@@ -49,13 +49,13 @@ describe("status", () => {
     expect(text).toContain("Needs you (1)\n  • Fix the flaky test in hawdb  hawdb\n    Tests pass locally; CI needs a rebase");
     expect(text).toContain("Working (1)");
     expect(text).toContain("Waiting (1)");
-    expect(text).toContain("Open decisions (1)\n  ? Rebase on main?\n    [Go: Rebase] [Hold]");
+    expect(text).toContain("Needs you (1)\n  ? Rebase on main?\n    [Go: Rebase] [Hold]");
     expect(text).toContain("Done today: 2");
   });
 
   test("quiet, in zh", () => {
     const text = formatSnapshot({ personaName: "小鸭", url: "ws://x", onHand: { tasks: [], counts: { needs_you: 0, working: 0, waiting: 0, done_today: 0 } }, decisions: [] }, zh);
-    expect(text).toBe("小鸭 · 运行于 ws://x\n\n还没有任务，一切安静。");
+    expect(text).toBe("小鸭 · 在 ws://x 运行\n\n还没有任务，一切安静。");
   });
 
   // A fake main process speaking the real wire protocol.

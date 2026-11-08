@@ -230,6 +230,10 @@ func (a *App) summary(b store.Board) string {
 		parts = append(parts, a.L.T("header.done", n))
 	}
 	if len(parts) == 0 {
+		// A reminder or a waiting task is still something on hand.
+		if n := len(b.Lanes[store.LaneWaiting]) + len(a.looseWaiters()); n > 0 {
+			return a.L.T("header.waiting", n)
+		}
 		return a.L.T("header.summary.none")
 	}
 	return strings.Join(parts, " · ")

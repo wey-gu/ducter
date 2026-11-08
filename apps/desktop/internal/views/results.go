@@ -48,7 +48,14 @@ func (a *App) taskFooter(c *ui.Context, task *store.Task, detail string) {
 		ui.Row(c).Gap(8).Wrap().AlignItems(ui.Center).Children(func() {
 			a.taskChip(c, task, "")
 		})
+		// A result's own report's evidence: a follow-up's result doesn't
+		// re-show the first round's checks (the dossier keeps them all).
 		evs, line := task.Evidence, a.outsideLine(task)
+		if r := task.LastReport; r != nil && len(r.Evidence) > 0 {
+			evs = r.Evidence
+		} else if r := task.Card; r != nil && r.LastReport != nil && len(r.LastReport.Evidence) > 0 {
+			evs = r.LastReport.Evidence
+		}
 		if len(evs) > 0 || line != "" {
 			// Proof and reach as a two-column sheet: labels in one column,
 			// values aligned in the other.

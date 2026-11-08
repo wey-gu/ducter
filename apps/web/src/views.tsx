@@ -22,6 +22,8 @@ import {
   reasonOf,
   reportOf,
   sortEvidence,
+  headlineEvidence,
+  resultEvidence,
   title,
   type DecisionState,
   type Entry,
@@ -314,14 +316,15 @@ function ResultActions({ task, inTask }: { task: Task; inTask?: boolean }) {
 
 function ResultProof({ task }: { task: Task }) {
   const line = outsideLine(task);
-  if (!task.evidence.length && !line) return null;
+  const evs = resultEvidence(task);
+  if (!evs.length && !line) return null;
   return (
     <div class="sheet-proof">
-      {task.evidence.length > 0 && (
+      {evs.length > 0 && (
         <>
           <div class="k">{t("result.howknow")}</div>
           <div class="v">
-            <EvidenceChips task={task} evs={task.evidence} />
+            <EvidenceChips task={task} evs={evs} />
           </div>
         </>
       )}
@@ -730,7 +733,7 @@ export function OnHand() {
         <div class="counts">
           {(["needs_you", "working", "waiting", "done_today"] as const).map((k) => (
             <div class="count" key={k}>
-              <b>{k === "done_today" ? A.doneToday() : k === "needs_you" ? needs.length + partnerDs.length : b.counts[k]}</b>
+              <b>{k === "done_today" ? A.doneToday() : k === "needs_you" ? needs.length + partnerDs.length : k === "waiting" ? waiting.length + loose.length : b.counts[k]}</b>
               <span>{t(`lane.${k === "done_today" ? "done" : k}`)}</span>
             </div>
           ))}
@@ -795,7 +798,7 @@ export function OnHand() {
                 </h3>
                 {done.map((task) => {
                   const r = reportOf(task);
-                  const ev = sortEvidence(task.evidence.length ? task.evidence : (r?.evidence ?? [])).find((e) => machineChecked(e.kind));
+                  const ev = headlineEvidence(task.evidence.length ? task.evidence : (r?.evidence ?? []));
                   return <Row key={task.id} task={task} meta={[stateLabel(attention(task)), ev?.label ?? (r?.summary.split("\n")[0] || "")].filter(Boolean).join(" · ")} />;
                 })}
               </section>

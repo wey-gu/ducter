@@ -1,0 +1,4 @@
+{"jobs": 2, "tasks": [
+ {"id": "token_orange", "promptFiles": ["prompts/_style.md", "prompts/token_orange.md"], "image": "raw/token_orange.png", "ar": "1:1", "ref": ["raw/ab_web.png", "raw/pedestal.png"]},
+ {"id": "token_ink", "promptFiles": ["prompts/_style.md", "prompts/token_ink.md"], "image": "raw/token_ink.png", "ar": "1:1", "ref": ["raw/ab_web.png", "raw/pedestal.png"]}
+]}

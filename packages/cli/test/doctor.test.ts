@@ -100,6 +100,15 @@ describe("doctor", () => {
     expect(r.ok).toBe(true);
   });
 
+  test("DUCTER_MEMORY=off says off, never 'connected', and doesn't ask nmem; modes are translated", async () => {
+    const host = fake();
+    const r = await runDoctor(host, zh, { ...opts, memoryOff: true });
+    expect(byId(r, "nmem").detail).toBe("关着（DUCTER_MEMORY=off）：不读身份，不回想，不记");
+    expect(host.calls.some((c) => c.startsWith("nmem"))).toBe(false);
+    const remote = await runDoctor(fake({ out: { "nmem --json status": { code: 0, stdout: JSON.stringify({ status: "healthy", mode: "remote" }) } } }), zh, { ...opts, memoryOff: false });
+    expect(byId(remote, "nmem").detail).toBe("已连接（远程）");
+  });
+
   test("port: taken by another program blocks; taken by Ducter does not", async () => {
     const busy = await runDoctor(fake({ port: "busy" }), en, opts);
     expect(byId(busy, "port")).toMatchObject({ status: "missing", required: true, fix: "DUCTER_PORT=7784 ducter up" });

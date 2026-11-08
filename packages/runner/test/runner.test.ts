@@ -138,6 +138,11 @@ describe("session spec", () => {
     expect(b).toContain("always commit, even if the brief says \"no commits\"");
     expect(b).toContain("**Hold** = pause and wait (it never means \"no\")");
     expect(b).toContain("{kind:\"diff\", label:\"commit\", ref:\"<sha>\"}");
+    // The summary is read as-is on On hand and the phone: the user's language, outcome first,
+    // no "Branch ducter/x, commit abc." opener (live review 2026-11-09).
+    expect(b).toContain("in the language of the user's own words in the brief");
+    expect(b).toContain("Open with the outcome in one sentence anyone could follow");
+    expect(b).not.toContain("plus the branch name in the summary");
   });
 });
 

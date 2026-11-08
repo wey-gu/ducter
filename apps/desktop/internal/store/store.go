@@ -90,6 +90,7 @@ type Task struct {
 	HistoryLoaded bool
 	// OpenedAt is the time of task_open, when known.
 	OpenedAt string
+	openSeq  int64 // seq of the task_open in Open (a retitle is a later one)
 	// Version bumps when Events change, for views that recompute (diff).
 	Version int
 	// Sends are the user's direct messages to the task, oldest first.
@@ -101,8 +102,12 @@ type Task struct {
 	Browser *BrowserStatus
 	// Acting is the task_action awaiting its action_result ("" when none).
 	Acting string
-	// Acted is the last action_result for this task.
-	Acted *protocol.ServerFrame
+	// Acted is the last action_result for this task, and the seq it was
+	// logged at (the head seq for a live result). New work reported after
+	// it (a follow-up done on the same branch) clears it: that work isn't
+	// merged.
+	Acted    *protocol.ServerFrame
+	ActedSeq int64
 }
 
 // BrowserStatus is where a browser task's browser is.
@@ -335,7 +340,7 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 	case "action_result":
 		if t := s.Tasks[f.TaskID]; t != nil {
 			fc := f
-			t.Acting, t.Acted = "", &fc
+			t.Acting, t.Acted, t.ActedSeq = "", &fc, s.HeadSeq
 		}
 		s.ActionResults = append(s.ActionResults, f)
 	case "events":
@@ -485,9 +490,11 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 		// A user-origin "act_<task>_<action>" status records what the user did by button
 		// (merge, open_pr): the durable form of an action_result, so it survives restarts.
 		if ev.Origin == protocol.OriginUser && b.TaskID != "" && strings.HasPrefix(b.JobID, "act_"+b.TaskID+"_") {
-			if t := s.Tasks[b.TaskID]; t != nil {
-				t.Acted = &protocol.ServerFrame{T: "action_result", TaskID: b.TaskID, Action: strings.TrimPrefix(b.JobID, "act_"+b.TaskID+"_"), OK: true}
-			}
+			// On (re)connect the channel replays before on_hand lists the task: keep the
+			// action on a task that only on_hand will fill in, or Merge comes back.
+			t := s.task(b.TaskID)
+			t.Acted = &protocol.ServerFrame{T: "action_result", TaskID: b.TaskID, Action: strings.TrimPrefix(b.JobID, "act_"+b.TaskID+"_"), OK: true}
+			t.ActedSeq = ev.Seq
 			s.bySeq[ev.Seq] = nil
 			return
 		}
@@ -501,6 +508,11 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 		j.Status = b
 		s.bySeq[ev.Seq] = nil // seen, not an entry of its own
 	case *protocol.LivingMsg:
+		var before *protocol.LivingMsg
+		if old := s.bySeq[ev.Supersedes]; ev.Supersedes != 0 && old != nil {
+			before = old.Living
+		}
+		s.newWorkAfterAction(ev.Seq, before, b)
 		if old := s.bySeq[ev.Supersedes]; ev.Supersedes != 0 && old != nil && old.Living != nil {
 			old.Event, old.Living = ev, b
 			old.Revision++
@@ -617,6 +629,29 @@ func (s *Store) resolve(r *protocol.DecisionResolved) {
 	d.Pending = ""
 }
 
+// newWorkAfterAction clears a task's merge (or draft PR) once a done item
+// for it appears in the living message after that action: the task did
+// more work on its branch, and that work isn't merged. A revision that
+// only carries an earlier done item along changes nothing.
+func (s *Store) newWorkAfterAction(seq int64, before, after *protocol.LivingMsg) {
+	had := map[string]bool{}
+	if before != nil {
+		for _, it := range before.Items {
+			if it.Kind == "done" {
+				had[it.TaskID] = true
+			}
+		}
+	}
+	for _, it := range after.Items {
+		if it.Kind != "done" || had[it.TaskID] {
+			continue
+		}
+		if t := s.Tasks[it.TaskID]; t != nil && t.Acted != nil && seq > t.ActedSeq {
+			t.Acted = nil
+		}
+	}
+}
+
 func taskOf(ev protocol.LogEvent, body any) string {
 	switch b := body.(type) {
 	case *protocol.TaskOpen:
@@ -644,8 +679,14 @@ func (s *Store) applyTask(t *Task, ev protocol.LogEvent, body any) {
 	t.Version++
 	switch b := body.(type) {
 	case *protocol.TaskOpen:
-		t.Open = b
-		t.OpenedAt = ev.TS
+		// The partner retitles a task by appending another task_open: the latest one names
+		// the task, the first one dates it.
+		if t.Open == nil || ev.Seq >= t.openSeq {
+			t.Open, t.openSeq = b, ev.Seq
+		}
+		if t.OpenedAt == "" || ev.TS < t.OpenedAt {
+			t.OpenedAt = ev.TS
+		}
 	case *protocol.TaskState:
 		t.State = b
 	case *protocol.TaskEvent:
@@ -678,6 +719,9 @@ func (s *Store) applyTask(t *Task, ev protocol.LogEvent, body any) {
 	case *protocol.Report:
 		t.LastReport = b
 		t.Evidence = mergeEvidence(t.Evidence, b.Evidence)
+		if t.Acted != nil && ev.Seq > t.ActedSeq {
+			t.Acted = nil
+		}
 	case *protocol.Checkpoint:
 		t.Checkpoints = append(t.Checkpoints, CheckpointAt{Checkpoint: *b, Seq: ev.Seq, TS: ev.TS})
 		sort.Slice(t.Checkpoints, func(i, j int) bool { return t.Checkpoints[i].Seq < t.Checkpoints[j].Seq })

@@ -90,7 +90,8 @@ export interface Bodies {
   };
   checkpoint: { taskId: string; text: string; gitRef?: string };
   // A waiter is a cheap wait that wakes the partner (wait_until). Shown on On hand as a compact row.
-  waiter: { waiterId: string; taskId?: string; at?: string; reason: string; state: "armed" | "fired" | "cancelled" };
+  // decisionId: a wait tied to a question (an ask); it is cancelled when the question is answered.
+  waiter: { waiterId: string; taskId?: string; decisionId?: string; at?: string; reason: string; state: "armed" | "fired" | "cancelled" };
   // The partner saved something durable to the user's long-term memory (Nowledge Mem). Clients
   // show one quiet line under the reply: "记下了 · <title>" / "Noted · <title>". Never a card,
   // never a notification. Provenance lives in Mem, not here.

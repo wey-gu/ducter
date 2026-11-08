@@ -153,6 +153,7 @@ interface RunResult {
   recalls: { query: string; step: number }[];
   remembered: MemoryAdd[]; // saved (accepted by the fake Mem)
   memAttempts: { input: unknown; step: number }[]; // every memory_add call, refused ones too
+  retitles: { key: string; title: string; step: number }[]; // task_retitle, as new task_open events
 }
 
 const PARTNER_KINDS = new Set(["ack", "ai_msg", "decision"]);
@@ -280,6 +281,13 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   }
   // Decisions made by the partner keep their full shape for the judge.
   const decisions = core.log.read({ stream: "channel", fromSeq: startSeq + 1, kinds: ["decision"], limit: 100 }).filter((e) => e.origin === "partner");
+  const retitles = core.log
+    .read({ fromSeq: startSeq + 1, kinds: ["task_open"], limit: 1000 })
+    .filter((e) => e.origin === "partner")
+    .map((e) => {
+      const b = e.body as Bodies["task_open"];
+      return { key: keyOf.get(b.taskId) ?? b.taskId, title: b.title, step: stepOf(e.seq) };
+    });
   for (const t of tools) if (/(^|__)memory_add$/.test(t.name)) memAttempts.push({ input: t.input, step: t.step });
   const notedByStep = core.log
     .read({ stream: "channel", fromSeq: startSeq + 1, kinds: ["memory_noted"], limit: 100 })
@@ -315,14 +323,15 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     for (const n of notedByStep.filter((x) => x.step === i)) lines.push(`  [the app shows a small line: "Noted · ${n.title}"]`);
     for (const o of r_opened(fr.opened, i)) lines.push(`  [opened a task] title: ${o.title} | place: ${JSON.stringify(o.place ?? null)} | brief: ${o.brief.slice(0, 1200).replace(/\n/g, " ⏎ ")}`);
     for (const x of fr.sent.filter((x) => x.step === i)) lines.push(`  [sent to task ${keyOf.get(x.taskId) ?? "?"}] ${x.text.slice(0, 400)}`);
-    const other = [...new Set(tools.filter((x) => x.step === i).map((x) => x.name.replace(/^mcp__ducter__/, "")).filter((n) => !["task_open", "task_send", "ask", "wait_until", "ToolSearch", "memory_search", "memory_add"].includes(n)))];
+    for (const x of retitles.filter((x) => x.step === i)) lines.push(`  [retitled task ${x.key}] ${x.title}`);
+    const other = [...new Set(tools.filter((x) => x.step === i).map((x) => x.name.replace(/^mcp__ducter__/, "")).filter((n) => !["task_open", "task_send", "task_retitle", "ask", "wait_until", "ToolSearch", "memory_search", "memory_add"].includes(n)))];
     if (other.length) lines.push(`  [also used tools] ${other.join(", ")}`);
   }
   if (error) lines.push(`ERROR: ${error}`);
 
   await partner.close().catch(() => {});
   await core.stop().catch(() => {});
-  return { sc, visible, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n"), recalls, remembered: mem.added, memAttempts };
+  return { sc, visible, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n"), recalls, remembered: mem.added, memAttempts, retitles };
 }
 
 const r_opened = (o: Opened[], step: number) => o.filter((x) => x.step === step);
@@ -406,6 +415,11 @@ function check(r: RunResult): string[] {
     if (!r.sent.some((s) => s.taskId === want)) fails.push(`no task_send to ${e.sendTo}`);
   }
   if (e.noSend && r.sent.length) fails.push(`task_send ×${r.sent.length} (want none)`);
+  if (e.noSendTo && r.sent.some((s) => s.taskId === r.idOf.get(e.noSendTo!))) fails.push(`task_send to ${e.noSendTo} (want a new task)`);
+  if (e.retitled && !r.retitles.some((x) => x.key === e.retitled)) fails.push(`${e.retitled} not retitled`);
+  // Building on the repo's own branch (main) is fine; building on another task's branch is not.
+  if (e.noBaseBranch) for (const o of r.opened) if (/^ducter\//.test((o.place as { baseBranch?: string } | undefined)?.baseBranch ?? "")) fails.push(`new task built on ${(o.place as { baseBranch?: string }).baseBranch}`);
+
   if (e.ackFirst) {
     const acks = r.visible.filter((v) => v.kind === "ack");
     if (acks.length !== 1) fails.push(`acks ×${acks.length} (want 1)`);
@@ -418,6 +432,7 @@ function check(r: RunResult): string[] {
   }
   if (e.ask && !r.visible.some((v) => v.kind === "decision")) fails.push("no ask (decision)");
   if (e.waiter && !r.visible.some((v) => v.kind === "waiter")) fails.push("no reminder set");
+  if (e.noWaiter && r.visible.some((v) => v.kind === "waiter")) fails.push("set a reminder nobody asked for");
   for (const re of e.forbid ?? []) if (re.test(all)) fails.push(`says ${re}`);
   for (const re of e.require ?? []) if (!re.test(all)) fails.push(`missing ${re}`);
   const briefs = [...r.opened.map((o) => o.brief), ...r.sent.map((s) => s.text)].join("\n");

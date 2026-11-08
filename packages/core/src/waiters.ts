@@ -60,14 +60,21 @@ export function createWaiters(opts: { log: LogStore; clock?: Clock }): Waiters {
       const b = e.body as Bodies["task_state"];
       if (!FINISHED.includes(b.attention)) return;
       for (const { w } of [...armed.values()]) if (w.taskId === b.taskId) close(w.waiterId, "cancelled");
+    } else if (e.kind === "decision_resolved") {
+      // A wait that chased a question has nothing left to wait for once it is answered
+      // (review 2 #4: "等用户回答…" stayed on On hand after the answer).
+      const id = (e.body as Bodies["decision_resolved"]).decisionId;
+      for (const { w } of [...armed.values()]) if (w.decisionId === id) close(w.waiterId, "cancelled");
     }
   };
 
   // Rebuild from the Log, then re-arm (side effects only for what is still armed).
   const open = new Map<string, Bodies["waiter"]>();
   const finished = new Map<string, Attention>();
-  for (const e of log.read({ fromSeq: 0, limit: Number.MAX_SAFE_INTEGER, kinds: ["waiter", "task_state"] })) {
-    if (e.kind === "waiter") {
+  const answered = new Set<string>();
+  for (const e of log.read({ fromSeq: 0, limit: Number.MAX_SAFE_INTEGER, kinds: ["waiter", "task_state", "decision_resolved"] })) {
+    if (e.kind === "decision_resolved") answered.add((e.body as Bodies["decision_resolved"]).decisionId);
+    else if (e.kind === "waiter") {
       const w = e.body as Bodies["waiter"];
       if (w.state === "armed") open.set(w.waiterId, w);
       else open.delete(w.waiterId);
@@ -80,7 +87,7 @@ export function createWaiters(opts: { log: LogStore; clock?: Clock }): Waiters {
   for (const w of open.values()) {
     const a = w.taskId ? finished.get(w.taskId) : undefined;
     schedule(w);
-    if (a && FINISHED.includes(a)) close(w.waiterId, "cancelled");
+    if ((a && FINISHED.includes(a)) || (w.decisionId && answered.has(w.decisionId))) close(w.waiterId, "cancelled");
   }
 
   return {

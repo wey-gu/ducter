@@ -5,7 +5,7 @@ import { buildWeb } from "../build.ts";
 import { baseUrl, codeFromHash, deviceName, wsUrl } from "../src/conn.ts";
 import { format, joinHan, langOfText, strings, TABLES } from "../src/i18n.ts";
 import { markdown } from "../src/markdown.ts";
-import { isOutside, Store } from "../src/store.ts";
+import { headlineEvidence, isOutside, Store, title } from "../src/store.ts";
 
 let seq = 0;
 const ev = (kind: string, body: unknown, o: Partial<LogEvent> = {}): LogEvent =>
@@ -87,10 +87,54 @@ describe("store (parity with the desktop store)", () => {
     expect(s.tasksOfReply(u.seq)).toEqual(["t1"]);
   });
 
+  test("a retitle (a later task_open) renames the task and keeps when it was opened, in any order", () => {
+    const open = { taskId: "t1", project: "", place: { kind: "none" }, harness: "claude-code", brief: "b" };
+    const first = ev("task_open", { ...open, title: "修好分账测试" }, { stream: "task:t1", ts: "2026-11-09T10:00:00.000Z" });
+    const second = ev("task_open", { ...open, title: "修好分账测试和退款取整" }, { stream: "task:t1", ts: "2026-11-09T11:00:00.000Z" });
+    for (const order of [[first, second], [second, first]]) {
+      const s = new Store();
+      s.apply({ t: "welcome", persona: "default", personaName: "Ducter", headSeq: 0 });
+      for (const e of order) s.apply({ t: "events", events: [e] });
+      expect(title(s.task("t1"))).toBe("修好分账测试和退款取整");
+      expect(s.task("t1").openedAt).toBe("2026-11-09T10:00:00.000Z");
+    }
+  });
+
   test("a welcome from a Log that started over is stale", () => {
     const s = new Store();
     s.apply({ t: "events", events: [ev("user_msg", { text: "hi" })] });
     expect(s.stale({ t: "welcome", persona: "p", personaName: "D", headSeq: 0 })).toBe(true);
+  });
+
+  test("a merge replayed before on_hand still counts (no second Merge after a reconnect)", () => {
+    const s = new Store();
+    s.apply({ t: "welcome", persona: "default", personaName: "Ducter", headSeq: 0 });
+    s.apply({ t: "events", events: [ev("job_status", { jobId: "act_t1_merge", taskId: "t1", state: "done", text: "merged" }, { origin: "user" })] });
+    s.apply({ t: "on_hand", onHand: { tasks: [{ taskId: "t1", title: "fix", attention: "done" }] } as never });
+    expect(s.tasks.get("t1")!.acted).toEqual({ action: "merge", ok: true });
+  });
+
+  test("a Done row names the latest check of the best kind, as the desktop does", () => {
+    const evs = [
+      { kind: "diff", label: "commit", ref: "0210823" },
+      { kind: "test", label: "bun test before", ref: "2 pass, 1 fail" },
+      { kind: "test", label: "bun test after", ref: "3 pass" },
+    ];
+    expect(headlineEvidence(evs)?.label).toBe("bun test after");
+    expect(headlineEvidence([{ kind: "note", label: "x", ref: "" }])).toBeUndefined();
+  });
+
+  test("a follow-up done after a merge is not merged (Merge comes back)", () => {
+    const s = new Store();
+    const done = () => ev("living_msg", { items: [{ taskId: "t1", kind: "done", title: "fix", text: "ok" }] });
+    const first = done();
+    s.apply({ t: "events", events: [first, ev("job_status", { jobId: "act_t1_merge", taskId: "t1", state: "done", text: "merged" }, { origin: "user" })] });
+    expect(s.tasks.get("t1")!.acted?.action).toBe("merge");
+    const rev = ev("living_msg", { items: [{ taskId: "t1", kind: "done", title: "fix", text: "ok" }, { taskId: "t2", kind: "progress", title: "x", text: "" }] }, { supersedes: first.seq });
+    s.apply({ t: "events", events: [rev] });
+    expect(s.tasks.get("t1")!.acted?.action).toBe("merge");
+    s.apply({ t: "events", events: [done()] });
+    expect(s.tasks.get("t1")!.acted).toBeUndefined();
   });
 
   test("what counts as outside", () => {

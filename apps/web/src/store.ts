@@ -50,9 +50,12 @@ export interface Task {
   seqs: Set<number>;
   historyLoaded: boolean;
   openedAt?: string;
+  openSeq?: number; // seq of the task_open in `open` (a retitle is a later one)
   sends: Send[];
   acting?: string;
   acted?: { action: string; ok: boolean; message?: string; ref?: string };
+  /** The seq the action was logged at: a done report after it is new, unmerged work. */
+  actedSeq?: number;
 }
 
 export const LANE = { needs: 0, working: 1, waiting: 2, done: 3, hidden: 4 } as const;
@@ -139,7 +142,7 @@ export class Store {
       }
       case "action_result": {
         const t = this.tasks.get(f.taskId);
-        if (t) (t.acting = undefined), (t.acted = { action: f.action, ok: f.ok, message: f.message, ref: f.ref });
+        if (t) (t.acting = undefined), (t.acted = { action: f.action, ok: f.ok, message: f.message, ref: f.ref }), (t.actedSeq = this.cursor);
         this.actionResults.push(f);
         return;
       }
@@ -237,8 +240,10 @@ export class Store {
         const b = ev.body as Bodies["job_status"];
         // A user-origin act_<task>_<action> status is the durable record of a button action.
         if (ev.origin === "user" && b.taskId && b.jobId.startsWith(`act_${b.taskId}_`)) {
-          const t = this.tasks.get(b.taskId);
-          if (t) t.acted = { action: b.jobId.slice(`act_${b.taskId}_`.length), ok: true };
+          // On (re)connect the channel replays before on_hand lists the task: keep it anyway.
+          const t = this.task(b.taskId);
+          t.acted = { action: b.jobId.slice(`act_${b.taskId}_`.length), ok: true };
+          t.actedSeq = ev.seq;
           return void this.bySeq.set(ev.seq, null);
         }
         const known = this.jobs.get(b.jobId);
@@ -252,6 +257,12 @@ export class Store {
       }
       case "living_msg": {
         const old = ev.supersedes ? this.bySeq.get(ev.supersedes) : undefined;
+        // A done item that is new in this message, after a merge: more work on that branch, not merged.
+        const had = new Set((old?.living?.items ?? []).filter((i) => i.kind === "done").map((i) => i.taskId));
+        for (const it of (ev.body as Bodies["living_msg"]).items) {
+          const t = it.kind === "done" && !had.has(it.taskId) ? this.tasks.get(it.taskId) : undefined;
+          if (t?.acted && ev.seq > (t.actedSeq ?? 0)) t.acted = undefined;
+        }
         if (old?.living) {
           old.ev = ev;
           old.living = ev.body as Bodies["living_msg"];
@@ -313,8 +324,9 @@ export class Store {
     t.events.splice(i, 0, ev);
     switch (ev.kind) {
       case "task_open":
-        t.open = ev.body as Bodies["task_open"];
-        t.openedAt = ev.ts;
+        // A retitle is a later task_open for the same task: the latest names it, the first dates it.
+        if (!t.open || ev.seq >= (t.openSeq ?? 0)) (t.open = ev.body as Bodies["task_open"]), (t.openSeq = ev.seq);
+        if (!t.openedAt || ev.ts < t.openedAt) t.openedAt = ev.ts;
         break;
       case "task_state":
         t.state = ev.body as Bodies["task_state"];
@@ -330,6 +342,7 @@ export class Store {
       case "report": {
         const b = ev.body as Bodies["report"];
         t.lastReport = b;
+        if (t.acted && ev.seq > (t.actedSeq ?? 0)) t.acted = undefined;
         for (const e of b.evidence ?? []) if (!t.evidence.some((h) => h.ref === e.ref && h.label === e.label)) t.evidence.push(e);
         break;
       }
@@ -414,6 +427,22 @@ export class Store {
 const RANK: Record<string, number> = { test: 0, ci: 1, diff: 2, file: 3, log: 4, url: 5 };
 export const sortEvidence = (evs: EvidenceRef[]) => [...evs].sort((a, b) => (RANK[a.kind] ?? 9) - (RANK[b.kind] ?? 9));
 export const machineChecked = (kind: string) => ["test", "ci", "diff", "file"].includes(kind);
+
+/** The evidence a Done row names, as on the desktop: the best machine-checked kind, its latest
+ *  entry (a task reports "bun test before" then "bun test after": the row says after). */
+export function headlineEvidence(evs: EvidenceRef[]): EvidenceRef | undefined {
+  const sorted = sortEvidence(evs);
+  const first = sorted[0];
+  if (!first || !machineChecked(first.kind)) return undefined;
+  return sorted.filter((e) => e.kind === first.kind).at(-1);
+}
+
+/** A result's How I know: its own report's evidence. A follow-up's result doesn't re-show the
+ *  first round's checks; the task's dossier keeps them all. */
+export function resultEvidence(t: Task): EvidenceRef[] {
+  const r = reportOf(t);
+  return r?.evidence?.length ? r.evidence : t.evidence;
+}
 
 /** One evidence item per kind+label: the latest (a second "bun test" supersedes the first). */
 export function latestByLabel(evs: EvidenceRef[]): EvidenceRef[] {

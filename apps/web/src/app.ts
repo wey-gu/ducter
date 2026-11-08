@@ -322,7 +322,10 @@ class AppState {
     const done = this.doneToday();
     // A phone header has room for two things: what needs you and what's moving come first.
     if (done && parts.length < 2) parts.push(L.t("header.done", done));
-    return parts.length ? parts.join(" · ") : L.t("header.summary.none");
+    if (parts.length) return parts.join(" · ");
+    // A reminder or a waiting task is still something on hand.
+    const waiting = b.lanes[LANE.waiting]!.length + this.S.armedWaiters().filter((w) => !w.taskId).length;
+    return waiting ? L.t("header.waiting", waiting) : L.t("header.summary.none");
   }
 
   /** The conversation's rows (desktop rows()): decisions inside a living message show once,

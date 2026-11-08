@@ -128,7 +128,7 @@ describe("live-run regressions", () => {
     const p = buildSystemPrompt({ id: "p", name: "Ducter", identity: "ID" });
     expect(p).toMatchSnapshot();
     // Tuned with packages/partner/eval: the result prose leaves evidence, Outside and Merge to the app.
-    for (const s of ["at most 2 lines", "left-out line", "Never restate the evidence", "no task ids", "call ask", "then write nothing", "write nothing more", "goes to that\n      task with task_send", "gets ask first", "never pass it to a task", "ONE\n  concrete example"]) {
+    for (const s of ["at most 2 lines", "left-out line", "Never restate the evidence", "no task ids", "call ask", "write nothing else that turn, before or after it", "write nothing more", "Continue an existing task (task_send", "gets ask first", "never pass it to a task", "ONE\n  concrete example"]) {
       expect(p).toContain(s);
     }
   });
@@ -307,5 +307,78 @@ describe("partner eval regressions", () => {
     user("is it on main?");
     await partner.idle();
     expect(fr.sessions[0]!.inputs.at(-1)).toContain("into its base branch (e81f2aa) (base branch: main)");
+  });
+});
+
+// Review 2 (2026-11-09): #3 one task swallowed unrelated work; #4 a reminder chased an ask.
+describe("review 2 regressions", () => {
+  test("task_retitle appends a task_open with the new title and the same place and brief", async () => {
+    let r: any, again: any, bad: any;
+    const { fc, partner, user } = setup(async (_i, s) => {
+      r = await fc.callTool("task_retitle", { taskId: "t1", title: "hawdb: checkpoint + WAL flush timings" });
+      again = await fc.callTool("task_retitle", { taskId: "t1", title: "hawdb: checkpoint + WAL flush timings" });
+      bad = await fc.callTool("task_retitle", { taskId: "nope", title: "x" });
+      s.end();
+    });
+    const open = { taskId: "t1", title: "hawdb: checkpoint interval 30s", project: "", place: { kind: "repo", device: "local", repoPath: "/r" }, harness: "claude-code", brief: "b" };
+    fc.core.log.append({ stream: "task:t1", origin: "system", kind: "task_open", body: open as any });
+    fc.cards.set("t1", { taskId: "t1", persona: "p1", title: open.title, project: "", place: open.place as any, harness: "claude-code", attention: "working", residency: "hot", openedAt: "", updatedAt: "" });
+    user("also make the WAL flush interval configurable");
+    await partner.idle();
+    expect(r).toMatchObject({ ok: true });
+    expect(bad.ok).toBe(false);
+    const opens = fc.events.filter((e) => e.kind === "task_open");
+    expect(opens).toHaveLength(2); // the same title twice is a no-op
+    expect(opens[1]).toMatchObject({ stream: "task:t1", origin: "partner", body: { ...open, title: "hawdb: checkpoint + WAL flush timings" } });
+    expect(again.ok).toBe(true);
+  });
+
+  test("a wait next to an ask: refused unless the user asked for a reminder, and then tied to the ask", async () => {
+    const results: any[] = [];
+    const { fc, partner, user } = setup(async (_i, s, n) => {
+      if (n <= 1) {
+        await fc.callTool("ask", { question: "零头怎么分？", goLabel: "四舍五入", default: "hold" });
+        results.push(await fc.callTool("wait_until", { at: "2026-11-09T09:00:00Z", reason: "等你回答零头分法" }));
+      } else results.push(await fc.callTool("wait_until", { at: "2026-11-09T15:00:00Z", reason: "提醒你回邮件" }));
+      s.end();
+    });
+    user("分账零头怎么处理你先问我"); // no reminder asked: the card is enough
+    await partner.idle();
+    user("先问我零头怎么分，明天九点没回就提醒我");
+    await partner.idle();
+    user("三点提醒我回邮件");
+    await partner.idle();
+    expect(results.map((r) => r.ok)).toEqual([false, true, true]);
+    const d = fc.events.filter((e) => e.kind === "decision")[1]!.body as any;
+    const ws = fc.events.filter((e) => e.kind === "waiter").map((e) => e.body as any);
+    expect(ws).toHaveLength(2);
+    expect(ws[0]).toMatchObject({ reason: "等你回答零头分法", decisionId: d.decisionId });
+    expect(ws[1].decisionId).toBeUndefined();
+  });
+
+  test("a task the user merged says so in <tasks>, so new work on it becomes a new task", async () => {
+    const { renderTasks } = await import("../src/index.ts");
+    const card = { taskId: "t1", persona: "p", title: "values()", project: "", place: { kind: "repo", device: "local", repoPath: "/r", branch: "ducter/v", baseBranch: "main" } as any, harness: "claude-code", attention: "done" as const, residency: "parked" as const, openedAt: "", updatedAt: "" };
+    expect(renderTasks([card], 8, { merged: () => true, taskBase: () => "main" })).toContain("merged into main by the user (new work = a new task)");
+    expect(renderTasks([card], 8, { merged: () => false })).not.toContain("merged");
+  });
+
+  test("a turn woken by a task's question cannot answer it for the user", async () => {
+    let r: any;
+    const { fc, fr, partner } = setup(async (_i, s) => {
+      r = await fc.callTool("task_send", { taskId: "t1", text: "Go：一起改" });
+      s.end();
+    }, { settleMs: 0 });
+    partner.onTrigger(
+      fc.core.log.append({ stream: "task:t1", origin: "task", kind: "report", body: { taskId: "t1", state: "needs_input", summary: "s", questions: [{ id: "q", text: "一起改吗？", blocking: true, reversible: true }], evidence: [] } }),
+    );
+    await partner.idle();
+    expect(r.ok).toBe(false);
+    expect(fr.sent).toHaveLength(0);
+  });
+
+  test("persona: follow-ups continue a task only on its unmerged change; one-time instructions are not memory", () => {
+    const p = buildSystemPrompt({ id: "p", name: "Ducter", identity: "ID" });
+    for (const s of ["ONLY when the follow-up", "not merged yet", "Anything else is a new task", "task_retitle", "never an instruction for this one piece of work"]) expect(p).toContain(s);
   });
 });

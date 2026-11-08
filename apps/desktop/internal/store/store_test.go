@@ -154,6 +154,25 @@ func TestV2SnapshotDecisionsAndWaiters(t *testing.T) {
 	}
 }
 
+// A retitle is a later task_open for the same task: the latest names it, the first dates it,
+// whatever order the events arrive in (live push vs. history replay).
+func TestRetitleByLaterTaskOpen(t *testing.T) {
+	first := protocol.NewEvent(1, "2026-11-09T10:00:00Z", "ducter", "task:t1", protocol.OriginPartner, protocol.KindTaskOpen, protocol.TaskOpen{TaskID: "t1", Title: "修好分账测试"})
+	second := protocol.NewEvent(9, "2026-11-09T11:00:00Z", "ducter", "task:t1", protocol.OriginPartner, protocol.KindTaskOpen, protocol.TaskOpen{TaskID: "t1", Title: "修好分账测试和退款取整"})
+	for _, order := range [][]protocol.LogEvent{{first, second}, {second, first}} {
+		s := New()
+		for _, e := range order {
+			s.Apply(events(e))
+		}
+		if got := s.Task("t1").Title(); got != "修好分账测试和退款取整" {
+			t.Errorf("title %q", got)
+		}
+		if got := s.Task("t1").OpenedAt; got != "2026-11-09T10:00:00Z" {
+			t.Errorf("openedAt %q", got)
+		}
+	}
+}
+
 func TestDirectSendsAndDelivery(t *testing.T) {
 	s := New()
 	s.Apply(events(ev(1, "task:t1", protocol.KindTaskOpen, protocol.TaskOpen{TaskID: "t1", Title: "x"})))
@@ -202,6 +221,44 @@ func TestUserActionStatusMarksTaskActed(t *testing.T) {
 		if e != nil && e.Job != nil && e.Job.Status != nil && e.Job.Status.JobID == "act_t1_merge" {
 			t.Fatal("a user action must not become a conversation entry")
 		}
+	}
+}
+
+// On a reconnect the channel replays before on_hand lists the tasks: a merge
+// done earlier must survive, or the result offers Merge again.
+func TestUserActionBeforeOnHandSurvives(t *testing.T) {
+	s := New()
+	s.Apply(protocol.ServerFrame{T: "events", Events: []protocol.LogEvent{{Seq: 29, Stream: "channel", Origin: protocol.OriginUser, Kind: "job_status",
+		Body: []byte(`{"jobId":"act_t1_merge","taskId":"t1","state":"done","text":"merged"}`)}}})
+	s.Apply(protocol.ServerFrame{T: "on_hand", OnHand: &protocol.OnHand{Tasks: []protocol.TaskCard{{TaskID: "t1", Title: "fix", Attention: protocol.Done}}}})
+	if a := s.Tasks["t1"].Acted; a == nil || a.Action != "merge" {
+		t.Fatalf("Acted = %+v after on_hand, want merge", a)
+	}
+}
+
+// Live: merged, then a follow-up went to the same task and came back done on
+// the same branch. That new work is not merged: Merge comes back.
+func TestNewWorkAfterAMergeIsNotMerged(t *testing.T) {
+	s := New()
+	act := protocol.LogEvent{Seq: 29, Stream: "channel", Origin: protocol.OriginUser, Kind: "job_status",
+		Body: []byte(`{"jobId":"act_t1_merge","taskId":"t1","state":"done","text":"merged"}`)}
+	done := func(seq int64) protocol.LogEvent {
+		return ev(seq, "channel", protocol.KindLivingMsg, protocol.LivingMsg{Items: []protocol.LivingItem{{TaskID: "t1", Kind: "done", Text: "ok"}}})
+	}
+	s.Apply(events(done(20), act))
+	if s.Tasks["t1"].Acted == nil {
+		t.Fatal("merge lost")
+	}
+	// A revision carrying the old done item along with another task's line: still merged.
+	rev := ev(30, "channel", protocol.KindLivingMsg, protocol.LivingMsg{Items: []protocol.LivingItem{{TaskID: "t1", Kind: "done", Text: "ok"}, {TaskID: "t2", Kind: "progress"}}})
+	rev.Supersedes = 20
+	s.Apply(events(rev))
+	if s.Tasks["t1"].Acted == nil {
+		t.Fatal("a revision cleared the merge")
+	}
+	s.Apply(events(done(48)))
+	if s.Tasks["t1"].Acted != nil {
+		t.Fatal("new work after the merge still shows as merged")
 	}
 }
 

@@ -1,6 +1,8 @@
 # Roadmap
 
 > Living document. Scope changes go through the change loop (`AGENTS.md`) and `docs/decisions.md`.
+> *Built* notes below say what exists after the overnight build of 2026-11-09; what was verified
+> and how is in `docs/plan/v1-tonight.md` and `docs/design/scenarios.md`.
 
 ## V1: heavy developer + powerful personal AI (D33)
 
@@ -18,8 +20,14 @@ Onboarding and defaults meet the ordinary-person bar.
   *Built (D54):* `ducter worker --join`, presence, and task placement by `Place.device`, with
   offline/resume (`design/system.md` Workers).
 - **Clients:**
-  - Desktop: MyGo native UI.
+  - Desktop: MyGo native UI. *Built:* the three zoom levels, Connect to your Ducter, and
+    **Ducter.app** (a DMG, ad-hoc signed; the app runs its own Ducter and stops it on quit;
+    lifecycle pending, OPEN-QUESTIONS 2.1).
   - Mobile: **web** (served by the main process, reachable from anywhere through a tunnel).
+    *Built (2026-11-09):* `apps/web`, a Preact phone client served at `/app` (conversation,
+    decisions, On hand, opened task), pairing from the `ducter pair` link or QR, and Web Push.
+    Verified in a headless browser at 390×844, not yet on a real phone. Preact instead of
+    MyGo WASM departs from D20 (OPEN-QUESTIONS 1.3).
 - **Remote access (research/21):** a small **Ducter Edge** on the user's own free
   `workers.dev` subdomain. It is one Worker plus one relay Durable Object, about 300–600 LOC.
   - It serves the web client. The phone and the main process both dial into it, which gives
@@ -29,22 +37,31 @@ Onboarding and defaults meet the ordinary-person bar.
   - Supports both `workers.dev` (zero setup) and a **custom domain** on Cloudflare (D46).
     `workers.dev` is likely blocked in mainland China; there, use a custom domain or a
     company network.
+  - *Not built yet.* Today a phone or another Mac reaches a server through Caddy on the
+    user's own domain or an SSH tunnel (server mode below).
 - **Pairing:** a QR code with a one-time code (the dsh model), then a WebCrypto device key
   plus a passkey; every device can be revoked individually.
   *Built (D54):* the code half: `ducter pair` (code, link, terminal QR), `POST /pair` → a
   hashed, revocable device token, `ducter devices`; the desktop's "Connect to your Ducter".
-  The device key + passkey come with the web/phone client.
+  The phone web client pairs with the same code (the link opens `/pair#c=…`); the device key +
+  passkey are still to come.
 - **Server mode (D54, research/29):** `ducter service install` runs the main process as a
   systemd user service bound to 127.0.0.1. Reach it through Caddy on the user's own domain
   (`scripts/caddy-setup.sh`; the default for CN users, Q18) or an SSH tunnel. The Edge stays
   the no-domain path for phone and web.
 - **Push:** Web Push sent from the main process. iOS needs 16.4+ and a Home Screen install.
+  *Built:* VAPID + RFC 8291 in `packages/core/src/push.ts`; an unread decision pushes after
+  30 s, coalesced per 15 min; done results only on request; quiet hours 23:00–08:00 hold
+  everything; Android gets Go / Hold actions (defaults pending, OPEN-QUESTIONS 3.1).
 - **A full CF Worker / Durable Object deploy target is not in v1**; it moves to v1.x. Reasons:
   two storage backends, no custom FTS5 tokenizer or vectors in Durable Objects, and +2–4
   weeks. The Edge is its seed.
 
 **In scope**
 - The main AI with expire-aware projection and memory (digest, window, recall).
+  *Built:* the long-term memory slice on Nowledge Mem (`memory_search`, `memory_add`, the
+  记下了 / Noted line), measured with a fake Mem only. The digest, re-cut and folds are not
+  built yet (the projection is the simplified one from `docs/plan/v1-tonight.md`).
 - Tasks on Claude Code and Codex (pi if cheap), with places, projects, worktrees, recipes, and
   ports.
 - On hand with the attention forecast, the living message, and decisions.
@@ -54,7 +71,9 @@ Onboarding and defaults meet the ordinary-person bar.
 - One persona in daily use. Multi-persona works, but its UI can be minimal.
 
 - **Browser use (D42)** and **computer use on trycua/cua (D41)** as task places. The exact
-  stack follows `research/23`.
+  stack follows `research/23`. *Built:* browser places on the host Mac through cua-driver
+  (persistent per-persona profile, sign-in by the user, token diet); sandboxes and computer
+  use are not built.
 - **Game-like capability setup (D43):** enabling a capability shows where it lives and what it
   does.
 

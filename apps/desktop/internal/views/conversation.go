@@ -133,7 +133,11 @@ func (a *App) conversation(c *ui.Context) {
 		}
 	})
 	a.firstResultLine(c)
-	a.cliOfferLine(c)
+	// One card at a time under the conversation: Ducter can't run in the
+	// background, else a gentle ask, else the Terminal offer.
+	if !a.backgroundLine(c) && !a.askLine(c) {
+		a.cliOfferLine(c)
+	}
 	a.composer(c)
 	a.readWhenSeen(c)
 }
@@ -168,6 +172,7 @@ func (a *App) emptyConversation(c *ui.Context) {
 				ui.Text(c, a.L.T("empty.repos.note", n)).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.5).Margin(t.S1, 2, 0, 2)
 			}
 		})
+		a.memLine(c)
 		// The end of the first run: where Ducter lives and what it can do.
 		if a.button(c, a.L.T("firstrun.devices"), btnText, t.ControlMD, t.Bg) {
 			a.OpenDevices()

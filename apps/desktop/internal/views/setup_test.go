@@ -36,7 +36,41 @@ type fakeBackend struct {
 	linkError  error
 	background bool
 	rested     int
+	// Background fixes and macOS: the jobs the app started (fed by the
+	// test), cua-driver's state, the agent's.
+	jobs      map[string]*local.Job
+	runs      []string
+	cua       local.CuaState
+	settings  []string
+	bgFirst   bool
+	bgBlocked bool
+	bgAllowed bool
+	stopped   int
 }
+
+func (f *fakeBackend) Run(id, cmd string) (*local.Job, error) {
+	if f.jobs == nil {
+		f.jobs = map[string]*local.Job{}
+	}
+	if j := f.jobs[id]; j != nil && j.Running() {
+		return j, nil
+	}
+	j := local.NewJob(id, cmd)
+	f.jobs[id] = j
+	f.runs = append(f.runs, id+": "+cmd)
+	return j, nil
+}
+func (f *fakeBackend) Job(id string) *local.Job { return f.jobs[id] }
+func (f *fakeBackend) Cua(bool) local.CuaState  { return f.cua }
+func (f *fakeBackend) OpenSettings(link string) error {
+	f.settings = append(f.settings, link)
+	return nil
+}
+func (f *fakeBackend) BundleID() string        { return "co.nowledge.ducter" }
+func (f *fakeBackend) BackgroundFirst() bool   { return f.bgFirst }
+func (f *fakeBackend) BackgroundBlocked() bool { return f.bgBlocked }
+func (f *fakeBackend) BackgroundAllowed() bool { return f.bgAllowed }
+func (f *fakeBackend) StopChild()              { f.stopped++ }
 
 func (f *fakeBackend) Healthy() bool { return f.healthy }
 func (f *fakeBackend) Doctor() (local.Report, error) {

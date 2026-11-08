@@ -42,6 +42,17 @@ type state struct {
 	// CLIOffer is the answer to "use ducter in Terminal too?": "linked"
 	// or "declined"; empty until asked.
 	CLIOffer string `json:"cliOffer,omitempty"`
+	// Asks are the gentle one-time offers (notifications, the phone,
+	// Nowledge Mem): the answer and when, by name.
+	Asks map[string]Ask `json:"asks,omitempty"`
+}
+
+// Ask is one answer to a gentle offer: "yes", "no", or "later" (asked
+// again once, days later; never more).
+type Ask struct {
+	Answer string `json:"answer"`
+	At     string `json:"at"`
+	Times  int    `json:"times"`
 }
 
 // Local is the data folder as the client sees it. Its zero value (no
@@ -140,6 +151,42 @@ func (l *Local) SetCLIOffer(answer string) {
 	}
 	l.st.CLIOffer = answer
 	l.save()
+}
+
+// Asked is the answer to an offer (zero if never asked).
+func (l *Local) Asked(name string) Ask {
+	if l == nil {
+		return Ask{}
+	}
+	return l.st.Asks[name]
+}
+
+// Answer remembers an answer to an offer.
+func (l *Local) Answer(name, answer string, at time.Time) {
+	if l == nil {
+		return
+	}
+	if l.st.Asks == nil {
+		l.st.Asks = map[string]Ask{}
+	}
+	a := l.st.Asks[name]
+	a.Answer, a.At, a.Times = answer, at.UTC().Format(time.RFC3339), a.Times+1
+	l.st.Asks[name] = a
+	l.save()
+}
+
+// MayAsk reports whether an offer may show now: never asked; or "later"
+// once, at least after days. "yes" and "no" are final.
+func (l *Local) MayAsk(name string, now time.Time, after time.Duration) bool {
+	a := l.Asked(name)
+	switch a.Answer {
+	case "":
+		return true
+	case "later":
+		at, err := time.Parse(time.RFC3339, a.At)
+		return a.Times < 2 && err == nil && now.Sub(at) >= after
+	}
+	return false
 }
 
 func (l *Local) save() {

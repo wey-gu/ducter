@@ -275,10 +275,19 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
       ...(reason ? { reason } : {}),
       ...(detail ? { detail } : {}),
     });
-    const f = await frame();
-    const d = f.devices.find((x) => x.id === device || x.name === device);
+    let f = await frame();
+    let d = f.devices.find((x) => x.id === device || x.name === device);
     if (!d) return res(false, "unknown_device");
-    const a = d.abilities.find((x) => x.id === ability);
+    let a = d.abilities.find((x) => x.id === ability);
+    // cua-driver may have been installed or updated a moment ago (the app's own setup): look
+    // again before saying no, instead of answering from a minute-old probe.
+    if (a?.state === "unavailable" && (a.reason === "cua_missing" || a.reason === "cua_old") && d.home) {
+      cached = undefined;
+      f = await frame();
+      d = f.devices.find((x) => x.id === device || x.name === device) ?? d;
+      a = d.abilities.find((x) => x.id === ability);
+      if (a?.state !== "unavailable") changed();
+    }
     if (!a || a.state === "later") return res(false, "failed");
     if (a.state === "unavailable") return res(false, a.reason ?? "failed", a.detail);
     switch (ability) {

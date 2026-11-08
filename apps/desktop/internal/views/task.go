@@ -60,6 +60,12 @@ func (a *App) taskHeader(c *ui.Context, task *store.Task) {
 			}
 			ui.Text(c, title).FontSize(20).FontWeight(800).SingleLine().Shrink(1)
 			a.stateChip(c, task.Attention())
+			if h := task.Browsing(); h != "" {
+				ui.Row(c).Gap(6).Padding(4, 10).Radius(a.T.Pill).Background(t.Working.Surface).AlignItems(ui.Center).Shrink(1).MinWidth(0).Children(func() {
+					ui.Box(c).Size(8, 8).Radius(4).Background(t.Working.Dot).Shrink(0)
+					ui.Text(c, a.L.T("browser.looking", h)).FontSize(t.XS).FontWeight(700).TextColor(t.Working.Ink).SingleLine()
+				})
+			}
 		})
 		if h := task.Harness(); h != "" {
 			ui.Row(c).Gap(8).Height(44).Padding(0, 14).Radius(t.RadiusSM).Background(t.Surface).
@@ -335,6 +341,9 @@ func (a *App) sentBubble(c *ui.Context, text string, sd *store.Send) {
 func (a *App) systemLine(c *ui.Context, b *protocol.TaskEvent) {
 	t := a.T
 	text := b.Text
+	if strings.HasPrefix(text, "Looking at ") {
+		text = a.L.T("browser.looking", strings.TrimPrefix(text, "Looking at "))
+	}
 	switch strings.ToLower(strings.TrimSpace(text)) {
 	case "turn completed", "turn complete", "turn ended":
 		text = a.L.T("task.turn.done")

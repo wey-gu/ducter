@@ -19,7 +19,7 @@ import (
 // needs (task events are never pushed in bulk).
 func (a *App) ensureHistory(id string) {
 	t := a.S.Task(id)
-	if t == nil || t.HistoryLoaded || a.historyAsked[id] {
+	if t == nil || t.HistoryLoaded || a.historyAsked[id] || !a.S.Welcomed {
 		return
 	}
 	a.historyAsked[id] = true
@@ -160,14 +160,14 @@ func (a *App) resultActions(c *ui.Context, task *store.Task) {
 		} else if done := task.Acted; done != nil && done.OK && done.Action == "merge" {
 			ui.Text(c.Key("acted"), a.L.T("result.merged", base)).FontSize(t.SM).FontWeight(700).TextColor(t.Done.Ink)
 		} else {
-			if a.button(c, a.L.T("result.merge", base), btnPrimary, 38, t.Surface) {
+			if a.buttonFor(c, a.L.T("result.merge", base), task.Title(), btnPrimary, 38, t.Surface) {
 				act("merge")
 			}
-			if a.button(c, a.L.T("result.pr"), btnQuiet, 38, t.Surface) {
+			if a.buttonFor(c, a.L.T("result.pr"), task.Title(), btnQuiet, 38, t.Surface) {
 				act("open_pr")
 			}
 		}
-		if a.Route != RouteTask && a.button(c, a.L.T("result.changes"), btnText, 38, t.Surface) {
+		if a.Route != RouteTask && a.buttonFor(c, a.L.T("result.changes"), task.Title(), btnText, 38, t.Surface) {
 			a.OpenTask(task.ID)
 		}
 	})

@@ -22,6 +22,7 @@ const (
 type Table map[string]string
 
 var zh = Table{
+	"browser.looking":               "在 Ducter 的浏览器里看 %s",
 	"result.asked":                  "已经跟 %s 说了",
 	"task.dossier.body":             "谁在做",
 	"task.dossier.reason":           "为什么是它",
@@ -216,6 +217,7 @@ var zh = Table{
 }
 
 var en = Table{
+	"browser.looking":               "Looking at %s in Ducter's browser",
 	"result.asked":                  "Told %s",
 	"task.dossier.body":             "Who's doing it",
 	"task.dossier.reason":           "Why this one",

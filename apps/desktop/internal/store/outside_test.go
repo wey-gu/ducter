@@ -32,3 +32,19 @@ func TestOutsideSeenInTranscript(t *testing.T) {
 		t.Errorf("order %+v", evs)
 	}
 }
+
+func TestBrowserStatus(t *testing.T) {
+	s := New()
+	raw := json.RawMessage(`{"browser":{"host":"news.ycombinator.com","url":"https://news.ycombinator.com/"}}`)
+	s.Apply(events(
+		ev(1, "task:b1", protocol.KindTaskState, protocol.TaskState{TaskID: "b1", Attention: protocol.Working}),
+		ev(2, "task:b1", protocol.KindTaskEvent, protocol.TaskEvent{TaskID: "b1", Role: "system", Text: "Looking at news.ycombinator.com", Raw: raw}),
+	))
+	if h := s.Task("b1").Browsing(); h != "news.ycombinator.com" {
+		t.Fatalf("browsing %q", h)
+	}
+	s.Apply(events(ev(3, "task:b1", protocol.KindTaskState, protocol.TaskState{TaskID: "b1", Attention: protocol.Done})))
+	if s.Task("b1").Browsing() != "" {
+		t.Error("still browsing when done")
+	}
+}

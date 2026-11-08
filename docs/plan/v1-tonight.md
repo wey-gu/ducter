@@ -278,6 +278,11 @@ What changed:
   dropped after an ask and in needs_input-only turns; defaults stripped from ask questions;
   button merges name the base branch.
 
+Round 2 (after Review 2): 48 scenarios, 90/96 over 2 runs (94%). Follow-ups continue a task
+only on its unmerged change; otherwise a new task, and `task_retitle` when a follow-up widens it.
+Waiters tied to an ask are cancelled when it is answered. One-time instructions never go to
+memory. `DUCTER_MEMORY=off` means no identity read, and the banner and doctor say so.
+
 ## Not tonight (next sessions)
 
 Frozen digest + recall index · expire-aware re-cut and folds · Ducter Edge · routines with

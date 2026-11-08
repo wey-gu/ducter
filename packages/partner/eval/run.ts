@@ -417,7 +417,8 @@ function check(r: RunResult): string[] {
   if (e.noSend && r.sent.length) fails.push(`task_send ×${r.sent.length} (want none)`);
   if (e.noSendTo && r.sent.some((s) => s.taskId === r.idOf.get(e.noSendTo!))) fails.push(`task_send to ${e.noSendTo} (want a new task)`);
   if (e.retitled && !r.retitles.some((x) => x.key === e.retitled)) fails.push(`${e.retitled} not retitled`);
-  if (e.noBaseBranch) for (const o of r.opened) if ((o.place as { baseBranch?: string } | undefined)?.baseBranch) fails.push(`new task built on ${(o.place as { baseBranch?: string }).baseBranch}`);
+  // Building on the repo's own branch (main) is fine; building on another task's branch is not.
+  if (e.noBaseBranch) for (const o of r.opened) if (/^ducter\//.test((o.place as { baseBranch?: string } | undefined)?.baseBranch ?? "")) fails.push(`new task built on ${(o.place as { baseBranch?: string }).baseBranch}`);
 
   if (e.ackFirst) {
     const acks = r.visible.filter((v) => v.kind === "ack");

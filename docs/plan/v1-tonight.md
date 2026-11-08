@@ -118,6 +118,9 @@ indicative, not benchmarks.
   waiters survive restarts (rebuilt from the Log); task-bound ones cancel when the task ends.
 - Partner `ask` (decision without a task) → Go → partner opened the task 1.6 s later.
 - Codex: one task (JSDoc on `Cache`), open → committed + done in 37 s, with checkpoints.
+- `task_action merge` merged a task branch into `main` in the user's checkout (merge commit
+  as `ref`); `open_pr` refused with a plain reason (no `origin` remote). Every task action is
+  acked with `action_result`. A real push + `gh pr create` was not run live (fake `gh` in tests).
 - WS replay: `hello` without cursor = last 200 channel events, with cursor = channel since;
   live `task_event`/`task_state` for every task; a read freezes the living message (the next
   update appends instead of superseding).

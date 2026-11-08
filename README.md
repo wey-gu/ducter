@@ -79,15 +79,19 @@ Touch ID or your password. On macOS 14 and earlier it is right-click → Open �
 |---|---|
 | 0:00 | The window: "Checking this Mac…" with the sleeping clay character. The app runs `ducter doctor` itself, with the `PATH` a Terminal window would have (an app opened from Finder gets only the system folders) |
 | 0:03 | **Ready Mac:** nothing to answer, or one optional line "What should I be called?" (skipped when Nowledge Mem holds the identity). **Not ready:** "One thing first", only the blocking item (e.g. "Claude Code: installed, not signed in") with its command, **Copy**, and **Run in Terminal** (Terminal opens on that one command; no permission prompt). Optional things fold into one line. It checks again by itself when they come back to the window, and every 10 s |
-| 0:05 | "Waking Ducter up…", then the conversation with starters about their own recent repos (names only) |
+| 0:05 | "Waking Ducter up…" with one line: from now on Ducter keeps working when the window is closed, and Stop Ducter in the menu stops it. Then the conversation with starters about their own recent repos (names only) |
 | 0:30 | They type; the partner answers (2.5 s on sonnet in our run) |
 | after the first reply | Once: "Use ducter in Terminal too?" Yes links `~/.local/bin/ducter` to the app (no administrator password; never replaces a file already there; not offered while the app still runs from the disk image) |
 
-Today Ducter runs as long as the app is open: quitting (⌘Q), closing the window, or a force
-quit stops it. Next (D56): closing the window will leave Ducter working in the background, and
-only Quit stops it. If Ducter was already running (from `ducter up` in a terminal), the app just
-connects and leaves it running when it quits. Data lives in `~/.ducter`, as with the CLI; the
-app's own child log is `~/.ducter/app.log`.
+**Ducter keeps working when the window is closed** (D56). Closing the window hides it; the
+Dock icon brings it back as it was, and the Dock badge counts what is waiting for you. Ducter
+itself runs as a per-user LaunchAgent (`~/Library/LaunchAgents/co.nowledge.ducter.agent.plist`,
+started at login, restarted if it crashes), so ⌘Q quits only the window app. To stop Ducter
+and every task: **Ducter menu → Stop Ducter** (让 Ducter 歇着); it stays off, at login too,
+until **Wake Ducter** or the next time you open the app. Run from the disk image instead of
+Applications, Ducter stops with the app. If Ducter was already running (from `ducter up` in a
+terminal), the app just connects and leaves it alone. Data lives in `~/.ducter`, as with the
+CLI; Ducter's output from the app is in `~/.ducter/app.log`.
 
 For a scratch run of the real app: `~/Library/Application Support/Ducter/dev.env` with lines
 like `DUCTER_DATA_DIR=/tmp/ducter-scratch` and `DUCTER_PORT=7798` (only `DUCTER_*` keys are

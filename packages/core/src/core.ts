@@ -64,6 +64,7 @@ export function triggersPartner(e: LogEvent): boolean {
   if (e.kind === "user_msg" || e.kind === "decision_resolved") return true;
   if (e.kind === "waiter") return (e.body as Bodies["waiter"]).state === "fired";
   if (e.kind === "report") return (e.body as Bodies["report"]).state !== "progress";
+  if (e.kind === "bridge_msg") return (e.body as Bodies["bridge_msg"]).direction === "in";
   return false;
 }
 

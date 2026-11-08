@@ -63,5 +63,11 @@ partner eval (real model, fake tasks and Mem; `research/30`) · **unit** = unit 
 | I3 | Documents live in 做好的 (Save to…) | draft | draft | draft | draft | — | — | D52 Q7 |
 | I4 | Finding a result weeks later | draft | draft | draft | draft | — | — | ask first; list inside On hand |
 | I5 | Sharing a result | draft | draft | draft | draft | — | — | links ship with Ducter Edge |
+| J1 | Another agent asks the partner to take work (Nowledge Bridge) | draft | — | draft | — | — | unit (stub nmem): request logged once, framed untrusted, task only after Go, reply to the original; live round trip — | `bridge.md`; behind `DUCTER_BRIDGE=1`, branch `bridge-practice` |
+| J2 | The result goes back to the agent that asked | draft | — | — | — | — | unit: `bridge_reply`; task ↔ request link — | J-Q7 |
+| J3 | A teammate's agent asks (Mem Team) | draft | — | — | — | — | — | Team Bridge gated on Mem's side |
+| J4 | A task asks a session that holds the context | draft | — | — | — | — | — | needs outbound send (J-Q4) |
+| J5 | The persona reached from a consumer AI | — | — | — | — | — | — | waits on Mem remote-MCP delegation |
+| J6 | Fresh user: Bridge invisible until a second agent exists | draft | — | — | — | — | — | |
 
 Flow docs: `docs/design/flows/*.md`. Open questions: `docs/design/flows/OPEN-QUESTIONS.md` (none waiting after D67). Flows canvas: https://claude.ai/artifact/LKuVp3knPDJ4EdoyWBGSWN

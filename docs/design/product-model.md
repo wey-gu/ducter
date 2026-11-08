@@ -52,6 +52,8 @@
 | server keeps running (systemd service) | **一直开着 / Stays on** (doctor row) | |
 | capability (browser, computer use, phone, calls, remote access) | **no noun on screen** (D66). Headings: **你的设备，和它们会做的事 / Your devices and what they can do** · **还能装上的 / You can also add** | Equip = **装上 / Add to <device>**; remove = **取下 / Remove**; result = "MacBook 现在会上网了 / MacBook can now browse the web"; device detail "MacBook 会：… / can: …". Item names are ability phrases (上网, 用电脑, 在哪儿都能用). Never 学会/教会/赋予/授权 (they read as ordering a subordinate). Never 装备/Gear (reads as armour; rhymes with 设备). Claude Code skills stay **技能 / Skills** on their own page, never on the rack |
 | the partner saved something to long-term memory (Mem) | **记下了 · <title> / Noted · <title>** | One quiet line under the reply, no card, no action. Never "已存入记忆 / saved to memory" in the partner's words; recall is never shown at all |
+| a request from another agent through Nowledge Bridge (`bridge_msg` in) | **<X> 发来请求 · <gist> / Request from <X> · <gist>** (pending user OK, J-Q5) | One quiet line, then the partner's own Go/Hold question if it would act. Never 交接 / hand-off (that is a task changing body). Never "Bridge", "mailbox", "contact", "Space" in UI |
+| the partner answered that agent | **已回复 <X> / Replied to <X>** (pending user OK) | "Replied" is not "done"; nothing promises the other side has seen it |
 | Intent | (shown as a decision or a policy line: "要推送到 ducter/fix-ci / Will push to …") | |
 | a task message to the partner (report) | **告诉 {name} / Told {name}** (· 要你定 · 做完了 · 在等 · 没成); freshness "{time}更新 / updated {time}" | Never 汇报 or 交回给 (reporting up) |
 | task brief · transcript | **{name} 交代的 / What {name} asked for** · **过程 / What it did** | |
@@ -63,6 +65,7 @@
 | place `none` | **不用特定的地方 / Nowhere in particular** | |
 | devices, by the user's own words | **这台 Mac / This Mac** · **这台手机 / This phone** · **另一台电脑 / another computer** | Never 机器 / machine in UI copy |
 | presence | **{name} 在呢 / is here** · **在做事 / is working** · **有事找你 / needs you** · **刚做完一件事 / just finished something** · **还没醒 / isn't up yet** | Never 待命 |
+| stopping Ducter on a Mac (D56) | **让 Ducter 歇着 / Stop Ducter** (menu) · **{name} 歇着了 / {name} is resting** · **叫醒 {name} / Wake {name}** | Closing the window or ⌘Q never stops Ducter; this is the one explicit stop. 叫醒 is the same verb as for a device, on purpose |
 | a sandboxed place | **no noun**: the property, **碰不到你的文件 / Can't touch your files** | 沙盒 retired (D66, GQ8) |
 | Artifact | **做好的 / Finished**; the list **做好的东西 / Everything finished** | 成果 retired (report-speak) |
 
@@ -278,7 +281,7 @@ Timing and springs come from the theme's `motion.personality`. The spec lives in
 
 ## 8. Open questions
 
-- Results: where finished documents live is decided (D52 Q7: in 成果 on the control plane,
+- Results: where finished documents live is decided (D52 Q7: in 做好的 (Finished) on the control plane,
   with an optional "write it into a place"). The results view and the result anatomy are open
   (`flows/I-results.md`, IQ1–IQ11).
 - Merging and splitting tasks: the cheap version is decided (D52 Q5); full semantics for the

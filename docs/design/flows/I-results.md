@@ -114,7 +114,7 @@ C checks refs mechanically ──► M judges against the brief's done-criteria 
   │     └─ if a message was already posted: its state chip reads
   │        "检查没过：{reason}，它接着弄 / Check didn't pass: {reason}; it's back on it".
   │        When it is really done: a NEW message replying to the same ask, opening with
-  │        "上次说做完了，核对时发现{reason}，现在补好了。/ I said it was done, but the check
+  │        "上次说做完了，检查时发现{reason}，现在补好了。/ I said it was done, but the check
   │        found {reason}. It's fixed now."
   └─ needs judgment ──► 等你 / Needs you "看着对吗？/ Does this look right?"  [doc D4]
   │
@@ -180,7 +180,7 @@ refs[], snapshot?, version}`. The result message is rendered from it plus the re
 | `result.outside.list` | {effects} | {effects} |
 | `result.checking_chip` | 做完了 · 在检查 | Done · checking |
 | `result.check_failed_chip` | 检查没过：{reason}，它接着弄 | Check didn't pass: {reason}; it's back on it |
-| `result.fixed_after_check` | 上次说做完了，核对时发现{reason}，现在补好了。 | I said it was done, but the check found {reason}. It's fixed now. |
+| `result.fixed_after_check` | 上次说做完了，检查时发现{reason}，现在补好了。 | I said it was done, but the check found {reason}. It's fixed now. |
 | `result.batch_opening` | {n} 件刚做完： | {n} just finished: |
 | `result.interpreted` | 我理解成了：{reading} | I took this to mean: {reading} |
 | `result.new_below` | 新结果 ↓ | New result ↓ |
@@ -270,7 +270,7 @@ itself, in-app when Ducter can show it well, else outside with the URL shown fir
 | `capture` | 截图 · {what} / Screenshot · {what} | In-app lightbox, with when and on which page | C (taken by the gate) | Fixed |
 | `file` | {filename} | In-app preview for text, images, PDF; else reveal on its device | C (exists, hash) | "改过了 / Changed since" if the hash differs |
 | `document` | {title} | Document reader (I3) | — | Versioned |
-| `read_through` | 我通读过了 / I read it through | Nothing to open; tooltip: "这条是我读过后的判断，没有机器核对 / My read, not a machine check" | M | — |
+| `read_through` | 我通读过了 / I read it through | Nothing to open; tooltip: "这条是我读过后的判断，没有机器检查 / My read, not a machine check" | M | — |
 | `user_said` | 你说可以了 / You said it's good | The message where the user said so | U | — |
 
 Ordering on every surface: machine-checked kinds first (`test`, `test_pair`, `ci`, `diff`,
@@ -304,7 +304,7 @@ C refreshes only while the task or its waiters are active, and once when the use
 | `evidence.snapshot_from` | {time} 时的样子 | As it was at {time} |
 | `evidence.device_asleep` | {device} 睡着了，醒了就能看 | {device} is asleep; viewable once it wakes |
 | `evidence.changed_since` | 之后改过了 | Changed since |
-| `evidence.read_through.tip` | 这条是我读过后的判断，没有机器核对 | My read, not a machine check |
+| `evidence.read_through.tip` | 这条是我读过后的判断，没有机器检查 | My read, not a machine check |
 | `evidence.capture` | 截图 · {what} | Screenshot · {what} |
 | `evidence.commit` | 提交 {sha} | Commit {sha} |
 | `evidence.retrieved` | {date} 读的 | Read on {date} |

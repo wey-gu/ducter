@@ -30,7 +30,7 @@ Why not approvals [I, evidence thin]: prompts that interrupt every call train pe
 through. The best-known measurement is browser security warnings, which users clicked through
 at high rates (Akhawe & Felt, USENIX Security 2013 [ext, from memory, not re-verified here]).
 An approval asked fifty times a day carries no information by the fiftieth. A dedicated
-research report on approval fatigue and undo-send is worth writing (proposed as the next free report number, `research/31`; 29 is now the VPS-logins report).
+research report on approval fatigue and undo-send is worth writing (proposed as the next free report number; 29 and 31 are taken).
 
 **Rule 2. Asks are rare and earned** [I]. Ducter asks before an effect only when it does at
 least one of these:
@@ -800,7 +800,7 @@ None beyond the line fading in once. Isolation is a fact, not an event.
 | GQ10 | PR comments, mark ready, request review | **Ask, no countdown** by default; a Rule can allow | They notify people and can't be unsent |
 | GQ11 | The sending row's slide toward the destination: motion or metaphor? | **Treat it as motion**, check it in prototype review; if raters read it as anything but "leaving", drop it | AGENTS.md metaphor rule |
 | GQ12 | Extend 可以碰 / May touch from routines to every task's dossier | **Yes**, same word, same meaning | One concept for scope everywhere |
-| GQ13 | Write `research/31` (the draft said 29, now taken; approval fatigue, undo-send, prior art for audit views) before review? | **Yes, short report**; the Rule 1 evidence is currently from memory | The principle's evidence is thin |
+| GQ13 | Write the next free research report (29 and 31 are taken; approval fatigue, undo-send, prior art for audit views) before review? | **Yes, short report**; the Rule 1 evidence is currently from memory | The principle's evidence is thin |
 
 ## Artboards (proposed, not built)
 

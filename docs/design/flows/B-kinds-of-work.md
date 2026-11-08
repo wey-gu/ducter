@@ -65,7 +65,7 @@ Branches:
   task: the status line grows a pebble chip (`B2` shape). No apology, no announcement.
 - **3b. Device asleep** (the repo lives only on the Mac mini): status line reads "在等 · 叫醒
   Mac mini / Waiting · waking Mac mini". If wake fails in 30 s: answer from what Ducter
-  already knows, labelled "凭记忆，没核对 / From memory, not checked", plus Go "叫醒再看 /
+  already knows, labelled "凭记忆，没检查 / From memory, not checked", plus Go "叫醒再看 /
   Wake and check".
 - **4a. Can't answer:** say so plainly with what was tried: "没找到。看了 config.rs 和
   docs/，都没写默认值。要我跑一次看看吗？" Go = "跑一次 / Run it" (becomes a task).
@@ -82,7 +82,7 @@ No window. Job: `open → resolved`. If promoted: window `queued → working` (B
 | `b1.status.reading` | 在做 · 读 {path} | Working · reading {path} |
 | `b1.source.row` | 出处：{path}:{line} · {branch} · {device} | Source: {path}:{line} · {branch} · {device} |
 | `b1.footer.read_n` | 看了 {n} 个文件 | Read {n} files |
-| `b1.unchecked` | 凭记忆，没核对 | From memory, not checked |
+| `b1.unchecked` | 凭记忆，没检查 | From memory, not checked |
 | `b1.go.wake_check` | 叫醒再看 | Wake and check |
 | `b1.not_found` | 没找到。看了 {where}，都没写。 | Didn't find it. Looked in {where}; it isn't there. |
 | `b1.go.run_it` | 跑一次 | Run it |

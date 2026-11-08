@@ -30,6 +30,10 @@ type Backend interface {
 	Stopping() bool
 	ExitReason() string
 	LogPath() string
+	// Background: Ducter outlives the window and the app (a LaunchAgent).
+	Background() bool
+	// Rest stops Ducter until it is started again.
+	Rest() error
 	DataDir() string
 	// RunInTerminal opens Terminal on one fix command.
 	RunInTerminal(id, cmd string) error
@@ -50,7 +54,52 @@ const (
 	setupName                       // the one optional question
 	setupStarting                   // ducter up runs; waiting for it to answer
 	setupFailed                     // it didn't start, or stopped
+	setupResting                    // the person stopped it (Stop Ducter)
 )
+
+// Rest stops Ducter on purpose (the app menu's Stop Ducter): every task
+// stops, and it stays off, at login too, until Wake.
+func (a *App) Rest() {
+	if a.Backend == nil || a.setup.phase == setupResting {
+		return
+	}
+	a.setup.phase, a.setup.err = setupResting, ""
+	if a.OnResting != nil {
+		a.OnResting(true)
+	}
+	var err error
+	a.async(func() { err = a.Backend.Rest() }, func() {
+		if err != nil {
+			a.setup.phase, a.setup.err = setupFailed, err.Error()
+		}
+	})
+}
+
+// Resting reports whether the person stopped Ducter.
+func (a *App) Resting() bool { return a.setup.phase == setupResting }
+
+// Wake starts Ducter again after Rest.
+func (a *App) Wake() {
+	if a.Backend == nil {
+		return
+	}
+	a.setup.everUp = false
+	if a.OnResting != nil {
+		a.OnResting(false)
+	}
+	a.launch()
+}
+
+func (a *App) setupResting(c *ui.Context) {
+	t := a.T
+	name := a.personaName()
+	a.avatar(c, theme.Napping, 100)
+	ui.Text(c, a.L.T("rest.title", name)).FontSize(28).FontWeight(800).LetterSpacing(-0.4)
+	ui.Text(c, a.L.T("rest.body")).FontSize(t.LG).LineHeight(1.55).TextColor(t.InkSoft)
+	if a.button(c, a.L.T("rest.wake", name), btnPrimary, 50, t.Surface) {
+		a.Wake()
+	}
+}
 
 // RecheckEvery is how often a blocked Mac is checked again by itself.
 const RecheckEvery = 10 * time.Second
@@ -199,6 +248,12 @@ func (a *App) launch() {
 				}
 				time.Sleep(100 * time.Millisecond)
 			}
+			// A minute without an answer: say so, with the log.
+			a.Win.Update(func() {
+				if a.setup.phase == setupStarting && !a.S.Welcomed {
+					a.setup.phase, a.setup.err = setupFailed, a.Backend.ExitReason()
+				}
+			})
 		}()
 		go func() {
 			<-exited
@@ -221,7 +276,7 @@ func (a *App) setupActive() bool {
 	if a.Backend == nil {
 		return false
 	}
-	if a.setup.phase == setupFailed {
+	if a.setup.phase == setupFailed || a.setup.phase == setupResting {
 		return true
 	}
 	if a.S.Welcomed {
@@ -251,7 +306,13 @@ func (a *App) setupView(c *ui.Context) {
 				a.setupWaiting(c, theme.Napping, a.L.T("setup.checking"), a.L.T("setup.checking.body"))
 			case setupStarting:
 				name := a.personaName()
-				a.setupWaiting(c, theme.Working, a.L.T("setup.starting", name), a.L.T("setup.starting.body", name))
+				body := "setup.starting.body"
+				if a.Backend.Background() {
+					body = "setup.starting.bg"
+				}
+				a.setupWaiting(c, theme.Working, a.L.T("setup.starting", name), a.L.T(body, name))
+			case setupResting:
+				a.setupResting(c)
 			case setupBlocked:
 				a.setupBlocked(c)
 			case setupName:

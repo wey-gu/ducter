@@ -476,7 +476,7 @@ C never guesses done: no report → nudge → stall rule [doc].
 | `state.done` | 做完了 | Done |
 | `state.done_checking` | 做完了 · 在检查 | Done · checking |
 | `done.check_failed` | 检查没过：{reason}，它接着弄 | Check didn't pass: {reason}; it's back on it |
-| `done.check_failed_again` | 核对 {n} 次都没过。{reason}。你看怎么办？ | It didn't pass {n} checks. {reason}. What would you like to do? |
+| `done.check_failed_again` | 检查了 {n} 次都没过。{reason}。你看怎么办？ | It didn't pass {n} checks. {reason}. What would you like to do? |
 | `done.judge_ask` | 看着对吗？ | Does this look right? |
 | `done.judge_keep` | 就这样 | Keep it |
 | `evidence.ci` | CI 绿了 · {passed}/{total} | CI green · {passed}/{total} |

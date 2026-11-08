@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createPartner } from "../src/index.ts";
+import { buildSystemPrompt, createPartner } from "../src/index.ts";
 import { FakeClock, fakeCore, fakeRunner, type Script } from "./fakes.ts";
 
 function setup(script: Script, extra: Parameters<typeof createPartner>[2] = {}) {
@@ -68,6 +68,67 @@ describe("live-run regressions", () => {
     expect(channelText).not.toContain("undefined");
     expect(fc.events.filter((e) => e.kind === "ack")).toHaveLength(1);
     expect(fc.events.filter((e) => e.kind === "job_status").map((e) => (e.body as any).state)).toEqual(["running"]);
+  });
+
+  test("ask: a partner-level decision (no taskId); its answer comes back as a trigger to act on", async () => {
+    const { fc, fr, partner, user } = setup(async (input, s, n) => {
+      if (n === 0) {
+        await fc.callTool("ask", { question: "改公开签名吗？", goLabel: "改签名", default: "go", reversible: true });
+      } else {
+        expect(input).toContain('[your question answered: go] "改公开签名吗？": go ahead with "改签名"');
+      }
+      s.end();
+    });
+    user("改之前先问我要不要改公开签名，给个默认");
+    await partner.idle();
+    const d = fc.events.find((e) => e.kind === "decision")!;
+    expect(d).toMatchObject({ stream: "channel", origin: "partner" });
+    expect(d.body).toMatchObject({ question: "改公开签名吗？", goLabel: "改签名", defaultOption: "go", reversible: true });
+    expect((d.body as any).taskId).toBeUndefined();
+    partner.onTrigger(
+      fc.core.log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body: { decisionId: (d.body as any).decisionId, option: "go", by: "user" } }),
+    );
+    await partner.idle();
+    expect(fr.sessions[0]!.inputs).toHaveLength(2);
+  });
+
+  test("honesty guard: claiming a Go/Hold choice with no decision event triggers one correction turn", async () => {
+    const { fc, fr, partner, user } = setup(async (_input, s, n) => {
+      if (n === 0) s.say("这个提交问题已经在你那边显示了，选 Go 就保留，选 Hold 就撤销。");
+      if (n === 1) await fc.callTool("ask", { question: "保留这个提交吗？", goLabel: "保留", default: "go", reversible: true });
+      s.end();
+    });
+    user("结果怎么样？");
+    await partner.idle();
+    const inputs = fr.sessions[0]!.inputs;
+    expect(inputs).toHaveLength(2);
+    expect(inputs[1]).toContain("no such choice exists");
+    expect(fc.events.filter((e) => e.kind === "decision")).toHaveLength(1);
+  });
+
+  test("honesty guard: no correction when the decision really exists, or for ordinary text", async () => {
+    const { fc, fr, partner, user } = setup(async (_input, s, n) => {
+      if (n === 0) {
+        await fc.callTool("ask", { question: "Merge into main?", goLabel: "Merge", default: "hold", reversible: false });
+        s.say("Tap Go to merge it.");
+      }
+      if (n === 1) s.say("好，我去做。Go ahead is not a claim.");
+      s.end();
+    });
+    user("done?");
+    await partner.idle();
+    user("ok");
+    await partner.idle();
+    expect(fr.sessions[0]!.inputs).toHaveLength(2);
+    expect(fr.sessions[0]!.inputs.join("\n")).not.toContain("no such choice exists");
+  });
+
+  test("persona: result anatomy, no internals, ask for choices, silence after the ack", () => {
+    const p = buildSystemPrompt({ id: "p", name: "Ducter", identity: "ID" });
+    expect(p).toMatchSnapshot();
+    for (const s of ["at most 2 lines", "how you know", "left out", "outside", "at most one next step", "no task ids", "call ask", "ONLY if a decision exists", "say nothing more", "goes to that\n      task with task_send"]) {
+      expect(p).toContain(s);
+    }
   });
 
   test("prewarm off: no session until the first trigger", async () => {

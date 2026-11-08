@@ -58,8 +58,13 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
     case "decision_resolved": {
       const b = e.body as Bodies["decision_resolved"];
       const d = ctx.decision(b.decisionId);
-      const about = d ? ` (task ${d.taskId}: "${d.question}")` : ` (decision ${b.decisionId})`;
       const by = b.by === "default" ? " by default" : "";
+      if (d && !d.taskId) {
+        // The partner's own ask: the answer is for us to act on now.
+        const what = b.option === "go" ? `: go ahead with "${d.goLabel}"` : b.option === "hold" ? ": wait, don't start it" : "";
+        return `[your question answered: ${b.option}${by}] "${d.question}"${what}${b.text ? ` · user: ${b.text}` : ""}`;
+      }
+      const about = d ? ` (task ${d.taskId}: "${d.question}")` : ` (decision ${b.decisionId})`;
       const fwd = b.option === "hold" ? " (the task keeps waiting)" : " (already forwarded to the task)";
       return `[decision resolved: ${b.option}${by}]${about}${b.text ? ` ${b.text}` : ""}${fwd}`;
     }
@@ -105,7 +110,7 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
     }
     case "decision": {
       const d = e.body as Bodies["decision"];
-      return `[${t} task ${d.taskId} asks] ${clip(d.question, 300)} (Go: ${d.goLabel}, default ${d.defaultOption})`;
+      return `[${t} ${d.taskId ? `task ${d.taskId} asks` : "you asked (ask)"}] ${clip(d.question, 300)} (Go: ${d.goLabel}, default ${d.defaultOption})`;
     }
     case "decision_resolved": {
       const b = e.body as Bodies["decision_resolved"];

@@ -71,6 +71,7 @@ export function createRegistry(log: LogStore, clock: Clock = realClock): CoreReg
       }
       case "decision": {
         const b = e.body as Bodies["decision"];
+        if (!b.taskId) break; // partner-level decision: no card
         decisionTask.set(b.decisionId, b.taskId);
         decisionBody.set(b.decisionId, { ...b, askedAt: e.ts });
         pending.set(b.taskId, [...(pending.get(b.taskId) ?? []), b.decisionId]);

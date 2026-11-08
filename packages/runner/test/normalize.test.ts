@@ -4,6 +4,16 @@
 import { expect, test } from "bun:test";
 import { Normalizer } from "../src/normalize.ts";
 
+test("the task_open title is surfaced as soon as it streams in, once", () => {
+  const n = new Normalizer(() => undefined);
+  n.push({ kind: "tool_call_started", callId: "c1", tool: "mcp__ducter__task_open" });
+  expect(n.push({ kind: "tool_call_input_delta", callId: "c1", delta: '{"title":"foo: add has(k' })).toEqual([]);
+  expect(n.push({ kind: "tool_call_input_delta", callId: "c1", delta: ') to \\"Cache\\"","brief":"User' })).toEqual([
+    { role: "tool", tool: { name: "mcp__ducter__task_open", input: { title: 'foo: add has(k) to "Cache"' } }, raw: { kind: "tool_call_title", callId: "c1" } },
+  ]);
+  expect(n.push({ kind: "tool_call_input_delta", callId: "c1", delta: '\'s words"}' })).toEqual([]);
+});
+
 test("tool_call_started flushes held text and emits an early tool event", () => {
   const n = new Normalizer(() => undefined);
   expect(n.push({ kind: "text_delta", text: "I'll look into it." })).toEqual([]);

@@ -123,15 +123,19 @@ export function createDecisions(opts: {
     if (t !== undefined) clock.clearTimeout(t), timers.delete(r.decisionId);
     const d = all.get(r.decisionId);
     if (!d) return;
-    if (!tasks.pendingDecisions(d.taskId).length) {
-      if (r.option === "hold") setAttention(d.taskId, "blocked"); // no reason text: the card shows Waiting
-      else setAttention(d.taskId, "working");
+    // A partner-level decision (the partner's own ask, no task): resolving it only wakes the
+    // partner (decision_resolved is a trigger); nothing to forward, no card to move.
+    if (!d.taskId) return;
+    const taskId = d.taskId;
+    if (!tasks.pendingDecisions(taskId).length) {
+      if (r.option === "hold") setAttention(taskId, "blocked"); // no reason text: the card shows Waiting
+      else setAttention(taskId, "working");
     }
     const text = silent.delete(r.decisionId) ? "" : forwardText(d, r);
     if (hook && text) {
       Promise.resolve()
-        .then(() => hook!(d.taskId, text, r))
-        .catch((err) => console.error(`[decisions] forwarding ${r.decisionId} to ${d.taskId} failed:`, err));
+        .then(() => hook!(taskId, text, r))
+        .catch((err) => console.error(`[decisions] forwarding ${r.decisionId} to ${taskId} failed:`, err));
     }
   };
 

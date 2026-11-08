@@ -91,6 +91,9 @@ function isTrigger(e: LogEvent): boolean {
   return false;
 }
 
+/** Prose that tells the user to pick Go / Hold (only true when a decision event exists). */
+const CLAIMS_CHOICE = /(选|点|按|回复?|回)\s*[「“"]?\s*(Go|Hold|好|先等等)\b|\b(tap|press|choose|pick|select|reply|hit|say)\s+["“]?(Go|Hold)\b|\bGo\s*\/\s*Hold\b/i;
+
 const generatedAck = (zh: boolean, title: string) => (zh ? `好，我去做：${title}` : `On it: ${title}`);
 
 let idCounter = 0;
@@ -187,11 +190,36 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const appendAiMsg = (text: string) => {
     const t = text.trim();
     if (!t) return;
+    if (CLAIMS_CHOICE.test(t) && !openDecisionExists()) {
+      // Honesty guard (live: "选 Go 就保留" with no decision anywhere). The words are already
+      // the model's; make them true right away or have it take them back, in a follow-up turn.
+      corrections.push(t);
+    }
     core.log.append({
       stream: "channel",
       origin: "partner",
       kind: "ai_msg",
       body: turn?.replyTo !== undefined ? { text: t, replyTo: turn.replyTo } : { text: t },
+    });
+  };
+  const corrections: string[] = [];
+  const openDecisionExists = () => {
+    const evs = core.log.read({ stream: "channel", kinds: ["decision", "decision_resolved"], limit: 500 });
+    const done = new Set(evs.filter((e) => e.kind === "decision_resolved").map((e) => (e.body as Bodies["decision_resolved"]).decisionId));
+    return evs.some((e) => e.kind === "decision" && !done.has((e.body as Bodies["decision"]).decisionId));
+  };
+  let syntheticSeq = 0;
+  const queueCorrections = () => {
+    if (!corrections.length) return;
+    const said = corrections.splice(0).join(" / ");
+    queue.push({
+      seq: --syntheticSeq, // never in the Log
+      ts: new Date(now()).toISOString(),
+      persona: core.persona.id,
+      stream: "channel",
+      origin: "system",
+      kind: "ai_msg",
+      body: { text: `You told the user they have a Go / Hold choice ("${said.slice(0, 300)}"), but no such choice exists, so they see no buttons. Call ask now with that question and its default, without repeating it in text. If no choice is really needed, say in one short line what you will do instead.` },
     });
   };
   const replyToFor = (t: TurnState) => t.replyTo ?? t.triggers[t.triggers.length - 1]?.seq ?? core.log.head();
@@ -381,6 +409,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       await reading;
       flushPending();
       handledSeq = Math.max(handledSeq ?? 0, ...batch.map((e) => e.seq));
+      if (!batch.some((e) => e.seq < 0)) queueCorrections(); // one correction round, never a loop
+      else corrections.length = 0;
     } finally {
       turn = null;
       lastActivity = now();
@@ -576,6 +606,40 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       if (args.taskId) body.taskId = args.taskId;
       core.log.append({ stream: "channel", origin: "waiter", kind: "waiter", body });
       return { ok: true, waiterId: body.waiterId, firesAt: body.at };
+    },
+  );
+
+  core.mcp.register(
+    "partner",
+    "ask",
+    "Ask the user to choose, BEFORE any task exists (e.g. \"ask me before changing the public API\"). The user sees the question with Go / Hold / Reply buttons; never ask a choice in prose and never tell the user to type Go. Returns at once; end your turn. The answer arrives as a [your question answered: …] line, and then you act on it (e.g. open the task). Only refer to a choice the user can see if you created it with this tool.",
+    {
+      type: "object",
+      properties: {
+        question: { type: "string", description: "One question in the user's language" },
+        goLabel: { type: "string", description: "What Go does, short, in the user's language (e.g. 改签名 / Change the signature)" },
+        default: { type: "string", enum: ["go", "hold"], description: "What happens if the user doesn't answer (go only if reversible)" },
+        reversible: { type: "boolean", description: "Whether the default can be undone" },
+        defaultInMinutes: { type: "number", description: "When the default applies (reversible only); omit to wait for the user" },
+      },
+      required: ["question", "goLabel"],
+    },
+    async (args: { question: string; goLabel: string; default?: "go" | "hold"; reversible?: boolean; defaultInMinutes?: number }) => {
+      await Bun.sleep(5); // let the streamed text land first
+      flushPending(); // a line before the question stays a message, never an ack
+      const reversible = Boolean(args.reversible);
+      const body: Bodies["decision"] = {
+        decisionId: newId("d"),
+        question: args.question.trim(),
+        goLabel: args.goLabel.trim(),
+        defaultOption: args.default === "go" && reversible ? "go" : "hold",
+        reversible,
+      };
+      if (reversible && body.defaultOption === "go" && args.defaultInMinutes && args.defaultInMinutes > 0) {
+        body.defaultAt = new Date(now() + args.defaultInMinutes * 60_000).toISOString();
+      }
+      core.log.append({ stream: "channel", origin: "partner", kind: "decision", body });
+      return { ok: true, decisionId: body.decisionId, note: "The user sees it with Go / Hold / Reply. End your turn now; do not repeat the question." };
     },
   );
 

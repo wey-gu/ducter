@@ -1,0 +1,1 @@
+Character sheet, 2D illustration in a JAPANESE YURU-CHARA / Nintendo-like FLAT TOY style: very simple geometry, chunky proportions, clean vector flats, soft rounded shadows, subtle gradient sheen like a soft vinyl toy, playful. 6 poses in a 3x2 grid: front; three-quarter; idle; working (glancing sideways); done (happy nod); napping (eyes closed, tiny "z").

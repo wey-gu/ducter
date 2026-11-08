@@ -1,0 +1,68 @@
+{
+ "jobs": 4,
+ "tasks": [
+  {
+   "id": "char_vinyl",
+   "promptFiles": [
+    "prompts/_base.md",
+    "prompts/char_vinyl.md"
+   ],
+   "image": "char_vinyl.png",
+   "ar": "4:3"
+  },
+  {
+   "id": "char_gouache",
+   "promptFiles": [
+    "prompts/_base.md",
+    "prompts/char_gouache.md"
+   ],
+   "image": "char_gouache.png",
+   "ar": "4:3"
+  },
+  {
+   "id": "char_riso",
+   "promptFiles": [
+    "prompts/_base.md",
+    "prompts/char_riso.md"
+   ],
+   "image": "char_riso.png",
+   "ar": "4:3"
+  },
+  {
+   "id": "char_toy",
+   "promptFiles": [
+    "prompts/_base.md",
+    "prompts/char_toy.md"
+   ],
+   "image": "char_toy.png",
+   "ar": "4:3"
+  },
+  {
+   "id": "board_sticker",
+   "promptFiles": [
+    "prompts/_base.md",
+    "prompts/board_sticker.md"
+   ],
+   "image": "board_sticker.png",
+   "ar": "16:9"
+  },
+  {
+   "id": "board_cozy",
+   "promptFiles": [
+    "prompts/_base.md",
+    "prompts/board_cozy.md"
+   ],
+   "image": "board_cozy.png",
+   "ar": "16:9"
+  },
+  {
+   "id": "board_book",
+   "promptFiles": [
+    "prompts/_base.md",
+    "prompts/board_book.md"
+   ],
+   "image": "board_book.png",
+   "ar": "16:9"
+  }
+ ]
+}

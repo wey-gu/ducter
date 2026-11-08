@@ -1,0 +1,1 @@
+Character sheet, 2D illustration in a soft GOUACHE PICTURE-BOOK style: matte painted texture, gentle grain, no hard outlines (soft painted edges), warm natural light, subtle paper texture. 6 poses in a 3x2 grid: front neutral; three-quarter; idle blinking; working (glancing sideways); done (happy nod); napping (eyes closed, curled, tiny "z"). Consistent proportions.

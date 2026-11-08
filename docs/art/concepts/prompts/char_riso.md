@@ -1,0 +1,1 @@
+Character sheet, 2D illustration in a RISOGRAPH PRINT style: limited palette (fluorescent orange, sky blue, ink brown, cream paper), slight misregistration, halftone grain, bold simple shapes. 6 poses in a 3x2 grid: front; three-quarter; idle; working (glancing sideways); done (happy nod); napping (eyes closed, tiny "z").

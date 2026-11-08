@@ -1,0 +1,2 @@
+Original character design for "Ducter", a personal AI partner app. NOT based on any existing character or brand; no logos, no text except where asked.
+Ducter is a small, round, slightly irregular PEBBLE with a soft orange body (#FF7A2E family), two tall oval dark eyes with tiny white highlights, faint peach blush, a tiny smile. It carries a small sky-blue notebook (its memory) in a little strap or tucked at its side. It is a warm, trustworthy peer — a friend, not a servant, not a boss. Cute but grown-up, premium, calm. Cream paper background (#FFF6EA).

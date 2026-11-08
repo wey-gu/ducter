@@ -86,6 +86,14 @@ changes.
     supported, never mixed into the memory text.
 
   So every memory traces back to the exact Log events, and windows are never separate authors.
+
+  *As built (partner memory slice, `packages/partner/src/memory.ts`):* writes go through the
+  user's own `nmem` CLI: `nmem m add --stdin --title … --source ducter --source-app ducter
+  --source-msg "ducter;persona=<id>;log=<seq>[;task=<id>]"` (nmem keeps the last under
+  `metadata.source_message_id`; the CLI has no general metadata flag). Ducter passes no
+  `--agent-id` and no `--space`: nmem takes the identity from `NMEM_AGENT_ID` and the Space
+  from `NMEM_SPACE` or its own default, so Ducter never enrolls an identity or picks a Space.
+  Missing or unreachable Mem: the tools answer "not available" and the partner carries on.
 - **Everything else is read-only**: the user's skills, global rules, Working Memory, Spaces.
 - **Subscriptions** are used only through the user's own unmodified official binary, for
   themselves. There is no proxying and no impersonation, which is why Ducter is

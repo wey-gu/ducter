@@ -91,6 +91,10 @@ export interface Bodies {
   checkpoint: { taskId: string; text: string; gitRef?: string };
   // A waiter is a cheap wait that wakes the partner (wait_until). Shown on On hand as a compact row.
   waiter: { waiterId: string; taskId?: string; at?: string; reason: string; state: "armed" | "fired" | "cancelled" };
+  // The partner saved something durable to the user's long-term memory (Nowledge Mem). Clients
+  // show one quiet line under the reply: "记下了 · <title>" / "Noted · <title>". Never a card,
+  // never a notification. Provenance lives in Mem, not here.
+  memory_noted: { title: string; memoryId?: string; replyTo?: number };
 }
 
 export interface Usage { inputTokens?: number; outputTokens?: number; cacheRead?: number; cacheWrite?: number }
@@ -179,7 +183,7 @@ export type ServerFrame =
 export type Delivery = "steered" | "prompted" | "queued";
 
 // ---------- Ducter MCP tools (HTTP MCP served by core at /mcp, role-scoped by token) ----------
-// role "partner": task_open, task_send, task_read, log_search, log_read, wait_until, reply
+// role "partner": task_open, task_send, task_read, log_search, log_read, wait_until, ask, memory_search, memory_add
 // role "task:<id>": report_to_main, log_search, log_read, checkpoint
 
 export interface ToolArgs {
@@ -192,6 +196,8 @@ export interface ToolArgs {
   reply: { text: string };
   report_to_main: Bodies["report"] extends infer R ? Omit<R & object, "taskId"> : never;
   checkpoint: { text: string };
+  memory_search: { query: string; limit?: number };
+  memory_add: { title: string; content: string; importance?: number };
 }
 
 export const PROTOCOL_VERSION = 2;

@@ -51,6 +51,31 @@ at cut points, and changes between cuts arrive as L4 deltas.
 - **Quotes**: a search for "what exactly did the user say" runs lexically on distinctive
   terms, not on paraphrase.
 
+## Long-term memory across days (Nowledge Mem): first slice, as built
+
+The Log is this conversation's memory; Mem holds the distilled, durable things across days
+and tools (principle 17). The slice gives the partner two tools, both through the user's
+`nmem` CLI (`packages/partner/src/memory.ts`):
+
+- **`memory_search(query, limit≤8)`**, model-initiated. Use it when the user points at
+  something the conversation doesn't show ("像上次那样", a person, a past choice), or before
+  asking something Mem may know. **One per turn** unless the user asks to look again. Hits
+  come back compact (title, ≤280 chars, date, kind; no ids or Spaces). They are background:
+  never pasted, never "I searched". Recall is invisible in the UI.
+- **`memory_add(title, content, importance?)`** for a stated preference, a decision, or a
+  durable fact about the user's work or people. Secret-shaped text and task plumbing (task
+  ids, branches, worktrees, commit hashes) are refused by the tool. At most two per turn.
+  Provenance as in `system.md`. Each save appends `memory_noted {title, memoryId?, replyTo?}`
+  on the channel after the turn's text. Clients show it as one quiet line, 记下了 · <title>
+  / Noted · <title>, and the partner's words never announce it.
+- **Mem missing or down**: both tools answer "not available"; the partner asks like a
+  colleague who forgot and never mentions memory. A cold session sees its own saves as
+  `[you remembered] <title>` in the projection.
+- **Measured** (`packages/partner/eval`, category `memory`, fake Mem): recall on
+  "像上次那样" (the brief carries the recalled specifics), recall about a person, remembering
+  a stated preference (zh and en), no save of a task result or a pasted key, no recall for a
+  general question, Mem down.
+
 ## Open (measure in the prototype)
 
 - Roll-up loss over months: unmeasured anywhere. Confidence is low.

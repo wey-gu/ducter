@@ -126,6 +126,9 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
       const d = ctx.decision(b.decisionId);
       return `[${t} decision resolved: ${b.option}${b.by === "default" ? " by default" : ""}]${d ? ` "${clip(d.question, 120)}"` : ""}${b.text ? ` ${clip(b.text, 300)}` : ""}`;
     }
+    case "memory_noted":
+      // So a fresh session knows it is already remembered (and doesn't save it twice).
+      return `[${t} you remembered] ${clip((e.body as Bodies["memory_noted"]).title, 120)}`;
     default:
       return null; // living_msg is a rendering of reports; read receipts etc. carry nothing
   }

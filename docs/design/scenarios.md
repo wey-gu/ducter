@@ -38,8 +38,8 @@ Columns: **Flow** (steps + branches), **States** (which task/routine states it t
 | E4 | Pause / cancel / reopen days later | draft | draft | draft | draft | — | |
 | E5 | Merge / split tasks | draft | draft | draft | draft | — | open question |
 | F1 | Rule created / edited / forgotten | — | — | — | — | — | |
-| F2 | Recall from weeks ago | — | — | — | — | — | |
-| F3 | Mem unavailable | — | — | — | — | — | |
+| F2 | Recall from weeks ago | draft | — | draft | — | — | First slice built: `memory_search` (one per turn, never pasted) and `memory_add` (durable things only) on Nowledge Mem; app line 记下了 · <title> / Noted · <title> (`memory.noted`); eval category `memory` with a fake Mem. Copy pending user OK |
+| F3 | Mem unavailable | draft | — | — | — | — | Built: tools say so, the partner asks like a colleague who forgot, never mentions memory (eval `mem-down-zh`). No write outbox yet (todo) |
 | F4 | Switch / link personas | — | — | — | — | — | open question |
 | G1 | Something is about to go outside (intent needing policy) | draft | draft | draft | draft | — | `flows/G-safety.md`; effect ladder in §0 |
 | G2 | Undo windows, and what's honest after | draft | draft | draft | draft | — | |

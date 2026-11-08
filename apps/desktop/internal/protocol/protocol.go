@@ -100,6 +100,7 @@ const (
 	KindReport           = "report"
 	KindCheckpoint       = "checkpoint"
 	KindWaiter           = "waiter"
+	KindMemoryNoted      = "memory_noted"
 )
 
 type UserMsg struct {
@@ -215,6 +216,14 @@ type Waiter struct {
 	State    string `json:"state"` // armed | fired | cancelled
 }
 
+// MemoryNoted is the partner saving something durable to the user's
+// long-term memory. It shows as one quiet line: "记下了 · <title>".
+type MemoryNoted struct {
+	Title    string `json:"title"`
+	MemoryID string `json:"memoryId,omitempty"`
+	ReplyTo  int64  `json:"replyTo,omitempty"`
+}
+
 // Waiter states.
 const (
 	WaiterArmed     = "armed"
@@ -288,6 +297,8 @@ func (e LogEvent) Typed() (any, error) {
 		v = &Report{}
 	case KindCheckpoint:
 		v = &Checkpoint{}
+	case KindMemoryNoted:
+		v = &MemoryNoted{}
 	case KindWaiter:
 		v = &Waiter{}
 	default:

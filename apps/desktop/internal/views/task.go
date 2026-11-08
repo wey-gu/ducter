@@ -558,7 +558,9 @@ func (a *App) refreshDiff(id string) {
 		return
 	}
 	p := task.Place()
-	if p.Kind != "repo" || p.Worktree == "" {
+	// A remote Ducter's worktree path is on the server: never run git on that
+	// path here (it may name some other repo on this Mac, chosen by a model).
+	if p.Kind != "repo" || p.Worktree == "" || !a.onThisMachine() {
 		return
 	}
 	pane := a.diffs[id]

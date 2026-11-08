@@ -10,6 +10,7 @@ import (
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/client"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
+	"github.com/wey-gu/ducter/apps/desktop/internal/remote"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
@@ -550,12 +551,24 @@ func (a *App) livingLine(c *ui.Context, it protocol.LivingItem) {
 	}
 }
 
+// onThisMachine says whether the Ducter we talk to runs here (or is a test):
+// only then do its paths name files on this Mac. Through Connect to your
+// Ducter they are the server's paths, chosen by its models.
+func (a *App) onThisMachine() bool {
+	return a.URL == "" || remote.IsLoopback(a.URL)
+}
+
 func (a *App) openEvidence(c *ui.Context, ev protocol.EvidenceRef) {
+	ref := ev.Ref
+	web := strings.HasPrefix(ref, "https://") || strings.HasPrefix(ref, "http://")
+	file := strings.HasPrefix(ref, "file:") || strings.HasPrefix(ref, "/")
 	switch {
-	case len(ev.Ref) > 4 && (ev.Ref[:4] == "http" || ev.Ref[:5] == "file:"):
-		c.OpenURL(ev.Ref)
-	case len(ev.Ref) > 0 && ev.Ref[0] == '/':
-		c.OpenURL("file://" + ev.Ref)
+	case web:
+		c.OpenURL(ref)
+	case file && a.onThisMachine() && strings.HasPrefix(ref, "file:"):
+		c.OpenURL(ref)
+	case file && a.onThisMachine():
+		c.OpenURL("file://" + ref)
 	default:
 		c.WriteClipboard(ev.Ref)
 		c.Toast(ev.Label + " · " + ev.Ref)

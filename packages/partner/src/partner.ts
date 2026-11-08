@@ -705,7 +705,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       properties: {
         at: { type: "string", description: "ISO 8601 time" },
         taskId: { type: "string" },
-        reason: { type: "string" },
+        reason: { type: "string", description: "Shown to the user on On hand: short, in their language, addressed to them (提醒你回邮件 / Remind you to reply to the email)" },
       },
       required: ["reason"],
     },

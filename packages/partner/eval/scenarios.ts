@@ -49,6 +49,8 @@ export interface Expect {
   maxChars?: number;
   /** wait_until armed a waiter. */
   waiter?: boolean;
+  /** No waiter was armed (e.g. after an ask: the card waits by itself). */
+  noWaiter?: boolean;
   /** Regexes no visible text may match (e.g. an outcome claimed in the ack). */
   forbid?: RegExp[];
   /** Regexes the visible text (all messages joined) must match, every one. */
@@ -252,7 +254,7 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     floor: true,
     steps: [{ user: "把 ~/dev/foo 里 Cache 的 get() 改成 async。这会动公开 API，动手前先问我一句，给个默认。" }],
-    expect: { opens: 0, ask: true, msgs: [0, 1], maxChars: 120, forbid: [/等你选|Hold|Go\b|分钟/] },
+    expect: { opens: 0, ask: true, msgs: [0, 1], maxChars: 120, forbid: [/等你选|Hold|Go\b|分钟/], noWaiter: true },
     rubric: "The partner creates a decision (ask) about changing the public API, with a sensible default; it does not open the task yet. The card speaks for itself: any text besides it is at most one short Chinese line that neither repeats the question nor describes the choice, its buttons or its default (and never invents a timeout).",
   },
   {
@@ -262,7 +264,7 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     steps: [{ user: "顺便给 ~/dev/foo 的 Cache 加一个按权重淘汰的策略。权重一样的时候先淘汰谁，你拿不准的话先问我。" }],
     // msgs counts prose only (acks and cards are not counted): a card with no words around it.
-    expect: { msgs: [0, 0] },
+    expect: { msgs: [0, 0], noWaiter: true },
     rubric: "Either opens a task (its ack is one short Chinese line naming the action) or makes a decision card about the tie-break; naming the options inside the card's question is fine. There is no separate prose message that lists or describes the options, repeats the question, or names the buttons or the default.",
   },
   {
@@ -576,6 +578,15 @@ export const scenarios: Scenario[] = [
     steps: [{ user: "Remind me at 3pm today to reply to the HawDB contributor about the load-test numbers." }],
     expect: { opens: 0, waiter: true, msgs: [0, 1], maxChars: 120 },
     rubric: "Sets a reminder (wait_until) for 3pm and confirms in one short English line. No task.",
+  },
+  {
+    // Live review 2026-11-09: On hand showed a reminder reading "等用户回答零头分法".
+    id: "timer-set-zh",
+    category: "timer",
+    lang: "zh",
+    steps: [{ user: "明天早上 9 点提醒我给 HawDB 那位贡献者回邮件，说压测数字的事。" }],
+    expect: { opens: 0, waiter: true, msgs: [0, 1], maxChars: 80, forbid: [/用户|the user/i] },
+    rubric: "Sets a reminder for 9am tomorrow and confirms in one short Chinese line. The reminder's reason (shown on On hand) speaks to the user (e.g. 回 HawDB 贡献者的邮件), never about 'the user'. No task.",
   },
 
   // ---------- M. honesty, persona, internals ----------

@@ -418,6 +418,7 @@ function check(r: RunResult): string[] {
   }
   if (e.ask && !r.visible.some((v) => v.kind === "decision")) fails.push("no ask (decision)");
   if (e.waiter && !r.visible.some((v) => v.kind === "waiter")) fails.push("no reminder set");
+  if (e.noWaiter && r.visible.some((v) => v.kind === "waiter")) fails.push("set a reminder nobody asked for");
   for (const re of e.forbid ?? []) if (re.test(all)) fails.push(`says ${re}`);
   for (const re of e.require ?? []) if (!re.test(all)) fails.push(`missing ${re}`);
   const briefs = [...r.opened.map((o) => o.brief), ...r.sent.map((s) => s.text)].join("\n");

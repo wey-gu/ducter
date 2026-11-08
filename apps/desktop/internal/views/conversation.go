@@ -124,6 +124,7 @@ func (a *App) conversation(c *ui.Context) {
 		}
 	})
 	a.firstResultLine(c)
+	a.cliOfferLine(c)
 	a.composer(c)
 	a.readWhenSeen(c)
 }

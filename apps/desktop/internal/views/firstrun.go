@@ -74,12 +74,18 @@ func (a *App) retryLine(c *ui.Context) string {
 
 // commandBox shows a command to type, with a copy button.
 func (a *App) commandBox(c *ui.Context, cmd string) {
+	a.commandBoxSized(c, cmd, 17)
+}
+
+// commandBoxSized is a command box with its own type size (long commands
+// set smaller).
+func (a *App) commandBoxSized(c *ui.Context, cmd string, size float32) {
 	t := a.T
 	box := ui.Row(c.Key("cmd")).Gap(12).Padding(8, 8, 8, 18).Radius(t.RadiusSM).Background(t.Ink).AlignItems(ui.Center)
 	copied := ui.Local(box, "copied", func() time.Time { return time.Time{} })
 	box.Children(func() {
 		ui.Text(c, "$").Font(t.Mono).FontSize(16).TextColor(t.Accent)
-		ui.Text(c, cmd).Font(t.Mono).FontSize(17).FontWeight(700).TextColor(t.OnUserBubble).Grow(1).Selectable()
+		ui.Text(c, cmd).Font(t.Mono).FontSize(size).FontWeight(700).TextColor(t.OnUserBubble).Grow(1).Selectable()
 		label := a.L.T("firstrun.copy")
 		if since := a.Now().Sub(*copied); !copied.IsZero() && since < 2*time.Second {
 			label = a.L.T("firstrun.copied")

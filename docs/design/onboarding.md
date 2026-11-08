@@ -102,8 +102,53 @@ from the test harness signalling its own wrapper shell, not from Ducter.
   elsewhere right now).
 - The partner doesn't read `firstrun.json`, so "I found 14 repos; the most active is …" (the
   target in A1 step 6) is only shown, not said.
-- The name question is terminal-only; there is no rename in the desktop yet.
-- A double-clickable app (the A1-M target) doesn't exist; the friend still opens Terminal once.
+- There is no rename in the desktop yet (the name is asked once, in the terminal or the app).
+- ~~A double-clickable app doesn't exist~~: see the app path below.
+
+## What ships today: the app path (2026-11-09)
+
+`scripts/make-app.sh` builds `Ducter.app` (desktop binary in `Contents/MacOS`, the `ducter` CLI
+in `Contents/Helpers`, `AppIcon.icns` drawn by `apps/desktop/cmd/appicon` from the clay
+character) and a `.dmg` with an Applications shortcut. Ad-hoc signed, not notarized.
+
+**Lifetime (proposed, awaiting the user's call):** Ducter lives as long as the app. The app
+runs `ducter up --no-desktop` as its child; ⌘Q, closing the window, or a force quit stops it
+(`DUCTER_PARENT_PID`: the CLI exits when the app's pid goes away). A Ducter that was already
+running is attached to and left alone. *Tradeoff:* tasks stop when the window closes, which
+contradicts "silence means success" for long tasks; a LaunchAgent (or a menu-bar presence)
+would keep Ducter working with the window closed and come back at login. Recommended for the
+next step: keep the window-closes-quits default for v1 (honest and simple: one thing to
+understand), and add "Keep Ducter running when the window is closed" as a single opt-in that
+installs a LaunchAgent, offered the first time a task is still running at quit.
+
+**Screens** (copy keys `setup.*`, `cli.*` in `apps/desktop/internal/i18n`; views in
+`apps/desktop/internal/views/setup.go`; headless shots `apps/desktop/docs/app-*.png`)
+
+1. Checking this Mac (napping character). The app first fixes its `PATH` (login shell's
+   `PATH` + `~/.local/bin`, Homebrew, Bun …), since Finder starts apps with the system folders
+   only, then runs `ducter doctor --json` with `DUCTER_LOCALE` set to the window's language.
+2. Blocked: only required failures, each with Copy and **Run in Terminal** (a `.command` file
+   opened with `open -a Terminal`: no Automation permission prompt). URL fixes get "Open the
+   page". Optional misses fold into one line. Re-checks on return to the window and every 10 s.
+3. The name, once, skippable, written to `persona.json` as the CLI does; skipped when Nowledge
+   Mem is healthy or `DUCTER_PERSONA_NAME` is set.
+4. Waking {name} up… then the conversation. Starters come from `firstrun.json`, which the app
+   rereads on the first welcome (it opens before `up` writes the file).
+5. Failed / stopped: the last lines of `app.log`, its path, Try again.
+6. After the partner's first reply, once: "Use ducter in Terminal too?" → symlink
+   `~/.local/bin/ducter` → the app's CLI. Never replaces a real file; not offered from a disk
+   image or a translocated copy; prints the `PATH` line if `~/.local/bin` isn't on it.
+
+**Verified live** on macOS 15.7 (the DMG built, mounted, the app copied to a scratch folder,
+launched with `open`, `dev.env` pointing at a scratch data folder and port 7798, sonnet):
+doctor + `up` took ~4 s from open to "Ducter is up"; repo starters showed on the first launch;
+a message got its reply in 2.5 s; ⌘Q, ⌘W and `kill -9` of the app each stopped the backend
+(port freed, `SIGTERM: shutting down` in `ducter.log`). The Gatekeeper dialog for a
+quarantined copy ("“Ducter” Not Opened", Done / Move to Trash) and the "Open Anyway" button in
+Privacy & Security were seen; pressing Open Anyway was not (it needs the owner's password).
+**Headless only:** the blocked, name, failed screens and the CLI offer (a fake backend in
+`setup_test.go`); a real blocked Mac was not walked. **Not verified:** a helper binary still
+carrying quarantine after Open Anyway (the app clears the flag on its own helper, best effort).
 
 ## The cartoon (≈ 25 s, skippable, replayable from Settings)
 

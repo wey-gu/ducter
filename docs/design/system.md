@@ -162,3 +162,26 @@ redesign later:
   - VPS datacenter IPs draw CAPTCHAs, so prefer running browser places on a home Mac;
   - prompt injection is contained, not solved;
   - each live sandbox needs about 1–2 GB RAM.
+
+## Credentials and logged-in profiles (D48, research/25)
+
+The model follows the Muse pattern: the *session* (a persistent profile) is kept separate from
+the *secret* (a vault). The model never sees passwords or one-time codes.
+
+- **Encryption:** the profile root (`CUA_DRIVER_BROWSER_PROFILE_ROOT`) lives on an encrypted
+  volume per persona per device. Chromium on Linux encrypts cookies with a fixed key, so the
+  volume must do the encryption.
+- **Vault (`credd`):** one per persona per device. Sources: a local store, 1Password, or
+  Bitwarden.
+- **`site_login`:** a gate-side tool that verifies the site, pauses the agent, fills the form,
+  and scrubs secrets from the output.
+- **2FA:** a push to the phone (take over, or tap "I approved it"). TOTP is opt-in. For
+  passkeys, sign in once by takeover and reuse the session.
+- **Login health:** checked per site, with re-login prompts. A "Logged-in sites" view per
+  profile lets the user sign out of any site.
+- **Per-site policy:** draft-first for posting, rate limits with jitter, and a stop after two
+  consecutive write errors. A Grok-bot user's X account was frozen after its scheduled retries.
+- **Audit log** of every fill and every write.
+- **Open before building the fill:**
+  1. whether cua-driver's `browser_type` echoes typed text back in its result;
+  2. whether the encrypted volume survives a gVisor sandbox restart.

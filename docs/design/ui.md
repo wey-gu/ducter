@@ -91,10 +91,22 @@ brows when something needs you. Other themes render the same states in their own
 
 ## Capability map (D43): metaphor UNDER EVALUATION
 
-> Status: **candidate only.** The user rejected choosing a metaphor by deriving it from the
-> theme (2026-11-08). The metaphor must be world-class, chosen through `research/24`: a
-> systematic candidate set, a rubric, and a comprehension test. The Isles text below is
-> candidate A, kept for comparison.
+> Status: **awaiting the user's decision** (`research/24` done).
+> - **Recommendation:** a *literal playset*. The user's real devices are drawn as chunky toys on
+>   a table, with plain cards at zoom-out.
+>   - Each AI plan is one block per account, with cords to every device signed into it
+>     (shared quota read correctly 11/12 times with cords, vs 0/2 for the Isles woodpile).
+>   - Capabilities are cartridges that click into devices.
+>   - The partner sits on its home device and naps with it.
+>   - Memory is a book in the partner's backpack (read correctly 18/18; the lighthouse got 0/2).
+>   - The phone used to reach home is a walkie-talkie (20/20).
+> - **Scores:** playset 90, literal cards 80, Isles and the others 66–71, orchestra 55.
+> - **Pitfalls found:** sleep reads as "broken"; battery and fuel read as device power; an apron
+>   reads as "servant", a baton as "boss".
+> - **Caveats:** text-proxy raters only; humans are needed (pass bar ≥80% on key items, no
+>   boss or servant reads).
+>
+> The Isles text below is candidate A, kept for comparison.
 
 ### Candidate A: The Isles
 

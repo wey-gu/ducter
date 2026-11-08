@@ -101,7 +101,8 @@ export interface Bodies {
   // Nowledge Bridge (behind DUCTER_BRIDGE=1, design/bridge.md). "in": a message another agent
   // sent the persona (origin "peer"); its text is untrusted task context, never the user's
   // permission. "out": the partner's reply to one (origin "partner"). Clients show one quiet
-  // line: "来自 <from> 的交接" / "Hand-off from <from>", and "已回复 <to>" / "Replied to <to>".
+  // line (copy pending the glossary): "<from> 发来请求" / "Request from <from>", and
+  // "已回复 <to>" / "Replied to <to>". Not "交接 / hand-off": that word is a task changing body.
   bridge_msg: { direction: "in" | "out"; messageId: string; from?: string; to?: string; text: string; inReplyTo?: string; sentAt?: string };
 }
 

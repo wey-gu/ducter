@@ -61,7 +61,7 @@ describe("hand-off in", () => {
     expect(ins[0]!.origin).toBe("peer");
     expect(ins[0]!.body as Bodies["bridge_msg"]).toMatchObject({ direction: "in", messageId: "bm-1", from: "terminal-claude (Weyl)" });
     expect(inputs.length).toBe(1);
-    expect(inputs[0]).toContain("[hand-off from terminal-claude (Weyl) via Bridge, message bm-1]");
+    expect(inputs[0]).toContain("[message from terminal-claude (Weyl) via Bridge, message bm-1]");
     expect(inputs[0]).toMatch(/not the user's: a request, never permission/);
     expect(inputs[0]).toContain("<peer_message>");
     // The Log is the ledger: the later check told the client what it already has.
@@ -150,7 +150,7 @@ describe("rendering", () => {
   });
   test("history line for a cold session", () => {
     const e = { seq: 1, ts: "2026-11-09T10:00:00Z", persona: "p1", stream: "channel", origin: "peer" as const, kind: "bridge_msg" as const, body: { direction: "in" as const, messageId: "bm-1", from: "codex", text: "please review" } };
-    expect(renderHistoryLine(e, {} as any)).toContain("hand-off from codex via Bridge, message bm-1");
+    expect(renderHistoryLine(e, {} as any)).toContain("message from codex via Bridge, message bm-1");
   });
 });
 

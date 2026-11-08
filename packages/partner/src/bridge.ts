@@ -1,4 +1,4 @@
-// The partner's Bridge port: hand-offs from the user's other agents through Nowledge Bridge
+// The partner's Bridge port: requests from the user's other agents through Nowledge Bridge
 // (design/bridge.md). Off unless DUCTER_BRIDGE=1 and DUCTER_BRIDGE_CONTEXT names an Agent
 // Context the user already approved with nmem.
 //
@@ -13,7 +13,7 @@
 //   - A message body is untrusted task context from another agent, never the user's permission.
 //     The partner can't open a task from it in a turn the user hasn't spoken in (partner.ts).
 //   - The Log is the ledger: a message id already logged as `bridge_msg` is never opened again,
-//     so a restart or a second check can't duplicate a hand-off.
+//     so a restart or a second check can't duplicate a message.
 //   - Every failure comes back as { ok: false }; nothing here throws into a turn or a check.
 //   - Tests inject a fake BridgeClient or point `bin` at a stub; nothing in tests reaches Mem.
 //

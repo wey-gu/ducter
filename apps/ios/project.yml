@@ -1,5 +1,5 @@
 # The Ducter iPhone app: a native shell around the phone client the main serves at /app.
-# Generate the Xcode project with `xcodegen` (brew install xcodegen); see README.md.
+# Generate the Xcode project with `xcodegen` (brew install xcodegen); see docs/release-ios.md.
 name: Ducter
 options:
   deploymentTarget:

@@ -50,6 +50,14 @@ func (a *App) rows() []row {
 			}
 		}
 	}
+	a.livingNewest = map[string]int64{}
+	for _, r := range rows {
+		if e := r.entry; e.Living != nil {
+			for _, it := range e.Living.Items {
+				a.livingNewest[livingKey(it)] = max(a.livingNewest[livingKey(it)], e.FirstSeq)
+			}
+		}
+	}
 	kept := rows[:0]
 	for _, r := range rows {
 		if e := r.entry; e.Living != nil && len(a.livingItems(e)) == 0 {
@@ -291,10 +299,11 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 	case e.Decision != nil:
 		if d := a.S.Decisions[e.Decision.DecisionID]; d != nil {
 			ui.Column(c).Padding(18).Gap(10).Radius(22).Background(t.NeedsYou.Surface).Children(func() {
-				if d.TaskID == "" {
-					// The partner's own ask, before any task.
-					ui.Text(c, a.L.T("living.needsyou", 1)).FontSize(t.XS).FontWeight(800).TextColor(t.NeedsYou.Ink).LetterSpacing(0.5)
+				head := a.stateLabel(protocol.NeedsYou)
+				if task := a.S.Task(d.TaskID); task != nil && task.Title() != "" {
+					head += " · " + task.Title()
 				}
+				ui.Text(c, head).FontSize(t.XS).FontWeight(800).TextColor(t.NeedsYou.Ink).LetterSpacing(0.5)
 				a.decisionBody(c, d, "")
 			})
 		}
@@ -381,10 +390,17 @@ func (a *App) livingItems(e *store.Entry) []protocol.LivingItem {
 		if (it.Kind == "done" || it.Kind == "failed") && a.resultShown[it.TaskID] {
 			continue
 		}
+		// A read living message is frozen and the next one repeats what
+		// still stands: say each line once, in the newest message.
+		if it.Kind != "decision" && a.livingNewest[livingKey(it)] > e.FirstSeq {
+			continue
+		}
 		out = append(out, it)
 	}
 	return out
 }
+
+func livingKey(it protocol.LivingItem) string { return it.TaskID + "|" + it.Kind + "|" + it.Text }
 
 func (a *App) living(c *ui.Context, e *store.Entry) {
 	t := a.T

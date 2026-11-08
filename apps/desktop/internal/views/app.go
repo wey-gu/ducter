@@ -88,6 +88,10 @@ type App struct {
 	// conversation first showed something unread to the user.
 	readSent int64
 	unreadAt time.Time
+	// sideTab is the narrow task view's tab: "changes" or "details".
+	sideTab string
+	// livingNewest is, per living line, the newest living message with it.
+	livingNewest map[string]int64
 	// resultShown marks the tasks whose result the partner gave.
 	resultShown map[string]bool
 	// livingAway remembers, per living message, whether it came while

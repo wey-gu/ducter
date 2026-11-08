@@ -15,6 +15,10 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 )
 
+// NarrowTask is the window width below which an opened task shows its
+// changes and details as tabs of one column instead of two.
+const NarrowTask = 1100
+
 // task is an opened task, at conductor depth.
 func (a *App) task(c *ui.Context) {
 	task := a.S.Task(a.TaskID)
@@ -28,11 +32,42 @@ func (a *App) task(c *ui.Context) {
 		} else if finished(task) {
 			a.resultBanner(c, task)
 		}
+		t := a.T
+		w, _ := c.Size()
 		ui.Row(c).Grow(1).Gap(14).AlignItems(ui.Stretch).MinHeight(0).Children(func() {
 			a.transcript(c, task)
-			a.changes(c, task)
-			ui.Scroll(c).Grow(1).Basis(280).MinWidth(0).Children(func() {
-				ui.Column(c).Gap(14).Padding(0, 0, 6, 0).Children(func() { a.dossier(c, task) })
+			if w >= NarrowTask {
+				a.changes(c, task)
+				ui.Scroll(c).Grow(1).Basis(280).MinWidth(0).Children(func() {
+					ui.Column(c).Gap(14).Padding(0, 0, 6, 0).Children(func() { a.dossier(c, task) })
+				})
+				return
+			}
+			// Narrow: changes and details share one column, by tab.
+			ui.Column(c).Grow(2).Basis(420).MinWidth(0).Gap(10).Children(func() {
+				ui.Row(c).Gap(6).Padding(4).Radius(t.RadiusSM).Background(t.SurfaceSunken).Children(func() {
+					for _, tab := range []string{"changes", "details"} {
+						on := a.sideTab == tab || a.sideTab == "" && tab == "changes"
+						b := ui.Row(c.Key(tab)).Grow(1).Height(36).Radius(10).Justify(ui.Center).AlignItems(ui.Center).
+							Cursor(ui.CursorPointer).Role(ui.RoleTab).Label(a.L.T("task.side." + tab)).Selected(on)
+						if on {
+							b.Background(t.Surface)
+						}
+						b.Children(func() {
+							ui.Text(c, a.L.T("task.side."+tab)).FontSize(t.SM).FontWeight(700).AccessHidden(true)
+						})
+						if b.Clicked() {
+							a.sideTab = tab
+						}
+					}
+				})
+				if a.sideTab == "details" {
+					ui.Scroll(c).Grow(1).MinHeight(0).Children(func() {
+						ui.Column(c).Gap(14).Padding(0, 0, 6, 0).Children(func() { a.dossier(c, task) })
+					})
+				} else {
+					ui.Column(c).Grow(1).MinHeight(0).Children(func() { a.changes(c, task) })
+				}
 			})
 		})
 	})
@@ -43,7 +78,7 @@ func (a *App) taskHeader(c *ui.Context, task *store.Task) {
 	ui.Row(c).Gap(12).Wrap().AlignItems(ui.Center).Children(func() {
 		ui.Row(c).Gap(8).Grow(1).MinWidth(0).AlignItems(ui.Center).Children(func() {
 			crumb := func(label string, to Route) {
-				l := ui.Text(c.Key(label), label).FontSize(14).FontWeight(700).TextColor(t.InkMuted).Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Padding(6, 4)
+				l := ui.Text(c.Key(label), label).FontSize(14).FontWeight(700).TextColor(t.InkMuted).Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Padding(6, 4).SingleLine().Shrink(0)
 				if l.Hovered() {
 					l.TextColor(t.Ink)
 				}
@@ -77,6 +112,11 @@ func (a *App) taskHeader(c *ui.Context, task *store.Task) {
 			})
 		}
 		place := task.Place()
+		if w, _ := c.Size(); w < NarrowTask {
+			// Narrow: where it works and its project live under Details.
+			a.taskActions(c, task)
+			return
+		}
 		ui.Row(c).Gap(8).Height(44).Padding(0, 14).Radius(t.RadiusSM).Background(t.SurfaceSunken).AlignItems(ui.Center).Children(func() {
 			if place.Kind != "none" && place.Kind != "" {
 				ui.Box(c).Size(8, 8).Radius(4).Background(t.Done.Strong)
@@ -600,9 +640,13 @@ func (a *App) changes(c *ui.Context, task *store.Task) {
 			if pane != nil {
 				n = len(pane.files)
 			}
-			ui.Box(c).Height(40).Padding(0, 16).Radius(12).Background(t.Ink).Center().Children(func() {
-				ui.Text(c, a.L.T("task.changes", n)).FontSize(14).FontWeight(700).TextColor(t.OnUserBubble)
-			})
+			if w, _ := c.Size(); w >= NarrowTask {
+				ui.Box(c).Height(40).Padding(0, 16).Radius(12).Background(t.Ink).Center().Children(func() {
+					ui.Text(c, a.changesLabel(n)).FontSize(14).FontWeight(700).TextColor(t.OnUserBubble)
+				})
+			} else {
+				ui.Text(c, a.changesLabel(n)).FontSize(14).FontWeight(800).Padding(0, 6)
+			}
 			ui.Spacer(c)
 			if pane != nil {
 				if pane.loading {
@@ -746,4 +790,12 @@ func tokens(n int64) string {
 		return fmt.Sprintf("%.1fk", float64(n)/1e3)
 	}
 	return fmt.Sprint(n)
+}
+
+// changesLabel counts changed files, singular for one.
+func (a *App) changesLabel(n int) string {
+	if n == 1 {
+		return a.L.T("task.changes.one")
+	}
+	return a.L.T("task.changes", n)
 }

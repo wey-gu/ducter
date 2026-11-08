@@ -22,6 +22,10 @@ const (
 type Table map[string]string
 
 var zh = Table{
+	"task.changes.one":              "改动 · 1 个文件",
+	"time.opened.now":               "刚开",
+	"task.side.changes":             "改动",
+	"task.side.details":             "细节",
 	"browser.looking":               "在 Ducter 的浏览器里看 %s",
 	"result.asked":                  "已经跟 %s 说了",
 	"task.dossier.body":             "谁在做",
@@ -217,6 +221,10 @@ var zh = Table{
 }
 
 var en = Table{
+	"task.changes.one":              "Changes · 1 file",
+	"time.opened.now":               "just opened",
+	"task.side.changes":             "Changes",
+	"task.side.details":             "Details",
 	"browser.looking":               "Looking at %s in Ducter's browser",
 	"result.asked":                  "Told %s",
 	"task.dossier.body":             "Who's doing it",

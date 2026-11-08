@@ -6,6 +6,8 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
+
 	"github.com/wey-gu/ducter/apps/desktop/internal/remote"
 )
 
@@ -92,7 +94,7 @@ func (a *App) connect(c *ui.Context) {
 			Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.PressCard.Offset, 0, 0, t.PressCard.Color)
 		a.enter(c, card)
 		card.Children(func() {
-			a.sleepyFace(c, 64)
+			a.avatar(c, theme.Idle, 88)
 			ui.Text(c, a.L.T("connect.title")).FontSize(28).FontWeight(800).LetterSpacing(-0.4)
 			if a.Unauthorized {
 				ui.Text(c, a.L.T("connect.revoked")).FontSize(t.MD).LineHeight(1.5).TextColor(t.NeedsYou.Ink)

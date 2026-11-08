@@ -266,7 +266,9 @@ Timing and springs come from the theme's `motion.personality`. The spec lives in
 
 ## 8. Open questions
 
-- Results: where finished documents live (control-plane blobs vs. written to a place), and a
-  results view.
-- Merging and splitting tasks: semantics for the Log, leases, and branches.
+- Results: where finished documents live is decided (D52 Q7: in 成果 on the control plane,
+  with an optional "write it into a place"). The results view and the result anatomy are open
+  (`flows/I-results.md`, IQ1–IQ11).
+- Merging and splitting tasks: the cheap version is decided (D52 Q5); full semantics for the
+  Log, leases, and branches stay open.
 - Linking personas: scope (read-only? ask-only?) and how it is shown.

@@ -158,7 +158,9 @@ Reach it one of two ways:
   the address is `http://127.0.0.1:7777`.
 
 In the Mac app choose **My Ducter is on another machine → Connect to your Ducter** and enter
-the address and the code from `ducter pair` (or paste the whole link it prints). Only paired
+the address and the code from `ducter pair` (or paste the whole link it prints). On a phone,
+open that link or scan the QR it prints (through your domain): it opens the phone web client,
+pairs, and offers notifications for decisions that wait for you. Only paired
 devices get in from outside the server; `ducter devices` lists them and
 `ducter devices disconnect <id>` removes one. Another machine can join as a worker with
 `ducter pair --worker` on the server and `ducter worker --join <address> --code <code>` on the
@@ -200,6 +202,8 @@ and [`docs/design/`](docs/design/). The plan is in [`docs/roadmap.md`](docs/road
 
 ## Status
 
-Early, private preview. Expect rough edges: one persona, one
-device, macOS only for now; phone access, remote workers, routines, and browser tasks are on the
-[roadmap](docs/roadmap.md). Want to help? See [CONTRIBUTING.md](CONTRIBUTING.md).
+Early, private preview. Expect rough edges. One persona. The desktop app is macOS only; the
+main process also runs on a Linux server, other machines can join as workers, a phone can pair
+for the web client and notifications, and browser tasks run on the Mac. Routines, `until` loops,
+the Ducter Edge and computer use are on the [roadmap](docs/roadmap.md); what is verified and how
+is in [`docs/plan/v1-tonight.md`](docs/plan/v1-tonight.md). Want to help? See [CONTRIBUTING.md](CONTRIBUTING.md).

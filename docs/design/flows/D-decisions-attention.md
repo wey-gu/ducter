@@ -615,7 +615,7 @@ C: task Working, no events for T_stall (default 20 min [I]) and no waiter ──
 - **Stall during quiet hours:** M investigates as usual; a Needs-you outcome is held per D3.
 - **Main AI itself unavailable (quota):** C still marks the stall in the Log; the card shows
   "{persona} 一会儿去看 / {persona} will look shortly" and the investigation resumes when the
-  main AI reserve allows (principle 17 reserve) [I].
+  main AI reserve allows (`product-model.md` §5 quota reserve) [I].
 
 ### 7. Open questions
 

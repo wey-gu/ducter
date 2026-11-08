@@ -269,7 +269,7 @@ checkpoint.
 ### Open questions
 - Is a same-harness model change (e.g. Claude Code `/model`) a handoff, or a setting change at
   a cut (principle 4)? Proposal: a cut inside the same task, not a successor, so no
-  `superseded`. Needs a decision.
+  `superseded`. *Decided: D52 Q2, as proposed.*
 - Shown words for handoff and superseded (†). Proposal: 接着做 / Continue, 接力 / Relay.
 - Successor reuses the old card visually: does On hand show the chain, or only the dossier?
   Proposal: dossier only.

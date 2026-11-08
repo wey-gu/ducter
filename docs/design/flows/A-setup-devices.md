@@ -133,7 +133,7 @@ missing. The design moves every interactive step into the user's own browser.
       - Escape hatch: "我的 AI 在 Mac 上 / My AI is on my Mac" → pair the Mac as a worker
         (A2-W) and let the partner think there.
    3. **Your memory (optional).**
-   4. **Open from anywhere** (VPS only, because the temporary link is about to expire). One
+   4. **Reach from anywhere** (VPS only, because the temporary link is about to expire). One
       button: **登录 Cloudflare / Sign in to Cloudflare** (OAuth in this same browser; free
       account, no card, no domain). Ducter deploys the Edge and claims
       `ducter-<name>.workers.dev`. Alternatives (collapsed): own domain, Tailscale (shown first
@@ -183,7 +183,7 @@ missing. The design moves every interactive step into the user's own browser.
 | `setup.vps.running` | Ducter 在 {device} 上运行了 | Ducter is running on {device} |
 | `setup.vps.open_link` | 用浏览器打开这个链接完成设置（{min} 分钟内有效） | Open this link in a browser to finish setup (valid {min} min) |
 | `setup.vps.ai_on_mac` | 我的 AI 在 Mac 上 | My AI is on my Mac |
-| `setup.remote.title` | 在哪儿都能打开 | Open from anywhere |
+| `setup.remote.title` | 在哪儿都能打开 | Reach from anywhere |
 | `setup.remote.cf` | 登录 Cloudflare | Sign in to Cloudflare |
 | `setup.remote.cf.note` | 免费，不用绑卡，不用域名 | Free. No card, no domain |
 | `setup.remote.other` | 用自己的域名 · 用 Tailscale | Use my own domain · Use Tailscale |
@@ -214,7 +214,7 @@ missing. The design moves every interactive step into the user's own browser.
 ### Open questions
 1. Detect Mem *and* offer to create a Mem account in-flow for consumers, or only detect?
    *Proposed:* only detect in v1.
-2. Is "Open from anywhere" on the Mac first run (not just VPS)? *Proposed:* no; offered after the
+2. Is "Reach from anywhere" on the Mac first run (not just VPS)? *Proposed:* no; offered after the
    first task (A2-P trigger). VPS needs it because its temporary link expires.
 3. Does `get.ducter.dev` exist (a project-owned domain), or do we use GitHub release URLs?
 4. The quick-tunnel setup link: acceptable to rely on trycloudflare for 15 minutes, given
@@ -341,7 +341,7 @@ with what it can do.**
 | `devices.add.phone` | 手机 | Phone |
 | `devices.add.mac` | Mac | Mac |
 | `devices.add.linux` | Linux 服务器 | Linux server |
-| `ability.remote.name` | 远程打开 | Open from anywhere |
+| `ability.remote.name` | 远程打开 | Reach from anywhere |
 | `ability.remote.added` | {device} 现在在哪儿都能打开了 | {device} can now be opened from anywhere |
 | `ability.remote.step.deploy` | 搭好中转 | Setting up the relay |
 | `ability.remote.step.address` | 拿到地址 {host} | Got the address {host} |
@@ -829,13 +829,17 @@ sees it. Visible only when:
 
 ## 6. Glossary gaps and state changes to run through the change loop
 
+*Status 2026-11-09:* the device states, 额度, 叫醒, 连上 / 断开, 远程打开 and 换到 X 接着做 are in the
+glossary (D51, D54), and the device-offline rule is D52 Q1. Still open: 登录 · 登录过期 and 新伙伴
+(collected in `OPEN-QUESTIONS.md` §9).
+
 | Proposed (zh / en) | Used for | Notes |
 |---|---|---|
 | 醒着 · 睡着了 · 连不上 / Awake · Asleep · Can't reach | device states | "Asleep" only when the OS told us; "Can't reach" otherwise |
 | 额度 / quota | subscription limit | alternative 用量上限 / usage limit |
 | 登录 · 登录过期 / Sign in · signed out | harness login | |
 | 连上 / Connect (pair), 断开 / Disconnect | pairing, revoking | avoids "pair/配对" jargon |
-| 远程打开 / Open from anywhere | the remote-access ability (本事) | glossary has the zh item name only; en needs agreeing |
+| 远程打开 / Reach from anywhere | the remote-access ability (本事) | In the glossary since D51 |
 | 换到 {device} 接着做 / Continue on {device}; 交给 {harness} / Let {harness} continue | handoff | glossary has no shown word for handoff; these are action phrases |
 | 叫醒 / Wake | wake a device | |
 | 新伙伴 / New partner | persona creation | uses the glossary category word 伙伴 / Partner |

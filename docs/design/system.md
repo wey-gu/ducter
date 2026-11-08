@@ -162,6 +162,10 @@ changes.
 - **Clients**
   - Desktop and web: MyGo native UI (Go, GPU-drawn, also WASM).
   - Mobile: Expo.
+  - *As built (2026-11-09):* the phone client is `apps/web`, a Preact bundle served by the main
+    process at `/app`, with Web Push from `packages/core/src/push.ts`. It shares the desktop's
+    i18n keys and Pebble tokens. Departing from D20 for phone web is pending the user
+    (`flows/OPEN-QUESTIONS.md` 1.3).
   - The client protocol comes first; the two UI codebases share only the protocol, the state
     model, and design tokens.
 

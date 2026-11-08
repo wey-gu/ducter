@@ -58,8 +58,9 @@ a fresh data folder, and port 7795.
    address shows only when no desktop opened. Core's own `[ducter] …` lines go to
    `<dataDir>/ducter.log` (not with `--headless`, whose logs belong in the journal). Memory
    reads "Nowledge Mem (reading your identity…)" while core is still loading it. *Verified.*
-   *Open:* pairing today connects another Mac's desktop app; the phone web client (A2-P) is
-   still pending, so "phone" in this line runs ahead of the product.
+   Pairing connects another Mac's desktop app or a phone: the `ducter pair` link opens the
+   phone web client (`apps/web`) and pairs it (A2-P; headless browser only so far, not a real
+   phone).
 5. The desktop's empty conversation: "Hi, I'm {name}." and three starters. `ducter up` writes
    `<dataDir>/firstrun.json` before the client starts: git checkouts (a `.git` folder) up to
    depth 2 under `~/dev`, `~/code`, `~/src`, `~/Projects`, `~/work`, `~/repos`, `~/git`,

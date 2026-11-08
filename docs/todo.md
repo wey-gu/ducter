@@ -151,3 +151,13 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] Spike: run `@botiverse/oar/observe` (no `node:` imports) inside the MyGo client on
       moejs, with a `randomUUID` shim, for client-side read models
 - [ ] Evaluate moejs as the client plugin host (cf. MyGo Music / mygo-plugin)
+
+## Release and CI (`docs/release.md`)
+
+- [ ] First tagged release end to end (notarized DMG, Linux tarballs, TestFlight). Trigger: the
+      author's checklist at the top of `docs/release.md` is done.
+- [ ] One Bun for everything: the committed web bundle is built with 1.3.1, the compiled CLI
+      with 1.4.4 (they minify differently). Trigger: upgrading Bun on the author's Mac.
+- [ ] Intel Mac DMG (a `macos-15-intel` job). Trigger: someone asks for Intel.
+- [ ] Linux CI test runs (`bun test`, `go test` on ubuntu) were only compiled/planned on a Mac;
+      if the first runs fail for platform reasons, move that job to `macos-15`.

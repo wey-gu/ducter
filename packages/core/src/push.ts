@@ -10,7 +10,7 @@
 //   result pushes only when the user turned "also when done" on (I-results: done is level 2).
 // - iOS gets tap-to-open only (D52 Q11); Android also gets Go / Hold actions, answered through
 //   POST /api/decide by the service worker.
-import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Bodies, LogEvent } from "@ducter/protocol";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
@@ -120,6 +120,8 @@ interface PushFile {
 }
 
 export const DEFAULT_QUIET = { start: "23:00", end: "08:00" };
+export const MAX_SUBS_PER_DEVICE = 5;
+export const MAX_SUBS = 50;
 
 export interface PushStore {
   vapid(): Promise<Vapid>;
@@ -143,9 +145,13 @@ export function openPushStore(dataDir: string): PushStore {
       console.warn(`[push] ${path} is unreadable; starting fresh:`, (err as Error).message);
     }
   }
+  // Atomic: a torn push.json would be read as "unreadable; starting fresh", i.e. a new VAPID
+  // key, and every phone's subscription would stop working without a word.
   const save = () => {
-    writeFileSync(path, JSON.stringify(data, null, 2), { mode: 0o600 });
-    chmodSync(path, 0o600);
+    const tmp = `${path}.tmp`;
+    writeFileSync(tmp, JSON.stringify(data, null, 2), { mode: 0o600 });
+    chmodSync(tmp, 0o600);
+    renameSync(tmp, path);
   };
   let making: Promise<Vapid> | undefined;
   return {
@@ -158,6 +164,14 @@ export function openPushStore(dataDir: string): PushStore {
     subscribe(s) {
       data.subs = data.subs.filter((x) => x.endpoint !== s.endpoint);
       data.subs.push(s);
+      // Bounded: a device keeps its newest few (a browser re-subscribes with a new endpoint
+      // now and then), and the file never grows without end from one caller.
+      const mine = data.subs.filter((x) => x.deviceId === s.deviceId);
+      if (mine.length > MAX_SUBS_PER_DEVICE) {
+        const drop = new Set(mine.slice(0, mine.length - MAX_SUBS_PER_DEVICE));
+        data.subs = data.subs.filter((x) => !drop.has(x));
+      }
+      if (data.subs.length > MAX_SUBS) data.subs = data.subs.slice(-MAX_SUBS);
       save();
     },
     unsubscribe(endpoint) {
@@ -306,10 +320,29 @@ export interface SendResult {
   gone: boolean; // 404/410: the subscription is dead and is dropped
 }
 
+/**
+ * Push services take at most 4096 bytes of body, and one aes128gcm record of rs 4096 holds at
+ * most 4096 - 86 (header) - 17 (delimiter + tag) bytes of plaintext. Questions, default labels
+ * and task titles come from the model and can be long (Chinese is 3 bytes a character): trim
+ * the visible text so the push still goes out, instead of a 413 nobody sees.
+ */
+export const MAX_PUSH_PLAINTEXT = 3993;
+export function fitMessage(msg: PushMessage, max = MAX_PUSH_PLAINTEXT): Bytes {
+  const enc = (m: PushMessage) => te.encode(JSON.stringify(m));
+  let m = msg;
+  let bytes = enc(m);
+  const cut = (s: string, n: number) => ([...s].length > n ? [...s].slice(0, Math.max(0, n - 1)).join("") + "…" : s);
+  for (let n = 600; bytes.length > max && n >= 20; n = Math.floor(n * 0.7)) {
+    m = { ...msg, title: cut(msg.title, Math.min(n, 120)), body: cut(msg.body, n), ...(msg.actions ? { actions: msg.actions.map((a) => ({ ...a, title: cut(a.title, Math.min(n, 40)) })) } : {}) };
+    bytes = enc(m);
+  }
+  return bytes;
+}
+
 export async function sendPush(sub: PushSub, msg: PushMessage, v: Vapid, fetcher: Fetcher = fetch as Fetcher, urgency = "high"): Promise<SendResult> {
   let body: Bytes;
   try {
-    body = await encryptPayload(te.encode(JSON.stringify(msg)), sub.keys);
+    body = await encryptPayload(fitMessage(msg), sub.keys);
   } catch {
     return { endpoint: sub.endpoint, status: 0, gone: true }; // keys we can't use: drop it
   }

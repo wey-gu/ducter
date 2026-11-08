@@ -9,6 +9,10 @@ import {
   decisionMessage,
   defaultLine,
   encryptPayload,
+  fitMessage,
+  MAX_SUBS,
+  MAX_SUBS_PER_DEVICE,
+  sendPush,
   inQuiet,
   newVapid,
   openPushStore,
@@ -85,6 +89,42 @@ describe("web push wire format", () => {
     expect(b.publicKey).toBe(a.publicKey);
     const { statSync } = await import("node:fs");
     expect(statSync(`${t.dir}/push.json`).mode & 0o777).toBe(0o600);
+  });
+
+  test("a long question still fits one push (≤ 4096 bytes) and decrypts", async () => {
+    const r = await receiver();
+    const v = await newVapid();
+    const d: Bodies["decision"] = { decisionId: "d_long", taskId: "t1", question: "要不要把这个分支变基到主干上？".repeat(200), goLabel: "变基".repeat(100), defaultOption: "go", reversible: false };
+    const msg = decisionMessage(d, { persona: "Ducter", task: "修测试".repeat(100), locale: "zh", platform: "android", now: 0 });
+    expect(new TextEncoder().encode(JSON.stringify(msg)).length).toBeGreaterThan(4096); // what used to be sent
+    let sent: Uint8Array | undefined;
+    const res = await sendPush({ endpoint: "https://push.example/x", keys: r.keys, deviceId: "local", locale: "zh", platform: "android", createdAt: "" }, msg, v, async (_u, init) => {
+      sent = init.body as Uint8Array;
+      return new Response(null, { status: 201 });
+    });
+    expect(res.status).toBe(201);
+    expect(sent!.length).toBeLessThanOrEqual(4096);
+    const got = JSON.parse(await decrypt(sent!, r));
+    expect(got.decisionId).toBe("d_long");
+    expect(got.body.startsWith("要不要把这个分支")).toBe(true);
+    expect(got.actions).toHaveLength(2);
+    // A short one goes out exactly as written.
+    expect(JSON.parse(new TextDecoder().decode(fitMessage(coalescedMessage(2, { persona: "Ducter", locale: "en" }))))).toEqual(coalescedMessage(2, { persona: "Ducter", locale: "en" }));
+  });
+
+  test("subscriptions are bounded per device and in total; push.json is replaced atomically", () => {
+    const t = tempDir();
+    stops.push(t.cleanup);
+    const s = openPushStore(t.dir);
+    const sub = (i: number, deviceId = "dev1"): PushSub => ({ endpoint: `https://push.example/${deviceId}/${i}`, keys: { p256dh: "x", auth: "y" }, deviceId, locale: "en", platform: "web", createdAt: "" });
+    for (let i = 0; i < 100; i++) s.subscribe(sub(i));
+    expect(s.subs().map((x) => x.endpoint)).toEqual([95, 96, 97, 98, 99].map((i) => `https://push.example/dev1/${i}`));
+    for (let i = 0; i < 100; i++) s.subscribe(sub(0, `d${i}`));
+    expect(s.subs().length).toBe(MAX_SUBS);
+    expect(openPushStore(t.dir).subs().length).toBe(MAX_SUBS);
+    const { existsSync } = require("node:fs") as typeof import("node:fs");
+    expect(existsSync(`${t.dir}/push.json.tmp`)).toBe(false);
+    expect(MAX_SUBS_PER_DEVICE).toBe(5);
   });
 });
 

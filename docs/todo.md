@@ -28,6 +28,21 @@ token gate, Caddy and SSH-tunnel paths, desktop connect card, worker enrollment/
 - [ ] Worker as a client of the same main in the Devices UI (A2-W card: "vps-1 想加入 …" with
       Go / Not mine). Today the worker joins with a code typed on the worker, no confirm step.
 
+## Long-term memory: after the first slice (`design/memory.md`)
+
+- [ ] **One live write** into a dedicated scratch Space, then archive it. Not done: the
+      user's Mem is Cloud, so creating a Space is not a local op. Trigger: the user OKs a
+      scratch Space (or a local Mem).
+- [ ] Confirm `--source-msg` provenance lands in `metadata.source_message_id` on Cloud
+      (documented by `nmem m add --help`, unverified live). Trigger: the first live write.
+- [ ] Outbox with idempotency keys when Mem is down (research/private/10 §"Mem down ≠ Ducter
+      down"). Today a save while Mem is down is dropped and nothing is shown.
+- [ ] Search before writing, to supersede instead of duplicating (`nmem m supersede`).
+- [ ] Undo on the Noted line (archive the memory, never delete). Trigger: user review of the line.
+- [ ] Automatic pre-turn recall behind a precision gate, and logging recalls in the Log.
+- [ ] Tasks (windows) as the same identity: set `NMEM_AGENT_ID` in task environments.
+- [ ] Copy review: 记下了 · <title> / Noted · <title> (glossary row pending user OK).
+
 ## Storage: adopt HawDB (after Bun/Node binding)
 
 v1 stores the Log on SQLite behind an append-log port (principle 17). The port is shaped like

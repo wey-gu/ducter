@@ -67,6 +67,11 @@ export interface SessionSpec {
   mcp: (ReturnType<McpHub["configFor"]> | StdioMcpConfig)[];
   permissionMode: "bypass"; // D16: no per-call approvals
   resumeSessionId?: string;
+  // Per-task narrowing (e.g. a browser place): extra denied tools, and for claude-code only,
+  // extra launch flags and whether to leave out the user's own Claude config.
+  disallowedTools?: string[];
+  launchArgs?: string[];
+  userConfiguration?: "include" | "exclude";
 }
 
 export interface HarnessEvent {

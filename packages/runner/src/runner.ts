@@ -17,6 +17,7 @@ export interface RunnerOptions {
   newId?: () => string;
   now?: () => Date;
   browser?: BrowserOptions; // browser places: env gate and test seams
+  taskModel?: string; // default model when the partner passes none (default env DUCTER_TASK_MODEL)
 }
 
 /** Runner plus test/ops helpers that are not part of the contract. */
@@ -153,6 +154,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
   }
 
   function handleEvent(t: TaskRt, ev: HarnessEvent) {
+    const status = ev.tool && t.sidecar?.statusFor(ev.tool);
+    if (status) logEvent(t, { role: "system", text: status.text, raw: { browser: { host: status.host, url: status.url } } });
     if (ev.tool && /(^|__)report_to_main$/.test(ev.tool.name) && ev.tool.ok !== false) t.reportedThisTurn = true;
     if (!ev.text && !ev.tool && !ev.turnEnd) return; // usage-only or empty
     const raw = ev.turnEnd ? { turnEnd: true, usage: ev.usage, ...(ev.raw as object | undefined) } : undefined;
@@ -211,6 +214,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       const project = input.project ?? "";
       const persona = input.persona || core.persona.id;
       const partnerName = opts.partnerName ?? core.persona.name ?? "Ducter";
+      // The partner's choice wins; else DUCTER_TASK_MODEL; else the harness default.
+      const model = input.model || (opts.taskModel ?? process.env.DUCTER_TASK_MODEL) || undefined;
       // Throws before the task exists when a browser place is unavailable (the partner says why).
       const sidecar = await browserSidecar({ place: resolved.place, persona, taskId: id, dataDir: core.dataDir, partnerName }, opts.browser);
 
@@ -219,13 +224,13 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         stream: stream(id),
         origin: "system",
         kind: "task_open",
-        body: { taskId: id, title, project, place: resolved.place, harness: h, model: input.model, brief: input.brief },
+        body: { taskId: id, title, project, place: resolved.place, harness: h, model, brief: input.brief },
       });
 
       const mcp = core.mcp.configFor({ taskId: id });
       const spec: SessionSpec = {
         harness: h,
-        model: input.model,
+        model,
         cwd: resolved.cwd,
         appendSystemPrompt: taskBrief({
           partnerName,
@@ -239,6 +244,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         }) + (sidecar?.brief ?? ""),
         mcp: sidecar ? [mcp, sidecar.mcp] : [mcp],
         permissionMode: "bypass",
+        ...(sidecar && h === "claude-code" ? sidecar.claude : {}),
       };
       const card: TaskCard = {
         taskId: id,
@@ -247,7 +253,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         project,
         place: resolved.place,
         harness: h,
-        model: input.model,
+        model,
         attention: "queued",
         residency: "provisioning",
         updatedAt: now().toISOString(),

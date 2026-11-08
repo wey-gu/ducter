@@ -70,7 +70,9 @@ export function createOarHarnessPort(opts: OarPortOptions = {}): HarnessPort {
             ? { name: m.name, command: m.command, ...(m.args ? { args: m.args } : {}), ...(m.env ? { env: m.env } : {}) }
             : { name: m.name, type: "http", url: m.url, headers: m.headers },
         ),
-        disallowedTools: DISALLOWED[spec.harness],
+        disallowedTools: [...(DISALLOWED[spec.harness] ?? []), ...(spec.disallowedTools ?? [])],
+        launchArgs: spec.harness === "claude-code" && spec.launchArgs?.length ? spec.launchArgs : undefined,
+        userConfiguration: spec.harness === "claude-code" ? spec.userConfiguration : undefined,
         resume: spec.resumeSessionId,
         env: opts.env,
         retainedBytes: opts.retainedBytes ?? 8 * 1024 * 1024,

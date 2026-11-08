@@ -1,0 +1,253 @@
+name: Release
+
+# On a v* tag (v0.1.0, v0.2.0-beta.1, …), builds and ships everything:
+#
+#   meta      the tag's version must equal packages/cli/package.json's (the app reads it there)
+#   macos     Ducter.app + DMG via scripts/make-app.sh: Developer ID signed, notarized with the
+#             App Store Connect API key, stapled, checked by spctl (make-app.sh does all of it)
+#   linux     linux-arm64 and linux-x64 bundles via scripts/install.sh --linux, as tarballs
+#   ios       the iPhone app (apps/ios) to TestFlight; skipped, with a notice, while apps/ios
+#             isn't on the tagged commit or its secrets aren't set. Never blocks the release.
+#   release   one GitHub Release: DMG, tarballs, SHA256SUMS.txt, notes from CHANGELOG.md or the
+#             commits since the previous tag. Drafted first, published once every file is up.
+#             Tags with a "-" (v0.2.0-beta.1) are marked pre-release.
+#
+# Secrets (names as con's; scripts/ci/setup-github-secrets.sh sets them): see docs/release.md.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  # build.sh pins this Bun for the compiled `ducter` binary (research/18).
+  BUN_VERSION: "1.4.4"
+  APPLE_TEAM_ID: JMU55RJW2K
+
+jobs:
+  meta:
+    name: Version check
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      marketing: ${{ steps.v.outputs.marketing }}
+      prerelease: ${{ steps.v.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: v
+        run: |
+          set -eu
+          version="${GITHUB_REF_NAME#v}"
+          pkg="$(sed -n 's/^ *"version": *"\([^"]*\)".*/\1/p' packages/cli/package.json | head -1)"
+          if [ "$version" != "$pkg" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME is $version, packages/cli/package.json says $pkg. Bump the package, commit, tag again."
+            exit 1
+          fi
+          case "$version" in *-*) prerelease=true ;; *) prerelease=false ;; esac
+          # App Store marketing versions are digits only: 0.2.0-beta.1 ships to TestFlight as 0.2.0.
+          {
+            echo "version=$version"
+            echo "marketing=${version%%[-+]*}"
+            echo "prerelease=$prerelease"
+          } >>"$GITHUB_OUTPUT"
+
+  macos:
+    name: macOS app (signed, notarized)
+    needs: meta
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/desktop/go.mod
+          cache-dependency-path: apps/desktop/go.sum
+
+      - name: Import the Developer ID certificate
+        env:
+          APPLE_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_KEYCHAIN_PASSWORD: ${{ secrets.APPLE_KEYCHAIN_PASSWORD }}
+        run: scripts/ci/import-certificate.sh
+
+      - name: Write the App Store Connect API key
+        env:
+          APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
+          APPLE_NOTARY_API_KEY_BASE64: ${{ secrets.APPLE_NOTARY_API_KEY_BASE64 }}
+        run: |
+          set -eu
+          [ -n "$APPLE_NOTARY_KEY_ID" ] && [ -n "$APPLE_NOTARY_API_KEY_BASE64" ] ||
+            { echo "::error::APPLE_NOTARY_KEY_ID / APPLE_NOTARY_API_KEY_BASE64 are not set (docs/release.md)"; exit 1; }
+          key="$RUNNER_TEMP/AuthKey_$APPLE_NOTARY_KEY_ID.p8"
+          (umask 077; printf '%s' "$APPLE_NOTARY_API_KEY_BASE64" | base64 --decode >"$key")
+          grep -q 'BEGIN PRIVATE KEY' "$key" || { echo "::error::APPLE_NOTARY_API_KEY_BASE64 is not a base64 .p8"; exit 1; }
+          echo "APPLE_NOTARY_KEY_PATH=$key" >>"$GITHUB_ENV"
+
+      - name: Build, sign, notarize, staple (scripts/make-app.sh)
+        env:
+          DUCTER_SIGN_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          DUCTER_REQUIRE_NOTARIZATION: "1"
+          APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
+          APPLE_NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
+        run: |
+          set -eu
+          [ -n "$DUCTER_SIGN_IDENTITY" ] || { echo "::error::APPLE_SIGNING_IDENTITY is not set"; exit 1; }
+          scripts/make-app.sh "$RUNNER_TEMP/out"
+
+      - name: Check the artifact
+        env:
+          VERSION: ${{ needs.meta.outputs.version }}
+        run: |
+          set -eu
+          out="$RUNNER_TEMP/out"
+          dmg="$out/Ducter-$VERSION-arm64.dmg"
+          test -f "$dmg"
+          # make-app.sh already ran spctl and stapler; say it again in this job's log, from the DMG.
+          spctl -a -t open --context context:primary-signature -v "$dmg"
+          xcrun stapler validate "$dmg"
+          codesign -dv --verbose=2 "$out/Ducter.app" 2>&1 | grep -E '^(Identifier|Authority|TeamIdentifier|Runtime)'
+          mkdir -p "$RUNNER_TEMP/upload"
+          cp "$dmg" "$RUNNER_TEMP/upload/"
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: macos
+          path: ${{ runner.temp }}/upload/*
+          if-no-files-found: error
+
+      - name: Remove the keychain
+        if: always()
+        run: scripts/ci/import-certificate.sh --delete
+
+  linux:
+    name: Linux bundles (arm64, x64)
+    needs: meta
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Build (scripts/install.sh --linux)
+        run: sh scripts/install.sh --linux "$RUNNER_TEMP/linux"
+
+      - name: Smoke-run the x64 binary, pack tarballs
+        env:
+          VERSION: ${{ needs.meta.outputs.version }}
+        run: |
+          set -eu
+          "$RUNNER_TEMP/linux/linux-x64/ducter" version
+          mkdir -p "$RUNNER_TEMP/upload"
+          for arch in arm64 x64; do
+            name="ducter-$VERSION-linux-$arch"
+            # The tarball unpacks to one folder: ducter + install.sh (run its install.sh there).
+            mv "$RUNNER_TEMP/linux/linux-$arch" "$RUNNER_TEMP/linux/$name"
+            tar -C "$RUNNER_TEMP/linux" -czf "$RUNNER_TEMP/upload/$name.tar.gz" "$name"
+          done
+          ls -l "$RUNNER_TEMP/upload"
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: linux
+          path: ${{ runner.temp }}/upload/*
+          if-no-files-found: error
+
+  ios:
+    name: iPhone app to TestFlight
+    needs: meta
+    # Xcode 26 / the iOS 26 SDK, which App Store Connect requires for uploads.
+    runs-on: macos-26
+    timeout-minutes: 45
+    env:
+      # A separate Admin key may be set as ASC_*; otherwise the notary key is used.
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID || secrets.APPLE_NOTARY_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID || secrets.APPLE_NOTARY_ISSUER_ID }}
+      ASC_API_KEY_BASE64: ${{ secrets.ASC_API_KEY_BASE64 || secrets.APPLE_NOTARY_API_KEY_BASE64 }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Is there an iPhone app to ship?
+        id: gate
+        run: |
+          if [ ! -f apps/ios/project.yml ] && [ ! -d apps/ios/Ducter.xcodeproj ]; then
+            echo "::notice::No apps/ios on $GITHUB_REF_NAME; nothing for TestFlight."
+            echo "ship=false" >>"$GITHUB_OUTPUT"
+          elif [ -z "$ASC_KEY_ID" ] || [ -z "$ASC_ISSUER_ID" ] || [ -z "$ASC_API_KEY_BASE64" ]; then
+            echo "::warning::No App Store Connect API key in secrets; skipping TestFlight (docs/release.md)."
+            echo "ship=false" >>"$GITHUB_OUTPUT"
+          else
+            echo "ship=true" >>"$GITHUB_OUTPUT"
+          fi
+
+      - name: Archive, sign, upload (scripts/ci/testflight.sh)
+        if: steps.gate.outputs.ship == 'true'
+        env:
+          MARKETING_VERSION: ${{ needs.meta.outputs.marketing }}
+          # Unique and increasing per upload: the release run number, plus the attempt on a re-run.
+          BUILD_NUMBER: ${{ github.run_number }}.${{ github.run_attempt }}
+        run: scripts/ci/testflight.sh
+
+  release:
+    name: GitHub Release
+    needs: [meta, macos, linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # release notes read the commits since the previous tag
+
+      - uses: actions/download-artifact@v5
+        with:
+          path: assets
+          merge-multiple: true
+
+      - name: Checksums and notes
+        run: |
+          set -eu
+          (cd assets && sha256sum -- * >SHA256SUMS.txt && cat SHA256SUMS.txt)
+          scripts/ci/release-notes.sh "$GITHUB_REF_NAME" >"$RUNNER_TEMP/notes.md"
+          v="${GITHUB_REF_NAME#v}"
+          cat >>"$RUNNER_TEMP/notes.md" <<EOF
+
+          ## Install
+
+          - **Mac:** open the \`.dmg\` and drag Ducter to Applications.
+          - **Linux server:** take the tarball for \`uname -m\` (aarch64 → arm64, x86_64 → x64), e.g.
+            \`tar xzf ducter-$v-linux-x64.tar.gz && sh ducter-$v-linux-x64/install.sh --service\`.
+          - Check a download: \`shasum -a 256 -c SHA256SUMS.txt --ignore-missing\`.
+          EOF
+          cat "$RUNNER_TEMP/notes.md"
+
+      - name: Draft, upload, publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRERELEASE: ${{ needs.meta.outputs.prerelease }}
+        run: |
+          set -eu
+          tag="$GITHUB_REF_NAME"
+          # Drafts stay invisible until every file is attached; a re-run reuses the release.
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            flags="--draft"
+            [ "$PRERELEASE" = true ] && flags="$flags --prerelease"
+            # shellcheck disable=SC2086
+            gh release create "$tag" --title "Ducter ${tag#v}" --notes-file "$RUNNER_TEMP/notes.md" $flags
+          fi
+          for f in assets/*; do gh release upload "$tag" "$f" --clobber; done
+          gh release edit "$tag" --draft=false
+          gh release view "$tag" --json url,assets --jq '.url, (.assets[].name)'

@@ -26,6 +26,9 @@ type Check struct {
 	Required bool   `json:"required"`
 	Detail   string `json:"detail"`
 	Fix      string `json:"fix,omitempty"` // a shell command, or a URL
+	// Action says the app may run Fix itself, in the background:
+	// "install", "signin", "update" or "grant" ("" = a person runs it).
+	Action string `json:"action,omitempty"`
 	Quiet    bool   `json:"quiet,omitempty"`
 }
 
@@ -56,6 +59,16 @@ func (r Report) Later() []Check {
 		}
 	}
 	return out
+}
+
+// Get is the check with the id (ok false if there's none).
+func (r Report) Get(id string) (Check, bool) {
+	for _, k := range r.Checks {
+		if k.ID == id {
+			return k, true
+		}
+	}
+	return Check{}, false
 }
 
 // Has reports whether the check id passed.

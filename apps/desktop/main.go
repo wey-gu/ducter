@@ -69,12 +69,16 @@ func main() {
 			LoginPath:  login,
 			Scratch:    filepath.Join(os.TempDir(), "ducter-fix"),
 			After:      i18n.New(lang).T("setup.after"),
+			App:        local.BundleID(bundle.App),
 		}
 		app.Backend = host
 		// A child Ducter (no LaunchAgent) stops with the app; a background
 		// one keeps working after Cmd-Q, and one found running is left alone.
 		mygo.App.OnWillQuit(func(*mygo.QuitEvent) { host.Stop(8 * time.Second) })
-		mygo.App.OnQuit(func() { host.Stop(8 * time.Second) })
+		mygo.App.OnQuit(func() {
+			host.Jobs.StopAll() // an installer or a sign-in still waiting
+			host.Stop(8 * time.Second)
+		})
 	}
 
 	mygo.App.WhenReady(func() {
@@ -94,6 +98,7 @@ func main() {
 			Content:              ui.View(app.View),
 		})
 		app.Win = win
+		app.Desktop = desktop{win}
 
 		// The keep-running decision: closing the window hides it (Ducter keeps working); the Dock
 		// icon, or opening the app again, brings it back as it was. Only a
@@ -117,6 +122,13 @@ func main() {
 		badge := -1
 		updateBadge := func() {
 			if n := app.WaitingCount(); n != badge {
+				// Something new waits and the person isn't looking: a
+				// notification, if they said yes to them (views/asks.go).
+				if n > badge && badge >= 0 && !(win.IsVisible() && win.IsFocused()) {
+					if title, body := app.NeedsYouNotice(n); title != "" {
+						go func() { _ = (desktop{win}).Notify(title, body) }()
+					}
+				}
 				badge = n
 				mygo.App.SetBadgeCount(n)
 			}
@@ -250,4 +262,26 @@ func target() (string, string) {
 		}
 	}
 	return client.DefaultURL(), ""
+}
+
+// desktop is the window app's hands on macOS for the views.
+type desktop struct{ win *mygo.Window }
+
+// Focus brings Ducter's window back to the front.
+func (d desktop) Focus() {
+	d.win.Show()
+	d.win.Focus()
+	mygo.App.Focus()
+}
+
+// Notify shows a notification; the first one is when macOS asks.
+func (d desktop) Notify(title, body string) error {
+	if !mygo.NotificationsSupported() {
+		return errors.New("notifications need the app bundle")
+	}
+	err := mygo.NewNotification(mygo.NotificationOptions{Title: title, Body: body, Group: "ducter"}).Show()
+	if errors.Is(err, mygo.ErrNotificationsDenied) {
+		return views.ErrNotificationsDenied
+	}
+	return err
 }

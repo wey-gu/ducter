@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // Host is everything Ducter.app does on this Mac for the window
@@ -83,3 +84,7 @@ func (h *Host) LinkCLI() error { return LinkCLI(LinkDir(), h.CLI) }
 
 // CLIOnPath reports whether ~/.local/bin is on a new Terminal's PATH.
 func (h *Host) CLIOnPath() bool { return OnPath(LinkDir(), h.LoginPath) }
+
+// StopChild stops a Ducter that runs as the app's child (the agent, if
+// any, is left alone).
+func (h *Host) StopChild() { h.Supervisor.Stop(8 * time.Second) }

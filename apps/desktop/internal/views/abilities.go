@@ -850,11 +850,16 @@ func (a *App) abilityDetail(c *ui.Context, dv *protocol.DeviceView) {
 		if !(on && d.removing == id) {
 			ui.Text(c, a.L.T("ability."+id+".about")).FontSize(14).LineHeight(1.6).TextColor(t.InkSoft)
 		}
+		if id == protocol.AbilityWeb && a.webSetupOwned(dv) {
+			a.pollCua(c, false) // the two switches may be off even when the server says on
+		}
 		switch {
 		case ab == nil && !dv.Home && id != protocol.AbilityRemote:
 			a.reasonLine(c, a.L.T("ability.later"))
 		case ab == nil || ab.State == protocol.AbilityLater:
 			a.reasonLine(c, a.L.T("ability.later"))
+		case id == protocol.AbilityWeb && a.webNeedsSetup(dv) && dv.State == protocol.DeviceAwake:
+			a.webSetup(c, dv)
 		case ab.State == protocol.AbilityUnavailable:
 			a.unavailable(c, ab)
 		case on && id == protocol.AbilityRemote:

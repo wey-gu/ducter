@@ -139,6 +139,13 @@ type App struct {
 	undoUntil time.Time
 	// dev is Your devices and abilities' own state.
 	dev devicesState
+	// Desktop is the window app's hands on macOS (focus, notifications);
+	// nil in tests that don't need it.
+	Desktop Desktop
+	// asks are the gentle one-time offers after a result; web is 上网's
+	// setup on this Mac.
+	asks askState
+	web  webSetupState
 }
 
 // UndoWindow is how long a drop can be undone (D52).

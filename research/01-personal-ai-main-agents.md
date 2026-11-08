@@ -3,7 +3,7 @@
 Research date: 2026-11-08. Scope: DimAgent, xAI Grok Bot (plus the open-source xAI `grok-build` harness), OpenAI dots, Meta Muse (and Muse Spaces), plus OpenClaw and Letta as open-source references.
 
 Repos cloned (read-only, nothing executed) under
-`<scratch>`:
+`<scratch>/repos/`:
 `openclaw` (docs tree), `grok-build` (SOURCE_REV 559751fd), `letta-code`, `dim-ext` (sunny0826/dim-external-agents-extend), `dimcode` (issue tracker only).
 
 Labels: **V** means verified in source or official docs. **3P** means a third-party article. **I** means my own inference.

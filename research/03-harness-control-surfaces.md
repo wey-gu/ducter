@@ -8,9 +8,9 @@ Evidence tags: **[V]** verified by experiment on this machine or read in source;
 CLI `--help` / generated protocol schema); **[I]** inferred.
 
 Scratch artifacts: experiment scripts in
-`<scratch>`, outputs in
+`<scratch>/scripts/`, outputs in
 `.../scratchpad/exp/`, generated Codex protocol schema in `.../scratchpad/exp/codexschema/`. Experiment sessions
-were written only to new project dirs `~/.claude/projects/-private-tmp-claude-tmp--Users-me-dev-ducter-...-scratchpad-exp{,2}`;
+were written only to new project dirs `~/.claude/projects/-<scratch>-exp{,2}`;
 Codex threads were `ephemeral: true`. No user config or existing session was modified.
 
 ---

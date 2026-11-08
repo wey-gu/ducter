@@ -3,7 +3,7 @@
 Date: 2026-11-08. Time-boxed spike that follows `research/17` §4. Everything below was **executed** on macOS arm64
 (Darwin 24.6) unless marked [I].
 
-Code: `<scratch>`
+Code: `<scratch>/spike-runner/`
 (`runner.ts`, `build.sh`, `sea-config.json`, `out/`). OAR is `@botiverse/oar@0.95.1` from npm, imported from the
 **root entry** (all 11 default runtimes, pi SDK, ACP SDK), which is the hardest case to bundle.
 

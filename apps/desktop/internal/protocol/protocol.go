@@ -10,7 +10,7 @@ import (
 )
 
 // Version is PROTOCOL_VERSION.
-const Version = 1
+const Version = 2
 
 // ---------- States (docs/design/focus-window-states.md) ----------
 
@@ -99,6 +99,7 @@ const (
 	KindTaskEvent        = "task_event"
 	KindReport           = "report"
 	KindCheckpoint       = "checkpoint"
+	KindWaiter           = "waiter"
 )
 
 type UserMsg struct {
@@ -183,13 +184,43 @@ type ToolCall struct {
 	OK     *bool           `json:"ok,omitempty"`
 }
 
+// TaskEvent is one normalized harness record. Role "user" with From
+// "user" is text the user sent straight into the task (logged by the
+// runner); From "partner" is the partner talking to it.
 type TaskEvent struct {
 	TaskID string          `json:"taskId"`
-	Role   string          `json:"role"` // assistant | user | tool | system
+	Role   string          `json:"role"`           // assistant | user | tool | system
+	From   string          `json:"from,omitempty"` // user | partner | runner
 	Text   string          `json:"text,omitempty"`
 	Tool   *ToolCall       `json:"tool,omitempty"`
+	Usage  *Usage          `json:"usage,omitempty"` // present on turn ends
 	Raw    json.RawMessage `json:"raw,omitempty"`
 }
+
+// Usage is a turn's token use.
+type Usage struct {
+	InputTokens  int64 `json:"inputTokens,omitempty"`
+	OutputTokens int64 `json:"outputTokens,omitempty"`
+	CacheRead    int64 `json:"cacheRead,omitempty"`
+	CacheWrite   int64 `json:"cacheWrite,omitempty"`
+}
+
+// Waiter is a cheap wait that wakes the partner (wait_until). A task-less
+// waiter renders as a compact row on On hand.
+type Waiter struct {
+	WaiterID string `json:"waiterId"`
+	TaskID   string `json:"taskId,omitempty"`
+	At       string `json:"at,omitempty"`
+	Reason   string `json:"reason"`
+	State    string `json:"state"` // armed | fired | cancelled
+}
+
+// Waiter states.
+const (
+	WaiterArmed     = "armed"
+	WaiterFired     = "fired"
+	WaiterCancelled = "cancelled"
+)
 
 type Report struct {
 	TaskID    string        `json:"taskId"`
@@ -257,6 +288,8 @@ func (e LogEvent) Typed() (any, error) {
 		v = &Report{}
 	case KindCheckpoint:
 		v = &Checkpoint{}
+	case KindWaiter:
+		v = &Waiter{}
 	default:
 		return nil, nil
 	}
@@ -289,7 +322,16 @@ type TaskCard struct {
 	Reason            string    `json:"reason,omitempty"`
 	LastReport        *Report   `json:"lastReport,omitempty"`
 	PendingDecisionID string    `json:"pendingDecisionId,omitempty"`
-	UpdatedAt         string    `json:"updatedAt"`
+	// PendingDecision is the open decision, for On hand.
+	PendingDecision *PendingDecision `json:"pendingDecision,omitempty"`
+	OpenedAt        string           `json:"openedAt"`
+	UpdatedAt       string           `json:"updatedAt"`
+}
+
+// PendingDecision is Bodies["decision"] & { askedAt }.
+type PendingDecision struct {
+	Decision
+	AskedAt string `json:"askedAt"`
 }
 
 type Counts struct {
@@ -302,7 +344,24 @@ type Counts struct {
 type OnHand struct {
 	Tasks  []TaskCard `json:"tasks"`
 	Counts Counts     `json:"counts"`
+	// Waiters are the armed waiters; task-less ones render as compact
+	// rows.
+	Waiters []Waiter `json:"waiters"`
 }
+
+// ---------- Client <-> main process WebSocket ----------
+// Semantics (as in index.ts):
+//   - hello.cursor: the server replies welcome, then replays channel events
+//     with seq > cursor (cursor omitted = the last 200 channel events), then
+//     on_hand, then streams live events. Task streams are never pushed in
+//     bulk; clients pull them with task_history and receive live
+//     task_event/task_state for every task afterwards.
+//   - read.upToSeq: the user has seen the channel up to this seq. The living
+//     message is frozen once read: the next update appends a new living_msg
+//     instead of superseding.
+//   - task_send: delivered to the task as steer when it is mid-turn and the
+//     harness supports it, otherwise as the next turn ("prompted") or queued
+//     behind the current turn. The server acks it with a "sent" frame.
 
 // ---------- Client -> server frames ----------
 
@@ -373,15 +432,26 @@ type ClientFrame struct {
 // ServerFrame is any server -> client frame. Fields of all variants share
 // one struct; T tells which are set.
 type ServerFrame struct {
-	T           string     `json:"t"` // welcome | events | on_hand | task_history | error
+	T           string     `json:"t"` // welcome | events | on_hand | task_history | sent | error
 	Persona     string     `json:"persona,omitempty"`
 	PersonaName string     `json:"personaName,omitempty"`
 	HeadSeq     int64      `json:"headSeq,omitempty"`
 	Events      []LogEvent `json:"events,omitempty"`
 	OnHand      *OnHand    `json:"onHand,omitempty"`
 	TaskID      string     `json:"taskId,omitempty"`
+	Delivered   Delivery   `json:"delivered,omitempty"` // sent: how a task_send was delivered
 	Message     string     `json:"message,omitempty"`
 }
+
+// Delivery is how a task_send reached its task: steered in mid-turn, as
+// the next turn ("prompted"), or queued behind the current turn.
+type Delivery string
+
+const (
+	DeliverySteered  Delivery = "steered"
+	DeliveryPrompted Delivery = "prompted"
+	DeliveryQueued   Delivery = "queued"
+)
 
 // DecodeServerFrame decodes one server frame.
 func DecodeServerFrame(data []byte) (ServerFrame, error) {
@@ -390,7 +460,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 		return f, err
 	}
 	switch f.T {
-	case "welcome", "events", "on_hand", "task_history", "error":
+	case "welcome", "events", "on_hand", "task_history", "sent", "error":
 	default:
 		return f, fmt.Errorf("unknown server frame %q", f.T)
 	}

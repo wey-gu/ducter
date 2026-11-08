@@ -50,6 +50,7 @@ type hub struct {
 	log      []protocol.LogEvent
 	clients  map[*conn]bool
 	cards    map[string]*protocol.TaskCard
+	waiters  map[string]protocol.Waiter
 	order    []string
 	pending  map[string]*run // decision id → scenario run
 	living   int64           // seq of the open (unread) living message
@@ -65,7 +66,7 @@ func newHub() *hub {
 	if s, err := strconv.ParseFloat(os.Getenv("MOCK_SPEED"), 64); err == nil && s > 0 {
 		speed = s
 	}
-	h := &hub{clients: map[*conn]bool{}, cards: map[string]*protocol.TaskCard{}, pending: map[string]*run{}, speed: speed}
+	h := &hub{clients: map[*conn]bool{}, cards: map[string]*protocol.TaskCard{}, waiters: map[string]protocol.Waiter{}, pending: map[string]*run{}, speed: speed}
 	h.seed()
 	return h
 }
@@ -113,13 +114,13 @@ func (h *hub) applyCard(ev protocol.LogEvent) {
 	switch b := body.(type) {
 	case *protocol.TaskOpen:
 		h.cards[b.TaskID] = &protocol.TaskCard{TaskID: b.TaskID, Persona: persona, Title: b.Title, Project: b.Project, Place: b.Place,
-			Harness: b.Harness, Model: b.Model, BodyReason: b.BodyReason, Attention: protocol.Queued, Residency: protocol.Provisioning, UpdatedAt: ev.TS}
+			Harness: b.Harness, Model: b.Model, BodyReason: b.BodyReason, Attention: protocol.Queued, Residency: protocol.Provisioning, OpenedAt: ev.TS, UpdatedAt: ev.TS}
 		h.order = append([]string{b.TaskID}, h.order...)
 	case *protocol.TaskState:
 		if c := h.cards[b.TaskID]; c != nil {
 			c.Attention, c.Residency, c.Reason, c.UpdatedAt = b.Attention, b.Residency, b.Reason, ev.TS
 			if b.Attention != protocol.NeedsYou {
-				c.PendingDecisionID = ""
+				c.PendingDecisionID, c.PendingDecision = "", nil
 			}
 		}
 	case *protocol.Report:
@@ -130,6 +131,19 @@ func (h *hub) applyCard(ev protocol.LogEvent) {
 	case *protocol.Decision:
 		if c := h.cards[b.TaskID]; c != nil {
 			c.PendingDecisionID = b.DecisionID
+			c.PendingDecision = &protocol.PendingDecision{Decision: *b, AskedAt: ev.TS}
+		}
+	case *protocol.DecisionResolved:
+		for _, c := range h.cards {
+			if c.PendingDecisionID == b.DecisionID {
+				c.PendingDecisionID, c.PendingDecision = "", nil
+			}
+		}
+	case *protocol.Waiter:
+		if b.State == protocol.WaiterArmed {
+			h.waiters[b.WaiterID] = *b
+		} else {
+			delete(h.waiters, b.WaiterID)
 		}
 	}
 }
@@ -139,6 +153,10 @@ func (h *hub) onHand() protocol.OnHand {
 	defer h.mu.Unlock()
 	var o protocol.OnHand
 	o.Tasks = []protocol.TaskCard{}
+	o.Waiters = []protocol.Waiter{}
+	for _, w := range h.waiters {
+		o.Waiters = append(o.Waiters, w)
+	}
 	for _, id := range h.order {
 		c := *h.cards[id]
 		o.Tasks = append(o.Tasks, c)
@@ -219,6 +237,37 @@ func (h *hub) seed() {
 	open(past(40), "t-weekly", "周报草稿", "", "claude-code", "sonnet", "", protocol.Place{Kind: "none"})
 	state(past(40), "t-weekly", protocol.Blocked, protocol.Parked, "周日 20:00 的数据")
 	report(past(39), "t-weekly", "blocked", "到点自己接着写，不占机器", nil)
+	sunday := time.Now().Add(time.Duration((7-int(time.Now().Weekday()))%7) * 24 * time.Hour)
+	sunday = time.Date(sunday.Year(), sunday.Month(), sunday.Day(), 20, 0, 0, 0, time.Local)
+	h.emitAt(past(39), ch, protocol.OriginWaiter, protocol.KindWaiter, protocol.Waiter{WaiterID: "w-weekly", TaskID: "t-weekly", At: sunday.UTC().Format(time.RFC3339), Reason: "周日 20:00 的数据", State: protocol.WaiterArmed}, 0)
+
+	// A waiter of no task: a compact row on On hand.
+	morning := time.Now().Add(24 * time.Hour)
+	morning = time.Date(morning.Year(), morning.Month(), morning.Day(), 9, 0, 0, 0, time.Local)
+	h.emitAt(past(20), ch, protocol.OriginWaiter, protocol.KindWaiter, protocol.Waiter{WaiterID: "w-pr", At: morning.UTC().Format(time.RFC3339), Reason: "提醒你回 HawDB #1601 的评论", State: protocol.WaiterArmed}, 0)
+
+	// A second open decision, so "Go on all defaults" has two to take.
+	open(past(35), "t-deps", "升级 bun 到 1.3", "Ducter", "claude-code", "sonnet", "改动小，用便宜的模型", protocol.Place{Kind: "repo", Device: "MacBook", RepoPath: "~/dev/ducter", Branch: "ducter/bun-1.3", BaseBranch: "main"})
+	state(past(35), "t-deps", protocol.Working, protocol.Hot, "")
+	say(past(30), "t-deps", "升级完了，测试全过。lockfile 变了 41 行。")
+	report(past(12), "t-deps", "needs_input", "bun 升到 1.3.2，bun test 全过；lockfile 变化 41 行", []protocol.EvidenceRef{{Kind: "test", Label: "bun test · 212 通过", Ref: "212 pass, 0 fail"}})
+	h.emitAt(past(12), ch, protocol.OriginPartner, protocol.KindDecision, protocol.Decision{DecisionID: "d-deps", TaskID: "t-deps", Question: "lockfile 一起提交吗？",
+		GoLabel: "提交", DefaultOption: "go", DefaultAt: time.Now().Add(48 * time.Minute).UTC().Format(time.RFC3339), Reversible: true}, 0)
+	state(past(12), "t-deps", protocol.NeedsYou, protocol.Warm, "")
+}
+
+// seededDecided answers the seeded decision.
+func (h *hub) seededDecided(id, option string) {
+	h.emit("channel", protocol.OriginSystem, protocol.KindDecisionResolved, protocol.DecisionResolved{DecisionID: id, Option: option, By: "user"}, 0)
+	r := &run{h: h, task: "t-deps"}
+	if option == "hold" {
+		r.state(protocol.Blocked, protocol.Warm, h.l("你说先等等", "you said hold"))
+		return
+	}
+	r.state(protocol.Working, protocol.Hot, "")
+	h.sleep(800 * time.Millisecond)
+	h.emit(r.stream(), protocol.OriginTask, protocol.KindReport, protocol.Report{TaskID: "t-deps", State: "done", Summary: h.l("lockfile 一起提交了", "Committed with the lockfile"), Questions: []protocol.Question{}, Evidence: []protocol.EvidenceRef{}}, 0)
+	r.state(protocol.Done, protocol.Parked, "")
 }
 
 // ---------- the scenario ----------
@@ -246,7 +295,8 @@ func (h *hub) startRun(text string, clientID string) {
 func (r *run) stream() string { return protocol.TaskStream(r.task) }
 
 func (r *run) say(text string) {
-	r.h.emit(r.stream(), protocol.OriginTask, protocol.KindTaskEvent, protocol.TaskEvent{TaskID: r.task, Role: "assistant", Text: text}, 0)
+	r.h.emit(r.stream(), protocol.OriginTask, protocol.KindTaskEvent, protocol.TaskEvent{TaskID: r.task, Role: "assistant", Text: text,
+		Usage: &protocol.Usage{InputTokens: 3200, OutputTokens: 240, CacheRead: 18000}}, 0)
 }
 
 func (r *run) tool(name string, input any, output string, ok bool) {
@@ -366,11 +416,29 @@ func (r *run) decided(option, text string) {
 		"CI is fixed.\n\n- **Cause**: `checkpoint_recovery` slept a fixed 50 ms for the flush, too short on a busy machine\n- **Fix**: wait with `wal.wait_durable(seq)`, through a new test-only hook\n- **Checked**: rebased on the latest main; all 412 tests pass; CI #48219 is green\n\nThe change is on `ducter/fix-ci`. Say the word and I'll push it.")}, 0)
 }
 
-func (r *run) taskSend(text string) {
+// taskSend logs the user's text into the task (as the runner does), acks
+// how it was delivered, and answers: steered while the task works, queued
+// while it waits for a decision, prompted otherwise.
+func (r *run) taskSend(c *conn, text string) {
 	h := r.h
-	h.emit(r.stream(), protocol.OriginUser, protocol.KindTaskEvent, protocol.TaskEvent{TaskID: r.task, Role: "user", Text: text}, 0)
+	h.mu.Lock()
+	att := protocol.Attention("")
+	if card := h.cards[r.task]; card != nil {
+		att = card.Attention
+	}
+	h.mu.Unlock()
+	delivered := protocol.DeliveryPrompted
+	switch att {
+	case protocol.Working:
+		delivered = protocol.DeliverySteered
+	case protocol.NeedsYou:
+		delivered = protocol.DeliveryQueued
+	}
+	h.emit(r.stream(), protocol.OriginUser, protocol.KindTaskEvent, protocol.TaskEvent{TaskID: r.task, Role: "user", From: "user", Text: text}, 0)
+	c.send(map[string]any{"t": "sent", "taskId": r.task, "delivered": delivered})
 	h.sleep(800 * time.Millisecond)
-	r.say(h.l("收到，按你说的来。", "Got it; doing it your way."))
+	h.emit(r.stream(), protocol.OriginTask, protocol.KindTaskEvent, protocol.TaskEvent{TaskID: r.task, Role: "assistant",
+		Text: h.l("收到，按你说的来。", "Got it; doing it your way."), Usage: &protocol.Usage{InputTokens: 1840, OutputTokens: 96, CacheRead: 22100}}, 0)
 }
 
 // ---------- git fixtures ----------
@@ -436,10 +504,11 @@ func makeRepo(n int) string {
 	if _, err := exec.LookPath("git"); err != nil {
 		return ""
 	}
-	dir, err := os.MkdirTemp("", fmt.Sprintf("ducter-mock-%d-", n))
+	tmp, err := os.MkdirTemp("", fmt.Sprintf("ducter-mock-%d-", n))
 	if err != nil {
 		return ""
 	}
+	dir := filepath.Join(tmp, "hawdb")
 	path := filepath.Join(dir, "crates/storage/tests/checkpoint_recovery.rs")
 	_ = os.MkdirAll(filepath.Dir(path), 0o755)
 	_ = os.WriteFile(path, []byte(testBefore), 0o644)
@@ -506,6 +575,9 @@ func (h *hub) handle(c *conn, f protocol.ClientFrame) {
 				events = append(events, ev)
 			}
 		}
+		if f.Cursor == nil && len(events) > 200 {
+			events = events[len(events)-200:] // cursor omitted: the last 200
+		}
 		head := h.seq
 		h.clients[c] = true
 		h.mu.Unlock()
@@ -518,6 +590,10 @@ func (h *hub) handle(c *conn, f protocol.ClientFrame) {
 	case "send":
 		h.startRun(f.Text, f.ClientID)
 	case "decide":
+		if f.DecisionID == "d-deps" {
+			go h.seededDecided(f.DecisionID, f.Option)
+			return
+		}
 		h.mu.Lock()
 		r := h.pending[f.DecisionID]
 		delete(h.pending, f.DecisionID)
@@ -545,7 +621,7 @@ func (h *hub) handle(c *conn, f protocol.ClientFrame) {
 		if r == nil {
 			r = &run{h: h, task: f.TaskID}
 		}
-		go r.taskSend(f.Text)
+		go r.taskSend(c, f.Text)
 	case "task_action":
 		r := &run{h: h, task: f.TaskID}
 		switch f.Action {

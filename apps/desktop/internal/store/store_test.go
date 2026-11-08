@@ -114,3 +114,77 @@ func TestTasksBoardAndDecisions(t *testing.T) {
 		t.Errorf("after snapshot %+v", b.Counts)
 	}
 }
+
+func TestV2SnapshotDecisionsAndWaiters(t *testing.T) {
+	s := New()
+	pd := &protocol.PendingDecision{Decision: protocol.Decision{DecisionID: "d9", TaskID: "t9", Question: "push?", DefaultOption: "go", Reversible: true}, AskedAt: "2026-11-09T00:00:00Z"}
+	s.Apply(protocol.ServerFrame{T: "on_hand", OnHand: &protocol.OnHand{
+		Tasks: []protocol.TaskCard{
+			{TaskID: "t9", Title: "Push", Attention: protocol.NeedsYou, PendingDecisionID: "d9", PendingDecision: pd, OpenedAt: "2026-11-08T23:00:00Z"},
+			{TaskID: "t8", Title: "Other", Attention: protocol.NeedsYou, PendingDecision: &protocol.PendingDecision{Decision: protocol.Decision{DecisionID: "d8", TaskID: "t8", Question: "merge?"}, AskedAt: "2026-11-08T22:00:00Z"}},
+		},
+		Waiters: []protocol.Waiter{{WaiterID: "w1", Reason: "PR approval", At: "2026-11-09T08:00:00Z", State: "armed"}, {WaiterID: "w2", TaskID: "t9", Reason: "CI", State: "armed"}},
+	}})
+	// A decision only the card knows of (its event is older than the
+	// replay) is still answerable.
+	d := s.PendingDecision("t9")
+	if d == nil || d.Question != "push?" || d.AskedAt == "" {
+		t.Fatalf("pending from card %+v", d)
+	}
+	if s.Task("t9").OpenedAt != "2026-11-08T23:00:00Z" {
+		t.Error("openedAt from card")
+	}
+	if open := s.OpenDecisions(); len(open) != 2 || open[0].DecisionID != "d8" {
+		t.Errorf("open decisions %+v", open)
+	}
+	if w := s.ArmedWaiters(); len(w) != 2 || w[0].WaiterID != "w2" && w[0].At != "" {
+		t.Errorf("waiters %+v", w)
+	}
+	if s.WaiterFor("t9") == nil {
+		t.Error("task waiter")
+	}
+	// A fired waiter leaves; the next snapshot is authoritative.
+	s.Apply(events(ev(1, "channel", protocol.KindWaiter, protocol.Waiter{WaiterID: "w2", TaskID: "t9", Reason: "CI", State: "fired"})))
+	if s.WaiterFor("t9") != nil {
+		t.Error("fired waiter still armed")
+	}
+	s.Apply(protocol.ServerFrame{T: "on_hand", OnHand: &protocol.OnHand{Waiters: []protocol.Waiter{}}})
+	if len(s.ArmedWaiters()) != 0 {
+		t.Error("snapshot did not clear waiters")
+	}
+}
+
+func TestDirectSendsAndDelivery(t *testing.T) {
+	s := New()
+	s.Apply(events(ev(1, "task:t1", protocol.KindTaskOpen, protocol.TaskOpen{TaskID: "t1", Title: "x"})))
+	sd := s.AddSend("t1", "use the fixture")
+	s.Apply(protocol.ServerFrame{T: "sent", TaskID: "t1", Delivered: protocol.DeliveryQueued})
+	if sd.Delivered != protocol.DeliveryQueued {
+		t.Fatalf("delivery %+v", sd)
+	}
+	s.Apply(events(ev(2, "task:t1", protocol.KindTaskEvent, protocol.TaskEvent{TaskID: "t1", Role: "user", From: "user", Text: "use the fixture"})))
+	if sd.Seq != 2 || s.Task("t1").SendFor(2) != sd {
+		t.Errorf("echo %+v", sd)
+	}
+	s.Apply(events(ev(3, "task:t1", protocol.KindTaskEvent, protocol.TaskEvent{TaskID: "t1", Role: "assistant", Text: "ok", Usage: &protocol.Usage{InputTokens: 10, OutputTokens: 2}})))
+	if u := s.Task("t1").Usage; u.InputTokens != 10 || u.OutputTokens != 2 {
+		t.Errorf("usage %+v", u)
+	}
+	sd2 := s.AddSend("t1", "again")
+	s.Apply(protocol.ServerFrame{T: "error", Message: "task_send: runner is not available"})
+	if sd2.Failed == "" {
+		t.Error("refused send not failed")
+	}
+}
+
+func TestStaleWelcomeResets(t *testing.T) {
+	s := New()
+	s.Apply(events(ev(40, "channel", protocol.KindAIMsg, protocol.AIMsg{Text: "hi"})))
+	if !s.Stale(protocol.ServerFrame{T: "welcome", HeadSeq: 3}) || s.Stale(protocol.ServerFrame{T: "welcome", HeadSeq: 40}) {
+		t.Fatal("stale")
+	}
+	s.Reset()
+	if s.Cursor != 0 || len(s.Channel) != 0 || s.Tasks == nil {
+		t.Error("reset")
+	}
+}

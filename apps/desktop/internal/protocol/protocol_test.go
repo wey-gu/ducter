@@ -81,3 +81,54 @@ func TestClientFramesEncodeAsTheContract(t *testing.T) {
 		}
 	}
 }
+
+// Protocol v2 (packages/protocol, commit 17dad6a): waiters, task_event
+// from/usage, pendingDecision/openedAt on cards, the "sent" ack.
+func TestProtocolV2Frames(t *testing.T) {
+	if Version != 2 {
+		t.Fatalf("version %d", Version)
+	}
+	f, err := DecodeServerFrame([]byte(`{"t":"on_hand","onHand":{"tasks":[{"taskId":"t1","persona":"p","title":"x","project":"","place":{"kind":"none"},"harness":"codex",
+		"attention":"needs_you","residency":"warm","pendingDecisionId":"d1",
+		"pendingDecision":{"decisionId":"d1","taskId":"t1","question":"rebase?","goLabel":"Rebase","defaultOption":"go","defaultAt":"2026-11-09T01:00:00Z","reversible":true,"askedAt":"2026-11-09T00:30:00Z"},
+		"openedAt":"2026-11-09T00:00:00Z","updatedAt":"2026-11-09T00:30:00Z"}],
+		"counts":{"needs_you":1,"working":0,"waiting":0,"done_today":0},
+		"waiters":[{"waiterId":"w1","at":"2026-11-09T08:00:00Z","reason":"PR approval","state":"armed"}]}}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := f.OnHand.Tasks[0]
+	if c.OpenedAt == "" || c.PendingDecision == nil || c.PendingDecision.GoLabel != "Rebase" || c.PendingDecision.AskedAt == "" || !c.PendingDecision.Reversible {
+		t.Errorf("card %+v", c)
+	}
+	if w := f.OnHand.Waiters; len(w) != 1 || w[0].WaiterID != "w1" || w[0].TaskID != "" || w[0].State != WaiterArmed {
+		t.Errorf("waiters %+v", w)
+	}
+
+	f, err = DecodeServerFrame([]byte(`{"t":"sent","taskId":"t1","delivered":"steered"}`))
+	if err != nil || f.TaskID != "t1" || f.Delivered != DeliverySteered {
+		t.Errorf("sent %+v %v", f, err)
+	}
+
+	f, _ = DecodeServerFrame([]byte(`{"t":"events","events":[
+		{"seq":5,"ts":"2026-11-09T00:00:00Z","persona":"p","stream":"task:t1","origin":"user","kind":"task_event","body":{"taskId":"t1","role":"user","from":"user","text":"use the fixture"}},
+		{"seq":6,"ts":"2026-11-09T00:00:01Z","persona":"p","stream":"task:t1","origin":"task","kind":"task_event","body":{"taskId":"t1","role":"assistant","text":"ok","usage":{"inputTokens":12,"outputTokens":3,"cacheRead":100}}},
+		{"seq":7,"ts":"2026-11-09T00:00:02Z","persona":"p","stream":"channel","origin":"waiter","kind":"waiter","body":{"waiterId":"w1","taskId":"t1","at":"2026-11-09T08:00:00Z","reason":"CI","state":"armed"}}
+	]}`))
+	b, _ := f.Events[0].Typed()
+	if te := b.(*TaskEvent); te.From != "user" || te.Role != "user" {
+		t.Errorf("from %+v", te)
+	}
+	b, _ = f.Events[1].Typed()
+	if u := b.(*TaskEvent).Usage; u == nil || u.InputTokens != 12 || u.CacheRead != 100 {
+		t.Errorf("usage %+v", u)
+	}
+	b, _ = f.Events[2].Typed()
+	if w, ok := b.(*Waiter); !ok || w.Reason != "CI" || w.TaskID != "t1" {
+		t.Errorf("waiter %+v", b)
+	}
+	// A v1 snapshot (no waiters, no openedAt) still decodes.
+	if _, err := DecodeServerFrame([]byte(`{"t":"on_hand","onHand":{"tasks":[],"counts":{"needs_you":0,"working":0,"waiting":0,"done_today":0}}}`)); err != nil {
+		t.Error(err)
+	}
+}

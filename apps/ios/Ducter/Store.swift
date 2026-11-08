@@ -27,6 +27,10 @@ final class AppState: ObservableObject {
         if let link = UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)["pairLink"] as? String, let t = PairTarget.parse(link) {
             connect(t)
         }
+        // …and `-open 'app#onhand'` starts on a route, as a tapped notification would.
+        if let path = UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)["open"] as? String, let b = base {
+            entry = URL(string: path, relativeTo: b)?.absoluteURL
+        }
         #endif
     }
 
@@ -99,7 +103,7 @@ struct PairTarget: Equatable {
 }
 
 enum Keychain {
-    private static let service = (Bundle.main.bundleIdentifier ?? "dev.ducter.phone") + ".device"
+    private static let service = (Bundle.main.bundleIdentifier ?? "co.nowledge.ducter.ios") + ".device"
 
     /// Readable after the first unlock, so Go / Hold on a notification work on a locked phone
     /// (iOS asks for Face ID first: the actions are marked authenticationRequired).

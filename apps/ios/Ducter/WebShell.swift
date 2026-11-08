@@ -20,6 +20,11 @@ final class Shell: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegat
         config.dataDetectorTypes = []
         let info = "window.ducterNative = Object.freeze({platform: 'ios', version: '\(Native.version)', bundleId: '\(Native.bundleId)', apnsEnv: '\(Native.apnsEnv)'});"
         config.userContentController.addUserScript(WKUserScript(source: info, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        #if DEBUG
+        // Page errors and warnings in the app's log (`xcrun simctl spawn booted log stream`).
+        let relay = "(()=>{const s=(k,a)=>{try{window.webkit.messageHandlers.ducter.postMessage({t:'log',k,m:a.map(String).join(' ')})}catch{}};for(const k of ['error','warn']){const o=console[k];console[k]=(...a)=>{s(k,a);o.apply(console,a)}};addEventListener('error',e=>s('error',[e.message,e.filename+':'+e.lineno]));addEventListener('unhandledrejection',e=>s('error',['unhandled',e.reason&&e.reason.stack||e.reason]))})();"
+        config.userContentController.addUserScript(WKUserScript(source: relay, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        #endif
         web = WKWebView(frame: .zero, configuration: config)
         super.init()
         config.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "ducter")
@@ -96,6 +101,12 @@ final class Shell: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegat
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         withAnimation(.easeOut(duration: 0.25)) { phase = .ready }
+        #if DEBUG
+        if UserDefaults.standard.bool(forKey: "probe") {
+            let probe = "setTimeout(()=>console.warn('probe text', document.body.innerText.slice(0,300).replace(/\\n/g,' | ')),5000);setTimeout(()=>{const d=JSON.parse(localStorage.getItem('ducter.device.v1')||'{}');console.warn('probe token',!!d.token,location.href);const u=new URL('ws',location.href);u.protocol='ws:';const w=new WebSocket(u.href,['ducter',d.token]);w.onopen=()=>{console.warn('probe open');w.send(JSON.stringify({t:'hello'}))};w.onmessage=m=>console.warn('probe msg',String(m.data).slice(0,100));w.onclose=e=>console.warn('probe close',e.code,e.reason);w.onerror=()=>console.warn('probe err')},2000)"
+            webView.evaluateJavaScript(probe)
+        }
+        #endif
     }
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
@@ -121,6 +132,9 @@ final class Shell: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegat
             // Notifications were on before: make sure the main has this phone's current token.
             if AppState.shared.pushOn, let tok = AppState.shared.apnsToken { await API.subscribe(token: tok) }
             return (["ok": true], nil)
+        case "log":
+            NSLog("[ducter page] %@: %@", m["k"] as? String ?? "", m["m"] as? String ?? "")
+            return (nil, nil)
         case "haptic":
             Haptics.play(m["kind"] as? String ?? "light")
             return (nil, nil)
@@ -157,8 +171,23 @@ extension UIApplication {
     }
 }
 
+/// The one web view, in a container SwiftUI may rebuild freely: whichever container is on
+/// screen adopts it (handing SwiftUI the web view itself let a torn-down host detach it, and a
+/// detached WKWebView keeps running its page but stops painting).
 struct WebShellView: UIViewRepresentable {
     @ObservedObject var shell: Shell
-    func makeUIView(context: Context) -> WKWebView { shell.web }
-    func updateUIView(_ uiView: WKWebView, context: Context) {}
+    func makeUIView(context: Context) -> UIView {
+        let v = UIView()
+        v.backgroundColor = Pebble.uiBg
+        adopt(into: v)
+        return v
+    }
+    func updateUIView(_ v: UIView, context: Context) { adopt(into: v) }
+    private func adopt(into v: UIView) {
+        guard shell.web.superview !== v else { return }
+        shell.web.removeFromSuperview()
+        shell.web.frame = v.bounds
+        shell.web.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        v.addSubview(shell.web)
+    }
 }

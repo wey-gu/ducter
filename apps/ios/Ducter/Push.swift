@@ -156,7 +156,7 @@ enum Haptics {
 
 /// What the page is told about the app (window.ducterNative, apps/web/src/native.ts).
 enum Native {
-    static let bundleId = Bundle.main.bundleIdentifier ?? "dev.ducter.phone"
+    static let bundleId = Bundle.main.bundleIdentifier ?? "co.nowledge.ducter.ios"
     static let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
     #if DEBUG
     static let apnsEnv = "sandbox"

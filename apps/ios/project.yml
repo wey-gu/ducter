@@ -10,6 +10,7 @@ configFiles:
   Release: Config.xcconfig
 settings:
   base:
+    # CI overrides both on the xcodebuild command line (MARKETING_VERSION=… CURRENT_PROJECT_VERSION=…).
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
     SWIFT_VERSION: "5.0"
@@ -28,3 +29,17 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ENABLE_PREVIEWS: YES
+      configs:
+        Release:
+          # App Store / TestFlight builds talk to production APNs (the entitlement is rewritten
+          # to "production" by distribution signing; Native.apnsEnv follows the configuration).
+          SWIFT_OPTIMIZATION_LEVEL: -O
+schemes:
+  Ducter:
+    build:
+      targets:
+        Ducter: all
+    run:
+      config: Debug
+    archive:
+      config: Release

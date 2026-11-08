@@ -1,3 +1,4 @@
 Local.xcconfig
-Ducter.xcodeproj/
 build/
+Ducter.xcodeproj/xcuserdata/
+Ducter.xcodeproj/project.xcworkspace/xcuserdata/

@@ -112,15 +112,18 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     return t.running;
   }
 
-  async function sendTurn(t: TaskRt, text: string, from: From) {
+  async function sendTurn(t: TaskRt, text: string, from: From, logged = false) {
     t.running = true;
     setState(t, "working", "hot");
-    await deliver(t, text, "turn", from);
+    await deliver(t, text, "turn", from, logged);
   }
 
-  /** Logs the text first (the Log is the record even if delivery fails), then delivers it. */
-  async function deliver(t: TaskRt, text: string, mode: "turn" | "steer" | "queue", from: From) {
+  const logInput = (t: TaskRt, text: string, from: From, mode: string) =>
     logEvent(t, { role: "user", from, text: preview(text, 16 * 1024), raw: { delivered: mode } });
+
+  /** Logs the text first (the Log is the record even if delivery fails), then delivers it. */
+  async function deliver(t: TaskRt, text: string, mode: "turn" | "steer" | "queue", from: From, logged = false) {
+    if (!logged) logInput(t, text, from, mode);
     try {
       await t.session!.send(text, mode);
     } catch (err) {
@@ -365,13 +368,20 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       if (!t.session) {
         // Parked (process gone or restarted): resume by native session id, or fail loudly.
         if (!t.sessionId) throw new Error(`task ${taskId} has no session to resume`);
+        // Resuming takes seconds (measured ~10 s for Claude Code): log the text now so the
+        // transcript shows it at once; a resumed session is idle, so it becomes the next turn.
+        logInput(t, text, from, "turn");
         setState(t, currentAttention(t), "provisioning");
         try {
           await startSession(t, true);
         } catch (err) {
           setState(t, currentAttention(t), "parked");
+          logEvent(t, { role: "system", from: "runner", text: `delivery failed: could not resume the session: ${preview(String(err), 400)}` });
           throw err;
         }
+        setState(t, "working", "hot");
+        await sendTurn(t, text, from, true);
+        return { delivered: "prompted" };
       }
       if (isBusy(t)) {
         if (mode !== "queue" && t.session!.canSteer) {

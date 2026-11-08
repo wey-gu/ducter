@@ -378,6 +378,31 @@ describe("after a restart: drop and reopen (desktop regression)", () => {
   });
 });
 
+describe("send to a parked task (live regression)", () => {
+  test("the text is logged before the slow resume, and delivered once as the next turn", async () => {
+    const fake = new FakePort();
+    const runner = createRunner(core, { harness: fake, newId: nextId });
+    const card = await runner.openTask({ persona: "p1", title: "t", brief: "b" });
+    await runner.whenStarted(card.taskId);
+    fake.sessions[0]!.end();
+    await waitFor(() => core.tasks.get(card.taskId)?.residency === "parked", "parked");
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const start = fake.start.bind(fake);
+    fake.start = async (spec) => (await gate, start(spec));
+    const p = runner.send(card.taskId, "answer: b.ts", undefined, "user");
+    await Bun.sleep(5);
+    expect(taskEvents(card.taskId).filter((e) => e.text === "answer: b.ts")).toEqual([
+      { taskId: card.taskId, role: "user", from: "user", text: "answer: b.ts", raw: { delivered: "turn" } },
+    ]);
+    release();
+    expect(await p).toEqual({ delivered: "prompted" });
+    expect(fake.sessions[1]!.sent).toEqual([{ text: "answer: b.ts", mode: "turn" }]);
+    expect(taskEvents(card.taskId).filter((e) => e.text === "answer: b.ts")).toHaveLength(1);
+    await runner.dispose();
+  });
+});
+
 // ---------- a hand-written fake HarnessPort ----------
 
 class FakeSession implements HarnessSession {

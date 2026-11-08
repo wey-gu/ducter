@@ -1,6 +1,7 @@
 package views
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -151,5 +152,69 @@ func TestReplayedResultsAreNotTheFirst(t *testing.T) {
 	finish(h, "new", "a new task")
 	if h.tt.HasText("Your first task is done. Everything I finish comes back to you like this, with proof.") {
 		t.Error("celebrated although the Log already held a finished task")
+	}
+}
+
+// The first five minutes against a real Ducter on an empty data folder:
+// the greeting with this Mac's starters, one real message, and the first
+// result's celebration.
+//
+//	DUCTER_FIRSTRUN_URL=ws://127.0.0.1:7795/ws DUCTER_DATA_DIR=<the up's data dir> \
+//	DUCTER_FIRSTRUN_SEND="..." DUCTER_SHOTS=1 go test ./internal/views -run LiveFirstFive -v -timeout 30m
+func TestLiveFirstFiveMinutes(t *testing.T) {
+	url := os.Getenv("DUCTER_FIRSTRUN_URL")
+	if url == "" {
+		t.Skip("DUCTER_FIRSTRUN_URL not set")
+	}
+	lang := i18n.ZH
+	if os.Getenv("DUCTER_LOCALE") == "en" {
+		lang = i18n.EN
+	}
+	h := newLive(t, url, lang)
+	h.app.Local = hints.Open(hints.DataDir())
+	h.wait = 25 * time.Minute
+	if len(h.app.rows()) != 0 {
+		t.Fatalf("the Log isn't empty; start ducter up on a fresh data dir")
+	}
+	start := time.Now()
+	h.tt.Frame()
+	h.shot("firstrun-live-empty")
+	t.Logf("starters: %q", h.app.suggestions())
+	send := os.Getenv("DUCTER_FIRSTRUN_SEND")
+	if send == "" {
+		return
+	}
+	h.app.SendMessage(send)
+	h.until("the partner's first words", func() bool {
+		for _, e := range h.app.S.Channel {
+			if e.AI != nil || e.Job != nil {
+				return true
+			}
+		}
+		return false
+	})
+	t.Logf("first words after %s", time.Since(start).Round(time.Second))
+	h.shot("firstrun-live-ack")
+	h.until("the first result", func() bool { return h.app.firstDone != nil })
+	t.Logf("first result after %s", time.Since(start).Round(time.Second))
+	h.shot("firstrun-live-first-result")
+	h.until("the partner's result message", func() bool {
+		n := 0
+		for _, e := range h.app.S.Channel {
+			if e.AI != nil {
+				n++
+			}
+		}
+		return n >= 2 || (n >= 1 && time.Since(h.app.firstDone.at) > 40*time.Second)
+	})
+	t.Logf("result message after %s", time.Since(start).Round(time.Second))
+	h.shot("firstrun-live-result-message")
+	for _, e := range h.app.S.Channel {
+		if e.AI != nil {
+			fmt.Printf("AI: %s\n", e.AI.Text)
+		}
+		if e.Job != nil && e.Job.Ack != nil {
+			fmt.Printf("ACK: %s\n", e.Job.Ack.Text)
+		}
 	}
 }

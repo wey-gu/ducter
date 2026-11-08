@@ -71,7 +71,32 @@ row's detection result animates in.
    - pairing another device (when a task needs it, or the user says "I also have a VPS");
    - the phone web link ("find me on your phone" QR);
    - rules, created from conversation;
-   - routines.
+   - routines;
+   - the browser, the first time a task needs the web (below).
+
+## The browser, first time (observed while building W5, 2026-11-09)
+
+These are the setup moments a browser task hits on a Mac. They should become one checklist row
+("Browser: ✓ ready / Set up"), shown only when the first web task needs it. Design pending.
+
+1. **cua-driver must be new enough.** Typed browser tools (`browser_prepare`,
+   `get_browser_state`) landed in cua-driver-rs 2026-07. The author's Mac had 0.6.8, which
+   only has the legacy `page` tool; the latest was 0.44.0. The fix is
+   `cua-driver update --apply`, which installs into `/Applications`, so the user must approve
+   it. *Verified:* Ducter detects this and the partner explains it in plain words instead of
+   opening a broken task.
+2. **macOS privacy grants for CuaDriver** (not for Ducter or the terminal): Accessibility and
+   Screen Recording, attributed to `com.trycua.driver`. `cua-driver permissions grant` opens
+   the dialog; the user clicks Allow for both in System Settings → Privacy & Security.
+   *Verified:* already granted on the author's Mac, so no prompt appeared. *Not verified:*
+   the first-time prompt sequence, and whether an update (same team ID) keeps the grants.
+3. **A vendor-signed Google Chrome (or Edge) is required.** The driver launches a separate
+   Chrome with Ducter's own profile, so a second Chrome window and Dock icon appear. The
+   user's own Chrome and its sign-ins are never touched (D48). *Inferred from cua-driver
+   docs.*
+4. **First sign-in to a site** happens in that window: the task stops and asks ("Please sign
+   in to example.com in the Ducter browser window, then tap Go"). Later tasks reuse the
+   session. *Not verified live yet.*
 
 ## Ideas to decide (heavy-user delight)
 

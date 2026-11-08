@@ -4,6 +4,7 @@ import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, Sessio
 import { NUDGE, RESUME_AFTER_RESTART, kickoff, taskBrief } from "./brief.ts";
 import { createOarHarnessPort } from "./oar.ts";
 import { cwdOf, planPlace, provisionPlace } from "./places.ts";
+import { browserSidecar, type BrowserOptions } from "./browser.ts";
 import { PREVIEW_MAX, preview } from "./normalize.ts";
 
 type HarnessId = SessionSpec["harness"];
@@ -17,6 +18,7 @@ export interface RunnerOptions {
   partnerName?: string; // default core.persona.name
   newId?: () => string;
   now?: () => Date;
+  browser?: BrowserOptions; // browser places: env gate and test seams
 }
 
 /** Runner plus test/ops helpers that are not part of the contract. */
@@ -304,6 +306,9 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       const resolved = await planPlace(input.place, id, title, core.dataDir);
       const project = input.project ?? "";
       const persona = input.persona || core.persona.id;
+      const partnerName = opts.partnerName ?? core.persona.name ?? "Ducter";
+      // Throws before the task exists when a browser place is unavailable (the partner says why).
+      const sidecar = await browserSidecar({ place: resolved.place, persona, taskId: id, dataDir: core.dataDir, partnerName }, opts.browser);
 
       const model = input.model || (h === "claude-code" ? (opts.defaultModel ?? process.env.DUCTER_TASK_MODEL) || undefined : undefined);
       const open: Bodies["task_open"] = { taskId: id, title, project, place: resolved.place, harness: h, model, brief: input.brief };
@@ -321,13 +326,19 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         openedAt: opened.ts,
         updatedAt: opened.ts,
       };
-      const t = newRt(id, persona, card, specFor(id, open, resolved.cwd));
+      const spec = specFor(id, open, resolved.cwd);
+      if (sidecar) {
+        spec.appendSystemPrompt = (spec.appendSystemPrompt ?? "") + sidecar.brief;
+        spec.mcp = [...spec.mcp, sidecar.mcp];
+      }
+      const t = newRt(id, persona, card, spec);
       tasks.set(id, t);
       core.tasks.setState(id, "queued", "provisioning");
 
       t.started = (async () => {
         try {
           await provisionPlace(resolved);
+          await sidecar?.ready();
           await startSession(t, false);
           await sendTurn(t, kickoff(title), "runner");
         } catch (err) {

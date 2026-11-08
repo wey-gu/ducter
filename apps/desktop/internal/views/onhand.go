@@ -2,6 +2,7 @@ package views
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -20,19 +21,19 @@ func (a *App) onHand(c *ui.Context) {
 			ui.Row(c).Gap(16).Wrap().AlignItems(ui.Center).Children(func() {
 				a.backButton(c)
 				ui.Text(c, a.L.T("onhand.title")).FontSize(t.Title).FontWeight(800).LetterSpacing(-0.5).Grow(1)
-				var defaults []*store.DecisionState
-				for _, task := range b.Lanes[store.LaneNeedsYou] {
-					if d := a.S.PendingDecision(task.ID); d != nil && d.Pending == "" {
-						defaults = append(defaults, d)
-					}
-				}
-				if len(defaults) > 0 && a.button(c, a.L.T("decision.goall", len(defaults)), btnPrimary, 48, t.Surface) {
-					for _, d := range defaults {
-						a.Decide(d.DecisionID, d.DefaultOption, "")
-					}
+				// 都按默认 / Go on all defaults: only worth a button with two or more.
+				if open := a.S.OpenDecisions(); len(open) >= 2 && a.button(c, a.L.T("decision.goall", len(open)), btnPrimary, 48, t.Surface) {
+					a.GoOnAllDefaults()
 				}
 			})
 			a.countsBand(c, b)
+			if a.boardEmpty(b) {
+				ui.Column(c.Key("empty")).Padding(28, 28).Gap(14).Radius(t.RadiusXL).Border(2, t.Line).BorderStyle(ui.BorderDashed).AlignItems(ui.Center).Children(func() {
+					a.face(c, FaceIdle, 64, a.L.T("face.idle", a.S.PersonaName))
+					ui.Text(c, a.L.T("onhand.empty", a.S.PersonaName)).FontSize(t.LG).TextColor(t.InkSoft).TextAlign(ui.Center)
+				})
+				return
+			}
 			ui.Row(c).Gap(20).Wrap().AlignItems(ui.Start).Children(func() {
 				a.lane(c, store.LaneNeedsYou, b.Lanes[store.LaneNeedsYou], 2, 400)
 				a.lane(c, store.LaneWorking, b.Lanes[store.LaneWorking], 1, 220)
@@ -40,6 +41,70 @@ func (a *App) onHand(c *ui.Context) {
 				a.lane(c, store.LaneDone, b.Lanes[store.LaneDone], 1, 200)
 			})
 		})
+	})
+}
+
+func (a *App) boardEmpty(b store.Board) bool {
+	for _, l := range b.Lanes {
+		if len(l) > 0 {
+			return false
+		}
+	}
+	return len(a.looseWaiters()) == 0
+}
+
+// looseWaiters are the armed waiters of no task: compact rows on On hand.
+func (a *App) looseWaiters() []*protocol.Waiter {
+	var out []*protocol.Waiter
+	for _, w := range a.S.ArmedWaiters() {
+		if w.TaskID == "" || a.S.Task(w.TaskID) == nil {
+			out = append(out, w)
+		}
+	}
+	return out
+}
+
+// waitReason is what a waiting task waits for, in words: its waiter's
+// reason, else the state's reason (internal ones, as "report: blocked",
+// are not words for people).
+func (a *App) waitReason(task *store.Task) string {
+	if w := a.S.WaiterFor(task.ID); w != nil {
+		r := w.Reason
+		if at := store.ParseTime(w.At); !at.IsZero() {
+			r += " · " + a.L.T("waiter.at", a.when(at))
+		}
+		return r
+	}
+	r := task.Reason()
+	if strings.HasPrefix(r, "report:") || strings.HasSuffix(r, "by user") {
+		return ""
+	}
+	return r
+}
+
+// when is a time of day, with the weekday when it is not today.
+func (a *App) when(at time.Time) string {
+	at = at.Local()
+	now := a.Now().Local()
+	if at.YearDay() == now.YearDay() && at.Year() == now.Year() {
+		return at.Format("15:04")
+	}
+	if at.Sub(now) < 36*time.Hour && at.YearDay() == now.Add(24*time.Hour).YearDay() {
+		return a.L.T("time.tomorrow", at.Format("15:04"))
+	}
+	return at.Format("01-02 15:04")
+}
+
+// waiterRow is a task-less waiter: one compact line in the Waiting lane.
+func (a *App) waiterRow(c *ui.Context, w *protocol.Waiter) {
+	t := a.T
+	ui.Row(c).Gap(10).Padding(10, 14).Radius(16).Border(1.5, t.Waiting.Dot.Mix(t.Surface, 0.4)).BorderStyle(ui.BorderDashed).AlignItems(ui.Center).
+		Label(w.Reason).Children(func() {
+		ui.Box(c).Size(24, 24).Radius(8).Background(t.Waiting.Surface).Draw(drawClock(t.Waiting.Ink)).Shrink(0)
+		ui.Text(c, a.L.T("onhand.waiting.for", w.Reason)).FontSize(t.SM).FontWeight(700).TextColor(t.Waiting.Ink).Grow(1).MinWidth(0).MaxLines(3)
+		if at := store.ParseTime(w.At); !at.IsZero() {
+			ui.Text(c, a.when(at)).Font(t.Mono).FontSize(t.XS).TextColor(t.InkMuted).Shrink(0)
+		}
 	})
 }
 
@@ -96,9 +161,15 @@ func (a *App) countsBand(c *ui.Context, b store.Board) {
 					a.forecastChip(c.Key(task.ID), text, t.NeedsYou)
 				}
 				for _, task := range b.Lanes[store.LaneWaiting] {
-					if r := task.Reason(); r != "" {
+					if r := a.waitReason(task); r != "" {
 						any = true
 						a.forecastChip(c.Key(task.ID), task.Title()+" · "+r, t.Waiting)
+					}
+				}
+				for _, w := range a.looseWaiters() {
+					if at := store.ParseTime(w.At); !at.IsZero() {
+						any = true
+						a.forecastChip(c.Key("w:"+w.WaiterID), a.when(at)+" · "+w.Reason, t.Waiting)
 					}
 				}
 				if !any {
@@ -128,7 +199,11 @@ func (a *App) lane(c *ui.Context, lane store.Lane, tasks []*store.Task, grow, ba
 				ui.Text(c, a.L.T("lane.needs_you.hint")).FontSize(t.SM).TextColor(t.InkMuted)
 			}
 		})
-		if len(tasks) == 0 {
+		waiters := []*protocol.Waiter(nil)
+		if lane == store.LaneWaiting {
+			waiters = a.looseWaiters()
+		}
+		if len(tasks) == 0 && len(waiters) == 0 {
 			ui.Box(c).Padding(16, 18).Radius(22).Border(2, t.LineSoft).BorderStyle(ui.BorderDashed).Children(func() {
 				ui.Text(c, a.L.T("lane.empty")).FontSize(t.SM).TextColor(t.InkMuted)
 			})
@@ -146,6 +221,9 @@ func (a *App) lane(c *ui.Context, lane store.Lane, tasks []*store.Task, grow, ba
 		case store.LaneWaiting:
 			for _, task := range tasks {
 				a.waitingCard(c.Key(task.ID), task)
+			}
+			for _, w := range waiters {
+				a.waiterRow(c.Key("w:"+w.WaiterID), w)
 			}
 		case store.LaneDone:
 			a.doneList(c, tasks)
@@ -177,7 +255,7 @@ func (a *App) needsCard(c *ui.Context, task *store.Task) {
 			}
 			ui.Text(c, title).FontSize(16).FontWeight(800).TextColor(t.OnAccent).Grow(1).SingleLine()
 			if at := store.ParseTime(task.OpenedAt); !at.IsZero() {
-				ui.Text(c, a.L.T("time.opened", a.duration(a.Now().Sub(at)))).Font(t.Mono).FontSize(t.XS).FontWeight(700).TextColor(t.OnAccent)
+				ui.Text(c, a.L.T("time.opened", a.duration(a.Now().Sub(at)))).FontSize(t.XS).FontWeight(700).TextColor(t.OnAccent).Shrink(0)
 			}
 		})
 		ui.Column(c).Padding(20, 22, 22, 22).Gap(14).Children(func() {
@@ -192,17 +270,21 @@ func (a *App) needsCard(c *ui.Context, task *store.Task) {
 				ui.Text(c, q).FontSize(19).LineHeight(1.55).FontWeight(500)
 			}
 			if rep != nil && rep.Summary != "" && rep.Summary != q {
-				ui.Text(c, rep.Summary).FontSize(14).LineHeight(1.6).TextColor(t.InkSoft)
+				ui.Text(c, rep.Summary).FontSize(14).LineHeight(1.6).TextColor(t.InkSoft).MaxLines(4).Tooltip(rep.Summary)
 			}
 			if d != nil {
 				a.countdown(c, d)
 				a.decisionButtons(c, d, decisionStyle{height: 52, quietBg: t.Bg})
 			}
-			ui.Row(c).Gap(8).Wrap().Padding(10, 0, 0, 0).BorderWidth(1, 0, 0, 0).BorderColor(t.LineSoft).BorderStyle(ui.BorderDashed).AlignItems(ui.Center).Children(func() {
-				a.pill(c, a.metaLine(task))
-				a.pill(c, a.placeLine(task.Place()))
-				ui.Spacer(c)
-				l := ui.Text(c.Key("open"), a.L.T("onhand.open")).FontSize(t.SM).FontWeight(700).Cursor(ui.CursorPointer).Role(ui.RoleLink)
+			ui.Row(c).Gap(12).Padding(12, 0, 0, 0).BorderWidth(1, 0, 0, 0).BorderColor(t.LineSoft).BorderStyle(ui.BorderDashed).AlignItems(ui.Center).Children(func() {
+				ui.Row(c).Gap(8).Wrap().Grow(1).MinWidth(0).Children(func() {
+					a.pill(c, a.metaLine(task))
+					a.pill(c, a.placeLine(task.Place()))
+				})
+				l := ui.Text(c.Key("open"), a.L.T("onhand.open")).FontSize(t.SM).FontWeight(800).Cursor(ui.CursorPointer).Role(ui.RoleLink).Shrink(0).Padding(6, 4)
+				if l.Hovered() {
+					l.TextColor(t.NeedsYou.Ink)
+				}
 				if l.Clicked() {
 					a.OpenTask(task.ID)
 				}
@@ -250,6 +332,9 @@ func (a *App) countdown(c *ui.Context, d *store.DecisionState) {
 
 // decisionTime is when a decision was asked: its event's time.
 func (a *App) decisionTime(d *store.DecisionState) time.Time {
+	if at := store.ParseTime(d.AskedAt); !at.IsZero() {
+		return at
+	}
 	if task := a.S.Task(d.TaskID); task != nil {
 		for _, ev := range task.Events {
 			if ev.Seq == d.Seq {
@@ -281,7 +366,7 @@ func (a *App) workingCard(c *ui.Context, task *store.Task) {
 		ui.Text(c, task.Title()).FontSize(16).FontWeight(800)
 		if rep := task.Report(); rep != nil && rep.Summary != "" {
 			ui.Text(c, rep.Summary).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft).MaxLines(3)
-		} else if r := task.Reason(); r != "" {
+		} else if r := a.waitReason(task); r != "" {
 			ui.Text(c, r).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
 		}
 		a.workingBar(c)
@@ -319,9 +404,16 @@ func (a *App) waitingCard(c *ui.Context, task *store.Task) {
 	a.cardLink(c, card, task)
 	card.Children(func() {
 		ui.Text(c, task.Title()).FontSize(16).FontWeight(800)
-		if r := task.Reason(); r != "" {
-			ui.Text(c, a.L.T("onhand.waiting.for", r)).FontSize(t.SM).FontWeight(700).TextColor(t.Waiting.Ink)
+		reason := a.waitReason(task)
+		if reason == "" {
+			reason = a.stateLabel(protocol.Blocked)
+		} else {
+			reason = a.L.T("onhand.waiting.for", reason)
 		}
+		ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+			ui.Box(c).Size(22, 22).Radius(7).Background(t.Waiting.Surface).Draw(drawClock(t.Waiting.Ink)).Shrink(0)
+			ui.Text(c, reason).FontSize(t.SM).FontWeight(700).TextColor(t.Waiting.Ink).Grow(1).MinWidth(0)
+		})
 		if rep := task.Report(); rep != nil && rep.Summary != "" {
 			ui.Text(c, rep.Summary).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(2)
 		}

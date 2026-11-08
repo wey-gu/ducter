@@ -1,6 +1,9 @@
 package views
 
 import (
+	"fmt"
+	"sort"
+
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/markdown"
 
@@ -29,6 +32,19 @@ func (a *App) rows() []row {
 			continue
 		}
 		rows = append(rows, row{entry: e})
+	}
+	// A task's chip shows once: under the newest message about it.
+	a.chipOwner = map[string]int64{}
+	for _, r := range rows {
+		e := r.entry
+		switch {
+		case e.Job != nil && e.Job.Status != nil && e.Job.Status.TaskID != "":
+			a.chipOwner[e.Job.Status.TaskID] = e.FirstSeq
+		case e.AI != nil && e.AI.ReplyTo != 0:
+			for _, id := range a.tasksOfReply(e.AI.ReplyTo) {
+				a.chipOwner[id] = e.FirstSeq
+			}
+		}
 	}
 	keep := a.pending[:0]
 	for i := range a.pending {
@@ -73,14 +89,41 @@ func (a *App) conversation(c *ui.Context) {
 			})
 		})
 	}).Grow(1).Padding(8, 24, 16, 24).Gap(22).Justify(ui.End).Children(func() {
-		if len(rows) == 0 {
-			ui.Column(c).Margin(ui.Auto).MaxWidth(420).AlignItems(ui.Center).Gap(14).Children(func() {
-				a.face(c, FaceIdle, 88, a.L.T("face.idle", a.S.PersonaName))
-				ui.Text(c, a.L.T("empty.conversation")).FontSize(a.T.LG).TextAlign(ui.Center).TextColor(a.T.InkMuted).LineHeight(1.6)
-			})
+		if len(rows) == 0 && a.S.Welcomed {
+			a.emptyConversation(c)
 		}
 	})
 	a.composer(c)
+	a.readWhenSeen(c)
+}
+
+// emptyConversation greets a fresh user: who Ducter is, and three real
+// first things to say. A suggestion fills the composer; it never sends.
+func (a *App) emptyConversation(c *ui.Context) {
+	t := a.T
+	col := ui.Column(c.Key("empty")).Margin(ui.Auto).MaxWidth(520).AlignItems(ui.Center).Gap(16)
+	a.enter(c, col)
+	col.Children(func() {
+		a.face(c, FaceIdle, 96, a.L.T("face.idle", a.S.PersonaName))
+		ui.Text(c, a.L.T("empty.conversation.title", a.S.PersonaName)).FontSize(26).FontWeight(800).LetterSpacing(-0.3)
+		ui.Text(c, a.L.T("empty.conversation")).FontSize(t.LG).TextAlign(ui.Center).TextColor(t.InkSoft).LineHeight(1.6)
+		ui.Column(c).Gap(10).Margin(14, 0, 0, 0).AlignItems(ui.Stretch).Width(460).MaxWidthPercent(100).Children(func() {
+			ui.Text(c, a.L.T("empty.try")).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted).LetterSpacing(0.5)
+			for i := 1; i <= 3; i++ {
+				text := a.L.T(fmt.Sprintf("suggest.%d", i))
+				chip := ui.Row(c.Key(i)).Gap(12).Padding(13, 16).Radius(t.RadiusSM).Background(t.Surface).AlignItems(ui.Center).
+					Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(text)
+				a.press(c, chip, t.PressCard)
+				chip.Children(func() {
+					a.pebble(c, t.State([]string{"", "working", "done", "blocked"}[i]).Dot, 10, 12)
+					ui.Text(c, text).FontSize(t.MD).Grow(1).MinWidth(0)
+				})
+				if chip.Clicked() {
+					a.draft = text
+				}
+			}
+		})
+	})
 }
 
 func (a *App) header(c *ui.Context) {
@@ -169,7 +212,7 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 			a.chipsFor(c, e)
 		})
 	case e.Job != nil:
-		a.job(c, e.Job)
+		a.job(c, e.Job, e.FirstSeq)
 	case e.Living != nil:
 		a.living(c, e)
 	case e.Decision != nil:
@@ -187,11 +230,9 @@ func (a *App) chipsFor(c *ui.Context, e *store.Entry) {
 		return
 	}
 	var tasks []*store.Task
-	for _, j := range a.S.Jobs {
-		if j.Ack != nil && j.Ack.ReplyTo == e.AI.ReplyTo && j.Status != nil && j.Status.TaskID != "" {
-			if t := a.S.Task(j.Status.TaskID); t != nil {
-				tasks = append(tasks, t)
-			}
+	for _, id := range a.tasksOfReply(e.AI.ReplyTo) {
+		if t := a.S.Task(id); t != nil && a.chipOwner[id] == e.FirstSeq {
+			tasks = append(tasks, t)
 		}
 	}
 	if len(tasks) == 0 {
@@ -204,9 +245,21 @@ func (a *App) chipsFor(c *ui.Context, e *store.Entry) {
 	})
 }
 
+// tasksOfReply are the tasks the jobs answering a user message started.
+func (a *App) tasksOfReply(replyTo int64) []string {
+	var ids []string
+	for _, j := range a.S.Jobs {
+		if j.Ack != nil && j.Ack.ReplyTo == replyTo && j.Status != nil && j.Status.TaskID != "" {
+			ids = append(ids, j.Status.TaskID)
+		}
+	}
+	sort.Strings(ids)
+	return ids
+}
+
 // job is an ack in the partner's voice, then the job's status line and the
 // chip of its task.
-func (a *App) job(c *ui.Context, j *store.Job) {
+func (a *App) job(c *ui.Context, j *store.Job, firstSeq int64) {
 	t := a.T
 	ui.Column(c).MaxWidthPercent(88).Gap(10).Children(func() {
 		if j.Ack != nil {
@@ -219,6 +272,9 @@ func (a *App) job(c *ui.Context, j *store.Job) {
 		var task *store.Task
 		if st.TaskID != "" {
 			task = a.S.Task(st.TaskID)
+		}
+		if task != nil && task.Title() != "" && a.chipOwner[task.ID] != firstSeq {
+			return // a later message shows its chip
 		}
 		ui.Row(c).Gap(8).Wrap().AlignItems(ui.Center).Children(func() {
 			if task != nil && task.Title() != "" {
@@ -254,11 +310,22 @@ func (a *App) living(c *ui.Context, e *store.Entry) {
 				})
 			}
 		})
-		needs := 0
+		needs, open := 0, 0
 		for _, it := range e.Living.Items {
 			if it.Kind == "decision" {
 				needs++
+				if d := a.S.Decisions[it.DecisionID]; d != nil && d.Resolved == nil && d.Pending == "" {
+					open++
+				}
 			}
+		}
+		if open >= 2 {
+			ui.Row(c).Children(func() {
+				ui.Spacer(c)
+				if a.button(c, a.L.T("decision.goall", len(a.S.OpenDecisions())), btnQuiet, 40, t.Bg) {
+					a.GoOnAllDefaults()
+				}
+			})
 		}
 		// Needs-you first, each with its default; then the rest, one line
 		// each.
@@ -346,7 +413,7 @@ func (a *App) livingLine(c *ui.Context, it protocol.LivingItem) {
 		if it.Kind == "blocked" {
 			col = t.InkSoft
 		}
-		ui.Text(c, text).FontSize(t.MD).TextColor(col).Grow(1).MinWidth(0).LineHeight(1.45)
+		ui.Text(c, text).FontSize(t.MD).TextColor(col).Grow(1).MinWidth(0).LineHeight(1.45).MaxLines(3).Tooltip(text)
 		if len(it.Evidence) > 0 {
 			ev := it.Evidence[0]
 			l := ui.Text(c.Key("ev"), a.L.T("living.evidence")).FontSize(t.SM).FontWeight(700).Role(ui.RoleLink).

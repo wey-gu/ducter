@@ -7,6 +7,7 @@ package store
 
 import (
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
@@ -44,6 +45,22 @@ type DecisionState struct {
 	// Pending is set when the user acted and the server has not resolved
 	// it yet.
 	Pending string
+	// AskedAt is when the decision was asked, when known (the event's
+	// time, or the card's pendingDecision.askedAt).
+	AskedAt string
+}
+
+// Send is text the user sent straight into a task, and how it was
+// delivered once the server acked it.
+type Send struct {
+	Text      string
+	Delivered protocol.Delivery // "" until the "sent" ack
+	// Seq is the logged task_event that echoes it, once it arrived.
+	Seq int64
+	// Failed holds the server's error, if it refused the send.
+	Failed string
+	// At is when the user sent it (set by the app).
+	At time.Time
 }
 
 // CheckpointAt is a checkpoint with its time.
@@ -71,6 +88,20 @@ type Task struct {
 	OpenedAt string
 	// Version bumps when Events change, for views that recompute (diff).
 	Version int
+	// Sends are the user's direct messages to the task, oldest first.
+	Sends []*Send
+	// Usage sums the token use of the turns seen.
+	Usage protocol.Usage
+}
+
+// SendFor returns the user's send that a logged task_event echoes, or nil.
+func (t *Task) SendFor(seq int64) *Send {
+	for _, s := range t.Sends {
+		if s.Seq == seq {
+			return s
+		}
+	}
+	return nil
 }
 
 // Title is the task's title.
@@ -178,6 +209,9 @@ type Store struct {
 	Cursor int64
 	// ReadUpTo is the last read receipt.
 	ReadUpTo int64
+	// ChannelSeq is the newest channel event the user can see (read
+	// receipts don't count, or reading would never settle).
+	ChannelSeq int64
 
 	Channel   []*Entry
 	bySeq     map[int64]*Entry
@@ -185,8 +219,13 @@ type Store struct {
 	Decisions map[string]*DecisionState
 	Tasks     map[string]*Task
 	OnHand    *protocol.OnHand
+	// Waiters are the waiters known, by id (from waiter events and the
+	// snapshot's armed list).
+	Waiters map[string]*protocol.Waiter
 	// Errors are the server's error frames, newest last.
 	Errors []string
+	// Welcomed is set once the server said welcome on this store.
+	Welcomed bool
 }
 
 // New makes an empty store.
@@ -197,7 +236,20 @@ func New() *Store {
 		Jobs:        map[string]*Job{},
 		Decisions:   map[string]*DecisionState{},
 		Tasks:       map[string]*Task{},
+		Waiters:     map[string]*protocol.Waiter{},
 	}
+}
+
+// Stale reports whether a welcome comes from a Log that no longer holds
+// what this store has seen (the backend's data was reset): its head is
+// behind the cursor. The store must then start over.
+func (s *Store) Stale(f protocol.ServerFrame) bool {
+	return f.T == "welcome" && s.Cursor > 0 && f.HeadSeq < s.Cursor
+}
+
+// Reset forgets everything, for a Log that started over.
+func (s *Store) Reset() {
+	*s = *New()
 }
 
 // Apply applies one server frame.
@@ -205,8 +257,18 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 	switch f.T {
 	case "welcome":
 		s.Persona, s.HeadSeq = f.Persona, f.HeadSeq
+		s.Welcomed = true
 		if f.PersonaName != "" {
 			s.PersonaName = f.PersonaName
+		}
+	case "sent":
+		if t := s.Tasks[f.TaskID]; t != nil {
+			for _, sd := range t.Sends {
+				if sd.Delivered == "" && sd.Failed == "" {
+					sd.Delivered = f.Delivered
+					break
+				}
+			}
 		}
 	case "events":
 		for _, ev := range f.Events {
@@ -225,7 +287,26 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		t.HistoryLoaded = true
 	case "error":
 		s.Errors = append(s.Errors, f.Message)
+		// A refused task_send fails the oldest unacked send.
+		if strings.HasPrefix(f.Message, "task_send:") {
+			for _, t := range s.Tasks {
+				for _, sd := range t.Sends {
+					if sd.Delivered == "" && sd.Failed == "" {
+						sd.Failed = strings.TrimSpace(strings.TrimPrefix(f.Message, "task_send:"))
+						return
+					}
+				}
+			}
+		}
 	}
+}
+
+// AddSend records text the user is sending straight into a task.
+func (s *Store) AddSend(taskID, text string) *Send {
+	t := s.task(taskID)
+	sd := &Send{Text: text}
+	t.Sends = append(t.Sends, sd)
+	return sd
 }
 
 func (s *Store) task(id string) *Task {
@@ -242,10 +323,41 @@ func (s *Store) Task(id string) *Task { return s.Tasks[id] }
 
 func (s *Store) applyOnHand(o *protocol.OnHand) {
 	s.OnHand = o
+	if o.Waiters != nil {
+		// The snapshot lists the armed waiters: any other armed one we hold
+		// has fired or been cancelled meanwhile.
+		armed := map[string]bool{}
+		for i := range o.Waiters {
+			w := o.Waiters[i]
+			armed[w.WaiterID] = true
+			s.Waiters[w.WaiterID] = &w
+		}
+		for id, w := range s.Waiters {
+			if w.State == protocol.WaiterArmed && !armed[id] {
+				delete(s.Waiters, id)
+			}
+		}
+	}
 	for i := range o.Tasks {
 		card := o.Tasks[i]
 		t := s.task(card.TaskID)
 		t.Card = &card
+		if t.OpenedAt == "" {
+			t.OpenedAt = card.OpenedAt
+		}
+		if pd := card.PendingDecision; pd != nil {
+			d := s.Decisions[pd.DecisionID]
+			if d == nil {
+				d = &DecisionState{Decision: pd.Decision}
+				s.Decisions[pd.DecisionID] = d
+			}
+			if d.AskedAt == "" {
+				d.AskedAt = pd.AskedAt
+			}
+			if d.Question == "" {
+				d.Decision = pd.Decision
+			}
+		}
 		// A snapshot is newer than every task_state that arrived before it;
 		// later task_state events override it again.
 		t.State = &protocol.TaskState{TaskID: card.TaskID, Attention: card.Attention, Residency: card.Residency, Reason: card.Reason}
@@ -269,6 +381,13 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 			s.applyTask(t, ev, body)
 		}
 	}
+	if w, ok := body.(*protocol.Waiter); ok {
+		if w.State == protocol.WaiterArmed {
+			s.Waiters[w.WaiterID] = w
+		} else {
+			delete(s.Waiters, w.WaiterID)
+		}
+	}
 	if ev.Stream != "channel" {
 		// Decisions may be logged on a task's stream too.
 		if d, ok := body.(*protocol.Decision); ok {
@@ -281,6 +400,9 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 	}
 	if _, dup := s.bySeq[ev.Seq]; dup {
 		return
+	}
+	if ev.Kind != protocol.KindReadReceipt {
+		s.ChannelSeq = max(s.ChannelSeq, ev.Seq)
 	}
 	switch b := body.(type) {
 	case *protocol.UserMsg:
@@ -345,9 +467,61 @@ func (s *Store) job(id string) *Job {
 func (s *Store) addDecision(ev protocol.LogEvent, d *protocol.Decision) {
 	if old := s.Decisions[d.DecisionID]; old != nil {
 		old.Decision = *d
+		if old.Seq == 0 {
+			old.Seq, old.AskedAt = ev.Seq, ev.TS
+		}
 		return
 	}
-	s.Decisions[d.DecisionID] = &DecisionState{Decision: *d, Seq: ev.Seq}
+	s.Decisions[d.DecisionID] = &DecisionState{Decision: *d, Seq: ev.Seq, AskedAt: ev.TS}
+}
+
+// OpenDecisions are the unresolved decisions the user has not acted on,
+// oldest first.
+func (s *Store) OpenDecisions() []*DecisionState {
+	var out []*DecisionState
+	for _, d := range s.Decisions {
+		if d.Resolved == nil && d.Pending == "" && d.Question != "" {
+			if t := s.Tasks[d.TaskID]; t != nil && LaneOf(t.Attention()) == LaneHidden {
+				continue // its task was dropped or handed off
+			}
+			out = append(out, d)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].AskedAt != out[j].AskedAt {
+			return out[i].AskedAt < out[j].AskedAt
+		}
+		return out[i].DecisionID < out[j].DecisionID
+	})
+	return out
+}
+
+// ArmedWaiters are the armed waiters, soonest first; task-less ones are
+// what On hand shows as compact rows.
+func (s *Store) ArmedWaiters() []*protocol.Waiter {
+	var out []*protocol.Waiter
+	for _, w := range s.Waiters {
+		if w.State == protocol.WaiterArmed {
+			out = append(out, w)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].At != out[j].At {
+			return out[i].At < out[j].At
+		}
+		return out[i].WaiterID < out[j].WaiterID
+	})
+	return out
+}
+
+// WaiterFor is the armed waiter of a task, or nil.
+func (s *Store) WaiterFor(taskID string) *protocol.Waiter {
+	for _, w := range s.ArmedWaiters() {
+		if w.TaskID == taskID {
+			return w
+		}
+	}
+	return nil
 }
 
 func (s *Store) resolve(r *protocol.DecisionResolved) {
@@ -391,6 +565,23 @@ func (s *Store) applyTask(t *Task, ev protocol.LogEvent, body any) {
 		t.OpenedAt = ev.TS
 	case *protocol.TaskState:
 		t.State = b
+	case *protocol.TaskEvent:
+		if u := b.Usage; u != nil {
+			t.Usage.InputTokens += u.InputTokens
+			t.Usage.OutputTokens += u.OutputTokens
+			t.Usage.CacheRead += u.CacheRead
+			t.Usage.CacheWrite += u.CacheWrite
+		}
+		// The runner logs what the user sent straight in: it echoes the
+		// oldest matching send.
+		if b.Role == "user" && b.From != "partner" {
+			for _, sd := range t.Sends {
+				if sd.Seq == 0 && sd.Text == b.Text {
+					sd.Seq = ev.Seq
+					break
+				}
+			}
+		}
 	case *protocol.Report:
 		t.LastReport = b
 		t.Evidence = mergeEvidence(t.Evidence, b.Evidence)

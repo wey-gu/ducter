@@ -6,6 +6,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
@@ -389,6 +390,9 @@ func (a *App) defaultLine(c *ui.Context, d *store.DecisionState) string {
 	label := d.GoLabel
 	if label == "" {
 		label = a.L.T("decision.go")
+	}
+	if a.L.Lang == i18n.ZH && label != "" && label[0] < 0x80 {
+		label = " " + label // a Latin word in Chinese text gets its space
 	}
 	return a.L.T("decision.default.go", a.duration(left+time.Second*59/60), label)
 }

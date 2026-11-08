@@ -6,3 +6,5 @@ export type { OarPortOptions, HarnessSessionExt, RuntimeLoader } from "./oar.ts"
 export { registerTaskTools, normalizeReport, reportToMainSchema, checkpointSchema } from "./tools.ts";
 export { taskBrief, kickoff, NUDGE, RESUME_AFTER_RESTART } from "./brief.ts";
 export { planPlace, provisionPlace, slugify } from "./places.ts";
+export { browserSidecar, browserGate, browserBrief, detectCuaDriver, profileName, socketPath, BROWSER_MCP_NAME } from "./browser.ts";
+export type { BrowserOptions, BrowserSidecar, CuaDriverInfo } from "./browser.ts";

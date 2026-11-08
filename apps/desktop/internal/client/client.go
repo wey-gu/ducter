@@ -62,6 +62,10 @@ type Client struct {
 
 	mu   sync.Mutex
 	conn *websocket.Conn
+	// kick cuts a reconnect's wait short.
+	kick chan struct{}
+	// next is when the next attempt starts, while waiting.
+	next time.Time
 }
 
 // New makes a client; Run connects it.
@@ -69,7 +73,26 @@ func New(opt Options) *Client {
 	if opt.URL == "" {
 		opt.URL = DefaultURL()
 	}
-	return &Client{opt: opt}
+	return &Client{opt: opt, kick: make(chan struct{}, 1)}
+}
+
+// URL is the server the client dials.
+func (c *Client) URL() string { return c.opt.URL }
+
+// RetryNow cuts the wait before the next reconnect short.
+func (c *Client) RetryNow() {
+	select {
+	case c.kick <- struct{}{}:
+	default:
+	}
+}
+
+// NextAttempt is when the client will try again, while it waits; zero
+// otherwise.
+func (c *Client) NextAttempt() time.Time {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.next
 }
 
 // Run connects and reconnects until ctx is done.
@@ -82,16 +105,24 @@ func (c *Client) Run(ctx context.Context) {
 		if ctx.Err() != nil {
 			return
 		}
-		c.status(Disconnected, err)
 		if time.Since(start) > 10*time.Second {
 			backoff = 250 * time.Millisecond // it was up a while: retry soon
 		}
+		c.mu.Lock()
+		c.next = time.Now().Add(backoff)
+		c.mu.Unlock()
+		c.status(Disconnected, err)
 		select {
 		case <-ctx.Done():
 			return
 		case <-time.After(backoff):
+		case <-c.kick:
+			backoff = 250 * time.Millisecond
 		}
-		backoff = min(backoff*2, 8*time.Second)
+		c.mu.Lock()
+		c.next = time.Time{}
+		c.mu.Unlock()
+		backoff = min(backoff*2, 5*time.Second)
 	}
 }
 
@@ -106,7 +137,12 @@ func (c *Client) session(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	origin := "http://" + u.Host + "/"
+	// No trailing slash: core accepts only the bare loopback origin
+	// (http://127.0.0.1:port), as browsers send it.
+	origin := "http://" + u.Host
+	if u.Scheme == "wss" {
+		origin = "https://" + u.Host
+	}
 	cfg, err := websocket.NewConfig(c.opt.URL, origin)
 	if err != nil {
 		return err

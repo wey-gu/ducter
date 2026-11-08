@@ -29,6 +29,10 @@ type harness struct {
 	app    *App
 	tt     *ui.Tester
 	frames chan protocol.ServerFrame
+	// pump, if set, runs while waiting (the live test feeds the client).
+	pump func()
+	// wait is how long until waits; 10 s when zero.
+	wait time.Duration
 }
 
 func newHarness(t *testing.T, lang i18n.Lang) *harness {
@@ -60,27 +64,37 @@ func newHarness(t *testing.T, lang i18n.Lang) *harness {
 // until applies frames until cond holds.
 func (h *harness) until(what string, cond func() bool) {
 	h.t.Helper()
-	deadline := time.After(10 * time.Second)
-	for !cond() {
+	wait := h.wait
+	if wait == 0 {
+		wait = 10 * time.Second
+	}
+	deadline := time.After(wait)
+	tick := time.NewTicker(20 * time.Millisecond)
+	defer tick.Stop()
+	drain := func() {
+		for {
+			if h.pump != nil {
+				h.pump()
+			}
+			select {
+			case f := <-h.frames:
+				h.app.Receive(f)
+				continue
+			default:
+			}
+			return
+		}
+	}
+	for drain(); !cond(); drain() {
 		select {
 		case f := <-h.frames:
-			h.app.S.Apply(f)
-			h.app.Applied(f)
+			h.app.Receive(f)
+		case <-tick.C:
+			h.tt.Frame()
 		case <-deadline:
 			h.tt.Frame()
 			h.t.Fatalf("timed out waiting for %s; texts %q", what, h.tt.Texts())
 		}
-	}
-	// Drain what came with it.
-	for {
-		select {
-		case f := <-h.frames:
-			h.app.S.Apply(f)
-			h.app.Applied(f)
-			continue
-		default:
-		}
-		break
 	}
 	h.tt.Frame()
 }
@@ -145,7 +159,7 @@ func TestScenarioEndToEnd(t *testing.T) {
 		t.Fatalf("route %v task %q", h.app.Route, h.app.TaskID)
 	}
 	h.until("history", func() bool { return s.Task("t-ci-1").HistoryLoaded })
-	for _, want := range []string{"对话记录", "检查点", "为什么是 Codex"} {
+	for _, want := range []string{"对话记录", "存档", "为什么是 Codex"} {
 		if !h.tt.HasText(want) {
 			t.Errorf("task view lacks %q: %q", want, h.tt.Texts())
 		}
@@ -154,6 +168,19 @@ func TestScenarioEndToEnd(t *testing.T) {
 		t.Errorf("no diff: %+v", pane)
 	}
 	h.shot("task")
+
+	// Talk to the task directly: it waits for a decision, so the text is
+	// queued behind its turn, and the transcript says so.
+	h.app.SendToTask("t-ci-1", "rebase 前先看一眼 main 上 storage 的改动")
+	h.until("delivery", func() bool {
+		sd := s.Task("t-ci-1").Sends[0]
+		return sd.Delivered != "" && sd.Seq != 0
+	})
+	if !h.tt.HasText("排在这一轮之后") {
+		t.Errorf("no delivery shown: %q", h.tt.Texts())
+	}
+	h.until("its answer", func() bool { return h.tt.HasText("收到，按你说的来。") })
+	h.shot("task-sent")
 
 	h.click("好，rebase")
 	h.until("done", func() bool {

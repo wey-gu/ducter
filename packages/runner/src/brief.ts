@@ -21,7 +21,7 @@ function placeLine(p: Place, cwd: string): string {
     case "none":
       return `a scratch directory ${cwd} (no project attached).`;
     case "browser":
-      return `a browser profile "${p.profile}".`;
+      return `a browser (see "Your browser" below), with a scratch directory ${cwd} for notes and files.`;
   }
 }
 

@@ -78,7 +78,33 @@ func (a *App) taskHeader(c *ui.Context, task *store.Task) {
 		if p := task.Project(); p != "" {
 			a.pill(c, p)
 		}
+		a.taskActions(c, task)
 	})
+}
+
+// taskActions are what the user can do to the task itself: pause it while
+// it works, drop it (undoable for UndoWindow), or try again once it ended.
+func (a *App) taskActions(c *ui.Context, task *store.Task) {
+	t := a.T
+	att := task.Attention()
+	switch att {
+	case protocol.Failed, protocol.Dropped:
+		if a.button(c, a.L.T("task.action.retry"), btnQuiet, 44, t.Surface) {
+			a.TaskAction(task.ID, "reopen")
+		}
+		return
+	case protocol.Done, protocol.Superseded:
+		return
+	}
+	if att == protocol.Working && a.button(c, a.L.T("task.action.pause"), btnQuiet, 44, t.Surface) {
+		a.TaskAction(task.ID, "interrupt")
+	}
+	if a.button(c, a.L.T("task.action.drop"), btnText, 44, t.Surface) {
+		a.DropTask(task.ID)
+		title := task.Title()
+		c.AddToast(ui.Toast{ID: "undo:" + task.ID, Title: a.L.T("undo.dropped", title), Timeout: UndoWindow,
+			Action: a.L.T("undo.action"), OnAction: a.UndoDrop})
+	}
 }
 
 func (a *App) decisionBanner(c *ui.Context, d *store.DecisionState) {
@@ -111,6 +137,13 @@ func (a *App) transcript(c *ui.Context, task *store.Task) {
 			ui.Text(c, a.L.T("task.transcript.hint")).FontSize(t.XS).TextColor(t.InkMuted)
 		})
 		evs := a.transcriptEvents(task)
+		var local []*store.Send
+		for _, sd := range task.Sends {
+			if sd.Seq == 0 {
+				local = append(local, sd)
+			}
+		}
+		n := len(evs) + len(local)
 		ls := a.taskLists[task.ID]
 		if ls == nil {
 			ls = &ui.ListState{}
@@ -121,12 +154,19 @@ func (a *App) transcript(c *ui.Context, task *store.Task) {
 			if i < len(evs) {
 				return evs[i].Seq
 			}
+			if j := i - len(evs); j < len(local) {
+				return local[j]
+			}
 			return i
 		}
-		ui.List(c.Key("transcript:"+task.ID), ls, len(evs), func(i int) {
+		ui.List(c.Key("transcript:"+task.ID), ls, n, func(i int) {
+			if i >= len(evs) {
+				a.sentBubble(c, local[i-len(evs)].Text, local[i-len(evs)])
+				return
+			}
 			a.transcriptRow(c, task, evs[i])
 		}).Grow(1).Padding(14, 18).Gap(12).Children(func() {
-			if len(evs) == 0 {
+			if n == 0 {
 				ui.Text(c, a.L.T("task.loading")).FontSize(t.SM).TextColor(t.InkMuted)
 			}
 		})
@@ -177,15 +217,16 @@ func (a *App) transcriptRow(c *ui.Context, task *store.Task, ev protocol.LogEven
 		switch {
 		case b.Tool != nil:
 			a.toolRow(c, b.Tool)
-		case b.Role == "user":
-			ui.Row(c).Children(func() {
-				ui.Spacer(c)
-				r := t.BubbleRadius
-				ui.Text(c, b.Text).FontSize(14).LineHeight(1.5).TextColor(t.OnUserBubble).Background(t.UserBubble).
-					Padding(9, 14).Radius(r[0]*0.8, r[1]*0.8, r[2], r[3]*0.8).MaxWidthPercent(80).Selectable()
+		case b.Role == "user" && (b.From == "partner" || ev.Origin == protocol.OriginPartner):
+			// The partner talking to the task: its words, not the user's.
+			ui.Column(c).Gap(4).Padding(10, 14).Radius(16).Background(t.Working.Surface).Children(func() {
+				ui.Text(c, a.L.T("task.from.partner", a.S.PersonaName)).FontSize(11).FontWeight(800).TextColor(t.Working.Ink).LetterSpacing(0.5)
+				ui.Text(c, b.Text).FontSize(14).LineHeight(1.5).Selectable()
 			})
+		case b.Role == "user":
+			a.sentBubble(c, b.Text, task.SendFor(ev.Seq))
 		case b.Role == "system":
-			ui.Text(c, b.Text).FontSize(t.XS).TextColor(t.InkMuted)
+			a.systemLine(c, b)
 		case b.Text != "":
 			ui.Column(c).Children(func() { markdown.View(c, b.Text, &a.mdTask) })
 		}
@@ -198,6 +239,92 @@ func (a *App) transcriptRow(c *ui.Context, task *store.Task, ev protocol.LogEven
 	case *protocol.Report:
 		a.reportCard(c, b)
 	}
+}
+
+// sentBubble is what the user said straight into the task, with how it
+// was delivered: steered into this turn, as the next turn, or queued.
+func (a *App) sentBubble(c *ui.Context, text string, sd *store.Send) {
+	t := a.T
+	note, failed, waiting := "", false, false
+	if sd != nil {
+		switch {
+		case sd.Failed != "":
+			note, failed = a.L.T("delivery.failed", sd.Failed), true
+		case sd.Delivered != "":
+			note = a.L.T("delivery." + string(sd.Delivered))
+		case sd.Seq == 0 && a.Now().Sub(sd.At) < 4*time.Second:
+			// No ack yet. A server without "sent" acks never says; after a
+			// few seconds the label just goes.
+			note, waiting = a.L.T("delivery.sending"), true
+			c.After(4*time.Second - a.Now().Sub(sd.At))
+		}
+	}
+	ui.Column(c).Gap(5).AlignItems(ui.End).Children(func() {
+		r := t.BubbleRadius
+		b := ui.Text(c, text).FontSize(14).LineHeight(1.5).TextColor(t.OnUserBubble).Background(t.UserBubble).
+			Padding(9, 14).Radius(r[0]*0.8, r[1]*0.8, r[2], r[3]*0.8).MaxWidthPercent(80).Selectable()
+		if waiting {
+			b.Opacity(0.7)
+		}
+		if note == "" {
+			return
+		}
+		ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
+			col := t.InkMuted
+			if failed {
+				col = t.Failed.Ink
+			} else if !waiting {
+				ui.Box(c).Size(16, 16).Radius(6).Background(t.Done.Surface).Draw(drawCheck(t.Done.Ink))
+			}
+			ui.Text(c, note).FontSize(11.5).FontWeight(700).TextColor(col)
+		})
+	})
+}
+
+// systemLine is a harness's own note, as a turn ending: a thin divider,
+// in words for people.
+func (a *App) systemLine(c *ui.Context, b *protocol.TaskEvent) {
+	t := a.T
+	text := b.Text
+	switch strings.ToLower(strings.TrimSpace(text)) {
+	case "turn completed", "turn complete", "turn ended":
+		text = a.L.T("task.turn.done")
+	}
+	if u := b.Usage; u != nil && u.InputTokens+u.OutputTokens > 0 {
+		text += " · " + tokens(u.InputTokens+u.CacheRead+u.CacheWrite) + " / " + tokens(u.OutputTokens)
+	}
+	ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
+		ui.Box(c).Height(1).Grow(1).Background(t.LineSoft)
+		ui.Text(c, text).FontSize(11).TextColor(t.InkMuted).Shrink(0)
+		ui.Box(c).Height(1).Grow(1).Background(t.LineSoft)
+	})
+}
+
+// isLink reports whether an evidence ref opens somewhere.
+func isLink(ref string) bool {
+	return strings.HasPrefix(ref, "http://") || strings.HasPrefix(ref, "https://") || strings.HasPrefix(ref, "file:") || strings.HasPrefix(ref, "/")
+}
+
+// evidenceLine is one piece of evidence: a link when it points somewhere,
+// else its label and what it says.
+func (a *App) evidenceLine(c *ui.Context, ev protocol.EvidenceRef) {
+	t := a.T
+	if isLink(ev.Ref) {
+		l := ui.Text(c, ev.Label).FontSize(t.SM).FontWeight(700).Underline().Cursor(ui.CursorPointer).Role(ui.RoleLink).Tooltip(ev.Ref)
+		if l.Clicked() {
+			a.openEvidence(c, ev)
+		}
+		return
+	}
+	ui.Row(c).Gap(8).AlignItems(ui.Start).Children(func() {
+		ui.Box(c).Size(18, 18).Radius(6).Background(t.Done.Surface).Draw(drawCheck(t.Done.Ink)).Shrink(0)
+		ui.Column(c).Gap(1).Grow(1).MinWidth(0).Children(func() {
+			ui.Text(c, ev.Label).FontSize(t.SM).FontWeight(700)
+			if ev.Ref != "" && ev.Ref != ev.Label {
+				ui.Text(c, ev.Ref).FontSize(t.XS).TextColor(t.InkMuted).Selectable().MaxLines(3)
+			}
+		})
+	})
 }
 
 func (a *App) reportCard(c *ui.Context, r *protocol.Report) {
@@ -223,6 +350,12 @@ func (a *App) reportCard(c *ui.Context, r *protocol.Report) {
 		if len(r.Evidence) > 0 {
 			ui.Row(c).Gap(10).Wrap().Children(func() {
 				for i, ev := range r.Evidence {
+					if !isLink(ev.Ref) {
+						ui.Box(c.Key(i)).Padding(3, 8).Radius(8).Background(t.SurfaceSunken).Tooltip(ev.Ref).Children(func() {
+							ui.Text(c, ev.Label).FontSize(t.XS).FontWeight(700)
+						})
+						continue
+					}
 					l := ui.Text(c.Key(i), ev.Label).FontSize(t.XS).FontWeight(700).Underline().Cursor(ui.CursorPointer).Role(ui.RoleLink)
 					if l.Clicked() {
 						a.openEvidence(c, ev)
@@ -260,8 +393,19 @@ func (a *App) toolRow(c *ui.Context, tool *protocol.ToolCall) {
 	}
 }
 
+// toolName is a tool's name for people: an MCP tool loses its
+// mcp__server__ prefix.
+func toolName(name string) string {
+	if strings.HasPrefix(name, "mcp__") {
+		if i := strings.LastIndex(name, "__"); i > 4 {
+			return name[i+2:]
+		}
+	}
+	return name
+}
+
 func toolSummary(tool *protocol.ToolCall) string {
-	s := tool.Name
+	s := toolName(tool.Name)
 	if len(tool.Input) == 0 {
 		return s
 	}
@@ -474,11 +618,18 @@ func (a *App) dossier(c *ui.Context, task *store.Task) {
 	if who == "" {
 		who = "?"
 	}
-	a.dossierCard(c, a.L.T("task.dossier.why", who), func() {
+	title := who
+	if task.BodyReason() != "" {
+		title = a.L.T("task.dossier.why", who)
+	}
+	a.dossierCard(c, title, func() {
 		if r := task.BodyReason(); r != "" {
 			ui.Text(c, r).FontSize(t.SM).LineHeight(1.55).TextColor(t.InkSoft)
 		}
 		ui.Text(c, a.bodyLine(task)).FontSize(t.XS).TextColor(t.InkMuted)
+		if u := task.Usage; u.InputTokens+u.OutputTokens+u.CacheRead > 0 {
+			ui.Text(c, a.L.T("task.usage", tokens(u.InputTokens+u.CacheRead+u.CacheWrite), tokens(u.OutputTokens))).FontSize(t.XS).TextColor(t.InkMuted)
+		}
 	})
 	a.dossierCard(c, a.L.T("task.dossier.checkpoints"), func() {
 		if len(task.Checkpoints) == 0 {
@@ -507,10 +658,7 @@ func (a *App) dossier(c *ui.Context, task *store.Task) {
 			ui.Text(c, a.L.T("task.dossier.evidence.none")).FontSize(t.SM).TextColor(t.InkMuted)
 		}
 		for i, ev := range task.Evidence {
-			l := ui.Text(c.Key(i), ev.Label).FontSize(t.SM).FontWeight(700).Underline().Cursor(ui.CursorPointer).Role(ui.RoleLink).Tooltip(ev.Ref)
-			if l.Clicked() {
-				a.openEvidence(c, ev)
-			}
+			a.evidenceLine(c.Key(i), ev)
 		}
 	})
 	a.dossierCard(c, a.L.T("task.dossier.where"), func() {
@@ -527,4 +675,17 @@ func (a *App) dossier(c *ui.Context, task *store.Task) {
 			ui.Text(c, "base: "+p.BaseBranch).Font(t.Mono).FontSize(11).TextColor(t.InkMuted)
 		}
 	})
+}
+
+// tokens is a token count, short: 812, 12.4k, 1.2M.
+func tokens(n int64) string {
+	switch {
+	case n >= 1_000_000:
+		return fmt.Sprintf("%.1fM", float64(n)/1e6)
+	case n >= 10_000:
+		return fmt.Sprintf("%.0fk", float64(n)/1e3)
+	case n >= 1000:
+		return fmt.Sprintf("%.1fk", float64(n)/1e3)
+	}
+	return fmt.Sprint(n)
 }

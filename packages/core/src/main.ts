@@ -47,7 +47,13 @@ export function stubPartner(core: CoreApi): Partner {
   };
 }
 
-async function main() {
+/** Modules preloaded by a host (the compiled `ducter` CLI, where path-based dynamic import can't be bundled). */
+export interface BootModules {
+  runner?: Record<string, any>;
+  partner?: Record<string, any>;
+}
+
+export async function main(mods: BootModules = {}) {
   // Clients can connect at once; identity from Mem (slow: several seconds) is filled in before
   // the partner starts. Triggers that arrive meanwhile are held by core and replayed.
   const persona = { id: "default", name: process.env.DUCTER_PERSONA_NAME || "Ducter", identity: DEFAULT_IDENTITY };
@@ -63,7 +69,7 @@ async function main() {
   console.log(`[ducter] tools:   http://127.0.0.1:${core.port}/mcp`);
 
   let runner: Runner | undefined;
-  const runnerMod = await loadModule("@ducter/runner", "../../runner/src/index.ts", "createRunner");
+  const runnerMod = mods.runner ?? (await loadModule("@ducter/runner", "../../runner/src/index.ts", "createRunner"));
   if (runnerMod) {
     try {
       // Task-role tools (report_to_main, checkpoint) are the runner's; register them once.
@@ -81,7 +87,7 @@ async function main() {
   Object.assign(core.persona, { name: mem.name, identity: mem.identity });
 
   let partner: Partner | undefined;
-  const partnerMod = await loadModule("@ducter/partner", "../../partner/src/index.ts", "createPartner");
+  const partnerMod = mods.partner ?? (await loadModule("@ducter/partner", "../../partner/src/index.ts", "createPartner"));
   if (partnerMod) {
     try {
       partner = await partnerMod.createPartner(core, runner);
@@ -113,6 +119,7 @@ async function main() {
   };
   process.on("SIGINT", () => void shutdown("SIGINT"));
   process.on("SIGTERM", () => void shutdown("SIGTERM"));
+  return { core, runner, partner, identitySource: mem.source, shutdown };
 }
 
 if (import.meta.main) await main();

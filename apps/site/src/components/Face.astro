@@ -1,0 +1,28 @@
+---
+// The clay Ducter, one pose per state, stacked so the face can change without a reload.
+// State is shown by the character itself (D53), never by a dot.
+import Art from "./Art.astro";
+
+type FaceName = "idle" | "working" | "done" | "needsyou" | "napping";
+interface Props {
+  id: string;
+  faces: FaceName[];
+  start: FaceName;
+  sizes: string;
+  class?: string;
+  eager?: boolean;
+}
+const { id, faces, start, sizes, class: cls = "", eager = false } = Astro.props;
+const alt: Record<FaceName, string> = {
+  idle: "Ducter, the clay partner, holding a phone and smiling",
+  working: "Ducter reading, busy with a task",
+  done: "Ducter beaming: something just finished",
+  needsyou: "Ducter raising a little orange flag: something needs you",
+  napping: "Ducter napping under a knitted blanket",
+};
+---
+<div class={`mascot ${cls}`} id={id} data-face={start} role="img" aria-label={alt[start]}>
+  {faces.map((f) => (
+    <Art class={`f-${f}`} name={`ducter_${f}`} alt="" sizes={sizes} eager={eager && f === start} />
+  ))}
+</div>

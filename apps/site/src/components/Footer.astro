@@ -1,0 +1,19 @@
+---
+import Art from "./Art.astro";
+interface Props { gh: { href: string }; isPublic: boolean; home?: boolean }
+const { gh, isPublic, home = true } = Astro.props;
+const at = (h: string) => (h.startsWith("#") && !home ? "/" + h : h);
+---
+<footer>
+  <div class="wrap">
+    <a class="brand" href="/" style="font-size:18px"><Art name="ducter_idle" alt="" sizes="34px" />Ducter</a>
+    <nav aria-label="Footer">
+      <a href="/docs">Docs</a>
+      <a href={at(gh.href)}>{isPublic ? "GitHub" : "Source (opening soon)"}</a>
+      <a href="https://mem.nowledge.co" rel="noopener">Nowledge Mem</a>
+      <a href={at("#install")}>Install</a>
+      <a href={at("#trust")}>Trust</a>
+    </nav>
+    <span>Apache 2.0 · © 2026 the Ducter authors</span>
+  </div>
+</footer>

@@ -29,13 +29,17 @@ shows it.)
 Ducter then looks around your Mac for a few seconds:
 
 - **"Checking this Mac…"** It looks for Claude Code and Codex and whether you're signed in.
-- **If something is missing,** you see **"One thing first"** with just that one item, the
-  command that fixes it, **Copy**, and **Run in Terminal**. Do it, come back to the window, and
-  Ducter checks again by itself. Anything optional waits on one quiet line for later.
+- **If neither is ready,** you see *"Pick one, install it and sign in"*, with one row for Claude
+  Code and one for Codex. Click **Install**: Ducter runs the tool's official installer into your
+  own folders (no administrator password, no Terminal) and shows how long it's been. Then click
+  **Sign in** and finish in your browser. *"This continues by itself"*: when it's done, you see
+  **All set**. If something goes wrong, the row says what happened in plain words, with **Try
+  again** and **Do it in Terminal**.
 - **"What should I be called?"** Give your partner a name, or keep Ducter. (If you use
   [Nowledge Mem](https://mem.nowledge.co), your partner already has a name and this is skipped.)
 - **"Getting Ducter ready…"** From now on Ducter keeps working when you close the window. To
-  stop it, choose **Stop Ducter** in the menu.
+  stop it, choose **Stop Ducter** in the menu. macOS may show a *"Background Items Added"*
+  notice right after: that's Ducter working in the background, and there's nothing to do.
 
 ## 2. Say one thing
 
@@ -81,6 +85,10 @@ In our own runs, a small "fix the failing tests" task came back done in under a 
   *What it did*, see its changes, and talk to it directly.
 - **Close the window whenever you like.** Ducter keeps working. The Dock icon brings the window
   back, and its badge counts what is waiting for you.
+- **A few small offers come later, one at a time,** each with **Later**: notifications on this
+  Mac when you need to decide something (after your first result), finding Ducter on
+  [your phone](phone.md), and [Nowledge Mem](privacy-and-safety.md#memory-with-nowledge-mem) so
+  your partner remembers for longer.
 - **Use it from Terminal too.** After your partner's first reply, Ducter offers once: *"Use
   ducter in Terminal too?"* Say yes, and `ducter status` works in any new Terminal window.
 

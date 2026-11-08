@@ -38,8 +38,10 @@ Ducter tells you what that means.
 
 ### Browsing the web
 
-Browsing needs Google Chrome in Applications and a small free helper, cua-driver. If the helper
-is missing or too old, Ducter says so and gives you the one step to fix it.
+Browsing needs Google Chrome in Applications and a small free helper, the browser driver
+(cua-driver). Choose **Browse the web** and Ducter walks you through **Set up browsing**: three
+small steps, no Terminal. It installs the driver, then asks you to turn on two switches in
+System Settings, which macOS wants you to flip yourself. Each step checks itself off.
 
 What you'll notice:
 

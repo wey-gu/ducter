@@ -39,10 +39,24 @@ for one more step:
 
 On macOS 14 and earlier, right-click Ducter, choose **Open**, then **Open** again.
 
-### "One thing first: Claude Code: installed, not signed in"
+### Installing or signing in to Claude Code or Codex didn't finish
 
-Ducter works through your own AI plan, so Claude Code or Codex has to be signed in. Click
-**Run in Terminal**, follow the sign-in, and come back: Ducter checks again by itself.
+Ducter works through your own AI plan, so Claude Code or Codex has to be installed and signed
+in. The row tells you what went wrong:
+
+- *"Couldn't reach the internet"*: connect, then **Try again**.
+- *"A folder isn't writable"*: choose **Do it in Terminal** to see which one.
+- *"Signing in didn't finish"*: **Try again**. If the browser didn't open, click **Browser
+  didn't open?**; if the page showed you a code, click **Did the page show a code?** and paste
+  it.
+
+**Do it in Terminal** always runs the same command the button would, so you can watch it.
+
+### "Right now Ducter stops when you close the window"
+
+Running in the background is turned off for Ducter in macOS. Click **Open Login Items**
+(System Settings › General › Login Items & Extensions) and turn on **Allow in the Background**
+for Ducter. Ducter notices by itself and moves to the background once nothing is running.
 
 ### Ducter says the port is in use
 
@@ -83,13 +97,15 @@ hours hold everything. **Send a test** under **Notifications** confirms it works
 
 ### Browsing the web can't be added
 
-- *"The browser driver (cua-driver) isn't installed here yet"*: install cua-driver, then add it
-  again.
-- *"This device's browser driver (cua-driver) is too old"*: run `cua-driver update --apply`.
-- macOS needs **Accessibility** and **Screen Recording** for **CuaDriver** (not for Ducter).
-  Run `cua-driver permissions grant` and click Allow for both in System Settings → Privacy &
-  Security.
+Choosing **Browse the web** opens **Set up browsing**, three small steps that check themselves
+off: install (or update) the browser driver, then turn on **CuaDriver** under **Accessibility**
+and under **Screen & System Audio Recording** in System Settings › Privacy & Security. The
+switches are for CuaDriver, not for Ducter. If a step won't turn green:
+
+- Click **Take me there**, or **Just open System Settings** and find the pane by its name.
+- macOS may ask to reopen CuaDriver after the screen switch; that's fine.
 - Google Chrome (or Microsoft Edge) needs to be in Applications.
+- From Terminal, `cua-driver update --apply` updates an old driver.
 
 ### A website sign-in got lost
 

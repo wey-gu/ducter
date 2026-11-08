@@ -7,7 +7,7 @@ import (
 
 // System Settings panes, by their x-apple.systempreferences links. Each
 // was opened on macOS 15.7 and landed on the pane named beside it
-// (docs/design/onboarding.md, "macOS asks").
+// (design/onboarding.md, "macOS asks").
 const (
 	// Privacy & Security › Accessibility (辅助功能).
 	SettingsAccessibility = "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"

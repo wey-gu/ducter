@@ -11,7 +11,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
-// The first run without a terminal (docs/design/onboarding.md, "The app
+// The first run without a terminal (design/onboarding.md, "The app
 // path"): Ducter.app installs and signs in the AI tools itself, with their
 // official installers, shows progress, explains a failure with the one
 // thing to do, and goes on by itself once a check turns green. The same

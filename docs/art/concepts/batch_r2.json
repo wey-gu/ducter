@@ -1,0 +1,72 @@
+{
+ "jobs": 5,
+ "tasks": [
+  {
+   "id": "r2_char_clay",
+   "promptFiles": [
+    "prompts/_base.md",
+    "prompts/_r2_quality.md",
+    "prompts/r2_char_clay.md"
+   ],
+   "image": "r2/r2_char_clay.png",
+   "ar": "4:3",
+   "ref": [
+    "char_vinyl.jpg"
+   ]
+  },
+  {
+   "id": "r2_char_vinyl3d",
+   "promptFiles": [
+    "prompts/_base.md",
+    "prompts/_r2_quality.md",
+    "prompts/r2_char_vinyl3d.md"
+   ],
+   "image": "r2/r2_char_vinyl3d.png",
+   "ar": "4:3",
+   "ref": [
+    "char_vinyl.jpg"
+   ]
+  },
+  {
+   "id": "r2_char_plush",
+   "promptFiles": [
+    "prompts/_base.md",
+    "prompts/_r2_quality.md",
+    "prompts/r2_char_plush.md"
+   ],
+   "image": "r2/r2_char_plush.png",
+   "ar": "4:3",
+   "ref": [
+    "char_vinyl.jpg"
+   ]
+  },
+  {
+   "id": "r2_board_1",
+   "promptFiles": [
+    "prompts/_base.md",
+    "prompts/_r2_quality.md",
+    "prompts/r2_board.md"
+   ],
+   "image": "r2/r2_board_1.png",
+   "ar": "16:9",
+   "ref": [
+    "char_vinyl.jpg",
+    "board_cozy.jpg"
+   ]
+  },
+  {
+   "id": "r2_board_2",
+   "promptFiles": [
+    "prompts/_base.md",
+    "prompts/_r2_quality.md",
+    "prompts/r2_board.md"
+   ],
+   "image": "r2/r2_board_2.png",
+   "ar": "16:9",
+   "ref": [
+    "char_vinyl.jpg",
+    "board_cozy.jpg"
+   ]
+  }
+ ]
+}

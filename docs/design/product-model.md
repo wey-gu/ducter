@@ -29,7 +29,7 @@
 | Place | **在哪儿做 / Where** | Where a task works |
 | Device (machine, runner) | **设备 / Devices** | |
 | Routine | **例行 / Routine** | Recurring or triggered work |
-| Waiter | (shown as the reason for Waiting: "在等 PR 被批 / Waiting for PR approval") | |
+| Waiter | (shown as the reason for Waiting: "在等 PR 有人回复 / Waiting for PR approval") | |
 | `until` loop | "一直…直到… / Keep … until …" on the task | |
 | Rule | **规则 / Rule** | A standing preference stated in words |
 | device states | **醒着 / Awake · 睡着了 / Asleep · 连不上 / Can't reach** · wake = **叫醒 / Wake** | Never "broken" or "offline" wording for sleep |

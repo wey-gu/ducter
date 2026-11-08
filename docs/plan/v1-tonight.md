@@ -8,7 +8,7 @@
 Every number below comes from a report in this repo (this file's sections further down,
 `design/onboarding.md`, `research/29`, `research/30`, `packages/partner/eval/results/`). Live
 timings are one run or a few, so they are indicative, not benchmarks. What waits on the user is
-in `design/flows/OPEN-QUESTIONS.md` ("Decisions waiting for you"); per-scenario status is the
+in `design/flows/OPEN-QUESTIONS.md` (answered on the morning of 2026-11-09: D54, D56–D67); per-scenario status is the
 "Built" column of `design/scenarios.md`.
 
 **What a user can do now**
@@ -19,7 +19,7 @@ in `design/flows/OPEN-QUESTIONS.md` ("Decisions waiting for you"); per-scenario 
   or Codex in its own worktree on `ducter/<slug>`. Silence while it works.
 - **Decide.** A task's question arrives with a default as a living message and an On hand card:
   Go / Hold / Reply, or 都按默认 / Go on all defaults.
-- **Get the result.** The partner's short outcome, with How I know, Outside and Merge / Draft PR /
+- **Get the result.** The partner's short outcome, with How I know, Sent out and Merge / Draft PR /
   See changes rendered from the typed report; Merge works by button.
 - **Open a task** to read its transcript, diff and dossier and talk to it directly (steered into
   the running turn, or as the next turn); stop, drop with Undo, reopen, even after a restart.
@@ -81,7 +81,7 @@ in `design/flows/OPEN-QUESTIONS.md` ("Decisions waiting for you"); per-scenario 
   sidecars aren't restarted after recovery.
 - The digest, re-cut and folds, routines, `until` loops, the Ducter Edge, passkeys, the
   onboarding cartoon and the capability map are not built.
-- Ducter stops when the app's window closes (lifecycle pending the user's call).
+- Ducter stops when the app's window closes; D56 (keep running) is being built.
 
 ## The slice, end to end (definition of done)
 
@@ -110,10 +110,10 @@ in `design/flows/OPEN-QUESTIONS.md` ("Decisions waiting for you"); per-scenario 
   - Build from MyGo's own examples and packages: `ui/markdown`, `ui/richtext` (IME),
     `ui/editor` (diff view + git diff), `motion`, `svg`, virtual lists, plus the
     `examples/markdown-chat`, `terminal`, `code-editor`, and `timeline` examples.
-  - an open-source agent app's desktop is a MyGo-native agent app and serves as a **design reference
-    only**: it is GPL-3.0, so no code is copied.
+  - Ducter's desktop UI is its own code, built on MyGo's MIT packages and examples; no code from
+    other apps is copied.
   - Web via MyGo WASM comes later.
-- **Repo:** private `wey-gu/ducter` (public once ready).
+- **Repo:** `wey-gu/ducter`.
 - **Wiring:** one Bun process (`bun run up`) holds core, runner, and partner in-process;
   remote runners come later.
   - The contract is `packages/protocol/src/index.ts` (wire) and `internal.ts` (module
@@ -268,7 +268,7 @@ Details: `research/30-partner-eval.md`.
 
 What changed:
 - **Result prose is the outcome only**, plus left out and unverified. The desktop already
-  renders How I know, Outside and Merge under the message from the typed report, so the old
+  renders How I know, Sent out (then "Outside") and Merge under the message from the typed report, so the old
   persona's demand for those rows in prose produced the commit/branch/"合回 main？" talk.
 - **Persona:** one-example first words; hand-offs named as actions; nothing after `ask`; no
   default in its question; never name buttons; nothing on needs_input; ask before outside

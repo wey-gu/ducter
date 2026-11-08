@@ -8,7 +8,7 @@ with slow work, when should the main AI work itself, is a separate fast "talker"
 batch "while you were away" summary (principle 8) behave?
 
 Tags: **[V]** verified (read the source, doc page, or paper page today), **[S]** secondary (search summary, third-party
-article, or memory; not re-read), **[I]** my inference. `R/` = `<scratch>`.
+article, or memory; not re-read), **[I]** my inference. `R/` = `<scratch>/repos/`.
 Builds on `01` (dots, Muse, Grok Bot, OpenClaw; not repeated) and principles 3, 4, 6, 7, 8, 12.
 
 ---

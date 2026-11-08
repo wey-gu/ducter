@@ -4,7 +4,7 @@ Date: 2026-11-08. Scope: how the main AI should pick the "body" for each new Foc
 model, reasoning effort and machine. Covers prior art, reading quota, routing research, task-to-model fit,
 personalization, and a first-principles proposal. Marks: **[V]** verified (source read, local binary/schema
 inspected), **[D]** vendor docs read, **[I]** inferred or secondary. Repo paths are relative to
-`scratchpad/repos/` (`<scratch>`).
+`scratchpad/repos/` (`<scratch>/repos/`).
 Local installs checked read-only: Claude Code 2.1.319, codex-cli 0.167.0, plus pi, cursor-agent, gemini,
 opencode, kimi, grok present on PATH. No model calls were made.
 

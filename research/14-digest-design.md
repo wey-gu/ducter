@@ -14,7 +14,7 @@ proactive backward search over the Log.
 Versions (all clones fresh today unless noted; read only, nothing run): Claude Code 2.1.319 (`strings` on the native
 binary), openai/codex @748ab55, pi-mono @e49b149, xai-org/grok-build @2bdd1d6 (= remote HEAD), openclaw @3a25991,
 deepseek-harness @fcc0ad4, google-gemini/gemini-cli @62bab5b (cloned today), letta-code @64fdf59.
-`R/` = `<scratch>`.
+`R/` = `<scratch>/repos/`.
 Tags: **[V]** verified (read source or the paper page), **[S]** secondary (from memory or another summary; not re-read),
 **[I]** inferred. Builds on `11` (compaction *mechanics*: triggers, cache alignment) and `12` (folding literature,
 economics); this note is about *content* and *recall*, and does not repeat them.

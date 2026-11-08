@@ -40,8 +40,8 @@ func TestConnectToRemoteDucter(t *testing.T) {
 		return nil
 	}
 	h.until("a failed attempt", func() bool { return h.app.Failed })
-	h.click("我的 Ducter 在另一台机器上")
-	for _, want := range []string{"连接到你的 Ducter", PairCommand, "地址", "配对码", "连上"} {
+	h.click("我的 Ducter 在另一台电脑上")
+	for _, want := range []string{"连接到你的 Ducter", PairCommand, "地址", "连接码", "连上"} {
 		if !h.tt.HasText(want) {
 			t.Errorf("connect card lacks %q: %q", want, h.tt.Texts())
 		}
@@ -51,7 +51,7 @@ func TestConnectToRemoteDucter(t *testing.T) {
 	h.app.conn.address = "https://ducter.example.com"
 	h.app.conn.code = "AAAA-AAAA"
 	h.click("连上")
-	if !h.tt.HasText("这个码不对，或者已经过期了。在那台机器上再运行一次 ducter pair。") {
+	if !h.tt.HasText("这个码不对，或者已经过期了。在那台电脑上再运行一次 ducter pair。") {
 		t.Errorf("no bad-code line: %q", h.tt.Texts())
 	}
 	h.shot("connect-badcode")
@@ -76,7 +76,7 @@ func TestRevokedDeviceSeesConnectCard(t *testing.T) {
 	h.app.Pair = func(string, string) error { return nil }
 	h.app.Unauthorized = true
 	h.tt.Frame()
-	for _, want := range []string{"Connect to your Ducter", "This Mac was disconnected from your Ducter. Pair it again to come back."} {
+	for _, want := range []string{"Connect to your Ducter", "This Mac was disconnected from your Ducter. Connect it again to come back."} {
 		if !h.tt.HasText(want) {
 			t.Errorf("lacks %q: %q", want, h.tt.Texts())
 		}

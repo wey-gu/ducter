@@ -458,7 +458,7 @@ pinches into two. Reduced motion: cross-fade.
    - otherwise create a project implicitly, titled from the repo ("Tuwa").
 5. The ack shows the task chip plus a **新项目 · Tuwa** chip with `改名` and `撤销`.
    - 改名: inline text field in the chip; Enter commits; every task with the label follows.
-   - 撤销: the task becomes 随手 / Loose; the project is deleted (it had one task).
+   - 撤销: the task becomes 其他 / Other; the project is deleted (it had one task).
 6. The chip quiets after the user's next message (it becomes a plain project label).
 7. For org repos, the push question (E3) is asked at the first checkpoint, not now.
 
@@ -472,7 +472,7 @@ not a separate task.
 | `project.new_chip` | 新项目 · {name} | New project · {name} |
 | `project.rename` | 改名 | Rename |
 | `project.undo` | 撤销 | Undo |
-| `project.undone` | 不放进项目了，先算随手 | No project; it's Loose for now |
+| `project.undone` | 不放进项目了，先算其他 | No project; it's under Other for now |
 | `project.suggest_existing` | 放进 {project}？ | Put it in {project}? |
 | `place.device_reason.awake` | 在 {device} 上，它醒着 | On {device}; it's awake |
 | `place.device_reason.warm` | 在 {device} 上，上次就在这儿做的 | On {device}; it worked there last time |
@@ -485,7 +485,7 @@ not a separate task.
   sparkle on its left edge (惊喜, once per project ever).
 - Rename: the chip widens into a field in place; on commit it re-settles and every visible
   chip with the old name ripples to the new one.
-- Undo: the chip shrinks into the task chip's "随手" tag.
+- Undo: the chip shrinks into the task chip's "其他" tag.
 
 ### Edge cases
 - A path that's inside a repo (`~/dev/ducter/docs`) → repo `ducter`, scope narrowed to that
@@ -615,7 +615,7 @@ Setup job inside the task; task `queued` (reason: setup) → `needs-you` (propos
 |---|---|---|
 | `recipe.job` | 先看看 {repo} 怎么跑起来 | Figuring out how to run {repo} |
 | `recipe.propose.title` | {repo} 这样准备可以吗？ | Set up {repo} like this? |
-| `recipe.word` † | 准备方法 | Setup |
+| `recipe.word` † | 准备步骤 | Setup |
 | `recipe.proved` | 在新副本上跑通了 · {time} | Ran clean on a fresh copy · {time} |
 | `recipe.imported` | 照着 {file} 改的 | Based on {file} |
 | `recipe.exclusive` | 占用 {resource}（一次只给一件事用） | Uses {resource} (one task at a time) |
@@ -638,7 +638,7 @@ Setup job inside the task; task `queued` (reason: setup) → `needs-you` (propos
 - A read-only task never triggers a recipe.
 
 ### Open questions
-- Shown name for Recipe (†). Proposal: 准备方法 / Setup.
+- Shown name for Recipe (†). Proposal: 准备步骤 / Setup.
 - Should the proposal block the task, or let the task start in parallel without services?
   Proposal: block only if the brief needs to run/test; otherwise run in parallel.
 
@@ -735,7 +735,7 @@ residency `→ archived`. Intents: open PR, (merge under rule), close PR.
 |---|---|---|
 | `pr.intent.open` | 要开 PR（草稿）到 {repo}/{base} | Will open a draft PR to {repo}/{base} |
 | `pr.waiting.ci` | 在等 CI | Waiting for CI |
-| `pr.waiting.review` | 在等 PR 被批 | Waiting for PR approval |
+| `pr.waiting.review` | 在等 PR 通过 | Waiting for PR approval |
 | `pr.rebase.ask` | 落后 {base} {n} 个提交，先 rebase 再合吗？ | {n} commits behind {base}. Rebase first? |
 | `pr.rebase.go` | 好，rebase | Rebase |
 | `pr.rebase.default` | 不回的话 {time} 自动 rebase · 可撤销 | If you don't reply: rebase at {time} · undoable |
@@ -818,7 +818,7 @@ A small disk gauge on the decision card drains down as Go is pressed (the freed 
 | superseded | 已由 {x} 接着做 / Continued by {x} | E3 |
 | pause | 先停 / Pause (as Waiting reason, not a state) | E4 |
 | merged task | 已并进 / Merged into | E5 |
-| Recipe | 准备方法 / Setup | C3 |
+| Recipe | 准备步骤 / Setup | C3 |
 | draft copy / trusted | 草稿副本 / Draft copy · 直接改 / Edits directly | C2 |
 
 ## Artboards (scratchpad `flows/project/`)

@@ -27,7 +27,8 @@ export type Place =
 
 // ---------- Log events ----------
 
-export type Origin = "user" | "partner" | "task" | "system" | "waiter" | "schedule";
+// "peer": another agent reaching the persona through Nowledge Bridge (design/bridge.md).
+export type Origin = "user" | "partner" | "task" | "system" | "waiter" | "schedule" | "peer";
 
 export interface EvidenceRef {
   kind: "ci" | "diff" | "file" | "url" | "log" | "test";
@@ -97,6 +98,12 @@ export interface Bodies {
   // show one quiet line under the reply: "记下了 · <title>" / "Noted · <title>". Never a card,
   // never a notification. Provenance lives in Mem, not here.
   memory_noted: { title: string; memoryId?: string; replyTo?: number };
+  // Nowledge Bridge (behind DUCTER_BRIDGE=1, design/bridge.md). "in": a message another agent
+  // sent the persona (origin "peer"); its text is untrusted task context, never the user's
+  // permission. "out": the partner's reply to one (origin "partner"). Clients show one quiet
+  // line (copy pending the glossary): "<from> 发来请求" / "Request from <from>", and
+  // "已回复 <to>" / "Replied to <to>". Not "交接 / hand-off": that word is a task changing body.
+  bridge_msg: { direction: "in" | "out"; messageId: string; from?: string; to?: string; text: string; inReplyTo?: string; sentAt?: string };
 }
 
 export interface Usage { inputTokens?: number; outputTokens?: number; cacheRead?: number; cacheWrite?: number }
@@ -259,7 +266,8 @@ export interface Reach {
 }
 
 // ---------- Ducter MCP tools (HTTP MCP served by core at /mcp, role-scoped by token) ----------
-// role "partner": task_open, task_send, task_read, log_search, log_read, wait_until, ask, memory_search, memory_add
+// role "partner": task_open, task_send, task_read, log_search, log_read, wait_until, ask, memory_search, memory_add,
+//   bridge_reply (only with DUCTER_BRIDGE=1)
 // role "task:<id>": report_to_main, log_search, log_read, checkpoint
 
 export interface ToolArgs {
@@ -274,6 +282,7 @@ export interface ToolArgs {
   checkpoint: { text: string };
   memory_search: { query: string; limit?: number };
   memory_add: { title: string; content: string; importance?: number };
+  bridge_reply: { messageId: string; text: string };
 }
 
 export const PROTOCOL_VERSION = 2;

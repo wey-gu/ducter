@@ -1,0 +1,33 @@
+name: iOS build
+
+# The iPhone app compiles in Release (unsigned, nothing uploaded), only when apps/ios changes,
+# so a broken build shows up on the PR rather than at release time. macOS minutes are 10x on a
+# private repo, hence the path filter. Shipping to TestFlight is release.yml's job.
+
+on:
+  pull_request:
+    paths: ["apps/ios/**", "scripts/ci/testflight.sh", ".github/workflows/ios.yml"]
+  push:
+    branches: [main]
+    paths: ["apps/ios/**", "scripts/ci/testflight.sh", ".github/workflows/ios.yml"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Release archive (unsigned)
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - name: Archive
+        env:
+          MARKETING_VERSION: "0.0.0"
+          BUILD_NUMBER: ${{ github.run_number }}
+          DUCTER_TESTFLIGHT_DRY_RUN: "1"
+        run: scripts/ci/testflight.sh

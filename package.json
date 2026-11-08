@@ -10,7 +10,7 @@
     "test": "bun test",
     "eval:partner": "bun packages/partner/eval/run.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p apps/web/tsconfig.json",
-    "build:web": "bun run apps/web/build.ts"
+    "build:web": "sh scripts/build-web.sh"
   },
   "devDependencies": {
     "typescript": "^5.9.0",

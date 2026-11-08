@@ -6,26 +6,26 @@
 #
 # Needs Bun and Go on this Mac; the friend needs neither. Nothing outside OUTDIR changes.
 #
-# Signing (same Apple team and credential names as con and Nowledge Mem):
+# Signing:
 #   - With a Developer ID Application identity (DUCTER_SIGN_IDENTITY, a name or SHA-1; by
 #     default the "Developer ID Application: Nowledge Labs, LLC" one in the keychain, if any),
 #     every Mach-O is signed inside out with the hardened runtime and a secure timestamp, the
 #     app is notarized and stapled, and so is the disk image. The friend just opens it.
 #   - Notarization credentials, the first set that is complete wins:
 #       DUCTER_NOTARY_PROFILE                          a `notarytool store-credentials` profile
-#       APPLE_NOTARY_KEY_ID + APPLE_NOTARY_ISSUER_ID + APPLE_NOTARY_KEY_PATH   (con's names;
+#       APPLE_NOTARY_KEY_ID + APPLE_NOTARY_ISSUER_ID + APPLE_NOTARY_KEY_PATH   (an App Store Connect API key;
 #         APPLE_API_KEY + APPLE_API_ISSUER also work, key from ~/.appstoreconnect/private_keys)
-#       APPLE_ID + APPLE_PASSWORD (or APPLE_APP_SPECIFIC_PASSWORD) + APPLE_TEAM_ID  (Mem's names,
-#         e.g. `. ~/private-env.rc` first)
+#       APPLE_ID + APPLE_PASSWORD (or APPLE_APP_SPECIFIC_PASSWORD) + APPLE_TEAM_ID  (an Apple ID with an
+#         app-specific password, e.g. sourced from a private env file first)
 #     Signed but none of these: the build is signed, not notarized, and says so.
 #     DUCTER_REQUIRE_NOTARIZATION=1 makes that an error.
 #   - No identity (or DUCTER_SIGN_IDENTITY=-): signed ad hoc (codesign -s -), and the friend
-#     needs the Open Anyway steps in README.md, "Give Ducter to a friend".
+#     needs the Open Anyway steps in docs/install.md, "Give Ducter to a friend".
 #
 # Inside the app:
 #   Contents/MacOS/Ducter          the desktop app (apps/desktop)
 #   Contents/Helpers/ducter        the ducter CLI (packages/cli), which the app runs as
-#                                  `ducter up --no-desktop` (a LaunchAgent; see README "The app")
+#                                  `ducter up --no-desktop` (a LaunchAgent; see docs/install.md "The app")
 #   Contents/Resources/AppIcon.icns
 set -eu
 

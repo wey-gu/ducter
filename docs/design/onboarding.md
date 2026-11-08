@@ -29,7 +29,7 @@
 The cartoon and the in-app checklist below are the target. Until they exist, the first run is a
 terminal path plus the desktop's empty conversation. It holds itself to the same bar: detect
 first, one obvious next step per screen, zh and en designed together (`LANG`, or
-`DUCTER_LOCALE`). Walked live on the author's Mac with a bundle installed into a scratch prefix,
+`DUCTER_LOCALE`). Walked live on a sample Mac with a bundle installed into a scratch prefix,
 a fresh data folder, and port 7795.
 
 **For each user**
@@ -119,7 +119,7 @@ entitlement is `com.apple.security.cs.allow-jit` (`scripts/macos/ducter-cli.enti
 without it Bun's JIT dies under the hardened runtime). Without an identity the script falls back
 to ad-hoc signing and the README's Open Anyway steps.
 
-**Lifetime (the keep-running decision: Ducter keeps running when the window closes; Dn assigned by the docs pass).** The window is a view;
+**Lifetime (D56: Ducter keeps running when the window closes).** The window is a view;
 Ducter is the one doing the work, so neither closing the window nor ⌘Q stops it.
 - *Closing the window* (⌘W, the red button) hides it. The Dock icon, or opening the app again,
   shows it as it was (MyGo: `Window.OnClose` prevented + `Hide`, `App.OnActivate` → `Show`).
@@ -165,7 +165,7 @@ Ducter is the one doing the work, so neither closing the window nor ⌘Q stops i
 **Verified live** on macOS 15.7 (the DMG built, mounted, the app copied to a scratch folder,
 launched with `open`, `dev.env` pointing at a scratch data folder and port 7798, sonnet):
 doctor + `up` took ~4 s from open to "Ducter is up"; repo starters showed on the first launch;
-a message got its reply in 2.5 s; (before the keep-running decision) ⌘Q, ⌘W and `kill -9` each stopped the child
+a message got its reply in 2.5 s; (before D56) ⌘Q, ⌘W and `kill -9` each stopped the child
 backend. **Keep-running, live** (scripted model, port 7870, scratch data folder): first launch loaded
 the LaunchAgent (`state = running`, parent pid 1); a 90 s task was started, the window closed
 with ⌘W (app alive, window off screen), the task finished while hidden, `open` (the same
@@ -205,7 +205,7 @@ text walls, just one short line per scene (zh + en).
 | 3 | Ducter flicks small pebbles onto a laptop and a little server box, which light up | 我把事情分出去做。 / I hand things out. | Tasks run on your devices |
 | 4 | *(to redo once the metaphor is chosen; `research/24`: a battery reads as device power and must not be used. Likely an AI-plan block with cords to each device)* | 用的是你自己的 AI。 / Powered by your own AI plan. | Subscriptions stay yours |
 | 5 | The pebbles work quietly. One turns orange, raises a tiny hand, and Ducter carries it to you | 只有需要你时，我才来找你。 / I only come to you when it matters. | Attention; silence means success |
-| 6 | You tap **好 / Go**. The pebble bounces, turns mint green, and returns holding a tiny receipt | 做完了，会带证据给你。 / Done, with proof. | Decisions with defaults; done = evidence |
+| 6 | You tap **好 / Go**. The pebble bounces, turns mint green, and returns holding a tiny receipt | 做完了，还会告诉你我怎么确认的。 / Done, and how I checked. | Decisions with defaults; done = evidence |
 | 7 | All the pebbles roll into a tray labelled **手头 / On hand** | 想看全部，随时打开。 / See everything, anytime. | The overview exists, optionally |
 | 8 | The tray slides aside and a checklist assembles from the pebbles | 开始前只需要三样。 / Three things and we're ready. | *Becomes the real setup screen* |
 
@@ -222,7 +222,7 @@ row's detection result animates in.
      opens the client and pairs it. *Built so far (D54), terminal-first:*
      `sh install.sh --service` → systemd user service → a pairing code, link and QR in the
      terminal; the Mac app's first run has "我的 Ducter 在另一台机器上 / My Ducter is on another
-     machine" → **连接到你的 Ducter / Connect to your Ducter** (address + 配对码). The browser
+     machine" → **连接到你的 Ducter / Connect to your Ducter** (address + 连接码). The browser
      setup page with relayed AI logins (Q17) is next; the exact login commands it relays are in
      `research/29`.
 2. **Cartoon**, then the **live checklist**, auto-detected:
@@ -248,7 +248,7 @@ row's detection result animates in.
    - routines;
    - the browser, the first time a task needs the web (below).
 
-## The browser, first time (live on the author's Mac, 2026-11-09)
+## The browser, first time (live on a sample Mac, 2026-11-09)
 
 These are the setup moments a browser task hits on a Mac. They should become one checklist row
 ("Browser: ✓ ready / Set up"), shown only when the first web task needs it. Design pending.
@@ -279,7 +279,7 @@ Setup: cua-driver 0.44.0, Chrome 157, macOS 15, partner and task on Sonnet.
      (907×661 on a 1512×982 display), behind the user's work. *Verified* on a desktop
      capture.
    - Ducter sets the clay avatar as its Dock tile; Chrome accepted the call. *Not seen*: the
-     Dock was hidden on the author's Mac. Without this, it is an identical second Chrome
+     Dock was hidden on a sample Mac. Without this, it is an identical second Chrome
      icon.
 5. **Focus.** Left alone, the new Chrome makes itself the frontmost app for the whole task,
    so the user's typing goes into Ducter's browser (*verified*: about 29 s in front). Ducter

@@ -398,6 +398,47 @@ describe("restart mid-turn with two messages in one turn (soak regression)", () 
   });
 });
 
+describe("restart inside task_open (soak regression)", () => {
+  test("a task whose task_open is logged but whose job never was is handed back, not opened twice", async () => {
+    // Soak r1: SIGKILL landed inside runner.openTask (task_open appended, job_status not yet).
+    // The task still started after the restart, and the redone turn opened a second one.
+    const clock = new FakeClock();
+    const dir = tmp();
+    const fc = fakeCore(clock, dir);
+    let call = fc.callTool;
+    let die = true;
+    const fr = fakeRunner(async (input, s) => {
+      if (input.includes("[user] fix it")) {
+        s.say("On it: fix it");
+        await Bun.sleep(5);
+        await call("task_open", { title: "fix it", brief: "fix it" }).catch(() => {});
+      }
+      if (!die) s.end();
+    });
+    fr.bindCards(fc.cards);
+    const realOpen = fr.runner.openTask;
+    fr.runner.openTask = async (input) => {
+      if (!die) return realOpen(input);
+      fc.core.log.append({ stream: "task:t9", origin: "system", kind: "task_open", body: { taskId: "t9", title: input.title, project: "", place: { kind: "none" }, harness: "claude-code", brief: input.brief } });
+      return new Promise(() => {}); // the process dies here
+    };
+    const p1 = createPartner(fc.core, fr.runner, { now: clock.now, onError: () => {}, settleMs: 0 });
+    p1.onTrigger(fc.core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "fix it" } }));
+    await Bun.sleep(60);
+    die = false;
+    const tools2 = fakeCore(clock, dir);
+    call = tools2.callTool;
+    const p2 = createPartner({ ...fc.core, mcp: tools2.core.mcp }, fr.runner, { now: clock.now, onError: () => {}, settleMs: 0 });
+    await Bun.sleep(30);
+    await p2.idle();
+    expect(fr.opened).toHaveLength(0); // never through the real openTask: t9 was handed back
+    const acks = fc.events.filter((e) => e.kind === "ack");
+    expect(acks).toHaveLength(1);
+    const job = fc.events.find((e) => e.kind === "job_status")!.body as Bodies["job_status"];
+    expect(job).toMatchObject({ taskId: "t9", state: "running", jobId: (acks[0]!.body as Bodies["ack"]).jobId });
+  });
+});
+
 describe("place", () => {
   const fs: PlaceFs = {
     home: "/Users/w",

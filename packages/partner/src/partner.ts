@@ -142,7 +142,7 @@ function stripDefault(q: string): string {
 /** What a turn cut off by a restart had already done, from the Log after it started. */
 interface Carried {
   seqs: Set<number>; // its triggers
-  tasks: { taskId: string; title: string }[];
+  tasks: { taskId: string; title: string; jobId?: string; unbound?: boolean }[];
   waits: Set<string>; // wait_until reasons
   asks: Set<string>; // ask questions
   said: Set<string>; // ai_msg / ack texts
@@ -160,6 +160,14 @@ export function carriedFrom(log: CoreApi["log"], inflight: { seqs: number[]; fro
     else if (e.kind === "decision" && e.origin === "partner") c.asks.add((e.body as Bodies["decision"]).question);
     else if ((e.kind === "ai_msg" || e.kind === "ack") && e.origin === "partner") c.said.add((e.body as { text: string }).text.trim());
   }
+  // A task whose task_open is in the Log but whose job_status isn't (the process died inside
+  // runner.openTask, soak): it exists and will start; bind it to its ack when handed back.
+  for (const e of log.read({ fromSeq: inflight.from + 1, limit: 2000, kinds: ["task_open"] })) {
+    const b = e.body as Bodies["task_open"];
+    if (c.tasks.some((t) => t.taskId === b.taskId)) continue;
+    const ack = evs.find((x) => x.kind === "ack" && x.origin === "partner" && (x.body as Bodies["ack"]).text.includes(b.title));
+    c.tasks.push({ taskId: b.taskId, title: b.title, unbound: true, ...(ack ? { jobId: (ack.body as Bodies["ack"]).jobId } : {}) });
+  }
   const done = [
     ...c.tasks.map((t) => `opened task ${t.taskId} "${t.title}"`),
     ...[...c.waits].map((r) => `set a timer "${r}"`),
@@ -172,7 +180,7 @@ export function carriedFrom(log: CoreApi["log"], inflight: { seqs: number[]; fro
 }
 
 /** A task the carried turn opened with this title (taken: it is handed back once). */
-function carriedTask(c: Carried, title: unknown, take: boolean): { taskId: string; title: string } | undefined {
+function carriedTask(c: Carried, title: unknown, take: boolean): Carried["tasks"][number] | undefined {
   if (typeof title !== "string") return undefined;
   const i = c.tasks.findIndex((t) => t.title === title.trim());
   if (i < 0) return undefined;
@@ -682,6 +690,11 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       if (again) {
         t!.pending = null;
         t!.opensHandled++;
+        if (again.unbound) {
+          const jobId = again.jobId ?? newId("job");
+          jobs.set(again.taskId, { jobId, title: again.title, replyTo: replyToFor(t!), state: "running" });
+          core.log.append({ stream: "channel", origin: "partner", kind: "job_status", body: { jobId, text: again.title, state: "running", taskId: again.taskId } });
+        }
         return { ok: true, taskId: again.taskId, title: again.title, note: "This task was already opened for this message; it was not opened again. It reports back on its own." };
       }
       let jobId: string;

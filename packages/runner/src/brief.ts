@@ -72,5 +72,9 @@ export function kickoff(title: string): string {
   return `Start the task "${title}" now, following your task brief. Report via report_to_main when done, blocked, or needing a decision.`;
 }
 
+/** First turn of a task resumed after the main process restarted mid-turn. */
+export const RESUME_AFTER_RESTART =
+  "Your previous turn was cut off (the host restarted). Check where the work stands, then continue the task. Report via report_to_main when done, blocked, or needing a decision.";
+
 /** The one nudge after a turn ends with no report (stall rule). */
 export const NUDGE = "Report status via report_to_main.";

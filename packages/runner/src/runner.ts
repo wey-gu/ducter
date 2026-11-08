@@ -1,12 +1,13 @@
 import { randomBytes } from "node:crypto";
 import type { Attention, Bodies, LogEvent, Place, Residency, TaskCard } from "@ducter/protocol";
 import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, SessionSpec } from "@ducter/protocol/src/internal.ts";
-import { NUDGE, kickoff, taskBrief } from "./brief.ts";
+import { NUDGE, RESUME_AFTER_RESTART, kickoff, taskBrief } from "./brief.ts";
 import { createOarHarnessPort } from "./oar.ts";
-import { planPlace, provisionPlace } from "./places.ts";
+import { cwdOf, planPlace, provisionPlace } from "./places.ts";
 import { PREVIEW_MAX, preview } from "./normalize.ts";
 
 type HarnessId = SessionSpec["harness"];
+type From = NonNullable<Bodies["task_event"]["from"]>;
 const HARNESSES: HarnessId[] = ["claude-code", "codex", "pi"];
 
 export interface RunnerOptions {
@@ -34,6 +35,7 @@ interface TaskRt {
   spec: SessionSpec;
   session?: HarnessSession;
   sessionId?: string;
+  loggedSessionId?: string;
   running: boolean; // our view: a turn is in flight
   reportedThisTurn: boolean;
   nudged: boolean;
@@ -92,8 +94,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
   }
 
   function isBusy(t: TaskRt): boolean {
-    const s = t.session as any;
-    if (s && typeof s.busy === "function") {
+    const s = t.session;
+    if (s) {
       try {
         return Boolean(s.busy());
       } catch {
@@ -103,39 +105,50 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     return t.running;
   }
 
-  async function sendTurn(t: TaskRt, text: string) {
+  async function sendTurn(t: TaskRt, text: string, from: From) {
     t.running = true;
     setState(t, "working", "hot");
-    await deliver(t, text, "turn");
+    await deliver(t, text, "turn", from);
   }
 
-  async function deliver(t: TaskRt, text: string, mode: "turn" | "steer" | "queue") {
-    logEvent(t, { role: "user", text: preview(text, 16 * 1024), raw: { delivered: mode } });
-    await t.session!.send(text, mode);
+  /** Logs the text first (the Log is the record even if delivery fails), then delivers it. */
+  async function deliver(t: TaskRt, text: string, mode: "turn" | "steer" | "queue", from: From) {
+    logEvent(t, { role: "user", from, text: preview(text, 16 * 1024), raw: { delivered: mode } });
+    try {
+      await t.session!.send(text, mode);
+    } catch (err) {
+      if (mode === "turn") t.running = false;
+      logEvent(t, { role: "system", from: "runner", text: `delivery failed: ${preview(String(err), 500)}` });
+      throw err;
+    }
+  }
+
+  /** Records the native session id once known, so a restarted runner can resume it. */
+  function noteSessionId(t: TaskRt, session: HarnessSession) {
+    let id: string | undefined;
+    try {
+      id = session.id || undefined;
+    } catch {
+      /* some sessions learn their id later */
+    }
+    if (!id || id === t.loggedSessionId) return;
+    t.sessionId = id;
+    t.loggedSessionId = id;
+    logEvent(t, { role: "system", from: "runner", text: "session started", raw: { sessionId: id } });
   }
 
   async function startSession(t: TaskRt, resume: boolean) {
     const spec: SessionSpec = resume && t.sessionId ? { ...t.spec, resumeSessionId: t.sessionId } : t.spec;
     const session = await harness.start(spec);
     t.session = session;
-    try {
-      t.sessionId = session.id;
-    } catch {
-      /* some sessions learn their id later */
-    }
+    noteSessionId(t, session);
     void pump(t, session);
   }
 
   async function pump(t: TaskRt, session: HarnessSession) {
     try {
       for await (const ev of session.events()) {
-        if (!t.sessionId) {
-          try {
-            t.sessionId = session.id || undefined;
-          } catch {
-            /* not yet */
-          }
-        }
+        noteSessionId(t, session);
         handleEvent(t, ev);
         if (ev.turnEnd) await onTurnEnd(t, ev);
       }
@@ -152,11 +165,16 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
   function handleEvent(t: TaskRt, ev: HarnessEvent) {
     if (ev.tool && /(^|__)report_to_main$/.test(ev.tool.name) && ev.tool.ok !== false) t.reportedThisTurn = true;
     if (!ev.text && !ev.tool && !ev.turnEnd) return; // usage-only or empty
-    const raw = ev.turnEnd ? { turnEnd: true, usage: ev.usage, ...(ev.raw as object | undefined) } : undefined;
+    const raw = ev.turnEnd ? { turnEnd: true, ...(ev.raw as object | undefined) } : undefined;
     const tool = ev.tool
       ? { ...ev.tool, output: preview(ev.tool.output, PREVIEW_MAX), input: capInput(ev.tool.input) }
       : undefined;
-    logEvent(t, { role: ev.role, text: ev.text != null ? preview(ev.text, 16 * 1024) : undefined, tool, raw });
+    const body: Omit<Bodies["task_event"], "taskId"> = { role: ev.role };
+    if (ev.text != null) body.text = preview(ev.text, 16 * 1024);
+    if (tool) body.tool = tool;
+    if (ev.turnEnd && ev.usage) body.usage = ev.usage;
+    if (raw) body.raw = raw;
+    logEvent(t, body);
   }
 
   async function onTurnEnd(t: TaskRt, ev: HarnessEvent) {
@@ -176,7 +194,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     if (!t.nudged) {
       t.nudged = true;
       try {
-        await sendTurn(t, NUDGE);
+        await sendTurn(t, NUDGE, "runner");
       } catch (err) {
         logEvent(t, { role: "system", text: `nudge failed: ${preview(String(err), 500)}` });
       }
@@ -194,6 +212,85 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     return t;
   }
 
+  function specFor(id: string, open: Bodies["task_open"], cwd: string): SessionSpec {
+    const mcp = core.mcp.configFor({ taskId: id });
+    const spec: SessionSpec = {
+      harness: open.harness as HarnessId,
+      cwd,
+      appendSystemPrompt: taskBrief({
+        partnerName: opts.partnerName ?? core.persona.name ?? "Ducter",
+        taskId: id,
+        title: open.title,
+        brief: open.brief,
+        place: open.place,
+        cwd,
+        project: open.project || undefined,
+        mcpServerName: mcp.name,
+      }),
+      mcp: [mcp],
+      permissionMode: "bypass",
+    };
+    if (open.model) spec.model = open.model;
+    return spec;
+  }
+
+  function newRt(id: string, persona: string, card: TaskCard, spec: SessionSpec): TaskRt {
+    return {
+      id,
+      persona,
+      card,
+      spec,
+      running: false,
+      reportedThisTurn: false,
+      nudged: false,
+      stallNoted: false,
+      dropped: card.attention === "dropped",
+      attention: card.attention,
+      residency: card.residency,
+      started: Promise.resolve(),
+    };
+  }
+
+  // ---------- recovery: rebuild tasks from the Log after a restart ----------
+  // Every known task becomes addressable again (send resumes its native session by id).
+  // Tasks that were mid-turn when the process died are resumed and told to carry on.
+  const recovered: TaskRt[] = [];
+  for (const e of core.log.read({ fromSeq: 0, limit: Number.MAX_SAFE_INTEGER, kinds: ["task_open"] })) {
+    const open = e.body as Bodies["task_open"];
+    const card = core.tasks.get(open.taskId);
+    if (!card || tasks.has(open.taskId)) continue;
+    const t = newRt(open.taskId, e.persona, card, specFor(open.taskId, open, cwdOf(open.place, open.taskId, core.dataDir)));
+    for (const ev of core.log.read({ stream: stream(open.taskId), kinds: ["task_event"], limit: 50_000 })) {
+      const sid = ((ev.body as Bodies["task_event"]).raw as { sessionId?: string } | undefined)?.sessionId;
+      if (sid) t.sessionId = t.loggedSessionId = sid;
+    }
+    tasks.set(open.taskId, t);
+    recovered.push(t);
+  }
+  for (const t of recovered) {
+    const was = t.attention;
+    if (t.residency === "hot" || t.residency === "warm" || t.residency === "provisioning") setState(t, was, "parked");
+    if (was !== "working" && was !== "queued") continue;
+    t.started = (async () => {
+      try {
+        await Bun.sleep(0); // let the caller finish wiring (registerTaskTools, partner)
+        if (t.sessionId) {
+          logEvent(t, { role: "system", from: "runner", text: "main process restarted; resuming the session" });
+          await startSession(t, true);
+          await sendTurn(t, RESUME_AFTER_RESTART, "runner");
+        } else {
+          await provisionPlace({ place: t.card.place, cwd: t.spec.cwd });
+          await startSession(t, false);
+          await sendTurn(t, kickoff(t.card.title), "runner");
+        }
+      } catch (err) {
+        const reason = preview(err instanceof Error ? err.message : String(err), 500);
+        logEvent(t, { role: "system", from: "runner", text: `failed to resume after restart: ${reason}` });
+        setState(t, "failed", "parked", reason);
+      }
+    })();
+  }
+
   const runner: RunnerExt = {
     harness,
 
@@ -206,32 +303,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       const project = input.project ?? "";
       const persona = input.persona || core.persona.id;
 
-      core.log.append({
-        persona,
-        stream: stream(id),
-        origin: "system",
-        kind: "task_open",
-        body: { taskId: id, title, project, place: resolved.place, harness: h, model: input.model, brief: input.brief },
-      });
-
-      const mcp = core.mcp.configFor({ taskId: id });
-      const spec: SessionSpec = {
-        harness: h,
-        model: input.model,
-        cwd: resolved.cwd,
-        appendSystemPrompt: taskBrief({
-          partnerName: opts.partnerName ?? core.persona.name ?? "Ducter",
-          taskId: id,
-          title,
-          brief: input.brief,
-          place: resolved.place,
-          cwd: resolved.cwd,
-          project: project || undefined,
-          mcpServerName: mcp.name,
-        }),
-        mcp: [mcp],
-        permissionMode: "bypass",
-      };
+      const open: Bodies["task_open"] = { taskId: id, title, project, place: resolved.place, harness: h, model: input.model, brief: input.brief };
+      const opened = core.log.append({ persona, stream: stream(id), origin: "system", kind: "task_open", body: open });
       const card: TaskCard = {
         taskId: id,
         persona,
@@ -242,22 +315,10 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         model: input.model,
         attention: "queued",
         residency: "provisioning",
-        updatedAt: now().toISOString(),
+        openedAt: opened.ts,
+        updatedAt: opened.ts,
       };
-      const t: TaskRt = {
-        id,
-        persona,
-        card,
-        spec,
-        running: false,
-        reportedThisTurn: false,
-        nudged: false,
-        stallNoted: false,
-        dropped: false,
-        attention: "queued",
-        residency: "provisioning",
-        started: Promise.resolve(),
-      };
+      const t = newRt(id, persona, card, specFor(id, open, resolved.cwd));
       tasks.set(id, t);
       core.tasks.setState(id, "queued", "provisioning");
 
@@ -265,10 +326,10 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         try {
           await provisionPlace(resolved);
           await startSession(t, false);
-          await sendTurn(t, kickoff(title));
+          await sendTurn(t, kickoff(title), "runner");
         } catch (err) {
           const reason = preview(err instanceof Error ? err.message : String(err), 500);
-          logEvent(t, { role: "system", text: `failed to start: ${reason}` });
+          logEvent(t, { role: "system", from: "runner", text: `failed to start: ${reason}` });
           setState(t, "failed", "archived", reason);
         }
       })();
@@ -276,30 +337,36 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       return core.tasks.get(id) ?? card;
     },
 
-    async send(taskId, text, mode) {
+    async send(taskId, text, mode, from = "partner") {
       const t = get(taskId);
       if (t.dropped) throw new Error(`task ${taskId} was dropped`);
-      await t.started;
+      await t.started.catch(() => {});
       t.nudged = false;
       t.stallNoted = false;
       if (!t.session) {
-        // Parked (process gone): resume by native session id, or fail loudly.
+        // Parked (process gone or restarted): resume by native session id, or fail loudly.
         if (!t.sessionId) throw new Error(`task ${taskId} has no session to resume`);
         setState(t, currentAttention(t), "provisioning");
-        await startSession(t, true);
+        try {
+          await startSession(t, true);
+        } catch (err) {
+          setState(t, currentAttention(t), "parked");
+          throw err;
+        }
       }
-      const session = t.session!;
       if (isBusy(t)) {
-        const canSteer = (session as any).canSteer !== false;
-        if (mode !== "queue" && canSteer) {
-          await deliver(t, text, "steer");
+        if (mode !== "queue" && t.session!.canSteer) {
+          await deliver(t, text, "steer", from);
           return { delivered: "steered" };
         }
-        await deliver(t, text, "queue");
+        await deliver(t, text, "queue", from);
         return { delivered: "queued" };
       }
-      await sendTurn(t, text);
-      return { delivered: "queued" }; // idle: delivered as the next turn (contract has no "prompted")
+      // Idle: the text becomes the next turn. A finished or held task goes back to work.
+      const a = currentAttention(t);
+      if (a !== "working") setState(t, "working", "hot", from === "user" ? "Message from you" : undefined);
+      await sendTurn(t, text, from);
+      return { delivered: "prompted" };
     },
 
     async interrupt(taskId) {

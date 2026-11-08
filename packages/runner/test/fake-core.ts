@@ -22,7 +22,7 @@ export function createFakeCore(dataDir: string): FakeCore {
       const b = e.body as Bodies["task_open"];
       cards.set(b.taskId, {
         taskId: b.taskId, persona: e.persona, title: b.title, project: b.project, place: b.place, harness: b.harness,
-        model: b.model, attention: "queued", residency: "provisioning", updatedAt: e.ts,
+        model: b.model, attention: "queued", residency: "provisioning", openedAt: e.ts, updatedAt: e.ts,
       });
     } else if (e.kind === "task_state") {
       const b = e.body as Bodies["task_state"];

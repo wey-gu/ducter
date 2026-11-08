@@ -142,8 +142,8 @@ export interface HarnessPort {
 export interface Runner {
   harness: HarnessPort;
   openTask(input: { persona: string; title: string; brief: string; place?: Place; project?: string; harness?: string; model?: string }): Promise<TaskCard>;
-  // Logs the text as task_event {role:"user", from} before delivering it.
-  send(taskId: string, text: string, mode?: "steer" | "queue", from?: "user" | "partner"): Promise<{ delivered: Delivery }>;
+  // Logs the text as task_event {role:"user", from, clientId} before delivering it.
+  send(taskId: string, text: string, mode?: "steer" | "queue", from?: "user" | "partner", clientId?: string): Promise<{ delivered: Delivery }>;
   interrupt(taskId: string): Promise<void>;
   // Optional: resume (or start) a finished/dropped task's session and tell it to carry on.
   reopen?(taskId: string): Promise<{ delivered: Delivery }>;

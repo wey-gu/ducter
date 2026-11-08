@@ -179,8 +179,9 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     await deliver(t, text, "turn", from, logged);
   }
 
-  const logInput = (t: TaskRt, text: string, from: From, mode: string) =>
-    logEvent(t, { role: "user", from, text: preview(text, 16 * 1024), raw: { delivered: mode } });
+  // clientId: the client's id for a user's task_send, so core can tell a resend from a new message.
+  const logInput = (t: TaskRt, text: string, from: From, mode: string, clientId?: string) =>
+    logEvent(t, { role: "user", from, text: preview(text, 16 * 1024), ...(clientId ? { clientId } : {}), raw: { delivered: mode } });
 
   /** Logs the text first (the Log is the record even if delivery fails), then delivers it. */
   async function deliver(t: TaskRt, text: string, mode: "turn" | "steer" | "queue", from: From, logged = false) {
@@ -499,7 +500,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       return core.tasks.get(id) ?? card;
     },
 
-    async send(taskId, text, mode, from = "partner") {
+    async send(taskId, text, mode, from = "partner", clientId) {
       const t = get(taskId);
       if (typeof text !== "string" || !text.trim()) throw new Error("send needs non-empty text");
       if (t.dropped) throw new Error(`task ${taskId} was dropped`);
@@ -513,7 +514,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         if (!t.sessionId) throw new Error(`task ${taskId} has no session to resume`);
         // Resuming takes seconds (measured ~10 s for Claude Code): log the text now so the
         // transcript shows it at once; a resumed session is idle, so it becomes the next turn.
-        logInput(t, text, from, "turn");
+        logInput(t, text, from, "turn", clientId);
         setState(t, currentAttention(t), "provisioning");
         try {
           await startSession(t, true);
@@ -528,16 +529,19 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       }
       if (isBusy(t)) {
         if (mode !== "queue" && t.session!.canSteer) {
-          await deliver(t, text, "steer", from);
+          logInput(t, text, from, "steer", clientId);
+          await deliver(t, text, "steer", from, true);
           return { delivered: "steered" };
         }
-        await deliver(t, text, "queue", from);
+        logInput(t, text, from, "queue", clientId);
+        await deliver(t, text, "queue", from, true);
         return { delivered: "queued" };
       }
       // Idle: the text becomes the next turn. A finished or held task goes back to work.
       const a = currentAttention(t);
       if (a !== "working") setState(t, "working", "hot");
-      await sendTurn(t, text, from);
+      if (clientId) logInput(t, text, from, "turn", clientId);
+      await sendTurn(t, text, from, !!clientId);
       return { delivered: "prompted" };
     },
 

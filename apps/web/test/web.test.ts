@@ -4,6 +4,7 @@ import type { LogEvent } from "@ducter/protocol";
 import { buildWeb } from "../build.ts";
 import { baseUrl, codeFromHash, deviceName, wsUrl } from "../src/conn.ts";
 import { format, joinHan, langOfText, strings, TABLES } from "../src/i18n.ts";
+import { sameWords } from "../src/format.ts";
 import { markdown } from "../src/markdown.ts";
 import { headlineEvidence, isOutside, Store, title } from "../src/store.ts";
 
@@ -204,5 +205,14 @@ describe("the committed bundle", () => {
   test.skipIf(Bun.version !== PINNED)("is what src builds to (run `bun run build:web` after changing src)", async () => {
     const built = await buildWeb();
     for (const [name, text] of Object.entries(built)) expect(await Bun.file(join(import.meta.dir, "..", "static", name)).text()).toBe(text);
+  });
+});
+
+describe("task chip", () => {
+  test("a status line that only repeats the title falls back to the state", () => {
+    expect(sameWords("slow cleanup of the downloads list", "slow cleanup of the downloads list")).toBe(true);
+    expect(sameWords("Slow cleanup of the downloads list.", "slow cleanup of the  downloads list")).toBe(true);
+    expect(sameWords("Working", "slow cleanup of the downloads list")).toBe(false);
+    expect(sameWords(undefined, "x")).toBe(false);
   });
 });

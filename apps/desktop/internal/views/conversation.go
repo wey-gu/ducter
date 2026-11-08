@@ -92,6 +92,7 @@ func (a *App) rows() []row {
 
 // conversation is the default zoom level: one partner, no machinery.
 func (a *App) conversation(c *ui.Context) {
+	t := a.T
 	rows := a.rows()
 	a.header(c)
 	a.list.Key = func(i int) any {
@@ -109,8 +110,15 @@ func (a *App) conversation(c *ui.Context) {
 	} else {
 		a.list.FollowAnimation = nil
 	}
+	// Rhythm: S3 between two things the same voice says, S5 where the
+	// turn passes from one to the other.
+	userTurn := func(i int) bool { return rows[i].pending != nil || rows[i].entry.User != nil }
 	ui.List(c, &a.list, len(rows), func(i int) {
-		ui.Row(c).Justify(ui.Center).Children(func() {
+		top := float32(0)
+		if i > 0 && userTurn(i) != userTurn(i-1) {
+			top = t.S5 - t.S3
+		}
+		ui.Row(c).Justify(ui.Center).Padding(top, 0, 0, 0).Children(func() {
 			ui.Column(c).Grow(1).MaxWidth(convWidth).Children(func() {
 				if p := rows[i].pending; p != nil {
 					a.userBubble(c, p.text, true)
@@ -119,7 +127,7 @@ func (a *App) conversation(c *ui.Context) {
 				a.entry(c, rows[i].entry)
 			})
 		})
-	}).Grow(1).Padding(8, 24, 16, 24).Gap(22).Justify(ui.End).Children(func() {
+	}).Grow(1).Padding(t.S5, t.S5, t.S4, t.S5).Gap(t.S3).Children(func() {
 		if len(rows) == 0 && a.S.Welcomed {
 			a.emptyConversation(c)
 		}
@@ -134,19 +142,20 @@ func (a *App) conversation(c *ui.Context) {
 // first things to say. A suggestion fills the composer; it never sends.
 func (a *App) emptyConversation(c *ui.Context) {
 	t := a.T
-	col := ui.Column(c.Key("empty")).Margin(ui.Auto).MaxWidth(520).AlignItems(ui.Center).Gap(16)
+	col := ui.Column(c.Key("empty")).Margin(ui.Auto).MaxWidth(520).AlignItems(ui.Center).Gap(t.S4)
 	a.enter(c, col)
 	col.Children(func() {
 		a.avatar(c, theme.Idle, 180)
-		ui.Text(c, a.L.T("empty.conversation.title", a.S.PersonaName)).FontSize(26).FontWeight(800).LetterSpacing(-0.3)
+		ui.Text(c, a.L.T("empty.conversation.title", a.S.PersonaName)).FontSize(t.XXL).FontWeight(800).LetterSpacing(-0.3)
 		ui.Text(c, a.L.T("empty.conversation")).FontSize(t.LG).TextAlign(ui.Center).TextColor(t.InkSoft).LineHeight(1.6)
-		ui.Column(c).Gap(10).Margin(14, 0, 0, 0).AlignItems(ui.Stretch).Width(460).MaxWidthPercent(100).Children(func() {
+		ui.Column(c).Gap(t.S2).Margin(t.S3, 0, 0, 0).AlignItems(ui.Stretch).Width(460).MaxWidthPercent(100).Children(func() {
 			ui.Text(c, a.L.T("empty.try")).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted).LetterSpacing(0.5)
 			for n, text := range a.suggestions() {
 				i := n + 1
-				chip := ui.Row(c.Key(i)).Gap(12).Padding(13, 16).Radius(t.RadiusSM).Background(t.Surface).AlignItems(ui.Center).
-					Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(text)
-				a.press(c, chip, t.PressCard)
+				// A starter is a secondary button holding a sentence.
+				chip := ui.Row(c.Key(i)).Gap(t.S3).MinHeight(t.ControlLG).Padding(t.S3, t.S4).Radius(t.RadiusSM).AlignItems(ui.Center).
+					Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(text).Focusable()
+				a.buttonLook(c, chip, btnSecondary, t.ControlLG, t.Surface)
 				chip.Children(func() {
 					a.pebble(c, t.State([]string{"", "working", "done", "blocked"}[i]).Dot, 10, 12)
 					ui.Text(c, text).FontSize(t.MD).Grow(1).MinWidth(0)
@@ -157,11 +166,11 @@ func (a *App) emptyConversation(c *ui.Context) {
 				}
 			}
 			if n := a.Local.RepoCount(); n > 0 {
-				ui.Text(c, a.L.T("empty.repos.note", n)).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.5).Margin(4, 2, 0, 2)
+				ui.Text(c, a.L.T("empty.repos.note", n)).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.5).Margin(t.S1, 2, 0, 2)
 			}
 		})
 		// The end of the first run: where Ducter lives and what it can do.
-		if a.button(c, a.L.T("firstrun.devices"), btnText, 40, t.Bg) {
+		if a.button(c, a.L.T("firstrun.devices"), btnText, t.ControlMD, t.Bg) {
 			a.OpenDevices()
 		}
 	})
@@ -173,7 +182,7 @@ func (a *App) header(c *ui.Context) {
 	a.chrome(c, "conversation", func() {
 		a.avatar(c, a.presence(c), 40)
 		ui.Column(c).Gap(1).MinWidth(0).Children(func() {
-			ui.Text(c, a.S.PersonaName).FontSize(16).FontWeight(800).LetterSpacing(-0.2).SingleLine()
+			ui.Text(c, a.S.PersonaName).FontSize(t.MD).FontWeight(800).LetterSpacing(-0.2).SingleLine()
 			ui.Text(c, a.summary(b)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
 		})
 	}, func() {
@@ -186,22 +195,17 @@ func (a *App) header(c *ui.Context) {
 // lives on, and the word for it.
 func (a *App) devicesButton(c *ui.Context) {
 	t := a.T
-	btn := ui.Row(c.Key("devices")).Gap(8).Height(36).Padding(0, 14, 0, 5).Radius(12).Border(1, t.ChromeLine).Background(t.Surface).
-		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(a.L.T("nav.devices.label")).Shrink(0)
-	a.press(c, btn, t.PressQuiet)
-	btn.Children(func() {
+	if a.navButton(c, "devices", a.L.T("nav.devices"), a.L.T("nav.devices.label"), func() {
 		art := "laptop_awake"
 		if home := a.homeDevice(); home != nil {
 			art = deviceArt(home)
 		}
-		ui.Box(c).Size(26, 26).Radius(8).Background(t.Clay).Padding(2).Children(func() {
+		ui.Box(c).Size(22, 22).Radius(6).Background(t.Clay).Padding(1).Shrink(0).Children(func() {
 			if b := theme.Clay(art); b != nil {
 				ui.Image(c, b).Grow(1).AccessHidden(true)
 			}
 		})
-		ui.Text(c, a.L.T("nav.devices")).FontSize(t.MD).FontWeight(700).AccessHidden(true)
-	})
-	if btn.Clicked() {
+	}) {
 		a.OpenDevices()
 	}
 }
@@ -291,25 +295,22 @@ func (a *App) doneToday(b store.Board) int {
 // of the tasks in the conversation.
 func (a *App) onHandButton(c *ui.Context, b store.Board) {
 	t := a.T
-	btn := ui.Row(c.Key("onhand")).Gap(10).Height(36).Padding(0, 16, 0, 12).Radius(12).Border(1, t.ChromeLine).Background(t.Surface).
-		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(a.L.T("nav.onhand")).Shrink(0)
-	a.press(c, btn, t.PressQuiet)
-	btn.Children(func() {
-		n := 0
-		ui.Row(c).Gap(4).Children(func() {
-			for lane := store.LaneNeedsYou; lane <= store.LaneWaiting && n < 6; lane++ {
-				for _, task := range b.Lanes[lane] {
-					if n >= 6 {
-						break
-					}
-					n++
-					a.pebble(c.Key(task.ID), t.State(string(task.Attention())).Dot, 12, 14)
+	var shown []*store.Task
+	for lane := store.LaneNeedsYou; lane <= store.LaneWaiting; lane++ {
+		shown = append(shown, b.Lanes[lane]...)
+	}
+	shown = shown[:min(len(shown), 6)]
+	var glyph func()
+	if len(shown) > 0 {
+		glyph = func() {
+			ui.Row(c).Gap(3).AlignItems(ui.Center).Children(func() {
+				for _, task := range shown {
+					a.pebble(c.Key(task.ID), t.State(string(task.Attention())).Dot, 10, 12)
 				}
-			}
-		})
-		ui.Text(c, a.L.T("nav.onhand")).FontSize(t.MD).FontWeight(700)
-	})
-	if btn.Clicked() {
+			})
+		}
+	}
+	if a.navButton(c, "onhand", a.L.T("nav.onhand"), a.L.T("nav.onhand"), glyph) {
 		a.Route = RouteOnHand
 		a.markRead()
 	}
@@ -320,8 +321,8 @@ func (a *App) userBubble(c *ui.Context, text string, pending bool) {
 	ui.Row(c).Children(func() {
 		ui.Spacer(c)
 		r := t.BubbleRadius
-		b := ui.Text(c, text).Selectable().SelectionColor(t.InkSoft).FontSize(16).LineHeight(1.6).
-			TextColor(t.OnUserBubble).Background(t.UserBubble).Padding(14, 18).Radius(r[0], r[1], r[2], r[3]).
+		b := ui.Text(c, text).Selectable().SelectionColor(t.InkSoft).FontSize(t.MD).LineHeight(1.55).
+			TextColor(t.OnUserBubble).Background(t.UserBubble).Padding(t.S3, t.S4).Radius(r[0], r[1], r[2], r[3]).
 			MaxWidthPercent(72)
 		if pending {
 			b.Opacity(0.7)
@@ -335,7 +336,7 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 	case e.User != nil:
 		a.userBubble(c, e.User.Text, false)
 	case e.AI != nil:
-		ui.Column(c).MaxWidthPercent(88).Gap(12).Children(func() {
+		ui.Column(c).MaxWidthPercent(88).Gap(t.S3).Children(func() {
 			markdown.View(c, e.AI.Text, &a.md)
 			a.chipsFor(c, e)
 		})
@@ -348,7 +349,7 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 		a.living(c, e)
 	case e.Decision != nil:
 		if d := a.S.Decisions[e.Decision.DecisionID]; d != nil {
-			ui.Column(c).Padding(18).Gap(10).Radius(22).Background(t.NeedsYou.Surface).Children(func() {
+			ui.Column(c).Padding(t.S4, t.S5).Gap(t.S2).Radius(t.RadiusLG).Background(t.NeedsYou.Surface).Children(func() {
 				head := a.stateLabel(protocol.NeedsYou)
 				if task := a.S.Task(d.TaskID); task != nil && task.Title() != "" {
 					head += " · " + task.Title()
@@ -374,7 +375,7 @@ func (a *App) chipsFor(c *ui.Context, e *store.Entry) {
 	if len(tasks) == 0 {
 		return
 	}
-	ui.Column(c).Gap(10).Children(func() {
+	ui.Column(c).Gap(a.T.S3).Children(func() {
 		for _, t := range tasks {
 			a.taskFooter(c, t, "")
 		}
@@ -397,7 +398,7 @@ func (a *App) tasksOfReply(replyTo int64) []string {
 // chip of its task.
 func (a *App) job(c *ui.Context, j *store.Job, firstSeq int64) {
 	t := a.T
-	ui.Column(c).MaxWidthPercent(88).Gap(10).Children(func() {
+	ui.Column(c).MaxWidthPercent(88).Gap(t.S3).Children(func() {
 		if j.Ack != nil {
 			ui.Text(c, j.Ack.Text).Selectable().FontSize(t.PartnerSize).LineHeight(1.65)
 		}
@@ -416,7 +417,7 @@ func (a *App) job(c *ui.Context, j *store.Job, firstSeq int64) {
 			a.taskFooter(c, task, st.Text)
 			return
 		}
-		ui.Row(c).Gap(8).Wrap().AlignItems(ui.Center).Children(func() {
+		ui.Row(c).Gap(t.S2).Wrap().AlignItems(ui.Center).Children(func() {
 			col := t.Working
 			switch st.State {
 			case "done":
@@ -463,17 +464,15 @@ func (a *App) living(c *ui.Context, e *store.Entry) {
 		away = e.FirstSeq <= a.S.HeadSeq || !c.WindowActive() || c.WindowHidden()
 		a.livingAway[e.FirstSeq] = away
 	}
-	card := ui.Column(c.Key("living")).Padding(22, 24).Gap(16).Radius(t.RadiusXL).Background(t.Surface).
-		Shadow(0, t.PressCard.Offset, 0, 0, t.PressCard.Color).Label(a.L.T("living.title"))
+	card := ui.Column(c.Key("living")).Padding(t.S5).Gap(t.S4).Radius(t.RadiusXL).Background(t.Surface).
+		Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Label(a.L.T("living.title"))
 	a.resettle(c, card, e.Revision)
 	card.Children(func() {
 		if away {
-			ui.Row(c).Gap(12).AlignItems(ui.Center).Children(func() {
-				ui.Text(c, a.L.T("living.title")).FontSize(20).FontWeight(800).Grow(1)
+			ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
+				ui.Text(c, a.L.T("living.title")).FontSize(t.XL).FontWeight(800).LetterSpacing(-0.2).Grow(1)
 				if a.S.Unread(e) {
-					ui.Box(c).Padding(4, 10).Radius(t.Pill).Background(t.Highlight).Children(func() {
-						ui.Text(c, a.L.T("living.unread")).FontSize(t.XS).FontWeight(700).TextColor(t.HighlightInk)
-					})
+					a.tag(c, a.L.T("living.unread"), theme.StateColors{Surface: t.Highlight, Ink: t.HighlightInk})
 				}
 			})
 		}
@@ -489,7 +488,7 @@ func (a *App) living(c *ui.Context, e *store.Entry) {
 		if open >= 2 {
 			ui.Row(c).Children(func() {
 				ui.Spacer(c)
-				if a.button(c, a.L.T("decision.goall", len(a.defaultable())), btnQuiet, 40, t.Bg) {
+				if a.button(c, a.L.T("decision.goall", len(a.defaultable())), btnSecondary, t.ControlMD, t.Surface) {
 					a.GoOnAllDefaults()
 				}
 			})
@@ -501,16 +500,16 @@ func (a *App) living(c *ui.Context, e *store.Entry) {
 				continue
 			}
 			d := a.S.Decisions[it.DecisionID]
-			ui.Column(c.Key(i)).Padding(18).Gap(10).Radius(22).Background(t.NeedsYou.Surface).Children(func() {
+			ui.Column(c.Key(i)).Padding(t.S4, t.S5).Gap(t.S2).Radius(t.RadiusLG).Background(t.NeedsYou.Surface).Children(func() {
 				ui.Text(c, a.L.T("living.needsyou", needs)).FontSize(t.XS).FontWeight(800).TextColor(t.NeedsYou.Ink).LetterSpacing(0.5)
 				if d == nil {
-					ui.Text(c, it.Text).FontSize(17).LineHeight(1.5).FontWeight(500)
+					ui.Text(c, it.Text).FontSize(t.LG).LineHeight(1.5).FontWeight(500)
 					return
 				}
 				a.decisionBody(c, d, it.TaskID)
 			})
 		}
-		ui.Column(c).Gap(12).Children(func() {
+		ui.Column(c).Gap(t.S3).Children(func() {
 			for i, it := range items {
 				if it.Kind == "decision" {
 					continue
@@ -539,18 +538,16 @@ func (a *App) resettle(c *ui.Context, e ui.Element, revision int) {
 
 func (a *App) decisionBody(c *ui.Context, d *store.DecisionState, taskID string) {
 	t := a.T
-	ui.Text(c, d.Question).FontSize(17).LineHeight(1.5).FontWeight(500)
+	ui.Text(c, d.Question).FontSize(t.LG).LineHeight(1.5).FontWeight(500)
 	if d.Resolved == nil {
 		ui.Text(c, a.defaultLine(c, d)).FontSize(t.SM).TextColor(t.NeedsYou.Ink)
 	}
-	ui.Row(c).Gap(10).Wrap().AlignItems(ui.Center).Padding(4, 0, 0, 0).Children(func() {
+	ui.Row(c).Gap(t.S2).Wrap().AlignItems(ui.Center).Padding(t.S1, 0, 0, 0).Children(func() {
 		ui.Column(c).Grow(1).Children(func() {
-			a.decisionButtons(c, d, decisionStyle{height: 44, quietBg: t.Surface})
+			a.decisionButtons(c, d, decisionStyle{height: t.ControlMD, quietBg: t.Surface})
 		})
 		if id := firstNonEmpty(taskID, d.TaskID); id != "" {
-			l := ui.Text(c.Key("details"), a.L.T("living.details")).FontSize(14).FontWeight(700).TextColor(t.NeedsYou.Ink).
-				Cursor(ui.CursorPointer).Role(ui.RoleLink).Padding(12, 8)
-			if l.Clicked() {
+			if a.buttonFor(c, a.L.T("living.details"), a.decisionAbout(d), btnText, t.ControlMD, t.NeedsYou.Surface) {
 				a.OpenTask(id)
 			}
 		}
@@ -569,9 +566,9 @@ func (a *App) livingLine(c *ui.Context, it protocol.LivingItem) {
 	case "failed":
 		sc, icon = t.Failed, drawDot(t.Failed.Dot)
 	}
-	line := ui.Row(c).Gap(12).AlignItems(ui.Center).Cursor(ui.CursorPointer)
+	line := ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Cursor(ui.CursorPointer)
 	line.Children(func() {
-		ui.Box(c).Size(30, 30).Radius(11).Background(sc.Surface).Draw(icon).Shrink(0)
+		a.glyphTile(c, t.IconTile, sc.Surface, icon)
 		text := it.Text
 		if it.Title != "" {
 			text = it.Title + " · " + it.Text
@@ -630,17 +627,15 @@ func (a *App) openEvidence(c *ui.Context, ev protocol.EvidenceRef) {
 func (a *App) composer(c *ui.Context) {
 	t := a.T
 	if a.held != nil && a.held.taskID == "" {
-		ui.Row(c).Justify(ui.Center).Padding(0, 24).Children(func() {
-			ui.Column(c).Grow(1).MaxWidth(convWidth).Children(func() { a.heldLine(c) })
-		})
+		a.aboveComposer(c, func() { a.heldLine(c) })
 	}
-	ui.Row(c).Justify(ui.Center).Padding(12, 24, 28, 24).Children(func() {
-		box := ui.Row(c).Grow(1).MaxWidth(convWidth).Gap(10).AlignItems(ui.Center).Padding(8, 8, 8, 22).
-			Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.PressCard.Offset, 0, 0, t.PressCard.Color)
+	ui.Row(c).Justify(ui.Center).Padding(t.S2, t.S5, t.S5, t.S5).Children(func() {
+		box := ui.Row(c).Grow(1).MaxWidth(convWidth).Gap(t.S3).AlignItems(ui.Center).Padding(t.S2, t.S2, t.S2, t.S5).
+			Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color)
 		box.Children(func() {
 			ta := ui.TextArea(c.Key("composer"), &a.draft).Lines(1, 8).MinHeight(0).Placeholder(a.L.T("composer.placeholder", a.S.PersonaName)).
 				Label(a.L.T("composer.label", a.S.PersonaName)).AutoFocus().
-				Background(ui.Transparent).Border(0, ui.Transparent).Padding(12, 0).Grow(1).FontSize(17).
+				Background(ui.Transparent).Border(0, ui.Transparent).Padding(t.S3, 0).Grow(1).FontSize(t.MD).
 				OnTextKey(func(k ui.TextKey) bool {
 					if k.Key == ui.KeyEnter && k.Mods == 0 {
 						if a.SendMessage(k.Text()) {
@@ -654,7 +649,7 @@ func (a *App) composer(c *ui.Context) {
 				ta.Focus()
 				a.focusComposer = false
 			}
-			if a.iconButton(c, a.L.T("composer.send"), 52, t.Accent, t.PressAccent, drawSend(t.OnAccent)) {
+			if a.iconButton(c, a.L.T("composer.send"), t.ControlLG, btnAccent, drawSend) {
 				if a.SendMessage(a.draft) {
 					a.draft = ""
 				}
@@ -672,16 +667,19 @@ func firstNonEmpty(s ...string) string {
 	return ""
 }
 
-// heldLine says why a message was held, with Send anyway / Don't send.
+// heldLine says why a message was held, with Send anyway / Don't send:
+// an alert notice above the composer.
 func (a *App) heldLine(c *ui.Context) {
 	t := a.T
-	ui.Row(c.Key("held")).Gap(12).Wrap().Padding(12, 12, 12, 16).Radius(t.RadiusSM).Background(t.Failed.Surface).AlignItems(ui.Center).Role(ui.RoleAlert).Children(func() {
-		ui.Box(c).Size(10, 10).Radius(5).Background(t.Failed.Dot).Shrink(0)
-		ui.Text(c, a.L.T("secret.held")).FontSize(t.SM).FontWeight(700).TextColor(t.Failed.Ink).Grow(1).Basis(260).MinWidth(0)
-		if a.button(c, a.L.T("secret.cancel"), btnQuiet, 36, t.Surface) {
+	a.notice(c, "held", noticeAlert, func() {
+		a.glyphTile(c, 24, t.Surface, drawDot(t.Failed.Dot))
+	}, func() {
+		ui.Text(c, a.L.T("secret.held")).FontSize(t.SM).FontWeight(700).LineHeight(1.45).TextColor(t.Failed.Ink)
+	}, func() {
+		if a.button(c, a.L.T("secret.cancel"), btnSecondary, t.ControlSM, t.Surface) {
 			a.held = nil
 		}
-		if a.button(c, a.L.T("secret.send"), btnText, 36, t.Surface) {
+		if a.button(c, a.L.T("secret.send"), btnText, t.ControlSM, t.Surface) {
 			a.SendHeld()
 		}
 	})

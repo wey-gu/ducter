@@ -180,27 +180,27 @@ func (a *App) devicesView(c *ui.Context) {
 		root = ui.Column(c.Key("devices")).Grow(1).MinHeight(0)
 	}
 	root.Children(func() {
-		ui.Column(c).Grow(1).MinHeight(0).Gap(18).Padding(20, 32, 24, 32).Children(func() {
+		ui.Column(c).Grow(1).MinHeight(0).Gap(t.S4).Padding(t.S5, t.S6, t.S5, t.S6).Children(func() {
 			a.devicesHeader(c, dev)
 			switch {
 			case len(a.S.Devices) == 0:
 				a.devicesWaiting(c)
 			case narrow:
-				ui.Row(c).Gap(12).Wrap().Children(func() { a.deviceCards(c, 230) })
+				ui.Row(c).Gap(t.S3).Wrap().Children(func() { a.deviceCards(c, 230) })
 				ui.Column(c).Height(560).Children(func() { a.stage(c, dev) })
-				ui.Row(c).Gap(18).AlignItems(ui.Start).Children(func() {
-					ui.Column(c).Grow(1).Basis(0).Gap(12).Children(func() { a.abilityGrid(c, dev, 3) })
+				ui.Row(c).Gap(t.S4).AlignItems(ui.Start).Children(func() {
+					ui.Column(c).Grow(1).Basis(0).Gap(t.S3).Children(func() { a.abilityGrid(c, dev, 3) })
 					ui.Column(c).Grow(1).Basis(0).Children(func() { a.abilityDetail(c, dev) })
 				})
 			default:
-				ui.Row(c).Grow(1).MinHeight(0).Gap(18).AlignItems(ui.Stretch).Children(func() {
-					ui.Column(c).Width(260).Shrink(0).Gap(12).Children(func() {
+				ui.Row(c).Grow(1).MinHeight(0).Gap(t.S4).AlignItems(ui.Stretch).Children(func() {
+					ui.Column(c).Width(260).Shrink(0).Gap(t.S3).Children(func() {
 						ui.Text(c, a.L.T("devices.list")).FontSize(t.XS).FontWeight(800).LetterSpacing(1.2).TextColor(t.InkMuted)
 						a.deviceCards(c, 0)
 					})
 					ui.Column(c).Grow(1).MinWidth(0).Children(func() { a.stage(c, dev) })
 					ui.Scroll(c.Key("abilities")).Width(300).Shrink(0).Children(func() {
-						ui.Column(c).Gap(12).Padding(0, 0, 8, 0).Children(func() {
+						ui.Column(c).Gap(t.S3).Padding(0, 0, t.S2, 0).Children(func() {
 							a.abilityGrid(c, dev, 2)
 							a.abilityDetail(c, dev)
 						})
@@ -219,7 +219,7 @@ func (a *App) devicesHeader(c *ui.Context, dev *protocol.DeviceView) {
 	}
 	if a.Status != client.Connected && len(a.S.Devices) > 0 {
 		if home := a.homeDevice(); home != nil {
-			ui.Row(c.Key("devices-offline")).Gap(10).Padding(10, 16).Radius(t.RadiusSM).Background(t.Away.Surface).AlignItems(ui.Center).Children(func() {
+			ui.Row(c.Key("devices-offline")).Gap(t.S3).Padding(t.S3, t.S4).Radius(t.RadiusSM).Background(t.Away.Surface).AlignItems(ui.Center).Children(func() {
 				ui.Text(c, a.L.T("devices.offline", a.deviceNameIn(home))).FontSize(t.SM).FontWeight(700).TextColor(t.Away.Ink)
 			})
 		}
@@ -244,7 +244,7 @@ func (a *App) devicesWaiting(c *ui.Context) {
 			msg = a.L.T("devices.unsupported")
 		}
 	}
-	ui.Column(c.Key("devices-wait")).Grow(1).Justify(ui.Center).AlignItems(ui.Center).Gap(14).Children(func() {
+	ui.Column(c.Key("devices-wait")).Grow(1).Justify(ui.Center).AlignItems(ui.Center).Gap(t.S3).Children(func() {
 		a.avatar(c, theme.Idle, 140)
 		ui.Text(c, msg).FontSize(t.LG).TextColor(t.InkSoft)
 	})
@@ -260,25 +260,25 @@ func (a *App) deviceCards(c *ui.Context, width float32) {
 		sel := shown != nil && shown.ID == dv.ID
 		name := a.deviceName(dv)
 		chip, sc := a.deviceChip(dv)
-		card := ui.Row(c.Key("dev:" + dv.ID)).Gap(12).Padding(10).Radius(22).Background(t.Surface).AlignItems(ui.Center).
+		card := ui.Row(c.Key("dev:" + dv.ID)).Gap(t.S3).Padding(t.S3).Radius(t.RadiusLG).Background(t.Surface).AlignItems(ui.Center).
 			Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(name + " · " + chip).AccessSelected(sel)
 		if width > 0 {
 			card.Width(width)
 		}
 		if sel {
-			card.Border(3, t.Ink).Shadow(0, 5, 0, 0, t.Ink)
+			card.Border(3, t.Ink).Shadow(0, t.PressPrimary.Offset, 0, 0, t.Ink)
 		} else {
-			a.press(c, card, t.PressCard)
+			a.press(c, card, t.PressSecondary)
 			a.lift(c, card, 2)
 		}
 		card.Children(func() {
-			ui.Box(c).Size(72, 72).Radius(16).Background(t.Clay).Padding(8).Shrink(0).Children(func() {
+			ui.Box(c).Size(72, 72).Radius(t.RadiusMD).Background(t.Clay).Padding(t.S2).Shrink(0).Children(func() {
 				if b := theme.Clay(deviceArt(dv)); b != nil {
 					ui.Image(c, b).Grow(1).AccessHidden(true)
 				}
 			})
-			ui.Column(c).Gap(4).Grow(1).MinWidth(0).Children(func() {
-				ui.Text(c, name).FontSize(15).FontWeight(800).SingleLine()
+			ui.Column(c).Gap(t.S1).Grow(1).MinWidth(0).Children(func() {
+				ui.Text(c, name).FontSize(t.MD).FontWeight(800).SingleLine()
 				if dv.Home && name != dv.Name {
 					ui.Text(c, dv.Name).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
 				}
@@ -311,7 +311,8 @@ func (a *App) deviceChip(dv *protocol.DeviceView) (string, theme.StateColors) {
 }
 
 func (a *App) stateChipText(c *ui.Context, text string, sc theme.StateColors) {
-	ui.Row(c).Gap(6).Padding(3, 9).Radius(a.T.Pill).Background(sc.Surface).AlignItems(ui.Center).AlignSelf(ui.Start).MaxWidthPercent(100).Children(func() {
+	t := a.T
+	ui.Row(c).Gap(t.S2).Padding(3, 9).Radius(a.T.Pill).Background(sc.Surface).AlignItems(ui.Center).AlignSelf(ui.Start).MaxWidthPercent(100).Children(func() {
 		ui.Box(c).Size(7, 7).Radius(4).Background(sc.Dot).Shrink(0)
 		ui.Text(c, text).FontSize(a.T.XS).FontWeight(700).TextColor(sc.Ink).MaxLines(2)
 	})
@@ -602,7 +603,7 @@ func (a *App) slot(c *ui.Context, dv *protocol.DeviceView, id string, cx, cy, k 
 	}
 	addable := !on && !flying && a.canAdd(dv, id)
 	target := flying || (addable && (d.ability == id || d.hover == id))
-	col := ui.Column(c.Key("slot:" + id)).Absolute().Left(cx - 100).Top(cy - well/2).Width(200).AlignItems(ui.Center).Gap(6).
+	col := ui.Column(c.Key("slot:" + id)).Absolute().Left(cx - 100).Top(cy - well/2).Width(200).AlignItems(ui.Center).Gap(t.S2).
 		Role(ui.RoleButton).Label(label).Cursor(ui.CursorPointer)
 	if dim || (ab != nil && ab.State == protocol.AbilityLater) {
 		col.Opacity(0.72)
@@ -642,8 +643,8 @@ func (a *App) slot(c *ui.Context, dv *protocol.DeviceView, id string, cx, cy, k 
 			}
 		})
 		d.slots[id] = w.Bounds()
-		ui.Box(c).Padding(4, 10).Radius(t.Pill).Background(t.Surface).Shadow(0, 3, 0, 0, t.Line).Children(func() {
-			ui.Text(c, label).FontSize(13).FontWeight(800).SingleLine()
+		ui.Box(c).Padding(t.S1, t.S3).Radius(t.Pill).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Children(func() {
+			ui.Text(c, label).FontSize(t.SM).FontWeight(800).SingleLine()
 		})
 	})
 	if on && dv.State == protocol.DeviceAwake && ab != nil && id == protocol.AbilityWeb {
@@ -686,8 +687,8 @@ func (a *App) tokens(c *ui.Context, dv *protocol.DeviceView, r rig) {
 		}
 		w := 250 * k
 		x := tokenCenter(r.sw, n, i, k) - w/2
-		tok := ui.Row(c.Key("tok:"+h.Harness)).Absolute().Left(x).Top(r.tokensTop).Width(w).Height(66).Gap(10).
-			Padding(6, 14, 6, 6).Radius(24).Background(t.Surface).Shadow(0, 4, 0, 0, t.Line).AlignItems(ui.Center).
+		tok := ui.Row(c.Key("tok:"+h.Harness)).Absolute().Left(x).Top(r.tokensTop).Width(w).Height(66).Gap(t.S3).
+			Padding(t.S2, t.S3, t.S2, t.S2).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).AlignItems(ui.Center).
 			Role(ui.RoleGroup).Label(harnessName(h.Harness) + " · " + status)
 		if !h.LoggedIn || dv.State != protocol.DeviceAwake {
 			tok.Opacity(0.6)
@@ -697,7 +698,7 @@ func (a *App) tokens(c *ui.Context, dv *protocol.DeviceView, r rig) {
 				ui.Image(c, bmp).Size(52, 52).Shrink(0).AccessHidden(true)
 			}
 			ui.Column(c).Gap(2).MinWidth(0).Children(func() {
-				ui.Text(c, harnessName(h.Harness)).FontSize(14).FontWeight(800).SingleLine()
+				ui.Text(c, harnessName(h.Harness)).FontSize(t.SM).FontWeight(800).SingleLine()
 				ui.Text(c, status).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
 			})
 		})
@@ -730,16 +731,16 @@ func (a *App) stageLine(c *ui.Context, dv *protocol.DeviceView, sw float32) {
 	}
 	line := ui.Row(c.Key("line:" + text)).Absolute().Top(18).Left(16).Width(sw - 32).Justify(ui.Center)
 	line.Children(func() {
-		pill := ui.Row(c.Key("pill")).Gap(10).Padding(10, 16).Radius(18).Background(t.Surface).Shadow(0, 5, 0, 0, t.Line).
+		pill := ui.Row(c.Key("pill")).Gap(t.S3).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).
 			AlignItems(ui.Center).Role(ui.RoleStatus).Label(text).MaxWidthPercent(100)
 		a.enter(c, pill)
 		pill.Children(func() {
 			if check {
-				ui.Box(c).Size(26, 26).Radius(9).Background(sc.Surface).Draw(drawCheck(sc.Dot)).Shrink(0)
+				ui.Box(c).Size(26, 26).Radius(t.RadiusXS).Background(sc.Surface).Draw(drawCheck(sc.Dot)).Shrink(0)
 			} else {
 				ui.Box(c).Size(10, 10).Radius(5).Background(sc.Dot).Shrink(0)
 			}
-			ui.Text(c, text).FontSize(16).FontWeight(800).TextColor(t.Ink).MaxLines(2)
+			ui.Text(c, text).FontSize(t.MD).FontWeight(800).TextColor(t.Ink).MaxLines(2)
 		})
 	})
 }
@@ -751,7 +752,7 @@ func (a *App) abilityGrid(c *ui.Context, dv *protocol.DeviceView, cols int) {
 	d := a.devState()
 	ui.Text(c, a.L.T("devices.grid")).FontSize(t.XS).FontWeight(800).LetterSpacing(1.2).TextColor(t.InkMuted)
 	hovered := ""
-	ui.Grid(c).Columns(cols).Gap(10).Children(func() {
+	ui.Grid(c).Columns(cols).Gap(t.S3).Children(func() {
 		for _, id := range gridAbilities {
 			ab := (*protocol.DeviceAbility)(nil)
 			if dv != nil {
@@ -779,12 +780,12 @@ func (a *App) abilityGrid(c *ui.Context, dv *protocol.DeviceView, cols int) {
 			} else if addable {
 				label += " · " + a.L.T("ability.add", a.deviceNameIn(dv))
 			}
-			tile := ui.Column(c.Key("ab:"+id)).Radius(22).Background(t.Surface).Padding(8, 8, 10, 8).Gap(2).AlignItems(ui.Center).
+			tile := ui.Column(c.Key("ab:"+id)).Radius(t.RadiusLG).Background(t.Surface).Padding(t.S2, t.S2, t.S3, t.S2).Gap(2).AlignItems(ui.Center).
 				Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(label).Focusable().AccessSelected(d.ability == id)
 			if d.ability == id {
-				tile.Border(3, t.Ink).Shadow(0, 5, 0, 0, t.Ink)
+				tile.Border(3, t.Ink).Shadow(0, t.PressPrimary.Offset, 0, 0, t.Ink)
 			} else {
-				a.press(c, tile, t.PressCard)
+				a.press(c, tile, t.PressSecondary)
 			}
 			locked := ab == nil || ab.State == protocol.AbilityLater
 			if locked {
@@ -798,7 +799,7 @@ func (a *App) abilityGrid(c *ui.Context, dv *protocol.DeviceView, cols int) {
 			}
 			flying := d.fx != nil && d.fx.ability == id
 			tile.Children(func() {
-				well := ui.Box(c.Key("well")).WidthPercent(100).Height(84).Radius(16).Background(t.Clay).Padding(8)
+				well := ui.Box(c.Key("well")).WidthPercent(100).Height(84).Radius(t.RadiusMD).Background(t.Clay).Padding(t.S2)
 				well.Children(func() {
 					if bmp := theme.Clay(abilityArt(id)); bmp != nil {
 						im := ui.Image(c, bmp).Grow(1).AccessHidden(true)
@@ -808,9 +809,9 @@ func (a *App) abilityGrid(c *ui.Context, dv *protocol.DeviceView, cols int) {
 					}
 				})
 				d.tiles[id] = well.Bounds()
-				ui.Text(c, name).FontSize(14).FontWeight(800).TextAlign(ui.Center).Margin(4, 0, 0, 0)
+				ui.Text(c, name).FontSize(t.SM).FontWeight(800).TextAlign(ui.Center).Margin(4, 0, 0, 0)
 				if sub != "" {
-					ui.Text(c, sub).FontSize(11.5).TextColor(t.InkMuted).TextAlign(ui.Center).MaxLines(2)
+					ui.Text(c, sub).FontSize(t.XS).TextColor(t.InkMuted).TextAlign(ui.Center).MaxLines(2)
 				}
 			})
 			if tile.Clicked() {
@@ -842,13 +843,13 @@ func (a *App) abilityDetail(c *ui.Context, dv *protocol.DeviceView) {
 	id := d.ability
 	ab := dv.Ability(id)
 	name := a.L.T("ability." + id)
-	card := ui.Column(c.Key("detail:"+id)).Radius(24).Background(t.Surface).Shadow(0, 4, 0, 0, t.Line).Padding(16).Gap(10).
+	card := ui.Column(c.Key("detail:"+id)).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Padding(t.S4).Gap(t.S3).
 		Role(ui.RoleGroup).Label(name)
 	card.Children(func() {
-		ui.Text(c, name).FontSize(19).FontWeight(800)
+		ui.Text(c, name).FontSize(t.LG).FontWeight(800)
 		on := a.shownOn(dv, id)
 		if !(on && d.removing == id) {
-			ui.Text(c, a.L.T("ability."+id+".about")).FontSize(14).LineHeight(1.6).TextColor(t.InkSoft)
+			ui.Text(c, a.L.T("ability."+id+".about")).FontSize(t.MD).LineHeight(1.6).TextColor(t.InkSoft)
 		}
 		switch {
 		case ab == nil && !dv.Home && id != protocol.AbilityRemote:
@@ -859,31 +860,31 @@ func (a *App) abilityDetail(c *ui.Context, dv *protocol.DeviceView) {
 			a.unavailable(c, ab)
 		case on && id == protocol.AbilityRemote:
 			a.reachList(c)
-			if a.button(c, a.L.T("pair.again"), btnQuiet, 44, t.Bg) {
+			if a.button(c, a.L.T("pair.again"), btnSecondary, t.ControlMD, t.Bg) {
 				a.openPair()
 			}
 		case on && d.removing == id:
-			ui.Text(c, a.L.T("ability.remove."+id, a.deviceNameIn(dv))).FontSize(14).LineHeight(1.55).TextColor(t.Ink)
-			ui.Row(c).Gap(10).Children(func() {
-				if a.buttonFor(c, a.L.T("ability.remove"), name, btnPrimary, 44, t.Surface) {
+			ui.Text(c, a.L.T("ability.remove."+id, a.deviceNameIn(dv))).FontSize(t.MD).LineHeight(1.55).TextColor(t.Ink)
+			ui.Row(c).Gap(t.S3).Children(func() {
+				if a.buttonFor(c, a.L.T("ability.remove"), name, btnPrimary, t.ControlMD, t.Surface) {
 					a.removeAbility(dv, id)
 				}
-				if a.button(c, a.L.T("ability.remove.keep"), btnQuiet, 44, t.Bg) {
+				if a.button(c, a.L.T("ability.remove.keep"), btnSecondary, t.ControlMD, t.Bg) {
 					d.removing = ""
 				}
 			})
 		case on:
-			ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
-				ui.Box(c).Size(22, 22).Radius(8).Background(t.Awake.Surface).Draw(drawCheck(t.Awake.Dot)).Shrink(0)
+			ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+				ui.Box(c).Size(22, 22).Radius(t.RadiusXS).Background(t.Awake.Surface).Draw(drawCheck(t.Awake.Dot)).Shrink(0)
 				ui.Text(c, a.L.T("ability.on.at", a.deviceNameIn(dv))).FontSize(t.SM).FontWeight(700).Grow(1).MinWidth(0)
-				if dv.State == protocol.DeviceAwake && a.buttonFor(c, a.L.T("ability.remove"), name, btnText, 36, t.Surface) {
+				if dv.State == protocol.DeviceAwake && a.buttonFor(c, a.L.T("ability.remove"), name, btnText, t.ControlSM, t.Surface) {
 					d.removing = id
 				}
 			})
 		case dv.State != protocol.DeviceAwake:
 			a.reasonLine(c, a.L.T("ability.reason.asleep"))
 		case id == protocol.AbilityRemote && d.pair.open:
-			ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
+			ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 				a.retryPulse(c)
 				ui.Text(c, a.L.T("pair.waiting")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 			})
@@ -891,7 +892,7 @@ func (a *App) abilityDetail(c *ui.Context, dv *protocol.DeviceView) {
 			if r, ok := d.refused[dv.ID+"/"+id]; ok {
 				a.reasonLine(c, a.reasonText(r.Reason))
 			}
-			if a.buttonFor(c, a.L.T("ability.add", a.deviceNameIn(dv)), name, btnPrimary, 50, t.Surface) {
+			if a.buttonFor(c, a.L.T("ability.add", a.deviceNameIn(dv)), name, btnPrimary, t.ControlLG, t.Surface) {
 				a.startEquip(dv, id, d.tiles[id], false)
 			}
 			ui.Text(c, a.L.T("devices.empty.hint", a.deviceNameIn(dv))).FontSize(t.XS).TextColor(t.InkMuted).TextAlign(ui.Center)
@@ -901,7 +902,7 @@ func (a *App) abilityDetail(c *ui.Context, dv *protocol.DeviceView) {
 
 func (a *App) reasonLine(c *ui.Context, text string) {
 	t := a.T
-	ui.Row(c).Gap(8).Padding(10, 12).Radius(14).Background(t.SurfaceSunken).AlignItems(ui.Center).Children(func() {
+	ui.Row(c).Gap(t.S2).Padding(t.S3, t.S3).Radius(t.RadiusSM).Background(t.SurfaceSunken).AlignItems(ui.Center).Children(func() {
 		ui.Text(c, text).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).LineHeight(1.5)
 	})
 }
@@ -924,7 +925,7 @@ func (a *App) unavailable(c *ui.Context, ab *protocol.DeviceAbility) {
 	case "cua_old":
 		a.commandBoxSized(c, "cua-driver update --apply", 13)
 	case "cua_missing":
-		if a.button(c, a.L.T("ability.fix.install"), btnQuiet, 40, t.Bg) {
+		if a.button(c, a.L.T("ability.fix.install"), btnSecondary, t.ControlMD, t.Bg) {
 			a.openLink("https://github.com/trycua/cua")
 		}
 	}
@@ -944,7 +945,7 @@ func (a *App) reachList(c *ui.Context) {
 	if a.S.Reach == nil {
 		return
 	}
-	ui.Column(c).Gap(6).Children(func() {
+	ui.Column(c).Gap(t.S2).Children(func() {
 		for _, cl := range a.S.Reach.Clients {
 			line := a.L.T("reach.client.online", cl.Name)
 			if !cl.Connected {
@@ -953,7 +954,7 @@ func (a *App) reachList(c *ui.Context) {
 					line = a.L.T("reach.client.seen", cl.Name, ago)
 				}
 			}
-			ui.Row(c.Key("cl:" + cl.ID)).Gap(8).AlignItems(ui.Center).Children(func() {
+			ui.Row(c.Key("cl:" + cl.ID)).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 				sc := t.Away
 				if cl.Connected {
 					sc = t.Awake
@@ -1248,13 +1249,13 @@ func (a *App) pairSheet(c *ui.Context, dv *protocol.DeviceView, sw, sh float32) 
 	pc := a.S.PairCode
 	w := min(sw-48, 420)
 	sheet := ui.Column(c.Key("pair")).Absolute().Left((sw-w)/2).Top(40).Width(w).MaxHeight(sh-80).
-		Padding(20, 22).Gap(12).Radius(26).Background(t.Surface).Shadow(0, 6, 0, 0, t.Line).ZIndex(10).
+		Padding(t.S5, t.S5).Gap(t.S3).Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).ZIndex(10).
 		Role(ui.RoleDialog).Label(a.L.T("pair.title"))
 	a.enter(c, sheet)
 	sheet.Children(func() {
-		ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
+		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 			ui.Text(c, a.L.T("pair.title")).FontSize(t.LG).FontWeight(800).Grow(1).MinWidth(0)
-			if a.button(c, a.L.T("pair.close"), btnText, 36, t.Surface) {
+			if a.button(c, a.L.T("pair.close"), btnSecondary, t.ControlSM, t.Surface) {
 				d.pair.open = false
 			}
 		})
@@ -1266,7 +1267,7 @@ func (a *App) pairSheet(c *ui.Context, dv *protocol.DeviceView, sw, sh float32) 
 		left := exp.Sub(a.Now())
 		if !exp.IsZero() && left <= 0 {
 			a.reasonLine(c, a.L.T("pair.expired"))
-			if a.button(c, a.L.T("pair.again"), btnPrimary, 44, t.Surface) {
+			if a.button(c, a.L.T("pair.again"), btnPrimary, t.ControlMD, t.Surface) {
 				a.openPair()
 			}
 			return
@@ -1274,13 +1275,13 @@ func (a *App) pairSheet(c *ui.Context, dv *protocol.DeviceView, sw, sh float32) 
 		if left > 0 {
 			c.After(min(left, time.Minute))
 		}
-		ui.Row(c).Gap(16).AlignItems(ui.Center).Children(func() {
+		ui.Row(c).Gap(t.S4).AlignItems(ui.Center).Children(func() {
 			if len(pc.QR) > 0 {
 				qrBox(c, pc.QR, 132, t.Ink, t.Surface)
 			}
-			ui.Column(c).Gap(6).Grow(1).MinWidth(0).Children(func() {
+			ui.Column(c).Gap(t.S2).Grow(1).MinWidth(0).Children(func() {
 				ui.Text(c, a.L.T("pair.code")).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted)
-				ui.Text(c, pc.Code).Font(t.Mono).FontSize(28).FontWeight(800).LetterSpacing(1).Selectable()
+				ui.Text(c, pc.Code).Font(t.Mono).FontSize(t.XXL).FontWeight(800).LetterSpacing(1).Selectable()
 				mins := int(math.Ceil(left.Minutes()))
 				ui.Text(c, a.L.T("pair.once", mins)).FontSize(t.XS).TextColor(t.InkMuted)
 				if pc.Address != "" {
@@ -1294,7 +1295,7 @@ func (a *App) pairSheet(c *ui.Context, dv *protocol.DeviceView, sw, sh float32) 
 		} else {
 			a.reasonLine(c, a.L.T("pair.noaddress"))
 		}
-		ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
+		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 			a.retryPulse(c)
 			ui.Text(c, a.L.T("pair.waiting")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 		})

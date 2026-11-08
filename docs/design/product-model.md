@@ -23,7 +23,7 @@
 | Focus Window, window | **事 / Task** | A job big enough to need its own session and place. **Only windows get cards** |
 | workspace view | "展开 / Open" (no name of its own) | A task opened to full depth |
 | overview board | **手头 / On hand** | Every task across all personas |
-| attention states | 等你 / Needs you · 在做 / Working · 在等 / Waiting · 做完了 / Done · 没成 / Didn't work · 放下了 / Dropped | `done?` shows as "做完了 · 在检查 / Done · checking"; `queued` shows as "还没开始 / Not started yet" |
+| attention states | 等你 / Needs you · 在做 / Working · 在等 / Waiting · 做完了 / Done · 没成 / Didn't work · 放下了 / Dropped | `done?` shows as "做完了 · 在检查 / Done · checking" only while a check runs, else as Done (D68); `queued` shows as "还没开始 / Not started yet" |
 | decision actions | **好 / Go** · **先等等 / Hold** · **回复… / Reply…** | The Go button may name the action ("Rebase") |
 | Project | **项目 / Project**; no project = **其他 / Other** | An editable grouping label |
 | Place | **在哪儿做 / Where** | Where a task works |

@@ -159,6 +159,21 @@ describe("live-run regressions", () => {
     expect(acks).toEqual(["I'll add values() in foo.", "On it: foo: keys()"]);
   });
 
+  test("silence after the ack: a short follow-up line is dropped, a question is kept", async () => {
+    const { fc, partner, user } = setup(async (_i, s, n) => {
+      s.say(n === 0 ? "I'll add values() in foo." : "我去改。");
+      await fc.callTool("task_open", { title: "t", brief: "b" });
+      s.emit({ role: "tool", tool: { name: "mcp__ducter__task_open", output: "{}", ok: true } });
+      s.say(n === 0 ? "Task opened." : "顺便问一下：要不要同时更新 README？");
+      s.end();
+    });
+    user("add values()");
+    await partner.idle();
+    user("改一下");
+    await partner.idle();
+    expect(fc.events.filter((e) => e.kind === "ai_msg").map((e) => (e.body as any).text)).toEqual(["顺便问一下：要不要同时更新 README？"]);
+  });
+
   test("prewarm off: no session until the first trigger", async () => {
     const { fr, partner, user } = setup(ok, { prewarm: false });
     await Bun.sleep(5);

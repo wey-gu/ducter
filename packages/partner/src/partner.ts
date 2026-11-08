@@ -72,6 +72,7 @@ interface TurnState {
   // the MCP call; a stream event for a call the handler already acked must not ack again.
   opensSeen: number;
   opensHandled: number;
+  acked?: boolean; // an ack went out this turn
   zh: boolean;
 }
 
@@ -230,12 +231,16 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const appendAck = (t: TurnState, text: string): { jobId: string } => {
     const jobId = newId("job");
     core.log.append({ stream: "channel", origin: "partner", kind: "ack", body: { jobId, text: text.trim(), replyTo: replyToFor(t) } });
+    t.acked = true;
     return { jobId };
   };
   const flushPending = () => {
     if (!turn || turn.pending === null) return;
     const p = turn.pending;
     turn.pending = null;
+    // Silence after the ack (live: "Task opened.", "任务已开。" right after it). With a
+    // single ask in the turn, a short line after the ack that asks nothing is dropped.
+    if (turn.acked && turn.userTexts.length <= 1 && p.trim().length < 200 && !/[?？]/.test(p)) return;
     appendAiMsg(p);
   };
   const claimAck = (t: TurnState): { jobId: string } | null => {

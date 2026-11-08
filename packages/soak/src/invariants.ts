@@ -176,17 +176,31 @@ export function finalAttention(events: LogEvent[]): Map<string, Bodies["task_sta
  * 7. At rest every task tells the truth: nothing working or queued, needs_you only with an open
  * question, and an open question only on a task that needs you.
  */
-export function checkResting(cards: TaskCard[], opts: { offlineDevices?: Set<string> } = {}): Finding[] {
+export function checkResting(cards: TaskCard[], opts: { offlineDevices?: Set<string>; stalled?: Set<string> } = {}): Finding[] {
   const out: Finding[] = [];
   for (const c of cards) {
     const dev = (c.place as { device?: string }).device;
     const away = dev && opts.offlineDevices?.has(dev);
     if ((c.attention === "working" || c.attention === "queued") && !away)
-      out.push({ check: "rest.stuck", detail: `${c.taskId} "${c.title}" is ${c.attention}/${c.residency} at rest` });
+      // Stalled (no report after the nudge): the design keeps it working and has C tell M; that
+      // notice isn't built, so it is its own finding.
+      out.push({ check: opts.stalled?.has(c.taskId) ? "rest.stalled_silent" : "rest.stuck", detail: `${c.taskId} "${c.title}" is ${c.attention}/${c.residency} at rest` });
     if (c.attention === "needs_you" && !c.pendingDecisionId) out.push({ check: "rest.needs_you_without_question", detail: `${c.taskId} "${c.title}"` });
     if (c.pendingDecisionId && !["needs_you", "dropped"].includes(c.attention))
       out.push({ check: "rest.question_on_wrong_state", detail: `${c.taskId} "${c.title}" has ${c.pendingDecisionId} open while ${c.attention}` });
     if (c.residency === "hot") out.push({ check: "rest.hot", detail: `${c.taskId} "${c.title}" is still hot at rest (${c.attention})` });
+  }
+  return out;
+}
+
+/** Tasks whose last word is the runner's stall note (no report after one nudge). */
+export function stalledTasks(events: LogEvent[]): Set<string> {
+  const out = new Set<string>();
+  for (const e of events) {
+    if (e.kind !== "task_event") continue;
+    const b = e.body as Bodies["task_event"];
+    if ((b.raw as { stall?: boolean } | undefined)?.stall) out.add(b.taskId);
+    else if (b.role === "user" && b.from !== "runner") out.delete(b.taskId);
   }
   return out;
 }
@@ -251,7 +265,7 @@ export function checkAll(events: LogEvent[], cards: TaskCard[], d: DriverRecord,
     ...checkForwards(events),
     ...checkWaiters(events, now),
     ...checkJobs(events),
-    ...checkResting(cards, opts),
+    ...checkResting(cards, { ...opts, stalled: stalledTasks(events) }),
     ...checkLiving(events, cards),
     ...checkReports(events),
   ];

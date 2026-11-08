@@ -15,6 +15,7 @@ import { join } from "node:path";
 import type { Bodies, LogEvent } from "@ducter/protocol";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
 import { realClock, type Clock } from "./clock.ts";
+import { APNS_PREFIX, type ApnsSender } from "./apns.ts";
 
 // ---------- base64url ----------
 
@@ -100,6 +101,8 @@ export interface PushSub {
   locale: "zh" | "en";
   platform: string; // ios | android | macos | web
   createdAt: string;
+  /** The iPhone app (apps/ios): endpoint is apns:<device token>, keys are empty. */
+  apns?: { env: "sandbox" | "production"; topic: string };
 }
 
 export interface Quiet {
@@ -355,7 +358,8 @@ export function fitMessage(msg: PushMessage, max = MAX_PUSH_PLAINTEXT): Bytes {
   return bytes;
 }
 
-export async function sendPush(sub: PushSub, msg: PushMessage, v: Vapid, fetcher: Fetcher = fetch as Fetcher, urgency = "high"): Promise<SendResult> {
+export async function sendPush(sub: PushSub, msg: PushMessage, v: Vapid, fetcher: Fetcher = fetch as Fetcher, urgency = "high", apns?: ApnsSender): Promise<SendResult> {
+  if (sub.endpoint.startsWith(APNS_PREFIX)) return apns ? apns.send(sub, msg) : { endpoint: sub.endpoint, status: 0, gone: false };
   // Subscriptions saved before the allowlist (isPushEndpoint) are dropped, never posted to.
   if (!isPushEndpoint(sub.endpoint)) return { endpoint: sub.endpoint, status: 0, gone: true };
   let body: Bytes;
@@ -416,6 +420,8 @@ export function createPusher(opts: {
   holdMs?: number;
   coalesceMs?: number;
   fetcher?: Fetcher;
+  /** Sends to the iPhone app's subscriptions (apns.ts). */
+  apns?: ApnsSender;
   enabled?: boolean;
   /** A subscription whose device was disconnected gets nothing more (and is dropped). */
   alive?: (s: PushSub) => boolean;
@@ -463,7 +469,7 @@ export function createPusher(opts: {
           const d = list[0]!.decision!;
           msg = decisionMessage(d, { persona, task: d.taskId ? opts.taskTitle(d.taskId) : undefined, locale: s.locale, platform: s.platform, now: clock.now() });
         } else msg = doneMessage(list[0]!.done!, { persona, locale: s.locale });
-        return sendPush(s, msg, v, opts.fetcher);
+        return sendPush(s, msg, v, opts.fetcher, "high", opts.apns);
       }),
     );
     for (const r of results) if (r.gone) opts.store.unsubscribe(r.endpoint);
@@ -539,7 +545,7 @@ export function createPusher(opts: {
     async sendNow(make, only) {
       const v = await opts.store.vapid();
       const subs = liveSubs().filter((s) => !only || only(s));
-      const results = await Promise.all(subs.map((s) => sendPush(s, make(s), v, opts.fetcher)));
+      const results = await Promise.all(subs.map((s) => sendPush(s, make(s), v, opts.fetcher, "high", opts.apns)));
       for (const r of results) if (r.gone) opts.store.unsubscribe(r.endpoint);
       return results;
     },

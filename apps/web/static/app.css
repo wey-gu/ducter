@@ -65,6 +65,12 @@
   --t-fast: 120ms;
   --t-med: 320ms;
 
+  /* Depth (ui.md): the ledge means "pressable". Every filled button has the same ledge, a
+     darker shade of its fill, and presses down into it. Containers never get a ledge: they
+     float on a soft elevation shadow. Text buttons are flat. */
+  --ledge: 3px;
+  --elev: 0 1px 2px rgba(43, 33, 24, 0.06), 0 6px 18px rgba(43, 33, 24, 0.07);
+
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
@@ -96,6 +102,7 @@
     --failed-surface: #3a1621;
     --failed-ink: #f8a9bc;
     --press-card: #0d0a07;
+    --elev: 0 1px 2px rgba(0, 0, 0, 0.35), 0 6px 18px rgba(0, 0, 0, 0.3);
     --press-primary: #8a7a66;
     --press-quiet: #0d0a07;
   }
@@ -125,6 +132,7 @@
   --failed-surface: #3a1621;
   --failed-ink: #f8a9bc;
   --press-card: #0d0a07;
+  --elev: 0 1px 2px rgba(0, 0, 0, 0.35), 0 6px 18px rgba(0, 0, 0, 0.3);
   --press-primary: #8a7a66;
   --press-quiet: #0d0a07;
 }
@@ -246,15 +254,15 @@ a {
   padding: 0 12px 0 10px;
   border-radius: 16px;
   background: var(--surface);
-  box-shadow: 0 4px 0 var(--press-card);
+  box-shadow: 0 var(--ledge) 0 var(--press-card);
   font-weight: 700;
   flex-shrink: 0;
   transition: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
 }
 .press:active,
 .onhand-btn:active {
-  transform: translateY(3px);
-  box-shadow: 0 1px 0 var(--press-card);
+  transform: translateY(var(--ledge));
+  box-shadow: 0 0 0 transparent;
 }
 .pebbles {
   display: flex;
@@ -394,7 +402,7 @@ a {
   padding: 4px 12px 4px 10px;
   border-radius: 12px;
   background: var(--surface);
-  box-shadow: 0 3px 0 var(--press-card);
+  box-shadow: 0 var(--ledge) 0 var(--press-card);
   font-size: var(--sm);
   font-weight: 700;
   max-width: 100%;
@@ -485,23 +493,23 @@ a {
 .btn.primary {
   background: var(--ink);
   color: var(--bg);
-  box-shadow: 0 3px 0 var(--press-primary);
+  box-shadow: 0 var(--ledge) 0 var(--press-primary);
 }
 .btn.quiet {
   background: var(--surface);
-  box-shadow: 0 3px 0 var(--press-quiet);
+  box-shadow: 0 var(--ledge) 0 var(--press-quiet);
 }
 .btn.accent {
   background: var(--accent);
   color: var(--on-accent);
-  box-shadow: 0 3px 0 var(--press-accent);
+  box-shadow: 0 var(--ledge) 0 var(--press-accent);
 }
 .btn.text {
   padding: 0 10px;
   color: var(--ink-soft);
 }
 .btn:active:not(:disabled) {
-  transform: translateY(3px);
+  transform: translateY(var(--ledge));
   box-shadow: 0 0 0 transparent;
 }
 .btn:disabled {
@@ -521,7 +529,7 @@ a {
 .living {
   background: var(--surface);
   border-radius: 26px;
-  box-shadow: 0 4px 0 var(--press-card);
+  box-shadow: var(--elev);
   padding: 18px 16px;
   display: flex;
   flex-direction: column;
@@ -718,7 +726,7 @@ a {
   padding: 6px 6px 6px 16px;
   border-radius: var(--r-lg);
   background: var(--surface);
-  box-shadow: 0 4px 0 var(--press-card);
+  box-shadow: var(--elev);
 }
 .composer textarea {
   flex: 1;
@@ -738,7 +746,7 @@ a {
   border-radius: 15px;
   background: var(--accent);
   color: var(--on-accent);
-  box-shadow: 0 3px 0 var(--press-accent);
+  box-shadow: 0 var(--ledge) 0 var(--press-accent);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -746,7 +754,7 @@ a {
   transition: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
 }
 .send:active {
-  transform: translateY(3px);
+  transform: translateY(var(--ledge));
   box-shadow: none;
 }
 .send:disabled {
@@ -797,7 +805,7 @@ a {
   padding: 13px 15px;
   border-radius: var(--r-sm);
   background: var(--surface);
-  box-shadow: 0 4px 0 var(--press-card);
+  box-shadow: 0 var(--ledge) 0 var(--press-card);
   font-size: var(--md);
   text-align: left;
   transition: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
@@ -807,7 +815,7 @@ a {
 .ask {
   background: var(--surface);
   border-radius: 22px;
-  box-shadow: 0 4px 0 var(--press-card);
+  box-shadow: var(--elev);
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -1081,6 +1089,11 @@ a {
   max-height: 88vh;
   overflow-y: auto;
   animation: rise 360ms var(--spring);
+}
+/* Close is a secondary button, not a full-width bar (tapping outside closes too). */
+.sheet > .sheet-close {
+  align-self: center;
+  min-width: 120px;
 }
 .sheet .grab {
   width: 40px;

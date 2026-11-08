@@ -8,6 +8,7 @@ import { A } from "./app.ts";
 import { ago, cjkPad, deviceLabel, duration, harnessName, placeLine, when } from "./format.ts";
 import { markdown } from "./markdown.ts";
 import { disablePush, enablePush } from "./push-client.ts";
+import { inApp } from "./native.ts";
 import {
   attention,
   bodyReasonOf,
@@ -77,9 +78,9 @@ const Back = () => (
 
 const stateLabel = (a: Attention) => t(`state.${a}`);
 
-function Btn(p: { kind: "primary" | "quiet" | "text" | "accent"; onClick: () => void; label: string; about?: string; disabled?: boolean; grow?: boolean }) {
+function Btn(p: { kind: "primary" | "quiet" | "text" | "accent"; onClick: () => void; label: string; about?: string; disabled?: boolean; grow?: boolean; class?: string }) {
   return (
-    <button class={`btn ${p.kind}${p.grow ? " grow" : ""}`} onClick={p.onClick} aria-label={p.about ? `${p.label} · ${p.about}` : undefined} disabled={p.disabled}>
+    <button class={`btn ${p.kind}${p.grow ? " grow" : ""}${p.class ? ` ${p.class}` : ""}`} onClick={p.onClick} aria-label={p.about ? `${p.label} · ${p.about}` : undefined} disabled={p.disabled}>
       {p.label}
     </button>
   );
@@ -561,7 +562,7 @@ async function turnOnPush() {
       new Promise<never>((_, no) => setTimeout(() => no(new Error("timeout")), 20_000)),
     ]);
     if (s === "denied") A.toast(t("notify.denied"));
-    if (s === "unsupported") A.toast(t("notify.unsupported"));
+    if (s === "unsupported") A.toast(t(inApp() ? "notify.app.unavailable" : "notify.unsupported"));
     return s;
   } catch (err) {
     A.toast(t("result.action.failed", (err as Error).message));
@@ -598,7 +599,7 @@ function NotifyAsk() {
         </button>
       </div>
     );
-  if (A.push !== "off" || !A.me.push.publicKey) return null;
+  if (A.push !== "off" || !A.me.push.publicKey || (inApp() && !A.me.push.apns)) return null;
   return (
     <div class="ask">
       <div class="q">{t("notify.ask")}</div>
@@ -951,7 +952,7 @@ function Sheet({ children, label }: { children: preact.ComponentChildren; label:
       <div class="sheet" role="dialog" aria-modal="true" aria-label={label}>
         <div class="grab" />
         {children}
-        <Btn kind="quiet" label={t("sheet.close")} onClick={close} />
+        <Btn kind="quiet" class="sheet-close" label={t("sheet.close")} onClick={close} />
       </div>
     </>
   );
@@ -987,9 +988,10 @@ function SettingsSheet() {
       <div class="small">{A.me?.via === "device" ? `${A.me.deviceName ?? ""}` : deviceLabel(A.L, "local")}</div>
       <h3 style={{ margin: "6px 2px 0", fontSize: 12, color: "var(--ink-muted)" }}>{t("notify.title")}</h3>
       {A.push === "ios-install" && <div class="hint">{t("notify.ios")}</div>}
-      {A.push === "unsupported" && <div class="hint">{t("notify.unsupported")}</div>}
+      {A.push === "unsupported" && <div class="hint">{t(inApp() ? "notify.app.unavailable" : "notify.unsupported")}</div>}
+      {inApp() && A.push === "off" && !A.me?.push.apns && <div class="hint">{t("notify.app.nokey")}</div>}
       {A.push === "denied" && <div class="hint">{t("notify.denied")}</div>}
-      {A.push === "off" && A.me?.push.publicKey && (
+      {A.push === "off" && A.me?.push.publicKey && (!inApp() || A.me.push.apns) && (
         <Btn
           kind="primary"
           label={t("notify.on")}

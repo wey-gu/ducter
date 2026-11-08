@@ -4,6 +4,7 @@ import type { ClientFrame, LogEvent, ServerFrame } from "@ducter/protocol";
 import type { CoreApi, Runner } from "@ducter/protocol/src/internal.ts";
 import type { Decisions } from "./decisions.ts";
 import { PROJECTED_KINDS, taskStream } from "./registry.ts";
+import { machineId } from "./machine.ts";
 
 export interface WsData {
   live: boolean;
@@ -64,7 +65,8 @@ export function createWsHandler(deps: WsDeps) {
     if (f.t !== "hello" && !ws.data.live) throw new Error("send hello first");
     switch (f.t) {
       case "hello": {
-        send(ws, { t: "welcome", persona: core.persona.id, personaName: core.persona.name, headSeq: log.head() });
+        const machine = machineId();
+        send(ws, { t: "welcome", persona: core.persona.id, personaName: core.persona.name, headSeq: log.head(), ...(machine ? { machine } : {}) });
         // Channel only: task streams are pulled with task_history.
         const events =
           f.cursor != null && f.cursor >= 0

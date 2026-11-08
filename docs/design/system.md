@@ -193,6 +193,12 @@ machine" that opens **连接到你的 Ducter / Connect to your Ducter**: address
 and 配对码. The token goes to `<user config>/Ducter/connection.json` (0600, dir 0700); the
 Keychain is a later upgrade. A refused upgrade from a non-loopback server brings the card back
 with one line ("这台 Mac 已经和你的 Ducter 断开了"). `DUCTER_URL` + `DUCTER_TOKEN` still override.
+- **Whose paths.** The welcome carries `machine`: sha256 of the main's machine id (macOS
+  IOPlatformUUID, Linux `/etc/machine-id`), 32 hex, never the raw id (`core/src/machine.ts`).
+  The desktop computes the same hash; only when they match does it run `git diff` on a place's
+  worktree or open `file://` evidence. Otherwise those paths are the server's, so it copies them
+  instead of opening them. An SSH tunnel looks like loopback but names another machine. A main
+  that sends no `machine` (older) falls back to "loopback address = this machine".
 
 **Harness logins on the server (research/29).** Doctor offers `claude auth login` (prints a URL,
 waits for the pasted code; no browser on the server) and `codex login --device-auth` (enable

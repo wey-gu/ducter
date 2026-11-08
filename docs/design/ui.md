@@ -205,3 +205,19 @@ user is on the Isles view. Elsewhere it uses the plain device names.
   3D engine.
 - Every element has a text label and an i18n key.
 - Respects reduced motion: stones teleport instead of skipping.
+
+## Art direction (D53)
+
+- **Medium:** puffy matte clay 3D illustrations, pre-rendered as assets and composed in a 2D
+  UI (MyGo native). No real-time 3D.
+- **Lighting rules:** one soft key light from the top left, gentle ambient occlusion and
+  contact shadows. Never glow, neon, bloom, rainbow gradients, lens flare, or over-gloss.
+- **Character:** the round-2 clay Ducter (`docs/art/concepts/r2/r2_char_clay.jpg`) is the
+  identity reference for every pose.
+- **Capability screen:** round-2 board v2 (`r2_board_2.jpg`): device cards on the left, the
+  hero device on a pedestal with slots, the ability grid on the right, AI-account tokens with
+  allowance rings at the bottom.
+- **Equip motion:** sticker peel-and-stick (`research/26`, `research/28` timings).
+- **Asset pipeline:** generate with the reference images for consistency, select, clean up,
+  and export at 1×/2×/3× with transparent backgrounds. Labels are always live UI text, never
+  baked into art.

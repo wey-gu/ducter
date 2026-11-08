@@ -32,6 +32,20 @@
 | Waiter | (shown as the reason for Waiting: "在等 PR 被批 / Waiting for PR approval") | |
 | `until` loop | "一直…直到… / Keep … until …" on the task | |
 | Rule | **规则 / Rule** | A standing preference stated in words |
+| device states | **醒着 / Awake · 睡着了 / Asleep · 连不上 / Can't reach** · wake = **叫醒 / Wake** | Never "broken" or "offline" wording for sleep |
+| quota | **额度 / Allowance** | One per AI account, shared across its devices |
+| screen place controls | **画面 / Screen** tab · **接手 / Take over** · **交还 / Hand back** | |
+| loop iteration | **第 n 轮 / Round n** | |
+| checkpoint | **存档 / Checkpoint** | |
+| handoff | **换到 X 接着做 / Continue on X** | Never "superseded" in UI |
+| pause | **先停 / Pause** | Shown as a waiting reason |
+| Recipe | **准备方法 / Setup steps** | |
+| non-git draft copy | **草稿副本 / Draft copy** | |
+| routine fields | **复查 / Review on** · **可以碰 / May touch** | |
+| default outcomes | **按默认做了 / Went with the default** · **都按默认 / Go on all defaults** | |
+| outcomes | **停下了 / Stopped** · **撤销 / Undo** · **再试一次 / Try again** · **核对没过 / Check didn't pass** | |
+| quiet hours | **安静时段 / Quiet hours** | |
+| remote access ability | **远程打开 / Reach from anywhere** | |
 | capability (browser, computer use, phone, calls, remote access) | **本事 / Abilities** (research/27; pending user OK; runner-up 能力) | Equip = **装上 / Add to <device>**; remove = **取下 / Remove**; result = "MacBook 现在会上网了 / MacBook can now browse the web"; device detail "MacBook 会：… / can: …". Item names are ability phrases (上网, 用电脑, 远程打开). Never 学会/教会/赋予/授权 (they read as ordering a subordinate). Never 装备/Gear (reads as armour; rhymes with 设备). Claude Code skills stay **技能 / Skills** on their own page, never on the rack |
 | Intent | (shown as a decision or a policy line: "要推送到 ducter/fix-ci / Will push to …") | |
 | Artifact | **成果 / Results** | |

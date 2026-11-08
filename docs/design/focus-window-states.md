@@ -67,7 +67,9 @@ C may wake a sleeping machine when input arrives for a parked window on it.
 
 ## Cross-axis invariants
 
-1. Residency never changes attention. The two exceptions are both explicit: a failure to
+1. Residency never changes attention, with three explicit exceptions (D52 adds the third):
+   a device asleep for more than 2 minutes sets its working tasks to `blocked` with reason
+   "设备睡着了 / device asleep", and they return to `working` on wake. The other two: a failure to
    provision becomes `failed`, and `offline` past its limit while `working` notifies M, which
    may hand off to another machine (→ `superseded`).
 2. Waiting is free. `needs-you` and `blocked` windows park like any idle window. A human who

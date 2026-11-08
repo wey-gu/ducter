@@ -170,14 +170,13 @@ func (a *App) emptyConversation(c *ui.Context) {
 func (a *App) header(c *ui.Context) {
 	t := a.T
 	b := a.S.Board()
-	ui.Row(c).Gap(16).Padding(20, 32).AlignItems(ui.Center).Children(func() {
-		ui.Row(c).Gap(14).Grow(1).AlignItems(ui.Center).Children(func() {
-			a.avatar(c, a.presence(c), 56)
-			ui.Column(c).Gap(2).Children(func() {
-				ui.Text(c, a.S.PersonaName).FontSize(t.XL).FontWeight(800).LetterSpacing(-0.3)
-				ui.Text(c, a.summary(b)).FontSize(t.SM).TextColor(t.InkMuted)
-			})
+	a.chrome(c, "conversation", func() {
+		a.avatar(c, a.presence(c), 40)
+		ui.Column(c).Gap(1).MinWidth(0).Children(func() {
+			ui.Text(c, a.S.PersonaName).FontSize(16).FontWeight(800).LetterSpacing(-0.2).SingleLine()
+			ui.Text(c, a.summary(b)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
 		})
+	}, func() {
 		a.devicesButton(c)
 		a.onHandButton(c, b)
 	})
@@ -187,7 +186,7 @@ func (a *App) header(c *ui.Context) {
 // lives on, and the word for it.
 func (a *App) devicesButton(c *ui.Context) {
 	t := a.T
-	btn := ui.Row(c.Key("devices")).Gap(8).Height(48).Padding(0, 16, 0, 8).Radius(16).Background(t.Surface).
+	btn := ui.Row(c.Key("devices")).Gap(8).Height(40).Padding(0, 14, 0, 6).Radius(13).Background(t.Surface).
 		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(a.L.T("nav.devices.label")).Shrink(0)
 	a.press(c, btn, t.PressCard)
 	btn.Children(func() {
@@ -195,7 +194,7 @@ func (a *App) devicesButton(c *ui.Context) {
 		if home := a.homeDevice(); home != nil {
 			art = deviceArt(home)
 		}
-		ui.Box(c).Size(34, 34).Radius(10).Background(t.Clay).Padding(3).Children(func() {
+		ui.Box(c).Size(28, 28).Radius(9).Background(t.Clay).Padding(2).Children(func() {
 			if b := theme.Clay(art); b != nil {
 				ui.Image(c, b).Grow(1).AccessHidden(true)
 			}
@@ -283,7 +282,7 @@ func (a *App) doneToday(b store.Board) int {
 // of the tasks in the conversation.
 func (a *App) onHandButton(c *ui.Context, b store.Board) {
 	t := a.T
-	btn := ui.Row(c.Key("onhand")).Gap(12).Height(48).Padding(0, 18, 0, 14).Radius(16).Background(t.Surface).
+	btn := ui.Row(c.Key("onhand")).Gap(10).Height(40).Padding(0, 16, 0, 12).Radius(13).Background(t.Surface).
 		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(a.L.T("nav.onhand")).Shrink(0)
 	a.press(c, btn, t.PressCard)
 	btn.Children(func() {

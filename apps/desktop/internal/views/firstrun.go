@@ -18,7 +18,8 @@ const StartCommand = "ducter up"
 // on its own; the conversation replaces it as soon as Ducter is up.
 func (a *App) firstRun(c *ui.Context) {
 	t := a.T
-	ui.Column(c).Grow(1).Justify(ui.Center).AlignItems(ui.Center).Padding(32).Children(func() {
+	a.bareChrome(c)
+	ui.Column(c).Grow(1).MinHeight(0).Justify(ui.Center).AlignItems(ui.Center).Padding(8, 32, 8+ChromeH, 32).Children(func() {
 		card := ui.Column(c.Key("firstrun")).Width(560).MaxWidthPercent(100).Padding(36, 40, 32, 40).Gap(18).
 			Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.PressCard.Offset, 0, 0, t.PressCard.Color)
 		a.enter(c, card)

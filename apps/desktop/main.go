@@ -71,7 +71,14 @@ func main() {
 			Width:     1280,
 			Height:    860,
 			MinWidth:  760,
-			MinHeight: 560,
+			MinHeight: 580,
+			// No title bar strip: the content runs to the top and each zoom
+			// level's own bar (views.ChromeH) is the title region, with the
+			// traffic lights centered on it. The title stays for Mission
+			// Control, the Dock and assistive technology.
+			TitleBarStyle:        mygo.TitleBarHidden,
+			TrafficLightPosition: &mygo.Point{X: int(views.TrafficLights.X), Y: int(views.TrafficLights.Y)},
+			TitleBarHeight:       views.ChromeH,
 			Content:   ui.View(app.View),
 		})
 		app.Win = win

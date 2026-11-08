@@ -22,6 +22,8 @@ const (
 type Table map[string]string
 
 var zh = Table{
+	"task.kickoff":                   "交代给它了，开始做",
+	"task.session.started":           "开工了",
 	"task.changes.one":               "改动 · 1 个文件",
 	"time.opened.now":                "刚开",
 	"task.side.changes":              "改动",
@@ -336,6 +338,8 @@ var zh = Table{
 }
 
 var en = Table{
+	"task.kickoff":                   "Handed the brief over; starting",
+	"task.session.started":           "Session started",
 	"task.changes.one":               "Changes · 1 file",
 	"time.opened.now":                "just opened",
 	"task.side.changes":              "Changes",

@@ -169,6 +169,10 @@ func (a *App) devicesView(c *ui.Context) {
 		d.ability = protocol.AbilityWeb
 	}
 
+	a.chrome(c, "devices", func() {
+		a.crumb(c, a.L.T("nav.conversation"), RouteConversation)
+		a.chromeTitle(c, a.L.T("devices.title"))
+	}, nil)
 	var root ui.Element
 	if narrow {
 		root = ui.Scroll(c.Key("devices-narrow")).Grow(1)
@@ -210,15 +214,9 @@ func (a *App) devicesView(c *ui.Context) {
 
 func (a *App) devicesHeader(c *ui.Context, dev *protocol.DeviceView) {
 	t := a.T
-	ui.Row(c).Gap(16).AlignItems(ui.Center).Children(func() {
-		a.backButton(c)
-		ui.Column(c).Gap(4).Grow(1).MinWidth(0).Children(func() {
-			ui.Text(c, a.L.T("devices.title")).FontSize(30).FontWeight(800).LetterSpacing(-0.4)
-			if home := a.homeDevice(); home != nil {
-				ui.Text(c, a.L.T("devices.subtitle", a.S.PersonaName, a.deviceNameIn(home))).FontSize(t.MD).TextColor(t.InkMuted)
-			}
-		})
-	})
+	if home := a.homeDevice(); home != nil {
+		ui.Text(c, a.L.T("devices.subtitle", a.S.PersonaName, a.deviceNameIn(home))).FontSize(t.MD).TextColor(t.InkMuted)
+	}
 	if a.Status != client.Connected && len(a.S.Devices) > 0 {
 		if home := a.homeDevice(); home != nil {
 			ui.Row(c.Key("devices-offline")).Gap(10).Padding(10, 16).Radius(t.RadiusSM).Background(t.Away.Surface).AlignItems(ui.Center).Children(func() {

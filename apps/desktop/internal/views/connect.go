@@ -89,7 +89,8 @@ func (a *App) connectError(err error, where string) string {
 // connect is the card itself: calm, one step, the literal words.
 func (a *App) connect(c *ui.Context) {
 	t := a.T
-	ui.Column(c).Grow(1).Justify(ui.Center).AlignItems(ui.Center).Padding(32).Children(func() {
+	a.bareChrome(c)
+	ui.Column(c).Grow(1).MinHeight(0).Justify(ui.Center).AlignItems(ui.Center).Padding(8, 32, 8+ChromeH, 32).Children(func() {
 		card := ui.Column(c.Key("connect")).Width(560).MaxWidthPercent(100).Padding(36, 40, 32, 40).Gap(16).
 			Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.PressCard.Offset, 0, 0, t.PressCard.Color)
 		a.enter(c, card)

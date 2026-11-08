@@ -16,18 +16,20 @@ import (
 func (a *App) onHand(c *ui.Context) {
 	t := a.T
 	b := a.S.Board()
+	a.chrome(c, "onhand", func() {
+		a.crumb(c, a.L.T("nav.conversation"), RouteConversation)
+		a.chromeTitle(c, a.L.T("onhand.title"))
+		ui.Text(c, a.summary(b)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0).Margin(0, 0, 0, 4)
+	}, func() {
+		// 都按默认 / Go on all defaults: only worth a button with two or more.
+		if open := a.defaultable(); len(open) >= 2 && a.button(c, a.L.T("decision.goall", len(open)), btnPrimary, 38, t.Surface) {
+			a.GoOnAllDefaults()
+		}
+	})
 	ui.Scroll(c).Grow(1).Children(func() {
-		ui.Column(c).Gap(20).Padding(20, 32, 32, 32).Children(func() {
-			ui.Row(c).Gap(16).Wrap().AlignItems(ui.Center).Children(func() {
-				a.backButton(c)
-				ui.Text(c, a.L.T("onhand.title")).FontSize(t.Title).FontWeight(800).LetterSpacing(-0.5).Grow(1)
-				// 都按默认 / Go on all defaults: only worth a button with two or more.
-				if open := a.defaultable(); len(open) >= 2 && a.button(c, a.L.T("decision.goall", len(open)), btnPrimary, 48, t.Surface) {
-					a.GoOnAllDefaults()
-				}
-			})
+		ui.Column(c).Gap(20).Padding(24, 32, 32, 32).Children(func() {
 			if a.boardEmpty(b) && len(a.partnerDecisions()) == 0 {
-				ui.Column(c.Key("empty")).Padding(28, 28).Gap(14).Radius(t.RadiusXL).Border(2, t.Line).BorderStyle(ui.BorderDashed).AlignItems(ui.Center).Children(func() {
+				ui.Column(c.Key("empty")).Width(640).MaxWidthPercent(100).AlignSelf(ui.Center).Padding(28, 28).Gap(14).Radius(t.RadiusXL).Border(2, t.Line).BorderStyle(ui.BorderDashed).AlignItems(ui.Center).Children(func() {
 					a.avatar(c, theme.Idle, 120)
 					ui.Text(c, a.L.T("onhand.empty", a.S.PersonaName)).FontSize(t.LG).TextColor(t.InkSoft).TextAlign(ui.Center)
 				})

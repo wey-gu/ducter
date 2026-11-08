@@ -38,6 +38,9 @@ type Tokens struct {
 	Accent, OnAccent                                                  ui.Color
 	UserBubble, OnUserBubble                                          ui.Color
 	Line, LineSoft, Highlight, HighlightInk                           ui.Color
+	// Chrome is the window's top bar (it holds the traffic lights and is
+	// the title region); ChromeLine its hairline.
+	Chrome, ChromeLine ui.Color
 	// Diff colors.
 	Added, AddedInk, Deleted, DeletedInk ui.Color
 
@@ -103,6 +106,8 @@ func Pebble() *Tokens {
 		OnUserBubble:  hex("#FFF6EA"),
 		Line:          hex("#E8D9C4"),
 		LineSoft:      hex("#F3E6D3"),
+		Chrome:        hex("#FFFAF3"),
+		ChromeLine:    hex("#EEDFCA"),
 		Highlight:     hex("#FFE9A8"),
 		HighlightInk:  hex("#6B5000"),
 		Added:         hex("#DDF3E2"),

@@ -197,7 +197,7 @@ func (a *App) View(c *ui.Context) {
 	c.SetTheme(a.uiTheme)
 	a.drainActionResults(c)
 	a.shortcuts(c)
-	ui.Column(c).Fill().Background(a.T.Bg).TextColor(a.T.Ink).Font(a.T.Body).Children(func() {
+	ui.Column(c).Fill().Background(a.T.Bg).TextColor(a.T.Ink).Font(a.T.Body).Children(a.page(c, func() {
 		switch {
 		case a.Unauthorized || (!a.S.Welcomed && a.conn.open):
 			a.connect(c)
@@ -214,7 +214,7 @@ func (a *App) View(c *ui.Context) {
 		default:
 			a.conversation(c)
 		}
-	})
+	}))
 }
 
 // shortcuts: Esc goes up one level, Cmd+1 the conversation, Cmd+2 On

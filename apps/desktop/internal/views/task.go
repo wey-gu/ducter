@@ -25,8 +25,8 @@ func (a *App) task(c *ui.Context) {
 	if task == nil {
 		task = &store.Task{ID: a.TaskID}
 	}
-	ui.Column(c).Grow(1).Gap(14).Padding(16, 24, 24, 24).Children(func() {
-		a.taskHeader(c, task)
+	a.taskHeader(c, task)
+	ui.Column(c).Grow(1).MinHeight(0).Gap(14).Padding(16, 24, 24, 24).Children(func() {
 		if d := a.S.PendingDecision(task.ID); d != nil {
 			a.decisionBanner(c, d)
 		} else if finished(task) {
@@ -75,56 +75,43 @@ func (a *App) task(c *ui.Context) {
 
 func (a *App) taskHeader(c *ui.Context, task *store.Task) {
 	t := a.T
-	ui.Row(c).Gap(12).Wrap().AlignItems(ui.Center).Children(func() {
-		ui.Row(c).Gap(8).Grow(1).MinWidth(0).AlignItems(ui.Center).Children(func() {
-			crumb := func(label string, to Route) {
-				l := ui.Text(c.Key(label), label).FontSize(14).FontWeight(700).TextColor(t.InkMuted).Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Padding(6, 4).SingleLine().Shrink(0)
-				if l.Hovered() {
-					l.TextColor(t.Ink)
-				}
-				if l.Clicked() {
-					a.Route = to
-				}
-				ui.Text(c, "/").FontSize(14).TextColor(t.Line.Mix(t.InkMuted, 0.4))
-			}
-			crumb(a.L.T("nav.conversation"), RouteConversation)
-			crumb(a.L.T("nav.onhand"), RouteOnHand)
-			title := task.Title()
-			if title == "" {
-				title = a.L.T("task.unknown")
-			}
-			ui.Text(c, title).FontSize(20).FontWeight(800).SingleLine().Shrink(1)
-			a.stateChip(c, task.Attention())
-			if h := task.Browsing(); h != "" {
-				ui.Row(c).Gap(6).Padding(4, 10).Radius(a.T.Pill).Background(t.Working.Surface).AlignItems(ui.Center).Shrink(1).MinWidth(0).Children(func() {
-					ui.Box(c).Size(8, 8).Radius(4).Background(t.Working.Dot).Shrink(0)
-					ui.Text(c, a.L.T("browser.looking", h)).FontSize(t.XS).FontWeight(700).TextColor(t.Working.Ink).SingleLine()
-				})
-			}
-		})
-		if h := task.Harness(); h != "" {
-			ui.Row(c).Gap(8).Height(44).Padding(0, 14).Radius(t.RadiusSM).Background(t.Surface).
-				Shadow(0, 3, 0, 0, t.PressCard.Color).AlignItems(ui.Center).Children(func() {
-				ui.Box(c).Size(22, 22).Radius(7).Background(t.Ink).Center().Children(func() {
-					ui.Text(c, harnessBadge(h)).Font(t.Mono).FontSize(10).TextColor(t.OnUserBubble)
-				})
-				ui.Text(c, a.bodyLine(task)).FontSize(14).FontWeight(700)
+	w, _ := c.Size()
+	a.chrome(c, "task", func() {
+		a.crumb(c, a.L.T("nav.conversation"), RouteConversation)
+		a.crumb(c, a.L.T("nav.onhand"), RouteOnHand)
+		title := task.Title()
+		if title == "" {
+			title = a.L.T("task.unknown")
+		}
+		a.chromeTitle(c, title)
+		a.stateChip(c, task.Attention())
+		if h := task.Browsing(); h != "" {
+			ui.Row(c).Gap(6).Padding(4, 10).Radius(a.T.Pill).Background(t.Working.Surface).AlignItems(ui.Center).Shrink(1).MinWidth(0).Children(func() {
+				ui.Box(c).Size(8, 8).Radius(4).Background(t.Working.Dot).Shrink(0)
+				ui.Text(c, a.L.T("browser.looking", h)).FontSize(t.XS).FontWeight(700).TextColor(t.Working.Ink).SingleLine()
 			})
 		}
-		place := task.Place()
-		if w, _ := c.Size(); w < NarrowTask {
-			// Narrow: where it works and its project live under Details.
-			a.taskActions(c, task)
-			return
+	}, func() {
+		if h := task.Harness(); h != "" && w >= 980 {
+			ui.Row(c).Gap(8).Height(36).Padding(0, 12, 0, 8).Radius(11).Background(t.Surface).
+				Border(1, t.ChromeLine).AlignItems(ui.Center).Children(func() {
+				ui.Box(c).Size(20, 20).Radius(6).Background(t.Ink).Center().Children(func() {
+					ui.Text(c, harnessBadge(h)).Font(t.Mono).FontSize(9.5).TextColor(t.OnUserBubble)
+				})
+				ui.Text(c, a.bodyLine(task)).FontSize(t.SM).FontWeight(700).SingleLine()
+			})
 		}
-		ui.Row(c).Gap(8).Height(44).Padding(0, 14).Radius(t.RadiusSM).Background(t.SurfaceSunken).AlignItems(ui.Center).Children(func() {
-			if place.Kind != "none" && place.Kind != "" {
-				ui.Box(c).Size(8, 8).Radius(4).Background(t.Done.Strong)
+		if w >= NarrowTask {
+			place := task.Place()
+			ui.Row(c).Gap(8).Height(36).Padding(0, 12).Radius(11).Background(t.SurfaceSunken).AlignItems(ui.Center).Children(func() {
+				if place.Kind != "none" && place.Kind != "" {
+					ui.Box(c).Size(7, 7).Radius(4).Background(t.Done.Strong)
+				}
+				ui.Text(c, a.placeLine(place)).FontSize(t.SM).FontWeight(700).SingleLine()
+			})
+			if p := task.Project(); p != "" {
+				a.pill(c, p)
 			}
-			ui.Text(c, a.placeLine(place)).FontSize(t.SM).FontWeight(700)
-		})
-		if p := task.Project(); p != "" {
-			a.pill(c, p)
 		}
 		a.taskActions(c, task)
 	})
@@ -137,17 +124,17 @@ func (a *App) taskActions(c *ui.Context, task *store.Task) {
 	att := task.Attention()
 	switch att {
 	case protocol.Failed, protocol.Dropped:
-		if a.button(c, a.L.T("task.action.retry"), btnQuiet, 44, t.Surface) {
+		if a.button(c, a.L.T("task.action.retry"), btnQuiet, 36, t.Surface) {
 			a.TaskAction(task.ID, "reopen")
 		}
 		return
 	case protocol.Done, protocol.Superseded:
 		return
 	}
-	if att == protocol.Working && a.button(c, a.L.T("task.action.pause"), btnQuiet, 44, t.Surface) {
+	if att == protocol.Working && a.button(c, a.L.T("task.action.pause"), btnQuiet, 36, t.Surface) {
 		a.TaskAction(task.ID, "interrupt")
 	}
-	if a.button(c, a.L.T("task.action.drop"), btnText, 44, t.Surface) {
+	if a.button(c, a.L.T("task.action.drop"), btnText, 36, t.Surface) {
 		a.DropTask(task.ID)
 		title := task.Title()
 		c.AddToast(ui.Toast{ID: "undo:" + task.ID, Title: a.L.T("undo.dropped", title), Timeout: UndoWindow,
@@ -312,6 +299,9 @@ func (a *App) transcriptRow(c *ui.Context, task *store.Task, ev protocol.LogEven
 		switch {
 		case b.Tool != nil:
 			a.toolRow(c, b.Tool)
+		case b.Role == "user" && (b.From == "runner" || b.From == "" && strings.HasPrefix(b.Text, `Start the task "`)):
+			// The runner's own kickoff, not something anyone said.
+			a.systemLine(c, &protocol.TaskEvent{Text: a.L.T("task.kickoff")})
 		case b.Role == "user" && (b.From == "partner" || ev.Origin == protocol.OriginPartner):
 			// The partner talking to the task: its words, not the user's.
 			ui.Column(c).Gap(4).Padding(10, 14).Radius(16).Background(t.Working.Surface).Children(func() {
@@ -385,6 +375,8 @@ func (a *App) systemLine(c *ui.Context, b *protocol.TaskEvent) {
 		text = a.L.T("browser.looking", strings.TrimPrefix(text, "Looking at "))
 	}
 	switch strings.ToLower(strings.TrimSpace(text)) {
+	case "session started":
+		text = a.L.T("task.session.started")
 	case "turn completed", "turn complete", "turn ended":
 		text = a.L.T("task.turn.done")
 	}

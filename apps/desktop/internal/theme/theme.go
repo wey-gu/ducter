@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 )
@@ -42,6 +43,12 @@ type Tokens struct {
 
 	// semantic states
 	NeedsYou, Working, Waiting, Done, Failed StateColors
+	// device states (醒着 / 睡着了 / 连不上): awake is mint, asleep dusk,
+	// can't reach grey (never an error red: sleep is not broken).
+	Awake, Asleep, Away StateColors
+
+	// Clay is the surface clay art sits on (the renders' own cream).
+	Clay ui.Color
 
 	// type
 	Display, Body, Mono string
@@ -65,6 +72,16 @@ type Tokens struct {
 
 	// motion
 	Bouncy, Snappy ui.Animation
+	// Equip is the sticker peel-and-stick of an ability (research/26, 28).
+	Equip EquipMotion
+}
+
+// EquipMotion times the equip: the whole flight, the moment it snaps into
+// the slot (a fraction of the flight), the device's squash, how long
+// Ducter shows its done face, and the reduced-motion cross-fade.
+type EquipMotion struct {
+	Flight, Squash, DoneFace, Fade time.Duration
+	Snap                           float32
 }
 
 func hex(s string) ui.Color { return ui.Hex(s) }
@@ -98,6 +115,10 @@ func Pebble() *Tokens {
 		Waiting:  StateColors{Dot: hex("#FFC94D"), Surface: hex("#FFF0BF"), Ink: hex("#6B5000"), Strong: hex("#B58600")},
 		Done:     StateColors{Dot: hex("#7FD99A"), Surface: hex("#D6F5DC"), Ink: hex("#1F5E2F"), Strong: hex("#2E9A55")},
 		Failed:   StateColors{Dot: hex("#E5577A"), Surface: hex("#FBDDE4"), Ink: hex("#8A1F3B"), Strong: hex("#C23A5E")},
+		Awake:    StateColors{Dot: hex("#2FA45C"), Surface: hex("#D4F5DD"), Ink: hex("#1F5E2F"), Strong: hex("#2E9A55")},
+		Asleep:   StateColors{Dot: hex("#6C63A8"), Surface: hex("#ECE9F8"), Ink: hex("#4B3F70"), Strong: hex("#574F8F")},
+		Away:     StateColors{Dot: hex("#A99C8B"), Surface: hex("#EFEAE3"), Ink: hex("#5E5448"), Strong: hex("#8C7F6E")},
+		Clay:     hex("#FFF4E6"),
 
 		Display: "Bricolage Grotesque, PingFang SC, Noto Sans SC",
 		Body:    "Bricolage Grotesque, PingFang SC, Noto Sans SC",
@@ -117,6 +138,7 @@ func Pebble() *Tokens {
 
 		Bouncy: ui.Animation{Spring: ui.SpringOptions{Duration: 420e6, Bounce: 0.35}},
 		Snappy: ui.Snappy,
+		Equip:  EquipMotion{Flight: 820 * time.Millisecond, Snap: 0.62, Squash: 420 * time.Millisecond, DoneFace: 1800 * time.Millisecond, Fade: 200 * time.Millisecond},
 	}
 }
 

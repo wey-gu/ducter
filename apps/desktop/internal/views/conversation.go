@@ -159,6 +159,10 @@ func (a *App) emptyConversation(c *ui.Context) {
 				ui.Text(c, a.L.T("empty.repos.note", n)).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.5).Margin(4, 2, 0, 2)
 			}
 		})
+		// The end of the first run: where Ducter lives and what it can do.
+		if a.button(c, a.L.T("firstrun.devices"), btnText, 40, t.Bg) {
+			a.OpenDevices()
+		}
 	})
 }
 
@@ -173,8 +177,33 @@ func (a *App) header(c *ui.Context) {
 				ui.Text(c, a.summary(b)).FontSize(t.SM).TextColor(t.InkMuted)
 			})
 		})
+		a.devicesButton(c)
 		a.onHandButton(c, b)
 	})
+}
+
+// devicesButton opens Your devices and abilities: the clay device Ducter
+// lives on, and the word for it.
+func (a *App) devicesButton(c *ui.Context) {
+	t := a.T
+	btn := ui.Row(c.Key("devices")).Gap(8).Height(48).Padding(0, 16, 0, 8).Radius(16).Background(t.Surface).
+		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(a.L.T("nav.devices.label")).Shrink(0)
+	a.press(c, btn, t.PressCard)
+	btn.Children(func() {
+		art := "laptop_awake"
+		if home := a.homeDevice(); home != nil {
+			art = deviceArt(home)
+		}
+		ui.Box(c).Size(34, 34).Radius(10).Background(t.Clay).Padding(3).Children(func() {
+			if b := theme.Clay(art); b != nil {
+				ui.Image(c, b).Grow(1).AccessHidden(true)
+			}
+		})
+		ui.Text(c, a.L.T("nav.devices")).FontSize(t.MD).FontWeight(700).AccessHidden(true)
+	})
+	if btn.Clicked() {
+		a.OpenDevices()
+	}
 }
 
 func (a *App) summary(b store.Board) string {

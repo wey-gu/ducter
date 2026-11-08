@@ -27,6 +27,8 @@ const (
 	RouteConversation Route = iota
 	RouteOnHand
 	RouteTask
+	// RouteDevices is 你的设备和本事 / Your devices and abilities.
+	RouteDevices
 )
 
 // Updater runs a function on the UI thread and draws a frame
@@ -124,6 +126,8 @@ type App struct {
 	// dropped is the task just dropped, undoable until undoUntil.
 	dropped   string
 	undoUntil time.Time
+	// dev is Your devices and abilities' own state.
+	dev devicesState
 }
 
 // UndoWindow is how long a drop can be undone (D52).
@@ -205,6 +209,8 @@ func (a *App) View(c *ui.Context) {
 			a.onHand(c)
 		case a.Route == RouteTask:
 			a.task(c)
+		case a.Route == RouteDevices:
+			a.devicesView(c)
 		default:
 			a.conversation(c)
 		}
@@ -212,15 +218,18 @@ func (a *App) View(c *ui.Context) {
 }
 
 // shortcuts: Esc goes up one level, Cmd+1 the conversation, Cmd+2 On
-// hand, Cmd+K the composer of the level shown.
+// hand, Cmd+3 Your devices and abilities, Cmd+K the composer of the level
+// shown.
 func (a *App) shortcuts(c *ui.Context) {
 	switch {
 	case c.Shortcut(ui.Cmd, ui.Key1):
 		a.Route = RouteConversation
 	case c.Shortcut(ui.Cmd, ui.Key2):
 		a.Route = RouteOnHand
+	case c.Shortcut(ui.Cmd, ui.Key3):
+		a.OpenDevices()
 	case c.Shortcut(ui.Cmd, ui.KeyK):
-		if a.Route == RouteOnHand {
+		if a.Route == RouteOnHand || a.Route == RouteDevices {
 			a.Route = RouteConversation
 		}
 		a.focusComposer = true
@@ -235,7 +244,7 @@ func (a *App) Up() {
 	switch a.Route {
 	case RouteTask:
 		a.Route = RouteOnHand
-	case RouteOnHand:
+	case RouteOnHand, RouteDevices:
 		a.Route = RouteConversation
 	}
 }
@@ -442,6 +451,10 @@ func (a *App) Welcomed() {
 	a.flushOutbox()
 	if a.Route == RouteTask && a.TaskID != "" {
 		a.send(protocol.TaskHistoryReq{T: "task_history", TaskID: a.TaskID, Limit: 500})
+	}
+	// Devices are pushed only to sockets that asked: ask again on a new one.
+	if a.Route == RouteDevices || !a.S.DevicesAt.IsZero() {
+		a.send(protocol.DevicesReq{T: "devices"})
 	}
 }
 

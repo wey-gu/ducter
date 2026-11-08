@@ -59,6 +59,7 @@ type hub struct {
 	en       bool
 	runs     int
 	speed    float64
+	dev      *devices
 }
 
 func newHub() *hub {
@@ -664,7 +665,9 @@ func (h *hub) handle(c *conn, f protocol.ClientFrame) {
 		}
 		c.send(map[string]any{"t": "task_history", "taskId": f.TaskID, "events": events})
 	default:
-		c.send(map[string]any{"t": "error", "message": "unknown frame: " + f.T})
+		if !h.handleDevices(c, f) {
+			c.send(map[string]any{"t": "error", "message": "unknown frame: " + f.T})
+		}
 	}
 }
 

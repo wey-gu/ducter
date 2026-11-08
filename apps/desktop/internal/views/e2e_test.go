@@ -31,6 +31,8 @@ type harness struct {
 	frames chan protocol.ServerFrame
 	// pump, if set, runs while waiting (the live test feeds the client).
 	pump func()
+	// hub is the mock main (nil against a live backend).
+	hub *mock.Hub
 	// wait is how long until waits; 10 s when zero.
 	wait time.Duration
 }
@@ -46,7 +48,7 @@ func newHarness(t *testing.T, lang i18n.Lang) *harness {
 
 	s := store.New()
 	app := New(s, theme.Pebble(), i18n.New(lang))
-	h := &harness{t: t, app: app, frames: make(chan protocol.ServerFrame, 1024)}
+	h := &harness{t: t, app: app, hub: hub, frames: make(chan protocol.ServerFrame, 1024)}
 	c := client.New(client.Options{
 		URL:     "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws",
 		Locale:  string(lang),

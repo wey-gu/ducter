@@ -1,99 +1,106 @@
-# Ducter - An Opinionated Personal AI
+# Ducter: an opinionated personal AI
 
-## Motivation
+## Why I'm building it
 
-I decided to build my own Personal AI due to following things and thoughts
+I decided to build my own personal AI for three reasons.
 
-- conductor.build, the major AI toolchain that I had been using for more than 6 months,
-is winding down due to the team got aquired by meta(happy for them), the only hardcore tooling
- that's enough for me to both ochrestrate AI subs/Models from Codex, Claude Code and Cursor seamlessly,
- yet with elegant design, GUI based conversation and durable session managemnt, mobile clients and
- built-in Cloud Env -- I need an alternative in weeks(and my cloud condcutor env need to be switched in days).
+- **The tool I relied on is going away.** For more than six months my main AI workbench was
+  conductor.build. Its team was acquired by Meta (happy for them), and the product is winding
+  down. It was the only serious tool that let me orchestrate subscriptions and models from
+  Codex, Claude Code and Cursor side by side, with an elegant design, a GUI for every
+  conversation, durable sessions, mobile clients and a built-in cloud environment. I needed an
+  alternative within weeks, and my cloud environment had to move within days.
 
-- with thinking/researching and things being done more and more heavily, i strongly felt that
- my bandwidth limitation of my attention when i having to deal with sessions, although many sessions are
- already ochestrator agent that's manipulating swarms of subagents, some are long run loops that's always
- working actually -- the new platform need to address this, help dealing with the ochrestration thing and
- only depends on my attension when needed.
+- **My attention became the bottleneck.** As more and heavier thinking, research and building
+  ran through AI, I felt the limit of my own attention every time I had to tend to sessions.
+  Many of those sessions were already orchestrators driving swarms of subagents; some were
+  long-running loops that never stopped working. The next platform has to take over that
+  orchestration and ask for my attention only when it is really needed.
 
-- i had been using muse, openai dots and grok bot recently, with **Nowledge Mem**(to be with all wisdom and experiencese
- compounding in Mem for more than a year among all AI that i used), it's already with
- quite some aha moments in my work and life time. -- similar capabilies should be in my workflow of both
- life and work(when i used conductor), i also want those AI to be model-agnostic and token-vender neutral,
- aka, freedom of your AI subs/keys, just like what we got from **Nowledge Mem**, decouple your context or
- AI roles/identities from the ai/platforms
+- **Personal AI already changed my days, and it should not lock me in.** I have been using
+  Muse, OpenAI Dots and the Grok bot, together with **Nowledge Mem**, where more
+  than a year of knowledge and experience from every AI I use has compounded. They have given
+  me real "aha" moments at work and in life. I want the same powers in my everyday workflow, for
+  life and for work, and I want them model-agnostic and vendor-neutral: freedom to use whichever
+  subscriptions and keys I have. Nowledge Mem already gives me that freedom for context: my
+  context and my AI's identity are decoupled from any one model or platform.
 
 ## Imagine Ducter
 
-- The main object that human are dealing with in this system is an entity with a Persona, by default it's called
- Ducter but anyone can name him/her, its idenitity(agent card, persona context) are well maintained by the system
- itself all alone, user can create more than one main ai object
+- **You talk to one partner with a persona.** By default it is called Ducter, but anyone can
+  rename it. Its identity (its card and persona context) is maintained by the system itself. A
+  person can have more than one partner.
 
-- The main ai can be run on both cloud and locally machines
+- **It runs anywhere:** in the cloud or on your own machines.
 
-- Most of the things for a main ai will be delegated by a "subagent", in our system, we can call it a "Focus Window",
- this is due to I want it to be used by anyone instead of those who knows what is a subagent, session or git worktree, etc.
- a Focus Window technically could be an agent session, the agent session's harness/model will be carefully
- selected by main ai, yet, can be zoomed out and control(GUI, with proper like artifact sidbar etc.
- Like herdr, but totoally GUI) any time when a user would like to, just like we
- are talking to muse or bots, but all its background sessions are fully accessible in GUI way, only if
- the user wants so -- this ensures, users like me, heavily steering things in herdr/conductor to continuely have
- such controls on day-to-day work, yet is optional for fresh, other type of ai consumers
+- **Most work is handed to a task** (early on I called it a Focus Window), which is what a
+  developer would call a subagent. I want Ducter to work for people who have never heard of
+  subagents, sessions or git worktrees. Technically a task is an agent session, and the partner
+  carefully chooses its harness and model. You can zoom into any task and take control at any
+  time, in a real GUI with an artifact sidebar and so on (think of a terminal multiplexer for
+  agents, but fully graphical). Day to day it feels like talking to Muse or a chat bot, yet
+  every background session is fully open to you whenever you want it. People like me, who
+  steer a lot of work by hand, keep that control; for everyone else it stays optional.
 
-- can have computer use/browser use/ phone use(virtually or phsically)/ Phone Call(tuwa.ai - like) env and
- durable context/credential securely maintained
+- **It can act in the world:** computer use, browser use, phone use (virtual or physical) and
+  phone calls, with durable context and credentials kept securely.
 
-- Main ai and Focus Window ai harness/model are all decoupled from your subs or harness/models.
+- **No lock-in.** The partner and every task are decoupled from your subscriptions, harnesses
+  and models.
 
-- The Main ai's loop is native Off-the-Shelf harness based, with harness adapters maintained by use to
+- **The partner's loop is an off-the-shelf harness**, with harness adapters that Ducter
+  maintains. The adapters:
 
-  - make the main ai's session infiniate, yet optima to deal with multiple Focus Windows and user's freely
-    communication consistently, like, the session handling, should be like slack thread to a human, we dont see threads detail messages
-    at the first glance, but will look into when needed, and when next turn that's not about that "slack thread/Focus Window" any more
-    we'll make the prefix cache back to the main channel without unfolded thread info
-  - we carefully maintain the identity context with the harness adapters so when user want to use Opus 5.5, the main ai
-    is just claude code + our harness adapter + context our adapter maintained(and securely persistent in
-    Nowledge Mem)
-  - the harness adapter will do a lot of things to ensure the harness loop that's not for main ai, carefully
-    adapted to do such work wisely, for instance, if a new call(resume session) got an expired cache, the harness's
-    session history will start from a begining message from main channel that's reasonable(not from begning + compaction based).
-    also, like muse/ dots will response user first and run subagents at the same time, all those behaviors should be
-    done by our harness adapter(prompts, hooks, injections etc within each harness)
-    This is just an example, we need to carefully research on this on how we could leverage a loop/harness that's for a session
-    to be on such sessionless and main ai case.
-  - we should have machnisms for main ai and focus window to do long run loop based tasks, or code based(symantic) waiting
-    conditions etc...
-  - and we should handle plugin/apps properly, where, with our harness adapter to make them wired to main ai and focus window's
-    harness properly
+  - make the partner's session feel endless, while it stays good at juggling many tasks and an
+    open-ended conversation with you. It should work the way a Slack thread does for a person:
+    you don't read every message in a thread at first glance, you open it when you need it,
+    and when the next turn is no longer about that thread, the prompt cache goes back to the
+    main channel without the thread unfolded;
+  - carefully maintain the partner's identity context, so that when you choose, say, Opus 5.5,
+    the partner is simply Claude Code plus Ducter's adapter plus the context the adapter keeps
+    (stored securely in Nowledge Mem);
+  - adapt a harness loop that was never designed to be a long-lived assistant. For example,
+    when a resumed session finds its cache expired, its history restarts from a sensible
+    message in the main channel rather than from the very beginning plus a compaction. And, the
+    way Muse does, the partner answers you first while its tasks start in parallel. All of this
+    lives in the adapter (prompts, hooks and injections in each harness). These are only
+    examples; how to turn a per-session harness into a sessionless partner needs careful
+    research;
+  - give the partner and its tasks ways to run long loops and to wait on conditions expressed
+    in code or in plain language;
+  - wire plugins and apps into the partner's and each task's harness properly.
 
-- the UX/UI should be totoally different from tradtional POWERFUL AI -- SUPER simple, yet elegant and special -- user should just be talking to his
-  reliable work partner reports to her/him. When needed he can have micro management when needed or wanted.
-  Like landing into any focus window, could be a conductor like GUI of agent sessions and artifacts/browser use window,
-  could be like a ghost in a phone call meeting, etc.
-  To have more controlablity, we might either create super well-designed GUI/Animation showing progress of all Focus Windows,
-  or even world-class GenUI based?
+- **The interface should feel nothing like a traditional "powerful AI" tool.** It is very
+  simple, yet elegant and distinctive: you are just talking to a reliable partner who reports
+  to you, and you can micro-manage whenever you need or want to. Landing in a task might look
+  like a conductor-style view of agent sessions with artifacts and a browser window, or like
+  sitting silently in on a phone call. For more control, there could be beautifully designed
+  views and animation showing the progress of every task, or even world-class generative UI.
 
-- user could create GUI based Apps that's with code based/gen-ui and agentic ai when needed with needed, just
-  like magic, i came with this idea during a flight yesterday from shanghai to tokyo without internet and intrestingly
-  i found muse had such thing called muse spaces.
+- **You can make your own apps:** small GUI apps built from code or generative UI, with agentic
+  AI inside when they need it, as if by magic. The idea came to me on a flight from Shanghai to
+  Tokyo with no internet, and I later found that Muse has something similar, called Muse Spaces.
 
-- if, a heavy conductor-like ai user want ducter have more conductor view, our main ai could be in a floating GUI way, this is
-  an opiotnal mode that most of users wont use.
+- **A conductor-style view for heavy users.** Someone who wants more of a workbench can keep the
+  partner in a floating window. It is an optional mode most people won't use.
 
-- generally, user can access ducter on web, native mobile app or desktop app, the concept of bootstrap it,
-  enroll new machines should be extremely smooth, no concept burdon or confuse
+- **Everywhere you are:** on the web, in a native mobile app and in a desktop app. Setting it up
+  and adding a new machine should be extremely smooth, with no concepts to learn and nothing to
+  get confused by.
 
-- we should, at best use both mac machines, linux servers, nowledge mem, and like CF workers/r1 to enable
-  seemless experience of using ai to do things anywhere, and efficent.
+- **Use what you already have, well:** Macs, Linux servers, Nowledge Mem, and edge services like
+  Cloudflare Workers and R2, so that using AI to get things done feels seamless and efficient
+  wherever you are.
 
-## Feasibility Study
+## What to find out first
 
-- Main AI's key design to fulfill the requirements
-
-- Whether Harness Adapter over claude code, codex, deepseek harness, pi is feasible for Main AI
-
-- Prototyping core GUI design and flows, styling to be extremely modern and lovely like icons from , design like  etc
-
-- See if MyGO(ref an open-source agent app and https://github.com/egoist/mygo) + expo can be
-  our stack, yet, can we use https://github.com/botiverse/oar +
-  nowledge bridge for harness layer and control plane/communication within MyGO/expo
+- The key design of the partner, so it can meet everything above.
+- Whether a harness adapter over Claude Code, Codex, DeepSeek's harness and pi is feasible for
+  the partner.
+- Prototypes of the core screens and flows. The look should be modern and lovable: soft,
+  puffy, matte clay shapes with rounded silhouettes, a warm and sunny palette, gentle depth
+  from soft shadows, and calm, bouncy motion. Friendly like a toy, never childish, and quiet
+  enough to live with all day.
+- Whether [MyGo](https://github.com/egoist/mygo) plus Expo can be our client stack, and whether
+  [OAR](https://github.com/botiverse/oar) plus the Nowledge bridge can serve as the harness layer
+  and the control plane between them.

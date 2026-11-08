@@ -299,6 +299,9 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 		})
 	case e.Job != nil:
 		a.job(c, e.Job, e.FirstSeq)
+	case e.Noted != nil:
+		// Shown, not explained (D43): one quiet line, no card, no action.
+		ui.Text(c, a.L.T("memory.noted", e.Noted.Title)).FontSize(t.XS).TextColor(t.InkMuted)
 	case e.Living != nil:
 		a.living(c, e)
 	case e.Decision != nil:

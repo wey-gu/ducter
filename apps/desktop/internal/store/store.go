@@ -23,6 +23,7 @@ type Entry struct {
 	Job      *Job // for ack and orphan job_status entries
 	Living   *protocol.LivingMsg
 	Decision *protocol.Decision
+	Noted    *protocol.MemoryNoted // something the partner remembered
 	// Revision counts how often a living message was superseded in place,
 	// for the re-settle motion.
 	Revision int
@@ -486,6 +487,12 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 	case *protocol.ReadReceipt:
 		s.ReadUpTo = max(s.ReadUpTo, b.UpToSeq)
 		s.bySeq[ev.Seq] = nil
+	case *protocol.MemoryNoted:
+		if strings.TrimSpace(b.Title) == "" {
+			s.bySeq[ev.Seq] = nil
+			return
+		}
+		s.add(&Entry{Event: ev, Noted: b})
 	default:
 		s.bySeq[ev.Seq] = nil
 	}

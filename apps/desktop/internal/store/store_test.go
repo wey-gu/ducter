@@ -204,3 +204,19 @@ func TestUserActionStatusMarksTaskActed(t *testing.T) {
 		}
 	}
 }
+
+func TestMemoryNotedIsOneQuietEntry(t *testing.T) {
+	s := New()
+	s.Apply(events(
+		ev(1, "channel", protocol.KindUserMsg, protocol.UserMsg{Text: "以后测试都用假时钟"}),
+		ev(2, "channel", protocol.KindAIMsg, protocol.AIMsg{Text: "好，以后都这样。", ReplyTo: 1}),
+		ev(3, "channel", protocol.KindMemoryNoted, protocol.MemoryNoted{Title: "测试统一用假时钟", ReplyTo: 1}),
+		ev(4, "channel", protocol.KindMemoryNoted, protocol.MemoryNoted{Title: " "}),
+	))
+	if len(s.Channel) != 3 {
+		t.Fatalf("%d entries, want 3 (an empty title shows nothing)", len(s.Channel))
+	}
+	if n := s.Channel[2].Noted; n == nil || n.Title != "测试统一用假时钟" {
+		t.Errorf("noted entry %+v", s.Channel[2])
+	}
+}

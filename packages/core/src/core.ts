@@ -1,5 +1,5 @@
 // Assembles the control plane: Log, registry, decisions, living message, MCP hub, WS server.
-import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
@@ -99,6 +99,13 @@ export function startCore(opts: CoreOptions = {}): Core {
   const dataDir = opts.dataDir ?? defaultDataDir();
   // Owner-only when we create it: it holds the Log, worktrees, browser profiles, the env file.
   if (!existsSync(dataDir)) mkdirSync(dataDir, { recursive: true, mode: 0o700 });
+  // An existing dir from an older install (0755/0775) is tightened too, when it is ours.
+  try {
+    const st = statSync(dataDir);
+    if (process.getuid && st.uid === process.getuid() && (st.mode & 0o077) !== 0) chmodSync(dataDir, 0o700);
+  } catch {
+    /* not ours or not a plain dir: leave it */
+  }
   const clock = opts.clock ?? realClock;
   const persona = opts.persona ?? { id: "default", name: "Ducter", identity: DEFAULT_IDENTITY };
 

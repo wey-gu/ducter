@@ -68,7 +68,7 @@ if [ -n "$LINUX" ]; then
   ROOT="$(cd "$HERE/.." && pwd)"
   (cd "$ROOT" && bun install --frozen-lockfile >/dev/null 2>&1 || bun install >/dev/null)
   for arch in arm64 x64; do
-    step "正在构建 linux-$arch 版 ducter…" "Building ducter for linux-$arch…"
+    step "正在构建 linux-$arch 版 ducter…" "Building ducter for linux-${arch}…"
     mkdir -p "$LINUX/linux-$arch"
     DUCTER_TARGET="bun-linux-$arch" sh "$ROOT/packages/cli/build.sh" "$LINUX/linux-$arch/ducter"
     cp "$0" "$LINUX/linux-$arch/install.sh"

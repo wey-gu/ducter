@@ -86,3 +86,16 @@ test("a fresh data dir is owner-only", async () => {
   await core.stop();
   expect(statSync(dir).mode & 0o777).toBe(0o700);
 });
+
+test("an existing loose data dir from an older install is tightened", async () => {
+  const t = tempDir();
+  cleanup = t.cleanup;
+  const { startCore } = await import("../src/core.ts");
+  const { mkdirSync, chmodSync } = await import("node:fs");
+  const dir = join(t.dir, "old", ".ducter");
+  mkdirSync(dir, { recursive: true });
+  chmodSync(dir, 0o775);
+  const core = startCore({ dataDir: dir, port: 0 });
+  await core.stop();
+  expect(statSync(dir).mode & 0o777).toBe(0o700);
+});

@@ -61,15 +61,25 @@ export async function cmdPair(o: { t: T; style: Style; dataDir: string; port: nu
       if (!base) lines.push(`  ${style.dim(t("pair.worker.noAddress"))}`, "");
       console.log(lines.join("\n"));
     } else if (!base) {
-      lines.push(`  ${t("pair.tunnel")}`, "", `    ${tunnelCommand(o.port)}`, "", `  ${style.dim(t("pair.tunnelNote", { port: o.port }))}`, "");
+      // Over SSH this is a server and "your computer" is the one they typed on; on the Mac
+      // itself the tunnel comes from another computer.
+      const local = !process.env.SSH_CONNECTION;
+      lines.push(`  ${t(local ? "pair.tunnel.local" : "pair.tunnel")}`, "", `    ${tunnelCommand(o.port)}`, "", `  ${style.dim(t("pair.tunnelNote", { port: o.port }))}`, "");
     }
     if (!o.worker) {
       const lw = Math.max(width(t("pair.address")), width(t("pair.code"))) + 2;
       const row = (k: string, v: string) => `    ${k}${" ".repeat(lw - width(k))}${style.bold(v)}`;
-      lines.push(`  ${t("pair.howApp")}`, row(t("pair.address"), address), row(t("pair.code"), code), "", `  ${t("pair.orLink")}`, `    ${link}`, "");
-      console.log(lines.join("\n"));
-      const qr = await QR.toString(link, { type: "terminal", small: true, errorCorrectionLevel: "L" });
-      console.log(qr.split("\n").map((l) => "  " + l).join("\n"));
+      lines.push(`  ${t("pair.howApp")}`, row(t("pair.address"), address), row(t("pair.code"), code), "");
+      if (base) {
+        lines.push(`  ${t("pair.orLink")}`, `    ${link}`, "");
+        console.log(lines.join("\n"));
+        const qr = await QR.toString(link, { type: "terminal", small: true, errorCorrectionLevel: "L" });
+        console.log(qr.split("\n").map((l) => "  " + l).join("\n"));
+      } else {
+        // 127.0.0.1 on a phone is the phone itself: a QR here would open a page that can't load.
+        lines.push(`  ${style.dim(t("pair.noPhone"))}`, "");
+        console.log(lines.join("\n"));
+      }
     }
     if (!o.running) console.log(style.dim(t("pair.notRunning")));
     if (!o.wait) return 0;

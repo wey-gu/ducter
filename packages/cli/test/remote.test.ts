@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { plainStyle } from "../src/doctor.ts";
 import { translator } from "../src/i18n.ts";
-import { formatDevices, isLoopback, pairLink, publicUrl, servicePath, systemdUnit, tunnelCommand } from "../src/remote.ts";
+import { cmdPair, formatDevices, isLoopback, pairLink, publicUrl, servicePath, systemdUnit, tunnelCommand } from "../src/remote.ts";
 
 const en = translator("en");
 const zh = translator("zh");
@@ -55,6 +55,41 @@ describe("pairing text", () => {
     expect(isLoopback(undefined)).toBe(true);
     expect(isLoopback("127.0.0.1")).toBe(true);
     expect(isLoopback("0.0.0.0")).toBe(false);
+  });
+});
+
+describe("ducter pair without a public address", () => {
+  const run = async (env: { SSH_CONNECTION?: string; DUCTER_PUBLIC_URL?: string }) => {
+    const dir = mkdtempSync(join(tmpdir(), "ducter-pair-"));
+    const saved = { ssh: process.env.SSH_CONNECTION, pub: process.env.DUCTER_PUBLIC_URL };
+    const out: string[] = [];
+    const log = console.log;
+    console.log = (...a: unknown[]) => void out.push(a.join(" "));
+    try {
+      if (env.SSH_CONNECTION) process.env.SSH_CONNECTION = env.SSH_CONNECTION;
+      else delete process.env.SSH_CONNECTION;
+      if (env.DUCTER_PUBLIC_URL) process.env.DUCTER_PUBLIC_URL = env.DUCTER_PUBLIC_URL;
+      else delete process.env.DUCTER_PUBLIC_URL;
+      await cmdPair({ t: en, style: plainStyle, dataDir: dir, port: 7777, json: false, running: true, wait: false });
+    } finally {
+      console.log = log;
+      if (saved.ssh === undefined) delete process.env.SSH_CONNECTION;
+      else process.env.SSH_CONNECTION = saved.ssh;
+      if (saved.pub === undefined) delete process.env.DUCTER_PUBLIC_URL;
+      else process.env.DUCTER_PUBLIC_URL = saved.pub;
+      rmSync(dir, { recursive: true, force: true });
+    }
+    return out.join("\n");
+  };
+  test("on the Mac itself: no phone QR for 127.0.0.1, and the tunnel comes from another computer", async () => {
+    const out = await run({});
+    expect(out).toContain("From another computer");
+    expect(out).toContain("A phone can't reach this address");
+    expect(out).not.toContain("scan this with your phone");
+  });
+  test("over SSH (a server): the tunnel from your computer; with a public address the QR is back", async () => {
+    expect(await run({ SSH_CONNECTION: "203.0.113.5 50122 198.51.100.7 22" })).toContain("From your computer");
+    expect(await run({ DUCTER_PUBLIC_URL: "https://d.example.com" })).toContain("scan this with your phone");
   });
 });
 

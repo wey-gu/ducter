@@ -3,12 +3,17 @@ import type { ServerWebSocket } from "bun";
 import type { ClientFrame, LogEvent, ServerFrame } from "@ducter/protocol";
 import type { CoreApi, Runner } from "@ducter/protocol/src/internal.ts";
 import type { Decisions } from "./decisions.ts";
+import type { DevicesView } from "./devices.ts";
 import { PROJECTED_KINDS, taskStream } from "./registry.ts";
 
 export interface WsData {
   live: boolean;
   buf: LogEvent[];
   onHandDirty: boolean;
+  /** Asked for devices: gets a fresh devices frame whenever one changes. */
+  devices?: boolean;
+  /** The paired device behind a remote socket (core.ts). */
+  device?: { id: string };
 }
 
 const ON_HAND_KINDS = new Set<string>(PROJECTED_KINDS);
@@ -19,6 +24,8 @@ export interface WsDeps {
   core: CoreApi;
   decisions: Decisions;
   runner: () => Runner | undefined;
+  /** Your devices and abilities (devices.ts); absent in tests that don't need it. */
+  devices?: () => DevicesView | undefined;
   batchMs?: number;
 }
 
@@ -47,6 +54,24 @@ export function createWsHandler(deps: WsDeps) {
         send(ws, { t: "on_hand", onHand: tasks.onHand() });
       }
     }
+  };
+
+  // Devices: subscribers get a fresh frame on every change; a socket that comes or goes changes
+  // who is connected (Reach), so it is a change too.
+  const devicesView = () => deps.devices?.();
+  const pushDevices = async () => {
+    const v = devicesView();
+    if (!v) return;
+    const subs = [...sockets].filter((ws) => ws.data.devices);
+    if (!subs.length) return;
+    const frame = await v.frame();
+    for (const ws of subs) if (sockets.has(ws)) send(ws, frame);
+  };
+  let offDevices: (() => void) | undefined;
+  const watchDevices = () => {
+    if (offDevices) return;
+    const v = devicesView();
+    if (v) offDevices = v.onChange(() => void pushDevices().catch((err) => console.warn("[ws] devices:", (err as Error).message)));
   };
 
   const unsubscribe = log.subscribe((e) => {
@@ -156,6 +181,27 @@ export function createWsHandler(deps: WsDeps) {
       case "read":
         log.append({ stream: "channel", origin: "user", kind: "read_receipt", body: { upToSeq: f.upToSeq } });
         return;
+      case "devices": {
+        const v = devicesView();
+        if (!v) throw new Error("devices are not available");
+        watchDevices();
+        ws.data.devices = true;
+        send(ws, await v.frame());
+        return;
+      }
+      case "ability": {
+        const v = devicesView();
+        if (!v) throw new Error("devices are not available");
+        watchDevices();
+        send(ws, await v.setAbility(f.device, f.ability, f.on));
+        return; // the change pushes a fresh devices frame to every subscriber
+      }
+      case "pair_code": {
+        const v = devicesView();
+        if (!v) throw new Error("devices are not available");
+        send(ws, await v.pairCode());
+        return;
+      }
       case "task_history": {
         const stream = taskStream(f.taskId);
         const events = log.read({ stream, beforeSeq: f.beforeSeq, limit: Math.min(f.limit ?? 200, 2000) });
@@ -172,9 +218,11 @@ export function createWsHandler(deps: WsDeps) {
     websocket: {
       open(ws: ServerWebSocket<WsData>) {
         sockets.add(ws);
+        if (ws.data.device) devicesView()?.changed();
       },
       close(ws: ServerWebSocket<WsData>) {
         sockets.delete(ws);
+        if (ws.data.device) devicesView()?.changed();
       },
       async message(ws: ServerWebSocket<WsData>, raw: string | Buffer) {
         let f: ClientFrame;
@@ -191,7 +239,14 @@ export function createWsHandler(deps: WsDeps) {
         }
       },
     },
+    /** Paired client devices with a live socket now. */
+    connected(): Set<string> {
+      const out = new Set<string>();
+      for (const ws of sockets) if (ws.data.device) out.add(ws.data.device.id);
+      return out;
+    },
     stop() {
+      offDevices?.();
       unsubscribe();
       if (flushTimer) clearTimeout(flushTimer);
       for (const ws of sockets) ws.close(1001, "shutting down");

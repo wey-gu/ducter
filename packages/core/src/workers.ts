@@ -20,7 +20,17 @@ export interface WorkerHello {
   os?: string;
   arch?: string;
   version?: string;
+  /** laptop | mini | server: how the device is drawn on Your devices and abilities. */
+  kind?: string;
   harnesses?: { id: string; installed: boolean; loggedIn: boolean }[];
+}
+
+/** What the main last knew of a worker that isn't connected now. */
+export interface WorkerAway {
+  lastSeen: string;
+  /** The worker said it was going to sleep ({t:"sleep"}) before its socket went. */
+  asleep: boolean;
+  hello?: WorkerHello;
 }
 
 export interface OnlineWorker {
@@ -38,6 +48,10 @@ export interface WorkerSocketData {
 
 export interface Workers extends WorkerLinks {
   online(): OnlineWorker[];
+  /** Workers seen since the main started that aren't connected now, by device id. */
+  away(): Map<string, WorkerAway>;
+  /** Runs fn when a worker comes, goes, or says it is going to sleep. */
+  onChange(fn: () => void): () => void;
   websocket: {
     open(ws: ServerWebSocket<WorkerSocketData>): void;
     close(ws: ServerWebSocket<WorkerSocketData>): void;
@@ -110,6 +124,12 @@ export function createWorkers(opts: {
   const now = opts.now ?? (() => new Date());
   type Live = { ws: ServerWebSocket<WorkerSocketData>; hello?: WorkerHello };
   const live = new Map<string, Live>();
+  const gone = new Map<string, WorkerAway>();
+  const sleeping = new Set<string>();
+  const changeFns = new Set<() => void>();
+  const changed = () => {
+    for (const fn of changeFns) queueMicrotask(fn);
+  };
   const send = (ws: ServerWebSocket<WorkerSocketData>, f: object) => ws.send(JSON.stringify(f));
 
   // Per worker: pending requests, session listeners, online listeners. Kept across reconnects.
@@ -187,6 +207,11 @@ export function createWorkers(opts: {
         since: ws.data.since,
         ...(hello ? { hello } : {}),
       })),
+    away: () => new Map(gone),
+    onChange(fn) {
+      changeFns.add(fn);
+      return () => changeFns.delete(fn);
+    },
     link(device) {
       const byLive = [...live.values()].find((l) => l.ws.data.device.id === device || l.hello?.name === device || l.ws.data.device.name === device);
       const d = byLive?.ws.data.device ?? [...states.values()].find((st) => st.device.id === device || st.device.name === device)?.device ?? opts.find?.(device);
@@ -210,15 +235,19 @@ export function createWorkers(opts: {
         // A second connection from the same worker replaces the first.
         const old = live.get(ws.data.device.id);
         live.set(ws.data.device.id, { ws });
+        sleeping.delete(ws.data.device.id);
         if (old) {
           old.ws.close(4000, "replaced");
           lost(stateFor(ws.data.device));
         }
       },
       close(ws) {
-        if (live.get(ws.data.device.id)?.ws !== ws) return;
+        const entry = live.get(ws.data.device.id);
+        if (entry?.ws !== ws) return;
         live.delete(ws.data.device.id);
+        gone.set(ws.data.device.id, { lastSeen: now().toISOString(), asleep: sleeping.delete(ws.data.device.id), ...(entry.hello ? { hello: entry.hello } : {}) });
         lost(stateFor(ws.data.device));
+        changed();
       },
       message(ws, raw) {
         let f: any;
@@ -232,9 +261,14 @@ export function createWorkers(opts: {
           const entry = live.get(ws.data.device.id);
           if (entry?.ws !== ws) return;
           entry.hello = f as WorkerHello;
+          gone.delete(ws.data.device.id);
           send(ws, { t: "welcome", personaName: opts.personaName(), deviceId: ws.data.device.id, at: now().toISOString() });
           for (const fn of st.onOnline) queueMicrotask(fn);
+          changed();
         } else if (f?.t === "ping") send(ws, { t: "pong" });
+        // The worker's OS is putting it to sleep: when its socket goes, it is 睡着了 / Asleep,
+        // not 连不上 / Can't reach (A3: "Asleep" only when the device told us).
+        else if (f?.t === "sleep") sleeping.add(ws.data.device.id), changed();
         else if (f?.t === "res") {
           const p = st.pending.get(f.id);
           if (!p) return;

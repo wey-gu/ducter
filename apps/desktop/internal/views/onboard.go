@@ -62,6 +62,16 @@ func (a *App) signingIn() bool {
 	return false
 }
 
+// anyFixRunning reports whether a fix runs in the background now.
+func (a *App) anyFixRunning() bool {
+	for _, k := range a.setup.report.Checks {
+		if j := a.fixJob(k); j != nil && j.Running() {
+			return true
+		}
+	}
+	return false
+}
+
 // runFix starts a check's fix in the background.
 func (a *App) runFix(k local.Check) {
 	if a.setup.jobErr == nil {
@@ -228,6 +238,9 @@ func (a *App) jobFailed(c *ui.Context, k local.Check, j *local.Job) {
 		key = "fix.denied"
 	case "canceled":
 		key = "fix.canceled"
+		if k.Action == "signin" {
+			key = "fix.canceled.signin"
+		}
 	default:
 		if k.Action == "signin" {
 			key = "fix.signin.failed"

@@ -406,7 +406,11 @@ func (a *App) watchActive(c *ui.Context) {
 func (a *App) setupBlocked(c *ui.Context) {
 	t := a.T
 	blocking := a.setup.report.Blocking()
-	a.avatar(c, theme.NeedsYou, 100)
+	face := theme.NeedsYou
+	if a.anyFixRunning() {
+		face = theme.Working // installing, or waiting on the browser
+	}
+	a.avatar(c, face, 100)
 	title := a.L.T("setup.blocked")
 	if len(blocking) > 1 {
 		title = a.L.T("setup.blocked.many", len(blocking))

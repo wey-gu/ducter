@@ -47,6 +47,7 @@ const en = {
 
   "summary.ready": "This Mac is ready: {found}",
   "summary.sep": ", ",
+  "summary.item": "{label}: {detail}",
   "summary.more": "These are optional. ducter doctor shows how to add them.",
   "name.ask": "What should I be called? (Enter keeps {name}) ",
   "name.set": "Nice to meet you. I'm {name}.",
@@ -156,6 +157,7 @@ const zh: Record<MsgKey, string> = {
 
   "summary.ready": "这台 Mac 准备好了：{found}",
   "summary.sep": "、",
+  "summary.item": "{label}：{detail}",
   "summary.more": "这些是可选的，ducter doctor 里有装法。",
   "name.ask": "想叫我什么？（直接回车就叫 {name}）",
   "name.set": "好，以后我就叫 {name}。",
@@ -235,5 +237,9 @@ export type T = (key: MsgKey, vars?: Record<string, string | number>) => string;
 
 export function translator(locale: Locale): T {
   const table = STRINGS[locale];
-  return (key, vars) => table[key].replace(/\{(\w+)\}/g, (m, k) => (vars && k in vars ? String(vars[k]) : m));
+  return (key, vars) => {
+    const out = table[key].replace(/\{(\w+)\}/g, (m, k) => (vars && k in vars ? String(vars[k]) : m));
+    // zh copy spaces around a name so "Ducter" reads well; a Chinese name ("小鸭") sits flush.
+    return locale === "zh" && vars ? out.replace(/(\p{Script=Han}) (?=\p{Script=Han})/gu, "$1") : out;
+  };
 }

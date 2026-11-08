@@ -234,8 +234,8 @@ async function ask(prompt: string): Promise<string | undefined> {
     let answered = false;
     rl.question(prompt, (a) => {
       answered = true;
+      resolve(a); // before close(): close fires synchronously and would resolve undefined
       rl.close();
-      resolve(a);
     });
     rl.on("close", () => {
       if (!answered) process.stdout.write("\n");

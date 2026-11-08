@@ -94,19 +94,19 @@ if [ -n "$BUNDLE" ]; then
 Ducter: a personal AI you run on your own Mac.
 Ducter：在你自己的 Mac 上运行的个人 AI。
 
-1. Open Terminal in this folder (or drag install.sh into a Terminal window) and run:
-   在终端里进入这个文件夹（或者把 install.sh 拖进终端窗口），运行：
+1. Open Terminal, type "sh " (with the space), drag install.sh from this folder into the
+   window, and press Return.
+   打开“终端”，输入 "sh "（带一个空格），把这个文件夹里的 install.sh 拖进窗口，按回车。
 
-     sh install.sh
+2. Run the line it prints at the end (usually: ducter up).
+   运行它最后打印的那一行（一般是 ducter up）。
 
-2. Then start it / 然后启动：
-
-     ducter up
-
-The first start checks this Mac and tells you the one command to run for anything missing.
+The first start checks this Mac and gives you the one command for anything missing.
 You need Claude Code or Codex signed in; Ducter uses the AI plan you already have.
+It installs only two files into ~/.local/bin and keeps its data in ~/.ducter.
 第一次启动会检查这台 Mac，缺什么都会给出一行补上的命令。
 需要先登录 Claude Code 或 Codex；Ducter 用的是你已有的 AI 订阅。
+它只往 ~/.local/bin 放两个文件，数据放在 ~/.ducter。
 EOF
   step "打包好了：$(tilde "$BUNDLE")" "Bundle ready: $(tilde "$BUNDLE")"
   m "把整个文件夹发给朋友。在他的 Mac 上：sh install.sh（README.txt 里写了）" \
@@ -142,7 +142,7 @@ if [ "$ON_PATH" = 1 ]; then
 else
   printf '  %s/ducter up\n' "$(tilde "$BIN")"
   printf '\n'
-  m "想以后只打 ducter：（这个脚本不会改你的 shell 配置）" "To type just ducter from now on (this script doesn't touch your shell profile):"
+  m "想以后直接打 ducter（这个脚本不会改你的 shell 配置）：" "To type just ducter from now on (this script doesn't touch your shell profile):"
   printf '  echo '\''export PATH="%s:$PATH"'\'' >> ~/.zshrc && exec zsh\n' "$BIN"
 fi
 printf '\n'

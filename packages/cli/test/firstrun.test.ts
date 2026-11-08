@@ -117,3 +117,12 @@ describe("first-run screens", () => {
     expect(text).toContain("另外 3 项可选");
   });
 });
+
+describe("a Chinese name sits flush in zh copy", () => {
+  test("spaces around a name drop only between two Chinese characters", () => {
+    const zh = translator("zh");
+    expect(zh("up.ready", { name: "小鸭" })).toBe("小鸭准备好了");
+    expect(zh("up.ready", { name: "Ducter" })).toBe("Ducter 准备好了");
+    expect(zh("up.where.value", { dir: "~/.ducter" })).toBe("这台 Mac · 数据在 ~/.ducter");
+  });
+});

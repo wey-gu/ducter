@@ -211,7 +211,7 @@ export function formatSummary(r: DoctorReport, t: T, style: Style = plainStyle):
   const lines = [`  ${style.ok("✓")} ${t("summary.ready", { found: found.join(t("summary.sep")) })}`];
   for (const k of r.checks) {
     if (k.required || k.status === "ok" || k.id === "port") continue;
-    lines.push(style.dim(`    · ${k.label}: ${k.detail}`));
+    lines.push(style.dim(`    · ${t("summary.item", { label: k.label, detail: k.detail })}`));
   }
   if (lines.length > 1) lines.push(style.dim(`      ${t("summary.more")}`));
   return lines.join("\n");

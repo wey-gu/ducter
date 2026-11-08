@@ -398,7 +398,26 @@ func (s *Strings) T(key string, args ...any) string {
 	if len(args) == 0 {
 		return v
 	}
-	return fmt.Sprintf(v, args...)
+	out := fmt.Sprintf(v, args...)
+	if s.Lang == ZH {
+		out = JoinHan(out)
+	}
+	return out
+}
+
+// JoinHan drops a space between two Chinese characters: zh copy spaces
+// around a name ("%s 刚交回一件事") so a Latin name reads well, and a
+// Chinese name ("小鸭") must then sit flush.
+func JoinHan(s string) string {
+	rs := []rune(s)
+	out := rs[:0:0]
+	for i, r := range rs {
+		if r == ' ' && i > 0 && i+1 < len(rs) && unicode.Is(unicode.Han, rs[i-1]) && unicode.Is(unicode.Han, rs[i+1]) {
+			continue
+		}
+		out = append(out, r)
+	}
+	return string(out)
 }
 
 // Detect picks the language: DUCTER_LOCALE, else the system's preferred

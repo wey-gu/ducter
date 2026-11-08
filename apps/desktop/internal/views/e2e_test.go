@@ -183,7 +183,7 @@ func TestScenarioEndToEnd(t *testing.T) {
 		sd := s.Task("t-ci-1").Sends[0]
 		return sd.Delivered != "" && sd.Seq != 0
 	})
-	if !h.tt.HasText("排在这一轮之后") {
+	if !h.tt.HasText("排在手上这一步之后") {
 		t.Errorf("no delivery shown: %q", h.tt.Texts())
 	}
 	h.until("its answer", func() bool { return h.tt.HasText("收到，按你说的来。") })

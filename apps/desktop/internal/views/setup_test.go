@@ -148,7 +148,7 @@ func TestSetupBlockedShowsOnlyWhatBlocks(t *testing.T) {
 	if f.started != 1 {
 		t.Fatalf("started %d times", f.started)
 	}
-	h.has("正在叫醒小鸭…")
+	h.has("小鸭马上就好…")
 	h.shot("app-setup-starting-zh")
 	// Ducter answers: the conversation takes over, with starters from the
 	// firstrun.json that `ducter up` wrote after the window opened.
@@ -169,7 +169,7 @@ func TestSetupReadyMacStartsWithoutQuestions(t *testing.T) {
 	if f.started != 1 {
 		t.Fatalf("Mem holds the name, so no question; started %d", f.started)
 	}
-	h.has("Waking Ducter up…")
+	h.has("Getting Ducter ready…")
 	h.shot("app-setup-starting-en")
 	// Already asked once: no question either.
 	f2 := &fakeBackend{reports: []local.Report{readyReport()}}
@@ -204,7 +204,7 @@ func TestSetupSaysWhenDucterStops(t *testing.T) {
 	h.has("Ducter didn't start", "exec: no such file", "Try again")
 	f.startErr = nil
 	h.click("Try again")
-	h.has("Waking Ducter up…")
+	h.has("Getting Ducter ready…")
 	// It stops later, not because the app quit: say so, with the log.
 	h.app.setup.everUp = true
 	h.app.childExited()

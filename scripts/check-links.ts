@@ -1,7 +1,8 @@
 // Every relative link in the repo's Markdown resolves to a file or folder that exists.
 //   bun scripts/check-links.ts          # exit 1 and list the broken links
 // Checks [text](target) and <img src="target">, outside code fences and inline code.
-// URLs, mail links and same-page anchors are skipped; "#fragment" on a file link is ignored.
+// URLs and mail links are skipped. A "#fragment" pointing into a Markdown file (or the same
+// page) must match one of its headings, slugged the way GitHub does it.
 import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
@@ -12,25 +13,50 @@ const listed = Bun.spawnSync(
 );
 const files = listed.stdout.toString().split("\n").filter((f) => f && existsSync(join(root, f)));
 
+const slugs = new Map<string, Set<string>>();
+async function anchors(abs: string): Promise<Set<string>> {
+  let set = slugs.get(abs);
+  if (set) return set;
+  set = new Set();
+  const seen = new Map<string, number>();
+  let fence = false;
+  for (const line of (await Bun.file(abs).text()).split("\n")) {
+    if (/^\s*(```|~~~)/.test(line)) fence = !fence;
+    const h = !fence && /^#{1,6}\s+(.*?)\s*#*\s*$/.exec(line);
+    if (!h) continue;
+    const text = h[1]!.replace(/`/g, "").replace(/\[([^\]]*)\]\([^)]*\)/g, "$1");
+    const base = text.toLowerCase().replace(/[^\p{L}\p{N}\s_-]/gu, "").replace(/\s/g, "-");
+    const n = seen.get(base) ?? 0;
+    seen.set(base, n + 1);
+    set.add(n ? `${base}-${n}` : base);
+  }
+  slugs.set(abs, set);
+  return set;
+}
+
 const LINK = /\]\(\s*<?([^)\s>]+)>?(?:\s+"[^"]*")?\s*\)|<img[^>]*\ssrc="([^"]+)"/g;
 const broken: string[] = [];
 
 for (const file of files) {
   const text = await Bun.file(join(root, file)).text();
   let fenced = false;
-  text.split("\n").forEach((line, i) => {
+  const lines = text.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]!;
     if (/^\s*(```|~~~)/.test(line)) fenced = !fenced;
-    if (fenced) return;
+    if (fenced) continue;
     const bare = line.replace(/`[^`]*`/g, (code) => " ".repeat(code.length));
     for (const m of bare.matchAll(LINK)) {
       const target = m[1] ?? m[2];
-      if (!target || /^([a-z][a-z0-9+.-]*:|#|\/\/)/i.test(target)) continue;
-      const path = decodeURIComponent(target.split("#")[0]!.split("?")[0]!);
-      if (!path) continue;
-      const abs = path.startsWith("/") ? join(root, path) : join(root, dirname(file), path);
+      if (!target || /^([a-z][a-z0-9+.-]*:|\/\/)/i.test(target)) continue;
+      const [rawPath, frag] = target.split("#") as [string, string | undefined];
+      const path = decodeURIComponent(rawPath.split("?")[0]!);
+      const abs = !path ? join(root, file) : path.startsWith("/") ? join(root, path) : join(root, dirname(file), path);
       if (!existsSync(abs)) broken.push(`${file}:${i + 1}: ${target}`);
+      else if (frag && abs.endsWith(".md") && !(await anchors(abs)).has(decodeURIComponent(frag).toLowerCase()))
+        broken.push(`${file}:${i + 1}: ${target} (no such heading)`);
     }
-  });
+  }
 }
 
 if (broken.length) {

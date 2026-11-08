@@ -51,6 +51,12 @@ partner's loop, prompts and its eval), `packages/runner` (tasks over OAR), `pack
 (`ducter`), `packages/protocol` (the client protocol), `apps/desktop` (the MyGo desktop
 app) and `apps/web` (the phone client).
 
+Docs live in two places: [`design/`](design/README.md) is for people who build Ducter
+(principles, decisions, design notes, release runbooks), and [`docs/`](docs/README.md) is the
+user guide the website renders at `/docs`. If a change alters what a user sees or does, update
+the page in `docs/` too, in plain words and without decision numbers. `bun scripts/check-links.ts`
+checks that every relative link resolves.
+
 Tests never make real model calls: use fake runtimes, a fake clock and fake machines (see
 `packages/cli/test/doctor.test.ts`). The partner eval (`bun run eval:partner`) does call a
 real model and is run by hand.

@@ -56,7 +56,8 @@ Open `Ducter.app`. It checks your Mac, shows the one thing to fix if anything bl
 the conversation. Ducter keeps working when you close the window; **Stop Ducter** in the menu
 stops it. Built without an Apple Developer ID, the app is signed ad hoc, so the first open
 goes through **System Settings → Privacy & Security → Open Anyway**
-([details](design/build-and-run.md)).
+([details](docs/troubleshooting.md#ducter-not-opened)). The user guide is in
+[`docs/`](docs/README.md), starting with [Getting started](docs/getting-started.md).
 
 ### The command line
 
@@ -82,7 +83,8 @@ sh ducter/install.sh --service             # on the server
 
 The server listens on `127.0.0.1` only; reach it through your own domain (a one-line Caddy
 setup) or an SSH tunnel. Other machines can join as workers, and tasks can run on them. The
-full walkthrough is in [`design/build-and-run.md`](design/build-and-run.md).
+walkthrough is in [`docs/install.md`](docs/install.md), and every command and option in
+[`design/build-and-run.md`](design/build-and-run.md).
 
 ## How it works
 
@@ -111,7 +113,7 @@ flowchart LR
   protocol.
 
 The ideas behind the design are in [`design/principles.md`](design/principles.md) and the
-mechanics in [`design/`](design/); start at [`docs/README.md`](design/README.md). Why
+mechanics in [`design/`](design/); start at [`design/README.md`](design/README.md). Why
 Ducter exists is in [`motivation.md`](motivation.md), and what comes next is in
 [`design/roadmap.md`](design/roadmap.md).
 

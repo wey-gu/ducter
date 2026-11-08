@@ -1,7 +1,8 @@
-# Installing and running Ducter
+# Building and running Ducter
 
-This page has the full details behind the quickstart in the [README](../README.md): building
-the Mac app, handing Ducter to a friend, the commands, and running it on a Linux server.
+The builder's reference behind the quickstart in the [README](../README.md): building the Mac
+app, handing Ducter to a friend, every command and option, and running it on a Linux server.
+The friendly version for people using Ducter is [`docs/install.md`](../docs/install.md).
 
 ## Give Ducter to a friend
 
@@ -34,7 +35,7 @@ The top of `scripts/make-app.sh` lists the other ways: a `notarytool` keychain p
 
 No System Settings, no Open Anyway. It works offline too: the notarization ticket is stapled.
 
-Releases are built the same way by CI: push a `v*` tag (see [release.md](release/README.md)).
+Releases are built the same way by CI: push a `v*` tag (see [release/README.md](release/README.md)).
 
 **Without a Developer ID**, the script falls back to ad-hoc signing (`codesign -s -`, not
 notarized) and the first open needs an extra step. On **macOS 15 (Sequoia)** right-click →

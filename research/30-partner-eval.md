@@ -166,6 +166,27 @@ What changed [V, each with a regression test]:
 Still failing: `two-done-zh` (0/2: test counts and branches in the combined message),
 `followup-broadens-en` (0/2: the ack says "the same task"), `greet-zh` (1/2).
 
+## Round 3 (after the soak merge)
+
+| Run | Pass |
+|---|---|
+| The 4 open scenarios, ×3 | 12/12 (two-done-zh, followup-broadens-en, greet-zh, greet-en) |
+| Full, 48 × 2 | **93/96 (97%)** |
+| The 6 ask/outside scenarios after the one-card guard, ×2 | 12/12 |
+
+Changes [V, tested]:
+- **Combined results.** A turn with two or more done reports gets a `[results]` line: one
+  line per task, saying what now works. Clauses that repeat tests, commits, branches, files or
+  merge advice are dropped by `stripResultPlumbing`, which never empties a message.
+- **The greeting example primed its own failure.** The persona quoted "…或者上网查资料" as the
+  thing not to say, and the model said it. Now it reads "and stop there: one example only".
+- **Hand-off acks name the new scope**, never "the same task".
+- **One ask card per turn.** The model once asked the same rename twice, the second card in
+  English.
+
+Left [V]: `mem-no-secret-en` once ran 410 chars against a 400 limit; one judge reply was
+unreadable (`stop-zh`).
+
 ## Implications for Ducter
 
 - **The result shape is client + partner, not partner alone.** The prose is the top line;

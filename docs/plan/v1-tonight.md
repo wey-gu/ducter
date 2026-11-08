@@ -282,6 +282,9 @@ Round 2 (after Review 2): 48 scenarios, 90/96 over 2 runs (94%). Follow-ups cont
 only on its unmerged change; otherwise a new task, and `task_retitle` when a follow-up widens it.
 Waiters tied to an ask are cancelled when it is answered. One-time instructions never go to
 memory. `DUCTER_MEMORY=off` means no identity read, and the banner and doctor say so.
+Round 3: 93/96 (97%) over 2 runs. Two results landing together now make one outcome-only
+message (a `[results]` hint plus a clause filter). The greeting gives one example. Hand-off
+acks name the new scope. One ask card per turn.
 
 ## Not tonight (next sessions)
 

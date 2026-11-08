@@ -897,6 +897,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     async (args: { question: string; goLabel: string; default?: "go" | "hold"; reversible?: boolean; defaultInMinutes?: number }) => {
       await Bun.sleep(5); // let the streamed text land first
       flushPending(); // a line before the question stays a message, never an ack
+      // One card per turn (eval: the same rename asked twice, the second in English).
+      if (turn?.askedId) return { ok: false, error: "You already asked this turn; that card is on screen. End your turn." };
       const reversible = Boolean(args.reversible);
       const body: Bodies["decision"] = {
         decisionId: newId("d"),

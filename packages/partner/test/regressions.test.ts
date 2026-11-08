@@ -277,13 +277,19 @@ describe("partner eval regressions", () => {
   });
 
   test("an ask's question never carries its own default (the card renders the default line)", async () => {
-    const { fc, partner, user } = setup(async (_i, s) => {
-      await fc.callTool("ask", { question: "把 Cache 改名叫 TtlCache 吗？默认：直接改名。", goLabel: "改名", default: "hold" });
-      await fc.callTool("ask", { question: "Call it breaking? (default: yes)", goLabel: "Breaking", default: "hold" });
+    let second: any;
+    const { fc, partner, user } = setup(async (_i, s, n) => {
+      if (n === 0) {
+        await fc.callTool("ask", { question: "把 Cache 改名叫 TtlCache 吗？默认：直接改名。", goLabel: "改名", default: "hold" });
+        second = await fc.callTool("ask", { question: "Rename Cache to TtlCache?", goLabel: "Rename", default: "hold" }); // one card per turn
+      } else await fc.callTool("ask", { question: "Call it breaking? (default: yes)", goLabel: "Breaking", default: "hold" });
       s.end();
     });
     user("改名前先问我");
     await partner.idle();
+    user("and ask whether it's breaking");
+    await partner.idle();
+    expect(second.ok).toBe(false);
     expect(fc.events.filter((e) => e.kind === "decision").map((e) => (e.body as any).question)).toEqual(["把 Cache 改名叫 TtlCache 吗？", "Call it breaking?"]);
   });
 

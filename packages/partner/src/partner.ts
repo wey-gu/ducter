@@ -68,6 +68,10 @@ interface TurnState {
   replyTo?: number;
   pending: string | null;
   unboundAck: { jobId: string } | null;
+  // task_open calls seen in the stream vs. handled by the MCP handler. Stream events can lag
+  // the MCP call; a stream event for a call the handler already acked must not ack again.
+  opensSeen: number;
+  opensHandled: number;
   zh: boolean;
 }
 
@@ -253,12 +257,19 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     }
     if (ev.tool) {
       if (TASK_OPEN_RE.test(ev.tool.name)) {
-        // No-op if there is no pending text or an ack is already waiting.
-        const ack = claimAck(turn);
-        // No line before the call: ack by the title as soon as it streams in, instead of
-        // after the whole brief is written (live: 5 s).
-        const title = (ev.tool.input as { title?: unknown } | undefined)?.title;
-        if (!ack && typeof title === "string" && title.trim()) turn.unboundAck = appendAck(turn, generatedAck(turn.zh, title.trim()));
+        const kind = (ev.raw as { kind?: string } | undefined)?.kind;
+        // One call yields up to three stream events (started, title, ended); count calls by
+        // the start event (a tool event with no output yet).
+        if (kind === "tool_call_started" || (!kind && !ev.tool.output && ev.tool.ok === undefined)) turn.opensSeen++;
+        const handled = turn.opensSeen <= turn.opensHandled; // the MCP handler already acked it
+        if (!handled) {
+          // No-op if there is no pending text or an ack is already waiting.
+          const ack = claimAck(turn);
+          // No line before the call: ack by the title as soon as it streams in, instead of
+          // after the whole brief is written (live: 5 s).
+          const title = (ev.tool.input as { title?: unknown } | undefined)?.title;
+          if (!ack && typeof title === "string" && title.trim()) turn.unboundAck = appendAck(turn, generatedAck(turn.zh, title.trim()));
+        }
       } else if (QUIET_TOOL_RE.test(ev.tool.name)) {
         // Lookups between the ack line and task_open (Claude Code's deferred-tool ToolSearch,
         // reads of the Log or a task) must not turn the pending ack into a separate message.
@@ -404,7 +415,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
 
     const fresh = await ensureSession();
     const input = buildInput(batch, fresh);
-    turn = { triggers: batch, userTexts, replyTo, pending: null, unboundAck: null, zh };
+    turn = { triggers: batch, userTexts, replyTo, pending: null, unboundAck: null, opensSeen: 0, opensHandled: 0, zh };
     stats.turns++;
     try {
       const reading = readTurn();
@@ -515,6 +526,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         }
         if (!ack) ack = appendAck(t, generatedAck(t.zh, args.title));
         t.unboundAck = null;
+        t.opensHandled++;
         jobId = ack.jobId;
       } else {
         jobId = newId("job");

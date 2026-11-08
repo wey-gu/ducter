@@ -132,6 +132,33 @@ describe("live-run regressions", () => {
     }
   });
 
+  test("one ack per task_open even when stream events lag the MCP call (live: a second 'On it')", async () => {
+    const T = "mcp__ducter__task_open";
+    const { fc, partner, user } = setup(async (_i, s, n) => {
+      if (n === 0) {
+        s.say("I'll add values() in foo.");
+        s.emit({ role: "tool", tool: { name: T }, raw: { kind: "tool_call_started", callId: "c1" } });
+        await Bun.sleep(5);
+        await fc.callTool("task_open", { title: "foo: values()", brief: "add values()" });
+        s.emit({ role: "tool", tool: { name: T, input: { title: "foo: values()" } }, raw: { kind: "tool_call_title", callId: "c1" } });
+        s.emit({ role: "tool", tool: { name: T, output: "{}", ok: true } });
+      } else {
+        // No line first, and the handler overtakes every stream event.
+        await fc.callTool("task_open", { title: "foo: keys()", brief: "add keys()" });
+        s.emit({ role: "tool", tool: { name: T }, raw: { kind: "tool_call_started", callId: "c2" } });
+        s.emit({ role: "tool", tool: { name: T, input: { title: "foo: keys()" } }, raw: { kind: "tool_call_title", callId: "c2" } });
+        s.emit({ role: "tool", tool: { name: T, output: "{}", ok: true } });
+      }
+      s.end();
+    });
+    user("add values() to Cache in foo");
+    await partner.idle();
+    user("and keys()");
+    await partner.idle();
+    const acks = fc.events.filter((e) => e.kind === "ack").map((e) => (e.body as any).text);
+    expect(acks).toEqual(["I'll add values() in foo.", "On it: foo: keys()"]);
+  });
+
   test("prewarm off: no session until the first trigger", async () => {
     const { fr, partner, user } = setup(ok, { prewarm: false });
     await Bun.sleep(5);

@@ -21,7 +21,7 @@ Onboarding and defaults meet the ordinary-person bar.
   offline/resume (`design/system.md` Workers).
 - **Clients:**
   - Desktop: MyGo native UI. *Built:* the three zoom levels, Connect to your Ducter, and
-    **Ducter.app** (a DMG, ad-hoc signed; the app runs its own Ducter and stops it on quit;
+    **Ducter.app** (a DMG, Developer ID signed and notarized (D55); the app runs its own Ducter and stops it on quit;
     lifecycle pending, OPEN-QUESTIONS 2.1).
   - Mobile: **web** (served by the main process, reachable from anywhere through a tunnel).
     *Built (2026-11-09):* `apps/web`, a Preact phone client served at `/app` (conversation,

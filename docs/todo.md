@@ -53,10 +53,8 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       LaunchAgent, offered the first time a task is still running at quit. Waits on
       OPEN-QUESTIONS 2.1.
 - [ ] Walk a really blocked Mac through the app (blocked, name and failed screens are verified
-      headless only), and check that a helper binary loses its quarantine flag after Open
-      Anyway. Trigger: the first friend install.
-- [ ] Developer ID signing and notarization, so Gatekeeper needs no Settings detour. Trigger:
-      before sharing the DMG beyond friends.
+      headless only), and check an ad-hoc build's helper loses its quarantine flag after
+      Open Anyway. Trigger: the first friend install.
 - [ ] The partner's real first words: the greeting is the client's empty state today, not a
       Log message, and the partner doesn't read `firstrun.json` ("I found 14 repos …").
 - [ ] Rename the partner from the desktop (today the name is asked once, in the terminal or

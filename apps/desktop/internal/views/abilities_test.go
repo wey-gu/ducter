@@ -203,3 +203,88 @@ func TestAbilitiesNarrow(t *testing.T) {
 	h.settle(300 * time.Millisecond)
 	h.shotAs("abilities-en-900")
 }
+
+// The screen against a real Ducter (port 7800 in the report):
+//
+//	DUCTER_LIVE_URL=ws://127.0.0.1:7800/ws DUCTER_LOCALE=zh DUCTER_SHOTS=1 \
+//	  go test ./internal/views -run AbilitiesLive -v
+//
+// It removes 上网 if it is on, adds it back by tapping, and shows the
+// pairing code of 远程打开; screenshots go to docs/abilities-live-*.png.
+func TestAbilitiesLive(t *testing.T) {
+	url := os.Getenv("DUCTER_LIVE_URL")
+	if url == "" {
+		t.Skip("DUCTER_LIVE_URL not set")
+	}
+	lang := i18n.ZH
+	if os.Getenv("DUCTER_LOCALE") == "en" {
+		lang = i18n.EN
+	}
+	h := newLive(t, url, lang).harness
+	h.app.Now = h.tt.Now
+	pump := h.pump
+	h.pump = func() { pump(); h.tt.Advance(16 * time.Millisecond) }
+	L := h.app.L
+	h.click(L.T("nav.devices.label"))
+	h.until("devices", func() bool { return len(h.app.S.Devices) > 0 })
+	home := h.app.S.Device("local")
+	if home == nil || !home.Home {
+		t.Fatalf("no home device: %+v", h.app.S.Devices)
+	}
+	if web := home.Ability(protocol.AbilityWeb); web != nil && web.State == protocol.AbilityOn {
+		h.app.removeAbility(home, protocol.AbilityWeb)
+		h.until("web off", func() bool {
+			return h.app.S.Device("local").Ability(protocol.AbilityWeb).State == protocol.AbilityOff
+		})
+	}
+	h.settle(9 * time.Second) // the removed line fades
+	h.shotAs(fmt.Sprintf("abilities-live-%s-home", lang))
+	h.click(L.T("ability.web") + " · " + L.T("ability.add", L.T("device.local.inline")))
+	h.until("web on", func() bool {
+		d := h.app.S.Device("local")
+		return d.Ability(protocol.AbilityWeb).State == protocol.AbilityOn && h.app.dev.fx == nil
+	})
+	h.settle(200 * time.Millisecond)
+	if !h.tt.HasText(L.T("ability.web.done", L.T("device.local"))) {
+		t.Fatalf("no line: %q", h.tt.Texts())
+	}
+	h.shotAs(fmt.Sprintf("abilities-live-%s-added", lang))
+	h.click(L.T("ability.remote") + " · " + L.T("ability.add", L.T("device.local.inline")))
+	h.until("code", func() bool { return h.app.S.PairCode != nil })
+	h.settle(300 * time.Millisecond)
+	h.shotAs(fmt.Sprintf("abilities-live-%s-pair", lang))
+}
+
+// One paired device as the real main reports it (a worker awake, or gone):
+//
+//	DUCTER_LIVE_URL=... DUCTER_LIVE_DEVICE=build-box DUCTER_LIVE_SHOT=worker DUCTER_SHOTS=1 \
+//	  go test ./internal/views -run AbilitiesLiveDevice -v
+func TestAbilitiesLiveDevice(t *testing.T) {
+	url, name := os.Getenv("DUCTER_LIVE_URL"), os.Getenv("DUCTER_LIVE_DEVICE")
+	if url == "" || name == "" {
+		t.Skip("DUCTER_LIVE_URL or DUCTER_LIVE_DEVICE not set")
+	}
+	lang := i18n.ZH
+	if os.Getenv("DUCTER_LOCALE") == "en" {
+		lang = i18n.EN
+	}
+	h := newLive(t, url, lang).harness
+	h.app.Now = time.Now
+	h.click(h.app.L.T("nav.devices.label"))
+	var dv *protocol.DeviceView
+	h.until("device", func() bool {
+		for i := range h.app.S.Devices {
+			if h.app.S.Devices[i].Name == name {
+				dv = &h.app.S.Devices[i]
+			}
+		}
+		return dv != nil
+	})
+	chip, _ := h.app.deviceChip(dv)
+	h.click(name + " · " + chip)
+	h.until("shown", func() bool { return h.app.shownDevice().Name == name })
+	h.tt.Advance(time.Second)
+	h.tt.Frame()
+	t.Logf("%s: %s · %q", name, dv.State, chip)
+	h.shotAs(fmt.Sprintf("abilities-live-%s-%s", lang, os.Getenv("DUCTER_LIVE_SHOT")))
+}

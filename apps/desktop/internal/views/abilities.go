@@ -466,7 +466,7 @@ func (a *App) stage(c *ui.Context, dv *protocol.DeviceView) {
 		// Cords: a signed-in AI account is tied to this device.
 		n := len(harnesses)
 		for i, h := range harnesses {
-			if !h.LoggedIn {
+			if !h.LoggedIn || dim { // a device that isn't awake: what it last said, untied
 				continue
 			}
 			tx := rect.X + tokenCenter(sw, n, i, r.k)
@@ -691,8 +691,8 @@ func (a *App) tokens(c *ui.Context, dv *protocol.DeviceView, r rig) {
 		tok := ui.Row(c.Key("tok:"+h.Harness)).Absolute().Left(x).Top(r.tokensTop).Width(w).Height(66).Gap(10).
 			Padding(6, 14, 6, 6).Radius(24).Background(t.Surface).Shadow(0, 4, 0, 0, t.Line).AlignItems(ui.Center).
 			Role(ui.RoleGroup).Label(harnessName(h.Harness) + " · " + status)
-		if !h.LoggedIn {
-			tok.Opacity(0.7)
+		if !h.LoggedIn || dv.State != protocol.DeviceAwake {
+			tok.Opacity(0.6)
 		}
 		tok.Children(func() {
 			if bmp := theme.Clay(art); bmp != nil {

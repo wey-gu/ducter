@@ -12,14 +12,16 @@
 //     <name> is the persona id (plus "_<profile>" for a non-default profile).
 //
 // Gate (D47): DUCTER_BROWSER=0 turns browser places off, =1 requires them (fail loudly when
-// cua-driver is missing), unset = auto (on when a cua-driver with the typed browser tools is
-// found). DUCTER_CUA_DRIVER overrides the binary path.
+// cua-driver is missing), unset = the user's choice on Your devices and abilities
+// (<dataDir>/abilities.json `web`: false = off, true = on), else auto (on when a cua-driver with
+// the typed browser tools is found). DUCTER_CUA_DRIVER overrides the binary path.
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import type { Place } from "@ducter/protocol";
 import type { StdioMcpConfig } from "@ducter/protocol/src/internal.ts";
+import { readAbilitySettings } from "@ducter/protocol/src/abilities.ts";
 import { applyBrowserIdentity, closeBrowserGracefully } from "./cdp.ts";
 import { createFocusGuard, macFocusProbe, type FocusGuard, type FocusProbe } from "./focus-guard.ts";
 
@@ -118,11 +120,20 @@ const defaultExec: Exec = async (argv, opts = {}) => {
 
 export type BrowserGate = "off" | "on" | "auto";
 
-export function browserGate(env: Record<string, string | undefined> = process.env): BrowserGate {
+/** The env pins the gate when set; otherwise the saved choice in dataDir (if given) decides. */
+export function browserGate(env: Record<string, string | undefined> = process.env, dataDir?: string): BrowserGate {
   const v = (env.DUCTER_BROWSER ?? "").trim().toLowerCase();
   if (v === "0" || v === "off" || v === "false" || v === "no") return "off";
   if (v === "1" || v === "on" || v === "true" || v === "yes") return "on";
+  const saved = dataDir ? readAbilitySettings(dataDir).web : undefined;
+  if (saved === false) return "off";
+  if (saved === true) return "on";
   return "auto";
+}
+
+/** Whether the env (not the user's saved choice) pins the gate. */
+export function browserGatePinned(env: Record<string, string | undefined> = process.env): boolean {
+  return browserGate(env) !== "auto";
 }
 
 /** cua-driver profile names allow 1-64 of [A-Za-z0-9_-]. */
@@ -212,8 +223,15 @@ export interface SidecarInput {
 export async function browserSidecar(input: SidecarInput, opts: BrowserOptions = {}): Promise<BrowserSidecar | undefined> {
   const p = input.place;
   if (p.kind !== "browser") return undefined;
-  const gate = browserGate(opts.env ?? process.env);
-  if (gate === "off") throw new Error("browser tasks are turned off on this device (DUCTER_BROWSER=0)");
+  const env = opts.env ?? process.env;
+  const gate = browserGate(env, input.dataDir);
+  if (gate === "off") {
+    throw new Error(
+      browserGatePinned(env)
+        ? "browser tasks are turned off on this device (DUCTER_BROWSER=0)"
+        : "browser tasks are turned off on this device: the user removed Browse the web (上网) in Your devices and abilities",
+    );
+  }
   const probe = await detectCuaDriver(opts);
   if ("missing" in probe) throw new Error(`browser tasks are unavailable: ${probe.missing}`);
   const found: CuaDriverInfo = probe;

@@ -150,6 +150,21 @@ describe("browser helpers", () => {
     expect(browserGate({ DUCTER_BROWSER: "off" })).toBe("off");
   });
 
+  test("gate follows the user's saved choice unless the env pins it", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ducter-gate-"));
+    try {
+      expect(browserGate({}, dir)).toBe("auto");
+      writeFileSync(join(dir, "abilities.json"), JSON.stringify({ web: false }));
+      expect(browserGate({}, dir)).toBe("off");
+      expect(browserGate({ DUCTER_BROWSER: "1" }, dir)).toBe("on");
+      writeFileSync(join(dir, "abilities.json"), JSON.stringify({ web: true }));
+      expect(browserGate({}, dir)).toBe("on");
+      expect(browserGate({ DUCTER_BROWSER: "0" }, dir)).toBe("off");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   test("profile names are cua-driver safe and per persona", () => {
     expect(profileName("p1")).toBe("p1");
     expect(profileName("p1", "default")).toBe("p1");

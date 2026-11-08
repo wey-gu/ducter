@@ -169,7 +169,15 @@ export type ClientFrame =
   // The server acks every task_action with {t:"action_result"}.
   | { t: "task_action"; taskId: string; action: "interrupt" | "drop" | "undrop" | "reopen" | "merge" | "open_pr" }
   | { t: "read"; upToSeq: number }
-  | { t: "task_history"; taskId: string; beforeSeq?: number; limit?: number };
+  | { t: "task_history"; taskId: string; beforeSeq?: number; limit?: number }
+  // Devices and abilities (D43, D51): "devices" answers with a devices frame and keeps the
+  // socket subscribed (a fresh frame whenever a device or an ability changes). "ability" adds
+  // (on: true, 装上) or removes (on: false, 取下) an ability on a device; it is answered with
+  // ability_result, then a fresh devices frame. "pair_code" mints a one-time pairing code for
+  // 远程打开 / Reach from anywhere (D54), answered with a pair_code frame.
+  | { t: "devices" }
+  | { t: "ability"; device: string; ability: AbilityId; on: boolean }
+  | { t: "pair_code" };
 
 export type ServerFrame =
   // machine: a hash of the machine the main runs on (core/src/machine.ts); a client that computes
@@ -180,9 +188,69 @@ export type ServerFrame =
   | { t: "task_history"; taskId: string; events: LogEvent[] }
   | { t: "sent"; taskId: string; delivered: Delivery } // ack for task_send
   | { t: "action_result"; taskId: string; action: string; ok: boolean; message?: string; ref?: string } // ref: merge commit or PR URL
+  | { t: "devices"; devices: DeviceView[]; reach: Reach }
+  | { t: "ability_result"; device: string; ability: AbilityId; on: boolean; ok: boolean; reason?: AbilityReason; detail?: string }
+  | { t: "pair_code"; code: string; expiresAt: string; address?: string; link?: string; qr?: string[] }
   | { t: "error"; message: string };
 
 export type Delivery = "steered" | "prompted" | "queued";
+
+// ---------- Devices and abilities (D43, D51, design/flows/A-setup-devices.md) ----------
+// What each device is and can do, for 你的设备和本事 / Your devices and abilities. Only what
+// the server knows: no allowance unless a harness reports one, "asleep" only when the device
+// said it was going to sleep (otherwise "unreachable").
+
+export type DeviceKind = "laptop" | "mini" | "server" | "phone";
+export type DeviceState = "awake" | "asleep" | "unreachable";
+/** web 上网 · computer 用电脑 · remote 远程打开 · phone 用手机 · call 打电话 */
+export type AbilityId = "web" | "computer" | "remote" | "phone" | "call";
+/** later = not in this version (shown locked, "以后会有"); unavailable = can't be added here, see reason. */
+export type AbilityState = "on" | "off" | "unavailable" | "later";
+/**
+ * Why an ability is unavailable (or why adding it failed). Clients word it; detail carries a
+ * version or a path. cua_missing / cua_old: cua-driver isn't there or lacks the browser tools;
+ * env_off: DUCTER_BROWSER=0 pins it off; home_only: only on the device Ducter lives on;
+ * no_address: nothing outside can reach this Ducter yet (remote).
+ */
+export type AbilityReason = "cua_missing" | "cua_old" | "env_off" | "home_only" | "no_address" | "unknown_device" | "failed";
+
+export interface Allowance {
+  left: number; // 0..1, as the harness reports it
+  resetsAt?: string; // ISO
+  sharedBy?: number; // devices signed in to the same account
+}
+
+export interface DeviceHarness {
+  harness: string; // "claude-code" | "codex" | "pi"
+  installed: boolean;
+  loggedIn: boolean;
+  allowance?: Allowance; // only when the harness reports it; never estimated
+}
+
+export interface DeviceAbility {
+  id: AbilityId;
+  state: AbilityState;
+  reason?: AbilityReason;
+  detail?: string;
+}
+
+export interface DeviceView {
+  id: string; // "local" for the machine Ducter lives on; else the paired device id
+  name: string;
+  kind: DeviceKind;
+  home: boolean; // Ducter lives here
+  state: DeviceState;
+  lastSeen?: string; // ISO; for a device that isn't awake
+  version?: string; // cua-driver or worker version, informational
+  harnesses: DeviceHarness[];
+  abilities: DeviceAbility[];
+}
+
+/** Who can reach this Ducter from elsewhere (paired clients), and the address they use. */
+export interface Reach {
+  address?: string; // the public address, when one is set (DUCTER_PUBLIC_URL or <dataDir>/public-url)
+  clients: { id: string; name: string; platform: string; connected: boolean; lastSeen?: string }[];
+}
 
 // ---------- Ducter MCP tools (HTTP MCP served by core at /mcp, role-scoped by token) ----------
 // role "partner": task_open, task_send, task_read, log_search, log_read, wait_until, ask, memory_search, memory_add

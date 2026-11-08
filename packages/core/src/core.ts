@@ -19,6 +19,7 @@ import { createGate, openDeviceAuth, type DeviceAuth } from "./auth.ts";
 import { createWorkers, deviceRoutes, splitSockets, type Workers, type WorkerSocketData } from "./workers.ts";
 import { createPusher, openPushStore, type Pusher, type PushStore } from "./push.ts";
 import { webApi, webStatic } from "./web.ts";
+import { createDevicesView, type DeviceProbes, type DevicesView } from "./devices.ts";
 
 export interface CoreOptions {
   dataDir?: string;
@@ -32,6 +33,8 @@ export interface CoreOptions {
   push?: boolean; // send Web Push (default on; env DUCTER_PUSH=off turns it off)
   pushHoldMs?: number;
   pushFetch?: (url: string, init: RequestInit) => Promise<Response>; // tests
+  /** Test seams for Your devices and abilities (cua-driver, harness logins, device kind). */
+  deviceProbes?: Partial<DeviceProbes>;
 }
 
 export interface Core extends CoreApi {
@@ -42,6 +45,8 @@ export interface Core extends CoreApi {
   living: Living;
   devices: DeviceAuth;
   workers: Workers;
+  /** 你的设备和本事 / Your devices and abilities. */
+  devicesView: DevicesView;
   waiters: Waiters;
   push: PushStore;
   pusher: Pusher;
@@ -131,9 +136,19 @@ export function startCore(opts: CoreOptions = {}): Core {
   });
 
   const api = { log, tasks, mcp, persona, dataDir } as CoreApi;
-  const ws = createWsHandler({ core: api, decisions, runner: () => runner, batchMs: opts.batchMs });
+  let devicesView: DevicesView | undefined;
+  const ws = createWsHandler({ core: api, decisions, runner: () => runner, devices: () => devicesView, batchMs: opts.batchMs });
   const devices = openDeviceAuth(dataDir);
-  const gate = createGate({ auth: devices, personaName: () => persona.name });
+  // A device that pairs changes Your devices and abilities (远程打开 / Reach from anywhere).
+  const gateAuth = {
+    ...devices,
+    redeem: (...a: Parameters<typeof devices.redeem>) => {
+      const r = devices.redeem(...a);
+      if (!("error" in r)) devicesView?.changed();
+      return r;
+    },
+  };
+  const gate = createGate({ auth: gateAuth, personaName: () => persona.name });
   const workers = createWorkers({
     personaName: () => persona.name,
     // A disconnected (revoked) worker still resolves, as a link that is never online: its tasks
@@ -144,6 +159,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     },
   });
   api.workers = workers; // the runner places tasks on workers through this (runner/src/remote.ts)
+  devicesView = createDevicesView({ dataDir, auth: devices, workers, connected: () => ws.connected(), probes: opts.deviceProbes });
   const sockets = splitSockets(ws.websocket, workers, { isLive: (id) => devices.isLive(id), sweepMs: opts.sweepMs });
   const push = openPushStore(dataDir);
   const pusher = createPusher({
@@ -206,6 +222,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     living,
     devices,
     workers,
+    devicesView,
     waiters,
     push,
     pusher,
@@ -227,6 +244,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     },
     async stop() {
       ws.stop();
+      devicesView?.stop();
       workers.stop();
       sockets.stop();
       unsubscribePartner();

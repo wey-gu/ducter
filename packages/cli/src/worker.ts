@@ -11,6 +11,7 @@ import { realHost, runDoctor, type Style } from "./doctor.ts";
 import type { T } from "./i18n.ts";
 import * as runnerMod from "@ducter/runner";
 import { scriptedHarness } from "./scripted.ts";
+import { localDeviceKind } from "@ducter/core/src/devices.ts";
 
 /** Exit status when the main refuses this worker; the unit sets RestartPreventExitStatus to it. */
 export const EXIT_REFUSED = 3;
@@ -97,6 +98,7 @@ export async function cmdWorker(o: { t: T; style: Style; args: Args; dataDir: st
     name: saved.name,
     os: platform(),
     arch: arch(),
+    kind: await localDeviceKind(),
     version: pkg.version,
     harnesses: await probeHarnesses(t, o.dataDir),
   };

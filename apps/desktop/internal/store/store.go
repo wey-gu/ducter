@@ -261,6 +261,26 @@ type Store struct {
 	Errors []string
 	// Welcomed is set once the server said welcome on this store.
 	Welcomed bool
+
+	// Devices is Your devices and abilities, as the server last sent it;
+	// DevicesAt is when (zero until the first devices frame).
+	Devices   []protocol.DeviceView
+	Reach     *protocol.Reach
+	DevicesAt time.Time
+	// AbilityResults are ability_result frames not yet handled by the view.
+	AbilityResults []protocol.ServerFrame
+	// PairCode is the newest pairing code the server minted for this app.
+	PairCode *protocol.ServerFrame
+}
+
+// Device returns a device of Your devices and abilities by id, or nil.
+func (s *Store) Device(id string) *protocol.DeviceView {
+	for i := range s.Devices {
+		if s.Devices[i].ID == id {
+			return &s.Devices[i]
+		}
+	}
+	return nil
 }
 
 // New makes an empty store.
@@ -296,6 +316,13 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		if f.PersonaName != "" {
 			s.PersonaName = f.PersonaName
 		}
+	case "devices":
+		s.Devices, s.Reach, s.DevicesAt = f.Devices, f.Reach, time.Now()
+	case "ability_result":
+		s.AbilityResults = append(s.AbilityResults, f)
+	case "pair_code":
+		fc := f
+		s.PairCode = &fc
 	case "sent":
 		if t := s.Tasks[f.TaskID]; t != nil {
 			for _, sd := range t.Sends {

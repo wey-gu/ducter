@@ -420,6 +420,112 @@ type TaskHistoryReq struct {
 	Limit     int    `json:"limit,omitempty"`
 }
 
+// DevicesReq asks for Your devices and abilities, and keeps this socket
+// subscribed: a fresh devices frame comes whenever something changes.
+type DevicesReq struct {
+	T string `json:"t"` // "devices"
+}
+
+// AbilityReq adds (On, 装上) or removes (取下) an ability on a device. The
+// server answers ability_result, then a fresh devices frame.
+type AbilityReq struct {
+	T       string `json:"t"` // "ability"
+	Device  string `json:"device"`
+	Ability string `json:"ability"`
+	On      bool   `json:"on"`
+}
+
+// PairCodeReq asks for a one-time pairing code (远程打开 / Reach from
+// anywhere, D54); the server answers a pair_code frame.
+type PairCodeReq struct {
+	T string `json:"t"` // "pair_code"
+}
+
+// ---------- Devices and abilities (D43, D51) ----------
+
+// Ability ids: web 上网 · computer 用电脑 · remote 远程打开 · phone 用手机 ·
+// call 打电话.
+const (
+	AbilityWeb      = "web"
+	AbilityComputer = "computer"
+	AbilityRemote   = "remote"
+	AbilityPhone    = "phone"
+	AbilityCall     = "call"
+)
+
+// Ability states: later = not in this version (locked, "以后会有");
+// unavailable = can't be added here (Reason says why).
+const (
+	AbilityOn          = "on"
+	AbilityOff         = "off"
+	AbilityUnavailable = "unavailable"
+	AbilityLater       = "later"
+)
+
+// Device states (glossary: 醒着 / 睡着了 / 连不上).
+const (
+	DeviceAwake       = "awake"
+	DeviceAsleep      = "asleep"
+	DeviceUnreachable = "unreachable"
+)
+
+// Allowance is what a harness reported of its quota; never estimated.
+type Allowance struct {
+	Left     float64 `json:"left"` // 0..1
+	ResetsAt string  `json:"resetsAt,omitempty"`
+	SharedBy int     `json:"sharedBy,omitempty"`
+}
+
+type DeviceHarness struct {
+	Harness   string     `json:"harness"`
+	Installed bool       `json:"installed"`
+	LoggedIn  bool       `json:"loggedIn"`
+	Allowance *Allowance `json:"allowance,omitempty"`
+}
+
+type DeviceAbility struct {
+	ID     string `json:"id"`
+	State  string `json:"state"`
+	Reason string `json:"reason,omitempty"` // cua_missing | cua_old | env_off | home_only | no_address | unknown_device | failed
+	Detail string `json:"detail,omitempty"`
+}
+
+type DeviceView struct {
+	ID        string          `json:"id"` // "local" for the machine Ducter lives on
+	Name      string          `json:"name"`
+	Kind      string          `json:"kind"` // laptop | mini | server | phone
+	Home      bool            `json:"home"`
+	State     string          `json:"state"`
+	LastSeen  string          `json:"lastSeen,omitempty"`
+	Version   string          `json:"version,omitempty"`
+	Harnesses []DeviceHarness `json:"harnesses"`
+	Abilities []DeviceAbility `json:"abilities"`
+}
+
+// Ability returns the device's ability by id, or nil.
+func (d *DeviceView) Ability(id string) *DeviceAbility {
+	for i := range d.Abilities {
+		if d.Abilities[i].ID == id {
+			return &d.Abilities[i]
+		}
+	}
+	return nil
+}
+
+type ReachClient struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Platform  string `json:"platform"`
+	Connected bool   `json:"connected"`
+	LastSeen  string `json:"lastSeen,omitempty"`
+}
+
+// Reach is who can reach this Ducter from elsewhere, and the address.
+type Reach struct {
+	Address string        `json:"address,omitempty"`
+	Clients []ReachClient `json:"clients"`
+}
+
 // ClientFrame is any client -> server frame, decoded by its tag (for the
 // mock server). Fields of all variants share one struct.
 type ClientFrame struct {
@@ -436,6 +542,9 @@ type ClientFrame struct {
 	UpToSeq    int64  `json:"upToSeq,omitempty"`
 	BeforeSeq  int64  `json:"beforeSeq,omitempty"`
 	Limit      int    `json:"limit,omitempty"`
+	Device     string `json:"device,omitempty"`
+	Ability    string `json:"ability,omitempty"`
+	On         bool   `json:"on,omitempty"`
 }
 
 // ---------- Server -> client frames ----------
@@ -457,6 +566,22 @@ type ServerFrame struct {
 	Action string `json:"action,omitempty"`
 	OK     bool   `json:"ok,omitempty"`
 	Ref    string `json:"ref,omitempty"` // merge commit or PR URL
+	// devices: Your devices and abilities.
+	Devices []DeviceView `json:"devices,omitempty"`
+	Reach   *Reach       `json:"reach,omitempty"`
+	// ability_result: Device, Ability, On, OK, Reason, Detail.
+	Device  string `json:"device,omitempty"`
+	Ability string `json:"ability,omitempty"`
+	On      bool   `json:"on,omitempty"`
+	Reason  string `json:"reason,omitempty"`
+	Detail  string `json:"detail,omitempty"`
+	// pair_code: a one-time code, its expiry, and the address, link and QR
+	// (rows of "1" dark and "0" light) when a public address is set.
+	Code      string   `json:"code,omitempty"`
+	ExpiresAt string   `json:"expiresAt,omitempty"`
+	Address   string   `json:"address,omitempty"`
+	Link      string   `json:"link,omitempty"`
+	QR        []string `json:"qr,omitempty"`
 }
 
 // Delivery is how a task_send reached its task: steered in mid-turn, as
@@ -476,7 +601,8 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 		return f, err
 	}
 	switch f.T {
-	case "welcome", "events", "on_hand", "task_history", "sent", "action_result", "error":
+	case "welcome", "events", "on_hand", "task_history", "sent", "action_result", "error",
+		"devices", "ability_result", "pair_code":
 	default:
 		return f, fmt.Errorf("unknown server frame %q", f.T)
 	}

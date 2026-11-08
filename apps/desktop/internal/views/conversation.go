@@ -1,7 +1,6 @@
 package views
 
 import (
-	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -116,6 +115,7 @@ func (a *App) conversation(c *ui.Context) {
 			a.emptyConversation(c)
 		}
 	})
+	a.firstResultLine(c)
 	a.composer(c)
 	a.readWhenSeen(c)
 }
@@ -132,8 +132,8 @@ func (a *App) emptyConversation(c *ui.Context) {
 		ui.Text(c, a.L.T("empty.conversation")).FontSize(t.LG).TextAlign(ui.Center).TextColor(t.InkSoft).LineHeight(1.6)
 		ui.Column(c).Gap(10).Margin(14, 0, 0, 0).AlignItems(ui.Stretch).Width(460).MaxWidthPercent(100).Children(func() {
 			ui.Text(c, a.L.T("empty.try")).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted).LetterSpacing(0.5)
-			for i := 1; i <= 3; i++ {
-				text := a.L.T(fmt.Sprintf("suggest.%d", i))
+			for n, text := range a.suggestions() {
+				i := n + 1
 				chip := ui.Row(c.Key(i)).Gap(12).Padding(13, 16).Radius(t.RadiusSM).Background(t.Surface).AlignItems(ui.Center).
 					Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(text)
 				a.press(c, chip, t.PressCard)
@@ -143,7 +143,11 @@ func (a *App) emptyConversation(c *ui.Context) {
 				})
 				if chip.Clicked() {
 					a.draft = text
+					a.focusComposer = true
 				}
+			}
+			if n := a.Local.RepoCount(); n > 0 {
+				ui.Text(c, a.L.T("empty.repos.note", n)).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.5).Margin(4, 2, 0, 2)
 			}
 		})
 	})

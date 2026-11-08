@@ -13,6 +13,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/client"
+	"github.com/wey-gu/ducter/apps/desktop/internal/hints"
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
@@ -26,6 +27,7 @@ func main() {
 	lang := i18n.Detect(mygo.App.PreferredLanguages())
 	app := views.New(s, theme.Pebble(), i18n.New(lang))
 	app.LocaleFixed = i18n.Fixed()
+	app.Local = hints.Open(hints.DataDir())
 
 	mygo.App.WhenReady(func() {
 		win := mygo.NewWindow(mygo.WindowOptions{

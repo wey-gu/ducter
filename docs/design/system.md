@@ -202,35 +202,53 @@ can't tell a bad token from a good one. Relaying these flows into a client (Q17)
 OAR's scripted runtime. Its script still calls Ducter's real MCP tools over HTTP (`task_open`,
 `report_to_main`) and every reply says it's a demo.
 
-## Workers (design; enrollment only so far)
+## Workers (D54; built and verified in two VMs, research/29)
 
 A worker is a machine that runs tasks for a main process elsewhere (a VPS next to a home Mac
-main, or the reverse). Principle: **it dials out, never in.**
+main, or the reverse). Principle: **it dials out, never in.** All task state stays on the main;
+the worker only holds the place (disk, checkouts, worktrees) and runs the harness.
 
 - **Join.** On the main: `ducter pair --worker` (a code whose device kind is `worker`). On the
-  worker: `ducter worker --join <main address> --code <code> [--name vps-2]`. It pairs at
-  `/pair`, keeps the token in `~/.ducter/worker.json` (0600), then holds one outbound WebSocket
-  to `<main>/worker` with that token, reconnecting with backoff. A client token can't open
-  `/worker`, and a worker token can't open `/ws`.
-- **Hello.** The worker reports hostname, OS/arch, Ducter version, and which harnesses are
-  installed and signed in (the doctor probes). The main keeps it in memory; `ducter devices`
-  shows 醒着 / Awake while the socket is up and its last-seen time otherwise.
-- **Placement (not built).** When `Place.device` names a worker, the runner forwards
-  `openTask / send / interrupt / drop` over that socket. The worker runs the same runner code
-  locally (worktrees, recipes, harness via OAR) against a thin core proxy that forwards
-  `log.append` and `tasks.setState` back up. Task tools reach the main's `/mcp` with the role
-  token the main minted for that task plus the worker's device token; the main's MCP gate
-  already accepts exactly that pair. Device sleep or a dropped socket follows A3 (在等 after
-  2 minutes, D52).
-- **Built and verified (two Ubuntu VMs, research/29):** join with a worker code, `worker.json`
-  0600, hello with harnesses, `ducter devices` → `awake`, `ducter service install --worker`
-  (no listening port on the worker), reconnect after the main restarts. Revoking (from the
-  CLI, another process) closes live device sockets within 10 s (close code 4401, clients and
-  workers alike); a refused worker exits 3 and its unit has `RestartPreventExitStatus=3`, so
-  it stops instead of retrying.
-- **Why not tonight:** placement touches the runner and the core API that protocol v2 is
-  reshaping; doing it on a moving base would mean two incompatible runners. Trigger: protocol
-  v2 merged (`docs/todo.md`).
+  worker: `ducter worker --join <main address> --code <code> [--name vps-2]`, then
+  `ducter service install --worker` to keep it running (no listening port on the worker). It
+  pairs at `/pair`, keeps the token in `~/.ducter/worker.json` (0600), and holds one outbound
+  WebSocket to `<main>/worker`, reconnecting with backoff. A client token can't open `/worker`,
+  a worker token can't open `/ws`.
+- **Hello.** Hostname, OS/arch, Ducter version, and which harnesses are installed and signed in.
+  `ducter devices` shows `awake` while the socket is up.
+- **Placement.** `Place.device` (or `{kind:"none", device}` for a place-less task) names a
+  paired worker; any other name, `local`, or none means this machine, as before.
+  - The runner keeps one code path and swaps **PlaceOps** (`runner/src/remote.ts`): plan and
+    provision the place, start the harness session, merge, open a PR. For a worker these go
+    down the socket as requests (`core/src/workers.ts`: `WorkerLink`), and
+    `runner/src/worker-host.ts` runs them on the worker with its own `~/.ducter` and harnesses
+    (OAR). Session events stream back up as frames and land in the main's Log like local ones.
+  - Steer, send, interrupt, close and merge go back down the same way.
+  - The task's MCP config points at the main's loopback `/mcp`; the worker rewrites it to the
+    main's address and adds its device token. The main's gate accepts a worker token only on
+    `/mcp` (beside the task's HMAC role token) and `/worker`.
+  - The worker's cwd is recorded in the task's `session started` event, so a restarted main
+    resumes the right session on the right disk.
+- **The worker drops mid-task** (focus-window-states invariant 1, D52): the session ends with an
+  *offline* frame; the task's residency becomes `offline` at once (silent); after the grace
+  (2 min, `DUCTER_OFFLINE_GRACE_MS`) a working task becomes `blocked` with reason
+  `device:unreachable:<name>`, which clients show as **在等 · <name> 连不上 / Waiting ·
+  Can't reach <name>**. A message to it, or a new task for that device, fails with
+  "<name> is not connected" and the partner says so. When the worker says hello again, the
+  runner resumes the native session by id on the worker and tells it to carry on. A worker
+  process that loses its socket closes its sessions (nobody to report to); idle tasks just go
+  `parked` when it's back.
+- **Partner.** When workers exist, each turn carries one context line
+  (`[devices] local (this machine, the default) · vps-2 (awake, linux, signed in: claude-code)`);
+  without workers nothing changes. The `task_open` place `device` field says to use another
+  device only when the user asks or the task needs what only it has. "在 vps-2 上跑…" works.
+- **Revocation.** `ducter devices disconnect` (another process) closes live device sockets
+  within 10 s (close 4401); a refused worker exits 3 and its unit has
+  `RestartPreventExitStatus=3`.
+- **Not yet:** browser places on a worker (refused with a plain message); the A2-W confirm card
+  ("vps-1 想加入 … 好，加上 / 不是我的"); placing by need ("needs Linux") instead of by name;
+  queueing a task for an asleep worker instead of refusing it; reattaching a session that
+  survived a socket blip (today it's closed and resumed by id).
 
 ## Hooks v1 must leave open for phone and call (research/22)
 

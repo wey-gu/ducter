@@ -79,8 +79,10 @@ In the Mac app choose **My Ducter is on another machine → Connect to your Duct
 the address and the code from `ducter pair` (or paste the whole link it prints). Only paired
 devices get in from outside the server; `ducter devices` lists them and
 `ducter devices disconnect <id>` removes one. Another machine can join as a worker with
-`ducter pair --worker` on the server and `ducter worker --join <address> --code <code>` there
-(it connects and shows as awake; running tasks on it comes next).
+`ducter pair --worker` on the server and `ducter worker --join <address> --code <code>` on the
+other machine. Then say "在 vps-2 上跑…" / "run it on vps-2": the task runs there (its
+worktree on that disk, its harness), and if that machine drops, the task waits and resumes when
+it's back.
 
 | Command | What it does |
 |---|---|

@@ -5,9 +5,13 @@
 Built and verified in a local Ubuntu VM (`research/29`): systemd user service, code pairing,
 token gate, Caddy and SSH-tunnel paths, desktop connect card, worker enrollment/presence.
 
-- [ ] **Place tasks on a worker** (`design/system.md` Workers): forward openTask/send/
-      interrupt/drop over the `/worker` socket; the worker runs the runner against a core
-      proxy. Trigger: protocol v2 merged.
+- [x] Place tasks on a worker (`design/system.md` Workers), with offline → 在等 · <device>
+      连不上 → resume by session id. Verified in two VMs with the scripted runtime.
+- [ ] One real-harness task on a worker (needs a Claude Code or Codex login on the worker:
+      `claude auth login` / `codex login --device-auth` there). Trigger: the user signs in.
+- [ ] Workers: a new task for an asleep worker waits instead of being refused; place by need
+      ("needs Linux", a repo only the worker has); browser places on a worker; keep a session
+      alive across a short socket blip instead of close + resume.
 - [ ] **Relayed harness logins (Q17):** spawn `claude auth login` / `codex login --device-auth`
       on the server, show URL + code in the client, pipe the pasted code back. Trigger: the
       browser setup page (A1-V) or a desktop "Your AI" row for remote Ducters.

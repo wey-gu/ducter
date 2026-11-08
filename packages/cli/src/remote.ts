@@ -27,6 +27,14 @@ export function isLoopback(host: string | undefined): boolean {
   return !host || /^(127\.\d+\.\d+\.\d+|localhost|::1)$/.test(host);
 }
 
+/** The SSH line to run on the user's computer. Inside an SSH session, SSH_CONNECTION names the address they used. */
+export function tunnelCommand(port: number, env: Record<string, string | undefined> = process.env): string {
+  const user = env.USER || userInfo().username;
+  const server = env.SSH_CONNECTION?.trim().split(/\s+/)[2];
+  const host = server ? (server.includes(":") ? `[${server}]` : server) : hostname();
+  return `ssh -N -L ${port}:127.0.0.1:${port} ${user}@${host}`;
+}
+
 /** `ducter pair`: a fresh one-time code, how to use it, and (on a TTY) a wait for the device. */
 export async function cmdPair(o: { t: T; style: Style; dataDir: string; port: number; json: boolean; running: boolean; wait: boolean }): Promise<number> {
   const { t, style } = o;
@@ -48,8 +56,7 @@ export async function cmdPair(o: { t: T; style: Style; dataDir: string; port: nu
       "",
     ];
     if (!base) {
-      const user = process.env.USER || userInfo().username;
-      lines.push(`  ${t("pair.tunnel")}`, "", `    ssh -N -L ${o.port}:127.0.0.1:${o.port} ${user}@${hostname()}`, "", `  ${style.dim(t("pair.tunnelNote", { port: o.port }))}`, "");
+      lines.push(`  ${t("pair.tunnel")}`, "", `    ${tunnelCommand(o.port)}`, "", `  ${style.dim(t("pair.tunnelNote", { port: o.port }))}`, "");
     }
     const lw = Math.max(width(t("pair.address")), width(t("pair.code"))) + 2;
     const row = (k: string, v: string) => `    ${k}${" ".repeat(lw - width(k))}${style.bold(v)}`;
@@ -169,9 +176,8 @@ export function selfCommand(compiled: boolean): string[] {
 }
 
 export function servicePath(env: Record<string, string | undefined> = process.env, home = homedir()): string {
-  const parts = (env.PATH ?? "").split(":").filter(Boolean);
-  for (const p of [join(home, ".local", "bin"), join(home, ".bun", "bin"), "/usr/local/bin", "/usr/bin", "/bin"]) if (!parts.includes(p)) parts.push(p);
-  return parts.join(":");
+  const parts = [...(env.PATH ?? "").split(":"), join(home, ".local", "bin"), join(home, ".bun", "bin"), "/usr/local/bin", "/usr/bin", "/bin"];
+  return [...new Set(parts.filter(Boolean))].join(":");
 }
 
 async function sh(host: Host, cmd: string[], timeoutMs = 15_000) {

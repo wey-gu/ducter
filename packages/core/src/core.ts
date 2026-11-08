@@ -117,7 +117,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     log,
     tasks,
     clock,
-    defaultDelayMs: opts.defaultDelayMs,
+    // DUCTER_DECISION_DEFAULT_MS: how long a reversible default waits (soak runs and demos use seconds).
+    defaultDelayMs: opts.defaultDelayMs ?? (Number(process.env.DUCTER_DECISION_DEFAULT_MS) || undefined),
     onDecision: async (taskId, text) => {
       if (!runner) return console.warn(`[core] no runner: decision for ${taskId} not forwarded`);
       await runner.send(taskId, text, undefined, "user");

@@ -1,0 +1,14 @@
+{
+  "name": "@ducter/soak",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "soak": "bun src/run.ts",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@ducter/protocol": "workspace:*",
+    "@ducter/core": "workspace:*"
+  }
+}

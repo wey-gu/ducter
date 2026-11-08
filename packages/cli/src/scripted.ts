@@ -3,6 +3,7 @@
 // The script still uses Ducter's real MCP tools over HTTP (task_open, report_to_main), so the
 // partner → runner → task → report path is the real one; only the model's words are canned.
 import { scriptedRuntime, type ScriptedTurn } from "@botiverse/oar/testing";
+import { soakPartnerTurn, soakTaskTurn } from "./scripted-soak.ts";
 
 type Mcp = { url: string; headers: Record<string, string> };
 
@@ -49,6 +50,8 @@ async function turn(t: ScriptedTurn) {
   const mcp = ducterMcp(t);
   const role = roleOf(mcp);
   if (role.startsWith("task:")) {
+    const brief = String(t.options.appendSystemPrompt ?? "").match(/<brief>([\s\S]*?)<\/brief>/)?.[1] ?? "";
+    if (/#soak task /.test(brief)) return soakTaskTurn(t, mcp, callTool, brief, role.slice(5));
     const cn = zh(t.input) || zh(String(t.options.appendSystemPrompt ?? "")); // the brief keeps the user's language
     const resumed = /lost its connection|cut off/.test(t.input);
     t.say(resumed ? (cn ? "接着做。" : "Carrying on.") : cn ? "开始做。" : "Starting.");
@@ -64,6 +67,7 @@ async function turn(t: ScriptedTurn) {
     if (mcp) await t.tool("mcp__ducter__report_to_main", JSON.stringify({ state: "done" }), () => callTool(mcp, "report_to_main", { state: "done", summary }));
     return;
   }
+  if (/^\[(user\] #soak|timer fired\] soak-wait|your question answered[^\]]*\] "soak ask)/m.test(t.input)) return soakPartnerTurn(t, mcp, callTool);
   const trig = lastTrigger(t.input);
   const cn = zh(trig.text);
   if (trig.kind === "report") {

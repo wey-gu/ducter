@@ -66,6 +66,14 @@
         "@modelcontextprotocol/sdk": "^1.20.0",
       },
     },
+    "packages/soak": {
+      "name": "@ducter/soak",
+      "version": "0.0.1",
+      "dependencies": {
+        "@ducter/core": "workspace:*",
+        "@ducter/protocol": "workspace:*",
+      },
+    },
   },
   "packages": {
     "@agentclientprotocol/sdk": ["@agentclientprotocol/sdk@1.9.0", "", { "peerDependencies": { "zod": "^3.25.0 || ^4.0.0" } }, "sha512-saCOTPYBK1iqWqJFAYHXbg3+zCoFXyZZFoqQAwdTWkbrZZPpAETr80QOnYr2l+dzPwL0jpNhn3eDY8MoEIDbUA=="],
@@ -123,6 +131,8 @@
     "@ducter/protocol": ["@ducter/protocol@workspace:packages/protocol"],
 
     "@ducter/runner": ["@ducter/runner@workspace:packages/runner"],
+
+    "@ducter/soak": ["@ducter/soak@workspace:packages/soak"],
 
     "@ducter/web": ["@ducter/web@workspace:apps/web"],
 

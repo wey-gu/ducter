@@ -114,6 +114,10 @@ export type Script = (input: string, s: FakeSession, turnIndex: number) => Promi
 export class FakeSession implements HarnessSession {
   q = new AsyncQueue<HarnessEvent>();
   inputs: string[] = [];
+  readonly canSteer = true;
+  busy() {
+    return false;
+  }
   closed = false;
   constructor(
     public id: string,
@@ -172,6 +176,7 @@ export function fakeRunner(script: Script) {
         harness: input.harness ?? "claude-code",
         attention: "working",
         residency: "hot",
+        openedAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
       cardsRef?.set(card.taskId, card);

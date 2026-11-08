@@ -62,9 +62,12 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
       const by = b.by === "default" ? " by default" : "";
       return `[decision resolved: ${b.option}${by}]${about}${b.text ? ` ${b.text}` : ""}`;
     }
+    case "waiter": {
+      const b = e.body as Bodies["waiter"];
+      return `[timer ${b.state}] ${b.reason}${b.taskId ? ` (task ${b.taskId})` : ""}`;
+    }
     case "job_status": {
       const b = e.body as Bodies["job_status"];
-      if (e.origin === "waiter") return `[timer fired] ${b.text}${b.taskId ? ` (task ${b.taskId})` : ""}`;
       return `[job ${b.jobId} ${b.state}] ${b.text}`;
     }
     case "ai_msg":
@@ -86,9 +89,13 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
       return `[${t} you] ${clip((e.body as Bodies["ack"]).text, 300)}`;
     case "job_status": {
       const b = e.body as Bodies["job_status"];
-      if (e.origin === "waiter") return `[${t} timer] ${b.text} (${b.state === "running" ? "set" : "fired"})`;
       if (!b.taskId) return null;
       return `[${t} task ${b.taskId} ${b.state}] ${clip(b.text, 160)}`;
+    }
+    case "waiter": {
+      const b = e.body as Bodies["waiter"];
+      const st = b.state === "armed" ? `set for ${b.at ? hhmm(b.at) : "?"}` : b.state;
+      return `[${t} timer] ${clip(b.reason, 200)} (${st})`;
     }
     case "report": {
       const r = e.body as Bodies["report"];

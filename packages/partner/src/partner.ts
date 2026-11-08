@@ -23,11 +23,15 @@
 //   tasks) followed by the turn's deltas. Never any "you were reset" text (research/13).
 //
 // wait_until (tonight: timers only)
-//   `at` set: appends a job_status (origin "waiter", state running) as the visible status line,
-//   arms an in-process timer; when it fires, appends job_status (origin "waiter", state done)
-//   and feeds that event to onTrigger, rendered as "[timer fired] <reason>". Timers are not
-//   persisted across restarts (known gap). `taskId` without `at` is a no-op: the task's next
-//   report already wakes the partner.
+//   `at` set: appends `waiter {state:"armed"}` on the channel. Core owns the timer (it is
+//   rebuilt from the Log after a restart), appends `waiter {state:"fired"}` when due, and
+//   that event triggers us; it renders as "[timer fired] <reason>". `taskId` without `at` is
+//   a no-op: the task's next report already wakes the partner.
+//
+// Restart
+//   state.json keeps the session id, last activity, and the highest trigger seq a finished
+//   turn covered. On start, triggers after that seq (a turn cut off by the restart, or events
+//   that arrived while down) are queued again; user messages that already got a reply are not.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Bodies, LogEvent, Place } from "../../protocol/src/index.ts";
@@ -43,8 +47,6 @@ export interface PartnerOptions {
   model?: string; // default env DUCTER_PARTNER_MODEL or "opus"
   turnTimeoutMs?: number; // max silence inside a turn before interrupting, default 10 min
   fs?: PlaceFs;
-  setTimer?: (fn: () => void, ms: number) => unknown;
-  clearTimer?: (h: unknown) => void;
   persistState?: boolean; // write <dataDir>/partner/state.json, default true
   ackWaitMs?: number; // how long the task_open handler waits for the streamed ack text, default 250
   onError?: (err: unknown) => void;
@@ -71,11 +73,21 @@ interface Job {
   jobId: string;
   title: string;
   replyTo?: number;
+  state?: Bodies["job_status"]["state"]; // last job_status appended
 }
 
 const COLD_MS = 55 * 60 * 1000;
 const TASK_OPEN_RE = /(^|__)task_open$/;
 const QUIET_TOOL_RE = /(^ToolSearch$)|((^|__)(log_search|log_read|task_read)$)/;
+
+/** Same rule as core's triggersPartner (principle 6). */
+function isTrigger(e: LogEvent): boolean {
+  if (e.origin === "partner") return false;
+  if (e.kind === "user_msg" || e.kind === "decision_resolved") return true;
+  if (e.kind === "report") return (e.body as Bodies["report"]).state !== "progress";
+  if (e.kind === "waiter") return (e.body as Bodies["waiter"]).state === "fired";
+  return false;
+}
 
 let idCounter = 0;
 function newId(prefix: string): string {
@@ -90,8 +102,6 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const model = opts.model ?? process.env.DUCTER_PARTNER_MODEL ?? "opus";
   const turnTimeoutMs = opts.turnTimeoutMs ?? 10 * 60 * 1000;
   const fs = opts.fs ?? realFs;
-  const setTimer = opts.setTimer ?? ((fn, ms) => setTimeout(fn, ms));
-  const clearTimer = opts.clearTimer ?? ((h) => clearTimeout(h as ReturnType<typeof setTimeout>));
   const persist = opts.persistState ?? true;
   const ackWaitMs = opts.ackWaitMs ?? 250;
   const onError = opts.onError ?? ((err) => console.error("[partner]", err));
@@ -114,16 +124,17 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   let iter: AsyncIterator<HarnessEvent> | null = null;
   let lastActivity = 0;
   let lastSessionId: string | undefined;
+  let handledSeq: number | undefined; // highest trigger seq covered by a finished turn
   let turn: TurnState | null = null;
   const jobs = new Map<string, Job>(); // taskId -> job
-  const timers = new Set<unknown>();
   const stats: PartnerHandle["stats"] = { turns: 0, freshStarts: 0, resumes: 0 };
 
   if (persist) {
     try {
-      const s = JSON.parse(readFileSync(stateFile, "utf8")) as { sessionId?: string; lastActivity?: number };
+      const s = JSON.parse(readFileSync(stateFile, "utf8")) as { sessionId?: string; lastActivity?: number; handledSeq?: number };
       lastSessionId = s.sessionId;
       lastActivity = s.lastActivity ?? 0;
+      handledSeq = s.handledSeq;
     } catch {
       /* first run */
     }
@@ -131,7 +142,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const saveState = () => {
     if (!persist) return;
     try {
-      writeFileSync(stateFile, JSON.stringify({ sessionId: lastSessionId, lastActivity }));
+      writeFileSync(stateFile, JSON.stringify({ sessionId: lastSessionId, lastActivity, handledSeq }));
     } catch (err) {
       onError(err);
     }
@@ -148,6 +159,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       const b = e.body as Bodies["job_status"];
       if (e.origin !== "partner" || !b.taskId) continue;
       if (!jobs.has(b.taskId)) jobs.set(b.taskId, { jobId: b.jobId, title: b.text, replyTo: acks.get(b.jobId) });
+      const j = jobs.get(b.taskId)!;
+      if (j.jobId === b.jobId) j.state = b.state;
     }
   } catch (err) {
     onError(err);
@@ -268,7 +281,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         stream: "channel",
         beforeSeq: core.log.head() + 1,
         limit: historyLimit + batch.length,
-        kinds: ["user_msg", "ai_msg", "ack", "job_status", "report", "decision", "decision_resolved"],
+        kinds: ["user_msg", "ai_msg", "ack", "job_status", "report", "decision", "decision_resolved", "waiter"],
       })
       .filter((e) => !batchSeqs.has(e.seq))
       .sort((a, b) => a.seq - b.seq)
@@ -342,6 +355,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       await session!.send(input, "turn");
       await reading;
       flushPending();
+      handledSeq = Math.max(handledSeq ?? 0, ...batch.map((e) => e.seq));
     } finally {
       turn = null;
       lastActivity = now();
@@ -372,7 +386,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   function onReport(r: Bodies["report"]) {
     if (r.state !== "done" && r.state !== "failed") return;
     const j = jobs.get(r.taskId);
-    if (!j) return;
+    if (!j || j.state === r.state) return; // e.g. a report re-queued after a restart
+    j.state = r.state;
     core.log.append({
       stream: "channel",
       origin: "partner",
@@ -447,7 +462,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           ...(args.harness ? { harness: args.harness } : {}),
           ...(args.model ? { model: args.model } : {}),
         });
-        jobs.set(card.taskId, { jobId, title: card.title || args.title, replyTo: t ? replyToFor(t) : undefined });
+        jobs.set(card.taskId, { jobId, title: card.title || args.title, replyTo: t ? replyToFor(t) : undefined, state: "running" });
         core.log.append({
           stream: "channel",
           origin: "partner",
@@ -517,18 +532,13 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       }
       const at = Date.parse(args.at);
       if (Number.isNaN(at)) return { ok: false, error: `could not parse time: ${args.at}` };
-      const waiterId = newId("wait");
-      const delay = Math.max(0, Math.min(at - now(), 2 ** 31 - 1));
-      const base = { jobId: waiterId, text: args.reason, ...(args.taskId ? { taskId: args.taskId } : {}) };
-      core.log.append({ stream: "channel", origin: "waiter", kind: "job_status", body: { ...base, state: "running" } });
-      const h = setTimer(() => {
-        timers.delete(h);
-        if (closed) return;
-        const fired = core.log.append({ stream: "channel", origin: "waiter", kind: "job_status", body: { ...base, state: "done" } });
-        api.onTrigger(fired);
-      }, delay);
-      timers.add(h);
-      return { ok: true, waiterId, firesAt: new Date(now() + delay).toISOString() };
+      if (args.taskId && !core.tasks.get(args.taskId)) return { ok: false, error: `unknown task ${args.taskId}` };
+      // Core arms the timer from this event (it survives restarts) and appends waiter "fired",
+      // which wakes us; a task-bound waiter is cancelled if the task finishes first.
+      const body: Bodies["waiter"] = { waiterId: newId("wait"), at: new Date(at).toISOString(), reason: args.reason, state: "armed" };
+      if (args.taskId) body.taskId = args.taskId;
+      core.log.append({ stream: "channel", origin: "waiter", kind: "waiter", body });
+      return { ok: true, waiterId: body.waiterId, firesAt: body.at };
     },
   );
 
@@ -554,11 +564,26 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     },
     async close() {
       closed = true;
-      for (const h of timers) clearTimer(h);
-      timers.clear();
       await api.idle().catch(() => {});
       await dropSession();
     },
   };
+
+  // Re-queue triggers that no finished turn covered (cut off by a restart, or arrived while down).
+  if (persist && handledSeq !== undefined) {
+    const from = handledSeq + 1;
+    const missed = core.log
+      .read({ fromSeq: from, limit: 200, kinds: ["user_msg", "decision_resolved", "report", "waiter"] })
+      .filter(isTrigger);
+    const replied = new Set(
+      core.log
+        .read({ stream: "channel", fromSeq: from, limit: 5000, kinds: ["ai_msg", "ack"] })
+        .map((e) => (e.body as { replyTo?: number }).replyTo),
+    );
+    const todo = missed.filter((e) => !(e.kind === "user_msg" && replied.has(e.seq)));
+    if (todo.length) queueMicrotask(() => todo.forEach((e) => api.onTrigger(e)));
+  } else if (persist) {
+    handledSeq = core.log.head(); // first run: history is background, not new work
+  }
   return api;
 }

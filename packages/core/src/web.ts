@@ -14,7 +14,7 @@
 import type { Decisions } from "./decisions.ts";
 import type { Gate, GateResult } from "./auth.ts";
 import type { Pusher, PushStore, PushSub, Quiet } from "./push.ts";
-import { testMessage } from "./push.ts";
+import { isPushEndpoint, testMessage } from "./push.ts";
 
 import indexHtml from "../../../apps/web/static/index.html" with { type: "file" };
 import appJs from "../../../apps/web/static/app.js" with { type: "file" };
@@ -148,8 +148,9 @@ export async function webApi(req: Request, g: Extract<GateResult, { pass: true }
     case "POST /api/push/subscribe": {
       const b = await body();
       const s = b.subscription as { endpoint?: unknown; keys?: { p256dh?: unknown; auth?: unknown } } | undefined;
-      if (typeof s?.endpoint !== "string" || !/^https:\/\//.test(s.endpoint) || typeof s.keys?.p256dh !== "string" || typeof s.keys?.auth !== "string")
+      if (typeof s?.endpoint !== "string" || typeof s.keys?.p256dh !== "string" || typeof s.keys?.auth !== "string")
         return json(400, { error: "invalid subscription" });
+      if (!isPushEndpoint(s.endpoint)) return json(400, { error: "not a known push service" });
       const sub: PushSub = {
         endpoint: s.endpoint,
         keys: { p256dh: s.keys.p256dh, auth: s.keys.auth },

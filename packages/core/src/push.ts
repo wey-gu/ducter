@@ -120,6 +120,22 @@ interface PushFile {
 }
 
 export const DEFAULT_QUIET = { start: "23:00", end: "08:00" };
+/**
+ * The push services browsers hand out endpoints for. Anything else is refused: a subscription
+ * is a URL the main will POST to, and it must not be a way to reach hosts near the server.
+ */
+export function isPushEndpoint(endpoint: string): boolean {
+  let u: URL;
+  try {
+    u = new URL(endpoint);
+  } catch {
+    return false;
+  }
+  if (u.protocol !== "https:" || u.username || u.password || (u.port && u.port !== "443")) return false;
+  const h = u.hostname.toLowerCase();
+  return h === "fcm.googleapis.com" || h === "updates.push.services.mozilla.com" || h.endsWith(".push.apple.com") || h.endsWith(".notify.windows.com");
+}
+
 export const MAX_SUBS_PER_DEVICE = 5;
 export const MAX_SUBS = 50;
 
@@ -340,6 +356,8 @@ export function fitMessage(msg: PushMessage, max = MAX_PUSH_PLAINTEXT): Bytes {
 }
 
 export async function sendPush(sub: PushSub, msg: PushMessage, v: Vapid, fetcher: Fetcher = fetch as Fetcher, urgency = "high"): Promise<SendResult> {
+  // Subscriptions saved before the allowlist (isPushEndpoint) are dropped, never posted to.
+  if (!isPushEndpoint(sub.endpoint)) return { endpoint: sub.endpoint, status: 0, gone: true };
   let body: Bytes;
   try {
     body = await encryptPayload(fitMessage(msg), sub.keys);

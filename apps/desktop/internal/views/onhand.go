@@ -322,7 +322,6 @@ func (a *App) needsCard(c *ui.Context, task *store.Task) {
 	})
 }
 
-
 // countdown is the default's bar: how much of the wait has passed.
 func (a *App) countdown(c *ui.Context, d *store.DecisionState) {
 	t := a.T

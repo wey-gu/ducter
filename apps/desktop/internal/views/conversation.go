@@ -12,6 +12,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/client"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
+	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
 const convWidth = 760
@@ -126,7 +127,7 @@ func (a *App) emptyConversation(c *ui.Context) {
 	col := ui.Column(c.Key("empty")).Margin(ui.Auto).MaxWidth(520).AlignItems(ui.Center).Gap(16)
 	a.enter(c, col)
 	col.Children(func() {
-		a.face(c, FaceIdle, 96, a.L.T("face.idle", a.S.PersonaName))
+		a.avatar(c, theme.Idle, 180)
 		ui.Text(c, a.L.T("empty.conversation.title", a.S.PersonaName)).FontSize(26).FontWeight(800).LetterSpacing(-0.3)
 		ui.Text(c, a.L.T("empty.conversation")).FontSize(t.LG).TextAlign(ui.Center).TextColor(t.InkSoft).LineHeight(1.6)
 		ui.Column(c).Gap(10).Margin(14, 0, 0, 0).AlignItems(ui.Stretch).Width(460).MaxWidthPercent(100).Children(func() {
@@ -153,9 +154,7 @@ func (a *App) header(c *ui.Context) {
 	b := a.S.Board()
 	ui.Row(c).Gap(16).Padding(20, 32).AlignItems(ui.Center).Children(func() {
 		ui.Row(c).Gap(14).Grow(1).AlignItems(ui.Center).Children(func() {
-			fs := a.faceState()
-			key := map[FaceState]string{FaceIdle: "face.idle", FaceWorking: "face.working", FaceNeedsYou: "face.needs_you"}[fs]
-			a.face(c, fs, 52, a.L.T(key, a.S.PersonaName))
+			a.avatar(c, a.presence(c), 56)
 			ui.Column(c).Gap(2).Children(func() {
 				ui.Text(c, a.S.PersonaName).FontSize(t.XL).FontWeight(800).LetterSpacing(-0.3)
 				ui.Text(c, a.summary(b)).FontSize(t.SM).TextColor(t.InkMuted)
@@ -402,18 +401,16 @@ func (a *App) living(c *ui.Context, e *store.Entry) {
 		Shadow(0, t.PressCard.Offset, 0, 0, t.PressCard.Color).Label(a.L.T("living.title"))
 	a.resettle(c, card, e.Revision)
 	card.Children(func() {
-		ui.Row(c).Gap(12).AlignItems(ui.Center).Children(func() {
-			if away {
+		if away {
+			ui.Row(c).Gap(12).AlignItems(ui.Center).Children(func() {
 				ui.Text(c, a.L.T("living.title")).FontSize(20).FontWeight(800).Grow(1)
-			} else {
-				ui.Spacer(c)
-			}
-			if away && a.S.Unread(e) {
-				ui.Box(c).Padding(4, 10).Radius(t.Pill).Background(t.Highlight).Children(func() {
-					ui.Text(c, a.L.T("living.unread")).FontSize(t.XS).FontWeight(700).TextColor(t.HighlightInk)
-				})
-			}
-		})
+				if a.S.Unread(e) {
+					ui.Box(c).Padding(4, 10).Radius(t.Pill).Background(t.Highlight).Children(func() {
+						ui.Text(c, a.L.T("living.unread")).FontSize(t.XS).FontWeight(700).TextColor(t.HighlightInk)
+					})
+				}
+			})
+		}
 		needs, open := 0, 0
 		for _, it := range items {
 			if it.Kind == "decision" {

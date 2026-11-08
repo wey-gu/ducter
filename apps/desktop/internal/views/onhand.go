@@ -28,7 +28,7 @@ func (a *App) onHand(c *ui.Context) {
 			})
 			if a.boardEmpty(b) && len(a.partnerDecisions()) == 0 {
 				ui.Column(c.Key("empty")).Padding(28, 28).Gap(14).Radius(t.RadiusXL).Border(2, t.Line).BorderStyle(ui.BorderDashed).AlignItems(ui.Center).Children(func() {
-					a.face(c, FaceIdle, 64, a.L.T("face.idle", a.S.PersonaName))
+					a.avatar(c, theme.Idle, 120)
 					ui.Text(c, a.L.T("onhand.empty", a.S.PersonaName)).FontSize(t.LG).TextColor(t.InkSoft).TextAlign(ui.Center)
 				})
 				return
@@ -150,7 +150,7 @@ func (a *App) backButton(c *ui.Context) {
 		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(a.L.T("nav.back")).Shrink(0)
 	a.press(c, btn, t.PressCard)
 	btn.Children(func() {
-		a.face(c, a.faceState(), 30, a.S.PersonaName)
+		a.avatar(c, a.presence(c), 34)
 		ui.Text(c, a.L.T("nav.back")).FontSize(14).FontWeight(700)
 	})
 	if btn.Clicked() {
@@ -503,7 +503,7 @@ func (a *App) partnerDecisionCard(c *ui.Context, d *store.DecisionState) {
 	t := a.T
 	ui.Column(c).Padding(20, 22).Gap(12).Radius(t.RadiusXL).Background(t.NeedsYou.Surface).Children(func() {
 		ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
-			a.face(c, FaceNeedsYou, 26, a.S.PersonaName)
+			a.avatar(c, theme.NeedsYou, 32)
 			ui.Text(c, a.S.PersonaName).FontSize(t.SM).FontWeight(800).TextColor(t.NeedsYou.Ink)
 		})
 		ui.Text(c, d.Question).FontSize(18).LineHeight(1.5).FontWeight(500)

@@ -21,6 +21,8 @@ const (
 type Table map[string]string
 
 var zh = Table{
+	"face.done":                     "%s 刚交回一件事",
+	"face.napping":                  "%s 还没醒",
 	"weekday.0":                     "周日 %s",
 	"weekday.1":                     "周一 %s",
 	"weekday.2":                     "周二 %s",
@@ -183,6 +185,8 @@ var zh = Table{
 }
 
 var en = Table{
+	"face.done":                     "%s just handed something back",
+	"face.napping":                  "%s isn't up yet",
 	"weekday.0":                     "Sun %s",
 	"weekday.1":                     "Mon %s",
 	"weekday.2":                     "Tue %s",

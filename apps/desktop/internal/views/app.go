@@ -85,6 +85,8 @@ type App struct {
 	// livingAway remembers, per living message, whether it came while
 	// the user was away.
 	livingAway map[int64]bool
+	// doneAt is when a task last came back done (the done glow).
+	doneAt time.Time
 	// historyAsked marks the tasks whose stream was asked for.
 	historyAsked map[string]bool
 	// held is a message held back because it looks like a key.
@@ -361,6 +363,7 @@ func (a *App) Receive(f protocol.ServerFrame) {
 		}
 		a.send(protocol.Hello{T: "hello", Locale: string(a.L.Lang)})
 	}
+	a.noteResults(f)
 	a.S.Apply(f)
 	if f.T == "welcome" {
 		a.Welcomed()

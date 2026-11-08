@@ -38,7 +38,7 @@ func finished(t *store.Task) bool {
 // finished task its result's proof, Outside line and next steps.
 func (a *App) taskFooter(c *ui.Context, task *store.Task, detail string) {
 	if !finished(task) {
-		a.taskChip(c, task, detail)
+		ui.Row(c).Gap(8).Wrap().AlignItems(ui.Center).Children(func() { a.taskChip(c, task, detail) })
 		return
 	}
 	t := a.T

@@ -43,6 +43,12 @@ func newLive(t *testing.T, url string, lang i18n.Lang) *liveHarness {
 // dial makes the app and its client, without waiting for anything.
 func dial(t *testing.T, url string, lang i18n.Lang) *liveHarness {
 	t.Helper()
+	return dialWith(t, url, "", lang)
+}
+
+// dialWith is dial with a device token (a paired remote Ducter).
+func dialWith(t *testing.T, url, token string, lang i18n.Lang) *liveHarness {
+	t.Helper()
 	theme.LoadFonts()
 	s := store.New()
 	app := New(s, theme.Pebble(), i18n.New(lang))
@@ -52,6 +58,7 @@ func dial(t *testing.T, url string, lang i18n.Lang) *liveHarness {
 	var c *client.Client
 	c = client.New(client.Options{
 		URL:    url,
+		Token:  token,
 		Locale: string(lang),
 		// The store lives on the test's goroutine: ask it for the cursor.
 		Cursor:  func() int64 { return <-cursor },

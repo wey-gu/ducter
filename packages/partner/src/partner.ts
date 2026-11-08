@@ -133,7 +133,7 @@ export function redactSecrets(text: string): string {
   return text.replace(SECRET_RE, "[secret removed: the user pasted it in the conversation; use a placeholder and let the user fill it in]");
 }
 
-const RESULT_PLUMBING = /分支|branch|合并|合回|merge|冲突|conflict|提交|commit|\b[0-9a-f]{7,}\b|\d+\s*\/\s*\d+|\d+\s*个测试|测试(都|全)?(通过|过了)|^\s*(全部|都)(通过|过了)\s*$|\b\d+\s+tests?\b|tests? pass|\ball pass|\bpassing\b|src\/|\.ts\b|对外|outside|推送|push/i;
+const RESULT_PLUMBING = /分支|branch|合并|合回|合进|merge|冲突|conflict|提交|commit|\b[0-9a-f]{7,}\b|\d+\s*\/\s*\d+|\d+\s*个测试|测试(都|全)?(通过|过了)|^\s*(全部|都)(通过|过了)\s*$|\b\d+\s+tests?\b|tests? pass|\ball pass|\bpassing\b|src\/|\.ts\b|对外|outside|推送|push/i;
 /** Drops the clauses of a combined result that repeat evidence or plumbing; keeps the rest. */
 export function stripResultPlumbing(text: string): string {
   const out = text

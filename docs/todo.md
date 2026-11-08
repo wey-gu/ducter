@@ -23,3 +23,11 @@ is ~10–12k LOC, about 6–10 engineer-weeks. Do it Codex first, once OAR is ne
 - [ ] Spike: run `@botiverse/oar/observe` (no `node:` imports) inside the MyGo client on
       moejs, with a `randomUUID` shim, for client-side read models
 - [ ] Evaluate moejs as the client plugin host (cf. MyGo Music / mygo-plugin)
+
+## Art assets: production export
+
+Done: `docs/art/assets/alpha/` holds true-alpha cutouts of all 22 assets, made locally with
+macOS Vision foreground segmentation (`docs/art/assets/tools/cut.swift`). Cream objects cut
+cleanly. `ab_web` needed its enclosed window interior refilled from the raw image.
+- [ ] Export WebP at 1×/2×/3× per the size each asset is used at in the native client
+- [ ] Re-cut any regenerated asset with the same tool, and check it on a dark tile

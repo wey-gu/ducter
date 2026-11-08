@@ -3,7 +3,7 @@
 //                 WS server (/ws), MCP HTTP server (/mcp), main.ts wiring.
 //   runner  owns: HarnessPort over OAR, worktrees, task sessions, event normalization.
 //   partner owns: the main AI (persona prompt, projection, turn loop) on Claude Code via runner's HarnessPort.
-import type { Attention, Bodies, EventKind, LogEvent, OnHand, Origin, Place, Residency, TaskCard } from "./index.ts";
+import type { Attention, Bodies, Delivery, EventKind, LogEvent, OnHand, Origin, Place, Residency, TaskCard } from "./index.ts";
 
 // ---------- core ----------
 
@@ -72,6 +72,8 @@ export interface HarnessEvent {
 
 export interface HarnessSession {
   id: string; // native session id, resumable
+  readonly canSteer: boolean; // harness accepts input mid-turn
+  busy(): boolean; // a turn is in progress
   send(text: string, mode?: "turn" | "steer" | "queue"): Promise<void>;
   interrupt(): Promise<void>;
   close(): Promise<void>;
@@ -86,7 +88,8 @@ export interface HarnessPort {
 export interface Runner {
   harness: HarnessPort;
   openTask(input: { persona: string; title: string; brief: string; place?: Place; project?: string; harness?: string; model?: string }): Promise<TaskCard>;
-  send(taskId: string, text: string, mode?: "steer" | "queue"): Promise<{ delivered: "steered" | "queued" }>;
+  // Logs the text as task_event {role:"user", from} before delivering it.
+  send(taskId: string, text: string, mode?: "steer" | "queue", from?: "user" | "partner"): Promise<{ delivered: Delivery }>;
   interrupt(taskId: string): Promise<void>;
   drop(taskId: string): Promise<void>;
 }

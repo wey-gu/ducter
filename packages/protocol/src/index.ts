@@ -71,7 +71,16 @@ export interface Bodies {
     bodyReason?: string; // why this harness/model
   };
   task_state: { taskId: string; attention: Attention; residency: Residency; reason?: string };
-  task_event: { taskId: string; role: "assistant" | "user" | "tool" | "system"; text?: string; tool?: { name: string; input?: unknown; output?: string; ok?: boolean }; raw?: unknown };
+  // role "user" + from "user" = text the user sent straight into the task (logged by the runner).
+  task_event: {
+    taskId: string;
+    role: "assistant" | "user" | "tool" | "system";
+    from?: "user" | "partner" | "runner";
+    text?: string;
+    tool?: { name: string; input?: unknown; output?: string; ok?: boolean };
+    usage?: Usage; // present on turn ends
+    raw?: unknown;
+  };
   report: {
     taskId: string;
     state: "progress" | "needs_input" | "blocked" | "done" | "failed";
@@ -80,7 +89,11 @@ export interface Bodies {
     evidence: EvidenceRef[];
   };
   checkpoint: { taskId: string; text: string; gitRef?: string };
+  // A waiter is a cheap wait that wakes the partner (wait_until). Shown on On hand as a compact row.
+  waiter: { waiterId: string; taskId?: string; at?: string; reason: string; state: "armed" | "fired" | "cancelled" };
 }
+
+export interface Usage { inputTokens?: number; outputTokens?: number; cacheRead?: number; cacheWrite?: number }
 
 export type EventKind = keyof Bodies;
 
@@ -120,15 +133,27 @@ export interface TaskCard {
   reason?: string;
   lastReport?: Bodies["report"];
   pendingDecisionId?: string;
+  pendingDecision?: Bodies["decision"] & { askedAt: string }; // the open decision, for On hand
+  openedAt: string;
   updatedAt: string;
 }
 
 export interface OnHand {
   tasks: TaskCard[];
   counts: Record<"needs_you" | "working" | "waiting" | "done_today", number>;
+  waiters: Bodies["waiter"][]; // armed waiters (task-less ones render as compact rows)
 }
 
 // ---------- Client <-> main process WebSocket (ws://127.0.0.1:7777/ws) ----------
+// Semantics:
+//  - hello.cursor: the server replies welcome, then replays channel events with seq > cursor
+//    (cursor omitted = the last 200 channel events), then on_hand, then streams live events.
+//    Task streams are never pushed in bulk; clients pull them with task_history and receive
+//    live task_event/task_state for every task afterwards.
+//  - read.upToSeq: the user has seen the channel up to this seq. The living message is frozen
+//    once read: the next update appends a new living_msg instead of superseding.
+//  - task_send: delivered to the task as steer when it is mid-turn and the harness supports it,
+//    otherwise as the next turn ("prompted") or queued behind the current turn.
 
 export type ClientFrame =
   | { t: "hello"; persona?: string; cursor?: number; locale?: "zh" | "en" }
@@ -144,7 +169,10 @@ export type ServerFrame =
   | { t: "events"; events: LogEvent[] }
   | { t: "on_hand"; onHand: OnHand }
   | { t: "task_history"; taskId: string; events: LogEvent[] }
+  | { t: "sent"; taskId: string; delivered: Delivery } // ack for task_send
   | { t: "error"; message: string };
+
+export type Delivery = "steered" | "prompted" | "queued";
 
 // ---------- Ducter MCP tools (HTTP MCP served by core at /mcp, role-scoped by token) ----------
 // role "partner": task_open, task_send, task_read, log_search, log_read, wait_until, reply
@@ -162,4 +190,4 @@ export interface ToolArgs {
   checkpoint: { text: string };
 }
 
-export const PROTOCOL_VERSION = 1;
+export const PROTOCOL_VERSION = 2;

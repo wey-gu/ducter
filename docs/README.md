@@ -25,6 +25,7 @@ in `design/product-model.md`.
 | [`system.md`](design/system.md) | Harness adapter, identity and Mem, safety and trust, storage, server mode, workers |
 | [`onboarding.md`](design/onboarding.md) | The first five minutes, on a Mac and on a server |
 | [`ui.md`](design/ui.md) | Themes, tokens, zoom levels, the visual language |
+| [`glossary-review-2026-11-09.md`](design/glossary-review-2026-11-09.md) | Why each shown word is worded the way it is (D66) |
 | [`scenarios.md`](design/scenarios.md) | Which scenarios are designed and built, and how they were checked |
 | [`flows/`](design/flows/) | Step-by-step flows by area (setup, kinds of work, decisions, steering, safety, results) and the open questions |
 

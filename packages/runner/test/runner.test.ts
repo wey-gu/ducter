@@ -264,6 +264,11 @@ describe("send: steer vs queue", () => {
     s.canSteer = false;
     expect(await runner.send(card.taskId, "c", "steer")).toEqual({ delivered: "queued" });
     expect(s.sent.slice(1)).toEqual([{ text: "a", mode: "steer" }, { text: "b", mode: "queue" }, { text: "c", mode: "queue" }]);
+    // A user's task_send carries its clientId into the logged input (core dedupes resends by it).
+    s.busyFlag = false;
+    await runner.send(card.taskId, "d", undefined, "user", "cid-d");
+    const input = core.log.read({ stream: `task:${card.taskId}`, kinds: ["task_event"] }).find((e) => (e.body as { text?: string }).text === "d");
+    expect(input?.body).toMatchObject({ role: "user", from: "user", clientId: "cid-d", raw: { delivered: "turn" } });
 
     await runner.interrupt(card.taskId);
     expect(s.interrupted).toBe(1);

@@ -77,6 +77,7 @@ export interface Bodies {
     role: "assistant" | "user" | "tool" | "system";
     from?: "user" | "partner" | "runner";
     text?: string;
+    clientId?: string; // a user's task_send carries the client's id (resends are deduped by it)
     tool?: { name: string; input?: unknown; output?: string; ok?: boolean };
     usage?: Usage; // present on turn ends
     raw?: unknown;
@@ -157,6 +158,9 @@ export interface OnHand {
 //    live task_event/task_state for every task afterwards.
 //  - read.upToSeq: the user has seen the channel up to this seq. The living message is frozen
 //    once read: the next update appends a new living_msg instead of superseding.
+//  - send.clientId: idempotent. A send whose clientId is already in the Log is not appended
+//    again; the server re-sends that user_msg to the sender as an events frame (its echo).
+//    Clients keep unechoed messages and resend them, in order, after each welcome.
 //  - task_send: delivered to the task as steer when it is mid-turn and the harness supports it,
 //    otherwise as the next turn ("prompted") or queued behind the current turn.
 
@@ -164,7 +168,8 @@ export type ClientFrame =
   | { t: "hello"; persona?: string; cursor?: number; locale?: "zh" | "en" }
   | { t: "send"; text: string; clientId: string }
   | { t: "decide"; decisionId: string; option: "go" | "hold" | "reply"; text?: string }
-  | { t: "task_send"; taskId: string; text: string }
+  // clientId (optional): a resend with the same id is not delivered twice; it gets the same "sent".
+  | { t: "task_send"; taskId: string; text: string; clientId?: string }
   // merge: integrate the task branch into its base branch (local, reversible by revert);
   // open_pr: push the branch and open a draft PR (an intent: external effect, see G-safety).
   // The server acks every task_action with {t:"action_result"}.

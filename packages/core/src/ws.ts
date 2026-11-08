@@ -1,6 +1,6 @@
 // Client WebSocket protocol (ClientFrame / ServerFrame) over Bun's built-in WS.
 import type { ServerWebSocket } from "bun";
-import type { ClientFrame, LogEvent, ServerFrame } from "@ducter/protocol";
+import type { Bodies, ClientFrame, Delivery, LogEvent, ServerFrame } from "@ducter/protocol";
 import type { CoreApi, Runner } from "@ducter/protocol/src/internal.ts";
 import type { Decisions } from "./decisions.ts";
 import type { DevicesView } from "./devices.ts";
@@ -20,6 +20,10 @@ export interface WsData {
 const ON_HAND_KINDS = new Set<string>(PROJECTED_KINDS);
 const REPLAY_FRESH = 200; // channel events replayed when hello has no cursor
 const REPLAY_MAX = 5000; // cap for a cursor replay
+const SEEN_WINDOW = 2000; // user messages (by clientId) remembered for idempotent send
+const TASK_SEEN_WINDOW = 500; // task_event lines scanned for a task_send resend
+
+const DELIVERED: Record<string, Delivery> = { turn: "prompted", steer: "steered", queue: "queued" };
 
 export interface WsDeps {
   core: CoreApi;
@@ -75,7 +79,26 @@ export function createWsHandler(deps: WsDeps) {
     if (v) offDevices = v.onChange(() => void pushDevices().catch((err) => console.warn("[ws] devices:", (err as Error).message)));
   };
 
+  // Idempotent send: clientId -> seq of its user_msg. Seeded from the Log's recent window (the
+  // kind index), so a resend after a restart is recognised too; bounded to SEEN_WINDOW ids.
+  const seen = new Map<string, number>();
+  const remember = (clientId: string | undefined, seq: number) => {
+    if (!clientId || seen.has(clientId)) return;
+    seen.set(clientId, seq);
+    if (seen.size > SEEN_WINDOW) seen.delete(seen.keys().next().value!);
+  };
+  for (const e of log.read({ stream: "channel", kinds: ["user_msg"], limit: SEEN_WINDOW }))
+    remember((e.body as Bodies["user_msg"]).clientId, e.seq);
+  // task_send ids being delivered right now (the runner logs them after it awaits the session).
+  const taskSending = new Map<string, Promise<Delivery>>();
+  /** The task_event a task_send with this clientId already logged, if any (recent window). */
+  const loggedTaskSend = (taskId: string, clientId: string) =>
+    log
+      .read({ stream: taskStream(taskId), kinds: ["task_event"], limit: TASK_SEEN_WINDOW })
+      .find((e) => (e.body as Bodies["task_event"]).clientId === clientId);
+
   const unsubscribe = log.subscribe((e) => {
+    if (e.kind === "user_msg") remember((e.body as Bodies["user_msg"]).clientId, e.seq);
     let any = false;
     for (const ws of sockets) {
       if (!ws.data.live) continue;
@@ -104,6 +127,12 @@ export function createWsHandler(deps: WsDeps) {
       }
       case "send": {
         if (!f.text?.trim()) throw new Error("empty message");
+        const dup = f.clientId ? seen.get(f.clientId) : undefined;
+        if (dup != null) {
+          // A resend (the client never saw its echo): don't append again, echo the original.
+          send(ws, { t: "events", events: log.read({ fromSeq: dup, limit: 1 }) });
+          return;
+        }
         log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: f.text, clientId: f.clientId } });
         return; // the partner is triggered by core's user_msg subscription
       }
@@ -119,11 +148,29 @@ export function createWsHandler(deps: WsDeps) {
         // Before answeredByMessage: a dropped task's question must not be answered by a message
         // the runner then refuses to deliver.
         if (target.attention === "dropped") throw new Error("That task was dropped. Undo the drop first.");
+        const key = f.clientId ? `${f.taskId} ${f.clientId}` : undefined;
+        if (key) {
+          // A resend of a message already delivered: the same ack, nothing delivered twice.
+          const prior = loggedTaskSend(f.taskId, f.clientId!);
+          if (prior) {
+            const mode = ((prior.body as Bodies["task_event"]).raw as { delivered?: string } | undefined)?.delivered;
+            send(ws, { t: "sent", taskId: f.taskId, delivered: DELIVERED[mode ?? ""] ?? "prompted" });
+            return;
+          }
+          // The first copy is still on its way (the runner logs it once the session is up).
+          const inFlight = taskSending.get(key);
+          if (inFlight) return void send(ws, { t: "sent", taskId: f.taskId, delivered: await inFlight });
+        }
         // Answering the task directly answers its open question too (no later Go re-wakes it).
         decisions.answeredByMessage(f.taskId, f.text, "user");
-        const { delivered } = await r.send(f.taskId, f.text, undefined, "user");
-        send(ws, { t: "sent", taskId: f.taskId, delivered });
-        return;
+        const delivering = r.send(f.taskId, f.text, undefined, "user", f.clientId).then((x) => x.delivered);
+        if (key) taskSending.set(key, delivering);
+        try {
+          send(ws, { t: "sent", taskId: f.taskId, delivered: await delivering });
+          return;
+        } finally {
+          if (key) taskSending.delete(key);
+        }
       }
       case "task_action": {
         // What the user did by button is part of the conversation: the partner must know it

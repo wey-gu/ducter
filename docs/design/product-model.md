@@ -44,6 +44,7 @@
 | routine fields | **复查 / Review on** · **可以碰 / May touch** | |
 | default outcomes | **按默认做了 / Went with the default** · **都按默认 / Go on all defaults** | |
 | outcomes | **停下了 / Stopped** · **撤销 / Undo** · **再试一次 / Try again** · **核对没过 / Check didn't pass** | |
+| a merge / draft PR whose result was lost with the connection | **不确定做成没有，看一下 / Not sure it went through — check** · **再试一次 / Try again** (pending user OK) | Only when the Log doesn't show it done after reconnecting. Never "failed" wording: it may have happened |
 | quiet hours | **安静时段 / Quiet hours** | |
 | remote access ability | **远程打开 / Reach from anywhere** | |
 | pairing a client with a server (D54) | **连接到你的 Ducter / Connect to your Ducter** · **地址 / Address** · **配对码 / Pairing code** · **连上 / Connect** · **断开 / Disconnect** | The desktop card and the CLI (`ducter pair`, `ducter devices disconnect`). A code "只能用一次 / works once". Never "token", "授权 / authorize" or "绑定" in UI |

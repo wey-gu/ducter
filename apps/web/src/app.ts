@@ -44,6 +44,10 @@ class AppState {
   push: PushState = "unsupported";
   flash?: string; // a decision to highlight once (opened from a notification)
   private nextClient = 0;
+  /** merge / open_pr written to this socket and not yet answered (task -> action). */
+  private actSent = new Map<string, string>();
+  /** Those of the socket that went away, settled from the Log once the replay is in. */
+  private inDoubt?: Map<string, string>;
   private nextToast = 0;
   private listeners = new Set<() => void>();
   private readTimer?: ReturnType<typeof setTimeout>;
@@ -69,6 +73,9 @@ class AppState {
       (f) => this.receive(f),
       (s) => ((this.status = s), this.changed()),
     );
+    this.conn.onWritten = (f) => {
+      if (f.t === "task_action" && (f.action === "merge" || f.action === "open_pr")) this.actSent.set(f.taskId, f.action);
+    };
     this.conn.start();
     void this.refreshPush();
   }
@@ -87,6 +94,8 @@ class AppState {
       // The Log started over (its data was reset): forget everything and say hello from scratch.
       this.S = new Store();
       this.pending = [];
+      this.actSent.clear();
+      this.inDoubt = undefined;
       this.historyAsked.clear();
       this.livingAway.clear();
       this.route = { name: "conv" };
@@ -95,10 +104,18 @@ class AppState {
     const before = new Map([...this.S.tasks].map(([id, t]) => [id, attention(t)]));
     this.S.apply(f);
     for (const [id, t] of this.S.tasks) if (finished(t) && before.has(id) && !["done", "done_claimed", "failed"].includes(before.get(id)!)) this.doneAt = Date.now();
+    if (f.t === "action_result") this.actSent.delete(f.taskId);
     if (f.t === "welcome") {
       this.readSent = 0;
+      // What the old socket left unanswered: actions are settled from the Log after the replay;
+      // messages go again, in order (core dedupes them, so none shows or lands twice).
+      if (this.actSent.size) this.inDoubt = new Map([...(this.inDoubt ?? []), ...this.actSent]);
+      this.actSent.clear();
+      for (const r of this.S.resends(this.pending)) this.send(r);
       if (this.route.name === "task") this.history(this.route.id, true);
     }
+    // on_hand closes the replay that follows a welcome.
+    if (f.t === "on_hand" && this.inDoubt) this.S.settleInDoubt(this.inDoubt), (this.inDoubt = undefined);
     if (f.t === "events") for (const ev of f.events) if (!this.livingAway.has(ev.seq) && ev.kind === "living_msg") this.livingAway.set(ev.seq, ev.seq <= this.S.headSeq || document.hidden);
     this.followUserLanguage();
     this.drainActionResults();
@@ -225,8 +242,9 @@ class AppState {
       return false;
     }
     this.held = undefined;
-    this.S.addSend(id, text);
-    this.send({ t: "task_send", taskId: id, text });
+    const clientId = `t${Date.now()}-${++this.nextClient}`;
+    this.S.addSend(id, text, Date.now(), clientId);
+    this.send({ t: "task_send", taskId: id, text, clientId });
     this.changed();
     return true;
   }
@@ -261,6 +279,15 @@ class AppState {
     if (t && (action === "merge" || action === "open_pr")) t.acting = action;
     this.send({ t: "task_action", taskId: id, action });
     this.changed();
+  }
+
+  /** Sends an action again after its result was lost (unsure). */
+  retryAction(id: string) {
+    const t = this.S.tasks.get(id);
+    const action = t?.unsure;
+    if (!t || (action !== "merge" && action !== "open_pr")) return;
+    t.unsure = undefined;
+    this.taskAction(id, action);
   }
 
   drop(id: string) {

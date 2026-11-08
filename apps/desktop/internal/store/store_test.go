@@ -176,7 +176,7 @@ func TestRetitleByLaterTaskOpen(t *testing.T) {
 func TestDirectSendsAndDelivery(t *testing.T) {
 	s := New()
 	s.Apply(events(ev(1, "task:t1", protocol.KindTaskOpen, protocol.TaskOpen{TaskID: "t1", Title: "x"})))
-	sd := s.AddSend("t1", "use the fixture")
+	sd := s.AddSend("t1", "use the fixture", "")
 	s.Apply(protocol.ServerFrame{T: "sent", TaskID: "t1", Delivered: protocol.DeliveryQueued})
 	if sd.Delivered != protocol.DeliveryQueued {
 		t.Fatalf("delivery %+v", sd)
@@ -189,10 +189,39 @@ func TestDirectSendsAndDelivery(t *testing.T) {
 	if u := s.Task("t1").Usage; u.InputTokens != 10 || u.OutputTokens != 2 {
 		t.Errorf("usage %+v", u)
 	}
-	sd2 := s.AddSend("t1", "again")
+	sd2 := s.AddSend("t1", "again", "")
 	s.Apply(protocol.ServerFrame{T: "error", Message: "task_send: runner is not available"})
 	if sd2.Failed == "" {
 		t.Error("refused send not failed")
+	}
+}
+
+// Two sends with the same text: the echo carrying a clientId marks its own.
+func TestDirectSendEchoByClientID(t *testing.T) {
+	s := New()
+	a := s.AddSend("t1", "go on", "k1")
+	b := s.AddSend("t1", "go on", "k2")
+	s.Apply(events(ev(5, "task:t1", protocol.KindTaskEvent, protocol.TaskEvent{TaskID: "t1", Role: "user", From: "user", Text: "go on", ClientID: "k2"})))
+	if a.Seq != 0 || b.Seq != 5 {
+		t.Errorf("a %+v b %+v", a, b)
+	}
+}
+
+// The Log's record of a merge settles an action whose result was lost.
+func TestActedFromLogClearsActingAndUnsure(t *testing.T) {
+	s := New()
+	tk := s.task("t1")
+	tk.Acting = "merge"
+	ok := protocol.NewEvent(3, "2026-11-09T20:00:00Z", "ducter", "channel", protocol.OriginUser, protocol.KindJobStatus,
+		protocol.JobStatus{JobID: "act_t1_merge", TaskID: "t1", State: "done", Text: "merged"})
+	s.Apply(events(ok))
+	if tk.Acting != "" || tk.Acted == nil || tk.Acted.Action != "merge" {
+		t.Errorf("acting %q acted %+v", tk.Acting, tk.Acted)
+	}
+	tk.Unsure = "open_pr"
+	s.Apply(protocol.ServerFrame{T: "action_result", TaskID: "t1", Action: "open_pr", OK: false, Message: "no remote"})
+	if tk.Unsure != "" {
+		t.Errorf("a real result keeps unsure %q", tk.Unsure)
 	}
 }
 

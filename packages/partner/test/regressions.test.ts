@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { buildSystemPrompt, createPartner } from "../src/index.ts";
+import { buildSystemPrompt, createPartner, redactSecrets } from "../src/index.ts";
 import { FakeClock, fakeCore, fakeRunner, type Script } from "./fakes.ts";
 
 function setup(script: Script, extra: Parameters<typeof createPartner>[2] = {}) {
@@ -127,7 +127,8 @@ describe("live-run regressions", () => {
   test("persona: result anatomy, no internals, ask for choices, silence after the ack", () => {
     const p = buildSystemPrompt({ id: "p", name: "Ducter", identity: "ID" });
     expect(p).toMatchSnapshot();
-    for (const s of ["at most 2 lines", "how you know", "left out", "outside", "at most one next step", "no task ids", "call ask", "ONLY if a decision exists", "say nothing more", "goes to that\n      task with task_send"]) {
+    // Tuned with packages/partner/eval: the result prose leaves evidence, Outside and Merge to the app.
+    for (const s of ["at most 2 lines", "left-out line", "Never restate the evidence", "no task ids", "call ask", "then write nothing", "write nothing more", "goes to that\n      task with task_send", "gets ask first", "never pass it to a task", "ONE\n  concrete example"]) {
       expect(p).toContain(s);
     }
   });
@@ -204,5 +205,107 @@ describe("live-run regressions", () => {
     user("hi");
     await partner.idle();
     expect(fr.sessions).toHaveLength(1);
+  });
+});
+
+// Regressions from the partner eval (packages/partner/eval, 2026-11-09).
+describe("partner eval regressions", () => {
+  const report = (fc: ReturnType<typeof fakeCore>, taskId: string, summary: string) =>
+    fc.core.log.append({ stream: `task:${taskId}`, origin: "task", kind: "report", body: { taskId, state: "done", summary, questions: [], evidence: [] } });
+
+  test("two tasks finishing together settle into one turn", async () => {
+    const { fc, fr, partner } = setup(ok, { settleMs: 30 });
+    partner.onTrigger(report(fc, "t1", "values() added"));
+    await Bun.sleep(5);
+    partner.onTrigger(report(fc, "t2", "keys() added"));
+    await partner.idle();
+    expect(fr.sessions[0]!.inputs).toHaveLength(1);
+    expect(fr.sessions[0]!.inputs[0]).toContain("values() added");
+    expect(fr.sessions[0]!.inputs[0]).toContain("keys() added");
+  });
+
+  test("a user message does not wait for the settle window", async () => {
+    const { fr, partner, user } = setup(ok, { settleMs: 5_000 });
+    const t0 = Date.now();
+    user("hi");
+    await partner.idle();
+    expect(Date.now() - t0).toBeLessThan(1_000);
+    expect(fr.sessions[0]!.inputs).toHaveLength(1);
+  });
+
+  test("a report-only turn carries the language of the user's last message", async () => {
+    const { fc, fr, partner, user } = setup(ok, { settleMs: 0 });
+    user("Fix the flaky test in ~/dev/foo, then tell me.");
+    await partner.idle();
+    partner.onTrigger(report(fc, "t1", "测试修好了"));
+    await partner.idle();
+    expect(fr.sessions[0]!.inputs[1]).toContain("[language] The user's last message was in English");
+    user("好的");
+    await partner.idle();
+    partner.onTrigger(report(fc, "t1", "done"));
+    await partner.idle();
+    expect(fr.sessions[0]!.inputs[3]).not.toContain("[language]");
+  });
+
+  test("a pasted key never reaches a task: briefs and task_send are redacted", async () => {
+    const key = "sk-proj-FAKEevalKeyNotReal0000000000000000000000";
+    const { fc, fr, partner, user } = setup(async (_i, s) => {
+      await fc.callTool("task_open", { title: "foo: .env", brief: "Add OPENAI_API_KEY to ~/dev/foo/.env" });
+      await fc.callTool("task_send", { taskId: "t1", text: `use ${key}` });
+      s.end();
+    });
+    user(`Here's my key: ${key}. Put it in ~/dev/foo/.env`);
+    await partner.idle();
+    expect(fr.opened[0]!.brief).not.toContain(key);
+    expect(fr.opened[0]!.brief).toContain("[secret removed");
+    expect(fr.sent[0]!.text).not.toContain(key);
+    expect(redactSecrets("ghp_" + "a".repeat(36) + " and AKIAABCDEFGHIJKLMNOP")).not.toMatch(/ghp_a|AKIAABCD/);
+    expect(redactSecrets("commit c3d9f01, sk-short")).toBe("commit c3d9f01, sk-short");
+  });
+
+  test("the card speaks for itself: a short line after ask is dropped, a line before it is kept", async () => {
+    const { fc, partner, user } = setup(async (_i, s) => {
+      s.say("这会动公开 API。");
+      await fc.callTool("ask", { question: "改成 async 吗？", goLabel: "改成 async", default: "hold" });
+      s.say("等你点 Go 或 Hold。");
+      s.end();
+    });
+    user("改之前问我");
+    await partner.idle();
+    expect(fc.events.filter((e) => e.kind === "ai_msg").map((e) => (e.body as any).text)).toEqual(["这会动公开 API。"]);
+  });
+
+  test("an ask's question never carries its own default (the card renders the default line)", async () => {
+    const { fc, partner, user } = setup(async (_i, s) => {
+      await fc.callTool("ask", { question: "把 Cache 改名叫 TtlCache 吗？默认：直接改名。", goLabel: "改名", default: "hold" });
+      await fc.callTool("ask", { question: "Call it breaking? (default: yes)", goLabel: "Breaking", default: "hold" });
+      s.end();
+    });
+    user("改名前先问我");
+    await partner.idle();
+    expect(fc.events.filter((e) => e.kind === "decision").map((e) => (e.body as any).question)).toEqual(["把 Cache 改名叫 TtlCache 吗？", "Call it breaking?"]);
+  });
+
+  test("a turn woken only by a task's question stays quiet (the card shows it)", async () => {
+    const { fc, partner } = setup((_i, s) => {
+      s.say("The task is waiting on one question: regenerate the table? Go or Hold on the card.");
+      s.end();
+    }, { settleMs: 0 });
+    partner.onTrigger(
+      fc.core.log.append({ stream: "task:t1", origin: "task", kind: "report", body: { taskId: "t1", state: "needs_input", summary: "s", questions: [{ id: "q", text: "Regenerate the table?", blocking: true, reversible: true }], evidence: [] } }),
+    );
+    await partner.idle();
+    expect(fc.events.filter((e) => e.kind === "ai_msg")).toHaveLength(0);
+  });
+
+  test("a merge by button names the base branch", async () => {
+    const { fc, fr, partner, user } = setup(ok);
+    fc.cards.set("t1", { taskId: "t1", persona: "p1", title: "fix", project: "", place: { kind: "repo", device: "local", repoPath: "/r", baseBranch: "main" } as any, harness: "claude-code", attention: "done", residency: "parked", openedAt: "", updatedAt: "" });
+    user("hi");
+    await partner.idle();
+    fc.core.log.append({ stream: "channel", origin: "user", kind: "job_status", body: { jobId: "act_t1_merge", taskId: "t1", state: "done", text: "the user merged this task's branch into its base branch (e81f2aa)" } });
+    user("is it on main?");
+    await partner.idle();
+    expect(fr.sessions[0]!.inputs.at(-1)).toContain("into its base branch (e81f2aa) (base branch: main)");
   });
 });

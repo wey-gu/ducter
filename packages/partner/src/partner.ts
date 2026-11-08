@@ -49,6 +49,7 @@ export interface PartnerOptions {
   fs?: PlaceFs;
   persistState?: boolean; // write <dataDir>/partner/state.json, default true
   ackWaitMs?: number; // how long the task_open handler waits for the streamed ack text, default 250
+  settleMs?: number; // a turn woken only by reports/timers waits this long for more, default 1500
   onError?: (err: unknown) => void;
   prewarm?: boolean; // start/resume the session at creation, default true
   ready?: Promise<unknown>; // sessions start after this settles (e.g. L1 identity from Mem)
@@ -73,6 +74,8 @@ interface TurnState {
   opensSeen: number;
   opensHandled: number;
   acked?: boolean; // an ack went out this turn
+  asked?: boolean; // the partner made a decision card (ask) this turn
+  quiet?: boolean; // woken only by task questions the user already sees as decision cards
   zh: boolean;
 }
 
@@ -100,6 +103,24 @@ function isTrigger(e: LogEvent): boolean {
 /** Prose that tells the user to pick Go / Hold (only true when a decision event exists). */
 const CLAIMS_CHOICE = /(选|点|按|回复?|回)\s*[「“"]?\s*(Go|Hold|好|先等等)\b|\b(tap|press|choose|pick|select|reply|hit|say)\s+["“]?(Go|Hold)\b|\bGo\s*\/\s*Hold\b/i;
 
+/**
+ * Secret-shaped strings never reach a task (G-safety G3): the user's words are copied into the
+ * brief verbatim, so a pasted key would land in the task's prompt, transcript and Log.
+ */
+const SECRET_RE =
+  /\b(sk-(?:proj-|ant-[a-z0-9]+-)?[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{40,}|xox[abprs]-[A-Za-z0-9-]{10,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35})\b|-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g;
+export function redactSecrets(text: string): string {
+  return text.replace(SECRET_RE, "[secret removed: the user pasted it in the conversation; use a placeholder and let the user fill it in]");
+}
+
+function stripDefault(q: string): string {
+  const out = q
+    .replace(/\s*[（(]\s*(默认|default)[^)）]*[)）]/gi, "")
+    .replace(/\s*(默认|default)\s*[:：][^。.!?！？\n]*[。.]?/gi, "")
+    .trim();
+  return out || q.trim();
+}
+
 const generatedAck = (zh: boolean, title: string) => (zh ? `好，我去做：${title}` : `On it: ${title}`);
 
 let idCounter = 0;
@@ -117,6 +138,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const fs = opts.fs ?? realFs;
   const persist = opts.persistState ?? true;
   const ackWaitMs = opts.ackWaitMs ?? 250;
+  const settleMs = opts.settleMs ?? 1500;
   const onError = opts.onError ?? ((err) => console.error("[partner]", err));
 
   const cwd = join(core.dataDir, "partner");
@@ -182,6 +204,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
 
   const ctx: RenderCtx = {
     taskTitle: (id) => core.tasks.get(id)?.title ?? jobs.get(id)?.title,
+    taskBase: (id) => {
+      const p = core.tasks.get(id)?.place;
+      return p?.kind === "repo" ? p.baseBranch : undefined;
+    },
     decision: (decisionId) => {
       const evs = core.log.read({ stream: "channel", kinds: ["decision"], limit: 500 });
       for (let i = evs.length - 1; i >= 0; i--) {
@@ -242,6 +268,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     // Silence after the ack (live: "Task opened.", "任务已开。" right after it). With a
     // single ask in the turn, a short line after the ack that asks nothing is dropped.
     if (turn.acked && turn.userTexts.length <= 1 && p.trim().length < 200 && !/[?？]/.test(p)) return;
+    // The card speaks for itself (eval: "Pending your answer.", "上面那张卡片等你点 Go 或 Hold"):
+    // a short line after an ask only describes the card, so it is dropped.
+    if (turn.asked && p.trim().length < 200) return;
+    if (turn.quiet && p.trim().length < 300) return;
     appendAiMsg(p);
   };
   const claimAck = (t: TurnState): { jobId: string } | null => {
@@ -360,6 +390,12 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const lastUser = [...batch].reverse().find((e) => e.kind === "user_msg");
     if (lastUser && !isChinese((lastUser.body as Bodies["user_msg"]).text)) {
       deltas.push("[language] The user wrote this in English (not Chinese): reply in English, including the first line.");
+    } else if (!lastUser) {
+      // A report or timer has no language of its own (live eval: an English user got a Chinese
+      // failure report). The user's last message decides.
+      const prev = core.log.read({ stream: "channel", kinds: ["user_msg"], beforeSeq: core.log.head() + 1, limit: 1 });
+      const t = (prev[prev.length - 1]?.body as Bodies["user_msg"] | undefined)?.text;
+      if (t && !isChinese(t)) deltas.push("[language] The user's last message was in English: reply in English.");
     }
     deltas.push(renderTime(new Date(now())));
     if (!fresh) return deltas.join("\n");
@@ -436,7 +472,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
 
     const fresh = await ensureSession();
     const input = buildInput(batch, fresh);
-    turn = { triggers: batch, userTexts, replyTo, pending: null, unboundAck: null, opensSeen: 0, opensHandled: 0, zh };
+    // A task question is shown with its own Go / Hold / Reply; prose about it only repeats it
+    // (eval: restated in 4 of 4 runs whatever the persona said).
+    const quiet = batch.length > 0 && batch.every((e) => e.kind === "report" && (e.body as Bodies["report"]).state === "needs_input");
+    turn = { triggers: batch, userTexts, replyTo, pending: null, unboundAck: null, opensSeen: 0, opensHandled: 0, zh, quiet };
     stats.turns++;
     try {
       const reading = readTurn();
@@ -455,6 +494,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
 
   async function drain() {
     while (queue.length && !closed) {
+      // Settlement batch (I-results rule 3, research/16): tasks that finish within a moment of
+      // each other become one turn, so one message. Only when nothing from the user waits.
+      if (settleMs > 0 && !queue.some((e) => e.kind === "user_msg" || e.seq < 0)) await Bun.sleep(settleMs);
       const batch = queue.splice(0, queue.length);
       try {
         await runTurn(batch);
@@ -554,7 +596,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       }
       const userTexts = t?.userTexts ?? [];
       const place = resolvePlace(args.place, [args.brief, args.title, ...userTexts], core.tasks.list(), fs);
-      const brief = withVerbatim(args.brief, userTexts);
+      const brief = redactSecrets(withVerbatim(args.brief, userTexts));
       try {
         const card = await runner.openTask({
           persona: core.persona.id,
@@ -605,7 +647,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       await Bun.sleep(5); // let the streamed text land first
       flushPending(); // a line written before this call is a message, not an ack
       try {
-        const r = await runner.send(args.taskId, args.text, args.mode);
+        const r = await runner.send(args.taskId, redactSecrets(args.text), args.mode);
         return { ok: true, ...r };
       } catch (err) {
         return { ok: false, error: err instanceof Error ? err.message : String(err) };
@@ -666,7 +708,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       const reversible = Boolean(args.reversible);
       const body: Bodies["decision"] = {
         decisionId: newId("d"),
-        question: args.question.trim(),
+        // The question states the choice; a default written into it contradicts the card's
+        // own default line (live: "默认：直接改名" on a card that waits for the user).
+        question: stripDefault(args.question),
         goLabel: args.goLabel.trim(),
         defaultOption: args.default === "go" && reversible ? "go" : "hold",
         reversible,
@@ -675,6 +719,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         body.defaultAt = new Date(now() + args.defaultInMinutes * 60_000).toISOString();
       }
       core.log.append({ stream: "channel", origin: "partner", kind: "decision", body });
+      if (turn) turn.asked = true;
       return { ok: true, decisionId: body.decisionId, note: "The user sees it with Go / Hold / Reply. End your turn now; do not repeat the question." };
     },
   );

@@ -44,6 +44,13 @@ function renderReport(r: Bodies["report"], title?: string): string {
 export interface RenderCtx {
   taskTitle(taskId: string): string | undefined;
   decision(decisionId: string): Bodies["decision"] | undefined;
+  /** A repo task's base branch, so "merged into its base branch" names it (eval: "can't tell if that's main"). */
+  taskBase?(taskId: string): string | undefined;
+}
+
+function userAction(b: Bodies["job_status"], ctx: RenderCtx, n = 400): string {
+  const base = b.taskId && /base branch/.test(b.text) ? ctx.taskBase?.(b.taskId) : undefined;
+  return `${clip(b.text, n)}${base ? ` (base branch: ${base})` : ""}`;
 }
 
 /** One L4 delta for a trigger event, tagged by origin. */
@@ -74,7 +81,7 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
     }
     case "job_status": {
       const b = e.body as Bodies["job_status"];
-      if (e.origin === "user") return `[the user did this by button] task ${b.taskId}: ${b.text}`;
+      if (e.origin === "user") return `[the user did this by button] task ${b.taskId}: ${userAction(b, ctx)}`;
       return `[job ${b.jobId} ${b.state}] ${b.text}`;
     }
     case "ai_msg":
@@ -97,7 +104,7 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
     case "job_status": {
       const b = e.body as Bodies["job_status"];
       if (!b.taskId) return null;
-      if (e.origin === "user") return `[${t} the user, by button] task ${b.taskId}: ${clip(b.text, 160)}`;
+      if (e.origin === "user") return `[${t} the user, by button] task ${b.taskId}: ${userAction(b, ctx, 160)}`;
       return `[${t} task ${b.taskId} ${b.state}] ${clip(b.text, 160)}`;
     }
     case "waiter": {

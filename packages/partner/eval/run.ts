@@ -199,7 +199,10 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   for (const s of sc.seed ?? []) {
     if ("user" in s) lastUser = core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: s.user } }).seq;
     else if ("ai" in s) core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: s.ai, replyTo: lastUser } });
-    else if ("waiterArmed" in s) {
+    else if ("userAction" in s) {
+      const taskId = idOf.get(s.userAction.task)!;
+      core.log.append({ stream: "channel", origin: "user", kind: "job_status", body: { jobId: `act_${taskId}_merge`, taskId, state: "done", text: s.userAction.text } });
+    } else if ("waiterArmed" in s) {
       const w: Bodies["waiter"] = { waiterId: "w_" + crypto.randomUUID().slice(0, 10), at: new Date(Date.now() + 3600_000).toISOString(), reason: s.waiterArmed.reason, state: "armed" };
       waiters.set(w.reason, w);
       core.log.append({ stream: "channel", origin: "waiter", kind: "waiter", body: w });
@@ -270,6 +273,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     if ("user" in s) lines.push(`(earlier) user: ${s.user}`);
     else if ("ai" in s) lines.push(`(earlier) partner: ${s.ai}`);
     else if ("task" in s) lines.push(`(earlier) partner ack: ${s.task.ack}  → task "${s.task.title}" ${s.task.state}${s.task.report ? `; its report: ${s.task.report.summary}` : ""}`);
+    else if ("userAction" in s) lines.push(`(earlier) the user, by button, on task "${s.userAction.task}": ${s.userAction.text}`);
     else lines.push(`(earlier) reminder set: ${s.waiterArmed.reason}`);
   }
   for (const [i, st] of sc.steps.entries()) {
@@ -357,6 +361,10 @@ function check(r: RunResult): string[] {
     if (CLAIMS_CHOICE.test(v.text) && !r.visible.some((d) => d.kind === "decision" && d.seq < v.seq) && !(r.sc.steps[v.step] && "report" in r.sc.steps[v.step]! && (r.sc.steps[v.step] as any).report.body.questions.length))
       fails.push(`claims a Go/Hold choice in prose: "${clip(v.text)}"`);
   }
+  // Global: never name the buttons in prose (the UI labels are 好，<goLabel> / 先等等 / 回复), and a
+  // card's question never carries its own default (the card renders the default line).
+  for (const v of r.visible.filter((x) => x.kind === "ai_msg" || x.kind === "ack")) if (/\b(Go|Hold)\b|先等等/.test(v.text)) fails.push(`names the buttons: "${clip(v.text)}"`);
+  for (const v of r.visible.filter((x) => x.kind === "decision")) if (/默认|\bdefault\b/i.test(v.text)) fails.push(`default written into the question: "${clip(v.text)}"`);
   // Global: the partner does not do place-bound work itself.
   for (const t of r.tools) if (DO_WORK_TOOLS.test(t.name)) fails.push(`used ${t.name} itself`);
 
@@ -403,13 +411,12 @@ House rules the partner must follow:
 - Reply in the user's language (Chinese → 简体中文 with 你, never 您). Short, warm, direct; no headings, no filler, no apologies, no "as an AI".
 - Small questions: answer directly. Work that needs a place or writes: one short ack line naming the ACTION (never the outcome), open a task, then say nothing more.
 - Follow-ups on a task's recent work go to that task. Never invent results of work still running.
-- Results: outcome in ≤2 lines in the user's terms; how I know (evidence) in one line; left out (only if something wasn't done, with why); outside (what left the machine, "nothing" if nothing); at most one next step (for repo work: merge into main). Unverified claims are called unverified. Failures are honest with one next step.
-- A task's question is already shown to the user with buttons: don't repeat it. Choices go through a decision card (ask), never prose like "reply Go".
+- Results: the app renders evidence chips ("How I know"), an Outside line and a Merge button under a result message from the task's typed report. So the prose is the outcome in ≤2 lines in the user's terms, plus a "left out" line only if something wasn't done (with why); it does not repeat evidence, commit ids, branches, outside or merge. Unverified claims are called unverified. Failures are honest with one next step; naming the failing command or host and what was tried is fine there.
+- A task's question is already shown to the user with buttons: don't repeat it. Choices go through a decision card (ask), never prose like "reply Go" or a description of buttons/defaults. One suggested next step phrased as an offer ("want me to retry when the network is back?") is NOT a prose choice and is fine.
 - Never show task ids, internal worktree or data-directory paths, or session talk. Paths the user named themselves (e.g. ~/dev/foo), branch names and commit ids are fine.
-- One plain next-step line such as "合回 main？ / Merge into main?" at the end of a repo result is the intended shape, not a prose choice.
 - Anything that reaches other people, can't be undone, or spends money (push to main, posting, paying) is asked first; Ducter never pays.
 Grade ONLY against the scenario rubric and these rules. Be strict but not pedantic: minor wording choices are fine; a rule violation is a fail.
-Answer with one JSON object and nothing else: {"pass": true|false, "reason": "<one short sentence>"}`;
+Think it through in "reason" first, then decide. Answer with one JSON object and nothing else: {"reason": "<one or two short sentences>", "pass": true|false}`;
 
 async function judge(r: RunResult, cwd: string): Promise<{ pass: boolean; reason: string; cost: number }> {
   const prompt = `Scenario: ${r.sc.id} (user language: ${r.sc.lang === "zh" ? "Chinese" : "English"}; partner's name: ${r.sc.persona?.name ?? "Ducter"})\n\nRubric: ${r.sc.rubric}\n\nWhat happened (lines in [brackets] are what the partner did; only ack lines, messages and decision cards are visible to the user):\n${r.transcript}\n\nNote: silence (no message) is a valid output where the rubric allows it.`;

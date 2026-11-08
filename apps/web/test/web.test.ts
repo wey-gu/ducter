@@ -111,6 +111,19 @@ describe("store (parity with the desktop store)", () => {
     expect(headlineEvidence([{ kind: "note", label: "x", ref: "" }])).toBeUndefined();
   });
 
+  test("a follow-up done after a merge is not merged (Merge comes back)", () => {
+    const s = new Store();
+    const done = () => ev("living_msg", { items: [{ taskId: "t1", kind: "done", title: "fix", text: "ok" }] });
+    const first = done();
+    s.apply({ t: "events", events: [first, ev("job_status", { jobId: "act_t1_merge", taskId: "t1", state: "done", text: "merged" }, { origin: "user" })] });
+    expect(s.tasks.get("t1")!.acted?.action).toBe("merge");
+    const rev = ev("living_msg", { items: [{ taskId: "t1", kind: "done", title: "fix", text: "ok" }, { taskId: "t2", kind: "progress", title: "x", text: "" }] }, { supersedes: first.seq });
+    s.apply({ t: "events", events: [rev] });
+    expect(s.tasks.get("t1")!.acted?.action).toBe("merge");
+    s.apply({ t: "events", events: [done()] });
+    expect(s.tasks.get("t1")!.acted).toBeUndefined();
+  });
+
   test("what counts as outside", () => {
     expect(isOutside("git push origin main")).toBe(true);
     expect(isOutside("gh pr create --draft")).toBe(true);

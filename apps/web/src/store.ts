@@ -53,6 +53,8 @@ export interface Task {
   sends: Send[];
   acting?: string;
   acted?: { action: string; ok: boolean; message?: string; ref?: string };
+  /** The seq the action was logged at: a done report after it is new, unmerged work. */
+  actedSeq?: number;
 }
 
 export const LANE = { needs: 0, working: 1, waiting: 2, done: 3, hidden: 4 } as const;
@@ -139,7 +141,7 @@ export class Store {
       }
       case "action_result": {
         const t = this.tasks.get(f.taskId);
-        if (t) (t.acting = undefined), (t.acted = { action: f.action, ok: f.ok, message: f.message, ref: f.ref });
+        if (t) (t.acting = undefined), (t.acted = { action: f.action, ok: f.ok, message: f.message, ref: f.ref }), (t.actedSeq = this.cursor);
         this.actionResults.push(f);
         return;
       }
@@ -238,7 +240,9 @@ export class Store {
         // A user-origin act_<task>_<action> status is the durable record of a button action.
         if (ev.origin === "user" && b.taskId && b.jobId.startsWith(`act_${b.taskId}_`)) {
           // On (re)connect the channel replays before on_hand lists the task: keep it anyway.
-          this.task(b.taskId).acted = { action: b.jobId.slice(`act_${b.taskId}_`.length), ok: true };
+          const t = this.task(b.taskId);
+          t.acted = { action: b.jobId.slice(`act_${b.taskId}_`.length), ok: true };
+          t.actedSeq = ev.seq;
           return void this.bySeq.set(ev.seq, null);
         }
         const known = this.jobs.get(b.jobId);
@@ -252,6 +256,12 @@ export class Store {
       }
       case "living_msg": {
         const old = ev.supersedes ? this.bySeq.get(ev.supersedes) : undefined;
+        // A done item that is new in this message, after a merge: more work on that branch, not merged.
+        const had = new Set((old?.living?.items ?? []).filter((i) => i.kind === "done").map((i) => i.taskId));
+        for (const it of (ev.body as Bodies["living_msg"]).items) {
+          const t = it.kind === "done" && !had.has(it.taskId) ? this.tasks.get(it.taskId) : undefined;
+          if (t?.acted && ev.seq > (t.actedSeq ?? 0)) t.acted = undefined;
+        }
         if (old?.living) {
           old.ev = ev;
           old.living = ev.body as Bodies["living_msg"];
@@ -330,6 +340,7 @@ export class Store {
       case "report": {
         const b = ev.body as Bodies["report"];
         t.lastReport = b;
+        if (t.acted && ev.seq > (t.actedSeq ?? 0)) t.acted = undefined;
         for (const e of b.evidence ?? []) if (!t.evidence.some((h) => h.ref === e.ref && h.label === e.label)) t.evidence.push(e);
         break;
       }

@@ -217,6 +217,32 @@ func TestUserActionBeforeOnHandSurvives(t *testing.T) {
 	}
 }
 
+// Live: merged, then a follow-up went to the same task and came back done on
+// the same branch. That new work is not merged: Merge comes back.
+func TestNewWorkAfterAMergeIsNotMerged(t *testing.T) {
+	s := New()
+	act := protocol.LogEvent{Seq: 29, Stream: "channel", Origin: protocol.OriginUser, Kind: "job_status",
+		Body: []byte(`{"jobId":"act_t1_merge","taskId":"t1","state":"done","text":"merged"}`)}
+	done := func(seq int64) protocol.LogEvent {
+		return ev(seq, "channel", protocol.KindLivingMsg, protocol.LivingMsg{Items: []protocol.LivingItem{{TaskID: "t1", Kind: "done", Text: "ok"}}})
+	}
+	s.Apply(events(done(20), act))
+	if s.Tasks["t1"].Acted == nil {
+		t.Fatal("merge lost")
+	}
+	// A revision carrying the old done item along with another task's line: still merged.
+	rev := ev(30, "channel", protocol.KindLivingMsg, protocol.LivingMsg{Items: []protocol.LivingItem{{TaskID: "t1", Kind: "done", Text: "ok"}, {TaskID: "t2", Kind: "progress"}}})
+	rev.Supersedes = 20
+	s.Apply(events(rev))
+	if s.Tasks["t1"].Acted == nil {
+		t.Fatal("a revision cleared the merge")
+	}
+	s.Apply(events(done(48)))
+	if s.Tasks["t1"].Acted != nil {
+		t.Fatal("new work after the merge still shows as merged")
+	}
+}
+
 func TestMemoryNotedIsOneQuietEntry(t *testing.T) {
 	s := New()
 	s.Apply(events(

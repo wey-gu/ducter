@@ -144,6 +144,59 @@ describe("store (parity with the desktop store)", () => {
   });
 });
 
+describe("after a reconnect (soak design calls 2 and 3)", () => {
+  test("unechoed messages and unacked task sends go again, in order; echoed ones don't", () => {
+    const s = new Store();
+    const pending = [
+      { clientId: "p1", text: "first" },
+      { clientId: "p2", text: "second" },
+    ];
+    s.apply({ t: "events", events: [ev("user_msg", { text: "first", clientId: "p1" }, { origin: "user" })] });
+    s.addSend("t1", "also the docs", 1, "k1");
+    const acked = s.addSend("t1", "and the tests", 2, "k2");
+    acked.delivered = "steered";
+    expect(s.resends(pending)).toEqual([
+      { t: "send", text: "second", clientId: "p2" },
+      { t: "task_send", taskId: "t1", text: "also the docs", clientId: "k1" },
+    ]);
+    // Core re-sends the original echo for a duplicate: the store keeps one bubble.
+    const echo = ev("user_msg", { text: "second", clientId: "p2" }, { origin: "user" });
+    s.apply({ t: "events", events: [echo] });
+    s.apply({ t: "events", events: [echo] });
+    expect(s.channel.filter((e) => e.user?.clientId === "p2")).toHaveLength(1);
+    expect(s.resends(pending).filter((f) => f.t === "send")).toEqual([]);
+  });
+
+  test("a task echo with a clientId marks its own send", () => {
+    const s = new Store();
+    const a = s.addSend("t1", "go on", 1, "k1");
+    const b = s.addSend("t1", "go on", 2, "k2");
+    s.apply({ t: "events", events: [ev("task_event", { taskId: "t1", role: "user", from: "user", text: "go on", clientId: "k2" }, { stream: "task:t1" })] });
+    expect([a.seq, b.seq !== undefined]).toEqual([undefined, true]);
+  });
+
+  test("a lost action_result resolves from the Log, or is unsure, never failed", () => {
+    const s = new Store();
+    s.task("t1").acting = "merge";
+    s.task("t2").acting = "open_pr";
+    // Replay: the merge is in the Log, the PR isn't.
+    s.apply({ t: "events", events: [ev("job_status", { jobId: "act_t1_merge", taskId: "t1", state: "done", text: "merged" }, { origin: "user" })] });
+    s.settleInDoubt(new Map([["t1", "merge"], ["t2", "open_pr"]]));
+    const [t1, t2] = [s.tasks.get("t1")!, s.tasks.get("t2")!];
+    expect([t1.acting, t1.unsure, t1.acted]).toEqual([undefined, undefined, { action: "merge", ok: true }]);
+    expect([t2.acting, t2.unsure, t2.acted]).toEqual([undefined, "open_pr", undefined]);
+    expect(s.actionResults).toEqual([]);
+    // A late Log line settles it too.
+    s.apply({ t: "events", events: [ev("job_status", { jobId: "act_t2_open_pr", taskId: "t2", state: "done", text: "pr" }, { origin: "user" })] });
+    expect([t2.unsure, t2.acted]).toEqual([undefined, { action: "open_pr", ok: true }]);
+  });
+
+  test("the unsure line has zh and en copy", () => {
+    expect(strings("zh").t("result.unsure")).toBe("不确定做成没有，看一下");
+    expect(strings("en").t("result.unsure")).toBe("Not sure it went through — check");
+  });
+});
+
 describe("the committed bundle", () => {
   test("is what src builds to (run `bun run apps/web/build.ts` after changing src)", async () => {
     const built = await buildWeb();

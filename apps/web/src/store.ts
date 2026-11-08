@@ -2,7 +2,7 @@
 // clients fold the same events the same way: living messages revised in place, jobs folded into
 // their acks, decisions with their resolutions, tasks with their streams, the On hand snapshot.
 // Pure data; tested without a DOM.
-import type { Attention, Bodies, Delivery, EvidenceRef, LogEvent, OnHand, Place, ServerFrame, TaskCard } from "@ducter/protocol";
+import type { Attention, Bodies, ClientFrame, Delivery, EvidenceRef, LogEvent, OnHand, Place, ServerFrame, TaskCard } from "@ducter/protocol";
 
 export type Ev<K extends keyof Bodies = keyof Bodies> = LogEvent<K>;
 
@@ -32,6 +32,8 @@ export type DecisionState = Bodies["decision"] & {
 
 export interface Send {
   text: string;
+  /** The id it was sent with; a resend after a reconnect uses the same one (core dedupes). */
+  clientId?: string;
   delivered?: Delivery;
   failed?: string;
   seq?: number;
@@ -53,6 +55,9 @@ export interface Task {
   openSeq?: number; // seq of the task_open in `open` (a retitle is a later one)
   sends: Send[];
   acting?: string;
+  /** A merge / open_pr whose result was lost with the socket and that the Log doesn't show done:
+   *  it may or may not have happened. Shown as "not sure, check" with Try again, never a failure. */
+  unsure?: string;
   acted?: { action: string; ok: boolean; message?: string; ref?: string };
   /** The seq the action was logged at: a done report after it is new, unmerged work. */
   actedSeq?: number;
@@ -142,7 +147,7 @@ export class Store {
       }
       case "action_result": {
         const t = this.tasks.get(f.taskId);
-        if (t) (t.acting = undefined), (t.acted = { action: f.action, ok: f.ok, message: f.message, ref: f.ref }), (t.actedSeq = this.cursor);
+        if (t) (t.acting = undefined), (t.unsure = undefined), (t.acted = { action: f.action, ok: f.ok, message: f.message, ref: f.ref }), (t.actedSeq = this.cursor);
         this.actionResults.push(f);
         return;
       }
@@ -174,8 +179,8 @@ export class Store {
     }
   }
 
-  addSend(taskId: string, text: string, at = Date.now()): Send {
-    const sd: Send = { text, at };
+  addSend(taskId: string, text: string, at = Date.now(), clientId?: string): Send {
+    const sd: Send = { text, at, ...(clientId ? { clientId } : {}) };
     this.task(taskId).sends.push(sd);
     return sd;
   }
@@ -242,8 +247,12 @@ export class Store {
         if (ev.origin === "user" && b.taskId && b.jobId.startsWith(`act_${b.taskId}_`)) {
           // On (re)connect the channel replays before on_hand lists the task: keep it anyway.
           const t = this.task(b.taskId);
-          t.acted = { action: b.jobId.slice(`act_${b.taskId}_`.length), ok: true };
+          const action = b.jobId.slice(`act_${b.taskId}_`.length);
+          t.acted = { action, ok: true };
           t.actedSeq = ev.seq;
+          // The Log says it happened: an action whose result was lost resolves here.
+          if (t.acting === action) t.acting = undefined;
+          if (t.unsure === action) t.unsure = undefined;
           return void this.bySeq.set(ev.seq, null);
         }
         const known = this.jobs.get(b.jobId);
@@ -334,7 +343,7 @@ export class Store {
       case "task_event": {
         const b = ev.body as Bodies["task_event"];
         if (b.role === "user" && b.from !== "partner") {
-          const sd = t.sends.find((s) => !s.seq && s.text === b.text);
+          const sd = t.sends.find((s) => !s.seq && (b.clientId ? s.clientId === b.clientId : s.text === b.text));
           if (sd) sd.seq = ev.seq;
         }
         break;
@@ -350,6 +359,29 @@ export class Store {
         t.checkpoints.push({ text: (ev.body as Bodies["checkpoint"]).text, seq: ev.seq, ts: ev.ts });
         t.checkpoints.sort((a, b) => a.seq - b.seq);
         break;
+    }
+  }
+
+  // ---------- after a reconnect ----------
+
+  /** What to send again after a welcome, in order: messages to the partner not yet echoed, then
+   *  direct task messages not yet acked. Core dedupes both by clientId, so a copy it already has
+   *  is echoed (or acked) again, never appended twice. */
+  resends(pending: { clientId: string; text: string }[]): ClientFrame[] {
+    const echoed = new Set<string>();
+    for (const e of this.channel) if (e.user?.clientId) echoed.add(e.user.clientId);
+    const out: ClientFrame[] = pending.filter((p) => !echoed.has(p.clientId)).map((p) => ({ t: "send", text: p.text, clientId: p.clientId }));
+    for (const t of this.tasks.values())
+      for (const sd of t.sends) if (sd.clientId && !sd.delivered && !sd.failed) out.push({ t: "task_send", taskId: t.id, text: sd.text, clientId: sd.clientId });
+    return out;
+  }
+
+  /** Once the replay after a welcome is in (on_hand): an action sent on the old socket that is
+   *  still acting got no result and the Log doesn't show it done, so it is unsure. */
+  settleInDoubt(inDoubt: Map<string, string>) {
+    for (const [id, action] of inDoubt) {
+      const t = this.tasks.get(id);
+      if (t && t.acting === action) (t.acting = undefined), (t.unsure = action);
     }
   }
 

@@ -1,6 +1,7 @@
 // The phone's connection to core: the device token (pairing), the authenticated HTTP API, and the
-// client WebSocket with reconnect-by-cursor and an outbox that holds what the user said until the
-// server has said welcome (nothing typed while reconnecting is dropped).
+// client WebSocket with reconnect-by-cursor and an outbox that holds what the user chose until the
+// server has said welcome. Messages (send, task_send) don't wait here: the app keeps them until
+// echoed and sends them again after every welcome (core dedupes by clientId).
 import type { ClientFrame, ServerFrame } from "@ducter/protocol";
 
 export interface DeviceRecord {
@@ -104,7 +105,8 @@ export class Api {
 
 export type ConnStatus = "connecting" | "connected" | "offline";
 
-const KEEP = new Set(["send", "task_send", "decide", "task_action"]);
+const KEEP = new Set(["decide", "task_action"]);
+const MSG = new Set(["send", "task_send"]);
 const BACKOFF = [500, 1000, 2000, 4000, 8000, 15000];
 
 export class Connection {
@@ -115,6 +117,8 @@ export class Connection {
   private attempt = 0;
   private timer?: ReturnType<typeof setTimeout>;
   private stopped = false;
+  /** Called with each frame written to a welcomed socket (the app tracks actions in flight). */
+  onWritten?: (f: ClientFrame) => void;
 
   constructor(
     private url: string,
@@ -191,12 +195,14 @@ export class Connection {
   }
 
   send(f: ClientFrame) {
-    if (KEEP.has(f.t) && (!this.welcomed || this.ws?.readyState !== WebSocket.OPEN)) {
-      this.outbox.push(f);
-      return;
+    if ((KEEP.has(f.t) || MSG.has(f.t)) && (!this.welcomed || this.ws?.readyState !== WebSocket.OPEN)) {
+      if (KEEP.has(f.t)) this.outbox.push(f);
+      return; // a message goes out from the app's pending list after the welcome
     }
-    if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(f));
-    else if (KEEP.has(f.t)) this.outbox.push(f);
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(f));
+      if (this.welcomed) this.onWritten?.(f);
+    } else if (KEEP.has(f.t)) this.outbox.push(f);
   }
 
   get pending() {

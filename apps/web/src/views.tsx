@@ -299,6 +299,13 @@ function ResultActions({ task, inTask }: { task: Task; inTask?: boolean }) {
     <div class="btns">
       {task.acting ? (
         <span class="small">{t(`result.acting.${task.acting}`, base)}</span>
+      ) : task.unsure ? (
+        // The result was lost with the connection and the Log doesn't show it done: say so,
+        // offer to try again, never claim a failure.
+        <>
+          <span class="small">{t("result.unsure")}</span>
+          <Btn kind="quiet" label={t("task.action.retry")} about={title(task)} onClick={() => A.retryAction(task.id)} />
+        </>
       ) : task.acted?.ok && task.acted.action === "merge" ? (
         <span class="small" style={{ color: "var(--done-ink)", fontWeight: 700 }}>
           {t("result.merged", base)}

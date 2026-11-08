@@ -205,6 +205,18 @@ func TestUserActionStatusMarksTaskActed(t *testing.T) {
 	}
 }
 
+// On a reconnect the channel replays before on_hand lists the tasks: a merge
+// done earlier must survive, or the result offers Merge again.
+func TestUserActionBeforeOnHandSurvives(t *testing.T) {
+	s := New()
+	s.Apply(protocol.ServerFrame{T: "events", Events: []protocol.LogEvent{{Seq: 29, Stream: "channel", Origin: protocol.OriginUser, Kind: "job_status",
+		Body: []byte(`{"jobId":"act_t1_merge","taskId":"t1","state":"done","text":"merged"}`)}}})
+	s.Apply(protocol.ServerFrame{T: "on_hand", OnHand: &protocol.OnHand{Tasks: []protocol.TaskCard{{TaskID: "t1", Title: "fix", Attention: protocol.Done}}}})
+	if a := s.Tasks["t1"].Acted; a == nil || a.Action != "merge" {
+		t.Fatalf("Acted = %+v after on_hand, want merge", a)
+	}
+}
+
 func TestMemoryNotedIsOneQuietEntry(t *testing.T) {
 	s := New()
 	s.Apply(events(

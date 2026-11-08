@@ -237,8 +237,8 @@ export class Store {
         const b = ev.body as Bodies["job_status"];
         // A user-origin act_<task>_<action> status is the durable record of a button action.
         if (ev.origin === "user" && b.taskId && b.jobId.startsWith(`act_${b.taskId}_`)) {
-          const t = this.tasks.get(b.taskId);
-          if (t) t.acted = { action: b.jobId.slice(`act_${b.taskId}_`.length), ok: true };
+          // On (re)connect the channel replays before on_hand lists the task: keep it anyway.
+          this.task(b.taskId).acted = { action: b.jobId.slice(`act_${b.taskId}_`.length), ok: true };
           return void this.bySeq.set(ev.seq, null);
         }
         const known = this.jobs.get(b.jobId);

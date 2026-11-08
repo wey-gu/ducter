@@ -93,6 +93,14 @@ describe("store (parity with the desktop store)", () => {
     expect(s.stale({ t: "welcome", persona: "p", personaName: "D", headSeq: 0 })).toBe(true);
   });
 
+  test("a merge replayed before on_hand still counts (no second Merge after a reconnect)", () => {
+    const s = new Store();
+    s.apply({ t: "welcome", persona: "default", personaName: "Ducter", headSeq: 0 });
+    s.apply({ t: "events", events: [ev("job_status", { jobId: "act_t1_merge", taskId: "t1", state: "done", text: "merged" }, { origin: "user" })] });
+    s.apply({ t: "on_hand", onHand: { tasks: [{ taskId: "t1", title: "fix", attention: "done" }] } as never });
+    expect(s.tasks.get("t1")!.acted).toEqual({ action: "merge", ok: true });
+  });
+
   test("what counts as outside", () => {
     expect(isOutside("git push origin main")).toBe(true);
     expect(isOutside("gh pr create --draft")).toBe(true);

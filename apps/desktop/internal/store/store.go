@@ -428,6 +428,15 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 		j.Ack = b
 		s.add(&Entry{Event: ev, Job: j})
 	case *protocol.JobStatus:
+		// A user-origin "act_<task>_<action>" status records what the user did by button
+		// (merge, open_pr): the durable form of an action_result, so it survives restarts.
+		if ev.Origin == protocol.OriginUser && b.TaskID != "" && strings.HasPrefix(b.JobID, "act_"+b.TaskID+"_") {
+			if t := s.Tasks[b.TaskID]; t != nil {
+				t.Acted = &protocol.ServerFrame{T: "action_result", TaskID: b.TaskID, Action: strings.TrimPrefix(b.JobID, "act_"+b.TaskID+"_"), OK: true}
+			}
+			s.bySeq[ev.Seq] = nil
+			return
+		}
 		j := s.Jobs[b.JobID]
 		if j == nil {
 			j = s.job(b.JobID)

@@ -188,3 +188,19 @@ func TestStaleWelcomeResets(t *testing.T) {
 		t.Error("reset")
 	}
 }
+
+func TestUserActionStatusMarksTaskActed(t *testing.T) {
+	s := New()
+	s.Tasks["t1"] = &Task{ID: "t1", seqs: map[int64]bool{}}
+	ev := protocol.LogEvent{Seq: 9, Stream: "channel", Origin: protocol.OriginUser, Kind: "job_status",
+		Body: []byte(`{"jobId":"act_t1_merge","taskId":"t1","state":"done","text":"merged"}`)}
+	s.ApplyEvent(ev)
+	if a := s.Tasks["t1"].Acted; a == nil || a.Action != "merge" || !a.OK {
+		t.Fatalf("Acted = %+v, want merge ok", a)
+	}
+	for _, e := range s.Channel {
+		if e != nil && e.Job != nil && e.Job.Status != nil && e.Job.Status.JobID == "act_t1_merge" {
+			t.Fatal("a user action must not become a conversation entry")
+		}
+	}
+}

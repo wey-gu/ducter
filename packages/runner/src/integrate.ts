@@ -20,6 +20,31 @@ function repoOf(place: Place): RepoPlace | undefined {
   return asOption(place.branch) || asOption(place.baseBranch) ? undefined : place;
 }
 
+/** Files git lists (tab-indented) under a "would be overwritten" error, at most a few. */
+function listedFiles(out: string, after: RegExp): string {
+  const lines = out.split("\n");
+  const i = lines.findIndex((l) => after.test(l));
+  const files = i < 0 ? [] : lines.slice(i + 1).filter((l) => /^\s+\S/.test(l)).map((l) => l.trim());
+  const shown = files.slice(0, 3).join(", ");
+  return files.length > 3 ? `${shown} and ${files.length - 3} more` : shown;
+}
+
+/** What to tell the user when git merge said no: the actual reason, in plain words. */
+export function mergeRefusal(out: string, branch: string, base: string, started: boolean): string {
+  if (/untracked working tree files would be overwritten/i.test(out)) {
+    const f = listedFiles(out, /untracked working tree files would be overwritten/i);
+    return `Your checkout of ${base} has files git doesn't track that ${branch} would overwrite${f ? ` (${f})` : ""}. Move or delete them, then try again. Nothing changed.`;
+  }
+  if (/local changes to the following files would be overwritten/i.test(out)) {
+    const f = listedFiles(out, /local changes to the following files would be overwritten/i);
+    return `Your checkout of ${base} has uncommitted changes${f ? ` in ${f}` : ""} that the merge would overwrite. Commit or stash them, then try again. Nothing changed.`;
+  }
+  if (started || /CONFLICT|Automatic merge failed/.test(out))
+    return `${branch} doesn't merge cleanly into ${base}: both changed the same lines. Nothing changed; ask the task to rebase onto ${base}.`;
+  const first = out.split("\n").map((l) => l.trim()).find((l) => /^(fatal|error):/.test(l)) ?? out.trim().split("\n")[0] ?? "";
+  return `git couldn't merge ${branch} into ${base}: ${first.replace(/^(fatal|error):\s*/, "")}. Nothing changed.`;
+}
+
 /** Merge the task branch into its base branch in the user's own checkout. */
 export async function mergeTaskBranch(place: Place): Promise<ActionResult> {
   const p = repoOf(place);
@@ -37,8 +62,11 @@ export async function mergeTaskBranch(place: Place): Promise<ActionResult> {
   if (ahead.ok && ahead.out === "0") return { ok: false, message: `${p.branch} has nothing that ${base} doesn't already have.` };
   const merged = await git(p.repoPath, ["merge", "--no-ff", "--no-edit", p.branch!]);
   if (!merged.ok) {
-    await git(p.repoPath, ["merge", "--abort"]);
-    return { ok: false, message: `${p.branch} doesn't merge cleanly into ${base} (conflicts). Nothing changed; ask the task to rebase onto ${base}.` };
+    // Only a merge that started (conflicts) leaves something to abort; git refuses the others
+    // before touching anything.
+    const started = (await git(p.repoPath, ["rev-parse", "-q", "--verify", "MERGE_HEAD"])).ok;
+    if (started) await git(p.repoPath, ["merge", "--abort"]);
+    return { ok: false, message: mergeRefusal(merged.out + "\n" + merged.err, p.branch!, base, started) };
   }
   const ref = (await git(p.repoPath, ["rev-parse", "HEAD"])).out;
   return { ok: true, message: `Merged ${p.branch} into ${base}.`, ref };

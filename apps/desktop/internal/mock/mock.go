@@ -594,6 +594,22 @@ func (h *hub) handle(c *conn, f protocol.ClientFrame) {
 		c.send(map[string]any{"t": "events", "events": events})
 		c.send(map[string]any{"t": "on_hand", "onHand": h.onHand()})
 	case "send":
+		// Like core: a resend (same clientId) is echoed again, not appended.
+		h.mu.Lock()
+		var dup *protocol.LogEvent
+		for i := range h.log {
+			ev := h.log[i]
+			var u protocol.UserMsg
+			if f.ClientID != "" && ev.Kind == protocol.KindUserMsg && json.Unmarshal(ev.Body, &u) == nil && u.ClientID == f.ClientID {
+				dup = &ev
+				break
+			}
+		}
+		h.mu.Unlock()
+		if dup != nil {
+			c.send(map[string]any{"t": "events", "events": []protocol.LogEvent{*dup}})
+			return
+		}
 		h.startRun(f.Text, f.ClientID)
 	case "decide":
 		if f.DecisionID == "d-brief" {

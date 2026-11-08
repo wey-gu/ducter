@@ -117,8 +117,16 @@ type App struct {
 	doneAt time.Time
 	// historyAsked marks the tasks whose stream was asked for.
 	historyAsked map[string]bool
-	// outbox holds what the user sent before the server was there.
+	// outbox holds what the user chose before the server was there.
+	// Messages (to the partner or a task) don't go in it: they stay in
+	// pending / the task's Sends until echoed, and are (re)sent from there
+	// after each welcome (the server dedupes them by clientId).
 	outbox []any
+	// actSent are the merge / open_pr frames sent on this socket and not
+	// yet answered (task -> action); inDoubt are those of the socket that
+	// went away, settled from the Log once the replay is in (on_hand).
+	actSent map[string]string
+	inDoubt map[string]string
 	// firstDone is the first result ever on this Mac, while it's shown.
 	firstDone *firstResult
 	// held is a message held back because it looks like a key.
@@ -161,21 +169,82 @@ func (a *App) send(frame any) {
 	// What the user said or chose is never dropped: until the server has
 	// said welcome (just launched, or reconnecting), it waits in the
 	// outbox and goes out right after the welcome.
-	keep := false
+	keep, msg := false, false
 	switch frame.(type) {
-	case protocol.Send, protocol.TaskSend, protocol.Decide, protocol.TaskAction:
+	case protocol.Send, protocol.TaskSend:
+		msg = true
+	case protocol.Decide, protocol.TaskAction:
 		keep = true
 	}
-	if keep && (!a.S.Welcomed || a.Status != client.Connected) {
-		a.outbox = append(a.outbox, frame)
-		return
+	if !a.S.Welcomed || a.Status != client.Connected {
+		if keep {
+			a.outbox = append(a.outbox, frame)
+		}
+		if keep || msg {
+			return // a message goes out from pending after the welcome
+		}
 	}
 	if err := a.Send(frame); err != nil {
 		a.StatusErr = err.Error()
 		if keep {
 			a.outbox = append(a.outbox, frame)
 		}
+		return
 	}
+	if f, ok := frame.(protocol.TaskAction); ok && (f.Action == "merge" || f.Action == "open_pr") {
+		if a.actSent == nil {
+			a.actSent = map[string]string{}
+		}
+		a.actSent[f.TaskID] = f.Action
+	}
+}
+
+// resendUnechoed sends again, in order, every message the server hasn't
+// echoed yet: sent on a socket that went away, or never sent. A copy the
+// server already has is not appended twice (it dedupes by clientId), and
+// the conversation shows each message once (pending is keyed by clientId).
+func (a *App) resendUnechoed() {
+	echoed := map[string]bool{}
+	for _, e := range a.S.Channel {
+		if e.User != nil && e.User.ClientID != "" {
+			echoed[e.User.ClientID] = true
+		}
+	}
+	for _, p := range a.pending {
+		if !echoed[p.clientID] {
+			a.send(protocol.Send{T: "send", Text: p.text, ClientID: p.clientID})
+		}
+	}
+	for _, t := range a.S.Tasks {
+		for _, sd := range t.Sends {
+			if sd.Delivered == "" && sd.Failed == "" && sd.ClientID != "" {
+				a.send(protocol.TaskSend{T: "task_send", TaskID: t.ID, Text: sd.Text, ClientID: sd.ClientID})
+			}
+		}
+	}
+}
+
+// settleInDoubt runs once the replay after a welcome is in: a merge or
+// draft PR whose result was lost with the old socket is done if the Log
+// says so (the store already cleared Acting); otherwise it is Unsure,
+// never a failure.
+func (a *App) settleInDoubt() {
+	for id, action := range a.inDoubt {
+		if t := a.S.Task(id); t != nil && t.Acting == action {
+			t.Acting, t.Unsure = "", action
+		}
+	}
+	a.inDoubt = nil
+}
+
+// RetryAction sends an action again after its result was lost.
+func (a *App) RetryAction(t *store.Task) {
+	action := t.Unsure
+	if action == "" {
+		return
+	}
+	t.Unsure, t.Acting = "", action
+	a.TaskAction(t.ID, action)
 }
 
 // flushOutbox sends what waited for the connection, in order.
@@ -345,8 +414,10 @@ func (a *App) SendToTask(id, text string) bool {
 }
 
 func (a *App) sendToTask(id, text string) {
-	a.S.AddSend(id, text).At = a.Now()
-	a.send(protocol.TaskSend{T: "task_send", TaskID: id, Text: text})
+	a.nextClient++
+	cid := fmt.Sprintf("t%d-%d", a.Now().UnixMilli(), a.nextClient)
+	a.S.AddSend(id, text, cid).At = a.Now()
+	a.send(protocol.TaskSend{T: "task_send", TaskID: id, Text: text, ClientID: cid})
 }
 
 // SendHeld sends the held message after all, and empties its composer.
@@ -448,6 +519,18 @@ func (a *App) Welcomed() {
 		a.Local.Reload()
 	}
 	a.Status = client.Connected // a welcome means the socket is up
+	// What the old socket left unanswered: messages go again (deduped by
+	// the server), actions are settled from the Log after the replay.
+	if len(a.actSent) > 0 {
+		if a.inDoubt == nil {
+			a.inDoubt = map[string]string{}
+		}
+		for id, act := range a.actSent {
+			a.inDoubt[id] = act
+		}
+	}
+	a.actSent = nil
+	a.resendUnechoed()
 	a.flushOutbox()
 	if a.Route == RouteTask && a.TaskID != "" {
 		a.send(protocol.TaskHistoryReq{T: "task_history", TaskID: a.TaskID, Limit: 500})
@@ -465,6 +548,7 @@ func (a *App) Receive(f protocol.ServerFrame) {
 	if a.S.Stale(f) {
 		a.S.Reset()
 		a.pending, a.diffs = nil, map[string]*diffPane{}
+		a.actSent, a.inDoubt = nil, nil
 		a.taskLists = map[string]*ui.ListState{}
 		a.historyAsked = map[string]bool{}
 		a.livingAway = map[int64]bool{}
@@ -476,8 +560,16 @@ func (a *App) Receive(f protocol.ServerFrame) {
 	a.noteResults(f)
 	a.S.Apply(f)
 	a.followUserLanguage()
-	if f.T == "welcome" {
+	switch f.T {
+	case "welcome":
 		a.Welcomed()
+	case "action_result":
+		delete(a.actSent, f.TaskID)
+	case "on_hand":
+		// on_hand closes the replay that follows a welcome.
+		if a.inDoubt != nil {
+			a.settleInDoubt()
+		}
 	}
 	a.Applied(f)
 }

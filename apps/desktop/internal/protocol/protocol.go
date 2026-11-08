@@ -189,13 +189,15 @@ type ToolCall struct {
 // "user" is text the user sent straight into the task (logged by the
 // runner); From "partner" is the partner talking to it.
 type TaskEvent struct {
-	TaskID string          `json:"taskId"`
-	Role   string          `json:"role"`           // assistant | user | tool | system
-	From   string          `json:"from,omitempty"` // user | partner | runner
-	Text   string          `json:"text,omitempty"`
-	Tool   *ToolCall       `json:"tool,omitempty"`
-	Usage  *Usage          `json:"usage,omitempty"` // present on turn ends
-	Raw    json.RawMessage `json:"raw,omitempty"`
+	TaskID string `json:"taskId"`
+	Role   string `json:"role"`           // assistant | user | tool | system
+	From   string `json:"from,omitempty"` // user | partner | runner
+	Text   string `json:"text,omitempty"`
+	// ClientID is the client's id for a user's task_send (resends are deduped by it).
+	ClientID string          `json:"clientId,omitempty"`
+	Tool     *ToolCall       `json:"tool,omitempty"`
+	Usage    *Usage          `json:"usage,omitempty"` // present on turn ends
+	Raw      json.RawMessage `json:"raw,omitempty"`
 }
 
 // Usage is a turn's token use.
@@ -400,6 +402,8 @@ type TaskSend struct {
 	T      string `json:"t"` // "task_send"
 	TaskID string `json:"taskId"`
 	Text   string `json:"text"`
+	// ClientID makes a resend safe: the server delivers it once.
+	ClientID string `json:"clientId,omitempty"`
 }
 
 type TaskAction struct {

@@ -57,7 +57,9 @@ type DecisionState struct {
 // Send is text the user sent straight into a task, and how it was
 // delivered once the server acked it.
 type Send struct {
-	Text      string
+	Text string
+	// ClientID is the id it was sent with; a resend uses the same one.
+	ClientID  string
 	Delivered protocol.Delivery // "" until the "sent" ack
 	// Seq is the logged task_event that echoes it, once it arrived.
 	Seq int64
@@ -102,6 +104,10 @@ type Task struct {
 	Browser *BrowserStatus
 	// Acting is the task_action awaiting its action_result ("" when none).
 	Acting string
+	// Unsure is a merge or open_pr whose result was lost with the socket
+	// and that the Log doesn't show done: it may or may not have happened
+	// ("Not sure it went through — check"). Never shown as a failure.
+	Unsure string
 	// Acted is the last action_result for this task, and the seq it was
 	// logged at (the head seq for a live result). New work reported after
 	// it (a follow-up done on the same branch) clears it: that work isn't
@@ -340,7 +346,7 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 	case "action_result":
 		if t := s.Tasks[f.TaskID]; t != nil {
 			fc := f
-			t.Acting, t.Acted, t.ActedSeq = "", &fc, s.HeadSeq
+			t.Acting, t.Unsure, t.Acted, t.ActedSeq = "", "", &fc, s.HeadSeq
 		}
 		s.ActionResults = append(s.ActionResults, f)
 	case "events":
@@ -375,9 +381,9 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 }
 
 // AddSend records text the user is sending straight into a task.
-func (s *Store) AddSend(taskID, text string) *Send {
+func (s *Store) AddSend(taskID, text, clientID string) *Send {
 	t := s.task(taskID)
-	sd := &Send{Text: text}
+	sd := &Send{Text: text, ClientID: clientID}
 	t.Sends = append(t.Sends, sd)
 	return sd
 }
@@ -493,7 +499,15 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 			// On (re)connect the channel replays before on_hand lists the task: keep the
 			// action on a task that only on_hand will fill in, or Merge comes back.
 			t := s.task(b.TaskID)
-			t.Acted = &protocol.ServerFrame{T: "action_result", TaskID: b.TaskID, Action: strings.TrimPrefix(b.JobID, "act_"+b.TaskID+"_"), OK: true}
+			action := strings.TrimPrefix(b.JobID, "act_"+b.TaskID+"_")
+			t.Acted = &protocol.ServerFrame{T: "action_result", TaskID: b.TaskID, Action: action, OK: true}
+			// The Log says it happened: an action whose result was lost resolves here.
+			if t.Acting == action {
+				t.Acting = ""
+			}
+			if t.Unsure == action {
+				t.Unsure = ""
+			}
 			t.ActedSeq = ev.Seq
 			s.bySeq[ev.Seq] = nil
 			return
@@ -710,7 +724,7 @@ func (s *Store) applyTask(t *Task, ev protocol.LogEvent, body any) {
 		// oldest matching send.
 		if b.Role == "user" && b.From != "partner" {
 			for _, sd := range t.Sends {
-				if sd.Seq == 0 && sd.Text == b.Text {
+				if sd.Seq == 0 && ((b.ClientID != "" && sd.ClientID == b.ClientID) || (b.ClientID == "" && sd.Text == b.Text)) {
 					sd.Seq = ev.Seq
 					break
 				}

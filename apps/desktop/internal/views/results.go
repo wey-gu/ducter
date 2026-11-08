@@ -176,6 +176,13 @@ func (a *App) resultActions(c *ui.Context, task *store.Task) {
 		}
 		if task.Acting != "" {
 			ui.Text(c.Key("acting"), a.L.T("result.acting."+task.Acting, base)).FontSize(t.SM).TextColor(t.InkMuted)
+		} else if task.Unsure != "" {
+			// The result was lost with the connection and the Log doesn't
+			// show it done: say so, offer to try again, never claim a failure.
+			ui.Text(c.Key("unsure"), a.L.T("result.unsure")).FontSize(t.SM).TextColor(t.InkMuted)
+			if a.buttonFor(c, a.L.T("task.action.retry"), task.Title(), btnQuiet, 38, t.Surface) {
+				a.RetryAction(task)
+			}
 		} else if done := task.Acted; done != nil && done.OK && done.Action == "merge" {
 			ui.Text(c.Key("acted"), a.L.T("result.merged", base)).FontSize(t.SM).FontWeight(700).TextColor(t.Done.Ink)
 		} else {

@@ -20,11 +20,16 @@ import (
 )
 
 const (
-	size  = 1024
-	body  = 824 // the icon body on the macOS grid
-	inset = (size - body) / 2
+	size = 1024
 	// squircle exponent: 5 is close to Apple's continuous-corner shape.
 	squircleN = 5.0
+)
+
+// The icon body on the macOS grid (824 px, centred). With -ios the body is the whole square,
+// opaque and without a drop shadow: iOS masks app icons itself and refuses alpha.
+var (
+	body  = 824
+	inset = (size - body) / 2
 )
 
 // Pebble's warm paper, a shade deeper at the bottom so the body reads as
@@ -43,7 +48,11 @@ func main() {
 	in := flag.String("in", "", "the character, a square PNG with true alpha")
 	out := flag.String("out", "icon-1024.png", "where to write the 1024 px icon")
 	scale := flag.Float64("scale", 0.70, "the character's height as a share of the body")
+	ios := flag.Bool("ios", false, "a full-bleed, opaque square for iOS (no squircle, no shadow)")
 	flag.Parse()
+	if *ios {
+		body, inset = size, 0
+	}
 	if *in == "" {
 		log.Fatal("appicon: -in is required")
 	}
@@ -59,15 +68,20 @@ func main() {
 
 	dst := image.NewNRGBA(image.Rect(0, 0, size, size))
 	mask := squircleMask()
-
-	// 1. The drop shadow of the body: the macOS grid's soft shadow below.
-	shadow := shift(mask, 0, 12)
-	shadow = blur(shadow, 14, 3)
-	paint(dst, shadow, rgbf{0, 0, 0}, 0.30, nil)
+	if *ios {
+		for i := range mask {
+			mask[i] = 1
+		}
+	} else {
+		// 1. The drop shadow of the body: the macOS grid's soft shadow below.
+		shadow := shift(mask, 0, 12)
+		shadow = blur(shadow, 14, 3)
+		paint(dst, shadow, rgbf{0, 0, 0}, 0.30, nil)
+	}
 
 	// 2. The body: warm paper, light from above.
 	paint(dst, mask, rgbf{}, 1, func(x, y int) rgbf {
-		t := float64(y-inset) / body
+		t := float64(y-inset) / float64(body)
 		t = math.Max(0, math.Min(1, t))
 		return mix(top, bottom, t*t*0.9+t*0.1)
 	})

@@ -112,15 +112,30 @@ from the test harness signalling its own wrapper shell, not from Ducter.
 in `Contents/Helpers`, `AppIcon.icns` drawn by `apps/desktop/cmd/appicon` from the clay
 character) and a `.dmg` with an Applications shortcut. Ad-hoc signed, not notarized.
 
-**Lifetime (proposed, awaiting the user's call):** Ducter lives as long as the app. The app
-runs `ducter up --no-desktop` as its child; ⌘Q, closing the window, or a force quit stops it
-(`DUCTER_PARENT_PID`: the CLI exits when the app's pid goes away). A Ducter that was already
-running is attached to and left alone. *Tradeoff:* tasks stop when the window closes, which
-contradicts "silence means success" for long tasks; a LaunchAgent (or a menu-bar presence)
-would keep Ducter working with the window closed and come back at login. Recommended for the
-next step: keep the window-closes-quits default for v1 (honest and simple: one thing to
-understand), and add "Keep Ducter running when the window is closed" as a single opt-in that
-installs a LaunchAgent, offered the first time a task is still running at quit.
+**Lifetime (D55: Ducter keeps running when the window closes).** The window is a view;
+Ducter is the one doing the work, so neither closing the window nor ⌘Q stops it.
+- *Closing the window* (⌘W, the red button) hides it. The Dock icon, or opening the app again,
+  shows it as it was (MyGo: `Window.OnClose` prevented + `Hide`, `App.OnActivate` → `Show`).
+- *Ducter itself* runs as a per-user LaunchAgent, `~/Library/LaunchAgents/<bundle-id>.ducter.plist`
+  (`ducter up --no-desktop`, `RunAtLoad`, `KeepAlive` on a crash only, logs to
+  `<dataDir>/app.log`, the app's `PATH` and `DUCTER_*` in its environment,
+  `AssociatedBundleIdentifiers` so Login Items shows it as Ducter). The app writes and loads it
+  on first run, says so in one line on the "Waking Ducter up…" card ("From now on Ducter keeps
+  working when you close the window; to stop it, choose Stop Ducter in the menu"), and attaches
+  to it on every later launch. A moved app rewrites and reloads it.
+- *⌘Q* quits the window app only. *Why:* people press ⌘Q out of habit to tidy up; a partner
+  that loses its tasks to a reflex is not 放心. Stopping the work is a different intent, so it
+  gets its own, explicit place.
+- *Stop Ducter / 让 Ducter 歇着* (app menu, subtitle "Stops every task until you wake it"):
+  unloads the agent and removes the plist, so it stays off, at login too. The window shows
+  "Ducter is resting" with **Wake Ducter**; the menu item turns into Wake Ducter.
+- *The Dock badge* counts what waits for the person (the header's "needs you": tasks waiting
+  plus open partner decisions), nothing else. No menu-bar extra.
+- *Fallback:* run from the disk image or a translocated copy (paths that go away), Ducter is the
+  app's child instead (`DUCTER_PARENT_PID`) and stops with the app.
+- A Ducter already running (from `ducter up` in a terminal) is attached to and left alone.
+- *Note:* macOS may post "Background Items Added" when the plist is loaded; with an ad-hoc
+  signature it names the item after the binary. Not seen in our run (not looked for).
 
 **Screens** (copy keys `setup.*`, `cli.*` in `apps/desktop/internal/i18n`; views in
 `apps/desktop/internal/views/setup.go`; headless shots `apps/desktop/docs/app-*.png`)
@@ -143,8 +158,16 @@ installs a LaunchAgent, offered the first time a task is still running at quit.
 **Verified live** on macOS 15.7 (the DMG built, mounted, the app copied to a scratch folder,
 launched with `open`, `dev.env` pointing at a scratch data folder and port 7798, sonnet):
 doctor + `up` took ~4 s from open to "Ducter is up"; repo starters showed on the first launch;
-a message got its reply in 2.5 s; ⌘Q, ⌘W and `kill -9` of the app each stopped the backend
-(port freed, `SIGTERM: shutting down` in `ducter.log`). The Gatekeeper dialog for a
+a message got its reply in 2.5 s; (before D55) ⌘Q, ⌘W and `kill -9` each stopped the child
+backend. **D55, live** (scripted model, port 7870, scratch data folder): first launch loaded
+the LaunchAgent (`state = running`, parent pid 1); a 90 s task was started, the window closed
+with ⌘W (app alive, window off screen), the task finished while hidden, `open` (the same
+reopen event as a Dock click) brought the window back showing that result; a partner decision
+set the Dock badge to "1" (`lsappinfo` StatusLabel); ⌘Q quit the app while the same Ducter
+process kept listening; a relaunch attached to it; Stop Ducter (menu) removed the plist and
+freed the port, the card read "Ducter is resting"; Wake Ducter reloaded the agent and the
+window came back with its history. Clicking the Dock icon itself was not driven (the Dock's
+accessibility tree was empty to the driver). The Gatekeeper dialog for a
 quarantined copy ("“Ducter” Not Opened", Done / Move to Trash) and the "Open Anyway" button in
 Privacy & Security were seen; pressing Open Anyway was not (it needs the owner's password).
 **Headless only:** the blocked, name, failed screens and the CLI offer (a fake backend in

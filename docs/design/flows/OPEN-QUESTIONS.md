@@ -44,16 +44,14 @@ process, sharing the desktop's i18n keys and Pebble tokens. This departs from D2
 
 ### 2. Ducter.app
 
-**2.1 Lifecycle: tied to the app, or keeps running.** Today Ducter lives as long as the app:
-⌘Q, closing the window, or a force quit stops it, and tasks stop with it. A Ducter that was
-already running from a terminal is attached to and left alone.
-- *Recommendation:* keep "the window closes, Ducter stops" for v1 (one thing to understand),
-  and add one opt-in, "Keep Ducter running when the window is closed", which installs a
-  LaunchAgent. Offer it the first time a task is still running at quit. Alternative: a
-  LaunchAgent or menu-bar presence by default (closer to "silence means success", but a
-  background process the user didn't ask for).
-- *Default:* as recommended.
-- Links: `../onboarding.md` "What ships today: the app path" · `../../../README.md` "The app"
+**2.1 Lifecycle: tied to the app, or keeps running.** **Decided (2026-11-09): D55 Ducter
+keeps running when the window closes.** Closing the window hides it; Ducter runs as a
+per-user LaunchAgent, so ⌘Q quits only the window app and tasks keep going (at login too).
+The app menu's "Stop Ducter / 让 Ducter 歇着" is the rare full stop. The Dock badge counts
+what waits for the user. Shipped as described in `../onboarding.md` "What ships today: the
+app path".
+- Links: `../../decisions.md` D55 · `../onboarding.md` "What ships today: the app path" ·
+  `../../../README.md` "The app"
 
 ### 3. Phone notifications (push)
 

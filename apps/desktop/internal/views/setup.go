@@ -117,9 +117,9 @@ func (a *App) setupResting(c *ui.Context) {
 	t := a.T
 	name := a.personaName()
 	a.avatar(c, theme.Napping, 100)
-	ui.Text(c, a.L.T("rest.title", name)).FontSize(28).FontWeight(800).LetterSpacing(-0.4)
+	ui.Text(c, a.L.T("rest.title", name)).FontSize(t.XXL).FontWeight(800).LetterSpacing(-0.4)
 	ui.Text(c, a.L.T("rest.body")).FontSize(t.LG).LineHeight(1.55).TextColor(t.InkSoft)
-	if a.button(c, a.L.T("rest.wake", name), btnPrimary, 50, t.Surface) {
+	if a.button(c, a.L.T("rest.wake", name), btnPrimary, t.ControlLG, t.Surface) {
 		a.Wake()
 	}
 }
@@ -339,8 +339,8 @@ func (a *App) setupView(c *ui.Context) {
 	a.watchActive(c)
 	a.bareChrome(c)
 	ui.Column(c).Grow(1).MinHeight(0).Justify(ui.Center).AlignItems(ui.Center).Padding(8, 32, 8+ChromeH, 32).Children(func() {
-		card := ui.Column(c.Key("setup")).Width(600).MaxWidthPercent(100).Padding(36, 40, 32, 40).Gap(16).
-			Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.PressCard.Offset, 0, 0, t.PressCard.Color)
+		card := ui.Column(c.Key("setup")).Width(600).MaxWidthPercent(100).Padding(t.S6, t.S7, t.S6, t.S7).Gap(t.S4).
+			Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color)
 		a.enter(c, card)
 		card.Children(func() {
 			switch a.setup.phase {
@@ -372,9 +372,8 @@ func (a *App) setupView(c *ui.Context) {
 func (a *App) setupWaiting(c *ui.Context, p theme.Presence, title, body string) {
 	t := a.T
 	a.avatar(c, p, 120)
-	ui.Row(c).Gap(12).AlignItems(ui.Center).Children(func() {
-		ui.Text(c, title).FontSize(28).FontWeight(800).LetterSpacing(-0.4).Grow(1).MinWidth(0)
-		a.retryPulse(c)
+	ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
+		ui.Text(c, title).FontSize(t.XXL).FontWeight(800).LetterSpacing(-0.4).Grow(1).MinWidth(0)
 	})
 	ui.Text(c, body).FontSize(t.LG).LineHeight(1.55).TextColor(t.InkSoft)
 }
@@ -406,6 +405,10 @@ func (a *App) watchActive(c *ui.Context) {
 func (a *App) setupBlocked(c *ui.Context) {
 	t := a.T
 	blocking := a.setup.report.Blocking()
+	if a.Backend != nil && allInApp(blocking) {
+		a.setupOptions(c, blocking)
+		return
+	}
 	face := theme.NeedsYou
 	if a.anyFixRunning() {
 		face = theme.Working // installing, or waiting on the browser
@@ -415,17 +418,24 @@ func (a *App) setupBlocked(c *ui.Context) {
 	if len(blocking) > 1 {
 		title = a.L.T("setup.blocked.many", len(blocking))
 	}
-	ui.Text(c, title).FontSize(28).FontWeight(800).LetterSpacing(-0.4)
+	ui.Text(c, title).FontSize(t.XXL).FontWeight(800).LetterSpacing(-0.4)
 	ui.Text(c, a.L.T("setup.blocked.body")).FontSize(t.LG).LineHeight(1.55).TextColor(t.InkSoft)
+	var fixable []local.Check
+	for _, k := range blocking {
+		if k.Action != "" && a.Backend != nil {
+			fixable = append(fixable, k)
+		}
+	}
+	if len(fixable) > 0 {
+		a.optionRows(c, fixable)
+	}
 	for _, k := range blocking {
 		k := k
 		if k.Action != "" && a.Backend != nil {
-			a.fixRow(c, k, false)
 			continue
 		}
-		ui.Column(c.Key("fix:"+k.ID)).Gap(10).Padding(16, 18).Radius(t.RadiusLG).Background(t.SurfaceSunken).Children(func() {
-			ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
-				ui.Box(c).Size(10, 10).Radius(5).Background(t.NeedsYou.Dot).Shrink(0)
+		ui.Column(c.Key("fix:"+k.ID)).Gap(t.S3).Padding(t.S4, t.S4).Radius(t.RadiusLG).Background(t.SurfaceSunken).Children(func() {
+			ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 				ui.Text(c, k.Label).FontSize(t.MD).FontWeight(800)
 				ui.Text(c, k.Detail).FontSize(t.MD).TextColor(t.InkSoft).Grow(1).MinWidth(0)
 			})
@@ -433,19 +443,19 @@ func (a *App) setupBlocked(c *ui.Context) {
 				return
 			}
 			if strings.HasPrefix(k.Fix, "http") {
-				if a.button(c, a.L.T("setup.open"), btnQuiet, 40, t.SurfaceSunken) {
+				if a.button(c, a.L.T("setup.open"), btnSecondary, t.ControlMD, t.SurfaceSunken) {
 					_ = a.Backend.OpenURL(k.Fix)
 				}
 				return
 			}
 			a.commandBoxSized(c, k.Fix, 14)
-			ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
+			ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 				label := a.L.T("setup.run")
 				if at, ok := a.setup.ran[k.ID]; ok && a.Now().Sub(at) < 4*time.Second {
 					label = a.L.T("setup.ran")
 					c.After(4*time.Second - a.Now().Sub(at))
 				}
-				if a.button(c, label, btnPrimary, 44, t.SurfaceSunken) {
+				if a.button(c, label, btnPrimary, t.ControlMD, t.SurfaceSunken) {
 					if a.setup.ran == nil {
 						a.setup.ran = map[string]time.Time{}
 					}
@@ -455,7 +465,6 @@ func (a *App) setupBlocked(c *ui.Context) {
 			})
 		})
 	}
-	a.alternative(c)
 	if later := a.setup.report.Later(); len(later) > 0 {
 		var names []string
 		for _, k := range later {
@@ -473,17 +482,13 @@ func (a *App) setupBlocked(c *ui.Context) {
 		}
 	}
 	ui.Box(c).Height(1).Background(t.LineSoft).Margin(4, 0)
-	ui.Row(c).Gap(12).AlignItems(ui.Center).Children(func() {
-		auto := "setup.auto"
-		if allInApp(blocking) && a.Backend != nil {
-			auto = "setup.auto.app"
-		}
-		ui.Text(c, a.L.T(auto)).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5).Grow(1).MinWidth(0)
+	ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
+		ui.Text(c, a.L.T("setup.auto")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5).Grow(1).MinWidth(0)
 		label := a.L.T("setup.recheck")
 		if a.setup.busy {
 			label = a.L.T("setup.rechecking")
 		}
-		if a.button(c, label, btnQuiet, 44, t.Surface) && !a.setup.busy {
+		if a.button(c, label, btnSecondary, t.ControlMD, t.Surface) && !a.setup.busy {
 			a.check()
 		}
 	})
@@ -492,21 +497,21 @@ func (a *App) setupBlocked(c *ui.Context) {
 func (a *App) setupName(c *ui.Context) {
 	t := a.T
 	a.avatar(c, theme.Idle, 120)
-	ui.Text(c, a.L.T("setup.name.title", "Ducter")).FontSize(28).FontWeight(800).LetterSpacing(-0.4)
+	ui.Text(c, a.L.T("setup.name.title", "Ducter")).FontSize(t.XXL).FontWeight(800).LetterSpacing(-0.4)
 	ui.Text(c, a.L.T("setup.name.body")).FontSize(t.LG).LineHeight(1.55).TextColor(t.InkSoft)
 	submit := func() { a.SaveName(a.setup.name) }
 	in := ui.TextInput(c.Key("input:name"), &a.setup.name).Placeholder("Ducter").Label(a.L.T("setup.name.body")).
-		FontSize(18).Padding(12, 16).Radius(t.RadiusSM).Background(t.SurfaceSunken).Border(1, t.LineSoft).
+		FontSize(t.LG).Padding(t.S3, t.S4).Radius(t.RadiusSM).Background(t.SurfaceSunken).Border(1, t.LineSoft).
 		OnSubmit(submit)
 	if !a.setup.nameFocused {
 		in.Focus()
 		a.setup.nameFocused = true
 	}
-	ui.Row(c).Gap(12).AlignItems(ui.Center).Margin(4, 0, 0, 0).Children(func() {
-		if a.button(c, a.L.T("setup.name.ok"), btnPrimary, 50, t.Surface) {
+	ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Margin(4, 0, 0, 0).Children(func() {
+		if a.button(c, a.L.T("setup.name.ok"), btnPrimary, t.ControlLG, t.Surface) {
 			submit()
 		}
-		if a.button(c, a.L.T("setup.name.keep", "Ducter"), btnText, 50, t.Surface) {
+		if a.button(c, a.L.T("setup.name.keep", "Ducter"), btnText, t.ControlLG, t.Surface) {
 			a.SaveName("")
 		}
 	})
@@ -519,14 +524,14 @@ func (a *App) setupFailed(c *ui.Context) {
 	if a.setup.everUp {
 		key = "setup.stopped"
 	}
-	ui.Text(c, a.L.T(key, a.personaName())).FontSize(28).FontWeight(800).LetterSpacing(-0.4)
+	ui.Text(c, a.L.T(key, a.personaName())).FontSize(t.XXL).FontWeight(800).LetterSpacing(-0.4)
 	if a.setup.err != "" {
 		ui.Text(c, a.L.T("setup.failed.body")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
-		ui.Text(c, a.setup.err).Font(t.Mono).FontSize(12).LineHeight(1.5).TextColor(t.InkSoft).
-			Padding(12, 14).Radius(t.RadiusSM).Background(t.SurfaceSunken).Selectable()
+		ui.Text(c, a.setup.err).Font(t.Mono).FontSize(t.MonoSM).LineHeight(1.5).TextColor(t.InkSoft).
+			Padding(t.S3, t.S3).Radius(t.RadiusSM).Background(t.SurfaceSunken).Selectable()
 	}
 	ui.Text(c, a.L.T("setup.failed.log", tildeHome(a.Backend.LogPath()))).FontSize(t.SM).TextColor(t.InkMuted).Selectable()
-	if a.button(c, a.L.T("setup.retry"), btnPrimary, 50, t.Surface) {
+	if a.button(c, a.L.T("setup.retry"), btnPrimary, t.ControlLG, t.Surface) {
 		a.setup.everUp = false
 		a.StartLocal()
 	}
@@ -565,49 +570,52 @@ func (a *App) cliOfferLine(c *ui.Context) {
 		o.shown = true
 	}
 	t := a.T
-	ui.Row(c).Justify(ui.Center).Padding(0, 24).Children(func() {
-		card := ui.Column(c.Key("clioffer")).Grow(1).MaxWidth(convWidth).Gap(10).Padding(12, 16).
-			Radius(t.RadiusLG).Background(t.Surface).Role(ui.RoleStatus)
-		a.enter(c, card)
-		card.Children(func() {
-			switch o.result {
-			case "":
-				ui.Row(c).Gap(12).AlignItems(ui.Center).Children(func() {
-					ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
-						ui.Text(c, a.L.T("cli.offer")).FontSize(t.MD).FontWeight(700)
-						ui.Text(c, a.L.T("cli.offer.body")).FontSize(t.SM).TextColor(t.InkMuted)
-					})
-					if a.button(c, a.L.T("cli.offer.yes"), btnPrimary, 40, t.Surface) {
-						a.linkCLI()
-					}
-					if a.button(c, a.L.T("cli.offer.no"), btnText, 40, t.Surface) {
-						a.Local.SetCLIOffer("declined")
-						o.closed = true
-					}
-				})
-			default:
-				ui.Row(c).Gap(12).AlignItems(ui.Center).Children(func() {
-					var line string
+	glyph := func() { a.glyphTile(c, 28, t.Surface, drawPrompt(t.InkSoft)) }
+	a.aboveComposer(c, func() {
+		switch o.result {
+		case "":
+			a.notice(c, "clioffer", noticeInfo, glyph, func() {
+				ui.Text(c, a.L.T("cli.offer")).FontSize(t.SM).FontWeight(700)
+				ui.Text(c, a.L.T("cli.offer.body")).FontSize(t.XS).LineHeight(1.45).TextColor(t.InkMuted)
+			}, func() {
+				if a.button(c, a.L.T("cli.offer.no"), btnText, t.ControlSM, t.Surface) {
+					a.Local.SetCLIOffer("declined")
+					o.closed = true
+				}
+				if a.button(c, a.L.T("cli.offer.yes"), btnPrimary, t.ControlSM, t.Surface) {
+					a.linkCLI()
+					// Done is said once, in passing; only what still
+					// needs the person (a line to run, an error) stays.
 					switch o.result {
 					case "done":
-						line = a.L.T("cli.done")
-					case "path":
-						line = a.L.T("cli.done.path")
+						c.Toast(a.L.T("cli.done"))
+						o.closed = true
 					case "other":
-						line = a.L.T("cli.other")
-					default:
-						line = a.L.T("cli.failed", o.result)
-					}
-					ui.Text(c, line).FontSize(t.MD).LineHeight(1.45).Grow(1).MinWidth(0)
-					if a.button(c, a.L.T("cli.ok"), btnQuiet, 40, t.Surface) {
+						c.Toast(a.L.T("cli.other"))
 						o.closed = true
 					}
-				})
-				if o.result == "path" {
-					a.commandBoxSized(c, local.PathLine(local.LinkDir()), 13)
 				}
-			}
-		})
+			})
+		case "path":
+			a.notice(c, "clioffer", noticeInfo, glyph, func() {
+				ui.Text(c, a.L.T("cli.done.path")).FontSize(t.SM).LineHeight(1.45).TextColor(t.InkSoft)
+			}, func() {
+				if a.button(c, a.L.T("cli.ok"), btnText, t.ControlSM, t.Surface) {
+					o.closed = true
+				}
+			})
+			ui.Box(c).Height(t.S2)
+			a.commandBoxSized(c, local.PathLine(local.LinkDir()), t.SM)
+			ui.Box(c).Height(t.S2)
+		default:
+			a.notice(c, "clioffer", noticeAlert, glyph, func() {
+				ui.Text(c, a.L.T("cli.failed", o.result)).FontSize(t.SM).LineHeight(1.45).TextColor(t.Failed.Ink)
+			}, func() {
+				if a.button(c, a.L.T("cli.ok"), btnText, t.ControlSM, t.Surface) {
+					o.closed = true
+				}
+			})
+		}
 	})
 }
 

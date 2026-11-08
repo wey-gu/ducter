@@ -64,8 +64,11 @@ func TestOnboardInstallAndSignInFromTheWindow(t *testing.T) {
 			h := newSetup(t, lang, f)
 			T := h.app.L.T
 			h.app.StartLocal()
-			install := T("fix.install", "Claude Code")
-			h.has(install, T("fix.terminal"), T("setup.or"), T("fix.install", "Codex"))
+			install := T("fix.install.short")
+			h.has(T("setup.pick.body"), "Claude Code", "Codex", install, T("setup.auto.app"))
+			if h.tt.HasText(T("setup.recheck")) || h.tt.HasText("Nowledge Mem") {
+				t.Error("Check again or the optional line on an automatic screen")
+			}
 			if h.tt.HasText("curl -fsSL") {
 				t.Error("the installer's command shows as a step to type")
 			}
@@ -80,7 +83,7 @@ func TestOnboardInstallAndSignInFromTheWindow(t *testing.T) {
 			}
 			j.Line("Setting up Claude Code...")
 			h.app.Now = func() time.Time { return j.Started.Add(23 * time.Second) }
-			h.has(T("fix.installing", "Claude Code"), "Setting up Claude Code...", T("fix.elapsed", 23), T("fix.cancel"))
+			h.has(T("fix.installing.now", 23), T("fix.cancel"))
 			h.shot("onboard-ai-installing-" + string(lang))
 			h.app.Now = time.Now
 
@@ -104,7 +107,7 @@ func TestOnboardInstallAndSignInFromTheWindow(t *testing.T) {
 			j2.Finish(nil)
 			h.tt.Frame()
 			h.tt.Frame()
-			signin := T("fix.signin", "Claude")
+			signin := T("fix.signin.short")
 			h.has(signin, w["x.signedout"])
 
 			// Sign in: the browser does it; the window waits and offers the
@@ -204,13 +207,13 @@ func TestOnboardWebSetup(t *testing.T) {
 			}
 			j.Line("note: installing cua-driver via the Rust implementation.")
 			h.settle(500 * time.Millisecond)
-			h.has(T("web.driver.installing"))
+			h.has(T("fix.cancel"))
 			h.shotAs("onboard-web-installing-" + string(lang))
 
 			f.cua = local.CuaState{Bin: local.CuaAppBin, Version: "0.44.0", Checked: true}
 			j.Finish(nil)
 			h.settle(2 * time.Second)
-			h.has(T("web.ax.body"), T("web.grant.open"), T("web.art.where", T("web.ax.pane")), T("web.done"))
+			h.has(T("web.ax.body"), T("web.grant.open"), T("web.art.where", T("web.ax.pane")))
 			h.shotAs("onboard-web-accessibility-" + string(lang))
 			h.click(T("web.grant.open") + " · " + T("web.ax.pane"))
 			g := f.jobs[jobCuaGrant]
@@ -222,7 +225,7 @@ func TestOnboardWebSetup(t *testing.T) {
 
 			f.cua.Accessibility = true // the person flipped the first switch
 			h.settle(2 * time.Second)
-			h.has(T("web.screen.body"), T("web.art.where", T("web.screen.pane")))
+			h.has(T("web.art.where", T("web.screen.pane")))
 			h.shotAs("onboard-web-screen-" + string(lang))
 
 			f.cua.ScreenRecording = true

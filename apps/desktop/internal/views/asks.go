@@ -126,7 +126,7 @@ func (a *App) notifyAsk(c *ui.Context) {
 	switch s.result {
 	case "ok":
 		a.askRow(c, theme.Done, a.L.T("notify.ok"), "", func() {
-			if a.button(c, a.L.T("cli.ok"), btnQuiet, 40, t.Surface) {
+			if a.button(c, a.L.T("cli.ok"), btnSecondary, 40, t.Surface) {
 				a.answer(askNotify, "yes")
 			}
 		})
@@ -187,14 +187,11 @@ func (a *App) phoneAsk(c *ui.Context) {
 	}
 	pc := a.S.PairCode
 	if pc == nil {
-		ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
-			a.retryPulse(c)
-			ui.Text(c, a.L.T("devices.loading")).FontSize(t.SM).TextColor(t.InkMuted)
-		})
+		ui.Text(c, a.L.T("devices.loading")).FontSize(t.SM).TextColor(t.InkMuted)
 		return
 	}
 	done := func() {
-		if a.button(c, a.L.T("cli.ok"), btnQuiet, 40, t.Surface) {
+		if a.button(c, a.L.T("cli.ok"), btnSecondary, 40, t.Surface) {
 			a.answer(askPhone, "yes")
 		}
 	}
@@ -219,10 +216,7 @@ func (a *App) phoneAsk(c *ui.Context) {
 					c.After(min(left, time.Minute))
 				}
 			}
-			ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
-				a.retryPulse(c)
-				ui.Text(c, a.L.T("pair.waiting")).FontSize(t.SM).TextColor(t.InkMuted)
-			})
+			ui.Text(c, a.L.T("pair.waiting")).FontSize(t.SM).TextColor(t.InkMuted)
 		})
 		done()
 	})

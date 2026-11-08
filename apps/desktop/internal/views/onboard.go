@@ -101,171 +101,193 @@ func (a *App) settle(j *local.Job) {
 	}
 }
 
-// fixRow is one blocking check the app can fix itself: its state, its one
-// button, its progress, and what went wrong.
-func (a *App) fixRow(c *ui.Context, k local.Check, quiet bool) {
+// optionRows is the list of things the window can fix itself, one flat
+// row each on one left edge: the name, ONE status line in plain words
+// (replaced in place while it works), the action at the row's right. No
+// dots, no pulsing: the clay character above carries the mood.
+func (a *App) optionRows(c *ui.Context, rows []local.Check) {
 	t := a.T
-	j := a.fixJob(k)
-	a.settle(j)
-	running := j != nil && j.Running()
-	failed := j != nil && !running && !j.OK() && a.setup.settled[j] && !a.setup.retried[j]
-	bg := t.SurfaceSunken
-	if quiet {
-		bg = t.Bg
-	}
-	ui.Column(c.Key("fix:"+k.ID)).Gap(10).Padding(16, 18).Radius(t.RadiusLG).Background(bg).Children(func() {
-		ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
-			switch {
-			case running:
-				a.pebble(c, t.Working.Dot, 12, 10)
-			case failed:
-				ui.Box(c).Size(10, 10).Radius(5).Background(t.Failed.Dot).Shrink(0)
-			default:
-				ui.Box(c).Size(10, 10).Radius(5).Background(t.NeedsYou.Dot).Shrink(0)
+	ui.Column(c.Key("options")).Radius(t.RadiusLG).Background(t.SurfaceSunken).Children(func() {
+		for i, k := range rows {
+			if i > 0 {
+				ui.Box(c).Height(1).Background(t.Line).Margin(0, t.S4)
 			}
-			ui.Text(c, k.Label).FontSize(t.MD).FontWeight(800)
-			ui.Text(c, k.Detail).FontSize(t.MD).TextColor(t.InkSoft).Grow(1).MinWidth(0)
-		})
-		switch {
-		case running && k.Action == "signin":
-			a.signinProgress(c, k, j)
-		case running:
-			a.jobProgress(c, k, j, a.L.T("fix.installing", k.Label), a.L.T("fix.installing.body"))
-		case failed:
-			a.jobFailed(c, k, j)
-		default:
-			if e := a.setup.jobErr[jobID(k)]; e != "" {
-				a.reasonLine(c, a.L.T("fix.failed.start", e))
-			}
-			ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
-				kind := btnPrimary
-				if quiet {
-					kind = btnQuiet
-				}
-				if a.buttonFor(c, a.fixLabel(k), k.Label, kind, 44, bg) {
-					a.runFix(k)
-				}
-				ui.Box(c).Grow(1)
-				if a.button(c, a.L.T("fix.terminal"), btnText, 36, bg) {
-					_ = a.Backend.RunInTerminal(k.ID, k.Fix)
-				}
-			})
+			a.optionRow(c, k, i == 0)
 		}
 	})
-	if running {
-		c.After(250 * time.Millisecond)
+}
+
+// rowState is where one fix stands.
+type rowState int
+
+const (
+	rowIdle rowState = iota
+	rowRunning
+	rowFailed
+	rowCanceled
+)
+
+func (a *App) rowState(k local.Check) (rowState, *local.Job) {
+	j := a.fixJob(k)
+	a.settle(j)
+	switch {
+	case j == nil || a.setup.retried[j]:
+		return rowIdle, j
+	case j.Running():
+		return rowRunning, j
+	case j.OK() || !a.setup.settled[j]:
+		return rowIdle, j
+	case j.Trouble() == "canceled":
+		return rowCanceled, j
 	}
+	return rowFailed, j
+}
+
+// optionRow is one option: the name, its status, its action.
+func (a *App) optionRow(c *ui.Context, k local.Check, first bool) {
+	t := a.T
+	st, j := a.rowState(k)
+	ui.Column(c.Key("fix:"+k.ID)).Gap(t.S2).Padding(t.S4, t.S4).MinHeight(72).Justify(ui.Center).Children(func() {
+		ui.Row(c).Gap(t.S4).AlignItems(ui.Center).Children(func() {
+			ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
+				ui.Text(c, k.Label).FontSize(t.LG).FontWeight(800)
+				ui.Text(c, a.rowStatus(k, st, j)).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.45)
+			})
+			switch st {
+			case rowRunning:
+				if a.buttonFor(c, a.L.T("fix.cancel"), k.Label, btnText, t.ControlSM, t.SurfaceSunken) {
+					j.Cancel()
+				}
+			case rowFailed:
+				if a.buttonFor(c, a.L.T("fix.retry"), k.Label, btnSecondary, t.ControlMD, t.SurfaceSunken) {
+					a.retry(k, j)
+				}
+			default:
+				kind := btnSecondary
+				if first {
+					kind = btnPrimary
+				}
+				if a.buttonFor(c, a.fixLabel(k), k.Label, kind, t.ControlMD, t.SurfaceSunken) {
+					if j != nil {
+						a.retry(k, j)
+					} else {
+						a.runFix(k)
+					}
+				}
+			}
+		})
+		switch {
+		case st == rowRunning && k.Action == "signin":
+			a.signinHelp(c, k, j)
+		case st == rowFailed:
+			if last := j.Last(); last != "" && j.Trouble() == "" {
+				ui.Text(c, last).Font(t.Mono).FontSize(12).TextColor(t.InkMuted).SingleLine().Selectable()
+			}
+			if a.button(c, a.L.T("fix.terminal"), btnText, t.ControlSM, t.SurfaceSunken) {
+				_ = a.Backend.RunInTerminal(k.ID, k.Fix)
+			}
+		}
+	})
+	if st == rowRunning {
+		c.After(500 * time.Millisecond)
+	}
+}
+
+// rowStatus is the row's one line: what it is now, in plain words.
+func (a *App) rowStatus(k local.Check, st rowState, j *local.Job) string {
+	switch st {
+	case rowRunning:
+		if k.Action == "signin" {
+			return a.L.T("fix.signing")
+		}
+		return a.L.T("fix.installing.now", int(a.Now().Sub(j.Started).Seconds()))
+	case rowCanceled:
+		return a.L.T("fix.canceled.short")
+	case rowFailed:
+		switch j.Trouble() {
+		case "offline":
+			return a.L.T("fix.offline", k.Label)
+		case "denied":
+			return a.L.T("fix.denied", k.Label)
+		}
+		if k.Action == "signin" {
+			return a.L.T("fix.signin.failed", k.Label)
+		}
+		return a.L.T("fix.failed.short", k.Label)
+	}
+	if e := a.setup.jobErr[jobID(k)]; e != "" {
+		return a.L.T("fix.failed.start", e)
+	}
+	return k.Detail
+}
+
+func (a *App) retry(k local.Check, j *local.Job) {
+	if a.setup.retried == nil {
+		a.setup.retried = map[*local.Job]bool{}
+	}
+	a.setup.retried[j] = true
+	a.runFix(k)
 }
 
 func (a *App) fixLabel(k local.Check) string {
-	name := k.Label
-	if k.ID == "claude" && k.Action == "signin" {
-		name = "Claude" // the account people sign in to
+	if k.Action == "signin" {
+		return a.L.T("fix.signin.short")
 	}
-	return a.L.T("fix."+k.Action, name)
+	return a.L.T("fix.install.short")
 }
 
-// jobProgress: what runs, its last line, how long so far, Cancel.
-func (a *App) jobProgress(c *ui.Context, k local.Check, j *local.Job, title, body string) {
+// signinHelp: the browser does the work. Two quiet ways out on the same
+// left edge: the page again, and a code the page may show instead of
+// returning.
+func (a *App) signinHelp(c *ui.Context, k local.Check, j *local.Job) {
 	t := a.T
-	ui.Row(c).Gap(12).AlignItems(ui.Center).Children(func() {
-		a.retryPulse(c)
-		ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
-			ui.Text(c, title).FontSize(t.MD).FontWeight(700)
-			ui.Text(c, body).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.45)
-		})
-		secs := int(a.Now().Sub(j.Started).Seconds())
-		ui.Text(c, a.L.T("fix.elapsed", secs)).FontSize(t.SM).TextColor(t.InkMuted).Shrink(0)
-	})
-	if last := j.Last(); last != "" {
-		ui.Text(c, last).Font(t.Mono).FontSize(11.5).TextColor(t.InkMuted).SingleLine().Padding(0, 2)
-	}
-	ui.Row(c).Children(func() {
-		ui.Box(c).Grow(1)
-		if a.buttonFor(c, a.L.T("fix.cancel"), k.Label, btnText, 32, t.SurfaceSunken) {
-			j.Cancel()
-		}
-	})
-}
-
-// signinProgress: the browser does the work; the window waits, offers the
-// page again, and takes a code the page may show instead of returning.
-func (a *App) signinProgress(c *ui.Context, k local.Check, j *local.Job) {
-	t := a.T
-	ui.Row(c).Gap(12).AlignItems(ui.Center).Children(func() {
-		a.retryPulse(c)
-		ui.Text(c, a.L.T("fix.signing")).FontSize(t.MD).FontWeight(700).Grow(1).MinWidth(0).LineHeight(1.45)
-	})
-	ui.Row(c).Gap(4).AlignItems(ui.Center).Wrap().Children(func() {
-		if u := j.URL(); u != "" && a.button(c, a.L.T("fix.signing.open"), btnText, 32, t.SurfaceSunken) {
+	ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Margin(0, -10).Children(func() {
+		if u := j.URL(); u != "" && a.button(c, a.L.T("fix.signing.open"), btnText, t.ControlSM, t.SurfaceSunken) {
 			_ = a.Backend.OpenURL(u)
 		}
-		if a.button(c, a.L.T("fix.signing.code"), btnText, 32, t.SurfaceSunken) {
+		if a.button(c, a.L.T("fix.signing.code"), btnText, t.ControlSM, t.SurfaceSunken) {
 			a.setup.codeOpen = !a.setup.codeOpen
 		}
-		ui.Box(c).Grow(1)
-		if a.buttonFor(c, a.L.T("fix.cancel"), k.Label, btnText, 32, t.SurfaceSunken) {
-			j.Cancel()
+	})
+	if !a.setup.codeOpen {
+		return
+	}
+	send := func() {
+		if strings.TrimSpace(a.setup.code) != "" {
+			_ = j.Send(a.setup.code)
+			a.setup.code, a.setup.codeOpen = "", false
+		}
+	}
+	ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+		ui.TextInput(c.Key("input:code"), &a.setup.code).Placeholder(a.L.T("fix.signing.paste")).Label(a.L.T("fix.signing.code")).
+			Font(t.Mono).FontSize(t.SM).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.Surface).Border(1, t.LineSoft).
+			Height(t.ControlMD).Grow(1).MinWidth(0).OnSubmit(send)
+		if a.button(c, a.L.T("fix.signing.send"), btnSecondary, t.ControlMD, t.SurfaceSunken) {
+			send()
 		}
 	})
-	if a.setup.codeOpen {
-		send := func() {
-			if strings.TrimSpace(a.setup.code) != "" {
-				_ = j.Send(a.setup.code)
-				a.setup.code, a.setup.codeOpen = "", false
-			}
-		}
-		ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
-			ui.TextInput(c.Key("input:code"), &a.setup.code).Placeholder(a.L.T("fix.signing.paste")).Label(a.L.T("fix.signing.code")).
-				Font(t.Mono).FontSize(14).Padding(10, 14).Radius(t.RadiusSM).Background(t.Surface).Border(1, t.LineSoft).
-				Grow(1).MinWidth(0).OnSubmit(send)
-			if a.button(c, a.L.T("fix.signing.send"), btnQuiet, 40, t.SurfaceSunken) {
-				send()
-			}
-		})
-	}
 }
 
-// jobFailed says what went wrong in words, the last lines for the curious,
-// and the one thing to do.
-func (a *App) jobFailed(c *ui.Context, k local.Check, j *local.Job) {
+// setupOptions is the blocked card when everything that blocks can be
+// fixed from the window: pick one, it installs and signs in, and the
+// screen goes on by itself.
+func (a *App) setupOptions(c *ui.Context, blocking []local.Check) {
 	t := a.T
-	key := "fix.failed"
-	switch j.Trouble() {
-	case "offline":
-		key = "fix.offline"
-	case "denied":
-		key = "fix.denied"
-	case "canceled":
-		key = "fix.canceled"
-		if k.Action == "signin" {
-			key = "fix.canceled.signin"
-		}
-	default:
-		if k.Action == "signin" {
-			key = "fix.signin.failed"
-		}
+	face := theme.NeedsYou
+	if a.anyFixRunning() {
+		face = theme.Working
 	}
-	a.reasonLine(c, a.L.T(key, k.Label))
-	if j.Trouble() != "canceled" {
-		if tail := j.Tail(3); len(tail) > 0 {
-			ui.Text(c, strings.Join(tail, "\n")).Font(t.Mono).FontSize(11.5).LineHeight(1.45).TextColor(t.InkMuted).
-				Padding(10, 12).Radius(t.RadiusSM).Background(t.Surface).Selectable().MaxLines(3)
-		}
+	a.avatar(c, face, 100)
+	ui.Text(c, a.L.T("setup.blocked")).FontSize(t.XXL).FontWeight(800).LetterSpacing(-0.4)
+	rows := blocking
+	body := "setup.blocked.body"
+	if k, ok := a.setup.report.Get("codex"); ok && !a.setup.report.HarnessReady && k.Status != "ok" && k.Action != "" && !k.Required {
+		rows = append(append([]local.Check(nil), blocking...), k)
+		body = "setup.pick.body"
 	}
-	ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
-		if a.buttonFor(c, a.L.T("fix.retry"), k.Label, btnPrimary, 44, t.SurfaceSunken) {
-			if a.setup.retried == nil {
-				a.setup.retried = map[*local.Job]bool{}
-			}
-			a.setup.retried[j] = true
-			a.runFix(k)
-		}
-		ui.Box(c).Grow(1)
-		if a.button(c, a.L.T("fix.terminal"), btnText, 36, t.SurfaceSunken) {
-			_ = a.Backend.RunInTerminal(k.ID, k.Fix)
-		}
-	})
+	ui.Text(c, a.L.T(body)).FontSize(t.MD).LineHeight(1.55).TextColor(t.InkSoft)
+	a.optionRows(c, rows)
+	ui.Text(c, a.L.T("setup.auto.app")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
 }
 
 // setupReady is the short "All set" after the person fixed something: the
@@ -302,21 +324,6 @@ func (a *App) afterReady() {
 	a.launch()
 }
 
-// alternative is the other AI tool, offered quietly under the one that
-// blocks ("Or: Codex").
-func (a *App) alternative(c *ui.Context) {
-	if a.setup.report.HarnessReady {
-		return
-	}
-	k, ok := a.setup.report.Get("codex")
-	if !ok || k.Status == "ok" || k.Action == "" || k.Required {
-		return
-	}
-	t := a.T
-	ui.Text(c, a.L.T("setup.or")).FontSize(t.XS).FontWeight(800).LetterSpacing(0.5).TextColor(t.InkMuted).Margin(2, 4, -6, 4)
-	a.fixRow(c, k, true)
-}
-
 // ---------- the background: Login Items ----------
 
 // backgroundNote is the line under "Waking Ducter up…" the first time the
@@ -328,7 +335,6 @@ func (a *App) backgroundNote(c *ui.Context) {
 	}
 	t := a.T
 	ui.Row(c).Gap(10).Padding(10, 14).Radius(t.RadiusSM).Background(t.SurfaceSunken).AlignItems(ui.Center).Children(func() {
-		ui.Box(c).Size(8, 8).Radius(4).Background(t.Waiting.Dot).Shrink(0)
 		ui.Text(c, a.L.T("bg.note")).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.5).Grow(1).MinWidth(0)
 	})
 }

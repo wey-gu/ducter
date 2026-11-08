@@ -150,7 +150,7 @@ Ducter is the one doing the work, so neither closing the window nor ⌘Q stops i
 1. Checking this Mac (napping character). The app first fixes its `PATH` (login shell's
    `PATH` + `~/.local/bin`, Homebrew, Bun …), since Finder starts apps with the system folders
    only, then runs `ducter doctor --json` with `DUCTER_LOCALE` set to the window's language.
-2. Blocked: only what blocks. A check doctor marks with an `action` (D68) gets its **own button
+2. Blocked: only what blocks. A check doctor marks with an `action` (D69) gets its **own button
    that runs the official fix inside the app** (see "No terminal, start to finish" below);
    anything else keeps Copy and **Run in Terminal** (a `.command` file opened with
    `open -a Terminal`: no Automation permission prompt). URL fixes get "Open the page". With
@@ -198,7 +198,7 @@ app, launched with a scratch `dev.env`, ran doctor and `ducter up` under the har
 and served in ~5 s; quitting stopped the helper. The first-open "downloaded from the Internet"
 dialog itself was not clicked through (it needs a person).
 
-## No terminal, start to finish (D68, 2026-11-09)
+## No terminal, start to finish (D69, 2026-11-09)
 
 From double-clicking the disk image to the first result, a person who has never opened
 Terminal doesn't need to. Code: `apps/desktop/internal/views/onboard.go` (fix rows, All set,

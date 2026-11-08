@@ -40,11 +40,11 @@ func chromeInset(c *ui.Context) (left, right float32) {
 func (a *App) chrome(c *ui.Context, key string, left, right func()) {
 	t := a.T
 	l, r := chromeInset(c)
-	ui.Row(c.Key("chrome:"+key)).Height(ChromeH).Shrink(0).Gap(12).AlignItems(ui.Center).Padding(0, r, 0, l).
+	ui.Row(c.Key("chrome:"+key)).Height(ChromeH).Shrink(0).Gap(t.S3).AlignItems(ui.Center).Padding(0, r, 0, l).
 		Background(t.Chrome).BorderWidth(0, 0, 1, 0).BorderColor(t.ChromeLine).DragWindow().Children(func() {
-		ui.Row(c).Gap(10).Grow(1).MinWidth(0).AlignItems(ui.Center).Children(left)
+		ui.Row(c).Gap(t.S3).Grow(1).MinWidth(0).AlignItems(ui.Center).Children(left)
 		if right != nil {
-			ui.Row(c).Gap(10).Shrink(0).AlignItems(ui.Center).Children(right)
+			ui.Row(c).Gap(t.S3).Shrink(0).AlignItems(ui.Center).Children(right)
 		}
 	})
 }
@@ -59,20 +59,24 @@ func (a *App) bareChrome(c *ui.Context) {
 // crumb is one step of the breadcrumb: a button back up to a zoom level.
 func (a *App) crumb(c *ui.Context, label string, to Route) {
 	t := a.T
-	l := ui.Text(c.Key("crumb:"+label), label).FontSize(14).FontWeight(700).TextColor(t.InkMuted).Cursor(ui.CursorPointer).
-		Role(ui.RoleButton).Focusable().Padding(6, 6).Radius(8).SingleLine().Shrink(0)
-	if l.Hovered() {
-		l.TextColor(t.Ink).Background(t.SurfaceSunken.Mix(t.Chrome, 0.4))
+	l := ui.Text(c.Key("crumb:"+label), label).FontSize(t.MD).FontWeight(700).TextColor(t.InkMuted).Cursor(ui.CursorPointer).
+		Role(ui.RoleButton).Focusable().Padding(t.S1+2, t.S2).Radius(t.RadiusSM).SingleLine().Shrink(0)
+	// A text button of the chrome: muted ink, the secondary hover tint.
+	switch {
+	case l.Pressed():
+		l.TextColor(t.Ink).Background(t.SurfaceSunken)
+	case l.Hovered():
+		l.TextColor(t.Ink).Background(t.SurfaceSunken.Mix(t.Chrome, 0.45))
 	}
 	if l.Clicked() {
 		a.Route = to
 	}
-	ui.Text(c, "/").FontSize(14).TextColor(t.Line.Mix(t.InkMuted, 0.4)).Shrink(0)
+	ui.Text(c, "/").FontSize(t.MD).TextColor(t.Line.Mix(t.InkMuted, 0.4)).Shrink(0)
 }
 
 // chromeTitle is the current level's name in the bar.
 func (a *App) chromeTitle(c *ui.Context, title string) ui.Element {
-	return ui.Text(c, title).FontSize(17).FontWeight(800).LetterSpacing(-0.2).SingleLine().Shrink(1).MinWidth(0)
+	return ui.Text(c, title).FontSize(a.T.LG).FontWeight(800).LetterSpacing(-0.2).SingleLine().Shrink(1).MinWidth(0)
 }
 
 // routeEnter plays a zoom level's entrance as the route changes: a short

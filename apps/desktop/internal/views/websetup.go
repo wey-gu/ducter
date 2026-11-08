@@ -151,10 +151,7 @@ func (a *App) webSetup(c *ui.Context, dv *protocol.DeviceView) {
 	}
 	st := w.cua
 	if !w.checked {
-		ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
-			a.retryPulse(c)
-			ui.Text(c, a.L.T("web.checking")).FontSize(t.SM).TextColor(t.InkMuted)
-		})
+		ui.Text(c, a.L.T("web.checking")).FontSize(t.SM).TextColor(t.InkMuted)
 		return
 	}
 	if st.Ready() {
@@ -170,126 +167,171 @@ func (a *App) webSetup(c *ui.Context, dv *protocol.DeviceView) {
 	default:
 		current = "screen"
 	}
-	ui.Column(c).Gap(8).Children(func() {
-		a.webStep(c, "driver", 1, current, driverOK)
-		a.webStep(c, "ax", 2, current, driverOK && st.Accessibility)
-		a.webStep(c, "screen", 3, current, driverOK && st.ScreenRecording)
+	ui.Column(c.Key("websteps")).Radius(t.RadiusLG).Background(t.SurfaceSunken).Children(func() {
+		for i, id := range []string{"driver", "ax", "screen"} {
+			if i > 0 {
+				ui.Box(c).Height(1).Background(t.Line).Margin(0, t.S4)
+			}
+			done := map[string]bool{"driver": driverOK, "ax": driverOK && st.Accessibility, "screen": driverOK && st.ScreenRecording}[id]
+			a.webStep(c, id, i+1, current, done)
+		}
 	})
 	if current != "driver" {
 		ui.Text(c, a.L.T("web.why")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.5)
 	}
 }
 
-// webStep is one calm card: done (a green check, folded), current (its
-// one action), or later (dim).
+// webStep is one flat row: done (a check, quiet), the one open now (its
+// status line and its action at the right), or later (its name, quiet).
 func (a *App) webStep(c *ui.Context, id string, n int, current string, done bool) {
 	t := a.T
 	w := &a.web
 	isCur := id == current && !done
-	bg := t.SurfaceSunken
-	if !isCur {
-		bg = t.Bg
+	title := "web." + id
+	if id == "driver" && w.cua.Installed() && w.cua.Old {
+		title = "web.driver.old"
 	}
-	card := ui.Column(c.Key("webstep:"+id)).Gap(8).Padding(12, 14).Radius(t.RadiusLG).Background(bg)
-	if !isCur && !done {
-		card.Opacity(0.6)
-	}
-	if isCur {
-		a.enter(c, card)
-	}
-	card.Children(func() {
-		ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
-			switch {
-			case done:
-				ui.Box(c).Size(22, 22).Radius(8).Background(t.Awake.Surface).Draw(drawCheck(t.Awake.Dot)).Shrink(0)
-			case isCur:
-				ui.Box(c).Size(22, 22).Radius(8).Background(t.NeedsYou.Surface).Shrink(0).Children(func() {
-					ui.Text(c, strconv.Itoa(n)).FontSize(12).FontWeight(800).TextColor(t.NeedsYou.Ink).Margin(ui.Auto)
-				})
-			default:
-				ui.Box(c).Size(22, 22).Radius(8).Background(t.SurfaceSunken).Shrink(0).Children(func() {
-					ui.Text(c, strconv.Itoa(n)).FontSize(12).FontWeight(800).TextColor(t.InkMuted).Margin(ui.Auto)
-				})
-			}
-			title := "web." + id
-			if id == "driver" && w.cua.Installed() && w.cua.Old {
-				title = "web.driver.old"
-			}
-			ui.Text(c, a.L.T(title)).FontSize(t.MD).FontWeight(800).Grow(1).MinWidth(0)
+	ui.Column(c.Key("webstep:"+id)).Gap(t.S2).Padding(t.S3, t.S4).MinHeight(52).Justify(ui.Center).Children(func() {
+		ui.Row(c).Gap(t.S3).AlignItems(ui.Start).Children(func() {
+			mark := ui.Box(c).Size(20, 20).Shrink(0).Margin(1, 0, 0, 0)
 			if done {
-				ui.Text(c, a.L.T("web.done")).FontSize(t.SM).TextColor(t.Awake.Ink)
+				mark.Draw(drawCheck(t.Ink))
+			} else {
+				mark.Children(func() {
+					ui.Text(c, strconv.Itoa(n)).FontSize(t.SM).FontWeight(800).TextColor(t.InkMuted).Margin(ui.Auto)
+				})
+			}
+			ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
+				tt := ui.Text(c, a.L.T(title)).FontSize(t.MD).FontWeight(800)
+				if !isCur {
+					tt.TextColor(t.InkMuted)
+				}
+				if isCur {
+					ui.Text(c, a.webStatus(id)).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.45)
+				}
+			})
+			if isCur {
+				a.webAction(c, id)
 			}
 		})
-		if !isCur {
+		if !isCur || id == "driver" {
+			if isCur {
+				a.webDriverExtra(c)
+			}
 			return
 		}
-		switch id {
-		case "driver":
-			a.webDriverStep(c)
-		default:
-			a.webGrantStep(c, id)
+		pane, link := "web.ax.pane", local.SettingsAccessibility
+		if id == "screen" {
+			pane, link = "web.screen.pane", local.SettingsScreenRecording
 		}
+		ui.Column(c).Gap(t.S2).Padding(0, 0, 0, 32).Children(func() {
+			a.switchArt(c, a.L.T(pane))
+			ui.Row(c).Margin(0, -10).Children(func() {
+				if a.button(c, a.L.T("web.grant.self"), btnText, t.ControlSM, t.SurfaceSunken) {
+					_ = a.Backend.OpenSettings(link)
+				}
+			})
+		})
 	})
+	if isCur {
+		c.After(500 * time.Millisecond)
+	}
 }
 
-func (a *App) webDriverStep(c *ui.Context) {
+func (a *App) driverJob() (string, string, *local.Job) {
+	w := &a.web
+	if w.cua.Installed() && w.cua.Old {
+		id := jobCuaUpdate
+		return id, shellQuoteArg(w.cua.Bin) + " update --apply", a.Backend.Job(id)
+	}
+	return jobCuaInstall, local.CuaInstall, a.Backend.Job(jobCuaInstall)
+}
+
+// webStatus is the open step's one line, replaced in place while it works.
+func (a *App) webStatus(id string) string {
+	if id == "driver" {
+		_, _, j := a.driverJob()
+		switch {
+		case j != nil && j.Running():
+			return a.L.T("fix.installing.now", int(a.Now().Sub(j.Started).Seconds()))
+		case j != nil && !j.OK() && !a.setup.retried[j] && j.Trouble() == "offline":
+			return a.L.T("fix.offline", "cua-driver")
+		case j != nil && !j.OK() && !a.setup.retried[j] && j.Trouble() == "canceled":
+			return a.L.T("fix.canceled.short")
+		case j != nil && !j.OK() && !a.setup.retried[j]:
+			return a.L.T("fix.failed.short", "cua-driver")
+		}
+		return a.L.T("web.driver.body")
+	}
+	if g := a.Backend.Job(jobCuaGrant); g != nil && g.Running() {
+		return a.L.T("web.grant.waiting")
+	}
+	return a.L.T("web." + id + ".body")
+}
+
+// webAction is the open step's action, at the row's right.
+func (a *App) webAction(c *ui.Context, id string) {
 	t := a.T
 	w := &a.web
-	old := w.cua.Installed() && w.cua.Old
-	jid, cmd, label := jobCuaInstall, local.CuaInstall, a.L.T("web.driver.install")
-	if old {
-		jid, cmd, label = jobCuaUpdate, w.cua.Bin+" update --apply", a.L.T("web.driver.update")
+	if id != "driver" {
+		if g := a.Backend.Job(jobCuaGrant); g != nil && g.Running() {
+			return
+		}
+		pane := "web.ax.pane"
+		if id == "screen" {
+			pane = "web.screen.pane"
+		}
+		if a.buttonFor(c, a.L.T("web.grant.open"), a.L.T(pane), btnPrimary, t.ControlMD, t.SurfaceSunken) {
+			_, _ = a.Backend.Run(jobCuaGrant, shellQuoteArg(w.cua.Bin)+" "+local.CuaGrant)
+		}
+		return
 	}
-	k := local.Check{ID: "cua", Label: "cua-driver", Fix: cmd, Action: "install"}
-	j := a.Backend.Job(jid)
+	jid, cmd, j := a.driverJob()
 	switch {
 	case j != nil && j.Running():
-		a.jobProgress(c, k, j, a.L.T("web.driver.installing"), a.L.T("web.driver.installing.body"))
-		c.After(250 * time.Millisecond)
-	case j != nil && !j.OK() && !a.setup.retried[j]:
-		a.jobFailed(c, local.Check{ID: jid, Label: "cua-driver", Fix: cmd, Action: "install"}, j)
+		if a.buttonFor(c, a.L.T("fix.cancel"), "cua-driver", btnText, t.ControlSM, t.SurfaceSunken) {
+			j.Cancel()
+		}
 	default:
-		ui.Text(c, a.L.T("web.driver.body")).FontSize(t.SM).LineHeight(1.55).TextColor(t.InkSoft)
-		ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
-			if a.buttonFor(c, label, a.L.T("ability.web"), btnPrimary, 44, t.SurfaceSunken) {
-				if _, err := a.Backend.Run(jid, cmd); err != nil {
-					a.dev.line, a.dev.lineAt = err.Error(), a.Now()
+		label := a.L.T("web.driver.install")
+		if jid == jobCuaUpdate {
+			label = a.L.T("web.driver.update")
+		}
+		failed := j != nil && !j.OK() && !a.setup.retried[j] && j.Trouble() != "canceled"
+		if failed {
+			label = a.L.T("fix.retry")
+		}
+		if a.buttonFor(c, label, a.L.T("ability.web"), btnPrimary, t.ControlMD, t.SurfaceSunken) {
+			if j != nil {
+				if a.setup.retried == nil {
+					a.setup.retried = map[*local.Job]bool{}
 				}
+				a.setup.retried[j] = true
 			}
-			ui.Box(c).Grow(1)
-			if a.button(c, a.L.T("fix.terminal"), btnText, 36, t.SurfaceSunken) {
-				_ = a.Backend.RunInTerminal("cua", cmd)
+			if _, err := a.Backend.Run(jid, cmd); err != nil {
+				a.dev.line, a.dev.lineAt = err.Error(), a.Now()
 			}
-		})
+		}
 	}
 }
 
-// webGrantStep: one macOS switch. The guide cua-driver ships opens System
-// Settings at the right list; the card shows exactly what to look for,
-// and turns green by itself.
-func (a *App) webGrantStep(c *ui.Context, id string) {
+// webDriverExtra: after a failed install, the installer's last line and
+// the Terminal way.
+func (a *App) webDriverExtra(c *ui.Context) {
 	t := a.T
-	w := &a.web
-	pane, link := "web.ax.pane", local.SettingsAccessibility
-	if id == "screen" {
-		pane, link = "web.screen.pane", local.SettingsScreenRecording
+	jid, cmd, j := a.driverJob()
+	if j == nil || j.Running() || j.OK() || a.setup.retried[j] || j.Trouble() == "canceled" {
+		return
 	}
-	ui.Text(c, a.L.T("web."+id+".body")).FontSize(t.SM).LineHeight(1.55).TextColor(t.InkSoft)
-	a.switchArt(c, a.L.T(pane))
-	j := a.Backend.Job(jobCuaGrant)
-	ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
-		if j != nil && j.Running() {
-			a.retryPulse(c)
-			ui.Text(c, a.L.T("web.grant.waiting")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).Grow(1).MinWidth(0)
-		} else {
-			if a.buttonFor(c, a.L.T("web.grant.open"), a.L.T(pane), btnPrimary, 44, t.SurfaceSunken) {
-				_, _ = a.Backend.Run(jobCuaGrant, shellQuoteArg(w.cua.Bin)+" "+local.CuaGrant)
+	ui.Column(c).Gap(t.S1).Padding(0, 0, 0, 32).Children(func() {
+		if last := j.Last(); last != "" && j.Trouble() == "" {
+			ui.Text(c, last).Font(t.Mono).FontSize(12).TextColor(t.InkMuted).SingleLine().Selectable()
+		}
+		ui.Row(c).Margin(0, -10).Children(func() {
+			if a.button(c, a.L.T("fix.terminal"), btnText, t.ControlSM, t.SurfaceSunken) {
+				_ = a.Backend.RunInTerminal(jid, cmd)
 			}
-			ui.Box(c).Grow(1)
-		}
-		if a.button(c, a.L.T("web.grant.self"), btnText, 36, t.SurfaceSunken) {
-			_ = a.Backend.OpenSettings(link)
-		}
+		})
 	})
 }
 
@@ -298,33 +340,19 @@ func (a *App) webGrantStep(c *ui.Context, id string) {
 // picture of the literal thing, not a metaphor.
 func (a *App) switchArt(c *ui.Context, pane string) {
 	t := a.T
-	ui.Column(c).Gap(6).Padding(10, 12).Radius(12).Background(t.Surface).Border(1, t.LineSoft).Role(ui.RoleImage).
+	ui.Column(c).Gap(t.S2).Padding(t.S3, t.S3).Radius(t.RadiusSM).Background(t.Surface).Border(1, t.LineSoft).Role(ui.RoleImage).
 		Label(a.L.T("web.art", pane)).Children(func() {
-		ui.Text(c, a.L.T("web.art.where", pane)).FontSize(11.5).FontWeight(700).TextColor(t.InkMuted)
-		ui.Row(c).Gap(10).AlignItems(ui.Center).Padding(6, 8).Radius(8).Background(t.SurfaceSunken).Children(func() {
-			ui.Box(c).Size(22, 22).Radius(6).Background(t.Ink).Shrink(0).Draw(func(p *ui.Painter, r ui.Rect) {
-				var m ui.Path
-				m.Circle(r.X+r.W/2, r.Y+r.H/2, 5)
-				p.FillPath(&m, t.Accent)
-			})
+		ui.Text(c, a.L.T("web.art.where", pane)).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
+		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Padding(t.S2, t.S2).Radius(t.RadiusXS).Background(t.SurfaceSunken).Children(func() {
+			ui.Box(c).Size(20, 20).Radius(5).Background(t.Ink).Shrink(0)
 			ui.Text(c, "CuaDriver").FontSize(t.SM).FontWeight(700).Grow(1)
-			now := c.Now()
-			still := c.Preferences().ReduceMotion
+			// The switch, on: what the person is looking for.
 			ui.Box(c).Size(34, 20).Shrink(0).Draw(func(p *ui.Painter, r ui.Rect) {
 				p.Fill(r, t.Awake.Dot, r.H/2)
 				var knob ui.Path
 				knob.Circle(r.X+r.W-r.H/2, r.Y+r.H/2, r.H/2-2)
 				p.FillPath(&knob, t.Surface)
-				ph := float32(0.5)
-				if !still {
-					ph = float32(now.UnixMilli()%2000) / 2000
-				}
-				ring := ui.Rect{X: r.X - 4*ph, Y: r.Y - 4*ph, W: r.W + 8*ph, H: r.H + 8*ph}
-				p.Stroke(ring, t.NeedsYou.Dot.Alpha(0.8*(1-ph)), ring.H/2, 2)
 			})
-			if !still {
-				c.After(50 * time.Millisecond)
-			}
 		})
 	})
 }

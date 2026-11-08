@@ -21,12 +21,13 @@ const NarrowTask = 1100
 
 // task is an opened task, at conductor depth.
 func (a *App) task(c *ui.Context) {
+	t := a.T
 	task := a.S.Task(a.TaskID)
 	if task == nil {
 		task = &store.Task{ID: a.TaskID}
 	}
 	a.taskHeader(c, task)
-	ui.Column(c).Grow(1).MinHeight(0).Gap(14).Padding(16, 24, 24, 24).Children(func() {
+	ui.Column(c).Grow(1).MinHeight(0).Gap(t.S3).Padding(t.S4, t.S5, t.S5, t.S5).Children(func() {
 		if d := a.S.PendingDecision(task.ID); d != nil {
 			a.decisionBanner(c, d)
 		} else if finished(task) {
@@ -34,21 +35,21 @@ func (a *App) task(c *ui.Context) {
 		}
 		t := a.T
 		w, _ := c.Size()
-		ui.Row(c).Grow(1).Gap(14).AlignItems(ui.Stretch).MinHeight(0).Children(func() {
+		ui.Row(c).Grow(1).Gap(t.S3).AlignItems(ui.Stretch).MinHeight(0).Children(func() {
 			a.transcript(c, task)
 			if w >= NarrowTask {
 				a.changes(c, task)
 				ui.Scroll(c).Grow(1).Basis(280).MinWidth(0).Children(func() {
-					ui.Column(c).Gap(14).Padding(0, 0, 6, 0).Children(func() { a.dossier(c, task) })
+					ui.Column(c).Gap(t.S3).Padding(0, 0, t.S2, 0).Children(func() { a.dossier(c, task) })
 				})
 				return
 			}
 			// Narrow: changes and details share one column, by tab.
-			ui.Column(c).Grow(2).Basis(420).MinWidth(0).Gap(10).Children(func() {
-				ui.Row(c).Gap(6).Padding(4).Radius(t.RadiusSM).Background(t.SurfaceSunken).Children(func() {
+			ui.Column(c).Grow(2).Basis(420).MinWidth(0).Gap(t.S3).Children(func() {
+				ui.Row(c).Gap(t.S2).Padding(t.S1).Radius(t.RadiusSM).Background(t.SurfaceSunken).Children(func() {
 					for _, tab := range []string{"changes", "details"} {
 						on := a.sideTab == tab || a.sideTab == "" && tab == "changes"
-						b := ui.Row(c.Key(tab)).Grow(1).Height(36).Radius(10).Justify(ui.Center).AlignItems(ui.Center).
+						b := ui.Row(c.Key(tab)).Grow(1).Height(t.ControlSM).Radius(t.RadiusXS).Justify(ui.Center).AlignItems(ui.Center).
 							Cursor(ui.CursorPointer).Role(ui.RoleTab).Label(a.L.T("task.side." + tab)).Selected(on)
 						if on {
 							b.Background(t.Surface)
@@ -63,7 +64,7 @@ func (a *App) task(c *ui.Context) {
 				})
 				if a.sideTab == "details" {
 					ui.Scroll(c).Grow(1).MinHeight(0).Children(func() {
-						ui.Column(c).Gap(14).Padding(0, 0, 6, 0).Children(func() { a.dossier(c, task) })
+						ui.Column(c).Gap(t.S3).Padding(0, 0, t.S2, 0).Children(func() { a.dossier(c, task) })
 					})
 				} else {
 					ui.Column(c).Grow(1).MinHeight(0).Children(func() { a.changes(c, task) })
@@ -86,15 +87,16 @@ func (a *App) taskHeader(c *ui.Context, task *store.Task) {
 		a.chromeTitle(c, title)
 		a.stateChip(c, task.Attention())
 		if h := task.Browsing(); h != "" {
-			ui.Row(c).Gap(6).Padding(4, 10).Radius(a.T.Pill).Background(t.Working.Surface).AlignItems(ui.Center).Shrink(1).MinWidth(0).Children(func() {
+			a.chipBox(c, t.Chip, t.Working.Surface).Shrink(1).MinWidth(0).Children(func() {
 				ui.Box(c).Size(8, 8).Radius(4).Background(t.Working.Dot).Shrink(0)
 				ui.Text(c, a.L.T("browser.looking", h)).FontSize(t.XS).FontWeight(700).TextColor(t.Working.Ink).SingleLine()
 			})
 		}
 	}, func() {
 		if h := task.Harness(); h != "" && w >= 980 {
-			ui.Row(c).Gap(8).Height(36).Padding(0, 12, 0, 8).Radius(11).Background(t.Surface).
-				Border(1, t.ChromeLine).AlignItems(ui.Center).Children(func() {
+			// Metadata in the chrome is chips (flat, RadiusXS), so it never
+			// reads as one more button.
+			a.chipBox(c, t.ChipLG, t.SurfaceSunken).Padding(0, t.S3, 0, t.S1+2).Children(func() {
 				ui.Box(c).Size(20, 20).Radius(6).Background(t.Ink).Center().Children(func() {
 					ui.Text(c, harnessBadge(h)).Font(t.Mono).FontSize(9.5).TextColor(t.OnUserBubble)
 				})
@@ -103,14 +105,16 @@ func (a *App) taskHeader(c *ui.Context, task *store.Task) {
 		}
 		if w >= NarrowTask {
 			place := task.Place()
-			ui.Row(c).Gap(8).Height(36).Padding(0, 12).Radius(11).Background(t.SurfaceSunken).AlignItems(ui.Center).Children(func() {
+			a.chipBox(c, t.ChipLG, t.SurfaceSunken).Padding(0, t.S3).Children(func() {
 				if place.Kind != "none" && place.Kind != "" {
 					ui.Box(c).Size(7, 7).Radius(4).Background(t.Done.Strong)
 				}
 				ui.Text(c, a.placeLine(place)).FontSize(t.SM).FontWeight(700).SingleLine()
 			})
 			if p := task.Project(); p != "" {
-				a.pill(c, p)
+				a.chipBox(c, t.ChipLG, t.SurfaceSunken).Padding(0, t.S3).Children(func() {
+					ui.Text(c, p).FontSize(t.SM).FontWeight(700).SingleLine()
+				})
 			}
 		}
 		a.taskActions(c, task)
@@ -124,17 +128,17 @@ func (a *App) taskActions(c *ui.Context, task *store.Task) {
 	att := task.Attention()
 	switch att {
 	case protocol.Failed, protocol.Dropped:
-		if a.button(c, a.L.T("task.action.retry"), btnQuiet, 36, t.Surface) {
+		if a.button(c, a.L.T("task.action.retry"), btnSecondary, t.ControlSM, t.Surface) {
 			a.TaskAction(task.ID, "reopen")
 		}
 		return
 	case protocol.Done, protocol.Superseded:
 		return
 	}
-	if att == protocol.Working && a.button(c, a.L.T("task.action.pause"), btnQuiet, 36, t.Surface) {
+	if att == protocol.Working && a.button(c, a.L.T("task.action.pause"), btnSecondary, t.ControlSM, t.Surface) {
 		a.TaskAction(task.ID, "interrupt")
 	}
-	if a.button(c, a.L.T("task.action.drop"), btnText, 36, t.Surface) {
+	if a.button(c, a.L.T("task.action.drop"), btnText, t.ControlSM, t.Surface) {
 		a.DropTask(task.ID)
 		title := task.Title()
 		c.AddToast(ui.Toast{ID: "undo:" + task.ID, Title: a.L.T("undo.dropped", title), Timeout: UndoWindow,
@@ -150,7 +154,7 @@ func (a *App) resultBanner(c *ui.Context, task *store.Task) {
 	if task.Attention() == protocol.Failed {
 		sc = t.Failed
 	}
-	ui.Row(c.Key("result-banner")).Gap(14).Wrap().AlignItems(ui.Center).Padding(12, 14, 12, 20).Radius(20).Background(sc.Surface).Children(func() {
+	ui.Row(c.Key("result-banner")).Gap(t.S3).Wrap().AlignItems(ui.Center).Padding(t.S3, t.S3, t.S3, t.S5).Radius(t.RadiusLG).Background(sc.Surface).Children(func() {
 		ui.Column(c).Grow(1).Basis(320).MinWidth(0).Gap(3).Children(func() {
 			if rep := task.Report(); rep != nil {
 				ui.Text(c, summaryLine(rep.Summary)).FontSize(t.MD).FontWeight(700).TextColor(sc.Ink).MaxLines(2).Tooltip(rep.Summary)
@@ -175,14 +179,14 @@ func (a *App) decisionBanner(c *ui.Context, d *store.DecisionState) {
 		if opt == "reply" {
 			msg = a.L.T("decision.resolved.reply", "")
 		}
-		ui.Row(c.Key("banner")).Gap(10).Padding(10, 16).Radius(16).Background(t.SurfaceSunken).AlignItems(ui.Center).Children(func() {
-			ui.Box(c).Size(20, 20).Radius(7).Background(t.Done.Surface).Draw(drawCheck(t.Done.Ink)).Shrink(0)
+		ui.Row(c.Key("banner")).Gap(t.S3).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.SurfaceSunken).AlignItems(ui.Center).Children(func() {
+			ui.Box(c).Size(20, 20).Radius(t.RadiusXS).Background(t.Done.Surface).Draw(drawCheck(t.Done.Ink)).Shrink(0)
 			ui.Text(c, a.L.T("decision.answered", strings.TrimRight(msg, "：: "), d.AnsweredAt.Local().Format("15:04"))).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).Shrink(0)
 			ui.Text(c, d.Question).FontSize(t.SM).TextColor(t.InkMuted).SingleLine().Grow(1).MinWidth(0)
 		})
 		return
 	}
-	ui.Row(c.Key("banner")).Gap(14).Wrap().AlignItems(ui.Center).Padding(12, 14, 12, 20).Radius(20).Background(t.NeedsYou.Surface).Children(func() {
+	ui.Row(c.Key("banner")).Gap(t.S3).Wrap().AlignItems(ui.Center).Padding(t.S3, t.S3, t.S3, t.S5).Radius(t.RadiusLG).Background(t.NeedsYou.Surface).Children(func() {
 		ui.Column(c).Grow(1).Basis(300).Gap(2).Children(func() {
 			ui.Text(c, d.Question).FontSize(t.MD).FontWeight(700)
 			if d.Resolved == nil {
@@ -199,13 +203,13 @@ func (a *App) decisionBanner(c *ui.Context, d *store.DecisionState) {
 
 func (a *App) panel(c *ui.Context) ui.Element {
 	t := a.T
-	return ui.Column(c).Radius(24).Background(t.Surface).Shadow(0, t.PressCard.Offset, 0, 0, t.PressCard.Color).Clip().MinWidth(0)
+	return ui.Column(c).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Clip().MinWidth(0)
 }
 
 func (a *App) transcript(c *ui.Context, task *store.Task) {
 	t := a.T
 	a.panel(c).Grow(1).Basis(360).Children(func() {
-		ui.Row(c).Gap(8).Padding(14, 18).BorderWidth(0, 0, 1, 0).BorderColor(t.LineSoft).Children(func() {
+		ui.Row(c).Gap(t.S2).Padding(t.S3, t.S4).BorderWidth(0, 0, 1, 0).BorderColor(t.LineSoft).Children(func() {
 			ui.Text(c, a.L.T("task.transcript")).FontSize(t.MD).FontWeight(800).Grow(1)
 			ui.Text(c, a.L.T("task.transcript.hint")).FontSize(t.XS).TextColor(t.InkMuted)
 		})
@@ -238,7 +242,7 @@ func (a *App) transcript(c *ui.Context, task *store.Task) {
 				return
 			}
 			a.transcriptRow(c, task, evs[i])
-		}).Grow(1).Padding(14, 18).Gap(12).Children(func() {
+		}).Grow(1).Padding(t.S3, t.S4).Gap(t.S3).Children(func() {
 			if n == 0 {
 				ui.Text(c, a.L.T("task.loading")).FontSize(t.SM).TextColor(t.InkMuted)
 			}
@@ -247,10 +251,10 @@ func (a *App) transcript(c *ui.Context, task *store.Task) {
 			ui.Column(c).Margin(0, 12, 0, 12).Children(func() { a.heldLine(c) })
 		}
 		draft := a.taskDrafts[task.ID]
-		ui.Row(c).Gap(8).Margin(0, 12, 12, 12).Padding(6, 6, 6, 14).Radius(18).Background(t.Bg).AlignItems(ui.Center).Children(func() {
+		ui.Row(c).Gap(t.S2).Margin(0, 12, 12, 12).Padding(t.S2, t.S2, t.S2, t.S3).Radius(t.RadiusMD).Background(t.Bg).AlignItems(ui.Center).Children(func() {
 			ta := ui.TextArea(c.Key("taskcomposer:"+task.ID), &draft).Lines(1, 6).MinHeight(0).Placeholder(a.L.T("composer.task")).
 				Label(a.L.T("composer.task")).
-				Background(ui.Transparent).Border(0, ui.Transparent).Padding(8, 0).Grow(1).FontSize(14).
+				Background(ui.Transparent).Border(0, ui.Transparent).Padding(t.S2, 0).Grow(1).FontSize(t.MD).
 				OnTextKey(func(k ui.TextKey) bool {
 					if k.Key == ui.KeyEnter && k.Mods == 0 {
 						if a.SendToTask(task.ID, k.Text()) {
@@ -264,7 +268,7 @@ func (a *App) transcript(c *ui.Context, task *store.Task) {
 				ta.Focus()
 				a.focusComposer = false
 			}
-			if a.iconButton(c, a.L.T("composer.send"), 44, t.Ink, t.PressPrimary, drawSend(t.OnUserBubble)) {
+			if a.iconButton(c, a.L.T("composer.send"), t.ControlMD, btnPrimary, drawSend) {
 				if a.SendToTask(task.ID, draft) {
 					draft = ""
 				}
@@ -291,9 +295,9 @@ func (a *App) transcriptRow(c *ui.Context, task *store.Task, ev protocol.LogEven
 	body, _ := ev.Typed()
 	switch b := body.(type) {
 	case *protocol.TaskOpen:
-		ui.Column(c).Padding(12, 14).Gap(4).Radius(16).Background(t.Bg).Children(func() {
-			ui.Text(c, a.L.T("task.brief", a.S.PersonaName)).FontSize(11).FontWeight(800).TextColor(t.InkMuted).LetterSpacing(0.5)
-			ui.Text(c, b.Brief).FontSize(14).LineHeight(1.55).Selectable()
+		ui.Column(c).Padding(t.S3, t.S3).Gap(t.S1).Radius(t.RadiusMD).Background(t.Bg).Children(func() {
+			ui.Text(c, a.L.T("task.brief", a.S.PersonaName)).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted).LetterSpacing(0.5)
+			ui.Text(c, b.Brief).FontSize(t.MD).LineHeight(1.55).Selectable()
 		})
 	case *protocol.TaskEvent:
 		switch {
@@ -304,9 +308,9 @@ func (a *App) transcriptRow(c *ui.Context, task *store.Task, ev protocol.LogEven
 			a.systemLine(c, &protocol.TaskEvent{Text: a.L.T("task.kickoff")})
 		case b.Role == "user" && (b.From == "partner" || ev.Origin == protocol.OriginPartner):
 			// The partner talking to the task: its words, not the user's.
-			ui.Column(c).Gap(4).Padding(10, 14).Radius(16).Background(t.Working.Surface).Children(func() {
-				ui.Text(c, a.L.T("task.from.partner", a.S.PersonaName)).FontSize(11).FontWeight(800).TextColor(t.Working.Ink).LetterSpacing(0.5)
-				ui.Text(c, b.Text).FontSize(14).LineHeight(1.5).Selectable()
+			ui.Column(c).Gap(t.S1).Padding(t.S3, t.S3).Radius(t.RadiusMD).Background(t.Working.Surface).Children(func() {
+				ui.Text(c, a.L.T("task.from.partner", a.S.PersonaName)).FontSize(t.XS).FontWeight(800).TextColor(t.Working.Ink).LetterSpacing(0.5)
+				ui.Text(c, b.Text).FontSize(t.MD).LineHeight(1.5).Selectable()
 			})
 		case b.Role == "user":
 			a.sentBubble(c, b.Text, task.SendFor(ev.Seq))
@@ -316,7 +320,7 @@ func (a *App) transcriptRow(c *ui.Context, task *store.Task, ev protocol.LogEven
 			ui.Column(c).Children(func() { markdown.View(c, b.Text, &a.mdTask) })
 		}
 	case *protocol.Checkpoint:
-		ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 			ui.Box(c).Height(1).Grow(1).Background(t.Working.Surface.Mix(t.Working.Dot, 0.15))
 			ui.Text(c, a.L.T("task.checkpoint", b.Text)).FontSize(t.XS).FontWeight(700).TextColor(t.Working.Ink).MaxLines(2).TextAlign(ui.Center)
 			ui.Box(c).Height(1).Grow(1).Background(t.Working.Surface.Mix(t.Working.Dot, 0.15))
@@ -344,24 +348,24 @@ func (a *App) sentBubble(c *ui.Context, text string, sd *store.Send) {
 			c.After(4*time.Second - a.Now().Sub(sd.At))
 		}
 	}
-	ui.Column(c).Gap(5).AlignItems(ui.End).Children(func() {
+	ui.Column(c).Gap(t.S1).AlignItems(ui.End).Children(func() {
 		r := t.BubbleRadius
-		b := ui.Text(c, text).FontSize(14).LineHeight(1.5).TextColor(t.OnUserBubble).Background(t.UserBubble).
-			Padding(9, 14).Radius(r[0]*0.8, r[1]*0.8, r[2], r[3]*0.8).MaxWidthPercent(80).Selectable()
+		b := ui.Text(c, text).FontSize(t.MD).LineHeight(1.5).TextColor(t.OnUserBubble).Background(t.UserBubble).
+			Padding(9, t.S3).Radius(r[0]*0.8, r[1]*0.8, r[2], r[3]*0.8).MaxWidthPercent(80).Selectable()
 		if waiting {
 			b.Opacity(0.7)
 		}
 		if note == "" {
 			return
 		}
-		ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
+		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 			col := t.InkMuted
 			if failed {
 				col = t.Failed.Ink
 			} else if !waiting {
 				ui.Box(c).Size(16, 16).Radius(6).Background(t.Done.Surface).Draw(drawCheck(t.Done.Ink))
 			}
-			ui.Text(c, note).FontSize(11.5).FontWeight(700).TextColor(col)
+			ui.Text(c, note).FontSize(t.XS).FontWeight(700).TextColor(col)
 		})
 	})
 }
@@ -383,9 +387,9 @@ func (a *App) systemLine(c *ui.Context, b *protocol.TaskEvent) {
 	if u := b.Usage; u != nil && u.InputTokens+u.OutputTokens > 0 {
 		text += " · " + tokens(u.InputTokens+u.CacheRead+u.CacheWrite) + " / " + tokens(u.OutputTokens)
 	}
-	ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
+	ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 		ui.Box(c).Height(1).Grow(1).Background(t.LineSoft)
-		ui.Text(c, text).FontSize(11).TextColor(t.InkMuted).Shrink(0)
+		ui.Text(c, text).FontSize(t.XS).TextColor(t.InkMuted).Shrink(0)
 		ui.Box(c).Height(1).Grow(1).Background(t.LineSoft)
 	})
 }
@@ -406,7 +410,7 @@ func (a *App) evidenceLine(c *ui.Context, ev protocol.EvidenceRef) {
 		}
 		return
 	}
-	ui.Row(c).Gap(8).AlignItems(ui.Start).Children(func() {
+	ui.Row(c).Gap(t.S2).AlignItems(ui.Start).Children(func() {
 		ui.Box(c).Size(18, 18).Radius(6).Background(t.Done.Surface).Draw(drawCheck(t.Done.Ink)).Shrink(0)
 		ui.Column(c).Gap(1).Grow(1).MinWidth(0).Children(func() {
 			ui.Text(c, ev.Label).FontSize(t.SM).FontWeight(700)
@@ -431,17 +435,17 @@ func (a *App) reportCard(c *ui.Context, r *protocol.Report) {
 	case "failed":
 		sc, key = t.Failed, "task.report.failed"
 	}
-	ui.Column(c).Padding(12, 14).Gap(6).Radius(16).Border(2, sc.Dot.Mix(t.Surface, 0.45)).Children(func() {
-		ui.Text(c, a.L.T(key, a.S.PersonaName)).FontSize(11).FontWeight(800).TextColor(sc.Ink).LetterSpacing(0.5)
-		ui.Text(c, r.Summary).FontSize(14).LineHeight(1.55).Selectable()
+	ui.Column(c).Padding(t.S3, t.S3).Gap(t.S2).Radius(t.RadiusMD).Border(2, sc.Dot.Mix(t.Surface, 0.45)).Children(func() {
+		ui.Text(c, a.L.T(key, a.S.PersonaName)).FontSize(t.XS).FontWeight(800).TextColor(sc.Ink).LetterSpacing(0.5)
+		ui.Text(c, r.Summary).FontSize(t.MD).LineHeight(1.55).Selectable()
 		for i, q := range r.Questions {
 			ui.Text(c.Key(i), "· "+q.Text).FontSize(t.SM).TextColor(t.InkSoft)
 		}
 		if len(r.Evidence) > 0 {
-			ui.Row(c).Gap(10).Wrap().Children(func() {
+			ui.Row(c).Gap(t.S3).Wrap().Children(func() {
 				for i, ev := range r.Evidence {
 					if !isLink(ev.Ref) {
-						ui.Box(c.Key(i)).Padding(3, 8).Radius(8).Background(t.SurfaceSunken).Tooltip(ev.Ref).Children(func() {
+						ui.Box(c.Key(i)).Padding(3, t.S2).Radius(t.RadiusXS).Background(t.SurfaceSunken).Tooltip(ev.Ref).Children(func() {
 							ui.Text(c, ev.Label).FontSize(t.XS).FontWeight(700)
 						})
 						continue
@@ -459,10 +463,10 @@ func (a *App) reportCard(c *ui.Context, r *protocol.Report) {
 // toolRow is a tool call collapsed to one line; a click shows its output.
 func (a *App) toolRow(c *ui.Context, tool *protocol.ToolCall) {
 	t := a.T
-	col := ui.Column(c).Radius(10).Background(t.SurfaceRaised.Mix(t.SurfaceSunken, 0.6)).Cursor(ui.CursorPointer)
+	col := ui.Column(c).Radius(t.RadiusXS).Background(t.SurfaceRaised.Mix(t.SurfaceSunken, 0.6)).Cursor(ui.CursorPointer)
 	open := ui.Local(col, "open", func() bool { return false })
 	col.Children(func() {
-		ui.Row(c).Gap(8).Padding(8, 10).AlignItems(ui.Center).Children(func() {
+		ui.Row(c).Gap(t.S2).Padding(t.S2, t.S3).AlignItems(ui.Center).Children(func() {
 			ui.Text(c, "›").Font(t.Mono).FontSize(t.XS).TextColor(t.InkMuted).Rotate(map[bool]float32{true: 90, false: 0}[*open])
 			ui.Text(c, toolSummary(tool)).Font(t.Mono).FontSize(t.XS).Grow(1).MinWidth(0).SingleLine()
 			if tool.OK != nil {
@@ -474,8 +478,8 @@ func (a *App) toolRow(c *ui.Context, tool *protocol.ToolCall) {
 			}
 		})
 		if *open && tool.Output != "" {
-			ui.Text(c, strings.TrimRight(tool.Output, "\n")).Font(t.Mono).FontSize(11.5).LineHeight(1.5).TextColor(t.InkSoft).
-				Padding(0, 10, 10, 26).Selectable().MaxLines(40)
+			ui.Text(c, strings.TrimRight(tool.Output, "\n")).Font(t.Mono).FontSize(t.MonoSM).LineHeight(1.5).TextColor(t.InkSoft).
+				Padding(0, t.S3, t.S3, t.S5).Selectable().MaxLines(40)
 		}
 	})
 	if col.Clicked() {
@@ -629,30 +633,30 @@ func (a *App) changes(c *ui.Context, task *store.Task) {
 	t := a.T
 	pane := a.diffs[task.ID]
 	a.panel(c).Grow(2).Basis(520).Children(func() {
-		ui.Row(c).Gap(4).Padding(10, 12).BorderWidth(0, 0, 1, 0).BorderColor(t.LineSoft).AlignItems(ui.Center).Children(func() {
+		ui.Row(c).Gap(t.S1).Padding(t.S3, t.S3).BorderWidth(0, 0, 1, 0).BorderColor(t.LineSoft).AlignItems(ui.Center).Children(func() {
 			n := 0
 			if pane != nil {
 				n = len(pane.files)
 			}
 			if w, _ := c.Size(); w >= NarrowTask {
-				ui.Box(c).Height(40).Padding(0, 16).Radius(12).Background(t.Ink).Center().Children(func() {
-					ui.Text(c, a.changesLabel(n)).FontSize(14).FontWeight(700).TextColor(t.OnUserBubble)
+				ui.Box(c).Height(40).Padding(0, t.S4).Radius(t.RadiusSM).Background(t.Ink).Center().Children(func() {
+					ui.Text(c, a.changesLabel(n)).FontSize(t.SM).FontWeight(700).TextColor(t.OnUserBubble)
 				})
 			} else {
-				ui.Text(c, a.changesLabel(n)).FontSize(14).FontWeight(800).Padding(0, 6)
+				ui.Text(c, a.changesLabel(n)).FontSize(t.SM).FontWeight(800).Padding(0, t.S2)
 			}
 			ui.Spacer(c)
 			if pane != nil {
 				if pane.loading {
 					ui.Spinner(c).Size(16, 16)
 				}
-				if a.button(c, a.L.T("task.changes.refresh"), btnText, 40, t.Surface) {
+				if a.button(c, a.L.T("task.changes.refresh"), btnText, t.ControlMD, t.Surface) {
 					a.refreshDiff(task.ID)
 				}
 			}
 		})
 		ui.Scroll(c).Grow(1).Children(func() {
-			ui.Column(c).Padding(14).Gap(12).Children(func() {
+			ui.Column(c).Padding(t.S3).Gap(t.S3).Children(func() {
 				p := task.Place()
 				switch {
 				case p.Kind != "repo" || p.Worktree == "":
@@ -675,15 +679,15 @@ func (a *App) changes(c *ui.Context, task *store.Task) {
 
 func (a *App) emptyNote(c *ui.Context, text string) {
 	t := a.T
-	ui.Box(c).Padding(12, 14).Radius(14).Border(1, t.Line).BorderStyle(ui.BorderDashed).Children(func() {
+	ui.Box(c).Padding(t.S3, t.S3).Radius(t.RadiusSM).Border(1, t.Line).BorderStyle(ui.BorderDashed).Children(func() {
 		ui.Text(c, text).FontSize(t.SM).TextColor(t.InkMuted)
 	})
 }
 
 func (a *App) fileDiff(c *ui.Context, f *diffFile) {
 	t := a.T
-	ui.Column(c).Gap(8).Children(func() {
-		ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
+	ui.Column(c).Gap(t.S2).Children(func() {
+		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 			ui.Text(c, f.name).Font(t.Mono).FontSize(t.SM).FontWeight(700).Grow(1).MinWidth(0).SingleLine()
 			ui.Text(c, fmt.Sprintf("+%d", f.added)).Font(t.Mono).FontSize(t.SM).TextColor(t.Done.Ink)
 			ui.Text(c, fmt.Sprintf("−%d", f.deleted)).Font(t.Mono).FontSize(t.SM).TextColor(t.Failed.Ink)
@@ -691,7 +695,7 @@ func (a *App) fileDiff(c *ui.Context, f *diffFile) {
 		if f.state == nil {
 			return
 		}
-		ui.Column(c).Radius(14).Border(1, t.LineSoft).Clip().Children(func() {
+		ui.Column(c).Radius(t.RadiusSM).Border(1, t.LineSoft).Clip().Children(func() {
 			editor.DiffView(c, f.state).FillWidth()
 		})
 	})
@@ -701,8 +705,8 @@ func (a *App) fileDiff(c *ui.Context, f *diffFile) {
 
 func (a *App) dossierCard(c *ui.Context, title string, body func()) {
 	t := a.T
-	ui.Column(c.Key(title)).Padding(16, 18).Gap(10).Radius(24).Background(t.Surface).
-		Shadow(0, t.PressCard.Offset, 0, 0, t.PressCard.Color).Children(func() {
+	ui.Column(c.Key(title)).Padding(t.S4, t.S4).Gap(t.S3).Radius(t.RadiusLG).Background(t.Surface).
+		Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Children(func() {
 		ui.Text(c, title).FontSize(t.MD).FontWeight(800)
 		body()
 	})
@@ -732,7 +736,7 @@ func (a *App) dossier(c *ui.Context, task *store.Task) {
 		}
 		last := len(task.Checkpoints) - 1
 		for i, cp := range task.Checkpoints {
-			ui.Row(c.Key(cp.Seq)).Gap(10).AlignItems(ui.Center).Children(func() {
+			ui.Row(c.Key(cp.Seq)).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 				dot := t.Done.Dot
 				if i == last && task.Attention() == protocol.NeedsYou {
 					dot = t.NeedsYou.Dot
@@ -744,7 +748,7 @@ func (a *App) dossier(c *ui.Context, task *store.Task) {
 				if i == last {
 					txt.FontWeight(700)
 				}
-				ui.Text(c, clock(cp.TS)).Font(t.Mono).FontSize(11).TextColor(t.InkMuted)
+				ui.Text(c, clock(cp.TS)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkMuted)
 			})
 		}
 	})
@@ -764,11 +768,11 @@ func (a *App) dossier(c *ui.Context, task *store.Task) {
 		for i, s := range []string{p.RepoPath, p.Worktree, p.Path} {
 			if s != "" && !shown[s] {
 				shown[s] = true
-				ui.Text(c.Key(i), s).Font(t.Mono).FontSize(11).TextColor(t.InkMuted).Selectable()
+				ui.Text(c.Key(i), s).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkMuted).Selectable()
 			}
 		}
 		if p.BaseBranch != "" {
-			ui.Text(c, "base: "+p.BaseBranch).Font(t.Mono).FontSize(11).TextColor(t.InkMuted)
+			ui.Text(c, "base: "+p.BaseBranch).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkMuted)
 		}
 	})
 }

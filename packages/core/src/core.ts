@@ -18,6 +18,7 @@ import { createWsHandler, type WsData } from "./ws.ts";
 import { createGate, openDeviceAuth, type DeviceAuth } from "./auth.ts";
 import { createWorkers, deviceRoutes, splitSockets, type Workers, type WorkerSocketData } from "./workers.ts";
 import { createPusher, openPushStore, type Pusher, type PushStore } from "./push.ts";
+import { createApnsSender, loadApnsConfig, type ApnsSender } from "./apns.ts";
 import { webApi, webStatic } from "./web.ts";
 import { createDevicesView, type DeviceProbes, type DevicesView } from "./devices.ts";
 
@@ -33,6 +34,8 @@ export interface CoreOptions {
   push?: boolean; // send Web Push (default on; env DUCTER_PUSH=off turns it off)
   pushHoldMs?: number;
   pushFetch?: (url: string, init: RequestInit) => Promise<Response>; // tests
+  /** Sends to the iPhone app (tests pass a fake; default: <dataDir>/apns.json or DUCTER_APNS_*). */
+  apns?: ApnsSender;
   /** Test seams for Your devices and abilities (cua-driver, harness logins, device kind). */
   deviceProbes?: Partial<DeviceProbes>;
 }
@@ -171,6 +174,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   devicesView = createDevicesView({ dataDir, auth: devices, workers, connected: () => ws.connected(), probes: opts.deviceProbes });
   const sockets = splitSockets(ws.websocket, workers, { isLive: (id) => devices.isLive(id), sweepMs: opts.sweepMs });
   const push = openPushStore(dataDir);
+  const apns = opts.apns ?? createApnsSender(loadApnsConfig(dataDir));
   const pusher = createPusher({
     log,
     store: push,
@@ -181,6 +185,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     holdMs: opts.pushHoldMs ?? (Number(process.env.DUCTER_PUSH_HOLD_MS) || undefined),
     enabled: opts.push ?? process.env.DUCTER_PUSH !== "off",
     fetcher: opts.pushFetch,
+    apns,
     alive: (s) => s.deviceId === "local" || devices.isLive(s.deviceId),
   });
 
@@ -198,7 +203,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       if (!g.pass) return g.response;
       const d = deviceRoutes(req, g, srv, workers);
       if (d) return d === "upgraded" ? undefined : d;
-      const api = await webApi(req, g, { decisions, push, pusher, personaName: () => persona.name });
+      const api = await webApi(req, g, { decisions, push, pusher, apns, personaName: () => persona.name });
       if (api) return api;
       if (url.pathname === "/ws") {
         // Block cross-site WebSocket hijacking from browser pages; native clients send no Origin

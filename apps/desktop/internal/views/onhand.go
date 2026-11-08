@@ -22,14 +22,14 @@ func (a *App) onHand(c *ui.Context) {
 		ui.Text(c, a.summary(b)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0).Margin(0, 0, 0, 4)
 	}, func() {
 		// 都按默认 / Go on all defaults: only worth a button with two or more.
-		if open := a.defaultable(); len(open) >= 2 && a.button(c, a.L.T("decision.goall", len(open)), btnPrimary, 38, t.Surface) {
+		if open := a.defaultable(); len(open) >= 2 && a.button(c, a.L.T("decision.goall", len(open)), btnPrimary, t.ControlMD, t.Surface) {
 			a.GoOnAllDefaults()
 		}
 	})
 	ui.Scroll(c).Grow(1).Children(func() {
-		ui.Column(c).Gap(20).Padding(24, 32, 32, 32).Children(func() {
+		ui.Column(c).Gap(t.S5).Padding(t.S5, t.S6, t.S6, t.S6).Children(func() {
 			if a.boardEmpty(b) && len(a.partnerDecisions()) == 0 {
-				ui.Column(c.Key("empty")).Width(640).MaxWidthPercent(100).AlignSelf(ui.Center).Padding(28, 28).Gap(14).Radius(t.RadiusXL).Border(2, t.Line).BorderStyle(ui.BorderDashed).AlignItems(ui.Center).Children(func() {
+				ui.Column(c.Key("empty")).Width(640).MaxWidthPercent(100).AlignSelf(ui.Center).Padding(t.S5, t.S5).Gap(t.S3).Radius(t.RadiusXL).Border(2, t.Line).BorderStyle(ui.BorderDashed).AlignItems(ui.Center).Children(func() {
 					a.avatar(c, theme.Idle, 120)
 					ui.Text(c, a.L.T("onhand.empty", a.S.PersonaName)).FontSize(t.LG).TextColor(t.InkSoft).TextAlign(ui.Center)
 				})
@@ -43,12 +43,12 @@ func (a *App) onHand(c *ui.Context) {
 				if n := len(b.Lanes[store.LaneWorking]); n > 0 {
 					line = a.L.T("onhand.calm.working", a.S.PersonaName, n)
 				}
-				ui.Row(c.Key("calm")).Gap(12).Padding(16, 20).Radius(t.RadiusLG).Background(t.Done.Surface).AlignItems(ui.Center).Children(func() {
-					ui.Box(c).Size(26, 26).Radius(9).Background(t.Surface).Draw(drawCheck(t.Done.Ink)).Shrink(0)
+				ui.Row(c.Key("calm")).Gap(t.S3).Padding(t.S4, t.S5).Radius(t.RadiusLG).Background(t.Done.Surface).AlignItems(ui.Center).Children(func() {
+					ui.Box(c).Size(26, 26).Radius(t.RadiusXS).Background(t.Surface).Draw(drawCheck(t.Done.Ink)).Shrink(0)
 					ui.Text(c, line).FontSize(t.MD).FontWeight(600).TextColor(t.Done.Ink)
 				})
 			}
-			ui.Row(c).Gap(20).Wrap().AlignItems(ui.Start).Children(func() {
+			ui.Row(c).Gap(t.S5).Wrap().AlignItems(ui.Start).Children(func() {
 				// Only lanes with something in them; empty ones collapse.
 				if needs > 0 {
 					a.lane(c, store.LaneNeedsYou, b.Lanes[store.LaneNeedsYou], 2, 400)
@@ -140,29 +140,18 @@ func (a *App) when(at time.Time) string {
 // waiterRow is a task-less waiter: one compact line in the Waiting lane.
 func (a *App) waiterRow(c *ui.Context, w *protocol.Waiter) {
 	t := a.T
-	ui.Row(c).Gap(10).Padding(10, 14).Radius(16).Border(1.5, t.Waiting.Dot.Mix(t.Surface, 0.4)).BorderStyle(ui.BorderDashed).AlignItems(ui.Center).
+	ui.Row(c).Gap(t.S3).Padding(t.S3, t.S4).Radius(t.RadiusMD).Border(1.5, t.Waiting.Dot.Mix(t.Surface, 0.4)).BorderStyle(ui.BorderDashed).AlignItems(ui.Start).
 		Label(w.Reason).Children(func() {
-		ui.Box(c).Size(24, 24).Radius(8).Background(t.Waiting.Surface).Draw(drawClock(t.Waiting.Ink)).Shrink(0)
-		// Already under the Waiting lane's header: the reason alone.
-		ui.Text(c, w.Reason).FontSize(t.SM).FontWeight(700).TextColor(t.Waiting.Ink).Grow(1).MinWidth(0).MaxLines(3)
-		if at := store.ParseTime(w.At); !at.IsZero() {
-			ui.Text(c, a.when(at)).Font(t.Mono).FontSize(t.XS).TextColor(t.InkMuted).Shrink(0)
-		}
+		a.glyphTile(c, 24, t.Waiting.Surface, drawClock(t.Waiting.Ink))
+		// Already under the Waiting lane's header: the reason alone, and
+		// its time under it (a narrow lane has no room for both on a line).
+		ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
+			ui.Text(c, w.Reason).FontSize(t.SM).FontWeight(700).TextColor(t.Waiting.Ink).MaxLines(3)
+			if at := store.ParseTime(w.At); !at.IsZero() {
+				ui.Text(c, a.when(at)).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum")
+			}
+		})
 	})
-}
-
-func (a *App) backButton(c *ui.Context) {
-	t := a.T
-	btn := ui.Row(c.Key("back")).Gap(10).Height(48).Padding(0, 16, 0, 10).Radius(16).Background(t.Surface).
-		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(a.L.T("nav.back")).Shrink(0)
-	a.press(c, btn, t.PressCard)
-	btn.Children(func() {
-		a.avatar(c, a.presence(c), 34)
-		ui.Text(c, a.L.T("nav.back")).FontSize(14).FontWeight(700)
-	})
-	if btn.Clicked() {
-		a.Route = RouteConversation
-	}
 }
 
 // forecastBand says when the user will be needed next: defaults taking
@@ -202,8 +191,8 @@ func (a *App) forecastBand(c *ui.Context, b store.Board) {
 	if len(chips) == 0 {
 		return
 	}
-	ui.Row(c.Key("forecast")).Gap(12).Wrap().Padding(14, 18).Radius(t.RadiusLG).Background(t.Surface).
-		Shadow(0, t.PressCard.Offset, 0, 0, t.PressCard.Color).AlignItems(ui.Center).Children(func() {
+	ui.Row(c.Key("forecast")).Gap(t.S3).Wrap().Padding(t.S3, t.S4).Radius(t.RadiusLG).Background(t.Surface).
+		Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).AlignItems(ui.Center).Children(func() {
 		ui.Text(c, a.L.T("onhand.forecast")).FontSize(t.SM).FontWeight(800).TextColor(t.InkMuted)
 		for _, ch := range chips {
 			a.forecastChip(c.Key(ch.key), ch.text, ch.sc)
@@ -212,7 +201,8 @@ func (a *App) forecastBand(c *ui.Context, b store.Board) {
 }
 
 func (a *App) forecastChip(c *ui.Context, text string, sc theme.StateColors) {
-	ui.Row(c).Gap(6).Padding(4, 10, 4, 8).Radius(8).Background(sc.Surface).AlignItems(ui.Center).Children(func() {
+	t := a.T
+	ui.Row(c).Gap(t.S2).Padding(t.S1, t.S3, t.S1, t.S2).Radius(t.RadiusXS).Background(sc.Surface).AlignItems(ui.Center).Children(func() {
 		a.pebble(c, sc.Dot, 10, 12)
 		ui.Text(c, text).FontSize(a.T.XS).FontWeight(700).TextColor(sc.Ink).SingleLine()
 	})
@@ -222,10 +212,10 @@ func (a *App) lane(c *ui.Context, lane store.Lane, tasks []*store.Task, grow, ba
 	t := a.T
 	names := [...]string{"lane.needs_you", "lane.working", "lane.waiting", "lane.done"}
 	colors := [...]theme.StateColors{t.NeedsYou, t.Working, t.Waiting, t.Done}
-	ui.Column(c.Key(lane)).Grow(grow).Basis(basis).MinWidth(0).MaxWidth(basis * 2.2).Gap(14).Children(func() {
-		ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
+	ui.Column(c.Key(lane)).Grow(grow).Basis(basis).MinWidth(0).MaxWidth(basis * 2.2).Gap(t.S3).Children(func() {
+		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 			a.pebble(c, colors[lane].Dot, 14, 16)
-			ui.Text(c, a.L.T(names[lane])).FontSize(20).FontWeight(800)
+			ui.Text(c, a.L.T(names[lane])).FontSize(t.XL).FontWeight(800)
 			n := len(tasks)
 			switch lane {
 			case store.LaneNeedsYou:
@@ -233,14 +223,14 @@ func (a *App) lane(c *ui.Context, lane store.Lane, tasks []*store.Task, grow, ba
 			case store.LaneWaiting:
 				n += len(a.looseWaiters())
 			}
-			ui.Text(c, fmt.Sprint(n)).FontSize(20).FontWeight(800).TextColor(colors[lane].Strong).FontFeatures("tnum")
+			ui.Text(c, fmt.Sprint(n)).FontSize(t.XL).FontWeight(800).TextColor(colors[lane].Strong).FontFeatures("tnum")
 		})
 		waiters := []*protocol.Waiter(nil)
 		if lane == store.LaneWaiting {
 			waiters = a.looseWaiters()
 		}
 		if len(tasks) == 0 && len(waiters) == 0 && lane != store.LaneNeedsYou {
-			ui.Box(c).Padding(16, 18).Radius(22).Border(2, t.LineSoft).BorderStyle(ui.BorderDashed).Children(func() {
+			ui.Box(c).Padding(t.S4, t.S4).Radius(t.RadiusLG).Border(2, t.LineSoft).BorderStyle(ui.BorderDashed).Children(func() {
 				ui.Text(c, a.L.T("lane.empty")).FontSize(t.SM).TextColor(t.InkMuted)
 			})
 			return
@@ -284,15 +274,15 @@ func (a *App) metaLine(task *store.Task) string {
 func (a *App) needsCard(c *ui.Context, task *store.Task) {
 	t := a.T
 	d := a.S.PendingDecision(task.ID)
-	card := ui.Column(c).Radius(t.RadiusXL).Background(t.Surface).Shadow(0, 5, 0, 0, hexShade(t)).Clip()
+	card := ui.Column(c).Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Clip()
 	a.lift(c, card, 3)
 	card.Children(func() {
-		ui.Row(c).Gap(10).Padding(14, 22).Background(t.Accent).AlignItems(ui.Center).Children(func() {
+		ui.Row(c).Gap(t.S3).Padding(t.S3, t.S5).Background(t.Accent).AlignItems(ui.Center).Children(func() {
 			title := task.Title()
 			if p := task.Project(); p != "" {
 				title = p + " · " + title
 			}
-			ui.Text(c, title).FontSize(16).FontWeight(800).TextColor(t.OnAccent).Grow(1).SingleLine()
+			ui.Text(c, title).FontSize(t.MD).FontWeight(800).TextColor(t.OnAccent).Grow(1).SingleLine()
 			if at := store.ParseTime(task.OpenedAt); !at.IsZero() {
 				opened := a.L.T("time.opened.now")
 				if d := a.Now().Sub(at); d >= time.Minute {
@@ -301,7 +291,7 @@ func (a *App) needsCard(c *ui.Context, task *store.Task) {
 				ui.Text(c, opened).FontSize(t.XS).FontWeight(700).TextColor(t.OnAccent).Shrink(0)
 			}
 		})
-		ui.Column(c).Padding(20, 22, 22, 22).Gap(14).Children(func() {
+		ui.Column(c).Padding(t.S5, t.S5, t.S5, t.S5).Gap(t.S3).Children(func() {
 			rep := task.Report()
 			q := ""
 			if d != nil {
@@ -310,33 +300,27 @@ func (a *App) needsCard(c *ui.Context, task *store.Task) {
 				q = rep.Questions[0].Text
 			}
 			if q != "" {
-				ui.Text(c, q).FontSize(19).LineHeight(1.55).FontWeight(500)
+				ui.Text(c, q).FontSize(t.LG).LineHeight(1.55).FontWeight(500)
 			}
 			if rep != nil && rep.Summary != "" && rep.Summary != q {
-				ui.Text(c, rep.Summary).FontSize(14).LineHeight(1.6).TextColor(t.InkSoft).MaxLines(4).Tooltip(rep.Summary)
+				ui.Text(c, rep.Summary).FontSize(t.SM).LineHeight(1.6).TextColor(t.InkSoft).MaxLines(4).Tooltip(rep.Summary)
 			}
 			if d != nil {
 				a.countdown(c, d)
 				a.decisionButtons(c, d, decisionStyle{height: 52, quietBg: t.Bg})
 			}
-			ui.Row(c).Gap(12).Padding(12, 0, 0, 0).BorderWidth(1, 0, 0, 0).BorderColor(t.LineSoft).BorderStyle(ui.BorderDashed).AlignItems(ui.Center).Children(func() {
-				ui.Row(c).Gap(8).Wrap().Grow(1).MinWidth(0).Children(func() {
+			ui.Row(c).Gap(t.S3).Padding(t.S3, 0, 0, 0).BorderWidth(1, 0, 0, 0).BorderColor(t.LineSoft).BorderStyle(ui.BorderDashed).AlignItems(ui.Center).Children(func() {
+				ui.Row(c).Gap(t.S2).Wrap().Grow(1).MinWidth(0).Children(func() {
 					a.pill(c, a.metaLine(task))
 					a.pill(c, a.placeLine(task.Place()))
 				})
-				l := ui.Text(c.Key("open"), a.L.T("onhand.open")).FontSize(t.SM).FontWeight(800).Cursor(ui.CursorPointer).Role(ui.RoleLink).Shrink(0).Padding(6, 4)
-				if l.Hovered() {
-					l.TextColor(t.NeedsYou.Ink)
-				}
-				if l.Clicked() {
+				if a.buttonFor(c, a.L.T("onhand.open"), task.Title(), btnText, t.ControlSM, t.Surface) {
 					a.OpenTask(task.ID)
 				}
 			})
 		})
 	})
 }
-
-func hexShade(t *theme.Tokens) ui.Color { return t.NeedsYou.Surface.Mix(t.NeedsYou.Strong, 0.25) }
 
 // countdown is the default's bar: how much of the wait has passed.
 func (a *App) countdown(c *ui.Context, d *store.DecisionState) {
@@ -361,7 +345,7 @@ func (a *App) countdown(c *ui.Context, d *store.DecisionState) {
 		right = a.duration(max(left, 0))
 		c.After(min(max(left%time.Minute, time.Second), time.Minute))
 	}
-	ui.Column(c).Gap(6).Children(func() {
+	ui.Column(c).Gap(t.S2).Children(func() {
 		ui.Row(c).Children(func() {
 			ui.Text(c, label).FontSize(t.XS).FontWeight(700).TextColor(t.NeedsYou.Ink).Grow(1)
 			if right != "" {
@@ -406,10 +390,10 @@ func (a *App) cardLink(c *ui.Context, card ui.Element, task *store.Task) {
 
 func (a *App) workingCard(c *ui.Context, task *store.Task) {
 	t := a.T
-	card := ui.Column(c).Padding(16, 18).Gap(10).Radius(22).Background(t.Surface).Shadow(0, t.PressCard.Offset, 0, 0, t.PressCard.Color)
+	card := ui.Column(c).Padding(t.S4, t.S4).Gap(t.S3).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color)
 	a.cardLink(c, card, task)
 	card.Children(func() {
-		ui.Text(c, task.Title()).FontSize(16).FontWeight(800)
+		ui.Text(c, task.Title()).FontSize(t.MD).FontWeight(800)
 		if rep := task.Report(); rep != nil && rep.Summary != "" {
 			ui.Text(c, rep.Summary).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft).MaxLines(3)
 		} else if r := a.waitReason(task); r != "" {
@@ -446,18 +430,18 @@ func (a *App) workingBar(c *ui.Context) {
 
 func (a *App) waitingCard(c *ui.Context, task *store.Task) {
 	t := a.T
-	card := ui.Column(c).Padding(16, 18).Gap(8).Radius(22).Background(t.SurfaceRaised).Border(2, t.Waiting.Dot.Mix(t.Surface, 0.4)).BorderStyle(ui.BorderDashed)
+	card := ui.Column(c).Padding(t.S4, t.S4).Gap(t.S2).Radius(t.RadiusLG).Background(t.SurfaceRaised).Border(2, t.Waiting.Dot.Mix(t.Surface, 0.4)).BorderStyle(ui.BorderDashed)
 	a.cardLink(c, card, task)
 	card.Children(func() {
-		ui.Text(c, task.Title()).FontSize(16).FontWeight(800)
+		ui.Text(c, task.Title()).FontSize(t.MD).FontWeight(800)
 		reason := a.waitReason(task)
 		if reason == "" {
 			reason = a.stateLabel(protocol.Blocked)
 		} else {
 			reason = a.L.T("onhand.waiting.for", reason)
 		}
-		ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
-			ui.Box(c).Size(22, 22).Radius(7).Background(t.Waiting.Surface).Draw(drawClock(t.Waiting.Ink)).Shrink(0)
+		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+			ui.Box(c).Size(22, 22).Radius(t.RadiusXS).Background(t.Waiting.Surface).Draw(drawClock(t.Waiting.Ink)).Shrink(0)
 			ui.Text(c, reason).FontSize(t.SM).FontWeight(700).TextColor(t.Waiting.Ink).Grow(1).MinWidth(0)
 		})
 		if rep := task.Report(); rep != nil && rep.Summary != "" {
@@ -468,22 +452,16 @@ func (a *App) waitingCard(c *ui.Context, task *store.Task) {
 
 func (a *App) doneList(c *ui.Context, tasks []*store.Task) {
 	t := a.T
-	ui.Column(c).Padding(6, 18).Radius(22).Background(t.Surface).Shadow(0, t.PressCard.Offset, 0, 0, t.PressCard.Color).
+	ui.Column(c).Padding(t.S2, t.S4).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).
 		Dividers(1, t.LineSoft).Children(func() {
 		for _, task := range tasks {
-			row := ui.Column(c.Key(task.ID)).Gap(6).Padding(12, 0).Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(task.Title())
+			row := ui.Column(c.Key(task.ID)).Gap(t.S2).Padding(t.S3, 0).Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(task.Title())
 			row.Children(func() {
-				ui.Row(c).Gap(8).AlignItems(ui.Start).Children(func() {
-					ui.Text(c, task.Title()).FontSize(14).FontWeight(700).Grow(1).MinWidth(0).MaxLines(2)
+				ui.Row(c).Gap(t.S2).AlignItems(ui.Start).Children(func() {
+					ui.Text(c, task.Title()).FontSize(t.MD).FontWeight(700).Grow(1).MinWidth(0).MaxLines(2)
 					switch task.Attention() {
-					case protocol.DoneClaimed:
-						ui.Box(c).Padding(3, 8).Radius(t.Pill).Background(t.Waiting.Surface).Shrink(0).Children(func() {
-							ui.Text(c, a.L.T("onhand.checking")).FontSize(11).FontWeight(700).TextColor(t.Waiting.Ink)
-						})
 					case protocol.Failed:
-						ui.Box(c).Padding(3, 8).Radius(t.Pill).Background(t.Failed.Surface).Shrink(0).Children(func() {
-							ui.Text(c, a.stateLabel(protocol.Failed)).FontSize(11).FontWeight(700).TextColor(t.Failed.Ink)
-						})
+						a.stateChip(c, protocol.Failed)
 					}
 				})
 				// The result itself: its first line, and its first machine check.
@@ -509,12 +487,12 @@ func (a *App) doneList(c *ui.Context, tasks []*store.Task) {
 // its default, and Go / Hold / Reply.
 func (a *App) partnerDecisionCard(c *ui.Context, d *store.DecisionState) {
 	t := a.T
-	ui.Column(c).Padding(20, 22).Gap(12).Radius(t.RadiusXL).Background(t.NeedsYou.Surface).Children(func() {
-		ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
+	ui.Column(c).Padding(t.S5, t.S5).Gap(t.S3).Radius(t.RadiusXL).Background(t.NeedsYou.Surface).Children(func() {
+		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 			a.avatar(c, theme.NeedsYou, 32)
 			ui.Text(c, a.S.PersonaName).FontSize(t.SM).FontWeight(800).TextColor(t.NeedsYou.Ink)
 		})
-		ui.Text(c, d.Question).FontSize(18).LineHeight(1.5).FontWeight(500)
+		ui.Text(c, d.Question).FontSize(t.LG).LineHeight(1.5).FontWeight(500)
 		a.countdown(c, d)
 		a.decisionButtons(c, d, decisionStyle{height: 48, quietBg: t.Surface})
 	})

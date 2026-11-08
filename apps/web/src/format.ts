@@ -63,3 +63,9 @@ export function cjkPad(L: Strings, s: string): string {
   if (s.charCodeAt(s.length - 1) < 0x80) s += " ";
   return s;
 }
+
+/** A status line that only repeats the title says nothing (ignoring case, spaces, end punctuation). */
+export const sameWords = (detail: string | undefined, title: string) => {
+  const norm = (s: string) => s.split(/\s+/).filter(Boolean).join(" ").replace(/[.。…]+$/, "").toLowerCase();
+  return !!detail && norm(detail) !== "" && norm(detail) === norm(title);
+};

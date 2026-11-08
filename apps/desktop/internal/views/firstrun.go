@@ -20,8 +20,8 @@ func (a *App) firstRun(c *ui.Context) {
 	t := a.T
 	a.bareChrome(c)
 	ui.Column(c).Grow(1).MinHeight(0).Justify(ui.Center).AlignItems(ui.Center).Padding(8, 32, 8+ChromeH, 32).Children(func() {
-		card := ui.Column(c.Key("firstrun")).Width(560).MaxWidthPercent(100).Padding(36, 40, 32, 40).Gap(18).
-			Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.PressCard.Offset, 0, 0, t.PressCard.Color)
+		card := ui.Column(c.Key("firstrun")).Width(560).MaxWidthPercent(100).Padding(t.S6, t.S7, t.S6, t.S7).Gap(t.S4).
+			Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color)
 		a.enter(c, card)
 		card.Children(func() {
 			if theme.Art(theme.Napping, 240) != nil {
@@ -29,11 +29,11 @@ func (a *App) firstRun(c *ui.Context) {
 			} else {
 				a.sleepyFace(c, 72)
 			}
-			ui.Text(c, a.L.T("firstrun.title")).FontSize(28).FontWeight(800).LetterSpacing(-0.4)
+			ui.Text(c, a.L.T("firstrun.title")).FontSize(t.XXL).FontWeight(800).LetterSpacing(-0.4)
 			ui.Text(c, a.L.T("firstrun.body")).FontSize(t.LG).LineHeight(1.55).TextColor(t.InkSoft)
 			a.commandBox(c, StartCommand)
 			ui.Box(c).Height(1).Background(t.LineSoft).Margin(4, 0)
-			ui.Row(c).Gap(12).AlignItems(ui.Center).Children(func() {
+			ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 				a.retryPulse(c)
 				ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
 					ui.Text(c, a.retryLine(c)).FontSize(t.MD).FontWeight(700)
@@ -41,17 +41,17 @@ func (a *App) firstRun(c *ui.Context) {
 						// Someone who has never heard of a WebSocket: say where, not the URL.
 						ui.Text(c, a.L.T("firstrun.where.local")).FontSize(t.SM).TextColor(t.InkMuted).SingleLine()
 					} else if a.URL != "" {
-						ui.Text(c, a.L.T("firstrun.where", a.URL)).Font(t.Mono).FontSize(11.5).TextColor(t.InkMuted).SingleLine()
+						ui.Text(c, a.L.T("firstrun.where", a.URL)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkMuted).SingleLine()
 					}
 				})
-				if a.RetryNow != nil && a.button(c, a.L.T("firstrun.retry"), btnQuiet, 44, t.Bg) {
+				if a.RetryNow != nil && a.button(c, a.L.T("firstrun.retry"), btnSecondary, t.ControlMD, t.Bg) {
 					a.RetryNow()
 				}
 			})
 			ui.Text(c, a.L.T("firstrun.auto")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
 			if a.Pair != nil {
 				ui.Box(c).Height(1).Background(t.LineSoft).Margin(4, 0)
-				if a.button(c, a.L.T("firstrun.elsewhere"), btnText, 40, t.Surface) {
+				if a.button(c, a.L.T("firstrun.elsewhere"), btnText, t.ControlMD, t.Surface) {
 					a.openConnect()
 				}
 			}
@@ -95,18 +95,23 @@ func (a *App) commandBox(c *ui.Context, cmd string) {
 // set smaller).
 func (a *App) commandBoxSized(c *ui.Context, cmd string, size float32) {
 	t := a.T
-	box := ui.Row(c.Key("cmd")).Gap(12).Padding(8, 8, 8, 18).Radius(t.RadiusSM).Background(t.Ink).AlignItems(ui.Center)
+	box := ui.Row(c.Key("cmd")).Gap(t.S3).Padding(t.S2, t.S2, t.S2, t.S4).Radius(t.RadiusSM).Background(t.Ink).AlignItems(ui.Center)
 	copied := ui.Local(box, "copied", func() time.Time { return time.Time{} })
 	box.Children(func() {
-		ui.Text(c, "$").Font(t.Mono).FontSize(16).TextColor(t.Accent)
+		ui.Text(c, "$").Font(t.Mono).FontSize(t.MD).TextColor(t.Accent)
 		ui.Text(c, cmd).Font(t.Mono).FontSize(size).FontWeight(700).TextColor(t.OnUserBubble).Grow(1).Selectable()
 		label := a.L.T("firstrun.copy")
 		if since := a.Now().Sub(*copied); !copied.IsZero() && since < 2*time.Second {
 			label = a.L.T("firstrun.copied")
 			c.After(2*time.Second - since)
 		}
-		b := ui.Row(c.Key("copy")).Height(36).Padding(0, 14).Radius(10).Background(t.InkSoft).Justify(ui.Center).
-			Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(a.L.T("firstrun.copy")).Shrink(0)
+		// A button on the dark box: the secondary shape, in the box's ink.
+		b := ui.Row(c.Key("copy")).Height(t.ControlSM).Padding(0, t.S3).Radius(t.RadiusSM).Background(t.InkSoft).Justify(ui.Center).
+			AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(a.L.T("firstrun.copy")).Focusable().Shrink(0)
+		if b.Hovered() {
+			b.Background(t.InkSoft.Mix(t.InkMuted, 0.35))
+		}
+		a.sink(c, b, b.Pressed())
 		b.Children(func() {
 			ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.OnUserBubble)
 		})

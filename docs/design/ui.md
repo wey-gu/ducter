@@ -27,8 +27,9 @@ shadow, so adding or switching a theme is pure data. The same tokens drive MyGo 
   decide-surface `#FFE3CF`, decide `#9A3F0E`, ok-surface `#C9F2C7`, progress-surface `#DCEFFF`,
   user-bubble `#7CC6FF`, line `#E8D9C4`, highlight `#FFE9A8`
 - type: Bricolage Grotesque (500/700/800) + Noto Sans SC
-- shape: radius 14/20/26/pill, chunky and slightly irregular avatar
-- depth: `press`, a 3–4px solid offset in a darker tint of the surface
+- shape: radius 8/12/16/22/28/pill (Components below), chunky and slightly irregular avatar
+- depth: a 3px ledge under every filled button only; containers rest on a soft shadow
+  (Components below)
 - motion: bouncy; buttons press down on tap
 
 ## Persona face
@@ -52,6 +53,66 @@ brows when something needs you. Other themes render the same states in their own
 - **Decision buttons:** primary `Go / 好` (or the action itself, e.g. "Rebase") as a dark
   press-down pebble button; secondary `Hold / 先等等` as a light press-down button; tertiary
   `Reply… / 回复…` as a text button. No seals or stamps (D22).
+
+## Components and tokens (canonical; polish pass 2026-11-09)
+
+The rules every screen follows, on the desktop (`apps/desktop/internal/theme`,
+`views/components.go`) and the phone (`apps/web/static/app.css`) alike. A new screen uses these
+components and tokens; a value not in the scales below needs a token first.
+
+**Scales.**
+
+| Scale | Values | Use |
+|---|---|---|
+| type | 12 · 13 · 15 · 18 · 22 · 28 · 34 (`XS SM MD LG XL XXL Title`); mono 12 | captions/labels · secondary and small controls · body, controls, the user's bubble, the composer · the partner's voice, questions · card and lane titles · screen titles · hero |
+| space | 4 · 8 · 12 · 16 · 24 · 32 · 48 (`S1…S7`) | inside a group S2–S3; between groups S4–S5; a screen's sections S6–S7 |
+| radius | 8 · 12 · 16 · 22 · 28 · pill (`XS SM MD LG XL`) | chips, glyph tiles · buttons, fields · sheets, inset cards, notices · cards · hero cards, the composer · progress bars and dots |
+| controls | 32 · 40 · 48 (`ControlSM/MD/LG`) | chrome and inline lines · cards and the conversation · setup screens |
+| chips | 24 · 28 · 32 (`ChipSM/Chip/ChipLG`) | a state tag · evidence and metadata · a task in the conversation |
+| motion | press 70 ms · hover/lift `Snappy` · enter 220 ms (6-pt rise + fade) · `Bouncy` for the living message and the equip | reduced motion: no movement, colors still change |
+
+**Depth: the ledge means "this can be pressed".** Every filled button (primary, secondary,
+accent, any size) stands on the same 3px ledge in a darker shade of its own fill and sinks
+into it (translate 3, ledge to 0) while pressed. Nothing else has a ledge.
+- Containers (cards, the living message, the composer, sheets, notices, On hand cards, the
+  dossier) are never pressable-looking: they rest on `Raised` (0 2 10, ink at 7%) or, for a
+  sheet over the page, `Floating` (0 10 32, ink at 14%). Inline sheets (a result's proof) are
+  flat, hung from a 2px hairline.
+- Text buttons (回复… / Reply…, 看改动 / See changes, 不用了 / No thanks, 看细节 / Details,
+  展开 / Open) are flat: ink only, a soft tint under them on hover and press.
+- Chips and tags are flat rounded rectangles (radius 8) in a state's or the paper's tint; a
+  chip that opens something lifts 2pt on hover, it never presses down.
+
+**Buttons** (one family): primary (ink on cream text), secondary (surface with a 1px `line`
+hairline), accent (the composer's send), text, and icon (a square of any of them). One radius
+(12), three heights, one type size per height (13 at 32, 15 at 40/48), the same hover (a shade
+lighter or a sunken tint), press (sink into the ledge) and keyboard focus ring on all of them.
+In a row the primary is last (macOS) and at most one primary shows per group.
+
+**Chips.** A task chip says its title once, then where it stands: the job's status line when
+it adds something, else the state (a status line that only repeats the title falls back to
+the state). A finished task reads 做完了 / Done: `done?` shows as Done until something actually
+checks the result (no check runs yet; "在检查 / checking" is shown only while one does).
+
+**Results.** Under a result message: the chip, then a light two-column sheet (labels 84 wide,
+values aligned), then the actions. A row with nothing to say is left out, and with both rows
+gone the sheet is gone: 怎么知道的 / How I know only with evidence, 发出去的 / Sent out only
+when something was sent out (the opened task's Sent out card still says "Nothing sent out
+yet").
+
+**Notices: the app speaking, never the partner.** The partner speaks in 18px on the paper and
+in cards; a system notice (the CLI offer, the first-result celebration, a held message) is a
+slim strip just above the composer: radius 16, a sunken tint (done: done-surface; alert:
+failed-surface), a 24–28 glyph tile at its start, 13/12px text, small (32) buttons at its end.
+Something that needs no answer ("ducter now works in Terminal") is a toast instead.
+
+**Conversation rhythm.** Top-aligned (no empty band above a short conversation). 12 between
+two things one voice says, 24 where the turn passes; 12 inside a message (text → chip → sheet
+→ actions); the composer 24 from the window's edges.
+
+**Chrome.** 60pt bar, the title region. Left: where you are (crumbs are text buttons, 15/700
+muted, the level's name 18/800). Right: what you can do (small secondary buttons; metadata
+such as the model and place as flat 32 chips, never as buttons).
 
 ## Three zoom levels (Core UI canvas: https://claude.ai/artifact/U9r15Tpm8AL7aGQZwrtbDL)
 
@@ -106,6 +167,7 @@ they show what the code does today, for review against the docs.
 | Desktop, live | `apps/desktop/docs/live-*.png` | live backend, real harness | ack, early send, task sent/done/result, On hand, reconnecting |
 | Desktop, remote | `apps/desktop/docs/remote-{conversation,onhand,device-unreachable}.png`, `connect{,-badcode,-revoked}.png` | VM over an SSH tunnel (`research/29`); connect cards headless | Connect to your Ducter, a worker that can't be reached |
 | Ducter.app | `apps/desktop/docs/app-*.png` | setup screens headless (fake backend); `app-live-first-reply` live; `app-dmg-finder`, `app-gatekeeper-macos15` real macOS screenshots; `app-icon` the drawn icon | checking, blocked, name, starting, stopped, CLI offer, Gatekeeper |
+| Polish pass | `apps/desktop/docs/polish-{before,after}-*.png` | native window (cua-driver) on a scripted backend, plus the headless renderer | the components above: buttons, chips, notices, the result sheet, rhythm |
 | Taste review | `apps/desktop/docs/review-{before,after}-{zh-1280,en-900}-*.png` | headless renderer, mock (`DUCTER_REVIEW`) | every screen at 1280 and 900 px, before and after the taste pass |
 | Phone web | `docs/design/screens/phone-*.png` | headless browser at 390×844 on a demo core; `phone-real-sonnet-result-zh` from a real sonnet run | conversation, decision sheet, decided, On hand, task, result, pairing, notify ask, iOS hint, offline; dark variants |
 

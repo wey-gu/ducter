@@ -38,14 +38,14 @@ func finished(t *store.Task) bool {
 // taskFooter is what follows a message about a task: its chip, and for a
 // finished task its result's proof, Outside line and next steps.
 func (a *App) taskFooter(c *ui.Context, task *store.Task, detail string) {
+	t := a.T
 	if !finished(task) {
-		ui.Row(c).Gap(8).Wrap().AlignItems(ui.Center).Children(func() { a.taskChip(c, task, detail) })
+		ui.Row(c).Gap(t.S2).Wrap().AlignItems(ui.Center).Children(func() { a.taskChip(c, task, detail) })
 		return
 	}
-	t := a.T
 	a.ensureHistory(task.ID)
-	ui.Column(c.Key("result:" + task.ID)).Gap(10).Children(func() {
-		ui.Row(c).Gap(8).Wrap().AlignItems(ui.Center).Children(func() {
+	ui.Column(c.Key("result:" + task.ID)).Gap(t.S3).Children(func() {
+		ui.Row(c).Gap(t.S2).Wrap().AlignItems(ui.Center).Children(func() {
 			a.taskChip(c, task, "")
 		})
 		// A result's own report's evidence: a follow-up's result doesn't
@@ -57,24 +57,27 @@ func (a *App) taskFooter(c *ui.Context, task *store.Task, detail string) {
 			evs = r.LastReport.Evidence
 		}
 		if len(evs) > 0 || line != "" {
-			// Proof and reach as a two-column sheet: labels in one column,
-			// values aligned in the other.
-			ui.Column(c).Gap(10).Padding(12, 16).Radius(t.RadiusSM).Background(t.SurfaceRaised).Border(1, t.LineSoft).Children(func() {
+			// Proof and reach as a light two-column sheet hung from a
+			// hairline: labels in one column, values aligned in the other.
+			// A row with nothing to say is left out, and with it the sheet.
+			ui.Column(c).Gap(t.S2).Padding(t.S1, 0, t.S1, t.S3+2).BorderWidth(0, 0, 0, 2).BorderColor(t.Line).Children(func() {
 				label := func(key string) {
-					ui.Text(c, a.L.T(key)).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted).Width(84).Shrink(0).Padding(6, 0, 0, 0)
+					ui.Text(c, a.L.T(key)).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Width(84).Shrink(0).
+						Padding(t.S2-1, 0, 0, 0) // centred on a chip's first row
 				}
 				if len(evs) > 0 {
-					ui.Row(c).Gap(12).AlignItems(ui.Start).Children(func() {
+					ui.Row(c).Gap(t.S3).AlignItems(ui.Start).Children(func() {
 						label("result.howknow")
-						ui.Row(c).Gap(8).Wrap().Grow(1).MinWidth(0).AlignItems(ui.Center).Children(func() {
+						ui.Row(c).Gap(t.S2 - 2).Wrap().Grow(1).MinWidth(0).AlignItems(ui.Center).Children(func() {
 							a.evidenceChips(c, task, evs, 4)
 						})
 					})
 				}
 				if line != "" {
-					ui.Row(c).Gap(12).AlignItems(ui.Start).Children(func() {
+					ui.Row(c).Gap(t.S3).AlignItems(ui.Start).Children(func() {
 						label("outside.title")
-						ui.Text(c, line).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft).Grow(1).MinWidth(0).Padding(4, 0, 0, 0)
+						ui.Text(c, line).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft).Grow(1).MinWidth(0).
+							Padding(t.S1, 0, 0, 0)
 					})
 				}
 			})
@@ -110,11 +113,13 @@ func (a *App) evidenceChip(c *ui.Context, task *store.Task, ev protocol.Evidence
 	if checked {
 		bg, fg = t.Done.Surface, t.Done.Ink
 	}
-	chip := ui.Row(c).Gap(6).Height(28).Padding(0, 10, 0, 8).Radius(9).Background(bg).AlignItems(ui.Center).
-		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(ev.Label).Tooltip(ev.Ref).Shrink(0)
+	chip := a.chipBox(c, t.Chip, bg).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(ev.Label).Tooltip(ev.Ref).Focusable()
+	if chip.Hovered() {
+		chip.Background(bg.Mix(fg, 0.06))
+	}
 	chip.Children(func() {
 		if checked {
-			ui.Box(c).Size(14, 14).Draw(drawCheck(t.Done.Ink))
+			ui.Box(c).Size(14, 14).Draw(drawCheck(t.Done.Ink)).Shrink(0)
 		}
 		ui.Text(c, ev.Label).FontSize(t.XS).FontWeight(700).TextColor(fg).SingleLine()
 	})
@@ -127,33 +132,23 @@ func (a *App) evidenceChip(c *ui.Context, task *store.Task, ev protocol.Evidence
 	}
 }
 
-// outsideLine is what the task did outside, in one line: what the
-// transcript shows, or that nothing left its branch. Empty until the
-// transcript is loaded: never claim "nothing" without having looked.
+// outsideLine is what the task sent out, in one line, from what its log
+// shows. Empty when nothing was sent out, or until the log is loaded: a
+// row with nothing to say is left out (the dossier's Sent out card still
+// says "Nothing sent out yet"; the actions say where the changes are).
 func (a *App) outsideLine(task *store.Task) string {
 	if !task.HistoryLoaded {
 		return ""
 	}
 	acts := task.Outside()
-	if len(acts) > 0 {
-		s := acts[0].Command
-		if len(acts) > 1 {
-			s += " · " + a.L.T("result.more", len(acts)-1)
-		}
-		return s + " · " + a.L.T("outside.seen")
+	if len(acts) == 0 {
+		return ""
 	}
-	p := task.Place()
-	if done := task.Acted; done != nil && done.OK && done.Action == "merge" {
-		base := p.BaseBranch
-		if base == "" {
-			base = "main"
-		}
-		return a.L.T("outside.nothing.merged", base, a.cjkPad(a.device(p.Device)))
+	s := acts[0].Command
+	if len(acts) > 1 {
+		s += " · " + a.L.T("result.more", len(acts)-1)
 	}
-	if p.Kind == "repo" && p.Branch != "" {
-		return a.L.T("outside.nothing.repo", p.Branch, a.cjkPad(a.device(p.Device)))
-	}
-	return a.L.T("outside.nothing")
+	return s + " · " + a.L.T("outside.seen")
 }
 
 // resultActions are the next steps a finished repo task offers. They go
@@ -169,7 +164,7 @@ func (a *App) resultActions(c *ui.Context, task *store.Task) {
 	if base == "" {
 		base = "main"
 	}
-	ui.Row(c.Key("actions:" + task.ID)).Gap(8).Wrap().AlignItems(ui.Center).Children(func() {
+	ui.Row(c.Key("actions:" + task.ID)).Gap(t.S2).Wrap().AlignItems(ui.Center).Children(func() {
 		act := func(action string) {
 			task.Acting = action
 			a.TaskAction(task.ID, action)
@@ -180,20 +175,20 @@ func (a *App) resultActions(c *ui.Context, task *store.Task) {
 			// The result was lost with the connection and the Log doesn't
 			// show it done: say so, offer to try again, never claim a failure.
 			ui.Text(c.Key("unsure"), a.L.T("result.unsure")).FontSize(t.SM).TextColor(t.InkMuted)
-			if a.buttonFor(c, a.L.T("task.action.retry"), task.Title(), btnQuiet, 38, t.Surface) {
+			if a.buttonFor(c, a.L.T("task.action.retry"), task.Title(), btnSecondary, t.ControlMD, t.Surface) {
 				a.RetryAction(task)
 			}
 		} else if done := task.Acted; done != nil && done.OK && done.Action == "merge" {
 			ui.Text(c.Key("acted"), a.L.T("result.merged", base)).FontSize(t.SM).FontWeight(700).TextColor(t.Done.Ink)
 		} else {
-			if a.buttonFor(c, a.L.T("result.merge", base), task.Title(), btnPrimary, 38, t.Surface) {
+			if a.buttonFor(c, a.L.T("result.merge", base), task.Title(), btnPrimary, t.ControlMD, t.Surface) {
 				act("merge")
 			}
-			if a.buttonFor(c, a.L.T("result.pr"), task.Title(), btnQuiet, 38, t.Surface) {
+			if a.buttonFor(c, a.L.T("result.pr"), task.Title(), btnSecondary, t.ControlMD, t.Surface) {
 				act("open_pr")
 			}
 		}
-		if a.Route != RouteTask && a.buttonFor(c, a.L.T("result.changes"), task.Title(), btnText, 38, t.Surface) {
+		if a.Route != RouteTask && a.buttonFor(c, a.L.T("result.changes"), task.Title(), btnText, t.ControlMD, t.Surface) {
 			a.OpenTask(task.ID)
 		}
 	})
@@ -215,7 +210,7 @@ func (a *App) outsideCard(c *ui.Context, task *store.Task) {
 		}
 		ui.Text(c, a.L.T("outside.seen")).FontSize(t.XS).FontWeight(800).TextColor(t.Waiting.Ink)
 		for _, act := range acts {
-			ui.Text(c.Key(act.Seq), act.Command).Font(t.Mono).FontSize(11.5).LineHeight(1.45).Selectable().MaxLines(3)
+			ui.Text(c.Key(act.Seq), act.Command).Font(t.Mono).FontSize(t.MonoSM).LineHeight(1.45).Selectable().MaxLines(3)
 		}
 	})
 }

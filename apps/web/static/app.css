@@ -40,10 +40,16 @@
   --failed-surface: #fbdde4;
   --failed-ink: #8a1f3b;
 
-  --press-card: #e8d9c4;
+  /* Depth (docs/design/ui.md, Components): a ledge means "this can be pressed"; every
+     filled button has the same one (--ledge, in a darker shade of its fill) and sinks into
+     it. Containers never have a ledge: they rest on --raised or float on --floating. */
+  --ledge: 3px;
   --press-primary: #000000;
-  --press-quiet: #e0c9b0;
+  --press-quiet: #e0c9b0; /* secondary */
   --press-accent: #c9642a;
+  --raised: 0 2px 10px rgba(43, 33, 24, 0.07);
+  --elev: var(--raised); /* the name some rules use */
+  --floating: 0 10px 32px rgba(43, 33, 24, 0.14);
 
   --font: "Bricolage Grotesque", "PingFang SC", "Noto Sans SC", "Hiragino Sans GB", system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, "JetBrains Mono", monospace;
@@ -53,9 +59,19 @@
   --lg: 17px;
   --partner: 17px;
 
-  --r-sm: 14px;
-  --r-md: 20px;
-  --r-lg: 26px;
+  /* One 4-pt spacing scale and one radius scale (same as the desktop's tokens). */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --s7: 48px;
+  --r-xs: 8px; /* chips, glyph tiles */
+  --r-sm: 12px; /* buttons, fields */
+  --r-md: 16px; /* sheets, inset cards */
+  --r-lg: 22px; /* cards */
+  --r-xl: 28px; /* hero cards, the composer */
   --pill: 999px;
   --bubble: 22px 22px 8px 22px;
   --pebble: 6px 7px 5px 6px;
@@ -95,7 +111,8 @@
     --done-ink: #a6ecbb;
     --failed-surface: #3a1621;
     --failed-ink: #f8a9bc;
-    --press-card: #0d0a07;
+    --raised: 0 2px 10px rgba(0, 0, 0, 0.35);
+    --floating: 0 10px 32px rgba(0, 0, 0, 0.5);
     --press-primary: #8a7a66;
     --press-quiet: #0d0a07;
   }
@@ -124,7 +141,8 @@
   --done-ink: #a6ecbb;
   --failed-surface: #3a1621;
   --failed-ink: #f8a9bc;
-  --press-card: #0d0a07;
+  --raised: 0 2px 10px rgba(0, 0, 0, 0.35);
+  --floating: 0 10px 32px rgba(0, 0, 0, 0.5);
   --press-primary: #8a7a66;
   --press-quiet: #0d0a07;
 }
@@ -246,15 +264,16 @@ a {
   padding: 0 12px 0 10px;
   border-radius: 16px;
   background: var(--surface);
-  box-shadow: 0 4px 0 var(--press-card);
+  border: 1px solid var(--line);
+  box-shadow: 0 var(--ledge) 0 var(--press-quiet);
   font-weight: 700;
   flex-shrink: 0;
   transition: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
 }
 .press:active,
 .onhand-btn:active {
-  transform: translateY(3px);
-  box-shadow: 0 1px 0 var(--press-card);
+  transform: translateY(var(--ledge));
+  box-shadow: 0 0 0 transparent;
 }
 .pebbles {
   display: flex;
@@ -390,11 +409,10 @@ a {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  min-height: 34px;
+  min-height: 32px;
   padding: 4px 12px 4px 10px;
-  border-radius: 12px;
-  background: var(--surface);
-  box-shadow: 0 3px 0 var(--press-card);
+  border-radius: var(--r-xs);
+  background: var(--surface-sunken); /* flat: chips never look pressable */
   font-size: var(--sm);
   font-weight: 700;
   max-width: 100%;
@@ -406,8 +424,9 @@ a {
   white-space: nowrap;
 }
 .chip .s {
-  color: var(--ink-muted);
-  font-weight: 600;
+  color: inherit;
+  opacity: 0.85;
+  font-weight: 700;
   white-space: nowrap;
 }
 .status-line {
@@ -420,11 +439,9 @@ a {
 .sheet-proof {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 10px 12px;
-  padding: 12px 14px;
-  border-radius: var(--r-sm);
-  background: var(--surface-raised);
-  border: 1px solid var(--line-soft);
+  gap: var(--s2) var(--s3);
+  padding: var(--s1) 0 var(--s1) 14px;
+  border-left: 2px solid var(--line); /* light: hung from a hairline, no card */
 }
 .sheet-proof .k {
   font-size: var(--xs);
@@ -448,7 +465,7 @@ a {
   height: 28px;
   padding: 0 10px 0 8px;
   margin: 0 6px 6px 0;
-  border-radius: 9px;
+  border-radius: var(--r-xs);
   background: var(--surface-sunken);
   font-size: var(--xs);
   font-weight: 700;
@@ -476,7 +493,7 @@ a {
   justify-content: center;
   min-height: 44px;
   padding: 0 18px;
-  border-radius: 15px;
+  border-radius: var(--r-sm);
   font-weight: 700;
   font-size: var(--md);
   transition: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
@@ -485,24 +502,29 @@ a {
 .btn.primary {
   background: var(--ink);
   color: var(--bg);
-  box-shadow: 0 3px 0 var(--press-primary);
+  box-shadow: 0 var(--ledge) 0 var(--press-primary);
 }
 .btn.quiet {
   background: var(--surface);
-  box-shadow: 0 3px 0 var(--press-quiet);
+  border: 1px solid var(--line);
+  box-shadow: 0 var(--ledge) 0 var(--press-quiet);
 }
 .btn.accent {
   background: var(--accent);
   color: var(--on-accent);
-  box-shadow: 0 3px 0 var(--press-accent);
+  box-shadow: 0 var(--ledge) 0 var(--press-accent);
 }
 .btn.text {
   padding: 0 10px;
   color: var(--ink-soft);
 }
-.btn:active:not(:disabled) {
-  transform: translateY(3px);
+.btn:active:not(:disabled):not(.text) {
+  transform: translateY(var(--ledge));
   box-shadow: 0 0 0 transparent;
+}
+.btn.text:active:not(:disabled),
+.btn.text:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ink) 7%, transparent); /* flat: a soft tint only */
 }
 .btn:disabled {
   opacity: 0.5;
@@ -520,8 +542,8 @@ a {
 /* ---------- living message and decisions ---------- */
 .living {
   background: var(--surface);
-  border-radius: 26px;
-  box-shadow: 0 4px 0 var(--press-card);
+  border-radius: var(--r-xl);
+  box-shadow: var(--raised);
   padding: 18px 16px;
   display: flex;
   flex-direction: column;
@@ -718,7 +740,7 @@ a {
   padding: 6px 6px 6px 16px;
   border-radius: var(--r-lg);
   background: var(--surface);
-  box-shadow: 0 4px 0 var(--press-card);
+  box-shadow: var(--raised);
 }
 .composer textarea {
   flex: 1;
@@ -735,10 +757,10 @@ a {
 .send {
   width: 44px;
   height: 44px;
-  border-radius: 15px;
+  border-radius: var(--r-sm);
   background: var(--accent);
   color: var(--on-accent);
-  box-shadow: 0 3px 0 var(--press-accent);
+  box-shadow: 0 var(--ledge) 0 var(--press-accent);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -746,7 +768,7 @@ a {
   transition: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
 }
 .send:active {
-  transform: translateY(3px);
+  transform: translateY(var(--ledge));
   box-shadow: none;
 }
 .send:disabled {
@@ -797,7 +819,8 @@ a {
   padding: 13px 15px;
   border-radius: var(--r-sm);
   background: var(--surface);
-  box-shadow: 0 4px 0 var(--press-card);
+  border: 1px solid var(--line);
+  box-shadow: 0 var(--ledge) 0 var(--press-quiet);
   font-size: var(--md);
   text-align: left;
   transition: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
@@ -806,8 +829,8 @@ a {
 /* ---------- ask cards (notifications) ---------- */
 .ask {
   background: var(--surface);
-  border-radius: 22px;
-  box-shadow: 0 4px 0 var(--press-card);
+  border-radius: var(--r-lg);
+  box-shadow: var(--raised);
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -1073,7 +1096,8 @@ a {
   margin: 0 auto;
   z-index: 21;
   background: var(--bg);
-  border-radius: 28px 28px 0 0;
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  box-shadow: var(--floating);
   padding: 10px 16px calc(var(--safe-bottom) + 16px);
   display: flex;
   flex-direction: column;
@@ -1081,6 +1105,11 @@ a {
   max-height: 88vh;
   overflow-y: auto;
   animation: rise 360ms var(--spring);
+}
+/* Close is a secondary button, not a full-width bar (tapping outside closes too). */
+.sheet > .sheet-close {
+  align-self: center;
+  min-width: 120px;
 }
 .sheet .grab {
   width: 40px;

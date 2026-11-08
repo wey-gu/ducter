@@ -2,6 +2,7 @@ package views
 
 import (
 	"math"
+	"strings"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -30,13 +31,15 @@ func (a *App) firstRun(c *ui.Context) {
 			ui.Text(c, a.L.T("firstrun.title")).FontSize(28).FontWeight(800).LetterSpacing(-0.4)
 			ui.Text(c, a.L.T("firstrun.body")).FontSize(t.LG).LineHeight(1.55).TextColor(t.InkSoft)
 			a.commandBox(c, StartCommand)
-			ui.Text(c, a.L.T("firstrun.source")).FontSize(t.SM).TextColor(t.InkMuted)
 			ui.Box(c).Height(1).Background(t.LineSoft).Margin(4, 0)
 			ui.Row(c).Gap(12).AlignItems(ui.Center).Children(func() {
 				a.retryPulse(c)
 				ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
 					ui.Text(c, a.retryLine(c)).FontSize(t.MD).FontWeight(700)
-					if a.URL != "" {
+					if a.URL != "" && isLocalURL(a.URL) {
+						// Someone who has never heard of a WebSocket: say where, not the URL.
+						ui.Text(c, a.L.T("firstrun.where.local")).FontSize(t.SM).TextColor(t.InkMuted).SingleLine()
+					} else if a.URL != "" {
 						ui.Text(c, a.L.T("firstrun.where", a.URL)).Font(t.Mono).FontSize(11.5).TextColor(t.InkMuted).SingleLine()
 					}
 				})
@@ -53,6 +56,16 @@ func (a *App) firstRun(c *ui.Context) {
 			}
 		})
 	})
+}
+
+// isLocalURL: Ducter on this machine (loopback).
+func isLocalURL(u string) bool {
+	for _, h := range []string{"//127.0.0.1:", "//localhost:", "//[::1]:"} {
+		if strings.Contains(u, h) {
+			return true
+		}
+	}
+	return false
 }
 
 // retryLine says when the next attempt is.

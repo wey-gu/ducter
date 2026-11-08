@@ -50,8 +50,17 @@ export function Avatar({ size, state, big }: { size: number; state?: (typeof ART
   );
 }
 
-const Pebble = ({ att, size = 10 }: { att: string; size?: number }) => (
-  <i class={`pebble dot-${att}${att === "blocked" ? " waiting" : ""}`} style={{ width: size, height: size * 1.2 }} aria-hidden="true" />
+// No status dots (ui.md, "Shown, not dotted"): state is the thing itself, its words, or a
+// drawn mark for an exception.
+const Forward = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+    <path d="M2.5 7h9M8 3.5L11.5 7 8 10.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+  </svg>
+);
+const Cross = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+    <path d="M3.5 3.5l7 7M10.5 3.5l-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+  </svg>
 );
 
 const Check = () => (
@@ -250,7 +259,6 @@ function TaskChip({ task, detail }: { task: Task; detail?: string }) {
   const a = attention(task);
   return (
     <button class={`chip st-${a}`} onClick={() => A.go({ name: "task", id: task.id })}>
-      <Pebble att={a} />
       <span class="t">{title(task) || t("task.unknown")}</span>
       <span class="s">{(!sameWords(detail, title(task)) && detail) || stateLabel(a)}</span>
     </button>
@@ -381,8 +389,7 @@ function JobRow({ e, chipOwner }: { e: Entry; chipOwner: Map<string, number> }) 
             </div>
           )
         ) : (
-          <div class="status-line" style={{ marginTop: 8 }}>
-            <Pebble att={st.state === "done" ? "done" : st.state === "failed" ? "failed" : "working"} />
+          <div class={`status-line${st.state === "failed" ? " failed" : ""}`} style={{ marginTop: 8 }}>
             {st.text}
           </div>
         ))}
@@ -394,7 +401,7 @@ function LivingLine({ it }: { it: LivingItem }) {
   const text = it.title ? `${it.title} · ${it.text}` : it.text;
   return (
     <button class={`line k-${it.kind}`} onClick={() => it.taskId && A.go({ name: "task", id: it.taskId })}>
-      <span class="ic">{it.kind === "done" ? <Check /> : it.kind === "blocked" ? <Clock /> : <Pebble att={it.kind === "failed" ? "failed" : "working"} />}</span>
+      <span class="ic">{it.kind === "done" ? <Check /> : it.kind === "blocked" ? <Clock /> : it.kind === "failed" ? <Cross /> : <Forward />}</span>
       <span class="tx">{text}</span>
     </button>
   );
@@ -472,18 +479,9 @@ function EntryView({ e, chipOwner, livingItems }: { e: Entry; chipOwner: Map<str
 // ---------- header, composer ----------
 
 function OnHandButton() {
-  const b = A.S.board();
-  const pebbles: Task[] = [];
-  for (const lane of [LANE.needs, LANE.working, LANE.waiting]) for (const task of b.lanes[lane]!) if (pebbles.length < 5) pebbles.push(task);
+  // Just the word: the header line says what needs you, in words; no row of colored dots.
   return (
     <button class="onhand-btn" onClick={() => A.go({ name: "onhand" })}>
-      {pebbles.length > 0 && (
-        <span class="pebbles">
-          {pebbles.map((p) => (
-            <Pebble key={p.id} att={attention(p)} />
-          ))}
-        </span>
-      )}
       {t("nav.onhand")}
     </button>
   );
@@ -686,7 +684,6 @@ function Hello() {
               document.getElementById("composer")?.focus();
             }}
           >
-            <Pebble att={["", "working", "done", "blocked"][i]!} />
             {t(`suggest.${i}`)}
           </button>
         ))}
@@ -712,7 +709,6 @@ function waitReason(task: Task): string {
 function Row({ task, meta, waiting }: { task: Task; meta: string; waiting?: boolean }) {
   return (
     <button class={`row${waiting ? " waiting" : ""}`} onClick={() => A.go({ name: "task", id: task.id })}>
-      <Pebble att={attention(task)} size={12} />
       <span class="main">
         <span class="t">{title(task) || t("task.unknown")}</span>
         <span class="m">{meta}</span>
@@ -753,7 +749,7 @@ export function OnHand() {
           <>
             <section class="section">
               <h3>
-                <Pebble att="needs_you" /> {t("lane.needs_you")} <span class="n">{needs.length + partnerDs.length || ""}</span>
+                {t("lane.needs_you")} <span class="n">{needs.length + partnerDs.length || ""}</span>
                 {openCount >= 2 && (
                   <span style={{ marginLeft: "auto" }}>
                     <Btn kind="quiet" label={t("decision.goall", openCount)} onClick={() => A.goOnAllDefaults()} />
@@ -774,7 +770,7 @@ export function OnHand() {
             {working.length > 0 && (
               <section class="section">
                 <h3>
-                  <Pebble att="working" /> {t("lane.working")} <span class="n">{working.length}</span>
+                  {t("lane.working")} <span class="n">{working.length}</span>
                 </h3>
                 {working.map((task) => (
                   <Row key={task.id} task={task} meta={metaLine(task)} />
@@ -784,7 +780,7 @@ export function OnHand() {
             {(waiting.length > 0 || loose.length > 0) && (
               <section class="section">
                 <h3>
-                  <Pebble att="blocked" /> {t("lane.waiting")} <span class="n">{waiting.length + loose.length}</span>
+                  {t("lane.waiting")} <span class="n">{waiting.length + loose.length}</span>
                 </h3>
                 {waiting.map((task) => (
                   <Row key={task.id} task={task} meta={waitReason(task)} waiting />
@@ -803,7 +799,7 @@ export function OnHand() {
             {done.length > 0 && (
               <section class="section">
                 <h3>
-                  <Pebble att="done" /> {t("lane.done")} <span class="n">{done.length}</span>
+                  {t("lane.done")} <span class="n">{done.length}</span>
                 </h3>
                 {done.map((task) => {
                   const r = reportOf(task);
@@ -888,7 +884,7 @@ export function TaskView({ id }: { id: string }) {
       <main class="scroll" ref={scroller} style={{ gap: 14 }}>
         <div class="task-head">
           <span class={`state st-${a}`}>
-            <Pebble att={a} size={9} /> {stateLabel(a)}
+            {stateLabel(a)}
           </span>
           <h1>{title(task) || t("task.unknown")}</h1>
           <div class="meta">

@@ -1,0 +1,23 @@
+/* The iPhone app's own words. Keys and words come from the glossary tables
+   (apps/web/src/i18n.ts, apps/desktop/internal/i18n/i18n.go); the connect.app.* keys are the app's. */
+"connect.title" = "Connect to your Ducter";
+"connect.app.body" = "On the computer running Ducter, run ducter pair, then scan the QR code it shows.";
+"connect.app.scan" = "Scan the QR code";
+"connect.app.or" = "or type them in";
+"connect.address" = "Address";
+"connect.address.placeholder" = "ducter.example.com, or paste the whole link";
+"connect.code" = "Code";
+"connect.code.placeholder" = "K7QM-4XPA";
+"connect.go" = "Connect";
+"connect.phone.safe" = "The code works once. After that this phone remembers the connection; disconnect it anytime with ducter devices on that computer.";
+"connect.err.address" = "That doesn't look like an address.";
+"connect.err.unreachable" = "Can't reach %@. Is the address right? If you use an SSH tunnel, is it still open?";
+"connect.other" = "Connect to another Ducter";
+"conn.connecting" = "Connecting…";
+"task.action.retry" = "Try again";
+"decision.go" = "Go";
+"decision.hold" = "Hold";
+"decision.reply" = "Reply…";
+"decision.reply.placeholder" = "Reply about this…";
+"composer.send" = "Send";
+"notify.action.failed" = "That didn't go through. Open Ducter and answer it there.";

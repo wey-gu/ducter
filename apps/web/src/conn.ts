@@ -56,6 +56,7 @@ export function codeFromHash(hash: string): string {
 export function deviceName(ua = navigator.userAgent): { name: string; platform: string } {
   const platform = /iPhone|iPad|iPod/.test(ua) ? "ios" : /Android/.test(ua) ? "android" : /Macintosh/.test(ua) ? "macos" : "web";
   const model = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) ? "iPad" : /Android/.test(ua) ? "Android phone" : "Browser";
+  if (/DucterApp\//.test(ua)) return { name: `${model} · Ducter`, platform }; // the iPhone app (apps/ios)
   const browser = /CriOS|Chrome\//.test(ua) && !/Edg\//.test(ua) ? "Chrome" : /FxiOS|Firefox\//.test(ua) ? "Firefox" : /Edg\//.test(ua) ? "Edge" : /Safari\//.test(ua) ? "Safari" : "";
   return { name: browser ? `${model} · ${browser}` : model, platform };
 }
@@ -80,7 +81,7 @@ export interface Me {
   personaName: string;
   deviceId?: string;
   deviceName?: string;
-  push: { supported: boolean; publicKey?: string };
+  push: { supported: boolean; publicKey?: string; apns?: boolean };
 }
 
 export class Api {

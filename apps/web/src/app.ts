@@ -3,6 +3,7 @@ import type { ClientFrame, ServerFrame } from "@ducter/protocol";
 import { Api, Connection, type ConnStatus, type Me, wsUrl } from "./conn.ts";
 import { detectLang, langOfText, strings, type Strings } from "./i18n.ts";
 import { pushState, type PushState } from "./push-client.ts";
+import { haptic } from "./native.ts";
 import { attention, finished, LANE, laneOf, looksSecret, Store, title, type DecisionState, type Entry } from "./store.ts";
 
 export type Route = { name: "conv" } | { name: "onhand" } | { name: "task"; id: string };
@@ -261,6 +262,7 @@ class AppState {
     if (d) d.pending = option;
     this.replyOpen.delete(id);
     if (navigator.vibrate) navigator.vibrate(8);
+    haptic(option === "go" ? "success" : "light");
     this.markRead();
     this.send({ t: "decide", decisionId: id, option, ...(text ? { text } : {}) });
     this.changed();

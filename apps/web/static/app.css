@@ -48,6 +48,7 @@
   --press-quiet: #e0c9b0; /* secondary */
   --press-accent: #c9642a;
   --raised: 0 2px 10px rgba(43, 33, 24, 0.07);
+  --elev: var(--raised); /* the name some rules use */
   --floating: 0 10px 32px rgba(43, 33, 24, 0.14);
 
   --font: "Bricolage Grotesque", "PingFang SC", "Noto Sans SC", "Hiragino Sans GB", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -1104,6 +1105,11 @@ a {
   max-height: 88vh;
   overflow-y: auto;
   animation: rise 360ms var(--spring);
+}
+/* Close is a secondary button, not a full-width bar (tapping outside closes too). */
+.sheet > .sheet-close {
+  align-self: center;
+  min-width: 120px;
 }
 .sheet .grab {
   width: 40px;

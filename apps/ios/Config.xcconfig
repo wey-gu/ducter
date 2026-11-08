@@ -1,0 +1,7 @@
+// Defaults for the Ducter iPhone app. To sign with your own team or bundle id, put overrides in
+// Local.xcconfig next to this file (gitignored), e.g.
+//   DEVELOPMENT_TEAM = ABCDE12345
+//   DUCTER_BUNDLE_ID = com.example.ducter
+DUCTER_BUNDLE_ID = co.nowledge.ducter.ios
+DEVELOPMENT_TEAM = JMU55RJW2K
+#include? "Local.xcconfig"

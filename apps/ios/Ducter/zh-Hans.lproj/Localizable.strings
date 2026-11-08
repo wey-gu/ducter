@@ -1,0 +1,22 @@
+/* 词来自术语表（apps/web/src/i18n.ts、apps/desktop/internal/i18n/i18n.go）；connect.app.* 是 App 自己的。 */
+"connect.title" = "连接到你的 Ducter";
+"connect.app.body" = "在运行 Ducter 的那台电脑上运行 ducter pair，然后扫它给的二维码。";
+"connect.app.scan" = "扫二维码";
+"connect.app.or" = "或者手动填";
+"connect.address" = "地址";
+"connect.address.placeholder" = "ducter.example.com，或者粘贴整条链接";
+"connect.code" = "连接码";
+"connect.code.placeholder" = "K7QM-4XPA";
+"connect.go" = "连上";
+"connect.phone.safe" = "这个码只能用一次。之后这台手机会记住这个连接；随时可以在那台电脑上用 ducter devices 断开它。";
+"connect.err.address" = "这看起来不像一个地址。";
+"connect.err.unreachable" = "连不上 %@。地址对吗？用 SSH 隧道的话，隧道还开着吗？";
+"connect.other" = "连接到另一个 Ducter";
+"conn.connecting" = "正在连上…";
+"task.action.retry" = "再试一次";
+"decision.go" = "好";
+"decision.hold" = "先等等";
+"decision.reply" = "回复…";
+"decision.reply.placeholder" = "回复这件事…";
+"composer.send" = "发送";
+"notify.action.failed" = "没发出去。打开 Ducter 在那里回一下。";

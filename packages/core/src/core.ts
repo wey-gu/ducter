@@ -17,6 +17,8 @@ import { createWaiters, type Waiters } from "./waiters.ts";
 import { createWsHandler, type WsData } from "./ws.ts";
 import { createGate, openDeviceAuth, type DeviceAuth } from "./auth.ts";
 import { createWorkers, deviceRoutes, splitSockets, type Workers, type WorkerSocketData } from "./workers.ts";
+import { createPusher, openPushStore, type Pusher, type PushStore } from "./push.ts";
+import { webApi, webStatic } from "./web.ts";
 
 export interface CoreOptions {
   dataDir?: string;
@@ -27,6 +29,9 @@ export interface CoreOptions {
   defaultDelayMs?: number;
   batchMs?: number;
   sweepMs?: number; // how often live device sockets are re-checked for revocation (default 10 s)
+  push?: boolean; // send Web Push (default on; env DUCTER_PUSH=off turns it off)
+  pushHoldMs?: number;
+  pushFetch?: (url: string, init: RequestInit) => Promise<Response>; // tests
 }
 
 export interface Core extends CoreApi {
@@ -38,6 +43,8 @@ export interface Core extends CoreApi {
   devices: DeviceAuth;
   workers: Workers;
   waiters: Waiters;
+  push: PushStore;
+  pusher: Pusher;
   port: number;
   url: string; // ws URL for clients
   setRunner(r: Runner): void;
@@ -119,6 +126,19 @@ export function startCore(opts: CoreOptions = {}): Core {
   });
   api.workers = workers; // the runner places tasks on workers through this (runner/src/remote.ts)
   const sockets = splitSockets(ws.websocket, workers, { isLive: (id) => devices.isLive(id), sweepMs: opts.sweepMs });
+  const push = openPushStore(dataDir);
+  const pusher = createPusher({
+    log,
+    store: push,
+    clock,
+    personaName: () => persona.name,
+    taskTitle: (id) => tasks.get(id)?.title,
+    lastSummary: (id) => tasks.get(id)?.lastReport?.summary,
+    holdMs: opts.pushHoldMs ?? (Number(process.env.DUCTER_PUSH_HOLD_MS) || undefined),
+    enabled: opts.push ?? process.env.DUCTER_PUSH !== "off",
+    fetcher: opts.pushFetch,
+    alive: (s) => s.deviceId === "local" || devices.isLive(s.deviceId),
+  });
 
   const server = Bun.serve<WsData | WorkerSocketData>({
     hostname: opts.hostname ?? (process.env.DUCTER_HOST || "127.0.0.1"),
@@ -126,11 +146,16 @@ export function startCore(opts: CoreOptions = {}): Core {
     idleTimeout: 120,
     async fetch(req, srv) {
       const url = new URL(req.url);
+      // The phone/web client's own files are public (web.ts); everything it talks to is not.
+      const page = await webStatic(req);
+      if (page) return page;
       // Off-machine callers need a paired device token (auth.ts); /pair is answered here.
       const g = await gate.check(req, srv.requestIP(req)?.address);
       if (!g.pass) return g.response;
       const d = deviceRoutes(req, g, srv, workers);
       if (d) return d === "upgraded" ? undefined : d;
+      const api = await webApi(req, g, { decisions, push, pusher, personaName: () => persona.name });
+      if (api) return api;
       if (url.pathname === "/ws") {
         // Block cross-site WebSocket hijacking from browser pages; native clients send no Origin.
         // A device token can't ride along ambiently (no cookies), so it needs no origin check.
@@ -138,6 +163,8 @@ export function startCore(opts: CoreOptions = {}): Core {
         if (g.via === "local" && origin && !/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?\/?$/.test(origin)) return new Response("forbidden", { status: 403 });
         // The device rides along so a revoked device's live socket can be closed (workers.ts).
         const data = { ...ws.newData(), ...(g.via === "device" ? { device: g.device } : {}) };
+        // A browser that offered ["ducter", <token>] gets "ducter" back: Bun echoes the first
+        // offered subprotocol by itself (adding the header again would send it twice).
         return srv.upgrade(req, { data }) ? undefined : new Response("upgrade failed", { status: 400 });
       }
       if (url.pathname === "/mcp") return mcp.handle(req);
@@ -159,6 +186,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     devices,
     workers,
     waiters,
+    push,
+    pusher,
     port,
     url: `ws://127.0.0.1:${port}/ws`,
     setRunner: (r) => void (runner = r),
@@ -174,6 +203,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       decisions.stop();
       living.stop();
       waiters.stop();
+      pusher.stop();
       void server.stop(true); // awaiting hangs in Bun 1.3 when a WebSocket was open
       log.close();
       devices.close();

@@ -12,6 +12,7 @@ import { detectLocale, translator, type T } from "./i18n.ts";
 import { fetchSnapshot, formatSnapshot } from "./status.ts";
 import { cmdDevices, cmdPair, cmdService, isLoopback, publicUrl } from "./remote.ts";
 import { cmdWorker } from "./worker.ts";
+import { parentPid, watchParent } from "./parent.ts";
 import { scriptedRunnerModule } from "./scripted.ts";
 import { hostname } from "node:os";
 import { openDeviceAuth } from "@ducter/core/src/auth.ts";
@@ -129,6 +130,9 @@ async function cmdOpen(ctx: Ctx): Promise<number> {
 
 async function cmdUp(ctx: Ctx): Promise<number | "running"> {
   const { t, style } = ctx;
+  // Started by Ducter.app: stop when the app goes away (quit, crash), like any child of it.
+  const parent = parentPid(process.env);
+  if (parent) watchParent(parent, () => process.kill(process.pid, "SIGTERM"));
   const state = await ctx.host.port(ctx.port);
   if (state === "ducter") {
     const snap = await fetchSnapshot(ctx.port);

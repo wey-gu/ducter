@@ -231,6 +231,12 @@ export function rateKey(req: Request, peerIp: string | undefined): string {
   return peerIp || "?";
 }
 
+/** The device token a browser offered as a WebSocket subprotocol, if any. */
+export function wsProtocolToken(req: Request): string | undefined {
+  const offered = (req.headers.get("sec-websocket-protocol") ?? "").split(",").map((p) => p.trim());
+  return offered.find((p) => p.startsWith("dvc."));
+}
+
 export type GateResult = { pass: true; via: "local" } | { pass: true; via: "device"; device: Device } | { pass: false; response: Response };
 
 export interface Gate {
@@ -247,6 +253,9 @@ export function createGate(opts: { auth: DeviceAuth; trustLoopback?: boolean; pe
     // On /mcp, Authorization carries the MCP role token, never a device token.
     const a = req.headers.get("authorization") ?? "";
     if (path !== "/mcp" && a.startsWith("Bearer ")) return a.slice(7).trim();
+    // A browser can't set headers on a WebSocket: the web client offers its token as a
+    // subprotocol (`new WebSocket(url, ["ducter", token])`); core answers with "ducter".
+    if (path === "/ws") return wsProtocolToken(req);
   };
   return {
     async check(req, peerIp) {

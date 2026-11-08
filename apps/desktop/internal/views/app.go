@@ -71,6 +71,10 @@ type App struct {
 	// a token from an old pairing): the connect card shows, with a line.
 	Unauthorized bool
 	conn         connectState
+	// Backend is the Ducter this app runs itself (Ducter.app); nil when
+	// the window only connects.
+	Backend Backend
+	setup   setupState
 
 	Route  Route
 	TaskID string
@@ -193,6 +197,8 @@ func (a *App) View(c *ui.Context) {
 		switch {
 		case a.Unauthorized || (!a.S.Welcomed && a.conn.open):
 			a.connect(c)
+		case a.setupActive():
+			a.setupView(c)
 		case !a.S.Welcomed && a.Failed:
 			a.firstRun(c)
 		case a.Route == RouteOnHand:
@@ -427,6 +433,11 @@ func (a *App) readWhenSeen(c *ui.Context) {
 func (a *App) Welcomed() {
 	a.Failed = false
 	a.readSent = 0
+	// The app opens before the Ducter it starts writes firstrun.json:
+	// read the hints again once it answers.
+	if a.Backend != nil && a.Local != nil && a.Local.Hints == nil && a.Local.Dir != "" {
+		a.Local.Reload()
+	}
 	a.Status = client.Connected // a welcome means the socket is up
 	a.flushOutbox()
 	if a.Route == RouteTask && a.TaskID != "" {

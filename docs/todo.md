@@ -18,8 +18,12 @@ token gate, Caddy and SSH-tunnel paths, desktop connect card, worker enrollment/
 - [ ] **Verify `scripts/caddy-setup.sh` on a real VPS + domain** (ACME, renewal, WebSocket
       through Caddy with TLS). Trigger: first real VPS install.
 - [ ] Keychain for the desktop token (today a 0600 file under the user config dir).
-- [ ] Device key + passkey and the phone/web pairing page `/pair#c=…` (today it answers with a
-      one-line text). Trigger: the web client.
+- [ ] Device key + passkey for the phone/web client (the `/pair#c=…` page and code pairing
+      exist: `apps/web`). Trigger: the Ducter Edge, or a second phone per user.
+- [ ] Phone web: verify iOS Home Screen push on a real iPhone (16.4+), and whether a token
+      paired in Safari carries into the Home Screen app (if not, pair from the installed app).
+      Verify `PushManager.subscribe` on a real Android Chrome (Chromium builds here have no
+      push service). Trigger: first phone install.
 - [ ] `ducter service` on macOS (launchd) for a Mac that serves others.
 - [ ] Shared Linux hosts: loopback is token-free, so other local users could connect. Offer
       `DUCTER_LOCAL_TRUST=off` in doctor when `who`/`/etc/passwd` shows other human users.

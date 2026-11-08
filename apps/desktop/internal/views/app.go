@@ -85,6 +85,12 @@ type App struct {
 	// livingAway remembers, per living message, whether it came while
 	// the user was away.
 	livingAway map[int64]bool
+	// LocaleFixed keeps the language as given (DUCTER_LOCALE); otherwise
+	// it follows the user's first message (localeSet once it did).
+	LocaleFixed bool
+	localeSet   bool
+	// focusComposer asks the shown composer to take the keyboard.
+	focusComposer bool
 	// doneAt is when a task last came back done (the done glow).
 	doneAt time.Time
 	// historyAsked marks the tasks whose stream was asked for.
@@ -136,6 +142,7 @@ func (a *App) View(c *ui.Context) {
 		a.mdTask.Theme = a.markdownTheme(14, 1.55)
 	}
 	c.SetTheme(a.uiTheme)
+	a.shortcuts(c)
 	ui.Column(c).Fill().Background(a.T.Bg).TextColor(a.T.Ink).Font(a.T.Body).Children(func() {
 		switch {
 		case !a.S.Welcomed && a.Failed:
@@ -148,6 +155,35 @@ func (a *App) View(c *ui.Context) {
 			a.conversation(c)
 		}
 	})
+}
+
+// shortcuts: Esc goes up one level, Cmd+1 the conversation, Cmd+2 On
+// hand, Cmd+K the composer of the level shown.
+func (a *App) shortcuts(c *ui.Context) {
+	switch {
+	case c.Shortcut(ui.Cmd, ui.Key1):
+		a.Route = RouteConversation
+	case c.Shortcut(ui.Cmd, ui.Key2):
+		a.Route = RouteOnHand
+	case c.Shortcut(ui.Cmd, ui.KeyK):
+		if a.Route == RouteOnHand {
+			a.Route = RouteConversation
+		}
+		a.focusComposer = true
+	case c.Shortcut(0, ui.KeyEscape):
+		a.Up()
+	}
+}
+
+// Up goes up one zoom level: an opened task to On hand, On hand to the
+// conversation.
+func (a *App) Up() {
+	switch a.Route {
+	case RouteTask:
+		a.Route = RouteOnHand
+	case RouteOnHand:
+		a.Route = RouteConversation
+	}
 }
 
 func (a *App) markdownTheme(size, leading float32) *markdown.Theme {
@@ -365,10 +401,31 @@ func (a *App) Receive(f protocol.ServerFrame) {
 	}
 	a.noteResults(f)
 	a.S.Apply(f)
+	a.followUserLanguage()
 	if f.T == "welcome" {
 		a.Welcomed()
 	}
 	a.Applied(f)
+}
+
+// followUserLanguage speaks the language of the user's first message,
+// unless DUCTER_LOCALE pins one (LocaleFixed).
+func (a *App) followUserLanguage() {
+	if a.LocaleFixed || a.localeSet {
+		return
+	}
+	for _, e := range a.S.Channel {
+		if e.User == nil {
+			continue
+		}
+		if l := i18n.FromText(e.User.Text); l != "" {
+			a.localeSet = true
+			if l != a.L.Lang {
+				a.L = i18n.New(l)
+			}
+		}
+		return
+	}
 }
 
 // Applied is called after the store applied a frame: it refreshes what

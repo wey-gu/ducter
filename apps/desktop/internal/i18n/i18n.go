@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"unicode"
 )
 
 // Lang is a supported language.
@@ -21,6 +22,9 @@ const (
 type Table map[string]string
 
 var zh = Table{
+	"task.dossier.body":             "谁在做",
+	"task.dossier.reason":           "为什么是它",
+	"task.dossier.body.none":        "还没有用量",
 	"face.done":                     "%s 刚交回一件事",
 	"face.napping":                  "%s 还没醒",
 	"weekday.0":                     "周日 %s",
@@ -185,6 +189,9 @@ var zh = Table{
 }
 
 var en = Table{
+	"task.dossier.body":             "Who's doing it",
+	"task.dossier.reason":           "Why this one",
+	"task.dossier.body.none":        "No usage yet",
 	"face.done":                     "%s just handed something back",
 	"face.napping":                  "%s isn't up yet",
 	"weekday.0":                     "Sun %s",
@@ -395,6 +402,27 @@ func Detect(preferred []string) Lang {
 		return l
 	}
 	return EN
+}
+
+// Fixed reports whether DUCTER_LOCALE pins the language.
+func Fixed() bool { return os.Getenv("DUCTER_LOCALE") != "" }
+
+// FromText guesses the language a person writes in: Chinese with any Han
+// character, English with Latin words and none, else "".
+func FromText(text string) Lang {
+	latin := 0
+	for _, r := range text {
+		switch {
+		case unicode.Is(unicode.Han, r):
+			return ZH
+		case r < 0x80 && unicode.IsLetter(r):
+			latin++
+		}
+	}
+	if latin >= 3 {
+		return EN
+	}
+	return ""
 }
 
 func parse(tag string) Lang {

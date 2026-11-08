@@ -41,7 +41,7 @@ func (a *App) taskHeader(c *ui.Context, task *store.Task) {
 	ui.Row(c).Gap(12).Wrap().AlignItems(ui.Center).Children(func() {
 		ui.Row(c).Gap(8).Grow(1).MinWidth(0).AlignItems(ui.Center).Children(func() {
 			crumb := func(label string, to Route) {
-				l := ui.Text(c.Key(label), label).FontSize(14).FontWeight(700).TextColor(t.InkMuted).Cursor(ui.CursorPointer).Role(ui.RoleLink)
+				l := ui.Text(c.Key(label), label).FontSize(14).FontWeight(700).TextColor(t.InkMuted).Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Padding(6, 4)
 				if l.Hovered() {
 					l.TextColor(t.Ink)
 				}
@@ -192,7 +192,7 @@ func (a *App) transcript(c *ui.Context, task *store.Task) {
 		}
 		draft := a.taskDrafts[task.ID]
 		ui.Row(c).Gap(8).Margin(0, 12, 12, 12).Padding(6, 6, 6, 14).Radius(18).Background(t.Bg).AlignItems(ui.Center).Children(func() {
-			ui.TextArea(c.Key("taskcomposer:"+task.ID), &draft).Lines(1, 6).MinHeight(0).Placeholder(a.L.T("composer.task")).
+			ta := ui.TextArea(c.Key("taskcomposer:"+task.ID), &draft).Lines(1, 6).MinHeight(0).Placeholder(a.L.T("composer.task")).
 				Label(a.L.T("composer.task")).
 				Background(ui.Transparent).Border(0, ui.Transparent).Padding(8, 0).Grow(1).FontSize(14).
 				OnTextKey(func(k ui.TextKey) bool {
@@ -204,6 +204,10 @@ func (a *App) transcript(c *ui.Context, task *store.Task) {
 					}
 					return false
 				})
+			if a.focusComposer {
+				ta.Focus()
+				a.focusComposer = false
+			}
 			if a.iconButton(c, a.L.T("composer.send"), 44, t.Ink, t.PressPrimary, drawSend(t.OnUserBubble)) {
 				if a.SendToTask(task.ID, draft) {
 					draft = ""
@@ -636,21 +640,20 @@ func (a *App) dossierCard(c *ui.Context, title string, body func()) {
 
 func (a *App) dossier(c *ui.Context, task *store.Task) {
 	t := a.T
-	who := harnessName(task.Harness())
-	if who == "" {
-		who = "?"
-	}
-	title := who
-	if task.BodyReason() != "" {
-		title = a.L.T("task.dossier.why", who)
+	// The body: which harness and model, why this one, what it used.
+	title := a.bodyLine(task)
+	if title == "" {
+		title = a.L.T("task.dossier.body")
 	}
 	a.dossierCard(c, title, func() {
 		if r := task.BodyReason(); r != "" {
+			ui.Text(c, a.L.T("task.dossier.reason")).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted)
 			ui.Text(c, r).FontSize(t.SM).LineHeight(1.55).TextColor(t.InkSoft)
 		}
-		ui.Text(c, a.bodyLine(task)).FontSize(t.XS).TextColor(t.InkMuted)
 		if u := task.Usage; u.InputTokens+u.OutputTokens+u.CacheRead > 0 {
 			ui.Text(c, a.L.T("task.usage", tokens(u.InputTokens+u.CacheRead+u.CacheWrite), tokens(u.OutputTokens))).FontSize(t.XS).TextColor(t.InkMuted)
+		} else if task.BodyReason() == "" {
+			ui.Text(c, a.L.T("task.dossier.body.none")).FontSize(t.XS).TextColor(t.InkMuted)
 		}
 	})
 	a.dossierCard(c, a.L.T("task.dossier.checkpoints"), func() {

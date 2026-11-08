@@ -552,7 +552,7 @@ func (a *App) composer(c *ui.Context) {
 		box := ui.Row(c).Grow(1).MaxWidth(convWidth).Gap(10).AlignItems(ui.Center).Padding(8, 8, 8, 22).
 			Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.PressCard.Offset, 0, 0, t.PressCard.Color)
 		box.Children(func() {
-			ui.TextArea(c.Key("composer"), &a.draft).Lines(1, 8).MinHeight(0).Placeholder(a.L.T("composer.placeholder", a.S.PersonaName)).
+			ta := ui.TextArea(c.Key("composer"), &a.draft).Lines(1, 8).MinHeight(0).Placeholder(a.L.T("composer.placeholder", a.S.PersonaName)).
 				Label(a.L.T("composer.label", a.S.PersonaName)).AutoFocus().
 				Background(ui.Transparent).Border(0, ui.Transparent).Padding(12, 0).Grow(1).FontSize(17).
 				OnTextKey(func(k ui.TextKey) bool {
@@ -564,6 +564,10 @@ func (a *App) composer(c *ui.Context) {
 					}
 					return false // Shift+Enter breaks the line
 				})
+			if a.focusComposer {
+				ta.Focus()
+				a.focusComposer = false
+			}
 			if a.iconButton(c, a.L.T("composer.send"), 52, t.Accent, t.PressAccent, drawSend(t.OnAccent)) {
 				if a.SendMessage(a.draft) {
 					a.draft = ""

@@ -88,3 +88,24 @@ test("card carries openedAt and the open decision with askedAt; cleared on resol
   expect(tasks.get("t1")!.pendingDecisionId).toBeUndefined();
   expect(tasks.get("t1")!.openedAt).toBe(opened.ts);
 });
+
+test("a waiter tied to a question is cancelled when the question is answered, also across a restart", () => {
+  const { path, clock, log, waiters } = setup();
+  const at = new Date(clock.now() + 3600_000).toISOString();
+  const arm = (reason: string, decisionId?: string) =>
+    log.append({ stream: "channel", origin: "waiter", kind: "waiter", body: { waiterId: `w_${reason}`, at, reason, state: "armed", ...(decisionId ? { decisionId } : {}) } });
+  arm("chase-d1", "d1");
+  arm("chase-d2", "d2");
+  arm("plain");
+  log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body: { decisionId: "d1", option: "go", by: "user" } });
+  expect(states(log)).toEqual(["chase-d1:armed", "chase-d2:armed", "plain:armed", "chase-d1:cancelled"]);
+  waiters.stop();
+  // d2 is answered while core is down: the rebuilt waiters cancel it at start.
+  log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body: { decisionId: "d2", option: "hold", by: "user" } });
+  log.close();
+  const log2 = openLog({ path, persona: "default", clock });
+  createWaiters({ log: log2, clock });
+  expect(states(log2).slice(-1)).toEqual(["chase-d2:cancelled"]);
+  clock.advance(3600_000);
+  expect(states(log2).filter((s) => s.endsWith("fired"))).toEqual(["plain:fired"]);
+});

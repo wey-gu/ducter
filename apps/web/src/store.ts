@@ -50,6 +50,7 @@ export interface Task {
   seqs: Set<number>;
   historyLoaded: boolean;
   openedAt?: string;
+  openSeq?: number; // seq of the task_open in `open` (a retitle is a later one)
   sends: Send[];
   acting?: string;
   acted?: { action: string; ok: boolean; message?: string; ref?: string };
@@ -323,8 +324,9 @@ export class Store {
     t.events.splice(i, 0, ev);
     switch (ev.kind) {
       case "task_open":
-        t.open = ev.body as Bodies["task_open"];
-        t.openedAt = ev.ts;
+        // A retitle is a later task_open for the same task: the latest names it, the first dates it.
+        if (!t.open || ev.seq >= (t.openSeq ?? 0)) (t.open = ev.body as Bodies["task_open"]), (t.openSeq = ev.seq);
+        if (!t.openedAt || ev.ts < t.openedAt) t.openedAt = ev.ts;
         break;
       case "task_state":
         t.state = ev.body as Bodies["task_state"];

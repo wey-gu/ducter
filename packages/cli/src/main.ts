@@ -207,7 +207,7 @@ async function cmdUp(ctx: Ctx): Promise<number | "running"> {
       box(t("up.ready", { name }), [
         [t("up.where"), t("up.where.value", { dir: tilde(core.dataDir) })],
         // Core doesn't wait for Mem (~6 s); "loading" means nmem answered slowly, not that it's missing.
-        [t("up.memory"), booted.identitySource === "nowledge-mem" ? t("up.memory.mem") : booted.identitySource === "loading" ? t("up.memory.loading") : t("up.memory.default")],
+        [t("up.memory"), booted.identitySource === "off" ? t("up.memory.off") : booted.identitySource === "nowledge-mem" ? t("up.memory.mem") : booted.identitySource === "loading" ? t("up.memory.loading") : t("up.memory.default")],
         [t("up.desktop"), desktopLine],
         ...(desktop ? [] : ([[t("up.address"), core.url]] as [string, string][])),
         [t("up.reach"), t("up.reach.value")],

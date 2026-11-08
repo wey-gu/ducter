@@ -25,8 +25,10 @@ export function identityFromBundle(b: any): { name?: string; identity?: string }
   return { name: agent.display_name || undefined, identity: lines.length ? lines.join("\n") : undefined };
 }
 
-export async function loadPersona(opts: { timeoutMs?: number; bin?: string } = {}): Promise<Persona & { source: string }> {
+export async function loadPersona(opts: { timeoutMs?: number; bin?: string; off?: boolean } = {}): Promise<Persona & { source: string }> {
   const fallback = { id: "default", name: process.env.DUCTER_PERSONA_NAME || "Ducter", identity: DEFAULT_IDENTITY, source: "default" };
+  // Memory off means the partner neither recalls, saves, nor reads its identity from Mem.
+  if ((opts.off ?? process.env.DUCTER_MEMORY === "off")) return { ...fallback, source: "off" };
   try {
     const proc = Bun.spawn([opts.bin ?? "nmem", "--json", "context", "--no-ensure", "--no-working-memory"], {
       stdout: "pipe",

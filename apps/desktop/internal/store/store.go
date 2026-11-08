@@ -90,6 +90,7 @@ type Task struct {
 	HistoryLoaded bool
 	// OpenedAt is the time of task_open, when known.
 	OpenedAt string
+	openSeq  int64 // seq of the task_open in Open (a retitle is a later one)
 	// Version bumps when Events change, for views that recompute (diff).
 	Version int
 	// Sends are the user's direct messages to the task, oldest first.
@@ -678,8 +679,14 @@ func (s *Store) applyTask(t *Task, ev protocol.LogEvent, body any) {
 	t.Version++
 	switch b := body.(type) {
 	case *protocol.TaskOpen:
-		t.Open = b
-		t.OpenedAt = ev.TS
+		// The partner retitles a task by appending another task_open: the latest one names
+		// the task, the first one dates it.
+		if t.Open == nil || ev.Seq >= t.openSeq {
+			t.Open, t.openSeq = b, ev.Seq
+		}
+		if t.OpenedAt == "" || ev.TS < t.OpenedAt {
+			t.OpenedAt = ev.TS
+		}
 	case *protocol.TaskState:
 		t.State = b
 	case *protocol.TaskEvent:

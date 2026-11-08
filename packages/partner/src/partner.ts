@@ -85,6 +85,7 @@ interface TurnState {
   opensHandled: number;
   acked?: boolean; // an ack went out this turn
   asked?: boolean; // the partner made a decision card (ask) this turn
+  askedId?: string; // the last decision it made this turn
   quiet?: boolean; // woken only by task questions the user already sees as decision cards
   zh: boolean;
   recalls: number; // memory_search calls this turn
@@ -101,7 +102,7 @@ interface Job {
 const COLD_MS = 55 * 60 * 1000;
 const TASK_OPEN_RE = /(^|__)task_open$/;
 const TASK_SEND_RE = /(^|__)task_send$/;
-const QUIET_TOOL_RE = /(^ToolSearch$)|((^|__)(log_search|log_read|task_read|memory_search|memory_add)$)/;
+const QUIET_TOOL_RE = /(^ToolSearch$)|((^|__)(log_search|log_read|task_read|memory_search|memory_add|task_retitle)$)/;
 
 /** The user asks to look harder, which lifts the one-recall-per-turn gate. */
 const ASKS_RECALL = /(再|多|仔细|好好)(查|找|搜|想想|翻)|翻翻|想不起|look (again|harder)|search (again|more)|\bdig\b|check (your )?memory|do you remember|还记得/i;
@@ -696,6 +697,34 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     },
   );
 
+  // Review 2 #3: one card kept its first title for three different jobs. A retitle is a new
+  // task_open for the same task (same place and brief): every client already takes the latest
+  // one for the title, the registry keeps openedAt and state, and runner recovery uses the first.
+  core.mcp.register(
+    "partner",
+    "task_retitle",
+    "Give a task a new title when a follow-up you sent it changes or widens what it is about, so its card says what it is doing now. Short, in the user's language, covering all of its work. Not for new separate work (open a new task for that).",
+    {
+      type: "object",
+      properties: { taskId: { type: "string" }, title: { type: "string" } },
+      required: ["taskId", "title"],
+    },
+    async (args: { taskId: string; title: string }) => {
+      const title = String(args.title ?? "").trim().slice(0, 80);
+      if (!title) return { ok: false, error: "task_retitle needs a title" };
+      if (!core.tasks.get(args.taskId)) return { ok: false, error: `unknown task ${args.taskId}` };
+      const opens = core.log.read({ stream: `task:${args.taskId}`, kinds: ["task_open"], limit: 1000 });
+      const last = opens[opens.length - 1];
+      if (!last) return { ok: false, error: `task ${args.taskId} has no task_open` };
+      const prev = last.body as Bodies["task_open"];
+      if (prev.title === title) return { ok: true, title };
+      core.log.append({ persona: last.persona, stream: last.stream, origin: "partner", kind: "task_open", body: { ...prev, title } });
+      const j = jobs.get(args.taskId);
+      if (j) j.title = title;
+      return { ok: true, title };
+    },
+  );
+
   core.mcp.register(
     "partner",
     "wait_until",
@@ -705,11 +734,12 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       properties: {
         at: { type: "string", description: "ISO 8601 time" },
         taskId: { type: "string" },
+        decisionId: { type: "string", description: "Only if this wait is about a question you asked: it is cancelled when the user answers" },
         reason: { type: "string", description: "Shown to the user on On hand: short, in their language, addressed to them (提醒你回邮件 / Remind you to reply to the email)" },
       },
       required: ["reason"],
     },
-    async (args: { at?: string; taskId?: string; reason: string }) => {
+    async (args: { at?: string; taskId?: string; decisionId?: string; reason: string }) => {
       await Bun.sleep(5); // let the streamed text land first
       flushPending(); // keep the line before the status line
       if (!args.at) {
@@ -723,6 +753,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       // which wakes us; a task-bound waiter is cancelled if the task finishes first.
       const body: Bodies["waiter"] = { waiterId: newId("wait"), at: new Date(at).toISOString(), reason: args.reason, state: "armed" };
       if (args.taskId) body.taskId = args.taskId;
+      // A wait armed in the same turn as an ask is about that ask (review 2 #4), even unlinked.
+      const decisionId = (typeof args.decisionId === "string" && args.decisionId.trim()) || turn?.askedId;
+      if (decisionId) body.decisionId = decisionId;
       core.log.append({ stream: "channel", origin: "waiter", kind: "waiter", body });
       return { ok: true, waiterId: body.waiterId, firesAt: body.at };
     },
@@ -760,7 +793,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         body.defaultAt = new Date(now() + args.defaultInMinutes * 60_000).toISOString();
       }
       core.log.append({ stream: "channel", origin: "partner", kind: "decision", body });
-      if (turn) turn.asked = true;
+      if (turn) (turn.asked = true), (turn.askedId = body.decisionId);
       return { ok: true, decisionId: body.decisionId, note: "The user sees it with Go / Hold / Reply. End your turn now; do not repeat the question." };
     },
   );

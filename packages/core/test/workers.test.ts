@@ -11,7 +11,7 @@ afterEach(async () => {
 
 function boot(): Core {
   const t = tempDir();
-  const core = startCore({ dataDir: t.dir, port: 0, batchMs: 5 });
+  const core = startCore({ dataDir: t.dir, port: 0, batchMs: 5, sweepMs: 50 });
   stops.push(t.cleanup, () => core.stop());
   return core;
 }
@@ -64,4 +64,25 @@ test("a worker token opens /worker, says hello, shows online; client and worker 
   // Revoked: the worker can't come back.
   core.devices.revoke(worker.device.id);
   expect((await open(`${base}/worker`, { ...REMOTE, authorization: `Bearer ${worker.token}` })).ok).toBe(false);
+});
+
+test("revoking a device (from another process, the CLI) closes its live sockets: client and worker", async () => {
+  const core = boot();
+  const base = `ws://127.0.0.1:${core.port}`;
+  const pair = (kind: "client" | "worker") => core.devices.redeem(core.devices.createCode({ kind }).code, { name: kind }) as { token: string; device: { id: string } };
+  const c = pair("client");
+  const w = pair("worker");
+  const closes: number[] = [];
+  for (const [path, p] of [["/ws", c], ["/worker", w]] as const) {
+    const s = await open(`${base}${path}`, { ...REMOTE, authorization: `Bearer ${p.token}` });
+    expect(s.ok).toBe(true);
+    s.ws!.onclose = (e) => closes.push(e.code);
+  }
+  const { openDeviceAuth } = await import("../src/auth.ts");
+  const cli = openDeviceAuth(core.dataDir);
+  cli.revoke(c.device.id);
+  cli.revoke(w.device.id);
+  cli.close();
+  await until(() => closes.length === 2);
+  expect(closes).toEqual([4401, 4401]);
 });

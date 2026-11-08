@@ -10,6 +10,9 @@ import type { Args } from "./args.ts";
 import { realHost, runDoctor, type Style } from "./doctor.ts";
 import type { T } from "./i18n.ts";
 
+/** Exit status when the main refuses this worker; the unit sets RestartPreventExitStatus to it. */
+export const EXIT_REFUSED = 3;
+
 export interface WorkerSaved {
   url: string; // http(s) base of the main
   token: string;
@@ -131,7 +134,7 @@ async function stayConnected(s: WorkerSaved, hello: object, t: T, style: Style):
     });
     if (outcome === "refused") {
       console.log(t("worker.refused", { url: s.url }));
-      return 1;
+      return EXIT_REFUSED;
     }
     console.log(style.dim(t("worker.lost", { url: s.url, s: Math.round(backoff / 1000) })));
     await Bun.sleep(backoff);

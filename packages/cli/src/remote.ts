@@ -179,6 +179,7 @@ export function systemdUnit(u: UnitSpec): string {
     "Type=simple",
     `ExecStart=${args.map(sdQuote).join(" ")}`,
     "Restart=on-failure",
+    ...(u.worker ? ["# Exit 3: the main revoked this worker. Pair again; don't retry.", "RestartPreventExitStatus=3"] : []),
     "RestartSec=3",
     "WorkingDirectory=%h",
     `Environment=${sdQuote(`DUCTER_DATA_DIR=${u.dataDir}`)}`,

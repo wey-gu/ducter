@@ -25,6 +25,7 @@ export interface CoreOptions {
   clock?: Clock;
   defaultDelayMs?: number;
   batchMs?: number;
+  sweepMs?: number; // how often live device sockets are re-checked for revocation (default 10 s)
 }
 
 export interface Core extends CoreApi {
@@ -103,6 +104,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const devices = openDeviceAuth(dataDir);
   const gate = createGate({ auth: devices, personaName: () => persona.name });
   const workers = createWorkers({ personaName: () => persona.name });
+  const sockets = splitSockets(ws.websocket, workers, { isLive: (id) => devices.isLive(id), sweepMs: opts.sweepMs });
 
   const server = Bun.serve<WsData | WorkerSocketData>({
     hostname: opts.hostname ?? (process.env.DUCTER_HOST || "127.0.0.1"),
@@ -120,13 +122,15 @@ export function startCore(opts: CoreOptions = {}): Core {
         // A device token can't ride along ambiently (no cookies), so it needs no origin check.
         const origin = req.headers.get("origin");
         if (g.via === "local" && origin && !/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(origin)) return new Response("forbidden", { status: 403 });
-        return srv.upgrade(req, { data: ws.newData() }) ? undefined : new Response("upgrade failed", { status: 400 });
+        // The device rides along so a revoked device's live socket can be closed (workers.ts).
+        const data = { ...ws.newData(), ...(g.via === "device" ? { device: g.device } : {}) };
+        return srv.upgrade(req, { data }) ? undefined : new Response("upgrade failed", { status: 400 });
       }
       if (url.pathname === "/mcp") return mcp.handle(req);
       if (url.pathname === "/health") return Response.json({ ok: true, headSeq: log.head() });
       return new Response("not found", { status: 404 });
     },
-    websocket: splitSockets(ws.websocket, workers),
+    websocket: sockets,
   });
   const port = server.port!;
   mcp.setPort(port);
@@ -150,6 +154,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     async stop() {
       ws.stop();
       workers.stop();
+      sockets.stop();
       unsubscribePartner();
       decisions.stop();
       living.stop();

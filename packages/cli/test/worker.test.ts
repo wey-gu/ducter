@@ -16,5 +16,6 @@ describe("worker", () => {
     expect(u).toContain("Description=Ducter (worker)");
     expect(u).toContain("ExecStart=/home/me/.local/bin/ducter worker\n");
     expect(u).not.toContain("--headless");
+    expect(u).toContain("\nRestartPreventExitStatus=3\n");
   });
 });

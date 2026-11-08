@@ -38,13 +38,37 @@ export interface Workers {
 
 type Handlers = { open(ws: any): void; close(ws: any, code?: number, reason?: string): void; message(ws: any, m: string | Buffer): void | Promise<void> };
 
-/** One Bun.serve socket handler for both kinds: client sockets (ws.ts) and worker sockets. */
-export function splitSockets(client: Handlers, workers: Workers): Handlers {
+/** Close code sent to a socket whose device was disconnected (`ducter devices disconnect`). */
+export const CLOSE_REVOKED = 4401;
+
+/**
+ * One Bun.serve socket handler for both kinds: client sockets (ws.ts) and worker sockets.
+ * Sockets opened with a device token are re-checked every `sweepMs`: revoking happens in another
+ * process (the CLI), so a live socket of a revoked device is closed here with CLOSE_REVOKED.
+ */
+export function splitSockets(
+  client: Handlers,
+  workers: Workers,
+  opts: { isLive?: (deviceId: string) => boolean; sweepMs?: number } = {},
+): Handlers & { stop(): void } {
   const isWorker = (ws: any) => ws.data?.worker === true;
+  const withDevice = new Set<any>();
+  const timer = opts.isLive
+    ? setInterval(() => {
+        for (const ws of withDevice) if (!opts.isLive!(ws.data.device.id)) ws.close(CLOSE_REVOKED, "device disconnected");
+      }, opts.sweepMs ?? 10_000)
+    : undefined;
   return {
-    open: (ws) => (isWorker(ws) ? workers.websocket.open(ws) : client.open(ws)),
-    close: (ws, code, reason) => (isWorker(ws) ? workers.websocket.close(ws) : client.close(ws, code, reason)),
+    open: (ws) => {
+      if (ws.data?.device) withDevice.add(ws);
+      return isWorker(ws) ? workers.websocket.open(ws) : client.open(ws);
+    },
+    close: (ws, code, reason) => {
+      withDevice.delete(ws);
+      return isWorker(ws) ? workers.websocket.close(ws) : client.close(ws, code, reason);
+    },
     message: (ws, m) => (isWorker(ws) ? workers.websocket.message(ws, m) : client.message(ws, m)),
+    stop: () => clearInterval(timer),
   };
 }
 

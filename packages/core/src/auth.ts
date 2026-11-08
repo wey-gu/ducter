@@ -47,6 +47,8 @@ export interface DeviceAuth {
   /** Revokes by id, or by name when the name is unique among live devices. Returns what it revoked. */
   revoke(idOrName: string): Device[];
   pendingCodes(): number;
+  /** The device exists and isn't revoked (cheap; used to close live sockets after a revoke). */
+  isLive(id: string): boolean;
   close(): void;
 }
 
@@ -185,6 +187,7 @@ export function openDeviceAuth(dataDir: string, opts: { now?: () => number } = {
       }
       return hit.map(row);
     },
+    isLive: (id) => db.query("SELECT 1 FROM devices WHERE id = ? AND revoked_at IS NULL").get(id) != null,
     pendingCodes() {
       return (db.query("SELECT COUNT(*) AS n FROM pair_codes WHERE expires_at > ?").get(now()) as any).n;
     },

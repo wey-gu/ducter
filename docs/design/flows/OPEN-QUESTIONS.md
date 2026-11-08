@@ -51,7 +51,7 @@ The app menu's "Stop Ducter / 让 Ducter 歇着" is the rare full stop. The Dock
 what waits for the user. Shipped as described in `../onboarding.md` "What ships today: the
 app path".
 - Links: `../../decisions.md` (keep-running Dn, pending) · `../onboarding.md` "What ships today: the app path" ·
-  `../../../README.md` "The app"
+  `../../install.md` "The app"
 
 ### 3. Phone notifications (push)
 

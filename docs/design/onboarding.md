@@ -29,7 +29,7 @@
 The cartoon and the in-app checklist below are the target. Until they exist, the first run is a
 terminal path plus the desktop's empty conversation. It holds itself to the same bar: detect
 first, one obvious next step per screen, zh and en designed together (`LANG`, or
-`DUCTER_LOCALE`). Walked live on the author's Mac with a bundle installed into a scratch prefix,
+`DUCTER_LOCALE`). Walked live on a sample Mac with a bundle installed into a scratch prefix,
 a fresh data folder, and port 7795.
 
 **For each user**
@@ -248,7 +248,7 @@ row's detection result animates in.
    - routines;
    - the browser, the first time a task needs the web (below).
 
-## The browser, first time (live on the author's Mac, 2026-11-09)
+## The browser, first time (live on a sample Mac, 2026-11-09)
 
 These are the setup moments a browser task hits on a Mac. They should become one checklist row
 ("Browser: ✓ ready / Set up"), shown only when the first web task needs it. Design pending.
@@ -279,7 +279,7 @@ Setup: cua-driver 0.44.0, Chrome 157, macOS 15, partner and task on Sonnet.
      (907×661 on a 1512×982 display), behind the user's work. *Verified* on a desktop
      capture.
    - Ducter sets the clay avatar as its Dock tile; Chrome accepted the call. *Not seen*: the
-     Dock was hidden on the author's Mac. Without this, it is an identical second Chrome
+     Dock was hidden on a sample Mac. Without this, it is an identical second Chrome
      icon.
 5. **Focus.** Left alone, the new Chrome makes itself the frontmost app for the whole task,
    so the user's typing goes into Ducter's browser (*verified*: about 29 s in front). Ducter

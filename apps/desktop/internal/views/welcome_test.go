@@ -22,7 +22,7 @@ import (
 //
 //	DUCTER_SHOTS=1 go test ./internal/views -run Welcome   # writes docs/firstrun-*.png
 
-// The repos `ducter up` found on the author's Mac (names only).
+// The repos `ducter up` found on a sample Mac (names only).
 const hintsJSON = `{"version":1,"generatedAt":"2026-11-09T01:20:00Z","repoCount":91,"repos":[
  {"name":"ducter","path":"~/dev/ducter","touchedAt":"2026-11-09T01:14:42Z"},
  {"name":"website","path":"~/dev/website","touchedAt":"2026-11-08T09:23:38Z"},

@@ -4,8 +4,11 @@ Ducter is an open-source, self-deployed personal AI. One named partner (the main
 the user talks to; its work runs as tasks on off-the-shelf harnesses (Claude Code, Codex,
 pi via OAR). Read `motivation.md` for why it exists.
 
-**Status: design phase.** There is no product code yet. Implementation starts only when the
-"Ready to build" checklist at the end of this file is met.
+**Status: early preview.** The v1 slice is built (2026-11-09): the partner, tasks over OAR,
+the Log, the CLI, the macOS desktop app, the phone web client, server mode and workers. What
+runs, and how it was checked, is in `docs/design/scenarios.md` and `docs/roadmap.md`. Design
+still leads code: every change goes through the change loop below, and the "Build state"
+checklist at the end of this file says what is still open.
 
 ## Working with the user
 
@@ -140,13 +143,18 @@ Design notes:
 - **No silent decisions:** a prototype that would need a new object, state, or name goes
   back through the change loop first.
 
-## Ready to build (all must hold before implementation starts)
+## Build state
 
+The v1 slice was built before every design item below was reviewed. Close these before
+calling v1 done; new work must not widen the gap.
+
+- [x] The client protocol (control plane ↔ desktop/mobile) is written (`packages/protocol`).
+- [x] The first slice and its test strategy exist: fake runtimes, a fake clock, fake
+      machines, and the partner eval with a real model (`packages/partner/eval`).
 - [ ] Principles reviewed end to end by the user.
-- [ ] Product model has no open questions that block the first slice.
+- [ ] Product model has no open questions that block the first slice
+      (`docs/design/flows/OPEN-QUESTIONS.md`).
 - [ ] Each scenario in the first slice has its flow, states, zh/en copy keys, and motion
       reviewed (`docs/design/scenarios.md`).
 - [ ] Prototypes of the first slice reviewed.
-- [ ] The client protocol (control plane ↔ desktop/mobile) is drafted.
-- [ ] The first slice and its test strategy are written down: prompt snapshots, fake
-      runtimes, fake clock, and a digest eval suite.
+- [ ] The memory digest (`docs/design/memory.md`) is built, with its eval suite (`research/15`).

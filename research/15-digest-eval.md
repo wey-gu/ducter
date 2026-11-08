@@ -247,7 +247,7 @@ that was not graded correct.
 
 ## Artifacts (local only, not committed)
 
-`<scratch>`:
+`<scratch>/exp-digest/`:
 - `transcript.txt` and `seg_*.txt` (private data)
 - `probes.json`
 - `digests/`

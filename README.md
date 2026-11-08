@@ -67,6 +67,8 @@ one set of credentials, the same ones con and Nowledge Mem use; for example:
 
 No System Settings, no Open Anyway. It works offline too: the notarization ticket is stapled.
 
+Releases are built the same way by CI: push a `v*` tag (see [docs/release.md](docs/release.md)).
+
 **Without a Developer ID** (someone else's Mac), the script falls back to ad-hoc signing
 (`codesign -s -`, not notarized) and the first open needs the extra step. On **macOS 15
 (Sequoia)** right-click → Open no longer gets past it: open Ducter, click **Done** on

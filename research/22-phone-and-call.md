@@ -1,8 +1,8 @@
 # 22: Phone use and phone calls as task places
 
 Researched 2026-11-08 for the Later items "Phone use" and "Phone calls (tuwa.ai-like)"
-(`docs/roadmap.md`, D35). A task's place can be "a phone or call"
-(`docs/design/product-model.md` §3). The motivation asks for "phone use (virtually or
+(`design/roadmap.md`, D35). A task's place can be "a phone or call"
+(`design/product-model.md` §3). The motivation asks for "phone use (virtually or
 physically)", a "Phone Call (tuwa.ai-like) env", and landing in a task "like a ghost in a
 phone call meeting" (`motivation.md:43`, `:72`).
 

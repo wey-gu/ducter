@@ -152,7 +152,7 @@ such as the model and place as flat 32 chips, never as buttons).
 | Flows | https://claude.ai/artifact/LKuVp3knPDJ4EdoyWBGSWN | 21 key screens for groups A, B, D, E, C | draft |
 | Concept art | https://claude.ai/artifact/HAPoyBbrSkm6sYjqGoNMze | character and screen art directions, rounds 1–2 | round 2 recommended: puffy matte clay |
 | Loadout (2D) | https://claude.ai/artifact/CUpw7P1bPjKQKQYeLkUVzG | devices / AI accounts / ability-sticker interaction | grammar prototype; art to be replaced |
-| Phone web (built) | `docs/design/screens/phone-*.png` (390×844, zh/en, light/dark) | the real `apps/web` client: conversation, decisions, On hand, opened task, pairing, notifications | built, pending review |
+| Phone web (built) | `design/screens/phone-*.png` (390×844, zh/en, light/dark) | the real `apps/web` client: conversation, decisions, On hand, opened task, pairing, notifications | built, pending review |
 
 ### Screenshots of the built clients (2026-11-09)
 
@@ -169,7 +169,7 @@ they show what the code does today, for review against the docs.
 | Ducter.app | `apps/desktop/docs/app-*.png` | setup screens headless (fake backend); `app-live-first-reply` live; `app-dmg-finder`, `app-gatekeeper-macos15` real macOS screenshots; `app-icon` the drawn icon | checking, blocked, name, starting, stopped, CLI offer, Gatekeeper |
 | Polish pass | `apps/desktop/docs/polish-{before,after}-*.png` | native window (cua-driver) on a scripted backend, plus the headless renderer | the components above: buttons, chips, notices, the result sheet, rhythm |
 | Taste review | `apps/desktop/docs/review-{before,after}-{zh-1280,en-900}-*.png` | headless renderer, mock (`DUCTER_REVIEW`) | every screen at 1280 and 900 px, before and after the taste pass |
-| Phone web | `docs/design/screens/phone-*.png` | headless browser at 390×844 on a demo core; `phone-real-sonnet-result-zh` from a real sonnet run | conversation, decision sheet, decided, On hand, task, result, pairing, notify ask, iOS hint, offline; dark variants |
+| Phone web | `design/screens/phone-*.png` | headless browser at 390×844 on a demo core; `phone-real-sonnet-result-zh` from a real sonnet run | conversation, decision sheet, decided, On hand, task, result, pairing, notify ask, iOS hint, offline; dark variants |
 
 ## Capability map (D43): the hybrid (D65)
 
@@ -294,7 +294,7 @@ user is on the Isles view. Elsewhere it uses the plain device names.
   UI (MyGo native). No real-time 3D.
 - **Lighting rules:** one soft key light from the top left, gentle ambient occlusion and
   contact shadows. Never glow, neon, bloom, rainbow gradients, lens flare, or over-gloss.
-- **Character:** the round-2 clay Ducter (`docs/art/concepts/r2/r2_char_clay.jpg`) is the
+- **Character:** the round-2 clay Ducter (`design/art/concepts/r2/r2_char_clay.jpg`) is the
   identity reference for every pose.
 - **Capability screen:** round-2 board v2 (`r2_board_2.jpg`): device cards on the left, the
   hero device on a pedestal with slots, the ability grid on the right, AI-account tokens with

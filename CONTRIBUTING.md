@@ -16,7 +16,7 @@ A few rules that matter for almost any change:
   personal-AI user, or someone who has never heard of a subagent), what they feel before and
   after, and how they first meet the feature.
 - **Words come from the glossary** in
-  [`docs/design/product-model.md`](docs/design/product-model.md). A new user-facing word or
+  [`design/product-model.md`](design/product-model.md). A new user-facing word or
   object needs a decision first.
 - **Copy is bilingual.** User-facing text is written in English and Chinese together, behind
   i18n keys (`packages/cli/src/i18n.ts`, `apps/desktop/internal/i18n`).
@@ -28,7 +28,7 @@ A few rules that matter for almost any change:
   change before writing the patch.
 - Wanted now: a **Tailscale remote-access adapter**, so you can reach your Ducter through
   `tailscale serve` or `tailscale funnel`. The spec, including what "done" means, is in
-  [`docs/roadmap.md`](docs/roadmap.md#tailscale-remote-access-d46).
+  [`design/roadmap.md`](design/roadmap.md#tailscale-remote-access-d46).
 
 ## Working on the code
 

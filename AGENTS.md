@@ -6,7 +6,7 @@ pi via OAR). Read `motivation.md` for why it exists.
 
 **Status: early preview.** The v1 slice is built (2026-11-09): the partner, tasks over OAR,
 the Log, the CLI, the macOS desktop app, the phone web client, server mode and workers. What
-runs, and how it was checked, is in `docs/design/scenarios.md` and `docs/roadmap.md`. Design
+runs, and how it was checked, is in `design/scenarios.md` and `design/roadmap.md`. Design
 still leads code: every change goes through the change loop below, and the "Build state"
 checklist at the end of this file says what is still open.
 
@@ -43,16 +43,23 @@ must hold for both kinds of user. Onboarding is a first-class scenario, not an a
 
 ## Where things live (single sources of truth)
 
+Two trees, two readers. **`design/` is for people who build Ducter** (principles, decisions,
+design notes, flows, art, plans, release runbooks). **`docs/` is for people who use it**: plain
+pages the website renders at `/docs`, written from the user's side in glossary words, with no
+decision numbers, internal names or unbuilt features. Never put builder material in `docs/`.
+
 | Layer | File | Answers | Rules |
 |---|---|---|---|
-| Why | `docs/principles.md` | Architecture and product principles | Conclusions only, each principle 3–5 lines, ≤ ~130 lines total, evidence cited as `[n]` |
-| What | `docs/design/product-model.md` | Objects, ownership, names (glossary), scenarios | **The glossary is authoritative** for every user-facing word |
-| How | `docs/design/*.md` | Mechanics (below) | One topic per file; may hold numbers, schemas, tables |
-| Decided | `docs/decisions.md` | Append-only log `Dn` | Supersede, never delete |
-| Later | `docs/todo.md` | Deferred work with its trigger | |
+| Why | `design/principles.md` | Architecture and product principles | Conclusions only, each principle 3–5 lines, ≤ ~130 lines total, evidence cited as `[n]` |
+| What | `design/product-model.md` | Objects, ownership, names (glossary), scenarios | **The glossary is authoritative** for every user-facing word |
+| How | `design/*.md` | Mechanics (below) | One topic per file; may hold numbers, schemas, tables |
+| Decided | `design/decisions.md` | Append-only log `Dn` | Supersede, never delete |
+| Later | `design/todo.md` | Deferred work with its trigger | |
 | Evidence | `research/NN-*.md`, index in `research/README.md` | Facts behind decisions | Every claim tagged VERIFIED / DOCUMENTED / INFERRED, with a source |
-| Look | Prototype canvases (listed in `docs/design/ui.md`) | What it looks and moves like | They reflect the docs and never decide anything on their own |
-| Coverage | `docs/design/scenarios.md` | Which scenarios have flow, copy, motion, prototype | Status per scenario |
+| Look | Prototype canvases (listed in `design/ui.md`) | What it looks and moves like | They reflect the docs and never decide anything on their own |
+| Coverage | `design/scenarios.md` | Which scenarios have flow, copy, motion, prototype | Status per scenario |
+| Ship | `design/release/`, `design/build-and-run.md` | Building, releasing, the full command reference | Maintainer runbooks |
+| Use | `docs/*.md` (index `docs/README.md`) | How to install and use Ducter | User words only; says "coming soon" for anything not built; front matter `title`, `description`, `order` |
 
 Design notes:
 - `context.md`: Log, projection, resume, working set.
@@ -67,15 +74,15 @@ Design notes:
 
 ## The change loop (run it for every new question or discovered problem)
 
-1. **Locate.** Search `docs/decisions.md`, `docs/principles.md`, and
-   `docs/design/product-model.md` first. For history, run a Nowledge Mem search:
+1. **Locate.** Search `design/decisions.md`, `design/principles.md`, and
+   `design/product-model.md` first. For history, run a Nowledge Mem search:
    `nmem --json m search "<topic>" -n 5`.
 2. **Gather evidence if facts are missing.** Write a numbered research report in `research/`
    (rules below) and add a line to `research/README.md`.
 3. **Reason.** Start from the scenario and the user's attention, then check the principles.
    If a principle is wrong, say so; don't route around it.
 4. **Propose to the user** in Chinese, as a recommendation with defaults (see above).
-5. **Record.** Add a `Dn` entry to `docs/decisions.md`. Mark anything it replaces as
+5. **Record.** Add a `Dn` entry to `design/decisions.md`. Mark anything it replaces as
    `superseded by Dn` in the Superseded section.
 6. **Propagate top-down** in one pass, in this order:
    1. principles, only if the change is principle-level; keep the length limits;
@@ -83,14 +90,16 @@ Design notes:
    3. the relevant design note;
    4. scenarios status;
    5. prototypes;
-   6. todo.
+   6. user docs (`docs/`), if what a user sees or does changed;
+   7. todo.
 
    Never leave superseded text in place as live content. Move it to the decisions log.
 7. **Check consistency** before declaring done:
    - Grep for retired vocabulary (`奏章`, `准`, `驳`, `朱批`, `seal`) and for stale terms
-     outside `docs/decisions.md` and `research/`.
+     outside `design/decisions.md` and `research/`.
    - Check that principle numbers cited in design notes still match.
    - Check that every user-facing word appears in the glossary.
+   - Run `bun scripts/check-links.ts`: every relative Markdown link resolves.
 8. **Remember.** Save each durable decision to Nowledge Mem:
    `nmem m add "<decision + why>" -t "<title>" -i 0.8`.
 
@@ -134,7 +143,7 @@ Design notes:
 
 ## Prototype rules
 
-- **Canvases:** each canvas covers one area; its URL is listed in `docs/design/ui.md`.
+- **Canvases:** each canvas covers one area; its URL is listed in `design/ui.md`.
   Artboards are named by scenario or zoom level.
 - **Copy** comes from the glossary. When a name changes, update every canvas in the same
   change loop.
@@ -153,8 +162,8 @@ calling v1 done; new work must not widen the gap.
       machines, and the partner eval with a real model (`packages/partner/eval`).
 - [ ] Principles reviewed end to end by the user.
 - [ ] Product model has no open questions that block the first slice
-      (`docs/design/flows/OPEN-QUESTIONS.md`).
+      (`design/flows/OPEN-QUESTIONS.md`).
 - [ ] Each scenario in the first slice has its flow, states, zh/en copy keys, and motion
-      reviewed (`docs/design/scenarios.md`).
+      reviewed (`design/scenarios.md`).
 - [ ] Prototypes of the first slice reviewed.
-- [ ] The memory digest (`docs/design/memory.md`) is built, with its eval suite (`research/15`).
+- [ ] The memory digest (`design/memory.md`) is built, with its eval suite (`research/15`).

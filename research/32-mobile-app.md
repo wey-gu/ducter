@@ -24,7 +24,7 @@ Source read: `github.com/egoist/mygo@v0.8.3` in the Go module cache (the version
   safe-area APIs for a phone (the browser backend "reports errUnsupported or does nothing" for
   desktop APIs). INFERRED: it would feel less native than the Preact client, which uses real DOM
   text, scrolling and inputs.
-- Verdict: not today. Watch for a UIKit backend upstream (trigger in `docs/todo.md`).
+- Verdict: not today. Watch for a UIKit backend upstream (trigger in `design/todo.md`).
 
 ## (b) A native shell around `apps/web`
 
@@ -96,7 +96,7 @@ trusted component, so it goes through the change loop first (open question; not 
   1.3 (Preact for phone web) is confirmed: the same Preact client is now also the app's UI.
 - New user-facing words are the app's connect screen and "Apple push key" (`notify.app.nokey`).
   These need glossary rows.
-- Next: the signing click or App ID (`docs/release-ios.md`), TestFlight via CI, and the push
+- Next: the signing click or App ID (`design/release/ios.md`), TestFlight via CI, and the push
   relay question for non-author users.
 
 ## Summary

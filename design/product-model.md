@@ -2,7 +2,7 @@
 
 > Draft 1 · 2026-11-08 · The single source of truth for *what exists in the product and what it
 > is called*. Principles say *why*, design notes say *how*, prototypes show *what it looks like*.
-> Decisions and superseded drafts live in `docs/decisions.md`. Evidence: `research/19`, `research/20`.
+> Decisions and superseded drafts live in `design/decisions.md`. Evidence: `research/19`, `research/20`.
 
 ## 1. Vocabulary
 
@@ -235,7 +235,7 @@ Two primitives plus one property cover every case.
 ## 6. Scenario catalog
 
 Each scenario needs a flow, states, copy (zh + en), and motion. Status is tracked in
-`docs/design/scenarios.md` once flow work starts.
+`design/scenarios.md` once flow work starts.
 
 - **A. Setup and devices.** First run; pairing a device; a device sleeping or waking; going
   offline mid-task; the same repo on two devices; a harness not logged in; quota running out;
@@ -277,7 +277,7 @@ The zoom metaphor:
   raises its brows when it needs you.
 
 Timing and springs come from the theme's `motion.personality`. The spec lives in
-`docs/design/ui.md`.
+`design/ui.md`.
 
 ## 8. Open questions
 

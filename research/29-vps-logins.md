@@ -1,7 +1,7 @@
 # 29 — Ducter on a VPS: harness logins on a headless box, and the remote-access slice
 
-Date: 2026-11-09. Inputs: `docs/design/flows/OPEN-QUESTIONS.md` Q16–Q18 (accepted in D52),
-`docs/design/flows/A-setup-devices.md` A1-V / A2-W, `research/21` (remote access), `system.md`.
+Date: 2026-11-09. Inputs: `design/flows/OPEN-QUESTIONS.md` Q16–Q18 (accepted in D52),
+`design/flows/A-setup-devices.md` A1-V / A2-W, `research/21` (remote access), `system.md`.
 
 Legend: **[V]** verified in this session, in a local Lima VM (Ubuntu 24.04.5 LTS arm64, kernel
 6.8, user-mode networking, no host mounts), with the command given. **[D]** documented by the vendor

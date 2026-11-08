@@ -1,5 +1,5 @@
 // CLI strings, zh + en designed together. Keys are stable; copy follows the glossary
-// (docs/design/product-model.md): partner, task, On hand / 手头, Needs you / 等你.
+// (design/product-model.md): partner, task, On hand / 手头, Needs you / 等你.
 
 export type Locale = "en" | "zh";
 

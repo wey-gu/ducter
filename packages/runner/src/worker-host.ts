@@ -1,4 +1,4 @@
-// The worker's side of task placement (docs/design/system.md "Workers"). The main sends
+// The worker's side of task placement (design/system.md "Workers"). The main sends
 // requests down the worker's outbound socket; this runs them here, on the worker's disk and
 // harnesses: plan/provision the place, run the harness session (OAR), merge, open a PR. Session
 // events stream back up. The task's MCP tools still live on the main: their URL is rewritten to

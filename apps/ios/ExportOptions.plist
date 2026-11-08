@@ -2,7 +2,7 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- App Store Connect / TestFlight. See docs/release-ios.md. -->
+	<!-- App Store Connect / TestFlight. See design/release/ios.md. -->
 	<key>method</key>
 	<string>app-store-connect</string>
 	<key>teamID</key>

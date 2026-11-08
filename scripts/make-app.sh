@@ -20,12 +20,12 @@
 #     Signed but none of these: the build is signed, not notarized, and says so.
 #     DUCTER_REQUIRE_NOTARIZATION=1 makes that an error.
 #   - No identity (or DUCTER_SIGN_IDENTITY=-): signed ad hoc (codesign -s -), and the friend
-#     needs the Open Anyway steps in docs/install.md, "Give Ducter to a friend".
+#     needs the Open Anyway steps in design/build-and-run.md, "Give Ducter to a friend".
 #
 # Inside the app:
 #   Contents/MacOS/Ducter          the desktop app (apps/desktop)
 #   Contents/Helpers/ducter        the ducter CLI (packages/cli), which the app runs as
-#                                  `ducter up --no-desktop` (a LaunchAgent; see docs/install.md "The app")
+#                                  `ducter up --no-desktop` (a LaunchAgent; see design/build-and-run.md "The app")
 #   Contents/Resources/AppIcon.icns
 set -eu
 
@@ -60,7 +60,7 @@ command -v go >/dev/null 2>&1 || { echo "Go is needed: brew install go" >&2; exi
   -o "$WORK/app/$NAME" .)
 
 say "3/5 the icon"
-(cd "$ROOT/apps/desktop" && go run ./cmd/appicon -in "$ROOT/docs/art/assets/alpha/ducter_idle.png" -out "$WORK/icon-1024.png")
+(cd "$ROOT/apps/desktop" && go run ./cmd/appicon -in "$ROOT/design/art/assets/alpha/ducter_idle.png" -out "$WORK/icon-1024.png")
 SET="$WORK/AppIcon.iconset"
 mkdir -p "$SET"
 for s in 16 32 128 256 512; do

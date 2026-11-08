@@ -1,7 +1,7 @@
 # 24: A metaphor for the capability map (D43)
 
 Researched 2026-11-08 for D43 ("enabling capabilities is game-like and visual: you see *where*
-a capability lives and *what* it does"). The current candidate is the Isles (`docs/design/ui.md`,
+a capability lives and *what* it does"). The current candidate is the Isles (`design/ui.md`,
 "Capability map"). The user rejected choosing it by extending the Pebble theme
 (pebbles → shores → islands). AGENTS.md requires at least 5 candidates including "no
 metaphor", a mapping table with false implications for each, a rubric, and a comprehension test.

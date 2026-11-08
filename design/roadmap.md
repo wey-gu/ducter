@@ -1,8 +1,8 @@
 # Roadmap
 
-> Living document. Scope changes go through the change loop (`AGENTS.md`) and `docs/decisions.md`.
+> Living document. Scope changes go through the change loop (`AGENTS.md`) and `design/decisions.md`.
 > *Built* notes below say what exists after the overnight build of 2026-11-09; what was verified
-> and how is in `docs/plan/v1-tonight.md` and `docs/design/scenarios.md`.
+> and how is in `design/plan/v1-tonight.md` and `design/scenarios.md`.
 
 ## V1: heavy developer + powerful personal AI (D33)
 
@@ -61,7 +61,7 @@ Onboarding and defaults meet the ordinary-person bar.
 - The main AI with expire-aware projection and memory (digest, window, recall).
   *Built:* the long-term memory slice on Nowledge Mem (`memory_search`, `memory_add`, the
   记下了 / Noted line), measured with a fake Mem only. The digest, re-cut and folds are not
-  built yet (the projection is the simplified one from `docs/plan/v1-tonight.md`).
+  built yet (the projection is the simplified one from `design/plan/v1-tonight.md`).
 - Tasks on Claude Code and Codex (pi if cheap), with places, projects, worktrees, recipes, and
   ports.
 - On hand with the attention forecast, the living message, and decisions.
@@ -111,4 +111,4 @@ Onboarding and defaults meet the ordinary-person bar.
 detected; phone web pairing, push, and reconnect all work. Tests cover the origin staying
 stable across restarts.
 
-**Read first:** `research/21-v1-topology-remote-access.md` and `docs/design/system.md`.
+**Read first:** `research/21-v1-topology-remote-access.md` and `design/system.md`.

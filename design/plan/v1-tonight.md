@@ -73,7 +73,7 @@ in `design/flows/OPEN-QUESTIONS.md` (answered on the morning of 2026-11-09: D54,
   VPS and domain; push on a real iPhone or Android; a live write into Nowledge Mem; a truly
   blocked Mac walked through the app; opus as the partner.
 
-**Known gaps** (details and triggers in `docs/todo.md`)
+**Known gaps** (details and triggers in `design/todo.md`)
 - Two results that land together still mention branches (eval `settle` 0/2).
 - Parked-session resume costs ~10 s; tasks can write outside their place (no sandbox on the Mac).
 - Loopback is token-free, so a shared host's other accounts count as local.

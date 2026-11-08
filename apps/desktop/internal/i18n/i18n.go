@@ -1,5 +1,5 @@
 // Package i18n holds every user-facing string of the desktop client, by
-// key, in Chinese and English (docs/design/product-model.md §1: no court
+// key, in Chinese and English (design/product-model.md §1: no court
 // vocabulary; partners, not hierarchy). Views never hard-code copy.
 package i18n
 

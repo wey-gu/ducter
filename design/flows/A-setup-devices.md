@@ -1,8 +1,8 @@
 # Flows A: Setup and Devices (A1–A5)
 
-> Draft 1 · 2026-11-08 · Group A of `docs/design/scenarios.md`. Builds on `onboarding.md`,
+> Draft 1 · 2026-11-08 · Group A of `design/scenarios.md`. Builds on `onboarding.md`,
 > `system.md`, `focus-window.md`, `focus-window-states.md`, `research/21` (remote access),
-> `research/27` (ability naming; the noun was dropped in D66), and the concept-art verdicts (`docs/art/concepts/README.md`).
+> `research/27` (ability naming; the noun was dropped in D66), and the concept-art verdicts (`design/art/concepts/README.md`).
 > Artboards: `A*.dc.html` in the flows prototype project (list at the end).
 >
 > **Status: drafted, not reviewed.** Words marked **[gap]** are not yet in the glossary

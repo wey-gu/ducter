@@ -70,4 +70,4 @@ partner eval (real model, fake tasks and Mem; `research/30`) · **unit** = unit 
 | J5 | The persona reached from a consumer AI | — | — | — | — | — | — | waits on Mem remote-MCP delegation |
 | J6 | Fresh user: Bridge invisible until a second agent exists | draft | — | — | — | — | — | |
 
-Flow docs: `docs/design/flows/*.md`. Open questions: `docs/design/flows/OPEN-QUESTIONS.md` (none waiting after D67). Flows canvas: https://claude.ai/artifact/LKuVp3knPDJ4EdoyWBGSWN
+Flow docs: `design/flows/*.md`. Open questions: `design/flows/OPEN-QUESTIONS.md` (none waiting after D67). Flows canvas: https://claude.ai/artifact/LKuVp3knPDJ4EdoyWBGSWN

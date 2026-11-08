@@ -1,8 +1,8 @@
 # 23: Browser use and computer use as task places
 
 Researched 2026-11-08 for D41 (computer use built on trycua/cua) and D42 (browser use in v1,
-"the most elegant solution") in `docs/roadmap.md`. The place model is in
-`docs/design/product-model.md` §3. The seams this has to fit are in `docs/design/system.md`,
+"the most elegant solution") in `design/roadmap.md`. The place model is in
+`design/product-model.md` §3. The seams this has to fit are in `design/system.md`,
 "Hooks v1 must leave open for phone and call": an environment port, a typed place union with an
 `isolation` field, per-task MCP sidecars, a media relay, and a takeover state. Principles 15
 (one thin adapter) and 18 (scope credentials, gate effects, honest isolation) apply.

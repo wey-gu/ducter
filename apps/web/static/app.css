@@ -1,4 +1,4 @@
-/* Ducter phone client. Pebble tokens (docs/design/ui.md); components read only these vars. */
+/* Ducter phone client. Pebble tokens (design/ui.md); components read only these vars. */
 @font-face {
   font-family: "Bricolage Grotesque";
   src: url("bricolage.woff") format("woff");
@@ -40,7 +40,7 @@
   --failed-surface: #fbdde4;
   --failed-ink: #8a1f3b;
 
-  /* Depth (docs/design/ui.md, Components): a ledge means "this can be pressed"; every
+  /* Depth (design/ui.md, Components): a ledge means "this can be pressed"; every
      filled button has the same one (--ledge, in a darker shade of its fill) and sinks into
      it. Containers never have a ledge: they rest on --raised or float on --floating. */
   --ledge: 3px;

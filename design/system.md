@@ -158,7 +158,7 @@ changes.
   - v1 runs on SQLite: one SQLite Durable Object per persona, or `bun:sqlite` on a Linux box (the runner
     is a Bun binary).
   - Indexes: FTS5 with a CJK tokenizer, plus vectors (`memory.md`).
-  - Moving to HawDB is in `docs/todo.md`.
+  - Moving to HawDB is in `design/todo.md`.
 - **Topology**
   - The control plane (Worker + Durable Object, or a Linux box) holds the Log, waiters,
     registry, intents, and the push fan-out.

@@ -8,7 +8,7 @@ user's go to `design/flows/OPEN-QUESTIONS.md`; the morning of 2026-11-09 answere
 offline → 在等 · <device> 连不上 → resume (two VMs, scripted model) · phone web client with code
 pairing and Web Push (`apps/web`) · Ducter.app + DMG · the partner memory slice on Nowledge Mem
 (eval only) · the partner eval (`bun run eval:partner`) · art cutouts with true alpha
-(`docs/art/assets/alpha/`, 22 assets, `docs/art/assets/tools/cut.swift`).
+(`design/art/assets/alpha/`, 22 assets, `design/art/assets/tools/cut.swift`).
 
 ## Server mode and remote access (D54, `research/29`)
 
@@ -63,7 +63,7 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [ ] Rename the partner from the desktop (today the name is asked once, in the terminal or
       the app).
 
-## Partner and tasks (`docs/plan/v1-tonight.md` "Known gaps", `research/30`)
+## Partner and tasks (`design/plan/v1-tonight.md` "Known gaps", `research/30`)
 
 - [ ] Two results landing together still mention branches and guess at merge conflicts (eval
       `settle` 0/2). Settlement batching in code, not prose.
@@ -159,10 +159,10 @@ Codex first, once OAR is near 1.0. See `research/17`.
       moejs, with a `randomUUID` shim, for client-side read models
 - [ ] Evaluate moejs as the client plugin host (cf. MyGo Music / mygo-plugin)
 
-## Release and CI (`docs/release.md`)
+## Release and CI (`design/release/README.md`)
 
 - [ ] First tagged release end to end (notarized DMG, Linux tarballs, TestFlight). Trigger: the
-      author's checklist at the top of `docs/release.md` is done.
+      author's checklist at the top of `design/release/README.md` is done.
 - [ ] One Bun for everything: the committed web bundle is built with 1.3.1, the compiled CLI
       with 1.4.4 (they minify differently). Trigger: upgrading Bun on the author's Mac.
 - [ ] Intel Mac DMG (a `macos-15-intel` job). Trigger: someone asks for Intel.

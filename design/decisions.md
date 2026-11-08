@@ -41,27 +41,27 @@ never delete it.
 | D30 | Rule precedence: task pin > project > persona > user > default | L | `design/product-model.md` §2 |
 | D31 | Projects and devices are user-level, shared by personas. Tasks and routines belong to a persona | L | `design/product-model.md` §2 |
 | D32 | Chat with the user in Chinese; repo docs in English | U | `AGENTS.md` |
-| D33 | **V1 target: a heavy-developer tool plus a powerful personal AI** (a conductor replacement for the author first). Onboarding and defaults are still designed to the ordinary-person bar | U | `docs/roadmap.md`, `AGENTS.md` |
-| D34 | V1 topology: the main process (control plane + main AI) runs on a **VPS or a Mac**; VPS and Macs act as workers. Mobile in v1 is **web**. Whether a CF Worker deploy is in v1 depends on `research/21` | U | `docs/roadmap.md` |
-| D35 | Later on the roadmap: phone calls (tuwa.ai-like), phone use (android-use, iPhone-use), native mobile app | U | `docs/roadmap.md` |
+| D33 | **V1 target: a heavy-developer tool plus a powerful personal AI** (a conductor replacement for the author first). Onboarding and defaults are still designed to the ordinary-person bar | U | `design/roadmap.md`, `AGENTS.md` |
+| D34 | V1 topology: the main process (control plane + main AI) runs on a **VPS or a Mac**; VPS and Macs act as workers. Mobile in v1 is **web**. Whether a CF Worker deploy is in v1 depends on `research/21` | U | `design/roadmap.md` |
+| D35 | Later on the roadmap: phone calls (tuwa.ai-like), phone use (android-use, iPhone-use), native mobile app | U | `design/roadmap.md` |
 | D36 | Experience north star: **好用 easy · 顺滑 smooth · 赏心悦目 delightful to look at · 放心 trustworthy · 惊喜 pleasantly surprising** | U | `AGENTS.md` |
-| D37 | Onboarding opens with a short, very cute cartoon in the Pebble style that explains the core concepts in seconds and shows what to set up | U | `docs/design/onboarding.md` |
-| D38 | The lead agent decides the scenario design order (A → B → D first) | U | `docs/design/scenarios.md` |
-| D39 | No full CF Worker/DO deploy target in v1 (moves to v1.x); v1 remote access via a "Ducter Edge" relay on the user's `workers.dev` (proposed; CN reachability pending) | R21 | `docs/roadmap.md` |
-| D40 | Device pairing follows the dsh model: one-time QR code, then a per-device key and passkey, each device revocable | R21 | `docs/roadmap.md` |
-| D41 | **Computer use is built on trycua/cua** and is in scope; integration details pending `research/23` | U | `docs/roadmap.md` |
-| D42 | **Browser use is in v1**; choose the most elegant solution per `research/23` | U | `docs/roadmap.md` |
+| D37 | Onboarding opens with a short, very cute cartoon in the Pebble style that explains the core concepts in seconds and shows what to set up | U | `design/onboarding.md` |
+| D38 | The lead agent decides the scenario design order (A → B → D first) | U | `design/scenarios.md` |
+| D39 | No full CF Worker/DO deploy target in v1 (moves to v1.x); v1 remote access via a "Ducter Edge" relay on the user's `workers.dev` (proposed; CN reachability pending) | R21 | `design/roadmap.md` |
+| D40 | Device pairing follows the dsh model: one-time QR code, then a per-device key and passkey, each device revocable | R21 | `design/roadmap.md` |
+| D41 | **Computer use is built on trycua/cua** and is in scope; integration details pending `research/23` | U | `design/roadmap.md` |
+| D42 | **Browser use is in v1**; choose the most elegant solution per `research/23` | U | `design/roadmap.md` |
 | D43 | **Enabling and deploying capabilities is a game-like, visual experience**: the user sees *where* a capability lives (which device or place) and *what* it does. All concept explanations follow this style | U | `design/ui.md`, `AGENTS.md` |
-| D44 | Target users also include **consumer personal-AI users (Grok bot, Muse)**: same capabilities, but any strong harness/model can be the main AI | U | `AGENTS.md`, `docs/roadmap.md` |
+| D44 | Target users also include **consumer personal-AI users (Grok bot, Muse)**: same capabilities, but any strong harness/model can be the main AI | U | `AGENTS.md`, `design/roadmap.md` |
 | D45 | **No "adopt running sessions" in v1**; users start fresh and grow into it | U | `design/onboarding.md` |
-| D46 | Remote access in v1 supports **both `workers.dev` and a custom domain**. Tailscale goes on the roadmap as a community contribution | U | `docs/roadmap.md` |
+| D46 | Remote access in v1 supports **both `workers.dev` and a custom domain**. Tailscale goes on the roadmap as a community contribution | U | `design/roadmap.md` |
 | D47 | Use **cua-driver** for browser and computer use. FSL-licensed parts are accepted for the open-source, self-deployed project; buy a license from cua if Ducter is ever commercialized. No heavy validation spike: integrate directly | U | `design/system.md` |
 | D48 | No real-Chrome attach. Instead, Ducter **maintains credentials and persistent logged-in profiles** (Muse-like) so it can do sustained work for the user, such as running social accounts | U | `design/system.md`, `research/25` |
-| D49 | **Build the first version tonight (~8 h)**: straighten the essentials → quick UI-flow prototype polish → parallel implementation with Claude Code agents. This supersedes AGENTS.md's "Ready to build" gate for this first slice | U | `docs/plan/v1-tonight.md` |
+| D49 | **Build the first version tonight (~8 h)**: straighten the essentials → quick UI-flow prototype polish → parallel implementation with Claude Code agents. This supersedes AGENTS.md's "Ready to build" gate for this first slice | U | `design/plan/v1-tonight.md` |
 | D50 | Capability map is **2D, not 3D**. Draw inspiration from 2D game design to express the metaphors and relationships (the three.js prototype is retired as a direction) | U | `design/ui.md`, `research/28` |
 | D51 | Glossary batch from flow design: 接手/交还 · 画面 · 第 n 轮 · 复查 · 可以碰 · 存档 · 醒着/睡着了/连不上 · 额度 · 叫醒 · 远程打开 (Reach from anywhere) · 换到 X 接着做 · 先停 · 准备方法 · 草稿副本 · 按默认做了 · 停下了/撤销/再试一次 · 都按默认 · 安静时段 · 核对没过 | U ("按建议") | `design/product-model.md` §1 |
 | D52 | Flow semantics 1–18 as recommended in `design/flows/OPEN-QUESTIONS.md`. Highlights: device sleep → tasks 在等 after 2 min (amends states invariant 1); same-harness model switch happens at a cut inside the task; pause is a wait reason; drop has a 10 s undo; draft PR auto-opens on personal repos, waits for Go on org repos; results live in 成果; quiet hours are unbreakable unless the user sets a deadline "even at night"; 2-min typing grace; breaker after 3 errors, stall after 20 min; a second partner may exist without Mem; CN users default to their own domain | U ("按建议") | `design/flows/*`, `design/focus-window-states.md` |
-| D53 | Art direction: **puffy matte clay 3D** illustrations (pre-rendered assets in a 2D UI); character = round-2 clay Ducter; capability screen = round-2 board v2 (cozy layout: device cards, hero device and slots, ability grid, AI-account tokens); equip = sticker peel-and-stick motion; lighting restraint rules apply | U ("按建议") | `design/ui.md`, `docs/art/concepts/README.md` |
+| D53 | Art direction: **puffy matte clay 3D** illustrations (pre-rendered assets in a 2D UI); character = round-2 clay Ducter; capability screen = round-2 board v2 (cozy layout: device cards, hero device and slots, ability grid, AI-account tokens); equip = sticker peel-and-stick motion; lighting restraint rules apply | U ("按建议") | `design/ui.md`, `design/art/concepts/README.md` |
 
 ## 2026-11-09: Server mode (overnight build)
 

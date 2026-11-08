@@ -1,6 +1,6 @@
 # Ducter Design Principles
 
-> Draft 8 · 2026-11-08 · Conclusions only. Mechanics live in `docs/design/`; evidence lives in
+> Draft 8 · 2026-11-08 · Conclusions only. Mechanics live in `design/`; evidence lives in
 > `research/` (index: `research/README.md`), cited as [n].
 
 ## Physics

@@ -1,6 +1,6 @@
 # Flows B: Kinds of Work
 
-> Draft 1 · 2026-11-08 · Group B of `docs/design/scenarios.md` (B1–B5, B7–B9; B6 phone/call is
+> Draft 1 · 2026-11-08 · Group B of `design/scenarios.md` (B1–B5, B7–B9; B6 phone/call is
 > out of v1). Names follow the glossary in `product-model.md` §1. Words the glossary does not
 > yet have are marked **[new]** and collected in "Glossary gaps" at the end; they need the
 > change loop before they ship. Artboards: scratchpad `flows/project/B*.dc.html`.

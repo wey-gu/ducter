@@ -8,26 +8,26 @@ in `design/product-model.md`.
 
 - [`../motivation.md`](../motivation.md): why Ducter exists.
 - [`principles.md`](principles.md): the architecture and product principles, as conclusions.
-- [`design/product-model.md`](design/product-model.md): the objects, who owns what, the
+- [`design/product-model.md`](product-model.md): the objects, who owns what, the
   glossary, and the scenario catalog.
-- [`install.md`](install.md): building, installing and running Ducter on a Mac or a server.
+- [`install.md`](build-and-run.md): building, installing and running Ducter on a Mac or a server.
 - [`roadmap.md`](roadmap.md): what is built, what is next, and what we'd love help with.
 
 ## Design notes (`design/`)
 
 | Note | What it covers |
 |---|---|
-| [`context.md`](design/context.md) | The Log, how each model call is projected from it, resume, the working set |
-| [`memory.md`](design/memory.md) | The partner's memory: digest, recent window, recall |
-| [`conversation.md`](design/conversation.md) | The conversation surface: jobs and the living message |
-| [`focus-window.md`](design/focus-window.md) | Tasks: brief, report, checkpoint, where they run |
-| [`focus-window-states.md`](design/focus-window-states.md) | The task state machine |
-| [`system.md`](design/system.md) | Harness adapter, identity and Mem, safety and trust, storage, server mode, workers |
-| [`onboarding.md`](design/onboarding.md) | The first five minutes, on a Mac and on a server |
-| [`ui.md`](design/ui.md) | Themes, tokens, zoom levels, the visual language |
-| [`glossary-review-2026-11-09.md`](design/glossary-review-2026-11-09.md) | Why each shown word is worded the way it is (D66) |
-| [`scenarios.md`](design/scenarios.md) | Which scenarios are designed and built, and how they were checked |
-| [`flows/`](design/flows/) | Step-by-step flows by area (setup, kinds of work, decisions, steering, safety, results) and the open questions |
+| [`context.md`](context.md) | The Log, how each model call is projected from it, resume, the working set |
+| [`memory.md`](memory.md) | The partner's memory: digest, recent window, recall |
+| [`conversation.md`](conversation.md) | The conversation surface: jobs and the living message |
+| [`focus-window.md`](focus-window.md) | Tasks: brief, report, checkpoint, where they run |
+| [`focus-window-states.md`](focus-window-states.md) | The task state machine |
+| [`system.md`](system.md) | Harness adapter, identity and Mem, safety and trust, storage, server mode, workers |
+| [`onboarding.md`](onboarding.md) | The first five minutes, on a Mac and on a server |
+| [`ui.md`](ui.md) | Themes, tokens, zoom levels, the visual language |
+| [`glossary-review-2026-11-09.md`](glossary-review-2026-11-09.md) | Why each shown word is worded the way it is (D66) |
+| [`scenarios.md`](scenarios.md) | Which scenarios are designed and built, and how they were checked |
+| [`flows/`](flows/) | Step-by-step flows by area (setup, kinds of work, decisions, steering, safety, results) and the open questions |
 
 "Focus Window" is the design-time name of what the product calls a **task**.
 

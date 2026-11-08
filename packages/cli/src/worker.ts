@@ -1,7 +1,7 @@
 // `ducter worker --join <address> --code <code>`: this machine joins a Ducter running elsewhere
 // as a worker. It dials OUT (no inbound port here), says which harnesses it has, and stays
 // connected. The main places tasks here over that socket; @ducter/runner's worker host runs
-// them on this disk with this machine's harnesses (docs/design/system.md "Workers").
+// them on this disk with this machine's harnesses (design/system.md "Workers").
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { arch, hostname, platform } from "node:os";
 import { dirname, join } from "node:path";

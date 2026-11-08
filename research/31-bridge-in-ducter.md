@@ -92,7 +92,7 @@ Two consequences follow:
 
 ## What was built (branch `bridge-practice`, behind `DUCTER_BRIDGE=1`)
 
-See `docs/design/bridge.md` for the full flow.
+See `design/bridge.md` for the full flow.
 
 - **Port.** `packages/partner/src/bridge.ts` talks to the user's own `nmem` with an argument vector (never a
   shell string), under `--agent-context $DUCTER_BRIDGE_CONTEXT`. It runs only `bridge inbox`,
@@ -147,4 +147,4 @@ See `docs/design/bridge.md` for the full flow.
   - whether Bridge is enabled for the author's account (the skill mentions administrator or rollout next steps);
   - how a real terminal session experiences the round trip.
 
-  All three need the author's live trial (commands in `docs/design/bridge.md`).
+  All three need the author's live trial (commands in `design/bridge.md`).

@@ -37,7 +37,7 @@ func (a *App) faceState() FaceState {
 
 // face draws Ducter: a rounded pebble with two eyes. It blinks while idle,
 // looks aside while working, and raises its brows when something needs
-// you (docs/design/ui.md, Persona face).
+// you (design/ui.md, Persona face).
 func (a *App) face(c *ui.Context, state FaceState, size float32, label string) ui.Element {
 	t := a.T
 	still := c.Preferences().ReduceMotion
@@ -220,7 +220,7 @@ func (a *App) pill(c *ui.Context, text string) {
 
 // ---------- buttons ----------
 
-// The one button family (docs/design/ui.md, Components):
+// The one button family (design/ui.md, Components):
 //
 //   - primary: the one thing to do. Ink.
 //   - secondary: a choice beside it. The surface, with a hairline.

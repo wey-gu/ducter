@@ -10,7 +10,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 )
 
-// Results (docs/design/flows/I-results.md, tonight): under the partner's
+// Results (design/flows/I-results.md, tonight): under the partner's
 // result message, the task's chip, "How I know" evidence chips (machine
 // checks first), the "Outside" line from what the transcript shows, and
 // what to do next with a repo result.

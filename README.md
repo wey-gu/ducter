@@ -13,7 +13,7 @@ you to look into and steer whenever you want.
 </p>
 <p>
   <img src="apps/desktop/docs/abilities-en-home.png" width="61%" alt="Your devices and abilities: this Mac and a worker, the AIs signed in on each, and abilities you can add">
-  <img src="docs/design/screens/phone-conversation-en.png" width="37%" alt="The phone client: two decisions waiting, each with a default, and Go on all defaults">
+  <img src="design/screens/phone-conversation-en.png" width="37%" alt="The phone client: two decisions waiting, each with a default, and Go on all defaults">
 </p>
 
 > **Status: early preview.** Ducter works end to end on macOS and on a Linux server, but expect
@@ -56,7 +56,7 @@ Open `Ducter.app`. It checks your Mac, shows the one thing to fix if anything bl
 the conversation. Ducter keeps working when you close the window; **Stop Ducter** in the menu
 stops it. Built without an Apple Developer ID, the app is signed ad hoc, so the first open
 goes through **System Settings → Privacy & Security → Open Anyway**
-([details](docs/install.md)).
+([details](design/build-and-run.md)).
 
 ### The command line
 
@@ -82,7 +82,7 @@ sh ducter/install.sh --service             # on the server
 
 The server listens on `127.0.0.1` only; reach it through your own domain (a one-line Caddy
 setup) or an SSH tunnel. Other machines can join as workers, and tasks can run on them. The
-full walkthrough is in [`docs/install.md`](docs/install.md).
+full walkthrough is in [`design/build-and-run.md`](design/build-and-run.md).
 
 ## How it works
 
@@ -110,10 +110,10 @@ flowchart LR
   the phone client is a small web app served by the main process. Both speak the same
   protocol.
 
-The ideas behind the design are in [`docs/principles.md`](docs/principles.md) and the
-mechanics in [`docs/design/`](docs/design/); start at [`docs/README.md`](docs/README.md). Why
+The ideas behind the design are in [`design/principles.md`](design/principles.md) and the
+mechanics in [`design/`](design/); start at [`docs/README.md`](design/README.md). Why
 Ducter exists is in [`motivation.md`](motivation.md), and what comes next is in
-[`docs/roadmap.md`](docs/roadmap.md).
+[`design/roadmap.md`](design/roadmap.md).
 
 ## Contributing
 
@@ -127,7 +127,7 @@ Ducter 是一个自己部署的个人 AI。你只跟一个伙伴说话，它把�
 Claude Code 或 Codex 去做，用的是你已经在付费的 AI 订阅，做完了带着证据回来告诉你。只有真正需要你拍板的事才会打扰你，而每件事你随时都能点开、查看、接手。
 
 目前是早期预览版：macOS 桌面端和 Linux 服务器都能用，界面中英双语。上手方法见上面的
-Quickstart，设计思路见 [`docs/principles.md`](docs/principles.md)。
+Quickstart，设计思路见 [`design/principles.md`](design/principles.md)。
 
 ## License
 

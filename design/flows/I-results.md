@@ -698,7 +698,7 @@ Every link and send is in the day's record (G5).
 | share link | 生成链接 / Make a link · 关掉链接 / Turn off the link | I5 | Not 撤销 / Undo: a read link can't be undone |
 | snapshot | 当时的样子 / As it was then | I2, I4 | |
 
-## Open questions (decided 2026-11-09: rule 1 as D60, the rest as D61; see `docs/decisions.md` for the two changes)
+## Open questions (decided 2026-11-09: rule 1 as D60, the rest as D61; see `design/decisions.md` for the two changes)
 
 | # | Question | Recommendation (default) | Why it matters |
 |---|---|---|---|

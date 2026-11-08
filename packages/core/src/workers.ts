@@ -1,7 +1,7 @@
 // Workers dial in at /worker with a worker device token (auth.ts) and stay connected. This file
 // is the main's side of that socket: presence (who is online, with which harnesses) and a small
 // request/response + session-frame transport (WorkerLink) that the runner uses to place tasks
-// on a worker (runner/src/remote.ts; docs/design/system.md "Workers").
+// on a worker (runner/src/remote.ts; design/system.md "Workers").
 import type { ServerWebSocket } from "bun";
 import type { WorkerInfo, WorkerLink, WorkerLinks, WorkerSessionFrame } from "@ducter/protocol/src/internal.ts";
 import type { Device } from "./auth.ts";

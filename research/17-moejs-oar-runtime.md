@@ -148,7 +148,7 @@ Notes:
 - (a) and (b) are the same problem. The engine is the easy part. The real work is a **Node-API emulation layer
   for process I/O**, and moejs only reaches parity there for fs and buffer. moejs is better than goja on speed
   and memory, but OAR is one long-lived program per runner, so per-call µs and per-runtime KiB do not matter.
-- Running OAR in the MyGo client process also conflicts with the topology in `docs/design/system.md`. Runners
+- Running OAR in the MyGo client process also conflicts with the topology in `design/system.md`. Runners
   are separate dial-out daemons on Macs and Linux boxes, and the client is GPU UI + WASM. A Go-embedded OAR
   would have to run headless on Linux boxes anyway, so one shared runner binary is better than an in-client
   engine.

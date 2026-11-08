@@ -1,7 +1,7 @@
 # Open Questions: Consolidated
 
 Calls that are the user's, each with the lead's recommendation and a default. Once the user
-answers, the answer goes to `docs/decisions.md` and is propagated per AGENTS.md; the answered
+answers, the answer goes to `design/decisions.md` and is propagated per AGENTS.md; the answered
 item leaves this page and only a pointer stays below.
 
 Canvas: https://claude.ai/artifact/LKuVp3knPDJ4EdoyWBGSWN
@@ -73,7 +73,7 @@ Nothing here is decided. The slice is built behind `DUCTER_BRIDGE=1` on branch `
 
 The author: "关闭窗口在后台会比较自然一些；词汇表你要仔细反思…；那些建议你自己第一性原理反思好按照建议吧".
 Each recommendation was re-checked from first principles before recording; the full text,
-including what the check changed, is in `docs/decisions.md`.
+including what the check changed, is in `design/decisions.md`.
 
 | Item (overnight list) | Decision | As recommended? |
 |---|---|---|

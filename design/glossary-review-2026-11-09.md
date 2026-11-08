@@ -116,7 +116,7 @@ the zh push line for a decision's default (`packages/core/src/push.ts`).
 
 ## Not changed yet (no string in code, or outside the three tables)
 
-- Flow drafts in `docs/design/flows/` are updated to the new words in the same change.
+- Flow drafts in `design/flows/` are updated to the new words in the same change.
 - The partner's own prose is steered by its persona, not by these tables. Its persona and the
   task brief use none of the replaced words (grep); the filter that keeps result plumbing out of
   its prose (`packages/partner/src/partner.ts`, `RESULT_PLUMBING`) now also catches 合进.

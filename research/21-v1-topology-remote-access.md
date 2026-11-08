@@ -1,7 +1,7 @@
 # 21 — V1 topology: CF Worker deploy target and reaching the main process from anywhere
 
-Date: 2026-11-08. Inputs: `docs/roadmap.md` (D34), `docs/design/system.md` §Storage and topology,
-`docs/principles.md` 15–19, `research/04` §3–4.
+Date: 2026-11-08. Inputs: `design/roadmap.md` (D34), `design/system.md` §Storage and topology,
+`design/principles.md` 15–19, `research/04` §3–4.
 
 Legend: **[V]** verified in this session (URL or local command given). **[I]** inferred, my judgment, or
 prior knowledge not re-checked today.

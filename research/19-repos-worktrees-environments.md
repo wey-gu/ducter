@@ -1,6 +1,6 @@
 # 19: Repos, worktrees and environments
 
-Researched 2026-11-08. This report checks the stances in `docs/design/product-model.md`
+Researched 2026-11-08. This report checks the stances in `design/product-model.md`
 ("Repos: yes, inside projects", "Worktrees: automatic, invisible") against real products.
 Read `02` first: it already covers how Conductor, Lody, Multica, Raft and herdr drive
 harnesses. This report covers only how they model repos and environments.

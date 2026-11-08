@@ -6,7 +6,7 @@ Date: 2026-11-08. Scope: harness layer (OAR), desktop/mobile UI (MyGo, Expo, alt
 Legend: **[V]** = verified from source/docs/API read in this session (path or URL given). **[I]** = inferred / my judgment / prior knowledge not re-checked today.
 
 Repos cloned (read-only, nothing executed) under
-`<scratch> reference app,mygo}`.
+`<scratch>/repos/{oar,mygo,…}`.
 
 ---
 
@@ -70,37 +70,31 @@ Repos cloned (read-only, nothing executed) under
 
 ---
 
-## 2. an open-source agent app and egoist/mygo
+## 2. MyGo, and the shape of existing agent apps
 
-### Correction [V]
-`an open-source agent app` is **not** a fork of `an older Go webview library` (GitHub `fork:false`). an older Go webview library (2018, MIT, 8.2k stars,
-last push 2024-08) is the old "Go + system Chrome via DevTools protocol" library. an open-source agent app is an unrelated
-**product**; egoist/mygo is the desktop framework it is built on.
+### Prior art in general terms [V/I]
+Before choosing a stack we read the public architecture docs of several open-source, single-user agent
+apps (desktop + phone, E2E-encrypted, coding agents on the user's machines). We read docs only and copied no
+code. The patterns that recur, and that Ducter's design draws on as common practice:
+- **Local daemon + thin desktop UI**: the desktop app talks only to a local process over
+  `ws://127.0.0.1:<port>`, with JSON request/event frames, and rejects requests that carry an `Origin`
+  header. The daemon owns identity keys, provider credentials and the agent loop, and runs as a user service.
+- **Store-and-forward relay**: a small self-hostable relay (SQLite or Postgres) that forwards signed,
+  encrypted blobs it cannot read, plus a push endpoint for APNs/FCM.
+- **Domain split**: one identity, many devices; desktops are *runners*, phones never are; durable delegated
+  jobs with attempts, scheduled routines with a missed-run policy, a review queue, secrets sealed to one
+  runner. This is close to Ducter's persona / task / waiter model.
+- **Coding agents driven directly**: Claude Code via `claude -p` stream-json with
+  `--permission-prompt-tool stdio` (so approvals can reach the user), Codex via `codex app-server`, pi via
+  `pi --mode rpc`.
+- **Pairing**: the relay/pairing model common to E2E messengers. A paired device shows a QR or string holding
+  the relay URL, its identity public key, an ephemeral public key and a nonce (about 10 minutes valid); the
+  new device posts a request sealed to that key into a relay mailbox; the existing device attests it and
+  sends back the account key encrypted to the new device.
+- **Phone app**: Expo (React Native, expo-router), with a shared native core where needed.
 
-### an open-source agent app — "Telegram but single person, with agents, E2E encrypted" [V]
-(`the reference app/README.md`, `ARCHITECTURE.md`, `docs/architecture/*.md`)
-- Created 2026-09-18, ~481 commits, 363 stars, **GPL-3.0**, essentially single author (egoist 444 commits).
-  Shipping: `mobile-v1.0.11`, `desktop-v0.1.21` (2026-10-28).
-- **This is the closest prior art to Ducter itself.** Three processes:
-  - Desktop app (Go, MyGo native UI) speaks only to a local **Rust CLI** over `ws://127.0.0.1:4862/ws`
-    (JSON `{id,method,params}` / `{event,data}`, rejects any request with an `Origin` header).
-  - Rust CLI = identity keys, agent loop (after pi-agent-core), provider creds, relay sync; runs as a
-    service (`the reference app service`), signed self-updates.
-  - **Relay**: Rust/axum, SQLite (single writer, WAL) or Postgres, Docker image, "zero-knowledge" store-and-
-    forward of signed/encrypted blobs, APNs/FCM push endpoint. Self-hostable via `RELAY_URL`.
-- Domain: Identity 1-* Device; desktop Devices are **Runners**, phones are never Runners; Bot runs on one
-  Runner; Jobs, Handoffs (durable delegated requests with attempts), Routines (cron, missed-run policy),
-  durable Tasks, Review queue, Secrets sealed to a Runner. Very close to Ducter's persona/FocusWindow/waiter model.
-- **Coding agents** on a Runner: Claude Code via `claude -p` stream-json with `--permission-prompt-tool stdio`
-  (so it *does* surface approvals to the user), Codex via `codex app-server`, OpenCode/fx via ACP, pi via
-  `pi --mode rpc` (`docs/architecture/coding-agents.md` L21-25). Hand-rolled, not OAR.
-- **Pairing UX** (`docs/architecture/identity.md` "Pairing a Device"): paired Device shows
-  `app://pair?relay=…&id=<identity pk>&ek=<ephemeral pk>&n=<nonce>` as QR/string (10-min validity);
-  new device posts a request sealed to `ek` into a relay mailbox; existing device attests it and replies with
-  the account DEK encrypted to the new device's reply key. Phone scans QR. Modeled on Happy's security model.
-- **Phone app**: Expo (React Native, expo-router) + the Rust device core via UniFFI as an Expo native module.
-- Usefulness for Ducter: excellent design reference (pairing, relay trust, runner/device split, routines,
-  handoffs). **Do not copy code** unless Ducter is GPL-3.0-compatible.
+Usefulness for Ducter: these are design patterns, not code to reuse. Ducter's own implementation is
+written from scratch.
 
 ### egoist/mygo — "Desktop apps in Go, with native UI or a web frontend" [V]
 (`mygo/README.md`, `docs/architecture.md`, GitHub API)
@@ -114,17 +108,17 @@ last push 2024-08) is the old "Go + system Chrome via DevTools protocol" library
   hello-world ~7 MB binary, ~35 MB RSS on macOS, 0% idle CPU.
 - Ships: tray, menus, notifications, deep links, global shortcuts, signed auto-updates with deltas,
   .app/.dmg, Windows installer, .deb, PKGBUILD, notarization.
-- **No mobile target** (no iOS/Android in docs) [V by grep]. It is *not* "system Chrome + Go" (that was
-  an older Go webview library); it is OS webview or its own renderer.
+- **No mobile target** (no iOS/Android in docs) [V by grep]. It is *not* a "system Chrome + Go" library;
+  it is OS webview or its own renderer.
 
 ### Is "MyGo + Expo" sensible? [I]
-It is literally the reference app's stack (MyGo desktop + Expo phone), so it is proven to work for one shipping app — but
-note the reference app uses **two UI codebases** (Go native UI desktop, React Native phone). For Ducter there are two shapes:
-- **(A) the reference app shape**: MyGo native-UI desktop + Expo mobile + separate web. 3 UIs. Best feel, most work. No.
+At least one shipping agent app already uses MyGo desktop + Expo phone, so the combination is proven in
+production, but with **two UI codebases** (Go native UI desktop, React Native phone). For Ducter there are two shapes:
+- **(A) Two native UIs**: MyGo native-UI desktop + Expo mobile + separate web. 3 UIs. Best feel, most work. No.
 - **(B) Shared React UI**: one Expo app (expo-router) targeting iOS/Android/**web** (react-native-web); the
   desktop is a **MyGo webview window loading the Expo web export**, with the Go host providing tray,
-  notifications, deep links, auto-update and — importantly — **embedding/launching the runner daemon** (as the reference app's
-  app launches its CLI). One UI codebase, ~10 MB desktop binary. Recommended if MyGo is chosen.
+  notifications, deep links, auto-update and — importantly — **embedding/launching the runner daemon** (the common
+  pattern of a desktop app launching its local daemon). One UI codebase, ~10 MB desktop binary. Recommended if MyGo is chosen.
 - Caveats: MyGo is 6 weeks old with a bus factor ~1; WebKitGTK on Linux is the weakest webview (rendering and
   perf quirks); Go host means the runner daemon (Node, for OAR) is a separate process anyway.
 - Expo DOM components (`'use dom'`) let web-React components render in a WebView on native and as-is on web;
@@ -189,7 +183,7 @@ snapshots; Workers Paid; has an explicit **"Coding agents" guide for Claude Code
   only turn-level records). 100k rows written/day is the tighter free limit → coalesce. Paid $5/mo removes the
   worry and unlocks Containers.
 - **Credential vault**: DO SQLite encrypted at rest by CF, but CF can read it. Prefer client-side encryption
-  (the reference app/Happy model: keys on devices, DO stores ciphertext; runners decrypt). [I]
+  (the E2E-messenger model: keys on devices, DO stores ciphertext; runners decrypt). [I]
 - **CF Containers/Sandbox as "lightweight runner"**: good for ephemeral, per-task Focus Windows (clone repo,
   run Claude Code headless, push PR) when no user machine is awake. Not great as an always-on personal box:
   billed while running, ephemeral disk unless snapshot/R2, harness login state (Claude subscription OAuth)
@@ -224,15 +218,15 @@ Node class; storage = SQL strings that run on both DO SQLite and libSQL/SQLite [
 
 ## 4. Machine enrollment UX
 
-Patterns [I, from product knowledge; the reference app details V]:
+Patterns [I, from product knowledge; pairing details V from the apps read in §2]:
 - **Tailscale**: `curl -fsSL https://tailscale.com/install.sh | sh && tailscale up` → prints login URL;
   browser SSO approves the node; auth keys for headless. Gives a mesh network, but Ducter would then depend on
   Tailscale accounts and still need its own app protocol.
 - **Cloudflare Tunnel**: `cloudflared tunnel login` + config; outbound-only; exposes inbound services.
   Great for exposing a self-hosted control plane, overkill for runners.
 - **Device-code flow** (`gh auth login`, `claude` login): CLI shows code + URL; approve on any logged-in client.
-- **QR / pairing string** (the reference app, Happy, WhatsApp Web): existing device shows QR containing relay URL +
-  ephemeral pubkey + nonce; new device scans; E2E key exchange via a mailbox. (`the reference app/docs/architecture/identity.md`)
+- **QR / pairing string** (E2E messengers and agent apps, WhatsApp Web): existing device shows QR containing relay URL +
+  ephemeral pubkey + nonce; new device scans; E2E key exchange via a mailbox.
 - **Outbound-only WebSocket**: runner dials the control plane, no inbound ports, NAT/sleep-friendly; reconnect
   with backoff and resume from last acked `seq`.
 
@@ -244,7 +238,7 @@ Patterns [I, from product knowledge; the reference app details V]:
 2. Runner generates an Ed25519 machine key, calls `POST /enroll` → gets a short code + `ducter://pair?…` URL,
    prints both and a **terminal QR**.
 3. User approves on phone/web (scan QR or type code); the client signs an attestation of the machine pubkey
-   (and, if vault is E2E, seals the account key to the runner's box key — the reference app model).
+   (and, if vault is E2E, seals the account key to the runner's box key, as E2E messengers do).
 4. Runner holds an outbound hibernatable WS to the persona DO; auth = challenge signed by machine key;
    heartbeats via WS ping (free, doesn't wake DO). Capabilities (OAR `orient` output: installed harnesses,
    logins, models) are posted at connect.
@@ -293,7 +287,7 @@ Assessment [I]:
 
 - **Harness layer**: OAR (`@botiverse/oar`, pinned exact version) inside a **Ducter runner daemon** (Node 24,
   shipped as a single executable), behind a thin internal port. Run harnesses in non-interactive permission modes
-  until OAR ships `Session.answer`; contribute it upstream if approvals in-app are a v1 must (the reference app shows Claude's
+  until OAR ships `Session.answer`; contribute it upstream if approvals in-app are a v1 must (existing agent apps show Claude's
   `--permission-prompt-tool stdio` route works).
 - **Control plane**: Cloudflare Worker + **one SQLite Durable Object per persona** (event log, FW registry,
   device registry, waiters table multiplexed onto the single alarm, ciphertext credential vault) + R2 for blobs.
@@ -304,20 +298,20 @@ Assessment [I]:
 - **Comms**: runner and clients connect **outbound** over hibernatable WSS to the persona DO; seq-cursor resume;
   coalesced deltas. Nowledge Bridge as an external durable mailbox channel, not the transport.
 - **Enrollment**: one-liner installer served by the user's own Worker + device-code/terminal-QR pairing + machine
-  Ed25519 key; optional E2E key sealing à la the reference app/Happy.
+  Ed25519 key; optional E2E key sealing as in E2E messengers.
 - **Clients**: **Expo** (expo-router) for iOS/Android/**web** from one React codebase (DOM components for heavy
   web views like transcripts/diffs). Desktop: thin shell loading the web build + tray/notifications + embedded
   runner. Shell choice: **Tauri v2** as the safer default (mature, MIT/Apache, Rust host); **MyGo** acceptable and
-  smaller if the team is comfortable betting on a 6-week-old single-maintainer project (the reference app proves it in
-  production). Do not build a separate native-UI desktop in v1.
-- **License hygiene**: the reference app is GPL-3.0 → design reference only. OAR Apache-2.0, MyGo MIT, Tauri MIT/Apache — fine.
+  smaller if the team is comfortable betting on a 6-week-old single-maintainer project (it already ships in
+  production apps). Do not build a separate native-UI desktop in v1.
+- **License hygiene**: prior-art apps read for design patterns only; no third-party app code is copied. OAR Apache-2.0, MyGo MIT, Tauri MIT/Apache — fine.
 
 ## Open questions
 1. Does Ducter need in-app permission approvals in v1? If yes: contribute `Session.answer` to OAR or bypass OAR for
    Claude (stream-json + `--permission-prompt-tool stdio`).
 2. Is the OAR team planning `oar serve` soon (roadmap §6)? Aligning Ducter's runner wire protocol with it could
    save a rewrite.
-3. Credential vault trust model: CF-readable (simple) vs E2E device-held keys (the reference app/Happy; harder recovery)?
+3. Credential vault trust model: CF-readable (simple) vs E2E device-held keys (E2E-messenger model; harder recovery)?
 4. Claude/Codex subscription logins on cloud sandboxes: allowed by ToS and technically portable? Otherwise cloud FWs
    are API-key only.
 5. Nowledge Bridge: HTTP API, push/webhook/long-poll, self-hosted `nmem serve` support, rate limits, pricing for
@@ -331,8 +325,8 @@ Assessment [I]:
 
 ## Sources
 - https://github.com/botiverse/oar (README, docs/design/{motivation,system,roadmap,decisions}.md, docs/runtimes/{claude,codex}.md)
-- an open-source agent app (README, ARCHITECTURE.md, docs/architecture/{identity,coding-agents,desktop-app,phone-app,relay,protocols}.md)
-- https://github.com/egoist/mygo (README, docs/architecture.md), an older Go webview library
+- Public architecture docs of open-source single-user agent apps (identity, coding agents, desktop, phone, relay)
+- https://github.com/egoist/mygo (README, docs/architecture.md)
 - https://developers.cloudflare.com/durable-objects/platform/pricing/ , /platform/limits/ , /api/alarms/ , /best-practices/websockets/
 - https://developers.cloudflare.com/containers/pricing/ , https://developers.cloudflare.com/sandbox/
 - https://docs.expo.dev/guides/dom-components/

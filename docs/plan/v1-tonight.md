@@ -110,10 +110,10 @@ in `design/flows/OPEN-QUESTIONS.md` ("Decisions waiting for you"); per-scenario 
   - Build from MyGo's own examples and packages: `ui/markdown`, `ui/richtext` (IME),
     `ui/editor` (diff view + git diff), `motion`, `svg`, virtual lists, plus the
     `examples/markdown-chat`, `terminal`, `code-editor`, and `timeline` examples.
-  - an open-source agent app's desktop is a MyGo-native agent app and serves as a **design reference
-    only**: it is GPL-3.0, so no code is copied.
+  - Ducter's desktop UI is its own code, built on MyGo's MIT packages and examples; no code from
+    other apps is copied.
   - Web via MyGo WASM comes later.
-- **Repo:** private `wey-gu/ducter` (public once ready).
+- **Repo:** `wey-gu/ducter`.
 - **Wiring:** one Bun process (`bun run up`) holds core, runner, and partner in-process;
   remote runners come later.
   - The contract is `packages/protocol/src/index.ts` (wire) and `internal.ts` (module

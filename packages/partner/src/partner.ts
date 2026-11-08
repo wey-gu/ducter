@@ -85,6 +85,7 @@ interface TurnState {
   opensHandled: number;
   acked?: boolean; // an ack went out this turn
   asked?: boolean; // the partner made a decision card (ask) this turn
+  askedId?: string; // the last decision it made this turn
   quiet?: boolean; // woken only by task questions the user already sees as decision cards
   zh: boolean;
   recalls: number; // memory_search calls this turn
@@ -101,7 +102,7 @@ interface Job {
 const COLD_MS = 55 * 60 * 1000;
 const TASK_OPEN_RE = /(^|__)task_open$/;
 const TASK_SEND_RE = /(^|__)task_send$/;
-const QUIET_TOOL_RE = /(^ToolSearch$)|((^|__)(log_search|log_read|task_read|memory_search|memory_add)$)/;
+const QUIET_TOOL_RE = /(^ToolSearch$)|((^|__)(log_search|log_read|task_read|memory_search|memory_add|task_retitle)$)/;
 
 /** The user asks to look harder, which lifts the one-recall-per-turn gate. */
 const ASKS_RECALL = /(再|多|仔细|好好)(查|找|搜|想想|翻)|翻翻|想不起|look (again|harder)|search (again|more)|\bdig\b|check (your )?memory|do you remember|还记得/i;
@@ -230,6 +231,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
 
   const ctx: RenderCtx = {
     taskTitle: (id) => core.tasks.get(id)?.title ?? jobs.get(id)?.title,
+    merged: (id) =>
+      core.log
+        .read({ stream: "channel", kinds: ["job_status"], limit: 500 })
+        .some((e) => e.origin === "user" && (e.body as Bodies["job_status"]).taskId === id && /\bmerged\b/.test((e.body as Bodies["job_status"]).text)),
     taskBase: (id) => {
       const p = core.tasks.get(id)?.place;
       return p?.kind === "repo" ? p.baseBranch : undefined;
@@ -674,7 +679,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   core.mcp.register(
     "partner",
     "task_send",
-    "Send text to a task, running or finished (a finished one resumes in its own branch and worktree): the user's follow-up or correction, the next step on the same work, or a question that needs the task's own judgment. Read first (task_read, log_search, log_read); ask only what the Log can't answer. mode 'steer' (default) interrupts at the next safe point; 'queue' waits for its current turn.",
+    "Send text to a task, running or finished (a finished one resumes in its own branch and worktree): the user's follow-up or correction, the next step on the same work, or a question that needs the task's own judgment. Only on the same subject and its unmerged change: other work in the same repo, or anything after the user merged it, is a new task (task_open). Read first (task_read, log_search, log_read); ask only what the Log can't answer. mode 'steer' (default) interrupts at the next safe point; 'queue' waits for its current turn.",
     {
       type: "object",
       properties: {
@@ -687,12 +692,43 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     async (args: { taskId: string; text: string; mode?: "steer" | "queue" }) => {
       await Bun.sleep(5); // let the streamed text land first
       flushPending(); // a line written before this call is a message, not an ack
+      // A turn woken only by a task's question: the user answers it on its card (eval: the
+      // partner sent "Go：…" to the task on the user's behalf).
+      if (turn?.quiet) return { ok: false, error: "The user answers this question on its card; send the task nothing and end your turn." };
       try {
         const r = await runner.send(args.taskId, redactSecrets(args.text), args.mode);
         return { ok: true, ...r };
       } catch (err) {
         return { ok: false, error: err instanceof Error ? err.message : String(err) };
       }
+    },
+  );
+
+  // Review 2 #3: one card kept its first title for three different jobs. A retitle is a new
+  // task_open for the same task (same place and brief): every client already takes the latest
+  // one for the title, the registry keeps openedAt and state, and runner recovery uses the first.
+  core.mcp.register(
+    "partner",
+    "task_retitle",
+    "Give a task a new title when a follow-up you sent it changes or widens what it is about, so its card says what it is doing now. Short, in the user's language, covering all of its work. Not for new separate work (open a new task for that).",
+    {
+      type: "object",
+      properties: { taskId: { type: "string" }, title: { type: "string" } },
+      required: ["taskId", "title"],
+    },
+    async (args: { taskId: string; title: string }) => {
+      const title = String(args.title ?? "").trim().slice(0, 80);
+      if (!title) return { ok: false, error: "task_retitle needs a title" };
+      if (!core.tasks.get(args.taskId)) return { ok: false, error: `unknown task ${args.taskId}` };
+      const opens = core.log.read({ stream: `task:${args.taskId}`, kinds: ["task_open"], limit: 1000 });
+      const last = opens[opens.length - 1];
+      if (!last) return { ok: false, error: `task ${args.taskId} has no task_open` };
+      const prev = last.body as Bodies["task_open"];
+      if (prev.title === title) return { ok: true, title };
+      core.log.append({ persona: last.persona, stream: last.stream, origin: "partner", kind: "task_open", body: { ...prev, title } });
+      const j = jobs.get(args.taskId);
+      if (j) j.title = title;
+      return { ok: true, title };
     },
   );
 
@@ -705,13 +741,18 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       properties: {
         at: { type: "string", description: "ISO 8601 time" },
         taskId: { type: "string" },
+        decisionId: { type: "string", description: "Only if this wait is about a question you asked: it is cancelled when the user answers" },
         reason: { type: "string", description: "Shown to the user on On hand: short, in their language, addressed to them (提醒你回邮件 / Remind you to reply to the email)" },
       },
       required: ["reason"],
     },
-    async (args: { at?: string; taskId?: string; reason: string }) => {
+    async (args: { at?: string; taskId?: string; decisionId?: string; reason: string }) => {
       await Bun.sleep(5); // let the streamed text land first
       flushPending(); // keep the line before the status line
+      // Review 2 #4: after its own ask the partner armed "等你决定…". The card comes back on
+      // its own; a reminder in the same turn is only for one the user asked for.
+      if (turn?.asked && !turn.userTexts.some((t) => /提醒|叫我|remind|alarm|\d\s*(点|:|pm|am)|明天|tomorrow/i.test(t)))
+        return { ok: false, error: "No reminder needed: the decision card stays on screen until the user answers. End your turn." };
       if (!args.at) {
         if (args.taskId) return { ok: true, note: "The task's next report will wake you; no timer set." };
         return { ok: false, error: "wait_until needs `at` (ISO time) tonight." };
@@ -723,6 +764,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       // which wakes us; a task-bound waiter is cancelled if the task finishes first.
       const body: Bodies["waiter"] = { waiterId: newId("wait"), at: new Date(at).toISOString(), reason: args.reason, state: "armed" };
       if (args.taskId) body.taskId = args.taskId;
+      // A wait armed in the same turn as an ask is about that ask (review 2 #4), even unlinked.
+      const decisionId = (typeof args.decisionId === "string" && args.decisionId.trim()) || turn?.askedId;
+      if (decisionId) body.decisionId = decisionId;
       core.log.append({ stream: "channel", origin: "waiter", kind: "waiter", body });
       return { ok: true, waiterId: body.waiterId, firesAt: body.at };
     },
@@ -760,7 +804,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         body.defaultAt = new Date(now() + args.defaultInMinutes * 60_000).toISOString();
       }
       core.log.append({ stream: "channel", origin: "partner", kind: "decision", body });
-      if (turn) turn.asked = true;
+      if (turn) (turn.asked = true), (turn.askedId = body.decisionId);
       return { ok: true, decisionId: body.decisionId, note: "The user sees it with Go / Hold / Reply. End your turn now; do not repeat the question." };
     },
   );
@@ -822,6 +866,11 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       if (PLUMBING_RE.test(text) || taskIds.some((id) => text.includes(id)))
         return { ok: false, error: "That is task plumbing (ids, branches, worktrees, commits). Remember only durable things about the user and their work; nothing was saved." };
       if (t && t.noted.length >= 2) return { ok: false, error: "Enough remembered this turn." };
+      // A one-time instruction is not a preference (review 2 round 2, eval: "Metric units: this
+      // report only" saved). Judged on the user's words this turn, and on what would be saved.
+      const ONE_TIME = /这次|这一次|本次|仅此|只这|\bthis (one )?time\b|\bjust (for )?this\b|\bfor this (one|report|task|pr|time)\b|\bonly (for )?this\b|\bthis .{0,12} only\b/i;
+      if (ONE_TIME.test(text) || (t?.userTexts.some((u) => ONE_TIME.test(u)) && !t.userTexts.some((u) => /以后|往后|总是|always|from now on|every time|每次/i.test(u))))
+        return { ok: false, error: "That is an instruction for this piece of work only, not a lasting preference: put it in the task's brief instead; nothing was saved." };
       const report = t?.triggers.find((e) => e.kind === "report");
       const r = await memory.add({
         title,

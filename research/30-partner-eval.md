@@ -132,6 +132,40 @@ the prompt did not hold:
   baseline was re-run under the final grader so the comparison is like for like.
 - **One run per scenario per build** apart from the final. ±3 scenarios is noise.
 
+## Round 2 (after Review 2, same day)
+
+Scenarios grew to 48 (memory and review-2 ones from other workstreams, plus five here:
+`new-bug-same-repo-zh`, `followup-after-merge-en`, `followup-broadens-en`, `mem-one-time-zh/en`).
+Persona: 9,865 chars (≈3.1K tokens) after the memory section landed.
+
+| Run | Pass |
+|---|---|
+| After merging main, before round-2 changes (48) | 40/48 (83%) |
+| Round 2 final, 2 runs (96) | 90/96 (94%); 91/96 with one eval-check bug fixed* |
+
+\* `noBaseBranch` flagged a new task based on `main`, which is correct behavior; the check now
+flags only another task's `ducter/*` branch. Not re-run.
+
+What changed [V, each with a regression test]:
+- **Follow-up vs new task (review #3):** rule 2d now continues a task only on its unmerged
+  change (same repo AND same subject). Another bug in the same repo, or anything after the user
+  merged it, is a new task. `<tasks>` marks merged tasks, and task_send's description says the
+  same. New partner tool **`task_retitle`** appends a later `task_open` with the new title.
+  Desktop and web take the latest `task_open` for the title and the first for `openedAt`
+  (Go and web tests, bundle rebuilt).
+- **Waiters tied to asks (review #4):** `waiter.decisionId`. Core cancels the waiter when that
+  decision is answered, also when rebuilding after a restart. A wait armed in the same turn as
+  an ask is tied to it, and refused unless the user asked for a reminder.
+- **needs_input turns cannot task_send.** The model answered "Go：…" to the task for the user.
+- **One-time instructions are not memory:** a persona line, and `memory_add` refuses
+  这次 / just for this / "this report only" unless the user also said 以后 / always.
+- **`DUCTER_MEMORY=off` (review #14):** decided that off means off. No identity read either
+  (`loadPersona` returns source `off`), the `up` banner says 关着 / off, doctor says off and
+  never runs nmem. nmem's local/remote mode is translated in zh.
+
+Still failing: `two-done-zh` (0/2: test counts and branches in the combined message),
+`followup-broadens-en` (0/2: the ack says "the same task"), `greet-zh` (1/2).
+
 ## Implications for Ducter
 
 - **The result shape is client + partner, not partner alone.** The prose is the top line;

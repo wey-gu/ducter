@@ -52,6 +52,7 @@ export interface DoctorReport {
 export interface DoctorOptions {
   port: number;
   dataDir: string;
+  memoryOff?: boolean; // default: DUCTER_MEMORY=off
 }
 
 const FIX = {
@@ -132,10 +133,15 @@ export async function runDoctor(host: Host, t: T, opts: DoctorOptions): Promise<
       return { installed: true, loggedIn: r.code === 0 && /logged in/i.test(r.stdout) && !/not logged in/i.test(r.stdout) };
     })(),
     (async () => {
+      // Off means off: no identity read, no recall, no saves (review 2 #14), so say that, not "connected".
+      if (opts.memoryOff ?? process.env.DUCTER_MEMORY === "off") return c("nmem", "check.nmem", "ok", false, "check.nmem.off");
       if (!host.which("nmem")) return c("nmem", "check.nmem", "missing", false, "check.nmem.missing", {}, FIX.nmemInstall);
       const r = await host.run(["nmem", "--json", "status"], 8_000);
       const j = parseJson(r.stdout);
-      if (r.code === 0 && j?.status === "healthy") return c("nmem", "check.nmem", "ok", false, "check.nmem.ok", { mode: String(j.mode ?? j.backend ?? "local") });
+      if (r.code === 0 && j?.status === "healthy") {
+        const mode = String(j.mode ?? j.backend ?? "local");
+        return c("nmem", "check.nmem", "ok", false, "check.nmem.ok", { mode: mode === "remote" ? t("check.nmem.remote") : mode === "local" ? t("check.nmem.local") : mode });
+      }
       return c("nmem", "check.nmem", "warn", false, "check.nmem.down", {}, FIX.nmemUp);
     })(),
     (async () => {

@@ -154,6 +154,25 @@ func TestV2SnapshotDecisionsAndWaiters(t *testing.T) {
 	}
 }
 
+// A retitle is a later task_open for the same task: the latest names it, the first dates it,
+// whatever order the events arrive in (live push vs. history replay).
+func TestRetitleByLaterTaskOpen(t *testing.T) {
+	first := protocol.NewEvent(1, "2026-11-09T10:00:00Z", "ducter", "task:t1", protocol.OriginPartner, protocol.KindTaskOpen, protocol.TaskOpen{TaskID: "t1", Title: "修好分账测试"})
+	second := protocol.NewEvent(9, "2026-11-09T11:00:00Z", "ducter", "task:t1", protocol.OriginPartner, protocol.KindTaskOpen, protocol.TaskOpen{TaskID: "t1", Title: "修好分账测试和退款取整"})
+	for _, order := range [][]protocol.LogEvent{{first, second}, {second, first}} {
+		s := New()
+		for _, e := range order {
+			s.Apply(events(e))
+		}
+		if got := s.Task("t1").Title(); got != "修好分账测试和退款取整" {
+			t.Errorf("title %q", got)
+		}
+		if got := s.Task("t1").OpenedAt; got != "2026-11-09T10:00:00Z" {
+			t.Errorf("openedAt %q", got)
+		}
+	}
+}
+
 func TestDirectSendsAndDelivery(t *testing.T) {
 	s := New()
 	s.Apply(events(ev(1, "task:t1", protocol.KindTaskOpen, protocol.TaskOpen{TaskID: "t1", Title: "x"})))

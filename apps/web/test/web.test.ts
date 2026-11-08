@@ -5,7 +5,7 @@ import { buildWeb } from "../build.ts";
 import { baseUrl, codeFromHash, deviceName, wsUrl } from "../src/conn.ts";
 import { format, joinHan, langOfText, strings, TABLES } from "../src/i18n.ts";
 import { markdown } from "../src/markdown.ts";
-import { headlineEvidence, isOutside, Store } from "../src/store.ts";
+import { headlineEvidence, isOutside, Store, title } from "../src/store.ts";
 
 let seq = 0;
 const ev = (kind: string, body: unknown, o: Partial<LogEvent> = {}): LogEvent =>
@@ -85,6 +85,19 @@ describe("store (parity with the desktop store)", () => {
     s.apply({ t: "events", events: [ev("decision_resolved", { decisionId: "d1", option: "go", by: "user" })] });
     expect(s.openDecisions()).toEqual([]);
     expect(s.tasksOfReply(u.seq)).toEqual(["t1"]);
+  });
+
+  test("a retitle (a later task_open) renames the task and keeps when it was opened, in any order", () => {
+    const open = { taskId: "t1", project: "", place: { kind: "none" }, harness: "claude-code", brief: "b" };
+    const first = ev("task_open", { ...open, title: "修好分账测试" }, { stream: "task:t1", ts: "2026-11-09T10:00:00.000Z" });
+    const second = ev("task_open", { ...open, title: "修好分账测试和退款取整" }, { stream: "task:t1", ts: "2026-11-09T11:00:00.000Z" });
+    for (const order of [[first, second], [second, first]]) {
+      const s = new Store();
+      s.apply({ t: "welcome", persona: "default", personaName: "Ducter", headSeq: 0 });
+      for (const e of order) s.apply({ t: "events", events: [e] });
+      expect(title(s.task("t1"))).toBe("修好分账测试和退款取整");
+      expect(s.task("t1").openedAt).toBe("2026-11-09T10:00:00.000Z");
+    }
   });
 
   test("a welcome from a Log that started over is stale", () => {

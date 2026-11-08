@@ -39,6 +39,13 @@ export interface Expect {
   sendTo?: string;
   /** No task_send at all. */
   noSend?: boolean;
+  /** No task_send to the seeded task with this key. */
+  noSendTo?: string;
+  /** The seeded task with this key got a new title (task_retitle). */
+  retitled?: string;
+  /** A new task's place must not build on another task's branch (place.baseBranch unset or the repo default). */
+  noBaseBranch?: boolean;
+
   /** Exactly one ack, and it comes before any other partner message of the step. */
   ackFirst?: boolean;
   /** Partner messages (ai_msg) after the last step: count range. Acks are not counted. */
@@ -248,6 +255,69 @@ export const scenarios: Scenario[] = [
   },
 
   // ---------- D. a choice before any task exists → ask, not prose ----------
+  // Review 2 #3: one task swallowed unrelated work. Continue a task only when the follow-up
+  // builds on its unmerged change (same repo AND same subject); otherwise a new task.
+  {
+    id: "new-bug-same-repo-zh",
+    category: "followup",
+    lang: "zh",
+    floor: true,
+    seed: [
+      { user: "修一下 ~/dev/foo 里那个不稳定的 TTL 测试，修好告诉我" },
+      {
+        task: {
+          key: "flaky",
+          title: "foo: 修不稳定的 TTL 测试",
+          repo: "~/dev/foo",
+          branch: "ducter/fix-flaky-ttl",
+          ack: "我去看看 foo 里那个不稳定的 TTL 测试。",
+          state: "done",
+          report: { state: "done", summary: "Fixed with a fake clock; bun test 20/20. Commit c3d9f01 on ducter/fix-flaky-ttl. Nothing pushed.", questions: [], evidence: [{ kind: "test", label: "20/20", ref: "bun test --rerun-each 20" }, { kind: "diff", label: "cache.ts", ref: "c3d9f01" }] },
+        },
+      },
+      { ai: "修好了：TTL 测试改用假时钟，不再抢时间。" },
+    ],
+    steps: [{ user: "另外 foo 里退款金额算错了，四舍五入多算了一分钱，帮我修一下" }],
+    expect: { opens: 1, noSendTo: "flaky", noBaseBranch: true, ackFirst: true, maxChars: 80 },
+    rubric: "A different bug in the same repo is separate work: the partner opens a NEW task for the refund rounding bug (not a follow-up to the TTL test task, and not built on its branch), with one short Chinese ack naming the action.",
+  },
+  {
+    id: "followup-after-merge-en",
+    category: "followup",
+    lang: "en",
+    seed: [
+      { user: "Add a values() method to Cache in ~/dev/foo." },
+      {
+        task: {
+          key: "values",
+          title: "foo: Cache.values()",
+          repo: "~/dev/foo",
+          branch: "ducter/cache-values",
+          ack: "I'll add values() to foo's Cache.",
+          state: "done",
+          report: { state: "done", summary: "Added Cache.values() (non-expired only), 2 tests, 14/14 pass. Commit a41c9e2 on ducter/cache-values.", questions: [], evidence: [{ kind: "test", label: "14/14", ref: "bun test" }, { kind: "diff", label: "src/cache.ts", ref: "a41c9e2" }] },
+        },
+      },
+      { ai: "values() is in: it returns only entries that haven't expired." },
+      { userAction: { task: "values", text: "the user merged this task's branch into its base branch (e81f2aa)" } },
+    ],
+    steps: [{ user: "Now add keys() too, same rule." }],
+    expect: { opens: 1, noSendTo: "values", noBaseBranch: true, maxChars: 100 },
+    rubric: "values() is already merged into main, so keys() is new work on main: a new task (not a follow-up to the merged task, not built on its branch), with one short English ack.",
+  },
+  {
+    id: "followup-broadens-en",
+    category: "followup",
+    lang: "en",
+    floor: true,
+    seed: [
+      { user: "Change HawDB's default checkpoint interval to 30s in ~/dev/hawdb and update the tests." },
+      { task: { key: "ckpt", title: "hawdb: checkpoint interval 30s", repo: "~/dev/hawdb", ack: "I'll change HawDB's checkpoint default to 30s and update the tests.", state: "working" } },
+    ],
+    steps: [{ user: "While it's in there, make the WAL flush interval configurable the same way, so both timings live in one config section." }],
+    expect: { opens: 0, sendTo: "ckpt", retitled: "ckpt", maxChars: 140 },
+    rubric: "The follow-up builds on the running task's change (same repo, same config code) but widens what it is about: the partner sends it to that task AND retitles the task to cover both (checkpoint and WAL flush timings). At most one short English line naming the action; no talk about retitling or tasks.",
+  },
   {
     id: "ask-zh",
     category: "ask",
@@ -720,6 +790,25 @@ export const scenarios: Scenario[] = [
     expect: { opens: 0, remember: /pnpm/i, msgs: [0, 1], maxChars: 100, forbid: [NO_MEM_TALK] },
     rubric:
       "A lasting preference. Pass if the partner saved it (memory_add) and answers with at most one short natural English line (\"Got it, pnpm from now on.\") or nothing, without saying it saved anything to memory. No task.",
+  },
+  {
+    id: "mem-one-time-zh",
+    category: "memory",
+    lang: "zh",
+    floor: true,
+    memories: MEM_BACKGROUND,
+    steps: [{ user: "这次给 ~/dev/foo 写的新测试用 4 个空格缩进，别用 tab" }],
+    expect: { noRemember: true, opens: [0, 1], maxChars: 80, forbid: [NO_MEM_TALK] },
+    rubric: "\"这次\" makes it a one-time instruction for this piece of work, not a lasting preference: the partner must NOT save it to long-term memory. A short Chinese acknowledgement (or a task carrying the instruction) is fine; no talk about memory.",
+  },
+  {
+    id: "mem-one-time-en",
+    category: "memory",
+    lang: "en",
+    memories: MEM_BACKGROUND,
+    steps: [{ user: "Just for this report, use metric units. Write up the HawDB load-test numbers from ~/dev/hawdb/bench as a short doc." }],
+    expect: { noRemember: true, opens: 1, maxChars: 120, forbid: [NO_MEM_TALK] },
+    rubric: "\"Just for this report\" is a one-time instruction: nothing is saved to long-term memory. The partner opens the doc task with metric units in its brief, with one short English ack.",
   },
   {
     id: "mem-no-plumbing-zh",

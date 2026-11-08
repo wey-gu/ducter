@@ -362,6 +362,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       deltas.push("[language] The user wrote this in English (not Chinese): reply in English, including the first line.");
     }
     deltas.push(renderTime(new Date(now())));
+    const devices = renderDevices(core.workers?.list() ?? []);
+    if (devices) deltas.push(devices);
     if (!fresh) return deltas.join("\n");
     const batchSeqs = new Set(batch.map((e) => e.seq));
     const history = core.log
@@ -511,7 +513,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
             'Where it works: {"kind":"repo","device":"local","repoPath":"~/dev/foo"}, {"kind":"folder","device":"local","path":"~/Documents/x"}, or {"kind":"browser","device":"local","profile":"default"} for web work. Omit if none.',
           properties: {
             kind: { type: "string", enum: ["none", "repo", "folder", "browser"] },
-            device: { type: "string" },
+            device: { type: "string", description: '"local" (default). Another device only when the user asks for it or the task needs what only it has; names come from the [devices] line' },
             repoPath: { type: "string" },
             path: { type: "string" },
             profile: { type: "string" },
@@ -749,4 +751,17 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     handledSeq = core.log.head(); // first run: history is background, not new work
   }
   return api;
+}
+
+/**
+ * Other machines that can run tasks, as one context line; empty when there are none (so prompts
+ * without workers are unchanged). Device states use the glossary words (醒着 / Awake).
+ */
+export function renderDevices(workers: { name: string; online: boolean; os?: string; harnesses?: { id: string; loggedIn: boolean }[] }[]): string {
+  if (!workers.length) return "";
+  const one = (w: (typeof workers)[number]) => {
+    const ai = (w.harnesses ?? []).filter((h) => h.loggedIn).map((h) => h.id);
+    return `${w.name} (${w.online ? "awake" : "can't reach"}${w.os ? `, ${w.os}` : ""}${ai.length ? `, signed in: ${ai.join(", ")}` : ", no AI signed in"})`;
+  };
+  return `[devices] local (this machine, the default) · ${workers.map(one).join(" · ")}. To run a task on another device, pass place.device = its name.`;
 }

@@ -50,8 +50,16 @@ async function turn(t: ScriptedTurn) {
   const role = roleOf(mcp);
   if (role.startsWith("task:")) {
     const cn = zh(t.input);
-    t.say(cn ? "开始做。" : "Starting.");
-    await Bun.sleep(1500);
+    const resumed = /lost its connection|cut off/.test(t.input);
+    t.say(resumed ? (cn ? "接着做。" : "Carrying on.") : cn ? "开始做。" : "Starting.");
+    // "慢 / slow" in the brief: a long task, so a demo can pull the plug on its machine mid-way.
+    const ms = !resumed && /慢|slow/i.test(t.input) ? 90_000 : 1500;
+    await t.tool("Bash", JSON.stringify({ command: `sleep ${ms / 1000}` }), () => "started");
+    await new Promise<void>((r) => {
+      const timer = setTimeout(r, ms);
+      t.signal.addEventListener("abort", () => (clearTimeout(timer), r()));
+    });
+    if (t.signal.aborted) return;
     const summary = cn ? "做完了（演示模式：没有真实模型，这是脚本写的结果）。" : "Done (scripted demo: no real model; this result is canned).";
     if (mcp) await t.tool("mcp__ducter__report_to_main", JSON.stringify({ state: "done" }), () => callTool(mcp, "report_to_main", { state: "done", summary }));
     return;
@@ -65,8 +73,12 @@ async function turn(t: ScriptedTurn) {
   const said = trig.text;
   if (/task|任务/i.test(said) && mcp) {
     const title = said.replace(/^.*?(task|任务)\s*[:：]?\s*/i, "").slice(0, 60) || said.slice(0, 60);
-    t.say(cn ? `好，我去做：${title}` : `On it: ${title}`);
-    await t.tool("mcp__ducter__task_open", JSON.stringify({ title }), () => callTool(mcp, "task_open", { title, brief: said }));
+    // "在 cloud-1 上跑…": a device named on the [devices] line (partner.ts renderDevices) and in the message.
+    const names = [...(t.input.match(/^\[devices\].*$/m)?.[0] ?? "").matchAll(/· ([^\s(·]+) \(/g)].map((m) => m[1]!);
+    const device = names.find((n) => said.includes(n));
+    const args = { title, brief: said, ...(device ? { place: { kind: "none", device } } : {}) };
+    t.say(cn ? `好，我去做：${title}${device ? `（在 ${device} 上）` : ""}` : `On it: ${title}${device ? ` (on ${device})` : ""}`);
+    await t.tool("mcp__ducter__task_open", JSON.stringify(args), () => callTool(mcp, "task_open", args));
     return;
   }
   t.say(cn ? `收到：「${said}」。（演示模式：没有接真实模型）` : `Got it: "${said}". (Scripted demo: no real model is connected.)`);
@@ -80,4 +92,10 @@ export function scriptedRunnerModule(runnerMod: Record<string, any>): Record<str
     createRunner: (core: unknown, opts: Record<string, unknown> = {}) =>
       runnerMod.createRunner(core, { ...opts, harness: runnerMod.createOarHarnessPort({ loadRuntime: async () => rt }) }),
   };
+}
+
+/** The scripted runtime as a HarnessPort (a worker runs sessions without a runner of its own). */
+export function scriptedHarness(runnerMod: Record<string, any>) {
+  const rt = scriptedRuntime({ id: "claude", model: "scripted-demo", turn });
+  return runnerMod.createOarHarnessPort({ loadRuntime: async () => rt });
 }

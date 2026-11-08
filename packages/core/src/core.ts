@@ -107,7 +107,11 @@ export function startCore(opts: CoreOptions = {}): Core {
   const ws = createWsHandler({ core: api, decisions, runner: () => runner, batchMs: opts.batchMs });
   const devices = openDeviceAuth(dataDir);
   const gate = createGate({ auth: devices, personaName: () => persona.name });
-  const workers = createWorkers({ personaName: () => persona.name });
+  const workers = createWorkers({
+    personaName: () => persona.name,
+    find: (d) => devices.list().find((x) => x.id === d || x.name === d),
+  });
+  api.workers = workers; // the runner places tasks on workers through this (runner/src/remote.ts)
   const sockets = splitSockets(ws.websocket, workers, { isLive: (id) => devices.isLive(id), sweepMs: opts.sweepMs });
 
   const server = Bun.serve<WsData | WorkerSocketData>({

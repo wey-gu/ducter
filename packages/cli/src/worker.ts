@@ -1,7 +1,7 @@
 // `ducter worker --join <address> --code <code>`: this machine joins a Ducter running elsewhere
 // as a worker. It dials OUT (no inbound port here), says which harnesses it has, and stays
-// connected. Enrollment and presence only: placing tasks on a worker is designed in
-// docs/design/system.md (Workers) and not built yet; the command says so.
+// connected. The main places tasks here over that socket; @ducter/runner's worker host runs
+// them on this disk with this machine's harnesses (docs/design/system.md "Workers").
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { arch, hostname, platform } from "node:os";
 import { dirname, join } from "node:path";
@@ -9,6 +9,8 @@ import pkg from "../package.json" with { type: "json" };
 import type { Args } from "./args.ts";
 import { realHost, runDoctor, type Style } from "./doctor.ts";
 import type { T } from "./i18n.ts";
+import * as runnerMod from "@ducter/runner";
+import { scriptedHarness } from "./scripted.ts";
 
 /** Exit status when the main refuses this worker; the unit sets RestartPreventExitStatus to it. */
 export const EXIT_REFUSED = 3;
@@ -98,24 +100,36 @@ export async function cmdWorker(o: { t: T; style: Style; args: Args; dataDir: st
     version: pkg.version,
     harnesses: await probeHarnesses(t, o.dataDir),
   };
-  console.log(style.dim(t("worker.notPlaced")));
-  return stayConnected(saved, hello, t, style);
+  // DUCTER_SCRIPTED_MODEL=1: canned model words, real tools (scripted.ts), for demos and e2e.
+  const harness = process.env.DUCTER_SCRIPTED_MODEL === "1" ? scriptedHarness(runnerMod) : runnerMod.createOarHarnessPort();
+  const s = saved;
+  return stayConnected(s, hello, t, style, (send) => runnerMod.createWorkerHost({ dataDir: o.dataDir, harness, mainBase: s.url, deviceToken: s.token, send }));
 }
 
 /** One outbound socket, reconnecting with backoff; exits only when the main refuses this worker. */
-async function stayConnected(s: WorkerSaved, hello: object, t: T, style: Style): Promise<number> {
+async function stayConnected(
+  s: WorkerSaved,
+  hello: object,
+  t: T,
+  style: Style,
+  makeHost: (send: (f: object) => void) => runnerMod.WorkerHost,
+): Promise<number> {
   let backoff = 1000;
   let announced = false;
   for (;;) {
     const outcome = await new Promise<"closed" | "refused">((resolve) => {
       const ws = new WebSocket(`${wsBase(s.url)}/worker`, { headers: { authorization: `Bearer ${s.token}` } } as any);
       let ping: ReturnType<typeof setInterval> | undefined;
+      const host = makeHost((f) => {
+        if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(f));
+      });
       ws.onopen = () => {
         ws.send(JSON.stringify(hello));
         ping = setInterval(() => ws.send(JSON.stringify({ t: "ping" })), 30_000);
       };
       ws.onmessage = (m) => {
         const f = JSON.parse(String(m.data));
+        if (f.t === "req") return void host.handle(f);
         if (f.t === "welcome") {
           backoff = 1000;
           if (!announced) console.log(`  ${style.ok("●")} ${t("worker.connected", { url: s.url, name: s.name })}`);
@@ -124,6 +138,8 @@ async function stayConnected(s: WorkerSaved, hello: object, t: T, style: Style):
       };
       ws.onclose = async () => {
         clearInterval(ping);
+        // Nobody to report to: stop the sessions; the main resumes them by id when we're back.
+        await host.closeAll();
         // Was it the gate? A GET with the token answers 401 when the token is gone.
         try {
           const r = await fetch(`${s.url}/worker`, { headers: { authorization: `Bearer ${s.token}` }, signal: AbortSignal.timeout(5000) });

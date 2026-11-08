@@ -109,6 +109,10 @@ func (a *App) waitReason(task *store.Task) string {
 		return r
 	}
 	r := task.Reason()
+	// The task's machine dropped (runner: unreachableReason); glossary 连不上 / Can't reach.
+	if d, ok := strings.CutPrefix(r, "device:unreachable:"); ok {
+		return a.L.T("device.unreachable", d)
+	}
 	if strings.HasPrefix(r, "report:") || strings.HasSuffix(r, "by user") {
 		return ""
 	}

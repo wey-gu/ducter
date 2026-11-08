@@ -62,6 +62,10 @@ export function resolvePlace(
   known: TaskCard[],
   fs: PlaceFs = realFs,
 ): Place {
+  // Another device (a worker): its paths are on its disk, so take the place as given; the worker
+  // resolves ~ and checks the repo (system.md "Workers").
+  const device = (explicit as { device?: string } | undefined)?.device?.trim();
+  if (explicit && device && device !== "local") return { ...explicit, device } as Place;
   if (explicit && explicit.kind !== "none") {
     if (explicit.kind === "repo") {
       return { ...explicit, device: explicit.device || "local", repoPath: expandHome(explicit.repoPath, fs.home) };

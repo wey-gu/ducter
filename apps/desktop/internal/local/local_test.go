@@ -104,6 +104,18 @@ func TestLinkCLI(t *testing.T) {
 	}
 }
 
+func TestSettled(t *testing.T) {
+	for p, want := range map[string]bool{
+		"/Applications/Ducter.app/Contents/Helpers/ducter":                                    true,
+		"/Volumes/Ducter/Ducter.app/Contents/Helpers/ducter":                                  false,
+		"/private/var/folders/x/T/AppTranslocation/AB12/d/Ducter.app/Contents/Helpers/ducter": false,
+	} {
+		if Settled(p) != want {
+			t.Errorf("Settled(%q) != %v", p, want)
+		}
+	}
+}
+
 func TestCommandFile(t *testing.T) {
 	p, err := CommandFile(t.TempDir(), "ducter-claude", "claude auth login", "It's done; go back to Ducter.")
 	if err != nil {

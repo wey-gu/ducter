@@ -51,6 +51,7 @@ func main() {
 	var host *local.Host
 	if url, _ := target(); inApp && url == client.DefaultURL() && os.Getenv("DUCTER_URL") == "" {
 		login := local.FixPath() // Finder gives apps only the system folders
+		local.ClearQuarantine(bundle.CLI)
 		host = &local.Host{
 			Supervisor: &local.Supervisor{CLI: bundle.CLI, DataDir: hints.DataDir(), Port: local.Port(), Locale: string(lang)},
 			LoginPath:  login,

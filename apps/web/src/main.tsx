@@ -18,6 +18,9 @@ function App() {
   const [, bump] = useReducer((n: number, _: void) => n + 1, 0);
   useEffect(() => {
     const off = A.onChange(() => bump());
+    // Frames that landed between A.start() and this effect (a fast socket beats the first
+    // paint) changed nothing on screen: catch up once now that we're listening.
+    bump();
     return () => void off();
   }, []);
   useEffect(() => {

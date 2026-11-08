@@ -46,6 +46,8 @@ export interface RenderCtx {
   decision(decisionId: string): Bodies["decision"] | undefined;
   /** A repo task's base branch, so "merged into its base branch" names it (eval: "can't tell if that's main"). */
   taskBase?(taskId: string): string | undefined;
+  /** The user merged this task's work (by button): new work after that is a new task. */
+  merged?(taskId: string): boolean;
 }
 
 function userAction(b: Bodies["job_status"], ctx: RenderCtx, n = 400): string {
@@ -136,7 +138,7 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
 
 const ACTIVE = new Set(["queued", "working", "needs_you", "blocked", "done_claimed"]);
 
-export function renderTasks(cards: TaskCard[], maxDone = 8): string {
+export function renderTasks(cards: TaskCard[], maxDone = 8, ctx?: Pick<RenderCtx, "merged" | "taskBase">): string {
   const open = cards.filter((c) => ACTIVE.has(c.attention));
   const closed = cards
     .filter((c) => !ACTIVE.has(c.attention))
@@ -146,7 +148,8 @@ export function renderTasks(cards: TaskCard[], maxDone = 8): string {
     const where =
       c.place.kind === "repo" ? ` · repo ${c.place.repoPath}${c.place.branch ? ` (branch ${c.place.branch})` : ""}` : c.place.kind === "folder" ? ` · folder ${c.place.path}` : c.place.kind === "browser" ? " · browser" : "";
     const last = c.lastReport ? ` · last report (${c.lastReport.state}): ${clip(c.lastReport.summary, 200)}` : "";
-    return `- ${c.taskId} "${c.title}" · ${c.attention}${where}${last}`;
+    const merged = ctx?.merged?.(c.taskId) ? ` · merged into ${ctx.taskBase?.(c.taskId) ?? "its base branch"} by the user (new work = a new task)` : "";
+    return `- ${c.taskId} "${c.title}" · ${c.attention}${merged}${where}${last}`;
   };
   const out: string[] = [];
   out.push("Open:");
@@ -163,6 +166,6 @@ export function renderProjection(history: LogEvent[], cards: TaskCard[], ctx: Re
   const lines = history.map((e) => renderHistoryLine(e, ctx)).filter((x): x is string => x !== null);
   const parts: string[] = [];
   if (lines.length) parts.push(`<conversation_so_far>\n${lines.join("\n")}\n</conversation_so_far>`);
-  if (cards.length) parts.push(`<tasks>\n${renderTasks(cards)}\n</tasks>`);
+  if (cards.length) parts.push(`<tasks>\n${renderTasks(cards, 8, ctx)}\n</tasks>`);
   return parts.join("\n\n");
 }

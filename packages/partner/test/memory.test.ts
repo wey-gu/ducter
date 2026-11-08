@@ -108,6 +108,25 @@ describe("memory_add", () => {
     expect(channel().some((e) => e.kind === "memory_noted")).toBe(false);
   });
 
+  test("a one-time instruction is not saved; a lasting one is (review 2)", async () => {
+    const rs: any[] = [];
+    const { partner, user, fc, mem } = setup(async (_i, s, n) => {
+      if (n === 0) rs.push(await fc.callTool("memory_add", { title: "测试缩进", content: "foo 的新测试用 4 个空格缩进。" }));
+      if (n === 1) rs.push(await fc.callTool("memory_add", { title: "Metric units", content: "Use metric units: this report only." }));
+      if (n === 2) rs.push(await fc.callTool("memory_add", { title: "测试缩进", content: "Weyl 的测试一律用 4 个空格缩进。" }));
+      s.end();
+    });
+    user("这次给 foo 写的新测试用 4 个空格缩进");
+    await partner.idle();
+    user("Write up the load-test numbers in metric.");
+    await partner.idle();
+    user("以后测试都用 4 个空格缩进，这次也是");
+    await partner.idle();
+    expect(rs.map((r) => r.ok)).toEqual([false, false, true]);
+    expect(rs[0].error).toMatch(/this piece of work only/);
+    expect(mem.added.length).toBe(1);
+  });
+
   test("a word made of hex letters is not plumbing", async () => {
     let r: any;
     const { partner, user, fc } = setup(async (_i, s) => {

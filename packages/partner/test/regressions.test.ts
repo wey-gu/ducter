@@ -333,22 +333,48 @@ describe("review 2 regressions", () => {
     expect(again.ok).toBe(true);
   });
 
-  test("a wait armed in the same turn as an ask is tied to it (cancelled when it is answered)", async () => {
+  test("a wait next to an ask: refused unless the user asked for a reminder, and then tied to the ask", async () => {
+    const results: any[] = [];
     const { fc, partner, user } = setup(async (_i, s, n) => {
-      if (n === 0) {
+      if (n <= 1) {
         await fc.callTool("ask", { question: "零头怎么分？", goLabel: "四舍五入", default: "hold" });
-        await fc.callTool("wait_until", { at: "2026-11-09T09:00:00Z", reason: "等你回答零头分法" });
-      } else await fc.callTool("wait_until", { at: "2026-11-09T15:00:00Z", reason: "提醒你回邮件" });
+        results.push(await fc.callTool("wait_until", { at: "2026-11-09T09:00:00Z", reason: "等你回答零头分法" }));
+      } else results.push(await fc.callTool("wait_until", { at: "2026-11-09T15:00:00Z", reason: "提醒你回邮件" }));
       s.end();
     });
-    user("分账零头怎么处理你先问我");
+    user("分账零头怎么处理你先问我"); // no reminder asked: the card is enough
+    await partner.idle();
+    user("先问我零头怎么分，明天九点没回就提醒我");
     await partner.idle();
     user("三点提醒我回邮件");
     await partner.idle();
-    const d = fc.events.find((e) => e.kind === "decision")!.body as any;
+    expect(results.map((r) => r.ok)).toEqual([false, true, true]);
+    const d = fc.events.filter((e) => e.kind === "decision")[1]!.body as any;
     const ws = fc.events.filter((e) => e.kind === "waiter").map((e) => e.body as any);
+    expect(ws).toHaveLength(2);
     expect(ws[0]).toMatchObject({ reason: "等你回答零头分法", decisionId: d.decisionId });
     expect(ws[1].decisionId).toBeUndefined();
+  });
+
+  test("a task the user merged says so in <tasks>, so new work on it becomes a new task", async () => {
+    const { renderTasks } = await import("../src/index.ts");
+    const card = { taskId: "t1", persona: "p", title: "values()", project: "", place: { kind: "repo", device: "local", repoPath: "/r", branch: "ducter/v", baseBranch: "main" } as any, harness: "claude-code", attention: "done" as const, residency: "parked" as const, openedAt: "", updatedAt: "" };
+    expect(renderTasks([card], 8, { merged: () => true, taskBase: () => "main" })).toContain("merged into main by the user (new work = a new task)");
+    expect(renderTasks([card], 8, { merged: () => false })).not.toContain("merged");
+  });
+
+  test("a turn woken by a task's question cannot answer it for the user", async () => {
+    let r: any;
+    const { fc, fr, partner } = setup(async (_i, s) => {
+      r = await fc.callTool("task_send", { taskId: "t1", text: "Go：一起改" });
+      s.end();
+    }, { settleMs: 0 });
+    partner.onTrigger(
+      fc.core.log.append({ stream: "task:t1", origin: "task", kind: "report", body: { taskId: "t1", state: "needs_input", summary: "s", questions: [{ id: "q", text: "一起改吗？", blocking: true, reversible: true }], evidence: [] } }),
+    );
+    await partner.idle();
+    expect(r.ok).toBe(false);
+    expect(fr.sent).toHaveLength(0);
   });
 
   test("persona: follow-ups continue a task only on its unmerged change; one-time instructions are not memory", () => {

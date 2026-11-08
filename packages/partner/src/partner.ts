@@ -231,6 +231,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
 
   const ctx: RenderCtx = {
     taskTitle: (id) => core.tasks.get(id)?.title ?? jobs.get(id)?.title,
+    merged: (id) =>
+      core.log
+        .read({ stream: "channel", kinds: ["job_status"], limit: 500 })
+        .some((e) => e.origin === "user" && (e.body as Bodies["job_status"]).taskId === id && /\bmerged\b/.test((e.body as Bodies["job_status"]).text)),
     taskBase: (id) => {
       const p = core.tasks.get(id)?.place;
       return p?.kind === "repo" ? p.baseBranch : undefined;
@@ -675,7 +679,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   core.mcp.register(
     "partner",
     "task_send",
-    "Send text to a task, running or finished (a finished one resumes in its own branch and worktree): the user's follow-up or correction, the next step on the same work, or a question that needs the task's own judgment. Read first (task_read, log_search, log_read); ask only what the Log can't answer. mode 'steer' (default) interrupts at the next safe point; 'queue' waits for its current turn.",
+    "Send text to a task, running or finished (a finished one resumes in its own branch and worktree): the user's follow-up or correction, the next step on the same work, or a question that needs the task's own judgment. Only on the same subject and its unmerged change: other work in the same repo, or anything after the user merged it, is a new task (task_open). Read first (task_read, log_search, log_read); ask only what the Log can't answer. mode 'steer' (default) interrupts at the next safe point; 'queue' waits for its current turn.",
     {
       type: "object",
       properties: {
@@ -688,6 +692,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     async (args: { taskId: string; text: string; mode?: "steer" | "queue" }) => {
       await Bun.sleep(5); // let the streamed text land first
       flushPending(); // a line written before this call is a message, not an ack
+      // A turn woken only by a task's question: the user answers it on its card (eval: the
+      // partner sent "Go：…" to the task on the user's behalf).
+      if (turn?.quiet) return { ok: false, error: "The user answers this question on its card; send the task nothing and end your turn." };
       try {
         const r = await runner.send(args.taskId, redactSecrets(args.text), args.mode);
         return { ok: true, ...r };
@@ -742,6 +749,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     async (args: { at?: string; taskId?: string; decisionId?: string; reason: string }) => {
       await Bun.sleep(5); // let the streamed text land first
       flushPending(); // keep the line before the status line
+      // Review 2 #4: after its own ask the partner armed "等你决定…". The card comes back on
+      // its own; a reminder in the same turn is only for one the user asked for.
+      if (turn?.asked && !turn.userTexts.some((t) => /提醒|叫我|remind|alarm|\d\s*(点|:|pm|am)|明天|tomorrow/i.test(t)))
+        return { ok: false, error: "No reminder needed: the decision card stays on screen until the user answers. End your turn." };
       if (!args.at) {
         if (args.taskId) return { ok: true, note: "The task's next report will wake you; no timer set." };
         return { ok: false, error: "wait_until needs `at` (ISO time) tonight." };
@@ -855,6 +866,11 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       if (PLUMBING_RE.test(text) || taskIds.some((id) => text.includes(id)))
         return { ok: false, error: "That is task plumbing (ids, branches, worktrees, commits). Remember only durable things about the user and their work; nothing was saved." };
       if (t && t.noted.length >= 2) return { ok: false, error: "Enough remembered this turn." };
+      // A one-time instruction is not a preference (review 2 round 2, eval: "Metric units: this
+      // report only" saved). Judged on the user's words this turn, and on what would be saved.
+      const ONE_TIME = /这次|这一次|本次|仅此|只这|\bthis (one )?time\b|\bjust (for )?this\b|\bfor this (one|report|task|pr|time)\b|\bonly (for )?this\b|\bthis .{0,12} only\b/i;
+      if (ONE_TIME.test(text) || (t?.userTexts.some((u) => ONE_TIME.test(u)) && !t.userTexts.some((u) => /以后|往后|总是|always|from now on|every time|每次/i.test(u))))
+        return { ok: false, error: "That is an instruction for this piece of work only, not a lasting preference: put it in the task's brief instead; nothing was saved." };
       const report = t?.triggers.find((e) => e.kind === "report");
       const r = await memory.add({
         title,

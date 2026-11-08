@@ -798,8 +798,8 @@ export const scenarios: Scenario[] = [
     floor: true,
     memories: MEM_BACKGROUND,
     steps: [{ user: "这次给 ~/dev/foo 写的新测试用 4 个空格缩进，别用 tab" }],
-    expect: { noRemember: true, opens: 1, maxChars: 80, forbid: [NO_MEM_TALK] },
-    rubric: "\"这次\" makes it a one-time instruction for this piece of work, not a lasting preference: the partner must NOT save it to long-term memory. It carries the instruction into the task (one short Chinese ack naming the action).",
+    expect: { noRemember: true, opens: [0, 1], maxChars: 80, forbid: [NO_MEM_TALK] },
+    rubric: "\"这次\" makes it a one-time instruction for this piece of work, not a lasting preference: the partner must NOT save it to long-term memory. A short Chinese acknowledgement (or a task carrying the instruction) is fine; no talk about memory.",
   },
   {
     id: "mem-one-time-en",

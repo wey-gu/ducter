@@ -1,6 +1,6 @@
 // `ducter doctor`: what this Mac has, what's missing, and the one command that fixes it.
 // Every probe goes through `Host`, so tests fake the machine (no real logins, no model calls).
-import { accessSync, constants, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { accessSync, constants, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { MsgKey, T } from "./i18n.ts";
 
@@ -27,7 +27,12 @@ export interface Host {
   platform?: string;
   /** Devices paired with this Ducter (core/src/auth.ts). */
   pairedDevices?(): number;
+  /** Whether a file exists (CuaDriver.app in /Applications, off PATH). */
+  exists?(path: string): boolean;
 }
+
+const CUA_APP_BIN = "/Applications/CuaDriver.app/Contents/MacOS/cua-driver";
+const CUA_TOOLS = ["browser_prepare", "get_browser_state", "browser_navigate"];
 
 export type CheckId = "bun" | "git" | "claude" | "codex" | "nmem" | "cua" | "port" | "data" | "service" | "devices";
 export type CheckStatus = "ok" | "missing" | "warn";
@@ -39,6 +44,12 @@ export interface Check {
   required: boolean;
   detail: string;
   fix?: string; // one shell command, or a URL
+  /**
+   * The app may run `fix` itself, in the background (Ducter.app's first run): "install" is an
+   * official installer that needs no terminal; "signin" opens the browser and finishes by itself.
+   * Absent: the fix needs a person at a terminal (or is a URL).
+   */
+  action?: "install" | "signin" | "update" | "grant";
   /** Nothing to say to a person (Bun built into the binary): left out of the printed report. */
   quiet?: boolean;
 }
@@ -55,16 +66,27 @@ export interface DoctorOptions {
   memoryOff?: boolean; // default: DUCTER_MEMORY=off
 }
 
-const FIX = {
+/**
+ * The official commands, each checked against its vendor's installer or `--help` (2026-11-09):
+ * Claude Code's native installer (code.claude.com; installs under ~/.local, no sudo), Codex's
+ * standalone installer (github.com/openai/codex README; ~/.local/bin, no sudo, no Homebrew),
+ * cua-driver's canonical installer (the URL `cua-driver update --apply` itself runs; puts
+ * CuaDriver.app in /Applications). `--no-connect` keeps it from wiring itself into the person's
+ * other agents (Ducter runs its own), `--no-test` skips its self-test, `--no-modify-path` leaves
+ * the shell profile alone (Ducter finds it in /Applications).
+ */
+export const FIX = {
   bun: "curl -fsSL https://bun.sh/install | bash",
   git: "xcode-select --install",
   claudeInstall: "curl -fsSL https://claude.ai/install.sh | bash",
   claudeLogin: "claude auth login",
-  codexInstall: "brew install codex",
+  codexInstall: "curl -fsSL https://chatgpt.com/codex/install.sh | sh",
   codexLogin: "codex login",
-  nmemInstall: "pipx install nmem-cli",
+  nmemInstall: "https://mem.nowledge.co",
   nmemUp: "nmem status",
-  cua: "https://github.com/trycua/cua",
+  cua: '/bin/bash -c "$(curl -fsSL https://cua.ai/driver/install.sh)" -- --no-connect --no-test --no-modify-path',
+  cuaUpdate: "cua-driver update --apply",
+  cuaGrant: "cua-driver permissions grant",
   port: (p: number) => `DUCTER_PORT=${p + 1} ducter up`,
   data: (d: string) => `mkdir -p "${d}" && chmod u+w "${d}"`,
 };
@@ -73,6 +95,7 @@ const FIX = {
 export const SERVER_FIX = {
   git: "sudo apt-get install -y git",
   codexInstall: "npm install -g @openai/codex",
+  nmemInstall: "pipx install nmem-cli",
   claudeLogin: "claude auth login",
   codexLogin: "codex login --device-auth",
   service: "ducter service install",
@@ -101,16 +124,18 @@ function parseJson(s: string): any {
 }
 
 export async function runDoctor(host: Host, t: T, opts: DoctorOptions): Promise<DoctorReport> {
-  const c = (id: CheckId, labelKey: MsgKey, status: CheckStatus, required: boolean, detailKey: MsgKey, vars: Record<string, string | number> = {}, fix?: string): Check => ({
+  const server = host.platform === "linux";
+  const c = (id: CheckId, labelKey: MsgKey, status: CheckStatus, required: boolean, detailKey: MsgKey, vars: Record<string, string | number> = {}, fix?: string, action?: Check["action"]): Check => ({
     id,
     label: t(labelKey, vars),
     status,
     required,
     detail: t(detailKey, vars),
     fix: status === "ok" ? undefined : fix,
+    // A server has no app to run it: the person runs the command.
+    ...(status !== "ok" && fix && action && !server ? { action } : {}),
   });
 
-  const server = host.platform === "linux";
   const fix = server ? { ...FIX, ...SERVER_FIX } : FIX;
   const loggedOut = (id: "claude" | "codex"): MsgKey => (server ? `check.${id}.loggedOut.headless` : `check.${id}.loggedOut`);
   // The slow probes (CLIs that may hit the network or keychain) run in parallel.
@@ -135,7 +160,7 @@ export async function runDoctor(host: Host, t: T, opts: DoctorOptions): Promise<
     (async () => {
       // Off means off: no identity read, no recall, no saves (review 2 #14), so say that, not "connected".
       if (opts.memoryOff ?? process.env.DUCTER_MEMORY === "off") return c("nmem", "check.nmem", "ok", false, "check.nmem.off");
-      if (!host.which("nmem")) return c("nmem", "check.nmem", "missing", false, "check.nmem.missing", {}, FIX.nmemInstall);
+      if (!host.which("nmem")) return c("nmem", "check.nmem", "missing", false, "check.nmem.missing", {}, fix.nmemInstall);
       const r = await host.run(["nmem", "--json", "status"], 8_000);
       const j = parseJson(r.stdout);
       if (r.code === 0 && j?.status === "healthy") {
@@ -145,9 +170,19 @@ export async function runDoctor(host: Host, t: T, opts: DoctorOptions): Promise<
       return c("nmem", "check.nmem", "warn", false, "check.nmem.down", {}, FIX.nmemUp);
     })(),
     (async () => {
-      if (!host.which("cua-driver")) return c("cua", "check.cua", "missing", false, "check.cua.missing", {}, FIX.cua);
-      const r = await host.run(["cua-driver", "--version"]);
-      return c("cua", "check.cua", "ok", false, "check.cua.ok", { version: firstVersion(r.stdout) });
+      // Ducter.app installs it in /Applications without touching PATH.
+      const bin = host.which("cua-driver") ? "cua-driver" : host.exists?.(CUA_APP_BIN) ? CUA_APP_BIN : null;
+      if (!bin) return c("cua", "check.cua", "missing", false, "check.cua.missing", {}, FIX.cua, "install");
+      const [v, tools] = await Promise.all([host.run([bin, "--version"]), host.run([bin, "list-tools"], 10_000)]);
+      const version = firstVersion(v.stdout);
+      const names = new Set(tools.stdout.split("\n").map((l) => l.split(":")[0]!.trim()));
+      // The typed browser tools arrived in cua-driver-rs 2026-07 (core/src/devices.ts).
+      if (v.code !== 0 || CUA_TOOLS.some((x) => !names.has(x))) return c("cua", "check.cua", "warn", false, "check.cua.old", { version }, FIX.cuaUpdate, "update");
+      if (host.platform === "darwin") {
+        const p = parseJson((await host.run([bin, "permissions", "status", "--json"], 10_000)).stdout);
+        if (p && (p.accessibility !== true || p.screen_recording !== true)) return c("cua", "check.cua", "warn", false, "check.cua.grants", { version }, FIX.cuaGrant, "grant");
+      }
+      return c("cua", "check.cua", "ok", false, "check.cua.ok", { version });
     })(),
     host.port(opts.port),
   ]);
@@ -162,13 +197,13 @@ export async function runDoctor(host: Host, t: T, opts: DoctorOptions): Promise<
   const claudeCheck = claude.loggedIn
     ? c("claude", "check.claude", "ok", true, claude.token ? "check.claude.token" : "check.claude.ok", { version: claude.version })
     : claude.installed
-      ? c("claude", "check.claude", "missing", !harnessReady, loggedOut("claude"), {}, fix.claudeLogin)
-      : c("claude", "check.claude", "missing", !harnessReady, "check.claude.missing", {}, FIX.claudeInstall);
+      ? c("claude", "check.claude", "missing", !harnessReady, loggedOut("claude"), {}, fix.claudeLogin, "signin")
+      : c("claude", "check.claude", "missing", !harnessReady, "check.claude.missing", {}, FIX.claudeInstall, "install");
   const codexCheck = codex.loggedIn
     ? c("codex", "check.codex", "ok", false, "check.codex.ok")
     : codex.installed
-      ? c("codex", "check.codex", "missing", false, loggedOut("codex"), {}, fix.codexLogin)
-      : c("codex", "check.codex", "missing", false, "check.codex.missing", {}, fix.codexInstall);
+      ? c("codex", "check.codex", "missing", false, loggedOut("codex"), {}, fix.codexLogin, "signin")
+      : c("codex", "check.codex", "missing", false, "check.codex.missing", {}, fix.codexInstall, "install");
 
   const portCheck =
     port === "free"
@@ -186,7 +221,7 @@ export async function runDoctor(host: Host, t: T, opts: DoctorOptions): Promise<
   return { checks, ok: checks.every((k) => !k.required || k.status === "ok"), harnessReady };
 }
 
-type Mk = (id: CheckId, labelKey: MsgKey, status: CheckStatus, required: boolean, detailKey: MsgKey, vars?: Record<string, string | number>, fix?: string) => Check;
+type Mk = (id: CheckId, labelKey: MsgKey, status: CheckStatus, required: boolean, detailKey: MsgKey, vars?: Record<string, string | number>, fix?: string, action?: Check["action"]) => Check;
 
 /** Server-only rows: does Ducter outlive this SSH session, and is any device connected? Both optional. */
 async function serverChecks(host: Host, c: Mk): Promise<Check[]> {
@@ -332,6 +367,7 @@ export function realHost(): Host {
         return false;
       }
     },
+    exists: (p) => existsSync(p),
     compiled: isCompiled(),
     bunVersion: Bun.version,
     platform: process.platform,

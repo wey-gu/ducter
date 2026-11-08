@@ -12,6 +12,8 @@ import (
 	"errors"
 	"log"
 	"os"
+	"path/filepath"
+	"time"
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
@@ -19,6 +21,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/client"
 	"github.com/wey-gu/ducter/apps/desktop/internal/hints"
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
+	"github.com/wey-gu/ducter/apps/desktop/internal/local"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/remote"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
@@ -27,12 +30,39 @@ import (
 )
 
 func main() {
+	// Ducter.app: the developer override first (a scratch data folder and
+	// port), so everything below sees it.
+	exe, _ := os.Executable()
+	bundle, inApp := local.FindBundle(exe)
+	if inApp {
+		if keys := local.LoadDevEnv(local.DevEnvPath()); len(keys) > 0 {
+			log.Printf("ducter: dev.env sets %v", keys)
+		}
+	}
 	theme.LoadFonts()
 	s := store.New()
 	lang := i18n.Detect(mygo.App.PreferredLanguages())
 	app := views.New(s, theme.Pebble(), i18n.New(lang))
 	app.LocaleFixed = i18n.Fixed()
 	app.Local = hints.Open(hints.DataDir())
+
+	// The app runs the Ducter of this Mac itself, unless the window is
+	// pointed somewhere else (DUCTER_URL, or a saved remote connection).
+	var host *local.Host
+	if url, _ := target(); inApp && url == client.DefaultURL() && os.Getenv("DUCTER_URL") == "" {
+		login := local.FixPath() // Finder gives apps only the system folders
+		host = &local.Host{
+			Supervisor: &local.Supervisor{CLI: bundle.CLI, DataDir: hints.DataDir(), Port: local.Port(), Locale: string(lang)},
+			LoginPath:  login,
+			Scratch:    filepath.Join(os.TempDir(), "ducter-fix"),
+			After:      i18n.New(lang).T("setup.after"),
+		}
+		app.Backend = host
+		// Ducter lives as long as the app: quitting (Cmd-Q, or closing the
+		// window) stops the Ducter it started, never one it found running.
+		mygo.App.OnWillQuit(func(*mygo.QuitEvent) { host.Stop(8 * time.Second) })
+		mygo.App.OnQuit(func() { host.Stop(8 * time.Second) })
+	}
 
 	mygo.App.WhenReady(func() {
 		win := mygo.NewWindow(mygo.WindowOptions{
@@ -94,6 +124,7 @@ func main() {
 			c.Retarget(saved.URL, saved.Token)
 			return nil
 		}
+		app.StartLocal() // no-op without a Backend
 		go c.Run(context.Background())
 	})
 	if err := mygo.App.Run(); err != nil {

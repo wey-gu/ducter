@@ -10,7 +10,9 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
+	"unicode"
 )
 
 const (
@@ -37,6 +39,9 @@ type Hints struct {
 
 type state struct {
 	FirstResultSeenAt string `json:"firstResultSeenAt,omitempty"`
+	// CLIOffer is the answer to "use ducter in Terminal too?": "linked"
+	// or "declined"; empty until asked.
+	CLIOffer string `json:"cliOffer,omitempty"`
 }
 
 // Local is the data folder as the client sees it. Its zero value (no
@@ -108,6 +113,27 @@ func (l *Local) MarkFirstResultSeen(at time.Time) {
 		return
 	}
 	l.st.FirstResultSeenAt = at.UTC().Format(time.RFC3339)
+	l.save()
+}
+
+// CLIOffer is the answer to the one-time "use ducter in Terminal too?".
+func (l *Local) CLIOffer() string {
+	if l == nil {
+		return ""
+	}
+	return l.st.CLIOffer
+}
+
+// SetCLIOffer remembers that answer.
+func (l *Local) SetCLIOffer(answer string) {
+	if l == nil {
+		return
+	}
+	l.st.CLIOffer = answer
+	l.save()
+}
+
+func (l *Local) save() {
 	if l.Dir == "" {
 		return
 	}
@@ -115,8 +141,68 @@ func (l *Local) MarkFirstResultSeen(at time.Time) {
 	if err != nil {
 		return
 	}
-	tmp := filepath.Join(l.Dir, StateFile+".tmp")
-	if os.WriteFile(tmp, append(b, '\n'), 0o644) == nil {
-		_ = os.Rename(tmp, filepath.Join(l.Dir, StateFile))
+	writeAtomic(filepath.Join(l.Dir, StateFile), append(b, '\n'))
+}
+
+func writeAtomic(path string, b []byte) {
+	tmp := path + ".tmp"
+	if os.WriteFile(tmp, b, 0o644) == nil {
+		_ = os.Rename(tmp, path)
 	}
+}
+
+// PersonaFile is the partner's chosen name, shared with the CLI
+// (packages/cli/src/firstrun.ts): every `ducter up` reads it.
+const PersonaFile = "persona.json"
+
+// Persona is persona.json. Name is absent when the person kept the default.
+type Persona struct {
+	Name    string `json:"name,omitempty"`
+	AskedAt string `json:"askedAt,omitempty"`
+}
+
+// ReadPersona reads persona.json; ok is false when there is none (the
+// name was never asked).
+func ReadPersona(dir string) (p Persona, ok bool) {
+	b, err := os.ReadFile(filepath.Join(dir, PersonaFile))
+	if err != nil {
+		return Persona{}, false
+	}
+	if json.Unmarshal(b, &p) != nil {
+		return Persona{}, false
+	}
+	return p, true
+}
+
+// WritePersona saves the answer to the name question.
+func WritePersona(dir string, p Persona) error {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	b, err := json.MarshalIndent(p, "", "  ")
+	if err != nil {
+		return err
+	}
+	writeAtomic(filepath.Join(dir, PersonaFile), append(b, '\n'))
+	return nil
+}
+
+// CleanName makes a typed name safe to show: one line, no control
+// characters, at most 24 characters (as cleanName in firstrun.ts).
+func CleanName(raw string) string {
+	var b strings.Builder
+	for _, r := range raw {
+		switch {
+		case r < 0x20 || r == 0x7f:
+		case unicode.IsSpace(r):
+			b.WriteRune(' ')
+		default:
+			b.WriteRune(r)
+		}
+	}
+	s := strings.Join(strings.Fields(b.String()), " ")
+	if rs := []rune(s); len(rs) > 24 {
+		s = string(rs[:24])
+	}
+	return s
 }

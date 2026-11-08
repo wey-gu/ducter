@@ -61,6 +61,7 @@ Use the \`report_to_main\` tool on the \`${s}\` MCP server. It is the only way $
 - Call it when you are **done** (state "done"), **failed** (state "failed"), **blocked** (state "blocked"), or **need a decision** (state "needs_input").
 - \`summary\`: at most 600 characters, plain and specific: what you did and what stands.
 - \`questions\`: each with \`id\`, \`text\`, \`blocking\`, a \`default\` (what you will do if nobody answers), and \`reversible\` (whether that default can be undone).
+  The user answers with three buttons: **Go** = do your \`default\`; **Hold** = pause and wait (it never means "no"); **Reply** = their own words. So phrase each question so that Go is the default action, and do not mention the buttons in the text.
 - \`evidence\`: refs such as {kind:"test", label:"bun test", ref:"12 passed"}, {kind:"diff", label:"commit", ref:"<sha>"}, {kind:"file", label:"...", ref:"<path>"}.
 - After reporting needs_input or blocked, end your turn and wait; the answer will arrive as a message.
 - Call \`checkpoint\` (same server) after each meaningful step with where the work stands and what comes next.

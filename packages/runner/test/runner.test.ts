@@ -136,6 +136,7 @@ describe("session spec", () => {
     ).toMatchSnapshot();
     const b = taskBrief({ partnerName: "Ducter", taskId: "x", title: "t", brief: "b", place: { kind: "repo", device: "mac", repoPath: "/r", branch: "ducter/t" }, cwd: "/w", mcpServerName: "ducter" });
     expect(b).toContain("always commit, even if the brief says \"no commits\"");
+    expect(b).toContain("**Hold** = pause and wait (it never means \"no\")");
     expect(b).toContain("{kind:\"diff\", label:\"commit\", ref:\"<sha>\"}");
   });
 });

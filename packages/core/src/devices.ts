@@ -58,11 +58,12 @@ export interface DevicesView {
 
 const defaultExec: Exec = async (argv, timeoutMs = 15_000) => {
   try {
-    const p = Bun.spawn(argv, { stdout: "pipe", stderr: "ignore", stdin: "ignore" });
+    // Both streams: `codex login status` answers on stderr.
+    const p = Bun.spawn(argv, { stdout: "pipe", stderr: "pipe", stdin: "ignore" });
     const timer = setTimeout(() => p.kill(), timeoutMs);
-    const [out, code] = await Promise.all([new Response(p.stdout).text(), p.exited]);
+    const [out, err, code] = await Promise.all([new Response(p.stdout).text(), new Response(p.stderr).text(), p.exited]);
     clearTimeout(timer);
-    return { code, out: out.trim() };
+    return { code, out: [out.trim(), err.trim()].filter(Boolean).join("\n") };
   } catch {
     return { code: -1, out: "" };
   }
@@ -145,7 +146,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
           (async (): Promise<DeviceHarness> => {
             if (!which("claude")) return { harness: "claude-code", installed: false, loggedIn: false };
             const r = await exec(["claude", "auth", "status"], 15_000);
-            return { harness: "claude-code", installed: true, loggedIn: r.code === 0 && parseJson(r.out)?.loggedIn === true };
+            return { harness: "claude-code", installed: true, loggedIn: r.code === 0 && parseJson(r.out.slice(r.out.indexOf("{"), r.out.lastIndexOf("}") + 1))?.loggedIn === true };
           })(),
           (async (): Promise<DeviceHarness> => {
             if (!which("codex")) return { harness: "codex", installed: false, loggedIn: false };

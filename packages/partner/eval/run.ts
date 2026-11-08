@@ -9,6 +9,8 @@
 // Safety: repo paths in scenarios (~/dev/foo, ~/dev/hawdb) do not exist on this machine, and
 // the partner's use of Bash/Write/Edit is a failing check. The ~/.claude/projects folders the
 // partner sessions create (named after the scratch dir, "ducter-eval-") are deleted at the end.
+// Memory is a FAKE Mem per scenario (scenario.memories, test/fakes.ts fakeMemory): the eval
+// never reads or writes the user's real Nowledge Mem.
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -18,6 +20,8 @@ import { startCore, type Core } from "../../core/src/index.ts";
 import { createOarHarnessPort, shortId } from "../../runner/src/index.ts";
 import { buildSystemPrompt, createPartner, isChinese } from "../src/index.ts";
 import { scenarios, type Expect, type Scenario, type Step } from "./scenarios.ts";
+import { fakeMemory } from "../test/fakes.ts";
+import type { MemoryAdd } from "../src/memory.ts";
 
 // ---------- args ----------
 const argv = process.argv.slice(2);
@@ -146,6 +150,9 @@ interface RunResult {
   error?: string;
   ms: number;
   transcript: string;
+  recalls: { query: string; step: number }[];
+  remembered: MemoryAdd[]; // saved (accepted by the fake Mem)
+  memAttempts: { input: unknown; step: number }[]; // every memory_add call, refused ones too
 }
 
 const PARTNER_KINDS = new Set(["ack", "ai_msg", "decision"]);
@@ -188,6 +195,13 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     if (ev.tool && ev.tool.input !== undefined && ev.tool.output === undefined) tools.push({ name: ev.tool.name, input: ev.tool.input, step: cur.step });
   });
   const fr = fakeRunner(core, port, cur);
+  const mem = fakeMemory(sc.memories ?? [], { down: sc.memoryDown });
+  const recalls: { query: string; step: number }[] = [];
+  const memAttempts: { input: unknown; step: number }[] = [];
+  const memWrapped = {
+    search: (q: string, n: number) => (recalls.push({ query: q, step: cur.step }), mem.memory.search(q, n)),
+    add: (m: MemoryAdd) => mem.memory.add(m),
+  };
   core.setRunner(fr.runner);
   core.setPartner({ onTrigger() {} }); // history is background, not new work
 
@@ -230,6 +244,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     persistState: false,
     fs: placeFs,
     turnTimeoutMs: 180_000,
+    memory: memWrapped,
     onError: (err) => console.error(`[${sc.id}]`, err instanceof Error ? err.message : err),
   });
   core.setPartner(partner);
@@ -265,6 +280,10 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   }
   // Decisions made by the partner keep their full shape for the judge.
   const decisions = core.log.read({ stream: "channel", fromSeq: startSeq + 1, kinds: ["decision"], limit: 100 }).filter((e) => e.origin === "partner");
+  for (const t of tools) if (/(^|__)memory_add$/.test(t.name)) memAttempts.push({ input: t.input, step: t.step });
+  const notedByStep = core.log
+    .read({ stream: "channel", fromSeq: startSeq + 1, kinds: ["memory_noted"], limit: 100 })
+    .map((e) => ({ title: (e.body as Bodies["memory_noted"]).title, step: stepOf(e.seq) }));
   for (const o of fr.opened) keyOf.set(o.taskId, keyOf.get(o.taskId) ?? `$opened${fr.opened.indexOf(o)}`);
   const sent = fr.sent.map((s) => ({ ...s, key: keyOf.get(s.taskId) ?? s.taskId }));
 
@@ -286,16 +305,24 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
       } else if (v.kind === "waiter") lines.push(`  [reminder set] ${v.text}`);
       else lines.push(`  [partner ${v.kind === "ack" ? "ack line" : "message"}] ${v.text}`);
     }
+    for (const q of recalls.filter((x) => x.step === i)) lines.push(`  [searched long-term memory (invisible to the user)] ${q.query}`);
+    for (const a of memAttempts.filter((x) => x.step === i)) {
+      // The stream's tool input can be partial (title first); the saved record is the truth.
+      const m = a.input as { title?: string; content?: string };
+      const saved = mem.added.find((x) => x.title === m.title);
+      lines.push(`  [${saved ? "saved to long-term memory" : "tried to save to memory (refused by the tool)"}] ${m.title ?? ""}: ${String(saved?.content ?? m.content ?? "").slice(0, 300)}`);
+    }
+    for (const n of notedByStep.filter((x) => x.step === i)) lines.push(`  [the app shows a small line: "Noted · ${n.title}"]`);
     for (const o of r_opened(fr.opened, i)) lines.push(`  [opened a task] title: ${o.title} | place: ${JSON.stringify(o.place ?? null)} | brief: ${o.brief.slice(0, 1200).replace(/\n/g, " ⏎ ")}`);
     for (const x of fr.sent.filter((x) => x.step === i)) lines.push(`  [sent to task ${keyOf.get(x.taskId) ?? "?"}] ${x.text.slice(0, 400)}`);
-    const other = [...new Set(tools.filter((x) => x.step === i).map((x) => x.name.replace(/^mcp__ducter__/, "")).filter((n) => !["task_open", "task_send", "ask", "wait_until", "ToolSearch"].includes(n)))];
+    const other = [...new Set(tools.filter((x) => x.step === i).map((x) => x.name.replace(/^mcp__ducter__/, "")).filter((n) => !["task_open", "task_send", "ask", "wait_until", "ToolSearch", "memory_search", "memory_add"].includes(n)))];
     if (other.length) lines.push(`  [also used tools] ${other.join(", ")}`);
   }
   if (error) lines.push(`ERROR: ${error}`);
 
   await partner.close().catch(() => {});
   await core.stop().catch(() => {});
-  return { sc, visible, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n") };
+  return { sc, visible, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n"), recalls, remembered: mem.added, memAttempts };
 }
 
 const r_opened = (o: Opened[], step: number) => o.filter((x) => x.step === step);
@@ -395,6 +422,19 @@ function check(r: RunResult): string[] {
   for (const re of e.require ?? []) if (!re.test(all)) fails.push(`missing ${re}`);
   const briefs = [...r.opened.map((o) => o.brief), ...r.sent.map((s) => s.text)].join("\n");
   for (const re of e.briefForbid ?? []) if (re.test(briefs)) fails.push(`task brief/send contains ${re}`);
+  const openedBriefs = r.opened.map((o) => o.brief).join("\n");
+  for (const re of e.briefRequire ?? []) if (!re.test(openedBriefs)) fails.push(`task brief lacks ${re}`);
+  // Memory.
+  if (e.recall && !r.recalls.length) fails.push("no memory_search");
+  if (e.noRecall && r.recalls.length) fails.push(`memory_search ×${r.recalls.length} (want none)`);
+  // Never more than one recall per turn unless the user asks (the tool gates it; count the calls).
+  for (const st of new Set(r.recalls.map((x) => x.step))) if (r.recalls.filter((x) => x.step === st).length > 1) fails.push("more than one memory_search in a turn");
+  const savedText = r.remembered.map((m) => `${m.title}\n${m.content}`).join("\n");
+  if (e.remember && !e.remember.test(savedText)) fails.push(`nothing saved matching ${e.remember}`);
+  if (e.noRemember && r.remembered.length) fails.push(`saved to memory ×${r.remembered.length} (want none)`);
+  const attempted = r.memAttempts.map((a) => JSON.stringify(a.input)).join("\n");
+  for (const re of e.rememberForbid ?? []) if (re.test(attempted)) fails.push(`memory_add carried ${re}`);
+  for (const m of r.remembered) if (m.provenance.logSeq === undefined || !m.provenance.persona) fails.push("memory saved without provenance");
   return [...new Set(fails)];
 }
 const clip = (s: string, n = 60) => (s.length > n ? s.slice(0, n - 1) + "…" : s).replace(/\n/g, " ");

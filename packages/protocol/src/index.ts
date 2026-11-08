@@ -51,7 +51,7 @@ export interface Bodies {
   living_msg: { items: LivingItem[] }; // supersedes the previous living_msg while unread
   decision: {
     decisionId: string;
-    taskId: string;
+    taskId?: string; // absent = a partner-level decision (the partner's own ask, before any task)
     question: string;
     goLabel: string; // e.g. "Rebase"; the UI shows "好，<goLabel>" / "Go: <goLabel>"
     defaultOption: "go" | "hold";

@@ -183,5 +183,10 @@ else
   printf '  echo '\''export PATH="%s:$PATH"'\'' >> ~/.zshrc && exec zsh\n' "$BIN"
 fi
 printf '\n'
-m "第一次启动会先检查这台 Mac；缺什么，会告诉你补上的那一行命令。" \
-  "The first start checks this Mac, and gives you the one command for anything missing."
+if [ "$(uname)" = "Darwin" ]; then
+  m "第一次启动会先检查这台 Mac；缺什么，会告诉你补上的那一行命令。" \
+    "The first start checks this Mac, and gives you the one command for anything missing."
+else
+  m "第一次启动会先检查这台机器；缺什么，会告诉你补上的那一行命令。" \
+    "The first start checks this machine, and gives you the one command for anything missing."
+fi

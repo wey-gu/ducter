@@ -6,6 +6,7 @@
 // Behind the gate (local, or a paired device's bearer token):
 //   GET  /api/me                     who this client is, and the push key
 //   POST /api/push/subscribe         {subscription, locale, platform, quiet?}
+//                                    or, from the iPhone app, {apns: {token, env, topic}, …}
 //   POST /api/push/unsubscribe       {endpoint}
 //   GET|POST /api/push/settings      {done?, quiet?}
 //   POST /api/push/test              one test push to this device's subscriptions
@@ -15,6 +16,7 @@ import type { Decisions } from "./decisions.ts";
 import type { Gate, GateResult } from "./auth.ts";
 import type { Pusher, PushStore, PushSub, Quiet } from "./push.ts";
 import { isPushEndpoint, testMessage } from "./push.ts";
+import { APNS_PREFIX, isApnsToken, isTopic, type ApnsSender } from "./apns.ts";
 
 import indexHtml from "../../../apps/web/static/index.html" with { type: "file" };
 import appJs from "../../../apps/web/static/app.js" with { type: "file" };
@@ -97,6 +99,7 @@ export interface WebApiDeps {
   decisions: Decisions;
   push: PushStore;
   pusher: Pusher;
+  apns?: ApnsSender;
   personaName: () => string;
 }
 
@@ -142,11 +145,21 @@ export async function webApi(req: Request, g: Extract<GateResult, { pass: true }
         via: g.via,
         personaName: deps.personaName(),
         ...(g.via === "device" ? { deviceId, deviceName: g.device.name } : {}),
-        push: { supported: true, publicKey: v.publicKey },
+        // apns: this main can send to the iPhone app (it has an APNs key).
+        push: { supported: true, publicKey: v.publicKey, apns: deps.apns?.configured ?? false },
       });
     }
     case "POST /api/push/subscribe": {
       const b = await body();
+      const locale = b.locale === "zh" ? "zh" : "en";
+      if (b.apns !== undefined) {
+        const a = b.apns as { token?: unknown; env?: unknown; topic?: unknown };
+        if (!isApnsToken(a?.token) || !isTopic(a.topic) || (a.env !== "sandbox" && a.env !== "production")) return json(400, { error: "invalid subscription" });
+        deps.push.subscribe({ endpoint: APNS_PREFIX + a.token.toLowerCase(), keys: { p256dh: "", auth: "" }, deviceId, locale, platform: "ios", createdAt: new Date().toISOString(), apns: { env: a.env, topic: a.topic } });
+        const quiet = parseQuiet(b.quiet);
+        if (quiet && !deps.push.settings().quiet) deps.push.setSettings({ quiet });
+        return json(200, { ok: true, settings: deps.push.settings(), apns: deps.apns?.configured ?? false });
+      }
       const s = b.subscription as { endpoint?: unknown; keys?: { p256dh?: unknown; auth?: unknown } } | undefined;
       if (typeof s?.endpoint !== "string" || typeof s.keys?.p256dh !== "string" || typeof s.keys?.auth !== "string")
         return json(400, { error: "invalid subscription" });
@@ -155,7 +168,7 @@ export async function webApi(req: Request, g: Extract<GateResult, { pass: true }
         endpoint: s.endpoint,
         keys: { p256dh: s.keys.p256dh, auth: s.keys.auth },
         deviceId,
-        locale: b.locale === "zh" ? "zh" : "en",
+        locale,
         platform: typeof b.platform === "string" ? b.platform.slice(0, 16) : "web",
         createdAt: new Date().toISOString(),
       };

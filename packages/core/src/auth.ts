@@ -73,7 +73,7 @@ const newId = () => randomBytes(5).toString("hex"); // 10 hex chars, shown in `d
 
 export function openDeviceAuth(dataDir: string, opts: { now?: () => number } = {}): DeviceAuth {
   const now = opts.now ?? Date.now;
-  mkdirSync(dataDir, { recursive: true });
+  if (!existsSync(dataDir)) mkdirSync(dataDir, { recursive: true, mode: 0o700 });
   const path = join(dataDir, "devices.db");
   const fresh = !existsSync(path);
   const db = new Database(path, { create: true });

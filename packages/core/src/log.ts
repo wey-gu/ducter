@@ -1,5 +1,6 @@
 // The Log: append-only SQLite event store with gapless seq and an FTS5 (trigram) index.
 import { Database } from "bun:sqlite";
+import { chmodSync, existsSync } from "node:fs";
 import type { EventKind, LogEvent } from "@ducter/protocol";
 import type { AppendInput, LogStore } from "@ducter/protocol/src/internal.ts";
 import { realClock, type Clock } from "./clock.ts";
@@ -40,6 +41,17 @@ export function textOf(body: unknown): string {
 export function openLog(opts: { path: string; persona: string; clock?: Clock }): SqliteLog {
   const clock = opts.clock ?? realClock;
   const db = new Database(opts.path, { create: true });
+  // The Log is every conversation: owner-only, like devices.db and mcp.secret. SQLite creates
+  // -wal/-shm with the main file's mode, so it is set before WAL is on (and fixed on old installs).
+  const ownerOnly = () => {
+    for (const f of [opts.path, `${opts.path}-wal`, `${opts.path}-shm`])
+      try {
+        if (existsSync(f)) chmodSync(f, 0o600);
+      } catch {
+        /* not ours to change (e.g. a read-only copy) */
+      }
+  };
+  if (opts.path !== ":memory:") ownerOnly();
   db.exec("PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA busy_timeout = 5000;");
   db.exec(`
     CREATE TABLE IF NOT EXISTS events (

@@ -1,4 +1,5 @@
 import { afterEach, expect, test } from "bun:test";
+import { chmodSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { openLog } from "../src/log.ts";
 import { tempDir } from "./helpers.ts";
@@ -62,4 +63,26 @@ test("subscribers see events in seq order even when a listener appends", () => {
   log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "hi" } });
   expect(seenA).toEqual([1, 2]);
   expect(seenB).toEqual([1, 2]);
+});
+
+test("the Log and its WAL files are owner-only, also on an install made before this was enforced", () => {
+  const { path, log } = fresh();
+  log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "private" } });
+  const mode = (f: string) => statSync(f).mode & 0o777;
+  for (const f of [path, `${path}-wal`, `${path}-shm`]) expect(mode(f)).toBe(0o600);
+  log.close();
+  chmodSync(path, 0o644); // an older install
+  const again = openLog({ path, persona: "default" });
+  expect(mode(path)).toBe(0o600);
+  again.close();
+});
+
+test("a fresh data dir is owner-only", async () => {
+  const t = tempDir();
+  cleanup = t.cleanup;
+  const { startCore } = await import("../src/core.ts");
+  const dir = join(t.dir, "fresh", ".ducter");
+  const core = startCore({ dataDir: dir, port: 0 });
+  await core.stop();
+  expect(statSync(dir).mode & 0o777).toBe(0o700);
 });

@@ -66,7 +66,8 @@ function loadSecret(dataDir: string): string {
 
 export function startCore(opts: CoreOptions = {}): Core {
   const dataDir = opts.dataDir ?? defaultDataDir();
-  mkdirSync(dataDir, { recursive: true });
+  // Owner-only when we create it: it holds the Log, worktrees, browser profiles, the env file.
+  if (!existsSync(dataDir)) mkdirSync(dataDir, { recursive: true, mode: 0o700 });
   const clock = opts.clock ?? realClock;
   const persona = opts.persona ?? { id: "default", name: "Ducter", identity: DEFAULT_IDENTITY };
 

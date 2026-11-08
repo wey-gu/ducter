@@ -5,6 +5,8 @@ const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 
 function inline(s: string): string {
   const codes: string[] = [];
+  // NUL marks code spans below: one in the text itself would point at a span that isn't there.
+  s = s.replace(/\u0000/g, "");
   s = s.replace(/`([^`\n]+)`/g, (_m, c: string) => `\u0000${codes.push(c) - 1}\u0000`);
   s = esc(s);
   s = s.replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g, (_m, t: string, u: string) => `<a href="${u}" target="_blank" rel="noopener noreferrer">${t}</a>`);

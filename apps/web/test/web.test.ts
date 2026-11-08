@@ -58,6 +58,9 @@ describe("markdown-lite", () => {
     expect(markdown("[pr](javascript:alert(1)) https://github.com/x")).toContain('<a href="https://github.com/x"');
     expect(markdown("[pr](javascript:alert(1))")).not.toContain("href");
   });
+  test("a NUL in a message doesn't break the conversation view", () => {
+    expect(markdown("see \u00000\u0000 here and `x`")).toBe("<p>see 0 here and <code>x</code></p>");
+  });
 });
 
 describe("store (parity with the desktop store)", () => {

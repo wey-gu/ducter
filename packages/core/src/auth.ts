@@ -70,6 +70,8 @@ function newCode(): string {
 }
 
 const newId = () => randomBytes(5).toString("hex"); // 10 hex chars, shown in `ducter devices`
+/** Control and format characters (ANSI escapes, newlines, bidi overrides) out, whitespace collapsed. */
+const cleanName = (s: string) => s.replace(/[\p{Cc}\p{Cf}]+/gu, " ").replace(/\s+/g, " ").trim();
 
 export function openDeviceAuth(dataDir: string, opts: { now?: () => number } = {}): DeviceAuth {
   const now = opts.now ?? Date.now;
@@ -104,6 +106,8 @@ export function openDeviceAuth(dataDir: string, opts: { now?: () => number } = {
     const cut = now() - FAIL_WINDOW_MS;
     const list = (fails.get(key) ?? []).filter((t) => t > cut);
     fails.set(key, list);
+    // Keys come from callers: drop stale ones so a flood of addresses can't grow this forever.
+    if (fails.size > 1000) for (const [k, v] of fails) if (k !== key && !v.some((t) => t > cut)) fails.delete(k);
     return list;
   };
   const fail = (key: string) => {
@@ -144,8 +148,9 @@ export function openDeviceAuth(dataDir: string, opts: { now?: () => number } = {
       }
       const id = newId();
       const secret = randomBytes(32).toString("base64url");
-      const name = (info.name || "device").trim().slice(0, 64) || "device";
-      const platform = (info.platform ?? "").trim().slice(0, 32);
+      // Names are printed in terminals (`ducter devices`) and shown to the partner.
+      const name = cleanName(info.name || "device").slice(0, 64) || "device";
+      const platform = cleanName(info.platform ?? "").slice(0, 32);
       const r = insertDevice(sha(raw), { id, name, platform, tokenHash: sha(secret) }) as { error: RedeemError } | { kind: DeviceKind };
       if ("error" in r) {
         fail(key);
@@ -206,7 +211,24 @@ const PROXY_HEADERS = ["forwarded", "x-forwarded-for", "x-forwarded-host", "x-re
 export function isLocalRequest(req: Request, peerIp: string | undefined): boolean {
   if (!peerIp || !LOOPBACK_IP.test(peerIp)) return false;
   if (!LOOPBACK_HOST.test(req.headers.get("host") ?? "")) return false;
-  return !PROXY_HEADERS.some((h) => req.headers.has(h));
+  for (const name of req.headers.keys()) if (isProxyHeader(name.toLowerCase())) return false;
+  return true;
+}
+
+const isProxyHeader = (h: string) => PROXY_HEADERS.includes(h) || h.startsWith("x-forwarded-") || h === "true-client-ip" || h === "x-client-ip";
+
+/**
+ * Who a /pair attempt counts against. X-Forwarded-For is believed only from a proxy on this box
+ * (loopback peer), and then only its last hop: the address that proxy itself saw (Caddy
+ * replaces the header; nginx appends to whatever the client sent). A caller reaching a public
+ * bind directly can't choose its own key and so can't spread guesses over made-up addresses.
+ */
+export function rateKey(req: Request, peerIp: string | undefined): string {
+  if (peerIp && LOOPBACK_IP.test(peerIp)) {
+    const last = req.headers.get("x-forwarded-for")?.split(",").pop()?.trim();
+    if (last) return last;
+  }
+  return peerIp || "?";
 }
 
 export type GateResult = { pass: true; via: "local" } | { pass: true; via: "device"; device: Device } | { pass: false; response: Response };
@@ -238,7 +260,7 @@ export function createGate(opts: { auth: DeviceAuth; trustLoopback?: boolean; pe
         } catch {
           return { pass: false, response: json(400, { error: "invalid" }) };
         }
-        const key = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || peerIp || "?";
+        const key = rateKey(req, peerIp);
         const r = opts.auth.redeem(String(body?.code ?? ""), { name: String(body?.name ?? ""), platform: String(body?.platform ?? "") }, key);
         if ("error" in r) return { pass: false, response: json(r.error === "locked" ? 429 : 401, { error: r.error }) };
         return { pass: false, response: json(200, { token: r.token, deviceId: r.device.id, name: r.device.name, personaName: opts.personaName?.() ?? "Ducter" }) };

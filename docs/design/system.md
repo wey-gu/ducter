@@ -149,8 +149,8 @@ when the partner suggests one, and then the steps below are what they copy and p
   a warning: no TLS, paired devices only.
 
 **Who is local.** A request is local when the TCP peer is loopback, the `Host` is loopback,
-and no proxy header (`Forwarded`, `X-Forwarded-*`, `X-Real-IP`, `Via`, `CF-Connecting-IP`,
-`Tailscale-User-Login`) is present. Local callers (the desktop on the same Mac, the CLI, the
+and no proxy header (`Forwarded`, any `X-Forwarded-*`, `X-Real-IP`, `True-Client-IP`,
+`X-Client-IP`, `Via`, `CF-Connecting-IP`, `Tailscale-User-Login`) is present. Local callers (the desktop on the same Mac, the CLI, the
 harnesses' MCP calls, an SSH tunnel's far end) need no token, as before. `DUCTER_LOCAL_TRUST=off`
 turns this off. Caveat: a reverse proxy that sends neither a proxy header nor the public Host
 (nginx's default `proxy_set_header Host $proxy_host`) would look local; the only proxy setup
@@ -167,8 +167,10 @@ Ducter writes is Caddy's, which adds `X-Forwarded-For`.
 - Storage: `<dataDir>/devices.db` (SQLite, WAL, 0600), shared by the CLI and the running server,
   so pairing and revoking work whether or not the service is up. Only SHA-256 hashes of codes
   and token secrets are kept.
-- Limits: 10 wrong codes per caller address per 10 min (`X-Forwarded-For`'s first hop behind a
-  proxy), then 429; 30 wrong codes in total voids every pending code.
+- Limits: 10 wrong codes per caller address per 10 min, then 429; 30 wrong codes in total voids
+  every pending code. The address is the TCP peer, or, only when the peer is a proxy on this box
+  (loopback), the last `X-Forwarded-For` hop (the one that proxy saw; earlier hops are the
+  client's to invent). Device names and platforms lose control characters.
 - `ducter devices` lists name, kind (client / worker), platform, last seen, id;
   `ducter devices disconnect <id|unique name>` revokes at once.
 - Remote `/ws` needs `Authorization: Bearer <token>` (or `X-Ducter-Device`). With a token the

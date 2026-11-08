@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { CODE_ALPHABET, createGate, isLocalRequest, normalizeCode, openDeviceAuth, type DeviceAuth } from "../src/auth.ts";
+import { CODE_ALPHABET, createGate, isLocalRequest, normalizeCode, openDeviceAuth, rateKey, type DeviceAuth } from "../src/auth.ts";
 import { startCore, type Core } from "../src/core.ts";
 import { tempDir } from "./helpers.ts";
 
@@ -116,9 +116,46 @@ describe("isLocalRequest", () => {
     ["127.0.0.1", "127.0.0.1:7777", { "x-forwarded-for": "8.8.8.8" }, false], // Caddy's default
     ["127.0.0.1", "127.0.0.1:7777", { "cf-connecting-ip": "8.8.8.8" }, false], // cloudflared
     ["127.0.0.1", "127.0.0.1:7777", { forwarded: "for=8.8.8.8" }, false],
+    ["127.0.0.1", "127.0.0.1:7777", { "X-Forwarded-Proto": "https" }, false], // a proxy that only says the scheme
+    ["127.0.0.1", "127.0.0.1:7777", { "true-client-ip": "8.8.8.8" }, false],
   ] as const)("%s Host %s %j → %p", (ip, host, headers, want) => {
     expect(isLocalRequest(req(host, headers as Record<string, string>), ip)).toBe(want);
   });
+});
+
+describe("pairing rate-limit key", () => {
+  const req = (xff?: string) => new Request("http://d.example.com/pair", { method: "POST", headers: xff ? { "x-forwarded-for": xff } : {} });
+  test("a direct caller (public bind) can't pick its key with X-Forwarded-For", () => {
+    expect(rateKey(req("10.9.9.9"), "203.0.113.7")).toBe("203.0.113.7");
+  });
+  test("behind a proxy on this box, the hop the proxy saw counts, not what the client wrote", () => {
+    expect(rateKey(req("1.1.1.1, 203.0.113.7"), "127.0.0.1")).toBe("203.0.113.7"); // nginx appends
+    expect(rateKey(req("203.0.113.7"), "::1")).toBe("203.0.113.7"); // Caddy replaces
+    expect(rateKey(req(), "127.0.0.1")).toBe("127.0.0.1");
+  });
+  test("made-up addresses on a public bind all count against one caller and lock it", async () => {
+    const { a } = auth();
+    const gate = createGate({ auth: a });
+    const { code } = a.createCode();
+    let last = 0;
+    for (let i = 0; i < 11; i++) {
+      const r = await gate.check(
+        new Request("http://d.example.com/pair", { method: "POST", headers: { host: "d.example.com", "x-forwarded-for": `10.0.0.${i}` }, body: JSON.stringify({ code: "AAAA-AAAA", name: "x" }) }),
+        "203.0.113.7",
+      );
+      last = (r as { response: Response }).response.status;
+    }
+    expect(last).toBe(429);
+    expect(a.pendingCodes()).toBe(1); // the user's own code is still good
+    void code;
+  });
+});
+
+test("device names lose control characters (they are printed in terminals and shown to the partner)", () => {
+  const { a } = auth();
+  const r = a.redeem(a.createCode().code, { name: "evil\u001b[2J\u001b]0;pwn\u0007\nname‮", platform: "linux\r\n" }) as { device: { name: string; platform: string } };
+  expect(r.device.name).toBe("evil [2J ]0;pwn name");
+  expect(r.device.platform).toBe("linux");
 });
 
 describe("gate on a real server", () => {

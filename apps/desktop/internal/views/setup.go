@@ -315,7 +315,7 @@ func (a *App) setupBlocked(c *ui.Context) {
 				return
 			}
 			if strings.HasPrefix(k.Fix, "http") {
-				if a.button(c, a.L.T("setup.open"), btnQuiet, 40, t.SurfaceSunken) {
+				if a.button(c, a.L.T("setup.open"), btnSecondary, 40, t.SurfaceSunken) {
 					_ = a.Backend.OpenURL(k.Fix)
 				}
 				return
@@ -355,7 +355,7 @@ func (a *App) setupBlocked(c *ui.Context) {
 		if a.setup.busy {
 			label = a.L.T("setup.rechecking")
 		}
-		if a.button(c, label, btnQuiet, 44, t.Surface) && !a.setup.busy {
+		if a.button(c, label, btnSecondary, 44, t.Surface) && !a.setup.busy {
 			a.check()
 		}
 	})
@@ -437,49 +437,52 @@ func (a *App) cliOfferLine(c *ui.Context) {
 		o.shown = true
 	}
 	t := a.T
-	ui.Row(c).Justify(ui.Center).Padding(0, 24).Children(func() {
-		card := ui.Column(c.Key("clioffer")).Grow(1).MaxWidth(convWidth).Gap(10).Padding(12, 16).
-			Radius(t.RadiusLG).Background(t.Surface).Role(ui.RoleStatus)
-		a.enter(c, card)
-		card.Children(func() {
-			switch o.result {
-			case "":
-				ui.Row(c).Gap(12).AlignItems(ui.Center).Children(func() {
-					ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
-						ui.Text(c, a.L.T("cli.offer")).FontSize(t.MD).FontWeight(700)
-						ui.Text(c, a.L.T("cli.offer.body")).FontSize(t.SM).TextColor(t.InkMuted)
-					})
-					if a.button(c, a.L.T("cli.offer.yes"), btnPrimary, 40, t.Surface) {
-						a.linkCLI()
-					}
-					if a.button(c, a.L.T("cli.offer.no"), btnText, 40, t.Surface) {
-						a.Local.SetCLIOffer("declined")
-						o.closed = true
-					}
-				})
-			default:
-				ui.Row(c).Gap(12).AlignItems(ui.Center).Children(func() {
-					var line string
+	glyph := func() { a.glyphTile(c, 28, t.Surface, drawPrompt(t.InkSoft)) }
+	a.aboveComposer(c, func() {
+		switch o.result {
+		case "":
+			a.notice(c, "clioffer", noticeInfo, glyph, func() {
+				ui.Text(c, a.L.T("cli.offer")).FontSize(t.SM).FontWeight(700)
+				ui.Text(c, a.L.T("cli.offer.body")).FontSize(t.XS).LineHeight(1.45).TextColor(t.InkMuted)
+			}, func() {
+				if a.button(c, a.L.T("cli.offer.no"), btnText, t.ControlSM, t.Surface) {
+					a.Local.SetCLIOffer("declined")
+					o.closed = true
+				}
+				if a.button(c, a.L.T("cli.offer.yes"), btnPrimary, t.ControlSM, t.Surface) {
+					a.linkCLI()
+					// Done is said once, in passing; only what still
+					// needs the person (a line to run, an error) stays.
 					switch o.result {
 					case "done":
-						line = a.L.T("cli.done")
-					case "path":
-						line = a.L.T("cli.done.path")
+						c.Toast(a.L.T("cli.done"))
+						o.closed = true
 					case "other":
-						line = a.L.T("cli.other")
-					default:
-						line = a.L.T("cli.failed", o.result)
-					}
-					ui.Text(c, line).FontSize(t.MD).LineHeight(1.45).Grow(1).MinWidth(0)
-					if a.button(c, a.L.T("cli.ok"), btnQuiet, 40, t.Surface) {
+						c.Toast(a.L.T("cli.other"))
 						o.closed = true
 					}
-				})
-				if o.result == "path" {
-					a.commandBoxSized(c, local.PathLine(local.LinkDir()), 13)
 				}
-			}
-		})
+			})
+		case "path":
+			a.notice(c, "clioffer", noticeInfo, glyph, func() {
+				ui.Text(c, a.L.T("cli.done.path")).FontSize(t.SM).LineHeight(1.45).TextColor(t.InkSoft)
+			}, func() {
+				if a.button(c, a.L.T("cli.ok"), btnText, t.ControlSM, t.Surface) {
+					o.closed = true
+				}
+			})
+			ui.Box(c).Height(t.S2)
+			a.commandBoxSized(c, local.PathLine(local.LinkDir()), t.SM)
+			ui.Box(c).Height(t.S2)
+		default:
+			a.notice(c, "clioffer", noticeAlert, glyph, func() {
+				ui.Text(c, a.L.T("cli.failed", o.result)).FontSize(t.SM).LineHeight(1.45).TextColor(t.Failed.Ink)
+			}, func() {
+				if a.button(c, a.L.T("cli.ok"), btnText, t.ControlSM, t.Surface) {
+					o.closed = true
+				}
+			})
+		}
 	})
 }
 

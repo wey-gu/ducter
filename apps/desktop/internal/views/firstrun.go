@@ -44,7 +44,7 @@ func (a *App) firstRun(c *ui.Context) {
 						ui.Text(c, a.L.T("firstrun.where", a.URL)).Font(t.Mono).FontSize(11.5).TextColor(t.InkMuted).SingleLine()
 					}
 				})
-				if a.RetryNow != nil && a.button(c, a.L.T("firstrun.retry"), btnQuiet, 44, t.Bg) {
+				if a.RetryNow != nil && a.button(c, a.L.T("firstrun.retry"), btnSecondary, 44, t.Bg) {
 					a.RetryNow()
 				}
 			})

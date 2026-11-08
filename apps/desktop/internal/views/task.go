@@ -124,14 +124,14 @@ func (a *App) taskActions(c *ui.Context, task *store.Task) {
 	att := task.Attention()
 	switch att {
 	case protocol.Failed, protocol.Dropped:
-		if a.button(c, a.L.T("task.action.retry"), btnQuiet, 36, t.Surface) {
+		if a.button(c, a.L.T("task.action.retry"), btnSecondary, 36, t.Surface) {
 			a.TaskAction(task.ID, "reopen")
 		}
 		return
 	case protocol.Done, protocol.Superseded:
 		return
 	}
-	if att == protocol.Working && a.button(c, a.L.T("task.action.pause"), btnQuiet, 36, t.Surface) {
+	if att == protocol.Working && a.button(c, a.L.T("task.action.pause"), btnSecondary, 36, t.Surface) {
 		a.TaskAction(task.ID, "interrupt")
 	}
 	if a.button(c, a.L.T("task.action.drop"), btnText, 36, t.Surface) {
@@ -264,7 +264,7 @@ func (a *App) transcript(c *ui.Context, task *store.Task) {
 				ta.Focus()
 				a.focusComposer = false
 			}
-			if a.iconButton(c, a.L.T("composer.send"), 44, t.Ink, t.PressPrimary, drawSend(t.OnUserBubble)) {
+			if a.iconButton(c, a.L.T("composer.send"), t.ControlMD, btnPrimary, drawSend) {
 				if a.SendToTask(task.ID, draft) {
 					draft = ""
 				}

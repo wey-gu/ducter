@@ -2,6 +2,7 @@ package views
 
 import (
 	"math"
+	"strings"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -122,7 +123,9 @@ func (a *App) pebble(c *ui.Context, color ui.Color, w, h float32) ui.Element {
 }
 
 // taskChip is a task's chip inside the partner's words: it links to the
-// task and lifts as the pointer comes over it.
+// task and lifts as the pointer comes over it. It says the title once,
+// then where the task stands: the job's status line when it adds
+// something, else the state.
 func (a *App) taskChip(c *ui.Context, t *store.Task, detail string) {
 	att := t.Attention()
 	sc := a.T.State(string(att))
@@ -132,22 +135,35 @@ func (a *App) taskChip(c *ui.Context, t *store.Task, detail string) {
 	} else if t.Place().Kind == "browser" && !finished(t) {
 		a.ensureHistory(t.ID) // browser status lines come with the task's stream
 	}
+	if sameWords(detail, label) {
+		detail = "" // a status line that only repeats the title says nothing
+	}
 	if detail == "" {
 		detail = a.stateLabel(att)
 	}
 	if detail != "" {
 		label += " · " + detail
 	}
-	chip := ui.Row(c.Key("chip:"+t.ID)).Gap(8).Height(36).Padding(0, 14, 0, 10).Radius(12).
-		Background(sc.Surface).Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(label).Shrink(0)
+	chip := a.chipBox(c.Key("chip:"+t.ID), a.T.ChipLG, sc.Surface).Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(label).
+		Focusable().MinWidth(0)
 	a.lift(c, chip, 2)
 	chip.Children(func() {
 		a.pebble(c, sc.Dot, 10, 12)
-		ui.Text(c, label).FontSize(a.T.SM).FontWeight(700).TextColor(sc.Ink).SingleLine()
+		ui.Text(c, label).FontSize(a.T.SM).FontWeight(700).TextColor(sc.Ink).SingleLine().Shrink(1).MinWidth(0)
 	})
 	if chip.Clicked() {
 		a.OpenTask(t.ID)
 	}
+}
+
+// sameWords reports whether a status line only repeats the title
+// (ignoring case, spaces and an ending's punctuation).
+func sameWords(detail, title string) bool {
+	norm := func(s string) string {
+		return strings.ToLower(strings.TrimRight(strings.Join(strings.Fields(s), " "), ".。…"))
+	}
+	d := norm(detail)
+	return d != "" && d == norm(title)
 }
 
 // lift raises an element a little while hovered: the chip → card motion.
@@ -162,37 +178,83 @@ func (a *App) lift(c *ui.Context, e ui.Element, by float32) {
 	e.AnimatePose(p, a.T.Snappy)
 }
 
-// stateChip is a small pill naming a state.
-func (a *App) stateChip(c *ui.Context, att protocol.Attention) {
-	sc := a.T.State(string(att))
-	ui.Box(c).Padding(4, 10).Radius(a.T.Pill).Background(sc.Surface).Children(func() {
-		ui.Text(c, a.stateLabel(att)).FontSize(a.T.XS).FontWeight(800).TextColor(sc.Ink)
+// ---------- chips ----------
+
+// The one chip family: a flat rounded rectangle (RadiusXS) in a state's
+// or the paper's tint, ChipSM (a state tag), Chip (evidence, metadata,
+// the forecast) or ChipLG (a task in the conversation) tall, with
+// SM/XS bold text. Chips never press down: only buttons do.
+
+// chipBox is a chip's row, h tall, on bg; the caller adds what is in it.
+func (a *App) chipBox(c *ui.Context, h float32, bg ui.Color) ui.Element {
+	t := a.T
+	pad := t.S3 - 2 // 10: a pebble or a check sits close to the edge
+	if h <= t.ChipSM {
+		pad = t.S2
+	}
+	return ui.Row(c).Gap(t.S2-2).Height(h).Padding(0, pad).Radius(t.RadiusXS).Background(bg).AlignItems(ui.Center).Shrink(0)
+}
+
+// tag is the small chip naming a state or a fact: one word or two.
+func (a *App) tag(c *ui.Context, text string, sc theme.StateColors) {
+	a.chipBox(c, a.T.ChipSM, sc.Surface).Children(func() {
+		ui.Text(c, text).FontSize(a.T.XS).FontWeight(700).TextColor(sc.Ink).SingleLine()
 	})
 }
 
-// pill is a sunken pill of metadata.
+// stateChip is a small tag naming a state.
+func (a *App) stateChip(c *ui.Context, att protocol.Attention) {
+	a.tag(c, a.stateLabel(att), a.T.State(string(att)))
+}
+
+// pill is a sunken chip of metadata.
 func (a *App) pill(c *ui.Context, text string) {
 	if text == "" {
 		return
 	}
-	ui.Box(c).Padding(5, 10).Radius(a.T.Pill).Background(a.T.SurfaceSunken).Children(func() {
-		ui.Text(c, text).FontSize(a.T.XS).FontWeight(700).SingleLine()
+	t := a.T
+	a.chipBox(c, t.Chip, t.SurfaceSunken).Shrink(1).MinWidth(0).Children(func() {
+		ui.Text(c, text).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).SingleLine().Shrink(1).MinWidth(0)
 	})
 }
 
 // ---------- buttons ----------
 
+// The one button family (docs/design/ui.md, Components):
+//
+//   - primary: the one thing to do. Ink, and it presses down (PressPrimary).
+//   - secondary: a choice beside it. The surface with a hairline, flat;
+//     it darkens as it is pressed.
+//   - text (quiet): words only, with a tint under them on hover.
+//   - accent: the composer's send.
+//   - icon: a square of any of these (iconButton).
+//
+// Three heights (ControlSM/MD/LG); every button of one height has the same
+// corners, padding and type. Hover, press and keyboard focus look the same
+// on all of them.
 type btnKind int
 
 const (
-	btnPrimary btnKind = iota // dark press-down pebble button
-	btnQuiet                  // light press-down button
-	btnText                   // text button
-	btnAccent                 // accent, as the composer's send
+	btnPrimary   btnKind = iota // dark press-down pebble button
+	btnSecondary                // light, flat, hairline
+	btnText                     // text button
+	btnAccent                   // accent, as the composer's send
 )
 
-// button is a press-down Pebble button: it sits on a solid offset shadow
-// and sinks into it while pressed. It reports a click.
+// controlHeight snaps a height to the family's three: small (chrome,
+// inline lines), medium (cards, the conversation), large (setup screens).
+func (a *App) controlHeight(h float32) float32 {
+	t := a.T
+	switch {
+	case h <= (t.ControlSM+t.ControlMD)/2:
+		return t.ControlSM
+	case h < (t.ControlMD+t.ControlLG)/2:
+		return t.ControlMD
+	}
+	return t.ControlLG
+}
+
+// button is a button of the family. It reports a click.
 func (a *App) button(c *ui.Context, label string, kind btnKind, height float32, onSurface ui.Color) bool {
 	return a.buttonFor(c, label, "", kind, height, onSurface)
 }
@@ -206,37 +268,91 @@ func (a *App) buttonFor(c *ui.Context, label, about string, kind btnKind, height
 	if about != "" {
 		name = label + " · " + about
 	}
-	var bg, fg ui.Color
-	var press theme.Press
-	switch kind {
-	case btnPrimary:
-		bg, fg, press = t.Ink, t.OnUserBubble, t.PressPrimary
-	case btnQuiet:
-		bg, fg, press = onSurface, t.Ink, t.PressQuiet
-	case btnAccent:
-		bg, fg, press = t.Accent, t.OnAccent, t.PressAccent
-	default:
-		bg, fg = ui.Transparent, t.NeedsYou.Ink
+	h := a.controlHeight(height)
+	size, padX := t.MD, t.S4
+	switch h {
+	case t.ControlSM:
+		size, padX = t.SM, t.S3
+	case t.ControlLG:
+		padX = t.S5
 	}
-	radius := t.RadiusSM
-	if height >= 50 {
-		radius = 18
-	}
-	padX := float32(22)
 	if kind == btnText {
-		padX = 10
+		padX = t.S2 + 2
 	}
-	b := ui.Row(c.Key("btn:"+name)).Height(height).Padding(0, padX).Radius(radius).Background(bg).
-		Justify(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(name).Focusable().Shrink(0)
-	a.press(c, b, press)
-	size := t.MD
-	if height >= 50 {
-		size = 16
-	}
+	b := ui.Row(c.Key("btn:"+name)).Height(h).Padding(0, padX).Radius(t.RadiusSM).
+		Justify(ui.Center).AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(name).Focusable().Shrink(0)
+	fg := a.buttonLook(c, b, kind, h, onSurface)
 	b.Children(func() {
 		ui.Text(c, label).FontSize(size).FontWeight(700).TextColor(fg).SingleLine().AccessHidden(about != "")
 	})
 	return b.Clicked()
+}
+
+// buttonLook styles b as a button of kind on onSurface, h tall: its
+// background, edge, depth and hover/press states. It returns the ink for
+// what is on it.
+func (a *App) buttonLook(c *ui.Context, b ui.Element, kind btnKind, h float32, onSurface ui.Color) ui.Color {
+	t := a.T
+	hover, down := b.Hovered(), b.Pressed()
+	switch kind {
+	case btnPrimary:
+		bg := t.Ink
+		if hover && !down {
+			bg = t.Ink.Mix(t.InkSoft, 0.45)
+		}
+		b.Background(bg)
+		a.press(c, b, a.pressFor(t.PressPrimary, h))
+		return t.OnUserBubble
+	case btnAccent:
+		bg := t.Accent
+		if hover && !down {
+			bg = t.Accent.Mix(t.NeedsYou.Strong, 0.35)
+		}
+		b.Background(bg)
+		a.press(c, b, a.pressFor(t.PressAccent, h))
+		return t.OnAccent
+	case btnSecondary:
+		bg := t.Surface
+		switch {
+		case down:
+			bg = t.SurfaceSunken
+		case hover:
+			bg = t.SurfaceSunken.Mix(t.Surface, 0.55)
+		}
+		b.Background(bg).Border(1, t.Line)
+		a.sink(c, b, down)
+		return t.Ink
+	}
+	// Text: no edge until the pointer comes over it.
+	if hover || down {
+		tint := 0.08
+		if down {
+			tint = 0.14
+		}
+		b.Background(t.NeedsYou.Ink.Alpha(float32(tint)))
+	}
+	return t.NeedsYou.Ink
+}
+
+// pressFor is a press depth for a control h tall: a small control sits
+// lower (2 points), the others at the theme's depth.
+func (a *App) pressFor(p theme.Press, h float32) theme.Press {
+	if h <= a.T.ControlSM && p.Offset > 2 {
+		p.Offset = 2
+	}
+	return p
+}
+
+// sink moves a flat control a point down while it is pressed.
+func (a *App) sink(c *ui.Context, e ui.Element, down bool) {
+	if c.Preferences().ReduceMotion {
+		return
+	}
+	y := float32(0)
+	if down {
+		y = 1
+	}
+	e.Translate(0, e.AnimateTo("sink", y, ui.Animation{Duration: a.T.PressDur}))
 }
 
 // press gives an element the Pebble depth: a solid offset under it that it
@@ -256,17 +372,90 @@ func (a *App) press(c *ui.Context, e ui.Element, press theme.Press) {
 		e.Shadow(0, off, 0, 0, press.Color)
 		return
 	}
-	y = e.AnimateTo("press", y, ui.Animation{Duration: 70 * time.Millisecond})
+	y = e.AnimateTo("press", y, ui.Animation{Duration: a.T.PressDur})
 	e.Translate(0, y).Shadow(0, press.Offset-y, 0, 0, press.Color)
 }
 
-// iconButton is a square button that draws its icon.
-func (a *App) iconButton(c *ui.Context, label string, size float32, bg ui.Color, press theme.Press, draw func(p *ui.Painter, r ui.Rect)) bool {
-	b := ui.Box(c.Key("icon:"+label)).Size(size, size).Radius(size / 3).Background(bg).Label(label).
-		Role(ui.RoleButton).Cursor(ui.CursorPointer).Shrink(0)
-	a.press(c, b, press)
-	b.Draw(draw)
+// navButton is a button of the window's chrome (Devices, On hand): a
+// secondary button at the small height with a glyph before its word.
+func (a *App) navButton(c *ui.Context, key, label, name string, glyph func()) bool {
+	t := a.T
+	b := ui.Row(c.Key("nav:"+key)).Gap(t.S2).Height(t.ControlSM).Padding(0, t.S3, 0, t.S2).Radius(t.RadiusSM).
+		AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(name).Focusable().Shrink(0)
+	fg := a.buttonLook(c, b, btnSecondary, t.ControlSM, t.Chrome)
+	b.Children(func() {
+		glyph()
+		ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(fg).SingleLine().AccessHidden(true)
+	})
 	return b.Clicked()
+}
+
+// iconButton is a square button that draws its icon, in one of the
+// family's kinds.
+func (a *App) iconButton(c *ui.Context, label string, size float32, kind btnKind, draw func(fg ui.Color) func(p *ui.Painter, r ui.Rect)) bool {
+	t := a.T
+	b := ui.Box(c.Key("icon:"+label)).Size(size, size).Radius(t.RadiusSM).Label(label).
+		Role(ui.RoleButton).Cursor(ui.CursorPointer).Focusable().Shrink(0)
+	fg := a.buttonLook(c, b, kind, size, t.Surface)
+	b.Draw(draw(fg))
+	return b.Clicked()
+}
+
+// ---------- notices ----------
+
+// noticeTone is what a notice is about.
+type noticeTone int
+
+const (
+	noticeInfo  noticeTone = iota // the app telling or offering something
+	noticeDone                    // something good happened
+	noticeAlert                   // something held, to look at
+)
+
+// notice is the app speaking, never the partner: a slim, quiet strip just
+// above the composer, in small type, with a glyph tile at its start and
+// small buttons at its end. The partner speaks in large type on the paper
+// and in cards; a notice is neither, so it is never mistaken for a
+// message. body writes its words; actions its buttons (ControlSM).
+func (a *App) notice(c *ui.Context, key string, tone noticeTone, glyph func(), body func(), actions func()) ui.Element {
+	t := a.T
+	bg := t.SurfaceSunken.Mix(t.Bg, 0.45)
+	switch tone {
+	case noticeDone:
+		bg = t.Done.Surface
+	case noticeAlert:
+		bg = t.Failed.Surface
+	}
+	row := ui.Row(c.Key(key)).Gap(t.S3).Wrap().Padding(t.S2, t.S2, t.S2, t.S3).MinHeight(t.ControlSM+2*t.S2).
+		Radius(t.RadiusMD).Background(bg).AlignItems(ui.Center).Role(ui.RoleStatus)
+	if tone == noticeAlert {
+		row.Role(ui.RoleAlert)
+	}
+	a.enter(c, row)
+	row.Children(func() {
+		if glyph != nil {
+			glyph()
+		}
+		ui.Column(c).Grow(1).Basis(240).MinWidth(0).Gap(2).Children(body)
+		if actions != nil {
+			ui.Row(c).Gap(t.S1).AlignItems(ui.Center).Shrink(0).Children(actions)
+		}
+	})
+	return row
+}
+
+// aboveComposer centers what it holds on the conversation's column, just
+// above the composer: where notices go.
+func (a *App) aboveComposer(c *ui.Context, body func()) {
+	t := a.T
+	ui.Row(c).Justify(ui.Center).Padding(0, t.S5, t.S2, t.S5).Children(func() {
+		ui.Column(c).Grow(1).MaxWidth(convWidth).Children(body)
+	})
+}
+
+// glyphTile is a glyph on a small tile: a notice's or a row's icon.
+func (a *App) glyphTile(c *ui.Context, size float32, bg ui.Color, draw func(p *ui.Painter, r ui.Rect)) {
+	ui.Box(c).Size(size, size).Radius(a.T.RadiusXS).Background(bg).Draw(draw).Shrink(0)
 }
 
 func drawSend(col ui.Color) func(p *ui.Painter, r ui.Rect) {
@@ -279,6 +468,20 @@ func drawSend(col ui.Color) func(p *ui.Painter, r ui.Rect) {
 		arrow.LineTo(cx, cy-7)
 		arrow.LineTo(cx+6, cy-1)
 		p.StrokePath(&arrow, 2.4, col)
+	}
+}
+
+// drawPrompt is a terminal's prompt: a chevron and a cursor line.
+func drawPrompt(col ui.Color) func(p *ui.Painter, r ui.Rect) {
+	return func(p *ui.Painter, r ui.Rect) {
+		cx, cy := r.X+r.W/2, r.Y+r.H/2
+		var m ui.Path
+		m.MoveTo(cx-6, cy-4.5)
+		m.LineTo(cx-1.5, cy)
+		m.LineTo(cx-6, cy+4.5)
+		m.MoveTo(cx+0.5, cy+5)
+		m.LineTo(cx+6.5, cy+5)
+		p.StrokePath(&m, 2, col)
 	}
 }
 
@@ -354,7 +557,7 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 		if a.buttonFor(c, goText, about, btnPrimary, st.height, st.quietBg) {
 			a.Decide(d.DecisionID, "go", "")
 		}
-		if a.buttonFor(c, a.L.T("decision.hold"), about, btnQuiet, st.height, st.quietBg) {
+		if a.buttonFor(c, a.L.T("decision.hold"), about, btnSecondary, st.height, st.quietBg) {
 			a.Decide(d.DecisionID, "hold", "")
 		}
 		if a.buttonFor(c, a.L.T("decision.reply"), about, btnText, st.height, st.quietBg) {
@@ -377,7 +580,7 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 					}
 					return false
 				})
-			if a.iconButton(c, a.L.T("composer.send"), 40, t.Ink, t.PressPrimary, drawSend(t.OnUserBubble)) && draft != "" {
+			if a.iconButton(c, a.L.T("composer.send"), t.ControlMD, btnPrimary, drawSend) && draft != "" {
 				a.Decide(d.DecisionID, "reply", draft)
 				draft = ""
 			}

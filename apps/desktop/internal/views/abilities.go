@@ -859,7 +859,7 @@ func (a *App) abilityDetail(c *ui.Context, dv *protocol.DeviceView) {
 			a.unavailable(c, ab)
 		case on && id == protocol.AbilityRemote:
 			a.reachList(c)
-			if a.button(c, a.L.T("pair.again"), btnQuiet, 44, t.Bg) {
+			if a.button(c, a.L.T("pair.again"), btnSecondary, 44, t.Bg) {
 				a.openPair()
 			}
 		case on && d.removing == id:
@@ -868,7 +868,7 @@ func (a *App) abilityDetail(c *ui.Context, dv *protocol.DeviceView) {
 				if a.buttonFor(c, a.L.T("ability.remove"), name, btnPrimary, 44, t.Surface) {
 					a.removeAbility(dv, id)
 				}
-				if a.button(c, a.L.T("ability.remove.keep"), btnQuiet, 44, t.Bg) {
+				if a.button(c, a.L.T("ability.remove.keep"), btnSecondary, 44, t.Bg) {
 					d.removing = ""
 				}
 			})
@@ -924,7 +924,7 @@ func (a *App) unavailable(c *ui.Context, ab *protocol.DeviceAbility) {
 	case "cua_old":
 		a.commandBoxSized(c, "cua-driver update --apply", 13)
 	case "cua_missing":
-		if a.button(c, a.L.T("ability.fix.install"), btnQuiet, 40, t.Bg) {
+		if a.button(c, a.L.T("ability.fix.install"), btnSecondary, 40, t.Bg) {
 			a.openLink("https://github.com/trycua/cua")
 		}
 	}

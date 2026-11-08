@@ -69,24 +69,24 @@ func (a *App) firstResultLine(c *ui.Context) {
 	}
 	c.After(left)
 	t := a.T
-	ui.Row(c).Justify(ui.Center).Padding(0, 24).Children(func() {
-		card := ui.Row(c.Key("firstresult")).Grow(1).MaxWidth(convWidth).Gap(14).Padding(10, 12, 10, 12).
-			Radius(t.RadiusLG).Background(t.Done.Surface).AlignItems(ui.Center).Role(ui.RoleStatus).Label(a.L.T("firstresult.line"))
-		a.enter(c, card)
-		card.Children(func() {
+	a.aboveComposer(c, func() {
+		row := a.notice(c, "firstresult", noticeDone, func() {
 			if bmp := theme.Art(theme.Done, 112); bmp != nil {
-				ui.Image(c, bmp).Size(56, 56).Shrink(0)
+				ui.Image(c, bmp).Size(40, 40).Margin(-4, 0).Shrink(0)
 			} else {
-				ui.Box(c).Size(30, 30).Radius(11).Background(t.Surface).Draw(drawCheck(t.Done.Ink)).Shrink(0)
+				a.glyphTile(c, 28, t.Surface, drawCheck(t.Done.Ink))
 			}
-			line := ui.Text(c, a.L.T("firstresult.line")).FontSize(t.MD).FontWeight(600).TextColor(t.Done.Ink).
-				Grow(1).MinWidth(0).LineHeight(1.45).Cursor(ui.CursorPointer)
+		}, func() {
+			line := ui.Text(c, a.L.T("firstresult.line")).FontSize(t.SM).FontWeight(700).TextColor(t.Done.Ink).
+				LineHeight(1.45).Cursor(ui.CursorPointer)
 			if line.Clicked() && f.taskID != "" {
 				a.OpenTask(f.taskID)
 			}
-			if a.button(c, a.L.T("firstresult.ok"), btnQuiet, 40, t.Surface) {
+		}, func() {
+			if a.button(c, a.L.T("firstresult.ok"), btnText, t.ControlSM, t.Surface) {
 				f.at = time.Time{}
 			}
 		})
+		row.Label(a.L.T("firstresult.line"))
 	})
 }

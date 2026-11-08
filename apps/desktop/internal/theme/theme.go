@@ -53,28 +53,52 @@ type Tokens struct {
 	// Clay is the surface clay art sits on (the renders' own cream).
 	Clay ui.Color
 
-	// type
-	Display, Body, Mono string
-	XS, SM, MD, LG, XL  float32 // 12, 13, 15, 18, 22
-	PartnerSize         float32 // bubble-less partner voice, 18
-	Title               float32 // page titles, 34
+	// type: one scale. XS captions and labels, SM secondary text and
+	// small controls, MD body and controls, LG the partner's voice and
+	// questions, XL card and lane titles, XXL screen titles, Title hero.
+	Display, Body, Mono     string
+	XS, SM, MD, LG, XL, XXL float32 // 12, 13, 15, 18, 22, 28
+	PartnerSize             float32 // bubble-less partner voice, 18
+	Title                   float32 // page titles, 34
+	MonoSM                  float32 // code in cards and transcripts, 12
 
-	// shape
-	RadiusSM, RadiusMD, RadiusLG, RadiusXL, Pill float32
+	// space: one 4-point scale, S1 4 … S7 48. Gaps inside a group are
+	// S2–S3, between groups S4–S5, between a screen's sections S6–S7.
+	S1, S2, S3, S4, S5, S6, S7 float32
+
+	// shape: XS small chips and glyph tiles, SM buttons, chips and fields,
+	// MD sheets and inset cards, LG cards, XL hero cards and the composer.
+	RadiusXS, RadiusSM, RadiusMD, RadiusLG, RadiusXL, Pill float32
+
+	// controls: the heights of the one button family (SM in the chrome
+	// and inline, MD in cards and the conversation, LG on setup screens)
+	// and of chips (ChipSM for a state tag, Chip for evidence and
+	// metadata, ChipLG for a task's chip in the conversation). Buttons
+	// have RadiusSM corners, chips RadiusXS: a chip never looks pressable
+	// the way a button does.
+	ControlSM, ControlMD, ControlLG, ChipSM, Chip, ChipLG float32
+	// IconSM is a glyph inside a control; IconTile a glyph's tile in a
+	// row (a check, a clock).
+	IconSM, IconTile float32
 	// BubbleRadius is the user bubble's corners: top-left, top-right,
 	// bottom-right, bottom-left.
 	BubbleRadius [4]float32
 	// PebbleRadius is a task pebble's slightly irregular corners.
 	PebbleRadius [4]float32
 
-	// depth
-	PressCard    Press // cards, chips, the composer
+	// depth: three levels. Flat (sheets, chips, rows inside a card);
+	// PressCard, a card resting on the paper; PressPrimary/PressAccent, a
+	// button you press down. Secondary buttons are flat with a hairline:
+	// only the one thing to press stands up.
+	PressCard    Press // cards and the composer
 	PressPrimary Press // dark buttons
-	PressQuiet   Press // light buttons
 	PressAccent  Press // accent buttons
 
-	// motion
-	Bouncy, Snappy ui.Animation
+	// motion: Snappy for hover and lift, PressDur for a press, EnterDur
+	// for a screen or a notice coming in, Bouncy for the living message
+	// and the equip.
+	Bouncy, Snappy     ui.Animation
+	PressDur, EnterDur time.Duration
 	// Equip is the sticker peel-and-stick of an ability (research/26, 28).
 	Equip EquipMotion
 }
@@ -128,22 +152,27 @@ func Pebble() *Tokens {
 		Display: "Bricolage Grotesque, PingFang SC, Noto Sans SC",
 		Body:    "Bricolage Grotesque, PingFang SC, Noto Sans SC",
 		Mono:    "JetBrains Mono, SF Mono, Menlo, monospace",
-		XS:      12, SM: 13, MD: 15, LG: 18, XL: 22,
+		XS:      12, SM: 13, MD: 15, LG: 18, XL: 22, XXL: 28,
 		PartnerSize: 18,
 		Title:       34,
+		MonoSM:      12,
 
-		RadiusSM: 14, RadiusMD: 20, RadiusLG: 26, RadiusXL: 28, Pill: 999,
+		S1: 4, S2: 8, S3: 12, S4: 16, S5: 24, S6: 32, S7: 48,
+
+		RadiusXS: 8, RadiusSM: 12, RadiusMD: 16, RadiusLG: 22, RadiusXL: 28, Pill: 999,
+		ControlSM: 32, ControlMD: 40, ControlLG: 48, ChipSM: 24, Chip: 28, ChipLG: 32,
+		IconSM: 16, IconTile: 28,
 		BubbleRadius: [4]float32{22, 22, 8, 22},
 		PebbleRadius: [4]float32{6, 7, 5, 6},
 
 		PressCard:    Press{Offset: 4, Color: hex("#E8D9C4")},
 		PressPrimary: Press{Offset: 3, Color: hex("#000000")},
-		PressQuiet:   Press{Offset: 3, Color: hex("#E0C9B0")},
 		PressAccent:  Press{Offset: 3, Color: hex("#C9642A")},
 
-		Bouncy: ui.Animation{Spring: ui.SpringOptions{Duration: 420e6, Bounce: 0.35}},
-		Snappy: ui.Snappy,
-		Equip:  EquipMotion{Flight: 820 * time.Millisecond, Snap: 0.62, Squash: 420 * time.Millisecond, DoneFace: 1800 * time.Millisecond, Fade: 200 * time.Millisecond},
+		Bouncy:   ui.Animation{Spring: ui.SpringOptions{Duration: 420e6, Bounce: 0.35}},
+		Snappy:   ui.Snappy,
+		PressDur: 70 * time.Millisecond, EnterDur: 220 * time.Millisecond,
+		Equip: EquipMotion{Flight: 820 * time.Millisecond, Snap: 0.62, Squash: 420 * time.Millisecond, DoneFace: 1800 * time.Millisecond, Fade: 200 * time.Millisecond},
 	}
 }
 

@@ -81,6 +81,10 @@ type Supervisor struct {
 	// copy) Ducter is the app's child and stops with it.
 	Agent *Agent
 
+	// bgBlocked: macOS doesn't let the agent run (Login Items › Allow in
+	// the Background is off), so Ducter is the app's child for now.
+	bgBlocked bool
+
 	mu     sync.Mutex
 	cmd    *exec.Cmd
 	exited chan struct{}
@@ -89,7 +93,28 @@ type Supervisor struct {
 }
 
 // Background reports whether Ducter keeps running after the app quits.
-func (s *Supervisor) Background() bool { return s.Agent != nil }
+func (s *Supervisor) Background() bool { return s.Agent != nil && !s.BackgroundBlocked() }
+
+// BackgroundBlocked reports whether macOS refused the LaunchAgent (the
+// person turned Ducter off in Login Items), so this run is the app's child.
+func (s *Supervisor) BackgroundBlocked() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.bgBlocked
+}
+
+// BackgroundFirst reports whether the LaunchAgent isn't there yet: the
+// next Start is the one macOS answers with "Background Items Added".
+func (s *Supervisor) BackgroundFirst() bool { return s.Agent != nil && !s.Agent.Installed() }
+
+// BackgroundAllowed asks macOS again whether the agent may run.
+func (s *Supervisor) BackgroundAllowed() bool {
+	if s.Agent == nil {
+		return false
+	}
+	st := s.Agent.AgentBackground()
+	return st == BackgroundAllowed || st == BackgroundNotRegistered || st == BackgroundUnknown
+}
 
 // Rest stops Ducter for good, until the app starts it again: the
 // LaunchAgent is unloaded and removed, or the child is stopped.
@@ -168,7 +193,27 @@ func (s *Supervisor) Start() error {
 				f.Close()
 			}
 		}
-		return s.Agent.Install(AgentEnv(s.Port, s.DataDir, s.Locale))
+		// Turned off in Login Items: macOS won't load it. Run as the
+		// app's child instead, and say so (the window explains, with the
+		// way back); never a dead end.
+		blocked := s.Agent.AgentBackground() == BackgroundNeedsApproval
+		if !blocked {
+			err := s.Agent.Install(AgentEnv(s.Port, s.DataDir, s.Locale))
+			if err == nil {
+				s.mu.Lock()
+				s.bgBlocked = false
+				s.mu.Unlock()
+				return nil
+			}
+			blocked = true
+			if f, ferr := os.OpenFile(s.LogPath(), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644); ferr == nil {
+				fmt.Fprintf(f, "--- background agent didn't load (%v); running as the app's child\n", err)
+				f.Close()
+			}
+		}
+		s.mu.Lock()
+		s.bgBlocked = blocked
+		s.mu.Unlock()
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()

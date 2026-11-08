@@ -50,13 +50,21 @@ export interface CoreApi {
 
 // ---------- runner ----------
 
+/** A per-task MCP sidecar the harness starts over stdio (e.g. cua-driver for a browser place). */
+export interface StdioMcpConfig {
+  name: string;
+  command: string;
+  args?: string[];
+  env?: Record<string, string>;
+}
+
 export interface SessionSpec {
   harness: "claude-code" | "codex" | "pi";
   model?: string;
   cwd: string;
   systemPrompt?: string; // replaces the harness default where supported
   appendSystemPrompt?: string;
-  mcp: ReturnType<McpHub["configFor"]>[];
+  mcp: (ReturnType<McpHub["configFor"]> | StdioMcpConfig)[];
   permissionMode: "bypass"; // D16: no per-call approvals
   resumeSessionId?: string;
 }

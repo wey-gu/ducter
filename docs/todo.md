@@ -25,8 +25,12 @@ token gate, Caddy and SSH-tunnel paths, desktop connect card, worker enrollment/
       Verify `PushManager.subscribe` on a real Android Chrome (Chromium builds here have no
       push service). Trigger: first phone install.
 - [ ] `ducter service` on macOS (launchd) for a Mac that serves others.
-- [ ] Shared Linux hosts: loopback is token-free, so other local users could connect. Offer
-      `DUCTER_LOCAL_TRUST=off` in doctor when `who`/`/etc/passwd` shows other human users.
+- [ ] Shared Linux hosts: loopback is token-free, so other local users could connect
+      (`design/system.md` Safety, "Who counts as local"). **A 0600 local token** in the data dir,
+      presented by the CLI, the desktop on that machine and the tasks' MCP config (beside the
+      role token), so `DUCTER_LOCAL_TRUST=off` costs nothing. Today `off` cuts the main's own
+      tasks off `/mcp`. Then doctor offers (or defaults to) `off` when `who`/`/etc/passwd`
+      shows other human users. Trigger: before recommending a shared host, or the first user on one.
 - [ ] Desktop: a "Disconnect from this Ducter / 断开" item and a visible "connected to
       <host>" line, so a remote connection is never invisible.
 - [ ] Worker as a client of the same main in the Devices UI (A2-W card: "vps-1 想加入 …" with
@@ -77,3 +81,9 @@ cleanly. `ab_web` needed its enclosed window interior refilled from the raw imag
 - [ ] Snapshots carry no link targets (href); tasks fall back to page URLs or fetching public HTML. Ask cua for hrefs in `semantic_v2`, or read them through the env-gate.
 - [ ] Browser identity (OPEN-QUESTIONS W5-1): built as a draft (Dock tile, parked window, "Looking at <host>" task_event). Still needed: the client renders the status line with a Show action, and someone checks the Dock tile with the Dock visible. In a `bun build --compile` binary the avatar file is not bundled, so there is no Dock tile.
 - [ ] Find what triggers macOS's "CuaDriver was prevented from modifying apps" notification.
+- [ ] **Hostile pages and the Log.** Task tokens can `log_search` / `log_read` the whole Log on
+      purpose (progressive pull of the partner's context). A browser task reads untrusted pages,
+      so a page that talks the task into searching the Log and putting what it finds into a form
+      or URL could leak conversations. Option: scope only browser tasks' log tools to their own
+      stream (plus what the brief already carries), and leave code tasks as they are. Trigger:
+      the env-gate proxy work, or the first browser task that posts or submits on its own.

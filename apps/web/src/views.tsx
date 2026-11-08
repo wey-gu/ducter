@@ -78,9 +78,9 @@ const Back = () => (
 
 const stateLabel = (a: Attention) => t(`state.${a}`);
 
-function Btn(p: { kind: "primary" | "quiet" | "text" | "accent"; onClick: () => void; label: string; about?: string; disabled?: boolean; grow?: boolean }) {
+function Btn(p: { kind: "primary" | "quiet" | "text" | "accent"; onClick: () => void; label: string; about?: string; disabled?: boolean; grow?: boolean; class?: string }) {
   return (
-    <button class={`btn ${p.kind}${p.grow ? " grow" : ""}`} onClick={p.onClick} aria-label={p.about ? `${p.label} · ${p.about}` : undefined} disabled={p.disabled}>
+    <button class={`btn ${p.kind}${p.grow ? " grow" : ""}${p.class ? ` ${p.class}` : ""}`} onClick={p.onClick} aria-label={p.about ? `${p.label} · ${p.about}` : undefined} disabled={p.disabled}>
       {p.label}
     </button>
   );
@@ -952,7 +952,7 @@ function Sheet({ children, label }: { children: preact.ComponentChildren; label:
       <div class="sheet" role="dialog" aria-modal="true" aria-label={label}>
         <div class="grab" />
         {children}
-        <Btn kind="quiet" label={t("sheet.close")} onClick={close} />
+        <Btn kind="quiet" class="sheet-close" label={t("sheet.close")} onClick={close} />
       </div>
     </>
   );

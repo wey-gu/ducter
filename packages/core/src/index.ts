@@ -1,0 +1,10 @@
+export { startCore, defaultDataDir, triggersPartner, type Core, type CoreOptions } from "./core.ts";
+export { openLog, textOf, type SqliteLog } from "./log.ts";
+export { createRegistry, taskStream, isActive, type CoreRegistry } from "./registry.ts";
+export { createDecisions, forwardText, DEFAULT_DELAY_MS, type Decisions, type DecisionHook } from "./decisions.ts";
+export { createLiving, itemsFor, type Living } from "./living.ts";
+export { createMcpHub, type CoreMcpHub } from "./mcp.ts";
+export { registerCoreTools } from "./tools.ts";
+export { loadPersona, DEFAULT_IDENTITY, type Persona } from "./persona.ts";
+export { realClock, FakeClock, type Clock } from "./clock.ts";
+export { stubRunner, stubPartner } from "./main.ts";

@@ -1,0 +1,126 @@
+# Releasing Ducter
+
+Push a `v*` tag and `.github/workflows/release.yml` ships everything: the signed, notarized Mac
+app (DMG), the Linux server bundles, a GitHub Release with checksums and notes, and the iPhone
+app to TestFlight. Pull requests and `main` run `.github/workflows/ci.yml`.
+
+## Author's checklist (one time, in this order)
+
+1. **Check the App Store Connect API key's role.** Open App Store Connect > Users and Access >
+   Integrations > App Store Connect API > Team Keys, and find the key in `~/ios_build.rc`
+   (`APPLE_API_KEY`). Notarization works with any role. TestFlight signing in CI needs **Admin**,
+   because CI uses cloud-managed distribution certificates. If the key isn't Admin, generate an
+   Admin key, save the `.p8` to `~/.appstoreconnect/private_keys/`, and write a small rc file
+   (say `~/asc_admin.rc`) with `APPLE_API_KEY`, `APPLE_API_ISSUER` and `APPLE_API_KEY_PATH`. In
+   step 4 you pass it as `ASC_RC`.
+2. **Register the iPhone app's bundle id.** At developer.apple.com > Identifiers > +, add App ID
+   `co.nowledge.ducter.ios` with the **Push Notifications** capability. This is the id in
+   `apps/ios/Config.xcconfig` on the `phone-app` branch. The change from `dev.ducter.phone` was
+   still uncommitted there when CI was written, so check it landed.
+3. **Create the app record.** In App Store Connect > Apps > + > New App, choose iOS, name it
+   Ducter, pick bundle id `co.nowledge.ducter.ios`, and give it any SKU (e.g. `ducter-ios`). Then
+   go to TestFlight > Internal Testing, add a group, and add yourself. Export compliance is
+   already answered by `ITSAppUsesNonExemptEncryption = NO` in `Info.plist`.
+4. **Upload the secrets.** On this Mac, run:
+   ```sh
+   scripts/ci/setup-github-secrets.sh --dry-run          # the plan; sets nothing
+   scripts/ci/setup-github-secrets.sh                    # macOS asks once for the keychain password
+   ASC_RC=~/asc_admin.rc scripts/ci/setup-github-secrets.sh   # only if step 1 made a new key
+   gh secret list --repo wey-gu/ducter
+   ```
+5. **Push `main`** (it carries the workflows). Then make a trial release with a pre-release
+   version. The tag must equal `packages/cli/package.json`'s `version`:
+   ```sh
+   # set "version": "0.1.0-rc.1" in packages/cli/package.json, commit
+   git tag v0.1.0-rc.1 && git push origin main v0.1.0-rc.1
+   gh run watch
+   ```
+   The GitHub Release comes out marked pre-release. TestFlight gets build `0.1.0 (<run>.1)`.
+6. **Install from TestFlight** on your iPhone and confirm that pushes arrive. A TestFlight build
+   is a Release build, so it subscribes with `env: production`, and the core then sends through
+   `api.push.apple.com`. The core still needs its APNs key (`DUCTER_APNS_*`, phone-app branch).
+
+After this, every release is: bump the version, commit, `git tag vX.Y.Z`, push the tag.
+
+## What a tag does
+
+| Job | Runner | What |
+|---|---|---|
+| `meta` | ubuntu | Fails unless tag `vX` equals `packages/cli/package.json` `version` (the app and DMG name read it there). Tags with a `-` are pre-releases. |
+| `macos` | macos-15 (arm64) | Imports the Developer ID `.p12` into a throwaway keychain (`scripts/ci/import-certificate.sh`), writes the API key `.p8`, runs `scripts/make-app.sh` with `DUCTER_REQUIRE_NOTARIZATION=1`. That script signs inside out with the hardened runtime, notarizes the app and the DMG with the API key, staples both, and checks them with `spctl`. The job checks the DMG again and uploads `Ducter-X-arm64.dmg`. |
+| `linux` | ubuntu | `scripts/install.sh --linux` builds `bun-linux-arm64` and `bun-linux-x64` with build.sh's pinned Bun 1.4.4. It smoke-runs the x64 binary, then packs `ducter-X-linux-{arm64,x64}.tar.gz`. Each tarball unpacks to one folder holding `ducter` and `install.sh`. |
+| `ios` | macos-26 (Xcode 26) | `scripts/ci/testflight.sh`: xcodegen (unless the project is committed), `xcodebuild archive`, then `-exportArchive` with `destination=upload`. Marketing version is the tag without its suffix; the build number is `run_number.run_attempt`. It skips with a notice when `apps/ios` isn't on the tagged commit or no key is set, and it never blocks the GitHub Release. |
+| `release` | ubuntu | Writes `SHA256SUMS.txt`. Notes come from the `## X` section of `CHANGELOG.md` if there is one, otherwise from the commit subjects since the previous `v*` tag (`scripts/ci/release-notes.sh`). The release is created as a draft, the files are uploaded, then it is published. |
+
+Only Apple silicon gets a DMG for now. An Intel build would add a `macos-15-intel` job running
+the same steps.
+
+## Secrets
+
+`scripts/ci/setup-github-secrets.sh` sets all of these. The names are con's, so one Apple setup
+serves both repos. Values never appear in logs.
+
+| Secret | Used by | What it is |
+|---|---|---|
+| `APPLE_CERTIFICATE_P12_BASE64` | macos | Base64 of a `.p12` holding the **Developer ID Application: Nowledge Labs, LLC (JMU55RJW2K)** certificate and its private key, and nothing else. The script narrows `security export` (which exports every identity in the keychain) down to that one identity. |
+| `APPLE_CERTIFICATE_PASSWORD` | macos | The `.p12`'s password. The script makes a fresh random one. |
+| `APPLE_SIGNING_IDENTITY` | macos | SHA-1 of that identity, passed to `codesign` as `DUCTER_SIGN_IDENTITY`. A SHA, because the keychain holds several certificates with the same name. |
+| `APPLE_KEYCHAIN_PASSWORD` | macos | Password for CI's throwaway keychain (random). Optional: a random one is made if it's unset. |
+| `APPLE_NOTARY_KEY_ID` | macos, ios | App Store Connect API key id (10 characters). |
+| `APPLE_NOTARY_ISSUER_ID` | macos, ios | The issuer UUID shown above the key list. |
+| `APPLE_NOTARY_API_KEY_BASE64` | macos, ios | Base64 of `AuthKey_<id>.p8`. |
+| `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_API_KEY_BASE64` | ios | Optional: a separate **Admin** key for TestFlight. When unset, the `APPLE_NOTARY_*` key is used. |
+
+The team id `JMU55RJW2K` is not secret. It is set in the workflow and in `apps/ios/Config.xcconfig`.
+
+**Creating an App Store Connect API key:** go to App Store Connect > Users and Access >
+Integrations > App Store Connect API > Team Keys > Generate API Key. Name it (e.g. "Ducter
+CI") and pick the role **Admin**. Download the `.p8`; Apple lets you download it once only.
+Note the Key ID and the Issuer ID. Roles: Developer is enough to notarize, App Manager is enough
+to upload a build signed elsewhere, and CI's automatic signing creates a cloud-managed Apple
+Distribution certificate, which needs Admin. If an iOS run fails with a "Cloud signing
+permission error", the key is not Admin.
+
+## Why TestFlight goes through `xcodebuild -exportArchive`
+
+CI signs with Xcode's automatic signing, authenticated by the API key
+(`-allowProvisioningUpdates -authenticationKeyPath/ID/IssuerID`), and exports with
+`method=app-store-connect` and `destination=upload`. That one command does the App Store
+signing and the upload, the same path as Organizer's "Distribute App > TestFlight". No
+distribution `.p12`, no `.mobileprovision`, and no fastlane match repo live in secrets, so
+nothing in CI expires or needs rotating except the key itself. Apple's tooling points uploads at
+Xcode, Transporter, or the App Store Connect API (altool's notarization was retired in 2023).
+`xcodebuild` is the one already on the runner.
+
+- *Tradeoff:* it needs an Admin key.
+- *Fallback (Mem's path):* export with `destination=export`, then run
+  `xcrun altool --upload-app --type ios --file X.ipa --apiKey … --apiIssuer …`. Signing then
+  needs an Apple Distribution `.p12` and an App Store profile in secrets.
+
+## Ducter CI (`ci.yml`)
+
+These jobs run on Linux only, in parallel, and take a few minutes. macOS minutes cost 10x on a
+private repo.
+
+- **ts:** `bun install --frozen-lockfile`, `bun run typecheck` (both tsconfigs), rebuilds
+  `apps/web/static` and fails if it differs from what is committed, `bun test`, `bash -n` on
+  scripts.
+- **go** (`apps/desktop`): `gofmt -l`, `go vet` for darwin and linux, a darwin/arm64 build, and
+  `go test`. MyGo calls AppKit through purego, not cgo, so all of it runs on Linux.
+- **`ios.yml`:** an unsigned Release archive on macos-26, only when `apps/ios/**` changes.
+
+**Two Buns.** The committed web bundle is built with Bun **1.3.1**, the Bun on the author's Mac,
+and CI's test job pins the same version. Bun 1.4.4, which build.sh pins for the compiled binary,
+minifies differently, so `bun test` under 1.4.4 fails the bundle-freshness test. To unify,
+upgrade Bun locally, run `bun run build:web`, commit, and change `BUN_VERSION` in `ci.yml`.
+
+## Locally
+
+The same scripts run on the Mac:
+
+```sh
+scripts/make-app.sh                                    # see its header for credentials
+sh scripts/install.sh --linux dist/linux
+MARKETING_VERSION=0.1.0 BUILD_NUMBER=1 DUCTER_TESTFLIGHT_DRY_RUN=1 scripts/ci/testflight.sh
+scripts/ci/release-notes.sh v0.1.0
+```

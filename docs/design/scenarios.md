@@ -7,7 +7,7 @@ Columns: **Flow** (steps + branches), **States** (which task/routine states it t
 
 | ID | Scenario | Flow | States | Copy | Motion | Proto | Notes |
 |---|---|---|---|---|---|---|---|
-| A1 | First run | draft | draft | draft | draft | — | `onboarding.md` (cartoon + live checklist). VPS path built terminal-first (D54): service install, doctor with headless logins, pairing code |
+| A1 | First run | draft | draft | draft | draft | — | `onboarding.md` (cartoon + live checklist). VPS path built terminal-first (D54): service install, doctor with headless logins, pairing code. Mac terminal path shipped and walked live 2026-11-09 (onboarding.md "What ships today") |
 | A2 | Pair a device | draft | draft | draft | draft | — | Built (D54): code pairing (CLI + desktop "Connect to your Ducter" card, screenshots `apps/desktop/docs/connect*.png`), revoke, worker enrollment/presence. Phone/web QR + passkey and worker task placement pending |
 | A3 | Device sleeps / wakes / offline mid-task | draft | draft | draft | draft | — | |
 | A4 | Harness not logged in; quota runs out | draft | draft | draft | draft | — | Headless login commands verified to the human step (`research/29`); relay into a client pending |

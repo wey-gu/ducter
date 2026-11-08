@@ -13,6 +13,7 @@ import (
 	"github.com/egoist/mygo/ui/markdown"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/client"
+	"github.com/wey-gu/ducter/apps/desktop/internal/hints"
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
@@ -47,6 +48,9 @@ type App struct {
 	Win Updater
 	// Now is the clock, time.Now unless a test sets it.
 	Now func() time.Time
+	// Local is what the client knows about this Mac (first-run hints,
+	// whether the first result was celebrated); in memory unless set.
+	Local *hints.Local
 
 	Status    client.Status
 	StatusErr string
@@ -109,6 +113,8 @@ type App struct {
 	historyAsked map[string]bool
 	// outbox holds what the user sent before the server was there.
 	outbox []any
+	// firstDone is the first result ever on this Mac, while it's shown.
+	firstDone *firstResult
 	// held is a message held back because it looks like a key.
 	held *heldSend
 	// dropped is the task just dropped, undoable until undoUntil.
@@ -128,6 +134,7 @@ func New(s *store.Store, t *theme.Tokens, l *i18n.Strings) *App {
 	return &App{
 		S: s, T: t, L: l,
 		Now:          time.Now,
+		Local:        hints.Open(""),
 		Status:       client.Connecting,
 		taskDrafts:   map[string]string{},
 		replyOpen:    map[string]bool{},

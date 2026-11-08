@@ -99,7 +99,7 @@ export function formatSnapshot(s: Snapshot, t: T, style: Style = plainStyle): st
     lines.push("");
   }
   const done = s.onHand.counts.done_today;
-  if (done) lines.push(`${t("status.doneToday")}: ${done}`);
+  if (done) lines.push(t("status.doneLine", { n: done }));
   if (!any && !done) lines.push(t("status.noTasks"));
   return lines.join("\n").trimEnd();
 }

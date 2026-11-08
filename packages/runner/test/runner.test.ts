@@ -438,6 +438,43 @@ describe("interrupt (live regression)", () => {
   });
 });
 
+describe("idle parking (soak regression)", () => {
+  // Soak 2026-11-09: no warm -> parked transition existed, so every task that ever ran kept its
+  // harness process (one claude per task) until the main restarted.
+  test("an idle warm session is closed after parkIdleMs and resumed by id on the next input", async () => {
+    const fake = new FakePort();
+    const runner = createRunner(core, { harness: fake, newId: nextId, parkIdleMs: 40 });
+    const card = await runner.openTask({ persona: "p1", title: "t", brief: "b" });
+    await runner.whenStarted(card.taskId);
+    const s = fake.sessions[0]!;
+    await core.call("report_to_main", { state: "done", summary: "ok", evidence: [{ kind: "log", label: "l", ref: "r" }] }, card.taskId);
+    s.emit({ role: "system", text: "turn completed", turnEnd: true, raw: { kind: "turn_ended", outcome: "completed" } });
+    await waitFor(() => core.tasks.get(card.taskId)?.residency === "parked", "parked");
+    expect(s.closed).toBe(true);
+    expect(core.tasks.get(card.taskId)!.attention).toBe("done_claimed"); // attention is untouched
+    expect(await runner.send(card.taskId, "one more thing", undefined, "user")).toEqual({ delivered: "prompted" });
+    expect(fake.specs[1]!.resumeSessionId).toBe("fake-1");
+    expect(fake.sessions[1]!.sent).toEqual([{ text: "one more thing", mode: "turn" }]);
+    await runner.dispose();
+  });
+
+  test("a busy session or one that got input in time is not parked", async () => {
+    const fake = new FakePort();
+    const runner = createRunner(core, { harness: fake, newId: nextId, parkIdleMs: 60 });
+    const card = await runner.openTask({ persona: "p1", title: "t", brief: "b" });
+    await runner.whenStarted(card.taskId);
+    const s = fake.sessions[0]!;
+    await core.call("report_to_main", { state: "progress", summary: "going" }, card.taskId);
+    s.emit({ role: "system", text: "turn completed", turnEnd: true, raw: { kind: "turn_ended", outcome: "completed" } });
+    await waitFor(() => core.tasks.get(card.taskId)?.residency === "warm", "warm");
+    await runner.send(card.taskId, "next", undefined, "user"); // a new turn starts: no park
+    await Bun.sleep(120);
+    expect(s.closed).toBe(false);
+    expect(core.tasks.get(card.taskId)!.residency).toBe("hot");
+    await runner.dispose();
+  });
+});
+
 // ---------- a hand-written fake HarnessPort ----------
 
 class FakeSession implements HarnessSession {

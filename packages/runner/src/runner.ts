@@ -29,6 +29,13 @@ export interface RunnerOptions {
   taskModel?: string; // default model when the partner passes none (default env DUCTER_TASK_MODEL)
   /** How long a worker may be gone before its working tasks show as waiting (D52: 2 min). */
   offlineGraceMs?: number;
+  /**
+   * How long an idle session stays warm before it is parked: the harness process is closed and
+   * the next input resumes it by session id (focus-window-states: warm -> parked, 15 min).
+   * Without it every task that ever ran kept its harness process until the main restarted.
+   * 0 = never park. Default env DUCTER_PARK_IDLE_MS, else 15 min.
+   */
+  parkIdleMs?: number;
 }
 
 /** Runner plus test/ops helpers that are not part of the contract. */
@@ -69,6 +76,7 @@ interface TaskRt {
   ops: PlaceOps; // where the place lives: this machine or a worker (remote.ts)
   resumeOnBack?: boolean; // its worker dropped mid-work: resume when the worker is back
   offlineTimer?: ReturnType<typeof setTimeout>;
+  parkTimer?: ReturnType<typeof setTimeout>;
   offlineOff?: () => void;
 }
 
@@ -92,6 +100,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
   const newId = opts.newId ?? shortId;
   const tasks = new Map<string, TaskRt>();
   const graceMs = opts.offlineGraceMs ?? Number(process.env.DUCTER_OFFLINE_GRACE_MS || 120_000);
+  const parkMs = opts.parkIdleMs ?? Number(process.env.DUCTER_PARK_IDLE_MS || 15 * 60_000);
   const localOps: PlaceOps = {
     plan: (place, id, title) => planPlace(place, id, title, core.dataDir),
     provision: (r) => provisionPlace(r),
@@ -145,7 +154,26 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     return t.running;
   }
 
+  /** Idle and warm: park it after parkMs (the next input resumes it by session id). */
+  function armPark(t: TaskRt) {
+    clearTimeout(t.parkTimer);
+    t.parkTimer = undefined;
+    if (!(parkMs > 0)) return;
+    t.parkTimer = setTimeout(() => void park(t), parkMs);
+  }
+  async function park(t: TaskRt) {
+    t.parkTimer = undefined;
+    const s = t.session;
+    // Only a session that can be resumed: without its id, closing it would lose the task.
+    if (!s || !t.sessionId || t.dropped || isBusy(t)) return;
+    t.session = undefined; // first: input arriving from now on resumes instead of using it
+    t.running = false;
+    setState(t, currentAttention(t), "parked");
+    await s.close().catch(() => {});
+  }
+
   async function sendTurn(t: TaskRt, text: string, from: From, logged = false) {
+    clearTimeout(t.parkTimer);
     t.running = true;
     setState(t, "working", "hot");
     await deliver(t, text, "turn", from, logged);
@@ -286,6 +314,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     if (outcome) t.interruptRequested = false;
     // Stopped by the user: it is not working any more, it waits for them (truthful card).
     if (!busy && !t.dropped) setState(t, stopped && currentAttention(t) === "working" ? "blocked" : currentAttention(t), "warm");
+    if (!busy && !t.dropped) armPark(t);
+    else clearTimeout(t.parkTimer);
     // A finished browser task quits its browser cleanly so sign-ins are saved (browser.ts).
     if (!busy && t.sidecar && ["done_claimed", "done", "failed"].includes(currentAttention(t))) void t.sidecar.close().catch(() => false);
     if (t.dropped || busy) return;
@@ -608,6 +638,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       unsubscribe();
       for (const t of tasks.values()) {
         clearTimeout(t.offlineTimer);
+        clearTimeout(t.parkTimer);
         t.offlineOff?.();
       }
       await Promise.all([...tasks.values()].map((t) => t.session?.close().catch(() => {})));

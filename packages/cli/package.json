@@ -1,0 +1,19 @@
+{
+  "name": "@ducter/cli",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "ducter": "src/main.ts"
+  },
+  "scripts": {
+    "test": "bun test",
+    "build": "sh ./build.sh"
+  },
+  "dependencies": {
+    "@ducter/core": "workspace:*",
+    "@ducter/partner": "workspace:*",
+    "@ducter/protocol": "workspace:*",
+    "@ducter/runner": "workspace:*"
+  }
+}

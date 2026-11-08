@@ -101,12 +101,6 @@ final class Shell: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegat
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         withAnimation(.easeOut(duration: 0.25)) { phase = .ready }
-        #if DEBUG
-        if UserDefaults.standard.bool(forKey: "probe") {
-            let probe = "setTimeout(()=>console.warn('probe text', document.body.innerText.slice(0,300).replace(/\\n/g,' | ')),5000);setTimeout(()=>{const d=JSON.parse(localStorage.getItem('ducter.device.v1')||'{}');console.warn('probe token',!!d.token,location.href);const u=new URL('ws',location.href);u.protocol='ws:';const w=new WebSocket(u.href,['ducter',d.token]);w.onopen=()=>{console.warn('probe open');w.send(JSON.stringify({t:'hello'}))};w.onmessage=m=>console.warn('probe msg',String(m.data).slice(0,100));w.onclose=e=>console.warn('probe close',e.code,e.reason);w.onerror=()=>console.warn('probe err')},2000)"
-            webView.evaluateJavaScript(probe)
-        }
-        #endif
     }
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {

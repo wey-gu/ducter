@@ -683,8 +683,8 @@ Every link and send is in the day's record (G5).
 
 | Concept (internal) | zh / en | Used in | Note |
 |---|---|---|---|
-| evidence row heading | 怎么知道的 / How I know | I1, I2 | In the glossary (D65), and the only evidence word |
-| evidence (noun, lists and dossier) | no noun: 怎么知道的 / How I know | I2, desktop dossier | 证据 retired (D65) |
+| evidence row heading | 怎么知道的 / How I know | I1, I2 | In the glossary (D66), and the only evidence word |
+| evidence (noun, lists and dossier) | no noun: 怎么知道的 / How I know | I2, desktop dossier | 证据 retired (D66) |
 | scope not done | 这次没包括 / Left out | I1 | Not 没做 (too close to 没成 / Didn't work) |
 | outside effects | 发出去的 / Sent out | I1, I5, all of G | Shared with `G-safety.md`; one word for "left your devices" |
 | save into a place | 存到… / Save to… | I3, I5 | Generalizes B2's 存到项目 |

@@ -2,7 +2,7 @@
 
 > Draft 1 · 2026-11-08 · Group A of `docs/design/scenarios.md`. Builds on `onboarding.md`,
 > `system.md`, `focus-window.md`, `focus-window-states.md`, `research/21` (remote access),
-> `research/27` (ability naming; the noun was dropped in D65), and the concept-art verdicts (`docs/art/concepts/README.md`).
+> `research/27` (ability naming; the noun was dropped in D66), and the concept-art verdicts (`docs/art/concepts/README.md`).
 > Artboards: `A*.dc.html` in the flows prototype project (list at the end).
 >
 > **Status: drafted, not reviewed.** Words marked **[gap]** are not yet in the glossary
@@ -839,7 +839,7 @@ glossary (D51, D54), and the device-offline rule is D52 Q1. Still open: 登录 �
 | 额度 / quota | subscription limit | alternative 用量上限 / usage limit |
 | 登录 · 登录过期 / Sign in · signed out | harness login | |
 | 连上 / Connect (pair), 断开 / Disconnect | pairing, revoking | avoids "pair/配对" jargon |
-| 在哪儿都能用 / Reach from anywhere | the remote-access ability | In the glossary (D51, reworded D65) |
+| 在哪儿都能用 / Reach from anywhere | the remote-access ability | In the glossary (D51, reworded D66) |
 | 换到 {device} 接着做 / Continue on {device}; 交给 {harness} / Let {harness} continue | handoff | glossary has no shown word for handoff; these are action phrases |
 | 叫醒 / Wake | wake a device | |
 | 新伙伴 / New partner | persona creation | uses the glossary category word 伙伴 / Partner |

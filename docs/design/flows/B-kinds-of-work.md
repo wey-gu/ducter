@@ -710,7 +710,7 @@ firing; a running run is a normal Working card nested under it.
 ### Open questions
 - Name of the Go label on the proposal: "开始 / Start" vs plain "好 / Go". Proposed: Go button
   names the action, "开始 / Start".
-- "Review on" wording: decided D65, {date} 再问你 / Ask you again {date} (复查 read as clinical).
+- "Review on" wording: decided D66, {date} 再问你 / Ask you again {date} (复查 read as clinical).
 - Auto-pause on 3 unread reports: automatic (product model) or proposed with a default
   (research/20 recommends proposed)? Proposed: automatic but reversible, with the question.
 
@@ -725,14 +725,14 @@ firing; a running run is a normal Working card nested under it.
 | hand back | 还给它 | Give it back | B5 |
 | draft PR | 草稿 PR | Draft PR | B3, B4 |
 | iteration | 第 n 次 | Try n | B7 |
-| review date | {date} 再问你 | Ask you again {date} | B9 (D65) |
+| review date | {date} 再问你 | Ask you again {date} | B9 (D66) |
 | effect scope | 可以碰 | May touch | B9 |
 | dry run | 现在跑的话 | If it ran now | B9 |
 | spending cap | 上限 | Cap | B7, B9 |
 | routine paused | 先停了 | Paused | B9 |
 | empty place | 只是查资料 | Just reading | B2 |
-| checkpoint divider | 保存了进度 · {time} | Progress saved · {time} | B3 artboard (D65) |
-| intents list (dossier heading) | 会发出去的 | Will go out | B3 artboard (D65) |
+| checkpoint divider | 保存了进度 · {time} | Progress saved · {time} | B3 artboard (D66) |
+| intents list (dossier heading) | 会发出去的 | Will go out | B3 artboard (D66) |
 | logged-in sites | 已登录的网站 | Signed-in sites | B5 |
 
 ## Top open questions (for the lead)

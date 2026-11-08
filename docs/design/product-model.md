@@ -41,7 +41,7 @@
 | pause | **先停 / Pause** | Shown as a waiting reason |
 | Recipe | **准备步骤 / Setup steps** | |
 | non-git draft copy | **草稿副本 / Draft copy** | |
-| routine fields | **{date} 再问你 / Ask you again {date}** (review date) · **可以碰 / May touch** (also on every task, D60) | |
+| routine fields | **{date} 再问你 / Ask you again {date}** (review date) · **可以碰 / May touch** (also on every task, D61) | |
 | default outcomes | **按默认做了 / Went with the default** · **都按默认 / Go on all defaults** | |
 | outcomes | **停下了 / Stopped** · **撤销 / Undo** · **再试一次 / Try again** · **检查没过 / Check didn't pass** | |
 | a merge / draft PR whose result was lost with the connection | **不确定做成没有，看一下 / Not sure it went through — check** · **再试一次 / Try again** | Only when the Log doesn't show it done after reconnecting. Never "failed" wording: it may have happened |
@@ -50,20 +50,20 @@
 | pairing a client with a server (D54) | **连接到你的 Ducter / Connect to your Ducter** · **地址 / Address** · **连接码 / Code** · **连上 / Connect** · **断开 / Disconnect** · again: **再连一次 / Connect it again** | The desktop card, the phone and the CLI (`ducter pair`, `ducter devices disconnect`). Sentences say "这个码只能用一次 / The code works once". Never "token", "配对 / pair", "授权 / authorize" or "绑定" in UI |
 | a device that runs tasks for a main elsewhere (worker) | (a **设备 / Device**; in the CLI "让这台电脑替另一个 Ducter 干活 / lend this machine to another Ducter"; the main is "Ducter 住的那台电脑 / the computer Ducter lives on") | Shown with the device states (醒着 / Awake …). "Worker" stays internal |
 | server keeps running (systemd service) | **一直开着 / Stays on** (doctor row) | |
-| capability (browser, computer use, phone, calls, remote access) | **no noun on screen** (D65). Headings: **你的设备，和它们会做的事 / Your devices and what they can do** · **还能装上的 / You can also add** | Equip = **装上 / Add to <device>**; remove = **取下 / Remove**; result = "MacBook 现在会上网了 / MacBook can now browse the web"; device detail "MacBook 会：… / can: …". Item names are ability phrases (上网, 用电脑, 在哪儿都能用). Never 学会/教会/赋予/授权 (they read as ordering a subordinate). Never 装备/Gear (reads as armour; rhymes with 设备). Claude Code skills stay **技能 / Skills** on their own page, never on the rack |
+| capability (browser, computer use, phone, calls, remote access) | **no noun on screen** (D66). Headings: **你的设备，和它们会做的事 / Your devices and what they can do** · **还能装上的 / You can also add** | Equip = **装上 / Add to <device>**; remove = **取下 / Remove**; result = "MacBook 现在会上网了 / MacBook can now browse the web"; device detail "MacBook 会：… / can: …". Item names are ability phrases (上网, 用电脑, 在哪儿都能用). Never 学会/教会/赋予/授权 (they read as ordering a subordinate). Never 装备/Gear (reads as armour; rhymes with 设备). Claude Code skills stay **技能 / Skills** on their own page, never on the rack |
 | the partner saved something to long-term memory (Mem) | **记下了 · <title> / Noted · <title>** | One quiet line under the reply, no card, no action. Never "已存入记忆 / saved to memory" in the partner's words; recall is never shown at all |
 | Intent | (shown as a decision or a policy line: "要推送到 ducter/fix-ci / Will push to …") | |
 | a task message to the partner (report) | **告诉 {name} / Told {name}** (· 要你定 · 做完了 · 在等 · 没成); freshness "{time}更新 / updated {time}" | Never 汇报 or 交回给 (reporting up) |
 | task brief · transcript | **{name} 交代的 / What {name} asked for** · **过程 / What it did** | |
 | harness turn ended | **先做到这儿 / Stopped here for now** | Never "turn", "step", 这一轮, 这一步 |
 | a message to a task | **它正在做，已经告诉它了 / Told it while it works** · **它收到了，接着做 / Got it; it's on it** · **等它忙完手上的就告诉它 / It'll get this once it finishes what it's doing** · **没送到 / Didn't get through** | |
-| the result anatomy (D59) | **怎么知道的 / How I know** (also the evidence heading everywhere; no 证据) · **发出去的 / Sent out** (empty: 没有 / Nothing) · **这次没包括 / Left out** · **合进 {branch} / Merge into {branch}** · **开草稿 PR / Open draft PR** · **看改动 / See changes** | |
+| the result anatomy (D60) | **怎么知道的 / How I know** (also the evidence heading everywhere; no 证据) · **发出去的 / Sent out** (empty: 没有 / Nothing) · **这次没包括 / Left out** · **合进 {branch} / Merge into {branch}** · **开草稿 PR / Open draft PR** · **看改动 / See changes** | |
 | effects seen but not gated | **它的记录里看到的 / Seen in its log** | |
 | the day's record | **今天发出去的 / Sent out today** | |
 | place `none` | **不用特定的地方 / Nowhere in particular** | |
 | devices, by the user's own words | **这台 Mac / This Mac** · **这台手机 / This phone** · **另一台电脑 / another computer** | Never 机器 / machine in UI copy |
 | presence | **{name} 在呢 / is here** · **在做事 / is working** · **有事找你 / needs you** · **刚做完一件事 / just finished something** · **还没醒 / isn't up yet** | Never 待命 |
-| a sandboxed place | **no noun**: the property, **碰不到你的文件 / Can't touch your files** | 沙盒 retired (D65, GQ8) |
+| a sandboxed place | **no noun**: the property, **碰不到你的文件 / Can't touch your files** | 沙盒 retired (D66, GQ8) |
 | Artifact | **做好的 / Finished**; the list **做好的东西 / Everything finished** | 成果 retired (report-speak) |
 
 ## 2. Objects and ownership

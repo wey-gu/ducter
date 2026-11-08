@@ -1,6 +1,6 @@
 # Glossary Review (2026-11-09)
 
-> Asked by the author: "词汇表你要仔细反思，不能有非人类感觉和无关的新概念". Decided as D65. The
+> Asked by the author: "词汇表你要仔细反思，不能有非人类感觉和无关的新概念". Decided as D66. The
 > glossary in `product-model.md` §1 is updated from this table, and the three string tables
 > (`apps/desktop/internal/i18n/i18n.go`, `apps/web/src/i18n.ts`, `packages/cli/src/i18n.ts`)
 > follow it (commit `fe5afe4`).

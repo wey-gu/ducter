@@ -87,6 +87,7 @@ interface TurnState {
   asked?: boolean; // the partner made a decision card (ask) this turn
   askedId?: string; // the last decision it made this turn
   quiet?: boolean; // woken only by task questions the user already sees as decision cards
+  results?: number; // done reports in this turn (several = one combined message)
   zh: boolean;
   recalls: number; // memory_search calls this turn
   noted: { title: string; memoryId?: string }[]; // memory_add successes, shown after the turn's text
@@ -130,6 +131,24 @@ const SECRET_RE =
   /\b(sk-(?:proj-|ant-[a-z0-9]+-)?[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{40,}|xox[abprs]-[A-Za-z0-9-]{10,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35})\b|-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g;
 export function redactSecrets(text: string): string {
   return text.replace(SECRET_RE, "[secret removed: the user pasted it in the conversation; use a placeholder and let the user fill it in]");
+}
+
+const RESULT_PLUMBING = /分支|branch|合并|合回|merge|冲突|conflict|提交|commit|\b[0-9a-f]{7,}\b|\d+\s*\/\s*\d+|\d+\s*个测试|测试(都|全)?(通过|过了)|^\s*(全部|都)(通过|过了)\s*$|\b\d+\s+tests?\b|tests? pass|\ball pass|\bpassing\b|src\/|\.ts\b|对外|outside|推送|push/i;
+/** Drops the clauses of a combined result that repeat evidence or plumbing; keeps the rest. */
+export function stripResultPlumbing(text: string): string {
+  const out = text
+    .split(/(?<=[。！？!?\n]|\.\s)/)
+    .map((sentence) => {
+      const end = /[。！？!?.\s]+$/.exec(sentence)?.[0] ?? "";
+      const body = sentence.slice(0, sentence.length - end.length);
+      const kept = body.split(/[，,；;]\s*/).filter((c) => c.trim() && !RESULT_PLUMBING.test(c));
+      if (!kept.length) return "";
+      const sep = /[\u4e00-\u9fff]/.test(body) ? "，" : ", ";
+      return kept.join(sep) + (end || "");
+    })
+    .join("")
+    .trim();
+  return out || text;
 }
 
 function stripDefault(q: string): string {
@@ -362,7 +381,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     // a short line after an ask only describes the card, so it is dropped.
     if (turn.asked && p.trim().length < 200) return;
     if (turn.quiet && p.trim().length < 300) return;
-    appendAiMsg(p);
+    // Several results at once: the app renders each one's evidence, Outside and Merge under
+    // the message, so clauses about tests, commits, branches or merging only repeat or guess
+    // (eval two-done-zh, 0/4 under the prompt alone).
+    appendAiMsg((turn.results ?? 0) >= 2 ? stripResultPlumbing(p) : p);
   };
   const claimAck = (t: TurnState): { jobId: string } | null => {
     if (t.unboundAck) return t.unboundAck;
@@ -491,6 +513,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       if (t && !isChinese(t)) deltas.push("[language] The user's last message was in English: reply in English.");
     }
     if (note) deltas.unshift(note);
+    const done = batch.filter((e) => e.kind === "report" && (e.body as Bodies["report"]).state === "done").length;
+    if (done >= 2 && !lastUser)
+      deltas.push(`[results] ${done} tasks finished together: one message, one short line per task saying what now works, in the user's terms. The app shows tests, commits, branches and Merge under it.`);
     deltas.push(renderTime(new Date(now())));
     const devices = renderDevices(core.workers?.list() ?? []);
     if (devices) deltas.push(devices);
@@ -573,7 +598,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     // A task question is shown with its own Go / Hold / Reply; prose about it only repeats it
     // (eval: restated in 4 of 4 runs whatever the persona said).
     const quiet = batch.length > 0 && batch.every((e) => e.kind === "report" && (e.body as Bodies["report"]).state === "needs_input");
-    turn = { triggers: batch, userTexts, replyTo, pending: null, unboundAck: null, opensSeen: 0, opensHandled: 0, zh, quiet, recalls: 0, noted: [] };
+    const results = batch.filter((e) => e.kind === "report" && (e.body as Bodies["report"]).state === "done").length;
+    turn = { triggers: batch, userTexts, replyTo, pending: null, unboundAck: null, opensSeen: 0, opensHandled: 0, zh, quiet, results, recalls: 0, noted: [] };
     if (redo) turn.carried = redo;
     const real = batch.map((e) => e.seq).filter((n) => n > 0);
     if (real.length) inflight = { seqs: real, from: core.log.head() }, saveState();

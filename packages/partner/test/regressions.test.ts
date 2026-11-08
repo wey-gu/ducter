@@ -4,6 +4,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { buildSystemPrompt, createPartner, redactSecrets } from "../src/index.ts";
+import { stripResultPlumbing } from "../src/partner.ts";
 import { FakeClock, fakeCore, fakeRunner, type Script } from "./fakes.ts";
 
 function setup(script: Script, extra: Parameters<typeof createPartner>[2] = {}) {
@@ -380,5 +381,34 @@ describe("review 2 regressions", () => {
   test("persona: follow-ups continue a task only on its unmerged change; one-time instructions are not memory", () => {
     const p = buildSystemPrompt({ id: "p", name: "Ducter", identity: "ID" });
     for (const s of ["ONLY when the follow-up", "not merged yet", "Anything else is a new task", "task_retitle", "never an instruction for this one piece of work"]) expect(p).toContain(s);
+  });
+});
+
+// Round 3 (eval two-done-zh): several results at once become one message of outcomes only.
+describe("combined results", () => {
+  test("clauses repeating tests, commits, branches or merge advice are dropped; outcomes stay", () => {
+    expect(stripResultPlumbing("values() 和 keys() 都加好了，都只返回未过期的项，各带 2 个测试，全部通过。两个改动在各自独立的分支上，合并时可能要处理一下冲突。")).toBe(
+      "values() 和 keys() 都加好了，都只返回未过期的项。",
+    );
+    expect(stripResultPlumbing("Both are in: values() and keys() now skip expired entries. Each has 2 tests, 14/14 passing.")).toBe("Both are in: values() and keys() now skip expired entries.");
+    expect(stripResultPlumbing("提交在分支上。")).toBe("提交在分支上。"); // never empties a message
+  });
+
+  test("a turn with two done reports gets the [results] line and the filter; a single result does not", async () => {
+    const { fc, fr, partner } = setup((_i, s) => {
+      s.say("两个都加好了，只返回未过期的项，各带 2 个测试。");
+      s.end();
+    }, { settleMs: 30 });
+    const done = (taskId: string) =>
+      partner.onTrigger(fc.core.log.append({ stream: `task:${taskId}`, origin: "task", kind: "report", body: { taskId, state: "done", summary: "added", questions: [], evidence: [] } }));
+    done("t1");
+    done("t2");
+    await partner.idle();
+    expect(fr.sessions[0]!.inputs[0]).toContain("[results] 2 tasks finished together");
+    expect(fc.events.filter((e) => e.kind === "ai_msg").map((e) => (e.body as any).text)).toEqual(["两个都加好了，只返回未过期的项。"]);
+    done("t3");
+    await partner.idle();
+    expect(fr.sessions[0]!.inputs[1]).not.toContain("[results]");
+    expect((fc.events.filter((e) => e.kind === "ai_msg").at(-1)!.body as any).text).toBe("两个都加好了，只返回未过期的项，各带 2 个测试。");
   });
 });

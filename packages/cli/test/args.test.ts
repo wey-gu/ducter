@@ -55,3 +55,26 @@ describe("parseArgs", () => {
     expect(err(["--verbose"])).toEqual({ key: "err.unknownFlag", vars: { flag: "--verbose" } });
   });
 });
+
+describe("server and pairing commands", () => {
+  test("up --headless implies no desktop; --host is explicit", () => {
+    expect(ok(["up", "--headless"])).toMatchObject({ command: "up", headless: true, desktop: false });
+    expect(ok(["up", "--headless", "--host", "0.0.0.0"]).host).toBe("0.0.0.0");
+    expect(ok(["up"]).host).toBeUndefined();
+    expect(err(["up", "--host"]).key).toBe("err.missingValue");
+  });
+
+  test("pair, devices, service, worker", () => {
+    expect(ok(["pair"]).command).toBe("pair");
+    expect(ok(["devices"])).toMatchObject({ command: "devices" });
+    expect(ok(["devices", "revoke", "a1b2c3d4e5"]).rest).toEqual(["revoke", "a1b2c3d4e5"]);
+    expect(ok(["service", "install", "--host", "0.0.0.0"])).toMatchObject({ command: "service", rest: ["install"], host: "0.0.0.0" });
+    expect(ok(["worker", "--join", "https://d.example.com", "--code", "K7QM-4XPA", "--name", "vps-2"])).toMatchObject({
+      command: "worker",
+      join: "https://d.example.com",
+      code: "K7QM-4XPA",
+      name: "vps-2",
+    });
+    expect(err(["pair", "extra"]).key).toBe("err.unknownCommand");
+  });
+});

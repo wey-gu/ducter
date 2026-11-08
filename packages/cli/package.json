@@ -11,9 +11,14 @@
     "build": "sh ./build.sh"
   },
   "dependencies": {
+    "@botiverse/oar": "0.95.1",
     "@ducter/core": "workspace:*",
     "@ducter/partner": "workspace:*",
     "@ducter/protocol": "workspace:*",
-    "@ducter/runner": "workspace:*"
+    "@ducter/runner": "workspace:*",
+    "qrcode": "1.5.4"
+  },
+  "devDependencies": {
+    "@types/qrcode": "^1.5.6"
   }
 }

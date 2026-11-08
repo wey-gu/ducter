@@ -120,9 +120,6 @@ func (a *App) connect(c *ui.Context) {
 				if !a.Unauthorized && a.button(c, a.L.T("connect.back"), btnText, t.ControlLG, t.Surface) {
 					a.conn.open = false
 				}
-				if a.conn.busy {
-					a.retryPulse(c)
-				}
 			})
 			ui.Text(c, a.L.T("connect.safe")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
 		})

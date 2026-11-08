@@ -157,7 +157,6 @@ func (a *App) emptyConversation(c *ui.Context) {
 					Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(text).Focusable()
 				a.buttonLook(c, chip, btnSecondary, t.ControlLG, t.Surface)
 				chip.Children(func() {
-					a.pebble(c, t.State([]string{"", "working", "done", "blocked"}[i]).Dot, 10, 12)
 					ui.Text(c, text).FontSize(t.MD).Grow(1).MinWidth(0)
 				})
 				if chip.Clicked() {
@@ -291,26 +290,11 @@ func (a *App) doneToday(b store.Board) int {
 	return n
 }
 
-// onHandButton opens On hand; its pebble row is the only peripheral signal
-// of the tasks in the conversation.
+// onHandButton opens On hand.
 func (a *App) onHandButton(c *ui.Context, b store.Board) {
-	t := a.T
-	var shown []*store.Task
-	for lane := store.LaneNeedsYou; lane <= store.LaneWaiting; lane++ {
-		shown = append(shown, b.Lanes[lane]...)
-	}
-	shown = shown[:min(len(shown), 6)]
-	var glyph func()
-	if len(shown) > 0 {
-		glyph = func() {
-			ui.Row(c).Gap(3).AlignItems(ui.Center).Children(func() {
-				for _, task := range shown {
-					a.pebble(c.Key(task.ID), t.State(string(task.Attention())).Dot, 10, 12)
-				}
-			})
-		}
-	}
-	if a.navButton(c, "onhand", a.L.T("nav.onhand"), a.L.T("nav.onhand"), glyph) {
+	// Just the word: the header's line already says what needs you and
+	// what is being worked on, in words; no row of colored dots.
+	if a.navButton(c, "onhand", a.L.T("nav.onhand"), a.L.T("nav.onhand"), nil) {
 		a.Route = RouteOnHand
 		a.markRead()
 	}
@@ -417,17 +401,13 @@ func (a *App) job(c *ui.Context, j *store.Job, firstSeq int64) {
 			a.taskFooter(c, task, st.Text)
 			return
 		}
-		ui.Row(c).Gap(t.S2).Wrap().AlignItems(ui.Center).Children(func() {
-			col := t.Working
-			switch st.State {
-			case "done":
-				col = t.Done
-			case "failed":
-				col = t.Failed
-			}
-			ui.Box(c).Size(10, 10).Draw(drawDot(col.Dot))
-			ui.Text(c, st.Text).FontSize(t.SM).TextColor(t.InkMuted)
-		})
+		// A status line of no task: its words, in the state's ink when it
+		// failed (the exception), muted otherwise. No dot.
+		col := t.InkMuted
+		if st.State == "failed" {
+			col = t.Failed.Ink
+		}
+		ui.Text(c, st.Text).FontSize(t.SM).TextColor(col)
 	})
 }
 
@@ -562,9 +542,9 @@ func (a *App) livingLine(c *ui.Context, it protocol.LivingItem) {
 	case "blocked":
 		sc, icon = t.Waiting, drawClock(t.Waiting.Ink)
 	case "progress":
-		sc, icon = t.Working, drawDot(t.Working.Dot)
+		sc, icon = t.Working, drawArrow(t.Working.Ink)
 	case "failed":
-		sc, icon = t.Failed, drawDot(t.Failed.Dot)
+		sc, icon = t.Failed, drawCross(t.Failed.Ink)
 	}
 	line := ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Cursor(ui.CursorPointer)
 	line.Children(func() {
@@ -672,7 +652,7 @@ func firstNonEmpty(s ...string) string {
 func (a *App) heldLine(c *ui.Context) {
 	t := a.T
 	a.notice(c, "held", noticeAlert, func() {
-		a.glyphTile(c, 24, t.Surface, drawDot(t.Failed.Dot))
+		a.glyphTile(c, 24, t.Surface, drawBang(t.Failed.Ink))
 	}, func() {
 		ui.Text(c, a.L.T("secret.held")).FontSize(t.SM).FontWeight(700).LineHeight(1.45).TextColor(t.Failed.Ink)
 	}, func() {

@@ -34,6 +34,8 @@ The top of `scripts/make-app.sh` lists the other ways: a `notarytool` keychain p
 
 No System Settings, no Open Anyway. It works offline too: the notarization ticket is stapled.
 
+Releases are built the same way by CI: push a `v*` tag (see [release.md](release.md)).
+
 **Without a Developer ID**, the script falls back to ad-hoc signing (`codesign -s -`, not
 notarized) and the first open needs an extra step. On **macOS 15 (Sequoia)** right-click →
 Open no longer gets past it: open Ducter, click **Done** on *"“Ducter” Not Opened"*, then

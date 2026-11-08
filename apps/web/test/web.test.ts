@@ -198,7 +198,10 @@ describe("after a reconnect (soak design calls 2 and 3)", () => {
 });
 
 describe("the committed bundle", () => {
-  test("is what src builds to (run `bun run apps/web/build.ts` after changing src)", async () => {
+  // The bundle is built with the pinned Bun (scripts/build-web.sh); another Bun minifies a few
+  // bytes differently, so the byte-for-byte check only runs on the pinned one (CI pins it too).
+  const PINNED = "1.4.4";
+  test.skipIf(Bun.version !== PINNED)("is what src builds to (run `bun run build:web` after changing src)", async () => {
     const built = await buildWeb();
     for (const [name, text] of Object.entries(built)) expect(await Bun.file(join(import.meta.dir, "..", "static", name)).text()).toBe(text);
   });

@@ -69,6 +69,7 @@ export interface SessionSpec {
   // Leave out the user's own harness config (global CLAUDE.md, user settings, plugins and their
   // hooks, user MCP servers). The partner always isolates; tasks keep it by default (system.md).
   isolateUserConfig?: boolean;
+  env?: Record<string, string>; // extra env for the harness process (never logged)
   resumeSessionId?: string;
 }
 

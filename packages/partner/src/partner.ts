@@ -278,6 +278,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       mcp: [core.mcp.configFor("partner")],
       permissionMode: "bypass",
       isolateUserConfig: true, // never the user's CLAUDE.md, hooks or MCP servers (live: zh replies, 20 s acks)
+      // Ducter's handful of tools load up front: deferring them behind ToolSearch cost a full
+      // model round trip (~3 s) before the ack on a fresh session (live, sonnet).
+      env: { ENABLE_TOOL_SEARCH: "false" },
       ...(resumeSessionId ? { resumeSessionId } : {}),
     });
     session = s;

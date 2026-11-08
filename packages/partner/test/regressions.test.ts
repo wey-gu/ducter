@@ -49,6 +49,7 @@ describe("live-run regressions", () => {
     user("hi");
     await partner.idle();
     expect(fr.sessions[0]!.spec.isolateUserConfig).toBe(true);
+    expect(fr.sessions[0]!.spec.env).toEqual({ ENABLE_TOOL_SEARCH: "false" });
   });
 
   test("task_open without title derives one from the brief; without brief it fails before touching the channel", async () => {

@@ -72,7 +72,7 @@ export function createOarHarnessPort(opts: OarPortOptions = {}): HarnessPort {
         ),
         disallowedTools: DISALLOWED[spec.harness],
         resume: spec.resumeSessionId,
-        env: opts.env,
+        env: spec.env ? { ...opts.env, ...spec.env } : opts.env,
         retainedBytes: opts.retainedBytes ?? 8 * 1024 * 1024,
         // OAR: --setting-sources project,local --strict-mcp-config + claudeMdExcludes for claude;
         // runtimes without a verified separation refuse "exclude", so only ask when wanted.

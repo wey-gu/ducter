@@ -62,3 +62,38 @@ Canvas: https://claude.ai/artifact/LKuVp3knPDJ4EdoyWBGSWN
     spike for relaying Claude Code and Codex logins.
 18. **CN users' remote access default:** **their own domain.** Tailscale stays a community
     contribution.
+
+## Groups I (Results) and G (Safety), 2026-11-09 · drafted, not decided
+
+Full tables with reasons: `I-results.md` (IQ1–IQ11) and `G-safety.md` (GQ1–GQ13). Defaults
+in bold; "按建议" takes all.
+
+- **IQ1** Result message appears **at verified Done**; if the user is watching and checks take
+  > 10 s, at Done · checking with chips that fill as checks pass.
+- **IQ2** Always show the **对外 / Outside** line for tasks with a place, **including "没有"**.
+- **IQ3** The Results list lives **inside On hand** (from the Done lane header); asking is the
+  primary path. No fourth zoom level.
+- **IQ4** Save to… a repo **writes, never commits**; offers a draft PR separately (default Hold).
+- **IQ5** **Diff snapshot at Done**, 5 MB cap per task.
+- **IQ6** Share links: **7 days, revocable, with Ducter Edge** (not tonight).
+- **IQ7** **Pre-share check on** (secrets, home paths, private hosts, Mem private memories).
+- **IQ8** **Keep results until deleted** (10 s Undo).
+- **IQ9** Save to Mem **only on tap**, into the named space, with provenance.
+- **IQ10** Promote **"words freeze, chips live"** to `conversation.md` after review.
+- **IQ11** New evidence kinds and a `result` Log event as **one protocol change** after tonight.
+- **GQ1** Adopt the **effect ladder** (`G-safety.md` §0 Rule 3) as v1 policy.
+- **GQ2** People-facing sends **wait until quiet end + 30 min** unless Go'd in the moment.
+- **GQ3** **30 s** undo window for emails and posts, held on the control plane.
+- **GQ4** Offer "don't ask next time" **after 3 identical Go's in 14 days**, never for the floor.
+- **GQ5** Floor: **payments, passwords, untrusted-requested effects, no-default decisions**.
+- **GQ6** **Redact** a secret that reached the Log (superseding event + blob delete) and advise
+  rotation: a narrow exception to "never delete".
+- **GQ7** Until the gate covers harness commands, list **"Seen in transcripts"** effects.
+- **GQ8** **沙盒 / Sandbox** + its plain meaning; comprehension proxy before final.
+- **GQ9** On hand record line **always shown, muted** ("今天对外：没有").
+- **GQ10** PR comments / ready / request review: **ask, no countdown**.
+- **GQ11** Sending-row slide: **motion, not metaphor**; check in prototype review.
+- **GQ12** **可以碰 / May touch** on every task, not only routines.
+- **GQ13** Write a short **`research/29`** on approval fatigue and undo-send before review.
+- **Glossary batch:** see the "Proposed glossary additions" tables in both files (对外 /
+  Outside is the anchor word for both groups).

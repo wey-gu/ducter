@@ -45,6 +45,12 @@ func (a *App) firstRun(c *ui.Context) {
 				}
 			})
 			ui.Text(c, a.L.T("firstrun.auto")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
+			if a.Pair != nil {
+				ui.Box(c).Height(1).Background(t.LineSoft).Margin(4, 0)
+				if a.button(c, a.L.T("firstrun.elsewhere"), btnText, 40, t.Surface) {
+					a.openConnect()
+				}
+			}
 		})
 	})
 }

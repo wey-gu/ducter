@@ -13,8 +13,10 @@ import type { Exec } from "./browser.ts";
 export interface FocusProbe {
   /** pid of the frontmost app, if known. */
   front(): Promise<number | undefined>;
-  /** pids of Chrome processes running on Ducter's profile root. */
+  /** pids of Chrome main processes running on Ducter's profile root. */
   ducterBrowsers(): Promise<number[]>;
+  /** The profile dir a Ducter browser pid runs on, if known. */
+  profileOf?(pid: number): string | undefined;
   /** Make `pid` the frontmost app again. */
   activate(pid: number): Promise<void>;
 }
@@ -25,6 +27,8 @@ export interface FocusGuardOptions {
   graceMs?: number; // how long after launch an activation counts as a steal (default 5 s)
   idleStopMs?: number; // stop after no Ducter browser and no arm() for this long (default 60 s)
   onRevert?: (fromPid: number, toPid: number) => void;
+  /** A Ducter browser process appeared (once per pid). */
+  onLaunch?: (pid: number) => void;
 }
 
 export interface FocusGuard {
@@ -54,7 +58,11 @@ export function createFocusGuard(o: FocusGuardOptions, intervalMs = 250): FocusG
       const t = now();
       const pids = await o.probe.ducterBrowsers();
       const live = new Set(pids);
-      for (const p of pids) if (!firstSeen.has(p)) firstSeen.set(p, t);
+      for (const p of pids) {
+        if (firstSeen.has(p)) continue;
+        firstSeen.set(p, t);
+        o.onLaunch?.(p);
+      }
       for (const p of [...firstSeen.keys()]) if (!live.has(p)) firstSeen.delete(p);
       if (pids.length) lastActivity = t;
       const front = await o.probe.front();
@@ -106,6 +114,7 @@ export function createFocusGuard(o: FocusGuardOptions, intervalMs = 250): FocusG
 
 /** macOS probe: lsappinfo (no permission needed), pgrep, and cua-driver's bring_to_front. */
 export function macFocusProbe(exec: Exec, bin: string, socket: string, profileRoot: string): FocusProbe {
+  const profiles = new Map<number, string>();
   return {
     async front() {
       const asn = (await exec(["/usr/bin/lsappinfo", "front"], { timeoutMs: 2_000 })).out.replace(/:$/, "");
@@ -115,14 +124,30 @@ export function macFocusProbe(exec: Exec, bin: string, socket: string, profileRo
       return m ? Number(m[1]) : undefined;
     },
     async ducterBrowsers() {
-      // Only the browser's main process carries the profile root as --user-data-dir= and
-      // becomes an app; helpers that match too are harmless (they are never frontmost).
-      const pattern = `--user-data-dir=${profileRoot}/`.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const r = await exec(["/usr/bin/pgrep", "-f", "--", pattern], { timeoutMs: 2_000 });
-      return r.out.split("\n").map((s) => Number(s.trim())).filter((n) => n > 0);
+      // Main browser processes only: helpers carry --type=.
+      const r = await exec(["/bin/ps", "-axo", "pid=,command="], { timeoutMs: 2_000 });
+      return parseDucterBrowsers(r.out, profileRoot, profiles);
     },
+    profileOf: (pid) => profiles.get(pid),
     async activate(pid) {
       await exec([bin, "call", "bring_to_front", JSON.stringify({ pid }), "--socket", socket], { timeoutMs: 5_000 });
     },
   };
+}
+
+/** Parse `ps -axo pid=,command=` for Chrome main processes on a profile under `root`. */
+export function parseDucterBrowsers(ps: string, root: string, profiles?: Map<number, string>): number[] {
+  const flag = `--user-data-dir=${root}/`;
+  const out: number[] = [];
+  for (const line of ps.split("\n")) {
+    const m = /^\s*(\d+)\s+(.*)$/.exec(line);
+    if (!m) continue;
+    const cmd = m[2]!;
+    const at = cmd.indexOf(flag);
+    if (at < 0 || / --type=/.test(cmd)) continue;
+    const pid = Number(m[1]);
+    out.push(pid);
+    profiles?.set(pid, cmd.slice(at + "--user-data-dir=".length).split(" --")[0]!.trim());
+  }
+  return out;
 }

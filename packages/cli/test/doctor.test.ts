@@ -177,3 +177,54 @@ describe("i18n", () => {
     expect(en("check.port")).toBe("Port {port}");
   });
 });
+
+describe("doctor on a Linux server", () => {
+  const server = (m: Machine & { devices?: number } = {}, extra: Record<string, RunResult> = {}) => {
+    const h = fake({ ...m, tools: [...(m.tools ?? ALL), "systemctl", "loginctl"], out: { ...m.out, ...extra } });
+    return Object.assign(h, { platform: "linux", pairedDevices: () => m.devices ?? 0 });
+  };
+  const user = process.env.USER || "$USER";
+  const svc = (active: string, linger: string) => ({
+    "systemctl --user is-active ducter.service": { code: active === "active" ? 0 : 3, stdout: active + "\n" },
+    [`loginctl show-user ${user} -p Linger`]: { code: 0, stdout: `Linger=${linger}\n` },
+  });
+
+  test("logged-out harnesses get the headless commands; service and devices rows appear", async () => {
+    const r = await runDoctor(
+      server(
+        { out: { "claude auth status": { code: 1, stdout: JSON.stringify({ loggedIn: false, authMethod: "none" }) }, "codex login status": { code: 1, stdout: "Not logged in\n" } } },
+        svc("inactive", "no"),
+      ),
+      en,
+      opts,
+    );
+    expect(byId(r, "claude").fix).toBe("claude auth login");
+    expect(byId(r, "claude").detail).toContain("paste the code back");
+    expect(byId(r, "codex").fix).toBe("codex login --device-auth");
+    expect(byId(r, "service")).toMatchObject({ status: "missing", required: false, fix: "ducter service install" });
+    expect(byId(r, "devices")).toMatchObject({ status: "missing", fix: "ducter pair" });
+    expect(formatReport(r, en)).toContain("Checking this server for Ducter");
+  });
+
+  test("a set-up server: service on with linger, one device, token login counts", async () => {
+    const r = await runDoctor(
+      server({ devices: 1, out: { "claude auth status": { code: 0, stdout: JSON.stringify({ loggedIn: true, authMethod: "oauth_token" }) } } }, svc("active", "yes")),
+      en,
+      opts,
+    );
+    expect(r.ok).toBe(true);
+    expect(byId(r, "claude").detail).toContain("long-lived token");
+    expect(byId(r, "service").status).toBe("ok");
+    expect(byId(r, "devices").detail).toBe("1 connected");
+  });
+
+  test("service on without linger is a warning with the sudo line", async () => {
+    const r = await runDoctor(server({}, svc("active", "no")), en, opts);
+    expect(byId(r, "service")).toMatchObject({ status: "warn", fix: `sudo loginctl enable-linger ${user}` });
+  });
+
+  test("a Mac shows no server rows", async () => {
+    const r = await runDoctor(fake(), en, opts);
+    expect(r.checks.some((c) => c.id === "service" || c.id === "devices")).toBe(false);
+  });
+});

@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/url"
 	"os"
 	"sync"
@@ -44,7 +45,10 @@ func DefaultURL() string {
 
 // Options configure a client.
 type Options struct {
-	URL     string
+	URL string
+	// Token is a device token from pairing (internal/remote); sent as
+	// Authorization: Bearer. Loopback servers need none.
+	Token   string
 	Persona string
 	Locale  string // zh | en
 	// Cursor returns the seq of the last event the app holds, sent with
@@ -66,6 +70,8 @@ type Client struct {
 	kick chan struct{}
 	// next is when the next attempt starts, while waiting.
 	next time.Time
+	// url and token are what the next attempt dials (Retarget changes them).
+	url, token string
 }
 
 // New makes a client; Run connects it.
@@ -73,11 +79,32 @@ func New(opt Options) *Client {
 	if opt.URL == "" {
 		opt.URL = DefaultURL()
 	}
-	return &Client{opt: opt, kick: make(chan struct{}, 1)}
+	return &Client{opt: opt, kick: make(chan struct{}, 1), url: opt.URL, token: opt.Token}
 }
 
 // URL is the server the client dials.
-func (c *Client) URL() string { return c.opt.URL }
+func (c *Client) URL() string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.url
+}
+
+// Retarget points the client at another server (after pairing) and
+// reconnects there at once.
+func (c *Client) Retarget(url, token string) {
+	c.mu.Lock()
+	c.url, c.token = url, token
+	conn := c.conn
+	c.mu.Unlock()
+	if conn != nil {
+		conn.Close()
+	}
+	c.RetryNow()
+}
+
+// ErrUnauthorized means the server refused this device: it was never
+// paired, or it was disconnected with `ducter devices disconnect`.
+var ErrUnauthorized = errors.New("ducter: this device isn't connected (pair it again)")
 
 // RetryNow cuts the wait before the next reconnect short.
 func (c *Client) RetryNow() {
@@ -133,7 +160,10 @@ func (c *Client) status(s Status, err error) {
 }
 
 func (c *Client) session(ctx context.Context) error {
-	u, err := url.Parse(c.opt.URL)
+	c.mu.Lock()
+	target, token := c.url, c.token
+	c.mu.Unlock()
+	u, err := url.Parse(target)
 	if err != nil {
 		return err
 	}
@@ -143,13 +173,21 @@ func (c *Client) session(ctx context.Context) error {
 	if u.Scheme == "wss" {
 		origin = "https://" + u.Host
 	}
-	cfg, err := websocket.NewConfig(c.opt.URL, origin)
+	cfg, err := websocket.NewConfig(target, origin)
 	if err != nil {
 		return err
 	}
 	cfg.Dialer = nil
+	if token != "" {
+		cfg.Header.Set("Authorization", "Bearer "+token)
+	}
 	conn, err := cfg.DialContext(ctx)
 	if err != nil {
+		// Off this machine, a refused upgrade is Ducter's gate saying no.
+		var de *websocket.DialError
+		if errors.As(err, &de) && de.Err == websocket.ErrBadStatus && !isLoopback(u.Hostname()) {
+			return ErrUnauthorized
+		}
 		return err
 	}
 	defer conn.Close()
@@ -189,6 +227,14 @@ func (c *Client) session(ctx context.Context) error {
 			c.opt.OnFrame(f)
 		}
 	}
+}
+
+func isLoopback(h string) bool {
+	if h == "localhost" {
+		return true
+	}
+	ip := net.ParseIP(h)
+	return ip != nil && ip.IsLoopback()
 }
 
 // ErrOffline is returned by Send while there is no connection.

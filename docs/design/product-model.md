@@ -46,6 +46,9 @@
 | outcomes | **停下了 / Stopped** · **撤销 / Undo** · **再试一次 / Try again** · **核对没过 / Check didn't pass** | |
 | quiet hours | **安静时段 / Quiet hours** | |
 | remote access ability | **远程打开 / Reach from anywhere** | |
+| pairing a client with a server (D54) | **连接到你的 Ducter / Connect to your Ducter** · **地址 / Address** · **配对码 / Pairing code** · **连上 / Connect** · **断开 / Disconnect** | The desktop card and the CLI (`ducter pair`, `ducter devices disconnect`). A code "只能用一次 / works once". Never "token", "授权 / authorize" or "绑定" in UI |
+| a device that runs tasks for a main elsewhere (worker) | (a **设备 / Device**; in the CLI "干活的设备 / a machine that does work") | Shown with the device states (醒着 / Awake …). "Worker" stays internal |
+| server keeps running (systemd service) | **保持运行 / Keeps running** (doctor row) | |
 | capability (browser, computer use, phone, calls, remote access) | **本事 / Abilities** (research/27; pending user OK; runner-up 能力) | Equip = **装上 / Add to <device>**; remove = **取下 / Remove**; result = "MacBook 现在会上网了 / MacBook can now browse the web"; device detail "MacBook 会：… / can: …". Item names are ability phrases (上网, 用电脑, 远程打开). Never 学会/教会/赋予/授权 (they read as ordering a subordinate). Never 装备/Gear (reads as armour; rhymes with 设备). Claude Code skills stay **技能 / Skills** on their own page, never on the rack |
 | Intent | (shown as a decision or a policy line: "要推送到 ducter/fix-ci / Will push to …") | |
 | Artifact | **成果 / Results** | |

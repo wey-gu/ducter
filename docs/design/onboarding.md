@@ -50,7 +50,12 @@ row's detection result animates in.
    - *Mac:* the desktop app holds the main process and a local worker. One download, one
      launch.
    - *VPS:* a one-line installer starts the main process and prints a QR code / link that
-     opens the client and pairs it. The details depend on `research/21`.
+     opens the client and pairs it. *Built so far (D54), terminal-first:*
+     `sh install.sh --service` → systemd user service → a pairing code, link and QR in the
+     terminal; the Mac app's first run has "我的 Ducter 在另一台机器上 / My Ducter is on another
+     machine" → **连接到你的 Ducter / Connect to your Ducter** (address + 配对码). The browser
+     setup page with relayed AI logins (Q17) is next; the exact login commands it relays are in
+     `research/29`.
 2. **Cartoon**, then the **live checklist**, auto-detected:
    1. **This device**: ✓ ("MacBook Pro · 14 repos found under ~/dev").
    2. **Your AI**: lists the logged-in harnesses (Claude Code ✓, Codex ✓/✗). A missing one
@@ -98,26 +103,46 @@ Setup: cua-driver 0.44.0, Chrome 157, macOS 15, partner and task on Sonnet.
 
 **While a browser task runs (what the user sees)**
 
-4. **A second Chrome window appears**, 1200×900 at the top left of the current Space. It shows
-   "about:blank" first, then the page the task opens. It is a separate Chrome on Ducter's
-   own profile (`<dataDir>/browser-profiles/<persona>`), not the user's Chrome. *Verified*
-   from the process args and the window list. *Inferred, not looked at:* a second Chrome
-   icon in the Dock, indistinguishable from the user's own Chrome.
+4. **A second Chrome window appears.** It is a separate Chrome on Ducter's own profile
+   (`<dataDir>/browser-profiles/<persona>`), not the user's Chrome. *Verified* from the
+   process args and the window list.
+   - It opens at 1200×900 top left, then Ducter parks it bottom-right at about 60% size
+     (907×661 on a 1512×982 display), behind the user's work. *Verified* on a desktop
+     capture.
+   - Ducter sets the clay avatar as its Dock tile; Chrome accepted the call. *Not seen*: the
+     Dock was hidden on the author's Mac. Without this, it is an identical second Chrome
+     icon.
 5. **Focus.** Left alone, the new Chrome makes itself the frontmost app for the whole task,
-   so the user's typing goes into Ducter's browser. *Verified* (sampled every 0.5 s: about
-   29 s in front). Ducter now hands focus back within half a second. *Verified:* at most one
-   0.5 s sample showed Chrome in front.
-6. **The window goes away on its own** when the task reports done, about 20–30 s after it
+   so the user's typing goes into Ducter's browser (*verified*: about 29 s in front). Ducter
+   now hands focus back within half a second (*verified*).
+6. **The window goes away on its own** when the task reports done, 20–40 s after it
    appeared. *Verified.*
 7. **Sign-ins persist across tasks.** *Verified* with a cookie: one task set it, the next
-   task saw it. This only works because Ducter quits the browser cleanly; cua-driver's own
+   task saw it. This depends on Ducter quitting the browser cleanly; cua-driver's own
    `end_session` kills Chrome and lost a cookie set seconds earlier (*verified*).
-8. **First sign-in to a real site.** The task stops and asks ("Please sign in to example.com
-   in the Ducter browser window, then tap Go"). *Not verified live.* Known risk: the driver
-   closes an idle browser after 5 minutes, which a slow sign-in can exceed.
+8. **Signing in for a task** (*verified* on the-internet.herokuapp.com with its public demo
+   login):
+   1. The task opens the login page and asks: "Please type the username and password
+      yourself in the Ducter browser window on this Mac and click Login, then tap Go."
+   2. The user types in that window; the model never sees the password.
+   3. After Go, the task reads the signed-in page and reports.
 
-**Latency (one sample each):** the lookup tasks took 35–50 s from task start to report.
-The partner's first line took 5–31 s; the 31 s case was a cold start.
+   Two traps came up and are fixed in the brief:
+   - Go means "take the default". When the default was "skip this step", Go skipped the
+     sign-in, and the partner still told the user the task was reading the page. Now the
+     default is "check that you are signed in and carry on".
+   - The driver closes an idle browser after 300 s (*verified*: the window vanished at 5:00
+     while the task waited). A sign-in finished well before that was kept on disk. A slow
+     sign-in (2FA, a long form) can lose the window. This is open in `todo.md`.
+9. **"CuaDriver was prevented from modifying apps on your Mac"** (a macOS Privacy & Security
+   notification) appeared during the session. *Cause not identified*; browser tasks worked
+   regardless. It needs a look before onboarding copy is written.
+
+**Latency and cost (one sample each):**
+- Lookup tasks took 25–50 s from task start to report.
+- The partner's first line took 5–31 s; the 31 s case was a cold start.
+- An HN lookup used 332k input tokens before the token diet and 140k after (mostly cache
+  reads).
 
 ## Ideas to decide (heavy-user delight)
 
@@ -126,6 +151,6 @@ The partner's first line took 5–31 s; the 31 s case was a cold start.
 
 ## Open
 
-- Remote-access step: Ducter Edge on `workers.dev` (`research/21`). It is about 3 steps, 4 on iOS (Home Screen install for push). CN users need a different path (pending).
+- Remote-access step: Ducter Edge on `workers.dev` (`research/21`). It is about 3 steps, 4 on iOS (Home Screen install for push). CN users default to their own domain (Q18): `scripts/caddy-setup.sh` + code pairing (D54).
 - Whether the cartoon is pre-rendered (Lottie/Rive) or native MyGo animation. Native keeps
   the "cartoon becomes the UI" transition seamless.

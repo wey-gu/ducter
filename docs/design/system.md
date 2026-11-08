@@ -56,6 +56,12 @@ are kept). `--bare` is not usable: it drops OAuth / subscription login.
   user's attention path, since the ack comes from the partner. Turn it on for untrusted or
   shared-machine setups.
 
+- **Task model:** the partner may pass a model per task. If it passes none, `DUCTER_TASK_MODEL`
+  applies; if that is unset, the harness's own default applies.
+- **Browser tasks: isolated** (W5-2, proposed): only the curated cua-driver tools, no user MCP
+  servers (which would include a path to the user's real Chrome), measured 332k → 140k input
+  tokens on one lookup.
+
 ## Waits (principle 16)
 
 Waiters live in a table, multiplexed onto one alarm per Durable Object. Handlers are
@@ -123,6 +129,109 @@ changes.
   - The client protocol comes first; the two UI codebases share only the protocol, the state
     model, and design tokens.
 
+## Server mode and remote access, first slice (D54, research/29)
+
+**Who and when.** Mostly the heavy developer who wants the partner awake while the Mac sleeps
+(Q16). A consumer who has never touched a VPS is not expected to start here; they meet a VPS only
+when the partner suggests one, and then the steps below are what they copy and paste.
+
+**Running on a server**
+- One static binary per arch (`bun build --compile`, `DUCTER_TARGET=bun-linux-arm64|x64`;
+  `scripts/install.sh --linux DIR` makes copyable bundles).
+- `ducter up --headless`: never opens a window; a failing doctor is printed (to journald) but
+  doesn't block start, so the user can pair a device and sign in an AI afterwards.
+- `ducter service install` (or `install.sh --service`): a systemd **user** unit
+  (`~/.config/systemd/user/ducter.service`), `Restart=on-failure`, journald logs,
+  `EnvironmentFile=-~/.ducter/env` (0600; where `CLAUDE_CODE_OAUTH_TOKEN` goes, never in the
+  unit). It enables linger itself when polkit allows (Ubuntu 24.04: yes, without sudo) and
+  prints the `sudo loginctl enable-linger` line when not. Then it pairs the first device.
+- Binds **127.0.0.1 only** unless `--host` / `DUCTER_HOST` says otherwise. A public bind prints
+  a warning: no TLS, paired devices only.
+
+**Who is local.** A request is local when the TCP peer is loopback, the `Host` is loopback,
+and no proxy header (`Forwarded`, `X-Forwarded-*`, `X-Real-IP`, `Via`, `CF-Connecting-IP`,
+`Tailscale-User-Login`) is present. Local callers (the desktop on the same Mac, the CLI, the
+harnesses' MCP calls, an SSH tunnel's far end) need no token, as before. `DUCTER_LOCAL_TRUST=off`
+turns this off. Caveat: a reverse proxy that sends neither a proxy header nor the public Host
+(nginx's default `proxy_set_header Host $proxy_host`) would look local; the only proxy setup
+Ducter writes is Caddy's, which adds `X-Forwarded-For`.
+
+**Pairing**
+- `ducter pair` mints a code: 8 characters from `ABCDEFGHJKMNPQRSTVWXYZ23456789` (≈ 39 bits),
+  shown as `K7QM-4XPA`, valid 10 minutes, single use. It prints the address (`public-url`, else
+  the SSH tunnel line built from `SSH_CONNECTION`), the code, a link `<address>/pair#c=<code>`
+  (the code rides in the fragment, which browsers never send) and that link as a terminal QR.
+  On a TTY it waits and says "<device> 连上了 / is connected".
+- `POST /pair {code, name, platform}` → `{token, deviceId, personaName}`. Token:
+  `dvc.<10-hex id>.<32 random bytes, base64url>`.
+- Storage: `<dataDir>/devices.db` (SQLite, WAL, 0600), shared by the CLI and the running server,
+  so pairing and revoking work whether or not the service is up. Only SHA-256 hashes of codes
+  and token secrets are kept.
+- Limits: 10 wrong codes per caller address per 10 min (`X-Forwarded-For`'s first hop behind a
+  proxy), then 429; 30 wrong codes in total voids every pending code.
+- `ducter devices` lists name, kind (client / worker), platform, last seen, id;
+  `ducter devices disconnect <id|unique name>` revokes at once.
+- Remote `/ws` needs `Authorization: Bearer <token>` (or `X-Ducter-Device`). With a token the
+  browser-origin check is skipped: a header token can't ride along ambiently like a cookie.
+  Remote `/mcp` needs `X-Ducter-Device` beside its HMAC role token. Remote `/health` answers
+  `{ok:true}` only.
+
+**Reaching it**
+- *Own domain (default for everyone with one, and for CN users per Q18):*
+  `scripts/caddy-setup.sh <domain>`: checks DNS, installs Caddy from its apt repo, adds a site
+  block (`reverse_proxy 127.0.0.1:7777`), reloads, waits for `https://<domain>/health`, writes
+  `~/.ducter/public-url`. Mainland-China servers need an ICP filing for 80/443.
+- *No domain:* `ssh -N -L 7777:127.0.0.1:7777 user@server`, then the address is
+  `http://127.0.0.1:7777`; no code is needed, SSH is the authentication.
+- *Later (D39/D46):* the Ducter Edge on `workers.dev` for phone/web without a domain, and
+  Tailscale as the community adapter. Both keep this pairing.
+
+**Desktop.** First run gains a quiet "我的 Ducter 在另一台机器上 / My Ducter is on another
+machine" that opens **连接到你的 Ducter / Connect to your Ducter**: address (or the whole link)
+and 配对码. The token goes to `<user config>/Ducter/connection.json` (0600, dir 0700); the
+Keychain is a later upgrade. A refused upgrade from a non-loopback server brings the card back
+with one line ("这台 Mac 已经和你的 Ducter 断开了"). `DUCTER_URL` + `DUCTER_TOKEN` still override.
+
+**Harness logins on the server (research/29).** Doctor offers `claude auth login` (prints a URL,
+waits for the pasted code; no browser on the server) and `codex login --device-auth` (enable
+device login in ChatGPT first). `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token` goes in
+`~/.ducter/env`; doctor shows it as "set, checked on first use" because `claude auth status`
+can't tell a bad token from a good one. Relaying these flows into a client (Q17) is next.
+
+**Demo / e2e without an AI login.** `DUCTER_SCRIPTED_MODEL=1` swaps every harness session for
+OAR's scripted runtime. Its script still calls Ducter's real MCP tools over HTTP (`task_open`,
+`report_to_main`) and every reply says it's a demo.
+
+## Workers (design; enrollment only so far)
+
+A worker is a machine that runs tasks for a main process elsewhere (a VPS next to a home Mac
+main, or the reverse). Principle: **it dials out, never in.**
+
+- **Join.** On the main: `ducter pair --worker` (a code whose device kind is `worker`). On the
+  worker: `ducter worker --join <main address> --code <code> [--name vps-2]`. It pairs at
+  `/pair`, keeps the token in `~/.ducter/worker.json` (0600), then holds one outbound WebSocket
+  to `<main>/worker` with that token, reconnecting with backoff. A client token can't open
+  `/worker`, and a worker token can't open `/ws`.
+- **Hello.** The worker reports hostname, OS/arch, Ducter version, and which harnesses are
+  installed and signed in (the doctor probes). The main keeps it in memory; `ducter devices`
+  shows 醒着 / Awake while the socket is up and its last-seen time otherwise.
+- **Placement (not built).** When `Place.device` names a worker, the runner forwards
+  `openTask / send / interrupt / drop` over that socket. The worker runs the same runner code
+  locally (worktrees, recipes, harness via OAR) against a thin core proxy that forwards
+  `log.append` and `tasks.setState` back up. Task tools reach the main's `/mcp` with the role
+  token the main minted for that task plus the worker's device token; the main's MCP gate
+  already accepts exactly that pair. Device sleep or a dropped socket follows A3 (在等 after
+  2 minutes, D52).
+- **Built and verified (two Ubuntu VMs, research/29):** join with a worker code, `worker.json`
+  0600, hello with harnesses, `ducter devices` → `awake`, `ducter service install --worker`
+  (no listening port on the worker), reconnect after the main restarts. Revoking (from the
+  CLI, another process) closes live device sockets within 10 s (close code 4401, clients and
+  workers alike); a refused worker exits 3 and its unit has `RestartPreventExitStatus=3`, so
+  it stops instead of retrying.
+- **Why not tonight:** placement touches the runner and the core API that protocol v2 is
+  reshaping; doing it on a moving base would mean two incompatible runners. Trigger: protocol
+  v2 merged (`docs/todo.md`).
+
 ## Hooks v1 must leave open for phone and call (research/22)
 
 Phone and call tasks are on the roadmap, not in v1. These seams keep them from forcing a
@@ -182,6 +291,50 @@ redesign later:
   - VPS datacenter IPs draw CAPTCHAs, so prefer running browser places on a home Mac;
   - prompt injection is contained, not solved;
   - each live sandbox needs about 1–2 GB RAM.
+
+### v1 slice on the host Mac (built 2026-11-09, `packages/runner/src/browser.ts`)
+
+What runs today, before sandboxes and spacesd:
+
+- **Driver:** Ducter starts its own cua-driver daemon per data dir on a private socket, via
+  LaunchServices so that macOS grants stay with CuaDriver. The daemon gets
+  `CUA_DRIVER_BROWSER_PROFILE_ROOT=<dataDir>/browser-profiles`. The task's harness runs
+  `cua-driver mcp --socket <it>`. The profile is `isolated_named` `<persona>`. Gate:
+  `DUCTER_BROWSER` (0 / 1 / unset = auto).
+- **env-gate, first slice (no proxy yet):** a browser task sees 10 cua-driver tools.
+  Everything else the driver offers, including `page` and `end_session`, is denied.
+  - Claude built-ins are limited to `Bash, Read, Write, ToolSearch`.
+  - The user's own Claude config is left out (`userConfiguration: exclude`): no user MCP
+    servers (so no path to the real Chrome), skills, or CLAUDE.md.
+  - Live, the same HN lookup went from 332k to 140k input tokens.
+- **Focus:** a freshly launched Ducter Chrome makes itself frontmost. Ducter hands focus back
+  to the user's app (only within 5 s of launch).
+- **Clean quit:** cua-driver ends its browsers with SIGKILL, which loses recent cookies. Ducter
+  quits the browser itself (CDP `Browser.close`) when a task is done, failed, or dropped.
+- **Status line:** when a task navigates to a new site, the runner logs a `task_event`
+  `{role:"system", text:"Looking at <host>", raw.browser:{host, url}}`. The client renders
+  it in the user's language.
+- **Known limit:** the driver closes an idle browser after 300 s. A task waiting on the user
+  loses its window, but sign-ins finished more than ~30 s earlier are kept and the task
+  reopens it.
+
+### Proposed: the Ducter browser's identity (DRAFT, for review; not a decision)
+
+The problem: the Ducter browser is a second, identical Google Chrome (same Dock icon, same
+window chrome), so a user cannot tell it from their own. The proposal uses Ducter's own
+DevTools side channel (browser-level chores only, never page content). It is built and on
+by default in the slice, so it can be reviewed live:
+
+- **Dock tile:** the clay avatar (`ducter_working`) replaces the Chrome icon on the second
+  Dock tile (`Browser.setDockTile`).
+- **Parked window:** about 60% of the screen, bottom-right of the available area, behind the
+  user's work (`Browser.setWindowBounds`).
+- **Status line:** "在 Ducter 的浏览器里看 github.com / Looking at github.com in Ducter's
+  browser", with a **Show** action that brings the window forward.
+
+Alternatives considered: minimise the window (hides the agent, and screenshots of a
+minimised window may fail), or a Chrome theme colour (needs edits to the profile's
+Preferences). Open question: `flows/OPEN-QUESTIONS.md` (W5-1).
 
 ## Credentials and logged-in profiles (D48, research/25)
 

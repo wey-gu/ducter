@@ -8,6 +8,7 @@ import type { Place } from "@ducter/protocol";
 import type { HarnessEvent, HarnessPort, HarnessSession, SessionSpec } from "@ducter/protocol/src/internal.ts";
 import { startCore, type Core } from "../../core/src/core.ts";
 import { createRunner, mergeTaskBranch, openDraftPr, registerTaskTools } from "../src/index.ts";
+import { mergeRefusal } from "../src/integrate.ts";
 import { git } from "../src/places.ts";
 
 let dir: string;
@@ -70,9 +71,31 @@ test("merge: conflicts are aborted and leave the checkout as it was", async () =
   writeFileSync(join(p.repoPath, "a.txt"), "ours\n");
   sh(p.repoPath, "commit", "-qam", "ours");
   const before = (await git(p.repoPath, ["rev-parse", "HEAD"])).out;
-  expect(await mergeTaskBranch(p)).toMatchObject({ ok: false, message: expect.stringContaining("conflicts") });
+  expect(await mergeTaskBranch(p)).toMatchObject({ ok: false, message: "ducter/fix doesn't merge cleanly into main: both changed the same lines. Nothing changed; ask the task to rebase onto main." });
   expect((await git(p.repoPath, ["rev-parse", "HEAD"])).out).toBe(before);
   expect((await git(p.repoPath, ["status", "--porcelain"])).out).toBe("");
+});
+
+test("merge: untracked files in the way are named, not called conflicts, and stay where they are", async () => {
+  const p = repoWithTaskBranch(); // the task adds b.txt
+  writeFileSync(join(p.repoPath, "b.txt"), "the user's own notes\n"); // untracked in the checkout
+  const before = (await git(p.repoPath, ["rev-parse", "HEAD"])).out;
+  expect(await mergeTaskBranch(p)).toEqual({
+    ok: false,
+    message: "Your checkout of main has files git doesn't track that ducter/fix would overwrite (b.txt). Move or delete them, then try again. Nothing changed.",
+  });
+  expect((await git(p.repoPath, ["rev-parse", "HEAD"])).out).toBe(before);
+  expect(await Bun.file(join(p.repoPath, "b.txt")).text()).toBe("the user's own notes\n");
+});
+
+test("merge refusal copy: local changes in the way, many files, and anything else git says", () => {
+  expect(mergeRefusal("error: Your local changes to the following files would be overwritten by merge:\n\ta.txt\nPlease commit your changes or stash them before you merge.\nAborting", "ducter/x", "main", false)).toBe(
+    "Your checkout of main has uncommitted changes in a.txt that the merge would overwrite. Commit or stash them, then try again. Nothing changed.",
+  );
+  expect(mergeRefusal("error: The following untracked working tree files would be overwritten by merge:\n\t1\n\t2\n\t3\n\t4\n\t5\nPlease move", "b", "main", false)).toContain("(1, 2, 3 and 2 more)");
+  expect(mergeRefusal("\n*** Please tell me who you are.\nfatal: unable to auto-detect email address", "b", "main", false)).toBe(
+    "git couldn't merge b into main: unable to auto-detect email address. Nothing changed.",
+  );
 });
 
 test("open_pr without the GitHub CLI says exactly how to fix it, and pushes nothing", async () => {

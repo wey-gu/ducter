@@ -62,6 +62,25 @@ export function triggersPartner(e: LogEvent): boolean {
   return false;
 }
 
+/**
+ * No Origin (a native client), or this server's own origin as the browser reached it: the Host
+ * itself, or another loopback name for it on the same port (localhost vs 127.0.0.1).
+ */
+export function sameOriginWs(req: Request): boolean {
+  const origin = req.headers.get("origin");
+  if (origin == null) return true;
+  try {
+    const o = new URL(origin);
+    const h = new URL(`http://${req.headers.get("host") ?? ""}`);
+    if ((o.protocol !== "http:" && o.protocol !== "https:") || o.pathname !== "/") return false;
+    if (o.host === h.host) return true;
+    const loop = (n: string) => n === "127.0.0.1" || n === "localhost" || n === "[::1]";
+    return loop(o.hostname) && loop(h.hostname) && o.port === h.port;
+  } catch {
+    return false;
+  }
+}
+
 function loadSecret(dataDir: string): string {
   const p = join(dataDir, "mcp.secret");
   if (existsSync(p)) return readFileSync(p, "utf8").trim();
@@ -157,10 +176,12 @@ export function startCore(opts: CoreOptions = {}): Core {
       const api = await webApi(req, g, { decisions, push, pusher, personaName: () => persona.name });
       if (api) return api;
       if (url.pathname === "/ws") {
-        // Block cross-site WebSocket hijacking from browser pages; native clients send no Origin.
+        // Block cross-site WebSocket hijacking from browser pages; native clients send no Origin
+        // (the desktop sends its own address). Only this server's own origin counts: a page from
+        // another local port (a dev server, another app) is another site. Through an SSH tunnel
+        // the Host is the tunnel's, and so is the page's origin.
         // A device token can't ride along ambiently (no cookies), so it needs no origin check.
-        const origin = req.headers.get("origin");
-        if (g.via === "local" && origin && !/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?\/?$/.test(origin)) return new Response("forbidden", { status: 403 });
+        if (g.via === "local" && !sameOriginWs(req)) return new Response("forbidden", { status: 403 });
         // The device rides along so a revoked device's live socket can be closed (workers.ts).
         const data = { ...ws.newData(), ...(g.via === "device" ? { device: g.device } : {}) };
         // A browser that offered ["ducter", <token>] gets "ducter" back: Bun echoes the first
@@ -190,7 +211,16 @@ export function startCore(opts: CoreOptions = {}): Core {
     pusher,
     port,
     url: `ws://127.0.0.1:${port}/ws`,
-    setRunner: (r) => void (runner = r),
+    setRunner(r) {
+      runner = r;
+      // Answers that were resolved but never handed to their task before a restart (decisions.ts).
+      for (const u of decisions.takeUnforwarded()) {
+        console.warn(`[core] re-sending the answer to ${u.decisionId} that ${u.taskId} never got (restart)`);
+        void Promise.resolve()
+          .then(() => r.send(u.taskId, u.text, undefined, "user"))
+          .catch((err) => console.error(`[core] re-sending ${u.decisionId} to ${u.taskId} failed:`, (err as Error).message));
+      }
+    },
     setPartner(p) {
       partner = p;
       early.splice(0).forEach(trigger);

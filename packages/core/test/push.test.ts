@@ -14,6 +14,7 @@ import {
   MAX_SUBS_PER_DEVICE,
   sendPush,
   inQuiet,
+  isPushEndpoint,
   newVapid,
   openPushStore,
   quietEndsAt,
@@ -59,6 +60,35 @@ async function decrypt(body: Uint8Array, r: Awaited<ReturnType<typeof receiver>>
   return new TextDecoder().decode(plain.slice(0, -1));
 }
 
+describe("push endpoints", () => {
+  test("only the browsers' push services", () => {
+    for (const ok of [
+      "https://fcm.googleapis.com/fcm/send/abc",
+      "https://updates.push.services.mozilla.com/wpush/v2/abc",
+      "https://web.push.apple.com/QGx",
+      "https://wns2-db5p.notify.windows.com/w/?token=abc",
+    ])
+      expect(isPushEndpoint(ok)).toBe(true);
+    for (const bad of [
+      "http://fcm.googleapis.com/fcm/send/abc",
+      "https://169.254.169.254/latest/meta-data",
+      "https://localhost/x",
+      "https://fcm.googleapis.com.evil.example/x",
+      "https://evilpush.apple.com/x",
+      "https://user:pw@fcm.googleapis.com/x",
+      "https://fcm.googleapis.com:8443/x",
+      "not a url",
+    ])
+      expect(isPushEndpoint(bad)).toBe(false);
+  });
+  test("a stored subscription to anywhere else is dropped, never posted to", async () => {
+    let posted = false;
+    const r = await sendPush({ endpoint: "https://10.0.0.5/x", keys: { p256dh: "x", auth: "y" }, deviceId: "d", locale: "en", platform: "web", createdAt: "" }, coalescedMessage(1, { persona: "D", locale: "en" }), await newVapid(), async () => ((posted = true), new Response(null, { status: 201 })));
+    expect(r).toMatchObject({ gone: true, status: 0 });
+    expect(posted).toBe(false);
+  });
+});
+
 describe("web push wire format", () => {
   test("payloads decrypt on the receiving side (RFC 8291, aes128gcm)", async () => {
     const r = await receiver();
@@ -98,7 +128,7 @@ describe("web push wire format", () => {
     const msg = decisionMessage(d, { persona: "Ducter", task: "修测试".repeat(100), locale: "zh", platform: "android", now: 0 });
     expect(new TextEncoder().encode(JSON.stringify(msg)).length).toBeGreaterThan(4096); // what used to be sent
     let sent: Uint8Array | undefined;
-    const res = await sendPush({ endpoint: "https://push.example/x", keys: r.keys, deviceId: "local", locale: "zh", platform: "android", createdAt: "" }, msg, v, async (_u, init) => {
+    const res = await sendPush({ endpoint: "https://fcm.googleapis.com/fcm/send/x", keys: r.keys, deviceId: "local", locale: "zh", platform: "android", createdAt: "" }, msg, v, async (_u, init) => {
       sent = init.body as Uint8Array;
       return new Response(null, { status: 201 });
     });
@@ -116,9 +146,9 @@ describe("web push wire format", () => {
     const t = tempDir();
     stops.push(t.cleanup);
     const s = openPushStore(t.dir);
-    const sub = (i: number, deviceId = "dev1"): PushSub => ({ endpoint: `https://push.example/${deviceId}/${i}`, keys: { p256dh: "x", auth: "y" }, deviceId, locale: "en", platform: "web", createdAt: "" });
+    const sub = (i: number, deviceId = "dev1"): PushSub => ({ endpoint: `https://fcm.googleapis.com/fcm/send/${deviceId}/${i}`, keys: { p256dh: "x", auth: "y" }, deviceId, locale: "en", platform: "web", createdAt: "" });
     for (let i = 0; i < 100; i++) s.subscribe(sub(i));
-    expect(s.subs().map((x) => x.endpoint)).toEqual([95, 96, 97, 98, 99].map((i) => `https://push.example/dev1/${i}`));
+    expect(s.subs().map((x) => x.endpoint)).toEqual([95, 96, 97, 98, 99].map((i) => `https://fcm.googleapis.com/fcm/send/dev1/${i}`));
     for (let i = 0; i < 100; i++) s.subscribe(sub(0, `d${i}`));
     expect(s.subs().length).toBe(MAX_SUBS);
     expect(openPushStore(t.dir).subs().length).toBe(MAX_SUBS);
@@ -173,7 +203,7 @@ describe("the pusher", () => {
     const log = openLog({ path: `${t.dir}/d.db`, persona: "default", clock });
     const store = openPushStore(t.dir);
     const r = await receiver();
-    const sub: PushSub = { endpoint: "https://push.example/1", keys: r.keys, deviceId: "phone", locale: "zh", platform: "ios", createdAt: "" };
+    const sub: PushSub = { endpoint: "https://fcm.googleapis.com/fcm/send/1", keys: r.keys, deviceId: "phone", locale: "zh", platform: "ios", createdAt: "" };
     const sent: { url: string; body: Uint8Array }[] = [];
     const pusher = createPusher({
       log,

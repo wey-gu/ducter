@@ -119,6 +119,59 @@ test("report states map to attention; done needs evidence", async () => {
   expect(tasks.get("t1")!.attention).toBe("failed");
 });
 
+test("an answer resolved just before a crash, never handed to its task, is handed over after the restart (once)", async () => {
+  const { path, log, clock, decisions, living } = setup();
+  const ask = (taskId: string, text: string) => {
+    openTask(log, taskId);
+    report(log, taskId, { state: "needs_input", summary: text, questions: [{ id: "q", text, blocking: true, reversible: false }] });
+  };
+  ask("t1", "Which file?"); // answered, then the process died before the forward
+  ask("t2", "Which branch?"); // answered and delivered (the runner logged the input)
+  ask("t3", "Rename it?"); // answered by a direct message (silent)
+  await tick();
+  const ids = log.read({ kinds: ["decision"] }).map((e) => (e.body as Bodies["decision"]).decisionId);
+  decisions.decide(ids[0]!, "reply", "src/a.ts");
+  decisions.decide(ids[1]!, "go");
+  log.append({ stream: "task:t2", origin: "task", kind: "task_event", body: { taskId: "t2", role: "user", from: "user", text: "User says Go: Continue." } });
+  log.append({ stream: "task:t3", origin: "task", kind: "task_event", body: { taskId: "t3", role: "user", from: "user", text: "yes, rename" } });
+  decisions.answeredByMessage("t3", "yes, rename", "user");
+  decisions.stop();
+  living.stop();
+  log.close();
+
+  const log2 = openLog({ path, persona: "default", clock });
+  const tasks2 = createRegistry(log2, clock);
+  const d2 = createDecisions({ log: log2, tasks: tasks2, clock });
+  expect(d2.takeUnforwarded().map(({ taskId, text }) => [taskId, text])).toEqual([["t1", "src/a.ts"]]);
+  expect(d2.takeUnforwarded()).toEqual([]);
+  // Once the runner logs it as input, a further restart doesn't send it again.
+  log2.append({ stream: "task:t1", origin: "task", kind: "task_event", body: { taskId: "t1", role: "user", from: "user", text: "src/a.ts" } });
+  d2.stop();
+  const d3 = createDecisions({ log: log2, tasks: tasks2, clock });
+  expect(d3.takeUnforwarded()).toEqual([]);
+  d3.stop();
+  log2.close();
+});
+
+test("core hands the lost answer to the runner when it is wired", async () => {
+  const t = tempDir();
+  cleanup = t.cleanup;
+  const { startCore } = await import("../src/core.ts");
+  const c1 = startCore({ dataDir: t.dir, port: 0 });
+  c1.setRunner({ send: async () => ({ delivered: "queued" }) } as any); // delivers nothing, logs nothing: the crash
+  openTask(c1.log, "t1");
+  report(c1.log, "t1", { state: "needs_input", summary: "Which file?", questions: [{ id: "q", text: "Which file?", blocking: true, reversible: false }] });
+  await tick();
+  c1.decisions.decide((c1.log.read({ kinds: ["decision"] })[0]!.body as Bodies["decision"]).decisionId, "reply", "src/a.ts");
+  await c1.stop();
+  const c2 = startCore({ dataDir: t.dir, port: 0 });
+  const sent: [string, string, string | undefined][] = [];
+  c2.setRunner({ send: async (id: string, text: string, _m: unknown, from?: string) => (sent.push([id, text, from]), { delivered: "prompted" }) } as any);
+  for (let i = 0; i < 100 && !sent.length; i++) await Bun.sleep(10);
+  expect(sent).toEqual([["t1", "src/a.ts", "user"]]);
+  await c2.stop();
+});
+
 test("pending reversible defaults are re-armed after a restart", async () => {
   const { path, log, clock, decisions, living } = setup();
   openTask(log, "t1");

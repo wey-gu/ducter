@@ -116,6 +116,34 @@ changes.
 - **Isolation is only as strong as the environment.** A sandbox is strong; the user's Mac is
   not, and Ducter says so.
 
+### Who counts as local, and what that allows
+
+- **Local** means: the TCP peer is loopback, the `Host` is loopback, and no proxy header is
+  present (auth.ts `isLocalRequest`; full rule under "Server mode" below). It is a property of
+  the connection, not of a person. Every process on the machine qualifies: the desktop, the CLI,
+  an SSH tunnel's far end, each task's harness and anything it runs (D16 bypass), and every
+  other account on the same host.
+- **What a local caller can do without a token:** everything a paired device can. That covers
+  `/ws` (read the whole conversation and every task, send messages, Go/Hold, merge, open a
+  PR, drop), `/api/*` (push settings, decide), and `/devices/online`. Browser pages are held
+  back: a local `/ws` upgrade or `/api` POST from a browser must come from this server's own
+  origin. `/mcp` still needs its HMAC role token. But a process that can read
+  `<dataDir>/mcp.secret` (0600, so the same account) can mint any role token, the partner's
+  included.
+- **Why that is acceptable on your own Mac:** under D16 a task already runs with your account's
+  full power, so local trust adds nothing it couldn't do anyway. The data dir is 0700 and the
+  Log, `devices.db`, `mcp.secret`, `push.json` and `env` are 0600, so other accounts can't
+  read them.
+- **Shared hosts (a VPS with other human users, a multi-user Linux box): the caveat.** Other
+  accounts can't read your files, but they can connect to `127.0.0.1:7777` and are local: they
+  can read and drive your Ducter. Mitigation today: `DUCTER_LOCAL_TRUST=off`, which makes
+  every caller show a device token (pair the desktop and the CLI like any other device).
+  Limit: with it off, the main's own tasks can't reach `/mcp`, because their config carries only
+  the role token. So today it suits a main that places all of its tasks on workers.
+  Recommended next step (todo): a 0600 local token in the data dir. The CLI, the desktop on
+  that machine and the tasks' MCP config would present it, so `off` costs nothing and can
+  become the default whenever other human users exist.
+
 ## Storage and topology (principle 19)
 
 - **Storage port** shaped like an append log: a partition, a gapless commit sequence, cursor
@@ -201,6 +229,12 @@ machine" that opens **连接到你的 Ducter / Connect to your Ducter**: address
 and 配对码. The token goes to `<user config>/Ducter/connection.json` (0600, dir 0700); the
 Keychain is a later upgrade. A refused upgrade from a non-loopback server brings the card back
 with one line ("这台 Mac 已经和你的 Ducter 断开了"). `DUCTER_URL` + `DUCTER_TOKEN` still override.
+- **Whose paths.** The welcome carries `machine`: sha256 of the main's machine id (macOS
+  IOPlatformUUID, Linux `/etc/machine-id`), 32 hex, never the raw id (`core/src/machine.ts`).
+  The desktop computes the same hash; only when they match does it run `git diff` on a place's
+  worktree or open `file://` evidence. Otherwise those paths are the server's, so it copies them
+  instead of opening them. An SSH tunnel looks like loopback but names another machine. A main
+  that sends no `machine` (older) falls back to "loopback address = this machine".
 
 **Harness logins on the server (research/29).** Doctor offers `claude auth login` (prints a URL,
 waits for the pasted code; no browser on the server) and `codex login --device-auth` (enable

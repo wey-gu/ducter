@@ -446,6 +446,7 @@ type ServerFrame struct {
 	T           string     `json:"t"` // welcome | events | on_hand | task_history | sent | error
 	Persona     string     `json:"persona,omitempty"`
 	PersonaName string     `json:"personaName,omitempty"`
+	Machine     string     `json:"machine,omitempty"` // welcome: hash of the machine the main runs on
 	HeadSeq     int64      `json:"headSeq,omitempty"`
 	Events      []LogEvent `json:"events,omitempty"`
 	OnHand      *OnHand    `json:"onHand,omitempty"`

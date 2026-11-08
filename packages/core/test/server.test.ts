@@ -142,6 +142,20 @@ test("ws: frames before hello are rejected; browser origins are refused", async 
   expect((await c.until((f) => f.t === "error")) as any).toMatchObject({ message: "send: send hello first" });
   const res = await fetch(`http://127.0.0.1:${core.port}/ws`, { headers: { Origin: "https://evil.example", Upgrade: "websocket" } });
   expect(res.status).toBe(403);
+  // Another local port (a dev server, another app) is another site; so is a sandboxed page.
+  for (const o of ["http://localhost:3000", `http://127.0.0.1:${core.port + 1}`, "null", `http://evil.example:${core.port}`]) {
+    const r = await fetch(`http://127.0.0.1:${core.port}/ws`, { headers: { Origin: o, Upgrade: "websocket" } });
+    expect([o, r.status]).toEqual([o, 403]);
+  }
+  // This server's own page (the web app at /app) and native clients (no Origin, or the desktop's own address) get in.
+  for (const headers of [{ Origin: `http://127.0.0.1:${core.port}` }, {}] as Record<string, string>[]) {
+    const ok = await new Promise<boolean>((resolve) => {
+      const ws = new WebSocket(core.url, { headers } as any);
+      ws.onopen = () => (ws.close(), resolve(true));
+      ws.onerror = () => resolve(false);
+    });
+    expect([headers, ok]).toEqual([headers, true]);
+  }
 });
 
 async function mcpClient(core: Core, role: Parameters<Core["mcp"]["configFor"]>[0]) {

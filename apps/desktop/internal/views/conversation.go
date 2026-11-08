@@ -554,11 +554,19 @@ func (a *App) livingLine(c *ui.Context, it protocol.LivingItem) {
 	}
 }
 
+// thisMachine is this computer's machine hash (a seam for tests).
+var thisMachine = remote.ThisMachine
+
 // onThisMachine says whether the Ducter we talk to runs here (or is a test):
 // only then do its paths name files on this Mac. Through Connect to your
-// Ducter they are the server's paths, chosen by its models.
+// Ducter, or an SSH tunnel (a loopback address to another machine), they are
+// the server's paths, chosen by its models. The welcome's machine hash
+// decides; an older Ducter without one falls back to the address.
 func (a *App) onThisMachine() bool {
-	return a.URL == "" || remote.IsLoopback(a.URL)
+	if a.URL == "" {
+		return true
+	}
+	return remote.SameMachine(a.S.Machine, thisMachine(), a.URL)
 }
 
 func (a *App) openEvidence(c *ui.Context, ev protocol.EvidenceRef) {

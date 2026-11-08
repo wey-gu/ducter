@@ -172,7 +172,9 @@ export type ClientFrame =
   | { t: "task_history"; taskId: string; beforeSeq?: number; limit?: number };
 
 export type ServerFrame =
-  | { t: "welcome"; persona: string; personaName: string; headSeq: number }
+  // machine: a hash of the machine the main runs on (core/src/machine.ts); a client that computes
+  // the same hash is on that machine, so the place paths it sees are its own.
+  | { t: "welcome"; persona: string; personaName: string; headSeq: number; machine?: string }
   | { t: "events"; events: LogEvent[] }
   | { t: "on_hand"; onHand: OnHand }
   | { t: "task_history"; taskId: string; events: LogEvent[] }

@@ -121,14 +121,18 @@ describe("the phone/web client", () => {
     const base = `http://127.0.0.1:${core.port}`;
     const kp = (await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"])) as CryptoKeyPair;
     const p256dh = Buffer.from(await crypto.subtle.exportKey("raw", kp.publicKey)).toString("base64url");
-    const subscription = { endpoint: "https://push.example/abc", keys: { p256dh, auth: Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString("base64url") } };
+    const subscription = { endpoint: "https://fcm.googleapis.com/fcm/send/abc", keys: { p256dh, auth: Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString("base64url") } };
     const post = (path: string, body: unknown) => fetch(base + path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
 
     expect((await post("/api/push/subscribe", { subscription: { endpoint: "http://insecure" } })).status).toBe(400);
+    // Not a push service: the main would POST wherever a subscription points.
+    const ssrf = await post("/api/push/subscribe", { subscription: { ...subscription, endpoint: "https://169.254.169.254/latest" } });
+    expect([ssrf.status, (await ssrf.json()).error]).toEqual([400, "not a known push service"]);
+    expect(core.push.subs()).toHaveLength(0);
     const r: any = await (await post("/api/push/subscribe", { subscription, locale: "zh", platform: "android", quiet: { start: "23:00", end: "08:00", tz: "Asia/Shanghai" } })).json();
     expect(r.settings.quiet).toEqual({ start: "23:00", end: "08:00", tz: "Asia/Shanghai" });
     expect((await post("/api/push/test", {})).status).toBe(200);
-    expect(sent).toEqual(["https://push.example/abc"]);
+    expect(sent).toEqual(["https://fcm.googleapis.com/fcm/send/abc"]);
 
     core.log.append({ stream: "channel", origin: "system", kind: "decision", body: { decisionId: "d_x", taskId: "t1", question: "Rebase?", goLabel: "Rebase", defaultOption: "go", reversible: true } });
     expect((await post("/api/decide", { decisionId: "d_x", option: "go" })).status).toBe(200);

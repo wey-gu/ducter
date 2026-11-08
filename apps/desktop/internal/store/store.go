@@ -236,7 +236,10 @@ type Store struct {
 	ActionResults []protocol.ServerFrame
 	Persona       string
 	PersonaName   string
-	HeadSeq       int64
+	// Machine is the welcome's hash of the machine the main runs on ("" from
+	// an older Ducter): it says whether place paths are on this computer.
+	Machine string
+	HeadSeq int64
 	// Cursor is the highest seq applied from the live stream.
 	Cursor int64
 	// ReadUpTo is the last read receipt.
@@ -288,7 +291,7 @@ func (s *Store) Reset() {
 func (s *Store) Apply(f protocol.ServerFrame) {
 	switch f.T {
 	case "welcome":
-		s.Persona, s.HeadSeq = f.Persona, f.HeadSeq
+		s.Persona, s.HeadSeq, s.Machine = f.Persona, f.HeadSeq, f.Machine
 		s.Welcomed = true
 		if f.PersonaName != "" {
 			s.PersonaName = f.PersonaName

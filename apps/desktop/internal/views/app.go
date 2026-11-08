@@ -58,6 +58,14 @@ type App struct {
 	// next one starts. Nil in tests.
 	RetryNow    func()
 	NextAttempt func() time.Time
+	// Pair trades a pairing code for a device token at an address (an
+	// http(s) base), saves it, and points the client there. Nil hides the
+	// "my Ducter is on another machine" path.
+	Pair func(base, code string) error
+	// Unauthorized is set when the server refused this device (revoked, or
+	// a token from an old pairing): the connect card shows, with a line.
+	Unauthorized bool
+	conn         connectState
 
 	Route  Route
 	TaskID string
@@ -124,6 +132,8 @@ func (a *App) View(c *ui.Context) {
 	c.SetTheme(a.uiTheme)
 	ui.Column(c).Fill().Background(a.T.Bg).TextColor(a.T.Ink).Font(a.T.Body).Children(func() {
 		switch {
+		case a.Unauthorized || (!a.S.Welcomed && a.conn.open):
+			a.connect(c)
 		case !a.S.Welcomed && a.Failed:
 			a.firstRun(c)
 		case a.Route == RouteOnHand:

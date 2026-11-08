@@ -207,10 +207,27 @@ the background line), `websetup.go` (上网), `asks.go` (notifications, phone, M
 `apps/desktop/internal/i18n/onboard.go`; doctor's `action` in `packages/cli/src/doctor.ts`.
 
 **Who, and what they feel.** The fresh user (never heard of a subagent) meets a button, not a
-command: 安装 Claude Code → a working character, "正在安装 Claude Code…", the seconds, the
-installer's own last line, Cancel → 登录 Claude → "在浏览器里登录，好了会自动继续" → 好了. The
-consumer with one plan gets the same, plus Codex offered as the other way. The heavy developer
-still has "在终端里做 / Do it in Terminal" on every row, and on a ready Mac sees none of this.
+command. The heavy developer still gets "在终端里做 / Do it in Terminal" whenever something
+fails, and on a ready Mac sees none of this.
+
+**The screen** (redone after the author's review: "设计排版有问题…那个闪烁的灯一般认为是 ai slop"):
+- The clay character carries the mood: *needs you* while waiting for a choice, *working* while
+  something installs or a sign-in waits in the browser, *done* on All set. Nothing else blinks,
+  pulses or glows; no colored dots, no status pills.
+- "Ducter 用你已有的 AI 订阅干活。选一个，装好、登录就行 / Pick one, install it and sign in", then one
+  flat list on one left edge, one row per option (Claude Code, Codex), hairlines between rows,
+  the same row height. Each row: the tool's name, **one** status line in plain words, the action
+  at the row's right (安装 / 登录; the first row's is primary). Working replaces the status line
+  in place ("正在安装 · 已经 10 秒 / Installing · 10s so far", "在浏览器里登录，好了会自动继续")
+  and the action becomes the text button 取消 / Cancel. A failure replaces it with the reason in
+  words; the action becomes 再试一次 / Try again, with "在终端里做" under it.
+- Signing in adds two quiet text buttons on the same left edge: "浏览器没打开？" (the page
+  again) and "网页给了你一串代码？" (a field that hands the code to the command).
+- No "Check again" (checks are automatic) and no optional line here: the footer is one quiet
+  "好了会自己继续 / This continues by itself". Nowledge Mem is offered later (below).
+- The same rule holds for 上网's steps: one flat list, a check for a done step, a number for the
+  others, the open step's status line and its action at the right; the drawn System Settings row
+  is static.
 
 **The AI tool** (one button per row; the command is doctor's `fix`, so the app and `ducter
 doctor` never disagree):
@@ -266,10 +283,11 @@ more, then never; answers in `desktop.json` `asks`):
 Every System Settings link was opened on macOS 15.7 and landed on the named pane (**verified**:
 Accessibility, Screen & System Audio Recording, Login Items & Extensions, Notifications).
 
-**Screenshots.** Native (a scratch `HOME`, the real app bundle, cua-driver): 
-`apps/desktop/docs/onboard-native-*-{zh,en}.png` (fresh, installing, canceled, signin,
-allset, name, conversation, devices, web-driver, web-accessibility, web-screen, web-ready;
-zh also signin-ready and web-waiting). Headless, every state in both languages:
+**Screenshots.** Native (a scratch `HOME`, the real app bundle, cua-driver), after the redesign:
+`apps/desktop/docs/onboard-native-{fresh,installing,signin,web-driver,web-accessibility,
+web-screen,web-ready}-{zh,en}.png` (zh also web-waiting); before it:
+`onboard-native-before-*.png`; other native states from the first pass (canceled, allset,
+name, conversation, devices, signin-ready) are the earlier styling of the same flow. Headless, every state in both languages:
 `onboard-{ai-fresh,ai-installing,ai-offline,ai-signin,ready,background-note,background-off,
 web-driver,web-installing,web-accessibility,web-screen,web-ready,ask-notify,ask-notify-denied,
 ask-phone,ask-phone-noaddress,ask-phone-qr,mem-line}-{zh,en}.png`

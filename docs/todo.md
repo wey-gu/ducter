@@ -168,3 +168,17 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] Intel Mac DMG (a `macos-15-intel` job). Trigger: someone asks for Intel.
 - [ ] Linux CI test runs (`bun test`, `go test` on ubuntu) were only compiled/planned on a Mac;
       if the first runs fail for platform reasons, move that job to `macos-15`.
+
+## First run without a terminal (D69, `design/onboarding.md` "No terminal, start to finish")
+
+- [ ] A task that needs the web before 上网 is set up: open the three steps from the
+      conversation, not only from the devices screen. Trigger: core gives the refusal a
+      structured reason the client can act on.
+- [ ] See macOS's "Background Items Added" notice for Ducter's own agent and quote its zh title
+      exactly. Trigger: the first signed build installed on a Mac in Chinese.
+- [ ] Walk a real Claude Code sign-in and a Codex sign-in from the app to the end. Trigger: a
+      throwaway account, or a fresh Mac user.
+- [ ] Nowledge Mem installed but not running: say so in one line with a way to open it.
+      Trigger: Mem exposes how to start it from outside.
+- [ ] Moving the app out of the disk image (offer "Move to Applications" when run from
+      `/Volumes` or a translocated copy). Trigger: the first friend who opens it from the DMG.

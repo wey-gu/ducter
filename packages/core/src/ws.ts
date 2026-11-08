@@ -95,27 +95,56 @@ export function createWsHandler(deps: WsDeps) {
         return;
       }
       case "task_action": {
+        // Every task_action is acked with action_result (ok or a user-facing reason).
+        const result = (ok: boolean, message?: string, ref?: string) =>
+          send(ws, { t: "action_result", taskId: f.taskId, action: f.action, ok, ...(message ? { message } : {}), ...(ref ? { ref } : {}) });
         const card = tasks.get(f.taskId);
-        if (!card) throw new Error(`unknown task ${f.taskId}`);
+        if (!card) return result(false, "I can't find that task.");
         const r = deps.runner();
-        if (f.action === "interrupt") {
-          if (!r) throw new Error("runner is not available");
-          await r.interrupt(f.taskId);
-        } else if (f.action === "drop") {
-          try {
-            await r?.drop(f.taskId);
-          } catch (err) {
-            console.warn(`[ws] runner.drop(${f.taskId}) failed; marking dropped anyway:`, (err as Error).message);
+        try {
+          switch (f.action) {
+            case "interrupt":
+              if (!r) return result(false, "Tasks can't run right now.");
+              await r.interrupt(f.taskId);
+              return result(true);
+            case "drop": {
+              try {
+                await r?.drop(f.taskId);
+              } catch (err) {
+                console.warn(`[ws] runner.drop(${f.taskId}) failed; marking dropped anyway:`, (err as Error).message);
+              }
+              const now = tasks.get(f.taskId)!;
+              if (now.attention !== "dropped") tasks.setState(f.taskId, "dropped", now.residency);
+              return result(true);
+            }
+            case "undrop": {
+              if (!r?.undrop) return result(false, "Undo isn't available.");
+              const u = await r.undrop(f.taskId);
+              return result(u.ok, u.message);
+            }
+            case "reopen": {
+              // Truthful state only: the runner resumes the session and the task goes back to work.
+              if (!r?.reopen) return result(false, "Reopen isn't available.");
+              const { delivered } = await r.reopen(f.taskId);
+              send(ws, { t: "sent", taskId: f.taskId, delivered });
+              return result(true);
+            }
+            case "merge": {
+              if (!r?.merge) return result(false, "Merging isn't available.");
+              const m = await r.merge(f.taskId);
+              return result(m.ok, m.message, m.ref);
+            }
+            case "open_pr": {
+              if (!r?.openPr) return result(false, "Opening a PR isn't available.");
+              const o = await r.openPr(f.taskId);
+              return result(o.ok, o.message, o.ref);
+            }
+            default:
+              return result(false, `unknown action ${(f as { action?: string }).action}`);
           }
-          const now = tasks.get(f.taskId)!;
-          if (now.attention !== "dropped") tasks.setState(f.taskId, "dropped", now.residency);
-        } else if (f.action === "reopen") {
-          // Truthful state only: the runner resumes the session and the task goes back to work.
-          if (!r?.reopen) throw new Error("reopen is not available");
-          const { delivered } = await r.reopen(f.taskId);
-          send(ws, { t: "sent", taskId: f.taskId, delivered });
+        } catch (err) {
+          return result(false, (err as Error).message);
         }
-        return;
       }
       case "read":
         log.append({ stream: "channel", origin: "user", kind: "read_receipt", body: { upToSeq: f.upToSeq } });

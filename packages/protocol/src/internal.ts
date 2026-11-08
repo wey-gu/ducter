@@ -105,6 +105,11 @@ export interface Runner {
   interrupt(taskId: string): Promise<void>;
   // Optional: resume (or start) a finished/dropped task's session and tell it to carry on.
   reopen?(taskId: string): Promise<{ delivered: Delivery }>;
+  // Optional: Undo a drop; merge the task branch into its base in the user's checkout; push +
+  // open a draft PR (an outside effect). Each resolves with a user-facing message.
+  undrop?(taskId: string): Promise<{ ok: boolean; message: string; ref?: string }>;
+  merge?(taskId: string): Promise<{ ok: boolean; message: string; ref?: string }>;
+  openPr?(taskId: string): Promise<{ ok: boolean; message: string; ref?: string }>;
   drop(taskId: string): Promise<void>;
 }
 

@@ -104,6 +104,31 @@ test("drop marks the task dropped even if the runner no longer knows it; reopen 
   expect(core.tasks.get("t1")).toMatchObject({ attention: "working", residency: "hot" });
 });
 
+test("every task_action is acked with action_result (merge carries its ref; failures carry a message)", async () => {
+  const core = boot();
+  core.setRunner({
+    interrupt: async () => {},
+    merge: async () => ({ ok: true, message: "Merged ducter/fix into main.", ref: "abc123" }),
+    openPr: async () => ({ ok: false, message: "GitHub CLI isn't signed in. Run gh auth login in a terminal, then try again." }),
+  } as unknown as Runner);
+  openTask(core.log, "t1");
+  const c = await client(core);
+  const results: Extract<ServerFrame, { t: "action_result" }>[] = [];
+  for (const action of ["merge", "open_pr", "interrupt", "undrop"]) {
+    c.send({ t: "task_action", taskId: "t1", action });
+    results.push(await c.until((f) => f.t === "action_result" && f.action === action));
+  }
+  c.send({ t: "task_action", taskId: "nope", action: "merge" });
+  results.push(await c.until((f) => f.t === "action_result" && f.taskId === "nope"));
+  expect(results).toEqual([
+    { t: "action_result", taskId: "t1", action: "merge", ok: true, message: "Merged ducter/fix into main.", ref: "abc123" },
+    { t: "action_result", taskId: "t1", action: "open_pr", ok: false, message: "GitHub CLI isn't signed in. Run gh auth login in a terminal, then try again." },
+    { t: "action_result", taskId: "t1", action: "interrupt", ok: true },
+    { t: "action_result", taskId: "t1", action: "undrop", ok: false, message: "Undo isn't available." },
+    { t: "action_result", taskId: "nope", action: "merge", ok: false, message: "I can't find that task." },
+  ]);
+});
+
 test("a localhost Origin with a trailing slash is accepted; other sites are not", async () => {
   const core = boot();
   const ok = await fetch(`http://127.0.0.1:${core.port}/ws`, { headers: { Origin: `http://localhost:${core.port}/`, Upgrade: "websocket" } });

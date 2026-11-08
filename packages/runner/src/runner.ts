@@ -6,6 +6,7 @@ import { createOarHarnessPort } from "./oar.ts";
 import { cwdOf, planPlace, provisionPlace } from "./places.ts";
 import { browserSidecar, type BrowserOptions, type BrowserSidecar } from "./browser.ts";
 import { PREVIEW_MAX, preview } from "./normalize.ts";
+import { mergeTaskBranch, openDraftPr, type ActionResult } from "./integrate.ts";
 
 type HarnessId = SessionSpec["harness"];
 type From = NonNullable<Bodies["task_event"]["from"]>;
@@ -15,6 +16,7 @@ export interface RunnerOptions {
   harness?: HarnessPort; // default: OAR
   defaultHarness?: HarnessId;
   defaultModel?: string; // default env DUCTER_TASK_MODEL; else the harness default
+  gh?: string; // GitHub CLI binary (tests)
   isolateUserConfig?: boolean; // tasks keep the user's own harness setup by default (system.md)
   partnerName?: string; // default core.persona.name
   newId?: () => string;
@@ -30,6 +32,9 @@ export interface RunnerExt extends Runner {
   sessionId(taskId: string): string | undefined;
   /** Resume (or start) the session of a finished or dropped task and tell it to carry on. */
   reopen(taskId: string): Promise<{ delivered: Delivery }>;
+  undrop(taskId: string): Promise<ActionResult>;
+  merge(taskId: string): Promise<ActionResult>;
+  openPr(taskId: string): Promise<ActionResult>;
   /** Alias of dispose, called by main on shutdown. */
   stop(): Promise<void>;
   /** Close all sessions and stop listening. */
@@ -452,6 +457,46 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       await s?.close().catch(() => {});
       await t.sidecar?.close().catch(() => false);
       // The worktree and branch are kept on purpose.
+    },
+
+    async undrop(taskId) {
+      const t = get(taskId);
+      if (!t.dropped && currentAttention(t) !== "dropped") return { ok: true, message: "The task wasn't dropped." };
+      // What it was before the drop, from the Log (survives a restart).
+      const states = core.log.read({ stream: stream(taskId), kinds: ["task_state"], limit: 50_000 });
+      let before: Attention = "blocked";
+      for (let i = states.length - 1; i >= 0; i--) {
+        const a = (states[i]!.body as Bodies["task_state"]).attention;
+        if (a !== "dropped") {
+          before = a;
+          break;
+        }
+      }
+      t.dropped = false;
+      if (before === "working" || before === "queued") {
+        // It was mid-work; its session was closed by the drop, so carry on from where it was.
+        await runner.reopen(taskId);
+        return { ok: true, message: "Back, and carrying on." };
+      }
+      setState(t, before, "parked");
+      return { ok: true, message: "Back where it was." };
+    },
+
+    async merge(taskId) {
+      const t = get(taskId);
+      const card = core.tasks.get(taskId) ?? t.card;
+      const r = await mergeTaskBranch(card.place);
+      if (r.ok) logEvent(t, { role: "system", from: "runner", text: r.message, raw: { effect: "merge", ref: r.ref } });
+      return r;
+    },
+
+    async openPr(taskId) {
+      const t = get(taskId);
+      const card = core.tasks.get(taskId) ?? t.card;
+      const r = await openDraftPr(card.place, { gh: opts.gh });
+      // Pushing and opening a PR leave the user's machines: an outside effect (I-results "Outside").
+      if (r.ok) logEvent(t, { role: "system", from: "runner", text: r.message, raw: { effect: "outside", what: "draft_pr", ref: r.ref } });
+      return r;
     },
 
     whenStarted(taskId) {

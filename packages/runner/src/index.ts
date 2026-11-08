@@ -8,3 +8,4 @@ export { taskBrief, kickoff, NUDGE, REOPENED, RESUME_AFTER_RESTART } from "./bri
 export { planPlace, provisionPlace, slugify } from "./places.ts";
 export { browserSidecar, browserGate, browserBrief, detectCuaDriver, profileName, socketPath, BROWSER_MCP_NAME } from "./browser.ts";
 export type { BrowserOptions, BrowserSidecar, CuaDriverInfo } from "./browser.ts";
+export { mergeTaskBranch, openDraftPr, type ActionResult } from "./integrate.ts";

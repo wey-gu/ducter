@@ -91,6 +91,14 @@ export function registerTaskTools(core: CoreApi): void {
     async (args, ctx) => {
       if (!ctx.taskId) throw new Error("report_to_main requires a task token");
       const body = normalizeReport(ctx.taskId, args);
+      const open = core.tasks.get(ctx.taskId)?.pendingDecision;
+      if (open && body.state === "done") {
+        // Live (desktop run): a task reported done before the user answered its own question,
+        // so a later Go re-woke a finished task. Its question has to be answered first.
+        throw new Error(
+          `Your question "${open.question}" is still open: the user hasn't answered it. Don't report done yet. End your turn now; the answer will arrive as a message.`,
+        );
+      }
       const persona = core.tasks.get(ctx.taskId)?.persona;
       core.log.append({ persona, stream: `task:${ctx.taskId}`, origin: "task", kind: "report", body });
       const card = core.tasks.get(ctx.taskId);

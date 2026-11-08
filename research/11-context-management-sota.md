@@ -10,7 +10,7 @@ topic moves on. There are two candidate operations:
 Versions: Claude Code 2.1.319 (native binary; evidence comes from `strings` on the binary and from session JSONL on this
 machine), claude-agent-sdk-python @2209f2c, openai/codex @748ab55 (2026-11-08), pi-mono @e49b149 (2026-11-08),
 xai-org/grok-build @2bdd1d6 (== remote HEAD), openclaw @3a25991 (local copy from today; remote has moved one commit),
-deepseek-harness @fcc0ad4 (== remote HEAD). Repo root `R/` = `<scratch>`.
+deepseek-harness @fcc0ad4 (== remote HEAD). Repo root `R/` = `<scratch>/repos/`.
 I read code but ran none of it.
 
 Tags: **[V]** verified (I read the source, binary strings, or a local file), **[D]** documented (official docs; URL given),
@@ -59,7 +59,7 @@ and `06` (subagent handoff), and does not repeat them.
   needed"), `idleCompaction`, `CLAUDE_CODE_IDLE_COMPACT_MIN_TOKENS` [V binary strings; D code.claude.com/docs/en/model-config].
   Current models default to a 1M window. Haiku 5.5 "auto-compact[s] at about 967K tokens" [D]. A local main session
   compacted at `preTokens: 967182 → postTokens: 9832` and again at `968046 → 10489` [V
-  `~/.claude/projects/<project>/<session>.jsonl`].
+  `~/.claude/projects/<project>/<session>.jsonl:5894,12954`].
   *That trigger is far above Ducter's 128–256K budget. Ducter must set `CLAUDE_CODE_AUTO_COMPACT_WINDOW` per window.*
 - **What survives** [D code.claude.com/docs/en/context-window]: the system prompt and output style still apply. The
   project-root CLAUDE.md, auto memory, skill descriptions, the plan, and a fresh git snapshot are re-injected from disk.

@@ -1,7 +1,7 @@
 # 02 — How orchestration platforms build their core agent and wrap other harnesses
 
 Researched 2026-11-08. Sources are cloned shallow repos (read-only, not executed) under
-`<scratch>` (written `R/` below), plus official docs.
+`<scratch>/repos/<name>` (written `R/` below), plus official docs.
 **V** = verified from source or official docs. **I** = inferred.
 
 | Target | What it is | Source available? |

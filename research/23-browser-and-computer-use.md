@@ -9,7 +9,7 @@ Researched 2026-11-08 for D41 (computer use built on trycua/cua) and D42 (browse
 
 **Sources.**
 - Shallow clones, read-only and never executed, under
-  `<scratch>`
+  `<scratch>/repos/`
   (written `R/` below):
   - `cua` @ `da8e73b` (2026-11-08);
   - `playwright-mcp` @ `404be8e`;

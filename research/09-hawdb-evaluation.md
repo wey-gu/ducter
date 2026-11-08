@@ -6,7 +6,7 @@ persona, portable to Node/Bun + SQLite on a Linux box, see `04` §3) store its L
 
 Legend: **[V]** = verified by reading source/docs in this session (path:line). **[I]** = inferred / judgment.
 Clone (read-only, nothing built or run), HEAD `e3e7ef4` (2026-11-07):
-`<scratch>`
+`<scratch>/repos/hawdb-latest`
 (paths below are relative to that root).
 
 **TL;DR.** HawDB is a strong **embedded Rust** engine (graph + Postgres-dialect SQL + BM25/vector projections +

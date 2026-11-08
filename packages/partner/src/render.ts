@@ -74,6 +74,7 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
     }
     case "job_status": {
       const b = e.body as Bodies["job_status"];
+      if (e.origin === "user") return `[the user did this by button] task ${b.taskId}: ${b.text}`;
       return `[job ${b.jobId} ${b.state}] ${b.text}`;
     }
     case "ai_msg":
@@ -96,6 +97,7 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
     case "job_status": {
       const b = e.body as Bodies["job_status"];
       if (!b.taskId) return null;
+      if (e.origin === "user") return `[${t} the user, by button] task ${b.taskId}: ${clip(b.text, 160)}`;
       return `[${t} task ${b.taskId} ${b.state}] ${clip(b.text, 160)}`;
     }
     case "waiter": {

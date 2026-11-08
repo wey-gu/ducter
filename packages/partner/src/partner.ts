@@ -347,8 +347,15 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     return true;
   }
 
+  const userActions: LogEvent[] = [];
+  core.log.subscribe((e) => {
+    if (e.stream === "channel" && e.kind === "job_status" && e.origin === "user") userActions.push(e);
+  });
+
   function buildInput(batch: LogEvent[], fresh: boolean): string {
-    const deltas = batch.map((e) => renderTrigger(e, ctx));
+    // Things the user did by button since our last turn (merge, open PR): context, not triggers.
+    const noted = fresh ? [] : userActions.splice(0);
+    const deltas = [...noted.map((e) => renderTrigger(e, ctx)), ...batch.map((e) => renderTrigger(e, ctx))];
     // The identity may say the user prefers Chinese; the language of this message wins.
     const lastUser = [...batch].reverse().find((e) => e.kind === "user_msg");
     if (lastUser && !isChinese((lastUser.body as Bodies["user_msg"]).text)) {

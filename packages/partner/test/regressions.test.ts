@@ -187,6 +187,16 @@ describe("live-run regressions", () => {
     expect(fc.events.filter((e) => e.kind === "ai_msg").map((e) => (e.body as any).text)).toEqual(["我给 slugify 加上可选的分隔符参数。"]);
   });
 
+  test("a merge the user did by button reaches the partner's next turn", async () => {
+    const { fc, fr, partner, user } = setup(ok);
+    user("hi");
+    await partner.idle();
+    fc.core.log.append({ stream: "channel", origin: "user", kind: "job_status", body: { jobId: "act_t1_merge", taskId: "t1", state: "done", text: "the user merged this task's branch into its base branch (e336541)" } });
+    user("main 上测试过了吗");
+    await partner.idle();
+    expect(fr.sessions[0]!.inputs.at(-1)).toContain("[the user did this by button] task t1: the user merged");
+  });
+
   test("prewarm off: no session until the first trigger", async () => {
     const { fr, partner, user } = setup(ok, { prewarm: false });
     await Bun.sleep(5);

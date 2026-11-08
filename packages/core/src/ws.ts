@@ -95,6 +95,11 @@ export function createWsHandler(deps: WsDeps) {
         return;
       }
       case "task_action": {
+        // What the user did by button is part of the conversation: the partner must know it
+        // (live: after a Merge click it told the user "I didn't merge this; check who did").
+        // Logged as a user-origin job_status on the channel; it does not wake the partner.
+        const noteUserAction = (taskId: string, text: string) =>
+          log.append({ stream: "channel", origin: "user", kind: "job_status", body: { jobId: `act_${taskId}_${f.action}`, taskId, state: "done", text } });
         // Every task_action is acked with action_result (ok or a user-facing reason).
         const result = (ok: boolean, message?: string, ref?: string) =>
           send(ws, { t: "action_result", taskId: f.taskId, action: f.action, ok, ...(message ? { message } : {}), ...(ref ? { ref } : {}) });
@@ -132,11 +137,13 @@ export function createWsHandler(deps: WsDeps) {
             case "merge": {
               if (!r?.merge) return result(false, "Merging isn't available.");
               const m = await r.merge(f.taskId);
+              if (m.ok) noteUserAction(f.taskId, `the user merged this task's branch into its base branch${m.ref ? ` (${m.ref.slice(0, 7)})` : ""}`);
               return result(m.ok, m.message, m.ref);
             }
             case "open_pr": {
               if (!r?.openPr) return result(false, "Opening a PR isn't available.");
               const o = await r.openPr(f.taskId);
+              if (o.ok) noteUserAction(f.taskId, `the user opened a draft PR for this task${o.ref ? `: ${o.ref}` : ""}`);
               return result(o.ok, o.message, o.ref);
             }
             default:

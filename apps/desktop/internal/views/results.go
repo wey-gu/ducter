@@ -142,13 +142,19 @@ func (a *App) resultActions(c *ui.Context, task *store.Task) {
 		base = "main"
 	}
 	ui.Row(c.Key("actions:" + task.ID)).Gap(8).Wrap().AlignItems(ui.Center).Children(func() {
+		ask := func(text string) {
+			a.SendMessage(text)
+			if a.Route != RouteConversation {
+				c.Toast(a.L.T("result.asked", a.S.PersonaName))
+			}
+		}
 		if a.button(c, a.L.T("result.merge", base), btnPrimary, 38, t.Surface) {
-			a.SendMessage(a.L.T("result.ask.merge", task.Title(), base))
+			ask(a.L.T("result.ask.merge", task.Title(), base))
 		}
 		if a.button(c, a.L.T("result.pr"), btnQuiet, 38, t.Surface) {
-			a.SendMessage(a.L.T("result.ask.pr", task.Title()))
+			ask(a.L.T("result.ask.pr", task.Title()))
 		}
-		if a.button(c, a.L.T("result.changes"), btnText, 38, t.Surface) {
+		if a.Route != RouteTask && a.button(c, a.L.T("result.changes"), btnText, 38, t.Surface) {
 			a.OpenTask(task.ID)
 		}
 	})

@@ -25,6 +25,8 @@ func (a *App) task(c *ui.Context) {
 		a.taskHeader(c, task)
 		if d := a.S.PendingDecision(task.ID); d != nil {
 			a.decisionBanner(c, d)
+		} else if finished(task) {
+			a.resultBanner(c, task)
 		}
 		ui.Row(c).Grow(1).Gap(14).AlignItems(ui.Stretch).MinHeight(0).Children(func() {
 			a.transcript(c, task)
@@ -105,6 +107,27 @@ func (a *App) taskActions(c *ui.Context, task *store.Task) {
 		c.AddToast(ui.Toast{ID: "undo:" + task.ID, Title: a.L.T("undo.dropped", title), Timeout: UndoWindow,
 			Action: a.L.T("undo.action"), OnAction: a.UndoDrop})
 	}
+}
+
+// resultBanner tops a finished task: its result's first line, its
+// Outside line, and what to do with it next.
+func (a *App) resultBanner(c *ui.Context, task *store.Task) {
+	t := a.T
+	sc := t.Done
+	if task.Attention() == protocol.Failed {
+		sc = t.Failed
+	}
+	ui.Row(c.Key("result-banner")).Gap(14).Wrap().AlignItems(ui.Center).Padding(12, 14, 12, 20).Radius(20).Background(sc.Surface).Children(func() {
+		ui.Column(c).Grow(1).Basis(320).MinWidth(0).Gap(3).Children(func() {
+			if rep := task.Report(); rep != nil {
+				ui.Text(c, summaryLine(rep.Summary)).FontSize(t.MD).FontWeight(700).TextColor(sc.Ink).MaxLines(2).Tooltip(rep.Summary)
+			}
+			if line := a.outsideLine(task); line != "" {
+				ui.Text(c, a.L.T("outside.title")+" · "+line).FontSize(t.SM).TextColor(t.InkSoft).MaxLines(2)
+			}
+		})
+		a.resultActions(c, task)
+	})
 }
 
 func (a *App) decisionBanner(c *ui.Context, d *store.DecisionState) {

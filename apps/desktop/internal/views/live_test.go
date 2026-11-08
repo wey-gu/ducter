@@ -149,19 +149,20 @@ func TestLiveBackend(t *testing.T) {
 	if os.Getenv("DUCTER_LIVE_NOGO") != "" {
 		return
 	}
-	// Talk to the task directly; the server acks with "sent" (v2), or not.
-	h.app.SendToTask(d.TaskID, liveSendText(lang))
-	deadline := time.Now().Add(20 * time.Second)
-	h.wait = 25 * time.Second
-	h.until("delivery", func() bool {
+	if os.Getenv("DUCTER_LIVE_NOSEND") == "" {
+		// Talk to the task directly; the server acks with "sent" (v2), or not.
+		h.app.SendToTask(d.TaskID, liveSendText(lang))
+		deadline := time.Now().Add(20 * time.Second)
+		h.wait = 25 * time.Second
+		h.until("delivery", func() bool {
+			sd := s.Task(d.TaskID).Sends[0]
+			return sd.Delivered != "" || sd.Failed != "" || time.Now().After(deadline)
+		})
 		sd := s.Task(d.TaskID).Sends[0]
-		return sd.Delivered != "" || sd.Failed != "" || time.Now().After(deadline)
-	})
-	sd := s.Task(d.TaskID).Sends[0]
-	t.Logf("direct send: delivered=%q failed=%q echoed seq=%d", sd.Delivered, sd.Failed, sd.Seq)
-	h.shot(prefix + "-task-sent")
-	h.wait = long
-
+		t.Logf("direct send: delivered=%q failed=%q echoed seq=%d", sd.Delivered, sd.Failed, sd.Seq)
+		h.shot(prefix + "-task-sent")
+		h.wait = long
+	}
 	// Go.
 	goText := h.app.L.T("decision.go")
 	if d.GoLabel != "" {

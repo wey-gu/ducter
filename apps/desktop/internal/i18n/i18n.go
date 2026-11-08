@@ -22,6 +22,7 @@ const (
 type Table map[string]string
 
 var zh = Table{
+	"result.asked":                  "已经跟 %s 说了",
 	"task.dossier.body":             "谁在做",
 	"task.dossier.reason":           "为什么是它",
 	"task.dossier.body.none":        "还没有用量",
@@ -189,6 +190,7 @@ var zh = Table{
 }
 
 var en = Table{
+	"result.asked":                  "Told %s",
 	"task.dossier.body":             "Who's doing it",
 	"task.dossier.reason":           "Why this one",
 	"task.dossier.body.none":        "No usage yet",

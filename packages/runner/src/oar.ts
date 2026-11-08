@@ -65,7 +65,11 @@ export function createOarHarnessPort(opts: OarPortOptions = {}): HarnessPort {
         appendSystemPrompt: spec.appendSystemPrompt,
         // D16 bypass: OAR launches claude with --dangerously-skip-permissions and codex with
         // approvalPolicy "never" + danger-full-access by default, so no extra option is needed.
-        mcpServers: spec.mcp.map((m): McpServer => ({ name: m.name, type: "http", url: m.url, headers: m.headers })),
+        mcpServers: spec.mcp.map((m): McpServer =>
+          "command" in m
+            ? { name: m.name, command: m.command, ...(m.args ? { args: m.args } : {}), ...(m.env ? { env: m.env } : {}) }
+            : { name: m.name, type: "http", url: m.url, headers: m.headers },
+        ),
         disallowedTools: DISALLOWED[spec.harness],
         resume: spec.resumeSessionId,
         env: opts.env,

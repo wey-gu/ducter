@@ -2,6 +2,7 @@
 //   repo   -> git worktree at <dataDir>/worktrees/<taskId> on branch ducter/<slug>
 //   folder -> the folder as given
 //   none   -> scratch dir <dataDir>/scratch/<taskId>
+//   browser-> scratch dir too; the browser is a cua-driver MCP sidecar (browser.ts)
 import { mkdirSync, existsSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
@@ -65,14 +66,15 @@ export async function planPlace(place: Place | undefined, taskId: string, title:
       return { place: { ...p, repoPath, worktree, branch, baseBranch }, cwd: worktree };
     }
     case "browser":
-      throw new Error("browser places are not supported by the runner yet (W5)");
+      // The browser itself is a sidecar (browser.ts); the task also gets a scratch dir.
+      return { place: { ...p, device: p.device || "local", profile: p.profile || "default" }, cwd: join(dataDir, "scratch", taskId) };
   }
 }
 
 /** Create the directory / worktree. Throws with git's message on failure. */
 export async function provisionPlace(r: ResolvedPlace): Promise<void> {
   const p = r.place;
-  if (p.kind === "none") {
+  if (p.kind === "none" || p.kind === "browser") {
     mkdirSync(r.cwd, { recursive: true });
     return;
   }

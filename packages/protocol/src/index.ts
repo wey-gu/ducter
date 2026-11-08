@@ -1,0 +1,165 @@
+// Ducter protocol: the single contract shared by core, runner, partner, and clients.
+// Changes here go through the lead. The Go client mirrors these types in
+// apps/desktop/internal/protocol (keep field names identical; JSON is the wire format).
+
+// ---------- States (docs/design/focus-window-states.md) ----------
+
+export type Attention =
+  | "queued"
+  | "working"
+  | "needs_you"
+  | "blocked" // shown to users as "Waiting"
+  | "done_claimed" // "Done · checking"
+  | "done"
+  | "failed"
+  | "dropped"
+  | "superseded";
+
+export type Residency = "provisioning" | "hot" | "warm" | "parked" | "archived" | "offline";
+
+// ---------- Places (docs/design/product-model.md §3) ----------
+
+export type Place =
+  | { kind: "none" }
+  | { kind: "repo"; device: string; repoPath: string; worktree?: string; branch?: string; baseBranch?: string }
+  | { kind: "folder"; device: string; path: string }
+  | { kind: "browser"; device: string; profile: string };
+
+// ---------- Log events ----------
+
+export type Origin = "user" | "partner" | "task" | "system" | "waiter" | "schedule";
+
+export interface EvidenceRef {
+  kind: "ci" | "diff" | "file" | "url" | "log" | "test";
+  label: string;
+  ref: string;
+}
+
+export interface Question {
+  id: string;
+  text: string;
+  blocking: boolean;
+  default?: string; // the action taken if the user doesn't answer
+  reversible: boolean; // a default applies on its own only if reversible
+}
+
+export interface Bodies {
+  user_msg: { text: string; clientId?: string };
+  ai_msg: { text: string; replyTo?: number };
+  ack: { jobId: string; text: string; replyTo: number }; // names the action, never the outcome
+  job_status: { jobId: string; text: string; state: "running" | "done" | "failed"; taskId?: string };
+  living_msg: { items: LivingItem[] }; // supersedes the previous living_msg while unread
+  decision: {
+    decisionId: string;
+    taskId: string;
+    question: string;
+    goLabel: string; // e.g. "Rebase"; the UI shows "好，<goLabel>" / "Go: <goLabel>"
+    defaultOption: "go" | "hold";
+    defaultAt?: string; // ISO time the default applies (only if reversible)
+    reversible: boolean;
+  };
+  decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default" };
+  read_receipt: { upToSeq: number };
+  task_open: {
+    taskId: string;
+    title: string;
+    project: string; // "" = Loose
+    place: Place;
+    harness: string; // "claude-code" | "codex" | "pi"
+    model?: string;
+    brief: string;
+    bodyReason?: string; // why this harness/model
+  };
+  task_state: { taskId: string; attention: Attention; residency: Residency; reason?: string };
+  task_event: { taskId: string; role: "assistant" | "user" | "tool" | "system"; text?: string; tool?: { name: string; input?: unknown; output?: string; ok?: boolean }; raw?: unknown };
+  report: {
+    taskId: string;
+    state: "progress" | "needs_input" | "blocked" | "done" | "failed";
+    summary: string; // ≤ 600 chars
+    questions: Question[];
+    evidence: EvidenceRef[];
+  };
+  checkpoint: { taskId: string; text: string; gitRef?: string };
+}
+
+export type EventKind = keyof Bodies;
+
+export interface LogEvent<K extends EventKind = EventKind> {
+  seq: number; // gapless, assigned by the Log
+  ts: string; // ISO
+  persona: string;
+  stream: string; // "channel" | `task:${taskId}`
+  origin: Origin;
+  kind: K;
+  body: Bodies[K];
+  supersedes?: number; // seq this event replaces (living_msg revisions)
+}
+
+export interface LivingItem {
+  taskId: string;
+  kind: "decision" | "blocked" | "done" | "progress" | "failed";
+  title: string;
+  text: string;
+  decisionId?: string;
+  evidence?: EvidenceRef[];
+}
+
+// ---------- On hand snapshot ----------
+
+export interface TaskCard {
+  taskId: string;
+  persona: string;
+  title: string;
+  project: string;
+  place: Place;
+  harness: string;
+  model?: string;
+  bodyReason?: string;
+  attention: Attention;
+  residency: Residency;
+  reason?: string;
+  lastReport?: Bodies["report"];
+  pendingDecisionId?: string;
+  updatedAt: string;
+}
+
+export interface OnHand {
+  tasks: TaskCard[];
+  counts: Record<"needs_you" | "working" | "waiting" | "done_today", number>;
+}
+
+// ---------- Client <-> main process WebSocket (ws://127.0.0.1:7777/ws) ----------
+
+export type ClientFrame =
+  | { t: "hello"; persona?: string; cursor?: number; locale?: "zh" | "en" }
+  | { t: "send"; text: string; clientId: string }
+  | { t: "decide"; decisionId: string; option: "go" | "hold" | "reply"; text?: string }
+  | { t: "task_send"; taskId: string; text: string }
+  | { t: "task_action"; taskId: string; action: "interrupt" | "drop" | "reopen" }
+  | { t: "read"; upToSeq: number }
+  | { t: "task_history"; taskId: string; beforeSeq?: number; limit?: number };
+
+export type ServerFrame =
+  | { t: "welcome"; persona: string; personaName: string; headSeq: number }
+  | { t: "events"; events: LogEvent[] }
+  | { t: "on_hand"; onHand: OnHand }
+  | { t: "task_history"; taskId: string; events: LogEvent[] }
+  | { t: "error"; message: string };
+
+// ---------- Ducter MCP tools (HTTP MCP served by core at /mcp, role-scoped by token) ----------
+// role "partner": task_open, task_send, task_read, log_search, log_read, wait_until, reply
+// role "task:<id>": report_to_main, log_search, log_read, checkpoint
+
+export interface ToolArgs {
+  task_open: { title: string; brief: string; place?: Place; project?: string; harness?: string; model?: string };
+  task_send: { taskId: string; text: string; mode?: "steer" | "queue" };
+  task_read: { taskId: string; level?: "card" | "report" | "transcript"; limit?: number };
+  log_search: { query: string; stream?: string; limit?: number };
+  log_read: { stream: string; fromSeq?: number; limit?: number };
+  wait_until: { taskId?: string; at?: string; reason: string };
+  reply: { text: string };
+  report_to_main: Bodies["report"] extends infer R ? Omit<R & object, "taskId"> : never;
+  checkpoint: { text: string };
+}
+
+export const PROTOCOL_VERSION = 1;

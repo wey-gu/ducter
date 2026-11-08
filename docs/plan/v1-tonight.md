@@ -26,9 +26,20 @@
   SQLite (`bun:sqlite`) for the Log, behind the append-log port.
 - **Main AI:** Claude Code via OAR. Ducter's MCP tool server is injected; the system prompt is
   the Ducter persona; projection is simplified for tonight (below).
-- **Client:** MyGo native UI (Go) talking to the main process over one WebSocket protocol,
-  using Pebble tokens. *Decision pending: web via the same MyGo UI compiled to WASM, or a thin
-  web client later.*
+- **Client:** MyGo native UI (Go) on macOS, over one WebSocket protocol, using Pebble tokens.
+  - Build from MyGo's own examples and packages: `ui/markdown`, `ui/richtext` (IME),
+    `ui/editor` (diff view + git diff), `motion`, `svg`, virtual lists, plus the
+    `examples/markdown-chat`, `terminal`, `code-editor`, and `timeline` examples.
+  - an open-source agent app's desktop is a MyGo-native agent app and serves as a **design reference
+    only**: it is GPL-3.0, so no code is copied.
+  - Web via MyGo WASM comes later.
+- **Repo:** private `wey-gu/ducter` (public once ready).
+- **Wiring:** one Bun process (`bun run up`) holds core, runner, and partner in-process;
+  remote runners come later.
+  - The contract is `packages/protocol/src/index.ts` (wire) and `internal.ts` (module
+    boundaries).
+  - The main process listens on `127.0.0.1:7777`: `/ws` for clients, `/mcp` for Ducter tools
+    (role-scoped tokens).
 - **Memory:** Nowledge Mem via the `nmem` CLI: L1 identity read at start, Working Memory as a
   delta.
 

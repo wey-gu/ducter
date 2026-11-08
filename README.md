@@ -34,9 +34,42 @@ Your partner replies, opens a task for the work, and comes back
 when it's done or when it needs you. `ducter status` shows the same from a terminal.
 
 `install.sh` never edits your shell profile. If `~/.local/bin` isn't on your `PATH`, it prints the
-line to add. To share Ducter with a friend on another Mac, run `scripts/install.sh --bundle
-ducter-bundle` and hand them the folder; on their Mac, `sh install.sh` installs it with no build
-tools.
+line to add.
+
+## Give Ducter to a friend
+
+**On your Mac** (needs Bun, and Go for the desktop app):
+
+```sh
+scripts/install.sh --bundle ~/Desktop/ducter-for-anna
+```
+
+You get one folder: `ducter`, `ducter-desktop`, `install.sh`, and a two-language `README.txt`.
+Send it any way you like (AirDrop, a zip, a USB stick).
+
+**On their Mac** (no build tools; they need Claude Code or Codex signed in):
+
+1. In Terminal, type `sh ` (with the space), drag `install.sh` from the folder into the window,
+   press Return. It puts two files in `~/.local/bin`, clears the download quarantine flag on
+   those two only, and prints one next step.
+2. Run that step: `ducter up` (or its full path, if `~/.local/bin` isn't on `PATH` yet).
+
+**What they see in the first five minutes**
+
+| When | What happens |
+|---|---|
+| 0:00 | `install.sh` says "Ducter is installed" and prints the one command to run next |
+| 0:10 | First `ducter up`: a quick check of the Mac. Ready → one line ("This Mac is ready: Claude Code, Codex"). Not ready → only what blocks, each with the one command that fixes it |
+| 0:15 | One optional question: "What should I be called? (Enter keeps Ducter)". Skipped when Nowledge Mem is connected, since the identity there has a name |
+| 0:25 | The banner: where Ducter lives (this Mac, data in `~/.ducter`), memory, the desktop window, and how to connect another device later (`ducter pair`) |
+| 0:30 | The desktop opens on a greeting by name, in their language, with three starters about *their* Mac: the git repos they touched most recently under `~/dev`, `~/code`, `~/src`, `~/Projects`, `~/work` (names only; nothing inside is opened). No repos → everyday starters |
+| 1:00 | They tap a starter (it fills the box; it never sends by itself) and press Return. The partner says what it's starting (3–19 s in our two runs) and opens a task |
+| ~2:00 | The task comes back done (46–52 s after sending, for "fix the failing tests" in a small repo). The first time ever, a single line with the clay character: "Your first task is done. Everything I finish comes back to you like this, with proof." Then the partner's own short result with evidence (about a minute), and Merge / Draft PR / See changes |
+
+To start over as a brand-new user, stop Ducter and remove `~/.ducter` (or use a fresh
+`--data-dir`). Ducter's files there: `ducter.db` (the Log), `ducter.log` (its own log lines),
+`persona.json` (the name they chose), `firstrun.json` (the repo names for the starters),
+`desktop.json` (whether the first result was celebrated).
 
 | Command | What it does |
 |---|---|

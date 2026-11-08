@@ -39,6 +39,8 @@ export interface Check {
   required: boolean;
   detail: string;
   fix?: string; // one shell command, or a URL
+  /** Nothing to say to a person (Bun built into the binary): left out of the printed report. */
+  quiet?: boolean;
 }
 
 export interface DoctorReport {
@@ -145,7 +147,7 @@ export async function runDoctor(host: Host, t: T, opts: DoctorOptions): Promise<
   ]);
 
   let bun: Check;
-  if (host.compiled) bun = c("bun", "check.bun", "ok", true, "check.bun.builtin", { version: `bun ${host.bunVersion}` });
+  if (host.compiled) bun = { ...c("bun", "check.bun", "ok", true, "check.bun.builtin", { version: `bun ${host.bunVersion}` }), quiet: true };
   else if (!versionAtLeast(host.bunVersion, MIN_BUN)) bun = c("bun", "check.bun", "missing", true, "check.bun.old", { version: host.bunVersion, min: MIN_BUN }, FIX.bun);
   else bun = c("bun", "check.bun", "ok", true, "check.bun.ok", { version: host.bunVersion });
 
@@ -170,7 +172,7 @@ export async function runDoctor(host: Host, t: T, opts: DoctorOptions): Promise<
         : c("port", "check.port", "missing", true, "check.port.busy", { port: opts.port }, FIX.port(opts.port));
 
   const dataCheck = host.writable(opts.dataDir)
-    ? c("data", "check.data", "ok", true, "check.data.ok", { dir: opts.dataDir })
+    ? c("data", "check.data", "ok", true, "check.data.ok", { dir: tildePath(opts.dataDir) })
     : c("data", "check.data", "missing", true, "check.data.bad", { dir: opts.dataDir }, FIX.data(opts.dataDir));
 
   const checks = [bun, git, claudeCheck, codexCheck, nmem, cua, portCheck, dataCheck];
@@ -223,22 +225,61 @@ export function width(s: string): number {
 const pad = (s: string, w: number) => s + " ".repeat(Math.max(0, w - width(s)));
 
 export function formatReport(r: DoctorReport, t: T, style: Style = plainStyle, opts: { closing?: boolean } = {}): string {
-  const labelW = Math.max(...r.checks.map((k) => width(k.label))) + 2;
+  const shown = r.checks.filter((k) => !k.quiet);
+  const labelW = Math.max(...shown.map((k) => width(k.label))) + 2;
   const server = r.checks.some((k) => k.id === "service");
   const lines = [style.bold(t(server ? "doctor.title.server" : "doctor.title")), ""];
-  for (const k of r.checks) {
+  for (const k of shown) {
     const mark = k.status === "ok" ? style.ok("✓") : k.required ? style.bad("✗") : style.dim("·");
-    const tag = k.status !== "ok" && !k.required ? style.dim(`  (${t("doctor.optional")})`) : "";
+    const tag = k.status !== "ok" && !k.required ? style.dim(` ${t("doctor.optional")}`) : "";
     lines.push(`  ${mark} ${pad(k.label, labelW)}${k.detail}${tag}`);
-    if (k.fix) lines.push(`    ${" ".repeat(labelW)}${style.dim(t("doctor.fix"))} ${k.fix}`);
+    if (k.fix) lines.push(`    ${" ".repeat(labelW)}${style.dim(t("doctor.fix"))}${k.fix}`);
   }
   lines.push("");
   if (!r.harnessReady) lines.push(t("check.harness.none"));
   const missing = r.checks.filter((k) => k.required && k.status !== "ok").length;
-  if (missing) lines.push(t("doctor.needsFix", { n: missing }));
+  if (missing) lines.push(t(missing === 1 ? "doctor.needsFix.one" : "doctor.needsFix", { n: missing }));
   else if (opts.closing !== false) lines.push(t("doctor.allGood"));
   if (r.checks.some((k) => !k.required && k.status !== "ok")) lines.push(style.dim(t("doctor.optionalNote")));
   return lines.join("\n");
+}
+
+/**
+ * The first `ducter up` on a Mac that's ready: one line of what was found, one dim line per
+ * optional thing that's missing. The full table stays in `ducter doctor`.
+ */
+export function formatSummary(r: DoctorReport, t: T, style: Style = plainStyle): string {
+  const found = r.checks.filter((k) => k.status === "ok" && ["claude", "codex", "nmem", "cua"].includes(k.id)).map((k) => k.label);
+  const lines = [`  ${style.ok("✓")} ${t("summary.ready", { found: found.join(t("summary.sep")) })}`];
+  for (const k of r.checks) {
+    if (k.required || k.status === "ok" || k.id === "port") continue;
+    lines.push(style.dim(`    · ${t("summary.item", { label: k.label, detail: k.detail })}`));
+  }
+  if (lines.length > 1) lines.push(style.dim(`      ${t("summary.more")}`));
+  return lines.join("\n");
+}
+
+/**
+ * The first `ducter up` on a Mac that isn't ready: only what blocks, each with its one fix.
+ * Optional things fold into one line; the caller adds the closing step.
+ */
+export function formatBlocked(r: DoctorReport, t: T, style: Style = plainStyle): string {
+  const blocking = r.checks.filter((k) => k.required && k.status !== "ok");
+  const labelW = Math.max(...blocking.map((k) => width(k.label))) + 2;
+  const lines: string[] = [];
+  for (const k of blocking) {
+    lines.push(`  ${style.bad("✗")} ${pad(k.label, labelW)}${k.detail}`);
+    if (k.fix) lines.push(`    ${" ".repeat(labelW)}${style.dim(t("doctor.fix"))}${style.bold(k.fix)}`);
+  }
+  if (!r.harnessReady) lines.push("", `  ${t("check.harness.none")}`);
+  const optional = r.checks.filter((k) => !k.required && k.status !== "ok" && k.id !== "port");
+  if (optional.length) lines.push("", style.dim(`  ${t("up.optionalLater", { n: optional.length, names: optional.map((k) => k.label).join(t("summary.sep")) })}`));
+  return lines.join("\n");
+}
+
+/** ~/… for a path under the home folder: shorter, and it doesn't print the user's name. */
+export function tildePath(p: string, home = process.env.HOME || ""): string {
+  return home && (p === home || p.startsWith(home + "/")) ? "~" + p.slice(home.length) : p;
 }
 
 // ---------- The real machine ----------

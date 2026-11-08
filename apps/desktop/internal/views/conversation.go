@@ -1,7 +1,6 @@
 package views
 
 import (
-	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -47,6 +46,14 @@ func (a *App) rows() []row {
 				if t := a.S.Task(id); t != nil && finished(t) {
 					a.resultShown[id] = true
 				}
+			}
+		}
+	}
+	a.livingNewest = map[string]int64{}
+	for _, r := range rows {
+		if e := r.entry; e.Living != nil {
+			for _, it := range e.Living.Items {
+				a.livingNewest[livingKey(it)] = max(a.livingNewest[livingKey(it)], e.FirstSeq)
 			}
 		}
 	}
@@ -116,6 +123,7 @@ func (a *App) conversation(c *ui.Context) {
 			a.emptyConversation(c)
 		}
 	})
+	a.firstResultLine(c)
 	a.composer(c)
 	a.readWhenSeen(c)
 }
@@ -132,8 +140,8 @@ func (a *App) emptyConversation(c *ui.Context) {
 		ui.Text(c, a.L.T("empty.conversation")).FontSize(t.LG).TextAlign(ui.Center).TextColor(t.InkSoft).LineHeight(1.6)
 		ui.Column(c).Gap(10).Margin(14, 0, 0, 0).AlignItems(ui.Stretch).Width(460).MaxWidthPercent(100).Children(func() {
 			ui.Text(c, a.L.T("empty.try")).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted).LetterSpacing(0.5)
-			for i := 1; i <= 3; i++ {
-				text := a.L.T(fmt.Sprintf("suggest.%d", i))
+			for n, text := range a.suggestions() {
+				i := n + 1
 				chip := ui.Row(c.Key(i)).Gap(12).Padding(13, 16).Radius(t.RadiusSM).Background(t.Surface).AlignItems(ui.Center).
 					Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(text)
 				a.press(c, chip, t.PressCard)
@@ -143,7 +151,11 @@ func (a *App) emptyConversation(c *ui.Context) {
 				})
 				if chip.Clicked() {
 					a.draft = text
+					a.focusComposer = true
 				}
+			}
+			if n := a.Local.RepoCount(); n > 0 {
+				ui.Text(c, a.L.T("empty.repos.note", n)).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.5).Margin(4, 2, 0, 2)
 			}
 		})
 	})
@@ -291,10 +303,11 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 	case e.Decision != nil:
 		if d := a.S.Decisions[e.Decision.DecisionID]; d != nil {
 			ui.Column(c).Padding(18).Gap(10).Radius(22).Background(t.NeedsYou.Surface).Children(func() {
-				if d.TaskID == "" {
-					// The partner's own ask, before any task.
-					ui.Text(c, a.L.T("living.needsyou", 1)).FontSize(t.XS).FontWeight(800).TextColor(t.NeedsYou.Ink).LetterSpacing(0.5)
+				head := a.stateLabel(protocol.NeedsYou)
+				if task := a.S.Task(d.TaskID); task != nil && task.Title() != "" {
+					head += " · " + task.Title()
 				}
+				ui.Text(c, head).FontSize(t.XS).FontWeight(800).TextColor(t.NeedsYou.Ink).LetterSpacing(0.5)
 				a.decisionBody(c, d, "")
 			})
 		}
@@ -381,10 +394,17 @@ func (a *App) livingItems(e *store.Entry) []protocol.LivingItem {
 		if (it.Kind == "done" || it.Kind == "failed") && a.resultShown[it.TaskID] {
 			continue
 		}
+		// A read living message is frozen and the next one repeats what
+		// still stands: say each line once, in the newest message.
+		if it.Kind != "decision" && a.livingNewest[livingKey(it)] > e.FirstSeq {
+			continue
+		}
 		out = append(out, it)
 	}
 	return out
 }
+
+func livingKey(it protocol.LivingItem) string { return it.TaskID + "|" + it.Kind + "|" + it.Text }
 
 func (a *App) living(c *ui.Context, e *store.Entry) {
 	t := a.T

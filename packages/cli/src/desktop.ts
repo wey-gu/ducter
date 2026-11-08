@@ -63,7 +63,8 @@ export async function launchDesktop(plan: DesktopPlan, opts: { port: number; dat
   } else bin = plan.path;
   try {
     const proc = Bun.spawn([bin], {
-      env: { ...process.env, DUCTER_PORT: String(opts.port) },
+      // The client reads first-run hints and the partner's name from the data folder.
+      env: { ...process.env, DUCTER_PORT: String(opts.port), DUCTER_DATA_DIR: opts.dataDir },
       stdout: logFd,
       stderr: logFd,
       stdin: "ignore",

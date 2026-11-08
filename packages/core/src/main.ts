@@ -119,12 +119,14 @@ export async function main(mods: BootModules = {}) {
     stopping = true;
     console.log(`[ducter] ${sig}: shutting down`);
     const force = setTimeout(() => process.exit(1), 5000);
-    for (const part of [partner, runner] as any[]) {
+    for (const [label, part] of [["partner", partner], ["runner", runner]] as [string, any][]) {
+      const t0 = Date.now();
       try {
         await part?.stop?.();
       } catch (err) {
         console.warn("[ducter] stop failed:", err);
       }
+      console.log(`[ducter] ${label} stopped in ${Date.now() - t0} ms`);
     }
     await core.stop();
     clearTimeout(force);

@@ -13,6 +13,7 @@ import (
 	"github.com/egoist/mygo/ui/markdown"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/client"
+	"github.com/wey-gu/ducter/apps/desktop/internal/hints"
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
@@ -47,6 +48,9 @@ type App struct {
 	Win Updater
 	// Now is the clock, time.Now unless a test sets it.
 	Now func() time.Time
+	// Local is what the client knows about this Mac (first-run hints,
+	// whether the first result was celebrated); in memory unless set.
+	Local *hints.Local
 
 	Status    client.Status
 	StatusErr string
@@ -88,6 +92,10 @@ type App struct {
 	// conversation first showed something unread to the user.
 	readSent int64
 	unreadAt time.Time
+	// sideTab is the narrow task view's tab: "changes" or "details".
+	sideTab string
+	// livingNewest is, per living line, the newest living message with it.
+	livingNewest map[string]int64
 	// resultShown marks the tasks whose result the partner gave.
 	resultShown map[string]bool
 	// livingAway remembers, per living message, whether it came while
@@ -103,6 +111,10 @@ type App struct {
 	doneAt time.Time
 	// historyAsked marks the tasks whose stream was asked for.
 	historyAsked map[string]bool
+	// outbox holds what the user sent before the server was there.
+	outbox []any
+	// firstDone is the first result ever on this Mac, while it's shown.
+	firstDone *firstResult
 	// held is a message held back because it looks like a key.
 	held *heldSend
 	// dropped is the task just dropped, undoable until undoUntil.
@@ -122,6 +134,7 @@ func New(s *store.Store, t *theme.Tokens, l *i18n.Strings) *App {
 	return &App{
 		S: s, T: t, L: l,
 		Now:          time.Now,
+		Local:        hints.Open(""),
 		Status:       client.Connecting,
 		taskDrafts:   map[string]string{},
 		replyOpen:    map[string]bool{},
@@ -137,8 +150,32 @@ func (a *App) send(frame any) {
 	if a.Send == nil {
 		return
 	}
+	// What the user said or chose is never dropped: until the server has
+	// said welcome (just launched, or reconnecting), it waits in the
+	// outbox and goes out right after the welcome.
+	keep := false
+	switch frame.(type) {
+	case protocol.Send, protocol.TaskSend, protocol.Decide, protocol.TaskAction:
+		keep = true
+	}
+	if keep && (!a.S.Welcomed || a.Status != client.Connected) {
+		a.outbox = append(a.outbox, frame)
+		return
+	}
 	if err := a.Send(frame); err != nil {
 		a.StatusErr = err.Error()
+		if keep {
+			a.outbox = append(a.outbox, frame)
+		}
+	}
+}
+
+// flushOutbox sends what waited for the connection, in order.
+func (a *App) flushOutbox() {
+	out := a.outbox
+	a.outbox = nil
+	for _, f := range out {
+		a.send(f)
 	}
 }
 
@@ -390,6 +427,8 @@ func (a *App) readWhenSeen(c *ui.Context) {
 func (a *App) Welcomed() {
 	a.Failed = false
 	a.readSent = 0
+	a.Status = client.Connected // a welcome means the socket is up
+	a.flushOutbox()
 	if a.Route == RouteTask && a.TaskID != "" {
 		a.send(protocol.TaskHistoryReq{T: "task_history", TaskID: a.TaskID, Limit: 500})
 	}

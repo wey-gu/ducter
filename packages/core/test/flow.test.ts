@@ -167,8 +167,7 @@ test("core hands the lost answer to the runner when it is wired", async () => {
   const c2 = startCore({ dataDir: t.dir, port: 0 });
   const sent: [string, string, string | undefined][] = [];
   c2.setRunner({ send: async (id: string, text: string, _m: unknown, from?: string) => (sent.push([id, text, from]), { delivered: "prompted" }) } as any);
-  await tick();
-  await tick();
+  for (let i = 0; i < 100 && !sent.length; i++) await Bun.sleep(10);
   expect(sent).toEqual([["t1", "src/a.ts", "user"]]);
   await c2.stop();
 });

@@ -66,6 +66,20 @@ test("a worker token opens /worker, says hello, shows online; client and worker 
   expect((await open(`${base}/worker`, { ...REMOTE, authorization: `Bearer ${worker.token}` })).ok).toBe(false);
 });
 
+test("a worker on this machine (loopback, or an SSH tunnel) joins with its token (soak regression)", async () => {
+  // Soak 2026-11-09: a loopback request was "local" before its token was read, so /worker
+  // answered 403 and a local or tunnelled worker reconnected forever.
+  const core = boot();
+  const worker = core.devices.redeem(core.devices.createCode({ kind: "worker" }).code, { name: "here", platform: "darwin" }) as { token: string; device: { id: string } };
+  const w = await open(`ws://127.0.0.1:${core.port}/worker`, { authorization: `Bearer ${worker.token}` });
+  expect(w.ok).toBe(true);
+  w.ws!.send(JSON.stringify({ t: "hello", name: "here", os: "darwin", harnesses: [] }));
+  await until(() => core.workers.online().length === 1);
+  w.ws!.close();
+  // A local caller with a bad token still can't open /worker.
+  expect((await fetch(`http://127.0.0.1:${core.port}/worker`, { headers: { upgrade: "websocket", authorization: "Bearer nope" } })).status).toBe(403);
+});
+
 test("revoking a device (from another process, the CLI) closes its live sockets: client and worker", async () => {
   const core = boot();
   const base = `ws://127.0.0.1:${core.port}`;

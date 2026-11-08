@@ -274,6 +274,13 @@ export function createGate(opts: { auth: DeviceAuth; trustLoopback?: boolean; pe
         if ("error" in r) return { pass: false, response: json(r.error === "locked" ? 429 : 401, { error: r.error }) };
         return { pass: false, response: json(200, { token: r.token, deviceId: r.device.id, name: r.device.name, personaName: opts.personaName?.() ?? "Ducter" }) };
       }
+      // A worker is always a paired device, also when it dials in over loopback (same box, or
+      // through an SSH tunnel): its token decides, or /worker refused it as "local" (soak).
+      if (local && url.pathname === "/worker") {
+        const t = tokenOf(req, url.pathname);
+        const d = t ? opts.auth.verify(t) : undefined;
+        if (d) return { pass: true, via: "device", device: d };
+      }
       if (local) return { pass: true, via: "local" };
       if (url.pathname === "/health") return { pass: false, response: json(200, { ok: true }) };
       const token = tokenOf(req, url.pathname);

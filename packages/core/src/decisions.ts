@@ -19,7 +19,9 @@ export const DEFAULT_DELAY_MS = 30 * 60 * 1000;
 
 export function forwardText(d: Bodies["decision"], r: Bodies["decision_resolved"]): string {
   if (r.option === "go") return `User says Go: ${d.goLabel}.`;
-  if (r.option === "hold") return "User says Hold: pause and wait.";
+  // Hold is not forwarded: the task already ended its turn waiting, and a "pause" turn would
+  // only flip it back to working and earn a nudge. The card shows Waiting (Hold).
+  if (r.option === "hold") return "";
   return r.text ?? "";
 }
 

@@ -3,7 +3,7 @@ import type { Attention, Bodies, LogEvent, OnHand, Residency, TaskCard } from "@
 import type { LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import { realClock, type Clock } from "./clock.ts";
 
-export const PROJECTED_KINDS = ["task_open", "task_state", "report", "decision", "decision_resolved"] as const;
+export const PROJECTED_KINDS = ["task_open", "task_state", "report", "decision", "decision_resolved", "waiter"] as const;
 
 const ACTIVE: Attention[] = ["queued", "working", "needs_you", "blocked", "done_claimed"];
 const ORDER: Attention[] = ["needs_you", "blocked", "working", "queued", "done_claimed", "done", "failed", "dropped", "superseded"];
@@ -15,12 +15,16 @@ export const isActive = (a: Attention) => ACTIVE.includes(a);
 export interface CoreRegistry extends TaskRegistry {
   /** Unresolved decisions per task, oldest first. */
   pendingDecisions(taskId: string): string[];
+  /** Armed waiters, oldest first. */
+  waiters(): Bodies["waiter"][];
 }
 
 export function createRegistry(log: LogStore, clock: Clock = realClock): CoreRegistry {
   const cards = new Map<string, TaskCard>();
   const pending = new Map<string, string[]>(); // taskId -> unresolved decisionIds
   const decisionTask = new Map<string, string>(); // decisionId -> taskId
+  const decisionBody = new Map<string, Bodies["decision"] & { askedAt: string }>();
+  const waiters = new Map<string, Bodies["waiter"]>(); // armed only
 
   const apply = (e: LogEvent) => {
     switch (e.kind) {
@@ -41,6 +45,8 @@ export function createRegistry(log: LogStore, clock: Clock = realClock): CoreReg
           reason: prev?.reason,
           lastReport: prev?.lastReport,
           pendingDecisionId: prev?.pendingDecisionId,
+          pendingDecision: prev?.pendingDecision,
+          openedAt: prev?.openedAt ?? e.ts,
           updatedAt: e.ts,
         });
         break;
@@ -66,9 +72,10 @@ export function createRegistry(log: LogStore, clock: Clock = realClock): CoreReg
       case "decision": {
         const b = e.body as Bodies["decision"];
         decisionTask.set(b.decisionId, b.taskId);
+        decisionBody.set(b.decisionId, { ...b, askedAt: e.ts });
         pending.set(b.taskId, [...(pending.get(b.taskId) ?? []), b.decisionId]);
         const c = cards.get(b.taskId);
-        if (c) (c.pendingDecisionId = b.decisionId), (c.updatedAt = e.ts);
+        if (c) (c.pendingDecisionId = b.decisionId), (c.pendingDecision = decisionBody.get(b.decisionId)), (c.updatedAt = e.ts);
         break;
       }
       case "decision_resolved": {
@@ -77,8 +84,21 @@ export function createRegistry(log: LogStore, clock: Clock = realClock): CoreReg
         if (!taskId) return;
         const left = (pending.get(taskId) ?? []).filter((d) => d !== b.decisionId);
         pending.set(taskId, left);
+        decisionBody.delete(b.decisionId);
         const c = cards.get(taskId);
-        if (c) (c.pendingDecisionId = left.at(-1)), (c.updatedAt = e.ts);
+        if (c) {
+          c.pendingDecisionId = left.at(-1);
+          c.pendingDecision = c.pendingDecisionId ? decisionBody.get(c.pendingDecisionId) : undefined;
+          if (!c.pendingDecision) delete c.pendingDecision;
+          if (!c.pendingDecisionId) delete c.pendingDecisionId;
+          c.updatedAt = e.ts;
+        }
+        break;
+      }
+      case "waiter": {
+        const b = e.body as Bodies["waiter"];
+        if (b.state === "armed") waiters.set(b.waiterId, b);
+        else waiters.delete(b.waiterId);
         break;
       }
     }
@@ -96,6 +116,7 @@ export function createRegistry(log: LogStore, clock: Clock = realClock): CoreReg
     },
     list: () => [...cards.values()].map(copy),
     pendingDecisions: (id) => [...(pending.get(id) ?? [])],
+    waiters: () => [...waiters.values()].map((w) => ({ ...w })),
     onHand(): OnHand {
       const now = clock.now();
       const today = new Date(now).toDateString();
@@ -112,7 +133,7 @@ export function createRegistry(log: LogStore, clock: Clock = realClock): CoreReg
       tasks.sort(
         (a, b) => ORDER.indexOf(a.attention) - ORDER.indexOf(b.attention) || b.updatedAt.localeCompare(a.updatedAt),
       );
-      return { tasks, counts };
+      return { tasks, counts, waiters: [...waiters.values()].map((w) => ({ ...w })) };
     },
     setState(taskId: string, attention: Attention, residency: Residency, reason?: string) {
       if (!cards.has(taskId)) throw new Error(`unknown task ${taskId}`);

@@ -75,7 +75,7 @@ test("blocking question -> decision + needs_you; reversible default auto-resolve
   expect(forwarded).toEqual([["t1", "User says Go: Rebase."]]);
 });
 
-test("irreversible questions wait for the user; decide forwards hold / reply text", async () => {
+test("irreversible questions wait for the user; reply text is forwarded, hold is not", async () => {
   const { log, tasks, clock, decisions, forwarded } = setup();
   openTask(log, "t1");
   report(log, "t1", { state: "needs_input", summary: "Force push?", questions: [{ id: "q", text: "Force push?", blocking: true, default: "Push", reversible: false }] });
@@ -94,10 +94,8 @@ test("irreversible questions wait for the user; decide forwards hold / reply tex
   expect(() => decisions.decide(d2.decisionId, "reply")).toThrow(/needs text/);
   decisions.decide(d2.decisionId, "reply", "Use src/a.ts");
   await tick();
-  expect(forwarded).toEqual([
-    ["t1", "User says Hold: pause and wait."],
-    ["t1", "Use src/a.ts"],
-  ]);
+  // Hold stays on the card (Waiting) without starting a turn in the idle task.
+  expect(forwarded).toEqual([["t1", "Use src/a.ts"]]);
 });
 
 test("report states map to attention; done needs evidence", async () => {

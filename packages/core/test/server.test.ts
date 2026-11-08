@@ -66,45 +66,71 @@ class WsClient {
   }
 }
 
-test("ws: hello -> welcome, replay since cursor (no transcripts), on_hand, live push", async () => {
+test("ws: hello -> welcome, channel replay since cursor, on_hand, live push of every task", async () => {
   const core = boot();
   const triggers: string[] = [];
   core.setPartner({ onTrigger: (e) => void triggers.push(e.kind) } satisfies Partner);
-  const sent: [string, string][] = [];
-  core.setRunner({ send: async (id: string, text: string) => (sent.push([id, text]), { delivered: "steered" }) } as unknown as Runner);
+  const sent: [string, string, string | undefined][] = [];
+  core.setRunner({
+    send: async (id: string, text: string, _mode?: string, from?: string) => (sent.push([id, text, from]), { delivered: "prompted" }),
+  } as unknown as Runner);
 
   core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "old" } }); // seq 1
   core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: "seen" } }); // seq 2
-  openTask(core.log, "t1"); // seq 3
+  openTask(core.log, "t1"); // seq 3 (task stream: not replayed)
   core.log.append({ stream: "task:t1", origin: "task", kind: "task_event", body: { taskId: "t1", role: "assistant", text: "thinking" } });
+  core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: "new" } }); // seq 5
 
   const c = new WsClient(core.url);
   stops.push(() => c.ws.close());
   await c.open();
   c.send({ t: "hello", cursor: 2 });
   const welcome = await c.until((f) => f.t === "welcome");
-  expect(welcome).toMatchObject({ persona: "default", personaName: "Ducter", headSeq: 4 });
+  expect(welcome).toMatchObject({ persona: "default", personaName: "Ducter", headSeq: 5 });
   await c.until((f) => f.t === "on_hand");
-  expect(c.events().map((e) => e.kind)).toEqual(["task_open"]);
+  expect(c.events().map((e) => e.seq)).toEqual([5]);
   const oh = c.frames.find((f) => f.t === "on_hand") as Extract<ServerFrame, { t: "on_hand" }>;
   expect(oh.onHand.tasks.map((t) => t.taskId)).toEqual(["t1"]);
+  expect(oh.onHand.tasks[0]!.openedAt).toBe(core.log.read({ kinds: ["task_open"] })[0]!.ts);
+  expect(oh.onHand.waiters).toEqual([]);
 
   c.send({ t: "send", text: "Fix the flaky test", clientId: "c1" });
   await c.until(() => c.events().some((e) => e.kind === "user_msg"));
   expect(triggers).toContain("user_msg");
 
-  c.send({ t: "task_history", taskId: "t1" });
-  const h = await c.until<Extract<ServerFrame, { t: "task_history" }>>((f) => f.t === "task_history");
-  expect(h.events.map((e) => e.kind)).toEqual(["task_open", "task_event"]);
-  // Watching the task now streams its transcript live.
+  // Live task events reach every client, opened or not.
   core.log.append({ stream: "task:t1", origin: "task", kind: "task_event", body: { taskId: "t1", role: "assistant", text: "live" } });
   await c.until(() => c.events().some((e) => e.kind === "task_event"));
 
+  c.send({ t: "task_history", taskId: "t1" });
+  const h = await c.until<Extract<ServerFrame, { t: "task_history" }>>((f) => f.t === "task_history");
+  expect(h.events.map((e) => e.kind)).toEqual(["task_open", "task_event", "task_event"]);
+
   c.send({ t: "task_send", taskId: "t1", text: "also check CI" });
+  const ack = await c.until<Extract<ServerFrame, { t: "sent" }>>((f) => f.t === "sent");
+  expect(ack).toEqual({ t: "sent", taskId: "t1", delivered: "prompted" });
   c.send({ t: "decide", decisionId: "nope", option: "go" });
   const err = await c.until<Extract<ServerFrame, { t: "error" }>>((f) => f.t === "error");
   expect(err.message).toContain("unknown decision");
-  expect(sent).toEqual([["t1", "also check CI"]]);
+  expect(sent).toEqual([["t1", "also check CI", "user"]]);
+});
+
+test("ws: hello without cursor replays the last 200 channel events, superseded revisions dropped", async () => {
+  const core = boot();
+  for (let i = 0; i < 230; i++) core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: `m${i}` } });
+  const lm = core.log.append({ stream: "channel", origin: "system", kind: "living_msg", body: { items: [] } });
+  core.log.append({ stream: "channel", origin: "system", kind: "living_msg", body: { items: [] }, supersedes: lm.seq });
+  openTask(core.log, "t1");
+  const c = new WsClient(core.url);
+  stops.push(() => c.ws.close());
+  await c.open();
+  c.send({ t: "hello" });
+  await c.until((f) => f.t === "on_hand");
+  const evs = c.events();
+  expect(evs.length).toBe(199); // 200 read, one superseded revision dropped
+  expect(evs.every((e) => e.stream === "channel")).toBe(true);
+  expect(evs.some((e) => e.seq === lm.seq)).toBe(false);
+  expect(evs.at(-1)!.supersedes).toBe(lm.seq);
 });
 
 test("ws: frames before hello are rejected; browser origins are refused", async () => {

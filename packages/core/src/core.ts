@@ -13,6 +13,7 @@ import { createMcpHub, type CoreMcpHub } from "./mcp.ts";
 import { DEFAULT_IDENTITY, type Persona } from "./persona.ts";
 import { createRegistry, type CoreRegistry } from "./registry.ts";
 import { registerCoreTools } from "./tools.ts";
+import { createWaiters, type Waiters } from "./waiters.ts";
 import { createWsHandler, type WsData } from "./ws.ts";
 
 export interface CoreOptions {
@@ -31,6 +32,7 @@ export interface Core extends CoreApi {
   mcp: CoreMcpHub;
   decisions: Decisions;
   living: Living;
+  waiters: Waiters;
   port: number;
   url: string; // ws URL for clients
   setRunner(r: Runner): void;
@@ -40,9 +42,10 @@ export interface Core extends CoreApi {
 
 export const defaultDataDir = () => process.env.DUCTER_DATA_DIR || join(homedir(), ".ducter");
 
-/** Events that wake the partner (principle 6). Timers (job_status from "waiter") are fed by the partner itself. */
+/** Events that wake the partner (principle 6): user messages, resolutions, non-progress reports, fired waiters. */
 export function triggersPartner(e: LogEvent): boolean {
   if (e.kind === "user_msg" || e.kind === "decision_resolved") return true;
+  if (e.kind === "waiter") return (e.body as Bodies["waiter"]).state === "fired";
   if (e.kind === "report") return (e.body as Bodies["report"]).state !== "progress";
   return false;
 }
@@ -73,10 +76,11 @@ export function startCore(opts: CoreOptions = {}): Core {
     defaultDelayMs: opts.defaultDelayMs,
     onDecision: async (taskId, text) => {
       if (!runner) return console.warn(`[core] no runner: decision for ${taskId} not forwarded`);
-      await runner.send(taskId, text);
+      await runner.send(taskId, text, undefined, "user");
     },
   });
   const living = createLiving({ log, tasks, decisions, clock });
+  const waiters = createWaiters({ log, clock });
   const mcp = createMcpHub({ secret: loadSecret(dataDir) });
   registerCoreTools(mcp, log, tasks);
 
@@ -125,6 +129,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     mcp,
     decisions,
     living,
+    waiters,
     port,
     url: `ws://127.0.0.1:${port}/ws`,
     setRunner: (r) => void (runner = r),
@@ -137,6 +142,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       unsubscribePartner();
       decisions.stop();
       living.stop();
+      waiters.stop();
       void server.stop(true); // awaiting hangs in Bun 1.3 when a WebSocket was open
       log.close();
     },

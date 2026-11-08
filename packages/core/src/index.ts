@@ -8,3 +8,4 @@ export { registerCoreTools } from "./tools.ts";
 export { loadPersona, DEFAULT_IDENTITY, type Persona } from "./persona.ts";
 export { realClock, FakeClock, type Clock } from "./clock.ts";
 export { stubRunner, stubPartner } from "./main.ts";
+export { createWaiters, type Waiters } from "./waiters.ts";

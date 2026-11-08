@@ -52,6 +52,7 @@ func review(t *testing.T, dir string, lang i18n.Lang, w int) {
 	// First run, then the connect card.
 	d := dial(t, "ws://127.0.0.1:1/ws", lang)
 	d.tt.SetSize(w, 860)
+	d.tt.SetTitleBar(ui.TitleBar{Height: ChromeH, Left: 78}) // the macOS traffic lights
 	d.until("a failed attempt", func() bool { return d.app.Failed })
 	shot(d.tt, "firstrun")
 	d.app.Pair = func(string, string) error { return nil }
@@ -67,6 +68,7 @@ func review(t *testing.T, dir string, lang i18n.Lang, w int) {
 	empty.Receive(protocol.ServerFrame{T: "welcome", Persona: "p", PersonaName: "Ducter"})
 	empty.Receive(protocol.ServerFrame{T: "on_hand", OnHand: &protocol.OnHand{}})
 	et := ui.NewTesterWith(empty.View, w, 860, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+	et.SetTitleBar(ui.TitleBar{Height: ChromeH, Left: 78})
 	et.Frame()
 	shot(et, "empty")
 	empty.Route = RouteOnHand
@@ -77,6 +79,7 @@ func review(t *testing.T, dir string, lang i18n.Lang, w int) {
 	h := newHarness(t, lang)
 	h.app.LocaleFixed = true
 	h.tt.SetSize(w, 860)
+	h.tt.SetTitleBar(ui.TitleBar{Height: ChromeH, Left: 78})
 	s := h.app.S
 	msg := map[i18n.Lang]string{i18n.ZH: "帮我看下 HawDB #1592 的 CI 为什么挂了", i18n.EN: "Find out why CI fails on HawDB #1592"}[lang]
 	h.app.SendMessage(msg)

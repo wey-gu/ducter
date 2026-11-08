@@ -186,15 +186,15 @@ func (a *App) header(c *ui.Context) {
 // lives on, and the word for it.
 func (a *App) devicesButton(c *ui.Context) {
 	t := a.T
-	btn := ui.Row(c.Key("devices")).Gap(8).Height(40).Padding(0, 14, 0, 6).Radius(13).Background(t.Surface).
+	btn := ui.Row(c.Key("devices")).Gap(8).Height(36).Padding(0, 14, 0, 5).Radius(12).Border(1, t.ChromeLine).Background(t.Surface).
 		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(a.L.T("nav.devices.label")).Shrink(0)
-	a.press(c, btn, t.PressCard)
+	a.press(c, btn, t.PressQuiet)
 	btn.Children(func() {
 		art := "laptop_awake"
 		if home := a.homeDevice(); home != nil {
 			art = deviceArt(home)
 		}
-		ui.Box(c).Size(28, 28).Radius(9).Background(t.Clay).Padding(2).Children(func() {
+		ui.Box(c).Size(26, 26).Radius(8).Background(t.Clay).Padding(2).Children(func() {
 			if b := theme.Clay(art); b != nil {
 				ui.Image(c, b).Grow(1).AccessHidden(true)
 			}
@@ -282,9 +282,9 @@ func (a *App) doneToday(b store.Board) int {
 // of the tasks in the conversation.
 func (a *App) onHandButton(c *ui.Context, b store.Board) {
 	t := a.T
-	btn := ui.Row(c.Key("onhand")).Gap(10).Height(40).Padding(0, 16, 0, 12).Radius(13).Background(t.Surface).
+	btn := ui.Row(c.Key("onhand")).Gap(10).Height(36).Padding(0, 16, 0, 12).Radius(12).Border(1, t.ChromeLine).Background(t.Surface).
 		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(a.L.T("nav.onhand")).Shrink(0)
-	a.press(c, btn, t.PressCard)
+	a.press(c, btn, t.PressQuiet)
 	btn.Children(func() {
 		n := 0
 		ui.Row(c).Gap(4).Children(func() {

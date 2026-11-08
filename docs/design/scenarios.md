@@ -7,7 +7,7 @@ Columns: **Flow** (steps + branches), **States** (which task/routine states it t
 
 | ID | Scenario | Flow | States | Copy | Motion | Proto | Notes |
 |---|---|---|---|---|---|---|---|
-| A1 | First run | draft | draft | draft | draft | — | `onboarding.md` (cartoon + live checklist) |
+| A1 | First run | draft | draft | draft | draft | — | `onboarding.md` (cartoon + live checklist). Terminal path shipped and walked live 2026-11-09 (onboarding.md "What ships today") |
 | A2 | Pair a device | draft | draft | draft | draft | — | waits on research/21 |
 | A3 | Device sleeps / wakes / offline mid-task | draft | draft | draft | draft | — | |
 | A4 | Harness not logged in; quota runs out | draft | draft | draft | draft | — | |

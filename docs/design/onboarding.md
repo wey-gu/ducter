@@ -24,6 +24,83 @@
 - Every setup step is **auto-detected first**. The user confirms rather than fills in.
 - Nothing is asked before it is needed: no projects, rules, or extra devices.
 
+## What ships today: the terminal path (2026-11-09)
+
+The cartoon and the in-app checklist below are the target. Until they exist, the first run is a
+terminal path plus the desktop's empty conversation. It holds itself to the same bar: detect
+first, one obvious next step per screen, zh and en designed together (`LANG`, or
+`DUCTER_LOCALE`). Walked live on the author's Mac with a bundle installed into a scratch prefix,
+a fresh data folder, and port 7795.
+
+**For each user**
+
+| Who | What they need from the first five minutes | What the terminal path gives them |
+|---|---|---|
+| Heavy multi-agent dev (Claude Code + Codex + Mem signed in, ~90 repos) | No interrogation; proof it knows the machine | One line "This Mac is ready: Claude Code, Codex, Nowledge Mem, cua-driver"; no name question (Mem has the identity); starters about the three repos touched most recently |
+| Consumer (Grok bot / Muse) with one AI plan | Nothing to learn; a name and a face | Ready line, then one question "What should I be called?" (Enter keeps Ducter); the desktop greets by that name; everyday starters if no repos |
+| Never heard of a subagent | A next step they can't get wrong | A blocked Mac shows only what blocks ("✗ Claude Code: not installed" + one command), optional things folded into one dim line, and one closing line: run that, then `ducter up` again |
+
+**Screens, in order** (copy keys in `packages/cli/src/i18n.ts` and `apps/desktop/internal/i18n`)
+
+1. `install.sh` (from the bundle): "Ducter is installed", where (`~/.local/bin`), then **Next:**
+   one command. If `~/.local/bin` isn't on `PATH`, the next step is the full path, and the
+   `PATH` line comes after it as an option. *Verified* (zh and en).
+2. First `ducter up`, doctor on a ready Mac: one line (`summary.ready`) and one dim line per
+   missing optional thing. On a blocked Mac: only the blocking checks with their fix
+   (`formatBlocked`), then `up.blocked`. The full table stays in `ducter doctor`. *Verified*
+   (ready: real Mac; blocked: `PATH` stripped to the system folders).
+3. The name, once, in a terminal only, and not when Mem is connected: `name.ask` → `name.set`.
+   Stored in `<dataDir>/persona.json`; every later `up` sets `DUCTER_PERSONA_NAME` from it
+   unless the env already does. A Chinese name sits flush in zh copy ("小鸭准备好了").
+   *Verified* in a pty.
+4. The banner (`up.ready`): Lives on (this Mac · data folder), Memory, Desktop, and **Other
+   devices: "this Mac only, for now. Phone and other computers are on the way."** The ws
+   address shows only when no desktop opened. Core's own `[ducter] …` lines go to
+   `<dataDir>/ducter.log`. *Verified.* When `ducter pair` (branch `vps-remote-access`) lands,
+   the Other devices line becomes "connect your phone: ducter pair".
+5. The desktop's empty conversation: "Hi, I'm {name}." and three starters. `ducter up` writes
+   `<dataDir>/firstrun.json` before the client starts: git checkouts (a `.git` folder) up to
+   depth 2 under `~/dev`, `~/code`, `~/src`, `~/Projects`, `~/work`, `~/repos`, `~/git`,
+   ranked by the newest mtime of `.git/HEAD`, `.git/index`, `.git/logs/HEAD`. Names and
+   `~` paths only; no file is opened, git isn't run, nothing leaves the Mac. The starters:
+   failing tests in repo 1, what changed this week in repo 2, unfinished branches in repo 3;
+   a one-line note under them says they came from names only. No repos → everyday starters.
+   A starter fills the composer; it never sends. *Verified* (headless renderer:
+   `apps/desktop/docs/firstrun-empty-{zh,en,fresh}.png`, live: `firstrun-live-empty.png`).
+   The scan of the author's ~90 repos took under 0.2 s.
+6. The first result: the first task ever to come back done (live, not a replay, and no other
+   finished task in the Log) shows one line with the clay *done* character above the
+   composer for 14 s or until Got it, and the header's character shows *done*. Remembered in
+   `<dataDir>/desktop.json`, so it happens once per Mac. Reduced motion: no rise-in.
+   *Verified* (headless + live, below).
+
+**Live run** (2026-11-09, zh, Mem connected, partner and task on the default models; one sample).
+The real `ducter up` from the bundle, the desktop's headless renderer as the client
+(`TestLiveFirstFiveMinutes`), and the message 看看 <scratch>/demo/calc 最近有哪些测试没过，修好了告诉我
+(a three-test Python repo with an off-by-0.5 bug):
+
+| t | What appeared |
+|---|---|
+| 0 s | The greeting and three starters about ~/dev/ducter, ~/dev/website, ~/dev/notes (91 repos found) |
+| 19 s | The ack: 我去看看 calc 里最近哪些测试没过，并把它们修好。 Then a second partner message restating the plan (redundant; see the report's persona text) |
+| 52 s | Task done; the first-result line and the done character |
+| 58 s | The partner's result: which 2 of 3 failed and why (`+ 0.5` on line 9), the fix, `python3 -m unittest` 3/3 after, "not committed, on ducter/calc", with Merge / Draft PR / See changes |
+
+Screenshots: `apps/desktop/docs/firstrun-live-{empty,ack,first-result,result-message}.png`.
+*Seen, not fixed here:* Ctrl-C exits with code 1 because core's shutdown passes its 5 s force
+timeout; the terminal still reads calm.
+
+**Not yet**
+
+- The greeting is the client's empty state in the partner's voice, not a message from the
+  partner; it isn't in the Log, so the partner doesn't know it "said" it. Proposed persona text
+  for the partner's real first words is in the first-run report (packages/partner is owned
+  elsewhere right now).
+- The partner doesn't read `firstrun.json`, so "I found 14 repos; the most active is …" (the
+  target in A1 step 6) is only shown, not said.
+- The name question is terminal-only; there is no rename in the desktop yet.
+- A double-clickable app (the A1-M target) doesn't exist; the friend still opens Terminal once.
+
 ## The cartoon (≈ 25 s, skippable, replayable from Settings)
 
 Pebble style: cream paper, chunky shapes, press shadows, bouncy motion. No brand logos. No

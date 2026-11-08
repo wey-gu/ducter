@@ -29,7 +29,8 @@ describe("persona", () => {
   test("system prompt carries L1 identity, language rule, ack rule; no volatile bytes", () => {
     const p = buildSystemPrompt({ id: "p", name: "Ducter", identity: "IDENTITY-XYZ" });
     expect(p).toContain("IDENTITY-XYZ");
-    expect(p).toContain("If the user writes Chinese");
+    expect(p).toContain("language of the user's latest message");
+    expect(p).toContain("wins over any language preference under Identity");
     expect(p).toContain("never its");
     expect(p).toContain("task_open");
     expect(p).not.toMatch(/20\d\d-\d\d-\d\d/);
@@ -265,30 +266,57 @@ describe("turn loop", () => {
     expect(p2.stats.resumes).toBe(1);
   });
 
-  test("wait_until: status line now, [timer fired] trigger later", async () => {
-    let fire!: () => void;
-    const { fc, fr, partner, user, channel } = setup(
-      async (input, s, n) => {
-        if (n === 0) {
-          s.say("好，三点提醒你。");
-          await fc.callTool("wait_until", { at: "2026-11-08T15:00:00Z", reason: "提醒：给 Alice 回邮件" });
-        } else {
-          expect(input).toContain("[timer fired] 提醒：给 Alice 回邮件");
-          s.say("三点了：该给 Alice 回邮件了。");
-        }
-        s.end();
-      },
-      { setTimer: (fn) => ((fire = fn), 1), clearTimer: () => {} },
-    );
+  test("wait_until: armed waiter now, [timer fired] trigger when core fires it", async () => {
+    const { fc, fr, partner, user, channel } = setup(async (input, s, n) => {
+      if (n === 0) {
+        s.say("好，三点提醒你。");
+        await fc.callTool("wait_until", { at: "2026-11-08T15:00:00Z", reason: "提醒：给 Alice 回邮件" });
+      } else {
+        expect(input).toContain("[timer fired] 提醒：给 Alice 回邮件");
+        s.say("三点了：该给 Alice 回邮件了。");
+      }
+      s.end();
+    });
     user("三点提醒我给 Alice 回邮件");
     await partner.idle();
-    fire();
+    const armed = channel().find((e) => e.kind === "waiter")!;
+    expect(armed.body).toMatchObject({ state: "armed", at: "2026-11-08T15:00:00.000Z", reason: "提醒：给 Alice 回邮件" });
+    // Core's waiter module fires it (see core/test/waiters.test.ts); here we play core.
+    partner.onTrigger(fc.core.log.append({ stream: "channel", origin: "waiter", kind: "waiter", body: { ...(armed.body as Bodies["waiter"]), state: "fired" } }));
     await partner.idle();
     expect(fr.sessions[0]!.inputs.length).toBe(2);
-    expect(kinds(channel())).toEqual(["user:user_msg", "partner:ai_msg", "waiter:job_status", "waiter:job_status", "partner:ai_msg"]);
+    expect(kinds(channel())).toEqual(["user:user_msg", "partner:ai_msg", "waiter:waiter", "waiter:waiter", "partner:ai_msg"]);
+  });
+
+  test("restart mid-turn: the unanswered trigger is queued again; answered ones are not", async () => {
+    const clock = new FakeClock();
+    const dir = tmp();
+    const fc = fakeCore(clock, dir);
+    let hang = false;
+    const fr = fakeRunner((_i, s) => {
+      if (hang) return; // the turn never ends: the process dies mid-turn
+      s.say("ok");
+      s.end();
+    });
+    const p1 = createPartner(fc.core, fr.runner, { now: clock.now, onError: () => {} });
+    p1.onTrigger(fc.core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "first" } }));
+    await p1.idle();
+    hang = true;
+    p1.onTrigger(fc.core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "second" } }));
+    await Bun.sleep(5);
+    // Restart: a new partner over the same Log and data dir.
+    hang = false;
+    const fc2 = { ...fc.core, mcp: fakeCore(clock, dir).core.mcp };
+    const p2 = createPartner(fc2, fr.runner, { now: clock.now, onError: () => {} });
+    await Bun.sleep(5);
+    await p2.idle();
+    const last = fr.sessions.at(-1)!;
+    expect(last.inputs.at(-1)).toContain("[user] second");
+    expect(last.inputs.join("\n")).not.toContain("[user] first");
+    const replies = fc.events.filter((e) => e.kind === "ai_msg").map((e) => (e.body as Bodies["ai_msg"]).replyTo);
+    expect(replies).toEqual([1, 3]);
   });
 });
-
 describe("place", () => {
   const fs: PlaceFs = {
     home: "/Users/w",

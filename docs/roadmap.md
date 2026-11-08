@@ -15,6 +15,8 @@ Onboarding and defaults meet the ordinary-person bar.
 - The **main process** runs on a VPS or a Mac: control plane, main AI loop, Log store
   (SQLite), waiters, push.
 - **Workers** are VPS and Mac runners: the single-binary OAR runner, which dials out only.
+  *Built (D54):* `ducter worker --join` enrollment and presence over an outbound socket.
+  *Not yet:* placing tasks on a worker (`design/system.md` Workers; trigger: protocol v2).
 - **Clients:**
   - Desktop: MyGo native UI.
   - Mobile: **web** (served by the main process, reachable from anywhere through a tunnel).
@@ -29,6 +31,13 @@ Onboarding and defaults meet the ordinary-person bar.
     company network.
 - **Pairing:** a QR code with a one-time code (the dsh model), then a WebCrypto device key
   plus a passkey; every device can be revoked individually.
+  *Built (D54):* the code half: `ducter pair` (code, link, terminal QR), `POST /pair` → a
+  hashed, revocable device token, `ducter devices`; the desktop's "Connect to your Ducter".
+  The device key + passkey come with the web/phone client.
+- **Server mode (D54, research/29):** `ducter service install` runs the main process as a
+  systemd user service bound to 127.0.0.1. Reach it through Caddy on the user's own domain
+  (`scripts/caddy-setup.sh`; the default for CN users, Q18) or an SSH tunnel. The Edge stays
+  the no-domain path for phone and web.
 - **Push:** Web Push sent from the main process. iOS needs 16.4+ and a Home Screen install.
 - **A full CF Worker / Durable Object deploy target is not in v1**; it moves to v1.x. Reasons:
   two storage backends, no custom FTS5 tokenizer or vectors in Durable Objects, and +2–4

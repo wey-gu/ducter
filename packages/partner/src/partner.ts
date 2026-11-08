@@ -23,11 +23,15 @@
 //   tasks) followed by the turn's deltas. Never any "you were reset" text (research/13).
 //
 // wait_until (tonight: timers only)
-//   `at` set: appends a job_status (origin "waiter", state running) as the visible status line,
-//   arms an in-process timer; when it fires, appends job_status (origin "waiter", state done)
-//   and feeds that event to onTrigger, rendered as "[timer fired] <reason>". Timers are not
-//   persisted across restarts (known gap). `taskId` without `at` is a no-op: the task's next
-//   report already wakes the partner.
+//   `at` set: appends `waiter {state:"armed"}` on the channel. Core owns the timer (it is
+//   rebuilt from the Log after a restart), appends `waiter {state:"fired"}` when due, and
+//   that event triggers us; it renders as "[timer fired] <reason>". `taskId` without `at` is
+//   a no-op: the task's next report already wakes the partner.
+//
+// Restart
+//   state.json keeps the session id, last activity, and the highest trigger seq a finished
+//   turn covered. On start, triggers after that seq (a turn cut off by the restart, or events
+//   that arrived while down) are queued again; user messages that already got a reply are not.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Bodies, LogEvent, Place } from "../../protocol/src/index.ts";
@@ -43,11 +47,11 @@ export interface PartnerOptions {
   model?: string; // default env DUCTER_PARTNER_MODEL or "opus"
   turnTimeoutMs?: number; // max silence inside a turn before interrupting, default 10 min
   fs?: PlaceFs;
-  setTimer?: (fn: () => void, ms: number) => unknown;
-  clearTimer?: (h: unknown) => void;
   persistState?: boolean; // write <dataDir>/partner/state.json, default true
   ackWaitMs?: number; // how long the task_open handler waits for the streamed ack text, default 250
   onError?: (err: unknown) => void;
+  prewarm?: boolean; // start/resume the session at creation, default true
+  ready?: Promise<unknown>; // sessions start after this settles (e.g. L1 identity from Mem)
 }
 
 export interface PartnerHandle extends Partner {
@@ -64,6 +68,11 @@ interface TurnState {
   replyTo?: number;
   pending: string | null;
   unboundAck: { jobId: string } | null;
+  // task_open calls seen in the stream vs. handled by the MCP handler. Stream events can lag
+  // the MCP call; a stream event for a call the handler already acked must not ack again.
+  opensSeen: number;
+  opensHandled: number;
+  acked?: boolean; // an ack went out this turn
   zh: boolean;
 }
 
@@ -71,11 +80,27 @@ interface Job {
   jobId: string;
   title: string;
   replyTo?: number;
+  state?: Bodies["job_status"]["state"]; // last job_status appended
 }
 
 const COLD_MS = 55 * 60 * 1000;
 const TASK_OPEN_RE = /(^|__)task_open$/;
+const TASK_SEND_RE = /(^|__)task_send$/;
 const QUIET_TOOL_RE = /(^ToolSearch$)|((^|__)(log_search|log_read|task_read)$)/;
+
+/** Same rule as core's triggersPartner (principle 6). */
+function isTrigger(e: LogEvent): boolean {
+  if (e.origin === "partner") return false;
+  if (e.kind === "user_msg" || e.kind === "decision_resolved") return true;
+  if (e.kind === "report") return (e.body as Bodies["report"]).state !== "progress";
+  if (e.kind === "waiter") return (e.body as Bodies["waiter"]).state === "fired";
+  return false;
+}
+
+/** Prose that tells the user to pick Go / Hold (only true when a decision event exists). */
+const CLAIMS_CHOICE = /(选|点|按|回复?|回)\s*[「“"]?\s*(Go|Hold|好|先等等)\b|\b(tap|press|choose|pick|select|reply|hit|say)\s+["“]?(Go|Hold)\b|\bGo\s*\/\s*Hold\b/i;
+
+const generatedAck = (zh: boolean, title: string) => (zh ? `好，我去做：${title}` : `On it: ${title}`);
 
 let idCounter = 0;
 function newId(prefix: string): string {
@@ -90,8 +115,6 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const model = opts.model ?? process.env.DUCTER_PARTNER_MODEL ?? "opus";
   const turnTimeoutMs = opts.turnTimeoutMs ?? 10 * 60 * 1000;
   const fs = opts.fs ?? realFs;
-  const setTimer = opts.setTimer ?? ((fn, ms) => setTimeout(fn, ms));
-  const clearTimer = opts.clearTimer ?? ((h) => clearTimeout(h as ReturnType<typeof setTimeout>));
   const persist = opts.persistState ?? true;
   const ackWaitMs = opts.ackWaitMs ?? 250;
   const onError = opts.onError ?? ((err) => console.error("[partner]", err));
@@ -103,7 +126,6 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   } catch (err) {
     onError(err);
   }
-  const systemPrompt = buildSystemPrompt(core.persona);
 
   // ---------- state ----------
   const queue: LogEvent[] = [];
@@ -114,16 +136,19 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   let iter: AsyncIterator<HarnessEvent> | null = null;
   let lastActivity = 0;
   let lastSessionId: string | undefined;
+  let handledSeq: number | undefined; // highest trigger seq covered by a finished turn
   let turn: TurnState | null = null;
+  let warming: Promise<void> | null = null; // pre-start of the session at boot
+  let unseeded = false; // the live session was started fresh and has not had its seed yet
   const jobs = new Map<string, Job>(); // taskId -> job
-  const timers = new Set<unknown>();
   const stats: PartnerHandle["stats"] = { turns: 0, freshStarts: 0, resumes: 0 };
 
   if (persist) {
     try {
-      const s = JSON.parse(readFileSync(stateFile, "utf8")) as { sessionId?: string; lastActivity?: number };
+      const s = JSON.parse(readFileSync(stateFile, "utf8")) as { sessionId?: string; lastActivity?: number; handledSeq?: number };
       lastSessionId = s.sessionId;
       lastActivity = s.lastActivity ?? 0;
+      handledSeq = s.handledSeq;
     } catch {
       /* first run */
     }
@@ -131,7 +156,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const saveState = () => {
     if (!persist) return;
     try {
-      writeFileSync(stateFile, JSON.stringify({ sessionId: lastSessionId, lastActivity }));
+      writeFileSync(stateFile, JSON.stringify({ sessionId: lastSessionId, lastActivity, handledSeq }));
     } catch (err) {
       onError(err);
     }
@@ -148,6 +173,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       const b = e.body as Bodies["job_status"];
       if (e.origin !== "partner" || !b.taskId) continue;
       if (!jobs.has(b.taskId)) jobs.set(b.taskId, { jobId: b.jobId, title: b.text, replyTo: acks.get(b.jobId) });
+      const j = jobs.get(b.taskId)!;
+      if (j.jobId === b.jobId) j.state = b.state;
     }
   } catch (err) {
     onError(err);
@@ -169,6 +196,11 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const appendAiMsg = (text: string) => {
     const t = text.trim();
     if (!t) return;
+    if (CLAIMS_CHOICE.test(t) && !openDecisionExists()) {
+      // Honesty guard (live: "选 Go 就保留" with no decision anywhere). The words are already
+      // the model's; make them true right away or have it take them back, in a follow-up turn.
+      corrections.push(t);
+    }
     core.log.append({
       stream: "channel",
       origin: "partner",
@@ -176,16 +208,40 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       body: turn?.replyTo !== undefined ? { text: t, replyTo: turn.replyTo } : { text: t },
     });
   };
+  const corrections: string[] = [];
+  const openDecisionExists = () => {
+    const evs = core.log.read({ stream: "channel", kinds: ["decision", "decision_resolved"], limit: 500 });
+    const done = new Set(evs.filter((e) => e.kind === "decision_resolved").map((e) => (e.body as Bodies["decision_resolved"]).decisionId));
+    return evs.some((e) => e.kind === "decision" && !done.has((e.body as Bodies["decision"]).decisionId));
+  };
+  let syntheticSeq = 0;
+  const queueCorrections = () => {
+    if (!corrections.length) return;
+    const said = corrections.splice(0).join(" / ");
+    queue.push({
+      seq: --syntheticSeq, // never in the Log
+      ts: new Date(now()).toISOString(),
+      persona: core.persona.id,
+      stream: "channel",
+      origin: "system",
+      kind: "ai_msg",
+      body: { text: `You told the user they have a Go / Hold choice ("${said.slice(0, 300)}"), but no such choice exists, so they see no buttons. Call ask now with that question and its default, without repeating it in text. If no choice is really needed, say in one short line what you will do instead.` },
+    });
+  };
   const replyToFor = (t: TurnState) => t.replyTo ?? t.triggers[t.triggers.length - 1]?.seq ?? core.log.head();
   const appendAck = (t: TurnState, text: string): { jobId: string } => {
     const jobId = newId("job");
     core.log.append({ stream: "channel", origin: "partner", kind: "ack", body: { jobId, text: text.trim(), replyTo: replyToFor(t) } });
+    t.acked = true;
     return { jobId };
   };
   const flushPending = () => {
     if (!turn || turn.pending === null) return;
     const p = turn.pending;
     turn.pending = null;
+    // Silence after the ack (live: "Task opened.", "任务已开。" right after it). With a
+    // single ask in the turn, a short line after the ack that asks nothing is dropped.
+    if (turn.acked && turn.userTexts.length <= 1 && p.trim().length < 200 && !/[?？]/.test(p)) return;
     appendAiMsg(p);
   };
   const claimAck = (t: TurnState): { jobId: string } | null => {
@@ -206,8 +262,28 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       return;
     }
     if (ev.tool) {
+      // Handing more work to an existing task is an action like opening one: the line before
+      // it is the ack, and a short line after it is filler (live: "已经交给它去做了，做完会告诉您结果。").
+      if (TASK_SEND_RE.test(ev.tool.name) && !turn.acked && turn.pending !== null && turn.pending.trim()) {
+        const line = turn.pending;
+        turn.pending = null;
+        appendAiMsg(line);
+        turn.acked = true;
+      }
       if (TASK_OPEN_RE.test(ev.tool.name)) {
-        claimAck(turn); // no-op if there is no pending text or an ack is already waiting
+        const kind = (ev.raw as { kind?: string } | undefined)?.kind;
+        // One call yields up to three stream events (started, title, ended); count calls by
+        // the start event (a tool event with no output yet).
+        if (kind === "tool_call_started" || (!kind && !ev.tool.output && ev.tool.ok === undefined)) turn.opensSeen++;
+        const handled = turn.opensSeen <= turn.opensHandled; // the MCP handler already acked it
+        if (!handled) {
+          // No-op if there is no pending text or an ack is already waiting.
+          const ack = claimAck(turn);
+          // No line before the call: ack by the title as soon as it streams in, instead of
+          // after the whole brief is written (live: 5 s).
+          const title = (ev.tool.input as { title?: unknown } | undefined)?.title;
+          if (!ack && typeof title === "string" && title.trim()) turn.unboundAck = appendAck(turn, generatedAck(turn.zh, title.trim()));
+        }
       } else if (QUIET_TOOL_RE.test(ev.tool.name)) {
         // Lookups between the ack line and task_open (Claude Code's deferred-tool ToolSearch,
         // reads of the Log or a task) must not turn the pending ack into a separate message.
@@ -223,9 +299,13 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       harness: "claude-code",
       model,
       cwd,
-      systemPrompt,
+      systemPrompt: buildSystemPrompt(core.persona), // built per start: identity may arrive after boot
       mcp: [core.mcp.configFor("partner")],
       permissionMode: "bypass",
+      isolateUserConfig: true, // never the user's CLAUDE.md, hooks or MCP servers (live: zh replies, 20 s acks)
+      // Ducter's handful of tools load up front: deferring them behind ToolSearch cost a full
+      // model round trip (~3 s) before the ack on a fresh session (live, sonnet).
+      env: { ENABLE_TOOL_SEARCH: "false" },
       ...(resumeSessionId ? { resumeSessionId } : {}),
     });
     session = s;
@@ -241,6 +321,15 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   }
   /** Returns true when the session is fresh (needs the projection seed). */
   async function ensureSession(): Promise<boolean> {
+    if (opts.ready) await opts.ready.catch(() => {});
+    if (warming) {
+      await warming;
+      warming = null;
+    }
+    if (session && unseeded) {
+      unseeded = false;
+      return true; // pre-started fresh session: this turn carries the projection seed
+    }
     const warm = lastActivity > 0 && now() - lastActivity <= idleColdMs;
     if (session && warm) return false;
     if (session && !warm) await dropSession();
@@ -258,8 +347,20 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     return true;
   }
 
+  const userActions: LogEvent[] = [];
+  core.log.subscribe((e) => {
+    if (e.stream === "channel" && e.kind === "job_status" && e.origin === "user") userActions.push(e);
+  });
+
   function buildInput(batch: LogEvent[], fresh: boolean): string {
-    const deltas = batch.map((e) => renderTrigger(e, ctx));
+    // Things the user did by button since our last turn (merge, open PR): context, not triggers.
+    const noted = fresh ? [] : userActions.splice(0);
+    const deltas = [...noted.map((e) => renderTrigger(e, ctx)), ...batch.map((e) => renderTrigger(e, ctx))];
+    // The identity may say the user prefers Chinese; the language of this message wins.
+    const lastUser = [...batch].reverse().find((e) => e.kind === "user_msg");
+    if (lastUser && !isChinese((lastUser.body as Bodies["user_msg"]).text)) {
+      deltas.push("[language] The user wrote this in English (not Chinese): reply in English, including the first line.");
+    }
     deltas.push(renderTime(new Date(now())));
     if (!fresh) return deltas.join("\n");
     const batchSeqs = new Set(batch.map((e) => e.seq));
@@ -268,7 +369,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         stream: "channel",
         beforeSeq: core.log.head() + 1,
         limit: historyLimit + batch.length,
-        kinds: ["user_msg", "ai_msg", "ack", "job_status", "report", "decision", "decision_resolved"],
+        kinds: ["user_msg", "ai_msg", "ack", "job_status", "report", "decision", "decision_resolved", "waiter"],
       })
       .filter((e) => !batchSeqs.has(e.seq))
       .sort((a, b) => a.seq - b.seq)
@@ -335,13 +436,16 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
 
     const fresh = await ensureSession();
     const input = buildInput(batch, fresh);
-    turn = { triggers: batch, userTexts, replyTo, pending: null, unboundAck: null, zh };
+    turn = { triggers: batch, userTexts, replyTo, pending: null, unboundAck: null, opensSeen: 0, opensHandled: 0, zh };
     stats.turns++;
     try {
       const reading = readTurn();
       await session!.send(input, "turn");
       await reading;
       flushPending();
+      handledSeq = Math.max(handledSeq ?? 0, ...batch.map((e) => e.seq));
+      if (!batch.some((e) => e.seq < 0)) queueCorrections(); // one correction round, never a loop
+      else corrections.length = 0;
     } finally {
       turn = null;
       lastActivity = now();
@@ -372,7 +476,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   function onReport(r: Bodies["report"]) {
     if (r.state !== "done" && r.state !== "failed") return;
     const j = jobs.get(r.taskId);
-    if (!j) return;
+    if (!j || j.state === r.state) return; // e.g. a report re-queued after a restart
+    j.state = r.state;
     core.log.append({
       stream: "channel",
       origin: "partner",
@@ -391,7 +496,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   core.mcp.register(
     "partner",
     "task_open",
-    "Open a task: a separate working session in its own place (repo, folder, browser) for anything that needs a place, writes, or takes more than ~10s. Write a one-line ack naming the action BEFORE calling this. The brief must quote the user's words verbatim and list decisions, done-criteria, out of scope, and the place. " +
+    "Open a task: a separate working session in its own place (repo, folder, browser) for anything that needs a place, writes, or takes more than ~10s. A follow-up on recent work (same repo, builds on what a task just did) is NOT a new task: task_send it to that task, even if it is done; it keeps its branch, worktree and session. Open a new task only for separate work; if it must build on an unmerged task branch, set place.baseBranch to that branch. Write a one-line ack naming the action BEFORE calling this. The brief must quote the user's words verbatim and list decisions, done-criteria, out of scope, and the place. " +
       'Choose place {"kind":"browser"} when the work happens on the web: looking something up, checking or reading a page or site, comparing products, filling a form. The browser keeps its sign-ins between tasks. ' +
       "A browser task never signs in, submits, posts, buys, or pays by itself: it stops and asks the user with a question, so put that in the brief's out of scope. " +
       "Returns at once; the task reports back on its own. Never wait on it.",
@@ -410,6 +515,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
             repoPath: { type: "string" },
             path: { type: "string" },
             profile: { type: "string" },
+            baseBranch: { type: "string", description: "Repo only: branch to start from. For new work that builds on an earlier task's unmerged branch, pass that branch." },
           },
           required: ["kind"],
         },
@@ -419,7 +525,14 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       },
       required: ["title", "brief"],
     },
-    async (args: { title: string; brief: string; place?: Place; project?: string; harness?: string; model?: string }) => {
+    async (raw: { title?: unknown; brief?: unknown; place?: Place; project?: string; harness?: string; model?: string }) => {
+      // Validate before any channel side effect (live: a call without `title` crashed after
+      // "On it: undefined" and a failed job_status were already on the channel).
+      const briefIn = typeof raw?.brief === "string" ? raw.brief.trim() : "";
+      if (!briefIn) return { ok: false, error: "task_open needs `brief` (the user's words, decisions, done-criteria, out of scope, place) and `title`." };
+      const firstLine = briefIn.split("\n").find((l) => l.trim())!.replace(/^[#>*\-\s"“]+/, "").trim();
+      const title = (typeof raw.title === "string" && raw.title.trim()) || (firstLine.length > 60 ? firstLine.slice(0, 59) + "…" : firstLine);
+      const args = { ...raw, title, brief: briefIn };
       const t = turn;
       let jobId: string;
       if (t) {
@@ -432,8 +545,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
             ack = claimAck(t);
           }
         }
-        if (!ack) ack = appendAck(t, t.zh ? `好，我去做：${args.title}` : `On it: ${args.title}`);
+        if (!ack) ack = appendAck(t, generatedAck(t.zh, args.title));
         t.unboundAck = null;
+        t.opensHandled++;
         jobId = ack.jobId;
       } else {
         jobId = newId("job");
@@ -451,7 +565,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           ...(args.harness ? { harness: args.harness } : {}),
           ...(args.model ? { model: args.model } : {}),
         });
-        jobs.set(card.taskId, { jobId, title: card.title || args.title, replyTo: t ? replyToFor(t) : undefined });
+        jobs.set(card.taskId, { jobId, title: card.title || args.title, replyTo: t ? replyToFor(t) : undefined, state: "running" });
         core.log.append({
           stream: "channel",
           origin: "partner",
@@ -477,7 +591,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   core.mcp.register(
     "partner",
     "task_send",
-    "Send text to a running task: the user's follow-up or correction, or a question that needs the task's own judgment. Read first (task_read, log_search, log_read); ask only what the Log can't answer. mode 'steer' (default) interrupts at the next safe point; 'queue' waits for its current turn.",
+    "Send text to a task, running or finished (a finished one resumes in its own branch and worktree): the user's follow-up or correction, the next step on the same work, or a question that needs the task's own judgment. Read first (task_read, log_search, log_read); ask only what the Log can't answer. mode 'steer' (default) interrupts at the next safe point; 'queue' waits for its current turn.",
     {
       type: "object",
       properties: {
@@ -521,18 +635,47 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       }
       const at = Date.parse(args.at);
       if (Number.isNaN(at)) return { ok: false, error: `could not parse time: ${args.at}` };
-      const waiterId = newId("wait");
-      const delay = Math.max(0, Math.min(at - now(), 2 ** 31 - 1));
-      const base = { jobId: waiterId, text: args.reason, ...(args.taskId ? { taskId: args.taskId } : {}) };
-      core.log.append({ stream: "channel", origin: "waiter", kind: "job_status", body: { ...base, state: "running" } });
-      const h = setTimer(() => {
-        timers.delete(h);
-        if (closed) return;
-        const fired = core.log.append({ stream: "channel", origin: "waiter", kind: "job_status", body: { ...base, state: "done" } });
-        api.onTrigger(fired);
-      }, delay);
-      timers.add(h);
-      return { ok: true, waiterId, firesAt: new Date(now() + delay).toISOString() };
+      if (args.taskId && !core.tasks.get(args.taskId)) return { ok: false, error: `unknown task ${args.taskId}` };
+      // Core arms the timer from this event (it survives restarts) and appends waiter "fired",
+      // which wakes us; a task-bound waiter is cancelled if the task finishes first.
+      const body: Bodies["waiter"] = { waiterId: newId("wait"), at: new Date(at).toISOString(), reason: args.reason, state: "armed" };
+      if (args.taskId) body.taskId = args.taskId;
+      core.log.append({ stream: "channel", origin: "waiter", kind: "waiter", body });
+      return { ok: true, waiterId: body.waiterId, firesAt: body.at };
+    },
+  );
+
+  core.mcp.register(
+    "partner",
+    "ask",
+    "Ask the user to choose, BEFORE any task exists (e.g. \"ask me before changing the public API\"). The user sees the question with Go / Hold / Reply buttons; never ask a choice in prose and never tell the user to type Go. Returns at once; end your turn. The answer arrives as a [your question answered: …] line, and then you act on it (e.g. open the task). Only refer to a choice the user can see if you created it with this tool.",
+    {
+      type: "object",
+      properties: {
+        question: { type: "string", description: "One question in the user's language" },
+        goLabel: { type: "string", description: "What Go does, short, in the user's language (e.g. 改签名 / Change the signature)" },
+        default: { type: "string", enum: ["go", "hold"], description: "What happens if the user doesn't answer (go only if reversible)" },
+        reversible: { type: "boolean", description: "Whether the default can be undone" },
+        defaultInMinutes: { type: "number", description: "When the default applies (reversible only); omit to wait for the user" },
+      },
+      required: ["question", "goLabel"],
+    },
+    async (args: { question: string; goLabel: string; default?: "go" | "hold"; reversible?: boolean; defaultInMinutes?: number }) => {
+      await Bun.sleep(5); // let the streamed text land first
+      flushPending(); // a line before the question stays a message, never an ack
+      const reversible = Boolean(args.reversible);
+      const body: Bodies["decision"] = {
+        decisionId: newId("d"),
+        question: args.question.trim(),
+        goLabel: args.goLabel.trim(),
+        defaultOption: args.default === "go" && reversible ? "go" : "hold",
+        reversible,
+      };
+      if (reversible && body.defaultOption === "go" && args.defaultInMinutes && args.defaultInMinutes > 0) {
+        body.defaultAt = new Date(now() + args.defaultInMinutes * 60_000).toISOString();
+      }
+      core.log.append({ stream: "channel", origin: "partner", kind: "decision", body });
+      return { ok: true, decisionId: body.decisionId, note: "The user sees it with Go / Hold / Reply. End your turn now; do not repeat the question." };
     },
   );
 
@@ -558,11 +701,52 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     },
     async close() {
       closed = true;
-      for (const h of timers) clearTimer(h);
-      timers.clear();
       await api.idle().catch(() => {});
       await dropSession();
     },
   };
+
+  // Start (or resume) the session at boot, so the first message does not pay for process
+  // start-up and the MCP handshake (measured live: ~5-7 s of a 15 s first ack).
+  if (opts.prewarm ?? true) {
+    warming = (async () => {
+      try {
+        await opts.ready?.catch(() => {});
+        const warm = lastActivity > 0 && now() - lastActivity <= idleColdMs;
+        if (warm && lastSessionId) {
+          try {
+            await startSession(lastSessionId);
+            stats.resumes++;
+            return;
+          } catch (err) {
+            onError(err);
+          }
+        }
+        await startSession();
+        stats.freshStarts++;
+        unseeded = true;
+      } catch (err) {
+        onError(err);
+        session = null;
+      }
+    })();
+  }
+
+  // Re-queue triggers that no finished turn covered (cut off by a restart, or arrived while down).
+  if (persist && handledSeq !== undefined) {
+    const from = handledSeq + 1;
+    const missed = core.log
+      .read({ fromSeq: from, limit: 200, kinds: ["user_msg", "decision_resolved", "report", "waiter"] })
+      .filter(isTrigger);
+    const replied = new Set(
+      core.log
+        .read({ stream: "channel", fromSeq: from, limit: 5000, kinds: ["ai_msg", "ack"] })
+        .map((e) => (e.body as { replyTo?: number }).replyTo),
+    );
+    const todo = missed.filter((e) => !(e.kind === "user_msg" && replied.has(e.seq)));
+    if (todo.length) queueMicrotask(() => todo.forEach((e) => api.onTrigger(e)));
+  } else if (persist) {
+    handledSeq = core.log.head(); // first run: history is background, not new work
+  }
   return api;
 }

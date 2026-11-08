@@ -61,10 +61,10 @@ Send it any way you like (AirDrop, a zip, a USB stick).
 | 0:00 | `install.sh` says "Ducter is installed" and prints the one command to run next |
 | 0:10 | First `ducter up`: a quick check of the Mac. Ready → one line ("This Mac is ready: Claude Code, Codex"). Not ready → only what blocks, each with the one command that fixes it |
 | 0:15 | One optional question: "What should I be called? (Enter keeps Ducter)". Skipped when Nowledge Mem is connected, since the identity there has a name |
-| 0:25 | The banner: where Ducter lives (this Mac, data in `~/.ducter`), memory, the desktop window. Phone and other computers can't connect yet, and it says so |
+| 0:25 | The banner: where Ducter lives (this Mac, data in `~/.ducter`), memory, the desktop window, and how to connect another device later (`ducter pair`) |
 | 0:30 | The desktop opens on a greeting by name, in their language, with three starters about *their* Mac: the git repos they touched most recently under `~/dev`, `~/code`, `~/src`, `~/Projects`, `~/work` (names only; nothing inside is opened). No repos → everyday starters |
-| 1:00 | They tap a starter (it fills the box; it never sends by itself) and press Return. The partner says what it's starting (19 s in our run, a cold start) and opens a task |
-| ~2:00 | The task comes back done (52 s after sending, for "fix the failing tests" in a small repo). The first time ever, a single line with the clay character: "Your first task is done. Everything I finish comes back to you like this, with proof." Then the partner's own short result with evidence (58 s), and Merge / Draft PR / See changes |
+| 1:00 | They tap a starter (it fills the box; it never sends by itself) and press Return. The partner says what it's starting (3–19 s in our two runs) and opens a task |
+| ~2:00 | The task comes back done (46–52 s after sending, for "fix the failing tests" in a small repo). The first time ever, a single line with the clay character: "Your first task is done. Everything I finish comes back to you like this, with proof." Then the partner's own short result with evidence (about a minute), and Merge / Draft PR / See changes |
 
 To start over as a brand-new user, stop Ducter and remove `~/.ducter` (or use a fresh
 `--data-dir`). Ducter's files there: `ducter.db` (the Log), `ducter.log` (its own log lines),
@@ -84,6 +84,47 @@ Options: `--port` (default 7777, or `DUCTER_PORT`), `--data-dir` (default `~/.du
 `DUCTER_LOCALE=zh` or `en` to choose.
 
 From a checkout you can also skip the install: `bun install && bun packages/cli/src/main.ts up`.
+
+## On a server (Linux VPS)
+
+Keep your partner awake while your Mac sleeps. On your Mac, build the Linux binaries; on the
+server, install them as a service; then connect the Mac app.
+
+```sh
+# on your Mac
+scripts/install.sh --linux ducter-linux            # ducter-linux/linux-x64 and linux-arm64
+scp -r ducter-linux/linux-x64 you@server:ducter    # pick the server's CPU (uname -m)
+
+# on the server
+sh ducter/install.sh --service   # systemd user service on 127.0.0.1:7777, then a pairing code
+ducter doctor                    # says how to sign in Claude Code / Codex without a browser there
+```
+
+Reach it one of two ways:
+
+- **Your own domain (recommended):** point a DNS record at the server, open ports 80/443, then
+  `sh scripts/caddy-setup.sh ducter.example.com` on the server. Caddy gets the HTTPS
+  certificate; Ducter stays on 127.0.0.1.
+- **No domain:** an SSH tunnel from your Mac, `ssh -N -L 7777:127.0.0.1:7777 you@server`, then
+  the address is `http://127.0.0.1:7777`.
+
+In the Mac app choose **My Ducter is on another machine → Connect to your Ducter** and enter
+the address and the code from `ducter pair` (or paste the whole link it prints). Only paired
+devices get in from outside the server; `ducter devices` lists them and
+`ducter devices disconnect <id>` removes one. Another machine can join as a worker with
+`ducter pair --worker` on the server and `ducter worker --join <address> --code <code>` there
+(it connects and shows as awake; running tasks on it comes next).
+
+| Command | What it does |
+|---|---|
+| `ducter up --headless` | Run as a server: no window. Binds 127.0.0.1 unless `--host` says otherwise |
+| `ducter service install \| uninstall \| status` | systemd user service with restart on failure; logs in `journalctl --user -u ducter` |
+| `ducter pair` | One-time pairing code (10 min), address, link and QR |
+| `ducter devices` | Connected devices; `disconnect <id>` removes one |
+| `ducter worker --join <address> --code <code>` | Make this machine a worker of that Ducter (`service install --worker` keeps it running) |
+
+`DUCTER_SCRIPTED_MODEL=1 ducter up` runs with a canned model (OAR's scripted runtime) over the
+real tools, for demos on a box with no AI signed in. Every reply says so.
 
 ## How it works
 

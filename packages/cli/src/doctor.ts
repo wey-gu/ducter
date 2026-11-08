@@ -23,9 +23,13 @@ export interface Host {
   /** True inside the `bun build --compile` binary: Bun is built in. */
   compiled: boolean;
   bunVersion: string;
+  /** process.platform; on "linux", doctor speaks to a server (headless logins, service, devices). */
+  platform?: string;
+  /** Devices paired with this Ducter (core/src/auth.ts). */
+  pairedDevices?(): number;
 }
 
-export type CheckId = "bun" | "git" | "claude" | "codex" | "nmem" | "cua" | "port" | "data";
+export type CheckId = "bun" | "git" | "claude" | "codex" | "nmem" | "cua" | "port" | "data" | "service" | "devices";
 export type CheckStatus = "ok" | "missing" | "warn";
 
 export interface Check {
@@ -64,6 +68,17 @@ const FIX = {
   data: (d: string) => `mkdir -p "${d}" && chmod u+w "${d}"`,
 };
 
+/** A Linux server has no browser and no Homebrew; research/29 has the evidence for each line. */
+export const SERVER_FIX = {
+  git: "sudo apt-get install -y git",
+  codexInstall: "npm install -g @openai/codex",
+  claudeLogin: "claude auth login",
+  codexLogin: "codex login --device-auth",
+  service: "ducter service install",
+  linger: (u: string) => `sudo loginctl enable-linger ${u}`,
+  devices: "ducter pair",
+};
+
 /** Compares dotted versions numerically; non-numeric parts count as 0. */
 export function versionAtLeast(have: string, min: string): boolean {
   const a = have.split(/[.+-]/).map((x) => parseInt(x, 10) || 0);
@@ -94,18 +109,22 @@ export async function runDoctor(host: Host, t: T, opts: DoctorOptions): Promise<
     fix: status === "ok" ? undefined : fix,
   });
 
+  const server = host.platform === "linux";
+  const fix = server ? { ...FIX, ...SERVER_FIX } : FIX;
+  const loggedOut = (id: "claude" | "codex"): MsgKey => (server ? `check.${id}.loggedOut.headless` : `check.${id}.loggedOut`);
   // The slow probes (CLIs that may hit the network or keychain) run in parallel.
   const [git, claude, codex, nmem, cua, port] = await Promise.all([
     (async () => {
-      if (!host.which("git")) return c("git", "check.git", "missing", true, "check.git.missing", {}, FIX.git);
+      if (!host.which("git")) return c("git", "check.git", "missing", true, "check.git.missing", {}, fix.git);
       const r = await host.run(["git", "--version"]);
       return c("git", "check.git", "ok", true, "check.git.ok", { version: firstVersion(r.stdout) });
     })(),
     (async () => {
-      if (!host.which("claude")) return { installed: false, loggedIn: false, version: "" };
+      if (!host.which("claude")) return { installed: false, loggedIn: false, token: false, version: "" };
       const [v, auth] = await Promise.all([host.run(["claude", "--version"]), host.run(["claude", "auth", "status"], 15_000)]);
       const j = parseJson(auth.stdout);
-      return { installed: true, loggedIn: auth.code === 0 && j?.loggedIn === true, version: firstVersion(v.stdout) };
+      // A CLAUDE_CODE_OAUTH_TOKEN counts as logged in without being checked (research/29).
+      return { installed: true, loggedIn: auth.code === 0 && j?.loggedIn === true, token: j?.authMethod === "oauth_token", version: firstVersion(v.stdout) };
     })(),
     (async () => {
       if (!host.which("codex")) return { installed: false, loggedIn: false };
@@ -135,15 +154,15 @@ export async function runDoctor(host: Host, t: T, opts: DoctorOptions): Promise<
   // At least one harness is required; whichever is logged in carries the requirement.
   const harnessReady = claude.loggedIn || codex.loggedIn;
   const claudeCheck = claude.loggedIn
-    ? c("claude", "check.claude", "ok", true, "check.claude.ok", { version: claude.version })
+    ? c("claude", "check.claude", "ok", true, claude.token ? "check.claude.token" : "check.claude.ok", { version: claude.version })
     : claude.installed
-      ? c("claude", "check.claude", "missing", !harnessReady, "check.claude.loggedOut", {}, FIX.claudeLogin)
+      ? c("claude", "check.claude", "missing", !harnessReady, loggedOut("claude"), {}, fix.claudeLogin)
       : c("claude", "check.claude", "missing", !harnessReady, "check.claude.missing", {}, FIX.claudeInstall);
   const codexCheck = codex.loggedIn
     ? c("codex", "check.codex", "ok", false, "check.codex.ok")
     : codex.installed
-      ? c("codex", "check.codex", "missing", false, "check.codex.loggedOut", {}, FIX.codexLogin)
-      : c("codex", "check.codex", "missing", false, "check.codex.missing", {}, FIX.codexInstall);
+      ? c("codex", "check.codex", "missing", false, loggedOut("codex"), {}, fix.codexLogin)
+      : c("codex", "check.codex", "missing", false, "check.codex.missing", {}, fix.codexInstall);
 
   const portCheck =
     port === "free"
@@ -157,7 +176,29 @@ export async function runDoctor(host: Host, t: T, opts: DoctorOptions): Promise<
     : c("data", "check.data", "missing", true, "check.data.bad", { dir: opts.dataDir }, FIX.data(opts.dataDir));
 
   const checks = [bun, git, claudeCheck, codexCheck, nmem, cua, portCheck, dataCheck];
+  if (server) checks.push(...(await serverChecks(host, c)));
   return { checks, ok: checks.every((k) => !k.required || k.status === "ok"), harnessReady };
+}
+
+type Mk = (id: CheckId, labelKey: MsgKey, status: CheckStatus, required: boolean, detailKey: MsgKey, vars?: Record<string, string | number>, fix?: string) => Check;
+
+/** Server-only rows: does Ducter outlive this SSH session, and is any device connected? Both optional. */
+async function serverChecks(host: Host, c: Mk): Promise<Check[]> {
+  const user = process.env.USER || "$USER";
+  let service: Check;
+  if (!host.which("systemctl")) service = c("service", "check.service", "missing", false, "check.service.off", {}, SERVER_FIX.service);
+  else {
+    const [active, linger] = await Promise.all([
+      host.run(["systemctl", "--user", "is-active", "ducter.service"]),
+      host.run(["loginctl", "show-user", user, "-p", "Linger"]),
+    ]);
+    if (active.stdout.trim() !== "active") service = c("service", "check.service", "missing", false, "check.service.off", {}, SERVER_FIX.service);
+    else if (!/Linger=yes/.test(linger.stdout)) service = c("service", "check.service", "warn", false, "check.service.noLinger", {}, SERVER_FIX.linger(user));
+    else service = c("service", "check.service", "ok", false, "check.service.ok");
+  }
+  const n = host.pairedDevices?.() ?? 0;
+  const devices = n > 0 ? c("devices", "check.devices", "ok", false, "check.devices.ok", { n }) : c("devices", "check.devices", "missing", false, "check.devices.none", {}, SERVER_FIX.devices);
+  return [service, devices];
 }
 
 export interface Style {
@@ -186,7 +227,8 @@ const pad = (s: string, w: number) => s + " ".repeat(Math.max(0, w - width(s)));
 export function formatReport(r: DoctorReport, t: T, style: Style = plainStyle, opts: { closing?: boolean } = {}): string {
   const shown = r.checks.filter((k) => !k.quiet);
   const labelW = Math.max(...shown.map((k) => width(k.label))) + 2;
-  const lines = [style.bold(t("doctor.title")), ""];
+  const server = r.checks.some((k) => k.id === "service");
+  const lines = [style.bold(t(server ? "doctor.title.server" : "doctor.title")), ""];
   for (const k of shown) {
     const mark = k.status === "ok" ? style.ok("✓") : k.required ? style.bad("✗") : style.dim("·");
     const tag = k.status !== "ok" && !k.required ? style.dim(` ${t("doctor.optional")}`) : "";
@@ -286,6 +328,7 @@ export function realHost(): Host {
     },
     compiled: isCompiled(),
     bunVersion: Bun.version,
+    platform: process.platform,
   };
 }
 

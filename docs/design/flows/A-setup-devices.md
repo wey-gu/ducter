@@ -97,6 +97,12 @@
 
 ### Flow A1-V: VPS one-line install
 
+> *Built so far (D54, 2026-11-09), terminal-first:* `sh install.sh --service` (systemd user
+> service, linger, journald) → `ducter pair` prints a code, the address or an SSH tunnel line, a
+> link and a QR → the Mac app's **连接到你的 Ducter** card. The temporary browser link, the
+> quick tunnel and the relayed logins below are not built; `research/29` has the exact
+> headless login commands they will relay.
+
 The VPS case has two problems the Mac doesn't: there is no screen, and the AI logins are usually
 missing. The design moves every interactive step into the user's own browser.
 

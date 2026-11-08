@@ -68,7 +68,7 @@ func (a *App) taskFooter(c *ui.Context, task *store.Task, detail string) {
 // first, folding the rest into "+n".
 func (a *App) evidenceChips(c *ui.Context, task *store.Task, evs []protocol.EvidenceRef, max int) {
 	t := a.T
-	evs = store.SortEvidence(evs)
+	evs = store.SortEvidence(latestByLabel(evs))
 	for i, ev := range evs {
 		if i == max {
 			l := ui.Text(c.Key("more"), a.L.T("result.more", len(evs)-max)).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted).
@@ -124,14 +124,22 @@ func (a *App) outsideLine(task *store.Task) string {
 		return s + " · " + a.L.T("outside.seen")
 	}
 	p := task.Place()
+	if done := task.Acted; done != nil && done.OK && done.Action == "merge" {
+		base := p.BaseBranch
+		if base == "" {
+			base = "main"
+		}
+		return a.L.T("outside.nothing.merged", base, a.cjkPad(a.device(p.Device)))
+	}
 	if p.Kind == "repo" && p.Branch != "" {
 		return a.L.T("outside.nothing.repo", p.Branch, a.cjkPad(a.device(p.Device)))
 	}
 	return a.L.T("outside.nothing")
 }
 
-// resultActions are the next steps a finished repo task offers. There is
-// no protocol frame for them yet, so they ask the partner in words.
+// resultActions are the next steps a finished repo task offers. They go
+// straight to the task as task_action frames; the server answers with an
+// action_result, shown as a toast (see drainActionResults).
 func (a *App) resultActions(c *ui.Context, task *store.Task) {
 	t := a.T
 	p := task.Place()
@@ -143,17 +151,21 @@ func (a *App) resultActions(c *ui.Context, task *store.Task) {
 		base = "main"
 	}
 	ui.Row(c.Key("actions:" + task.ID)).Gap(8).Wrap().AlignItems(ui.Center).Children(func() {
-		ask := func(text string) {
-			a.SendMessage(text)
-			if a.Route != RouteConversation {
-				c.Toast(a.L.T("result.asked", a.S.PersonaName))
+		act := func(action string) {
+			task.Acting = action
+			a.TaskAction(task.ID, action)
+		}
+		if task.Acting != "" {
+			ui.Text(c.Key("acting"), a.L.T("result.acting."+task.Acting, base)).FontSize(t.SM).TextColor(t.InkMuted)
+		} else if done := task.Acted; done != nil && done.OK && done.Action == "merge" {
+			ui.Text(c.Key("acted"), a.L.T("result.merged", base)).FontSize(t.SM).FontWeight(700).TextColor(t.Done.Ink)
+		} else {
+			if a.button(c, a.L.T("result.merge", base), btnPrimary, 38, t.Surface) {
+				act("merge")
 			}
-		}
-		if a.button(c, a.L.T("result.merge", base), btnPrimary, 38, t.Surface) {
-			ask(a.L.T("result.ask.merge", task.Title(), base))
-		}
-		if a.button(c, a.L.T("result.pr"), btnQuiet, 38, t.Surface) {
-			ask(a.L.T("result.ask.pr", task.Title()))
+			if a.button(c, a.L.T("result.pr"), btnQuiet, 38, t.Surface) {
+				act("open_pr")
+			}
 		}
 		if a.Route != RouteTask && a.button(c, a.L.T("result.changes"), btnText, 38, t.Surface) {
 			a.OpenTask(task.ID)
@@ -220,4 +232,49 @@ func headlineEvidence(evs []protocol.EvidenceRef) (protocol.EvidenceRef, bool) {
 		}
 	}
 	return best, true
+}
+
+// drainActionResults shows each new action_result once, as a toast.
+func (a *App) drainActionResults(c *ui.Context) {
+	for _, f := range a.S.ActionResults {
+		title := ""
+		if t := a.S.Tasks[f.TaskID]; t != nil {
+			title = t.Title()
+		}
+		switch {
+		case f.OK && f.Action == "merge":
+			c.Toast(a.L.T("result.merged.toast", title, short(f.Ref)))
+		case f.OK && f.Action == "open_pr":
+			c.Toast(a.L.T("result.pr.toast", f.Ref))
+		case !f.OK:
+			c.Toast(a.L.T("result.action.failed", f.Message))
+		}
+	}
+	a.S.ActionResults = nil
+}
+
+func short(ref string) string {
+	if len(ref) > 7 && !strings.Contains(ref, "/") {
+		return ref[:7]
+	}
+	return ref
+}
+
+// latestByLabel keeps one evidence item per label: the latest, since a
+// follow-up run supersedes the earlier one (e.g. a second "bun test").
+func latestByLabel(evs []protocol.EvidenceRef) []protocol.EvidenceRef {
+	seen := map[string]bool{}
+	out := make([]protocol.EvidenceRef, 0, len(evs))
+	for i := len(evs) - 1; i >= 0; i-- {
+		k := evs[i].Kind + "|" + evs[i].Label
+		if seen[k] {
+			continue
+		}
+		seen[k] = true
+		out = append(out, evs[i])
+	}
+	for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
+		out[i], out[j] = out[j], out[i]
+	}
+	return out
 }

@@ -71,6 +71,18 @@ export async function planPlace(place: Place | undefined, taskId: string, title:
   }
 }
 
+/** Working directory of an already-planned place (task recovery after a restart). */
+export function cwdOf(p: Place, taskId: string, dataDir: string): string {
+  switch (p.kind) {
+    case "repo":
+      return p.worktree ?? p.repoPath;
+    case "folder":
+      return p.path;
+    default:
+      return join(dataDir, "scratch", taskId);
+  }
+}
+
 /** Create the directory / worktree. Throws with git's message on failure. */
 export async function provisionPlace(r: ResolvedPlace): Promise<void> {
   const p = r.place;

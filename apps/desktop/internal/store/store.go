@@ -94,6 +94,10 @@ type Task struct {
 	Sends []*Send
 	// Usage sums the token use of the turns seen.
 	Usage protocol.Usage
+	// Acting is the task_action awaiting its action_result ("" when none).
+	Acting string
+	// Acted is the last action_result for this task.
+	Acted *protocol.ServerFrame
 }
 
 // SendFor returns the user's send that a logged task_event echoes, or nil.
@@ -204,9 +208,11 @@ func (t *Task) BodyReason() string {
 
 // Store is the client's state.
 type Store struct {
-	Persona     string
-	PersonaName string
-	HeadSeq     int64
+	// ActionResults are action_result frames not yet shown to the user.
+	ActionResults []protocol.ServerFrame
+	Persona       string
+	PersonaName   string
+	HeadSeq       int64
 	// Cursor is the highest seq applied from the live stream.
 	Cursor int64
 	// ReadUpTo is the last read receipt.
@@ -272,6 +278,12 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 				}
 			}
 		}
+	case "action_result":
+		if t := s.Tasks[f.TaskID]; t != nil {
+			fc := f
+			t.Acting, t.Acted = "", &fc
+		}
+		s.ActionResults = append(s.ActionResults, f)
 	case "events":
 		for _, ev := range f.Events {
 			s.ApplyEvent(ev)
@@ -416,6 +428,15 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 		j.Ack = b
 		s.add(&Entry{Event: ev, Job: j})
 	case *protocol.JobStatus:
+		// A user-origin "act_<task>_<action>" status records what the user did by button
+		// (merge, open_pr): the durable form of an action_result, so it survives restarts.
+		if ev.Origin == protocol.OriginUser && b.TaskID != "" && strings.HasPrefix(b.JobID, "act_"+b.TaskID+"_") {
+			if t := s.Tasks[b.TaskID]; t != nil {
+				t.Acted = &protocol.ServerFrame{T: "action_result", TaskID: b.TaskID, Action: strings.TrimPrefix(b.JobID, "act_"+b.TaskID+"_"), OK: true}
+			}
+			s.bySeq[ev.Seq] = nil
+			return
+		}
 		j := s.Jobs[b.JobID]
 		if j == nil {
 			j = s.job(b.JobID)

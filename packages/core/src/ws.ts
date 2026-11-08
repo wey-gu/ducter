@@ -1,22 +1,19 @@
 // Client WebSocket protocol (ClientFrame / ServerFrame) over Bun's built-in WS.
 import type { ServerWebSocket } from "bun";
-import type { ClientFrame, EventKind, LogEvent, ServerFrame } from "@ducter/protocol";
+import type { ClientFrame, LogEvent, ServerFrame } from "@ducter/protocol";
 import type { CoreApi, Runner } from "@ducter/protocol/src/internal.ts";
 import type { Decisions } from "./decisions.ts";
 import { PROJECTED_KINDS, taskStream } from "./registry.ts";
 
 export interface WsData {
   live: boolean;
-  watching: Set<string>; // task streams this client opened (task_history) and gets live
   buf: LogEvent[];
   onHandDirty: boolean;
 }
 
-// Transcript-level kinds go only to clients that opened the task.
-const TRANSCRIPT_KINDS = new Set<EventKind>(["task_event", "checkpoint"]);
 const ON_HAND_KINDS = new Set<string>(PROJECTED_KINDS);
-const REPLAY_FRESH = 500;
-const REPLAY_MAX = 5000;
+const REPLAY_FRESH = 200; // channel events replayed when hello has no cursor
+const REPLAY_MAX = 5000; // cap for a cursor replay
 
 export interface WsDeps {
   core: CoreApi;
@@ -24,11 +21,6 @@ export interface WsDeps {
   runner: () => Runner | undefined;
   batchMs?: number;
 }
-
-const REPLAY_KINDS: EventKind[] = [
-  "user_msg", "ai_msg", "ack", "job_status", "living_msg", "decision", "decision_resolved", "read_receipt",
-  "task_open", "task_state", "report",
-];
 
 /** Drops living_msg revisions that a later event in the same batch supersedes. */
 export function dropSuperseded(events: LogEvent[]): LogEvent[] {
@@ -61,7 +53,8 @@ export function createWsHandler(deps: WsDeps) {
     let any = false;
     for (const ws of sockets) {
       if (!ws.data.live) continue;
-      if (!TRANSCRIPT_KINDS.has(e.kind) || ws.data.watching.has(e.stream)) ws.data.buf.push(e), (any = true);
+      // Channel events and live task events (task_event/task_state/...) for every task.
+      ws.data.buf.push(e), (any = true);
       if (ON_HAND_KINDS.has(e.kind)) (ws.data.onHandDirty = true), (any = true);
     }
     if (any && !flushTimer) flushTimer = setTimeout(flush, batchMs);
@@ -72,10 +65,11 @@ export function createWsHandler(deps: WsDeps) {
     switch (f.t) {
       case "hello": {
         send(ws, { t: "welcome", persona: core.persona.id, personaName: core.persona.name, headSeq: log.head() });
+        // Channel only: task streams are pulled with task_history.
         const events =
-          f.cursor && f.cursor > 0
-            ? log.read({ fromSeq: f.cursor + 1, limit: REPLAY_MAX, kinds: REPLAY_KINDS })
-            : log.read({ limit: REPLAY_FRESH, kinds: REPLAY_KINDS });
+          f.cursor != null && f.cursor >= 0
+            ? log.read({ stream: "channel", fromSeq: f.cursor + 1, limit: REPLAY_MAX })
+            : log.read({ stream: "channel", limit: REPLAY_FRESH });
         send(ws, { t: "events", events: dropSuperseded(events) });
         send(ws, { t: "on_hand", onHand: tasks.onHand() });
         ws.data.live = true; // synchronous since the read: no event can be missed in between
@@ -92,31 +86,78 @@ export function createWsHandler(deps: WsDeps) {
       case "task_send": {
         const r = deps.runner();
         if (!r) throw new Error("runner is not available");
-        await r.send(f.taskId, f.text);
+        if (!f.text?.trim()) throw new Error("empty message");
+        if (!tasks.get(f.taskId)) throw new Error(`unknown task ${f.taskId}`);
+        // Answering the task directly answers its open question too (no later Go re-wakes it).
+        decisions.answeredByMessage(f.taskId, f.text, "user");
+        const { delivered } = await r.send(f.taskId, f.text, undefined, "user");
+        send(ws, { t: "sent", taskId: f.taskId, delivered });
         return;
       }
       case "task_action": {
+        // What the user did by button is part of the conversation: the partner must know it
+        // (live: after a Merge click it told the user "I didn't merge this; check who did").
+        // Logged as a user-origin job_status on the channel; it does not wake the partner.
+        const noteUserAction = (taskId: string, text: string) =>
+          log.append({ stream: "channel", origin: "user", kind: "job_status", body: { jobId: `act_${taskId}_${f.action}`, taskId, state: "done", text } });
+        // Every task_action is acked with action_result (ok or a user-facing reason).
+        const result = (ok: boolean, message?: string, ref?: string) =>
+          send(ws, { t: "action_result", taskId: f.taskId, action: f.action, ok, ...(message ? { message } : {}), ...(ref ? { ref } : {}) });
         const card = tasks.get(f.taskId);
-        if (!card) throw new Error(`unknown task ${f.taskId}`);
+        if (!card) return result(false, "I can't find that task.");
         const r = deps.runner();
-        if (f.action === "interrupt") {
-          if (!r) throw new Error("runner is not available");
-          await r.interrupt(f.taskId);
-        } else if (f.action === "drop") {
-          await r?.drop(f.taskId);
-          const now = tasks.get(f.taskId)!;
-          if (now.attention !== "dropped") tasks.setState(f.taskId, "dropped", now.residency, "Dropped by user");
-        } else if (f.action === "reopen") {
-          tasks.setState(f.taskId, "working", card.residency, "Reopened by user");
+        try {
+          switch (f.action) {
+            case "interrupt":
+              if (!r) return result(false, "Tasks can't run right now.");
+              await r.interrupt(f.taskId);
+              return result(true);
+            case "drop": {
+              try {
+                await r?.drop(f.taskId);
+              } catch (err) {
+                console.warn(`[ws] runner.drop(${f.taskId}) failed; marking dropped anyway:`, (err as Error).message);
+              }
+              const now = tasks.get(f.taskId)!;
+              if (now.attention !== "dropped") tasks.setState(f.taskId, "dropped", now.residency);
+              return result(true);
+            }
+            case "undrop": {
+              if (!r?.undrop) return result(false, "Undo isn't available.");
+              const u = await r.undrop(f.taskId);
+              return result(u.ok, u.message);
+            }
+            case "reopen": {
+              // Truthful state only: the runner resumes the session and the task goes back to work.
+              if (!r?.reopen) return result(false, "Reopen isn't available.");
+              const { delivered } = await r.reopen(f.taskId);
+              send(ws, { t: "sent", taskId: f.taskId, delivered });
+              return result(true);
+            }
+            case "merge": {
+              if (!r?.merge) return result(false, "Merging isn't available.");
+              const m = await r.merge(f.taskId);
+              if (m.ok) noteUserAction(f.taskId, `the user merged this task's branch into its base branch${m.ref ? ` (${m.ref.slice(0, 7)})` : ""}`);
+              return result(m.ok, m.message, m.ref);
+            }
+            case "open_pr": {
+              if (!r?.openPr) return result(false, "Opening a PR isn't available.");
+              const o = await r.openPr(f.taskId);
+              if (o.ok) noteUserAction(f.taskId, `the user opened a draft PR for this task${o.ref ? `: ${o.ref}` : ""}`);
+              return result(o.ok, o.message, o.ref);
+            }
+            default:
+              return result(false, `unknown action ${(f as { action?: string }).action}`);
+          }
+        } catch (err) {
+          return result(false, (err as Error).message);
         }
-        return;
       }
       case "read":
         log.append({ stream: "channel", origin: "user", kind: "read_receipt", body: { upToSeq: f.upToSeq } });
         return;
       case "task_history": {
         const stream = taskStream(f.taskId);
-        ws.data.watching.add(stream);
         const events = log.read({ stream, beforeSeq: f.beforeSeq, limit: Math.min(f.limit ?? 200, 2000) });
         send(ws, { t: "task_history", taskId: f.taskId, events });
         return;
@@ -127,7 +168,7 @@ export function createWsHandler(deps: WsDeps) {
   };
 
   return {
-    newData: (): WsData => ({ live: false, watching: new Set(), buf: [], onHandDirty: false }),
+    newData: (): WsData => ({ live: false, buf: [], onHandDirty: false }),
     websocket: {
       open(ws: ServerWebSocket<WsData>) {
         sockets.add(ws);

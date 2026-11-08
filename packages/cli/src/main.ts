@@ -10,6 +10,11 @@ import { ansiStyle, formatBlocked, formatReport, formatSummary, realHost, runDoc
 import { buildHints, cleanName, readPersonaFile, writeHints, writePersonaFile } from "./firstrun.ts";
 import { detectLocale, translator, type T } from "./i18n.ts";
 import { fetchSnapshot, formatSnapshot } from "./status.ts";
+import { cmdDevices, cmdPair, cmdService, isLoopback, publicUrl } from "./remote.ts";
+import { cmdWorker } from "./worker.ts";
+import { scriptedRunnerModule } from "./scripted.ts";
+import { hostname } from "node:os";
+import { openDeviceAuth } from "@ducter/core/src/auth.ts";
 
 declare const DUCTER_COMMIT: string | undefined; // set by build.sh via --define
 
@@ -32,11 +37,18 @@ export function helpText(t: T): string {
     cmd("doctor", t("help.doctor")),
     cmd("status", t("help.status")),
     cmd("version", t("help.version")),
+    cmd("pair", t("help.pair")),
+    cmd("devices", t("help.devices")),
+    cmd("service", t("help.service")),
+    cmd("worker", t("help.worker")),
     "",
     t("help.options"),
     opt("--port <n>", t("help.port")),
     opt("--data-dir <dir>", t("help.dataDir")),
     opt("--no-desktop", t("help.noDesktop")),
+    opt("--headless", t("help.headless")),
+    opt("--host <addr>", t("help.host")),
+    opt("--worker", t("help.pairWorker")),
     opt("--json", t("help.json")),
   ].join("\n");
 }
@@ -129,15 +141,22 @@ async function cmdUp(ctx: Ctx): Promise<number | "running"> {
   if (!existsSync(join(ctx.dataDir, DOCTOR_MARKER)) || state === "busy") {
     if (state !== "busy") console.log(t("up.firstRun") + "\n");
     const report = await runDoctor(ctx.host, t, { port: ctx.port, dataDir: ctx.dataDir });
-    // A ready Mac gets one line; anything blocking gets the full table with its fixes.
-    console.log((report.ok ? formatSummary(report, t, style) : formatBlocked(report, t, style)) + "\n");
-    if (!report.ok) {
+    if (report.ok) {
+      // A ready Mac gets one line; the full table stays in `ducter doctor`.
+      console.log(formatSummary(report, t, style) + "\n");
+      writeFileSync(join(ctx.dataDir, DOCTOR_MARKER), new Date().toISOString());
+      firstReport = report;
+    } else if (ctx.args.headless && state !== "busy") {
+      // A server keeps running with nothing signed in: the user pairs a device and signs in later.
+      console.log(formatReport(report, t, style, { closing: false }) + "\n");
+      console.log(t("headless.notReady") + "\n");
+    } else {
+      // Only what blocks, each with its one fix.
+      console.log(formatBlocked(report, t, style) + "\n");
       const n = report.checks.filter((k) => k.required && k.status !== "ok").length;
       console.log(t(n === 1 ? "up.blocked" : "up.blocked.many"));
       return 1;
     }
-    writeFileSync(join(ctx.dataDir, DOCTOR_MARKER), new Date().toISOString());
-    firstReport = report;
   }
 
   // What the desktop's empty conversation can say about this Mac (names only; see firstrun.ts).
@@ -146,7 +165,8 @@ async function cmdUp(ctx: Ctx): Promise<number | "running"> {
   } catch {}
   await nameOnFirstRun(ctx, firstReport);
 
-  quietCoreLogs(ctx.dataDir);
+  // A server's logs belong in its journal; in front of a person they go to ducter.log.
+  if (!ctx.args.headless) quietCoreLogs(ctx.dataDir);
   console.log(style.dim(t("up.starting", { name: process.env.DUCTER_PERSONA_NAME || "Ducter" })));
   // String-literal imports so `bun build --compile` bundles them; core's own path-based loader
   // can't be bundled. A module that fails to load falls back to core's stub.
@@ -155,7 +175,9 @@ async function cmdUp(ctx: Ctx): Promise<number | "running"> {
     import("@ducter/partner").catch(() => undefined),
     import("@ducter/core/src/main.ts"),
   ]);
-  const booted = await coreMain.main({ runner: runnerMod, partner: partnerMod });
+  // Demo / e2e mode: canned model words over the real tools (scripted.ts). Says so in every reply.
+  const runner = runnerMod && process.env.DUCTER_SCRIPTED_MODEL === "1" ? scriptedRunnerModule(runnerMod) : runnerMod;
+  const booted = await coreMain.main({ runner, partner: partnerMod });
   const { core } = booted;
 
   let desktop: Launched | undefined;
@@ -172,14 +194,19 @@ async function cmdUp(ctx: Ctx): Promise<number | "running"> {
   }
 
   const name = core.persona.name;
+  if (ctx.args.headless) {
+    printHeadless(ctx, name, core.port);
+    return "running";
+  }
   console.log(
     "\n" +
       box(t("up.ready", { name }), [
         [t("up.where"), t("up.where.value", { dir: tilde(core.dataDir) })],
-        [t("up.memory"), booted.identitySource === "nowledge-mem" ? t("up.memory.mem") : t("up.memory.default")],
+        // Core doesn't wait for Mem (~6 s); "loading" means nmem answered slowly, not that it's missing.
+        [t("up.memory"), booted.identitySource === "nowledge-mem" ? t("up.memory.mem") : booted.identitySource === "loading" ? t("up.memory.loading") : t("up.memory.default")],
         [t("up.desktop"), desktopLine],
         ...(desktop ? [] : ([[t("up.address"), core.url]] as [string, string][])),
-        [t("up.reach"), style.dim(t("up.reach.value"))],
+        [t("up.reach"), t("up.reach.value")],
       ], style) +
       "\n\n  " +
       t(desktop ? "up.hint" : "up.hintNoDesktop", { name }) +
@@ -270,6 +297,24 @@ function quietCoreLogs(dataDir: string) {
   }
 }
 
+function printHeadless(ctx: Ctx, name: string, port: number) {
+  const { t, style } = ctx;
+  const bind = process.env.DUCTER_HOST || "127.0.0.1";
+  const auth = openDeviceAuth(ctx.dataDir);
+  const n = auth.list().length;
+  auth.close();
+  const rows: [string, string][] = [
+    [t("headless.listen"), `${bind}:${port}`],
+    [t("up.data"), tilde(ctx.dataDir)],
+    [t("check.devices"), n ? t("check.devices.ok", { n }) : t("check.devices.none")],
+  ];
+  const pub = publicUrl(ctx.dataDir);
+  if (pub) rows.splice(1, 0, [t("pair.address"), pub]);
+  console.log("\n" + box(t("headless.ready", { name, device: hostname() }), rows, style) + "\n");
+  if (!isLoopback(bind)) console.log("  " + t("headless.public", { host: `${bind}:${port}` }));
+  console.log("  " + t("headless.next") + "\n");
+}
+
 export async function run(argv: string[]): Promise<number | "running"> {
   const t = translator(detectLocale());
   const parsed = parseArgs(argv);
@@ -285,12 +330,23 @@ export async function run(argv: string[]): Promise<number | "running"> {
   // Flags win over env; core reads the env, so set it once here.
   if (args.port) process.env.DUCTER_PORT = String(args.port);
   if (args.dataDir) process.env.DUCTER_DATA_DIR = args.dataDir;
+  if (args.host) process.env.DUCTER_HOST = args.host;
   const port = Number(process.env.DUCTER_PORT || 7777);
   const dataDir = process.env.DUCTER_DATA_DIR || join(homedir(), ".ducter");
   fixEnv();
   const style = ansiStyle(Boolean(process.stdout.isTTY) && !process.env.NO_COLOR && !args.json);
   const ctx: Ctx = { args, t, style, host, port, dataDir };
   host.writable(dataDir); // creates it; doctor reports if it can't
+  host.pairedDevices = () => {
+    try {
+      const auth = openDeviceAuth(dataDir);
+      const n = auth.list().length;
+      auth.close();
+      return n;
+    } catch {
+      return 0;
+    }
+  };
 
   switch (args.command) {
     case "doctor":
@@ -301,6 +357,29 @@ export async function run(argv: string[]): Promise<number | "running"> {
       return cmdOpen(ctx);
     case "up":
       return cmdUp(ctx);
+    case "pair":
+      return cmdPair({ t, style, dataDir, port, json: args.json, running: (await host.port(port)) === "ducter", wait: Boolean(process.stdout.isTTY) && !args.json, worker: args.worker });
+    case "devices":
+      return cmdDevices({ t, style, dataDir, json: args.json, rest: args.rest ?? [], port });
+    case "service":
+      return cmdService({
+        t,
+        style,
+        host,
+        dataDir,
+        port,
+        bindHost: args.host,
+        worker: args.worker,
+        rest: args.rest ?? [],
+        onInstalled: async () => {
+          const auth = openDeviceAuth(dataDir);
+          const none = auth.list().length === 0;
+          auth.close();
+          if (none) await cmdPair({ t, style, dataDir, port, json: false, running: true, wait: Boolean(process.stdout.isTTY) });
+        },
+      });
+    case "worker":
+      return cmdWorker({ t, style, args, dataDir });
   }
 }
 

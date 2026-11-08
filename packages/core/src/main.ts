@@ -53,9 +53,12 @@ export interface BootModules {
   partner?: Record<string, any>;
 }
 
+const BANNER_WAIT_MS = 300;
+const IDENTITY_WAIT_MS = 8_000;
+
 export async function main(mods: BootModules = {}) {
-  // Clients can connect at once; identity from Mem (slow: several seconds) is filled in before
-  // the partner starts. Triggers that arrive meanwhile are held by core and replayed.
+  // Clients can connect at once; identity from Mem (slow: several seconds) is folded in when it
+  // lands (below). Triggers that arrive before the partner is wired are held by core and replayed.
   const persona = { id: "default", name: process.env.DUCTER_PERSONA_NAME || "Ducter", identity: DEFAULT_IDENTITY };
   const loaded = loadPersona({ timeoutMs: 10_000 });
   let core: Core;
@@ -83,14 +86,23 @@ export async function main(mods: BootModules = {}) {
   runner ??= stubRunner(core);
   core.setRunner(runner);
 
-  const mem = await loaded;
-  Object.assign(core.persona, { name: mem.name, identity: mem.identity });
+  // Don't hold boot on Mem (`nmem context` takes ~6 s): fold the identity in when it lands.
+  // The partner starts its session only after it lands or IDENTITY_WAIT_MS passes, so the
+  // first session normally carries the real L1 identity.
+  let source = "loading";
+  const identity = loaded.then((mem) => {
+    Object.assign(core.persona, { name: mem.name, identity: mem.identity });
+    source = mem.source;
+    return mem.source;
+  });
+  const identityOrTimeout = Promise.race([identity, Bun.sleep(IDENTITY_WAIT_MS).then(() => "timeout")]);
+  await Promise.race([identity, Bun.sleep(BANNER_WAIT_MS)]); // usually lost: the banner says "loading"
 
   let partner: Partner | undefined;
   const partnerMod = mods.partner ?? (await loadModule("@ducter/partner", "../../partner/src/index.ts", "createPartner"));
   if (partnerMod) {
     try {
-      partner = await partnerMod.createPartner(core, runner);
+      partner = await partnerMod.createPartner(core, runner, { ready: identityOrTimeout });
     } catch (err) {
       console.warn("[ducter] createPartner threw; running with a stub partner:", err);
     }
@@ -98,7 +110,8 @@ export async function main(mods: BootModules = {}) {
   partner ??= stubPartner(core);
   core.setPartner(partner);
 
-  console.log(`[ducter] ${persona.name} is up at ${core.url} (identity: ${mem.source}, data: ${core.dataDir})`);
+  console.log(`[ducter] ${persona.name} is up at ${core.url} (identity: ${source}, data: ${core.dataDir})`);
+  void identity.then((src) => src !== "default" && console.log(`[ducter] identity loaded from ${src}`));
 
   let stopping = false;
   const shutdown = async (sig: string) => {
@@ -106,12 +119,14 @@ export async function main(mods: BootModules = {}) {
     stopping = true;
     console.log(`[ducter] ${sig}: shutting down`);
     const force = setTimeout(() => process.exit(1), 5000);
-    for (const part of [partner, runner] as any[]) {
+    for (const [label, part] of [["partner", partner], ["runner", runner]] as [string, any][]) {
+      const t0 = Date.now();
       try {
         await part?.stop?.();
       } catch (err) {
         console.warn("[ducter] stop failed:", err);
       }
+      console.log(`[ducter] ${label} stopped in ${Date.now() - t0} ms`);
     }
     await core.stop();
     clearTimeout(force);
@@ -119,7 +134,7 @@ export async function main(mods: BootModules = {}) {
   };
   process.on("SIGINT", () => void shutdown("SIGINT"));
   process.on("SIGTERM", () => void shutdown("SIGTERM"));
-  return { core, runner, partner, identitySource: mem.source, shutdown };
+  return { core, runner, partner, identitySource: source, identity, shutdown };
 }
 
 if (import.meta.main) await main();

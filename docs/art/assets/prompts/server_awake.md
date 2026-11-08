@@ -1,0 +1,1 @@
+A small chunky toy server box (two stacked rounded slabs with tiny mint and orange status lights) sitting on a soft puffy white cloud, three-quarter view, a friendly face of two small dot eyes on the front.

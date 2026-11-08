@@ -1,6 +1,6 @@
 // Argument parsing for `ducter`. Pure: no env, no I/O, so it is easy to test.
 
-export type Command = "up" | "open" | "doctor" | "status" | "version" | "help";
+export type Command = "up" | "open" | "doctor" | "status" | "version" | "help" | "pair" | "devices" | "service" | "worker";
 
 export interface Args {
   command: Command;
@@ -8,11 +8,20 @@ export interface Args {
   dataDir?: string;
   desktop: boolean; // false with --no-desktop
   json: boolean;
+  headless?: boolean; // a server: no desktop, never opens anything
+  worker?: boolean; // pair --worker: a code for a worker device
+  host?: string; // interface to bind; only ever set on purpose
+  name?: string; // this device's name when joining as a worker
+  join?: string; // worker: the main process's URL
+  code?: string; // worker: a pairing code
+  rest?: string[]; // words after devices / service (e.g. "revoke <id>")
 }
 
 export type ParseResult = { ok: true; args: Args } | { ok: false; error: { key: "err.unknownCommand" | "err.unknownFlag" | "err.missingValue" | "err.badPort"; vars: Record<string, string> } };
 
-const COMMANDS = new Set<Command>(["up", "open", "doctor", "status", "version", "help"]);
+const COMMANDS = new Set<Command>(["up", "open", "doctor", "status", "version", "help", "pair", "devices", "service", "worker"]);
+/** Commands that take words after them (`ducter devices revoke a1b2`, `ducter service install`). */
+const WITH_REST = new Set<Command>(["devices", "service"]);
 const ALIASES: Record<string, Command> = {
   "-v": "version",
   "--version": "version",
@@ -60,6 +69,22 @@ export function parseArgs(argv: string[]): ParseResult {
       case "--no-desktop":
         args.desktop = false;
         continue;
+      case "--worker":
+        args.worker = true;
+        continue;
+      case "--headless":
+        args.headless = true;
+        args.desktop = false;
+        continue;
+      case "--host":
+      case "--name":
+      case "--join":
+      case "--code": {
+        const v = value();
+        if (v === undefined || !v.trim()) return { ok: false, error: { key: "err.missingValue", vars: { flag: a } } };
+        args[a.slice(2) as "host" | "name" | "join" | "code"] = v.trim();
+        continue;
+      }
       case "--json":
         args.json = true;
         continue;
@@ -69,6 +94,10 @@ export function parseArgs(argv: string[]): ParseResult {
         continue;
     }
     if (a.startsWith("-")) return { ok: false, error: { key: "err.unknownFlag", vars: { flag: a } } };
+    if (commandSeen && WITH_REST.has(args.command)) {
+      (args.rest ??= []).push(a);
+      continue;
+    }
     if (commandSeen) return { ok: false, error: { key: "err.unknownCommand", vars: { cmd: a } } };
     if (!COMMANDS.has(a as Command)) return { ok: false, error: { key: "err.unknownCommand", vars: { cmd: a } } };
     args.command = a as Command;

@@ -1,5 +1,29 @@
 # Ducter TODO
 
+## Server mode and remote access: after the first slice (D54)
+
+Built and verified in a local Ubuntu VM (`research/29`): systemd user service, code pairing,
+token gate, Caddy and SSH-tunnel paths, desktop connect card, worker enrollment/presence.
+
+- [ ] **Place tasks on a worker** (`design/system.md` Workers): forward openTask/send/
+      interrupt/drop over the `/worker` socket; the worker runs the runner against a core
+      proxy. Trigger: protocol v2 merged.
+- [ ] **Relayed harness logins (Q17):** spawn `claude auth login` / `codex login --device-auth`
+      on the server, show URL + code in the client, pipe the pasted code back. Trigger: the
+      browser setup page (A1-V) or a desktop "Your AI" row for remote Ducters.
+- [ ] **Verify `scripts/caddy-setup.sh` on a real VPS + domain** (ACME, renewal, WebSocket
+      through Caddy with TLS). Trigger: first real VPS install.
+- [ ] Keychain for the desktop token (today a 0600 file under the user config dir).
+- [ ] Device key + passkey and the phone/web pairing page `/pair#c=…` (today it answers with a
+      one-line text). Trigger: the web client.
+- [ ] `ducter service` on macOS (launchd) for a Mac that serves others.
+- [ ] Shared Linux hosts: loopback is token-free, so other local users could connect. Offer
+      `DUCTER_LOCAL_TRUST=off` in doctor when `who`/`/etc/passwd` shows other human users.
+- [ ] Desktop: a "Disconnect from this Ducter / 断开" item and a visible "connected to
+      <host>" line, so a remote connection is never invisible.
+- [ ] Worker as a client of the same main in the Devices UI (A2-W card: "vps-1 想加入 …" with
+      Go / Not mine). Today the worker joins with a code typed on the worker, no confirm step.
+
 ## Storage: adopt HawDB (after Bun/Node binding)
 
 v1 stores the Log on SQLite behind an append-log port (principle 17). The port is shaped like
@@ -37,10 +61,11 @@ cleanly. `ab_web` needed its enclosed window interior refilled from the raw imag
 `packages/runner/src/browser.ts` attaches cua-driver directly (D47). Verified live on 0.44.0
 (see `design/onboarding.md`, "The browser, first time"). Still open:
 
-- [ ] env-gate MCP proxy: ~12 curated tools, untrusted-content framing, domain policy, submit/pay as intents (today the rule lives only in the task brief). The driver exposes ~60 tools, and one lookup cost ~460k input tokens (mostly cache reads).
-- [ ] Sign-in handoff: the driver ends an idle browser session after 300 s (SIGKILL), so a user signing in while the task waits on needs_input can lose the window. Keep the session alive while a task needs the user, or close it cleanly first.
+- [ ] env-gate MCP proxy: untrusted-content framing, domain policy, submit/pay as intents (today the rule lives only in the task brief). First slice done: 10 allowed cua tools, Claude built-ins Bash/Read/Write/ToolSearch, no user Claude config (HN lookup 332k → 140k input tokens).
+- [ ] Sign-in handoff: the driver ends an idle browser session after 300 s (SIGKILL; verified live), so a slow sign-in while the task waits on needs_input loses the window. Fix with the env-gate proxy, which can keep the session alive while the task waits on the user.
 - [ ] Cookie durability depends on Ducter's clean quit (CDP `Browser.close` on done/failed/drop). A crash, or a task that calls `end_session` anyway, can still lose sign-ins from the last ~30 s.
 - [ ] Profile exclusivity in the runner: a second browser task for the same persona waits (today the driver refuses and the task reports blocked)
 - [ ] If Ducter's cua-driver daemon dies mid-task, `mcp --socket` relaunches it without `CUA_DRIVER_BROWSER_PROFILE_ROOT`, so the profile would land in the driver's default root; supervise the daemon instead. Ducter also leaves its daemon running after it exits.
 - [ ] Snapshots carry no link targets (href); tasks fall back to page URLs or fetching public HTML. Ask cua for hrefs in `semantic_v2`, or read them through the env-gate.
-- [ ] The Ducter browser looks like the user's Chrome (same Dock icon, same window). Proposal, pending the change loop: on launch, Ducter uses the browser's own CDP endpoint to badge its Dock tile (`Browser.setDockTile`) and park the window in one predictable spot (`Browser.setWindowBounds`). The status line names it ("in the Ducter browser") with a Show button. Screen tab and takeover come later.
+- [ ] Browser identity (OPEN-QUESTIONS W5-1): built as a draft (Dock tile, parked window, "Looking at <host>" task_event). Still needed: the client renders the status line with a Show action, and someone checks the Dock tile with the Dock visible. In a `bun build --compile` binary the avatar file is not bundled, so there is no Dock tile.
+- [ ] Find what triggers macOS's "CuaDriver was prevented from modifying apps" notification.

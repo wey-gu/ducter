@@ -66,7 +66,16 @@ export interface SessionSpec {
   appendSystemPrompt?: string;
   mcp: (ReturnType<McpHub["configFor"]> | StdioMcpConfig)[];
   permissionMode: "bypass"; // D16: no per-call approvals
+  // Leave out the user's own harness config (global CLAUDE.md, user settings, plugins and their
+  // hooks, user MCP servers). The partner always isolates; tasks keep it by default (system.md).
+  isolateUserConfig?: boolean;
+  env?: Record<string, string>; // extra env for the harness process (never logged)
   resumeSessionId?: string;
+  // Per-task narrowing (e.g. a browser place): extra denied tools, and for claude-code only,
+  // extra launch flags and whether to leave out the user's own Claude config.
+  disallowedTools?: string[];
+  launchArgs?: string[];
+  userConfiguration?: "include" | "exclude";
 }
 
 export interface HarnessEvent {
@@ -99,6 +108,13 @@ export interface Runner {
   // Logs the text as task_event {role:"user", from} before delivering it.
   send(taskId: string, text: string, mode?: "steer" | "queue", from?: "user" | "partner"): Promise<{ delivered: Delivery }>;
   interrupt(taskId: string): Promise<void>;
+  // Optional: resume (or start) a finished/dropped task's session and tell it to carry on.
+  reopen?(taskId: string): Promise<{ delivered: Delivery }>;
+  // Optional: Undo a drop; merge the task branch into its base in the user's checkout; push +
+  // open a draft PR (an outside effect). Each resolves with a user-facing message.
+  undrop?(taskId: string): Promise<{ ok: boolean; message: string; ref?: string }>;
+  merge?(taskId: string): Promise<{ ok: boolean; message: string; ref?: string }>;
+  openPr?(taskId: string): Promise<{ ok: boolean; message: string; ref?: string }>;
   drop(taskId: string): Promise<void>;
 }
 

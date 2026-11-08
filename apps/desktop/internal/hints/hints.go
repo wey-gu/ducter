@@ -84,6 +84,15 @@ func Open(dir string) *Local {
 	return l
 }
 
+// Reload reads firstrun.json again (the client may open before `ducter
+// up` wrote it), keeping the client's own state.
+func (l *Local) Reload() {
+	if l == nil || l.Dir == "" {
+		return
+	}
+	l.Hints = Open(l.Dir).Hints
+}
+
 // Repos are the recent repos, newest first (nil without hints).
 func (l *Local) Repos() []Repo {
 	if l == nil || l.Hints == nil {

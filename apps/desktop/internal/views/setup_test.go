@@ -150,10 +150,14 @@ func TestSetupBlockedShowsOnlyWhatBlocks(t *testing.T) {
 	}
 	h.has("正在叫醒小鸭…")
 	h.shot("app-setup-starting-zh")
-	// Ducter answers: the conversation takes over.
+	// Ducter answers: the conversation takes over, with starters from the
+	// firstrun.json that `ducter up` wrote after the window opened.
+	if err := os.WriteFile(f.dir+"/"+hints.HintsFile, []byte(hintsJSON), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	h.app.Receive(protocol.ServerFrame{T: "welcome", Persona: "default", PersonaName: "小鸭", HeadSeq: 0})
 	h.app.Receive(protocol.ServerFrame{T: "on_hand", OnHand: &protocol.OnHand{}})
-	h.has("你好，我是小鸭。")
+	h.has("你好，我是小鸭。", "看看 ~/dev/ducter 最近有哪些测试没过，修好了告诉我")
 }
 
 func TestSetupReadyMacStartsWithoutQuestions(t *testing.T) {

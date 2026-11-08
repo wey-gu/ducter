@@ -447,13 +447,17 @@ document.querySelectorAll(".reveal").forEach((el) => revealer.observe(el));
     if (!st.width) return;
     cords.setAttribute("viewBox", `0 0 ${st.width} ${st.height}`);
     const top = (el: HTMLElement, fx = 0.5) => { const r = el.getBoundingClientRect(); return { x: r.left - st.left + r.width * fx, y: r.top - st.top + 4 }; };
-    const pedIn = (fx: number) => { const r = ped.getBoundingClientRect(); return { x: r.left - st.left + r.width * fx, y: r.top - st.top + r.height * 0.72 }; };
-    const srvIn = () => { const r = srv.getBoundingClientRect(); return { x: r.left - st.left + r.width * 0.5, y: r.bottom - st.top - r.height * 0.12 }; };
+    const pedIn = (fx: number) => { const r = ped.getBoundingClientRect(); return { x: r.left - st.left + r.width * fx, y: r.top - st.top + r.height * 0.6 }; };
+    const srvIn = () => { const r = srv.getBoundingClientRect(); return { x: r.left - st.left + r.width * 0.84, y: r.bottom - st.top - r.height * 0.3 }; };
     const cc = $("tok-cc"), cx = $("tok-cx");
-    const path = (a: { x: number; y: number }, b: { x: number; y: number }, color: string) =>
+    const up = (a: { x: number; y: number }, b: { x: number; y: number }, color: string) =>
       `<path d="M${a.x} ${a.y} C ${a.x} ${a.y - 50}, ${b.x} ${b.y + 60}, ${b.x} ${b.y}" fill="none" stroke="${color}" stroke-width="2.5" stroke-dasharray="2 6" stroke-linecap="round"/>`;
-    cords.innerHTML =
-      path(top(cc, 0.35), pedIn(0.42), "#FF8A3D") + path(top(cc, 0.7), srvIn(), "#FF8A3D") + path(top(cx, 0.5), pedIn(0.6), "#2B2118");
+    const r = cc.getBoundingClientRect();
+    const side = { x: r.right - st.left - 4, y: r.top - st.top + r.height / 2 };
+    const s = srvIn();
+    // the shared plan's cord runs out along the floor, then up to the server
+    const toServer = `<path d="M${side.x} ${side.y} C ${side.x + (s.x - side.x) * 0.8} ${side.y}, ${s.x} ${side.y - 20}, ${s.x} ${s.y}" fill="none" stroke="#FF8A3D" stroke-width="2.5" stroke-dasharray="2 6" stroke-linecap="round"/>`;
+    cords.innerHTML = up(top(cx, 0.5), pedIn(0.42), "#2B2118") + up(top(cc, 0.4), pedIn(0.6), "#FF8A3D") + (st.width >= 640 ? toServer : "");
   };
   new ResizeObserver(drawCords).observe(stage);
   addEventListener("load", drawCords);

@@ -176,8 +176,8 @@ const ld = {
           </div>
         </div>
         <div class="tokens" aria-label="AI accounts signed in on your devices">
-          <div class="tok" id="tok-cc"><Art name="token_orange" alt="" sizes="42px" /><span><b>Claude Code</b><small>Signed in · 2 devices</small></span></div>
           <div class="tok" id="tok-cx"><Art name="token_ink" alt="" sizes="42px" /><span><b>Codex</b><small>Signed in · 1 device</small></span></div>
+          <div class="tok" id="tok-cc"><Art name="token_orange" alt="" sizes="42px" /><span><b>Claude Code</b><small>Signed in · 2 devices</small></span></div>
         </div>
       </div>
 
@@ -292,7 +292,7 @@ const ld = {
       </div>
       <div class="tw-cols">
         <div class="tw-panel">
-          <h4>What it did</h4>
+          <h3 class="tw-h">What it did</h3>
           <ol class="steps">
             <li><code>Edit crates/storage/tests/checkpoint_recovery.rs</code></li>
             <li class="saved">Progress saved · Confirmed flaky; wait for durability</li>
@@ -305,7 +305,7 @@ const ld = {
           <div class="talk">Talk to this task</div>
         </div>
         <div class="tw-panel">
-          <h4>Changes · 2 files</h4>
+          <h3 class="tw-h">Changes · 2 files</h3>
           <div class="diff" aria-label="Diff of crates/storage/tests/checkpoint_recovery.rs">
             <div class="file">crates/storage/tests/checkpoint_recovery.rs <span>+3 −3</span></div>
 <pre><span>    let wal = Wal::open(&amp;dir, WalOptions::fsync_each())?;</span><span>    let seq = wal.append(b"hello")?;</span><span class="del">-   std::thread::sleep(Duration::from_millis(50));</span><span class="add">+   // wait for the flusher instead of a fixed sleep</span><span class="add">+   wal.wait_durable(seq)?;</span><span>    crash_and_reopen(&amp;dir)?;</span><span>    assert_eq!(recovered.last_seq(), seq);</span></pre>

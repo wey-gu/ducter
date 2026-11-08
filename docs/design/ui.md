@@ -91,7 +91,19 @@ brows when something needs you. Other themes render the same states in their own
 
 ## Capability map (D43): metaphor UNDER EVALUATION
 
-> Status: **awaiting the user's decision** (`research/24` done).
+> Status: **awaiting the user's decision** (`research/24`, `research/26` done).
+> - **research/26 (loadout, the user's mecha/equip feel):**
+>   - Loadout as first proposed reads as military: the user as commander (3/3), combat, pilots
+>     that can't share a plan, and a floating partner that's still reachable while home sleeps.
+>   - **Recommended hybrid:** the playset's world (real device shapes on a sunny mat, literal
+>     cards when zoomed out) plus the loadout's characters and **equip snap**.
+>   - The partner **rides in a seat on the home device and shares its pulse light**; "home
+>     sleeps, so the partner is unavailable" read correctly 3/3 (needs a human test).
+>   - Never: weapons, stats, slot limits, hangar or roster screens, "mission", kneeling as
+>     sleep, a floating partner, a charging cradle.
+>   - **Equip motion:** about 0.6–0.8 s. Lift → drag with lag → slot opens → magnetic pull →
+>     50 ms freeze + "tock" + light haptic → bounce → device blinks and nods. The chime fires
+>     only once the capability actually works. Reduced motion = cross-fade.
 > - **Recommendation:** a *literal playset*. The user's real devices are drawn as chunky toys on
 >   a table, with plain cards at zoom-out.
 >   - Each AI plan is one block per account, with cords to every device signed into it

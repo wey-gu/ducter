@@ -97,3 +97,14 @@ in bold; "按建议" takes all.
 - **GQ13** Write a short **`research/29`** on approval fatigue and undo-send before review.
 - **Glossary batch:** see the "Proposed glossary additions" tables in both files (对外 /
   Outside is the anchor word for both groups).
+
+## Browser places (W5), 2026-11-09 · drafted, not decided
+
+- **W5-1** Ducter browser identity: **Dock tile = clay avatar, window parked bottom-right at
+  ~60% size behind the user's work, status line "Looking at <site> in Ducter's browser" with
+  Show.** Alternative: minimise while working. Built on by default so it can be seen;
+  details in `system.md` "Proposed: the Ducter browser's identity".
+- **W5-2** Browser tasks run **without the user's own Claude config** (no user MCP servers,
+  skills, or CLAUDE.md). This cuts tokens by more than half and keeps the user's real Chrome
+  out of reach. It departs from "windows inherit skills by default" for this place kind only.
+

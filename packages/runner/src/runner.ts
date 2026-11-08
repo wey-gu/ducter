@@ -22,6 +22,7 @@ export interface RunnerOptions {
   newId?: () => string;
   now?: () => Date;
   browser?: BrowserOptions; // browser places: env gate and test seams
+  taskModel?: string; // default model when the partner passes none (default env DUCTER_TASK_MODEL)
 }
 
 /** Runner plus test/ops helpers that are not part of the contract. */
@@ -181,6 +182,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
   }
 
   function handleEvent(t: TaskRt, ev: HarnessEvent) {
+    const status = ev.tool && t.sidecar?.statusFor(ev.tool);
+    if (status) logEvent(t, { role: "system", text: status.text, raw: { browser: { host: status.host, url: status.url } } });
     const early = (ev.raw as { kind?: string } | undefined)?.kind;
     if (early === "tool_call_started" || early === "tool_call_title") return; // the ended event logs the call
     if (ev.tool && /(^|__)report_to_main$/.test(ev.tool.name) && ev.tool.ok !== false) t.reportedThisTurn = true;
@@ -332,7 +335,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       // Throws before the task exists when a browser place is unavailable (the partner says why).
       const sidecar = await browserSidecar({ place: resolved.place, persona, taskId: id, dataDir: core.dataDir, partnerName }, opts.browser);
 
-      const model = input.model || (h === "claude-code" ? (opts.defaultModel ?? process.env.DUCTER_TASK_MODEL) || undefined : undefined);
+      // The partner's choice wins; else DUCTER_TASK_MODEL; else the harness default.
+      const model = input.model || (h === "claude-code" ? (opts.defaultModel ?? opts.taskModel ?? process.env.DUCTER_TASK_MODEL) || undefined : undefined);
       const open: Bodies["task_open"] = { taskId: id, title, project, place: resolved.place, harness: h, model, brief: input.brief };
       const opened = core.log.append({ persona, stream: stream(id), origin: "system", kind: "task_open", body: open });
       const card: TaskCard = {
@@ -352,6 +356,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       if (sidecar) {
         spec.appendSystemPrompt = (spec.appendSystemPrompt ?? "") + sidecar.brief;
         spec.mcp = [...spec.mcp, sidecar.mcp];
+        if (h === "claude-code") Object.assign(spec, sidecar.claude);
       }
       const t = newRt(id, persona, card, spec);
       if (sidecar) t.sidecar = sidecar;

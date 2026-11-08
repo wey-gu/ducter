@@ -1,0 +1,1 @@
+A puffy ROUND badge (a thick soft circular button, same shape as the other round ability badges in the reference) in light warm grey #D9D3CA containing a telephone handset and a tiny padlock, muted, locked feeling.

@@ -56,6 +56,12 @@ are kept). `--bare` is not usable: it drops OAuth / subscription login.
   user's attention path, since the ack comes from the partner. Turn it on for untrusted or
   shared-machine setups.
 
+- **Task model:** the partner may pass a model per task. If it passes none, `DUCTER_TASK_MODEL`
+  applies; if that is unset, the harness's own default applies.
+- **Browser tasks: isolated** (W5-2, proposed): only the curated cua-driver tools, no user MCP
+  servers (which would include a path to the user's real Chrome), measured 332k → 140k input
+  tokens on one lookup.
+
 ## Waits (principle 16)
 
 Waiters live in a table, multiplexed onto one alarm per Durable Object. Handlers are
@@ -182,6 +188,50 @@ redesign later:
   - VPS datacenter IPs draw CAPTCHAs, so prefer running browser places on a home Mac;
   - prompt injection is contained, not solved;
   - each live sandbox needs about 1–2 GB RAM.
+
+### v1 slice on the host Mac (built 2026-11-09, `packages/runner/src/browser.ts`)
+
+What runs today, before sandboxes and spacesd:
+
+- **Driver:** Ducter starts its own cua-driver daemon per data dir on a private socket, via
+  LaunchServices so that macOS grants stay with CuaDriver. The daemon gets
+  `CUA_DRIVER_BROWSER_PROFILE_ROOT=<dataDir>/browser-profiles`. The task's harness runs
+  `cua-driver mcp --socket <it>`. The profile is `isolated_named` `<persona>`. Gate:
+  `DUCTER_BROWSER` (0 / 1 / unset = auto).
+- **env-gate, first slice (no proxy yet):** a browser task sees 10 cua-driver tools.
+  Everything else the driver offers, including `page` and `end_session`, is denied.
+  - Claude built-ins are limited to `Bash, Read, Write, ToolSearch`.
+  - The user's own Claude config is left out (`userConfiguration: exclude`): no user MCP
+    servers (so no path to the real Chrome), skills, or CLAUDE.md.
+  - Live, the same HN lookup went from 332k to 140k input tokens.
+- **Focus:** a freshly launched Ducter Chrome makes itself frontmost. Ducter hands focus back
+  to the user's app (only within 5 s of launch).
+- **Clean quit:** cua-driver ends its browsers with SIGKILL, which loses recent cookies. Ducter
+  quits the browser itself (CDP `Browser.close`) when a task is done, failed, or dropped.
+- **Status line:** when a task navigates to a new site, the runner logs a `task_event`
+  `{role:"system", text:"Looking at <host>", raw.browser:{host, url}}`. The client renders
+  it in the user's language.
+- **Known limit:** the driver closes an idle browser after 300 s. A task waiting on the user
+  loses its window, but sign-ins finished more than ~30 s earlier are kept and the task
+  reopens it.
+
+### Proposed: the Ducter browser's identity (DRAFT, for review; not a decision)
+
+The problem: the Ducter browser is a second, identical Google Chrome (same Dock icon, same
+window chrome), so a user cannot tell it from their own. The proposal uses Ducter's own
+DevTools side channel (browser-level chores only, never page content). It is built and on
+by default in the slice, so it can be reviewed live:
+
+- **Dock tile:** the clay avatar (`ducter_working`) replaces the Chrome icon on the second
+  Dock tile (`Browser.setDockTile`).
+- **Parked window:** about 60% of the screen, bottom-right of the available area, behind the
+  user's work (`Browser.setWindowBounds`).
+- **Status line:** "在 Ducter 的浏览器里看 github.com / Looking at github.com in Ducter's
+  browser", with a **Show** action that brings the window forward.
+
+Alternatives considered: minimise the window (hides the agent, and screenshots of a
+minimised window may fail), or a Chrome theme colour (needs edits to the profile's
+Preferences). Open question: `flows/OPEN-QUESTIONS.md` (W5-1).
 
 ## Credentials and logged-in profiles (D48, research/25)
 

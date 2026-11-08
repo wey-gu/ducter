@@ -19,7 +19,7 @@ in `design/flows/OPEN-QUESTIONS.md` ("Decisions waiting for you"); per-scenario 
   or Codex in its own worktree on `ducter/<slug>`. Silence while it works.
 - **Decide.** A task's question arrives with a default as a living message and an On hand card:
   Go / Hold / Reply, or 都按默认 / Go on all defaults.
-- **Get the result.** The partner's short outcome, with How I know, Outside and Merge / Draft PR /
+- **Get the result.** The partner's short outcome, with How I know, Sent out and Merge / Draft PR /
   See changes rendered from the typed report; Merge works by button.
 - **Open a task** to read its transcript, diff and dossier and talk to it directly (steered into
   the running turn, or as the next turn); stop, drop with Undo, reopen, even after a restart.
@@ -268,7 +268,7 @@ Details: `research/30-partner-eval.md`.
 
 What changed:
 - **Result prose is the outcome only**, plus left out and unverified. The desktop already
-  renders How I know, Outside and Merge under the message from the typed report, so the old
+  renders How I know, Sent out (then "Outside") and Merge under the message from the typed report, so the old
   persona's demand for those rows in prose produced the commit/branch/"合回 main？" talk.
 - **Persona:** one-example first words; hand-offs named as actions; nothing after `ask`; no
   default in its question; never name buttons; nothing on needs_input; ask before outside

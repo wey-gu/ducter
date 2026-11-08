@@ -1,10 +1,10 @@
-# Flows I: Results (成果)
+# Flows I: Results (做好的 / Finished)
 
 > Draft 1 · 2026-11-09 · Status: **drafted, not reviewed**. Covers scenarios I1–I5
 > (`product-model.md` §6 "I. Results"). Builds on principles 6, 7, 12, 18, 20,
 > `conversation.md` (turn protocol, living message), `focus-window.md` (report, evidence),
 > D4 in `D-decisions-attention.md` (done · checking, check didn't pass), B2/B3 in
-> `B-kinds-of-work.md` (document card, draft PR intent), D52 Q7 (documents live in 成果 on the
+> `B-kinds-of-work.md` (document card, draft PR intent), D52 Q7 (documents live in 做好的 on the
 > control plane, with an optional "write it into a place"), and `G-safety.md` (outside
 > effects, the day's record).
 >
@@ -29,11 +29,11 @@ padded.
 | 2 | **Top line** | M, from the report summary | The outcome in the user's own terms, at most 2 lines. No "I'm happy to report", no step-by-step |
 | 3 | **怎么知道的 / How I know** | `evidence[]` (typed) | Chips, machine-checked first: tests, CI, diff, commit, PR; then "I read it through"; then "you said so". M's own opinion is never a chip [doc D4] |
 | 4 | **没包括 / Left out** | brief done-criteria vs report | Only when part of the ask was not done or was out of scope. One line each, with why |
-| 5 | **对外 / Outside** | the task's intents and the day's record (`G-safety.md` G5) | For every task that had a place: what left the user's devices. When nothing did, it says so ("对外：没有 / Outside: nothing"). The empty line is the point |
+| 5 | **发出去的 / Sent out** | the task's intents and the day's record (`G-safety.md` G5) | For every task that had a place: what left the user's devices. When nothing did, it says so ("发出去的：没有 / Sent out: nothing"). The empty line is the point |
 | 6 | **Result card** | the `Result` object | When there is a durable thing: a document, a change, files, a capture |
 | 7 | **One next step** | the report's questions or M | At most one: a decision with a default (e.g. open a draft PR) or a plain action (Open, Save to…) |
 
-Why the empty "Outside: nothing" line: in the first dogfood run (`apps/desktop/docs/live-
+Why the empty "Sent out: nothing" line: in the first dogfood run (`apps/desktop/docs/live-
 conversation-done.png`) the task wrote, unprompted, "没有 push，工作区是干净的 / nothing
 pushed, the working tree is clean". Agents already know users care; Ducter should make it a
 typed fact instead of prose the user has to hunt for [I, from one observation; thin].
@@ -88,18 +88,18 @@ checked", "这次没包括 / Left out this time". Never "Task completed successf
   赏心悦目 (a calm, short card instead of a wall of text).
 - **First time:** the first task that finishes. No tutorial. The chips are labelled with
   what they literally are ("测试 310 个通过 / 310 tests passed"); tapping one opens the exact
-  thing. The outside line reads "对外：没有 / Outside: nothing" and needs no explanation.
+  thing. The outside line reads "发出去的：没有 / Sent out: nothing" and needs no explanation.
 
 ### 2. Flow
 
 Example from B3 (the author's HawDB): "把 HawDB 的 checkpoint 默认间隔改成 30 秒，测试也改一下。"
 
 ```
-W reports done + evidence ──► C: task → 做完了 · 核对中 / Done · checking (done?)   [level 1: badge]
+W reports done + evidence ──► C: task → 做完了 · 在检查 / Done · checking (done?)   [level 1: badge]
   │
   ├─ user is watching (this conversation focused, active in the last 2 min) AND
   │  the checks will take > 10 s (e.g. CI) [I]
-  │     ──► M posts the result message now. State chip: "做完了 · 核对中".
+  │     ──► M posts the result message now. State chip: "做完了 · 在检查".
   │         Evidence chips that C has not confirmed yet are drawn unfilled; each fills in
   │         as C confirms it.
   └─ otherwise ──► nothing yet (no message about an unverified claim)
@@ -112,7 +112,7 @@ C checks refs mechanically ──► M judges against the brief's done-criteria 
   │     └─ message already posted ──► its chips flip to done; the face nods; no new message
   ├─ fixable gap ──► back to 在做 / Working  [doc D4]
   │     └─ if a message was already posted: its state chip reads
-  │        "核对没过：{reason}，它接着弄 / Check didn't pass: {reason}; it's back on it".
+  │        "检查没过：{reason}，它接着弄 / Check didn't pass: {reason}; it's back on it".
   │        When it is really done: a NEW message replying to the same ask, opening with
   │        "上次说做完了，核对时发现{reason}，现在补好了。/ I said it was done, but the check
   │        found {reason}. It's fixed now."
@@ -130,7 +130,7 @@ The result message, as rendered (zh first, en below):
 │
 │ 怎么知道的   [测试 310 个通过]  [改动 +12 −4 · 2 个文件]  [之前 2 个没过 → 之后都过了]
 │ 这次没包括   文档里的旧数字没改（docs/ 不在这次的范围里）
-│ 对外        没有 · 改动只在 ducter/checkpoint-30s 分支上，这台 MacBook 上
+│ 发出去的    没有 · 改动只在 ducter/checkpoint-30s 分支上，这台 MacBook 上
 │
 │ ┌ 改动 · HawDB ─────────────────────────────────────────┐
 │ │ src/config.rs   +2 −2      tests/checkpoint.rs  +10 −2 │   (tap → diff at that file)
@@ -147,7 +147,7 @@ Done: the default interval is now 30 s (was 60 s), and the 3 related tests are u
 
 How I know   [310 tests passed]  [+12 −4 · 2 files]  [2 failing before → all passing after]
 Left out     The old number in the docs isn't changed (docs/ wasn't in scope)
-Outside      Nothing · changes stay on branch ducter/checkpoint-30s, on this MacBook
+Sent out     Nothing · changes stay on branch ducter/checkpoint-30s, on this MacBook
 ```
 
 ### 3. States
@@ -174,12 +174,12 @@ refs[], snapshot?, version}`. The result message is rendered from it plus the re
 | `result.how_i_know` | 怎么知道的 | How I know |
 | `result.left_out` | 这次没包括 | Left out |
 | `result.left_out.item` | {thing}（{why}） | {thing} ({why}) |
-| `result.outside` | 对外 | Outside |
+| `result.outside` | 发出去的 | Sent out |
 | `result.outside.none` | 没有 | Nothing |
 | `result.outside.none_repo` | 没有 · 改动只在 {branch} 分支上，这台 {device} 上 | Nothing · changes stay on branch {branch}, on {device} |
 | `result.outside.list` | {effects} | {effects} |
-| `result.checking_chip` | 做完了 · 核对中 | Done · checking |
-| `result.check_failed_chip` | 核对没过：{reason}，它接着弄 | Check didn't pass: {reason}; it's back on it |
+| `result.checking_chip` | 做完了 · 在检查 | Done · checking |
+| `result.check_failed_chip` | 检查没过：{reason}，它接着弄 | Check didn't pass: {reason}; it's back on it |
 | `result.fixed_after_check` | 上次说做完了，核对时发现{reason}，现在补好了。 | I said it was done, but the check found {reason}. It's fixed now. |
 | `result.batch_opening` | {n} 件刚做完： | {n} just finished: |
 | `result.interpreted` | 我理解成了：{reading} | I took this to mean: {reading} |
@@ -201,7 +201,7 @@ Reused from D4/B3: `state.done`, `state.done_checking`, `done.check_failed`,
   pebble completes its green fill (D4 motion). No toast, no sound.
 - **Check didn't pass:** the chip's green drains (300 ms) and the line cross-fades in. No red,
   no shake: it is not a failure.
-- **Outside line:** static. When something did go out, each effect shows the destination's
+- **Sent out line:** static. When something did go out, each effect shows the destination's
   small literal mark (GitHub, mail, X) with no animation; the motion for leaving belongs to G2.
 - **Reduced motion:** cross-fades only; chips switch state without fills.
 
@@ -212,14 +212,14 @@ Reused from D4/B3: `state.done`, `state.done_checking`, `done.check_failed`,
   typing, a "新结果 ↓ / New result ↓" pill appears instead of scrolling them.
 - **Several tasks finish together** (e.g. the Monday dependency-bump routine plus a HawDB fix):
   one message opening with `result.batch_opening`, one block per task, each with its own
-  How I know and Outside lines.
+  How I know and Sent out lines.
 - **The ask was ambiguous and the task chose a reading:** `result.interpreted` above How I
   know, with Reply… to redirect. Never buried in the body.
 - **Partly done:** if the done-criteria are met but some of the ask was out of scope, the
   task is Done and Left out names the rest. If criteria are not met, it is not Done (D4).
 - **Result of a dropped task:** suppressed unless it reveals something the user must know
   (`research/16`), such as an effect that already happened, which is then shown with its
-  Outside line.
+  Sent out line.
 - **Very long output** (a 300-line test log): never pasted into the message. A chip opens the
   excerpt (I2).
 - **The evidence is only "I read it through"** (writing, research): the How I know row says
@@ -232,7 +232,7 @@ Reused from D4/B3: `state.done`, `state.done_checking`, `done.check_failed`,
 ### 7. v1 tonight vs later
 
 - **Tonight:** under the partner's result message, show the task's state chip, the How I know
-  chips from `task.Evidence` (machine kinds first), and an Outside line built from what the
+  chips from `task.Evidence` (machine kinds first), and an Sent out line built from what the
   transcript shows (see "Desktop changes" in the report and `G-safety.md` G5). The rest of the
   anatomy is the partner prompt's job (W3): top line ≤ 2 lines, Left out when relevant.
 - **Next:** the `result` Log event, diff snapshot at done, posting at done? while watching,
@@ -269,7 +269,7 @@ itself, in-app when Ducter can show it well, else outside with the URL shown fir
 | `url` / `source` | {n} 个来源 / {n} sources; per source: site name | The document reader at the quote; the page outside on second tap | M (read) | Retrieved date shown |
 | `capture` | 截图 · {what} / Screenshot · {what} | In-app lightbox, with when and on which page | C (taken by the gate) | Fixed |
 | `file` | {filename} | In-app preview for text, images, PDF; else reveal on its device | C (exists, hash) | "改过了 / Changed since" if the hash differs |
-| `document` | 成果：{title} / Result: {title} | Document reader (I3) | — | Versioned |
+| `document` | {title} | Document reader (I3) | — | Versioned |
 | `read_through` | 我通读过了 / I read it through | Nothing to open; tooltip: "这条是我读过后的判断，没有机器核对 / My read, not a machine check" | M | — |
 | `user_said` | 你说可以了 / You said it's good | The message where the user said so | U | — |
 
@@ -285,7 +285,7 @@ tap chip ──► in-app kind? ── yes ──► opens over the conversation
   │                                   Back ──► same scroll position
   └─ outside kind ──► URL shown in the chip's tooltip/press preview ──► opens in the browser
 evidence snapshot missing (old task, device asleep) ──► opens the snapshot blob if any,
-  labelled "{time} 的快照 / Snapshot from {time}"; else "{device} 睡着了，醒了就能看 / {device} is
+  labelled "{time} 的当时的样子 / As it was then from {time}"; else "{device} 睡着了，醒了就能看 / {device} is
   asleep; viewable once it wakes" with 叫醒 / Wake
 ```
 
@@ -301,7 +301,7 @@ C refreshes only while the task or its waiters are active, and once when the use
 |---|---|---|
 | `evidence.more` | +{n} | +{n} |
 | `evidence.full_log` | 完整日志 | Full log |
-| `evidence.snapshot_from` | {time} 的快照 | Snapshot from {time} |
+| `evidence.snapshot_from` | {time} 时的样子 | As it was at {time} |
 | `evidence.device_asleep` | {device} 睡着了，醒了就能看 | {device} is asleep; viewable once it wakes |
 | `evidence.changed_since` | 之后改过了 | Changed since |
 | `evidence.read_through.tip` | 这条是我读过后的判断，没有机器核对 | My read, not a machine check |
@@ -343,7 +343,7 @@ C refreshes only while the task or its waiters are active, and once when the use
 
 ---
 
-## I3 · Documents: research and writing live in 成果
+## I3 · Documents: research and writing live in 做好的
 
 ### 1. Scenario card
 
@@ -385,7 +385,7 @@ follow-up days later ("那 1.4.5 呢？") ──► same task reopens [doc B2] �
 Why the control plane by default and not the repo [doc D52 Q7, reasoning I]: a research
 document has no natural place for a consumer user, and for a developer the right folder is a
 judgment call; writing into a repo is a write that needs a lease and pollutes `git status`.
-Keeping it in 成果 is zero-question, survives every device sleeping, and "Save to…" is one
+Keeping it in 做好的 is zero-question, survives every device sleeping, and "Save to…" is one
 tap when the user does want it in a place.
 
 ### 3. States
@@ -443,7 +443,7 @@ can be any place, not only a project folder [I].
 - **A very long document** (> 20 pages): the reader shows a table of contents; the card's top
   line still fits in 3 lines [doc B2].
 - **The user edits the saved file, then asks for v2:** Ducter never overwrites their edits;
-  v2 lives in 成果, and Save to… asks again.
+  v2 lives in 做好的, and Save to… asks again.
 - **Writing (not research):** a weekly report draft is a document too; it carries
   `read_through` evidence and no source counts.
 - **The document quotes private memory** (from Mem recall): marked in the reader as "来自你的
@@ -492,14 +492,14 @@ browsing, and every row in it leads with the user's own ask (Rule 5) [I].
   │     default: the newest; tapping a row sends it
   └─ none ──► say so, with what was searched; if the thing was said in conversation but never
         became a result, answer from the Log (recall, F2) and offer
-        "要我存成一份成果吗？/ Shall I keep this as a result?"
+        "要我留一份吗？/ Shall I keep a copy?"
 ```
 
-**Browse (fallback): the 成果 / Results list** [I].
-- **Where:** opened from On hand, from the Done lane header: "全部成果 → / All results". It
+**Browse (fallback): the 做好的 / Finished list** [I].
+- **Where:** opened from On hand, from the Done lane header: "做好的东西 → / All results". It
   is a view *inside* On hand, not a fourth zoom level, so the three-level model holds
   (conversation · On hand · opened task).
-- **Rows:** grouped by project (then 随手 / Loose), newest first. Each row: kind glyph,
+- **Rows:** grouped by project (then 其他 / Other), newest first. Each row: kind glyph,
   title, the ask (one line, muted), date, the best evidence chip, persona face when there are
   several personas (On hand aggregates per person [doc]).
 - **Filters:** project chips and kind chips (文档 / Documents · 改动 / Changes · 文件 / Files ·
@@ -518,9 +518,9 @@ a device unless the user asks for the live place ("叫醒 / Wake") [doc principl
 
 | i18n key | zh | en |
 |---|---|---|
-| `results.all` | 全部成果 → | All results → |
-| `results.title` | 成果 | Results |
-| `results.search` | 找成果… | Find a result… |
+| `results.all` | 做好的东西 → | All results → |
+| `results.title` | 做好的东西 | Everything finished |
+| `results.search` | 找做好的东西… | Find something finished… |
 | `results.kind.document` | 文档 | Documents |
 | `results.kind.change` | 改动 | Changes |
 | `results.kind.files` | 文件 | Files |
@@ -528,11 +528,11 @@ a device unless the user asks for the live place ("叫醒 / Wake") [doc principl
 | `results.row.asked` | 你问的：{ask} | You asked: {ask} |
 | `results.found_on` | {date} 你问的：『{ask}』 | On {date} you asked: "{ask}" |
 | `results.pick` | 有几份可能是，你要哪份？ | A few could be it. Which one? |
-| `results.none` | 没找到。我在成果和对话里找了「{query}」。 | Didn't find it. I searched results and the conversation for "{query}". |
-| `results.keep_offer` | 要我存成一份成果吗？ | Shall I keep this as a result? |
+| `results.none` | 没找到。我在做好的东西和对话里找了「{query}」。 | Didn't find it. I searched results and the conversation for "{query}". |
+| `results.keep_offer` | 要我留一份吗？ | Shall I keep a copy? |
 | `results.newer_since` | 那之后{what}，要我看看有没有变化吗？ | Since then {what}. Want me to check what changed? |
 | `results.show_on` | 在 {device} 上显示 | Show on {device} |
-| `results.other_persona` | 那份是 {persona} 做的，在成果里能打开。 | {persona} made that one; you can open it in Results. |
+| `results.other_persona` | 那份是 {persona} 做的，在做好的东西里能打开。 | {persona} made that one; you can open it under Everything finished. |
 
 ### 5. Motion
 
@@ -547,9 +547,9 @@ a device unless the user asks for the live place ("叫醒 / Wake") [doc principl
   partner doesn't read it, but the user's own Results list shows it (attention and the list
   are per person), and the reply says `results.other_persona`.
 - **The branch was deleted upstream and the device reclaimed the worktree:** the diff
-  snapshot opens; the card says "分支已经删了，这是 {date} 的快照 / The branch is gone; this
+  snapshot opens; the card says "分支已经删了，这是 {date} 时的样子 / The branch is gone; this
   is the snapshot from {date}".
-- **The user deleted the saved file in the place:** 成果 still has the document; the "Saved
+- **The user deleted the saved file in the place:** 做好的 still has the document; the "Saved
   to" chip reads "那边已经删了 / Removed there".
 - **Retention:** results are kept until the user deletes one (10 s Undo); diff snapshots are
   capped per task (Open question IQ5).
@@ -661,8 +661,8 @@ Every link and send is in the day's record (G5).
 
 ### 6. Edge cases
 
-- **No Ducter Edge yet** (local-only setup): Make a link is shown disabled with "要先能远程打开
-  / Needs Reach from anywhere first", linking to the 远程打开 ability (D43, A-group).
+- **No Ducter Edge yet** (local-only setup): Make a link is shown disabled with "要先能在哪儿都能用
+  / Needs Reach from anywhere first", linking to the 在哪儿都能用 ability (D43, A-group).
 - **The document cites a source behind a login:** the shared page keeps the citation text and
   link, never the fetched content of a logged-in page [I].
 - **The result is a code change:** sharing offers the PR link (if any) and "复制 diff / Copy
@@ -683,28 +683,28 @@ Every link and send is in the day's record (G5).
 
 | Concept (internal) | zh / en | Used in | Note |
 |---|---|---|---|
-| evidence row heading | 怎么知道的 / How I know | I1, I2 | Avoids the noun 证据 in the heading; reads as the partner speaking |
-| evidence (noun, lists and dossier) | 证据 / Evidence | I2, desktop dossier | Already in the client and in D Q6; still not in the glossary |
+| evidence row heading | 怎么知道的 / How I know | I1, I2 | In the glossary (D65), and the only evidence word |
+| evidence (noun, lists and dossier) | no noun: 怎么知道的 / How I know | I2, desktop dossier | 证据 retired (D65) |
 | scope not done | 这次没包括 / Left out | I1 | Not 没做 (too close to 没成 / Didn't work) |
-| outside effects | 对外 / Outside | I1, I5, all of G | Shared with `G-safety.md`; one word for "left your devices" |
+| outside effects | 发出去的 / Sent out | I1, I5, all of G | Shared with `G-safety.md`; one word for "left your devices" |
 | save into a place | 存到… / Save to… | I3, I5 | Generalizes B2's 存到项目 |
 | version | 第 n 版 / Version n | I3, I5 | |
 | what changed between versions | 改了什么 / What changed | I3 | |
-| results list entry | 全部成果 / All results | I4 | 成果 / Results itself is in the glossary |
+| results list entry | 做好的东西 / Everything finished | I4 | 做好的 / Finished itself is in the glossary |
 | the user's original ask | 你问的 / You asked | I3, I4 | |
 | share sheet | 分享… / Share… | I5 | |
 | copy, save as file | 复制 / Copy · 存成文件 / Save as file | I5 | Ordinary verbs, listed for completeness |
 | save to memory | 存进 Mem / Save to Mem | I5 | "Mem" is the product name the user already knows |
 | share link | 生成链接 / Make a link · 关掉链接 / Turn off the link | I5 | Not 撤销 / Undo: a read link can't be undone |
-| snapshot | 快照 / Snapshot | I2, I4 | |
+| snapshot | 当时的样子 / As it was then | I2, I4 | |
 
 ## Open questions (recommendation first; answer "按建议" to take all)
 
 | # | Question | Recommendation (default) | Why it matters |
 |---|---|---|---|
 | IQ1 | When does the result message appear: at Done · checking, or only at verified Done? | **At verified Done.** Exception: if the user is watching and the checks take > 10 s, post at Done · checking with unfilled chips that fill as checks pass | Honesty (principle 7) without making a watching user stare at nothing |
-| IQ2 | Is the Outside line always shown for tasks that had a place, even when nothing went out? | **Yes.** "对外：没有" is the trust signal. Omitted for in-turn answers and research with no place | The dogfood run shows the user wants this said; prose is easy to miss |
-| IQ3 | Where does the Results list live? | **Inside On hand**, opened from the Done lane header ("全部成果 →"). No fourth zoom level. Asking is the primary path | Keeps the three-level model (principle 20) |
+| IQ2 | Is the Sent out line always shown for tasks that had a place, even when nothing went out? | **Yes.** "发出去的：没有" is the trust signal. Omitted for in-turn answers and research with no place | The dogfood run shows the user wants this said; prose is easy to miss |
+| IQ3 | Where does the Results list live? | **Inside On hand**, opened from the Done lane header ("做好的东西 →"). No fourth zoom level. Asking is the primary path | Keeps the three-level model (principle 20) |
 | IQ4 | "Save to…" into a git repo: commit or not? | **Write the file, never commit; say so.** Offer a draft PR once, as a separate decision (default Hold). 7-day Undo for unchanged files in non-git folders | Writing into a repo is the user's territory; a commit is a choice |
 | IQ5 | Diff snapshot at Done: size cap? | **Yes, snapshot at Done; cap 5 MB per task**, beyond that keep stat + the first 50 files | Evidence must outlive worktree reclaim and branch deletion |
 | IQ6 | Share links: default expiry, and in v1? | **7 days, revocable, ships with Ducter Edge (not tonight)** | A link is the farthest a result can go |
@@ -715,14 +715,14 @@ Every link and send is in the day's record (G5).
 | IQ11 | New typed evidence kinds (`test_pair`, `commit`, `capture`, `user_said`) and a `result` Log event | **Yes, as one protocol change through the lead**, after tonight | Chips need types to open the right thing |
 
 Evidence is thin on two points: (a) that users prefer asking over browsing for old results
-rests on first principles and the B2 reasoning, not on a study; (b) the "Outside: nothing"
+rests on first principles and the B2 reasoning, not on a study; (b) the "Sent out: nothing"
 line's value rests on one dogfood observation. Both are cheap to test in prototype review.
 
 ## Artboards (proposed, not built)
 
 | File | Size | Shows |
 |---|---|---|
-| `IResultMessage.dc.html` | desktop 1440×900 | The HawDB result message: top line, How I know, Left out, Outside: nothing, change card, draft PR decision |
+| `IResultMessage.dc.html` | desktop 1440×900 | The HawDB result message: top line, How I know, Left out, Sent out: nothing, change card, draft PR decision |
 | `IChecking.dc.html` | desktop 1440×900 | Same message while checking: unfilled chips filling; then check didn't pass |
 | `IDocReader.dc.html` | desktop 1440×900 | Bun research document: tags, footnotes, a disagreement block, version switcher |
 | `IFindLater.dc.html` | phone 390×844 | "上个月那个 Bun 编译的调研" → the card with the ask quote and a freshness note |

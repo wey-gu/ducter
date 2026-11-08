@@ -230,7 +230,7 @@ Ducter writes is Caddy's, which adds `X-Forwarded-For`.
 
 **Desktop.** First run gains a quiet "我的 Ducter 在另一台机器上 / My Ducter is on another
 machine" that opens **连接到你的 Ducter / Connect to your Ducter**: address (or the whole link)
-and 配对码. The token goes to `<user config>/Ducter/connection.json` (0600, dir 0700); the
+and 连接码. The token goes to `<user config>/Ducter/connection.json` (0600, dir 0700); the
 Keychain is a later upgrade. A refused upgrade from a non-loopback server brings the card back
 with one line ("这台 Mac 已经和你的 Ducter 断开了"). `DUCTER_URL` + `DUCTER_TOKEN` still override.
 - **Whose paths.** The welcome carries `machine`: sha256 of the main's machine id (macOS
@@ -344,7 +344,7 @@ redesign later:
   - blocks the agent during takeover.
 
   Video is relayed over the runner's outbound socket.
-- **UI:** an opened task gets a **Screen** tab: live view, plus Take over / Hand back / Pause /
+- **UI:** an opened task gets a **Screen** tab: live view, plus Take over / Give it back / Pause /
   Snapshot.
 - **Fallback backend:** agent-browser (Vercel, Apache-2.0) behind the same `EnvironmentPort`.
 - **No validation spike (D47):** integrate cua-driver directly and fix issues as they appear.

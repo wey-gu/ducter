@@ -163,7 +163,7 @@ text walls, just one short line per scene (zh + en).
 | 3 | Ducter flicks small pebbles onto a laptop and a little server box, which light up | 我把事情分出去做。 / I hand things out. | Tasks run on your devices |
 | 4 | *(to redo once the metaphor is chosen; `research/24`: a battery reads as device power and must not be used. Likely an AI-plan block with cords to each device)* | 用的是你自己的 AI。 / Powered by your own AI plan. | Subscriptions stay yours |
 | 5 | The pebbles work quietly. One turns orange, raises a tiny hand, and Ducter carries it to you | 只有需要你时，我才来找你。 / I only come to you when it matters. | Attention; silence means success |
-| 6 | You tap **好 / Go**. The pebble bounces, turns mint green, and returns holding a tiny receipt | 做完了，会带证据给你。 / Done, with proof. | Decisions with defaults; done = evidence |
+| 6 | You tap **好 / Go**. The pebble bounces, turns mint green, and returns holding a tiny receipt | 做完了，还会告诉你我怎么确认的。 / Done, and how I checked. | Decisions with defaults; done = evidence |
 | 7 | All the pebbles roll into a tray labelled **手头 / On hand** | 想看全部，随时打开。 / See everything, anytime. | The overview exists, optionally |
 | 8 | The tray slides aside and a checklist assembles from the pebbles | 开始前只需要三样。 / Three things and we're ready. | *Becomes the real setup screen* |
 
@@ -180,7 +180,7 @@ row's detection result animates in.
      opens the client and pairs it. *Built so far (D54), terminal-first:*
      `sh install.sh --service` → systemd user service → a pairing code, link and QR in the
      terminal; the Mac app's first run has "我的 Ducter 在另一台机器上 / My Ducter is on another
-     machine" → **连接到你的 Ducter / Connect to your Ducter** (address + 配对码). The browser
+     machine" → **连接到你的 Ducter / Connect to your Ducter** (address + 连接码). The browser
      setup page with relayed AI logins (Q17) is next; the exact login commands it relays are in
      `research/29`.
 2. **Cartoon**, then the **live checklist**, auto-detected:

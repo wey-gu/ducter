@@ -195,7 +195,7 @@ Order inside the message (refines `conversation.md` [I], adding the default-fire
    They are not decisions anymore, but the user would want to know first.
 3. **停下了 / Stopped**: 没成 / Didn't work, and 在等 / Waiting past its deadline, each with
    its reason in plain words.
-4. **做完了 / Done**, one line each with evidence chips; `done?` shows "核对中 / checking".
+4. **做完了 / Done**, one line each with evidence chips; `done?` shows "在检查 / checking".
    More than 3 done items compress into "还有 {n} 件也做完了 / {n} more finished" (expand
    in place).
 
@@ -260,7 +260,7 @@ report verbatim [doc].
 | `harvest.go_all_skips` | #{list} 要你亲自定 | #{list} needs you |
 | `harvest.go_all_echo` | 按默认定了 #{list}。#{rest} 还等你。 | Went with the defaults for #{list}. #{rest} still needs you. |
 | `item.resolved_itself` | 它自己好了 | It sorted itself out |
-| `state.done_checking` | 做完了 · 核对中 | Done · checking |
+| `state.done_checking` | 做完了 · 在检查 | Done · checking |
 
 ### 5. Motion
 
@@ -375,7 +375,7 @@ the card says so plainly (principle 14: never skip silently) [I].
 | i18n key | zh | en |
 |---|---|---|
 | `quiet.propose` | 晚上我先替你攒着，早上 {time} 一起给你？能自己往下走的照常走。 | Shall I hold things overnight and give you everything at {time}? Anything that can safely carry on will. |
-| `quiet.band_label` | 安静时段 {start}–{end} | Quiet hours {start}–{end} |
+| `quiet.band_label` | 免打扰 {start}–{end} | Quiet hours {start}–{end} |
 | `quiet.held_count` | 攒着 {n} 件，{time} 给你 | {n} held until {time} |
 | `quiet.moved_deadline` | 那时你在休息，我改到 {time} 再定 | You'll be resting then, so I moved it to {time} |
 | `push.morning` | 早上好。{n} 件等你，最早的 {time} 到点。 | Morning. {n} need you; the first is due at {time}. |
@@ -435,10 +435,10 @@ See Q7 (v1 top level is push; what may break quiet hours), Q8 (quiet hours propo
 ### 2. Flow
 
 ```
-W reports done + evidence refs ──► C: task → 做完了 · 核对中 / Done · checking (done?)  [badge only]
+W reports done + evidence refs ──► C: task → 做完了 · 在检查 / Done · checking (done?)  [badge only]
   C checks refs mechanically (CI green, PR exists, diff non-empty, file exists)
     ├─ a ref fails ──► M: back to 在做 / Working with a follow-up (done? → working, actor M)
-    │      card line: "核对没过：{reason}，它接着弄 / Check didn't pass: {reason}; it's back on it"
+    │      card line: "检查没过：{reason}，它接着弄 / Check didn't pass: {reason}; it's back on it"
     │      level 1 only; no message unless the user was told "done?" in a message already [I]
     │      ├─ passes next time ──► done
     │      └─ fails verification 3 times ──► M: Needs you (or Didn't work if hopeless) [I]
@@ -474,8 +474,8 @@ C never guesses done: no report → nudge → stall rule [doc].
 | i18n key | zh | en |
 |---|---|---|
 | `state.done` | 做完了 | Done |
-| `state.done_checking` | 做完了 · 核对中 | Done · checking |
-| `done.check_failed` | 核对没过：{reason}，它接着弄 | Check didn't pass: {reason}; it's back on it |
+| `state.done_checking` | 做完了 · 在检查 | Done · checking |
+| `done.check_failed` | 检查没过：{reason}，它接着弄 | Check didn't pass: {reason}; it's back on it |
 | `done.check_failed_again` | 核对 {n} 次都没过。{reason}。你看怎么办？ | It didn't pass {n} checks. {reason}. What would you like to do? |
 | `done.judge_ask` | 看着对吗？ | Does this look right? |
 | `done.judge_keep` | 就这样 | Keep it |
@@ -484,7 +484,7 @@ C never guesses done: no report → nudge → stall rule [doc].
 | `evidence.diff` | 改了 {n} 个文件 | {n} files changed |
 | `evidence.sources` | {n} 个来源 | {n} sources |
 | `evidence.read_through` | 我通读过了 | I read it through |
-| `evidence.result` | 成果：{name} | Result: {name} |
+| `evidence.result` | {name} | {name} |
 
 ### 5. Motion
 
@@ -632,7 +632,7 @@ See Q10 (breaker N and T_stall values), Q11 (retry default).
 | Q3 | Hold = cancel default and wait indefinitely, or snooze to a new time? | Cancel and wait; Reply can set a time ("明早再说") | Hold must never silently turn into Go later |
 | Q4 | Re-ask an irreversible open item after 24 h? | Once, inside the next living message, never as a push | Avoids forgotten items without nagging |
 | Q5 | "Seen" per message or per item (an 8-item message only half scrolled)? | Per message for freezing; per item for pinning only via push | Simpler; revisit if users miss bottom items |
-| Q6 | New user-facing words not yet in the glossary: 按默认做了 / Went with the default · 停下了 / Stopped · 都按默认 / Go on all defaults · 撤销 / Undo · 安静时段 / Quiet hours · 核对没过 / Check didn't pass · 再试一次 / Try again · 放下 / Drop · 证据 chips | Add all via the change loop (D-entry + glossary) before any artboard is reviewed | AGENTS rule: every user-facing word in the glossary |
+| Q6 | New user-facing words not yet in the glossary: 按默认做了 / Went with the default · 停下了 / Stopped · 都按默认 / Go on all defaults · 撤销 / Undo · 免打扰 / Quiet hours · 检查没过 / Check didn't pass · 再试一次 / Try again · 放下 / Drop · 怎么知道的 chips | Add all via the change loop (D-entry + glossary) before any artboard is reviewed | AGENTS rule: every user-facing word in the glossary |
 | Q7 | v1 has no calls (D35). What may break quiet hours in v1? | Nothing by default. Only a user-set deadline rule that says "even at night" sends a push inside quiet hours | Keeps "it never woke me" absolute |
 | Q8 | Quiet hours: offered on the first late evening vs a fixed default from day one | Offer on the first evening; coalescing only until then | Zero setup, but the first night is covered |
 | Q9 | Verification loop cap; show "checking" in the conversation? | Cap 3; "checking" appears in the conversation only inside a living message (never as its own message) | Honesty without noise |

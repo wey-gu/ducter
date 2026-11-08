@@ -65,7 +65,7 @@ brows when something needs you. Other themes render the same states in their own
      conclusions due). The user's quiet hours are drawn as a band.
    - Below it are four lanes: **等你 / Needs you** (wide decision cards with the question,
      default, countdown, and Go / Hold / Reply), **在做 / Working**, **在等 / Waiting**
-     (dashed, showing what it waits for), and **做完了 / Done** (with "核对中 / checking"
+     (dashed, showing what it waits for), and **做完了 / Done** (with "在检查 / checking"
      for `done?`).
    - Lanes can be grouped by state, time, device, project, or persona. A "Go on all
      defaults" batch action sits in the header.

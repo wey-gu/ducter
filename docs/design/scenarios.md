@@ -37,7 +37,7 @@ partner eval (real model, fake tasks and Mem; `research/30`) · **unit** = unit 
 | D1 | Decision with default + countdown | draft | draft | draft | draft | draft | live: Go / Hold / Reply; countdown firing not walked live | Core UI · all levels |
 | D2 | Batch harvest after being away | draft | draft | draft | draft | draft | live: living message, freeze on read | Core UI · living message |
 | D3 | Quiet hours / escalation | draft | draft | draft | draft | draft | unit: push hold, coalescing, quiet hours; no real phone push yet | Core UI · attention forecast |
-| D4 | Done with evidence / failed check | draft | draft | draft | draft | — | live: done with evidence; Done · checking and 核对没过 — | |
+| D4 | Done with evidence / failed check | draft | draft | draft | draft | — | live: done with evidence; Done · checking and 检查没过 — | |
 | D5 | Failure / stall | draft | draft | draft | draft | — | live: interrupt; eval: failure wording; stall/breaker — | |
 | E1 | Follow-up in conversation vs in task | draft | draft | draft | draft | — | live: `task_send` steered / prompted; eval: follow-ups reach the right task | |
 | E2 | Add scope mid-way | draft | draft | draft | draft | — | live: steer into a running turn | |
@@ -58,9 +58,9 @@ partner eval (real model, fake tasks and Mem; `research/30`) · **unit** = unit 
 | H1 | Phone → desktop continuity | — | — | — | — | — | headless: phone and desktop read the same Log | |
 | H2 | Voice | — | — | — | — | — | — | |
 | H3 | Act on lock-screen notification | — | — | — | — | — | unit: Android Go / Hold push actions; no real device | |
-| I1 | Finished work comes back (the result message) | draft | draft | draft | draft | — | live: desktop result (How I know, Outside, Merge / Draft PR / See changes); headless: phone, from a real sonnet run | `flows/I-results.md`; result anatomy in §0 |
+| I1 | Finished work comes back (the result message) | draft | draft | draft | draft | — | live: desktop result (How I know, Sent out, Merge / Draft PR / See changes); headless: phone, from a real sonnet run | `flows/I-results.md`; result anatomy in §0 |
 | I2 | Evidence: what each chip opens | draft | draft | draft | draft | — | live: commit and test chips; typed kinds (IQ11) — | |
-| I3 | Documents live in 成果 (Save to…) | draft | draft | draft | draft | — | — | D52 Q7 |
+| I3 | Documents live in 做好的 (Save to…) | draft | draft | draft | draft | — | — | D52 Q7 |
 | I4 | Finding a result weeks later | draft | draft | draft | draft | — | — | ask first; list inside On hand |
 | I5 | Sharing a result | draft | draft | draft | draft | — | — | links ship with Ducter Edge |
 

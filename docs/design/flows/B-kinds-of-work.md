@@ -31,7 +31,7 @@ Shared status-line keys (used by all flows):
 | `job.status.working` | 在做 · {doing} | Working · {doing} |
 | `job.status.waiting` | 在等 · {reason} | Waiting · {reason} |
 | `job.status.needs_you` | 等你 · {question} | Needs you · {question} |
-| `job.status.done_checking` | 做完了 · 核对中 | Done · checking |
+| `job.status.done_checking` | 做完了 · 在检查 | Done · checking |
 | `job.status.failed` | 没成 · {reason} | Didn't work · {reason} |
 | `job.status.dropped` | 放下了 | Dropped |
 | `job.followup.receipt` | 收到，已经转给这件事 | Got it, passed on to this task |
@@ -185,7 +185,7 @@ Fork → window: `queued → working → done? → done`; branches to `needs-you
 
 ### Open questions
 - Where the document lives (product-model §8): proposed default = control-plane blob, shown
-  under 成果 / Results, with "存到项目" to write it into a place.
+  under 做好的 / Finished, with "存到项目" to write it into a place.
 - Is "只是查资料 / Just reading" the right label for the empty Where chip, or hide the chip?
   Proposed: show it, so the user learns that Where exists.
 
@@ -374,7 +374,7 @@ As B3, with one lease per repo write set; `blocked` if either lease is busy.
    takeover are not captured into the transcript; typed text never logged).
 6. **2FA:** the site sends a push to the user's phone authenticator. The banner offers "我在手
    机上批了 / I approved it on my phone". Or the user types the code directly in takeover.
-7. User taps **交还 / Hand back** [new]. Gate runs the probe; on `signed_in`, a toast:
+7. User taps **还给它 / Give it back** [new]. Gate runs the probe; on `signed_in`, a toast:
    "Cloudflare 登好了，以后会记住 / Signed in to Cloudflare; it'll stay signed in". The
    agent resumes; state `working`.
 8. Result: the number, a cropped snapshot of the usage chart as evidence, and the profile now
@@ -391,9 +391,9 @@ Branches:
 - **6a. 2FA not approved in 10 min:** state `needs-you` stays; the request is re-armed when the
   user returns; never retried in a loop.
 - **6b. Passkey or CAPTCHA:** only takeover; the agent never attempts them.
-- **7a. Hand back before signing in:** probe fails → "还没登上，要再接手吗？ / Not signed in
+- **7a. Give it back before signing in:** probe fails → "还没登上，要再接手吗？ / Not signed in
   yet. Take over again?" Default = Hold.
-- **7b. User wanders** (clicks around elsewhere in takeover): fine; on Hand back the agent
+- **7b. User wanders** (clicks around elsewhere in takeover): fine; on Give it back the agent
   re-reads the page before acting (hold-before-send).
 - **Site wants a submit or payment:** becomes an intent (payments always need a human).
 - **Challenge page / "unusual activity":** pause the site, task `needs-you`, never auto-retry.
@@ -413,7 +413,7 @@ filling? → agent` [new state names, internal only]. Residency stays `hot` duri
 | `login.go.takeover` | 接手登录 | Take over to sign in |
 | `screen.tab` | 画面 | Screen |
 | `screen.takeover` | 接手 | Take over |
-| `screen.handback` | 交还 | Hand back |
+| `screen.handback` | 还给它 | Give it back |
 | `screen.banner.human` | 你在操作 · {name} 暂停了 | You're in control · {name} is paused |
 | `screen.private_note` | 这段画面和输入不会给到 AI | This screen and what you type here never reach the AI |
 | `login.2fa.approved_on_phone` | 我在手机上批了 | I approved it on my phone |
@@ -425,7 +425,7 @@ filling? → agent` [new state names, internal only]. Residency stays `hot` duri
 ### Motion
 - Entering takeover: the Screen panel's frame thickens and warms to the needs-you orange
   (200 ms); the agent cursor shrinks to a dot and fades; the face closes its eyes (paused).
-- Hand back: the frame cools to working blue; the agent cursor reappears where it left off;
+- Give it back: the frame cools to working blue; the agent cursor reappears where it left off;
   the face opens its eyes and glances at the screen.
 - Login saved: a small key glyph drops into the "Logged-in sites" counter (bouncy).
 
@@ -439,7 +439,7 @@ filling? → agent` [new state names, internal only]. Residency stays `hot` duri
   moving browser work to the home Mac (honest about why).
 
 ### Open questions
-- Names: 画面/Screen, 接手/Take over, 交还/Hand back are not in the glossary. Proposed as above.
+- Names: 画面/Screen, 接手/Take over, 还给它/Give it back are not in the glossary. Proposed as above.
 - Should the first-ever takeover show a one-time 3-second explainer of "the AI can't see this"?
   Proposed: yes, as a dismissible line, not a modal.
 - Can takeover on a 390 px phone be usable for desktop sites? Proposed: pinch-zoom plus a
@@ -460,7 +460,7 @@ filling? → agent` [new state names, internal only]. Residency stays `hot` duri
 1. User: "HawDB #1592 一直修，直到 CI 绿。"
 2. Ack: "我一直修 #1592，直到 CI 绿。" (restates the condition in the user's words). Task chip.
    The task header gains the line "一直修 · 直到 CI 绿 / Keep fixing · until CI is green" and
-   an **iteration strip** [new: 第 n 轮 / round n] with 20 empty slots (the cap).
+   an **iteration strip** [new: 第 n 次 / round n] with 20 empty slots (the cap).
 3. Each round: fix → push → wait for CI (a waiter: `在等 · CI`, costs no model turn) → a cheap
    model judges the condition.
 4. Each finished round fills one cell, colored by outcome: progress (green), no change (grey),
@@ -543,14 +543,14 @@ One writer: rounds never overlap.
 - **First time:** "…了告诉我 / tell me when…".
 
 ### Flow
-1. User: "ducter #12 被批了告诉我。"
-2. Ack: "好，#12 被批了我告诉你。" (names the watching, not the approval).
+1. User: "ducter #12 通过了告诉我。"
+2. Ack: "好，#12 通过了我告诉你。" (names the watching, not the approval).
 3. If a task already holds the work key (#12): the waiter attaches to it. Otherwise a light
-   task is created. Its status line and card: **在等 · 在等 PR 被批 / Waiting for PR
+   task is created. Its status line and card: **在等 · 在等 PR 通过 / Waiting for PR
    approval**, dashed outline, the time it started waiting.
 4. Nothing else happens. No model turns (code predicate: GitHub webhook or 60 s+ poll with
    backoff). No pushes.
-5. Approved → waiter fires → result message replies to the ask: "#12 被批了（lily 批的，
+5. Approved → waiter fires → result message replies to the ask: "#12 通过了（lily，
    10:42）。" Is this a push? Only if the user asked to be told (they did: "告诉我" is an
    explicit report), so yes, one push, coalesced and held if the user is in the app.
 6. No follow-on action is offered by default; Ducter never merges unless a rule allows it.
@@ -559,7 +559,7 @@ One writer: rounds never overlap.
 
 Branches:
 - **5a. Changes requested instead:** this is not the condition, but it matters: result "#12 没
-  被批，lily 要求改两处。要我去改吗？" Go = "去改 / Go fix it" (becomes B3/B7). The waiter stays
+  通过，lily 要求改两处。要我去改吗？" Go = "去改 / Go fix it" (becomes B3/B7). The waiter stays
   armed.
 - **5b. PR closed:** waiter ends; "#12 被关了，没合。" No default action.
 - **Deadline:** none by default. After 7 days waiting, a quiet line in the living message
@@ -576,10 +576,10 @@ whole time.
 | i18n key | zh | en |
 |---|---|---|
 | `waiter.ack` | 好，{event}了我告诉你。 | OK, I'll tell you when {event}. |
-| `waiter.reason.pr_approved` | 在等 PR 被批 | Waiting for PR approval |
+| `waiter.reason.pr_approved` | 在等 PR 通过 | Waiting for PR approval |
 | `waiter.since` | 从 {time} 开始等 | Waiting since {time} |
-| `waiter.fired.pr_approved` | #{n} 被批了（{who} 批的，{time}）。 | #{n} was approved ({who}, {time}). |
-| `waiter.changes_requested` | #{n} 没被批，{who} 要求改 {k} 处。要我去改吗？ | #{n} wasn't approved; {who} asked for {k} changes. Want me to make them? |
+| `waiter.fired.pr_approved` | #{n} 通过了（{who}，{time}）。 | #{n} was approved ({who}, {time}). |
+| `waiter.changes_requested` | #{n} 没通过，{who} 要求改 {k} 处。要我去改吗？ | #{n} wasn't approved; {who} asked for {k} changes. Want me to make them? |
 | `waiter.go.fix` | 去改 | Go fix it |
 | `waiter.closed` | #{n} 被关了，没合。 | #{n} was closed without merging. |
 | `waiter.long` | {thing} 等了 {d} 天还没{event} | {thing} has waited {d} days; not {event} yet |
@@ -637,7 +637,7 @@ whole time.
    09:00". A routine card appears on On hand (one card; next firing + latest run).
 4. Each firing creates a run (a fresh task). Quiet runs leave only a tick. A run that finds
    something posts into the living message: "早上好，2 个 PR 要你看：…"
-5. Review date: the day before, a quiet line: "PR 早检 明天到期复查。还要吗？" Go = "再 30 天
+5. Review date: the day before, a quiet line: "PR 早检 明天到时间了，还要吗？" Go = "再 30 天
    / 30 more days" (default), "停掉 / Stop".
 
 Branches:
@@ -680,10 +680,10 @@ firing; a running run is a normal Working card nested under it.
 | `routine.budget` | 每次 ≤ 第一次的 2 倍 · 每月 ≤ {cap} | Each run ≤ 2× the first · month ≤ {cap} |
 | `routine.scope.read_only` | 可以碰：只看，不动 | May touch: read only |
 | `routine.scope.beyond` | 超出的会先问你 | Anything more asks you first |
-| `routine.review_on` | {date} 复查（{d} 天） | Review on {date} ({d} days) |
+| `routine.review_on` | {date} 再问你（{d} 天） | Ask you again {date} ({d} days) |
 | `routine.go.start` | 开始 | Start |
 | `routine.started` | 已开始 · 下次 {next} | Started · next {next} |
-| `routine.review.soon` | {name} 明天到期复查。还要吗？ | {name} is up for review tomorrow. Keep this? |
+| `routine.review.soon` | {name} 明天到时间了，还要吗？ | Tomorrow I'll check whether to keep {name}. Keep it? |
 | `routine.go.extend` | 再 {d} 天 | {d} more days |
 | `routine.stop` | 停掉 | Stop |
 | `routine.paused.keep_q` | {name} 先停了：{why}。还要吗？ | Paused {name}: {why}. Keep this? |
@@ -710,8 +710,7 @@ firing; a running run is a normal Working card nested under it.
 ### Open questions
 - Name of the Go label on the proposal: "开始 / Start" vs plain "好 / Go". Proposed: Go button
   names the action, "开始 / Start".
-- "Review on" wording: 复查 sounds clinical; alternatives 到期问你 / "ask again on". Needs a
-  glossary entry.
+- "Review on" wording: decided D65, {date} 再问你 / Ask you again {date} (复查 read as clinical).
 - Auto-pause on 3 unread reports: automatic (product model) or proposed with a default
   (research/20 recommends proposed)? Proposed: automatic but reversible, with the question.
 
@@ -723,23 +722,23 @@ firing; a running run is a normal Working card nested under it.
 |---|---|---|---|
 | Screen tab | 画面 | Screen | B5 |
 | takeover | 接手 | Take over | B5 |
-| hand back | 交还 | Hand back | B5 |
+| hand back | 还给它 | Give it back | B5 |
 | draft PR | 草稿 PR | Draft PR | B3, B4 |
-| iteration | 第 n 轮 | Round n | B7 |
-| review date | 复查 / 到期 | Review on | B9 |
+| iteration | 第 n 次 | Try n | B7 |
+| review date | {date} 再问你 | Ask you again {date} | B9 (D65) |
 | effect scope | 可以碰 | May touch | B9 |
 | dry run | 现在跑的话 | If it ran now | B9 |
 | spending cap | 上限 | Cap | B7, B9 |
 | routine paused | 先停了 | Paused | B9 |
 | empty place | 只是查资料 | Just reading | B2 |
-| checkpoint divider | 存档 {n} | Checkpoint {n} | B3 artboard |
-| intents list (dossier heading) | 要做的外部动作 | Outside actions | B3 artboard |
+| checkpoint divider | 保存了进度 · {time} | Progress saved · {time} | B3 artboard (D65) |
+| intents list (dossier heading) | 会发出去的 | Will go out | B3 artboard (D65) |
 | logged-in sites | 已登录的网站 | Signed-in sites | B5 |
 
 ## Top open questions (for the lead)
 
-1. Glossary additions above, especially 接手 / 交还 / 画面 for takeover.
+1. Glossary additions above, especially 接手 / 还给它 / 画面 for takeover.
 2. Draft-PR default: auto-open after a countdown for personal repos, Go-only for org repos?
-3. Where research documents live (blob under 成果 vs written into a place).
+3. Where research documents live (blob under 做好的 vs written into a place; decided D52 Q7).
 4. Routine auto-pause on unread: automatic vs proposed.
 5. Waiter with no prior task: full card or compact row on On hand.

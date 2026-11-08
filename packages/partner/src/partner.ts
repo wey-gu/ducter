@@ -89,6 +89,7 @@ interface TurnState {
   zh: boolean;
   recalls: number; // memory_search calls this turn
   noted: { title: string; memoryId?: string }[]; // memory_add successes, shown after the turn's text
+  carried?: Carried; // this turn redoes one a restart cut off
 }
 
 interface Job {
@@ -138,6 +139,46 @@ function stripDefault(q: string): string {
   return out || q.trim();
 }
 
+/** What a turn cut off by a restart had already done, from the Log after it started. */
+interface Carried {
+  seqs: Set<number>; // its triggers
+  tasks: { taskId: string; title: string }[];
+  waits: Set<string>; // wait_until reasons
+  asks: Set<string>; // ask questions
+  said: Set<string>; // ai_msg / ack texts
+  note: string; // rendered for the model
+}
+
+export function carriedFrom(log: CoreApi["log"], inflight: { seqs: number[]; from: number }): Carried | undefined {
+  const evs = log.read({ stream: "channel", fromSeq: inflight.from + 1, limit: 2000 });
+  const c: Carried = { seqs: new Set(inflight.seqs), tasks: [], waits: new Set(), asks: new Set(), said: new Set(), note: "" };
+  for (const e of evs) {
+    if (e.kind === "job_status" && e.origin === "partner") {
+      const b = e.body as Bodies["job_status"];
+      if (b.state === "running" && b.taskId) c.tasks.push({ taskId: b.taskId, title: b.text });
+    } else if (e.kind === "waiter" && (e.body as Bodies["waiter"]).state === "armed") c.waits.add((e.body as Bodies["waiter"]).reason);
+    else if (e.kind === "decision" && e.origin === "partner") c.asks.add((e.body as Bodies["decision"]).question);
+    else if ((e.kind === "ai_msg" || e.kind === "ack") && e.origin === "partner") c.said.add((e.body as { text: string }).text.trim());
+  }
+  const done = [
+    ...c.tasks.map((t) => `opened task ${t.taskId} "${t.title}"`),
+    ...[...c.waits].map((r) => `set a timer "${r}"`),
+    ...[...c.asks].map((q) => `asked "${q}"`),
+    ...[...c.said].map((t) => `said "${t.length > 160 ? t.slice(0, 159) + "…" : t}"`),
+  ];
+  if (!done.length) return { ...c, note: "" };
+  c.note = `[note] Your last turn on the lines below was cut off before it finished. It had already ${done.join("; ")}. Don't do those again; do only what is left.`;
+  return c;
+}
+
+/** A task the carried turn opened with this title (taken: it is handed back once). */
+function carriedTask(c: Carried, title: unknown, take: boolean): { taskId: string; title: string } | undefined {
+  if (typeof title !== "string") return undefined;
+  const i = c.tasks.findIndex((t) => t.title === title.trim());
+  if (i < 0) return undefined;
+  return take ? c.tasks.splice(i, 1)[0] : c.tasks[i];
+}
+
 const generatedAck = (zh: boolean, title: string) => (zh ? `好，我去做：${title}` : `On it: ${title}`);
 
 let idCounter = 0;
@@ -184,6 +225,13 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const promptHash = () => String(Bun.hash(buildSystemPrompt(core.persona)));
   const canResume = () => !!lastSessionId && lastPromptHash === promptHash();
   let handledSeq: number | undefined; // highest trigger seq covered by a finished turn
+  // The turn in flight: its trigger seqs and the Log head when it started (state.json). A turn
+  // cut off by a restart is run again with all of its triggers, and what it already did is
+  // carried over so it is not done twice (soak: two messages shared a turn, the first one's task
+  // was opened, the process died; on restart the first was opened again and the second dropped).
+  let inflight: { seqs: number[]; from: number } | undefined;
+  let carried: Carried | undefined; // what a cut-off turn already did, for the turn that redoes it
+  let requeuing = false; // queueing the triggers a restart left over
   let turn: TurnState | null = null;
   let warming: Promise<void> | null = null; // pre-start of the session at boot
   let unseeded = false; // the live session was started fresh and has not had its seed yet
@@ -192,7 +240,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
 
   if (persist) {
     try {
-      const s = JSON.parse(readFileSync(stateFile, "utf8")) as { sessionId?: string; lastActivity?: number; handledSeq?: number; promptHash?: string };
+      const s = JSON.parse(readFileSync(stateFile, "utf8")) as { sessionId?: string; lastActivity?: number; handledSeq?: number; promptHash?: string; inflight?: { seqs: number[]; from: number } };
+      inflight = s.inflight;
       lastSessionId = s.sessionId;
       lastPromptHash = s.promptHash;
       lastActivity = s.lastActivity ?? 0;
@@ -204,7 +253,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const saveState = () => {
     if (!persist) return;
     try {
-      writeFileSync(stateFile, JSON.stringify({ sessionId: lastSessionId, lastActivity, handledSeq, promptHash: lastPromptHash }));
+      writeFileSync(stateFile, JSON.stringify({ sessionId: lastSessionId, lastActivity, handledSeq, promptHash: lastPromptHash, ...(inflight ? { inflight } : {}) }));
     } catch (err) {
       onError(err);
     }
@@ -248,6 +297,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const appendAiMsg = (text: string) => {
     const t = text.trim();
     if (!t) return;
+    // Said already in the cut-off turn this one redoes: once is enough.
+    if (turn?.carried && turn.carried.said.delete(t)) return;
     if (CLAIMS_CHOICE.test(t) && !openDecisionExists()) {
       // Honesty guard (live: "选 Go 就保留" with no decision anywhere). The words are already
       // the model's; make them true right away or have it take them back, in a follow-up turn.
@@ -326,7 +377,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         appendAiMsg(line);
         turn.acked = true;
       }
-      if (TASK_OPEN_RE.test(ev.tool.name)) {
+      if (TASK_OPEN_RE.test(ev.tool.name) && turn.carried && carriedTask(turn.carried, (ev.tool.input as { title?: unknown } | undefined)?.title, false)) {
+        turn.pending = null; // its ack went out in the cut-off turn
+      } else if (TASK_OPEN_RE.test(ev.tool.name)) {
         const kind = (ev.raw as { kind?: string } | undefined)?.kind;
         // One call yields up to three stream events (started, title, ended); count calls by
         // the start event (a tool event with no output yet).
@@ -409,7 +462,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     if (e.stream === "channel" && e.kind === "job_status" && e.origin === "user") userActions.push(e);
   });
 
-  function buildInput(batch: LogEvent[], fresh: boolean): string {
+  function buildInput(batch: LogEvent[], fresh: boolean, note?: string): string {
     // Things the user did by button since our last turn (merge, open PR): context, not triggers.
     const noted = fresh ? [] : userActions.splice(0);
     const deltas = [...noted.map((e) => renderTrigger(e, ctx)), ...batch.map((e) => renderTrigger(e, ctx))];
@@ -424,6 +477,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       const t = (prev[prev.length - 1]?.body as Bodies["user_msg"] | undefined)?.text;
       if (t && !isChinese(t)) deltas.push("[language] The user's last message was in English: reply in English.");
     }
+    if (note) deltas.unshift(note);
     deltas.push(renderTime(new Date(now())));
     const devices = renderDevices(core.workers?.list() ?? []);
     if (devices) deltas.push(devices);
@@ -500,11 +554,16 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     }
 
     const fresh = await ensureSession();
-    const input = buildInput(batch, fresh);
+    const redo = carried && batch.some((e) => carried!.seqs.has(e.seq)) ? carried : undefined;
+    if (redo) carried = undefined;
+    const input = buildInput(batch, fresh, redo?.note);
     // A task question is shown with its own Go / Hold / Reply; prose about it only repeats it
     // (eval: restated in 4 of 4 runs whatever the persona said).
     const quiet = batch.length > 0 && batch.every((e) => e.kind === "report" && (e.body as Bodies["report"]).state === "needs_input");
     turn = { triggers: batch, userTexts, replyTo, pending: null, unboundAck: null, opensSeen: 0, opensHandled: 0, zh, quiet, recalls: 0, noted: [] };
+    if (redo) turn.carried = redo;
+    const real = batch.map((e) => e.seq).filter((n) => n > 0);
+    if (real.length) inflight = { seqs: real, from: core.log.head() }, saveState();
     stats.turns++;
     try {
       const reading = readTurn();
@@ -517,6 +576,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       else corrections.length = 0;
     } finally {
       turn = null;
+      inflight = undefined;
       lastActivity = now();
       saveState();
     }
@@ -617,6 +677,13 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       const title = (typeof raw.title === "string" && raw.title.trim()) || (firstLine.length > 60 ? firstLine.slice(0, 59) + "…" : firstLine);
       const args = { ...raw, title, brief: briefIn };
       const t = turn;
+      // Opened already by the cut-off turn this one redoes: hand back that task.
+      const again = t?.carried && carriedTask(t.carried, args.title, true);
+      if (again) {
+        t!.pending = null;
+        t!.opensHandled++;
+        return { ok: true, taskId: again.taskId, title: again.title, note: "This task was already opened for this message; it was not opened again. It reports back on its own." };
+      }
       let jobId: string;
       if (t) {
         let ack = claimAck(t);
@@ -721,6 +788,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       if (args.taskId && !core.tasks.get(args.taskId)) return { ok: false, error: `unknown task ${args.taskId}` };
       // Core arms the timer from this event (it survives restarts) and appends waiter "fired",
       // which wakes us; a task-bound waiter is cancelled if the task finishes first.
+      if (turn?.carried?.waits.delete(args.reason)) return { ok: true, note: "That timer is already set." };
       const body: Bodies["waiter"] = { waiterId: newId("wait"), at: new Date(at).toISOString(), reason: args.reason, state: "armed" };
       if (args.taskId) body.taskId = args.taskId;
       core.log.append({ stream: "channel", origin: "waiter", kind: "waiter", body });
@@ -759,8 +827,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       if (reversible && body.defaultOption === "go" && args.defaultInMinutes && args.defaultInMinutes > 0) {
         body.defaultAt = new Date(now() + args.defaultInMinutes * 60_000).toISOString();
       }
-      core.log.append({ stream: "channel", origin: "partner", kind: "decision", body });
       if (turn) turn.asked = true;
+      if (turn?.carried?.asks.delete(body.question)) return { ok: true, note: "That question is already in front of the user. End your turn now." };
+      core.log.append({ stream: "channel", origin: "partner", kind: "decision", body });
       return { ok: true, decisionId: body.decisionId, note: "The user sees it with Go / Hold / Reply. End your turn now; do not repeat the question." };
     },
   );
@@ -856,7 +925,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       if (e.origin === "partner") return; // never wake on our own output
       if (e.kind === "report") onReport(e.body as Bodies["report"]);
       queue.push(e);
-      kick();
+      if (!requeuing) kick();
     },
     async idle() {
       while (running) await running;
@@ -905,8 +974,19 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         .read({ stream: "channel", fromSeq: from, limit: 5000, kinds: ["ai_msg", "ack"] })
         .map((e) => (e.body as { replyTo?: number }).replyTo),
     );
-    const todo = missed.filter((e) => !(e.kind === "user_msg" && replied.has(e.seq)));
-    if (todo.length) queueMicrotask(() => todo.forEach((e) => api.onTrigger(e)));
+    // The cut-off turn's own triggers run again, whatever it managed to say first.
+    const cut = new Set(inflight?.seqs ?? []);
+    const todo = missed.filter((e) => cut.has(e.seq) || !(e.kind === "user_msg" && replied.has(e.seq)));
+    if (inflight && todo.some((e) => cut.has(e.seq))) carried = carriedFrom(core.log, inflight);
+    inflight = undefined;
+    // All at once, so a cut-off turn runs again as one turn (not one per trigger).
+    if (todo.length)
+      queueMicrotask(() => {
+        requeuing = true;
+        todo.forEach((e) => api.onTrigger(e));
+        requeuing = false;
+        kick();
+      });
   } else if (persist) {
     handledSeq = core.log.head(); // first run: history is background, not new work
   }

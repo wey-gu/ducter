@@ -338,6 +338,66 @@ describe("turn loop", () => {
     expect(replies).toEqual([1, 3]);
   });
 });
+describe("restart mid-turn with two messages in one turn (soak regression)", () => {
+  test("a message whose task was already opened is not opened again", async () => {
+    const clock = new FakeClock();
+    const dir = tmp();
+    const fc = fakeCore(clock, dir);
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    let hang = false;
+    let call = fc.callTool;
+    const fr = fakeRunner(async (input, s, i) => {
+      if (i === 0) {
+        await gate; // A and B arrive while this first turn runs: they share the next turn
+        s.say("ok");
+        return s.end();
+      }
+      if (hang) {
+        // The turn opens A's task, then the process dies before B is handled.
+        if (input.includes("[user] A")) {
+          s.say("On it: A");
+          await Bun.sleep(5);
+          await call("task_open", { title: "A", brief: "A" });
+        }
+        return;
+      }
+      if (input.includes("[user] A")) {
+        s.say("On it: A");
+        await Bun.sleep(5);
+        await call("task_open", { title: "A", brief: "A" });
+      }
+      s.say("done");
+      s.end();
+    });
+    fr.bindCards(fc.cards);
+    const p1 = createPartner(fc.core, fr.runner, { now: clock.now, onError: () => {}, settleMs: 0 });
+    p1.onTrigger(fc.core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "X" } }));
+    await Bun.sleep(5);
+    hang = true;
+    p1.onTrigger(fc.core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "A" } }));
+    p1.onTrigger(fc.core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "B" } }));
+    release();
+    await Bun.sleep(50);
+    expect(fr.opened.map((o) => o.title)).toEqual(["A"]);
+    hang = false;
+    const tools2 = fakeCore(clock, dir);
+    call = tools2.callTool;
+    const fc2 = { ...fc.core, mcp: tools2.core.mcp };
+    const p2 = createPartner(fc2, fr.runner, { now: clock.now, onError: () => {}, settleMs: 0 });
+    await Bun.sleep(20);
+    await p2.idle();
+    expect(fr.opened.map((o) => o.title)).toEqual(["A"]);
+    // B, cut off with it, is not lost: the turn runs again, told what already happened.
+    const redo = fr.sessions.at(-1)!.inputs.at(-1)!;
+    expect(redo).toContain("[user] B");
+    expect(redo).toContain('opened task t1 "A"');
+    expect(redo).not.toMatch(/restart|reset/i);
+    // "On it: A" went out once.
+    expect(fc.events.filter((e) => e.kind === "ack").length).toBe(1);
+  });
+});
+
 describe("place", () => {
   const fs: PlaceFs = {
     home: "/Users/w",

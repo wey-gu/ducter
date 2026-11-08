@@ -130,7 +130,7 @@ const en = {
 
   "headless.ready": "{name} is running on {device}",
   "headless.listen": "Listening",
-  "headless.public": "listening on {host} without TLS. Only paired devices get in; put Caddy in front for HTTPS (docs: scripts/caddy-setup.sh)",
+  "headless.public": "listening on {host} without TLS. Only connected devices get in; put Caddy in front for HTTPS (docs: scripts/caddy-setup.sh)",
   "headless.next": "Connect a device: ducter pair",
   "headless.notReady": "Not ready yet (Ducter still runs, and will use an AI once you sign one in):",
 
@@ -316,7 +316,7 @@ const zh: Record<MsgKey, string> = {
 
   "headless.ready": "{name} 在 {device} 上运行了",
   "headless.listen": "监听",
-  "headless.public": "正在 {host} 上监听，没有 TLS。只有配对过的设备能连进来；要 HTTPS，在前面放一个 Caddy（见 scripts/caddy-setup.sh）",
+  "headless.public": "正在 {host} 上监听，没有 TLS。只有连上过的设备能进来；要 HTTPS，在前面放一个 Caddy（见 scripts/caddy-setup.sh）",
   "headless.next": "连接一台设备：ducter pair",
   "headless.notReady": "还没准备好（Ducter 照常运行，等你登录一个 AI 后就能用）：",
 

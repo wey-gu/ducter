@@ -371,6 +371,9 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 
 // defaultLine says what happens if the user doesn't answer.
 func (a *App) defaultLine(c *ui.Context, d *store.DecisionState) string {
+	if !d.Reversible {
+		return a.L.T("decision.no_default") // never claim it can be undone
+	}
 	if d.DefaultOption != "go" {
 		return a.L.T("decision.default.hold")
 	}

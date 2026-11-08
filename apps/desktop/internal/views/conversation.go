@@ -442,6 +442,11 @@ func (a *App) openEvidence(c *ui.Context, ev protocol.EvidenceRef) {
 
 func (a *App) composer(c *ui.Context) {
 	t := a.T
+	if a.held != nil && a.held.taskID == "" {
+		ui.Row(c).Justify(ui.Center).Padding(0, 24).Children(func() {
+			ui.Column(c).Grow(1).MaxWidth(convWidth).Children(func() { a.heldLine(c) })
+		})
+	}
 	ui.Row(c).Justify(ui.Center).Padding(12, 24, 28, 24).Children(func() {
 		box := ui.Row(c).Grow(1).MaxWidth(convWidth).Gap(10).AlignItems(ui.Center).Padding(8, 8, 8, 22).
 			Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.PressCard.Offset, 0, 0, t.PressCard.Color)
@@ -451,15 +456,17 @@ func (a *App) composer(c *ui.Context) {
 				Background(ui.Transparent).Border(0, ui.Transparent).Padding(12, 0).Grow(1).FontSize(17).
 				OnTextKey(func(k ui.TextKey) bool {
 					if k.Key == ui.KeyEnter && k.Mods == 0 {
-						a.SendMessage(k.Text())
-						k.SetText("")
+						if a.SendMessage(k.Text()) {
+							k.SetText("")
+						}
 						return true
 					}
 					return false // Shift+Enter breaks the line
 				})
 			if a.iconButton(c, a.L.T("composer.send"), 52, t.Accent, t.PressAccent, drawSend(t.OnAccent)) {
-				a.SendMessage(a.draft)
-				a.draft = ""
+				if a.SendMessage(a.draft) {
+					a.draft = ""
+				}
 			}
 		})
 	})
@@ -472,4 +479,19 @@ func firstNonEmpty(s ...string) string {
 		}
 	}
 	return ""
+}
+
+// heldLine says why a message was held, with Send anyway / Don't send.
+func (a *App) heldLine(c *ui.Context) {
+	t := a.T
+	ui.Row(c.Key("held")).Gap(12).Wrap().Padding(12, 12, 12, 16).Radius(t.RadiusSM).Background(t.Failed.Surface).AlignItems(ui.Center).Role(ui.RoleAlert).Children(func() {
+		ui.Box(c).Size(10, 10).Radius(5).Background(t.Failed.Dot).Shrink(0)
+		ui.Text(c, a.L.T("secret.held")).FontSize(t.SM).FontWeight(700).TextColor(t.Failed.Ink).Grow(1).Basis(260).MinWidth(0)
+		if a.button(c, a.L.T("secret.cancel"), btnQuiet, 36, t.Surface) {
+			a.held = nil
+		}
+		if a.button(c, a.L.T("secret.send"), btnText, 36, t.Surface) {
+			a.SendHeld()
+		}
+	})
 }

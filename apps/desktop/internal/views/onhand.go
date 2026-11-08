@@ -300,6 +300,9 @@ func (a *App) countdown(c *ui.Context, d *store.DecisionState) {
 	t := a.T
 	left, ok := a.defaultIn(d)
 	label := a.L.T("decision.default.hold")
+	if !d.Reversible {
+		label = a.L.T("decision.no_default")
+	}
 	frac := float32(0)
 	right := ""
 	if ok && d.DefaultOption == "go" {

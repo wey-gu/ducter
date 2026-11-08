@@ -109,6 +109,23 @@ func (a *App) taskActions(c *ui.Context, task *store.Task) {
 
 func (a *App) decisionBanner(c *ui.Context, d *store.DecisionState) {
 	t := a.T
+	if d.Resolved != nil || d.Pending != "" {
+		// Answered: one quiet line, not the whole ask again.
+		opt := d.Pending
+		if d.Resolved != nil {
+			opt = d.Resolved.Option
+		}
+		msg := a.L.T("decision.resolved." + opt)
+		if opt == "reply" {
+			msg = a.L.T("decision.resolved.reply", "")
+		}
+		ui.Row(c.Key("banner")).Gap(10).Padding(10, 16).Radius(16).Background(t.SurfaceSunken).AlignItems(ui.Center).Children(func() {
+			ui.Box(c).Size(20, 20).Radius(7).Background(t.Done.Surface).Draw(drawCheck(t.Done.Ink)).Shrink(0)
+			ui.Text(c, a.L.T("decision.answered", strings.TrimRight(msg, "：: "), d.AnsweredAt.Local().Format("15:04"))).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).Shrink(0)
+			ui.Text(c, d.Question).FontSize(t.SM).TextColor(t.InkMuted).SingleLine().Grow(1).MinWidth(0)
+		})
+		return
+	}
 	ui.Row(c.Key("banner")).Gap(14).Wrap().AlignItems(ui.Center).Padding(12, 14, 12, 20).Radius(20).Background(t.NeedsYou.Surface).Children(func() {
 		ui.Column(c).Grow(1).Basis(300).Gap(2).Children(func() {
 			ui.Text(c, d.Question).FontSize(t.MD).FontWeight(700)
@@ -170,22 +187,27 @@ func (a *App) transcript(c *ui.Context, task *store.Task) {
 				ui.Text(c, a.L.T("task.loading")).FontSize(t.SM).TextColor(t.InkMuted)
 			}
 		})
+		if a.held != nil && a.held.taskID == task.ID {
+			ui.Column(c).Margin(0, 12, 0, 12).Children(func() { a.heldLine(c) })
+		}
 		draft := a.taskDrafts[task.ID]
 		ui.Row(c).Gap(8).Margin(0, 12, 12, 12).Padding(6, 6, 6, 14).Radius(18).Background(t.Bg).AlignItems(ui.Center).Children(func() {
-			ui.TextArea(c.Key("taskcomposer:"+task.ID), &draft).Lines(1, 6).MinHeight(0).Placeholder(a.L.T("composer.task", a.S.PersonaName)).
-				Label(a.L.T("composer.task", a.S.PersonaName)).
+			ui.TextArea(c.Key("taskcomposer:"+task.ID), &draft).Lines(1, 6).MinHeight(0).Placeholder(a.L.T("composer.task")).
+				Label(a.L.T("composer.task")).
 				Background(ui.Transparent).Border(0, ui.Transparent).Padding(8, 0).Grow(1).FontSize(14).
 				OnTextKey(func(k ui.TextKey) bool {
 					if k.Key == ui.KeyEnter && k.Mods == 0 {
-						a.SendToTask(task.ID, k.Text())
-						k.SetText("")
+						if a.SendToTask(task.ID, k.Text()) {
+							k.SetText("")
+						}
 						return true
 					}
 					return false
 				})
 			if a.iconButton(c, a.L.T("composer.send"), 44, t.Ink, t.PressPrimary, drawSend(t.OnUserBubble)) {
-				a.SendToTask(task.ID, draft)
-				draft = ""
+				if a.SendToTask(task.ID, draft) {
+					draft = ""
+				}
 			}
 		})
 		a.taskDrafts[task.ID] = draft

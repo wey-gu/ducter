@@ -103,6 +103,103 @@ changes.
   - The client protocol comes first; the two UI codebases share only the protocol, the state
     model, and design tokens.
 
+## Server mode and remote access, first slice (D54, research/29)
+
+**Who and when.** Mostly the heavy developer who wants the partner awake while the Mac sleeps
+(Q16). A consumer who has never touched a VPS is not expected to start here; they meet a VPS only
+when the partner suggests one, and then the steps below are what they copy and paste.
+
+**Running on a server**
+- One static binary per arch (`bun build --compile`, `DUCTER_TARGET=bun-linux-arm64|x64`;
+  `scripts/install.sh --linux DIR` makes copyable bundles).
+- `ducter up --headless`: never opens a window; a failing doctor is printed (to journald) but
+  doesn't block start, so the user can pair a device and sign in an AI afterwards.
+- `ducter service install` (or `install.sh --service`): a systemd **user** unit
+  (`~/.config/systemd/user/ducter.service`), `Restart=on-failure`, journald logs,
+  `EnvironmentFile=-~/.ducter/env` (0600; where `CLAUDE_CODE_OAUTH_TOKEN` goes, never in the
+  unit). It enables linger itself when polkit allows (Ubuntu 24.04: yes, without sudo) and
+  prints the `sudo loginctl enable-linger` line when not. Then it pairs the first device.
+- Binds **127.0.0.1 only** unless `--host` / `DUCTER_HOST` says otherwise. A public bind prints
+  a warning: no TLS, paired devices only.
+
+**Who is local.** A request is local when the TCP peer is loopback, the `Host` is loopback,
+and no proxy header (`Forwarded`, `X-Forwarded-*`, `X-Real-IP`, `Via`, `CF-Connecting-IP`,
+`Tailscale-User-Login`) is present. Local callers (the desktop on the same Mac, the CLI, the
+harnesses' MCP calls, an SSH tunnel's far end) need no token, as before. `DUCTER_LOCAL_TRUST=off`
+turns this off. Caveat: a reverse proxy that sends neither a proxy header nor the public Host
+(nginx's default `proxy_set_header Host $proxy_host`) would look local; the only proxy setup
+Ducter writes is Caddy's, which adds `X-Forwarded-For`.
+
+**Pairing**
+- `ducter pair` mints a code: 8 characters from `ABCDEFGHJKMNPQRSTVWXYZ23456789` (≈ 39 bits),
+  shown as `K7QM-4XPA`, valid 10 minutes, single use. It prints the address (`public-url`, else
+  the SSH tunnel line built from `SSH_CONNECTION`), the code, a link `<address>/pair#c=<code>`
+  (the code rides in the fragment, which browsers never send) and that link as a terminal QR.
+  On a TTY it waits and says "<device> 连上了 / is connected".
+- `POST /pair {code, name, platform}` → `{token, deviceId, personaName}`. Token:
+  `dvc.<10-hex id>.<32 random bytes, base64url>`.
+- Storage: `<dataDir>/devices.db` (SQLite, WAL, 0600), shared by the CLI and the running server,
+  so pairing and revoking work whether or not the service is up. Only SHA-256 hashes of codes
+  and token secrets are kept.
+- Limits: 10 wrong codes per caller address per 10 min (`X-Forwarded-For`'s first hop behind a
+  proxy), then 429; 30 wrong codes in total voids every pending code.
+- `ducter devices` lists name, kind (client / worker), platform, last seen, id;
+  `ducter devices disconnect <id|unique name>` revokes at once.
+- Remote `/ws` needs `Authorization: Bearer <token>` (or `X-Ducter-Device`). With a token the
+  browser-origin check is skipped: a header token can't ride along ambiently like a cookie.
+  Remote `/mcp` needs `X-Ducter-Device` beside its HMAC role token. Remote `/health` answers
+  `{ok:true}` only.
+
+**Reaching it**
+- *Own domain (default for everyone with one, and for CN users per Q18):*
+  `scripts/caddy-setup.sh <domain>`: checks DNS, installs Caddy from its apt repo, adds a site
+  block (`reverse_proxy 127.0.0.1:7777`), reloads, waits for `https://<domain>/health`, writes
+  `~/.ducter/public-url`. Mainland-China servers need an ICP filing for 80/443.
+- *No domain:* `ssh -N -L 7777:127.0.0.1:7777 user@server`, then the address is
+  `http://127.0.0.1:7777`; no code is needed, SSH is the authentication.
+- *Later (D39/D46):* the Ducter Edge on `workers.dev` for phone/web without a domain, and
+  Tailscale as the community adapter. Both keep this pairing.
+
+**Desktop.** First run gains a quiet "我的 Ducter 在另一台机器上 / My Ducter is on another
+machine" that opens **连接到你的 Ducter / Connect to your Ducter**: address (or the whole link)
+and 配对码. The token goes to `<user config>/Ducter/connection.json` (0600, dir 0700); the
+Keychain is a later upgrade. A refused upgrade from a non-loopback server brings the card back
+with one line ("这台 Mac 已经和你的 Ducter 断开了"). `DUCTER_URL` + `DUCTER_TOKEN` still override.
+
+**Harness logins on the server (research/29).** Doctor offers `claude auth login` (prints a URL,
+waits for the pasted code; no browser on the server) and `codex login --device-auth` (enable
+device login in ChatGPT first). `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token` goes in
+`~/.ducter/env`; doctor shows it as "set, checked on first use" because `claude auth status`
+can't tell a bad token from a good one. Relaying these flows into a client (Q17) is next.
+
+**Demo / e2e without an AI login.** `DUCTER_SCRIPTED_MODEL=1` swaps every harness session for
+OAR's scripted runtime. Its script still calls Ducter's real MCP tools over HTTP (`task_open`,
+`report_to_main`) and every reply says it's a demo.
+
+## Workers (design; enrollment only so far)
+
+A worker is a machine that runs tasks for a main process elsewhere (a VPS next to a home Mac
+main, or the reverse). Principle: **it dials out, never in.**
+
+- **Join.** On the main: `ducter pair --worker` (a code whose device kind is `worker`). On the
+  worker: `ducter worker --join <main address> --code <code> [--name vps-2]`. It pairs at
+  `/pair`, keeps the token in `~/.ducter/worker.json` (0600), then holds one outbound WebSocket
+  to `<main>/worker` with that token, reconnecting with backoff. A client token can't open
+  `/worker`, and a worker token can't open `/ws`.
+- **Hello.** The worker reports hostname, OS/arch, Ducter version, and which harnesses are
+  installed and signed in (the doctor probes). The main keeps it in memory; `ducter devices`
+  shows 醒着 / Awake while the socket is up and its last-seen time otherwise.
+- **Placement (not built).** When `Place.device` names a worker, the runner forwards
+  `openTask / send / interrupt / drop` over that socket. The worker runs the same runner code
+  locally (worktrees, recipes, harness via OAR) against a thin core proxy that forwards
+  `log.append` and `tasks.setState` back up. Task tools reach the main's `/mcp` with the role
+  token the main minted for that task plus the worker's device token; the main's MCP gate
+  already accepts exactly that pair. Device sleep or a dropped socket follows A3 (在等 after
+  2 minutes, D52).
+- **Why not tonight:** placement touches the runner and the core API that protocol v2 is
+  reshaping; doing it on a moving base would mean two incompatible runners. Trigger: protocol
+  v2 merged (`docs/todo.md`).
+
 ## Hooks v1 must leave open for phone and call (research/22)
 
 Phone and call tasks are on the roadmap, not in v1. These seams keep them from forcing a

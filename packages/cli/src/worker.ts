@@ -1,10 +1,140 @@
-// `ducter worker --join <url> --code <code>`: this machine runs tasks for a main process
-// elsewhere. See docs/design/system.md "Workers" for the design and what ships tonight.
+// `ducter worker --join <address> --code <code>`: this machine joins a Ducter running elsewhere
+// as a worker. It dials OUT (no inbound port here), says which harnesses it has, and stays
+// connected. Enrollment and presence only: placing tasks on a worker is designed in
+// docs/design/system.md (Workers) and not built yet; the command says so.
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { arch, hostname, platform } from "node:os";
+import { dirname, join } from "node:path";
+import pkg from "../package.json" with { type: "json" };
 import type { Args } from "./args.ts";
-import type { Style } from "./doctor.ts";
+import { realHost, runDoctor, type Style } from "./doctor.ts";
 import type { T } from "./i18n.ts";
 
+export interface WorkerSaved {
+  url: string; // http(s) base of the main
+  token: string;
+  deviceId: string;
+  persona: string;
+  name: string;
+}
+
+/** Address as typed or the whole `ducter pair --worker` link → http(s) base and maybe a code. */
+export function parseJoin(raw: string): { base: string; code?: string } {
+  let s = raw.trim();
+  const m = /[#?&]c=([A-Za-z0-9-]+)/.exec(s);
+  const code = m?.[1];
+  s = s.replace(/[#?].*$/, "");
+  if (!/^[a-z]+:\/\//i.test(s)) s = (/^(127\.|localhost|\[::1\])/.test(s) ? "http://" : "https://") + s;
+  const u = new URL(s);
+  if (u.protocol === "ws:") u.protocol = "http:";
+  if (u.protocol === "wss:") u.protocol = "https:";
+  u.pathname = u.pathname.replace(/\/+$/, "").replace(/\/(pair|ws|worker)$/, "");
+  u.hash = u.search = "";
+  return { base: u.toString().replace(/\/+$/, ""), ...(code ? { code } : {}) };
+}
+
+const wsBase = (base: string) => base.replace(/^http/, "ws");
+
+function load(file: string): WorkerSaved | undefined {
+  try {
+    return JSON.parse(readFileSync(file, "utf8"));
+  } catch {
+    return undefined;
+  }
+}
+
+function save(file: string, s: WorkerSaved) {
+  mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(file, JSON.stringify(s, null, 2), { mode: 0o600 });
+  chmodSync(file, 0o600);
+}
+
+async function probeHarnesses(t: T, dataDir: string) {
+  const r = await runDoctor(realHost(), t, { port: 0, dataDir });
+  return (["claude", "codex"] as const).map((id) => {
+    const c = r.checks.find((k) => k.id === id)!;
+    return { id: id === "claude" ? "claude-code" : "codex", installed: c.detail !== t(`check.${id}.missing`), loggedIn: c.status === "ok" };
+  });
+}
+
 export async function cmdWorker(o: { t: T; style: Style; args: Args; dataDir: string }): Promise<number> {
-  console.log(o.t("worker.notYet"));
-  return 2;
+  const { t, style, args } = o;
+  const file = join(o.dataDir, "worker.json");
+  let saved = existsSync(file) ? load(file) : undefined;
+
+  if (args.join) {
+    const { base, code: linkCode } = parseJoin(args.join);
+    const code = args.code ?? linkCode;
+    if (!code) return console.log(t("worker.usage")), 2;
+    const name = args.name || hostname().replace(/\.local$/, "");
+    let res: Response;
+    try {
+      res = await fetch(`${base}/pair`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ code, name, platform: `${platform()}-${arch()}` }),
+        signal: AbortSignal.timeout(10_000),
+      });
+    } catch {
+      return console.log(t("worker.err.unreachable", { url: base })), 1;
+    }
+    if (res.status === 429) return console.log(t("worker.err.locked")), 1;
+    if (res.status !== 200) return console.log(t("worker.err.code")), 1;
+    const j: any = await res.json();
+    saved = { url: base, token: j.token, deviceId: j.deviceId, persona: j.personaName ?? "Ducter", name };
+    save(file, saved);
+    console.log(`  ${style.ok("✓")} ${t("worker.joined", { name, persona: saved.persona, url: base })}`);
+  }
+  if (!saved) return console.log(t("worker.usage")), 2;
+
+  const hello = {
+    t: "hello",
+    name: saved.name,
+    os: platform(),
+    arch: arch(),
+    version: pkg.version,
+    harnesses: await probeHarnesses(t, o.dataDir),
+  };
+  console.log(style.dim(t("worker.notPlaced")));
+  return stayConnected(saved, hello, t, style);
+}
+
+/** One outbound socket, reconnecting with backoff; exits only when the main refuses this worker. */
+async function stayConnected(s: WorkerSaved, hello: object, t: T, style: Style): Promise<number> {
+  let backoff = 1000;
+  let announced = false;
+  for (;;) {
+    const outcome = await new Promise<"closed" | "refused">((resolve) => {
+      const ws = new WebSocket(`${wsBase(s.url)}/worker`, { headers: { authorization: `Bearer ${s.token}` } } as any);
+      let ping: ReturnType<typeof setInterval> | undefined;
+      ws.onopen = () => {
+        ws.send(JSON.stringify(hello));
+        ping = setInterval(() => ws.send(JSON.stringify({ t: "ping" })), 30_000);
+      };
+      ws.onmessage = (m) => {
+        const f = JSON.parse(String(m.data));
+        if (f.t === "welcome") {
+          backoff = 1000;
+          if (!announced) console.log(`  ${style.ok("●")} ${t("worker.connected", { url: s.url, name: s.name })}`);
+          announced = true;
+        }
+      };
+      ws.onclose = async () => {
+        clearInterval(ping);
+        // Was it the gate? A GET with the token answers 401 when the token is gone.
+        try {
+          const r = await fetch(`${s.url}/worker`, { headers: { authorization: `Bearer ${s.token}` }, signal: AbortSignal.timeout(5000) });
+          if (r.status === 401) return resolve("refused");
+        } catch {}
+        resolve("closed");
+      };
+    });
+    if (outcome === "refused") {
+      console.log(t("worker.refused", { url: s.url }));
+      return 1;
+    }
+    console.log(style.dim(t("worker.lost", { url: s.url, s: Math.round(backoff / 1000) })));
+    await Bun.sleep(backoff);
+    backoff = Math.min(backoff * 2, 30_000);
+  }
 }

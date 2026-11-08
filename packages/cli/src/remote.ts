@@ -36,12 +36,12 @@ export function tunnelCommand(port: number, env: Record<string, string | undefin
 }
 
 /** `ducter pair`: a fresh one-time code, how to use it, and (on a TTY) a wait for the device. */
-export async function cmdPair(o: { t: T; style: Style; dataDir: string; port: number; json: boolean; running: boolean; wait: boolean }): Promise<number> {
+export async function cmdPair(o: { t: T; style: Style; dataDir: string; port: number; json: boolean; running: boolean; wait: boolean; worker?: boolean }): Promise<number> {
   const { t, style } = o;
   const auth = openDeviceAuth(o.dataDir);
   try {
     const before = new Set(auth.list().map((d) => d.id));
-    const { code, expiresAt } = auth.createCode();
+    const { code, expiresAt } = auth.createCode({ kind: o.worker ? "worker" : "client" });
     const base = publicUrl(o.dataDir);
     const address = base ?? `http://127.0.0.1:${o.port}`;
     const link = pairLink(address, code);
@@ -55,15 +55,22 @@ export async function cmdPair(o: { t: T; style: Style; dataDir: string; port: nu
       `  ${style.ok("●")} ${style.bold(t("pair.title"))}   ${style.bold(code)}   ${style.dim(t("pair.once", { min }))}`,
       "",
     ];
-    if (!base) {
+    if (o.worker) {
+      // A worker dials out to this Ducter: it needs a reachable address, never a tunnel to here.
+      lines.push(`  ${t("pair.worker.how")}`, "", `    ducter worker --join ${base ?? "<address>"} --code ${code}`, "");
+      if (!base) lines.push(`  ${style.dim(t("pair.worker.noAddress"))}`, "");
+      console.log(lines.join("\n"));
+    } else if (!base) {
       lines.push(`  ${t("pair.tunnel")}`, "", `    ${tunnelCommand(o.port)}`, "", `  ${style.dim(t("pair.tunnelNote", { port: o.port }))}`, "");
     }
-    const lw = Math.max(width(t("pair.address")), width(t("pair.code"))) + 2;
-    const row = (k: string, v: string) => `    ${k}${" ".repeat(lw - width(k))}${style.bold(v)}`;
-    lines.push(`  ${t("pair.howApp")}`, row(t("pair.address"), address), row(t("pair.code"), code), "", `  ${t("pair.orLink")}`, `    ${link}`, "");
-    console.log(lines.join("\n"));
-    const qr = await QR.toString(link, { type: "terminal", small: true, errorCorrectionLevel: "L" });
-    console.log(qr.split("\n").map((l) => "  " + l).join("\n"));
+    if (!o.worker) {
+      const lw = Math.max(width(t("pair.address")), width(t("pair.code"))) + 2;
+      const row = (k: string, v: string) => `    ${k}${" ".repeat(lw - width(k))}${style.bold(v)}`;
+      lines.push(`  ${t("pair.howApp")}`, row(t("pair.address"), address), row(t("pair.code"), code), "", `  ${t("pair.orLink")}`, `    ${link}`, "");
+      console.log(lines.join("\n"));
+      const qr = await QR.toString(link, { type: "terminal", small: true, errorCorrectionLevel: "L" });
+      console.log(qr.split("\n").map((l) => "  " + l).join("\n"));
+    }
     if (!o.running) console.log(style.dim(t("pair.notRunning")));
     if (!o.wait) return 0;
 
@@ -92,28 +99,40 @@ function ago(iso: string | undefined, now = Date.now()): string {
   return `${Math.round(s / 86400)}d`;
 }
 
-export function formatDevices(list: Device[], t: T, style: Style, now = Date.now()): string {
+export function formatDevices(list: Device[], t: T, style: Style, now = Date.now(), awake: Set<string> = new Set()): string {
   if (!list.length) return t("devices.none");
   const w = Math.max(...list.map((d) => d.name.length)) + 2;
   return [
     style.bold(t("devices.header")),
     "",
     ...list.map((d) => {
-      const seen = d.lastSeenAt ? t("devices.seen", { when: ago(d.lastSeenAt, now) }) : t("devices.never");
+      const seen = awake.has(d.id) ? t("devices.awake") : d.lastSeenAt ? t("devices.seen", { when: ago(d.lastSeenAt, now) }) : t("devices.never");
       return `  ${style.ok("●")} ${d.name.padEnd(w)}${style.dim(`${d.kind}${d.platform ? " · " + d.platform : ""} · ${seen} · ${d.id}`)}`;
     }),
   ].join("\n");
 }
 
+/** Workers connected to the running Ducter right now (empty when it isn't running). */
+async function awakeWorkers(port: number): Promise<Set<string>> {
+  try {
+    const r = await fetch(`http://127.0.0.1:${port}/devices/online`, { signal: AbortSignal.timeout(1500) });
+    const j: any = await r.json();
+    return new Set((j.workers ?? []).map((w: any) => w.deviceId));
+  } catch {
+    return new Set();
+  }
+}
+
 /** `ducter devices` and `ducter devices disconnect <id|name>`. */
-export function cmdDevices(o: { t: T; style: Style; dataDir: string; json: boolean; rest: string[] }): number {
+export async function cmdDevices(o: { t: T; style: Style; dataDir: string; json: boolean; rest: string[]; port: number }): Promise<number> {
   const { t } = o;
   const auth = openDeviceAuth(o.dataDir);
   try {
     const [verb, what] = o.rest;
     if (!verb || verb === "list") {
       const list = auth.list();
-      console.log(o.json ? JSON.stringify(list, null, 2) : formatDevices(list, t, o.style));
+      const awake = await awakeWorkers(o.port);
+      console.log(o.json ? JSON.stringify(list.map((d) => ({ ...d, awake: awake.has(d.id) })), null, 2) : formatDevices(list, t, o.style, Date.now(), awake));
       return 0;
     }
     if (verb === "disconnect" || verb === "revoke" || verb === "rm") {
@@ -138,17 +157,21 @@ export interface UnitSpec {
   path: string;
   port: number;
   host?: string;
+  /** A worker unit runs `ducter worker` (dials out to its main) instead of the main process. */
+  worker?: boolean;
 }
 
 const sdQuote = (s: string) => (/[\s"\\]/.test(s) ? `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"` : s);
 
 /** The unit file: journald gets stdout/stderr; secrets for harness logins go in ~/.ducter/env (0600), never here. */
 export function systemdUnit(u: UnitSpec): string {
-  const args = [...u.execStart, "up", "--headless", "--port", String(u.port), ...(u.host && !isLoopback(u.host) ? ["--host", u.host] : [])];
+  const args = u.worker
+    ? [...u.execStart, "worker"]
+    : [...u.execStart, "up", "--headless", "--port", String(u.port), ...(u.host && !isLoopback(u.host) ? ["--host", u.host] : [])];
   return [
     "# Written by `ducter service install`. Remove with `ducter service uninstall`.",
     "[Unit]",
-    "Description=Ducter (main process)",
+    `Description=Ducter (${u.worker ? "worker" : "main process"})`,
     "After=network-online.target",
     "Wants=network-online.target",
     "",
@@ -209,6 +232,7 @@ export async function cmdService(o: {
   dataDir: string;
   port: number;
   bindHost?: string;
+  worker?: boolean;
   rest: string[];
   onInstalled?: () => Promise<void>;
 }): Promise<number> {
@@ -234,7 +258,7 @@ export async function cmdService(o: {
     return 0;
   }
 
-  const unit = systemdUnit({ execStart: selfCommand(host.compiled), dataDir: o.dataDir, path: servicePath(), port: o.port, host: o.bindHost });
+  const unit = systemdUnit({ execStart: selfCommand(host.compiled), dataDir: o.dataDir, path: servicePath(), port: o.port, host: o.bindHost, worker: o.worker });
   mkdirSync(dirname(unitPath()), { recursive: true });
   writeFileSync(unitPath(), unit);
   console.log(style.dim(t("service.installed", { unit: unitPath() })));
@@ -251,6 +275,14 @@ export async function cmdService(o: {
   if (!linger) {
     await sh(host, ["loginctl", "enable-linger", user]);
     linger = await lingerOn(host, user);
+  }
+  if (o.worker) {
+    await Bun.sleep(2000);
+    const r = await sh(host, ["systemctl", "--user", "is-active", UNIT_NAME]);
+    console.log(`\n  ${style.ok("●")} ${r.stdout.trim()}`);
+    if (!linger) console.log("  " + t("service.linger", { user }));
+    console.log("  " + style.dim(t("service.logs")));
+    return r.stdout.trim() === "active" ? 0 : 1;
   }
   if (!(await waitHealthy(o.port, 20_000))) {
     console.log(t("service.notUp", { s: 20 }));

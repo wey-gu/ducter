@@ -151,7 +151,19 @@ const en = {
   "help.worker": "join another Ducter as a worker: --join <url> --code <code>",
   "help.headless": "run as a server: never open a window",
   "help.host": "network interface to listen on (default 127.0.0.1 only)",
-  "worker.notYet": "Workers aren't ready yet: this machine can't run tasks for another Ducter today. The design is in docs/design/system.md (Workers).",
+  "help.pairWorker": "with pair: a code for a worker (a machine that does work), not a client",
+  "pair.worker.how": "On the machine that should do work, run:",
+  "pair.worker.noAddress": "A worker dials out to this Ducter, so it needs an address it can reach. Set one up with scripts/caddy-setup.sh, or put a reachable address in place of <address>.",
+  "devices.awake": "awake",
+  "worker.usage": "Usage: ducter worker --join <address> --code <code> [--name <name>]   (get the code on the main machine: ducter pair --worker)",
+  "worker.joined": "{name} joined {persona}'s Ducter at {url}.",
+  "worker.connected": "Connected to {url} as {name}. This machine stays available while this runs (Ctrl-C to stop).",
+  "worker.notPlaced": "Tasks can't be placed on a worker yet: this is enrollment and presence only (docs/design/system.md, Workers).",
+  "worker.lost": "Lost the connection to {url}; trying again in {s} s…",
+  "worker.refused": "{url} no longer accepts this worker. Pair it again: on the main machine run ducter pair --worker",
+  "worker.err.code": "That code is wrong or has expired. On the main machine run: ducter pair --worker",
+  "worker.err.locked": "Too many wrong codes. Wait 10 minutes, or get a new code.",
+  "worker.err.unreachable": "Can't reach {url}. Is the address right, and reachable from this machine?",
 } as const;
 
 export type MsgKey = keyof typeof en;
@@ -304,7 +316,19 @@ const zh: Record<MsgKey, string> = {
   "help.worker": "作为干活的设备加入另一个 Ducter：--join <地址> --code <配对码>",
   "help.headless": "作为服务器运行：不打开任何窗口",
   "help.host": "监听的网络接口（默认只在 127.0.0.1）",
-  "worker.notYet": "干活的设备还没做好：这台机器今天还不能替另一个 Ducter 做事。设计见 docs/design/system.md（Workers）。",
+  "help.pairWorker": "和 pair 一起用：给干活的设备的配对码（不是给客户端的）",
+  "pair.worker.how": "在要干活的那台机器上运行：",
+  "pair.worker.noAddress": "干活的设备会主动连到这个 Ducter，所以它需要一个连得上的地址。用 scripts/caddy-setup.sh 设一个，或者把 <address> 换成它连得上的地址。",
+  "devices.awake": "醒着",
+  "worker.usage": "用法：ducter worker --join <地址> --code <配对码> [--name <名字>]（配对码在主机器上用 ducter pair --worker 拿）",
+  "worker.joined": "{name} 加入了 {persona} 的 Ducter（{url}）。",
+  "worker.connected": "已连上 {url}，名字是 {name}。这个命令运行期间，这台机器随时可用（Ctrl-C 停止）。",
+  "worker.notPlaced": "现在还不能把任务放到干活的设备上：目前只做到加入和在线状态（见 docs/design/system.md，Workers）。",
+  "worker.lost": "和 {url} 断开了；{s} 秒后再连…",
+  "worker.refused": "{url} 不再接受这台设备。重新配对：在主机器上运行 ducter pair --worker",
+  "worker.err.code": "这个码不对，或者已经过期了。在主机器上运行：ducter pair --worker",
+  "worker.err.locked": "试错太多次了。等 10 分钟再试，或者换一个新码。",
+  "worker.err.unreachable": "连不上 {url}。地址对吗？这台机器连得到它吗？",
 };
 
 export const STRINGS: Record<Locale, Record<MsgKey, string>> = { en, zh };

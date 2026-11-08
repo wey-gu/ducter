@@ -9,6 +9,7 @@ export interface Args {
   desktop: boolean; // false with --no-desktop
   json: boolean;
   headless?: boolean; // a server: no desktop, never opens anything
+  worker?: boolean; // pair --worker: a code for a worker device
   host?: string; // interface to bind; only ever set on purpose
   name?: string; // this device's name when joining as a worker
   join?: string; // worker: the main process's URL
@@ -67,6 +68,9 @@ export function parseArgs(argv: string[]): ParseResult {
       }
       case "--no-desktop":
         args.desktop = false;
+        continue;
+      case "--worker":
+        args.worker = true;
         continue;
       case "--headless":
         args.headless = true;

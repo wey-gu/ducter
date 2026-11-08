@@ -15,6 +15,7 @@ import { createRegistry, type CoreRegistry } from "./registry.ts";
 import { registerCoreTools } from "./tools.ts";
 import { createWsHandler, type WsData } from "./ws.ts";
 import { createGate, openDeviceAuth, type DeviceAuth } from "./auth.ts";
+import { createWorkers, deviceRoutes, splitSockets, type Workers, type WorkerSocketData } from "./workers.ts";
 
 export interface CoreOptions {
   dataDir?: string;
@@ -33,6 +34,7 @@ export interface Core extends CoreApi {
   decisions: Decisions;
   living: Living;
   devices: DeviceAuth;
+  workers: Workers;
   port: number;
   url: string; // ws URL for clients
   setRunner(r: Runner): void;
@@ -100,8 +102,9 @@ export function startCore(opts: CoreOptions = {}): Core {
   const ws = createWsHandler({ core: api, decisions, runner: () => runner, batchMs: opts.batchMs });
   const devices = openDeviceAuth(dataDir);
   const gate = createGate({ auth: devices, personaName: () => persona.name });
+  const workers = createWorkers({ personaName: () => persona.name });
 
-  const server = Bun.serve<WsData>({
+  const server = Bun.serve<WsData | WorkerSocketData>({
     hostname: opts.hostname ?? (process.env.DUCTER_HOST || "127.0.0.1"),
     port: opts.port ?? Number(process.env.DUCTER_PORT || 7777),
     idleTimeout: 120,
@@ -110,6 +113,8 @@ export function startCore(opts: CoreOptions = {}): Core {
       // Off-machine callers need a paired device token (auth.ts); /pair is answered here.
       const g = await gate.check(req, srv.requestIP(req)?.address);
       if (!g.pass) return g.response;
+      const d = deviceRoutes(req, g, srv, workers);
+      if (d) return d === "upgraded" ? undefined : d;
       if (url.pathname === "/ws") {
         // Block cross-site WebSocket hijacking from browser pages; native clients send no Origin.
         // A device token can't ride along ambiently (no cookies), so it needs no origin check.
@@ -121,7 +126,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       if (url.pathname === "/health") return Response.json({ ok: true, headSeq: log.head() });
       return new Response("not found", { status: 404 });
     },
-    websocket: ws.websocket,
+    websocket: splitSockets(ws.websocket, workers),
   });
   const port = server.port!;
   mcp.setPort(port);
@@ -134,6 +139,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     decisions,
     living,
     devices,
+    workers,
     port,
     url: `ws://127.0.0.1:${port}/ws`,
     setRunner: (r) => void (runner = r),
@@ -143,6 +149,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     },
     async stop() {
       ws.stop();
+      workers.stop();
       unsubscribePartner();
       decisions.stop();
       living.stop();

@@ -47,6 +47,7 @@ export function helpText(t: T): string {
     opt("--no-desktop", t("help.noDesktop")),
     opt("--headless", t("help.headless")),
     opt("--host <addr>", t("help.host")),
+    opt("--worker", t("help.pairWorker")),
     opt("--json", t("help.json")),
   ].join("\n");
 }
@@ -271,9 +272,9 @@ export async function run(argv: string[]): Promise<number | "running"> {
     case "up":
       return cmdUp(ctx);
     case "pair":
-      return cmdPair({ t, style, dataDir, port, json: args.json, running: (await host.port(port)) === "ducter", wait: Boolean(process.stdout.isTTY) && !args.json });
+      return cmdPair({ t, style, dataDir, port, json: args.json, running: (await host.port(port)) === "ducter", wait: Boolean(process.stdout.isTTY) && !args.json, worker: args.worker });
     case "devices":
-      return cmdDevices({ t, style, dataDir, json: args.json, rest: args.rest ?? [] });
+      return cmdDevices({ t, style, dataDir, json: args.json, rest: args.rest ?? [], port });
     case "service":
       return cmdService({
         t,
@@ -282,6 +283,7 @@ export async function run(argv: string[]): Promise<number | "running"> {
         dataDir,
         port,
         bindHost: args.host,
+        worker: args.worker,
         rest: args.rest ?? [],
         onInstalled: async () => {
           const auth = openDeviceAuth(dataDir);

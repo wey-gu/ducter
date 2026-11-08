@@ -12,8 +12,12 @@ export interface ActionResult {
 
 type RepoPlace = Extract<Place, { kind: "repo" }>;
 
+/** A ref name the model wrote must not read as an option to git or gh (`--receive-pack=…`). */
+const asOption = (s: string | undefined) => s != null && s.trimStart().startsWith("-");
+
 function repoOf(place: Place): RepoPlace | undefined {
-  return place.kind === "repo" && place.branch && place.worktree ? place : undefined;
+  if (place.kind !== "repo" || !place.branch || !place.worktree) return undefined;
+  return asOption(place.branch) || asOption(place.baseBranch) ? undefined : place;
 }
 
 /** Merge the task branch into its base branch in the user's own checkout. */

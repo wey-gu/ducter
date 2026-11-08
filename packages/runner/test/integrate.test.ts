@@ -49,6 +49,20 @@ test("merge: refuses a dirty checkout or the wrong branch, never forces; then me
   expect(await mergeTaskBranch(p)).toMatchObject({ ok: false, message: expect.stringContaining("nothing") });
 });
 
+test("a branch name that reads as a git option is never passed to git (push --receive-pack runs a command)", async () => {
+  const p = repoWithTaskBranch();
+  const marker = join(dir, "pwned");
+  Bun.spawnSync(["git", "init", "-q", "--bare", join(dir, "origin.git")]);
+  sh(p.repoPath, "remote", "add", "origin", join(dir, "origin.git")); // a local remote: receive-pack runs here
+  sh(p.repoPath, "config", "push.default", "current"); // a common setting; with it, git needs no refspec
+  const evil = { ...p, branch: `--receive-pack=touch ${marker}; echo` };
+  const gh = join(dir, "gh");
+  writeFileSync(gh, "#!/bin/sh\nexit 0\n", { mode: 0o755 }); // "signed in"
+  expect(await openDraftPr(evil, { gh })).toMatchObject({ ok: false });
+  expect(await mergeTaskBranch({ ...p, baseBranch: "--abort" })).toMatchObject({ ok: false });
+  expect(await Bun.file(marker).exists()).toBe(false);
+});
+
 test("merge: conflicts are aborted and leave the checkout as it was", async () => {
   const p = repoWithTaskBranch();
   writeFileSync(join(p.worktree!, "a.txt"), "theirs\n");

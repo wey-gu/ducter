@@ -158,6 +158,13 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   let iter: AsyncIterator<HarnessEvent> | null = null;
   let lastActivity = 0;
   let lastSessionId: string | undefined;
+  // Hash of the system prompt the last session was started with. A session started under a
+  // different persona (an upgrade, a rename, the identity arriving) is not resumed: its history
+  // speaks in the old voice and its cache is gone anyway (live: 您 and branch talk survived a
+  // persona fix because the partner resumed yesterday's session).
+  let lastPromptHash: string | undefined;
+  const promptHash = () => String(Bun.hash(buildSystemPrompt(core.persona)));
+  const canResume = () => !!lastSessionId && lastPromptHash === promptHash();
   let handledSeq: number | undefined; // highest trigger seq covered by a finished turn
   let turn: TurnState | null = null;
   let warming: Promise<void> | null = null; // pre-start of the session at boot
@@ -167,8 +174,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
 
   if (persist) {
     try {
-      const s = JSON.parse(readFileSync(stateFile, "utf8")) as { sessionId?: string; lastActivity?: number; handledSeq?: number };
+      const s = JSON.parse(readFileSync(stateFile, "utf8")) as { sessionId?: string; lastActivity?: number; handledSeq?: number; promptHash?: string };
       lastSessionId = s.sessionId;
+      lastPromptHash = s.promptHash;
       lastActivity = s.lastActivity ?? 0;
       handledSeq = s.handledSeq;
     } catch {
@@ -178,7 +186,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const saveState = () => {
     if (!persist) return;
     try {
-      writeFileSync(stateFile, JSON.stringify({ sessionId: lastSessionId, lastActivity, handledSeq }));
+      writeFileSync(stateFile, JSON.stringify({ sessionId: lastSessionId, lastActivity, handledSeq, promptHash: lastPromptHash }));
     } catch (err) {
       onError(err);
     }
@@ -340,6 +348,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     });
     session = s;
     iter = null;
+    lastPromptHash = promptHash();
     lastSessionId = s.id || resumeSessionId;
     stats.sessionId = lastSessionId;
   }
@@ -363,7 +372,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const warm = lastActivity > 0 && now() - lastActivity <= idleColdMs;
     if (session && warm) return false;
     if (session && !warm) await dropSession();
-    if (!session && warm && lastSessionId) {
+    if (!session && warm && canResume()) {
       try {
         await startSession(lastSessionId);
         stats.resumes++;
@@ -760,7 +769,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       try {
         await opts.ready?.catch(() => {});
         const warm = lastActivity > 0 && now() - lastActivity <= idleColdMs;
-        if (warm && lastSessionId) {
+        if (warm && canResume()) {
           try {
             await startSession(lastSessionId);
             stats.resumes++;

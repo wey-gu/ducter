@@ -266,6 +266,27 @@ describe("turn loop", () => {
     expect(p2.stats.resumes).toBe(1);
   });
 
+  test("restart under a different persona starts fresh instead of resuming", async () => {
+    const clock = new FakeClock();
+    const dir = tmp();
+    const fc = fakeCore(clock, dir);
+    const fr = fakeRunner((_i, s) => {
+      s.say("ok");
+      s.end();
+    });
+    const p1 = createPartner(fc.core, fr.runner, { now: clock.now, onError: () => {} });
+    p1.onTrigger(fc.core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "hi" } }));
+    await p1.idle();
+    await p1.close();
+    clock.advance(5 * 60 * 1000);
+    const fc2 = { ...fc.core, mcp: fakeCore(clock, dir).core.mcp, persona: { ...fc.core.persona, name: "小鸭" } };
+    const p2 = createPartner(fc2, fr.runner, { now: clock.now, onError: () => {} });
+    p2.onTrigger(fc.core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "again" } }));
+    await p2.idle();
+    expect(fr.sessions[1]!.spec.resumeSessionId).toBeUndefined();
+    expect(p2.stats.resumes).toBe(0);
+  });
+
   test("wait_until: armed waiter now, [timer fired] trigger when core fires it", async () => {
     const { fc, fr, partner, user, channel } = setup(async (input, s, n) => {
       if (n === 0) {

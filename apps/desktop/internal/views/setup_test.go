@@ -21,19 +21,21 @@ import (
 //	DUCTER_SHOTS=1 go test ./internal/views -run Setup   # writes docs/app-setup-*.png
 
 type fakeBackend struct {
-	healthy   bool
-	reports   []local.Report // one per Doctor call; the last repeats
-	doctored  int
-	started   int
-	ran       []string
-	dir       string
-	cli       local.CLIState
-	linked    bool
-	onPath    bool
-	exited    chan struct{}
-	stopping  bool
-	startErr  error
-	linkError error
+	healthy    bool
+	reports    []local.Report // one per Doctor call; the last repeats
+	doctored   int
+	started    int
+	ran        []string
+	dir        string
+	cli        local.CLIState
+	linked     bool
+	onPath     bool
+	exited     chan struct{}
+	stopping   bool
+	startErr   error
+	linkError  error
+	background bool
+	rested     int
 }
 
 func (f *fakeBackend) Healthy() bool { return f.healthy }
@@ -64,7 +66,43 @@ func (f *fakeBackend) LinkCLI() error {
 	f.linked = true
 	return nil
 }
-func (f *fakeBackend) CLIOnPath() bool { return f.onPath }
+func (f *fakeBackend) CLIOnPath() bool  { return f.onPath }
+func (f *fakeBackend) Background() bool { return f.background }
+func (f *fakeBackend) Rest() error {
+	f.rested++
+	return nil
+}
+
+func TestStopDucterAndWakeIt(t *testing.T) {
+	f := &fakeBackend{reports: []local.Report{readyReport()}, healthy: true, background: true}
+	h := newSetup(t, i18n.ZH, f)
+	var menu []bool
+	h.app.OnResting = func(r bool) { menu = append(menu, r) }
+	h.app.StartLocal()
+	h.app.Receive(protocol.ServerFrame{T: "welcome", Persona: "default", PersonaName: "Ducter", HeadSeq: 0})
+	h.app.Rest()
+	if f.rested != 1 || !h.app.Resting() {
+		t.Fatalf("rested %d", f.rested)
+	}
+	h.has("Ducter 歇着了", "开机也不会", "叫醒 Ducter")
+	h.shot("app-resting-zh")
+	h.click("叫醒 Ducter")
+	if f.started != 1 || h.app.Resting() {
+		t.Errorf("started %d, resting %v", f.started, h.app.Resting())
+	}
+	if len(menu) != 2 || !menu[0] || menu[1] {
+		t.Errorf("menu told %v", menu)
+	}
+}
+
+func TestStartingSaysItKeepsWorking(t *testing.T) {
+	f := &fakeBackend{reports: []local.Report{readyReport()}, background: true}
+	f.dir = t.TempDir()
+	_ = hints.WritePersona(f.dir, hints.Persona{AskedAt: "x"})
+	h := newSetup(t, i18n.EN, f)
+	h.app.StartLocal()
+	h.has("keeps working when you close the window", "Stop Ducter")
+}
 
 func check(id, label, detail string, ok, required bool, fix string) local.Check {
 	st := "ok"

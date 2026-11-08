@@ -3,7 +3,7 @@
 # 05 — How Raft uses OAR, and what Ducter's runner should copy
 
 Date: 2026-11-08. Sources: shallow clones (read only, nothing executed) under
-`<scratch>`:
+`<scratch>/repos/`:
 `raft-source` (release mirror, one commit `db5e399` "Release v1.21.23-source.1", 2026-10-19, so it has no
 history to answer "why" questions) and `oar` (`2e235c8`, 2026-11-07, `@botiverse/oar` 0.95.0).
 Path prefixes: **D/** = `raft-source/packages/daemon/src/`, **S/** = `raft-source/packages/`, **O/** = `oar/`.

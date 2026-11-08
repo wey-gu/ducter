@@ -52,15 +52,27 @@ func main() {
 	if url, _ := target(); inApp && url == client.DefaultURL() && os.Getenv("DUCTER_URL") == "" {
 		login := local.FixPath() // Finder gives apps only the system folders
 		local.ClearQuarantine(bundle.CLI)
+		sup := &local.Supervisor{CLI: bundle.CLI, DataDir: hints.DataDir(), Port: local.Port(), Locale: string(lang)}
+		// The keep-running decision: Ducter keeps working when the window closes or the app
+		// quits, as a LaunchAgent. Not from the disk image or a
+		// translocated copy, whose path goes away: then it is the app's
+		// child and stops with it.
+		if local.Settled(bundle.CLI) {
+			bid := local.BundleID(bundle.App)
+			if bid == "" {
+				bid = "co.nowledge.ducter"
+			}
+			sup.Agent = &local.Agent{Label: local.AgentLabel(bid), BundleID: bid, CLI: bundle.CLI, DataDir: sup.DataDir, Dir: local.LaunchAgentsDir()}
+		}
 		host = &local.Host{
-			Supervisor: &local.Supervisor{CLI: bundle.CLI, DataDir: hints.DataDir(), Port: local.Port(), Locale: string(lang)},
+			Supervisor: sup,
 			LoginPath:  login,
 			Scratch:    filepath.Join(os.TempDir(), "ducter-fix"),
 			After:      i18n.New(lang).T("setup.after"),
 		}
 		app.Backend = host
-		// Ducter lives as long as the app: quitting (Cmd-Q, or closing the
-		// window) stops the Ducter it started, never one it found running.
+		// A child Ducter (no LaunchAgent) stops with the app; a background
+		// one keeps working after Cmd-Q, and one found running is left alone.
 		mygo.App.OnWillQuit(func(*mygo.QuitEvent) { host.Stop(8 * time.Second) })
 		mygo.App.OnQuit(func() { host.Stop(8 * time.Second) })
 	}
@@ -79,9 +91,39 @@ func main() {
 			TitleBarStyle:        mygo.TitleBarHidden,
 			TrafficLightPosition: &mygo.Point{X: int(views.TrafficLights.X), Y: int(views.TrafficLights.Y)},
 			TitleBarHeight:       views.ChromeH,
-			Content:   ui.View(app.View),
+			Content:              ui.View(app.View),
 		})
 		app.Win = win
+
+		// The keep-running decision: closing the window hides it (Ducter keeps working); the Dock
+		// icon, or opening the app again, brings it back as it was. Only a
+		// quit really closes it.
+		quitting := false
+		mygo.App.OnBeforeQuit(func(*mygo.QuitEvent) { quitting = true })
+		win.OnClose(func(e *mygo.CloseEvent) {
+			if quitting {
+				return
+			}
+			e.PreventDefault()
+			win.Hide()
+		})
+		mygo.App.OnActivate(func(visible bool) {
+			if !visible || !win.IsVisible() {
+				win.Show()
+				win.Focus()
+			}
+		})
+		// The Dock badge: what waits for the person, nothing else.
+		badge := -1
+		updateBadge := func() {
+			if n := app.WaitingCount(); n != badge {
+				badge = n
+				mygo.App.SetBadgeCount(n)
+			}
+		}
+		if host != nil {
+			mygo.App.SetMenu(appMenu(app, i18n.New(lang), win))
+		}
 
 		// The store lives on the UI thread; the client's goroutine hands
 		// each frame over with Update. Cursor is read there too.
@@ -98,7 +140,10 @@ func main() {
 			Locale: string(lang),
 			Cursor: cursor,
 			OnFrame: func(f protocol.ServerFrame) {
-				win.Update(func() { app.Receive(f) })
+				win.Update(func() {
+					app.Receive(f)
+					updateBadge()
+				})
 			},
 			OnStatus: func(st client.Status, err error) {
 				win.Update(func() {
@@ -138,6 +183,53 @@ func main() {
 	if err := mygo.App.Run(); err != nil {
 		log.Fatal(err)
 	}
+}
+
+// appMenu is the standard menu bar with one addition in the app menu:
+// Stop Ducter, the rare full stop (every task stops; it stays off, at
+// login too, until woken). It turns into Wake Ducter while resting.
+func appMenu(app *views.App, l *i18n.Strings, win *mygo.Window) *mygo.Menu {
+	menu := mygo.NewMenu([]*mygo.MenuItem{
+		{Role: mygo.RoleAppMenu, Submenu: []*mygo.MenuItem{
+			{Role: mygo.RoleAbout},
+			mygo.Separator(),
+			{ID: "rest", Label: l.T("menu.rest"), Subtitle: l.T("menu.rest.sub"), Click: func(*mygo.MenuItem, *mygo.Window) {
+				win.Update(func() {
+					if app.Resting() {
+						app.Wake()
+					} else {
+						app.Rest()
+					}
+					win.Show()
+				})
+			}},
+			mygo.Separator(),
+			{Role: mygo.RoleServices},
+			mygo.Separator(),
+			{Role: mygo.RoleHide},
+			{Role: mygo.RoleHideOthers},
+			{Role: mygo.RoleUnhide},
+			mygo.Separator(),
+			{Role: mygo.RoleQuit},
+		}},
+		{Role: mygo.RoleFileMenu},
+		{Role: mygo.RoleEditMenu},
+		{Role: mygo.RoleViewMenu},
+		{Role: mygo.RoleWindowMenu},
+	})
+	// The item says what it will do: stop, or wake while resting.
+	app.OnResting = func(resting bool) {
+		if item := menu.ItemByID("rest"); item != nil {
+			if resting {
+				item.SetLabel(l.T("menu.wake"))
+				item.SetSubtitle("")
+			} else {
+				item.SetLabel(l.T("menu.rest"))
+				item.SetSubtitle(l.T("menu.rest.sub"))
+			}
+		}
+	}
+	return menu
 }
 
 // target is the server to dial and its device token: DUCTER_URL (and

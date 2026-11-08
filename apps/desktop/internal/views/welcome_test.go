@@ -22,7 +22,7 @@ import (
 //
 //	DUCTER_SHOTS=1 go test ./internal/views -run Welcome   # writes docs/firstrun-*.png
 
-// The repos `ducter up` found on the author's Mac (names only).
+// The repos `ducter up` found on a sample Mac (names only).
 const hintsJSON = `{"version":1,"generatedAt":"2026-11-09T01:20:00Z","repoCount":91,"repos":[
  {"name":"ducter","path":"~/dev/ducter","touchedAt":"2026-11-09T01:14:42Z"},
  {"name":"website","path":"~/dev/website","touchedAt":"2026-11-08T09:23:38Z"},
@@ -113,7 +113,7 @@ func finish(h *harness, id, title string) {
 func TestTheFirstResultIsCelebratedOnce(t *testing.T) {
 	dir := hintsDir(t, hintsJSON)
 	h := newWelcome(t, i18n.ZH, dir, false)
-	line := "第一件事做完了。以后做完的事，我都会这样带着证据交回给你。"
+	line := "第一件事做完了。以后做完的事都会这样回到你这儿，还会告诉你我怎么确认的。"
 	finish(h, "t1", "修好 ducter 里没过的测试")
 	if !h.tt.HasText(line) {
 		t.Fatalf("no first-result line: %q", h.tt.Texts())

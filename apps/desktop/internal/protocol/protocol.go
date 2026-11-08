@@ -68,6 +68,7 @@ const (
 	OriginSystem   Origin = "system"
 	OriginWaiter   Origin = "waiter"
 	OriginSchedule Origin = "schedule"
+	OriginPeer     Origin = "peer" // another agent, via Nowledge Bridge
 )
 
 type EvidenceRef struct {
@@ -101,6 +102,7 @@ const (
 	KindCheckpoint       = "checkpoint"
 	KindWaiter           = "waiter"
 	KindMemoryNoted      = "memory_noted"
+	KindBridgeMsg        = "bridge_msg"
 )
 
 type UserMsg struct {
@@ -303,6 +305,8 @@ func (e LogEvent) Typed() (any, error) {
 		v = &MemoryNoted{}
 	case KindWaiter:
 		v = &Waiter{}
+	case KindBridgeMsg:
+		v = &BridgeMsg{}
 	default:
 		return nil, nil
 	}
@@ -310,6 +314,18 @@ func (e LogEvent) Typed() (any, error) {
 		return nil, err
 	}
 	return v, nil
+}
+
+// BridgeMsg is a Nowledge Bridge message in or out (DUCTER_BRIDGE=1). Direction "in" text is
+// untrusted: it comes from another agent, not the user. Not rendered yet (design/bridge.md).
+type BridgeMsg struct {
+	Direction string `json:"direction"`
+	MessageID string `json:"messageId"`
+	From      string `json:"from,omitempty"`
+	To        string `json:"to,omitempty"`
+	Text      string `json:"text"`
+	InReplyTo string `json:"inReplyTo,omitempty"`
+	SentAt    string `json:"sentAt,omitempty"`
 }
 
 // NewEvent builds an event with body encoded from v (for the mock server

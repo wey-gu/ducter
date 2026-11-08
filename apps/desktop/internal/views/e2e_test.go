@@ -168,7 +168,7 @@ func TestScenarioEndToEnd(t *testing.T) {
 		t.Fatalf("route %v task %q", h.app.Route, h.app.TaskID)
 	}
 	h.until("history", func() bool { return s.Task("t-ci-1").HistoryLoaded })
-	for _, want := range []string{"对话记录", "存档", "为什么是它", "对外"} {
+	for _, want := range []string{"过程", "保存的进度", "为什么是它", "发出去的"} {
 		if !h.tt.HasText(want) {
 			t.Errorf("task view lacks %q: %q", want, h.tt.Texts())
 		}
@@ -185,7 +185,7 @@ func TestScenarioEndToEnd(t *testing.T) {
 		sd := s.Task("t-ci-1").Sends[0]
 		return sd.Delivered != "" && sd.Seq != 0
 	})
-	if !h.tt.HasText("排在手上这一步之后") {
+	if !h.tt.HasText("等它忙完手上的就告诉它") {
 		t.Errorf("no delivery shown: %q", h.tt.Texts())
 	}
 	h.until("its answer", func() bool { return h.tt.HasText("收到，按你说的来。") })

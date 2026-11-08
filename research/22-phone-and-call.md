@@ -8,7 +8,7 @@ phone call meeting" (`motivation.md:43`, `:72`).
 
 **Sources.**
 - Shallow clones, read-only and never executed, under
-  `<scratch>`
+  `<scratch>/repos/`
   (written `R/` below):
   - `android-use` @ `0baab86` (2026-11-06);
   - `iPhone-use` @ `3ce9c08` (2026-10-22).

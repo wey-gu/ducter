@@ -65,7 +65,7 @@ brows when something needs you. Other themes render the same states in their own
      conclusions due). The user's quiet hours are drawn as a band.
    - Below it are four lanes: **等你 / Needs you** (wide decision cards with the question,
      default, countdown, and Go / Hold / Reply), **在做 / Working**, **在等 / Waiting**
-     (dashed, showing what it waits for), and **做完了 / Done** (with "核对中 / checking"
+     (dashed, showing what it waits for), and **做完了 / Done** (with "在检查 / checking"
      for `done?`).
    - Lanes can be grouped by state, time, device, project, or persona. A "Go on all
      defaults" batch action sits in the header.
@@ -109,9 +109,12 @@ they show what the code does today, for review against the docs.
 | Taste review | `apps/desktop/docs/review-{before,after}-{zh-1280,en-900}-*.png` | headless renderer, mock (`DUCTER_REVIEW`) | every screen at 1280 and 900 px, before and after the taste pass |
 | Phone web | `docs/design/screens/phone-*.png` | headless browser at 390×844 on a demo core; `phone-real-sonnet-result-zh` from a real sonnet run | conversation, decision sheet, decided, On hand, task, result, pairing, notify ask, iOS hint, offline; dark variants |
 
-## Capability map (D43): metaphor UNDER EVALUATION
+## Capability map (D43): the hybrid (D65)
 
-> Status: **awaiting the user's decision** (`research/24`, `research/26` done).
+> Status: **decided D65**: the literal playset's world with the loadout's equip snap, still to
+> pass a human comprehension test before it ships. No category noun on screen (D66): headings
+> say 你的设备，和它们会做的事 / Your devices and what they can do. The research summary below is
+> the evidence (`research/24`, `26`, `28`).
 > - **research/26 (loadout, the user's mecha/equip feel):**
 >   - Loadout as first proposed reads as military: the user as commander (3/3), combat, pilots
 >     that can't share a plan, and a floating partner that's still reachable while home sleeps.
@@ -236,5 +239,6 @@ user is on the Isles view. Elsewhere it uses the plain device names.
   allowance rings at the bottom.
 - **Equip motion:** sticker peel-and-stick (`research/26`, `research/28` timings).
 - **Asset pipeline:** generate with the reference images for consistency, select, clean up,
-  and export at 1×/2×/3× with transparent backgrounds. Labels are always live UI text, never
+  and export at 1×/2×/3× with transparent backgrounds. Only final exports go into git, plain
+  git with no LFS (D64); raw generations stay in the concept-art canvas. Labels are always live UI text, never
   baked into art.

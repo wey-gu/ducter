@@ -249,7 +249,7 @@ export function quietEndsAt(at: number, q: Quiet | null): number {
 const COPY = {
   zh: {
     go: "好",
-    defaultGo: (inText: string, label: string) => `你不回的话，${inText}后我会${/^[\x00-\x7f]/.test(label) ? " " + label : label}。这一步能撤销。`,
+    defaultGo: (inText: string, label: string) => `你不回的话，${inText}后我会${/^[\x00-\x7f]/.test(label) ? " " + label : label}，之后也能撤销。`,
     defaultHold: "你不回的话，我会先停着等你。",
     noDefault: "这件不会自己动，等你定",
     min: (n: number) => `${n} 分钟`,

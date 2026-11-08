@@ -76,12 +76,29 @@ type Supervisor struct {
 	// Locale is the app's language, passed to the CLI (DUCTER_LOCALE)
 	// so doctor's words match the window's.
 	Locale string
+	// Agent, when set, runs Ducter as a LaunchAgent that outlives the app
+	// (the keep-running decision). Without it (the app still on its disk image, or a translocated
+	// copy) Ducter is the app's child and stops with it.
+	Agent *Agent
 
 	mu     sync.Mutex
 	cmd    *exec.Cmd
 	exited chan struct{}
 	err    error
 	stop   bool
+}
+
+// Background reports whether Ducter keeps running after the app quits.
+func (s *Supervisor) Background() bool { return s.Agent != nil }
+
+// Rest stops Ducter for good, until the app starts it again: the
+// LaunchAgent is unloaded and removed, or the child is stopped.
+func (s *Supervisor) Rest() error {
+	if s.Agent != nil {
+		return s.Agent.Remove()
+	}
+	s.Stop(8 * time.Second)
+	return nil
 }
 
 // LogPath is where the child's own output goes.
@@ -143,6 +160,16 @@ func (s *Supervisor) Doctor() (Report, error) {
 // the app does: Stop on quit, and the CLI watches DUCTER_PARENT_PID in
 // case the app dies without saying so.
 func (s *Supervisor) Start() error {
+	if s.Agent != nil {
+		// The keep-running decision: Ducter outlives the window; launchd runs it.
+		if err := os.MkdirAll(s.DataDir, 0o755); err == nil {
+			if f, err := os.OpenFile(s.LogPath(), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644); err == nil {
+				fmt.Fprintf(f, "\n--- %s Ducter.app starts Ducter in the background (%s)\n", time.Now().Format(time.RFC3339), s.Agent.Label)
+				f.Close()
+			}
+		}
+		return s.Agent.Install(AgentEnv(s.Port, s.DataDir, s.Locale))
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.cmd != nil && s.exited != nil {

@@ -91,6 +91,8 @@ function isTrigger(e: LogEvent): boolean {
   return false;
 }
 
+const generatedAck = (zh: boolean, title: string) => (zh ? `好，我去做：${title}` : `On it: ${title}`);
+
 let idCounter = 0;
 function newId(prefix: string): string {
   idCounter = (idCounter + 1) % 1e6;
@@ -223,7 +225,12 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     }
     if (ev.tool) {
       if (TASK_OPEN_RE.test(ev.tool.name)) {
-        claimAck(turn); // no-op if there is no pending text or an ack is already waiting
+        // No-op if there is no pending text or an ack is already waiting.
+        const ack = claimAck(turn);
+        // No line before the call: ack by the title as soon as it streams in, instead of
+        // after the whole brief is written (live: 5 s).
+        const title = (ev.tool.input as { title?: unknown } | undefined)?.title;
+        if (!ack && typeof title === "string" && title.trim()) turn.unboundAck = appendAck(turn, generatedAck(turn.zh, title.trim()));
       } else if (QUIET_TOOL_RE.test(ev.tool.name)) {
         // Lookups between the ack line and task_open (Claude Code's deferred-tool ToolSearch,
         // reads of the Log or a task) must not turn the pending ack into a separate message.
@@ -424,7 +431,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   core.mcp.register(
     "partner",
     "task_open",
-    "Open a task: a separate working session in its own place (repo, folder, browser) for anything that needs a place, writes, or takes more than ~10s. Write a one-line ack naming the action BEFORE calling this. The brief must quote the user's words verbatim and list decisions, done-criteria, out of scope, and the place. " +
+    "Open a task: a separate working session in its own place (repo, folder, browser) for anything that needs a place, writes, or takes more than ~10s. A follow-up on recent work (same repo, builds on what a task just did) is NOT a new task: task_send it to that task, even if it is done; it keeps its branch, worktree and session. Open a new task only for separate work; if it must build on an unmerged task branch, set place.baseBranch to that branch. Write a one-line ack naming the action BEFORE calling this. The brief must quote the user's words verbatim and list decisions, done-criteria, out of scope, and the place. " +
       'Choose place {"kind":"browser"} when the work happens on the web: looking something up, checking or reading a page or site, comparing products, filling a form. The browser keeps its sign-ins between tasks. ' +
       "A browser task never signs in, submits, posts, buys, or pays by itself: it stops and asks the user with a question, so put that in the brief's out of scope. " +
       "Returns at once; the task reports back on its own. Never wait on it.",
@@ -443,6 +450,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
             repoPath: { type: "string" },
             path: { type: "string" },
             profile: { type: "string" },
+            baseBranch: { type: "string", description: "Repo only: branch to start from. For new work that builds on an earlier task's unmerged branch, pass that branch." },
           },
           required: ["kind"],
         },
@@ -472,7 +480,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
             ack = claimAck(t);
           }
         }
-        if (!ack) ack = appendAck(t, t.zh ? `好，我去做：${args.title}` : `On it: ${args.title}`);
+        if (!ack) ack = appendAck(t, generatedAck(t.zh, args.title));
         t.unboundAck = null;
         jobId = ack.jobId;
       } else {
@@ -517,7 +525,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   core.mcp.register(
     "partner",
     "task_send",
-    "Send text to a running task: the user's follow-up or correction, or a question that needs the task's own judgment. Read first (task_read, log_search, log_read); ask only what the Log can't answer. mode 'steer' (default) interrupts at the next safe point; 'queue' waits for its current turn.",
+    "Send text to a task, running or finished (a finished one resumes in its own branch and worktree): the user's follow-up or correction, the next step on the same work, or a question that needs the task's own judgment. Read first (task_read, log_search, log_read); ask only what the Log can't answer. mode 'steer' (default) interrupts at the next safe point; 'queue' waits for its current turn.",
     {
       type: "object",
       properties: {

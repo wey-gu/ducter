@@ -127,7 +127,7 @@ export function renderTasks(cards: TaskCard[], maxDone = 8): string {
     .slice(0, maxDone);
   const line = (c: TaskCard) => {
     const where =
-      c.place.kind === "repo" ? ` · repo ${c.place.repoPath}` : c.place.kind === "folder" ? ` · folder ${c.place.path}` : c.place.kind === "browser" ? " · browser" : "";
+      c.place.kind === "repo" ? ` · repo ${c.place.repoPath}${c.place.branch ? ` (branch ${c.place.branch})` : ""}` : c.place.kind === "folder" ? ` · folder ${c.place.path}` : c.place.kind === "browser" ? " · browser" : "";
     const last = c.lastReport ? ` · last report (${c.lastReport.state}): ${clip(c.lastReport.summary, 200)}` : "";
     return `- ${c.taskId} "${c.title}" · ${c.attention}${where}${last}`;
   };

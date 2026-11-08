@@ -29,6 +29,8 @@ type OarEventLike = { kind: string; agentPath?: readonly string[]; [k: string]: 
 interface PendingTool {
   name: string;
   input?: string;
+  partial?: string; // streamed input so far (until a title is found)
+  titled?: boolean;
 }
 
 /**
@@ -50,7 +52,24 @@ export class Normalizer {
       this.text += ev.text ?? "";
       return out;
     }
-    if (ev.kind === "reasoning" || ev.kind === "usage" || ev.kind === "tool_call_input_delta" || ev.kind === "tool_call_progress") {
+    if (ev.kind === "tool_call_input_delta") {
+      // Early title: the partner acks a task_open by its title before the brief is written.
+      const t = this.tools.get(ev.callId);
+      if (t && !t.titled) {
+        t.partial = (t.partial ?? "") + (ev.delta ?? "");
+        const m = /"title"\s*:\s*"((?:[^"\\]|\\.)*)"/.exec(t.partial);
+        if (m) {
+          t.titled = true;
+          let title = m[1]!;
+          try {
+            title = JSON.parse(`"${m[1]}"`);
+          } catch {}
+          out.push({ role: "tool", tool: { name: t.name, input: { title } }, raw: { kind: "tool_call_title", callId: ev.callId } });
+        }
+      }
+      return out;
+    }
+    if (ev.kind === "reasoning" || ev.kind === "usage" || ev.kind === "tool_call_progress") {
       return out; // not logged; usage is folded into turnEnd
     }
     this.flushText(out);

@@ -56,7 +56,7 @@ describe("doctor", () => {
       ["bun", "ok"], ["git", "ok"], ["claude", "ok"], ["codex", "ok"], ["nmem", "ok"], ["cua", "ok"], ["port", "ok"], ["data", "ok"],
     ]);
     expect(r.checks.every((c) => c.fix === undefined)).toBe(true);
-    expect(byId(r, "claude").detail).toBe("logged in (2.1.319)");
+    expect(byId(r, "claude").detail).toBe("signed in (2.1.319)");
     expect(byId(r, "git").detail).toBe("2.50.1");
     expect(byId(r, "nmem").detail).toBe("connected (local)");
   });
@@ -77,7 +77,7 @@ describe("doctor", () => {
 
   test("Claude Code installed but logged out", async () => {
     const r = await runDoctor(fake({ tools: ["git", "claude"], out: { "claude auth status": { code: 1, stdout: JSON.stringify({ loggedIn: false }) } } }), en, opts);
-    expect(byId(r, "claude")).toMatchObject({ status: "missing", required: true, detail: "installed, not logged in", fix: "claude auth login" });
+    expect(byId(r, "claude")).toMatchObject({ status: "missing", required: true, detail: "installed, not signed in", fix: "claude auth login" });
     expect(r.ok).toBe(false);
   });
 
@@ -90,7 +90,7 @@ describe("doctor", () => {
 
   test("Codex says 'Not logged in'", async () => {
     const r = await runDoctor(fake({ out: { "codex login status": { code: 1, stdout: "Not logged in\n" } } }), en, opts);
-    expect(byId(r, "codex")).toMatchObject({ status: "missing", detail: "installed, not logged in", fix: "codex login" });
+    expect(byId(r, "codex")).toMatchObject({ status: "missing", detail: "installed, not signed in", fix: "codex login" });
     expect(r.ok).toBe(true);
   });
 
@@ -213,7 +213,7 @@ describe("doctor on a Linux server", () => {
       opts,
     );
     expect(r.ok).toBe(true);
-    expect(byId(r, "claude").detail).toContain("long-lived token");
+    expect(byId(r, "claude").detail).toContain("long-lived sign-in");
     expect(byId(r, "service").status).toBe("ok");
     expect(byId(r, "devices").detail).toBe("1 connected");
   });

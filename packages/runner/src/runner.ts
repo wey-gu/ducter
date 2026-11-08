@@ -164,6 +164,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
   }
 
   function handleEvent(t: TaskRt, ev: HarnessEvent) {
+    if ((ev.raw as { kind?: string } | undefined)?.kind === "tool_call_started") return; // the ended event logs the call
     if (ev.tool && /(^|__)report_to_main$/.test(ev.tool.name) && ev.tool.ok !== false) t.reportedThisTurn = true;
     if (!ev.text && !ev.tool && !ev.turnEnd) return; // usage-only or empty
     const raw = ev.turnEnd ? { turnEnd: true, ...(ev.raw as object | undefined) } : undefined;

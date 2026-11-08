@@ -50,6 +50,7 @@ export interface PartnerOptions {
   persistState?: boolean; // write <dataDir>/partner/state.json, default true
   ackWaitMs?: number; // how long the task_open handler waits for the streamed ack text, default 250
   onError?: (err: unknown) => void;
+  prewarm?: boolean; // start/resume the session at creation, default true
 }
 
 export interface PartnerHandle extends Partner {
@@ -126,6 +127,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   let lastSessionId: string | undefined;
   let handledSeq: number | undefined; // highest trigger seq covered by a finished turn
   let turn: TurnState | null = null;
+  let warming: Promise<void> | null = null; // pre-start of the session at boot
+  let unseeded = false; // the live session was started fresh and has not had its seed yet
   const jobs = new Map<string, Job>(); // taskId -> job
   const stats: PartnerHandle["stats"] = { turns: 0, freshStarts: 0, resumes: 0 };
 
@@ -254,6 +257,14 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   }
   /** Returns true when the session is fresh (needs the projection seed). */
   async function ensureSession(): Promise<boolean> {
+    if (warming) {
+      await warming;
+      warming = null;
+    }
+    if (session && unseeded) {
+      unseeded = false;
+      return true; // pre-started fresh session: this turn carries the projection seed
+    }
     const warm = lastActivity > 0 && now() - lastActivity <= idleColdMs;
     if (session && warm) return false;
     if (session && !warm) await dropSession();
@@ -273,6 +284,11 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
 
   function buildInput(batch: LogEvent[], fresh: boolean): string {
     const deltas = batch.map((e) => renderTrigger(e, ctx));
+    // The identity may say the user prefers Chinese; the language of this message wins.
+    const lastUser = [...batch].reverse().find((e) => e.kind === "user_msg");
+    if (lastUser && !isChinese((lastUser.body as Bodies["user_msg"]).text)) {
+      deltas.push("[language] The user wrote this in English (not Chinese): reply in English, including the first line.");
+    }
     deltas.push(renderTime(new Date(now())));
     if (!fresh) return deltas.join("\n");
     const batchSeqs = new Set(batch.map((e) => e.seq));
@@ -568,6 +584,31 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       await dropSession();
     },
   };
+
+  // Start (or resume) the session at boot, so the first message does not pay for process
+  // start-up and the MCP handshake (measured live: ~5-7 s of a 15 s first ack).
+  if (opts.prewarm ?? true) {
+    warming = (async () => {
+      try {
+        const warm = lastActivity > 0 && now() - lastActivity <= idleColdMs;
+        if (warm && lastSessionId) {
+          try {
+            await startSession(lastSessionId);
+            stats.resumes++;
+            return;
+          } catch (err) {
+            onError(err);
+          }
+        }
+        await startSession();
+        stats.freshStarts++;
+        unseeded = true;
+      } catch (err) {
+        onError(err);
+        session = null;
+      }
+    })();
+  }
 
   // Re-queue triggers that no finished turn covered (cut off by a restart, or arrived while down).
   if (persist && handledSeq !== undefined) {

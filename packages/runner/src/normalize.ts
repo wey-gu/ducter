@@ -61,6 +61,10 @@ export class Normalizer {
         break;
       case "tool_call_started":
         this.tools.set(ev.callId, { name: ev.tool, input: ev.input });
+        // Early signal (no output yet): lets the partner turn its held line into an ack as
+        // soon as the model starts a task_open call, not after it finishes writing the brief.
+        // The runner does not log these (the ended event carries the full call).
+        out.push({ role: "tool", tool: { name: ev.tool }, raw: { kind: "tool_call_started", callId: ev.callId } });
         break;
       case "tool_call_input": {
         const t = this.tools.get(ev.callId);

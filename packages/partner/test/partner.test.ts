@@ -29,7 +29,8 @@ describe("persona", () => {
   test("system prompt carries L1 identity, language rule, ack rule; no volatile bytes", () => {
     const p = buildSystemPrompt({ id: "p", name: "Ducter", identity: "IDENTITY-XYZ" });
     expect(p).toContain("IDENTITY-XYZ");
-    expect(p).toContain("If the user writes Chinese");
+    expect(p).toContain("language of the user's latest message");
+    expect(p).toContain("wins over any language preference under Identity");
     expect(p).toContain("never its");
     expect(p).toContain("task_open");
     expect(p).not.toMatch(/20\d\d-\d\d-\d\d/);

@@ -426,7 +426,7 @@ func (a *App) notice(c *ui.Context, key string, tone noticeTone, glyph func(), b
 	case noticeAlert:
 		bg = t.Failed.Surface
 	}
-	row := ui.Row(c.Key(key)).Gap(t.S3).Wrap().Padding(t.S2, t.S2, t.S2, t.S3).MinHeight(t.ControlSM+2*t.S2).
+	row := ui.Row(c.Key(key)).Gap(t.S3).Wrap().Padding(t.S2, t.S2, t.S2, t.S3).MinHeight(t.ControlSM + 2*t.S2).
 		Radius(t.RadiusMD).Background(bg).AlignItems(ui.Center).Role(ui.RoleStatus)
 	if tone == noticeAlert {
 		row.Role(ui.RoleAlert)

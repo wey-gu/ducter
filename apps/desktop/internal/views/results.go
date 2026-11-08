@@ -68,7 +68,7 @@ func (a *App) taskFooter(c *ui.Context, task *store.Task, detail string) {
 				if len(evs) > 0 {
 					ui.Row(c).Gap(t.S3).AlignItems(ui.Start).Children(func() {
 						label("result.howknow")
-						ui.Row(c).Gap(t.S2-2).Wrap().Grow(1).MinWidth(0).AlignItems(ui.Center).Children(func() {
+						ui.Row(c).Gap(t.S2 - 2).Wrap().Grow(1).MinWidth(0).AlignItems(ui.Center).Children(func() {
 							a.evidenceChips(c, task, evs, 4)
 						})
 					})

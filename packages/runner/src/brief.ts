@@ -76,5 +76,9 @@ export function kickoff(title: string): string {
 export const RESUME_AFTER_RESTART =
   "Your previous turn was cut off (the host restarted). Check where the work stands, then continue the task. Report via report_to_main when done, blocked, or needing a decision.";
 
+/** Turn sent when the user reopens a finished or dropped task. */
+export const REOPENED =
+  "The user reopened this task. Check where the work stands, then carry on with the brief. Report via report_to_main when done, blocked, or needing a decision.";
+
 /** The one nudge after a turn ends with no report (stall rule). */
 export const NUDGE = "Report status via report_to_main.";

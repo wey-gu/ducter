@@ -88,6 +88,8 @@ export function createWsHandler(deps: WsDeps) {
         if (!r) throw new Error("runner is not available");
         if (!f.text?.trim()) throw new Error("empty message");
         if (!tasks.get(f.taskId)) throw new Error(`unknown task ${f.taskId}`);
+        // Answering the task directly answers its open question too (no later Go re-wakes it).
+        decisions.answeredByMessage(f.taskId, f.text, "user");
         const { delivered } = await r.send(f.taskId, f.text, undefined, "user");
         send(ws, { t: "sent", taskId: f.taskId, delivered });
         return;
@@ -100,11 +102,18 @@ export function createWsHandler(deps: WsDeps) {
           if (!r) throw new Error("runner is not available");
           await r.interrupt(f.taskId);
         } else if (f.action === "drop") {
-          await r?.drop(f.taskId);
+          try {
+            await r?.drop(f.taskId);
+          } catch (err) {
+            console.warn(`[ws] runner.drop(${f.taskId}) failed; marking dropped anyway:`, (err as Error).message);
+          }
           const now = tasks.get(f.taskId)!;
-          if (now.attention !== "dropped") tasks.setState(f.taskId, "dropped", now.residency, "Dropped by user");
+          if (now.attention !== "dropped") tasks.setState(f.taskId, "dropped", now.residency);
         } else if (f.action === "reopen") {
-          tasks.setState(f.taskId, "working", card.residency, "Reopened by user");
+          // Truthful state only: the runner resumes the session and the task goes back to work.
+          if (!r?.reopen) throw new Error("reopen is not available");
+          const { delivered } = await r.reopen(f.taskId);
+          send(ws, { t: "sent", taskId: f.taskId, delivered });
         }
         return;
       }

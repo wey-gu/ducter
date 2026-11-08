@@ -85,7 +85,8 @@ test("irreversible questions wait for the user; reply text is forwarded, hold is
   clock.advance(3 * 3600 * 1000);
   expect(kinds(log, "decision_resolved")).toHaveLength(0);
   decisions.decide(d1.decisionId, "hold");
-  expect(tasks.get("t1")).toMatchObject({ attention: "blocked", reason: "Hold" });
+  expect(tasks.get("t1")!.attention).toBe("blocked");
+  expect(tasks.get("t1")!.reason).toBeUndefined(); // internal words never reach the card
   expect(() => decisions.decide(d1.decisionId, "go")).toThrow(/already resolved/);
 
   report(log, "t1", { state: "needs_input", summary: "Which file?", questions: [] });

@@ -110,7 +110,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       if (url.pathname === "/ws") {
         // Block cross-site WebSocket hijacking from browser pages; native clients send no Origin.
         const origin = req.headers.get("origin");
-        if (origin && !/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(origin)) return new Response("forbidden", { status: 403 });
+        if (origin && !/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?\/?$/.test(origin)) return new Response("forbidden", { status: 403 });
         return srv.upgrade(req, { data: ws.newData() }) ? undefined : new Response("upgrade failed", { status: 400 });
       }
       if (url.pathname === "/mcp") return mcp.handle(req);

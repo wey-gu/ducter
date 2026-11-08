@@ -6,7 +6,7 @@ import { scriptedRuntime, type ScriptedTurn } from "@botiverse/oar/testing";
 import type { Runtime } from "@botiverse/oar/browser";
 import type { Bodies } from "@ducter/protocol";
 import type { HarnessEvent, HarnessPort, HarnessSession, SessionSpec } from "@ducter/protocol/src/internal.ts";
-import { createOarHarnessPort, createRunner, NUDGE, RESUME_AFTER_RESTART, registerTaskTools, taskBrief } from "../src/index.ts";
+import { createOarHarnessPort, createRunner, NUDGE, REOPENED, RESUME_AFTER_RESTART, registerTaskTools, taskBrief } from "../src/index.ts";
 import { git } from "../src/places.ts";
 import { createFakeCore, waitFor, type FakeCore } from "./fake-core.ts";
 
@@ -345,6 +345,35 @@ describe("protocol v2: logging, usage, recovery", () => {
     expect(await r2.send(b.taskId, "src/a.ts", undefined, "user")).toEqual({ delivered: "prompted" });
     expect(fake2.specs[1]!.resumeSessionId).toBe("fake-2");
     expect(fake2.sessions[1]!.sent).toEqual([{ text: "src/a.ts", mode: "turn" }]);
+    await r2.dispose();
+  });
+});
+
+describe("after a restart: drop and reopen (desktop regression)", () => {
+  test("drop and reopen work on tasks from before the restart; reopen resumes the session", async () => {
+    const fake1 = new FakePort();
+    const r1 = createRunner(core, { harness: fake1, newId: nextId });
+    const a = await r1.openTask({ persona: "p1", title: "finished one", brief: "b" });
+    const b = await r1.openTask({ persona: "p1", title: "other", brief: "b" });
+    await r1.whenStarted(a.taskId);
+    await r1.whenStarted(b.taskId);
+    await core.call("report_to_main", { state: "done", summary: "ok", evidence: [{ kind: "test", label: "t", ref: "1 pass" }] }, a.taskId);
+    await core.call("report_to_main", { state: "needs_input", summary: "?" }, b.taskId);
+
+    const fake2 = new FakePort();
+    const r2 = createRunner(core, { harness: fake2, newId: nextId });
+    await r2.drop(b.taskId);
+    expect(core.tasks.get(b.taskId)!.attention).toBe("dropped");
+
+    expect(await r2.reopen(a.taskId)).toEqual({ delivered: "prompted" });
+    expect(fake2.specs.at(-1)!.resumeSessionId).toBe("fake-1");
+    expect(fake2.sessions.at(-1)!.sent).toEqual([{ text: REOPENED, mode: "turn" }]);
+    expect(core.tasks.get(a.taskId)).toMatchObject({ attention: "working", residency: "hot" });
+    expect(core.tasks.get(a.taskId)!.reason).toBeUndefined();
+
+    // A dropped task can be reopened too.
+    expect(await r2.reopen(b.taskId)).toEqual({ delivered: "prompted" });
+    expect(fake2.specs.at(-1)!.resumeSessionId).toBe("fake-2");
     await r2.dispose();
   });
 });

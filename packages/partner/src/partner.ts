@@ -51,6 +51,7 @@ export interface PartnerOptions {
   ackWaitMs?: number; // how long the task_open handler waits for the streamed ack text, default 250
   onError?: (err: unknown) => void;
   prewarm?: boolean; // start/resume the session at creation, default true
+  ready?: Promise<unknown>; // sessions start after this settles (e.g. L1 identity from Mem)
 }
 
 export interface PartnerHandle extends Partner {
@@ -114,7 +115,6 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   } catch (err) {
     onError(err);
   }
-  const systemPrompt = buildSystemPrompt(core.persona);
 
   // ---------- state ----------
   const queue: LogEvent[] = [];
@@ -239,7 +239,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       harness: "claude-code",
       model,
       cwd,
-      systemPrompt,
+      systemPrompt: buildSystemPrompt(core.persona), // built per start: identity may arrive after boot
       mcp: [core.mcp.configFor("partner")],
       permissionMode: "bypass",
       ...(resumeSessionId ? { resumeSessionId } : {}),
@@ -257,6 +257,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   }
   /** Returns true when the session is fresh (needs the projection seed). */
   async function ensureSession(): Promise<boolean> {
+    if (opts.ready) await opts.ready.catch(() => {});
     if (warming) {
       await warming;
       warming = null;
@@ -594,6 +595,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   if (opts.prewarm ?? true) {
     warming = (async () => {
       try {
+        await opts.ready?.catch(() => {});
         const warm = lastActivity > 0 && now() - lastActivity <= idleColdMs;
         if (warm && lastSessionId) {
           try {

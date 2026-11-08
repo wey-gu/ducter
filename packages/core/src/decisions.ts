@@ -12,6 +12,12 @@ export interface Decisions {
   get(decisionId: string): Bodies["decision"] | undefined;
   isPending(decisionId: string): boolean;
   setHook(fn: DecisionHook): void;
+  /**
+   * The user (or the partner) answered the task directly with a message: resolve its open
+   * decisions as "reply" without forwarding (the message itself is the answer). Without this a
+   * later Go re-woke a task that had already finished (working -> done flap).
+   */
+  answeredByMessage(taskId: string, text: string, by: "user" | "partner"): void;
   stop(): void;
 }
 
@@ -40,6 +46,7 @@ export function createDecisions(opts: {
   let hook: DecisionHook | undefined = opts.onDecision;
   const all = new Map<string, Bodies["decision"]>();
   const resolved = new Set<string>();
+  const silent = new Set<string>(); // resolutions that must not be forwarded
   const timers = new Map<string, unknown>();
 
   const setAttention = (taskId: string, attention: Attention, reason?: string) => {
@@ -117,10 +124,10 @@ export function createDecisions(opts: {
     const d = all.get(r.decisionId);
     if (!d) return;
     if (!tasks.pendingDecisions(d.taskId).length) {
-      if (r.option === "hold") setAttention(d.taskId, "blocked", "Hold");
+      if (r.option === "hold") setAttention(d.taskId, "blocked"); // no reason text: the card shows Waiting
       else setAttention(d.taskId, "working");
     }
-    const text = forwardText(d, r);
+    const text = silent.delete(r.decisionId) ? "" : forwardText(d, r);
     if (hook && text) {
       Promise.resolve()
         .then(() => hook!(d.taskId, text, r))
@@ -142,9 +149,27 @@ export function createDecisions(opts: {
       all.set(d.decisionId, d);
       schedule(d);
     } else if (e.kind === "decision_resolved") onResolved(e.body as Bodies["decision_resolved"]);
+    else if (e.kind === "task_event") {
+      // The partner answering a task with task_send (the runner logs it first, from "partner").
+      // Decision forwards are logged from "user"; the user's own task_send goes through ws.
+      const b = e.body as Bodies["task_event"];
+      if (b.role === "user" && b.from === "partner" && b.text) api.answeredByMessage(b.taskId, b.text, "partner");
+    }
   });
 
-  return {
+  const api: Decisions = {
+    answeredByMessage(taskId, text, by) {
+      for (const id of tasks.pendingDecisions(taskId)) {
+        if (resolved.has(id) || !all.has(id)) continue;
+        silent.add(id);
+        log.append({
+          stream: "channel",
+          origin: by,
+          kind: "decision_resolved",
+          body: { decisionId: id, option: "reply", text: text.slice(0, 2000), by: "user" },
+        });
+      }
+    },
     decide(decisionId, option, text) {
       if (!all.has(decisionId)) throw new Error(`unknown decision ${decisionId}`);
       if (resolved.has(decisionId)) throw new Error(`decision ${decisionId} is already resolved`);
@@ -162,4 +187,5 @@ export function createDecisions(opts: {
       timers.clear();
     },
   };
+  return api;
 }

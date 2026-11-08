@@ -99,6 +99,8 @@ export interface Runner {
   // Logs the text as task_event {role:"user", from} before delivering it.
   send(taskId: string, text: string, mode?: "steer" | "queue", from?: "user" | "partner"): Promise<{ delivered: Delivery }>;
   interrupt(taskId: string): Promise<void>;
+  // Optional: resume (or start) a finished/dropped task's session and tell it to carry on.
+  reopen?(taskId: string): Promise<{ delivered: Delivery }>;
   drop(taskId: string): Promise<void>;
 }
 

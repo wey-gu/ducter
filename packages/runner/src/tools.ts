@@ -94,7 +94,8 @@ export function registerTaskTools(core: CoreApi): void {
       const persona = core.tasks.get(ctx.taskId)?.persona;
       core.log.append({ persona, stream: `task:${ctx.taskId}`, origin: "task", kind: "report", body });
       const card = core.tasks.get(ctx.taskId);
-      core.tasks.setState(ctx.taskId, ATTENTION[body.state], card?.residency ?? "hot", `report: ${body.state}`);
+      // No reason text: task_state.reason is user-facing copy (decisions.ts sets blocked/failed ones).
+      core.tasks.setState(ctx.taskId, ATTENTION[body.state], card?.residency ?? "hot");
       return body.state === "progress"
         ? "Reported. Keep working."
         : "Reported. End your turn now; any answer will arrive as a new message.";

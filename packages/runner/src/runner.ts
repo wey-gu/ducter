@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
-import type { Attention, Bodies, LogEvent, Place, Residency, TaskCard } from "@ducter/protocol";
+import type { Attention, Bodies, Delivery, LogEvent, Place, Residency, TaskCard } from "@ducter/protocol";
 import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, SessionSpec } from "@ducter/protocol/src/internal.ts";
-import { NUDGE, RESUME_AFTER_RESTART, kickoff, taskBrief } from "./brief.ts";
+import { NUDGE, REOPENED, RESUME_AFTER_RESTART, kickoff, taskBrief } from "./brief.ts";
 import { createOarHarnessPort } from "./oar.ts";
 import { cwdOf, planPlace, provisionPlace } from "./places.ts";
 import { browserSidecar, type BrowserOptions } from "./browser.ts";
@@ -27,6 +27,10 @@ export interface RunnerExt extends Runner {
   whenStarted(taskId: string): Promise<void>;
   /** Native session id of a task (for resume), if started. */
   sessionId(taskId: string): string | undefined;
+  /** Resume (or start) the session of a finished or dropped task and tell it to carry on. */
+  reopen(taskId: string): Promise<{ delivered: Delivery }>;
+  /** Alias of dispose, called by main on shutdown. */
+  stop(): Promise<void>;
   /** Close all sessions and stop listening. */
   dispose(): Promise<void>;
 }
@@ -379,9 +383,33 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       }
       // Idle: the text becomes the next turn. A finished or held task goes back to work.
       const a = currentAttention(t);
-      if (a !== "working") setState(t, "working", "hot", from === "user" ? "Message from you" : undefined);
+      if (a !== "working") setState(t, "working", "hot");
       await sendTurn(t, text, from);
       return { delivered: "prompted" };
+    },
+
+    async reopen(taskId) {
+      const t = get(taskId);
+      await t.started.catch(() => {});
+      t.dropped = false;
+      if (t.session || t.sessionId) return runner.send(taskId, REOPENED, undefined, "user");
+      // Never got a session (e.g. failed to start): start one from the brief.
+      t.started = (async () => {
+        await provisionPlace({ place: t.card.place, cwd: t.spec.cwd });
+        await startSession(t, false);
+        await sendTurn(t, kickoff(t.card.title), "runner");
+      })();
+      try {
+        await t.started;
+      } catch (err) {
+        setState(t, "failed", "parked", preview(err instanceof Error ? err.message : String(err), 500));
+        throw err;
+      }
+      return { delivered: "prompted" as const };
+    },
+
+    stop() {
+      return runner.dispose();
     },
 
     async interrupt(taskId) {

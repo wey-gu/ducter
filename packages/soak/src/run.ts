@@ -192,8 +192,10 @@ class Client {
       this.open = true;
       ws.send(JSON.stringify(this.useCursor && this.cursor != null ? { t: "hello", cursor: this.cursor } : { t: "hello" }));
     };
-    ws.onmessage = (m) => this.frame(JSON.parse(String(m.data)) as ServerFrame);
+    // A socket this client already replaced says nothing more (its late close must not reopen).
+    ws.onmessage = (m) => ws === this.ws && this.frame(JSON.parse(String(m.data)) as ServerFrame);
     ws.onclose = () => {
+      if (ws !== this.ws) return;
       this.open = false;
       for (const [k, n] of this.waiting) if (n > 0) this.lostResults += n;
       this.waiting.clear();
@@ -209,6 +211,7 @@ class Client {
   }
   close() {
     this.closedByUs = true;
+    this.open = false;
     this.ws?.close();
   }
   send(f: object) {

@@ -23,6 +23,7 @@ import {
   reportOf,
   sortEvidence,
   headlineEvidence,
+  resultEvidence,
   title,
   type DecisionState,
   type Entry,
@@ -315,14 +316,15 @@ function ResultActions({ task, inTask }: { task: Task; inTask?: boolean }) {
 
 function ResultProof({ task }: { task: Task }) {
   const line = outsideLine(task);
-  if (!task.evidence.length && !line) return null;
+  const evs = resultEvidence(task);
+  if (!evs.length && !line) return null;
   return (
     <div class="sheet-proof">
-      {task.evidence.length > 0 && (
+      {evs.length > 0 && (
         <>
           <div class="k">{t("result.howknow")}</div>
           <div class="v">
-            <EvidenceChips task={task} evs={task.evidence} />
+            <EvidenceChips task={task} evs={evs} />
           </div>
         </>
       )}

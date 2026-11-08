@@ -435,6 +435,13 @@ export function headlineEvidence(evs: EvidenceRef[]): EvidenceRef | undefined {
   return sorted.filter((e) => e.kind === first.kind).at(-1);
 }
 
+/** A result's How I know: its own report's evidence. A follow-up's result doesn't re-show the
+ *  first round's checks; the task's dossier keeps them all. */
+export function resultEvidence(t: Task): EvidenceRef[] {
+  const r = reportOf(t);
+  return r?.evidence?.length ? r.evidence : t.evidence;
+}
+
 /** One evidence item per kind+label: the latest (a second "bun test" supersedes the first). */
 export function latestByLabel(evs: EvidenceRef[]): EvidenceRef[] {
   const seen = new Set<string>();

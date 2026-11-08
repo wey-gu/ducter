@@ -391,7 +391,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   core.mcp.register(
     "partner",
     "task_open",
-    "Open a task: a separate working session in its own place (repo, folder, browser) for anything that needs a place, writes, or takes more than ~10s. Write a one-line ack naming the action BEFORE calling this. The brief must quote the user's words verbatim and list decisions, done-criteria, out of scope, and the place. Returns at once; the task reports back on its own. Never wait on it.",
+    "Open a task: a separate working session in its own place (repo, folder, browser) for anything that needs a place, writes, or takes more than ~10s. Write a one-line ack naming the action BEFORE calling this. The brief must quote the user's words verbatim and list decisions, done-criteria, out of scope, and the place. " +
+      'Choose place {"kind":"browser"} when the work happens on the web: looking something up, checking or reading a page or site, comparing products, filling a form. The browser keeps its sign-ins between tasks. ' +
+      "A browser task never signs in, submits, posts, buys, or pays by itself: it stops and asks the user with a question, so put that in the brief's out of scope. " +
+      "Returns at once; the task reports back on its own. Never wait on it.",
     {
       type: "object",
       properties: {
@@ -399,7 +402,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         brief: { type: "string", description: "User's verbatim words, decisions, done-criteria, out of scope, place" },
         place: {
           type: "object",
-          description: 'Where it works, e.g. {"kind":"repo","device":"local","repoPath":"~/dev/foo"}. Omit if none.',
+          description:
+            'Where it works: {"kind":"repo","device":"local","repoPath":"~/dev/foo"}, {"kind":"folder","device":"local","path":"~/Documents/x"}, or {"kind":"browser","device":"local","profile":"default"} for web work. Omit if none.',
           properties: {
             kind: { type: "string", enum: ["none", "repo", "folder", "browser"] },
             device: { type: "string" },

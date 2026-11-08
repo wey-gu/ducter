@@ -18,6 +18,11 @@ export interface Decisions {
    * later Go re-woke a task that had already finished (working -> done flap).
    */
   answeredByMessage(taskId: string, text: string, by: "user" | "partner"): void;
+  /**
+   * Answers resolved before a restart that never reached their task (the process died between
+   * decision_resolved and the forward). Returned once; core hands them over when the runner is wired.
+   */
+  takeUnforwarded(): { taskId: string; text: string; decisionId: string }[];
   stop(): void;
 }
 
@@ -140,11 +145,41 @@ export function createDecisions(opts: {
   };
 
   // Rebuild from the Log (no side effects for history), then re-arm pending defaults.
+  const askedAt = new Map<string, number>(); // decisionId -> seq of the decision event
+  const lastAnswer = new Map<string, LogEvent<"decision_resolved">>(); // taskId -> its latest resolution
   for (const e of log.read({ fromSeq: 0, limit: Number.MAX_SAFE_INTEGER, kinds: ["decision", "decision_resolved"] })) {
-    if (e.kind === "decision") all.set((e.body as Bodies["decision"]).decisionId, e.body as Bodies["decision"]);
-    else resolved.add((e.body as Bodies["decision_resolved"]).decisionId);
+    if (e.kind === "decision") {
+      const d = e.body as Bodies["decision"];
+      all.set(d.decisionId, d);
+      askedAt.set(d.decisionId, e.seq);
+    } else {
+      const r = e.body as Bodies["decision_resolved"];
+      resolved.add(r.decisionId);
+      const taskId = all.get(r.decisionId)?.taskId;
+      if (taskId) lastAnswer.set(taskId, e as LogEvent<"decision_resolved">);
+    }
   }
   for (const d of all.values()) if (!resolved.has(d.decisionId)) schedule(d);
+
+  // Answers the process died before handing to their task: the latest resolution of a task
+  // whose forward text never shows up as task input after the question was asked. The runner
+  // logs every input before delivering it, and a task answered by message (silent) has that
+  // message as input, so both count as handed over.
+  const unforwarded: { taskId: string; text: string; decisionId: string }[] = [];
+  for (const [taskId, e] of lastAnswer) {
+    const d = all.get(e.body.decisionId)!;
+    const text = forwardText(d, e.body);
+    if (!text || tasks.get(taskId)?.attention === "dropped") continue;
+    // It asked something newer since: it got past this one.
+    if ([...all.values()].some((x) => x.taskId === taskId && (askedAt.get(x.decisionId) ?? 0) > e.seq)) continue;
+    const after = askedAt.get(d.decisionId) ?? 0;
+    const inputs = log.read({ stream: `task:${taskId}`, fromSeq: after + 1, limit: Number.MAX_SAFE_INTEGER, kinds: ["task_event"] });
+    const handed = inputs.some((x) => {
+      const b = x.body as Bodies["task_event"];
+      return b.role === "user" && (b.text === text || (e.body.option === "reply" && b.text === e.body.text));
+    });
+    if (!handed) unforwarded.push({ taskId, text, decisionId: d.decisionId });
+  }
 
   const unsubscribe = log.subscribe((e) => {
     if (e.kind === "report") onReport(e.body as Bodies["report"]);
@@ -182,6 +217,7 @@ export function createDecisions(opts: {
       if (text) body.text = text;
       return log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body });
     },
+    takeUnforwarded: () => unforwarded.splice(0),
     get: (id) => all.get(id),
     isPending: (id) => all.has(id) && !resolved.has(id),
     setHook: (fn) => void (hook = fn),

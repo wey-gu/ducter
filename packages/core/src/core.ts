@@ -190,7 +190,16 @@ export function startCore(opts: CoreOptions = {}): Core {
     pusher,
     port,
     url: `ws://127.0.0.1:${port}/ws`,
-    setRunner: (r) => void (runner = r),
+    setRunner(r) {
+      runner = r;
+      // Answers that were resolved but never handed to their task before a restart (decisions.ts).
+      for (const u of decisions.takeUnforwarded()) {
+        console.warn(`[core] re-sending the answer to ${u.decisionId} that ${u.taskId} never got (restart)`);
+        void Promise.resolve()
+          .then(() => r.send(u.taskId, u.text, undefined, "user"))
+          .catch((err) => console.error(`[core] re-sending ${u.decisionId} to ${u.taskId} failed:`, (err as Error).message));
+      }
+    },
     setPartner(p) {
       partner = p;
       early.splice(0).forEach(trigger);

@@ -1,0 +1,10 @@
+# Vercel uploads only what the website needs: apps/site and the user docs it renders.
+/*
+!/apps
+/apps/*
+!/apps/site
+/apps/site/node_modules
+/apps/site/dist
+/apps/site/.astro
+!/docs
+!/.vercelignore

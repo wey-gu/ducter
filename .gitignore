@@ -10,3 +10,4 @@ out/
 apps/desktop/bin/
 .claude/
 .gstack/
+.vercel/

@@ -17,21 +17,28 @@ Send the `.dmg` (AirDrop, a link, a USB stick). It holds `Ducter.app` (the deskt
 the `ducter` CLI inside it) and an Applications shortcut. The build is for your Mac's CPU
 (Apple silicon builds run only on Apple silicon).
 
-**The app is not signed by Apple.** It is signed ad hoc (`codesign -s -`), not with a
-Developer ID, and not notarized. So the first open needs one extra step. On **macOS 15
-(Sequoia)** right-click → Open no longer gets past this; the way through is System Settings:
+**With an Apple Developer ID** in your keychain, `scripts/make-app.sh` signs the app with it
+(hardened runtime), notarizes it with Apple, and staples the ticket, and does the same for the
+`.dmg`. Notarization needs credentials, for example in the environment:
 
-1. Double-click the `.dmg`, drag **Ducter** onto **Applications**, then open Ducter from
-   Applications.
-2. macOS says **"“Ducter” Not Opened"**: *"Apple could not verify “Ducter” is free of malware
-   that may harm your Mac or compromise your privacy."* Buttons: **Done** and **Move to
-   Trash**. Click **Done**.
-3. Open **System Settings → Privacy & Security** and scroll down to Security. It says
-   *"“Ducter” was blocked to protect your Mac."* Click **Open Anyway**, then **Open Anyway**
-   again in the dialog that follows, and confirm with Touch ID or your password.
-4. Ducter opens. From then on it opens like any app.
+```sh
+APPLE_ID=… APPLE_PASSWORD=… APPLE_TEAM_ID=… scripts/make-app.sh
+```
 
-(On macOS 14 and earlier, steps 2 and 3 are simply right-click → Open → Open.)
+The top of `scripts/make-app.sh` lists the other ways: a `notarytool` keychain profile
+(`DUCTER_NOTARY_PROFILE`) or an App Store Connect API key. Your friend then just:
+
+1. Double-clicks the `.dmg` and drags **Ducter** onto **Applications**.
+2. Opens Ducter from Applications. macOS asks once, *"“Ducter” is an app downloaded from the
+   Internet. Are you sure you want to open it?"*, and names the developer. **Open**.
+
+No System Settings, no Open Anyway. It works offline too: the notarization ticket is stapled.
+
+**Without a Developer ID**, the script falls back to ad-hoc signing (`codesign -s -`, not
+notarized) and the first open needs an extra step. On **macOS 15 (Sequoia)** right-click →
+Open no longer gets past it: open Ducter, click **Done** on *"“Ducter” Not Opened"*, then
+**System Settings → Privacy & Security → Open Anyway** (twice) and Touch ID or your password.
+On macOS 14 and earlier it is right-click → Open → Open.
 
 **What happens next, with no terminal**
 
@@ -39,14 +46,19 @@ Developer ID, and not notarized. So the first open needs one extra step. On **ma
 |---|---|
 | 0:00 | The window: "Checking this Mac…" with the sleeping clay character. The app runs `ducter doctor` itself, with the `PATH` a Terminal window would have (an app opened from Finder gets only the system folders) |
 | 0:03 | **Ready Mac:** nothing to answer, or one optional line "What should I be called?" (skipped when Nowledge Mem holds the identity). **Not ready:** "One thing first", only the blocking item (e.g. "Claude Code: installed, not signed in") with its command, **Copy**, and **Run in Terminal** (Terminal opens on that one command; no permission prompt). Optional things fold into one line. It checks again by itself when they come back to the window, and every 10 s |
-| 0:05 | "Waking Ducter up…", then the conversation with starters about their own recent repos (names only) |
+| 0:05 | "Waking Ducter up…" with one line: from now on Ducter keeps working when the window is closed, and Stop Ducter in the menu stops it. Then the conversation with starters about their own recent repos (names only) |
 | 0:30 | They type; the partner answers (2.5 s on sonnet in our run) |
 | after the first reply | Once: "Use ducter in Terminal too?" Yes links `~/.local/bin/ducter` to the app (no administrator password; never replaces a file already there; not offered while the app still runs from the disk image) |
 
-Ducter runs as long as the app is open: quitting (⌘Q), closing the window, or a force quit
-stops it. If Ducter was already running (from `ducter up` in a terminal), the app just
-connects and leaves it running when it quits. Data lives in `~/.ducter`, as with the CLI; the
-app's own child log is `~/.ducter/app.log`.
+**Ducter keeps working when the window is closed.** Closing the window hides it; the
+Dock icon brings it back as it was, and the Dock badge counts what is waiting for you. Ducter
+itself runs as a per-user LaunchAgent (`~/Library/LaunchAgents/co.nowledge.ducter.agent.plist`,
+started at login, restarted if it crashes), so ⌘Q quits only the window app. To stop Ducter
+and every task: **Ducter menu → Stop Ducter** (让 Ducter 歇着); it stays off, at login too,
+until **Wake Ducter** or the next time you open the app. Run from the disk image instead of
+Applications, Ducter stops with the app. If Ducter was already running (from `ducter up` in a
+terminal), the app just connects and leaves it alone. Data lives in `~/.ducter`, as with the
+CLI; Ducter's output from the app is in `~/.ducter/app.log`.
 
 For a scratch run of the real app: `~/Library/Application Support/Ducter/dev.env` with lines
 like `DUCTER_DATA_DIR=/tmp/ducter-scratch` and `DUCTER_PORT=7798` (only `DUCTER_*` keys are

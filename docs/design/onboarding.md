@@ -110,17 +110,39 @@ from the test harness signalling its own wrapper shell, not from Ducter.
 
 `scripts/make-app.sh` builds `Ducter.app` (desktop binary in `Contents/MacOS`, the `ducter` CLI
 in `Contents/Helpers`, `AppIcon.icns` drawn by `apps/desktop/cmd/appicon` from the clay
-character) and a `.dmg` with an Applications shortcut. Ad-hoc signed, not notarized.
+character) and a `.dmg` with an Applications shortcut. Bundle id `co.nowledge.ducter` (helper
+`co.nowledge.ducter.cli`), following `co.nowledge.con` and `co.nowledge.mem.desktop`. With the
+Nowledge Labs Developer ID in the keychain, both the app and the `.dmg` are signed (hardened
+runtime, timestamp), notarized, and stapled, so a friend's first open is the ordinary "downloaded
+from the Internet" prompt with Open, and no System Settings detour. The helper's only
+entitlement is `com.apple.security.cs.allow-jit` (`scripts/macos/ducter-cli.entitlements`:
+without it Bun's JIT dies under the hardened runtime). Without an identity the script falls back
+to ad-hoc signing and the README's Open Anyway steps.
 
-**Lifetime (proposed, awaiting the user's call):** Ducter lives as long as the app. The app
-runs `ducter up --no-desktop` as its child; ⌘Q, closing the window, or a force quit stops it
-(`DUCTER_PARENT_PID`: the CLI exits when the app's pid goes away). A Ducter that was already
-running is attached to and left alone. *Tradeoff:* tasks stop when the window closes, which
-contradicts "silence means success" for long tasks; a LaunchAgent (or a menu-bar presence)
-would keep Ducter working with the window closed and come back at login. Recommended for the
-next step: keep the window-closes-quits default for v1 (honest and simple: one thing to
-understand), and add "Keep Ducter running when the window is closed" as a single opt-in that
-installs a LaunchAgent, offered the first time a task is still running at quit.
+**Lifetime (the keep-running decision: Ducter keeps running when the window closes; Dn assigned by the docs pass).** The window is a view;
+Ducter is the one doing the work, so neither closing the window nor ⌘Q stops it.
+- *Closing the window* (⌘W, the red button) hides it. The Dock icon, or opening the app again,
+  shows it as it was (MyGo: `Window.OnClose` prevented + `Hide`, `App.OnActivate` → `Show`).
+- *Ducter itself* runs as a per-user LaunchAgent, `~/Library/LaunchAgents/co.nowledge.ducter.agent.plist` (`<bundle-id>.agent`)
+  (`ducter up --no-desktop`, `RunAtLoad`, `KeepAlive` on a crash only, logs to
+  `<dataDir>/app.log`, the app's `PATH` and `DUCTER_*` in its environment,
+  `AssociatedBundleIdentifiers` so Login Items shows it as Ducter). The app writes and loads it
+  on first run, says so in one line on the "Waking Ducter up…" card ("From now on Ducter keeps
+  working when you close the window; to stop it, choose Stop Ducter in the menu"), and attaches
+  to it on every later launch. A moved app rewrites and reloads it.
+- *⌘Q* quits the window app only. *Why:* people press ⌘Q out of habit to tidy up; a partner
+  that loses its tasks to a reflex is not 放心. Stopping the work is a different intent, so it
+  gets its own, explicit place.
+- *Stop Ducter / 让 Ducter 歇着* (app menu, subtitle "Stops every task until you wake it"):
+  unloads the agent and removes the plist, so it stays off, at login too. The window shows
+  "Ducter is resting" with **Wake Ducter**; the menu item turns into Wake Ducter.
+- *The Dock badge* counts what waits for the person (the header's "needs you": tasks waiting
+  plus open partner decisions), nothing else. No menu-bar extra.
+- *Fallback:* run from the disk image or a translocated copy (paths that go away), Ducter is the
+  app's child instead (`DUCTER_PARENT_PID`) and stops with the app.
+- A Ducter already running (from `ducter up` in a terminal) is attached to and left alone.
+- *Note:* macOS may post "Background Items Added" when the plist is loaded; with an ad-hoc
+  signature it names the item after the binary. Not seen in our run (not looked for).
 
 **Screens** (copy keys `setup.*`, `cli.*` in `apps/desktop/internal/i18n`; views in
 `apps/desktop/internal/views/setup.go`; headless shots `apps/desktop/docs/app-*.png`)
@@ -143,13 +165,33 @@ installs a LaunchAgent, offered the first time a task is still running at quit.
 **Verified live** on macOS 15.7 (the DMG built, mounted, the app copied to a scratch folder,
 launched with `open`, `dev.env` pointing at a scratch data folder and port 7798, sonnet):
 doctor + `up` took ~4 s from open to "Ducter is up"; repo starters showed on the first launch;
-a message got its reply in 2.5 s; ⌘Q, ⌘W and `kill -9` of the app each stopped the backend
-(port freed, `SIGTERM: shutting down` in `ducter.log`). The Gatekeeper dialog for a
+a message got its reply in 2.5 s; (before the keep-running decision) ⌘Q, ⌘W and `kill -9` each stopped the child
+backend. **Keep-running, live** (scripted model, port 7870, scratch data folder): first launch loaded
+the LaunchAgent (`state = running`, parent pid 1); a 90 s task was started, the window closed
+with ⌘W (app alive, window off screen), the task finished while hidden, `open` (the same
+reopen event as a Dock click) brought the window back showing that result; a partner decision
+set the Dock badge to "1" (`lsappinfo` StatusLabel); ⌘Q quit the app while the same Ducter
+process kept listening; a relaunch attached to it; Stop Ducter (menu) removed the plist and
+freed the port, the card read "Ducter is resting"; Wake Ducter reloaded the agent and the
+window came back with its history. Clicking the Dock icon itself was not driven (the Dock's
+accessibility tree was empty to the driver). Under the hardened runtime: the helper re-signed
+ad hoc with `--options runtime` and `ducter-cli.entitlements` (allow-jit), the app with
+`--options runtime`, label `co.nowledge.ducter.agent`; launchd ran it (`state = running`), a
+task ran to done, ⌘Q left it listening. The Developer ID–signed, notarized build itself was not
+run as a LaunchAgent here (its signature differs only in the identity). The Gatekeeper dialog for a
 quarantined copy ("“Ducter” Not Opened", Done / Move to Trash) and the "Open Anyway" button in
 Privacy & Security were seen; pressing Open Anyway was not (it needs the owner's password).
 **Headless only:** the blocked, name, failed screens and the CLI offer (a fake backend in
 `setup_test.go`); a real blocked Mac was not walked. **Not verified:** a helper binary still
 carrying quarantine after Open Anyway (the app clears the flag on its own helper, best effort).
+
+**Signed build, verified 2026-11-09** (D55): Apple accepted both submissions; on a copy of the
+DMG with a Safari quarantine flag, `spctl -a -t open --context context:primary-signature` says
+*accepted, source=Notarized Developer ID*, and so does `spctl -a -vv` on the app in the mounted
+image and on a copy of it (`syspolicy_check distribution`: ready for distribution). The copied
+app, launched with a scratch `dev.env`, ran doctor and `ducter up` under the hardened runtime
+and served in ~5 s; quitting stopped the helper. The first-open "downloaded from the Internet"
+dialog itself was not clicked through (it needs a person).
 
 ## The cartoon (≈ 25 s, skippable, replayable from Settings)
 

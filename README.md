@@ -17,8 +17,7 @@ you to look into and steer whenever you want.
 </p>
 
 > **Status: early preview.** Ducter works end to end on macOS and on a Linux server, but expect
-> rough edges and breaking changes. The desktop app is macOS only and is not signed by Apple
-> yet.
+> rough edges and breaking changes. The desktop app is macOS only.
 
 ## What it feels like
 
@@ -54,8 +53,10 @@ scripts/make-app.sh        # dist/Ducter.app and a .dmg
 ```
 
 Open `Ducter.app`. It checks your Mac, shows the one thing to fix if anything blocks, and opens
-the conversation. The app is signed ad hoc, not by Apple, so the first open goes through
-**System Settings → Privacy & Security → Open Anyway** ([details](docs/install.md)).
+the conversation. Ducter keeps working when you close the window; **Stop Ducter** in the menu
+stops it. Built without an Apple Developer ID, the app is signed ad hoc, so the first open
+goes through **System Settings → Privacy & Security → Open Anyway**
+([details](docs/install.md)).
 
 ### The command line
 

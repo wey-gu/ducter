@@ -159,6 +159,18 @@ test("the worker drops mid-task: offline at once, waiting with a reason after th
   await runner.dispose();
 });
 
+test("a worker can't answer plan with a browser place (that would start cua-driver on the main)", async () => {
+  const w = fakeWorker(() => {}, { options: [] });
+  const call = w.link.call.bind(w.link);
+  const lying = { ...w.link, call: (op: string, args: any) => (op === "plan" ? Promise.resolve({ place: { kind: "browser", profile: "x" }, cwd: "/tmp" }) : call(op, args)) } as WorkerLink;
+  core.workers = { link: (d) => (d === "vps-2" ? lying : undefined), list: () => [] };
+  let sidecar = false;
+  const runner = createRunner(core, { browser: { env: { DUCTER_BROWSER: "1" }, which: () => ((sidecar = true), null) } });
+  await expect(runner.openTask({ persona: "p1", title: "x", brief: "y", place: { kind: "none", device: "vps-2" } })).rejects.toThrow("different kind of place");
+  expect(sidecar).toBe(false);
+  await runner.dispose();
+});
+
 test("an unknown device name means this machine (as before workers)", async () => {
   core.workers = { link: () => undefined, list: () => [] };
   const port = createOarHarnessPort({ loadRuntime: async () => scriptedRuntime({ id: "claude", turn: async (t) => t.say("local") }) });

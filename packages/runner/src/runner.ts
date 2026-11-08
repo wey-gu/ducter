@@ -415,6 +415,9 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       if (ops.device && !ops.device.online()) throw new DeviceOfflineError(ops.device.name);
       if (ops.device && input.place?.kind === "browser") throw new Error(`browser places run on this machine only for now, not on ${ops.device.name}`);
       const resolved = await ops.plan(input.place, id, title);
+      // A worker plans its own place; it can't turn it into something this machine then runs
+      // (a browser place starts cua-driver here).
+      if (ops.device && resolved?.place?.kind !== (input.place?.kind ?? "none")) throw new Error(`${ops.device.name} answered with a different kind of place`);
       const project = input.project ?? "";
       const persona = input.persona || core.persona.id;
       const partnerName = opts.partnerName ?? core.persona.name ?? "Ducter";

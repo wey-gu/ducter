@@ -22,6 +22,9 @@ enum Pebble {
 
     static let radius: CGFloat = 16
     static let radiusSmall: CGFloat = 12
+    /// Buttons share the desktop/web component system (ui.md "Components and tokens").
+    static let buttonRadius: CGFloat = 12
+    static let buttonHeight: CGFloat = 48
 
     static func display(_ size: CGFloat, _ weight: Font.Weight = .bold) -> Font {
         Font.custom("Bricolage Grotesque", size: size, relativeTo: .title).weight(weight)
@@ -44,14 +47,16 @@ extension UIColor {
 private struct LedgeButton: View {
     let configuration: ButtonStyle.Configuration
     let fill: Color, ledge: Color, ink: Color
+    var hairline: Color? = nil
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: Pebble.radius, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: Pebble.buttonRadius, style: .continuous)
         let down = configuration.isPressed ? Pebble.ledge : 0
         configuration.label
             .font(.body.weight(.semibold))
             .foregroundStyle(ink)
-            .frame(maxWidth: .infinity, minHeight: 52)
+            .frame(maxWidth: .infinity, minHeight: Pebble.buttonHeight)
             .background(fill, in: shape)
+            .overlay(shape.stroke(hairline ?? .clear, lineWidth: 1))
             .background(ledge, in: shape.offset(y: Pebble.ledge - down))
             .offset(y: down)
             .padding(.bottom, Pebble.ledge)
@@ -69,6 +74,6 @@ struct PrimaryButtonStyle: ButtonStyle {
 /// A secondary button: ink on the surface.
 struct QuietButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        LedgeButton(configuration: configuration, fill: Pebble.surface, ledge: Pebble.pressQuiet, ink: Pebble.ink)
+        LedgeButton(configuration: configuration, fill: Pebble.surface, ledge: Pebble.pressQuiet, ink: Pebble.ink, hairline: Pebble.line)
     }
 }

@@ -9,3 +9,4 @@ out/
 .ducter/
 apps/desktop/bin/
 .claude/
+.gstack/

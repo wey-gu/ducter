@@ -1,7 +1,87 @@
-# V1 Tonight: Build Plan (~8 hours)
+# V1 Tonight: Build Plan and Where It Landed
 
 > 2026-11-08 · D49. Honest scope: tonight produces a **working vertical slice** that the author
 > can use daily. It is not the whole design. Everything cut is listed under "Not tonight".
+
+## State of v1 (2026-11-09 08:00 SGT)
+
+Every number below comes from a report in this repo (this file's sections further down,
+`design/onboarding.md`, `research/29`, `research/30`, `packages/partner/eval/results/`). Live
+timings are one run or a few, so they are indicative, not benchmarks. What waits on the user is
+in `design/flows/OPEN-QUESTIONS.md` ("Decisions waiting for you"); per-scenario status is the
+"Built" column of `design/scenarios.md`.
+
+**What a user can do now**
+- **On a Mac:** open `Ducter.app` from the DMG (or `scripts/install.sh` + `ducter up`). Ducter
+  checks the Mac, shows only what blocks with a Run in Terminal fix, asks a name once (not when
+  Mem holds the identity), and opens on starters about the user's own recent repos.
+- **Talk and hand off work.** Quick answers in turn; bigger work becomes a task on Claude Code
+  or Codex in its own worktree on `ducter/<slug>`. Silence while it works.
+- **Decide.** A task's question arrives with a default as a living message and an On hand card:
+  Go / Hold / Reply, or 都按默认 / Go on all defaults.
+- **Get the result.** The partner's short outcome, with How I know, Outside and Merge / Draft PR /
+  See changes rendered from the typed report; Merge works by button.
+- **Open a task** to read its transcript, diff and dossier and talk to it directly (steered into
+  the running turn, or as the next turn); stop, drop with Undo, reopen, even after a restart.
+- **Reminders** (`wait_until` timers that survive restarts) and **browser tasks** on the Mac in
+  Ducter's own Chrome profile, with sign-ins typed by the user.
+- **Memory:** with Nowledge Mem, the partner recalls and saves durable things, shown as one
+  记下了 · <title> / Noted · <title> line.
+- **On a server:** `install.sh --service` runs Ducter as a systemd user service; the Mac app
+  connects with a pairing code over Caddy or an SSH tunnel; another machine joins as a worker
+  and runs tasks placed on it; a phone pairs from the `ducter pair` link and gets the phone web
+  client with notifications.
+
+**Measured**
+
+| What | Number | Source |
+|---|---|---|
+| Ack latency, user message → ack (sonnet) | **2.3 s** fresh session (zh), 3.5 s resumed after restart, 1.3 s warm (en); was 15.4 s / 7.2 s before the fixes | "How it went" below |
+| First reply in Ducter.app | 2.5 s; open → "Ducter is up" ~4 s | `onboarding.md` app path |
+| First five minutes, live (Mac, zh, Mem on) | ack 19 s, done 52 s, result 58 s; second run after merging main: ack 3 s, done 46 s, result 60 s | `onboarding.md` terminal path |
+| Flaky-test task (Claude Code) | open → done report 23 s, result message 4 s later | below |
+| Codex task | open → committed + done 37 s | below |
+| Go forwarded to the task | 0.4 s | below |
+| Parked Claude Code session resume | ~10 s | below |
+| Restart mid-task | resumed by native session id 9 s after boot | below |
+| Timer waiter | fired +1 ms, partner reminded 1.8 s later | below |
+| Browser lookups | 25–50 s per task; input tokens 332k → 140k after the token diet | `onboarding.md` browser |
+| Repo scan for starters | ~90 repos in under 0.2 s | `onboarding.md` |
+| Partner eval, sonnet | baseline 18/33 (55%) → tuned **62/66 (94%)** over 2 runs; with memory scenarios **79/82 (96%)**, memory 16/16 | `research/30`, eval results |
+| Partner eval, haiku floor | 14/17 (82%) | eval results |
+| Eval cost | ≈$0.93 per 33-scenario sonnet run; noise about ±3 scenarios per run | `research/30` |
+| Tests in the repo | about 241 `bun test` cases (core 66, cli 60, partner 53, runner 50, web 12) and 59 Go test functions in `apps/desktop` | counted from declarations on 2026-11-09, not a test run |
+
+**Verified, and how**
+- **Live on the author's Mac** (real Claude Code / Codex, sonnet): the whole slice below (message →
+  ack → task → decision → Go / Hold / Reply → result), merge by button, steer / prompt / stop /
+  drop / reopen, restart recovery, timers, partner `ask`, the terminal first run, Ducter.app from
+  the DMG (⌘Q, ⌘W and `kill -9` all stop the backend), browser tasks with a user sign-in.
+- **In Ubuntu VMs with the scripted model** (`research/29`): systemd service, linger, journald,
+  restart / SIGKILL / reboot survival, pairing and the token gate behind Caddy (plain HTTP on a
+  VM port), the SSH tunnel, the desktop over a tunnel, workers with offline → 在等 → resume, and
+  headless harness logins up to the human step.
+- **Headless only:** the desktop's mock screens and taste review, the app's blocked / name /
+  failed screens, the phone web client at 390×844 (one shot from a real sonnet run).
+- **Eval only (real model, fake tasks and Mem):** partner wording, safety asks, memory recall and
+  saves.
+- **Unit tests only:** Web Push (hold, coalescing, quiet hours, payload size), draft PR with a
+  fake `gh`.
+
+**Not verified yet**
+- A real `git push` + `gh pr create`; a real-harness task on a worker; Caddy with TLS on a real
+  VPS and domain; push on a real iPhone or Android; a live write into Nowledge Mem; a truly
+  blocked Mac walked through the app; opus as the partner.
+
+**Known gaps** (details and triggers in `docs/todo.md`)
+- Two results that land together still mention branches (eval `settle` 0/2).
+- Parked-session resume costs ~10 s; tasks can write outside their place (no sandbox on the Mac).
+- Loopback is token-free, so a shared host's other accounts count as local.
+- Browser: no env-gate proxy yet (the rules live in the brief), idle sessions close after 300 s,
+  sidecars aren't restarted after recovery.
+- The digest, re-cut and folds, routines, `until` loops, the Ducter Edge, passkeys, the
+  onboarding cartoon and the capability map are not built.
+- Ducter stops when the app's window closes (lifecycle pending the user's call).
 
 ## The slice, end to end (definition of done)
 
@@ -85,6 +165,7 @@ Every workstream codes against these. They live in `packages/protocol`:
 - **Projection:** no frozen digests, no re-cut, no folds. Resume when warm; start a fresh
   session from the last N events plus a rolling summary when cold.
 - **One persona, one device** (the Mac). Remote workers, the Edge, and phone web come next.
+  *(Workers and phone web landed overnight; the Edge did not.)*
 - **Routines and `until`:** only a timer `wait_until`. No proposal card yet.
 - **Onboarding:** a plain first-run checklist (detect the harness login and Mem), no cartoon
   yet.
@@ -199,7 +280,9 @@ What changed:
 
 ## Not tonight (next sessions)
 
-Frozen digest + recall index · expire-aware re-cut and folds · multiple devices + Ducter Edge +
-phone web · routines with proposal cards · body selection ranking · the Isles/metaphor ·
-onboarding cartoon · credentials vault (`research/25`) · multi-persona UI · computer use
-(macOS VMs).
+Frozen digest + recall index · expire-aware re-cut and folds · Ducter Edge · routines with
+proposal cards · body selection ranking · the Isles/metaphor · onboarding cartoon · credentials
+vault (`research/25`) · multi-persona UI · computer use (macOS VMs).
+
+Pulled in overnight after all (see "State of v1" above): multiple devices (server mode, code
+pairing, workers; D54), phone web with Web Push, Ducter.app, and the long-term memory slice.

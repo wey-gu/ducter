@@ -110,7 +110,12 @@ export function startCore(opts: CoreOptions = {}): Core {
   const gate = createGate({ auth: devices, personaName: () => persona.name });
   const workers = createWorkers({
     personaName: () => persona.name,
-    find: (d) => devices.list().find((x) => x.id === d || x.name === d),
+    // A disconnected (revoked) worker still resolves, as a link that is never online: its tasks
+    // show 连不上 / Can't reach and new ones are refused, instead of silently running here.
+    find: (d) => {
+      const hit = (x: { id: string; name: string; kind: string }) => x.kind === "worker" && (x.id === d || x.name === d);
+      return devices.list().find(hit) ?? devices.list({ all: true }).reverse().find(hit);
+    },
   });
   api.workers = workers; // the runner places tasks on workers through this (runner/src/remote.ts)
   const sockets = splitSockets(ws.websocket, workers, { isLive: (id) => devices.isLive(id), sweepMs: opts.sweepMs });

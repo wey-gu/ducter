@@ -122,7 +122,8 @@ export function createWorkers(opts: {
   }
   const states = new Map<string, State>();
   let nextId = 0;
-  const nameOf = (st: State) => live.get(st.device.id)?.hello?.name || st.device.name;
+  // The paired name is the worker's name: a hello can't rename it (or claim another worker's tasks).
+  const nameOf = (st: State) => st.device.name;
 
   function stateFor(device: Device): State {
     let st = states.get(device.id);
@@ -183,12 +184,12 @@ export function createWorkers(opts: {
     online: () =>
       [...live.values()].map(({ ws, hello }) => ({
         deviceId: ws.data.device.id,
-        name: hello?.name || ws.data.device.name,
+        name: ws.data.device.name,
         since: ws.data.since,
         ...(hello ? { hello } : {}),
       })),
     link(device) {
-      const byLive = [...live.values()].find((l) => l.ws.data.device.id === device || l.hello?.name === device || l.ws.data.device.name === device);
+      const byLive = [...live.values()].find((l) => l.ws.data.device.id === device || l.ws.data.device.name === device);
       const d = byLive?.ws.data.device ?? [...states.values()].find((st) => st.device.id === device || st.device.name === device)?.device ?? opts.find?.(device);
       if (!d || d.kind !== "worker") return undefined;
       return stateFor(d).link;
@@ -198,7 +199,7 @@ export function createWorkers(opts: {
         .filter((l) => l.hello)
         .map(({ ws, hello }) => ({
           id: ws.data.device.id,
-          name: hello!.name || ws.data.device.name,
+          name: ws.data.device.name,
           online: true,
           ...(hello!.os ? { os: hello!.os } : {}),
           ...(hello!.arch ? { arch: hello!.arch } : {}),

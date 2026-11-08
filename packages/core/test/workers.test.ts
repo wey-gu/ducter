@@ -127,3 +127,31 @@ test("WorkerLink over the real socket: requests, session frames, offline end on 
   await until(() => back === 1);
   s.ws!.close();
 });
+
+test("a worker's hello can't take another worker's name (and its tasks)", async () => {
+  const core = boot();
+  const pair = (name: string) => core.devices.redeem(core.devices.createCode({ kind: "worker" }).code, { name }) as { token: string; device: { id: string } };
+  const a = pair("vps-a");
+  const b = pair("vps-b");
+  for (const [p, claim] of [[b, "vps-b"], [a, "vps-b"]] as const) {
+    const s = await open(`ws://127.0.0.1:${core.port}/worker`, { ...REMOTE, authorization: `Bearer ${p.token}` });
+    stops.push(() => s.ws!.close());
+    s.ws!.send(JSON.stringify({ t: "hello", name: claim }));
+    await until(() => s.frames.some((f) => f.t === "welcome"));
+  }
+  expect(core.workers.link("vps-b")!.id).toBe(b.device.id);
+  expect(core.workers.link("vps-a")!.name).toBe("vps-a");
+  expect(core.workers.list().map((w) => w.name).sort()).toEqual(["vps-a", "vps-b"]);
+});
+
+test("a disconnected (revoked) worker still resolves, never online: its tasks don't fall back to this machine", () => {
+  const core = boot();
+  const w = core.devices.redeem(core.devices.createCode({ kind: "worker" }).code, { name: "vps-2" }) as { device: { id: string } };
+  core.devices.revoke(w.device.id);
+  const link = core.workers.link("vps-2");
+  expect(link?.id).toBe(w.device.id);
+  expect(link!.online()).toBe(false);
+  // A client device with that name is still not a worker.
+  core.devices.redeem(core.devices.createCode().code, { name: "mac" });
+  expect(core.workers.link("mac")).toBeUndefined();
+});

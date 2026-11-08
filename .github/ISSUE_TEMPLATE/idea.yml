@@ -1,0 +1,23 @@
+name: An idea
+description: Something Ducter could do, or do better.
+labels: [idea]
+body:
+  - type: textarea
+    id: moment
+    attributes:
+      label: The moment
+      description: Who are you in this moment, what are you trying to get done, and how does it feel today?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help
+      description: What you'd like Ducter to do. Sketches and examples are welcome.
+    validations:
+      required: true
+  - type: textarea
+    id: else
+    attributes:
+      label: Anything else
+      description: Workarounds you use now, similar tools, or links to the relevant design notes in docs/.

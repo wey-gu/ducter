@@ -14,11 +14,12 @@ import { DEFAULT_IDENTITY, type Persona } from "./persona.ts";
 import { createRegistry, type CoreRegistry } from "./registry.ts";
 import { registerCoreTools } from "./tools.ts";
 import { createWsHandler, type WsData } from "./ws.ts";
+import { createGate, openDeviceAuth, type DeviceAuth } from "./auth.ts";
 
 export interface CoreOptions {
   dataDir?: string;
   port?: number; // 0 = random (tests)
-  hostname?: string;
+  hostname?: string; // default env DUCTER_HOST or 127.0.0.1; anything else is an explicit choice
   persona?: Persona;
   clock?: Clock;
   defaultDelayMs?: number;
@@ -31,6 +32,7 @@ export interface Core extends CoreApi {
   mcp: CoreMcpHub;
   decisions: Decisions;
   living: Living;
+  devices: DeviceAuth;
   port: number;
   url: string; // ws URL for clients
   setRunner(r: Runner): void;
@@ -96,17 +98,23 @@ export function startCore(opts: CoreOptions = {}): Core {
 
   const api = { log, tasks, mcp, persona, dataDir } as CoreApi;
   const ws = createWsHandler({ core: api, decisions, runner: () => runner, batchMs: opts.batchMs });
+  const devices = openDeviceAuth(dataDir);
+  const gate = createGate({ auth: devices, personaName: () => persona.name });
 
   const server = Bun.serve<WsData>({
-    hostname: opts.hostname ?? "127.0.0.1",
+    hostname: opts.hostname ?? (process.env.DUCTER_HOST || "127.0.0.1"),
     port: opts.port ?? Number(process.env.DUCTER_PORT || 7777),
     idleTimeout: 120,
     async fetch(req, srv) {
       const url = new URL(req.url);
+      // Off-machine callers need a paired device token (auth.ts); /pair is answered here.
+      const g = await gate.check(req, srv.requestIP(req)?.address);
+      if (!g.pass) return g.response;
       if (url.pathname === "/ws") {
         // Block cross-site WebSocket hijacking from browser pages; native clients send no Origin.
+        // A device token can't ride along ambiently (no cookies), so it needs no origin check.
         const origin = req.headers.get("origin");
-        if (origin && !/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(origin)) return new Response("forbidden", { status: 403 });
+        if (g.via === "local" && origin && !/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(origin)) return new Response("forbidden", { status: 403 });
         return srv.upgrade(req, { data: ws.newData() }) ? undefined : new Response("upgrade failed", { status: 400 });
       }
       if (url.pathname === "/mcp") return mcp.handle(req);
@@ -125,6 +133,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     mcp,
     decisions,
     living,
+    devices,
     port,
     url: `ws://127.0.0.1:${port}/ws`,
     setRunner: (r) => void (runner = r),
@@ -139,6 +148,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       living.stop();
       void server.stop(true); // awaiting hangs in Bun 1.3 when a WebSocket was open
       log.close();
+      devices.close();
     },
   };
 }

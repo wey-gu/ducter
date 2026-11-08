@@ -58,6 +58,7 @@ never delete it.
 | D47 | Use **cua-driver** for browser and computer use. FSL-licensed parts are accepted for the open-source, self-deployed project; buy a license from cua if Ducter is ever commercialized. No heavy validation spike: integrate directly | U | `design/system.md` |
 | D48 | No real-Chrome attach. Instead, Ducter **maintains credentials and persistent logged-in profiles** (Muse-like) so it can do sustained work for the user, such as running social accounts | U | `design/system.md`, `research/25` |
 | D49 | **Build the first version tonight (~8 h)**: straighten the essentials → quick UI-flow prototype polish → parallel implementation with Claude Code agents. This supersedes AGENTS.md's "Ready to build" gate for this first slice | U | `docs/plan/v1-tonight.md` |
+| D50 | Capability map is **2D, not 3D**. Draw inspiration from 2D game design to express the metaphors and relationships (the three.js prototype is retired as a direction) | U | `design/ui.md`, `research/28` |
 
 ## Superseded
 

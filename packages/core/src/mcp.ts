@@ -27,6 +27,26 @@ export interface CoreMcpHub extends McpHub {
   call(ctx: Ctx, name: string, args: unknown): Promise<unknown>;
 }
 
+/**
+ * Minimal argument check against the tool's JSON schema: required keys present, and required
+ * string keys non-empty. Models do guess names (seen live: task_send called with `message`
+ * instead of `text`), and a silent undefined would reach the task as an empty turn.
+ */
+export function checkArgs(tool: string, schema: object, args: unknown) {
+  const s = schema as { required?: string[]; properties?: Record<string, { type?: string }> };
+  if (!s.required?.length) return;
+  const a = (args && typeof args === "object" ? args : {}) as Record<string, unknown>;
+  const bad = s.required.filter((k) => {
+    const v = a[k];
+    if (v === undefined || v === null) return true;
+    return s.properties?.[k]?.type === "string" && (typeof v !== "string" || !v.trim());
+  });
+  if (!bad.length) return;
+  const expected = Object.keys(s.properties ?? {}).map((k) => (s.required!.includes(k) ? k : `${k}?`));
+  const got = Object.keys(a);
+  throw new Error(`${tool}: missing or empty ${bad.join(", ")}. Expected arguments: ${expected.join(", ")}; got: ${got.join(", ") || "none"}.`);
+}
+
 const b64 = (s: string) => Buffer.from(s).toString("base64url");
 
 export function createMcpHub(opts: { secret: string; port?: number; version?: string }): CoreMcpHub {
@@ -49,6 +69,7 @@ export function createMcpHub(opts: { secret: string; port?: number; version?: st
   const call = async (ctx: Ctx, name: string, args: unknown) => {
     const tool = registry[ctx.role].get(name);
     if (!tool) throw new Error(`tool ${name} is not available to role ${ctx.role}`);
+    checkArgs(name, tool.inputSchema, args ?? {});
     return tool.handler(args ?? {}, ctx);
   };
 

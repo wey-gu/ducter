@@ -13,6 +13,7 @@ const HARNESSES: HarnessId[] = ["claude-code", "codex", "pi"];
 export interface RunnerOptions {
   harness?: HarnessPort; // default: OAR
   defaultHarness?: HarnessId;
+  defaultModel?: string; // default env DUCTER_TASK_MODEL; else the harness default
   partnerName?: string; // default core.persona.name
   newId?: () => string;
   now?: () => Date;
@@ -303,7 +304,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       const project = input.project ?? "";
       const persona = input.persona || core.persona.id;
 
-      const open: Bodies["task_open"] = { taskId: id, title, project, place: resolved.place, harness: h, model: input.model, brief: input.brief };
+      const model = input.model || (h === "claude-code" ? (opts.defaultModel ?? process.env.DUCTER_TASK_MODEL) || undefined : undefined);
+      const open: Bodies["task_open"] = { taskId: id, title, project, place: resolved.place, harness: h, model, brief: input.brief };
       const opened = core.log.append({ persona, stream: stream(id), origin: "system", kind: "task_open", body: open });
       const card: TaskCard = {
         taskId: id,
@@ -312,7 +314,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         project,
         place: resolved.place,
         harness: h,
-        model: input.model,
+        model,
         attention: "queued",
         residency: "provisioning",
         openedAt: opened.ts,
@@ -339,6 +341,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
 
     async send(taskId, text, mode, from = "partner") {
       const t = get(taskId);
+      if (typeof text !== "string" || !text.trim()) throw new Error("send needs non-empty text");
       if (t.dropped) throw new Error(`task ${taskId} was dropped`);
       await t.started.catch(() => {});
       t.nudged = false;

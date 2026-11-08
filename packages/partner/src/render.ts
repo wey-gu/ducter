@@ -60,7 +60,8 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
       const d = ctx.decision(b.decisionId);
       const about = d ? ` (task ${d.taskId}: "${d.question}")` : ` (decision ${b.decisionId})`;
       const by = b.by === "default" ? " by default" : "";
-      return `[decision resolved: ${b.option}${by}]${about}${b.text ? ` ${b.text}` : ""}`;
+      const fwd = b.option === "hold" ? " (the task keeps waiting)" : " (already forwarded to the task)";
+      return `[decision resolved: ${b.option}${by}]${about}${b.text ? ` ${b.text}` : ""}${fwd}`;
     }
     case "waiter": {
       const b = e.body as Bodies["waiter"];

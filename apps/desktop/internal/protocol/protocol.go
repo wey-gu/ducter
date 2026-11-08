@@ -140,7 +140,7 @@ type LivingItem struct {
 
 type Decision struct {
 	DecisionID    string `json:"decisionId"`
-	TaskID        string `json:"taskId"`
+	TaskID        string `json:"taskId,omitempty"` // "" = a partner-level decision
 	Question      string `json:"question"`
 	GoLabel       string `json:"goLabel"`
 	DefaultOption string `json:"defaultOption"` // go | hold

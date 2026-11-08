@@ -254,6 +254,10 @@ func (h *hub) seed() {
 	h.emitAt(past(12), ch, protocol.OriginPartner, protocol.KindDecision, protocol.Decision{DecisionID: "d-deps", TaskID: "t-deps", Question: "lockfile 一起提交吗？",
 		GoLabel: "提交", DefaultOption: "go", DefaultAt: time.Now().Add(48 * time.Minute).UTC().Format(time.RFC3339), Reversible: true}, 0)
 	state(past(12), "t-deps", protocol.NeedsYou, protocol.Warm, "")
+
+	// The partner's own ask, of no task, with no default: it waits.
+	h.emitAt(past(5), ch, protocol.OriginPartner, protocol.KindDecision, protocol.Decision{DecisionID: "d-brief", Question: "以后每天早上 9 点给你一份手头的简报，要吗？",
+		GoLabel: "每天发", DefaultOption: "hold", Reversible: false}, 0)
 }
 
 // seededDecided answers the seeded decision.
@@ -399,6 +403,7 @@ func (r *run) decided(option, text string) {
 	h.sleep(1000 * time.Millisecond)
 	r.tool("Bash", map[string]string{"command": "cargo test --workspace"}, "test result: ok. 412 passed; 0 failed\n", true)
 	h.emit(r.stream(), protocol.OriginTask, protocol.KindCheckpoint, protocol.Checkpoint{TaskID: r.task, Text: h.l("rebase 完成，全量测试通过", "Rebased; full suite green"), GitRef: "ducter/fix-ci"}, 0)
+	r.tool("Bash", map[string]string{"command": "git push -u origin ducter/fix-ci"}, "branch 'ducter/fix-ci' set up to track 'origin/ducter/fix-ci'.\n", true)
 	h.sleep(900 * time.Millisecond)
 	ev := []protocol.EvidenceRef{
 		{Kind: "ci", Label: h.l("CI run #48219 · 绿", "CI run #48219 · green"), Ref: "https://example.com/ci/48219"},
@@ -590,6 +595,10 @@ func (h *hub) handle(c *conn, f protocol.ClientFrame) {
 	case "send":
 		h.startRun(f.Text, f.ClientID)
 	case "decide":
+		if f.DecisionID == "d-brief" {
+			go h.emit("channel", protocol.OriginSystem, protocol.KindDecisionResolved, protocol.DecisionResolved{DecisionID: f.DecisionID, Option: f.Option, Text: f.Text, By: "user"}, 0)
+			return
+		}
 		if f.DecisionID == "d-deps" {
 			go h.seededDecided(f.DecisionID, f.Option)
 			return

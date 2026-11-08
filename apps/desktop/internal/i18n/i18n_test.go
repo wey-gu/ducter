@@ -124,3 +124,11 @@ func TestDetect(t *testing.T) {
 		t.Errorf("en order: %q", got)
 	}
 }
+
+func TestFromText(t *testing.T) {
+	for text, want := range map[string]Lang{"帮我修 CI": ZH, "fix the flaky test": EN, "ok": "", "123 !": ""} {
+		if got := FromText(text); got != want {
+			t.Errorf("%q: %q, want %q", text, got, want)
+		}
+	}
+}

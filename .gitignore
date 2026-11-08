@@ -8,3 +8,4 @@ out/
 .env.*
 .ducter/
 apps/desktop/bin/
+.claude/

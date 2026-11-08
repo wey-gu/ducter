@@ -142,6 +142,7 @@ func (a *App) View(c *ui.Context) {
 		a.mdTask.Theme = a.markdownTheme(14, 1.55)
 	}
 	c.SetTheme(a.uiTheme)
+	a.drainActionResults(c)
 	a.shortcuts(c)
 	ui.Column(c).Fill().Background(a.T.Bg).TextColor(a.T.Ink).Font(a.T.Body).Children(func() {
 		switch {

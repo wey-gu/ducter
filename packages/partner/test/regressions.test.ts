@@ -174,6 +174,19 @@ describe("live-run regressions", () => {
     expect(fc.events.filter((e) => e.kind === "ai_msg").map((e) => (e.body as any).text)).toEqual(["顺便问一下：要不要同时更新 README？"]);
   });
 
+  test("handing work to an existing task: the line before task_send is the ack, filler after it is dropped", async () => {
+    const { fc, partner, user } = setup(async (_i, s) => {
+      s.say("我给 slugify 加上可选的分隔符参数。");
+      s.emit({ role: "tool", tool: { name: "mcp__ducter__task_send", input: { taskId: "t1", text: "add sep" } } });
+      s.emit({ role: "tool", tool: { name: "mcp__ducter__task_send", output: "{}", ok: true } });
+      s.say("已经交给它去做了，做完会告诉您结果。");
+      s.end();
+    });
+    user("再给 slugify 加一个可选的分隔符参数");
+    await partner.idle();
+    expect(fc.events.filter((e) => e.kind === "ai_msg").map((e) => (e.body as any).text)).toEqual(["我给 slugify 加上可选的分隔符参数。"]);
+  });
+
   test("prewarm off: no session until the first trigger", async () => {
     const { fr, partner, user } = setup(ok, { prewarm: false });
     await Bun.sleep(5);

@@ -85,6 +85,7 @@ interface Job {
 
 const COLD_MS = 55 * 60 * 1000;
 const TASK_OPEN_RE = /(^|__)task_open$/;
+const TASK_SEND_RE = /(^|__)task_send$/;
 const QUIET_TOOL_RE = /(^ToolSearch$)|((^|__)(log_search|log_read|task_read)$)/;
 
 /** Same rule as core's triggersPartner (principle 6). */
@@ -261,6 +262,14 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       return;
     }
     if (ev.tool) {
+      // Handing more work to an existing task is an action like opening one: the line before
+      // it is the ack, and a short line after it is filler (live: "已经交给它去做了，做完会告诉您结果。").
+      if (TASK_SEND_RE.test(ev.tool.name) && !turn.acked && turn.pending !== null && turn.pending.trim()) {
+        const line = turn.pending;
+        turn.pending = null;
+        appendAiMsg(line);
+        turn.acked = true;
+      }
       if (TASK_OPEN_RE.test(ev.tool.name)) {
         const kind = (ev.raw as { kind?: string } | undefined)?.kind;
         // One call yields up to three stream events (started, title, ended); count calls by

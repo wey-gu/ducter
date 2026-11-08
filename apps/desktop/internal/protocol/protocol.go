@@ -394,7 +394,7 @@ type TaskSend struct {
 type TaskAction struct {
 	T      string `json:"t"` // "task_action"
 	TaskID string `json:"taskId"`
-	Action string `json:"action"` // interrupt | drop | reopen
+	Action string `json:"action"` // interrupt | drop | undrop | reopen | merge | open_pr
 }
 
 type Read struct {
@@ -441,6 +441,10 @@ type ServerFrame struct {
 	TaskID      string     `json:"taskId,omitempty"`
 	Delivered   Delivery   `json:"delivered,omitempty"` // sent: how a task_send was delivered
 	Message     string     `json:"message,omitempty"`
+	// action_result: the outcome of a task_action (merge, open_pr, ...).
+	Action string `json:"action,omitempty"`
+	OK     bool   `json:"ok,omitempty"`
+	Ref    string `json:"ref,omitempty"` // merge commit or PR URL
 }
 
 // Delivery is how a task_send reached its task: steered in mid-turn, as
@@ -460,7 +464,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 		return f, err
 	}
 	switch f.T {
-	case "welcome", "events", "on_hand", "task_history", "sent", "error":
+	case "welcome", "events", "on_hand", "task_history", "sent", "action_result", "error":
 	default:
 		return f, fmt.Errorf("unknown server frame %q", f.T)
 	}

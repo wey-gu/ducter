@@ -113,7 +113,7 @@ func finish(h *harness, id, title string) {
 func TestTheFirstResultIsCelebratedOnce(t *testing.T) {
 	dir := hintsDir(t, hintsJSON)
 	h := newWelcome(t, i18n.ZH, dir, false)
-	line := "第一件事做完了。以后做完的事，我都会这样带着证据交回给你。"
+	line := "第一件事做完了。以后做完的事都会这样回到你这儿，还会告诉你我怎么确认的。"
 	finish(h, "t1", "修好 ducter 里没过的测试")
 	if !h.tt.HasText(line) {
 		t.Fatalf("no first-result line: %q", h.tt.Texts())

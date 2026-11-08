@@ -34,10 +34,13 @@ cleanly. `ab_web` needed its enclosed window interior refilled from the raw imag
 
 ## Browser places: gaps left by the v1 slice (W5)
 
-`packages/runner/src/browser.ts` attaches cua-driver directly (D47). Still open:
+`packages/runner/src/browser.ts` attaches cua-driver directly (D47). Verified live on 0.44.0
+(see `design/onboarding.md`, "The browser, first time"). Still open:
 
-- [ ] Live proof on cua-driver ≥ the typed-browser-tools release (blocked: the author's Mac has 0.6.8; trigger: `cua-driver update --apply` approved)
-- [ ] env-gate MCP proxy: ~12 curated tools, untrusted-content framing, domain policy, submit/pay as intents (today the rule lives only in the task brief)
+- [ ] env-gate MCP proxy: ~12 curated tools, untrusted-content framing, domain policy, submit/pay as intents (today the rule lives only in the task brief). The driver exposes ~60 tools, and one lookup cost ~460k input tokens (mostly cache reads).
+- [ ] Sign-in handoff: the driver ends an idle browser session after 300 s (SIGKILL), so a user signing in while the task waits on needs_input can lose the window. Keep the session alive while a task needs the user, or close it cleanly first.
+- [ ] Cookie durability depends on Ducter's clean quit (CDP `Browser.close` on done/failed/drop). A crash, or a task that calls `end_session` anyway, can still lose sign-ins from the last ~30 s.
 - [ ] Profile exclusivity in the runner: a second browser task for the same persona waits (today the driver refuses and the task reports blocked)
-- [ ] If Ducter's cua-driver daemon dies mid-task, `mcp --socket` relaunches it without `CUA_DRIVER_BROWSER_PROFILE_ROOT`, so the profile would land in the driver's default root; supervise the daemon instead
-- [ ] Screenshot evidence path (`cua-driver call get_window_state ... --screenshot-out-file`) is unverified; Screen tab and takeover come later
+- [ ] If Ducter's cua-driver daemon dies mid-task, `mcp --socket` relaunches it without `CUA_DRIVER_BROWSER_PROFILE_ROOT`, so the profile would land in the driver's default root; supervise the daemon instead. Ducter also leaves its daemon running after it exits.
+- [ ] Snapshots carry no link targets (href); tasks fall back to page URLs or fetching public HTML. Ask cua for hrefs in `semantic_v2`, or read them through the env-gate.
+- [ ] The Ducter browser looks like the user's Chrome (same Dock icon, same window). Proposal, pending the change loop: on launch, Ducter uses the browser's own CDP endpoint to badge its Dock tile (`Browser.setDockTile`) and park the window in one predictable spot (`Browser.setWindowBounds`). The status line names it ("in the Ducter browser") with a Show button. Screen tab and takeover come later.

@@ -20,6 +20,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import type { Place } from "@ducter/protocol";
 import type { StdioMcpConfig } from "@ducter/protocol/src/internal.ts";
+import { createFocusGuard, macFocusProbe, type FocusGuard, type FocusProbe } from "./focus-guard.ts";
 
 export const BROWSER_MCP_NAME = "browser";
 /** Typed browser tools arrived in cua-driver-rs 2026-07; 0.6.x has only the legacy `page` tool. */
@@ -38,6 +39,66 @@ export interface BrowserOptions {
   /** How long to wait for the daemon to listen (default 15 s). */
   daemonTimeoutMs?: number;
   platform?: NodeJS.Platform;
+  /** macOS: put back the user's app when a freshly launched Ducter Chrome takes focus (default on). */
+  focusGuard?: boolean;
+  /** Test seam for the focus guard. */
+  focusProbe?: FocusProbe;
+  /** Test seam: how a profile's browser is closed. */
+  closeBrowser?: (profileDir: string) => Promise<boolean>;
+}
+
+/**
+ * Quit a Ducter browser through its own DevTools endpoint (CDP Browser.close).
+ *
+ * Why: cua-driver ends a driver-owned browser with SIGKILL (end_session, idle expiry), and
+ * Chrome commits cookies to disk only about every 30 s, so a sign-in made shortly before is
+ * lost (observed 2026-11-09, Chrome 157, cua-driver 0.44.0). SIGTERM does not quit Chrome on
+ * macOS. Browser.close shuts it down cleanly and the cookies are saved.
+ */
+export async function closeBrowserGracefully(profileDir: string, timeoutMs = 5_000): Promise<boolean> {
+  let port: string | undefined;
+  let path: string | undefined;
+  try {
+    [port, path] = (await Bun.file(join(profileDir, "DevToolsActivePort")).text()).trim().split("\n");
+  } catch {
+    return false;
+  }
+  if (!port || !/^\d+$/.test(port) || !path?.startsWith("/devtools/browser/")) return false;
+  return await new Promise<boolean>((resolve) => {
+    let done = false;
+    const finish = (v: boolean) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      try {
+        ws.close();
+      } catch {
+        /* already closed */
+      }
+      resolve(v);
+    };
+    const timer = setTimeout(() => finish(false), timeoutMs);
+    const ws = new WebSocket(`ws://127.0.0.1:${port}${path}`);
+    let opened = false;
+    ws.onopen = () => {
+      opened = true;
+      ws.send(JSON.stringify({ id: 1, method: "Browser.close" }));
+    };
+    ws.onmessage = (m) => {
+      if (/"id":1\b/.test(String(m.data))) finish(true);
+    };
+    ws.onerror = () => finish(false); // stale port file: the browser is not running
+    ws.onclose = () => finish(opened);
+  });
+}
+
+/** One focus guard per Ducter daemon (socket). */
+const guards = new Map<string, FocusGuard>();
+
+/** Stop every focus guard (runner dispose, tests). */
+export function stopFocusGuards(): void {
+  for (const g of guards.values()) g.stop();
+  guards.clear();
 }
 
 export interface CuaDriverInfo {
@@ -52,6 +113,8 @@ export interface BrowserSidecar {
   brief: string;
   /** Start (or reuse) the daemon with the profile root; create the evidence dir. */
   ready(): Promise<void>;
+  /** Quit this profile's browser gracefully so it saves cookies (sign-ins). No-op if not running. */
+  close(): Promise<boolean>;
   profileDir: string;
   evidenceDir: string;
   socket: string;
@@ -178,6 +241,18 @@ export async function browserSidecar(input: SidecarInput, opts: BrowserOptions =
     mkdirSync(root, { recursive: true, mode: 0o700 });
     mkdirSync(dirname(socket), { recursive: true });
     mkdirSync(evidenceDir, { recursive: true });
+    await startDaemon();
+    if (found.app && opts.focusGuard !== false) {
+      let g = guards.get(socket);
+      if (!g) {
+        g = createFocusGuard({ probe: opts.focusProbe ?? macFocusProbe(exec, found.bin, socket, root) });
+        guards.set(socket, g);
+      }
+      g.arm();
+    }
+  }
+
+  async function startDaemon() {
     if (await running()) return;
     const envArgs = Object.entries(daemonEnv).flatMap(([k, v]) => ["--env", `${k}=${v}`]);
     // `serve` first, then its flags: the same argv cua-driver's own proxy uses.
@@ -203,6 +278,7 @@ export async function browserSidecar(input: SidecarInput, opts: BrowserOptions =
   }
 
   return {
+    close: () => (opts.closeBrowser ?? closeBrowserGracefully)(join(root, name)),
     mcp: { name: BROWSER_MCP_NAME, command: found.bin, args: ["mcp", "--socket", socket] },
     brief: browserBrief({ partnerName: input.partnerName, profile: name, session, bin: found.bin, socket, evidenceDir }),
     ready,
@@ -233,7 +309,10 @@ You drive a real Chrome window through the \`${s}\` MCP server (cua-driver). Its
 2. \`list_windows\` with {"pid":<prepared_pid>}, then bind: \`get_browser_state\` with {"pid":<pid>,"window_id":<id>,"session":"${b.session}"}. Continue only when it says mutation_allowed.
 3. Read: \`get_browser_state\` with {"target_id","tab_id","session":"${b.session}","snapshot_format":"semantic_v2"}.
 4. Act with \`browser_navigate\`, \`browser_click\`, \`browser_type\`, using refs from the latest snapshot; snapshot again after every action.
-5. Pass "session":"${b.session}" on every call that accepts it. When you are finished, call \`end_session\` with that session (the browser closes; the profile stays).
+5. Pass "session":"${b.session}" on every call that accepts it. If a call says that session has ended (for example when you continue later), open the browser again from step 1 with "session":"${b.session}-2" (then -3, ...).
+6. Do not call \`end_session\` and do not close the browser yourself. When you report done or failed, ${b.partnerName} closes it cleanly so sign-ins are saved; \`end_session\` kills it and can lose a fresh sign-in.
+
+Snapshots do not include link targets (href). To get a link's URL, read the page URL after you navigate or click to it, or fetch the public page's HTML from your shell. Do not use the legacy \`page\` tool: it cannot read this browser.
 
 If \`browser_prepare\` says the profile is in use, another task has the browser: report state "blocked" saying so.
 
@@ -248,8 +327,9 @@ Never sign in, type passwords or one-time codes, accept terms, solve CAPTCHAs, s
 ### Evidence
 
 - Attach every page you relied on as {kind:"url", label:"<page title>", ref:"<url>"}.
+- Links the user asked for (results, articles, products) also go in evidence, one {kind:"url"} each, labelled with their title. The summary is cut at 600 characters, so never rely on it to carry URLs.
 - A screenshot is welcome when the look of the page matters. Take it from your shell (needs the pid and window_id from step 2):
-  \`${b.bin} call get_window_state '{"pid":<pid>,"window_id":<id>}' --socket ${b.socket} --screenshot-out-file ${b.evidenceDir}/<name>.png\`
+  \`${b.bin} call get_window_state '{"pid":<pid>,"window_id":<id>}' --socket ${b.socket} --screenshot-out-file ${b.evidenceDir}/<name>.png > /dev/null\`
   then attach {kind:"file", label:"screenshot", ref:"${b.evidenceDir}/<name>.png"}. If it fails, URLs are enough.
 `;
 }

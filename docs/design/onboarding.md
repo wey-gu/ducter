@@ -110,7 +110,14 @@ from the test harness signalling its own wrapper shell, not from Ducter.
 
 `scripts/make-app.sh` builds `Ducter.app` (desktop binary in `Contents/MacOS`, the `ducter` CLI
 in `Contents/Helpers`, `AppIcon.icns` drawn by `apps/desktop/cmd/appicon` from the clay
-character) and a `.dmg` with an Applications shortcut. Ad-hoc signed, not notarized.
+character) and a `.dmg` with an Applications shortcut. Bundle id `co.nowledge.ducter` (helper
+`co.nowledge.ducter.cli`), following `co.nowledge.con` and `co.nowledge.mem.desktop`. With the
+Nowledge Labs Developer ID in the keychain, both the app and the `.dmg` are signed (hardened
+runtime, timestamp), notarized, and stapled, so a friend's first open is the ordinary "downloaded
+from the Internet" prompt with Open, and no System Settings detour. The helper's only
+entitlement is `com.apple.security.cs.allow-jit` (`scripts/macos/ducter-cli.entitlements`:
+without it Bun's JIT dies under the hardened runtime). Without an identity the script falls back
+to ad-hoc signing and the README's Open Anyway steps.
 
 **Lifetime (D55: Ducter keeps running when the window closes).** The window is a view;
 Ducter is the one doing the work, so neither closing the window nor ⌘Q stops it.
@@ -173,6 +180,14 @@ Privacy & Security were seen; pressing Open Anyway was not (it needs the owner's
 **Headless only:** the blocked, name, failed screens and the CLI offer (a fake backend in
 `setup_test.go`); a real blocked Mac was not walked. **Not verified:** a helper binary still
 carrying quarantine after Open Anyway (the app clears the flag on its own helper, best effort).
+
+**Signed build, verified 2026-11-09** (D55): Apple accepted both submissions; on a copy of the
+DMG with a Safari quarantine flag, `spctl -a -t open --context context:primary-signature` says
+*accepted, source=Notarized Developer ID*, and so does `spctl -a -vv` on the app in the mounted
+image and on a copy of it (`syspolicy_check distribution`: ready for distribution). The copied
+app, launched with a scratch `dev.env`, ran doctor and `ducter up` under the hardened runtime
+and served in ~5 s; quitting stopped the helper. The first-open "downloaded from the Internet"
+dialog itself was not clicked through (it needs a person).
 
 ## The cartoon (≈ 25 s, skippable, replayable from Settings)
 

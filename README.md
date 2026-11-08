@@ -50,21 +50,28 @@ Send the `.dmg` (AirDrop, a link, a USB stick). It holds `Ducter.app` (the deskt
 the `ducter` CLI inside it) and an Applications shortcut. The build is for your Mac's CPU
 (Apple silicon builds run only on Apple silicon).
 
-**The app is not signed by Apple.** It is signed ad hoc (`codesign -s -`), not with a
-Developer ID, and not notarized. So the first open needs one extra step. On **macOS 15
-(Sequoia)** right-click → Open no longer gets past this; the way through is System Settings:
+**On a Mac with the Nowledge Labs Developer ID** (in the keychain) the app is signed with it,
+hardened runtime on, notarized by Apple, and stapled, and so is the `.dmg`. Notarization needs
+one set of credentials, the same ones con and Nowledge Mem use; for example:
 
-1. Double-click the `.dmg`, drag **Ducter** onto **Applications**, then open Ducter from
-   Applications.
-2. macOS says **"“Ducter” Not Opened"**: *"Apple could not verify “Ducter” is free of malware
-   that may harm your Mac or compromise your privacy."* Buttons: **Done** and **Move to
-   Trash**. Click **Done**.
-3. Open **System Settings → Privacy & Security** and scroll down to Security. It says
-   *"“Ducter” was blocked to protect your Mac."* Click **Open Anyway**, then **Open Anyway**
-   again in the dialog that follows, and confirm with Touch ID or your password.
-4. Ducter opens. From then on it opens like any app.
+```sh
+(set -a; . ~/private-env.rc; set +a; scripts/make-app.sh)   # APPLE_ID, APPLE_PASSWORD, APPLE_TEAM_ID
+```
 
-(On macOS 14 and earlier, steps 2 and 3 are simply right-click → Open → Open.)
+`scripts/make-app.sh` (top of the file) lists the other ways: a `notarytool` keychain profile
+(`DUCTER_NOTARY_PROFILE`) or an App Store Connect API key. The friend then just:
+
+1. Double-clicks the `.dmg` and drags **Ducter** onto **Applications**.
+2. Opens Ducter from Applications. macOS asks once, *"“Ducter” is an app downloaded from the
+   Internet. Are you sure you want to open it?"*, and names the developer. **Open**.
+
+No System Settings, no Open Anyway. It works offline too: the notarization ticket is stapled.
+
+**Without a Developer ID** (someone else's Mac), the script falls back to ad-hoc signing
+(`codesign -s -`, not notarized) and the first open needs the extra step. On **macOS 15
+(Sequoia)** right-click → Open no longer gets past it: open Ducter, click **Done** on
+*"“Ducter” Not Opened"*, then **System Settings → Privacy & Security → Open Anyway** (twice) and
+Touch ID or your password. On macOS 14 and earlier it is right-click → Open → Open.
 
 **What happens next, with no terminal**
 

@@ -4,9 +4,23 @@
 #   scripts/make-app.sh             # dist/Ducter.app and dist/Ducter-<version>-<arch>.dmg
 #   scripts/make-app.sh OUTDIR
 #
-# Needs Bun and Go on this Mac; the friend needs neither. The app is signed ad hoc
-# (codesign -s -), never with a Developer ID, so the friend opens it the first time with
-# right-click > Open (README.md, "Give Ducter to a friend"). Nothing outside OUTDIR changes.
+# Needs Bun and Go on this Mac; the friend needs neither. Nothing outside OUTDIR changes.
+#
+# Signing (same Apple team and credential names as con and Nowledge Mem):
+#   - With a Developer ID Application identity (DUCTER_SIGN_IDENTITY, a name or SHA-1; by
+#     default the "Developer ID Application: Nowledge Labs, LLC" one in the keychain, if any),
+#     every Mach-O is signed inside out with the hardened runtime and a secure timestamp, the
+#     app is notarized and stapled, and so is the disk image. The friend just opens it.
+#   - Notarization credentials, the first set that is complete wins:
+#       DUCTER_NOTARY_PROFILE                          a `notarytool store-credentials` profile
+#       APPLE_NOTARY_KEY_ID + APPLE_NOTARY_ISSUER_ID + APPLE_NOTARY_KEY_PATH   (con's names;
+#         APPLE_API_KEY + APPLE_API_ISSUER also work, key from ~/.appstoreconnect/private_keys)
+#       APPLE_ID + APPLE_PASSWORD (or APPLE_APP_SPECIFIC_PASSWORD) + APPLE_TEAM_ID  (Mem's names,
+#         e.g. `. ~/private-env.rc` first)
+#     Signed but none of these: the build is signed, not notarized, and says so.
+#     DUCTER_REQUIRE_NOTARIZATION=1 makes that an error.
+#   - No identity (or DUCTER_SIGN_IDENTITY=-): signed ad hoc (codesign -s -), and the friend
+#     needs the Open Anyway steps in README.md, "Give Ducter to a friend".
 #
 # Inside the app:
 #   Contents/MacOS/Ducter          the desktop app (apps/desktop)
@@ -22,7 +36,8 @@ mkdir -p "$OUT"
 OUT="$(cd "$OUT" && pwd)"
 
 NAME=Ducter
-ID=dev.ducter.app
+# Reverse DNS of nowledge.co, like co.nowledge.con and co.nowledge.mem.desktop.
+ID=co.nowledge.ducter
 VERSION="$(sed -n 's/^ *"version": *"\([^"]*\)".*/\1/p' "$ROOT/packages/cli/package.json" | head -1)"
 COMMIT="$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)"
 ARCH="$(uname -m)"
@@ -110,11 +125,66 @@ cat >"$APP/Contents/Info.plist" <<EOF
 </plist>
 EOF
 plutil -lint "$APP/Contents/Info.plist" >/dev/null
-# Ad hoc: the helper first, then the bundle around it. No identity from any keychain.
-codesign --force --sign - --identifier "$ID.cli" "$APP/Contents/Helpers/ducter"
-codesign --force --sign - --identifier "$ID" "$APP"
+
+ENT="$ROOT/scripts/macos/ducter-cli.entitlements"
+IDENTITY="${DUCTER_SIGN_IDENTITY:-$(security find-identity -v -p codesigning 2>/dev/null |
+  sed -n 's/^ *[0-9]*) \([0-9A-F]\{40\}\) "Developer ID Application: Nowledge Labs, LLC.*/\1/p' | head -1)}"
+[ -n "$IDENTITY" ] || IDENTITY=-
+if [ "$IDENTITY" = - ]; then
+  # Ad hoc: the helper first, then the bundle around it. No identity from any keychain.
+  codesign --force --sign - --identifier "$ID.cli" "$APP/Contents/Helpers/ducter"
+  codesign --force --sign - --identifier "$ID" "$APP"
+  SIGNED="ad-hoc signed"
+else
+  # Inside out: the helper, then the bundle, which signs Contents/MacOS/Ducter with it.
+  # Hardened runtime + timestamp on both. The helper's one entitlement is allow-jit:
+  # JavaScriptCore maps MAP_JIT pages, and without it a Bun binary dies with "Ran out of
+  # executable memory" once code gets hot (tested with Bun 1.4.4). The CLI loads no native
+  # addons, so library validation stays on; the desktop binary needs no entitlements.
+  codesign --force --timestamp --options runtime --sign "$IDENTITY" \
+    --identifier "$ID.cli" --entitlements "$ENT" "$APP/Contents/Helpers/ducter"
+  codesign --force --timestamp --options runtime --sign "$IDENTITY" --identifier "$ID" "$APP"
+  SIGNED="signed by $(codesign -dvv "$APP" 2>&1 | sed -n 's/^Authority=Developer ID Application: //p')"
+fi
 codesign --verify --strict --deep "$APP"
 "$APP/Contents/Helpers/ducter" version >/dev/null
+
+# notarize FILE: submit to Apple's notary service and wait. Returns 1 when no credentials.
+notarize() {
+  if [ -n "${DUCTER_NOTARY_PROFILE:-}" ]; then
+    set -- "$1" --keychain-profile "$DUCTER_NOTARY_PROFILE"
+  elif [ -n "${APPLE_NOTARY_KEY_ID:-${APPLE_API_KEY:-}}" ] && [ -n "${APPLE_NOTARY_ISSUER_ID:-${APPLE_API_ISSUER:-}}" ]; then
+    k="${APPLE_NOTARY_KEY_ID:-$APPLE_API_KEY}"
+    set -- "$1" --key "${APPLE_NOTARY_KEY_PATH:-$HOME/.appstoreconnect/private_keys/AuthKey_$k.p8}" \
+      --key-id "$k" --issuer "${APPLE_NOTARY_ISSUER_ID:-$APPLE_API_ISSUER}"
+  elif [ -n "${APPLE_ID:-}" ] && [ -n "${APPLE_PASSWORD:-${APPLE_APP_SPECIFIC_PASSWORD:-}}" ] && [ -n "${APPLE_TEAM_ID:-}" ]; then
+    set -- "$1" --apple-id "$APPLE_ID" --password "${APPLE_PASSWORD:-$APPLE_APP_SPECIFIC_PASSWORD}" \
+      --team-id "$APPLE_TEAM_ID"
+  else
+    return 1
+  fi
+  echo "notarizing $(basename "$1") (a few minutes)"
+  xcrun notarytool submit "$@" --wait --timeout 30m >"$WORK/notary.log" 2>&1 || true
+  if ! grep -q 'status: Accepted' "$WORK/notary.log"; then
+    cat "$WORK/notary.log" >&2
+    sub="$(sed -n 's/^ *id: //p' "$WORK/notary.log" | head -1)"
+    [ -z "$sub" ] || echo "Apple's log: xcrun notarytool log $sub <same credentials>" >&2
+    exit 1
+  fi
+}
+
+NOTARIZED=no
+if [ "$IDENTITY" != - ]; then
+  ditto -c -k --keepParent "$APP" "$WORK/$NAME.zip"
+  if notarize "$WORK/$NAME.zip"; then
+    xcrun stapler staple -q "$APP"
+    NOTARIZED=yes
+  elif [ "${DUCTER_REQUIRE_NOTARIZATION:-0}" = 1 ]; then
+    echo "No notarization credentials (see the top of $0)." >&2; exit 1
+  else
+    echo "No notarization credentials: signed but not notarized (see the top of $0)." >&2
+  fi
+fi
 
 say "5/5 the disk image"
 STAGE="$WORK/dmg"
@@ -124,5 +194,17 @@ ln -s /Applications "$STAGE/Applications"
 DMG="$OUT/$NAME-$VERSION-$ARCH.dmg"
 rm -f "$DMG"
 hdiutil create -quiet -volname "$NAME" -srcfolder "$STAGE" -fs HFS+ -format UDZO -ov "$DMG"
+if [ "$IDENTITY" != - ]; then
+  codesign --force --timestamp --sign "$IDENTITY" --identifier "$ID.dmg" "$DMG"
+  if [ "$NOTARIZED" = yes ]; then
+    notarize "$DMG"
+    xcrun stapler staple -q "$DMG"
+    # Gatekeeper's own verdicts, as a friend's Mac would give them.
+    spctl -a -vv "$APP"
+    spctl -a -t open --context context:primary-signature -v "$DMG"
+    xcrun stapler validate -q "$APP" && xcrun stapler validate -q "$DMG"
+    SIGNED="$SIGNED, notarized"
+  fi
+fi
 
-printf '\n  %s\n  %s\n  %s (%s)\n' "$APP" "$DMG" "$NAME $VERSION" "$COMMIT, $ARCH, ad-hoc signed"
+printf '\n  %s\n  %s\n  %s (%s)\n' "$APP" "$DMG" "$NAME $VERSION" "$COMMIT, $ARCH, $SIGNED"

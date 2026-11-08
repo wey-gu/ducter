@@ -784,7 +784,7 @@ None beyond the line fading in once. Isolation is a fact, not an event.
 | sandbox | 碰不到你的文件 / Can't touch your files | G7 | Always followed by its plain meaning; see GQ8 |
 | May touch on tasks | 可以碰 / May touch | G7 | Already in the glossary for routines [doc D51]; extended to tasks |
 
-## Open questions (decided 2026-11-09: rule 1 as D60, the rest as D61; see `docs/decisions.md` for the two changes)
+## Open questions (decided 2026-11-09 as D61; GQ8 changed: no 沙盒 noun, see `docs/decisions.md`)
 
 | # | Question | Recommendation (default) | Why it matters |
 |---|---|---|---|

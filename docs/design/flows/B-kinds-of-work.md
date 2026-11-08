@@ -373,7 +373,7 @@ As B3, with one lease per repo write set; `blocked` if either lease is busy.
 5. User types email + password. Nothing from this screen reaches the model (frames during
    takeover are not captured into the transcript; typed text never logged).
 6. **2FA:** the site sends a push to the user's phone authenticator. The banner offers "我在手
-   机上批了 / I approved it on my phone". Or the user types the code directly in takeover.
+   机上点了同意 / I approved it on my phone". Or the user types the code directly in takeover.
 7. User taps **还给它 / Give it back** [new]. Gate runs the probe; on `signed_in`, a toast:
    "Cloudflare 登好了，以后会记住 / Signed in to Cloudflare; it'll stay signed in". The
    agent resumes; state `working`.
@@ -416,7 +416,7 @@ filling? → agent` [new state names, internal only]. Residency stays `hot` duri
 | `screen.handback` | 还给它 | Give it back |
 | `screen.banner.human` | 你在操作 · {name} 暂停了 | You're in control · {name} is paused |
 | `screen.private_note` | 这段画面和输入不会给到 AI | This screen and what you type here never reach the AI |
-| `login.2fa.approved_on_phone` | 我在手机上批了 | I approved it on my phone |
+| `login.2fa.approved_on_phone` | 我在手机上点了同意 | I approved it on my phone |
 | `login.ok` | {site} 登好了，以后会记住 | Signed in to {site}; it'll stay signed in |
 | `login.not_yet.q` | 还没登上，要再接手吗？ | Not signed in yet. Take over again? |
 | `browser.busy` | 在等 · 浏览器被占用 | Waiting · browser in use |
@@ -563,7 +563,7 @@ Branches:
   armed.
 - **5b. PR closed:** waiter ends; "#12 被关了，没合。" No default action.
 - **Deadline:** none by default. After 7 days waiting, a quiet line in the living message
-  ("#12 等了 7 天还没批") with "继续等 / Keep waiting" (default) and "不等了 / Stop waiting".
+  ("#12 等了 7 天还没通过") with "继续等 / Keep waiting" (default) and "不等了 / Stop waiting".
 - **GitHub token lacks access:** `needs-you` immediately (auth errors go to the user), never a
   silent waiter that can't see anything.
 - **User asks "还在等吗？":** answered in turn from the waiter's state, including last check time.

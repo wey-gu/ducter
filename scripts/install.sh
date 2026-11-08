@@ -1,19 +1,26 @@
 #!/bin/sh
-# Installs Ducter on this Mac: the `ducter` binary, plus the desktop app when Go is present.
+# Installs Ducter on this Mac or Linux server: the `ducter` binary, plus the desktop app when Go
+# is present (Mac only).
 #
 #   scripts/install.sh                      # build from this checkout, install to ~/.local/bin
 #   scripts/install.sh --prefix /opt/ducter # install to /opt/ducter/bin
 #   scripts/install.sh --from DIR           # install prebuilt binaries from DIR (no build tools needed)
 #   scripts/install.sh --bundle DIR         # build a folder you can hand to a friend:
 #                                           #   DIR/ducter, DIR/ducter-desktop, DIR/install.sh
+#   scripts/install.sh --linux DIR          # build Linux bundles DIR/linux-arm64 and DIR/linux-x64
+#                                           #   (copy one to the server, run its install.sh there)
+#   scripts/install.sh --service            # Linux: also run Ducter as a systemd user service
 #
-# What it touches: only $PREFIX/bin/ducter and $PREFIX/bin/ducter-desktop.
-# It never edits your shell profile; if $PREFIX/bin isn't on PATH it prints the line to add.
+# What it touches: only $PREFIX/bin/ducter and $PREFIX/bin/ducter-desktop (and, with --service,
+# ~/.config/systemd/user/ducter.service). It never edits your shell profile; if $PREFIX/bin isn't
+# on PATH it prints the line to add.
 set -eu
 
 PREFIX="${DUCTER_PREFIX:-$HOME/.local}"
 FROM=""
 BUNDLE=""
+LINUX=""
+SERVICE=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --prefix) PREFIX="$2"; shift 2 ;;
@@ -22,7 +29,10 @@ while [ $# -gt 0 ]; do
     --from=*) FROM="${1#*=}"; shift ;;
     --bundle) BUNDLE="$2"; shift 2 ;;
     --bundle=*) BUNDLE="${1#*=}"; shift ;;
-    -h|--help) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    --linux) LINUX="$2"; shift 2 ;;
+    --linux=*) LINUX="${1#*=}"; shift ;;
+    --service) SERVICE=1; shift ;;
+    -h|--help) sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "unknown option: $1 (try --help)" >&2; exit 2 ;;
   esac
 done
@@ -39,6 +49,22 @@ trap 'rm -rf "$WORK"' EXIT
 
 DUCTER_SRC=""
 DESKTOP_SRC=""
+
+if [ -n "$LINUX" ]; then
+  ROOT="$(cd "$HERE/.." && pwd)"
+  (cd "$ROOT" && bun install --frozen-lockfile >/dev/null 2>&1 || bun install >/dev/null)
+  for arch in arm64 x64; do
+    step "Building ducter for linux-$arch"
+    mkdir -p "$LINUX/linux-$arch"
+    DUCTER_TARGET="bun-linux-$arch" sh "$ROOT/packages/cli/build.sh" "$LINUX/linux-$arch/ducter"
+    cp "$0" "$LINUX/linux-$arch/install.sh"
+    chmod +x "$LINUX/linux-$arch/install.sh"
+  done
+  say ""
+  say "Copy the folder for your server's CPU (uname -m: aarch64 -> linux-arm64, x86_64 -> linux-x64):"
+  say "  scp -r $LINUX/linux-x64 you@server:ducter && ssh you@server 'sh ducter/install.sh --service'"
+  exit 0
+fi
 
 if [ -n "$FROM" ]; then
   [ -x "$FROM/ducter" ] || { say "No ducter binary in $FROM"; exit 1; }
@@ -59,7 +85,9 @@ else
   DUCTER_SRC="$WORK/ducter"
 
   step "Building the desktop app"
-  if command -v go >/dev/null 2>&1; then
+  if [ "$(uname)" != "Darwin" ]; then
+    say "Skipped: the desktop app is for the Mac. Connect to this server from it with: ducter pair"
+  elif command -v go >/dev/null 2>&1; then
     (cd "$ROOT/apps/desktop" && go build -o "$WORK/ducter-desktop" .)
     DESKTOP_SRC="$WORK/ducter-desktop"
     say "built ducter-desktop"
@@ -100,6 +128,14 @@ case ":$PATH:" in
   *":$BIN:"*) ON_PATH=1 ;;
   *) ON_PATH=0 ;;
 esac
+
+if [ "$SERVICE" = 1 ]; then
+  if [ "$(uname)" = "Linux" ]; then
+    step "Running Ducter as a service"
+    exec "$BIN/ducter" service install
+  fi
+  say "--service is for Linux servers; on a Mac, ducter up keeps it running."
+fi
 
 step "Next"
 if [ "$ON_PATH" = 0 ]; then

@@ -5,7 +5,7 @@ import { buildWeb } from "../build.ts";
 import { baseUrl, codeFromHash, deviceName, wsUrl } from "../src/conn.ts";
 import { format, joinHan, langOfText, strings, TABLES } from "../src/i18n.ts";
 import { markdown } from "../src/markdown.ts";
-import { isOutside, Store } from "../src/store.ts";
+import { headlineEvidence, isOutside, Store } from "../src/store.ts";
 
 let seq = 0;
 const ev = (kind: string, body: unknown, o: Partial<LogEvent> = {}): LogEvent =>
@@ -99,6 +99,16 @@ describe("store (parity with the desktop store)", () => {
     s.apply({ t: "events", events: [ev("job_status", { jobId: "act_t1_merge", taskId: "t1", state: "done", text: "merged" }, { origin: "user" })] });
     s.apply({ t: "on_hand", onHand: { tasks: [{ taskId: "t1", title: "fix", attention: "done" }] } as never });
     expect(s.tasks.get("t1")!.acted).toEqual({ action: "merge", ok: true });
+  });
+
+  test("a Done row names the latest check of the best kind, as the desktop does", () => {
+    const evs = [
+      { kind: "diff", label: "commit", ref: "0210823" },
+      { kind: "test", label: "bun test before", ref: "2 pass, 1 fail" },
+      { kind: "test", label: "bun test after", ref: "3 pass" },
+    ];
+    expect(headlineEvidence(evs)?.label).toBe("bun test after");
+    expect(headlineEvidence([{ kind: "note", label: "x", ref: "" }])).toBeUndefined();
   });
 
   test("what counts as outside", () => {

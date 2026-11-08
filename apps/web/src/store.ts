@@ -415,6 +415,15 @@ const RANK: Record<string, number> = { test: 0, ci: 1, diff: 2, file: 3, log: 4,
 export const sortEvidence = (evs: EvidenceRef[]) => [...evs].sort((a, b) => (RANK[a.kind] ?? 9) - (RANK[b.kind] ?? 9));
 export const machineChecked = (kind: string) => ["test", "ci", "diff", "file"].includes(kind);
 
+/** The evidence a Done row names, as on the desktop: the best machine-checked kind, its latest
+ *  entry (a task reports "bun test before" then "bun test after": the row says after). */
+export function headlineEvidence(evs: EvidenceRef[]): EvidenceRef | undefined {
+  const sorted = sortEvidence(evs);
+  const first = sorted[0];
+  if (!first || !machineChecked(first.kind)) return undefined;
+  return sorted.filter((e) => e.kind === first.kind).at(-1);
+}
+
 /** One evidence item per kind+label: the latest (a second "bun test" supersedes the first). */
 export function latestByLabel(evs: EvidenceRef[]): EvidenceRef[] {
   const seen = new Set<string>();

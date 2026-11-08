@@ -211,7 +211,7 @@ var en = Table{
 	"outside.title":                 "Outside",
 	"outside.seen":                  "Seen in the transcript",
 	"outside.none":                  "Hasn't touched anything outside",
-	"outside.nothing.repo":          "Nothing · the changes stay on the %s branch, on %s",
+	"outside.nothing.repo":          "Nothing · the changes stay on the %s branch · %s",
 	"outside.nothing":               "Nothing",
 	"result.howknow":                "How I know",
 	"result.more":                   "+%d",

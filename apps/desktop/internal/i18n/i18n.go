@@ -178,7 +178,7 @@ var zh = Table{
 	"suggest.2":                     "把今天 docs/decisions.md 里新加的决定总结给我",
 	"suggest.3":                     "明早 9 点提醒我回 HawDB 那个 PR 的评论",
 	"firstrun.title":                "Ducter 还没启动",
-	"firstrun.body":                 "在终端里运行这一行，Ducter 就会在这台 Mac 上开始工作：",
+	"firstrun.body":                 "在终端运行这一行，Ducter 就在这台 Mac 上开工：",
 	"firstrun.copy":                 "复制",
 	"firstrun.copied":               "复制好了",
 	"firstrun.source":               "从源码运行：在 Ducter 仓库里执行 bun run up",

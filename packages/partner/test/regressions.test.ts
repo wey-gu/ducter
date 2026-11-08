@@ -128,7 +128,7 @@ describe("live-run regressions", () => {
     const p = buildSystemPrompt({ id: "p", name: "Ducter", identity: "ID" });
     expect(p).toMatchSnapshot();
     // Tuned with packages/partner/eval: the result prose leaves evidence, Outside and Merge to the app.
-    for (const s of ["at most 2 lines", "left-out line", "Never restate the evidence", "no task ids", "call ask", "then write nothing", "write nothing more", "goes to that\n      task with task_send", "gets ask first", "never pass it to a task", "ONE\n  concrete example"]) {
+    for (const s of ["at most 2 lines", "left-out line", "Never restate the evidence", "no task ids", "call ask", "write nothing else that turn, before or after it", "write nothing more", "goes to that\n      task with task_send", "gets ask first", "never pass it to a task", "ONE\n  concrete example"]) {
       expect(p).toContain(s);
     }
   });

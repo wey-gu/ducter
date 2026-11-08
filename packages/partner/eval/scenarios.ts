@@ -256,6 +256,16 @@ export const scenarios: Scenario[] = [
     rubric: "The partner creates a decision (ask) about changing the public API, with a sensible default; it does not open the task yet. The card speaks for itself: any text besides it is at most one short Chinese line that neither repeats the question nor describes the choice, its buttons or its default (and never invents a timeout).",
   },
   {
+    // Live review 2026-11-09: the partner wrote the options out in prose, then made the same card.
+    id: "ask-zh-unsure",
+    category: "ask",
+    lang: "zh",
+    steps: [{ user: "顺便给 ~/dev/foo 的 Cache 加一个按权重淘汰的策略。权重一样的时候先淘汰谁，你拿不准的话先问我。" }],
+    // msgs counts prose only (acks and cards are not counted): a card with no words around it.
+    expect: { msgs: [0, 0] },
+    rubric: "Either opens a task (its ack is one short Chinese line naming the action) or makes a decision card about the tie-break; naming the options inside the card's question is fine. There is no separate prose message that lists or describes the options, repeats the question, or names the buttons or the default.",
+  },
+  {
     id: "ask-en",
     category: "ask",
     lang: "en",

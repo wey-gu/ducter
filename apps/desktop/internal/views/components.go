@@ -380,11 +380,17 @@ func (a *App) press(c *ui.Context, e ui.Element, press theme.Press) {
 // secondary button at the small height with a glyph before its word.
 func (a *App) navButton(c *ui.Context, key, label, name string, glyph func()) bool {
 	t := a.T
-	b := ui.Row(c.Key("nav:"+key)).Gap(t.S2).Height(t.ControlSM).Padding(0, t.S3, 0, t.S2).Radius(t.RadiusSM).
+	left := t.S3
+	if glyph != nil {
+		left = t.S2 - 2 // a glyph sits close to the edge, as in a chip
+	}
+	b := ui.Row(c.Key("nav:"+key)).Gap(t.S2).Height(t.ControlSM).Padding(0, t.S3, 0, left).Radius(t.RadiusSM).
 		AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(name).Focusable().Shrink(0)
 	fg := a.buttonLook(c, b, btnSecondary, t.ControlSM, t.Chrome)
 	b.Children(func() {
-		glyph()
+		if glyph != nil {
+			glyph()
+		}
 		ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(fg).SingleLine().AccessHidden(true)
 	})
 	return b.Clicked()
@@ -542,8 +548,8 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 		if by == "default" {
 			msg = a.L.T("decision.resolved.default")
 		}
-		ui.Row(c).Gap(8).Children(func() {
-			ui.Box(c).Size(22, 22).Radius(8).Background(t.Done.Surface).Draw(drawCheck(t.Done.Ink))
+		ui.Row(c).Gap(t.S2).Children(func() {
+			ui.Box(c).Size(22, 22).Radius(t.RadiusXS).Background(t.Done.Surface).Draw(drawCheck(t.Done.Ink))
 			ui.Text(c, msg).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 		})
 		return
@@ -552,7 +558,7 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 	if d.GoLabel != "" {
 		goText = a.L.T("decision.go.label", d.GoLabel)
 	}
-	ui.Row(c.Key("decide:" + d.DecisionID)).Gap(10).Wrap().AlignItems(ui.Center).Children(func() {
+	ui.Row(c.Key("decide:" + d.DecisionID)).Gap(t.S3).Wrap().AlignItems(ui.Center).Children(func() {
 		about := a.decisionAbout(d)
 		if a.buttonFor(c, goText, about, btnPrimary, st.height, st.quietBg) {
 			a.Decide(d.DecisionID, "go", "")
@@ -566,9 +572,9 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 	})
 	if a.replyOpen[d.DecisionID] {
 		draft := a.replyDraft[d.DecisionID]
-		ui.Row(c.Key("reply:"+d.DecisionID)).Gap(8).Padding(4, 4, 4, 14).Radius(16).Background(t.Surface).Children(func() {
+		ui.Row(c.Key("reply:"+d.DecisionID)).Gap(t.S2).Padding(t.S1, t.S1, t.S1, t.S3).Radius(t.RadiusMD).Background(t.Surface).Children(func() {
 			ui.TextArea(c, &draft).Lines(1, 4).Placeholder(a.L.T("decision.reply.placeholder")).AutoFocus().
-				Background(ui.Transparent).Border(0, ui.Transparent).Padding(8, 0).Grow(1).FontSize(t.MD).
+				Background(ui.Transparent).Border(0, ui.Transparent).Padding(t.S2, 0).Grow(1).FontSize(t.MD).
 				OnTextKey(func(k ui.TextKey) bool {
 					if k.Key == ui.KeyEnter && k.Mods == 0 {
 						if txt := k.Text(); txt != "" {

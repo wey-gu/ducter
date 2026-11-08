@@ -91,12 +91,12 @@ func (a *App) connect(c *ui.Context) {
 	t := a.T
 	a.bareChrome(c)
 	ui.Column(c).Grow(1).MinHeight(0).Justify(ui.Center).AlignItems(ui.Center).Padding(8, 32, 8+ChromeH, 32).Children(func() {
-		card := ui.Column(c.Key("connect")).Width(560).MaxWidthPercent(100).Padding(36, 40, 32, 40).Gap(16).
+		card := ui.Column(c.Key("connect")).Width(560).MaxWidthPercent(100).Padding(t.S6, t.S7, t.S6, t.S7).Gap(t.S4).
 			Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.PressCard.Offset, 0, 0, t.PressCard.Color)
 		a.enter(c, card)
 		card.Children(func() {
 			a.avatar(c, theme.Idle, 88)
-			ui.Text(c, a.L.T("connect.title")).FontSize(28).FontWeight(800).LetterSpacing(-0.4)
+			ui.Text(c, a.L.T("connect.title")).FontSize(t.XXL).FontWeight(800).LetterSpacing(-0.4)
 			if a.Unauthorized {
 				ui.Text(c, a.L.T("connect.revoked")).FontSize(t.MD).LineHeight(1.5).TextColor(t.NeedsYou.Ink)
 			}
@@ -109,15 +109,15 @@ func (a *App) connect(c *ui.Context) {
 			if a.conn.err != "" {
 				ui.Text(c, a.conn.err).FontSize(t.MD).LineHeight(1.5).TextColor(t.NeedsYou.Ink).Role(ui.RoleAlert)
 			}
-			ui.Row(c).Gap(12).AlignItems(ui.Center).Margin(6, 0, 0, 0).Children(func() {
+			ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Margin(6, 0, 0, 0).Children(func() {
 				label := a.L.T("connect.go")
 				if a.conn.busy {
 					label = a.L.T("connect.busy")
 				}
-				if a.button(c, label, btnPrimary, 50, t.Bg) {
+				if a.button(c, label, btnPrimary, t.ControlLG, t.Bg) {
 					a.submitConnect()
 				}
-				if !a.Unauthorized && a.button(c, a.L.T("connect.back"), btnText, 50, t.Surface) {
+				if !a.Unauthorized && a.button(c, a.L.T("connect.back"), btnText, t.ControlLG, t.Surface) {
 					a.conn.open = false
 				}
 				if a.conn.busy {
@@ -132,10 +132,10 @@ func (a *App) connect(c *ui.Context) {
 // field is one labelled single-line input on the connect card.
 func (a *App) field(c *ui.Context, key, label string, value *string, placeholder, hint string) {
 	t := a.T
-	ui.Column(c.Key("field:" + key)).Gap(6).Children(func() {
+	ui.Column(c.Key("field:" + key)).Gap(t.S2).Children(func() {
 		ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 		ui.TextInput(c.Key("input:"+key), value).Placeholder(placeholder).Label(label).
-			Font(t.Mono).FontSize(16).Padding(12, 16).Radius(t.RadiusSM).
+			Font(t.Mono).FontSize(t.MD).Padding(t.S3, t.S4).Radius(t.RadiusSM).
 			Background(t.SurfaceSunken).Border(1, t.LineSoft).
 			OnSubmit(a.submitConnect)
 		if hint != "" {

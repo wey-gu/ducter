@@ -264,7 +264,7 @@ func (a *App) View(c *ui.Context) {
 	if a.uiTheme == nil {
 		a.uiTheme = a.T.UITheme(c.Theme())
 		a.md.Theme = a.markdownTheme(a.T.PartnerSize, 1.65)
-		a.mdTask.Theme = a.markdownTheme(14, 1.55)
+		a.mdTask.Theme = a.markdownTheme(a.T.MD, 1.55)
 	}
 	c.SetTheme(a.uiTheme)
 	a.drainActionResults(c)

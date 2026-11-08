@@ -135,19 +135,20 @@ func (a *App) conversation(c *ui.Context) {
 // first things to say. A suggestion fills the composer; it never sends.
 func (a *App) emptyConversation(c *ui.Context) {
 	t := a.T
-	col := ui.Column(c.Key("empty")).Margin(ui.Auto).MaxWidth(520).AlignItems(ui.Center).Gap(16)
+	col := ui.Column(c.Key("empty")).Margin(ui.Auto).MaxWidth(520).AlignItems(ui.Center).Gap(t.S4)
 	a.enter(c, col)
 	col.Children(func() {
 		a.avatar(c, theme.Idle, 180)
-		ui.Text(c, a.L.T("empty.conversation.title", a.S.PersonaName)).FontSize(26).FontWeight(800).LetterSpacing(-0.3)
+		ui.Text(c, a.L.T("empty.conversation.title", a.S.PersonaName)).FontSize(t.XXL).FontWeight(800).LetterSpacing(-0.3)
 		ui.Text(c, a.L.T("empty.conversation")).FontSize(t.LG).TextAlign(ui.Center).TextColor(t.InkSoft).LineHeight(1.6)
-		ui.Column(c).Gap(10).Margin(14, 0, 0, 0).AlignItems(ui.Stretch).Width(460).MaxWidthPercent(100).Children(func() {
+		ui.Column(c).Gap(t.S2).Margin(t.S3, 0, 0, 0).AlignItems(ui.Stretch).Width(460).MaxWidthPercent(100).Children(func() {
 			ui.Text(c, a.L.T("empty.try")).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted).LetterSpacing(0.5)
 			for n, text := range a.suggestions() {
 				i := n + 1
-				chip := ui.Row(c.Key(i)).Gap(12).Padding(13, 16).Radius(t.RadiusSM).Background(t.Surface).AlignItems(ui.Center).
-					Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(text)
-				a.press(c, chip, t.PressCard)
+				// A starter is a secondary button holding a sentence.
+				chip := ui.Row(c.Key(i)).Gap(t.S3).MinHeight(t.ControlLG).Padding(t.S3, t.S4).Radius(t.RadiusSM).AlignItems(ui.Center).
+					Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(text).Focusable()
+				a.buttonLook(c, chip, btnSecondary, t.ControlLG, t.Surface)
 				chip.Children(func() {
 					a.pebble(c, t.State([]string{"", "working", "done", "blocked"}[i]).Dot, 10, 12)
 					ui.Text(c, text).FontSize(t.MD).Grow(1).MinWidth(0)
@@ -158,11 +159,11 @@ func (a *App) emptyConversation(c *ui.Context) {
 				}
 			}
 			if n := a.Local.RepoCount(); n > 0 {
-				ui.Text(c, a.L.T("empty.repos.note", n)).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.5).Margin(4, 2, 0, 2)
+				ui.Text(c, a.L.T("empty.repos.note", n)).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.5).Margin(t.S1, 2, 0, 2)
 			}
 		})
 		// The end of the first run: where Ducter lives and what it can do.
-		if a.button(c, a.L.T("firstrun.devices"), btnText, 40, t.Bg) {
+		if a.button(c, a.L.T("firstrun.devices"), btnText, t.ControlMD, t.Bg) {
 			a.OpenDevices()
 		}
 	})
@@ -174,7 +175,7 @@ func (a *App) header(c *ui.Context) {
 	a.chrome(c, "conversation", func() {
 		a.avatar(c, a.presence(c), 40)
 		ui.Column(c).Gap(1).MinWidth(0).Children(func() {
-			ui.Text(c, a.S.PersonaName).FontSize(16).FontWeight(800).LetterSpacing(-0.2).SingleLine()
+			ui.Text(c, a.S.PersonaName).FontSize(t.MD).FontWeight(800).LetterSpacing(-0.2).SingleLine()
 			ui.Text(c, a.summary(b)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
 		})
 	}, func() {
@@ -287,20 +288,22 @@ func (a *App) doneToday(b store.Board) int {
 // of the tasks in the conversation.
 func (a *App) onHandButton(c *ui.Context, b store.Board) {
 	t := a.T
-	if a.navButton(c, "onhand", a.L.T("nav.onhand"), a.L.T("nav.onhand"), func() {
-		n := 0
-		ui.Row(c).Gap(3).AlignItems(ui.Center).Children(func() {
-			for lane := store.LaneNeedsYou; lane <= store.LaneWaiting && n < 6; lane++ {
-				for _, task := range b.Lanes[lane] {
-					if n >= 6 {
-						break
-					}
-					n++
+	var shown []*store.Task
+	for lane := store.LaneNeedsYou; lane <= store.LaneWaiting; lane++ {
+		shown = append(shown, b.Lanes[lane]...)
+	}
+	shown = shown[:min(len(shown), 6)]
+	var glyph func()
+	if len(shown) > 0 {
+		glyph = func() {
+			ui.Row(c).Gap(3).AlignItems(ui.Center).Children(func() {
+				for _, task := range shown {
 					a.pebble(c.Key(task.ID), t.State(string(task.Attention())).Dot, 10, 12)
 				}
-			}
-		})
-	}) {
+			})
+		}
+	}
+	if a.navButton(c, "onhand", a.L.T("nav.onhand"), a.L.T("nav.onhand"), glyph) {
 		a.Route = RouteOnHand
 		a.markRead()
 	}

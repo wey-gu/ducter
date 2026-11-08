@@ -38,11 +38,11 @@ func finished(t *store.Task) bool {
 // taskFooter is what follows a message about a task: its chip, and for a
 // finished task its result's proof, Outside line and next steps.
 func (a *App) taskFooter(c *ui.Context, task *store.Task, detail string) {
+	t := a.T
 	if !finished(task) {
-		ui.Row(c).Gap(8).Wrap().AlignItems(ui.Center).Children(func() { a.taskChip(c, task, detail) })
+		ui.Row(c).Gap(t.S2).Wrap().AlignItems(ui.Center).Children(func() { a.taskChip(c, task, detail) })
 		return
 	}
-	t := a.T
 	a.ensureHistory(task.ID)
 	ui.Column(c.Key("result:" + task.ID)).Gap(t.S3).Children(func() {
 		ui.Row(c).Gap(t.S2).Wrap().AlignItems(ui.Center).Children(func() {

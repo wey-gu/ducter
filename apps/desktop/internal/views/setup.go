@@ -329,7 +329,6 @@ func (a *App) setupWaiting(c *ui.Context, p theme.Presence, title, body string) 
 	a.avatar(c, p, 120)
 	ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 		ui.Text(c, title).FontSize(t.XXL).FontWeight(800).LetterSpacing(-0.4).Grow(1).MinWidth(0)
-		a.retryPulse(c)
 	})
 	ui.Text(c, body).FontSize(t.LG).LineHeight(1.55).TextColor(t.InkSoft)
 }
@@ -368,7 +367,6 @@ func (a *App) setupBlocked(c *ui.Context) {
 		k := k
 		ui.Column(c.Key("fix:"+k.ID)).Gap(t.S3).Padding(t.S4, t.S4).Radius(t.RadiusLG).Background(t.SurfaceSunken).Children(func() {
 			ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-				ui.Box(c).Size(10, 10).Radius(5).Background(t.NeedsYou.Dot).Shrink(0)
 				ui.Text(c, k.Label).FontSize(t.MD).FontWeight(800)
 				ui.Text(c, k.Detail).FontSize(t.MD).TextColor(t.InkSoft).Grow(1).MinWidth(0)
 			})

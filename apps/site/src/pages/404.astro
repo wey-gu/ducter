@@ -1,0 +1,25 @@
+---
+import "../styles/site.css";
+import Head from "../components/Head.astro";
+import Nav from "../components/Nav.astro";
+import Footer from "../components/Footer.astro";
+import Face from "../components/Face.astro";
+import { siteLinks } from "../lib/links";
+const { facts, dl, gh } = await siteLinks();
+---
+<!doctype html>
+<html lang="en">
+<Head title="Nothing here · Ducter" description="This page doesn't exist." path="/404" />
+<body>
+<Nav dl={dl} gh={gh} home={false} />
+<main id="main" class="final" style="padding-top:72px">
+  <div class="wrap">
+    <Face id="nf-face" faces={["napping"]} start="napping" sizes="168px" eager />
+    <h2>Nothing here.</h2>
+    <p class="lede">This page doesn't exist, so Ducter took a nap. Everything else is where you left it.</p>
+    <div class="cta-row"><a class="btn lg" href="/">Back to the start</a><a class="btn secondary lg" href="/docs">Read the docs</a></div>
+  </div>
+</main>
+<Footer gh={gh} isPublic={facts.isPublic} home={false} />
+</body>
+</html>

@@ -65,7 +65,7 @@ var zhOnboard = Table{
 	"phone.noaddress.body":       "要先给这台 Mac 一个从外面也能打开的地址（比如你自己的域名）。设好以后，在设备里的「在哪儿都能用」就能扫码连上。",
 	"mem.ask":                    "想让 %s 记得更久？",
 	"mem.get":                    "装上 Nowledge Mem",
-	"web.title":                  "装上上网",
+	"web.title":                  "让这台 Mac 能上网",
 	"web.tile":                   "三小步就能装上",
 	"web.entry.missing":          "这台 Mac 还没有浏览器驱动。三小步就能装好，不用终端。",
 	"web.entry.old":              "这台 Mac 的浏览器驱动太旧了，更新一下就行。",

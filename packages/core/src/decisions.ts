@@ -70,12 +70,19 @@ export function createDecisions(opts: {
       }
     });
 
+  // A dropped task's open question stays open (Undo brings it back as it was), but nothing acts
+  // on it meanwhile: soak, answering it flipped the dropped task to "working" and the restart
+  // after that ran it again.
+  const dropped = (taskId: string | undefined) => !!taskId && tasks.get(taskId)?.attention === "dropped";
+
   const schedule = (d: Bodies["decision"]) => {
     if (!d.reversible || !d.defaultAt) return;
     const ms = Date.parse(d.defaultAt) - clock.now();
     const fire = () => {
       timers.delete(d.decisionId);
       if (resolved.has(d.decisionId)) return;
+      if (dropped(d.taskId)) return; // no default for a dropped task; it waits for Undo
+
       log.append({
         stream: "channel",
         origin: "system",
@@ -132,6 +139,7 @@ export function createDecisions(opts: {
     // partner (decision_resolved is a trigger); nothing to forward, no card to move.
     if (!d.taskId) return;
     const taskId = d.taskId;
+    if (dropped(taskId)) return; // resolved (e.g. by a direct message) while dropped: no turn, no flip
     if (!tasks.pendingDecisions(taskId).length) {
       if (r.option === "hold") setAttention(taskId, "blocked"); // no reason text: the card shows Waiting
       else setAttention(taskId, "working");
@@ -213,6 +221,7 @@ export function createDecisions(opts: {
       if (!all.has(decisionId)) throw new Error(`unknown decision ${decisionId}`);
       if (resolved.has(decisionId)) throw new Error(`decision ${decisionId} is already resolved`);
       if (option === "reply" && !text?.trim()) throw new Error("reply needs text");
+      if (dropped(all.get(decisionId)!.taskId)) throw new Error("That task was dropped. Undo the drop first, then answer.");
       const body: Bodies["decision_resolved"] = { decisionId, option, by: "user" };
       if (text) body.text = text;
       return log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body });

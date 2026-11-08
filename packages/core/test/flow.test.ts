@@ -99,6 +99,25 @@ test("irreversible questions wait for the user; reply text is forwarded, hold is
   expect(forwarded).toEqual([["t1", "Use src/a.ts"]]);
 });
 
+test("a dropped task's open question: answering is refused, its default waits, it never flips the card (soak regression)", async () => {
+  // Soak 2026-11-09: the user dropped a task with an open question, then answered it; the
+  // answer moved the dropped task to "working" and the next restart ran it again.
+  const { log, tasks, clock, decisions, forwarded } = setup();
+  openTask(log, "t1");
+  report(log, "t1", { state: "needs_input", summary: "Ship?", questions: [{ id: "q", text: "Ship?", blocking: true, default: "Ship", reversible: true }] });
+  await tick();
+  const d = kinds(log, "decision")[0]!.body as Bodies["decision"];
+  tasks.setState("t1", "dropped", "parked");
+  expect(() => decisions.decide(d.decisionId, "go")).toThrow(/dropped/);
+  clock.advance(31 * 60 * 1000); // past its default
+  expect(kinds(log, "decision_resolved")).toHaveLength(0);
+  // Resolved anyway (an older client, a message): the card stays dropped, nothing is forwarded.
+  log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body: { decisionId: d.decisionId, option: "go", by: "user" } });
+  await tick();
+  expect(tasks.get("t1")!.attention).toBe("dropped");
+  expect(forwarded).toEqual([]);
+});
+
 test("report states map to attention; done needs evidence", async () => {
   const { log, tasks } = setup();
   openTask(log, "t1");

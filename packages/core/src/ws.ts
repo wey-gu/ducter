@@ -114,7 +114,11 @@ export function createWsHandler(deps: WsDeps) {
         const r = deps.runner();
         if (!r) throw new Error("runner is not available");
         if (!f.text?.trim()) throw new Error("empty message");
-        if (!tasks.get(f.taskId)) throw new Error(`unknown task ${f.taskId}`);
+        const target = tasks.get(f.taskId);
+        if (!target) throw new Error(`unknown task ${f.taskId}`);
+        // Before answeredByMessage: a dropped task's question must not be answered by a message
+        // the runner then refuses to deliver.
+        if (target.attention === "dropped") throw new Error("That task was dropped. Undo the drop first.");
         // Answering the task directly answers its open question too (no later Go re-wakes it).
         decisions.answeredByMessage(f.taskId, f.text, "user");
         const { delivered } = await r.send(f.taskId, f.text, undefined, "user");

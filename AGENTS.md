@@ -59,6 +59,7 @@ Design notes:
 - `focus-window-states.md`: the state machine.
 - `system.md`: adapter, identity/Mem, safety, storage, runtime.
 - `ui.md`: themes, tokens, zoom levels, canvases.
+- `bridge.md`: Nowledge Bridge, agents Ducter didn't start (draft).
 - `product-model.md`: see above.
 
 ## The change loop (run it for every new question or discovered problem)

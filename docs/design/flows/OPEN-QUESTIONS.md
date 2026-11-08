@@ -281,3 +281,64 @@ out · 新伙伴 / New partner · 显示 / Show (W5-1).
     spike for relaying Claude Code and Codex logins.
 18. **CN users' remote access default:** **their own domain.** Tailscale stays a community
     contribution.
+
+## J. Nowledge Bridge (2026-11-09 evening, draft; `../bridge.md`, `research/31`)
+
+Nothing here is decided. The slice is built behind `DUCTER_BRIDGE=1` on branch `bridge-practice`.
+
+**J-Q1. Adopt Bridge as Ducter's doorway to agents it didn't start, addressed to the persona.**
+- *Recommendation:* yes, through the persona identity's Agent mailbox, never a native session (partner
+  sessions are caches).
+  - Ducter's own tasks keep the Log and typed reports.
+  - Ducter uses a named Agent Context the user approved in nmem.
+- *Default:* accept. Bridge stays off unless `DUCTER_BRIDGE=1` and `DUCTER_BRIDGE_CONTEXT` are set; a settings
+  toggle comes later.
+
+**J-Q2. Who may make Ducter act.**
+- *Recommendation:* v1 asks the user before any task that comes from another agent (Go/Hold, default hold,
+  enforced in code).
+  - Later, the user may state a rule in plain words, e.g. "我自己终端里的请求直接接". Ducter confirms it (D-style
+    rule, principle 14).
+- *Default:* always ask in v1. The partner may still answer questions with `bridge_reply` without asking.
+
+**J-Q3. When Ducter checks for requests.**
+- *Recommendation:* at start, then every 5 minutes while running; no push until Mem offers one.
+  - Ducter's always-on control plane is the host here, so this is not a session kept alive by polling.
+- *Default:* 5 min (`bridgeIntervalMs`). Ask Mem for a hint/push into an always-on host (private/31 §7).
+
+**J-Q4. Outbound: may Ducter start a conversation with another agent?**
+- *Recommendation:* reply-only in v1. Send to a new recipient only when the user names one; the recipient is
+  then confirmed on a card that shows who and where (J4).
+- *Default:* reply-only.
+
+**J-Q5. Copy.**
+- *Recommendation:*
+  - incoming: "<X> 发来请求 · <gist>" / "Request from <X> · <gist>", one quiet line;
+  - outgoing: "已回复 <X>" / "Replied to <X>".
+  - Never 交接 / hand-off, which the glossary reserves for a task changing body. Bridge words never appear in
+    the conversation.
+- *Default:* these strings, added to the glossary as "pending user OK".
+
+**J-Q6. A lost reply response.**
+- *Recommendation:* never resend. Log the reply as "unknown", then use `bridge outbox` → `inspect` → `resume`
+  on the same original at the next check.
+- *Default:* build this before J-Q4.
+
+**J-Q7. The result goes back automatically.**
+- *Recommendation:* link the task to the request it came from, as a field on `task_open` or a small map in the
+  Log. The partner then replies with the outcome when the task ends, instead of relying on the prompt.
+- *Default:* yes, next slice.
+
+**J-Q8. Work agreement.**
+- *Background:* Mem's Bridge guidance suggests a Memory that the receiver confirms. Ducter forbids writing task
+  plumbing to Mem.
+- *Recommendation:* the user's Go plus a reply carrying the claim ("接了 · <scope>") is the agreement. It is
+  recorded in Ducter's Log, and no Memory is written.
+- *Default:* accept; revisit for Team (J3).
+
+**J-Q9. Asks for the Mem team (author's call whether to file them).**
+- a pinned JSON contract for `bridge inbox` and `bridge open`;
+- a non-consuming probe for the Agent mailbox;
+- push or hint into an always-on host;
+- a stated position on app hosts (Agent mailbox only, or `--host app`).
+- *Default:* file all four.

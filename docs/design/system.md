@@ -94,6 +94,10 @@ changes.
   `--agent-id` and no `--space`: nmem takes the identity from `NMEM_AGENT_ID` and the Space
   from `NMEM_SPACE` or its own default, so Ducter never enrolls an identity or picks a Space.
   Missing or unreachable Mem: the tools answer "not available" and the partner carries on.
+- **Bridge (DRAFT, `bridge.md`).** Agents Ducter didn't start reach the persona through its Mem
+  Agent mailbox, never a harness session. Ducter only reads that inbox and replies to messages
+  already in the Log, under a named Agent Context the user approved. It never runs setup, enrolls an
+  identity, or picks a Space.
 - **Everything else is read-only**: the user's skills, global rules, Working Memory, Spaces.
 - **Subscriptions** are used only through the user's own unmodified official binary, for
   themselves. There is no proxying and no impersonation, which is why Ducter is

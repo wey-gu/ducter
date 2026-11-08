@@ -52,6 +52,8 @@
 | server keeps running (systemd service) | **保持运行 / Keeps running** (doctor row) | |
 | capability (browser, computer use, phone, calls, remote access) | **本事 / Abilities** (research/27; pending user OK; runner-up 能力) | Equip = **装上 / Add to <device>**; remove = **取下 / Remove**; result = "MacBook 现在会上网了 / MacBook can now browse the web"; device detail "MacBook 会：… / can: …". Item names are ability phrases (上网, 用电脑, 远程打开). Never 学会/教会/赋予/授权 (they read as ordering a subordinate). Never 装备/Gear (reads as armour; rhymes with 设备). Claude Code skills stay **技能 / Skills** on their own page, never on the rack |
 | the partner saved something to long-term memory (Mem) | **记下了 · <title> / Noted · <title>** (pending user OK) | One quiet line under the reply, no card, no action. Never "已存入记忆 / saved to memory" in the partner's words; recall is never shown at all |
+| a request from another agent through Nowledge Bridge (`bridge_msg` in) | **<X> 发来请求 · <gist> / Request from <X> · <gist>** (pending user OK, J-Q5) | One quiet line, then the partner's own Go/Hold question if it would act. Never 交接 / hand-off (that is a task changing body). Never "Bridge", "mailbox", "contact", "Space" in UI |
+| the partner answered that agent | **已回复 <X> / Replied to <X>** (pending user OK) | "Replied" is not "done"; nothing promises the other side has seen it |
 | Intent | (shown as a decision or a policy line: "要推送到 ducter/fix-ci / Will push to …") | |
 | Artifact | **成果 / Results** | |
 

@@ -110,8 +110,15 @@ func (a *App) conversation(c *ui.Context) {
 	} else {
 		a.list.FollowAnimation = nil
 	}
+	// Rhythm: S3 between two things the same voice says, S5 where the
+	// turn passes from one to the other.
+	userTurn := func(i int) bool { return rows[i].pending != nil || rows[i].entry.User != nil }
 	ui.List(c, &a.list, len(rows), func(i int) {
-		ui.Row(c).Justify(ui.Center).Children(func() {
+		top := float32(0)
+		if i > 0 && userTurn(i) != userTurn(i-1) {
+			top = t.S5 - t.S3
+		}
+		ui.Row(c).Justify(ui.Center).Padding(top, 0, 0, 0).Children(func() {
 			ui.Column(c).Grow(1).MaxWidth(convWidth).Children(func() {
 				if p := rows[i].pending; p != nil {
 					a.userBubble(c, p.text, true)
@@ -120,7 +127,7 @@ func (a *App) conversation(c *ui.Context) {
 				a.entry(c, rows[i].entry)
 			})
 		})
-	}).Grow(1).Padding(t.S5, t.S5, t.S4, t.S5).Gap(t.S5).Children(func() {
+	}).Grow(1).Padding(t.S5, t.S5, t.S4, t.S5).Gap(t.S3).Children(func() {
 		if len(rows) == 0 && a.S.Welcomed {
 			a.emptyConversation(c)
 		}
@@ -628,7 +635,7 @@ func (a *App) composer(c *ui.Context) {
 		box.Children(func() {
 			ta := ui.TextArea(c.Key("composer"), &a.draft).Lines(1, 8).MinHeight(0).Placeholder(a.L.T("composer.placeholder", a.S.PersonaName)).
 				Label(a.L.T("composer.label", a.S.PersonaName)).AutoFocus().
-				Background(ui.Transparent).Border(0, ui.Transparent).Padding(t.S3, 0).Grow(1).FontSize(t.MD).LineHeight(1.5).
+				Background(ui.Transparent).Border(0, ui.Transparent).Padding(t.S3, 0).Grow(1).FontSize(t.MD).
 				OnTextKey(func(k ui.TextKey) bool {
 					if k.Key == ui.KeyEnter && k.Mods == 0 {
 						if a.SendMessage(k.Text()) {

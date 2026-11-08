@@ -51,7 +51,7 @@ const zh: Record<string, string> = {
   "state.working": "在做",
   "state.needs_you": "等你",
   "state.blocked": "在等",
-  "state.done_claimed": "做完了 · 没核对",
+  "state.done_claimed": "做完了 · 没检查",
   "state.done": "做完了",
   "state.failed": "没成",
   "state.dropped": "放下了",

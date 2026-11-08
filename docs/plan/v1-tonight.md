@@ -90,6 +90,84 @@ Every workstream codes against these. They live in `packages/protocol`:
   yet.
 - **Theme:** Pebble only. i18n keys are in from the start, with zh and en strings.
 
+## How it went: backend, against real harnesses (2026-11-09, workstream B)
+
+Setup: `DUCTER_PORT=7781 DUCTER_PARTNER_MODEL=sonnet DUCTER_TASK_MODEL=sonnet bun run up`
+on a scratch data dir, a throwaway Bun repo `foo` with a deliberately flaky TTL test, and a
+small Bun WS script as the client. Partner and tasks on Claude Code (sonnet); one task on
+Codex. Times below are from the Log's own timestamps (`ts`), one run each, so treat them as
+indicative, not benchmarks.
+
+**Verified end to end (live)**
+- Message → ack → `task_open` (worktree on `ducter/<slug>`, based on the repo's HEAD branch) →
+  task works and streams `task_event`s → `report_to_main` → partner relays the result. Flaky
+  test fix: open → done report in 23 s, result message 4 s later, commit as evidence.
+- Task question with a default → `decision` + living message + card `needs_you` with
+  `pendingDecision` → **Go** (forwarded in 0.4 s, task commits, done) · **Hold** (card goes to
+  Waiting, nothing forwarded) · **Reply** by `task_send` straight to the task (the open
+  decision resolves as `reply`, no second forward).
+- `task_send`: `steered` into a running turn; `prompted` on an idle or parked task (a parked
+  Claude Code session takes **~10 s** to resume; the text is logged at once). `{t:"sent"}`
+  frames arrive.
+- `task_history`, `interrupt` (turn aborted; the card now shows Waiting), `drop`.
+- Restart mid-task (SIGTERM while a task ran a shell loop): the runner rebuilt every task
+  from the Log, resumed the mid-turn one by its native session id 9 s after boot, and the
+  task noticed its loop had been killed, re-ran it, and reported. Waiting tasks stay parked
+  until the next message; drop/reopen work on tasks from before the restart.
+- `wait_until`: `waiter` armed → fired on time (+1 ms) → partner reminded 1.8 s later. Armed
+  waiters survive restarts (rebuilt from the Log); task-bound ones cancel when the task ends.
+- Partner `ask` (decision without a task) → Go → partner opened the task 1.6 s later.
+- Codex: one task (JSDoc on `Cache`), open → committed + done in 37 s, with checkpoints.
+- WS replay: `hello` without cursor = last 200 channel events, with cursor = channel since;
+  live `task_event`/`task_state` for every task; a read freezes the living message (the next
+  update appends instead of superseding).
+
+**Ack latency (user message → `ack` event)**
+
+| Build | Session | Ack |
+|---|---|---|
+| Before fixes | fresh, first message after boot | 15.4 s |
+| Before fixes | warm | 7.2 s |
+| + ack on `tool_call_started` | warm, after restart (resume on demand) | 15.1 s |
+| + prewarm at boot, partner config isolated | warm, English | 1.3 s |
+| + same, model wrote no line first (generated ack waited for the brief) | warm | 5.2 s |
+| + ack from the streamed title, ToolSearch off | fresh session, Chinese | **2.3 s** |
+| same | resumed after restart | 3.5 s |
+
+Where the time went: holding the ack line until the whole `task_open` brief was written
+(~5 s), a cold Claude Code start + MCP handshake on the first message (~5–7 s), ToolSearch
+round trips because Ducter's MCP tools were deferred (~3 s), and the user's global
+`~/.claude` config (CLAUDE.md, plugin hooks, MCP servers) loaded into the partner.
+
+**Bugs found live and fixed (each with a fake-harness regression test)**
+- Partner called `task_send` with `message` instead of `text`; the task got an empty steer.
+  Required tool args are now checked against each schema before any handler runs.
+- Partner re-forwarded a Go that core had already delivered.
+- Hold was forwarded as a "pause" turn, which flipped the card back to working.
+- Replies in Chinese to English messages (the user's global CLAUDE.md and Mem preference won).
+- Ack latency (above): early ack on `tool_call_started` and on the streamed title, prewarm,
+  partner isolated via OAR `userConfiguration: "exclude"`, `ENABLE_TOOL_SEARCH=false`.
+- A second "On it" ack when stream events lagged the MCP call.
+- Text sent to a parked task appeared in the transcript only after the ~10 s resume.
+- An interrupted task stayed "working".
+- Plus the desktop- and lead-reported ones: drop/reopen after restart, reopen with no session,
+  a decision left open after a direct reply, internal words in `task_state.reason`, a
+  trailing-slash Origin, "On it: undefined" when `title` was missing, boot waiting ~6 s on
+  `nmem`, an invented "pick Go" with no decision (honesty guard now queues a correction turn).
+
+**Known gaps (not fixed tonight)**
+- Partner prose still drifts from the persona: it sometimes adds "Task opened." (now dropped
+  mechanically when short), repeats a task's question, or puts branches and commit-policy talk
+  in results. Needs prompt evals, not more rules.
+- A task phrased its question as "Go = add the test, Hold = don't"; the brief now says Hold
+  means pause, never "no". Not re-verified live.
+- Parked-session resume costs ~10 s on Claude Code; nothing prewarms tasks.
+- Browser sidecars are not restarted when a browser task is recovered after a restart.
+- Tasks write outside their place when they choose to (one used `/tmp/flk`); no sandbox.
+- Branch slugs from Chinese titles keep only the ASCII words (`ducter/foo-…`).
+- The honesty guard is a regex over zh/en wording; it can miss paraphrases.
+- Live runs used sonnet only; opus partner latency not measured.
+
 ## Not tonight (next sessions)
 
 Frozen digest + recall index · expire-aware re-cut and folds · multiple devices + Ducter Edge +

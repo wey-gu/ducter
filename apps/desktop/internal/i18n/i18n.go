@@ -1,0 +1,281 @@
+// Package i18n holds every user-facing string of the desktop client, by
+// key, in Chinese and English (docs/design/product-model.md §1: no court
+// vocabulary; partners, not hierarchy). Views never hard-code copy.
+package i18n
+
+import (
+	"fmt"
+	"os"
+	"strings"
+)
+
+// Lang is a supported language.
+type Lang string
+
+const (
+	ZH Lang = "zh"
+	EN Lang = "en"
+)
+
+// Table maps keys to strings of one language. Strings may hold fmt verbs.
+type Table map[string]string
+
+var zh = Table{
+	"app.title":                     "Ducter",
+	"nav.conversation":              "对话",
+	"nav.onhand":                    "手头",
+	"nav.back":                      "回到对话",
+	"header.summary":                "手头 %d 件事，%d 件等你",
+	"header.summary.none":           "手头没事，随时说",
+	"conn.connecting":               "正在连上…",
+	"conn.offline":                  "连不上 Ducter，正在重试",
+	"composer.placeholder":          "跟 %s 说点什么…",
+	"composer.task":                 "直接对这件事说（不经过 %s）",
+	"composer.send":                 "发送",
+	"composer.label":                "跟 %s 说",
+	"empty.conversation":            "说一句话就能开始。要做的事交给我，需要你的时候我会来问。",
+	"day.today":                     "今天",
+	"decision.go":                   "好",
+	"decision.go.label":             "好，%s",
+	"decision.hold":                 "先等等",
+	"decision.reply":                "回复…",
+	"decision.reply.placeholder":    "回复这件事…",
+	"decision.default.go":           "你不回的话，%s后我会%s。这一步能撤销。",
+	"decision.default.hold":         "你不回的话，我会先停着等你。",
+	"decision.default.due":          "默认马上生效",
+	"decision.default.label":        "默认：%s",
+	"decision.resolved.go":          "已经说好",
+	"decision.resolved.hold":        "先等等了",
+	"decision.resolved.reply":       "已回复：%s",
+	"decision.resolved.default":     "按默认办了",
+	"decision.goall":                "全部按默认 · %d",
+	"living.title":                  "你不在的时候",
+	"living.unread":                 "刚更新 · 未读",
+	"living.needsyou":               "等你 · %d",
+	"living.evidence":               "证据",
+	"living.details":                "看细节",
+	"state.queued":                  "排队中",
+	"state.working":                 "在做",
+	"state.needs_you":               "等你",
+	"state.blocked":                 "在等",
+	"state.done_claimed":            "做完了 · 核对中",
+	"state.done":                    "做完了",
+	"state.failed":                  "没成",
+	"state.dropped":                 "放下了",
+	"state.superseded":              "换人接手了",
+	"lane.needs_you":                "等你",
+	"lane.needs_you.hint":           "需要你一句话的事",
+	"lane.working":                  "在做",
+	"lane.waiting":                  "在等",
+	"lane.done":                     "今天做完",
+	"lane.empty":                    "现在没有",
+	"count.needs_you":               "等你",
+	"count.working":                 "在做",
+	"count.waiting":                 "在等",
+	"count.done_today":              "今天做完",
+	"onhand.title":                  "手头",
+	"onhand.forecast":               "接下来什么时候需要你",
+	"onhand.open":                   "展开 →",
+	"onhand.checking":               "核对中",
+	"onhand.loose":                  "随手",
+	"onhand.waiting.for":            "等 · %s",
+	"onhand.reported":               "%s汇报",
+	"task.transcript":               "对话记录",
+	"task.transcript.hint":          "工具调用已折叠",
+	"task.brief":                    "任务书 · 来自 %s",
+	"task.report":                   "向 %s 汇报",
+	"task.report.needs_input":       "向 %s 汇报 · 需要决定",
+	"task.report.done":              "向 %s 汇报 · 做完了",
+	"task.report.blocked":           "向 %s 汇报 · 卡住了",
+	"task.report.failed":            "向 %s 汇报 · 没成",
+	"task.checkpoint":               "检查点 · %s",
+	"task.you":                      "你",
+	"task.changes":                  "改动 · %d 个文件",
+	"task.changes.none":             "还没有改动",
+	"task.changes.noplace":          "这件事不在代码仓库里做，没有改动可看",
+	"task.changes.error":            "读不到改动：%s",
+	"task.changes.refresh":          "刷新",
+	"task.dossier.why":              "为什么是 %s",
+	"task.dossier.checkpoints":      "检查点",
+	"task.dossier.checkpoints.none": "还没有检查点",
+	"task.dossier.evidence":         "证据",
+	"task.dossier.evidence.none":    "还没有证据",
+	"task.dossier.where":            "在哪儿做",
+	"task.loading":                  "正在读这件事的记录…",
+	"task.unknown":                  "这件事",
+	"place.none":                    "不需要环境",
+	"time.now":                      "刚刚",
+	"time.min":                      "%d 分钟",
+	"time.hour":                     "%d 小时",
+	"time.ago.min":                  "%d 分钟前",
+	"time.ago.hour":                 "%d 小时前",
+	"time.opened":                   "开了 %s",
+	"face.idle":                     "%s 正在待命",
+	"face.working":                  "%s 正在做事",
+	"face.needs_you":                "%s 有事找你",
+	"job.running":                   "在做",
+	"job.done":                      "做完了",
+	"job.failed":                    "没成",
+	"tool.ok":                       "成功",
+	"tool.fail":                     "失败",
+}
+
+var en = Table{
+	"app.title":                     "Ducter",
+	"nav.conversation":              "Conversation",
+	"nav.onhand":                    "On hand",
+	"nav.back":                      "Back to the conversation",
+	"header.summary":                "%d tasks on hand, %d need you",
+	"header.summary.none":           "Nothing on hand. Say anything.",
+	"conn.connecting":               "Connecting…",
+	"conn.offline":                  "Can't reach Ducter, retrying",
+	"composer.placeholder":          "Say something to %s…",
+	"composer.task":                 "Talk to this task directly (not through %s)",
+	"composer.send":                 "Send",
+	"composer.label":                "Talk to %s",
+	"empty.conversation":            "Say one thing to begin. Hand me the work; I'll come to you when it needs you.",
+	"day.today":                     "Today",
+	"decision.go":                   "Go",
+	"decision.go.label":             "Go: %s",
+	"decision.hold":                 "Hold",
+	"decision.reply":                "Reply…",
+	"decision.reply.placeholder":    "Reply about this…",
+	"decision.default.go":           "If you don't answer, I'll %[2]s in %[1]s. It can be undone.",
+	"decision.default.hold":         "If you don't answer, I'll hold and wait for you.",
+	"decision.default.due":          "The default applies now",
+	"decision.default.label":        "Default: %s",
+	"decision.resolved.go":          "Agreed",
+	"decision.resolved.hold":        "On hold",
+	"decision.resolved.reply":       "Replied: %s",
+	"decision.resolved.default":     "Went with the default",
+	"decision.goall":                "Go on all defaults · %d",
+	"living.title":                  "While you were away",
+	"living.unread":                 "Just updated · unread",
+	"living.needsyou":               "Needs you · %d",
+	"living.evidence":               "Evidence",
+	"living.details":                "Details",
+	"state.queued":                  "Queued",
+	"state.working":                 "Working",
+	"state.needs_you":               "Needs you",
+	"state.blocked":                 "Waiting",
+	"state.done_claimed":            "Done · checking",
+	"state.done":                    "Done",
+	"state.failed":                  "Didn't work",
+	"state.dropped":                 "Dropped",
+	"state.superseded":              "Handed off",
+	"lane.needs_you":                "Needs you",
+	"lane.needs_you.hint":           "Things that need a word from you",
+	"lane.working":                  "Working",
+	"lane.waiting":                  "Waiting",
+	"lane.done":                     "Done today",
+	"lane.empty":                    "None right now",
+	"count.needs_you":               "Needs you",
+	"count.working":                 "Working",
+	"count.waiting":                 "Waiting",
+	"count.done_today":              "Done today",
+	"onhand.title":                  "On hand",
+	"onhand.forecast":               "When you'll be needed next",
+	"onhand.open":                   "Open →",
+	"onhand.checking":               "Checking",
+	"onhand.loose":                  "Loose",
+	"onhand.waiting.for":            "Waiting · %s",
+	"onhand.reported":               "reported %s",
+	"task.transcript":               "Transcript",
+	"task.transcript.hint":          "Tool calls collapsed",
+	"task.brief":                    "Brief · from %s",
+	"task.report":                   "Report to %s",
+	"task.report.needs_input":       "Report to %s · needs a decision",
+	"task.report.done":              "Report to %s · done",
+	"task.report.blocked":           "Report to %s · stuck",
+	"task.report.failed":            "Report to %s · didn't work",
+	"task.checkpoint":               "Checkpoint · %s",
+	"task.you":                      "You",
+	"task.changes":                  "Changes · %d files",
+	"task.changes.none":             "No changes yet",
+	"task.changes.noplace":          "This task doesn't work in a repo, so there are no changes to show",
+	"task.changes.error":            "Can't read the changes: %s",
+	"task.changes.refresh":          "Refresh",
+	"task.dossier.why":              "Why %s",
+	"task.dossier.checkpoints":      "Checkpoints",
+	"task.dossier.checkpoints.none": "No checkpoints yet",
+	"task.dossier.evidence":         "Evidence",
+	"task.dossier.evidence.none":    "No evidence yet",
+	"task.dossier.where":            "Where",
+	"task.loading":                  "Reading this task's history…",
+	"task.unknown":                  "This task",
+	"place.none":                    "No environment",
+	"time.now":                      "just now",
+	"time.min":                      "%d min",
+	"time.hour":                     "%d h",
+	"time.ago.min":                  "%d min ago",
+	"time.ago.hour":                 "%d h ago",
+	"time.opened":                   "open %s",
+	"face.idle":                     "%s is standing by",
+	"face.working":                  "%s is working",
+	"face.needs_you":                "%s needs you",
+	"job.running":                   "Working",
+	"job.done":                      "Done",
+	"job.failed":                    "Didn't work",
+	"tool.ok":                       "ok",
+	"tool.fail":                     "failed",
+}
+
+// Tables returns the tables by language, for tests.
+func Tables() map[Lang]Table { return map[Lang]Table{ZH: zh, EN: en} }
+
+// Strings translates keys in one language.
+type Strings struct {
+	Lang  Lang
+	table Table
+}
+
+// New returns the strings of a language (English for an unknown one).
+func New(l Lang) *Strings {
+	if l == ZH {
+		return &Strings{Lang: ZH, table: zh}
+	}
+	return &Strings{Lang: EN, table: en}
+}
+
+// T translates key, formatting args into it. A missing key shows itself,
+// so it is seen and fixed.
+func (s *Strings) T(key string, args ...any) string {
+	v, ok := s.table[key]
+	if !ok {
+		if v, ok = en[key]; !ok {
+			return key
+		}
+	}
+	if len(args) == 0 {
+		return v
+	}
+	return fmt.Sprintf(v, args...)
+}
+
+// Detect picks the language: DUCTER_LOCALE, else the system's preferred
+// languages (as mygo reports them), else LANG, else English.
+func Detect(preferred []string) Lang {
+	if l := os.Getenv("DUCTER_LOCALE"); l != "" {
+		return parse(l)
+	}
+	for _, p := range preferred {
+		if l := parse(p); l != "" {
+			return l
+		}
+	}
+	if l := parse(os.Getenv("LANG")); l != "" {
+		return l
+	}
+	return EN
+}
+
+func parse(tag string) Lang {
+	tag = strings.ToLower(tag)
+	switch {
+	case strings.HasPrefix(tag, "zh"):
+		return ZH
+	case strings.HasPrefix(tag, "en"):
+		return EN
+	}
+	return ""
+}

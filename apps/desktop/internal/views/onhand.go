@@ -215,7 +215,7 @@ func (a *App) lane(c *ui.Context, lane store.Lane, tasks []*store.Task, grow, ba
 	t := a.T
 	names := [...]string{"lane.needs_you", "lane.working", "lane.waiting", "lane.done"}
 	colors := [...]theme.StateColors{t.NeedsYou, t.Working, t.Waiting, t.Done}
-	ui.Column(c.Key(lane)).Grow(grow).Basis(basis).MinWidth(0).Gap(14).Children(func() {
+	ui.Column(c.Key(lane)).Grow(grow).Basis(basis).MinWidth(0).MaxWidth(basis * 2.2).Gap(14).Children(func() {
 		ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
 			a.pebble(c, colors[lane].Dot, 14, 16)
 			ui.Text(c, a.L.T(names[lane])).FontSize(20).FontWeight(800)
@@ -483,11 +483,8 @@ func (a *App) doneList(c *ui.Context, tasks []*store.Task) {
 				if line := summaryLine(rep.Summary); line != "" {
 					ui.Text(c, line).FontSize(t.XS).LineHeight(1.45).TextColor(t.InkSoft).MaxLines(2).Tooltip(rep.Summary)
 				}
-				for _, ev := range store.SortEvidence(rep.Evidence) {
-					if store.MachineChecked(ev.Kind) {
-						ui.Row(c).Children(func() { a.evidenceChip(c.Key("ev"), task, ev) })
-					}
-					break
+				if ev, ok := headlineEvidence(rep.Evidence); ok {
+					ui.Row(c).Children(func() { a.evidenceChip(c.Key("ev"), task, ev) })
 				}
 			})
 			if row.Clicked() {

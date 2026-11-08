@@ -134,10 +134,33 @@ func TestLiveBackend(t *testing.T) {
 
 	open := s.OpenDecisions()
 	if len(open) == 0 {
-		t.Log("no open decision on the backend; stopping after On hand")
+		// Nothing to decide: open the newest task, to see its result.
+		var newest *store.Task
+		for _, task := range s.Tasks {
+			if newest == nil || task.OpenedAt > newest.OpenedAt {
+				newest = task
+			}
+		}
+		if newest != nil {
+			h.app.OpenTask(newest.ID)
+			h.until("history", func() bool { return newest.HistoryLoaded })
+			h.until("diff", func() bool {
+				p := h.app.diffs[newest.ID]
+				return p == nil || !p.loading
+			})
+			h.shot(prefix + "-task-result")
+			h.click(h.app.L.T("nav.conversation"))
+			h.shot(prefix + "-conversation-result")
+		}
 		return
 	}
 	d := open[len(open)-1]
+	if d.TaskID == "" {
+		// The partner's own ask: answered in the conversation.
+		h.click(h.app.L.T("nav.conversation"))
+		h.shot(prefix + "-partner-decision")
+		return
+	}
 	h.app.OpenTask(d.TaskID)
 	h.until("history", func() bool { return s.Task(d.TaskID).HistoryLoaded })
 	h.until("diff", func() bool {

@@ -5,6 +5,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 )
@@ -124,7 +125,7 @@ func (a *App) outsideLine(task *store.Task) string {
 	}
 	p := task.Place()
 	if p.Kind == "repo" && p.Branch != "" {
-		return a.L.T("outside.nothing.repo", p.Branch, a.device(p.Device))
+		return a.L.T("outside.nothing.repo", p.Branch, a.cjkPad(a.device(p.Device)))
 	}
 	return a.L.T("outside.nothing")
 }
@@ -188,4 +189,35 @@ func summaryLine(s string) string {
 		s = s[:i]
 	}
 	return s
+}
+
+// cjkPad spaces a Latin word apart from the Chinese around it, and leaves
+// Chinese and English text as is.
+func (a *App) cjkPad(s string) string {
+	if a.L.Lang != i18n.ZH || s == "" {
+		return s
+	}
+	if s[0] < 0x80 {
+		s = " " + s
+	}
+	if s[len(s)-1] < 0x80 {
+		s += " "
+	}
+	return s
+}
+
+// headlineEvidence is the one machine check a Done row shows: the last
+// of the strongest kind (an "after" test run beats a "before").
+func headlineEvidence(evs []protocol.EvidenceRef) (protocol.EvidenceRef, bool) {
+	sorted := store.SortEvidence(evs)
+	if len(sorted) == 0 || !store.MachineChecked(sorted[0].Kind) {
+		return protocol.EvidenceRef{}, false
+	}
+	best := sorted[0]
+	for _, ev := range sorted[1:] {
+		if ev.Kind == best.Kind {
+			best = ev
+		}
+	}
+	return best, true
 }

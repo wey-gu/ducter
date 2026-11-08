@@ -101,7 +101,7 @@ func (a *App) waiterRow(c *ui.Context, w *protocol.Waiter) {
 	ui.Row(c).Gap(10).Padding(10, 14).Radius(16).Border(1.5, t.Waiting.Dot.Mix(t.Surface, 0.4)).BorderStyle(ui.BorderDashed).AlignItems(ui.Center).
 		Label(w.Reason).Children(func() {
 		ui.Box(c).Size(24, 24).Radius(8).Background(t.Waiting.Surface).Draw(drawClock(t.Waiting.Ink)).Shrink(0)
-		ui.Text(c, a.L.T("onhand.waiting.for", w.Reason)).FontSize(t.SM).FontWeight(700).TextColor(t.Waiting.Ink).Grow(1).MinWidth(0).MaxLines(2)
+		ui.Text(c, a.L.T("onhand.waiting.for", w.Reason)).FontSize(t.SM).FontWeight(700).TextColor(t.Waiting.Ink).Grow(1).MinWidth(0).MaxLines(3)
 		if at := store.ParseTime(w.At); !at.IsZero() {
 			ui.Text(c, a.when(at)).Font(t.Mono).FontSize(t.XS).TextColor(t.InkMuted).Shrink(0)
 		}

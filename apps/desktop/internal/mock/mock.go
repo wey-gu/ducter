@@ -239,7 +239,7 @@ func (h *hub) seed() {
 	report(past(39), "t-weekly", "blocked", "到点自己接着写，不占机器", nil)
 	sunday := time.Now().Add(time.Duration((7-int(time.Now().Weekday()))%7) * 24 * time.Hour)
 	sunday = time.Date(sunday.Year(), sunday.Month(), sunday.Day(), 20, 0, 0, 0, time.Local)
-	h.emitAt(past(39), ch, protocol.OriginWaiter, protocol.KindWaiter, protocol.Waiter{WaiterID: "w-weekly", TaskID: "t-weekly", At: sunday.UTC().Format(time.RFC3339), Reason: "周日 20:00 的数据", State: protocol.WaiterArmed}, 0)
+	h.emitAt(past(39), ch, protocol.OriginWaiter, protocol.KindWaiter, protocol.Waiter{WaiterID: "w-weekly", TaskID: "t-weekly", At: sunday.UTC().Format(time.RFC3339), Reason: "这周的数据到齐", State: protocol.WaiterArmed}, 0)
 
 	// A waiter of no task: a compact row on On hand.
 	morning := time.Now().Add(24 * time.Hour)

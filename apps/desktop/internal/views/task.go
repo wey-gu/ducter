@@ -628,7 +628,7 @@ func (a *App) dossier(c *ui.Context, task *store.Task) {
 		}
 		ui.Text(c, a.bodyLine(task)).FontSize(t.XS).TextColor(t.InkMuted)
 		if u := task.Usage; u.InputTokens+u.OutputTokens+u.CacheRead > 0 {
-			ui.Text(c, a.L.T("task.usage", tokens(u.InputTokens+u.CacheRead+u.CacheWrite), tokens(u.OutputTokens))).Font(t.Mono).FontSize(11).TextColor(t.InkMuted)
+			ui.Text(c, a.L.T("task.usage", tokens(u.InputTokens+u.CacheRead+u.CacheWrite), tokens(u.OutputTokens))).FontSize(t.XS).TextColor(t.InkMuted)
 		}
 	})
 	a.dossierCard(c, a.L.T("task.dossier.checkpoints"), func() {

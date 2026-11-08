@@ -310,11 +310,22 @@ func (a *App) living(c *ui.Context, e *store.Entry) {
 				})
 			}
 		})
-		needs := 0
+		needs, open := 0, 0
 		for _, it := range e.Living.Items {
 			if it.Kind == "decision" {
 				needs++
+				if d := a.S.Decisions[it.DecisionID]; d != nil && d.Resolved == nil && d.Pending == "" {
+					open++
+				}
 			}
+		}
+		if open >= 2 {
+			ui.Row(c).Children(func() {
+				ui.Spacer(c)
+				if a.button(c, a.L.T("decision.goall", len(a.S.OpenDecisions())), btnQuiet, 40, t.Bg) {
+					a.GoOnAllDefaults()
+				}
+			})
 		}
 		// Needs-you first, each with its default; then the rest, one line
 		// each.
@@ -402,7 +413,7 @@ func (a *App) livingLine(c *ui.Context, it protocol.LivingItem) {
 		if it.Kind == "blocked" {
 			col = t.InkSoft
 		}
-		ui.Text(c, text).FontSize(t.MD).TextColor(col).Grow(1).MinWidth(0).LineHeight(1.45)
+		ui.Text(c, text).FontSize(t.MD).TextColor(col).Grow(1).MinWidth(0).LineHeight(1.45).MaxLines(3).Tooltip(text)
 		if len(it.Evidence) > 0 {
 			ev := it.Evidence[0]
 			l := ui.Text(c.Key("ev"), a.L.T("living.evidence")).FontSize(t.SM).FontWeight(700).Role(ui.RoleLink).

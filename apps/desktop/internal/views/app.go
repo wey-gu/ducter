@@ -74,7 +74,7 @@ type App struct {
 	md, mdTask markdown.Options
 	// chipOwner is the entry that shows each task's chip.
 	chipOwner map[string]int64
-	uiTheme    *ui.Theme
+	uiTheme   *ui.Theme
 	// readSent is the last seq a read frame covered; unreadAt is when the
 	// conversation first showed something unread to the user.
 	readSent int64

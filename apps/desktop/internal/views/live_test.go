@@ -99,6 +99,10 @@ func TestLiveBackend(t *testing.T) {
 	if os.Getenv("DUCTER_LOCALE") == "en" {
 		lang = i18n.EN
 	}
+	prefix := os.Getenv("DUCTER_LIVE_SHOTS")
+	if prefix == "" {
+		prefix = "live"
+	}
 	h := newLive(t, url, lang)
 	s := h.app.S
 	long := 8 * time.Minute
@@ -117,16 +121,16 @@ func TestLiveBackend(t *testing.T) {
 			}
 			return false
 		})
-		h.shot("live-ack")
+		h.shot(prefix + "-ack")
 		h.until("a task with a decision", func() bool { return len(s.OpenDecisions()) > 0 })
 	}
 	// Show the newest messages, then let them count as read.
 	h.tt.Advance(2 * time.Second)
 	h.until("conversation settles", func() bool { return true })
-	h.shot("live-conversation")
+	h.shot(prefix + "-conversation")
 
 	h.click(h.app.L.T("nav.onhand"))
-	h.shot("live-onhand")
+	h.shot(prefix + "-onhand")
 
 	open := s.OpenDecisions()
 	if len(open) == 0 {
@@ -140,7 +144,7 @@ func TestLiveBackend(t *testing.T) {
 		p := h.app.diffs[d.TaskID]
 		return p == nil || !p.loading
 	})
-	h.shot("live-task")
+	h.shot(prefix + "-task")
 
 	if os.Getenv("DUCTER_LIVE_NOGO") != "" {
 		return
@@ -155,7 +159,7 @@ func TestLiveBackend(t *testing.T) {
 	})
 	sd := s.Task(d.TaskID).Sends[0]
 	t.Logf("direct send: delivered=%q failed=%q echoed seq=%d", sd.Delivered, sd.Failed, sd.Seq)
-	h.shot("live-task-sent")
+	h.shot(prefix + "-task-sent")
 	h.wait = long
 
 	// Go.
@@ -173,7 +177,7 @@ func TestLiveBackend(t *testing.T) {
 		p := h.app.diffs[d.TaskID]
 		return p == nil || !p.loading
 	})
-	h.shot("live-task-done")
+	h.shot(prefix + "-task-done")
 	h.click(h.app.L.T("nav.conversation"))
 	h.until("the partner's result", func() bool {
 		e := s.Channel[len(s.Channel)-1]
@@ -181,7 +185,7 @@ func TestLiveBackend(t *testing.T) {
 	})
 	h.tt.Advance(2 * time.Second)
 	h.until("read", func() bool { return true })
-	h.shot("live-conversation-done")
+	h.shot(prefix + "-conversation-done")
 
 	if os.Getenv("DUCTER_LIVE_RESTART") == "" {
 		return
@@ -189,7 +193,7 @@ func TestLiveBackend(t *testing.T) {
 	cursor, entries := s.Cursor, len(s.Channel)
 	t.Logf("restart the backend now (cursor %d)", cursor)
 	h.until("disconnect", func() bool { return h.app.Status == client.Disconnected })
-	h.shot("live-reconnecting")
+	h.shot(prefix + "-reconnecting")
 	h.until("reconnect", func() bool { return h.app.Status == client.Connected && s.HeadSeq >= cursor })
 	h.until("replay", func() bool { return true })
 	if len(s.Channel) < entries {
@@ -202,7 +206,7 @@ func TestLiveBackend(t *testing.T) {
 		}
 		seen[e.FirstSeq] = true
 	}
-	h.shot("live-reconnected")
+	h.shot(prefix + "-reconnected")
 }
 
 func liveSendText(l i18n.Lang) string {

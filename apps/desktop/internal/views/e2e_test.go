@@ -169,6 +169,19 @@ func TestScenarioEndToEnd(t *testing.T) {
 	}
 	h.shot("task")
 
+	// Talk to the task directly: it waits for a decision, so the text is
+	// queued behind its turn, and the transcript says so.
+	h.app.SendToTask("t-ci-1", "rebase 前先看一眼 main 上 storage 的改动")
+	h.until("delivery", func() bool {
+		sd := s.Task("t-ci-1").Sends[0]
+		return sd.Delivered != "" && sd.Seq != 0
+	})
+	if !h.tt.HasText("排在这一轮之后") {
+		t.Errorf("no delivery shown: %q", h.tt.Texts())
+	}
+	h.until("its answer", func() bool { return h.tt.HasText("收到，按你说的来。") })
+	h.shot("task-sent")
+
 	h.click("好，rebase")
 	h.until("done", func() bool {
 		task := s.Task("t-ci-1")

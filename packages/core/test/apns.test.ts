@@ -102,6 +102,11 @@ describe("APNs (the iPhone app)", () => {
     expect(core.push.subs()).toMatchObject([{ endpoint: `apns:${TOKEN}`, platform: "ios", locale: "zh", apns: { env: "sandbox", topic: "dev.ducter.phone" } }]);
     expect((await post("/api/push/test", {})).status).toBe(200);
     expect(sent).toHaveLength(1);
+    // Reply typed on the notification.
+    core.log.append({ stream: "channel", origin: "system", kind: "decision", body: { ...decision, decisionId: "d_r" } });
+    expect((await post("/api/decide", { decisionId: "d_r", option: "reply" })).status).toBe(400);
+    expect((await post("/api/decide", { decisionId: "d_r", option: "reply", text: "先跑一下测试" })).status).toBe(200);
+    expect(core.decisions.isPending("d_r")).toBe(false);
     expect((await post("/api/push/unsubscribe", { endpoint: `apns:${TOKEN}` })).status).toBe(200);
     expect(core.push.subs()).toHaveLength(0);
   });

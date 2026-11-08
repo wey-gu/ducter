@@ -10,7 +10,7 @@
 //   POST /api/push/unsubscribe       {endpoint}
 //   GET|POST /api/push/settings      {done?, quiet?}
 //   POST /api/push/test              one test push to this device's subscriptions
-//   POST /api/decide                 {decisionId, option}: Go / Hold from a notification
+//   POST /api/decide                 {decisionId, option, text?}: Go / Hold / Reply from a notification
 // The assets are imported as files, so `bun build --compile` embeds them in the binary.
 import type { Decisions } from "./decisions.ts";
 import type { Gate, GateResult } from "./auth.ts";
@@ -203,9 +203,11 @@ export async function webApi(req: Request, g: Extract<GateResult, { pass: true }
     case "POST /api/decide": {
       const b = await body();
       const option = b.option;
-      if (typeof b.decisionId !== "string" || (option !== "go" && option !== "hold")) return json(400, { error: "invalid" });
+      // reply: typed on the notification itself (the iPhone app's Reply action).
+      const text = typeof b.text === "string" ? b.text.trim().slice(0, 4000) : "";
+      if (typeof b.decisionId !== "string" || (option !== "go" && option !== "hold" && option !== "reply") || (option === "reply" && !text)) return json(400, { error: "invalid" });
       if (!deps.decisions.isPending(b.decisionId)) return json(409, { error: "already answered" });
-      deps.decisions.decide(b.decisionId, option);
+      deps.decisions.decide(b.decisionId, option, option === "reply" ? text : undefined);
       return json(200, { ok: true });
     }
   }

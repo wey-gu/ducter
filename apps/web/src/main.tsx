@@ -6,6 +6,7 @@ import { A } from "./app.ts";
 import { Api, baseUrl, codeFromHash, pair, storage, type Me, type PairError } from "./conn.ts";
 import { kvSet } from "./idb.ts";
 import { registerWorker } from "./push-client.ts";
+import { inApp, tellApp } from "./native.ts";
 import { Avatar, Conversation, OnHand, Sheets, TaskView, Toasts } from "./views.tsx";
 
 const base = baseUrl();
@@ -122,7 +123,8 @@ async function boot(pairing?: PairView) {
   if (r.status === 0 && !had) return boot({ busy: false, code: "", error: "unreachable" });
   const me: Me = r.data ?? { via: had ? "device" : "local", personaName: storage.get()?.personaName ?? "Ducter", push: { supported: false } };
   if (had) await kvSet("token", had);
-  void registerWorker(base);
+  tellApp({ token: had, base: base.href, locale: A.L.lang, personaName: me.personaName });
+  if (!inApp()) void registerWorker(base); // the app's notifications are its own (APNs)
   A.start(base, api, me, token);
   A.fromHash();
   addEventListener("popstate", () => A.fromHash());

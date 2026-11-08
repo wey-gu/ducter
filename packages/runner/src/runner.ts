@@ -4,6 +4,7 @@ import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, Sessio
 import { NUDGE, kickoff, taskBrief } from "./brief.ts";
 import { createOarHarnessPort } from "./oar.ts";
 import { planPlace, provisionPlace } from "./places.ts";
+import { browserSidecar, type BrowserOptions } from "./browser.ts";
 import { PREVIEW_MAX, preview } from "./normalize.ts";
 
 type HarnessId = SessionSpec["harness"];
@@ -15,6 +16,7 @@ export interface RunnerOptions {
   partnerName?: string; // default core.persona.name
   newId?: () => string;
   now?: () => Date;
+  browser?: BrowserOptions; // browser places: env gate and test seams
 }
 
 /** Runner plus test/ops helpers that are not part of the contract. */
@@ -205,6 +207,9 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       const resolved = await planPlace(input.place, id, title, core.dataDir);
       const project = input.project ?? "";
       const persona = input.persona || core.persona.id;
+      const partnerName = opts.partnerName ?? core.persona.name ?? "Ducter";
+      // Throws before the task exists when a browser place is unavailable (the partner says why).
+      const sidecar = await browserSidecar({ place: resolved.place, persona, taskId: id, dataDir: core.dataDir, partnerName }, opts.browser);
 
       core.log.append({
         persona,
@@ -220,7 +225,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         model: input.model,
         cwd: resolved.cwd,
         appendSystemPrompt: taskBrief({
-          partnerName: opts.partnerName ?? core.persona.name ?? "Ducter",
+          partnerName,
           taskId: id,
           title,
           brief: input.brief,
@@ -228,8 +233,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
           cwd: resolved.cwd,
           project: project || undefined,
           mcpServerName: mcp.name,
-        }),
-        mcp: [mcp],
+        }) + (sidecar?.brief ?? ""),
+        mcp: sidecar ? [mcp, sidecar.mcp] : [mcp],
         permissionMode: "bypass",
       };
       const card: TaskCard = {
@@ -264,6 +269,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       t.started = (async () => {
         try {
           await provisionPlace(resolved);
+          await sidecar?.ready();
           await startSession(t, false);
           await sendTurn(t, kickoff(title));
         } catch (err) {

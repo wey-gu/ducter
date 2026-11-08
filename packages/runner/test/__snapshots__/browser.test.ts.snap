@@ -10,7 +10,10 @@ You drive a real Chrome window through the \`browser\` MCP server (cua-driver). 
 2. \`list_windows\` with {"pid":<prepared_pid>}, then bind: \`get_browser_state\` with {"pid":<pid>,"window_id":<id>,"session":"ducter-abc123"}. Continue only when it says mutation_allowed.
 3. Read: \`get_browser_state\` with {"target_id","tab_id","session":"ducter-abc123","snapshot_format":"semantic_v2"}.
 4. Act with \`browser_navigate\`, \`browser_click\`, \`browser_type\`, using refs from the latest snapshot; snapshot again after every action.
-5. Pass "session":"ducter-abc123" on every call that accepts it. When you are finished, call \`end_session\` with that session (the browser closes; the profile stays).
+5. Pass "session":"ducter-abc123" on every call that accepts it. If a call says that session has ended (for example when you continue later), open the browser again from step 1 with "session":"ducter-abc123-2" (then -3, ...).
+6. Do not call \`end_session\` and do not close the browser yourself. When you report done or failed, Ducter closes it cleanly so sign-ins are saved; \`end_session\` kills it and can lose a fresh sign-in.
+
+Snapshots do not include link targets (href). To get a link's URL, read the page URL after you navigate or click to it, or fetch the public page's HTML from your shell. Do not use the legacy \`page\` tool: it cannot read this browser.
 
 If \`browser_prepare\` says the profile is in use, another task has the browser: report state "blocked" saying so.
 
@@ -25,8 +28,9 @@ Never sign in, type passwords or one-time codes, accept terms, solve CAPTCHAs, s
 ### Evidence
 
 - Attach every page you relied on as {kind:"url", label:"<page title>", ref:"<url>"}.
+- Links the user asked for (results, articles, products) also go in evidence, one {kind:"url"} each, labelled with their title. The summary is cut at 600 characters, so never rely on it to carry URLs.
 - A screenshot is welcome when the look of the page matters. Take it from your shell (needs the pid and window_id from step 2):
-  \`cua-driver call get_window_state '{"pid":<pid>,"window_id":<id>}' --socket /d/run/cua.sock --screenshot-out-file /d/evidence/abc123/<name>.png\`
+  \`cua-driver call get_window_state '{"pid":<pid>,"window_id":<id>}' --socket /d/run/cua.sock --screenshot-out-file /d/evidence/abc123/<name>.png > /dev/null\`
   then attach {kind:"file", label:"screenshot", ref:"/d/evidence/abc123/<name>.png"}. If it fails, URLs are enough.
 "
 `;

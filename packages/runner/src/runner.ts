@@ -4,7 +4,7 @@ import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, Sessio
 import { NUDGE, kickoff, taskBrief } from "./brief.ts";
 import { createOarHarnessPort } from "./oar.ts";
 import { planPlace, provisionPlace } from "./places.ts";
-import { browserSidecar, type BrowserOptions } from "./browser.ts";
+import { browserSidecar, type BrowserOptions, type BrowserSidecar } from "./browser.ts";
 import { PREVIEW_MAX, preview } from "./normalize.ts";
 
 type HarnessId = SessionSpec["harness"];
@@ -44,6 +44,7 @@ interface TaskRt {
   attention: Attention;
   residency: Residency;
   started: Promise<void>;
+  sidecar?: BrowserSidecar; // browser place
 }
 
 const REPORT_ATTENTION: Record<Bodies["report"]["state"], Attention> = {
@@ -168,6 +169,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const reported = t.reportedThisTurn;
     t.reportedThisTurn = false;
     if (!busy && !t.dropped) setState(t, currentAttention(t), "warm");
+    // A finished browser task quits its browser cleanly so sign-ins are saved (browser.ts).
+    if (!busy && t.sidecar && ["done_claimed", "done", "failed"].includes(currentAttention(t))) void t.sidecar.close().catch(() => false);
     if (t.dropped || busy) return;
     if (reported) {
       t.nudged = false;
@@ -262,6 +265,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         attention: "queued",
         residency: "provisioning",
         started: Promise.resolve(),
+        sidecar,
       };
       tasks.set(id, t);
       core.tasks.setState(id, "queued", "provisioning");
@@ -323,6 +327,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       t.session = undefined;
       t.running = false;
       await s?.close().catch(() => {});
+      await t.sidecar?.close().catch(() => false);
       // The worktree and branch are kept on purpose.
     },
 

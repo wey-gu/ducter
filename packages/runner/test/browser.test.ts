@@ -1,12 +1,13 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { scriptedRuntime } from "@botiverse/oar/testing";
+import { scriptedRuntime, type ScriptedTurn } from "@botiverse/oar/testing";
 import type { Runtime } from "@botiverse/oar/browser";
 import { createOarHarnessPort, createRunner, registerTaskTools } from "../src/index.ts";
-import { browserBrief, browserGate, profileName, resetCuaDriverProbe, socketPath, type Exec } from "../src/browser.ts";
-import { createFakeCore, type FakeCore } from "./fake-core.ts";
+import { browserBrief, browserGate, closeBrowserGracefully, profileName, resetCuaDriverProbe, socketPath, stopFocusGuards, type Exec } from "../src/browser.ts";
+import { createFocusGuard, type FocusProbe } from "../src/focus-guard.ts";
+import { createFakeCore, waitFor, type FakeCore } from "./fake-core.ts";
 
 const BIN = "/opt/cua/CuaDriver.app/Contents/MacOS/cua-driver";
 const TOOLS_044 = ["browser_prepare: Prepare", "get_browser_state: Read", "browser_navigate: Go", "list_windows: List"].join("\n");
@@ -30,8 +31,8 @@ function fakeDriver(tools: string) {
   return { exec, calls };
 }
 
-function capturingRuntime(seen: { options?: any }): Runtime {
-  const rt = scriptedRuntime({ id: "claude", turn: async () => {} });
+function capturingRuntime(seen: { options?: any }, turn: (t: ScriptedTurn) => Promise<void> = async () => {}): Runtime {
+  const rt = scriptedRuntime({ id: "claude", turn });
   return new Proxy(rt, {
     get(target, prop, recv) {
       if (prop === "session") {
@@ -53,7 +54,12 @@ beforeEach(() => {
   core = createFakeCore(join(dir, "d"));
   registerTaskTools(core);
 });
-afterEach(() => rmSync(dir, { recursive: true, force: true }));
+afterEach(() => {
+  stopFocusGuards();
+  rmSync(dir, { recursive: true, force: true });
+});
+
+const idleProbe: FocusProbe = { front: async () => undefined, ducterBrowsers: async () => [], activate: async () => {} };
 
 describe("browser place: session-config wiring", () => {
   test("attaches cua-driver as a stdio MCP sidecar next to Ducter's MCP, with the persona profile", async () => {
@@ -63,7 +69,7 @@ describe("browser place: session-config wiring", () => {
     const runner = createRunner(core, {
       harness: port,
       newId: () => "tskb0001",
-      browser: { env: {}, exec: drv.exec, which: () => BIN, platform: "darwin", daemonTimeoutMs: 1000 },
+      browser: { env: {}, exec: drv.exec, which: () => BIN, platform: "darwin", daemonTimeoutMs: 1000, focusProbe: idleProbe },
     });
     const card = await runner.openTask({ persona: "p1", title: "Latest OAR release", brief: "look it up", place: { kind: "browser", device: "", profile: "" } });
     await runner.whenStarted(card.taskId);
@@ -97,7 +103,7 @@ describe("browser place: session-config wiring", () => {
     const drv = fakeDriver(TOOLS_044);
     const port = createOarHarnessPort({ loadRuntime: async () => capturingRuntime({}) });
     let n = 0;
-    const runner = createRunner(core, { harness: port, newId: () => `tskb000${++n}`, browser: { env: {}, exec: drv.exec, which: () => BIN, platform: "darwin" } });
+    const runner = createRunner(core, { harness: port, newId: () => `tskb000${++n}`, browser: { env: {}, exec: drv.exec, which: () => BIN, platform: "darwin", focusProbe: idleProbe } });
     for (let i = 0; i < 2; i++) {
       const c = await runner.openTask({ persona: "p1", title: "t", brief: "b", place: { kind: "browser", device: "local", profile: "default" } });
       await runner.whenStarted(c.taskId);
@@ -154,5 +160,117 @@ describe("browser helpers", () => {
     expect(
       browserBrief({ partnerName: "Ducter", profile: "p1", session: "ducter-abc123", bin: "cua-driver", socket: "/d/run/cua.sock", evidenceDir: "/d/evidence/abc123" }),
     ).toMatchSnapshot();
+  });
+});
+
+describe("focus guard (macOS: a freshly launched Ducter Chrome steals focus)", () => {
+  function world() {
+    const w = { t: 0, front: 100 as number | undefined, chrome: [] as number[], activated: [] as number[] };
+    const probe: FocusProbe = {
+      front: async () => w.front,
+      ducterBrowsers: async () => w.chrome,
+      activate: async (pid) => {
+        w.activated.push(pid);
+        w.front = pid;
+      },
+    };
+    return { w, guard: createFocusGuard({ probe, now: () => w.t, graceMs: 5000, idleStopMs: 60_000 }) };
+  }
+
+  test("a Chrome that grabs focus right after launch gives it back to the user's app", async () => {
+    const { w, guard } = world();
+    await guard.tick(); // user is in pid 100
+    w.t = 1000;
+    w.chrome = [500];
+    w.front = 500; // launched and activated itself
+    await guard.tick();
+    expect(w.activated).toEqual([100]);
+    expect(w.front).toBe(100);
+  });
+
+  test("after the grace period, the user choosing the browser window is respected", async () => {
+    const { w, guard } = world();
+    await guard.tick();
+    w.t = 1000;
+    w.chrome = [500];
+    await guard.tick(); // launched in the background, seen at t=1000
+    w.t = 20_000;
+    w.front = 500; // user clicked it (to watch, or to sign in)
+    await guard.tick();
+    expect(w.activated).toEqual([]);
+  });
+
+  test("other apps are never touched", async () => {
+    const { w, guard } = world();
+    await guard.tick();
+    w.front = 200;
+    await guard.tick();
+    w.front = 300;
+    await guard.tick();
+    expect(w.activated).toEqual([]);
+  });
+});
+
+describe("closing the browser so sign-ins are saved", () => {
+  async function runWithReport(state: "done" | "needs_input") {
+    const drv = fakeDriver(TOOLS_044);
+    const closed: string[] = [];
+    const turn = async (t: ScriptedTurn) => {
+      await t.tool("mcp__ducter__report_to_main", JSON.stringify({ state, summary: "s" }), () =>
+        core.call("report_to_main", { state, summary: "s", questions: state === "needs_input" ? [{ id: "q1", text: "Sign in?", blocking: true, default: "skip", reversible: true }] : [] }, "tskd0001"),
+      );
+    };
+    const port = createOarHarnessPort({ loadRuntime: async () => capturingRuntime({}, turn) });
+    const runner = createRunner(core, {
+      harness: port,
+      newId: () => "tskd0001",
+      browser: { env: {}, exec: drv.exec, which: () => BIN, platform: "darwin", focusProbe: idleProbe, closeBrowser: async (dir) => (closed.push(dir), true) },
+    });
+    const card = await runner.openTask({ persona: "p1", title: "t", brief: "b", place: { kind: "browser", device: "local", profile: "default" } });
+    await runner.whenStarted(card.taskId);
+    await waitFor(() => core.tasks.get(card.taskId)?.residency === "warm", "warm");
+    await Bun.sleep(20);
+    return { runner, closed, taskId: card.taskId };
+  }
+
+  test("a task that reports done gets its browser closed cleanly (not killed)", async () => {
+    const { runner, closed } = await runWithReport("done");
+    expect(closed).toEqual([join(core.dataDir, "browser-profiles", "p1")]);
+    await runner.dispose();
+  });
+
+  test("a task waiting on the user keeps its browser open (they may need to sign in there)", async () => {
+    const { runner, closed, taskId } = await runWithReport("needs_input");
+    expect(closed).toEqual([]);
+    await runner.drop(taskId);
+    expect(closed.length).toBe(1);
+    await runner.dispose();
+  });
+
+  test("closeBrowserGracefully sends CDP Browser.close to the profile's own endpoint", async () => {
+    const got: string[] = [];
+    const server = Bun.serve({
+      port: 0,
+      fetch(req, srv) {
+        if (new URL(req.url).pathname === "/devtools/browser/abc" && srv.upgrade(req)) return;
+        return new Response("no", { status: 404 });
+      },
+      websocket: {
+        message(ws, m) {
+          got.push(String(m));
+          ws.send(JSON.stringify({ id: 1, result: {} }));
+          ws.close();
+        },
+      },
+    });
+    const profile = join(dir, "prof");
+    mkdirSync(profile);
+    writeFileSync(join(profile, "DevToolsActivePort"), `${server.port}\n/devtools/browser/abc\n`);
+    expect(await closeBrowserGracefully(profile)).toBe(true);
+    expect(JSON.parse(got[0]!)).toEqual({ id: 1, method: "Browser.close" });
+    server.stop(true);
+    // Stale port file (browser gone): reports false, does not throw.
+    expect(await closeBrowserGracefully(profile, 1000)).toBe(false);
+    expect(await closeBrowserGracefully(join(dir, "missing"))).toBe(false);
   });
 });

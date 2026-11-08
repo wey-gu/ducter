@@ -150,9 +150,14 @@ Ducter is the one doing the work, so neither closing the window nor ⌘Q stops i
 1. Checking this Mac (napping character). The app first fixes its `PATH` (login shell's
    `PATH` + `~/.local/bin`, Homebrew, Bun …), since Finder starts apps with the system folders
    only, then runs `ducter doctor --json` with `DUCTER_LOCALE` set to the window's language.
-2. Blocked: only required failures, each with Copy and **Run in Terminal** (a `.command` file
-   opened with `open -a Terminal`: no Automation permission prompt). URL fixes get "Open the
-   page". Optional misses fold into one line. Re-checks on return to the window and every 10 s.
+2. Blocked: only what blocks. A check doctor marks with an `action` (D68) gets its **own button
+   that runs the official fix inside the app** (see "No terminal, start to finish" below);
+   anything else keeps Copy and **Run in Terminal** (a `.command` file opened with
+   `open -a Terminal`: no Automation permission prompt). URL fixes get "Open the page". With
+   no AI tool signed in, the other one is offered quietly under the first ("或者用 / OR").
+   Optional misses fold into one line. Re-checks on return to the window, every 10 s, and every
+   3 s while a sign-in waits in the browser.
+   - **All set / 好了** (the done character, ~1.6 s) when the person fixed something, then on.
 3. The name, once, skippable, written to `persona.json` as the CLI does; skipped when Nowledge
    Mem is healthy or `DUCTER_PERSONA_NAME` is set.
 4. Waking {name} up… then the conversation. Starters come from `firstrun.json`, which the app
@@ -192,6 +197,90 @@ image and on a copy of it (`syspolicy_check distribution`: ready for distributio
 app, launched with a scratch `dev.env`, ran doctor and `ducter up` under the hardened runtime
 and served in ~5 s; quitting stopped the helper. The first-open "downloaded from the Internet"
 dialog itself was not clicked through (it needs a person).
+
+## No terminal, start to finish (D68, 2026-11-09)
+
+From double-clicking the disk image to the first result, a person who has never opened
+Terminal doesn't need to. Code: `apps/desktop/internal/views/onboard.go` (fix rows, All set,
+the background line), `websetup.go` (上网), `asks.go` (notifications, phone, Mem),
+`internal/local/jobs.go` (background fixes), `cua.go`, `macos.go` + `btm_darwin.go`; copy in
+`apps/desktop/internal/i18n/onboard.go`; doctor's `action` in `packages/cli/src/doctor.ts`.
+
+**Who, and what they feel.** The fresh user (never heard of a subagent) meets a button, not a
+command: 安装 Claude Code → a working character, "正在安装 Claude Code…", the seconds, the
+installer's own last line, Cancel → 登录 Claude → "在浏览器里登录，好了会自动继续" → 好了. The
+consumer with one plan gets the same, plus Codex offered as the other way. The heavy developer
+still has "在终端里做 / Do it in Terminal" on every row, and on a ready Mac sees none of this.
+
+**The AI tool** (one button per row; the command is doctor's `fix`, so the app and `ducter
+doctor` never disagree):
+
+| Row | What the button runs | Verified |
+|---|---|---|
+| Claude Code, not installed | `curl -fsSL https://claude.ai/install.sh \| bash` (native installer; everything under `$HOME`, refuses sudo) | **Verified** twice into a scratch `HOME`: no TTY, exit 0, `~/.local/bin/claude` 2.1.319, `auth status` → `loggedIn:false`; once from the app itself (button → 4 min on this network → the row turned into 登录 Claude by itself) |
+| Claude Code, signed out | `claude auth login` | **Verified** up to the browser: from the app it opened the browser with the `localhost:<port>/callback` redirect (automatic finish), and printed the manual-code URL as an OSC-8 link, which the row offers as "浏览器没打开？". A page that shows a code instead of returning: "网页给了你一串代码？" opens a field that writes it to the command's stdin. **Not verified:** a completed real sign-in (it would sign a scratch home into the author's account); the finish was walked with a stand-in `claude` |
+| Codex, not installed | `curl -fsSL https://chatgpt.com/codex/install.sh \| sh` (the README's standalone installer; no Homebrew needed), run with `CODEX_NON_INTERACTIVE=1` | **Verified** into a scratch `HOME`: exit 0, `codex-cli 0.167.0`, `Not logged in`. It adds a `PATH` block to `~/.zprofile` (its own behavior) |
+| Codex, signed out | `codex login` (local server on :1455, browser) | Printed URL **verified**; it opens the browser with `open` (it ignores `BROWSER`), so the app path was not walked to the end |
+
+Failure says what went wrong in words and the one thing to do: no network ("连不上网…连上网以后再
+试一次", from curl's own messages), a folder it can't write, a sign-in that didn't finish, or the
+installer's last three lines; **Try again** and **Do it in Terminal**. Cancel stops the whole
+`curl | bash` process group (**verified**: no installer process left). Offline the doctor still
+answers, so the screen shows; only the install itself fails, with that line.
+
+**上网 / Browse the web: three steps, only when it's picked.** Never upfront: the tile reads
+"三小步就能装上 / Three small steps" and nothing happens until the person picks it on the devices
+screen. Then a sheet over the stage (as the connect code), one step open at a time, each turning
+green by itself (`cua-driver permissions status --json` every 1.5 s; it never prompts):
+
+1. 装上浏览器驱动: cua-driver's canonical installer (`cua.ai/driver/install.sh`, the one
+   `cua-driver update --apply` runs; CuaDriver.app into /Applications, sudo-free when it's
+   writable), with `--no-connect --no-test --no-modify-path`; an old driver gets 更新 →
+   `cua-driver update --apply`. **Not run here**: it would replace the author's
+   /Applications/CuaDriver.app; read line by line instead (flags, /Applications, no TTY skips
+   its own guide). Walked with a stand-in driver.
+2. 允许它用鼠标和键盘: the literal pane name "辅助功能 / Accessibility", a small drawn picture of
+   the CuaDriver row with its switch on, **带我去设置 / Take me there** (runs `cua-driver
+   permissions grant`, its own guide), and "只打开系统设置 / Just open System Settings".
+3. 允许它看到屏幕: "录屏与系统录音 / Screen & System Audio Recording", same shape.
+
+When all three are green, Ducter's window comes back to the front by itself, the guide is
+stopped, and 上网 lands in its slot. Core looks at cua-driver again when the add arrives instead
+of answering from its one-minute probe cache (`packages/core/src/devices.ts`). **Verified
+natively** with a stand-in driver (zh and en): steps advanced by themselves, "只打开系统设置"
+opened Screen & System Audio Recording, Ducter came back to the front when the second switch
+turned on, core re-probed and 上网 went from "not yet" to "added". **Not verified:** a first
+real grant, and the "CuaDriver was prevented from modifying apps" notice (cause still unknown).
+
+**macOS asks, one at a time** (none at launch; each has 稍后 / Later: away for 3 days, asked once
+more, then never; answers in `desktop.json` `asks`):
+
+| Moment | When | What the card says and does | Verified |
+|---|---|---|---|
+| Background item | The first start of the LaunchAgent | A line under "马上就好" before macOS posts its own notice ("Background Items Added"), naming System Settings › General › Login Items & Extensions | Line: headless. The notice: **not seen** (a scratch `HOME`'s plist isn't tracked by macOS; registering a test item in the real `~/Library/LaunchAgents` was refused by the session's permission guard). en title from the BTM agent binary; zh wording deliberately doesn't quote it |
+| Background turned off | `SMAppService statusForLegacyURL:` says *requires approval* (Login Items › 允许在后台 off) | Ducter runs as the app's child instead of failing; a card "现在关掉窗口，Ducter 就会停下" + **打开登录项** (`x-apple.systempreferences:com.apple.LoginItems-Settings.extension`); it notices the switch by itself and moves to the background once nothing is running | Status call **verified** on this Mac's own agents (running ones *enabled*, unloaded ones *requires approval*); the card headless; a real toggle not walked |
+| Notifications | After the first result's line is put away | "有事要你拿主意时，用通知告诉你？" → 好 shows one notification right away, which is when macOS asks; denied → **打开通知设置** (System Settings › Notifications; the `?id=` doesn't scroll to the app's row on macOS 15, so the copy names the path) | Card and denied path: headless. Sending on "needs you" while the window isn't focused: built, **not seen** (needs a signed bundle) |
+| Phone | On a later result | "在手机上也能找到我" → the connect code's QR in the card; no outside address → says so plainly | Headless (QR and no-address) |
+| Nowledge Mem | The empty conversation, when Mem isn't installed | One line: "想让 Ducter 记得更久？装上 Nowledge Mem" (opens mem.nowledge.co) · 稍后 | Headless. Installed-but-not-running shows nothing (open) |
+
+Every System Settings link was opened on macOS 15.7 and landed on the named pane (**verified**:
+Accessibility, Screen & System Audio Recording, Login Items & Extensions, Notifications).
+
+**Screenshots.** Native (a scratch `HOME`, the real app bundle, cua-driver): 
+`apps/desktop/docs/onboard-native-*-{zh,en}.png` (fresh, installing, canceled, signin,
+allset, name, conversation, devices, web-driver, web-accessibility, web-screen, web-ready;
+zh also signin-ready and web-waiting). Headless, every state in both languages:
+`onboard-{ai-fresh,ai-installing,ai-offline,ai-signin,ready,background-note,background-off,
+web-driver,web-installing,web-accessibility,web-screen,web-ready,ask-notify,ask-notify-denied,
+ask-phone,ask-phone-noaddress,ask-phone-qr,mem-line}-{zh,en}.png`
+(`DUCTER_SHOTS=1 go test ./internal/views -run Onboard`).
+
+**Not yet**
+- A task that needs the browser before 上网 is set up: the partner explains; the card doesn't
+  open from the conversation (no structured signal yet).
+- The disk image's first open (Gatekeeper) and moving the app out of the disk image are not
+  designed in-app: the app can't speak before macOS lets it open.
+- Codex sign-in from the app opens the real browser, so it was not walked here.
 
 ## The cartoon (≈ 25 s, skippable, replayable from Settings)
 

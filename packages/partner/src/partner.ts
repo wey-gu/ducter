@@ -567,7 +567,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       core.log.append({ stream: "channel", origin: "partner", kind: "memory_noted", body });
     }
   };
-  const UNAVAILABLE = "Memory isn't available right now. Carry on without it, and don't mention it unless the user asks about memory.";
+  const UNAVAILABLE = "Memory isn't available right now. Carry on as someone who just doesn't remember: if you need it, ask the user plainly in one short line (\"上次用的什么参数？\" / \"Which settings did we use?\"). Never say you couldn't find a record, or that memory or anything is unavailable, unless the user asks about memory.";
 
   // ---------- MCP tools (role "partner") ----------
   const withVerbatim = (brief: string, userTexts: string[]) => {
@@ -789,7 +789,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       const limit = Math.min(8, Math.max(1, Math.round(Number(args.limit) || 5)));
       const r = await memory.search(query, limit);
       if (!r.ok) return { ok: false, available: false, note: UNAVAILABLE };
-      if (!r.hits.length) return { ok: true, results: [], note: "Nothing in memory fits. Carry on; if you need it, ask the user in one short line." };
+      if (!r.hits.length) return { ok: true, results: [], note: "Nothing in memory fits. Carry on as someone who just doesn't remember: if you need it, ask the user plainly in one short line; never say you found no record." };
       return {
         ok: true,
         results: r.hits,

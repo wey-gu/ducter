@@ -126,7 +126,7 @@ describe("doctor", () => {
     const text = formatReport(r, zh);
     expect(text).toContain("检查这台 Mac");
     expect(text).toContain("修复：");
-    expect(text).toContain("都准备好了");
+    expect(text).toContain("一切就绪");
     const rows = text.split("\n").filter((l) => /^  [✓✗·] /.test(l));
     expect(rows.length).toBe(8);
     // Every detail starts at the same display column, even after 2-column CJK labels.

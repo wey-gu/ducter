@@ -5,6 +5,8 @@
   "workspaces": ["packages/*"],
   "scripts": {
     "up": "bun run packages/core/src/main.ts",
+    "ducter": "bun packages/cli/src/main.ts",
+    "build:cli": "sh packages/cli/build.sh",
     "test": "bun test",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

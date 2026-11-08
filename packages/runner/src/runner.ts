@@ -217,7 +217,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const was = currentAttention(t);
     t.resumeOnBack = t.resumeOnBack || midTurn || was === "working" || was === "queued";
     setState(t, was, "offline");
-    logEvent(t, { role: "system", from: "runner", text: `${d.name} disconnected; the task carries on when it is back`, raw: { device: d.id, offline: true } });
+    // Only work in flight is said out loud; an idle task just shows its machine as away.
+    if (t.resumeOnBack) logEvent(t, { role: "system", from: "runner", text: `${d.name} disconnected; the task carries on when it is back`, raw: { device: d.id, offline: true } });
     clearTimeout(t.offlineTimer);
     // Short blips stay silent (D52); past the grace, working tasks show as waiting on the device.
     if (t.resumeOnBack)

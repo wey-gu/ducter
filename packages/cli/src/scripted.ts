@@ -49,7 +49,7 @@ async function turn(t: ScriptedTurn) {
   const mcp = ducterMcp(t);
   const role = roleOf(mcp);
   if (role.startsWith("task:")) {
-    const cn = zh(t.input);
+    const cn = zh(t.input) || zh(String(t.options.appendSystemPrompt ?? "")); // the brief keeps the user's language
     const resumed = /lost its connection|cut off/.test(t.input);
     t.say(resumed ? (cn ? "接着做。" : "Carrying on.") : cn ? "开始做。" : "Starting.");
     // "慢 / slow" in the brief: a long task, so a demo can pull the plug on its machine mid-way.
@@ -76,7 +76,9 @@ async function turn(t: ScriptedTurn) {
     // "在 cloud-1 上跑…": a device named on the [devices] line (partner.ts renderDevices) and in the message.
     const names = [...(t.input.match(/^\[devices\].*$/m)?.[0] ?? "").matchAll(/· ([^\s(·]+) \(/g)].map((m) => m[1]!);
     const device = names.find((n) => said.includes(n));
-    const args = { title, brief: said, ...(device ? { place: { kind: "none", device } } : {}) };
+    const repo = said.match(/~\/[\w./-]+/)?.[0]; // "在 vps-worker 上改 ~/dev/demo"
+    const place = device ? (repo ? { kind: "repo", device, repoPath: repo } : { kind: "none", device }) : undefined;
+    const args = { title, brief: said, ...(place ? { place } : {}) };
     t.say(cn ? `好，我去做：${title}${device ? `（在 ${device} 上）` : ""}` : `On it: ${title}${device ? ` (on ${device})` : ""}`);
     await t.tool("mcp__ducter__task_open", JSON.stringify(args), () => callTool(mcp, "task_open", args));
     return;

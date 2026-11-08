@@ -73,15 +73,46 @@ func TestRemoteDucter(t *testing.T) {
 	stamp := time.Now().Format("15:04:05")
 	say("你好 " + stamp)
 	h.until("a reply", func() bool { return partnerSaid("你好 " + stamp) })
-	say("开个任务：看看 README 有没有错别字 " + stamp)
-	h.until("the task is done", func() bool {
-		for _, tk := range s.OnHand.Tasks {
-			if strings.Contains(tk.Title, stamp) && (tk.Attention == "done_claimed" || tk.Attention == "done") {
-				return true
-			}
+	// DUCTER_REMOTE_DEVICE=vps-worker places the task on that worker; with DUCTER_REMOTE_SLOW=1
+	// the task runs long and the test waits (up to 5 min) while someone stops and restarts the
+	// worker: it shots On hand while the task waits on "<device> 连不上", then waits for done.
+	task := "开个任务：看看 README 有没有错别字 " + stamp
+	device, slow := os.Getenv("DUCTER_REMOTE_DEVICE"), os.Getenv("DUCTER_REMOTE_SLOW") == "1"
+	if device != "" {
+		task = "开个任务：在 " + device + " 上看看 README " + stamp
+		if slow {
+			task = "开个任务：在 " + device + " 上慢慢编译一遍 " + stamp
 		}
-		return false
-	})
+	}
+	say(task)
+	byStamp := func(want ...string) func() bool {
+		return func() bool {
+			for _, tk := range s.OnHand.Tasks {
+				if strings.Contains(tk.Title, stamp) {
+					for _, w := range want {
+						if string(tk.Attention) == w {
+							return true
+						}
+					}
+				}
+			}
+			return false
+		}
+	}
+	if slow {
+		h.wait = 5 * time.Minute
+		t.Log("task running on " + device + ": stop the worker now (systemctl --user stop ducter on it)")
+		h.until("the task waits on its device", byStamp("blocked"))
+		h.click(h.app.L.T("nav.onhand"))
+		h.tt.Advance(time.Second)
+		if !h.tt.HasText(h.app.L.T("device.unreachable", device)) {
+			t.Errorf("On hand doesn't say %q: %q", h.app.L.T("device.unreachable", device), h.tt.Texts())
+		}
+		h.shot("remote-device-unreachable")
+		t.Log("waiting: start the worker again")
+		h.click(h.app.L.T("nav.back"))
+	}
+	h.until("the task is done", byStamp("done_claimed", "done"))
 	h.tt.Advance(2 * time.Second)
 	h.until("settle", func() bool { return true })
 	h.shot("remote-conversation")

@@ -1,0 +1,253 @@
+# Product Model: Objects, Vocabulary, Scenarios
+
+> Draft 1 · 2026-11-08 · The single source of truth for *what exists in the product and what it
+> is called*. Principles say *why*, design notes say *how*, prototypes show *what it looks like*.
+> Decisions and superseded drafts live in `docs/decisions.md`. Evidence: `research/19`, `research/20`.
+
+## 1. Vocabulary
+
+**Rules**
+- **Partners, not hierarchy.** No court, throne, approve/reject, seal, or boss language.
+- **Every user-facing word translates cleanly**, with no puns and no culture-bound images.
+  English and Chinese are designed together.
+- **No concept to learn.** Seeing the word should be enough to guess what it means.
+- **i18n keys from day one** (`decision.go`, `state.needs_you`, …). No hard-coded copy.
+
+**Glossary.** "Internal" is what docs and code say; "shown" is what users see.
+
+| Internal | Shown (中 / EN) | Meaning |
+|---|---|---|
+| persona, main AI | its **name** (default "Ducter"); as a category 伙伴 / Partner | Whoever you're talking to |
+| Log, channel | (hidden) "对话 / the conversation" | |
+| job | (no card; just an ack and a status line) | Any work not answered at once. Executed in turn, in a fork, or in a window (principle 6) |
+| Focus Window, window | **事 / Task** | A job big enough to need its own session and place. **Only windows get cards** |
+| workspace view | "展开 / Open" (no name of its own) | A task opened to full depth |
+| overview board | **手头 / On hand** | Every task across all personas |
+| attention states | 等你 / Needs you · 在做 / Working · 在等 / Waiting · 做完了 / Done · 没成 / Didn't work · 放下了 / Dropped | `done?` shows as "做完了 · 核对中 / Done · checking" |
+| decision actions | **好 / Go** · **先等等 / Hold** · **回复… / Reply…** | The Go button may name the action ("Rebase") |
+| Project | **项目 / Project**; no project = **随手 / Loose** | An editable grouping label |
+| Place | **在哪儿做 / Where** | Where a task works |
+| Device (machine, runner) | **设备 / Devices** | |
+| Routine | **例行 / Routine** | Recurring or triggered work |
+| Waiter | (shown as the reason for Waiting: "在等 PR 被批 / Waiting for PR approval") | |
+| `until` loop | "一直…直到… / Keep … until …" on the task | |
+| Rule | **规则 / Rule** | A standing preference stated in words |
+| Intent | (shown as a decision or a policy line: "要推送到 ducter/fix-ci / Will push to …") | |
+| Artifact | **成果 / Results** | |
+
+## 2. Objects and ownership
+
+| Object | Owned by | What it is |
+|---|---|---|
+| **User** | | The person. Attention, quiet hours, devices, subscriptions, skills, projects, and global rules are theirs |
+| **Persona** | user | A named partner with one conversation and one Mem identity |
+| **Device** | user | An enrolled Mac/Linux box or an ephemeral sandbox; shared by all personas |
+| **Project** | user | A grouping label that remembers its places and rules; shared across personas |
+| **Repo** | project | A git repository, identified by its remote |
+| **Checkout** | repo × device | Where that repo lives on that device; discovered automatically |
+| **Folder** | project | A non-git directory on a device |
+| **Recipe** | repo | Setup / run / cleanup commands, approved once |
+| **Task** (window) | persona | One delegated job with its own session, place, project label, and states |
+| **Routine** | persona | A template (trigger, brief, report policy, budget, effect scope, review date) whose firings create runs |
+| **Waiter** | task | A one-shot predicate that wakes its task |
+| **Rule** | user, persona, or project | A binding preference |
+| **Intent** | task | A pending external effect |
+| **Result** | task | A file, document, diff/PR, report, or app it produced |
+
+**Rule precedence**, most specific wins: task pin > project rule > persona rule > user rule >
+Ducter default. A rule that can't be honored is never skipped silently (principle 14).
+
+## 3. Place and project
+
+Every task shows two editable things on its card and header.
+
+**Where / 在哪儿做**, shown as chips such as `HawDB · MacBook · ducter/fix-ci`. It is one of:
+- nothing: thinking or writing;
+- a folder on a device;
+- one or more repos on a device;
+- a browser profile;
+- a phone or call.
+
+**Project / 项目** is a short title shared by related tasks. It is a label, not a container.
+
+**Smooth by default.** In the common case Ducter asks no questions:
+- **Place:** inferred from what you said (a repo name, a path, a URL, "on the Linux box")
+  plus what Ducter knows.
+- **Device:** if a repo lives on several devices, Ducter picks one that is awake, has a warm
+  cache, or matches a rule. The card says why.
+- **Project:** inferred from the place (a repo's project) or from the conversation. It is
+  created implicitly the first time and shown as a "new project" chip you can rename or undo.
+
+**Controllable always:**
+- **Projects:** rename one inline (every task carrying it follows), move a task to another
+  project, or merge two projects.
+- **Changing a task's device, base branch, or repo** is a handoff (principle 13). The old task
+  becomes superseded. Adding a repo just extends the place.
+- **+ New task** in On hand opens a picker: project → repo(s)/folder → device → base branch
+  → model. It is the power path, never required.
+
+**Repos and worktrees**
+
+*Discovery and cloning*
+- A runner discovers the checkouts on its device.
+- A repo can be cloned onto another device using that device's own git login. Ducter asks
+  once per repo.
+
+*Worktrees*
+- A task whose brief says it will **write** gets a worktree **at start**, in
+  `~/.ducter/worktrees`. The agent names the branch `ducter/<slug>` on its first turn.
+- A **read-only** task reads the main checkout, including uncommitted changes, and never
+  gets a worktree.
+- In a **multi-repo** task, the repos marked writable get worktrees at start; the others are
+  read on demand.
+
+*Recipes*
+- The first time a repo is used, Ducter proposes a Recipe and the user approves it once.
+- Recipes are stored in Ducter, with an offer to commit them to the repo.
+
+*Caches and files*
+- Dependency caches are shared: pnpm, bun, uv, sccache.
+- Build output directories are never shared or symlinked.
+- `.env`-style files are copied per `.worktreeinclude`.
+
+*Ports and leases*
+- Each task gets a 10-port block.
+- Exclusive resources, like a database port, make the second task **wait** instead of
+  crashing.
+- One writer per write set. A second task wanting the same files shows "在等 · 被占用 /
+  Waiting · in use", or proposes its own branch.
+
+*History*
+- Checkpoints are private git refs.
+- The branch is pushed as `ducter/*` at each checkpoint:
+  - personal repos automatically;
+  - org repos after asking once per repo.
+- This push is what makes moving a task to another device possible.
+- A revert appends to the Log; history is never deleted.
+
+*PRs*
+- Draft by default, created as an intent.
+- Rebase is a decision with a default.
+- A merged PR auto-archives its task.
+- Ducter never merges unless a rule allows it.
+
+*Archive and disk*
+- Archiving commits leftovers, removes the worktree, and keeps the branch. The device's own
+  runner does this when it next wakes.
+- Each device has a disk budget. Reclaiming archived worktrees is automatic; deleting
+  anything else needs Go.
+
+*Folders that aren't git*
+- Writes go to a **draft copy** and are applied with one Go at the end, unless you mark the
+  folder trusted. Either way, writes stay reversible.
+
+## 4. Work over time
+
+Two primitives plus one property cover every case.
+
+- **Waiter** on a task: "tell me when the PR is approved". It is code where possible; a quiet
+  check costs no model turn. While waiting, the task shows **在等 / Waiting** with the reason.
+- **`until` on a task**: "keep fixing until CI is green". A cheap model judges the condition
+  after each turn. The loop stops on any of:
+  - the condition holding;
+  - 20 iterations (the default cap);
+  - no progress;
+  - oscillation.
+
+  The card shows a per-iteration strip.
+- **Routine / 例行**: "every Monday at 9, draft the weekly report", "when someone replies to
+  this thread, summarize it".
+  - Each firing creates a **run**: a fresh task by default. A "babysit one thing" routine
+    continues a single task across runs.
+  - On On hand a routine is **one card**, showing its next firing and its latest run. Runs are
+    nested inside it. Only runs that will need the user appear on the attention forecast.
+  - **Creation:** always through a proposal card in the conversation, showing:
+    - the trigger in words, with the time zone;
+    - the next 5 firings, or a live dry run of the condition;
+    - the budget;
+    - how it reports;
+    - its effect scope.
+
+    One Go activates it. The agent may pause it; only the user resumes it.
+  - **Time zone:** personal-time routines follow the user ("every morning at 9, brief me");
+    world-time routines are pinned ("at market open", "team standup"). Ducter infers which
+    and states it on the card.
+  - **Budget:** each run is capped at 2× the first run's actual cost, plus a monthly cap.
+    Both are shown and editable.
+  - **Reporting:** report on change, or when it needs you. Digests the user asked for are
+    always delivered.
+  - **Missed firings** (devices asleep) coalesce. Ducter tries, in order: another device, then
+    waking the device, then one late run, then recording the skip. The cloud fallback is off
+    unless enabled per routine.
+  - **Lifespan:** each routine has a review date, 30 days by default. It auto-pauses after 3
+    consecutive failures or 3 unread reports, then asks "还要吗？ / Keep this?".
+  - **Visibility:** the condition is always shown in plain words; the compiled code is
+    visible once the task is opened.
+  - **Safety:** each routine has a fixed effect scope, and anything beyond it becomes an
+    intent. Trigger payloads (emails, webhooks) are untrusted data. Harness-native cron and
+    loops stay disabled.
+
+## 5. Personas
+
+- Each persona has its own conversation and Mem identity. Its tasks run under that identity.
+- **Attention is the person's.** On hand aggregates every persona, and each card carries its
+  persona's face and color. Conversations stay separate.
+- **Isolated by default.** A persona reads or asks another only after the user links them.
+- **Recognizable at a glance:** its own face, accent color, and optionally theme.
+- **Creating one is light:** a name plus one sentence. Mem's birth-draft flow does the rest.
+- **Quota:** subscriptions belong to the user. The main-AI reserve is kept per subscription,
+  shared by all personas' main turns.
+
+## 6. Scenario catalog
+
+Each scenario needs a flow, states, copy (zh + en), and motion. Status is tracked in
+`docs/design/scenarios.md` once flow work starts.
+
+- **A. Setup and devices.** First run; pairing a device; a device sleeping or waking; going
+  offline mid-task; the same repo on two devices; a harness not logged in; quota running out;
+  a second persona.
+- **B. Kinds of work.**
+  - Quick answer done in turn.
+  - Research with no place.
+  - A code change in one or several repos.
+  - Browser work that needs a login.
+  - A phone or call task.
+  - Writing.
+  - A `until` loop; a waiter; a one-off scheduled run; a recurring routine; an always-on
+    monitor.
+- **C. Places and projects.** First mention of a new repo; discovering repos; a project with
+  no repo; a non-git folder; the recipe failing; a port clash; a busy lease; PR, rebase,
+  merge, archive; running low on disk.
+- **D. Decisions and attention.** A decision with a default and countdown; batch harvest;
+  quiet hours; escalation (badge → message → push → call); done with evidence; failed
+  verification; failure; stall.
+- **E. Steering.** A follow-up in the conversation vs. inside the task; adding scope; switching
+  model or harness; handoff; pause or cancel; merging or splitting tasks; reopening days
+  later.
+- **F. Memory and identity.** A rule created, edited, or forgotten; recalling something from
+  weeks ago; Mem unavailable; switching or linking personas.
+- **G. Safety.** An intent that needs policy (push, send, pay, call); a credential request;
+  honesty about isolation.
+- **H. Across devices.** Starting on the phone and continuing on the desktop; voice; acting
+  on a lock-screen notification.
+- **I. Results.** Where results live; sharing; user-made apps (later).
+
+## 7. Motion
+
+The zoom metaphor:
+- A task chip in the conversation **grows** into its On hand card, which **unfolds** into the
+  open task. Going back reverses the path.
+- The living message **re-settles** in place when revised.
+- A decision resolves with a soft **press-and-settle**.
+- The face reacts to state: blinks while idle, glances aside while working, nods on done,
+  raises its brows when it needs you.
+
+Timing and springs come from the theme's `motion.personality`. The spec lives in
+`docs/design/ui.md`.
+
+## 8. Open questions
+
+- Results: where finished documents live (control-plane blobs vs. written to a place), and a
+  results view.
+- Merging and splitting tasks: semantics for the Log, leases, and branches.
+- Linking personas: scope (read-only? ask-only?) and how it is shown.

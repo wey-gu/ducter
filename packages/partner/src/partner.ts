@@ -75,6 +75,7 @@ interface Job {
 
 const COLD_MS = 55 * 60 * 1000;
 const TASK_OPEN_RE = /(^|__)task_open$/;
+const QUIET_TOOL_RE = /(^ToolSearch$)|((^|__)(log_search|log_read|task_read)$)/;
 
 let idCounter = 0;
 function newId(prefix: string): string {
@@ -207,6 +208,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     if (ev.tool) {
       if (TASK_OPEN_RE.test(ev.tool.name)) {
         claimAck(turn); // no-op if there is no pending text or an ack is already waiting
+      } else if (QUIET_TOOL_RE.test(ev.tool.name)) {
+        // Lookups between the ack line and task_open (Claude Code's deferred-tool ToolSearch,
+        // reads of the Log or a task) must not turn the pending ack into a separate message.
       } else {
         flushPending();
       }

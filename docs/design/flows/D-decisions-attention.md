@@ -36,8 +36,8 @@ unseen; at most one push per 15 min per person (across personas); quiet hours ho
 completely [I; 3 min and coalescing from `research/16` §5.3].
 
 **Copy tone.** The partner speaks as a peer who did the legwork: "我替你…了 / I went ahead
-and…", "你看着办 / Your call". Never "已批准 / approved", "请审批", "等待指示 / awaiting
-instructions", never "boss", "task assigned".
+and…", "你看着办 / Your call". Never approval, sign-off, or "awaiting instructions"
+language, and never "boss" or "task assigned".
 
 ---
 

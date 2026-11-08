@@ -517,6 +517,8 @@ func (a *App) stage(c *ui.Context, dv *protocol.DeviceView) {
 		a.stageLine(c, dv, sw)
 		if d.pair.open {
 			a.pairSheet(c, dv, sw, sh)
+		} else if a.web.open && a.webSetupOwned(dv) {
+			a.webSheet(c, dv, sw, sh)
 		}
 	})
 	a.sparkles(c)
@@ -770,6 +772,9 @@ func (a *App) abilityGrid(c *ui.Context, dv *protocol.DeviceView, cols int) {
 			case ab.State == protocol.AbilityUnavailable:
 				sub = a.L.T("ability.unavailable")
 			}
+			if id == protocol.AbilityWeb && dv != nil && a.webNeedsSetup(dv) {
+				sub = a.L.T("web.tile")
+			}
 			if id == protocol.AbilityRemote && dv != nil && a.abilityOn(dv, id) && a.S.Reach != nil && len(a.S.Reach.Clients) > 0 {
 				sub = a.L.T("pair.connected") + " · " + a.S.Reach.Clients[len(a.S.Reach.Clients)-1].Name
 			}
@@ -815,6 +820,9 @@ func (a *App) abilityGrid(c *ui.Context, dv *protocol.DeviceView, cols int) {
 			})
 			if tile.Clicked() {
 				d.ability, d.removing = id, ""
+				if id == protocol.AbilityWeb && dv != nil && a.webNeedsSetup(dv) {
+					a.openWebSetup()
+				}
 				if addable {
 					a.startEquip(dv, id, d.tiles[id], false)
 				}
@@ -859,7 +867,7 @@ func (a *App) abilityDetail(c *ui.Context, dv *protocol.DeviceView) {
 		case ab == nil || ab.State == protocol.AbilityLater:
 			a.reasonLine(c, a.L.T("ability.later"))
 		case id == protocol.AbilityWeb && a.webNeedsSetup(dv) && dv.State == protocol.DeviceAwake:
-			a.webSetup(c, dv)
+			a.webSetupEntry(c, dv)
 		case ab.State == protocol.AbilityUnavailable:
 			a.unavailable(c, ab)
 		case on && id == protocol.AbilityRemote:

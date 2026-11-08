@@ -470,7 +470,11 @@ func (a *App) setupBlocked(c *ui.Context) {
 	}
 	ui.Box(c).Height(1).Background(t.LineSoft).Margin(4, 0)
 	ui.Row(c).Gap(12).AlignItems(ui.Center).Children(func() {
-		ui.Text(c, a.L.T("setup.auto")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5).Grow(1).MinWidth(0)
+		auto := "setup.auto"
+		if allInApp(blocking) && a.Backend != nil {
+			auto = "setup.auto.app"
+		}
+		ui.Text(c, a.L.T(auto)).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5).Grow(1).MinWidth(0)
 		label := a.L.T("setup.recheck")
 		if a.setup.busy {
 			label = a.L.T("setup.rechecking")
@@ -629,4 +633,15 @@ func (a *App) partnerSpoke() bool {
 		}
 	}
 	return false
+}
+
+// allInApp: every blocking fix runs from the window (nothing to do in
+// Terminal).
+func allInApp(blocking []local.Check) bool {
+	for _, k := range blocking {
+		if k.Action == "" {
+			return false
+		}
+	}
+	return len(blocking) > 0
 }

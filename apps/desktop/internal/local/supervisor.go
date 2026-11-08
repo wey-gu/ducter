@@ -29,7 +29,7 @@ type Check struct {
 	// Action says the app may run Fix itself, in the background:
 	// "install", "signin", "update" or "grant" ("" = a person runs it).
 	Action string `json:"action,omitempty"`
-	Quiet    bool   `json:"quiet,omitempty"`
+	Quiet  bool   `json:"quiet,omitempty"`
 }
 
 // Report is the whole check.

@@ -24,6 +24,8 @@ import (
 const CuaPoll = 1500 * time.Millisecond
 
 type webSetupState struct {
+	// open: the steps show, over the stage (opened by picking 上网).
+	open      bool
 	cua       local.CuaState
 	checked   bool
 	busy      bool
@@ -31,6 +33,7 @@ type webSetupState struct {
 	tools     time.Time // last check with list-tools
 	wasReady  bool
 	equipSent bool
+	readyAt   time.Time
 }
 
 const (
@@ -81,11 +84,54 @@ func (a *App) webNeedsSetup(dv *protocol.DeviceView) bool {
 	if ab == nil || ab.State == protocol.AbilityUnavailable && ab.Reason != "cua_missing" && ab.Reason != "cua_old" {
 		return false
 	}
-	w := &a.web
-	if !w.checked {
+	if !a.web.checked {
 		return ab.State == protocol.AbilityUnavailable
 	}
-	return !w.cua.Ready() || w.wasReady && !w.equipSent && ab.State != protocol.AbilityOn
+	return !a.web.cua.Ready()
+}
+
+// openWebSetup shows the steps over the stage.
+func (a *App) openWebSetup() {
+	w := &a.web
+	w.open, w.wasReady, w.equipSent = true, false, false
+	a.dev.pair.open = false
+}
+
+// webSetupEntry is the detail card's part: what's missing, in one line,
+// and the button that opens the steps.
+func (a *App) webSetupEntry(c *ui.Context, dv *protocol.DeviceView) {
+	t := a.T
+	w := &a.web
+	key := "web.entry.missing"
+	switch {
+	case w.checked && w.cua.Installed() && w.cua.Old:
+		key = "web.entry.old"
+	case w.checked && w.cua.Installed():
+		key = "web.entry.switches"
+	}
+	a.reasonLine(c, a.L.T(key))
+	if !w.open && a.buttonFor(c, a.L.T("web.entry.start"), a.L.T("ability.web"), btnPrimary, 50, t.Surface) {
+		a.openWebSetup()
+	}
+}
+
+// webSheet is the steps, as a sheet over the stage (as the connect code).
+func (a *App) webSheet(c *ui.Context, dv *protocol.DeviceView, sw, sh float32) {
+	t := a.T
+	w := min(sw-48, 440)
+	sheet := ui.Column(c.Key("websheet")).Absolute().Left((sw-w)/2).Top(28).Width(w).MaxHeight(sh-56).
+		Padding(18, 20).Gap(12).Radius(26).Background(t.Surface).Shadow(0, 6, 0, 0, t.Line).ZIndex(10).
+		Role(ui.RoleDialog).Label(a.L.T("web.title"))
+	a.enter(c, sheet)
+	sheet.Children(func() {
+		ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
+			ui.Text(c, a.L.T("web.title")).FontSize(t.LG).FontWeight(800).Grow(1).MinWidth(0)
+			if a.button(c, a.L.T("ask.later"), btnText, 36, t.Surface) {
+				a.web.open = false
+			}
+		})
+		a.webSetup(c, dv)
+	})
 }
 
 // webSetup is the three steps, in the detail card.
@@ -298,9 +344,19 @@ func (a *App) webReady(c *ui.Context, dv *protocol.DeviceView) {
 		}
 	}
 	ab := dv.Ability(protocol.AbilityWeb)
-	if ab != nil && ab.State != protocol.AbilityOn && !w.equipSent && a.dev.fx == nil {
-		w.equipSent = true
-		a.startEquip(dv, protocol.AbilityWeb, a.dev.tiles[protocol.AbilityWeb], false)
+	if !w.equipSent && a.dev.fx == nil {
+		w.equipSent, w.readyAt = true, a.Now()
+		if ab != nil && ab.State != protocol.AbilityOn {
+			a.startEquip(dv, protocol.AbilityWeb, a.dev.tiles[protocol.AbilityWeb], false)
+		} else {
+			a.landed(a.deviceName(dv), protocol.AbilityWeb)
+		}
+	}
+	// The sheet steps aside after a moment, and the sticker lands.
+	if left := w.readyAt.Add(1200 * time.Millisecond).Sub(a.Now()); left > 0 {
+		c.After(left)
+	} else {
+		w.open = false
 	}
 	ui.Row(c).Gap(10).AlignItems(ui.Center).Padding(10, 12).Radius(14).Background(t.Done.Surface).Children(func() {
 		if bmp := theme.Art(theme.Done, 72); bmp != nil {

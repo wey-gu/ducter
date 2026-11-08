@@ -93,6 +93,22 @@ brows when something needs you. Other themes render the same states in their own
 | Loadout (2D) | https://claude.ai/artifact/CUpw7P1bPjKQKQYeLkUVzG | devices / AI accounts / ability-sticker interaction | grammar prototype; art to be replaced |
 | Phone web (built) | `docs/design/screens/phone-*.png` (390×844, zh/en, light/dark) | the real `apps/web` client: conversation, decisions, On hand, opened task, pairing, notifications | built, pending review |
 
+### Screenshots of the built clients (2026-11-09)
+
+These are screenshots of the real clients, not canvases. Like the canvases, they decide nothing;
+they show what the code does today, for review against the docs.
+
+| Set | Files | How it was made | Shows |
+|---|---|---|---|
+| Desktop, mock | `apps/desktop/docs/{conversation,conversation-done,onhand,task,task-sent,task-done}.png` | headless renderer, mock server | the three zoom levels; README images |
+| Desktop, first run | `apps/desktop/docs/firstrun*.png` (`firstrun-empty-{zh,en,fresh}`, `firstrun-first-result`) | headless renderer | empty conversation with repo starters, the first-result line |
+| Desktop, first run live | `apps/desktop/docs/firstrun-live-{empty,ack,first-result,result-message}.png` | live: real `ducter up` + sonnet (`onboarding.md`) | the first five minutes, timed |
+| Desktop, live | `apps/desktop/docs/live-*.png` | live backend, real harness | ack, early send, task sent/done/result, On hand, reconnecting |
+| Desktop, remote | `apps/desktop/docs/remote-{conversation,onhand,device-unreachable}.png`, `connect{,-badcode,-revoked}.png` | VM over an SSH tunnel (`research/29`); connect cards headless | Connect to your Ducter, a worker that can't be reached |
+| Ducter.app | `apps/desktop/docs/app-*.png` | setup screens headless (fake backend); `app-live-first-reply` live; `app-dmg-finder`, `app-gatekeeper-macos15` real macOS screenshots; `app-icon` the drawn icon | checking, blocked, name, starting, stopped, CLI offer, Gatekeeper |
+| Taste review | `apps/desktop/docs/review-{before,after}-{zh-1280,en-900}-*.png` | headless renderer, mock (`DUCTER_REVIEW`) | every screen at 1280 and 900 px, before and after the taste pass |
+| Phone web | `docs/design/screens/phone-*.png` | headless browser at 390×844 on a demo core; `phone-real-sonnet-result-zh` from a real sonnet run | conversation, decision sheet, decided, On hand, task, result, pairing, notify ask, iOS hint, offline; dark variants |
+
 ## Capability map (D43): metaphor UNDER EVALUATION
 
 > Status: **awaiting the user's decision** (`research/24`, `research/26` done).

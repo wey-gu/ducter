@@ -134,10 +134,33 @@ func TestLiveBackend(t *testing.T) {
 
 	open := s.OpenDecisions()
 	if len(open) == 0 {
-		t.Log("no open decision on the backend; stopping after On hand")
+		// Nothing to decide: open the newest task, to see its result.
+		var newest *store.Task
+		for _, task := range s.Tasks {
+			if newest == nil || task.OpenedAt > newest.OpenedAt {
+				newest = task
+			}
+		}
+		if newest != nil {
+			h.app.OpenTask(newest.ID)
+			h.until("history", func() bool { return newest.HistoryLoaded })
+			h.until("diff", func() bool {
+				p := h.app.diffs[newest.ID]
+				return p == nil || !p.loading
+			})
+			h.shot(prefix + "-task-result")
+			h.click(h.app.L.T("nav.conversation"))
+			h.shot(prefix + "-conversation-result")
+		}
 		return
 	}
 	d := open[len(open)-1]
+	if d.TaskID == "" {
+		// The partner's own ask: answered in the conversation.
+		h.click(h.app.L.T("nav.conversation"))
+		h.shot(prefix + "-partner-decision")
+		return
+	}
 	h.app.OpenTask(d.TaskID)
 	h.until("history", func() bool { return s.Task(d.TaskID).HistoryLoaded })
 	h.until("diff", func() bool {
@@ -149,19 +172,20 @@ func TestLiveBackend(t *testing.T) {
 	if os.Getenv("DUCTER_LIVE_NOGO") != "" {
 		return
 	}
-	// Talk to the task directly; the server acks with "sent" (v2), or not.
-	h.app.SendToTask(d.TaskID, liveSendText(lang))
-	deadline := time.Now().Add(20 * time.Second)
-	h.wait = 25 * time.Second
-	h.until("delivery", func() bool {
+	if os.Getenv("DUCTER_LIVE_NOSEND") == "" {
+		// Talk to the task directly; the server acks with "sent" (v2), or not.
+		h.app.SendToTask(d.TaskID, liveSendText(lang))
+		deadline := time.Now().Add(20 * time.Second)
+		h.wait = 25 * time.Second
+		h.until("delivery", func() bool {
+			sd := s.Task(d.TaskID).Sends[0]
+			return sd.Delivered != "" || sd.Failed != "" || time.Now().After(deadline)
+		})
 		sd := s.Task(d.TaskID).Sends[0]
-		return sd.Delivered != "" || sd.Failed != "" || time.Now().After(deadline)
-	})
-	sd := s.Task(d.TaskID).Sends[0]
-	t.Logf("direct send: delivered=%q failed=%q echoed seq=%d", sd.Delivered, sd.Failed, sd.Seq)
-	h.shot(prefix + "-task-sent")
-	h.wait = long
-
+		t.Logf("direct send: delivered=%q failed=%q echoed seq=%d", sd.Delivered, sd.Failed, sd.Seq)
+		h.shot(prefix + "-task-sent")
+		h.wait = long
+	}
 	// Go.
 	goText := h.app.L.T("decision.go")
 	if d.GoLabel != "" {

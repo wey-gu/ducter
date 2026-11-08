@@ -25,6 +25,7 @@ func main() {
 	s := store.New()
 	lang := i18n.Detect(mygo.App.PreferredLanguages())
 	app := views.New(s, theme.Pebble(), i18n.New(lang))
+	app.LocaleFixed = i18n.Fixed()
 
 	mygo.App.WhenReady(func() {
 		win := mygo.NewWindow(mygo.WindowOptions{

@@ -5,6 +5,7 @@ package views
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -79,6 +80,23 @@ type App struct {
 	// conversation first showed something unread to the user.
 	readSent int64
 	unreadAt time.Time
+	// resultShown marks the tasks whose result the partner gave.
+	resultShown map[string]bool
+	// livingAway remembers, per living message, whether it came while
+	// the user was away.
+	livingAway map[int64]bool
+	// LocaleFixed keeps the language as given (DUCTER_LOCALE); otherwise
+	// it follows the user's first message (localeSet once it did).
+	LocaleFixed bool
+	localeSet   bool
+	// focusComposer asks the shown composer to take the keyboard.
+	focusComposer bool
+	// doneAt is when a task last came back done (the done glow).
+	doneAt time.Time
+	// historyAsked marks the tasks whose stream was asked for.
+	historyAsked map[string]bool
+	// held is a message held back because it looks like a key.
+	held *heldSend
 	// dropped is the task just dropped, undoable until undoUntil.
 	dropped   string
 	undoUntil time.Time
@@ -95,13 +113,15 @@ const ReadAfter = 1200 * time.Millisecond
 func New(s *store.Store, t *theme.Tokens, l *i18n.Strings) *App {
 	return &App{
 		S: s, T: t, L: l,
-		Now:        time.Now,
-		Status:     client.Connecting,
-		taskDrafts: map[string]string{},
-		replyOpen:  map[string]bool{},
-		replyDraft: map[string]string{},
-		diffs:      map[string]*diffPane{},
-		taskLists:  map[string]*ui.ListState{},
+		Now:          time.Now,
+		Status:       client.Connecting,
+		taskDrafts:   map[string]string{},
+		replyOpen:    map[string]bool{},
+		replyDraft:   map[string]string{},
+		diffs:        map[string]*diffPane{},
+		taskLists:    map[string]*ui.ListState{},
+		historyAsked: map[string]bool{},
+		livingAway:   map[int64]bool{},
 	}
 }
 
@@ -122,6 +142,7 @@ func (a *App) View(c *ui.Context) {
 		a.mdTask.Theme = a.markdownTheme(14, 1.55)
 	}
 	c.SetTheme(a.uiTheme)
+	a.shortcuts(c)
 	ui.Column(c).Fill().Background(a.T.Bg).TextColor(a.T.Ink).Font(a.T.Body).Children(func() {
 		switch {
 		case !a.S.Welcomed && a.Failed:
@@ -134,6 +155,35 @@ func (a *App) View(c *ui.Context) {
 			a.conversation(c)
 		}
 	})
+}
+
+// shortcuts: Esc goes up one level, Cmd+1 the conversation, Cmd+2 On
+// hand, Cmd+K the composer of the level shown.
+func (a *App) shortcuts(c *ui.Context) {
+	switch {
+	case c.Shortcut(ui.Cmd, ui.Key1):
+		a.Route = RouteConversation
+	case c.Shortcut(ui.Cmd, ui.Key2):
+		a.Route = RouteOnHand
+	case c.Shortcut(ui.Cmd, ui.KeyK):
+		if a.Route == RouteOnHand {
+			a.Route = RouteConversation
+		}
+		a.focusComposer = true
+	case c.Shortcut(0, ui.KeyEscape):
+		a.Up()
+	}
+}
+
+// Up goes up one zoom level: an opened task to On hand, On hand to the
+// conversation.
+func (a *App) Up() {
+	switch a.Route {
+	case RouteTask:
+		a.Route = RouteOnHand
+	case RouteOnHand:
+		a.Route = RouteConversation
+	}
 }
 
 func (a *App) markdownTheme(size, leading float32) *markdown.Theme {
@@ -157,12 +207,36 @@ func (a *App) markdownTheme(size, leading float32) *markdown.Theme {
 
 // ---------- actions ----------
 
-// SendMessage sends what the composer holds to the partner.
-func (a *App) SendMessage(text string) {
+// secretRE finds what looks like a credential: GitHub, Anthropic, OpenAI,
+// AWS and Slack tokens, and private keys (G-safety).
+var secretRE = regexp.MustCompile(`ghp_[A-Za-z0-9]{10,}|github_pat_[A-Za-z0-9_]{10,}|sk-ant-[A-Za-z0-9_-]{10,}|sk-[A-Za-z0-9_-]{20,}|AKIA[0-9A-Z]{16}|xox[abpr]-[A-Za-z0-9-]{6,}|-----BEGIN [A-Z ]*PRIVATE KEY-----`)
+
+// LooksSecret reports whether text holds what looks like a credential.
+func LooksSecret(text string) bool { return secretRE.MatchString(text) }
+
+// heldSend is a message held back because it looks like a key.
+type heldSend struct {
+	taskID, text string // taskID "" = to the partner
+}
+
+// SendMessage sends what the composer holds to the partner, and reports
+// whether it went: text that looks like a key is held, and the composer
+// keeps it, until the user says Send anyway or Don't send.
+func (a *App) SendMessage(text string) bool {
 	text = strings.TrimSpace(text)
 	if text == "" {
-		return
+		return false
 	}
+	if LooksSecret(text) {
+		a.held = &heldSend{text: text}
+		return false
+	}
+	a.held = nil
+	a.sendMessage(text)
+	return true
+}
+
+func (a *App) sendMessage(text string) {
 	a.nextClient++
 	id := fmt.Sprintf("c%d-%d", a.Now().UnixMilli(), a.nextClient)
 	a.pending = append(a.pending, pendingMsg{clientID: id, text: text})
@@ -174,7 +248,7 @@ func (a *App) SendMessage(text string) {
 // Decide answers a decision.
 func (a *App) Decide(id, option, text string) {
 	if d := a.S.Decisions[id]; d != nil {
-		d.Pending = option
+		d.Pending, d.AnsweredAt = option, a.Now()
 	}
 	a.replyOpen[id] = false
 	a.markRead()
@@ -193,13 +267,39 @@ func (a *App) OpenTask(id string) {
 
 // SendToTask talks to a task directly; the transcript shows the text at
 // once, then how it was delivered.
-func (a *App) SendToTask(id, text string) {
+func (a *App) SendToTask(id, text string) bool {
 	text = strings.TrimSpace(text)
 	if text == "" {
-		return
+		return false
 	}
+	if LooksSecret(text) {
+		a.held = &heldSend{taskID: id, text: text}
+		return false
+	}
+	a.held = nil
+	a.sendToTask(id, text)
+	return true
+}
+
+func (a *App) sendToTask(id, text string) {
 	a.S.AddSend(id, text).At = a.Now()
 	a.send(protocol.TaskSend{T: "task_send", TaskID: id, Text: text})
+}
+
+// SendHeld sends the held message after all, and empties its composer.
+func (a *App) SendHeld() {
+	h := a.held
+	if h == nil {
+		return
+	}
+	a.held = nil
+	if h.taskID == "" {
+		a.sendMessage(h.text)
+		a.draft = ""
+		return
+	}
+	a.sendToTask(h.taskID, h.text)
+	a.taskDrafts[h.taskID] = ""
 }
 
 // DropTask puts a task down; it can be undone for UndoWindow.
@@ -224,13 +324,25 @@ func (a *App) TaskAction(id, action string) {
 
 // GoOnAllDefaults takes the default of every open decision.
 func (a *App) GoOnAllDefaults() {
-	for _, d := range a.S.OpenDecisions() {
+	for _, d := range a.defaultable() {
 		opt := d.DefaultOption
 		if opt == "" {
 			opt = "hold"
 		}
 		a.Decide(d.DecisionID, opt, "")
 	}
+}
+
+// defaultable are the open decisions that have a default to go with:
+// an irreversible one never goes ahead without the user.
+func (a *App) defaultable() []*store.DecisionState {
+	var out []*store.DecisionState
+	for _, d := range a.S.OpenDecisions() {
+		if d.Reversible {
+			out = append(out, d)
+		}
+	}
+	return out
 }
 
 // markRead tells the server the user has seen the conversation so far.
@@ -280,16 +392,40 @@ func (a *App) Receive(f protocol.ServerFrame) {
 		a.S.Reset()
 		a.pending, a.diffs = nil, map[string]*diffPane{}
 		a.taskLists = map[string]*ui.ListState{}
+		a.historyAsked = map[string]bool{}
+		a.livingAway = map[int64]bool{}
 		if a.Route == RouteTask {
 			a.Route = RouteConversation
 		}
 		a.send(protocol.Hello{T: "hello", Locale: string(a.L.Lang)})
 	}
+	a.noteResults(f)
 	a.S.Apply(f)
+	a.followUserLanguage()
 	if f.T == "welcome" {
 		a.Welcomed()
 	}
 	a.Applied(f)
+}
+
+// followUserLanguage speaks the language of the user's first message,
+// unless DUCTER_LOCALE pins one (LocaleFixed).
+func (a *App) followUserLanguage() {
+	if a.LocaleFixed || a.localeSet {
+		return
+	}
+	for _, e := range a.S.Channel {
+		if e.User == nil {
+			continue
+		}
+		if l := i18n.FromText(e.User.Text); l != "" {
+			a.localeSet = true
+			if l != a.L.Lang {
+				a.L = i18n.New(l)
+			}
+		}
+		return
+	}
 }
 
 // Applied is called after the store applied a frame: it refreshes what

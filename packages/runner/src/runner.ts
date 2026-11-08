@@ -4,7 +4,7 @@ import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, Sessio
 import { NUDGE, REOPENED, RESUME_AFTER_RESTART, kickoff, taskBrief } from "./brief.ts";
 import { createOarHarnessPort } from "./oar.ts";
 import { cwdOf, planPlace, provisionPlace } from "./places.ts";
-import { browserSidecar, type BrowserOptions } from "./browser.ts";
+import { browserSidecar, type BrowserOptions, type BrowserSidecar } from "./browser.ts";
 import { PREVIEW_MAX, preview } from "./normalize.ts";
 
 type HarnessId = SessionSpec["harness"];
@@ -53,6 +53,7 @@ interface TaskRt {
   attention: Attention;
   residency: Residency;
   started: Promise<void>;
+  sidecar?: BrowserSidecar; // browser place
 }
 
 const REPORT_ATTENTION: Record<Bodies["report"]["state"], Attention> = {
@@ -201,6 +202,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     if (outcome) t.interruptRequested = false;
     // Stopped by the user: it is not working any more, it waits for them (truthful card).
     if (!busy && !t.dropped) setState(t, stopped && currentAttention(t) === "working" ? "blocked" : currentAttention(t), "warm");
+    // A finished browser task quits its browser cleanly so sign-ins are saved (browser.ts).
+    if (!busy && t.sidecar && ["done_claimed", "done", "failed"].includes(currentAttention(t))) void t.sidecar.close().catch(() => false);
     if (t.dropped || busy) return;
     if (reported) {
       t.nudged = false;
@@ -346,6 +349,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         spec.mcp = [...spec.mcp, sidecar.mcp];
       }
       const t = newRt(id, persona, card, spec);
+      if (sidecar) t.sidecar = sidecar;
       tasks.set(id, t);
       core.tasks.setState(id, "queued", "provisioning");
 
@@ -446,6 +450,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       t.session = undefined;
       t.running = false;
       await s?.close().catch(() => {});
+      await t.sidecar?.close().catch(() => false);
       // The worktree and branch are kept on purpose.
     },
 

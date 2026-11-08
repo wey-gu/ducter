@@ -160,7 +160,10 @@ export type ClientFrame =
   | { t: "send"; text: string; clientId: string }
   | { t: "decide"; decisionId: string; option: "go" | "hold" | "reply"; text?: string }
   | { t: "task_send"; taskId: string; text: string }
-  | { t: "task_action"; taskId: string; action: "interrupt" | "drop" | "reopen" }
+  // merge: integrate the task branch into its base branch (local, reversible by revert);
+  // open_pr: push the branch and open a draft PR (an intent: external effect, see G-safety).
+  // The server acks every task_action with {t:"action_result"}.
+  | { t: "task_action"; taskId: string; action: "interrupt" | "drop" | "undrop" | "reopen" | "merge" | "open_pr" }
   | { t: "read"; upToSeq: number }
   | { t: "task_history"; taskId: string; beforeSeq?: number; limit?: number };
 
@@ -170,6 +173,7 @@ export type ServerFrame =
   | { t: "on_hand"; onHand: OnHand }
   | { t: "task_history"; taskId: string; events: LogEvent[] }
   | { t: "sent"; taskId: string; delivered: Delivery } // ack for task_send
+  | { t: "action_result"; taskId: string; action: string; ok: boolean; message?: string; ref?: string } // ref: merge commit or PR URL
   | { t: "error"; message: string };
 
 export type Delivery = "steered" | "prompted" | "queued";

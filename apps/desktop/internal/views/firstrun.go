@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
+
+	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
 // StartCommand is what starts Ducter's main process.
@@ -20,7 +22,11 @@ func (a *App) firstRun(c *ui.Context) {
 			Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.PressCard.Offset, 0, 0, t.PressCard.Color)
 		a.enter(c, card)
 		card.Children(func() {
-			a.sleepyFace(c, 72)
+			if theme.Art(theme.Napping, 240) != nil {
+				a.avatar(c, theme.Napping, 120)
+			} else {
+				a.sleepyFace(c, 72)
+			}
 			ui.Text(c, a.L.T("firstrun.title")).FontSize(28).FontWeight(800).LetterSpacing(-0.4)
 			ui.Text(c, a.L.T("firstrun.body")).FontSize(t.LG).LineHeight(1.55).TextColor(t.InkSoft)
 			a.commandBox(c, StartCommand)

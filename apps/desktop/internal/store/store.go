@@ -45,6 +45,8 @@ type DecisionState struct {
 	// Pending is set when the user acted and the server has not resolved
 	// it yet.
 	Pending string
+	// AnsweredAt is when the user acted on it here.
+	AnsweredAt time.Time
 	// AskedAt is when the decision was asked, when known (the event's
 	// time, or the card's pendingDecision.askedAt).
 	AskedAt string

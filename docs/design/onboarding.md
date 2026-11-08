@@ -74,29 +74,50 @@ row's detection result animates in.
    - routines;
    - the browser, the first time a task needs the web (below).
 
-## The browser, first time (observed while building W5, 2026-11-09)
+## The browser, first time (live on the author's Mac, 2026-11-09)
 
 These are the setup moments a browser task hits on a Mac. They should become one checklist row
 ("Browser: ✓ ready / Set up"), shown only when the first web task needs it. Design pending.
+Setup: cua-driver 0.44.0, Chrome 157, macOS 15, partner and task on Sonnet.
 
-1. **cua-driver must be new enough.** Typed browser tools (`browser_prepare`,
-   `get_browser_state`) landed in cua-driver-rs 2026-07. The author's Mac had 0.6.8, which
-   only has the legacy `page` tool; the latest was 0.44.0. The fix is
-   `cua-driver update --apply`, which installs into `/Applications`, so the user must approve
-   it. *Verified:* Ducter detects this and the partner explains it in plain words instead of
-   opening a broken task.
-2. **macOS privacy grants for CuaDriver** (not for Ducter or the terminal): Accessibility and
-   Screen Recording, attributed to `com.trycua.driver`. `cua-driver permissions grant` opens
-   the dialog; the user clicks Allow for both in System Settings → Privacy & Security.
-   *Verified:* already granted on the author's Mac, so no prompt appeared. *Not verified:*
-   the first-time prompt sequence, and whether an update (same team ID) keeps the grants.
-3. **A vendor-signed Google Chrome (or Edge) is required.** The driver launches a separate
-   Chrome with Ducter's own profile, so a second Chrome window and Dock icon appear. The
-   user's own Chrome and its sign-ins are never touched (D48). *Inferred from cua-driver
-   docs.*
-4. **First sign-in to a site** happens in that window: the task stops and asks ("Please sign
-   in to example.com in the Ducter browser window, then tap Go"). Later tasks reuse the
-   session. *Not verified live yet.*
+**Before the first web task**
+
+1. **cua-driver must be new enough.** The typed browser tools (`browser_prepare`,
+   `get_browser_state`) arrived in cua-driver-rs 2026-07. 0.6.8 has only the legacy `page`
+   tool. The fix is `cua-driver update --apply`; it installs into `/Applications`, so the user
+   approves it. *Verified:* with 0.6.8, Ducter refuses the task and the partner explains the
+   fix in plain words, instead of opening a task that cannot work.
+2. **macOS privacy grants belong to CuaDriver**, not to Ducter or the terminal: Accessibility
+   and Screen Recording for `com.trycua.driver`. For a fresh user, `cua-driver permissions
+   grant` opens the dialog and they click Allow for both in System Settings → Privacy &
+   Security. *Verified:* the 0.6.8 → 0.44.0 update kept both grants (same team ID), and the
+   browser tasks raised no prompt. *Not seen:* the first-time prompt sequence, because the
+   grants already existed.
+3. **A vendor-signed Google Chrome (or Edge) in `/Applications` is required.** *Inferred*
+   from cua-driver docs; the author has Chrome, so nothing appeared.
+
+**While a browser task runs (what the user sees)**
+
+4. **A second Chrome window appears**, 1200×900 at the top left of the current Space. It shows
+   "about:blank" first, then the page the task opens. It is a separate Chrome on Ducter's
+   own profile (`<dataDir>/browser-profiles/<persona>`), not the user's Chrome. *Verified*
+   from the process args and the window list. *Inferred, not looked at:* a second Chrome
+   icon in the Dock, indistinguishable from the user's own Chrome.
+5. **Focus.** Left alone, the new Chrome makes itself the frontmost app for the whole task,
+   so the user's typing goes into Ducter's browser. *Verified* (sampled every 0.5 s: about
+   29 s in front). Ducter now hands focus back within half a second. *Verified:* at most one
+   0.5 s sample showed Chrome in front.
+6. **The window goes away on its own** when the task reports done, about 20–30 s after it
+   appeared. *Verified.*
+7. **Sign-ins persist across tasks.** *Verified* with a cookie: one task set it, the next
+   task saw it. This only works because Ducter quits the browser cleanly; cua-driver's own
+   `end_session` kills Chrome and lost a cookie set seconds earlier (*verified*).
+8. **First sign-in to a real site.** The task stops and asks ("Please sign in to example.com
+   in the Ducter browser window, then tap Go"). *Not verified live.* Known risk: the driver
+   closes an idle browser after 5 minutes, which a slow sign-in can exceed.
+
+**Latency (one sample each):** the lookup tasks took 35–50 s from task start to report.
+The partner's first line took 5–31 s; the 31 s case was a cold start.
 
 ## Ideas to decide (heavy-user delight)
 

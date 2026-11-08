@@ -1,0 +1,213 @@
+// CLI strings, zh + en designed together. Keys are stable; copy follows the glossary
+// (docs/design/product-model.md): partner, task, On hand / 手头, Needs you / 等你.
+
+export type Locale = "en" | "zh";
+
+const en = {
+  "doctor.title": "Checking this Mac for Ducter",
+  "doctor.required": "required",
+  "doctor.optional": "optional",
+  "doctor.fix": "fix:",
+  "doctor.allGood": "All set. Start with: ducter up",
+  "doctor.needsFix": "{n} thing(s) to fix before Ducter can start. Run the command next to each, then: ducter doctor",
+  "doctor.optionalNote": "Optional items add powers; Ducter works without them.",
+
+  "check.bun": "Bun runtime",
+  "check.bun.builtin": "built in ({version})",
+  "check.bun.ok": "{version}",
+  "check.bun.old": "{version} is too old (need {min} or newer)",
+  "check.bun.missing": "not installed",
+  "check.git": "git",
+  "check.git.ok": "{version}",
+  "check.git.missing": "not installed",
+  "check.claude": "Claude Code",
+  "check.claude.ok": "logged in ({version})",
+  "check.claude.loggedOut": "installed, not logged in",
+  "check.claude.missing": "not installed",
+  "check.codex": "Codex",
+  "check.codex.ok": "logged in",
+  "check.codex.loggedOut": "installed, not logged in",
+  "check.codex.missing": "not installed",
+  "check.harness.none": "Ducter needs at least one AI it can work with: Claude Code or Codex.",
+  "check.nmem": "Nowledge Mem",
+  "check.nmem.ok": "connected ({mode})",
+  "check.nmem.down": "installed, not reachable (your partner starts with a default identity)",
+  "check.nmem.missing": "not installed (your partner starts with a default identity)",
+  "check.cua": "cua-driver",
+  "check.cua.ok": "{version} (browser and computer tasks)",
+  "check.cua.missing": "not installed (no browser tasks yet)",
+  "check.port": "Port {port}",
+  "check.port.ok": "free",
+  "check.port.ducter": "Ducter is already running here",
+  "check.port.busy": "in use by another program",
+  "check.data": "Data folder",
+  "check.data.ok": "{dir}",
+  "check.data.bad": "{dir} is not writable",
+
+  "up.firstRun": "First run: a quick check of this Mac.",
+  "up.blocked": "Ducter can't start yet. Fix the items above, then run: ducter up",
+  "up.already": "{name} is already running at {url}.",
+  "up.starting": "Starting {name}…",
+  "up.ready": "{name} is ready",
+  "up.address": "Address",
+  "up.data": "Data",
+  "up.memory": "Memory",
+  "up.memory.mem": "Nowledge Mem",
+  "up.memory.default": "default identity (Nowledge Mem not connected)",
+  "up.desktop": "Desktop",
+  "up.desktop.open": "window open",
+  "up.desktop.building": "building the desktop app (first time takes a minute)…",
+  "up.desktop.none": "not installed. Connect any client to {url}",
+  "up.desktop.failed": "could not start ({reason})",
+  "up.desktop.closed": "The desktop window closed. {name} keeps running; reopen it with: ducter open",
+  "up.hint": "Say hi in the desktop window. Press Ctrl-C to stop.",
+  "up.hintNoDesktop": "Press Ctrl-C to stop. In another terminal, `ducter status` shows what it is doing.",
+  "up.stopping": "Stopping {name}…",
+
+  "open.notRunning": "Ducter isn't running. Start it with: ducter up",
+  "open.none": "The desktop app isn't installed. Run scripts/install.sh with Go present, or set DUCTER_DESKTOP.",
+
+  "status.notRunning": "Ducter isn't running on port {port}. Start it with: ducter up",
+  "status.header": "{name} · running at {url}",
+  "status.needsYou": "Needs you",
+  "status.working": "Working",
+  "status.waiting": "Waiting",
+  "status.doneToday": "Done today",
+  "status.decisions": "Open decisions",
+  "status.default": "default: {option} at {time}",
+  "status.noTasks": "No tasks yet. Everything is quiet.",
+  "status.go": "Go",
+  "status.hold": "Hold",
+
+  "help.usage": "Usage: ducter <command> [options]",
+  "help.commands": "Commands",
+  "help.up": "start Ducter (and the desktop app, if installed)",
+  "help.open": "open the desktop app for a running Ducter",
+  "help.doctor": "check this Mac and say how to fix anything missing",
+  "help.status": "show tasks and open decisions from the running Ducter",
+  "help.version": "print the version",
+  "help.options": "Options",
+  "help.port": "port to listen on (default 7777, or DUCTER_PORT)",
+  "help.dataDir": "where Ducter keeps its data (default ~/.ducter, or DUCTER_DATA_DIR)",
+  "help.noDesktop": "don't open the desktop app",
+  "help.json": "machine-readable output (doctor, status)",
+  "err.unknownCommand": "Unknown command: {cmd}",
+  "err.unknownFlag": "Unknown option: {flag}",
+  "err.missingValue": "Option {flag} needs a value",
+  "err.badPort": "Port must be a number from 1 to 65535: {value}",
+} as const;
+
+export type MsgKey = keyof typeof en;
+
+const zh: Record<MsgKey, string> = {
+  "doctor.title": "检查这台 Mac",
+  "doctor.required": "必需",
+  "doctor.optional": "可选",
+  "doctor.fix": "修复：",
+  "doctor.allGood": "都准备好了。开始：ducter up",
+  "doctor.needsFix": "还有 {n} 项要处理，Ducter 才能启动。逐条运行旁边的命令，然后：ducter doctor",
+  "doctor.optionalNote": "可选项会增加能力；没有它们 Ducter 也能用。",
+
+  "check.bun": "Bun 运行时",
+  "check.bun.builtin": "已内置（{version}）",
+  "check.bun.ok": "{version}",
+  "check.bun.old": "{version} 版本太旧（需要 {min} 或更新）",
+  "check.bun.missing": "未安装",
+  "check.git": "git",
+  "check.git.ok": "{version}",
+  "check.git.missing": "未安装",
+  "check.claude": "Claude Code",
+  "check.claude.ok": "已登录（{version}）",
+  "check.claude.loggedOut": "已安装，未登录",
+  "check.claude.missing": "未安装",
+  "check.codex": "Codex",
+  "check.codex.ok": "已登录",
+  "check.codex.loggedOut": "已安装，未登录",
+  "check.codex.missing": "未安装",
+  "check.harness.none": "Ducter 至少需要一个能干活的 AI：Claude Code 或 Codex。",
+  "check.nmem": "Nowledge Mem",
+  "check.nmem.ok": "已连接（{mode}）",
+  "check.nmem.down": "已安装，连不上（伙伴先用默认身份）",
+  "check.nmem.missing": "未安装（伙伴先用默认身份）",
+  "check.cua": "cua-driver",
+  "check.cua.ok": "{version}（浏览器和电脑任务）",
+  "check.cua.missing": "未安装（暂时不能做浏览器任务）",
+  "check.port": "端口 {port}",
+  "check.port.ok": "空闲",
+  "check.port.ducter": "Ducter 已经在这里运行",
+  "check.port.busy": "被其他程序占用",
+  "check.data": "数据文件夹",
+  "check.data.ok": "{dir}",
+  "check.data.bad": "{dir} 不可写",
+
+  "up.firstRun": "第一次启动：先快速检查一下这台 Mac。",
+  "up.blocked": "Ducter 暂时还不能启动。处理好上面几项后运行：ducter up",
+  "up.already": "{name} 已经在 {url} 运行了。",
+  "up.starting": "正在启动 {name}…",
+  "up.ready": "{name} 准备好了",
+  "up.address": "地址",
+  "up.data": "数据",
+  "up.memory": "记忆",
+  "up.memory.mem": "Nowledge Mem",
+  "up.memory.default": "默认身份（未连接 Nowledge Mem）",
+  "up.desktop": "桌面端",
+  "up.desktop.open": "窗口已打开",
+  "up.desktop.building": "正在构建桌面端（第一次大约一分钟）…",
+  "up.desktop.none": "未安装。任何客户端都可以连接 {url}",
+  "up.desktop.failed": "无法启动（{reason}）",
+  "up.desktop.closed": "桌面窗口关了。{name} 还在运行；重新打开：ducter open",
+  "up.hint": "在桌面窗口里打个招呼吧。按 Ctrl-C 停止。",
+  "up.hintNoDesktop": "按 Ctrl-C 停止。在另一个终端里运行 `ducter status` 可以看它在做什么。",
+  "up.stopping": "正在停止 {name}…",
+
+  "open.notRunning": "Ducter 没有在运行。启动：ducter up",
+  "open.none": "桌面端未安装。在装有 Go 的机器上运行 scripts/install.sh，或设置 DUCTER_DESKTOP。",
+
+  "status.notRunning": "端口 {port} 上没有运行 Ducter。启动：ducter up",
+  "status.header": "{name} · 运行于 {url}",
+  "status.needsYou": "等你",
+  "status.working": "在做",
+  "status.waiting": "在等",
+  "status.doneToday": "今天做完了",
+  "status.decisions": "待你决定",
+  "status.default": "默认：{time} {option}",
+  "status.noTasks": "还没有任务，一切安静。",
+  "status.go": "好",
+  "status.hold": "先等等",
+
+  "help.usage": "用法：ducter <命令> [选项]",
+  "help.commands": "命令",
+  "help.up": "启动 Ducter（如已安装，同时打开桌面端）",
+  "help.open": "为正在运行的 Ducter 打开桌面端",
+  "help.doctor": "检查这台 Mac，并说明缺什么、怎么补",
+  "help.status": "查看正在运行的 Ducter 的任务和待决定事项",
+  "help.version": "显示版本",
+  "help.options": "选项",
+  "help.port": "监听端口（默认 7777，或 DUCTER_PORT）",
+  "help.dataDir": "Ducter 存放数据的位置（默认 ~/.ducter，或 DUCTER_DATA_DIR）",
+  "help.noDesktop": "不打开桌面端",
+  "help.json": "机器可读输出（doctor、status）",
+  "err.unknownCommand": "未知命令：{cmd}",
+  "err.unknownFlag": "未知选项：{flag}",
+  "err.missingValue": "选项 {flag} 需要一个值",
+  "err.badPort": "端口必须是 1 到 65535 之间的数字：{value}",
+};
+
+export const STRINGS: Record<Locale, Record<MsgKey, string>> = { en, zh };
+
+/** DUCTER_LOCALE wins, then the POSIX order LC_ALL > LC_MESSAGES > LANG. */
+export function detectLocale(env: Record<string, string | undefined> = process.env): Locale {
+  for (const v of [env.DUCTER_LOCALE, env.LC_ALL, env.LC_MESSAGES, env.LANG]) {
+    if (!v) continue;
+    if (/^zh/i.test(v)) return "zh";
+    if (v !== "C" && v !== "POSIX") return "en";
+  }
+  return "en";
+}
+
+export type T = (key: MsgKey, vars?: Record<string, string | number>) => string;
+
+export function translator(locale: Locale): T {
+  const table = STRINGS[locale];
+  return (key, vars) => table[key].replace(/\{(\w+)\}/g, (m, k) => (vars && k in vars ? String(vars[k]) : m));
+}

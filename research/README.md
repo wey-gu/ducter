@@ -1,6 +1,6 @@
 # Research Index
 
-Evidence behind `docs/principles.md`, cited there as [n]. Each report marks its claims as
+Evidence behind `design/principles.md`, cited there as [n]. Each report marks its claims as
 verified, documented, or inferred. `private/` is excluded from the public repo.
 
 | [n] | Report | Key findings |

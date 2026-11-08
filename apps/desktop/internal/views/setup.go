@@ -43,6 +43,28 @@ type Backend interface {
 	LinkCLI() error
 	// CLIOnPath reports whether ~/.local/bin is on a new Terminal's PATH.
 	CLIOnPath() bool
+
+	// Run starts a fix in the background (an official installer, a
+	// sign-in); one per id, asking again returns the running one.
+	Run(id, cmd string) (*local.Job, error)
+	// Job is the latest background fix under id (nil if none).
+	Job(id string) *local.Job
+	// Cua looks at cua-driver and its two macOS switches.
+	Cua(withTools bool) local.CuaState
+	// OpenSettings opens a System Settings pane (an x-apple link).
+	OpenSettings(link string) error
+	// BundleID is the app's bundle id.
+	BundleID() string
+	// BackgroundFirst: the next Start loads the agent for the first time
+	// (macOS then posts its own notice about a background item).
+	BackgroundFirst() bool
+	// BackgroundBlocked: macOS refused the agent (Login Items › Allow in
+	// the Background is off); Ducter runs as the app's child for now.
+	BackgroundBlocked() bool
+	// BackgroundAllowed asks macOS again whether the agent may run.
+	BackgroundAllowed() bool
+	// StopChild stops a Ducter running as the app's child.
+	StopChild()
 }
 
 type setupPhase int
@@ -55,6 +77,7 @@ const (
 	setupStarting                   // ducter up runs; waiting for it to answer
 	setupFailed                     // it didn't start, or stopped
 	setupResting                    // the person stopped it (Stop Ducter)
+	setupReady                      // "All set", after the person fixed something
 )
 
 // Rest stops Ducter on purpose (the app menu's Stop Ducter): every task
@@ -118,6 +141,17 @@ type setupState struct {
 	// nameFocused: the name field took the keyboard once.
 	nameFocused bool
 	cli         cliOffer
+	// Background fixes: which ended jobs were looked at, retried, or
+	// failed to start; the sign-in code field.
+	settled  map[*local.Job]bool
+	retried  map[*local.Job]bool
+	jobErr   map[string]string
+	codeOpen bool
+	code     string
+	readyAt  time.Time
+	// bgFirst: this start loads the background agent for the first time.
+	bgFirst bool
+	bg      bgState
 }
 
 // async runs work off the UI thread and done on it; inline in tests.
@@ -168,10 +202,17 @@ func (a *App) check() {
 			a.setup.phase, a.setup.err = setupFailed, err.Error()
 			return
 		}
+		wasBlocked := a.setup.phase == setupBlocked
 		a.setup.report = r
 		switch {
 		case !r.OK:
 			a.setup.phase = setupBlocked
+		case wasBlocked:
+			// The person just fixed something: a short "All set" first.
+			a.setup.phase, a.setup.readyAt = setupReady, a.Now()
+			if a.Win == nil {
+				a.afterReady() // tests: no frames to wait through
+			}
 		case a.needsName(r):
 			a.setup.phase = setupName
 		default:
@@ -220,6 +261,7 @@ func (a *App) SaveName(raw string) {
 // say so if it stops without being asked to.
 func (a *App) launch() {
 	a.setup.phase, a.setup.err = setupStarting, ""
+	a.setup.bgFirst = a.setup.bgFirst || a.Backend.BackgroundFirst()
 	var err error
 	a.async(func() { err = a.Backend.Start() }, func() {
 		if err != nil {
@@ -311,6 +353,9 @@ func (a *App) setupView(c *ui.Context) {
 					body = "setup.starting.bg"
 				}
 				a.setupWaiting(c, theme.Working, a.L.T("setup.starting", name), a.L.T(body, name))
+				a.backgroundNote(c)
+			case setupReady:
+				a.setupReady(c)
 			case setupResting:
 				a.setupResting(c)
 			case setupBlocked:
@@ -329,7 +374,6 @@ func (a *App) setupWaiting(c *ui.Context, p theme.Presence, title, body string) 
 	a.avatar(c, p, 120)
 	ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 		ui.Text(c, title).FontSize(t.XXL).FontWeight(800).LetterSpacing(-0.4).Grow(1).MinWidth(0)
-		a.retryPulse(c)
 	})
 	ui.Text(c, body).FontSize(t.LG).LineHeight(1.55).TextColor(t.InkSoft)
 }
@@ -347,7 +391,11 @@ func (a *App) watchActive(c *ui.Context) {
 		a.check()
 		return
 	}
-	if left := a.setup.checkedAt.Add(RecheckEvery).Sub(a.Now()); left > 0 {
+	every := RecheckEvery
+	if a.signingIn() {
+		every = SigninRecheck // the browser may finish any second
+	}
+	if left := a.setup.checkedAt.Add(every).Sub(a.Now()); left > 0 {
 		c.After(left)
 	} else {
 		a.check()
@@ -357,18 +405,37 @@ func (a *App) watchActive(c *ui.Context) {
 func (a *App) setupBlocked(c *ui.Context) {
 	t := a.T
 	blocking := a.setup.report.Blocking()
-	a.avatar(c, theme.NeedsYou, 100)
+	if a.Backend != nil && allInApp(blocking) {
+		a.setupOptions(c, blocking)
+		return
+	}
+	face := theme.NeedsYou
+	if a.anyFixRunning() {
+		face = theme.Working // installing, or waiting on the browser
+	}
+	a.avatar(c, face, 100)
 	title := a.L.T("setup.blocked")
 	if len(blocking) > 1 {
 		title = a.L.T("setup.blocked.many", len(blocking))
 	}
 	ui.Text(c, title).FontSize(t.XXL).FontWeight(800).LetterSpacing(-0.4)
 	ui.Text(c, a.L.T("setup.blocked.body")).FontSize(t.LG).LineHeight(1.55).TextColor(t.InkSoft)
+	var fixable []local.Check
+	for _, k := range blocking {
+		if k.Action != "" && a.Backend != nil {
+			fixable = append(fixable, k)
+		}
+	}
+	if len(fixable) > 0 {
+		a.optionRows(c, fixable)
+	}
 	for _, k := range blocking {
 		k := k
+		if k.Action != "" && a.Backend != nil {
+			continue
+		}
 		ui.Column(c.Key("fix:"+k.ID)).Gap(t.S3).Padding(t.S4, t.S4).Radius(t.RadiusLG).Background(t.SurfaceSunken).Children(func() {
 			ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-				ui.Box(c).Size(10, 10).Radius(5).Background(t.NeedsYou.Dot).Shrink(0)
 				ui.Text(c, k.Label).FontSize(t.MD).FontWeight(800)
 				ui.Text(c, k.Detail).FontSize(t.MD).TextColor(t.InkSoft).Grow(1).MinWidth(0)
 			})
@@ -399,15 +466,20 @@ func (a *App) setupBlocked(c *ui.Context) {
 		})
 	}
 	if later := a.setup.report.Later(); len(later) > 0 {
-		names := make([]string, len(later))
-		for i, k := range later {
-			names[i] = k.Label
+		var names []string
+		for _, k := range later {
+			if k.ID == "codex" && !a.setup.report.HarnessReady && k.Action != "" {
+				continue // offered above
+			}
+			names = append(names, k.Label)
 		}
 		sep := ", "
 		if a.L.Lang == "zh" {
 			sep = "、"
 		}
-		ui.Text(c, a.L.T("setup.later", strings.Join(names, sep))).FontSize(t.SM).TextColor(t.InkMuted)
+		if len(names) > 0 {
+			ui.Text(c, a.L.T("setup.later", strings.Join(names, sep))).FontSize(t.SM).TextColor(t.InkMuted)
+		}
 	}
 	ui.Box(c).Height(1).Background(t.LineSoft).Margin(4, 0)
 	ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
@@ -573,4 +645,15 @@ func (a *App) partnerSpoke() bool {
 		}
 	}
 	return false
+}
+
+// allInApp: every blocking fix runs from the window (nothing to do in
+// Terminal).
+func allInApp(blocking []local.Check) bool {
+	for _, k := range blocking {
+		if k.Action == "" {
+			return false
+		}
+	}
+	return len(blocking) > 0
 }

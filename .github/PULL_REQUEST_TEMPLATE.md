@@ -4,7 +4,7 @@
 
 ## Design
 
-<!-- Does it add or change an object, state, or user-facing word? Then link the decision (docs/decisions.md Dn) and the design note it updates. Otherwise write "no design change". -->
+<!-- Does it add or change an object, state, or user-facing word? Then link the decision (design/decisions.md Dn) and the design note it updates. Otherwise write "no design change". -->
 
 ## How it was checked
 

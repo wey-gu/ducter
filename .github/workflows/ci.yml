@@ -1,7 +1,8 @@
 name: CI
 
 # Every PR and every push to main. Two Linux jobs in parallel, a few minutes each:
-#   ts  bun test (0 failures), both tsc configs, the committed web bundle is fresh
+#   ts  bun test (0 failures), both tsc configs, the committed web bundle is fresh, Markdown links
+#       resolve
 #   go  apps/desktop: gofmt, go vet (darwin + linux), go test, and a darwin build
 # MyGo binds AppKit through purego (no cgo), so the darwin build cross-compiles on Linux and the
 # tests run there too; nothing here needs a macOS runner (10x the minutes on a private repo).
@@ -58,6 +59,9 @@ jobs:
 
       - name: bun test
         run: bun test
+
+      - name: Markdown links resolve
+        run: bun scripts/check-links.ts
 
       - name: Shell scripts parse
         run: for f in scripts/*.sh scripts/ci/*.sh packages/cli/build.sh; do bash -n "$f"; done

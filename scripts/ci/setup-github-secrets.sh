@@ -21,7 +21,7 @@
 #       # also set a separate key for TestFlight (ASC_*), for when the notary key is not Admin
 #
 # Overrides (env): IOS_RC, ASC_RC, SIGNING_IDENTITY_SHA, SIGNING_IDENTITY_NAME.
-# Idempotent: re-running overwrites the values. See docs/release.md for what each secret is.
+# Idempotent: re-running overwrites the values. See design/release/README.md for what each secret is.
 
 set -euo pipefail
 
@@ -191,7 +191,7 @@ push_asc_key() { # PREFIX RCFILE LABEL
 
 step "App Store Connect API key for notarization (from $IOS_RC)"
 push_asc_key APPLE_NOTARY "$IOS_RC" "notary" ||
-  fail "Need APPLE_API_KEY, APPLE_API_ISSUER and the .p8 (APPLE_API_KEY_PATH) in $IOS_RC. See docs/release.md."
+  fail "Need APPLE_API_KEY, APPLE_API_ISSUER and the .p8 (APPLE_API_KEY_PATH) in $IOS_RC. See design/release/README.md."
 ok "this key also signs and uploads TestFlight builds unless ASC_* is set (it then needs the Admin role)"
 
 if ! $SKIP_IOS && [[ -n "$ASC_RC" ]]; then
@@ -201,5 +201,5 @@ fi
 
 step "Done"
 echo "    Check: gh secret list --repo $REPO"
-echo "    Next:  the checklist at the top of docs/release.md (App Store Connect app record, first tag)."
+echo "    Next:  the checklist at the top of design/release/README.md (App Store Connect app record, first tag)."
 echo

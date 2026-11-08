@@ -9,7 +9,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
-// The polish pass (docs/design/ui.md, Components): a chip says its title
+// The polish pass (design/ui.md, Components): a chip says its title
 // once; a result says nothing about Sent out when nothing went out.
 
 func TestChipStatusThatRepeatsTheTitle(t *testing.T) {

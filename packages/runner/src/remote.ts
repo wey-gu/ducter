@@ -1,4 +1,4 @@
-// Where a task's place lives: this machine, or a worker (docs/design/system.md "Workers").
+// Where a task's place lives: this machine, or a worker (design/system.md "Workers").
 // PlaceOps is everything the runner does on the machine that holds the place: plan and provision
 // the worktree, run the harness session, merge, open a PR. Local ops call places.ts / OAR /
 // integrate.ts directly; remote ops send the same calls down the worker's outbound socket

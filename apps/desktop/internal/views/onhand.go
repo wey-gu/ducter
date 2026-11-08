@@ -203,7 +203,6 @@ func (a *App) forecastBand(c *ui.Context, b store.Board) {
 func (a *App) forecastChip(c *ui.Context, text string, sc theme.StateColors) {
 	t := a.T
 	ui.Row(c).Gap(t.S2).Padding(t.S1, t.S3, t.S1, t.S2).Radius(t.RadiusXS).Background(sc.Surface).AlignItems(ui.Center).Children(func() {
-		a.pebble(c, sc.Dot, 10, 12)
 		ui.Text(c, text).FontSize(a.T.XS).FontWeight(700).TextColor(sc.Ink).SingleLine()
 	})
 }
@@ -214,7 +213,6 @@ func (a *App) lane(c *ui.Context, lane store.Lane, tasks []*store.Task, grow, ba
 	colors := [...]theme.StateColors{t.NeedsYou, t.Working, t.Waiting, t.Done}
 	ui.Column(c.Key(lane)).Grow(grow).Basis(basis).MinWidth(0).MaxWidth(basis * 2.2).Gap(t.S3).Children(func() {
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-			a.pebble(c, colors[lane].Dot, 14, 16)
 			ui.Text(c, a.L.T(names[lane])).FontSize(t.XL).FontWeight(800)
 			n := len(tasks)
 			switch lane {
@@ -223,7 +221,7 @@ func (a *App) lane(c *ui.Context, lane store.Lane, tasks []*store.Task, grow, ba
 			case store.LaneWaiting:
 				n += len(a.looseWaiters())
 			}
-			ui.Text(c, fmt.Sprint(n)).FontSize(t.XL).FontWeight(800).TextColor(colors[lane].Strong).FontFeatures("tnum")
+			ui.Text(c, fmt.Sprint(n)).FontSize(t.XL).FontWeight(800).TextColor(colors[lane].Ink).FontFeatures("tnum")
 		})
 		waiters := []*protocol.Waiter(nil)
 		if lane == store.LaneWaiting {
@@ -399,33 +397,12 @@ func (a *App) workingCard(c *ui.Context, task *store.Task) {
 		} else if r := a.waitReason(task); r != "" {
 			ui.Text(c, r).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
 		}
-		a.workingBar(c)
 		meta := a.metaLine(task)
 		if task.Card != nil && task.Card.UpdatedAt != "" {
 			meta += " · " + a.L.T("onhand.reported", a.ago(task.Card.UpdatedAt))
 		}
 		ui.Text(c, meta).FontSize(t.XS).TextColor(t.InkMuted)
 	})
-}
-
-// workingBar is an indeterminate bar: a short pill gliding along.
-func (a *App) workingBar(c *ui.Context) {
-	t := a.T
-	still := c.Preferences().ReduceMotion
-	bar := ui.Box(c).Height(6).Radius(3).Background(t.Working.Surface).Clip()
-	now := c.Now()
-	bar.Draw(func(p *ui.Painter, r ui.Rect) {
-		w := r.W * 0.3
-		x := r.X + (r.W-w)*0.5
-		if !still {
-			ph := float64(now.UnixMilli()%2400) / 2400
-			x = r.X - w + float32(ph)*(r.W+w)
-		}
-		p.Fill(ui.Rect{X: x, Y: r.Y, W: w, H: r.H}, t.Working.Dot, 3)
-	})
-	if !still {
-		c.After(33 * time.Millisecond)
-	}
 }
 
 func (a *App) waitingCard(c *ui.Context, task *store.Task) {

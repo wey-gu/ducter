@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // Host is everything Ducter.app does on this Mac for the window
@@ -18,7 +19,26 @@ type Host struct {
 	Scratch string
 	// After is what Terminal says once a fix ran.
 	After string
+	// Jobs are the fixes the app runs itself (installers, sign-ins).
+	Jobs Jobs
+	// App is the app's bundle id (notification settings link).
+	App string
 }
+
+// Run starts a fix in the background (one per id).
+func (h *Host) Run(id, cmd string) (*Job, error) { return h.Jobs.Run(id, cmd) }
+
+// Job is the latest background fix under id.
+func (h *Host) Job(id string) *Job { return h.Jobs.Job(id) }
+
+// Cua looks at cua-driver (withTools: also whether it can browse).
+func (h *Host) Cua(withTools bool) CuaState { return ProbeCua(withTools) }
+
+// OpenSettings opens a System Settings pane.
+func (h *Host) OpenSettings(link string) error { return OpenSettings(link) }
+
+// BundleID is the app's bundle id.
+func (h *Host) BundleID() string { return h.App }
 
 // DataDir is Ducter's data folder.
 func (h *Host) DataDir() string { return h.Supervisor.DataDir }
@@ -64,3 +84,7 @@ func (h *Host) LinkCLI() error { return LinkCLI(LinkDir(), h.CLI) }
 
 // CLIOnPath reports whether ~/.local/bin is on a new Terminal's PATH.
 func (h *Host) CLIOnPath() bool { return OnPath(LinkDir(), h.LoginPath) }
+
+// StopChild stops a Ducter that runs as the app's child (the agent, if
+// any, is left alone).
+func (h *Host) StopChild() { h.Supervisor.Stop(8 * time.Second) }

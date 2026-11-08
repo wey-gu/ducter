@@ -12,7 +12,7 @@ name: Release
 #             commits since the previous tag. Drafted first, published once every file is up.
 #             Tags with a "-" (v0.2.0-beta.1) are marked pre-release.
 #
-# Secrets (names as con's; scripts/ci/setup-github-secrets.sh sets them): see docs/release.md.
+# Secrets (names as con's; scripts/ci/setup-github-secrets.sh sets them): see design/release/README.md.
 
 on:
   push:
@@ -88,7 +88,7 @@ jobs:
         run: |
           set -eu
           [ -n "$APPLE_NOTARY_KEY_ID" ] && [ -n "$APPLE_NOTARY_API_KEY_BASE64" ] ||
-            { echo "::error::APPLE_NOTARY_KEY_ID / APPLE_NOTARY_API_KEY_BASE64 are not set (docs/release.md)"; exit 1; }
+            { echo "::error::APPLE_NOTARY_KEY_ID / APPLE_NOTARY_API_KEY_BASE64 are not set (design/release/README.md)"; exit 1; }
           key="$RUNNER_TEMP/AuthKey_$APPLE_NOTARY_KEY_ID.p8"
           (umask 077; printf '%s' "$APPLE_NOTARY_API_KEY_BASE64" | base64 --decode >"$key")
           grep -q 'BEGIN PRIVATE KEY' "$key" || { echo "::error::APPLE_NOTARY_API_KEY_BASE64 is not a base64 .p8"; exit 1; }
@@ -187,7 +187,7 @@ jobs:
             echo "::notice::No apps/ios on $GITHUB_REF_NAME; nothing for TestFlight."
             echo "ship=false" >>"$GITHUB_OUTPUT"
           elif [ -z "$ASC_KEY_ID" ] || [ -z "$ASC_ISSUER_ID" ] || [ -z "$ASC_API_KEY_BASE64" ]; then
-            echo "::warning::No App Store Connect API key in secrets; skipping TestFlight (docs/release.md)."
+            echo "::warning::No App Store Connect API key in secrets; skipping TestFlight (design/release/README.md)."
             echo "ship=false" >>"$GITHUB_OUTPUT"
           else
             echo "ship=true" >>"$GITHUB_OUTPUT"

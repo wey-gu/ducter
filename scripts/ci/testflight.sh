@@ -14,7 +14,7 @@
 # cloud-managed Apple Distribution certificate and an App Store profile, and the export with
 # destination=upload sends the build to App Store Connect, the same path as Organizer's
 # "Distribute App > TestFlight". No .p12 or .mobileprovision lives in secrets. Cloud-managed
-# certificates need the key's role to be Admin (docs/release.md).
+# certificates need the key's role to be Admin (design/release/README.md).
 set -eu
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"

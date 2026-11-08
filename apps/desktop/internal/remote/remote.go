@@ -1,7 +1,7 @@
 // Package remote connects the desktop to a Ducter on another machine (a
 // VPS, a home server): it trades a one-time pairing code for a device
 // token at POST <address>/pair, and keeps that token in a 0600 file in the
-// user's config folder (D54; docs/design/system.md "Remote access").
+// user's config folder (D54; design/system.md "Remote access").
 // Tokens are never logged.
 package remote
 

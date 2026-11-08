@@ -1,4 +1,4 @@
-// Package theme holds Ducter's design tokens (docs/design/ui.md). Views
+// Package theme holds Ducter's design tokens (design/ui.md). Views
 // never hard-code a color, font, radius or shadow: they read a *Tokens, so
 // another theme is another value of it.
 package theme

@@ -1,4 +1,4 @@
-// Device auth for remote clients and workers (D54, docs/design/system.md "Remote access").
+// Device auth for remote clients and workers (D54, design/system.md "Remote access").
 //
 // - Clients on this machine (loopback peer, loopback Host, no proxy headers) stay token-free.
 // - Everyone else pairs once: `ducter pair` mints a one-time code (10 min); the client trades it

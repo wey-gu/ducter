@@ -88,7 +88,6 @@ func (a *App) taskHeader(c *ui.Context, task *store.Task) {
 		a.stateChip(c, task.Attention())
 		if h := task.Browsing(); h != "" {
 			a.chipBox(c, t.Chip, t.Working.Surface).Shrink(1).MinWidth(0).Children(func() {
-				ui.Box(c).Size(8, 8).Radius(4).Background(t.Working.Dot).Shrink(0)
 				ui.Text(c, a.L.T("browser.looking", h)).FontSize(t.XS).FontWeight(700).TextColor(t.Working.Ink).SingleLine()
 			})
 		}
@@ -106,9 +105,6 @@ func (a *App) taskHeader(c *ui.Context, task *store.Task) {
 		if w >= NarrowTask {
 			place := task.Place()
 			a.chipBox(c, t.ChipLG, t.SurfaceSunken).Padding(0, t.S3).Children(func() {
-				if place.Kind != "none" && place.Kind != "" {
-					ui.Box(c).Size(7, 7).Radius(4).Background(t.Done.Strong)
-				}
 				ui.Text(c, a.placeLine(place)).FontSize(t.SM).FontWeight(700).SingleLine()
 			})
 			if p := task.Project(); p != "" {

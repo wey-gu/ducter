@@ -34,7 +34,6 @@ func (a *App) firstRun(c *ui.Context) {
 			a.commandBox(c, StartCommand)
 			ui.Box(c).Height(1).Background(t.LineSoft).Margin(4, 0)
 			ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-				a.retryPulse(c)
 				ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
 					ui.Text(c, a.retryLine(c)).FontSize(t.MD).FontWeight(700)
 					if a.URL != "" && isLocalURL(a.URL) {
@@ -120,30 +119,6 @@ func (a *App) commandBoxSized(c *ui.Context, cmd string, size float32) {
 			*copied = a.Now()
 		}
 	})
-}
-
-// retryPulse is a small dot that breathes while the client keeps trying.
-func (a *App) retryPulse(c *ui.Context) {
-	t := a.T
-	still := c.Preferences().ReduceMotion
-	now := c.Now()
-	ui.Box(c).Size(28, 28).Shrink(0).Draw(func(p *ui.Painter, r ui.Rect) {
-		cx, cy := r.X+r.W/2, r.Y+r.H/2
-		ph := float32(0.5)
-		if !still {
-			ph = float32(now.UnixMilli()%1800) / 1800
-		}
-		ring := 6 + 8*ph
-		var m ui.Path
-		m.Circle(cx, cy, ring)
-		p.FillPath(&m, t.Waiting.Dot.Alpha(0.45*(1-ph)))
-		var d ui.Path
-		d.Circle(cx, cy, 6)
-		p.FillPath(&d, t.Waiting.Dot)
-	})
-	if !still {
-		c.After(33 * time.Millisecond)
-	}
 }
 
 // sleepyFace is the persona's face with its eyes closed: Ducter is not up

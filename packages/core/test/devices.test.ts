@@ -105,6 +105,21 @@ test("no cua-driver: 上网 is unavailable with the reason, and adding it is ref
   expect(readAbilitySettings(core.dataDir)).toEqual({});
 });
 
+test("cua-driver installed a moment ago (the app's setup): adding 上网 looks again instead of a stale no", async () => {
+  let installed = false;
+  const core = boot({ cua: async () => (installed ? { version: "0.44.0" } : { missing: "cua-driver is not installed" }) });
+  const c = await client(core.url);
+  c.send({ t: "devices" });
+  const f = await c.until<Devices>((x) => x.t === "devices");
+  expect(ability(f.devices[0]!, "web")).toMatchObject({ state: "unavailable", reason: "cua_missing" });
+  installed = true; // the probe is cached for a minute
+  const n = c.frames.length;
+  c.send({ t: "ability", device: "local", ability: "web", on: true });
+  expect(await c.until((x) => x.t === "ability_result", n)).toMatchObject({ ok: true, on: true });
+  const on = await c.until<Devices>((x) => x.t === "devices", n);
+  expect(ability(on.devices[0]!, "web").state).toBe("on");
+});
+
 test("an old cua-driver reads as cua_old; a later ability can't be added", async () => {
   const core = boot({ cua: async () => ({ missing: "cua-driver 0.6.8 has no typed browser tools" }) });
   const c = await client(core.url);

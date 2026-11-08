@@ -15,7 +15,7 @@ support window. Fixes land on `main`.
 
 ## The trust model, in short
 
-The full model is in [`docs/design/system.md`](docs/design/system.md) (sections *Safety*,
+The full model is in [`design/system.md`](design/system.md) (sections *Safety*,
 *Who counts as local*, and *Server mode and remote access*). The parts most relevant to a
 report:
 

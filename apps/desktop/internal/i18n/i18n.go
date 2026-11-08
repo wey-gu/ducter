@@ -1,5 +1,5 @@
 // Package i18n holds every user-facing string of the desktop client, by
-// key, in Chinese and English (docs/design/product-model.md §1: no court
+// key, in Chinese and English (design/product-model.md §1: no court
 // vocabulary; partners, not hierarchy). Views never hard-code copy.
 package i18n
 
@@ -283,6 +283,7 @@ var zh = Table{
 	"devices.empty.hint":             "拖到 %s 上，或者点一下",
 	"devices.accounts":               "%s 上能用的 AI 账号",
 	"device.home":                    "醒着 · %s 在这儿",
+	"device.home.line":               "%s 在这儿",
 	"device.state.awake":             "醒着",
 	"device.state.asleep":            "睡着了 · 醒来就接着做",
 	"device.state.unreachable":       "连不上 · %s",
@@ -607,6 +608,7 @@ var en = Table{
 	"devices.empty.hint":             "Drag onto %s, or tap",
 	"devices.accounts":               "AI accounts on %s",
 	"device.home":                    "Awake · %s lives here",
+	"device.home.line":               "%s lives here",
 	"device.state.awake":             "Awake",
 	"device.state.asleep":            "Asleep · carries on when it wakes",
 	"device.state.unreachable":       "Can't reach · %s",

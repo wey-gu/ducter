@@ -1,5 +1,5 @@
 // CLI strings, zh + en designed together. Keys are stable; copy follows the glossary
-// (docs/design/product-model.md): partner, task, On hand / 手头, Needs you / 等你.
+// (design/product-model.md): partner, task, On hand / 手头, Needs you / 等你.
 
 export type Locale = "en" | "zh";
 
@@ -41,6 +41,8 @@ const en = {
   "check.cua": "cua-driver",
   "check.cua.ok": "{version} (browser and computer tasks)",
   "check.cua.missing": "not installed (no browser tasks yet)",
+  "check.cua.old": "{version} is too old for browser tasks; update it",
+  "check.cua.grants": "{version}, still needs Accessibility and Screen Recording in System Settings",
   "check.port": "Port {port}",
   "check.port.ok": "free",
   "check.port.ducter": "Ducter is already running here",
@@ -210,11 +212,11 @@ const zh: Record<MsgKey, string> = {
   "check.claude": "Claude Code",
   "check.claude.ok": "已登录（{version}）",
   "check.claude.token": "已设置长期登录（{version}）；第一次用时验证",
-  "check.claude.loggedOut": "已安装，未登录",
+  "check.claude.loggedOut": "装好了，还没登录",
   "check.claude.missing": "未安装",
   "check.codex": "Codex",
   "check.codex.ok": "已登录",
-  "check.codex.loggedOut": "已安装，未登录",
+  "check.codex.loggedOut": "装好了，还没登录",
   "check.codex.missing": "未安装",
   "check.harness.none": "Ducter 至少需要一个能干活的 AI：Claude Code 或 Codex。",
   "check.nmem": "Nowledge Mem",
@@ -227,6 +229,8 @@ const zh: Record<MsgKey, string> = {
   "check.cua": "cua-driver",
   "check.cua.ok": "{version}（浏览器和电脑任务）",
   "check.cua.missing": "未安装（暂时不能做浏览器任务）",
+  "check.cua.old": "{version} 太旧，做不了浏览器任务；更新一下",
+  "check.cua.grants": "{version}，还要在系统设置里打开「辅助功能」和「录屏与系统录音」",
   "check.port": "端口 {port}",
   "check.port.ok": "空闲",
   "check.port.ducter": "Ducter 已经在这里运行",
@@ -304,8 +308,8 @@ const zh: Record<MsgKey, string> = {
   "err.badPort": "端口必须是 1 到 65535 之间的数字：{value}",
 
   "doctor.title.server": "检查这台服务器能否运行 Ducter",
-  "check.claude.loggedOut.headless": "已安装，未登录。在服务器上：运行这条命令，在任意设备上打开它给的链接，再把码粘回来",
-  "check.codex.loggedOut.headless": "已安装，未登录。在服务器上：运行这条命令，在任意设备上输入它显示的码",
+  "check.claude.loggedOut.headless": "装好了，还没登录。在服务器上：运行这条命令，在任意设备上打开它给的链接，再把码粘回来",
+  "check.codex.loggedOut.headless": "装好了，还没登录。在服务器上：运行这条命令，在任意设备上输入它显示的码",
   "check.service": "一直开着",
   "check.service.ok": "systemd 用户服务已开启（开机自动启动）",
   "check.service.noLinger": "服务已开启，但你退出登录后会停",

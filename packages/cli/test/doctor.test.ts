@@ -23,7 +23,9 @@ const HAPPY: Record<string, RunResult> = {
   "claude auth status": { code: 0, stdout: JSON.stringify({ loggedIn: true, authMethod: "claude.ai" }) },
   "codex login status": { code: 0, stdout: "Logged in using ChatGPT\n" },
   "nmem --json status": { code: 0, stdout: JSON.stringify({ status: "healthy", mode: "local" }) },
-  "cua-driver --version": { code: 0, stdout: "cua-driver 0.6.8\n" },
+  "cua-driver --version": { code: 0, stdout: "cua-driver 0.44.0\n" },
+  "cua-driver list-tools": { code: 0, stdout: "browser_prepare: Prepare\nget_browser_state: State\nbrowser_navigate: Go\n" },
+  "cua-driver permissions status --json": { code: 0, stdout: JSON.stringify({ accessibility: true, screen_recording: true }) },
 };
 
 function fake(m: Machine = {}): Host & { calls: string[] } {
@@ -69,7 +71,7 @@ describe("doctor", () => {
     expect(h.calls).toEqual([]); // nothing missing gets executed
     expect(byId(r, "git")).toMatchObject({ status: "missing", required: true, fix: "xcode-select --install" });
     expect(byId(r, "claude")).toMatchObject({ status: "missing", required: true, fix: "curl -fsSL https://claude.ai/install.sh | bash" });
-    expect(byId(r, "codex")).toMatchObject({ status: "missing", required: false, fix: "brew install codex" });
+    expect(byId(r, "codex")).toMatchObject({ status: "missing", required: false, fix: "curl -fsSL https://chatgpt.com/codex/install.sh | sh", action: "install" });
     expect(byId(r, "nmem")).toMatchObject({ status: "missing", required: false });
     expect(byId(r, "cua")).toMatchObject({ status: "missing", required: false });
     for (const c of r.checks) if (c.status !== "ok") expect(c.fix).toBeTruthy();
@@ -141,6 +143,34 @@ describe("doctor", () => {
     // Every detail starts at the same display column, even after 2-column CJK labels.
     const cols = rows.map((l, i) => width(l.slice(0, l.indexOf(r.checks[i]!.detail))));
     expect(new Set(cols).size).toBe(1);
+  });
+
+  test("the app can run installers and sign-ins itself: each carries its action", async () => {
+    const out = { "claude auth status": { code: 1, stdout: JSON.stringify({ loggedIn: false }) } };
+    const r = await runDoctor(fake({ tools: ["git", "claude"], out }), en, opts);
+    expect(byId(r, "claude")).toMatchObject({ fix: "claude auth login", action: "signin" });
+    expect(byId(r, "codex").action).toBe("install");
+    const cua = byId(r, "cua").fix!;
+    expect(byId(r, "cua").action).toBe("install");
+    expect(cua.includes("https://cua.ai/driver/install.sh")).toBe(true);
+    expect(cua.includes("--no-connect")).toBe(true); // never wires itself into the person's other agents
+    expect(byId(r, "nmem")).toMatchObject({ fix: "https://mem.nowledge.co" });
+    expect(byId(r, "nmem").action).toBeUndefined(); // a page, not a command
+    expect(byId(r, "git").action).toBeUndefined();
+  });
+
+  test("cua-driver: too old to browse, or the two macOS switches still off", async () => {
+    const old = await runDoctor(fake({ out: { "cua-driver --version": { code: 0, stdout: "cua-driver 0.6.8\n" }, "cua-driver list-tools": { code: 0, stdout: "page: legacy\n" } } }), en, opts);
+    expect(byId(old, "cua")).toMatchObject({ status: "warn", required: false, fix: "cua-driver update --apply", action: "update" });
+    const h = Object.assign(fake({ out: { "cua-driver permissions status --json": { code: 0, stdout: JSON.stringify({ accessibility: true, screen_recording: false }) } } }), { platform: "darwin" });
+    const off = await runDoctor(h, en, opts);
+    expect(byId(off, "cua")).toMatchObject({ status: "warn", fix: "cua-driver permissions grant", action: "grant" });
+    expect(off.ok).toBe(true); // optional
+    // Found in /Applications, off PATH (the app's installer leaves the shell profile alone).
+    const app = "/Applications/CuaDriver.app/Contents/MacOS/cua-driver";
+    const h2 = fake({ tools: ["git", "claude", app], out: { [`${app} --version`]: { code: 0, stdout: "cua-driver 0.44.0" }, [`${app} list-tools`]: HAPPY["cua-driver list-tools"]! } });
+    const r2 = await runDoctor(Object.assign(h2, { exists: (p: string) => p === app }), en, opts);
+    expect(byId(r2, "cua").status).toBe("ok");
   });
 
   test("the report names what to fix, then how many", async () => {
@@ -230,6 +260,11 @@ describe("doctor on a Linux server", () => {
   test("service on without linger is a warning with the sudo line", async () => {
     const r = await runDoctor(server({}, svc("active", "no")), en, opts);
     expect(byId(r, "service")).toMatchObject({ status: "warn", fix: `sudo loginctl enable-linger ${user}` });
+  });
+
+  test("a server gets commands only, never an action for an app", async () => {
+    const r = await runDoctor(server({ tools: ["git", "claude"], out: { "claude auth status": { code: 1, stdout: "{}" } } } as any), en, opts);
+    expect(r.checks.every((c) => c.action === undefined)).toBe(true);
   });
 
   test("a Mac shows no server rows", async () => {

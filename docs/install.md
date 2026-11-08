@@ -1,161 +1,142 @@
-# Installing and running Ducter
+---
+title: Install
+description: Install the Mac app or the ducter command, run Ducter on a Linux server that stays on, and connect your phone.
+order: 2
+---
 
-This page has the full details behind the quickstart in the [README](../README.md): building
-the Mac app, handing Ducter to a friend, the commands, and running it on a Linux server.
+# Install
 
-## Give Ducter to a friend
+There are four ways to have Ducter, and you can mix them:
 
-### The app (no terminal)
+| | Best for | Status |
+|---|---|---|
+| [The Mac app](#the-mac-app) | Most people. Double-click and go | Ready, built from source for now |
+| [The `ducter` command](#the-ducter-command) | People who live in Terminal | Ready |
+| [A Linux server](#a-linux-server-that-stays-on) | Keeping your partner working while your Mac sleeps | Ready |
+| [Your phone](#your-phone) | Answering decisions and checking results on the go | Ready in the phone's browser; an iPhone app is coming soon |
 
-**On your Mac** (needs Bun and Go):
+Whichever you choose, you need **Claude Code or Codex** installed and signed in on the computer
+that does the work. Ducter uses your own plan through them; it never asks for an API key to get
+started.
 
-```sh
-scripts/make-app.sh            # dist/Ducter.app and dist/Ducter-0.0.1-arm64.dmg
-```
+## The Mac app
 
-Send the `.dmg` (AirDrop, a link, a USB stick). It holds `Ducter.app` (the desktop app, with
-the `ducter` CLI inside it) and an Applications shortcut. The build is for your Mac's CPU
-(Apple silicon builds run only on Apple silicon).
-
-**With an Apple Developer ID** in your keychain, `scripts/make-app.sh` signs the app with it
-(hardened runtime), notarizes it with Apple, and staples the ticket, and does the same for the
-`.dmg`. Notarization needs credentials, for example in the environment:
-
-```sh
-APPLE_ID=… APPLE_PASSWORD=… APPLE_TEAM_ID=… scripts/make-app.sh
-```
-
-The top of `scripts/make-app.sh` lists the other ways: a `notarytool` keychain profile
-(`DUCTER_NOTARY_PROFILE`) or an App Store Connect API key. Your friend then just:
-
-1. Double-clicks the `.dmg` and drags **Ducter** onto **Applications**.
-2. Opens Ducter from Applications. macOS asks once, *"“Ducter” is an app downloaded from the
-   Internet. Are you sure you want to open it?"*, and names the developer. **Open**.
-
-No System Settings, no Open Anyway. It works offline too: the notarization ticket is stapled.
-
-Releases are built the same way by CI: push a `v*` tag (see [release.md](release.md)).
-
-**Without a Developer ID**, the script falls back to ad-hoc signing (`codesign -s -`, not
-notarized) and the first open needs an extra step. On **macOS 15 (Sequoia)** right-click →
-Open no longer gets past it: open Ducter, click **Done** on *"“Ducter” Not Opened"*, then
-**System Settings → Privacy & Security → Open Anyway** (twice) and Touch ID or your password.
-On macOS 14 and earlier it is right-click → Open → Open.
-
-**What happens next, with no terminal**
-
-| When | What they see |
-|---|---|
-| 0:00 | The window: "Checking this Mac…" with the sleeping clay character. The app runs `ducter doctor` itself, with the `PATH` a Terminal window would have (an app opened from Finder gets only the system folders) |
-| 0:03 | **Ready Mac:** nothing to answer, or one optional line "What should I be called?" (skipped when Nowledge Mem holds the identity). **Not ready:** "One thing first", only the blocking item (e.g. "Claude Code: installed, not signed in") with its command, **Copy**, and **Run in Terminal** (Terminal opens on that one command; no permission prompt). Optional things fold into one line. It checks again by itself when they come back to the window, and every 10 s |
-| 0:05 | "Waking Ducter up…" with one line: from now on Ducter keeps working when the window is closed, and Stop Ducter in the menu stops it. Then the conversation with starters about their own recent repos (names only) |
-| 0:30 | They type; the partner answers (2.5 s on sonnet in our run) |
-| after the first reply | Once: "Use ducter in Terminal too?" Yes links `~/.local/bin/ducter` to the app (no administrator password; never replaces a file already there; not offered while the app still runs from the disk image) |
-
-**Ducter keeps working when the window is closed.** Closing the window hides it; the
-Dock icon brings it back as it was, and the Dock badge counts what is waiting for you. Ducter
-itself runs as a per-user LaunchAgent (`~/Library/LaunchAgents/co.nowledge.ducter.agent.plist`,
-started at login, restarted if it crashes), so ⌘Q quits only the window app. To stop Ducter
-and every task: **Ducter menu → Stop Ducter** (让 Ducter 歇着); it stays off, at login too,
-until **Wake Ducter** or the next time you open the app. Run from the disk image instead of
-Applications, Ducter stops with the app. If Ducter was already running (from `ducter up` in a
-terminal), the app just connects and leaves it alone. Data lives in `~/.ducter`, as with the
-CLI; Ducter's output from the app is in `~/.ducter/app.log`.
-
-For a scratch run of the real app: `~/Library/Application Support/Ducter/dev.env` with lines
-like `DUCTER_DATA_DIR=/tmp/ducter-scratch` and `DUCTER_PORT=7798` (only `DUCTER_*` keys are
-read). Delete the file afterwards.
-
-### The terminal path
-
-**On your Mac** (needs Bun, and Go for the desktop app):
+A ready-made download is coming soon. Until then the app is built once from the source, on a
+Mac with [Bun](https://bun.sh) and [Go](https://go.dev) installed:
 
 ```sh
-scripts/install.sh --bundle ~/Desktop/ducter-for-anna
+git clone https://github.com/wey-gu/ducter && cd ducter
+scripts/make-app.sh        # makes dist/Ducter.app and a .dmg
 ```
 
-You get one folder: `ducter`, `ducter-desktop`, `install.sh`, and a two-language `README.txt`.
-Send it any way you like (AirDrop, a zip, a USB stick).
+The `.dmg` can go to anyone with an Apple silicon Mac (AirDrop, a link, a USB stick). They
+need no build tools.
 
-**On their Mac** (no build tools; they need Claude Code or Codex signed in):
+To install: open the `.dmg`, drag **Ducter** onto **Applications**, and open it from there.
+If whoever built it signed it with an Apple Developer ID, macOS asks once whether to open an app
+from the Internet; choose **Open**. If not, see
+[Ducter can't be opened](troubleshooting.md#ducter-not-opened).
 
-1. In Terminal, type `sh ` (with the space), drag `install.sh` from the folder into the window,
-   press Return. It puts two files in `~/.local/bin`, clears the download quarantine flag on
-   those two only, and prints one next step.
-2. Run that step: `ducter up` (or its full path, if `~/.local/bin` isn't on `PATH` yet).
+What happens next is in [Getting started](getting-started.md). In short: Ducter checks your Mac,
+shows the one thing to fix if anything blocks, and opens the conversation. It keeps working
+when you close the window.
 
-**What they see in the first five minutes**
+## The `ducter` command
 
-| When | What happens |
-|---|---|
-| 0:00 | `install.sh` says "Ducter is installed" and prints the one command to run next |
-| 0:10 | First `ducter up`: a quick check of the Mac. Ready → one line ("This Mac is ready: Claude Code, Codex"). Not ready → only what blocks, each with the one command that fixes it |
-| 0:15 | One optional question: "What should I be called? (Enter keeps Ducter)". Skipped when Nowledge Mem is connected, since the identity there has a name |
-| 0:25 | The banner: where Ducter lives (this Mac, data in `~/.ducter`), memory, the desktop window, and how to connect another device later (`ducter pair`) |
-| 0:30 | The desktop opens on a greeting by name, in their language, with three starters about *their* Mac: the git repos they touched most recently under `~/dev`, `~/code`, `~/src`, `~/Projects`, `~/work` (names only; nothing inside is opened). No repos → everyday starters |
-| 1:00 | They tap a starter (it fills the box; it never sends by itself) and press Return. The partner says what it's starting (3–19 s in our two runs) and opens a task |
-| ~2:00 | The task comes back done (46–52 s after sending, for "fix the failing tests" in a small repo). The first time ever, a single line with the clay character: "Your first task is done. Everything I finish comes back to you like this, with proof." Then the partner's own short result with evidence (about a minute), and Merge / Draft PR / See changes |
+The app already includes the command: after your partner's first reply it offers *"Use ducter
+in Terminal too?"*, and **Yes** puts `ducter` in `~/.local/bin`.
 
-To start over as a brand-new user, stop Ducter and remove `~/.ducter` (or use a fresh
-`--data-dir`). Ducter's files there: `ducter.db` (the Log), `ducter.log` (its own log lines),
-`persona.json` (the name they chose), `firstrun.json` (the repo names for the starters),
-`desktop.json` (whether the first result was celebrated).
+Without the app, from the source (needs Bun; Go too if you want the desktop window):
+
+```sh
+scripts/install.sh      # puts ducter (and the desktop app) in ~/.local/bin
+ducter doctor           # checks this Mac; anything missing comes with the command that fixes it
+ducter up               # starts your partner and opens the desktop window
+```
+
+To hand the command to a friend who doesn't build anything, run
+`scripts/install.sh --bundle ~/Desktop/ducter-for-anna` and send them that folder. On their Mac
+they type `sh ` in Terminal, drag `install.sh` from the folder into the window, press Return, and
+run the one command it prints.
 
 | Command | What it does |
 |---|---|
-| `ducter up` | Start Ducter (and the desktop app). Ctrl-C stops everything. Runs `doctor` on first start |
-| `ducter open` | Reopen the desktop app for a running Ducter |
-| `ducter doctor` | Check bun, git, Claude Code, Codex, Nowledge Mem, cua-driver, the port, and the data folder |
-| `ducter status` | Tasks and open decisions from the running Ducter (`--json` for scripts) |
-| `ducter version` | Version and build |
+| `ducter up` | Start Ducter and open the desktop window. Ctrl-C stops everything |
+| `ducter open` | Open the desktop window again for a Ducter that's already running |
+| `ducter status` | Your tasks and the decisions waiting for you |
+| `ducter doctor` | The check-up (see [Troubleshooting](troubleshooting.md)) |
+| `ducter pair` | A one-time code to connect your phone or another computer |
+| `ducter devices` | The devices connected to your Ducter; `ducter devices disconnect <name>` removes one |
+| `ducter version` | Which version you have |
 
-Options: `--port` (default 7777, or `DUCTER_PORT`), `--data-dir` (default `~/.ducter`, or
-`DUCTER_DATA_DIR`), `--no-desktop`. Messages follow your locale (`LANG`); set
-`DUCTER_LOCALE=zh` or `en` to choose.
+Messages follow your system language. Set `DUCTER_LOCALE=zh` or `DUCTER_LOCALE=en` to choose.
 
-From a checkout you can also skip the install: `bun install && bun packages/cli/src/main.ts up`.
+## A Linux server that stays on
 
-## On a server (Linux VPS)
+A Mac sleeps; a small server doesn't. Put Ducter on a Linux server you own and your partner
+keeps working through the night, while your Mac and phone simply connect to it.
 
-Keep your partner awake while your Mac sleeps. On your Mac, build the Linux binaries; on the
-server, install them as a service; then connect the Mac app.
+**1. On your Mac, make the Linux files** (from the source):
 
 ```sh
-# on your Mac
-scripts/install.sh --linux ducter-linux            # ducter-linux/linux-x64 and linux-arm64
-scp -r ducter-linux/linux-x64 you@server:ducter    # pick the server's CPU (uname -m)
-
-# on the server
-sh ducter/install.sh --service   # systemd user service on 127.0.0.1:7777, then a pairing code
-ducter doctor                    # says how to sign in Claude Code / Codex without a browser there
+scripts/install.sh --linux ducter-linux
+scp -r ducter-linux/linux-x64 you@server:ducter    # or linux-arm64; `uname -m` on the server tells you
 ```
 
-Reach it one of two ways:
+**2. On the server, install it as a service:**
 
-- **Your own domain (recommended):** point a DNS record at the server, open ports 80/443, then
-  `sh scripts/caddy-setup.sh ducter.example.com` on the server. Caddy gets the HTTPS
-  certificate; Ducter stays on 127.0.0.1.
-- **No domain:** an SSH tunnel from your Mac, `ssh -N -L 7777:127.0.0.1:7777 you@server`, then
-  the address is `http://127.0.0.1:7777`.
+```sh
+sh ducter/install.sh --service
+ducter doctor
+```
 
-In the Mac app choose **My Ducter is on another machine → Connect to your Ducter** and enter
-the address and the code from `ducter pair` (or paste the whole link it prints). On a phone,
-open that link or scan the QR it prints (through your domain): it opens the phone web client,
-pairs, and offers notifications for decisions that wait for you. Only paired
-devices get in from outside the server; `ducter devices` lists them and
-`ducter devices disconnect <id>` removes one. Another machine can join as a worker with
-`ducter pair --worker` on the server and `ducter worker --join <address> --code <code>` on the
-other machine. Then say "在 vps-2 上跑…" / "run it on vps-2": the task runs there (its
-worktree on that disk, its harness), and if that machine drops, the task waits and resumes when
-it's back.
+Ducter now starts with the server and restarts if it ever crashes. It only listens on the
+server itself (`127.0.0.1`), so nobody reaches it from outside until you choose how. The
+install ends by showing a code to connect your first device.
 
-| Command | What it does |
-|---|---|
-| `ducter up --headless` | Run as a server: no window. Binds 127.0.0.1 unless `--host` says otherwise |
-| `ducter service install \| uninstall \| status` | systemd user service with restart on failure; logs in `journalctl --user -u ducter` |
-| `ducter pair` | One-time pairing code (10 min), address, link and QR |
-| `ducter devices` | Connected devices; `disconnect <id>` removes one |
-| `ducter worker --join <address> --code <code>` | Make this machine a worker of that Ducter (`service install --worker` keeps it running) |
+`ducter doctor` also tells you how to sign in Claude Code or Codex on a server that has no
+browser: `claude auth login` prints a link to open on any device and waits for the code, and
+`codex login --device-auth` works the same way.
 
-`DUCTER_SCRIPTED_MODEL=1 ducter up` runs with a canned model (OAR's scripted runtime) over the
-real tools, for demos on a box with no AI signed in. Every reply says so.
+**3. Choose how to reach it:**
+
+- **Your own domain (recommended).** Point a DNS record at the server, open ports 80 and 443,
+  copy `scripts/caddy-setup.sh` from the source to the server, and run
+  `sh caddy-setup.sh ducter.example.com` there. It sets up HTTPS for you. This is also the way
+  to reach Ducter from your phone.
+- **No domain.** Open an SSH tunnel from your Mac:
+  `ssh -N -L 7777:127.0.0.1:7777 you@server`. The address is then `http://127.0.0.1:7777`.
+  This works for your Mac, not your phone.
+- A zero-setup address with no domain of your own is coming soon.
+
+**4. Connect your Mac.** Open the Mac app and choose **My Ducter is on another computer**, then
+**Connect to your Ducter**. On the server, run `ducter pair`, and type the **Address** and
+**Code** it shows (or paste the whole link). The code works once, for 10 minutes.
+
+Ducter's own messages on the server go to the system journal:
+`journalctl --user -u ducter`.
+
+### Lend another computer
+
+A second server or Mac can do tasks for your Ducter. On the computer Ducter lives on, run
+`ducter pair --worker`; on the other one, run `ducter worker --join <address> --code <code>`
+(add `ducter service install --worker` on a Linux server to keep it running). Then just say
+where: *"run it on vps-2"*. If that computer drops off, its task waits and carries on when it's
+back.
+
+## Your phone
+
+Your phone connects to the Ducter on your server through your own domain. On the server, run
+`ducter pair` and scan the QR code it shows, or open the link. The phone opens Ducter in its
+browser, connects, and asks whether to notify you when something needs you.
+
+Everything about the phone, including notifications and quiet hours, is on
+[Your phone](phone.md). An iPhone app is coming soon.
+
+## Remove Ducter
+
+- **Mac app:** choose **Stop Ducter** in the menu, then drag Ducter from Applications to the
+  Trash.
+- **Server:** `ducter service uninstall`.
+- **Your data** (your conversation, tasks and settings) lives in `~/.ducter`. Delete that folder
+  only if you want to start over completely: it cannot be undone.

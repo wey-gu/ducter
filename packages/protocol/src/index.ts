@@ -2,7 +2,7 @@
 // Changes here go through the lead. The Go client mirrors these types in
 // apps/desktop/internal/protocol (keep field names identical; JSON is the wire format).
 
-// ---------- States (docs/design/focus-window-states.md) ----------
+// ---------- States (design/focus-window-states.md) ----------
 
 export type Attention =
   | "queued"
@@ -17,7 +17,7 @@ export type Attention =
 
 export type Residency = "provisioning" | "hot" | "warm" | "parked" | "archived" | "offline";
 
-// ---------- Places (docs/design/product-model.md §3) ----------
+// ---------- Places (design/product-model.md §3) ----------
 
 export type Place =
   | { kind: "none"; device?: string } // device: where a place-less task runs (a worker); default this machine

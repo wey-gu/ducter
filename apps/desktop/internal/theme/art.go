@@ -9,7 +9,7 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// The clay Ducter (docs/art/assets/alpha, D53), cut square around the
+// The clay Ducter (design/art/assets/alpha, D53), cut square around the
 // character and downscaled: @160 for avatars up to 80 DIPs, @400 for the
 // hero. Regenerate from the 1024px masters, never upscale these.
 //

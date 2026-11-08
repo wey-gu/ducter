@@ -12,7 +12,7 @@ import (
 // Version is PROTOCOL_VERSION.
 const Version = 2
 
-// ---------- States (docs/design/focus-window-states.md) ----------
+// ---------- States (design/focus-window-states.md) ----------
 
 // Attention is a task's attention state.
 type Attention string

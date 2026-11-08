@@ -7,7 +7,7 @@ access. You snap one onto a device, and the device "can now …". Working word: 
 **Labels.** **V** = verified this session (my own experiment). **K** = established usage from prior
 knowledge. **I** = my inference.
 
-**Constraints** (from `docs/design/product-model.md` §1 and the brief): partners not hierarchy;
+**Constraints** (from `design/product-model.md` §1 and the brief): partners not hierarchy;
 plain words that translate cleanly with no puns; guessable at a glance; as simple as 事 / Task.
 Must not collide with **skills** (Claude Code skills, kept separate in Ducter), **tools** (MCP),
 **plugins**, **extensions** or **apps**. It needs an equip verb and a result line in both languages.

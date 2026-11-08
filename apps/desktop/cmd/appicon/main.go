@@ -1,10 +1,10 @@
 // Command appicon draws Ducter's macOS app icon: the clay character
-// (docs/art/assets/alpha/ducter_idle.png) standing on a warm squircle, on
+// (design/art/assets/alpha/ducter_idle.png) standing on a warm squircle, on
 // the 1024 px macOS icon grid (an 824 px body, centred, with its drop
 // shadow). Standard library and golang.org/x/image only; scripts/make-app.sh
 // turns the PNG into AppIcon.icns with sips and iconutil.
 //
-//	go run ./cmd/appicon -in ../../docs/art/assets/alpha/ducter_idle.png -out icon-1024.png
+//	go run ./cmd/appicon -in ../../design/art/assets/alpha/ducter_idle.png -out icon-1024.png
 package main
 
 import (

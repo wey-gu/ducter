@@ -78,7 +78,7 @@ async function turn(t: ScriptedTurn) {
   // Only the user asks for tasks: a resolution or timer line that mentions "task" is not a
   // request (soak: "[decision resolved] (task …)" opened tasks titled with rendered context).
   if (trig.kind === "user" && /task|任务/i.test(said) && mcp) {
-    const title = said.replace(/^.*?(task|任务)\s*[:：]?\s*/i, "").slice(0, 60) || said.slice(0, 60);
+    const title = said.replace(/^.*?(task|任务)\s*[:：]?\s*/i, "").replace(/^[\s,，、:：。.]+/, "").slice(0, 60) || said.slice(0, 60);
     // "在 cloud-1 上跑…": a device named on the [devices] line (partner.ts renderDevices) and in the message.
     const names = [...(t.input.match(/^\[devices\].*$/m)?.[0] ?? "").matchAll(/· ([^\s(·]+) \(/g)].map((m) => m[1]!);
     const device = names.find((n) => said.includes(n));

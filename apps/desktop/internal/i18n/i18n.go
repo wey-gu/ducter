@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"unicode"
 )
 
 // Lang is a supported language.
@@ -21,6 +22,49 @@ const (
 type Table map[string]string
 
 var zh = Table{
+	"result.asked":                  "已经跟 %s 说了",
+	"task.dossier.body":             "谁在做",
+	"task.dossier.reason":           "为什么是它",
+	"task.dossier.body.none":        "还没有用量",
+	"face.done":                     "%s 刚交回一件事",
+	"face.napping":                  "%s 还没醒",
+	"weekday.0":                     "周日 %s",
+	"weekday.1":                     "周一 %s",
+	"weekday.2":                     "周二 %s",
+	"weekday.3":                     "周三 %s",
+	"weekday.4":                     "周四 %s",
+	"weekday.5":                     "周五 %s",
+	"weekday.6":                     "周六 %s",
+	"decision.no_default":           "这件不会自己动，等你定",
+	"decision.answered":             "%s · %s",
+	"secret.held":                   "这像是密钥。别发在对话里，我不需要看到它。",
+	"secret.send":                   "照样发送",
+	"secret.cancel":                 "不发了",
+	"outside.title":                 "对外",
+	"outside.seen":                  "从对话记录里看到的",
+	"outside.none":                  "还没有对外动过",
+	"outside.nothing.merged":        "没有 · 已合回本机的 %s，在%s上，没推送",
+	"outside.nothing.repo":          "没有 · 改动只在 %s 分支上，在%s上",
+	"outside.nothing":               "没有",
+	"result.howknow":                "怎么知道的",
+	"result.more":                   "+%d",
+	"result.merge":                  "合回 %s",
+	"result.pr":                     "开草稿 PR",
+	"result.changes":                "看改动",
+	"result.ask.merge":              "把「%s」的改动合回 %s",
+	"result.acting.merge":           "正在合回 %s…",
+	"result.acting.open_pr":         "正在开草稿 PR…",
+	"result.merged":                 "已经合回 %s",
+	"result.merged.toast":           "「%s」合回去了 · %s",
+	"result.pr.toast":               "草稿 PR 开好了 · %s",
+	"result.action.failed":          "没做成：%s",
+	"result.ask.pr":                 "给「%s」开一个草稿 PR",
+	"header.working":                "在做 %d 件",
+	"header.needs":                  "%d 件等你",
+	"header.done":                   "今天交回 %d 件",
+	"header.thinking":               "在想…",
+	"onhand.calm":                   "现在没有要你定的事。",
+	"onhand.calm.working":           "现在没有要你定的事。%s 在做 %d 件，做完会告诉你。",
 	"app.title":                     "Ducter",
 	"nav.conversation":              "对话",
 	"nav.onhand":                    "手头",
@@ -30,7 +74,7 @@ var zh = Table{
 	"conn.connecting":               "正在连上…",
 	"conn.offline":                  "连不上 Ducter，正在重试",
 	"composer.placeholder":          "跟 %s 说点什么…",
-	"composer.task":                 "直接对这件事说（不经过 %s）",
+	"composer.task":                 "直接跟这件事说",
 	"composer.send":                 "发送",
 	"composer.label":                "跟 %s 说",
 	"empty.conversation":            "说一句话就能开始。要做的事交给我，需要你的时候我会来问。",
@@ -141,7 +185,7 @@ var zh = Table{
 	"suggest.2":                     "把今天 docs/decisions.md 里新加的决定总结给我",
 	"suggest.3":                     "明早 9 点提醒我回 HawDB 那个 PR 的评论",
 	"firstrun.title":                "Ducter 还没启动",
-	"firstrun.body":                 "在终端里运行这一行，Ducter 就会在这台 Mac 上开始工作：",
+	"firstrun.body":                 "在终端运行这一行，Ducter 就在这台 Mac 上开工：",
 	"firstrun.copy":                 "复制",
 	"firstrun.copied":               "复制好了",
 	"firstrun.source":               "从源码运行：在 Ducter 仓库里执行 bun run up",
@@ -172,6 +216,49 @@ var zh = Table{
 }
 
 var en = Table{
+	"result.asked":                  "Told %s",
+	"task.dossier.body":             "Who's doing it",
+	"task.dossier.reason":           "Why this one",
+	"task.dossier.body.none":        "No usage yet",
+	"face.done":                     "%s just handed something back",
+	"face.napping":                  "%s isn't up yet",
+	"weekday.0":                     "Sun %s",
+	"weekday.1":                     "Mon %s",
+	"weekday.2":                     "Tue %s",
+	"weekday.3":                     "Wed %s",
+	"weekday.4":                     "Thu %s",
+	"weekday.5":                     "Fri %s",
+	"weekday.6":                     "Sat %s",
+	"decision.no_default":           "I won't go ahead on this without you",
+	"decision.answered":             "%s · %s",
+	"secret.held":                   "This looks like a key. Don't send it in the conversation; I never need to see it.",
+	"secret.send":                   "Send anyway",
+	"secret.cancel":                 "Don't send",
+	"outside.title":                 "Outside",
+	"outside.seen":                  "Seen in the transcript",
+	"outside.none":                  "Hasn't touched anything outside",
+	"outside.nothing.merged":        "Nothing · merged into %s locally · %s · not pushed",
+	"outside.nothing.repo":          "Nothing · the changes stay on the %s branch · %s",
+	"outside.nothing":               "Nothing",
+	"result.howknow":                "How I know",
+	"result.more":                   "+%d",
+	"result.merge":                  "Merge into %s",
+	"result.pr":                     "Open draft PR",
+	"result.changes":                "See changes",
+	"result.ask.merge":              "Merge the changes from “%s” into %s",
+	"result.acting.merge":           "Merging into %s…",
+	"result.acting.open_pr":         "Opening a draft PR…",
+	"result.merged":                 "Merged into %s",
+	"result.merged.toast":           "“%s” is merged · %s",
+	"result.pr.toast":               "Draft PR is open · %s",
+	"result.action.failed":          "Didn't work: %s",
+	"result.ask.pr":                 "Open a draft PR for “%s”",
+	"header.working":                "Working on %d",
+	"header.needs":                  "%d need you",
+	"header.done":                   "%d handed back today",
+	"header.thinking":               "Thinking…",
+	"onhand.calm":                   "Nothing needs you right now.",
+	"onhand.calm.working":           "Nothing needs you right now. %s is working on %d and will tell you when they're done.",
 	"app.title":                     "Ducter",
 	"nav.conversation":              "Conversation",
 	"nav.onhand":                    "On hand",
@@ -181,7 +268,7 @@ var en = Table{
 	"conn.connecting":               "Connecting…",
 	"conn.offline":                  "Can't reach Ducter, retrying",
 	"composer.placeholder":          "Say something to %s…",
-	"composer.task":                 "Talk to this task directly (not through %s)",
+	"composer.task":                 "Talk to this task",
 	"composer.send":                 "Send",
 	"composer.label":                "Talk to %s",
 	"empty.conversation":            "Say one thing to begin. Hand me the work; I'll come to you when it needs you.",
@@ -369,6 +456,27 @@ func Detect(preferred []string) Lang {
 		return l
 	}
 	return EN
+}
+
+// Fixed reports whether DUCTER_LOCALE pins the language.
+func Fixed() bool { return os.Getenv("DUCTER_LOCALE") != "" }
+
+// FromText guesses the language a person writes in: Chinese with any Han
+// character, English with Latin words and none, else "".
+func FromText(text string) Lang {
+	latin := 0
+	for _, r := range text {
+		switch {
+		case unicode.Is(unicode.Han, r):
+			return ZH
+		case r < 0x80 && unicode.IsLetter(r):
+			latin++
+		}
+	}
+	if latin >= 3 {
+		return EN
+	}
+	return ""
 }
 
 func parse(tag string) Lang {

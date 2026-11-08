@@ -159,7 +159,7 @@ func TestScenarioEndToEnd(t *testing.T) {
 		t.Fatalf("route %v task %q", h.app.Route, h.app.TaskID)
 	}
 	h.until("history", func() bool { return s.Task("t-ci-1").HistoryLoaded })
-	for _, want := range []string{"对话记录", "存档", "为什么是 Codex"} {
+	for _, want := range []string{"对话记录", "存档", "为什么是它", "对外"} {
 		if !h.tt.HasText(want) {
 			t.Errorf("task view lacks %q: %q", want, h.tt.Texts())
 		}
@@ -182,6 +182,19 @@ func TestScenarioEndToEnd(t *testing.T) {
 	h.until("its answer", func() bool { return h.tt.HasText("收到，按你说的来。") })
 	h.shot("task-sent")
 
+	// Keyboard: Esc goes up a level, Cmd+1 / Cmd+2 jump.
+	h.tt.Key(0, ui.KeyEscape)
+	h.tt.Frame()
+	if h.app.Route != RouteOnHand {
+		t.Errorf("Esc: route %v", h.app.Route)
+	}
+	h.tt.Key(ui.Cmd, ui.Key1)
+	h.tt.Frame()
+	if h.app.Route != RouteConversation {
+		t.Errorf("Cmd+1: route %v", h.app.Route)
+	}
+	h.app.OpenTask("t-ci-1")
+	h.tt.Frame()
 	h.click("好，rebase")
 	h.until("done", func() bool {
 		task := s.Task("t-ci-1")

@@ -47,11 +47,13 @@ You work in ${placeLine(b.place, b.cwd)}${b.project ? ` Project: ${b.project}.` 
 - The brief's own done-criteria, if it states any, are met.
 - Otherwise: the ask is fully done and you can point to evidence (test output, a diff or commit, a file path, a URL).
 - Attach that evidence to your final report.
+- In a repo: your work is committed on your own branch, in small meaningful commits. That branch lives only in your worktree, so a commit there is private and reversible: always commit, even if the brief says "no commits" (read that as "don't merge or push"). Never leave finished work uncommitted.
+- Your done report carries each commit as {kind:"diff", label:"commit", ref:"<sha>"} plus the branch name in the summary, so the user can merge it with one tap.
 
 ## Out of scope
 
 - Anything the brief does not ask for. Note follow-ups in your report instead of doing them.
-- Files outside your working place, pushing to remotes, merging, publishing, deleting user data, or spending money, unless the brief says so explicitly.
+- Files outside your working place, pushing to remotes, merging into the base branch, opening a PR, publishing, deleting user data, or spending money, unless the brief says so explicitly. Integrating your branch is the user's call; offer it in your report, don't ask before committing.
 
 ## How you report (required)
 
@@ -59,6 +61,7 @@ Use the \`report_to_main\` tool on the \`${s}\` MCP server. It is the only way $
 - Call it when you are **done** (state "done"), **failed** (state "failed"), **blocked** (state "blocked"), or **need a decision** (state "needs_input").
 - \`summary\`: at most 600 characters, plain and specific: what you did and what stands.
 - \`questions\`: each with \`id\`, \`text\`, \`blocking\`, a \`default\` (what you will do if nobody answers), and \`reversible\` (whether that default can be undone).
+  The user answers with three buttons: **Go** = do your \`default\`; **Hold** = pause and wait (it never means "no"); **Reply** = their own words. So phrase each question so that Go is the default action, and do not mention the buttons in the text.
 - \`evidence\`: refs such as {kind:"test", label:"bun test", ref:"12 passed"}, {kind:"diff", label:"commit", ref:"<sha>"}, {kind:"file", label:"...", ref:"<path>"}.
 - After reporting needs_input or blocked, end your turn and wait; the answer will arrive as a message.
 - Call \`checkpoint\` (same server) after each meaningful step with where the work stands and what comes next.
@@ -71,6 +74,14 @@ Use the \`report_to_main\` tool on the \`${s}\` MCP server. It is the only way $
 export function kickoff(title: string): string {
   return `Start the task "${title}" now, following your task brief. Report via report_to_main when done, blocked, or needing a decision.`;
 }
+
+/** First turn of a task resumed after the main process restarted mid-turn. */
+export const RESUME_AFTER_RESTART =
+  "Your previous turn was cut off (the host restarted). Check where the work stands, then continue the task. Report via report_to_main when done, blocked, or needing a decision.";
+
+/** Turn sent when the user reopens a finished or dropped task. */
+export const REOPENED =
+  "The user reopened this task. Check where the work stands, then carry on with the brief. Report via report_to_main when done, blocked, or needing a decision.";
 
 /** The one nudge after a turn ends with no report (stall rule). */
 export const NUDGE = "Report status via report_to_main.";

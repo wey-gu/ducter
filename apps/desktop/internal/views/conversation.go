@@ -3,6 +3,8 @@ package views
 import (
 	"fmt"
 	"sort"
+	"strings"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/markdown"
@@ -10,6 +12,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/client"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
+	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
 const convWidth = 760
@@ -35,6 +38,26 @@ func (a *App) rows() []row {
 	}
 	// A task's chip shows once: under the newest message about it.
 	a.chipOwner = map[string]int64{}
+	// One voice: once the partner's result message is in, the living
+	// message no longer repeats that task's done line.
+	a.resultShown = map[string]bool{}
+	for _, r := range rows {
+		if e := r.entry; e.AI != nil && e.AI.ReplyTo != 0 {
+			for _, id := range a.tasksOfReply(e.AI.ReplyTo) {
+				if t := a.S.Task(id); t != nil && finished(t) {
+					a.resultShown[id] = true
+				}
+			}
+		}
+	}
+	kept := rows[:0]
+	for _, r := range rows {
+		if e := r.entry; e.Living != nil && len(a.livingItems(e)) == 0 {
+			continue
+		}
+		kept = append(kept, r)
+	}
+	rows = kept
 	for _, r := range rows {
 		e := r.entry
 		switch {
@@ -104,7 +127,7 @@ func (a *App) emptyConversation(c *ui.Context) {
 	col := ui.Column(c.Key("empty")).Margin(ui.Auto).MaxWidth(520).AlignItems(ui.Center).Gap(16)
 	a.enter(c, col)
 	col.Children(func() {
-		a.face(c, FaceIdle, 96, a.L.T("face.idle", a.S.PersonaName))
+		a.avatar(c, theme.Idle, 180)
 		ui.Text(c, a.L.T("empty.conversation.title", a.S.PersonaName)).FontSize(26).FontWeight(800).LetterSpacing(-0.3)
 		ui.Text(c, a.L.T("empty.conversation")).FontSize(t.LG).TextAlign(ui.Center).TextColor(t.InkSoft).LineHeight(1.6)
 		ui.Column(c).Gap(10).Margin(14, 0, 0, 0).AlignItems(ui.Stretch).Width(460).MaxWidthPercent(100).Children(func() {
@@ -131,9 +154,7 @@ func (a *App) header(c *ui.Context) {
 	b := a.S.Board()
 	ui.Row(c).Gap(16).Padding(20, 32).AlignItems(ui.Center).Children(func() {
 		ui.Row(c).Gap(14).Grow(1).AlignItems(ui.Center).Children(func() {
-			fs := a.faceState()
-			key := map[FaceState]string{FaceIdle: "face.idle", FaceWorking: "face.working", FaceNeedsYou: "face.needs_you"}[fs]
-			a.face(c, fs, 52, a.L.T(key, a.S.PersonaName))
+			a.avatar(c, a.presence(c), 56)
 			ui.Column(c).Gap(2).Children(func() {
 				ui.Text(c, a.S.PersonaName).FontSize(t.XL).FontWeight(800).LetterSpacing(-0.3)
 				ui.Text(c, a.summary(b)).FontSize(t.SM).TextColor(t.InkMuted)
@@ -152,11 +173,63 @@ func (a *App) summary(b store.Board) string {
 	case client.Disconnected:
 		return a.L.T("conn.offline")
 	}
-	n := len(b.Lanes[store.LaneNeedsYou]) + len(b.Lanes[store.LaneWorking]) + len(b.Lanes[store.LaneWaiting])
-	if n == 0 {
+	// Live: what needs the user, what is being worked on, what came back.
+	var parts []string
+	if n := len(b.Lanes[store.LaneNeedsYou]) + len(a.partnerDecisions()); n > 0 {
+		parts = append(parts, a.L.T("header.needs", n))
+	}
+	if n := len(b.Lanes[store.LaneWorking]); n > 0 {
+		parts = append(parts, a.L.T("header.working", n))
+	} else if a.thinking() {
+		parts = append(parts, a.L.T("header.thinking"))
+	}
+	if n := a.doneToday(b); n > 0 {
+		parts = append(parts, a.L.T("header.done", n))
+	}
+	if len(parts) == 0 {
 		return a.L.T("header.summary.none")
 	}
-	return a.L.T("header.summary", n, b.Counts.NeedsYou)
+	return strings.Join(parts, " · ")
+}
+
+// thinking reports whether the partner owes an answer: the user's last
+// message has no ack or reply after it yet.
+func (a *App) thinking() bool {
+	if len(a.pending) > 0 {
+		return true
+	}
+	for i := len(a.S.Channel) - 1; i >= 0; i-- {
+		e := a.S.Channel[i]
+		switch {
+		case e.User != nil:
+			return true
+		case e.AI != nil || e.Job != nil:
+			return false
+		}
+	}
+	return false
+}
+
+// doneToday counts the tasks handed back today.
+func (a *App) doneToday(b store.Board) int {
+	n := 0
+	today := a.Now().Local().YearDay()
+	for _, t := range b.Lanes[store.LaneDone] {
+		if t.Attention() == protocol.Failed {
+			continue
+		}
+		at := time.Time{}
+		if t.Card != nil {
+			at = store.ParseTime(t.Card.UpdatedAt)
+		}
+		if at.IsZero() && len(t.Events) > 0 {
+			at = store.ParseTime(t.Events[len(t.Events)-1].TS)
+		}
+		if at.IsZero() || at.Local().YearDay() == today {
+			n++
+		}
+	}
+	return n
 }
 
 // onHandButton opens On hand; its pebble row is the only peripheral signal
@@ -218,6 +291,10 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 	case e.Decision != nil:
 		if d := a.S.Decisions[e.Decision.DecisionID]; d != nil {
 			ui.Column(c).Padding(18).Gap(10).Radius(22).Background(t.NeedsYou.Surface).Children(func() {
+				if d.TaskID == "" {
+					// The partner's own ask, before any task.
+					ui.Text(c, a.L.T("living.needsyou", 1)).FontSize(t.XS).FontWeight(800).TextColor(t.NeedsYou.Ink).LetterSpacing(0.5)
+				}
 				a.decisionBody(c, d, "")
 			})
 		}
@@ -238,9 +315,9 @@ func (a *App) chipsFor(c *ui.Context, e *store.Entry) {
 	if len(tasks) == 0 {
 		return
 	}
-	ui.Row(c).Gap(8).Wrap().Children(func() {
+	ui.Column(c).Gap(10).Children(func() {
 		for _, t := range tasks {
-			a.taskChip(c, t, "")
+			a.taskFooter(c, t, "")
 		}
 	})
 }
@@ -276,11 +353,11 @@ func (a *App) job(c *ui.Context, j *store.Job, firstSeq int64) {
 		if task != nil && task.Title() != "" && a.chipOwner[task.ID] != firstSeq {
 			return // a later message shows its chip
 		}
+		if task != nil && task.Title() != "" {
+			a.taskFooter(c, task, st.Text)
+			return
+		}
 		ui.Row(c).Gap(8).Wrap().AlignItems(ui.Center).Children(func() {
-			if task != nil && task.Title() != "" {
-				a.taskChip(c, task, st.Text)
-				return
-			}
 			col := t.Working
 			switch st.State {
 			case "done":
@@ -296,25 +373,49 @@ func (a *App) job(c *ui.Context, j *store.Job, firstSeq int64) {
 
 // living is the living message: the partner's one running summary,
 // revised in place while unread, with decisions inline.
+// livingItems are the living message's items still worth a line: a done
+// or failed task whose result the partner already gave is left out.
+func (a *App) livingItems(e *store.Entry) []protocol.LivingItem {
+	var out []protocol.LivingItem
+	for _, it := range e.Living.Items {
+		if (it.Kind == "done" || it.Kind == "failed") && a.resultShown[it.TaskID] {
+			continue
+		}
+		out = append(out, it)
+	}
+	return out
+}
+
 func (a *App) living(c *ui.Context, e *store.Entry) {
 	t := a.T
+	items := a.livingItems(e)
+	// "While you were away" only for what came while the user was away.
+	away, ok := a.livingAway[e.FirstSeq]
+	if !ok {
+		// It came before this window was open, or while it was in the
+		// background.
+		away = e.FirstSeq <= a.S.HeadSeq || !c.WindowActive() || c.WindowHidden()
+		a.livingAway[e.FirstSeq] = away
+	}
 	card := ui.Column(c.Key("living")).Padding(22, 24).Gap(16).Radius(t.RadiusXL).Background(t.Surface).
 		Shadow(0, t.PressCard.Offset, 0, 0, t.PressCard.Color).Label(a.L.T("living.title"))
 	a.resettle(c, card, e.Revision)
 	card.Children(func() {
-		ui.Row(c).Gap(12).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, a.L.T("living.title")).FontSize(20).FontWeight(800).Grow(1)
-			if a.S.Unread(e) {
-				ui.Box(c).Padding(4, 10).Radius(t.Pill).Background(t.Highlight).Children(func() {
-					ui.Text(c, a.L.T("living.unread")).FontSize(t.XS).FontWeight(700).TextColor(t.HighlightInk)
-				})
-			}
-		})
+		if away {
+			ui.Row(c).Gap(12).AlignItems(ui.Center).Children(func() {
+				ui.Text(c, a.L.T("living.title")).FontSize(20).FontWeight(800).Grow(1)
+				if a.S.Unread(e) {
+					ui.Box(c).Padding(4, 10).Radius(t.Pill).Background(t.Highlight).Children(func() {
+						ui.Text(c, a.L.T("living.unread")).FontSize(t.XS).FontWeight(700).TextColor(t.HighlightInk)
+					})
+				}
+			})
+		}
 		needs, open := 0, 0
-		for _, it := range e.Living.Items {
+		for _, it := range items {
 			if it.Kind == "decision" {
 				needs++
-				if d := a.S.Decisions[it.DecisionID]; d != nil && d.Resolved == nil && d.Pending == "" {
+				if d := a.S.Decisions[it.DecisionID]; d != nil && d.Resolved == nil && d.Pending == "" && d.Reversible {
 					open++
 				}
 			}
@@ -322,14 +423,14 @@ func (a *App) living(c *ui.Context, e *store.Entry) {
 		if open >= 2 {
 			ui.Row(c).Children(func() {
 				ui.Spacer(c)
-				if a.button(c, a.L.T("decision.goall", len(a.S.OpenDecisions())), btnQuiet, 40, t.Bg) {
+				if a.button(c, a.L.T("decision.goall", len(a.defaultable())), btnQuiet, 40, t.Bg) {
 					a.GoOnAllDefaults()
 				}
 			})
 		}
 		// Needs-you first, each with its default; then the rest, one line
 		// each.
-		for i, it := range e.Living.Items {
+		for i, it := range items {
 			if it.Kind != "decision" {
 				continue
 			}
@@ -344,7 +445,7 @@ func (a *App) living(c *ui.Context, e *store.Entry) {
 			})
 		}
 		ui.Column(c).Gap(12).Children(func() {
-			for i, it := range e.Living.Items {
+			for i, it := range items {
 				if it.Kind == "decision" {
 					continue
 				}
@@ -442,24 +543,35 @@ func (a *App) openEvidence(c *ui.Context, ev protocol.EvidenceRef) {
 
 func (a *App) composer(c *ui.Context) {
 	t := a.T
+	if a.held != nil && a.held.taskID == "" {
+		ui.Row(c).Justify(ui.Center).Padding(0, 24).Children(func() {
+			ui.Column(c).Grow(1).MaxWidth(convWidth).Children(func() { a.heldLine(c) })
+		})
+	}
 	ui.Row(c).Justify(ui.Center).Padding(12, 24, 28, 24).Children(func() {
 		box := ui.Row(c).Grow(1).MaxWidth(convWidth).Gap(10).AlignItems(ui.Center).Padding(8, 8, 8, 22).
 			Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.PressCard.Offset, 0, 0, t.PressCard.Color)
 		box.Children(func() {
-			ui.TextArea(c.Key("composer"), &a.draft).Lines(1, 8).MinHeight(0).Placeholder(a.L.T("composer.placeholder", a.S.PersonaName)).
+			ta := ui.TextArea(c.Key("composer"), &a.draft).Lines(1, 8).MinHeight(0).Placeholder(a.L.T("composer.placeholder", a.S.PersonaName)).
 				Label(a.L.T("composer.label", a.S.PersonaName)).AutoFocus().
 				Background(ui.Transparent).Border(0, ui.Transparent).Padding(12, 0).Grow(1).FontSize(17).
 				OnTextKey(func(k ui.TextKey) bool {
 					if k.Key == ui.KeyEnter && k.Mods == 0 {
-						a.SendMessage(k.Text())
-						k.SetText("")
+						if a.SendMessage(k.Text()) {
+							k.SetText("")
+						}
 						return true
 					}
 					return false // Shift+Enter breaks the line
 				})
+			if a.focusComposer {
+				ta.Focus()
+				a.focusComposer = false
+			}
 			if a.iconButton(c, a.L.T("composer.send"), 52, t.Accent, t.PressAccent, drawSend(t.OnAccent)) {
-				a.SendMessage(a.draft)
-				a.draft = ""
+				if a.SendMessage(a.draft) {
+					a.draft = ""
+				}
 			}
 		})
 	})
@@ -472,4 +584,19 @@ func firstNonEmpty(s ...string) string {
 		}
 	}
 	return ""
+}
+
+// heldLine says why a message was held, with Send anyway / Don't send.
+func (a *App) heldLine(c *ui.Context) {
+	t := a.T
+	ui.Row(c.Key("held")).Gap(12).Wrap().Padding(12, 12, 12, 16).Radius(t.RadiusSM).Background(t.Failed.Surface).AlignItems(ui.Center).Role(ui.RoleAlert).Children(func() {
+		ui.Box(c).Size(10, 10).Radius(5).Background(t.Failed.Dot).Shrink(0)
+		ui.Text(c, a.L.T("secret.held")).FontSize(t.SM).FontWeight(700).TextColor(t.Failed.Ink).Grow(1).Basis(260).MinWidth(0)
+		if a.button(c, a.L.T("secret.cancel"), btnQuiet, 36, t.Surface) {
+			a.held = nil
+		}
+		if a.button(c, a.L.T("secret.send"), btnText, 36, t.Surface) {
+			a.SendHeld()
+		}
+	})
 }

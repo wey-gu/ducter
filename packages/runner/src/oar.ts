@@ -70,10 +70,15 @@ export function createOarHarnessPort(opts: OarPortOptions = {}): HarnessPort {
             ? { name: m.name, command: m.command, ...(m.args ? { args: m.args } : {}), ...(m.env ? { env: m.env } : {}) }
             : { name: m.name, type: "http", url: m.url, headers: m.headers },
         ),
-        disallowedTools: DISALLOWED[spec.harness],
+        disallowedTools: [...(DISALLOWED[spec.harness] ?? []), ...(spec.disallowedTools ?? [])],
+        launchArgs: spec.harness === "claude-code" && spec.launchArgs?.length ? spec.launchArgs : undefined,
         resume: spec.resumeSessionId,
-        env: opts.env,
+        env: spec.env ? { ...opts.env, ...spec.env } : opts.env,
         retainedBytes: opts.retainedBytes ?? 8 * 1024 * 1024,
+        // OAR: --setting-sources project,local --strict-mcp-config + claudeMdExcludes for claude;
+        // runtimes without a verified separation refuse "exclude", so only ask when wanted.
+        // A browser sidecar may ask for it too (spec.userConfiguration, claude only).
+        userConfiguration: spec.isolateUserConfig ? "exclude" : spec.harness === "claude-code" ? spec.userConfiguration : undefined,
       };
       // Drop undefined keys: some runtimes refuse an option by presence.
       for (const k of Object.keys(options) as (keyof SessionOptions)[]) if (options[k] === undefined) delete (options as any)[k];

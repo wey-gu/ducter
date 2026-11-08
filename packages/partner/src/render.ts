@@ -58,13 +58,23 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
     case "decision_resolved": {
       const b = e.body as Bodies["decision_resolved"];
       const d = ctx.decision(b.decisionId);
-      const about = d ? ` (task ${d.taskId}: "${d.question}")` : ` (decision ${b.decisionId})`;
       const by = b.by === "default" ? " by default" : "";
-      return `[decision resolved: ${b.option}${by}]${about}${b.text ? ` ${b.text}` : ""}`;
+      if (d && !d.taskId) {
+        // The partner's own ask: the answer is for us to act on now.
+        const what = b.option === "go" ? `: go ahead with "${d.goLabel}"` : b.option === "hold" ? ": wait, don't start it" : "";
+        return `[your question answered: ${b.option}${by}] "${d.question}"${what}${b.text ? ` · user: ${b.text}` : ""}`;
+      }
+      const about = d ? ` (task ${d.taskId}: "${d.question}")` : ` (decision ${b.decisionId})`;
+      const fwd = b.option === "hold" ? " (the task keeps waiting)" : " (already forwarded to the task)";
+      return `[decision resolved: ${b.option}${by}]${about}${b.text ? ` ${b.text}` : ""}${fwd}`;
+    }
+    case "waiter": {
+      const b = e.body as Bodies["waiter"];
+      return `[timer ${b.state}] ${b.reason}${b.taskId ? ` (task ${b.taskId})` : ""}`;
     }
     case "job_status": {
       const b = e.body as Bodies["job_status"];
-      if (e.origin === "waiter") return `[timer fired] ${b.text}${b.taskId ? ` (task ${b.taskId})` : ""}`;
+      if (e.origin === "user") return `[the user did this by button] task ${b.taskId}: ${b.text}`;
       return `[job ${b.jobId} ${b.state}] ${b.text}`;
     }
     case "ai_msg":
@@ -86,9 +96,14 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
       return `[${t} you] ${clip((e.body as Bodies["ack"]).text, 300)}`;
     case "job_status": {
       const b = e.body as Bodies["job_status"];
-      if (e.origin === "waiter") return `[${t} timer] ${b.text} (${b.state === "running" ? "set" : "fired"})`;
       if (!b.taskId) return null;
+      if (e.origin === "user") return `[${t} the user, by button] task ${b.taskId}: ${clip(b.text, 160)}`;
       return `[${t} task ${b.taskId} ${b.state}] ${clip(b.text, 160)}`;
+    }
+    case "waiter": {
+      const b = e.body as Bodies["waiter"];
+      const st = b.state === "armed" ? `set for ${b.at ? hhmm(b.at) : "?"}` : b.state;
+      return `[${t} timer] ${clip(b.reason, 200)} (${st})`;
     }
     case "report": {
       const r = e.body as Bodies["report"];
@@ -97,7 +112,7 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
     }
     case "decision": {
       const d = e.body as Bodies["decision"];
-      return `[${t} task ${d.taskId} asks] ${clip(d.question, 300)} (Go: ${d.goLabel}, default ${d.defaultOption})`;
+      return `[${t} ${d.taskId ? `task ${d.taskId} asks` : "you asked (ask)"}] ${clip(d.question, 300)} (Go: ${d.goLabel}, default ${d.defaultOption})`;
     }
     case "decision_resolved": {
       const b = e.body as Bodies["decision_resolved"];
@@ -119,7 +134,7 @@ export function renderTasks(cards: TaskCard[], maxDone = 8): string {
     .slice(0, maxDone);
   const line = (c: TaskCard) => {
     const where =
-      c.place.kind === "repo" ? ` · repo ${c.place.repoPath}` : c.place.kind === "folder" ? ` · folder ${c.place.path}` : c.place.kind === "browser" ? " · browser" : "";
+      c.place.kind === "repo" ? ` · repo ${c.place.repoPath}${c.place.branch ? ` (branch ${c.place.branch})` : ""}` : c.place.kind === "folder" ? ` · folder ${c.place.path}` : c.place.kind === "browser" ? " · browser" : "";
     const last = c.lastReport ? ` · last report (${c.lastReport.state}): ${clip(c.lastReport.summary, 200)}` : "";
     return `- ${c.taskId} "${c.title}" · ${c.attention}${where}${last}`;
   };

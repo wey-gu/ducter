@@ -12,6 +12,12 @@ export interface Decisions {
   get(decisionId: string): Bodies["decision"] | undefined;
   isPending(decisionId: string): boolean;
   setHook(fn: DecisionHook): void;
+  /**
+   * The user (or the partner) answered the task directly with a message: resolve its open
+   * decisions as "reply" without forwarding (the message itself is the answer). Without this a
+   * later Go re-woke a task that had already finished (working -> done flap).
+   */
+  answeredByMessage(taskId: string, text: string, by: "user" | "partner"): void;
   stop(): void;
 }
 
@@ -19,7 +25,9 @@ export const DEFAULT_DELAY_MS = 30 * 60 * 1000;
 
 export function forwardText(d: Bodies["decision"], r: Bodies["decision_resolved"]): string {
   if (r.option === "go") return `User says Go: ${d.goLabel}.`;
-  if (r.option === "hold") return "User says Hold: pause and wait.";
+  // Hold is not forwarded: the task already ended its turn waiting, and a "pause" turn would
+  // only flip it back to working and earn a nudge. The card shows Waiting (Hold).
+  if (r.option === "hold") return "";
   return r.text ?? "";
 }
 
@@ -38,6 +46,7 @@ export function createDecisions(opts: {
   let hook: DecisionHook | undefined = opts.onDecision;
   const all = new Map<string, Bodies["decision"]>();
   const resolved = new Set<string>();
+  const silent = new Set<string>(); // resolutions that must not be forwarded
   const timers = new Map<string, unknown>();
 
   const setAttention = (taskId: string, attention: Attention, reason?: string) => {
@@ -114,15 +123,19 @@ export function createDecisions(opts: {
     if (t !== undefined) clock.clearTimeout(t), timers.delete(r.decisionId);
     const d = all.get(r.decisionId);
     if (!d) return;
-    if (!tasks.pendingDecisions(d.taskId).length) {
-      if (r.option === "hold") setAttention(d.taskId, "blocked", "Hold");
-      else setAttention(d.taskId, "working");
+    // A partner-level decision (the partner's own ask, no task): resolving it only wakes the
+    // partner (decision_resolved is a trigger); nothing to forward, no card to move.
+    if (!d.taskId) return;
+    const taskId = d.taskId;
+    if (!tasks.pendingDecisions(taskId).length) {
+      if (r.option === "hold") setAttention(taskId, "blocked"); // no reason text: the card shows Waiting
+      else setAttention(taskId, "working");
     }
-    const text = forwardText(d, r);
+    const text = silent.delete(r.decisionId) ? "" : forwardText(d, r);
     if (hook && text) {
       Promise.resolve()
-        .then(() => hook!(d.taskId, text, r))
-        .catch((err) => console.error(`[decisions] forwarding ${r.decisionId} to ${d.taskId} failed:`, err));
+        .then(() => hook!(taskId, text, r))
+        .catch((err) => console.error(`[decisions] forwarding ${r.decisionId} to ${taskId} failed:`, err));
     }
   };
 
@@ -140,9 +153,27 @@ export function createDecisions(opts: {
       all.set(d.decisionId, d);
       schedule(d);
     } else if (e.kind === "decision_resolved") onResolved(e.body as Bodies["decision_resolved"]);
+    else if (e.kind === "task_event") {
+      // The partner answering a task with task_send (the runner logs it first, from "partner").
+      // Decision forwards are logged from "user"; the user's own task_send goes through ws.
+      const b = e.body as Bodies["task_event"];
+      if (b.role === "user" && b.from === "partner" && b.text) api.answeredByMessage(b.taskId, b.text, "partner");
+    }
   });
 
-  return {
+  const api: Decisions = {
+    answeredByMessage(taskId, text, by) {
+      for (const id of tasks.pendingDecisions(taskId)) {
+        if (resolved.has(id) || !all.has(id)) continue;
+        silent.add(id);
+        log.append({
+          stream: "channel",
+          origin: by,
+          kind: "decision_resolved",
+          body: { decisionId: id, option: "reply", text: text.slice(0, 2000), by: "user" },
+        });
+      }
+    },
     decide(decisionId, option, text) {
       if (!all.has(decisionId)) throw new Error(`unknown decision ${decisionId}`);
       if (resolved.has(decisionId)) throw new Error(`decision ${decisionId} is already resolved`);
@@ -160,4 +191,5 @@ export function createDecisions(opts: {
       timers.clear();
     },
   };
+  return api;
 }

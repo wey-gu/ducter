@@ -6,7 +6,7 @@ import { scriptedRuntime, type ScriptedTurn } from "@botiverse/oar/testing";
 import type { Runtime } from "@botiverse/oar/browser";
 import type { Bodies } from "@ducter/protocol";
 import type { HarnessEvent, HarnessPort, HarnessSession, SessionSpec } from "@ducter/protocol/src/internal.ts";
-import { createOarHarnessPort, createRunner, NUDGE, registerTaskTools, taskBrief } from "../src/index.ts";
+import { createOarHarnessPort, createRunner, NUDGE, REOPENED, RESUME_AFTER_RESTART, registerTaskTools, taskBrief } from "../src/index.ts";
 import { git } from "../src/places.ts";
 import { createFakeCore, waitFor, type FakeCore } from "./fake-core.ts";
 
@@ -119,6 +119,7 @@ describe("session spec", () => {
     expect(o.systemPrompt).toBeUndefined();
     expect(o.mcpServers).toEqual([{ name: "ducter", type: "http", url: "http://127.0.0.1:0/mcp", headers: { Authorization: "Bearer task-token-tsk00001" } }]);
     expect(o.disallowedTools).toContain("AskUserQuestion");
+    expect(o.userConfiguration).toBeUndefined(); // tasks keep the user's own Claude Code setup by default
     const open = core.events.find((e) => e.kind === "task_open")!;
     expect(open.stream).toBe("task:tsk00001");
     expect(open.origin).toBe("system");
@@ -133,6 +134,10 @@ describe("session spec", () => {
         cwd: "/home/.ducter/worktrees/abc123", project: "foo", mcpServerName: "ducter",
       }),
     ).toMatchSnapshot();
+    const b = taskBrief({ partnerName: "Ducter", taskId: "x", title: "t", brief: "b", place: { kind: "repo", device: "mac", repoPath: "/r", branch: "ducter/t" }, cwd: "/w", mcpServerName: "ducter" });
+    expect(b).toContain("always commit, even if the brief says \"no commits\"");
+    expect(b).toContain("**Hold** = pause and wait (it never means \"no\")");
+    expect(b).toContain("{kind:\"diff\", label:\"commit\", ref:\"<sha>\"}");
   });
 });
 
@@ -235,7 +240,7 @@ describe("send: steer vs queue", () => {
     release();
     await waitFor(() => core.tasks.get(card.taskId)?.residency === "warm", "warm");
     expect(steeredSeen[0]).toEqual(["also do X"]);
-    expect(await runner.send(card.taskId, "next thing")).toEqual({ delivered: "queued" });
+    expect(await runner.send(card.taskId, "next thing")).toEqual({ delivered: "prompted" });
     await waitFor(() => inputs.length === 2, "second turn");
     expect(inputs[1]).toBe("next thing");
     await runner.dispose();
@@ -271,9 +276,164 @@ describe("send: steer vs queue", () => {
     await runner.whenStarted(card.taskId);
     fake.sessions[0]!.end(); // process went away
     await waitFor(() => core.tasks.get(card.taskId)?.residency === "parked", "parked");
-    expect(await runner.send(card.taskId, "continue")).toEqual({ delivered: "queued" });
+    expect(await runner.send(card.taskId, "continue")).toEqual({ delivered: "prompted" });
     expect(fake.specs[1]!.resumeSessionId).toBe("fake-1");
     expect(fake.sessions[1]!.sent).toEqual([{ text: "continue", mode: "turn" }]);
+    await runner.dispose();
+  });
+});
+
+describe("protocol v2: logging, usage, recovery", () => {
+  test("send logs the text with `from` before delivering it", async () => {
+    const fake = new FakePort();
+    const runner = createRunner(core, { harness: fake, newId: nextId });
+    const card = await runner.openTask({ persona: "p1", title: "t", brief: "b" });
+    await runner.whenStarted(card.taskId);
+    const s = fake.sessions[0]!;
+    let loggedFirst = false;
+    const orig = s.send.bind(s);
+    s.send = async (text, mode) => {
+      loggedFirst = taskEvents(card.taskId).some((e) => e.role === "user" && e.text === text && e.from === "user");
+      return orig(text, mode);
+    };
+    expect(await runner.send(card.taskId, "use src/a.ts", undefined, "user")).toEqual({ delivered: "prompted" });
+    expect(loggedFirst).toBe(true);
+    const kick = taskEvents(card.taskId).find((e) => e.role === "user")!;
+    expect(kick.from).toBe("runner");
+    // A failed delivery stays in the Log, followed by a system note.
+    s.send = async () => {
+      throw new Error("boom");
+    };
+    await expect(runner.send(card.taskId, "again", undefined, "partner")).rejects.toThrow("boom");
+    const tail = taskEvents(card.taskId).slice(-2);
+    expect(tail[0]).toMatchObject({ role: "user", from: "partner", text: "again" });
+    expect(tail[1]!.text).toContain("delivery failed");
+    await runner.dispose();
+  });
+
+  test("usage rides on the turn-end task_event; session id is logged once", async () => {
+    const fake = new FakePort();
+    const runner = createRunner(core, { harness: fake, newId: nextId });
+    const card = await runner.openTask({ persona: "p1", title: "t", brief: "b" });
+    await runner.whenStarted(card.taskId);
+    fake.sessions[0]!.emit({ role: "assistant", text: "hi" });
+    fake.sessions[0]!.emit({ role: "system", text: "turn completed", turnEnd: true, usage: { inputTokens: 10, outputTokens: 3 } });
+    await waitFor(() => taskEvents(card.taskId).some((e) => e.usage), "usage");
+    const end = taskEvents(card.taskId).find((e) => e.usage)!;
+    expect(end.usage).toEqual({ inputTokens: 10, outputTokens: 3 });
+    expect(taskEvents(card.taskId).find((e) => e.role === "assistant")!.usage).toBeUndefined();
+    expect(taskEvents(card.taskId).filter((e) => (e.raw as any)?.sessionId === "fake-1")).toHaveLength(1);
+    await runner.dispose();
+  });
+
+  test("restart: tasks are rebuilt from the Log; a mid-turn task resumes, a waiting one stays parked", async () => {
+    const fake1 = new FakePort();
+    const r1 = createRunner(core, { harness: fake1, newId: nextId });
+    const a = await r1.openTask({ persona: "p1", title: "working one", brief: "b" });
+    const b = await r1.openTask({ persona: "p1", title: "asking one", brief: "b2" });
+    await r1.whenStarted(a.taskId);
+    await r1.whenStarted(b.taskId);
+    await core.call("report_to_main", { state: "needs_input", summary: "which?", questions: [] }, b.taskId);
+    // The process dies: no clean close, sessions are simply gone.
+
+    const fake2 = new FakePort();
+    const r2 = createRunner(core, { harness: fake2, newId: nextId });
+    await r2.whenStarted(a.taskId);
+    expect(fake2.specs).toHaveLength(1);
+    expect(fake2.specs[0]!.resumeSessionId).toBe("fake-1");
+    expect(fake2.specs[0]!.appendSystemPrompt).toContain("working one");
+    expect(fake2.sessions[0]!.sent).toEqual([{ text: RESUME_AFTER_RESTART, mode: "turn" }]);
+    expect(core.tasks.get(a.taskId)).toMatchObject({ attention: "working", residency: "hot" });
+    expect(core.tasks.get(b.taskId)).toMatchObject({ attention: "needs_you", residency: "parked" });
+
+    // The waiting task resumes its own session when the user answers.
+    expect(await r2.send(b.taskId, "src/a.ts", undefined, "user")).toEqual({ delivered: "prompted" });
+    expect(fake2.specs[1]!.resumeSessionId).toBe("fake-2");
+    expect(fake2.sessions[1]!.sent).toEqual([{ text: "src/a.ts", mode: "turn" }]);
+    await r2.dispose();
+  });
+});
+
+describe("after a restart: drop and reopen (desktop regression)", () => {
+  test("drop and reopen work on tasks from before the restart; reopen resumes the session", async () => {
+    const fake1 = new FakePort();
+    const r1 = createRunner(core, { harness: fake1, newId: nextId });
+    const a = await r1.openTask({ persona: "p1", title: "finished one", brief: "b" });
+    const b = await r1.openTask({ persona: "p1", title: "other", brief: "b" });
+    await r1.whenStarted(a.taskId);
+    await r1.whenStarted(b.taskId);
+    await core.call("report_to_main", { state: "done", summary: "ok", evidence: [{ kind: "test", label: "t", ref: "1 pass" }] }, a.taskId);
+    await core.call("report_to_main", { state: "needs_input", summary: "?" }, b.taskId);
+
+    const fake2 = new FakePort();
+    const r2 = createRunner(core, { harness: fake2, newId: nextId });
+    await r2.drop(b.taskId);
+    expect(core.tasks.get(b.taskId)!.attention).toBe("dropped");
+
+    expect(await r2.reopen(a.taskId)).toEqual({ delivered: "prompted" });
+    expect(fake2.specs.at(-1)!.resumeSessionId).toBe("fake-1");
+    expect(fake2.sessions.at(-1)!.sent).toEqual([{ text: REOPENED, mode: "turn" }]);
+    expect(core.tasks.get(a.taskId)).toMatchObject({ attention: "working", residency: "hot" });
+    expect(core.tasks.get(a.taskId)!.reason).toBeUndefined();
+
+    // A dropped task can be reopened too.
+    expect(await r2.reopen(b.taskId)).toEqual({ delivered: "prompted" });
+    expect(fake2.specs.at(-1)!.resumeSessionId).toBe("fake-2");
+    await r2.dispose();
+  });
+});
+
+describe("send to a parked task (live regression)", () => {
+  test("the text is logged before the slow resume, and delivered once as the next turn", async () => {
+    const fake = new FakePort();
+    const runner = createRunner(core, { harness: fake, newId: nextId });
+    const card = await runner.openTask({ persona: "p1", title: "t", brief: "b" });
+    await runner.whenStarted(card.taskId);
+    fake.sessions[0]!.end();
+    await waitFor(() => core.tasks.get(card.taskId)?.residency === "parked", "parked");
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const start = fake.start.bind(fake);
+    fake.start = async (spec) => (await gate, start(spec));
+    const p = runner.send(card.taskId, "answer: b.ts", undefined, "user");
+    await Bun.sleep(5);
+    expect(taskEvents(card.taskId).filter((e) => e.text === "answer: b.ts")).toEqual([
+      { taskId: card.taskId, role: "user", from: "user", text: "answer: b.ts", raw: { delivered: "turn" } },
+    ]);
+    release();
+    expect(await p).toEqual({ delivered: "prompted" });
+    expect(fake.sessions[1]!.sent).toEqual([{ text: "answer: b.ts", mode: "turn" }]);
+    expect(taskEvents(card.taskId).filter((e) => e.text === "answer: b.ts")).toHaveLength(1);
+    await runner.dispose();
+  });
+});
+
+describe("user config isolation", () => {
+  test("isolateUserConfig maps to OAR userConfiguration: exclude", async () => {
+    const seen: { options?: any } = {};
+    const port = createOarHarnessPort({ loadRuntime: async () => trippedRuntime(async () => {}, seen) });
+    const runner = createRunner(core, { harness: port, newId: nextId, isolateUserConfig: true });
+    const card = await runner.openTask({ persona: "p1", title: "t", brief: "b" });
+    await runner.whenStarted(card.taskId);
+    expect(seen.options.userConfiguration).toBe("exclude");
+    await runner.dispose();
+  });
+});
+
+describe("interrupt (live regression)", () => {
+  test("a turn the user stopped leaves the card Waiting, not working; the next message resumes work", async () => {
+    const fake = new FakePort();
+    const runner = createRunner(core, { harness: fake, newId: nextId });
+    const card = await runner.openTask({ persona: "p1", title: "t", brief: "b" });
+    await runner.whenStarted(card.taskId);
+    const s = fake.sessions[0]!;
+    await runner.interrupt(card.taskId);
+    s.emit({ role: "system", text: "turn aborted", turnEnd: true, raw: { kind: "turn_ended", outcome: "aborted" } });
+    await waitFor(() => core.tasks.get(card.taskId)?.residency === "warm", "warm");
+    expect(core.tasks.get(card.taskId)!.attention).toBe("blocked");
+    expect(s.sent).toHaveLength(1); // no nudge after a stop
+    expect(await runner.send(card.taskId, "carry on", undefined, "user")).toEqual({ delivered: "prompted" });
+    expect(core.tasks.get(card.taskId)).toMatchObject({ attention: "working", residency: "hot" });
     await runner.dispose();
   });
 });

@@ -1,0 +1,1 @@
+The orange pebble character from the first reference (same identity: round pebble body, tall oval dark eyes with small highlights, peach blush, tiny smile, little nubby feet), standing, holding its small sky-blue notebook with a brown strap at its side, calm friendly look.

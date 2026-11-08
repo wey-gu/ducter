@@ -41,11 +41,20 @@ Columns: **Flow** (steps + branches), **States** (which task/routine states it t
 | F2 | Recall from weeks ago | — | — | — | — | — | |
 | F3 | Mem unavailable | — | — | — | — | — | |
 | F4 | Switch / link personas | — | — | — | — | — | open question |
-| G1 | Intent needing policy | — | — | — | — | — | |
-| G2 | Credential request | — | — | — | — | — | |
+| G1 | Something is about to go outside (intent needing policy) | draft | draft | draft | draft | — | `flows/G-safety.md`; effect ladder in §0 |
+| G2 | Undo windows, and what's honest after | draft | draft | draft | draft | — | |
+| G3 | Credential request (+ secret pasted in chat) | draft | draft | draft | draft | — | |
+| G4 | Browser never signs in, pays, or submits on its own | draft | draft | draft | draft | — | builds on B5 |
+| G5 | What did Ducter do today (the record) | draft | draft | draft | draft | — | |
+| G6 | Quiet hours and outside effects | draft | draft | draft | draft | — | effects; D3 covers notifications |
+| G7 | Honest about where a task can reach | draft | draft | draft | draft | — | 可以碰 / May touch on tasks |
 | H1 | Phone → desktop continuity | — | — | — | — | — | |
 | H2 | Voice | — | — | — | — | — | |
 | H3 | Act on lock-screen notification | — | — | — | — | — | |
-| I1 | Results: where they live, sharing | — | — | — | — | — | open question |
+| I1 | Finished work comes back (the result message) | draft | draft | draft | draft | — | `flows/I-results.md`; result anatomy in §0 |
+| I2 | Evidence: what each chip opens | draft | draft | draft | draft | — | |
+| I3 | Documents live in 成果 (Save to…) | draft | draft | draft | draft | — | D52 Q7 |
+| I4 | Finding a result weeks later | draft | draft | draft | draft | — | ask first; list inside On hand |
+| I5 | Sharing a result | draft | draft | draft | draft | — | links ship with Ducter Edge |
 
 Flow docs: `docs/design/flows/*.md`. Open questions: `docs/design/flows/OPEN-QUESTIONS.md`. Flows canvas: https://claude.ai/artifact/LKuVp3knPDJ4EdoyWBGSWN

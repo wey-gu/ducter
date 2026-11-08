@@ -1,0 +1,291 @@
+{
+ "jobs": 6,
+ "tasks": [
+  {
+   "id": "ducter_idle",
+   "promptFiles": [
+    "prompts/_style.md",
+    "prompts/ducter_idle.md"
+   ],
+   "image": "raw/ducter_idle.png",
+   "ar": "1:1",
+   "ref": [
+    "../concepts/r2/r2_char_clay.jpg",
+    "../concepts/r2/r2_board_2.jpg"
+   ]
+  },
+  {
+   "id": "ducter_working",
+   "promptFiles": [
+    "prompts/_style.md",
+    "prompts/ducter_working.md"
+   ],
+   "image": "raw/ducter_working.png",
+   "ar": "1:1",
+   "ref": [
+    "../concepts/r2/r2_char_clay.jpg",
+    "../concepts/r2/r2_board_2.jpg"
+   ]
+  },
+  {
+   "id": "ducter_done",
+   "promptFiles": [
+    "prompts/_style.md",
+    "prompts/ducter_done.md"
+   ],
+   "image": "raw/ducter_done.png",
+   "ar": "1:1",
+   "ref": [
+    "../concepts/r2/r2_char_clay.jpg",
+    "../concepts/r2/r2_board_2.jpg"
+   ]
+  },
+  {
+   "id": "ducter_needsyou",
+   "promptFiles": [
+    "prompts/_style.md",
+    "prompts/ducter_needsyou.md"
+   ],
+   "image": "raw/ducter_needsyou.png",
+   "ar": "1:1",
+   "ref": [
+    "../concepts/r2/r2_char_clay.jpg",
+    "../concepts/r2/r2_board_2.jpg"
+   ]
+  },
+  {
+   "id": "ducter_napping",
+   "promptFiles": [
+    "prompts/_style.md",
+    "prompts/ducter_napping.md"
+   ],
+   "image": "raw/ducter_napping.png",
+   "ar": "1:1",
+   "ref": [
+    "../concepts/r2/r2_char_clay.jpg",
+    "../concepts/r2/r2_board_2.jpg"
+   ]
+  },
+  {
+   "id": "laptop_awake",
+   "promptFiles": [
+    "prompts/_style.md",
+    "prompts/laptop_awake.md"
+   ],
+   "image": "raw/laptop_awake.png",
+   "ar": "1:1",
+   "ref": [
+    "../concepts/r2/r2_char_clay.jpg",
+    "../concepts/r2/r2_board_2.jpg"
+   ]
+  },
+  {
+   "id": "laptop_asleep",
+   "promptFiles": [
+    "prompts/_style.md",
+    "prompts/laptop_asleep.md"
+   ],
+   "image": "raw/laptop_asleep.png",
+   "ar": "1:1",
+   "ref": [
+    "../concepts/r2/r2_char_clay.jpg",
+    "../concepts/r2/r2_board_2.jpg"
+   ]
+  },
+  {
+   "id": "server_awake",
+   "promptFiles": [
+    "prompts/_style.md",
+    "prompts/server_awake.md"
+   ],
+   "image": "raw/server_awake.png",
+   "ar": "1:1",
+   "ref": [
+    "../concepts/r2/r2_char_clay.jpg",
+    "../concepts/r2/r2_board_2.jpg"
+   ]
+  },
+  {
+   "id": "server_asleep",
+   "promptFiles": [
+    "prompts/_style.md",
+    "prompts/server_asleep.md"
+   ],
+   "image": "raw/server_asleep.png",
+   "ar": "1:1",
+   "ref": [
+    "../concepts/r2/r2_char_clay.jpg",
+    "../concepts/r2/r2_board_2.jpg"
+   ]
+  },
+  {
+   "id": "mini_awake",
+   "promptFiles": [
+    "prompts/_style.md",
+    "prompts/mini_awake.md"
+   ],
+   "image": "raw/mini_awake.png",
+   "ar": "1:1",
+   "ref": [
+    "../concepts/r2/r2_char_clay.jpg",
+    "../concepts/r2/r2_board_2.jpg"
+   ]
+  },
+  {
+   "id": "mini_asleep",
+   "promptFiles": [
+    "prompts/_style.md",
+    "prompts/mini_asleep.md"
+   ],
+   "image": "raw/mini_asleep.png",
+   "ar": "1:1",
+   "ref": [
+    "../concepts/r2/r2_char_clay.jpg",
+    "../concepts/r2/r2_board_2.jpg"
+   ]
+  },
+  {
+   "id": "device_unreachable",
+   "promptFiles": [
+    "prompts/_style.md",
+    "prompts/device_unreachable.md"
+   ],
+   "image": "raw/device_unreachable.png",
+   "ar": "1:1",
+   "ref": [
+    "../concepts/r2/r2_char_clay.jpg",
+    "../concepts/r2/r2_board_2.jpg"
+   ]
+  },
+  {
+   "id": "phone",
+   "promptFiles": [
+    "prompts/_style.md",
+    "prompts/phone.md"
+   ],
+   "image": "raw/phone.png",
+   "ar": "1:1",
+   "ref": [
+    "../concepts/r2/r2_char_clay.jpg",
+    "../concepts/r2/r2_board_2.jpg"
+   ]
+  },
+  {
+   "id": "ab_web",
+   "promptFiles": [
+    "prompts/_style.md",
+    "prompts/ab_web.md"
+   ],
+   "image": "raw/ab_web.png",
+   "ar": "1:1",
+   "ref": [
+    "../concepts/r2/r2_char_clay.jpg",
+    "../concepts/r2/r2_board_2.jpg"
+   ]
+  },
+  {
+   "id": "ab_computer",
+   "promptFiles": [
+    "prompts/_style.md",
+    "prompts/ab_computer.md"
+   ],
+   "image": "raw/ab_computer.png",
+   "ar": "1:1",
+   "ref": [
+    "../concepts/r2/r2_char_clay.jpg",
+    "../concepts/r2/r2_board_2.jpg"
+   ]
+  },
+  {
+   "id": "ab_remote",
+   "promptFiles": [
+    "prompts/_style.md",
+    "prompts/ab_remote.md"
+   ],
+   "image": "raw/ab_remote.png",
+   "ar": "1:1",
+   "ref": [
+    "../concepts/r2/r2_char_clay.jpg",
+    "../concepts/r2/r2_board_2.jpg"
+   ]
+  },
+  {
+   "id": "ab_phone_locked",
+   "promptFiles": [
+    "prompts/_style.md",
+    "prompts/ab_phone_locked.md"
+   ],
+   "image": "raw/ab_phone_locked.png",
+   "ar": "1:1",
+   "ref": [
+    "../concepts/r2/r2_char_clay.jpg",
+    "../concepts/r2/r2_board_2.jpg"
+   ]
+  },
+  {
+   "id": "ab_call_locked",
+   "promptFiles": [
+    "prompts/_style.md",
+    "prompts/ab_call_locked.md"
+   ],
+   "image": "raw/ab_call_locked.png",
+   "ar": "1:1",
+   "ref": [
+    "../concepts/r2/r2_char_clay.jpg",
+    "../concepts/r2/r2_board_2.jpg"
+   ]
+  },
+  {
+   "id": "token_orange",
+   "promptFiles": [
+    "prompts/_style.md",
+    "prompts/token_orange.md"
+   ],
+   "image": "raw/token_orange.png",
+   "ar": "1:1",
+   "ref": [
+    "../concepts/r2/r2_char_clay.jpg",
+    "../concepts/r2/r2_board_2.jpg"
+   ]
+  },
+  {
+   "id": "token_ink",
+   "promptFiles": [
+    "prompts/_style.md",
+    "prompts/token_ink.md"
+   ],
+   "image": "raw/token_ink.png",
+   "ar": "1:1",
+   "ref": [
+    "../concepts/r2/r2_char_clay.jpg",
+    "../concepts/r2/r2_board_2.jpg"
+   ]
+  },
+  {
+   "id": "pedestal",
+   "promptFiles": [
+    "prompts/_style.md",
+    "prompts/pedestal.md"
+   ],
+   "image": "raw/pedestal.png",
+   "ar": "1:1",
+   "ref": [
+    "../concepts/r2/r2_char_clay.jpg",
+    "../concepts/r2/r2_board_2.jpg"
+   ]
+  },
+  {
+   "id": "slot_empty",
+   "promptFiles": [
+    "prompts/_style.md",
+    "prompts/slot_empty.md"
+   ],
+   "image": "raw/slot_empty.png",
+   "ar": "1:1",
+   "ref": [
+    "../concepts/r2/r2_char_clay.jpg",
+    "../concepts/r2/r2_board_2.jpg"
+   ]
+  }
+ ]
+}

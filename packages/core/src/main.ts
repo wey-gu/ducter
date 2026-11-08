@@ -1,14 +1,14 @@
 // `bun run up`: boots core, then runner and partner (stubs if they're missing or fail).
 import type { CoreApi, Partner, Runner } from "@ducter/protocol/src/internal.ts";
-import { startCore, defaultDataDir, type Core } from "./core.ts";
-import { loadPersona } from "./persona.ts";
+import { startCore, type Core } from "./core.ts";
+import { DEFAULT_IDENTITY, loadPersona } from "./persona.ts";
 
-async function loadModule<T>(pkg: string, relative: string, factory: string): Promise<((...a: any[]) => T) | undefined> {
+async function loadModule(pkg: string, relative: string, factory: string): Promise<Record<string, any> | undefined> {
   const errors: string[] = [];
   for (const spec of [new URL(relative, import.meta.url).href, pkg]) {
     try {
       const mod = await import(spec);
-      if (typeof mod[factory] === "function") return mod[factory];
+      if (typeof mod[factory] === "function") return mod;
       errors.push(`${spec}: no ${factory} export`);
     } catch (err) {
       errors.push(`${spec}: ${(err as Error).message.split("\n")[0]}`);
@@ -48,7 +48,10 @@ export function stubPartner(core: CoreApi): Partner {
 }
 
 async function main() {
-  const persona = await loadPersona();
+  // Clients can connect at once; identity from Mem (slow: several seconds) is filled in before
+  // the partner starts. Triggers that arrive meanwhile are held by core and replayed.
+  const persona = { id: "default", name: process.env.DUCTER_PERSONA_NAME || "Ducter", identity: DEFAULT_IDENTITY };
+  const loaded = loadPersona({ timeoutMs: 10_000 });
   let core: Core;
   try {
     core = startCore({ persona });
@@ -56,12 +59,17 @@ async function main() {
     console.error(`[ducter] failed to start core (is port ${process.env.DUCTER_PORT || 7777} in use?):`, (err as Error).message);
     process.exit(1);
   }
+  console.log(`[ducter] clients: ${core.url}`);
+  console.log(`[ducter] tools:   http://127.0.0.1:${core.port}/mcp`);
 
   let runner: Runner | undefined;
-  const createRunner = await loadModule<Runner | Promise<Runner>>("@ducter/runner", "../../runner/src/index.ts", "createRunner");
-  if (createRunner) {
+  const runnerMod = await loadModule("@ducter/runner", "../../runner/src/index.ts", "createRunner");
+  if (runnerMod) {
     try {
-      runner = await createRunner(core);
+      // Task-role tools (report_to_main, checkpoint) are the runner's; register them once.
+      if (typeof runnerMod.registerTaskTools === "function") runnerMod.registerTaskTools(core);
+      else console.warn("[ducter] runner has no registerTaskTools: tasks cannot report_to_main");
+      runner = await runnerMod.createRunner(core);
     } catch (err) {
       console.warn("[ducter] createRunner threw; running with a stub runner:", err);
     }
@@ -69,11 +77,14 @@ async function main() {
   runner ??= stubRunner(core);
   core.setRunner(runner);
 
+  const mem = await loaded;
+  Object.assign(core.persona, { name: mem.name, identity: mem.identity });
+
   let partner: Partner | undefined;
-  const createPartner = await loadModule<Partner | Promise<Partner>>("@ducter/partner", "../../partner/src/index.ts", "createPartner");
-  if (createPartner) {
+  const partnerMod = await loadModule("@ducter/partner", "../../partner/src/index.ts", "createPartner");
+  if (partnerMod) {
     try {
-      partner = await createPartner(core, runner);
+      partner = await partnerMod.createPartner(core, runner);
     } catch (err) {
       console.warn("[ducter] createPartner threw; running with a stub partner:", err);
     }
@@ -81,9 +92,7 @@ async function main() {
   partner ??= stubPartner(core);
   core.setPartner(partner);
 
-  console.log(`[ducter] ${persona.name} is up (identity: ${persona.source}, data: ${defaultDataDir()})`);
-  console.log(`[ducter] clients: ${core.url}`);
-  console.log(`[ducter] tools:   http://127.0.0.1:${core.port}/mcp`);
+  console.log(`[ducter] ${persona.name} is up at ${core.url} (identity: ${mem.source}, data: ${core.dataDir})`);
 
   let stopping = false;
   const shutdown = async (sig: string) => {

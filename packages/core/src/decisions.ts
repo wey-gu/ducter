@@ -42,9 +42,19 @@ export function createDecisions(opts: {
 
   const setAttention = (taskId: string, attention: Attention, reason?: string) => {
     const c = tasks.get(taskId);
-    if (!c || (c.attention === attention && c.reason === reason)) return;
+    if (!c || (c.attention === attention && (reason === undefined || c.reason === reason))) return;
     tasks.setState(taskId, attention, c.residency, reason);
   };
+  // Report reactions run after the current dispatch, so they reconcile with whatever the
+  // report_to_main handler (runner) set right after appending, instead of racing it.
+  const later = (fn: () => void) =>
+    queueMicrotask(() => {
+      try {
+        fn();
+      } catch (err) {
+        console.error("[decisions] report reaction failed:", err);
+      }
+    });
 
   const schedule = (d: Bodies["decision"]) => {
     if (!d.reversible || !d.defaultAt) return;
@@ -63,7 +73,8 @@ export function createDecisions(opts: {
   };
 
   const onReport = (r: Bodies["report"]) => {
-    const blocking = r.questions.filter((q) => q.blocking);
+    let blocking = r.questions.filter((q) => q.blocking && q.text.trim());
+    if (r.state === "needs_input" && !blocking.length) blocking = r.questions.filter((q) => q.text.trim());
     if (r.state === "needs_input" || blocking.length) {
       const qs: Question[] = blocking.length ? blocking : [{ id: "q", text: r.summary, blocking: true, reversible: false }];
       for (const q of qs) {
@@ -79,24 +90,22 @@ export function createDecisions(opts: {
         if (q.reversible && hasDefault) body.defaultAt = new Date(clock.now() + delay).toISOString();
         log.append({ stream: "channel", origin: "system", kind: "decision", body });
       }
-      setAttention(r.taskId, "needs_you");
+      later(() => setAttention(r.taskId, "needs_you"));
       return;
     }
-    switch (r.state) {
-      case "blocked":
-        return setAttention(r.taskId, "blocked", r.summary.slice(0, 120));
-      case "failed":
-        return setAttention(r.taskId, "failed", r.summary.slice(0, 120));
-      case "progress":
-        return setAttention(r.taskId, "working");
-      case "done": {
-        // C checks evidence mechanically: no refs means it stays "Done · checking".
-        setAttention(r.taskId, "done_claimed");
-        const c = tasks.get(r.taskId);
-        if (c && r.evidence.length) tasks.setState(r.taskId, "done", c.residency);
-        return;
+    later(() => {
+      switch (r.state) {
+        case "blocked":
+          return setAttention(r.taskId, "blocked", r.summary.slice(0, 120));
+        case "failed":
+          return setAttention(r.taskId, "failed", r.summary.slice(0, 120));
+        case "progress":
+          return setAttention(r.taskId, "working");
+        case "done":
+          // C checks evidence mechanically: refs present -> done; none -> stays "Done · checking".
+          return setAttention(r.taskId, r.evidence.some((e) => e.ref.trim()) ? "done" : "done_claimed");
       }
-    }
+    });
   };
 
   const onResolved = (r: Bodies["decision_resolved"]) => {

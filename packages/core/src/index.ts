@@ -4,7 +4,7 @@ export { createRegistry, taskStream, isActive, type CoreRegistry } from "./regis
 export { createDecisions, forwardText, DEFAULT_DELAY_MS, type Decisions, type DecisionHook } from "./decisions.ts";
 export { createLiving, itemsFor, type Living } from "./living.ts";
 export { createMcpHub, type CoreMcpHub } from "./mcp.ts";
-export { normalizeReport, registerCoreTools } from "./tools.ts";
+export { registerCoreTools } from "./tools.ts";
 export { loadPersona, DEFAULT_IDENTITY, type Persona } from "./persona.ts";
 export { realClock, FakeClock, type Clock } from "./clock.ts";
 export { stubRunner, stubPartner } from "./main.ts";

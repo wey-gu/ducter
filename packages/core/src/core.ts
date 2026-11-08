@@ -40,11 +40,11 @@ export interface Core extends CoreApi {
 
 export const defaultDataDir = () => process.env.DUCTER_DATA_DIR || join(homedir(), ".ducter");
 
-/** Events that wake the partner (principle 6). `waiter` is not yet a Bodies kind. */
+/** Events that wake the partner (principle 6). Timers (job_status from "waiter") are fed by the partner itself. */
 export function triggersPartner(e: LogEvent): boolean {
   if (e.kind === "user_msg" || e.kind === "decision_resolved") return true;
   if (e.kind === "report") return (e.body as Bodies["report"]).state !== "progress";
-  return (e.kind as string) === "waiter";
+  return false;
 }
 
 function loadSecret(dataDir: string): string {
@@ -80,13 +80,18 @@ export function startCore(opts: CoreOptions = {}): Core {
   const mcp = createMcpHub({ secret: loadSecret(dataDir) });
   registerCoreTools(mcp, log, tasks);
 
-  const unsubscribePartner = log.subscribe((e) => {
-    if (!partner || !triggersPartner(e)) return;
+  const early: LogEvent[] = []; // triggers that arrive before the partner is wired
+  const trigger = (e: LogEvent) => {
     try {
-      partner.onTrigger(e);
+      partner!.onTrigger(e);
     } catch (err) {
       console.error(`[core] partner.onTrigger failed on ${e.kind}#${e.seq}:`, err);
     }
+  };
+  const unsubscribePartner = log.subscribe((e) => {
+    if (!triggersPartner(e)) return;
+    if (partner) trigger(e);
+    else if (early.length < 100) early.push(e);
   });
 
   const api = { log, tasks, mcp, persona, dataDir } as CoreApi;
@@ -123,13 +128,16 @@ export function startCore(opts: CoreOptions = {}): Core {
     port,
     url: `ws://127.0.0.1:${port}/ws`,
     setRunner: (r) => void (runner = r),
-    setPartner: (p) => void (partner = p),
+    setPartner(p) {
+      partner = p;
+      early.splice(0).forEach(trigger);
+    },
     async stop() {
       ws.stop();
       unsubscribePartner();
       decisions.stop();
       living.stop();
-      await server.stop(true);
+      void server.stop(true); // awaiting hangs in Bun 1.3 when a WebSocket was open
       log.close();
     },
   };

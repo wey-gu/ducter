@@ -56,6 +56,7 @@ test("blocking question -> decision + needs_you; reversible default auto-resolve
     summary: "main moved; rebase or merge?",
     questions: [{ id: "q1", text: "Rebase onto main?", blocking: true, default: "Rebase", reversible: true }],
   });
+  await tick();
   const [d] = kinds(log, "decision");
   const body = d!.body as Bodies["decision"];
   expect(body).toMatchObject({ taskId: "t1", question: "Rebase onto main?", goLabel: "Rebase", defaultOption: "go", reversible: true });
@@ -78,6 +79,7 @@ test("irreversible questions wait for the user; decide forwards hold / reply tex
   const { log, tasks, clock, decisions, forwarded } = setup();
   openTask(log, "t1");
   report(log, "t1", { state: "needs_input", summary: "Force push?", questions: [{ id: "q", text: "Force push?", blocking: true, default: "Push", reversible: false }] });
+  await tick();
   const d1 = kinds(log, "decision")[0]!.body as Bodies["decision"];
   expect(d1.defaultAt).toBeUndefined();
   clock.advance(3 * 3600 * 1000);
@@ -98,24 +100,31 @@ test("irreversible questions wait for the user; decide forwards hold / reply tex
   ]);
 });
 
-test("report states map to attention; done needs evidence", () => {
+test("report states map to attention; done needs evidence", async () => {
   const { log, tasks } = setup();
   openTask(log, "t1");
   openTask(log, "t2");
   report(log, "t1", { state: "done", summary: "Fixed." });
+  await tick();
   expect(tasks.get("t1")!.attention).toBe("done_claimed");
+  // Like runner's report_to_main: append, then set done_claimed itself; core reconciles to done.
   report(log, "t2", { state: "done", summary: "Fixed.", evidence: [{ kind: "test", label: "bun test", ref: "10/10 pass" }] });
+  tasks.setState("t2", "done_claimed", "hot", "report: done");
+  await tick();
   expect(tasks.get("t2")!.attention).toBe("done");
   report(log, "t1", { state: "blocked", summary: "Waiting on CI" });
+  await tick();
   expect(tasks.get("t1")).toMatchObject({ attention: "blocked", reason: "Waiting on CI" });
   report(log, "t1", { state: "failed", summary: "Env broken" });
+  await tick();
   expect(tasks.get("t1")!.attention).toBe("failed");
 });
 
-test("pending reversible defaults are re-armed after a restart", () => {
+test("pending reversible defaults are re-armed after a restart", async () => {
   const { path, log, clock, decisions, living } = setup();
   openTask(log, "t1");
   report(log, "t1", { state: "needs_input", summary: "?", questions: [{ id: "q", text: "Rebase?", blocking: true, default: "Rebase", reversible: true }] });
+  await tick();
   decisions.stop();
   living.stop();
   log.close();

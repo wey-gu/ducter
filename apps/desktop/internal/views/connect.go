@@ -92,7 +92,7 @@ func (a *App) connect(c *ui.Context) {
 	a.bareChrome(c)
 	ui.Column(c).Grow(1).MinHeight(0).Justify(ui.Center).AlignItems(ui.Center).Padding(8, 32, 8+ChromeH, 32).Children(func() {
 		card := ui.Column(c.Key("connect")).Width(560).MaxWidthPercent(100).Padding(t.S6, t.S7, t.S6, t.S7).Gap(t.S4).
-			Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.PressCard.Offset, 0, 0, t.PressCard.Color)
+			Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color)
 		a.enter(c, card)
 		card.Children(func() {
 			a.avatar(c, theme.Idle, 88)

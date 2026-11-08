@@ -29,6 +29,13 @@ type Press struct {
 	Color  ui.Color
 }
 
+// Elevation is a soft shadow: how far down it falls, how blurred, and
+// its color.
+type Elevation struct {
+	Y, Blur float32
+	Color   ui.Color
+}
+
 // Tokens is one theme's full token set.
 type Tokens struct {
 	Name string
@@ -86,13 +93,14 @@ type Tokens struct {
 	// PebbleRadius is a task pebble's slightly irregular corners.
 	PebbleRadius [4]float32
 
-	// depth: three levels. Flat (sheets, chips, rows inside a card);
-	// PressCard, a card resting on the paper; PressPrimary/PressAccent, a
-	// button you press down. Secondary buttons are flat with a hairline:
-	// only the one thing to press stands up.
-	PressCard    Press // cards and the composer
-	PressPrimary Press // dark buttons
-	PressAccent  Press // accent buttons
+	// depth. A ledge (a solid offset under the element, in a darker
+	// shade of its own fill) means one thing: this can be pressed. Every
+	// filled button has the same one, 3 points deep, and sinks into it
+	// as it is pressed. Containers (cards, sheets, the composer, notices)
+	// never have a ledge: they rest on Raised, a soft shadow, or float on
+	// Floating (a sheet over the page). Chips and text buttons are flat.
+	PressPrimary, PressSecondary, PressAccent Press
+	Raised, Floating                          Elevation
 
 	// motion: Snappy for hover and lift, PressDur for a press, EnterDur
 	// for a screen or a notice coming in, Bouncy for the living message
@@ -165,9 +173,11 @@ func Pebble() *Tokens {
 		BubbleRadius: [4]float32{22, 22, 8, 22},
 		PebbleRadius: [4]float32{6, 7, 5, 6},
 
-		PressCard:    Press{Offset: 4, Color: hex("#E8D9C4")},
-		PressPrimary: Press{Offset: 3, Color: hex("#000000")},
-		PressAccent:  Press{Offset: 3, Color: hex("#C9642A")},
+		PressPrimary:   Press{Offset: 3, Color: hex("#000000")},
+		PressSecondary: Press{Offset: 3, Color: hex("#E0C9B0")},
+		PressAccent:    Press{Offset: 3, Color: hex("#C9642A")},
+		Raised:         Elevation{Y: 2, Blur: 10, Color: hex("#2B2118").Alpha(0.07)},
+		Floating:       Elevation{Y: 10, Blur: 32, Color: hex("#2B2118").Alpha(0.14)},
 
 		Bouncy:   ui.Animation{Spring: ui.SpringOptions{Duration: 420e6, Bounce: 0.35}},
 		Snappy:   ui.Snappy,

@@ -617,6 +617,13 @@ func (a *App) Applied(f protocol.ServerFrame) {
 // ---------- formatting ----------
 
 func (a *App) stateLabel(att protocol.Attention) string {
+	if att == protocol.DoneClaimed {
+		// A finished task reads "Done". done? means "done, nothing checked
+		// it": no check runs today, so "Done · checking" (state.done_claimed)
+		// would promise one that never comes; it is shown once something
+		// actually checks (focus-window-states.md, done? → done).
+		att = protocol.Done
+	}
 	return a.L.T("state." + string(att))
 }
 

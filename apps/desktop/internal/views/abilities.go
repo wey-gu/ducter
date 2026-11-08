@@ -266,9 +266,9 @@ func (a *App) deviceCards(c *ui.Context, width float32) {
 			card.Width(width)
 		}
 		if sel {
-			card.Border(3, t.Ink).Shadow(0, t.PressCard.Offset, 0, 0, t.Ink)
+			card.Border(3, t.Ink).Shadow(0, t.PressPrimary.Offset, 0, 0, t.Ink)
 		} else {
-			a.press(c, card, t.PressCard)
+			a.press(c, card, t.PressSecondary)
 			a.lift(c, card, 2)
 		}
 		card.Children(func() {
@@ -643,7 +643,7 @@ func (a *App) slot(c *ui.Context, dv *protocol.DeviceView, id string, cx, cy, k 
 			}
 		})
 		d.slots[id] = w.Bounds()
-		ui.Box(c).Padding(t.S1, t.S3).Radius(t.Pill).Background(t.Surface).Shadow(0, t.PressPrimary.Offset, 0, 0, t.PressCard.Color).Children(func() {
+		ui.Box(c).Padding(t.S1, t.S3).Radius(t.Pill).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Children(func() {
 			ui.Text(c, label).FontSize(t.SM).FontWeight(800).SingleLine()
 		})
 	})
@@ -688,7 +688,7 @@ func (a *App) tokens(c *ui.Context, dv *protocol.DeviceView, r rig) {
 		w := 250 * k
 		x := tokenCenter(r.sw, n, i, k) - w/2
 		tok := ui.Row(c.Key("tok:"+h.Harness)).Absolute().Left(x).Top(r.tokensTop).Width(w).Height(66).Gap(t.S3).
-			Padding(t.S2, t.S3, t.S2, t.S2).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.PressCard.Offset, 0, 0, t.PressCard.Color).AlignItems(ui.Center).
+			Padding(t.S2, t.S3, t.S2, t.S2).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).AlignItems(ui.Center).
 			Role(ui.RoleGroup).Label(harnessName(h.Harness) + " · " + status)
 		if !h.LoggedIn || dv.State != protocol.DeviceAwake {
 			tok.Opacity(0.6)
@@ -731,7 +731,7 @@ func (a *App) stageLine(c *ui.Context, dv *protocol.DeviceView, sw float32) {
 	}
 	line := ui.Row(c.Key("line:" + text)).Absolute().Top(18).Left(16).Width(sw - 32).Justify(ui.Center)
 	line.Children(func() {
-		pill := ui.Row(c.Key("pill")).Gap(t.S3).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.Surface).Shadow(0, t.PressCard.Offset, 0, 0, t.PressCard.Color).
+		pill := ui.Row(c.Key("pill")).Gap(t.S3).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).
 			AlignItems(ui.Center).Role(ui.RoleStatus).Label(text).MaxWidthPercent(100)
 		a.enter(c, pill)
 		pill.Children(func() {
@@ -783,9 +783,9 @@ func (a *App) abilityGrid(c *ui.Context, dv *protocol.DeviceView, cols int) {
 			tile := ui.Column(c.Key("ab:"+id)).Radius(t.RadiusLG).Background(t.Surface).Padding(t.S2, t.S2, t.S3, t.S2).Gap(2).AlignItems(ui.Center).
 				Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(label).Focusable().AccessSelected(d.ability == id)
 			if d.ability == id {
-				tile.Border(3, t.Ink).Shadow(0, t.PressCard.Offset, 0, 0, t.Ink)
+				tile.Border(3, t.Ink).Shadow(0, t.PressPrimary.Offset, 0, 0, t.Ink)
 			} else {
-				a.press(c, tile, t.PressCard)
+				a.press(c, tile, t.PressSecondary)
 			}
 			locked := ab == nil || ab.State == protocol.AbilityLater
 			if locked {
@@ -843,7 +843,7 @@ func (a *App) abilityDetail(c *ui.Context, dv *protocol.DeviceView) {
 	id := d.ability
 	ab := dv.Ability(id)
 	name := a.L.T("ability." + id)
-	card := ui.Column(c.Key("detail:"+id)).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.PressCard.Offset, 0, 0, t.PressCard.Color).Padding(t.S4).Gap(t.S3).
+	card := ui.Column(c.Key("detail:"+id)).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Padding(t.S4).Gap(t.S3).
 		Role(ui.RoleGroup).Label(name)
 	card.Children(func() {
 		ui.Text(c, name).FontSize(t.LG).FontWeight(800)
@@ -1249,13 +1249,13 @@ func (a *App) pairSheet(c *ui.Context, dv *protocol.DeviceView, sw, sh float32) 
 	pc := a.S.PairCode
 	w := min(sw-48, 420)
 	sheet := ui.Column(c.Key("pair")).Absolute().Left((sw-w)/2).Top(40).Width(w).MaxHeight(sh-80).
-		Padding(t.S5, t.S5).Gap(t.S3).Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.PressCard.Offset+2, 0, 0, t.PressCard.Color).ZIndex(10).
+		Padding(t.S5, t.S5).Gap(t.S3).Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).ZIndex(10).
 		Role(ui.RoleDialog).Label(a.L.T("pair.title"))
 	a.enter(c, sheet)
 	sheet.Children(func() {
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 			ui.Text(c, a.L.T("pair.title")).FontSize(t.LG).FontWeight(800).Grow(1).MinWidth(0)
-			if a.button(c, a.L.T("pair.close"), btnText, t.ControlSM, t.Surface) {
+			if a.button(c, a.L.T("pair.close"), btnSecondary, t.ControlSM, t.Surface) {
 				d.pair.open = false
 			}
 		})

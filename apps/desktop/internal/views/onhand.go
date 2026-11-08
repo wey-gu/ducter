@@ -192,7 +192,7 @@ func (a *App) forecastBand(c *ui.Context, b store.Board) {
 		return
 	}
 	ui.Row(c.Key("forecast")).Gap(t.S3).Wrap().Padding(t.S3, t.S4).Radius(t.RadiusLG).Background(t.Surface).
-		Shadow(0, t.PressCard.Offset, 0, 0, t.PressCard.Color).AlignItems(ui.Center).Children(func() {
+		Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).AlignItems(ui.Center).Children(func() {
 		ui.Text(c, a.L.T("onhand.forecast")).FontSize(t.SM).FontWeight(800).TextColor(t.InkMuted)
 		for _, ch := range chips {
 			a.forecastChip(c.Key(ch.key), ch.text, ch.sc)
@@ -274,7 +274,7 @@ func (a *App) metaLine(task *store.Task) string {
 func (a *App) needsCard(c *ui.Context, task *store.Task) {
 	t := a.T
 	d := a.S.PendingDecision(task.ID)
-	card := ui.Column(c).Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.PressCard.Offset, 0, 0, hexShade(t)).Clip()
+	card := ui.Column(c).Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Clip()
 	a.lift(c, card, 3)
 	card.Children(func() {
 		ui.Row(c).Gap(t.S3).Padding(t.S3, t.S5).Background(t.Accent).AlignItems(ui.Center).Children(func() {
@@ -314,11 +314,7 @@ func (a *App) needsCard(c *ui.Context, task *store.Task) {
 					a.pill(c, a.metaLine(task))
 					a.pill(c, a.placeLine(task.Place()))
 				})
-				l := ui.Text(c.Key("open"), a.L.T("onhand.open")).FontSize(t.SM).FontWeight(800).Cursor(ui.CursorPointer).Role(ui.RoleLink).Shrink(0).Padding(t.S2, t.S1)
-				if l.Hovered() {
-					l.TextColor(t.NeedsYou.Ink)
-				}
-				if l.Clicked() {
+				if a.buttonFor(c, a.L.T("onhand.open"), task.Title(), btnText, t.ControlSM, t.Surface) {
 					a.OpenTask(task.ID)
 				}
 			})
@@ -326,7 +322,6 @@ func (a *App) needsCard(c *ui.Context, task *store.Task) {
 	})
 }
 
-func hexShade(t *theme.Tokens) ui.Color { return t.NeedsYou.Surface.Mix(t.NeedsYou.Strong, 0.25) }
 
 // countdown is the default's bar: how much of the wait has passed.
 func (a *App) countdown(c *ui.Context, d *store.DecisionState) {
@@ -396,7 +391,7 @@ func (a *App) cardLink(c *ui.Context, card ui.Element, task *store.Task) {
 
 func (a *App) workingCard(c *ui.Context, task *store.Task) {
 	t := a.T
-	card := ui.Column(c).Padding(t.S4, t.S4).Gap(t.S3).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.PressCard.Offset, 0, 0, t.PressCard.Color)
+	card := ui.Column(c).Padding(t.S4, t.S4).Gap(t.S3).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color)
 	a.cardLink(c, card, task)
 	card.Children(func() {
 		ui.Text(c, task.Title()).FontSize(t.MD).FontWeight(800)
@@ -458,7 +453,7 @@ func (a *App) waitingCard(c *ui.Context, task *store.Task) {
 
 func (a *App) doneList(c *ui.Context, tasks []*store.Task) {
 	t := a.T
-	ui.Column(c).Padding(t.S2, t.S4).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.PressCard.Offset, 0, 0, t.PressCard.Color).
+	ui.Column(c).Padding(t.S2, t.S4).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).
 		Dividers(1, t.LineSoft).Children(func() {
 		for _, task := range tasks {
 			row := ui.Column(c.Key(task.ID)).Gap(t.S2).Padding(t.S3, 0).Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(task.Title())
@@ -466,9 +461,6 @@ func (a *App) doneList(c *ui.Context, tasks []*store.Task) {
 				ui.Row(c).Gap(t.S2).AlignItems(ui.Start).Children(func() {
 					ui.Text(c, task.Title()).FontSize(t.MD).FontWeight(700).Grow(1).MinWidth(0).MaxLines(2)
 					switch task.Attention() {
-					case protocol.DoneClaimed:
-						// A fact, not an alarm: nobody checked it.
-						a.tag(c, a.L.T("onhand.checking"), theme.StateColors{Surface: t.SurfaceSunken, Ink: t.InkSoft})
 					case protocol.Failed:
 						a.stateChip(c, protocol.Failed)
 					}

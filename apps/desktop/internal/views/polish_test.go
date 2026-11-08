@@ -10,7 +10,7 @@ import (
 )
 
 // The polish pass (docs/design/ui.md, Components): a chip says its title
-// once; a result says nothing about Outside when there is nothing to say.
+// once; a result says nothing about Sent out when nothing went out.
 
 func TestChipStatusThatRepeatsTheTitle(t *testing.T) {
 	for _, c := range []struct {
@@ -42,7 +42,7 @@ func TestOutsideLineOnlyWhenItSaysSomething(t *testing.T) {
 	if got := a.outsideLine(open("t1", protocol.Place{Kind: "none"})); got != "" {
 		t.Errorf("no place, nothing outside: %q, want no line", got)
 	}
-	if got := a.outsideLine(open("t2", protocol.Place{Kind: "repo", Branch: "ducter/calc", Device: "MacBook"})); got == "" {
-		t.Error("a repo task: the branch it stays on is worth a line")
+	if got := a.outsideLine(open("t2", protocol.Place{Kind: "repo", Branch: "ducter/calc", Device: "MacBook"})); got != "" {
+		t.Errorf("a repo task that sent nothing out: %q, want no line", got)
 	}
 }

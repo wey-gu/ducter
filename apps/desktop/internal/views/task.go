@@ -203,7 +203,7 @@ func (a *App) decisionBanner(c *ui.Context, d *store.DecisionState) {
 
 func (a *App) panel(c *ui.Context) ui.Element {
 	t := a.T
-	return ui.Column(c).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.PressCard.Offset, 0, 0, t.PressCard.Color).Clip().MinWidth(0)
+	return ui.Column(c).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Clip().MinWidth(0)
 }
 
 func (a *App) transcript(c *ui.Context, task *store.Task) {
@@ -706,7 +706,7 @@ func (a *App) fileDiff(c *ui.Context, f *diffFile) {
 func (a *App) dossierCard(c *ui.Context, title string, body func()) {
 	t := a.T
 	ui.Column(c.Key(title)).Padding(t.S4, t.S4).Gap(t.S3).Radius(t.RadiusLG).Background(t.Surface).
-		Shadow(0, t.PressCard.Offset, 0, 0, t.PressCard.Color).Children(func() {
+		Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Children(func() {
 		ui.Text(c, title).FontSize(t.MD).FontWeight(800)
 		body()
 	})

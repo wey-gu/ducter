@@ -222,16 +222,17 @@ func (a *App) pill(c *ui.Context, text string) {
 
 // The one button family (docs/design/ui.md, Components):
 //
-//   - primary: the one thing to do. Ink, and it presses down (PressPrimary).
-//   - secondary: a choice beside it. The surface with a hairline, flat;
-//     it darkens as it is pressed.
-//   - text (quiet): words only, with a tint under them on hover.
+//   - primary: the one thing to do. Ink.
+//   - secondary: a choice beside it. The surface, with a hairline.
 //   - accent: the composer's send.
+//   - text (quiet): words only, a soft tint under them on hover and press.
 //   - icon: a square of any of these (iconButton).
 //
-// Three heights (ControlSM/MD/LG); every button of one height has the same
-// corners, padding and type. Hover, press and keyboard focus look the same
-// on all of them.
+// Every filled button stands on the same ledge (a darker shade of its own
+// fill, 3 points) and sinks into it as it is pressed: the ledge means
+// "this can be pressed", and only buttons have one. Text buttons, chips
+// and containers are flat. Three heights (ControlSM/MD/LG); one radius;
+// hover, press and keyboard focus look the same on all of them.
 type btnKind int
 
 const (
@@ -301,7 +302,7 @@ func (a *App) buttonLook(c *ui.Context, b ui.Element, kind btnKind, h float32, o
 			bg = t.Ink.Mix(t.InkSoft, 0.45)
 		}
 		b.Background(bg)
-		a.press(c, b, a.pressFor(t.PressPrimary, h))
+		a.press(c, b, t.PressPrimary)
 		return t.OnUserBubble
 	case btnAccent:
 		bg := t.Accent
@@ -309,18 +310,15 @@ func (a *App) buttonLook(c *ui.Context, b ui.Element, kind btnKind, h float32, o
 			bg = t.Accent.Mix(t.NeedsYou.Strong, 0.35)
 		}
 		b.Background(bg)
-		a.press(c, b, a.pressFor(t.PressAccent, h))
+		a.press(c, b, t.PressAccent)
 		return t.OnAccent
 	case btnSecondary:
 		bg := t.Surface
-		switch {
-		case down:
-			bg = t.SurfaceSunken
-		case hover:
-			bg = t.SurfaceSunken.Mix(t.Surface, 0.55)
+		if hover && !down {
+			bg = t.SurfaceSunken.Mix(t.Surface, 0.6)
 		}
 		b.Background(bg).Border(1, t.Line)
-		a.sink(c, b, down)
+		a.press(c, b, t.PressSecondary)
 		return t.Ink
 	}
 	// Text: no edge until the pointer comes over it.
@@ -332,15 +330,6 @@ func (a *App) buttonLook(c *ui.Context, b ui.Element, kind btnKind, h float32, o
 		b.Background(t.NeedsYou.Ink.Alpha(float32(tint)))
 	}
 	return t.NeedsYou.Ink
-}
-
-// pressFor is a press depth for a control h tall: a small control sits
-// lower (2 points), the others at the theme's depth.
-func (a *App) pressFor(p theme.Press, h float32) theme.Press {
-	if h <= a.T.ControlSM && p.Offset > 2 {
-		p.Offset = 2
-	}
-	return p
 }
 
 // sink moves a flat control a point down while it is pressed.

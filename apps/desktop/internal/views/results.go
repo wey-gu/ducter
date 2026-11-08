@@ -132,35 +132,23 @@ func (a *App) evidenceChip(c *ui.Context, task *store.Task, ev protocol.Evidence
 	}
 }
 
-// outsideLine is what the task did outside, in one line: what the
-// transcript shows, or that nothing left its branch. Empty until the
-// transcript is loaded: never claim "nothing" without having looked.
+// outsideLine is what the task sent out, in one line, from what its log
+// shows. Empty when nothing was sent out, or until the log is loaded: a
+// row with nothing to say is left out (the dossier's Sent out card still
+// says "Nothing sent out yet"; the actions say where the changes are).
 func (a *App) outsideLine(task *store.Task) string {
 	if !task.HistoryLoaded {
 		return ""
 	}
 	acts := task.Outside()
-	if len(acts) > 0 {
-		s := acts[0].Command
-		if len(acts) > 1 {
-			s += " · " + a.L.T("result.more", len(acts)-1)
-		}
-		return s + " · " + a.L.T("outside.seen")
+	if len(acts) == 0 {
+		return ""
 	}
-	p := task.Place()
-	if done := task.Acted; done != nil && done.OK && done.Action == "merge" {
-		base := p.BaseBranch
-		if base == "" {
-			base = "main"
-		}
-		return a.L.T("outside.nothing.merged", base, a.cjkPad(a.device(p.Device)))
+	s := acts[0].Command
+	if len(acts) > 1 {
+		s += " · " + a.L.T("result.more", len(acts)-1)
 	}
-	if p.Kind == "repo" && p.Branch != "" {
-		return a.L.T("outside.nothing.repo", p.Branch, a.cjkPad(a.device(p.Device)))
-	}
-	// Nothing went outside and the task had no place to stay in: there
-	// is nothing to say (the dossier's Outside card still says "none").
-	return ""
+	return s + " · " + a.L.T("outside.seen")
 }
 
 // resultActions are the next steps a finished repo task offers. They go

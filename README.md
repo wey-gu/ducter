@@ -52,6 +52,47 @@ Options: `--port` (default 7777, or `DUCTER_PORT`), `--data-dir` (default `~/.du
 
 From a checkout you can also skip the install: `bun install && bun packages/cli/src/main.ts up`.
 
+## On a server (Linux VPS)
+
+Keep your partner awake while your Mac sleeps. On your Mac, build the Linux binaries; on the
+server, install them as a service; then connect the Mac app.
+
+```sh
+# on your Mac
+scripts/install.sh --linux ducter-linux            # ducter-linux/linux-x64 and linux-arm64
+scp -r ducter-linux/linux-x64 you@server:ducter    # pick the server's CPU (uname -m)
+
+# on the server
+sh ducter/install.sh --service   # systemd user service on 127.0.0.1:7777, then a pairing code
+ducter doctor                    # says how to sign in Claude Code / Codex without a browser there
+```
+
+Reach it one of two ways:
+
+- **Your own domain (recommended):** point a DNS record at the server, open ports 80/443, then
+  `sh scripts/caddy-setup.sh ducter.example.com` on the server. Caddy gets the HTTPS
+  certificate; Ducter stays on 127.0.0.1.
+- **No domain:** an SSH tunnel from your Mac, `ssh -N -L 7777:127.0.0.1:7777 you@server`, then
+  the address is `http://127.0.0.1:7777`.
+
+In the Mac app choose **My Ducter is on another machine → Connect to your Ducter** and enter
+the address and the code from `ducter pair` (or paste the whole link it prints). Only paired
+devices get in from outside the server; `ducter devices` lists them and
+`ducter devices disconnect <id>` removes one. Another machine can join as a worker with
+`ducter pair --worker` on the server and `ducter worker --join <address> --code <code>` there
+(it connects and shows as awake; running tasks on it comes next).
+
+| Command | What it does |
+|---|---|
+| `ducter up --headless` | Run as a server: no window. Binds 127.0.0.1 unless `--host` says otherwise |
+| `ducter service install \| uninstall \| status` | systemd user service with restart on failure; logs in `journalctl --user -u ducter` |
+| `ducter pair` | One-time pairing code (10 min), address, link and QR |
+| `ducter devices` | Connected devices; `disconnect <id>` removes one |
+| `ducter worker --join <address> --code <code>` | Make this machine a worker of that Ducter (`service install --worker` keeps it running) |
+
+`DUCTER_SCRIPTED_MODEL=1 ducter up` runs with a canned model (OAR's scripted runtime) over the
+real tools, for demos on a box with no AI signed in. Every reply says so.
+
 ## How it works
 
 - **One partner.** You only talk to your partner (named Ducter unless you rename it). It runs

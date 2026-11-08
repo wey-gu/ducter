@@ -50,7 +50,12 @@ row's detection result animates in.
    - *Mac:* the desktop app holds the main process and a local worker. One download, one
      launch.
    - *VPS:* a one-line installer starts the main process and prints a QR code / link that
-     opens the client and pairs it. The details depend on `research/21`.
+     opens the client and pairs it. *Built so far (D54), terminal-first:*
+     `sh install.sh --service` → systemd user service → a pairing code, link and QR in the
+     terminal; the Mac app's first run has "我的 Ducter 在另一台机器上 / My Ducter is on another
+     machine" → **连接到你的 Ducter / Connect to your Ducter** (address + 配对码). The browser
+     setup page with relayed AI logins (Q17) is next; the exact login commands it relays are in
+     `research/29`.
 2. **Cartoon**, then the **live checklist**, auto-detected:
    1. **This device**: ✓ ("MacBook Pro · 14 repos found under ~/dev").
    2. **Your AI**: lists the logged-in harnesses (Claude Code ✓, Codex ✓/✗). A missing one
@@ -105,6 +110,6 @@ These are the setup moments a browser task hits on a Mac. They should become one
 
 ## Open
 
-- Remote-access step: Ducter Edge on `workers.dev` (`research/21`). It is about 3 steps, 4 on iOS (Home Screen install for push). CN users need a different path (pending).
+- Remote-access step: Ducter Edge on `workers.dev` (`research/21`). It is about 3 steps, 4 on iOS (Home Screen install for push). CN users default to their own domain (Q18): `scripts/caddy-setup.sh` + code pairing (D54).
 - Whether the cartoon is pre-rendered (Lottie/Rive) or native MyGo animation. Native keeps
   the "cartoon becomes the UI" transition seamless.

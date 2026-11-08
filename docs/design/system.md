@@ -196,6 +196,12 @@ main, or the reverse). Principle: **it dials out, never in.**
   token the main minted for that task plus the worker's device token; the main's MCP gate
   already accepts exactly that pair. Device sleep or a dropped socket follows A3 (在等 after
   2 minutes, D52).
+- **Built and verified (two Ubuntu VMs, research/29):** join with a worker code, `worker.json`
+  0600, hello with harnesses, `ducter devices` → `awake`, `ducter service install --worker`
+  (no listening port on the worker), reconnect after the main restarts. Revoking (from the
+  CLI, another process) closes live device sockets within 10 s (close code 4401, clients and
+  workers alike); a refused worker exits 3 and its unit has `RestartPreventExitStatus=3`, so
+  it stops instead of retrying.
 - **Why not tonight:** placement touches the runner and the core API that protocol v2 is
   reshaping; doing it on a moving base would mean two incompatible runners. Trigger: protocol
   v2 merged (`docs/todo.md`).

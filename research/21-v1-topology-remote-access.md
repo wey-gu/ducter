@@ -103,7 +103,7 @@ to be reachable: the main process POSTs to Apple's or Google's push endpoint, ou
 | **bore** | 1 | no | none | $0 (self-host the server) | yes | **TCP only, no TLS** [I] | no | Unsuitable. |
 | **frp** | ~6 (rent a VPS, run frps, TLS, DNS) | effectively yes | Ducter | VPS cost | yes | any | yes | Makes sense only if a VPS exists, and then the VPS should *be* the main process. |
 | **VPS public IP + Caddy** | ~3 | yes (or sslip.io-style, rate-limit risk [I]) | Ducter | $0 extra | n/a | any | yes | Direct and lowest latency. |
-| **Ducter Edge** (own `workers.dev` Worker + relay DO) | **~3** (CF account, `wrangler login` OAuth, Ducter deploys) | **no** | Ducter device keys + passkeys; the relay only checks a relay token | **$0** on the free plan (§4.3) | yes, outbound WSS | any | **yes**, `ducter.<sub>.workers.dev` | Design follows the reference app's relay (research/04 §2). `workers.dev` is unreliable from mainland China [I]; fall back to a named tunnel or Tailscale there. |
+| **Ducter Edge** (own `workers.dev` Worker + relay DO) | **~3** (CF account, `wrangler login` OAuth, Ducter deploys) | **no** | Ducter device keys + passkeys; the relay only checks a relay token | **$0** on the free plan (§4.3) | yes, outbound WSS | any | **yes**, `ducter.<sub>.workers.dev` | Design follows the store-and-forward relay common to E2E agent apps (research/04 §2). `workers.dev` is unreliable from mainland China [I]; fall back to a named tunnel or Tailscale there. |
 | **Ducter-hosted relay** (like Nowledge Link) | 1–2 | no | E2E needed (operator sees traffic) | Ducter pays | yes | any | yes | Most convenient, but the project would run infrastructure, and users would trust it with traffic; it serves the JS, so it could serve different JS. Later, maybe paid. |
 
 Latency [I]: tunnels and the relay add one edge hop, about 10–60 ms per frame. That is negligible
@@ -190,7 +190,7 @@ subprocesses), which can't run in a Worker (research/04 §1 gap 5). So the "full
 - **LAN** is always on (`http://<mac>.local`) for the desktop client. The phone uses the stable origin
   even at home, so its install, push and passkey stay valid.
 
-### 5.2 Pairing and auth (copy the dsh/the reference app model, not Mem's single key)
+### 5.2 Pairing and auth (the relay/pairing model common to E2E messengers, not Mem's single key)
 1. The main process holds an Ed25519 **installation key**. The Edge knows the installation's public key
    and a relay token.
 2. On desktop or in the terminal: `ducter pair` shows a QR code and an 8-character code. The QR encodes
@@ -259,4 +259,4 @@ QR. About 5 steps, plus the VPN stays on.
 - https://developers.cloudflare.com/durable-objects/api/sqlite-storage-api/ ; https://developers.cloudflare.com/workers/platform/limits/ ; https://developers.cloudflare.com/workers-vpc
 - https://tailscale.com/kb/1223/funnel ; https://ngrok.com/pricing ; https://netfoundry.io/docs/zrok/myzrok/limits ; https://pinggy.io/blog/best_cloudflare_tunnel_alternatives/
 - https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/
-- research/04 §2 (the reference app relay and pairing), §3 (DO pricing, hibernation)
+- research/04 §2 (relay and pairing patterns), §3 (DO pricing, hibernation)

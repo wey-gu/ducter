@@ -287,4 +287,4 @@ threshold alone.
 - DeepSeek: https://api-docs.deepseek.com/quick_start/pricing/
 - Subscription anecdotes (S): https://theregister.com/2026/03/31/anthropic_claude_code_limits ·
   https://www.morphllm.com/claude-code-usage-limits
-- Cost model script: `<scratch>`
+- Cost model script: `<scratch>/costmodel.py`

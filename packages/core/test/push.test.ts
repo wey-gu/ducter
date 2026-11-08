@@ -163,12 +163,12 @@ describe("push copy", () => {
   const now = Date.parse("2026-11-09T00:00:00Z");
 
   test("quotes the question and the card's default line exactly", () => {
-    expect(defaultLine(d, "zh", now)).toBe("你不回的话，30 分钟后我会 rebase。这一步能撤销。");
+    expect(defaultLine(d, "zh", now)).toBe("你不回的话，30 分钟后我会 rebase，之后也能撤销。");
     expect(defaultLine(d, "en", now)).toBe("If you don't answer, I'll rebase in 30 min. It can be undone.");
     expect(defaultLine({ ...d, reversible: false }, "zh", now)).toBe("这件不会自己动，等你定");
     const m = decisionMessage(d, { persona: "Ducter", task: "修 fix-ci", locale: "zh", platform: "android", now });
     expect(m.title).toBe("Ducter · 修 fix-ci");
-    expect(m.body).toBe("要 rebase 吗？ 你不回的话，30 分钟后我会 rebase。这一步能撤销。");
+    expect(m.body).toBe("要 rebase 吗？ 你不回的话，30 分钟后我会 rebase，之后也能撤销。");
     expect(m.url).toBe("app#d=d1");
   });
 

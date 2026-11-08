@@ -2,7 +2,7 @@
 
 > Draft 1 · 2026-11-08 · Group A of `docs/design/scenarios.md`. Builds on `onboarding.md`,
 > `system.md`, `focus-window.md`, `focus-window-states.md`, `research/21` (remote access),
-> `research/27` (本事 / Abilities), and the concept-art verdicts (`docs/art/concepts/README.md`).
+> `research/27` (ability naming; the noun was dropped in D66), and the concept-art verdicts (`docs/art/concepts/README.md`).
 > Artboards: `A*.dc.html` in the flows prototype project (list at the end).
 >
 > **Status: drafted, not reviewed.** Words marked **[gap]** are not yet in the glossary
@@ -250,8 +250,8 @@ with what it can do.**
   your phone too? One scan." with **好 / Go** · "以后再说 / Later".
 - Always available: Devices → **加一个设备 / Add a device** → Phone.
 
-1. **Remote access ready?** If the Edge isn't set up yet, this *is* adding the **远程打开** ability
-   (本事) to the home device. One card, in place:
+1. **Remote access ready?** If the Edge isn't set up yet, this *is* adding the **在哪儿都能用** ability
+   (an ability) to the home device. One card, in place:
    - **登录 Cloudflare** → browser OAuth → back in the app: three ticks animate (deploy the
      Edge · claim `ducter-you.workers.dev` · check it from outside). ≈ 20 s.
    - Tailscale detected → it's offered as a second chip "用 Tailscale（只在你的设备之间）".
@@ -328,7 +328,7 @@ with what it can do.**
 ### States touched
 - Device states (proposed, see §6): `online` · `asleep` · `unreachable` · `removed`; plus
   `joining` (shown on the add card only).
-- Ability: 远程打开 added to the home device; push enabled per client.
+- Ability: 在哪儿都能用 added to the home device; push enabled per client.
 - Tasks: a task `queued` with reason "needs a Linux device" moves to `working` when A2-W completes.
 
 ### Copy
@@ -341,7 +341,7 @@ with what it can do.**
 | `devices.add.phone` | 手机 | Phone |
 | `devices.add.mac` | Mac | Mac |
 | `devices.add.linux` | Linux 服务器 | Linux server |
-| `ability.remote.name` | 远程打开 | Reach from anywhere |
+| `ability.remote.name` | 在哪儿都能用 | Reach from anywhere |
 | `ability.remote.added` | {device} 现在在哪儿都能打开了 | {device} can now be opened from anywhere |
 | `ability.remote.step.deploy` | 搭好中转 | Setting up the relay |
 | `ability.remote.step.address` | 拿到地址 {host} | Got the address {host} |
@@ -385,7 +385,7 @@ with what it can do.**
 - Phone connects: on the desktop the QR card **flips** to show a small phone toy with the
   partner's face on its screen, which bounces once; on the phone the face does the same bounce at
   the same moment. Two screens, one beat: that synchronicity is the 惊喜.
-- Adding an ability (远程打开): the equip snap from `ui.md` (lift → slot → magnetic pull → tock
+- Adding an ability (在哪儿都能用): the equip snap from `ui.md` (lift → slot → magnetic pull → tock
   → bounce). The chime fires only after the outside check passes.
 - Worker joins: its device toy slides onto the Devices table from the edge; repos appear as
   small labels dropping onto it.
@@ -454,7 +454,7 @@ with what it can do.**
    - "MacBook 睡着了，上面有 2 件事停着。/ MacBook is asleep with 2 tasks paused."
    - **好，换到 vps-1 接着做 / Go, continue on vps-1** — shown only if vps-1 has the repo (or can
      clone it) and the task's branch was pushed at its last checkpoint. That's a handoff
-     (principle 13); the card says what is lost ("最后 4 分钟没存档的改动会留在 MacBook 上").
+     (principle 13); the card says what is lost ("最后 4 分钟没保存的改动会留在 MacBook 上").
    - **叫醒它 / Wake it** — shown only when it can actually work: another awake device on the same
      LAN can send Wake-on-LAN, or the device is a cloud VM with a start API.
    - **先等等 / Hold** (default): wait until it wakes. No countdown, because waiting is free and
@@ -526,7 +526,7 @@ with what it can do.**
 | `device.asleep.decision` | {device} 睡着了，上面有 {n} 件事停着。 | {device} is asleep with {n} tasks paused. |
 | `device.unreachable.decision` | 连不上 {device} {duration} 了，上面有 {n} 件事停着。 | Can't reach {device} for {duration}; {n} tasks are paused. |
 | `device.move` | 好，换到 {device} 接着做 | Go, continue on {device} |
-| `device.move.loss` | 最后 {min} 分钟没存档的改动会留在 {device} 上 | The last {min} minutes of unsaved changes stay on {device} |
+| `device.move.loss` | 最后 {min} 分钟没保存的改动会留在 {device} 上 | The last {min} minutes of unsaved changes stay on {device} |
 | `device.wake` | 叫醒它 | Wake it |
 | `device.waking` | 正在叫醒 {device}… | Waking {device}… |
 | `device.wake.failed` | 没叫醒。它可能没插电，或者不在家里的网络上 | It didn't wake. It may be unplugged or off the home network |
@@ -829,9 +829,9 @@ sees it. Visible only when:
 
 ## 6. Glossary gaps and state changes to run through the change loop
 
-*Status 2026-11-09:* the device states, 额度, 叫醒, 连上 / 断开, 远程打开 and 换到 X 接着做 are in the
+*Status 2026-11-09:* the device states, 额度, 叫醒, 连上 / 断开, 在哪儿都能用 and 换到 X 接着做 are in the
 glossary (D51, D54), and the device-offline rule is D52 Q1. Still open: 登录 · 登录过期 and 新伙伴
-(collected in `OPEN-QUESTIONS.md` §9).
+(reviewed in `../glossary-review-2026-11-09.md`, D66).
 
 | Proposed (zh / en) | Used for | Notes |
 |---|---|---|
@@ -839,7 +839,7 @@ glossary (D51, D54), and the device-offline rule is D52 Q1. Still open: 登录 �
 | 额度 / quota | subscription limit | alternative 用量上限 / usage limit |
 | 登录 · 登录过期 / Sign in · signed out | harness login | |
 | 连上 / Connect (pair), 断开 / Disconnect | pairing, revoking | avoids "pair/配对" jargon |
-| 远程打开 / Reach from anywhere | the remote-access ability (本事) | In the glossary since D51 |
+| 在哪儿都能用 / Reach from anywhere | the remote-access ability | In the glossary (D51, reworded D66) |
 | 换到 {device} 接着做 / Continue on {device}; 交给 {harness} / Let {harness} continue | handoff | glossary has no shown word for handoff; these are action phrases |
 | 叫醒 / Wake | wake a device | |
 | 新伙伴 / New partner | persona creation | uses the glossary category word 伙伴 / Partner |

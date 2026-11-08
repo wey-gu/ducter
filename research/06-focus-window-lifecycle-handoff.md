@@ -3,7 +3,7 @@
 Researched 2026-11-08. This builds on `01`–`03` and does not repeat them: OpenClaw announce, dsh-superagent's ≤600-char
 reports, Raft's cold recycle, and the harness control surfaces are already covered there.
 Clones (read-only, nothing executed) are at
-`<scratch>`, written `R/` below.
+`<scratch>/repos/`, written `R/` below.
 **V** = verified in source or official docs. **I** = my inference. **3P** = secondary source.
 
 ---

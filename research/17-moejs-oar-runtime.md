@@ -6,7 +6,7 @@ to not depend on Bun/Node?
 Legend: **[V]** = verified this session from source or the GitHub API (path:line or URL). **[I]** = inferred,
 judgment, or prior knowledge not re-checked today. Nothing was executed; all repos were read only.
 
-Clones (read-only) under `<scratch>`:
+Clones (read-only) under `<scratch>/repos/`:
 - `moejs` = MoeForge/moejs @ `df42231` (2026-11-03)
 - `oar-moe` = botiverse/oar @ `55c836c` (v0.95.1, 2026-11-08). This is newer than `oar-latest` (`2e235c8`).
 

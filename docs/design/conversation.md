@@ -13,6 +13,19 @@ human opens them.
    line. The main AI sees each open job as an explicit pending marker.
 3. **Result.** A new message replying to the ask, rendered from the job's typed report.
 
+**The result's anatomy (D60).** The partner's words are the outcome only, in the user's terms,
+plus what was left out and what is unverified. Everything else is rendered by the client from
+the typed report, under the words: 怎么知道的 / How I know (chips), 发出去的 / Sent out (always
+shown for a task with a place, "没有 / Nothing" included), and the actions (合进 {branch} /
+Merge, 开草稿 PR / Open draft PR, 看改动 / See changes). The partner never restates them in
+prose. **Words freeze, chips live:** the message text never changes once sent; its chips are
+live views of typed state (checking → done, a PR merged); a change of *meaning* is a new
+message. Full anatomy: `flows/I-results.md` §0.
+
+**Asks (D67).** An ask about how to do the work (reversible) always carries a default and a
+time, 10 min unless the work suggests otherwise; only effect-ladder asks (`flows/G-safety.md`
+§0) may wait without one.
+
 **Executors.** All three return the same report, so they look the same to the human.
 
 | Executor | Use when (starting budget; logged and tuned) |
@@ -25,6 +38,8 @@ human opens them.
   the fork's checkpoint. The fork itself does not continue, so a long job never carries the
   whole channel.
 - **Follow-ups** while a job runs are steered in or queued, and the sender gets a receipt.
+  After a job, a follow-up goes to the same task only when it builds on that task's unmerged
+  change; anything else opens a new task, and a task is retitled when its job changes (D67).
   "Never mind" cancels the job.
 - **Models.** Text uses one model. Voice adds a realtime front-end limited to an allow-list,
   which escalates to the main AI and logs every utterance (OpenAI's chat-supervisor

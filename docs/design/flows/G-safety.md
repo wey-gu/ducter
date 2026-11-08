@@ -1,12 +1,12 @@
 # Flows G: Safety You Can See (放心)
 
-> Draft 1 · 2026-11-09 · Status: **drafted, not reviewed**. Covers scenarios G1–G7
+> Draft 1 · 2026-11-09 · Status: **drafted; its open questions were decided 2026-11-09 (D60, D61), words per D66**. Covers scenarios G1–G7
 > (`product-model.md` §6 "G. Safety", widened). Builds on principle 18, D16 (no per-call
 > approvals), D26 (push and PR defaults), D27 (draft copies), D47/D48 and `system.md`
 > (env-gate, credentials, isolation), `research/25` (vault, per-site policy, audit),
 > D52 Q6 (draft PR countdown on personal repos) and Q12 (quiet hours), D3 in
 > `D-decisions-attention.md` (quiet hours for attention), B5 in `B-kinds-of-work.md` (sign-in
-> by takeover), and `I-results.md` (the Outside line).
+> by takeover), and `I-results.md` (the Sent out line).
 >
 > Tags: **[doc]** already stated in a design note or decision; **[I]** this draft's proposal,
 > not yet decided; **[ext]** outside evidence not yet in `research/`. Nothing here is a Dn
@@ -30,7 +30,7 @@ Why not approvals [I, evidence thin]: prompts that interrupt every call train pe
 through. The best-known measurement is browser security warnings, which users clicked through
 at high rates (Akhawe & Felt, USENIX Security 2013 [ext, from memory, not re-verified here]).
 An approval asked fifty times a day carries no information by the fiftieth. A dedicated
-research report on approval fatigue and undo-send is worth writing (proposed as the next free report number, `research/31`; 29 is now the VPS-logins report).
+research report on approval fatigue and undo-send is worth writing (proposed as the next free report number; 29 and 31 are taken).
 
 **Rule 2. Asks are rare and earned** [I]. Ducter asks before an effect only when it does at
 least one of these:
@@ -39,7 +39,7 @@ least one of these:
 - **spends money**;
 - **goes beyond 可以碰 / May touch**.
 
-Everything else runs, is recorded, and shows up in the result's Outside line and in the day's
+Everything else runs, is recorded, and shows up in the result's Sent out line and in the day's
 record. Silence still means success.
 
 **Rule 3. The effect ladder (defaults)** [doc where tagged, else I]:
@@ -124,7 +124,7 @@ Four real examples, one card shape:
 
 ```
 W (or a routine run) wants an outside effect ──► gate: classify against the effect ladder + Rules
-  ├─ policy: run ──► runs; recorded (G5); appears in the result's Outside line (I1)
+  ├─ policy: run ──► runs; recorded (G5); appears in the result's Sent out line (I1)
   ├─ policy: ask with countdown (reversible) ──► decision card (D1 shape) with the preview
   ├─ policy: ask (reaches people / can't come back / money / beyond May touch)
   │     ──► decision card, no countdown: "这件不会自己动，等你定 / I won't go ahead on this without you"
@@ -249,7 +249,7 @@ Go ──► sending row replaces the card:
   ├─ Undo within the window ──► intent → undone; the card returns as it was, with Edit open;
   │                             receipt "没发，还在这儿 / Not sent; it's right here"
   └─ window ends ──► sends ──► row settles: "发出去了 · 14:02 / Sent · 14:02" + destination link
-        ├─ the destination accepted ──► recorded (G5); Outside line updated (I1)
+        ├─ the destination accepted ──► recorded (G5); Sent out line updated (I1)
         └─ the destination refused (bounce, rate limit, 403) ──► "没发出去：{reason} / Didn't
               go out: {reason}" with 再试一次 / Try again; no automatic retry [doc D5, research/25]
 ```
@@ -452,12 +452,12 @@ browser task works (B5 shape) ──► reaches a step the env-gate classifies [
   └─ pay ──► Needs you, no default, no countdown:
           "到付款这步了：ducter.dev 续费一年，$12.18。付款要你自己来。/ This is the payment
           step: ducter.dev for one more year, $12.18. Paying is yours to do."
-          [接手付款 / Take over to pay]  [先等等]  [回复…]
+          [你来付 / You pay]  [先等等]  [回复…]
           Take over ──► Screen tab in takeover; banner "你在操作 · {name} 暂停了" [doc B5];
                         what the user types and sees here never reaches the AI [doc]
-          Hand back ──► the agent re-reads the page (hold-before-send), finds the receipt,
+          Give it back ──► the agent re-reads the page (hold-before-send), finds the receipt,
                         captures it as evidence ──► result: "续好了，到 2027-11-12 / Renewed
-                        until 2027-11-12" + capture chip + Outside line "你付了 $12.18 /
+                        until 2027-11-12" + capture chip + Sent out line "你付了 $12.18 /
                         You paid $12.18"
 ```
 
@@ -475,7 +475,7 @@ new state; it is a Needs-you decision without a default.
 | i18n key | zh | en |
 |---|---|---|
 | `browser.pay.q` | 到付款这步了：{what}，{amount}。付款要你自己来。 | This is the payment step: {what}, {amount}. Paying is yours to do. |
-| `browser.pay.go` | 接手付款 | Take over to pay |
+| `browser.pay.go` | 你来付 | Take over to pay |
 | `browser.pay.unreadable` | 金额我读不清，请在画面里看 | I can't read the amount reliably; check it on the screen |
 | `browser.paid.outside` | 你付了 {amount} | You paid {amount} |
 | `browser.submit.q` | 要提交这张表吗？ | Submit this form? |
@@ -525,7 +525,7 @@ eyes while paused). The pay card has no countdown ring at all, which is itself t
 - **Feels after:** "One short page: what went out, which accounts were used, what changed on
   my machines, what it cost. Most days it says nothing went out at all." 放心, and quietly
   惊喜 the first time the page is empty.
-- **First time:** the user asks ("今天你都对外做了什么？"), or taps the quiet line on On hand.
+- **First time:** the user asks ("今天你都发出去了什么？"), or taps the quiet line on On hand.
 
 **First principles.** The transcript records every tool call; that is too much to read and
 not what the user is asking. The question is about *consequences outside*, so the record
@@ -534,9 +534,9 @@ lists only effects that left the task's own place, plus sign-ins, secret uses, a
 ### 2. Flow
 
 ```
-"今天你都对外做了什么？" ──► M answers in one line + the record card:
-    "今天对外 4 件：推了 2 个分支，开了 1 个草稿 PR，用了一次 Cloudflare 账号。都能撤回。"
-On hand header (quiet, muted text): "今天对外 4 件 → / Outside today: 4 →"   (or "今天对外：没有")
+"今天你都发出去了什么？" ──► M answers in one line + the record card:
+    "今天发出去的 4 件：推了 2 个分支，开了 1 个草稿 PR，用了一次 Cloudflare 账号。都能撤回。"
+On hand header (quiet, muted text): "今天发出去的 4 件 → / Sent out today: 4 →"   (or "今天发出去的：没有")
   ──► the record view (inside On hand, like All results):
       发出去的 / Went out
         09:12  推送 ducter/secret-guard → wey-gu/ducter          对话框拦住密钥          [撤销]
@@ -551,7 +551,7 @@ On hand header (quiet, muted text): "今天对外 4 件 → / Outside today: 4 �
     the honest follow-up while one exists
 ```
 
-**Empty day** [I]: "今天没有对外动过任何东西。/ Nothing went outside today." with the day's
+**Empty day** [I]: "今天什么都没发出去。/ Nothing was sent out today." with the day's
 task count beneath ("做完了 6 件，都在你的设备上 / 6 tasks finished, all on your devices").
 The empty state is designed as carefully as the full one.
 
@@ -561,7 +561,7 @@ the conversation ("上周四推过 mem 吗？").
 **Honesty about coverage** [I]. The record lists what passed Ducter's gate. A harness running
 with approvals off on the user's Mac could still run, say, `git push` itself. Until the gate
 covers it, the record also lists outside-looking commands seen in transcripts, in their own
-group, labelled "从对话记录里看到的 / Seen in transcripts", and the view says so once: "这里
+group, labelled "它的记录里看到的 / Seen in its log", and the view says so once: "这里
 是经过 {name} 的；在你 Mac 上直接跑的命令，我从对话记录里尽量找出来了。/ This lists what
 went through {name}; for commands run directly on your Mac, I've picked out what I could from
 the transcripts."
@@ -576,17 +576,17 @@ gate is complete) `seen_command` derived from tool calls [I].
 
 | i18n key | zh | en |
 |---|---|---|
-| `record.ask_answer` | 今天对外 {n} 件：{summary}。{undo_note} | Outside today: {n}. {summary}. {undo_note} |
+| `record.ask_answer` | 今天发出去的 {n} 件：{summary}。{undo_note} | Sent out today: {n}. {summary}. {undo_note} |
 | `record.all_undoable` | 都能撤回。 | All of it can be undone. |
-| `record.entry` | 今天对外 {n} 件 → | Outside today: {n} → |
-| `record.entry_none` | 今天对外：没有 | Outside today: nothing |
-| `record.title` | {name} 今天对外做了什么 | What {name} did outside today |
+| `record.entry` | 今天发出去的 {n} 件 → | Sent out today: {n} → |
+| `record.entry_none` | 今天发出去的：没有 | Sent out today: nothing |
+| `record.title` | {name} 今天发出去的做了什么 | What {name} did outside today |
 | `record.group.went_out` | 发出去的 | Went out |
 | `record.group.accounts` | 用过的账号 | Accounts used |
 | `record.group.devices` | 在你设备上动过的 | Changed on your devices |
 | `record.group.spent` | 花掉的 | Spent |
-| `record.group.seen` | 从对话记录里看到的 | Seen in transcripts |
-| `record.empty` | 今天没有对外动过任何东西。 | Nothing went outside today. |
+| `record.group.seen` | 它的记录里看到的 | Seen in its log |
+| `record.empty` | 今天什么都没发出去。 | Nothing was sent out today. |
 | `record.empty_sub` | 做完了 {n} 件，都在你的设备上 | {n} tasks finished, all on your devices |
 | `record.coverage_note` | 这里是经过 {name} 的；在你 Mac 上直接跑的命令，我从对话记录里尽量找出来了。 | This lists what went through {name}; for commands run directly on your Mac, I've picked out what I could from the transcripts. |
 | `record.day.yesterday` | 昨天 | Yesterday |
@@ -615,10 +615,10 @@ Allowance figures reuse 额度 / Allowance [doc glossary].
 
 ### 7. v1 tonight vs later
 
-- **Tonight:** per task, an "对外 / Outside" card in the opened task's dossier, listing
+- **Tonight:** per task, an "发出去的 / Sent out" card in the opened task's dossier, listing
   outside-looking commands found in its transcript (`git push`, `gh pr …`, `npm publish`,
-  `curl -X POST`, `ssh`, `wrangler deploy` …), labelled "从对话记录里看到的", with "还没有
-  对外动过 / Hasn't touched anything outside" when there are none (desktop change 3).
+  `curl -X POST`, `ssh`, `wrangler deploy` …), labelled "它的记录里看到的", with "还没有
+  发出去任何东西 / Nothing sent out yet" when there are none (desktop change 3).
 - **Next:** intents from the gate; the On hand entry line and the day view.
 - **Later:** accounts used, spend, day switcher, export.
 
@@ -643,13 +643,13 @@ D3 covers notifications during quiet hours. This scenario covers *effects*.
 | During quiet hours | Behaviour |
 |---|---|
 | Reversible, in-scope effects (push `ducter/*`, a draft PR whose countdown ends) | Run on time [doc D3: reversible defaults fire] |
-| People-facing effects that would go out **by default or from a routine** (email, post, PR comment, mark ready, request review) | Wait until quiet hours end + 30 min, shown as "安静时段里发给别人的，我留到 {time} / Anything going to other people during quiet hours waits until {time}" |
+| People-facing effects that would go out **by default or from a routine** (email, post, PR comment, mark ready, request review) | Wait until quiet hours end + 30 min, shown as "免打扰里发给别人的，我留到 {time} / Anything going to other people during quiet hours waits until {time}" |
 | People-facing effects the user Go'd **in the moment** | Go now. It was their call |
 | Effects with no default (irreversible) | Already wait for the user [doc D1] |
 
 Why [I]: a reversible push at 3 a.m. harms no one, but an email or post at 3 a.m. is seen by
 other people as *the user* acting at 3 a.m., and the user can't use an undo window while
-asleep. A Rule can lift it ("周报定时 7 点发，安静时段也发 / send the weekly report at 7 even
+asleep. A Rule can lift it ("周报定时 7 点发，免打扰也发 / send the weekly report at 7 even
 in quiet hours").
 
 ```
@@ -667,8 +667,8 @@ not a new state (as with pause, D52 Q3).
 
 | i18n key | zh | en |
 |---|---|---|
-| `quiet.outside_wait` | 安静时段里发给别人的，我留到 {time} | Anything going to other people during quiet hours waits until {time} |
-| `quiet.outside_reason` | 在等 · 安静时段过了再发 | Waiting · sends after quiet hours |
+| `quiet.outside_wait` | 免打扰里发给别人的，我留到 {time} | Anything going to other people during quiet hours waits until {time} |
+| `quiet.outside_reason` | 在等 · 免打扰过了再发 | Waiting · sends after quiet hours |
 | `quiet.outside_rule` | 规则：{rule} | Rule: {rule} |
 
 ### 5. Motion
@@ -711,16 +711,16 @@ Every task shows 可以碰 / May touch in its dossier, literally [I]:
 | Where it works | May touch (zh / en) |
 |---|---|
 | Worktree on your device | 这个分支上的改动 · 你在这台 {device} 上能碰的文件也能碰到 / Changes on this branch · it can also reach any file you can on {device} |
-| A sandbox (gVisor Linux, Lume VM) | 只有沙盒里的东西，碰不到你的文件 / Only what's inside the sandbox; can't reach your files |
+| A sandbox (gVisor Linux, Lume VM) | 碰不到你的文件 / Can't touch your files |
 | A non-git folder, draft copy | 草稿副本；原文件要你说好才改 / A draft copy; originals change only when you say Go |
 | A trusted folder | 这个文件夹，直接改 / This folder, directly |
 | The browser profile | 这个浏览器里登录过的网站 / Sites signed in to in this browser |
 | Your real Chrome (v1.x opt-in) | 你的真 Chrome，不隔开 / Your real Chrome, no separation (red chip) [doc system.md] |
 
 First task directly on the Mac, once, under the chip [I]:
-"提醒一句：在这台 Mac 上做事时，它能碰到你能碰的文件。要更严的，可以让它在沙盒里做。/
+"提醒一句：在这台 Mac 上做事时，它能碰到你能碰的文件。要更严的，可以让它碰不到你的文件。/
 Heads-up: working on this Mac, it can reach any file you can. For stricter limits, have it
-work in a sandbox." with [以后都在沙盒里 / Use a sandbox from now on] (becomes a Rule) and
+keep it away from your files." with [以后都别碰我的文件 / Keep it off my files from now on] (becomes a Rule) and
 [知道了 / Got it].
 
 ### 3. States
@@ -733,13 +733,13 @@ None. `Place.isolation` is a typed field already proposed in `system.md` hooks [
 |---|---|---|
 | `reach.title` | 可以碰 | May touch |
 | `reach.worktree` | 这个分支上的改动 · 你在这台 {device} 上能碰的文件也能碰到 | Changes on this branch · it can also reach any file you can on {device} |
-| `reach.sandbox` | 只有沙盒里的东西，碰不到你的文件 | Only what's inside the sandbox; can't reach your files |
+| `reach.sandbox` | 碰不到你的文件 | Can't touch your files |
 | `reach.draft_copy` | 草稿副本；原文件要你说好才改 | A draft copy; originals change only when you say Go |
 | `reach.trusted` | 这个文件夹，直接改 | This folder, directly |
 | `reach.browser` | 这个浏览器里登录过的网站 | Sites signed in to in this browser |
 | `reach.real_chrome` | 你的真 Chrome，不隔开 | Your real Chrome, no separation |
-| `reach.first_mac` | 提醒一句：在这台 Mac 上做事时，它能碰到你能碰的文件。要更严的，可以让它在沙盒里做。 | Heads-up: working on this Mac, it can reach any file you can. For stricter limits, have it work in a sandbox. |
-| `reach.use_sandbox` | 以后都在沙盒里 | Use a sandbox from now on |
+| `reach.first_mac` | 提醒一句：在这台 Mac 上做事时，它能碰到你能碰的文件。要更严的，可以让它碰不到你的文件。 | Heads-up: working on this Mac, it can reach any file you can. For stricter limits, have it work in a sandbox. |
+| `reach.use_sandbox` | 以后都别碰我的文件 | Keep it off my files from now on |
 | `reach.got_it` | 知道了 | Got it |
 
 ### 5. Motion
@@ -749,7 +749,7 @@ None beyond the line fading in once. Isolation is a fact, not an event.
 ### 6. Edge cases
 
 - **No sandbox available on this device** (no gVisor, Lume not installed): the button reads
-  "在 {other device} 的沙盒里做 / Use the sandbox on {other device}", or is hidden with no
+  "在 {other device} 上做，碰不到你的文件 / Do it on {other device}, away from your files", or is hidden with no
   apology if none exists.
 - **Multi-repo task:** May touch lists each writable repo.
 - **The consumer user who has never heard the word sandbox:** the line carries its own
@@ -768,7 +768,7 @@ None beyond the line fading in once. Isolation is a fact, not an event.
 
 | Concept (internal) | zh / en | Used in | Note |
 |---|---|---|---|
-| outside effects | 对外 / Outside | G1–G6, I1 | One word for "left your devices"; alternatives 外面 / 出去的 are weaker |
+| outside effects | 发出去的 / Sent out | G1–G6, I1 | One word for "left your devices"; alternatives 外面 / 出去的 are weaker |
 | intent card header | 会发出去 / Will go out | G1 | The glossary already shows intents as "要推送到… / Will push to…"; this is the generic header |
 | edit an outgoing preview | 改一改 / Edit | G1 | |
 | send / push / post / submit (named Go) | 发出去 / Send · 推送 / Push · 发布 / Post · 提交 / Submit | G1, G4 | Named Go labels [doc D1 allows naming] |
@@ -778,13 +778,13 @@ None beyond the line fading in once. Isolation is a fact, not an event.
 | secret (key, token) | 密钥 / Key | G3 | |
 | add a credential | 放进去 / Add it | G3 | |
 | revoke | 不让用了 / Stop using it | G3 | Not 撤销: revoking is not undoing |
-| take over to pay | 接手付款 / Take over to pay | G4 | Builds on 接手 [doc D51] |
-| the record | 今天对外 / Outside today; groups 发出去的 · 用过的账号 · 在你设备上动过的 · 花掉的 | G5 | |
-| seen in transcripts | 从对话记录里看到的 / Seen in transcripts | G5 | Honest label for detected (not gated) effects |
-| sandbox | 沙盒 / Sandbox | G7 | Always followed by its plain meaning; see GQ8 |
+| take over to pay | 你来付 / You pay | G4 | Builds on 接手 [doc D51] |
+| the record | 今天发出去的 / Sent out today; groups 发出去的 · 用过的账号 · 在你设备上动过的 · 花掉的 | G5 | |
+| seen in transcripts | 它的记录里看到的 / Seen in its log | G5 | Honest label for detected (not gated) effects |
+| sandbox | 碰不到你的文件 / Can't touch your files | G7 | Always followed by its plain meaning; see GQ8 |
 | May touch on tasks | 可以碰 / May touch | G7 | Already in the glossary for routines [doc D51]; extended to tasks |
 
-## Open questions (recommendation first; answer "按建议" to take all)
+## Open questions (decided 2026-11-09 as D61; GQ8 changed: no 沙盒 noun, see `docs/decisions.md`)
 
 | # | Question | Recommendation (default) | Why it matters |
 |---|---|---|---|
@@ -794,13 +794,13 @@ None beyond the line fading in once. Isolation is a fact, not an event.
 | GQ4 | Offer "do this without asking from now on"? | **After 3 Go's of the same kind to the same destination within 14 days**, never for floor items | Asks must stay rare without the user writing rules |
 | GQ5 | The floor no Rule can lower | **Payments (the user pays), passwords (never typed by the agent), effects requested by untrusted content, no-default decisions always visible.** Merge stays Rule-allowed [doc] | Some things must never be configurable away |
 | GQ6 | A secret that reached the Log: redact? | **Yes: a superseding redaction event plus blob deletion, and advise rotation.** A narrow exception to "never delete" (principle 1) | An append-only log otherwise keeps a secret forever |
-| GQ7 | Until the gate covers harness commands, list outside-looking commands from transcripts? | **Yes, in their own group labelled "Seen in transcripts"**, with the coverage note | Approvals are off on the Mac today; honesty requires showing what we can see |
-| GQ8 | The word for a sandbox | **沙盒 / Sandbox, always followed by its plain meaning** ("can't reach your files"); run the fresh-user comprehension proxy before final | Technical word, consumer audience |
-| GQ9 | On hand entry line for the record | **Always shown, muted**: "今天对外：没有" is itself the reassurance | Visibility vs clutter |
+| GQ7 | Until the gate covers harness commands, list outside-looking commands from transcripts? | **Yes, in their own group labelled "Seen in its log"**, with the coverage note | Approvals are off on the Mac today; honesty requires showing what we can see |
+| GQ8 | The word for a sandbox | **碰不到你的文件 / Can't touch your files, always followed by its plain meaning** ("can't reach your files"); run the fresh-user comprehension proxy before final | Technical word, consumer audience |
+| GQ9 | On hand entry line for the record | **Always shown, muted**: "今天发出去的：没有" is itself the reassurance | Visibility vs clutter |
 | GQ10 | PR comments, mark ready, request review | **Ask, no countdown** by default; a Rule can allow | They notify people and can't be unsent |
 | GQ11 | The sending row's slide toward the destination: motion or metaphor? | **Treat it as motion**, check it in prototype review; if raters read it as anything but "leaving", drop it | AGENTS.md metaphor rule |
 | GQ12 | Extend 可以碰 / May touch from routines to every task's dossier | **Yes**, same word, same meaning | One concept for scope everywhere |
-| GQ13 | Write `research/31` (the draft said 29, now taken; approval fatigue, undo-send, prior art for audit views) before review? | **Yes, short report**; the Rule 1 evidence is currently from memory | The principle's evidence is thin |
+| GQ13 | Write the next free research report (29 and 31 are taken; approval fatigue, undo-send, prior art for audit views) before review? | **Yes, short report**; the Rule 1 evidence is currently from memory | The principle's evidence is thin |
 
 ## Artboards (proposed, not built)
 

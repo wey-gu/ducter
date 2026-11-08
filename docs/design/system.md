@@ -58,9 +58,10 @@ are kept). `--bare` is not usable: it drops OAuth / subscription login.
 
 - **Task model:** the partner may pass a model per task. If it passes none, `DUCTER_TASK_MODEL`
   applies; if that is unset, the harness's own default applies.
-- **Browser tasks: isolated** (W5-2, proposed): only the curated cua-driver tools, no user MCP
+- **Browser tasks: isolated** (W5-2, D62): only the curated cua-driver tools, no user MCP
   servers (which would include a path to the user's real Chrome), measured 332k → 140k input
-  tokens on one lookup.
+  tokens on one lookup. Their `log_search` / `log_read` are scoped to their own task (D62; to
+  build, `todo.md`).
 
 ## Waits (principle 16)
 
@@ -94,6 +95,10 @@ changes.
   `--agent-id` and no `--space`: nmem takes the identity from `NMEM_AGENT_ID` and the Space
   from `NMEM_SPACE` or its own default, so Ducter never enrolls an identity or picks a Space.
   Missing or unreachable Mem: the tools answer "not available" and the partner carries on.
+- **Bridge (DRAFT, `bridge.md`).** Agents Ducter didn't start reach the persona through its Mem
+  Agent mailbox, never a harness session. Ducter only reads that inbox and replies to messages
+  already in the Log, under a named Agent Context the user approved. It never runs setup, enrolls an
+  identity, or picks a Space.
 - **Everything else is read-only**: the user's skills, global rules, Working Memory, Spaces.
 - **Subscriptions** are used only through the user's own unmodified official binary, for
   themselves. There is no proxying and no impersonation, which is why Ducter is
@@ -140,9 +145,11 @@ changes.
   every caller show a device token (pair the desktop and the CLI like any other device).
   Limit: with it off, the main's own tasks can't reach `/mcp`, because their config carries only
   the role token. So today it suits a main that places all of its tasks on workers.
-  Recommended next step (todo): a 0600 local token in the data dir. The CLI, the desktop on
-  that machine and the tasks' MCP config would present it, so `off` costs nothing and can
-  become the default whenever other human users exist.
+  **Decided (D57):** a 0600 local token in the data dir, presented automatically by the CLI,
+  the desktop on that machine and the tasks' MCP config. Once it exists, every caller shows a
+  token, loopback included, `DUCTER_LOCAL_TRUST` is retired, and an SSH-tunnel client connects
+  once with a code like any other device. Until then Ducter is not recommended on a shared
+  host.
 
 ## Storage and topology (principle 19)
 
@@ -160,12 +167,11 @@ changes.
 - **Enrollment.** A one-line installer served by the user's own Worker. The runner generates
   its key and shows a code and a QR; the user approves it from phone or web.
 - **Clients**
-  - Desktop and web: MyGo native UI (Go, GPU-drawn, also WASM).
-  - Mobile: Expo.
-  - *As built (2026-11-09):* the phone client is `apps/web`, a Preact bundle served by the main
-    process at `/app`, with Web Push from `packages/core/src/push.ts`. It shares the desktop's
-    i18n keys and Pebble tokens. Departing from D20 for phone web is pending the user
-    (`flows/OPEN-QUESTIONS.md` 1.3).
+  - Desktop: MyGo native UI (Go, GPU-drawn).
+  - Web (D58): `apps/web`, a Preact bundle served by the main process at `/app`, phone first,
+    with Web Push from `packages/core/src/push.ts`. It shares the desktop's i18n keys and Pebble
+    tokens. A MyGo WASM web client is not planned.
+  - Native mobile later: Expo.
   - The client protocol comes first; the two UI codebases share only the protocol, the state
     model, and design tokens.
 
@@ -230,7 +236,7 @@ Ducter writes is Caddy's, which adds `X-Forwarded-For`.
 
 **Desktop.** First run gains a quiet "我的 Ducter 在另一台机器上 / My Ducter is on another
 machine" that opens **连接到你的 Ducter / Connect to your Ducter**: address (or the whole link)
-and 配对码. The token goes to `<user config>/Ducter/connection.json` (0600, dir 0700); the
+and 连接码. The token goes to `<user config>/Ducter/connection.json` (0600, dir 0700); the
 Keychain is a later upgrade. A refused upgrade from a non-loopback server brings the card back
 with one line ("这台 Mac 已经和你的 Ducter 断开了"). `DUCTER_URL` + `DUCTER_TOKEN` still override.
 - **Whose paths.** The welcome carries `machine`: sha256 of the main's machine id (macOS
@@ -344,7 +350,7 @@ redesign later:
   - blocks the agent during takeover.
 
   Video is relayed over the runner's outbound socket.
-- **UI:** an opened task gets a **Screen** tab: live view, plus Take over / Hand back / Pause /
+- **UI:** an opened task gets a **Screen** tab: live view, plus Take over / Give it back / Pause /
   Snapshot.
 - **Fallback backend:** agent-browser (Vercel, Apache-2.0) behind the same `EnvironmentPort`.
 - **No validation spike (D47):** integrate cua-driver directly and fix issues as they appear.
@@ -384,10 +390,10 @@ What runs today, before sandboxes and spacesd:
   loses its window, but sign-ins finished more than ~30 s earlier are kept and the task
   reopens it.
 
-### Proposed: the Ducter browser's identity (DRAFT, for review; not a decision)
+### The Ducter browser's identity (D62)
 
 The problem: the Ducter browser is a second, identical Google Chrome (same Dock icon, same
-window chrome), so a user cannot tell it from their own. The proposal uses Ducter's own
+window chrome), so a user cannot tell it from their own. It uses Ducter's own
 DevTools side channel (browser-level chores only, never page content). It is built and on
 by default in the slice, so it can be reviewed live:
 
@@ -400,7 +406,7 @@ by default in the slice, so it can be reviewed live:
 
 Alternatives considered: minimise the window (hides the agent, and screenshots of a
 minimised window may fail), or a Chrome theme colour (needs edits to the profile's
-Preferences). Open question: `flows/OPEN-QUESTIONS.md` (W5-1).
+Preferences).
 
 ## Credentials and logged-in profiles (D48, research/25)
 

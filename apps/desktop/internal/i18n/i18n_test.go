@@ -138,10 +138,10 @@ func TestChineseNameSitsFlush(t *testing.T) {
 	if got := zh.T("empty.conversation.title", "小鸭"); got != "你好，我是小鸭。" {
 		t.Errorf("got %q", got)
 	}
-	if got := zh.T("face.done", "小鸭"); got != "小鸭刚交回一件事" {
+	if got := zh.T("face.done", "小鸭"); got != "小鸭刚做完一件事" {
 		t.Errorf("got %q", got)
 	}
-	if got := zh.T("face.done", "Ducter"); got != "Ducter 刚交回一件事" {
+	if got := zh.T("face.done", "Ducter"); got != "Ducter 刚做完一件事" {
 		t.Errorf("got %q", got)
 	}
 }

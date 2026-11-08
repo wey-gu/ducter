@@ -7,7 +7,7 @@ harnesses. This report covers only how they model repos and environments.
 
 **Sources.**
 - Shallow clones, read-only and never executed, under
-  `<scratch>`
+  `<scratch>/repos/`
   (written `R/` below).
 - Official docs, fetched 2026-11-08.
 

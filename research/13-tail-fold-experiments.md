@@ -20,7 +20,7 @@ Tags: **[V]** measured here · **[I]** inferred.
 - **Read**: `big.txt`, 221 lines, **16.8K tokens** as a `Read` tool_result. One meaningful line: port 48213, owner
   Marisol.
 - **Fold summary**: about 100 tokens, marked `[FOLDED READ]`, with a pointer for re-reading the file.
-- Scripts are in `<scratch>`:
+- Scripts are in `<scratch>/scripts/`:
   `fold_gen.py` (spine JSONL + file), `fold_run.py` (one call + usage), `fold_rewrite.py` (copy to a new session id
   with `fold`, `branch <uuid>`, `fold_tamper_sig`, `fold_drop_thinking`), `fold_deep.py` (fold + N later pairs),
   `codex_fold.py`, `codex_recut.py`. Raw stream outputs are in `.../scratchpad/exp3/out/`.

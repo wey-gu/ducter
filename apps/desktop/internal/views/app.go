@@ -77,6 +77,9 @@ type App struct {
 	// the window only connects.
 	Backend Backend
 	setup   setupState
+	// OnResting is told when Ducter is stopped on purpose or woken (the
+	// app menu's item follows it).
+	OnResting func(resting bool)
 
 	Route  Route
 	TaskID string

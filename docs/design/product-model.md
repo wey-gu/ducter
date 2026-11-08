@@ -23,37 +23,51 @@
 | Focus Window, window | **事 / Task** | A job big enough to need its own session and place. **Only windows get cards** |
 | workspace view | "展开 / Open" (no name of its own) | A task opened to full depth |
 | overview board | **手头 / On hand** | Every task across all personas |
-| attention states | 等你 / Needs you · 在做 / Working · 在等 / Waiting · 做完了 / Done · 没成 / Didn't work · 放下了 / Dropped | `done?` shows as "做完了 · 核对中 / Done · checking" |
+| attention states | 等你 / Needs you · 在做 / Working · 在等 / Waiting · 做完了 / Done · 没成 / Didn't work · 放下了 / Dropped | `done?` shows as "做完了 · 在检查 / Done · checking"; `queued` shows as "还没开始 / Not started yet" |
 | decision actions | **好 / Go** · **先等等 / Hold** · **回复… / Reply…** | The Go button may name the action ("Rebase") |
-| Project | **项目 / Project**; no project = **随手 / Loose** | An editable grouping label |
+| Project | **项目 / Project**; no project = **其他 / Other** | An editable grouping label |
 | Place | **在哪儿做 / Where** | Where a task works |
 | Device (machine, runner) | **设备 / Devices** | |
 | Routine | **例行 / Routine** | Recurring or triggered work |
-| Waiter | (shown as the reason for Waiting: "在等 PR 有人回复 / Waiting for PR approval") | |
+| Waiter | (shown as the reason for Waiting: "在等 PR 通过 / Waiting for the PR to be approved") | |
 | `until` loop | "一直…直到… / Keep … until …" on the task | |
 | Rule | **规则 / Rule** | A standing preference stated in words |
 | device states | **醒着 / Awake · 睡着了 / Asleep · 连不上 / Can't reach** · wake = **叫醒 / Wake** | Never "broken" or "offline" wording for sleep |
-| quota | **额度 / Allowance** | One per AI account, shared across its devices |
-| screen place controls | **画面 / Screen** tab · **接手 / Take over** · **交还 / Hand back** | |
-| loop iteration | **第 n 轮 / Round n** | |
-| checkpoint | **存档 / Checkpoint** | |
+| quota | **额度 / limit** ("额度还剩 80% / 80% of the limit left") | One per AI account, shared across its devices |
+| screen place controls | **画面 / Screen** tab · **接手 / Take over** · **还给它 / Give it back** | |
+| loop iteration | **第 n 次 / Try n** | |
+| checkpoint | **保存了进度 · {time} / Progress saved · {time}**; in the dossier **保存的进度 / Saved progress** | Describes what happened; no noun to learn |
 | handoff | **换到 X 接着做 / Continue on X** | Never "superseded" in UI |
 | pause | **先停 / Pause** | Shown as a waiting reason |
-| Recipe | **准备方法 / Setup steps** | |
+| Recipe | **准备步骤 / Setup steps** | |
 | non-git draft copy | **草稿副本 / Draft copy** | |
-| routine fields | **复查 / Review on** · **可以碰 / May touch** | |
+| routine fields | **{date} 再问你 / Ask you again {date}** (review date) · **可以碰 / May touch** (also on every task, D61) | |
 | default outcomes | **按默认做了 / Went with the default** · **都按默认 / Go on all defaults** | |
-| outcomes | **停下了 / Stopped** · **撤销 / Undo** · **再试一次 / Try again** · **核对没过 / Check didn't pass** | |
-| a merge / draft PR whose result was lost with the connection | **不确定做成没有，看一下 / Not sure it went through — check** · **再试一次 / Try again** (pending user OK) | Only when the Log doesn't show it done after reconnecting. Never "failed" wording: it may have happened |
-| quiet hours | **安静时段 / Quiet hours** | |
-| remote access ability | **远程打开 / Reach from anywhere** | |
-| pairing a client with a server (D54) | **连接到你的 Ducter / Connect to your Ducter** · **地址 / Address** · **配对码 / Pairing code** · **连上 / Connect** · **断开 / Disconnect** | The desktop card and the CLI (`ducter pair`, `ducter devices disconnect`). A code "只能用一次 / works once". Never "token", "授权 / authorize" or "绑定" in UI |
-| a device that runs tasks for a main elsewhere (worker) | (a **设备 / Device**; in the CLI "干活的设备 / a machine that does work") | Shown with the device states (醒着 / Awake …). "Worker" stays internal |
-| server keeps running (systemd service) | **保持运行 / Keeps running** (doctor row) | |
-| capability (browser, computer use, phone, calls, remote access) | **本事 / Abilities** (research/27; pending user OK; runner-up 能力) | Equip = **装上 / Add to <device>**; remove = **取下 / Remove**; result = "MacBook 现在会上网了 / MacBook can now browse the web"; device detail "MacBook 会：… / can: …". Item names are ability phrases (上网, 用电脑, 远程打开). Never 学会/教会/赋予/授权 (they read as ordering a subordinate). Never 装备/Gear (reads as armour; rhymes with 设备). Claude Code skills stay **技能 / Skills** on their own page, never on the rack |
-| the partner saved something to long-term memory (Mem) | **记下了 · <title> / Noted · <title>** (pending user OK) | One quiet line under the reply, no card, no action. Never "已存入记忆 / saved to memory" in the partner's words; recall is never shown at all |
+| outcomes | **停下了 / Stopped** · **撤销 / Undo** · **再试一次 / Try again** · **检查没过 / Check didn't pass** | |
+| a merge / draft PR whose result was lost with the connection | **不确定做成没有，看一下 / Not sure it went through — check** · **再试一次 / Try again** | Only when the Log doesn't show it done after reconnecting. Never "failed" wording: it may have happened |
+| quiet hours | **免打扰 / Quiet hours** ("免打扰 23:00–08:00") | The word the user's phone already uses |
+| remote access ability | **在哪儿都能用 / Reach from anywhere** | Done: "MacBook 现在在哪儿都能用了" |
+| pairing a client with a server (D54) | **连接到你的 Ducter / Connect to your Ducter** · **地址 / Address** · **连接码 / Code** · **连上 / Connect** · **断开 / Disconnect** · again: **再连一次 / Connect it again** | The desktop card, the phone and the CLI (`ducter pair`, `ducter devices disconnect`). Sentences say "这个码只能用一次 / The code works once". Never "token", "配对 / pair", "授权 / authorize" or "绑定" in UI |
+| a device that runs tasks for a main elsewhere (worker) | (a **设备 / Device**; in the CLI "让这台电脑替另一个 Ducter 干活 / lend this machine to another Ducter"; the main is "Ducter 住的那台电脑 / the computer Ducter lives on") | Shown with the device states (醒着 / Awake …). "Worker" stays internal |
+| server keeps running (systemd service) | **一直开着 / Stays on** (doctor row) | |
+| capability (browser, computer use, phone, calls, remote access) | **no noun on screen** (D66). Headings: **你的设备，和它们会做的事 / Your devices and what they can do** · **还能装上的 / You can also add** | Equip = **装上 / Add to <device>**; remove = **取下 / Remove**; result = "MacBook 现在会上网了 / MacBook can now browse the web"; device detail "MacBook 会：… / can: …". Item names are ability phrases (上网, 用电脑, 在哪儿都能用). Never 学会/教会/赋予/授权 (they read as ordering a subordinate). Never 装备/Gear (reads as armour; rhymes with 设备). Claude Code skills stay **技能 / Skills** on their own page, never on the rack |
+| the partner saved something to long-term memory (Mem) | **记下了 · <title> / Noted · <title>** | One quiet line under the reply, no card, no action. Never "已存入记忆 / saved to memory" in the partner's words; recall is never shown at all |
+| a request from another agent through Nowledge Bridge (`bridge_msg` in) | **<X> 发来请求 · <gist> / Request from <X> · <gist>** (pending user OK, J-Q5) | One quiet line, then the partner's own Go/Hold question if it would act. Never 交接 / hand-off (that is a task changing body). Never "Bridge", "mailbox", "contact", "Space" in UI |
+| the partner answered that agent | **已回复 <X> / Replied to <X>** (pending user OK) | "Replied" is not "done"; nothing promises the other side has seen it |
 | Intent | (shown as a decision or a policy line: "要推送到 ducter/fix-ci / Will push to …") | |
-| Artifact | **成果 / Results** | |
+| a task message to the partner (report) | **告诉 {name} / Told {name}** (· 要你定 · 做完了 · 在等 · 没成); freshness "{time}更新 / updated {time}" | Never 汇报 or 交回给 (reporting up) |
+| task brief · transcript | **{name} 交代的 / What {name} asked for** · **过程 / What it did** | |
+| harness turn ended | **先做到这儿 / Stopped here for now** | Never "turn", "step", 这一轮, 这一步 |
+| a message to a task | **它正在做，已经告诉它了 / Told it while it works** · **它收到了，接着做 / Got it; it's on it** · **等它忙完手上的就告诉它 / It'll get this once it finishes what it's doing** · **没送到 / Didn't get through** | |
+| the result anatomy (D60) | **怎么知道的 / How I know** (also the evidence heading everywhere; no 证据) · **发出去的 / Sent out** (empty: 没有 / Nothing) · **这次没包括 / Left out** · **合进 {branch} / Merge into {branch}** · **开草稿 PR / Open draft PR** · **看改动 / See changes** | |
+| effects seen but not gated | **它的记录里看到的 / Seen in its log** | |
+| the day's record | **今天发出去的 / Sent out today** | |
+| place `none` | **不用特定的地方 / Nowhere in particular** | |
+| devices, by the user's own words | **这台 Mac / This Mac** · **这台手机 / This phone** · **另一台电脑 / another computer** | Never 机器 / machine in UI copy |
+| presence | **{name} 在呢 / is here** · **在做事 / is working** · **有事找你 / needs you** · **刚做完一件事 / just finished something** · **还没醒 / isn't up yet** | Never 待命 |
+| stopping Ducter on a Mac (D56) | **让 Ducter 歇着 / Stop Ducter** (menu) · **{name} 歇着了 / {name} is resting** · **叫醒 {name} / Wake {name}** | Closing the window or ⌘Q never stops Ducter; this is the one explicit stop. 叫醒 is the same verb as for a device, on purpose |
+| a sandboxed place | **no noun**: the property, **碰不到你的文件 / Can't touch your files** | 沙盒 retired (D66, GQ8) |
+| Artifact | **做好的 / Finished**; the list **做好的东西 / Everything finished** | 成果 retired (report-speak) |
 
 ## 2. Objects and ownership
 
@@ -267,7 +281,7 @@ Timing and springs come from the theme's `motion.personality`. The spec lives in
 
 ## 8. Open questions
 
-- Results: where finished documents live is decided (D52 Q7: in 成果 on the control plane,
+- Results: where finished documents live is decided (D52 Q7: in 做好的 (Finished) on the control plane,
   with an optional "write it into a place"). The results view and the result anatomy are open
   (`flows/I-results.md`, IQ1–IQ11).
 - Merging and splitting tasks: the cheap version is decided (D52 Q5); full semantics for the

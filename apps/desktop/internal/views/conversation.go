@@ -202,6 +202,15 @@ func (a *App) devicesButton(c *ui.Context) {
 	}
 }
 
+// WaitingCount is how many things wait for the person (the header's
+// "等你"), for the Dock badge while the window is closed.
+func (a *App) WaitingCount() int {
+	if !a.S.Welcomed {
+		return 0
+	}
+	return len(a.S.Board().Lanes[store.LaneNeedsYou]) + len(a.partnerDecisions())
+}
+
 func (a *App) summary(b store.Board) string {
 	switch a.Status {
 	case client.Connecting:

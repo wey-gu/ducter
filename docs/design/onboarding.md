@@ -119,11 +119,11 @@ entitlement is `com.apple.security.cs.allow-jit` (`scripts/macos/ducter-cli.enti
 without it Bun's JIT dies under the hardened runtime). Without an identity the script falls back
 to ad-hoc signing and the README's Open Anyway steps.
 
-**Lifetime (D55: Ducter keeps running when the window closes).** The window is a view;
+**Lifetime (the keep-running decision: Ducter keeps running when the window closes; Dn assigned by the docs pass).** The window is a view;
 Ducter is the one doing the work, so neither closing the window nor ⌘Q stops it.
 - *Closing the window* (⌘W, the red button) hides it. The Dock icon, or opening the app again,
   shows it as it was (MyGo: `Window.OnClose` prevented + `Hide`, `App.OnActivate` → `Show`).
-- *Ducter itself* runs as a per-user LaunchAgent, `~/Library/LaunchAgents/<bundle-id>.ducter.plist`
+- *Ducter itself* runs as a per-user LaunchAgent, `~/Library/LaunchAgents/co.nowledge.ducter.agent.plist` (`<bundle-id>.agent`)
   (`ducter up --no-desktop`, `RunAtLoad`, `KeepAlive` on a crash only, logs to
   `<dataDir>/app.log`, the app's `PATH` and `DUCTER_*` in its environment,
   `AssociatedBundleIdentifiers` so Login Items shows it as Ducter). The app writes and loads it
@@ -165,8 +165,8 @@ Ducter is the one doing the work, so neither closing the window nor ⌘Q stops i
 **Verified live** on macOS 15.7 (the DMG built, mounted, the app copied to a scratch folder,
 launched with `open`, `dev.env` pointing at a scratch data folder and port 7798, sonnet):
 doctor + `up` took ~4 s from open to "Ducter is up"; repo starters showed on the first launch;
-a message got its reply in 2.5 s; (before D55) ⌘Q, ⌘W and `kill -9` each stopped the child
-backend. **D55, live** (scripted model, port 7870, scratch data folder): first launch loaded
+a message got its reply in 2.5 s; (before the keep-running decision) ⌘Q, ⌘W and `kill -9` each stopped the child
+backend. **Keep-running, live** (scripted model, port 7870, scratch data folder): first launch loaded
 the LaunchAgent (`state = running`, parent pid 1); a 90 s task was started, the window closed
 with ⌘W (app alive, window off screen), the task finished while hidden, `open` (the same
 reopen event as a Dock click) brought the window back showing that result; a partner decision
@@ -174,7 +174,11 @@ set the Dock badge to "1" (`lsappinfo` StatusLabel); ⌘Q quit the app while the
 process kept listening; a relaunch attached to it; Stop Ducter (menu) removed the plist and
 freed the port, the card read "Ducter is resting"; Wake Ducter reloaded the agent and the
 window came back with its history. Clicking the Dock icon itself was not driven (the Dock's
-accessibility tree was empty to the driver). The Gatekeeper dialog for a
+accessibility tree was empty to the driver). Under the hardened runtime: the helper re-signed
+ad hoc with `--options runtime` and `ducter-cli.entitlements` (allow-jit), the app with
+`--options runtime`, label `co.nowledge.ducter.agent`; launchd ran it (`state = running`), a
+task ran to done, ⌘Q left it listening. The Developer ID–signed, notarized build itself was not
+run as a LaunchAgent here (its signature differs only in the identity). The Gatekeeper dialog for a
 quarantined copy ("“Ducter” Not Opened", Done / Move to Trash) and the "Open Anyway" button in
 Privacy & Security were seen; pressing Open Anyway was not (it needs the owner's password).
 **Headless only:** the blocked, name, failed screens and the CLI offer (a fake backend in

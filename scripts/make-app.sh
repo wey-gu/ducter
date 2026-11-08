@@ -25,7 +25,7 @@
 # Inside the app:
 #   Contents/MacOS/Ducter          the desktop app (apps/desktop)
 #   Contents/Helpers/ducter        the ducter CLI (packages/cli), which the app runs as
-#                                  `ducter up --no-desktop` for as long as it is open
+#                                  `ducter up --no-desktop` (a LaunchAgent; see README "The app")
 #   Contents/Resources/AppIcon.icns
 set -eu
 

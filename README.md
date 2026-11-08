@@ -83,9 +83,9 @@ Touch ID or your password. On macOS 14 and earlier it is right-click → Open �
 | 0:30 | They type; the partner answers (2.5 s on sonnet in our run) |
 | after the first reply | Once: "Use ducter in Terminal too?" Yes links `~/.local/bin/ducter` to the app (no administrator password; never replaces a file already there; not offered while the app still runs from the disk image) |
 
-**Ducter keeps working when the window is closed** (D55). Closing the window hides it; the
+**Ducter keeps working when the window is closed.** Closing the window hides it; the
 Dock icon brings it back as it was, and the Dock badge counts what is waiting for you. Ducter
-itself runs as a per-user LaunchAgent (`~/Library/LaunchAgents/dev.ducter.app.ducter.plist`,
+itself runs as a per-user LaunchAgent (`~/Library/LaunchAgents/co.nowledge.ducter.agent.plist`,
 started at login, restarted if it crashes), so ⌘Q quits only the window app. To stop Ducter
 and every task: **Ducter menu → Stop Ducter** (让 Ducter 歇着); it stays off, at login too,
 until **Wake Ducter** or the next time you open the app. Run from the disk image instead of

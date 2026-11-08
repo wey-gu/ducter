@@ -53,14 +53,14 @@ func main() {
 		login := local.FixPath() // Finder gives apps only the system folders
 		local.ClearQuarantine(bundle.CLI)
 		sup := &local.Supervisor{CLI: bundle.CLI, DataDir: hints.DataDir(), Port: local.Port(), Locale: string(lang)}
-		// D55: Ducter keeps working when the window closes or the app
+		// The keep-running decision: Ducter keeps working when the window closes or the app
 		// quits, as a LaunchAgent. Not from the disk image or a
 		// translocated copy, whose path goes away: then it is the app's
 		// child and stops with it.
 		if local.Settled(bundle.CLI) {
 			bid := local.BundleID(bundle.App)
 			if bid == "" {
-				bid = "dev.ducter.app"
+				bid = "co.nowledge.ducter"
 			}
 			sup.Agent = &local.Agent{Label: local.AgentLabel(bid), BundleID: bid, CLI: bundle.CLI, DataDir: sup.DataDir, Dir: local.LaunchAgentsDir()}
 		}
@@ -95,7 +95,7 @@ func main() {
 		})
 		app.Win = win
 
-		// D55: closing the window hides it (Ducter keeps working); the Dock
+		// The keep-running decision: closing the window hides it (Ducter keeps working); the Dock
 		// icon, or opening the app again, brings it back as it was. Only a
 		// quit really closes it.
 		quitting := false

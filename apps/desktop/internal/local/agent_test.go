@@ -33,7 +33,7 @@ func (f *fakeLaunchd) run(args ...string) (string, error) {
 
 func newAgent(t *testing.T) (*Agent, *fakeLaunchd) {
 	f := &fakeLaunchd{}
-	a := &Agent{Label: AgentLabel("dev.ducter.app"), BundleID: "dev.ducter.app", CLI: "/Applications/Ducter.app/Contents/Helpers/ducter",
+	a := &Agent{Label: AgentLabel("co.nowledge.ducter"), BundleID: "co.nowledge.ducter", CLI: "/Applications/Ducter.app/Contents/Helpers/ducter",
 		DataDir: t.TempDir(), Dir: t.TempDir(), Launchctl: f.run}
 	return a, f
 }
@@ -47,7 +47,7 @@ func TestAgentPlistIsValid(t *testing.T) {
 		t.Fatalf("plutil: %v %s", err, out)
 	}
 	s := string(a.Plist(env))
-	for _, want := range []string{"<string>dev.ducter.app.ducter</string>", "<string>up</string>", "<string>--no-desktop</string>",
+	for _, want := range []string{"<string>co.nowledge.ducter.agent</string>", "<string>up</string>", "<string>--no-desktop</string>",
 		"<key>RunAtLoad</key>", "<key>SuccessfulExit</key>", "app.log", "a&lt;b&amp;c", "<key>AssociatedBundleIdentifiers</key>"} {
 		if !strings.Contains(s, want) {
 			t.Errorf("plist lacks %q", want)
@@ -72,7 +72,7 @@ func TestAgentInstallAndRemove(t *testing.T) {
 	if err := a.Install(env); err != nil {
 		t.Fatal(err)
 	}
-	if f.calls[len(f.calls)-1] != "kickstart gui/"+strconv.Itoa(os.Getuid())+"/dev.ducter.app.ducter" {
+	if f.calls[len(f.calls)-1] != "kickstart gui/"+strconv.Itoa(os.Getuid())+"/co.nowledge.ducter.agent" {
 		t.Errorf("calls %q", f.calls)
 	}
 	// The app moved: reload.
@@ -108,8 +108,8 @@ func TestAgentEnv(t *testing.T) {
 func TestBundleID(t *testing.T) {
 	app := filepath.Join(t.TempDir(), "Ducter.app")
 	os.MkdirAll(filepath.Join(app, "Contents"), 0o755)
-	os.WriteFile(filepath.Join(app, "Contents", "Info.plist"), []byte("<dict>\n\t<key>CFBundleIdentifier</key>\n\t<string>dev.ducter.app</string>\n</dict>"), 0o644)
-	if got := BundleID(app); got != "dev.ducter.app" {
+	os.WriteFile(filepath.Join(app, "Contents", "Info.plist"), []byte("<dict>\n\t<key>CFBundleIdentifier</key>\n\t<string>co.nowledge.ducter</string>\n</dict>"), 0o644)
+	if got := BundleID(app); got != "co.nowledge.ducter" {
 		t.Errorf("BundleID = %q", got)
 	}
 }

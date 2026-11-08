@@ -13,13 +13,13 @@ import (
 	"strings"
 )
 
-// Agent is Ducter running as a per-user LaunchAgent (D55): it keeps
+// Agent is Ducter running as a per-user LaunchAgent (the keep-running decision): it keeps
 // working when the window closes or the app quits, comes back at login,
 // and is restarted if it crashes. The app writes the plist and loads it on
 // first run; "Stop Ducter" in the app menu unloads it and removes the
 // plist, so it stays off until the app is opened again.
 type Agent struct {
-	Label    string // e.g. dev.ducter.app.ducter
+	Label    string // e.g. co.nowledge.ducter.agent
 	BundleID string // the app's, so Login Items shows "Ducter" with its icon
 	CLI      string
 	DataDir  string
@@ -30,7 +30,7 @@ type Agent struct {
 }
 
 // AgentLabel is the LaunchAgent's label for an app's bundle id.
-func AgentLabel(bundleID string) string { return bundleID + ".ducter" }
+func AgentLabel(bundleID string) string { return bundleID + ".agent" }
 
 // LaunchAgentsDir is ~/Library/LaunchAgents.
 func LaunchAgentsDir() string {

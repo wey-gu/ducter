@@ -77,7 +77,7 @@ type Supervisor struct {
 	// so doctor's words match the window's.
 	Locale string
 	// Agent, when set, runs Ducter as a LaunchAgent that outlives the app
-	// (D55). Without it (the app still on its disk image, or a translocated
+	// (the keep-running decision). Without it (the app still on its disk image, or a translocated
 	// copy) Ducter is the app's child and stops with it.
 	Agent *Agent
 
@@ -161,7 +161,7 @@ func (s *Supervisor) Doctor() (Report, error) {
 // case the app dies without saying so.
 func (s *Supervisor) Start() error {
 	if s.Agent != nil {
-		// D55: Ducter outlives the window; launchd runs it.
+		// The keep-running decision: Ducter outlives the window; launchd runs it.
 		if err := os.MkdirAll(s.DataDir, 0o755); err == nil {
 			if f, err := os.OpenFile(s.LogPath(), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644); err == nil {
 				fmt.Fprintf(f, "\n--- %s Ducter.app starts Ducter in the background (%s)\n", time.Now().Format(time.RFC3339), s.Agent.Label)

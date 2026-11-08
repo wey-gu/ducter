@@ -119,6 +119,7 @@ describe("session spec", () => {
     expect(o.systemPrompt).toBeUndefined();
     expect(o.mcpServers).toEqual([{ name: "ducter", type: "http", url: "http://127.0.0.1:0/mcp", headers: { Authorization: "Bearer task-token-tsk00001" } }]);
     expect(o.disallowedTools).toContain("AskUserQuestion");
+    expect(o.userConfiguration).toBeUndefined(); // tasks keep the user's own Claude Code setup by default
     const open = core.events.find((e) => e.kind === "task_open")!;
     expect(open.stream).toBe("task:tsk00001");
     expect(open.origin).toBe("system");
@@ -133,6 +134,9 @@ describe("session spec", () => {
         cwd: "/home/.ducter/worktrees/abc123", project: "foo", mcpServerName: "ducter",
       }),
     ).toMatchSnapshot();
+    const b = taskBrief({ partnerName: "Ducter", taskId: "x", title: "t", brief: "b", place: { kind: "repo", device: "mac", repoPath: "/r", branch: "ducter/t" }, cwd: "/w", mcpServerName: "ducter" });
+    expect(b).toContain("always commit, even if the brief says \"no commits\"");
+    expect(b).toContain("{kind:\"diff\", label:\"commit\", ref:\"<sha>\"}");
   });
 });
 
@@ -399,6 +403,18 @@ describe("send to a parked task (live regression)", () => {
     expect(await p).toEqual({ delivered: "prompted" });
     expect(fake.sessions[1]!.sent).toEqual([{ text: "answer: b.ts", mode: "turn" }]);
     expect(taskEvents(card.taskId).filter((e) => e.text === "answer: b.ts")).toHaveLength(1);
+    await runner.dispose();
+  });
+});
+
+describe("user config isolation", () => {
+  test("isolateUserConfig maps to OAR userConfiguration: exclude", async () => {
+    const seen: { options?: any } = {};
+    const port = createOarHarnessPort({ loadRuntime: async () => trippedRuntime(async () => {}, seen) });
+    const runner = createRunner(core, { harness: port, newId: nextId, isolateUserConfig: true });
+    const card = await runner.openTask({ persona: "p1", title: "t", brief: "b" });
+    await runner.whenStarted(card.taskId);
+    expect(seen.options.userConfiguration).toBe("exclude");
     await runner.dispose();
   });
 });

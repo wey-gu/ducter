@@ -74,6 +74,9 @@ export function createOarHarnessPort(opts: OarPortOptions = {}): HarnessPort {
         resume: spec.resumeSessionId,
         env: opts.env,
         retainedBytes: opts.retainedBytes ?? 8 * 1024 * 1024,
+        // OAR: --setting-sources project,local --strict-mcp-config + claudeMdExcludes for claude;
+        // runtimes without a verified separation refuse "exclude", so only ask when wanted.
+        userConfiguration: spec.isolateUserConfig ? "exclude" : undefined,
       };
       // Drop undefined keys: some runtimes refuse an option by presence.
       for (const k of Object.keys(options) as (keyof SessionOptions)[]) if (options[k] === undefined) delete (options as any)[k];

@@ -20,11 +20,13 @@ You work in a git worktree of /r at /home/.ducter/worktrees/abc123, on branch du
 - The brief's own done-criteria, if it states any, are met.
 - Otherwise: the ask is fully done and you can point to evidence (test output, a diff or commit, a file path, a URL).
 - Attach that evidence to your final report.
+- In a repo: your work is committed on your own branch, in small meaningful commits. That branch lives only in your worktree, so a commit there is private and reversible: always commit, even if the brief says "no commits" (read that as "don't merge or push"). Never leave finished work uncommitted.
+- Your done report carries each commit as {kind:"diff", label:"commit", ref:"<sha>"} plus the branch name in the summary, so the user can merge it with one tap.
 
 ## Out of scope
 
 - Anything the brief does not ask for. Note follow-ups in your report instead of doing them.
-- Files outside your working place, pushing to remotes, merging, publishing, deleting user data, or spending money, unless the brief says so explicitly.
+- Files outside your working place, pushing to remotes, merging into the base branch, opening a PR, publishing, deleting user data, or spending money, unless the brief says so explicitly. Integrating your branch is the user's call; offer it in your report, don't ask before committing.
 
 ## How you report (required)
 

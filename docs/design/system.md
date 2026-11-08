@@ -36,6 +36,26 @@
   - tests use fake runtimes that fail on forbidden calls, a fake clock, and snapshots of every
     prompt string.
 
+### The user's own harness config: partner isolated, tasks inherit (2026-11-09)
+
+`SessionSpec.isolateUserConfig` maps to OAR `userConfiguration: "exclude"` (Claude Code:
+`--setting-sources project,local --strict-mcp-config`, `claudeMdExcludes` for the user's
+`~/.claude/**` memory, auto-memory and claude.ai MCP servers off; login and session history
+are kept). `--bare` is not usable: it drops OAuth / subscription login.
+
+- **Partner: always isolated.** Its behavior is Ducter's persona and nothing else. Measured
+  live: the author's global `~/.claude/CLAUDE.md` ("chat in Chinese") beat "reply in the
+  user's language", user plugins' SessionStart hooks injected extra context, and user MCP
+  servers pushed Ducter's tools behind ToolSearch, all on the ack's critical path (20 s
+  acks). Isolation cut a trivial turn from 12 s to 5 s (lead's experiment). If Codex is ever
+  the partner, the same needs `-c` overrides and no user `AGENTS.md` (not built).
+- **Tasks: inherit by default** (runner option `isolateUserConfig`, default false). A task
+  works in the user's repo the way the user codes there: their skills, hooks, `CLAUDE.md`
+  and MCP servers are deliberate choices, and a power user expects a Ducter task to behave
+  like their own Claude Code session. The cost (slower start, extra context) is off the
+  user's attention path, since the ack comes from the partner. Turn it on for untrusted or
+  shared-machine setups.
+
 ## Waits (principle 16)
 
 Waiters live in a table, multiplexed onto one alarm per Durable Object. Handlers are

@@ -44,6 +44,32 @@ describe("live-run regressions", () => {
     expect(fr.sessions[0]!.inputs[0]).toContain("<conversation_so_far>");
   });
 
+  test("the partner session always isolates the user's harness config", async () => {
+    const { fr, partner, user } = setup(ok);
+    user("hi");
+    await partner.idle();
+    expect(fr.sessions[0]!.spec.isolateUserConfig).toBe(true);
+  });
+
+  test("task_open without title derives one from the brief; without brief it fails before touching the channel", async () => {
+    let bad: any, good: any;
+    const { fc, fr, partner, user } = setup(async (_i, s) => {
+      bad = await fc.callTool("task_open", { title: "x" });
+      good = await fc.callTool("task_open", { brief: "User's words: \"Fix the flaky test in ~/dev/foo\"\nDone: tests pass" });
+      s.end();
+    });
+    user("Fix the flaky test in ~/dev/foo");
+    await partner.idle();
+    expect(bad.ok).toBe(false);
+    expect(good.ok).toBe(true);
+    expect(fr.opened).toHaveLength(1);
+    expect(fr.opened[0]!.title).toBe("User's words: \"Fix the flaky test in ~/dev/foo\"");
+    const channelText = JSON.stringify(fc.events.filter((e) => e.stream === "channel").map((e) => e.body));
+    expect(channelText).not.toContain("undefined");
+    expect(fc.events.filter((e) => e.kind === "ack")).toHaveLength(1);
+    expect(fc.events.filter((e) => e.kind === "job_status").map((e) => (e.body as any).state)).toEqual(["running"]);
+  });
+
   test("prewarm off: no session until the first trigger", async () => {
     const { fr, partner, user } = setup(ok, { prewarm: false });
     await Bun.sleep(5);

@@ -66,6 +66,9 @@ export interface SessionSpec {
   appendSystemPrompt?: string;
   mcp: (ReturnType<McpHub["configFor"]> | StdioMcpConfig)[];
   permissionMode: "bypass"; // D16: no per-call approvals
+  // Leave out the user's own harness config (global CLAUDE.md, user settings, plugins and their
+  // hooks, user MCP servers). The partner always isolates; tasks keep it by default (system.md).
+  isolateUserConfig?: boolean;
   resumeSessionId?: string;
 }
 

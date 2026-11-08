@@ -242,6 +242,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       systemPrompt: buildSystemPrompt(core.persona), // built per start: identity may arrive after boot
       mcp: [core.mcp.configFor("partner")],
       permissionMode: "bypass",
+      isolateUserConfig: true, // never the user's CLAUDE.md, hooks or MCP servers (live: zh replies, 20 s acks)
       ...(resumeSessionId ? { resumeSessionId } : {}),
     });
     session = s;
@@ -451,7 +452,14 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       },
       required: ["title", "brief"],
     },
-    async (args: { title: string; brief: string; place?: Place; project?: string; harness?: string; model?: string }) => {
+    async (raw: { title?: unknown; brief?: unknown; place?: Place; project?: string; harness?: string; model?: string }) => {
+      // Validate before any channel side effect (live: a call without `title` crashed after
+      // "On it: undefined" and a failed job_status were already on the channel).
+      const briefIn = typeof raw?.brief === "string" ? raw.brief.trim() : "";
+      if (!briefIn) return { ok: false, error: "task_open needs `brief` (the user's words, decisions, done-criteria, out of scope, place) and `title`." };
+      const firstLine = briefIn.split("\n").find((l) => l.trim())!.replace(/^[#>*\-\s"“]+/, "").trim();
+      const title = (typeof raw.title === "string" && raw.title.trim()) || (firstLine.length > 60 ? firstLine.slice(0, 59) + "…" : firstLine);
+      const args = { ...raw, title, brief: briefIn };
       const t = turn;
       let jobId: string;
       if (t) {

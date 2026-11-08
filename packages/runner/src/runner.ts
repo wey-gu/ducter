@@ -15,6 +15,7 @@ export interface RunnerOptions {
   harness?: HarnessPort; // default: OAR
   defaultHarness?: HarnessId;
   defaultModel?: string; // default env DUCTER_TASK_MODEL; else the harness default
+  isolateUserConfig?: boolean; // tasks keep the user's own harness setup by default (system.md)
   partnerName?: string; // default core.persona.name
   newId?: () => string;
   now?: () => Date;
@@ -240,6 +241,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       }),
       mcp: [mcp],
       permissionMode: "bypass",
+      isolateUserConfig: opts.isolateUserConfig ?? false,
     };
     if (open.model) spec.model = open.model;
     return spec;

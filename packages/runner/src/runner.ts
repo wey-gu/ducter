@@ -48,6 +48,7 @@ interface TaskRt {
   reportedThisTurn: boolean;
   nudged: boolean;
   stallNoted: boolean;
+  interruptRequested?: boolean; // the user stopped the current turn
   dropped: boolean;
   attention: Attention;
   residency: Residency;
@@ -196,7 +197,10 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     t.running = busy;
     const reported = t.reportedThisTurn;
     t.reportedThisTurn = false;
-    if (!busy && !t.dropped) setState(t, currentAttention(t), "warm");
+    const stopped = t.interruptRequested && outcome === "aborted";
+    if (outcome) t.interruptRequested = false;
+    // Stopped by the user: it is not working any more, it waits for them (truthful card).
+    if (!busy && !t.dropped) setState(t, stopped && currentAttention(t) === "working" ? "blocked" : currentAttention(t), "warm");
     if (t.dropped || busy) return;
     if (reported) {
       t.nudged = false;
@@ -428,7 +432,9 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     async interrupt(taskId) {
       const t = get(taskId);
       await t.started;
-      await t.session?.interrupt();
+      if (!t.session) return;
+      t.interruptRequested = true;
+      await t.session.interrupt();
     },
 
     async drop(taskId) {

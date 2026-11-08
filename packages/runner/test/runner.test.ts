@@ -419,6 +419,24 @@ describe("user config isolation", () => {
   });
 });
 
+describe("interrupt (live regression)", () => {
+  test("a turn the user stopped leaves the card Waiting, not working; the next message resumes work", async () => {
+    const fake = new FakePort();
+    const runner = createRunner(core, { harness: fake, newId: nextId });
+    const card = await runner.openTask({ persona: "p1", title: "t", brief: "b" });
+    await runner.whenStarted(card.taskId);
+    const s = fake.sessions[0]!;
+    await runner.interrupt(card.taskId);
+    s.emit({ role: "system", text: "turn aborted", turnEnd: true, raw: { kind: "turn_ended", outcome: "aborted" } });
+    await waitFor(() => core.tasks.get(card.taskId)?.residency === "warm", "warm");
+    expect(core.tasks.get(card.taskId)!.attention).toBe("blocked");
+    expect(s.sent).toHaveLength(1); // no nudge after a stop
+    expect(await runner.send(card.taskId, "carry on", undefined, "user")).toEqual({ delivered: "prompted" });
+    expect(core.tasks.get(card.taskId)).toMatchObject({ attention: "working", residency: "hot" });
+    await runner.dispose();
+  });
+});
+
 // ---------- a hand-written fake HarnessPort ----------
 
 class FakeSession implements HarnessSession {

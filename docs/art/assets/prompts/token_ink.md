@@ -1,1 +1,1 @@
-A thick round puffy token like a soft clay coin in ink #2B2118, with a raised smooth center, and a thin mint ring partially around its edge (about half).
+A thick round puffy token like a soft clay coin in ink #2B2118, with a raised smooth domed center and a soft rounded rim. Completely plain: NO ring, NO arc, NO stripe, NO gauge, NO marks around the edge — one solid colour all the way round, like a squishy button.

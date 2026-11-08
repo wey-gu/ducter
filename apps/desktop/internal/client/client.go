@@ -137,7 +137,12 @@ func (c *Client) session(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	origin := "http://" + u.Host + "/"
+	// No trailing slash: core accepts only the bare loopback origin
+	// (http://127.0.0.1:port), as browsers send it.
+	origin := "http://" + u.Host
+	if u.Scheme == "wss" {
+		origin = "https://" + u.Host
+	}
 	cfg, err := websocket.NewConfig(c.opt.URL, origin)
 	if err != nil {
 		return err

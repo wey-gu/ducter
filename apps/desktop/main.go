@@ -49,14 +49,14 @@ func main() {
 			Locale: string(lang),
 			Cursor: cursor,
 			OnFrame: func(f protocol.ServerFrame) {
-				win.Update(func() {
-					s.Apply(f)
-					app.Applied(f)
-				})
+				win.Update(func() { app.Receive(f) })
 			},
 			OnStatus: func(st client.Status, err error) {
 				win.Update(func() {
 					app.Status = st
+					if st == client.Disconnected {
+						app.Failed = true
+					}
 					if err != nil {
 						app.StatusErr = err.Error()
 					}
@@ -64,6 +64,9 @@ func main() {
 			},
 		})
 		app.Send = c.Send
+		app.URL = c.URL()
+		app.RetryNow = c.RetryNow
+		app.NextAttempt = c.NextAttempt
 		go c.Run(context.Background())
 	})
 	if err := mygo.App.Run(); err != nil {

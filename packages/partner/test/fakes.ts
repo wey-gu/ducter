@@ -1,5 +1,6 @@
 // Test fakes: an in-memory core and a scripted HarnessPort / Runner.
 import type { EventKind, LogEvent, Place, TaskCard } from "../../protocol/src/index.ts";
+import type { MemoryAdd, MemoryClient } from "../src/memory.ts";
 import type {
   AppendInput,
   CoreApi,
@@ -198,4 +199,26 @@ export function fakeRunner(script: Script) {
       cardsRef = m;
     },
   };
+}
+
+/** In-memory stand-in for Nowledge Mem: tests never reach the user's real Mem. */
+export function fakeMemory(seed: { title: string; content: string; date?: string; kind?: string }[] = [], opts: { down?: boolean } = {}) {
+  const searches: { query: string; limit: number }[] = [];
+  const added: MemoryAdd[] = [];
+  const memory: MemoryClient = {
+    async search(query, limit) {
+      searches.push({ query, limit });
+      if (opts.down) return { ok: false, reason: "not_configured", message: "Nowledge Mem isn't installed on this machine." };
+      const words = query.toLowerCase().split(/[\s,，。]+/).filter(Boolean);
+      const score = (m: (typeof seed)[number]) => words.filter((w) => `${m.title} ${m.content}`.toLowerCase().includes(w)).length;
+      const hits = seed.filter((m) => score(m) > 0).sort((a, b) => score(b) - score(a));
+      return { ok: true, hits: (hits.length ? hits : seed).slice(0, limit) };
+    },
+    async add(m) {
+      if (opts.down) return { ok: false, reason: "not_configured", message: "Nowledge Mem isn't installed on this machine." };
+      added.push(m);
+      return { ok: true, id: `mem-${added.length}` };
+    },
+  };
+  return { memory, searches, added };
 }

@@ -28,6 +28,14 @@
 //   that event triggers us; it renders as "[timer fired] <reason>". `taskId` without `at` is
 //   a no-op: the task's next report already wakes the partner.
 //
+// Memory (Nowledge Mem, see memory.ts)
+//   memory_search: at most one recall per turn unless the user asks to look again; results are
+//   background for the model, never pasted. memory_add: durable things only (secret- and
+//   plumbing-shaped text is refused), at most two per turn, provenance = persona + the Log seq
+//   of the user's message (+ task id). Each saved memory appends `memory_noted` on the channel
+//   after the turn's text, which clients show as one quiet line ("记下了 · <title>").
+//   Mem missing or down: the tools say so and the partner carries on.
+//
 // Restart
 //   state.json keeps the session id, last activity, and the highest trigger seq a finished
 //   turn covered. On start, triggers after that seq (a turn cut off by the restart, or events
@@ -36,6 +44,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Bodies, LogEvent, Place } from "../../protocol/src/index.ts";
 import type { CoreApi, HarnessEvent, HarnessSession, Partner, Runner } from "../../protocol/src/internal.ts";
+import { createNmemClient, noMemory, type MemoryClient } from "./memory.ts";
 import { buildSystemPrompt } from "./persona.ts";
 import { realFs, resolvePlace, type PlaceFs } from "./place.ts";
 import { isChinese, renderProjection, renderTime, renderTrigger, type RenderCtx } from "./render.ts";
@@ -53,6 +62,7 @@ export interface PartnerOptions {
   onError?: (err: unknown) => void;
   prewarm?: boolean; // start/resume the session at creation, default true
   ready?: Promise<unknown>; // sessions start after this settles (e.g. L1 identity from Mem)
+  memory?: MemoryClient; // default: the nmem CLI (DUCTER_MEMORY=off: none); tests inject a fake
 }
 
 export interface PartnerHandle extends Partner {
@@ -77,6 +87,8 @@ interface TurnState {
   asked?: boolean; // the partner made a decision card (ask) this turn
   quiet?: boolean; // woken only by task questions the user already sees as decision cards
   zh: boolean;
+  recalls: number; // memory_search calls this turn
+  noted: { title: string; memoryId?: string }[]; // memory_add successes, shown after the turn's text
 }
 
 interface Job {
@@ -89,7 +101,12 @@ interface Job {
 const COLD_MS = 55 * 60 * 1000;
 const TASK_OPEN_RE = /(^|__)task_open$/;
 const TASK_SEND_RE = /(^|__)task_send$/;
-const QUIET_TOOL_RE = /(^ToolSearch$)|((^|__)(log_search|log_read|task_read)$)/;
+const QUIET_TOOL_RE = /(^ToolSearch$)|((^|__)(log_search|log_read|task_read|memory_search|memory_add)$)/;
+
+/** The user asks to look harder, which lifts the one-recall-per-turn gate. */
+const ASKS_RECALL = /(再|多|仔细|好好)(查|找|搜|想想|翻)|翻翻|想不起|look (again|harder)|search (again|more)|\bdig\b|check (your )?memory|do you remember|还记得/i;
+/** Task plumbing never goes to Mem: ids, branches, worktrees, commits (a hex run with a digit). */
+const PLUMBING_RE = /\/worktrees\/|\.ducter\/|\bjob_[a-z0-9]{6,}|\bducter\/[a-z0-9][a-z0-9-]*|\b(?=[0-9a-f]*\d)(?=[0-9a-f]*[a-f])[0-9a-f]{7,40}\b/i;
 
 /** Same rule as core's triggersPartner (principle 6). */
 function isTrigger(e: LogEvent): boolean {
@@ -140,6 +157,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const ackWaitMs = opts.ackWaitMs ?? 250;
   const settleMs = opts.settleMs ?? 1500;
   const onError = opts.onError ?? ((err) => console.error("[partner]", err));
+  const memory = opts.memory ?? (process.env.DUCTER_MEMORY === "off" ? noMemory : createNmemClient());
 
   const cwd = join(core.dataDir, "partner");
   const stateFile = join(cwd, "state.json");
@@ -416,7 +434,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         stream: "channel",
         beforeSeq: core.log.head() + 1,
         limit: historyLimit + batch.length,
-        kinds: ["user_msg", "ai_msg", "ack", "job_status", "report", "decision", "decision_resolved", "waiter"],
+        kinds: ["user_msg", "ai_msg", "ack", "job_status", "report", "decision", "decision_resolved", "waiter", "memory_noted"],
       })
       .filter((e) => !batchSeqs.has(e.seq))
       .sort((a, b) => a.seq - b.seq)
@@ -486,13 +504,14 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     // A task question is shown with its own Go / Hold / Reply; prose about it only repeats it
     // (eval: restated in 4 of 4 runs whatever the persona said).
     const quiet = batch.length > 0 && batch.every((e) => e.kind === "report" && (e.body as Bodies["report"]).state === "needs_input");
-    turn = { triggers: batch, userTexts, replyTo, pending: null, unboundAck: null, opensSeen: 0, opensHandled: 0, zh, quiet };
+    turn = { triggers: batch, userTexts, replyTo, pending: null, unboundAck: null, opensSeen: 0, opensHandled: 0, zh, quiet, recalls: 0, noted: [] };
     stats.turns++;
     try {
       const reading = readTurn();
       await session!.send(input, "turn");
       await reading;
       flushPending();
+      appendNoted(turn);
       handledSeq = Math.max(handledSeq ?? 0, ...batch.map((e) => e.seq));
       if (!batch.some((e) => e.seq < 0)) queueCorrections(); // one correction round, never a loop
       else corrections.length = 0;
@@ -538,6 +557,17 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       body: { jobId: j.jobId, text: j.title, state: r.state, taskId: r.taskId },
     });
   }
+
+  // ---------- memory ----------
+  const appendNoted = (t: TurnState) => {
+    for (const n of t.noted.splice(0)) {
+      const body: Bodies["memory_noted"] = { title: n.title };
+      if (n.memoryId) body.memoryId = n.memoryId;
+      if (t.replyTo !== undefined) body.replyTo = t.replyTo;
+      core.log.append({ stream: "channel", origin: "partner", kind: "memory_noted", body });
+    }
+  };
+  const UNAVAILABLE = "Memory isn't available right now. Carry on without it, and don't mention it unless the user asks about memory.";
 
   // ---------- MCP tools (role "partner") ----------
   const withVerbatim = (brief: string, userTexts: string[]) => {
@@ -732,6 +762,82 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       core.log.append({ stream: "channel", origin: "partner", kind: "decision", body });
       if (turn) turn.asked = true;
       return { ok: true, decisionId: body.decisionId, note: "The user sees it with Go / Hold / Reply. End your turn now; do not repeat the question." };
+    },
+  );
+
+  core.mcp.register(
+    "partner",
+    "memory_search",
+    "Recall from the user's long-term memory (Nowledge Mem): their preferences, past decisions, people and earlier work that this conversation does not show. Use it when the user refers to something from before (\"像上次那样\", \"the usual\", a person or project you don't see here), or before asking the user something memory may already know. One search per turn. Results are background for you: use what fits, in your own words; never paste them, list them, or say you searched.",
+    {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "A few distinctive words (names, project, topic), in the user's language or English" },
+        limit: { type: "number", description: "Max results, default 5 (at most 8)" },
+      },
+      required: ["query"],
+    },
+    async (args: { query?: unknown; limit?: unknown }) => {
+      const query = typeof args?.query === "string" ? args.query.trim() : "";
+      if (!query) return { ok: false, error: "memory_search needs `query`." };
+      const t = turn;
+      if (t) {
+        if (t.recalls >= 1 && !t.userTexts.some((u) => ASKS_RECALL.test(u)))
+          return { ok: false, error: "You already searched memory this turn. Answer with what you have, or ask the user in one short line." };
+        t.recalls++;
+      }
+      const limit = Math.min(8, Math.max(1, Math.round(Number(args.limit) || 5)));
+      const r = await memory.search(query, limit);
+      if (!r.ok) return { ok: false, available: false, note: UNAVAILABLE };
+      if (!r.hits.length) return { ok: true, results: [], note: "Nothing in memory fits. Carry on; if you need it, ask the user in one short line." };
+      return {
+        ok: true,
+        results: r.hits,
+        note: "Background for you, not for the user: use only what clearly fits, in your own words. Never paste or list these, never say you searched or checked memory. If none fits, carry on or ask.",
+      };
+    },
+  );
+
+  core.mcp.register(
+    "partner",
+    "memory_add",
+    "Remember something durable about the user in their long-term memory (Nowledge Mem): a preference they stated, a decision they made, a lasting fact about their work, projects or people. Never secrets (keys, passwords, tokens), never task plumbing (ids, branches, worktrees, commits, progress), never one-off chatter. The app shows the user a small \"Noted\" line with the title, so don't announce it in your reply.",
+    {
+      type: "object",
+      properties: {
+        title: { type: "string", description: "Short title in the user's language, e.g. 测试统一用假时钟 / Fake clock in tests" },
+        content: { type: "string", description: "One or two self-contained sentences: what, and the why if the user gave one" },
+        importance: { type: "number", description: "0..1, default 0.6; 0.8+ for explicit \"always/never\" rules" },
+      },
+      required: ["title", "content"],
+    },
+    async (args: { title?: unknown; content?: unknown; importance?: unknown }) => {
+      const title = typeof args?.title === "string" ? args.title.trim().slice(0, 80) : "";
+      const content = typeof args?.content === "string" ? args.content.trim().slice(0, 1200) : "";
+      if (!title || !content) return { ok: false, error: "memory_add needs `title` and `content`." };
+      const text = `${title}\n${content}`;
+      if (redactSecrets(text) !== text) return { ok: false, error: "That contains a secret. Never store secrets; nothing was saved." };
+      const t = turn;
+      const taskIds = core.tasks.list().map((c) => c.taskId);
+      if (PLUMBING_RE.test(text) || taskIds.some((id) => text.includes(id)))
+        return { ok: false, error: "That is task plumbing (ids, branches, worktrees, commits). Remember only durable things about the user and their work; nothing was saved." };
+      if (t && t.noted.length >= 2) return { ok: false, error: "Enough remembered this turn." };
+      const report = t?.triggers.find((e) => e.kind === "report");
+      const r = await memory.add({
+        title,
+        content,
+        importance: typeof args.importance === "number" ? args.importance : undefined,
+        provenance: {
+          persona: core.persona.id,
+          logSeq: t ? replyToFor(t) : core.log.head(),
+          ...(report ? { taskId: (report.body as Bodies["report"]).taskId } : {}),
+        },
+      });
+      if (!r.ok) return { ok: false, saved: false, note: `${UNAVAILABLE} Nothing was saved.` };
+      const noted = { title, ...(r.id ? { memoryId: r.id } : {}) };
+      if (t) t.noted.push(noted);
+      else core.log.append({ stream: "channel", origin: "partner", kind: "memory_noted", body: noted });
+      return { ok: true, note: "Remembered. The user sees a small Noted line; don't mention it in your reply." };
     },
   );
 

@@ -4,3 +4,4 @@ export { buildSystemPrompt } from "./persona.ts";
 export { redactSecrets } from "./partner.ts";
 export { renderProjection, renderTrigger, renderHistoryLine, renderTasks, isChinese } from "./render.ts";
 export { resolvePlace, findPaths, type PlaceFs } from "./place.ts";
+export { createNmemClient, noMemory, provenanceRef, compactHit, type MemoryClient, type MemoryHit, type MemoryAdd, type Provenance } from "./memory.ts";

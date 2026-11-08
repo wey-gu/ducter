@@ -1,12 +1,13 @@
 #!/usr/bin/env bun
 // `ducter`: the one command a person runs. up · open · doctor · status · version.
-import { existsSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import pkg from "../package.json" with { type: "json" };
 import { parseArgs, type Args } from "./args.ts";
 import { launchDesktop, planDesktop, sourceRepoRoot, type Launched } from "./desktop.ts";
-import { ansiStyle, formatReport, realHost, runDoctor, width, type Host, type Style } from "./doctor.ts";
+import { ansiStyle, formatBlocked, formatReport, formatSummary, realHost, runDoctor, width, type DoctorReport, type Host, type Style } from "./doctor.ts";
+import { buildHints, cleanName, readPersonaFile, writeHints, writePersonaFile } from "./firstrun.ts";
 import { detectLocale, translator, type T } from "./i18n.ts";
 import { fetchSnapshot, formatSnapshot } from "./status.ts";
 
@@ -124,17 +125,28 @@ async function cmdUp(ctx: Ctx): Promise<number | "running"> {
     return 0;
   }
   // Doctor runs on the first `up`, and again whenever something looks off (port taken).
+  let firstReport: DoctorReport | undefined;
   if (!existsSync(join(ctx.dataDir, DOCTOR_MARKER)) || state === "busy") {
     if (state !== "busy") console.log(t("up.firstRun") + "\n");
     const report = await runDoctor(ctx.host, t, { port: ctx.port, dataDir: ctx.dataDir });
-    console.log(formatReport(report, t, style, { closing: false }) + "\n");
+    // A ready Mac gets one line; anything blocking gets the full table with its fixes.
+    console.log((report.ok ? formatSummary(report, t, style) : formatBlocked(report, t, style)) + "\n");
     if (!report.ok) {
-      console.log(t("up.blocked"));
+      const n = report.checks.filter((k) => k.required && k.status !== "ok").length;
+      console.log(t(n === 1 ? "up.blocked" : "up.blocked.many"));
       return 1;
     }
     writeFileSync(join(ctx.dataDir, DOCTOR_MARKER), new Date().toISOString());
+    firstReport = report;
   }
 
+  // What the desktop's empty conversation can say about this Mac (names only; see firstrun.ts).
+  try {
+    writeHints(ctx.dataDir, buildHints());
+  } catch {}
+  await nameOnFirstRun(ctx, firstReport);
+
+  quietCoreLogs(ctx.dataDir);
   console.log(style.dim(t("up.starting", { name: process.env.DUCTER_PERSONA_NAME || "Ducter" })));
   // String-literal imports so `bun build --compile` bundles them; core's own path-based loader
   // can't be bundled. A module that fails to load falls back to core's stub.
@@ -149,7 +161,7 @@ async function cmdUp(ctx: Ctx): Promise<number | "running"> {
   let desktop: Launched | undefined;
   let desktopLine: string;
   const plan = ctx.args.desktop ? desktopPlan(ctx) : ({ kind: "none" } as const);
-  if (!ctx.args.desktop) desktopLine = "--no-desktop";
+  if (!ctx.args.desktop) desktopLine = t("up.desktop.off");
   else if (plan.kind === "none") desktopLine = t("up.desktop.none", { url: core.url });
   else {
     const r = await launchDesktop(plan, { port: core.port, dataDir: core.dataDir, onBuild: () => console.log(style.dim(t("up.desktop.building"))) });
@@ -163,13 +175,14 @@ async function cmdUp(ctx: Ctx): Promise<number | "running"> {
   console.log(
     "\n" +
       box(t("up.ready", { name }), [
-        [t("up.address"), core.url],
-        [t("up.data"), tilde(core.dataDir)],
+        [t("up.where"), t("up.where.value", { dir: tilde(core.dataDir) })],
         [t("up.memory"), booted.identitySource === "nowledge-mem" ? t("up.memory.mem") : t("up.memory.default")],
         [t("up.desktop"), desktopLine],
+        ...(desktop ? [] : ([[t("up.address"), core.url]] as [string, string][])),
+        [t("up.reach"), style.dim(t("up.reach.value"))],
       ], style) +
       "\n\n  " +
-      t(desktop ? "up.hint" : "up.hintNoDesktop") +
+      t(desktop ? "up.hint" : "up.hintNoDesktop", { name }) +
       "\n",
   );
 
@@ -190,6 +203,71 @@ async function cmdUp(ctx: Ctx): Promise<number | "running"> {
     if (!stopping) console.log(style.dim(t("up.desktop.closed", { name })));
   });
   return "running"; // core's own signal handlers stop the process
+}
+
+/**
+ * The one optional question of the first run: the partner's name. Asked only in a terminal,
+ * only once, and not when Nowledge Mem is connected (the identity there already has a name).
+ * A name saved earlier applies to every later `up` unless DUCTER_PERSONA_NAME is set.
+ */
+async function nameOnFirstRun(ctx: Ctx, firstReport: DoctorReport | undefined) {
+  const saved = readPersonaFile(ctx.dataDir);
+  const memOk = firstReport?.checks.some((k) => k.id === "nmem" && k.status === "ok");
+  if (!saved && firstReport && !memOk && !process.env.DUCTER_PERSONA_NAME && process.stdin.isTTY && process.stdout.isTTY) {
+    const answer = cleanName((await ask("  " + ctx.t("name.ask", { name: "Ducter" }))) ?? "");
+    const name = answer && answer.toLowerCase() !== "ducter" ? answer : undefined;
+    try {
+      writePersonaFile(ctx.dataDir, { ...(name ? { name } : {}), askedAt: new Date().toISOString() });
+    } catch {}
+    if (name) console.log("  " + ctx.style.ok(ctx.t("name.set", { name })));
+    console.log("");
+  }
+  const name = readPersonaFile(ctx.dataDir)?.name;
+  if (name && !process.env.DUCTER_PERSONA_NAME) process.env.DUCTER_PERSONA_NAME = name;
+}
+
+/** One line from the terminal; undefined on Ctrl-D. */
+async function ask(prompt: string): Promise<string | undefined> {
+  const { createInterface } = await import("node:readline");
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  return new Promise((resolve) => {
+    let answered = false;
+    rl.question(prompt, (a) => {
+      answered = true;
+      rl.close();
+      resolve(a);
+    });
+    rl.on("close", () => {
+      if (!answered) process.stdout.write("\n");
+      resolve(undefined);
+    });
+  });
+}
+
+/**
+ * Core prints its own "[ducter] ..." bring-up lines (English, addresses, paths). In front of a
+ * person they are noise, so `up` sends them to <dataDir>/ducter.log; warnings and errors still
+ * show, and go to the log too.
+ */
+function quietCoreLogs(dataDir: string) {
+  const file = join(dataDir, "ducter.log");
+  const write = (level: string, args: unknown[]) => {
+    try {
+      appendFileSync(file, `${new Date().toISOString()} ${level} ${args.map((a) => (typeof a === "string" ? a : Bun.inspect(a))).join(" ")}\n`);
+    } catch {}
+  };
+  const isCore = (args: unknown[]) => typeof args[0] === "string" && args[0].startsWith("[");
+  for (const level of ["log", "info"] as const) {
+    const orig = console[level].bind(console);
+    console[level] = (...args: unknown[]) => (isCore(args) ? write(level, args) : orig(...args));
+  }
+  for (const level of ["warn", "error"] as const) {
+    const orig = console[level].bind(console);
+    console[level] = (...args: unknown[]) => {
+      if (isCore(args)) write(level, args);
+      orig(...args);
+    };
+  }
 }
 
 export async function run(argv: string[]): Promise<number | "running"> {

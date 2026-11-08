@@ -138,7 +138,7 @@ describe("doctor", () => {
     const text = formatReport(await runDoctor(fake({ tools: ["git"] }), en, opts), en);
     expect(text).toContain("fix: curl -fsSL https://claude.ai/install.sh | bash");
     expect(text).toContain("Ducter needs at least one AI");
-    expect(text).toContain("1 thing(s) to fix");
+    expect(text).toContain("One thing to fix");
   });
 });
 

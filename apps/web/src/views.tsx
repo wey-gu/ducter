@@ -543,6 +543,22 @@ function Composer({ taskId }: { taskId?: string }) {
 
 // ---------- notifications ask (in the partner's voice, with a default) ----------
 
+/** Asks the browser, subscribes, tells core; says so if the browser can't. */
+async function turnOnPush() {
+  try {
+    const s = await Promise.race([
+      enablePush(A.api, A.base, A.L.lang, A.me!.push.publicKey!),
+      new Promise<never>((_, no) => setTimeout(() => no(new Error("timeout")), 20_000)),
+    ]);
+    if (s === "denied") A.toast(t("notify.denied"));
+    if (s === "unsupported") A.toast(t("notify.unsupported"));
+    return s;
+  } catch (err) {
+    A.toast(t("result.action.failed", (err as Error).message));
+    return "off" as const;
+  }
+}
+
 const ASKED = "ducter.notify.asked";
 const asked = () => {
   try {
@@ -584,11 +600,10 @@ function NotifyAsk() {
           disabled={busy}
           onClick={async () => {
             setBusy(true);
-            A.push = await enablePush(A.api, A.base, A.L.lang, A.me!.push.publicKey!).catch(() => "off" as const);
+            A.push = await turnOnPush();
             setBusy(false);
             dismiss();
             if (A.push === "on") A.toast(t("notify.enabled"));
-            if (A.push === "denied") A.toast(t("notify.denied"));
           }}
         />
         <Btn kind="quiet" label={t("notify.later")} onClick={dismiss} />
@@ -969,7 +984,7 @@ function SettingsSheet() {
           kind="primary"
           label={t("notify.on")}
           onClick={async () => {
-            A.push = await enablePush(A.api, A.base, A.L.lang, A.me!.push.publicKey!).catch(() => "off" as const);
+            A.push = await turnOnPush();
             A.changed();
           }}
         />

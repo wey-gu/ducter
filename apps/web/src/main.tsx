@@ -98,7 +98,7 @@ function Pairing({ initial, onPaired }: { initial: PairView; onPaired: () => voi
           </form>
           <p class="small">{t("connect.phone.safe")}</p>
           <p class="small">
-            {t("connect.address")}: <code>{base.host}</code>
+            {t("connect.address")}{A.L.lang === "zh" ? "：" : ": "}<code>{base.host}</code>
           </p>
         </>
       )}

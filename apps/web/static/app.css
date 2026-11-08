@@ -222,6 +222,7 @@ a {
 }
 .avatar {
   position: relative;
+  display: inline-block;
   flex-shrink: 0;
 }
 .avatar img {
@@ -433,6 +434,7 @@ a {
   white-space: nowrap;
 }
 .sheet-proof .v {
+  padding-top: 4px;
   font-size: var(--sm);
   line-height: 1.5;
   color: var(--ink-soft);

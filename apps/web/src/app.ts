@@ -320,7 +320,8 @@ class AppState {
     if (b.lanes[LANE.working]!.length) parts.push(L.t("header.working", b.lanes[LANE.working]!.length));
     else if (this.thinking()) parts.push(L.t("header.thinking"));
     const done = this.doneToday();
-    if (done) parts.push(L.t("header.done", done));
+    // A phone header has room for two things: what needs you and what's moving come first.
+    if (done && parts.length < 2) parts.push(L.t("header.done", done));
     return parts.length ? parts.join(" · ") : L.t("header.summary.none");
   }
 

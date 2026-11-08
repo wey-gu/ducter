@@ -1,7 +1,8 @@
 // Every user-facing string of the phone client, by key, in Chinese and English. Keys and
 // strings are copied from the desktop client (apps/desktop/internal/i18n) so both speak the
-// same glossary (docs/design/product-model.md §1); keys marked "phone" are new here and listed
-// for the glossary in apps/web/README.md. Strings use printf verbs (%s, %d, %[n]s).
+// same glossary (docs/design/product-model.md §1); keys under "phone" are new here and wait for
+// the glossary (通知 / Notifications, 添加到主屏幕 / Add to Home Screen, 这台手机 / This phone).
+// Strings use printf verbs (%s, %d, %[n]s).
 
 export type Lang = "zh" | "en";
 

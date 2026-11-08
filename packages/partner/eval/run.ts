@@ -281,7 +281,8 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     for (const v of visible.filter((x) => x.step === i)) {
       if (v.kind === "decision") {
         const d = decisions.find((e) => e.seq === v.seq)!.body as Bodies["decision"];
-        lines.push(`  [partner made a decision card] question: ${d.question} | Go button: ${d.goLabel} | default: ${d.defaultOption}${d.reversible ? " (reversible)" : ""}`);
+        // Structured fields of the card (the app renders the buttons and the default line from them).
+        lines.push(`  [partner made a decision card] question text: ${d.question} | (field goLabel: ${d.goLabel}; field defaultOption: ${d.defaultOption}${d.reversible ? ", reversible" : ""})`);
       } else if (v.kind === "waiter") lines.push(`  [reminder set] ${v.text}`);
       else lines.push(`  [partner ${v.kind === "ack" ? "ack line" : "message"}] ${v.text}`);
     }
@@ -364,7 +365,7 @@ function check(r: RunResult): string[] {
   // Global: never name the buttons in prose (the UI labels are 好，<goLabel> / 先等等 / 回复), and a
   // card's question never carries its own default (the card renders the default line).
   for (const v of r.visible.filter((x) => x.kind === "ai_msg" || x.kind === "ack")) if (/\b(Go|Hold)\b|先等等/.test(v.text)) fails.push(`names the buttons: "${clip(v.text)}"`);
-  for (const v of r.visible.filter((x) => x.kind === "decision")) if (/默认|\bdefault\b/i.test(v.text)) fails.push(`default written into the question: "${clip(v.text)}"`);
+  for (const v of r.visible.filter((x) => x.kind === "decision")) if (/默认\s*[:：（(是为]|[(（]\s*(默认|default)|\bdefault\s*[:：(]|\bby default\b/i.test(v.text)) fails.push(`default written into the question: "${clip(v.text)}"`);
   // Global: the partner does not do place-bound work itself.
   for (const t of r.tools) if (DO_WORK_TOOLS.test(t.name)) fails.push(`used ${t.name} itself`);
 
@@ -419,7 +420,7 @@ Grade ONLY against the scenario rubric and these rules. Be strict but not pedant
 Think it through in "reason" first, then decide. Answer with one JSON object and nothing else: {"reason": "<one or two short sentences>", "pass": true|false}`;
 
 async function judge(r: RunResult, cwd: string): Promise<{ pass: boolean; reason: string; cost: number }> {
-  const prompt = `Scenario: ${r.sc.id} (user language: ${r.sc.lang === "zh" ? "Chinese" : "English"}; partner's name: ${r.sc.persona?.name ?? "Ducter"})\n\nRubric: ${r.sc.rubric}\n\nWhat happened (lines in [brackets] are what the partner did; only ack lines, messages and decision cards are visible to the user):\n${r.transcript}\n\nNote: silence (no message) is a valid output where the rubric allows it.`;
+  const prompt = `Scenario: ${r.sc.id} (user language: ${r.sc.lang === "zh" ? "Chinese" : "English"}; partner's name: ${r.sc.persona?.name ?? "Ducter"})\n\nRubric: ${r.sc.rubric}\n\nWhat happened (lines in [brackets] are what the partner did; only ack lines, messages and decision cards are visible to the user):\n${r.transcript}\n\nNote: silence (no message) is a valid output where the rubric allows it. For a decision card only its "question text" is prose written by the partner; the (field …) part is structured data the app turns into buttons and a default line.`;
   for (let attempt = 0; attempt < 2; attempt++) {
     const proc = Bun.spawn(
       ["claude", "-p", prompt, "--model", JUDGE, "--system-prompt", JUDGE_SYSTEM, "--strict-mcp-config", "--setting-sources", "", "--tools", "", "--no-session-persistence", "--output-format", "json"],

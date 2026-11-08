@@ -159,9 +159,9 @@ round trips because Ducter's MCP tools were deferred (~3 s), and the user's glob
   `nmem`, an invented "pick Go" with no decision (honesty guard now queues a correction turn).
 
 **Known gaps (not fixed tonight)**
-- Partner prose still drifts from the persona: it sometimes adds "Task opened." (now dropped
-  mechanically when short), repeats a task's question, or puts branches and commit-policy talk
-  in results. Needs prompt evals, not more rules.
+- Partner prose drift: now measured, see "Partner eval" below. Still open: two results that
+  land together mention branches and guess at merge conflicts; greetings sometimes give two
+  examples.
 - A task phrased its question as "Go = add the test, Hold = don't"; the brief now says Hold
   means pause, never "no". Not re-verified live.
 - Parked-session resume costs ~10 s on Claude Code; nothing prewarms tasks.
@@ -170,6 +170,32 @@ round trips because Ducter's MCP tools were deferred (~3 s), and the user's glob
 - Branch slugs from Chinese titles keep only the ASCII words (`ducter/foo-…`).
 - The honesty guard is a regex over zh/en wording; it can miss paraphrases.
 - Live runs used sonnet only; opus partner latency not measured.
+
+## Partner eval (2026-11-09)
+
+`bun run eval:partner [--model haiku] [--floor] [--only ids] [--repeat n]`: 33 zh/en
+scenarios through the real partner and core, with a real model on the same Claude Code
+harness and a fake task runner. Deterministic checks first, then a haiku judge; the table
+goes to `packages/partner/eval/results/<date>-<model>-<label>.md`. ≈$0.93 per sonnet run.
+Details: `research/30-partner-eval.md`.
+
+| | Pass |
+|---|---|
+| Baseline persona, sonnet | 18/33 (55%) |
+| Tuned, sonnet, 2 runs | 62/66 (94%) |
+| Tuned, haiku floor subset | 14/17 (82%) |
+
+What changed:
+- **Result prose is the outcome only**, plus left out and unverified. The desktop already
+  renders How I know, Outside and Merge under the message from the typed report, so the old
+  persona's demand for those rows in prose produced the commit/branch/"合回 main？" talk.
+- **Persona:** one-example first words; hand-offs named as actions; nothing after `ask`; no
+  default in its question; never name buttons; nothing on needs_input; ask before outside
+  effects (never pay); stop, secrets, button actions. 2,028 → 2,695 tokens.
+- **Code guards**, each with a test: a 1.5 s settle window for report-only turns; the
+  language hint on report-only turns; secret redaction in briefs and task_send; short lines
+  dropped after an ask and in needs_input-only turns; defaults stripped from ask questions;
+  button merges name the base branch.
 
 ## Not tonight (next sessions)
 

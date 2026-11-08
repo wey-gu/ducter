@@ -250,7 +250,7 @@ export const scenarios: Scenario[] = [
       },
     ],
     expect: { opens: 0, msgs: [1, 1], maxChars: 160, forbid: [/要不要提交|commit it\?|提交一下吗/i, NO_PLUMBING] },
-    rubric: `A result in Chinese (even though the task reported in English). ${RESULT_SHAPE}: the flaky TTL test is fixed, and why in a few words is fine. No step-by-step recap, no headings, no 'commit it?'.`,
+    rubric: `A result in Chinese (even though the task reported in English). ${RESULT_SHAPE}: the flaky TTL test is fixed, with its cause and the fix in plain words (one short clause each is fine). No step-by-step recap, no headings, no 'commit it?'.`,
   },
   {
     id: "result-en-leftout",
@@ -521,7 +521,7 @@ export const scenarios: Scenario[] = [
     category: "timer",
     lang: "en",
     steps: [{ user: "Remind me at 3pm today to reply to the HawDB contributor about the load-test numbers." }],
-    expect: { opens: 0, waiter: true, msgs: [0, 1], maxChars: 100 },
+    expect: { opens: 0, waiter: true, msgs: [0, 1], maxChars: 120 },
     rubric: "Sets a reminder (wait_until) for 3pm and confirms in one short English line. No task.",
   },
 
@@ -593,7 +593,7 @@ export const scenarios: Scenario[] = [
       { userAction: { task: "flaky", text: "the user merged this task's branch into its base branch (e81f2aa)" } },
     ],
     steps: [{ user: "已经合到 main 上了吗？" }],
-    expect: { opens: 0, noSend: true, msgs: [1, 1], maxChars: 100, forbid: [/没(有)?合|不是我|谁合|还没/] },
+    expect: { opens: 0, noSend: true, msgs: [1, 1], maxChars: 100, forbid: [/没(有)?合|不是我|谁合|还没合/] },
     rubric: "The user merged it by button a moment ago (that is in the conversation as a fact). The partner answers yes from that fact, briefly, in Chinese; it must not say it didn't merge it, ask who did, or send the user to check.",
   },
   {

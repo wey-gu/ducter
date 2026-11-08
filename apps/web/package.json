@@ -1,0 +1,15 @@
+{
+  "name": "@ducter/web",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun run build.ts",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@ducter/core": "workspace:*",
+    "@ducter/protocol": "workspace:*",
+    "preact": "10.27.2"
+  }
+}

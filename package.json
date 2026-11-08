@@ -2,14 +2,15 @@
   "name": "ducter",
   "private": true,
   "type": "module",
-  "workspaces": ["packages/*"],
+  "workspaces": ["packages/*", "apps/web"],
   "scripts": {
     "up": "bun run packages/core/src/main.ts",
     "ducter": "bun packages/cli/src/main.ts",
     "build:cli": "sh packages/cli/build.sh",
     "test": "bun test",
     "eval:partner": "bun packages/partner/eval/run.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p apps/web/tsconfig.json",
+    "build:web": "bun run apps/web/build.ts"
   },
   "devDependencies": {
     "typescript": "^5.9.0",

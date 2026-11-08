@@ -127,6 +127,11 @@ func (a *App) taskChip(c *ui.Context, t *store.Task, detail string) {
 	att := t.Attention()
 	sc := a.T.State(string(att))
 	label := t.Title()
+	if h := t.Browsing(); h != "" {
+		detail = a.L.T("browser.looking", h)
+	} else if t.Place().Kind == "browser" && !finished(t) {
+		a.ensureHistory(t.ID) // browser status lines come with the task's stream
+	}
 	if detail == "" {
 		detail = a.stateLabel(att)
 	}
@@ -189,7 +194,18 @@ const (
 // button is a press-down Pebble button: it sits on a solid offset shadow
 // and sinks into it while pressed. It reports a click.
 func (a *App) button(c *ui.Context, label string, kind btnKind, height float32, onSurface ui.Color) bool {
+	return a.buttonFor(c, label, "", kind, height, onSurface)
+}
+
+// buttonFor is a button whose accessible name says what it acts on ("Go:
+// rebase · Fix CI"), so two "Go" buttons on one screen are told apart
+// by screen readers and automation; the visible text stays label.
+func (a *App) buttonFor(c *ui.Context, label, about string, kind btnKind, height float32, onSurface ui.Color) bool {
 	t := a.T
+	name := label
+	if about != "" {
+		name = label + " · " + about
+	}
 	var bg, fg ui.Color
 	var press theme.Press
 	switch kind {
@@ -210,15 +226,15 @@ func (a *App) button(c *ui.Context, label string, kind btnKind, height float32, 
 	if kind == btnText {
 		padX = 10
 	}
-	b := ui.Row(c.Key("btn:"+label)).Height(height).Padding(0, padX).Radius(radius).Background(bg).
-		Justify(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(label).Focusable().Shrink(0)
+	b := ui.Row(c.Key("btn:"+name)).Height(height).Padding(0, padX).Radius(radius).Background(bg).
+		Justify(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(name).Focusable().Shrink(0)
 	a.press(c, b, press)
 	size := t.MD
 	if height >= 50 {
 		size = 16
 	}
 	b.Children(func() {
-		ui.Text(c, label).FontSize(size).FontWeight(700).TextColor(fg).SingleLine()
+		ui.Text(c, label).FontSize(size).FontWeight(700).TextColor(fg).SingleLine().AccessHidden(about != "")
 	})
 	return b.Clicked()
 }
@@ -334,13 +350,14 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 		goText = a.L.T("decision.go.label", d.GoLabel)
 	}
 	ui.Row(c.Key("decide:" + d.DecisionID)).Gap(10).Wrap().AlignItems(ui.Center).Children(func() {
-		if a.button(c, goText, btnPrimary, st.height, st.quietBg) {
+		about := a.decisionAbout(d)
+		if a.buttonFor(c, goText, about, btnPrimary, st.height, st.quietBg) {
 			a.Decide(d.DecisionID, "go", "")
 		}
-		if a.button(c, a.L.T("decision.hold"), btnQuiet, st.height, st.quietBg) {
+		if a.buttonFor(c, a.L.T("decision.hold"), about, btnQuiet, st.height, st.quietBg) {
 			a.Decide(d.DecisionID, "hold", "")
 		}
-		if a.button(c, a.L.T("decision.reply"), btnText, st.height, st.quietBg) {
+		if a.buttonFor(c, a.L.T("decision.reply"), about, btnText, st.height, st.quietBg) {
 			a.replyOpen[d.DecisionID] = !a.replyOpen[d.DecisionID]
 		}
 	})
@@ -398,4 +415,17 @@ func (a *App) defaultLine(c *ui.Context, d *store.DecisionState) string {
 		label = " " + label // a Latin word in Chinese text gets its space
 	}
 	return a.L.T("decision.default.go", a.duration(left+time.Second*59/60), label)
+}
+
+// decisionAbout names what a decision is about, for its buttons'
+// accessible names: its task's title, else the question's start.
+func (a *App) decisionAbout(d *store.DecisionState) string {
+	if t := a.S.Task(d.TaskID); t != nil && t.Title() != "" {
+		return t.Title()
+	}
+	q := []rune(d.Question)
+	if len(q) > 40 {
+		return string(q[:40]) + "…"
+	}
+	return string(q)
 }

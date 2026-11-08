@@ -6,6 +6,7 @@
 package store
 
 import (
+	"encoding/json"
 	"sort"
 	"strings"
 	"time"
@@ -94,10 +95,32 @@ type Task struct {
 	Sends []*Send
 	// Usage sums the token use of the turns seen.
 	Usage protocol.Usage
+	// Browser is what a browser task last looked at (task_event
+	// {role: system, raw.browser: {host, url}}), nil until one.
+	Browser *BrowserStatus
 	// Acting is the task_action awaiting its action_result ("" when none).
 	Acting string
 	// Acted is the last action_result for this task.
 	Acted *protocol.ServerFrame
+}
+
+// BrowserStatus is where a browser task's browser is.
+type BrowserStatus struct {
+	Host string `json:"host"`
+	URL  string `json:"url"`
+	Seq  int64  `json:"-"`
+}
+
+// Browsing is the host a running task's browser is on, or "".
+func (t *Task) Browsing() string {
+	if t.Browser == nil {
+		return ""
+	}
+	switch t.Attention() {
+	case protocol.Working, protocol.Queued, protocol.NeedsYou, protocol.Blocked:
+		return t.Browser.Host
+	}
+	return ""
 }
 
 // SendFor returns the user's send that a logged task_event echoes, or nil.
@@ -589,6 +612,16 @@ func (s *Store) applyTask(t *Task, ev protocol.LogEvent, body any) {
 	case *protocol.TaskState:
 		t.State = b
 	case *protocol.TaskEvent:
+		if b.Role == "system" && len(b.Raw) > 0 {
+			var raw struct {
+				Browser *BrowserStatus `json:"browser"`
+			}
+			if json.Unmarshal(b.Raw, &raw) == nil && raw.Browser != nil && raw.Browser.Host != "" &&
+				(t.Browser == nil || t.Browser.Seq < ev.Seq) {
+				raw.Browser.Seq = ev.Seq
+				t.Browser = raw.Browser
+			}
+		}
 		if u := b.Usage; u != nil {
 			t.Usage.InputTokens += u.InputTokens
 			t.Usage.OutputTokens += u.OutputTokens

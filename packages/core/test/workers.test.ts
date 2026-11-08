@@ -86,3 +86,44 @@ test("revoking a device (from another process, the CLI) closes its live sockets:
   await until(() => closes.length === 2);
   expect(closes).toEqual([4401, 4401]);
 });
+
+test("WorkerLink over the real socket: requests, session frames, offline end on close, onOnline on reconnect", async () => {
+  const core = boot();
+  const base = `ws://127.0.0.1:${core.port}`;
+  const w = core.devices.redeem(core.devices.createCode({ kind: "worker" }).code, { name: "vps-2" }) as { token: string; device: { id: string } };
+  const connect = async () => {
+    const s = await open(`${base}/worker`, { ...REMOTE, authorization: `Bearer ${w.token}` });
+    s.ws!.onmessage = (m) => {
+      const f = JSON.parse(String(m.data));
+      s.frames.push(f);
+      if (f.t === "req") {
+        s.ws!.send(JSON.stringify({ t: "res", id: f.id, ok: true, result: { echo: f.op, key: f.args.key } }));
+        s.ws!.send(JSON.stringify({ t: "ev", key: f.args.key, ev: { role: "assistant", text: "hi" }, busy: true, sessionId: "s1" }));
+      }
+    };
+    s.ws!.send(JSON.stringify({ t: "hello", name: "vps-2", harnesses: [{ id: "claude-code", installed: true, loggedIn: true }] }));
+    return s;
+  };
+  const link = core.workers.link("vps-2")!;
+  expect(link.online()).toBe(false);
+  await expect(link.call("plan", {})).rejects.toThrow("vps-2 is not connected");
+
+  let s = await connect();
+  await until(() => link.online());
+  expect(core.workers.list()).toEqual([{ id: w.device.id, name: "vps-2", online: true, harnesses: [{ id: "claude-code", installed: true, loggedIn: true }] }]);
+  const frames: any[] = [];
+  link.onSession("k1", (f) => frames.push(f));
+  expect(await link.call("start", { key: "k1" })).toEqual({ echo: "start", key: "k1" });
+  await until(() => frames.length === 1);
+  expect(frames[0]).toMatchObject({ t: "ev", key: "k1", busy: true, sessionId: "s1" });
+
+  let back = 0;
+  link.onOnline(() => back++);
+  s.ws!.close();
+  await until(() => frames.length === 2);
+  expect(frames[1]).toMatchObject({ t: "end", key: "k1", offline: true });
+  expect(link.online()).toBe(false);
+  s = await connect();
+  await until(() => back === 1);
+  s.ws!.close();
+});

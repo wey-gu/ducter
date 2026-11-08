@@ -7,6 +7,10 @@ import { cwdOf, planPlace, provisionPlace } from "./places.ts";
 import { browserSidecar, type BrowserOptions, type BrowserSidecar } from "./browser.ts";
 import { PREVIEW_MAX, preview } from "./normalize.ts";
 import { mergeTaskBranch, openDraftPr, type ActionResult } from "./integrate.ts";
+import { DEVICE_BACK, DeviceOfflineError, deviceOf, isOffline, remoteOps, type PlaceOps } from "./remote.ts";
+
+/** task_state reason for a task whose worker dropped; clients render it as "<device> 连不上 / Can't reach <device>". */
+export const unreachableReason = (device: string) => `device:unreachable:${device}`;
 
 type HarnessId = SessionSpec["harness"];
 type From = NonNullable<Bodies["task_event"]["from"]>;
@@ -23,6 +27,8 @@ export interface RunnerOptions {
   now?: () => Date;
   browser?: BrowserOptions; // browser places: env gate and test seams
   taskModel?: string; // default model when the partner passes none (default env DUCTER_TASK_MODEL)
+  /** How long a worker may be gone before its working tasks show as waiting (D52: 2 min). */
+  offlineGraceMs?: number;
 }
 
 /** Runner plus test/ops helpers that are not part of the contract. */
@@ -60,6 +66,10 @@ interface TaskRt {
   residency: Residency;
   started: Promise<void>;
   sidecar?: BrowserSidecar; // browser place
+  ops: PlaceOps; // where the place lives: this machine or a worker (remote.ts)
+  resumeOnBack?: boolean; // its worker dropped mid-work: resume when the worker is back
+  offlineTimer?: ReturnType<typeof setTimeout>;
+  offlineOff?: () => void;
 }
 
 const REPORT_ATTENTION: Record<Bodies["report"]["state"], Attention> = {
@@ -81,6 +91,20 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
   const now = opts.now ?? (() => new Date());
   const newId = opts.newId ?? shortId;
   const tasks = new Map<string, TaskRt>();
+  const graceMs = opts.offlineGraceMs ?? Number(process.env.DUCTER_OFFLINE_GRACE_MS || 120_000);
+  const localOps: PlaceOps = {
+    plan: (place, id, title) => planPlace(place, id, title, core.dataDir),
+    provision: (r) => provisionPlace(r),
+    harness,
+    merge: (place) => mergeTaskBranch(place),
+    openPr: (place) => openDraftPr(place, { gh: opts.gh }),
+  };
+  /** A paired worker's ops when the place names one; any other name (e.g. "mac") is this machine. */
+  function opsFor(place: Place | undefined): PlaceOps {
+    const device = deviceOf(place);
+    const link = device ? core.workers?.link(device) : undefined;
+    return link ? remoteOps(link) : localOps;
+  }
 
   const unsubscribe = core.log.subscribe((e: LogEvent) => {
     if (e.kind !== "report") return;
@@ -153,18 +177,20 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     if (!id || id === t.loggedSessionId) return;
     t.sessionId = id;
     t.loggedSessionId = id;
-    logEvent(t, { role: "system", from: "runner", text: "session started", raw: { sessionId: id } });
+    // On a worker, the cwd was planned there: record it, a restarted main resumes from it.
+    logEvent(t, { role: "system", from: "runner", text: "session started", raw: { sessionId: id, ...(t.ops.device ? { cwd: t.spec.cwd, device: t.ops.device.id } : {}) } });
   }
 
   async function startSession(t: TaskRt, resume: boolean) {
     const spec: SessionSpec = resume && t.sessionId ? { ...t.spec, resumeSessionId: t.sessionId } : t.spec;
-    const session = await harness.start(spec);
+    const session = await t.ops.harness.start(spec);
     t.session = session;
     noteSessionId(t, session);
     void pump(t, session);
   }
 
   async function pump(t: TaskRt, session: HarnessSession) {
+    let offline = false;
     try {
       for await (const ev of session.events()) {
         noteSessionId(t, session);
@@ -172,12 +198,62 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         if (ev.turnEnd) await onTurnEnd(t, ev);
       }
     } catch (err) {
-      logEvent(t, { role: "system", text: `event stream error: ${preview(String(err), 500)}` });
+      if (isOffline(err)) offline = true;
+      else logEvent(t, { role: "system", text: `event stream error: ${preview(String(err), 500)}` });
     }
     if (t.session === session) {
+      const wasRunning = t.running;
       t.session = undefined;
       t.running = false;
-      if (!t.dropped) setState(t, currentAttention(t), "parked");
+      if (offline && !t.dropped) deviceLost(t, wasRunning);
+      else if (!t.dropped) setState(t, currentAttention(t), "parked");
+    }
+  }
+
+  // ---------- workers: a task's machine drops and comes back (focus-window-states invariant 1) ----------
+  function deviceLost(t: TaskRt, midTurn: boolean) {
+    const d = t.ops.device;
+    if (!d || t.dropped) return;
+    const was = currentAttention(t);
+    t.resumeOnBack = t.resumeOnBack || midTurn || was === "working" || was === "queued";
+    setState(t, was, "offline");
+    // Only work in flight is said out loud; an idle task just shows its machine as away.
+    if (t.resumeOnBack) logEvent(t, { role: "system", from: "runner", text: `${d.name} disconnected; the task carries on when it is back`, raw: { device: d.id, offline: true } });
+    clearTimeout(t.offlineTimer);
+    // Short blips stay silent (D52); past the grace, working tasks show as waiting on the device.
+    if (t.resumeOnBack)
+      t.offlineTimer = setTimeout(() => {
+        if (!d.online() && !t.dropped && !t.session) setState(t, "blocked", "offline", unreachableReason(d.name));
+      }, graceMs);
+    t.offlineOff?.();
+    t.offlineOff = d.onOnline(() => {
+      t.offlineOff?.();
+      t.offlineOff = undefined;
+      clearTimeout(t.offlineTimer);
+      void deviceBack(t);
+    });
+  }
+
+  async function deviceBack(t: TaskRt) {
+    if (t.dropped || t.session) return;
+    const d = t.ops.device!;
+    if (!t.resumeOnBack) return setState(t, currentAttention(t), "parked");
+    t.resumeOnBack = false;
+    logEvent(t, { role: "system", from: "runner", text: `${d.name} is back; resuming the session`, raw: { device: d.id, offline: false } });
+    try {
+      if (t.sessionId) {
+        await startSession(t, true);
+        await sendTurn(t, DEVICE_BACK, "runner");
+      } else {
+        await t.ops.provision({ place: t.card.place, cwd: t.spec.cwd });
+        await startSession(t, false);
+        await sendTurn(t, kickoff(t.card.title), "runner");
+      }
+    } catch (err) {
+      if (isOffline(err)) return deviceLost(t, true);
+      const reason = preview(err instanceof Error ? err.message : String(err), 500);
+      logEvent(t, { role: "system", from: "runner", text: `failed to resume on ${d.name}: ${reason}` });
+      setState(t, "failed", "parked", reason);
     }
   }
 
@@ -263,8 +339,9 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     return spec;
   }
 
-  function newRt(id: string, persona: string, card: TaskCard, spec: SessionSpec): TaskRt {
+  function newRt(id: string, persona: string, card: TaskCard, spec: SessionSpec, ops: PlaceOps = localOps): TaskRt {
     return {
+      ops,
       id,
       persona,
       card,
@@ -288,10 +365,14 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const open = e.body as Bodies["task_open"];
     const card = core.tasks.get(open.taskId);
     if (!card || tasks.has(open.taskId)) continue;
-    const t = newRt(open.taskId, e.persona, card, specFor(open.taskId, open, cwdOf(open.place, open.taskId, core.dataDir)));
+    const ops = opsFor(open.place);
+    // A worker's cwd is on the worker; it was planned there and recorded in the place.
+    const cwd = ops.device ? remoteCwd(open.place) : cwdOf(open.place, open.taskId, core.dataDir);
+    const t = newRt(open.taskId, e.persona, card, specFor(open.taskId, open, cwd), ops);
     for (const ev of core.log.read({ stream: stream(open.taskId), kinds: ["task_event"], limit: 50_000 })) {
-      const sid = ((ev.body as Bodies["task_event"]).raw as { sessionId?: string } | undefined)?.sessionId;
-      if (sid) t.sessionId = t.loggedSessionId = sid;
+      const raw = (ev.body as Bodies["task_event"]).raw as { sessionId?: string; cwd?: string } | undefined;
+      if (raw?.sessionId) t.sessionId = t.loggedSessionId = raw.sessionId;
+      if (raw?.sessionId && raw.cwd && ops.device) t.spec.cwd = raw.cwd;
     }
     tasks.set(open.taskId, t);
     recovered.push(t);
@@ -308,11 +389,12 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
           await startSession(t, true);
           await sendTurn(t, RESUME_AFTER_RESTART, "runner");
         } else {
-          await provisionPlace({ place: t.card.place, cwd: t.spec.cwd });
+          await t.ops.provision({ place: t.card.place, cwd: t.spec.cwd });
           await startSession(t, false);
           await sendTurn(t, kickoff(t.card.title), "runner");
         }
       } catch (err) {
+        if (isOffline(err)) return deviceLost(t, true);
         const reason = preview(err instanceof Error ? err.message : String(err), 500);
         logEvent(t, { role: "system", from: "runner", text: `failed to resume after restart: ${reason}` });
         setState(t, "failed", "parked", reason);
@@ -328,7 +410,11 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       const h = (input.harness ?? opts.defaultHarness ?? "claude-code") as HarnessId;
       if (!HARNESSES.includes(h)) throw new Error(`unknown harness ${input.harness}`);
       const title = input.title.trim() || "Untitled task";
-      const resolved = await planPlace(input.place, id, title, core.dataDir);
+      // Where it runs: this machine, or a worker that must be connected right now.
+      const ops = opsFor(input.place);
+      if (ops.device && !ops.device.online()) throw new DeviceOfflineError(ops.device.name);
+      if (ops.device && input.place?.kind === "browser") throw new Error(`browser places run on this machine only for now, not on ${ops.device.name}`);
+      const resolved = await ops.plan(input.place, id, title);
       const project = input.project ?? "";
       const persona = input.persona || core.persona.id;
       const partnerName = opts.partnerName ?? core.persona.name ?? "Ducter";
@@ -358,18 +444,19 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         spec.mcp = [...spec.mcp, sidecar.mcp];
         if (h === "claude-code") Object.assign(spec, sidecar.claude);
       }
-      const t = newRt(id, persona, card, spec);
+      const t = newRt(id, persona, card, spec, ops);
       if (sidecar) t.sidecar = sidecar;
       tasks.set(id, t);
       core.tasks.setState(id, "queued", "provisioning");
 
       t.started = (async () => {
         try {
-          await provisionPlace(resolved);
+          await ops.provision(resolved);
           await sidecar?.ready();
           await startSession(t, false);
           await sendTurn(t, kickoff(title), "runner");
         } catch (err) {
+          if (isOffline(err)) return deviceLost(t, true);
           const reason = preview(err instanceof Error ? err.message : String(err), 500);
           logEvent(t, { role: "system", from: "runner", text: `failed to start: ${reason}` });
           setState(t, "failed", "archived", reason);
@@ -387,6 +474,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       t.nudged = false;
       t.stallNoted = false;
       if (!t.session) {
+        // Its worker is away: say so, and deliver nothing (the partner tells the user).
+        if (t.ops.device && !t.ops.device.online()) throw new DeviceOfflineError(t.ops.device.name);
         // Parked (process gone or restarted): resume by native session id, or fail loudly.
         if (!t.sessionId) throw new Error(`task ${taskId} has no session to resume`);
         // Resuming takes seconds (measured ~10 s for Claude Code): log the text now so the
@@ -426,7 +515,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       if (t.session || t.sessionId) return runner.send(taskId, REOPENED, undefined, "user");
       // Never got a session (e.g. failed to start): start one from the brief.
       t.started = (async () => {
-        await provisionPlace({ place: t.card.place, cwd: t.spec.cwd });
+        await t.ops.provision({ place: t.card.place, cwd: t.spec.cwd });
         await startSession(t, false);
         await sendTurn(t, kickoff(t.card.title), "runner");
       })();
@@ -490,7 +579,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     async merge(taskId) {
       const t = get(taskId);
       const card = core.tasks.get(taskId) ?? t.card;
-      const r = await mergeTaskBranch(card.place);
+      const r = await t.ops.merge(card.place);
       if (r.ok) logEvent(t, { role: "system", from: "runner", text: r.message, raw: { effect: "merge", ref: r.ref } });
       return r;
     },
@@ -498,7 +587,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     async openPr(taskId) {
       const t = get(taskId);
       const card = core.tasks.get(taskId) ?? t.card;
-      const r = await openDraftPr(card.place, { gh: opts.gh });
+      const r = await t.ops.openPr(card.place);
       // Pushing and opening a PR leave the user's machines: an outside effect (I-results "Outside").
       if (r.ok) logEvent(t, { role: "system", from: "runner", text: r.message, raw: { effect: "outside", what: "draft_pr", ref: r.ref } });
       return r;
@@ -514,6 +603,10 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
 
     async dispose() {
       unsubscribe();
+      for (const t of tasks.values()) {
+        clearTimeout(t.offlineTimer);
+        t.offlineOff?.();
+      }
       await Promise.all([...tasks.values()].map((t) => t.session?.close().catch(() => {})));
     },
   };
@@ -528,3 +621,10 @@ function capInput(input: unknown): unknown {
 }
 
 export type { Place };
+
+/** A worker task's cwd, from its recorded place (planned on the worker at open time). */
+function remoteCwd(place: Place): string {
+  if (place.kind === "repo") return place.worktree ?? place.repoPath;
+  if (place.kind === "folder") return place.path;
+  return "";
+}

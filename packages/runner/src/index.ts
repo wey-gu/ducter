@@ -9,3 +9,6 @@ export { planPlace, provisionPlace, slugify } from "./places.ts";
 export { browserSidecar, browserGate, browserBrief, detectCuaDriver, profileName, socketPath, BROWSER_MCP_NAME } from "./browser.ts";
 export type { BrowserOptions, BrowserSidecar, CuaDriverInfo } from "./browser.ts";
 export { mergeTaskBranch, openDraftPr, type ActionResult } from "./integrate.ts";
+export { remoteOps, deviceOf, isOffline, DeviceOfflineError, DEVICE_BACK, type PlaceOps } from "./remote.ts";
+export { createWorkerHost, rewriteMcp, type WorkerHost, type WorkerHostOptions } from "./worker-host.ts";
+export { unreachableReason } from "./runner.ts";

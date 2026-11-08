@@ -22,6 +22,11 @@ const (
 type Table map[string]string
 
 var zh = Table{
+	"task.changes.one":              "改动 · 1 个文件",
+	"time.opened.now":               "刚开",
+	"task.side.changes":             "改动",
+	"task.side.details":             "细节",
+	"browser.looking":               "在 Ducter 的浏览器里看 %s",
 	"result.asked":                  "已经跟 %s 说了",
 	"task.dossier.body":             "谁在做",
 	"task.dossier.reason":           "为什么是它",
@@ -181,9 +186,15 @@ var zh = Table{
 	"onhand.empty":                  "手头没事。在对话里说一句，%s 就会接着做。",
 	"empty.conversation.title":      "你好，我是 %s。",
 	"empty.try":                     "可以这样开头",
-	"suggest.1":                     "看看 ~/dev/ducter 里哪些测试没过，修好了告诉我",
-	"suggest.2":                     "把今天 docs/decisions.md 里新加的决定总结给我",
-	"suggest.3":                     "明早 9 点提醒我回 HawDB 那个 PR 的评论",
+	"suggest.1":                     "你能帮我做些什么？举三个例子",
+	"suggest.2":                     "帮我把这周要做的事理一理",
+	"suggest.3":                     "明早 9 点提醒我回邮件",
+	"suggest.repo.1":                "看看 %s 最近有哪些测试没过，修好了告诉我",
+	"suggest.repo.2":                "说说 %s 这周都改了些什么",
+	"suggest.repo.3":                "%s 里有哪些没收尾的分支？帮我理一理",
+	"empty.repos.note":              "按这台 Mac 上 %d 个代码库的名字想的，没打开里面的内容。",
+	"firstresult.line":              "第一件事做完了。以后做完的事，我都会这样带着证据交回给你。",
+	"firstresult.ok":                "知道了",
 	"firstrun.title":                "Ducter 还没启动",
 	"firstrun.body":                 "在终端运行这一行，Ducter 就在这台 Mac 上开工：",
 	"firstrun.copy":                 "复制",
@@ -195,6 +206,7 @@ var zh = Table{
 	"firstrun.where":                "在找 %s",
 	"firstrun.auto":                 "不用管这个窗口，连上了它自己会切过去。",
 	"firstrun.elsewhere":            "我的 Ducter 在另一台机器上",
+	"device.unreachable":            "%s 连不上",
 	"connect.title":                 "连接到你的 Ducter",
 	"connect.body":                  "在运行 Ducter 的那台机器上运行这一行，把它给的地址和配对码填在下面：",
 	"connect.address":               "地址",
@@ -216,6 +228,11 @@ var zh = Table{
 }
 
 var en = Table{
+	"task.changes.one":              "Changes · 1 file",
+	"time.opened.now":               "just opened",
+	"task.side.changes":             "Changes",
+	"task.side.details":             "Details",
+	"browser.looking":               "Looking at %s in Ducter's browser",
 	"result.asked":                  "Told %s",
 	"task.dossier.body":             "Who's doing it",
 	"task.dossier.reason":           "Why this one",
@@ -375,9 +392,15 @@ var en = Table{
 	"onhand.empty":                  "Nothing on hand. Say one thing in the conversation and %s picks it up.",
 	"empty.conversation.title":      "Hi, I'm %s.",
 	"empty.try":                     "You could start with",
-	"suggest.1":                     "Find the failing tests in ~/dev/ducter, fix them, and tell me",
-	"suggest.2":                     "Summarize what's new in docs/decisions.md today",
-	"suggest.3":                     "Remind me at 9 tomorrow to answer the comments on the HawDB PR",
+	"suggest.1":                     "What can you do for me? Give me three examples",
+	"suggest.2":                     "Help me sort out what I need to do this week",
+	"suggest.3":                     "Remind me at 9 tomorrow to answer my email",
+	"suggest.repo.1":                "Find the failing tests in %s, fix them, and tell me",
+	"suggest.repo.2":                "What changed in %s this week?",
+	"suggest.repo.3":                "Which branches in %s are left unfinished? Sort them out for me",
+	"empty.repos.note":              "From the names of %d repos on this Mac. Nothing inside them was opened.",
+	"firstresult.line":              "Your first task is done. Everything I finish comes back to you like this, with proof.",
+	"firstresult.ok":                "Got it",
 	"firstrun.title":                "Ducter isn't running yet",
 	"firstrun.body":                 "Run this in a terminal and Ducter starts working on this Mac:",
 	"firstrun.copy":                 "Copy",
@@ -389,6 +412,7 @@ var en = Table{
 	"firstrun.where":                "Looking for %s",
 	"firstrun.auto":                 "Leave this window open; it switches over by itself once Ducter is up.",
 	"firstrun.elsewhere":            "My Ducter is on another machine",
+	"device.unreachable":            "Can't reach %s",
 	"connect.title":                 "Connect to your Ducter",
 	"connect.body":                  "On the machine running Ducter, run this, then enter the address and pairing code it shows:",
 	"connect.address":               "Address",
@@ -438,7 +462,26 @@ func (s *Strings) T(key string, args ...any) string {
 	if len(args) == 0 {
 		return v
 	}
-	return fmt.Sprintf(v, args...)
+	out := fmt.Sprintf(v, args...)
+	if s.Lang == ZH {
+		out = JoinHan(out)
+	}
+	return out
+}
+
+// JoinHan drops a space between two Chinese characters: zh copy spaces
+// around a name ("%s 刚交回一件事") so a Latin name reads well, and a
+// Chinese name ("小鸭") must then sit flush.
+func JoinHan(s string) string {
+	rs := []rune(s)
+	out := rs[:0:0]
+	for i, r := range rs {
+		if r == ' ' && i > 0 && i+1 < len(rs) && unicode.Is(unicode.Han, rs[i-1]) && unicode.Is(unicode.Han, rs[i+1]) {
+			continue
+		}
+		out = append(out, r)
+	}
+	return string(out)
 }
 
 // Detect picks the language: DUCTER_LOCALE, else the system's preferred

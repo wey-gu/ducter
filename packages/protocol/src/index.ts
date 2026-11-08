@@ -20,7 +20,7 @@ export type Residency = "provisioning" | "hot" | "warm" | "parked" | "archived" 
 // ---------- Places (docs/design/product-model.md §3) ----------
 
 export type Place =
-  | { kind: "none" }
+  | { kind: "none"; device?: string } // device: where a place-less task runs (a worker); default this machine
   | { kind: "repo"; device: string; repoPath: string; worktree?: string; branch?: string; baseBranch?: string }
   | { kind: "folder"; device: string; path: string }
   | { kind: "browser"; device: string; profile: string };

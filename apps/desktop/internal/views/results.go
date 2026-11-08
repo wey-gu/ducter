@@ -19,7 +19,7 @@ import (
 // needs (task events are never pushed in bulk).
 func (a *App) ensureHistory(id string) {
 	t := a.S.Task(id)
-	if t == nil || t.HistoryLoaded || a.historyAsked[id] {
+	if t == nil || t.HistoryLoaded || a.historyAsked[id] || !a.S.Welcomed {
 		return
 	}
 	a.historyAsked[id] = true
@@ -48,16 +48,28 @@ func (a *App) taskFooter(c *ui.Context, task *store.Task, detail string) {
 		ui.Row(c).Gap(8).Wrap().AlignItems(ui.Center).Children(func() {
 			a.taskChip(c, task, "")
 		})
-		if evs := task.Evidence; len(evs) > 0 {
-			ui.Row(c).Gap(8).Wrap().AlignItems(ui.Center).Children(func() {
-				ui.Text(c, a.L.T("result.howknow")).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted).LetterSpacing(0.3)
-				a.evidenceChips(c, task, evs, 4)
-			})
-		}
-		if line := a.outsideLine(task); line != "" {
-			ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
-				ui.Text(c, a.L.T("outside.title")).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted).LetterSpacing(0.3).Shrink(0)
-				ui.Text(c, line).FontSize(t.SM).TextColor(t.InkSoft).Grow(1).MinWidth(0)
+		evs, line := task.Evidence, a.outsideLine(task)
+		if len(evs) > 0 || line != "" {
+			// Proof and reach as a two-column sheet: labels in one column,
+			// values aligned in the other.
+			ui.Column(c).Gap(10).Padding(12, 16).Radius(t.RadiusSM).Background(t.SurfaceRaised).Border(1, t.LineSoft).Children(func() {
+				label := func(key string) {
+					ui.Text(c, a.L.T(key)).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted).Width(84).Shrink(0).Padding(6, 0, 0, 0)
+				}
+				if len(evs) > 0 {
+					ui.Row(c).Gap(12).AlignItems(ui.Start).Children(func() {
+						label("result.howknow")
+						ui.Row(c).Gap(8).Wrap().Grow(1).MinWidth(0).AlignItems(ui.Center).Children(func() {
+							a.evidenceChips(c, task, evs, 4)
+						})
+					})
+				}
+				if line != "" {
+					ui.Row(c).Gap(12).AlignItems(ui.Start).Children(func() {
+						label("outside.title")
+						ui.Text(c, line).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft).Grow(1).MinWidth(0).Padding(4, 0, 0, 0)
+					})
+				}
 			})
 		}
 		a.resultActions(c, task)
@@ -160,14 +172,14 @@ func (a *App) resultActions(c *ui.Context, task *store.Task) {
 		} else if done := task.Acted; done != nil && done.OK && done.Action == "merge" {
 			ui.Text(c.Key("acted"), a.L.T("result.merged", base)).FontSize(t.SM).FontWeight(700).TextColor(t.Done.Ink)
 		} else {
-			if a.button(c, a.L.T("result.merge", base), btnPrimary, 38, t.Surface) {
+			if a.buttonFor(c, a.L.T("result.merge", base), task.Title(), btnPrimary, 38, t.Surface) {
 				act("merge")
 			}
-			if a.button(c, a.L.T("result.pr"), btnQuiet, 38, t.Surface) {
+			if a.buttonFor(c, a.L.T("result.pr"), task.Title(), btnQuiet, 38, t.Surface) {
 				act("open_pr")
 			}
 		}
-		if a.Route != RouteTask && a.button(c, a.L.T("result.changes"), btnText, 38, t.Surface) {
+		if a.Route != RouteTask && a.buttonFor(c, a.L.T("result.changes"), task.Title(), btnText, 38, t.Surface) {
 			a.OpenTask(task.ID)
 		}
 	})

@@ -1,8 +1,18 @@
 // Workers dial in at /worker with a worker device token (auth.ts) and stay connected. This file
-// is enrollment and presence only: who is online, with which harnesses. Placing tasks on a
-// worker is designed in docs/design/system.md (Workers) and not built yet.
+// is the main's side of that socket: presence (who is online, with which harnesses) and a small
+// request/response + session-frame transport (WorkerLink) that the runner uses to place tasks
+// on a worker (runner/src/remote.ts; docs/design/system.md "Workers").
 import type { ServerWebSocket } from "bun";
+import type { WorkerInfo, WorkerLink, WorkerLinks, WorkerSessionFrame } from "@ducter/protocol/src/internal.ts";
 import type { Device } from "./auth.ts";
+
+/** A request to a worker that is (or went) offline. The runner turns it into 连不上 / Can't reach. */
+export class WorkerOfflineError extends Error {
+  readonly offline = true;
+  constructor(name: string) {
+    super(`${name} is not connected`);
+  }
+}
 
 export interface WorkerHello {
   t: "hello";
@@ -26,7 +36,7 @@ export interface WorkerSocketData {
   since: string;
 }
 
-export interface Workers {
+export interface Workers extends WorkerLinks {
   online(): OnlineWorker[];
   websocket: {
     open(ws: ServerWebSocket<WorkerSocketData>): void;
@@ -91,10 +101,84 @@ export function deviceRoutes(req: Request, g: Gated, srv: { upgrade(req: Request
   }
 }
 
-export function createWorkers(opts: { personaName: () => string; now?: () => Date }): Workers {
+export function createWorkers(opts: {
+  personaName: () => string;
+  now?: () => Date;
+  /** Paired devices by id or name, for links to workers that are offline right now. */
+  find?: (idOrName: string) => Device | undefined;
+}): Workers {
   const now = opts.now ?? (() => new Date());
-  const live = new Map<string, { ws: ServerWebSocket<WorkerSocketData>; hello?: WorkerHello }>();
+  type Live = { ws: ServerWebSocket<WorkerSocketData>; hello?: WorkerHello };
+  const live = new Map<string, Live>();
   const send = (ws: ServerWebSocket<WorkerSocketData>, f: object) => ws.send(JSON.stringify(f));
+
+  // Per worker: pending requests, session listeners, online listeners. Kept across reconnects.
+  interface State {
+    device: Device;
+    pending: Map<number, { resolve(v: unknown): void; reject(e: Error): void; timer: ReturnType<typeof setTimeout> }>;
+    sessions: Map<string, (f: WorkerSessionFrame) => void>;
+    onOnline: Set<() => void>;
+    link: WorkerLink;
+  }
+  const states = new Map<string, State>();
+  let nextId = 0;
+  const nameOf = (st: State) => live.get(st.device.id)?.hello?.name || st.device.name;
+
+  function stateFor(device: Device): State {
+    let st = states.get(device.id);
+    if (st) return st;
+    const s: State = {
+      device,
+      pending: new Map(),
+      sessions: new Map(),
+      onOnline: new Set(),
+      link: undefined as unknown as WorkerLink,
+    };
+    s.link = {
+      id: device.id,
+      get name() {
+        return nameOf(s);
+      },
+      online: () => Boolean(live.get(device.id)?.hello),
+      call<T>(op: string, args: unknown, timeoutMs = 120_000): Promise<T> {
+        const l = live.get(device.id);
+        if (!l?.hello) return Promise.reject(new WorkerOfflineError(nameOf(s)));
+        const id = ++nextId;
+        return new Promise<T>((resolve, reject) => {
+          const timer = setTimeout(() => {
+            s.pending.delete(id);
+            reject(new Error(`${nameOf(s)} didn't answer ${op} in ${Math.round(timeoutMs / 1000)} s`));
+          }, timeoutMs);
+          s.pending.set(id, { resolve: resolve as (v: unknown) => void, reject, timer });
+          send(l.ws, { t: "req", id, op, args });
+        });
+      },
+      onSession(key, fn) {
+        s.sessions.set(key, fn);
+        return () => s.sessions.get(key) === fn && s.sessions.delete(key);
+      },
+      onOnline(fn) {
+        s.onOnline.add(fn);
+        return () => s.onOnline.delete(fn);
+      },
+    } as WorkerLink;
+    states.set(device.id, s);
+    return s;
+  }
+
+  /** The socket is gone: fail what was in flight and end every remote session (offline). */
+  function lost(st: State) {
+    for (const [id, p] of st.pending) {
+      clearTimeout(p.timer);
+      p.reject(new WorkerOfflineError(nameOf(st)));
+      st.pending.delete(id);
+    }
+    for (const [key, fn] of [...st.sessions]) {
+      st.sessions.delete(key);
+      fn({ t: "end", key, offline: true, error: `${nameOf(st)} disconnected` });
+    }
+  }
+
   return {
     online: () =>
       [...live.values()].map(({ ws, hello }) => ({
@@ -103,14 +187,38 @@ export function createWorkers(opts: { personaName: () => string; now?: () => Dat
         since: ws.data.since,
         ...(hello ? { hello } : {}),
       })),
+    link(device) {
+      const byLive = [...live.values()].find((l) => l.ws.data.device.id === device || l.hello?.name === device || l.ws.data.device.name === device);
+      const d = byLive?.ws.data.device ?? [...states.values()].find((st) => st.device.id === device || st.device.name === device)?.device ?? opts.find?.(device);
+      if (!d || d.kind !== "worker") return undefined;
+      return stateFor(d).link;
+    },
+    list(): WorkerInfo[] {
+      return [...live.values()]
+        .filter((l) => l.hello)
+        .map(({ ws, hello }) => ({
+          id: ws.data.device.id,
+          name: hello!.name || ws.data.device.name,
+          online: true,
+          ...(hello!.os ? { os: hello!.os } : {}),
+          ...(hello!.arch ? { arch: hello!.arch } : {}),
+          ...(hello!.harnesses ? { harnesses: hello!.harnesses } : {}),
+        }));
+    },
     websocket: {
       open(ws) {
         // A second connection from the same worker replaces the first.
-        live.get(ws.data.device.id)?.ws.close(4000, "replaced");
+        const old = live.get(ws.data.device.id);
         live.set(ws.data.device.id, { ws });
+        if (old) {
+          old.ws.close(4000, "replaced");
+          lost(stateFor(ws.data.device));
+        }
       },
       close(ws) {
-        if (live.get(ws.data.device.id)?.ws === ws) live.delete(ws.data.device.id);
+        if (live.get(ws.data.device.id)?.ws !== ws) return;
+        live.delete(ws.data.device.id);
+        lost(stateFor(ws.data.device));
       },
       message(ws, raw) {
         let f: any;
@@ -119,12 +227,25 @@ export function createWorkers(opts: { personaName: () => string; now?: () => Dat
         } catch {
           return send(ws, { t: "error", message: "invalid JSON" });
         }
+        const st = stateFor(ws.data.device);
         if (f?.t === "hello") {
           const entry = live.get(ws.data.device.id);
-          if (entry?.ws === ws) entry.hello = f as WorkerHello;
+          if (entry?.ws !== ws) return;
+          entry.hello = f as WorkerHello;
           send(ws, { t: "welcome", personaName: opts.personaName(), deviceId: ws.data.device.id, at: now().toISOString() });
+          for (const fn of st.onOnline) queueMicrotask(fn);
         } else if (f?.t === "ping") send(ws, { t: "pong" });
-        else send(ws, { t: "error", message: `unknown frame ${f?.t}` });
+        else if (f?.t === "res") {
+          const p = st.pending.get(f.id);
+          if (!p) return;
+          st.pending.delete(f.id);
+          clearTimeout(p.timer);
+          if (f.ok) p.resolve(f.result);
+          else p.reject(new Error(String(f.error ?? "worker error")));
+        } else if (f?.t === "ev" || f?.t === "end") {
+          st.sessions.get(f.key)?.(f as WorkerSessionFrame);
+          if (f.t === "end") st.sessions.delete(f.key);
+        } else send(ws, { t: "error", message: `unknown frame ${f?.t}` });
       },
     },
     stop() {

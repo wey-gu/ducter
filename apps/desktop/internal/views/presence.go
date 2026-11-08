@@ -79,6 +79,7 @@ func (a *App) noteResults(f protocol.ServerFrame) {
 		var st protocol.TaskState
 		if ev.Decode(&st) == nil && st.Attention == protocol.Done {
 			a.doneAt = a.Now()
+			a.noteFirstResult(st)
 		}
 	}
 }

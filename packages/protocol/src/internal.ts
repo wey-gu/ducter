@@ -46,6 +46,43 @@ export interface CoreApi {
   mcp: McpHub;
   persona: { id: string; name: string; identity: string /* L1 text from Nowledge Mem or default */ };
   dataDir: string; // ~/.ducter
+  /** Paired worker machines (system.md "Workers"); absent in tests and stubs. */
+  workers?: WorkerLinks;
+}
+
+// ---------- workers (main ↔ worker over the worker's outbound /worker socket) ----------
+
+/** One frame the worker sends up about a remote harness session. */
+export type WorkerSessionFrame =
+  | { t: "ev"; key: string; ev: HarnessEvent; busy: boolean; sessionId?: string }
+  | { t: "end"; key: string; error?: string; offline?: boolean };
+
+export interface WorkerInfo {
+  id: string; // device id
+  name: string;
+  online: boolean;
+  os?: string;
+  arch?: string;
+  harnesses?: { id: string; installed: boolean; loggedIn: boolean }[];
+}
+
+/** The main's handle on one worker. Stable across reconnects. */
+export interface WorkerLink {
+  readonly id: string;
+  readonly name: string;
+  online(): boolean;
+  /** One request; rejects with a WorkerOfflineError when the worker is (or goes) away. */
+  call<T = unknown>(op: string, args: unknown, timeoutMs?: number): Promise<T>;
+  /** Frames for one remote session; an `end` with offline:true arrives when the socket drops. */
+  onSession(key: string, fn: (f: WorkerSessionFrame) => void): () => void;
+  /** Runs fn each time the worker (re)connects and says hello. */
+  onOnline(fn: () => void): () => void;
+}
+
+export interface WorkerLinks {
+  /** By device id or name; undefined when no such worker was ever paired. */
+  link(device: string): WorkerLink | undefined;
+  list(): WorkerInfo[];
 }
 
 // ---------- runner ----------

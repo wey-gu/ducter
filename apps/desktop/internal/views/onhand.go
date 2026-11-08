@@ -109,6 +109,10 @@ func (a *App) waitReason(task *store.Task) string {
 		return r
 	}
 	r := task.Reason()
+	// The task's machine dropped (runner: unreachableReason); glossary 连不上 / Can't reach.
+	if d, ok := strings.CutPrefix(r, "device:unreachable:"); ok {
+		return a.L.T("device.unreachable", d)
+	}
 	if strings.HasPrefix(r, "report:") || strings.HasSuffix(r, "by user") {
 		return ""
 	}
@@ -287,7 +291,11 @@ func (a *App) needsCard(c *ui.Context, task *store.Task) {
 			}
 			ui.Text(c, title).FontSize(16).FontWeight(800).TextColor(t.OnAccent).Grow(1).SingleLine()
 			if at := store.ParseTime(task.OpenedAt); !at.IsZero() {
-				ui.Text(c, a.L.T("time.opened", a.duration(a.Now().Sub(at)))).FontSize(t.XS).FontWeight(700).TextColor(t.OnAccent).Shrink(0)
+				opened := a.L.T("time.opened.now")
+				if d := a.Now().Sub(at); d >= time.Minute {
+					opened = a.L.T("time.opened", a.duration(d))
+				}
+				ui.Text(c, opened).FontSize(t.XS).FontWeight(700).TextColor(t.OnAccent).Shrink(0)
 			}
 		})
 		ui.Column(c).Padding(20, 22, 22, 22).Gap(14).Children(func() {

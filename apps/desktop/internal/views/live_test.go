@@ -286,3 +286,31 @@ func TestFirstRunUntilDucterIsUp(t *testing.T) {
 		t.Errorf("still on first run: %q", h.tt.Texts())
 	}
 }
+
+// A message typed in the first instant after launch, before the welcome,
+// still reaches the real backend and gets its ack.
+func TestLiveSendBeforeWelcome(t *testing.T) {
+	url := os.Getenv("DUCTER_LIVE_URL")
+	if url == "" || os.Getenv("DUCTER_LIVE_EARLY") == "" {
+		t.Skip("DUCTER_LIVE_URL / DUCTER_LIVE_EARLY not set")
+	}
+	h := dial(t, url, i18n.ZH)
+	if h.app.S.Welcomed {
+		t.Fatal("welcomed already")
+	}
+	h.app.SendMessage(os.Getenv("DUCTER_LIVE_EARLY"))
+	h.wait = 3 * time.Minute
+	h.until("its echo and ack", func() bool {
+		echoed, acked := false, false
+		for _, e := range h.app.S.Channel {
+			if e.User != nil && e.User.ClientID != "" {
+				echoed = true
+			}
+			if echoed && (e.Job != nil || e.AI != nil) {
+				acked = true
+			}
+		}
+		return acked
+	})
+	h.shot("live-early-send")
+}

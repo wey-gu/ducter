@@ -153,6 +153,13 @@ func TestScenarioEndToEnd(t *testing.T) {
 		}
 	}
 	h.shot("onhand")
+	// Two decisions each have a Go: their accessible names tell them apart.
+	if _, ok := h.tt.AccessByRole(ui.RoleButton, "好，rebase · 修 CI · #1592"); !ok {
+		t.Error("Go of Fix CI has no unique accessible name")
+	}
+	if _, ok := h.tt.AccessByRole(ui.RoleButton, "先等等 · 升级 bun 到 1.3"); !ok {
+		t.Error("Hold of the bun upgrade has no unique accessible name")
+	}
 
 	h.click("展开 →")
 	if h.app.Route != RouteTask || h.app.TaskID != "t-ci-1" {

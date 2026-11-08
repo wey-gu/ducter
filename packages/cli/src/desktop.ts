@@ -1,6 +1,6 @@
 // Finds and launches the desktop client (apps/desktop, Go + MyGo).
 // Order: $DUCTER_DESKTOP, next to the `ducter` binary, then (source checkout only) a `go build`
-// of apps/desktop into apps/desktop/.build/. The client reads DUCTER_PORT to find the main process.
+// of apps/desktop into apps/desktop/bin/. The client reads DUCTER_PORT to find the main process.
 import { existsSync, openSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
@@ -30,7 +30,7 @@ export function planDesktop(d: DesktopEnv): DesktopPlan {
   }
   if (d.repoRoot) {
     const dir = join(d.repoRoot, "apps", "desktop");
-    const out = join(dir, ".build", DESKTOP_BIN);
+    const out = join(dir, "bin", DESKTOP_BIN);
     const go = d.which("go");
     if (d.exists(join(dir, "go.mod")) && go) return { kind: "build", dir, out, go };
     if (d.exists(out)) return { kind: "binary", path: out };

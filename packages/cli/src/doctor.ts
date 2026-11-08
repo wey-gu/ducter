@@ -206,7 +206,7 @@ export function realHost(): Host {
     which: (cmd) => Bun.which(cmd),
     async run(cmd, timeoutMs = 5_000) {
       try {
-        const proc = Bun.spawn(cmd, { stdout: "pipe", stderr: "pipe", stdin: "ignore" });
+        const proc = Bun.spawn(cmd, { env: { ...process.env }, stdout: "pipe", stderr: "pipe", stdin: "ignore" });
         const timer = setTimeout(() => proc.kill(), timeoutMs);
         const [stdout, stderr] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
         const code = await proc.exited;

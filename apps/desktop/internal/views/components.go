@@ -115,13 +115,6 @@ func (a *App) face(c *ui.Context, state FaceState, size float32, label string) u
 
 // ---------- pebbles and chips ----------
 
-// pebble is a task glyph: a small irregular pebble in its state color.
-func (a *App) pebble(c *ui.Context, color ui.Color, w, h float32) ui.Element {
-	r := a.T.PebbleRadius
-	k := w / 12
-	return ui.Box(c).Size(w, h).Radius(r[0]*k, r[1]*k, r[2]*k, r[3]*k).Background(color).Shrink(0)
-}
-
 // taskChip is a task's chip inside the partner's words: it links to the
 // task and lifts as the pointer comes over it. It says the title once,
 // then where the task stands: the job's status line when it adds
@@ -147,8 +140,8 @@ func (a *App) taskChip(c *ui.Context, t *store.Task, detail string) {
 	chip := a.chipBox(c.Key("chip:"+t.ID), a.T.ChipLG, sc.Surface).Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(label).
 		Focusable().MinWidth(0)
 	a.lift(c, chip, 2)
+	// No leading dot: the chip's tint and its words say the state.
 	chip.Children(func() {
-		a.pebble(c, sc.Dot, 10, 12)
 		ui.Text(c, label).FontSize(a.T.SM).FontWeight(700).TextColor(sc.Ink).SingleLine().Shrink(1).MinWidth(0)
 	})
 	if chip.Clicked() {
@@ -188,7 +181,7 @@ func (a *App) lift(c *ui.Context, e ui.Element, by float32) {
 // chipBox is a chip's row, h tall, on bg; the caller adds what is in it.
 func (a *App) chipBox(c *ui.Context, h float32, bg ui.Color) ui.Element {
 	t := a.T
-	pad := t.S3 - 2 // 10: a pebble or a check sits close to the edge
+	pad := t.S3 - 2 // 10; a check mark sits close to the edge
 	if h <= t.ChipSM {
 		pad = t.S2
 	}
@@ -505,9 +498,42 @@ func drawClock(col ui.Color) func(p *ui.Painter, r ui.Rect) {
 	}
 }
 
-func drawDot(col ui.Color) func(p *ui.Painter, r ui.Rect) {
+// drawArrow is a forward arrow: something under way.
+func drawArrow(col ui.Color) func(p *ui.Painter, r ui.Rect) {
 	return func(p *ui.Painter, r ui.Rect) {
-		p.Fill(ui.Rect{X: r.X + r.W/2 - 4, Y: r.Y + r.H/2 - 4, W: 8, H: 8}, col, 4)
+		cx, cy := r.X+r.W/2, r.Y+r.H/2
+		var m ui.Path
+		m.MoveTo(cx-5.5, cy)
+		m.LineTo(cx+5.5, cy)
+		m.MoveTo(cx+1.5, cy-4)
+		m.LineTo(cx+5.5, cy)
+		m.LineTo(cx+1.5, cy+4)
+		p.StrokePath(&m, 2.2, col)
+	}
+}
+
+// drawCross is an ×: it didn't work.
+func drawCross(col ui.Color) func(p *ui.Painter, r ui.Rect) {
+	return func(p *ui.Painter, r ui.Rect) {
+		cx, cy := r.X+r.W/2, r.Y+r.H/2
+		var m ui.Path
+		m.MoveTo(cx-4, cy-4)
+		m.LineTo(cx+4, cy+4)
+		m.MoveTo(cx+4, cy-4)
+		m.LineTo(cx-4, cy+4)
+		p.StrokePath(&m, 2.2, col)
+	}
+}
+
+// drawBang is an !: look at this.
+func drawBang(col ui.Color) func(p *ui.Painter, r ui.Rect) {
+	return func(p *ui.Painter, r ui.Rect) {
+		cx, cy := r.X+r.W/2, r.Y+r.H/2
+		var m ui.Path
+		m.MoveTo(cx, cy-5)
+		m.LineTo(cx, cy+1.5)
+		p.StrokePath(&m, 2.4, col)
+		p.Fill(ui.Rect{X: cx - 1.3, Y: cy + 3.5, W: 2.6, H: 2.6}, col, 1.3)
 	}
 }
 

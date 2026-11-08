@@ -275,43 +275,6 @@ a {
   transform: translateY(var(--ledge));
   box-shadow: 0 0 0 transparent;
 }
-.pebbles {
-  display: flex;
-  gap: 3px;
-}
-.pebble {
-  display: inline-block;
-  width: 10px;
-  height: 12px;
-  border-radius: var(--pebble);
-  flex-shrink: 0;
-}
-.pebble.waiting {
-  background: transparent !important;
-  border: 2px dashed var(--waiting-dot);
-}
-.dot-needs_you,
-.dot-decision {
-  background: var(--needs-dot);
-}
-.dot-working,
-.dot-queued,
-.dot-progress {
-  background: var(--working-dot);
-}
-.dot-blocked {
-  background: var(--waiting-dot);
-}
-.dot-done,
-.dot-done_claimed {
-  background: var(--done-dot);
-}
-.dot-failed,
-.dot-dropped,
-.dot-superseded {
-  background: var(--failed-dot);
-}
-
 .conn {
   margin: 0 16px 6px;
   padding: 8px 12px;
@@ -428,6 +391,9 @@ a {
   opacity: 0.85;
   font-weight: 700;
   white-space: nowrap;
+}
+.status-line.failed {
+  color: var(--failed-ink);
 }
 .status-line {
   display: flex;
@@ -676,9 +642,9 @@ a {
   width: 100%;
 }
 .line .ic {
-  width: 30px;
-  height: 30px;
-  border-radius: 11px;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-xs);
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
@@ -704,9 +670,11 @@ a {
 }
 .k-progress .ic {
   background: var(--working-surface);
+  color: var(--working-ink);
 }
 .k-failed .ic {
   background: var(--failed-surface);
+  color: var(--failed-ink);
 }
 .k-blocked .tx {
   color: var(--ink-soft);
@@ -1253,13 +1221,14 @@ a {
     opacity: 0;
   }
 }
+/* Found you: a one-time deepening of the card's own tint, never a glow ring. */
 @keyframes flash {
   0%,
   100% {
-    box-shadow: 0 0 0 0 transparent;
+    background: var(--needs-surface);
   }
   30% {
-    box-shadow: 0 0 0 4px var(--needs-dot);
+    background: color-mix(in srgb, var(--needs-surface) 70%, var(--needs-dot));
   }
 }
 @media (prefers-reduced-motion: reduce) {

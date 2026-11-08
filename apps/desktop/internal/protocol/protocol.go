@@ -1,0 +1,401 @@
+// Package protocol mirrors packages/protocol/src/index.ts, the wire contract
+// shared by core, runner, partner and clients. Field names and JSON tags are
+// identical to the TypeScript types; JSON is the wire format. Change the TS
+// file first (through the lead), then this one.
+package protocol
+
+import (
+	"encoding/json"
+	"fmt"
+)
+
+// Version is PROTOCOL_VERSION.
+const Version = 1
+
+// ---------- States (docs/design/focus-window-states.md) ----------
+
+// Attention is a task's attention state.
+type Attention string
+
+const (
+	Queued      Attention = "queued"
+	Working     Attention = "working"
+	NeedsYou    Attention = "needs_you"
+	Blocked     Attention = "blocked" // shown as "Waiting"
+	DoneClaimed Attention = "done_claimed"
+	Done        Attention = "done"
+	Failed      Attention = "failed"
+	Dropped     Attention = "dropped"
+	Superseded  Attention = "superseded"
+)
+
+// Residency is where a task's session lives.
+type Residency string
+
+const (
+	Provisioning Residency = "provisioning"
+	Hot          Residency = "hot"
+	Warm         Residency = "warm"
+	Parked       Residency = "parked"
+	Archived     Residency = "archived"
+	Offline      Residency = "offline"
+)
+
+// ---------- Places ----------
+
+// Place is the TS union { kind: "none" | "repo" | "folder" | "browser" },
+// flattened: only the fields of its kind are set.
+type Place struct {
+	Kind       string `json:"kind"`
+	Device     string `json:"device,omitempty"`
+	RepoPath   string `json:"repoPath,omitempty"`
+	Worktree   string `json:"worktree,omitempty"`
+	Branch     string `json:"branch,omitempty"`
+	BaseBranch string `json:"baseBranch,omitempty"`
+	Path       string `json:"path,omitempty"`
+	Profile    string `json:"profile,omitempty"`
+}
+
+// ---------- Log events ----------
+
+// Origin is who wrote an event.
+type Origin string
+
+const (
+	OriginUser     Origin = "user"
+	OriginPartner  Origin = "partner"
+	OriginTask     Origin = "task"
+	OriginSystem   Origin = "system"
+	OriginWaiter   Origin = "waiter"
+	OriginSchedule Origin = "schedule"
+)
+
+type EvidenceRef struct {
+	Kind  string `json:"kind"` // ci | diff | file | url | log | test
+	Label string `json:"label"`
+	Ref   string `json:"ref"`
+}
+
+type Question struct {
+	ID         string `json:"id"`
+	Text       string `json:"text"`
+	Blocking   bool   `json:"blocking"`
+	Default    string `json:"default,omitempty"`
+	Reversible bool   `json:"reversible"`
+}
+
+// Event kinds (keyof Bodies).
+const (
+	KindUserMsg          = "user_msg"
+	KindAIMsg            = "ai_msg"
+	KindAck              = "ack"
+	KindJobStatus        = "job_status"
+	KindLivingMsg        = "living_msg"
+	KindDecision         = "decision"
+	KindDecisionResolved = "decision_resolved"
+	KindReadReceipt      = "read_receipt"
+	KindTaskOpen         = "task_open"
+	KindTaskState        = "task_state"
+	KindTaskEvent        = "task_event"
+	KindReport           = "report"
+	KindCheckpoint       = "checkpoint"
+)
+
+type UserMsg struct {
+	Text     string `json:"text"`
+	ClientID string `json:"clientId,omitempty"`
+}
+
+type AIMsg struct {
+	Text    string `json:"text"`
+	ReplyTo int64  `json:"replyTo,omitempty"`
+}
+
+type Ack struct {
+	JobID   string `json:"jobId"`
+	Text    string `json:"text"`
+	ReplyTo int64  `json:"replyTo"`
+}
+
+type JobStatus struct {
+	JobID  string `json:"jobId"`
+	Text   string `json:"text"`
+	State  string `json:"state"` // running | done | failed
+	TaskID string `json:"taskId,omitempty"`
+}
+
+type LivingMsg struct {
+	Items []LivingItem `json:"items"`
+}
+
+type LivingItem struct {
+	TaskID     string        `json:"taskId"`
+	Kind       string        `json:"kind"` // decision | blocked | done | progress | failed
+	Title      string        `json:"title"`
+	Text       string        `json:"text"`
+	DecisionID string        `json:"decisionId,omitempty"`
+	Evidence   []EvidenceRef `json:"evidence,omitempty"`
+}
+
+type Decision struct {
+	DecisionID    string `json:"decisionId"`
+	TaskID        string `json:"taskId"`
+	Question      string `json:"question"`
+	GoLabel       string `json:"goLabel"`
+	DefaultOption string `json:"defaultOption"` // go | hold
+	DefaultAt     string `json:"defaultAt,omitempty"`
+	Reversible    bool   `json:"reversible"`
+}
+
+type DecisionResolved struct {
+	DecisionID string `json:"decisionId"`
+	Option     string `json:"option"` // go | hold | reply
+	Text       string `json:"text,omitempty"`
+	By         string `json:"by"` // user | default
+}
+
+type ReadReceipt struct {
+	UpToSeq int64 `json:"upToSeq"`
+}
+
+type TaskOpen struct {
+	TaskID     string `json:"taskId"`
+	Title      string `json:"title"`
+	Project    string `json:"project"`
+	Place      Place  `json:"place"`
+	Harness    string `json:"harness"`
+	Model      string `json:"model,omitempty"`
+	Brief      string `json:"brief"`
+	BodyReason string `json:"bodyReason,omitempty"`
+}
+
+type TaskState struct {
+	TaskID    string    `json:"taskId"`
+	Attention Attention `json:"attention"`
+	Residency Residency `json:"residency"`
+	Reason    string    `json:"reason,omitempty"`
+}
+
+type ToolCall struct {
+	Name   string          `json:"name"`
+	Input  json.RawMessage `json:"input,omitempty"`
+	Output string          `json:"output,omitempty"`
+	OK     *bool           `json:"ok,omitempty"`
+}
+
+type TaskEvent struct {
+	TaskID string          `json:"taskId"`
+	Role   string          `json:"role"` // assistant | user | tool | system
+	Text   string          `json:"text,omitempty"`
+	Tool   *ToolCall       `json:"tool,omitempty"`
+	Raw    json.RawMessage `json:"raw,omitempty"`
+}
+
+type Report struct {
+	TaskID    string        `json:"taskId"`
+	State     string        `json:"state"` // progress | needs_input | blocked | done | failed
+	Summary   string        `json:"summary"`
+	Questions []Question    `json:"questions"`
+	Evidence  []EvidenceRef `json:"evidence"`
+}
+
+type Checkpoint struct {
+	TaskID string `json:"taskId"`
+	Text   string `json:"text"`
+	GitRef string `json:"gitRef,omitempty"`
+}
+
+// LogEvent is one event of the Log. Body stays raw until a typed accessor
+// decodes it, so unknown kinds pass through untouched.
+type LogEvent struct {
+	Seq        int64           `json:"seq"`
+	TS         string          `json:"ts"`
+	Persona    string          `json:"persona"`
+	Stream     string          `json:"stream"` // "channel" | "task:<id>"
+	Origin     Origin          `json:"origin"`
+	Kind       string          `json:"kind"`
+	Body       json.RawMessage `json:"body"`
+	Supersedes int64           `json:"supersedes,omitempty"`
+}
+
+// Decode decodes the event's body into v.
+func (e LogEvent) Decode(v any) error {
+	if err := json.Unmarshal(e.Body, v); err != nil {
+		return fmt.Errorf("event %d (%s): %w", e.Seq, e.Kind, err)
+	}
+	return nil
+}
+
+// Typed returns the body decoded into its Go type, by kind, or nil for an
+// unknown kind.
+func (e LogEvent) Typed() (any, error) {
+	var v any
+	switch e.Kind {
+	case KindUserMsg:
+		v = &UserMsg{}
+	case KindAIMsg:
+		v = &AIMsg{}
+	case KindAck:
+		v = &Ack{}
+	case KindJobStatus:
+		v = &JobStatus{}
+	case KindLivingMsg:
+		v = &LivingMsg{}
+	case KindDecision:
+		v = &Decision{}
+	case KindDecisionResolved:
+		v = &DecisionResolved{}
+	case KindReadReceipt:
+		v = &ReadReceipt{}
+	case KindTaskOpen:
+		v = &TaskOpen{}
+	case KindTaskState:
+		v = &TaskState{}
+	case KindTaskEvent:
+		v = &TaskEvent{}
+	case KindReport:
+		v = &Report{}
+	case KindCheckpoint:
+		v = &Checkpoint{}
+	default:
+		return nil, nil
+	}
+	if err := e.Decode(v); err != nil {
+		return nil, err
+	}
+	return v, nil
+}
+
+// NewEvent builds an event with body encoded from v (for the mock server
+// and tests).
+func NewEvent(seq int64, ts, persona, stream string, origin Origin, kind string, body any) LogEvent {
+	raw, _ := json.Marshal(body)
+	return LogEvent{Seq: seq, TS: ts, Persona: persona, Stream: stream, Origin: origin, Kind: kind, Body: raw}
+}
+
+// ---------- On hand snapshot ----------
+
+type TaskCard struct {
+	TaskID            string    `json:"taskId"`
+	Persona           string    `json:"persona"`
+	Title             string    `json:"title"`
+	Project           string    `json:"project"`
+	Place             Place     `json:"place"`
+	Harness           string    `json:"harness"`
+	Model             string    `json:"model,omitempty"`
+	BodyReason        string    `json:"bodyReason,omitempty"`
+	Attention         Attention `json:"attention"`
+	Residency         Residency `json:"residency"`
+	Reason            string    `json:"reason,omitempty"`
+	LastReport        *Report   `json:"lastReport,omitempty"`
+	PendingDecisionID string    `json:"pendingDecisionId,omitempty"`
+	UpdatedAt         string    `json:"updatedAt"`
+}
+
+type Counts struct {
+	NeedsYou  int `json:"needs_you"`
+	Working   int `json:"working"`
+	Waiting   int `json:"waiting"`
+	DoneToday int `json:"done_today"`
+}
+
+type OnHand struct {
+	Tasks  []TaskCard `json:"tasks"`
+	Counts Counts     `json:"counts"`
+}
+
+// ---------- Client -> server frames ----------
+
+type Hello struct {
+	T       string `json:"t"` // "hello"
+	Persona string `json:"persona,omitempty"`
+	Cursor  *int64 `json:"cursor,omitempty"`
+	Locale  string `json:"locale,omitempty"` // zh | en
+}
+
+type Send struct {
+	T        string `json:"t"` // "send"
+	Text     string `json:"text"`
+	ClientID string `json:"clientId"`
+}
+
+type Decide struct {
+	T          string `json:"t"` // "decide"
+	DecisionID string `json:"decisionId"`
+	Option     string `json:"option"` // go | hold | reply
+	Text       string `json:"text,omitempty"`
+}
+
+type TaskSend struct {
+	T      string `json:"t"` // "task_send"
+	TaskID string `json:"taskId"`
+	Text   string `json:"text"`
+}
+
+type TaskAction struct {
+	T      string `json:"t"` // "task_action"
+	TaskID string `json:"taskId"`
+	Action string `json:"action"` // interrupt | drop | reopen
+}
+
+type Read struct {
+	T       string `json:"t"` // "read"
+	UpToSeq int64  `json:"upToSeq"`
+}
+
+type TaskHistoryReq struct {
+	T         string `json:"t"` // "task_history"
+	TaskID    string `json:"taskId"`
+	BeforeSeq int64  `json:"beforeSeq,omitempty"`
+	Limit     int    `json:"limit,omitempty"`
+}
+
+// ClientFrame is any client -> server frame, decoded by its tag (for the
+// mock server). Fields of all variants share one struct.
+type ClientFrame struct {
+	T          string `json:"t"`
+	Persona    string `json:"persona,omitempty"`
+	Cursor     *int64 `json:"cursor,omitempty"`
+	Locale     string `json:"locale,omitempty"`
+	Text       string `json:"text,omitempty"`
+	ClientID   string `json:"clientId,omitempty"`
+	DecisionID string `json:"decisionId,omitempty"`
+	Option     string `json:"option,omitempty"`
+	TaskID     string `json:"taskId,omitempty"`
+	Action     string `json:"action,omitempty"`
+	UpToSeq    int64  `json:"upToSeq,omitempty"`
+	BeforeSeq  int64  `json:"beforeSeq,omitempty"`
+	Limit      int    `json:"limit,omitempty"`
+}
+
+// ---------- Server -> client frames ----------
+
+// ServerFrame is any server -> client frame. Fields of all variants share
+// one struct; T tells which are set.
+type ServerFrame struct {
+	T           string     `json:"t"` // welcome | events | on_hand | task_history | error
+	Persona     string     `json:"persona,omitempty"`
+	PersonaName string     `json:"personaName,omitempty"`
+	HeadSeq     int64      `json:"headSeq,omitempty"`
+	Events      []LogEvent `json:"events,omitempty"`
+	OnHand      *OnHand    `json:"onHand,omitempty"`
+	TaskID      string     `json:"taskId,omitempty"`
+	Message     string     `json:"message,omitempty"`
+}
+
+// DecodeServerFrame decodes one server frame.
+func DecodeServerFrame(data []byte) (ServerFrame, error) {
+	var f ServerFrame
+	if err := json.Unmarshal(data, &f); err != nil {
+		return f, err
+	}
+	switch f.T {
+	case "welcome", "events", "on_hand", "task_history", "error":
+	default:
+		return f, fmt.Errorf("unknown server frame %q", f.T)
+	}
+	return f, nil
+}
+
+// TaskStream is the stream name of a task.
+func TaskStream(taskID string) string { return "task:" + taskID }

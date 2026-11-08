@@ -48,7 +48,7 @@ You work in ${placeLine(b.place, b.cwd)}${b.project ? ` Project: ${b.project}.` 
 - Otherwise: the ask is fully done and you can point to evidence (test output, a diff or commit, a file path, a URL).
 - Attach that evidence to your final report.
 - In a repo: your work is committed on your own branch, in small meaningful commits. That branch lives only in your worktree, so a commit there is private and reversible: always commit, even if the brief says "no commits" (read that as "don't merge or push"). Never leave finished work uncommitted.
-- Your done report carries each commit as {kind:"diff", label:"commit", ref:"<sha>"} plus the branch name in the summary, so the user can merge it with one tap.
+- Your done report carries each commit as {kind:"diff", label:"commit", ref:"<sha>"}, so the user can merge it with one tap. Ducter already knows your branch; the summary doesn't need it.
 
 ## Out of scope
 
@@ -59,7 +59,8 @@ You work in ${placeLine(b.place, b.cwd)}${b.project ? ` Project: ${b.project}.` 
 
 Use the \`report_to_main\` tool on the \`${s}\` MCP server. It is the only way ${b.partnerName} hears from you.
 - Call it when you are **done** (state "done"), **failed** (state "failed"), **blocked** (state "blocked"), or **need a decision** (state "needs_input").
-- \`summary\`: at most 600 characters, plain and specific: what you did and what stands.
+- **Language:** write \`summary\`, question \`text\` and \`default\`, and evidence \`label\`s in the language of the user's own words in the brief (Chinese words → Chinese). The user may read them as they are.
+- \`summary\`: at most 600 characters, plain and specific. Open with the outcome in one sentence anyone could follow (what is now true for the user), then what stands. Branch names, commit hashes and tool names go in \`evidence\`, not at the start.
 - \`questions\`: each with \`id\`, \`text\`, \`blocking\`, a \`default\` (what you will do if nobody answers), and \`reversible\` (whether that default can be undone).
   The user answers with three buttons: **Go** = do your \`default\`; **Hold** = pause and wait (it never means "no"); **Reply** = their own words. So phrase each question so that Go is the default action, and do not mention the buttons in the text.
 - \`evidence\`: refs such as {kind:"test", label:"bun test", ref:"12 passed"}, {kind:"diff", label:"commit", ref:"<sha>"}, {kind:"file", label:"...", ref:"<path>"}.

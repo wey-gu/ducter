@@ -21,6 +21,13 @@ const (
 type Table map[string]string
 
 var zh = Table{
+	"weekday.0":                     "周日 %s",
+	"weekday.1":                     "周一 %s",
+	"weekday.2":                     "周二 %s",
+	"weekday.3":                     "周三 %s",
+	"weekday.4":                     "周四 %s",
+	"weekday.5":                     "周五 %s",
+	"weekday.6":                     "周六 %s",
 	"decision.no_default":           "这件不会自己动，等你定",
 	"decision.answered":             "%s · %s",
 	"secret.held":                   "这像是密钥。别发在对话里，我不需要看到它。",
@@ -176,6 +183,13 @@ var zh = Table{
 }
 
 var en = Table{
+	"weekday.0":                     "Sun %s",
+	"weekday.1":                     "Mon %s",
+	"weekday.2":                     "Tue %s",
+	"weekday.3":                     "Wed %s",
+	"weekday.4":                     "Thu %s",
+	"weekday.5":                     "Fri %s",
+	"weekday.6":                     "Sat %s",
 	"decision.no_default":           "I won't go ahead on this without you",
 	"decision.answered":             "%s · %s",
 	"secret.held":                   "This looks like a key. Don't send it in the conversation; I never need to see it.",

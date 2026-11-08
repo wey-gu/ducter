@@ -26,7 +26,7 @@ const (
 func (a *App) faceState() FaceState {
 	b := a.S.Board()
 	switch {
-	case b.Counts.NeedsYou > 0:
+	case b.Counts.NeedsYou > 0 || len(a.partnerDecisions()) > 0:
 		return FaceNeedsYou
 	case b.Counts.Working > 0:
 		return FaceWorking

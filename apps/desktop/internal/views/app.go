@@ -80,6 +80,13 @@ type App struct {
 	// conversation first showed something unread to the user.
 	readSent int64
 	unreadAt time.Time
+	// resultShown marks the tasks whose result the partner gave.
+	resultShown map[string]bool
+	// livingAway remembers, per living message, whether it came while
+	// the user was away.
+	livingAway map[int64]bool
+	// historyAsked marks the tasks whose stream was asked for.
+	historyAsked map[string]bool
 	// held is a message held back because it looks like a key.
 	held *heldSend
 	// dropped is the task just dropped, undoable until undoUntil.
@@ -98,13 +105,15 @@ const ReadAfter = 1200 * time.Millisecond
 func New(s *store.Store, t *theme.Tokens, l *i18n.Strings) *App {
 	return &App{
 		S: s, T: t, L: l,
-		Now:        time.Now,
-		Status:     client.Connecting,
-		taskDrafts: map[string]string{},
-		replyOpen:  map[string]bool{},
-		replyDraft: map[string]string{},
-		diffs:      map[string]*diffPane{},
-		taskLists:  map[string]*ui.ListState{},
+		Now:          time.Now,
+		Status:       client.Connecting,
+		taskDrafts:   map[string]string{},
+		replyOpen:    map[string]bool{},
+		replyDraft:   map[string]string{},
+		diffs:        map[string]*diffPane{},
+		taskLists:    map[string]*ui.ListState{},
+		historyAsked: map[string]bool{},
+		livingAway:   map[int64]bool{},
 	}
 }
 
@@ -277,13 +286,25 @@ func (a *App) TaskAction(id, action string) {
 
 // GoOnAllDefaults takes the default of every open decision.
 func (a *App) GoOnAllDefaults() {
-	for _, d := range a.S.OpenDecisions() {
+	for _, d := range a.defaultable() {
 		opt := d.DefaultOption
 		if opt == "" {
 			opt = "hold"
 		}
 		a.Decide(d.DecisionID, opt, "")
 	}
+}
+
+// defaultable are the open decisions that have a default to go with:
+// an irreversible one never goes ahead without the user.
+func (a *App) defaultable() []*store.DecisionState {
+	var out []*store.DecisionState
+	for _, d := range a.S.OpenDecisions() {
+		if d.Reversible {
+			out = append(out, d)
+		}
+	}
+	return out
 }
 
 // markRead tells the server the user has seen the conversation so far.
@@ -333,6 +354,8 @@ func (a *App) Receive(f protocol.ServerFrame) {
 		a.S.Reset()
 		a.pending, a.diffs = nil, map[string]*diffPane{}
 		a.taskLists = map[string]*ui.ListState{}
+		a.historyAsked = map[string]bool{}
+		a.livingAway = map[int64]bool{}
 		if a.Route == RouteTask {
 			a.Route = RouteConversation
 		}

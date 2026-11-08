@@ -22,26 +22,59 @@ func (a *App) onHand(c *ui.Context) {
 				a.backButton(c)
 				ui.Text(c, a.L.T("onhand.title")).FontSize(t.Title).FontWeight(800).LetterSpacing(-0.5).Grow(1)
 				// 都按默认 / Go on all defaults: only worth a button with two or more.
-				if open := a.S.OpenDecisions(); len(open) >= 2 && a.button(c, a.L.T("decision.goall", len(open)), btnPrimary, 48, t.Surface) {
+				if open := a.defaultable(); len(open) >= 2 && a.button(c, a.L.T("decision.goall", len(open)), btnPrimary, 48, t.Surface) {
 					a.GoOnAllDefaults()
 				}
 			})
-			a.countsBand(c, b)
-			if a.boardEmpty(b) {
+			if a.boardEmpty(b) && len(a.partnerDecisions()) == 0 {
 				ui.Column(c.Key("empty")).Padding(28, 28).Gap(14).Radius(t.RadiusXL).Border(2, t.Line).BorderStyle(ui.BorderDashed).AlignItems(ui.Center).Children(func() {
 					a.face(c, FaceIdle, 64, a.L.T("face.idle", a.S.PersonaName))
 					ui.Text(c, a.L.T("onhand.empty", a.S.PersonaName)).FontSize(t.LG).TextColor(t.InkSoft).TextAlign(ui.Center)
 				})
 				return
 			}
+			a.forecastBand(c, b)
+			needs := len(b.Lanes[store.LaneNeedsYou]) + len(a.partnerDecisions())
+			if needs == 0 {
+				// Nothing needs the user: one warm line, not an empty lane.
+				line := a.L.T("onhand.calm")
+				if n := len(b.Lanes[store.LaneWorking]); n > 0 {
+					line = a.L.T("onhand.calm.working", a.S.PersonaName, n)
+				}
+				ui.Row(c.Key("calm")).Gap(12).Padding(16, 20).Radius(t.RadiusLG).Background(t.Done.Surface).AlignItems(ui.Center).Children(func() {
+					ui.Box(c).Size(26, 26).Radius(9).Background(t.Surface).Draw(drawCheck(t.Done.Ink)).Shrink(0)
+					ui.Text(c, line).FontSize(t.MD).FontWeight(600).TextColor(t.Done.Ink)
+				})
+			}
 			ui.Row(c).Gap(20).Wrap().AlignItems(ui.Start).Children(func() {
-				a.lane(c, store.LaneNeedsYou, b.Lanes[store.LaneNeedsYou], 2, 400)
-				a.lane(c, store.LaneWorking, b.Lanes[store.LaneWorking], 1, 220)
-				a.lane(c, store.LaneWaiting, b.Lanes[store.LaneWaiting], 1, 200)
-				a.lane(c, store.LaneDone, b.Lanes[store.LaneDone], 1, 200)
+				// Only lanes with something in them; empty ones collapse.
+				if needs > 0 {
+					a.lane(c, store.LaneNeedsYou, b.Lanes[store.LaneNeedsYou], 2, 400)
+				}
+				if len(b.Lanes[store.LaneWorking]) > 0 {
+					a.lane(c, store.LaneWorking, b.Lanes[store.LaneWorking], 1, 240)
+				}
+				if len(b.Lanes[store.LaneWaiting]) > 0 || len(a.looseWaiters()) > 0 {
+					a.lane(c, store.LaneWaiting, b.Lanes[store.LaneWaiting], 1, 220)
+				}
+				if len(b.Lanes[store.LaneDone]) > 0 {
+					a.lane(c, store.LaneDone, b.Lanes[store.LaneDone], 1, 260)
+				}
 			})
 		})
 	})
+}
+
+// partnerDecisions are the open decisions of no task: the partner's own
+// asks.
+func (a *App) partnerDecisions() []*store.DecisionState {
+	var out []*store.DecisionState
+	for _, d := range a.S.OpenDecisions() {
+		if d.TaskID == "" {
+			out = append(out, d)
+		}
+	}
+	return out
 }
 
 func (a *App) boardEmpty(b store.Board) bool {
@@ -92,6 +125,9 @@ func (a *App) when(at time.Time) string {
 	if at.Sub(now) < 36*time.Hour && at.YearDay() == now.Add(24*time.Hour).YearDay() {
 		return a.L.T("time.tomorrow", at.Format("15:04"))
 	}
+	if at.Sub(now) < 7*24*time.Hour && at.After(now) {
+		return a.L.T(fmt.Sprintf("weekday.%d", int(at.Weekday())), at.Format("15:04"))
+	}
 	return at.Format("01-02 15:04")
 }
 
@@ -122,61 +158,49 @@ func (a *App) backButton(c *ui.Context) {
 	}
 }
 
-func (a *App) countsBand(c *ui.Context, b store.Board) {
+// forecastBand says when the user will be needed next: defaults taking
+// effect and waits coming due. It is left out when there is nothing to say.
+func (a *App) forecastBand(c *ui.Context, b store.Board) {
 	t := a.T
-	ui.Row(c).Gap(28).Wrap().Padding(22, 26).Radius(t.RadiusXL).Background(t.Surface).
-		Shadow(0, t.PressCard.Offset, 0, 0, t.PressCard.Color).AlignItems(ui.End).Children(func() {
-		count := func(n int, label string, sc theme.StateColors) {
-			ui.Column(c.Key(label)).Gap(2).Children(func() {
-				ui.Text(c, fmt.Sprint(n)).FontSize(56).FontWeight(800).LineHeight(1).TextColor(sc.Strong).FontFeatures("tnum")
-				ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(sc.Ink)
-			})
+	type chip struct {
+		key, text string
+		sc        theme.StateColors
+	}
+	var chips []chip
+	for _, task := range b.Lanes[store.LaneNeedsYou] {
+		d := a.S.PendingDecision(task.ID)
+		if d == nil {
+			continue
 		}
-		ui.Row(c).Gap(22).AlignItems(ui.End).Children(func() {
-			count(b.Counts.NeedsYou, a.L.T("count.needs_you"), t.NeedsYou)
-			count(b.Counts.Working, a.L.T("count.working"), t.Working)
-			count(b.Counts.Waiting, a.L.T("count.waiting"), t.Waiting)
-			count(b.Counts.DoneToday, a.L.T("count.done_today"), t.Done)
-		})
-		// The forecast: when each pending default takes effect.
-		ui.Column(c).Grow(1).Basis(320).Gap(10).Children(func() {
-			ui.Text(c, a.L.T("onhand.forecast")).FontSize(t.MD).FontWeight(800)
-			ui.Row(c).Gap(8).Wrap().Children(func() {
-				any := false
-				for _, task := range b.Lanes[store.LaneNeedsYou] {
-					d := a.S.PendingDecision(task.ID)
-					if d == nil {
-						continue
-					}
-					at := store.ParseTime(d.DefaultAt)
-					text := task.Title()
-					if !at.IsZero() && d.Reversible {
-						label := d.GoLabel
-						if label == "" {
-							label = a.L.T("decision.go")
-						}
-						text = at.Local().Format("15:04") + " " + a.L.T("decision.default.label", label) + " · " + task.Title()
-					}
-					any = true
-					a.forecastChip(c.Key(task.ID), text, t.NeedsYou)
-				}
-				for _, task := range b.Lanes[store.LaneWaiting] {
-					if r := a.waitReason(task); r != "" {
-						any = true
-						a.forecastChip(c.Key(task.ID), task.Title()+" · "+r, t.Waiting)
-					}
-				}
-				for _, w := range a.looseWaiters() {
-					if at := store.ParseTime(w.At); !at.IsZero() {
-						any = true
-						a.forecastChip(c.Key("w:"+w.WaiterID), a.when(at)+" · "+w.Reason, t.Waiting)
-					}
-				}
-				if !any {
-					ui.Text(c, a.L.T("lane.empty")).FontSize(t.SM).TextColor(t.InkMuted)
-				}
-			})
-		})
+		at := store.ParseTime(d.DefaultAt)
+		if at.IsZero() || !d.Reversible || d.DefaultOption != "go" {
+			continue
+		}
+		label := d.GoLabel
+		if label == "" {
+			label = a.L.T("decision.go")
+		}
+		chips = append(chips, chip{task.ID, a.when(at) + " " + a.L.T("decision.default.label", label) + " · " + task.Title(), t.NeedsYou})
+	}
+	for _, task := range b.Lanes[store.LaneWaiting] {
+		if r := a.waitReason(task); r != "" {
+			chips = append(chips, chip{task.ID, task.Title() + " · " + r, t.Waiting})
+		}
+	}
+	for _, w := range a.looseWaiters() {
+		if at := store.ParseTime(w.At); !at.IsZero() {
+			chips = append(chips, chip{"w:" + w.WaiterID, a.when(at) + " · " + w.Reason, t.Waiting})
+		}
+	}
+	if len(chips) == 0 {
+		return
+	}
+	ui.Row(c.Key("forecast")).Gap(12).Wrap().Padding(14, 18).Radius(t.RadiusLG).Background(t.Surface).
+		Shadow(0, t.PressCard.Offset, 0, 0, t.PressCard.Color).AlignItems(ui.Center).Children(func() {
+		ui.Text(c, a.L.T("onhand.forecast")).FontSize(t.SM).FontWeight(800).TextColor(t.InkMuted)
+		for _, ch := range chips {
+			a.forecastChip(c.Key(ch.key), ch.text, ch.sc)
+		}
 	})
 }
 
@@ -195,15 +219,20 @@ func (a *App) lane(c *ui.Context, lane store.Lane, tasks []*store.Task, grow, ba
 		ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
 			a.pebble(c, colors[lane].Dot, 14, 16)
 			ui.Text(c, a.L.T(names[lane])).FontSize(20).FontWeight(800)
-			if lane == store.LaneNeedsYou {
-				ui.Text(c, a.L.T("lane.needs_you.hint")).FontSize(t.SM).TextColor(t.InkMuted)
+			n := len(tasks)
+			switch lane {
+			case store.LaneNeedsYou:
+				n += len(a.partnerDecisions())
+			case store.LaneWaiting:
+				n += len(a.looseWaiters())
 			}
+			ui.Text(c, fmt.Sprint(n)).FontSize(20).FontWeight(800).TextColor(colors[lane].Strong).FontFeatures("tnum")
 		})
 		waiters := []*protocol.Waiter(nil)
 		if lane == store.LaneWaiting {
 			waiters = a.looseWaiters()
 		}
-		if len(tasks) == 0 && len(waiters) == 0 {
+		if len(tasks) == 0 && len(waiters) == 0 && lane != store.LaneNeedsYou {
 			ui.Box(c).Padding(16, 18).Radius(22).Border(2, t.LineSoft).BorderStyle(ui.BorderDashed).Children(func() {
 				ui.Text(c, a.L.T("lane.empty")).FontSize(t.SM).TextColor(t.InkMuted)
 			})
@@ -211,6 +240,9 @@ func (a *App) lane(c *ui.Context, lane store.Lane, tasks []*store.Task, grow, ba
 		}
 		switch lane {
 		case store.LaneNeedsYou:
+			for _, d := range a.partnerDecisions() {
+				a.partnerDecisionCard(c.Key("pd:"+d.DecisionID), d)
+			}
 			for _, task := range tasks {
 				a.needsCard(c.Key(task.ID), task)
 			}
@@ -428,27 +460,54 @@ func (a *App) doneList(c *ui.Context, tasks []*store.Task) {
 	ui.Column(c).Padding(6, 18).Radius(22).Background(t.Surface).Shadow(0, t.PressCard.Offset, 0, 0, t.PressCard.Color).
 		Dividers(1, t.LineSoft).Children(func() {
 		for _, task := range tasks {
-			row := ui.Row(c.Key(task.ID)).Gap(10).Padding(12, 0).AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(task.Title())
+			row := ui.Column(c.Key(task.ID)).Gap(6).Padding(12, 0).Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(task.Title())
 			row.Children(func() {
-				ui.Text(c, task.Title()).FontSize(14).FontWeight(700).Grow(1).MinWidth(0).SingleLine()
-				switch task.Attention() {
-				case protocol.DoneClaimed:
-					ui.Box(c).Padding(3, 8).Radius(t.Pill).Background(t.Waiting.Surface).Children(func() {
-						ui.Text(c, a.L.T("onhand.checking")).FontSize(11).FontWeight(700).TextColor(t.Waiting.Ink)
-					})
-				case protocol.Failed:
-					ui.Box(c).Padding(3, 8).Radius(t.Pill).Background(t.Failed.Surface).Children(func() {
-						ui.Text(c, a.stateLabel(protocol.Failed)).FontSize(11).FontWeight(700).TextColor(t.Failed.Ink)
-					})
-				default:
-					if rep := task.Report(); rep != nil && len(rep.Evidence) > 0 {
-						ui.Text(c, a.L.T("living.evidence")).FontSize(t.XS).FontWeight(700).Underline()
+				ui.Row(c).Gap(8).AlignItems(ui.Start).Children(func() {
+					ui.Text(c, task.Title()).FontSize(14).FontWeight(700).Grow(1).MinWidth(0).MaxLines(2)
+					switch task.Attention() {
+					case protocol.DoneClaimed:
+						ui.Box(c).Padding(3, 8).Radius(t.Pill).Background(t.Waiting.Surface).Shrink(0).Children(func() {
+							ui.Text(c, a.L.T("onhand.checking")).FontSize(11).FontWeight(700).TextColor(t.Waiting.Ink)
+						})
+					case protocol.Failed:
+						ui.Box(c).Padding(3, 8).Radius(t.Pill).Background(t.Failed.Surface).Shrink(0).Children(func() {
+							ui.Text(c, a.stateLabel(protocol.Failed)).FontSize(11).FontWeight(700).TextColor(t.Failed.Ink)
+						})
 					}
+				})
+				// The result itself: its first line, and its first machine check.
+				rep := task.Report()
+				if rep == nil {
+					return
+				}
+				if line := summaryLine(rep.Summary); line != "" {
+					ui.Text(c, line).FontSize(t.XS).LineHeight(1.45).TextColor(t.InkSoft).MaxLines(2).Tooltip(rep.Summary)
+				}
+				for _, ev := range store.SortEvidence(rep.Evidence) {
+					if store.MachineChecked(ev.Kind) {
+						ui.Row(c).Children(func() { a.evidenceChip(c.Key("ev"), task, ev) })
+					}
+					break
 				}
 			})
 			if row.Clicked() {
 				a.OpenTask(task.ID)
 			}
 		}
+	})
+}
+
+// partnerDecisionCard is the partner's own ask, of no task: the question,
+// its default, and Go / Hold / Reply.
+func (a *App) partnerDecisionCard(c *ui.Context, d *store.DecisionState) {
+	t := a.T
+	ui.Column(c).Padding(20, 22).Gap(12).Radius(t.RadiusXL).Background(t.NeedsYou.Surface).Children(func() {
+		ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
+			a.face(c, FaceNeedsYou, 26, a.S.PersonaName)
+			ui.Text(c, a.S.PersonaName).FontSize(t.SM).FontWeight(800).TextColor(t.NeedsYou.Ink)
+		})
+		ui.Text(c, d.Question).FontSize(18).LineHeight(1.5).FontWeight(500)
+		a.countdown(c, d)
+		a.decisionButtons(c, d, decisionStyle{height: 48, quietBg: t.Surface})
 	})
 }

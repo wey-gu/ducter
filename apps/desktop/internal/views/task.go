@@ -683,6 +683,7 @@ func (a *App) dossier(c *ui.Context, task *store.Task) {
 			a.evidenceLine(c.Key(i), ev)
 		}
 	})
+	a.outsideCard(c, task)
 	a.dossierCard(c, a.L.T("task.dossier.where"), func() {
 		p := task.Place()
 		ui.Text(c, a.placeLine(p)).FontSize(t.SM).FontWeight(700)

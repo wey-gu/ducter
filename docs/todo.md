@@ -1,8 +1,8 @@
 # Ducter TODO
 
 Deferred work, grouped by area, each with its trigger where it has one. Calls that are the
-user's are in `design/flows/OPEN-QUESTIONS.md` ("Decisions waiting for you"), not here; an item
-below that waits on one says so.
+user's go to `design/flows/OPEN-QUESTIONS.md`; the morning of 2026-11-09 answered all of them
+(D54, D56–D66), and items below cite the decision they carry out.
 
 **Closed overnight (2026-11-09), kept here for one review cycle:** tasks placed on a worker with
 offline → 在等 · <device> 连不上 → resume (two VMs, scripted model) · phone web client with code
@@ -26,12 +26,15 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       service). Trigger: the first phone install.
 
 **Build next**
-- [ ] **Local token on shared hosts** (`design/system.md` "Who counts as local"): a 0600 token
-      in the data dir, presented by the CLI, the desktop on that machine and the tasks' MCP
-      config (beside the role token), so `DUCTER_LOCAL_TRUST=off` costs nothing (today `off`
-      cuts the main's own tasks off `/mcp`). Then doctor offers, or defaults to, `off` when
-      `who` / `/etc/passwd` shows other human users. Trigger: before recommending a shared
-      host, or the first user on one. Waits on OPEN-QUESTIONS 1.2.
+- [ ] **Local token (D57)** (`design/system.md` "Who counts as local"): a 0600 token in the
+      data dir, presented automatically by the CLI, the desktop on that machine and the tasks'
+      MCP config (beside the role token). Then every caller shows a token, loopback included;
+      `DUCTER_LOCAL_TRUST` is retired, and an SSH-tunnel client connects once with a code.
+      Until then, doctor warns when `who` / `/etc/passwd` shows other human users. Trigger:
+      before recommending a shared host, or the first user on one.
+- [ ] **Push never holds a decision past its default (D59):** coalescing (15 min) must let a
+      decision out at once when its default would fire before the window ends
+      (`packages/core/src/push.ts`, `tick`). Trigger: now; it is a correctness gap.
 - [ ] **Relayed harness logins (D52 Q17):** spawn `claude auth login` / `codex login
       --device-auth` on the server, show URL + code in the client, pipe the pasted code back.
       Trigger: the browser setup page (A1-V) or a desktop "Your AI" row for remote Ducters.
@@ -49,9 +52,9 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 
 ## Mac app and first run (`design/onboarding.md`)
 
-- [ ] "Keep Ducter running when the window is closed" as one opt-in that installs a
-      LaunchAgent, offered the first time a task is still running at quit. Waits on
-      OPEN-QUESTIONS 2.1.
+- [ ] D56: Ducter keeps running when the window closes; Quit is the explicit stop. In
+      progress in another workstream; then update `design/onboarding.md` "Lifetime" and the
+      README's app section to the as-built behavior.
 - [ ] Walk a really blocked Mac through the app (blocked, name and failed screens are verified
       headless only), and check an ad-hoc build's helper loses its quarantine flag after
       Open Anyway. Trigger: the first friend install.
@@ -72,17 +75,21 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [ ] The honesty guard is a regex over zh/en wording; it can miss paraphrases.
 - [ ] Measure partner latency on opus (live runs used sonnet only).
 
+- [ ] **Reversible asks carry a default (D67):** the ask tool and persona give every
+      how-to-do-the-work choice a default and a time (10 min); only effect-ladder asks wait
+      with no default. Re-run the eval's ask scenarios after.
+- [ ] **Long paths in bubbles (D67):** middle-ellipsis with tap to expand, desktop and phone.
+
 ## Long-term memory (`design/memory.md`)
 
 - [ ] **One live write** into a scratch Space, then archive it (the user's Mem is Cloud, so
-      creating a Space is not a local op). Waits on OPEN-QUESTIONS 6.1.
+      creating a Space is not a local op). Decided D63: a Space named `ducter-scratch`.
 - [ ] Confirm `--source-msg` provenance lands in `metadata.source_message_id` on Cloud
       (documented by `nmem m add --help`, unverified live). Trigger: the first live write.
 - [ ] Outbox with idempotency keys when Mem is down (research/private/10 §"Mem down ≠ Ducter
       down"). Today a save while Mem is down is dropped and nothing is shown.
 - [ ] Search before writing, to supersede instead of duplicating (`nmem m supersede`).
-- [ ] Undo on the Noted line (archive the memory, never delete). Trigger: the user reviews the
-      line (OPEN-QUESTIONS 8).
+- [ ] Undo on the Noted line (archive the memory, never delete).
 - [ ] Automatic pre-turn recall behind a precision gate, and logging recalls in the Log.
 - [ ] Tasks (windows) as the same identity: set `NMEM_AGENT_ID` in task environments.
 
@@ -100,7 +107,7 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       putting what it finds into a form or URL could leak conversations. Scope browser tasks'
       log tools to their own stream (plus what the brief carries); code tasks stay as they are.
       Trigger: the env-gate proxy work, or the first browser task that posts or submits on its
-      own. Proposed together with W5-2 (OPEN-QUESTIONS 5.2).
+      own. Decided with W5-2 (D62).
 - [ ] Sign-in handoff: the driver ends an idle browser session after 300 s (SIGKILL; verified
       live), so a slow sign-in while the task waits on needs_input loses the window. The
       env-gate proxy can keep the session alive while the task waits.
@@ -115,7 +122,7 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [ ] Browser sidecars are not restarted when a browser task is recovered after a restart.
 - [ ] Snapshots carry no link targets (href); tasks fall back to page URLs or fetching public
       HTML. Ask cua for hrefs in `semantic_v2`, or read them through the env-gate.
-- [ ] Browser identity (W5-1, OPEN-QUESTIONS 5.1): built as a draft. Still needed: the client
+- [ ] Browser identity (W5-1, D62): built. Still needed: the client
       renders the status line with a Show action; someone checks the Dock tile with the Dock
       visible; in a `bun build --compile` binary the avatar file is not bundled, so there is no
       Dock tile.
@@ -124,7 +131,7 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 ## Art assets: production export
 
 - [ ] Export WebP at 1×/2×/3× per the size each asset is used at in the clients. Commit only
-      final exports from here on (OPEN-QUESTIONS 7.1).
+      final exports from here on (D64).
 - [ ] Re-cut any regenerated asset with the same tool, and check it on a dark tile.
 
 ## Storage: adopt HawDB (after the Bun/Node binding)

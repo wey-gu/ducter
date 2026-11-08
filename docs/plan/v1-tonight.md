@@ -8,7 +8,7 @@
 Every number below comes from a report in this repo (this file's sections further down,
 `design/onboarding.md`, `research/29`, `research/30`, `packages/partner/eval/results/`). Live
 timings are one run or a few, so they are indicative, not benchmarks. What waits on the user is
-in `design/flows/OPEN-QUESTIONS.md` ("Decisions waiting for you"); per-scenario status is the
+in `design/flows/OPEN-QUESTIONS.md` (answered on the morning of 2026-11-09: D54, D56–D67); per-scenario status is the
 "Built" column of `design/scenarios.md`.
 
 **What a user can do now**
@@ -81,7 +81,7 @@ in `design/flows/OPEN-QUESTIONS.md` ("Decisions waiting for you"); per-scenario 
   sidecars aren't restarted after recovery.
 - The digest, re-cut and folds, routines, `until` loops, the Ducter Edge, passkeys, the
   onboarding cartoon and the capability map are not built.
-- Ducter stops when the app's window closes (lifecycle pending the user's call).
+- Ducter stops when the app's window closes; D56 (keep running) is being built.
 
 ## The slice, end to end (definition of done)
 

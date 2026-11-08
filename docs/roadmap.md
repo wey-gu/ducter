@@ -21,13 +21,13 @@ Onboarding and defaults meet the ordinary-person bar.
   offline/resume (`design/system.md` Workers).
 - **Clients:**
   - Desktop: MyGo native UI. *Built:* the three zoom levels, Connect to your Ducter, and
-    **Ducter.app** (a DMG, Developer ID signed and notarized (D55); the app runs its own Ducter and stops it on quit;
-    lifecycle pending, OPEN-QUESTIONS 2.1).
+    **Ducter.app** (a DMG, Developer ID signed and notarized (D55); the app runs its own Ducter; D56: closing the
+    window keeps it running, being built).
   - Mobile: **web** (served by the main process, reachable from anywhere through a tunnel).
     *Built (2026-11-09):* `apps/web`, a Preact phone client served at `/app` (conversation,
     decisions, On hand, opened task), pairing from the `ducter pair` link or QR, and Web Push.
-    Verified in a headless browser at 390×844, not yet on a real phone. Preact instead of
-    MyGo WASM departs from D20 (OPEN-QUESTIONS 1.3).
+    Verified in a headless browser at 390×844, not yet on a real phone. Preact, amending D20
+    for the web (D58).
 - **Remote access (research/21):** a small **Ducter Edge** on the user's own free
   `workers.dev` subdomain. It is one Worker plus one relay Durable Object, about 300–600 LOC.
   - It serves the web client. The phone and the main process both dial into it, which gives
@@ -52,7 +52,7 @@ Onboarding and defaults meet the ordinary-person bar.
 - **Push:** Web Push sent from the main process. iOS needs 16.4+ and a Home Screen install.
   *Built:* VAPID + RFC 8291 in `packages/core/src/push.ts`; an unread decision pushes after
   30 s, coalesced per 15 min; done results only on request; quiet hours 23:00–08:00 hold
-  everything; Android gets Go / Hold actions (defaults pending, OPEN-QUESTIONS 3.1).
+  everything; Android gets Go / Hold actions (D59).
 - **A full CF Worker / Durable Object deploy target is not in v1**; it moves to v1.x. Reasons:
   two storage backends, no custom FTS5 tokenizer or vectors in Durable Objects, and +2–4
   weeks. The Edge is its seed.

@@ -1,6 +1,6 @@
 # Flows I: Results (做好的 / Finished)
 
-> Draft 1 · 2026-11-09 · Status: **drafted, not reviewed**. Covers scenarios I1–I5
+> Draft 1 · 2026-11-09 · Status: **drafted; its open questions were decided 2026-11-09 (D60, D61), words per D66**. Covers scenarios I1–I5
 > (`product-model.md` §6 "I. Results"). Builds on principles 6, 7, 12, 18, 20,
 > `conversation.md` (turn protocol, living message), `focus-window.md` (report, evidence),
 > D4 in `D-decisions-attention.md` (done · checking, check didn't pass), B2/B3 in
@@ -698,7 +698,7 @@ Every link and send is in the day's record (G5).
 | share link | 生成链接 / Make a link · 关掉链接 / Turn off the link | I5 | Not 撤销 / Undo: a read link can't be undone |
 | snapshot | 当时的样子 / As it was then | I2, I4 | |
 
-## Open questions (recommendation first; answer "按建议" to take all)
+## Open questions (decided 2026-11-09: rule 1 as D60, the rest as D61; see `docs/decisions.md` for the two changes)
 
 | # | Question | Recommendation (default) | Why it matters |
 |---|---|---|---|

@@ -1,6 +1,6 @@
 # Flows G: Safety You Can See (放心)
 
-> Draft 1 · 2026-11-09 · Status: **drafted, not reviewed**. Covers scenarios G1–G7
+> Draft 1 · 2026-11-09 · Status: **drafted; its open questions were decided 2026-11-09 (D60, D61), words per D66**. Covers scenarios G1–G7
 > (`product-model.md` §6 "G. Safety", widened). Builds on principle 18, D16 (no per-call
 > approvals), D26 (push and PR defaults), D27 (draft copies), D47/D48 and `system.md`
 > (env-gate, credentials, isolation), `research/25` (vault, per-site policy, audit),
@@ -784,7 +784,7 @@ None beyond the line fading in once. Isolation is a fact, not an event.
 | sandbox | 碰不到你的文件 / Can't touch your files | G7 | Always followed by its plain meaning; see GQ8 |
 | May touch on tasks | 可以碰 / May touch | G7 | Already in the glossary for routines [doc D51]; extended to tasks |
 
-## Open questions (recommendation first; answer "按建议" to take all)
+## Open questions (decided 2026-11-09: rule 1 as D60, the rest as D61; see `docs/decisions.md` for the two changes)
 
 | # | Question | Recommendation (default) | Why it matters |
 |---|---|---|---|

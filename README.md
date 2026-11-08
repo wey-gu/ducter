@@ -83,8 +83,9 @@ Touch ID or your password. On macOS 14 and earlier it is right-click → Open �
 | 0:30 | They type; the partner answers (2.5 s on sonnet in our run) |
 | after the first reply | Once: "Use ducter in Terminal too?" Yes links `~/.local/bin/ducter` to the app (no administrator password; never replaces a file already there; not offered while the app still runs from the disk image) |
 
-Ducter runs as long as the app is open: quitting (⌘Q), closing the window, or a force quit
-stops it. If Ducter was already running (from `ducter up` in a terminal), the app just
+Today Ducter runs as long as the app is open: quitting (⌘Q), closing the window, or a force
+quit stops it. Next (D56): closing the window will leave Ducter working in the background, and
+only Quit stops it. If Ducter was already running (from `ducter up` in a terminal), the app just
 connects and leaves it running when it quits. Data lives in `~/.ducter`, as with the CLI; the
 app's own child log is `~/.ducter/app.log`.
 

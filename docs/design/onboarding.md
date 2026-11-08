@@ -119,15 +119,12 @@ entitlement is `com.apple.security.cs.allow-jit` (`scripts/macos/ducter-cli.enti
 without it Bun's JIT dies under the hardened runtime). Without an identity the script falls back
 to ad-hoc signing and the README's Open Anyway steps.
 
-**Lifetime (proposed, awaiting the user's call):** Ducter lives as long as the app. The app
-runs `ducter up --no-desktop` as its child; ⌘Q, closing the window, or a force quit stops it
-(`DUCTER_PARENT_PID`: the CLI exits when the app's pid goes away). A Ducter that was already
-running is attached to and left alone. *Tradeoff:* tasks stop when the window closes, which
-contradicts "silence means success" for long tasks; a LaunchAgent (or a menu-bar presence)
-would keep Ducter working with the window closed and come back at login. Recommended for the
-next step: keep the window-closes-quits default for v1 (honest and simple: one thing to
-understand), and add "Keep Ducter running when the window is closed" as a single opt-in that
-installs a LaunchAgent, offered the first time a task is still running at quit.
+**Lifetime (D56): Ducter keeps running when the window closes.** Closing the window is like
+closing Mail's window: the partner and its tasks carry on, and opening the app reconnects.
+Quit (the menu, ⌘Q) is the explicit stop. *Being built* (another workstream); until it lands
+the build below still stops Ducter with the window: the app runs `ducter up --no-desktop` as
+its child, and the CLI exits when the app's pid goes away (`DUCTER_PARENT_PID`). A Ducter
+that was already running is attached to and left alone.
 
 **Screens** (copy keys `setup.*`, `cli.*` in `apps/desktop/internal/i18n`; views in
 `apps/desktop/internal/views/setup.go`; headless shots `apps/desktop/docs/app-*.png`)

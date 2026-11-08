@@ -45,7 +45,7 @@ partner eval (real model, fake tasks and Mem; `research/30`) · **unit** = unit 
 | E4 | Pause / cancel / reopen days later | draft | draft | draft | draft | — | live: stop, drop, reopen, restart mid-task | |
 | E5 | Merge / split tasks | draft | draft | draft | draft | — | — | open question |
 | F1 | Rule created / edited / forgotten | — | — | — | — | — | — | |
-| F2 | Recall from weeks ago | draft | — | draft | — | — | eval with a fake Mem (no live write) | First slice built: `memory_search` (one per turn, never pasted) and `memory_add` (durable things only) on Nowledge Mem; app line 记下了 · <title> / Noted · <title> (`memory.noted`); eval category `memory` with a fake Mem. Copy pending user OK |
+| F2 | Recall from weeks ago | draft | — | draft | — | — | eval with a fake Mem (no live write) | First slice built: `memory_search` (one per turn, never pasted) and `memory_add` (durable things only) on Nowledge Mem; app line 记下了 · <title> / Noted · <title> (`memory.noted`); eval category `memory` with a fake Mem. Copy accepted (D66) |
 | F3 | Mem unavailable | draft | — | — | — | — | eval with a fake Mem | Built: tools say so, the partner asks like a colleague who forgot, never mentions memory (eval `mem-down-zh`). No write outbox yet (todo) |
 | F4 | Switch / link personas | — | — | — | — | — | — | open question |
 | G1 | Something is about to go outside (intent needing policy) | draft | draft | draft | draft | — | eval: asks before push / post / pay; draft PR as an outside-effect action | `flows/G-safety.md`; effect ladder in §0 |
@@ -64,4 +64,4 @@ partner eval (real model, fake tasks and Mem; `research/30`) · **unit** = unit 
 | I4 | Finding a result weeks later | draft | draft | draft | draft | — | — | ask first; list inside On hand |
 | I5 | Sharing a result | draft | draft | draft | draft | — | — | links ship with Ducter Edge |
 
-Flow docs: `docs/design/flows/*.md`. Open questions: `docs/design/flows/OPEN-QUESTIONS.md`. Flows canvas: https://claude.ai/artifact/LKuVp3knPDJ4EdoyWBGSWN
+Flow docs: `docs/design/flows/*.md`. Open questions: `docs/design/flows/OPEN-QUESTIONS.md` (none waiting after D67). Flows canvas: https://claude.ai/artifact/LKuVp3knPDJ4EdoyWBGSWN

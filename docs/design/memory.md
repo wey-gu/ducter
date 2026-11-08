@@ -71,6 +71,8 @@ and tools (principle 17). The slice gives the partner two tools, both through th
 - **Mem missing or down**: both tools answer "not available"; the partner asks like a
   colleague who forgot and never mentions memory. A cold session sees its own saves as
   `[you remembered] <title>` in the projection.
+- **Live check (D63):** one write into a scratch Space `ducter-scratch`, provenance checked,
+  then archived (not done yet).
 - **Measured** (`packages/partner/eval`, category `memory`, fake Mem): recall on
   "像上次那样" (the brief carries the recalled specifics), recall about a person, remembering
   a stated preference (zh and en), no save of a task result or a pasted key, no recall for a

@@ -831,7 +831,7 @@ sees it. Visible only when:
 
 *Status 2026-11-09:* the device states, 额度, 叫醒, 连上 / 断开, 在哪儿都能用 and 换到 X 接着做 are in the
 glossary (D51, D54), and the device-offline rule is D52 Q1. Still open: 登录 · 登录过期 and 新伙伴
-(collected in `OPEN-QUESTIONS.md` §9).
+(reviewed in `../glossary-review-2026-11-09.md`, D66).
 
 | Proposed (zh / en) | Used for | Notes |
 |---|---|---|

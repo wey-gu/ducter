@@ -47,9 +47,9 @@ brows when something needs you. Other themes render the same states in their own
   in lightness and shape (waiting = dashed outline), not only in hue.
 - **Voices:** the user's messages are cocoa bubbles (`#2B2118` on cream text). Ducter speaks
   bubble-less in 18px body type on the paper, so it reads like a person talking, not a chat
-  app. Structured things (decisions, files, summaries) are white cards with a press shadow.
-- **Task glyph:** each task is a small irregular pebble in its state color. Pebbles are the
-  only peripheral signal in the conversation view.
+  app. Structured things (decisions, files, summaries) are white cards on a soft shadow.
+- **Task chip:** a task shows as a flat chip in its state's tint, its title and its state in
+  words. No pebble or dot in front of it (D69).
 - **Decision buttons:** primary `Go / 好` (or the action itself, e.g. "Rebase") as a dark
   press-down pebble button; secondary `Hold / 先等等` as a light press-down button; tertiary
   `Reply… / 回复…` as a text button. No seals or stamps (D22).
@@ -106,6 +106,26 @@ slim strip just above the composer: radius 16, a sunken tint (done: done-surface
 failed-surface), a 24–28 glyph tile at its start, 13/12px text, small (32) buttons at its end.
 Something that needs no answer ("ducter now works in Terminal") is a toast instead.
 
+**Shown, not dotted (anti-slop rule, D69).** No pulsing or glowing status dots, no status
+pills or capsules with a leading dot, no decorative identity-color dots, no perpetual
+"alive" animation (breathing rings, gliding bars).
+- State is shown by the thing itself (D43): the clay art (an awake laptop, the napping one
+  under its blanket, a filled or empty slot), the chip's tint and its own words, the face.
+- Words appear only for exceptions, plainly ("睡着了 · 醒来就接着做", "连不上 · 2 小时前");
+  the normal state says nothing (an awake worker has no status line; Ducter's home says
+  "Ducter 在这儿" quietly).
+- A state in text is plain text in the state's ink (a lane's count, a failed status line),
+  or a flat chip in the state's tint, never with a dot in front.
+- A mark is a drawn glyph that means something (✓ done, clock waiting, → under way, × didn't
+  work, ! look at this), on a tile, never a colored dot.
+- A one-time highlight (a decision found from a notification) deepens the card's own tint;
+  it never glows.
+- Selection on a card is a 2-point ink hairline (cards are containers: no ledge).
+- On the devices stage, a slot is labelled by its ability's name only and is laid out so the
+  label never leaves the stage; AI-account cards shrink to fit; the accessible name carries
+  the full state.
+- The partner's clay face may blink or breathe: it is the thing itself, not a status dot.
+
 **Conversation rhythm.** Top-aligned (no empty band above a short conversation). 12 between
 two things one voice says, 24 where the turn passes; 12 inside a message (text → chip → sheet
 → actions); the composer 24 from the window's edges.
@@ -116,9 +136,9 @@ such as the model and place as flat 32 chips, never as buttons).
 
 ## Three zoom levels (Core UI canvas: https://claude.ai/artifact/U9r15Tpm8AL7aGQZwrtbDL)
 
-1. **The conversation** (default). One partner, no machinery. Tasks appear only as pebble
-   chips inside the partner's messages, and as the pebble row on the **手头 / On hand**
-   button. The living message carries decisions inline with Go / Hold / Reply, so most days
+1. **The conversation** (default). One partner, no machinery. Tasks appear only as chips
+   inside the partner's messages; the header line says in words what needs you and what is
+   being worked on, and **手头 / On hand** is a plain button. The living message carries decisions inline with Go / Hold / Reply, so most days
    the user never leaves this view.
 2. **手头 / On hand** (overview for decisions, all personas).
    - The top band is the **attention forecast**: counts per state, plus a timeline from now

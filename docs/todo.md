@@ -169,7 +169,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] Linux CI test runs (`bun test`, `go test` on ubuntu) were only compiled/planned on a Mac;
       if the first runs fail for platform reasons, move that job to `macos-15`.
 
-## First run without a terminal (D69, `design/onboarding.md` "No terminal, start to finish")
+## First run without a terminal (D70, `design/onboarding.md` "No terminal, start to finish")
 
 - [ ] A task that needs the web before 上网 is set up: open the three steps from the
       conversation, not only from the devices screen. Trigger: core gives the refusal a

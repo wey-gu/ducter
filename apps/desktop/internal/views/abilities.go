@@ -260,17 +260,13 @@ func (a *App) deviceCards(c *ui.Context, width float32) {
 		sel := shown != nil && shown.ID == dv.ID
 		name := a.deviceName(dv)
 		chip, sc := a.deviceChip(dv)
+		_ = chip
 		card := ui.Row(c.Key("dev:" + dv.ID)).Gap(t.S3).Padding(t.S3).Radius(t.RadiusLG).Background(t.Surface).AlignItems(ui.Center).
 			Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(name + " · " + chip).AccessSelected(sel)
 		if width > 0 {
 			card.Width(width)
 		}
-		if sel {
-			card.Border(3, t.Ink).Shadow(0, t.PressPrimary.Offset, 0, 0, t.Ink)
-		} else {
-			a.press(c, card, t.PressSecondary)
-			a.lift(c, card, 2)
-		}
+		a.selectable(c, card, sel)
 		card.Children(func() {
 			ui.Box(c).Size(72, 72).Radius(t.RadiusMD).Background(t.Clay).Padding(t.S2).Shrink(0).Children(func() {
 				if b := theme.Clay(deviceArt(dv)); b != nil {
@@ -279,10 +275,12 @@ func (a *App) deviceCards(c *ui.Context, width float32) {
 			})
 			ui.Column(c).Gap(t.S1).Grow(1).MinWidth(0).Children(func() {
 				ui.Text(c, name).FontSize(t.MD).FontWeight(800).SingleLine()
-				if dv.Home && name != dv.Name {
-					ui.Text(c, dv.Name).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
+				// Shown, not explained (D43): the clay says awake or asleep,
+				// Ducter on the stage says where it lives. Words only for
+				// what is unusual, plainly, in the state's ink; no pill.
+				if line, ink := a.deviceLine(dv, sc); line != "" {
+					ui.Text(c, line).FontSize(t.XS).FontWeight(700).TextColor(ink).LineHeight(1.4).MaxLines(2)
 				}
-				a.stateChipText(c, chip, sc)
 			})
 		})
 		if card.Clicked() {
@@ -310,12 +308,32 @@ func (a *App) deviceChip(dv *protocol.DeviceView) (string, theme.StateColors) {
 	return a.L.T("device.state.awake"), t.Awake
 }
 
-func (a *App) stateChipText(c *ui.Context, text string, sc theme.StateColors) {
+// deviceLine is the one quiet line under a device's name: why it is
+// asleep or can't be reached, or, for the home device, that Ducter lives
+// there. An awake worker says nothing.
+func (a *App) deviceLine(dv *protocol.DeviceView, sc theme.StateColors) (string, ui.Color) {
+	switch {
+	case dv.State == protocol.DeviceAsleep || dv.State == protocol.DeviceUnreachable:
+		text, _ := a.deviceChip(dv)
+		return text, sc.Ink
+	case dv.Home:
+		return a.L.T("device.home.line", a.S.PersonaName), a.T.InkMuted
+	}
+	return "", a.T.InkMuted
+}
+
+// selectable styles a card that can be chosen (a device, an ability): a
+// container on Raised that lifts on hover; chosen, a 2-point ink hairline.
+// Never a ledge: cards are not buttons.
+func (a *App) selectable(c *ui.Context, card ui.Element, sel bool) {
 	t := a.T
-	ui.Row(c).Gap(t.S2).Padding(3, 9).Radius(a.T.Pill).Background(sc.Surface).AlignItems(ui.Center).AlignSelf(ui.Start).MaxWidthPercent(100).Children(func() {
-		ui.Box(c).Size(7, 7).Radius(4).Background(sc.Dot).Shrink(0)
-		ui.Text(c, text).FontSize(a.T.XS).FontWeight(700).TextColor(sc.Ink).MaxLines(2)
-	})
+	card.Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color)
+	if sel {
+		card.Border(2, t.Ink)
+	} else {
+		card.Border(2, t.Surface)
+		a.lift(c, card, 2)
+	}
 }
 
 // agoLong is a past time in words, with days.
@@ -510,7 +528,7 @@ func (a *App) stage(c *ui.Context, dv *protocol.DeviceView) {
 			if i >= len(slotSpots) {
 				break
 			}
-			a.slot(c, dv, id, slotSpots[i][0]*sw, slotSpots[i][1]*sh, r.k, dim)
+			a.slot(c, dv, id, slotSpots[i][0]*sw, slotSpots[i][1]*sh, r.k, sw, dim)
 		}
 		// AI accounts below.
 		a.tokens(c, dv, r)
@@ -538,8 +556,15 @@ func (a *App) slotAbilities(dv *protocol.DeviceView) []string {
 	return out
 }
 
+// tokenWidth is an AI account card's width: 250 at full size, narrower
+// so that every card fits inside the stage.
+func tokenWidth(sw float32, n int, k float32) float32 {
+	gap := float32(22) * k
+	return max(min(250*k, (sw-32-float32(max(n-1, 0))*gap)/float32(max(n, 1))), 120)
+}
+
 func tokenCenter(sw float32, n, i int, k float32) float32 {
-	w := float32(250) * k
+	w := tokenWidth(sw, n, k)
 	gap := float32(22) * k
 	total := float32(n)*w + float32(max(n-1, 0))*gap
 	return (sw-total)/2 + float32(i)*(w+gap) + w/2
@@ -586,7 +611,7 @@ func dottedCurve(p *ui.Painter, x0, y0, x1, y1, x2, y2, x3, y3 float32, col ui.C
 	}
 }
 
-func (a *App) slot(c *ui.Context, dv *protocol.DeviceView, id string, cx, cy, k float32, dim bool) {
+func (a *App) slot(c *ui.Context, dv *protocol.DeviceView, id string, cx, cy, k, sw float32, dim bool) {
 	t := a.T
 	d := a.devState()
 	ab := dv.Ability(id)
@@ -605,7 +630,11 @@ func (a *App) slot(c *ui.Context, dv *protocol.DeviceView, id string, cx, cy, k 
 	}
 	addable := !on && !flying && a.canAdd(dv, id)
 	target := flying || (addable && (d.ability == id || d.hover == id))
-	col := ui.Column(c.Key("slot:" + id)).Absolute().Left(cx - 100).Top(cy - well/2).Width(200).AlignItems(ui.Center).Gap(t.S2).
+	// The column keeps inside the stage: near an edge the label moves in
+	// rather than being cut (its well moves with it, a little).
+	colW := max(well+t.S5, 140*k)
+	left := min(max(cx-colW/2, t.S3), sw-colW-t.S3)
+	col := ui.Column(c.Key("slot:" + id)).Absolute().Left(left).Top(cy - well/2).Width(colW).AlignItems(ui.Center).Gap(t.S2).
 		Role(ui.RoleButton).Label(label).Cursor(ui.CursorPointer)
 	if dim || (ab != nil && ab.State == protocol.AbilityLater) {
 		col.Opacity(0.72)
@@ -645,9 +674,9 @@ func (a *App) slot(c *ui.Context, dv *protocol.DeviceView, id string, cx, cy, k 
 			}
 		})
 		d.slots[id] = w.Bounds()
-		ui.Box(c).Padding(t.S1, t.S3).Radius(t.Pill).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Children(func() {
-			ui.Text(c, label).FontSize(t.SM).FontWeight(800).SingleLine()
-		})
+		// Just the name: the art says added (filled), can add (empty
+		// well) or later (dimmed); the full state is the accessible name.
+		ui.Text(c, name).FontSize(t.SM).FontWeight(800).TextAlign(ui.Center).MaxLines(2).AccessHidden(true)
 	})
 	if on && dv.State == protocol.DeviceAwake && ab != nil && id == protocol.AbilityWeb {
 		col.ContextMenu(func(m *ui.Menu) {
@@ -687,7 +716,7 @@ func (a *App) tokens(c *ui.Context, dv *protocol.DeviceView, r rig) {
 		if h.Harness == "claude-code" {
 			art = "token_orange"
 		}
-		w := 250 * k
+		w := tokenWidth(r.sw, n, k)
 		x := tokenCenter(r.sw, n, i, k) - w/2
 		tok := ui.Row(c.Key("tok:"+h.Harness)).Absolute().Left(x).Top(r.tokensTop).Width(w).Height(66).Gap(t.S3).
 			Padding(t.S2, t.S3, t.S2, t.S2).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).AlignItems(ui.Center).
@@ -699,7 +728,7 @@ func (a *App) tokens(c *ui.Context, dv *protocol.DeviceView, r rig) {
 			if bmp := theme.Clay(art); bmp != nil {
 				ui.Image(c, bmp).Size(52, 52).Shrink(0).AccessHidden(true)
 			}
-			ui.Column(c).Gap(2).MinWidth(0).Children(func() {
+			ui.Column(c).Gap(2).MinWidth(0).Shrink(1).Children(func() {
 				ui.Text(c, harnessName(h.Harness)).FontSize(t.SM).FontWeight(800).SingleLine()
 				ui.Text(c, status).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
 			})
@@ -739,8 +768,6 @@ func (a *App) stageLine(c *ui.Context, dv *protocol.DeviceView, sw float32) {
 		pill.Children(func() {
 			if check {
 				ui.Box(c).Size(26, 26).Radius(t.RadiusXS).Background(sc.Surface).Draw(drawCheck(sc.Dot)).Shrink(0)
-			} else {
-				ui.Box(c).Size(10, 10).Radius(5).Background(sc.Dot).Shrink(0)
 			}
 			ui.Text(c, text).FontSize(t.MD).FontWeight(800).TextColor(t.Ink).MaxLines(2)
 		})
@@ -787,11 +814,7 @@ func (a *App) abilityGrid(c *ui.Context, dv *protocol.DeviceView, cols int) {
 			}
 			tile := ui.Column(c.Key("ab:"+id)).Radius(t.RadiusLG).Background(t.Surface).Padding(t.S2, t.S2, t.S3, t.S2).Gap(2).AlignItems(ui.Center).
 				Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(label).Focusable().AccessSelected(d.ability == id)
-			if d.ability == id {
-				tile.Border(3, t.Ink).Shadow(0, t.PressPrimary.Offset, 0, 0, t.Ink)
-			} else {
-				a.press(c, tile, t.PressSecondary)
-			}
+			a.selectable(c, tile, d.ability == id)
 			locked := ab == nil || ab.State == protocol.AbilityLater
 			if locked {
 				tile.Opacity(0.72)
@@ -897,10 +920,7 @@ func (a *App) abilityDetail(c *ui.Context, dv *protocol.DeviceView) {
 		case dv.State != protocol.DeviceAwake:
 			a.reasonLine(c, a.L.T("ability.reason.asleep"))
 		case id == protocol.AbilityRemote && d.pair.open:
-			ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-				a.retryPulse(c)
-				ui.Text(c, a.L.T("pair.waiting")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
-			})
+			ui.Text(c, a.L.T("pair.waiting")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 		default:
 			if r, ok := d.refused[dv.ID+"/"+id]; ok {
 				a.reasonLine(c, a.reasonText(r.Reason))
@@ -967,14 +987,8 @@ func (a *App) reachList(c *ui.Context) {
 					line = a.L.T("reach.client.seen", cl.Name, ago)
 				}
 			}
-			ui.Row(c.Key("cl:" + cl.ID)).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-				sc := t.Away
-				if cl.Connected {
-					sc = t.Awake
-				}
-				ui.Box(c).Size(8, 8).Radius(4).Background(sc.Dot).Shrink(0)
-				ui.Text(c, line).FontSize(t.SM).FontWeight(700).SingleLine()
-			})
+			// The words say it (online / seen 2 h ago); no status dot.
+			ui.Text(c.Key("cl:"+cl.ID), line).FontSize(t.SM).FontWeight(700).SingleLine()
 		}
 		ui.Text(c, a.L.T("ability.remote.how")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.5)
 	})
@@ -1308,10 +1322,7 @@ func (a *App) pairSheet(c *ui.Context, dv *protocol.DeviceView, sw, sh float32) 
 		} else {
 			a.reasonLine(c, a.L.T("pair.noaddress"))
 		}
-		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-			a.retryPulse(c)
-			ui.Text(c, a.L.T("pair.waiting")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
-		})
+		ui.Text(c, a.L.T("pair.waiting")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 	})
 }
 

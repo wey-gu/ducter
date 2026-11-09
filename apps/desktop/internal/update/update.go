@@ -285,7 +285,9 @@ func (u *Updater) CheckNow(ctx context.Context) Status {
 	}
 	team, err := u.cfg.Check.Team(u.cfg.App)
 	if err != nil || team == "" {
-		u.set(func(s *Status) { s.State, s.Reason, s.Detail = Available, ReasonUnsigned, "this build has no Developer ID team" })
+		u.set(func(s *Status) {
+			s.State, s.Reason, s.Detail = Available, ReasonUnsigned, "this build has no Developer ID team"
+		})
 		return u.Status()
 	}
 

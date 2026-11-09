@@ -15,8 +15,7 @@ app to TestFlight. Pull requests and `main` run `.github/workflows/ci.yml`.
    step 4 you pass it as `ASC_RC`.
 2. **Register the iPhone app's bundle id.** At developer.apple.com > Identifiers > +, add App ID
    `co.nowledge.ducter.ios` with the **Push Notifications** capability. This is the id in
-   `apps/ios/Config.xcconfig` on the `phone-app` branch. The change from `dev.ducter.phone` was
-   still uncommitted there when CI was written, so check it landed.
+   `apps/ios/Config.xcconfig` (`DUCTER_BUNDLE_ID`).
 3. **Create the app record.** In App Store Connect > Apps > + > New App, choose iOS, name it
    Ducter, pick bundle id `co.nowledge.ducter.ios`, and give it any SKU (e.g. `ducter-ios`). Then
    go to TestFlight > Internal Testing, add a group, and add yourself. Export compliance is
@@ -38,7 +37,7 @@ app to TestFlight. Pull requests and `main` run `.github/workflows/ci.yml`.
    The GitHub Release comes out marked pre-release. TestFlight gets build `0.1.0 (<run>.1)`.
 6. **Install from TestFlight** on your iPhone and confirm that pushes arrive. A TestFlight build
    is a Release build, so it subscribes with `env: production`, and the core then sends through
-   `api.push.apple.com`. The core still needs its APNs key (`DUCTER_APNS_*`, phone-app branch).
+   `api.push.apple.com`. The core still needs its APNs key (`<dataDir>/apns.json` or `DUCTER_APNS_*`).
 
 After this, every release is: bump the version, commit, `git tag vX.Y.Z`, push the tag.
 
@@ -147,16 +146,30 @@ These jobs run on Linux only, in parallel, and take a few minutes. macOS minutes
 private repo.
 
 - **ts:** `bun install --frozen-lockfile`, `bun run typecheck` (both tsconfigs), rebuilds
-  `apps/web/static` and fails if it differs from what is committed, `bun test`, `bash -n` on
-  scripts.
+  `apps/web/static` and fails if it differs from what is committed, `bun test`, the Markdown
+  link check, the binaries check (D75), and `bash -n` on scripts.
 - **go** (`apps/desktop`): `gofmt -l`, `go vet` for darwin and linux, a darwin/arm64 build, and
   `go test`. MyGo calls AppKit through purego, not cgo, so all of it runs on Linux.
 - **`ios.yml`:** an unsigned Release archive on macos-26, only when `apps/ios/**` changes.
 
-**Two Buns.** The committed web bundle is built with Bun **1.3.1**, the Bun on the author's Mac,
-and CI's test job pins the same version. Bun 1.4.4, which build.sh pins for the compiled binary,
-minifies differently, so `bun test` under 1.4.4 fails the bundle-freshness test. To unify,
-upgrade Bun locally, run `bun run build:web`, commit, and change `BUN_VERSION` in `ci.yml`.
+**One Bun.** CI, the web bundle and the compiled CLI all use Bun **1.4.4**. `bun run build:web`
+and `packages/cli/build.sh` use the `bun` on PATH when it is 1.4.4 and otherwise fetch it with
+`npx -y bun@1.4.4`, so the committed bundle matches CI's rebuild byte for byte whatever Bun the
+Mac has. Another Bun minifies differently and fails the bundle-freshness test.
+
+**Tests are hermetic.** A CI runner has no git identity, no `claude`, `codex`, `gh` or `oo`, and
+an empty home. Tests that run git commits through the product set the test repo's own
+`user.name`/`user.email`; tests that open tasks pass `deviceProbes` with fake harnesses. To
+check a change the way CI sees it, on the Mac:
+
+```sh
+env -i HOME="$(mktemp -d)" TMPDIR=/tmp PATH="/usr/bin:/bin:$(dirname "$(command -v bun)")" \
+  GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=user.useConfigOnly GIT_CONFIG_VALUE_0=true \
+  bun test
+```
+
+`user.useConfigOnly` stops git from guessing a name from the Mac account, which is what Linux
+does when there is none.
 
 ## Locally
 

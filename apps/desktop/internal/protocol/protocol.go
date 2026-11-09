@@ -845,6 +845,8 @@ type Noted struct {
 type MemView struct {
 	State string  `json:"state"`
 	Noted []Noted `json:"noted"`
+	// KeptUnder is the name its memories are kept under in Mem (D141).
+	KeptUnder string `json:"keptUnder,omitempty"`
 }
 
 // Forgot says how a memory_forget went: "mem" (Mem forgot it) or

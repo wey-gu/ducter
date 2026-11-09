@@ -734,6 +734,8 @@ export interface MemView {
   state: "connected" | "missing" | "off";
   /** Recent 记下了 / Noted lines from the conversation, newest first, without forgotten ones. */
   noted: { seq: number; title: string; at: string; memoryId?: string }[];
+  /** The name its memories are kept under in Mem (D141): the persona's AI Identity, once bound. */
+  keptUnder?: string;
 }
 
 /** The choices offered for defaultAfterMin, in minutes. */

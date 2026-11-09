@@ -2,6 +2,32 @@
 import type { CoreApi, Partner, Runner } from "@ducter/protocol/src/internal.ts";
 import { startCore, type Core } from "./core.ts";
 import { DEFAULT_IDENTITY, loadPersona } from "./persona.ts";
+import { bindMemIdentity, nmemRunner, readMemIdentity, renameMemIdentity } from "./mem-identity.ts";
+
+/**
+ * D141: binds the persona's Mem identity the first time Mem answers with memory on (enrolling
+ * Ducter's own when the user has none set), and carries a rename to the identity Ducter enrolled.
+ */
+export function keepMemIdentity(core: Core, memConnected: boolean, run = nmemRunner()) {
+  if (memConnected && !core.persona.mem && core.settings.get().memory) {
+    void bindMemIdentity({ dataDir: core.dataDir, personaId: core.persona.id, name: core.persona.name, run }).then(
+      (mem) => {
+        if (!mem) return console.warn("[ducter] Nowledge Mem didn't answer; the partner's Mem identity is bound on a later start");
+        core.persona.mem = mem;
+        core.settings.memIdentityChanged();
+        console.log(`[ducter] Mem identity: ${mem.agentId}${mem.owned ? " (Ducter's own)" : ""}${mem.space ? `, Space ${mem.space}` : ""}`);
+      },
+      (err) => console.warn("[ducter] binding the Mem identity failed:", (err as Error).message),
+    );
+  }
+  let named = core.persona.name;
+  core.settings.onChange(() => {
+    if (core.persona.name === named) return;
+    named = core.persona.name;
+    const mem = core.persona.mem;
+    if (mem?.owned) void renameMemIdentity(run, mem, named).then((ok) => ok || console.warn("[ducter] Mem kept the partner's old name; it is updated on the next rename"));
+  });
+}
 
 async function loadModule(pkg: string, relative: string, factory: string): Promise<Record<string, any> | undefined> {
   const errors: string[] = [];
@@ -61,7 +87,6 @@ export async function main(mods: BootModules = {}) {
   // lands (below). Triggers that arrive before the partner is wired are held by core and replayed.
   const persona = { id: "default", name: process.env.DUCTER_PERSONA_NAME || "Ducter", identity: DEFAULT_IDENTITY };
   const bootName = persona.name;
-  const loaded = loadPersona({ timeoutMs: 10_000 });
   let core: Core;
   try {
     core = startCore({ persona });
@@ -69,6 +94,10 @@ export async function main(mods: BootModules = {}) {
     console.error(`[ducter] failed to start core (is port ${process.env.DUCTER_PORT || 7777} in use?):`, (err as Error).message);
     process.exit(1);
   }
+  // D141: the persona's Mem identity, bound on an earlier start; named on every Mem call.
+  const boundMem = process.env.DUCTER_MEMORY === "off" ? undefined : readMemIdentity(core.dataDir);
+  if (boundMem) core.persona.mem = boundMem;
+  const loaded = loadPersona({ timeoutMs: 10_000, ...(boundMem ? { mem: boundMem } : {}) });
   console.log(`[ducter] clients: ${core.url}`);
   console.log(`[ducter] tools:   http://127.0.0.1:${core.port}/mcp`);
 
@@ -105,6 +134,7 @@ export async function main(mods: BootModules = {}) {
     if (mem.source !== "off") core.settings.setMemState(mem.source === "nowledge-mem" ? "connected" : "missing");
     return mem.source;
   });
+  void identity.then((src) => keepMemIdentity(core, src === "nowledge-mem"));
   const identityOrTimeout = Promise.race([identity, Bun.sleep(IDENTITY_WAIT_MS).then(() => "timeout")]);
   await Promise.race([identity, Bun.sleep(BANNER_WAIT_MS)]); // usually lost: the banner says "loading"
 

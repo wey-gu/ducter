@@ -75,11 +75,31 @@ export interface McpHub {
   configFor(role: "partner" | { taskId: string }): { name: string; url: string; headers: Record<string, string> };
 }
 
+/**
+ * The Nowledge Mem AI Identity a persona runs as (D141): bound once, kept in persona.json, and
+ * named explicitly on every Mem call (memory_add --agent-id, a task's NMEM_AGENT_ID).
+ */
+export interface MemIdentity {
+  agentId: string;
+  /** The Space the user had chosen for Ducter (NMEM_SPACE when it was bound); absent: Mem's own default. */
+  space?: string;
+  /** Ducter enrolled it, so it keeps the identity's display name in step with the partner's name. */
+  owned: boolean;
+  /** The identity's display name in Mem, for one the user already had. */
+  label?: string;
+}
+
 export interface CoreApi {
   log: LogStore;
   tasks: TaskRegistry;
   mcp: McpHub;
-  persona: { id: string; name: string; identity: string /* L1 text from Nowledge Mem or default */ };
+  persona: {
+    id: string;
+    name: string;
+    identity: string /* L1 text from Nowledge Mem or default */;
+    /** The persona's Mem AI Identity (D141); absent until bound, or with Mem off or missing. */
+    mem?: MemIdentity;
+  };
   dataDir: string; // ~/.ducter
   /** Paired worker machines (system.md "Workers"); absent in tests and stubs. */
   workers?: WorkerLinks;

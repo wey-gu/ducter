@@ -57,6 +57,30 @@ func TestPartnerPage(t *testing.T) {
 	}
 }
 
+// D141: with the persona's Mem identity bound, the memory card says whose name
+// its memories are kept under, in plain words.
+func TestPartnerPageKeptUnder(t *testing.T) {
+	for _, tc := range []struct {
+		lang i18n.Lang
+		want string
+	}{
+		{i18n.ZH, "你说过的事，它记在 Nowledge Mem 的「小鸭」名下。"},
+		{i18n.EN, "What you've told it is kept in Nowledge Mem under “小鸭”."},
+	} {
+		app, _ := iaApp(t, tc.lang)
+		f := settingsFrame()
+		f.Mem.KeptUnder = "小鸭"
+		app.Receive(f)
+		app.Route = RoutePartner
+		tt := ui.NewTesterWith(app.View, 1280, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+		tt.Frame()
+		tt.Frame()
+		if !tt.HasText(tc.want) {
+			t.Errorf("%s: no %q in %q", tc.lang, tc.want, tt.Texts())
+		}
+	}
+}
+
 func TestPartnerPageEmptyMemoryHidesList(t *testing.T) {
 	app, _ := iaApp(t, i18n.EN)
 	f := settingsFrame()

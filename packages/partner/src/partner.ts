@@ -364,7 +364,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const ackWaitMs = opts.ackWaitMs ?? 250;
   const settleMs = opts.settleMs ?? 1500;
   const onError = opts.onError ?? ((err) => console.error("[partner]", err));
-  const memoryOn = opts.memory ?? (process.env.DUCTER_MEMORY === "off" ? noMemory : createNmemClient());
+  const memoryOn = opts.memory ?? (process.env.DUCTER_MEMORY === "off" ? noMemory : createNmemClient({ identity: () => core.persona.mem }));
   // The Partner page can switch memory off (D71): then nothing is recalled or saved.
   const memory: MemoryClient = {
     search: (q, n) => (core.settings && !core.settings.get().memory ? noMemory.search(q, n) : memoryOn.search(q, n)),

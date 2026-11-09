@@ -214,7 +214,7 @@ describe("nmem client (stub binary)", () => {
     }
   });
 
-  test("add: content via stdin, provenance flags, no identity or space invented", async () => {
+  test("add: content via stdin, provenance flags, no identity or space invented when none is bound", async () => {
     const s = stub(`echo '{"id":"m9"}'`);
     const r = await createNmemClient({ bin: s.bin, env: { PATH: process.env.PATH } }).add({
       title: "-Fake clock",
@@ -241,6 +241,23 @@ describe("nmem client (stub binary)", () => {
     expect(seen).toContain("NMEM_SPACE=work");
     expect(seen).toContain("HOME=/h");
     for (const k of ["ANTHROPIC_API_KEY", "OPENAI_API_KEY", "DUCTER_MCP_SECRET", "GH_TOKEN"]) expect(seen).not.toContain(k);
+  });
+
+  test("D141: the persona's identity is named on every write, its Space on search too; the env's NMEM_AGENT_ID never wins", async () => {
+    const s = stub(`echo '{"id":"m10"}'`);
+    let who: { agentId: string; space?: string } | undefined = { agentId: "ducter" };
+    const c = createNmemClient({ bin: s.bin, env: { PATH: process.env.PATH, NMEM_AGENT_ID: "someone-else" }, identity: () => who });
+    await c.add({ title: "t", content: "c", provenance: { persona: "default", logSeq: 3 } });
+    let a = s.args();
+    expect(a.join(" ")).toContain("--source-app ducter --source-msg ducter;persona=default;log=3 --agent-id ducter");
+    expect(a).not.toContain("--space");
+    expect(a).not.toContain("someone-else");
+    who = { agentId: "ducter-scratch", space: "ducter-scratch" }; // read per call: a bind mid-run applies at once
+    await c.add({ title: "t", content: "c", provenance: { persona: "default" } });
+    a = s.args();
+    expect(a.slice(-4)).toEqual(["--agent-id", "ducter-scratch", "--space", "ducter-scratch"]);
+    await c.search("q", 2);
+    expect(s.args()).toEqual(["--json", "m", "search", "-n", "2", "--space", "ducter-scratch", "--", "q"]);
   });
 
   test("missing binary and auth errors read as not configured; others as unavailable", async () => {

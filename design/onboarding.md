@@ -238,8 +238,8 @@ Op. 28 No. 13 in Musopen's CC0 / public-domain recordings, cut so the final chor
 beat. All six are in the prototype's sound picker; only A is in git, the others stay in the
 evidence folder. The art direction picked is A, dawn on the island.
 
-**Rules.** Once per Mac (`desktop.json` `titleSeenAt`, written when it is left); Settings › About
-has 再看一次开场 / Replay the intro and the Sound switch. Not shown when macOS opened the app at
+**Rules.** Once per Mac (`desktop.json` `titleSeenAt`, written when it is left); Settings › Look and sound
+has 再看一次开场 / Replay the intro and the intro's Sound switch with 听一下 / Play (D150). Not shown when macOS opened the app at
 login (`WasOpenedAtLogin`, asked once the app has launched); it waits for a real open. Its clock
 starts when the window is active, and only then does the sound start. ⌘ shortcuts pass through
 (⌘Q quits). The first check of this Mac (doctor) runs underneath, so the setup card is usually

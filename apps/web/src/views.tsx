@@ -6,7 +6,7 @@ import { Fragment } from "preact";
 import { PARTNER_RESERVE } from "@ducter/protocol/src/loadout.ts";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { JSX } from "preact";
-import { A, candKey, placeKey } from "./app.ts";
+import { A, candKey, placeKey, type SettingsPage } from "./app.ts";
 import { ago, behind, cjkPad, deviceLabel, duration, firstClause, harnessName, modelName, phaseLine as phaseWords, placeLine, sameWords, splitOutcome, when } from "./format.ts";
 import { markdown } from "./markdown.ts";
 import { Coin } from "./coin.tsx";
@@ -1777,10 +1777,13 @@ function Seg<V extends string | number>(p: { label: string; value: V | undefined
   );
 }
 
-function Toggle(p: { label: string; checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
+function Toggle(p: { label: string; help?: string; checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
   return (
     <label class="switch">
-      <span>{p.label}</span>
+      <span>
+        {p.label}
+        {p.help && <small>{p.help}</small>}
+      </span>
       <input type="checkbox" role="switch" checked={p.checked} disabled={p.disabled} onChange={(e) => p.onChange((e.target as HTMLInputElement).checked)} />
     </label>
   );
@@ -1826,69 +1829,132 @@ function NameRow() {
   );
 }
 
-function PartnerSettings() {
+function TalkSettings() {
+  const s = A.settings;
+  if (!s) return null;
+  return (
+    <section class="set">
+      <h3>{t("partner.talk.title")}</h3>
+      <div class="set-card">
+        <div class="set-item">
+          <b>{t("settings.talk.row")}</b>
+          <small>{s.language === "auto" ? t("partner.talk.auto.note") : t("partner.talk.fixed.note", t(`partner.talk.${s.language}`))}</small>
+          <Seg
+            label={t("partner.talk.title")}
+            value={s.language}
+            options={(["auto", "zh", "en"] as const).map((v) => ({ v, label: t(`partner.talk.${v}`) }))}
+            onPick={(language) => A.setSettings({ language })}
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/** 记得什么 (D150): said as it is. No Mem: no switch, the way to get it; connected: whose name it's kept under (D141). */
+function MemorySettings() {
   const s = A.settings;
   const mem = A.mem;
+  if (!s) return null;
+  const missing = mem?.state === "missing" && s.memory;
+  const help = !s.memory
+    ? t("partner.memory.off")
+    : mem?.keptUnder
+      ? t("partner.memory.under", mem.keptUnder)
+      : mem?.state === "connected"
+        ? t("partner.memory.connected")
+        : t("partner.memory.on.help");
+  return (
+    <section class="set">
+      <h3>{t("partner.memory.title")}</h3>
+      {missing ? (
+        <div class="set-card">
+          <div class="set-item">
+            <b>{t("partner.memory.switch")}</b>
+            <small>{t("partner.memory.missing")}</small>
+            <a class="btn secondary sm set-go" href="https://mem.nowledge.co" target="_blank" rel="noopener">
+              <span class="lbl">{t("partner.memory.connect")}</span>
+            </a>
+          </div>
+        </div>
+      ) : (
+        <>
+          <Toggle label={t("partner.memory.switch")} help={help} checked={s.memory} onChange={(memory) => A.setSettings({ memory })} />
+          {s.memory && !!mem?.noted.length && (
+            <div class="noted" aria-label={t("partner.memory.recent")}>
+              {mem.noted.map((n) => (
+                <div class="noted-row" key={n.seq}>
+                  <span>{n.title}</span>
+                  <Btn kind="text" label={t("partner.memory.forget")} about={n.title} onClick={() => A.forget(n.seq)} />
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+/** 自己就做，还是先问你: the rules core keeps, in everyday words (read-only). */
+function TrustSettings() {
+  const list = (head: string, prefix: string, cls: string) => (
+    <div class={`trust ${cls}`}>
+      <b>{t(head)}</b>
+      <ul>
+        {[1, 2, 3, 4].map((i) => (
+          <li key={i}>{t(`${prefix}.${i}`)}</li>
+        ))}
+      </ul>
+    </div>
+  );
+  return (
+    <section class="set">
+      <h3>{t("partner.trust.title")}</h3>
+      <div class="set-card trust-card">
+        {list("partner.trust.own", "partner.trust.own", "own")}
+        {list("partner.trust.asks", "partner.trust.asks", "asks")}
+      </div>
+      <div class="small sub">{t("partner.trust.note")}</div>
+    </section>
+  );
+}
+
+function NotifySettings() {
+  const s = A.settings;
   if (!s) return <div class="small">{t("conn.connecting")}</div>;
   const quiet = s.quiet;
   const setQuiet = (start: string, end: string) => A.setSettings({ quiet: { start, end, tz: quiet?.tz ?? tz() } });
   return (
     <>
       <section class="set">
-        <h3>{t("partner.talk.title")}</h3>
-        <Seg
-          label={t("partner.talk.title")}
-          value={s.language}
-          options={(["auto", "zh", "en"] as const).map((v) => ({ v, label: t(`partner.talk.${v}`) }))}
-          onPick={(language) => A.setSettings({ language })}
-        />
-        <div class="small sub">{s.language === "auto" ? t("partner.talk.auto.note") : t("partner.talk.fixed.note", t(`partner.talk.${s.language}`))}</div>
-      </section>
-      <section class="set">
         <h3>{t("partner.notify.title")}</h3>
-        <Toggle label={t("partner.notify.on")} checked={s.notify} onChange={(notify) => A.setSettings({ notify })} />
-        <div class="small sub">{t(s.notify ? "partner.notify.on.note" : "partner.notify.off.note")}</div>
-        <Toggle label={t("partner.quiet")} checked={!!quiet} onChange={(on) => A.setSettings({ quiet: on ? { start: "23:00", end: "08:00", tz: tz() } : null })} />
-        {quiet && (
+        <Toggle label={t("partner.notify.on")} help={t(s.notify ? "partner.notify.on.note" : "partner.notify.off.note")} checked={s.notify} onChange={(notify) => A.setSettings({ notify })} />
+        {s.notify && <Toggle label={t("partner.quiet")} help={t("partner.quiet.note")} checked={!!quiet} onChange={(on) => A.setSettings({ quiet: on ? { start: "23:00", end: "08:00", tz: tz() } : null })} />}
+        {s.notify && quiet && (
           <div class="quiet-range">
             <input type="time" aria-label={t("partner.quiet")} value={quiet.start} onChange={(e) => setQuiet((e.target as HTMLInputElement).value || quiet.start, quiet.end)} />
             <span>{t("partner.quiet.to")}</span>
             <input type="time" aria-label={`${t("partner.quiet")} ${t("partner.quiet.to")}`} value={quiet.end} onChange={(e) => setQuiet(quiet.start, (e.target as HTMLInputElement).value || quiet.end)} />
           </div>
         )}
-        {quiet && <div class="small sub">{t("partner.quiet.note")}</div>}
       </section>
       <section class="set">
         <h3>{t("partner.default.title")}</h3>
-        <div class="small sub">{t("partner.default.line")}</div>
-        <Seg
-          label={t("partner.default.line")}
-          value={s.defaultAfterMin}
-          options={[10, 30, 60, 120].map((v) => ({ v, label: v < 60 ? t("partner.default.min", v) : t("partner.default.hour", v / 60) }))}
-          onPick={(defaultAfterMin) => A.setSettings({ defaultAfterMin })}
-        />
-        <div class="small sub">{t("partner.default.note")}</div>
-      </section>
-      <section class="set">
-        <h3>{t("partner.memory.title")}</h3>
-        {mem && <div class="small sub">{mem.state === "connected" && mem.keptUnder ? t("partner.memory.under", mem.keptUnder) : t(`partner.memory.${mem.state}`)}</div>}
-        {mem?.state === "missing" && (
-          <a class="more" href="https://mem.nowledge.co" target="_blank" rel="noopener">
-            {t("partner.memory.connect")}
-          </a>
-        )}
-        <Toggle label={t("partner.memory.switch")} checked={s.memory} onChange={(memory) => A.setSettings({ memory })} />
-        {s.memory && !!mem?.noted.length && (
-          <div class="noted" aria-label={t("partner.memory.recent")}>
-            {mem.noted.map((n) => (
-              <div class="noted-row" key={n.seq}>
-                <span>{n.title}</span>
-                <Btn kind="text" label={t("partner.memory.forget")} about={n.title} onClick={() => A.forget(n.seq)} />
-              </div>
-            ))}
+        <div class="set-card">
+          <div class="set-item">
+            <b>{t("partner.default.line")}</b>
+            <small>{t("partner.default.note")}</small>
+            <Seg
+              label={t("partner.default.line")}
+              value={s.defaultAfterMin}
+              options={[10, 30, 60, 120].map((v) => ({ v, label: v < 60 ? t("partner.default.min", v) : t("partner.default.hour", v / 60) }))}
+              onPick={(defaultAfterMin) => A.setSettings({ defaultAfterMin })}
+            />
           </div>
-        )}
+        </div>
       </section>
+      {s.notify && <PhonePush />}
     </>
   );
 }
@@ -1900,26 +1966,25 @@ function agentLine(h: DeviceHarness, brain: boolean): string {
   const al = h.allowance;
   if (!al) return t("loadout.signed_in");
   const left = brain && al.left <= PARTNER_RESERVE ? t("loadout.left.reserve", pct(al.left), A.S.personaName) : t("loadout.left", pct(al.left));
-  return [left, al.sharedBy && al.sharedBy > 1 ? t("loadout.acct.shared", al.sharedBy) : t("loadout.acct.only"), al.resetsAt && t("loadout.acct.resets", when(A.L, al.resetsAt))].filter(Boolean).join(" · ");
+  return [left, al.sharedBy && al.sharedBy > 1 ? t("loadout.acct.shared", al.sharedBy) : t("loadout.acct.only", A.homeName ?? ""), al.resetsAt && t("loadout.acct.resets", when(A.L, al.resetsAt))].filter(Boolean).join(" · ");
 }
 
-const MODELS: Record<string, { id: string; label: string }[]> = { "claude-code": [{ id: "opus", label: "Opus" }, { id: "sonnet", label: "Sonnet" }] };
-const isFast = (id: string) => /sonnet|haiku|mini|luna|flash/i.test(id);
 
 /** What it thinks with, and who does the tasks (D89), as lists: no stage on the phone. */
 function Loadout() {
   const s = A.settings;
   const agents = A.agents ?? [];
   if (!s) return null;
-  const brain = s.brain ?? { harness: "claude-code", model: "opus" };
+  const brain = A.brainNow ?? s.brain ?? { harness: "claude-code", model: "opus" };
   const b = agents.find((h) => h.harness === brain.harness);
-  const models = b?.models?.length ? b.models : (MODELS[brain.harness] ?? []);
-  const brains = agents.filter((h) => h.canBePartner);
+  // D150: the models come from the home (settings.brainNow), never a list of the phone's own.
+  const models = A.brainNow?.harness === brain.harness ? A.brainNow.models : [];
+  const brains = agents.filter((h) => h.canBePartner && h.installed && h.loggedIn);
   const ready = agents.filter((h) => h.installed && h.loggedIn);
   const name = A.S.personaName;
   const setBrain = (harness: string, model?: string) => {
     const h = agents.find((x) => x.harness === harness);
-    const m = model ?? (h?.models?.[0]?.id || MODELS[harness]?.[0]?.id);
+    const m = model ?? h?.models?.[0]?.id;
     A.setSettings({ brain: { harness: harness as never, ...(m ? { model: m } : {}) } });
     A.toast(t("loadout.toast.brain", name, harnessName(harness)));
   };
@@ -1932,6 +1997,7 @@ function Loadout() {
           <Coin harness={brain.harness} size={40} />
           <span class="grow">
             <b>{harnessName(brain.harness)}</b>
+            {A.brainNow?.why === "only_codex" && <small class="auto">{t("loadout.brain.auto", harnessName(brain.harness))}</small>}
             <small>{reserve}</small>
           </span>
         </div>
@@ -1942,7 +2008,7 @@ function Loadout() {
           <Seg
             label={t("loadout.brain.model")}
             value={brain.model}
-            options={models.map((m, i) => ({ v: m.id, label: `${m.label || m.id} · ${t(i > 0 || isFast(m.id) ? "loadout.model.fast" : "loadout.model.smart")}` }))}
+            options={models.map((m) => ({ v: m.id, label: `${m.label || m.id} · ${t(m.kind === "fast" ? "loadout.model.fast" : "loadout.model.smart")}` }))}
             onPick={(m) => setBrain(brain.harness, m)}
           />
         )}
@@ -2321,7 +2387,8 @@ export function DevicesSection() {
   );
 }
 
-function PhoneSettings() {
+/** This phone's own notifications: turn them on here, what they cover, a test. */
+function PhonePush() {
   const [push, setPush] = useState<{ done: boolean } | null>(null);
   useEffect(() => {
     void A.api.call<{ done: boolean }>("api/push/settings").then((r) => r.data && setPush(r.data));
@@ -2329,76 +2396,144 @@ function PhoneSettings() {
   return (
     <section class="set">
       <h3>{t("settings.phone")}</h3>
-      <div class="small">{A.me?.via === "device" ? `${A.me.deviceName ?? ""}` : deviceLabel(A.L, "local")}</div>
-      <div class="small sub">{t("settings.lang.title")}</div>
-      <Seg label={t("settings.lang.title")} value={A.uiLang} options={(["auto", "zh", "en"] as const).map((v) => ({ v, label: t(`settings.lang.${v}`) }))} onPick={(v) => A.setUiLang(v)} />
-      <div class="small sub">{t("settings.details.title")}</div>
-      <Seg label={t("settings.details.title")} value={A.details} options={(["folded", "shown"] as const).map((v) => ({ v, label: t(`settings.details.${v}`) }))} onPick={(v) => A.setDetails(v)} />
-      {A.settings?.notify !== false && (
+      {A.push === "ios-install" && <div class="hint">{t("notify.ios")}</div>}
+      {A.push === "unsupported" && <div class="hint">{t(inApp() ? "notify.app.unavailable" : "notify.unsupported")}</div>}
+      {inApp() && A.push === "off" && !A.me?.push.apns && <div class="hint">{t("notify.app.nokey")}</div>}
+      {A.push === "denied" && <div class="hint">{t("notify.denied")}</div>}
+      {A.push === "off" && A.me?.push.publicKey && (!inApp() || A.me.push.apns) && (
+        <Btn
+          kind="primary"
+          label={t("notify.on")}
+          onClick={async () => {
+            A.push = await turnOnPush();
+            A.changed();
+          }}
+        />
+      )}
+      {A.push === "on" && (
         <>
-          {A.push === "ios-install" && <div class="hint">{t("notify.ios")}</div>}
-          {A.push === "unsupported" && <div class="hint">{t(inApp() ? "notify.app.unavailable" : "notify.unsupported")}</div>}
-          {inApp() && A.push === "off" && !A.me?.push.apns && <div class="hint">{t("notify.app.nokey")}</div>}
-          {A.push === "denied" && <div class="hint">{t("notify.denied")}</div>}
-          {A.push === "off" && A.me?.push.publicKey && (!inApp() || A.me.push.apns) && (
+          <Toggle
+            label={t("notify.done")}
+            help={t("notify.enabled")}
+            checked={push?.done ?? false}
+            onChange={async (done) => {
+              const r = await A.api.call<{ done: boolean }>("api/push/settings", { method: "POST", body: { done } });
+              if (r.data) setPush(r.data);
+            }}
+          />
+          <div class="btns end">
             <Btn
-              kind="primary"
-              label={t("notify.on")}
+              kind="text"
+              label={t("notify.off")}
               onClick={async () => {
-                A.push = await turnOnPush();
+                A.push = await disablePush(A.api);
                 A.changed();
               }}
             />
-          )}
-          {A.push === "on" && (
-            <>
-              <div class="small">{t("notify.enabled")}</div>
-              <Toggle
-                label={t("notify.done")}
-                checked={push?.done ?? false}
-                onChange={async (done) => {
-                  const r = await A.api.call<{ done: boolean }>("api/push/settings", { method: "POST", body: { done } });
-                  if (r.data) setPush(r.data);
-                }}
-              />
-              <div class="btns">
-                <Btn
-                  kind="text"
-                  label={t("notify.off")}
-                  onClick={async () => {
-                    A.push = await disablePush(A.api);
-                    A.changed();
-                  }}
-                />
-                <Btn
-                  kind="secondary"
-                  label={t("notify.test")}
-                  onClick={async () => {
-                    const r = await A.api.call("api/push/test", { method: "POST" });
-                    A.toast(r.status === 200 ? t("notify.test.sent") : t("result.action.failed", String(r.status)));
-                  }}
-                />
-              </div>
-            </>
-          )}
+            <Btn
+              kind="secondary"
+              label={t("notify.test")}
+              onClick={async () => {
+                const r = await A.api.call("api/push/test", { method: "POST" });
+                A.toast(r.status === 200 ? t("notify.test.sent") : t("result.action.failed", String(r.status)));
+              }}
+            />
+          </div>
         </>
       )}
     </section>
   );
 }
 
+/** 这台手机 / This phone: its own language and how Details show. */
+function PhoneSettings() {
+  return (
+    <section class="set">
+      <div class="small sub">{A.me?.via === "device" ? `${A.me.deviceName ?? ""}` : deviceLabel(A.L, "local")}</div>
+      <div class="set-card">
+        <div class="set-item">
+          <b>{t("settings.lang.title")}</b>
+          <Seg label={t("settings.lang.title")} value={A.uiLang} options={(["auto", "zh", "en"] as const).map((v) => ({ v, label: t(`settings.lang.${v}`) }))} onPick={(v) => A.setUiLang(v)} />
+        </div>
+        <div class="set-item">
+          <b>{t("settings.details.title")}</b>
+          <Seg label={t("settings.details.title")} value={A.details} options={(["folded", "shown"] as const).map((v) => ({ v, label: t(`settings.details.${v}`) }))} onPick={(v) => A.setDetails(v)} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const SECTIONS: { page: Exclude<SettingsPage, "">; art: string; title: string }[] = [
+  { page: "partner", art: "idle", title: "settings.tab.partner" },
+  { page: "notify", art: "wait_clock", title: "settings.tab.notify" },
+  { page: "accounts", art: "wait_mail", title: "settings.tab.accounts" },
+  { page: "devices", art: "mini_awake", title: "settings.tab.devices" },
+  { page: "phone", art: "phone", title: "settings.phone" },
+];
+
+/** Settings (D150): the same sections as the Mac's rail, as a list; a tap pushes its page. */
 function SettingsSheet() {
   useEffect(() => {
     if (!A.settings && A.S.welcomed) A.send({ t: "settings" });
   }, []);
+  const page = (A.sheet?.kind === "settings" && A.sheet.page) || "";
+  const go = (p: SettingsPage) => ((A.sheet = { kind: "settings", page: p }), A.changed());
+  const sec = SECTIONS.find((x) => x.page === page);
+  const brain = A.brainNow ?? A.settings?.brain;
   return (
     <Sheet label={t("settings.title")}>
-      <NameRow />
-      <Loadout />
-      <PartnerSettings />
-      <Accounts />
-      <DevicesSection />
-      <PhoneSettings />
+      {!sec ? (
+        <div class="set-page" key="list">
+          <h2>{t("settings.title")}</h2>
+          <button class="set-hero" onClick={() => go("partner")}>
+            <Avatar size={64} />
+            <span class="grow">
+              <b>{A.S.personaName}</b>
+              {brain && A.homeName && <small>{t("partner.header", A.homeName, harnessName(brain.harness))}</small>}
+            </span>
+            <Chev />
+          </button>
+          <div class="set-card set-list">
+            {SECTIONS.map((x) => (
+              <button class="set-row" key={x.page} onClick={() => go(x.page)}>
+                <img src={`app/art/${x.art}.webp`} alt="" width="40" height="40" />
+                <span class="grow">
+                  <b>{t(x.title)}</b>
+                  <small>{t(`settings.list.${x.page}`)}</small>
+                </span>
+                <Chev />
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div class="set-page pushed" key={page}>
+          <button class="set-back" onClick={() => go("")} aria-label={t("settings.back")}>
+            <span class="back-chev" aria-hidden="true">
+              ‹
+            </span>
+            {t("settings.back")}
+          </button>
+          <h2 class="set-title">
+            <img src={`app/art/${sec.art}.webp`} alt="" width="32" height="32" />
+            {t(sec.title)}
+          </h2>
+          {page === "partner" && (
+            <>
+              <NameRow />
+              <Loadout />
+              <TalkSettings />
+              <MemorySettings />
+              <TrustSettings />
+            </>
+          )}
+          {page === "notify" && <NotifySettings />}
+          {page === "accounts" && <Accounts />}
+          {page === "devices" && <DevicesSection />}
+          {page === "phone" && <PhoneSettings />}
+        </div>
+      )}
     </Sheet>
   );
 }

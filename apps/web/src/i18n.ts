@@ -7,6 +7,33 @@
 export type Lang = "zh" | "en";
 
 const zh: Record<string, string> = {
+  // Settings as one place (D150): the list of sections, each a pushed page.
+  "settings.tab.partner": "伙伴",
+  "settings.tab.notify": "通知",
+  "settings.tab.accounts": "账号",
+  "settings.list.partner": "名字、用什么想事情、怎么说话、记得什么",
+  "settings.list.notify": "什么时候找你、免打扰、你没回的时候",
+  "settings.list.accounts": "它能看的邮件、日历和别的账号",
+  "settings.tab.devices": "你的设备",
+  "settings.list.devices": "每台电脑上的 Ducter、版本和更新",
+  "settings.list.phone": "界面语言、对话里的细节",
+  "settings.back": "设置",
+  "partner.header": "住在 %s 上 · 用 %s 想事情",
+  "loadout.brain.auto": "自动选的：只有 %s 登录了",
+  "settings.talk.row": "回你用的语言",
+  "partner.memory.on.help": "记得你说过的事，下次不用再讲一遍。",
+  "partner.trust.title": "自己就做，还是先问你",
+  "partner.trust.own": "自己就做",
+  "partner.trust.asks": "先问你",
+  "partner.trust.own.1": "在自己的副本里改文件，你的原件不会被动到",
+  "partner.trust.own.2": "读你的项目和文件",
+  "partner.trust.own.3": "查资料、看网页；能用你的 Chrome 时就在里面看",
+  "partner.trust.own.4": "能撤销的事，你没回就按默认做",
+  "partner.trust.asks.1": "发给别人的东西：邮件、消息、帖子",
+  "partner.trust.asks.2": "改不回来的事，比如合进你的主线",
+  "partner.trust.asks.3": "登录网站：你自己来",
+  "partner.trust.asks.4": "付钱：永远是你来付",
+  "partner.trust.note": "这两张单子就是 Ducter 守的规矩，不能在这里改。",
   "app.title": "Ducter",
   // 开一件事 / New task (D128): the same keys and words as the desktop.
   "newtask.button": "开一件事",
@@ -473,7 +500,7 @@ const zh: Record<string, string> = {
   "loadout.rule.prefill": "以后",
   "loadout.rules.none": "还没有规则。你在对话里说一句，比如“后端的事用 Codex”，它就记在这儿。",
   "loadout.rule.removed": "不要了：%s",
-  "loadout.tray": "这台 Mac 上的 AI agent",
+  "loadout.tray": "%s 上的 AI agent",
   "loadout.left": "额度还剩 %d%%",
   "loadout.left.reserve": "额度还剩 %d%% · 都是给 %s 留着的",
   "loadout.signed_in": "已登录",
@@ -481,7 +508,7 @@ const zh: Record<string, string> = {
   "loadout.missing": "还没装",
   "loadout.signed_out": "没登录",
   "loadout.acct.shared": "%d 台设备共用",
-  "loadout.acct.only": "只在这台 Mac 上",
+  "loadout.acct.only": "只在 %s 上",
   "loadout.acct.resets": "%s 恢复",
   "loadout.acct.same": "做事和 %s 想事情用的是同一份额度。",
   "loadout.acct.paid": "按用量付费：每次用都花钱，不是包月额度。",
@@ -534,6 +561,33 @@ const zh: Record<string, string> = {
 };
 
 const en: Record<string, string> = {
+  // Settings as one place (D150): the list of sections, each a pushed page.
+  "settings.tab.partner": "Partner",
+  "settings.tab.notify": "Notifications",
+  "settings.tab.accounts": "Accounts",
+  "settings.list.partner": "Name, what it thinks with, how it talks, what it remembers",
+  "settings.list.notify": "When it comes to you, quiet hours, if you don't answer",
+  "settings.list.accounts": "The mail, calendars and other accounts it can read",
+  "settings.tab.devices": "Your devices",
+  "settings.list.devices": "Ducter on each computer, its version and updates",
+  "settings.list.phone": "Language, Details in the conversation",
+  "settings.back": "Settings",
+  "partner.header": "Lives on %s · thinks with %s",
+  "loadout.brain.auto": "Picked for you: only %s is signed in",
+  "settings.talk.row": "Replies in",
+  "partner.memory.on.help": "Remembers what you've told it, so you don't have to say it twice.",
+  "partner.trust.title": "On its own, or asks you first",
+  "partner.trust.own": "On its own",
+  "partner.trust.asks": "Asks you first",
+  "partner.trust.own.1": "Change files in its own copy; your originals stay as they are",
+  "partner.trust.own.2": "Read your projects and files",
+  "partner.trust.own.3": "Look things up and read web pages, in your own Chrome when it can",
+  "partner.trust.own.4": "Go with the default on things that can be undone, if you don't answer",
+  "partner.trust.asks.1": "Anything that reaches other people: email, messages, posts",
+  "partner.trust.asks.2": "Anything that can't be taken back, like merging into your main line",
+  "partner.trust.asks.3": "Signing in to a site: you do it",
+  "partner.trust.asks.4": "Paying: you always pay",
+  "partner.trust.note": "These two lists are the rules Ducter keeps; they can't be changed here.",
   "app.title": "Ducter",
   // New task (D128): the same keys and words as the desktop.
   "newtask.button": "New task",
@@ -999,7 +1053,7 @@ const en: Record<string, string> = {
   "loadout.rule.prefill": "From now on, ",
   "loadout.rules.none": "No rules yet. Say one in the conversation, like \"backend work on Codex\", and it shows up here.",
   "loadout.rule.removed": "Removed: %s",
-  "loadout.tray": "AI agents on this Mac",
+  "loadout.tray": "AI agents on %s",
   "loadout.left": "%d%% of the limit left",
   "loadout.left.reserve": "%d%% left · all kept for %s",
   "loadout.signed_in": "Signed in",
@@ -1007,7 +1061,7 @@ const en: Record<string, string> = {
   "loadout.missing": "Not installed",
   "loadout.signed_out": "Not signed in",
   "loadout.acct.shared": "shared by %d devices",
-  "loadout.acct.only": "this Mac only",
+  "loadout.acct.only": "%s only",
   "loadout.acct.resets": "back %s",
   "loadout.acct.same": "Tasks and %s's own thinking use the same limit.",
   "loadout.acct.paid": "Pay per use: every use costs money; it isn't a monthly limit.",
@@ -1283,6 +1337,11 @@ const devup: Record<Lang, Record<string, string>> = {
 export const TABLES: Record<Lang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh }, en: { ...en, ...folder.en, ...devup.en } };
 
 /** Drops a space between two Chinese characters (zh copy spaces around a name for Latin names). */
+/** D78: a space where a Chinese character touches a Latin letter or a digit ("住在%s 上" with "hel"). */
+export function spaceHan(s: string): string {
+  return s.replace(/(\p{Script=Han})(?=[A-Za-z0-9])|([A-Za-z0-9])(?=\p{Script=Han})/gu, "$1$2 ");
+}
+
 export function joinHan(s: string): string {
   return s.replace(/(\p{Script=Han}) (?=\p{Script=Han})/gu, "$1");
 }
@@ -1310,7 +1369,7 @@ export function strings(lang: Lang): Strings {
       const v = table[key] ?? en[key] ?? key; // a missing key shows itself, so it gets fixed
       if (!args.length) return v;
       const out = format(v, args);
-      return lang === "zh" ? joinHan(out) : out;
+      return lang === "zh" ? joinHan(spaceHan(out)) : out;
     },
   };
 }

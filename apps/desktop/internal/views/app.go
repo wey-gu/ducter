@@ -29,9 +29,10 @@ const (
 	RouteTask
 	// RouteDevices is 你的设备，和它们会做的事 / Your devices and what they can do.
 	RouteDevices
-	// RoutePartner is 伙伴 / Partner: the partner's character sheet (D71).
+	// RoutePartner is Settings › 伙伴 / Partner (D150; its own page in D71).
 	RoutePartner
-	// RouteSettings is 设置 / Settings: the app's own (D71).
+	// RouteSettings is 设置 / Settings: one place for everything you can
+	// set, a rail of tabs (D150).
 	RouteSettings
 )
 
@@ -362,9 +363,7 @@ func (a *App) View(c *ui.Context) {
 			a.task(c)
 		case a.Route == RouteDevices:
 			a.devicesView(c)
-		case a.Route == RoutePartner:
-			a.partnerView(c)
-		case a.Route == RouteSettings:
+		case a.Route == RoutePartner, a.Route == RouteSettings:
 			a.settingsView(c)
 		default:
 			a.conversation(c)
@@ -652,16 +651,17 @@ func (a *App) Welcomed() {
 		a.send(protocol.TaskHistoryReq{T: "task_history", TaskID: a.TaskID, Limit: 500})
 	}
 	// Devices are pushed only to sockets that asked: ask again on a new one.
-	if a.Route == RouteDevices || a.Route == RoutePartner || !a.S.DevicesAt.IsZero() {
+	inSettings := a.Route == RoutePartner || a.Route == RouteSettings
+	if a.Route == RouteDevices || inSettings || !a.S.DevicesAt.IsZero() {
 		a.send(protocol.DevicesReq{T: "devices"})
 	}
 	// Settings, too: the Partner page, and whether (and when) this Mac
 	// shows notifications.
-	if a.S.Settings != nil || a.Route == RoutePartner || a.Desktop != nil {
+	if a.S.Settings != nil || inSettings || a.Desktop != nil {
 		a.send(protocol.SettingsReq{T: "settings"})
 	}
 	// Connections (D96): same, once the Partner page asked.
-	if a.S.ConnAsked || a.Route == RoutePartner {
+	if a.S.ConnAsked || inSettings {
 		a.send(protocol.ConnectionsReq{T: "connections"})
 	}
 }

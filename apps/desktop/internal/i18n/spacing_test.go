@@ -38,3 +38,14 @@ func TestZhSpacesHanAndLatin(t *testing.T) {
 		t.Errorf("Han against Latin or a digit without a space (D78): %s", h)
 	}
 }
+
+// D150: a name filled into zh copy is spaced from Han ("住在 hel 上"), and a
+// Chinese one sits flush ("住在这台 Mac 上").
+func TestZhSpacesFilledNames(t *testing.T) {
+	zh := New(ZH)
+	for _, tc := range []struct{ arg, want string }{{"hel", "住在 hel 上"}, {"这台 Mac", "住在这台 Mac 上"}} {
+		if got := zh.T("partner.lives", tc.arg); got != tc.want {
+			t.Errorf("%q: got %q want %q", tc.arg, got, tc.want)
+		}
+	}
+}

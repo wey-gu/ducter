@@ -132,9 +132,9 @@ func TestDeviceCards(t *testing.T) {
 				}
 			}
 
-			// Settings: every computer's version, and the night switch.
+			// Settings › Updates and about: every computer's version, and the night switch.
 			cardWorld(h)
-			h.app.OpenSettings()
+			h.app.OpenAbout()
 			h.settle(300 * time.Millisecond)
 			if !h.tt.HasText(L.T("settings.versions.title")) {
 				t.Fatalf("settings: %q", h.tt.Texts())

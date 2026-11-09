@@ -31,7 +31,7 @@ func TestOoOfferIsTheDefault(t *testing.T) {
 	app, sent := iaApp(t, i18n.ZH)
 	app.Receive(settingsFrame())
 	app.Receive(ooFrame(protocol.OoDetect{Installed: true, Account: true, Apps: ooApps}))
-	app.Route = RoutePartner
+	app.Route, app.settings.tab = RouteSettings, TabAccounts
 	tt := ui.NewTesterWith(app.View, 1280, 2200, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
@@ -77,7 +77,7 @@ func TestOoOfferLoadingAndEmpty(t *testing.T) {
 	app, _ := iaApp(t, i18n.EN)
 	app.Receive(settingsFrame())
 	app.Receive(ooFrame(protocol.OoDetect{Installed: true, Account: true}))
-	app.Route = RoutePartner
+	app.Route, app.settings.tab = RouteSettings, TabAccounts
 	tt := ui.NewTesterWith(app.View, 1280, 2200, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
@@ -121,7 +121,7 @@ func TestOoConnectShots(t *testing.T) {
 			app, _ := iaApp(t, lang)
 			app.Receive(settingsFrame())
 			app.Receive(s.frame)
-			app.Route = RoutePartner
+			app.Route, app.settings.tab = RouteSettings, TabAccounts
 			if s.setup != nil {
 				s.setup(app)
 			}

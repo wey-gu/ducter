@@ -347,6 +347,8 @@ type Store struct {
 	// outcome, until the view shows it.
 	Settings *protocol.Settings
 	Mem      *protocol.MemView
+	// BrainNow is what the partner thinks with right now (D150).
+	BrainNow *protocol.BrainNow
 	// Connections (D96), once asked for; nil means not yet. Oo is what the
 	// oo CLI is set up with. ConnResult is the last add/remove answer, for
 	// the page to turn into one line.
@@ -450,6 +452,7 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		if f.Mem != nil {
 			s.Mem = f.Mem
 		}
+		s.BrainNow = f.BrainNow
 		if f.Forgot != nil {
 			s.Forgot = f.Forgot
 		}

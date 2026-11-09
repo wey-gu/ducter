@@ -262,13 +262,54 @@ v1 has five places, and every one is reachable from the menu bar, a shortcut and
 | 对话 / Conversation | ⌘1, Esc from any other place | Home: talk, decide, see results |
 | 手头的事 / On hand | ⌘2, the button in the conversation's bar | Every task and what waits for you |
 | 设备 / Devices | ⌘3, the clay device button | The setup surface: devices, what they can do, AI accounts (sign in, install, sign out on this Mac), Connect a phone or computer |
-| 伙伴 / Partner | ⌘4, the partner's own face and name | A character sheet across the whole hero card: on the left the clay partner large, its name (renamed in place) and where it lives; on the right its five faces as a row filling the card (hover one to see it big); no status line under the name. Beside the clay partner, a clay socket holds the AI agent it thinks with (D89), labelled 想事情用 / Thinks with, the account and model in words under it. Then the tray of this Mac's AI agents (clay tokens with a limit ring each; on the partner's own account the last 10%, kept for it, is the darker accent; not installed: a dashed ring), then two cards: What it thinks with · Who does the tasks. Then How it talks · When it comes to you · What it remembers · On its own, or asks you first |
-| 设置 / Settings | ⌘, and Settings… in the app menu and the menu bar extra | The app's own, calm: Look, Language, When you close the window, Updates, Data and logs, About, Remove Ducter (last, a quiet text button) |
+| 伙伴 / Partner | ⌘4, the partner's own face and name | Settings' first tab (D150), below |
+| 设置 / Settings | ⌘, and Settings… in the app menu and the menu bar extra | One place for everything you can set (D150), below |
 
 An opened task is the third zoom level under On hand. The **menu bar extra** (the clay partner
 as a template icon) is the handheld moment: with the window closed, its menu lists what needs
-you, each with Go / Hold / Reply…, then Open Ducter. The phone has one **Settings sheet**
-(tap the partner) with the partner's settings and the phone's own language; What it thinks with and Who does the tasks are lists there (an agent's row: its clay token, name, one line, Use it for tasks), with no stage (D89).
+you, each with Go / Hold / Reply…, then Open Ducter.
+
+**Settings (D150).** A game's settings menu. On the left a rail (264 wide, on the chrome's cream
+with a hairline) of chunky clay tabs, 56 tall, radius 16: each the clay thing it is about at 40
+(the partner's face; `wait_clock`; `wait_mail`; Pebble's paper, accent and ink as three clay
+pebbles; `mini_awake`; an arrow up on an accent pebble) and its name 15/700. The tab shown is a
+white surface on the card's 4pt base in ink 800; the others lie flat in soft ink, tinted and on a
+2pt base under the pointer, and sink while pressed. The build number sits at the rail's foot in
+12 muted. On the right one section at a time (max 820, centered): **伙伴 / Partner** · **通知 /
+Notifications** · **账号 / Accounts** · **外观与声音 / Look and sound** · **在哪儿运行 / Where it
+runs** · **更新与关于 / Updates and about**. Deep links land on their tab: ⌘4 and the partner's face
+on Partner, About Ducter and the update line on Updates and about (whose update block is one
+slot, `updateSection`).
+
+One vocabulary on every tab:
+- **Type:** the tab's name 28 heading (or the hero card's name), a one-line lede 15 muted; a
+  group's title 20 heading on the paper, its note 13 muted; a row's label 15/700; its helper 13
+  muted (zh 1.75); captions 12.
+- **Groups:** the title on the paper, then a white card (radius 24, the 4pt clay base) of rows.
+  A row is 68 high at least, padded 16 × 24, its label and one-line helper on the left and the
+  control at the right end: a switch, a segmented control, a small secondary button, or a ›
+  (a link row: the whole row is the button; ↗ for a page outside the app). A 1pt `line-soft`
+  hairline, set in 24 from the card's sides, between rows.
+- **Actions:** a card's primary (clay) buttons sit at the right end of its last line; a quiet
+  text button (Cancel, Add one with an address and key) at the left of the same line. Remove
+  Ducter is a quiet text button after the last group, never centered.
+- **Partner:** one calm clay header (the partner at 112, its name 34 with Rename, one line "住在
+  hel 上 · 用 Codex 想事情"), then the tray titled **{device} 上的 AI agent**, What it thinks with
+  (the clay well holding the token; the token flies into it on Switch), Who does the tasks, How it
+  talks, What it remembers (no Mem: no switch, **装上 Nowledge Mem** instead), On its own or asks
+  you first (two lists side by side in one card). Single column; the faces strip is gone.
+- **Look and sound** opens on a preview stage: the partner, one message of yours and its answer
+  in this window's language, and Details folded or shown as set. The partner smiles (its done
+  face, cross-faded) for 1.6 s after any choice there, and while **听一下 / Play** plays the
+  intro's sound (stopped after 5 s). Reduced motion: the face still changes, nothing moves.
+- **The phone** shows the same sections as a list (a card of rows: the clay thing at 40, the
+  name, a helper, ›) under a partner card; a tap pushes the section (a 24pt slide from the right,
+  280 ms; none under reduced motion) with **‹ 设置** to go back. Its fourth section is **这台手机 /
+  This phone** (language, Details); its Notifications page also holds this phone's own push.
+  `#settings=<section>` deep-links a page.
+
+Screenshots: `.shots/settings/` (desktop 1280 every tab zh/en, the Partner tab on a Mac and on a
+Codex-only server; phone 390 every page light/dark).
 
 **Switching what it thinks with** (D89) is the one game moment on Partner: Switch lifts the
 tray tokens that can go in (the others step back and say why: Install first, Pick a model

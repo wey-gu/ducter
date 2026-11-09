@@ -4,6 +4,7 @@
 // tier table, then the limit left. A pin (the partner's or the person's choice) wins over all of
 // it unless a hard filter says no, and then the move is said, never silent.
 import { HARNESSES, harnessName, isHarnessId, PARTNER_RESERVE, type BodyWhy, type Candidate, type CandidateBlock, type DeviceHarness, type RuleView, type Settings } from "@ducter/protocol";
+import { HARNESS_FACTS } from "@ducter/protocol/src/harness-facts.ts";
 import { ruleFor } from "./rules.ts";
 
 /** One AI agent and model, as the tier table knows it. smart: the strongest; fast: quick and light on the limit. */
@@ -53,6 +54,20 @@ const rows = (h: DeviceHarness): Tier[] => {
   const own = TIERS.filter((t) => t.harness === h.harness);
   return own.length ? own : [{ harness: h.harness, kind: "fast" }];
 };
+
+/**
+ * The models the partner may think with on an AI agent (D150): what the home's account lists,
+ * else the tier table's models for it (Claude Code: Opus, Sonnet), kept to names the harness
+ * facts know. None: it runs on its own default model.
+ */
+export function brainModelRows(harness: string, h: DeviceHarness | undefined): { id: string; label: string; kind: "smart" | "fast" }[] {
+  const facts = isHarnessId(harness) ? HARNESS_FACTS[harness]?.models.value : undefined;
+  const known = (id: string) => !facts || !Object.keys(facts).length || id in facts;
+  const listed = h?.models?.length ? h.models : undefined;
+  return rows(h ?? { harness, installed: true, loggedIn: true, canBePartner: true })
+    .filter((t): t is Tier & { model: string } => !!t.model && known(t.model))
+    .map((t) => ({ id: t.model, label: listed?.find((m) => m.id === t.model)?.label || t.model[0]!.toUpperCase() + t.model.slice(1), kind: t.kind }));
+}
 
 const same = (a: { harness: string; model?: string }, b?: { harness: string; model?: string }) =>
   !!b && a.harness === b.harness && (a.model ?? "") === (b.model ?? "");

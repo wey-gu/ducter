@@ -1,5 +1,5 @@
 // The phone app's state and actions (the views read it and call these). One store, one socket.
-import type { Candidate, ClientFrame, Place, PlaceChoice, ConnectionView, DeviceHarness, DeviceView, MemView, OoDetect, Reach, RuleView, ServerFrame, Settings, SettingsPatch, UpdateReason } from "@ducter/protocol";
+import type { BrainNow, Candidate, ClientFrame, Place, PlaceChoice, ConnectionView, DeviceHarness, DeviceView, MemView, OoDetect, Reach, RuleView, ServerFrame, Settings, SettingsPatch, UpdateReason } from "@ducter/protocol";
 import { Api, Connection, type ConnStatus, type Me, wsUrl } from "./conn.ts";
 import { detectLang, langOfText, strings, type Lang, type Strings } from "./i18n.ts";
 import { pushState, type PushState } from "./push-client.ts";
@@ -7,7 +7,9 @@ import { haptic } from "./native.ts";
 import { attention, finished, LANE, laneOf, looksSecret, Store, title, type DecisionState, type Entry } from "./store.ts";
 
 export type Route = { name: "conv" } | { name: "onhand" } | { name: "task"; id: string };
-export type Sheet = { kind: "decision"; id: string } | { kind: "settings" } | { kind: "newtask" } | null;
+/** Settings (D150) is a list of sections; page is the one pushed ("" is the list). */
+export type SettingsPage = "" | "partner" | "notify" | "accounts" | "devices" | "phone";
+export type Sheet = { kind: "decision"; id: string } | { kind: "settings"; page?: SettingsPage } | { kind: "newtask" } | null;
 
 /** 开一件事 / New task's sheet (D128): what the user chose and typed, and how starting went. */
 export interface NewTaskDraft {
@@ -73,6 +75,9 @@ class AppState {
   /** The partner's settings (D71), once the server sent them; mem is what it remembers. */
   settings?: Settings;
   mem?: MemView;
+  /** What the partner thinks with right now (D150), and the computer Ducter lives on. */
+  brainNow?: BrainNow;
+  homeName?: string;
   /** Who does the tasks (D89): Your rules, this Mac's AI agents (from devices), and who could
    *  do the task whose Switch who does it is open. */
   rules?: RuleView[];
@@ -185,7 +190,10 @@ class AppState {
     }
     if (f.t === "settings") return this.applySettings(f);
     if (f.t === "rules") return void ((this.rules = f.rules), this.changed());
-    if (f.t === "devices") return void ((this.agents = f.devices.find((d) => d.home)?.harnesses ?? []), (this.devices = f.devices), (this.reach = f.reach), this.changed());
+    if (f.t === "devices") {
+      const home = f.devices.find((d) => d.home);
+      return void ((this.agents = home?.harnesses ?? []), (this.homeName = home?.name), (this.devices = f.devices), (this.reach = f.reach), this.changed());
+    }
     if (f.t === "update_result") return void ((this.deviceAnswer = f.ok || f.update ? undefined : { device: f.device, reason: f.reason ?? "failed" }), this.changed());
     if (f.t === "disconnect_result" || f.t === "rename_result") return void ((this.deviceAnswer = f.ok ? undefined : { device: f.device, reason: f.reason === "name_taken" ? "name_taken" : "failed" }), this.changed());
     if (f.t === "candidates") return void (this.candidates.set(f.taskId, f.candidates), this.changed());
@@ -229,6 +237,7 @@ class AppState {
   applySettings(f: Extract<ServerFrame, { t: "settings" }>) {
     this.settings = f.settings;
     this.mem = f.mem;
+    this.brainNow = f.brainNow;
     if (f.settings.name) this.S.personaName = f.settings.name;
     if (f.forgot) {
       const title = this.forgetting.get(f.forgot.seq) ?? "";
@@ -239,8 +248,8 @@ class AppState {
   }
 
   /** Opens this phone's Settings sheet, asking for the partner's settings. */
-  openSettings() {
-    this.sheet = { kind: "settings" };
+  openSettings(page: SettingsPage = "") {
+    this.sheet = { kind: "settings", page };
     if (this.S.welcomed) this.askLoadout();
     this.changed();
   }
@@ -547,9 +556,10 @@ class AppState {
     if (task) return this.applyRoute({ name: "task", id: decodeURIComponent(task[1]!) });
     if (hash === "#onhand") return this.applyRoute({ name: "onhand" });
     this.route = { name: "conv" };
-    if (hash === "#settings") {
+    const set = /^#settings(?:=(partner|notify|accounts|devices|phone))?$/.exec(hash);
+    if (set) {
       history.replaceState(null, "", location.pathname);
-      return this.openSettings();
+      return this.openSettings((set[1] ?? "") as SettingsPage);
     }
     if (d) {
       this.sheet = { kind: "decision", id: decodeURIComponent(d[1]!) };

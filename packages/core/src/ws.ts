@@ -1,4 +1,6 @@
 // Client WebSocket protocol (ClientFrame / ServerFrame) over Bun's built-in WS.
+import { brainNow } from "./brain.ts";
+import { harnessName, isHarnessId } from "@ducter/protocol";
 import type { ServerWebSocket } from "bun";
 import type { Bodies, ClientFrame, ClientKind, Delivery, LogEvent, PartnerActivity, Place, ServerFrame, UndoConfirm } from "@ducter/protocol";
 import type { NewTaskInput, NewTaskResult } from "./newtask.ts";
@@ -120,13 +122,23 @@ export function createWsHandler(deps: WsDeps) {
   const watchDevices = () => {
     if (offDevices) return;
     const v = devicesView();
-    if (v) offDevices = v.onChange(() => void pushDevices().catch((err) => console.warn("[ws] devices:", (err as Error).message)));
+    if (v)
+      offDevices = v.onChange(() => {
+        void pushDevices().catch((err) => console.warn("[ws] devices:", (err as Error).message));
+        // A sign-in on the home can change what the partner thinks with (brainNow).
+        const subs = [...sockets].filter((ws) => ws.data.settings);
+        if (subs.length && deps.settings) void settingsFrame().then((f) => subs.forEach((ws) => sockets.has(ws) && send(ws, f)));
+      });
   };
 
   // Settings: every subscriber gets a fresh frame on every change (another window, the phone).
   const settingsFrame = async (forgot?: { seq: number; how: "mem" | "hidden" }): Promise<ServerFrame> => {
     const v = await deps.settings!.view();
-    return { t: "settings", ...v, ...(forgot ? { forgot } : {}) };
+    // D150: the brain actually in use (core's Codex-only fallback included), so no client claims one
+    // the home doesn't have.
+    const home = devicesView() ? (await devicesView()!.frame()).devices.find((d) => d.home)?.harnesses : undefined;
+    const now = brainNow(v.settings.brain, deps.settings!.brainChosen(), home);
+    return { t: "settings", ...v, brainNow: now, ...(forgot ? { forgot } : {}) };
   };
   const offSettings = deps.settings?.onChange(() => {
     const subs = [...sockets].filter((ws) => ws.data.settings);
@@ -443,7 +455,9 @@ export function createWsHandler(deps: WsDeps) {
           const home = (await devicesView()!.frame()).devices.find((d) => d.home);
           const h = home?.harnesses.find((x) => x.harness === b.harness);
           if (!h?.canBePartner) {
-            send(ws, { t: "error", message: `settings_set: ${b.harness} can't be what the partner thinks with here (it must be signed in on this computer and able to be the partner)` });
+            // D150: never an agent the home doesn't have signed in (it would break the partner).
+            const name = isHarnessId(b.harness) ? harnessName(b.harness) : b.harness;
+            send(ws, { t: "error", message: `${name} isn't signed in on ${home?.name ?? "the computer Ducter lives on"}, so it can't be what ${deps.core.persona.name} thinks with.` });
             send(ws, await settingsFrame());
             return;
           }

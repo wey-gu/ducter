@@ -50,10 +50,44 @@ func TestPartnerPage(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 900, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	for _, want := range []string{"小鸭", "怎么说话", "跟着我", "什么时候找你", "记得什么", "测试统一用假时钟", "先问你", "付钱：永远是你来付"} {
+	for _, want := range []string{"小鸭", "怎么说话", "跟着我", "记得什么", "测试统一用假时钟", "先问你", "付钱：永远是你来付"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
+	}
+	// When it comes to you is its own tab now (D150).
+	tt.Click("通知")
+	tt.Frame()
+	if !tt.HasText("什么时候找你") || !tt.HasText("你没回的时候") {
+		t.Errorf("no notifications tab: %q", tt.Texts())
+	}
+}
+
+// D150: the brain shown is the one core runs, and the home is named.
+func TestPartnerTabShowsTheBrainInUse(t *testing.T) {
+	app, _ := iaApp(t, i18n.ZH)
+	app.URL = "wss://hel.example.com/ws"
+	f := settingsFrame()
+	f.Mem.State = "missing"
+	f.BrainNow = &protocol.BrainNow{Brain: protocol.Brain{Harness: "codex"}, Auto: true, Why: "only_codex"}
+	app.Receive(f)
+	app.Receive(protocol.ServerFrame{T: "devices", Devices: []protocol.DeviceView{{ID: "hel", Name: "hel", Kind: "server", Home: true, State: protocol.DeviceAwake,
+		Harnesses: []protocol.DeviceHarness{{Harness: "claude-code"}, {Harness: "codex", Installed: true, LoggedIn: true, CanBePartner: true}}}}})
+	app.OpenPartner()
+	tt := ui.NewTesterWith(app.View, 1280, 1400, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+	tt.Frame()
+	tt.Frame()
+	for _, want := range []string{"住在 hel 上 · 用 Codex 想事情", "自动选的：只有 Codex 登录了", "hel 上的 AI agent", "装上 Nowledge Mem"} {
+		if !tt.HasText(want) {
+			t.Errorf("no %q in %q", want, tt.Texts())
+		}
+	}
+	if tt.HasText("Claude Code · Opus") {
+		t.Errorf("claims Claude Code: %q", tt.Texts())
+	}
+	// Mem not connected: no switch that says it remembers.
+	if tt.HasText("记住事情") && tt.HasText("记得你说过的事，存在 Nowledge Mem 里。") {
+		t.Errorf("memory says connected while missing")
 	}
 }
 
@@ -119,10 +153,18 @@ func TestSettingsPage(t *testing.T) {
 	app.OpenSettings()
 	tt := ui.NewTesterWith(app.View, 1280, 1400, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
-	tt.Frame()
-	for _, want := range []string{"Look", "Pebble", "Language", "Follow the system", "When you close the window", "About", "Version 0.3.0 (abc1234)"} {
-		if !tt.HasText(want) {
-			t.Errorf("no %q in %q", want, tt.Texts())
+	for tab, wants := range map[string][]string{
+		"Look and sound": {"Look", "Pebble", "Language", "Follow the system", "Sound"},
+		"Where it runs":  {"Where it lives", "Your devices and AI accounts"},
+		"About":          {"Version 0.3.0 (abc1234)", "Credits", "Docs"},
+	} {
+		tt.Click(tab)
+		tt.Frame()
+		tt.Frame()
+		for _, want := range wants {
+			if !tt.HasText(want) {
+				t.Errorf("%s: no %q in %q", tab, want, tt.Texts())
+			}
 		}
 	}
 	// Updates hide until the app can check.
@@ -212,7 +254,7 @@ func TestSettingsUpdateReady(t *testing.T) {
 	app.Updates = &fakeUpdates{st: update.Status{State: update.Ready, Current: "0.3.0", Version: "0.3.1", InstallOnQuit: true}}
 	restarted := false
 	app.RestartToUpdate = func() { restarted = true }
-	app.OpenSettings()
+	app.OpenUpdate()
 	tt := ui.NewTesterWith(app.View, 1280, 1600, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()

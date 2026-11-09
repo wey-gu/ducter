@@ -609,7 +609,7 @@ export type ServerFrame =
   | { t: "rename_result"; device: string; ok: boolean; name?: string; reason?: "unknown_device" | "empty" | "name_taken" | "home" }
   | { t: "disconnect_result"; device: string; ok: boolean; reason?: "unknown_device" | "home" }
   | { t: "update_result"; device: string; ok: boolean; reason?: UpdateReason; detail?: string; update?: DeviceUpdate }
-  | { t: "settings"; settings: Settings; mem: MemView; forgot?: { seq: number; how: "mem" | "hidden" } }
+  | { t: "settings"; settings: Settings; mem: MemView; brainNow?: BrainNow; forgot?: { seq: number; how: "mem" | "hidden" } }
   | { t: "rules"; rules: RuleView[] }
   | { t: "candidates"; taskId: string; candidates: Candidate[] }
   | { t: "connections"; connections: ConnectionView[]; oo: OoDetect }
@@ -871,6 +871,18 @@ export interface ContextWindows {
 export interface Brain {
   harness: HarnessId;
   model?: string;
+}
+
+/**
+ * What the partner thinks with right now (D150): settings.brain, unless the user never chose one and
+ * the home has only Codex signed in, when core runs it on Codex instead (why: "only_codex").
+ */
+export interface BrainNow extends Brain {
+  /** auto: the user never chose; core picked it. why: the reason when it isn't the setting. */
+  auto: boolean;
+  why?: "only_codex";
+  /** The models it may think with on the home (its listed ones, else Ducter's tier table); none: its own default. */
+  models: { id: string; label: string; kind: "smart" | "fast" }[];
 }
 
 export type SettingsPatch = Partial<Settings>;

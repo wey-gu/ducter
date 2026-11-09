@@ -83,7 +83,7 @@ func (a *App) submitConnect() {
 			a.forgetShown()
 			a.send(protocol.Hello{T: "hello", Locale: string(a.L.Lang), TZ: localZone(), Client: "desktop"})
 			a.hereBackend, a.Backend, a.askStopHere = a.Backend, nil, true
-			a.Route = RouteSettings
+			a.Route, a.settings.tab = RouteSettings, TabRun
 		}
 		a.conn = connectState{}
 		a.Unauthorized = false

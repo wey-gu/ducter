@@ -1,4 +1,5 @@
 // Assembles the control plane: Log, registry, decisions, living message, MCP hub, WS server.
+import { effectiveBrain } from "./brain.ts";
 import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { homedir, hostname as osHostname } from "node:os";
 import { join } from "node:path";
@@ -250,11 +251,10 @@ export function startCore(opts: CoreOptions = {}): Core {
   let devicesView: DevicesView | undefined;
   const loadout = createLoadout({ log, tasks, settings, rules, devices: () => devicesView });
   const api = { log, tasks, mcp, persona, dataDir, settings, connections, bodies: loadout, spine: log.spine } as CoreApi;
+  // D150: the one helper (brain.ts) the runner and the settings frame share.
   api.partnerFallback = () => {
-    if (settings.brainChosen()) return undefined;
-    const hs = devicesView?.harnessesNow();
-    const signedIn = (id: string) => Boolean(hs?.find((h) => h.harness === id)?.loggedIn);
-    return hs && !signedIn("claude-code") && signedIn("codex") ? { harness: "codex" } : undefined;
+    const e = effectiveBrain(settings.get().brain, settings.brainChosen(), devicesView?.harnessesNow());
+    return e.why === "only_codex" ? { harness: "codex" } : undefined;
   };
   // 开一件事 / New task (D128): the one opening path the card and `ducter task` share.
   const newTaskDeps = { log, tasks, runner: () => runner, persona, dataDir, loadout, settings, ...(opts.git ? { git: opts.git } : {}) };

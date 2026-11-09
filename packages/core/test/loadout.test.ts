@@ -159,6 +159,25 @@ test("socket: rules are listed and removed; a removal reaches every subscriber",
   expect((await b.until<Rules>((f) => f.t === "rules", n)).rules).toEqual([]);
 });
 
+// D150: a Codex-only home. The frame says what the partner really thinks with (Codex, picked by
+// core), offers no Claude Code models, and a write of Claude Code is refused in plain words.
+test("socket: a Codex-only home shows Codex, auto, and refuses Claude Code", async () => {
+  harnessesNow = [cc(0.5, { installed: false, loggedIn: false, canBePartner: false }), cx()];
+  const core = boot();
+  for (let i = 0; i < 50 && !core.devicesView.harnessesNow(); i++) await Bun.sleep(10);
+  const c = await client(core.url);
+  c.send({ t: "settings" });
+  type S = Extract<ServerFrame, { t: "settings" }>;
+  const s = await c.until<S>((f) => f.t === "settings");
+  expect(s.brainNow).toMatchObject({ harness: "codex", auto: true, why: "only_codex" });
+  expect(s.brainNow!.models.map((m) => m.id)).not.toContain("opus");
+  c.send({ t: "settings_set", patch: { brain: { harness: "claude-code", model: "opus" } } });
+  const err = await c.until<Extract<ServerFrame, { t: "error" }>>((f) => f.t === "error");
+  expect(err.message).toContain("Claude Code isn't signed in");
+  expect(core.settings.brainChosen()).toBe(false);
+  expect(core.partnerFallback?.()).toEqual({ harness: "codex" });
+});
+
 test("socket: brain must be signed in here and able to be the partner", async () => {
   harnessesNow = [cc(), { ...pi, loggedIn: true }];
   const core = boot();

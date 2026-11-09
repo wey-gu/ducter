@@ -63,6 +63,9 @@ import waitFile from "../../../apps/web/static/art/wait_file.webp" with { type: 
 import goalLightOn from "../../../apps/web/static/art/goal_light_on.webp" with { type: "file" };
 import goalLightOff from "../../../apps/web/static/art/goal_light_off.webp" with { type: "file" };
 import routineCalendar from "../../../apps/web/static/art/routine_calendar.webp" with { type: "file" };
+// D150: Settings › This phone.
+import artPhone from "../../../apps/web/static/art/phone.webp" with { type: "file" };
+import artMini from "../../../apps/web/static/art/mini_awake.webp" with { type: "file" };
 
 const INDEX = indexHtml as unknown as string; // Bun types an .html import as an HTMLBundle; with type "file" it is a path
 
@@ -107,6 +110,8 @@ const ASSETS: Record<string, [string, string]> = {
   "art/goal_light_on.webp": [goalLightOn, "image/webp"],
   "art/goal_light_off.webp": [goalLightOff, "image/webp"],
   "art/routine_calendar.webp": [routineCalendar, "image/webp"],
+  "art/phone.webp": [artPhone, "image/webp"],
+  "art/mini_awake.webp": [artMini, "image/webp"],
 };
 
 // The page loads only its own scripts and styles; it talks only to this origin.

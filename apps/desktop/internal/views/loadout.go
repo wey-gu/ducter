@@ -59,6 +59,11 @@ func (a *App) brain() protocol.Brain {
 			return *lo.pending
 		}
 	}
+	// D150: what it actually thinks with, as the home says (core's
+	// Codex-only fallback included), before the setting.
+	if bn := a.S.BrainNow; bn != nil && bn.Harness != "" {
+		return bn.Brain
+	}
 	if st := a.S.Settings; st != nil && st.Brain != nil && st.Brain.Harness != "" {
 		return *st.Brain
 	}
@@ -93,7 +98,19 @@ func (a *App) BrainBadge(c *ui.Context, dv *protocol.DeviceView, harness string)
 	})
 }
 
-// trayHarnesses are this Mac's AI agents, as Devices reports them.
+// homeName names the computer Ducter lives on inside a sentence: "this
+// Mac", or the home's own name ("hel") when it lives elsewhere.
+func (a *App) homeName() string {
+	if home := a.homeDevice(); home != nil {
+		return a.deviceNameIn(home)
+	}
+	if a.onThisMac() {
+		return a.L.T("device.local.inline")
+	}
+	return hostOf(a.URL)
+}
+
+// trayHarnesses are the home's AI agents, as Devices reports them.
 func (a *App) trayHarnesses() []protocol.DeviceHarness {
 	if home := a.homeDevice(); home != nil {
 		return home.Harnesses
@@ -128,6 +145,20 @@ type modelChoice struct {
 	id    string
 	label string
 	fast  bool
+}
+
+// brainModels are the models offered for what the partner thinks with: the
+// home's word (settings.brainNow, D150) for the agent in use; else what the
+// agent lists.
+func (a *App) brainModels(b protocol.Brain, h *protocol.DeviceHarness) []modelChoice {
+	if bn := a.S.BrainNow; bn != nil && bn.Harness == b.Harness {
+		out := make([]modelChoice, 0, len(bn.Models))
+		for _, m := range bn.Models {
+			out = append(out, modelChoice{id: m.ID, label: m.Label, fast: m.Kind == "fast"})
+		}
+		return out
+	}
+	return modelChoices(h)
 }
 
 // modelChoices are the models offered for the partner on an AI agent:
@@ -294,6 +325,31 @@ func (a *App) socket(c *ui.Context) {
 	})
 }
 
+// socketWell is the clay well on What it thinks with, holding the token
+// of the AI agent it thinks with: where a token flies on Switch.
+func (a *App) socketWell(c *ui.Context, b protocol.Brain) {
+	t := a.T
+	lo := &a.lo
+	flying := lo.fx != nil && !lo.fx.back
+	well := ui.Box(c.Key("well")).Size(80, 80).Radius(40).Shrink(0).
+		LinearGradient(ui.LinearGradient{From: t.SurfaceSunken, To: t.Line2, Angle: 180}).
+		InsetShadow(0, 5, 8, 0, t.Ink.Alpha(0.2)).Shadow(0, 3, 0, 0, t.Surface.Alpha(0.8)).
+		Role(ui.RoleImage).Label(a.L.T("loadout.socket") + " · " + a.brainLine(b))
+	well.Children(func() {
+		if !flying {
+			if bmp := theme.Clay(coinArt(b.Harness, 60, false)); bmp != nil {
+				ui.Image(c, bmp).Size(60, 60).Absolute().Left(10).Top(10)
+			}
+		}
+		if lo.choosing || flying {
+			ui.Box(c.Key("target")).Absolute().Left(-6).Top(-6).Size(92, 92).Draw(func(p *ui.Painter, r ui.Rect) {
+				p.StrokeDashed(r, t.Accent, r.W/2, 3)
+			})
+		}
+	})
+	lo.socket = well.Bounds()
+}
+
 // ---------- the tray ----------
 
 // tray is this Mac's AI agents on a clay tray: a coin each with its limit
@@ -312,13 +368,12 @@ func (a *App) tray(c *ui.Context) {
 	}
 	b := a.brain()
 	ui.Column(c.Key("tray")).Gap(t.S2).Children(func() {
-		ui.Row(c).Padding(0, t.S5).Children(func() {
-			ui.Text(c, a.L.T("loadout.tray")).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted).
-				Padding(1, t.S2).Radius(t.RadiusXS).Background(t.Surface.Alpha(0.85))
+		ui.Row(c).Padding(0, t.S1, t.S1, t.S1).Children(func() {
+			a.heading(c, a.L.T("loadout.tray", a.homeName()), t.XL)
 		})
 		ui.Row(c.Key("tray-bed")).Gap(t.S2).Wrap().Justify(ui.SpaceAround).Padding(t.S4, t.S4).Radius(t.RadiusXL).
 			LinearGradient(ui.LinearGradient{From: t.Sunken, To: t.SurfaceSunken, Angle: 180}).
-			InsetShadow(0, 3, 0, 0, t.Surface.Alpha(0.75)).Shadow(0, 6, 0, 0, t.Line2).Role(ui.RoleGroup).Label(a.L.T("loadout.tray")).
+			InsetShadow(0, 3, 0, 0, t.Surface.Alpha(0.75)).Shadow(0, 6, 0, 0, t.Line2).Role(ui.RoleGroup).Label(a.L.T("loadout.tray", a.homeName())).
 			Children(func() {
 				for _, h := range hs {
 					a.trayToken(c, h, b)
@@ -331,7 +386,7 @@ func (a *App) trayToken(c *ui.Context, h protocol.DeviceHarness, b protocol.Brai
 	t := a.T
 	lo := &a.lo
 	isBrain := h.Harness == b.Harness
-	canGo := h.CanBePartner && !isBrain
+	canGo := h.CanBePartner && !isBrain && h.Installed && h.LoggedIn
 	status := a.tokenStatus(h)
 	if isBrain {
 		status = a.L.T("loadout.socket")
@@ -485,17 +540,19 @@ func (a *App) brainCard(c *ui.Context) {
 	h := a.trayHarness(b.Harness)
 	others := 0
 	for _, x := range a.trayHarnesses() {
-		if x.CanBePartner && x.Harness != b.Harness {
+		if x.CanBePartner && x.Harness != b.Harness && x.Installed && x.LoggedIn {
 			others++
 		}
 	}
 	a.sheetCard(c, "brain", a.L.T("loadout.brain.title"), func() {
-		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-			if bmp := theme.Clay(coinArt(b.Harness, 46, false)); bmp != nil {
-				ui.Image(c, bmp).Size(46, 46).Shrink(0).AccessHidden(true)
-			}
+		ui.Row(c).Gap(t.S4).AlignItems(ui.Center).Children(func() {
+			a.socketWell(c, b)
 			ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
-				ui.Text(c, harnessName(b.Harness)).Font(t.Display).FontSize(t.LG).FontWeight(800).SingleLine()
+				ui.Text(c, a.brainLine(b)).Font(t.Display).FontSize(t.LG).FontWeight(800).SingleLine()
+				if bn := a.S.BrainNow; bn != nil && bn.Why == "only_codex" && a.lo.pending == nil {
+					// D150: core picked it, the user didn't: say so.
+					ui.Text(c, a.L.T("loadout.brain.auto", harnessName(b.Harness))).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).MaxLines(2)
+				}
 				line := ""
 				if h != nil && h.Allowance != nil {
 					line = a.L.T("loadout.left", pct(h.Allowance.Left)) + " · " + a.L.T("loadout.brain.reserve", a.S.PersonaName)
@@ -520,9 +577,9 @@ func (a *App) brainCard(c *ui.Context) {
 		})
 		if lo.choosing {
 			ui.Text(c, a.L.T("loadout.choose")).FontSize(t.MD).FontWeight(800)
-			a.note(c, a.L.T("loadout.brain.onlymac", a.S.PersonaName))
+			a.note(c, a.L.T("loadout.brain.onlymac", a.homeName()))
 		}
-		if ms := modelChoices(h); len(ms) > 0 {
+		if ms := a.brainModels(b, h); len(ms) > 0 {
 			sel := 0
 			labels := make([]string, len(ms))
 			for i, m := range ms {
@@ -575,8 +632,8 @@ func (a *App) tasksCard(c *ui.Context) {
 			if lo.acct != "" {
 				a.acctLine(c)
 			}
-			ui.Row(c).Children(func() {
-				if a.button(c, a.L.T("loadout.tasks.devices"), btnSecondary, t.ControlSM, t.Surface) {
+			ui.Row(c).Justify(ui.End).Children(func() {
+				if a.button(c, a.L.T("loadout.tasks.devices"), btnSecondary, t.ControlMD, t.Surface) {
 					a.OpenDevices()
 				}
 			})
@@ -637,7 +694,7 @@ func (a *App) acctLine(c *ui.Context) {
 		say := func(s string) { ui.Text(c, s).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft) }
 		switch {
 		case !h.Installed:
-			say(a.L.T("loadout.acct.missing", name))
+			say(a.L.T("loadout.acct.missing", a.homeName(), name))
 		case h.Harness == "pi" && !h.LoggedIn:
 			say(a.L.T("loadout.acct.pi"))
 		case !h.LoggedIn:
@@ -653,7 +710,7 @@ func (a *App) acctLine(c *ui.Context) {
 				if al.SharedBy > 1 {
 					parts = append(parts, a.L.T("loadout.acct.shared", al.SharedBy))
 				} else {
-					parts = append(parts, a.L.T("loadout.acct.only"))
+					parts = append(parts, a.L.T("loadout.acct.only", a.homeName()))
 				}
 				if at := store.ParseTime(al.ResetsAt); !at.IsZero() {
 					parts = append(parts, a.L.T("loadout.acct.resets", a.when(at)))

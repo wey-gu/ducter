@@ -1054,9 +1054,28 @@ func (s *Strings) T(key string, args ...any) string {
 	}
 	out := fmt.Sprintf(v, args...)
 	if s.Lang == ZH {
-		out = JoinHan(out)
+		out = JoinHan(SpaceHan(out))
 	}
 	return out
+}
+
+// SpaceHan puts a space where a Chinese character touches a Latin letter
+// or a digit (D78): a name or a number filled into zh copy ("住在%s 上"
+// with "hel") never runs into the words round it.
+func SpaceHan(s string) string {
+	rs := []rune(s)
+	out := make([]rune, 0, len(rs)+4)
+	latin := func(r rune) bool { return r < 0x250 && (unicode.IsLetter(r) || unicode.IsDigit(r)) }
+	for i, r := range rs {
+		if i > 0 {
+			p := rs[i-1]
+			if unicode.Is(unicode.Han, p) && latin(r) || latin(p) && unicode.Is(unicode.Han, r) {
+				out = append(out, ' ')
+			}
+		}
+		out = append(out, r)
+	}
+	return string(out)
 }
 
 // JoinHan drops a space between two Chinese characters: zh copy spaces

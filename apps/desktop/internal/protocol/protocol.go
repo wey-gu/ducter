@@ -892,6 +892,25 @@ type MemView struct {
 	KeptUnder string `json:"keptUnder,omitempty"`
 }
 
+// BrainNow is the brain in use, and why when it isn't the one set.
+type BrainNow struct {
+	Brain
+	// Auto: the user never chose; core picked it. Why: the reason when it
+	// isn't the setting ("only_codex").
+	Auto bool   `json:"auto"`
+	Why  string `json:"why,omitempty"`
+	// Models are the ones it may think with on the home (D150); none: its
+	// own default model.
+	Models []BrainModel `json:"models,omitempty"`
+}
+
+// BrainModel is one model the partner may think with: smart or fast.
+type BrainModel struct {
+	ID    string `json:"id"`
+	Label string `json:"label"`
+	Kind  string `json:"kind"`
+}
+
 // Forgot says how a memory_forget went: "mem" (Mem forgot it) or
 // "hidden" (only no longer shown here).
 type Forgot struct {
@@ -1103,6 +1122,9 @@ type ServerFrame struct {
 	// settings: the partner's settings, its memory, and how a forget went.
 	Settings *Settings `json:"settings,omitempty"`
 	Mem      *MemView  `json:"mem,omitempty"`
+	// BrainNow is what the partner thinks with right now (D150): Brain,
+	// unless core runs it on the only signed-in agent (Why "only_codex").
+	BrainNow *BrainNow `json:"brainNow,omitempty"`
 	Forgot   *Forgot   `json:"forgot,omitempty"`
 	// rules: Your rules. candidates: who could do TaskID, best first.
 	Rules      []RuleView  `json:"rules,omitempty"`

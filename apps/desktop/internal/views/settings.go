@@ -2,14 +2,13 @@ package views
 
 import (
 	"context"
-	"errors"
 	"strings"
-	"time"
 
 	"github.com/egoist/mygo/ui"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/local"
+	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 	"github.com/wey-gu/ducter/apps/desktop/internal/update"
 )
@@ -27,10 +26,27 @@ type Remover interface {
 	Uninstall(p local.UninstallPlan) (local.UninstallResult, error)
 }
 
-// 设置 / Settings (D71, ⌘,): the app's own things only, calm and short.
-// The look, the window's language, what happens when the window closes,
-// updates, data and logs, and about. What the partner is like lives on
-// the Partner page; devices and AI accounts on Devices.
+// 设置 / Settings (D150, after D71): one place for everything you can set,
+// as a game's settings menu. A rail of clay tabs on the left, one section
+// at a time on the right:
+//
+//	伙伴 / Partner           the character sheet: name, faces, what it
+//	                         thinks with, who does the tasks, how it
+//	                         talks, what it remembers, what it asks first
+//	通知 / Notifications     when it comes to you, quiet hours, if you
+//	                         don't answer
+//	账号 / Accounts          the accounts it can read (D96)
+//	外观与声音 / Look & sound the look, the window's language, Details,
+//	                         the intro's sound
+//	在哪儿运行 / Where it runs this Mac or another computer, Stop,
+//	                         data and logs, Remove Ducter
+//	更新与关于 / Updates & about the update block, the mascot, links,
+//	                         credits behind a fold
+//
+// Every section speaks one vocabulary: a group title on the paper, a white
+// card on the clay base, rows of a label and a one-line helper with the
+// control at the right end, primary actions as clay buttons at the card's
+// end, and quiet text buttons for the rest.
 
 // Links of the app.
 const (
@@ -39,14 +55,37 @@ const (
 	LicensesURL = "https://github.com/wey-gu/ducter/blob/main/LICENSE"
 )
 
+// The tabs of Settings, in the rail's order.
+const (
+	TabPartner  = "partner"
+	TabNotify   = "notify"
+	TabAccounts = "accounts"
+	TabLook     = "look"
+	TabRun      = "run"
+	TabAbout    = "about"
+)
+
+var settingsTabs = []string{TabPartner, TabNotify, TabAccounts, TabLook, TabRun, TabAbout}
+
 type settingsState struct {
+	// tab is the section shown ("" is the first).
+	tab      string
 	checking bool
 	report   *local.Report
 	err      string
 	updating bool
-	// first: the card opened from the app menu (update, about) comes first.
-	first  string
-	remove removeState
+	remove   removeState
+	// rows counts the rows of the card being drawn: a hairline goes
+	// above every row but the first.
+	rows int
+	// credits: 素材与致谢 / Credits is open.
+	credits bool
+	// cheer is when something on Look and sound was chosen: the partner
+	// on the preview smiles for a moment.
+	cheer int64
+	// sound is the intro's sound while its preview plays.
+	sound     TitleSound
+	soundFrom int64
 }
 
 type removeState struct {
@@ -60,18 +99,21 @@ type removeState struct {
 	done    bool
 }
 
-// OpenSettings shows Settings.
-func (a *App) OpenSettings() { a.Route, a.settings.first = RouteSettings, "" }
+// OpenSettings shows Settings on the tab last shown (the partner's first).
+func (a *App) OpenSettings() { a.openTab(a.settings.tab) }
 
-// OpenAbout is the app menu's About Ducter: Settings with About first.
-func (a *App) OpenAbout() { a.Route, a.settings.first = RouteSettings, "about" }
+// OpenPartner is ⌘4 and the partner's face: Settings › Partner.
+func (a *App) OpenPartner() { a.openTab(TabPartner) }
 
-// OpenUpdate is the app menu's update line: Settings with its update card
-// first, checking now unless a version is already on its way or ready. The
-// one update flow: its progress, Restart to update and the reasons are all
-// that card's.
+// OpenAbout is the app menu's About Ducter: Settings › Updates and about.
+func (a *App) OpenAbout() { a.openTab(TabAbout) }
+
+// OpenUpdate is the app menu's update line: Settings › Updates and about,
+// checking now unless a version is already on its way or ready. The one
+// update flow: its progress, Restart to update and the reasons are all
+// that block's.
 func (a *App) OpenUpdate() {
-	a.Route, a.settings.first = RouteSettings, "update"
+	a.openTab(TabAbout)
 	u := a.Updates
 	if u == nil || a.settings.updating {
 		return
@@ -83,6 +125,35 @@ func (a *App) OpenUpdate() {
 	ss := &a.settings
 	ss.updating = true
 	a.async(func() { u.CheckNow(context.Background()) }, func() { ss.updating = false })
+}
+
+// openTab shows Settings on a tab, asking the server for what the
+// partner's tabs show (and to be told of every change while this socket
+// lives).
+func (a *App) openTab(tab string) {
+	if tab == "" {
+		tab = TabPartner
+	}
+	a.Route, a.settings.tab = RouteSettings, tab
+	a.send(protocol.SettingsReq{T: "settings"})
+	a.send(protocol.RulesReq{T: "rules"}) // Your rules (D89)
+	a.send(protocol.ConnectionsReq{T: "connections"})
+	if a.S.DevicesAt.IsZero() {
+		a.send(protocol.DevicesReq{T: "devices"}) // where it lives
+	}
+}
+
+// settingsTab is the tab shown.
+func (a *App) settingsTab() string {
+	if a.Route == RoutePartner {
+		return TabPartner
+	}
+	for _, t := range settingsTabs {
+		if t == a.settings.tab {
+			return t
+		}
+	}
+	return TabPartner
 }
 
 // SetInterfaceLanguage switches the window's language: "auto" follows
@@ -106,363 +177,315 @@ func (a *App) SetInterfaceLanguage(choice string) {
 	}
 }
 
+// railW is the width of Settings' rail of tabs.
+const railW = 264
+
 func (a *App) settingsView(c *ui.Context) {
 	t := a.T
+	tab := a.settingsTab()
+	a.drainForgot()
 	a.chrome(c, "settings", func() {
 		a.crumb(c, a.L.T("nav.conversation"), RouteConversation)
 		a.chromeTitle(c, a.L.T("nav.settings"))
 	}, nil)
-	ui.Scroll(c.Key("settings-scroll")).Grow(1).Children(func() {
-		ui.Row(c).Justify(ui.Center).Padding(t.S6, t.S6, t.S7, t.S6).Children(func() {
-			ui.Column(c).Grow(1).MaxWidth(680).Gap(t.S5).Children(func() {
-				switch a.settings.first {
-				case "update":
-					a.updateCard(c)
-				case "about":
-					a.aboutCard(c)
-				}
-				a.lookCard(c)
-				a.langCard(c)
-				a.detailsCard(c)
-				a.runCard(c)
-				if a.settings.first != "update" {
-					a.updateCard(c)
-				}
-				a.updateSection(c) // D148: every computer's Ducter version (devupdate.go)
-				a.dataCard(c)
-				if a.settings.first != "about" {
-					a.aboutCard(c)
-				}
-				a.removeEntry(c)
+	w, _ := c.Size()
+	ui.Row(c.Key("settings-body")).Grow(1).MinHeight(0).AlignItems(ui.Stretch).Children(func() {
+		a.settingsRail(c, tab)
+		ui.Scroll(c.Key("settings-scroll:" + tab)).Grow(1).Basis(0).MinWidth(0).Children(func() {
+			ui.Row(c).Justify(ui.Center).Padding(t.S6, t.S6, t.S7, t.S6).Children(func() {
+				panel := ui.Column(c.Key("panel:" + tab)).Grow(1).MaxWidth(820).Gap(t.S6)
+				a.routeEnter(c, panel)
+				panel.Children(func() {
+					switch tab {
+					case TabPartner:
+						a.partnerPanel(c, w-railW)
+					case TabNotify:
+						a.notifyPanel(c)
+					case TabAccounts:
+						a.accountsPanel(c)
+					case TabLook:
+						a.lookPanel(c)
+					case TabRun:
+						a.runPanel(c)
+					case TabAbout:
+						a.aboutPanel(c)
+					}
+				})
 			})
 		})
 	})
-}
-
-// lookCard: the one look that ships, Pebble, drawn as its own paper,
-// clay and ink. More appear here only when they work.
-func (a *App) lookCard(c *ui.Context) {
-	t := a.T
-	a.sheetCard(c, "look", a.L.T("settings.look"), func() {
-		ui.Row(c.Key("theme:pebble")).Gap(t.S4).Padding(t.S3).Radius(t.RadiusMD).Background(t.Bg).Border(2, t.Ink).
-			AlignItems(ui.Center).Role(ui.RoleRadio).AccessSelected(true).Label(a.L.T("settings.look.pebble")).Children(func() {
-			ui.Row(c).Gap(4).Shrink(0).Children(func() {
-				for _, col := range []ui.Color{t.Bg, t.NeedsYou.Surface, t.Accent, t.Done.Surface, t.Ink} {
-					ui.Box(c).Size(22, 40).Radius(t.RadiusXS).Background(col).Border(1, t.Line)
-				}
-			})
-			ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
-				ui.Text(c, a.L.T("settings.look.pebble")).FontSize(t.MD).FontWeight(800)
-				a.note(c, a.L.T("settings.look.pebble.note"))
-			})
-			if b := theme.Art(theme.Idle, 96); b != nil {
-				ui.Image(c, b).Size(44, 44).Shrink(0).AccessHidden(true)
-			}
-		})
-	})
-}
-
-func (a *App) langCard(c *ui.Context) {
-	a.sheetCard(c, "lang", a.L.T("settings.lang.title"), func() {
-		opts := []string{"auto", "zh", "en"}
-		cur := "auto"
-		if a.Local != nil {
-			cur = a.Local.Lang()
-		}
-		sel := 0
-		for i, o := range opts {
-			if o == cur {
-				sel = i
-			}
-		}
-		labels := []string{a.L.T("settings.lang.auto"), a.L.T("settings.lang.zh"), a.L.T("settings.lang.en")}
-		if i := a.choices(c, "lang", a.L.T("settings.lang.title"), labels, sel); i >= 0 {
-			a.SetInterfaceLanguage(opts[i])
-		}
-	})
-}
-
-// detailsCard: 对话里的细节 / Details in the conversation (D104), this
-// window's own: folded (the default) or shown under every message.
-func (a *App) detailsCard(c *ui.Context) {
-	a.sheetCard(c, "details", a.L.T("settings.details.title"), func() {
-		sel := 0
-		if a.Local.DetailsShown() {
-			sel = 1
-		}
-		labels := []string{a.L.T("settings.details.folded"), a.L.T("settings.details.shown")}
-		if i := a.choices(c, "details", a.L.T("settings.details.title"), labels, sel); i >= 0 {
-			a.Local.SetDetailsShown(i == 1)
-			// The preference applies anew: no message keeps a flip.
-			for k := range a.open {
-				if strings.HasPrefix(k, "det:") {
-					delete(a.open, k)
-				}
-			}
-		}
-		a.note(c, a.L.T("settings.details.note"))
-	})
-}
-
-// runCard: what happens when the window closes (D56), as it is now, and
-// the one full stop.
-func (a *App) runCard(c *ui.Context) {
-	t := a.T
-	name := a.personaName()
-	a.sheetCard(c, "run", a.L.T("settings.run.title"), func() {
-		if a.Backend == nil {
-			// The window talks to a Ducter it didn't start: say where it lives and that
-			// closing the window doesn't stop it (never a bare or empty address).
-			host := hostOf(a.URL)
-			line := a.L.T("settings.run.apart", name)
-			remoteHome := host != "" && !isLoopback(host)
-			if remoteHome {
-				line = a.L.T("settings.run.remote", name, host)
-			}
-			ui.Text(c, line).FontSize(t.MD).LineHeight(1.5)
-			if a.askStopHere && a.hereBackend != nil {
-				a.askStopHereCard(c, host)
-			}
-			if remoteHome && a.UseLocal != nil && a.button(c, a.L.T("settings.home.useHere"), btnText, t.ControlMD, t.Surface) {
-				a.UseLocal()
-			}
-			return
-		}
-		var line string
-		switch {
-		case a.Resting():
-			line = a.L.T("settings.run.resting", name)
-		case a.Backend.BackgroundBlocked():
-			line = a.L.T("settings.run.blocked", name)
-		case a.Backend.Background():
-			line = a.L.T("settings.run.bg", name)
-		default:
-			line = a.L.T("settings.run.child", name)
-		}
-		ui.Text(c, line).FontSize(t.MD).LineHeight(1.5)
-		ui.Row(c).Gap(t.S2).Wrap().Children(func() {
-			if a.Backend.BackgroundBlocked() && a.button(c, a.L.T("settings.run.allow"), btnSecondary, t.ControlMD, t.Surface) {
-				_ = a.Backend.OpenSettings(local.SettingsLoginItems)
-			}
-			if a.Resting() {
-				if a.button(c, a.L.T("rest.wake", name), btnPrimary, t.ControlMD, t.Surface) {
-					a.Wake()
-				}
-			} else if a.button(c, a.L.T("menu.rest"), btnSecondary, t.ControlMD, t.Surface) {
-				a.Rest()
-			}
-		})
-		if !a.Resting() {
-			a.note(c, a.L.T("menu.rest.sub"))
-		}
-		if a.Pair != nil && a.button(c, a.L.T("settings.home.elsewhere"), btnText, t.ControlMD, t.Surface) {
-			a.connectElsewhere()
-		}
-	})
-}
-
-// askStopHereCard: the app now uses a Ducter on another computer; asked
-// once whether this Mac's own keeps running. Keep is the default: nothing
-// is lost either way, and its data stays in ~/.ducter.
-func (a *App) askStopHereCard(c *ui.Context, host string) {
-	t := a.T
-	ui.Column(c.Key("ask-stop-here")).Gap(t.S2).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.SurfaceSunken).Children(func() {
-		ui.Text(c, a.L.T("settings.home.ask")).FontSize(t.MD).FontWeight(700).LineHeight(1.4)
-		ui.Text(c, a.L.T("settings.home.ask.body", host)).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
-		ui.Row(c).Gap(t.S2).Wrap().Children(func() {
-			if a.button(c, a.L.T("settings.home.keep"), btnPrimary, t.ControlMD, t.Surface) {
-				a.askStopHere = false
-			}
-			if a.button(c, a.L.T("settings.home.stop"), btnSecondary, t.ControlMD, t.Surface) {
-				a.askStopHere = false
-				b := a.hereBackend
-				a.async(func() { _ = b.Rest() }, func() {})
-			}
-		})
-	})
-}
-
-// updateCard: this version and where the next one stands (D72): check
-// now, restart into a ready one, or install it when quitting.
-func (a *App) updateCard(c *ui.Context) {
-	t := a.T
-	u := a.Updates
-	if u == nil {
-		return // the version is under About
+	if tab == TabPartner {
+		a.loadoutToast(c, w)
+		a.brainFlyer(c)
 	}
-	ss := &a.settings
-	st := u.Status()
-	a.sheetCard(c, "update", a.L.T("settings.update.title"), func() {
-		line, why := a.L.T("settings.update.version", firstNonEmpty(st.Current, a.versionText())), ""
-		switch st.State {
-		case update.UpToDate:
-			line = a.L.T("update.uptodate", st.Current)
-		case update.Checking:
-			line = a.L.T("menu.update.checking")
-		case update.Downloading:
-			line = a.L.T("menu.update.downloading", st.Version)
-		case update.Ready:
-			line, why = a.L.T("update.line.ready", st.Version), a.L.T("update.ready.body")
-		case update.Available:
-			line, why = a.L.T("update.line.available", st.Version), a.L.T("update.reason."+string(st.Reason))
-		case update.Failed:
-			line, why = a.L.T("update.failed"), a.L.T("update.reason."+string(st.Reason))
-		case update.NoFeed:
-			line, why = a.L.T("update.nofeed"), a.L.T("update.nofeed.body")
+}
+
+// tabName is a tab's name in the rail and at the top of its section.
+func (a *App) tabName(tab string) string {
+	if tab == TabAbout && a.Updates == nil {
+		return a.L.T("settings.tab.about.only")
+	}
+	return a.L.T("settings.tab." + tab)
+}
+
+// settingsRail is the rail of tabs: each a chunky clay tab with its clay
+// thing and its name. The one shown stands on the card's base, white; the
+// others lie flat on the paper and lift a little under the pointer.
+func (a *App) settingsRail(c *ui.Context, shown string) {
+	t := a.T
+	ui.Column(c.Key("settings-rail")).Width(railW).Shrink(0).Padding(t.S6, t.S4, t.S5, t.S5).Gap(t.S2).
+		Background(t.Chrome).BorderWidth(0, 1, 0, 0).BorderColor(t.ChromeLine).
+		Role(ui.RoleTabList).Label(a.L.T("nav.settings")).Children(func() {
+		for _, tab := range settingsTabs {
+			a.railTab(c, tab, tab == shown)
 		}
-		if st.State == update.Checking || st.State == update.Downloading || ss.updating {
-			c.After(500e6)
-		}
-		ui.Text(c, line).FontSize(t.MD).FontWeight(700)
-		if st.State == update.Ready && st.Reason == update.ReasonOwner {
-			why = a.L.T("update.reason.owner")
-		}
-		if why != "" && st.Reason != update.ReasonNone || st.State == update.Ready || st.State == update.NoFeed {
-			a.note(c, why)
-		}
-		if !st.CheckedAt.IsZero() {
-			a.note(c, a.L.T("update.checked", a.agoLong(st.CheckedAt.UTC().Format(time.RFC3339))))
-		}
-		ui.Row(c).Gap(t.S2).Wrap().Children(func() {
-			busy := ss.updating || st.State == update.Checking || st.State == update.Downloading
-			if !busy && a.button(c, a.L.T("update.checknow"), btnSecondary, t.ControlMD, t.Surface) {
-				ss.updating = true
-				a.async(func() { u.CheckNow(context.Background()) }, func() { ss.updating = false })
-			}
-			switch {
-			case st.State == update.Ready && a.RestartToUpdate != nil:
-				if a.button(c, a.L.T("update.restart"), btnPrimary, t.ControlMD, t.Surface) {
-					a.RestartToUpdate()
-				}
-			case st.State == update.Available && st.Page != "":
-				if a.button(c, a.L.T("update.download"), btnSecondary, t.ControlMD, t.Surface) {
-					a.openLink(st.Page)
-				}
-			}
-		})
-		if v, ch := a.switchRow(c, "oninquit", a.L.T("update.oninquit"), "", st.InstallOnQuit); ch {
-			u.SetInstallOnQuit(v)
-		}
+		ui.Box(c).Grow(1)
+		// The version, quietly, where a game puts its build number.
+		ui.Text(c, "Ducter "+a.versionText()).FontSize(t.XS).TextColor(t.InkMuted).Padding(0, t.S3).SingleLine().Selectable()
 	})
 }
 
-// dataCard: the data folder, the log, and the same checks the first run
-// makes, as plain rows.
-func (a *App) dataCard(c *ui.Context) {
+func (a *App) railTab(c *ui.Context, tab string, on bool) {
 	t := a.T
-	if a.Backend == nil {
+	name := a.tabName(tab)
+	b := ui.Row(c.Key("tab:"+tab)).Height(56).Gap(t.S3).Padding(0, t.S3, 0, t.S2).Radius(t.RadiusMD).AlignItems(ui.Center).
+		Cursor(ui.CursorPointer).Role(ui.RoleTab).Label(name).AccessSelected(on).Focusable()
+	down := b.Pressed()
+	switch {
+	case on:
+		b.Background(t.Surface).Shadow(0, t.Raised.Y, 0, 0, t.Raised.Color)
+	case down:
+		b.Background(t.SurfaceSunken)
+	case b.Hovered():
+		b.Background(t.Surface.Alpha(0.55)).Shadow(0, 2, 0, 0, t.Line.Alpha(0.7))
+	}
+	a.sink(c, b, down && !on)
+	b.Children(func() {
+		a.tabIcon(c, tab, 40)
+		fg, weight := t.InkSoft, 700
+		if on {
+			fg, weight = t.Ink, 800
+		}
+		ui.Text(c, name).FontSize(t.MD).FontWeight(weight).TextColor(fg).Grow(1).MinWidth(0).MaxLines(2).AccessHidden(true)
+	})
+	if b.Clicked() && !on {
+		a.openTab(tab)
+	}
+}
+
+// tabIcon is a tab's clay thing: the partner itself, the clock of when it
+// comes to you, the envelope of the accounts it reads, the look's own
+// colors as clay pebbles, the computer it runs on, and an arrow up on a
+// clay pebble for updates. All art the app already has, or drawn in the
+// same clay (a fill on a darker ledge, a highlight along the top).
+func (a *App) tabIcon(c *ui.Context, tab string, size float32) {
+	box := ui.Box(c.Key("icon")).Size(size, size).Shrink(0).AccessHidden(true)
+	var bmp *ui.Bitmap
+	switch tab {
+	case TabPartner:
+		bmp = theme.Face(theme.Idle, size*2)
+	case TabNotify:
+		bmp = theme.Clay("wait_clock")
+	case TabAccounts:
+		bmp = theme.Clay("wait_mail")
+	case TabRun:
+		bmp = theme.Clay("mini_awake")
+	case TabLook:
+		box.Draw(a.drawSwatches())
+		return
+	case TabAbout:
+		box.Draw(a.drawUpdatePebble())
 		return
 	}
-	ss := &a.settings
-	a.sheetCard(c, "data", a.L.T("settings.data.title"), func() {
-		ui.Text(c, tildeHome(a.Backend.DataDir())).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkSoft).Selectable()
-		ui.Row(c).Gap(t.S2).Wrap().Children(func() {
-			if a.button(c, a.L.T("settings.data.folder"), btnSecondary, t.ControlMD, t.Surface) {
-				_ = a.Backend.OpenURL(a.Backend.DataDir())
+	if bmp == nil {
+		return
+	}
+	box.Children(func() {
+		// Fit the art in the square, keeping its shape.
+		iw, ih := ui.ImageSize(bmp)
+		w, h := size, size
+		if iw > 0 && ih > 0 {
+			if iw > ih {
+				h = size * ih / iw
+			} else {
+				w = size * iw / ih
 			}
-			if a.button(c, a.L.T("settings.data.logs"), btnSecondary, t.ControlMD, t.Surface) {
-				_ = a.Backend.OpenURL(a.Backend.LogPath())
-			}
-			label := a.L.T("settings.data.check")
-			if ss.checking {
-				label = a.L.T("settings.data.checking")
-			}
-			if a.button(c, label, btnSecondary, t.ControlMD, t.Surface) && !ss.checking {
-				ss.checking, ss.err = true, ""
-				var r local.Report
-				var err error
-				a.async(func() { r, err = a.Backend.Doctor() }, func() {
-					ss.checking = false
-					if err != nil {
-						ss.err = err.Error()
-						return
-					}
-					ss.report = &r
-				})
-			}
-		})
-		if ss.err != "" {
-			a.reasonLine(c, ss.err)
 		}
-		if r := ss.report; r != nil {
-			a.checkRows(c, *r)
+		ui.Image(c, bmp).Size(w, h).Absolute().Left((size - w) / 2).Top((size - h) / 2)
+	})
+}
+
+// clayDot draws one clay pebble: its ledge a little below, the fill, and
+// a highlight along its upper edge.
+func clayDot(p *ui.Painter, cx, cy, rad float32, fill, ledge, hi ui.Color) {
+	var l ui.Path
+	l.Circle(cx, cy+rad*0.16, rad)
+	p.FillPath(&l, ledge)
+	var f ui.Path
+	f.Circle(cx, cy, rad)
+	p.FillPath(&f, fill)
+	var h ui.Path
+	h.MoveTo(cx-rad*0.55, cy-rad*0.45)
+	h.QuadTo(cx-rad*0.1, cy-rad*0.8, cx+rad*0.35, cy-rad*0.62)
+	p.StrokePath(&h, rad*0.16, hi)
+}
+
+// drawSwatches is Look and sound's icon: Pebble's own paper, accent and
+// ink as three clay pebbles.
+func (a *App) drawSwatches() func(p *ui.Painter, r ui.Rect) {
+	t := a.T
+	return func(p *ui.Painter, r ui.Rect) {
+		s := r.W / 40
+		x := func(v float32) float32 { return r.X + v*s }
+		y := func(v float32) float32 { return r.Y + v*s }
+		clayDot(p, x(13), y(25), 9*s, t.Bg, t.Line2, t.Surface)
+		clayDot(p, x(27), y(25), 9*s, t.Ink, hexInk(t), t.Surface.Alpha(0.3))
+		clayDot(p, x(20), y(14), 9.5*s, t.Accent, t.PressAccent.Color, t.Surface.Alpha(0.6))
+	}
+}
+
+// hexInk is the ink pebble's ledge: the ink button's own.
+func hexInk(t *theme.Tokens) ui.Color { return t.PressPrimary.Color }
+
+// drawUpdatePebble is Updates and about's icon: an arrow up on a clay
+// pebble in the accent.
+func (a *App) drawUpdatePebble() func(p *ui.Painter, r ui.Rect) {
+	t := a.T
+	return func(p *ui.Painter, r ui.Rect) {
+		s := r.W / 40
+		cx, cy := r.X+20*s, r.Y+19*s
+		clayDot(p, cx, cy, 15*s, t.Accent, t.PressAccent.Color, t.Surface.Alpha(0.55))
+		var m ui.Path
+		m.MoveTo(cx, cy+7*s)
+		m.LineTo(cx, cy-6.5*s)
+		m.MoveTo(cx-5.5*s, cy-1.5*s)
+		m.LineTo(cx, cy-7*s)
+		m.LineTo(cx+5.5*s, cy-1.5*s)
+		p.StrokePath(&m, 3.2*s, t.Surface)
+	}
+}
+
+// ---------- the one vocabulary ----------
+
+// panelHead is a section's name at the top of the panel, and one line
+// about what is in it.
+func (a *App) panelHead(c *ui.Context, tab, lede string) {
+	t := a.T
+	ui.Column(c.Key("panel-head")).Gap(t.S1).Children(func() {
+		a.heading(c, a.tabName(tab), t.XXL)
+		if lede != "" {
+			ui.Text(c, lede).FontSize(t.MD).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 		}
 	})
 }
 
-// checkRows lists the checks: a drawn mark and the words, nothing more.
-// All good says so in one line, and the rows still show what was checked.
-func (a *App) checkRows(c *ui.Context, r local.Report) {
+// group is one titled group of a section: its title (and a note) on the
+// paper, then a white card on the clay base holding its rows.
+func (a *App) group(c *ui.Context, key, title, note string, body func()) {
 	t := a.T
-	all := true
-	for _, k := range r.Checks {
-		all = all && k.Status == "ok"
-	}
-	if all {
-		ui.Text(c, a.L.T("settings.data.allgood")).FontSize(t.MD).FontWeight(800).TextColor(t.Done.Ink)
-	}
-	ui.Column(c.Key("checks")).Gap(t.S2).Children(func() {
-		for _, k := range r.Checks {
-			if k.Quiet && k.Status == "ok" {
-				continue
-			}
-			// A drawn mark in its state's ink, no tile (D73).
-			glyph := drawCheck(t.Done.Ink)
-			if k.Status != "ok" {
-				// A check that isn't met: × in its ink, never an alarm "!".
-				glyph = drawCross(t.Waiting.Ink)
-				if k.Required {
-					glyph = drawCross(t.NeedsYou.Ink)
+	ui.Column(c.Key("group:" + key)).Gap(t.S3).Children(func() {
+		if title != "" || note != "" {
+			ui.Column(c).Gap(2).Padding(0, t.S1).Children(func() {
+				if title != "" {
+					a.heading(c, title, t.XL)
 				}
-			}
-			ui.Row(c.Key("check:" + k.ID)).Gap(t.S3).AlignItems(ui.Start).Children(func() {
-				ui.Box(c).Size(20, 20).Draw(glyph).Shrink(0)
-				ui.Column(c).Gap(1).Grow(1).MinWidth(0).Children(func() {
-					ui.Text(c, k.Label).FontSize(t.MD).FontWeight(700)
-					if k.Detail != "" {
-						ui.Text(c, k.Detail).FontSize(t.SM).TextColor(t.InkMuted).MaxLines(2)
-					}
-				})
+				if note != "" {
+					ui.Text(c, note).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+				}
 			})
+		}
+		a.settings.rows = 0
+		ui.Column(c.Key("card:"+key)).Radius(t.RadiusLG).Background(t.Surface).Clip().
+			Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Role(ui.RoleGroup).Label(title).Children(body)
+	})
+}
+
+// sep is the hairline between two rows of a card, set in from its sides.
+func (a *App) sep(c *ui.Context) {
+	if a.settings.rows > 0 {
+		ui.Box(c).Height(1).Margin(0, a.T.S5).Background(a.T.LineSoft).Shrink(0)
+	}
+	a.settings.rows++
+}
+
+// row is one line of a card: its label and a one-line helper on the left,
+// its control at the right end.
+func (a *App) row(c *ui.Context, key, label, help string, control func()) {
+	t := a.T
+	a.sep(c)
+	ui.Row(c.Key("row:"+key)).Gap(t.S5).Padding(t.S4, t.S5).MinHeight(68).AlignItems(ui.Center).Children(func() {
+		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
+			ui.Text(c, label).FontSize(t.MD).FontWeight(700).LineHeight(1.4)
+			if help != "" {
+				ui.Text(c, help).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
+			}
+		})
+		if control != nil {
+			ui.Row(c).Shrink(0).Gap(t.S2).AlignItems(ui.Center).Children(control)
 		}
 	})
 }
 
-func (a *App) aboutCard(c *ui.Context) {
+// rowBlock is a row that holds something else than a label and a control
+// (a list, a form, a hero): the card's padding, the hairline above.
+func (a *App) rowBlock(c *ui.Context, key string, body func()) {
 	t := a.T
-	a.sheetCard(c, "about", a.L.T("settings.about.title"), func() {
-		ui.Row(c).Gap(t.S4).AlignItems(ui.Center).Children(func() {
-			if b := theme.Art(theme.Idle, 120); b != nil {
-				ui.Image(c, b).Size(56, 56).Shrink(0).AccessHidden(true)
+	a.sep(c)
+	ui.Column(c.Key("block:"+key)).Gap(t.S3).Padding(t.S4, t.S5).Children(body)
+}
+
+// toggleRow is a row whose control is a switch. It returns the new value
+// when it was flipped.
+func (a *App) toggleRow(c *ui.Context, key, label, help string, on bool) (bool, bool) {
+	v, changed := on, false
+	a.row(c, key, label, help, func() {
+		changed = ui.Switch(c.Key("sw:"+key), &v).Label(label).Changed()
+	})
+	return v, changed
+}
+
+// linkRow is a row that goes somewhere: the whole row is the button, a ›
+// (or ↗ for a page outside the app) at its end. It reports a click.
+func (a *App) linkRow(c *ui.Context, key, label, help string, out bool) bool {
+	t := a.T
+	a.sep(c)
+	b := ui.Row(c.Key("link:"+key)).Gap(t.S4).Padding(t.S4, t.S5).MinHeight(60).AlignItems(ui.Center).
+		Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(label).Focusable()
+	switch {
+	case b.Pressed():
+		b.Background(t.Ink.Alpha(0.06))
+	case b.Hovered():
+		b.Background(t.Ink.Alpha(0.03))
+	}
+	b.Children(func() {
+		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
+			ui.Text(c, label).FontSize(t.MD).FontWeight(700).LineHeight(1.4)
+			if help != "" {
+				ui.Text(c, help).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted)
 			}
-			ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
-				ui.Text(c, "Ducter").FontSize(t.LG).FontWeight(800)
-				ui.Text(c, a.L.T("settings.about.version", a.versionText())).FontSize(t.SM).TextColor(t.InkMuted).Selectable()
-				a.note(c, a.L.T("settings.about.made"))
-			})
 		})
-		a.textRow(c, t.ControlSM).Gap(t.S1).Wrap().Children(func() {
-			if a.button(c, a.L.T("settings.about.docs"), btnText, t.ControlSM, t.Surface) {
-				a.openLink(DocsURL)
-			}
-			if a.button(c, a.L.T("settings.about.licenses"), btnText, t.ControlSM, t.Surface) {
-				a.openLink(LicensesURL)
-			}
-			if a.button(c, a.L.T("settings.about.report"), btnText, t.ControlSM, t.Surface) {
-				if a.ReportProblem != nil {
-					a.ReportProblem()
-				} else {
-					a.openLink(ReportURL)
-				}
-			}
-			if a.button(c, a.L.T("settings.about.title_replay"), btnText, t.ControlSM, t.Surface) {
-				a.ShowTitle()
-			}
-		})
-		if on, changed := a.switchRow(c, "sound", a.L.T("settings.sound"), a.L.T("settings.sound.note"), a.Local.Sound()); changed {
-			a.Local.SetSound(on)
+		mark := drawChevron(t.InkMuted, false)
+		if out {
+			mark = drawOut(t.InkMuted)
 		}
-		a.note(c, a.L.T("settings.sound.credits"))
+		a.glyph(c, 16, mark)
+	})
+	return b.Clicked()
+}
+
+// actions is a card's last line: its clay buttons at the right end, a
+// quiet text button (if any) at the left.
+func (a *App) actions(c *ui.Context, key string, quiet, buttons func()) {
+	t := a.T
+	a.sep(c)
+	ui.Row(c.Key("actions:"+key)).Gap(t.S2).Padding(t.S3, t.S5, t.S4, t.S5).AlignItems(ui.Center).Children(func() {
+		if quiet != nil {
+			a.textRow(c, t.ControlMD).Gap(t.S1).Children(quiet)
+		}
+		ui.Box(c).Grow(1)
+		if buttons != nil {
+			ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(buttons)
+		}
 	})
 }
 
@@ -500,135 +523,4 @@ func hostOf(u string) string {
 		}
 	}
 	return u
-}
-
-// ---------- Remove Ducter (D72): last, quiet, exact ----------
-
-// removeEntry is a quiet text button at the very end of Settings; it
-// opens the plan: two choices, then exactly what goes and what stays.
-func (a *App) removeEntry(c *ui.Context) {
-	t := a.T
-	rm, ok := a.Backend.(Remover)
-	if a.Backend == nil || !ok {
-		return
-	}
-	r := &a.settings.remove
-	if !r.open {
-		ui.Row(c).Justify(ui.Center).Children(func() {
-			if a.button(c, a.L.T("remove.title"), btnText, t.ControlSM, t.Bg) {
-				r.open = true
-				a.loadPlan(rm, false)
-			}
-		})
-		return
-	}
-	a.sheetCard(c, "remove", a.L.T("remove.title"), func() {
-		if r.done {
-			ui.Text(c, a.L.T("remove.done")).FontSize(t.MD).FontWeight(800)
-			return
-		}
-		a.note(c, a.L.T("remove.body"))
-		opts := []struct {
-			all       bool
-			name, sub string
-		}{{false, a.L.T("remove.background"), a.L.T("remove.background.sub")}, {true, a.L.T("remove.all"), a.L.T("remove.all.sub")}}
-		ui.Column(c).Gap(t.S2).Role(ui.RoleRadioGroup).Label(a.L.T("remove.title")).Children(func() {
-			for _, o := range opts {
-				on := o.all == r.all
-				row := ui.Column(c.Key("rm:" + o.name)).Gap(2).Padding(t.S3).Radius(t.RadiusMD).Cursor(ui.CursorPointer).
-					Role(ui.RoleRadio).Label(o.name).AccessSelected(on).Focusable()
-				if on {
-					row.Border(2, t.Ink)
-				} else {
-					row.Border(1, t.Line)
-				}
-				row.Children(func() {
-					ui.Text(c, o.name).FontSize(t.MD).FontWeight(800)
-					a.note(c, o.sub)
-				})
-				if row.Clicked() && !on {
-					r.all, r.word = o.all, ""
-					a.loadPlan(rm, o.all)
-				}
-			}
-		})
-		if r.loading {
-			a.note(c, a.L.T("settings.data.checking"))
-			c.After(300e6)
-		}
-		if p := r.plan; p != nil && !r.loading {
-			for _, w := range p.Warnings {
-				a.reasonLine(c, w.Detail)
-			}
-			if len(p.Remove) > 0 {
-				ui.Text(c, a.L.T("remove.removes")).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted)
-				for _, it := range p.Remove {
-					ui.Text(c.Key("rmi:"+it.Path), it.What+"  "+tildeHome(it.Path)).FontSize(t.SM).MaxLines(2).Selectable()
-				}
-			}
-			if len(p.Keep) > 0 {
-				ui.Text(c, a.L.T("remove.keeps")).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted)
-				for _, k := range p.Keep {
-					ui.Text(c.Key("rmk:"+k.What), k.What+" · "+tildeHome(k.Detail)).FontSize(t.SM).TextColor(t.InkSoft).MaxLines(2)
-				}
-			}
-		}
-		if r.err != "" {
-			a.reasonLine(c, r.err)
-		}
-		word := a.L.T("remove.confirm.word")
-		if r.all {
-			ui.TextInput(c.Key("input:remove"), &r.word).Placeholder(word).Label(a.L.T("remove.confirm", word)).
-				FontSize(t.MD).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.SurfaceSunken).Border(1, t.LineSoft).Width(240)
-			a.note(c, a.L.T("remove.confirm", word))
-		}
-		ui.Row(c).Gap(t.S2).Children(func() {
-			if a.button(c, a.L.T("remove.cancel"), btnSecondary, t.ControlMD, t.Surface) {
-				*r = removeState{}
-			}
-			ready := r.plan != nil && !r.loading && !r.busy && (!r.all || r.word == word)
-			if ready && a.button(c, a.L.T("remove.go"), btnPrimary, t.ControlMD, t.Surface) {
-				r.busy, r.err = true, ""
-				plan := *r.plan
-				var res local.UninstallResult
-				var err error
-				a.async(func() { res, err = rm.Uninstall(plan) }, func() {
-					r.busy = false
-					switch {
-					case errors.Is(err, local.ErrStillRunning):
-						r.err = a.L.T("remove.running")
-					case err != nil:
-						r.err = err.Error()
-					case len(res.Failed) > 0:
-						var paths []string
-						for _, f := range res.Failed {
-							paths = append(paths, tildeHome(f.Path))
-						}
-						r.err = a.L.T("remove.failed", strings.Join(paths, ", "))
-					default:
-						r.done = true
-						if a.Quit != nil {
-							go func() { time.Sleep(2 * time.Second); a.Quit() }()
-						}
-					}
-				})
-			}
-		})
-	})
-}
-
-func (a *App) loadPlan(rm Remover, all bool) {
-	r := &a.settings.remove
-	r.loading, r.plan, r.err = true, nil, ""
-	var p local.UninstallPlan
-	var err error
-	a.async(func() { p, err = rm.UninstallPlan(all) }, func() {
-		r.loading = false
-		if err != nil {
-			r.err = err.Error()
-			return
-		}
-		p.All = all
-		r.plan = &p
-	})
 }

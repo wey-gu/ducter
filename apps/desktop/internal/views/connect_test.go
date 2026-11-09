@@ -117,7 +117,7 @@ func TestSettingsConnectElsewhere(t *testing.T) {
 	}
 	used := false
 	h.app.UseLocal = func() { used = true }
-	h.app.Route = RouteSettings
+	h.app.Route, h.app.settings.tab = RouteSettings, TabRun
 	h.tt.Frame()
 	h.click("Connect to a Ducter on another computer")
 	if h.app.conn.address != "https://hel.example.com/pair#c=K7QM-4XPA" || !h.tt.HasText("Connect to your Ducter") {

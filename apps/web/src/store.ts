@@ -29,6 +29,8 @@ export type DecisionState = Bodies["decision"] & {
   askedAt?: string;
   resolved?: Bodies["decision_resolved"];
   pending?: "go" | "hold" | "reply" | "";
+  /** A task's question in the partner's own words (D129); the task's wording stays in question. */
+  said?: string;
 };
 
 export interface Send {
@@ -264,8 +266,18 @@ export class Store {
     switch (ev.kind) {
       case "user_msg":
         return entry({ user: ev.body as Bodies["user_msg"] });
-      case "ai_msg":
-        return entry({ ai: ev.body as Bodies["ai_msg"] });
+      case "ai_msg": {
+        const b = ev.body as Bodies["ai_msg"];
+        // A task's question in the partner's words (D129) is that question's words, not a
+        // message of its own.
+        if (b.decisionId) {
+          const d = this.decisions.get(b.decisionId);
+          if (d) d.said = b.text;
+          else this.decisions.set(b.decisionId, { decisionId: b.decisionId, question: "", goLabel: "", defaultOption: "hold", reversible: false, seq: 0, said: b.text });
+          return void this.bySeq.set(ev.seq, null);
+        }
+        return entry({ ai: b });
+      }
       case "ack": {
         const b = ev.body as Bodies["ack"];
         const j = this.job(b.jobId);

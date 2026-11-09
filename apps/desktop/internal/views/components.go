@@ -704,18 +704,7 @@ type decisionStyle struct {
 func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decisionStyle) {
 	t := a.T
 	if d.Resolved != nil || d.Pending != "" {
-		opt, text := d.Pending, ""
-		by := ""
-		if d.Resolved != nil {
-			opt, text, by = d.Resolved.Option, d.Resolved.Text, d.Resolved.By
-		}
-		msg := a.L.T("decision.resolved." + opt)
-		if opt == "reply" {
-			msg = a.L.T("decision.resolved.reply", text)
-		}
-		if by == "default" {
-			msg = a.L.T("decision.resolved.default")
-		}
+		msg := a.answeredWords(d)
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 			a.glyph(c, 16, drawCheck(t.InkMuted))
 			ui.Text(c, msg).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
@@ -794,7 +783,7 @@ func (a *App) defaultLine(c *ui.Context, d *store.DecisionState) string {
 	}
 	label := d.GoLabel
 	if label == "" {
-		label = a.L.T("decision.go")
+		return a.L.T("decision.default.goon", a.duration(left+time.Second*59/60))
 	}
 	if a.L.Lang == i18n.ZH && label != "" && label[0] < 0x80 {
 		label = " " + label // a Latin word in Chinese text gets its space

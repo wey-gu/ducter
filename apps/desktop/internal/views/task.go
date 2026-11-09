@@ -318,14 +318,7 @@ func (a *App) outcome(c *ui.Context, task *store.Task) {
 // decisionAnswered is an ask already answered: one quiet line.
 func (a *App) decisionAnswered(c *ui.Context, d *store.DecisionState) {
 	t := a.T
-	opt := d.Pending
-	if d.Resolved != nil {
-		opt = d.Resolved.Option
-	}
-	msg := a.L.T("decision.resolved." + opt)
-	if opt == "reply" {
-		msg = a.L.T("decision.resolved.reply", "")
-	}
+	msg := a.answeredWords(d)
 	ui.Row(c.Key("answered")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 		a.glyph(c, 16, drawCheck(t.InkMuted))
 		ui.Text(c, a.L.T("decision.answered", strings.TrimRight(msg, "：: "), d.AnsweredAt.Local().Format("15:04"))).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).Shrink(0)

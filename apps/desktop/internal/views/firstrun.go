@@ -98,7 +98,7 @@ func (a *App) commandBoxSized(c *ui.Context, cmd string, size float32) {
 	copied := ui.Local(box, "copied", func() time.Time { return time.Time{} })
 	box.Children(func() {
 		ui.Text(c, "$").Font(t.Mono).FontSize(t.MD).TextColor(t.Accent)
-		ui.Text(c, cmd).Font(t.Mono).FontSize(size).FontWeight(700).TextColor(t.OnUserBubble).Grow(1).Selectable()
+		ui.Text(c, cmd).Font(t.Mono).FontSize(size).FontWeight(700).TextColor(t.Bg).Grow(1).Selectable()
 		label := a.L.T("firstrun.copy")
 		if since := a.Now().Sub(*copied); !copied.IsZero() && since < 2*time.Second {
 			label = a.L.T("firstrun.copied")
@@ -112,7 +112,7 @@ func (a *App) commandBoxSized(c *ui.Context, cmd string, size float32) {
 		}
 		a.sink(c, b, b.Pressed())
 		b.Children(func() {
-			ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.OnUserBubble)
+			ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.Bg)
 		})
 		if b.Clicked() {
 			c.WriteClipboard(cmd)

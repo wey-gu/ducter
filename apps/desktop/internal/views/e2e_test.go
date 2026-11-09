@@ -126,6 +126,7 @@ func (h *harness) click(label string) {
 
 // The full slice: a message, its task, a decision, Go, the result.
 func TestScenarioEndToEnd(t *testing.T) {
+	noRelayWait(t)
 	h := newHarness(t, i18n.ZH)
 	s := h.app.S
 	if !h.tt.HasText("Ducter") || !h.tt.HasText("手头") {

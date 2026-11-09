@@ -35,8 +35,11 @@
   --faint: #c7b49a;
   --accent: #ff8a3d;
   --on-accent: #2b2118;
-  --user-bubble: #2b2118;
-  --on-user-bubble: #fff6ea;
+  /* The two voices (D129): the user in the accent with ink (6.9:1), the partner in white. */
+  --user-bubble: #ff8a3d;
+  --on-user-bubble: #2b2118;
+  --partner-bubble: #ffffff;
+  --on-partner-bubble: #2b2118;
   --line: #e8d9c4;
   --line-2: #e0c9b0;
   --line-soft: #f3e6d3;
@@ -90,9 +93,9 @@
   --xs: 12px;
   --sm: 13px;
   --md: 15px;
-  --body: 16px; /* the user's bubble, the composer */
+  --body: 16px; /* the conversation's one body size: both bubbles, the composer (D129) */
   --lg: 18px;
-  --partner: 18px;
+  --partner: 16px;
   --t20: 20px;
   --t28: 28px;
   --t34: 34px;
@@ -115,7 +118,10 @@
   --r-lg: 24px; /* cards */
   --r-xl: 28px; /* hero cards, the composer */
   --pill: 999px;
-  --bubble: 22px 22px 8px 22px;
+  --bubble: 20px 20px 6px 20px; /* the user's; the partner's mirrors it */
+  --bubble-partner: 20px 20px 20px 6px;
+  --bubble-join: 6px; /* the tail side's top corner of a bubble stacked on one of its voice */
+  --bubble-measure: 38em;
 
   --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -145,8 +151,10 @@
     --ink-soft: #dccbb6;
     --ink-muted: #a8957e;
     --faint: #5a4c3e;
-    --user-bubble: #f6ebdd;
+    --user-bubble: #ff8a3d;
     --on-user-bubble: #2b2118;
+    --partner-bubble: #2a221b;
+    --on-partner-bubble: #f6ebdd;
     --line: #3a3027;
     --line-2: #0d0a07;
     --line-soft: #2c241d;
@@ -197,8 +205,10 @@
   --ink-soft: #dccbb6;
   --ink-muted: #a8957e;
   --faint: #5a4c3e;
-  --user-bubble: #f6ebdd;
+  --user-bubble: #ff8a3d;
   --on-user-bubble: #2b2118;
+  --partner-bubble: #2a221b;
+  --on-partner-bubble: #f6ebdd;
   --line: #3a3027;
   --line-2: #0d0a07;
   --line-soft: #2c241d;
@@ -448,37 +458,66 @@ a {
   flex-direction: column;
   gap: 12px;
 }
-/* Rhythm (ui.md): 12 between two things one voice says, 24 where the turn passes. */
+/* Rhythm (D129): a run of one voice stacks 4 apart, other things one voice says 12 apart, 16
+   where the turn passes. */
 .scroll > .user + :not(.user),
 .scroll > :not(.user):not(.when):not(.spacer) + .user {
-  margin-top: 12px;
+  margin-top: 4px;
+}
+.scroll > .join {
+  margin-top: -8px;
 }
 .scroll > .spacer {
   flex: 1;
 }
+/* The two voices as a messaging app (D129): one body size, at most about 38em wide. */
 .user {
   align-self: flex-end;
-  max-width: 82%;
+  max-width: min(80%, var(--bubble-measure));
   background: var(--user-bubble);
   color: var(--on-user-bubble);
-  padding: 12px 16px;
+  padding: 10px 14px;
   border-radius: var(--bubble);
   font-size: var(--body);
-  line-height: 1.6;
+  line-height: 1.5;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+.user.join {
+  border-top-right-radius: var(--bubble-join);
 }
 .user.pending {
   opacity: 0.65;
 }
 :lang(zh) .user {
-  line-height: 1.75;
+  line-height: 1.7;
 }
 .partner {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
   font-size: var(--partner);
-  line-height: var(--lh-voice);
-  max-width: 94%;
+  line-height: 1.5;
+  max-width: min(88%, var(--bubble-measure));
   overflow-wrap: anywhere;
+}
+:lang(zh) .partner {
+  line-height: 1.7;
+}
+.partner > .bubble {
+  max-width: 100%;
+  background: var(--partner-bubble);
+  color: var(--on-partner-bubble);
+  padding: 10px 14px;
+  border-radius: var(--bubble-partner);
+}
+.partner.join > .bubble:first-child {
+  border-top-left-radius: var(--bubble-join);
+}
+/* What sits under a bubble (the quiet row, a status line, the default) is set in to its text. */
+.partner > :not(.bubble):not(.tray):not(.reply):not(.routine-facts):not(.said) {
+  margin-left: 14px;
 }
 .partner p {
   margin: 0 0 0.6em;
@@ -1916,10 +1955,6 @@ a {
 }
 
 /* ---------- the quiet conversation (D104) ---------- */
-/* The partner's words keep a reading measure (~36 CJK characters, ~68 Latin). */
-.partner {
-  max-width: min(100%, 36em);
-}
 /* A messaging app's time line: small, centered, muted; the away divider is one too. */
 .when {
   align-self: center;
@@ -1996,30 +2031,65 @@ a {
 .det.lines {
   gap: 4px;
 }
-/* An ask in the partner's words: the question as speech, its default in one muted line, and
-   one small row (Reply… · Hold · Go, the primary last). */
+/* An ask (D129): the question in the partner's bubble, one compact tray under it (Reply… · Hold
+   as quiet text, Go last and named by the action), the default as one small grey line; once
+   answered, a tiny line on the user's side in their own words. */
+.partner.askq {
+  max-width: 100%;
+  align-self: stretch;
+}
+.askq > .bubble,
+.askq > .tray,
+.askq > .reply,
+.askq > .routine-facts {
+  max-width: min(88%, var(--bubble-measure));
+}
+.askq > .tray {
+  align-self: stretch;
+  width: min(88%, var(--bubble-measure));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 8px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: 0 3px 0 var(--line);
+}
+.askq > .tray .grow {
+  flex: 1;
+}
+.askq > .tray .btn.text {
+  font-weight: 600;
+  color: var(--ink-soft);
+}
 .askq .dflt {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0 12px;
-  margin-top: 4px;
-  font-size: var(--sm);
+  font-size: var(--xs);
   line-height: 1.45;
-  color: var(--needs-ink);
+  color: var(--ink-muted);
 }
-.askq .ans {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  margin-top: 8px;
+.askq .dflt .tb {
+  min-height: 24px;
+  font-size: var(--xs);
 }
-.askq .ans .btn.text {
-  margin-left: -10px;
+.askq > .said {
+  align-self: flex-end;
+  max-width: 72%;
+  margin-right: 8px;
+  font-size: var(--sm);
+  line-height: 1.4;
+  color: var(--ink-muted);
+  text-align: right;
 }
-.askq .resolved {
-  margin-top: 6px;
+.det .its {
+  font-size: var(--sm);
+  line-height: 1.5;
+  color: var(--ink-muted);
 }
 .askq.flash {
   animation: flash 1.4s var(--ease);
@@ -2659,10 +2729,14 @@ ol.tries b {
    prefer spaces and punctuation, and two-line titles are balanced. */
 .task-head h1,
 .task-head .waitline,
-.decision .q,
-.askq > div:first-child {
+.decision .q {
   word-break: keep-all;
   overflow-wrap: anywhere;
   line-break: strict;
   text-wrap: balance;
+}
+/* A question is a sentence in a bubble: it fills the measure (D78), never balanced. */
+.partner > .bubble {
+  line-break: strict;
+  text-wrap: pretty;
 }

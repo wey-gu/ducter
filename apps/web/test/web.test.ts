@@ -209,7 +209,7 @@ describe("after a reconnect (soak design calls 2 and 3)", () => {
   });
 
   test("the unsure line has zh and en copy", () => {
-    expect(strings("zh").t("result.unsure")).toBe("不确定做成没有，看一下");
+    expect(strings("zh").t("result.unsure")).toBe("不确定成没成，你看一眼");
     expect(strings("en").t("result.unsure")).toBe("Not sure it went through — check");
   });
 });

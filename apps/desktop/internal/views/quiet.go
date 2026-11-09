@@ -131,11 +131,16 @@ func (a *App) quiet(c *ui.Context, key string, tasks []*store.Task, detail strin
 	if len(tasks) == 0 && len(notes) == 0 {
 		return
 	}
-	t := a.T
 	about := ""
 	if len(tasks) > 0 {
 		about = tasks[0].Title()
 	}
+	a.underBubble(c, func() { a.quietRow(c, key, tasks, detail, notes, about) })
+}
+
+// quietRow is the quiet row and, when open, Details, under a bubble.
+func (a *App) quietRow(c *ui.Context, key string, tasks []*store.Task, detail string, notes []noted, about string) {
+	t := a.T
 	ui.Row(c.Key("qrow:" + key)).Gap(t.S4).Wrap().AlignItems(ui.Center).Children(func() {
 		for _, task := range tasks {
 			a.mergeAction(c, task)
@@ -274,8 +279,8 @@ func (a *App) news(c *ui.Context, key string, it protocol.LivingItem, owns bool)
 		}
 		text = a.L.T(k, it.Title, it.Text)
 	}
-	ui.Column(c.Key("news:" + key)).MaxWidthPercent(88).MaxWidth(readingMeasure).Gap(t.S1).Children(func() {
-		ui.Text(c, autospace(text)).Selectable().CopyData(autospaceCopy).FontSize(t.PartnerSize).LineHeight(leadingFor(text, 1.65))
+	ui.Column(c.Key("news:" + key)).Gap(t.S1).Children(func() {
+		a.partnerWords(c, text)
 		// The action row shows once, under the newest message about the task.
 		if task != nil && owns {
 			a.quiet(c, key, []*store.Task{task}, "", nil)
@@ -283,38 +288,53 @@ func (a *App) news(c *ui.Context, key string, it protocol.LivingItem, owns bool)
 	})
 }
 
-// ask is one question in the partner's words: the question as it speaks,
-// its default in one muted line with Details, and, when it is the one
-// being asked, Reply… · Hold · Go in one small row.
+// ask is one question in the partner's words (D129): the question in its
+// bubble (a task's question as the partner said it, its own wording in
+// Details), then, while open, one compact tray (Reply… · Hold · Go) and the
+// default as a small grey line; once answered, a tiny line on the user's
+// side in their own words. While the partner is still putting a task's
+// question into words, its waiting presence holds the place.
 func (a *App) ask(c *ui.Context, d *store.DecisionState, taskID string) {
 	t := a.T
 	id := firstNonEmpty(taskID, d.TaskID)
 	task := a.S.Task(id)
 	key := "d" + d.DecisionID
-	ui.Column(c.Key("ask:" + d.DecisionID)).MaxWidthPercent(88).MaxWidth(readingMeasure).Gap(t.S1 + 2).Children(func() {
-		ui.Text(c, autospace(d.Question)).Selectable().CopyData(autospaceCopy).FontSize(t.PartnerSize).LineHeight(leadingFor(d.Question, 1.65))
+	inTask := a.Route == RouteTask && a.TaskID == id
+	words := d.Question
+	if d.Said != "" && !inTask {
+		words = d.Said
+	}
+	if !inTask && openAsk(d) {
+		if wait := a.relayDueIn(d); wait > 0 {
+			c.After(wait + 50*time.Millisecond)
+			a.waitingRow(c.Key("relay:"+d.DecisionID), a.L.T("activity.relay"), "")
+			return
+		}
+	}
+	ui.Column(c.Key("ask:" + d.DecisionID)).Gap(t.S2).Children(func() {
+		a.partnerWords(c, words)
 		// A routine's proposal card (D29, D114): what it would do, before one Go.
 		if d.RoutineID != "" && d.Resolved == nil {
-			ui.Column(c.Key("facts")).Padding(t.S4, t.S4).Radius(t.RadiusLG).Background(t.NeedsYou.Surface).Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge).Children(func() {
+			ui.Column(c.Key("facts")).MaxWidth(t.BubbleMeasure).Padding(t.S4, t.S4).Radius(t.RadiusLG).Background(t.NeedsYou.Surface).Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge).Children(func() {
 				a.routineFacts(c, d.RoutineID, t.NeedsYou.Ink)
 			})
 		}
 		if !openAsk(d) {
-			a.decisionButtons(c, d, decisionStyle{height: t.ControlSM, quietBg: t.Bg})
+			a.answeredLine(c, d)
 			return
 		}
-		ui.Row(c).Gap(t.S3).Wrap().AlignItems(ui.Center).Children(func() {
-			ui.Text(c, a.defaultLine(c, d)).FontSize(t.SM).TextColor(t.NeedsYou.Ink)
-			if task != nil && task.Title() != "" && !(a.Route == RouteTask && a.TaskID == id) {
-				a.detailsToggle(c, key, task.Title())
-			}
-		})
-		if task != nil && a.detailsOpen(key) {
-			a.detailsPane(c, key, func() { a.taskLine(c, task, "") })
+		details := task != nil && task.Title() != "" && !inTask
+		a.decisionTray(c, d, task, key, details)
+		if details && a.detailsOpen(key) {
+			a.underBubble(c, func() {
+				a.detailsPane(c, key, func() {
+					a.taskLine(c, task, "")
+					if d.Said != "" && d.Question != "" {
+						ui.Text(c, a.L.T("decision.its_words", d.Question)).Selectable().FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
+					}
+				})
+			})
 		}
-		ui.Column(c).Padding(t.S1, 0, 0, 0).Children(func() {
-			a.decisionButtons(c, d, decisionStyle{height: t.ControlSM, quietBg: t.Bg})
-		})
 	})
 }
 

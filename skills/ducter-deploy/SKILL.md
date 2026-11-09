@@ -120,6 +120,13 @@ propagates while you install.
    another computer" on first run), paste the link. Phone: open the link, or the iPhone app
    (TestFlight: https://testflight.apple.com/join/Z4GvWt7t) with address + code. Verify:
    `ducter devices --json` lists it.
+7. **Browsing the web (optional):** `ducter ability add browser` installs Ducter's own headless
+   Chrome (Chrome for Testing, ~170 MB, into `~/.ducter/browser`) so tasks can browse. As root it
+   installs Chrome's system libraries with apt-get itself; as a normal user it prints one
+   `sudo apt-get install …` line: run it, then the same command again. Verify: it ends with
+   "… can browse the web now (Chrome <version>)". The user does the same with one tap in Devices
+   › Browse the web. Sites that need a sign-in are signed into by the user, in the app's live
+   view; never sign in for them. `ducter browser sites` lists them.
 
 **Which layer is broken**, from any machine: `curl -sS -o /dev/null -w '%{http_code}' https://<name>/health`
 

@@ -74,6 +74,18 @@ on. Exit code 1 with `reason` (and `rolledBack: true`) means it stayed on, or we
 version it had. Don't update on your own initiative while tasks are mid-merge or the user is
 in the middle of something.
 
+## Browsing on a server
+
+```sh
+ducter ability add browser        # Ducter installs its own headless Chrome; tasks can browse
+ducter browser sites --json       # the sites the user signed into in Ducter's browser
+ducter browser signout <site>     # forget one; `ducter browser clear` forgets all (ask first)
+```
+
+A task that needs a sign-in asks with a card "Sign in to <site>". Only the user answers it, by
+signing in themselves in the app's live view and tapping Done. Never answer it with `ducter
+answer … go`: the task would carry on not signed in.
+
 ## Safe defaults
 
 - **Never answer Go for the user** on anything irreversible or outward (merge to main, push,

@@ -35,6 +35,12 @@ exactly what it will and won't do. This page lists it.
 - **It never types your passwords.** When a website needs a login, you type it yourself, in
   your Chrome or in Ducter's browser window; the AI never sees it. Submitting forms, posting and
   paying are always left to you.
+- **On a server, it can't look while you sign in.** Ducter's browser on a server shows you its
+  page live when a task asks you to sign in. While that view is open, the task's browser tools
+  refuse to read anything (no text, no picture), and nothing you type or see there goes to the
+  AI or into your conversation. Afterwards the task reads pages as the signed-in you, but never
+  the contents of password fields, and it can't type into them. What it can see: the pages it
+  opens, their text and links, and pictures of them it saves as evidence.
 - **It never types into a page you had open.** A web task in your own Chrome opens a window or
   tab of its own, checks that it's the one in front before typing, and closes it when it's done.
   It's signed in as you there, so it asks before anything that would act for you.

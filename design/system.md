@@ -584,6 +584,53 @@ What runs today, before sandboxes and spacesd:
   loses its window, but sign-ins finished more than ~30 s earlier are kept and the task
   reopens it.
 
+### On a server: Ducter's own browser (D144, research/39; built 2026-11-10, `packages/core/src/browser/`)
+
+A headless Linux server has no desktop for cua-driver and neither harness brings a browser there,
+so the main process holds one.
+
+- **Runtime (`chrome.ts`, `host.ts`):** Chrome for Testing Stable (`chrome`, linux64 /
+  linux-arm64; macOS builds for tests), installed into `<dataDir>/browser/<version>`,
+  recorded in `installed.json`; else `DUCTER_CHROME`, else a non-snap system Chrome or Chromium.
+  Started `--headless=new`, DevTools on 127.0.0.1 port 0 (read from `DevToolsActivePort`),
+  `--user-data-dir=<dataDir>/browser-profiles/<persona>`, `--password-store=basic`, the plain
+  Chrome user agent, `--no-sandbox` only as root. Chrome's stderr goes to
+  `<profile>.log`. CDP over Ducter's own small WebSocket client (`ws-client.ts`): Bun 1.3's
+  client negotiated permessage-deflate with Chrome and then failed inflating its frames.
+  One browser per profile, started on demand, quit with `Browser.close` when no task and no
+  live view uses it (at once on release, else after 5 idle minutes, and on shutdown). A Chrome
+  from a crashed Ducter still holding the profile is found by its `SingletonLock` pid and quit.
+- **Install (`installChrome`):** the CfT JSON index, the zip, `unzip` or `python3 -m zipfile`
+  (then chmod), `ldd` for missing libraries, the zip's `deb.deps` mapped to apt names (`t64`
+  when apt has it), `fonts-liberation` and `fonts-noto-cjk`; installed with apt-get as root,
+  else returned as the one `sudo apt-get install …` line. Then one headless start that must
+  answer CDP. Devices drives it (`setAbility web on`), and so does `ducter ability add browser`.
+- **Tools (`tools.ts`):** `browser_open, _read, _click, _type, _press, _scroll, _back, _tabs,
+  _screenshot, _ask_sign_in` on Ducter's MCP, `registerWhen` only for tasks the runner attached
+  (`DucterBrowserPort.attach` in the sidecar's `ready`, `release` on done). Each task works in
+  tabs of its own (pages its tabs open join them). Reads come from an in-page walker
+  (`reader.ts`) that numbers what can be acted on and never returns a password or
+  one-time-code field's value; typing into those is refused; only http(s) URLs open; reads are
+  labelled as the page's own text. Downloads go to the task's scratch folder.
+- **Runner (`browser.ts`):** on Linux (or `DUCTER_BROWSER_DRIVER=ducter`) a browser place's
+  sidecar is the `ducter` driver: no stdio MCP, `ducterBrowserBrief`, the clean per-harness
+  setup as for other browser places, no Codex Computer Use rules. Not ready: the task can't
+  open, with the words to fix it.
+- **Live view (`live.ts`):** `live_open {decisionId}` from a pending sign-in card →
+  `setLive(profile)` (blind) → a second CDP session on the task's tab →
+  `Emulation.setDeviceMetricsOverride` at the viewer's size and ratio (≤ 2) →
+  `Page.startScreencast` JPEG q60. CDP frames are acked at once; the client gets the newest
+  one only after acking the last (3 s timeout), at most 8 a second. `live_input` maps fractions
+  to CSS pixels (`Input.dispatchMouseEvent`, `mouseWheel`, `insertText`, key events), only from
+  the socket that opened the view; a second window takes it over. `live_close done` → blind off,
+  the site remembered in `<profile>.sites.json`, the card resolved with Go (the forward says the
+  user signed in themselves). A dropped socket closes its views. Nothing is logged.
+- **Sites (`sites.ts`):** the remembered sites with their cookie counts (`Storage.getCookies`),
+  sign-out by `Network.deleteCookies` + `Storage.clearDataForOrigin`, clear all by
+  `Storage.clearCookies`.
+- **Not built:** Xvfb for sites that refuse headless; a vault that fills passwords, TOTP,
+  session probes, per-site rate limits (research/25 §3); browser places on a worker.
+
 ### The Ducter browser's identity (D62)
 
 The problem: the Ducter browser is a second, identical Google Chrome (same Dock icon, same

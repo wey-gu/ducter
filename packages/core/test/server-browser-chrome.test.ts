@@ -10,6 +10,7 @@ import { join } from "node:path";
 import type { ServerFrame } from "@ducter/protocol";
 import { startCore, type Core } from "../src/core.ts";
 import { BLIND } from "../src/browser/tools.ts";
+import { launchChrome } from "../src/browser/chrome.ts";
 import { tempDir } from "./helpers.ts";
 
 const CHROME = process.env.DUCTER_TEST_CHROME;
@@ -149,7 +150,10 @@ run("Ducter's browser on a real Chrome (D144)", () => {
   test("the sign-in survives a browser restart (persistent profile)", async () => {
     expect(await core.ducterBrowser!.host.close("default")).toBe(true);
     expect(core.ducterBrowser!.host.running("default")).toBeUndefined();
+    // A Chrome a crashed Ducter left on the profile is quit first, not a dead end (exit 21).
+    const stray = await launchChrome({ chrome: CHROME!, profileDir: join(td.dir, "browser-profiles", "default") });
     expect(await call("browser_open", { url: `${base}/home` })).toContain("Welcome back, Ada");
+    expect(await Promise.race([stray.proc.exited.then(() => true), Bun.sleep(3_000).then(() => false)])).toBe(true);
   }, 30_000);
 
   test("screenshots land in the task's evidence folder", async () => {

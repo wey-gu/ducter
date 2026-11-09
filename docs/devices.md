@@ -57,7 +57,7 @@ What a device can do:
 
 | | What it means | Status |
 |---|---|---|
-| **Browse the web** | The computer can get things done on the web: look things up, read pages, gather what it finds. In your Chrome when your AI agent has its own browser, otherwise in Ducter's own browser | Ready on the computer Ducter lives on (a Mac) |
+| **Browse the web** | The computer can get things done on the web: look things up, read pages, gather what it finds. In your Chrome when your AI agent has its own browser, otherwise in Ducter's own browser | Ready on the computer Ducter lives on (a Mac, or a server: see below) |
 | **Reach from anywhere** | Reach Ducter from your phone or another computer, with a one-time code | Ready (needs an address that works from outside; see [Install](install.md#a-linux-server-that-stays-on)) |
 | **Use this computer** | Ducter uses the other apps on the computer the way you do | Coming later |
 | **Use a phone** | Ducter does things on your phone | Coming later |
@@ -103,6 +103,39 @@ What you'll notice with Ducter's own browser:
   that window, then tap **Go**. Your password never reaches the AI. Sign-ins are remembered for
   the next task.
 - **Submitting forms and paying are always left to you.**
+
+### Browsing the web on a server
+
+On a Linux server (a VPS with no screen) your AI agent has no browser of its own, so Ducter
+brings one: **Ducter's own browser**, a real Chrome that runs on the server with no window.
+
+- **Adding it is one tap.** Choose **Browse the web** on the server in Devices, then **Add to**.
+  Ducter downloads Chrome (about 170 MB, the first time only) and says **Getting ready…** until
+  it can start. From a terminal, `ducter ability add browser` does the same.
+- **If the server lacks a few system libraries**, and Ducter doesn't run as root, it can't
+  install them itself. Devices shows **One step left** and the one line to run on the server
+  (`sudo apt-get install …`); run it, then **Try again**. As root, Ducter installs them itself.
+- **Its profile is its own**, kept on the server, separate from any Chrome of yours. Sites you
+  sign into stay signed in for later tasks.
+- **Files a page downloads** land in the task's own folder.
+
+**Signing in.** When a task needs you signed in to a site, it pauses and asks: **Sign in to
+github.com** (the site it needs). Tap **Sign in**, in the Mac app or on your phone, and the
+server's browser opens right there, live: the page as the server sees it, and your taps, scrolls
+and typing go straight into it. Sign in the way you always do, two-step codes included, then tap
+**Done**. The task carries on, signed in.
+
+While that view is open, the task can't see the page at all: it waits. Your password and your
+codes go from your keyboard to the site and nowhere else; nothing of it is shown to the AI or
+kept in your conversation. **Not now** closes the view and leaves the question open.
+
+**Signed-in sites.** Devices › **Browse the web** on the server lists the sites you signed into
+there. **Sign out** forgets one site's sign-in on the server; **Clear all** forgets every one.
+(To be sure, also sign that session out on the site's own security page.) From a terminal:
+`ducter browser sites`, `ducter browser signout <site>`, `ducter browser clear`.
+
+Good to know: sites see a server's address, which some treat with suspicion; you may get a
+"confirm it's you" check or a puzzle the first time. Solve it in the same live view.
 
 ## It keeps working when you close the window
 

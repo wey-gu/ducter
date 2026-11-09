@@ -176,7 +176,7 @@ export function createWork(o: WorkOptions): Work {
     }
   };
   const waitForProps = {
-    reason: { type: "string", description: "The condition in the user's words, short, in their language; shown to them (PR #1592 的 CI 通过 / PR #1592's CI passes)" },
+    reason: { type: "string", description: "What is awaited, in the user's words and language, named as awaited, never as done (PR #1592 的 CI 通过 / PR #1592's CI passes; 域名续费的邮件 / the domain renewal email). Shown to them after 等 / Waiting until" },
     check: checkSchema,
     event: eventSchema,
     judge: { type: "string", description: "Only when code can't decide: a yes/no question a cheap model answers over what the check or event fetched (是不是域名续费的提醒邮件？). Rate-limited, only on change." },

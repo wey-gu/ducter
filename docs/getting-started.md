@@ -81,8 +81,10 @@ In our own runs, a small "fix the failing tests" task came back done in under a 
 ## What happens next
 
 - **Your partner shows it's on it.** The moment you send something, your partner appears where
-  its reply will come, with a short line of what it is doing, such as *Thinking…* or *Setting up
-  a task…*. The line goes away when the reply arrives.
+  its reply will come, with a short line of what it is doing, such as *Thinking…*. For real
+  work, a sentence follows within a couple of seconds, such as *"On it: checking why CI failed,
+  usually about 10 min; I'll tell you when it's clear"*, and the work is already under way when
+  you read it. Then it stays quiet until there is a result.
 - **Decisions come with a default.** When a task needs you, your partner asks, such as *"Rebase
   before merging?"*, and says what it will do if you don't answer. Press **Go** to take it,
   **Hold** for "not yet", or **Reply…** in your own words. When several things are waiting, it

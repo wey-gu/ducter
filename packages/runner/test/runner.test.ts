@@ -581,3 +581,42 @@ class FakePort implements HarnessPort {
     throw new Error("forbidden: available() during task flow");
   }
 }
+
+describe("ack and go (D120): open before the brief is written", () => {
+  test("the card and the session start first; the brief is the first turn and the briefed task_open is logged", async () => {
+    const fake = new FakePort();
+    const runner = createRunner(core, { harness: fake, newId: nextId });
+    let give!: (b: string) => void;
+    const brief = new Promise<string>((r) => (give = r));
+    const card = await runner.openTaskEarly!({ persona: "p1", title: "Fix CI" }, brief);
+    expect(core.tasks.get(card.taskId)).toBeDefined();
+    await waitFor(() => fake.sessions.length === 1);
+    expect(fake.specs[0]!.appendSystemPrompt).toContain("It is your first message, between <brief> tags");
+    expect(fake.sessions[0]!.sent).toEqual([]); // waits for the brief
+    give("User's words: fix CI");
+    await runner.whenStarted(card.taskId);
+    expect(fake.sessions[0]!.sent).toEqual([{ text: expect.stringMatching(/^<brief>\nUser's words: fix CI\n<\/brief>\n\nStart the task "Fix CI"/), mode: "turn" }]);
+    const opens = core.log.read({ stream: `task:${card.taskId}`, kinds: ["task_open"] }).map((e) => (e.body as Bodies["task_open"]).brief);
+    expect(opens).toEqual(["", "User's words: fix CI"]);
+    await runner.dispose();
+  });
+
+  test("a brief that never comes drops the task before it did anything; recovery never starts one", async () => {
+    const fake = new FakePort();
+    const runner = createRunner(core, { harness: fake, newId: nextId });
+    const card = await runner.openTaskEarly!({ persona: "p1", title: "t" }, Promise.reject(new Error("no call")));
+    await runner.whenStarted(card.taskId);
+    expect(core.tasks.get(card.taskId)).toMatchObject({ attention: "dropped" });
+    expect(fake.sessions.every((s) => s.sent.length === 0 && s.closed)).toBe(true);
+    await runner.dispose();
+    // Cut off before the brief: on restart it is not started with an empty brief.
+    const card2 = await createRunner(core, { harness: fake, newId: nextId }).openTaskEarly!({ persona: "p1", title: "t2" }, new Promise<string>(() => {}));
+    await waitFor(() => fake.sessions.length === 2);
+    const again = new FakePort();
+    const r2 = createRunner(core, { harness: again, newId: nextId });
+    await r2.whenStarted(card2.taskId);
+    expect(again.sessions).toHaveLength(0);
+    expect(core.tasks.get(card2.taskId)).toMatchObject({ attention: "dropped" });
+    await r2.dispose();
+  });
+});

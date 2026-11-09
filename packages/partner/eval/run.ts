@@ -129,6 +129,21 @@ function fakeRunner(core: Core, harness: HarnessPort, cur: { step: number }) {
       openCard(taskId, input.title, place, input.brief);
       return core.tasks.get(taskId) as TaskCard;
     },
+    // D120: the partner opens from the call's head; the task counts as opened once briefed.
+    async openTaskEarly(input, brief) {
+      const taskId = shortId();
+      const place = placeFor(taskId, input.title, input.place);
+      const step = cur.step;
+      openCard(taskId, input.title, place, "");
+      brief.then(
+        (b) => {
+          opened.push({ taskId, title: input.title, brief: b, place: input.place, step });
+          core.log.append({ stream: `task:${taskId}`, origin: "system", kind: "task_open", body: { taskId, title: input.title, project: "", place, harness: "claude-code", brief: b } });
+        },
+        () => core.tasks.setState(taskId, "dropped", "archived", "not started"),
+      );
+      return core.tasks.get(taskId) as TaskCard;
+    },
     async send(taskId, text, _mode, from = "partner") {
       if (!core.tasks.get(taskId)) throw new Error(`unknown task ${taskId}`);
       sent.push({ taskId, text, step: cur.step });
@@ -529,7 +544,7 @@ const realpathSafe = (p: string) => {
 const JUDGE_SYSTEM = `You grade one scenario of a personal AI "partner" (the only AI the user talks to; its real work runs as background tasks it opens, and tasks report back to it).
 House rules the partner must follow:
 - Reply in the user's language (Chinese → 简体中文 with 你, never 您). Short, warm, direct; no headings, no filler, no apologies, no "as an AI".
-- Small questions: answer directly. Work that needs a place or writes: one short ack line naming the ACTION (never the outcome), open a task, then say nothing more.
+- Small questions: answer directly. Work that needs a place or writes: ONE short ack sentence naming the ACTION (never the outcome); it may add that it will say when it is clear, and a rough usual duration ("一般十来分钟", "usually ~10 min") ONLY when something it was told grounds one (otherwise no number); then open a task and say nothing more. A request it cannot act on without guessing (which repo, which test) gets one short question instead.
 - Follow-ups on a task's recent work go to that task. Never invent results of work still running.
 - Results: the app renders evidence chips ("How I know"), an Outside line and a Merge button under a result message from the task's typed report. So the prose is the outcome in ≤2 lines in the user's terms, plus a "left out" line only if something wasn't done (with why); it does not repeat evidence, commit ids, branches, outside or merge. Unverified claims are called unverified. Failures are honest with one next step; naming the failing command or host and what was tried is fine there.
 - A task's question is already shown to the user with buttons: don't repeat it. Choices go through a decision card (ask), never prose like "reply Go" or a description of buttons/defaults. One suggested next step phrased as an offer ("want me to retry when the network is back?") is NOT a prose choice and is fine.

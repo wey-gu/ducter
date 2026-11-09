@@ -184,7 +184,18 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
 
 const ACTIVE = new Set(["queued", "working", "needs_you", "blocked", "done_claimed"]);
 
-export function renderTasks(cards: TaskCard[], maxDone = 8, ctx?: Pick<RenderCtx, "merged" | "taskBase">): string {
+/** How long a finished task took, roughly: grounds for "一般十来分钟" in the next ack (D120). */
+function took(c: TaskCard): string {
+  if (!["done", "done_claimed", "failed"].includes(c.attention)) return "";
+  const ms = Date.parse(c.updatedAt) - Date.parse(c.openedAt);
+  if (!(ms >= 60_000)) return "";
+  const min = Math.round(ms / 60_000);
+  return ` · took about ${min < 60 ? `${min} min` : `${Math.round(min / 6) / 10} h`}`;
+}
+
+export function renderTasks(all: TaskCard[], maxDone = 8, ctx?: Pick<RenderCtx, "merged" | "taskBase">): string {
+  // A task dropped before its brief arrived (D120) never did anything: not worth a line.
+  const cards = all.filter((c) => !(c.attention === "dropped" && c.reason === "not started"));
   const open = cards.filter((c) => ACTIVE.has(c.attention));
   const closed = cards
     .filter((c) => !ACTIVE.has(c.attention))
@@ -195,7 +206,7 @@ export function renderTasks(cards: TaskCard[], maxDone = 8, ctx?: Pick<RenderCtx
       c.place.kind === "repo" ? ` · repo ${c.place.repoPath}${c.place.branch ? ` (branch ${c.place.branch})` : ""}` : c.place.kind === "folder" ? ` · folder ${c.place.path}` : c.place.kind === "browser" ? " · browser" : "";
     const last = c.lastReport ? ` · last report (${c.lastReport.state}): ${clip(c.lastReport.summary, 200)}` : "";
     const merged = ctx?.merged?.(c.taskId) ? ` · merged into ${ctx.taskBase?.(c.taskId) ?? "its base branch"} by the user (new work = a new task)` : "";
-    return `- ${c.taskId} "${c.title}" · ${c.attention}${merged}${where}${last}`;
+    return `- ${c.taskId} "${c.title}" · ${c.attention}${took(c)}${merged}${where}${last}`;
   };
   const out: string[] = [];
   out.push("Open:");

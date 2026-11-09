@@ -81,10 +81,17 @@ core sends it after any buffered events and once after each welcome, `null` ends
 turn that ends without a word (the partner asked instead) ends the waiting line too. An older
 client ignores the frame.
 
-Long work: the ack says what it is starting; the header says 在做 1 件; the result arrives as a
-message (and a notification when away). **Not built:** the ack saying how long the work usually
-takes ("一般十来分钟"); that is a partner prompt change and goes through the partner eval first
-(`design/todo.md`).
+**Long work: ack and go (D120).** The ack is one sentence that replaces the waiting line the
+moment it lands: what the partner is starting, that it will say when it's clear, and how long it
+usually takes only when something grounds it ("好，我去查 CI 为什么挂了，一般十来分钟，查清楚了告诉你" /
+"On it: checking why CI failed, usually about 10 min; I'll tell you when it's clear"). The partner
+sends `activity: null` with the ack, so no step flashes after it. The task starts with the
+sentence, not after the brief: its card (so the header's **在做 1 件**) and its session open from
+the streamed title and place of the `task_open` call while the partner is still writing the
+brief, which becomes the session's first turn. Then silence until the result, which arrives as a
+message (and a notification when away). Measured live, warm session, one run each: sonnet ack
+1.2 s and task session spawn 1.8 s after Send; opus 2.3 s and 3.0 s (before D120: spawn 4.7–5.1 s
+and 7.5 s, after the whole brief). `bun packages/partner/eval/latency.ts --model opus` repeats it.
 
 ## Settings
 

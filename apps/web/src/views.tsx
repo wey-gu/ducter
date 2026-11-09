@@ -1222,7 +1222,8 @@ function WhatItDid({ task }: { task: Task }) {
       }
     }
     fold = undefined;
-    if (ev.kind === "task_open") items.push(<div key={ev.seq} class="tx said"><small>{t("task.brief", A.S.personaName)}</small>{(ev.body as Bodies["task_open"]).brief}</div>);
+    // A task opened before its brief was written (D120) logs an empty one first: the briefed one follows.
+    if (ev.kind === "task_open") (ev.body as Bodies["task_open"]).brief.trim() && items.push(<div key={ev.seq} class="tx said"><small>{t("task.brief", A.S.personaName)}</small>{(ev.body as Bodies["task_open"]).brief}</div>);
     else if (ev.kind === "checkpoint") items.push(<div key={ev.seq} class="tx note">{t("task.checkpoint", (ev.body as Bodies["checkpoint"]).text)}</div>);
     else if (ev.kind === "report" && ev.seq !== lastReport) {
       const r = ev.body as Bodies["report"];

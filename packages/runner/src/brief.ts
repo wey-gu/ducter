@@ -5,7 +5,7 @@ export interface BriefInput {
   partnerName: string; // e.g. "Ducter"
   taskId: string;
   title: string;
-  brief: string; // verbatim from the partner
+  brief: string | null; // verbatim from the partner; null: it arrives as the first turn (D120)
   place: Place;
   cwd: string;
   project?: string;
@@ -34,9 +34,7 @@ ${b.partnerName} is the user's personal AI partner. The user talks only to ${b.p
 
 ## The brief (verbatim from ${b.partnerName})
 
-<brief>
-${b.brief}
-</brief>
+${b.brief === null ? `It is your first message, between <brief> tags: ${b.partnerName} opened you while still writing it.` : `<brief>\n${b.brief}\n</brief>`}
 
 ## Where you work
 
@@ -72,6 +70,11 @@ Use the \`report_to_main\` tool on the \`${s}\` MCP server. It is the only way $
 }
 
 /** First user turn of a fresh task session. */
+/** The first turn of a task opened before its brief was written (D120): the brief, then the kickoff. */
+export function briefTurn(brief: string, title: string): string {
+  return `<brief>\n${brief}\n</brief>\n\n${kickoff(title)}`;
+}
+
 export function kickoff(title: string): string {
   return `Start the task "${title}" now, following your task brief. Report via report_to_main when done, blocked, or needing a decision.`;
 }

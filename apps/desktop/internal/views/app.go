@@ -99,6 +99,9 @@ type App struct {
 	taskLists  map[string]*ui.ListState
 	md, mdTask markdown.Options
 	mdLang     i18n.Lang // the language md's themes were made for
+	// pressAll draws every button as pressed: the button specimen's
+	// pressed row (tests only).
+	pressAll bool
 	// chipOwner is the entry that shows each task's chip.
 	chipOwner map[string]int64
 	uiTheme   *ui.Theme

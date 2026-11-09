@@ -340,13 +340,14 @@ func (a *App) buttonLook(c *ui.Context, b ui.Element, kind btnKind, h float32, o
 	}
 	switch kind {
 	case btnPrimary:
-		bg := t.Ink
-		if hover && !down {
-			bg = t.Ink.Mix(t.InkSoft, 0.45)
-		}
-		b.Background(bg)
 		p := t.PressPrimary
 		p.Offset = ledge
+		top, bottom := p.Top, t.Ink
+		if hover && !down {
+			top, bottom = top.Mix(t.InkSoft, 0.4), bottom.Mix(t.InkSoft, 0.4)
+		}
+		// A vertical gradient: lighter at the top, ink at the bottom.
+		b.Gradient(top, bottom, 180)
 		a.press(c, b, p)
 		return t.Bg
 	case btnAccent:
@@ -410,7 +411,7 @@ func (a *App) press(c *ui.Context, e ui.Element, press theme.Press) {
 	}
 	t := a.T
 	target := float32(0)
-	if e.Pressed() {
+	if e.Pressed() || a.pressAll {
 		target = 1
 	}
 	k := target
@@ -426,11 +427,21 @@ func (a *App) press(c *ui.Context, e ui.Element, press theme.Press) {
 	if press.Rim.A > 0 {
 		e.InsetShadow(0, 0, 0, 1, press.Rim)
 	}
+	// MyGo paints a later shadow over an earlier one (CSS is the other
+	// way round): the soft drop first, then the ledge, then the seam (1
+	// point, right under the fill); seam and ledge sink to nothing as it
+	// is pressed.
+	d, dp := t.Drop, t.DropPressed
+	if press.Drop.A > 0 {
+		d.Color = press.Drop
+	}
+	e.Shadow(0, lerp(d.Y, dp.Y), lerp(d.Blur, dp.Blur), lerp(-4, 0), d.Color.Mix(dp.Color, k))
 	if l := press.Offset - y; l > 0.01 {
 		e.Shadow(0, l, 0, 0, press.Color)
+		if press.Seam.A > 0 {
+			e.Shadow(0, min(1, l), 0, 0, press.Seam)
+		}
 	}
-	d, dp := t.Drop, t.DropPressed
-	e.Shadow(0, lerp(d.Y, dp.Y), lerp(d.Blur, dp.Blur), lerp(-4, 0), d.Color.Mix(dp.Color, k))
 }
 
 // navButton is a button of the window's chrome (Devices, On hand): a

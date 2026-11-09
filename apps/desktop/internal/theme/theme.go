@@ -32,6 +32,14 @@ type Press struct {
 	Offset  float32
 	Color   ui.Color
 	Hi, Rim ui.Color
+	// Seam is a 1-point line right under the fill, above the ledge: a
+	// lighter, warmer shade that keeps the ledge legible ("brown seam").
+	Seam ui.Color
+	// Top, when set, is the fill's color at its top edge, running down to
+	// the fill: the ink button's gradient.
+	Top ui.Color
+	// Drop is the soft shadow's color at rest (Tokens.Drop when unset).
+	Drop ui.Color
 }
 
 // Elevation is a soft shadow: how far down it falls, how blurred, and
@@ -199,9 +207,11 @@ func Pebble() *Tokens {
 		BubbleRadius: [4]float32{22, 22, 8, 22},
 		PebbleRadius: [4]float32{6, 7, 5, 6},
 
-		PressPrimary:   Press{Offset: 3, Color: hex("#000000"), Hi: hex("#FFF6EA").Alpha(0.22), Rim: ui.Transparent},
-		PressSecondary: Press{Offset: 3, Color: hex("#E0C9B0"), Hi: hex("#FFFFFF").Alpha(0.95), Rim: hex("#2B2118").Alpha(0.09)},
-		PressAccent:    Press{Offset: 3, Color: hex("#C9642A"), Hi: hex("#FFFFFF").Alpha(0.38), Rim: ui.Transparent},
+		// Ink: "brown seam" (a #000 ledge under #2B2118 disappeared).
+		PressPrimary: Press{Offset: 3, Color: hex("#140D07"), Seam: hex("#5A4434"), Top: hex("#3B2D22"),
+			Hi: hex("#FFF6EA").Alpha(0.26), Rim: hex("#FFECD6").Alpha(0.08), Drop: hex("#2B2118").Alpha(0.38)},
+		PressSecondary: Press{Offset: 3, Color: hex("#E0C9B0"), Seam: hex("#F3E3CC"), Hi: hex("#FFFFFF").Alpha(0.95), Rim: hex("#2B2118").Alpha(0.09)},
+		PressAccent:    Press{Offset: 3, Color: hex("#C9642A"), Seam: hex("#FFA466"), Hi: hex("#FFFFFF").Alpha(0.38), Rim: ui.Transparent},
 		Raised:         Elevation{Y: 4, Blur: 0, Color: hex("#E8D9C4")},
 		Floating:       Elevation{Y: 10, Blur: 32, Color: hex("#2B2118").Alpha(0.14)},
 		Drop:           Elevation{Y: 7, Blur: 12, Color: hex("#2B2118").Alpha(0.28)},

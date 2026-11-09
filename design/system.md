@@ -104,10 +104,13 @@ One table (`packages/protocol/src/harnesses.ts`), one adapter (`packages/runner/
   Codex lists the partner's sessions in the user's own history; pi's model list does not test
   its keys; in its owned home DeepSeek Harness sees only the DeepSeek key, not the user's other
   provider routes.
-- **Browser tasks: isolated** (W5-2, D62): only the curated cua-driver tools, no user MCP
-  servers (which would include a path to the user's real Chrome), measured 332k → 140k input
-  tokens on one lookup. Their `log_search` / `log_read` are scoped to their own task (D62; to
-  build, `todo.md`).
+- **Browser tasks: a clean setup** (W5-2, D62): only the curated cua-driver tools and no user
+  MCP servers, measured 332k → 140k input tokens on one lookup. Their `log_search` / `log_read`
+  are scoped to their own task (D62; to build, `todo.md`). Reaching the user's own Chrome is
+  allowed since D126; the harness's own browser tools are in "Screen places" below.
+- **Codex tasks inherit the user's Codex Computer Use** (`cua_repl`, a plugin): any app,
+  including the user's signed-in Chrome. Only `features.plugins=false` removes it, not the
+  `computer_use` / `browser_use` flags (research/38). Allowed under D126.
 
 ## Waits (principle 16)
 
@@ -400,8 +403,8 @@ redesign later:
   Linux sandbox.
   - Logins happen through takeover, so passwords never reach the model.
   - The profile is an exclusive resource: a second browser task for the same persona waits.
-  - Attaching to the user's **real Chrome is off in v1**. It becomes a v1.x per-task opt-in
-    with a red "no isolation" chip.
+  - A task may also use the user's **own Chrome** (D126), through the harness's own browser
+    tools (below).
 - **env-gate:** a runner-side MCP proxy in front of spacesd. It:
   - keeps the tool list to about 12;
   - wraps page text as untrusted data;
@@ -428,7 +431,16 @@ redesign later:
 
 What runs today, before sandboxes and spacesd:
 
-- **Driver:** Ducter starts its own cua-driver daemon per data dir on a private socket, via
+- **Which driver (D126):** native first by rule, cua-driver as the fallback.
+  `DUCTER_BROWSER_DRIVER=native` gives a browser place the harness's own tools when they are set
+  up: Claude Code gets Claude in Chrome (`--chrome`, with the clean setup and the four built-ins
+  kept); Codex keeps its Computer Use plugin from the user's setup (not under the clean setup).
+  No sidecar, no Ducter browser; the brief keeps the Go, untrusted-page and evidence rules and
+  says to work only in tabs it opened; Ducter never closes that Chrome. The probe reads files
+  only (Claude's native-messaging host file; Codex's plugin entry, cache and Computer Use app).
+  `=cua` forces cua-driver. Unset is `DEFAULT_BROWSER_DRIVER`, **cua-driver for now**: neither
+  native path passed under OAR (research/38). pi and DeepSeek Harness always get cua-driver.
+- **Driver (cua):** Ducter starts its own cua-driver daemon per data dir on a private socket, via
   LaunchServices so that macOS grants stay with CuaDriver. The daemon gets
   `CUA_DRIVER_BROWSER_PROFILE_ROOT=<dataDir>/browser-profiles`. The task's harness runs
   `cua-driver mcp --socket <it>`. The profile is `isolated_named` `<persona>`. Gate:
@@ -445,7 +457,8 @@ What runs today, before sandboxes and spacesd:
   quits the browser itself (CDP `Browser.close`) when a task is done, failed, or dropped.
 - **Status line:** when a task navigates to a new site, the runner logs a `task_event`
   `{role:"system", text:"Looking at <host>", raw.browser:{host, url}}`. The client renders
-  it in the user's language.
+  it in the user's language. A native driver adds `own: true`, and the app says 在你的 Chrome
+  里看 {host} / Looking at {host} in your Chrome instead of Ducter's browser.
 - **Known limit:** the driver closes an idle browser after 300 s. A task waiting on the user
   loses its window, but sign-ins finished more than ~30 s earlier are kept and the task
   reopens it.

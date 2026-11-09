@@ -72,7 +72,9 @@ own `refusedSessionOptions` at that version; a later OAR may admit more.
   for MCP tools named `mcp__server__tool`; built-ins (`request_user_input`, `spawn_agent`,
   goals) cannot be denied, so the partner's overrides switch off `goals`, `multi_agent`,
   `image_generation`, `computer_use`, `browser_use` instead. INFERRED that these flags remove
-  the tools; the eval saw no use of them.
+  the tools; the eval saw no use of them. **Corrected by research/38 (VERIFIED):** with Codex
+  0.167 the `computer_use` / `browser_use` flags leave the Computer Use plugin's `cua_repl`
+  in place; the partner's `features.plugins=false` is what removes it.
 - **Usage.** Session token totals (input incl. cached; output looked low: 1 213 output tokens
   over 10 scenarios, so reasoning is likely not counted). Plan, so no per-token price.
 

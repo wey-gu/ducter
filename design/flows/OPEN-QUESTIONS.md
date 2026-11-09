@@ -10,7 +10,7 @@ Canvas: https://claude.ai/artifact/LKuVp3knPDJ4EdoyWBGSWN
 
 ### J. Nowledge Bridge (2026-11-09 evening, draft; `../bridge.md`, `research/31`, `research/33`)
 
-J-Q4, J-Q6, J-Q7 and J-Q9 to J-Q13 are answered (D91–D97, below). What is still open:
+J-Q4, J-Q6, J-Q7 and J-Q9 to J-Q13 are answered (D105–D111, below). What is still open:
 
 **J-Q1. Adopt Bridge as Ducter's doorway to agents it didn't start, addressed to the persona.**
 - *Recommendation:* yes, through the persona identity's Agent mailbox, never a native session (partner
@@ -62,7 +62,7 @@ J-Q4, J-Q6, J-Q7 and J-Q9 to J-Q13 are answered (D91–D97, below). What is stil
 
 ## Answered on 2026-11-09 (Bridge, the author's "按建议 go")
 
-J-Q4 → D91 · J-Q6 → D92 · J-Q7, J-Q12 → D93 · J-Q11 → D94 · J-Q13 → D95 · J-Q10 → D96 · J-Q9 → D97.
+J-Q4 → D105 · J-Q6 → D106 · J-Q7, J-Q12 → D107 · J-Q11 → D108 · J-Q13 → D109 · J-Q10 → D110 · J-Q9 → D111.
 
 ## Answered on 2026-11-09 morning
 

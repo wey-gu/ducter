@@ -107,14 +107,14 @@ export interface Bodies {
   // (decisionId); `taskId` links an exchange to the task opened for it, so the result reply is
   // owed by code, not by prompt. An "in" with `inReplyTo` answers one of ours.
   // `agent` is the other agent's own name and `mine` says it belongs to the user, so it is called
-  // "你的 <agent>" / "your <agent>"; a teammate's stays "<agent> (<member>)" in `from`/`to` (D94).
-  // Outgoing operations (D92): every "out" carries `opId`, and one op is logged once per `state`
+  // "你的 <agent>" / "your <agent>"; a teammate's stays "<agent> (<member>)" in `from`/`to` (D108).
+  // Outgoing operations (D106): every "out" carries `opId`, and one op is logged once per `state`
   // it passes through: "pending" (a send card is up; `contact` is the handle), "held" (the user
   // held it), "sending" (logged before the CLI call), then "sent", "failed" (definitely not
   // sent), "unknown" (no answer; recovered by outbox → inspect → resume on the same
   // `operation`, never a second send) or "unconfirmed" (recovery gave up; never resent).
-  // "followed" marks the one follow-through line said about an unanswered sent message (D96).
-  // No `state` = "sent" (events logged before D92).
+  // "followed" marks the one follow-through line said about an unanswered sent message (D110).
+  // No `state` = "sent" (events logged before D106).
   bridge_msg: {
     direction: "in" | "out";
     messageId: string;

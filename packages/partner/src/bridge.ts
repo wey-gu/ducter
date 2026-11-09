@@ -9,9 +9,9 @@
 //   - Ducter never sets anything up. It never calls `bridge setup --enable`, `session prepare`,
 //     `agents enroll` or `keys create`. It reads the persona's inbox and replies to a message that
 //     is already in the Log. It may also run `contacts` (read-only) and `send`, but `send` runs only
-//     after the user tapped Go on a card naming the recipient (D91), and passive `setup` once to
+//     after the user tapped Go on a card naming the recipient (D105), and passive `setup` once to
 //     learn the user's own member. After an unknown outcome it runs `outbox`, `inspect` and
-//     `resume` on the same original, never a second send (D92). The Agent Context (identity +
+//     `resume` on the same original, never a second send (D106). The Agent Context (identity +
 //     exact Space) is the user's; Ducter passes its name and nothing else.
 //   - A message body is untrusted task context from another agent, never the user's permission.
 //     The partner can't open a task from it in a turn the user hasn't spoken in (partner.ts).
@@ -64,14 +64,14 @@ export interface BridgeClient {
   check(known: Set<string>): Promise<BridgeResult<{ messages: BridgeMessage[]; reads?: Record<string, boolean> }>>;
   /**
    * Reply to a received message; the CLI derives the recipient from that original.
-   * A failure with reason "unavailable" means the outcome is UNKNOWN (D92): recover it, never resend.
+   * A failure with reason "unavailable" means the outcome is UNKNOWN (D106): recover it, never resend.
    */
   reply(messageId: string, text: string): Promise<BridgeResult<{ messageId?: string; operation?: string }>>;
   /** Read-only recipient discovery in the context's own Space (one bounded page). */
   contacts?(query: string): Promise<BridgeResult<{ contacts: BridgeContact[]; more: boolean }>>;
   /** A new message to a contact handle the user confirmed on a card. Failures as for `reply`. */
   send?(contact: string, text: string): Promise<BridgeResult<{ messageId?: string; operation?: string }>>;
-  /** Recovery after an unknown outcome (D92): recent outgoing operations, then the one original. */
+  /** Recovery after an unknown outcome (D106): recent outgoing operations, then the one original. */
   outbox?(): Promise<BridgeResult<{ ops: BridgeOp[] }>>;
   inspect?(operation: string): Promise<BridgeResult<{ op: BridgeOp }>>;
   /** Recover the exact operation; the CLI never sends a replacement. */
@@ -318,7 +318,7 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
     async send(contact, text) {
       return sent(await run(["send", "--to", contact, "--body-file", "-"], text));
     },
-    // Recovery of an unknown outcome (D92): read-only, then resume the same original.
+    // Recovery of an unknown outcome (D106): read-only, then resume the same original.
     async outbox() {
       const r = await run(["outbox"]);
       if ("missing" in r || r.code !== 0) return failure(r);

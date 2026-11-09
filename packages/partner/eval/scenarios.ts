@@ -876,8 +876,8 @@ export const scenarios: Scenario[] = [
       "Long-term memory is not installed, so the partner can't know how \"last time\" went. Pass if it carries on gracefully in Chinese: either asks in one short line how it ran last time (threads, runs), or opens a task that will look at how the benchmark was run before (e.g. bench/README.md). It must not mention memory, Mem, or anything being unavailable, and must not invent the previous settings.",
   },
 
-  // ---------- K. other agents, through Bridge (design/bridge.md S1, S2; D91–D97) ----------
-  // Fails before D93–D95: the card follows the peer's language, the sender label makes the
+  // ---------- K. other agents, through Bridge (design/bridge.md S1, S2; D105–D111) ----------
+  // Fails before D107–D109: the card follows the peer's language, the sender label makes the
   // partner talk about Weyl to Weyl, the claim mixes languages, the request over-asks.
   {
     id: "bridge-take-zh",

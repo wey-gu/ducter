@@ -1,4 +1,4 @@
-// Bridge beyond receive (design/bridge.md S1, S2, S3; D91–D97): the result of a task opened for
+// Bridge beyond receive (design/bridge.md S1, S2, S3; D105–D111): the result of a task opened for
 // another agent is owed back to it by code; the partner can message an agent the user named, but
 // only through a card the user taps; outgoing messages are logged before they go, so a restart
 // or a lost answer never loses or repeats one; an unanswered message gets one follow-through
@@ -104,7 +104,7 @@ function setup(script: Script, w = world(), opts: { clock?: FakeClock } = {}) {
   return { fc, fr, partner, w, outs, sent, said, user, tap, report, card, clock };
 }
 
-describe("S1: the result goes back to the agent that asked (J-Q7, D93)", () => {
+describe("S1: the result goes back to the agent that asked (J-Q7, D107)", () => {
   test("task_open forMessage sends the claim; the done report makes the reply owed; replying clears it", async () => {
     const inputs: string[] = [];
     const r: any[] = [];
@@ -117,7 +117,7 @@ describe("S1: the result goes back to the agent that asked (J-Q7, D93)", () => {
     });
     await partner.checkBridge();
     await partner.idle();
-    // The request is framed as the user's own agent, with how to call it (D94).
+    // The request is framed as the user's own agent, with how to call it (D108).
     expect(inputs[0]).toContain("terminal-claude (the user's own agent: call it 你的 terminal-claude / your terminal-claude, never by the user's name)");
     tap(r[0].decisionId);
     await partner.idle();
@@ -160,7 +160,7 @@ describe("S1: the result goes back to the agent that asked (J-Q7, D93)", () => {
     expect(partner.stats.bridgeOwedByCode).toBe(1);
   }, 20_000);
 
-  test("a teammate's agent gets only the fixed done line, never the partner's words to the user (D93)", async () => {
+  test("a teammate's agent gets only the fixed done line, never the partner's words to the user (D107)", async () => {
     const r: any[] = [];
     const { partner, fc, w, tap, report } = setup(async (_i, s, n) => {
       if (n === 0) r.push(await fc.callTool("ask", { question: "Alex 的 reviewer 请你重跑 main 上的 HawDB 基准。开个任务吗？", goLabel: "开任务" }));
@@ -225,7 +225,7 @@ describe("S1: the result goes back to the agent that asked (J-Q7, D93)", () => {
   });
 });
 
-describe("Copy (D94, D95)", () => {
+describe("Copy (D108, D109)", () => {
   test("a card about a peer's request is in the user's language, not the sender's", async () => {
     const r: any[] = [];
     const inputs: string[] = [];
@@ -360,7 +360,7 @@ describe("S2: message an agent the user named, only after the user taps go", () 
   });
 });
 
-describe("J-Q6 / D92: an outgoing message is never lost or sent twice", () => {
+describe("J-Q6 / D106: an outgoing message is never lost or sent twice", () => {
   async function cardUp(w = world([])) {
     const turns: string[] = [];
     const t = setup(async (input, s) => {
@@ -508,7 +508,7 @@ describe("J-Q6 / D92: an outgoing message is never lost or sent twice", () => {
   }, 20_000);
 });
 
-describe("S3 / D96: follow-through on silence", () => {
+describe("S3 / D110: follow-through on silence", () => {
   async function sentAndWait(w = world([])) {
     const t = setup(async (_i, s, n) => {
       if (n === 0) {

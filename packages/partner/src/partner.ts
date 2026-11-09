@@ -551,7 +551,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       const r = e.body as Bodies["report"];
       const owed = r.state === "progress" ? undefined : bridgeOwed(r.taskId);
       if (owed)
-        // D93: the outcome goes back to the agent that asked, and the user hears about the task,
+        // D107: the outcome goes back to the agent that asked, and the user hears about the task,
         // not about the reply (dogfood: "已把结果回给 Weyl" when it went to the terminal session).
         deltas.push(
           `[reply owed] This task was opened for the request from ${whoForModel(owed)} (message ${owed.messageId}). First send it the outcome with bridge_reply (messageId ${owed.messageId}): a few lines in its language, only what it asked for; no paths, ids, or anything the user hasn't shared with it. Then tell the user the outcome once, as for any result. Don't mention the reply to the user: the app shows that it went to ${owed.agent ?? "that agent"}. The reply goes to that agent, never to the user.`,
@@ -563,7 +563,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const peerOnly = !lastUser && batch.some((e) => e.kind === "bridge_msg") && !batch.some((e) => e.kind === "decision_resolved");
     const lang = userZh();
     if (peerOnly && lang !== undefined) {
-      // D95: another agent's words don't set the language. The user reads the card.
+      // D109: another agent's words don't set the language. The user reads the card.
       deltas.push(
         lang
           ? "[language] The user speaks Chinese: the card (ask) and anything the user sees are in Chinese (中文), whatever language the other agent wrote in. Only a bridge_reply to that agent is in its own language."
@@ -992,13 +992,13 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       flushPending(); // a line before the question stays a message, never an ack
       // One card per turn (eval: the same rename asked twice, the second in English).
       if (turn?.askedId) return { ok: false, error: "You already asked this turn; that card is on screen. End your turn." };
-      // D95: a card about another agent's request is in the user's language, not the sender's
+      // D109: a card about another agent's request is in the user's language, not the sender's
       // (dogfood: an English request put an English card in front of a Chinese-speaking user).
       if (bridge && bridgeOnly(turn) && typeof args.question === "string") {
         const want = userZh();
         if (want === true && !isChinese(args.question)) return { ok: false, error: "The user reads Chinese: write this card (question and goLabel) in Chinese, whatever language the other agent used. Call ask again." };
         if (want === false && isChinese(args.question)) return { ok: false, error: "The user reads English: write this card (question and goLabel) in English. Call ask again." };
-        // D94: the user's own agent is "你的 <agent>"; the card never names the user to the user.
+        // D108: the user's own agent is "你的 <agent>"; the card never names the user to the user.
         for (const e of turn!.triggers) {
           const b = e.body as Bodies["bridge_msg"];
           const member = e.kind === "bridge_msg" && b.mine ? /\(([^()]+)\)\s*$/.exec(b.from ?? "")?.[1] : undefined;
@@ -1123,7 +1123,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
 
   // ---------- Nowledge Bridge (design/bridge.md; off unless configured) ----------
   // The Log is the ledger: ids already logged as bridge_msg are never opened again, and every
-  // outgoing operation is logged before its CLI call, so a restart can't lose or repeat it (D92).
+  // outgoing operation is logged before its CLI call, so a restart can't lose or repeat it (D106).
   function loggedBridge(): LogEvent<"bridge_msg">[] {
     return core.log.read({ stream: "channel", kinds: ["bridge_msg"], limit: 5000 }).map((e) => e as LogEvent<"bridge_msg">);
   }
@@ -1172,7 +1172,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     core.log.append({ stream: "channel", origin: "partner", kind: "bridge_msg", body: { ...base, direction: "out", messageId: "", state, ...extra } });
 
   /**
-   * One outgoing message (D92): logged as "sending" before the CLI runs, then "sent", "failed"
+   * One outgoing message (D106): logged as "sending" before the CLI runs, then "sent", "failed"
    * (refused: definitely not sent) or "unknown" (no answer: recovered later, never resent).
    */
   /** What an op is, for the one line the user hears if it can't go out. */
@@ -1216,7 +1216,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   }
 
   /**
-   * Recovery of unknown outcomes (D92, J-Q6), on the same original only: outbox → inspect →
+   * Recovery of unknown outcomes (D106, J-Q6), on the same original only: outbox → inspect →
    * resume. Never a second send. Three checks without an answer → "unconfirmed", told once.
    */
   let recovering: Promise<void> | null = null;
@@ -1285,7 +1285,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   }
 
   /**
-   * J-Q7 / D93: the outcome of a task opened for another agent goes back to it even when the
+   * J-Q7 / D107: the outcome of a task opened for another agent goes back to it even when the
    * model forgot bridge_reply. The user's own agent gets what the partner just told the user (it
    * was already shown to the user, and the request was theirs to approve); a teammate's agent
    * gets only a fixed done / not-done line until a sharing rule exists.
@@ -1307,7 +1307,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     }
   }
 
-  // S2: a send waits on the user's Go as a "pending" op in the Log (D92), so a restart keeps it.
+  // S2: a send waits on the user's Go as a "pending" op in the Log (D106), so a restart keeps it.
   const seenContacts = new Map<string, BridgeContact>(); // handles bridge_contacts returned
   const sendOp = (decisionId: string): OutOp | undefined => [...foldOut(loggedBridge()).values()].find((o) => o.last.decisionId === decisionId);
   async function performSend(decisionId: string, option: "go" | "hold" | "reply") {
@@ -1322,7 +1322,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   }
 
   /**
-   * S3 / D96: one line per confirmed message that got no answer, no earlier than 2 h after it
+   * S3 / D110: one line per confirmed message that got no answer, no earlier than 2 h after it
    * went out, only while the user is around (they did something in the last 15 min), never in
    * quiet hours. Bridge wakes nobody, so the line reports silence; it never says "reminded".
    */
@@ -1458,7 +1458,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           if (!contact) return { ok: false, error: "Unknown contact. Use a handle bridge_contacts returned." };
           if (!text) return { ok: false, error: "bridge_send needs `text`." };
           if (redactSecrets(text) !== text) return { ok: false, error: "That contains a secret. Nothing was sent." };
-          // D95: what the user asked, in plain sentences; not a list of extra sub-questions.
+          // D109: what the user asked, in plain sentences; not a list of extra sub-questions.
           if (overAsks(text)) return { ok: false, error: "Ask what the user asked in plain sentences with the background the recipient needs, without numbered or bulleted sub-questions. Rewrite it and call bridge_send again." };
           await Bun.sleep(5);
           flushPending();

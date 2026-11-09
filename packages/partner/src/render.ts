@@ -141,7 +141,7 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
         return b.inReplyTo && ctx.bridgeOut?.(b.inReplyTo)
           ? `[${t} reply from ${whoForModel(b)} via Bridge to your message ${b.inReplyTo}, message ${b.messageId}] ${clip(b.text, 600)}`
           : `[${t} message from ${whoForModel(b)} via Bridge, message ${b.messageId}] ${clip(b.text, 600)}`;
-      // One line per outgoing operation, at its final state (D92): pending, held and sending are
+      // One line per outgoing operation, at its final state (D106): pending, held and sending are
       // steps, and the follow-through marker is shown as the partner's own message.
       if (!shownOut(b)) return null;
       const to = whoForModel({ ...b, label: b.to });

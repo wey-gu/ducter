@@ -1,13 +1,13 @@
 // Ducter's side of talking to other agents through Nowledge Bridge: who they are called, what
 // the code itself says to them, the ledger of outgoing operations, and follow-through on silence.
-// Pure functions over Log events; partner.ts does the calls (design/bridge.md, D91–D97).
+// Pure functions over Log events; partner.ts does the calls (design/bridge.md, D105–D111).
 import type { Bodies, LogEvent } from "../../protocol/src/index.ts";
 import { isChinese } from "./render.ts";
 
 type Msg = Bodies["bridge_msg"];
 export type OutState = NonNullable<Msg["state"]>;
 
-// ---------- names (D94) ----------
+// ---------- names (D108) ----------
 
 /** What the user reads for another agent: "你的 <agent>" / "your <agent>" when it is theirs. */
 export function whoForUser(b: { mine?: boolean; agent?: string; label?: string; from?: string; to?: string }, zh: boolean): string {
@@ -28,13 +28,13 @@ export function whoForModel(b: { mine?: boolean; agent?: string; label?: string;
 /**
  * The claim sent when a task opens for another agent's request (J-Q8): in the requester's
  * language, with the title in quotes, so a title in the user's language is a name, not mixed
- * prose (D95).
+ * prose (D109).
  */
 export function claimText(requestText: string, title: string): string {
   return isChinese(requestText) ? `接了：「${title}」。做完把结果回你。` : `Taken: "${title}". I'll send you the result when it's done.`;
 }
 
-/** The fixed line a teammate gets when the partner didn't reply itself (D93). */
+/** The fixed line a teammate gets when the partner didn't reply itself (D107). */
 export function fixedOutcome(requestText: string, title: string, done: boolean): string {
   return isChinese(requestText) ? `「${title}」：${done ? "做完了" : "没做成"}。` : `"${title}": ${done ? "done" : "not done"}.`;
 }
@@ -48,7 +48,7 @@ export function overAsks(text: string): boolean {
   return NUMBERED.test(text);
 }
 
-// ---------- the outgoing ledger (D92) ----------
+// ---------- the outgoing ledger (D106) ----------
 
 export interface OutOp {
   opId: string;
@@ -64,7 +64,7 @@ const LIVE: OutState[] = ["sending", "sent", "unknown", "unconfirmed"];
 /** States in which the message may have reached the other side (so it is never sent again). */
 export const mayHaveGone = (s: OutState) => LIVE.includes(s);
 
-/** Outgoing operations folded from the Log, by opId. Events from before D92 are each one "sent" op. */
+/** Outgoing operations folded from the Log, by opId. Events from before D106 are each one "sent" op. */
 export function foldOut(events: LogEvent[]): Map<string, OutOp> {
   const ops = new Map<string, OutOp>();
   for (const e of events) {
@@ -92,7 +92,7 @@ export function shownOut(b: Msg): boolean {
   return b.direction === "out" && (b.state === undefined || b.state === "sent" || b.state === "unknown" || b.state === "unconfirmed" || b.state === "failed");
 }
 
-// ---------- follow-through on silence (D96) ----------
+// ---------- follow-through on silence (D110) ----------
 
 export const FOLLOW_AFTER_MS = 2 * 60 * 60_000; // never earlier than 2 h after the send
 export const FOLLOW_ACTIVE_MS = 15 * 60_000; // the user did something in the last 15 min
@@ -163,7 +163,7 @@ export function zhJoin(...parts: string[]): string {
 }
 
 /**
- * The one line (D96). It reports silence and never claims the other side was reminded: Bridge
+ * The one line (D110). It reports silence and never claims the other side was reminded: Bridge
  * wakes nobody. Read and unread are different facts, said only when the inbox told us.
  */
 export function followLine(op: OutOp, now: number, zh: boolean, read?: boolean, asked?: string): string {
@@ -186,7 +186,7 @@ export function followLine(op: OutOp, now: number, zh: boolean, read?: boolean, 
     : `${Who} hasn't answered what you asked ${when} ("${gist}"); it may have stopped. I'll tell you as soon as it does.`;
 }
 
-// ---------- what the user is told when an outgoing message can't be confirmed (D92) ----------
+// ---------- what the user is told when an outgoing message can't be confirmed (D106) ----------
 
 export type OutKind = "message" | "claim" | "result" | "reply";
 export function lostLine(op: OutOp, zh: boolean, state: "failed" | "unconfirmed", kind: OutKind): string {

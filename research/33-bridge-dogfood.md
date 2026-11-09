@@ -150,7 +150,7 @@ Three back-to-back runs of both scenarios with the final code (haiku partner, ha
   - *Over-asking* (3 of 3): S2 messages carry numbered sub-questions ("1) … 2) …"). The answers were still short
     and right.
 
-### 3.2 After the decisions (D91–D97), same day
+### 3.2 After the decisions (D105–D111), same day
 
 The author approved the §J defaults. Built on `bridge-spike`, all over the fake Bridge CLI; nothing reached Mem.
 [VERIFIED; unit tests in `packages/partner/test/bridge-out.test.ts`, eval results in
@@ -182,7 +182,7 @@ The author approved the §J defaults. Built on `bridge-spike`, all over the fake
 ## 4. Dogfood findings for the Nowledge team (filed 2026-11-09)
 
 B1–B5 were filed through Nowledge Mem's `report_mem_issue` (concepts and repro only). B6–B10 hit the tool's rate
-limit and wait, ready to file, in `research/private/bridge-issues.md` (D97).
+limit and wait, ready to file, in `research/private/bridge-issues.md` (D111).
 
 Each one has a repro, what was expected, and what happened. Already-known items from #9445 (cold-prompt CLI
 discovery, address-file exchange) are not repeated.
@@ -260,7 +260,7 @@ Ducter decides what to run.
   - The partner must name the agent it replied to, not the user ("已把结果回给 Weyl" was wrong).
   - A claim in the requester's language must not mix in a title in the user's language
     ("Taken: 修 live.test.ts…").
-- **Restart gap and unknown outcome: closed (D92).** Every outgoing op is in the Log before its CLI call; a card
+- **Restart gap and unknown outcome: closed (D106).** Every outgoing op is in the Log before its CLI call; a card
   survives a restart; an unknown outcome is recovered with `outbox → inspect → resume`, never resent.
 
 ## Summary
@@ -276,7 +276,7 @@ Ducter decides what to run.
 - The spike proves S1 and S2 end to end with two real models (haiku) over a fake Bridge. The fixes that made them
   pass: code links the task to the request; the code, not the model, sends the outcome when the model forgets;
   and the code sends only after the user taps a card that names the recipient.
-- After D91–D97 (§3.2): the copy defects are fixed in code and tested (eval 0/6 before; after, sonnet 9/9 and
+- After D105–D111 (§3.2): the copy defects are fixed in code and tested (eval 0/6 before; after, sonnet 9/9 and
   haiku 7/9 with every deterministic check passing); lost sends are recovered; follow-through is built; the live
   trial is one command, waiting on the account.
 - Ten dogfood findings for the Nowledge team: five filed, five rate-limited and ready. The most important: an unavailable backend exits 0

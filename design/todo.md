@@ -229,7 +229,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
   open branch merged.
 
 
-## Nowledge Bridge (D91–D97, `design/bridge.md`)
+## Nowledge Bridge (D105–D111, `design/bridge.md`)
 
 - [ ] Run `bun run bridge:live -- --real` and record the result in research/33. Trigger: the author says the
       account and both contexts are ready (J-Q14 steps 1–4).

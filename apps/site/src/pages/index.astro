@@ -7,7 +7,9 @@ import Head from "../components/Head.astro";
 import Nav from "../components/Nav.astro";
 import Footer from "../components/Footer.astro";
 import Isles from "../components/Isles.astro";
+import GitHubMark from "../components/GitHubMark.astro";
 import { siteLinks } from "../lib/links";
+import { RELEASES_URL } from "../lib/github";
 import { agentsLine, agentsToday, agentsTodayAnd } from "../lib/agents";
 
 const { facts, dl, gh } = await siteLinks();
@@ -344,13 +346,10 @@ const ld = {
           <button role="tab" id="tab-srv" aria-controls="p-srv" aria-selected="false" tabindex="-1">Server</button>
         </div>
         <div class="panel" id="p-mac" role="tabpanel" aria-labelledby="tab-mac" style="margin-top:14px">
-          {facts.dmgUrl
-            ? <p><a class="btn" href={facts.dmgUrl}>Download for Mac</a></p>
-            : <p>The signed download is <b>coming soon</b>. Until then, build it from source on a Mac with Bun and Go:</p>}
-          <div class="term"><button class="btn sm copy" type="button" data-copy="git clone https://github.com/wey-gu/ducter && cd ducter&#10;scripts/make-app.sh">Copy</button><pre><span class="p">$ </span>git clone https://github.com/wey-gu/ducter && cd ducter
-<span class="c"># builds dist/Ducter.app and a .dmg</span>
-<span class="p">$ </span>scripts/make-app.sh</pre></div>
-          <p>Open Ducter.app. It checks your Mac, then opens the conversation. Closing the window doesn't stop it.</p>
+          <p>Paste this into Terminal. It downloads the signed app, checks it, puts it in Applications and opens it:</p>
+          <div class="term"><button class="btn sm copy" type="button" data-copy="curl -fsSL https://ducter.ai/install.sh | sh">Copy</button><pre><span class="p">$ </span>curl -fsSL https://ducter.ai/install.sh | sh</pre></div>
+          <p>Ducter checks your Mac, then opens the conversation. Closing the window doesn't stop it. It needs a Mac with Apple silicon.</p>
+          <p>Or <a href={facts.dmgUrl ?? RELEASES_URL}>download the .dmg</a> and drag Ducter to Applications, or <a href="/docs/install#build-it-from-the-source-instead">build it from the source</a>.</p>
         </div>
         <div class="panel" id="p-cli" role="tabpanel" aria-labelledby="tab-cli" style="margin-top:14px" hidden>
           <div class="term"><button class="btn sm copy" type="button" data-copy="scripts/install.sh&#10;ducter doctor&#10;ducter up">Copy</button><pre><span class="c"># puts `ducter` in ~/.local/bin</span>
@@ -362,10 +361,8 @@ const ld = {
           <p><code>ducter status</code> shows your tasks and the decisions waiting for you.</p>
         </div>
         <div class="panel" id="p-srv" role="tabpanel" aria-labelledby="tab-srv" style="margin-top:14px" hidden>
-          <div class="term"><button class="btn sm copy" type="button" data-copy="scripts/install.sh --linux ducter-linux&#10;sh ducter/install.sh --service&#10;ducter pair">Copy</button><pre><span class="c"># on your Mac</span>
-<span class="p">$ </span>scripts/install.sh --linux ducter-linux
-<span class="c"># on the server</span>
-<span class="p">$ </span>sh ducter/install.sh --service
+          <div class="term"><button class="btn sm copy" type="button" data-copy="curl -fsSL https://ducter.ai/install.sh | sh -s -- --service&#10;ducter pair">Copy</button><pre><span class="c"># on the server (x64 or arm64 Linux): runs as a service</span>
+<span class="p">$ </span>curl -fsSL https://ducter.ai/install.sh | sh -s -- --service
 <span class="c"># a one-time code for your Mac or phone</span>
 <span class="p">$ </span>ducter pair</pre></div>
           <p>Your partner keeps working while your Mac sleeps. It only listens on the server itself (127.0.0.1); reach it through your own domain or an SSH tunnel.</p>
@@ -381,14 +378,14 @@ const ld = {
     <h2>Say it once.</h2>
     <p class="lede">Then get on with your day. Ducter tells you when it's done.</p>
     <div class="cta-row">
-      <a class="btn secondary lg" href={facts.isPublic ? gh.href : "/docs"}>{facts.isPublic ? "Star on GitHub" : "Read the docs"}</a>
+      <a class="btn secondary lg gh" href={gh.href} rel="noopener"><GitHubMark />Star on GitHub</a>
       <a class="btn lg" href={dl.href}>{dl.label}</a>
     </div>
   </div>
 </section>
 </main>
 
-<Footer gh={gh} isPublic={facts.isPublic} />
+<Footer gh={gh} />
 
 <script>
   import "../scripts/main.ts";

@@ -1,7 +1,7 @@
 ---
 import Art from "./Art.astro";
-interface Props { gh: { href: string }; isPublic: boolean; home?: boolean }
-const { gh, isPublic, home = true } = Astro.props;
+interface Props { gh: { href: string }; home?: boolean }
+const { gh, home = true } = Astro.props;
 const at = (h: string) => (h.startsWith("#") && !home ? "/" + h : h);
 ---
 <footer>
@@ -9,7 +9,7 @@ const at = (h: string) => (h.startsWith("#") && !home ? "/" + h : h);
     <a class="brand" href="/" style="font-size:18px"><Art name="ducter_idle" alt="" sizes="34px" />Ducter</a>
     <nav aria-label="Footer">
       <a href="/docs">Docs</a>
-      <a href={at(gh.href)}>{isPublic ? "GitHub" : "Source (opening soon)"}</a>
+      <a href={gh.href} rel="noopener">GitHub</a>
       <a href="https://mem.nowledge.co" rel="noopener">Nowledge Mem</a>
       <a href={at("#install")}>Install</a>
       <a href={at("#trust")}>Trust</a>

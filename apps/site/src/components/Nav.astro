@@ -1,5 +1,6 @@
 ---
 import Art from "./Art.astro";
+import GitHubMark from "./GitHubMark.astro";
 interface Props { dl: { href: string; label: string }; gh: { href: string; label: string }; home?: boolean }
 const { dl, gh, home = true } = Astro.props;
 const at = (hash: string) => (home ? hash : "/" + hash);
@@ -16,8 +17,8 @@ const at = (hash: string) => (home ? hash : "/" + hash);
       <a href={at("#devices")}>Your computers</a>
       <a href={at("#trust")}>Trust</a>
       <a href="/docs">Docs</a>
-      <a href={gh.href.startsWith("#") ? at(gh.href) : gh.href}>{gh.label}</a>
     </nav>
+    <a class="nav-gh" href={gh.href} rel="noopener" aria-label="Ducter on GitHub"><GitHubMark /><span>{gh.label}</span></a>
     <a class="btn md" href={dl.href.startsWith("#") ? at(dl.href) : dl.href}>{dl.label}</a>
   </div>
 </header>

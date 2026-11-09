@@ -8,7 +8,7 @@ import { docHref, type Doc } from "../lib/docs";
 
 interface Props { doc: Doc | null; docs: Doc[] }
 const { doc, docs } = Astro.props;
-const { facts, dl, gh } = await siteLinks();
+const { dl, gh } = await siteLinks();
 const title = doc?.data.title ?? "Ducter docs";
 const description = doc?.data.description ?? "How to install Ducter and work with your partner on your own computers.";
 const path = doc ? docHref(doc) : "/docs";
@@ -44,7 +44,7 @@ const next = i >= 0 && i < docs.length - 1 ? docs[i + 1] : null;
     )}
   </article>
 </main>
-<Footer gh={gh} isPublic={facts.isPublic} home={false} />
+<Footer gh={gh} home={false} />
 <script>
   const nav = document.getElementById("nav")!;
   const f = () => nav.classList.toggle("scrolled", scrollY > 8);

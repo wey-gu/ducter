@@ -153,7 +153,14 @@ func (a *App) runCard(c *ui.Context) {
 	name := a.personaName()
 	a.sheetCard(c, "run", a.L.T("settings.run.title"), func() {
 		if a.Backend == nil {
-			ui.Text(c, a.L.T("settings.run.remote", hostOf(a.URL))).FontSize(t.MD).LineHeight(1.5)
+			// The window talks to a Ducter it didn't start: say where it lives and that
+			// closing the window doesn't stop it (never a bare or empty address).
+			host := hostOf(a.URL)
+			line := a.L.T("settings.run.apart", name)
+			if host != "" && !isLoopback(host) {
+				line = a.L.T("settings.run.remote", name, host)
+			}
+			ui.Text(c, line).FontSize(t.MD).LineHeight(1.5)
 			return
 		}
 		var line string
@@ -369,6 +376,16 @@ func (a *App) versionText() string {
 		v += " (" + a.Commit + ")"
 	}
 	return v
+}
+
+// isLoopback reports whether host (with or without a port) is this computer.
+func isLoopback(host string) bool {
+	h := host
+	if i := strings.LastIndex(h, ":"); i > 0 && !strings.HasSuffix(h, "]") {
+		h = h[:i]
+	}
+	h = strings.Trim(h, "[]")
+	return h == "localhost" || h == "::1" || strings.HasPrefix(h, "127.")
 }
 
 func hostOf(u string) string {

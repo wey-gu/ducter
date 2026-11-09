@@ -65,10 +65,17 @@
      into the ledge when pressed. */
   --base: 0 4px 0 var(--line);
   --ledge: 3px;
-  --press-primary: #000000;
+  --press-primary: #140d07;
   --press-quiet: #e0c9b0; /* secondary */
   --press-accent: #c9642a;
-  --hi-primary: rgba(255, 246, 234, 0.22);
+  /* The ink button reads as clay too: a lighter top, a warm seam above its ledge. */
+  --primary-top: #3b2d22;
+  --seam-primary: #5a4434;
+  --rim-primary: rgba(255, 236, 214, 0.08);
+  --seam-quiet: #f3e3cc;
+  --seam-accent: #ffa466;
+  --hi-primary: rgba(255, 246, 234, 0.26);
+  --drop-primary: 0 7px 12px -4px rgba(43, 33, 24, 0.38);
   --hi-secondary: rgba(255, 255, 255, 0.95);
   --hi-accent: rgba(255, 255, 255, 0.38);
   --rim: rgba(43, 33, 24, 0.09);
@@ -159,11 +166,23 @@
     --base: 0 4px 0 #0d0a07;
     --floating: 0 10px 32px rgba(0, 0, 0, 0.5);
     --press-primary: #8a7a66;
+  --primary-top: var(--ink);
+  --seam-primary: #8a7a66;
+  --rim-primary: transparent;
+  --seam-quiet: #0d0a07;
+  --seam-accent: #c9642a;
+    --primary-top: var(--ink);
+    --seam-primary: #8a7a66;
+    --rim-primary: transparent;
+    --seam-quiet: #0d0a07;
+    --seam-accent: #c9642a;
     --press-quiet: #0d0a07;
     --hi-primary: rgba(255, 255, 255, 0.35);
     --hi-secondary: rgba(255, 255, 255, 0.06);
     --rim: rgba(255, 255, 255, 0.06);
     --drop: 0 7px 12px -4px rgba(0, 0, 0, 0.5);
+  --drop-primary: var(--drop);
+    --drop-primary: var(--drop);
     --drop-pressed: 0 1px 3px rgba(0, 0, 0, 0.4);
   }
 }
@@ -199,11 +218,17 @@
   --base: 0 4px 0 #0d0a07;
   --floating: 0 10px 32px rgba(0, 0, 0, 0.5);
   --press-primary: #8a7a66;
+  --primary-top: var(--ink);
+  --seam-primary: #8a7a66;
+  --rim-primary: transparent;
+  --seam-quiet: #0d0a07;
+  --seam-accent: #c9642a;
   --press-quiet: #0d0a07;
   --hi-primary: rgba(255, 255, 255, 0.35);
   --hi-secondary: rgba(255, 255, 255, 0.06);
   --rim: rgba(255, 255, 255, 0.06);
   --drop: 0 7px 12px -4px rgba(0, 0, 0, 0.5);
+  --drop-primary: var(--drop);
   --drop-pressed: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
@@ -592,6 +617,8 @@ a {
   --hi: var(--hi-secondary);
   --rim-c: var(--rim);
   --lh: var(--ledge);
+  --seam: var(--seam-quiet);
+  --fill-top: var(--fill);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -600,13 +627,13 @@ a {
   min-width: 0;
   padding: 0 20px;
   border-radius: var(--r-btn);
-  background: var(--fill);
+  background: linear-gradient(var(--fill-top), var(--fill));
   color: var(--on);
   font-weight: 700;
   font-size: var(--md);
   line-height: 1.2;
   white-space: nowrap;
-  box-shadow: inset 0 1.5px 0 var(--hi), inset 0 0 0 1px var(--rim-c), 0 var(--lh) 0 var(--ledge-c), var(--drop);
+  box-shadow: inset 0 1.5px 0 var(--hi), inset 0 0 0 1px var(--rim-c), 0 1px 0 var(--seam), 0 var(--lh) 0 var(--ledge-c), var(--drop);
   transition: transform var(--t-press) var(--ease), box-shadow var(--t-press) var(--ease), filter var(--t-fast) var(--ease);
 }
 .btn > .lbl {
@@ -618,7 +645,10 @@ a {
   --on: var(--bg);
   --ledge-c: var(--press-primary);
   --hi: var(--hi-primary);
-  --rim-c: transparent;
+  --rim-c: var(--rim-primary);
+  --seam: var(--seam-primary);
+  --fill-top: var(--primary-top);
+  --drop: var(--drop-primary);
 }
 .btn.secondary {
   --fill: var(--bg);
@@ -630,6 +660,7 @@ a {
   --ledge-c: var(--press-accent);
   --hi: var(--hi-accent);
   --rim-c: transparent;
+  --seam: var(--seam-accent);
 }
 .btn.sm {
   height: 36px;
@@ -662,7 +693,7 @@ a {
 }
 .btn:active:not(:disabled):not(.text) {
   transform: translateY(var(--lh));
-  box-shadow: inset 0 1.5px 0 var(--hi), inset 0 0 0 1px var(--rim-c), 0 0 0 var(--ledge-c), var(--drop-pressed);
+  box-shadow: inset 0 1.5px 0 var(--hi), inset 0 0 0 1px var(--rim-c), 0 0 0 var(--seam), 0 0 0 var(--ledge-c), var(--drop-pressed);
 }
 @media (hover: hover) {
   .btn:hover:not(:disabled):not(.text) {
@@ -787,6 +818,7 @@ a {
   --fill: var(--surface);
   --rim-c: transparent;
   --ledge-c: var(--needs-ledge);
+  --seam: var(--needs-ledge);
 }
 .decision .btn.text {
   color: var(--needs-ink);

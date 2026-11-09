@@ -5,7 +5,20 @@ import { join } from "node:path";
 import { scriptedRuntime, type ScriptedTurn } from "@botiverse/oar/testing";
 import type { Runtime } from "@botiverse/oar/browser";
 import { createOarHarnessPort, createRunner, registerTaskTools } from "../src/index.ts";
-import { browserBrief, browserGate, closeBrowserGracefully, profileName, resetCuaDriverProbe, socketPath, stopFocusGuards, type Exec } from "../src/browser.ts";
+import {
+  browserBrief,
+  browserDriverPref,
+  browserGate,
+  closeBrowserGracefully,
+  defaultNativeProbe,
+  nativeBrowserBrief,
+  nativeUrlOf,
+  profileName,
+  resetCuaDriverProbe,
+  socketPath,
+  stopFocusGuards,
+  type Exec,
+} from "../src/browser.ts";
 import { createFocusGuard, parseDucterBrowsers, type FocusProbe } from "../src/focus-guard.ts";
 import { parkedBounds } from "../src/cdp.ts";
 import { createFakeCore, waitFor, type FakeCore } from "./fake-core.ts";
@@ -61,6 +74,8 @@ afterEach(() => {
 });
 
 const idleProbe: FocusProbe = { front: async () => undefined, ducterBrowsers: async () => [], activate: async () => {} };
+/** The machine's own Claude in Chrome / Codex setup never leaks into these tests (D126). */
+const noNative = () => false;
 
 describe("browser place: session-config wiring", () => {
   test("attaches cua-driver as a stdio MCP sidecar next to Ducter's MCP, with the persona profile", async () => {
@@ -70,7 +85,7 @@ describe("browser place: session-config wiring", () => {
     const runner = createRunner(core, {
       harness: port,
       newId: () => "tskb0001",
-      browser: { env: {}, exec: drv.exec, which: () => BIN, platform: "darwin", daemonTimeoutMs: 1000, focusProbe: idleProbe },
+      browser: { nativeProbe: noNative, env: {}, exec: drv.exec, which: () => BIN, platform: "darwin", daemonTimeoutMs: 1000, focusProbe: idleProbe },
     });
     const card = await runner.openTask({ persona: "p1", title: "Latest OAR release", brief: "look it up", place: { kind: "browser", device: "", profile: "" } });
     await runner.whenStarted(card.taskId);
@@ -109,7 +124,7 @@ describe("browser place: session-config wiring", () => {
     const drv = fakeDriver(TOOLS_044);
     const port = createOarHarnessPort({ loadRuntime: async () => capturingRuntime({}) });
     let n = 0;
-    const runner = createRunner(core, { harness: port, newId: () => `tskb000${++n}`, browser: { env: {}, exec: drv.exec, which: () => BIN, platform: "darwin", focusProbe: idleProbe } });
+    const runner = createRunner(core, { harness: port, newId: () => `tskb000${++n}`, browser: { nativeProbe: noNative, env: {}, exec: drv.exec, which: () => BIN, platform: "darwin", focusProbe: idleProbe } });
     for (let i = 0; i < 2; i++) {
       const c = await runner.openTask({ persona: "p1", title: "t", brief: "b", place: { kind: "browser", device: "local", profile: "default" } });
       await runner.whenStarted(c.taskId);
@@ -121,7 +136,7 @@ describe("browser place: session-config wiring", () => {
   test("an old cua-driver without typed browser tools fails task_open with what to do", async () => {
     const drv = fakeDriver(TOOLS_068);
     const port = createOarHarnessPort({ loadRuntime: async () => capturingRuntime({}) });
-    const runner = createRunner(core, { harness: port, newId: () => "tskb0009", browser: { env: {}, exec: drv.exec, which: () => BIN } });
+    const runner = createRunner(core, { harness: port, newId: () => "tskb0009", browser: { nativeProbe: noNative, env: {}, exec: drv.exec, which: () => BIN } });
     await expect(runner.openTask({ persona: "p1", title: "t", brief: "b", place: { kind: "browser", device: "local", profile: "default" } })).rejects.toThrow(
       /no typed browser tools.*cua-driver update --apply/,
     );
@@ -133,7 +148,7 @@ describe("browser place: session-config wiring", () => {
     const seen: { options?: any } = {};
     const port = createOarHarnessPort({ loadRuntime: async () => capturingRuntime(seen) });
     let n = 0;
-    const runner = createRunner(core, { harness: port, newId: () => `tskc000${++n}`, browser: { env: { DUCTER_BROWSER: "0" }, exec: drv.exec, which: () => BIN } });
+    const runner = createRunner(core, { harness: port, newId: () => `tskc000${++n}`, browser: { nativeProbe: noNative, env: { DUCTER_BROWSER: "0" }, exec: drv.exec, which: () => BIN } });
     await expect(runner.openTask({ persona: "p1", title: "t", brief: "b", place: { kind: "browser", device: "local", profile: "default" } })).rejects.toThrow(/turned off/);
     const c = await runner.openTask({ persona: "p1", title: "t", brief: "b" });
     await runner.whenStarted(c.taskId);
@@ -252,7 +267,7 @@ describe("closing the browser so sign-ins are saved", () => {
     const runner = createRunner(core, {
       harness: port,
       newId: () => "tskd0001",
-      browser: { env: {}, exec: drv.exec, which: () => BIN, platform: "darwin", focusProbe: idleProbe, closeBrowser: async (dir) => (closed.push(dir), true) },
+      browser: { nativeProbe: noNative, env: {}, exec: drv.exec, which: () => BIN, platform: "darwin", focusProbe: idleProbe, closeBrowser: async (dir) => (closed.push(dir), true) },
     });
     const card = await runner.openTask({ persona: "p1", title: "t", brief: "b", place: { kind: "browser", device: "local", profile: "default" } });
     await runner.whenStarted(card.taskId);
@@ -319,7 +334,7 @@ describe("browser status line, identity, task model", () => {
     const runner = createRunner(core, {
       harness: port,
       newId: () => "tske0001",
-      browser: { env: {}, exec: drv.exec, which: () => BIN, platform: "darwin", focusProbe: idleProbe, closeBrowser: async () => true },
+      browser: { nativeProbe: noNative, env: {}, exec: drv.exec, which: () => BIN, platform: "darwin", focusProbe: idleProbe, closeBrowser: async () => true },
     });
     const card = await runner.openTask({ persona: "p1", title: "t", brief: "b", place: { kind: "browser", device: "local", profile: "default" } });
     await runner.whenStarted(card.taskId);
@@ -381,5 +396,130 @@ describe("browser status line, identity, task model", () => {
     await runner.whenStarted(b.taskId);
     expect(seen.options.model).toBe("haiku");
     await runner.dispose();
+  });
+});
+
+describe("browser place: the harness's own browser tools first (D126)", () => {
+  const nativeFor = (...hs: string[]) => (h: string) => hs.includes(h);
+  const place = { kind: "browser", device: "local", profile: "default" } as const;
+  const NATIVE = { DUCTER_BROWSER_DRIVER: "native" };
+
+  test("Claude Code: Claude in Chrome (--chrome), no cua-driver sidecar, clean config kept", async () => {
+    const drv = fakeDriver(TOOLS_044);
+    const seen: { options?: any } = {};
+    const port = createOarHarnessPort({ loadRuntime: async () => capturingRuntime(seen) });
+    const runner = createRunner(core, { harness: port, newId: () => "tskn0001", browser: { nativeProbe: nativeFor("claude-code"), env: NATIVE, exec: drv.exec, which: () => BIN } });
+    const card = await runner.openTask({ persona: "p1", title: "t", brief: "b", place });
+    await runner.whenStarted(card.taskId);
+    const o = seen.options;
+    expect(o.mcpServers.map((m: any) => m.name)).toEqual(["ducter"]);
+    expect(o.launchArgs).toEqual(["--chrome", "--tools", "Bash,Read,Write,ToolSearch"]);
+    expect(o.userConfiguration).toBe("exclude");
+    expect(o.appendSystemPrompt).toContain("Claude in Chrome");
+    expect(o.appendSystemPrompt).toContain("Never sign in");
+    expect(drv.calls).toEqual([]); // cua-driver is never probed or started
+    await runner.dispose();
+  });
+
+  test("Codex: its Computer Use plugin, nothing added; the brief says so", async () => {
+    const seen: { options?: any } = {};
+    const port = createOarHarnessPort({ loadRuntime: async () => capturingRuntime(seen) });
+    const runner = createRunner(core, { harness: port, newId: () => "tskn0002", browser: { nativeProbe: nativeFor("codex"), env: NATIVE, which: () => null } });
+    const card = await runner.openTask({ persona: "p1", title: "t", brief: "b", harness: "codex", place });
+    await runner.whenStarted(card.taskId);
+    expect(seen.options.mcpServers.map((m: any) => m.name)).toEqual(["ducter"]);
+    expect(seen.options.launchArgs).toBeUndefined();
+    expect(seen.options.appendSystemPrompt).toContain("cua_repl");
+    await runner.dispose();
+  });
+
+  test("a harness without its own tools falls back to cua-driver", async () => {
+    const drv = fakeDriver(TOOLS_044);
+    const seen: { options?: any } = {};
+    const port = createOarHarnessPort({ loadRuntime: async () => capturingRuntime(seen) });
+    const runner = createRunner(core, {
+      harness: port,
+      newId: () => "tskn0006",
+      browser: { nativeProbe: nativeFor("codex"), env: NATIVE, exec: drv.exec, which: () => BIN, platform: "darwin", focusProbe: idleProbe },
+    });
+    const card = await runner.openTask({ persona: "p1", title: "t", brief: "b", place }); // claude-code here
+    await runner.whenStarted(card.taskId);
+    expect(seen.options.mcpServers.map((m: any) => m.name)).toEqual(["ducter", "browser"]);
+    await runner.dispose();
+  });
+
+  test("unset or =cua: cua-driver, even when the harness has its own tools", async () => {
+    expect(browserDriverPref({})).toBe("cua"); // the default for now (DEFAULT_BROWSER_DRIVER)
+    expect(browserDriverPref(NATIVE)).toBe("native");
+    expect(browserDriverPref({ DUCTER_BROWSER_DRIVER: "cua" })).toBe("cua");
+    const drv = fakeDriver(TOOLS_044);
+    const seen: { options?: any } = {};
+    const port = createOarHarnessPort({ loadRuntime: async () => capturingRuntime(seen) });
+    const runner = createRunner(core, {
+      harness: port,
+      newId: () => "tskn0003",
+      browser: { nativeProbe: nativeFor("claude-code"), env: { DUCTER_BROWSER_DRIVER: "cua" }, exec: drv.exec, which: () => BIN, platform: "darwin", focusProbe: idleProbe },
+    });
+    const card = await runner.openTask({ persona: "p1", title: "t", brief: "b", place });
+    await runner.whenStarted(card.taskId);
+    expect(seen.options.mcpServers.map((m: any) => m.name)).toEqual(["ducter", "browser"]);
+    expect(seen.options.launchArgs).toEqual(["--tools", "Bash,Read,Write,ToolSearch"]);
+    await runner.dispose();
+  });
+
+  test("Browse the web turned off still wins over native tools", async () => {
+    const port = createOarHarnessPort({ loadRuntime: async () => capturingRuntime({}) });
+    const runner = createRunner(core, { harness: port, newId: () => "tskn0004", browser: { nativeProbe: nativeFor("claude-code"), env: { ...NATIVE, DUCTER_BROWSER: "0" } } });
+    await expect(runner.openTask({ persona: "p1", title: "t", brief: "b", place })).rejects.toThrow(/turned off/);
+  });
+
+  test("native status lines carry own:true, one per new site", async () => {
+    const turn = async (t: ScriptedTurn) => {
+      await t.tool("mcp__claude-in-chrome__navigate", JSON.stringify({ url: "https://www.example.com/a", tabId: 1 }), () => "ok");
+      await t.tool("mcp__claude-in-chrome__navigate", JSON.stringify({ url: "https://example.com/b", tabId: 1 }), () => "ok");
+      await t.tool("mcp__ducter__report_to_main", JSON.stringify({ state: "done", summary: "s" }), () => core.call("report_to_main", { state: "done", summary: "s" }, "tskn0005"));
+    };
+    const port = createOarHarnessPort({ loadRuntime: async () => capturingRuntime({}, turn) });
+    const runner = createRunner(core, { harness: port, newId: () => "tskn0005", browser: { nativeProbe: nativeFor("claude-code"), env: NATIVE } });
+    const card = await runner.openTask({ persona: "p1", title: "t", brief: "b", place });
+    await runner.whenStarted(card.taskId);
+    await waitFor(() => core.tasks.get(card.taskId)?.residency === "warm", "warm");
+    const lines = core.events.filter((e) => e.kind === "task_event" && (e.body as any).raw?.browser).map((e) => (e.body as any).raw.browser);
+    expect(lines).toEqual([{ host: "example.com", url: "https://www.example.com/a", own: true }]);
+    await runner.dispose();
+  });
+
+  test("the URL of a native call: Claude in Chrome navigate, or the first URL in Codex cua_repl code", () => {
+    expect(nativeUrlOf({ name: "mcp__claude-in-chrome__navigate", input: { url: "https://a.com/x" } })).toBe("https://a.com/x");
+    expect(nativeUrlOf({ name: "mcp__cua_repl__js", input: { code: 'await app.typeText("https://news.ycombinator.com"); await app.pressKey("Return")' } })).toBe("https://news.ycombinator.com");
+    expect(nativeUrlOf({ name: "mcp__cua_repl__js", input: { code: "await app.getAXState()" } })).toBeUndefined();
+    expect(nativeUrlOf({ name: "mcp__browser__browser_navigate", input: { url: "https://a.com" } })).toBeUndefined();
+  });
+
+  test("the default probe reads files only: Claude's host file, Codex's plugin and app", () => {
+    const home = join(dir, "home");
+    const env = { HOME: home, CODEX_HOME: "" };
+    expect(defaultNativeProbe("claude-code", { env, isolated: false })).toBe(false);
+    expect(defaultNativeProbe("codex", { env, isolated: false })).toBe(false);
+    expect(defaultNativeProbe("pi", { env, isolated: false })).toBe(false);
+    const hosts =
+      process.platform === "darwin" ? join(home, "Library", "Application Support", "Google/Chrome", "NativeMessagingHosts") : join(home, ".config", "google-chrome", "NativeMessagingHosts");
+    mkdirSync(hosts, { recursive: true });
+    writeFileSync(join(hosts, "com.anthropic.claude_code_browser_extension.json"), "{}");
+    if (process.platform === "darwin" || process.platform === "linux") expect(defaultNativeProbe("claude-code", { env, isolated: true })).toBe(true);
+    if (process.platform !== "darwin") return;
+    const codex = join(home, ".codex");
+    mkdirSync(join(codex, "plugins", "cache", "openai-bundled", "unified-computer-use"), { recursive: true });
+    mkdirSync(join(codex, "computer-use", "Codex Computer Use.app"), { recursive: true });
+    writeFileSync(join(codex, "config.toml"), '[plugins."unified-computer-use@openai-bundled"]\nenabled = true\n');
+    expect(defaultNativeProbe("codex", { env, isolated: false })).toBe(true);
+    expect(defaultNativeProbe("codex", { env, isolated: true })).toBe(false); // the clean setup has no plugins
+    writeFileSync(join(codex, "config.toml"), '[features]\nplugins = false\n[plugins."unified-computer-use@openai-bundled"]\nenabled = true\n');
+    expect(defaultNativeProbe("codex", { env, isolated: false })).toBe(false);
+  });
+
+  test("native briefs (snapshot)", () => {
+    expect(nativeBrowserBrief({ partnerName: "Ducter", harness: "claude-code", evidenceDir: "/d/evidence/t1" })).toMatchSnapshot();
+    expect(nativeBrowserBrief({ partnerName: "Ducter", harness: "codex", evidenceDir: "/d/evidence/t1" })).toMatchSnapshot();
   });
 });

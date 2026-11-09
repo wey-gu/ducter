@@ -80,7 +80,7 @@ var IdleSquareContent = struct{ X, Y, W, H float32 }{X: 66.0 / 400, Y: 88.0 / 40
 // content: devices and the pedestal at 640 px on the long side, abilities,
 // the empty slot and the AI-account tokens at 256. Nil if it is missing.
 func Clay(name string) *ui.Bitmap {
-	for _, size := range []int{640, 256} {
+	for _, size := range []int{1280, 640, 256} {
 		if _, err := artFS.Open(fmt.Sprintf("art/clay/%s@%d.png", name, size)); err == nil {
 			return load(fmt.Sprintf("art/clay/%s@%d.png", name, size))
 		}

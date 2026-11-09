@@ -147,6 +147,15 @@ Reach it one of two ways:
 - **No domain:** an SSH tunnel from your Mac, `ssh -N -L 7777:127.0.0.1:7777 you@server`, then
   the address is `http://127.0.0.1:7777`.
 
+Keys for harness sign-ins (`CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token`,
+`DEEPSEEK_API_KEY`) go in `~/.ducter/keys.env` (`KEY=value`, `chmod 600`). Ducter reads that
+file and hands each key only to the harness that signs in with it; the service never loads it
+into its environment (D102). The unit's `EnvironmentFile`, `~/.ducter/env`, is for non-secret
+settings; a key left there by an older install moves to `keys.env` on the next start or
+`service install`. Every harness process gets an allowlisted environment
+(`packages/runner/src/child-env.ts`), so a key or token in the shell Ducter was started from
+doesn't reach tasks either.
+
 In the Mac app choose **My Ducter is on another machine → Connect to your Ducter** and enter
 the address and the code from `ducter pair` (or paste the whole link it prints). On a phone,
 open that link or scan the QR it prints (through your domain): it opens the phone web client,

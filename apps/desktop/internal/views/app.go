@@ -163,6 +163,12 @@ type App struct {
 	// partner and settings are the Partner page's and Settings' own state.
 	partner  partnerState
 	settings settingsState
+	// title is the title moment's own state (D87); PlayTitle starts its
+	// sound (nil: silent, as in tests).
+	title     titleState
+	PlayTitle func() TitleSound
+	// lo is what the partner thinks with and who does the tasks (D89).
+	lo loadoutState
 	// SystemLang is macOS's language, for Settings' "follow the system";
 	// OnLanguage is told when the window's language changes (the menus).
 	SystemLang i18n.Lang
@@ -316,8 +322,12 @@ func (a *App) View(c *ui.Context) {
 	c.SetTheme(a.uiTheme)
 	a.drainActionResults(c)
 	a.shortcuts(c)
+	a.titleTick(c)
 	ui.Column(c).Fill().Background(a.T.Bg).TextColor(a.T.Ink).Font(a.T.Body).Children(a.page(c, func() {
 		switch {
+		case a.title.on:
+			a.setupActive() // the first check runs under the title
+			a.titleView(c)
 		case a.Unauthorized || (!a.S.Welcomed && a.conn.open):
 			a.connect(c)
 		case a.setupActive():
@@ -605,6 +615,10 @@ func (a *App) Welcomed() {
 	if a.S.Settings != nil || a.Route == RoutePartner || a.Desktop != nil {
 		a.send(protocol.SettingsReq{T: "settings"})
 	}
+	// Connections (D96): same, once the Partner page asked.
+	if a.S.ConnAsked || a.Route == RoutePartner {
+		a.send(protocol.ConnectionsReq{T: "connections"})
+	}
 }
 
 // Receive applies a server frame on the UI thread. A welcome from a Log
@@ -761,7 +775,7 @@ func (a *App) bodyLine(t *store.Task) string {
 		parts = append(parts, h)
 	}
 	if m := t.Model(); m != "" {
-		parts = append(parts, m)
+		parts = append(parts, modelLabel(a.trayHarness(t.Harness()), m))
 	}
 	return strings.Join(parts, " · ")
 }

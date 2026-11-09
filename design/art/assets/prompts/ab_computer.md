@@ -1,1 +1,1 @@
-A puffy round badge in mint tint containing a small monitor with a soft cartoon hand touching the screen.
+A soft orange clay hand with a pointing finger tapping a tiny mint clay screen of a chunky cream mini computer.

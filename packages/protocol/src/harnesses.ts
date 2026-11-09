@@ -146,6 +146,23 @@ export const PI_PROVIDER_ENV = [
 /** The env var DeepSeek Harness reads its DeepSeek key from (dsh-credentials-local). */
 export const DSH_KEY_ENV = "DEEPSEEK_API_KEY";
 
+/** The Claude Code login token from `claude setup-token` (research/29); a server keeps it in keys.env. */
+export const CLAUDE_TOKEN_ENV = "CLAUDE_CODE_OAUTH_TOKEN";
+
+/**
+ * D102: the only secret-shaped variables each harness's processes may receive, from Ducter's key
+ * file (<dataDir>/keys.env) or the environment Ducter was started with. Every other key or token
+ * is left out of a harness child. A key is granted to the harness that signs in with it and to no
+ * other: DEEPSEEK_API_KEY goes to DeepSeek Harness only, never to pi. Codex also gets the
+ * `env_key` its own config.toml names for a custom provider (runner child-env.ts).
+ */
+export const HARNESS_KEYS: Readonly<Record<HarnessId, readonly string[]>> = {
+  "claude-code": [CLAUDE_TOKEN_ENV, "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"],
+  codex: ["OPENAI_API_KEY", "CODEX_API_KEY"],
+  pi: PI_PROVIDER_ENV.filter((k) => k !== DSH_KEY_ENV),
+  "deepseek-harness": [DSH_KEY_ENV],
+};
+
 /** A device's view of one harness, completed from the table: may it be the partner, how is it paid. */
 export function deviceHarness<T extends { harness: string; installed: boolean; loggedIn: boolean; billing?: "plan" | "usage" }>(h: T): T & { canBePartner: boolean; billing?: "plan" | "usage" } {
   const info = isHarnessId(h.harness) ? HARNESSES[h.harness] : undefined;

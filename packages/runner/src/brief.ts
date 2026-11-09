@@ -86,3 +86,12 @@ export const REOPENED =
 
 /** The one nudge after a turn ends with no report (stall rule). */
 export const NUDGE = "Report status via report_to_main.";
+
+/**
+ * First turn of a task handed to another AI agent (D89, 换到 X 接着做 / Continue on X): the new
+ * session has the same brief and worktree; this says where the work stood.
+ */
+export function handedOver(from: string, progress: string[]): string {
+  const where = progress.length ? `\n\nWhere it stood (saved progress, oldest first):\n${progress.map((p) => `- ${p}`).join("\n")}` : "";
+  return `This task was started by ${from}; the user moved it to you to carry on. The worktree has its changes so far. Check where the work stands (git status, git log, the files), then continue with the brief from there. Don't start over.${where}\n\nReport via report_to_main when done, blocked, or needing a decision.`;
+}

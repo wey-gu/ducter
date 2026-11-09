@@ -2,7 +2,7 @@
 // clients fold the same events the same way: living messages revised in place, jobs folded into
 // their acks, decisions with their resolutions, tasks with their streams, the On hand snapshot.
 // Pure data; tested without a DOM.
-import type { ActivityStep, Attention, Bodies, ClientFrame, Delivery, EvidenceRef, LogEvent, OnHand, Place, ServerFrame, TaskCard } from "@ducter/protocol";
+import type { ActivityStep, Attention, Bodies, ClientFrame, Delivery, EvidenceRef, LogEvent, OnHand, Place, ServerFrame, TaskBody, TaskCard } from "@ducter/protocol";
 
 export type Ev<K extends keyof Bodies = keyof Bodies> = LogEvent<K>;
 
@@ -61,6 +61,9 @@ export interface Task {
   acted?: { action: string; ok: boolean; message?: string; ref?: string };
   /** The seq the action was logged at: a done report after it is new, unmerged work. */
   actedSeq?: number;
+  /** Who does it now and why: the latest body_selected (D89). */
+  body?: TaskBody;
+  bodySeq?: number;
 }
 
 export const LANE = { needs: 0, working: 1, waiting: 2, done: 3, hidden: 4 } as const;
@@ -88,15 +91,16 @@ export const attention = (t: Task): Attention => t.state?.attention ?? t.card?.a
 export const reasonOf = (t: Task) => t.state?.reason || t.card?.reason || "";
 export const placeOf = (t: Task): Place => t.open?.place ?? t.card?.place ?? { kind: "none" };
 export const reportOf = (t: Task) => t.lastReport ?? t.card?.lastReport;
-export const harnessOf = (t: Task) => t.open?.harness || t.card?.harness || "";
-export const modelOf = (t: Task) => t.open?.model || t.card?.model || "";
+export const whoOf = (t: Task): TaskBody | undefined => t.body ?? t.card?.body;
+export const harnessOf = (t: Task) => whoOf(t)?.harness || t.open?.harness || t.card?.harness || "";
+export const modelOf = (t: Task) => { const w = whoOf(t); return w ? w.model ?? "" : t.open?.model || t.card?.model || ""; };
 export const projectOf = (t: Task) => t.open?.project ?? t.card?.project ?? "";
 export const bodyReasonOf = (t: Task) => t.open?.bodyReason || t.card?.bodyReason || "";
 export const finished = (t: Task) => ["done", "done_claimed", "failed"].includes(attention(t));
 
 function taskOf(ev: LogEvent): string {
   const b = ev.body as { taskId?: string };
-  if (["task_open", "task_state", "task_event", "report", "checkpoint"].includes(ev.kind) && b.taskId) return b.taskId;
+  if (["task_open", "task_state", "task_event", "report", "checkpoint", "body_selected"].includes(ev.kind) && b.taskId) return b.taskId;
   return ev.stream.startsWith("task:") ? ev.stream.slice(5) : "";
 }
 
@@ -153,6 +157,8 @@ export class Store {
         return;
       }
       case "action_result": {
+        // A switch (D89) is not a result action: Merge and the rest stay as they were.
+        if (f.action === "switch") return void this.actionResults.push(f);
         const t = this.tasks.get(f.taskId);
         if (t) (t.acting = undefined), (t.unsure = undefined), (t.acted = { action: f.action, ok: f.ok, message: f.message, ref: f.ref }), (t.actedSeq = this.cursor);
         this.actionResults.push(f);
@@ -256,6 +262,9 @@ export class Store {
       }
       case "job_status": {
         const b = ev.body as Bodies["job_status"];
+        // A body_<task>_… note tells the partner the user switched who does a task (D89); the
+        // task's own line says it.
+        if (ev.origin === "user" && b.jobId.startsWith("body_")) return void this.bySeq.set(ev.seq, null);
         // A user-origin act_<task>_<action> status is the durable record of a button action.
         if (ev.origin === "user" && b.taskId && b.jobId.startsWith(`act_${b.taskId}_`)) {
           // On (re)connect the channel replays before on_hand lists the task: keep it anyway.
@@ -373,6 +382,12 @@ export class Store {
         for (const e of b.evidence ?? []) if (!t.evidence.some((h) => h.ref === e.ref && h.label === e.label)) t.evidence.push(e);
         break;
       }
+      case "body_selected":
+        if (!t.body || ev.seq >= (t.bodySeq ?? 0)) {
+          const b = ev.body as Bodies["body_selected"];
+          (t.body = { harness: b.harness, ...(b.model ? { model: b.model } : {}), why: b.why }), (t.bodySeq = ev.seq);
+        }
+        break;
       case "checkpoint":
         t.checkpoints.push({ text: (ev.body as Bodies["checkpoint"]).text, seq: ev.seq, ts: ev.ts });
         t.checkpoints.sort((a, b) => a.seq - b.seq);

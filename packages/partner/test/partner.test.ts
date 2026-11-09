@@ -313,6 +313,44 @@ describe("turn loop", () => {
     expect(p2.stats.resumes).toBe(0);
   });
 
+  test("D89: Switch on Partner while a session is live: the next message starts fresh on the new pick", async () => {
+    const clock = new FakeClock();
+    const dir = tmp();
+    const fc = fakeCore(clock, dir);
+    const fr = fakeRunner((_i, s) => {
+      s.say("ok");
+      s.end();
+    });
+    let settings: any = { brain: { harness: "claude-code", model: "opus" } };
+    const core = { ...fc.core, settings: { get: () => settings, setForgetter() {}, setMemState() {} } as any };
+    const p = createPartner(core, fr.runner, { now: clock.now, onError: () => {} });
+    p.onTrigger(fc.core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "hi" } }));
+    await p.idle();
+    clock.advance(60 * 1000); // still warm: without a switch the live session would carry on
+    settings = { brain: { harness: "codex", model: "gpt-6-luna" } };
+    p.onTrigger(fc.core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "and now?" } }));
+    await p.idle();
+    const last = fr.sessions.at(-1)!;
+    expect(fr.sessions.length).toBeGreaterThanOrEqual(2);
+    expect(fr.sessions[0]!.spec).toMatchObject({ harness: "claude-code", model: "opus" });
+    expect(fr.sessions[0]!.closed).toBe(true);
+    expect(last.spec).toMatchObject({ harness: "codex", model: "gpt-6-luna", isolateUserConfig: true });
+    expect(last.spec.resumeSessionId).toBeUndefined();
+    // The model alone changes: also a fresh session, on the same harness.
+    clock.advance(60 * 1000);
+    settings = { brain: { harness: "codex", model: "gpt-6.1-sol" } };
+    p.onTrigger(fc.core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "smarter" } }));
+    await p.idle();
+    expect(fr.sessions.at(-1)!.spec).toMatchObject({ harness: "codex", model: "gpt-6.1-sol" });
+    // No switch: the live session carries on.
+    const n = fr.sessions.length;
+    clock.advance(60 * 1000);
+    p.onTrigger(fc.core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "same" } }));
+    await p.idle();
+    expect(fr.sessions.length).toBe(n);
+    await p.close();
+  });
+
   test("wait_until: armed waiter now, [timer fired] trigger when core fires it", async () => {
     const { fc, fr, partner, user, channel } = setup(async (input, s, n) => {
       if (n === 0) {

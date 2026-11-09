@@ -19,6 +19,8 @@ type devices struct {
 	subs   map[*conn]bool
 	codeN  int
 	refuse map[string]string // ability -> reason the next add is refused with
+	// conns are the user's connections (D96) a scene shows as mailboxes.
+	conns []protocol.ConnectionView
 }
 
 func defaultDevices() []protocol.DeviceView {
@@ -148,6 +150,12 @@ func (h *hub) handleDevices(c *conn, f protocol.ClientFrame) bool {
 			time.Sleep(50 * time.Millisecond)
 			h.pushDevices()
 		}()
+	case "connections":
+		d.mu.Lock()
+		d.subs[c] = true
+		conns := append([]protocol.ConnectionView{}, d.conns...)
+		d.mu.Unlock()
+		c.send(map[string]any{"t": "connections", "connections": conns})
 	case "pair_code":
 		d.mu.Lock()
 		d.codeN++

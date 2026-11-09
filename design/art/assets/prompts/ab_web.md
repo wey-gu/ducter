@@ -1,1 +1,1 @@
-A puffy round badge (like a thick soft button) in sky-blue tint containing a small rounded browser window icon with three tiny dots (orange, butter, mint).
+A small round sky-blue clay globe with mint clay continents, wearing a chunky cream clay browser frame around its front like a window it is looking through, three tiny clay dots on the frame's top bar.

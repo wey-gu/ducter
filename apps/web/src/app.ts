@@ -1,5 +1,5 @@
 // The phone app's state and actions (the views read it and call these). One store, one socket.
-import type { ClientFrame, MemView, ServerFrame, Settings, SettingsPatch } from "@ducter/protocol";
+import type { Candidate, ClientFrame, ConnectionView, DeviceHarness, MemView, OoDetect, RuleView, ServerFrame, Settings, SettingsPatch } from "@ducter/protocol";
 import { Api, Connection, type ConnStatus, type Me, wsUrl } from "./conn.ts";
 import { detectLang, langOfText, strings, type Lang, type Strings } from "./i18n.ts";
 import { pushState, type PushState } from "./push-client.ts";
@@ -57,6 +57,18 @@ class AppState {
   /** The partner's settings (D71), once the server sent them; mem is what it remembers. */
   settings?: Settings;
   mem?: MemView;
+  /** Who does the tasks (D89): Your rules, this Mac's AI agents (from devices), and who could
+   *  do the task whose Switch who does it is open. */
+  rules?: RuleView[];
+  agents?: DeviceHarness[];
+  candidates = new Map<string, Candidate[]>();
+  switchFor = "";
+  switching = "";
+  /** The user's connections (D96) and what oo is set up with, once asked for. */
+  connections?: ConnectionView[];
+  oo?: OoDetect;
+  /** A connection being checked (the add button waits). */
+  connecting = false;
   route: Route = { name: "conv" };
   sheet: Sheet = null;
   status: ConnStatus = "connecting";
@@ -137,6 +149,17 @@ class AppState {
       this.conn?.rehello();
     }
     if (f.t === "settings") return this.applySettings(f);
+    if (f.t === "rules") return void ((this.rules = f.rules), this.changed());
+    if (f.t === "devices") return void ((this.agents = f.devices.find((d) => d.home)?.harnesses ?? []), this.changed());
+    if (f.t === "candidates") return void (this.candidates.set(f.taskId, f.candidates), this.changed());
+    if (f.t === "connections") return (this.connections = f.connections), (this.oo = f.oo), this.changed();
+    if (f.t === "connection_result") {
+      this.connecting = false;
+      if (!f.ok && f.reason) this.toast(this.L.t(`acct.err.${f.reason}`));
+      const added = f.ok && this.connections?.find((c) => c.id === f.id);
+      if (added) this.toast(this.L.t("acct.added", added.name));
+      return this.changed();
+    }
     const before = new Map([...this.S.tasks].map(([id, t]) => [id, attention(t)]));
     this.S.apply(f);
     for (const [id, t] of this.S.tasks) if (finished(t) && before.has(id) && !["done", "done_claimed", "failed"].includes(before.get(id)!)) this.doneAt = Date.now();
@@ -150,7 +173,8 @@ class AppState {
       for (const r of this.S.resends(this.pending)) this.send(r);
       if (this.route.name === "task") this.history(this.route.id, true);
       // Settings are pushed only to sockets that asked: ask again on a new one.
-      if (this.settings || this.sheet?.kind === "settings") this.send({ t: "settings" });
+      if (this.settings || this.sheet?.kind === "settings") this.askLoadout();
+      if (this.connections) this.send({ t: "connections" });
     }
     // on_hand closes the replay that follows a welcome.
     if (f.t === "on_hand" && this.inDoubt) this.S.settleInDoubt(this.inDoubt), (this.inDoubt = undefined);
@@ -175,8 +199,37 @@ class AppState {
   /** Opens this phone's Settings sheet, asking for the partner's settings. */
   openSettings() {
     this.sheet = { kind: "settings" };
-    if (this.S.welcomed) this.send({ t: "settings" });
+    if (this.S.welcomed) this.askLoadout();
     this.changed();
+  }
+
+  /** The settings, Your rules and this Mac's AI agents (each socket asks for itself). */
+  askLoadout() {
+    this.send({ t: "settings" });
+    this.send({ t: "rules" });
+    this.send({ t: "devices" });
+  }
+
+  /** 换谁来做 / Switch who does it: opens (or closes) the list for a task, asking who could. */
+  openSwitch(taskId: string) {
+    if (this.switchFor === taskId) this.switchFor = "";
+    else (this.switchFor = taskId), this.send({ t: "candidates", taskId });
+    this.changed();
+  }
+
+  /** 换到 X 接着做 / Continue on X. */
+  switchTask(taskId: string, harness: string, model: string | undefined, name: string) {
+    this.switching = name;
+    this.send({ t: "task_switch", taskId, harness, ...(model ? { model } : {}) });
+    this.changed();
+  }
+
+  /** 跟 Ducter 说一条规则… / Tell Ducter a rule…: the conversation, with the words started. */
+  tellRule() {
+    this.sheet = null;
+    this.draft = this.L.t("loadout.rule.prefill");
+    this.go({ name: "conv" });
+    setTimeout(() => document.getElementById("composer")?.focus(), 50);
   }
 
   /** Changes partner settings: shown at once, then confirmed by the server's frame. */
@@ -185,6 +238,33 @@ class AppState {
     if (patch.name) this.S.personaName = patch.name;
     this.send({ t: "settings_set", patch });
     this.changed();
+  }
+
+  /** Connections (D96): ask once; the server keeps this socket up to date. */
+  askConnections() {
+    if (this.S.welcomed) this.send({ t: "connections" });
+  }
+  addConnection(url: string, token: string) {
+    this.connecting = true;
+    this.send({ t: "connection_add", url, ...(token ? { token } : {}) });
+    this.changed();
+  }
+  useOoConnection() {
+    this.connecting = true;
+    this.send({ t: "connection_oo" });
+    this.changed();
+  }
+  removeConnection(id: string) {
+    if (this.connections) this.connections = this.connections.filter((c) => c.id !== id);
+    this.send({ t: "connection_remove", id });
+    this.changed();
+  }
+  /**
+   * For the devices stage (Isles, being rebuilt on the isles branch): the mailboxes that stand on
+   * the island of the computer Ducter lives on. Connections always live there (D96).
+   */
+  homeMailboxes(): { id: string; name: string; source: ConnectionView["source"]; trouble: boolean }[] {
+    return (this.connections ?? []).map((c) => ({ id: c.id, name: c.name, source: c.source, trouble: c.state === "unreachable" || c.state === "unauthorized" }));
   }
 
   /** Titles of the noted lines being forgotten, for the toast that answers. */
@@ -255,7 +335,11 @@ class AppState {
       const name = t ? title(t) : "";
       if (f.ok && f.action === "merge") this.toast(this.L.t("result.merged.toast", name, short(f.ref ?? "")));
       else if (f.ok && f.action === "open_pr") this.toast(this.L.t("result.pr.toast", f.ref ?? ""));
-      else if (!f.ok) this.toast(this.L.t("result.action.failed", f.message ?? ""));
+      else if (f.action === "switch") {
+        if (f.ok) (this.switchFor = ""), this.toast(this.L.t("who.done", this.switching));
+        else this.toast(this.L.t("who.failed", f.message ?? ""));
+        this.switching = "";
+      } else if (!f.ok) this.toast(this.L.t("result.action.failed", f.message ?? ""));
     }
   }
 

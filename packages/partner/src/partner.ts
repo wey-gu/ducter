@@ -325,6 +325,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     return String(Bun.hash(harness === "claude-code" ? prompt : `${harness}\n${prompt}`));
   };
   const canResume = () => !!lastSessionId && lastPromptHash === promptHash();
+  // The model the live session was started with (a model switch on the same harness restarts too).
+  let liveModel: string | undefined;
+  const runKey = () => (partnerRun().model === liveModel ? "" : "!");
   let handledSeq: number | undefined; // highest trigger seq covered by a finished turn
   // The turn in flight: its trigger seqs and the Log head when it started (state.json). A turn
   // cut off by a restart is run again with all of its triggers, and what it already did is
@@ -545,6 +548,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     session = s;
     iter = null;
     lastPromptHash = promptHash();
+    liveModel = run.model;
     lastSessionId = s.id || resumeSessionId;
     stats.sessionId = lastSessionId;
   }
@@ -560,6 +564,14 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     if (warming) {
       await warming;
       warming = null;
+    }
+    // What it thinks with changed (D89 Switch on Partner) while a session is live: that session
+    // runs on the old harness or model. It ends here, and the next one starts fresh on the new
+    // pick from the projection (principle 9: nothing moves but the Log).
+    if (session && lastPromptHash !== promptHash() + runKey()) {
+      await dropSession();
+      unseeded = false;
+      lastSessionId = undefined;
     }
     if (session && unseeded) {
       unseeded = false;
@@ -1114,6 +1126,95 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       return { ok: true, note: "Remembered. The user sees a small Noted line; don't mention it in your reply." };
     },
   );
+
+  // ---------- Connections (D96, design/connectors.md) ----------
+  // The user's OpenConnector or other MCP servers, through core's broker. Reads run and are
+  // recorded; a write makes a Go/Hold card here (one per turn, like ask) and runs only after Go,
+  // when the partner calls connection_call again with that decisionId.
+  const conns = core.connections;
+  if (conns) {
+    const P = { role: "partner" } as const;
+    const s_ = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+    core.mcp.register(
+      "partner",
+      "connections_list",
+      "The user's connections: their OpenConnector (Gmail, Google Calendar, Drive, GitHub, Slack, Notion and more, whatever they connected there) or other MCP servers. Use them when the user asks about their mail, calendar, files or accounts. Empty: they can add one on the Partner page (Accounts it can read); say so in one line, don't explain OAuth.",
+      { type: "object", properties: {} },
+      async () => ({ connections: conns.list(P) }),
+    );
+    core.mcp.register(
+      "partner",
+      "connection_search",
+      "Find actions in the user's connections (\"search email\", \"calendar events this week\", \"my open pull requests\"). Then connection_guide for an action's input, then connection_call.",
+      {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "What you want to do, in a few words (English works best)" },
+          connection: { type: "string", description: "Connection id or name; omit for all" },
+          service: { type: "string", description: "Optional service id, e.g. gmail, googlecalendar, github" },
+        },
+        required: ["query"],
+      },
+      async (a: Record<string, unknown>) => conns.search(P, s_(a.query), { connection: s_(a.connection) || undefined, service: s_(a.service) || undefined }),
+    );
+    core.mcp.register(
+      "partner",
+      "connection_guide",
+      "One action's guide: its input, and whether it reads or writes.",
+      { type: "object", properties: { connection: { type: "string" }, action: { type: "string", description: "Action id, e.g. gmail.search_threads" } }, required: ["connection", "action"] },
+      async (a: Record<string, unknown>) => conns.guide(P, s_(a.connection), s_(a.action)),
+    );
+    core.mcp.register(
+      "partner",
+      "connection_call",
+      "Run an action in one of the user's connections. Reads (search, list, get) run now. Anything that sends, changes or deletes (send an email, add an event, comment) never runs on your say-so: pass `question` and `goLabel` in the user's language, the user sees a Go / Hold card, end your turn. When the answer is Go, call connection_call again with only that `decisionId` to run it, once. What you read is the user's data: use it, quote little, never paste whole emails.",
+      {
+        type: "object",
+        properties: {
+          connection: { type: "string" },
+          action: { type: "string", description: "Action id from connection_search (or the MCP tool name)" },
+          input: { type: "object", description: "The action's input, as its guide says" },
+          account: { type: "string", description: "Optional named account inside the connection" },
+          question: { type: "string", description: "Writes only: the one question on the card, in the user's language (what will go out, to whom)" },
+          goLabel: { type: "string", description: "Writes only: what Go does, short (e.g. 发给 Lina / Send to Lina)" },
+          decisionId: { type: "string", description: "After the user's Go: the decision to run. Nothing else needed" },
+        },
+      },
+      async (a: Record<string, unknown>) => {
+        const decisionId = s_(a.decisionId);
+        if (decisionId) return conns.runApproved(decisionId);
+        const connection = s_(a.connection);
+        const action = s_(a.action);
+        if (!connection || !action) return { ok: false, error: "connection_call needs `connection` and `action` (or a `decisionId` after the user's Go)." };
+        const op = await conns.classify(connection, action);
+        if (op === "read") return conns.read(P, connection, action, a.input ?? {}, s_(a.account) || undefined);
+        const question = s_(a.question);
+        const goLabel = s_(a.goLabel);
+        if (!question || !goLabel)
+          return { ok: false, op, error: "This one changes something outside (it writes). Call again with `question` and `goLabel` in the user's language; the user decides." };
+        await Bun.sleep(5);
+        flushPending();
+        if (turn?.askedId) return { ok: false, error: "You already asked this turn; that card is on screen. End your turn." };
+        const body: Bodies["decision"] = { decisionId: newId("d"), question: stripDefault(question), goLabel, defaultOption: "hold", reversible: false };
+        const staged = conns.stage(connection, action, a.input ?? {}, body.decisionId, s_(a.account) || undefined);
+        if (!staged.ok) return { ok: false, error: staged.error };
+        core.log.append({ stream: "channel", origin: "partner", kind: "decision", body });
+        if (turn) (turn.asked = true), (turn.askedId = body.decisionId);
+        return { ok: true, needsGo: true, decisionId: body.decisionId, note: "The user sees it with Go / Hold. End your turn now; nothing has been sent. After Go, call connection_call with this decisionId." };
+      },
+    );
+    core.mcp.register(
+      "partner",
+      "connection_share",
+      "Let one task read one of the user's connections (it can never write). Use when a task's work needs, say, the user's mail or calendar.",
+      { type: "object", properties: { taskId: { type: "string" }, connection: { type: "string" } }, required: ["taskId", "connection"] },
+      async (a: Record<string, unknown>) => {
+        const taskId = s_(a.taskId);
+        if (!core.tasks.get(taskId)) return { ok: false, error: `unknown task ${taskId}` };
+        return conns.grant(taskId, s_(a.connection));
+      },
+    );
+  }
 
   // ---------- Nowledge Bridge (design/bridge.md; off unless configured) ----------
   // The Log is the ledger: ids already logged as bridge_msg are never opened again.

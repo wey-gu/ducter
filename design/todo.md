@@ -80,6 +80,29 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       with no default. Re-run the eval's ask scenarios after.
 - [ ] **Long paths in bubbles (D67):** middle-ellipsis with tap to expand, desktop and phone.
 
+### What it thinks with, and who does the tasks (D89, D90)
+
+- [x] **The partner runs on `Settings.brain`** (harnesses, D85) and a live session ends at the
+      next message after a switch (ai-loadout): unit (fake runner) and end to end on OAR's
+      scripted runtime (`packages/cli/test/brain-switch.test.ts`). A live Codex partner turn is
+      still to walk.
+- [ ] **Codex as what it thinks with** behind its config isolation (`-c` overrides, no user
+      `AGENTS.md`) and a pass of `packages/partner/eval`; pi and DeepSeek Harness the same,
+      each when it passes the eval.
+- [ ] **The partner's prompt sees Your rules** (today core applies them in `fw_candidates`;
+      the partner learns them only through `rule_list`). Trigger: a rule the partner ignores
+      when it pins a harness itself.
+- [ ] **Allowance on the tray is real** only where a harness reports it (`DeviceHarness.allowance`);
+      probes for Claude Code (`get_usage`) and Codex (`account/rateLimits`) are not built.
+- [ ] **Live handoff** between harnesses: verified with fake sessions only (runner test).
+- [ ] **Human comprehension test** of the socket and tray (`design/ai-loadout.md` §6: ≥ 80% on
+      key items, no boss or servant reads).
+- [x] **Devices mark** is an icon-only badge on the coin (`BrainBadge`, tooltip and accessible
+      name "{name} 想事情用"); the rebuilt Devices stage (`isles`) only has to keep calling it
+      inside a token's coin box.
+- [ ] **The phone's opened task** keeps its title as the headline; D90's "what it is doing
+      now" headline is desktop-only so far.
+
 ## The quiet conversation (D104, `design/quiet-conversation.md`)
 
 - [ ] The ack says how long work usually takes and that it will say when it's done ("一般十来
@@ -154,6 +177,21 @@ note and a `Dn`) before it is built.
       visible; in a `bun build --compile` binary the avatar file is not bundled, so there is no
       Dock tile.
 - [ ] Find what triggers macOS's "CuaDriver was prevented from modifying apps" notification.
+
+## Devices stage: the Isles (D81)
+
+- [ ] Human comprehension test of the Isles scene (owed since D65; research/33 used LLM proxy
+      raters only). Pass bar: 80% on where Ducter lives, what a bridge means, work running, can't
+      reach, and where a new device goes. Trigger: before v1 is called done.
+- [ ] Reduced motion checked on the native window with the system setting on (verified in the
+      headless renderer only; this machine's setting was left alone). Trigger: the next design QA.
+- [ ] "Shared by N devices" from the AI agent itself, per account (D82). Trigger: an AI agent
+      reports its account or allowance.
+- [ ] The site's ability stickers: `design/art/assets/alpha/ab_*.png` are now the clay objects
+      (D81); `apps/site/public/art` still holds the old rings until `apps/site/scripts/art.mjs`
+      runs. Trigger: the next site build.
+- [ ] One small mark on the AI agent Ducter thinks with (a separate proposal); the token has
+      room for it. Trigger: that proposal is decided.
 
 ## Art assets: production export
 
@@ -254,11 +292,18 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] Verify Codex leaves out a non-empty global `~/.codex/AGENTS.md` and the user's
       `personality` (this Mac's AGENTS.md is empty). Trigger: a scratch `CODEX_HOME` copy with
       a test AGENTS.md, or a user with one.
-- [ ] The Devices key field for API-key accounts: masked input, writes `<dataDir>/env` (0600),
-      never echoed or logged; "需要一个 DeepSeek 密钥 / Needs a DeepSeek key". Trigger: the
-      ai-loadout Devices work.
-- [ ] Pass pi's provider keys from `<dataDir>/env` too (today only DeepSeek Harness's key is
-      read from there). Trigger: a pi user without the key in their login env.
+- [ ] The Devices key field for API-key accounts: masked input, writes `<dataDir>/keys.env`
+      (0600, D102), never echoed or logged; "需要一个 DeepSeek 密钥 / Needs a DeepSeek key".
+      Trigger: the ai-loadout Devices work.
+- [x] Pass pi's provider keys from Ducter's key file too (D102: `HARNESS_KEYS.pi`, from the
+      env or `keys.env`, never the DeepSeek key).
+- [ ] A way for the user to give tasks a named env token on purpose (e.g. `GITHUB_TOKEN` for
+      `gh`), now that a harness child's environment is an allowlist (D102). Trigger: a task
+      fails because a tool it runs relied on a token from Ducter's shell.
+- [ ] pi's in-process fallback (no `node` and no `pi` on PATH) runs inside Ducter's process and
+      reads its environment directly; the allowlist covers only pi's bash tool there. Ducter's
+      own keys are scrubbed from that environment, a shell key is not. Trigger: a machine
+      without node that runs pi tasks.
 - [ ] Label the partner's Codex sessions (`SessionOptions.name`) so they read as Ducter's in the
       user's Codex history. Trigger: a user asks what they are.
 - [ ] Qwen Code, Qoder, Grok as the next harnesses (cheapest per research/34). Trigger: a user

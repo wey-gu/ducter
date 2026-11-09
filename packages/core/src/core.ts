@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { randomBytes } from "node:crypto";
 import type { Bodies, LogEvent } from "@ducter/protocol";
 import type { CoreApi, Partner, Runner } from "@ducter/protocol/src/internal.ts";
+import { migrateKeys, readKeys, scrubKeysFromEnv } from "@ducter/protocol/src/keys.ts";
 import { realClock, type Clock } from "./clock.ts";
 import { createDecisions, type Decisions } from "./decisions.ts";
 import { createLiving, type Living } from "./living.ts";
@@ -22,6 +23,10 @@ import { createApnsSender, loadApnsConfig, type ApnsSender } from "./apns.ts";
 import { webApi, webStatic } from "./web.ts";
 import { createDevicesView, type DeviceProbes, type DevicesView } from "./devices.ts";
 import { openSettings, type SettingsStore } from "./settings.ts";
+import { openRules, type RulesStore } from "./rules.ts";
+import { createLoadout, isRuleHint, registerRuleTools, type Loadout } from "./loadout.ts";
+import { openConnections, type ConnectionsStore, type Linker, type OoSource } from "./connections.ts";
+import { registerConnectionTools } from "./connection-tools.ts";
 
 export interface CoreOptions {
   dataDir?: string;
@@ -39,6 +44,9 @@ export interface CoreOptions {
   apns?: ApnsSender;
   /** Test seams for Your devices and abilities (cua-driver, harness logins, device kind). */
   deviceProbes?: Partial<DeviceProbes>;
+  /** Test seams for connections: the MCP link, and the oo CLI's config. */
+  connectionLinker?: Linker;
+  ooSource?: OoSource;
 }
 
 export interface Core extends CoreApi {
@@ -56,6 +64,11 @@ export interface Core extends CoreApi {
   pusher: Pusher;
   /** The partner's settings (D71). */
   settings: SettingsStore;
+  /** 你的规则 / Your rules and who does the tasks (D89). */
+  rules: RulesStore;
+  loadout: Loadout;
+  /** The user's connections (D96). */
+  connections: ConnectionsStore;
   port: number;
   url: string; // ws URL for clients
   setRunner(r: Runner): void;
@@ -71,6 +84,8 @@ export function triggersPartner(e: LogEvent): boolean {
   if (e.kind === "waiter") return (e.body as Bodies["waiter"]).state === "fired";
   if (e.kind === "report") return (e.body as Bodies["report"]).state !== "progress";
   if (e.kind === "bridge_msg") return (e.body as Bodies["bridge_msg"]).direction === "in";
+  // The second switch the same way: the partner offers a rule once (loadout.ts).
+  if (isRuleHint(e)) return true;
   return false;
 }
 
@@ -104,7 +119,7 @@ function loadSecret(dataDir: string): string {
 
 export function startCore(opts: CoreOptions = {}): Core {
   const dataDir = opts.dataDir ?? defaultDataDir();
-  // Owner-only when we create it: it holds the Log, worktrees, browser profiles, the env file.
+  // Owner-only when we create it: it holds the Log, worktrees, browser profiles, the key file.
   if (!existsSync(dataDir)) mkdirSync(dataDir, { recursive: true, mode: 0o700 });
   // An existing dir from an older install (0755/0775) is tightened too, when it is ours.
   try {
@@ -112,6 +127,16 @@ export function startCore(opts: CoreOptions = {}): Core {
     if (process.getuid && st.uid === process.getuid() && (st.mode & 0o077) !== 0) chmodSync(dataDir, 0o700);
   } catch {
     /* not ours or not a plain dir: leave it */
+  }
+  // D102: keys live in <dataDir>/keys.env (0600), read only by the code that passes each one to
+  // its harness. Keys an older install left in <dataDir>/env move there, and any a server's unit
+  // already loaded from that file leave this process's environment.
+  try {
+    const moved = migrateKeys(dataDir).moved;
+    if (moved.length) console.log(`[ducter] moved ${moved.length} key(s) from ${join(dataDir, "env")} to ${join(dataDir, "keys.env")}`);
+    scrubKeysFromEnv(readKeys(dataDir));
+  } catch (err) {
+    console.warn(`[ducter] could not move keys to keys.env: ${(err as Error).message}`);
   }
   const clock = opts.clock ?? realClock;
   const persona = opts.persona ?? { id: "default", name: "Ducter", identity: DEFAULT_IDENTITY };
@@ -138,6 +163,10 @@ export function startCore(opts: CoreOptions = {}): Core {
   const waiters = createWaiters({ log, clock });
   const mcp = createMcpHub({ secret: loadSecret(dataDir) });
   registerCoreTools(mcp, log, tasks);
+  const rules = openRules(dataDir);
+  registerRuleTools(mcp, rules);
+  const connections = openConnections({ dataDir, log, linker: opts.connectionLinker, oo: opts.ooSource });
+  registerConnectionTools(mcp, connections);
 
   const early: LogEvent[] = []; // triggers that arrive before the partner is wired
   const trigger = (e: LogEvent) => {
@@ -153,9 +182,10 @@ export function startCore(opts: CoreOptions = {}): Core {
     else if (early.length < 100) early.push(e);
   });
 
-  const api = { log, tasks, mcp, persona, dataDir, settings } as CoreApi;
   let devicesView: DevicesView | undefined;
-  const ws = createWsHandler({ core: api, decisions, runner: () => runner, devices: () => devicesView, settings, batchMs: opts.batchMs });
+  const loadout = createLoadout({ log, tasks, settings, rules, devices: () => devicesView });
+  const api = { log, tasks, mcp, persona, dataDir, settings, connections, bodies: loadout } as CoreApi;
+  const ws = createWsHandler({ core: api, decisions, runner: () => runner, devices: () => devicesView, settings, connections, rules, loadout, batchMs: opts.batchMs });
   api.activity = { set: ws.setActivity };
   const devices = openDeviceAuth(dataDir);
   // A device that pairs changes Your devices and abilities (远程打开 / Reach from anywhere).
@@ -249,6 +279,9 @@ export function startCore(opts: CoreOptions = {}): Core {
     push,
     pusher,
     settings,
+    rules,
+    loadout,
+    connections,
     port,
     url: `ws://127.0.0.1:${port}/ws`,
     setRunner(r) {

@@ -1,6 +1,6 @@
 ---
 title: Your partner and settings
-description: Rename your partner, choose how it talks, when it may come to you, what it remembers, and the app's own settings.
+description: Rename your partner, choose what it thinks with and who does the tasks, how it talks, when it may come to you, what it remembers, and the app's own settings.
 order: 4
 ---
 
@@ -15,6 +15,23 @@ your devices can do lives in **Devices**.
 Open it with **⌘4**, from **View › Partner**, or by clicking your partner's face and name at the
 top of the conversation. On a phone, tap your partner at the top of the conversation.
 
+- **What it thinks with.** Beside your partner is a round socket labelled **Thinks with**. It
+  holds the AI agent your partner itself runs on, Claude Code with Opus at first. Pick **Opus ·
+  Smartest** or **Sonnet · Faster replies**. Switching keeps its name, what it remembers and
+  your conversation; the new choice takes over from your next message. **Switch** lets you
+  drop another AI agent signed in on this Mac into the socket. Today your partner can think
+  with Claude Code; Codex is coming soon. Other AI agents do tasks only.
+- **Who does the tasks.** Under the socket is a tray of the AI agents on this Mac, each with a
+  ring showing how much of its limit is left. For each task your partner picks one: the best fit
+  with the most limit left. Click an AI agent to see its limit, how many devices share it, when
+  it comes back, and **Use it for tasks** (on unless you turn it off). One limit is shared by
+  your partner's own thinking and the tasks, so 10% of your partner's own account is kept for
+  it: tasks can't use that part, and it can always answer you. An AI agent you pay per use says
+  **Pay per use**.
+- **Your rules.** Say a rule in the conversation, like "backend work on Codex", and your
+  partner repeats it back and keeps it. Your rules are listed here; **Remove** drops one. If you
+  move the same kind of task to another AI agent twice, your partner asks once whether to make
+  it a rule.
 - **Its name.** Click **Rename**, type a new name, and press Return. The new name shows at once
   in every window and on your phone.
 - **How it talks.** Choose **Follow me** to have it answer in whatever language you write in.
@@ -32,10 +49,37 @@ top of the conversation. On a phone, tap your partner at the top of the conversa
   down. **Forget** removes a line: Nowledge Mem forgets it when it can, and otherwise the line
   is only hidden here (the app tells you which). To stop it from recalling or noting anything,
   turn off **Remember things**.
+- **Accounts it can read.** Your partner can read your Gmail, calendar, GitHub and other
+  accounts through [OpenConnector](https://github.com/oomol-lab/open-connector). Connect the
+  accounts there first, make a key for Ducter on OpenConnector's Access page (Create Token), then choose
+  **Add one**, pick where your OpenConnector runs, and paste its address and the key.
+  - **Hosted by OOMOL** needs no setup with Google, but your mail and sign-ins pass through
+    OOMOL's servers.
+  - **Self-hosted** keeps them on your own machine. For Gmail and similar accounts, you then
+    set up your own app with Google in OpenConnector.
+  - If OOMOL's `oo` command line is set up with your own OpenConnector, choose **Use the
+    OpenConnector from oo** instead.
+  - Your partner reads on its own, and asks you first before anything is sent or changed.
+  - What it reads is shown to your AI account to understand it; no one else gets it.
+  - **Remove** takes an account away, and the key with it. The key is kept only in
+    Ducter's own data folder.
+  - This is new and still being tried out. Your partner doesn't yet watch your accounts on
+    its own; it looks when you ask.
 - **On its own, or asks you first.** This list shows what your partner does without asking
   (changing code in its own copy, reading your projects, browsing in its own browser) and what it
   always asks you about first (anything that reaches other people, anything that can't be taken
   back, signing in, paying). You can't change this list yet.
+
+### Who's doing a task
+
+Every task says who is doing it. In the conversation its line ends with the AI agent's name,
+and the reason when it isn't your partner's plain pick ("Claude Code's limit is low", or your
+rule). Open the task and look under **Details › Who's doing it**: one sentence says who and
+why. **Switch who does it** lists who else could do it, with why and how much limit each has
+left; the ones that can't say why. **Continue on …** moves the task: a task that is still
+working carries on there from its saved progress; it doesn't start over.
+
+On a phone, the same is in the Settings sheet (tap your partner) and in a task's Details.
 
 ## Settings
 

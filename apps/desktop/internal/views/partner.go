@@ -33,6 +33,13 @@ type partnerState struct {
 	toastAt      time.Time
 	// forgetting: the noted lines asked to be forgotten, seq -> title.
 	forgetting map[int64]string
+	// Adding a connection (D96): the form, where it runs, the address and
+	// the token being typed (dropped once it is sent).
+	acctAdding  bool
+	acctWhere   int // 0 OOMOL Hosted, 1 self-hosted, 2 other MCP
+	acctURL     string
+	acctToken   string
+	acctWaiting bool
 }
 
 // OpenPartner shows the Partner page, asking for the settings (and to be
@@ -40,6 +47,8 @@ type partnerState struct {
 func (a *App) OpenPartner() {
 	a.Route = RoutePartner
 	a.send(protocol.SettingsReq{T: "settings"})
+	a.send(protocol.RulesReq{T: "rules"}) // Your rules (D89)
+	a.send(protocol.ConnectionsReq{T: "connections"})
 	if a.S.DevicesAt.IsZero() {
 		a.send(protocol.DevicesReq{T: "devices"}) // where it lives
 	}
@@ -75,11 +84,25 @@ func (a *App) partnerView(c *ui.Context) {
 						ui.Text(c, ps.toast).FontSize(t.SM).FontWeight(700).MaxLines(2)
 					}, nil)
 				}
+				// What it thinks with and who does the tasks (D89): the tray
+				// of this Mac's AI agents, then the two cards.
+				a.tray(c)
+				loadout := []func(){func() { a.brainCard(c) }, func() { a.tasksCard(c) }}
+				if wide {
+					ui.Row(c).Gap(t.S5).AlignItems(ui.Start).Children(func() {
+						ui.Column(c).Grow(1).Basis(0).MinWidth(0).Children(loadout[0])
+						ui.Column(c).Grow(1).Basis(0).MinWidth(0).Children(loadout[1])
+					})
+				} else {
+					loadout[0]()
+					loadout[1]()
+				}
 				cards := []func(){
 					func() { a.talkCard(c, st) },
 					func() { a.notifyCard(c, st) },
 					func() { a.memoryCard(c, st) },
 					func() { a.trustCard(c) },
+					func() { a.accountsCard(c) },
 				}
 				if !wide {
 					for _, card := range cards {
@@ -88,12 +111,14 @@ func (a *App) partnerView(c *ui.Context) {
 					return
 				}
 				ui.Row(c).Gap(t.S5).AlignItems(ui.Start).Children(func() {
-					ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(t.S5).Children(func() { cards[0](); cards[1]() })
+					ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(t.S5).Children(func() { cards[0](); cards[1](); cards[4]() })
 					ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(t.S5).Children(func() { cards[2](); cards[3]() })
 				})
 			})
 		})
 	})
+	a.loadoutToast(c, w)
+	a.brainFlyer(c)
 }
 
 // partnerHero: a character sheet across the whole card. The clay partner
@@ -112,8 +137,18 @@ func (a *App) partnerHero(c *ui.Context, wide bool) {
 	}
 	ui.Row(c.Key("partner-hero")).Gap(t.S6).Wrap().AlignItems(ui.Center).Padding(t.S5, t.S6).Radius(t.RadiusXL).Background(t.Clay).
 		Shadow(0, t.Raised.Y, 0, 0, t.Raised.Color).Children(func() {
-		ui.Row(c).Gap(t.S5).AlignItems(ui.Center).Grow(1).Basis(400).MinWidth(0).Children(func() {
-			a.avatar(c, shown, 200)
+		// With the socket beside it (what it thinks with, D89) the partner's
+		// half is wider and the partner a little smaller.
+		withSocket := a.S.Settings != nil
+		basis, size := float32(400), float32(200)
+		if withSocket {
+			basis, size = 600, 176
+		}
+		ui.Row(c).Gap(t.S5).AlignItems(ui.Center).Grow(1).Basis(basis).MinWidth(0).Children(func() {
+			a.avatar(c, shown, size)
+			if withSocket {
+				a.socket(c)
+			}
 			ui.Column(c).Grow(1).MinWidth(0).Gap(t.S2).Children(func() {
 				a.partnerName(c)
 				if home := a.homeDevice(); home != nil {
@@ -121,7 +156,7 @@ func (a *App) partnerHero(c *ui.Context, wide bool) {
 				}
 			})
 		})
-		ui.Row(c.Key("faces")).Gap(t.S2).Grow(1).Basis(400).MinWidth(0).Justify(ui.SpaceBetween).Role(ui.RoleGroup).Children(func() {
+		ui.Row(c.Key("faces")).Gap(t.S2).Grow(1).Basis(340).MinWidth(0).Justify(ui.SpaceBetween).Role(ui.RoleGroup).Children(func() {
 			for _, p := range theme.Presences {
 				a.faceThumb(c, p, shown == p)
 			}
@@ -461,6 +496,180 @@ func (a *App) trustCard(c *ui.Context) {
 		list(a.L.T("partner.trust.own"), "partner.trust.own.", t.Done, drawCheck)
 		list(a.L.T("partner.trust.asks"), "partner.trust.asks.", t.NeedsYou, drawAsk)
 	})
+}
+
+// ---------- 它能看的账号 / Accounts it can read (D96) ----------
+
+const hostedConnector = "https://connector.oomol.com"
+
+// accountsCard: the user's OpenConnector (OOMOL Hosted or self-hosted) or
+// another MCP server, each a small clay mailbox (the prototype's look,
+// design/connectors.md §9), with an honest line about where mail passes.
+// The token is typed once and never shown again.
+func (a *App) accountsCard(c *ui.Context) {
+	t := a.T
+	ps := &a.partner
+	a.drainConnResult()
+	a.sheetCard(c, "accounts", a.L.T("acct.title"), func() {
+		a.note(c, a.L.T("acct.lede"))
+		list := a.S.Connections
+		if a.S.ConnAsked && len(list) == 0 {
+			ui.Text(c, a.L.T("acct.none")).FontSize(t.MD).LineHeight(1.5).TextColor(t.InkSoft)
+		}
+		for _, cv := range list {
+			cv := cv
+			ui.Row(c.Key("acct:"+cv.ID)).Gap(t.S3).AlignItems(ui.Center).Padding(t.S2, t.S3).Radius(t.RadiusMD).Background(t.SurfaceSunken).Children(func() {
+				ui.Box(c).Size(30, 46).Draw(a.drawMailbox(cv.Source)).Shrink(0).AccessHidden(true)
+				ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
+					ui.Text(c, cv.Name).FontSize(t.MD).FontWeight(700).SingleLine()
+					a.note(c, a.L.T("acct.src."+cv.Source))
+					if cv.State == "unreachable" || cv.State == "unauthorized" {
+						ui.Text(c, a.L.T("acct.state."+cv.State)).FontSize(t.SM).FontWeight(700).TextColor(t.Failed.Ink)
+					}
+				})
+				if a.buttonFor(c, a.L.T("acct.remove"), cv.Name, btnText, t.ControlSM, t.SurfaceSunken) {
+					a.send(protocol.ConnectionRemove{T: "connection_remove", ID: cv.ID})
+				}
+			})
+		}
+		oo := a.S.Oo
+		usedOo := false
+		for _, cv := range list {
+			usedOo = usedOo || cv.Via == "oo"
+		}
+		if oo != nil && oo.SelfHosted != nil && !usedOo {
+			ui.Column(c).Gap(t.S2).Children(func() {
+				ui.Row(c).Children(func() {
+					if a.button(c, a.L.T("acct.oo"), btnSecondary, t.ControlMD, t.Surface) && !ps.acctWaiting {
+						ps.acctWaiting = true
+						a.send(protocol.ConnectionOo{T: "connection_oo"})
+					}
+				})
+				a.note(c, a.L.T("acct.oo.note", oo.SelfHosted.URL))
+			})
+		} else if oo != nil && oo.Account && oo.SelfHosted == nil {
+			a.note(c, a.L.T("acct.oo.account"))
+		}
+		if !ps.acctAdding {
+			ui.Row(c).Children(func() {
+				if a.button(c, a.L.T("acct.add"), btnSecondary, t.ControlMD, t.Surface) {
+					ps.acctAdding, ps.acctWhere, ps.acctURL, ps.acctToken = true, 0, hostedConnector, ""
+				}
+			})
+		} else {
+			ui.Box(c).Height(1).Background(t.LineSoft)
+			wheres := []string{"oomol", "self", "mcp"}
+			labels := []string{a.L.T("acct.where.oomol"), a.L.T("acct.where.self"), a.L.T("acct.where.mcp")}
+			if i := a.choices(c, "acct-where", a.L.T("acct.where"), labels, ps.acctWhere); i >= 0 {
+				ps.acctWhere = i
+				switch i {
+				case 0:
+					ps.acctURL = hostedConnector
+				case 1:
+					ps.acctURL = "http://localhost:3000"
+				default:
+					ps.acctURL = ""
+				}
+			}
+			a.note(c, a.L.T("acct.where."+wheres[ps.acctWhere]+".note"))
+			submit := func() {
+				if ps.acctWaiting || strings.TrimSpace(ps.acctURL) == "" {
+					return
+				}
+				ps.acctWaiting = true
+				a.send(protocol.ConnectionAdd{T: "connection_add", URL: strings.TrimSpace(ps.acctURL), Token: strings.TrimSpace(ps.acctToken)})
+				ps.acctToken = "" // sent once; never kept in the app
+			}
+			a.acctField(c, "acct-url", a.L.T("acct.address"), &ps.acctURL, false, submit)
+			a.acctField(c, "acct-token", a.L.T("acct.key"), &ps.acctToken, true, submit)
+			ui.Row(c).Gap(t.S2).Justify(ui.End).Children(func() {
+				if a.button(c, a.L.T("acct.cancel"), btnText, t.ControlMD, t.Surface) {
+					ps.acctAdding, ps.acctToken = false, ""
+				}
+				label := a.L.T("acct.check")
+				if ps.acctWaiting {
+					label = a.L.T("acct.checking")
+				}
+				if a.button(c, label, btnPrimary, t.ControlMD, t.Surface) {
+					submit()
+				}
+			})
+		}
+		a.note(c, a.L.T("acct.honest"))
+	})
+}
+
+// acctField is one labelled input on the accounts card; the token is masked.
+func (a *App) acctField(c *ui.Context, key, label string, value *string, secret bool, submit func()) {
+	t := a.T
+	ui.Column(c.Key("field:" + key)).Gap(t.S2).Children(func() {
+		ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
+		in := ui.TextInput(c.Key("input:"+key), value).Label(label).FontSize(t.MD).Padding(t.S3, t.S4).Radius(t.RadiusSM).
+			Background(t.SurfaceSunken).Border(1, t.LineSoft).OnSubmit(submit)
+		if secret {
+			in.Password()
+		}
+	})
+}
+
+// drainConnResult turns the server's answer to an add or a remove into one
+// line on the page.
+func (a *App) drainConnResult() {
+	r := a.S.ConnResult
+	if r == nil {
+		return
+	}
+	a.S.ConnResult = nil
+	ps := &a.partner
+	ps.acctWaiting = false
+	if !r.OK {
+		if r.Reason != "" {
+			ps.toast, ps.toastAt = a.L.T("acct.err."+r.Reason), a.Now()
+		}
+		return
+	}
+	for _, cv := range a.S.Connections {
+		if cv.ID == r.ID {
+			ps.acctAdding = false
+			ps.toast, ps.toastAt = a.L.T("acct.added", cv.Name), a.Now()
+		}
+	}
+}
+
+// drawMailbox is the small clay mailbox for one connection: a post, a
+// rounded box, an envelope on the lid; its colour says where it runs.
+func (a *App) drawMailbox(source string) func(p *ui.Painter, r ui.Rect) {
+	t := a.T
+	body := t.InkMuted
+	switch source {
+	case "oomol":
+		body = t.Accent
+	case "self":
+		body = t.Working.Dot
+	}
+	return func(p *ui.Painter, r ui.Rect) {
+		sx, sy := r.W/52, r.H/84
+		x := func(v float32) float32 { return r.X + v*sx }
+		y := func(v float32) float32 { return r.Y + v*sy }
+		p.Fill(ui.Rect{X: x(22), Y: y(44), W: 8 * sx, H: 37 * sy}, t.Line2, 3*sx)
+		var box ui.Path
+		box.MoveTo(x(6), y(46)).LineTo(x(6), y(26)).CubeTo(x(6), y(4), x(46), y(4), x(46), y(26)).LineTo(x(46), y(46)).Close()
+		p.FillPath(&box, body)
+		var lid ui.Path
+		lid.MoveTo(x(10), y(44)).LineTo(x(10), y(28)).CubeTo(x(10), y(10), x(42), y(10), x(42), y(28)).LineTo(x(42), y(44)).Close()
+		p.FillPath(&lid, t.Surface)
+		p.Fill(ui.Rect{X: x(15), Y: y(27), W: 22 * sx, H: 15 * sy}, body, 2.5*sx)
+		var env ui.Path
+		env.MoveTo(x(15.5), y(28)).LineTo(x(26), y(36)).LineTo(x(36.5), y(28))
+		p.StrokePath(&env, 1.6, t.Surface)
+	}
+}
+
+// HomeMailboxes is for the devices stage (Isles, being rebuilt on the isles
+// branch): the mailboxes that stand on the island of the computer Ducter
+// lives on. Connections always live there (D96).
+func (a *App) HomeMailboxes() []protocol.ConnectionView {
+	return a.S.Connections
 }
 
 // ---------- helpers ----------

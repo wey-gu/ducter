@@ -77,6 +77,9 @@ type Tokens struct {
 
 	// Clay is the surface clay art sits on (the renders' own cream).
 	Clay ui.Color
+	// Isles is the Devices stage's scene (D81): a calm clay sea, the
+	// bridges from home and what crosses them.
+	Isles IslesTokens
 
 	// type: one scale (D76). XS captions and labels, SM secondary text
 	// and small controls, MD body and controls, Bubble the user's bubble
@@ -138,6 +141,20 @@ type Tokens struct {
 	Equip EquipMotion
 }
 
+// IslesTokens are the colors of the Devices stage's scene (D81): the sky
+// band and the sea from far to near, the light on the water, the foam
+// round an island and the mist of one that can't be reached; a bridge's
+// planks, their dark edge and its ropes; a parcel crossing it.
+type IslesTokens struct {
+	Sky, SeaFar, Sea, SeaNear, Glint, Foam, Mist ui.Color
+	// SkyTop is the sky's top, Haze the horizon's, Cloud the soft clouds.
+	SkyTop, Haze, Cloud               ui.Color
+	Plank, PlankDark, PlankPale, Rope ui.Color
+	Parcel, ParcelEdge                ui.Color
+	// ParcelSpeed is how fast parcels cross, in scene points a second.
+	ParcelSpeed float32
+}
+
 // EquipMotion times the equip: the whole flight, the moment it snaps into
 // the slot (a fraction of the flight), the device's squash, how long
 // Ducter shows its done face, and the reduced-motion cross-fade.
@@ -187,6 +204,14 @@ func Pebble() *Tokens {
 		Asleep:   StateColors{Dot: hex("#6C63A8"), Surface: hex("#ECE9F8"), Ink: hex("#4B3F70"), Strong: hex("#574F8F")},
 		Away:     StateColors{Dot: hex("#A99C8B"), Surface: hex("#EFEAE3"), Ink: hex("#5E5448"), Strong: hex("#8C7F6E")},
 		Clay:     hex("#FFF4E6"),
+		Isles: IslesTokens{
+			Sky: hex("#FCEBD6"), SeaFar: hex("#C4E6DF"), Sea: hex("#A6D8D0"), SeaNear: hex("#86C4BC"),
+			SkyTop: hex("#E9EEEA"), Haze: hex("#FFF6EA"), Cloud: hex("#FFFDF8"),
+			Glint: hex("#FFFFFA"), Foam: hex("#FFFFFF"), Mist: hex("#FFF9F0"),
+			Plank: hex("#D9A76A"), PlankDark: hex("#A8743E"), PlankPale: hex("#EADCC6"), Rope: hex("#8A6236"),
+			Parcel: hex("#FFF3E0"), ParcelEdge: hex("#C98F4E"),
+			ParcelSpeed: 40,
+		},
 
 		Display: "Bricolage Grotesque, Resource Han Rounded CN, PingFang SC, Noto Sans SC",
 		Body:    "Bricolage Grotesque, PingFang SC, Noto Sans SC",

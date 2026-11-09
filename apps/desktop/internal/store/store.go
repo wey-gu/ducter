@@ -90,6 +90,9 @@ type Task struct {
 	seqs   map[int64]bool
 	// HistoryLoaded is set once a task_history frame arrived.
 	HistoryLoaded bool
+	// Body is who does it now and why (the latest body_selected, D89).
+	Body    *protocol.TaskBody
+	bodySeq int64
 	// OpenedAt is the time of task_open, when known.
 	OpenedAt string
 	openSeq  int64 // seq of the task_open in Open (a retitle is a later one)
@@ -200,8 +203,24 @@ func (t *Task) Report() *protocol.Report {
 	return nil
 }
 
-// Harness, Model, Project, BodyReason come from task_open or the card.
+// Who returns who does the task now and why: the latest body_selected,
+// else the card's, else nil (a task from before D89).
+func (t *Task) Who() *protocol.TaskBody {
+	if t.Body != nil {
+		return t.Body
+	}
+	if t.Card != nil {
+		return t.Card.Body
+	}
+	return nil
+}
+
+// Harness, Model, Project, BodyReason come from who does it now, task_open
+// or the card.
 func (t *Task) Harness() string {
+	if w := t.Who(); w != nil {
+		return w.Harness
+	}
 	if t.Open != nil {
 		return t.Open.Harness
 	}
@@ -212,6 +231,9 @@ func (t *Task) Harness() string {
 }
 
 func (t *Task) Model() string {
+	if w := t.Who(); w != nil {
+		return w.Model
+	}
 	if t.Open != nil && t.Open.Model != "" {
 		return t.Open.Model
 	}
@@ -289,7 +311,22 @@ type Store struct {
 	// outcome, until the view shows it.
 	Settings *protocol.Settings
 	Mem      *protocol.MemView
-	Forgot   *protocol.Forgot
+	// Connections (D96), once asked for; nil means not yet. Oo is what the
+	// oo CLI is set up with. ConnResult is the last add/remove answer, for
+	// the page to turn into one line.
+	Connections []protocol.ConnectionView
+	ConnAsked   bool
+	Oo          *protocol.OoDetect
+	ConnResult  *protocol.ServerFrame
+	Forgot      *protocol.Forgot
+	// Rules are 你的规则 / Your rules, as last sent (nil until a rules
+	// frame; RulesAt says one came). Candidates are who could do a task,
+	// by task id, as last asked; SwitchResults the switch answers not yet
+	// shown (D89).
+	Rules         []protocol.RuleView
+	RulesAt       time.Time
+	Candidates    map[string][]protocol.Candidate
+	SwitchResults []protocol.ServerFrame
 
 	// Activity is what the partner is doing while the user waits on its
 	// reply (D104), nil between turns; ActivityAt is when this app first
@@ -367,6 +404,14 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		if f.Forgot != nil {
 			s.Forgot = f.Forgot
 		}
+	case "connections":
+		s.Connections, s.Oo, s.ConnAsked = f.Connections, f.Oo, true
+		if s.Connections == nil {
+			s.Connections = []protocol.ConnectionView{}
+		}
+	case "connection_result":
+		fc := f
+		s.ConnResult = &fc
 	case "sent":
 		if t := s.Tasks[f.TaskID]; t != nil {
 			for _, sd := range t.Sends {
@@ -376,7 +421,19 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 				}
 			}
 		}
+	case "rules":
+		s.Rules, s.RulesAt = f.Rules, time.Now()
+	case "candidates":
+		if s.Candidates == nil {
+			s.Candidates = map[string][]protocol.Candidate{}
+		}
+		s.Candidates[f.TaskID] = f.Candidates
 	case "action_result":
+		// A switch is not a task action the result line shows (Merge stays as it was).
+		if f.Action == "switch" {
+			s.SwitchResults = append(s.SwitchResults, f)
+			return
+		}
 		if t := s.Tasks[f.TaskID]; t != nil {
 			fc := f
 			t.Acting, t.Unsure, t.Acted, t.ActedSeq = "", "", &fc, s.HeadSeq
@@ -534,6 +591,12 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 		j.Ack = b
 		s.add(&Entry{Event: ev, Job: j})
 	case *protocol.JobStatus:
+		// A "body_<task>_…" note tells the partner the user switched who does a task; the
+		// task's own line already says it (D89).
+		if ev.Origin == protocol.OriginUser && strings.HasPrefix(b.JobID, "body_") {
+			s.bySeq[ev.Seq] = nil
+			return
+		}
 		// A user-origin "act_<task>_<action>" status records what the user did by button
 		// (merge, open_pr): the durable form of an action_result, so it survives restarts.
 		if ev.Origin == protocol.OriginUser && b.TaskID != "" && strings.HasPrefix(b.JobID, "act_"+b.TaskID+"_") {
@@ -719,6 +782,8 @@ func taskOf(ev protocol.LogEvent, body any) string {
 		return b.TaskID
 	case *protocol.Checkpoint:
 		return b.TaskID
+	case *protocol.BodySelected:
+		return b.TaskID
 	}
 	if len(ev.Stream) > 5 && ev.Stream[:5] == "task:" {
 		return ev.Stream[5:]
@@ -776,6 +841,10 @@ func (s *Store) applyTask(t *Task, ev protocol.LogEvent, body any) {
 		t.Evidence = mergeEvidence(t.Evidence, b.Evidence)
 		if t.Acted != nil && ev.Seq > t.ActedSeq {
 			t.Acted = nil
+		}
+	case *protocol.BodySelected:
+		if t.Body == nil || ev.Seq >= t.bodySeq {
+			t.Body, t.bodySeq = &protocol.TaskBody{Harness: b.Harness, Model: b.Model, Why: b.Why}, ev.Seq
 		}
 	case *protocol.Checkpoint:
 		t.Checkpoints = append(t.Checkpoints, CheckpointAt{Checkpoint: *b, Seq: ev.Seq, TS: ev.TS})

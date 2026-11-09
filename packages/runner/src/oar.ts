@@ -16,10 +16,12 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DSH_KEY_ENV, HARNESS_IDS, type HarnessId } from "@ducter/protocol";
+import { readEnvFile, readKeys } from "@ducter/protocol/src/keys.ts";
 import type { HarnessEvent, HarnessPort, HarnessSession, SessionSpec } from "@ducter/protocol/src/internal.ts";
 import type { Runtime, Session, SessionOptions, McpServer } from "@botiverse/oar/browser";
 import { Normalizer } from "./normalize.ts";
 import { bridgeCommand, writeBridgeTarget } from "./mcp-bridge.ts";
+import { childEnvOverlay } from "./child-env.ts";
 
 export type { HarnessId };
 
@@ -50,45 +52,43 @@ export function codexCleanArgs(config: { mcp_servers?: Record<string, unknown> }
   ];
 }
 
-function readCodexConfig(env: Record<string, string | null | undefined>): { mcp_servers?: Record<string, unknown> } | undefined {
+type CodexConfig = { mcp_servers?: Record<string, unknown>; model_providers?: Record<string, { env_key?: unknown }> };
+
+function readCodexConfig(env: Record<string, string | null | undefined>): CodexConfig | undefined {
   const home = env.CODEX_HOME || process.env.CODEX_HOME || join(homedir(), ".codex");
   try {
-    return Bun.TOML.parse(readFileSync(join(home, "config.toml"), "utf8")) as { mcp_servers?: Record<string, unknown> };
+    return Bun.TOML.parse(readFileSync(join(home, "config.toml"), "utf8")) as CodexConfig;
   } catch {
     return undefined; // no config, or one codex itself would refuse: nothing of the user's to leave out
   }
 }
 
+/** The key names Codex's own config routes a custom provider through (`model_providers.<id>.env_key`). */
+export function codexKeyNames(config: CodexConfig | undefined): string[] {
+  return Object.values(config?.model_providers ?? {})
+    .map((p) => p?.env_key)
+    .filter((k): k is string => typeof k === "string" && /^[A-Za-z_][A-Za-z0-9_]*$/.test(k));
+}
+
 /**
- * A harness key: the env first, then Ducter's env file (<dataDir>/env, 0600, KEY=value lines; the
- * same file a server's systemd unit reads as its EnvironmentFile). Never logged, never in the Log.
+ * A harness key: the env Ducter runs with first, then Ducter's key file (<dataDir>/keys.env,
+ * 0600, D102). Never logged, never in the Log, and passed only to the harness HARNESS_KEYS grants.
  */
 export function harnessKey(dataDir: string, name: string, env: Record<string, string | null | undefined> = {}): string | undefined {
-  const fromEnv = env[name] ?? process.env[name];
+  const fromEnv = name in env ? env[name] : process.env[name];
   if (fromEnv) return fromEnv;
-  return readEnvFile(join(dataDir, "env"))[name];
+  return readKeys(dataDir)[name];
 }
 
-/** KEY=value lines; # comments, optional quotes, `export ` prefixes. Unreadable means empty. */
-export function readEnvFile(path: string): Record<string, string> {
-  const out: Record<string, string> = {};
-  let text = "";
-  try {
-    text = readFileSync(path, "utf8");
-  } catch {
-    return out;
-  }
-  for (const line of text.split("\n")) {
-    const m = /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/.exec(line);
-    if (!m || line.trim().startsWith("#")) continue;
-    let v = m[2]!;
-    if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) v = v.slice(1, -1);
-    if (v) out[m[1]!] = v;
-  }
-  return out;
+export { readEnvFile };
+
+/** The env a harness process gets (D102): the allowlist, its own keys, then Ducter's explicit vars. */
+function harnessEnv(h: HarnessId, ctx: { env?: Record<string, string | null>; dataDir: string; inherited?: Record<string, string | undefined> }, explicit?: Record<string, string | null>): Record<string, string | null> {
+  const grants = h === "codex" ? codexKeyNames(readCodexConfig(ctx.env ?? {})) : [];
+  return childEnvOverlay(h, { inherited: ctx.inherited ?? process.env, overlay: ctx.env, keys: readKeys(ctx.dataDir), grants, explicit });
 }
 
-/** Whether DeepSeek Harness has a DeepSeek key anywhere it reads one (env, Ducter's env file, its own credential file). */
+/** Whether DeepSeek Harness has a DeepSeek key anywhere it reads one (env, Ducter's key file, its own credential file). */
 function dshHasKey(dataDir: string, env: Record<string, string | null | undefined>): boolean {
   if (harnessKey(dataDir, DSH_KEY_ENV, env)) return true;
   const home = env.DSH_HOME || process.env.DSH_HOME || join(homedir(), ".dsh");
@@ -147,11 +147,11 @@ const loaded = new Map<string, Runtime>();
 export interface OarPortOptions {
   /** Test seam: supply runtimes (e.g. @botiverse/oar/testing scriptedRuntime). */
   loadRuntime?: RuntimeLoader;
-  /** Env overlay for every session/probe (e.g. captured login-shell env). Never logged. */
+  /** Env overlay for every session/probe (e.g. captured login-shell env), filtered per harness like the rest (D102). Never logged. */
   env?: Record<string, string | null>;
   /** Bound retained records per session (OAR retainedBytes). */
   retainedBytes?: number;
-  /** Ducter's data folder: its env file (keys), the DeepSeek Harness home, MCP bridge targets (default DUCTER_DATA_DIR or ~/.ducter). */
+  /** Ducter's data folder: its key file (keys.env), the DeepSeek Harness home, MCP bridge targets (default DUCTER_DATA_DIR or ~/.ducter). */
   dataDir?: string;
 }
 
@@ -164,11 +164,12 @@ export interface Adapted {
 }
 
 /** Spec -> OAR options for one harness (exported for tests; no process is started). */
-export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string | null>; dataDir: string; refused?: Readonly<Record<string, string>> }): Adapted {
+export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string | null>; dataDir: string; refused?: Readonly<Record<string, string>>; inherited?: Record<string, string | undefined> }): Adapted {
   const h = spec.harness;
   const refused = ctx.refused ?? {};
   const clean = !!spec.isolateUserConfig;
-  let env: Record<string, string | null> | undefined = spec.env ? { ...ctx.env, ...spec.env } : ctx.env;
+  // What Ducter itself sets for this session; the rest of the child's env is the allowlist (D102).
+  let env: Record<string, string | null> | undefined = spec.env ? { ...spec.env } : undefined;
   let systemPrompt = spec.systemPrompt;
   let appendSystemPrompt = spec.appendSystemPrompt;
   let preamble: string | undefined;
@@ -187,7 +188,7 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
     case "codex":
       // Codex denies only MCP tools qualified as mcp__server__tool (OAR tool-denials).
       disallowed = disallowed.filter((n) => /^mcp__[\w-]+__.+$/.test(n));
-      if (clean) launchArgs = codexCleanArgs(readCodexConfig(env ?? {}), mcpServers.map((m) => m.name));
+      if (clean) launchArgs = codexCleanArgs(readCodexConfig(ctx.env ?? {}), mcpServers.map((m) => m.name));
       break;
     case "pi":
       break; // the clean setup is the runtime variant's flags (defaultLoader)
@@ -200,8 +201,6 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
         const b = bridgeCommand(file);
         return { name: m.name, command: b.command, args: b.args };
       });
-      const key = harnessKey(ctx.dataDir, DSH_KEY_ENV, env ?? {});
-      if (key && !env?.[DSH_KEY_ENV]) env = { ...env, [DSH_KEY_ENV]: key };
       const instructions = [systemPrompt, appendSystemPrompt].filter(Boolean).join("\n\n");
       systemPrompt = appendSystemPrompt = undefined;
       if (clean) {
@@ -236,7 +235,7 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
     disallowedTools: disallowed.length ? disallowed : undefined,
     launchArgs,
     resume: spec.resumeSessionId,
-    env,
+    env: harnessEnv(h, ctx, env),
     // claude: --setting-sources project,local --strict-mcp-config + claudeMdExcludes. The other
     // runtimes refuse "exclude"; their clean setup is made above. A browser sidecar may ask for
     // it too (spec.userConfiguration, claude only).
@@ -261,7 +260,7 @@ export function createOarHarnessPort(opts: OarPortOptions = {}): HarnessPort {
       const clean = !!spec.isolateUserConfig && spec.harness === "pi";
       const rt = await load(spec.harness, clean ? { clean } : undefined);
       if (!rt) throw new Error(`harness ${spec.harness} is not supported`);
-      const inst = await rt.installation?.({ env: opts.env });
+      const inst = await rt.installation?.({ env: harnessEnv(spec.harness, { env: opts.env, dataDir }) });
       if (!inst || inst.kind !== "available") throw new Error(`harness ${spec.harness} is not installed`);
       const a = adaptSpec(spec, { env: opts.env, dataDir, refused: (rt as { refusedSessionOptions?: Record<string, string> }).refusedSessionOptions });
       const session = await rt.session(inst, { ...a.options, retainedBytes: opts.retainedBytes ?? 8 * 1024 * 1024 });
@@ -282,15 +281,16 @@ export function createOarHarnessPort(opts: OarPortOptions = {}): HarnessPort {
           continue;
         }
         try {
-          const inst = await rt.installation?.({ env: opts.env });
+          const env = harnessEnv(harness, { env: opts.env, dataDir });
+          const inst = await rt.installation?.({ env });
           if (!inst || inst.kind !== "available") {
             out.push({ harness, installed: false, loggedIn: false });
             continue;
           }
           // Pi and DeepSeek Harness have no authStatus. Pi: signed in means "has a usable
           // model". DeepSeek Harness lists its catalog without a key, so: has a DeepSeek key.
-          const auth = rt.authStatus ? await rt.authStatus(inst, { env: opts.env, timeoutMs: 15_000 }).catch(() => undefined) : undefined;
-          const listed = await rt.listModels?.(inst, { env: opts.env, timeoutMs: 30_000 }).catch(() => undefined);
+          const auth = rt.authStatus ? await rt.authStatus(inst, { env, timeoutMs: 15_000 }).catch(() => undefined) : undefined;
+          const listed = await rt.listModels?.(inst, { env, timeoutMs: 30_000 }).catch(() => undefined);
           const models = listed?.kind === "ok" ? listed.models.filter((m) => !m.disabled).map((m) => m.id) : undefined;
           const loggedIn = auth ? auth.kind === "logged_in" : harness === "deepseek-harness" ? dshHasKey(dataDir, opts.env ?? {}) : (models?.length ?? 0) > 0;
           out.push({ harness, installed: true, loggedIn, models });

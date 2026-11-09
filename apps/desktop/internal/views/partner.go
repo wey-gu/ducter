@@ -37,7 +37,7 @@ type partnerState struct {
 	// the token being typed (dropped once it is sent).
 	acctAdding  bool
 	acctHow     bool // "How to connect" is open: the setup steps behind the fold
-	acctWhere   int // 0 OOMOL Hosted, 1 self-hosted, 2 other MCP
+	acctWhere   int  // 0 OOMOL Hosted, 1 self-hosted, 2 other MCP
 	acctURL     string
 	acctToken   string
 	acctWaiting bool
@@ -653,7 +653,7 @@ func (a *App) ooOffer(c *ui.Context, oo *protocol.OoDetect) {
 			ui.Column(c).Gap(t.S2).Padding(t.S3, t.S4).Radius(t.RadiusSM).Background(t.Surface).Children(func() {
 				for _, app := range oo.Apps {
 					app := app
-					ui.Row(c.Key("ooapp:"+app.Service)).Gap(t.S3).AlignItems(ui.Baseline).Children(func() {
+					ui.Row(c.Key("ooapp:" + app.Service)).Gap(t.S3).AlignItems(ui.Baseline).Children(func() {
 						ui.Text(c, app.Title).FontSize(t.MD).FontWeight(700).Width(112).Shrink(0).SingleLine()
 						ui.Text(c, strings.Join(app.Accounts, " · ")).FontSize(t.SM).TextColor(t.InkSoft).Grow(1).MinWidth(0).SingleLine()
 					})

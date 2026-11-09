@@ -112,6 +112,9 @@ One table (`packages/protocol/src/harnesses.ts`), one adapter (`packages/runner/
     their own, anything else the basics.
   - A check (D112) has its own, narrower list (`packages/protocol/src/checks-run.ts`).
   - Not yet scoped: the cua-driver spawns of the browser (`packages/runner/src/browser.ts`).
+- **The partner's session is read-only** (principle 6, `SessionSpec.readOnly`; per harness in
+  `design/conversation.md` "Executors"). Bypass stays (D16): nothing asks, the write and run tools
+  are simply not there. Not narrowed yet: DeepSeek Harness.
 - **Known gaps:** Codex's global `AGENTS.md` and `personality` are not left out (unverified);
   Codex lists the partner's sessions in the user's own history; pi's model list does not test
   its keys; in its owned home DeepSeek Harness sees only the DeepSeek key, not the user's other

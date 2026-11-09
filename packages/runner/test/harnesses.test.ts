@@ -10,7 +10,7 @@ import type { Runtime } from "@botiverse/oar/browser";
 import { dshRuntime } from "@botiverse/oar/runtimes/dsh";
 import { HARNESSES, HARNESS_IDS } from "@ducter/protocol";
 import type { SessionSpec } from "@ducter/protocol/src/internal.ts";
-import { adaptSpec, codexCleanArgs, contextTokensOf, createOarHarnessPort, PI_CLEAN_FLAGS, withPreamble } from "../src/oar.ts";
+import { adaptSpec, codexCleanArgs, contextTokensOf, createOarHarnessPort, PARTNER_READ_MAX_TOKENS, PI_CLEAN_FLAGS, withPreamble } from "../src/oar.ts";
 import { Normalizer, stripThinking } from "../src/normalize.ts";
 import { runBridge } from "../src/mcp-bridge.ts";
 
@@ -70,6 +70,24 @@ describe("adaptSpec: the partner's clean setup per harness", () => {
     expect(args).toContain("notify=[]");
     expect(a.options.userConfiguration).toBeUndefined();
     expect(a.options.disallowedTools).toEqual(["mcp__x__y"]); // codex denies MCP tools only
+  });
+
+  test("principle 6: a read-only (partner) session can't write or run; a task keeps its tools", () => {
+    const claude = adaptSpec(spec("claude-code", { readOnly: true }), { dataDir: dir });
+    for (const t of ["Bash", "Edit", "Write", "MultiEdit", "NotebookEdit", "Task"]) expect(claude.options.disallowedTools).toContain(t);
+    for (const t of ["Read", "Grep", "Glob", "WebFetch", "WebSearch"]) expect(claude.options.disallowedTools).not.toContain(t);
+    expect(claude.options.disallowedTools!.some((t) => t.startsWith("mcp__"))).toBe(false); // Ducter's tools stay
+    expect((claude.options.env as Record<string, string>).CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS).toBe(String(PARTNER_READ_MAX_TOKENS));
+    const codex = adaptSpec(spec("codex", { readOnly: true }), { dataDir: dir, env: { CODEX_HOME: join(dir, "none") } });
+    expect(codex.options.launchArgs!.slice(-2)).toEqual(["-c", 'sandbox_mode="read-only"']);
+    // Codex declines MCP calls under its sandbox unless marked read-only: Ducter's MCP is told.
+    expect((codex.options.mcpServers![0] as { url: string }).url).toBe(ducterMcp.url + "?sandbox=read-only");
+    expect((claude.options.mcpServers![0] as { url: string }).url).toBe(ducterMcp.url);
+    const pi = adaptSpec(spec("pi", { readOnly: true }), { dataDir: dir });
+    expect(pi.options.disallowedTools).toEqual(["bash", "edit", "write"]);
+    const task = adaptSpec(spec("claude-code", { isolateUserConfig: false }), { dataDir: dir });
+    expect(task.options.disallowedTools).not.toContain("Bash");
+    expect(adaptSpec(spec("codex", { isolateUserConfig: false }), { dataDir: dir }).options.launchArgs).toBeUndefined();
   });
 
   test("Codex task (not clean): no overrides at all", () => {

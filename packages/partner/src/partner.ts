@@ -780,6 +780,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       // Never the user's own instructions, skills, plugins, hooks or MCP servers (live: zh
       // replies, 20 s acks), on every harness by its own method (D85, runner/oar.ts).
       isolateUserConfig: true,
+      // Principle 6: the partner reads and decides; writing and running belong to a task.
+      readOnly: true,
       // Ducter's handful of tools load up front: deferring them behind ToolSearch cost a full
       // model round trip (~3 s) before the ack on a fresh session (live, sonnet).
       env: { ENABLE_TOOL_SEARCH: "false" },

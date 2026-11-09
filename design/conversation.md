@@ -65,6 +65,15 @@ promotion are not built.*
 | Fork (side context sharing the cache) | read-only, ≤ ~2 min |
 | Focus Window | needs an environment, writes, runs longer, or will take follow-ups |
 
+- **As built: the in-turn executor is read-only** (`SessionSpec.readOnly`, set only by the
+  partner; `packages/runner/src/oar.ts`). Claude Code: Bash, Edit, Write, MultiEdit,
+  NotebookEdit and subagents are denied; Read, Grep, Glob, WebFetch, WebSearch and Ducter's tools
+  stay, and a file read over 8k tokens is refused so it is read in parts. Codex: its read-only
+  sandbox (shell still runs, read-only, no network); Ducter's tools are marked read-only for that
+  session so Codex runs them. pi: bash, edit and write are excluded. DeepSeek Harness: not
+  narrowed (no tool denial; its read-only mode is unverified). Evals:
+  `packages/partner/eval/results/2026-11-09-haiku-readonly-smoke.md`,
+  `2026-11-10-codex-gpt-6-luna-readonly-smoke.md`.
 - **Promotion.** A fork that outgrows its budget becomes a window seeded with a brief plus
   the fork's checkpoint. The fork itself does not continue, so a long job never carries the
   whole channel.

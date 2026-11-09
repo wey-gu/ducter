@@ -5,16 +5,16 @@ export const X = 12; // frames each fade overlaps
 
 // [name, frames]; the total is their sum minus X per cut.
 export const SCENES = [
-  ["Hook", 132],
-  ["Title", 120],
-  ["SayIt", 150],
-  ["Handoff", 186],
-  ["Quiet", 90],
-  ["Decide", 168],
-  ["Result", 150],
-  ["RealApp", 108],
-  ["World", 132],
-  ["End", 186],
+  ["Hook", 118],
+  ["Title", 100],
+  ["SayIt", 132],
+  ["Handoff", 156],
+  ["Quiet", 96],
+  ["Decide", 170],
+  ["Result", 132],
+  ["RealApp", 100],
+  ["World", 118],
+  ["End", 140],
 ] as const;
 
 export const LAUNCH_FRAMES = SCENES.reduce((n, [, d]) => n + d, 0) - X * (SCENES.length - 1);

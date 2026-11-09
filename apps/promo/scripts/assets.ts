@@ -18,8 +18,7 @@ const files: Record<string, string> = {
   "sound/title.wav": `${theme}/sound/title.wav`,
   "fonts/bricolage.woff2": "apps/site/public/fonts/bricolage.woff2",
   "fonts/jetbrains-mono.woff2": "apps/site/public/fonts/jetbrains-mono.woff2",
-  "shots/on-hand.webp": ".github/readme/on-hand.webp",
-  "shots/task.webp": ".github/readme/task.webp",
+  "fonts/rounded-sc-bold.woff2": "apps/web/static/fonts/rounded-sc-bold.woff2",
 };
 for (const pose of ["idle", "idle_closed", "working", "needsyou", "done", "waiting", "napping"]) {
   files[`ducter/${pose}.png`] = `${theme}/art/ducter_${pose}@400.png`;
@@ -30,6 +29,21 @@ for (const name of [
   "coin_pi@256", "coin_deepseek_harness@256", "coin_sheen@256", "wait_ci@256", "wait_clock@256",
 ]) {
   files[`clay/${name.split("@")[0]}.png`] = `${theme}/art/clay/${name}.png`;
+}
+
+// The real app, at 2x: the README's raw renders from the maintainer's evidence archive
+// (~/dev/ducter-evidence/readme/raw, see apps/desktop/internal/views/readme_shots_test.go). Without
+// the archive, the README's own 1x pictures stand in (scenes crop by fractions, so both work).
+const evidence = join(process.env.HOME ?? "", "dev/ducter-evidence/readme/raw");
+const readme = join(repo, ".github/readme");
+const shots: Record<string, [string, string]> = {
+  "shots/onhand.png": [join(evidence, "onhand.png"), join(readme, "on-hand.webp")],
+  "shots/task.png": [join(evidence, "task-diff.png"), join(readme, "task.webp")],
+};
+for (const [to, [hi, lo]] of Object.entries(shots)) {
+  const dst = join(out, to);
+  mkdirSync(dirname(dst), { recursive: true });
+  copyFileSync(existsSync(hi) ? hi : lo, dst);
 }
 
 let n = 0;

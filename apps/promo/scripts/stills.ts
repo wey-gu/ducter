@@ -7,16 +7,22 @@ import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { bundle } from "@remotion/bundler";
 import { renderStill, selectComposition } from "@remotion/renderer";
-import { SCENES, X, startOf } from "../src/timeline";
+import { startOf } from "../src/timeline";
+
+// one frame per scene that shows what the scene is for (RealApp twice: its two shots)
+const STORYBOARD: [string, number][] = [
+  ["Hook", 84], ["Title", 76], ["SayIt", 112], ["Handoff", 96], ["Quiet", 74], ["Decide", 96],
+  ["Decide", 140], ["Result", 104], ["RealApp", 34], ["RealApp", 84], ["World", 96], ["End", 120],
+];
 
 const repo = resolve(import.meta.dir, "../../..");
-const out = resolve(process.env.DUCTER_SHOTS_DIR ?? resolve(repo, ".shots"), "promo/stills");
+const out = resolve(process.env.DUCTER_SHOTS_DIR ?? resolve(repo, ".shots"), "promo/v2/stills");
 mkdirSync(out, { recursive: true });
 
 const args = process.argv.slice(2);
 const picks: [string, number][] = args.length
   ? args.map((a) => { const [n, f] = a.split(":"); return [n, Number(f)]; })
-  : SCENES.map(([n, d]) => [n, Math.round((d - X) * 0.82)]);
+  : STORYBOARD;
 const only = (process.env.COMP ?? "Launch,LaunchSquare").split(",");
 
 const serveUrl = await bundle({ entryPoint: resolve(import.meta.dir, "../src/index.ts") });
@@ -32,8 +38,8 @@ for (const id of only) {
   }
   if (!args.length) {
     // a contact sheet: 2 columns for 16:9, 5 for 1:1
-    const cols = composition.width === composition.height ? 5 : 2;
-    const w = composition.width === composition.height ? 432 : 960;
+    const cols = composition.width === composition.height ? 4 : 3;
+    const w = composition.width === composition.height ? 540 : 640;
     const h = Math.round((w * composition.height) / composition.width);
     const inputs = files.flatMap((f) => ["-i", f]);
     const scaled = files.map((_, i) => `[${i}]scale=${w}:${h}[s${i}]`).join(";");

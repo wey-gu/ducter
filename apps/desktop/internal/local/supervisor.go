@@ -160,6 +160,25 @@ func (s *Supervisor) Healthy() bool {
 	return Healthy(s.Port, time.Second)
 }
 
+// HealthBuild asks the Ducter on 127.0.0.1:port which build it runs: ok is
+// false when none answers; build is "" from a Ducter too old to say.
+func HealthBuild(port int, timeout time.Duration) (build string, ok bool) {
+	cl := http.Client{Timeout: timeout}
+	r, err := cl.Get(fmt.Sprintf("http://127.0.0.1:%d/health", port))
+	if err != nil {
+		return "", false
+	}
+	defer r.Body.Close()
+	var j struct {
+		OK    bool   `json:"ok"`
+		Build string `json:"build"`
+	}
+	if json.NewDecoder(r.Body).Decode(&j) != nil || !j.OK {
+		return "", false
+	}
+	return j.Build, true
+}
+
 // Healthy reports whether a Ducter answers /health on 127.0.0.1:port.
 func Healthy(port int, timeout time.Duration) bool {
 	cl := http.Client{Timeout: timeout}

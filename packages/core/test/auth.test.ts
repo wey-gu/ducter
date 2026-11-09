@@ -275,6 +275,8 @@ describe("gate on a real server", () => {
     const base = `http://127.0.0.1:${core.port}`;
     expect((await fetch(`${base}/ws`, { headers: { ...REMOTE, upgrade: "websocket" } })).status).toBe(401);
     expect(await (await fetch(`${base}/health`, { headers: REMOTE })).json()).toEqual({ ok: true });
+    // Locally it also says which build runs (Ducter.app restarts a background Ducter left on an old helper).
+    expect(await (await fetch(`${base}/health`)).json()).toEqual({ ok: true, headSeq: core.log.head(), build: "dev" });
 
     const bad = await fetch(`${base}/pair`, { method: "POST", headers: REMOTE, body: JSON.stringify({ code: "AAAA-AAAA", name: "x" }) });
     expect(bad.status).toBe(401);

@@ -30,6 +30,11 @@ import { createLoadout, isRuleHint, registerRuleTools, type Loadout } from "./lo
 import { openConnections, type ConnectionsStore, type Linker, type OoSource } from "./connections.ts";
 import { registerConnectionTools } from "./connection-tools.ts";
 
+declare const DUCTER_COMMIT: string | undefined; // set by packages/cli/build.sh via --define
+/** The build this core runs ("dev" from a checkout): /health says it, so Ducter.app can tell a background
+ *  Ducter still on the helper it replaced (the app dragged in by hand) and restart it. */
+const BUILD = typeof DUCTER_COMMIT === "string" ? DUCTER_COMMIT : "dev";
+
 export interface CoreOptions {
   dataDir?: string;
   port?: number; // 0 = random (tests)
@@ -298,7 +303,7 @@ export function startCore(opts: CoreOptions = {}): Core {
         return srv.upgrade(req, { data }) ? undefined : new Response("upgrade failed", { status: 400 });
       }
       if (url.pathname === "/mcp") return mcp.handle(req);
-      if (url.pathname === "/health") return Response.json({ ok: true, headSeq: log.head() });
+      if (url.pathname === "/health") return Response.json({ ok: true, headSeq: log.head(), build: BUILD });
       return new Response("not found", { status: 404 });
     },
     websocket: sockets,

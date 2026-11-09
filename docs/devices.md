@@ -46,7 +46,7 @@ What a device can do:
 
 | | What it means | Status |
 |---|---|---|
-| **Browse the web** | The computer can get things done on the web in Ducter's own browser: look things up, read pages, gather what it finds | Ready on the computer Ducter lives on (a Mac) |
+| **Browse the web** | The computer can get things done on the web: look things up, read pages, gather what it finds. In your Chrome when your AI agent has its own browser, otherwise in Ducter's own browser | Ready on the computer Ducter lives on (a Mac) |
 | **Reach from anywhere** | Reach Ducter from your phone or another computer, with a one-time code | Ready (needs an address that works from outside; see [Install](install.md#a-linux-server-that-stays-on)) |
 | **Use this computer** | Ducter uses the other apps on the computer the way you do | Coming later |
 | **Use a phone** | Ducter does things on your phone | Coming later |
@@ -58,12 +58,32 @@ Ducter tells you what that means.
 
 ### Browsing the web
 
-Browsing needs Google Chrome in Applications and a small free helper, the browser driver
-(cua-driver). Choose **Browse the web** and Ducter walks you through **Set up browsing**: three
-small steps, no Terminal. It installs the driver, then asks you to turn on two switches in
-System Settings, which macOS wants you to flip yourself. Each step checks itself off.
+Browsing the web now uses your AI agent's own browser when it can:
 
-What you'll notice:
+- **Codex**, with the Codex app installed and its computer use turned on, works in your Chrome.
+- **Claude Code** works in your Chrome through the Claude extension, when the extension is
+  connected.
+
+Then **Browse the web** says **In your Chrome**, and there is nothing to set up. A task there is
+signed in to the sites you are signed in to, as you. It keeps to what it opened:
+
+- **It opens a window or tab of its own** and works only there. It never types into a page you
+  had open.
+- **Before it types, it checks** that the window in front is the one it opened. If it isn't, it
+  stops and asks.
+- **It closes what it opened** when it's done, and nothing else.
+- **Signing in, submitting forms, posting and paying are always left to you.** When a page needs
+  one of these, the task asks, and you tap **Go** when you've done it.
+
+Otherwise, and always for pi and DeepSeek Harness, Ducter uses its own browser. That needs
+Google Chrome in Applications and a small free helper, the browser driver (cua-driver). Choose
+**Browse the web** and Ducter walks you through **Set up browsing**: three small steps, no
+Terminal. It installs the driver, then asks you to turn on two switches in System Settings,
+which macOS wants you to flip yourself. Each step checks itself off. If the Claude extension
+turns out not to be connected when a task starts, that task moves to Ducter's own browser by
+itself and says so.
+
+What you'll notice with Ducter's own browser:
 
 - **A second Chrome window** appears while a web task runs. It is Ducter's own Chrome, with its
   own profile, separate from yours. It moves itself to the bottom right, behind your work, gives

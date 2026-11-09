@@ -211,11 +211,16 @@ export interface SessionSpec {
   // extra launch flags and whether to leave out the user's own Claude config.
   disallowedTools?: string[];
   launchArgs?: string[];
+  // claude-code: leave out the user's own Claude config. codex: Ducter's clean setup, keeping
+  // Codex's own browser and Computer Use plugins (a browser place on Codex's own tools, D130).
   userConfiguration?: "include" | "exclude";
   // The partner only (research/11 §7.3.7): the harness's own compactor waits until the context
   // holds this many tokens, and compacts nothing while idle, so Ducter's re-cut runs first and the
   // harness's summary never competes with the spine. Each harness maps it in runner/oar.ts.
   harnessCompactAt?: number;
+  // Tasks (D130): under the clean setup, Codex keeps its own browser and Computer Use plugins.
+  // The partner and the judge leave it unset (their clean setup turns them off).
+  keepNativeTools?: boolean;
 }
 
 export interface HarnessEvent {

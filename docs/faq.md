@@ -75,8 +75,10 @@ See [Privacy and safety](privacy-and-safety.md#memory-with-nowledge-mem).
 
 ### Can it use the web?
 
-Yes, on a Mac: it uses its own Chrome window to look things up and read pages. Signing in,
-submitting forms and paying are left to you. See [Browsing the web](devices.md#browsing-the-web).
+Yes, on a Mac. When your AI agent has its own browser (Codex with the Codex app, or Claude
+Code with the Claude extension connected), it works in your Chrome, in a window of its own;
+otherwise it uses Ducter's own Chrome window. Signing in, submitting forms and paying are left
+to you. See [Browsing the web](devices.md#browsing-the-web).
 
 ### Can it read my email or calendar?
 

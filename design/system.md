@@ -108,9 +108,15 @@ One table (`packages/protocol/src/harnesses.ts`), one adapter (`packages/runner/
   MCP servers, measured 332k → 140k input tokens on one lookup. Their `log_search` / `log_read`
   are scoped to their own task (D62; to build, `todo.md`). Reaching the user's own Chrome is
   allowed since D126; the harness's own browser tools are in "Screen places" below.
-- **Codex tasks inherit the user's Codex Computer Use** (`cua_repl`, a plugin): any app,
-  including the user's signed-in Chrome. Only `features.plugins=false` removes it, not the
-  `computer_use` / `browser_use` flags (research/38). Allowed under D126.
+- **Codex tasks keep Codex's own Computer Use and browser use** (D130): `cua_repl` (a bundled
+  plugin) reaches any app, including the user's signed-in Chrome. Under a clean setup a task
+  (`keepNativeTools`) keeps plugins on, turns off by id every plugin the user enabled except
+  `browser`, `chrome`, `unified-computer-use` and `computer-use` (`@openai-bundled`), and keeps
+  the desktop app's `node_repl` server; the partner's clean setup still sets
+  `features.plugins=false`, the only switch that removes `cua_repl` (research/38). Plugin ids go
+  in bare (`-c plugins.chatcut@chatcut-inc.enabled=false`); a quoted id is not matched. Every
+  Codex task outside a browser place gets the Computer Use rules in its brief
+  (`codexComputerBrief`) and the tripwire below, armed once it reaches for Chrome.
 
 ## Waits (principle 16)
 
@@ -431,15 +437,48 @@ redesign later:
 
 What runs today, before sandboxes and spacesd:
 
-- **Which driver (D126):** native first by rule, cua-driver as the fallback.
-  `DUCTER_BROWSER_DRIVER=native` gives a browser place the harness's own tools when they are set
-  up: Claude Code gets Claude in Chrome (`--chrome`, with the clean setup and the four built-ins
-  kept); Codex keeps its Computer Use plugin from the user's setup (not under the clean setup).
-  No sidecar, no Ducter browser; the brief keeps the Go, untrusted-page and evidence rules and
-  says to work only in tabs it opened; Ducter never closes that Chrome. The probe reads files
-  only (Claude's native-messaging host file; Codex's plugin entry, cache and Computer Use app).
-  `=cua` forces cua-driver. Unset is `DEFAULT_BROWSER_DRIVER`, **cua-driver for now**: neither
-  native path passed under OAR (research/38). pi and DeepSeek Harness always get cua-driver.
+- **Which driver (D126, D130):** the harness's own tools by default, cua-driver as the fallback.
+  `DEFAULT_BROWSER_DRIVER = native`; `DUCTER_BROWSER_DRIVER=cua` forces cua-driver. pi and
+  DeepSeek Harness always get cua-driver. No sidecar and no Ducter browser on a native path;
+  Ducter never closes the user's Chrome (the brief says to close what it opened). The probes
+  live in `packages/protocol/src/native-browser.ts`, shared with Your devices and abilities.
+  - **Claude Code:** Claude in Chrome (`--chrome`, with the clean setup and the four built-ins
+    kept) when it is connected at task open: a live bridge socket
+    `/tmp/claude-mcp-browser-bridge-<user>/<pid>.sock` (Chrome started Claude Code's host), else
+    one read-only `list_connected_browsers` call to `claude --claude-in-chrome-mcp` (no model,
+    ~2 s, minimal env, cached 30 s). Not connected: cua-driver. If a call still answers "Browser
+    extension is not connected", the runner moves that task to cua-driver in place: the old
+    session closes, the spec swaps the native brief and flags for cua-driver's, the session
+    resumes by id with a turn saying so, and a system line reads "Claude in Chrome isn't
+    connected; switched to Ducter's own browser".
+  - **Codex, browser tools:** when the desktop app's browser access host reaches Ducter (its env
+    carries `BROWSER_USE_ACCESS_PIPE_PATH`, `_EXECUTOR_ID`, `_VERIFYING_IDENTITY` and the pipe
+    exists, i.e. Ducter was started under the app), they pass through to Codex (child-env) and
+    the brief says `cua.createBrowserTab("iab", …)` (its own profile) or `("chrome", …,
+    { sessionName })` for sign-ins, tab-scoped. Ducter never reads these values from another
+    process.
+  - **Codex, Computer Use:** otherwise. It drives Chrome as an app and types into the front
+    window, so the brief says: open a window first from the shell (`open -na "Google Chrome"
+    --args --new-window "<url>"`, never ⌘T in the user's window), check the focused window by URL
+    or title before every batch of keys, never type into a page it didn't open, close its window
+    when done.
+  - **Codex's setup:** both run under the clean setup that keeps only the four browser /
+    computer-use plugins and `node_repl` (spec `userConfiguration: "exclude"` on Codex); verified,
+    only `cua_repl` and `node_repl` carry tools.
+  - **The tripwire (code):** Claude in Chrome and Codex's browser tools act by tab id, so they
+    can't type into the user's tab. For Codex Computer Use the runner watches each finished
+    `cua_repl` call; keys (`typeText`, `pressKey`, … but not ⌘N) before any window-opening step
+    trip it once: a system line, and a steer telling the task to stop and open its own window. It
+    runs after the call, so it limits damage rather than preventing the first keystroke.
+- **Every session start rebuilds the browser (runner `prepareSpec`):** opening, recovery after a
+  restart, reopen, resuming a parked task and a switch of who does it all start from the task's
+  spec without browser parts (`base`) and add the browser for the harness doing it now
+  (`withBrowser`): the brief with its Go and own-window rules, the cua-driver sidecar, and per
+  harness the setup that leaves the user's own config out: Claude Code its four built-ins,
+  denials and `exclude`; Codex the clean setup that keeps its own browser and Computer Use
+  plugins (on either driver); pi its clean flags. DeepSeek Harness keeps its own setup for now
+  (its Ducter-owned home holds the partner's instructions). Before this, a recovered or reopened
+  browser task resumed with none of it.
 - **Driver (cua):** Ducter starts its own cua-driver daemon per data dir on a private socket, via
   LaunchServices so that macOS grants stay with CuaDriver. The daemon gets
   `CUA_DRIVER_BROWSER_PROFILE_ROOT=<dataDir>/browser-profiles`. The task's harness runs

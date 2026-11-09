@@ -8,6 +8,7 @@ import { join } from "node:path";
 import QRCode from "qrcode";
 import { deviceHarness, type AbilityId, type AbilityReason, type DeviceAbility, type DeviceHarness, type DeviceKind, type DeviceView, type Reach, type ServerFrame } from "@ducter/protocol";
 import { readAbilitySettings, writeAbilitySettings } from "@ducter/protocol/src/abilities.ts";
+import { claudeInChromeConnected, codexNative } from "@ducter/protocol/src/native-browser.ts";
 import type { DeviceAuth } from "./auth.ts";
 import type { Workers } from "./workers.ts";
 import { probeHarnesses } from "./harness-probe.ts";
@@ -22,8 +23,12 @@ export type Exec = (argv: string[], timeoutMs?: number) => Promise<{ code: numbe
 /** The browser driver on this machine: its version, or why there is none. */
 export type CuaProbe = () => Promise<{ version: string } | { missing: string }>;
 
+/** An AI agent's own browser tools ready on this machine (D130): Codex's, or Claude in Chrome connected. */
+export type NativeBrowserProbe = () => Promise<"codex" | "claude" | undefined>;
+
 export interface DeviceProbes {
   cua: CuaProbe;
+  native: NativeBrowserProbe;
   /** Harness logins on this machine (as `ducter doctor` checks them); canBePartner is filled in. */
   harnesses(): Promise<(Omit<DeviceHarness, "canBePartner"> & { canBePartner?: boolean })[]>;
   /** laptop | mini | server for this machine. */
@@ -143,6 +148,12 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
         if (REQUIRED_TOOLS.some((t) => !names.has(t))) return { missing: `cua-driver ${version} has no typed browser tools` };
         return { version };
       }),
+    native:
+      o.probes?.native ??
+      (async () => {
+        if (codexNative(env)) return "codex";
+        return (await claudeInChromeConnected({ env, which })) ? "claude" : undefined;
+      }),
     // The four first-wave harnesses (D85, harness-probe.ts).
     // Claude Code and Codex always show (one can be installed from here); pi and DeepSeek Harness
     // only once set up, so a Mac without them reads as before.
@@ -153,18 +164,19 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
   };
 
   // Probe results are reused for cacheMs: harness CLIs can take seconds.
-  type Cached = { at: number; cua: Awaited<ReturnType<CuaProbe>>; harnesses: Awaited<ReturnType<DeviceProbes["harnesses"]>>; kind: DeviceKind };
+  type Cached = { at: number; cua: Awaited<ReturnType<CuaProbe>>; native: Awaited<ReturnType<NativeBrowserProbe>>; harnesses: Awaited<ReturnType<DeviceProbes["harnesses"]>>; kind: DeviceKind };
   let cached: Cached | undefined;
   let inflight: Promise<Cached> | undefined;
   const local = async (): Promise<Cached> => {
     if (cached && now() - cached.at < cacheMs) return cached;
     inflight ??= (async () => {
-      const [cua, harnesses, kind] = await Promise.all([
+      const [cua, native, harnesses, kind] = await Promise.all([
         probes.cua().catch((e) => ({ missing: String((e as Error).message ?? e) })),
+        probes.native().catch(() => undefined),
         probes.harnesses().catch(() => [] as Awaited<ReturnType<DeviceProbes["harnesses"]>>),
         probes.kind().catch(() => "laptop" as DeviceKind),
       ]);
-      cached = { at: now(), cua, harnesses, kind };
+      cached = { at: now(), cua, native, harnesses, kind };
       inflight = undefined;
       return cached;
     })();
@@ -177,15 +189,24 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
     if (v === "1" || v === "on" || v === "true" || v === "yes") return "on";
   };
 
-  const webAbility = (cua: Cached["cua"]): DeviceAbility => {
+  // DUCTER_BROWSER_DRIVER=cua: browser tasks use Ducter's own browser only (runner browser.ts).
+  const cuaOnly = () => /^(cua|cua-driver)$/i.test((env.DUCTER_BROWSER_DRIVER ?? "").trim());
+
+  const webAbility = (cua: Cached["cua"], native: Cached["native"]): DeviceAbility => {
     const pinned = envPinned();
     if (pinned === "off") return { id: "web", state: "unavailable", reason: "env_off" };
+    // An AI agent's own browser is ready (D130): Browse the web works in the user's Chrome, no
+    // cua-driver needed. detail names whose tools ("codex" | "claude").
+    if (native && !cuaOnly()) {
+      const state = pinned === "on" ? "on" : readAbilitySettings(o.dataDir).web === false ? "off" : "on";
+      return { id: "web", state, detail: native, where: "chrome" };
+    }
     if ("missing" in cua) {
       const old = /no typed browser tools|does not run/.test(cua.missing);
       return { id: "web", state: "unavailable", reason: old ? "cua_old" : "cua_missing", detail: cua.missing };
     }
-    if (pinned === "on") return { id: "web", state: "on", detail: cua.version };
-    return { id: "web", state: readAbilitySettings(o.dataDir).web === false ? "off" : "on", detail: cua.version };
+    if (pinned === "on") return { id: "web", state: "on", detail: cua.version, where: "ducter" };
+    return { id: "web", state: readAbilitySettings(o.dataDir).web === false ? "off" : "on", detail: cua.version, where: "ducter" };
   };
 
   const clients = () => o.auth.list().filter((d) => d.kind === "client");
@@ -217,7 +238,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
       home: true,
       state: "awake", // this answer comes from it
       harnesses: me.harnesses.map((h) => deviceHarness(h)),
-      abilities: [webAbility(me.cua), later("computer"), { id: "remote", state: remoteOn ? "on" : "off" }, later("phone"), later("call")],
+      abilities: [webAbility(me.cua, me.native), later("computer"), { id: "remote", state: remoteOn ? "on" : "off" }, later("phone"), later("call")],
     };
     const online = new Map(o.workers.online().map((w) => [w.deviceId, w]));
     const away = o.workers.away();

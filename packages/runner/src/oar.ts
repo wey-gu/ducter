@@ -22,6 +22,7 @@ import type { Runtime, Session, SessionOptions, McpServer } from "@botiverse/oar
 import { Normalizer } from "./normalize.ts";
 import { bridgeCommand, writeBridgeTarget } from "./mcp-bridge.ts";
 import { childEnvOverlay } from "./child-env.ts";
+import { CODEX_NATIVE_MCP, CODEX_NATIVE_PLUGINS } from "@ducter/protocol/src/native-browser.ts";
 
 export type { HarnessId };
 
@@ -39,13 +40,30 @@ export const PI_CLEAN_FLAGS = ["--no-skills", "--no-context-files", "--no-prompt
  * (a `mcp_servers={}` override merges, it does not replace: research/34), and the features that
  * load the user's hooks, plugins (their skills and MCP servers), apps and memories are off. The
  * partner also leaves out the features that compete with Ducter (goals, subagents, images, computer use).
+ *
+ * `nativeTools` (tasks, D130): Codex's own browser and Computer Use stay. Plugins stay on as a
+ * feature, every plugin the user enabled is turned off by id except the four bundled browser /
+ * computer-use ones, and the desktop app's `node_repl` server stays. The plugin id goes in bare
+ * (`plugins.chatcut@chatcut-inc.enabled=false`): a quoted id is not matched (verified against
+ * `mcpServerStatus/list`, codex-cli 0.167.0, 2026-11-09; research/38 §1).
  */
-export function codexCleanArgs(config: { mcp_servers?: Record<string, unknown> } | undefined, keep: string[] = []): string[] {
-  const names = Object.keys(config?.mcp_servers ?? {}).filter((n) => !keep.includes(n));
+export function codexCleanArgs(config: CodexConfig | undefined, keep: string[] = [], o: { nativeTools?: boolean } = {}): string[] {
+  const keepServers = o.nativeTools ? [...keep, ...CODEX_NATIVE_MCP] : keep;
+  const names = Object.keys(config?.mcp_servers ?? {}).filter((n) => !keepServers.includes(n));
   const key = (n: string) => (/^[A-Za-z0-9_-]+$/.test(n) ? n : JSON.stringify(n));
-  const off = ["hooks", "codex_hooks", "plugin_hooks", "plugins", "apps", "memories", "js_repl", "goals", "multi_agent", "image_generation", "computer_use", "browser_use"];
+  const native = ["computer_use", "browser_use"];
+  const off = ["hooks", "codex_hooks", "plugin_hooks", "plugins", "apps", "memories", "js_repl", "goals", "multi_agent", "image_generation", ...native].filter(
+    (f) => !(o.nativeTools && (f === "plugins" || f === "plugin_hooks" || native.includes(f))),
+  );
+  // Plugin ids that a dotted -c path can name (an id with a dot can't be addressed bare).
+  const plugins = o.nativeTools
+    ? Object.entries(config?.plugins ?? {})
+        .filter(([id, p]) => p?.enabled !== false && !CODEX_NATIVE_PLUGINS.includes(id) && /^[A-Za-z0-9_@-]+$/.test(id))
+        .map(([id]) => id)
+    : [];
   return [
     ...names.flatMap((n) => ["-c", `mcp_servers.${key(n)}.enabled=false`]),
+    ...plugins.flatMap((id) => ["-c", `plugins.${id}.enabled=false`]),
     ...off.flatMap((f) => ["-c", `features.${f}=false`]),
     "-c",
     "notify=[]",
@@ -79,7 +97,11 @@ function writeClaudeCompactSettings(cwd: string): void {
   writeFileSync(file, JSON.stringify({ ...cur, ...CLAUDE_COMPACT_SETTINGS }, null, 2) + "\n");
 }
 
-type CodexConfig ={ mcp_servers?: Record<string, unknown>; model_providers?: Record<string, { env_key?: unknown }> };
+type CodexConfig = {
+  mcp_servers?: Record<string, unknown>;
+  model_providers?: Record<string, { env_key?: unknown }>;
+  plugins?: Record<string, { enabled?: unknown } | undefined>;
+};
 
 function readCodexConfig(env: Record<string, string | null | undefined>): CodexConfig | undefined {
   const home = env.CODEX_HOME || process.env.CODEX_HOME || join(homedir(), ".codex");
@@ -234,7 +256,13 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
     case "codex":
       // Codex denies only MCP tools qualified as mcp__server__tool (OAR tool-denials).
       disallowed = disallowed.filter((n) => /^mcp__[\w-]+__.+$/.test(n));
-      if (clean) launchArgs = codexCleanArgs(readCodexConfig(ctx.env ?? {}), mcpServers.map((m) => m.name));
+      // The clean setup: the session's own (isolateUserConfig), or one a browser place asks for
+      // (userConfiguration "exclude": its own browser plugins kept, the rest left out). Tasks
+      // keep Codex's own browser and Computer Use (keepNativeTools, D130); the partner doesn't.
+      if (clean || spec.userConfiguration === "exclude") {
+        const nativeTools = !!spec.keepNativeTools || (!clean && spec.userConfiguration === "exclude");
+        launchArgs = codexCleanArgs(readCodexConfig(ctx.env ?? {}), mcpServers.map((m) => m.name), { nativeTools });
+      }
       if (spec.harnessCompactAt) launchArgs = [...(launchArgs ?? []), "-c", `model_auto_compact_token_limit=${Math.round(spec.harnessCompactAt)}`];
       break;
     case "pi":

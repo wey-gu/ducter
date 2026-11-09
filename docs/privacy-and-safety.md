@@ -15,9 +15,12 @@ exactly what it will and won't do. This page lists it.
   draft PR**. Nothing lands until you choose.
 - **It never works in your own checkout.** Each coding task works in its own copy of the project,
   on its own branch (`ducter/…`). Your checkout changes only when you choose **Merge into main**.
-- **It never types your passwords.** When a website needs a login, you type it yourself in
-  Ducter's browser window; the AI never sees it. Submitting forms and paying are always left to
-  you.
+- **It never types your passwords.** When a website needs a login, you type it yourself, in
+  your Chrome or in Ducter's browser window; the AI never sees it. Submitting forms, posting and
+  paying are always left to you.
+- **It never types into a page you had open.** A web task in your own Chrome opens a window or
+  tab of its own, checks that it's the one in front before typing, and closes it when it's done.
+  It's signed in as you there, so it asks before anything that would act for you.
 - **It never hides what went out.** When a result sent something out, a line marked ↗ says
   what, right under the message (never folded away). An opened task's **Details** always lists
   **Sent out**, often **Nothing**.

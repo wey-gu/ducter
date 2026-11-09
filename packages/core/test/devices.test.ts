@@ -16,6 +16,7 @@ afterEach(async () => {
 
 const probes = (over: Partial<DeviceProbes> = {}): Partial<DeviceProbes> => ({
   cua: async () => ({ version: "0.44.0" }),
+  native: async () => undefined, // the machine's own Codex / Claude in Chrome never leak in
   harnesses: async () => [
     { harness: "claude-code", installed: true, loggedIn: true },
     { harness: "codex", installed: true, loggedIn: false },
@@ -92,6 +93,27 @@ test("removing and adding 上网 persists the choice the runner reads, and pushe
   const on = await c.until<Devices>((x) => x.t === "devices", m);
   expect(ability(on.devices[0]!, "web").state).toBe("on");
   expect(readAbilitySettings(core.dataDir)).toEqual({ web: true });
+});
+
+test("an AI agent's own browser is ready (D130): 上网 works in the user's Chrome without cua-driver", async () => {
+  const core = boot({ cua: async () => ({ missing: "cua-driver is not installed" }), native: async () => "codex" });
+  const c = await client(core.url);
+  c.send({ t: "devices" });
+  const f = await c.until<Devices>((x) => x.t === "devices");
+  expect(ability(f.devices[0]!, "web")).toMatchObject({ state: "on", where: "chrome", detail: "codex" });
+  const n = c.frames.length;
+  c.send({ t: "ability", device: "local", ability: "web", on: false });
+  expect(await c.until((x) => x.t === "ability_result", n)).toMatchObject({ ok: true, on: false });
+  const off = await c.until<Devices>((x) => x.t === "devices", n);
+  expect(ability(off.devices[0]!, "web")).toMatchObject({ state: "off", where: "chrome" });
+});
+
+test("cua-driver ready and no native browser: 上网 runs in Ducter's own browser", async () => {
+  const core = boot();
+  const c = await client(core.url);
+  c.send({ t: "devices" });
+  const f = await c.until<Devices>((x) => x.t === "devices");
+  expect(ability(f.devices[0]!, "web")).toMatchObject({ state: "on", where: "ducter", detail: "0.44.0" });
 });
 
 test("no cua-driver: 上网 is unavailable with the reason, and adding it is refused", async () => {

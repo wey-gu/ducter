@@ -85,19 +85,52 @@ N is tiny (2 per arm), so these are observations, not rates.
   Mac it is not, and the only way to know is a live call.
 - **pi and DeepSeek Harness have nothing of their own**: cua-driver stays their browser.
 
+## 4. Follow-up checks for D130 (2026-11-09)
+
+The author then decided that native is the default (D130). These checks shaped how; none of
+them drove the author's Chrome or Computer Use.
+
+- **Per-plugin overrides work, unquoted.** `-c plugins.chatcut@chatcut-inc.enabled=false`
+  removes `chatcut` from `mcpServerStatus/list`; `-c 'plugins."chatcut@chatcut-inc".enabled=false'`
+  does not (VERIFIED). So §1's "`plugins."unified-computer-use@openai-bundled".enabled=false`
+  still lists it" was the quoting, not the override: unquoted, `cua_repl` goes. The desktop app
+  itself starts its app-server with `-c plugins.codex-app-tools@openai-bundled.mcp_servers.codex_app.enabled=true`
+  (VERIFIED, its process arguments), and `-c plugins.unified-computer-use@openai-bundled.mcp_servers.cua_repl.enabled=false`
+  also takes effect (VERIFIED).
+- **A clean setup that keeps Codex's own tools.** With every user MCP server off by name except
+  `node_repl`, every enabled plugin off by id except `browser`, `chrome`, `unified-computer-use`,
+  `computer-use`, and `features.{hooks,codex_hooks,apps,memories,js_repl,goals,multi_agent,image_generation}=false`,
+  only `cua_repl` (3 tools) and `node_repl` (4) carry tools; `codex_apps` (406), the user's own
+  `cua-driver` (62) and the rest are gone (VERIFIED, codex-cli 0.167.0).
+- **The browser access host.** The browser plugin's service throws "The browser access host is
+  unavailable" unless `BROWSER_USE_ACCESS_PIPE_PATH` and `BROWSER_USE_ACCESS_VERIFYING_IDENTITY`
+  are set (VERIFIED, `browser-service.mjs`). The desktop app sets them, with
+  `BROWSER_USE_ACCESS_EXECUTOR_ID`, only on the app-server it starts; the pipe is a per-launch
+  socket under `/tmp/codex-app-tools/` (VERIFIED, names only). Ducter does not read them from
+  the app's process (that is borrowing the app's credentials); it passes them through when its
+  own environment has them, i.e. when Ducter was started under the app. Not live-tested.
+- **Claude in Chrome's connection, without a model call.** Claude Code reaches the extension two
+  ways (VERIFIED, strings in the `claude` binary): a local socket that its native host creates
+  when Chrome starts it, `/tmp/claude-mcp-browser-bridge-<user>/<pid>.sock`, and a cloud bridge
+  (`wss://bridge.claudeusercontent.com`) tied to the claude.ai account. `claude
+  --claude-in-chrome-mcp` serves the 20 tools over stdio; its `list_connected_browsers` is
+  read-only and answered `[]` here in ~2 s (VERIFIED), matching "not connected". Why it is not
+  connected on this Mac: Chrome runs the Claude **desktop app's** native host for the same
+  extension id (VERIFIED, process list), so Claude Code's own host never starts (INFERRED).
+  Whether a socket-only connection shows in `list_connected_browsers` is unknown; Ducter treats
+  a live socket as connected on its own.
+
 ## Implications for Ducter
 
-1. **Native first is the right rule; today no native path passes, so the default stays
-   cua-driver.** The author decided: tasks may use the user's own Chrome, and cua-driver is the
-   fallback. The code now carries that rule behind one constant: `DUCTER_BROWSER_DRIVER=native`
-   picks the harness's own tools when they are set up (Claude in Chrome for Claude Code, Computer
-   Use for Codex), `=cua` forces cua-driver, and unset means `DEFAULT_BROWSER_DRIVER` (`"cua"`
-   until a native path passes). Flipping it is a one-line change.
-2. **What flips it, per harness.** Claude Code: a cheap check that Claude in Chrome is
-   *connected* before choosing it (one `tabs_context_mcp` call at task open, or a status read if
-   Claude Code ever exposes one), and a live run that passes. Codex: its browser surfaces (`iab`
-   or `chrome`) answering under `codex app-server` without the desktop app; Computer Use alone
-   should not carry browser places.
+1. **Native is the default now (D130, superseding this report's first recommendation).** The
+   author decided Codex tasks keep Codex's own Computer Use and browser use, Claude Code tasks
+   prefer Claude in Chrome, and cua-driver is the fallback. `DEFAULT_BROWSER_DRIVER = native`;
+   `DUCTER_BROWSER_DRIVER=cua` forces cua-driver.
+2. **How each harness qualifies.** Claude Code: connected at task open (§4: a bridge socket or
+   `list_connected_browsers`), and a task that still meets "not connected" moves to cua-driver
+   in place. Codex: its browser tools when the desktop app's access host reaches Ducter, else
+   Computer Use under the new-window rule and Ducter's tripwire (D130 (4)), all under a clean
+   setup that keeps only its browser / computer-use plugins (§4).
 3. **Risks, with the author's decision applied.** Using the user's real Chrome is now allowed,
    so D62's isolation stops being a goal for native drivers. What still matters:
    - *Acting as the user.* Native tools act inside the user's sign-ins. D62's other rules still
@@ -111,14 +144,17 @@ N is tiny (2 per arm), so these are observations, not rates.
    - *Already true today.* Every Codex task (any place) inherits `cua_repl` from the user's Codex
      setup and can drive the whole desktop; under the author's decision that is allowed, but the
      partner should know, and the task brief says nothing about it.
-4. **Smaller follow-ups.** The app now says 在你的 Chrome 里看 {host} / Looking at {host} in your
+4. **Smaller follow-ups.** The app says 在你的 Chrome 里看 {host} / Looking at {host} in your
    Chrome when a native driver is used (`raw.browser.own`). "Your devices and abilities" and the
-   上网 setup still require cua-driver even where a native driver would do; that changes with the
-   default.
+   上网 setup accept a ready native driver and say 在你的 Chrome 里 / In your Chrome (D130).
+   Still to check live: a Claude in Chrome run with the extension connected, and Codex's browser
+   tools with Ducter started under the desktop app (`design/todo.md`).
 
 **Summary.** Codex's native browser use exists but needs the desktop app; headless, Codex falls
 back to desktop Computer Use, which on one of two runs typed into the user's open 2FA page.
 Claude in Chrome runs headless and is the best native candidate, but it needs a connected
 extension that Ducter can't see from files. Ducter now has the per-harness switch (native when
-set up, cua-driver otherwise) with tests; it ships with cua-driver as the default until a native
-path passes the checks above.
+set up, cua-driver otherwise) with tests. Update (D130): native is the default; Claude in Chrome
+is checked connected at task open (a bridge socket or one read-only MCP call, §4) with an
+in-place move to cua-driver; Codex keeps its own tools under a clean setup verified to leave
+only `cua_repl` and `node_repl`, with a new-window rule and a tripwire for Computer Use.

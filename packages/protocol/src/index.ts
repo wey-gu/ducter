@@ -604,6 +604,12 @@ export interface DeviceAbility {
   state: AbilityState;
   reason?: AbilityReason;
   detail?: string;
+  /**
+   * web only (D130): where browser tasks run. chrome = the user's own Chrome, through an AI
+   * agent's own browser tools (Codex, Claude in Chrome), no cua-driver needed; ducter = Ducter's
+   * own browser (cua-driver).
+   */
+  where?: "chrome" | "ducter";
 }
 
 export interface DeviceView {

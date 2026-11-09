@@ -141,7 +141,11 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
         return { version };
       }),
     // The four first-wave harnesses (D85, harness-probe.ts).
-    harnesses: o.probes?.harnesses ?? (() => probeHarnesses({ exec, which, env, dataDir: o.dataDir })),
+    // Claude Code and Codex always show (one can be installed from here); pi and DeepSeek Harness
+    // only once set up, so a Mac without them reads as before.
+    harnesses:
+      o.probes?.harnesses ??
+      (async () => (await probeHarnesses({ exec, which, env, dataDir: o.dataDir })).filter((h) => (h.harness === "pi" ? h.loggedIn : h.harness === "deepseek-harness" ? h.installed : true))),
     kind: o.probes?.kind ?? (() => localDeviceKind(exec)),
   };
 

@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { HARNESS_IDS, harnessName, type Attention, type Bodies, type Delivery, type LogEvent, type Place, type Residency, type TaskCard } from "@ducter/protocol";
 import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, SessionSpec } from "@ducter/protocol/src/internal.ts";
-import { NUDGE, REOPENED, RESUME_AFTER_RESTART, handedOver, kickoff, taskBrief } from "./brief.ts";
+import { NUDGE, REOPENED, RESUME_AFTER_RESTART, briefTurn, handedOver, kickoff, taskBrief } from "./brief.ts";
 import { createOarHarnessPort } from "./oar.ts";
 import { cwdOf, planPlace, provisionPlace } from "./places.ts";
 import { browserSidecar, type BrowserOptions, type BrowserSidecar } from "./browser.ts";
@@ -290,7 +290,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const status = ev.tool && t.sidecar?.statusFor(ev.tool);
     if (status) logEvent(t, { role: "system", text: status.text, raw: { browser: { host: status.host, url: status.url } } });
     const early = (ev.raw as { kind?: string } | undefined)?.kind;
-    if (early === "tool_call_started" || early === "tool_call_title") return; // the ended event logs the call
+    if (early === "tool_call_started" || early === "tool_call_title" || early === "tool_call_head") return; // the ended event logs the call
     if (ev.tool && /(^|__)report_to_main$/.test(ev.tool.name) && ev.tool.ok !== false) t.reportedThisTurn = true;
     if (!ev.text && !ev.tool && !ev.turnEnd) return; // usage-only or empty
     const raw = ev.turnEnd ? { turnEnd: true, ...(ev.raw as object | undefined) } : undefined;
@@ -347,7 +347,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     return t;
   }
 
-  function specFor(id: string, open: Bodies["task_open"], cwd: string): SessionSpec {
+  /** briefed=false: the brief is still being written and comes as the first turn (D120). */
+  function specFor(id: string, open: Bodies["task_open"], cwd: string, briefed = true): SessionSpec {
     const mcp = core.mcp.configFor({ taskId: id });
     const spec: SessionSpec = {
       harness: open.harness as HarnessId,
@@ -356,7 +357,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         partnerName: opts.partnerName ?? core.persona.name ?? "Ducter",
         taskId: id,
         title: open.title,
-        brief: open.brief,
+        brief: briefed ? open.brief : null,
         place: open.place,
         cwd,
         project: open.project || undefined,
@@ -392,7 +393,11 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
   // Every known task becomes addressable again (send resumes its native session by id).
   // Tasks that were mid-turn when the process died are resumed and told to carry on.
   const recovered: TaskRt[] = [];
-  for (const e of core.log.read({ fromSeq: 0, limit: Number.MAX_SAFE_INTEGER, kinds: ["task_open"] })) {
+  // The latest task_open of each task: a task opened before its brief was written (D120) logs a
+  // second one with the brief, and a retitle logs one with the new title.
+  const opens = new Map<string, LogEvent>();
+  for (const e of core.log.read({ fromSeq: 0, limit: Number.MAX_SAFE_INTEGER, kinds: ["task_open"] })) opens.set((e.body as Bodies["task_open"]).taskId, e);
+  for (const e of opens.values()) {
     const open = e.body as Bodies["task_open"];
     const card = core.tasks.get(open.taskId);
     if (!card || tasks.has(open.taskId)) continue;
@@ -414,6 +419,12 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const was = t.attention;
     if (t.residency === "hot" || t.residency === "warm" || t.residency === "provisioning") setState(t, was, "parked");
     if (was !== "working" && was !== "queued") continue;
+    // Cut off before its brief arrived (D120): it never did anything, so it never starts.
+    if (!opens.get(t.id) || !(opens.get(t.id)!.body as Bodies["task_open"]).brief.trim()) {
+      t.dropped = true;
+      setState(t, "dropped", "archived", "not started");
+      continue;
+    }
     t.started = (async () => {
       try {
         await Bun.sleep(0); // let the caller finish wiring (registerTaskTools, partner)
@@ -435,84 +446,119 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     })();
   }
 
-  const runner: RunnerExt = {
-    harness,
+  /** Opens a task; `brief` still being written (a promise) starts the session before it arrives (D120). */
+  async function open(input: Parameters<Runner["openTask"]>[0], briefIn: string | Promise<string>): Promise<TaskCard> {
+    const id = newId();
+    // Who does it (D89): the person's rules, the limits and Use it for tasks, through core's
+    // chooser; a pick this runner can't run (or no device info) keeps the old default.
+    const picked = await core.bodies?.choose({ title: input.title, brief: input.brief, place: input.place, harness: input.harness, model: input.model });
+    if (picked && "none" in picked) throw new Error(picked.none);
+    const pick = picked && HARNESSES.includes(picked.harness as HarnessId) ? picked : undefined;
+    if (pick) input = { ...input, harness: pick.harness, ...(pick.model ? { model: pick.model } : {}) };
+    // D85: the partner's choice; else the first account the user lets tasks use (Settings
+    // taskAccounts; a missing entry is enabled), in first-wave order.
+    const accounts = core.settings?.get().taskAccounts ?? {};
+    const enabled = (x: HarnessId) => accounts[x]?.enabled !== false;
+    const h = (input.harness ?? opts.defaultHarness ?? HARNESSES.find(enabled) ?? "claude-code") as HarnessId;
+    if (!HARNESSES.includes(h)) throw new Error(`unknown harness ${input.harness}`);
+    if (input.harness && !enabled(h)) throw new Error(`the user switched ${harnessName(h)} off for tasks; leave harness out or ask them`);
+    const title = input.title.trim() || "Untitled task";
+    // Where it runs: this machine, or a worker that must be connected right now.
+    const ops = opsFor(input.place);
+    if (ops.device && !ops.device.online()) throw new DeviceOfflineError(ops.device.name);
+    if (ops.device && input.place?.kind === "browser") throw new Error(`browser places run on this machine only for now, not on ${ops.device.name}`);
+    const resolved = await ops.plan(input.place, id, title);
+    // A worker plans its own place; it can't turn it into something this machine then runs
+    // (a browser place starts cua-driver here).
+    if (ops.device && resolved?.place?.kind !== (input.place?.kind ?? "none")) throw new Error(`${ops.device.name} answered with a different kind of place`);
+    const project = input.project ?? "";
+    const persona = input.persona || core.persona.id;
+    const partnerName = opts.partnerName ?? core.persona.name ?? "Ducter";
+    // Throws before the task exists when a browser place is unavailable (the partner says why).
+    const sidecar = await browserSidecar({ place: resolved.place, persona, taskId: id, dataDir: core.dataDir, partnerName }, opts.browser);
 
-    async openTask(input) {
-      const id = newId();
-      // Who does it (D89): the person's rules, the limits and Use it for tasks, through core's
-      // chooser; a pick this runner can't run (or no device info) keeps the old default.
-      const picked = await core.bodies?.choose({ title: input.title, brief: input.brief, place: input.place, harness: input.harness, model: input.model });
-      if (picked && "none" in picked) throw new Error(picked.none);
-      const pick = picked && HARNESSES.includes(picked.harness as HarnessId) ? picked : undefined;
-      if (pick) input = { ...input, harness: pick.harness, ...(pick.model ? { model: pick.model } : {}) };
-      // D85: the partner's choice; else the first account the user lets tasks use (Settings
-      // taskAccounts; a missing entry is enabled), in first-wave order.
-      const accounts = core.settings?.get().taskAccounts ?? {};
-      const enabled = (x: HarnessId) => accounts[x]?.enabled !== false;
-      const h = (input.harness ?? opts.defaultHarness ?? HARNESSES.find(enabled) ?? "claude-code") as HarnessId;
-      if (!HARNESSES.includes(h)) throw new Error(`unknown harness ${input.harness}`);
-      if (input.harness && !enabled(h)) throw new Error(`the user switched ${harnessName(h)} off for tasks; leave harness out or ask them`);
-      const title = input.title.trim() || "Untitled task";
-      // Where it runs: this machine, or a worker that must be connected right now.
-      const ops = opsFor(input.place);
-      if (ops.device && !ops.device.online()) throw new DeviceOfflineError(ops.device.name);
-      if (ops.device && input.place?.kind === "browser") throw new Error(`browser places run on this machine only for now, not on ${ops.device.name}`);
-      const resolved = await ops.plan(input.place, id, title);
-      // A worker plans its own place; it can't turn it into something this machine then runs
-      // (a browser place starts cua-driver here).
-      if (ops.device && resolved?.place?.kind !== (input.place?.kind ?? "none")) throw new Error(`${ops.device.name} answered with a different kind of place`);
-      const project = input.project ?? "";
-      const persona = input.persona || core.persona.id;
-      const partnerName = opts.partnerName ?? core.persona.name ?? "Ducter";
-      // Throws before the task exists when a browser place is unavailable (the partner says why).
-      const sidecar = await browserSidecar({ place: resolved.place, persona, taskId: id, dataDir: core.dataDir, partnerName }, opts.browser);
-
-      // The partner's choice wins; else DUCTER_TASK_MODEL; else the harness default.
-      const model = input.model || (h === "claude-code" ? (opts.defaultModel ?? opts.taskModel ?? process.env.DUCTER_TASK_MODEL) || undefined : undefined);
-      const open: Bodies["task_open"] = { taskId: id, title, project, place: resolved.place, harness: h, model, brief: input.brief };
-      const opened = core.log.append({ persona, stream: stream(id), origin: "system", kind: "task_open", body: open });
-      core.log.append({ persona, stream: stream(id), origin: "system", kind: "body_selected", body: { taskId: id, harness: h, ...(model ? { model } : {}), why: pick?.why ?? { kind: input.harness ? "partner" : "default" } } });
-      const card: TaskCard = {
-        taskId: id,
-        persona,
-        title,
-        project,
-        place: resolved.place,
-        harness: h,
-        model,
-        attention: "queued",
-        residency: "provisioning",
-        openedAt: opened.ts,
-        updatedAt: opened.ts,
-      };
-      const spec = specFor(id, open, resolved.cwd);
+    // The partner's choice wins; else DUCTER_TASK_MODEL; else the harness default.
+    const model = input.model || (h === "claude-code" ? (opts.defaultModel ?? opts.taskModel ?? process.env.DUCTER_TASK_MODEL) || undefined : undefined);
+    const later = typeof briefIn !== "string";
+    const body: Bodies["task_open"] = { taskId: id, title, project, place: resolved.place, harness: h, model, brief: later ? "" : briefIn };
+    const opened = core.log.append({ persona, stream: stream(id), origin: "system", kind: "task_open", body });
+    core.log.append({ persona, stream: stream(id), origin: "system", kind: "body_selected", body: { taskId: id, harness: h, ...(model ? { model } : {}), why: pick?.why ?? { kind: input.harness ? "partner" : "default" } } });
+    const card: TaskCard = {
+      taskId: id,
+      persona,
+      title,
+      project,
+      place: resolved.place,
+      harness: h,
+      model,
+      attention: "queued",
+      residency: "provisioning",
+      openedAt: opened.ts,
+      updatedAt: opened.ts,
+    };
+    const specOf = (b: Bodies["task_open"], briefed: boolean) => {
+      const spec = specFor(id, b, resolved.cwd, briefed);
       if (sidecar) {
         spec.appendSystemPrompt = (spec.appendSystemPrompt ?? "") + sidecar.brief;
         spec.mcp = [...spec.mcp, sidecar.mcp];
         if (h === "claude-code") Object.assign(spec, sidecar.claude);
       }
-      const t = newRt(id, persona, card, spec, ops);
-      if (sidecar) t.sidecar = sidecar;
-      tasks.set(id, t);
-      core.tasks.setState(id, "queued", "provisioning");
+      return spec;
+    };
+    const spec = specOf(body, !later);
+    const t = newRt(id, persona, card, spec, ops);
+    if (sidecar) t.sidecar = sidecar;
+    tasks.set(id, t);
+    core.tasks.setState(id, "queued", "provisioning");
 
-      t.started = (async () => {
-        try {
-          await ops.provision(resolved);
-          await sidecar?.ready();
-          await startSession(t, false);
-          await sendTurn(t, kickoff(title), "runner");
-        } catch (err) {
-          if (isOffline(err)) return deviceLost(t, true);
-          const reason = preview(err instanceof Error ? err.message : String(err), 500);
-          logEvent(t, { role: "system", from: "runner", text: `failed to start: ${reason}` });
-          setState(t, "failed", "archived", reason);
+    t.started = (async () => {
+      try {
+        await ops.provision(resolved);
+        await sidecar?.ready();
+        await startSession(t, false);
+        let first = kickoff(title);
+        if (later) {
+          // The session is up (or coming up) while the partner finishes the brief.
+          let text: string;
+          try {
+            text = await briefIn;
+          } catch {
+            // Never briefed (the partner's call changed or failed): gone before it did anything.
+            if (t.dropped) return;
+            t.dropped = true;
+            setState(t, "dropped", "archived", "not started");
+            const s = t.session;
+            t.session = undefined;
+            await s?.close().catch(() => {});
+            await sidecar?.close().catch(() => false);
+            return;
+          }
+          if (t.dropped) return;
+          // The briefed task_open is the one the registry, recovery and hand-offs read.
+          const full = { ...body, brief: text };
+          core.log.append({ persona, stream: stream(id), origin: "system", kind: "task_open", body: full });
+          t.spec = { ...specOf(full, true), cwd: t.spec.cwd };
+          first = briefTurn(text, title);
         }
-      })();
+        if (t.dropped) return;
+        await sendTurn(t, first, "runner");
+      } catch (err) {
+        if (isOffline(err)) return deviceLost(t, true);
+        const reason = preview(err instanceof Error ? err.message : String(err), 500);
+        logEvent(t, { role: "system", from: "runner", text: `failed to start: ${reason}` });
+        setState(t, "failed", "archived", reason);
+      }
+    })();
 
-      return core.tasks.get(id) ?? card;
-    },
+    return core.tasks.get(id) ?? card;
+  }
+
+  const runner: RunnerExt = {
+    harness,
+
+    openTask: (input) => open(input, input.brief),
+    // D120: the card, the place and the session start while the partner still writes the brief.
+    openTaskEarly: (input, brief) => open({ ...input, brief: "" }, brief),
 
     async send(taskId, text, mode, from = "partner", clientId) {
       const t = get(taskId);

@@ -450,6 +450,9 @@ func (a *App) transcriptRow(c *ui.Context, task *store.Task, ev protocol.LogEven
 	body, _ := ev.Typed()
 	switch b := body.(type) {
 	case *protocol.TaskOpen:
+		if strings.TrimSpace(b.Brief) == "" {
+			return // opened before its brief was written (D120): the briefed one follows
+		}
 		// What the partner asked for: its words, quoted under a small label.
 		ui.Column(c).Gap(t.S1).Children(func() {
 			ui.Text(c, a.L.T("task.brief", a.S.PersonaName)).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)

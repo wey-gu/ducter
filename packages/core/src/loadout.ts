@@ -62,7 +62,8 @@ export function createLoadout(o: {
     async candidates(taskId) {
       const card = o.tasks.get(taskId);
       if (!card) throw new Error(`unknown task ${taskId}`);
-      const open = o.log.read({ stream: taskStream(taskId), kinds: ["task_open"], limit: 1 })[0]?.body as Bodies["task_open"] | undefined;
+      // The latest: a task opened before its brief was written logs the brief in a second one (D120).
+      const open = o.log.read({ stream: taskStream(taskId), kinds: ["task_open"], limit: 1000 }).at(-1)?.body as Bodies["task_open"] | undefined;
       const hs = (await harnessesFor("device" in card.place ? card.place.device : undefined)) ?? [];
       return fwCandidates({
         work: { title: card.title, brief: open?.brief },

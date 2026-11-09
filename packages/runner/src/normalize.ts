@@ -31,6 +31,43 @@ interface PendingTool {
   input?: string;
   partial?: string; // streamed input so far (until a title is found)
   titled?: boolean;
+  headed?: boolean; // the head before "brief" was emitted (or given up on)
+}
+
+/**
+ * The top-level fields of a streamed JSON object written before `key` starts, parsed, or null
+ * while `key` hasn't started yet. `{"title":"x","place":{…},"brief":"…` → {title, place}.
+ */
+export function headBefore(partial: string, key: string): Record<string, unknown> | null {
+  let depth = 0;
+  let inStr = false;
+  for (let i = 0; i < partial.length; i++) {
+    const c = partial[i]!;
+    if (inStr) {
+      if (c === "\\") i++;
+      else if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === "{" || c === "[") depth++;
+    else if (c === "}" || c === "]") depth--;
+    else if (c === '"') {
+      if (depth === 1 && partial.startsWith(`"${key}"`, i)) {
+        const rest = partial.slice(i + key.length + 2);
+        if (/^\s*$/.test(rest)) return null; // can't tell yet whether it is the key
+        if (/^\s*:/.test(rest)) {
+          const before = partial.slice(0, i).replace(/,\s*$/, "");
+          try {
+            const v = JSON.parse(`${before}}`);
+            return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
+          } catch {
+            return null;
+          }
+        }
+      }
+      inStr = true;
+    }
+  }
+  return null;
 }
 
 /**
@@ -53,11 +90,11 @@ export class Normalizer {
       return out;
     }
     if (ev.kind === "tool_call_input_delta") {
-      // Early title: the partner acks a task_open by its title before the brief is written.
       const t = this.tools.get(ev.callId);
-      if (t && !t.titled) {
+      if (t && !t.headed) {
         t.partial = (t.partial ?? "") + (ev.delta ?? "");
-        const m = /"title"\s*:\s*"((?:[^"\\]|\\.)*)"/.exec(t.partial);
+        // Early title: the partner acks a task_open by its title before the brief is written.
+        const m = t.titled ? null : /"title"\s*:\s*"((?:[^"\\]|\\.)*)"/.exec(t.partial);
         if (m) {
           t.titled = true;
           let title = m[1]!;
@@ -66,6 +103,14 @@ export class Normalizer {
           } catch {}
           out.push({ role: "tool", tool: { name: t.name, input: { title } }, raw: { kind: "tool_call_title", callId: ev.callId } });
         }
+        // Early head (D120): everything written before the "brief" key (title, place, …), so
+        // the partner can open the task while the model is still writing its brief.
+        const head = headBefore(t.partial, "brief");
+        if (head) {
+          t.headed = true;
+          t.partial = undefined;
+          out.push({ role: "tool", tool: { name: t.name, input: head }, raw: { kind: "tool_call_head", callId: ev.callId } });
+        } else if (t.partial.length > 8192) t.headed = true; // no brief key early on: give up
       }
       return out;
     }

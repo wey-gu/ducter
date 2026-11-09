@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.0.2
+
+**Talk to it like a messaging app**
+- The conversation reads like iMessage: your words and your partner's in bubbles, a question as
+  one small card with its action on the button, and plainer, shorter replies with no file paths
+  or jargon unless you used them.
+- The opened task shows what it did one quiet line per step, and On hand asks one question at a
+  glance.
+
+**Start work yourself**
+- New task (⌘N): pick where, who, and say what; it starts right away with your own words.
+  On hand can group tasks by project, with each branch and its changes.
+- The `ducter` command can talk too: `ducter task`, `ducter say`, `ducter tail`, `ducter answer`,
+  `ducter open`, `ducter merge`, `ducter undo`.
+
+**Ordinary folders are safe to hand over**
+- Before a task changes a folder that isn't a git repo, Ducter keeps a copy. You see what changed
+  in plain words and can undo it all with one tap for 7 days.
+
+**Better and safer under the hood**
+- AI agents use their own browser and computer use first (in your Chrome, in a window of their
+  own); Ducter's browser is the fallback.
+- Your partner and tasks run on small 200K context windows, and your partner can only read and
+  start tasks, never change files itself.
+- A task's "done" is checked against its evidence; tasks only see their own part of the record.
+- Quiet hours are on by default (23:00–08:00).
+- Memory in Nowledge Mem is kept under your partner's own identity.
+
 ## 0.0.1-rc.1
 
 A release candidate for 0.0.1: the same build, cut first to check the release pipeline end to

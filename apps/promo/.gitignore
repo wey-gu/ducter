@@ -1,0 +1,3 @@
+# Art, fonts and sound are copied in from the repo by `bun run assets`; renders go to .shots/promo (D75).
+/public/
+/out/

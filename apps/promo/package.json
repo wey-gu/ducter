@@ -1,0 +1,27 @@
+{
+  "name": "ducter-promo",
+  "private": true,
+  "type": "module",
+  "description": "Ducter's launch video, made with Remotion. Source only: `bun run assets` copies the art in from the repo; renders go to .shots/promo (D75).",
+  "scripts": {
+    "assets": "bun scripts/assets.ts",
+    "studio": "bun run assets && remotion studio",
+    "stills": "bun run assets && bun scripts/stills.ts",
+    "render": "bun run assets && bun scripts/render.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@remotion/bundler": "4.0.537",
+    "@remotion/cli": "4.0.537",
+    "@remotion/fonts": "4.0.537",
+    "@remotion/renderer": "4.0.537",
+    "@remotion/transitions": "4.0.537",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "remotion": "4.0.537"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.2",
+    "typescript": "5.9.3"
+  }
+}

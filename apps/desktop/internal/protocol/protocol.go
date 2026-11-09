@@ -466,6 +466,15 @@ type PairCodeReq struct {
 	T string `json:"t"` // "pair_code"
 }
 
+// RenameDeviceReq is 改名字 / Rename for a paired device (another
+// computer; D84). The server answers rename_result, then a fresh devices
+// frame. The machine Ducter lives on keeps its own name.
+type RenameDeviceReq struct {
+	T      string `json:"t"` // "rename_device"
+	Device string `json:"device"`
+	Name   string `json:"name"`
+}
+
 // ---------- Settings (D71: the Partner page and Settings) ----------
 
 // SettingsReq asks for the partner's settings and keeps this socket told
@@ -667,6 +676,7 @@ type ClientFrame struct {
 	Device     string `json:"device,omitempty"`
 	Ability    string `json:"ability,omitempty"`
 	On         bool   `json:"on,omitempty"`
+	Name       string `json:"name,omitempty"` // rename_device
 }
 
 // ---------- Server -> client frames ----------
@@ -692,6 +702,9 @@ type ServerFrame struct {
 	Devices []DeviceView `json:"devices,omitempty"`
 	Reach   *Reach       `json:"reach,omitempty"`
 	// ability_result: Device, Ability, On, OK, Reason, Detail.
+	// rename_result: Device, OK, Name, Reason (unknown_device | empty |
+	// name_taken | home).
+	Name    string `json:"name,omitempty"`
 	Device  string `json:"device,omitempty"`
 	Ability string `json:"ability,omitempty"`
 	On      bool   `json:"on,omitempty"`
@@ -728,7 +741,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	}
 	switch f.T {
 	case "welcome", "events", "on_hand", "task_history", "sent", "action_result", "error",
-		"devices", "ability_result", "pair_code", "settings":
+		"devices", "ability_result", "pair_code", "rename_result", "settings":
 	default:
 		return f, fmt.Errorf("unknown server frame %q", f.T)
 	}

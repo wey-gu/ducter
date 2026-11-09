@@ -6,11 +6,12 @@ import Head from "../components/Head.astro";
 import Nav from "../components/Nav.astro";
 import Footer from "../components/Footer.astro";
 import { siteLinks } from "../lib/links";
+import { agentsLine, agentsToday, agentsTodayAnd } from "../lib/agents";
 
 const { facts, dl, gh } = await siteLinks();
-const title = "Ducter: one partner who runs your AI work";
+const title = "Ducter: say it once, hear back when it's done";
 const description =
-  "Ducter is a personal AI you run yourself. Talk to one partner; it hands the work to Claude Code and Codex on your own computers, on the plans you already pay for, and comes to you only when a decision is yours.";
+  `Ducter is an open-source personal AI on your own Mac or server. Tell one partner what you want. It hands the work to AI agents like ${agentsTodayAnd} and tells you when it's done.`;
 const check = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"/></svg>`;
 const arrow = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 8h10M9 4.5L12.5 8 9 11.5"/></svg>`;
 const out = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l8-8M6 4h6v6"/></svg>`;
@@ -43,13 +44,13 @@ const ld = {
   <div class="wrap hero-grid">
     <div class="hero-copy">
       <h1>Say it once. <span class="line">Hear back when it's&nbsp;done.</span></h1>
-      <p class="lede">Ducter is a personal AI you run yourself. You talk to <b>one partner</b>. It hands the real work to <b>Claude Code and Codex on your own computers</b>, on the plans you already pay for, and comes to you only when a decision is truly yours.</p>
+      <p class="lede">Ducter is a personal AI that runs on your own Mac or server. You tell <b>one partner</b> what you want. It hands the work to <b>the AI agents you already use</b>, on the plans you already pay for, and comes back when the work is done or a decision is yours to make.</p>
       <div class="cta-row">
         <a class="btn secondary lg" href="#how">See how it works</a>
         <a class="btn lg" href={dl.href}>{dl.label}</a>
       </div>
       <p class="cta-note">{dl.note}</p>
-      <p class="facts">Open source under Apache 2.0. Runs on your Mac or a server you own, with Claude Code or Codex, in English or 中文.</p>
+      <p class="facts">Free and open source under Apache 2.0. {agentsLine}</p>
     </div>
 
     <div class="demo" id="demo" aria-label="A short example conversation with Ducter">
@@ -70,7 +71,7 @@ const ld = {
               <div class="proof">
                 <span class="mk"><Fragment set:html={check} />412 tests pass</span>
                 <span class="mk"><Fragment set:html={check} />CI run #48219 · green</span>
-                <span class="qlink">2 files changed ›</span>
+                <span class="qlink">1 file changed ›</span>
                 <span class="qlink">Fix CI ›</span>
               </div>
               <div class="proof"><span class="mk out"><Fragment set:html={out} />git push -u origin ducter/fix-ci</span></div>
@@ -103,11 +104,11 @@ const ld = {
       <div class="sec-head">
         <h2>Silence means it's going fine.</h2>
       </div>
-      <p class="lede">Tasks run in the background. You hear back when one is done, or when a decision is truly yours, and every decision arrives with a default, so not answering is an answer too.</p>
+      <p class="lede">Tasks run in the background. You hear back when one is done, or when it needs you to decide something. Every decision comes with a suggested default.</p>
       <ul class="points">
-        <li><span><b>Go, Hold, or Reply.</b> Press Go, ask it to wait, or answer in your own words.</span></li>
-        <li><span><b>Or let the default happen.</b> It only applies on its own when it can be undone.</span></li>
-        <li><span><b>Done comes with proof:</b> what changed, and how it checked.</span></li>
+        <li><span><b>Go, Hold or Reply…</b> Take the default, say "not yet", or answer in your own words.</span></li>
+        <li><span><b>Or don't answer at all.</b> After 30 minutes it goes with the default, but only if that can be undone. Anything else waits for you.</span></li>
+        <li><span><b>Done comes with proof:</b> what changed and how it checked.</span></li>
       </ul>
     </div>
 
@@ -145,7 +146,7 @@ const ld = {
   <div class="wrap">
     <div class="sec-head">
         <h2>Your computers. Your plans.</h2>
-      <p class="lede">Ducter lives on your Mac, or on a server you own. Every task runs there in its own git worktree and branch, on the Claude Code or Codex sign-in you already have. There's no Ducter cloud in the middle.</p>
+      <p class="lede">Ducter lives on your Mac or on a server you own, and its tasks run there, signed in to your AI agents with your own accounts. A coding task works in its own copy of your project, on its own branch, so your checkout stays as you left it. There's no Ducter account to make and no Ducter server in between.</p>
     </div>
 
     <div class="stage-wrap reveal">
@@ -188,7 +189,7 @@ const ld = {
         </div>
         <div class="detail" id="web-detail">
           <h3>Browse the web</h3>
-          <p>Lets this Mac get things done on the web in Ducter's own browser: look things up, read pages, gather what it finds. Signing in, submitting and paying are always left to you.</p>
+          <p>This Mac can look things up and read pages in Ducter's own Chrome window, apart from yours. Signing in, submitting forms and paying stay with you.</p>
           <button class="btn md" type="button" id="equip">Add to this Mac</button>
         </div>
       </div>
@@ -203,8 +204,8 @@ const ld = {
       <div class="sec-head">
         <h2>One thumb is enough.</h2>
       </div>
-      <p class="lede">Only decisions earn a push, and they wait out your quiet hours. Each one carries a default, so you can answer from the lock screen, or let the default happen and read about it over coffee.</p>
-      <p class="body note">Quiet hours run 23:00 to 08:00 unless you change them. Two decisions waiting? Go on all defaults answers both. A phone connects once, with a one-time code.</p>
+      <p class="lede">Your phone buzzes only when a decision is waiting for you, and never during your quiet hours. Answer it in one tap, or let the default happen and read about it in the morning.</p>
+      <p class="body note">Quiet hours are 23:00 to 08:00 until you change them. With two decisions waiting, Go on all defaults answers both. For now the phone opens Ducter in its browser and needs Ducter on a server with your own domain. An iPhone app is coming soon.</p>
     </div>
     <div class="phone-scene">
       <div class="phone" id="phone">
@@ -241,13 +242,13 @@ const ld = {
   <div class="wrap split">
     <div>
       <div class="sec-head">
-        <h2>It asks before anything leaves.</h2>
+        <h2>It asks before anything reaches other people.</h2>
       </div>
-      <p class="lede">No pop-up for every command. Each task holds only what it needs, everything that goes out is written down in plain words, and a few things are never its call.</p>
+      <p class="lede">A task doesn't stop you for every command. Emails, posts, PR comments and pushes to shared branches wait for your Go, and every one is written down. A few things it never does at all.</p>
       <ul class="nevers">
-        <li><b>It never signs in as you.</b><span>You sign in on its screen; it picks up from there.</span></li>
-        <li><b>It never pays.</b><span>Not once, and no rule can change that.</span></li>
-        <li><b>It never reaches other people without asking.</b><span>Emails, posts, PR comments and pushes to shared branches wait for your Go.</span></li>
+        <li><b>It never merges into main.</b><span>A finished task offers Merge into main or Open draft PR, and waits for you.</span></li>
+        <li><b>It never types your passwords.</b><span>You sign in yourself, in its browser window. The AI never sees what you type.</span></li>
+        <li><b>It never pays.</b><span>Payments are always left to you.</span></li>
       </ul>
     </div>
     <div class="ledger reveal" id="ledger">
@@ -256,7 +257,7 @@ const ld = {
         <li class="step"><code>git push -u origin ducter/fix-ci</code><span class="verdict ran"><Fragment set:html={check} />Ran: its own branch</span></li>
         <li class="step"><code>gh pr create --draft "Fix flaky checkpoint_recovery"</code><span class="verdict asked"><Fragment set:html={check} />Asked you; you said Go</span></li>
         <li class="step"><code>git push origin main</code><span class="verdict waits"><Fragment set:html={lock} />Waits for you, always</span></li>
-        <li class="step"><code>email: load-test numbers → a HawDB contributor</code><span class="verdict asked"><Fragment set:html={out} />Asks first, 30 s to undo</span></li>
+        <li class="step"><code>email: load-test numbers → a HawDB contributor</code><span class="verdict asked"><Fragment set:html={out} />Asks you first</span></li>
         <li class="step"><code>sign in to github.com</code><span class="verdict yours"><Fragment set:html={lock} />Yours to do</span></li>
         <li class="step"><code>pay: renew a domain</code><span class="verdict yours"><Fragment set:html={lock} />Never Ducter's call</span></li>
       </ol>
@@ -269,7 +270,7 @@ const ld = {
   <div class="wrap">
     <div class="sec-head">
         <h2>Open anything. Any time.</h2>
-      <p class="lede">Most days you never leave the conversation. When you want the wheel, <b>On hand</b> shows every task at a glance, and any task opens into one page: what came of it and how it knows, what it did step by step, the changed files with each diff a tap away, and a box to talk to it directly.</p>
+      <p class="lede">Most days you stay in the conversation. When you want a closer look, <b>On hand</b> shows every task at a glance. Open one to read what it did, step by step, and the diff of every file it changed. You can write to it directly while it works.</p>
     </div>
     <div class="task-win reveal" aria-label="An opened task">
       <div class="tw-bar">
@@ -323,7 +324,7 @@ const ld = {
     <div class="split" style="margin-bottom: clamp(56px, 8vw, 104px)">
       <div class="sec-head" style="margin:0">
         <h2>It remembers you.</h2>
-        <p class="lede">With <a href="https://mem.nowledge.co" rel="noopener">Nowledge Mem</a>, your partner starts with the identity and context you already keep there, shared with the other AIs you use. Switch models whenever you like; it's still the same partner.</p>
+        <p class="lede">Your partner remembers your conversation. Connect <a href="https://mem.nowledge.co" rel="noopener">Nowledge Mem</a> and it also knows who you are and what you're working on, from the same memory your other AI tools use.</p>
       </div>
       <div class="memory-card reveal" aria-label="Example">
         <div class="msg user" style="align-self:end;justify-self:end">Rebase, never merge commits. Remember that for every repo.</div>
@@ -334,18 +335,18 @@ const ld = {
     </div>
 
     <div class="sec-head">
-        <h2>Yours, all the way down.</h2>
+        <h2>Yours to read and run.</h2>
     </div>
     <div class="cards3">
-      <div class="card reveal"><div class="card-art"><Art name="ducter_working" alt="" sizes="120px" /></div><h3>Open source</h3><p>Apache 2.0. Read every prompt, every adapter, every line that touches your work.</p></div>
-      <div class="card reveal"><div class="card-art"><Art name="server_awake" alt="" sizes="140px" /></div><h3>Self-hosted</h3><p>Your Mac, or a Linux server you own. The record of everything lives in one SQLite file on it.</p></div>
-      <div class="card reveal"><div class="card-art pair"><Art name="token_orange" alt="" sizes="80px" /><Art name="token_ink" alt="" sizes="80px" /></div><h3>No lock-in</h3><p>Your Claude Code and Codex subscriptions, through their own official apps. Bring whichever you have.</p></div>
+      <div class="card reveal"><div class="card-art"><Art name="ducter_working" alt="" sizes="120px" /></div><h3>Open source</h3><p>Apache 2.0. Every prompt Ducter writes and every line of code that touches your work is in the source.</p></div>
+      <div class="card reveal"><div class="card-art"><Art name="server_awake" alt="" sizes="140px" /></div><h3>Self-hosted</h3><p>Your Mac, or a Linux server you own. Your conversation and tasks stay in one folder there that only your account can read.</p></div>
+      <div class="card reveal"><div class="card-art pair"><Art name="token_orange" alt="" sizes="80px" /><Art name="token_ink" alt="" sizes="80px" /></div><h3>No lock-in</h3><p>Ducter works through each AI agent's own app, signed in as you, on your existing plan. Use whichever one you have.</p></div>
     </div>
 
     <div class="install" id="install">
       <div>
         <h3 style="font-size:28px">Get Ducter</h3>
-        <p class="body" style="margin-top:10px">You need Claude Code or Codex installed and signed in. Ducter checks the rest and tells you the one thing to fix, if anything.</p>
+        <p class="body" style="margin-top:10px">You need {agentsToday} installed and signed in on the computer that does the work. Ducter checks everything else and tells you the one thing to fix, if there is one.</p>
         {!facts.isPublic && <p class="body" style="margin-top:10px">The repository opens to the public soon. Until then, these are the exact steps it will take.</p>}
       </div>
       <div class="panel-box">
@@ -357,7 +358,7 @@ const ld = {
         <div class="panel" id="p-mac" role="tabpanel" aria-labelledby="tab-mac" style="margin-top:14px">
           {facts.dmgUrl
             ? <p><a class="btn" href={facts.dmgUrl}>Download for Mac</a></p>
-            : <p>The signed, notarized download is <b>coming soon</b>. Until then, build it in one step:</p>}
+            : <p>The signed download is <b>coming soon</b>. Until then, build it from source on a Mac with Bun and Go:</p>}
           <div class="term"><button class="btn sm copy" type="button" data-copy="git clone https://github.com/wey-gu/ducter && cd ducter&#10;scripts/make-app.sh">Copy</button><pre><span class="p">$ </span>git clone https://github.com/wey-gu/ducter && cd ducter
 <span class="c"># builds dist/Ducter.app and a .dmg</span>
 <span class="p">$ </span>scripts/make-app.sh</pre></div>
@@ -370,7 +371,7 @@ const ld = {
 <span class="p">$ </span>ducter doctor
 <span class="c"># starts your partner</span>
 <span class="p">$ </span>ducter up</pre></div>
-          <p><code>ducter status</code> shows tasks and open decisions right in your terminal.</p>
+          <p><code>ducter status</code> shows your tasks and the decisions waiting for you.</p>
         </div>
         <div class="panel" id="p-srv" role="tabpanel" aria-labelledby="tab-srv" style="margin-top:14px" hidden>
           <div class="term"><button class="btn sm copy" type="button" data-copy="scripts/install.sh --linux ducter-linux&#10;sh ducter/install.sh --service&#10;ducter pair">Copy</button><pre><span class="c"># on your Mac</span>
@@ -379,7 +380,7 @@ const ld = {
 <span class="p">$ </span>sh ducter/install.sh --service
 <span class="c"># a one-time code for your Mac or phone</span>
 <span class="p">$ </span>ducter pair</pre></div>
-          <p>Keeps your partner awake while your Mac sleeps. It listens on 127.0.0.1 only; reach it through your own domain or an SSH tunnel.</p>
+          <p>Your partner keeps working while your Mac sleeps. It only listens on the server itself (127.0.0.1); reach it through your own domain or an SSH tunnel.</p>
         </div>
       </div>
     </div>
@@ -390,9 +391,9 @@ const ld = {
   <div class="wrap">
     <Face id="final-face" faces={["napping", "idle"]} start="napping" sizes="168px" />
     <h2>Say it once.</h2>
-    <p class="lede">Then get on with your day. Ducter will be here when it's done.</p>
+    <p class="lede">Then get on with your day. Ducter tells you when it's done.</p>
     <div class="cta-row">
-      <a class="btn secondary lg" href={gh.href}>{facts.isPublic ? "Star on GitHub" : "Read how it works"}</a>
+      <a class="btn secondary lg" href={facts.isPublic ? gh.href : "/docs"}>{facts.isPublic ? "Star on GitHub" : "Read the docs"}</a>
       <a class="btn lg" href={dl.href}>{dl.label}</a>
     </div>
   </div>

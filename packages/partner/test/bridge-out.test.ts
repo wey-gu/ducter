@@ -487,7 +487,7 @@ describe("J-Q6 / D106: an outgoing message is never lost or sent twice", () => {
     const state = join(dir, "state.json");
     const ident = (agent: string, member: string, member_id: string) => ({ agent, member, member_id, description: agent });
     writeFileSync(state, JSON.stringify({ seq: 0, messages: [], identities: { "ducter-main": ident("Ducter", "Weyl", "m-weyl"), codex: ident("codex-mem", "Weyl", "m-weyl") } }));
-    const env = { ...process.env, FAKE_BRIDGE_STATE: state, FAKE_BRIDGE_LOSE: "send", FAKE_BRIDGE_LOSE_MODE: "pending", DUCTER_BRIDGE_MEMBER: "" } as Record<string, string>;
+    const env = { ...process.env, NMEM_FAKE_BRIDGE_STATE: state, NMEM_FAKE_BRIDGE_LOSE: "send", NMEM_FAKE_BRIDGE_LOSE_MODE: "pending", DUCTER_BRIDGE_MEMBER: "" } as Record<string, string>;
     const client = createNmemBridge({ context: "ducter-main", bin, env });
     const { partner, fc, user, card, outs } = setup(async (_i, s) => {
       await fc.callTool("bridge_contacts", { query: "codex" });

@@ -137,6 +137,10 @@ describe("the phone/web client", () => {
     expect(core.push.subs()).toHaveLength(0);
     const r: any = await (await post("/api/push/subscribe", { subscription, locale: "zh", platform: "android", quiet: { start: "23:00", end: "08:00", tz: "Asia/Shanghai" } })).json();
     expect(r.settings.quiet).toEqual({ start: "23:00", end: "08:00", tz: "Asia/Shanghai" });
+    // D59: the user's off sticks; a later subscribe (another phone, the iPhone app) doesn't undo it.
+    expect((await (await post("/api/push/settings", { quiet: null })).json()).quiet).toBeNull();
+    const again: any = await (await post("/api/push/subscribe", { subscription, locale: "zh", platform: "android", quiet: { start: "23:00", end: "08:00", tz: "Europe/Berlin" } })).json();
+    expect(again.settings.quiet).toBeNull();
     expect((await post("/api/push/test", {})).status).toBe(200);
     expect(sent).toEqual(["https://fcm.googleapis.com/fcm/send/abc"]);
 

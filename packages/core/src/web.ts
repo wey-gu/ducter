@@ -185,7 +185,7 @@ export async function webApi(req: Request, g: Extract<GateResult, { pass: true }
         if (!isApnsToken(a?.token) || !isTopic(a.topic) || (a.env !== "sandbox" && a.env !== "production")) return json(400, { error: "invalid subscription" });
         deps.push.subscribe({ endpoint: APNS_PREFIX + a.token.toLowerCase(), keys: { p256dh: "", auth: "" }, deviceId, locale, platform: "ios", createdAt: new Date().toISOString(), apns: { env: a.env, topic: a.topic } });
         const quiet = parseQuiet(b.quiet);
-        if (quiet && !deps.push.settings().quiet) deps.push.setSettings({ quiet });
+        if (quiet && deps.push.settings().quietDefault) deps.push.setSettings({ quiet });
         return json(200, { ok: true, settings: deps.push.settings(), apns: deps.apns?.configured ?? false });
       }
       const s = b.subscription as { endpoint?: unknown; keys?: { p256dh?: unknown; auth?: unknown } } | undefined;
@@ -202,9 +202,10 @@ export async function webApi(req: Request, g: Extract<GateResult, { pass: true }
       };
       deps.push.subscribe(sub);
       // The first phone to turn notifications on brings the quiet hours with it (23:00–08:00 in
-      // its own zone, D-decisions-attention D3); they change only when the user changes them.
+      // its own zone, D-decisions-attention D3), in place of the default in this machine's zone
+      // (D59); after that they change only when the user changes them, and off stays off.
       const quiet = parseQuiet(b.quiet);
-      if (quiet && !deps.push.settings().quiet) deps.push.setSettings({ quiet });
+      if (quiet && deps.push.settings().quietDefault) deps.push.setSettings({ quiet });
       return json(200, { ok: true, settings: deps.push.settings() });
     }
     case "POST /api/push/unsubscribe": {

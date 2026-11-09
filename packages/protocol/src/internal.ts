@@ -226,6 +226,10 @@ export interface SessionSpec {
   // Tasks only (D135): what the harness keeps when it compacts (Claude Code's PreCompact hook
   // prints it as compact instructions). Absent: the partner's setup (no hook).
   preCompactNote?: string;
+  // The partner only (principle 6: the in-turn executor has no environment and only reads): no
+  // native tool that writes or runs anything; Ducter's MCP tools stay. Each harness maps it in
+  // runner/oar.ts (Claude Code and pi deny the tools, Codex runs its read-only sandbox).
+  readOnly?: boolean;
 }
 
 export interface HarnessEvent {

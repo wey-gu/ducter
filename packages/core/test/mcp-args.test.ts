@@ -41,3 +41,24 @@ test("every listed tool carries Claude Code's always-load key", async () => {
   expect(tools.map((t) => t.name)).toEqual(["checkpoint", "report_to_main"]);
   for (const t of tools) expect(t._meta?.["anthropic/alwaysLoad"]).toBe(true);
 });
+
+// Principle 6: a Codex partner runs in its read-only sandbox, which declines MCP calls not marked
+// read-only. Only a partner session that says it is sandboxed gets the mark.
+test("the partner's tools are marked read-only only for a sandboxed session", async () => {
+  const hub = createMcpHub({ secret: "s" });
+  hub.register("partner", "task_open", "o", { type: "object" }, async () => "ok");
+  hub.register("task", "checkpoint", "c", { type: "object" }, async () => "ok");
+  const list = async (role: "partner" | { taskId: string }, query: string) => {
+    const res = await hub.handle(
+      new Request(`http://127.0.0.1/mcp${query}`, {
+        method: "POST",
+        headers: { "content-type": "application/json", accept: "application/json, text/event-stream", ...hub.configFor(role).headers },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} }),
+      }),
+    );
+    return ((await res.json()) as { result: { tools: { annotations?: { readOnlyHint?: boolean } }[] } }).result.tools[0]!.annotations;
+  };
+  expect(await list("partner", "?sandbox=read-only")).toEqual({ readOnlyHint: true });
+  expect(await list("partner", "")).toBeUndefined();
+  expect(await list({ taskId: "t1" }, "?sandbox=read-only")).toBeUndefined();
+});

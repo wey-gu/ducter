@@ -112,7 +112,11 @@ export interface Quiet {
 }
 
 export interface PushSettings {
+  // D59: 23:00–08:00 unless the user set others or turned them off. Read back, an unset one is
+  // the default in this machine's zone (quietDefault), which the first phone's zone replaces.
   quiet: Quiet | null;
+  quietOff?: boolean; // the user turned quiet hours off: nothing turns them back on but the user
+  quietDefault?: boolean; // read only: `quiet` is the default, not one the user or a phone set
   done: boolean; // also push when a task is done (off by default: done is level 2)
   off?: boolean; // notifications switched off on the Partner page (D71): nothing is pushed
 }
@@ -154,7 +158,14 @@ export interface PushStore {
   setSettings(p: Partial<PushSettings>): PushSettings;
 }
 
-export function openPushStore(dataDir: string): PushStore {
+/** The quiet hours in force: the ones set, else the default (D59) unless the user turned them off. */
+export function effectiveSettings(s: PushSettings, tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"): PushSettings {
+  const { quietDefault: _, ...rest } = s;
+  if (rest.quiet || rest.quietOff) return rest;
+  return { ...rest, quiet: { ...DEFAULT_QUIET, tz }, quietDefault: true };
+}
+
+export function openPushStore(dataDir: string, opts: { tz?: string } = {}): PushStore {
   const path = join(dataDir, "push.json");
   let data: PushFile = { subs: [], settings: { quiet: null, done: false } };
   if (existsSync(path)) {
@@ -205,11 +216,16 @@ export function openPushStore(dataDir: string): PushStore {
       data.subs = data.subs.filter((x) => x.deviceId !== deviceId);
       if (data.subs.length !== n) save();
     },
-    settings: () => ({ ...data.settings }),
+    settings: () => effectiveSettings(data.settings, opts.tz),
     setSettings(p) {
-      data.settings = { ...data.settings, ...p };
+      const { quietDefault: _, ...patch } = p;
+      // Off is remembered (a later phone's subscribe must not turn it back on); setting hours clears it.
+      if (patch.quiet === null) patch.quietOff = true;
+      else if (patch.quiet) patch.quietOff = false;
+      data.settings = { ...data.settings, ...patch };
+      if (!data.settings.quietOff) delete data.settings.quietOff;
       save();
-      return { ...data.settings };
+      return effectiveSettings(data.settings, opts.tz);
     },
   };
 }

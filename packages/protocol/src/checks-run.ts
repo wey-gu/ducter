@@ -1,7 +1,9 @@
 // Running one check (D112), on the device Ducter lives on or on a worker (worker-host "check").
 // The child gets a small allowlisted environment (D102: no key enters it wholesale): the basics,
 // proxies and CA bundles, and nothing secret-shaped. gh and git read their own config files.
-import { CHECK_MAX_OUTPUT, CHECK_TIMEOUT_MS, evaluate, validateCheck } from "./checks.ts";
+import { homedir } from "node:os";
+import { isAbsolute, join } from "node:path";
+import { CHECK_MAX_OUTPUT, CHECK_TIMEOUT_MS, type CheckContext, evaluate, validateCheck } from "./checks.ts";
 import type { CheckSpec } from "./index.ts";
 import { isSecretName } from "./keys.ts";
 
@@ -29,8 +31,18 @@ export function checkEnv(inherited: Record<string, string | undefined> = process
   return env;
 }
 
+/** A bare command found on PATH's absolute entries only: never the cwd, never a relative entry. */
+export function resolveOnPath(cmd: string, path: string | undefined): string | null {
+  if (/[\\/]/.test(cmd)) return null;
+  const sep = process.platform === "win32" ? ";" : ":";
+  const dirs = (path ?? "").split(sep).filter((d) => d && isAbsolute(d));
+  return dirs.length ? Bun.which(cmd, { PATH: dirs.join(sep) }) : null;
+}
+
 export const realExec: Exec = async (argv, { cwd, env, timeoutMs }) => {
-  const p = Bun.spawn(argv, { cwd, env, stdin: "ignore", stdout: "pipe", stderr: "pipe" });
+  const bin = resolveOnPath(argv[0]!, env.PATH);
+  if (!bin) throw new Error(`${argv[0]} not found`);
+  const p = Bun.spawn([bin, ...argv.slice(1)], { cwd, env, stdin: "ignore", stdout: "pipe", stderr: "pipe" });
   const timer = setTimeout(() => p.kill(), timeoutMs);
   try {
     const [out, err] = await Promise.all([new Response(p.stdout).text(), new Response(p.stderr).text()]);
@@ -43,11 +55,23 @@ export const realExec: Exec = async (argv, { cwd, env, timeoutMs }) => {
   }
 };
 
-export async function runCheck(spec: CheckSpec, opts: { cwd?: string; exec?: Exec; timeoutMs?: number } = {}): Promise<CheckResult> {
-  const v = validateCheck(spec);
+/** Where checks run on this device: home and Ducter's data folder, for the path rules. */
+export function checkContext(env: Record<string, string | undefined> = process.env): CheckContext {
+  const home = homedir();
+  return { home, dataDir: env.DUCTER_DATA_DIR || join(home, ".ducter") };
+}
+
+const tilde = (a: string, home: string) => (a === "~" ? home : a.startsWith("~/") ? home + a.slice(1) : a);
+
+export async function runCheck(spec: CheckSpec, opts: { cwd?: string; exec?: Exec; timeoutMs?: number; ctx?: CheckContext } = {}): Promise<CheckResult> {
+  const ctx: CheckContext = { ...(opts.ctx ?? checkContext()), cwd: opts.cwd };
+  const v = validateCheck(spec, ctx);
   if (!v.ok) return { ok: false, met: false, summary: v.error, error: v.error };
+  // No shell, so nothing expands ~: do it here, as the partner wrote it (test -f ~/out/x.pdf).
+  const home = ctx.home ?? homedir();
+  const argv = spec.argv.map((a, i) => (i === 0 ? a : tilde(a, home)));
   try {
-    const r = await (opts.exec ?? realExec)(spec.argv, { cwd: spec.cwd ?? opts.cwd, env: checkEnv(), timeoutMs: opts.timeoutMs ?? CHECK_TIMEOUT_MS });
+    const r = await (opts.exec ?? realExec)(argv, { cwd: spec.cwd ? tilde(spec.cwd, home) : opts.cwd, env: checkEnv(), timeoutMs: opts.timeoutMs ?? CHECK_TIMEOUT_MS });
     const e = evaluate(spec.succeedWhen, r.exitCode, r.stdout);
     return { ok: true, met: e.met, summary: e.summary, exitCode: r.exitCode, output: r.stdout.slice(0, 4096) };
   } catch (err) {

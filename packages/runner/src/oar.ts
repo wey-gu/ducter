@@ -236,6 +236,37 @@ export interface Adapted {
   clean: boolean;
 }
 
+/**
+ * The partner's read-only session (SessionSpec.readOnly, principle 6), per harness, checked
+ * against the installed builds:
+ *   - Claude Code 2.1.319: its write and run tools are denied (and subagents, which could carry
+ *     them); Read, Grep, Glob, WebFetch, WebSearch and Ducter's MCP tools stay. A file read is
+ *     capped by CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS: a bigger one is refused and the model
+ *     reads it in parts (principle 5).
+ *   - Codex 0.167.0: `-c sandbox_mode="read-only"` after OAR's own danger-full-access override
+ *     (the later one wins: app-server config/read shows read-only in the session-flags layer).
+ *     Shell commands still run, read-only and without network. No read cap.
+ *   - pi: its bash, edit and write tools are excluded (OAR's excludeTools); read/grep/find/ls stay.
+ *   - DeepSeek Harness: no per-session tool denial (OAR refuses it) and its read-only permission
+ *     mode is unverified, so nothing changes (design/system.md, known gaps).
+ */
+export const READ_ONLY_DENY: Partial<Record<HarnessId, string[]>> = {
+  "claude-code": ["Bash", "BashOutput", "KillShell", "KillBash", "Edit", "MultiEdit", "Write", "NotebookEdit", "Task", "Agent"],
+  pi: ["bash", "edit", "write"],
+};
+export const PARTNER_READ_MAX_TOKENS = 8_000;
+
+function readOnlyFor(h: HarnessId, a: { disallowed: string[]; launchArgs?: string[]; env?: Record<string, string | null> }): { disallowed: string[]; launchArgs?: string[]; env?: Record<string, string | null> } {
+  const disallowed = [...a.disallowed, ...(READ_ONLY_DENY[h] ?? []).filter((t) => !a.disallowed.includes(t))];
+  if (h === "claude-code") return { ...a, disallowed, env: { ...a.env, CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS: String(PARTNER_READ_MAX_TOKENS) } };
+  if (h === "codex") {
+    // Under any sandbox codex declines an MCP call not marked readOnlyHint (with approvals off it
+    // can't ask; measured: task_open and wait_for refused). See the MCP URL in adaptSpec.
+    return { ...a, launchArgs: [...(a.launchArgs ?? []), "-c", 'sandbox_mode="read-only"'] };
+  }
+  return { ...a, disallowed };
+}
+
 /** Spec -> OAR options for one harness (exported for tests; no process is started). */
 export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string | null>; dataDir: string; refused?: Readonly<Record<string, string>>; inherited?: Record<string, string | undefined> }): Adapted {
   const h = spec.harness;
@@ -311,6 +342,13 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
       }
       break;
     }
+  }
+
+  if (spec.readOnly) {
+    ({ disallowed, launchArgs, env } = readOnlyFor(h, { disallowed, launchArgs, env }));
+    // Codex declines MCP calls under its sandbox unless a tool is marked read-only: the URL tells
+    // Ducter's MCP the session is sandboxed, and it marks the partner's tools (core/src/mcp.ts).
+    if (h === "codex") mcpServers = mcpServers.map((m) => ("url" in m && m.url ? { ...m, url: m.url + (m.url.includes("?") ? "&" : "?") + "sandbox=read-only" } : m));
   }
 
   // What the runtime says it cannot honor is never sent (OAR refuses by presence).

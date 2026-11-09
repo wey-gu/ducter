@@ -88,13 +88,21 @@ export function createMcpHub(opts: { secret: string; port?: number; version?: st
     return tool.handler(args ?? {}, ctx);
   };
 
-  const serverFor = (ctx: Ctx) => {
+  const serverFor = (ctx: Ctx, sandboxed = false) => {
     const server = new Server({ name: "ducter", version: opts.version ?? "0.0.1" }, { capabilities: { tools: {} } });
-    server.setRequestHandler(ListToolsRequestSchema, async () => ({
-      tools: [...registry[ctx.role]]
-        .filter(([, t]) => !t.visible || t.visible(ctx))
-        .map(([name, t]) => ({ name, description: t.description, inputSchema: t.inputSchema as any, _meta: ALWAYS_LOAD })),
-    }));
+    server.setRequestHandler(ListToolsRequestSchema, async () => {
+      // Codex runs the partner in its read-only sandbox (principle 6, runner/oar.ts), where it
+      // declines any MCP call not marked read-only, having no one to ask. Ducter's tools leave
+      // the partner's environment alone (their effects go through Ducter's own cards), so for a
+      // session that says it is sandboxed (?sandbox=read-only) they say so. Not otherwise:
+      // Claude Code would run read-only tools in parallel.
+      const hint = ctx.role === "partner" && sandboxed ? { annotations: { readOnlyHint: true } } : {};
+      return {
+        tools: [...registry[ctx.role]]
+          .filter(([, t]) => !t.visible || t.visible(ctx))
+          .map(([name, t]) => ({ name, description: t.description, inputSchema: t.inputSchema as any, _meta: ALWAYS_LOAD, ...hint })),
+      };
+    });
     server.setRequestHandler(CallToolRequestSchema, async (req) => {
       try {
         const out = await call(ctx, req.params.name, req.params.arguments);
@@ -131,7 +139,7 @@ export function createMcpHub(opts: { secret: string; port?: number; version?: st
       const ctx = auth.startsWith("Bearer ") ? verify(auth.slice(7).trim()) : undefined;
       if (!ctx) return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401 });
       if (req.method !== "POST") return new Response(null, { status: 405, headers: { Allow: "POST" } });
-      const server = serverFor(ctx);
+      const server = serverFor(ctx, new URL(req.url).searchParams.get("sandbox") === "read-only");
       const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
       await server.connect(transport);
       try {

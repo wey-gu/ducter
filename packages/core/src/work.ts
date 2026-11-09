@@ -2,6 +2,7 @@
 // routines, the partner's and tasks' tools for them, the client frames, and On hand's view.
 // See waiters.ts, until.ts, routines.ts for each mechanism.
 import { homedir } from "node:os";
+import { resolve } from "node:path";
 import type { Bodies, CheckSpec, EventSpec, LogEvent, OnHand, Place, RoutineTrigger } from "@ducter/protocol";
 import type { LogStore, Runner, WorkerLinks } from "@ducter/protocol/src/internal.ts";
 import { describeCheck, describePredicate, validateCheck } from "@ducter/protocol/src/checks.ts";
@@ -54,6 +55,20 @@ export function placeOfCheck(place: Place | undefined): { device: string; cwd?: 
   return { device: place.device || "local" };
 }
 
+/**
+ * The folder a check runs in. The model's cwd stays inside the task's place: a folder in it,
+ * never above or beside it. Without a place (the partner's own wait) it is taken as written;
+ * validateCheck still keeps it out of the data folder and key folders.
+ */
+export function cwdOfCheck(placeCwd: string | undefined, specCwd: string | undefined): { cwd?: string } | { error: string } {
+  if (!specCwd) return { cwd: placeCwd };
+  if (!placeCwd) return { cwd: expand(specCwd) };
+  const root = resolve(placeCwd);
+  const cwd = resolve(root, expand(specCwd));
+  if (cwd !== root && !cwd.startsWith(root + "/")) return { error: `a check runs in the task's place (${placeCwd}); ${specCwd} is outside it` };
+  return { cwd };
+}
+
 const zhOf = (s: string) => /[一-鿿]/.test(s);
 
 export function createWork(o: WorkOptions): Work {
@@ -62,7 +77,9 @@ export function createWork(o: WorkOptions): Work {
   const check = async (spec: CheckSpec, w: { taskId?: string }): Promise<CheckResult> => {
     const where = placeOfCheck(w.taskId ? tasks.get(w.taskId)?.place : undefined);
     const device = spec.device ?? where.device;
-    const cwd = spec.cwd ? expand(spec.cwd) : where.cwd;
+    const at = cwdOfCheck(where.cwd, spec.cwd);
+    if ("error" in at) return { ok: false, met: false, summary: at.error, error: at.error };
+    const cwd = at.cwd;
     if (device === "local") return runCheck({ ...spec, ...(cwd ? { cwd } : {}) }, { exec: o.exec });
     const link = o.workers?.()?.link(device);
     if (!link) return { ok: false, met: false, summary: `no device called ${device}`, error: "unknown device" };
@@ -72,6 +89,11 @@ export function createWork(o: WorkOptions): Work {
     } catch (err) {
       return { ok: false, met: false, summary: (err as Error).message, error: (err as Error).message };
     }
+  };
+  /** Why an event can't be watched (an oo account, an MCP server), before any wait is set. */
+  const eventRefusal = (ev: EventSpec): string | undefined => {
+    const w = o.connections?.watchable?.(ev.connection);
+    return w && !w.ok ? w.error : undefined;
   };
   const readEvent: WaiterDeps["readEvent"] = o.connections ? (spec, cp) => o.connections!.readTrigger(spec.connection, spec.service, spec.trigger, spec.config, cp) : undefined;
 
@@ -146,6 +168,8 @@ export function createWork(o: WorkOptions): Work {
       const v = validateCheck(a.check);
       if (!v.ok) return { ok: false, error: v.error };
     }
+    const unwatchable = a.event ? eventRefusal(a.event) : undefined;
+    if (unwatchable) return { ok: false, error: unwatchable };
     // Look once now: it may already hold, and the user hears what it sees today.
     const first = await waiters.dryRun({ reason, ...(a.check ? { check: a.check } : {}), ...(a.event ? { event: a.event } : {}), ...(a.judge ? { judge: a.judge } : {}), ...(taskId ? { taskId } : {}) });
     if (first.met) return { ok: true, met: true, now: first.summary, note: "It already holds; nothing was set. Tell the user in one line." };
@@ -243,6 +267,8 @@ export function createWork(o: WorkOptions): Work {
       required: ["name", "trigger", "brief"],
     },
     async (a: { name: string; trigger: RoutineTrigger; triggerWords?: string; brief: string; place?: Place; reports?: "every" | "on_change" | "needs_you"; effect?: "read_only" | "drafts" | "local_writes"; monthTokens?: number }) => {
+      const unwatchable = a.trigger?.kind === "condition" && a.trigger.event ? eventRefusal(a.trigger.event) : undefined;
+      if (unwatchable) return { ok: false, error: unwatchable };
       try {
         const v = await routines.propose(a);
         return {

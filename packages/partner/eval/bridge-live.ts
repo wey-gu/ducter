@@ -81,7 +81,7 @@ if (REAL) {
   writeFileSync(state, JSON.stringify({ seq: 0, messages: [], identities: { [CTX]: ident("Ducter", "Weyl's personal AI partner (always on)"), [PEER_CTX]: ident("terminal-claude", "Weyl's Claude Code in a terminal, ~/dev/ducter") } }));
 }
 chmodSync(nmem, 0o755);
-const env: Record<string, string> = { ...(process.env as Record<string, string>), PATH: `${binDir}:${process.env.PATH}`, ...(REAL ? {} : { FAKE_BRIDGE_STATE: state }) };
+const env: Record<string, string> = { ...(process.env as Record<string, string>), PATH: `${binDir}:${process.env.PATH}`, ...(REAL ? {} : { NMEM_FAKE_BRIDGE_STATE: state }) };
 const peerEnv: Record<string, string> = { ...env, ...(PEER_CONFIG ? { NMEM_CLI_CONFIG_DIR: PEER_CONFIG } : {}) };
 type FakeMsg = { id: string; from: string; to: string; body: string; in_reply_to?: string; pending?: boolean };
 const ledger = (): FakeMsg[] => (REAL ? [] : JSON.parse(readFileSync(state, "utf8")).messages);
@@ -290,8 +290,8 @@ async function main() {
 
   if (ONLY.includes("j6") && !REAL) {
     say(`\n## J-Q6 · A send whose answer is lost is recovered, never sent twice (fake only)\n`);
-    env.FAKE_BRIDGE_LOSE = "send";
-    env.FAKE_BRIDGE_LOSE_MODE = "pending";
+    env.NMEM_FAKE_BRIDGE_LOSE = "send";
+    env.NMEM_FAKE_BRIDGE_LOSE_MODE = "pending";
     user("跟我终端里那个 Claude 说一声：今晚别动 main。");
     await settle(partner);
     seq = show(core, seq);

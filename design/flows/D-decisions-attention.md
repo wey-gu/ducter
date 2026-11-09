@@ -318,6 +318,11 @@ are new words).
   Shall I hold things overnight and give you everything at 8? Anything that can safely carry
   on will." Go creates the user's quiet hours Rule (23:00–08:00 local, editable on the card)
   [I]. Before that, Ducter uses no quiet hours but still coalesces pushes.
+- **As built (D59):** no proposal card; quiet hours are on from the start, 23:00–08:00. Until a
+  phone subscribes they are in the zone of the machine Ducter runs on; the first phone to turn
+  notifications on (the web page or the iPhone app) brings its own zone. The partner's
+  follow-through (D110) reads the same hours. Turning them off is remembered: no later phone
+  turns them back on (`packages/core/src/push.ts`, `effectiveSettings`).
 
 ### 2. Flow
 

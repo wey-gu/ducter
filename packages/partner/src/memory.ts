@@ -14,6 +14,25 @@
 //   - Tests inject a fake MemoryClient or point `bin` at a stub; nothing in tests reaches the
 //     user's real Mem.
 
+/** What nmem needs from Ducter's environment: paths, user, locale, temp folder, proxies, CA bundles. */
+const NMEM_BASICS = new Set([
+  "PATH", "HOME", "USER", "LOGNAME", "SHELL", "LANG", "LANGUAGE", "TERM", "TMPDIR", "TMP", "TEMP", "TZ",
+  "SYSTEMROOT", "APPDATA", "LOCALAPPDATA", "USERPROFILE",
+  "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "no_proxy", "all_proxy",
+  "NODE_EXTRA_CA_CERTS", "SSL_CERT_FILE", "SSL_CERT_DIR", "REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE",
+]);
+
+/**
+ * nmem's environment (D102): the basics and its own NMEM_* settings (its API key among them),
+ * never the whole of Ducter's, which may hold harness keys. The partner package stays free of
+ * other packages, so this is the same allowlist as protocol/src/tool-env.ts, kept here.
+ */
+export function nmemEnv(inherited: Record<string, string | undefined> = process.env): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(inherited)) if (typeof v === "string" && (NMEM_BASICS.has(k) || k.startsWith("NMEM_") || k.startsWith("LC_") || k.startsWith("XDG_"))) out[k] = v;
+  return out;
+}
+
 export interface MemoryHit {
   title: string;
   content: string; // clipped
@@ -82,7 +101,7 @@ export function createNmemClient(opts: NmemOptions = {}): MemoryClient {
         stdout: "pipe",
         stderr: "pipe",
         stdin: input !== undefined ? new Blob([input]) : "ignore",
-        env: (opts.env ?? process.env) as Record<string, string>,
+        env: nmemEnv(opts.env), // D102: the basics and NMEM_*, never Ducter's keys
       });
     } catch {
       return { missing: true };

@@ -50,6 +50,7 @@ describe("live-run regressions", () => {
     user("hi");
     await partner.idle();
     expect(fr.sessions[0]!.spec.isolateUserConfig).toBe(true);
+    expect(fr.sessions[0]!.spec.readOnly).toBe(true); // principle 6: no native write or run tools
     expect(fr.sessions[0]!.spec.env).toEqual({ ENABLE_TOOL_SEARCH: "false" });
   });
 

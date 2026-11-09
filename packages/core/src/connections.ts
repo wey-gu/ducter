@@ -327,7 +327,16 @@ export interface ConnectionsStore extends ConnectionsApi {
    * the checkpoint the last read returned (null the first time). Only for OpenConnector sources.
    */
   readTrigger(key: string, service: string, trigger: string, config: unknown, checkpoint: unknown): Promise<TriggerRead>;
+  /** Whether an event wait can watch this connection, and why not (checked before a wait is set). */
+  watchable(key: string): { ok: true } | { ok: false; error: string };
 }
+
+/**
+ * oo (D122) runs actions through its CLI and has no Provider Triggers (oo 1.9: `oo connector`
+ * is search / schema / run / proxy / apps), so an account reached through oo can't be watched.
+ */
+export const OO_NOT_WATCHABLE =
+  "This account is reached through oo, which can't be watched for new items yet. Use a check instead: wait_for with a check that looks every few minutes (everyMinutes), or a routine on a schedule that reads it.";
 
 export type TriggerRead = { ok: true; items: { id: string; text: string }[]; checkpoint: unknown } | { ok: false; error: string };
 
@@ -711,10 +720,19 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
       return () => listeners.delete(fn);
     },
 
-    async readTrigger(key, service, trigger, config, checkpoint) {
+    watchable(key) {
       const r = find(key);
       if (!r) return { ok: false, error: NOT_FOUND };
       if (r.source === "mcp") return { ok: false, error: `${r.name} is not an OpenConnector: it has no triggers to watch` };
+      if (r.source === "oo" || r.url.startsWith("oo:")) return { ok: false, error: OO_NOT_WATCHABLE };
+      return { ok: true };
+    },
+
+    async readTrigger(key, service, trigger, config, checkpoint) {
+      const r = find(key);
+      if (!r) return { ok: false, error: NOT_FOUND };
+      const w = api.watchable(key);
+      if (!w.ok) return w;
       const base = r.url.replace(/\/mcp\/?$/, "").replace(/\/+$/, "");
       const url = `${base}/v1/providers/${encodeURIComponent(service)}/triggers/${encodeURIComponent(trigger)}/execute`;
       try {

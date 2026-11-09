@@ -23,6 +23,7 @@
 // The nmem JSON shapes below are read tolerantly: `bridge inbox` lists `messages[]` with a
 // `message` handle; `bridge open <message>` returns `body` and the sender. Field names that are
 // not documented in the CLI help are guesses with fallbacks (research/31).
+import { nmemEnv } from "./memory.ts";
 
 export interface BridgeMessage {
   messageId: string; // the CLI's message handle (what `open` and `reply` take)
@@ -219,7 +220,7 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
         stdout: "pipe",
         stderr: "pipe",
         stdin: input !== undefined ? new Blob([input]) : "ignore",
-        env: env as Record<string, string>,
+        env: nmemEnv(env), // D102: the basics and NMEM_*, never Ducter's keys
       });
     } catch {
       return { missing: true };

@@ -463,3 +463,8 @@ Codex first, once OAR is near 1.0. See `research/17`.
       run, and add what reads as **用了 / Used {tool}**. Trigger: the next live dogfood run.
 - [ ] Older Logs have no thinking headings (`task_event.thinking` is new); a session resumed
       across the change shows Thinking lines only from then on. Trigger: none needed.
+- [ ] D138: the browser's cua-driver spawns (`packages/runner/src/browser.ts`) still inherit the
+      whole environment; give them `toolEnv` plus the display/session-bus names. Trigger: the
+      next change to browser.ts.
+- [ ] D139: DeepSeek Harness's partner session is not read-only (no per-session tool denial in
+      OAR; its read-only permission mode unverified). Trigger: dsh installed for a check.

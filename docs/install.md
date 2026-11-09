@@ -10,7 +10,7 @@ There are four ways to have Ducter, and you can mix them:
 
 | | Best for | Status |
 |---|---|---|
-| [The Mac app](#the-mac-app) | Most people. Double-click and go | Ready: download it from GitHub |
+| [The Mac app](#the-mac-app) | Most people. One line in Terminal, or a download | Ready |
 | [The `ducter` command](#the-ducter-command) | People who live in Terminal | Ready |
 | [A Linux server](#a-linux-server-that-stays-on) | Keeping your partner working while your Mac sleeps | Ready |
 | [Your phone](#your-phone) | Answering decisions and checking results on the go | Ready in the phone's browser; an iPhone app is coming soon |
@@ -21,12 +21,23 @@ Ducter uses your own plan through it; it never asks for an API key to get starte
 
 ## The Mac app
 
-Download `Ducter-<version>-arm64.dmg` from the
-[latest release on GitHub](https://github.com/wey-gu/ducter/releases/latest). It runs on Macs
-with Apple silicon, and it's signed and notarized, so macOS asks only once whether to open an
-app from the Internet; choose **Open**.
+It runs on Macs with Apple silicon. Paste this into Terminal:
 
-To install: open the `.dmg`, drag **Ducter** onto **Applications**, and open it from there.
+```sh
+curl -fsSL https://ducter.ai/install.sh | sh
+```
+
+It downloads the latest release from GitHub, checks the download's checksum and that Apple
+notarized it, puts **Ducter** in **Applications** (replacing an older copy), and opens it. It
+asks for your password only if your account can't write to Applications.
+
+### Or download it yourself
+
+Download `Ducter-<version>-arm64.dmg` from the
+[latest release on GitHub](https://github.com/wey-gu/ducter/releases/latest). It's signed and
+notarized, so macOS asks only once whether to open an app from the Internet; choose **Open**.
+Open the `.dmg`, drag **Ducter** onto **Applications**, and open it from there.
+
 The app updates itself: when a new version is ready, the menu says so, and it installs the next
 time you quit.
 
@@ -89,19 +100,18 @@ example `ducter status --port 7790`.
 A Mac sleeps; a small server doesn't. Put Ducter on a Linux server you own and your partner
 keeps working through the night, while your Mac and phone connect to it.
 
-**1. On your Mac, make the Linux files** (from the source):
+**1. On the server, install it as a service** (x64 or arm64 Linux):
 
 ```sh
-scripts/install.sh --linux ducter-linux
-scp -r ducter-linux/linux-x64 you@server:ducter    # or linux-arm64; `uname -m` on the server tells you
-```
-
-**2. On the server, install it as a service:**
-
-```sh
-sh ducter/install.sh --service
+curl -fsSL https://ducter.ai/install.sh | sh -s -- --service
 ducter doctor
 ```
+
+The same line without `-s -- --service` installs only the `ducter` command, in `~/.local/bin`.
+You can also take the tarball for your server's CPU from the
+[latest release](https://github.com/wey-gu/ducter/releases/latest) and run its `install.sh`, or
+build the files from the source on your Mac with `scripts/install.sh --linux ducter-linux` and
+copy the folder over.
 
 Ducter now starts with the server and restarts if it ever crashes. It only listens on the
 server itself (`127.0.0.1`), so nobody reaches it from outside until you choose how. The
@@ -124,7 +134,7 @@ DeepSeek Harness and nothing else. Other keys and tokens on the server, such as 
 shell, aren't passed to tasks either. If an older Ducter had you put keys in `~/.ducter/env`,
 Ducter moves them to `keys.env` the next time it starts.
 
-**3. Choose how to reach it:**
+**2. Choose how to reach it:**
 
 - **Your own domain (recommended).** Point a DNS record at the server, open ports 80 and 443,
   copy `scripts/caddy-setup.sh` from the source to the server, and run
@@ -135,7 +145,7 @@ Ducter moves them to `keys.env` the next time it starts.
   This works for your Mac, not your phone.
 - A zero-setup address with no domain of your own is coming soon.
 
-**4. Connect your Mac.** Open the Mac app and choose **My Ducter is on another computer**, then
+**3. Connect your Mac.** Open the Mac app and choose **My Ducter is on another computer**, then
 **Connect to your Ducter**. On the server, run `ducter pair`, and type the **Address** and
 **Code** it shows (or paste the whole link). The code works once, for 10 minutes.
 

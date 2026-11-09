@@ -17,14 +17,15 @@ write to a colleague.
   ([which agents](faq.md#which-ai-agents-does-it-work-with)). Ducter does its work through
   the plan you already have. If neither is set up yet, Ducter installs one for you in the next
   step.
-- **The Ducter app.** Download the `.dmg` from the
-  [latest release on GitHub](https://github.com/wey-gu/ducter/releases/latest). You can also
-  build it from the source: see [Install](install.md).
+- **The Ducter app.** In Terminal, `curl -fsSL https://ducter.ai/install.sh | sh` installs it
+  and opens it. You can also download the `.dmg` from the
+  [latest release on GitHub](https://github.com/wey-gu/ducter/releases/latest), or build it
+  from the source: see [Install](install.md).
 
 ## 1. Open Ducter
 
-Open the `.dmg`, drag **Ducter** onto **Applications**, and open it from there. The first time,
-macOS asks whether you want to open an app downloaded from the Internet: choose **Open**. (If
+With the one line in Terminal, Ducter is already open. With the `.dmg`, drag **Ducter** onto
+**Applications** and open it from there; the first time, macOS asks whether you want to open an app downloaded from the Internet: choose **Open**. (If
 you built it yourself without an Apple Developer ID, macOS needs one extra step; [Troubleshooting](troubleshooting.md#ducter-not-opened)
 shows it.)
 

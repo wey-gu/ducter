@@ -54,6 +54,28 @@ After this, every release is: bump the version, commit, `git tag vX.Y.Z`, push t
 Only Apple silicon gets a DMG for now. An Intel build would add a `macos-15-intel` job running
 the same steps.
 
+## The one-line installer (`curl -fsSL https://ducter.ai/install.sh | sh`)
+
+`apps/site/public/install.sh`, served from the site's root (`apps/site/vercel.json` sends it as
+`text/plain` with a 5-minute cache). It reads the newest published release (the API's
+`releases/latest`, else the `releases/latest` redirect; `DUCTER_VERSION` pins one), downloads
+`Ducter-<v>-arm64.dmg` or `ducter-<v>-linux-<arch>.tar.gz` plus `SHA256SUMS.txt` from
+`releases/download/v<v>/`, and checks the SHA-256. On a Mac it also requires `spctl` to say
+"Notarized Developer ID" before it copies the app into `/Applications` (sudo only when that
+isn't writable), then restarts the background LaunchAgent if it runs from there and opens the
+app. On Linux it runs the tarball's own `install.sh` with the arguments after `sh -s --`.
+
+**It downloads files by the names this workflow gives them.** Rename an asset here and the
+installer must follow in the same change; `scripts/install-sh.test.ts` (part of `bun test`)
+fails when the two drift, and CI parses the script. To test it without touching
+`/Applications` or a running Ducter, mirror a release and point the script at it:
+
+```sh
+gh release download v0.0.1-rc.1 -R wey-gu/ducter -D /tmp/mirror
+DUCTER_VERSION=0.0.1-rc.1 DUCTER_DOWNLOAD_BASE=file:///tmp/mirror \
+  DUCTER_APP_DIR=/tmp/apps DUCTER_NO_OPEN=1 sh apps/site/public/install.sh
+```
+
 ## How the app updates itself (D72)
 
 `apps/desktop/internal/update`, a small Go updater (not Sparkle; why in D72). Nothing extra is

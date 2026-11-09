@@ -69,7 +69,7 @@ jobs:
         run: bun scripts/check-binaries.ts
 
       - name: Shell scripts parse
-        run: for f in scripts/*.sh scripts/ci/*.sh packages/cli/build.sh; do bash -n "$f"; done
+        run: for f in scripts/*.sh scripts/ci/*.sh packages/cli/build.sh apps/site/public/install.sh; do bash -n "$f"; done
 
   go:
     name: desktop (Go)

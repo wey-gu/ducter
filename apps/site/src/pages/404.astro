@@ -5,7 +5,7 @@ import Nav from "../components/Nav.astro";
 import Footer from "../components/Footer.astro";
 import Face from "../components/Face.astro";
 import { siteLinks } from "../lib/links";
-const { facts, dl, gh } = await siteLinks();
+const { dl, gh } = await siteLinks();
 ---
 <!doctype html>
 <html lang="en">
@@ -20,6 +20,6 @@ const { facts, dl, gh } = await siteLinks();
     <div class="cta-row"><a class="btn secondary lg" href="/docs">Read the docs</a><a class="btn lg" href="/">Back to the start</a></div>
   </div>
 </main>
-<Footer gh={gh} isPublic={facts.isPublic} home={false} />
+<Footer gh={gh} home={false} />
 </body>
 </html>

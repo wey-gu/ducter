@@ -3,6 +3,9 @@
 The builder's reference behind the quickstart in the [README](../README.md): building the Mac
 app, handing Ducter to a friend, every command and option, and running it on a Linux server.
 The friendly version for people using Ducter is [`docs/install.md`](../docs/install.md).
+People without a checkout install a release with `curl -fsSL https://ducter.ai/install.sh | sh`:
+that script lives in `apps/site/public/install.sh` and must keep matching the asset names in
+`.github/workflows/release.yml` (how it works and how to test it: [Releasing](release/README.md), "The one-line installer").
 
 ## Give Ducter to a friend
 

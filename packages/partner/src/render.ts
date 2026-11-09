@@ -68,6 +68,11 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
       const b = e.body as Bodies["decision_resolved"];
       const d = ctx.decision(b.decisionId);
       const by = b.by === "default" ? " by default" : "";
+      if (d?.routineId) {
+        // A routine's proposal or review card (D114): Ducter acts on the answer itself.
+        const what = b.option === "go" ? "it is on now and runs by itself; nothing to do" : b.option === "hold" ? "it stays off" : "the user replied instead";
+        return `[routine card answered: ${b.option}${by}] "${d.question}": ${what}${b.text ? ` · user: ${b.text}` : ""}`;
+      }
       if (d && !d.taskId) {
         // The partner's own ask: the answer is for us to act on now.
         const what = b.option === "go" ? `: go ahead with "${d.goLabel}"` : b.option === "hold" ? ": wait, don't start it" : "";
@@ -79,7 +84,25 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
     }
     case "waiter": {
       const b = e.body as Bodies["waiter"];
-      return `[timer ${b.state}] ${b.reason}${b.taskId ? ` (task ${b.taskId})` : ""}`;
+      const on = b.taskId ? ` (task ${b.taskId})` : "";
+      if (!b.check && !b.event) return `[timer ${b.state}] ${b.reason}${on}`;
+      // D112: a condition wait. Tell the user once, in one short line, in their terms.
+      if (b.state === "fired") return `[wait over] ${b.reason}${on}${b.observed ? ` · it saw: ${b.observed}` : ""}`;
+      if (b.state === "expired") return `[wait ran out] ${b.reason}${on}: still not true at the deadline${b.observed ? ` · last saw: ${b.observed}` : ""}. Tell the user plainly and ask whether to keep waiting.`;
+      return `[wait ${b.state}] ${b.reason}${on}`;
+    }
+    case "until": {
+      const b = e.body as Bodies["until"];
+      const title = ctx.taskTitle(b.taskId);
+      const task = `task ${b.taskId}${title ? ` "${title}"` : ""}`;
+      if (b.state === "met") return `[keep going: done] ${task}: "${b.condition}" holds now. Say the outcome once, in the user's terms.`;
+      const why = { max: "it used all its tries", no_progress: "3 tries made no progress", oscillation: "it is going in circles", task_finished: "the task ended", user: "the user stopped it", met: "" }[b.stop ?? "max"];
+      return `[keep going: stopped] ${task}: "${b.condition}" still isn't true; ${why}. It now needs the user: say so in one line.`;
+    }
+    case "routine": {
+      const r = e.body as Bodies["routine"];
+      const why = { failures: "3 runs in a row didn't work", unread: "its last 3 reports went unread", budget: "it reached its monthly budget", review: "it is up for review", asked: "asked" }[r.pauseReason ?? "asked"];
+      return `[routine paused] "${r.name}" (${r.triggerWords}): ${why}. Only the user can resume it from its card; tell them in one line.`;
     }
     case "job_status": {
       const b = e.body as Bodies["job_status"];
@@ -113,6 +136,8 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
     }
     case "waiter": {
       const b = e.body as Bodies["waiter"];
+      if (b.routineId) return null;
+      if (b.check || b.event) return `[${t} wait] ${clip(b.reason, 200)} (${b.state === "armed" ? `looking every ${Math.round((b.everyMs ?? 0) / 60000)} min${b.until ? ` until ${hhmm(b.until)}` : ""}` : b.state})${b.taskId ? ` task ${b.taskId}` : ""}`;
       const st = b.state === "armed" ? `set for ${b.at ? hhmm(b.at) : "?"}` : b.state;
       return `[${t} timer] ${clip(b.reason, 200)} (${st})`;
     }

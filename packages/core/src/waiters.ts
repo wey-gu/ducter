@@ -258,7 +258,9 @@ export function createWaiters(opts: WaiterDeps): Waiters {
     if (e.kind === "waiter") {
       const w = e.body as Bodies["waiter"];
       if (w.state === "armed") {
-        if (!armed.has(w.waiterId)) schedule(w);
+        // Its first look is one period out: whoever armed it has just looked (wait_for's first
+        // look, a routine's dry run or the run that just fired).
+        if (!armed.has(w.waiterId)) schedule(w, every(w));
       } else {
         const a = armed.get(w.waiterId);
         if (a) clear(a);

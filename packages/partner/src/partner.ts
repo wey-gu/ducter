@@ -129,7 +129,15 @@ export function activityStep(tool: string): ActivityStep | undefined {
       return "messaging_task";
     case "wait_until":
     case "ask":
+    case "keep_going":
+    case "routine_propose":
+    case "routine_pause":
+    case "wait_cancel":
       return "planning";
+    case "wait_for": // D112: it takes a first look before it arms
+      return "looking";
+    case "routine_list":
+      return "recalling";
     case "ToolSearch":
     case "memory_add":
     case "task_retitle":
@@ -150,7 +158,17 @@ function isTrigger(e: LogEvent): boolean {
   if (e.origin === "partner") return false;
   if (e.kind === "user_msg" || e.kind === "decision_resolved") return true;
   if (e.kind === "report") return (e.body as Bodies["report"]).state !== "progress";
-  if (e.kind === "waiter") return (e.body as Bodies["waiter"]).state === "fired";
+  if (e.kind === "waiter") {
+    const w = e.body as Bodies["waiter"];
+    if (w.routineId) return false;
+    if (w.state === "expired") return true;
+    return w.state === "fired" && !(w.taskId && (w.check || w.event));
+  }
+  if (e.kind === "until") return (e.body as Bodies["until"]).state !== "on" && (e.body as Bodies["until"]).stop !== "user";
+  if (e.kind === "routine") {
+    const r = e.body as Bodies["routine"];
+    return r.state === "paused" && r.pausedBy === "system" && r.pauseReason !== "review";
+  }
   if (e.kind === "bridge_msg") return (e.body as Bodies["bridge_msg"]).direction === "in";
   return false;
 }
@@ -1299,6 +1317,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       }
       if (e.origin === "partner") return; // never wake on our own output
       if (e.kind === "report") onReport(e.body as Bodies["report"]);
+      // An `until` loop that reached its condition is the task's result (D113): its tries' own
+      // done reports were held back while it kept going.
+      if (e.kind === "until" && (e.body as Bodies["until"]).state === "met")
+        onReport({ taskId: (e.body as Bodies["until"]).taskId, state: "done", summary: "", questions: [], evidence: [] });
       queue.push(e);
       if (!requeuing) kick();
     },
@@ -1343,7 +1365,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   if (persist && handledSeq !== undefined) {
     const from = handledSeq + 1;
     const missed = core.log
-      .read({ fromSeq: from, limit: 200, kinds: ["user_msg", "decision_resolved", "report", "waiter", "bridge_msg"] })
+      .read({ fromSeq: from, limit: 200, kinds: ["user_msg", "decision_resolved", "report", "waiter", "until", "routine", "bridge_msg"] })
       .filter(isTrigger);
     const replied = new Set(
       core.log

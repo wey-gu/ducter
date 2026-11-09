@@ -92,7 +92,12 @@ export function createRoutines(opts: {
 
   const zoneOf = (r: RoutineBody) => (r.trigger.kind === "time" ? (r.trigger.zone === "personal" ? userZone : r.trigger.tz) : userZone);
   const write = (r: RoutineBody) => log.append({ stream: `routine:${r.routineId}`, origin: "schedule", kind: "routine", body: { ...r } });
-  const run = (b: Bodies["routine_run"]) => log.append({ stream: `routine:${b.routineId}`, origin: "schedule", kind: "routine_run", body: b });
+  const run = (b: Bodies["routine_run"]) => {
+    const e = log.append({ stream: `routine:${b.routineId}`, origin: "schedule", kind: "routine_run", body: b });
+    const s = states.get(b.routineId);
+    if (s && b.state !== "skipped") s.lastRun = { ...b, at: e.ts };
+    return e;
+  };
 
   const later = (s: State, slot: "timer" | "review", due: number, fn: () => void) => {
     const hop = () => {
@@ -276,7 +281,10 @@ export function createRoutines(opts: {
       const s = states.get(w.routineId);
       if (!s || s.waiterId !== w.waiterId) return;
       s.waiterId = undefined;
-      void startRun(s, Date.parse(e.ts), { ...(w.observed ? { observed: w.observed } : {}) }).finally(() => arm(s));
+      // Out of the Log's delivery: opening a task appends events the registry must see first.
+      void Promise.resolve()
+        .then(() => startRun(s, Date.parse(e.ts), { ...(w.observed ? { observed: w.observed } : {}) }))
+        .finally(() => arm(s));
     } else if (e.kind === "report") {
       const r = e.body as Bodies["report"];
       const rid = byTask.get(r.taskId);

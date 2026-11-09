@@ -76,6 +76,8 @@ export interface ReportInput {
   doctor: DoctorReport;
   versions: string;
   locale: Locale;
+  /** Run by the app, which zips the bundle onto the Desktop. */
+  fromApp?: boolean;
 }
 
 export interface ReportResult {
@@ -99,11 +101,14 @@ export function writeReport(i: ReportInput): ReportResult {
   return {
     dir,
     files: files.map(([name]) => ({ name, bytes: statSync(join(dir, name)).size })),
-    issueUrl: issueUrl(i.versions, i.doctor, i.locale, i.home),
+    // The app zips the bundle onto the Desktop; the terminal leaves the folder.
+    issueUrl: issueUrl(i.versions, i.doctor, i.locale, i.home, i.fromApp ? undefined : dir),
   };
 }
 
-export function issueUrl(versions: string, doctor: DoctorReport, locale: Locale, home = ""): string {
+/** `folder`: the files are attached from there (ducter report in a terminal); absent: the app's .zip on the Desktop. */
+export function issueUrl(versions: string, doctor: DoctorReport, locale: Locale, home = "", folder?: string): string {
+  const where = folder && home && folder.startsWith(home + "/") ? "~" + folder.slice(home.length) : folder;
   const zh = locale === "zh";
   const notOk = doctor.checks.filter((c) => c.status !== "ok").map((c) => `- ${c.id}: ${c.status}`);
   const head = [
@@ -122,7 +127,13 @@ export function issueUrl(versions: string, doctor: DoctorReport, locale: Locale,
     "",
     ...(notOk.length ? notOk : [zh ? "- 全部通过" : "- all ok"]),
     "",
-    zh ? "请把桌面上的 .zip 拖到这里附上（发之前可以先打开看看）。" : "Attach the .zip from your Desktop (you can open it first to see what's inside).",
+    where
+      ? zh
+        ? `请把 ${where} 里的文件拖到这里附上（发之前可以先打开看看）。`
+        : `Attach the files in ${where} (you can open them first to see what's inside).`
+      : zh
+        ? "请把桌面上的 .zip 拖到这里附上（发之前可以先打开看看）。"
+        : "Attach the .zip from your Desktop (you can open it first to see what's inside).",
   ];
   const title = zh ? "问题：" : "Problem: ";
   let v = redactReport(versions.trim(), { home });

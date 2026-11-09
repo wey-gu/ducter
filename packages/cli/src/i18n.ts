@@ -8,7 +8,7 @@ const en = {
   "doctor.required": "required",
   "doctor.optional": "(optional)",
   "doctor.fix": "fix: ",
-  "doctor.allGood": "All set. Start with: ducter up",
+  "doctor.allGood": "All set. Start with: {up}",
   "doctor.needsFix": "{n} to fix before Ducter can start. Run the line under each, then: ducter doctor",
   "doctor.needsFix.one": "One thing to fix before Ducter can start. Run the line under it, then: ducter doctor",
   "doctor.optionalNote": "Optional items let Ducter do more; it works without them.",
@@ -65,10 +65,10 @@ const en = {
   "up.where": "Lives on",
   "up.where.value": "this Mac · data in {dir}",
   "up.reach": "Other devices",
-  "up.reach.value": "Connect your phone or another computer: ducter pair",
+  "up.reach.value": "Connect your phone or another computer: {pair}",
   "up.firstRun": "First run: a quick check of this Mac.",
-  "up.blocked": "Run the line above, then start again: ducter up",
-  "up.blocked.many": "Run the lines above, then start again: ducter up",
+  "up.blocked": "Run the line above, then start again: {up}",
+  "up.blocked.many": "Run the lines above, then start again: {up}",
   "up.optionalLater": "{n} optional ({names}) can wait; ducter doctor shows how to add them.",
   "up.already": "{name} is already running at {url}.",
   "up.starting": "Starting {name}…",
@@ -84,21 +84,27 @@ const en = {
   "up.desktop.open": "window open",
   "up.desktop.off": "not opened (--no-desktop)",
   "up.desktop.building": "building the desktop app (first time takes a minute)…",
-  "up.desktop.none": "not installed. Connect any client to {url}",
+  "up.desktop.none": "not installed. Open {url} in a browser",
   "up.desktop.failed": "could not start ({reason})",
   "up.desktop.closed": "The desktop window closed. {name} keeps running; reopen it with: ducter open",
   "up.hint": "Say hi to {name} in the desktop window. Ctrl-C stops it.",
-  "up.hintNoDesktop": "Ctrl-C stops it. In another terminal, ducter status shows what {name} is doing.",
+  "up.hintNoDesktop": "Ctrl-C stops it. In another terminal, {status} shows what {name} is doing.",
   "up.stopping": "Stopping {name}…",
 
-  "open.notRunning": "Ducter isn't running. Start it with: ducter up",
+  "open.notRunning": "Ducter isn't running. Start it with: {up}",
   "open.none": "The desktop app isn't installed. Run scripts/install.sh with Go present, or set DUCTER_DESKTOP.",
 
-  "status.notRunning": "Ducter isn't running on port {port}. Start it with: ducter up",
+  "status.notRunning": "Ducter isn't running on port {port}. Start it with: {up}",
   "status.header": "{name} · running at {url}",
   "status.needsYou": "Needs you",
   "status.working": "Working",
   "status.waiting": "Waiting",
+  "status.toMerge": "Done, waiting for you to merge",
+  "status.mergeHint": "Merge one into its base branch: {merge} <part of its title>",
+  "merge.usage": "Usage: {merge} <part of a task's title>",
+  "merge.none": "No finished task waiting to be merged matches \"{name}\".",
+  "merge.many": "\"{name}\" matches more than one task: {titles}. Say a bit more of the title.",
+  "merge.failed": "Couldn't reach Ducter on port {port} to merge.",
   "status.doneToday": "Done today",
   "status.doneLine": "Done today: {n}",
   "status.decisions": "Needs you",
@@ -113,6 +119,7 @@ const en = {
   "help.open": "open the desktop app for a running Ducter",
   "help.doctor": "check this Mac and say how to fix anything missing",
   "help.status": "show tasks and open decisions from the running Ducter",
+  "help.merge": "merge a finished task's branch into its base branch (part of its title)",
   "help.version": "print the version",
   "help.options": "Options",
   "help.port": "port to listen on (default 7777, or DUCTER_PORT)",
@@ -138,7 +145,7 @@ const en = {
   "headless.ready": "{name} is running on {device}",
   "headless.listen": "Listening",
   "headless.public": "listening on {host} without TLS. Only connected devices get in; put Caddy in front for HTTPS (docs: scripts/caddy-setup.sh)",
-  "headless.next": "Connect a device: ducter pair",
+  "headless.next": "Connect a device: {pair}",
   "headless.notReady": "Not ready yet (Ducter still runs, and will use an AI once you sign one in):",
 
   "pair.title": "Code",
@@ -243,7 +250,7 @@ const zh: Record<MsgKey, string> = {
   "doctor.required": "必需",
   "doctor.optional": "（可选）",
   "doctor.fix": "修复：",
-  "doctor.allGood": "一切就绪。开始：ducter up",
+  "doctor.allGood": "一切就绪。开始：{up}",
   "doctor.needsFix": "还有 {n} 项要处理，Ducter 才能启动。运行每项下面那一行，然后：ducter doctor",
   "doctor.needsFix.one": "还有 1 项要处理，Ducter 才能启动。运行它下面那一行，然后：ducter doctor",
   "doctor.optionalNote": "可选项能让 Ducter 多会几件事；没有它们也能用。",
@@ -300,10 +307,10 @@ const zh: Record<MsgKey, string> = {
   "up.where": "住在",
   "up.where.value": "这台 Mac · 数据在 {dir}",
   "up.reach": "别的设备",
-  "up.reach.value": "连手机或另一台电脑：ducter pair",
+  "up.reach.value": "连手机或另一台电脑：{pair}",
   "up.firstRun": "第一次启动：先快速检查一下这台 Mac。",
-  "up.blocked": "运行上面那一行，再启动一次：ducter up",
-  "up.blocked.many": "运行上面那几行，再启动一次：ducter up",
+  "up.blocked": "运行上面那一行，再启动一次：{up}",
+  "up.blocked.many": "运行上面那几行，再启动一次：{up}",
   "up.optionalLater": "另外 {n} 项可选（{names}），可以以后再说；ducter doctor 里有装法。",
   "up.already": "{name} 已经在 {url} 运行了。",
   "up.starting": "正在启动 {name}…",
@@ -319,21 +326,27 @@ const zh: Record<MsgKey, string> = {
   "up.desktop.open": "窗口已打开",
   "up.desktop.off": "没打开（--no-desktop）",
   "up.desktop.building": "正在构建桌面端（第一次大约一分钟）…",
-  "up.desktop.none": "未安装。任何客户端都可以连接 {url}",
+  "up.desktop.none": "未安装。在浏览器里打开 {url}",
   "up.desktop.failed": "无法启动（{reason}）",
   "up.desktop.closed": "桌面窗口关了。{name} 还在运行；重新打开：ducter open",
   "up.hint": "去桌面窗口跟 {name} 打个招呼吧。按 Ctrl-C 停止。",
-  "up.hintNoDesktop": "按 Ctrl-C 停止。在另一个终端里运行 ducter status，可以看 {name} 在做什么。",
+  "up.hintNoDesktop": "按 Ctrl-C 停止。在另一个终端里运行 {status}，可以看 {name} 在做什么。",
   "up.stopping": "正在停止 {name}…",
 
-  "open.notRunning": "Ducter 没有在运行。启动：ducter up",
+  "open.notRunning": "Ducter 没有在运行。启动：{up}",
   "open.none": "桌面端未安装。在装有 Go 的机器上运行 scripts/install.sh，或设置 DUCTER_DESKTOP。",
 
-  "status.notRunning": "端口 {port} 上没有运行 Ducter。启动：ducter up",
+  "status.notRunning": "端口 {port} 上没有运行 Ducter。启动：{up}",
   "status.header": "{name} · 在 {url} 运行",
   "status.needsYou": "等你",
   "status.working": "在做",
   "status.waiting": "在等",
+  "status.toMerge": "做完了，等你合并",
+  "status.mergeHint": "合并其中一件到它的基础分支：{merge} <标题里的几个字>",
+  "merge.usage": "用法：{merge} <任务标题里的几个字>",
+  "merge.none": "没有做完、等合并的任务对得上「{name}」。",
+  "merge.many": "「{name}」对上了不止一件：{titles}。多写几个标题里的字。",
+  "merge.failed": "连不上端口 {port} 上的 Ducter，没能合并。",
   "status.doneToday": "今天做完",
   "status.doneLine": "今天做完 {n} 件",
   "status.decisions": "等你",
@@ -348,6 +361,7 @@ const zh: Record<MsgKey, string> = {
   "help.open": "为正在运行的 Ducter 打开桌面端",
   "help.doctor": "检查这台 Mac，并说明缺什么、怎么补",
   "help.status": "查看正在运行的 Ducter 的任务和待决定事项",
+  "help.merge": "把做完的任务的分支合并到它的基础分支（写标题里的几个字）",
   "help.version": "显示版本",
   "help.options": "选项",
   "help.port": "监听端口（默认 7777，或 DUCTER_PORT）",
@@ -373,7 +387,7 @@ const zh: Record<MsgKey, string> = {
   "headless.ready": "{name} 在 {device} 上运行了",
   "headless.listen": "监听",
   "headless.public": "正在 {host} 上监听，没有 TLS。只有连上过的设备能进来；要 HTTPS，在前面放一个 Caddy（见 scripts/caddy-setup.sh）",
-  "headless.next": "连接一台设备：ducter pair",
+  "headless.next": "连接一台设备：{pair}",
   "headless.notReady": "还没准备好（Ducter 照常运行，等你登录一个 AI 后就能用）：",
 
   "pair.title": "连接码",
@@ -485,9 +499,26 @@ export function detectLocale(env: Record<string, string | undefined> = process.e
 
 export type T = (key: MsgKey, vars?: Record<string, string | number>) => string;
 
-export function translator(locale: Locale): T {
+/** The commands a hint names, with the --port / --data-dir this run was given (fresh-user QA:
+ *  `up --port 7798` said "ducter status", which then looked at 7777). */
+export interface Commands {
+  up: string;
+  status: string;
+  pair: string;
+  merge: string;
+}
+
+export function commandsFor(flags: { port?: number; dataDir?: string } = {}): Commands {
+  const q = (s: string) => (/^[\w@%+=:,./~-]+$/.test(s) ? s : `'${s.replace(/'/g, `'\\''`)}'`);
+  const rest = [flags.port ? `--port ${flags.port}` : "", flags.dataDir ? `--data-dir ${q(flags.dataDir)}` : ""].filter(Boolean).join(" ");
+  const c = (sub: string) => `ducter ${sub}${rest ? " " + rest : ""}`;
+  return { up: c("up"), status: c("status"), pair: c("pair"), merge: c("merge") };
+}
+
+export function translator(locale: Locale, commands: Commands = commandsFor()): T {
   const table = STRINGS[locale];
   return (key, vars) => {
+    if (/\{(up|status|pair|merge)\}/.test(table[key])) vars = { ...commands, ...vars };
     const out = table[key].replace(/\{(\w+)\}/g, (m, k) => (vars && k in vars ? String(vars[k]) : m));
     // zh copy spaces around a name so "Ducter" reads well; a Chinese name ("小鸭") sits flush.
     return locale === "zh" && vars ? out.replace(/(\p{Script=Han}) (?=\p{Script=Han})/gu, "$1") : out;

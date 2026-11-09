@@ -90,7 +90,11 @@ describe("writeReport", () => {
     const body = decodeURIComponent(new URL(u).searchParams.get("body")!);
     expect(body).toContain("- cua: missing");
     expect(body).not.toContain("claude");
-    expect(body).toContain("Attach the .zip");
+    // The terminal leaves a folder (fresh-user QA: it said "the .zip from your Desktop").
+    expect(body).toContain(`Attach the files in ${join(dir, "out")}`);
+    expect(body).not.toContain(".zip");
+    const app = writeReport({ dataDir: dir, out: join(dir, "out2"), home: HOME, includeConversation: false, doctor, versions: "v\n", locale: "en", fromApp: true }).issueUrl;
+    expect(decodeURIComponent(new URL(app).searchParams.get("body")!)).toContain("Attach the .zip");
     const long = issueUrl("x".repeat(20_000), doctor, "zh");
     expect(long.length).toBeLessThanOrEqual(MAX_ISSUE_URL);
     expect(decodeURIComponent(new URL(long).searchParams.get("body")!)).toContain("桌面");

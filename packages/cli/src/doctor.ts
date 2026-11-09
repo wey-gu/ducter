@@ -56,6 +56,8 @@ export interface Check {
    * Absent: the fix needs a person at a terminal (or is a URL).
    */
   action?: "install" | "signin" | "update" | "grant";
+  /** Fine because it is switched off (memory with DUCTER_MEMORY=off): never listed as ready. */
+  off?: boolean;
   /** Nothing to say to a person (Bun built into the binary): left out of the printed report. */
   quiet?: boolean;
 }
@@ -170,7 +172,7 @@ export async function runDoctor(host: Host, t: T, opts: DoctorOptions): Promise<
     })(),
     (async () => {
       // Off means off: no identity read, no recall, no saves (review 2 #14), so say that, not "connected".
-      if (opts.memoryOff ?? process.env.DUCTER_MEMORY === "off") return c("nmem", "check.nmem", "ok", false, "check.nmem.off");
+      if (opts.memoryOff ?? process.env.DUCTER_MEMORY === "off") return { ...c("nmem", "check.nmem", "ok", false, "check.nmem.off"), off: true };
       if (!host.which("nmem")) return c("nmem", "check.nmem", "missing", false, "check.nmem.missing", {}, fix.nmemInstall);
       const r = await host.run(["nmem", "--json", "status"], 8_000);
       const j = parseJson(r.stdout);
@@ -220,7 +222,8 @@ export async function runDoctor(host: Host, t: T, opts: DoctorOptions): Promise<
     port === "free"
       ? c("port", "check.port", "ok", true, "check.port.ok", { port: opts.port })
       : port === "ducter"
-        ? c("port", "check.port", "warn", false, "check.port.ducter", { port: opts.port })
+        ? // Ducter on its own port is as it should be (ducter report listed it as a problem).
+          c("port", "check.port", "ok", false, "check.port.ducter", { port: opts.port })
         : c("port", "check.port", "missing", true, "check.port.busy", { port: opts.port }, FIX.port(opts.port));
 
   const dataCheck = host.writable(opts.dataDir)
@@ -324,7 +327,7 @@ export function formatReport(r: DoctorReport, t: T, style: Style = plainStyle, o
  * optional thing that's missing. The full table stays in `ducter doctor`.
  */
 export function formatSummary(r: DoctorReport, t: T, style: Style = plainStyle): string {
-  const found = r.checks.filter((k) => k.status === "ok" && ["claude", "codex", "nmem", "cua"].includes(k.id)).map((k) => k.label);
+  const found = r.checks.filter((k) => k.status === "ok" && !k.off && ["claude", "codex", "nmem", "cua"].includes(k.id)).map((k) => k.label);
   const lines = [`  ${style.ok("✓")} ${t("summary.ready", { found: found.join(t("summary.sep")) })}`];
   for (const k of r.checks) {
     if (k.required || k.status === "ok" || k.id === "port") continue;

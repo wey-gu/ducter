@@ -80,6 +80,19 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       with no default. Re-run the eval's ask scenarios after.
 - [ ] **Long paths in bubbles (D67):** middle-ellipsis with tap to expand, desktop and phone.
 
+## The quiet conversation (D104, `design/quiet-conversation.md`)
+
+- [ ] The ack says how long work usually takes and that it will say when it's done ("一般十来
+      分钟，查清楚了告诉你"): a partner prompt change against rule 2c ("write nothing more"), so
+      it goes through `bun run eval:partner` first. Trigger: the author approves D104.
+- [ ] The waiting line on a real partner turn (opus), timed end to end: first step, each step,
+      the ack. Verified so far on the demo's scripted partner and in unit tests. Trigger: a
+      live run with a signed-in harness.
+- [ ] The iOS shell (`apps/ios`) renders `apps/web`, so it should follow; check it in the
+      Simulator. Trigger: the next iOS build.
+- [ ] A ↗ line in the demo seed, to show what went out stays in view (the seed sends nothing
+      out). Trigger: the next demo-seed change.
+
 ## Long-term memory (`design/memory.md`)
 
 - [ ] **One live write** into a scratch Space, then archive it (the user's Mem is Cloud, so

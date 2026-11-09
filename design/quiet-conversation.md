@@ -1,0 +1,100 @@
+# The Quiet Conversation
+
+> Design note for D104 · Principles 6, 7 · Evidence: `research/36` · Prototype:
+> https://claude.ai/artifact/8ZaW9XS7a7NEBX1ATD4Khr · Screens:
+> `~/dev/ducter-evidence/quiet-conversation/` (D75)
+
+The author: "我希望默认用户能看到总 main ai 简洁的文字，减少各种其他的信息干扰……让人感觉你就是一个
+partner，在一个沟通工具里说话，当然中间的各种加载反馈体验要做足". The conversation is a messaging
+app with one partner. It shows only what a person would say. Everything a machine would print
+(task lines, proof, files, statuses, tool calls, memory operations) is one tap away, never
+default chrome. Silence is never mistaken for being stuck.
+
+## Who is in this moment
+
+| Who | Before | After | First time |
+|---|---|---|---|
+| Heavy multi-agent developer | A screen of buttons, orange cards and status rows to scan before finding what the partner said | A report from a colleague: Details when they want to check, ⌘2 On hand, the opened task for every step; **对话里的细节 / Details in the conversation: 展开 / Shown** keeps proof open | Nothing changes in how they work; the setting is in Settings |
+| Consumer who uses Grok bot, dots or Muse | cargo, branches and ↗ git push say "not for me" | Reads like messaging; an ask is one sentence and one small row | Nothing to learn |
+| Fresh user | After sending, only two header words change: it looks stuck | The clay partner moves where the reply will land the instant they send, "在想…", then a reply in about 2 s | The words 看细节 / Details say there is more behind a message |
+
+North star (D36): 好用 one question at a time, one next step · 顺滑 no scanning · 赏心悦目 paper and
+words, no slabs · 放心 what went out always shows, every default says when it acts, every detail is
+one tap away · 惊喜 the partner visibly working the moment you send.
+
+## What the conversation shows
+
+1. **Words.** The user's bubbles and the partner's messages (ack, result, sentences from the
+   living message). Partner text keeps a reading measure (36em: about 36 CJK characters or 68
+   Latin), 18 at 1.65 (zh 1.75, D78).
+2. **One quiet row under a message** that has something behind it, 13pt text buttons on the
+   paper: **合进 main / Merge into main** (ink, 700) when it is the task's next step, then
+   **看细节 / Details ›**. Details opens in place, set in from a hairline: the line of proof (✓
+   and words, "改了 2 个文件 ›", the task's title as a link), **开草稿 PR / Open draft PR**, and
+   the message's **记下了 / Noted** lines with **忘掉 / Forget**. A task still under way shows its
+   status line there. The row's label becomes **收起 / Hide** while open.
+3. **What went out** (↗ and the literal action) is the one detail never folded: it shows above
+   the row whenever something left the machine (D73's rule, kept for trust).
+4. **The living message has no card.** When the user was away, a small centered time line
+   **你不在的时候 · 10:40 / While you were away · 10:40**. Then, in this order:
+   - a task that didn't work, as one sentence: "{title}没做成：{text}" / "{title} didn't
+     work: {text}" (a finished one: "{title}做完了：…" / "{title} is done: …"), with Details;
+   - the asks, in the partner's words (18, regular, not a 20/800 heading on a tinted card): the
+     question, then its default in one muted line in the needs-you ink with Details, then one
+     small row **回复… · 先等等 · 好，rebase** (36pt, primary last, D76). Only the ask whose
+     default comes soonest carries the row; the others gather in one line, **还有 1 件等你定 ›
+     / 1 more waiting on you ›** and **都按默认 · 2 / Go on all defaults · 2**. Opening the line
+     shows them all. An answered ask keeps its question and the outcome once ("按默认做了").
+   - Work under way and waits are not said: the header line ("2 件等你 · 在做 1 件") and On hand
+     carry them. The count of asks shows only in the header.
+5. **Time lines** like a messaging app: before the first message and wherever 15 minutes passed.
+6. **The waiting line** (below).
+
+Nothing is deleted: On hand, the opened task (D74) and the menu bar extra are unchanged, and
+every removed line is in Details, On hand or the task.
+
+## While it's busy: the waiting line
+
+While the user waits on a reply, the partner's own place in the conversation shows the clay
+partner (its working face, breathing, D77) and one plain line, updated in place and gone when
+the reply lands. It shows the moment the message is sent (the client's own state, 0 ms; web
+measured 2–4 ms), so the first feedback never waits on the server.
+
+| Step (protocol) | zh | en | From the partner's |
+|---|---|---|---|
+| thinking | 在想… | Thinking… | turn start, before any tool |
+| recalling | 在翻之前聊过的… | Looking back at what we said… | log_search, log_read, memory_search |
+| checking_task | 在看那件事做到哪了… | Checking on that task… | task_read |
+| opening_task | 在安排一件事去做… | Setting up a task… | task_open |
+| messaging_task | 在跟那件事说… | Passing it on to the task… | task_send |
+| planning | 在想怎么安排… | Working out the timing… | wait_until, ask |
+| looking | 在查… | Looking into it… | any other tool |
+
+Housekeeping (ToolSearch, memory_add, task_retitle) keeps the current step. Tool names never
+reach a client. One step past 15 s adds **比平常久一点，还在弄 / Taking a bit longer than usual**;
+past 45 s, **还在弄。你可以先忙别的，好了我说 / Still on it. Carry on with something else; I'll
+say when it's ready**. The clock is per step, on the client's own clock.
+
+**Mechanics.** A new unlogged server frame `{t:"activity", activity: {step, since, stepSince} |
+null}` (presence, not history): the partner sets it only for a turn that answers the user,
+core sends it after any buffered events and once after each welcome, `null` ends the turn. A
+turn that ends without a word (the partner asked instead) ends the waiting line too. An older
+client ignores the frame.
+
+Long work: the ack says what it is starting; the header says 在做 1 件; the result arrives as a
+message (and a notification when away). **Not built:** the ack saying how long the work usually
+takes ("一般十来分钟"); that is a partner prompt change and goes through the partner eval first
+(`design/todo.md`).
+
+## Settings
+
+**对话里的细节 / Details in the conversation**: **收起 / Folded** (default) or **展开 / Shown**,
+per client (the Mac's Settings, the phone's Settings sheet). Shown opens every message's Details
+by default, opens all asks, and lists work under way and waits in the living message.
+
+## What it replaces
+
+D73 (2) and (3) in the conversation: the proof line, Merge / Open draft PR as clay buttons under
+every result, the living message as a card with a heading, the section count, an orange card
+and countdown bar per ask, the asker's title above each ask, and the status rows. D73 (1) and
+(4) stand; On hand and the opened task keep their cards and buttons.

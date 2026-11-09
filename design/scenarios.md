@@ -35,7 +35,7 @@ partner eval (real model, fake tasks and Mem; `research/30`) · **unit** = unit 
 | C5 | PR, rebase, merge, archive | draft | draft | draft | draft | draft | live: merge by button; draft PR: unit (fake `gh`), refused live with no `origin` | Core UI (rebase decision) |
 | C6 | Low disk | draft | draft | draft | draft | — | — | |
 | D1 | Decision with default + countdown | draft | draft | draft | draft | draft | live: Go / Hold / Reply; countdown firing not walked live | Core UI · all levels |
-| D2 | Batch harvest after being away | draft | draft | draft | draft | draft | live: living message, freeze on read; native + 390 px (demo seed): count once, asks named by their task, Go names the action (`.shots/qa-2026-11-09`) | Core UI · living message. Title only when the user was away (D73) |
+| D2 | Batch harvest after being away | draft | draft | draft | draft | draft | live: living message, freeze on read; native + 390 px (demo seed): count once, asks named by their task, Go names the action (`.shots/qa-2026-11-09`); D104 quiet form, native + 390 px zh/en (demo seed): no card, a failure as a sentence, one ask at a time, the rest gathered (`~/dev/ducter-evidence/quiet-conversation`) | Core UI · living message; Quiet conversation canvas. Time line only when the user was away (D104) |
 | D3 | Quiet hours / escalation | draft | draft | draft | draft | draft | unit: push hold, coalescing, quiet hours; no real phone push yet | Core UI · attention forecast |
 | D4 | Done with evidence / failed check | draft | draft | draft | draft | — | live: done with evidence; Done · checking and 检查没过 — | |
 | D5 | Failure / stall | draft | draft | draft | draft | — | live: interrupt; eval: failure wording; stall/breaker — | |
@@ -58,7 +58,7 @@ partner eval (real model, fake tasks and Mem; `research/30`) · **unit** = unit 
 | H1 | Phone → desktop continuity | — | — | — | — | — | headless: phone and desktop read the same Log | |
 | H2 | Voice | — | — | — | — | — | — | |
 | H3 | Act on lock-screen notification | — | — | — | — | — | unit: Android Go / Hold push actions; no real device | |
-| I1 | Finished work comes back (the result message) | draft | draft | draft | draft | — | live: desktop result (How I know, Sent out, Merge / Draft PR / See changes); headless: phone, from a real sonnet run | `flows/I-results.md`; result anatomy in §0 |
+| I1 | Finished work comes back (the result message) | draft | draft | draft | draft | — | live: desktop result (How I know, Sent out, Merge / Draft PR / See changes); headless: phone, from a real sonnet run; D104 quiet row (Merge into main, Details opening proof / Noted in place) native + 390 px zh/en, demo seed | `flows/I-results.md`; result anatomy in §0; `quiet-conversation.md` |
 | I2 | Evidence: what each chip opens | draft | draft | draft | draft | — | live: commit and test chips; typed kinds (IQ11) — | |
 | I3 | Documents live in 做好的 (Save to…) | draft | draft | draft | draft | — | — | D52 Q7 |
 | I4 | Finding a result weeks later | draft | draft | draft | draft | — | — | ask first; list inside On hand |

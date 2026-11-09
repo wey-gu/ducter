@@ -9,18 +9,21 @@ human opens them.
 
 1. **Ack.** It names the *action* ("I'll check the CI"), never the outcome. OpenAI documents
    that models invent results for calls still pending.
-2. **Job.** Shown as a status line kept by the control plane. A cheap model may write the
-   line. The main AI sees each open job as an explicit pending marker.
+2. **Job.** Kept as a status line by the control plane, shown inside the message's Details and
+   on On hand (D104); while the user waits, the partner's step shows as the waiting line. A
+   cheap model may write the line. The main AI sees each open job as an explicit pending
+   marker.
 3. **Result.** A new message replying to the ask, rendered from the job's typed report.
 
-**The result's anatomy (D60).** The partner's words are the outcome only, in the user's terms,
-plus what was left out and what is unverified. Everything else is rendered by the client from
-the typed report, under the words: 怎么知道的 / How I know (chips), 发出去的 / Sent out (always
-shown for a task with a place, "没有 / Nothing" included), and the actions (合进 {branch} /
-Merge, 开草稿 PR / Open draft PR, 看改动 / See changes). The partner never restates them in
-prose. **Words freeze, chips live:** the message text never changes once sent; its chips are
-live views of typed state (checking → done, a PR merged); a change of *meaning* is a new
-message. Full anatomy: `flows/I-results.md` §0.
+**The result's anatomy (D60, D104).** The partner's words are the outcome only, in the user's
+terms, plus what was left out and what is unverified. Everything else is rendered by the client
+from the typed report and sits behind one quiet row under the words (D104): what went out (↗,
+only when something did, never folded), then 合进 main / Merge into main as a text button and
+看细节 / Details, which opens 怎么知道的 / How I know, the changes, 开草稿 PR / Open draft PR and the
+reply's 记下了 / Noted lines in place. The partner never restates them in prose. **Words freeze,
+details live:** the message text never changes once sent; what Details shows is a live view of
+typed state (checking → done, a PR merged); a change of *meaning* is a new message. Full
+anatomy: `flows/I-results.md` §0; the conversation's look: `quiet-conversation.md`.
 
 **Asks (D67).** An ask about how to do the work (reversible) always carries a default and a
 time, 10 min unless the work suggests otherwise; only effect-ladder asks (`flows/G-safety.md`
@@ -54,10 +57,13 @@ time, 10 min unless the work suggests otherwise; only effect-ladder asks (`flows
 | `seen` | A read receipt arrived. Frozen; anything new starts a fresh message. |
 | `superseded` | Replaced by a newer version (a Log event). |
 
-**Content and order**
+**Content and order** (shown per D104, `quiet-conversation.md`)
 - Rendered from typed reports, never paraphrased by a model.
-- Order: `needs-you` items first, each with its default. Then blocked items with their
-  reasons. Then successes, compressed to one line each with evidence links.
+- The typed items keep this order: `needs-you` items first, each with its default; then
+  blocked items with their reasons; then successes, one line each with evidence links.
+- Shown: what didn't work (and successes the partner didn't report) as sentences first, then
+  the asks, one at a time with the soonest default leading; blocked and progress items are not
+  shown unless Details in the conversation is Shown.
 - A default applies on its own only if the action is reversible.
 
 **Honesty rules**

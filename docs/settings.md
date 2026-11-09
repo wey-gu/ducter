@@ -44,6 +44,10 @@ Open it with **⌘,** or **Ducter › Settings…**.
 - **Look:** Pebble, the warm paper and clay look. More looks will appear here once they work.
 - **Language:** the language of the app's own words. **Follow the system** uses your Mac's
   language. This is separate from how your partner talks.
+- **Details in the conversation:** **Folded** (the default) keeps the conversation to what your
+  partner says, with each message's checks, changes and task one click away under **Details**.
+  **Shown** opens them all, lists what is still being worked on, and shows every question that
+  waits for you. On a phone, the same choice is in the Settings sheet.
 - **When you close the window:** shows whether Ducter keeps working in the background and
   starts again when you log in. **Stop Ducter** stops everything until you wake it.
 - **Updates:** checks for a new version, restarts into one that's ready, or installs it when

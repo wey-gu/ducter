@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.0.3
+
+**Servers that just work**
+- `ducter domain your.domain`: checks your DNS, sets up HTTPS with Caddy, and prints a code for
+  your phone and Mac. It tells apart "DNS or ports" from "Ducter isn't running" and says what to
+  run next.
+- After install, `ducter` works right away in the same shell; the service survives logout and
+  reboot.
+- A server with only Codex signed in now uses Codex for your partner.
+- `ducter uninstall --all --yes` cleans up everything Ducter added, for a fresh start.
+
+**For AI agents**
+- Skills in `skills/` (deploy, operate, troubleshoot), also at
+  `https://ducter.ai/skills/<name>/SKILL.md`, so your own agent can set up and run Ducter.
+
+**iPhone**
+- The iPhone app is in public beta: https://testflight.apple.com/join/Z4GvWt7t
+
+**Mac**
+- Settings › Connect to a Ducter on another computer, and back again.
+- Folder tasks show only what changed and the Undo; no stray file count.
+
 ## 0.0.2
 
 **Talk to it like a messaging app**

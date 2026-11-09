@@ -127,8 +127,11 @@ describe("bridge_reply", () => {
     expect(r[0].ok).toBe(false);
     expect(r[1].ok).toBe(true);
     expect(fb.replies).toEqual([{ messageId: "bm-1", text: "收到。我先问一下 Weyl，他同意就开任务，结果回你。" }]);
+    // One operation, logged before the call ("sending") and with its outcome ("sent"), D92.
     const out = channel().filter((e) => e.kind === "bridge_msg" && e.origin === "partner");
-    expect(out.length).toBe(1);
+    expect(out.map((e) => (e.body as Bodies["bridge_msg"]).state)).toEqual(["sending", "sent"]);
+    expect((out[0]!.body as Bodies["bridge_msg"]).opId).toBe((out[1]!.body as Bodies["bridge_msg"]).opId);
+    out.shift();
     expect(out[0]!.body as Bodies["bridge_msg"]).toMatchObject({ direction: "out", inReplyTo: "bm-1", to: "terminal-claude (Weyl)", messageId: "bm-r1" });
   });
 
@@ -170,8 +173,9 @@ describe("nmem bridge client (stub binary)", () => {
   *" bridge open bm-2"*) echo '{"message":{"id":"bm-2","agent":{"display_name":"codex-reviewer"},"member":{"display_name":"Weyl"}},"body":"Review PR 412 please","sent_at":"2026-11-09T09:00:00Z"}' ;;
   *) echo "unexpected $*" >&2; exit 9 ;;
 esac`);
-    const r = await createNmemBridge({ context: "ducter-main", bin: s.bin }).check(new Set(["bm-1"]));
-    expect(r).toEqual({ ok: true, messages: [{ messageId: "bm-2", from: "codex-reviewer (Weyl)", text: "Review PR 412 please", sentAt: "2026-11-09T09:00:00Z" }] });
+    const r = await createNmemBridge({ context: "ducter-main", bin: s.bin, me: "Weyl" }).check(new Set(["bm-1"]));
+    // Weyl is the user's member, so codex-reviewer is the user's own agent (D94).
+    expect(r).toEqual({ ok: true, messages: [{ messageId: "bm-2", from: "codex-reviewer (Weyl)", agent: "codex-reviewer", mine: true, text: "Review PR 412 please", sentAt: "2026-11-09T09:00:00Z" }], reads: {} });
     expect(s.argv()).toEqual(["--json --agent-context ducter-main bridge inbox", "--json --agent-context ducter-main bridge open bm-2"]);
   });
 

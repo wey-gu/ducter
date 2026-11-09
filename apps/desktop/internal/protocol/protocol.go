@@ -328,6 +328,12 @@ type BridgeMsg struct {
 	SentAt     string `json:"sentAt,omitempty"`
 	TaskID     string `json:"taskId,omitempty"`
 	DecisionID string `json:"decisionId,omitempty"`
+	Agent      string `json:"agent,omitempty"`
+	Mine       bool   `json:"mine,omitempty"`
+	State      string `json:"state,omitempty"` // out: pending|held|sending|sent|failed|unknown|unconfirmed|followed; empty = sent
+	OpID       string `json:"opId,omitempty"`
+	Contact    string `json:"contact,omitempty"`
+	Operation  string `json:"operation,omitempty"`
 }
 
 // NewEvent builds an event with body encoded from v (for the mock server

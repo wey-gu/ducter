@@ -106,7 +106,32 @@ export interface Bodies {
   // Spike (bridge-spike): "out" may also be a NEW message the user confirmed on a card
   // (decisionId); `taskId` links an exchange to the task opened for it, so the result reply is
   // owed by code, not by prompt. An "in" with `inReplyTo` answers one of ours.
-  bridge_msg: { direction: "in" | "out"; messageId: string; from?: string; to?: string; text: string; inReplyTo?: string; sentAt?: string; taskId?: string; decisionId?: string };
+  // `agent` is the other agent's own name and `mine` says it belongs to the user, so it is called
+  // "你的 <agent>" / "your <agent>"; a teammate's stays "<agent> (<member>)" in `from`/`to` (D94).
+  // Outgoing operations (D92): every "out" carries `opId`, and one op is logged once per `state`
+  // it passes through: "pending" (a send card is up; `contact` is the handle), "held" (the user
+  // held it), "sending" (logged before the CLI call), then "sent", "failed" (definitely not
+  // sent), "unknown" (no answer; recovered by outbox → inspect → resume on the same
+  // `operation`, never a second send) or "unconfirmed" (recovery gave up; never resent).
+  // "followed" marks the one follow-through line said about an unanswered sent message (D96).
+  // No `state` = "sent" (events logged before D92).
+  bridge_msg: {
+    direction: "in" | "out";
+    messageId: string;
+    from?: string;
+    to?: string;
+    text: string;
+    inReplyTo?: string;
+    sentAt?: string;
+    taskId?: string;
+    decisionId?: string;
+    agent?: string;
+    mine?: boolean;
+    state?: "pending" | "held" | "sending" | "sent" | "failed" | "unknown" | "unconfirmed" | "followed";
+    opId?: string;
+    contact?: string;
+    operation?: string;
+  };
 }
 
 export interface Usage { inputTokens?: number; outputTokens?: number; cacheRead?: number; cacheWrite?: number }

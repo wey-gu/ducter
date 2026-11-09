@@ -474,6 +474,8 @@ function check(r: RunResult): string[] {
   if (e.waiter && !r.visible.some((v) => v.kind === "waiter")) fails.push("no reminder set");
   if (e.noWaiter && r.visible.some((v) => v.kind === "waiter")) fails.push("set a reminder nobody asked for");
   for (const re of e.forbid ?? []) if (re.test(all)) fails.push(`says ${re}`);
+  const prose = r.visible.filter((v) => v.kind === "ai_msg" || v.kind === "ack").map((v) => v.text).join("\n");
+  for (const re of e.proseForbid ?? []) if (re.test(prose)) fails.push(`says ${re} in its own lines`);
   for (const re of e.require ?? []) if (!re.test(all)) fails.push(`missing ${re}`);
   const briefs = [...r.opened.map((o) => o.brief), ...r.sent.map((s) => s.text)].join("\n");
   for (const re of e.briefForbid ?? []) if (re.test(briefs)) fails.push(`task brief/send contains ${re}`);

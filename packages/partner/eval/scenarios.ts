@@ -79,6 +79,8 @@ export interface Expect {
   /** Text no memory_add call (even a refused one) may contain. */
   rememberForbid?: RegExp[];
 
+  /** Regexes the partner's own lines (messages and acks, not card text) may not match. */
+  proseForbid?: RegExp[];
   /** Bridge: what Ducter sent through the (fake) Bridge, all messages joined. */
   bridgeSent?: { to?: string; count?: [number, number]; require?: RegExp[]; forbid?: RegExp[] };
 }
@@ -140,7 +142,7 @@ const ALICE: SeedMemory = {
   kind: "fact",
 };
 // A message to another agent is one question plus background, never numbered sub-questions.
-const OVER_ASK = /(?:^|[\s：:，,])(?:1[.)、]|\(1\)|（1）|①)[\s\S]*?(?:2[.)、]|\(2\)|（2）|②)|(^|\n)\s*[-*•]\s[\s\S]*\n\s*[-*•]\s/;
+const OVER_ASK = /(?:^|[\s：:，,])(?:1[.)、）]|\(1\)|（1）|①)[\s\S]*?(?:2[.)、）]|\(2\)|（2）|②)|(^|\n)\s*[-*•]\s[\s\S]*\n\s*[-*•]\s/;
 // Visible text never talks about the memory machinery.
 const NO_MEM_TALK = /记忆|存(入|进|到)|保存|已记录|查了(一下)?(之前|记录)|搜(索|了)|\bMem\b|Nowledge|memory|I (searched|looked up|checked)|saved (it|this)|my notes/i;
 
@@ -894,7 +896,7 @@ export const scenarios: Scenario[] = [
       {
         report: {
           task: "$opened0",
-          body: { state: "done", summary: "live.test.ts now skips only the `open` assertion off macOS; bun test passes on ubuntu (CI green).", evidence: [{ kind: "ci", label: "ubuntu CI green", ref: "https://github.com/example/ci/1" }], questions: [] },
+          body: { state: "done", summary: "live.test.ts now skips only the `open` assertion off macOS; bun test passes in an ubuntu:24.04 container (the same image as CI).", evidence: [{ kind: "test", label: "bun test (ubuntu:24.04): 0 fail", ref: "packages/runner/test/live.test.ts" }], questions: [] },
         },
       },
     ],
@@ -903,10 +905,11 @@ export const scenarios: Scenario[] = [
       opens: 1,
       maxChars: 200,
       forbid: [/Weyl/, /msg-\d{3}/],
+      proseForbid: [/Weyl/], // the card is the partner's words too: forbid covers it
       bridgeSent: { to: "terminal-claude", count: [2, 3], forbid: [/^Taken: [^"“「]*[㐀-鿿]/m] },
     },
     rubric:
-      "The user's own terminal Claude Code asked (in English) for a side job. The user speaks Chinese, so the card and every line the user sees are in Chinese. Pass if: one Chinese card asks whether to take the job (naming it as the user's own terminal Claude / 你的 terminal-claude, not as Weyl); after Go a task opens; when it reports done the partner tells the user the outcome in at most 2 short lines. The partner never names Weyl (it is talking TO Weyl) and never says it sent the result to Weyl: the result went to the terminal session.",
+      "The user's own terminal Claude Code asked (in English) for a side job. The user speaks Chinese, so the card and every line the user sees are in Chinese. Pass if: one Chinese card asks whether to take the job (naming it as the user's own terminal Claude / 你的 terminal-claude, not as Weyl); after Go a task opens; when it reports done the partner tells the user the outcome in at most 2 short lines (saying the tests now pass on Linux / in the ubuntu image IS the outcome, not repeated evidence; that the change isn't pushed yet, so CI itself hasn't run, is a fine left-out line). The partner never names Weyl (it is talking TO Weyl) and never says it sent the result to Weyl: the result went to the terminal session.",
   },
   {
     id: "bridge-ask-zh",
@@ -923,7 +926,8 @@ export const scenarios: Scenario[] = [
       opens: 0,
       maxChars: 160,
       require: [/你的 ?terminal-claude/],
-      forbid: [/Weyl/, /msg-\d{3}/],
+      forbid: [/msg-\d{3}/],
+      proseForbid: [/Weyl/],
       bridgeSent: { to: "terminal-claude", count: [1, 1], forbid: [OVER_ASK] },
     },
     rubric:
@@ -944,7 +948,8 @@ export const scenarios: Scenario[] = [
       opens: 0,
       maxChars: 260,
       require: [/your terminal-claude/i],
-      forbid: [/Weyl/, /msg-\d{3}/],
+      forbid: [/msg-\d{3}/],
+      proseForbid: [/Weyl/],
       bridgeSent: { to: "terminal-claude", count: [1, 1], forbid: [OVER_ASK] },
     },
     rubric:

@@ -157,6 +157,9 @@ isl_rgb = clarity(isl_rgb, m_plate, radius=30, amount=0.15)
 # there the plate and the sky behind it don't quite match, so solving the
 # blend lifts the difference into a light lilac halo. Pull the edge in a
 # little (save_layer then gives the rim the clay's own color).
+# Vision's edge is a little lumpy where the clay meets the haze: smooth it
+# first, so the rim reads as one soft curve.
+m_plate = _gauss(m_plate[..., None], 2.5)[..., 0]
 m_plate = np.clip((m_plate - 0.12) / 0.83, 0, 1)
 m_plate = m_plate * m_plate * (3 - 2 * m_plate)
 

@@ -313,6 +313,34 @@ background. When one is ready, the Ducter menu says **Update 0.2.0 ready · rest
 It installs the next time you quit Ducter, or right away if you click that line. Your tasks
 carry on.
 
+### Updating a server, and the computers that do tasks for Ducter
+
+Every device's card under **Your devices** shows its version. When a newer one is out, a small
+dot appears by its name and the card says **Update to 0.0.4**, with the first lines of what's
+new and one **Update** button. Nothing pops up and nothing nags. On the phone it's the same,
+under **Settings › Your devices**.
+
+When you tap **Update**, the card says what it's doing: **Downloading… · Checking… · Waiting for
+work to settle… · Restarting…** and then **Back, now on 0.0.4**. Ducter only takes files from its
+official GitHub release, checks each one against the release's checksums, and tries the new
+version before it switches. It waits until no merge or undo is running; tasks that are working
+pause for the restart and carry on. If the new version doesn't come up within a minute, Ducter
+switches back to the one you had, and the card says **Didn't update; back on 0.0.3** with why.
+
+From a terminal, on the computer Ducter lives on:
+
+```sh
+ducter update --check   # where each device stands
+ducter update           # this computer (asks first; --yes doesn't)
+ducter update --all     # the other computers first, then this one
+```
+
+A Mac updates with the app, as above; its card says so. A computer running a Ducter older than
+0.0.4 can't be updated from here: run the install command on it once more.
+
+**Update at night** (off by default, in **Settings**) updates everything during your quiet hours,
+only when nothing is working.
+
 ## Remove Ducter
 
 - **Mac app:** choose **Stop Ducter** in the menu, then drag Ducter from Applications to the

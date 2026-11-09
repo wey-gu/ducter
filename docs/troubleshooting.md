@@ -126,6 +126,22 @@ Run `ducter uninstall --all` (it lists what goes before asking), or choose **Sto
 delete the `~/.ducter` folder. This erases your conversation, tasks and settings for good, so
 only do it if you mean it. The next start is a first run.
 
+### An update didn't go through
+
+The device's card says **Didn't update** and why. Nothing is lost:
+
+- **"The download didn't match its checksum"** or **"didn't pass its check":** nothing was
+  changed; try again later.
+- **"Back on 0.0.3":** the new version was installed but didn't come up within a minute, so
+  Ducter put the previous one back and restarted it. The one that didn't start is kept next to
+  `ducter` as `ducter.failed`, and the version before the update as `ducter.prev` (on a server,
+  usually in `~/.local/bin`). `ducter report` includes the log lines; please attach them to an
+  issue.
+- **"A merge or an undo is still running":** try again once it's done.
+
+To go back to a version by hand on a server: `ducter update --to 0.0.3 --yes`, or move
+`ducter.prev` over `ducter` and run `systemctl --user restart ducter`.
+
 ## Still stuck?
 
 In the Mac app, choose **Help → Report a problem…**. Ducter collects its check of your Mac, the

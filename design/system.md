@@ -399,6 +399,62 @@ the worker only holds the place (disk, checkouts, worktrees) and runs the harnes
   queueing a task for an asleep worker instead of refusing it; reattaching a session that
   survived a socket blip (today it's closed and resumed by id).
 
+## Updating in place (D146, built 2026-11-10)
+
+**Who and when.** The heavy developer with a VPS home and a worker or two, and anyone the
+partner once helped onto a server: a new version is out and they want it everywhere, with one
+tap, without SSH. A Mac home keeps the app's own updater (D72); this section is everything else.
+
+**Knowing** (`core/src/release.ts`, `protocol/src/version.ts`). The version is
+`packages/cli/package.json`'s (the release tag must equal it). `/health` says `version` beside
+`build` (local callers only). A worker's hello says `version` and `how`. The home reads
+`api.github.com/repos/wey-gu/ducter/releases/latest`, else the `github.com/…/releases/latest`
+redirect (version only), at most every 6 h (`<dataDir>/updates/latest.json`); a failure is
+silent and keeps the last answer; `DUCTER_UPDATE_CHECK=off` never asks; drafts and pre-releases
+never count; tests never touch the network (`NODE_ENV=test` without a feed turns it off).
+Every `DeviceView` carries `update {current, latest, available, notes, security, how, phase…}`.
+
+**How a device updates (`how`).** `self`: a compiled Linux `ducter`. `app`: a Mac whose ducter is
+inside Ducter.app (the app's updater does it; on that Mac the card's button calls
+`App.updateThisMac`: restart into a ready copy, else Settings' update card). `source`: from a
+checkout. `manual`: a worker that sent no `how` (before 0.0.4).
+
+**The staged update** (`core/src/update.ts`, one path for the home, a worker and the CLI):
+
+| Step | What is checked |
+|---|---|
+| precheck | `to` is a version; not the same; older only with `--to` (`downgrade`) |
+| disk | ≥ 300 MB free in `<dataDir>/updates/<v>/`, and ≥ 3× the download once its size is known |
+| download | `SHA256SUMS.txt`, then `ducter-<v>-linux-<arch>.tar.gz`, from `github.com/wey-gu/ducter/releases/download/v<v>/`, HTTPS, redirects only to GitHub hosts |
+| verify | the SHA-256 equals the listed sum, else the folder is removed (`checksum`) |
+| self-check | unpack; `<new> --version` names `<v>`; `<new> doctor --json` in a scratch data folder prints `checks` (`selfcheck`) |
+| safe point | no merge, undo or keep running (the runner's critical section; new ones are held with a plain line), ≤ 15 min (`busy`); turns in flight get ≤ 2 min, then the restart's recovery resumes them |
+| swap | the running binary hard-linked to `ducter.prev`, the new one renamed over `ducter` (same folder, atomic) |
+| restart | `systemd-run --user --collect` runs `ducter.prev update --finish <dataDir>/updates/plan.json` in its own unit (so `systemctl --user restart ducter`, which kills the service's cgroup, can't kill it) |
+| health | the home: `/health` names `<v>` within 60 s; a worker: it reached its main and wrote `updates/alive.json` with `<v>` |
+| rollback | not healthy: `ducter` → `ducter.failed`, `ducter.prev` → `ducter`, restart again; `result.json` says `health` and `rolledBack` |
+
+Without systemd it swaps and says to restart. Each step is a `device_update` event on the
+`devices` stream; the restarted home logs the helper's `result.json` once (`reported`), and a
+restarted worker says it in its hello. The card shows 回来了 30 min, a failure 24 h.
+
+**Workers.** The home sends `update {to, explicit}` down the worker's socket; the worker answers
+at once and reports `{t:"update", phase…}` frames up whichever socket is current
+(`cli/src/update.ts` `createWorkerUpdater`); its safe point is the worker host's critical ops
+(merge, archive, folder undo/keep) and turning sessions.
+
+**CLI.** `ducter update [--check] [--all] [--json] [--yes] [--to <v>]`. With a Ducter answering
+on this machine it goes through it (`device_update` frames, its safe point, its Log); without
+one (a worker machine) it runs the staged update itself, restarting the service when
+`systemctl --user is-active ducter` says so. `--all`: workers first, then the home.
+
+**At night** (`settings.autoUpdate`, off by default): every 10 min, inside quiet hours, nothing
+working and nothing critical: behind workers first, then the home.
+
+**Simulated, not yet run on a real systemd box:** every step above runs in tests with fakes (fake
+fetch, a fixture tarball, fake systemctl and `/health`, a fake worker socket); the end-to-end on
+Linux waits for the 0.0.4 release.
+
 ## Hooks v1 must leave open for phone and call (research/22)
 
 Phone and call tasks are on the roadmap, not in v1. These seams keep them from forcing a

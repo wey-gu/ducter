@@ -146,8 +146,21 @@ signed-in Claude Code/Codex. Verify on the home: `ducter devices --json` → the
 
 ## Upgrade
 
-Run the same one-liner again (with `--service` on a server); it replaces the binary and
-restarts the service. Data stays. Mac app: it updates itself; the one-liner also works.
+In place, from the release (0.0.4 and later):
+
+```sh
+ducter update --check --json   # {latest, devices:[{id, name, home, current, latest, available, how, notes}]}
+ducter update --yes            # this machine: download, check the SHA-256, self-check, swap, restart, health-check
+ducter update --all --yes      # the computers doing tasks for it first, then the home
+ducter update --to 0.0.3 --yes # go back to a version (never done without --to)
+```
+
+It waits for merges and undos to finish and gives running tasks a moment; tasks resume after
+the restart. If the new version doesn't answer `/health` within 60 s it puts `ducter.prev` back
+and restarts again; the exit code is 1 and `--json` says `reason` and `rolledBack`. `how` tells
+you what to do when it can't: `app` (a Mac: the app updates itself, Settings › Updates),
+`source` (run from a checkout), `manual` (a Ducter before 0.0.4: run the one-liner once). Data
+stays either way. Re-running the one-liner (with `--service` on a server) still works too.
 Verify: `ducter version`.
 
 ## Clean reinstall (destroys this home's data; confirm with the user first)

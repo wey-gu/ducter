@@ -19,6 +19,15 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [ ] **Move your Ducter to another computer (`ducter move`)**: a Mac-first user moves the home to a server: one-time move code from the new (empty) home; moves the Log, persona, settings, rules, routines, connections and the Mem binding over HTTPS with a verified count; not harness sign-ins (re-sign on the server, guided); running tasks parked first; the old machine becomes a worker for its local repos, its app connects to the new home; old data kept 30 days with a one-tap move back. Trigger: the author's Mac → Hetzner case (2026-11-10); design first, then v0.0.4.
 - [x] **Phone opened task overflows horizontally**: not the layout. The shot was taken with headless Chrome's `--window-size=390,…`, which lays out at its minimum window width (~500 px) and crops to 390. With device emulation at 390 px (CDP `Emulation.setDeviceMetricsOverride`) the folder task and a long zh title + long brief with unbreakable paths and URLs wrap, and `scrollWidth` is 390. Take phone shots with device emulation, never `--window-size`.
 - [x] **Folder result shows a stray proof line**: a folder task's proof line no longer counts the changes (desktop and web); D142's sentence says them.
+- [ ] **Updating in place (D146) on a real systemd box:** a 0.0.4 → 0.0.5 update of a VPS home
+      and of a Linux worker from the card and with `ducter update --all`, including one forced
+      rollback (a release whose binary fails `/health`) and the helper surviving `systemctl
+      restart`. All steps are tested with fakes only. Trigger: the 0.0.5 release.
+- [ ] **Updating in place, the rest of D146:** the partner's one line for a security release
+      (nothing tells the partner yet); a macOS worker inside Ducter.app asking its own app to
+      update (it answers `app` today); archive sweeps inside the runner's critical section;
+      renaming from the island's tag (the card's name does it). Trigger: after the first real
+      update round.
 - [ ] One real-harness task on a worker (`claude auth login` / `codex login --device-auth` on
       the worker). Trigger: the user signs in on a worker.
 - [ ] `ducter domain` on a real VPS + domain as root (DNS check, apt Caddy, ACME, renewal, WebSocket through Caddy

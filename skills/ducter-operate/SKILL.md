@@ -65,6 +65,15 @@ machine Ducter lives on.
 A task started with `ducter task` while following a server has no folder unless `--repo` names
 one, and that folder must be on a computer that does tasks for it.
 
+## Keep it up to date
+
+`ducter update --check --json` says each device's version, the latest, and `available`. When
+the user wants it updated: `ducter update --yes` (this machine) or `ducter update --all --yes`
+(every computer doing tasks for it, then the home). Ducter restarts once; tasks pause and carry
+on. Exit code 1 with `reason` (and `rolledBack: true`) means it stayed on, or went back to, the
+version it had. Don't update on your own initiative while tasks are mid-merge or the user is
+in the middle of something.
+
 ## Safe defaults
 
 - **Never answer Go for the user** on anything irreversible or outward (merge to main, push,

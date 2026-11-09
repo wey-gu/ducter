@@ -27,11 +27,19 @@ back to the middle one, because everything connects through the computer Ducter 
 - **A device that can't be reached** sits in a soft mist with one line, such as *"Can't reach ·
   2 h ago"*. Nothing needs fixing on your side; it shows up again when it's back.
 
-Choose an island (or its card on the left) to see that device's card: what it is, what it can
-do, and which AI agents are signed in on it.
+Choose an island (or its card on the left) to see that device's card: its name, what it is
+(*A computer in the cloud · Ducter lives here*, *Another computer · does tasks for Ducter*), whether
+it's awake, what it can do, the AI agents signed in on it, and its Ducter version. AI agents that
+aren't signed in there stay behind **+ Sign in another AI**.
 
-This view is on the Mac for now. The phone shows your conversation, **On hand** and your tasks,
-but not the devices.
+- **Rename** a device by clicking its name on the card: type, then Enter to keep it or Esc to
+  leave it as it was.
+- **Disconnect** is at the bottom of the card. Ducter asks once and says what it means; to bring
+  the device back, connect it again with a new code. Phones and other windows have the same card.
+- **Update:** a device that's behind gets one small dot by its name and an **Update** button on its
+  card. See [Updates](install.md#updates).
+
+The phone shows the same cards under **Settings › Your devices**, without the islands.
 
 Each device is in one of three states:
 

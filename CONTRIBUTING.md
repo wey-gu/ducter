@@ -28,7 +28,7 @@ A few rules that matter for almost any change:
   change before writing the patch.
 - Wanted now: a **Tailscale remote-access adapter**, so you can reach your Ducter through
   `tailscale serve` or `tailscale funnel`. The spec, including what "done" means, is in
-  [`design/roadmap.md`](design/roadmap.md#tailscale-remote-access-d46).
+  [`design/roadmap.md`](design/roadmap.md#help-wanted).
 
 ## Working on the code
 

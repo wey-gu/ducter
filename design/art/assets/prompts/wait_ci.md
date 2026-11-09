@@ -1,1 +1,1 @@
-A small puffy sky-blue clay cloud with one chunky mint-green clay check mark resting on its front.
+A small puffy sky-blue clay cloud with a soft cream underside, nothing on it.

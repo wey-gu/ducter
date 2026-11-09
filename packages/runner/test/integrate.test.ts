@@ -320,6 +320,7 @@ test("archive horizon: a finished task idle 14 days is archived (clean worktree 
   expect(core.tasks.get(taskId)!.residency).toBe("parked");
   rmSync(join(place.worktree!, "notes.txt"));
   expect(await runner.sweepArchive()).toEqual([]); // untouched since it was kept: not retried
+  await Bun.sleep(2); // updatedAt has ms resolution: a touch in the same ms as the keep would read as untouched
   core.tasks.setState(taskId, core.tasks.get(taskId)!.attention, "parked", "touched");
   clock += 15 * 24 * 3600_000;
   expect(await runner.sweepArchive()).toEqual([taskId]);

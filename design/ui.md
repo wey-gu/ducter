@@ -161,9 +161,11 @@ lives in Details. On hand needs no state chip: the lane is the state.
 | a sleeping device | its blanket rises and falls (scale-y 1.045 from the bottom, 4.8 s) |
 | an AI account's cords | a sheen runs along once every 9 s |
 | the equip | peel (14%) → arc (50%) → snap (62–69%), 0.82 s, a tock and a 10 ms haptic |
+| the title moment (D87) | once per Mac: dawn rises, a 3% push-in with parallax, the eyes open on the tone, the logotype lit by a passing light; see `onboarding.md` |
 
 Delays are staggered so nothing moves in unison. A device that can't be reached is still and a
-little grey. Status, chips, lines and buttons never animate on their own. Reduced motion: all
+little grey. One exception (D87): the title moment's "Press any key" breathes (60–100%, 3.4 s); it
+is an invitation, not a status. Status, chips, lines and buttons never animate on their own. Reduced motion: all
 of it stops; the equip cross-fades; colors and words are unchanged.
 
 **Chinese typography (D78).** Bricolage sets Latin and digits; Chinese has its own faces and rules.

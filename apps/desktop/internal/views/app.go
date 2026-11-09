@@ -158,6 +158,10 @@ type App struct {
 	// partner and settings are the Partner page's and Settings' own state.
 	partner  partnerState
 	settings settingsState
+	// title is the title moment's own state (D87); PlayTitle starts its
+	// sound (nil: silent, as in tests).
+	title     titleState
+	PlayTitle func() TitleSound
 	// SystemLang is macOS's language, for Settings' "follow the system";
 	// OnLanguage is told when the window's language changes (the menus).
 	SystemLang i18n.Lang
@@ -311,8 +315,12 @@ func (a *App) View(c *ui.Context) {
 	c.SetTheme(a.uiTheme)
 	a.drainActionResults(c)
 	a.shortcuts(c)
+	a.titleTick(c)
 	ui.Column(c).Fill().Background(a.T.Bg).TextColor(a.T.Ink).Font(a.T.Body).Children(a.page(c, func() {
 		switch {
+		case a.title.on:
+			a.setupActive() // the first check runs under the title
+			a.titleView(c)
 		case a.Unauthorized || (!a.S.Welcomed && a.conn.open):
 			a.connect(c)
 		case a.setupActive():

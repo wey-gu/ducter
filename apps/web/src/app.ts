@@ -300,6 +300,14 @@ class AppState {
     this.changed();
   }
 
+  /** The line under Start: why it didn't open. "Say what it should do first" holds only while
+   *  there are no words. */
+  newTaskError(): string {
+    const nt = this.nt;
+    if (nt.err && nt.err === this.L.t("newtask.err.empty") && nt.words.trim()) nt.err = "";
+    return nt.err;
+  }
+
   /** Start: sends task_new; the result opens the task or says why not, on the sheet. */
   startNewTask(): boolean {
     const nt = this.nt;

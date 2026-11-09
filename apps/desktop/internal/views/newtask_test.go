@@ -139,6 +139,30 @@ func TestNewTaskCard(t *testing.T) {
 		if _, ok := lastFrame[protocol.TaskNew](sent); ok {
 			t.Fatalf("%s: empty words were sent", lang)
 		}
+		emptyLine := app.L.T("newtask.err.empty")
+		if !tt.HasText(emptyLine) {
+			t.Fatalf("%s: Start with no words says nothing: %q", lang, tt.Texts())
+		}
+		// Typing clears it; so does closing and opening the card again.
+		tt.Type("修") // the words field has the focus
+		tt.Frame()
+		if strings.TrimSpace(app.nt.words) == "" {
+			t.Fatalf("%s: typing didn't reach the words field", lang)
+		}
+		tt.Frame()
+		if tt.HasText(emptyLine) {
+			t.Errorf("%s: the empty-words line stays once there are words", lang)
+		}
+		app.nt.words = ""
+		app.StartNewTask()
+		app.nt.open = false
+		app.OpenNewTask(nil)
+		app.Receive(newTaskOptions(lang))
+		tt.Frame()
+		tt.Frame()
+		if tt.HasText(emptyLine) {
+			t.Errorf("%s: a reopened card still says the empty-words line", lang)
+		}
 
 		// Filled, Codex picked, a branch picked.
 		app.nt.words = map[i18n.Lang]string{

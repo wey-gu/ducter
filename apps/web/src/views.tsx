@@ -2155,9 +2155,9 @@ function NewTaskSheet() {
           />
           <div class="small sub">{t("newtask.verbatim")}</div>
         </section>
-        {nt.err && (
+        {A.newTaskError() && (
           <div class="nt-err" role="status">
-            {nt.err}
+            {A.newTaskError()}
           </div>
         )}
         <div class="btns">

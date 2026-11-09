@@ -40,8 +40,10 @@ type newTaskState struct {
 	// Start when it didn't open.
 	sending string
 	err     string
-	focus   bool
-	seq     int
+	// errEmpty: err is the empty-words line (it goes once there are words).
+	errEmpty bool
+	focus    bool
+	seq      int
 }
 
 // returnTo is where Esc goes from a task the user just opened (New task,
@@ -174,7 +176,7 @@ func (a *App) StartNewTask() bool {
 	}
 	words := strings.TrimSpace(nt.words)
 	if words == "" {
-		nt.err = a.L.T("newtask.err.empty")
+		nt.err, nt.errEmpty = a.L.T("newtask.err.empty"), true
 		nt.focus = true
 		return false
 	}
@@ -201,7 +203,7 @@ func (a *App) StartNewTask() bool {
 	a.nextClient++
 	nt.sending = fmt.Sprintf("n%d-%d", a.Now().UnixMilli(), a.nextClient)
 	f.ClientID = nt.sending
-	nt.err = ""
+	nt.err, nt.errEmpty = "", false
 	a.send(f)
 	return true
 }
@@ -223,7 +225,7 @@ func (a *App) drainNewTask() {
 			a.openFromElsewhere(r.TaskID)
 			continue
 		}
-		nt.err = a.newTaskError(r.Reason, r.Message)
+		nt.err, nt.errEmpty = a.newTaskError(r.Reason, r.Message), false
 	}
 	for _, id := range a.S.OpenRequests {
 		a.openFromElsewhere(id)
@@ -265,6 +267,10 @@ func (a *App) newTaskCard(c *ui.Context) {
 	a.drainNewTask()
 	if !nt.open {
 		return
+	}
+	// "Say what it should do first" holds only while there are no words.
+	if nt.errEmpty && strings.TrimSpace(nt.words) != "" {
+		nt.err, nt.errEmpty = "", false
 	}
 	t := a.T
 	w, h := c.Size()
@@ -494,7 +500,7 @@ func (a *App) wordsField(c *ui.Context) {
 			return false
 		})
 	if ta.Changed() {
-		nt.err = ""
+		nt.err, nt.errEmpty = "", false
 	}
 	if nt.focus {
 		ta.Focus()
@@ -519,7 +525,7 @@ func (a *App) newTaskFoot(c *ui.Context) {
 			return
 		}
 		if a.button(c, a.L.T("newtask.cancel"), btnText, t.ControlMD, t.Surface) {
-			nt.open, nt.err = false, ""
+			nt.open, nt.err, nt.errEmpty = false, "", false
 		}
 		ui.Text(c, "⌘↩").FontSize(t.XS).TextColor(t.Faint).Shrink(0).AccessHidden(true)
 		if a.buttonFor(c, a.L.T("newtask.start"), a.L.T("newtask.title"), btnPrimary, t.ControlMD, t.Surface) {

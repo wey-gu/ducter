@@ -347,7 +347,15 @@ describe("New task (D128)", () => {
     expect(A.chosenPlace().name).toBe("ducter");
     expect(A.chosenCandidate()).toMatchObject({ c: { harness: "claude-code" }, picked: false });
     expect(A.startNewTask()).toBe(false);
-    expect(A.nt.err).toBe("先写一句要它做什么。");
+    expect(A.newTaskError()).toBe("先写一句要它做什么。");
+    A.nt.words = "  把结算按钮藏起来  ";
+    // The empty-words line goes once there are words, and a reopened sheet starts with none.
+    expect(A.newTaskError()).toBe("");
+    A.nt.words = "";
+    A.startNewTask();
+    A.openNewTask();
+    expect(A.newTaskError()).toBe("");
+    A.receive(options);
     A.nt.words = "  把结算按钮藏起来  ";
     A.nt.pick = "codex/";
     A.nt.branch = "release/0.0.1";

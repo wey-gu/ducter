@@ -17,6 +17,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DSH_KEY_ENV, HARNESS_IDS, type HarnessId } from "@ducter/protocol";
 import { readEnvFile, readKeys } from "@ducter/protocol/src/keys.ts";
+import { modelForWindow, windowKnobs } from "@ducter/protocol/src/harness-facts.ts";
 import type { HarnessEvent, HarnessPort, HarnessSession, SessionSpec } from "@ducter/protocol/src/internal.ts";
 import type { Runtime, Session, SessionOptions, McpServer } from "@botiverse/oar/browser";
 import { Normalizer } from "./normalize.ts";
@@ -71,20 +72,22 @@ export function codexCleanArgs(config: CodexConfig | undefined, keep: string[] =
 }
 
 /**
- * The partner's bound on a harness's own compactor (SessionSpec.harnessCompactAt; research/11
- * §7.3.7), checked against the installed builds:
- *   - Claude Code 2.1.319: CLAUDE_CODE_AUTO_COMPACT_WINDOW (100k-1M tokens; the window is the
- *     smaller of it and the model's, and compaction fires a summary buffer below it), and the
- *     settings `idleCompaction: false` (no compaction while idle, before the cache expires) and
- *     `precomputeCompactionEnabled: false` (no summary written in the background). The settings
- *     go in the session's own folder (.claude/settings.local.json): the clean setup keeps the
- *     project and local sources, and `--settings` is OAR's under userConfiguration "exclude".
- *   - Codex 0.167: `-c model_auto_compact_token_limit=<n>` (a top-level config.toml key).
- * pi and DeepSeek Harness: not bounded yet (design/todo.md).
+ * D135: every session runs on a small window, with the values protocol/harness-facts.ts holds
+ * for the installed build (research/11 §7.3.7):
+ *   - Claude Code 2.1.319: CLAUDE_CODE_DISABLE_1M_CONTEXT=1 (otherwise every model name gets 1M
+ *     on a Max account, alias or full id), CLAUDE_CODE_AUTO_COMPACT_WINDOW=<window>, and
+ *     CLAUDE_AUTOCOMPACT_PCT_OVERRIDE when the compaction point sits below the default one
+ *     (window - 33K). The partner's folder gets `idleCompaction: false` and
+ *     `precomputeCompactionEnabled: false` in .claude/settings.local.json (its clean setup keeps
+ *     the project and local sources; `--settings` is OAR's under userConfiguration "exclude").
+ *     A task gets `idleCompaction: false` and a PreCompact hook through `--settings`, so its
+ *     worktree stays clean; under "exclude" (a browser place) through its folder's settings file.
+ *   - Codex 0.167: `-c model_context_window=<window> -c model_auto_compact_token_limit=<n>`.
+ * pi and DeepSeek Harness: no per-session knob (design/todo.md).
  */
 export const CLAUDE_COMPACT_SETTINGS = { idleCompaction: false, precomputeCompactionEnabled: false } as const;
 
-function writeClaudeCompactSettings(cwd: string): void {
+function writeClaudeSettings(cwd: string, settings: Record<string, unknown>): void {
   const file = join(cwd, ".claude", "settings.local.json");
   let cur: Record<string, unknown> = {};
   try {
@@ -92,9 +95,15 @@ function writeClaudeCompactSettings(cwd: string): void {
   } catch {
     /* none yet */
   }
-  if (Object.entries(CLAUDE_COMPACT_SETTINGS).every(([k, v]) => cur[k] === v)) return;
+  if (Object.entries(settings).every(([k, v]) => JSON.stringify(cur[k]) === JSON.stringify(v))) return;
   mkdirSync(dirname(file), { recursive: true });
-  writeFileSync(file, JSON.stringify({ ...cur, ...CLAUDE_COMPACT_SETTINGS }, null, 2) + "\n");
+  writeFileSync(file, JSON.stringify({ ...cur, ...settings }, null, 2) + "\n");
+}
+
+/** A shell-safe PreCompact hook printing the note: Claude Code appends it to its compact instructions. */
+export function preCompactHooks(note: string): Record<string, unknown> {
+  const quoted = `'${note.replace(/'/g, `'\\''`)}'`;
+  return { PreCompact: [{ matcher: "auto", hooks: [{ type: "command", command: `printf '%s\\n' ${quoted}`, timeout: 10 }] }] };
 }
 
 type CodexConfig = {
@@ -245,12 +254,23 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
       : { name: m.name, type: "http", url: m.url, headers: m.headers },
   );
 
+  // D135: the window and compaction point, as this harness takes them (harness-facts.ts).
+  const window = spec.contextWindow ?? spec.harnessCompactAt;
+  const knobs = window ? windowKnobs(h, { window, compactAt: spec.harnessCompactAt ?? window }) : undefined;
+
   switch (h) {
     case "claude-code":
       if (spec.launchArgs?.length) launchArgs = spec.launchArgs;
-      if (spec.harnessCompactAt) {
-        env = { ...env, CLAUDE_CODE_AUTO_COMPACT_WINDOW: String(Math.round(spec.harnessCompactAt)) };
-        writeClaudeCompactSettings(spec.cwd);
+      if (knobs) {
+        env = { ...env, ...knobs.env };
+        if (spec.preCompactNote === undefined) {
+          writeClaudeSettings(spec.cwd, knobs.settings); // the partner's own folder
+        } else {
+          const settings = { idleCompaction: false, hooks: preCompactHooks(spec.preCompactNote) };
+          // OAR owns --settings under "exclude"; there the task's folder holds them.
+          if (clean || spec.userConfiguration === "exclude") writeClaudeSettings(spec.cwd, settings);
+          else launchArgs = [...(launchArgs ?? []), "--settings", JSON.stringify(settings)];
+        }
       }
       break;
     case "codex":
@@ -263,7 +283,7 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
         const nativeTools = !!spec.keepNativeTools || (!clean && spec.userConfiguration === "exclude");
         launchArgs = codexCleanArgs(readCodexConfig(ctx.env ?? {}), mcpServers.map((m) => m.name), { nativeTools });
       }
-      if (spec.harnessCompactAt) launchArgs = [...(launchArgs ?? []), "-c", `model_auto_compact_token_limit=${Math.round(spec.harnessCompactAt)}`];
+      if (knobs) launchArgs = [...(launchArgs ?? []), ...knobs.args];
       break;
     case "pi":
       break; // the clean setup is the runtime variant's flags (defaultLoader)
@@ -301,7 +321,7 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
 
   const options: SessionOptions = {
     cwd: spec.cwd,
-    model: modelFor(h, spec.model),
+    model: modelFor(h, window ? modelForWindow(h, spec.model, window) : spec.model),
     systemPrompt,
     appendSystemPrompt,
     // D16 bypass: OAR launches every runtime without approval gates (claude

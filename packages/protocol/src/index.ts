@@ -702,6 +702,17 @@ export interface Settings {
   brain: Brain;
   /** Which signed-in accounts tasks may use; a missing entry means enabled. */
   taskAccounts?: Partial<Record<HarnessId, { enabled: boolean }>>;
+  /** D135: the context windows the partner and tasks run on (settings.json + env; no UI yet). */
+  windows?: ContextWindows;
+}
+
+/**
+ * D135, in tokens. partner: its window, where Ducter re-cuts it, and the cap on the harness's own
+ * compactor (kept above the re-cut). tasks: their window and where the harness compacts them.
+ */
+export interface ContextWindows {
+  partner: { window: number; recutAt: number; compactAt: number };
+  tasks: { window: number; compactAt: number };
 }
 
 export interface Brain {

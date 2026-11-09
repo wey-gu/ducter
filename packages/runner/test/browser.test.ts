@@ -397,10 +397,10 @@ describe("browser status line, identity, task model", () => {
     const runner = createRunner(core, { harness: port, newId: () => `tskf000${++n}`, taskModel: "sonnet" });
     const a = await runner.openTask({ persona: "p1", title: "t", brief: "b" });
     await runner.whenStarted(a.taskId);
-    expect(seen.options.model).toBe("sonnet");
+    expect(seen.options.model).toBe("claude-sonnet-5-5"); // D135: aliases go as concrete ids
     const b = await runner.openTask({ persona: "p1", title: "t", brief: "b", model: "haiku" });
     await runner.whenStarted(b.taskId);
-    expect(seen.options.model).toBe("haiku");
+    expect(seen.options.model).toBe("claude-haiku-5-5");
     await runner.dispose();
   });
 });
@@ -467,6 +467,7 @@ describe("browser place: the harness's own browser tools first (D126, D130)", ()
     expect(args).toContain("features.apps=false");
     for (const kept of ["plugins", "plugin_hooks", "computer_use", "browser_use"]) expect(args).not.toContain(`features.${kept}=false`);
     expect(seen.options.appendSystemPrompt).toContain("--new-window");
+    expect(args.slice(-4)).toEqual(["-c", "model_context_window=200000", "-c", "model_auto_compact_token_limit=160000"]); // the small window (D135)
     await runner.dispose();
   });
 

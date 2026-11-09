@@ -7,6 +7,7 @@ import { join } from "node:path";
 import type { Bodies, MemView, QuietHours, Settings, SettingsPatch, TalkLanguage } from "@ducter/protocol";
 import { DEFAULT_AFTER_CHOICES, HARNESSES, isHarnessId, type Brain, type HarnessId } from "@ducter/protocol";
 import type { LogStore, SettingsApi } from "@ducter/protocol/src/internal.ts";
+import { resolveWindows, type WindowsInput } from "@ducter/protocol/src/harness-facts.ts";
 import type { PushStore } from "./push.ts";
 
 export const SETTINGS_FILE = "settings.json";
@@ -21,6 +22,8 @@ interface SettingsFile {
   /** D85: what the partner thinks with, and which accounts tasks may use. */
   brain?: Brain;
   taskAccounts?: Partial<Record<HarnessId, { enabled: boolean }>>;
+  /** D135: context windows, in tokens (env DUCTER_PARTNER_* / DUCTER_TASK_* override them). */
+  windows?: WindowsInput;
   /** 记下了 lines forgotten here, by seq (Mem forgot them, or they are only hidden). */
   hidden?: number[];
 }
@@ -73,6 +76,9 @@ export function openSettings(opts: {
   const changed = () => listeners.forEach((fn) => fn());
   let forgetter: ((id: string) => Promise<boolean>) | undefined;
   let memSeen: "connected" | "missing" | undefined;
+  // D135: checked once at start (env + file); a value out of range is said once, then its default runs.
+  const windowsNow = () => resolveWindows(data.windows, opts.env ?? process.env);
+  for (const p of windowsNow().problems) console.warn(`[settings] windows: ${p}`);
 
   const get = (): Settings => {
     const p = opts.push.settings();
@@ -85,6 +91,7 @@ export function openSettings(opts: {
       defaultAfterMin: data.defaultAfterMin ?? 30,
       brain: data.brain ?? defaultBrain(opts.env ?? process.env),
       ...(data.taskAccounts ? { taskAccounts: data.taskAccounts } : {}),
+      windows: windowsNow().windows,
     };
   };
 
@@ -171,6 +178,12 @@ export function openSettings(opts: {
           touched = true;
         }
         if (touched) (data.taskAccounts = merged), did.push("taskAccounts");
+      }
+      // D135: only a whole, valid pair of windows is kept (no client sets it yet; settings.json does).
+      const w = patch.windows as WindowsInput | undefined;
+      if (w && typeof w === "object") {
+        const next: WindowsInput = { partner: { ...data.windows?.partner, ...w.partner }, tasks: { ...data.windows?.tasks, ...w.tasks } };
+        if (resolveWindows(next).problems.length === 0 && JSON.stringify(next) !== JSON.stringify(data.windows ?? {})) (data.windows = next), did.push("windows");
       }
       const push: Parameters<PushStore["setSettings"]>[0] = {};
       if (typeof patch.notify === "boolean" && !opts.push.settings().off !== patch.notify) (push.off = !patch.notify), did.push("notify");

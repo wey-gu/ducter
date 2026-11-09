@@ -79,6 +79,7 @@ export class Normalizer {
   private text = "";
   private thought = "";
   private tools = new Map<string, PendingTool>();
+  private lastContext: number | undefined;
 
   constructor(private readonly usage: () => HarnessEvent["usage"] | undefined) {}
 
@@ -120,9 +121,17 @@ export class Normalizer {
       if (ev.content?.kind === "text" && typeof ev.content.text === "string") this.thought += ev.content.text;
       return out;
     }
-    if (ev.kind === "usage" || ev.kind === "tool_call_progress") {
-      return out; // not logged; usage is folded into turnEnd
+    if (ev.kind === "usage") {
+      // Not logged (usage is folded into turnEnd), but the context size goes out as it grows, so
+      // a task is asked to save its progress before its harness compacts (D135).
+      const c = this.usage()?.contextTokens;
+      if (c && c !== this.lastContext) {
+        this.lastContext = c;
+        out.push({ role: "system", usage: { contextTokens: c }, raw: { kind: "usage" } });
+      }
+      return out;
     }
+    if (ev.kind === "tool_call_progress") return out;
     this.flushText(out);
     switch (ev.kind) {
       case "user_message":
@@ -175,7 +184,11 @@ export class Normalizer {
       case "retry":
         out.push({ role: "system", text: `retry ${ev.attempt}${ev.reason ? `: ${ev.reason}` : ""}`, raw: { kind: "retry" } });
         break;
+      case "compaction_started":
+        out.push({ role: "system", text: "compaction started", raw: { kind: "compaction_started", trigger: ev.trigger } });
+        break;
       case "compaction_ended":
+        this.lastContext = undefined;
         out.push({ role: "system", text: `compaction ${ev.outcome}`, raw: { kind: "compaction_ended", outcome: ev.outcome, trigger: ev.trigger } });
         break;
       default:

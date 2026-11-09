@@ -736,7 +736,7 @@ func (a *App) taskDetails(c *ui.Context, task *store.Task) {
 				}
 			})
 		}
-		if len(task.Checkpoints) > 0 {
+		if len(task.Checkpoints) > 0 || task.Compactions > 0 {
 			row(a.L.T("task.dossier.checkpoints"), func() {
 				// Each with its time beside it, not stranded at the far edge.
 				for _, cp := range task.Checkpoints {
@@ -744,6 +744,14 @@ func (a *App) taskDetails(c *ui.Context, task *store.Task) {
 						ui.Text(c, cp.Text).FontSize(t.MD).LineHeight(leadingFor(cp.Text, 1.5)).TextColor(t.InkSoft).Shrink(1).MinWidth(0)
 						ui.Text(c, "· "+clock(cp.TS)).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0)
 					})
+				}
+				// D135: quietly, how often its context was compacted (it carried on from here).
+				if n := task.Compactions; n > 0 {
+					s := a.L.T("task.dossier.compacted", n)
+					if n == 1 {
+						s = a.L.T("task.dossier.compacted.one")
+					}
+					ui.Text(c.Key("compacted"), s).FontSize(t.SM).TextColor(t.InkMuted)
 				}
 			})
 		}

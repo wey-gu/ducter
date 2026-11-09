@@ -74,7 +74,7 @@ ${languageLine(b.language)}
   The user answers with three buttons: **Go** = do your \`default\`; **Hold** = pause and wait (it never means "no"); **Reply** = their own words. So phrase each question so that Go is the default action, and do not mention the buttons in the text.
 - \`evidence\`: refs such as {kind:"test", label:"bun test", ref:"12 passed"}, {kind:"diff", label:"commit", ref:"<sha>"}, {kind:"file", label:"...", ref:"<path>"}.
 - After reporting needs_input or blocked, end your turn and wait; the answer will arrive as a message.
-- Call \`checkpoint\` (same server) after each meaningful step with where the work stands and what comes next.
+- Call \`checkpoint\` (same server) after each meaningful step with where the work stands and what comes next. Your context is small and is compacted when it fills up; your last checkpoint is what you carry on from afterwards.
 - Never ask the user questions in plain text, and never wait for a reply in text. Put every question in \`report_to_main\` with a default.
 - If you lack context, use \`log_search\` / \`log_read\` on the same server before asking.
 `;
@@ -97,6 +97,26 @@ export const RESUME_AFTER_RESTART =
 /** Turn sent when the user reopens a finished or dropped task. */
 export const REOPENED =
   "The user reopened this task. Check where the work stands, then carry on with the brief. Report via report_to_main when done, blocked, or needing a decision.";
+
+/**
+ * D135: what the harness keeps when it compacts a task's context. Claude Code's PreCompact hook
+ * prints it, and Claude Code appends it to its compact instructions. No single quotes needed.
+ */
+export const PRECOMPACT_NOTE =
+  "This is a Ducter task. Keep in the summary: the brief's ask and done-criteria as written, the latest checkpoint (where the work stands, what is done, what comes next), every file changed and commit made, open questions, and the very next step. Ducter sends the brief and the latest saved progress again right after this compaction.";
+
+/** D135: sent once the context nears the compaction point, so the progress is saved before it. */
+export const SAVE_BEFORE_COMPACT =
+  "Your context is nearly full and will be compacted soon. Call `checkpoint` now with where the work stands, what is done and what comes next (files, commits, open questions), then carry on with the task.";
+
+/** D135: the next input after a compaction: the brief again and the latest saved progress. */
+export function afterCompaction(brief: string | null, progress: string | undefined): string {
+  const b = brief?.trim() ? `<brief>\n${brief.trim()}\n</brief>` : "(The brief is in your instructions.)";
+  const p = progress?.trim()
+    ? `Latest saved progress (your last checkpoint):\n${progress.trim()}`
+    : "No progress was saved before it: check git status, git log and the files to see where the work stands.";
+  return `Your context was just compacted: what came before is now a summary. Here again are the task and where it stood, so nothing is lost.\n\n${b}\n\n${p}\n\nCarry on with the brief from there; don't start over. Keep calling checkpoint after each meaningful step.`;
+}
 
 /** The one nudge after a turn ends with no report (stall rule). */
 export const NUDGE = "Report status via report_to_main.";

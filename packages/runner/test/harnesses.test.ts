@@ -89,16 +89,59 @@ describe("adaptSpec: the partner's clean setup per harness", () => {
 
     const cx = adaptSpec(spec("codex", { harnessCompactAt: 200_000 }), { dataDir: dir });
     const args = cx.options.launchArgs!;
-    expect(args.slice(-2)).toEqual(["-c", "model_auto_compact_token_limit=200000"]);
+    expect(args.slice(-4)).toEqual(["-c", "model_context_window=200000", "-c", "model_auto_compact_token_limit=200000"]);
     expect(args).toContain("features.hooks=false"); // the clean setup stays
 
-    // Tasks never carry it: no env, no settings file, no -c.
+    // A spec with no window carries none: no env, no settings file, no -c.
     const taskDir = join(dir, "task");
     const t1 = adaptSpec(spec("claude-code", { cwd: taskDir, isolateUserConfig: false }), { dataDir: dir });
     expect((t1.options.env as Record<string, string | null>).CLAUDE_CODE_AUTO_COMPACT_WINDOW).toBeUndefined();
     expect(() => readFileSync(join(taskDir, ".claude", "settings.local.json"))).toThrow();
     const t2 = adaptSpec(spec("codex", { isolateUserConfig: false }), { dataDir: dir });
     expect(t2.options.launchArgs).toBeUndefined();
+  });
+
+  test("D135 partner: a 200K window on the standard model, the alias as its concrete id, the compactor capped at the window", () => {
+    const cc = adaptSpec(spec("claude-code", { model: "opus", contextWindow: 200_000, harnessCompactAt: 200_000 }), { dataDir: dir });
+    const env = cc.options.env as Record<string, string | null>;
+    expect(cc.options.model).toBe("claude-opus-5-5");
+    expect(env.CLAUDE_CODE_DISABLE_1M_CONTEXT).toBe("1"); // every name gets 1M otherwise (live, 2.1.319)
+    expect(env.CLAUDE_CODE_AUTO_COMPACT_WINDOW).toBe("200000");
+    expect(env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE).toBeUndefined(); // its own point (167K) is already below the cap
+    for (const m of ["opus[1m]", "sonnet", "claude-haiku-5-5", "haiku[1M]"]) {
+      const id = adaptSpec(spec("claude-code", { model: m, contextWindow: 200_000 }), { dataDir: dir }).options.model!;
+      expect(id).toMatch(/^claude-(opus|sonnet|haiku)-5-5$/); // never a [1m] variant
+    }
+    // A user who sets a 1M window keeps the 1M variant and gets no switch.
+    const big = adaptSpec(spec("claude-code", { model: "opus[1m]", contextWindow: 1_000_000 }), { dataDir: dir });
+    expect(big.options.model).toBe("claude-opus-5-5[1m]");
+    expect((big.options.env as Record<string, string | null>).CLAUDE_CODE_DISABLE_1M_CONTEXT).toBeUndefined();
+    // Unknown names pass as they are.
+    expect(adaptSpec(spec("claude-code", { model: "claude-next-9", contextWindow: 200_000 }), { dataDir: dir }).options.model).toBe("claude-next-9");
+  });
+
+  test("D135 tasks: compaction at 160K, the PreCompact note via --settings, or its folder's settings under exclude", () => {
+    const taskDir = join(dir, "task");
+    const t = adaptSpec(spec("claude-code", { cwd: taskDir, isolateUserConfig: false, contextWindow: 200_000, harnessCompactAt: 160_000, preCompactNote: "keep it's brief" }), { dataDir: dir });
+    const env = t.options.env as Record<string, string | null>;
+    expect(env.CLAUDE_CODE_AUTO_COMPACT_WINDOW).toBe("200000");
+    expect(Math.floor(180_000 * (Number(env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE) / 100))).toBe(160_000);
+    const args = t.options.launchArgs!;
+    const settings = JSON.parse(args[args.indexOf("--settings") + 1]!);
+    expect(settings).toMatchObject({ idleCompaction: false, hooks: { PreCompact: [{ matcher: "auto" }] } });
+    const cmd = settings.hooks.PreCompact[0].hooks[0].command as string;
+    expect(Bun.spawnSync(["sh", "-c", cmd]).stdout.toString()).toBe("keep it's brief\n"); // shell-safe quoting
+    expect(() => readFileSync(join(taskDir, ".claude", "settings.local.json"))).toThrow();
+    // A browser place runs with "exclude": OAR owns --settings there, so the folder holds them.
+    const b = adaptSpec(spec("claude-code", { cwd: taskDir, isolateUserConfig: false, userConfiguration: "exclude", contextWindow: 200_000, harnessCompactAt: 160_000, preCompactNote: "n" }), { dataDir: dir });
+    expect(b.options.launchArgs ?? []).not.toContain("--settings");
+    expect(JSON.parse(readFileSync(join(taskDir, ".claude", "settings.local.json"), "utf8"))).toMatchObject({ idleCompaction: false, hooks: { PreCompact: [{ matcher: "auto" }] } });
+
+    const cx = adaptSpec(spec("codex", { isolateUserConfig: false, contextWindow: 200_000, harnessCompactAt: 160_000, preCompactNote: "n" }), { dataDir: dir });
+    expect(cx.options.launchArgs).toEqual(["-c", "model_context_window=200000", "-c", "model_auto_compact_token_limit=160000"]);
+    // pi has no per-session knob: nothing is passed (design/todo.md).
+    const p = adaptSpec(spec("pi", { isolateUserConfig: false, contextWindow: 200_000, harnessCompactAt: 160_000 }), { dataDir: dir });
+    expect(p.options.launchArgs).toBeUndefined();
   });
 
   test("context size: the harness's reading, but never Codex's cumulative fallback", () => {

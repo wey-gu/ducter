@@ -4,6 +4,18 @@
 import { expect, test } from "bun:test";
 import { Normalizer, headBefore } from "../src/normalize.ts";
 
+test("D135: the context size goes out as it grows mid-turn, once per reading; compactions are named", () => {
+  let ctx: number | undefined;
+  const n = new Normalizer(() => (ctx ? { contextTokens: ctx } : undefined));
+  expect(n.push({ kind: "usage" })).toEqual([]); // no reading yet
+  ctx = 120_000;
+  expect(n.push({ kind: "usage" })).toEqual([{ role: "system", usage: { contextTokens: 120_000 }, raw: { kind: "usage" } }]);
+  expect(n.push({ kind: "usage" })).toEqual([]); // unchanged
+  expect(n.push({ kind: "compaction_started", trigger: "auto" })).toEqual([{ role: "system", text: "compaction started", raw: { kind: "compaction_started", trigger: "auto" } }]);
+  expect(n.push({ kind: "compaction_ended", outcome: "completed", trigger: "auto" })).toEqual([{ role: "system", text: "compaction completed", raw: { kind: "compaction_ended", outcome: "completed", trigger: "auto" } }]);
+  expect(n.push({ kind: "usage" })).toHaveLength(1); // after a compaction the next reading goes out again
+});
+
 test("the task_open title is surfaced as soon as it streams in, once", () => {
   const n = new Normalizer(() => undefined);
   n.push({ kind: "tool_call_started", callId: "c1", tool: "mcp__ducter__task_open" });

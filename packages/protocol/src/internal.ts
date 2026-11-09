@@ -214,13 +214,18 @@ export interface SessionSpec {
   // claude-code: leave out the user's own Claude config. codex: Ducter's clean setup, keeping
   // Codex's own browser and Computer Use plugins (a browser place on Codex's own tools, D130).
   userConfiguration?: "include" | "exclude";
-  // The partner only (research/11 §7.3.7): the harness's own compactor waits until the context
-  // holds this many tokens, and compacts nothing while idle, so Ducter's re-cut runs first and the
-  // harness's summary never competes with the spine. Each harness maps it in runner/oar.ts.
+  // D135: the window the session runs on (standard-window models, never a 1M variant when it
+  // fits) and where the harness's own compactor may fire. The partner keeps its compactor above
+  // the re-cut (research/11 §7.3.7); a task compacts at its compaction point. Each harness maps
+  // them in runner/oar.ts from protocol/harness-facts.ts.
+  contextWindow?: number;
   harnessCompactAt?: number;
   // Tasks (D130): under the clean setup, Codex keeps its own browser and Computer Use plugins.
   // The partner and the judge leave it unset (their clean setup turns them off).
   keepNativeTools?: boolean;
+  // Tasks only (D135): what the harness keeps when it compacts (Claude Code's PreCompact hook
+  // prints it as compact instructions). Absent: the partner's setup (no hook).
+  preCompactNote?: string;
 }
 
 export interface HarnessEvent {

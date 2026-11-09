@@ -7,6 +7,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import type { HarnessId } from "../../../protocol/src/index.ts";
 import type { HarnessPort } from "../../../protocol/src/internal.ts";
+import { WINDOW_DEFAULTS } from "../../../protocol/src/harness-facts.ts";
 import type { Anchor, Change, Closed, Decision, Obligation, SegmentDigest, TocRow } from "./digest.ts";
 import { estTokens, mechanicalObligations, salientIdentifiers, unansweredAsks, userText, type Unit } from "./segment.ts";
 
@@ -198,6 +199,7 @@ export function createHarnessWriter(opts: { harness: () => HarnessPort | undefin
         permissionMode: "bypass",
         isolateUserConfig: true,
         disallowedTools: TOOLS_OFF,
+        contextWindow: WINDOW_DEFAULTS.partner.window, // D135: a standard-window model, never a 1M variant
       });
       let text = "";
       const timer = setTimeout(() => void session.interrupt().catch(() => {}), opts.timeoutMs ?? 5 * 60_000);

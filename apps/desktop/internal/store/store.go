@@ -311,7 +311,14 @@ type Store struct {
 	// outcome, until the view shows it.
 	Settings *protocol.Settings
 	Mem      *protocol.MemView
-	Forgot   *protocol.Forgot
+	// Connections (D96), once asked for; nil means not yet. Oo is what the
+	// oo CLI is set up with. ConnResult is the last add/remove answer, for
+	// the page to turn into one line.
+	Connections []protocol.ConnectionView
+	ConnAsked   bool
+	Oo          *protocol.OoDetect
+	ConnResult  *protocol.ServerFrame
+	Forgot      *protocol.Forgot
 	// Rules are 你的规则 / Your rules, as last sent (nil until a rules
 	// frame; RulesAt says one came). Candidates are who could do a task,
 	// by task id, as last asked; SwitchResults the switch answers not yet
@@ -388,6 +395,14 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		if f.Forgot != nil {
 			s.Forgot = f.Forgot
 		}
+	case "connections":
+		s.Connections, s.Oo, s.ConnAsked = f.Connections, f.Oo, true
+		if s.Connections == nil {
+			s.Connections = []protocol.ConnectionView{}
+		}
+	case "connection_result":
+		fc := f
+		s.ConnResult = &fc
 	case "sent":
 		if t := s.Tasks[f.TaskID]; t != nil {
 			for _, sd := range t.Sends {

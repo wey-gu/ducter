@@ -18,8 +18,14 @@ so it counts against that plan's limits like any other session.
 
 ### Which AI agents does it work with?
 
-Today, Claude Code and Codex, signed in with your own account. You need at least one. pi and
-DeepSeek Harness are coming soon, and more agents after that.
+Claude Code and Codex, signed in with your own account. You need at least one. Your partner
+thinks with Claude Code; choosing Codex for it instead is coming soon.
+
+Ducter can also hand tasks to **pi** and **DeepSeek Harness**, which run on an API key you pay
+for by use rather than a plan. If one of them is installed and has its key, ask your partner to
+use it for a task ("do this with DeepSeek Harness"). Choosing them from the app, and typing a
+DeepSeek key into Devices, are coming soon. Your partner itself running on pi or DeepSeek
+Harness is coming soon too, once each has been checked as carefully as Claude Code and Codex.
 
 ### What does it run on?
 
@@ -61,13 +67,30 @@ write to it directly while it works.
 ### Does it remember me?
 
 It remembers your conversation. With [Nowledge Mem](https://mem.nowledge.co) it also starts out
-knowing who you are and what you're working on, and you see **Noted** when it saves something.
+knowing who you are and what you're working on, from the same memory your other AI tools use,
+and you see **Noted** when it saves something.
 See [Privacy and safety](privacy-and-safety.md#memory-with-nowledge-mem).
 
 ### Can it use the web?
 
 Yes, on a Mac: it uses its own Chrome window to look things up and read pages. Signing in,
 submitting forms and paying are left to you. See [Browsing the web](devices.md#browsing-the-web).
+
+### Can it read my email or calendar?
+
+Not yet; it's coming soon. Gmail, Google Calendar and other services will connect through
+[OpenConnector](https://github.com/oomol-lab/open-connector), an open-source connector gateway.
+Use OOMOL's hosted one (quickest; your mail passes through their servers) or run your own (it
+stays on your machine, and you set up the sign-in apps yourself). Ducter holds the key to it,
+and the AI agents never see your passwords or tokens. Reading is fine, and anything that would send an email or change your calendar
+will wait for your **Go**, the way everything Ducter sends out does today.
+
+### Can it work with the AI agent in my terminal?
+
+Not yet; it's coming soon. With Nowledge Bridge, part of
+[Nowledge Mem](https://mem.nowledge.co), the Claude Code or Codex session you have open in a
+terminal will be able to hand your partner a job, and your partner will be able to ask that
+session what it knows. Either way, your partner checks with you first.
 
 ### Can it use my other apps, my phone, or make calls?
 

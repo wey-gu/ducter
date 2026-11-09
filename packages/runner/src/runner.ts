@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import type { Attention, Bodies, Delivery, LogEvent, Place, Residency, TaskCard } from "@ducter/protocol";
+import { HARNESS_IDS, harnessName, type Attention, type Bodies, type Delivery, type LogEvent, type Place, type Residency, type TaskCard } from "@ducter/protocol";
 import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, SessionSpec } from "@ducter/protocol/src/internal.ts";
 import { NUDGE, REOPENED, RESUME_AFTER_RESTART, handedOver, kickoff, taskBrief } from "./brief.ts";
 import { createOarHarnessPort } from "./oar.ts";
@@ -14,7 +14,7 @@ export const unreachableReason = (device: string) => `device:unreachable:${devic
 
 type HarnessId = SessionSpec["harness"];
 type From = NonNullable<Bodies["task_event"]["from"]>;
-const HARNESSES: HarnessId[] = ["claude-code", "codex", "pi"];
+const HARNESSES: readonly HarnessId[] = HARNESS_IDS;
 
 export interface RunnerOptions {
   harness?: HarnessPort; // default: OAR
@@ -95,7 +95,7 @@ export function shortId(): string {
 }
 
 export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt {
-  const harness = opts.harness ?? createOarHarnessPort();
+  const harness = opts.harness ?? createOarHarnessPort({ dataDir: core.dataDir });
   const now = opts.now ?? (() => new Date());
   const newId = opts.newId ?? shortId;
   const tasks = new Map<string, TaskRt>();
@@ -446,8 +446,13 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       if (picked && "none" in picked) throw new Error(picked.none);
       const pick = picked && HARNESSES.includes(picked.harness as HarnessId) ? picked : undefined;
       if (pick) input = { ...input, harness: pick.harness, ...(pick.model ? { model: pick.model } : {}) };
-      const h = (input.harness ?? opts.defaultHarness ?? "claude-code") as HarnessId;
+      // D85: the partner's choice; else the first account the user lets tasks use (Settings
+      // taskAccounts; a missing entry is enabled), in first-wave order.
+      const accounts = core.settings?.get().taskAccounts ?? {};
+      const enabled = (x: HarnessId) => accounts[x]?.enabled !== false;
+      const h = (input.harness ?? opts.defaultHarness ?? HARNESSES.find(enabled) ?? "claude-code") as HarnessId;
       if (!HARNESSES.includes(h)) throw new Error(`unknown harness ${input.harness}`);
+      if (input.harness && !enabled(h)) throw new Error(`the user switched ${harnessName(h)} off for tasks; leave harness out or ask them`);
       const title = input.title.trim() || "Untitled task";
       // Where it runs: this machine, or a worker that must be connected right now.
       const ops = opsFor(input.place);

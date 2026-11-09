@@ -78,13 +78,17 @@ export class Normalizer {
         // Native echo of host input. The runner logs what it sends itself, so skip echoes
         // (not every runtime echoes, and echo timing differs for steer/queue).
         break;
-      case "tool_call_started":
-        this.tools.set(ev.callId, { name: ev.tool, input: ev.input });
+      case "tool_call_started": {
+        // One name form on every harness: an MCP tool is mcp__<server>__<tool> (claude's own
+        // form; codex and pi report the server and tool apart, D85).
+        const name = ev.server && ev.toolName ? `mcp__${ev.server}__${ev.toolName}` : ev.tool;
+        this.tools.set(ev.callId, { name, input: ev.input });
         // Early signal (no output yet): lets the partner turn its held line into an ack as
         // soon as the model starts a task_open call, not after it finishes writing the brief.
         // The runner does not log these (the ended event carries the full call).
-        out.push({ role: "tool", tool: { name: ev.tool }, raw: { kind: "tool_call_started", callId: ev.callId } });
+        out.push({ role: "tool", tool: { name }, raw: { kind: "tool_call_started", callId: ev.callId } });
         break;
+      }
       case "tool_call_input": {
         const t = this.tools.get(ev.callId);
         if (t) t.input = ev.input;
@@ -137,9 +141,23 @@ export class Normalizer {
   }
 
   private flushText(out: HarnessEvent[]) {
-    if (this.text.trim()) out.push({ role: "assistant", text: this.text });
+    const text = stripThinking(this.text);
+    if (text.trim()) out.push({ role: "assistant", text });
     this.text = "";
   }
+}
+
+/**
+ * Reasoning some models write into the reply itself (MiniMax through pi: "…</think>\n\nNo."),
+ * which the harness does not separate when the model is not marked as reasoning. It never
+ * reaches the user. A block with no opening tag runs from the start of the text.
+ */
+export function stripThinking(text: string): string {
+  let t = text.replace(/<think>[\s\S]*?<\/think>/g, "");
+  const close = t.indexOf("</think>");
+  if (close >= 0) t = t.slice(close + "</think>".length);
+  if (t !== text) t = t.replace(/^\s+/, "");
+  return t;
 }
 
 function toolOutputText(content: readonly any[] | undefined): string | undefined {

@@ -112,6 +112,24 @@ export interface Bodies {
   // line (copy pending the glossary): "<from> 发来请求" / "Request from <from>", and
   // "已回复 <to>" / "Replied to <to>". Not "交接 / hand-off": that word is a task changing body.
   bridge_msg: { direction: "in" | "out"; messageId: string; from?: string; to?: string; text: string; inReplyTo?: string; sentAt?: string };
+  // A call into one of the user's connections (D96, design/connectors.md): their OpenConnector or
+  // another MCP server, reached only through Ducter's broker. Reads run and are recorded here;
+  // a write is recorded "needs_go" with its input, waits for the user's Go on a decision card,
+  // and runs once after it ("done"/"failed"). Never carries a token. On the channel for the
+  // partner, on the task's stream for a task. Clients stay quiet about reads.
+  connection_call: {
+    callId: string;
+    connectionId: string;
+    connection: string; // its name, for display
+    action: string; // an OpenConnector action id (gmail.search_threads) or an MCP tool name
+    op: "read" | "write";
+    state: "done" | "failed" | "denied" | "needs_go" | "held";
+    taskId?: string;
+    decisionId?: string;
+    input?: unknown; // writes only: what Go runs
+    summary?: string; // ≤ 200 chars, never the provider's full output
+    error?: string;
+  };
 }
 
 export interface Usage { inputTokens?: number; outputTokens?: number; cacheRead?: number; cacheWrite?: number }
@@ -223,7 +241,15 @@ export type ClientFrame =
   // (action "switch"). After two switches the same way the partner asks once whether to make it
   // a rule (a partner-level decision).
   | { t: "candidates"; taskId: string }
-  | { t: "task_switch"; taskId: string; harness: string; model?: string };
+  | { t: "task_switch"; taskId: string; harness: string; model?: string }
+  // Connections (D96): the user's OpenConnector or another MCP server. "connections" answers with
+  // a connections frame and keeps the socket subscribed. "connection_add" checks the address and
+  // token before saving (answered with connection_result, then a fresh frame). "connection_oo"
+  // uses the self-hosted OpenConnector that the user's oo CLI is set up with, only on this tap.
+  | { t: "connections" }
+  | { t: "connection_add"; url: string; token?: string; name?: string }
+  | { t: "connection_remove"; id: string }
+  | { t: "connection_oo" };
 
 export type ServerFrame =
   // machine: a hash of the machine the main runs on (core/src/machine.ts); a client that computes
@@ -241,6 +267,8 @@ export type ServerFrame =
   | { t: "settings"; settings: Settings; mem: MemView; forgot?: { seq: number; how: "mem" | "hidden" } }
   | { t: "rules"; rules: RuleView[] }
   | { t: "candidates"; taskId: string; candidates: Candidate[] }
+  | { t: "connections"; connections: ConnectionView[]; oo: OoDetect }
+  | { t: "connection_result"; ok: boolean; id?: string; reason?: ConnectionReason }
   | { t: "error"; message: string };
 
 export type Delivery = "steered" | "prompted" | "queued";
@@ -307,6 +335,35 @@ export interface Reach {
   address?: string; // the public address, when one is set (DUCTER_PUBLIC_URL or <dataDir>/public-url)
   clients: { id: string; name: string; platform: string; connected: boolean; lastSeen?: string }[];
 }
+
+// ---------- Connections (D96, design/connectors.md) ----------
+// Where the user's accounts are reached: their own OpenConnector (OOMOL Hosted or self-hosted) or
+// another MCP server. The token stays in Ducter's data folder (0600), never in a frame.
+
+/** oomol: OOMOL Hosted (mail and sign-ins pass through OOMOL); self: the user's own OpenConnector; mcp: any other MCP server. */
+export type ConnectionSource = "oomol" | "self" | "mcp";
+
+export interface ConnectionView {
+  id: string;
+  name: string;
+  url: string; // the MCP endpoint, without any secret
+  source: ConnectionSource;
+  addedAt: string;
+  via: "manual" | "oo";
+  state: "ok" | "unreachable" | "unauthorized" | "unknown";
+  checkedAt?: string;
+}
+
+/** What the user's oo CLI is set up with, as far as Ducter can tell without reading a secret. */
+export interface OoDetect {
+  installed: boolean;
+  /** A self-hosted OpenConnector in oo's connector.toml or OO_CONNECTOR_URL: its address only. */
+  selfHosted?: { url: string; hasToken: boolean };
+  /** Signed in to an OOMOL account (auth.toml). Not offered for one tap: that key can do more than connections. */
+  account: boolean;
+}
+
+export type ConnectionReason = "bad_url" | "unreachable" | "unauthorized" | "not_mcp" | "duplicate" | "unknown_connection" | "no_oo";
 
 // ---------- Settings (D71: the Partner page and Settings) ----------
 // Persisted in the data folder: the name in persona.json (shared with the CLI), notifications

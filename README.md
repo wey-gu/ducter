@@ -34,9 +34,28 @@ you to look into and steer whenever you want.
 - **Your machines, your plans.** Tasks run on your Mac or on a server you own, each in its own
   git worktree and branch, on the Claude Code or Codex login you already have. Merging is
   always your call.
-- **It remembers you.** With [Nowledge Mem](https://mem.nowledge.co), your partner starts with
-  the identity and context you already keep there, shared with the other AIs you use.
 - **English and 中文** throughout, following your system language.
+
+## It doesn't start from zero
+
+Much of what your partner needs to know is somewhere else: in your mail, your calendar, and
+last week's sessions with your other AI tools. Some of that it can use today. The rest is on
+the way, and none of it needs your passwords.
+
+- **One memory for all your AIs (works today).** [Nowledge Mem](https://mem.nowledge.co) keeps
+  what you've decided and what you're working on, from every AI tool you connect to it. Your
+  partner reads from it and adds to it, and each save shows as one quiet *Noted* line. Without
+  Mem, your partner remembers your conversation and nothing else.
+- **Your accounts, through your OpenConnector (coming soon).** Gmail, Google Calendar and
+  other services will connect through [OpenConnector](https://github.com/oomol-lab/open-connector),
+  an open-source connector gateway: OOMOL's hosted one, or your own on your own machine. Ducter
+  holds the key to it, and the AI agents never see your passwords or tokens. Reading your inbox is fine; anything that would
+  send waits for your Go, like everything else Ducter sends out.
+- **Your AI agents, reaching each other (early, coming soon).** With Nowledge Bridge, the
+  Claude Code session in your terminal can hand your partner a job, and your partner can ask
+  that session what it knows. Your partner checks with you before it takes the job or sends the
+  question. The receiving half is in the code behind a flag (`DUCTER_BRIDGE=1`) and hasn't been
+  tried end to end yet; asking the other way isn't built.
 
 ## Quickstart
 

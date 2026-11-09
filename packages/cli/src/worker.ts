@@ -13,6 +13,7 @@ import type { T } from "./i18n.ts";
 import * as runnerMod from "@ducter/runner";
 import { scriptedHarness } from "./scripted.ts";
 import { localDeviceKind } from "@ducter/core/src/devices.ts";
+import { probeHarnesses as probeLocalHarnesses } from "@ducter/core/src/harness-probe.ts";
 
 /** Exit status when the main refuses this worker; the unit sets RestartPreventExitStatus to it. */
 export const EXIT_REFUSED = 3;
@@ -56,12 +57,18 @@ function save(file: string, s: WorkerSaved) {
   chmodSync(file, 0o600);
 }
 
-async function probeHarnesses(t: T, dataDir: string) {
-  const r = await runDoctor(realHost(), t, { port: 0, dataDir });
-  return (["claude", "codex"] as const).map((id) => {
-    const c = r.checks.find((k) => k.id === id)!;
-    return { id: id === "claude" ? "claude-code" : "codex", installed: c.detail !== t(`check.${id}.missing`), loggedIn: c.status === "ok" };
+/** The four first-wave harnesses on this machine (D85), as the main's Your devices shows them. */
+async function probeHarnesses(_t: T, dataDir: string) {
+  const host = realHost();
+  const found = await probeLocalHarnesses({
+    exec: async (argv, ms) => {
+      const r = await host.run(argv, ms);
+      return { code: r.code, out: r.stdout };
+    },
+    which: (c) => host.which(c),
+    dataDir,
   });
+  return found.map((h) => ({ id: h.harness, installed: h.installed, loggedIn: h.loggedIn }));
 }
 
 export async function cmdWorker(o: { t: T; style: Style; args: Args; dataDir: string }): Promise<number> {
@@ -105,7 +112,7 @@ export async function cmdWorker(o: { t: T; style: Style; args: Args; dataDir: st
     harnesses: await probeHarnesses(t, o.dataDir),
   };
   // DUCTER_SCRIPTED_MODEL=1: canned model words, real tools (scripted.ts), for demos and e2e.
-  const harness = process.env.DUCTER_SCRIPTED_MODEL === "1" ? scriptedHarness(runnerMod) : runnerMod.createOarHarnessPort();
+  const harness = process.env.DUCTER_SCRIPTED_MODEL === "1" ? scriptedHarness(runnerMod) : runnerMod.createOarHarnessPort({ dataDir: o.dataDir });
   const s = saved;
   return stayConnected(s, hello, t, style, (send) => runnerMod.createWorkerHost({ dataDir: o.dataDir, harness, mainBase: s.url, deviceToken: s.token, send }));
 }

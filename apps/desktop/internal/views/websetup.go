@@ -120,7 +120,7 @@ func (a *App) webSheet(c *ui.Context, dv *protocol.DeviceView, sw, sh float32) {
 	t := a.T
 	w := min(sw-48, 440)
 	sheet := ui.Column(c.Key("websheet")).Absolute().Left((sw-w)/2).Top(28).Width(w).MaxHeight(sh-56).
-		Padding(18, 20).Gap(12).Radius(26).Background(t.Surface).Shadow(0, 6, 0, 0, t.Line).ZIndex(10).
+		Padding(18, 20).Gap(12).Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).ZIndex(10).
 		Role(ui.RoleDialog).Label(a.L.T("web.title"))
 	a.enter(c, sheet)
 	sheet.Children(func() {

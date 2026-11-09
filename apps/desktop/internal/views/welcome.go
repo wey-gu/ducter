@@ -74,7 +74,7 @@ func (a *App) firstResultLine(c *ui.Context) {
 			if bmp := theme.Art(theme.Done, 112); bmp != nil {
 				ui.Image(c, bmp).Size(40, 40).Margin(-4, 0).Shrink(0)
 			} else {
-				a.glyphTile(c, 28, t.Surface, drawCheck(t.Done.Ink))
+				a.glyph(c, 24, drawCheck(t.Done.Ink))
 			}
 		}, func() {
 			line := ui.Text(c, a.L.T("firstresult.line")).FontSize(t.SM).FontWeight(700).TextColor(t.Done.Ink).

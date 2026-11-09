@@ -10,7 +10,6 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
-	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
 // ---------- the persona face ----------
@@ -113,40 +112,89 @@ func (a *App) face(c *ui.Context, state FaceState, size float32, label string) u
 	return box
 }
 
-// ---------- pebbles and chips ----------
+// ---------- tasks in the partner's words ----------
 
-// taskChip is a task's chip inside the partner's words: it links to the
-// task and lifts as the pointer comes over it. It says the title once,
-// then where the task stands: the job's status line when it adds
-// something, else the state.
-func (a *App) taskChip(c *ui.Context, t *store.Task, detail string) {
+// taskLine is a task inside the partner's words: a drawn mark of where it
+// stands, its title as a link, and its status line in muted words. No
+// fill, no capsule (D71): the words say the state.
+func (a *App) taskLine(c *ui.Context, t *store.Task, detail string) {
+	th := a.T
 	att := t.Attention()
-	sc := a.T.State(string(att))
-	label := t.Title()
+	title := t.Title()
 	if h := t.Browsing(); h != "" {
 		detail = a.L.T("browser.looking", h)
 	} else if t.Place().Kind == "browser" && !finished(t) {
 		a.ensureHistory(t.ID) // browser status lines come with the task's stream
 	}
-	if sameWords(detail, label) {
+	if sameWords(detail, title) {
 		detail = "" // a status line that only repeats the title says nothing
 	}
 	if detail == "" {
 		detail = a.stateLabel(att)
 	}
+	name := title
 	if detail != "" {
-		label += " · " + detail
+		name += " · " + detail
 	}
-	chip := a.chipBox(c.Key("chip:"+t.ID), a.T.ChipLG, sc.Surface).Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(label).
-		Focusable().MinWidth(0)
-	a.lift(c, chip, 2)
-	// No leading dot: the chip's tint and its words say the state.
-	chip.Children(func() {
-		ui.Text(c, label).FontSize(a.T.SM).FontWeight(700).TextColor(sc.Ink).SingleLine().Shrink(1).MinWidth(0)
+	row := ui.Row(c.Key("task:"+t.ID)).Gap(th.S2).Wrap().AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleLink).
+		Label(name).Focusable().MinWidth(0)
+	hover := row.Hovered()
+	row.Children(func() {
+		ui.Box(c).Size(16, 16).Draw(stateMark(att)(th.InkMuted)).Shrink(0)
+		tl := ui.Text(c, title).FontSize(th.SM).FontWeight(700).TextColor(th.InkSoft).AccessHidden(true)
+		if hover {
+			tl.TextColor(th.Ink).Underline()
+		}
+		if detail != "" {
+			ui.Text(c, "· "+detail).FontSize(th.SM).TextColor(th.InkMuted).AccessHidden(true)
+		}
+		ui.Text(c, "›").FontSize(th.SM).FontWeight(700).TextColor(th.InkMuted).AccessHidden(true)
 	})
-	if chip.Clicked() {
+	if row.Clicked() {
 		a.OpenTask(t.ID)
 	}
+}
+
+// stateMark is the drawn mark of an attention state: → under way, clock
+// waiting, ! needs you, ✓ done, × didn't work.
+func stateMark(att protocol.Attention) func(ui.Color) func(*ui.Painter, ui.Rect) {
+	switch att {
+	case protocol.Blocked, protocol.Queued:
+		return drawClock
+	case protocol.NeedsYou:
+		return drawBang
+	case protocol.Done, protocol.DoneClaimed:
+		return drawCheck
+	case protocol.Failed, protocol.Dropped, protocol.Superseded:
+		return drawCross
+	}
+	return drawArrow
+}
+
+// quietLink is a quiet text link in a line of proof: its words in soft
+// ink, then "›"; the words underline on hover. It wraps, never truncates.
+func (a *App) quietLink(c *ui.Context, key, text, name string) bool {
+	t := a.T
+	l := ui.Text(c.Key("link:"+key), text+" ›").FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).
+		Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(name).Focusable().MinWidth(0)
+	if l.Hovered() || l.Pressed() {
+		l.TextColor(t.Ink).Underline()
+	}
+	return l.Clicked()
+}
+
+// mark is a drawn glyph and plain words in one color: a line of proof
+// ("✓ 50/50 pass"), or what went out ("↗ git push …").
+func (a *App) mark(c *ui.Context, draw func(ui.Color) func(*ui.Painter, ui.Rect), text string, col ui.Color) ui.Element {
+	t := a.T
+	row := ui.Row(c).Gap(t.S1 + 2).AlignItems(ui.Center).MinWidth(0)
+	row.Children(func() {
+		if draw != nil {
+			ui.Box(c).Size(16, 16).Draw(draw(col)).Shrink(0)
+		}
+		ui.Text(c, text).FontSize(t.SM).TextColor(col).MinWidth(0)
+	})
+	return row
 }
 
 // sameWords reports whether a status line only repeats the title
@@ -171,61 +219,21 @@ func (a *App) lift(c *ui.Context, e ui.Element, by float32) {
 	e.AnimatePose(p, a.T.Snappy)
 }
 
-// ---------- chips ----------
-
-// The one chip family: a flat rounded rectangle (RadiusXS) in a state's
-// or the paper's tint, ChipSM (a state tag), Chip (evidence, metadata,
-// the forecast) or ChipLG (a task in the conversation) tall, with
-// SM/XS bold text. Chips never press down: only buttons do.
-
-// chipBox is a chip's row, h tall, on bg; the caller adds what is in it.
-func (a *App) chipBox(c *ui.Context, h float32, bg ui.Color) ui.Element {
-	t := a.T
-	pad := t.S3 - 2 // 10; a check mark sits close to the edge
-	if h <= t.ChipSM {
-		pad = t.S2
-	}
-	return ui.Row(c).Gap(t.S2-2).Height(h).Padding(0, pad).Radius(t.RadiusXS).Background(bg).AlignItems(ui.Center).Shrink(0)
-}
-
-// tag is the small chip naming a state or a fact: one word or two.
-func (a *App) tag(c *ui.Context, text string, sc theme.StateColors) {
-	a.chipBox(c, a.T.ChipSM, sc.Surface).Children(func() {
-		ui.Text(c, text).FontSize(a.T.XS).FontWeight(700).TextColor(sc.Ink).SingleLine()
-	})
-}
-
-// stateChip is a small tag naming a state.
-func (a *App) stateChip(c *ui.Context, att protocol.Attention) {
-	a.tag(c, a.stateLabel(att), a.T.State(string(att)))
-}
-
-// pill is a sunken chip of metadata.
-func (a *App) pill(c *ui.Context, text string) {
-	if text == "" {
-		return
-	}
-	t := a.T
-	a.chipBox(c, t.Chip, t.SurfaceSunken).Shrink(1).MinWidth(0).Children(func() {
-		ui.Text(c, text).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).SingleLine().Shrink(1).MinWidth(0)
-	})
-}
-
 // ---------- buttons ----------
 
 // The one button family (design/ui.md, Components):
 //
-//   - primary: the one thing to do. Ink.
-//   - secondary: a choice beside it. The surface, with a hairline.
-//   - accent: the composer's send.
-//   - text (quiet): words only, a soft tint under them on hover and press.
+//   - primary: the one thing to do. A solid ink fill, cream words.
+//   - secondary: a choice beside it. The surface, with a 1px hairline.
+//   - accent: the composer's send. A solid orange fill.
+//   - text (quiet): accent-ink words only, a soft tint under them on hover
+//     and press.
 //   - icon: a square of any of these (iconButton).
 //
-// Every filled button stands on the same ledge (a darker shade of its own
-// fill, 3 points) and sinks into it as it is pressed: the ledge means
-// "this can be pressed", and only buttons have one. Text buttons, chips
-// and containers are flat. Three heights (ControlSM/MD/LG); one radius;
-// hover, press and keyboard focus look the same on all of them.
+// Flat (D71): no ledge, no shadow. A press darkens the fill a little and
+// scales the button to 0.98; nothing moves down. The clay art carries the
+// depth. Three heights (ControlSM/MD/LG); one radius; hover, press and
+// keyboard focus look the same on all of them.
 type btnKind int
 
 const (
@@ -283,35 +291,34 @@ func (a *App) buttonFor(c *ui.Context, label, about string, kind btnKind, height
 }
 
 // buttonLook styles b as a button of kind on onSurface, h tall: its
-// background, edge, depth and hover/press states. It returns the ink for
-// what is on it.
+// background, edge and hover/press states. It returns the ink for what is
+// on it.
 func (a *App) buttonLook(c *ui.Context, b ui.Element, kind btnKind, h float32, onSurface ui.Color) ui.Color {
 	t := a.T
 	hover, down := b.Hovered(), b.Pressed()
+	// fill is a filled button's background: a shade lighter on hover, a
+	// little darker while pressed.
+	fill := func(base, lighter ui.Color, lift float32) ui.Color {
+		switch {
+		case down:
+			return base.Mix(pressInk, t.Press.Darken)
+		case hover:
+			return base.Mix(lighter, lift)
+		}
+		return base
+	}
 	switch kind {
 	case btnPrimary:
-		bg := t.Ink
-		if hover && !down {
-			bg = t.Ink.Mix(t.InkSoft, 0.45)
-		}
-		b.Background(bg)
-		a.press(c, b, t.PressPrimary)
+		b.Background(fill(t.Ink, t.InkSoft, 0.45))
+		a.press(c, b)
 		return t.OnUserBubble
 	case btnAccent:
-		bg := t.Accent
-		if hover && !down {
-			bg = t.Accent.Mix(t.NeedsYou.Strong, 0.35)
-		}
-		b.Background(bg)
-		a.press(c, b, t.PressAccent)
+		b.Background(fill(t.Accent, t.NeedsYou.Strong, 0.35))
+		a.press(c, b)
 		return t.OnAccent
 	case btnSecondary:
-		bg := t.Surface
-		if hover && !down {
-			bg = t.SurfaceSunken.Mix(t.Surface, 0.6)
-		}
-		b.Background(bg).Border(1, t.Line)
-		a.press(c, b, t.PressSecondary)
+		b.Background(fill(t.Surface, t.SurfaceSunken, 0.4)).Border(1, t.Line)
+		a.press(c, b)
 		return t.Ink
 	}
 	// Text: no edge until the pointer comes over it.
@@ -325,55 +332,52 @@ func (a *App) buttonLook(c *ui.Context, b ui.Element, kind btnKind, h float32, o
 	return t.NeedsYou.Ink
 }
 
-// sink moves a flat control a point down while it is pressed.
+// pressInk is what a pressed fill darkens toward.
+var pressInk = ui.Hex("#000000")
+
+// sink is the press of a control drawn outside the family (a starter, a
+// row): the same 0.98 scale as a button.
 func (a *App) sink(c *ui.Context, e ui.Element, down bool) {
 	if c.Preferences().ReduceMotion {
 		return
 	}
-	y := float32(0)
+	p := ui.Pose{}
 	if down {
-		y = 1
+		p = ui.Pose{Scale: a.T.Press.Scale}
 	}
-	e.Translate(0, e.AnimateTo("sink", y, ui.Animation{Duration: a.T.PressDur}))
+	e.AnimatePose(p, ui.Animation{Duration: a.T.PressDur})
 }
 
-// press gives an element the Pebble depth: a solid offset under it that it
-// sinks into while pressed.
-func (a *App) press(c *ui.Context, e ui.Element, press theme.Press) {
-	if press.Offset == 0 {
-		return
-	}
-	down := e.Pressed()
-	off := press.Offset
-	y := float32(0)
-	if down {
-		y = press.Offset - 1
-		off = 1
-	}
-	if c.Preferences().ReduceMotion {
-		e.Shadow(0, off, 0, 0, press.Color)
-		return
-	}
-	y = e.AnimateTo("press", y, ui.Animation{Duration: a.T.PressDur})
-	e.Translate(0, y).Shadow(0, press.Offset-y, 0, 0, press.Color)
+// press scales a button to Press.Scale while it is pressed (its fill
+// darkens in buttonLook). Under reduced motion only the color changes.
+func (a *App) press(c *ui.Context, e ui.Element) {
+	a.sink(c, e, e.Pressed())
 }
 
-// navButton is a button of the window's chrome (Devices, On hand): a
-// secondary button at the small height with a glyph before its word.
+// navButton is a button of the window's chrome (Devices, On hand): quiet,
+// an optional glyph and its word in ink, no fill or edge until the pointer
+// comes over it (then the sunken tint), so the chrome never competes with
+// the page.
 func (a *App) navButton(c *ui.Context, key, label, name string, glyph func()) bool {
 	t := a.T
 	left := t.S3
 	if glyph != nil {
-		left = t.S2 - 2 // a glyph sits close to the edge, as in a chip
+		left = t.S2
 	}
 	b := ui.Row(c.Key("nav:"+key)).Gap(t.S2).Height(t.ControlSM).Padding(0, t.S3, 0, left).Radius(t.RadiusSM).
 		AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(name).Focusable().Shrink(0)
-	fg := a.buttonLook(c, b, btnSecondary, t.ControlSM, t.Chrome)
+	switch {
+	case b.Pressed():
+		b.Background(t.SurfaceSunken)
+	case b.Hovered():
+		b.Background(t.SurfaceSunken.Mix(t.Chrome, 0.45))
+	}
+	a.press(c, b)
 	b.Children(func() {
 		if glyph != nil {
 			glyph()
 		}
-		ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(fg).SingleLine().AccessHidden(true)
+		ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).SingleLine().AccessHidden(true)
 	})
 	return b.Clicked()
 }
@@ -441,9 +445,10 @@ func (a *App) aboveComposer(c *ui.Context, body func()) {
 	})
 }
 
-// glyphTile is a glyph on a small tile: a notice's or a row's icon.
-func (a *App) glyphTile(c *ui.Context, size float32, bg ui.Color, draw func(p *ui.Painter, r ui.Rect)) {
-	ui.Box(c).Size(size, size).Radius(a.T.RadiusXS).Background(bg).Draw(draw).Shrink(0)
+// glyph is a drawn mark at the start of a notice or a row: the glyph
+// alone, in its ink, never on a tile (D71).
+func (a *App) glyph(c *ui.Context, size float32, draw func(p *ui.Painter, r ui.Rect)) {
+	ui.Box(c).Size(size, size).Draw(draw).Shrink(0)
 }
 
 func drawSend(col ui.Color) func(p *ui.Painter, r ui.Rect) {
@@ -512,6 +517,20 @@ func drawArrow(col ui.Color) func(p *ui.Painter, r ui.Rect) {
 	}
 }
 
+// drawOut is a ↗: something went out.
+func drawOut(col ui.Color) func(p *ui.Painter, r ui.Rect) {
+	return func(p *ui.Painter, r ui.Rect) {
+		cx, cy := r.X+r.W/2, r.Y+r.H/2
+		var m ui.Path
+		m.MoveTo(cx-4.5, cy+4.5)
+		m.LineTo(cx+4.5, cy-4.5)
+		m.MoveTo(cx-2, cy-4.5)
+		m.LineTo(cx+4.5, cy-4.5)
+		m.LineTo(cx+4.5, cy+2)
+		p.StrokePath(&m, 2, col)
+	}
+}
+
 // drawCross is an ×: it didn't work.
 func drawCross(col ui.Color) func(p *ui.Painter, r ui.Rect) {
 	return func(p *ui.Painter, r ui.Rect) {
@@ -544,6 +563,8 @@ type decisionStyle struct {
 	height   float32  // of the buttons
 	quietBg  ui.Color // the light button, on the decision's surface
 	question float32  // font size; 0 hides the question
+	// after adds controls after Reply… in the same row (Details).
+	after func()
 }
 
 // decisionButtons builds Go / Hold / Reply… and the reply field, or how
@@ -563,16 +584,13 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 		if by == "default" {
 			msg = a.L.T("decision.resolved.default")
 		}
-		ui.Row(c).Gap(t.S2).Children(func() {
-			ui.Box(c).Size(22, 22).Radius(t.RadiusXS).Background(t.Done.Surface).Draw(drawCheck(t.Done.Ink))
+		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+			a.glyph(c, 16, drawCheck(t.InkMuted))
 			ui.Text(c, msg).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 		})
 		return
 	}
-	goText := a.L.T("decision.go")
-	if d.GoLabel != "" {
-		goText = a.L.T("decision.go.label", d.GoLabel)
-	}
+	goText := a.goLabel(d)
 	ui.Row(c.Key("decide:" + d.DecisionID)).Gap(t.S3).Wrap().AlignItems(ui.Center).Children(func() {
 		about := a.decisionAbout(d)
 		if a.buttonFor(c, goText, about, btnPrimary, st.height, st.quietBg) {
@@ -583,6 +601,9 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 		}
 		if a.buttonFor(c, a.L.T("decision.reply"), about, btnText, st.height, st.quietBg) {
 			a.replyOpen[d.DecisionID] = !a.replyOpen[d.DecisionID]
+		}
+		if st.after != nil {
+			st.after()
 		}
 	})
 	if a.replyOpen[d.DecisionID] {
@@ -608,6 +629,22 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 		})
 		a.replyDraft[d.DecisionID] = draft
 	}
+}
+
+// goLabel is the Go button's words: the action itself when the decision
+// names one ("Rebase"; zh "好，rebase"), else Go / 好.
+func (a *App) goLabel(d *store.DecisionState) string {
+	if d.GoLabel == "" {
+		return a.L.T("decision.go")
+	}
+	l := d.GoLabel
+	if a.L.Lang != i18n.ZH {
+		// Sentence case: the button starts with a capital.
+		r := []rune(l)
+		r[0] = []rune(strings.ToUpper(string(r[0])))[0]
+		l = string(r)
+	}
+	return a.L.T("decision.go.label", l)
 }
 
 // defaultLine says what happens if the user doesn't answer.

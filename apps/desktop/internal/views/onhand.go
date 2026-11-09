@@ -20,12 +20,7 @@ func (a *App) onHand(c *ui.Context) {
 		a.crumb(c, a.L.T("nav.conversation"), RouteConversation)
 		a.chromeTitle(c, a.L.T("onhand.title"))
 		ui.Text(c, a.summary(b)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0).Margin(0, 0, 0, 4)
-	}, func() {
-		// 都按默认 / Go on all defaults: only worth a button with two or more.
-		if open := a.defaultable(); len(open) >= 2 && a.button(c, a.L.T("decision.goall", len(open)), btnPrimary, t.ControlMD, t.Surface) {
-			a.GoOnAllDefaults()
-		}
-	})
+	}, nil)
 	ui.Scroll(c).Grow(1).Children(func() {
 		ui.Column(c).Gap(t.S5).Padding(t.S5, t.S6, t.S6, t.S6).Children(func() {
 			if a.boardEmpty(b) && len(a.partnerDecisions()) == 0 {
@@ -43,9 +38,9 @@ func (a *App) onHand(c *ui.Context) {
 				if n := len(b.Lanes[store.LaneWorking]); n > 0 {
 					line = a.L.T("onhand.calm.working", a.S.PersonaName, n)
 				}
-				ui.Row(c.Key("calm")).Gap(t.S3).Padding(t.S4, t.S5).Radius(t.RadiusLG).Background(t.Done.Surface).AlignItems(ui.Center).Children(func() {
-					ui.Box(c).Size(26, 26).Radius(t.RadiusXS).Background(t.Surface).Draw(drawCheck(t.Done.Ink)).Shrink(0)
-					ui.Text(c, line).FontSize(t.MD).FontWeight(600).TextColor(t.Done.Ink)
+				ui.Row(c.Key("calm")).Gap(t.S3).AlignItems(ui.Center).Children(func() {
+					a.glyph(c, 20, drawCheck(t.Done.Ink))
+					ui.Text(c, line).FontSize(t.LG).TextColor(t.InkSoft)
 				})
 			}
 			ui.Row(c).Gap(t.S5).Wrap().AlignItems(ui.Start).Children(func() {
@@ -142,7 +137,7 @@ func (a *App) waiterRow(c *ui.Context, w *protocol.Waiter) {
 	t := a.T
 	ui.Row(c).Gap(t.S3).Padding(t.S3, t.S4).Radius(t.RadiusMD).Border(1.5, t.Waiting.Dot.Mix(t.Surface, 0.4)).BorderStyle(ui.BorderDashed).AlignItems(ui.Start).
 		Label(w.Reason).Children(func() {
-		a.glyphTile(c, 24, t.Waiting.Surface, drawClock(t.Waiting.Ink))
+		a.glyph(c, 18, drawClock(t.InkMuted))
 		// Already under the Waiting lane's header: the reason alone, and
 		// its time under it (a narrow lane has no room for both on a line).
 		ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
@@ -191,19 +186,12 @@ func (a *App) forecastBand(c *ui.Context, b store.Board) {
 	if len(chips) == 0 {
 		return
 	}
-	ui.Row(c.Key("forecast")).Gap(t.S3).Wrap().Padding(t.S3, t.S4).Radius(t.RadiusLG).Background(t.Surface).
-		Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).AlignItems(ui.Center).Children(func() {
-		ui.Text(c, a.L.T("onhand.forecast")).FontSize(t.SM).FontWeight(800).TextColor(t.InkMuted)
+	// Plain words, one per coming moment, in the state's ink: no capsules.
+	ui.Row(c.Key("forecast")).Gap(t.S5).Wrap().AlignItems(ui.Center).Children(func() {
+		ui.Text(c, a.L.T("onhand.forecast")).FontSize(t.SM).FontWeight(800).TextColor(t.Ink)
 		for _, ch := range chips {
-			a.forecastChip(c.Key(ch.key), ch.text, ch.sc)
+			ui.Text(c.Key(ch.key), ch.text).FontSize(t.SM).TextColor(ch.sc.Ink)
 		}
-	})
-}
-
-func (a *App) forecastChip(c *ui.Context, text string, sc theme.StateColors) {
-	t := a.T
-	ui.Row(c).Gap(t.S2).Padding(t.S1, t.S3, t.S1, t.S2).Radius(t.RadiusXS).Background(sc.Surface).AlignItems(ui.Center).Children(func() {
-		ui.Text(c, text).FontSize(a.T.XS).FontWeight(700).TextColor(sc.Ink).SingleLine()
 	})
 }
 
@@ -222,6 +210,13 @@ func (a *App) lane(c *ui.Context, lane store.Lane, tasks []*store.Task, grow, ba
 				n += len(a.looseWaiters())
 			}
 			ui.Text(c, fmt.Sprint(n)).FontSize(t.XL).FontWeight(800).TextColor(colors[lane].Ink).FontFeatures("tnum")
+			if lane == store.LaneNeedsYou {
+				ui.Spacer(c)
+				// 都按默认 / Go on all defaults: only worth it with two or more.
+				if open := a.defaultable(); len(open) >= 2 && a.button(c, a.L.T("decision.goall", len(open)), btnText, t.ControlSM, t.Bg) {
+					a.GoOnAllDefaults()
+				}
+			}
 		})
 		waiters := []*protocol.Waiter(nil)
 		if lane == store.LaneWaiting {
@@ -269,55 +264,68 @@ func (a *App) metaLine(task *store.Task) string {
 	return s
 }
 
+// needsCard is a task's ask on On hand: the same tinted card as in the
+// conversation (the task's title as plain small words, the question, its
+// default and its countdown, Go / Hold / Reply… / Details), then where it
+// runs in muted words. No colored band, no capsules (D71).
 func (a *App) needsCard(c *ui.Context, task *store.Task) {
 	t := a.T
 	d := a.S.PendingDecision(task.ID)
-	card := ui.Column(c).Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Clip()
-	a.lift(c, card, 3)
-	card.Children(func() {
-		ui.Row(c).Gap(t.S3).Padding(t.S3, t.S5).Background(t.Accent).AlignItems(ui.Center).Children(func() {
+	ui.Column(c).Padding(t.S4, t.S5).Gap(t.S3).Radius(t.RadiusLG).Background(t.NeedsYou.Surface).Children(func() {
+		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 			title := task.Title()
 			if p := task.Project(); p != "" {
 				title = p + " · " + title
 			}
-			ui.Text(c, title).FontSize(t.MD).FontWeight(800).TextColor(t.OnAccent).Grow(1).SingleLine()
+			// The title is the way into the task.
+			l := ui.Text(c, title+" ›").FontSize(t.XS).FontWeight(700).TextColor(t.NeedsYou.Ink).Grow(1).MinWidth(0).MaxLines(2).
+				Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(task.Title()).Focusable()
+			if l.Hovered() {
+				l.Underline()
+			}
+			if l.Clicked() {
+				a.OpenTask(task.ID)
+			}
 			if at := store.ParseTime(task.OpenedAt); !at.IsZero() {
 				opened := a.L.T("time.opened.now")
 				if d := a.Now().Sub(at); d >= time.Minute {
 					opened = a.L.T("time.opened", a.duration(d))
 				}
-				ui.Text(c, opened).FontSize(t.XS).FontWeight(700).TextColor(t.OnAccent).Shrink(0)
+				ui.Text(c, opened).FontSize(t.XS).TextColor(t.NeedsYou.Ink).Shrink(0)
 			}
 		})
-		ui.Column(c).Padding(t.S5, t.S5, t.S5, t.S5).Gap(t.S3).Children(func() {
-			rep := task.Report()
-			q := ""
-			if d != nil {
-				q = d.Question
-			} else if rep != nil && len(rep.Questions) > 0 {
-				q = rep.Questions[0].Text
-			}
-			if q != "" {
-				ui.Text(c, q).FontSize(t.LG).LineHeight(1.55).FontWeight(500)
-			}
-			if rep != nil && rep.Summary != "" && rep.Summary != q {
-				ui.Text(c, rep.Summary).FontSize(t.SM).LineHeight(1.6).TextColor(t.InkSoft).MaxLines(4).Tooltip(rep.Summary)
-			}
-			if d != nil {
-				a.countdown(c, d)
-				a.decisionButtons(c, d, decisionStyle{height: 52, quietBg: t.Bg})
-			}
-			ui.Row(c).Gap(t.S3).Padding(t.S3, 0, 0, 0).BorderWidth(1, 0, 0, 0).BorderColor(t.LineSoft).BorderStyle(ui.BorderDashed).AlignItems(ui.Center).Children(func() {
-				ui.Row(c).Gap(t.S2).Wrap().Grow(1).MinWidth(0).Children(func() {
-					a.pill(c, a.metaLine(task))
-					a.pill(c, a.placeLine(task.Place()))
-				})
-				if a.buttonFor(c, a.L.T("onhand.open"), task.Title(), btnText, t.ControlSM, t.Surface) {
-					a.OpenTask(task.ID)
-				}
-			})
-		})
+		rep := task.Report()
+		q := ""
+		if d != nil {
+			q = d.Question
+		} else if rep != nil && len(rep.Questions) > 0 {
+			q = rep.Questions[0].Text
+		}
+		if q != "" {
+			ui.Text(c, q).FontSize(t.LG).LineHeight(1.5).FontWeight(500)
+		}
+		if rep != nil && rep.Summary != "" && rep.Summary != q {
+			ui.Text(c, rep.Summary).FontSize(t.SM).LineHeight(1.6).TextColor(t.InkSoft).MaxLines(4).Tooltip(rep.Summary)
+		}
+		if d != nil {
+			a.countdown(c, d)
+			a.decisionButtons(c, d, decisionStyle{height: t.ControlMD, quietBg: t.Surface})
+		}
+		if meta := strings.Join(nonEmpty(a.metaLine(task), a.placeLine(task.Place())), " · "); meta != "" {
+			ui.Text(c, meta).FontSize(t.XS).TextColor(t.InkMuted)
+		}
 	})
+}
+
+// nonEmpty keeps the strings that say something.
+func nonEmpty(s ...string) []string {
+	var out []string
+	for _, v := range s {
+		if v != "" {
+			out = append(out, v)
+		}
+	}
+	return out
 }
 
 // countdown is the default's bar: how much of the wait has passed.
@@ -351,8 +359,8 @@ func (a *App) countdown(c *ui.Context, d *store.DecisionState) {
 			}
 		})
 		if ok {
-			ui.Box(c).Height(8).Radius(4).Background(t.NeedsYou.Surface).Children(func() {
-				ui.Box(c).Height(8).Radius(4).Background(t.Accent).WidthPercent(min(max(frac, 0.02), 1) * 100)
+			ui.Box(c).Height(6).Radius(3).Background(t.Surface.Mix(t.NeedsYou.Surface, 0.5)).Children(func() {
+				ui.Box(c).Height(6).Radius(3).Background(t.Accent).WidthPercent(min(max(frac, 0.02), 1) * 100)
 			})
 		}
 	})
@@ -418,7 +426,7 @@ func (a *App) waitingCard(c *ui.Context, task *store.Task) {
 			reason = a.L.T("onhand.waiting.for", reason)
 		}
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-			ui.Box(c).Size(22, 22).Radius(t.RadiusXS).Background(t.Waiting.Surface).Draw(drawClock(t.Waiting.Ink)).Shrink(0)
+			a.glyph(c, 18, drawClock(t.Waiting.Ink))
 			ui.Text(c, reason).FontSize(t.SM).FontWeight(700).TextColor(t.Waiting.Ink).Grow(1).MinWidth(0)
 		})
 		if rep := task.Report(); rep != nil && rep.Summary != "" {
@@ -436,9 +444,9 @@ func (a *App) doneList(c *ui.Context, tasks []*store.Task) {
 			row.Children(func() {
 				ui.Row(c).Gap(t.S2).AlignItems(ui.Start).Children(func() {
 					ui.Text(c, task.Title()).FontSize(t.MD).FontWeight(700).Grow(1).MinWidth(0).MaxLines(2)
-					switch task.Attention() {
-					case protocol.Failed:
-						a.stateChip(c, protocol.Failed)
+					if task.Attention() == protocol.Failed {
+						// The exception, in words in its ink; no capsule.
+						ui.Text(c, a.stateLabel(protocol.Failed)).FontSize(t.XS).FontWeight(700).TextColor(t.Failed.Ink).Shrink(0)
 					}
 				})
 				// The result itself: its first line, and its first machine check.
@@ -449,8 +457,8 @@ func (a *App) doneList(c *ui.Context, tasks []*store.Task) {
 				if line := summaryLine(rep.Summary); line != "" {
 					ui.Text(c, line).FontSize(t.XS).LineHeight(1.45).TextColor(t.InkSoft).MaxLines(2).Tooltip(rep.Summary)
 				}
-				if ev, ok := headlineEvidence(rep.Evidence); ok {
-					ui.Row(c).Children(func() { a.evidenceChip(c.Key("ev"), task, ev) })
+				if ev, ok := headlineEvidence(rep.Evidence); ok && task.Attention() != protocol.Failed {
+					a.mark(c.Key("ev"), drawCheck, ev.Label, t.InkMuted)
 				}
 			})
 			if row.Clicked() {

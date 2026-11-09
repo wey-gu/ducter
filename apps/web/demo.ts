@@ -1,13 +1,14 @@
 // A demo core for the phone client's screenshots and manual checks: real core (Log, decisions,
 // living message, auth, web), stub partner and runner, seeded with work like the author's.
 //   DUCTER_PORT=7797 DUCTER_DATA_DIR=/tmp/x DEMO_LANG=zh bun apps/web/demo.ts
-import { startCore, stubPartner, stubRunner } from "@ducter/core";
+import { startCore, stubRunner } from "@ducter/core";
 import type { Bodies, Place } from "@ducter/protocol";
 
 const zh = (process.env.DEMO_LANG ?? "zh") === "zh";
 const core = startCore({ persona: { id: "default", name: "Ducter", identity: "" }, hostname: process.env.DUCTER_HOST || "127.0.0.1" });
 core.setRunner(stubRunner(core));
-core.setPartner(stubPartner(core));
+// A quiet partner: the seed below writes its words, so a live reply would only be noise.
+core.setPartner({ onTrigger() {} });
 const log = core.log;
 const tick = () => Bun.sleep(30);
 
@@ -26,7 +27,8 @@ const ask = zh ? "HawDB compaction 那个偶发失败的测试，帮我修一下
 const u = log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: ask } });
 log.append({ stream: "channel", origin: "partner", kind: "ack", body: { jobId: "j1", text: zh ? "好，我开一件事去修，在 MacBook 上的 hawdb 里。" : "On it. I'm opening a task in hawdb on the MacBook.", replyTo: u.seq } });
 const flakyTitle = zh ? "修 compaction 偶发失败的测试" : "Fix the flaky compaction test";
-await task("t_flaky", flakyTitle, repo("~/dev/hawdb", "ducter/compaction-fix"), ask);
+// DEMO_WORKTREE: a real checkout of the fix, so the clients can show its changes.
+await task("t_flaky", flakyTitle, { ...repo("~/dev/hawdb", "ducter/compaction-fix"), ...(process.env.DEMO_WORKTREE ? { worktree: process.env.DEMO_WORKTREE } : {}) }, ask);
 log.append({ stream: "channel", origin: "partner", kind: "job_status", body: { jobId: "j1", text: zh ? "在做" : "Working", state: "running", taskId: "t_flaky" } });
 ev("t_flaky", { role: "assistant", text: zh ? "先跑 50 遍看失败率。" : "Running it 50 times first to see how often it fails." });
 ev("t_flaky", { role: "tool", tool: { name: "Bash", input: { command: "cargo test -p hawdb-storage compaction -- --test-threads=1" }, ok: true, output: "test result: FAILED. 47 passed; 3 failed" } });
@@ -62,7 +64,7 @@ log.append({ stream: "channel", origin: "user", kind: "read_receipt", body: { up
 await tick();
 
 // 2. Two decisions with reversible defaults, one working task, one waiting.
-await task("t_rebase", zh ? "把 fix-ci 分支跟上 main" : "Bring fix-ci up to date with main", repo("~/dev/ducter", "ducter/fix-ci"), "rebase");
+await task("t_rebase", zh ? "把 fix-ci 分支跟上 main" : "Bring fix-ci up to date with main", repo("~/dev/ducter", "ducter/fix-ci"), zh ? "fix-ci 落后 main 了，跟上 main，冲突能解就解" : "fix-ci has fallen behind main; bring it up to date and resolve what you can");
 report("t_rebase", {
   state: "needs_input",
   summary: zh ? "落后 main 12 个提交" : "12 commits behind main",
@@ -78,7 +80,7 @@ report("t_rebase", {
   evidence: [],
 });
 await tick();
-await task("t_oar", zh ? "升级 OAR 到 0.96" : "Upgrade OAR to 0.96", repo("~/dev/ducter", "ducter/oar-096"), "upgrade", "sonnet");
+await task("t_oar", zh ? "升级 OAR 到 0.96" : "Upgrade OAR to 0.96", repo("~/dev/ducter", "ducter/oar-096"), zh ? "把 OAR 升到 0.96，跟着改 runner 里的调用" : "Upgrade OAR to 0.96 and follow its API changes in the runner", "sonnet");
 report("t_oar", {
   state: "needs_input",
   summary: zh ? "0.96 改了 steer 接口" : "0.96 changed the steer API",
@@ -94,12 +96,30 @@ report("t_oar", {
   evidence: [],
 });
 await tick();
-await task("t_review", zh ? "看这周 3 个待合的 PR" : "Review this week's 3 open PRs", { kind: "folder", device: "MacBook", path: "~/dev/ducter" }, "review", "sonnet");
+await task("t_review", zh ? "看这周 3 个待合的 PR" : "Review this week's 3 open PRs", { kind: "folder", device: "MacBook", path: "~/dev/ducter" }, zh ? "看一下这周 3 个待合的 PR，说说能不能合" : "Read this week's 3 open PRs and say which can merge", "sonnet");
+ev("t_review", { role: "tool", tool: { name: "Bash", input: { command: "gh pr list --state open --limit 3" }, ok: true, output: "#212 runner: retry on 529\n#214 web: decision sheet\n#215 core: digest window" } });
+ev("t_review", { role: "tool", tool: { name: "Bash", input: { command: "gh pr diff 212" }, ok: true } });
+ev("t_review", { role: "assistant", text: zh ? "#212 可以合：重试只包了 529，测试覆盖到了。" : "#212 can merge: the retry only wraps 529s, and the tests cover it." });
+ev("t_review", { role: "tool", tool: { name: "Bash", input: { command: "gh pr diff 214" }, ok: true } });
+ev("t_review", { role: "assistant", text: zh ? "#214 也可以合。#215 的 CI 还在跑，等它。" : "#214 can merge too. #215's CI is still running; waiting for it." });
 report("t_review", { state: "progress", summary: zh ? "看完 2 个，第 3 个还在等 CI" : "Read 2; the third is waiting on CI", questions: [], evidence: [] });
 await tick();
-await task("t_notes", zh ? "写 v0.4 的发版说明" : "Write the v0.4 release notes", repo("~/dev/ducter", "ducter/notes-04"), "notes", "sonnet");
+await task("t_notes", zh ? "写 v0.4 的发版说明" : "Write the v0.4 release notes", repo("~/dev/ducter", "ducter/notes-04"), zh ? "v0.4 的 CI 跑完后写发版说明" : "Write the v0.4 release notes once its CI run is green", "sonnet");
 log.append({ stream: "channel", origin: "partner", kind: "waiter", body: { waiterId: "w1", taskId: "t_notes", at: new Date(Date.now() + 40 * 60_000).toISOString(), reason: zh ? "CI 跑完" : "CI to finish", state: "armed" } });
 report("t_notes", { state: "blocked", summary: zh ? "等 v0.4 的 CI 跑完再写" : "Waiting for the v0.4 CI run", questions: [], evidence: [] });
+await tick();
+
+// 3. One that didn't work: the dependency bump hit a breaking change it could not fix alone.
+await task("t_tokio", zh ? "把 tokio 升到 1.41" : "Bump tokio to 1.41", repo("~/dev/hawdb", "ducter/tokio-141"), zh ? "把 hawdb 的 tokio 升到 1.41" : "Bump tokio to 1.41 in hawdb", "sonnet");
+ev("t_tokio", { role: "tool", tool: { name: "Edit", input: { file_path: "Cargo.toml" }, ok: true } });
+ev("t_tokio", { role: "tool", tool: { name: "Bash", input: { command: "cargo build --workspace" }, ok: false, output: "error[E0599]: no method named `into_std` found for struct `TcpStream`" } });
+ev("t_tokio", { role: "assistant", text: zh ? "1.41 去掉了 into_std，net 模块里 4 处要改写，超出了这次的范围。" : "1.41 removed into_std; 4 places in the net module need rewriting, which is more than this bump." });
+report("t_tokio", {
+  state: "failed",
+  summary: zh ? "1.41 去掉了 TcpStream::into_std，net 模块 4 处编译不过。没改动 main。" : "1.41 removed TcpStream::into_std; 4 places in the net module don't build. main is untouched.",
+  questions: [],
+  evidence: [{ kind: "test", label: zh ? "cargo build · 4 处报错" : "cargo build · 4 errors", ref: "cargo build --workspace" }],
+});
 await tick();
 
 console.log(`[demo] Ducter demo is up at http://127.0.0.1:${core.port}/app (data: ${core.dataDir})`);

@@ -338,14 +338,7 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 		a.living(c, e)
 	case e.Decision != nil:
 		if d := a.S.Decisions[e.Decision.DecisionID]; d != nil {
-			ui.Column(c).Padding(t.S4, t.S5).Gap(t.S2).Radius(t.RadiusLG).Background(t.NeedsYou.Surface).Children(func() {
-				head := a.stateLabel(protocol.NeedsYou)
-				if task := a.S.Task(d.TaskID); task != nil && task.Title() != "" {
-					head += " · " + task.Title()
-				}
-				ui.Text(c, head).FontSize(t.XS).FontWeight(800).TextColor(t.NeedsYou.Ink).LetterSpacing(0.5)
-				a.decisionBody(c, d, "")
-			})
+			a.decisionCard(c, d, "")
 		}
 	}
 }
@@ -441,25 +434,22 @@ func livingKey(it protocol.LivingItem) string { return it.TaskID + "|" + it.Kind
 func (a *App) living(c *ui.Context, e *store.Entry) {
 	t := a.T
 	items := a.livingItems(e)
-	// "While you were away" only for what came while the user was away.
+	// "While you were away" only for what came while the user was away:
+	// it arrived before this window opened and they hadn't read it yet,
+	// or it arrived while the window was in the background.
 	away, ok := a.livingAway[e.FirstSeq]
 	if !ok {
-		// It came before this window was open, or while it was in the
-		// background.
-		away = e.FirstSeq <= a.S.HeadSeq || !c.WindowActive() || c.WindowHidden()
+		away = (e.FirstSeq <= a.S.HeadSeq && a.S.Unread(e)) || !c.WindowActive() || c.WindowHidden()
 		a.livingAway[e.FirstSeq] = away
 	}
-	card := ui.Column(c.Key("living")).Padding(t.S5).Gap(t.S4).Radius(t.RadiusXL).Background(t.Surface).
-		Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Label(a.L.T("living.title"))
+	// A light container on the paper: a hairline, no slab and no shadow
+	// (D71), so the decisions inside are the only tinted things.
+	card := ui.Column(c.Key("living")).Padding(t.S5).Gap(t.S4).Radius(t.RadiusXL).Border(1, t.Line).
+		Label(a.L.T("living.title"))
 	a.resettle(c, card, e.Revision)
 	card.Children(func() {
 		if away {
-			ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-				ui.Text(c, a.L.T("living.title")).FontSize(t.XL).FontWeight(800).LetterSpacing(-0.2).Grow(1)
-				if a.S.Unread(e) {
-					a.tag(c, a.L.T("living.unread"), theme.StateColors{Surface: t.Highlight, Ink: t.HighlightInk})
-				}
-			})
+			ui.Text(c, a.L.T("living.title")).FontSize(t.XL).FontWeight(800).LetterSpacing(-0.2)
 		}
 		needs, open := 0, 0
 		for _, it := range items {
@@ -470,10 +460,12 @@ func (a *App) living(c *ui.Context, e *store.Entry) {
 				}
 			}
 		}
-		if open >= 2 {
-			ui.Row(c).Children(func() {
-				ui.Spacer(c)
-				if a.button(c, a.L.T("decision.goall", len(a.defaultable())), btnSecondary, t.ControlMD, t.Surface) {
+		// The count once, in the section's header, with Go on all defaults
+		// at its end as a text button.
+		if needs > 0 {
+			ui.Row(c).Gap(t.S3).AlignItems(ui.Center).MinHeight(t.ControlSM).Children(func() {
+				ui.Text(c, a.L.T("header.needs", needs)).FontSize(t.SM).FontWeight(800).TextColor(t.NeedsYou.Ink).Grow(1)
+				if open >= 2 && a.button(c, a.L.T("decision.goall", len(a.defaultable())), btnText, t.ControlSM, t.Surface) {
 					a.GoOnAllDefaults()
 				}
 			})
@@ -485,14 +477,13 @@ func (a *App) living(c *ui.Context, e *store.Entry) {
 				continue
 			}
 			d := a.S.Decisions[it.DecisionID]
-			ui.Column(c.Key(i)).Padding(t.S4, t.S5).Gap(t.S2).Radius(t.RadiusLG).Background(t.NeedsYou.Surface).Children(func() {
-				ui.Text(c, a.L.T("living.needsyou", needs)).FontSize(t.XS).FontWeight(800).TextColor(t.NeedsYou.Ink).LetterSpacing(0.5)
-				if d == nil {
+			if d == nil {
+				ui.Column(c.Key(i)).Padding(t.S4, t.S5).Radius(t.RadiusLG).Background(t.NeedsYou.Surface).Children(func() {
 					ui.Text(c, it.Text).FontSize(t.LG).LineHeight(1.5).FontWeight(500)
-					return
-				}
-				a.decisionBody(c, d, it.TaskID)
-			})
+				})
+				continue
+			}
+			a.decisionCard(c.Key(i), d, it.TaskID)
 		}
 		ui.Column(c).Gap(t.S3).Children(func() {
 			for i, it := range items {
@@ -502,6 +493,19 @@ func (a *App) living(c *ui.Context, e *store.Entry) {
 				a.livingLine(c.Key(i), it)
 			}
 		})
+	})
+}
+
+// decisionCard is one ask in the conversation: the asking task's title
+// as plain small words (nothing for the partner's own asks), the
+// question, its default, and Go / Hold / Reply… / Details.
+func (a *App) decisionCard(c *ui.Context, d *store.DecisionState, taskID string) {
+	t := a.T
+	ui.Column(c).Padding(t.S4, t.S5).Gap(t.S2).Radius(t.RadiusLG).Background(t.NeedsYou.Surface).Children(func() {
+		if task := a.S.Task(firstNonEmpty(taskID, d.TaskID)); task != nil && task.Title() != "" {
+			ui.Text(c, task.Title()).FontSize(t.XS).FontWeight(700).TextColor(t.NeedsYou.Ink)
+		}
+		a.decisionBody(c, d, taskID)
 	})
 }
 
@@ -527,42 +531,41 @@ func (a *App) decisionBody(c *ui.Context, d *store.DecisionState, taskID string)
 	if d.Resolved == nil {
 		ui.Text(c, a.defaultLine(c, d)).FontSize(t.SM).TextColor(t.NeedsYou.Ink)
 	}
-	ui.Row(c).Gap(t.S2).Wrap().AlignItems(ui.Center).Padding(t.S1, 0, 0, 0).Children(func() {
-		ui.Column(c).Grow(1).Children(func() {
-			a.decisionButtons(c, d, decisionStyle{height: t.ControlMD, quietBg: t.Surface})
-		})
-		if id := firstNonEmpty(taskID, d.TaskID); id != "" {
+	st := decisionStyle{height: t.ControlMD, quietBg: t.Surface}
+	if id := firstNonEmpty(taskID, d.TaskID); id != "" && !(a.Route == RouteTask && a.TaskID == id) {
+		// Details sits after Reply…, a text button like it.
+		st.after = func() {
 			if a.buttonFor(c, a.L.T("living.details"), a.decisionAbout(d), btnText, t.ControlMD, t.NeedsYou.Surface) {
 				a.OpenTask(id)
 			}
 		}
-	})
+	}
+	ui.Column(c).Padding(t.S1, 0, 0, 0).Children(func() { a.decisionButtons(c, d, st) })
 }
 
 func (a *App) livingLine(c *ui.Context, it protocol.LivingItem) {
 	t := a.T
-	sc := t.Done
-	icon := drawCheck(t.Done.Ink)
+	icon := drawCheck
 	switch it.Kind {
 	case "blocked":
-		sc, icon = t.Waiting, drawClock(t.Waiting.Ink)
+		icon = drawClock
 	case "progress":
-		sc, icon = t.Working, drawArrow(t.Working.Ink)
+		icon = drawArrow
 	case "failed":
-		sc, icon = t.Failed, drawCross(t.Failed.Ink)
+		icon = drawCross
 	}
 	line := ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Cursor(ui.CursorPointer)
 	line.Children(func() {
-		a.glyphTile(c, t.IconTile, sc.Surface, icon)
+		// A plain mark in muted ink: no tile, no state color (D71).
+		a.glyph(c, 18, icon(t.InkMuted))
 		text := it.Text
 		if it.Title != "" {
 			text = it.Title + " · " + it.Text
 		}
-		col := t.Ink
-		if it.Kind == "blocked" {
-			col = t.InkSoft
+		tx := ui.Text(c, text).FontSize(t.MD).TextColor(t.InkSoft).Grow(1).MinWidth(0).LineHeight(1.45).MaxLines(3).Tooltip(text)
+		if line.Hovered() {
+			tx.TextColor(t.Ink)
 		}
-		ui.Text(c, text).FontSize(t.MD).TextColor(col).Grow(1).MinWidth(0).LineHeight(1.45).MaxLines(3).Tooltip(text)
 		if len(it.Evidence) > 0 {
 			ev := it.Evidence[0]
 			l := ui.Text(c.Key("ev"), a.L.T("living.evidence")).FontSize(t.SM).FontWeight(700).Role(ui.RoleLink).
@@ -657,7 +660,7 @@ func firstNonEmpty(s ...string) string {
 func (a *App) heldLine(c *ui.Context) {
 	t := a.T
 	a.notice(c, "held", noticeAlert, func() {
-		a.glyphTile(c, 24, t.Surface, drawBang(t.Failed.Ink))
+		a.glyph(c, 18, drawBang(t.Failed.Ink))
 	}, func() {
 		ui.Text(c, a.L.T("secret.held")).FontSize(t.SM).FontWeight(700).LineHeight(1.45).TextColor(t.Failed.Ink)
 	}, func() {

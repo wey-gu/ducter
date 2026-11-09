@@ -22,11 +22,11 @@ type StateColors struct {
 	Strong ui.Color
 }
 
-// Press is the Pebble depth style: a solid offset under the element in a
-// darker tint, which shrinks as it is pressed down.
+// Press is how a button answers a press: its fill darkens by Darken (a
+// share of ink mixed in) and it shrinks to Scale. Nothing moves down:
+// the UI is flat, and the clay art carries the depth (D71).
 type Press struct {
-	Offset float32
-	Color  ui.Color
+	Darken, Scale float32
 }
 
 // Elevation is a soft shadow: how far down it falls, how blurred, and
@@ -93,14 +93,14 @@ type Tokens struct {
 	// PebbleRadius is a task pebble's slightly irregular corners.
 	PebbleRadius [4]float32
 
-	// depth. A ledge (a solid offset under the element, in a darker
-	// shade of its own fill) means one thing: this can be pressed. Every
-	// filled button has the same one, 3 points deep, and sinks into it
-	// as it is pressed. Containers (cards, sheets, the composer, notices)
-	// never have a ledge: they rest on Raised, a soft shadow, or float on
-	// Floating (a sheet over the page). Chips and text buttons are flat.
-	PressPrimary, PressSecondary, PressAccent Press
-	Raised, Floating                          Elevation
+	// depth. The UI is flat; the clay art carries the depth (D71). No
+	// button has a ledge or a shadow: a button is a solid fill (primary,
+	// accent), a surface with a hairline (secondary) or words (text), and
+	// a press darkens it and scales it to Press.Scale. Containers (cards,
+	// sheets, the composer) rest on Raised, a soft shadow, or float on
+	// Floating (a sheet over the page), never a border and a shadow both.
+	Press            Press
+	Raised, Floating Elevation
 
 	// motion: Snappy for hover and lift, PressDur for a press, EnterDur
 	// for a screen or a notice coming in, Bouncy for the living message
@@ -173,11 +173,9 @@ func Pebble() *Tokens {
 		BubbleRadius: [4]float32{22, 22, 8, 22},
 		PebbleRadius: [4]float32{6, 7, 5, 6},
 
-		PressPrimary:   Press{Offset: 3, Color: hex("#000000")},
-		PressSecondary: Press{Offset: 3, Color: hex("#E0C9B0")},
-		PressAccent:    Press{Offset: 3, Color: hex("#C9642A")},
-		Raised:         Elevation{Y: 2, Blur: 10, Color: hex("#2B2118").Alpha(0.07)},
-		Floating:       Elevation{Y: 10, Blur: 32, Color: hex("#2B2118").Alpha(0.14)},
+		Press:    Press{Darken: 0.06, Scale: 0.98},
+		Raised:   Elevation{Y: 2, Blur: 10, Color: hex("#2B2118").Alpha(0.07)},
+		Floating: Elevation{Y: 10, Blur: 32, Color: hex("#2B2118").Alpha(0.14)},
 
 		Bouncy:   ui.Animation{Spring: ui.SpringOptions{Duration: 420e6, Bounce: 0.35}},
 		Snappy:   ui.Snappy,

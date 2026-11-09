@@ -32,10 +32,29 @@ Choose an island (or its card on the left) to see that device's card: its name, 
 it's awake, what it can do, the AI agents signed in on it, and its Ducter version. AI agents that
 aren't signed in there stay behind **+ Sign in another AI**.
 
-- **Rename** a device by clicking its name on the card: type, then Enter to keep it or Esc to
-  leave it as it was.
+- **Rename** any device, the one Ducter lives on too, by clicking its name on the card: type,
+  then Enter to keep it or Esc to leave it as it was.
 - **Disconnect** is at the bottom of the card. Ducter asks once and says what it means; to bring
-  the device back, connect it again with a new code. Phones and other windows have the same card.
+  the device back, connect it again with a new code.
+
+Phones and app windows have the same card: what it is in plain words (*Your iPhone · connected
+through Safari*, *A Mac · through the Ducter app*), whether it's connected now or when it was last
+seen, and what it does for you (*Get notifications · Answer what waits for you · Talk with
+Ducter*). Two phones that would get the same name get *· 2* after the second one; rename either.
+
+**One computer, one card.** When the Ducter app connects your Mac to a Ducter on a server, the
+`ducter` command line on that Mac connects too. It isn't a device of its own: the Mac's card says
+*The command line is connected too*, and the **⋯** beside that line disconnects just the command
+line. The same goes for the app on a Mac that also does tasks: *The Ducter app is connected too*.
+
+## Let this Mac do tasks
+
+When the Ducter app on your Mac is connected to a Ducter on a server (say, *hel*), your Mac's
+card, and **Settings › Where it runs**, has one switch: **Let this Mac do tasks for hel**. Turn
+it on and your Mac becomes one of hel's computers, with the AI agents signed in on it (Claude
+Code and others) and its repos: *"run it on my Mac"* now works. It keeps running in the
+background, starts when you log in, and starts again if it stops. It only does tasks: it never
+sees your conversation. Turn it off and it stops, and hel forgets it.
 - **Update:** a device that's behind gets one small dot by its name and an **Update** button on its
   card. See [Updates](install.md#updates).
 

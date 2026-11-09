@@ -163,6 +163,9 @@ func (a *App) kindLine(dv *protocol.DeviceView) string {
 	}
 	if !dv.Home && dv.Kind != "server" {
 		what = a.L.T("device.other")
+		if a.isThisMac(deviceComputer(dv)) && !a.onThisMac() {
+			what = a.L.T("device.local") // D155: this Mac, doing tasks for a Ducter elsewhere
+		}
 	}
 	return a.L.T("device.what.worker", what, who)
 }
@@ -334,24 +337,29 @@ func (a *App) updateThisMac() {
 }
 
 // disconnectRow is the card's last row: 断开 / Disconnect, then a confirm
-// in place that says what it means.
-func (a *App) disconnectRow(c *ui.Context, id, name string, client bool) {
+// in place that says what it means (means is its i18n key).
+func (a *App) disconnectRow(c *ui.Context, id, name, means string) {
 	t := a.T
 	d := a.devState()
 	if d.card.cutting != id {
-		a.textRow(c, t.ControlSM).Margin(t.S2, 0, 0, 0).Children(func() {
+		// The quiet end of the card: a hairline, then 断开 as a text button.
+		ui.Box(c.Key("cutline:"+id)).Height(1).Background(t.Line).Margin(t.S3, 0, t.S1, 0)
+		a.textRow(c, t.ControlSM).Children(func() {
 			if a.buttonFor(c, a.L.T("device.disconnect"), name, btnText, t.ControlSM, t.Surface) {
 				d.card.cutting, d.card.cutFailed = id, ""
 			}
 		})
 		return
 	}
+	a.disconnectConfirm(c, id, name, means)
+}
+
+// disconnectConfirm asks in place: what disconnecting means, 断开 or 算了.
+func (a *App) disconnectConfirm(c *ui.Context, id, name, means string) {
+	t := a.T
+	d := a.devState()
 	ui.Column(c.Key("cut:"+id)).Gap(t.S2).Margin(t.S2, 0, 0, 0).Padding(t.S3).Radius(t.RadiusMD).Background(t.Bg).Children(func() {
-		ui.Text(c, a.L.T("device.disconnect.ask", name)).FontSize(t.SM).FontWeight(800)
-		means := "device.disconnect.means"
-		if client {
-			means = "device.disconnect.means.client"
-		}
+		ui.Text(c, a.L.T("device.disconnect.ask", name)).FontSize(t.SM).FontWeight(800).LineHeight(1.4)
 		a.note(c, a.L.T(means))
 		ui.Row(c).Gap(t.S2).Children(func() {
 			if a.buttonFor(c, a.L.T("device.disconnect.ok"), name, btnSecondary, t.ControlSM, t.Bg) {
@@ -367,8 +375,8 @@ func (a *App) disconnectRow(c *ui.Context, id, name string, client bool) {
 	})
 }
 
-// clientWhat names a phone or a window elsewhere from its platform:
-// iPhone · Safari, a Mac app window, a browser.
+// clientWhat names a phone or a window elsewhere from its platform, for
+// short places (the isles): iPhone · Safari, a Mac app window, a browser.
 func (a *App) clientWhat(cl *protocol.ReachClient) string {
 	p := strings.ToLower(cl.Platform)
 	switch {
@@ -387,24 +395,39 @@ func (a *App) clientWhat(cl *protocol.ReachClient) string {
 	return a.L.T("device.client.other")
 }
 
-// clientCard is a phone's (or another window's) card: its name, renamed in
-// place, what it is, when it was last here, and 断开.
+// clientCard is a phone's (or a window's, or a lone command line's) card in
+// the D148 language (D155): its name, renamed in place; what it is in plain
+// words; now or when it was last here; what it does for you; on a Mac, the
+// quiet lines of what else is connected from it, and on this Mac, Let this
+// Mac do tasks; 断开 at the bottom.
 func (a *App) clientCard(c *ui.Context, cl *protocol.ReachClient) {
 	t := a.T
-	a.cardName(c, cl.ID, cl.Name, true)
-	ui.Text(c, a.clientWhat(cl)+" · "+a.L.T("device.client.for", a.S.PersonaName)).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).LineHeight(1.5)
-	state := a.L.T("device.client.now")
-	ink := t.Awake.Ink
-	if !cl.Connected {
-		ink = t.InkMuted
-		if ago := a.agoLong(cl.LastSeen); ago != "" {
-			state = a.L.T("device.last_seen", ago)
-		} else {
-			state = a.L.T("device.client.notnow")
-		}
+	name := a.clientName(cl)
+	computer := clientComputer(cl)
+	ui.Column(c).Gap(t.S1).Children(func() {
+		a.cardName(c, cl.ID, name, true)
+		ui.Text(c, a.clientKind(cl)).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).LineHeight(1.5)
+	})
+	state, ink := a.clientState(cl)
+	if isCLI(cl) {
+		// A command line alone stands for its computer: its line says so, with its own menu.
+		a.foldedLines(c, "cl:"+cl.ID, computer, cl)
+	} else {
+		ui.Text(c, state).FontSize(t.SM).TextColor(ink).LineHeight(1.5)
+		a.foldedLines(c, "cl:"+cl.ID, computer, nil)
 	}
-	ui.Text(c, state).FontSize(t.SM).TextColor(ink).LineHeight(1.5)
-	a.disconnectRow(c, cl.ID, cl.Name, true)
+	ui.Column(c).Gap(t.S1).Margin(t.S2, 0, 0, 0).Children(func() {
+		ui.Text(c, a.L.T("device.does")).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted)
+		ui.Text(c, a.clientDoes(cl)).FontSize(t.SM).TextColor(t.Ink).LineHeight(1.5)
+	})
+	if computer != "" && a.isThisMac(computer) && a.canWork() {
+		a.workBlock(c, "card")
+	}
+	if isCLI(cl) {
+		a.disconnectRow(c, cl.ID, a.L.T("device.cli.name", computer), "device.disconnect.means.cli")
+		return
+	}
+	a.disconnectRow(c, cl.ID, name, "device.disconnect.means.client")
 }
 
 // updateSection is Settings' list of every computer's Ducter version

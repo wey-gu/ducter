@@ -91,7 +91,8 @@ export async function cmdWorker(o: { t: T; style: Style; args: Args; dataDir: st
         method: "POST",
         headers: { "content-type": "application/json" },
         // role: the code is open to any device (D83); this one joins to do tasks.
-        body: JSON.stringify({ code, name, platform: `${platform()}-${arch()}`, role: "worker" }),
+        // D155: computer = this host, so the app and the command line here fold into its card.
+        body: JSON.stringify({ code, name, platform: `${platform()}-${arch()}`, role: "worker", computer: hostname().replace(/\.local$/, "") }),
         signal: AbortSignal.timeout(10_000),
       });
     } catch {
@@ -130,11 +131,21 @@ export async function cmdWorker(o: { t: T; style: Style; args: Args; dataDir: st
   const s = saved;
   const dataDir = o.dataDir;
   const updater = createWorkerUpdater({ dataDir, version: pkg.version, how: hello.how });
-  return stayConnected(s, hello, t, style, (send) => runnerMod.createWorkerHost({ dataDir, harness, mainBase: s.url, deviceToken: s.token, send }), updater, () => {
+  const code = await stayConnected(s, hello, t, style, (send) => runnerMod.createWorkerHost({ dataDir, harness, mainBase: s.url, deviceToken: s.token, send }), updater, () => {
     // Reached the main: a restart after an update is healthy now (update.ts waitHealthy).
     writeAlive(dataDir, pkg.version);
     lastOutcome(dataDir, { markReported: true });
   });
+  return refusedExit(code, process.env);
+}
+
+/**
+ * D155: under launchd (a Mac's LaunchAgent restarts only an exit that isn't clean) a worker the
+ * main refused exits 0, so it isn't started again every few seconds; systemd keeps exit 3
+ * (RestartPreventExitStatus).
+ */
+export function refusedExit(code: number, env: Record<string, string | undefined>): number {
+  return code === EXIT_REFUSED && env.DUCTER_SUPERVISOR === "launchd" ? 0 : code;
 }
 
 /** One outbound socket, reconnecting with backoff; exits only when the main refuses this worker. */

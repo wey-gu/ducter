@@ -271,14 +271,21 @@ them over is on the roadmap).
    the link from `ducter pair` (or type the address and the code). The app now uses the server.
    It asks once whether to stop the Ducter on this Mac; its data in `~/.ducter` stays either way.
    `ducter` in Terminal now talks to the server too.
-3. Want tasks to use the repos on your Mac? Run the `ducter worker` command that `ducter pair`
-   printed, on the Mac.
+3. Want tasks to use the repos on your Mac? In the app, turn on **Let this Mac do tasks for
+   …** on your Mac's card in **Devices** (or in **Settings › Where it runs**).
 
 To go back, **Settings › Use the Ducter on this Mac again**.
 
 ### Lend another computer
 
-A second server or Mac can do tasks for your Ducter. On the computer Ducter lives on, run
+A second server or Mac can do tasks for your Ducter.
+
+**A Mac with the Ducter app**, connected to your Ducter on a server: one tap. On the Mac's card
+in **Devices** (or **Settings › Where it runs**), turn on **Let this Mac do tasks for …**. It
+runs in the background, starts at login, and starts again if it stops; its log is `worker.log`
+in Ducter's data folder. Turn it off to stop it and disconnect it there.
+
+**Any other computer:** on the computer Ducter lives on, run
 `ducter pair` (or choose **Connect a phone or computer** in the app). It prints one command for
 the other computer; run it there:
 
@@ -286,8 +293,9 @@ the other computer; run it there:
 ducter worker https://ducter.example.com --code K7QM-4XPA
 ```
 
-It's the same one-time code a phone uses. On a Linux server, add
-`ducter service install --worker` to keep it running. Then just say where: *"run it on vps-2"*.
+It's the same one-time code a phone uses. Then `ducter service install --worker` keeps it
+running: a systemd service on Linux, a background item on a Mac that starts at login
+(`ducter service status --worker` and `ducter service uninstall --worker` on a Mac). Then just say where: *"run it on vps-2"*.
 The computer shows up under its own name; rename it in the app, or with
 `ducter devices rename vps-2 "Build box"`. If that computer drops off, its task waits and
 carries on when it's back.

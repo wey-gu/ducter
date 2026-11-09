@@ -83,15 +83,18 @@ describe("pairing codes and device tokens", () => {
     const mac = pair("mac");
     const p1 = pair("phone");
     const p2 = pair("phone");
-    expect(a.list().map((d) => d.name)).toEqual(["mac", "phone", "phone"]);
-    expect(a.revoke("phone")).toEqual([]); // ambiguous name: nothing revoked
+    // D155: a second default name of the same kind gets " · 2"; a worker may share a client's.
+    expect(a.list().map((d) => d.name)).toEqual(["mac", "phone", "phone · 2"]);
+    const w = a.redeem(a.createCode().code, { name: "mac", role: "worker" }) as { device: { id: string } };
+    expect(a.revoke("mac")).toEqual([]); // ambiguous name: nothing revoked
+    expect(a.revoke(w.device.id)).toHaveLength(1);
     expect(a.revoke(p1.device.id).map((d) => d.id)).toEqual([p1.device.id]);
     expect(a.verify(p1.token)).toBeUndefined();
     expect(a.verify(p2.token)).toBeDefined();
     expect(a.revoke("mac")).toHaveLength(1);
     expect(a.verify(mac.token)).toBeUndefined();
     expect(a.list().map((d) => d.id)).toEqual([p2.device.id]);
-    expect(a.list({ all: true })).toHaveLength(3);
+    expect(a.list({ all: true })).toHaveLength(4);
   });
 
   test("a second handle on the same file (the CLI) sees codes and revocations at once", () => {

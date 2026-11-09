@@ -3522,6 +3522,13 @@ button.dev-name {
   font-size: var(--sm);
   font-weight: 800;
 }
+/* D155: the command line (and the app) on a computer, a quiet line in its card with its own 断开. */
+.dev-folded { display: flex; flex-direction: column; gap: 2px; margin-top: 2px; }
+.dev-fold { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 var(--s2); }
+.dev-fold > .dev-cut { flex-basis: 100%; }
+.dev-fold-line { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: var(--sm); font-weight: 700; color: var(--ink-soft); }
+.dev-fold-dot { flex: none; width: 6px; height: 6px; border-radius: 3px; background: var(--line-2); }
+.dev-fold-dot.on { background: var(--done-ink); }
 /* Nothing in a long sheet is squeezed: it scrolls instead (D150). */
 .sheet > * {
   flex-shrink: 0;

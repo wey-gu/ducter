@@ -533,3 +533,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
   Ducter's category (`research/41-zh-name.md`). Decide between "Ducter 搭子" and another name after a
   manual CNIPA search (classes 9, 42, 35, 38); the full zh pass is ready on branch
   `worktree-agent-a55f33cfcf026e6c1` (commit 702fa74). Trigger: the author picks a name.
+- **A Mac doing tasks for a server, live (D155).** Turn on "Let this Mac do tasks for hel" in a
+  signed Ducter.app against a real server: the LaunchAgent loads, survives logout/login and a
+  crash, the Mac appears on hel with its agents and repos, a task runs there, and off revokes it.
+  Trigger: the next release candidate.

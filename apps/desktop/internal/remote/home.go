@@ -213,7 +213,8 @@ func FollowHome(ctx context.Context, dataDir, base, appToken, mac string, now ti
 	code, err := IssueCode(ctx, base, appToken)
 	if err == nil {
 		var s Saved
-		s, err = Pair(ctx, base, code, CLIDeviceName(mac))
+		// D155: form "cli" on this Mac: the home folds it into this Mac's card.
+		s, err = PairWith(ctx, base, code, PairInfo{Name: CLIDeviceName(mac), Form: "cli", Computer: mac})
 		if err == nil {
 			home.Token, home.DeviceID = s.Token, s.DeviceID
 		}

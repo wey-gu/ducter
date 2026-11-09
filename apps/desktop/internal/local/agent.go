@@ -28,6 +28,11 @@ type Agent struct {
 	Dir string
 	// Launchctl runs launchctl; nil runs /bin/launchctl.
 	Launchctl func(args ...string) (string, error)
+	// Args are the helper's arguments (default: up --no-desktop); LogName
+	// is its log in the data folder (default: app.log). D155: the worker
+	// LaunchAgent runs `ducter worker` into worker.log.
+	Args    []string
+	LogName string
 }
 
 // AgentLabel is the LaunchAgent's label for an app's bundle id.
@@ -73,9 +78,17 @@ func (a *Agent) Plist(env map[string]string) []byte {
 	if a.BundleID != "" {
 		fmt.Fprintf(&b, "\t<key>AssociatedBundleIdentifiers</key>\n\t<array>\n\t\t<string>%s</string>\n\t</array>\n", esc(a.BundleID))
 	}
-	fmt.Fprintf(&b, "\t<key>ProgramArguments</key>\n\t<array>\n\t\t<string>%s</string>\n\t\t<string>up</string>\n\t\t<string>--no-desktop</string>\n\t</array>\n", esc(a.CLI))
+	args := a.Args
+	if len(args) == 0 {
+		args = []string{"up", "--no-desktop"}
+	}
+	b.WriteString("\t<key>ProgramArguments</key>\n\t<array>\n")
+	for _, s := range append([]string{a.CLI}, args...) {
+		fmt.Fprintf(&b, "\t\t<string>%s</string>\n", esc(s))
+	}
+	b.WriteString("\t</array>\n")
 	str("WorkingDirectory", a.DataDir)
-	log := filepath.Join(a.DataDir, "app.log")
+	log := a.LogPath()
 	str("StandardOutPath", log)
 	str("StandardErrorPath", log)
 	b.WriteString("\t<key>RunAtLoad</key>\n\t<true/>\n")
@@ -93,6 +106,14 @@ func (a *Agent) Plist(env map[string]string) []byte {
 	}
 	b.WriteString("\t</dict>\n</dict>\n</plist>\n")
 	return b.Bytes()
+}
+
+// LogPath is where the helper's output goes.
+func (a *Agent) LogPath() string {
+	if a.LogName != "" {
+		return filepath.Join(a.DataDir, a.LogName)
+	}
+	return filepath.Join(a.DataDir, "app.log")
 }
 
 // Installed reports whether the plist is there (Ducter is meant to run).

@@ -28,6 +28,8 @@ type Saved struct {
 	Token    string `json:"token,omitempty"`
 	DeviceID string `json:"deviceId,omitempty"`
 	Persona  string `json:"persona,omitempty"`
+	// Name is what the home calls this device (it may add " · 2" to a name it has).
+	Name string `json:"name,omitempty"`
 }
 
 // Errors the connect screen turns into words.
@@ -195,9 +197,26 @@ func DeviceName() string {
 	return runtime.GOOS
 }
 
-// Pair trades a code for a device token. With a loopback base and no code
-// it only checks that a Ducter answers there (no token needed).
+// PairInfo is what a device says about itself as it pairs: its name, the
+// role it joins as ("worker" does tasks; else an app), and (D155) its form
+// ("app", or "cli" for the command line) and the computer it runs on, so
+// the home can show the command line and the app inside that computer's card.
+type PairInfo struct {
+	Name     string
+	Role     string
+	Form     string
+	Computer string
+}
+
+// Pair trades a code for this app's device token (form "app", on this Mac).
+// With a loopback base and no code it only checks that a Ducter answers
+// there (no token needed).
 func Pair(ctx context.Context, base, code, name string) (Saved, error) {
+	return PairWith(ctx, base, code, PairInfo{Name: name, Form: "app", Computer: DeviceName()})
+}
+
+// PairWith trades a code for a device token, saying who it is.
+func PairWith(ctx context.Context, base, code string, info PairInfo) (Saved, error) {
 	hc := &http.Client{Timeout: 10 * time.Second}
 	if code == "" {
 		if !IsLoopback(base) {
@@ -217,7 +236,16 @@ func Pair(ctx context.Context, base, code, name string) (Saved, error) {
 		}
 		return Saved{URL: WSURL(base)}, nil
 	}
-	body, _ := json.Marshal(map[string]string{"code": code, "name": name, "platform": runtime.GOOS})
+	fields := map[string]string{"code": code, "name": info.Name, "platform": runtime.GOOS}
+	for k, v := range map[string]string{"role": info.Role, "form": info.Form, "computer": info.Computer} {
+		if v != "" {
+			fields[k] = v
+		}
+	}
+	if info.Role == "worker" {
+		fields["platform"] = runtime.GOOS + "-" + runtime.GOARCH
+	}
+	body, _ := json.Marshal(fields)
 	req, _ := http.NewRequestWithContext(ctx, "POST", base+"/pair", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	res, err := hc.Do(req)
@@ -238,9 +266,10 @@ func Pair(ctx context.Context, base, code, name string) (Saved, error) {
 		Token       string `json:"token"`
 		DeviceID    string `json:"deviceId"`
 		PersonaName string `json:"personaName"`
+		Name        string `json:"name"`
 	}
 	if err := json.NewDecoder(res.Body).Decode(&r); err != nil || r.Token == "" {
 		return Saved{}, ErrNotDucter
 	}
-	return Saved{URL: WSURL(base), Token: r.Token, DeviceID: r.DeviceID, Persona: r.PersonaName}, nil
+	return Saved{URL: WSURL(base), Token: r.Token, DeviceID: r.DeviceID, Persona: r.PersonaName, Name: r.Name}, nil
 }

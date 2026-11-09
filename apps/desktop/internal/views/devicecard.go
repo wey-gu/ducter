@@ -20,15 +20,15 @@ func (a *App) deviceDetail(c *ui.Context, dv *protocol.DeviceView) {
 	t := a.T
 	d := a.devState()
 	a.drainDeviceResults()
-	card := ui.Column(c.Key("device-card")).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).
+	card := ui.Column(c.Key("device-card")).Shrink(0).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).
 		Padding(t.S5).Gap(t.S2)
 	if d.selClient != "" && a.S.Reach != nil {
 		for i := range a.S.Reach.Clients {
 			cl := &a.S.Reach.Clients[i]
-			if cl.ID != d.selClient {
+			if cl.ID != d.selClient || a.fold().hidden[cl.ID] {
 				continue
 			}
-			card.Role(ui.RoleGroup).Label(cl.Name).Children(func() { a.clientCard(c, cl) })
+			card.Role(ui.RoleGroup).Label(a.clientName(cl)).Children(func() { a.clientCard(c, cl) })
 			return
 		}
 		d.selClient = ""
@@ -40,7 +40,10 @@ func (a *App) deviceDetail(c *ui.Context, dv *protocol.DeviceView) {
 	card.Role(ui.RoleGroup).Label(name).Children(func() {
 		ui.Column(c).Gap(t.S1).Children(func() {
 			ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-				ui.Column(c).Grow(1).MinWidth(0).Children(func() { a.cardName(c, dv.ID, name, !dv.Home) })
+				// D155: every device renames in place, the home too (a display name beside
+				// its host name); only "this Mac" is said for the Mac this app runs.
+				renamable := !(dv.Home && name != dv.Name)
+				ui.Column(c).Grow(1).MinWidth(0).Children(func() { a.cardName(c, dv.ID, name, renamable) })
 			})
 			ui.Text(c, a.kindLine(dv)).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).LineHeight(1.5)
 		})
@@ -67,6 +70,10 @@ func (a *App) deviceDetail(c *ui.Context, dv *protocol.DeviceView) {
 			}
 		}
 		ui.Text(c, line).FontSize(t.SM).TextColor(ink).LineHeight(1.5)
+		if !dv.Home {
+			// D155: the app window and the command line on this computer, one quiet line each.
+			a.foldedLines(c, "dev:"+dv.ID, deviceComputer(dv), nil)
+		}
 		var on []string
 		for _, ab := range dv.Abilities {
 			if a.abilityOn(dv, ab.ID) {
@@ -110,8 +117,11 @@ func (a *App) deviceDetail(c *ui.Context, dv *protocol.DeviceView) {
 
 		a.browserBlock(c, dv) // D151: 上网 on a server, Ducter's own browser
 		a.versionBlock(c, dv)
+		if !dv.Home && a.isThisMac(deviceComputer(dv)) && a.canWork() {
+			a.workBlock(c, "card") // D155: this Mac does tasks; off from here too
+		}
 		if !dv.Home {
-			a.disconnectRow(c, dv.ID, name, false)
+			a.disconnectRow(c, dv.ID, name, "device.disconnect.means")
 		}
 	})
 }

@@ -196,6 +196,9 @@ func (a *App) runPanel(c *ui.Context) {
 				place, line, art = host, a.L.T("settings.run.remote", name, host), "server_awake"
 			}
 			a.placeRow(c, art, place, line)
+			if remoteHome && a.canWork() {
+				a.workBlock(c, "settings") // D155: Let this Mac do tasks for it
+			}
 			if a.askStopHere && a.hereBackend != nil {
 				a.rowBlock(c, "ask-stop", func() { a.askStopHereCard(c, host) })
 			}

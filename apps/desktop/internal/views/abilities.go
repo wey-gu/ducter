@@ -199,14 +199,15 @@ func (a *App) devicesView(c *ui.Context) {
 		a.crumb(c, a.L.T("nav.conversation"), RouteConversation)
 		a.chromeTitle(c, a.L.T("devices.title"))
 	}, nil)
-	var root ui.Element
-	if narrow {
-		root = ui.Scroll(c.Key("devices-narrow")).Grow(1)
-	} else {
-		root = ui.Column(c.Key("devices")).Grow(1).MinHeight(0)
-	}
+	// One scroll for the whole page (D155): the stage keeps the window's
+	// height, and the card and what can be added flow at their natural
+	// height beside it; nothing scrolls inside anything else, nothing is
+	// cut off.
+	_, winH := c.Size()
+	stageH := max(float32(480), winH-ChromeH-150)
+	root := ui.Scroll(c.Key("devices-page")).Grow(1).MinHeight(0)
 	root.Children(func() {
-		ui.Column(c).Grow(1).MinHeight(0).Gap(t.S4).Padding(t.S5, t.S6, t.S5, t.S6).Children(func() {
+		ui.Column(c).Gap(t.S4).Padding(t.S5, t.S6, t.S6, t.S6).Children(func() {
 			a.devicesHeader(c, dev)
 			switch {
 			case len(a.S.Devices) == 0:
@@ -224,21 +225,20 @@ func (a *App) devicesView(c *ui.Context) {
 					})
 				})
 			default:
-				ui.Row(c).Grow(1).MinHeight(0).Gap(t.S4).AlignItems(ui.Stretch).Children(func() {
+				ui.Row(c).Gap(t.S4).AlignItems(ui.Start).Children(func() {
 					ui.Column(c).Width(260).Shrink(0).Gap(t.S3).Children(func() {
 						ui.Text(c, a.L.T("devices.list")).FontSize(t.XS).FontWeight(800).LetterSpacing(1.2).TextColor(t.InkMuted)
 						a.deviceCards(c, 0)
 						a.connectEntry(c)
 					})
-					ui.Column(c).Grow(1).MinWidth(0).Children(func() { a.stage(c, dev) })
-					ui.Scroll(c.Key("abilities")).Width(300).Shrink(0).Children(func() {
-						ui.Column(c).Gap(t.S3).Padding(0, 0, t.S2, 0).Children(func() {
-							a.deviceDetail(c, dev)
-							if d.selClient == "" {
-								a.abilityGrid(c, dev, 2)
-								a.abilityDetail(c, dev)
-							}
-						})
+					// The stage stays in view while the card and the grid scroll past (it never clips: it is shorter than the window).
+					ui.Column(c).Grow(1).MinWidth(0).Height(stageH).Sticky().Top(t.S4).Children(func() { a.stage(c, dev) })
+					ui.Column(c.Key("abilities")).Width(300).Shrink(0).Gap(t.S3).Children(func() {
+						a.deviceDetail(c, dev)
+						if d.selClient == "" {
+							a.abilityGrid(c, dev, 2)
+							a.abilityDetail(c, dev)
+						}
 					})
 				})
 			}
@@ -337,13 +337,20 @@ func (a *App) deviceCards(c *ui.Context, width float32) {
 	if a.S.Reach == nil {
 		return
 	}
-	// The phones (and windows elsewhere) that reach Ducter.
+	// The phones (and windows elsewhere) that reach Ducter. D155: the command
+	// line (and the app on a computer that does tasks) is a line in its
+	// computer's card, not a device of its own.
+	hidden := a.fold().hidden
 	for i := range a.S.Reach.Clients {
 		cl := &a.S.Reach.Clients[i]
+		if hidden[cl.ID] {
+			continue
+		}
 		sel := d.selClient == cl.ID
 		line := a.clientLine(cl)
+		name := a.clientName(cl)
 		card := ui.Row(c.Key("cl:" + cl.ID)).Gap(t.S3).Padding(t.S3).Radius(t.RadiusLG).Background(t.Surface).AlignItems(ui.Center).
-			Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(cl.Name + " · " + line).AccessSelected(sel)
+			Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(name + " · " + line).AccessSelected(sel)
 		if width > 0 {
 			card.Width(width)
 		}
@@ -353,7 +360,7 @@ func (a *App) deviceCards(c *ui.Context, width float32) {
 				a.clientClay(c, "card:"+cl.ID, cl, clientArt(cl)).Grow(1)
 			})
 			ui.Column(c).Gap(t.S1).Grow(1).MinWidth(0).Children(func() {
-				ui.Text(c, cl.Name).FontSize(t.Bubble).FontWeight(800).SingleLine()
+				ui.Text(c, name).FontSize(t.Bubble).FontWeight(800).SingleLine()
 				ui.Text(c, line).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).LineHeight(1.4).MaxLines(2)
 			})
 		})
@@ -643,7 +650,7 @@ func (a *App) abilityGrid(c *ui.Context, dv *protocol.DeviceView, cols int) {
 				sub = a.L.T("web.tile")
 			}
 			if id == protocol.AbilityRemote && dv != nil && a.abilityOn(dv, id) && a.S.Reach != nil && len(a.S.Reach.Clients) > 0 {
-				sub = a.L.T("pair.connected") + " · " + a.S.Reach.Clients[len(a.S.Reach.Clients)-1].Name
+				sub = a.L.T("pair.connected") + " · " + a.lastReach()
 			}
 			label := name
 			if sub != "" {
@@ -682,7 +689,7 @@ func (a *App) abilityGrid(c *ui.Context, dv *protocol.DeviceView, cols int) {
 				d.tiles[id] = well.Bounds()
 				ui.Text(c, name).FontSize(t.SM).FontWeight(800).TextAlign(ui.Center).Margin(4, 0, 0, 0)
 				if sub != "" {
-					ui.Text(c, sub).FontSize(t.XS).TextColor(t.InkMuted).TextAlign(ui.Center).MaxLines(2)
+					ui.Text(c, sub).FontSize(t.XS).TextColor(t.InkMuted).TextAlign(ui.Center).LineHeight(1.35).MaxLines(3)
 				}
 			})
 			if tile.Clicked() {
@@ -835,13 +842,19 @@ func (a *App) reachList(c *ui.Context) {
 	if a.S.Reach == nil {
 		return
 	}
+	hidden := a.fold().hidden
 	ui.Column(c).Gap(t.S2).Children(func() {
-		for _, cl := range a.S.Reach.Clients {
-			line := a.L.T("reach.client.online", cl.Name)
+		for i := range a.S.Reach.Clients {
+			cl := &a.S.Reach.Clients[i]
+			if hidden[cl.ID] {
+				continue
+			}
+			name := a.clientName(cl)
+			line := a.L.T("reach.client.online", name)
 			if !cl.Connected {
-				line = cl.Name
+				line = name
 				if ago := a.agoLong(cl.LastSeen); ago != "" {
-					line = a.L.T("reach.client.seen", cl.Name, ago)
+					line = a.L.T("reach.client.seen", name, ago)
 				}
 			}
 			// The words say it (online / seen 2 h ago); no status dot.

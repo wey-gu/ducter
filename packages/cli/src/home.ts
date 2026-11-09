@@ -225,7 +225,8 @@ export async function pairCli(o: { address: string; code?: string; name?: string
     r = await f(`${p.base}/pair`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ code, name: o.name ?? cliDeviceName(), platform: o.platform ?? process.platform }),
+      // D155: form "cli" + the computer it runs on: the home shows it inside that computer's card.
+      body: JSON.stringify({ code, name: o.name ?? cliDeviceName(), platform: o.platform ?? process.platform, form: "cli", computer: hostname().replace(/\.local$/, "") }),
       signal: AbortSignal.timeout(10_000),
     });
   } catch {

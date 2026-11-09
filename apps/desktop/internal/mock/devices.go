@@ -220,9 +220,7 @@ func (h *hub) handleDevices(c *conn, f protocol.ClientFrame) bool {
 			}
 		}
 		switch {
-		case f.Device == "local":
-			reason = "home"
-		case hit < 0 && client < 0:
+		case hit < 0 && client < 0: // D155: the home renames too (a display name)
 			reason = "unknown_device"
 		case name == "":
 			reason = "empty"

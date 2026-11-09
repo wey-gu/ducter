@@ -1,13 +1,15 @@
-// 7 · Done, in plain words: what changed and why, the checks it ran, and Merge into main as your
-// call. The copy is the README hero's.
+// 7 · Done, in plain words: what changed and why in two sentences, the checks it ran as proof,
+// and Merge into main left as your call. The copy is the README hero's.
+import type { ReactNode } from "react";
 import { interpolate, useCurrentFrame, useVideoConfig } from "remotion";
+import { useCopy } from "../copy";
 import { C } from "../theme";
-import { Btn, Bubble, Caption, Check, Code, Fill, MacWindow, Sub, clamp, useSpring, useSquare } from "../ui";
+import { Art, Btn, Bubble, Check, Code, Fill, Headline, MacWindow, Sparkles, clamp, useSpring, useSquare, useT, useType } from "../ui";
 
-const Chip = ({ children, at }: { children: React.ReactNode; at: number }) => {
-  const s = useSpring(at, { damping: 12, stiffness: 160 });
+const Chip = ({ children, at, ok = true }: { children: ReactNode; at: number; ok?: boolean }) => {
+  const s = useSpring(at, { damping: 11, stiffness: 170 });
   return (
-    <div style={{ display: "inline-flex", alignItems: "center", gap: 8, fontWeight: 650, fontSize: 21, color: C.okInk, background: C.okSurface, borderRadius: 12, padding: "7px 14px", boxShadow: `0 3px 0 #B6E6C2`, transform: `scale(${s})`, opacity: s }}>
+    <div style={{ display: "inline-flex", alignItems: "center", gap: 9, fontWeight: 700, fontSize: 24, color: ok ? C.okInk : C.ink, background: ok ? C.okSurface : C.surface, borderRadius: 14, padding: "9px 16px", boxShadow: `0 3px 0 ${ok ? "#B6E6C2" : C.line}`, transform: `scale(${s})`, opacity: Math.min(1, s * 1.5) }}>
       {children}
     </div>
   );
@@ -15,44 +17,49 @@ const Chip = ({ children, at }: { children: React.ReactNode; at: number }) => {
 
 export const Result = () => {
   const frame = useCurrentFrame();
-  const { width, height } = useVideoConfig();
+  const { width } = useVideoConfig();
   const sq = useSquare();
+  const type = useType();
+  const c = useCopy();
+  const t = useT();
   const win = useSpring(0, { damping: 18, stiffness: 90 });
-  const m1 = useSpring(10, { damping: 16 });
-  const m2 = useSpring(24, { damping: 16 });
-  const btns = useSpring(64, { damping: 14 });
-  const glow = interpolate(frame, [80, 96, 120], [0, 1, 0.35], clamp);
-  const ww = 1080, wh = 640;
-  const scale = sq ? 0.84 : 1;
+  const m1 = useSpring(8, { damping: 16 });
+  const m2 = useSpring(20, { damping: 16 });
+  const btns = useSpring(56, { damping: 14 });
+  const glow = interpolate(frame, [70, 84, 110], [0, 1, 0.4], clamp);
+  const ww = 1180, wh = 500;
+  const scale = sq ? (width - type.x * 2) / ww : 1;
+  const nod = useSpring(10, { damping: 9, stiffness: 140 });
   return (
     <Fill style={{ background: C.bg }}>
-      <div style={{ position: "absolute", left: sq ? 80 : 110, top: sq ? 80 : 330 }}>
-        <Caption text={sq ? "Done, in plain words." : "Done, in\nplain words."} size={sq ? 84 : 112} at={4} />
-        <Sub text={sq ? "With proof. Nothing merges until you say so." : "With proof. Nothing merges\nuntil you say so."} at={22} style={{ marginTop: 26, whiteSpace: "pre-line" }} size={sq ? 32 : 40} />
-      </div>
-      <div style={{ position: "absolute", left: sq ? (width - ww * scale) / 2 : 760, top: sq ? 290 : (height - wh) / 2, transform: `scale(${scale}) translateY(${(1 - win) * 80}px)`, transformOrigin: "0 0", opacity: win }}>
-        <MacWindow face="ducter/done.png" status="1 done today · Working on 2" width={ww} height={wh}>
-          <div style={{ padding: "30px 46px", display: "flex", flexDirection: "column", gap: 16 }}>
-            <Bubble who="partner" style={{ opacity: m1, transform: `translateY(${(1 - m1) * 20}px)`, maxWidth: 900 }}>
-              Fixed. The test slept a fixed 200 ms and hoped the flush had landed; now it waits for the flush itself. 50 runs in a row pass.
+      <Headline h={c.resultH} sub={sq ? c.resultSub.replace("\n", " ") : c.resultSub} />
+      <div style={{ position: "absolute", left: sq ? type.x : 690, top: sq ? 390 : 340, transform: `scale(${sq ? scale : 0.9}) translateY(${(1 - win) * 60}px)`, transformOrigin: "0 0", opacity: win }}>
+        <MacWindow face="ducter/done.png" status={c.doneToday} width={ww} height={wh}>
+          <div style={{ padding: "26px 44px", display: "flex", flexDirection: "column", gap: 14 }}>
+            <Bubble who="partner" style={{ opacity: m1, transform: `translateY(${(1 - m1) * 14}px)`, maxWidth: 1040 }}>{t(c.fixed)}</Bubble>
+            <Bubble who="partner" style={{ opacity: m2, transform: `translateY(${(1 - m2) * 14}px)`, maxWidth: 1040 }}>
+              {t(c.branchA)}<Code>ducter/compaction-fix</Code>{t(c.branchB)}
             </Bubble>
-            <Bubble who="partner" style={{ opacity: m2, transform: `translateY(${(1 - m2) * 20}px)`, maxWidth: 900 }}>
-              The change is on <Code>ducter/compaction-fix</Code>. Nothing is pushed.
-            </Bubble>
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 6 }}>
-              <Chip at={38}><Check /> cargo test · 50/50 pass</Chip>
-              <Chip at={46}><Check /> Workspace · 412 pass</Chip>
-              <Chip at={54}><span style={{ color: C.ink }}>Diff · 2 files ›</span></Chip>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 8 }}>
+              <Chip at={32}><Check /> {t(c.chipTest)}</Chip>
+              <Chip at={38}><Check /> {t(c.chipWs)}</Chip>
+              <Chip at={44} ok={false}>{t(c.chipDiff)}</Chip>
             </div>
-            <div style={{ display: "flex", gap: 14, marginTop: 14, opacity: btns, transform: `translateY(${(1 - btns) * 16}px)` }}>
-              <Btn scale={1.35}>Open draft PR</Btn>
-              <div style={{ borderRadius: 16, boxShadow: `0 0 0 ${8 * glow}px rgba(255,138,61,${0.35 * glow})` }}>
-                <Btn kind="ink" scale={1.35}>Merge into main</Btn>
+            <div style={{ display: "flex", gap: 16, marginTop: 10, opacity: btns, transform: `translateY(${(1 - btns) * 12}px)` }}>
+              <Btn scale={1.3}>{t(c.openPR)}</Btn>
+              <div style={{ borderRadius: 16, boxShadow: `0 0 0 ${9 * glow}px rgba(255,138,61,${0.3 * glow})` }}>
+                <Btn kind="ink" scale={1.3}>{t(c.merge)}</Btn>
               </div>
             </div>
           </div>
         </MacWindow>
       </div>
+      {!sq && (
+        <div style={{ position: "absolute", left: 230, top: 560, width: 330, transformOrigin: "50% 95%", transform: `scale(${0.9 + 0.1 * nod}, ${1.1 - 0.1 * nod})`, opacity: Math.min(1, nod * 2) }}>
+          <Art src="ducter/done.png" style={{ width: "100%" }} />
+        </div>
+      )}
+      {!sq && <Sparkles at={14} x={395} y={600} r={170} n={8} color="#FFD9B8" />}
     </Fill>
   );
 };

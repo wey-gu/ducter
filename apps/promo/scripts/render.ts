@@ -7,10 +7,11 @@ import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 
 const root = resolve(import.meta.dir, "..");
-const out = resolve(process.env.DUCTER_SHOTS_DIR ?? resolve(root, "../../.shots"), "promo");
+const out = resolve(process.env.DUCTER_SHOTS_DIR ?? resolve(root, "../../.shots"), "promo/v2");
 mkdirSync(out, { recursive: true });
 
-for (const id of (process.env.COMP ?? "Launch,LaunchSquare").split(",")) {
-  const file = resolve(out, `ducter-${id === "Launch" ? "launch-16x9" : "launch-1x1"}.mp4`);
+for (const id of (process.env.COMP ?? "Launch,LaunchSquare,LaunchZh").split(",")) {
+  const name = { Launch: "16x9", LaunchSquare: "1x1", LaunchZh: "16x9-zh", LaunchSquareZh: "1x1-zh" }[id] ?? id;
+  const file = resolve(out, `ducter-launch-${name}.mp4`);
   execFileSync("npx", ["remotion", "render", id, file, "--crf=18", "--concurrency=4"], { cwd: root, stdio: "inherit" });
 }

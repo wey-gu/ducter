@@ -1,0 +1,130 @@
+// Every word on screen, in English and Chinese. The product's words are the glossary's
+// (design/product-model.md) and the README's; the headlines are written for the video in the same
+// plain voice. zh strings keep a plain space between Chinese and Latin; it is set as a quarter-em
+// gap when shown (D78).
+import { createContext, useContext } from "react";
+
+export type Lang = "en" | "zh";
+
+const en = {
+  hook: "Your agents keep asking for you.",
+  titleSub: "A personal AI that runs on your own Mac or server.",
+  sayH: "Say it once.",
+  saySub: "Write to it the way you'd write to a colleague.",
+  ask: "Fix the flaky compaction test in HawDB and tell me when it's done",
+  ack: "On it: fixing the flaky compaction test in hawdb. I'll tell you when it's clear.",
+  composer: "Say something to Ducter…",
+  devices: "Devices",
+  onHand: "On hand",
+  working: (n: number) => `Working on ${n}`,
+  handH: "It hands the work to\nthe agents you already use.",
+  handSub: "On your own computers, with your own sign-ins.",
+  thisMac: "This Mac",
+  livesHere: "Ducter lives here",
+  tasks: (n: number) => `Working on ${n} task${n === 1 ? "" : "s"}`,
+  linuxServer: "Linux server",
+  forDucter: "Does tasks for Ducter",
+  quietH: "Then it goes quiet.",
+  quietSub: "Silence means it's going fine.",
+  decideH: "It asks only\nwhen it matters.",
+  decideSub: "Every question comes with a default.",
+  needsYou: "1 needs you · Working on 2",
+  askTitle: "Bring fix-ci up to date with main ›",
+  askQ: "fix-ci is 12 commits behind main with 2 conflicts, both in the CI config, which I can resolve. Rebase it?",
+  askDefault: (n: number) => `If you don't answer, I'll rebase in ${n} min. It can be undone.`,
+  minutes: (n: number) => `${n} min`,
+  defaultIs: "Default: rebase",
+  reply: "Reply…",
+  hold: "Hold",
+  go: "Rebase",
+  close: "Close",
+  youSaid: "You said: Rebase",
+  rebasing: "On it: rebasing fix-ci onto main. I'll tell you when CI is green.",
+  undoable: "It can be undone.",
+  resultH: "Done, in\nplain words.",
+  resultSub: "With proof. Nothing merges\nuntil you say so.",
+  doneToday: "1 done today · Working on 2",
+  fixed: "Fixed. The test slept a fixed 200 ms and hoped the flush had landed; now it waits for the flush itself. 50 runs in a row pass.",
+  branchA: "The change is on ",
+  branchB: ". Nothing is pushed.",
+  chipTest: "cargo test · 50/50 pass",
+  chipWs: "Workspace · 412 pass",
+  chipDiff: "Diff · 2 files ›",
+  openPR: "Open draft PR",
+  merge: "Merge into main",
+  realH: "Open anything, any time.",
+  realSub: "Every step it took, every line it changed.",
+  worldH: "One partner. All your agents.\nYour machines.",
+  iphone: "iPhone",
+  reaches: "Reaches Ducter from anywhere",
+  endLine: "Open source. On your Mac or your server.",
+  time: "14:30",
+};
+
+const zh: typeof en = {
+  hook: "你的 agent，一个个都在等你回话。",
+  titleSub: "跑在你自己 Mac 或服务器上的个人 AI。",
+  sayH: "说一次就够。",
+  saySub: "像跟同事交代事情一样。",
+  ask: "把 HawDB 里那个时好时坏的 compaction 测试修好，弄完告诉我",
+  ack: "好，我去修 hawdb 里那个时好时坏的 compaction 测试，查清楚了告诉你。",
+  composer: "跟 Ducter 说点什么…",
+  devices: "设备",
+  onHand: "手头的事",
+  working: (n) => `在做 ${n} 件`,
+  handH: "它把活儿交给\n你已经在用的 AI agent。",
+  handSub: "在你自己的电脑上，用你自己的账号。",
+  thisMac: "这台 Mac",
+  livesHere: "Ducter 住在这儿",
+  tasks: (n) => `在做 ${n} 件事`,
+  linuxServer: "Linux 服务器",
+  forDucter: "替 Ducter 做事",
+  quietH: "然后，它就安静了。",
+  quietSub: "没有消息，就是一切顺利。",
+  decideH: "只在真要你拍板时，\n才来找你。",
+  decideSub: "每个问题，都先替你想好了默认做法。",
+  needsYou: "1 件等你 · 在做 2 件",
+  askTitle: "让 fix-ci 跟上 main ›",
+  askQ: "fix-ci 落后 main 12 个提交，有 2 处冲突，都在 CI 配置里，我能解决。要 rebase 吗？",
+  askDefault: (n) => `${n} 分钟后你没回，我就 rebase，之后还能改回来。`,
+  minutes: (n) => `${n} 分钟`,
+  defaultIs: "默认：rebase",
+  reply: "回复…",
+  hold: "先等等",
+  go: "好，rebase",
+  close: "关闭",
+  youSaid: "你说：好，rebase",
+  rebasing: "好，我去把 fix-ci rebase 到 main 上，CI 过了告诉你。",
+  undoable: "之后还能改回来。",
+  resultH: "做完了，\n用大白话告诉你。",
+  resultSub: "证据都在。\n你不点头，什么都不会合进去。",
+  doneToday: "今天做完 1 件 · 在做 2 件",
+  fixed: "修好了。原来测试固定睡 200 ms，赌 flush 已经落盘；现在改成等 flush 本身完成。连跑 50 次都通过。",
+  branchA: "改动在 ",
+  branchB: " 上，还没推送。",
+  chipTest: "cargo test · 50/50 通过",
+  chipWs: "Workspace · 412 通过",
+  chipDiff: "Diff · 2 个文件 ›",
+  openPR: "开草稿 PR",
+  merge: "合进 main",
+  realH: "想看细节，随时点开。",
+  realSub: "它做了哪几步、改了哪几行，都在。",
+  worldH: "一个伙伴，你所有的 agent，\n都在你自己的机器上。",
+  iphone: "iPhone",
+  reaches: "在哪儿都能找到 Ducter",
+  endLine: "开源。装在你的 Mac 或服务器上。",
+  time: "14:30",
+};
+
+export const COPY = { en, zh };
+export type Copy = typeof en;
+
+export const LangContext = createContext<Lang>("en");
+export const useLang = () => useContext(LangContext);
+export const useCopy = () => COPY[useLang()];
+
+const CJK = "⺀-鿿　-〿＀-￯";
+/** D78: the gap between Chinese and Latin or digits is a quarter em (U+2005), not a word space. */
+export const zhGap = (s: string) =>
+  s.replace(new RegExp(`([${CJK}]) (?=[A-Za-z0-9])|([A-Za-z0-9.›…]) (?=[${CJK}])`, "g"), (_m, a, b) => `${a ?? b} `);
+export const hasCJK = (s: string) => new RegExp(`[${CJK}]`).test(s);

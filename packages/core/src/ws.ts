@@ -1,6 +1,7 @@
 // Client WebSocket protocol (ClientFrame / ServerFrame) over Bun's built-in WS.
 import type { ServerWebSocket } from "bun";
-import type { Bodies, ClientFrame, Delivery, LogEvent, PartnerActivity, ServerFrame } from "@ducter/protocol";
+import type { Bodies, ClientFrame, ClientKind, Delivery, LogEvent, PartnerActivity, Place, ServerFrame } from "@ducter/protocol";
+import type { NewTaskInput, NewTaskResult } from "./newtask.ts";
 import type { CoreApi, Runner } from "@ducter/protocol/src/internal.ts";
 import type { Decisions } from "./decisions.ts";
 import type { DevicesView } from "./devices.ts";
@@ -27,6 +28,8 @@ export interface WsData {
   device?: { id: string };
   /** Settles when this socket's hello is handled: frames sent right behind it wait for it. */
   greeting?: Promise<void>;
+  /** What connected (hello.client); absent = an app. */
+  client?: ClientKind;
 }
 
 const ON_HAND_KINDS = new Set<string>(PROJECTED_KINDS);
@@ -52,7 +55,15 @@ export interface WsDeps {
   connections?: ConnectionsStore;
   /** Work over time (D112-D114): waiters, until loops, routines; absent in tests that don't need it. */
   work?: WorkFrames;
+  /** 开一件事 / New task (D128, newtask.ts); absent in tests that don't need it. */
+  newTask?: NewTaskFrames;
   batchMs?: number;
+}
+
+/** What the New task frames do (core.ts wires them to newtask.ts). */
+export interface NewTaskFrames {
+  open(input: NewTaskInput): Promise<NewTaskResult>;
+  options(place?: Place): Promise<Omit<Extract<ServerFrame, { t: "task_new_options" }>, "t">>;
 }
 
 /** What the client frames for work over time do (core.ts wires them to waiters, untils, routines). */
@@ -145,6 +156,8 @@ export function createWsHandler(deps: WsDeps) {
   };
   for (const e of log.read({ stream: "channel", kinds: ["user_msg"], limit: SEEN_WINDOW }))
     remember((e.body as Bodies["user_msg"]).clientId, e.seq);
+  // task_new results by clientId (D128): a resend opens nothing twice. In memory, recent only.
+  const newTaskSeen = new Map<string, Promise<NewTaskResult>>();
   // task_send ids being delivered right now (the runner logs them after it awaits the session).
   const taskSending = new Map<string, Promise<Delivery>>();
   /** The task_event a task_send with this clientId already logged, if any (recent window). */
@@ -198,6 +211,7 @@ export function createWsHandler(deps: WsDeps) {
         send(ws, { t: "on_hand", onHand: tasks.onHand() });
         if (activity) send(ws, { t: "activity", activity });
         ws.data.live = true; // synchronous since the read: no event can be missed in between
+        if (f.client === "desktop" || f.client === "web" || f.client === "cli") ws.data.client = f.client;
         if (typeof f.tz === "string" && f.tz) deps.work?.zone(f.tz);
         return;
       }
@@ -439,6 +453,45 @@ export function createWsHandler(deps: WsDeps) {
         if (f.t === "waiter_action") send(ws, { t: "on_hand", onHand: tasks.onHand() });
         return;
       }
+      case "task_new_options": {
+        if (!deps.newTask) throw new Error("new tasks are not available");
+        send(ws, { t: "task_new_options", ...(await deps.newTask.options(f.place)) });
+        return;
+      }
+      case "task_new": {
+        if (!deps.newTask) throw new Error("new tasks are not available");
+        const id = typeof f.clientId === "string" && f.clientId ? f.clientId : undefined;
+        // A resend (the client never saw its result): the same answer, nothing opened twice.
+        const prior = id ? newTaskSeen.get(id) : undefined;
+        const pending =
+          prior ??
+          deps.newTask.open({
+            words: String(f.words ?? ""),
+            ...(f.place ? { place: f.place } : {}),
+            ...(typeof f.harness === "string" && f.harness ? { harness: f.harness } : {}),
+            ...(typeof f.model === "string" && f.model ? { model: f.model } : {}),
+          });
+        if (id && !prior) {
+          newTaskSeen.set(id, pending);
+          if (newTaskSeen.size > 200) newTaskSeen.delete(newTaskSeen.keys().next().value!);
+        }
+        const r = await pending;
+        send(ws, r.ok ? { t: "task_new_result", ok: true, ...(id ? { clientId: id } : {}), taskId: r.card.taskId, card: r.card } : { t: "task_new_result", ok: false, ...(id ? { clientId: id } : {}), reason: r.reason, message: r.message });
+        return;
+      }
+      case "open_task": {
+        // `ducter open <task>`: every connected app shows it; a CLI socket never does.
+        if (!tasks.get(f.taskId)) return send(ws, { t: "open_result", taskId: f.taskId, ok: false, apps: 0, message: "I can't find that task." });
+        let apps = 0;
+        for (const s of sockets) {
+          if (s === ws || !s.data.live || s.data.client === "cli") continue;
+          if (s.data.buf.length) send(s, { t: "events", events: s.data.buf.splice(0) });
+          send(s, { t: "open_task", taskId: f.taskId });
+          apps++;
+        }
+        send(ws, { t: "open_result", taskId: f.taskId, ok: true, apps });
+        return;
+      }
       case "task_history": {
         const stream = taskStream(f.taskId);
         const events = log.read({ stream, beforeSeq: f.beforeSeq, limit: Math.min(f.limit ?? 200, 2000) });
@@ -452,6 +505,12 @@ export function createWsHandler(deps: WsDeps) {
 
   return {
     setActivity,
+    /** Something On hand shows changed outside the Log (D128: a task's diff stat): push it. */
+    onHandChanged() {
+      let any = false;
+      for (const ws of sockets) if (ws.data.live) (ws.data.onHandDirty = true), (any = true);
+      if (any && !flushTimer) flushTimer = setTimeout(flush, batchMs);
+    },
     newData: (): WsData => ({ live: false, buf: [], onHandDirty: false }),
     websocket: {
       open(ws: ServerWebSocket<WsData>) {

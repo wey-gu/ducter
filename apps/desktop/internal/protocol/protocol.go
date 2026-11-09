@@ -178,6 +178,9 @@ type TaskOpen struct {
 	Brief      string `json:"brief"`
 	BodyReason string `json:"bodyReason,omitempty"`
 	Language   string `json:"language,omitempty"` // "zh" | "en": the language the user reads its reports in
+	// Origin "you" (D128): the user opened it themselves (New task, `ducter task`);
+	// empty: the partner did.
+	Origin string `json:"origin,omitempty"`
 }
 
 type TaskState struct {
@@ -416,6 +419,10 @@ type Report struct {
 type BranchChanges struct {
 	Commits     int  `json:"commits"`
 	Uncommitted bool `json:"uncommitted"`
+	// D128: the diff since the branch left its base (nil: not counted).
+	Files *int `json:"files,omitempty"`
+	Adds  *int `json:"adds,omitempty"`
+	Dels  *int `json:"dels,omitempty"`
 }
 
 // HasBranchChanges is false only when Ducter checked and the branch holds
@@ -549,6 +556,8 @@ type TaskCard struct {
 	UpdatedAt       string           `json:"updatedAt"`
 	Until           *Until           `json:"until,omitempty"`       // D113
 	FromRoutine     *FromRoutine     `json:"fromRoutine,omitempty"` // D114
+	OpenedBy        string           `json:"openedBy,omitempty"`    // D128: "you" = the user opened it
+	Changes         *DiffStat        `json:"changes,omitempty"`     // D128: repo tasks, once counted
 }
 
 // PendingDecision is Bodies["decision"] & { askedAt }.
@@ -596,6 +605,8 @@ type Hello struct {
 	Cursor  *int64 `json:"cursor,omitempty"`
 	Locale  string `json:"locale,omitempty"` // zh | en
 	TZ      string `json:"tz,omitempty"`     // IANA zone; personal routines follow it (D114)
+	// Client: "desktop" | "web" | "cli" (D128: open_task goes to the apps).
+	Client string `json:"client,omitempty"`
 }
 
 type Send struct {
@@ -1009,6 +1020,13 @@ type ServerFrame struct {
 	// activity: what the partner is doing while the user waits (D104); nil
 	// when its turn ended. Never logged.
 	Activity *PartnerActivity `json:"activity,omitempty"`
+	// D128 New task. task_new_options: Places and Candidates; task_new_result:
+	// OK, ClientID, TaskID, Card, Reason, Message; open_task: TaskID (show it);
+	// open_result: TaskID, OK, Apps.
+	Places   []PlaceChoice `json:"places,omitempty"`
+	ClientID string        `json:"clientId,omitempty"`
+	Card     *TaskCard     `json:"card,omitempty"`
+	Apps     int           `json:"apps,omitempty"`
 }
 
 // PartnerActivity is the step of a partner turn the user waits on (D104):
@@ -1038,7 +1056,8 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	}
 	switch f.T {
 	case "welcome", "events", "on_hand", "task_history", "sent", "action_result", "error",
-		"devices", "ability_result", "pair_code", "rename_result", "settings", "connections", "connection_result", "rules", "candidates", "activity":
+		"devices", "ability_result", "pair_code", "rename_result", "settings", "connections", "connection_result", "rules", "candidates", "activity",
+		"task_new_options", "task_new_result", "open_task", "open_result":
 	default:
 		return f, fmt.Errorf("unknown server frame %q", f.T)
 	}
@@ -1047,3 +1066,49 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 
 // TaskStream is the stream name of a task.
 func TaskStream(taskID string) string { return "task:" + taskID }
+
+// ---------- New task (D128) ----------
+
+// DiffStat is what a task changed so far: files, lines added and removed
+// ("改动 · 3 个文件 +42 −7"), counted by core and cached.
+type DiffStat struct {
+	Files int    `json:"files"`
+	Adds  int    `json:"adds"`
+	Dels  int    `json:"dels"`
+	At    string `json:"at"`
+}
+
+// PlaceChoice is one place the New task card offers. Kind "none" is
+// 不用特定的地方 / No particular place (always last).
+type PlaceChoice struct {
+	Place         Place    `json:"place"`
+	Name          string   `json:"name"`
+	UsedAt        string   `json:"usedAt,omitempty"`
+	DefaultBranch string   `json:"defaultBranch,omitempty"`
+	Branches      []string `json:"branches,omitempty"`
+}
+
+// TaskNewOptions asks what the New task card offers at Place (nil: this
+// machine); answered with a task_new_options frame.
+type TaskNewOptions struct {
+	T     string `json:"t"` // "task_new_options"
+	Place *Place `json:"place,omitempty"`
+}
+
+// TaskNew opens a task with the user's words as they are (no rewrite).
+// Harness/Model only when the user picked someone other than the top
+// candidate. Answered with task_new_result.
+type TaskNew struct {
+	T        string `json:"t"` // "task_new"
+	Words    string `json:"words"`
+	Place    *Place `json:"place,omitempty"`
+	Harness  string `json:"harness,omitempty"`
+	Model    string `json:"model,omitempty"`
+	ClientID string `json:"clientId,omitempty"`
+}
+
+// OpenTask asks the apps to show a task (`ducter open <task>`).
+type OpenTask struct {
+	T      string `json:"t"` // "open_task"
+	TaskID string `json:"taskId"`
+}

@@ -57,6 +57,7 @@
 | the display setting (D104) | **对话里的细节 / Details in the conversation**: **收起 / Folded** · **展开 / Shown** | Per client, in Settings (the Mac) and the Settings sheet (the phone) |
 | outcomes | **停下了 / Stopped** · **撤销 / Undo** · **再试一次 / Try again** · **告诉它怎么做… / Tell it what to do** · **检查没过 / Check didn't pass** | 告诉它怎么做… sits beside 再试一次 on a task that didn't work and opens the task's composer (D76) |
 | a merge / draft PR whose result was lost with the connection | **不确定做成没有，看一下 / Not sure it went through — check** · **再试一次 / Try again** | Only when the Log doesn't show it done after reconnecting. Never "failed" wording: it may have happened |
+| a task the user opens themselves (D128) | **开一件事 / New task** (⌘N) · the card's rows **在哪儿做 / Where** · **谁来做 / Who does it** · **做什么 / What** · **不用特定的地方 / No particular place** · under What **原话会交给它 / It gets your words as they are** · **开始 / Start** · a pick "…，是你选的 / …; you picked it" · On hand's toggle **按状态 / By state** · **按项目 / By project** · a group's **在这儿开一件 / New task here** · the Changes header **改动 · 3 个文件 +42 −7 / Changes · 3 files +42 −7** | The power path, never required. Nothing is said in the conversation when it opens; the partner reports its result like any task. CLI: `ducter task`, which prints 开了：「…」/ Opened: "…" |
 | quiet hours | **免打扰 / Quiet hours** ("免打扰 23:00–08:00") | The word the user's phone already uses |
 | remote access ability | **在哪儿都能用 / Reach from anywhere** | Done: "MacBook 现在在哪儿都能用了" |
 | pairing a client with a server (D54) | **连接到你的 Ducter / Connect to your Ducter** · **地址 / Address** · **连接码 / Code** · **连上 / Connect** · **断开 / Disconnect** · again: **再连一次 / Connect it again** | The desktop card, the phone and the CLI (`ducter pair`, `ducter devices disconnect`). Sentences say "这个码只能用一次 / The code works once". Never "token", "配对 / pair", "授权 / authorize" or "绑定" in UI |
@@ -161,8 +162,15 @@ Every task shows two editable things on its card and header.
   project, or merge two projects.
 - **Changing a task's device, base branch, or repo** is a handoff (principle 13). The old task
   becomes superseded. Adding a repo just extends the place.
-- **+ New task** in On hand opens a picker: project → repo(s)/folder → device → base branch
-  → model. It is the power path, never required.
+- **开一件事 / New task** (D128): a quiet text button on On hand, or ⌘N, opens a three-row
+  card: 在哪儿做 / Where (a repo, most recent first, or 不用特定的地方 / No particular place;
+  the base branch in its chip, default the repo's default branch; the device inferred as
+  today) · 谁来做 / Who does it (the best fit with its reason; picking another pins it for
+  this task, "…，是你选的 / …; you picked it") · 做什么 / What ("原话会交给它 / It gets your
+  words as they are"). Start opens the task with those words as its brief, unchanged, and
+  opens it. The partner says nothing then and reports the result like any task. It is the
+  power path, never required. From a terminal: `ducter task "<words>"`. Details:
+  `design/new-task.md`.
 
 **Repos and worktrees**
 

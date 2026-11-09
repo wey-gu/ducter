@@ -95,6 +95,11 @@ run the one command it prints.
 | `ducter up` | Start Ducter and open the desktop window. Ctrl-C stops everything |
 | `ducter open` | Open the desktop window again for a Ducter that's already running |
 | `ducter status` | Your tasks and the decisions waiting for you |
+| `ducter task "<what to do>"` | Start a task yourself, in the repo you're in. Your words go to it as they are. Add `--repo <folder>` for another repo (`--repo none` for no particular place), `--agent codex` to pick who does it, `--base <branch>` for where it starts |
+| `ducter say "<words>"` | Say something to your partner and see its reply right here |
+| `ducter tail` | Follow the conversation as it happens; `ducter tail <part of a task's title>` follows one task's steps. Ctrl-C stops |
+| `ducter answer <part of the question> go` | Answer something waiting for you: `go`, `hold`, or your reply in quotes |
+| `ducter open <part of a task's title>` | Show that task in the app (or, if the app isn't open, where it is) |
 | `ducter doctor` | The check-up (see [Troubleshooting](troubleshooting.md)) |
 | `ducter pair` | A one-time code to connect your phone or another computer |
 | `ducter devices` | The devices connected to your Ducter; `ducter devices disconnect <name>` removes one |

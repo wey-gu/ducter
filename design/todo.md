@@ -65,6 +65,12 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 
 ## Partner and tasks (`design/plan/v1-tonight.md` "Known gaps", `research/30`)
 
+- [ ] **New task: attachments (D128).** Trigger: the first time a brief needs a screenshot.
+      A file or image dropped on the card's What row goes to the task with the words.
+- [ ] **New task UI (D128, `design/new-task.md`):** the card, ⌘N, On hand's By project
+      grouping, the Changes header, and handling `open_task` in the desktop and web clients.
+      Trigger: the conversation and On hand redesigns have landed.
+
 - [ ] Two results landing together still mention branches and guess at merge conflicts (eval
       `settle` 0/2). Settlement batching in code, not prose.
 - [ ] Greetings sometimes give two examples (eval `first_words` 3/4).

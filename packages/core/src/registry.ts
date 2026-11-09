@@ -56,6 +56,8 @@ export function createRegistry(log: LogStore, clock: Clock = realClock): CoreReg
           updatedAt: e.ts,
           ...(prev?.until ? { until: prev.until } : {}),
           ...((prev?.fromRoutine ?? runOf.get(b.taskId)) ? { fromRoutine: prev?.fromRoutine ?? runOf.get(b.taskId) } : {}),
+          // D128: the user opened it themselves (a retitle copies the body, so it stays).
+          ...(b.origin === "you" || prev?.openedBy ? { openedBy: "you" as const } : {}),
         });
         break;
       }

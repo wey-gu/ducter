@@ -144,3 +144,25 @@ func TestDecodeActivity(t *testing.T) {
 		t.Fatalf("null: got %+v, %v", f.Activity, err)
 	}
 }
+
+// D128: a task the user opened themselves, its diff stat, and the New task frames.
+func TestNewTaskFrames(t *testing.T) {
+	f, err := DecodeServerFrame([]byte(`{"t":"task_new_result","ok":true,"clientId":"c1","taskId":"t1","card":{"taskId":"t1","persona":"default","title":"Fix","project":"tinycart","place":{"kind":"repo","device":"local","repoPath":"/r","branch":"ducter/fix","baseBranch":"main"},"harness":"codex","attention":"queued","residency":"provisioning","openedAt":"x","updatedAt":"x","openedBy":"you","changes":{"files":3,"adds":42,"dels":7,"at":"x"}}}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !f.OK || f.ClientID != "c1" || f.Card == nil || f.Card.OpenedBy != "you" || f.Card.Changes == nil || f.Card.Changes.Adds != 42 {
+		t.Fatalf("task_new_result %+v", f)
+	}
+	o, err := DecodeServerFrame([]byte(`{"t":"task_new_options","places":[{"place":{"kind":"repo","device":"local","repoPath":"/r"},"name":"tinycart","defaultBranch":"main","branches":["main","dev"]},{"place":{"kind":"none"},"name":""}],"candidates":[{"harness":"codex","reason":{"kind":"fit"}}]}`))
+	if err != nil || len(o.Places) != 2 || o.Places[0].DefaultBranch != "main" || len(o.Candidates) != 1 {
+		t.Fatalf("task_new_options %+v %v", o, err)
+	}
+	if s, err := DecodeServerFrame([]byte(`{"t":"open_task","taskId":"t1"}`)); err != nil || s.TaskID != "t1" {
+		t.Fatalf("open_task %+v %v", s, err)
+	}
+	b, _ := json.Marshal(TaskNew{T: "task_new", Words: "修一下测试", ClientID: "c1"})
+	if string(b) != `{"t":"task_new","words":"修一下测试","clientId":"c1"}` {
+		t.Errorf("task_new %s", b)
+	}
+}

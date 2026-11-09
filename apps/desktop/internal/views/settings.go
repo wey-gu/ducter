@@ -225,6 +225,11 @@ func (a *App) updateCard(c *ui.Context) {
 			a.note(c, a.L.T("update.checked", a.agoLong(st.CheckedAt.UTC().Format(time.RFC3339))))
 		}
 		ui.Row(c).Gap(t.S2).Wrap().Children(func() {
+			busy := ss.updating || st.State == update.Checking || st.State == update.Downloading
+			if !busy && a.button(c, a.L.T("update.checknow"), btnSecondary, t.ControlMD, t.Surface) {
+				ss.updating = true
+				a.async(func() { u.CheckNow(context.Background()) }, func() { ss.updating = false })
+			}
 			switch {
 			case st.State == update.Ready && a.RestartToUpdate != nil:
 				if a.button(c, a.L.T("update.restart"), btnPrimary, t.ControlMD, t.Surface) {
@@ -234,11 +239,6 @@ func (a *App) updateCard(c *ui.Context) {
 				if a.button(c, a.L.T("update.download"), btnSecondary, t.ControlMD, t.Surface) {
 					a.openLink(st.Page)
 				}
-			}
-			busy := ss.updating || st.State == update.Checking || st.State == update.Downloading
-			if !busy && a.button(c, a.L.T("update.checknow"), btnSecondary, t.ControlMD, t.Surface) {
-				ss.updating = true
-				a.async(func() { u.CheckNow(context.Background()) }, func() { ss.updating = false })
 			}
 		})
 		if v, ch := a.switchRow(c, "oninquit", a.L.T("update.oninquit"), "", st.InstallOnQuit); ch {

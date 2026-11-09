@@ -679,11 +679,11 @@ func (a *App) heldLine(c *ui.Context) {
 	}, func() {
 		ui.Text(c, a.L.T("secret.held")).FontSize(t.SM).FontWeight(700).LineHeight(1.45).TextColor(t.Failed.Ink)
 	}, func() {
-		if a.button(c, a.L.T("secret.cancel"), btnSecondary, t.ControlSM, t.Surface) {
-			a.held = nil
-		}
 		if a.button(c, a.L.T("secret.send"), btnText, t.ControlSM, t.Surface) {
 			a.SendHeld()
+		}
+		if a.button(c, a.L.T("secret.cancel"), btnSecondary, t.ControlSM, t.Surface) {
+			a.held = nil
 		}
 	})
 }

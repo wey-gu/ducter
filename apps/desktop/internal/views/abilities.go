@@ -946,11 +946,11 @@ func (a *App) abilityDetail(c *ui.Context, dv *protocol.DeviceView) {
 		case on && d.removing == id:
 			ui.Text(c, a.L.T("ability.remove."+id, a.deviceNameIn(dv))).FontSize(t.MD).LineHeight(1.55).TextColor(t.Ink)
 			ui.Row(c).Gap(t.S3).Children(func() {
-				if a.buttonFor(c, a.L.T("ability.remove"), name, btnPrimary, t.ControlMD, t.Surface) {
-					a.removeAbility(dv, id)
-				}
 				if a.button(c, a.L.T("ability.remove.keep"), btnSecondary, t.ControlMD, t.Bg) {
 					d.removing = ""
+				}
+				if a.buttonFor(c, a.L.T("ability.remove"), name, btnPrimary, t.ControlMD, t.Surface) {
+					a.removeAbility(dv, id)
 				}
 			})
 		case on:

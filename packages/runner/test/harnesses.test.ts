@@ -81,7 +81,7 @@ describe("adaptSpec: the partner's clean setup per harness", () => {
   });
 
   test("DeepSeek Harness: own home with the prompt as its AGENTS.md, the key from Ducter's file, MCP over the bridge", () => {
-    writeFileSync(join(dir, "env"), "# keys\nDEEPSEEK_API_KEY=\"sk-test-not-real\"\n", { mode: 0o600 });
+    writeFileSync(join(dir, "keys.env"),"# keys\nDEEPSEEK_API_KEY=\"sk-test-not-real\"\n", { mode: 0o600 });
     const a = adaptSpec(spec("deepseek-harness", { model: "deepseek-flash" }), { dataDir: dir, env: {}, refused: dshRuntime.refusedSessionOptions as Record<string, string> });
     const home = join(dir, "harness", "deepseek-harness");
     expect(a.options.env).toMatchObject({ DSH_HOME: home, DSH_AGENTS_HOME: join(home, "agents"), DEEPSEEK_API_KEY: "sk-test-not-real" });
@@ -176,6 +176,7 @@ describe("DeepSeek Harness on OAR's scripted runtime", () => {
     try {
       let ds = (await port.available()).find((h) => h.harness === "deepseek-harness")!;
       expect(ds).toMatchObject({ installed: true, loggedIn: false });
+      // An older install's env file, not yet migrated, still counts (readKeys).
       writeFileSync(join(dir, "env"), "# keys\nDEEPSEEK_API_KEY=\"sk-test-not-real\"\n", { mode: 0o600 });
       ds = (await port.available()).find((h) => h.harness === "deepseek-harness")!;
       expect(ds.loggedIn).toBe(true);

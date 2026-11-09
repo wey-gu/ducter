@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { randomBytes } from "node:crypto";
 import type { Bodies, LogEvent } from "@ducter/protocol";
 import type { CoreApi, Partner, Runner } from "@ducter/protocol/src/internal.ts";
+import { migrateKeys, readKeys, scrubKeysFromEnv } from "@ducter/protocol/src/keys.ts";
 import { realClock, type Clock } from "./clock.ts";
 import { createDecisions, type Decisions } from "./decisions.ts";
 import { createLiving, type Living } from "./living.ts";
@@ -111,7 +112,7 @@ function loadSecret(dataDir: string): string {
 
 export function startCore(opts: CoreOptions = {}): Core {
   const dataDir = opts.dataDir ?? defaultDataDir();
-  // Owner-only when we create it: it holds the Log, worktrees, browser profiles, the env file.
+  // Owner-only when we create it: it holds the Log, worktrees, browser profiles, the key file.
   if (!existsSync(dataDir)) mkdirSync(dataDir, { recursive: true, mode: 0o700 });
   // An existing dir from an older install (0755/0775) is tightened too, when it is ours.
   try {
@@ -119,6 +120,16 @@ export function startCore(opts: CoreOptions = {}): Core {
     if (process.getuid && st.uid === process.getuid() && (st.mode & 0o077) !== 0) chmodSync(dataDir, 0o700);
   } catch {
     /* not ours or not a plain dir: leave it */
+  }
+  // D102: keys live in <dataDir>/keys.env (0600), read only by the code that passes each one to
+  // its harness. Keys an older install left in <dataDir>/env move there, and any a server's unit
+  // already loaded from that file leave this process's environment.
+  try {
+    const moved = migrateKeys(dataDir).moved;
+    if (moved.length) console.log(`[ducter] moved ${moved.length} key(s) from ${join(dataDir, "env")} to ${join(dataDir, "keys.env")}`);
+    scrubKeysFromEnv(readKeys(dataDir));
+  } catch (err) {
+    console.warn(`[ducter] could not move keys to keys.env: ${(err as Error).message}`);
   }
   const clock = opts.clock ?? realClock;
   const persona = opts.persona ?? { id: "default", name: "Ducter", identity: DEFAULT_IDENTITY };

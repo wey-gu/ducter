@@ -11,8 +11,9 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
-// The partner remembering something shows as one quiet line under its
-// reply, in the user's language (D43: shown, not explained).
+// The partner remembering something is one quiet line inside its reply's
+// Details, in the user's language, with Forget (D43, D104): folded by
+// default, so the conversation stays the partner's words.
 func TestMemoryNotedLine(t *testing.T) {
 	for _, tc := range []struct {
 		lang        i18n.Lang
@@ -37,8 +38,15 @@ func TestMemoryNotedLine(t *testing.T) {
 		tt := ui.NewTesterWith(app.View, 1280, 860, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 		tt.Frame()
 		tt.Frame()
-		if !tt.HasText(tc.want) {
-			t.Errorf("%s: no %q in %q", tc.lang, tc.want, tt.Texts())
+		if tt.HasText(tc.want) {
+			t.Errorf("%s: %q shows before Details is opened", tc.lang, tc.want)
+		}
+		if err := tt.Click(app.L.T("details.show")); err != nil {
+			t.Fatalf("%s: %v in %q", tc.lang, err, tt.Texts())
+		}
+		tt.Frame()
+		if !tt.HasText(tc.want) || !tt.HasText(app.L.T("partner.memory.forget")) {
+			t.Errorf("%s: no %q with Forget in %q", tc.lang, tc.want, tt.Texts())
 		}
 	}
 }

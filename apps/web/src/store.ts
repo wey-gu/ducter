@@ -2,7 +2,7 @@
 // clients fold the same events the same way: living messages revised in place, jobs folded into
 // their acks, decisions with their resolutions, tasks with their streams, the On hand snapshot.
 // Pure data; tested without a DOM.
-import type { Attention, Bodies, ClientFrame, Delivery, EvidenceRef, LogEvent, OnHand, Place, ServerFrame, TaskBody, TaskCard } from "@ducter/protocol";
+import type { ActivityStep, Attention, Bodies, ClientFrame, Delivery, EvidenceRef, LogEvent, OnHand, Place, ServerFrame, TaskBody, TaskCard } from "@ducter/protocol";
 
 export type Ev<K extends keyof Bodies = keyof Bodies> = LogEvent<K>;
 
@@ -120,6 +120,13 @@ export class Store {
   onHand?: OnHand;
   waiters = new Map<string, Bodies["waiter"]>();
   errors: string[] = [];
+  /** 记下了 / Noted lines in the channel, shown inside the Details of the reply they belong to (D104). */
+  noted: { seq: number; title: string; memoryId?: string; replyTo?: number }[] = [];
+  /** What the partner is doing while the user waits (D104): its step, when this client first saw
+   *  that step (local clock, so a skewed server clock can't make it look slow), and the channel
+   *  seq at which a turn last ended (a user message at or before it has had its turn). */
+  activity?: { step: ActivityStep; at: number };
+  activityEndedAt = 0;
   actionResults: Extract<ServerFrame, { t: "action_result" }>[] = [];
 
   /** A welcome from a Log that no longer holds what we've seen (its data was reset). */
@@ -172,6 +179,12 @@ export class Store {
         t.historyLoaded = true;
         return;
       }
+      case "activity":
+        if (!f.activity) {
+          this.activity = undefined;
+          this.activityEndedAt = this.channelSeq;
+        } else if (this.activity?.step !== f.activity.step) this.activity = { step: f.activity.step, at: Date.now() };
+        return;
       case "error": {
         this.errors.push(f.message);
         if (f.message.startsWith("task_send:")) {
@@ -295,6 +308,11 @@ export class Store {
       case "decision_resolved":
         this.resolve(ev.body as Bodies["decision_resolved"]);
         return void this.bySeq.set(ev.seq, null);
+      case "memory_noted": {
+        const b = ev.body as Bodies["memory_noted"];
+        this.noted.push({ seq: ev.seq, title: b.title, ...(b.memoryId ? { memoryId: b.memoryId } : {}), ...(b.replyTo != null ? { replyTo: b.replyTo } : {}) });
+        return void this.bySeq.set(ev.seq, null);
+      }
       case "read_receipt":
         this.readUpTo = Math.max(this.readUpTo, (ev.body as Bodies["read_receipt"]).upToSeq);
         return void this.bySeq.set(ev.seq, null);

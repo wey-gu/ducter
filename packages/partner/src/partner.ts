@@ -42,7 +42,7 @@
 //   that arrived while down) are queued again; user messages that already got a reply are not.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { HARNESSES, HARNESS_IDS, isHarnessId, type Bodies, type Brain, type HarnessId, type LogEvent, type Place } from "../../protocol/src/index.ts";
+import { HARNESSES, HARNESS_IDS, isHarnessId, type ActivityStep, type Bodies, type Brain, type HarnessId, type LogEvent, type Place } from "../../protocol/src/index.ts";
 import type { CoreApi, HarnessEvent, HarnessSession, Partner, Runner } from "../../protocol/src/internal.ts";
 import { bridgeFromEnv, type BridgeClient } from "./bridge.ts";
 import { createNmemClient, noMemory, type MemoryClient } from "./memory.ts";
@@ -113,6 +113,31 @@ interface Job {
 const COLD_MS = 55 * 60 * 1000;
 const TASK_OPEN_RE = /(^|__)task_open$/;
 const TASK_SEND_RE = /(^|__)task_send$/;
+/** A partner tool call as the step the user sees (D104); undefined keeps the current step. */
+export function activityStep(tool: string): ActivityStep | undefined {
+  const name = tool.split("__").pop() ?? tool;
+  switch (name) {
+    case "log_search":
+    case "log_read":
+    case "memory_search":
+      return "recalling";
+    case "task_read":
+      return "checking_task";
+    case "task_open":
+      return "opening_task";
+    case "task_send":
+      return "messaging_task";
+    case "wait_until":
+    case "ask":
+      return "planning";
+    case "ToolSearch":
+    case "memory_add":
+    case "task_retitle":
+      return undefined; // housekeeping: not a step the user would recognise
+    default:
+      return "looking";
+  }
+}
 const QUIET_TOOL_RE = /(^ToolSearch$)|((^|__)(log_search|log_read|task_read|memory_search|memory_add|task_retitle)$)/;
 
 /** The user asks to look harder, which lifts the one-recall-per-turn gate. */
@@ -446,9 +471,23 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     return t.unboundAck;
   };
 
+  // ---------- what the user sees while waiting (D104) ----------
+  // Only a turn the user is waiting on (it answers their message) shows; each tool call becomes a
+  // plain step; the tool's name never leaves this process.
+  let shown: { since: string; step: ActivityStep } | null = null;
+  const showStep = (step: ActivityStep) => {
+    if (!shown || shown.step === step) return;
+    shown.step = step;
+    core.activity?.set({ step, since: shown.since, stepSince: new Date(now()).toISOString() });
+  };
+
   // ---------- harness events ----------
   const onHarnessEvent = (ev: HarnessEvent) => {
     if (!turn) return;
+    if (ev.tool) {
+      const step = activityStep(ev.tool.name);
+      if (step) showStep(step);
+    }
     if (ev.role === "assistant" && ev.text !== undefined && !ev.tool) {
       flushPending();
       turn.pending = ev.text;
@@ -658,6 +697,11 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       zh = t ? isChinese(t) : true;
     }
 
+    if (userEvents.length && core.activity) {
+      const at = new Date(now()).toISOString();
+      shown = { since: at, step: "thinking" };
+      core.activity.set({ step: "thinking", since: at, stepSince: at });
+    }
     const fresh = await ensureSession();
     const redo = carried && batch.some((e) => carried!.seqs.has(e.seq)) ? carried : undefined;
     if (redo) carried = undefined;
@@ -681,6 +725,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       if (!batch.some((e) => e.seq < 0)) queueCorrections(); // one correction round, never a loop
       else corrections.length = 0;
     } finally {
+      if (shown) (shown = null), core.activity?.set(null);
       turn = null;
       inflight = undefined;
       lastActivity = now();

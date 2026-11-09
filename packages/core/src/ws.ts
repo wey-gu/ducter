@@ -1,6 +1,6 @@
 // Client WebSocket protocol (ClientFrame / ServerFrame) over Bun's built-in WS.
 import type { ServerWebSocket } from "bun";
-import type { Bodies, ClientFrame, Delivery, LogEvent, ServerFrame } from "@ducter/protocol";
+import type { Bodies, ClientFrame, Delivery, LogEvent, PartnerActivity, ServerFrame } from "@ducter/protocol";
 import type { CoreApi, Runner } from "@ducter/protocol/src/internal.ts";
 import type { Decisions } from "./decisions.ts";
 import type { DevicesView } from "./devices.ts";
@@ -153,6 +153,20 @@ export function createWsHandler(deps: WsDeps) {
     if (any && !flushTimer) flushTimer = setTimeout(flush, batchMs);
   });
 
+  // What the partner is doing while the user waits (D104). Presence, not history: never logged.
+  // Buffered events go first, so a reply and the activity that ends with it arrive in order.
+  let activity: PartnerActivity | null = null;
+  const setActivity = (a: PartnerActivity | null) => {
+    if (a === null && activity === null) return;
+    if (a && activity && a.step === activity.step && a.since === activity.since) return;
+    activity = a;
+    for (const ws of sockets) {
+      if (!ws.data.live) continue;
+      if (ws.data.buf.length) send(ws, { t: "events", events: ws.data.buf.splice(0) });
+      send(ws, { t: "activity", activity: a });
+    }
+  };
+
   const handle = async (ws: ServerWebSocket<WsData>, f: ClientFrame) => {
     if (f.t !== "hello" && !ws.data.live) throw new Error("send hello first");
     switch (f.t) {
@@ -166,6 +180,7 @@ export function createWsHandler(deps: WsDeps) {
             : log.read({ stream: "channel", limit: REPLAY_FRESH });
         send(ws, { t: "events", events: dropSuperseded(events) });
         send(ws, { t: "on_hand", onHand: tasks.onHand() });
+        if (activity) send(ws, { t: "activity", activity });
         ws.data.live = true; // synchronous since the read: no event can be missed in between
         return;
       }
@@ -404,6 +419,7 @@ export function createWsHandler(deps: WsDeps) {
   };
 
   return {
+    setActivity,
     newData: (): WsData => ({ live: false, buf: [], onHandDirty: false }),
     websocket: {
       open(ws: ServerWebSocket<WsData>) {

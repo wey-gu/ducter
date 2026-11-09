@@ -65,22 +65,29 @@ While a task works, there's nothing to watch. **Silence means it's going fine.**
 it comes back to the conversation. The very first time, a small line says *"Your first task is
 done. Everything I finish comes back to you like this, with how I checked it."*
 
-A finished result tells you:
+A finished result reads like a message from a colleague: what it did, in a few lines. Under it
+you see at most one small row:
 
-- what it did, in a few lines;
-- how it checked, in one short line, such as *412 tests pass*;
-- how many files changed (click it to see the changes);
-- anything that left your computer, on a line marked ↗. If nothing did, there's no such line.
+- **Merge into main**, when the task changed code. Merging is always your call.
+- **Details**, which opens right there: how it checked (such as *412 tests pass*), how many files
+  changed (click it to see the changes), the task itself, **Open draft PR**, and anything your
+  partner noted to remember.
 
-Then you choose: **Merge into main** or **Open draft PR**. Merging is always your call.
+If anything left your computer, a line marked ↗ says what, above that row. It is never hidden
+behind Details.
 
 In our own runs, a small "fix the failing tests" task came back done in under a minute.
 
 ## What happens next
 
-- **Decisions come with a default.** When a task needs you, you see a question like *"Rebase
-  before merging?"* with a suggested answer. Press **Go** to take it, **Hold** for "not yet",
-  or **Reply…** in your own words.
+- **Your partner shows it's on it.** The moment you send something, your partner appears where
+  its reply will come, with a short line of what it is doing, such as *Thinking…* or *Setting up
+  a task…*. The line goes away when the reply arrives.
+- **Decisions come with a default.** When a task needs you, your partner asks, such as *"Rebase
+  before merging?"*, and says what it will do if you don't answer. Press **Go** to take it,
+  **Hold** for "not yet", or **Reply…** in your own words. When several things are waiting, it
+  asks one at a time; *"1 more waiting on you"* shows the rest, and **Go on all defaults** takes
+  every suggested answer at once.
 - **On hand** shows every task at a glance and what's waiting for you. Open any task to read
   *What it did*, see its changes, and talk to it directly.
 - **Close the window whenever you like.** Ducter keeps working. The Dock icon brings the window

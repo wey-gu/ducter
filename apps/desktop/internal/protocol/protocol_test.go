@@ -132,3 +132,15 @@ func TestProtocolV2Frames(t *testing.T) {
 		t.Error(err)
 	}
 }
+
+// The activity frame (D104) decodes, and its null ends the turn.
+func TestDecodeActivity(t *testing.T) {
+	f, err := DecodeServerFrame([]byte(`{"t":"activity","activity":{"step":"recalling","since":"2026-11-09T10:00:00Z","stepSince":"2026-11-09T10:00:01Z"}}`))
+	if err != nil || f.Activity == nil || f.Activity.Step != "recalling" {
+		t.Fatalf("got %+v, %v", f.Activity, err)
+	}
+	f, err = DecodeServerFrame([]byte(`{"t":"activity","activity":null}`))
+	if err != nil || f.Activity != nil {
+		t.Fatalf("null: got %+v, %v", f.Activity, err)
+	}
+}

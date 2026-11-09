@@ -123,7 +123,17 @@ type Task struct {
 type BrowserStatus struct {
 	Host string `json:"host"`
 	URL  string `json:"url"`
-	Seq  int64  `json:"-"`
+	// Own: the task works in the user's own Chrome, with the harness's own tools (D126).
+	Own bool  `json:"own,omitempty"`
+	Seq int64 `json:"-"`
+}
+
+// BrowsingKey is the i18n key for the line that says where it is looking.
+func (t *Task) BrowsingKey() string {
+	if t.Browser != nil && t.Browser.Own {
+		return "browser.looking.own"
+	}
+	return "browser.looking"
 }
 
 // Browsing is the host a running task's browser is on, or "".

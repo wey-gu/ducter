@@ -123,7 +123,7 @@ func (a *App) taskLine(c *ui.Context, t *store.Task, detail string) {
 	att := t.Attention()
 	title := t.Title()
 	if h := t.Browsing(); h != "" {
-		detail = a.L.T("browser.looking", h)
+		detail = a.L.T(t.BrowsingKey(), h)
 	} else if t.Place().Kind == "browser" && !finished(t) {
 		a.ensureHistory(t.ID) // browser status lines come with the task's stream
 	}

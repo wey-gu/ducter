@@ -152,7 +152,7 @@ func (a *App) taskHeadline(c *ui.Context, task *store.Task) {
 	line := ""
 	switch {
 	case task.Browsing() != "":
-		line = a.L.T("browser.looking", task.Browsing())
+		line = a.L.T(task.BrowsingKey(), task.Browsing())
 	case task.Attention() == protocol.Blocked:
 		line = a.waitReason(task)
 		if w := a.S.WaiterFor(task.ID); w != nil && (w.Check != nil || w.Event != nil) {
@@ -615,7 +615,16 @@ func (a *App) systemLine(c *ui.Context, b *protocol.TaskEvent) {
 	t := a.T
 	text := b.Text
 	if strings.HasPrefix(text, "Looking at ") {
-		text = a.L.T("browser.looking", strings.TrimPrefix(text, "Looking at "))
+		key := "browser.looking"
+		var raw struct {
+			Browser *struct {
+				Own bool `json:"own"`
+			} `json:"browser"`
+		}
+		if json.Unmarshal(b.Raw, &raw) == nil && raw.Browser != nil && raw.Browser.Own {
+			key = "browser.looking.own"
+		}
+		text = a.L.T(key, strings.TrimPrefix(text, "Looking at "))
 	}
 	switch strings.ToLower(strings.TrimSpace(text)) {
 	case "session started":

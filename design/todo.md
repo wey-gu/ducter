@@ -221,6 +221,18 @@ note and a `Dn`) before it is built.
       visible; in a `bun build --compile` binary the avatar file is not bundled, so there is no
       Dock tile.
 - [ ] Find what triggers macOS's "CuaDriver was prevented from modifying apps" notification.
+- [ ] **Native browser by default (D126).** The switch is built (`DUCTER_BROWSER_DRIVER=native`);
+      the default stays cua-driver until a native path passes (research/38). Claude Code: check
+      that Claude in Chrome is connected at task open (one `tabs_context_mcp` call, or a status
+      read if Claude Code exposes one) and fall back to cua-driver when it is not, then a live
+      HN lookup and a sign-in handoff pass. Codex: its Browser / Chrome surfaces answering under
+      `codex app-server` without the ChatGPT app; desktop Computer Use alone types into the
+      user's front tab and should not carry browser places. Then flip `DEFAULT_BROWSER_DRIVER`,
+      and let Your devices and abilities and the 上网 setup treat a ready native driver as
+      enough (they require cua-driver today).
+- [ ] Tell the partner that a Codex task (any place) carries the user's Codex Computer Use and
+      can drive any app and the user's own Chrome (research/38), so it briefs Go rules on
+      repo tasks that touch the web too.
 
 ## Devices stage: the Isles (D81)
 

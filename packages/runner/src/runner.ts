@@ -292,7 +292,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
 
   function handleEvent(t: TaskRt, ev: HarnessEvent) {
     const status = ev.tool && t.sidecar?.statusFor(ev.tool);
-    if (status) logEvent(t, { role: "system", text: status.text, raw: { browser: { host: status.host, url: status.url } } });
+    if (status) logEvent(t, { role: "system", text: status.text, raw: { browser: { host: status.host, url: status.url, ...(status.own ? { own: true } : {}) } } });
     const early = (ev.raw as { kind?: string } | undefined)?.kind;
     if (early === "tool_call_started" || early === "tool_call_title" || early === "tool_call_head") return; // the ended event logs the call
     if (ev.tool && /(^|__)report_to_main$/.test(ev.tool.name) && ev.tool.ok !== false) t.reportedThisTurn = true;
@@ -504,7 +504,10 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const persona = input.persona || core.persona.id;
     const partnerName = opts.partnerName ?? core.persona.name ?? "Ducter";
     // Throws before the task exists when a browser place is unavailable (the partner says why).
-    const sidecar = await browserSidecar({ place: resolved.place, persona, taskId: id, dataDir: core.dataDir, partnerName }, opts.browser);
+    const sidecar = await browserSidecar(
+      { place: resolved.place, persona, taskId: id, dataDir: core.dataDir, partnerName, harness: h, isolated: opts.isolateUserConfig ?? false },
+      opts.browser,
+    );
 
     // The partner's choice wins; else DUCTER_TASK_MODEL; else the harness default.
     const model = input.model || (h === "claude-code" ? (opts.defaultModel ?? opts.taskModel ?? process.env.DUCTER_TASK_MODEL) || undefined : undefined);
@@ -529,7 +532,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       const spec = specFor(id, b, resolved.cwd, briefed);
       if (sidecar) {
         spec.appendSystemPrompt = (spec.appendSystemPrompt ?? "") + sidecar.brief;
-        spec.mcp = [...spec.mcp, sidecar.mcp];
+        if (sidecar.mcp) spec.mcp = [...spec.mcp, sidecar.mcp];
         if (h === "claude-code") Object.assign(spec, sidecar.claude);
       }
       return spec;

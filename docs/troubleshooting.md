@@ -142,6 +142,19 @@ The device's card says **Didn't update** and why. Nothing is lost:
 To go back to a version by hand on a server: `ducter update --to 0.0.3 --yes`, or move
 `ducter.prev` over `ducter` and run `systemctl --user restart ducter`.
 
+### An AI agent didn't update
+
+The agent's line on the device card says **Didn't update** and why:
+
+- **"Its work kept running":** a task was still working with it; try again once it's done.
+- **"Back on 0.167.0":** the new version didn't answer, or its sign-in stopped working, so Ducter
+  put the previous version back. Nothing else changed.
+- **"Its updater ran, but the version didn't change":** the agent's own updater said it was done
+  without changing anything. Run `ducter update --agents --check` to see how it was installed,
+  then update it the same way yourself (for example `brew upgrade --cask codex`).
+- **No Update button:** a copy that came with the Codex app updates with that app, and one
+  installed in a way Ducter can't tell is left for you to update where it came from.
+
 ## Still stuck?
 
 In the Mac app, choose **Help → Report a problem…**. Ducter collects its check of your Mac, the

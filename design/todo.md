@@ -23,6 +23,12 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       and of a Linux worker from the card and with `ducter update --all`, including one forced
       rollback (a release whose binary fails `/health`) and the helper surviving `systemctl
       restart`. All steps are tested with fakes only. Trigger: the 0.0.5 release.
+- [ ] **Updating the AI agents (D153) for real:** an npm Codex and a native Claude Code on a
+      server updated from the card and with `ducter update --agents --yes`, one forced rollback
+      (a pinned npm version that fails `--version`), a worker's agent over its socket, and a
+      night round inside the verified range. Only fakes so far; no real install was run. Also
+      open: the partner holding a new turn while its own agent updates (only waited for today),
+      a Codex app copy seen on a real Mac. Trigger: the next Codex or Claude Code release.
 - [ ] **Updating in place, the rest of D148:** the partner's one line for a security release
       (nothing tells the partner yet); a macOS worker inside Ducter.app asking its own app to
       update (it answers `app` today); archive sweeps inside the runner's critical section;

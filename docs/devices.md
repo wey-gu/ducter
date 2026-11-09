@@ -58,6 +58,27 @@ sees your conversation. Turn it off and it stops, and hel forgets it.
 - **Update:** a device that's behind gets one small dot by its name and an **Update** button on its
   card. See [Updates](install.md#updates).
 
+### Your AI agents' versions
+
+Under each AI agent on a device's card is the version it runs there, for example *Version
+0.167.0*. When a newer one is out, a small dot and **Update to 0.168.0** appear with an
+**Update** button. Ducter updates it the same way it was installed (npm, Homebrew, or the agent's
+own installer), but only once nothing is running on that agent there: you may see *Waiting for its
+work to settle…* first, then *Updating to 0.168.0…* and *Done, now on 0.168.0*. If the new version
+doesn't start, or its sign-in stops working, Ducter puts the previous version back where it can
+and says so.
+
+- **Ducter hasn't checked this version yet** means Ducter hasn't tried it with this version
+  yet. It usually works fine; it is just said plainly.
+- **Updates with the Codex app** means this copy came with the Codex app, so the app updates it;
+  Ducter leaves it alone. **Updates with Ducter** means it ships inside Ducter.
+- **Update at night** (under your devices) also covers your AI agents: in quiet hours, when
+  nothing is running on one, Ducter updates it, but only to a version it has checked. Anything
+  else waits for your tap.
+
+From the command line: `ducter update --agents --check` shows them, `ducter update --agents`
+updates the ones behind (`--all` for every computer, `--json` for scripts).
+
 The phone shows the same cards under **Settings › Your devices**, without the islands.
 
 Each device is in one of three states:

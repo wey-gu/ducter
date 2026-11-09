@@ -163,6 +163,8 @@ ducter update --check --json   # {latest, devices:[{id, name, home, current, lat
 ducter update --yes            # this machine: download, check the SHA-256, self-check, swap, restart, health-check
 ducter update --all --yes      # the computers doing tasks for it first, then the home
 ducter update --to 0.0.3 --yes # go back to a version (never done without --to)
+ducter update --agents --check --json  # each AI agent: {device, harness, version, how, latest, available, standing}
+ducter update --agents --yes          # update the AI agents that are behind, each at its safe point
 ```
 
 It waits for merges and undos to finish and gives running tasks a moment; tasks resume after

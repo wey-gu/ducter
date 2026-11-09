@@ -74,6 +74,15 @@ on. Exit code 1 with `reason` (and `rolledBack: true`) means it stayed on, or we
 version it had. Don't update on your own initiative while tasks are mid-merge or the user is
 in the middle of something.
 
+The AI agents themselves (Codex, Claude Code, pi, DeepSeek Harness) have their own versions:
+`ducter update --agents --check --json` gives `{agents:[{device, harness, version, how, latest,
+available, standing, latestVerified}]}`. `how` is how that copy was installed (`npm`, `brew`,
+`installer`, `app`, `ducter`, `unknown`); only `npm`, `brew` and `installer` can be updated from
+Ducter. `standing` other than `verified` means Ducter hasn't checked that version yet: say so
+plainly, it is not an error. `ducter update --agents --yes` updates the ones behind (`--all`
+for every computer), each once nothing is running on it; it never touches an app's copy. Exit
+code 1 with `reason` (and `rolledBack: true`) means it stayed on, or went back to, its old version.
+
 ## Browsing on a server
 
 ```sh

@@ -53,3 +53,19 @@
 pi has no per-session window or compaction flag (`pi --help`); its compaction lives in
 settings.json, and `session_before_compact` can cancel or replace a summary (research/11).
 DeepSeek Harness is not installed on the verifying Mac. Both run with their defaults (todo).
+
+## Where each copy comes from, and how it updates (D153, 2026-11-10)
+
+`channels` in harness-facts (research/42). The real path of the binary decides `how`; each
+channel names where its latest is read and how it updates. Ducter never touches an app's copy.
+
+| Harness | npm | Homebrew cask | Its own installer (mark · update · pinned) | App copy |
+|---|---|---|---|---|
+| Claude Code | `@anthropic-ai/claude-code` | `claude-code` (follows stable) | `/claude/versions/` · `claude update` · `claude install <v>` (VERIFIED `--help`) | the Claude app's own copy |
+| Codex | `@openai/codex` | `codex` | `/packages/standalone/` · `codex update` · `install.sh --release <v>` (DOCUMENTED) | inside the Codex app |
+| pi | `@earendil-works/pi-coding-agent` | none | `managed-install.json` · `pi update --self` · none | none (inside Ducter from a checkout) |
+| DeepSeek Harness | `@deepseek-ai/dsh` (npm's `latest` is a pre-release) | none | none | none |
+
+`bun scripts/probe-harnesses.ts` prints each channel's latest beside the verified range
+(`--offline` skips it). On 2026-11-10: Claude Code npm/installer 2.1.321, cask 2.1.311; Codex
+0.167.0 everywhere (verified); pi 1.5.0; DeepSeek Harness 0.2.2-rc.1.

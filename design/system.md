@@ -477,6 +477,60 @@ working and nothing critical: behind workers first, then the home.
 fetch, a fixture tarball, fake systemctl and `/health`, a fake worker socket); the end-to-end on
 Linux waits for the 0.0.4 release.
 
+## Updating the AI agents (D153, draft, built 2026-11-10)
+
+**Who and when.** The same VPS owner, a week later: Codex shipped a new version, a task on the
+server still runs the old one, and they don't want to SSH in to run npm. Or a fresh user who
+never knew there was a version at all: their card says so quietly, and at night it is taken
+care of, but only to versions Ducter has checked.
+
+**Knowing** (`core/src/harness-probe.ts`, `core/src/agents.ts`). Each installed agent that answers
+its own `--version` gets `version` and `how`, from where its binary really lives (`agentHow`, the
+marks are harness-facts `channels`, research/42):
+
+| `how` | Real path | Latest from | Update | Pins (rolls back) |
+|---|---|---|---|---|
+| `npm` | `…/lib/node_modules/<pkg>/` | `registry.npmjs.org/<pkg>/latest` | `<prefix>/bin/npm --prefix <prefix> install -g <pkg>@<v>` | yes |
+| `brew` | `…/Caskroom/<token>/` | `formulae.brew.sh/api/cask/<token>.json` | `brew upgrade --cask <token>` | no |
+| `installer` | Claude Code `…/claude/versions/`; Codex `…/packages/standalone/`; pi: `managed-install.json` above it | the installer's pointer (`downloads.claude.ai/claude-code-releases/latest`, npm for Codex, `pi.dev/api/latest-version`) | newest: `claude update` · `codex update` · `pi update --self`; any other version: `claude install <v>` · `install.sh --release <v>` | Claude Code, Codex yes; pi no |
+| `app` | inside `Codex.app`, `Claude.app`, `Application Support/Claude/claude-code/` | none | never (updates with the app) | n/a |
+| `ducter` | pi inside Ducter (a checkout) | none | with Ducter | n/a |
+| `unknown` | anything else (pnpm, yarn, bun globals) | none | never | n/a |
+
+The home reads each channel once per 6 h (`<dataDir>/updates/agents-latest.json`), silent when
+offline, never with `DUCTER_UPDATE_CHECK=off` or in tests without a fetch seam. Workers say
+`version` and `how` in their hello; the home reads their channels. Each agent in the devices
+frame carries `latest`, `available` (newer and updatable), `standing` (installed vs the verified
+range) and `latestVerified`.
+
+**The update** (`updateAgent`, one path for the home, a worker and the CLI): detect the copy
+fresh → **safe point**: no task turn on that agent on that device and, on the home, no partner
+turn on it (≤ 30 min, `busy`) → hold new task sessions on it on the home (`runner.holdHarness`,
+≤ 15 min) → run the plan (≤ 10 min) → read the version back. Not answering: put the old version
+back where the channel pins (`version`, `rolledBack`). Unchanged: `unchanged` (or `failed` with
+the updater's last line). Signed in before and not after: back where it pins (`signed_out`).
+Every phase (`waiting`, `updating`, `checking`, `done`, `failed`) is an `agent_update` event on
+the `devices` stream; the card shows done 30 min, a failure 24 h.
+
+**Workers.** `agent_update {harness, to, latest}` down the worker's socket; the worker answers at
+once, runs the same update with its host's `turningOn(harness)` as the safe point, sends
+`{t:"agent_update", phase…}` frames, then `{t:"agents", harnesses}` so the home sees the new
+version.
+
+**Night.** With `settings.autoUpdate` on, inside quiet hours: one agent per 10-minute look, on an
+awake device, signed in, nothing on it working, to `nightTarget`: the channel's latest when it is
+inside harness-facts' verified range, else (a pinning channel) the newest verified version not
+past the latest. Nothing outside the range is installed without a tap.
+
+**CLI.** `ducter update --agents [--check] [--json] [--yes] [--all]` (`cli/src/update-agents.ts`):
+through the running Ducter when there is one (`agent_update` frames), else detect, read and run
+the updaters in-process.
+
+**Simulated vs verified.** Facts per channel were read on a Mac (research/42, read-only); the
+probe script reads every channel live. Every update path runs in tests with a fake registry and
+a fake npm/brew/claude (`core/test/agents.test.ts`, `cli/test/update.test.ts`); no real
+install was run. Todo: a real npm and native round on a server.
+
 ## Hooks v1 must leave open for phone and call (research/22)
 
 Phone and call tasks are on the roadmap, not in v1. These seams keep them from forcing a

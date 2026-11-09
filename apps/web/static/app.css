@@ -1503,6 +1503,62 @@ a {
   font-size: var(--md);
   line-height: 1.4;
 }
+/* 它能看的账号 / Accounts it can read (D96): one card, a clay mailbox per connection. */
+.acct-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  min-height: 64px;
+  padding: 8px var(--s1) 8px 12px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: var(--base);
+}
+.acct-row .grow {
+  flex: 1;
+  min-width: 0;
+}
+.acct-name {
+  font-size: var(--md);
+  font-weight: 700;
+}
+.acct-row .sub {
+  margin: 2px 0 0;
+}
+.mailbox {
+  flex: none;
+}
+.small.warn {
+  color: var(--failed-ink);
+  font-weight: 700;
+}
+.acct-oo,
+.acct-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+.acct-form .row {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--s2);
+}
+.acct-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.acct-field input {
+  height: 44px;
+  min-width: 0;
+  padding: 0 var(--s3);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--md);
+}
 .toasts {
   position: fixed;
   left: 0;

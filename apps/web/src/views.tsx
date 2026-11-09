@@ -1315,6 +1315,92 @@ function PartnerSettings() {
   );
 }
 
+/** A small clay mailbox (the prototype's look, design/connectors.md §9): no flag, the lid shows the source. */
+function Mailbox(p: { source: "oomol" | "self" | "mcp" }) {
+  const body = p.source === "oomol" ? "#E9604A" : p.source === "self" ? "#5B8FE0" : "#7A6A58";
+  return (
+    <svg class="mailbox" width="30" height="46" viewBox="0 0 52 84" aria-hidden="true">
+      <ellipse cx="26" cy="80" rx="12" ry="3.5" fill="rgba(70,46,20,.25)" />
+      <rect x="22" y="44" width="8" height="37" rx="3" fill="#C99A64" />
+      <path d="M6 46 V26 a20 18 0 0 1 40 0 V46 Z" fill={body} />
+      <path d="M6 46 h40" stroke="rgba(0,0,0,.22)" stroke-width="3" stroke-linecap="round" />
+      <path d="M10 44 V28 a16 14 0 0 1 32 0 V44 Z" fill="#FFF4E2" opacity=".92" />
+      <rect x="15" y="27" width="22" height="15" rx="2.5" fill={body} />
+      <path d="M15.5 28l10.5 8 10.5-8" fill="none" stroke="rgba(0,0,0,.28)" stroke-width="2" stroke-linejoin="round" />
+      <path d="M12 12 q6 -5 14 -5" stroke="rgba(255,255,255,.55)" stroke-width="3" stroke-linecap="round" fill="none" />
+    </svg>
+  );
+}
+
+const HOSTED_URL = "https://connector.oomol.com";
+
+/** 它能看的账号 / Accounts it can read (D96): the user's OpenConnector, hosted or self-hosted, or another MCP server. */
+function Accounts() {
+  const [adding, setAdding] = useState(false);
+  const [where, setWhere] = useState<"oomol" | "self" | "mcp">("oomol");
+  const [url, setUrl] = useState(HOSTED_URL);
+  const [token, setToken] = useState("");
+  useEffect(() => {
+    if (!A.connections) A.askConnections();
+  }, []);
+  useEffect(() => {
+    // A connection arrived: close the form and drop the typed token.
+    if (adding && !A.connecting && A.connections?.some((c) => c.url.startsWith(url.replace(/\/+$/, "")))) setAdding(false), setToken("");
+  }, [A.connections?.length]);
+  const list = A.connections;
+  const oo = A.oo;
+  const pick = (w: "oomol" | "self" | "mcp") => {
+    setWhere(w);
+    setUrl(w === "oomol" ? HOSTED_URL : w === "self" ? "http://localhost:3000" : "");
+  };
+  return (
+    <section class="set accounts">
+      <h3>{t("acct.title")}</h3>
+      <div class="small sub">{t("acct.lede")}</div>
+      {list && !list.length && <div class="small sub">{t("acct.none")}</div>}
+      {list?.map((c) => (
+        <div class="acct-row" key={c.id}>
+          <Mailbox source={c.source} />
+          <div class="grow">
+            <div class="acct-name">{c.name}</div>
+            <div class="small sub">{t(`acct.src.${c.source}`)}</div>
+            {(c.state === "unreachable" || c.state === "unauthorized") && <div class="small warn">{t(`acct.state.${c.state}`)}</div>}
+          </div>
+          <Btn kind="text" label={t("acct.remove")} about={c.name} onClick={() => A.removeConnection(c.id)} />
+        </div>
+      ))}
+      {oo?.selfHosted && !list?.some((c) => c.via === "oo") && (
+        <div class="acct-oo">
+          <Btn kind="secondary" label={t("acct.oo")} disabled={A.connecting} onClick={() => A.useOoConnection()} />
+          <div class="small sub">{t("acct.oo.note", oo.selfHosted.url)}</div>
+        </div>
+      )}
+      {oo?.account && !oo.selfHosted && <div class="small sub">{t("acct.oo.account")}</div>}
+      {!adding ? (
+        <Btn kind="secondary" label={t("acct.add")} onClick={() => setAdding(true)} />
+      ) : (
+        <div class="acct-form">
+          <Seg label={t("acct.where")} value={where} options={(["oomol", "self", "mcp"] as const).map((v) => ({ v, label: t(`acct.where.${v}`) }))} onPick={pick} />
+          <div class="small sub">{t(`acct.where.${where}.note`)}</div>
+          <label class="acct-field">
+            <span class="small">{t("acct.address")}</span>
+            <input id="acct-url" type="url" inputMode="url" autoComplete="off" spellcheck={false} value={url} onInput={(e) => setUrl((e.target as HTMLInputElement).value)} />
+          </label>
+          <label class="acct-field">
+            <span class="small">{t("acct.token")}</span>
+            <input id="acct-token" type="password" autoComplete="off" spellcheck={false} value={token} onInput={(e) => setToken((e.target as HTMLInputElement).value)} />
+          </label>
+          <div class="row">
+            <Btn kind="text" label={t("acct.cancel")} onClick={() => (setAdding(false), setToken(""))} />
+            <Btn kind="primary" label={A.connecting ? t("acct.checking") : t("acct.check")} disabled={A.connecting || !url.trim()} onClick={() => A.addConnection(url.trim(), token.trim())} />
+          </div>
+        </div>
+      )}
+      <div class="small sub">{t("acct.honest")}</div>
+    </section>
+  );
+}
+
 function PhoneSettings() {
   const [push, setPush] = useState<{ done: boolean } | null>(null);
   useEffect(() => {
@@ -1387,6 +1473,7 @@ function SettingsSheet() {
     <Sheet label={t("settings.title")}>
       <NameRow />
       <PartnerSettings />
+      <Accounts />
       <PhoneSettings />
     </Sheet>
   );

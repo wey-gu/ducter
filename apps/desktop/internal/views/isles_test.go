@@ -33,6 +33,13 @@ func TestIslesScenes(t *testing.T) {
 					checkLabels(t, scene, h.app.devState().labels)
 					h.shotAs(fmt.Sprintf("isles-%s-%d-%s", lang, size[0], scene))
 				}
+				// Six devices arriving in another order: every spot filled afresh.
+				h.app.devState().slotOf = nil
+				h.hub.Scene("one")
+				h.settle(200 * time.Millisecond)
+				h.hub.Scene("six")
+				h.settle(400 * time.Millisecond)
+				checkLabels(t, "six-fresh", h.app.devState().labels)
 			})
 		}
 	}

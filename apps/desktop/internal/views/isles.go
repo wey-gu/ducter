@@ -30,7 +30,7 @@ const sceneW, sceneH = 760, 560
 // right, back left, front right, front left, far left, far right. cx is
 // the island's middle, top its top edge, w its width (far ones smaller).
 var isleSlots = [6]struct{ cx, top, w float32 }{
-	{640, 190, 170}, {120, 200, 170}, {700, 410, 170}, {60, 410, 170}, {262, 50, 140}, {506, 46, 140},
+	{640, 176, 170}, {120, 186, 170}, {700, 440, 170}, {60, 440, 170}, {262, 40, 140}, {506, 36, 140},
 }
 
 // The home island.
@@ -1009,6 +1009,8 @@ func (a *App) island(c *ui.Context, v view, s *isle, shown *protocol.DeviceView,
 		devEl = a.clientClay(c, "isle:"+s.key, s.cl, s.art)
 	}
 	devEl.Absolute().Left(dr.X).Top(dr.Y).Size(dr.W, dr.H).TransformOrigin(0.5, 1).PassThrough()
+	// The device's clay (inside its transparent margin) must not cover another island's words.
+	d.labels["art:"+s.key] = ui.Rect{X: dr.X + dr.W*0.14, Y: dr.Y + dr.H*0.1, W: dr.W * 0.72, H: dr.H * 0.75}
 	if rs.island < 1 {
 		devEl.Opacity(rs.island)
 	}

@@ -674,18 +674,20 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 	}
 	goText := a.goLabel(d)
 	ui.Row(c.Key("decide:" + d.DecisionID)).Gap(t.S3).Wrap().AlignItems(ui.Center).Children(func() {
+		// One order on every surface (ui.md, Buttons): quiet text actions first, the
+		// primary last, where the eye and the thumb end up (as on the phone and the site).
 		about := a.decisionAbout(d)
-		if a.buttonFor(c, goText, about, btnPrimary, st.height, st.quietBg) {
-			a.Decide(d.DecisionID, "go", "")
-		}
-		if a.buttonFor(c, a.L.T("decision.hold"), about, btnSecondary, st.height, st.quietBg) {
-			a.Decide(d.DecisionID, "hold", "")
-		}
 		if a.buttonFor(c, a.L.T("decision.reply"), about, btnText, st.height, st.quietBg) {
 			a.replyOpen[d.DecisionID] = !a.replyOpen[d.DecisionID]
 		}
 		if st.after != nil {
 			st.after()
+		}
+		if a.buttonFor(c, a.L.T("decision.hold"), about, btnSecondary, st.height, st.quietBg) {
+			a.Decide(d.DecisionID, "hold", "")
+		}
+		if a.buttonFor(c, goText, about, btnPrimary, st.height, st.quietBg) {
+			a.Decide(d.DecisionID, "go", "")
 		}
 	})
 	if a.replyOpen[d.DecisionID] {

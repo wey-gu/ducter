@@ -617,6 +617,9 @@ func (a *App) abilityGrid(c *ui.Context, dv *protocol.DeviceView, cols int) {
 			switch {
 			case dv != nil && a.shownOn(dv, id):
 				sub = a.L.T("ability.on.at", a.deviceNameIn(dv))
+				if id == protocol.AbilityWeb && ab != nil && ab.Where == protocol.WhereChrome {
+					sub += " · " + a.L.T("web.where.chrome")
+				}
 			case ab == nil && dv != nil && !dv.Home:
 				sub = a.L.T("ability.unavailable")
 			case ab == nil || ab.State == protocol.AbilityLater:
@@ -708,7 +711,11 @@ func (a *App) abilityDetail(c *ui.Context, dv *protocol.DeviceView) {
 		a.heading(c, name, t.XL)
 		on := a.shownOn(dv, id)
 		if !(on && d.removing == id) {
-			ui.Text(c, a.L.T("ability."+id+".about")).FontSize(t.MD).LineHeight(1.6).TextColor(t.InkSoft)
+			about := "ability." + id + ".about"
+			if id == protocol.AbilityWeb && ab != nil && ab.Where == protocol.WhereChrome {
+				about = "ability.web.about.chrome" // an AI agent's own browser, in the user's Chrome (D130)
+			}
+			ui.Text(c, a.L.T(about)).FontSize(t.MD).LineHeight(1.6).TextColor(t.InkSoft)
 		}
 		if id == protocol.AbilityWeb && a.webSetupOwned(dv) {
 			a.pollCua(c, false) // the two switches may be off even when the server says on

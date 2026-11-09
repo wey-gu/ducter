@@ -39,7 +39,9 @@ const BASE_PREFIX = /^(?:LC_|XDG_|GIT_)/;
 /** Each harness's own settings (non-secret names only; its keys come from HARNESS_KEYS). */
 const HARNESS_CONFIG: Record<HarnessId, RegExp> = {
   "claude-code": /^(?:CLAUDE_|ANTHROPIC_|DISABLE_|ENABLE_|MAX_THINKING_TOKENS$|MCP_TIMEOUT$|MCP_TOOL_TIMEOUT$)/,
-  codex: /^(?:CODEX_|OPENAI_)/,
+  // BROWSER_USE_ACCESS_*: the Codex desktop app's browser access host, when Ducter itself was
+  // started under the app (D130; protocol native-browser.ts). A pipe path, an id and a public key.
+  codex: /^(?:CODEX_|OPENAI_|BROWSER_USE_ACCESS_(?:PIPE_PATH|EXECUTOR_ID|VERIFYING_IDENTITY)$)/,
   pi: /^PI_/,
   "deepseek-harness": /^DSH_/,
 };

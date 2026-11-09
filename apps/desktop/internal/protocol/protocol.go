@@ -906,7 +906,15 @@ type DeviceAbility struct {
 	State  string `json:"state"`
 	Reason string `json:"reason,omitempty"` // cua_missing | cua_old | env_off | home_only | no_address | unknown_device | failed
 	Detail string `json:"detail,omitempty"`
+	// web only (D130): where browser tasks run. WhereChrome = the user's own Chrome through an
+	// AI agent's own browser tools (no cua-driver needed); WhereDucter = Ducter's own browser.
+	Where string `json:"where,omitempty"`
 }
+
+const (
+	WhereChrome = "chrome"
+	WhereDucter = "ducter"
+)
 
 type DeviceView struct {
 	ID        string          `json:"id"` // "local" for the machine Ducter lives on

@@ -181,6 +181,14 @@ describe("a harness child's environment", () => {
 });
 
 describe("the allowlist", () => {
+  test("Codex keeps the desktop app's browser access host (D130); no other harness does", () => {
+    for (const n of ["BROWSER_USE_ACCESS_PIPE_PATH", "BROWSER_USE_ACCESS_EXECUTOR_ID", "BROWSER_USE_ACCESS_VERIFYING_IDENTITY"]) {
+      expect(allowedFor("codex", n)).toBe(true);
+      expect(allowedFor("claude-code", n)).toBe(false);
+    }
+    expect(allowedFor("codex", "BROWSER_USE_BACKEND_API_URL")).toBe(false);
+  });
+
   test("secret-shaped names are dropped even under an allowed prefix; explicit vars pass", () => {
     expect(allowedFor("claude-code", "CLAUDE_CONFIG_DIR")).toBe(true);
     expect(allowedFor("claude-code", "ANTHROPIC_API_KEY")).toBe(false); // granted, not inherited by prefix

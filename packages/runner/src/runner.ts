@@ -4,7 +4,7 @@ import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, Sessio
 import { NUDGE, REOPENED, RESUME_AFTER_RESTART, briefTurn, handedOver, kickoff, taskBrief } from "./brief.ts";
 import { createOarHarnessPort } from "./oar.ts";
 import { cwdOf, planPlace, provisionPlace } from "./places.ts";
-import { browserSidecar, type BrowserOptions, type BrowserSidecar } from "./browser.ts";
+import { browserSidecar, codexComputerBrief, computerUseGuard, type BrowserGuardHit, type BrowserOptions, type BrowserSidecar, type BrowserTool, type SidecarInput } from "./browser.ts";
 import { PREVIEW_MAX, preview } from "./normalize.ts";
 import { archiveWorktree, branchChanges, mergeTaskBranch, openDraftPr, type ActionResult } from "./integrate.ts";
 import { DEVICE_BACK, DeviceOfflineError, deviceOf, isOffline, remoteOps, type PlaceOps } from "./remote.ts";
@@ -61,7 +61,10 @@ interface TaskRt {
   id: string;
   persona: string;
   card: TaskCard;
+  /** What a session starts with: `base` plus the browser's parts (withBrowser), rebuilt in startSession. */
   spec: SessionSpec;
+  /** The spec without any browser parts: who does it, the brief, the place's cwd. */
+  base: SessionSpec;
   session?: HarnessSession;
   sessionId?: string;
   loggedSessionId?: string;
@@ -75,11 +78,40 @@ interface TaskRt {
   residency: Residency;
   started: Promise<void>;
   sidecar?: BrowserSidecar; // browser place
+  guard?: (tool: BrowserTool) => BrowserGuardHit | undefined; // Codex Computer Use outside a browser place (D130)
+  sidecarInput?: SidecarInput; // what built it (a native browser that says no is rebuilt on cua-driver)
+  retired?: HarnessSession; // a session closed on purpose mid-turn: its late events are ignored
   ops: PlaceOps; // where the place lives: this machine or a worker (remote.ts)
   resumeOnBack?: boolean; // its worker dropped mid-work: resume when the worker is back
   offlineTimer?: ReturnType<typeof setTimeout>;
   parkTimer?: ReturnType<typeof setTimeout>;
   offlineOff?: () => void;
+}
+
+/** The turn after a browser driver switch (D130): same task, now on Ducter's own browser. */
+export const SWITCHED_TO_CUA =
+  "Claude in Chrome is not connected, so Ducter moved you to its own browser: the `browser` MCP server, as \"Your browser\" in your instructions now describes. Do not use the Claude in Chrome tools again. Carry on with the task from where you were.";
+
+/**
+ * A task's spec with its browser's parts (D62, D126, D130): the browser brief (its Go, untrusted
+ * page and own-window rules), the cua-driver sidecar, and per harness a setup that leaves the
+ * user's own config out: Claude Code its curated built-ins and `exclude`; Codex the clean setup
+ * that keeps its own browser and Computer Use plugins; pi its clean flags. DeepSeek Harness keeps
+ * its own setup (its clean home is the partner's). Every Codex task without Codex's own browser
+ * gets the Computer Use rules (its Computer Use stays on).
+ */
+export function withBrowser(base: SessionSpec, sc: BrowserSidecar | undefined, partnerName: string): SessionSpec {
+  const spec: SessionSpec = { ...base, mcp: [...base.mcp] };
+  const h = spec.harness;
+  if (sc) {
+    spec.appendSystemPrompt = (spec.appendSystemPrompt ?? "") + sc.brief;
+    if (sc.mcp) spec.mcp.push(sc.mcp);
+    if (h === "claude-code") Object.assign(spec, sc.claude);
+    if (h === "codex") spec.userConfiguration = "exclude";
+    if (h === "pi") spec.isolateUserConfig = true;
+  }
+  if (h === "codex" && sc?.driver !== "native") spec.appendSystemPrompt = (spec.appendSystemPrompt ?? "") + codexComputerBrief(partnerName);
+  return spec;
 }
 
 const REPORT_ATTENTION: Record<Bodies["report"]["state"], Attention> = {
@@ -214,7 +246,31 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     logEvent(t, { role: "system", from: "runner", text: "session started", raw: { sessionId: id, ...(t.ops.device ? { cwd: t.spec.cwd, device: t.ops.device.id } : {}) } });
   }
 
+  const partnerNameOf = () => opts.partnerName ?? core.persona.name ?? "Ducter";
+
+  /**
+   * Before every session start (open, recovery after a restart, reopen, resume, a switch of who
+   * does it): a browser place has its browser for the harness doing it now, and the spec is
+   * rebuilt from `base` with it. Throws (with the reason the partner tells) when the browser is
+   * unavailable.
+   */
+  async function prepareSpec(t: TaskRt) {
+    const h = t.base.harness;
+    if (t.card.place?.kind === "browser" && !t.ops.device && (!t.sidecar || t.sidecarInput?.harness !== h)) {
+      const prev = t.sidecarInput?.harness === h ? t.sidecarInput : undefined;
+      const input: SidecarInput = { place: t.card.place, persona: t.persona, taskId: t.id, dataDir: core.dataDir, partnerName: partnerNameOf(), harness: h, ...(prev?.forceCua ? { forceCua: true } : {}) };
+      const sc = await browserSidecar(input, opts.browser);
+      if (!sc) throw new Error("this browser place could not be prepared");
+      await sc.ready();
+      t.sidecar = sc;
+      t.sidecarInput = input;
+    }
+    t.guard = h === "codex" ? (t.guard ?? computerUseGuard({ chromeOnly: true })) : undefined;
+    t.spec = withBrowser(t.base, t.sidecar, partnerNameOf());
+  }
+
   async function startSession(t: TaskRt, resume: boolean) {
+    await prepareSpec(t);
     const spec: SessionSpec = resume && t.sessionId ? { ...t.spec, resumeSessionId: t.sessionId } : t.spec;
     const session = await t.ops.harness.start(spec);
     t.session = session;
@@ -226,6 +282,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     let offline = false;
     try {
       for await (const ev of session.events()) {
+        if (t.retired === session) break; // replaced on purpose (a browser driver switch)
         noteSessionId(t, session);
         handleEvent(t, ev);
         if (ev.turnEnd) await onTurnEnd(t, ev);
@@ -308,6 +365,66 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     if (ev.turnEnd && ev.usage) body.usage = ev.usage;
     if (raw) body.raw = raw;
     logEvent(t, body);
+    if (ev.tool && (t.sidecar || t.guard)) browserChecks(t, ev.tool);
+  }
+
+  /**
+   * A native browser's safety and fallback checks on each finished tool call (D130):
+   *   - guard: a call broke a rule Ducter can see (Codex Computer Use sent keys before opening
+   *     its own window): say so in a system line and steer the task to stop;
+   *   - fallback: the native tools can't work here (Claude in Chrome isn't connected): move the
+   *     task to cua-driver, said in a system line.
+   */
+  function browserChecks(t: TaskRt, tool: NonNullable<HarnessEvent["tool"]>) {
+    const sc = t.sidecar;
+    const hit = (sc?.guard ?? t.guard)?.(tool);
+    if (hit) {
+      logEvent(t, { role: "system", from: "runner", text: hit.line, raw: { browser: { guard: true } } });
+      const s = t.session;
+      if (s) void (isBusy(t) ? deliver(t, hit.steer, s.canSteer ? "steer" : "queue", "runner") : sendTurn(t, hit.steer, "runner")).catch(() => {});
+    }
+    if (!sc) return;
+    // Input that arrives meanwhile waits for the switch (send awaits t.started).
+    if (sc.fallback?.(tool)) t.started = switchToCua(t);
+  }
+
+  /** Claude in Chrome said "not connected": the same task carries on with Ducter's own browser (cua-driver). */
+  async function switchToCua(t: TaskRt) {
+    const input = t.sidecarInput;
+    const old = t.session;
+    if (!input || !old || t.dropped) return;
+    // First, synchronously: the old session's remaining events are ignored from here on.
+    t.retired = old;
+    t.session = undefined;
+    t.running = true;
+    let cua: BrowserSidecar | undefined;
+    try {
+      cua = await browserSidecar({ ...input, forceCua: true }, opts.browser);
+    } catch (err) {
+      cua = undefined;
+      const reason = preview(err instanceof Error ? err.message : String(err), 400);
+      logEvent(t, { role: "system", from: "runner", text: `Claude in Chrome isn't connected, and Ducter's own browser isn't available: ${reason}` });
+    }
+    await old.close().catch(() => {});
+    if (!cua) {
+      t.running = false;
+      setState(t, "blocked", "parked", "Claude in Chrome isn't connected");
+      return;
+    }
+    // The same task on cua-driver: startSession rebuilds the spec from base with it.
+    t.sidecar = cua;
+    t.sidecarInput = { ...input, forceCua: true };
+    logEvent(t, { role: "system", from: "runner", text: "Claude in Chrome isn't connected; switched to Ducter's own browser", raw: { browser: { driver: "cua", from: "native" } } });
+    try {
+      await cua.ready();
+      await startSession(t, !!t.sessionId);
+      await sendTurn(t, SWITCHED_TO_CUA, "runner");
+    } catch (err) {
+      t.running = false;
+      const reason = preview(err instanceof Error ? err.message : String(err), 500);
+      logEvent(t, { role: "system", from: "runner", text: `could not switch to Ducter's own browser: ${reason}` });
+      setState(t, "failed", "parked", reason);
+    }
   }
 
   async function onTurnEnd(t: TaskRt, ev: HarnessEvent) {
@@ -396,6 +513,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       mcp: [mcp],
       permissionMode: "bypass",
       isolateUserConfig: opts.isolateUserConfig ?? false,
+      // D130: a task keeps Codex's own browser and Computer Use, also under the clean setup.
+      keepNativeTools: true,
     };
     if (open.model) spec.model = open.model;
     return spec;
@@ -407,7 +526,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       id,
       persona,
       card,
-      spec,
+      base: spec,
+      spec: withBrowser(spec, undefined, partnerNameOf()),
       running: false,
       reportedThisTurn: false,
       nudged: false,
@@ -416,6 +536,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       attention: card.attention,
       residency: card.residency,
       started: Promise.resolve(),
+      // Codex may use its own Computer Use in any place: the tripwire watches every Codex task.
+      ...(spec.harness === "codex" ? { guard: computerUseGuard({ chromeOnly: true }) } : {}),
     };
   }
 
@@ -440,7 +562,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     for (const ev of core.log.read({ stream: stream(open.taskId), kinds: ["task_event"], limit: 50_000 })) {
       const raw = (ev.body as Bodies["task_event"]).raw as { sessionId?: string; cwd?: string } | undefined;
       if (raw?.sessionId) t.sessionId = t.loggedSessionId = raw.sessionId;
-      if (raw?.sessionId && raw.cwd && ops.device) t.spec.cwd = raw.cwd;
+      if (raw?.sessionId && raw.cwd && ops.device) t.spec.cwd = t.base.cwd = raw.cwd;
     }
     tasks.set(open.taskId, t);
     recovered.push(t);
@@ -506,10 +628,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const persona = input.persona || core.persona.id;
     const partnerName = opts.partnerName ?? core.persona.name ?? "Ducter";
     // Throws before the task exists when a browser place is unavailable (the partner says why).
-    const sidecar = await browserSidecar(
-      { place: resolved.place, persona, taskId: id, dataDir: core.dataDir, partnerName, harness: h, isolated: opts.isolateUserConfig ?? false },
-      opts.browser,
-    );
+    const sidecarInput: SidecarInput = { place: resolved.place, persona, taskId: id, dataDir: core.dataDir, partnerName, harness: h };
+    const sidecar = await browserSidecar(sidecarInput, opts.browser);
 
     // The partner's choice wins; else DUCTER_TASK_MODEL; else the harness default.
     const model = input.model || (h === "claude-code" ? (opts.defaultModel ?? opts.taskModel ?? process.env.DUCTER_TASK_MODEL) || undefined : undefined);
@@ -530,18 +650,9 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       openedAt: opened.ts,
       updatedAt: opened.ts,
     };
-    const specOf = (b: Bodies["task_open"], briefed: boolean) => {
-      const spec = specFor(id, b, resolved.cwd, briefed);
-      if (sidecar) {
-        spec.appendSystemPrompt = (spec.appendSystemPrompt ?? "") + sidecar.brief;
-        if (sidecar.mcp) spec.mcp = [...spec.mcp, sidecar.mcp];
-        if (h === "claude-code") Object.assign(spec, sidecar.claude);
-      }
-      return spec;
-    };
-    const spec = specOf(body, !later);
-    const t = newRt(id, persona, card, spec, ops);
-    if (sidecar) t.sidecar = sidecar;
+    const t = newRt(id, persona, card, specFor(id, body, resolved.cwd, !later), ops);
+    if (sidecar) (t.sidecar = sidecar), (t.sidecarInput = sidecarInput);
+    t.spec = withBrowser(t.base, sidecar, partnerName);
     tasks.set(id, t);
     core.tasks.setState(id, "queued", "provisioning");
 
@@ -571,7 +682,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
           // The briefed task_open is the one the registry, recovery and hand-offs read.
           const full = { ...body, brief: text };
           core.log.append({ persona, stream: stream(id), origin: "system", kind: "task_open", body: full });
-          t.spec = { ...specOf(full, true), cwd: t.spec.cwd };
+          t.base = { ...specFor(id, full, resolved.cwd, true), cwd: t.base.cwd };
+          t.spec = withBrowser(t.base, t.sidecar, partnerName);
           first = briefTurn(text, title);
         }
         if (t.dropped) return;
@@ -676,9 +788,11 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       t.running = false;
       t.sessionId = undefined;
       await old?.close().catch(() => {});
-      t.spec = { ...t.spec, harness: harness as HarnessId };
-      if (model) t.spec.model = model;
-      else delete t.spec.model;
+      // The next session start rebuilds the spec (and a browser place's browser) for it.
+      t.base = { ...t.base, harness: harness as HarnessId };
+      if (model) t.base.model = model;
+      else delete t.base.model;
+      t.spec = withBrowser(t.base, t.sidecarInput?.harness === harness ? t.sidecar : undefined, partnerNameOf());
       logEvent(t, { role: "system", from: "runner", text: `moved from ${from} to ${harness}${model ? ` (${model})` : ""}` });
       // Something left to do: carry on there now, from the saved progress. A finished or waiting
       // task keeps its state; the next message starts the new session.

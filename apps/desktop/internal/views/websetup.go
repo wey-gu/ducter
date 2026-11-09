@@ -84,6 +84,11 @@ func (a *App) webNeedsSetup(dv *protocol.DeviceView) bool {
 	if ab == nil || ab.State == protocol.AbilityUnavailable && ab.Reason != "cua_missing" && ab.Reason != "cua_old" {
 		return false
 	}
+	// An AI agent's own browser is ready (Codex, or Claude in Chrome connected): nothing to
+	// set up, cua-driver or not (D130).
+	if ab.Where == protocol.WhereChrome {
+		return false
+	}
 	if !a.web.checked {
 		return ab.State == protocol.AbilityUnavailable
 	}

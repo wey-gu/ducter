@@ -32,14 +32,14 @@ exactly what it will and won't do. This page lists it.
   service of its own in the cloud, and no account to sign up for.
 - **Your conversation, tasks and settings** stay in `~/.ducter` on the computer Ducter lives on.
   The folder and its files can only be read by your own user account.
-- **What does leave your computer** is what any coding agent sends: your messages and the work
+- **What does leave your computer** is what any AI agent sends: your messages and the work
   in a task go to the company behind your agent (Anthropic for Claude Code, OpenAI for Codex),
   under your own account and their terms. If you connect Nowledge Mem, memories go there too
   (below).
 
 ## Your AI plans stay yours
 
-Ducter works through each coding agent's own official app, signed in with your own account. It
+Ducter works through each AI agent's own official app, signed in with your own account. It
 doesn't proxy your login, share it, or pretend to be anything else. That's also why Ducter is
 something you run yourself rather than a hosted service.
 
@@ -60,7 +60,7 @@ always trace it back. If you edit a memory in Nowledge Mem, your edit wins.
 ## Tasks run as you
 
 Tasks don't stop to ask before every command; that would make Ducter one more thing to babysit.
-Instead, a task on your Mac runs with the same access your own coding agent session would have:
+Instead, a task on your Mac runs with the same access your own AI agent session would have:
 it can do what you can do there. That's the trade, and it's why merging and sending things out
 wait for you.
 

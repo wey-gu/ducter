@@ -8,15 +8,15 @@ order: 7
 
 ### What is Ducter, in one sentence?
 
-A personal AI on your own computers: you talk to one partner, it hands the work to a coding agent
+A personal AI on your own computers: you talk to one partner, it hands the work to an AI agent
 you already use, and it comes back when the work is done, with how it checked.
 
 ### Does it cost anything?
 
-Ducter itself is free and open source (Apache 2.0). The AI work runs on your coding agent's plan,
+Ducter itself is free and open source (Apache 2.0). The AI work runs on your AI agent's plan,
 so it counts against that plan's limits like any other session.
 
-### Which coding agents does it work with?
+### Which AI agents does it work with?
 
 Today, Claude Code and Codex, signed in with your own account. You need at least one. pi and
 DeepSeek Harness are coming soon, and more agents after that.

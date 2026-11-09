@@ -1,5 +1,5 @@
 /**
- * The coding agents Ducter hands work to. This is the only place the site names them:
+ * The AI agents Ducter hands work to. This is the only place the site names them:
  * move a name from `soon` to `today` when it is verified end to end.
  */
 export const agents = {

@@ -7,7 +7,7 @@ order: 0
 # Ducter docs
 
 Ducter is a personal AI that runs on your own Mac or server. You talk to one partner, in one
-conversation. It hands the work to a coding agent you already use
+conversation. It hands the work to an AI agent you already use
 ([which ones](faq.md#which-coding-agents-does-it-work-with)), on the plan you already pay for,
 and comes back when the work is done, with how it checked. It asks you only when a decision is
 yours to make.

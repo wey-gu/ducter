@@ -15,7 +15,7 @@ There are four ways to have Ducter, and you can mix them:
 | [A Linux server](#a-linux-server-that-stays-on) | Keeping your partner working while your Mac sleeps | Ready |
 | [Your phone](#your-phone) | Answering decisions and checking results on the go | Ready in the phone's browser; an iPhone app is coming soon |
 
-Whichever you choose, you need a coding agent, **Claude Code or Codex** today, installed and
+Whichever you choose, you need an AI agent, **Claude Code or Codex** today, installed and
 signed in on the computer that does the work ([which agents](faq.md#which-coding-agents-does-it-work-with)).
 Ducter uses your own plan through it; it never asks for an API key to get started.
 

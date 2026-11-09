@@ -28,6 +28,7 @@
 | Project | **项目 / Project**; no project = **其他 / Other** | An editable grouping label |
 | Place | **在哪儿做 / Where** | Where a task works |
 | Device (machine, runner) | **设备 / Devices** | |
+| harness (Claude Code, Codex, pi, DeepSeek Harness, …) | each by its own product name; as a category **AI agent / AI agent** (D88) | The AI tools Ducter hands work to. Not "coding agent": people use them for much more than code |
 | Routine | **例行 / Routine** | Recurring or triggered work |
 | Waiter | (shown as the reason for Waiting: "在等 PR 通过 / Waiting for the PR to be approved") | |
 | `until` loop | "一直…直到… / Keep … until …" on the task | |

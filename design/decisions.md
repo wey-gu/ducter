@@ -131,6 +131,12 @@ approved all five proposals ("按照建议来吧").
 |---|---|---|---|
 | D80 | **The overview is 「手头的事」 in zh** (en stays On hand). 「手头」 alone reads as money at hand (手头紧) and as a fragment, not a place; 「当下」 was considered and rejected because it implies only what is happening now (done tasks, waiting decisions and next runs live here too) and reads as literary. Sentences that already say 手头没事 / 手头 n 件事 stay: they are speech, not the label. D76–D79 are taken by the brand rollout | U | `design/product-model.md`, `design/ui.md`, the desktop, phone web and CLI i18n |
 
+## 2026-11-09: What the tools are called (the author's "我倾向于叫他们 ai agents 而不是编程助手，很多人用他们做非编程的事情和工作的")
+
+| # | Decision | Source | Reflected in |
+|---|---|---|---|
+| D88 | **The harnesses are "AI agents"** as a category, in zh and en (Chinese users already say "AI agent"); each is named by its own product name. Not "coding agent" / 编程助手: people use them for work that isn't code. D81–D87 are held by open branches | U | `design/product-model.md`, the site, `docs/` |
+
 ## Superseded
 
 - **"Main AI asks windows instead of unfolding"** (first principle-3 draft). Superseded by D3:

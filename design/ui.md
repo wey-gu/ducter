@@ -113,6 +113,9 @@ buttons on the paper: **合进 main / Merge into main** (ink 700) when it is the
 check; "2 files changed ›" opening the task at its changes; the task's title as a quiet link),
 **开草稿 PR / Open draft PR** as a quiet link, and the message's **记下了 / Noted** lines with
 **忘掉 / Forget**. The opened task (D74) keeps Merge into main / Open draft PR as clay buttons.
+Neither action shows when the task's branch holds nothing its base doesn't: core checks the
+branch (commits ahead, uncommitted work) when a done or failed report lands and carries it on the
+report (`branch`); unknown keeps them, and the action itself still refuses in words.
 No blockquote rule, no label column, no capsules. Full note: `design/quiet-conversation.md`.
 
 **Notices: the app speaking, never the partner.** The partner speaks in 18px on the paper and
@@ -174,7 +177,7 @@ the clay thing awaited (PR, cloud, envelope, clock, file; `design/art/assets/alp
 
 | Thing | Idle motion |
 |---|---|
-| the clay partner | breathes (scale 1.012 × 1.03 from its feet, 3.8 s); blinks with an eyelid over its eyes (150 ms, every 3–6 s, sometimes twice) |
+| the clay partner | breathes (scale 1.012 × 1.03 from its feet, 3.8 s); blinks (150 ms, every 3–6 s, sometimes twice): the same render with its eyes closed (each eye filled from the clay round it, `tools/art/eyes.py`) shows through an upper lid that comes down and a lower lid that rises late, a crease riding the upper lid's edge; it differs from the open face only inside the lids, so no patch can show. The phone swaps to that closed frame. Reduced motion: no blink |
 | an awake device | floats 5pt (5.6 s) |
 | a cloud machine | drifts ±4pt (11 s) |
 | a sleeping device | its blanket rises and falls (scale-y 1.045 from the bottom, 4.8 s) |

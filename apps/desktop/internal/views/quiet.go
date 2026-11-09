@@ -174,7 +174,7 @@ func (a *App) detailsPane(c *ui.Context, key string, body func()) {
 func (a *App) mergeAction(c *ui.Context, task *store.Task) {
 	t := a.T
 	p := task.Place()
-	if !finished(task) || task.Attention() == protocol.Failed || p.Kind != "repo" || p.Branch == "" {
+	if !finished(task) || !task.CanIntegrate() {
 		return
 	}
 	base := p.BaseBranch
@@ -217,9 +217,8 @@ func (a *App) resultDetails(c *ui.Context, task *store.Task, detail string) {
 		evs = r.LastReport.Evidence
 	}
 	a.proofLine(c, task, evs, true)
-	p := task.Place()
 	merged := task.Acted != nil && task.Acted.OK && task.Acted.Action == "merge"
-	if task.Attention() != protocol.Failed && p.Kind == "repo" && p.Branch != "" && task.Acting == "" && !merged {
+	if task.CanIntegrate() && task.Acting == "" && !merged {
 		if a.quietLink(c, "pr:"+task.ID, a.L.T("result.pr"), a.L.T("result.pr")+" · "+task.Title()) {
 			task.Acting = "open_pr"
 			a.TaskAction(task.ID, "open_pr")

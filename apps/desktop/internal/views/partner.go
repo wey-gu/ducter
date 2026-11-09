@@ -36,6 +36,7 @@ type partnerState struct {
 	// Adding a connection (D96): the form, where it runs, the address and
 	// the token being typed (dropped once it is sent).
 	acctAdding  bool
+	acctHow     bool // "How to connect" is open: the setup steps behind the fold
 	acctWhere   int // 0 OOMOL Hosted, 1 self-hosted, 2 other MCP
 	acctURL     string
 	acctToken   string
@@ -583,6 +584,18 @@ func (a *App) accountsCard(c *ui.Context) {
 			}
 			a.acctField(c, "acct-url", a.L.T("acct.address"), &ps.acctURL, false, submit)
 			a.acctField(c, "acct-token", a.L.T("acct.key"), &ps.acctToken, true, submit)
+			// The technical steps (where the key is made) stay behind a fold:
+			// the card says what it does for the person, not how it's wired.
+			how := a.L.T("acct.how")
+			if ps.acctHow {
+				how = a.L.T("acct.how.hide")
+			}
+			if a.quietLink(c, "acct-how", how, a.L.T("acct.how")) {
+				ps.acctHow = !ps.acctHow
+			}
+			if ps.acctHow {
+				a.note(c, a.L.T("acct.how."+wheres[ps.acctWhere]))
+			}
 			ui.Row(c).Gap(t.S2).Justify(ui.End).Children(func() {
 				if a.button(c, a.L.T("acct.cancel"), btnText, t.ControlMD, t.Surface) {
 					ps.acctAdding, ps.acctToken = false, ""

@@ -80,9 +80,9 @@ func (a *App) avatar(c *ui.Context, p theme.Presence, size float32) {
 				continue
 			}
 			// It breathes, and blinks while idle (D77).
-			var lids *[2]theme.Lid
+			var lids *blinkArt
 			if q == theme.Idle {
-				lids = &squareLids
+				lids = squareBlink(size * 2)
 			}
 			phase := phaseOf(fmt.Sprint("avatar", size))
 			ui.Box(c.Key(q)).Size(size, size).Absolute().Top(0).Left(0).Opacity(op).Draw(func(p *ui.Painter, r ui.Rect) {
@@ -106,15 +106,3 @@ func (a *App) noteResults(f protocol.ServerFrame) {
 	}
 }
 
-// squareLids are the idle face's eyelids on the square art (theme.Art),
-// mapped through where the cut-out idle art sits in it.
-var squareLids = func() [2]theme.Lid {
-	sq := theme.IdleSquareContent
-	var out [2]theme.Lid
-	for i, l := range theme.FaceLids {
-		l.X, l.Y = sq.X+l.X*sq.W, sq.Y+l.Y*sq.H
-		l.W, l.H = l.W*sq.W, l.H*sq.H
-		out[i] = l
-	}
-	return out
-}()

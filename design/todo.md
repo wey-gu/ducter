@@ -270,6 +270,10 @@ Codex first, once OAR is near 1.0. See `research/17`.
       Trigger: Mem exposes how to start it from outside.
 - [ ] Moving the app out of the disk image (offer "Move to Applications" when run from
       `/Volumes` or a translocated copy). Trigger: the first friend who opens it from the DMG.
+- [ ] Remove Ducter from a copy run off the disk image: the plan's last step moves Ducter.app
+      to the Trash, which a read-only `/Volumes` copy can't do (and the installed copy, if any,
+      stays). Say so in the plan and leave the app alone. Trigger: with the "Move to
+      Applications" offer above, or the first report of it.
 
 ## Partner and Settings (D71)
 

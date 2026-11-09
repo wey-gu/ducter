@@ -51,6 +51,10 @@ export interface PlanInput {
   t: T;
   /** `git -C dir args…`; returns stdout or null on failure. Injected by tests. */
   git?: (dir: string, args: string[]) => string | null;
+  /** The AI agents installed on this machine, found by probing (pi ships inside Ducter and
+   *  leaves with it, so it isn't one). Each gets a keep line saying what is actually true;
+   *  absent (not probed) or empty: no line, never a claim we didn't check. */
+  agents?: { name: string; signedIn: boolean }[];
 }
 
 export function realGit(dir: string, args: string[]): string | null {
@@ -209,7 +213,7 @@ export function planUninstall(i: PlanInput): Plan {
 
   keep.push(
     { what: t("uninstall.keep.repos"), detail: t("uninstall.keep.repos.detail") },
-    { what: t("uninstall.keep.logins"), detail: t("uninstall.keep.logins.detail") },
+    ...(i.agents ?? []).map((a) => ({ what: a.name, detail: t(a.signedIn ? "uninstall.keep.agent.signedIn" : "uninstall.keep.agent.installed") })),
     { what: "Nowledge Mem", detail: t("uninstall.keep.mem.detail") },
     { what: "cua-driver", detail: t("uninstall.keep.cua.detail") },
   );

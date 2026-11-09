@@ -7,7 +7,7 @@ import { format, joinHan, langOfText, strings, TABLES } from "../src/i18n.ts";
 import { sameWords, splitOutcome } from "../src/format.ts";
 import { autospace, unspace } from "../src/autospace.ts";
 import { markdown } from "../src/markdown.ts";
-import { headlineEvidence, isOutside, Store, title } from "../src/store.ts";
+import { canIntegrate, headlineEvidence, isOutside, Store, title } from "../src/store.ts";
 
 let seq = 0;
 const ev = (kind: string, body: unknown, o: Partial<LogEvent> = {}): LogEvent =>
@@ -114,6 +114,21 @@ describe("store (parity with the desktop store)", () => {
     s.apply({ t: "events", events: [ev("job_status", { jobId: "act_t1_merge", taskId: "t1", state: "done", text: "merged" }, { origin: "user" })] });
     s.apply({ t: "on_hand", onHand: { tasks: [{ taskId: "t1", title: "fix", attention: "done" }] } as never });
     expect(s.tasks.get("t1")!.acted).toEqual({ action: "merge", ok: true });
+  });
+
+  test("Merge / Open draft PR only when the task's branch holds something (core's check at report time)", () => {
+    const s = new Store();
+    const place = { kind: "repo", device: "local", repoPath: "/r", worktree: "/w", branch: "ducter/look", baseBranch: "main" };
+    const stream = "task:tm";
+    s.apply({ t: "events", events: [ev("task_open", { taskId: "tm", title: "look", project: "", place, harness: "claude-code", brief: "b" }, { stream })] });
+    const report = (branch?: unknown) => ev("report", { taskId: "tm", state: "done", summary: "没改任何文件", questions: [], evidence: [], ...(branch ? { branch } : {}) }, { stream, origin: "task" });
+    const state = ev("task_state", { taskId: "tm", attention: "done", residency: "warm" }, { stream });
+    s.apply({ t: "events", events: [report({ commits: 0, uncommitted: false }), state] });
+    expect(canIntegrate(s.task("tm"))).toBe(false);
+    s.apply({ t: "events", events: [report({ commits: 2, uncommitted: false })] });
+    expect(canIntegrate(s.task("tm"))).toBe(true);
+    s.apply({ t: "events", events: [report()] }); // an older core: unknown keeps the actions
+    expect(canIntegrate(s.task("tm"))).toBe(true);
   });
 
   test("a Done row names the latest check of the best kind, as the desktop does", () => {

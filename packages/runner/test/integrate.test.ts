@@ -8,7 +8,8 @@ import type { Place } from "@ducter/protocol";
 import type { HarnessEvent, HarnessPort, HarnessSession, SessionSpec } from "@ducter/protocol/src/internal.ts";
 import { startCore, type Core } from "../../core/src/core.ts";
 import { createRunner, mergeTaskBranch, openDraftPr, registerTaskTools } from "../src/index.ts";
-import { mergeRefusal } from "../src/integrate.ts";
+import { branchChanges, mergeRefusal } from "../src/integrate.ts";
+import { hasBranchChanges, type Bodies } from "@ducter/protocol";
 import { git } from "../src/places.ts";
 
 let dir: string;
@@ -120,6 +121,46 @@ test("open_pr with a signed-in gh pushes the branch and logs an outside effect",
   await runner.dispose();
 });
 
+test("branchChanges: commits ahead of the base and uncommitted work; nothing on a fresh branch", async () => {
+  const p = repoWithTaskBranch();
+  expect(await branchChanges(p)).toEqual({ commits: 1, uncommitted: false });
+  writeFileSync(join(p.worktree!, "c.txt"), "c\n"); // untracked counts: the task made it
+  expect(await branchChanges(p)).toEqual({ commits: 1, uncommitted: true });
+  const fresh = join(dir, "fresh");
+  sh(p.repoPath, "worktree", "add", "-q", fresh, "-b", "ducter/nothing", "main");
+  const none = { ...p, worktree: fresh, branch: "ducter/nothing" };
+  expect(await branchChanges(none)).toEqual({ commits: 0, uncommitted: false });
+  expect(hasBranchChanges({ branch: { commits: 0, uncommitted: false } })).toBe(false);
+  expect(hasBranchChanges({ branch: { commits: 0, uncommitted: true } })).toBe(true);
+  expect(hasBranchChanges({})).toBe(true); // unknown: the actions stay, and refuse in words if empty
+  expect(await branchChanges({ ...p, baseBranch: undefined })).toBeUndefined();
+  expect(await branchChanges({ kind: "folder", device: "local", path: dir })).toBeUndefined();
+});
+
+test("a done report carries the branch check: a task that changed nothing says so to clients", async () => {
+  const repo = join(dir, "repo");
+  Bun.spawnSync(["git", "init", "-q", "-b", "main", repo]);
+  writeFileSync(join(repo, "a.txt"), "a\n");
+  sh(repo, "add", ".");
+  sh(repo, "commit", "-qm", "init");
+  const { core, runner, taskId } = await bootWithTask({ kind: "repo", device: "local", repoPath: repo }, { branchChecks: true });
+  await core.mcp.call({ role: "task", taskId }, "report_to_main", { state: "done", summary: "Nothing to change: it already works." });
+  const r = core.log.read({ stream: `task:${taskId}`, kinds: ["report"] }).at(-1)!.body as Bodies["report"];
+  expect(r.branch).toEqual({ commits: 0, uncommitted: false });
+  expect(core.tasks.get(taskId)!.lastReport?.branch).toEqual({ commits: 0, uncommitted: false });
+  // The task commits something and reports again: now there is something to merge.
+  const wt = (core.tasks.get(taskId)!.place as Extract<Place, { kind: "repo" }>).worktree!;
+  writeFileSync(join(wt, "b.txt"), "b\n");
+  sh(wt, "add", ".");
+  sh(wt, "commit", "-qm", "b");
+  await core.mcp.call({ role: "task", taskId }, "report_to_main", { state: "done", summary: "Added b." });
+  expect(core.tasks.get(taskId)!.lastReport?.branch).toEqual({ commits: 1, uncommitted: false });
+  // A progress report isn't checked (nothing is offered on one).
+  await core.mcp.call({ role: "task", taskId }, "report_to_main", { state: "progress", summary: "More." });
+  expect(core.tasks.get(taskId)!.lastReport?.branch).toBeUndefined();
+  await runner.dispose();
+});
+
 test("a task with an open question cannot report done; undrop restores the card", async () => {
   const p = repoWithTaskBranch();
   const { core, runner, taskId } = await bootWithTask(p);
@@ -141,11 +182,13 @@ test("a task with an open question cannot report done; undrop restores the card"
   await runner.dispose();
 });
 
-async function bootWithTask(place: Place, opts: { gh?: string } = {}) {
+async function bootWithTask(place: Place, opts: { gh?: string; branchChecks?: boolean } = {}) {
   const core: Core = startCore({ dataDir: join(dir, "data"), port: 0 });
   core.setPartner({ onTrigger: () => {} });
-  registerTaskTools(core);
+  let late: ReturnType<typeof createRunner> | undefined;
+  registerTaskTools(core, opts.branchChecks ? { branchChanges: (id) => late!.branchChanges(id) } : {});
   const runner = createRunner(core, { harness: idlePort(), gh: opts.gh, newId: () => "t1" });
+  late = runner;
   core.setRunner(runner);
   const card = await runner.openTask({ persona: "default", title: "fix", brief: "b", place });
   await runner.whenStarted(card.taskId);

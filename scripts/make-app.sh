@@ -191,13 +191,31 @@ if [ "$IDENTITY" != - ]; then
 fi
 
 say "5/5 the disk image"
+# A laid-out window, without Finder or a GUI session (CI builds it too): the app on its little
+# island on the left, a clay arrow, Applications on the right (tools/art/dmg_background.py).
+# The image is made read-write, mounted out of sight, given its .DS_Store
+# (scripts/macos/dmg-layout.ts) and the app icon as its own, then compressed.
 STAGE="$WORK/dmg"
-mkdir -p "$STAGE"
+mkdir -p "$STAGE/.background"
 cp -R "$APP" "$STAGE/"
 ln -s /Applications "$STAGE/Applications"
+# One TIFF with both resolutions: Finder picks the @2x one on a Retina screen.
+tiffutil -cathidpicheck "$ROOT/scripts/macos/dmg/background.png" "$ROOT/scripts/macos/dmg/background@2x.png" \
+  -out "$STAGE/.background/background.tiff" >/dev/null 2>&1
+cp "$WORK/AppIcon.icns" "$STAGE/.VolumeIcon.icns"
 DMG="$OUT/$NAME-$VERSION-$ARCH.dmg"
+RW="$WORK/rw.dmg"
 rm -f "$DMG"
-hdiutil create -quiet -volname "$NAME" -srcfolder "$STAGE" -fs HFS+ -format UDZO -ov "$DMG"
+hdiutil create -quiet -volname "$NAME" -srcfolder "$STAGE" -fs HFS+ -format UDRW -ov "$RW"
+MNT="$WORK/mnt"
+mkdir -p "$MNT"
+hdiutil attach -quiet -nobrowse -noautoopen -readwrite -mountpoint "$MNT" "$RW"
+detach() { hdiutil detach -quiet "$MNT" 2>/dev/null || hdiutil detach -quiet -force "$MNT"; }
+if ! bun "$ROOT/scripts/macos/dmg-layout.ts" "$MNT" "$NAME" "$NAME.app"; then detach; exit 1; fi
+# The volume shows the app icon: the root folder's Finder info has kHasCustomIcon (0x0400).
+xattr -wx com.apple.FinderInfo 0000000000000000040000000000000000000000000000000000000000000000 "$MNT"
+detach
+hdiutil convert -quiet "$RW" -format UDZO -imagekey zlib-level=9 -o "$DMG"
 if [ "$IDENTITY" != - ]; then
   codesign --force --timestamp --sign "$IDENTITY" --identifier "$ID.dmg" "$DMG"
   if [ "$NOTARIZED" = yes ]; then

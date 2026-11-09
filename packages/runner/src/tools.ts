@@ -1,6 +1,6 @@
 // Task-role Ducter MCP tools: report_to_main and checkpoint. Core serves them at /mcp; this
 // registers the handlers. Call once at wiring time (main.ts) unless core registers its own.
-import type { Attention, Bodies, EvidenceRef, Question } from "@ducter/protocol";
+import type { Attention, Bodies, BranchChanges, EvidenceRef, Question } from "@ducter/protocol";
 import type { CoreApi } from "@ducter/protocol/src/internal.ts";
 
 const SUMMARY_MAX = 600;
@@ -82,7 +82,27 @@ export function normalizeReport(taskId: string, args: any): Bodies["report"] {
   return { taskId, state, summary, questions, evidence };
 }
 
-export function registerTaskTools(core: CoreApi): void {
+export interface TaskToolOptions {
+  /** What the task's branch holds that its base doesn't, checked when a done or failed report
+   *  lands (the runner's branchChanges). Clients offer Merge / Open draft PR only when it has some. */
+  branchChanges?(taskId: string): Promise<BranchChanges | undefined>;
+}
+
+/** The branch check must never hold a report up: past this it is left unknown. */
+const BRANCH_CHECK_MS = 3_000;
+
+async function branchOf(opts: TaskToolOptions, taskId: string): Promise<BranchChanges | undefined> {
+  if (!opts.branchChanges) return undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<undefined>((r) => (timer = setTimeout(() => r(undefined), BRANCH_CHECK_MS)));
+  try {
+    return await Promise.race([opts.branchChanges(taskId).catch(() => undefined), late]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export function registerTaskTools(core: CoreApi, opts: TaskToolOptions = {}): void {
   core.mcp.register(
     "task",
     "report_to_main",
@@ -100,6 +120,10 @@ export function registerTaskTools(core: CoreApi): void {
         );
       }
       const persona = core.tasks.get(ctx.taskId)?.persona;
+      if (body.state === "done" || body.state === "failed") {
+        const branch = await branchOf(opts, ctx.taskId);
+        if (branch) body.branch = branch;
+      }
       core.log.append({ persona, stream: `task:${ctx.taskId}`, origin: "task", kind: "report", body });
       const card = core.tasks.get(ctx.taskId);
       // No reason text: task_state.reason is user-facing copy (decisions.ts sets blocked/failed ones).

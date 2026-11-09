@@ -31,6 +31,9 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageFilter
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from eyes import _gauss, close_eyes, find_eyes, lid_box  # noqa: E402
+
 src = Path(sys.argv[1])
 out = Path(sys.argv[2])
 width = int(sys.argv[3]) if len(sys.argv) > 3 else 3200
@@ -150,6 +153,15 @@ def clarity(rgb_, alpha, radius=24, amount=0.22):
 
 duc_rgb = clarity(duc_rgb, a_duc)
 isl_rgb = clarity(isl_rgb, m_plate, radius=30, amount=0.15)
+# The island's rim: Vision's soft edge runs a few pixels past the clay, and
+# there the plate and the sky behind it don't quite match, so solving the
+# blend lifts the difference into a light lilac halo. Pull the edge in a
+# little (save_layer then gives the rim the clay's own color).
+# Vision's edge is a little lumpy where the clay meets the haze: smooth it
+# first, so the rim reads as one soft curve.
+m_plate = _gauss(m_plate[..., None], 2.5)[..., 0]
+m_plate = np.clip((m_plate - 0.12) / 0.83, 0, 1)
+m_plate = m_plate * m_plate * (3 - 2 * m_plate)
 
 
 def bbox(alpha, pad=8):
@@ -160,7 +172,25 @@ def bbox(alpha, pad=8):
 s = width / W
 
 
-def save_layer(name, color, alpha):
+def extend_edge(c, a, solid=0.97):
+    """Every pixel that isn't solid takes the color of the solid layer next
+    to it (pulled outward by normalized blurs, near first), so the rim is
+    the clay fading out and the transparent pixels round it carry the same
+    color: a renderer that filters straight alpha can't bleed anything else
+    in at the edge."""
+    m = (a >= solid).astype(np.float32)
+    ext = c.copy()
+    have = m.copy()
+    for sigma in (1.5, 4, 12, 40):
+        num = _gauss(c * m, sigma)
+        den = _gauss(m, sigma)
+        pick = (have[..., 0] < 0.5) & (den[..., 0] > 0.02)
+        ext[pick] = num[pick] / den[pick]
+        have[pick] = 1
+    return np.where(a >= solid, c, ext)
+
+
+def save_layer(name, color, alpha, lossless=False):
     x0, y0, x1, y1 = bbox(alpha)
     rgba = np.dstack([color[y0:y1, x0:x1], alpha[y0:y1, x0:x1]])
     im = Image.fromarray((rgba * 255 + 0.5).astype(np.uint8), "RGBA")
@@ -172,8 +202,13 @@ def save_layer(name, color, alpha):
     p = np.asarray(pim).astype(np.float32) / 255
     a = p[..., 3:4]
     c = np.where(a > 1e-3, p[..., :3] / np.maximum(a, 1e-3), 0)
+    c = extend_edge(np.clip(c, 0, 1), a)
     small = Image.fromarray((np.dstack([np.clip(c, 0, 1), a]) * 255 + 0.5).astype(np.uint8), "RGBA")
-    small.save(out / f"{name}.webp", quality=90, alpha_quality=100, method=6)
+    if lossless:
+        # exact: keep the color under every transparent pixel (extend_edge's).
+        small.save(out / f"{name}.webp", lossless=True, quality=100, method=6, exact=True)
+    else:
+        small.save(out / f"{name}.webp", quality=90, alpha_quality=100, method=6, exact=True)
     small.save(out / f"{name}-check.png")
     return {"x": x0 / W, "y": y0 / H, "w": (x1 - x0) / W, "h": (y1 - y0) / H, "px": [w, h]}
 
@@ -185,48 +220,19 @@ sk = np.stack([np.asarray(Image.fromarray(sky[..., i].astype(np.float32), "F").r
 rng = np.random.default_rng(87)
 tri = (rng.random(sk.shape) - rng.random(sk.shape)).astype(np.float32)
 Image.fromarray(np.clip(sk * 255 + 0.5 + tri, 0, 255).astype(np.uint8)).save(out / "sky.webp", quality=95, method=6)
-layout["island"] = save_layer("island", isl_rgb, m_plate)
+# The island fills a third of the window at full size: lossless, so its
+# soft clay gradients show no blocks on a Retina screen.
+layout["island"] = save_layer("island", isl_rgb, m_plate, lossless=True)
 layout["ducter"] = save_layer("ducter", duc_rgb, a_duc)
 
-# The eyes: the two biggest dark blobs in Ducter's upper half, found on the
-# layer itself (so the boxes are fractions of ducter.webp).
+# The eyes, closed: the same layer with each eye filled from the clay round
+# it (tools/art/eyes.py), and the lid boxes the blink draws it through.
 duc = np.asarray(Image.open(out / "ducter-check.png").convert("RGBA")).astype(np.float32) / 255
-crop, ca = duc[..., :3], duc[..., 3]
-lum = crop.mean(axis=2)
-dark = (lum < 0.22) & (ca > 0.9)
-dark[int(dark.shape[0] * 0.55):] = False
-lab, sizes = components(dark)
-order = np.argsort(sizes)[::-1]
-eyes = []
-for n in order[:2]:
-    ys, xs = np.nonzero(lab == n)
-    eyes.append((ys.min(), xs.min(), ys.max(), xs.max()))
-eyes.sort(key=lambda e: e[1])
-ch, cw = crop.shape[:2]
-
-# The sleeping face: each eye painted over with the skin around it, each
-# column blended from the skin just above the eye to the skin just below,
-# feathered at an ellipse, so the lid is the same lit clay as the face.
-closed = crop.copy()
-yy, xx = np.mgrid[0:ch, 0:cw]
-lids = []
-for ey0, ex0, ey1, ex1 in eyes:
-    ew, eh = ex1 - ex0, ey1 - ey0
-    cx, cy = (ex0 + ex1) / 2, (ey0 + ey1) / 2
-    rx, ry = ew * 0.5 * 1.42, eh * 0.5 * 1.28
-    top, bot = int(cy - 1.2 * ry), int(cy + 1.2 * ry)
-    fill = crop.copy()
-    for x in range(int(cx - 1.25 * rx), int(cx + 1.25 * rx) + 1):
-        above, below = crop[top - 3:top, x].mean(axis=0), crop[bot:bot + 3, x].mean(axis=0)
-        t = np.linspace(0, 1, bot - top)[:, None]
-        fill[top:bot, x] = above * (1 - t) + below * t
-    # Columns blended one by one leave faint streaks: soften across them.
-    fill = np.asarray(Image.fromarray((np.clip(fill, 0, 1) * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(3))).astype(np.float32) / 255
-    d = ((xx - cx) / rx) ** 2 + ((yy - cy) / ry) ** 2
-    w = np.clip((1.3 - d) / 0.4, 0, 1)[..., None]  # 1 inside, feathered past the eye
-    closed = fill * w + closed * (1 - w)
-    lids.append({"x": float((cx - rx) / cw), "y": float((cy - ry) / ch), "w": float(2 * rx / cw), "h": float(2 * ry / ch)})
-Image.fromarray((np.dstack([np.clip(closed, 0, 1), ca]) * 255 + 0.5).astype(np.uint8), "RGBA").save(
+ch, cw = duc.shape[:2]
+boxes = [lid_box(e) for e in find_eyes(duc)]
+closed = close_eyes(duc, boxes)
+lids = [{"x": float(b[0] / cw), "y": float(b[1] / ch), "w": float((b[2] - b[0]) / cw), "h": float((b[3] - b[1]) / ch)} for b in boxes]
+Image.fromarray((np.clip(closed, 0, 1) * 255 + 0.5).astype(np.uint8), "RGBA").save(
     out / "ducter_closed.webp", quality=90, alpha_quality=100, method=6)
 layout["lids"] = lids
 (out / "layers.json").write_text(json.dumps(layout, indent=1))

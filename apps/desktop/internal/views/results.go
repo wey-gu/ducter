@@ -162,7 +162,7 @@ func (a *App) outsideLine(task *store.Task) string {
 func (a *App) resultActions(c *ui.Context, task *store.Task) {
 	t := a.T
 	p := task.Place()
-	if task.Attention() == protocol.Failed || p.Kind != "repo" || p.Branch == "" {
+	if !task.CanIntegrate() {
 		return
 	}
 	base := p.BaseBranch

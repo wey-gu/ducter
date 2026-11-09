@@ -200,11 +200,11 @@ func titleLids(t float64) float64 {
 	a := t - titleEyes
 	switch {
 	case a < 0.22:
-		return 1 - 0.6*outCubic(a/0.22)
+		return 1 - 0.45*outCubic(a/0.22)
 	case a < 0.36:
-		return 0.4
+		return 0.55
 	case a < 0.62:
-		return 0.4 * (1 - outCubic((a-0.36)/0.26))
+		return 0.55 * (1 - outCubic((a-0.36)/0.26))
 	}
 	if t >= titleFirstBlink {
 		if b := math.Mod(t-titleFirstBlink, 4.3); b < 0.15 {
@@ -324,6 +324,9 @@ func (a *App) drawTitle(p *ui.Painter, r ui.Rect) {
 		t = titleRest
 	}
 	f := titleAt(t)
+	if rm {
+		f.lids = 0 // reduced motion: awake and still, never a blink
+	}
 	L := art.Layout
 	W, H := r.W, r.H
 	FH := L.Frame[1] / L.Frame[0]
@@ -496,29 +499,17 @@ func (a *App) drawTitle(p *ui.Painter, r ui.Rect) {
 	}
 }
 
-// titleLidsDraw shuts Ducter's eyes by k (1 shut): the sleeping face shows
-// through a lid whose lower edge rises as the eyes open, with the closed
-// eye's line riding just above it, fading as it lifts.
+// titleLidsDraw shuts Ducter's eyes by k (1 shut): the sleeping face
+// through a lid over each eye, as every blink is drawn (lids.go).
 func titleLidsDraw(p *ui.Painter, art *theme.TitleArt, dr ui.Rect, k float64) {
-	if k <= 0.005 {
+	if art.Closed == nil || len(art.Layout.Lids) == 0 {
 		return
 	}
+	b := blinkArt{closed: art.Closed}
 	for _, l := range art.Layout.Lids {
-		bx, by, bw, bh := dr.X+l.X*dr.W, dr.Y+l.Y*dr.H, l.W*dr.W, l.H*dr.H
-		ye := by + bh*float32(k)
-		var clip ui.Path
-		clip.MoveTo(bx-bw*0.1, by-bh*0.15).LineTo(bx+bw*1.1, by-bh*0.15).LineTo(bx+bw*1.1, ye).
-			QuadTo(bx+bw/2, ye+bh*0.18*float32(k), bx-bw*0.1, ye).Close()
-		p.ClipPath(&clip, func() {
-			p.ImageRegion(art.Closed, ui.Rect{}, dr, ui.ImageOptions{})
-		})
-		if la := smooth01((k - 0.45) / 0.5); la > 0.01 {
-			ly := by + bh*0.56*float32(k)
-			var lash ui.Path
-			lash.MoveTo(bx+bw*0.12, ly).QuadTo(bx+bw/2, ly+bh*0.16, bx+bw*0.88, ly).Cap(ui.RoundCap)
-			p.StrokePath(&lash, max(1, bw*0.085), rgba(58, 33, 22, la))
-		}
+		b.lids = append(b.lids, theme.Lid{X: l.X, Y: l.Y, W: l.W, H: l.H})
 	}
+	drawLids(p, &b, dr, k)
 }
 
 // titlePrompt draws "Press any key", small and letter-spaced, centered at

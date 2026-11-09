@@ -306,3 +306,27 @@ func TestMemoryNotedIsOneQuietEntry(t *testing.T) {
 		t.Errorf("noted entry %+v", s.Channel[2])
 	}
 }
+
+// Merge / Open draft PR are offered only when the task's branch holds
+// something its base doesn't (core's check at report time).
+func TestCanIntegrateFollowsTheBranchCheck(t *testing.T) {
+	s := New()
+	place := protocol.Place{Kind: "repo", Device: "local", RepoPath: "/r", Worktree: "/w", Branch: "ducter/look", BaseBranch: "main"}
+	s.Apply(events(ev(1, "task:tm", protocol.KindTaskOpen, protocol.TaskOpen{TaskID: "tm", Title: "look", Place: place, Harness: "claude-code", Brief: "b"})))
+	report := func(seq int64, b *protocol.BranchChanges) protocol.LogEvent {
+		return ev(seq, "task:tm", protocol.KindReport, protocol.Report{TaskID: "tm", State: "done", Summary: "no files changed", Branch: b})
+	}
+	s.Apply(events(report(2, &protocol.BranchChanges{Commits: 0})))
+	task := s.Tasks["tm"]
+	if task == nil || task.CanIntegrate() {
+		t.Fatalf("a branch with nothing on it offers Merge: %+v", task)
+	}
+	s.Apply(events(report(3, &protocol.BranchChanges{Commits: 1})))
+	if !task.CanIntegrate() {
+		t.Fatal("a branch with a commit offers no Merge")
+	}
+	s.Apply(events(report(4, nil)))
+	if !task.CanIntegrate() {
+		t.Fatal("unknown (an older core) should keep the actions")
+	}
+}

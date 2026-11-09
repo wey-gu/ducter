@@ -11,6 +11,7 @@ import (
 	"github.com/egoist/mygo/ui/markdown"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/diff"
+	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
@@ -617,9 +618,8 @@ func (a *App) systemLine(c *ui.Context, b *protocol.TaskEvent) {
 	case "turn completed", "turn complete", "turn ended":
 		text = a.L.T("task.turn.done")
 	}
-	if u := b.Usage; u != nil && u.InputTokens+u.OutputTokens > 0 {
-		text += " · " + tokens(u.InputTokens+u.CacheRead+u.CacheWrite) + " / " + tokens(u.OutputTokens)
-	}
+	// A turn's token counts are not for this line: bare numbers say nothing
+	// to a person. The task's total lives in Details, in words.
 	ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 		ui.Box(c).Height(1).Grow(1).Background(t.LineSoft)
 		ui.Text(c, text).FontSize(t.XS).TextColor(t.InkMuted).Shrink(0)
@@ -963,21 +963,35 @@ func (a *App) taskDetails(c *ui.Context, task *store.Task) {
 		}
 		if u := task.Usage; u.InputTokens+u.OutputTokens+u.CacheRead > 0 {
 			row(a.L.T("task.dossier.usage"), func() {
-				value(a.L.T("task.usage", tokens(u.InputTokens+u.CacheRead+u.CacheWrite), tokens(u.OutputTokens)))
+				value(a.L.T("task.usage", a.aboutTokens(u.InputTokens+u.CacheRead+u.CacheWrite+u.OutputTokens)))
 			})
 		}
 	})
 }
 
-// tokens is a token count, short: 812, 12.4k, 1.2M.
-func tokens(n int64) string {
+// aboutTokens is a rough token count in the reader's own units: "4.5 万",
+// "120 万" in Chinese; "45k", "1.2M" in English. Rough on purpose: the
+// sentence says "about".
+func (a *App) aboutTokens(n int64) string {
+	trim := func(f float64) string { return strings.TrimSuffix(fmt.Sprintf("%.1f", f), ".0") }
+	if a.L.Lang == i18n.ZH {
+		switch {
+		case n >= 100_000_000:
+			return trim(float64(n)/1e8) + " 亿"
+		case n >= 1_000_000:
+			return fmt.Sprintf("%.0f 万", float64(n)/1e4)
+		case n >= 10_000:
+			return trim(float64(n)/1e4) + " 万"
+		}
+		return fmt.Sprint(n)
+	}
 	switch {
 	case n >= 1_000_000:
-		return fmt.Sprintf("%.1fM", float64(n)/1e6)
+		return trim(float64(n)/1e6) + "M"
 	case n >= 10_000:
 		return fmt.Sprintf("%.0fk", float64(n)/1e3)
 	case n >= 1000:
-		return fmt.Sprintf("%.1fk", float64(n)/1e3)
+		return trim(float64(n)/1e3) + "k"
 	}
 	return fmt.Sprint(n)
 }

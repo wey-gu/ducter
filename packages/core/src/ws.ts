@@ -25,6 +25,8 @@ export interface WsData {
   connections?: boolean;
   /** The paired device behind a remote socket (core.ts). */
   device?: { id: string };
+  /** Settles when this socket's hello is handled: frames sent right behind it wait for it. */
+  greeting?: Promise<void>;
 }
 
 const ON_HAND_KINDS = new Set<string>(PROJECTED_KINDS);
@@ -176,6 +178,10 @@ export function createWsHandler(deps: WsDeps) {
       send(ws, { t: "activity", activity: a });
     }
   };
+
+  // Computed once, now: on macOS it shells out (ioreg) with Bun.spawnSync, which runs the event
+  // loop, so doing it inside the first hello let the next frame in before hello had finished.
+  machineId();
 
   const handle = async (ws: ServerWebSocket<WsData>, f: ClientFrame) => {
     if (f.t !== "hello" && !ws.data.live) throw new Error("send hello first");
@@ -464,10 +470,17 @@ export function createWsHandler(deps: WsDeps) {
           send(ws, { t: "error", message: "invalid JSON" });
           return;
         }
+        // A frame sent right behind hello waits for it: hello may yield mid-way (Bun.spawnSync
+        // runs the event loop on macOS), and the next frame must not find the socket not live.
+        let greeted: (() => void) | undefined;
+        if (f?.t === "hello") ws.data.greeting = new Promise<void>((r) => (greeted = r));
+        else if (!ws.data.live && ws.data.greeting) await ws.data.greeting;
         try {
           await handle(ws, f);
         } catch (err) {
           send(ws, { t: "error", message: `${f?.t ?? "frame"}: ${(err as Error).message}` });
+        } finally {
+          greeted?.();
         }
       },
     },

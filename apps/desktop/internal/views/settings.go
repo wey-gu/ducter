@@ -372,7 +372,7 @@ func (a *App) aboutCard(c *ui.Context) {
 				a.note(c, a.L.T("settings.about.made"))
 			})
 		})
-		ui.Row(c).Gap(t.S1).Wrap().Children(func() {
+		a.textRow(c, t.ControlSM).Gap(t.S1).Wrap().Children(func() {
 			if a.button(c, a.L.T("settings.about.docs"), btnText, t.ControlSM, t.Surface) {
 				a.openLink(DocsURL)
 			}

@@ -4,7 +4,7 @@
 // integrate.ts directly; remote ops send the same calls down the worker's outbound socket
 // (WorkerLink), where worker-host.ts runs them. The runner keeps all task state on the main.
 import { randomBytes } from "node:crypto";
-import type { Place } from "@ducter/protocol";
+import type { BranchChanges, Place } from "@ducter/protocol";
 import type { HarnessEvent, HarnessPort, HarnessSession, SessionSpec, WorkerLink, WorkerSessionFrame } from "@ducter/protocol/src/internal.ts";
 import type { ActionResult } from "./integrate.ts";
 import type { ResolvedPlace } from "./places.ts";
@@ -17,6 +17,8 @@ export interface PlaceOps {
   harness: HarnessPort;
   merge(place: Place): Promise<ActionResult>;
   openPr(place: Place): Promise<ActionResult>;
+  /** What the task branch holds that its base doesn't (undefined: can't tell). */
+  changes(place: Place): Promise<BranchChanges | undefined>;
 }
 
 /** The device a place names; "local", empty, or absent mean this machine. */
@@ -106,5 +108,7 @@ export function remoteOps(link: WorkerLink): PlaceOps {
     },
     merge: (place) => guard(link.call<ActionResult>("merge", { place }, 5 * 60_000)),
     openPr: (place) => guard(link.call<ActionResult>("openPr", { place }, 5 * 60_000)),
+    // An older worker doesn't know "changes": unknown, never an error in a report.
+    changes: (place) => link.call<BranchChanges | undefined>("changes", { place }, 10_000).catch(() => undefined),
   };
 }

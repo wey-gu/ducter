@@ -23,6 +23,7 @@ import {
   modelOf,
   outsideActs,
   placeOf,
+  canIntegrate,
   reasonOf,
   reportOf,
   sortEvidence,
@@ -45,14 +46,15 @@ type Face = (typeof ART)[number];
 const FACE_KEY = { idle: "face.idle", working: "face.working", needsyou: "face.needs_you", done: "face.done", napping: "face.napping", waiting: "face.waiting" };
 const stillMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-/** Blinks the idle face's eyelids every 3-6 s, sometimes twice (D77). Character only. */
+/** Blinks the idle face every 3-6 s, sometimes twice (D77): its closed frame (the same render
+ *  with the eyes shut, tools/art/eyes.py) shows for a moment. Character only. */
 function useBlink(ref: { current: HTMLElement | null }, on: boolean) {
   useEffect(() => {
     if (!on || stillMotion()) return;
     let h: ReturnType<typeof setTimeout>;
     const blink = () => {
-      for (const lid of ref.current?.querySelectorAll<HTMLElement>(".idle.on .lid") ?? [])
-        lid.animate?.([{ transform: "scaleY(0)" }, { transform: "scaleY(1)", offset: 0.45 }, { transform: "scaleY(1)", offset: 0.55 }, { transform: "scaleY(0)" }], { duration: 150, easing: "ease-in-out" });
+      for (const shut of ref.current?.querySelectorAll<HTMLElement>(".idle.on .shut") ?? [])
+        shut.animate?.([{ opacity: 0 }, { opacity: 1, offset: 0.3 }, { opacity: 1, offset: 0.7 }, { opacity: 0 }], { duration: 150, easing: "ease-in-out" });
     };
     const next = (ms: number) =>
       (h = setTimeout(() => {
@@ -77,8 +79,7 @@ export function Avatar({ size, state, still }: { size: number; state?: Face; sti
         n === "idle" ? (
           <span key={n} class={`idle${n === p ? " on" : ""}`}>
             <img src="app/art/idle.webp" alt="" draggable={false} />
-            <i class="lid l" />
-            <i class="lid r" />
+            <img class="shut" src="app/art/idle_closed.webp" alt="" draggable={false} />
           </span>
         ) : (
           <img key={n} class={n === p ? "on" : ""} src={`app/art/${n}.webp`} alt="" draggable={false} />
@@ -431,7 +432,7 @@ function outsideLine(task: Task): string {
 
 function ResultActions({ task, inTask }: { task: Task; inTask?: boolean }) {
   const p = placeOf(task);
-  if (attention(task) === "failed" || p.kind !== "repo" || !p.branch) return null;
+  if (!canIntegrate(task) || p.kind !== "repo") return null;
   const base = p.baseBranch || "main";
   return (
     <div class="btns">
@@ -491,7 +492,7 @@ function DetailsToggle({ k, about }: { k: string; about?: string }) {
 /** Merge into main as a text button when it is the task's next step; its state in words after. */
 function MergeAction({ task }: { task: Task }) {
   const p = placeOf(task);
-  if (!finished(task) || attention(task) === "failed" || p.kind !== "repo" || !p.branch) return null;
+  if (!finished(task) || !canIntegrate(task) || p.kind !== "repo") return null;
   const base = p.baseBranch || "main";
   if (task.acting) return <span class="qs">{t(`result.acting.${task.acting}`, base)}</span>;
   if (task.unsure) return <Btn kind="text" size="sm" class="tb act" label={t("task.action.retry")} about={t("result.unsure")} onClick={() => A.retryAction(task.id)} />;
@@ -510,8 +511,7 @@ function MergeAction({ task }: { task: Task }) {
 function ResultDetails({ task, detail }: { task: Task; detail?: string }) {
   if (!finished(task)) return <TaskLine task={task} detail={detail} />;
   A.history(task.id);
-  const p = placeOf(task);
-  const pr = attention(task) !== "failed" && p.kind === "repo" && !!p.branch && !task.acting && !(task.acted?.ok && task.acted.action === "merge");
+  const pr = canIntegrate(task) && !task.acting && !(task.acted?.ok && task.acted.action === "merge");
   return (
     <>
       <ProofLine task={task} evs={resultEvidence(task)} withTitle />
@@ -1777,6 +1777,7 @@ function Accounts() {
   const [where, setWhere] = useState<"oomol" | "self" | "mcp">("oomol");
   const [url, setUrl] = useState(HOSTED_URL);
   const [token, setToken] = useState("");
+  const [how, setHow] = useState(false); // How to connect: the setup steps behind a fold
   useEffect(() => {
     if (!A.connections) A.askConnections();
   }, []);
@@ -1827,6 +1828,10 @@ function Accounts() {
             <span class="small">{t("acct.key")}</span>
             <input id="acct-token" type="password" autoComplete="off" spellcheck={false} value={token} onInput={(e) => setToken((e.target as HTMLInputElement).value)} />
           </label>
+          <button class="qlink" aria-expanded={how} onClick={() => setHow(!how)}>
+            {t(how ? "acct.how.hide" : "acct.how")} ›
+          </button>
+          {how && <div class="small sub steps">{t(`acct.how.${where}`)}</div>}
           <div class="row">
             <Btn kind="text" label={t("acct.cancel")} onClick={() => (setAdding(false), setToken(""))} />
             <Btn kind="primary" label={A.connecting ? t("acct.checking") : t("acct.check")} disabled={A.connecting || !url.trim()} onClick={() => A.addConnection(url.trim(), token.trim())} />

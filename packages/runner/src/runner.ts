@@ -1,12 +1,12 @@
 import { randomBytes } from "node:crypto";
-import { HARNESS_IDS, harnessName, type Attention, type Bodies, type Delivery, type LogEvent, type Place, type Residency, type TaskCard } from "@ducter/protocol";
+import { HARNESS_IDS, harnessName, type Attention, type Bodies, type BranchChanges, type Delivery, type LogEvent, type Place, type Residency, type TaskCard } from "@ducter/protocol";
 import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, SessionSpec } from "@ducter/protocol/src/internal.ts";
 import { NUDGE, REOPENED, RESUME_AFTER_RESTART, briefTurn, handedOver, kickoff, taskBrief } from "./brief.ts";
 import { createOarHarnessPort } from "./oar.ts";
 import { cwdOf, planPlace, provisionPlace } from "./places.ts";
 import { browserSidecar, type BrowserOptions, type BrowserSidecar } from "./browser.ts";
 import { PREVIEW_MAX, preview } from "./normalize.ts";
-import { mergeTaskBranch, openDraftPr, type ActionResult } from "./integrate.ts";
+import { branchChanges, mergeTaskBranch, openDraftPr, type ActionResult } from "./integrate.ts";
 import { DEVICE_BACK, DeviceOfflineError, deviceOf, isOffline, remoteOps, type PlaceOps } from "./remote.ts";
 
 /** task_state reason for a task whose worker dropped; clients render it as "<device> 连不上 / Can't reach <device>". */
@@ -49,6 +49,8 @@ export interface RunnerExt extends Runner {
   undrop(taskId: string): Promise<ActionResult>;
   merge(taskId: string): Promise<ActionResult>;
   openPr(taskId: string): Promise<ActionResult>;
+  /** What the task's branch holds that its base doesn't; undefined when not a repo task or unknown. */
+  branchChanges(taskId: string): Promise<BranchChanges | undefined>;
   /** Alias of dispose, called by main on shutdown. */
   stop(): Promise<void>;
   /** Close all sessions and stop listening. */
@@ -107,6 +109,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     harness,
     merge: (place) => mergeTaskBranch(place),
     openPr: (place) => openDraftPr(place, { gh: opts.gh }),
+    changes: (place) => branchChanges(place),
   };
   /** A paired worker's ops when the place names one; any other name (e.g. "mac") is this machine. */
   function opsFor(place: Place | undefined): PlaceOps {
@@ -730,6 +733,13 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       // Pushing and opening a PR leave the user's machines: an outside effect (I-results "Outside").
       if (r.ok) logEvent(t, { role: "system", from: "runner", text: r.message, raw: { effect: "outside", what: "draft_pr", ref: r.ref } });
       return r;
+    },
+
+    async branchChanges(taskId) {
+      const t = tasks.get(taskId);
+      const place = core.tasks.get(taskId)?.place ?? t?.card.place;
+      if (!t || place?.kind !== "repo") return undefined;
+      return t.ops.changes(place).catch(() => undefined);
     },
 
     whenStarted(taskId) {

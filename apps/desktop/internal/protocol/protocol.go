@@ -401,6 +401,22 @@ type Report struct {
 	Summary   string        `json:"summary"`
 	Questions []Question    `json:"questions"`
 	Evidence  []EvidenceRef `json:"evidence"`
+	// Branch is set by Ducter when the report is logged: what the task's
+	// branch holds that its base doesn't. Nil when unknown.
+	Branch *BranchChanges `json:"branch,omitempty"`
+}
+
+// BranchChanges is a task branch against its base: commits only it has,
+// and work not yet committed.
+type BranchChanges struct {
+	Commits     int  `json:"commits"`
+	Uncommitted bool `json:"uncommitted"`
+}
+
+// HasBranchChanges is false only when Ducter checked and the branch holds
+// nothing its base doesn't. Unknown counts as changes.
+func HasBranchChanges(r *Report) bool {
+	return r == nil || r.Branch == nil || r.Branch.Commits > 0 || r.Branch.Uncommitted
 }
 
 type Checkpoint struct {

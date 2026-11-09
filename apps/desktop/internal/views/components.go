@@ -293,6 +293,22 @@ func (a *App) button(c *ui.Context, label string, kind btnKind, height float32, 
 	return a.buttonFor(c, label, "", kind, height, onSurface)
 }
 
+// textPad is a text button's side padding at control height h: its hover
+// fill reaches that far past its words.
+func (a *App) textPad(h float32) float32 {
+	if a.controlHeight(h) == a.T.ControlSM {
+		return a.T.S2 + 2
+	}
+	return a.T.S3
+}
+
+// textRow is a row that starts with text buttons, pulled left by their
+// padding so their words line up with the card's text edge (the padding
+// is for the hover fill, not for indenting).
+func (a *App) textRow(c *ui.Context, h float32) ui.Element {
+	return ui.Row(c).MarginStart(-a.textPad(h))
+}
+
 // buttonFor is a button whose accessible name says what it acts on ("Go:
 // rebase · Fix CI"), so two "Go" buttons on one screen are told apart
 // by screen readers and automation; the visible text stays label.
@@ -311,10 +327,7 @@ func (a *App) buttonFor(c *ui.Context, label, about string, kind btnKind, height
 		size, padX = t.Bubble, t.S5 // 16 / 24
 	}
 	if kind == btnText {
-		padX = t.S3
-		if h == t.ControlSM {
-			padX = t.S2 + 2
-		}
+		padX = a.textPad(h)
 	}
 	b := ui.Row(c.Key("btn:"+name)).Height(h).Padding(0, padX).Radius(a.buttonRadius(h)).
 		Justify(ui.Center).AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(name).Focusable().Shrink(0)

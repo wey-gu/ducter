@@ -371,7 +371,7 @@ a {
   padding-right: 8px;
 }
  /* The clay partner (D76, D77): it breathes (3.8 s, from its feet) and the idle face blinks
-   (an eyelid over each eye, 150 ms, every 3-6 s). Status never animates; reduced motion stills
+   (its closed frame for 150 ms, every 3-6 s). Status never animates; reduced motion stills
    it all. Faces cross-fade on a change of state, standing on the box's bottom edge. */
 .avatar {
   position: relative;
@@ -416,26 +416,16 @@ a {
     transform: scale(1.012, 1.03);
   }
 }
-/* Positions relative to the bbox-cropped idle art (design/art/assets/alpha/ducter_idle). */
-.lid {
+/* How to connect: numbered steps, one per line. */
+.accounts .steps {
+  white-space: pre-line;
+}
+
+/* The blink's closed frame, over the open one: hidden but for a blink. */
+.avatar .idle .shut {
   position: absolute;
-  border-radius: 50%;
-  transform: scaleY(0);
-  transform-origin: 50% 0;
-}
-.lid.l {
-  left: 34.6%;
-  top: 24.8%;
-  width: 10.8%;
-  height: 26.2%;
-  background: linear-gradient(90deg, #f4a065, #f19562);
-}
-.lid.r {
-  left: 62.1%;
-  top: 24.3%;
-  width: 10.6%;
-  height: 26.4%;
-  background: linear-gradient(90deg, #e17938, #cb6026);
+  inset: 0;
+  opacity: 0;
 }
 
 .conn {

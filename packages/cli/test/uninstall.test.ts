@@ -77,8 +77,17 @@ describe("planUninstall", () => {
     expect(p.remove.find((x) => x.kind === "data")!.bytes).toBeGreaterThan(0);
     expect(p.warnings.map((w) => w.id)).toEqual(["unsaved-worktree"]);
     expect(p.repos!.map((r) => r.replace("/private", ""))).toEqual([repo.replace("/private", "")]);
-    expect(p.keep.map((k) => k.what)).toEqual(expect.arrayContaining(["Your repos", "Claude Code and Codex", "Nowledge Mem", "cua-driver", "Ducter.app"]));
+    expect(p.keep.map((k) => k.what)).toEqual(expect.arrayContaining(["Your repos", "Nowledge Mem", "cua-driver", "Ducter.app"]));
     expect(formatPlan(p, t, home)).toContain("~/.ducter");
+  });
+
+  test("the keep lines name only the AI agents found, as they are; none found, none named", () => {
+    const keepOf = (agents?: { name: string; signedIn: boolean }[]) => plan(false, { agents }).keep;
+    expect(keepOf(undefined).some((k) => /Claude Code|Codex/.test(k.what))).toBe(false);
+    expect(keepOf([]).some((k) => /Claude Code|Codex/.test(k.what))).toBe(false);
+    const k = keepOf([{ name: "Claude Code", signedIn: true }, { name: "Codex", signedIn: false }]);
+    expect(k).toContainEqual({ what: "Claude Code", detail: "stays installed and signed in" });
+    expect(k).toContainEqual({ what: "Codex", detail: "stays installed" });
   });
 
   test("a link to another copy of Ducter.app that still exists is that copy's, and stays", () => {

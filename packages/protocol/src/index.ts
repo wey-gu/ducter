@@ -41,6 +41,17 @@ export interface EvidenceRef {
   ref: string;
 }
 
+/** A task branch against its base: commits only it has, and work not yet committed. */
+export interface BranchChanges {
+  commits: number;
+  uncommitted: boolean;
+}
+
+/** False only when Ducter checked and the branch holds nothing its base doesn't: nothing to merge
+ *  or open a PR for. Unknown counts as changes (the actions themselves refuse if there are none). */
+export const hasBranchChanges = (r: { branch?: BranchChanges } | undefined): boolean =>
+  !r?.branch || r.branch.commits > 0 || r.branch.uncommitted;
+
 export interface Question {
   id: string;
   text: string;
@@ -98,6 +109,9 @@ export interface Bodies {
     summary: string; // ≤ 600 chars
     questions: Question[];
     evidence: EvidenceRef[];
+    /** Set by Ducter when the report is logged (never by the task): what the task's branch holds
+     *  that its base branch doesn't. Absent when unknown (no repo, no base, an older worker). */
+    branch?: BranchChanges;
   };
   checkpoint: { taskId: string; text: string; gitRef?: string };
   // A waiter is a cheap wait that wakes the partner (wait_until). Shown on On hand as a compact row.

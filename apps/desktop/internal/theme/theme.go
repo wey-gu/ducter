@@ -17,16 +17,21 @@ import (
 // StateColors are a semantic state's dot, surface and ink.
 type StateColors struct {
 	Dot, Surface, Ink ui.Color
+	// Ledge is the solid base under a card tinted in Surface (D76).
+	Ledge ui.Color
 	// Strong is a darker dot, for big numbers and the shadow under a
 	// pebble.
 	Strong ui.Color
 }
 
-// Press is the Pebble depth style: a solid offset under the element in a
-// darker tint, which shrinks as it is pressed down.
+// Press is the clay depth of a button (D76): a solid ledge under it in a
+// darker shade of its fill (Color, Offset deep), a soft drop under that, a
+// 1.5-point highlight along its inner top edge (Hi) and a 1-point inner
+// rim (Rim, transparent for none). Pressed, it sinks into the ledge.
 type Press struct {
-	Offset float32
-	Color  ui.Color
+	Offset  float32
+	Color   ui.Color
+	Hi, Rim ui.Color
 }
 
 // Elevation is a soft shadow: how far down it falls, how blurred, and
@@ -42,9 +47,14 @@ type Tokens struct {
 
 	// color
 	Bg, Surface, SurfaceRaised, SurfaceSunken, Ink, InkMuted, InkSoft ui.Color
-	Accent, OnAccent                                                  ui.Color
-	UserBubble, OnUserBubble                                          ui.Color
-	Line, LineSoft, Highlight, HighlightInk                           ui.Color
+	// BgDeep is the devices stage; Sunken the lighter sunken tint (diff
+	// hunks, inline code); Faint separators in words (a crumb's slash).
+	BgDeep, Sunken, Faint                   ui.Color
+	Accent, OnAccent                        ui.Color
+	UserBubble, OnUserBubble                ui.Color
+	Line, LineSoft, Highlight, HighlightInk ui.Color
+	// Line2 is the secondary button's ledge and the chosen choice's base.
+	Line2 ui.Color
 	// Chrome is the window's top bar (it holds the traffic lights and is
 	// the title region); ChromeLine its hairline.
 	Chrome, ChromeLine ui.Color
@@ -60,14 +70,21 @@ type Tokens struct {
 	// Clay is the surface clay art sits on (the renders' own cream).
 	Clay ui.Color
 
-	// type: one scale. XS captions and labels, SM secondary text and
-	// small controls, MD body and controls, LG the partner's voice and
-	// questions, XL card and lane titles, XXL screen titles, Title hero.
+	// type: one scale (D76). XS captions and labels, SM secondary text
+	// and small controls, MD body and controls, Bubble the user's bubble
+	// and the composer, LG the partner's voice, XL card titles and asks,
+	// XXL section titles, Title screen titles and a task's outcome, Hero
+	// hero numbers. 800 for titles and asks, 700 controls, 400 reading.
+	// Display is the heading face: Bricolage for Latin, Resource Han
+	// Rounded for Chinese (D78); Body the reading face (PingFang SC for
+	// Chinese).
 	Display, Body, Mono     string
-	XS, SM, MD, LG, XL, XXL float32 // 12, 13, 15, 18, 22, 28
+	XS, SM, MD, LG, XL, XXL float32 // 12, 13, 15, 18, 20, 28
+	Bubble                  float32 // the user's bubble and the composer, 16
 	PartnerSize             float32 // bubble-less partner voice, 18
-	Title                   float32 // page titles, 34
-	MonoSM                  float32 // code in cards and transcripts, 12
+	Title                   float32 // screen titles and a task's outcome, 34
+	Hero                    float32 // hero numbers, 56
+	MonoSM                  float32 // code in cards and transcripts, 13
 
 	// space: one 4-point scale, S1 4 … S7 48. Gaps inside a group are
 	// S2–S3, between groups S4–S5, between a screen's sections S6–S7.
@@ -84,6 +101,8 @@ type Tokens struct {
 	// have RadiusSM corners, chips RadiusXS: a chip never looks pressable
 	// the way a button does.
 	ControlSM, ControlMD, ControlLG, ChipSM, Chip, ChipLG float32
+	// ButtonRadius are the corners of the three button heights (12/14/18).
+	ButtonRadius [3]float32
 	// IconSM is a glyph inside a control; IconTile a glyph's tile in a
 	// row (a check, a clock).
 	IconSM, IconTile float32
@@ -93,14 +112,14 @@ type Tokens struct {
 	// PebbleRadius is a task pebble's slightly irregular corners.
 	PebbleRadius [4]float32
 
-	// depth. A ledge (a solid offset under the element, in a darker
-	// shade of its own fill) means one thing: this can be pressed. Every
-	// filled button has the same one, 3 points deep, and sinks into it
-	// as it is pressed. Containers (cards, sheets, the composer, notices)
-	// never have a ledge: they rest on Raised, a soft shadow, or float on
-	// Floating (a sheet over the page). Chips and text buttons are flat.
+	// depth: one clay (D76). A card rests on a solid base (Raised: 4
+	// points of Line, no blur; a tinted card's base is its state's Ledge)
+	// and never moves; a sheet over the page adds Floating. A button
+	// stands on a ledge with a drop (Drop; DropPressed while pressed) and
+	// sinks into it. Chips and text buttons are flat.
 	PressPrimary, PressSecondary, PressAccent Press
 	Raised, Floating                          Elevation
+	Drop, DropPressed                         Elevation
 
 	// motion: Snappy for hover and lift, PressDur for a press, EnterDur
 	// for a screen or a notice coming in, Bouncy for the living message
@@ -129,6 +148,10 @@ func Pebble() *Tokens {
 		Surface:       hex("#FFFFFF"),
 		SurfaceRaised: hex("#FFFBF0"),
 		SurfaceSunken: hex("#F3E6D3"),
+		BgDeep:        hex("#FCECD7"),
+		Sunken:        hex("#F7EBDA"),
+		Faint:         hex("#C7B49A"),
+		Line2:         hex("#E0C9B0"),
 		Ink:           hex("#2B2118"),
 		InkMuted:      hex("#75654F"),
 		InkSoft:       hex("#4A3D30"),
@@ -147,37 +170,42 @@ func Pebble() *Tokens {
 		Deleted:       hex("#FCE3DF"),
 		DeletedInk:    hex("#7A1E14"),
 
-		NeedsYou: StateColors{Dot: hex("#FF8A3D"), Surface: hex("#FFE3CF"), Ink: hex("#8A3A0C"), Strong: hex("#E06A1F")},
-		Working:  StateColors{Dot: hex("#4BA8F0"), Surface: hex("#DCEFFF"), Ink: hex("#174A75"), Strong: hex("#2F86C8")},
-		Waiting:  StateColors{Dot: hex("#FFC94D"), Surface: hex("#FFF0BF"), Ink: hex("#6B5000"), Strong: hex("#B58600")},
-		Done:     StateColors{Dot: hex("#7FD99A"), Surface: hex("#D6F5DC"), Ink: hex("#1F5E2F"), Strong: hex("#2E9A55")},
-		Failed:   StateColors{Dot: hex("#E5577A"), Surface: hex("#FBDDE4"), Ink: hex("#8A1F3B"), Strong: hex("#C23A5E")},
+		NeedsYou: StateColors{Dot: hex("#FF8A3D"), Surface: hex("#FFE3CF"), Ink: hex("#8A3A0C"), Strong: hex("#E06A1F"), Ledge: hex("#F0C29E")},
+		Working:  StateColors{Dot: hex("#4BA8F0"), Surface: hex("#DCEFFF"), Ink: hex("#174A75"), Strong: hex("#2F86C8"), Ledge: hex("#B9DBF5")},
+		Waiting:  StateColors{Dot: hex("#FFC94D"), Surface: hex("#FFF0BF"), Ink: hex("#6B5000"), Strong: hex("#B58600"), Ledge: hex("#F0DA8E")},
+		Done:     StateColors{Dot: hex("#7FD99A"), Surface: hex("#D6F5DC"), Ink: hex("#1F5E2F"), Strong: hex("#2E9A55"), Ledge: hex("#B4E3BE")},
+		Failed:   StateColors{Dot: hex("#E5577A"), Surface: hex("#FBDDE4"), Ink: hex("#8A1F3B"), Strong: hex("#C23A5E"), Ledge: hex("#F2BCC9")},
 		Awake:    StateColors{Dot: hex("#2FA45C"), Surface: hex("#D4F5DD"), Ink: hex("#1F5E2F"), Strong: hex("#2E9A55")},
 		Asleep:   StateColors{Dot: hex("#6C63A8"), Surface: hex("#ECE9F8"), Ink: hex("#4B3F70"), Strong: hex("#574F8F")},
 		Away:     StateColors{Dot: hex("#A99C8B"), Surface: hex("#EFEAE3"), Ink: hex("#5E5448"), Strong: hex("#8C7F6E")},
 		Clay:     hex("#FFF4E6"),
 
-		Display: "Bricolage Grotesque, PingFang SC, Noto Sans SC",
+		Display: "Bricolage Grotesque, Resource Han Rounded CN, PingFang SC, Noto Sans SC",
 		Body:    "Bricolage Grotesque, PingFang SC, Noto Sans SC",
 		Mono:    "JetBrains Mono, SF Mono, Menlo, monospace",
-		XS:      12, SM: 13, MD: 15, LG: 18, XL: 22, XXL: 28,
+		XS:      12, SM: 13, MD: 15, LG: 18, XL: 20, XXL: 28,
+		Bubble:      16,
 		PartnerSize: 18,
 		Title:       34,
-		MonoSM:      12,
+		Hero:        56,
+		MonoSM:      13,
 
 		S1: 4, S2: 8, S3: 12, S4: 16, S5: 24, S6: 32, S7: 48,
 
-		RadiusXS: 8, RadiusSM: 12, RadiusMD: 16, RadiusLG: 22, RadiusXL: 28, Pill: 999,
-		ControlSM: 32, ControlMD: 40, ControlLG: 48, ChipSM: 24, Chip: 28, ChipLG: 32,
-		IconSM: 16, IconTile: 28,
+		RadiusXS: 8, RadiusSM: 12, RadiusMD: 16, RadiusLG: 24, RadiusXL: 28, Pill: 999,
+		ControlSM: 36, ControlMD: 44, ControlLG: 52, ChipSM: 24, Chip: 28, ChipLG: 32,
+		ButtonRadius: [3]float32{12, 14, 18},
+		IconSM:       16, IconTile: 28,
 		BubbleRadius: [4]float32{22, 22, 8, 22},
 		PebbleRadius: [4]float32{6, 7, 5, 6},
 
-		PressPrimary:   Press{Offset: 3, Color: hex("#000000")},
-		PressSecondary: Press{Offset: 3, Color: hex("#E0C9B0")},
-		PressAccent:    Press{Offset: 3, Color: hex("#C9642A")},
-		Raised:         Elevation{Y: 2, Blur: 10, Color: hex("#2B2118").Alpha(0.07)},
+		PressPrimary:   Press{Offset: 3, Color: hex("#000000"), Hi: hex("#FFF6EA").Alpha(0.22), Rim: ui.Transparent},
+		PressSecondary: Press{Offset: 3, Color: hex("#E0C9B0"), Hi: hex("#FFFFFF").Alpha(0.95), Rim: hex("#2B2118").Alpha(0.09)},
+		PressAccent:    Press{Offset: 3, Color: hex("#C9642A"), Hi: hex("#FFFFFF").Alpha(0.38), Rim: ui.Transparent},
+		Raised:         Elevation{Y: 4, Blur: 0, Color: hex("#E8D9C4")},
 		Floating:       Elevation{Y: 10, Blur: 32, Color: hex("#2B2118").Alpha(0.14)},
+		Drop:           Elevation{Y: 7, Blur: 12, Color: hex("#2B2118").Alpha(0.28)},
+		DropPressed:    Elevation{Y: 1, Blur: 3, Color: hex("#2B2118").Alpha(0.22)},
 
 		Bouncy:   ui.Animation{Spring: ui.SpringOptions{Duration: 420e6, Bounce: 0.35}},
 		Snappy:   ui.Snappy,
@@ -230,15 +258,33 @@ func (t *Tokens) UITheme(base *ui.Theme) *ui.Theme {
 //go:embed fonts/BricolageGrotesque.ttf
 var bricolage []byte
 
+// JetBrains Mono (OFL), Latin subset, variable weight.
+//
+//go:embed fonts/JetBrainsMono.ttf
+var jetbrainsMono []byte
+
+// Resource Han Rounded CN Bold (OFL), the zh heading face (D78), cut to the
+// common hanzi (fits the 2 MB binary rule, D75); a missing glyph falls
+// back to PingFang SC.
+//
+//go:embed fonts/ResourceHanRoundedCN-Bold.ttf
+var hanRounded []byte
+
 var fontsOnce sync.Once
 
-// LoadFonts registers Bricolage Grotesque (embedded, OFL) and any fonts in
-// $DUCTER_FONTS or ~/.ducter/fonts (as Noto Sans SC or JetBrains Mono).
+// LoadFonts registers the embedded fonts (OFL): Bricolage Grotesque,
+// JetBrains Mono and Resource Han Rounded CN Bold, and any fonts in
+// $DUCTER_FONTS or ~/.ducter/fonts (as Noto Sans SC).
 // Fonts that do not load fall back to the system's (PingFang SC for CJK).
 func LoadFonts() {
 	fontsOnce.Do(func() {
-		if err := ui.RegisterFont(bricolage, "Bricolage Grotesque"); err != nil {
-			log.Printf("ducter: Bricolage Grotesque: %v (system font instead)", err)
+		for _, f := range []struct {
+			data []byte
+			name string
+		}{{bricolage, "Bricolage Grotesque"}, {jetbrainsMono, "JetBrains Mono"}, {hanRounded, "Resource Han Rounded CN"}} {
+			if err := ui.RegisterFont(f.data, f.name); err != nil {
+				log.Printf("ducter: %s: %v (system font instead)", f.name, err)
+			}
 		}
 		dirs := []string{os.Getenv("DUCTER_FONTS")}
 		if home, err := os.UserHomeDir(); err == nil {

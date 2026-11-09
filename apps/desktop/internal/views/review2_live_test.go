@@ -20,7 +20,7 @@ import (
 //	DUCTER_WALK_CLICK="<label>" DUCTER_WALK_SHOTS=conversation,onhand,task,devices \
 //	DUCTER_SHOTS=1 go test ./internal/views -run TestWalkStep -v -timeout 20m
 //
-// Shots go to apps/desktop/docs/<prefix>-<view>.png. WAIT holds until the
+// Shots go to .shots/desktop/<prefix>-<view>.png. WAIT holds until the
 // backend has done that much after this step's send (or click).
 func TestWalkStep(t *testing.T) {
 	url := os.Getenv("DUCTER_LIVE_URL")

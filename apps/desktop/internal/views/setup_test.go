@@ -18,7 +18,7 @@ import (
 
 // Ducter.app's first run, against a fake Mac.
 //
-//	DUCTER_SHOTS=1 go test ./internal/views -run Setup   # writes docs/app-setup-*.png
+//	DUCTER_SHOTS=1 go test ./internal/views -run Setup   # writes .shots/desktop/app-setup-*.png
 
 type fakeBackend struct {
 	healthy    bool

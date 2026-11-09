@@ -20,7 +20,7 @@ import (
 // The first five minutes, without a server: a welcome on an empty Log,
 // then (for the first result) a task that finishes live.
 //
-//	DUCTER_SHOTS=1 go test ./internal/views -run Welcome   # writes docs/firstrun-*.png
+//	DUCTER_SHOTS=1 go test ./internal/views -run Welcome   # writes .shots/desktop/firstrun-*.png
 
 // The repos `ducter up` found on a sample Mac (names only).
 const hintsJSON = `{"version":1,"generatedAt":"2026-11-09T01:20:00Z","repoCount":91,"repos":[

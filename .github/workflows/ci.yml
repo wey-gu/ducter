@@ -100,3 +100,6 @@ jobs:
 
       - name: go test
         run: go test ./...
+
+      - name: No work evidence or build output in git
+        run: bun scripts/check-binaries.ts

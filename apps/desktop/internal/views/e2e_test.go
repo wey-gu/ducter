@@ -107,7 +107,7 @@ func (h *harness) shot(name string) {
 		return
 	}
 	h.tt.Advance(time.Second)
-	f, err := os.Create(filepath.Join("..", "..", "docs", name+".png"))
+	f, err := os.Create(filepath.Join(shotsDir(h.t), name+".png"))
 	if err != nil {
 		h.t.Fatal(err)
 	}

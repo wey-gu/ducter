@@ -33,7 +33,7 @@ padded.
 | 6 | **Result card** | the `Result` object | When there is a durable thing: a document, a change, files, a capture |
 | 7 | **One next step** | the report's questions or M | At most one: a decision with a default (e.g. open a draft PR) or a plain action (Open, Save to…) |
 
-Why the empty "Sent out: nothing" line: in the first dogfood run (`apps/desktop/docs/live-
+Why the empty "Sent out: nothing" line: in the first dogfood run (`.shots/desktop/live-
 conversation-done.png`) the task wrote, unprompted, "没有 push，工作区是干净的 / nothing
 pushed, the working tree is clean". Agents already know users care; Ducter should make it a
 typed fact instead of prose the user has to hunt for [I, from one observation; thin].

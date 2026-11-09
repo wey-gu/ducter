@@ -141,6 +141,15 @@ Design notes:
   colors, fonts, radii, shadows, or motion.
 - **Personas:** attention aggregates per person; conversations stay separate and isolated.
 
+## Engineering discipline
+
+- **Git holds source, not evidence (D75).** Commit a binary only if an app loads it or a build
+  derives from it (≤ 2 MB). Screenshots, before/after pairs, recordings, raw generations and
+  build output go to `.shots/` (gitignored; `DUCTER_SHOTS_DIR` overrides) and are shown as a
+  published gallery; Markdown cites them by file name. `bun scripts/check-binaries.ts` runs in CI.
+- Stage explicit paths; never `git add -A`. Check the fail count, not only the totals, before
+  committing.
+
 ## Prototype rules
 
 - **Canvases:** each canvas covers one area; its URL is listed in `design/ui.md`.

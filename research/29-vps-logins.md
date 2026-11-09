@@ -107,7 +107,7 @@ All with the compiled `ducter` (bun 1.4.4, `linux-arm64`, cross-built on the Mac
 | Through Caddy (`reverse_proxy 127.0.0.1:7777`, Ubuntu's caddy 2.6.2, plain HTTP on :8080 since a local VM has no public domain) | no token: `/ws` 401, `/mcp` 401, `/health` 200 `{"ok":true}` only | [V] |
 | Pairing through Caddy | code → `POST /pair` 200 + token; the same code again → 401; token → WS 101; `ducter devices disconnect <id>` → 401 | [V] |
 | `devices.db` | mode 600; only SHA-256 hashes of codes and tokens (unit test reads the bytes) | [V] |
-| Desktop path | from the Mac, over `ssh -L 7781:127.0.0.1:8080`: `remote.Pair` → token → the desktop's client and views: a chat turn and a task that reports done (`TestRemoteDucter`, screenshots `apps/desktop/docs/remote-*.png`) | [V] |
+| Desktop path | from the Mac, over `ssh -L 7781:127.0.0.1:8080`: `remote.Pair` → token → the desktop's client and views: a chat turn and a task that reports done (`TestRemoteDucter`, screenshots `.shots/desktop/remote-*.png`) | [V] |
 | SSH-tunnel fallback | `ssh -N -L 7782:127.0.0.1:7777` → loopback → no token needed; same conversation and task | [V] |
 | `systemctl --user restart ducter` | new PID, same data (headSeq kept), the saved device token still works | [V] |
 | SIGKILL | `NRestarts=1`, active again within RestartSec=3 | [V] |

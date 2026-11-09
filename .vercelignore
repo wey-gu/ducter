@@ -7,4 +7,5 @@
 /apps/site/dist
 /apps/site/.astro
 !/docs
+!/skills
 !/.vercelignore

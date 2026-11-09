@@ -255,7 +255,7 @@ func Pebble() *Tokens {
 		PressAccent:    Press{Offset: 3, Color: hex("#C9642A"), Seam: hex("#FFA466"), Hi: hex("#FFFFFF").Alpha(0.38), Rim: ui.Transparent},
 		Raised:         Elevation{Y: 4, Blur: 0, Color: hex("#E8D9C4")},
 		Floating:       Elevation{Y: 10, Blur: 32, Color: hex("#2B2118").Alpha(0.14)},
-		Scrim:          hex("#17120E").Alpha(0.26),
+		Scrim:          hex("#3C2814").Alpha(0.14),
 		Drop:           Elevation{Y: 7, Blur: 12, Color: hex("#2B2118").Alpha(0.28)},
 		DropPressed:    Elevation{Y: 1, Blur: 3, Color: hex("#2B2118").Alpha(0.22)},
 

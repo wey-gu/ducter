@@ -20,9 +20,12 @@ I decided to build my own personal AI for three reasons.
 - **Personal AI already changed my days, and it should not lock me in.** I have been using
   Muse, OpenAI Dots and the Grok bot, together with **Nowledge Mem**, where more
   than a year of knowledge and experience from every AI I use has compounded. They have given
-  me real "aha" moments at work and in life. Many of the best ones in Dots came from it
-  reading my Gmail and, once in a while, telling me something I needed to know before I knew
-  I needed it: a bill about to be charged, a clash I hadn't noticed, someone waiting on me. I want the same powers in my everyday workflow, for
+  me real "aha" moments at work and in life. The best ones in Dots came from it reading my
+  Gmail and, once in a while, telling me something before I knew I needed it. Once it was a
+  domain renewal I had forgotten to pay, days before I would have lost the domain. Another
+  time it was a flight I had bought that didn't match my hotel dates. In both cases the
+  pieces were sitting in my inbox, weeks apart, and I would never have put them together
+  myself. I want the same powers in my everyday workflow, for
   life and for work, and I want them model-agnostic and vendor-neutral: freedom to use whichever
   subscriptions and keys I have. Nowledge Mem already gives me that freedom for context: my
   context and my AI's identity are decoupled from any one model or platform.
@@ -57,7 +60,8 @@ I decided to build my own personal AI for three reasons.
   sensible next step you can take with one tap. Reading and drafting are fine; anything that
   reaches other people, costs money or can't be taken back waits for you. And because it can
   also use a browser, a computer and a phone, the next step can be real everyday work: looking
-  up rebooking options when a flight changes, filling in the school form, moving a booking.
+  up whether the hotel can add the missing night, opening the renewal page so I only have to
+  pay, filling in the school form, moving a booking.
   Connecting an account should feel like a small, delightful act in the same game-like world
   as everything else, and you should always see where your accounts live and what Ducter may do
   with them.

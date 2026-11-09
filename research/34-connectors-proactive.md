@@ -1,6 +1,6 @@
 # 34. Connectors and restrained proactive help
 
-> 2026-11-09 · Branch `connectors` · Feeds `design/connectors.md` (draft) and proposals D89–D96.
+> 2026-11-09 · Branch `connectors` · Feeds `design/connectors.md` (draft) and proposals D96–D103.
 > Tags: **VERIFIED** (read the primary source or the code myself today), **DOCUMENTED** (an
 > official or vendor page says so; read through a summarizer or a search snippet), **INFERRED**
 > (my reasoning). Evidence for the metaphor test sits outside git (D75):
@@ -46,6 +46,18 @@ everything else is secondary.
     before taking action", "Hand off to you".
   - "Asking your dot to draft replies doesn't give it permission to send them."
   - "OpenAI doesn't train models directly on proactive research or its private notes."
+- **The author's own aha moments with dots.** VERIFIED as a first-hand report from the
+  author, 2026-11-09:
+  1. dots found **a domain renewal he had forgotten to pay**. Missing it would have meant
+     losing the domain.
+  2. dots found **a flight he had bought that didn't match his hotel dates**.
+
+  Both are joins the person couldn't easily make. A renewal notice has to be set against the
+  payment status, which sits in another mail or on the registrar's site. A flight booking has
+  to be set against a hotel booking: two companies, two confirmations, weeks apart. Both are
+  also costly to miss. This is the strongest evidence in this report, and it outranks the
+  reviews below. INFERRED: both need typed facts (renewal, payment, booking dates) kept long
+  enough to meet. Mail-by-mail triage alone can't produce them.
 - **Watching is explicit.** "Connecting Slack or another source alone doesn't create a
   monitoring task." Fixed check-ins are saved schedules: what to check, time zone, end date,
   what deserves a notification, and where it goes. DOCUMENTED: tasks-and-memory page.
@@ -150,7 +162,8 @@ https://docs.x.ai/grok-bot/approvals-security-and-privacy:
 
 1. **Background noticing is structurally read-only** (dots). A finding becomes an ordinary
    decision with an ordinary gate, and no rule can loosen the background tools.
-2. **The aha comes from joining sources the person can't join themselves.** A Slack thread
+2. **The aha comes from joining sources the person can't join themselves, where missing it is
+   costly.** The author's two dots moments: renewal notice vs payment; flight vs hotel dates. A Slack thread
    against a flight, a quote against a grant's rules. Repeating what the subject line already
    says is noise.
 3. **Unrequested work drafts and never sends.** Approvals from background work expire into
@@ -427,26 +440,30 @@ Prototype: https://claude.ai/artifact/BC1i6YEt8EKQ5VtMeCjEw8
 1. **Connectors live on the computer Ducter lives on**, in the control plane, behind a broker.
    Harnesses never hold provider credentials. They see a scoped slice through the Ducter tool
    server, so every read is recorded and every write is an intent.
-2. **Proactive work is a cascade.**
+2. **Lead with the author's two moments.** A forgotten domain renewal and a flight that
+   doesn't match the hotel. Triage extracts typed facts (renewals, payments, bookings) into a
+   small ledger on the main, so a later pass can join them across weeks.
+3. **Proactive work is a cascade.**
    - Code polls (`history.list`, `syncToken`) at zero model cost.
    - Rules drop bulk and already-known mail.
    - A cheap model triages batches.
    - The partner, with Mem, judges the few that pass.
    - Only items that clear the bar enter the living message, at most 3 a day by default and
      held during quiet hours.
-3. **Background reads are structurally read-only.** Drafts are fine; sending, spending and
+4. **Background reads are structurally read-only.** Drafts are fine; sending, spending and
    calendar writes wait for Go, and no rule can loosen that for background work.
-4. **Gmail for a self-hosted user means a guided BYO Google client**, published as
+5. **Gmail for a self-hosted user means a guided BYO Google client**, published as
    unverified-in-production. That is the main onboarding cost. Offer Fastmail, IMAP and Mail.app
    as lighter paths, and the browser (上网) as the zero-setup fallback.
-5. **Adopt open-connector partially**, as the embedded engine behind a port, pinned, and with
+6. **Adopt open-connector partially**, as the embedded engine behind a port, pinned, and with
    its hosted parts off.
-6. **Say plainly that the AI account sees the text.** It costs some felt safety in the proxy
+7. **Say plainly that the AI account sees the text.** It costs some felt safety in the proxy
    test, and it is true.
 
 **Summary.** dots, Muse and the Grok bot agree on read-only background noticing, drafts not
 sends, explicit watching, and approvals that expire. None publishes a numeric cap. The aha is a
-join across sources the person can't see. For self-hosted Ducter the hard part is Google's
+join across sources the person can't see, where missing it is costly, as in the author's own
+two dots moments (an unpaid domain renewal; a flight that didn't match the hotel). For self-hosted Ducter the hard part is Google's
 restricted scopes: each user brings an unverified, published OAuth client. Polling beats
 Pub/Sub. open-connector is a strong embeddable engine (Gmail poll trigger, per-action scopes,
 encrypted tokens, Bun-compatible headless library). It doesn't solve verification, and its

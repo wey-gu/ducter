@@ -1,7 +1,7 @@
 # Connectors and Restrained Proactive Help (DRAFT)
 
 > Draft 1 · 2026-11-09 · Branch `connectors` · Status: **drafted, nothing decided**. Proposals
-> D89–D96 at the end wait for the author. Evidence: `research/34` (prior art, Google access,
+> D96–D103 at the end wait for the author. Evidence: `research/34` (prior art, Google access,
 > open-connector, metaphor test). Builds on principles 7, 15, 16, 17 and 18, D43, D61 (the
 > effect ladder), D65/D81 (the devices world), routines (`product-model.md` §4) and
 > `flows/D-decisions-attention.md` D3 (quiet hours).
@@ -15,8 +15,8 @@
 - **The heavy multi-agent developer (the author).**
   - Before: twenty open sessions, and an inbox they are scared of. Teammates wait on PRs while
     the bills arrive unseen.
-  - After: the one partner they already talk to also says, once in the morning, "Lina's PR has
-    waited two days; Cloudflare bills Friday". Nothing else.
+  - After: the one partner they already talk to also says, once in the morning, "ducter.dev lapses
+    in a week and the renewal isn't paid; your flight lands a night before the hotel starts". Nothing else.
   - Emotional value: 放心, the sense of someone minding the edges, and 惊喜, when it joins two
     things they couldn't have joined themselves.
 - **The consumer personal-AI user** (Grok bot, Muse, dots).
@@ -252,6 +252,8 @@ with Go, never a background action [I].
 
 | Find | Proposed task | Ability (device) | Gate |
 |---|---|---|---|
+| Flight lands before the hotel starts | Ask the hotel's site about the missing night | 上网 (the Mac) | Changing the booking or paying: the person |
+| Domain renewal unpaid | Open the registrar's renewal page, confirm the status | 上网 (the Mac) | Paying: the person, by takeover (the floor) |
 | Flight changed | Look up rebook options on the airline's site | 上网 (the Mac) | Choosing a seat or paying: the person, by takeover |
 | School form attached | Fill the PDF from what it knows, leave it as a draft | (none) or 用电脑 | Sending the form: Go |
 | Restaurant clash | Call to move the booking | 打电话 (later) | The call itself: Go; the person can listen in |
@@ -267,7 +269,7 @@ with Go, never a background action [I].
 3. The guided client setup (§7.2) runs, then Google's consent page opens in the person's
    browser. Ducter never sees the password.
 4. A Gmail mailbox drops onto the island (the equip snap, D65). Ducter backfills **the last 14
-   days** through the cascade and speaks within a minute: "看了 386 封。有一件你可能想知道：…
+   days** (60 for bookings and renewals) through the cascade and speaks within a minute: "看了 386 封。有一件你可能想知道：…
    / I read 386 emails. One thing you may want to know: …". If nothing clears the bar: "看了
    386 封，没有要你操心的。/ I read 386 emails; nothing needs you."
 5. It asks the "how often" question once (§5.2).
@@ -322,11 +324,18 @@ Scopes: `gmail.readonly` and `gmail.compose` (drafts, and sending a draft after 
 Scores 1–5: **U** usefulness, **R** restraint (low noise risk), **T** trust (low harm if
 wrong), **F** feasibility in v1.x.
 
-| # | Scenario | Who | Sources | U | R | T | F | Σ |
+The two lead scenarios are the author's own dots moments (first-hand report, 2026-11-09;
+research/34 §1.1). Both are aha for the same two reasons:
+- **Missing it costs a lot**: a lost domain, or a night with no room in another country.
+- **It is a join the person can't easily make themselves.** The renewal notice and the payment
+  status live in different mails (or on the registrar's site). The flight and the hotel live
+  in two confirmations, weeks apart, from two companies.
+
+| # | Scenario | Who | Sources it needs | U | R | T | F | Σ |
 |---|---|---|---|---|---|---|---|---|
-| 1 | A bill due Friday found in mail, with the amount and card; Go sets a reminder | all | Gmail | 5 | 5 | 5 | 5 | 20 |
-| 2 | A teammate's PR has waited on you two days; Go asks a task to pre-read it | dev | GitHub | 5 | 5 | 5 | 5 | 20 |
-| 3 | A calendar invite clashes with a flight or event found in mail (the join) | all | Gmail + Calendar | 5 | 4 | 5 | 4 | 18 |
+| 1 | **A domain renewal you forgot to pay**: the registrar's renewal notice, with no payment receipt after it, and the expiry close (absorbs "a bill due Friday") | all | Gmail (notices, receipts); optionally the registrar's site via 上网 to confirm the status | 5 | 5 | 5 | 4 | 19 |
+| 2 | **A flight that doesn't match the hotel**: the booked flight lands on 11/21, but the hotel starts on 11/22 (absorbs "a clash across sources") | all | Gmail (both confirmations); Calendar if the trip is there | 5 | 5 | 5 | 4 | 19 |
+| 3 | A teammate's PR has waited on you two days; Go asks a task to pre-read it | dev | GitHub | 5 | 5 | 5 | 5 | 20 |
 | 4 | A renewal price went up, or a free trial ends tomorrow | all | Gmail (+ Mem: last price) | 4 | 5 | 5 | 4 | 18 |
 | 5 | A flight changed; Go looks up rebook options in the browser | consumer, dev | Gmail + 上网 | 5 | 4 | 4 | 3 | 16 |
 | 6 | Someone real asked you a question 3 days ago and you never answered | all | Gmail | 5 | 3 | 4 | 4 | 16 |
@@ -344,8 +353,19 @@ wrong), **F** feasibility in v1.x.
 | 18 | A meeting moved and you'd be late given your previous one | all | Calendar | 3 | 3 | 5 | 4 | 15 |
 
 **Top 5 for v1.x: #1, #2, #3, #4, #5.**
-- **Why these.** They have the highest scores, they cover all three users, and they show both
-  aha classes: a timely single source and a join. #5 also brings in an ability.
+- **Why these.** #1 and #2 are the moments that actually made a user say "aha", and the
+  design is tuned to them first. #3–#5 cover the developer, money and an ability.
+- **What #1 and #2 ask of the mechanism.**
+  - **Stage 2 extracts typed facts**, not summaries: a renewal (what, expiry, amount), a
+    payment (what, when), a booking (kind, place, dates).
+  - **Stage 3 joins them.** "A renewal with no payment after it and an expiry within 14 days";
+    "a stay that doesn't cover each night between a flight's arrival and the next departure".
+  - **The facts live in a small, structured trip-and-renewal ledger on the main.** Two mails
+    weeks apart can then meet without re-reading the inbox. Retention follows the Log. It is
+    not Mem: Mem gets only the durable gist, if anything.
+  - **The 14-day backfill on first sign-in (§6) should reach 60 days for bookings and
+    renewals.** Both of the author's moments came from mail older than two weeks (INFERRED,
+    from how bookings work).
 - **Close calls.**
   - #8 (passport) is strong but rare.
   - #10 (CI) is often already pushed by GitHub, so the bar must check "would they already
@@ -353,24 +373,26 @@ wrong), **F** feasibility in v1.x.
   - #6 (unanswered) is the most useful and the noisiest. It belongs in v1.x+1, after the
     feedback loop has data.
 
-**The words (glossary words; Go labels per D73).** All amounts, names and repos are examples.
+**The words (glossary words; Go labels per D73).** All domains, amounts, names and repos are
+examples.
 
-1. **Bill**
-   - zh: "Cloudflare 的账单 $25.00 周五（11/13）会自动扣款，卡是尾号 4417。跟上个月一样多。要我在周四上午提醒你看一眼吗？"
-     · 好，周四提醒我 · 先等等 · 回复… · 怎么知道的: 11/09 06:12 的邮件《Your invoice is ready》
-   - en: "Cloudflare will charge $25.00 on Friday (11/13) to the card ending 4417. Same as last month. Want a reminder on Thursday morning to take a look?"
-     · Remind me Thursday · Hold · Reply… · How I know: email "Your invoice is ready", 11/09 06:12
-2. **PR waiting**
+1. **Domain renewal not paid**
+   - zh: "ducter.dev 11/16 就到期了。Cloudflare 10/17 发过续费通知（$10.44），之后我没看到付款收据，自动续费的卡也在 10 月过期了。过期以后别人可能抢注。要我在 Ducter 的浏览器里打开续费页吗？付款留给你。"
+     · 好，打开续费页 · 先等等 · 回复… · 怎么知道的: 10/17 的邮件《Your domain renews soon》 · 10/02 的邮件《Card expiring》 · 之后没有收据
+   - en: "ducter.dev expires on 11/16. Cloudflare sent a renewal notice on 10/17 ($10.44), I haven't seen a payment receipt since, and the auto-renew card expired in October. Once it lapses, someone else can register it. Want me to open the renewal page in Ducter's browser? Paying stays with you."
+     · Open the renewal page · Hold · Reply… · How I know: email "Your domain renews soon", 10/17 · email "Card expiring", 10/02 · no receipt after
+   - If the registrar's site is signed in on Ducter's browser, a 上网 task confirms the status first ("still unpaid"). Otherwise the item says "从邮件看 / from your mail".
+2. **Flight vs hotel**
+   - zh: "你 11/21 的 CA929 晚上 21:40 到成田，可是新宿那家酒店订的是 11/22 入住。11/21 那晚还没有地方住。要我看看这家酒店能不能提前一晚吗？"
+     · 好，看看能不能提前 · 先等等 · 回复… · 怎么知道的: 11/02 的订票确认 · 10/28 的酒店确认
+   - en: "Your CA929 on 11/21 lands at Narita at 21:40, but the Shinjuku hotel is booked from 11/22. You have nowhere to stay the night of 11/21. Want me to check whether the hotel can add that night?"
+     · Check for that night · Hold · Reply… · How I know: flight confirmation, 11/02 · hotel confirmation, 10/28
+   - Go starts a 上网 task that looks and reports. Changing the booking or paying is the person's own step.
+3. **PR waiting**
    - zh: "Lina 的 PR（nowledge-co/mem #2141）等你 review 两天了，她今天上午又问了一次。改了 4 个文件，测试都过了。我可以先读一遍，把要注意的地方写给你。"
      · 好，先帮我读一遍 · 先等等
    - en: "Lina's PR (nowledge-co/mem #2141) has waited two days for your review, and she asked again this morning. 4 files changed, tests pass. I can read it first and write up what to look at."
      · Read it first · Hold
-3. **Clash (join)**
-   - zh: "周三 10:00 的 HawDB 周会，跟你邮件里那班 CA929（09:20 起飞）撞了。要我给组织的人写个草稿，说你那天来不了吗？"
-     · 好，写个草稿 · 先等等 · 怎么知道的: 日历邀请 · 11/02 的订票确认
-   - en: "Wednesday's 10:00 HawDB sync clashes with your flight CA929 (departs 09:20) from your email. Want me to draft a note to the organizer saying you can't make it?"
-     · Draft a note · Hold
-   - The draft is only a draft. Sending it is its own Go, with 30 s Undo.
 4. **Price up**
    - zh: "1Password 下个月续费从 $35.88 涨到 $47.88，11/20 扣款。要我把取消或换方案的入口找出来吗？"
      · 好，找出来 · 先等等
@@ -383,7 +405,7 @@ wrong), **F** feasibility in v1.x.
      · Look up options · Hold
 
 **Morning message frame.**
-- zh: "早。昨晚到现在看了 214 封信、3 个日历和 GitHub，有 2 件值得你知道，其余都不用管。"
+- zh: "早。昨晚到现在看了 214 封信、3 个日历和 GitHub，有 2 件值得你知道，其余都不用管。"（the two: #1 and #2）
   The last line: "没说的：12 封通知和收据你看标题就知道了；1 封像是推销，没理它。"
 - en: "Morning. Since last night I read 214 emails, 3 calendars and GitHub. Two things are worth knowing; the rest can wait." The last line: "Left out: 12 notifications and receipts you can read from the subject line; 1 that looked like a sales pitch."
 
@@ -411,23 +433,24 @@ wrong), **F** feasibility in v1.x.
 - **Owed:** the human comprehension test (with the D65 test), and art for the mailboxes (the
   prototype draws them in SVG).
 
-## 10. Proposals for the author (D89–D96)
+## 10. Proposals for the author (D96–D103)
 
 Each carries a default; "按建议" takes them all.
 
 | # | Proposal | Default | Main alternative |
 |---|---|---|---|
-| D89 | **Where connectors live.** On the computer Ducter lives on, in the control plane, behind a `ConnectorPort`; harnesses never hold provider credentials (B over A and C) | Yes | C (hosted gateway) as a per-account opt-in later |
-| D90 | **How they reach sessions.** Four fixed tools on the Ducter tool server; a per-session grant from 可以碰 / May touch; reads logged; writes are intents on the D61 ladder; background work is structurally read-only and may only draft | Yes | One tool per action (simpler, but grows the tool list and breaks the cache prefix) |
-| D91 | **Engine.** Embed open-connector's headless runtime, pinned, selected providers, Hosted/Marketplace/its MCP off, behind the port; user MCP servers attach to the broker as accounts | Adopt partially | Our own Gmail/Calendar/GitHub adapters only (smaller and slower to grow, no license risk) |
-| D92 | **Google access.** A guided bring-your-own Desktop client, published unverified-in-production, PKCE + loopback; scopes `gmail.readonly` + `gmail.compose` + `calendar.events` + `drive.readonly` (incremental); polling, no Pub/Sub; tokens in Keychain/libsecret | Yes | A Ducter-verified shared client (needs an entity, CASA, yearly cost); revisit at a hosted offering |
-| D93 | **The proactive policy.** Cascade (watch → rules → cheap triage → partner); the three-part attention bar; at most **3 a day**, batched into the morning message; held in quiet hours; 有用 / 这类别再说 under each item; a "没说的 / Left out" line; auto-pause after 3 unread mornings | Yes, cap 3 | Cap 5, or no cap with a confidence bar only (dots' approach; noisier in reviews) |
-| D94 | **Watching is asked for once at sign-in**, Go by default, and becomes a Rule; connecting alone never watches silently | Yes | Watch by default with no question (one less step, less 放心) |
-| D95 | **The honest line** on every account: "为了看懂一封信，它会把这封信给你的 AI 账号（{account}）看。别人拿不到。/ To understand a message, it shows it to your AI account ({account}). No one else gets it." | Yes | Put it only in docs (higher felt safety, less true) |
-| D96 | **Settings look.** Mailboxes on the main's island + the 3-slot tray; words 还能让它看的 / It can also read, 登录 / Sign in, 今天带给你的 / What it brings you today, the Partner group 它自己发现的事 / Things it notices with four options; pending a human test | Yes | Literal cards (A) if the human test finds "the mailbox means Ducter receives my mail" |
+| D96 | **Where connectors live.** On the computer Ducter lives on, in the control plane, behind a `ConnectorPort`; harnesses never hold provider credentials (B over A and C) | Yes | C (hosted gateway) as a per-account opt-in later |
+| D97 | **How they reach sessions.** Four fixed tools on the Ducter tool server; a per-session grant from 可以碰 / May touch; reads logged; writes are intents on the D61 ladder; background work is structurally read-only and may only draft | Yes | One tool per action (simpler, but grows the tool list and breaks the cache prefix) |
+| D98 | **Engine.** Embed open-connector's headless runtime, pinned, selected providers, Hosted/Marketplace/its MCP off, behind the port; user MCP servers attach to the broker as accounts | Adopt partially | Our own Gmail/Calendar/GitHub adapters only (smaller and slower to grow, no license risk) |
+| D99 | **Google access.** A guided bring-your-own Desktop client, published unverified-in-production, PKCE + loopback; scopes `gmail.readonly` + `gmail.compose` + `calendar.events` + `drive.readonly` (incremental); polling, no Pub/Sub; tokens in Keychain/libsecret | Yes | A Ducter-verified shared client (needs an entity, CASA, yearly cost); revisit at a hosted offering |
+| D100 | **The proactive policy.** Cascade (watch → rules → cheap triage → partner); the three-part attention bar; at most **3 a day**, batched into the morning message; held in quiet hours; 有用 / 这类别再说 under each item; a "没说的 / Left out" line; auto-pause after 3 unread mornings | Yes, cap 3 | Cap 5, or no cap with a confidence bar only (dots' approach; noisier in reviews) |
+| D101 | **Watching is asked for once at sign-in**, Go by default, and becomes a Rule; connecting alone never watches silently | Yes | Watch by default with no question (one less step, less 放心) |
+| D102 | **The honest line** on every account: "为了看懂一封信，它会把这封信给你的 AI 账号（{account}）看。别人拿不到。/ To understand a message, it shows it to your AI account ({account}). No one else gets it." | Yes | Put it only in docs (higher felt safety, less true) |
+| D103 | **Settings look.** Mailboxes on the main's island + the 3-slot tray; words 还能让它看的 / It can also read, 登录 / Sign in, 今天带给你的 / What it brings you today, the Partner group 它自己发现的事 / Things it notices with four options; pending a human test | Yes | Literal cards (A) if the human test finds "the mailbox means Ducter receives my mail" |
 
-Also for the author, without a number yet: the top-5 scenario set (§8); the 14-day backfill on
-first sign-in (§6); whether a Slack watch defaults to mentions and DMs only (§5.1).
+Also for the author, without a number yet: the top-5 scenario set (§8), led by the domain
+renewal and the flight vs hotel; the backfill on first sign-in (§6: 14 days, 60 for bookings
+and renewals); the trip-and-renewal ledger (§8); whether a Slack watch defaults to mentions and DMs only (§5.1).
 
 ## 11. Open
 

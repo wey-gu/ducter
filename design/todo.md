@@ -199,3 +199,20 @@ Codex first, once OAR is near 1.0. See `research/17`.
       Trigger: Mem exposes how to start it from outside.
 - [ ] Moving the app out of the disk image (offer "Move to Applications" when run from
       `/Volumes` or a translocated copy). Trigger: the first friend who opens it from the DMG.
+
+## Partner and Settings (D71)
+
+- [ ] A theme choice in Settings › Look. Trigger: a second theme (Pebble dark first) works on
+      the desktop and the phone alike.
+- [ ] Walk Forget against a live Nowledge Mem (`nmem m forget --force` on a line with a memory
+      id) and check recall no longer returns it. Trigger: a scratch Mem space for tests.
+- [ ] Screenshot the menu bar extra's open menu natively. On the test Mac it sat in the menu
+      bar's overflow, so only its contents are covered by unit tests. Trigger: a Mac with room in
+      the menu bar.
+- [ ] Sign in, install and sign out from a Devices account card in the real Ducter.app (the
+      card's sheet reuses the first run's jobs). Trigger: the same throwaway account as above.
+- [ ] Rules (F1) on the Partner page: let "On its own, or asks you first" be changed, not only
+      read. Trigger: F1 has a flow and a decision.
+- [ ] The partner's name in its live session: a rename reaches new sessions (the identity is
+      rewritten); the session already open keeps the old name until it restarts. Trigger: a
+      user notices.

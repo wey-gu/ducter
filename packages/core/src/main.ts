@@ -60,6 +60,7 @@ export async function main(mods: BootModules = {}) {
   // Clients can connect at once; identity from Mem (slow: several seconds) is folded in when it
   // lands (below). Triggers that arrive before the partner is wired are held by core and replayed.
   const persona = { id: "default", name: process.env.DUCTER_PERSONA_NAME || "Ducter", identity: DEFAULT_IDENTITY };
+  const bootName = persona.name;
   const loaded = loadPersona({ timeoutMs: 10_000 });
   let core: Core;
   try {
@@ -91,8 +92,11 @@ export async function main(mods: BootModules = {}) {
   // first session normally carries the real L1 identity.
   let source = "loading";
   const identity = loaded.then((mem) => {
-    Object.assign(core.persona, { name: mem.name, identity: mem.identity });
+    // A name chosen on the Partner page while Mem was still loading wins.
+    const renamed = core.persona.name !== bootName;
+    Object.assign(core.persona, renamed ? { identity: mem.identity.split(mem.name).join(core.persona.name) } : { name: mem.name, identity: mem.identity });
     source = mem.source;
+    if (mem.source !== "off") core.settings.setMemState(mem.source === "nowledge-mem" ? "connected" : "missing");
     return mem.source;
   });
   const identityOrTimeout = Promise.race([identity, Bun.sleep(IDENTITY_WAIT_MS).then(() => "timeout")]);

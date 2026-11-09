@@ -59,6 +59,9 @@ log.append({
   },
 });
 await tick();
+// Two things it noted along the way (记下了), for the Settings sheet.
+log.append({ stream: "channel", origin: "partner", kind: "memory_noted", body: { title: zh ? "测试统一用假时钟，不写死等待" : "Tests use a fake clock, never fixed sleeps", replyTo: u.seq } });
+log.append({ stream: "channel", origin: "partner", kind: "memory_noted", body: { title: zh ? "HawDB 的改动先留在分支上，不推送" : "HawDB changes stay on a branch, unpushed", replyTo: u.seq } });
 // The user saw that result (so what follows is "while you were away").
 log.append({ stream: "channel", origin: "user", kind: "read_receipt", body: { upToSeq: log.head() } });
 await tick();

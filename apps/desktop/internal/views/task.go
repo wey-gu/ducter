@@ -451,7 +451,7 @@ func (a *App) sentBubble(c *ui.Context, text string, sd *store.Send) {
 			if failed {
 				col = t.Failed.Ink
 			} else if !waiting {
-				ui.Box(c).Size(16, 16).Radius(6).Background(t.Done.Surface).Draw(drawCheck(t.Done.Ink))
+				ui.Box(c).Size(16, 16).Draw(drawCheck(t.InkMuted))
 			}
 			ui.Text(c, note).FontSize(t.XS).FontWeight(700).TextColor(col)
 		})

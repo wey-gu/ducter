@@ -544,7 +544,7 @@ function Top({ back }: { back?: string }) {
     );
   return (
     <header class="top">
-      <button class="who" onClick={() => ((A.sheet = { kind: "settings" }), A.changed())} aria-label={t("settings.title")}>
+      <button class="who" onClick={() => A.openSettings()} aria-label={t("settings.title")}>
         <Avatar size={46} />
         <span style={{ minWidth: 0 }}>
           <div class="name">{A.S.personaName}</div>
@@ -1121,66 +1121,208 @@ function DecisionSheet({ id }: { id: string }) {
   );
 }
 
-function SettingsSheet() {
-  const [settings, setSettings] = useState<{ done: boolean; quiet: { start: string; end: string } | null } | null>(null);
-  useEffect(() => {
-    void A.api.call<{ done: boolean; quiet: { start: string; end: string } | null }>("api/push/settings").then((r) => r.data && setSettings(r.data));
-  }, [A.push]);
-  const quiet = settings?.quiet ?? { start: "23:00", end: "08:00" };
+// A segmented choice: flat, the chosen one on the surface with an ink hairline (no ledge, no pill).
+function Seg<V extends string | number>(p: { label: string; value: V | undefined; options: { v: V; label: string }[]; onPick: (v: V) => void }) {
   return (
-    <Sheet label={t("settings.title")}>
-      <h2>{t("settings.title")}</h2>
-      <div class="small">{A.me?.via === "device" ? `${A.me.deviceName ?? ""}` : deviceLabel(A.L, "local")}</div>
-      <h3 style={{ margin: "6px 2px 0", fontSize: 12, color: "var(--ink-muted)" }}>{t("notify.title")}</h3>
-      {A.push === "ios-install" && <div class="hint">{t("notify.ios")}</div>}
-      {A.push === "unsupported" && <div class="hint">{t(inApp() ? "notify.app.unavailable" : "notify.unsupported")}</div>}
-      {inApp() && A.push === "off" && !A.me?.push.apns && <div class="hint">{t("notify.app.nokey")}</div>}
-      {A.push === "denied" && <div class="hint">{t("notify.denied")}</div>}
-      {A.push === "off" && A.me?.push.publicKey && (!inApp() || A.me.push.apns) && (
-        <Btn
-          kind="primary"
-          label={t("notify.on")}
-          onClick={async () => {
-            A.push = await turnOnPush();
-            A.changed();
-          }}
-        />
-      )}
-      {A.push === "on" && (
+    <div class="seg" role="radiogroup" aria-label={p.label}>
+      {p.options.map((o) => (
+        <button key={String(o.v)} role="radio" aria-checked={o.v === p.value} class={o.v === p.value ? "on" : ""} onClick={() => o.v !== p.value && p.onPick(o.v)}>
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function Toggle(p: { label: string; checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
+  return (
+    <label class="switch">
+      <span>{p.label}</span>
+      <input type="checkbox" role="switch" checked={p.checked} disabled={p.disabled} onChange={(e) => p.onChange((e.target as HTMLInputElement).checked)} />
+    </label>
+  );
+}
+
+const tz = () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+
+function NameRow() {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const save = () => {
+    const n = draft.trim();
+    if (n && n !== A.S.personaName) A.setSettings({ name: n });
+    setEditing(false);
+  };
+  return (
+    <div class="partner-head">
+      <Avatar size={64} />
+      {editing ? (
         <>
-          <div class="small">{t("notify.enabled")}</div>
-          <label class="switch">
-            <span>{t("notify.done")}</span>
-            <input
-              type="checkbox"
-              checked={settings?.done ?? false}
-              onChange={async (e) => {
-                const r = await A.api.call<typeof settings>("api/push/settings", { method: "POST", body: { done: (e.target as HTMLInputElement).checked } });
-                if (r.data) setSettings(r.data);
-              }}
-            />
-          </label>
-          <div class="small">{t("quiet.band_label", quiet.start, quiet.end)}</div>
-          <div class="btns">
+          <input
+            class="name-input"
+            value={draft}
+            maxLength={24}
+            aria-label={t("partner.rename")}
+            autoFocus
+            onInput={(e) => setDraft((e.target as HTMLInputElement).value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.isComposing) save();
+              if (e.key === "Escape") e.stopPropagation(), setEditing(false);
+            }}
+          />
+          <Btn kind="text" label={t("partner.rename.cancel")} onClick={() => setEditing(false)} />
+          <Btn kind="primary" label={t("partner.rename")} onClick={save} />
+        </>
+      ) : (
+        <>
+          <h2 class="grow">{A.S.personaName}</h2>
+          {A.settings && <Btn kind="text" label={t("partner.rename")} onClick={() => (setDraft(A.S.personaName), setEditing(true))} />}
+        </>
+      )}
+    </div>
+  );
+}
+
+function PartnerSettings() {
+  const s = A.settings;
+  const mem = A.mem;
+  if (!s) return <div class="small">{t("conn.connecting")}</div>;
+  const quiet = s.quiet;
+  const setQuiet = (start: string, end: string) => A.setSettings({ quiet: { start, end, tz: quiet?.tz ?? tz() } });
+  return (
+    <>
+      <section class="set">
+        <h3>{t("partner.talk.title")}</h3>
+        <Seg
+          label={t("partner.talk.title")}
+          value={s.language}
+          options={(["auto", "zh", "en"] as const).map((v) => ({ v, label: t(`partner.talk.${v}`) }))}
+          onPick={(language) => A.setSettings({ language })}
+        />
+        <div class="small sub">{s.language === "auto" ? t("partner.talk.auto.note") : t("partner.talk.fixed.note", t(`partner.talk.${s.language}`))}</div>
+      </section>
+      <section class="set">
+        <h3>{t("partner.notify.title")}</h3>
+        <Toggle label={t("partner.notify.on")} checked={s.notify} onChange={(notify) => A.setSettings({ notify })} />
+        <div class="small sub">{t(s.notify ? "partner.notify.on.note" : "partner.notify.off.note")}</div>
+        <Toggle label={t("partner.quiet")} checked={!!quiet} onChange={(on) => A.setSettings({ quiet: on ? { start: "23:00", end: "08:00", tz: tz() } : null })} />
+        {quiet && (
+          <div class="quiet-range">
+            <input type="time" aria-label={t("partner.quiet")} value={quiet.start} onChange={(e) => setQuiet((e.target as HTMLInputElement).value || quiet.start, quiet.end)} />
+            <span>{t("partner.quiet.to")}</span>
+            <input type="time" aria-label={`${t("partner.quiet")} ${t("partner.quiet.to")}`} value={quiet.end} onChange={(e) => setQuiet(quiet.start, (e.target as HTMLInputElement).value || quiet.end)} />
+          </div>
+        )}
+        {quiet && <div class="small sub">{t("partner.quiet.note")}</div>}
+      </section>
+      <section class="set">
+        <h3>{t("partner.default.title")}</h3>
+        <div class="small sub">{t("partner.default.line")}</div>
+        <Seg
+          label={t("partner.default.line")}
+          value={s.defaultAfterMin}
+          options={[10, 30, 60, 120].map((v) => ({ v, label: v < 60 ? t("partner.default.min", v) : t("partner.default.hour", v / 60) }))}
+          onPick={(defaultAfterMin) => A.setSettings({ defaultAfterMin })}
+        />
+        <div class="small sub">{t("partner.default.note")}</div>
+      </section>
+      <section class="set">
+        <h3>{t("partner.memory.title")}</h3>
+        {mem && <div class="small sub">{t(`partner.memory.${mem.state}`)}</div>}
+        {mem?.state === "missing" && (
+          <a class="more" href="https://mem.nowledge.co" target="_blank" rel="noopener">
+            {t("partner.memory.connect")}
+          </a>
+        )}
+        <Toggle label={t("partner.memory.switch")} checked={s.memory} onChange={(memory) => A.setSettings({ memory })} />
+        {s.memory && !!mem?.noted.length && (
+          <div class="noted" aria-label={t("partner.memory.recent")}>
+            {mem.noted.map((n) => (
+              <div class="noted-row" key={n.seq}>
+                <span>{n.title}</span>
+                <Btn kind="text" label={t("partner.memory.forget")} about={n.title} onClick={() => A.forget(n.seq)} />
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    </>
+  );
+}
+
+function PhoneSettings() {
+  const [push, setPush] = useState<{ done: boolean } | null>(null);
+  useEffect(() => {
+    void A.api.call<{ done: boolean }>("api/push/settings").then((r) => r.data && setPush(r.data));
+  }, [A.push]);
+  return (
+    <section class="set">
+      <h3>{t("settings.phone")}</h3>
+      <div class="small">{A.me?.via === "device" ? `${A.me.deviceName ?? ""}` : deviceLabel(A.L, "local")}</div>
+      <div class="small sub">{t("settings.lang.title")}</div>
+      <Seg label={t("settings.lang.title")} value={A.uiLang} options={(["auto", "zh", "en"] as const).map((v) => ({ v, label: t(`settings.lang.${v}`) }))} onPick={(v) => A.setUiLang(v)} />
+      {A.settings?.notify !== false && (
+        <>
+          {A.push === "ios-install" && <div class="hint">{t("notify.ios")}</div>}
+          {A.push === "unsupported" && <div class="hint">{t(inApp() ? "notify.app.unavailable" : "notify.unsupported")}</div>}
+          {inApp() && A.push === "off" && !A.me?.push.apns && <div class="hint">{t("notify.app.nokey")}</div>}
+          {A.push === "denied" && <div class="hint">{t("notify.denied")}</div>}
+          {A.push === "off" && A.me?.push.publicKey && (!inApp() || A.me.push.apns) && (
             <Btn
-              kind="quiet"
-              label={t("notify.test")}
+              kind="primary"
+              label={t("notify.on")}
               onClick={async () => {
-                const r = await A.api.call("api/push/test", { method: "POST" });
-                A.toast(r.status === 200 ? t("notify.test.sent") : t("result.action.failed", String(r.status)));
-              }}
-            />
-            <Btn
-              kind="text"
-              label={t("notify.off")}
-              onClick={async () => {
-                A.push = await disablePush(A.api);
+                A.push = await turnOnPush();
                 A.changed();
               }}
             />
-          </div>
+          )}
+          {A.push === "on" && (
+            <>
+              <div class="small">{t("notify.enabled")}</div>
+              <Toggle
+                label={t("notify.done")}
+                checked={push?.done ?? false}
+                onChange={async (done) => {
+                  const r = await A.api.call<{ done: boolean }>("api/push/settings", { method: "POST", body: { done } });
+                  if (r.data) setPush(r.data);
+                }}
+              />
+              <div class="btns">
+                <Btn
+                  kind="quiet"
+                  label={t("notify.test")}
+                  onClick={async () => {
+                    const r = await A.api.call("api/push/test", { method: "POST" });
+                    A.toast(r.status === 200 ? t("notify.test.sent") : t("result.action.failed", String(r.status)));
+                  }}
+                />
+                <Btn
+                  kind="text"
+                  label={t("notify.off")}
+                  onClick={async () => {
+                    A.push = await disablePush(A.api);
+                    A.changed();
+                  }}
+                />
+              </div>
+            </>
+          )}
         </>
       )}
+    </section>
+  );
+}
+
+function SettingsSheet() {
+  useEffect(() => {
+    if (!A.settings && A.S.welcomed) A.send({ t: "settings" });
+  }, []);
+  return (
+    <Sheet label={t("settings.title")}>
+      <NameRow />
+      <PartnerSettings />
+      <PhoneSettings />
     </Sheet>
   );
 }

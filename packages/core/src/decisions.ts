@@ -43,11 +43,13 @@ export function createDecisions(opts: {
   tasks: CoreRegistry;
   clock?: Clock;
   defaultDelayMs?: number;
+  /** The user's setting (D71), read when a decision is asked; defaultDelayMs (env, tests) wins. */
+  delayMs?: () => number;
   onDecision?: DecisionHook;
 }): Decisions {
   const { log, tasks } = opts;
   const clock = opts.clock ?? realClock;
-  const delay = opts.defaultDelayMs ?? DEFAULT_DELAY_MS;
+  const delay = () => opts.defaultDelayMs ?? opts.delayMs?.() ?? DEFAULT_DELAY_MS;
   let hook: DecisionHook | undefined = opts.onDecision;
   const all = new Map<string, Bodies["decision"]>();
   const resolved = new Set<string>();
@@ -108,7 +110,7 @@ export function createDecisions(opts: {
           defaultOption: hasDefault ? "go" : "hold",
           reversible: q.reversible,
         };
-        if (q.reversible && hasDefault) body.defaultAt = new Date(clock.now() + delay).toISOString();
+        if (q.reversible && hasDefault) body.defaultAt = new Date(clock.now() + delay()).toISOString();
         log.append({ stream: "channel", origin: "system", kind: "decision", body });
       }
       later(() => setAttention(r.taskId, "needs_you"));

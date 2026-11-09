@@ -282,6 +282,12 @@ type Store struct {
 	AbilityResults []protocol.ServerFrame
 	// PairCode is the newest pairing code the server minted for this app.
 	PairCode *protocol.ServerFrame
+	// Settings and Mem are the partner's settings and memory, as last sent
+	// (nil until the first settings frame); Forgot the last forget's
+	// outcome, until the view shows it.
+	Settings *protocol.Settings
+	Mem      *protocol.MemView
+	Forgot   *protocol.Forgot
 }
 
 // Device returns a device of Your devices and abilities by id, or nil.
@@ -334,6 +340,19 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 	case "pair_code":
 		fc := f
 		s.PairCode = &fc
+	case "settings":
+		if f.Settings != nil {
+			s.Settings = f.Settings
+			if f.Settings.Name != "" {
+				s.PersonaName = f.Settings.Name
+			}
+		}
+		if f.Mem != nil {
+			s.Mem = f.Mem
+		}
+		if f.Forgot != nil {
+			s.Forgot = f.Forgot
+		}
 	case "sent":
 		if t := s.Tasks[f.TaskID]; t != nil {
 			for _, sd := range t.Sends {

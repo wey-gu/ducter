@@ -28,6 +28,8 @@ These pages are for using Ducter. If you want to build it or change it, start wi
 
 - **[Your devices](devices.md):** which computers Ducter works on, what each one can do, and
   how it keeps working when you close the window.
+- **[Your partner and settings](settings.md):** rename your partner, choose how it talks, when
+  it may come to you and what it remembers, and the app's own settings and menus.
 - **[Your phone](phone.md):** connect your phone, get a nudge when something needs you, and
   keep your nights quiet.
 - **[Privacy and safety](privacy-and-safety.md):** what Ducter never does by itself, what runs
@@ -50,4 +52,5 @@ These pages are for using Ducter. If you want to build it or change it, start wi
 | **Go · Hold · Reply…** | Your answers to a decision. Go takes the suggested default, Hold says "not yet", Reply lets you say it in your own words. |
 | **How I know** | The proof under a finished result: tests that ran, checks, the changes. |
 | **Devices** | The computers (and phone) Ducter can use: **Awake**, **Asleep**, or **Can't reach**. |
+| **Partner · Settings** | Partner is about the one you talk to (name, language, notifications, memory); Settings is about the app. |
 | **Stop Ducter · Wake** | The one way to stop everything, and the way to start it again. |

@@ -63,6 +63,10 @@ partner eval (real model, fake tasks and Mem; `research/30`) · **unit** = unit 
 | I3 | Documents live in 做好的 (Save to…) | draft | draft | draft | draft | — | — | D52 Q7 |
 | I4 | Finding a result weeks later | draft | draft | draft | draft | — | — | ask first; list inside On hand |
 | I5 | Sharing a result | draft | draft | draft | draft | — | — | links ship with Ducter Edge |
+| K1 | Get to know the partner (Partner page: name, faces, how it talks, what it remembers, forget) | draft | — | draft | — | — | native (cua-driver, scripted core): rename, forget (hidden: no Mem id), default wait persisted; headless full page zh/en; phone sheet headless | D71. Forget in Mem verified by unit test with a fake forgetter only; a live `nmem m forget` not run |
+| K2 | Quiet the partner (notifications off, quiet hours, the default wait) | draft | — | draft | — | — | native: quiet hours and the wait persist to push.json / settings.json; unit: the Mac's notice held when off or in quiet hours | D71; D3 for what quiet hours hold |
+| K3 | App settings (Look, Language, when the window closes, updates, data and logs, about, remove) | draft | — | draft | — | — | native (window connected to a core: Look, Language, About); headless with a fake backend (Stop Ducter, Updates, Run checks, Remove plan) | D71, D72. Theme choice hidden until a second theme works |
+| K4 | Answer from the menu bar extra with the window closed | draft | — | draft | — | — | unit: what the menu lists, answering removes it; native: the icon is placed, its menu not screenshotted (the extra sat in the menu bar's overflow on the test Mac) | D71 |
 | J1 | Another agent asks the partner to take work (Nowledge Bridge) | draft | — | draft | — | — | unit (stub nmem): request logged once, framed untrusted, task only after Go, reply to the original; live round trip — | `bridge.md`; behind `DUCTER_BRIDGE=1`, branch `bridge-practice` |
 | J2 | The result goes back to the agent that asked | draft | — | — | — | — | unit: `bridge_reply`; task ↔ request link — | J-Q7 |
 | J3 | A teammate's agent asks (Mem Team) | draft | — | — | — | — | — | Team Bridge gated on Mem's side |

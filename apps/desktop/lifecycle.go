@@ -74,7 +74,7 @@ func (lc *lifecycle) helpMenu() *mygo.MenuItem {
 	if lc.host != nil {
 		items = append(items, mygo.Separator(), &mygo.MenuItem{Label: lc.l.T("menu.help.report"), Click: func(*mygo.MenuItem, *mygo.Window) { go lc.reportProblem() }})
 	}
-	return &mygo.MenuItem{Role: mygo.RoleHelp, Submenu: items}
+	return &mygo.MenuItem{Role: mygo.RoleHelp, Label: lc.l.T("menu.help"), Submenu: items}
 }
 
 // showStatus puts the update's state on the menu line: the quiet place.

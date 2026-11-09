@@ -107,53 +107,85 @@ function GrooveCaptions({ w, f }: { w: WaiterView; f: number }) {
   );
 }
 
-/** A try's mark: ✓ it holds, → better, × not yet (in the failed ink only when worse). */
-export const beadMark = (v: Bodies["until_try"]["verdict"]) => (v === "met" ? "✓" : v === "better" ? "→" : "×");
-
-/** The try pebbles: one per try, the current one hollow. */
-export function Beads({ u }: { u: UntilView }) {
-  const running = u.state === "on";
+/** A keep-going loop's goal, as everyone reads it (D115): when the goal can be counted, a row of
+ *  clay lights for the checks that must pass, lit as they pass ("6 盏灯里亮了 4 盏"); when it
+ *  can't, a clay flag with Ducter climbing one step per try, the flag green when it holds. The
+ *  try count is a quiet caption. */
+export function Goal({ u, big }: { u: UntilView; big?: boolean }) {
+  const last = [...u.tries].reverse().find((x) => x.progress);
+  const met = u.state === "met";
+  const n = u.tries.length + (u.state === "on" ? 1 : 0);
+  if (last?.progress && last.progress.total <= 12) {
+    const { total } = last.progress;
+    const done = met ? total : last.progress.done;
+    return (
+      <span class={`goal lights${big ? " big" : ""}`} role="img" aria-label={lightsWords(done, total)}>
+        <span class="row-of">
+          {Array.from({ length: total }, (_, i) => (
+            <img key={i} src={`app/art/${i < done ? "goal_light_on" : "goal_light_off"}.webp`} alt="" draggable={false} />
+          ))}
+        </span>
+        <span class="cap">{[lightsWords(done, total), t("until.n", n)].join(" · ")}</span>
+      </span>
+    );
+  }
+  // A staircase of six steps up to the flag; Ducter stands on the step of its latest try (the
+  // steps behind it are solid, the ones ahead faint). At the flag it holds.
+  const SLOTS = 6;
+  const steps = met ? SLOTS : Math.min(Math.max(u.tries.length, 1), SLOTS - 1);
   return (
-    <span class="beads" role="img" aria-label={t("until.tries", u.tries.length + (running ? 1 : 0), u.maxTries)}>
-      {u.tries.map((x) => (
-        <i key={x.n} class={`bd v-${x.verdict}`}>{beadMark(x.verdict)}</i>
-      ))}
-      {running && <i class="bd cur" />}
+    <span class={`goal climb${big ? " big" : ""}`} role="img" aria-label={met ? t("until.met", u.tries.length) : t("until.n", n)}>
+      <span class="hill">
+        {Array.from({ length: SLOTS }, (_, i) => (
+          <i key={i} class={i < steps ? "" : "ahead"} style={{ height: `${(i + 1) * (big ? 7 : 5)}px` }} />
+        ))}
+        {!met && (
+          // Ducter stands on the top step: one step per try.
+          <img
+            class="climber"
+            src="app/art/working.webp"
+            alt=""
+            draggable={false}
+            style={{ left: `${(steps - 1) * ((big ? 22 : 14) + 2)}px`, bottom: `${steps * (big ? 7 : 5)}px` }}
+          />
+        )}
+        <img class="flag" src={`app/art/${met ? "goal_flag_on" : "goal_flag_off"}.webp`} alt="" draggable={false} />
+      </span>
+      <span class="cap">{met ? t("until.met", u.tries.length) : t("until.try", n, u.maxTries)}</span>
     </span>
   );
 }
 
+/** "6 盏灯里亮了 4 盏" / "4 of 6 lights on". */
+function lightsWords(done: number, total: number): string {
+  return A.L.lang === "zh" ? t("until.lights", total, done) : t("until.lights", done, total);
+}
+
 export function untilLine(u: UntilView): string {
-  const n = u.tries.length + (u.state === "on" ? 1 : 0);
   const last = u.tries.at(-1);
   if (u.state === "met") return t("until.met", u.tries.length);
   if (u.state === "stopped") return t(`until.stop.${u.stop ?? "max"}`, u.tries.length);
-  return [t("until.try", n, u.maxTries), last ? t("until.last", last.summary) : ""].filter(Boolean).join(" · ");
+  // A counted goal already shows in its lights; the check's own words stay in How it checks.
+  if (last?.progress) return "";
+  return last ? t("until.last", last.summary) : t("until.now");
 }
 
-/** The keep-going loop in an opened task: each try with its own words; how it judges, folded. */
+/** The keep-going loop in an opened task: the goal first, then each try in a quiet line; how it
+ *  judges, folded. */
 export function TryStrip({ task }: { task: Task }) {
   const u = A.S.untilOf(task);
   if (!u) return null;
   return (
     <section class="section">
       <h2 class="sec-title">{t("until.title", u.condition)}</h2>
-      <div class="trystrip" role="list">
+      <Goal u={u} big />
+      <ol class="tries">
         {u.tries.map((x) => (
-          <div class={`try v-${x.verdict}`} role="listitem" key={x.n}>
-            <i class={`bd v-${x.verdict}`}>{beadMark(x.verdict)}</i>
-            <b>{t("until.n", x.n)}</b>
-            <span>{x.summary}</span>
-          </div>
+          <li key={x.n}>
+            <b>{t("until.n", x.n)}</b> {x.progress ? lightsWords(x.progress.done, x.progress.total) : x.summary}
+          </li>
         ))}
-        {u.state === "on" && (
-          <div class="try" role="listitem">
-            <i class="bd cur" />
-            <b>{t("until.n", u.tries.length + 1)}</b>
-            <span>{t("until.now")}</span>
-          </div>
-        )}
-      </div>
+      </ol>
       <div class="small">{t("until.rule", u.maxTries)}</div>
       <details class="how">
         <summary>{t("wait.how.title")}</summary>
@@ -224,29 +256,27 @@ export function WaitDetails({ task }: { task: Task }) {
   );
 }
 
-/** One strip for every routine: a line, today an ink mark at its left, a clay bead per run with
- *  its date under it, spaced by time. */
-export function RunStrip({ r, n = 5 }: { r: RoutineView; n?: number }) {
-  const runs = (r.upcoming ?? (r.nextAt ? [r.nextAt] : [])).slice(0, n);
-  if (!runs.length) return null;
-  const now = Date.now();
-  const last = Date.parse(runs.at(-1)!);
-  const span = Math.max(1, last - now);
+/** A routine's next run on a clay tear-off desk calendar (D115): the date big, its weekday (or
+ *  "1 号" for a monthly one) under it, a few pages behind to say it comes again. */
+export function CalendarBadge({ r, big }: { r: RoutineView; big?: boolean }) {
+  const next = r.nextAt ?? r.upcoming?.[0];
+  if (!next) return null;
+  const d = new Date(next);
+  const monthly = r.trigger.kind === "time" && r.trigger.every === "month";
+  const zh = A.L.lang === "zh";
+  const sub = monthly ? (zh ? `${d.getMonth() + 1} 月` : d.toLocaleString("en", { month: "short" })) : zh ? ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][d.getDay()] : d.toLocaleString("en", { weekday: "short" });
   return (
-    <span class="runstrip" role="img" aria-label={runs.map((x) => when(A.L, x)).join(", ")}>
-      <span class="line" />
-      <span class="nowmark" />
-      {runs.map((x) => {
-        const left = 8 + ((Date.parse(x) - now) / span) * 88;
-        return (
-          <span class="rb" key={x} style={{ left: `${Math.min(96, Math.max(8, left))}%` }}>
-            <i />
-            <em>{md(x)}</em>
-          </span>
-        );
-      })}
+    <span class={`cal-badge${big ? " big" : ""}`} role="img" aria-label={when(A.L, next)}>
+      <img src="app/art/routine_calendar.webp" alt="" draggable={false} />
+      <b>{monthly && zh ? `${d.getDate()} 号` : d.getDate()}</b>
+      <em>{sub}</em>
     </span>
   );
+}
+
+/** The next few runs in words, for the proposal card: "11/16 · 11/23 · 11/30". */
+function nextFew(r: RoutineView): string {
+  return (r.upcoming ?? []).slice(0, 4).map((x) => md(x)).join(" · ");
 }
 
 /** Why a routine is paused, in words: "停着：连着 3 次你没看", "停着：你暂停的". */
@@ -268,9 +298,7 @@ export function RoutineRow({ r }: { r: RoutineView }) {
   return (
     <div class={`row routine${paused ? " paused" : ""}`}>
       {r.trigger.kind === "time" ? (
-        <span class="clk" aria-hidden="true">
-          <img src="app/art/wait_clock.webp" alt="" draggable={false} />
-        </span>
+        <CalendarBadge r={r} />
       ) : (
         <WaitBubble w={{ check: r.trigger.check, event: r.trigger.event }} />
       )}
@@ -278,7 +306,6 @@ export function RoutineRow({ r }: { r: RoutineView }) {
         <span class="t">{r.name}</span>
         {/* A condition routine's name already says its condition. */}
         {r.trigger.kind === "time" && !r.name.includes(r.triggerWords) && <span class="m">{r.triggerWords}</span>}
-        {!paused && r.trigger.kind === "time" && <RunStrip r={r} n={3} />}
         {lines.length > 0 && <span class="m cap">{lines.join(" · ")}</span>}
       </span>
       {paused ? (
@@ -315,8 +342,17 @@ export function RoutineFacts({ routineId }: { routineId: string }) {
     <div class="kv routine-facts">
       <span class="k">{t("routine.when")}</span>
       <span class="v">
-        {r.triggerWords}
-        {r.trigger.kind === "time" && <RunStrip r={r} />}
+        {r.trigger.kind === "time" ? (
+          <span class="when-cal">
+            <CalendarBadge r={r} big />
+            <span>
+              {r.triggerWords}
+              {nextFew(r) && <span class="sub">{nextFew(r)}</span>}
+            </span>
+          </span>
+        ) : (
+          r.triggerWords
+        )}
       </span>
       <span class="k">{t("routine.does")}</span>
       <span class="v">{r.brief.split("\n")[0]}</span>

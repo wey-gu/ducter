@@ -149,77 +149,153 @@ func (a *App) groove(c *ui.Context, w *protocol.Waiter, big bool) {
 	}
 }
 
-// runStrip is every routine's one strip: a line, today an ink mark at its
-// left, a clay bead per run with its date under it.
-func (a *App) runStrip(c *ui.Context, r *protocol.Routine, n int) {
+// calendarBadge is a routine's next run on a clay tear-off desk calendar
+// (D115): the date big, its weekday (or the month for a monthly one) under
+// it, a few pages behind to say it comes again.
+func (a *App) calendarBadge(c *ui.Context, r *protocol.Routine, size float32) {
 	t := a.T
-	runs := r.Upcoming
-	if len(runs) == 0 && r.NextAt != "" {
-		runs = []string{r.NextAt}
+	next := r.NextAt
+	if next == "" && len(r.Upcoming) > 0 {
+		next = r.Upcoming[0]
 	}
-	if len(runs) > n {
-		runs = runs[:n]
-	}
-	if len(runs) == 0 {
+	at := store.ParseTime(next)
+	bmp := theme.Clay("routine_calendar")
+	if at.IsZero() || bmp == nil {
 		return
 	}
+	at = at.Local()
+	zh := a.L.Lang == i18n.ZH
+	big := fmt.Sprint(at.Day())
+	var sub string
+	if r.Trigger.Every == "month" {
+		if zh {
+			big += " 号"
+			sub = fmt.Sprintf("%d 月", int(at.Month()))
+		} else {
+			sub = at.Format("Jan")
+		}
+	} else if zh {
+		sub = [...]string{"周日", "周一", "周二", "周三", "周四", "周五", "周六"}[at.Weekday()]
+	} else {
+		sub = at.Format("Mon")
+	}
+	w, h := size, size*1.13
+	ui.Box(c.Key("cal")).Size(w, h).Shrink(0).Role(ui.RoleImage).Label(a.when(at)).Children(func() {
+		ui.Image(c, bmp).Size(w, h).AccessHidden(true)
+		// The page's face, under the binding, a little left of center (the pages behind).
+		ui.Column(c.Key("face")).Absolute().Left(w * 0.06).Top(h * 0.31).Width(w * 0.74).AlignItems(ui.Center).Gap(0).Children(func() {
+			ui.Text(c, big).FontSize(size * 0.31).LineHeight(1.05).FontWeight(800).TextColor(t.Ink).FontFeatures("tnum").AccessHidden(true)
+			ui.Text(c, sub).FontSize(max(9, size*0.17)).LineHeight(1.1).TextColor(t.InkMuted).AccessHidden(true)
+		})
+	})
+}
+
+// nextFew is a routine's next few runs in words: "11/16 · 11/23 · 11/30".
+func nextFew(r *protocol.Routine) string {
 	var ds []string
-	for _, x := range runs {
-		ds = append(ds, a.when(store.ParseTime(x)))
-	}
-	row := ui.Row(c.Key("runs")).Gap(0).AlignItems(ui.Start).MaxWidth(380).Padding(0, t.S2, 0, 0).Role(ui.RoleImage).Label(strings.Join(ds, ", "))
-	row.Draw(func(p *ui.Painter, rc ui.Rect) {
-		p.Fill(ui.Rect{X: rc.X, Y: rc.Y + 7, W: rc.W, H: 4}, t.Sunken, 2)
-		p.Fill(ui.Rect{X: rc.X, Y: rc.Y, W: 3, H: 18}, t.InkSoft, 1.5)
-	})
-	row.Children(func() {
-		ui.Box(c).Width(14).Shrink(0)
-		for i, x := range runs {
-			at := store.ParseTime(x)
-			ui.Column(c.Key(i)).Grow(1).Basis(0).AlignItems(ui.Center).Gap(t.S1).Children(func() {
-				ui.Box(c).Size(18, 16).Radius(9).Background(t.Accent).Shadow(0, 2, 0, 0, t.NeedsYou.Strong)
-				ui.Text(c, fmt.Sprintf("%d/%d", int(at.Local().Month()), at.Local().Day())).FontSize(11).TextColor(t.InkMuted).FontFeatures("tnum")
-			})
+	for i, x := range r.Upcoming {
+		if i == 4 {
+			break
 		}
-	})
-}
-
-// beadMark is a try's mark: ✓ it holds, → better, × not yet.
-func beadMark(v string) string {
-	switch v {
-	case "met":
-		return "✓"
-	case "better":
-		return "→"
+		ds = append(ds, i18n.MD(store.ParseTime(x)))
 	}
-	return "×"
+	return strings.Join(ds, " · ")
 }
 
-// beads is the try strip: one small pebble per try, the current one hollow.
-func (a *App) beads(c *ui.Context, u *protocol.Until, size float32) {
+// goal is a keep-going loop's goal as everyone reads it (D115): a counted
+// goal is a row of clay lights for the checks that must pass, lit as they
+// pass ("6 盏灯里亮了 4 盏"); one that can't be counted is a staircase of six
+// steps to a clay flag, Ducter on the step of its latest try, the flag green
+// when it holds. The try count is a quiet caption.
+func (a *App) goal(c *ui.Context, u *protocol.Until, big bool) {
 	t := a.T
-	ui.Row(c.Key("beads")).Gap(size * 0.3).AlignItems(ui.Center).Role(ui.RoleImage).
-		Label(a.L.T("until.tries", len(u.Tries)+map[bool]int{true: 1}[u.State == "on"], u.MaxTries)).Children(func() {
-		for _, x := range u.Tries {
-			ink := t.InkMuted
-			switch x.Verdict {
-			case "met":
-				ink = t.Done.Ink
-			case "worse":
-				ink = t.Failed.Ink
-			}
-			ui.Box(c.Key(x.N)).Size(size, size*0.82).Radius(size).Background(t.Sunken).Shadow(0, 2, 0, 0, t.Line2).
-				Justify(ui.Center).AlignItems(ui.Center).Children(func() {
-				ui.Text(c, beadMark(x.Verdict)).FontSize(size * 0.5).FontWeight(800).TextColor(ink)
+	met := u.State == "met"
+	n := len(u.Tries)
+	if u.State == "on" {
+		n++
+	}
+	var last *protocol.Progress
+	for i := len(u.Tries) - 1; i >= 0; i-- {
+		if u.Tries[i].Progress != nil {
+			last = u.Tries[i].Progress
+			break
+		}
+	}
+	scale := float32(1)
+	if big {
+		scale = 1.6
+	}
+	if last != nil && last.Total <= 12 {
+		done := last.Done
+		if met {
+			done = last.Total
+		}
+		words := a.lightsWords(done, last.Total)
+		ui.Column(c.Key("goal")).Gap(t.S1).Role(ui.RoleImage).Label(words).Children(func() {
+			ui.Row(c).Gap(4 * scale).AlignItems(ui.End).Children(func() {
+				for i := 0; i < last.Total; i++ {
+					name := "goal_light_off"
+					if i < done {
+						name = "goal_light_on"
+					}
+					if bmp := theme.Clay(name); bmp != nil {
+						ui.Image(c.Key(i), bmp).Size(20*scale, 24*scale).AccessHidden(true)
+					}
+				}
 			})
-		}
-		if u.State == "on" {
-			ui.Box(c.Key("cur")).Size(size, size*0.82).Radius(size).Border(2, t.Line2)
-		}
+			ui.Text(c, words+" · "+a.L.T("until.n", n)).FontSize(t.SM).TextColor(t.InkSoft).AccessHidden(true)
+		})
+		return
+	}
+	const slots = 6
+	steps := slots
+	if !met {
+		steps = min(max(len(u.Tries), 1), slots-1)
+	}
+	stepW, stepH := 14*scale, 5*scale
+	caption := a.L.T("until.try", n, u.MaxTries)
+	if met {
+		caption = a.L.T("until.met", len(u.Tries))
+	}
+	ui.Column(c.Key("goal")).Gap(t.S1).Role(ui.RoleImage).Label(caption).Children(func() {
+		ui.Row(c).Gap(2).AlignItems(ui.End).Padding(24*scale, 0, 0, 0).Children(func() {
+			for i := 0; i < slots; i++ {
+				b := ui.Box(c.Key(i)).Size(stepW, float32(i+1)*stepH).Radius(4)
+				if i < steps {
+					b.Background(t.Line2).Shadow(0, 2, 0, 0, ui.RGBA(120, 90, 60, 0.35))
+				} else {
+					b.Border(1.5, t.Line2)
+				}
+				if i == steps-1 && !met {
+					b.Children(func() {
+						if face := theme.Face(theme.Working, 24*scale*2); face != nil {
+							ui.Image(c, face).Absolute().Left(-5*scale).Top(-24*scale).Size(24*scale, 24*scale).AccessHidden(true)
+						}
+					})
+				}
+			}
+			flag := "goal_flag_off"
+			if met {
+				flag = "goal_flag_on"
+			}
+			if bmp := theme.Clay(flag); bmp != nil {
+				ui.Image(c, bmp).Size(30*scale, 40*scale).Margin(0, 0, 0, 14*scale).AccessHidden(true)
+			}
+		})
+		ui.Text(c, caption).FontSize(t.SM).TextColor(t.InkSoft).AccessHidden(true)
 	})
 }
 
-// untilLine is a keep-going loop in a line: "第 3 次 · 最多 20 · 上一次：…".
+// lightsWords is "6 盏灯里亮了 4 盏" / "4 of 6 lights on".
+func (a *App) lightsWords(done, total int) string {
+	if a.L.Lang == i18n.ZH {
+		return a.L.T("until.lights", total, done)
+	}
+	return a.L.T("until.lights", done, total)
+}
+
+// untilLine is where a keep-going loop stands in a line, when the goal
+// doesn't already say it: "上一次：还剩 4 处".
 func (a *App) untilLine(u *protocol.Until) string {
 	switch u.State {
 	case "met":
@@ -231,14 +307,15 @@ func (a *App) untilLine(u *protocol.Until) string {
 		}
 		return a.L.T("until.stop."+stop, len(u.Tries))
 	}
-	line := a.L.T("until.try", len(u.Tries)+1, u.MaxTries)
-	if n := len(u.Tries); n > 0 {
-		line += " · " + a.L.T("until.last", u.Tries[n-1].Summary)
+	n := len(u.Tries)
+	if n == 0 || u.Tries[n-1].Progress != nil {
+		return ""
 	}
-	return line
+	return a.L.T("until.last", u.Tries[n-1].Summary)
 }
 
-// tryStrip is an opened task's keep-going loop: each try with its own words.
+// tryStrip is an opened task's keep-going loop: the goal first, then each
+// try in a quiet line.
 func (a *App) tryStrip(c *ui.Context, task *store.Task) {
 	t := a.T
 	if task.Card == nil || task.Card.Until == nil {
@@ -247,37 +324,23 @@ func (a *App) tryStrip(c *ui.Context, task *store.Task) {
 	u := task.Card.Until
 	ui.Column(c.Key("until")).Gap(t.S3).Children(func() {
 		a.heading(c, a.L.T("until.title", u.Condition), t.LG)
-		ui.Row(c).Gap(t.S4).Wrap().AlignItems(ui.Start).Children(func() {
-			cell := func(key, mark, label, words string, ink ui.Color, hollow bool) {
-				ui.Column(c.Key(key)).Gap(t.S1).AlignItems(ui.Center).Width(96).Children(func() {
-					b := ui.Box(c).Size(34, 28).Radius(34).Justify(ui.Center).AlignItems(ui.Center)
-					if hollow {
-						b.Border(2, t.Line2)
-					} else {
-						b.Background(t.Sunken).Shadow(0, 2, 0, 0, t.Line2).Children(func() {
-							ui.Text(c, mark).FontSize(14).FontWeight(800).TextColor(ink)
-						})
-					}
-					ui.Text(c, label).FontSize(t.SM).FontWeight(800)
-					ui.Text(c, words).FontSize(t.XS).TextColor(t.InkMuted).TextAlign(ui.Center).MaxLines(3)
-				})
-			}
+		a.goal(c, u, true)
+		ui.Column(c.Key("tries")).Gap(2).Children(func() {
 			for _, x := range u.Tries {
-				ink := t.InkMuted
-				if x.Verdict == "met" {
-					ink = t.Done.Ink
-				} else if x.Verdict == "worse" {
-					ink = t.Failed.Ink
+				words := x.Summary
+				if x.Progress != nil {
+					words = a.lightsWords(x.Progress.Done, x.Progress.Total)
 				}
-				cell(fmt.Sprint(x.N), beadMark(x.Verdict), a.L.T("until.n", x.N), x.Summary, ink, false)
-			}
-			if u.State == "on" {
-				cell("cur", "", a.L.T("until.n", len(u.Tries)+1), a.L.T("until.now"), t.InkMuted, true)
+				ui.Text(c.Key(x.N), a.L.T("until.n", x.N)+"  "+words).FontSize(t.SM).TextColor(t.InkMuted)
 			}
 		})
 		ui.Text(c, a.L.T("until.rule", u.MaxTries)).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkMuted).MaxWidth(readMeasure)
-		if u.State == "on" && a.button(c, a.L.T("until.stop"), btnText, t.ControlSM, t.Bg) {
-			a.send(protocol.UntilAction{T: "until_action", TaskID: task.ID, Action: "stop"})
+		if u.State == "on" {
+			ui.Row(c.Key("stop")).Children(func() {
+				if a.button(c, a.L.T("until.stop"), btnText, t.ControlSM, t.Bg) {
+					a.send(protocol.UntilAction{T: "until_action", TaskID: task.ID, Action: "stop"})
+				}
+			})
 		}
 	})
 }
@@ -470,9 +533,7 @@ func (a *App) routineCard(c *ui.Context, r *protocol.Routine) {
 	ui.Row(c).Gap(t.S3).Padding(t.S4, t.S4).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).
 		AlignItems(ui.Center).Grow(1).Basis(320).MaxWidth(520).Label(r.Name).Children(func() {
 		if r.Trigger.Kind == "time" {
-			if bmp := theme.Clay("wait_clock"); bmp != nil {
-				ui.Image(c, bmp).Size(34, 34).Shrink(0).AccessHidden(true)
-			}
+			a.calendarBadge(c, r, 46)
 		} else {
 			a.waitBubble(c, waitGlyph(r.Trigger.Check, r.Trigger.Event), 40)
 		}
@@ -484,9 +545,6 @@ func (a *App) routineCard(c *ui.Context, r *protocol.Routine) {
 			// A condition routine's name already says its condition.
 			if r.Trigger.Kind == "time" && !strings.Contains(r.Name, r.TriggerWords) {
 				ui.Text(c, r.TriggerWords).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(2)
-			}
-			if !paused && r.Trigger.Kind == "time" {
-				a.runStrip(c, r, 3)
 			}
 			line := ""
 			switch {
@@ -534,7 +592,12 @@ func (a *App) routineFacts(c *ui.Context, id string, ink ui.Color) {
 		row(a.L.T("routine.when"), func() {
 			text(r.TriggerWords)
 			if r.Trigger.Kind == "time" {
-				a.runStrip(c, r, 5)
+				ui.Row(c.Key("cal")).Gap(t.S3).AlignItems(ui.Center).Children(func() {
+					a.calendarBadge(c, r, 58)
+					if few := nextFew(r); few != "" {
+						ui.Text(c, few).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum")
+					}
+				})
 			}
 		})
 		row(a.L.T("routine.does"), func() { text(firstLine(r.Brief)) })

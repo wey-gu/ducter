@@ -8,18 +8,25 @@ import type { Bodies, Place } from "@ducter/protocol";
 
 const zh = (process.env.DEMO_LANG ?? "zh") === "zh";
 let green = false;
+let ciLooks = 0;
 const checks = (s: string[]) => JSON.stringify(s.map((state, i) => ({ name: `job${i}`, state })));
 const verdicts = [
-  { met: false, reason: zh ? "3 项没过" : "3 checks failing", progress: "same" as const },
-  { met: false, reason: zh ? "还有 1 项没过，好些了" : "1 still failing, better", progress: "better" as const },
-  { met: true, reason: zh ? "全绿" : "all green" },
+  { met: false, reason: zh ? "还剩 4 处" : "4 left", progress: "better" as const },
+  { met: true, reason: zh ? "干净了" : "clean" },
 ];
 const core = startCore({
   persona: { id: "default", name: "Ducter", identity: "" },
   hostname: process.env.DUCTER_HOST || "127.0.0.1",
   work: {
     // Scripted command output: the PR's 6 checks, 4 passed, until DEMO_FIRE_MS.
-    exec: async () => ({ exitCode: green ? 0 : 8, stdout: green ? checks(Array(6).fill("SUCCESS")) : checks(["SUCCESS", "SUCCESS", "SUCCESS", "SUCCESS", "IN_PROGRESS", "IN_PROGRESS"]) }),
+    exec: async (argv) => {
+      // main's CI (gh run view): 2 of 6 checks pass after the first try, 4 after the second.
+      if (argv[1] === "run") {
+        const ok = [2, 4][Math.min(ciLooks++, 1)]!;
+        return { exitCode: 1, stdout: checks(Array.from({ length: 6 }, (_, i) => (i < ok ? "SUCCESS" : "FAILURE"))) };
+      }
+      return { exitCode: green ? 0 : 8, stdout: green ? checks(Array(6).fill("SUCCESS")) : checks(["SUCCESS", "SUCCESS", "SUCCESS", "SUCCESS", "IN_PROGRESS", "IN_PROGRESS"]) };
+    },
     minEveryMs: 1000,
     judge: async () => verdicts.shift() ?? { met: false, reason: "" },
   },
@@ -50,11 +57,23 @@ await tick();
 // 2. "Keep fixing until CI is green": two tries in, the third under way.
 const u2 = user(zh ? "main 的 CI 挂了，一直修到绿" : "main's CI is red; keep fixing until it's green");
 await task("t_ci", zh ? "一直修到 CI 绿：hawdb main" : "Keep fixing until CI is green: hawdb main", repo("~/dev/hawdb", "ducter/ci-green"), zh ? "把 main 的 CI 修绿。" : "Fix main's CI.");
-core.work.untils.start({ taskId: "t_ci", condition: zh ? "main 的 CI 全绿" : "main's CI is all green" });
+core.work.untils.start({
+  taskId: "t_ci",
+  condition: zh ? "main 的 CI 全绿" : "main's CI is all green",
+  check: { argv: ["gh", "run", "view", "--repo", "nowledge-co/hawdb", "--json", "jobs"], succeedWhen: { path: "[].state", equals: "SUCCESS" } },
+});
 say(zh ? "好，我一直修，绿了告诉你。" : "On it. I'll keep at it until it's green.", u2.seq);
 report("t_ci", { state: "done", summary: zh ? "修了 3 个测试里的超时" : "Fixed the timeouts in 3 tests", questions: [], evidence: [] });
 await Bun.sleep(80);
 report("t_ci", { state: "done", summary: zh ? "又修了 2 个" : "Fixed 2 more", questions: [], evidence: [] });
+await Bun.sleep(80);
+
+// 2b. A goal that can't be counted: a judge reads each try (the flag and the steps).
+const u2b = user(zh ? "把 docs 里的错别字一直改到干净为止" : "Keep fixing the typos in docs until they're clean");
+await task("t_typo", zh ? "一直改到没有错别字：ducter docs" : "Keep fixing typos until clean: ducter docs", repo("~/dev/ducter", "ducter/typos"), zh ? "把 docs 里的错别字改干净。" : "Fix the typos in docs.");
+core.work.untils.start({ taskId: "t_typo", condition: zh ? "docs 里没有错别字了" : "no typos left in docs" });
+say(zh ? "好，我一直改到干净。" : "On it, until they're clean.", u2b.seq);
+report("t_typo", { state: "done", summary: zh ? "改了 12 处" : "Fixed 12", questions: [], evidence: [] });
 await Bun.sleep(80);
 
 // 3. "When the domain renewal email arrives, tell me": an event wait (OpenConnector's Gmail trigger).

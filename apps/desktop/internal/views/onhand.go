@@ -488,8 +488,10 @@ func (a *App) workingCard(c *ui.Context, task *store.Task) {
 		ui.Text(c, task.Title()).FontSize(t.MD).FontWeight(800)
 		if u := task.Card; u != nil && u.Until != nil && u.Until.State == "on" {
 			// A keep-going loop (D113): its tries, then where it stands.
-			a.beads(c, u.Until, 22)
-			ui.Text(c, a.untilLine(u.Until)).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft).MaxLines(3)
+			a.goal(c, u.Until, false)
+			if line := a.untilLine(u.Until); line != "" {
+				ui.Text(c, line).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft).MaxLines(3)
+			}
 		} else if rep := task.Report(); rep != nil && rep.Summary != "" {
 			ui.Text(c, rep.Summary).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft).MaxLines(3)
 		} else if r := a.waitReason(task); r != "" {

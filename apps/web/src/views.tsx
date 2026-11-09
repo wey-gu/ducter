@@ -11,7 +11,7 @@ import { ago, cjkPad, deviceLabel, duration, firstClause, harnessName, modelName
 import { markdown } from "./markdown.ts";
 import { disablePush, enablePush } from "./push-client.ts";
 import { inApp } from "./native.ts";
-import { Beads, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, WaitBubble, waitCaption, WaitDetails, waitLine } from "./work.tsx";
+import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, WaitBubble, waitCaption, WaitDetails, waitLine } from "./work.tsx";
 import {
   attention,
   bodyReasonOf,
@@ -1049,7 +1049,7 @@ function Row({ task, meta }: { task: Task; meta: string }) {
       {w && <WaitBubble w={w} />}
       <span class="main">
         <span class="t">{title(task) || t("task.unknown")}</span>
-        {u && !finished(task) && <Beads u={u} />}
+        {u && !finished(task) && <Goal u={u} />}
         {w && <Groove w={w} />}
         <span class="m">{meta}</span>
       </span>

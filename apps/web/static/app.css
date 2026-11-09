@@ -2318,3 +2318,152 @@ details.how summary {
   transform: translateX(-50%);
   white-space: nowrap;
 }
+
+/* A keep-going loop's goal (D115, legible): clay lights for checks, or a flag to climb to. */
+.goal {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 6px 0 2px;
+}
+.goal .cap {
+  font-size: var(--sm);
+  color: var(--ink-soft);
+}
+.goal.lights .row-of {
+  display: flex;
+  gap: 4px;
+  align-items: flex-end;
+}
+.goal.lights img {
+  width: 20px;
+  height: 24px;
+  object-fit: contain;
+}
+.goal.lights.big img {
+  width: 32px;
+  height: 38px;
+}
+.goal.climb .hill {
+  position: relative;
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: flex-end;
+  gap: 2px;
+  height: 56px;
+  padding-top: 24px;
+}
+.goal.climb .hill i {
+  display: block;
+  width: 14px;
+  border-radius: 5px 5px 2px 2px;
+  background: linear-gradient(180deg, #f0dcc2, #d9bb97);
+  box-shadow: 0 2px 0 #c4a07a, inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+.goal.climb .climber {
+  position: absolute;
+  bottom: var(--climb, 0);
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  margin-left: -6px;
+  align-self: flex-end;
+}
+.goal.climb .flag {
+  width: 30px;
+  height: 40px;
+  margin-left: 18px;
+  object-fit: contain;
+}
+.goal.climb.big .hill {
+  height: 92px;
+  padding-top: 36px;
+}
+.goal.climb.big .hill i {
+  width: 22px;
+}
+.goal.climb.big .climber {
+  width: 36px;
+  height: 36px;
+}
+.goal.climb.big .flag {
+  width: 44px;
+  height: 58px;
+}
+ol.tries {
+  margin: 4px 0 0;
+  padding-left: 0;
+  list-style: none;
+  font-size: var(--sm);
+  color: var(--ink-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+ol.tries b {
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+/* A routine's next run on a clay tear-off calendar. */
+.cal-badge {
+  position: relative;
+  flex: none;
+  width: 46px;
+  height: 52px;
+  display: block;
+}
+.cal-badge img {
+  width: 46px;
+  height: 52px;
+  object-fit: contain;
+}
+.cal-badge b {
+  position: absolute;
+  left: 3px;
+  right: 9px;
+  top: 17px;
+  text-align: center;
+  font-size: 17px;
+  line-height: 1;
+  font-weight: 800;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.cal-badge em {
+  position: absolute;
+  left: 3px;
+  right: 9px;
+  top: 35px;
+  text-align: center;
+  font-style: normal;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--ink-muted);
+}
+.cal-badge.big {
+  width: 64px;
+  height: 72px;
+}
+.cal-badge.big img {
+  width: 64px;
+  height: 72px;
+}
+.cal-badge.big b {
+  top: 23px;
+  right: 12px;
+  font-size: 24px;
+}
+.cal-badge.big em {
+  top: 49px;
+  right: 12px;
+  font-size: 12px;
+}
+.when-cal {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.goal.climb .hill i.ahead {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--line-2);
+}

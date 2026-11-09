@@ -71,7 +71,7 @@ export function createRegistry(log: LogStore, clock: Clock = realClock): CoreReg
         const b = e.body as Bodies["until_try"];
         const c = cards.get(b.taskId);
         if (!c?.until) return;
-        c.until.tries.push({ n: b.n, verdict: b.verdict, summary: b.summary, by: b.by, at: e.ts });
+        c.until.tries.push({ n: b.n, verdict: b.verdict, summary: b.summary, by: b.by, at: e.ts, ...(b.progress ? { progress: b.progress } : {}) });
         if (b.tokens) c.until.tokens = (c.until.tokens ?? 0) + b.tokens;
         c.updatedAt = e.ts;
         break;

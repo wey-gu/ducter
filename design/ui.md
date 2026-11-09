@@ -158,10 +158,15 @@ against the same cases (`packages/protocol/fixtures/when.json`): 今天 18:00 ·
 no leading zero on the hour; never 12-01 09:00. A groove's "now" caption sits under Ducter; near
 the start it takes the start's place, near the deadline it gives way.
 
+**A keep-going loop shows its goal; a routine shows its next day (D115, legible).** A counted
+goal is a row of clay lights lit as its checks pass (`goal_light_on/off`); one that can't be
+counted is a staircase of six steps to a clay flag (`goal_flag_off/on`), Ducter on the step of
+its latest try. A time routine leads with a tear-off clay calendar (`routine_calendar`) showing
+the next date big, its cadence in words beside it.
+
 **Time is drawn; words are its caption (D115).** A wait with a deadline is a sunken groove from
-when it started to its deadline with the little Ducter on its bench at now. Every routine shows
-its next runs on one strip: today an ink mark at its left, a clay bead per run with its date
-under it. A keep-going loop is one clay pebble per try. No ticking numbers; nothing moves on its
+when it started to its deadline with the little Ducter on its bench at now. (The routine strip and
+the try pebbles were replaced, see above.) No ticking numbers; nothing moves on its
 own. Waiting is Ducter's sixth pose (on a bench, looking out) with a small cream bubble holding
 the clay thing awaited (PR, cloud, envelope, clock, file; `design/art/assets/alpha/wait_*`).
 

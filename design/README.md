@@ -25,6 +25,7 @@ renders it at `/docs`.
 | [`memory.md`](memory.md) | The partner's memory: digest, recent window, recall |
 | [`conversation.md`](conversation.md) | The conversation surface: jobs and the living message |
 | [`focus-window.md`](focus-window.md) | Tasks: brief, report, checkpoint, where they run |
+| [`ai-loadout.md`](ai-loadout.md) | Draft proposal: what the partner thinks with, who does the tasks, switching a task |
 | [`focus-window-states.md`](focus-window-states.md) | The task state machine |
 | [`system.md`](system.md) | Harness adapter, identity and Mem, safety and trust, storage, server mode, workers |
 | [`onboarding.md`](onboarding.md) | The first five minutes, on a Mac and on a server |

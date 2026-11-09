@@ -84,10 +84,12 @@ describe("ack → job → result", () => {
     // brief got the user's verbatim words appended, place passed through
     expect(fr.opened[0]!.brief).toContain("修一下 ~/dev/foo 里那个 flaky test，修好告诉我");
     expect(fr.opened[0]!.place).toEqual({ kind: "repo", device: "local", repoPath: "/x/foo" });
+    // The user wrote Chinese: the task is told to report in Chinese.
+    expect(fr.opened[0]!.language).toBe("zh");
   });
 
   test("MCP call overtaking the streamed text still yields one ack, no duplicate ai_msg", async () => {
-    const { fc, partner, user, channel } = setup(async (_input, s) => {
+    const { fc, fr, partner, user, channel } = setup(async (_input, s) => {
       const p = fc.callTool("task_open", { title: "Fix CI", brief: "fix ci" });
       await Bun.sleep(20);
       s.say("I'll look at the CI.");
@@ -99,6 +101,7 @@ describe("ack → job → result", () => {
     await partner.idle();
     expect(kinds(channel())).toEqual(["user:user_msg", "partner:ack", "partner:job_status"]);
     expect((channel()[1]!.body as Bodies["ack"]).text).toBe("I'll look at the CI.");
+    expect(fr.opened[0]!.language).toBe("en");
   });
 
   test("task_open without a preceding line gets a generated ack in the user's language", async () => {

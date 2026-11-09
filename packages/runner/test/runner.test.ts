@@ -110,10 +110,12 @@ describe("session spec", () => {
     const seen: { options?: any } = {};
     const port = createOarHarnessPort({ loadRuntime: async () => trippedRuntime(async () => {}, seen) });
     const runner = createRunner(core, { harness: port, newId: nextId });
-    const card = await runner.openTask({ persona: "p1", title: "t", brief: "THE BRIEF TEXT", model: "haiku" });
+    const card = await runner.openTask({ persona: "p1", title: "t", brief: "THE BRIEF TEXT", model: "haiku", language: "en" });
     await runner.whenStarted(card.taskId);
     const o = seen.options;
     expect(o.model).toBe("haiku");
+    expect(o.appendSystemPrompt).toContain("**Language: English.**");
+    expect((core.events.find((e) => e.kind === "task_open")!.body as { language?: string }).language).toBe("en");
     expect(o.appendSystemPrompt).toContain("THE BRIEF TEXT");
     expect(o.appendSystemPrompt).toContain("report_to_main");
     expect(o.systemPrompt).toBeUndefined();
@@ -143,6 +145,13 @@ describe("session spec", () => {
     expect(b).toContain("in the language of the user's own words in the brief");
     expect(b).toContain("Open with the outcome in one sentence anyone could follow");
     expect(b).not.toContain("plus the branch name in the summary");
+    // Fresh-user QA: a haiku task with an English brief reported in Chinese. The language the
+    // user reads is named when the partner knows it.
+    const en = taskBrief({ partnerName: "Ducter", taskId: "x", title: "t", brief: "b", place: { kind: "none" }, cwd: "/w", mcpServerName: "ducter", language: "en" });
+    expect(en).toContain("**Language: English.** The user reads English");
+    expect(en).not.toContain("in the language of the user's own words");
+    const zh = taskBrief({ partnerName: "Ducter", taskId: "x", title: "t", brief: "b", place: { kind: "none" }, cwd: "/w", mcpServerName: "ducter", language: "zh" });
+    expect(zh).toContain("**Language: Chinese (简体中文).**");
   });
 });
 

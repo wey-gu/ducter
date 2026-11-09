@@ -239,11 +239,12 @@ export interface HarnessPort {
 
 export interface Runner {
   harness: HarnessPort;
-  openTask(input: { persona: string; title: string; brief: string; place?: Place; project?: string; harness?: string; model?: string }): Promise<TaskCard>;
+  // language: the language the user reads the task's report in (from the conversation or their setting).
+  openTask(input: { persona: string; title: string; brief: string; place?: Place; project?: string; harness?: string; model?: string; language?: "zh" | "en" }): Promise<TaskCard>;
   // Optional (D120, ack and go): open a task while its brief is still being written. The card,
   // the place and the session start now; the brief becomes the session's first turn when it
   // settles. If it rejects, the task is dropped before it did anything.
-  openTaskEarly?(input: { persona: string; title: string; place?: Place; project?: string; harness?: string; model?: string }, brief: Promise<string>): Promise<TaskCard>;
+  openTaskEarly?(input: { persona: string; title: string; place?: Place; project?: string; harness?: string; model?: string; language?: "zh" | "en" }, brief: Promise<string>): Promise<TaskCard>;
   // Logs the text as task_event {role:"user", from, clientId} before delivering it.
   send(taskId: string, text: string, mode?: "steer" | "queue", from?: "user" | "partner", clientId?: string): Promise<{ delivered: Delivery }>;
   interrupt(taskId: string): Promise<void>;

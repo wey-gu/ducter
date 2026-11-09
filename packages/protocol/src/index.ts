@@ -87,6 +87,7 @@ export interface Bodies {
     model?: string;
     brief: string;
     bodyReason?: string; // why this harness/model
+    language?: "zh" | "en"; // the language the user reads its reports in (the brief says so)
   };
   task_state: { taskId: string; attention: Attention; residency: Residency; reason?: string };
   // Who does the task and why (D89, focus-window.md "Choosing a body"): appended when it opens

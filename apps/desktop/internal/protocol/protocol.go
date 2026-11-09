@@ -175,6 +175,7 @@ type TaskOpen struct {
 	Model      string `json:"model,omitempty"`
 	Brief      string `json:"brief"`
 	BodyReason string `json:"bodyReason,omitempty"`
+	Language   string `json:"language,omitempty"` // "zh" | "en": the language the user reads its reports in
 }
 
 type TaskState struct {

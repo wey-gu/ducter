@@ -10,6 +10,17 @@ export interface BriefInput {
   cwd: string;
   project?: string;
   mcpServerName: string; // the Ducter MCP server name, e.g. "ducter"
+  /** The language the user reads reports in; absent: the brief's own words decide. */
+  language?: "zh" | "en";
+}
+
+/** The report-language rule. Named when known: a haiku task with an English brief reported in
+ *  Chinese, and its evidence label became the On hand card's subtitle (fresh-user QA). */
+function languageLine(lang: BriefInput["language"]): string {
+  const what = "write `summary`, question `text` and `default`, and evidence `label`s";
+  if (lang === "en") return `- **Language: English.** The user reads English: ${what} in English, whatever language the code, files or tool output are in. They may read them as they are.`;
+  if (lang === "zh") return `- **Language: Chinese (简体中文).** The user reads Chinese: ${what} in Chinese, whatever language the code, files or tool output are in. Code, commands and names stay as they are. They may read them as they are.`;
+  return `- **Language:** ${what} in the language of the user's own words in the brief (Chinese words → Chinese). The user may read them as they are.`;
 }
 
 function placeLine(p: Place, cwd: string): string {
@@ -57,7 +68,7 @@ You work in ${placeLine(b.place, b.cwd)}${b.project ? ` Project: ${b.project}.` 
 
 Use the \`report_to_main\` tool on the \`${s}\` MCP server. It is the only way ${b.partnerName} hears from you.
 - Call it when you are **done** (state "done"), **failed** (state "failed"), **blocked** (state "blocked"), or **need a decision** (state "needs_input").
-- **Language:** write \`summary\`, question \`text\` and \`default\`, and evidence \`label\`s in the language of the user's own words in the brief (Chinese words → Chinese). The user may read them as they are.
+${languageLine(b.language)}
 - \`summary\`: at most 600 characters, plain and specific. Open with the outcome in one sentence anyone could follow (what is now true for the user), then what stands. Branch names, commit hashes and tool names go in \`evidence\`, not at the start.
 - \`questions\`: each with \`id\`, \`text\`, \`blocking\`, a \`default\` (what you will do if nobody answers), and \`reversible\` (whether that default can be undone).
   The user answers with three buttons: **Go** = do your \`default\`; **Hold** = pause and wait (it never means "no"); **Reply** = their own words. So phrase each question so that Go is the default action, and do not mention the buttons in the text.

@@ -389,6 +389,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         cwd,
         project: open.project || undefined,
         mcpServerName: mcp.name,
+        ...(open.language ? { language: open.language } : {}),
       }),
       mcp: [mcp],
       permissionMode: "bypass",
@@ -507,7 +508,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     // The partner's choice wins; else DUCTER_TASK_MODEL; else the harness default.
     const model = input.model || (h === "claude-code" ? (opts.defaultModel ?? opts.taskModel ?? process.env.DUCTER_TASK_MODEL) || undefined : undefined);
     const later = typeof briefIn !== "string";
-    const body: Bodies["task_open"] = { taskId: id, title, project, place: resolved.place, harness: h, model, brief: later ? "" : briefIn };
+    const body: Bodies["task_open"] = { taskId: id, title, project, place: resolved.place, harness: h, model, brief: later ? "" : briefIn, ...(input.language ? { language: input.language } : {}) };
     const opened = core.log.append({ persona, stream: stream(id), origin: "system", kind: "task_open", body });
     core.log.append({ persona, stream: stream(id), origin: "system", kind: "body_selected", body: { taskId: id, harness: h, ...(model ? { model } : {}), why: pick?.why ?? { kind: input.harness ? "partner" : "default" } } });
     const card: TaskCard = {

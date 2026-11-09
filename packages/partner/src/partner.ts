@@ -683,7 +683,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const brief = new Promise<string>((resolve, reject) => (settle = { resolve, reject }));
     brief.catch(() => {});
     const replyTo = replyToFor(t);
-    const card = runner.openTaskEarly({ persona: core.persona.id, title, place, ...who }, brief).then(
+    const card = runner.openTaskEarly({ persona: core.persona.id, title, place, ...who, language: taskLanguage(t) }, brief).then(
       (c) => {
         jobs.set(c.taskId, { jobId, title: c.title || title, replyTo, state: "running" });
         core.log.append({ stream: "channel", origin: "partner", kind: "job_status", body: { jobId, text: c.title || title, state: "running", taskId: c.taskId } });
@@ -1135,6 +1135,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           ...(args.project !== undefined ? { project: args.project } : {}),
           ...(args.harness ? { harness: args.harness } : {}),
           ...(args.model ? { model: args.model } : {}),
+          language: taskLanguage(t),
         });
         jobs.set(card.taskId, { jobId, title: card.title || args.title, replyTo: t ? replyToFor(t) : undefined, state: "running" });
         core.log.append({
@@ -1505,6 +1506,14 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const prev = core.log.read({ stream: "channel", kinds: ["user_msg"], beforeSeq: core.log.head() + 1, limit: 1 });
     const t = (prev[prev.length - 1]?.body as Bodies["user_msg"] | undefined)?.text;
     return t ? isChinese(t) : undefined;
+  }
+  /** The language a task reports in: the setting, else this turn's user words, else their last
+   *  message (fresh-user QA: a haiku task with an English brief reported in Chinese). */
+  function taskLanguage(t: TurnState | null | undefined): "zh" | "en" | undefined {
+    const talk = core.settings?.get().language ?? "auto";
+    if (talk !== "auto") return talk;
+    const zh = t?.userTexts.length ? t.zh : userZh();
+    return zh === undefined ? undefined : zh ? "zh" : "en";
   }
   function linkedTask(messageId: string): string | undefined {
     return loggedBridge().find((e) => e.body.direction === "out" && e.body.inReplyTo === messageId && e.body.taskId)?.body.taskId;

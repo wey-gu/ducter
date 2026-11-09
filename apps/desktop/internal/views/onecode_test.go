@@ -2,6 +2,7 @@ package views
 
 import (
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -35,6 +36,62 @@ func TestPairCardBothWays(t *testing.T) {
 				t.Fatalf("the new computer isn't shown: sel %q", h.app.dev.sel)
 			}
 		})
+	}
+}
+
+// The desktop button path against a real Ducter (D83): tap 连上手机或另一台
+// 电脑, write the code it shows to DUCTER_LIVE_CODE_OUT, then wait (up to
+// 5 min) for another computer to join with it via `ducter worker`, and
+// rename it from its card to DUCTER_LIVE_RENAME:
+//
+//	DUCTER_LIVE_URL=ws://127.0.0.1:7791/ws DUCTER_LIVE_CODE_OUT=/tmp/code \
+//	  DUCTER_LIVE_RENAME="Lima box" DUCTER_SHOTS=1 go test ./internal/views -run OneCodeLive -v
+func TestOneCodeLive(t *testing.T) {
+	url, out := os.Getenv("DUCTER_LIVE_URL"), os.Getenv("DUCTER_LIVE_CODE_OUT")
+	if url == "" || out == "" {
+		t.Skip("DUCTER_LIVE_URL or DUCTER_LIVE_CODE_OUT not set")
+	}
+	lang := i18n.ZH
+	if os.Getenv("DUCTER_LOCALE") == "en" {
+		lang = i18n.EN
+	}
+	h := newLive(t, url, lang).harness
+	h.app.Now = time.Now
+	L := h.app.L
+	h.click(L.T("nav.devices.label"))
+	h.until("devices", func() bool { return len(h.app.S.Devices) > 0 })
+	before := len(h.app.S.Devices)
+	h.click(L.T("devices.connect"))
+	h.until("code", func() bool { return h.app.S.PairCode != nil })
+	pc := h.app.S.PairCode
+	h.tt.Advance(time.Second)
+	h.tt.Frame()
+	t.Logf("code %s at %q; card says %q", pc.Code, pc.Address, workerCommand(pc.Address, pc.Code))
+	h.shotAs(fmt.Sprintf("live-%s-pair", lang))
+	if err := os.WriteFile(out, []byte(pc.Code+"\n"+pc.Address+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	h.wait = 5 * time.Minute
+	h.until("a computer joins", func() bool { return len(h.app.S.Devices) > before && !h.app.dev.pair.open })
+	dv := h.app.shownDevice()
+	h.until("awake", func() bool { dv = h.app.shownDevice(); return dv.State == protocol.DeviceAwake })
+	h.wait = 0
+	h.tt.Advance(time.Second)
+	h.tt.Frame()
+	if !h.tt.HasText(L.T("device.other") + " · " + L.T("device.other.does", h.app.S.PersonaName)) {
+		t.Fatalf("card: %q", h.tt.Texts())
+	}
+	t.Logf("joined: %s (%s, %s)", dv.Name, dv.ID, dv.State)
+	h.shotAs(fmt.Sprintf("live-%s-joined", lang))
+	if name := os.Getenv("DUCTER_LIVE_RENAME"); name != "" {
+		id := dv.ID
+		h.click(L.T("device.rename"))
+		h.app.dev.rename.draft = name
+		h.click(L.T("device.rename.ok"))
+		h.until("renamed", func() bool { d := h.app.S.Device(id); return d != nil && d.Name == name })
+		h.tt.Advance(time.Second)
+		h.tt.Frame()
+		h.shotAs(fmt.Sprintf("live-%s-renamed", lang))
 	}
 }
 

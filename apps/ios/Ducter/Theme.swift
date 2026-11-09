@@ -17,15 +17,12 @@ enum Pebble {
     static let line2 = dynamic(0xE0C9B0, 0x0D0A07)
     static let failedInk = dynamic(0x8A1F3B, 0xF8A9BC)
     /// Ledges: a darker shade of each filled button's fill (app.css --press-*).
-    static let pressPrimary = dynamic(0x000000, 0x8A7A66)
     static let pressAccent = dynamic(0xC9642A, 0xC9642A)
     static let pressQuiet = dynamic(0xE0C9B0, 0x0D0A07)
     /// Clay depth (D76): a card rests on a solid 4pt base; a button stands on a ledge (4pt at
     /// the 52 size), with a soft drop and a 1.5pt top highlight, and sinks into it when pressed.
     static let base: CGFloat = 4
     static let ledge: CGFloat = 4
-    static let dropColor = Color(UIColor(hex: 0x2B2118).withAlphaComponent(0.28))
-    static let dropPressedColor = Color(UIColor(hex: 0x2B2118).withAlphaComponent(0.22))
 
     static let radius: CGFloat = 24
     static let radiusSmall: CGFloat = 12
@@ -67,43 +64,116 @@ extension UIColor {
     }
 }
 
-/// A clay button (D76): its fill on a ledge of a darker shade, a soft drop, a 1.5pt top
-/// highlight; pressing sinks it into the ledge (70 ms).
-private struct LedgeButton: View {
+/// How one clay button is built (D76): a fill (flat or a top-to-bottom gradient), a 1.5pt inner
+/// top highlight, a 1pt inner rim, a 1pt seam right under the fill, then the ledge; 4pt in all
+/// at the 52 size. Pressed, it sinks: seam and ledge go to 0 and the drop tightens.
+struct Clay {
+    var top: Color, bottom: Color, ink: Color
+    var highlight: Color, rim: Color = .clear
+    var seam: Color, ledge: Color
+    var drop: Double = 0.28
+
+    /// Ink: a #000 ledge disappears under #2B2118, so the ink gets a slight gradient, a warm seam
+    /// and a near-black ledge, and a deeper drop.
+    static let primary = Clay(
+        top: dyn(0x3B2D22, 0xFFF6EA), bottom: dyn(0x2B2118, 0xF6EBDD), ink: Pebble.bg,
+        highlight: dynA(0xFFF6EA, 0.26, 0xFFFFFF, 0.5), rim: dynA(0xFFECD6, 0.08, 0x2B2118, 0.08),
+        seam: dyn(0x5A4434, 0xCDBBA5), ledge: dyn(0x140D07, 0x8A7A66), drop: 0.38)
+    static let secondary = Clay(
+        top: Pebble.bg, bottom: Pebble.bg, ink: Pebble.ink,
+        highlight: dynA(0xFFFFFF, 0.95, 0xFFFFFF, 0.06), rim: dynA(0x2B2118, 0.09, 0xFFFFFF, 0.06),
+        seam: dyn(0xF3E3CC, 0x2C241D), ledge: Pebble.pressQuiet)
+    static let accent = Clay(
+        top: Pebble.accent, bottom: Pebble.accent, ink: Pebble.onAccent,
+        highlight: Color.white.opacity(0.38),
+        seam: dyn(0xFFA466, 0xFFA466), ledge: Pebble.pressAccent)
+
+    private static func dyn(_ light: UInt32, _ dark: UInt32) -> Color {
+        Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: dark) : UIColor(hex: light) })
+    }
+    private static func dynA(_ light: UInt32, _ la: CGFloat, _ dark: UInt32, _ da: CGFloat) -> Color {
+        Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: dark).withAlphaComponent(da) : UIColor(hex: light).withAlphaComponent(la) })
+    }
+}
+
+private struct ClayButton: View {
     let configuration: ButtonStyle.Configuration
-    let fill: Color, ledge: Color, ink: Color, highlight: Color
-    var rim: Color = .clear
+    let clay: Clay
+    @Environment(\.clayPressed) private var forcedPress
+    private let seamH: CGFloat = 1
+
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: Pebble.buttonRadius, style: .continuous)
-        let pressed = configuration.isPressed
+        let pressed = forcedPress ?? configuration.isPressed
         let down = pressed ? Pebble.ledge : 0
         configuration.label
             .font(Pebble.text(16, .bold, relativeTo: .headline))
-            .foregroundStyle(ink)
+            .foregroundStyle(clay.ink)
             .frame(maxWidth: .infinity, minHeight: Pebble.buttonHeight)
-            .background(fill, in: shape)
-            .overlay(shape.inset(by: 0.5).stroke(rim, lineWidth: 1))
-            .overlay(alignment: .top) {
-                shape.stroke(highlight, lineWidth: 1.5).mask(alignment: .top) { Rectangle().frame(height: 1.5) }.padding(.horizontal, 6)
+            .background {
+                ZStack {
+                    shape.fill(clay.ledge).offset(y: Pebble.ledge - down)
+                    shape.fill(clay.seam).offset(y: pressed ? 0 : seamH)
+                    shape.fill(LinearGradient(colors: [clay.top, clay.bottom], startPoint: .top, endPoint: .bottom))
+                    shape.inset(by: 0.5).stroke(clay.rim, lineWidth: 1)
+                    // The inner top highlight: 1.5pt inside the top edge.
+                    shape.stroke(clay.highlight, lineWidth: 3).clipShape(shape)
+                        .mask(alignment: .top) { Rectangle().frame(height: 1.5) }
+                }
+                .compositingGroup()
+                .shadow(color: Color(UIColor(hex: 0x2B2118)).opacity(pressed ? 0.22 : clay.drop), radius: pressed ? 1.5 : 6, y: pressed ? 1 : 7)
             }
-            .background(ledge, in: shape.offset(y: Pebble.ledge - down))
-            .shadow(color: pressed ? Pebble.dropPressedColor : Pebble.dropColor, radius: pressed ? 1.5 : 6, y: pressed ? 1 : 7 + Pebble.ledge - down)
             .offset(y: down)
             .padding(.bottom, Pebble.ledge)
             .animation(.easeOut(duration: 0.07), value: pressed)
     }
 }
 
-/// The primary button: ink, cream words, on a black ledge. One per screen, last.
+/// The primary button: ink, cream words. One per screen, last.
 struct PrimaryButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        LedgeButton(configuration: configuration, fill: Pebble.ink, ledge: Pebble.pressPrimary, ink: Pebble.bg, highlight: Color(UIColor(hex: 0xFFF6EA).withAlphaComponent(0.22)))
-    }
+    func makeBody(configuration: Configuration) -> some View { ClayButton(configuration: configuration, clay: .primary) }
 }
 
 /// A secondary button: cream with a hairline rim, on a warm ledge.
 struct QuietButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        LedgeButton(configuration: configuration, fill: Pebble.bg, ledge: Pebble.pressQuiet, ink: Pebble.ink, highlight: Color.white.opacity(0.95), rim: Pebble.ink.opacity(0.09))
+    func makeBody(configuration: Configuration) -> some View { ClayButton(configuration: configuration, clay: .secondary) }
+}
+
+/// The accent button: orange on its ledge (the equip; the composer's send lives in the page).
+struct AccentButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View { ClayButton(configuration: configuration, clay: .accent) }
+}
+
+private struct ClayPressedKey: EnvironmentKey {
+    static let defaultValue: Bool? = nil
+}
+
+extension EnvironmentValues {
+    /// Shows a clay button as pressed (or at rest) regardless of touch: the button specimen only.
+    var clayPressed: Bool? {
+        get { self[ClayPressedKey.self] }
+        set { self[ClayPressedKey.self] = newValue }
     }
 }
+
+#if DEBUG
+/// The clay buttons at rest and pressed, for screenshots (`-buttonSpecimen YES`).
+struct ButtonSpecimen: View {
+    var body: some View {
+        HStack(alignment: .top, spacing: 16) {
+            ForEach([false, true], id: \.self) { down in
+                VStack(spacing: 18) {
+                    Text(down ? "Pressed" : "At rest").font(Pebble.text(13, .bold)).foregroundStyle(Pebble.inkMuted)
+                    Button("Merge") {}.buttonStyle(PrimaryButtonStyle())
+                    Button("Hold") {}.buttonStyle(QuietButtonStyle())
+                    Button("Send") {}.buttonStyle(AccentButtonStyle())
+                }
+                .environment(\.clayPressed, down)
+            }
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Pebble.bg)
+    }
+}
+#endif

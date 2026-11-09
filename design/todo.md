@@ -142,6 +142,18 @@ note and a `Dn`) before it is built.
       Dock tile.
 - [ ] Find what triggers macOS's "CuaDriver was prevented from modifying apps" notification.
 
+## Devices stage: the Isles (D81)
+
+- [ ] Human comprehension test of the Isles scene (owed since D65; research/33 used LLM proxy
+      raters only). Pass bar: 80% on where Ducter lives, what a bridge means, work running, can't
+      reach, and where a new device goes. Trigger: before v1 is called done.
+- [ ] Reduced motion checked on the native window with the system setting on (verified in the
+      headless renderer only; this machine's setting was left alone). Trigger: the next design QA.
+- [ ] "Shared by N devices" from the AI agent itself, per account (D82). Trigger: an AI agent
+      reports its account or allowance.
+- [ ] One small mark on the AI agent Ducter thinks with (a separate proposal); the token has
+      room for it. Trigger: that proposal is decided.
+
 ## Art assets: production export
 
 - [ ] Export WebP at 1×/2×/3× per the size each asset is used at in the clients. Commit only

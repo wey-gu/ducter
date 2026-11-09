@@ -145,9 +145,10 @@ lives in Details. On hand needs no state chip: the lane is the state.
 - A one-time highlight (a decision found from a notification) deepens the card's own tint;
   it never glows.
 - Selection on a card is a 2-point ink hairline (cards are containers: no ledge).
-- On the devices stage, a slot is labelled by its ability's name only and is laid out so the
-  label never leaves the stage; AI-account cards shrink to fit; the accessible name carries
-  the full state.
+- On the devices stage (D81), every word sits on a small clay tag (a cream card on a 2pt base)
+  and no two overlap at 1280 or 900 wide; an ability is labelled by its name only; under an
+  island only what is unusual; the accessible name carries the full state. The chosen island
+  is shown by brighter foam and an ink hairline on its tag, never a ring round the island.
 - The partner's clay face may blink or breathe: it is the thing itself, not a status dot.
 - A passed check's ✓ is drawn in the done ink (D76); other marks stay muted.
 
@@ -159,7 +160,10 @@ lives in Details. On hand needs no state chip: the lane is the state.
 | an awake device | floats 5pt (5.6 s) |
 | a cloud machine | drifts ±4pt (11 s) |
 | a sleeping device | its blanket rises and falls (scale-y 1.045 from the bottom, 4.8 s) |
-| an AI account's cords | a sheen runs along once every 9 s |
+| an ability that is on (Devices stage) | floats 5pt like an awake device (5.6 s), its own phase |
+| the sea and sky (Devices stage) | clouds drift ±16pt (70 s); slow light on the water drifts and fades (11–19 s); repainted at 12 fps |
+| parcels on a bridge | cross at a steady 40 scene-points a second, only while a task runs on that device (a state that is true, not decoration); still mode freezes them in place so "working" still reads |
+| a device that joins | its island rises out of the water (0.55 s), then the device drops on with the equip's squash and sparkles |
 | the equip | peel (14%) → arc (50%) → snap (62–69%), 0.82 s, a tock and a 10 ms haptic |
 
 Delays are staggered so nothing moves in unison. A device that can't be reached is still and a
@@ -306,122 +310,33 @@ relative paths as before), and each review is shown as a published gallery.
 | Phone web | `.shots/phone-*.png` | headless browser at 390×844 on a demo core; `phone-real-sonnet-result-zh` from a real sonnet run | conversation, decision sheet, decided, On hand, task, result, pairing, notify ask, iOS hint, offline; dark variants |
 | Design QA (D73, D74) | `.shots/qa-2026-11-09/{before,after}-*.png`, index in its `README.md` | native desktop window (cua-driver) on the demo seed, iOS Simulator, headless Chromium at 390 and 1440 (phone web, site) | no pills, the result line, the living message, On hand, the one-column task (done, working, didn't work), devices, setup, the site |
 
-## Capability map (D43): the hybrid (D65)
+## Devices stage: the Isles (D81)
 
-> Status: **decided D65**: the literal playset's world with the loadout's equip snap, still to
-> pass a human comprehension test before it ships. No category noun on screen (D66): headings
-> say 你的设备，和它们会做的事 / Your devices and what they can do. The research summary below is
-> the evidence (`research/24`, `26`, `28`).
-> - **research/26 (loadout, the user's mecha/equip feel):**
->   - Loadout as first proposed reads as military: the user as commander (3/3), combat, pilots
->     that can't share a plan, and a floating partner that's still reachable while home sleeps.
->   - **Recommended hybrid:** the playset's world (real device shapes on a sunny mat, literal
->     cards when zoomed out) plus the loadout's characters and **equip snap**.
->   - The partner **rides in a seat on the home device and shares its pulse light**; "home
->     sleeps, so the partner is unavailable" read correctly 3/3 (needs a human test).
->   - Never: weapons, stats, slot limits, hangar or roster screens, "mission", kneeling as
->     sleep, a floating partner, a charging cradle.
->   - **Equip motion:** about 0.6–0.8 s. Lift → drag with lag → slot opens → magnetic pull →
->     50 ms freeze + "tock" + light haptic → bounce → device blinks and nods. The chime fires
->     only once the capability actually works. Reduced motion = cross-fade.
-> - **Recommendation:** a *literal playset*. The user's real devices are drawn as chunky toys on
->   a table, with plain cards at zoom-out.
->   - Each AI plan is one block per account, with cords to every device signed into it
->     (shared quota read correctly 11/12 times with cords, vs 0/2 for the Isles woodpile).
->   - Capabilities are cartridges that click into devices.
->   - The partner sits on its home device and naps with it.
->   - Memory is a book in the partner's backpack (read correctly 18/18; the lighthouse got 0/2).
->   - The phone used to reach home is a walkie-talkie (20/20).
-> - **Scores:** playset 90, literal cards 80, Isles and the others 66–71, orchestra 55.
-> - **Pitfalls found:** sleep reads as "broken"; battery and fuel read as device power; an apron
->   reads as "servant", a baton as "boss".
-> - **Caveats:** text-proxy raters only; humans are needed (pass bar ≥80% on key items, no
->   boss or servant reads).
->
-> The Isles text below is candidate A, kept for comparison.
+The decision is D81 (and D82 for the shared line); the evidence is `research/33` (seven scene
+metaphors, 96 rater calls: Isles 129/180 against the literal floor's 106, felt better 16 vs 11
+of 20), building on `research/24`, `26`, `28` and D65's equip snap. Built in
+`apps/desktop/internal/views/isles.go` (the scene), `pairing.go` (the jetty and its sign) and
+`devicecard.go` (the chosen device's card); the scripted demo has a scene for every state
+(`MOCK_SCENE` / `GET /demo/scene?name=…` on the mock server).
 
-### Candidate A: The Isles
-
-**The problem:** "devices, harnesses, subscriptions, browser, computer use, memory, remote
-access" is a wall of concepts. Settings lists never make it land.
-
-**The answer:** draw the user's setup as a small archipelago they can see and play with.
-
-#### Why islands (first draft reasoning, not validated)
-
-- **It grows from the theme.** The partner and every task are pebbles, and pebbles live on
-  shores and in water, so a sea of islands is their natural world.
-- **It encodes real architecture, not decoration.**
-  - Devices are separate, isolated islands. They connect only by explicit piers and boats,
-    which matches "devices dial out only" and honest isolation.
-  - The sea is the network.
-- **The verbs are universal and delightful.** Handing work to a device is *skipping a stone*
-  (打水漂) from the home isle to another island. Every culture knows it; no pun is needed.
-- **It scales:** more devices are more islands, a phone is a boat at the pier, calls later
-  are a lighthouse radio.
-- **It restyles per theme:**
-  - Pebble: a sunny cozy sea.
-  - Paper: an old ink sea chart.
-  - Midnight: a night sea with sweeping lighthouse beams.
-  - Signal: a sonar schematic.
-  - Volt: a bold poster map.
-- *Rejected:*
-  - **Town:** buildings flatten everything into "places", and a town loses isolation and
-    distance.
-  - **Courtyard:** warm, but cramped beyond 2–3 devices, and cloud machines don't belong in
-    a yard.
-
-### The rule: pictures metaphorical, words plain
-
-Labels always say exactly what a thing is ("MacBook · Claude Code", "Browser"). The metaphor
-makes things graspable at a glance; it never makes the user guess.
-
-### Mapping
-
-| Picture | Real thing | States shown in the picture |
+| In the scene | What it is | States |
 |---|---|---|
-| **Home isle**, where the partner(s) live | The device running the main process | Faces of all personas idle here |
-| **Isle** | Any device. A VPS floats slightly above the water, held up by a small cloud | Fog = asleep; storm-grey = offline; a tiny "z" |
-| **Workshop hut** on an isle | A harness logged in on that device (Claude Code, Codex, pi) | Chimney smoke = working; **woodpile** = remaining quota; "sign in" sign = logged out |
-| **Spyglass** | Browser use on that device | Looking out = in use |
-| **Little hands at a desk** | Computer use (cua) on that device | Hands moving = in use; VM bubble around them = isolated VM |
-| **Lighthouse** on Home | Nowledge Mem | Beam = connected; dark = unavailable |
-| **Pier** + **boats** | Remote access (Ducter Edge or own domain); each paired phone or laptop is a boat | Boat docked = paired; a paper boat floating in = a notification |
-| **Pebbles** | Tasks | Skipping across = being handed to a device; resting on an isle = working there; **orange flag** = needs you; mint = done |
+| the big island in the middle, Ducter on its grass beside the laptop | the Mac (or server) Ducter lives on | Ducter's face: idle, working (reading), done after an equip, napping when home sleeps |
+| a smaller island round it, far ones smaller | another computer (D84), or a phone / app window that reaches Ducter | awake floats; asleep under its blanket; can't reach: soft mist, the device a little grey, one line of words |
+| a plank-and-rope bridge from home | the connection (only ever to home) | pale when the device can't be reached; relaxed when asleep; never slack or broken |
+| parcels crossing a bridge | a task running on that device now | none when nothing runs there |
+| small clay tokens on an island, names on tags | the AI agents signed in on that device | tap one: every island where it is signed in lifts; the card says "N 台设备共用" |
+| full-size clay tokens on the water in front of the island | abilities that are on | bob gently; the equip flies in |
+| an empty clay well beside them | an ability that can be added (or needs a fix first) | dashed accent ring while one is held over the stage, hovered or in flight |
+| a jetty from home, a ring of still water, a sign | the one-time code is out, waiting for a device (D83) | the scene makes room for the sign; the new island rises in that water |
 
-### Enabling a capability ("place a piece")
-
-1. A **driftwood shelf** at the bottom holds the available pieces. A locked piece says exactly
-   what it needs ("Needs a Mac", "Sign in to Codex").
-2. Tap a piece and the **island where it will live glows**. A card shows *what it does* as one
-   line plus a 3-second looping mini scene (the spyglass finds a page and fills a form).
-3. Confirm. The piece **floats out over the water and lands** on its island with a soft
-   bounce and a ripple. Setup steps (official login, permissions) run in a sheet.
-   Progress is a tiny scaffold around the piece; health is a small lantern.
-4. Problems appear **where they live**: an empty woodpile, a broken pier plank, a fogged isle
-   holding a waiting pebble. Tapping one opens the fix.
-
-### Where the Isles appear
-
-- **Onboarding:** the cartoon's last scene pulls back into the Isles, which *is* the live setup
-  checklist: Home, this device's isle, at least one workshop, the lighthouse (optional).
-- **Devices / settings:** the Isles are that page, with a plain list view beside them for
-  accessibility and power users.
-- **Anywhere something is missing:** the partner says so in words and links to the Isles,
-  zoomed to that island.
-
-### Name
-
-**群岛 / The Isles.** The page title reads "你的群岛 / Your isles". In conversation the
-partner says "我放到你的 VPS 那座岛上了 / I sent it over to your VPS isle" only when the
-user is on the Isles view. Elsewhere it uses the plain device names.
-
-### Constraints
-
-- Renders in MyGo native UI: flat vector shapes, transforms, and a light isometric tilt. No
-  3D engine.
-- Every element has a text label and an i18n key.
-- Respects reduced motion: stones teleport instead of skipping.
+Layout: home in the middle; six spots round it (back right, back left, front right, front
+left, far left, far right), an island keeps its spot while it is there; the abilities' row sits
+under home's name and below the front islands' words. The scene frames itself to fit what is on
+stage (one device large, up to 1.35×; six fill it) and eases when that changes. Art: the islands
+are clay renders (`design/art/assets/alpha/island_big.png`, `island_small.png`, 1600 wide,
+runtime @1280); the sea, sky, foam, reflections, bridges and parcels are drawn from the
+`Isles` tokens (`theme.go`).
 
 ## Art direction (D53)
 
@@ -431,9 +346,10 @@ user is on the Isles view. Elsewhere it uses the plain device names.
   contact shadows. Never glow, neon, bloom, rainbow gradients, lens flare, or over-gloss.
 - **Character:** the round-2 clay Ducter (`design/art/concepts/r2/r2_char_clay.jpg`) is the
   identity reference for every pose.
-- **Capability screen:** round-2 board v2 (`r2_board_2.jpg`): device cards on the left, the
-  hero device on a pedestal with slots, the ability grid on the right, AI-account tokens with
-  allowance rings at the bottom.
+- **Capability screen:** device cards on the left, the Isles scene in the middle (D81), the
+  chosen device's card and the ability grid on the right. (First drafted as round-2 board v2,
+  `r2_board_2.jpg`: the hero device on a pedestal with slots, AI-account tokens with
+  allowance rings at the bottom.)
 - **Equip motion:** sticker peel-and-stick (`research/26`, `research/28` timings).
 - **Asset pipeline:** generate with the reference images for consistency, select, clean up,
   and export at 1×/2×/3× with transparent backgrounds. Only final exports go into git, plain

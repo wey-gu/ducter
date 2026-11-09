@@ -12,8 +12,23 @@ and other Macs can connect to it to talk and decide.
 
 ## Your devices and what they can do
 
-In the app, **Your devices and what they can do** shows each device with its state and what it
-can do, and **You can also add** shows what else it could learn.
+In the app, **Your devices and what they can do** shows all your devices as little clay islands
+on a calm sea. The computer Ducter lives on is the big one in the middle, with Ducter sitting
+beside it. Each other computer, and each phone you connected, has its own island with a bridge
+back to the middle one, because everything connects through the computer Ducter lives on.
+
+- **Little parcels cross a bridge** while a task is running on that computer. When it's done
+  they stop; the bridge stays.
+- **The AI agents signed in on a device** stand on its island. Tap one and every island where it
+  is signed in lifts a little; the card beside the scene says, for example, *"Signed in · shared
+  by 2 devices"*.
+- **What a device can do** stands in front of its island at full size. An empty spot is
+  something you can add: tap it, or drag it from **You can also add**.
+- **A device that can't be reached** sits in a soft mist with one line, such as *"Can't reach ·
+  2 h ago"*. Nothing needs fixing on your side; it shows up again when it's back.
+
+Choose an island (or its card on the left) to see that device's card: what it is, what it can
+do, and which AI agents are signed in on it.
 
 Each device is in one of three states:
 
@@ -84,7 +99,9 @@ stops it for good.
 
 On the computer Ducter lives on, choose **Connect a phone or computer** in the app, or run
 `ducter pair` in Terminal. You get one **Code**, and it works for any kind of device, once, for
-10 minutes. The card shows both ways to use it:
+10 minutes. In the app, a small jetty grows out of the middle island and the code stands on a
+sign beside it, with *"Waiting for it to connect…"*; when the device connects, its island rises
+there and the device lands on it. The sign shows both ways to use the code:
 
 - **A phone or the Ducter app:** scan the QR code or open the **Address**, then type the code
   (in the app, choose **Connect to your Ducter** first).

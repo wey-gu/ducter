@@ -148,6 +148,10 @@ test("the audit catches an inexact anchor, an invented identifier, a dangling po
   expect(reasons).toMatch(/toc row 1–9/);
   expect(reasons).toMatch(/missing identifiers.*log\.ts/);
   expect(reasons).toMatch(/ask at #3 has no obligation/);
+  // The spine's own ids are pointers, not invented identifiers (real run 1: "D-6" degraded a digest).
+  const cites = { ...good, narrative: "延续 D-6 的决定。" };
+  expect(audit(cites, { ...c, knownIds: ["D-6"] })).toEqual([]);
+  expect(audit(cites, c).join()).toMatch(/"D-6" does not appear/);
 });
 
 test("a digest that fails its audit is rewritten with the reasons, then frozen; frozen ones are never written again", async () => {

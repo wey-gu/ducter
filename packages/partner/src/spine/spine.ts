@@ -135,7 +135,7 @@ export function createSpine(o: SpineOptions): Spine {
     const led = computeLedger(active(ds));
     const ids = usedIds(ds);
     const base: Omit<WriterInput, "feedback"> = { id, from: c.from, to: c.to, units: c.units, inForce: led.inForce, open: led.open, mustKeep: salientIdentifiers(c.units) };
-    const ctx = { units: c.units, open: led.open, inForce: led.inForce, mustKeep: base.mustKeep, capTokens: o.capTokens, usedO: ids.o };
+    const ctx = { units: c.units, open: led.open, inForce: led.inForce, mustKeep: base.mustKeep, capTokens: o.capTokens, usedO: ids.o, knownIds: ds.flatMap((x) => [...x.decisions.map((k) => k.id), ...x.opened.map((k) => k.id)]) };
     const attempt = (a: Omit<SpineAttempt, "fromSeq" | "toSeq">) => o.store.attempt({ fromSeq: c.from, toSeq: c.to, ...a });
     const freeze = (d: SegmentDigest) => {
       o.store.freeze({ id, kind: "segment", fromSeq: d.from, toSeq: d.to, body: d });

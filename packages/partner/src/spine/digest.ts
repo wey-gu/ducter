@@ -83,6 +83,7 @@ export interface EpochDigest {
   anchors: Anchor[]; // the newest two per segment
   opened: Obligation[]; // opened inside the epoch and still open at its end
   closed: Closed[]; // obligations from before the epoch that it closed
+  windows: WindowSnap[]; // every task seen, at its last state in the epoch
 }
 
 export type AnyDigest = ({ kind: "segment" } & SegmentDigest) | ({ kind: "epoch" } & EpochDigest);
@@ -118,19 +119,18 @@ export function renderDigest(d: AnyDigest): string {
   const out: string[] = [];
   const head = d.kind === "epoch" ? `${d.id}: ${d.segments.length} earlier parts` : d.id;
   out.push(`## ${day(d.t0)} → ${day(d.t1)} · ${range(d.from, d.to)} · ${head}${d.kind === "segment" && d.degraded ? " · index only: search the Log for details" : ""}`);
-  out.push("Topics:", ...(d.toc.length ? tocLines(d.toc) : ["- (none)"]));
-  out.push("Decisions:", ...(d.decisions.length ? d.decisions.map(decisionLine) : ["- (none)"]));
-  out.push("Changed (old → new):", ...(d.superseded.length ? d.superseded.map((c) => `- ${c.old} → ${c.new} #${c.at}`) : ["- (none)"]));
-  out.push("The user's own words:", ...(d.anchors.length ? d.anchors.map((a) => `- #${a.at} 「${a.quote}」`) : ["- (none)"]));
+  // Empty sections say so explicitly, on one line.
+  const section = (title: string, lines: string[]) => (lines.length ? out.push(`${title}:`, ...lines) : out.push(`${title}: (none)`));
+  section("Topics", tocLines(d.toc));
+  section("Decisions", d.decisions.map(decisionLine));
+  section("Changed (old → new)", d.superseded.map((c) => `- ${c.old} → ${c.new} #${c.at}`));
+  section("The user's own words", d.anchors.map((a) => `- #${a.at} 「${a.quote}」`));
   const opened = d.opened.map((o) => `- + ${o.id} ${o.who === "me" ? "you owe" : "waiting on the user"}: ${o.text} #${o.at}`);
   const closed = d.closed.map((c) => `- − ${c.id} settled #${c.at}`);
-  out.push("Obligations:", ...(opened.length + closed.length ? [...opened, ...closed] : ["- (none)"]));
-  if (d.kind === "segment") {
-    out.push("Tasks at the end of this part:", ...(d.windows.length ? d.windows.map((w) => `- ${w.taskId} "${w.title}" ${w.state} #${w.at}`) : ["- (none)"]));
-    out.push(`In short: ${d.narrative || "(none)"}`);
-  } else if (d.retired.length) {
-    out.push(`Replaced here: ${d.retired.join(", ")}`);
-  }
+  section("Obligations", [...opened, ...closed]);
+  section("Tasks at the end of this part", (d.windows ?? []).map((w) => `- ${w.taskId} "${w.title}" ${w.state} #${w.at}`));
+  if (d.kind === "segment") out.push(`In short: ${d.narrative || "(none)"}`);
+  else if (d.retired.length) out.push(`Replaced here: ${d.retired.join(", ")}`);
   return out.join("\n");
 }
 
@@ -211,5 +211,6 @@ export function rollUp(id: string, segs: SegmentDigest[]): EpochDigest {
     anchors: segs.flatMap((s) => s.anchors.slice(-2)),
     opened: [...opened.values()],
     closed: closedOutside,
+    windows: [...new Map(segs.flatMap((s) => s.windows).map((w) => [w.taskId, w])).values()],
   };
 }

@@ -43,7 +43,7 @@ export function writerPrompt(i: WriterInput): string {
     "- Write in the conversation's own language (mixed Chinese and English stays mixed). Copy names, ids, paths and numbers exactly as written.",
     "- toc: 1 to 6 rows {from, to, gist, keys}, one per sub-topic in order. from and to are #seq numbers of lines below. gist: one line on what it was and how it ended. keys: 3 to 10 fact-style keywords (names, ids, paths, numbers; the user's own terms).",
     "- decisions: what was decided and still binds, {text, why, at, supersedes?}. at: the #seq where it was decided. supersedes: the id of an earlier decision listed below that it replaces.",
-    "- superseded: every position that changed, {old, new, at}: an earlier proposal, plan or value, and what replaced it (inside this part too). Never drop the losing option.",
+    "- superseded: every position that changed, {old, new, at}: an earlier proposal, plan or value, and what replaced it (inside this part too). Never drop the losing option. A decision replaced later in this same part goes only here, not under decisions.",
     '- anchors: up to 6 {at, quote}: the user\'s own binding words (decisions, corrections, preferences, constraints), copied EXACTLY from the [user] line #at: one contiguous piece of it, at most 200 characters, no "…", no paraphrase.',
     '- opened: commitments still open at the end of this part, {who, text, at}. who "me": you promised or owe something. who "user": waiting on the user. Every ask listed under "Unanswered" needs one, with that at.',
     "- closed: earlier open obligations (listed below) that this part settled, {id, at}.",
@@ -113,7 +113,10 @@ export function assemble(raw: RawDigest, input: WriterInput, ids: { d: number; o
   const mech = mechanicalObligations(input.units);
   let o = ids.o;
   let d = ids.d;
-  const fromModel = raw.opened.map((x) => ({ ...x, id: `O-${++o}` }));
+  // A model obligation about a task code already tracks is a duplicate (eval run 2: the writer
+  // opened "接入 APNs 推送（任务 t_psh01 进行中）" next to code's own). Code's one stays.
+  const trackedTasks = mech.opened.filter((x) => x.ref?.startsWith("task:")).map((x) => x.ref!.slice(5));
+  const fromModel = raw.opened.filter((x) => !trackedTasks.some((t) => x.text.includes(t))).map((x) => ({ ...x, id: `O-${++o}` }));
   const tracked = mech.opened.map((x) => ({ ...x, id: `O-${++o}` }));
   const settledRefs = new Map(mech.settled.map((s) => [s.ref, s.at]));
   const codeClosed = input.open.filter((x) => x.ref && settledRefs.has(x.ref)).map((x) => ({ id: x.id, at: settledRefs.get(x.ref!)! }));

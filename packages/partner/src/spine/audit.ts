@@ -18,6 +18,7 @@ export interface AuditContext {
   mustKeep: string[];
   capTokens?: number; // default 3000
   usedO?: number; // the highest O-n anywhere in the spine (ids are never reused)
+  knownIds?: string[]; // every D-n / O-n in the spine, superseded and closed ones too
 }
 
 const MAX_ANCHORS = 6;
@@ -69,7 +70,9 @@ export function audit(d: SegmentDigest, c: AuditContext): string[] {
   // 3. Identifiers.
   const source = norm(c.units.map((u) => u.line).join("\n"));
   const known = norm([...c.open.map((o) => o.text), ...c.inForce.map((x) => x.text)].join("\n"));
-  const invented = identifiers(writtenText(d)).filter((id) => !source.includes(norm(id)) && !known.includes(norm(id)));
+  // The spine's own ids (D-n, O-n) are pointers, checked above; one that names nothing is invented.
+  const spineIds = new Set([...decided, ...c.open.map((o) => o.id), ...d.opened.map((o) => o.id), ...(c.knownIds ?? [])]);
+  const invented = identifiers(writtenText(d)).filter((id) => !(/^[DO]-\d+$/.test(id) && spineIds.has(id)) && !source.includes(norm(id)) && !known.includes(norm(id)));
   for (const id of invented.slice(0, 8)) reasons.push(`"${id}" does not appear in the lines`);
   const kept = norm(renderDigest({ kind: "segment", ...d }));
   const missing = c.mustKeep.filter((id) => !kept.includes(norm(id)));

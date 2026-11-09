@@ -49,6 +49,7 @@ type devicesState struct {
 	sparkAt  time.Time // the sparkles round the slot
 	sparkAt0 ui.Rect
 	pair     pairState
+	rename   renameState
 	tiles    map[string]ui.Rect // the ability art in the grid, last frame
 	slots    map[string]ui.Rect // the slots' wells, last frame
 	hover    string             // the tile under the pointer
@@ -62,6 +63,15 @@ type pairState struct {
 	open    bool
 	asked   time.Time
 	clients int // paired clients when it opened
+	devices int // devices (this one and other computers) when it opened
+}
+
+// renameState is 改名字 / Rename on another computer's card (D84).
+type renameState struct {
+	device  string // the device being renamed; "" = none
+	draft   string
+	focused bool
+	failed  string // why the server said no (rename_result reason)
 }
 
 type equipFx struct {
@@ -282,7 +292,10 @@ func (a *App) deviceCards(c *ui.Context, width float32) {
 				// Shown, not explained (D43): the clay says awake or asleep,
 				// Ducter on the stage says where it lives. Words only for
 				// what is unusual, plainly, in the state's ink; no pill.
-				if line, ink := a.deviceLine(dv, sc); line != "" {
+				// Another computer always says what it is (D84).
+				if !dv.Home {
+					a.otherComputerLine(c, dv, sc)
+				} else if line, ink := a.deviceLine(dv, sc); line != "" {
 					ui.Text(c, line).FontSize(t.XS).FontWeight(700).TextColor(ink).LineHeight(1.4).MaxLines(2)
 				}
 			})
@@ -291,6 +304,85 @@ func (a *App) deviceCards(c *ui.Context, width float32) {
 			a.devState().sel = dv.ID
 			a.devState().removing = ""
 		}
+		if sel && !dv.Home {
+			a.renameRow(c, dv, width)
+		}
+	}
+}
+
+// otherComputerLine is the subtitle of a computer that isn't the one
+// Ducter lives on: 另一台电脑 · 替 Ducter 做事, the second half replaced by
+// its state, in the state's ink, when something is wrong (D84).
+func (a *App) otherComputerLine(c *ui.Context, dv *protocol.DeviceView, sc theme.StateColors) {
+	t := a.T
+	if dv.State != protocol.DeviceAsleep && dv.State != protocol.DeviceUnreachable {
+		line := a.L.T("device.other") + " · " + a.L.T("device.other.does", a.S.PersonaName)
+		ui.Text(c, line).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).LineHeight(1.4).MaxLines(2)
+		return
+	}
+	state, _ := a.deviceChip(dv)
+	ui.Row(c).Gap(t.S1).Wrap().Children(func() {
+		ui.Text(c, a.L.T("device.other")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).LineHeight(1.4)
+		ui.Text(c, "·").FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).LineHeight(1.4)
+		ui.Text(c, state).FontSize(t.XS).FontWeight(700).TextColor(sc.Ink).LineHeight(1.4).MaxLines(2)
+	})
+}
+
+// renameRow is 改名字 / Rename under the chosen computer's card: one tap,
+// then the name is a field in place (as on Partner, D71).
+func (a *App) renameRow(c *ui.Context, dv *protocol.DeviceView, width float32) {
+	t := a.T
+	r := &a.devState().rename
+	if res := a.S.Renamed; res != nil {
+		a.S.Renamed = nil
+		if res.OK {
+			r.device, r.failed = "", ""
+		} else if res.Device == r.device {
+			r.failed = res.Reason
+		}
+	}
+	row := ui.Row(c.Key("rename:" + dv.ID)).Gap(t.S2).AlignItems(ui.Center).Wrap()
+	if width > 0 {
+		row.Width(width)
+	}
+	if r.device != dv.ID {
+		row.Children(func() {
+			if a.button(c, a.L.T("device.rename"), btnText, t.ControlSM, t.Bg) {
+				*r = renameState{device: dv.ID, draft: dv.Name}
+			}
+		})
+		return
+	}
+	save := func() {
+		name := strings.TrimSpace(r.draft)
+		if name == "" || name == dv.Name {
+			r.device = ""
+			return
+		}
+		r.failed = ""
+		a.send(protocol.RenameDeviceReq{T: "rename_device", Device: dv.ID, Name: name})
+	}
+	row.Children(func() {
+		in := ui.TextInput(c.Key("input:device-name:"+dv.ID), &r.draft).Placeholder(dv.Name).Label(a.L.T("device.rename")).
+			FontSize(t.MD).FontWeight(700).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.Surface).Border(1, t.Line).
+			Grow(1).MinWidth(140).OnSubmit(save)
+		if !r.focused {
+			in.Focus()
+			r.focused = true
+		}
+		if a.button(c, a.L.T("device.rename.cancel"), btnText, t.ControlSM, t.Bg) {
+			r.device = ""
+		}
+		if a.button(c, a.L.T("device.rename.ok"), btnPrimary, t.ControlSM, t.Bg) {
+			save()
+		}
+	})
+	switch r.failed {
+	case "":
+	case "name_taken":
+		a.reasonLine(c, a.L.T("device.rename.name_taken", strings.TrimSpace(r.draft)))
+	default:
+		a.reasonLine(c, a.L.T("device.rename."+r.failed))
 	}
 }
 
@@ -1108,6 +1200,11 @@ func (a *App) drainAbilityResults() {
 			d.refused[key] = r
 		}
 	}
+	// Another computer joined with the code (D83): it's on the stage now.
+	if d.pair.open && d.pair.devices > 0 && len(a.S.Devices) > d.pair.devices {
+		d.pair.open = false
+		d.sel = a.S.Devices[len(a.S.Devices)-1].ID
+	}
 	// A device that paired while the code was showing: 远程打开 is on.
 	if d.pair.open && a.S.Reach != nil && len(a.S.Reach.Clients) > d.pair.clients {
 		d.pair.open = false
@@ -1313,6 +1410,7 @@ func (a *App) openPair() {
 	if a.S.Reach != nil {
 		d.pair.clients = len(a.S.Reach.Clients)
 	}
+	d.pair.devices = len(a.S.Devices)
 	a.S.PairCode = nil
 	a.send(protocol.PairCodeReq{T: "pair_code"})
 }
@@ -1364,13 +1462,23 @@ func (a *App) pairSheet(c *ui.Context, dv *protocol.DeviceView, sw, sh float32) 
 				}
 			})
 		})
+		// One code, two ways to use it (D83): a phone or an app window
+		// opens the address; another computer runs one command.
 		if pc.Address != "" {
 			ui.Text(c, a.L.T("pair.scan")).FontSize(t.SM).LineHeight(1.55).TextColor(t.InkSoft)
+			ui.Text(c, a.L.T("pair.computer", a.S.PersonaName)).FontSize(t.SM).LineHeight(1.55).TextColor(t.InkSoft)
+			a.commandBoxSized(c, workerCommand(pc.Address, pc.Code), t.XS)
 		} else {
 			a.reasonLine(c, a.L.T("pair.noaddress"))
 		}
 		ui.Text(c, a.L.T("pair.waiting")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 	})
+}
+
+// workerCommand is what another computer runs to do tasks for this Ducter
+// with the code (D83; the CLI prints the same line).
+func workerCommand(address, code string) string {
+	return "ducter worker " + address + " --code " + code
 }
 
 // qrBox draws a QR code from rows of "1" and "0", with its quiet zone.

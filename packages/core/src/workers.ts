@@ -52,6 +52,8 @@ export interface Workers extends WorkerLinks {
   away(): Map<string, WorkerAway>;
   /** Runs fn when a worker comes, goes, or says it is going to sleep. */
   onChange(fn: () => void): () => void;
+  /** A paired worker got a new name (D84): links, tasks and frames use it from now on. */
+  renamed(deviceId: string, name: string): void;
   websocket: {
     open(ws: ServerWebSocket<WorkerSocketData>): void;
     close(ws: ServerWebSocket<WorkerSocketData>): void;
@@ -68,18 +70,26 @@ export const CLOSE_REVOKED = 4401;
 /**
  * One Bun.serve socket handler for both kinds: client sockets (ws.ts) and worker sockets.
  * Sockets opened with a device token are re-checked every `sweepMs`: revoking happens in another
- * process (the CLI), so a live socket of a revoked device is closed here with CLOSE_REVOKED.
+ * process (the CLI), so a live socket of a revoked device is closed here with CLOSE_REVOKED, and
+ * a worker renamed there takes its new name.
  */
 export function splitSockets(
   client: Handlers,
   workers: Workers,
-  opts: { isLive?: (deviceId: string) => boolean; sweepMs?: number } = {},
+  opts: { isLive?: (deviceId: string) => boolean; nameOf?: (deviceId: string) => string | undefined; sweepMs?: number } = {},
 ): Handlers & { stop(): void } {
   const isWorker = (ws: any) => ws.data?.worker === true;
   const withDevice = new Set<any>();
   const timer = opts.isLive
     ? setInterval(() => {
-        for (const ws of withDevice) if (!opts.isLive!(ws.data.device.id)) ws.close(CLOSE_REVOKED, "device disconnected");
+        for (const ws of withDevice) {
+          if (!opts.isLive!(ws.data.device.id)) ws.close(CLOSE_REVOKED, "device disconnected");
+          // Renamed from the CLI (another process): the worker's links pick up the new name.
+          else if (isWorker(ws)) {
+            const name = opts.nameOf?.(ws.data.device.id);
+            if (name && name !== ws.data.device.name) workers.renamed(ws.data.device.id, name);
+          }
+        }
       }, opts.sweepMs ?? 10_000)
     : undefined;
   return {
@@ -105,7 +115,7 @@ type Gated = { pass: true; via: "local" } | { pass: true; via: "device"; device:
 export function deviceRoutes(req: Request, g: Gated, srv: { upgrade(req: Request, o: { data: WorkerSocketData }): boolean }, workers: Workers): Response | "upgraded" | undefined {
   const path = new URL(req.url).pathname;
   if (path === "/worker") {
-    if (g.via !== "device" || g.device.kind !== "worker") return new Response("a worker pairing code is needed (ducter pair --worker)", { status: 403 });
+    if (g.via !== "device" || g.device.kind !== "worker") return new Response("this device joined as an app; to run tasks here, join with: ducter worker <address> --code <code>", { status: 403 });
     return srv.upgrade(req, { data: { worker: true, device: g.device, since: new Date().toISOString() } }) ? "upgraded" : new Response("upgrade failed", { status: 400 });
   }
   if (g.via === "device" && g.device.kind === "worker" && path !== "/mcp") return new Response("workers only use /worker and /mcp", { status: 403 });
@@ -209,6 +219,16 @@ export function createWorkers(opts: {
         ...(hello ? { hello } : {}),
       })),
     away: () => new Map(gone),
+    renamed(deviceId, name) {
+      const st = states.get(deviceId);
+      if (st) st.device.name = name;
+      const l = live.get(deviceId);
+      if (l) l.ws.data.device.name = name;
+      if (l?.hello) l.hello.name = name;
+      const g = gone.get(deviceId);
+      if (g?.hello) g.hello.name = name;
+      changed();
+    },
     onChange(fn) {
       changeFns.add(fn);
       return () => changeFns.delete(fn);

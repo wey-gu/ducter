@@ -153,7 +153,7 @@ open that link or scan the QR it prints (through your domain): it opens the phon
 pairs, and offers notifications for decisions that wait for you. Only paired
 devices get in from outside the server; `ducter devices` lists them and
 `ducter devices disconnect <id>` removes one. Another machine can join as a worker with
-`ducter pair --worker` on the server and `ducter worker --join <address> --code <code>` on the
+`ducter pair` on the server and `ducter worker <address> --code <code>` on the
 other machine. Then say "在 vps-2 上跑…" / "run it on vps-2": the task runs there (its
 worktree on that disk, its harness), and if that machine drops, the task waits and resumes when
 it's back.
@@ -162,9 +162,9 @@ it's back.
 |---|---|
 | `ducter up --headless` | Run as a server: no window. Binds 127.0.0.1 unless `--host` says otherwise |
 | `ducter service install \| uninstall \| status` | systemd user service with restart on failure; logs in `journalctl --user -u ducter` |
-| `ducter pair` | One-time pairing code (10 min), address, link and QR |
-| `ducter devices` | Connected devices; `disconnect <id>` removes one |
-| `ducter worker --join <address> --code <code>` | Make this machine a worker of that Ducter (`service install --worker` keeps it running) |
+| `ducter pair` | One-time pairing code (10 min) for any device: address, link and QR for a phone or app, and the `ducter worker` command for another computer (D83) |
+| `ducter devices` | Connected devices; `disconnect <id>` removes one, `rename <id> <name>` renames one (D84) |
+| `ducter worker <address> --code <code>` | Make this machine a worker of that Ducter, with the same one-time code a phone uses (D83; `service install --worker` keeps it running; `--join <address>` and `pair --worker` are hidden aliases) |
 
 `DUCTER_SCRIPTED_MODEL=1 ducter up` runs with a canned model (OAR's scripted runtime) over the
 real tools, for demos on a box with no AI signed in. Every reply says so.

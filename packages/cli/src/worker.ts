@@ -1,5 +1,6 @@
-// `ducter worker --join <address> --code <code>`: this machine joins a Ducter running elsewhere
-// as a worker. It dials OUT (no inbound port here), says which harnesses it has, and stays
+// `ducter worker <address> --code <code>`: this machine joins a Ducter running elsewhere as a
+// worker, with the same one-time code a phone or an app window uses (D83; `--join` is a hidden
+// alias for the address). It dials OUT (no inbound port here), says which harnesses it has, and stays
 // connected. The main places tasks here over that socket; @ducter/runner's worker host runs
 // them on this disk with this machine's harnesses (design/system.md "Workers").
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -24,7 +25,7 @@ export interface WorkerSaved {
   name: string;
 }
 
-/** Address as typed or the whole `ducter pair --worker` link → http(s) base and maybe a code. */
+/** Address as typed or the whole pairing link (…/pair#c=CODE) → http(s) base and maybe a code. */
 export function parseJoin(raw: string): { base: string; code?: string } {
   let s = raw.trim();
   const m = /[#?&]c=([A-Za-z0-9-]+)/.exec(s);
@@ -78,7 +79,8 @@ export async function cmdWorker(o: { t: T; style: Style; args: Args; dataDir: st
       res = await fetch(`${base}/pair`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ code, name, platform: `${platform()}-${arch()}` }),
+        // role: the code is open to any device (D83); this one joins to do tasks.
+        body: JSON.stringify({ code, name, platform: `${platform()}-${arch()}`, role: "worker" }),
         signal: AbortSignal.timeout(10_000),
       });
     } catch {
@@ -119,7 +121,7 @@ async function stayConnected(
   let backoff = 1000;
   let announced = false;
   for (;;) {
-    const outcome = await new Promise<"closed" | "refused">((resolve) => {
+    const outcome = await new Promise<"closed" | "refused" | "app">((resolve) => {
       const ws = new WebSocket(`${wsBase(s.url)}/worker`, { headers: { authorization: `Bearer ${s.token}` } } as any);
       let ping: ReturnType<typeof setInterval> | undefined;
       const host = makeHost((f) => {
@@ -146,10 +148,16 @@ async function stayConnected(
         try {
           const r = await fetch(`${s.url}/worker`, { headers: { authorization: `Bearer ${s.token}` }, signal: AbortSignal.timeout(5000) });
           if (r.status === 401) return resolve("refused");
+          // Joined as an app (a Ducter older than D83 ignores role): it can't do tasks with this token.
+          if (r.status === 403) return resolve("app");
         } catch {}
         resolve("closed");
       };
     });
+    if (outcome === "app") {
+      console.log(t("worker.asApp", { url: s.url }));
+      return EXIT_REFUSED;
+    }
     if (outcome === "refused") {
       console.log(t("worker.refused", { url: s.url }));
       return EXIT_REFUSED;

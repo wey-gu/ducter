@@ -22,6 +22,12 @@ type Step struct {
 	App    string `json:"app,omitempty"`
 	More   int    `json:"more,omitempty"`
 	Hidden bool   `json:"hidden,omitempty"`
+	// Probe is a look that may find nothing (command -v, which, test -e,
+	// ls, grep): a non-zero exit is "not there", never an error (D148).
+	Probe bool `json:"probe,omitempty"`
+	// Says is what the agent said the step is for, when its harness
+	// carries it (Claude Code's description, Codex's justification).
+	Says string `json:"says,omitempty"`
 }
 
 func in(list []string, s string) bool {
@@ -257,7 +263,7 @@ func unwrapShell(cmd string) string {
 
 var (
 	skipSegment = []string{"cd", "set", "source", ".", "export", "pushd", "popd", "unset", "true", ":", "local", "for", "while", "if", "done", "fi", "esac", "case"}
-	prefixWords = []string{"sudo", "time", "env", "nohup", "exec", "command", "do", "then", "else", "builtin"}
+	prefixWords = []string{"sudo", "time", "env", "nohup", "exec", "do", "then", "else", "builtin"}
 	tokenRe     = regexp.MustCompile(`"[^"]*"|'[^']*'|\S+`)
 	segRe       = regexp.MustCompile(`&&|\|\||[;|\n]`)
 	assignRe    = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*=`)
@@ -276,7 +282,8 @@ func mainCommand(cmd string) []string {
 		for len(ts) > 0 {
 			t0 := ts[0]
 			switch {
-			case assignRe.MatchString(t0) || in(prefixWords, t0):
+			// `command git …` runs git; `command -v git` asks where git is (a probe, kept).
+			case assignRe.MatchString(t0) || in(prefixWords, t0) || t0 == "command" && !(len(ts) > 1 && (ts[1] == "-v" || ts[1] == "-V")):
 				ts = ts[1:]
 				continue
 			case t0 == "timeout" && len(ts) > 1:
@@ -311,7 +318,13 @@ func baseName(p string) string {
 	return parts[len(parts)-1]
 }
 
-var osaRe = regexp.MustCompile(`tell application\s+\\?"([^"\\]+)`)
+var (
+	osaRe     = regexp.MustCompile(`tell application\s+\\?"([^"\\]+)`)
+	pythonRe  = regexp.MustCompile(`^python[\d.]*$`)
+	snippetRe = regexp.MustCompile(`^(?:python[\d.]*|node|bun|deno|ruby|perl)$`)
+	hostArgRe = regexp.MustCompile(`^[\w-]+(\.[\w-]+)+(/|$)`)
+	pipeShRe  = regexp.MustCompile(`\|\s*(?:sudo\s+)?(?:ba|z)?sh\b`)
+)
 
 // commandStep is a shell command as one step.
 func commandStep(cmd string) Step {
@@ -332,7 +345,79 @@ func commandStep(cmd string) Step {
 		}
 	}
 	last := func() string { return plain[len(plain)-1] }
+	whole := unwrapShell(cmd)
+	// `python3 -m pip install x` is pip.
+	if pythonRe.MatchString(prog) && len(args) > 1 && args[0] == "-m" && in([]string{"pip", "pip3", "uv"}, args[1]) {
+		return commandStep(strings.Join(args[1:], " "))
+	}
 	switch prog {
+	case "command", "which", "type", "hash", "whereis":
+		if len(plain) > 0 {
+			var names []string
+			for _, a := range plain[:min(3, len(plain))] {
+				names = append(names, baseName(a))
+			}
+			return Step{Kind: "searched", Act: "cmd", Target: strings.Join(names, " "), Probe: true}
+		}
+	case "test", "[", "[[":
+		p := ""
+		for _, a := range plain {
+			if a != "]" && a != "]]" && a != "!" {
+				p = a
+			}
+		}
+		if p != "" {
+			return Step{Kind: "read", Act: "exists", Target: pathTail(p), Probe: true}
+		}
+	case "curl", "wget", "http", "xh":
+		u := ""
+		for _, a := range plain {
+			if strings.HasPrefix(a, "http://") || strings.HasPrefix(a, "https://") {
+				u = a
+				break
+			}
+		}
+		if u == "" {
+			for _, a := range plain {
+				if hostArgRe.MatchString(a) {
+					u = "https://" + a
+					break
+				}
+			}
+		}
+		host := ""
+		if u != "" {
+			host = strings.SplitN(shortUrl(u), "/", 2)[0]
+		}
+		if pipeShRe.MatchString(whole) {
+			return Step{Kind: "ran", Act: "installer", Target: host}
+		}
+		return Step{Kind: "browsed", Act: "request", Target: host}
+	case "pip", "pip3", "pipx", "uv", "npm", "pnpm", "yarn", "bun", "brew", "apt", "apt-get", "dnf", "yum", "cargo", "gem", "go":
+		rest := plain
+		if prog == "uv" && len(rest) > 0 && rest[0] == "pip" {
+			rest = rest[1:]
+		}
+		if len(rest) > 0 && in([]string{"install", "add", "i"}, rest[0]) {
+			var pkgs []string
+			for _, a := range rest[1:] {
+				if !strings.HasPrefix(a, "<") && !strings.HasPrefix(a, ">") && !strings.HasPrefix(a, "=") {
+					pkgs = append(pkgs, baseName(strings.TrimSuffix(a, "@latest")))
+				}
+			}
+			st := Step{Kind: "ran", Act: "install"}
+			if len(pkgs) > 0 {
+				st.Target = strings.Join(pkgs[:min(2, len(pkgs))], " ")
+			}
+			if len(pkgs) > 2 {
+				st.More = len(pkgs) - 2
+			}
+			return st
+		}
+	case "mkdir":
+		if len(plain) > 0 {
+			return Step{Kind: "edited", Act: "mkdir", Target: pathTail(last())}
+		}
 	case "cat", "head", "tail", "nl", "less", "more", "bat":
 		if len(plain) > 0 {
 			return Step{Kind: "read", Target: pathTail(last())}
@@ -349,7 +434,7 @@ func commandStep(cmd string) Step {
 		}
 	case "rg", "grep", "ag", "ack":
 		if len(plain) > 0 {
-			return Step{Kind: "searched", Target: plain[0]}
+			return Step{Kind: "searched", Target: plain[0], Probe: true}
 		}
 	case "fd", "find":
 		name := ""
@@ -372,7 +457,11 @@ func commandStep(cmd string) Step {
 		if len(plain) > 0 {
 			p = plain[0]
 		}
-		return Step{Kind: "read", Act: "list", Target: pathTail(p)}
+		// `ls ~/.venv/bin/python*` looks for files by name; `ls src` lists a folder.
+		if b := baseName(p); strings.ContainsAny(b, "*?") {
+			return Step{Kind: "searched", Act: "files", Target: b, Probe: true}
+		}
+		return Step{Kind: "read", Act: "list", Target: pathTail(p), Probe: true}
 	case "open":
 		u, app := "", ""
 		for _, a := range plain {
@@ -399,6 +488,10 @@ func commandStep(cmd string) Step {
 			s.App = appName(m[1])
 		}
 		return s
+	}
+	// `python3 -c "…"`, `node -e "…"`: a snippet, not a script by name.
+	if snippetRe.MatchString(prog) && len(args) > 0 && (args[0] == "-c" || args[0] == "-e") {
+		return Step{Kind: "ran", Act: "snippet", Target: prog}
 	}
 	words := []string{prog}
 	for _, a := range args {
@@ -639,10 +732,12 @@ func stepOf(harness string, t *protocol.ToolCall) Step {
 	case tool == "js" || tool == "javascript" || tool == "node_repl":
 		return scriptStep(pick("code", "script", "source"), t.Output)
 	case in(shellTools, tool):
+		st := Step{Kind: "ran"}
 		if cmd := pick("command", "cmd", "script", "CommandLine"); cmd != "" {
-			return commandStep(cmd)
+			st = commandStep(cmd)
 		}
-		return Step{Kind: "ran"}
+		st.Says = saysOf(o)
+		return st
 	case in(readTools, tool):
 		st := Step{Kind: "read"}
 		if tool == "ls" || tool == "LS" || tool == "list_directory" {
@@ -706,6 +801,21 @@ func stepOf(harness string, t *protocol.ToolCall) Step {
 		return computerStep(tool, o)
 	}
 	return Step{Kind: "other", Target: strings.ReplaceAll(tool, "_", " ")}
+}
+
+// saysOf is the agent's own short words for a shell step, when its harness
+// carries them (D148).
+func saysOf(o map[string]any) string {
+	d := firstStr(o, "description", "justification")
+	if i := strings.IndexByte(d, '\n'); i >= 0 {
+		d = d[:i]
+	}
+	d = strings.TrimSpace(d)
+	d = strings.TrimSuffix(strings.TrimSuffix(d, "."), "。")
+	if len(d) < 3 || len([]rune(d)) > 80 {
+		return ""
+	}
+	return d
 }
 
 func num(v any) float64 {

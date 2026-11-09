@@ -7,6 +7,7 @@ import type { NewTaskInput, NewTaskResult } from "./newtask.ts";
 import type { CoreApi, Runner } from "@ducter/protocol/src/internal.ts";
 import type { Decisions } from "./decisions.ts";
 import type { DevicesView } from "./devices.ts";
+import { redactDeep } from "@ducter/protocol/src/redact.ts";
 import { PROJECTED_KINDS, taskStream } from "./registry.ts";
 import { machineId } from "./machine.ts";
 import type { SettingsStore } from "./settings.ts";
@@ -42,6 +43,7 @@ export interface WsData {
 }
 
 const ON_HAND_KINDS = new Set<string>(PROJECTED_KINDS);
+const REDACTED = new Set<string>(["events", "task_history", "on_hand", "task_new_result", "action_result"]);
 const REPLAY_FRESH = 200; // channel events replayed when hello has no cursor
 const REPLAY_MAX = 5000; // cap for a cursor replay
 const SEEN_WINDOW = 2000; // user messages (by clientId) remembered for idempotent send
@@ -100,7 +102,10 @@ export function createWsHandler(deps: WsDeps) {
   const batchMs = deps.batchMs ?? 50;
   let flushTimer: ReturnType<typeof setTimeout> | undefined;
 
-  const send = (ws: ServerWebSocket<WsData>, f: ServerFrame) => ws.send(JSON.stringify(f));
+  // What the Log holds goes out with every key in it hidden (D148): the Log keeps them (a task
+  // needs the key it was given), no client ever shows one. The frames that carry Log text: events,
+  // a task's history, On hand (titles, reports, questions).
+  const send = (ws: ServerWebSocket<WsData>, f: ServerFrame) => ws.send(JSON.stringify(REDACTED.has(f.t) ? redactDeep(f) : f));
 
   const flush = () => {
     flushTimer = undefined;

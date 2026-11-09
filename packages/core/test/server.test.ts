@@ -115,6 +115,33 @@ test("ws: hello -> welcome, channel replay since cursor, on_hand, live push of e
   expect(sent).toEqual([["t1", "also check CI", "user"]]);
 });
 
+test("ws: a key in the Log never leaves the home: history, live events and On hand come out hidden (D148)", async () => {
+  const core = boot();
+  core.setRunner({ send: async () => ({ delivered: "prompted" }) } as unknown as Runner);
+  const key = "nmem_ct_8fK2pQx7Lm4vRz9TbW3y";
+  core.log.append({
+    stream: "task:t1",
+    origin: "partner",
+    kind: "task_open",
+    body: { taskId: "t1", title: "Connect Nowledge Mem for Codex", project: "", place: { kind: "none" }, harness: "codex", brief: `Connect Mem with this token: ${key}` },
+  });
+  core.log.append({ stream: "task:t1", origin: "task", kind: "task_event", body: { taskId: "t1", role: "tool", tool: { name: "exec_command", input: { cmd: `nmem connect --token ${key}` }, output: "ok", ok: true } } });
+  const c = new WsClient(core.url);
+  stops.push(() => c.ws.close());
+  await c.open();
+  c.send({ t: "hello" });
+  await c.until((f) => f.t === "on_hand");
+  c.send({ t: "task_history", taskId: "t1" });
+  const h = await c.until<Extract<ServerFrame, { t: "task_history" }>>((f) => f.t === "task_history");
+  core.log.append({ stream: "task:t1", origin: "task", kind: "task_event", body: { taskId: "t1", role: "assistant", text: `Saved ${key} to the config.` } });
+  await c.until(() => c.events().some((e) => e.kind === "task_event"));
+  const wire = JSON.stringify(c.frames);
+  expect(wire).not.toContain("8fK2pQx7");
+  expect(JSON.stringify(h)).toContain("nmem_ct_••••••");
+  // The Log itself keeps it: the task was given the key to use it.
+  expect(JSON.stringify(core.log.read({ kinds: ["task_open"] }))).toContain(key);
+});
+
 test("ws: hello without cursor replays the last 200 channel events, superseded revisions dropped", async () => {
   const core = boot();
   for (let i = 0; i < 230; i++) core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: `m${i}` } });

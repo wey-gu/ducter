@@ -1,0 +1,82 @@
+// Keys never render (D148). A task's brief, its commands and their output can carry a credential
+// the user pasted ("connect with nmem_ct_…") or one a tool printed. The Log keeps them as they
+// are (the task needs the key to do its work, and the Log stays on the home), and the home
+// hides them in everything it sends to a client (core/src/ws.ts, the projection), so no screen,
+// notification or screenshot shows one. Clients hide again when they render, for a home that
+// predates this. The Go port (apps/desktop/internal/redact) passes the same cases
+// (fixtures/redact.json).
+//
+// What stays: a short recognizable head ("nmem_ct_", "sk-", "Bearer ") so a person can tell
+// which key it was, then HIDDEN. Patterns are RE2-safe (no lookaround) so Go reads them alike.
+
+/** What stands where a key was. Language-neutral: clients say "a key is hidden" in theirs. */
+export const HIDDEN = "••••••";
+
+/** Known key formats: the head kept, the rest hidden. */
+const PREFIXED =
+  /\b(nmem_[a-z]{2,4}_|sk-ant-[a-z0-9]{2,6}-|sk-proj-|sk-|ghp_|gho_|ghu_|ghs_|ghr_|github_pat_|glpat-|xox[abprs]-|AKIA|ASIA|AIza|hf_|npm_|pk_live_|sk_live_|rk_live_|whsec_|shpat_|dop_v1_)[A-Za-z0-9_\-]{8,}/g;
+/** A JWT: three base64url parts. */
+const JWT = /\beyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}/g;
+/** An Authorization header or a bare bearer token. */
+const BEARER = /\b((?:[Bb]earer|[Bb]asic|[Tt]oken)\s+)[A-Za-z0-9._~+/\-]{12,}=*/g;
+/** A password in a URL: scheme://user:secret@host. */
+const URL_CRED = /(\b[a-z][a-z0-9+.\-]*:\/\/[^\s:/@]+:)[^\s@/]{3,}@/gi;
+/** A value after a field that names a secret: token=…, "api_key": "…", password: …, --token … */
+const FIELD =
+  /((?:[A-Za-z0-9]+[_\-])*(?:api[_\-]?key|apikey|access[_\-]?key|secret|token|password|passwd|pwd|credential|auth[_\-]?key|private[_\-]?key|connect[_\-]?code)(?:[_\-][A-Za-z0-9]+)*\\?["']?\s*(?:[:=]|\s)\s*\\?["']?)([^\s"'`,;<>()\[\]{}\\•]{12,})/gi;
+/** A PEM private key block. */
+const PEM = /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g;
+
+/** A value that reads as a key, not a word: long, with a digit, not one repeated character, not a path. */
+function keyLike(v: string): boolean {
+  if (v.length < 12) return false;
+  if (!/[0-9]/.test(v) || !/[A-Za-z]/.test(v)) return false;
+  if (v.includes("/") && !/^[A-Za-z0-9+/]{20,}={0,2}$/.test(v)) return false; // a path, not base64
+  if (/^v?\d+(\.\d+)+$/.test(v)) return false; // a version
+  return true;
+}
+
+/** The text with every key in it hidden. */
+export function redact(s: string): string {
+  if (!s || s.length < 8) return s;
+  let out = s.replace(PEM, `-----BEGIN PRIVATE KEY-----${HIDDEN}-----END PRIVATE KEY-----`);
+  out = out.replace(PREFIXED, (m, head: string) => (/[0-9]/.test(m.slice(head.length)) ? head + HIDDEN : m));
+  out = out.replace(JWT, HIDDEN);
+  out = out.replace(BEARER, (_m, head: string) => head + HIDDEN);
+  out = out.replace(URL_CRED, (_m, head: string) => `${head}${HIDDEN}@`);
+  // A value already hidden by a pattern above ("sk-ant-api03-" + HIDDEN) keeps its head.
+  out = out.replace(FIELD, (m, head: string, v: string, at: number, all: string) => (keyLike(v) && !all.startsWith(HIDDEN, at + m.length) ? head + HIDDEN : m));
+  return out;
+}
+
+/** Whether the text had a key hidden in it (a client says so under it). */
+export const hasHidden = (s: string | undefined): boolean => !!s && s.includes(HIDDEN);
+
+const SECRET_KEY = /^(?:api[_-]?key|apikey|access[_-]?token|refresh[_-]?token|token|secret|client[_-]?secret|password|passwd|authorization|private[_-]?key|connect[_-]?code)$/i;
+
+/** A value with every string in it hidden as `redact` does; a field named for a secret hidden whole. */
+export function redactDeep<T>(v: T): T {
+  return walk(v, "") as T;
+}
+
+function walk(v: unknown, key: string): unknown {
+  if (typeof v === "string") return SECRET_KEY.test(key) && v.length >= 8 ? HIDDEN : redact(v);
+  if (Array.isArray(v)) {
+    let changed = false;
+    const out = v.map((x) => {
+      const y = walk(x, "");
+      if (y !== x) changed = true;
+      return y;
+    });
+    return changed ? out : v;
+  }
+  if (v && typeof v === "object") {
+    let out: Record<string, unknown> | undefined;
+    for (const [k, x] of Object.entries(v as Record<string, unknown>)) {
+      const y = walk(x, k);
+      if (y !== x) (out ??= { ...(v as Record<string, unknown>) })[k] = y;
+    }
+    return out ?? v;
+  }
+  return v;
+}

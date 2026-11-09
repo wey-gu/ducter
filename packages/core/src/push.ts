@@ -14,6 +14,7 @@ import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from "
 import { join } from "node:path";
 import type { Bodies, LogEvent } from "@ducter/protocol";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
+import { redactDeep } from "@ducter/protocol/src/redact.ts";
 import { realClock, type Clock } from "./clock.ts";
 import { APNS_PREFIX, type ApnsSender } from "./apns.ts";
 
@@ -364,6 +365,7 @@ export interface SendResult {
  */
 export const MAX_PUSH_PLAINTEXT = 3993;
 export function fitMessage(msg: PushMessage, max = MAX_PUSH_PLAINTEXT): Bytes {
+  msg = redactDeep(msg); // keys never render, a lock screen least of all (D148)
   const enc = (m: PushMessage) => te.encode(JSON.stringify(m));
   let m = msg;
   let bytes = enc(m);

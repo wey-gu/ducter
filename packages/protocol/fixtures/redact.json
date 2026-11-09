@@ -1,0 +1,22 @@
+[
+  { "in": "Connect Nowledge Mem with this connect token: nmem_ct_8fK2pQx7Lm4vRz9TbW3y and then run nmem doctor.", "want": "Connect Nowledge Mem with this connect token: nmem_ct_•••••• and then run nmem doctor." },
+  { "in": "nmem connect --token nmem_ct_8fK2pQx7Lm4vRz9TbW3y --space default", "want": "nmem connect --token nmem_ct_•••••• --space default" },
+  { "in": "export ANTHROPIC_API_KEY=sk-ant-api03-Zx81kPq0aB7cD9eF2gH4", "want": "export ANTHROPIC_API_KEY=sk-ant-api03-••••••" },
+  { "in": "OPENAI_API_KEY=sk-proj-4fG7hJ2kL9mN3pQ8rS1t", "want": "OPENAI_API_KEY=sk-proj-••••••" },
+  { "in": "curl -H \"Authorization: Bearer 9f8e7d6c5b4a39281706f5e4\" https://cloud.nowledge.co/api/v1/me", "want": "curl -H \"Authorization: Bearer ••••••\" https://cloud.nowledge.co/api/v1/me" },
+  { "in": "git remote add origin https://weyl:ghp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4@github.com/wey-gu/ducter", "want": "git remote add origin https://weyl:••••••@github.com/wey-gu/ducter" },
+  { "in": "{\"api_key\": \"a3f9c2e81b7d4f6a9c0e2b5d8f1a4c7e\", \"space\": \"default\"}", "want": "{\"api_key\": \"••••••\", \"space\": \"default\"}" },
+  { "in": "NMEM_CONNECT_TOKEN=9q8w7e6r5t4y3u2i1o0p nmem connect", "want": "NMEM_CONNECT_TOKEN=•••••• nmem connect" },
+  { "in": "token=eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c", "want": "token=••••••" },
+  { "in": "DB password: Tr0ub4dor&3-horse-battery", "want": "DB password: ••••••" },
+  { "in": "the secret is at /etc/ducter/keys/home-2026.pem", "want": "the secret is at /etc/ducter/keys/home-2026.pem" },
+  { "in": "AWS key AKIAIOSFODNN7EXAMPLE in ~/.aws/credentials", "want": "AWS key AKIA•••••• in ~/.aws/credentials" },
+  { "in": "Wrote the key to /root/.nowledge-mem/credentials.json", "want": "Wrote the key to /root/.nowledge-mem/credentials.json" },
+  { "in": "pip install scikit-learn && python3 -m sk-learn-check", "want": "pip install scikit-learn && python3 -m sk-learn-check" },
+  { "in": "Read the token budget: max_tokens 4096, used 117 tokens", "want": "Read the token budget: max_tokens 4096, used 117 tokens" },
+  { "in": "const token = getTokenFromEnv()", "want": "const token = getTokenFromEnv()" },
+  { "in": "commit 4f4f8d5a9b2c1e3d7f6a8b9c0d1e2f3a4b5c6d7e on main", "want": "commit 4f4f8d5a9b2c1e3d7f6a8b9c0d1e2f3a4b5c6d7e on main" },
+  { "in": "bun 1.3.14 and node v22.11.0", "want": "bun 1.3.14 and node v22.11.0" },
+  { "in": "-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQ\n-----END OPENSSH PRIVATE KEY-----", "want": "-----BEGIN PRIVATE KEY-----••••••-----END PRIVATE KEY-----" },
+  { "in": "slack xoxb-1234567890-0987654321-AbCdEfGhIjKl", "want": "slack xoxb-••••••" }
+]

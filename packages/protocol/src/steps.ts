@@ -18,6 +18,12 @@ export interface Step {
   more?: number;
   /** Not a step of the work: Ducter's own tools and a harness's bookkeeping (D124). */
   hidden?: boolean;
+  /** A look that may find nothing (`command -v`, `which`, `test -e`, `ls`, `grep`): a non-zero
+   *  exit is "not there", said in neutral ink, never an error (D148). */
+  probe?: boolean;
+  /** What the agent said the step is for, when its harness carries it (Claude Code's Bash
+   *  `description`, Codex's `justification`): the row's words before any summary (D148). */
+  says?: string;
 }
 
 export interface ToolLike {
@@ -156,7 +162,7 @@ export function unwrapShell(cmd: string): string {
 }
 
 const SKIP_SEGMENT = ["cd", "set", "source", ".", "export", "pushd", "popd", "unset", "true", ":", "local", "for", "while", "if", "done", "fi", "esac", "case"];
-const PREFIX = ["sudo", "time", "env", "nohup", "exec", "command", "do", "then", "else", "builtin"];
+const PREFIX = ["sudo", "time", "env", "nohup", "exec", "do", "then", "else", "builtin"];
 
 function tokens(seg: string): string[] {
   return seg.match(/"[^"]*"|'[^']*'|\S+/g) ?? [];
@@ -171,7 +177,8 @@ export function mainCommand(cmd: string): string[] {
     let ts = tokens(seg);
     while (ts.length) {
       const t0 = ts[0]!;
-      if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(t0) || PREFIX.includes(t0)) ts = ts.slice(1);
+      // `command git …` runs git; `command -v git` asks where git is (a probe, kept).
+      if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(t0) || PREFIX.includes(t0) || (t0 === "command" && !/^-[vV]$/.test(ts[1] ?? ""))) ts = ts.slice(1);
       else if (t0 === "timeout" && ts.length > 1) ts = ts.slice(/^\d/.test(ts[1]!) ? 2 : 1);
       else break;
     }
@@ -194,7 +201,60 @@ export function commandStep(cmd: string): Step {
   const prog = base(ts[0]!);
   const args = ts.slice(1);
   const plain = args.filter((a) => !isFlag(a)).map(unquote);
+  const whole = unwrapShell(cmd);
+  // `python3 -m pip install x` is pip.
+  if (/^python[\d.]*$/.test(prog) && args[0] === "-m" && args[1] && ["pip", "pip3", "uv"].includes(args[1])) return commandStep(args.slice(1).join(" "));
   switch (prog) {
+    case "command":
+    case "which":
+    case "type":
+    case "hash":
+    case "whereis":
+      if (plain.length) return { kind: "searched", act: "cmd", target: plain.slice(0, 3).map(base).join(" "), probe: true };
+      break;
+    case "test":
+    case "[":
+    case "[[": {
+      const p = plain.filter((a) => a !== "]" && a !== "]]" && a !== "!").at(-1);
+      if (p) return { kind: "read", act: "exists", target: pathTail(p), probe: true };
+      break;
+    }
+    case "curl":
+    case "wget":
+    case "http":
+    case "xh": {
+      const u = plain.find((a) => /^https?:\/\//.test(a)) ?? plain.find((a) => /^[\w-]+(\.[\w-]+)+(\/|$)/.test(a));
+      const host = u ? shortUrl(/^https?:/.test(u) ? u : `https://${u}`).split("/")[0]! : "";
+      if (/\|\s*(?:sudo\s+)?(?:ba|z)?sh\b/.test(whole)) return { kind: "ran", act: "installer", ...(host ? { target: host } : {}) };
+      return { kind: "browsed", act: "request", ...(host ? { target: host } : {}) };
+    }
+    case "pip":
+    case "pip3":
+    case "pipx":
+    case "uv":
+    case "npm":
+    case "pnpm":
+    case "yarn":
+    case "bun":
+    case "brew":
+    case "apt":
+    case "apt-get":
+    case "dnf":
+    case "yum":
+    case "cargo":
+    case "gem":
+    case "go": {
+      const rest = prog === "uv" && plain[0] === "pip" ? plain.slice(1) : plain;
+      const verb = rest[0] ?? "";
+      if (["install", "add", "i"].includes(verb)) {
+        const pkgs = rest.slice(1).filter((a) => !/^[<>=]/.test(a)).map((a) => base(a.replace(/@latest$/, "")));
+        return { kind: "ran", act: "install", ...(pkgs.length ? { target: pkgs.slice(0, 2).join(" ") } : {}), ...(pkgs.length > 2 ? { more: pkgs.length - 2 } : {}) };
+      }
+      break;
+    }
+    case "mkdir":
+      if (plain.length) return { kind: "edited", act: "mkdir", target: pathTail(plain.at(-1)!) };
+      break;
     case "cat":
     case "head":
     case "tail":
@@ -211,7 +271,7 @@ export function commandStep(cmd: string): Step {
     case "grep":
     case "ag":
     case "ack":
-      if (plain.length) return { kind: "searched", target: plain[0]! };
+      if (plain.length) return { kind: "searched", target: plain[0]!, probe: true };
       break;
     case "fd":
     case "find": {
@@ -220,8 +280,12 @@ export function commandStep(cmd: string): Step {
       return { kind: "searched", target: name || pathTail(plain[0] ?? ".") };
     }
     case "ls":
-    case "tree":
-      return { kind: "read", act: "list", target: pathTail(plain[0] ?? ".") };
+    case "tree": {
+      const p = plain[0] ?? ".";
+      // `ls ~/.venv/bin/python*` looks for files by name; `ls src` lists a folder.
+      if (/[*?]/.test(base(p))) return { kind: "searched", act: "files", target: base(p), probe: true };
+      return { kind: "read", act: "list", target: pathTail(p), probe: true };
+    }
     case "open": {
       const url = plain.find((a) => /^https?:\/\//.test(a));
       const ai = args.indexOf("-a");
@@ -235,6 +299,8 @@ export function commandStep(cmd: string): Step {
       return { kind: "computer", act: "script", ...(m ? { app: appName(m[1]!) } : {}) };
     }
   }
+  // `python3 -c "…"`, `node -e "…"`: a snippet, not a script by name.
+  if (/^(?:python[\d.]*|node|bun|deno|ruby|perl)$/.test(prog) && (args[0] === "-c" || args[0] === "-e")) return { kind: "ran", act: "snippet", target: prog };
   const words: string[] = [];
   for (const a of args) {
     if (words.length === 2 || !SUBWORD.test(a)) break;
@@ -351,6 +417,12 @@ function editPaths(input: unknown): string[] {
 
 // ---------- the step ----------
 
+/** The agent's own short words for a shell step, when its harness carries them (D148). */
+function saysOf(o: Record<string, unknown>): string {
+  const d = firstStr(o, ["description", "justification"]).split("\n")[0]!.trim().replace(/[.。]$/, "");
+  return d.length >= 3 && [...d].length <= 80 ? d : "";
+}
+
 /** What one tool call was, as a step. `harness` is the task's (claude-code, codex, pi, deepseek-harness). */
 export function stepOf(harness: string, t: ToolLike): Step {
   void harness; // the names don't collide across the four harnesses today; kept for when they do
@@ -367,7 +439,9 @@ export function stepOf(harness: string, t: ToolLike): Step {
   }
   if (SHELL.includes(tool)) {
     const cmd = typeof input === "string" ? input : firstStr(o, ["command", "cmd", "script", "CommandLine"]);
-    return cmd ? commandStep(cmd) : { kind: "ran" };
+    const st: Step = cmd ? commandStep(cmd) : { kind: "ran" };
+    const says = saysOf(o);
+    return says ? { ...st, says } : st;
   }
   if (READ.includes(tool)) {
     const p = typeof input === "string" ? input : firstStr(o, ["file_path", "path", "notebook_path", "filePath", "file", "target_file", "dir", "directory"]);

@@ -12,6 +12,9 @@ const title = "Ducter: one partner who runs your AI work";
 const description =
   "Ducter is a personal AI you run yourself. Talk to one partner; it hands the work to Claude Code and Codex on your own computers, on the plans you already pay for, and comes to you only when a decision is yours.";
 const check = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"/></svg>`;
+const arrow = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 8h10M9 4.5L12.5 8 9 11.5"/></svg>`;
+const out = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l8-8M6 4h6v6"/></svg>`;
+const cross = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg>`;
 const lock = `<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M5 7V5a3 3 0 016 0v2h.5A1.5 1.5 0 0113 8.5v4a1.5 1.5 0 01-1.5 1.5h-7A1.5 1.5 0 013 12.5v-4A1.5 1.5 0 014.5 7H5zm1.6 0h2.8V5a1.4 1.4 0 00-2.8 0v2z"/></svg>`;
 const ld = {
   "@context": "https://schema.org",
@@ -39,19 +42,14 @@ const ld = {
 <section class="hero">
   <div class="wrap hero-grid">
     <div class="hero-copy">
-      <h1>Say it once. <span class="soft">Hear back when it's&nbsp;done.</span></h1>
-      <p class="lede">Ducter is a personal AI you run yourself. You talk to <b>one partner</b>. It hands the real work to <b>Claude Code and Codex on your own computers</b>, on the plans you already pay for, and comes to you only when a decision is truly yours.</p>
+      <h1>Say it once. <span class="line">Hear back when it's&nbsp;done.</span></h1>
+      <p class="lede">Ducter is a personal AI you run yourself. You talk to one partner. It hands the real work to Claude Code and Codex on your own computers, on the plans you already pay for, and comes to you only when a decision is truly yours.</p>
       <div class="cta-row">
         <a class="btn lg" href={dl.href}>{dl.label}</a>
         <a class="btn secondary lg" href="#how">See how it works</a>
       </div>
       <p class="cta-note">{dl.note}</p>
-      <ul class="facts" aria-label="At a glance">
-        <li>Open source · Apache 2.0</li>
-        <li>Your Mac or your server</li>
-        <li>Claude Code · Codex</li>
-        <li>English · 中文</li>
-      </ul>
+      <p class="facts">Open source under Apache 2.0. Runs on your Mac or a server you own, with Claude Code or Codex, in English or 中文.</p>
     </div>
 
     <div class="demo" id="demo" aria-label="A short example conversation with Ducter">
@@ -65,19 +63,20 @@ const ld = {
           <div class="track" id="track">
             <div class="msg user step" data-step="user">Fix the flaky checkpoint test in <code>~/dev/hawdb</code>, then tell me.</div>
             <div class="msg ducter step" data-step="ack">I'll find out why <code>checkpoint_recovery</code> flakes, and fix it on its own branch.</div>
-            <div class="step pop" data-step="chip"><span class="tchip" id="hero-chip" data-state="done">Fix CI <span class="st" id="hero-st"><span>· Done</span></span></span></div>
+            <div class="step pop" data-step="chip"><span class="taskline" id="hero-chip" data-state="done"><span class="ic"><span class="i-work"><Fragment set:html={arrow} /></span><span class="i-done"><Fragment set:html={check} /></span></span><b>Fix CI</b><span class="st" id="hero-st"><span>· Done</span></span> ›</span></div>
             <div class="quiet step" data-step="quiet"><span class="clock"></span><span id="quiet-text">14 min later</span></div>
             <div class="msg ducter step" data-step="result">
               <p>CI is fixed. <code>checkpoint_recovery</code> slept a fixed 50&nbsp;ms for the flush, too short on a busy machine. It now waits for <code>wal.wait_durable(seq)</code>.</p>
-              <span class="tchip" data-state="done">Fix CI <span class="st">· Done</span></span>
-              <dl class="sheet">
-                <div><dt>How I know</dt><dd><span class="ev"><Fragment set:html={check} />412 tests pass</span><span class="ev"><Fragment set:html={check} />CI run #48219 · green</span></dd></div>
-                <div><dt>Sent out</dt><dd><span class="sent">git push -u origin ducter/fix-ci</span></dd></div>
-              </dl>
+              <div class="proof">
+                <span class="mk"><Fragment set:html={check} />412 tests pass</span>
+                <span class="mk"><Fragment set:html={check} />CI run #48219 · green</span>
+                <span class="qlink">2 files changed ›</span>
+                <span class="qlink">Fix CI ›</span>
+              </div>
+              <div class="proof"><span class="mk"><Fragment set:html={out} />git push -u origin ducter/fix-ci</span></div>
               <div class="actions">
                 <button class="btn md" type="button" tabindex="-1">Merge into main</button>
                 <button class="btn secondary md" type="button" tabindex="-1">Open draft PR</button>
-                <span class="textbtn hide-sm">See changes</span>
               </div>
             </div>
           </div>
@@ -102,7 +101,6 @@ const ld = {
   <div class="wrap split">
     <div>
       <div class="sec-head">
-        <span class="tag">Only when it matters</span>
         <h2>Silence means it's going fine.</h2>
       </div>
       <p class="lede">Tasks run in the background. You hear back when one is done, or when a decision is truly yours, and every decision arrives with a default, so not answering is an answer too.</p>
@@ -120,16 +118,16 @@ const ld = {
         <div class="ask-slot" id="ask-slot">
           <div>
             <div class="ask" id="ask" role="group" aria-labelledby="ask-q">
-              <div class="ask-top"><span id="ask-from">Needs you · Port the runner to OAR 0.96</span><span id="ask-time">30 min</span></div>
+              <div class="ask-top"><span id="ask-from">Port the runner to OAR 0.96 ›</span><span id="ask-time">30 min</span></div>
               <p class="q" id="ask-q">OAR 0.96 changed the steer API; 3 calls in the runner need to follow. Change them now?</p>
               <p class="def" id="ask-def">If you don't answer, I'll change them in 30 min. It can be undone.</p>
               <div class="bar"><i id="ask-bar"></i></div>
               <div class="actions">
-                <button class="btn md" type="button" id="ask-go">Go: change them</button>
+                <button class="btn md" type="button" id="ask-go">Change them</button>
                 <button class="btn secondary md" type="button" id="ask-hold">Hold</button>
-                <span class="hint" id="ask-hint">Try it: press Go</span>
+                <span class="hint" id="ask-hint">Try it: press Change them</span>
               </div>
-              <div class="resolved" id="ask-resolved"><Fragment set:html={check} /><span>Go · changing them now</span></div>
+              <div class="resolved" id="ask-resolved"><Fragment set:html={check} /><span>Changing them now</span></div>
             </div>
           </div>
         </div>
@@ -146,7 +144,6 @@ const ld = {
 <section class="sec" id="devices">
   <div class="wrap">
     <div class="sec-head">
-      <span class="tag">Where the work happens</span>
       <h2>Your computers. Your plans.</h2>
       <p class="lede">Ducter lives on your Mac, or on a server you own. Every task runs there in its own git worktree and branch, on the Claude Code or Codex sign-in you already have. There's no Ducter cloud in the middle.</p>
     </div>
@@ -204,15 +201,10 @@ const ld = {
   <div class="wrap split flip">
     <div>
       <div class="sec-head">
-        <span class="tag">On your phone</span>
         <h2>One thumb is enough.</h2>
       </div>
       <p class="lede">Only decisions earn a push, and they wait out your quiet hours. Each one carries a default, so you can answer from the lock screen, or let the default happen and read about it over coffee.</p>
-      <div class="chips">
-        <span class="chip">Quiet hours 23:00–08:00</span>
-        <span class="chip">Go on all defaults · 2</span>
-        <span class="chip">Connect with a one-time code</span>
-      </div>
+      <p class="body note">Quiet hours run 23:00 to 08:00 unless you change them. Two decisions waiting? Go on all defaults answers both. A phone connects once, with a one-time code.</p>
     </div>
     <div class="phone-scene">
       <div class="phone" id="phone">
@@ -249,7 +241,6 @@ const ld = {
   <div class="wrap split">
     <div>
       <div class="sec-head">
-        <span class="tag">Trust</span>
         <h2>It asks before anything leaves.</h2>
       </div>
       <p class="lede">No pop-up for every command. Each task holds only what it needs, everything that goes out is written down in plain words, and a few things are never its call.</p>
@@ -262,10 +253,10 @@ const ld = {
     <div class="ledger reveal" id="ledger">
       <div class="ledger-head"><b>Sent out today</b><small>Monday</small></div>
       <ol>
-        <li class="step"><code>git push -u origin ducter/fix-ci</code><span class="verdict ran"><Fragment set:html={check} />Ran · its own branch</span></li>
-        <li class="step"><code>gh pr create --draft "Fix flaky checkpoint_recovery"</code><span class="verdict asked">Asked you · you said Go</span></li>
+        <li class="step"><code>git push -u origin ducter/fix-ci</code><span class="verdict ran"><Fragment set:html={check} />Ran: its own branch</span></li>
+        <li class="step"><code>gh pr create --draft "Fix flaky checkpoint_recovery"</code><span class="verdict asked"><Fragment set:html={check} />Asked you; you said Go</span></li>
         <li class="step"><code>git push origin main</code><span class="verdict waits"><Fragment set:html={lock} />Waits for you, always</span></li>
-        <li class="step"><code>email: load-test numbers → a HawDB contributor</code><span class="verdict asked">Asks first · 30 s to undo</span></li>
+        <li class="step"><code>email: load-test numbers → a HawDB contributor</code><span class="verdict asked"><Fragment set:html={out} />Asks first, 30 s to undo</span></li>
         <li class="step"><code>sign in to github.com</code><span class="verdict yours"><Fragment set:html={lock} />Yours to do</span></li>
         <li class="step"><code>pay: renew a domain</code><span class="verdict yours"><Fragment set:html={lock} />Never Ducter's call</span></li>
       </ol>
@@ -277,44 +268,44 @@ const ld = {
 <section class="sec" id="depth">
   <div class="wrap">
     <div class="sec-head">
-      <span class="tag">Full depth, when you want it</span>
       <h2>Open anything. Any time.</h2>
-      <p class="lede">Most days you never leave the conversation. When you want the wheel, <b>On hand</b> shows every task at a glance, and any task opens into its full workspace: what it did, the diff, how it knows, and a box to talk to it directly.</p>
+      <p class="lede">Most days you never leave the conversation. When you want the wheel, <b>On hand</b> shows every task at a glance, and any task opens into one page: what came of it and how it knows, what it did step by step, the changed files with each diff a tap away, and a box to talk to it directly.</p>
     </div>
     <div class="task-win reveal" aria-label="An opened task">
       <div class="tw-bar">
         <span class="crumbs"><span>Conversation</span><span aria-hidden="true">/</span><span>On hand</span><span aria-hidden="true">/</span><b>Fix CI · #1592</b></span>
-        <span class="meta">Codex · gpt-5</span><span class="meta">hawdb · MacBook · ducter/fix-ci</span>
       </div>
-      <div class="tw-banner">
-        <div><b>Rebased; all 412 tests pass and CI is green.</b> The cause was a fixed sleep in the test, now a wait for durability.<small>Sent out · git push -u origin ducter/fix-ci</small></div>
-        <div class="actions" style="margin:0"><button class="btn md" type="button" tabindex="-1">Merge into main</button><button class="btn secondary md" type="button" tabindex="-1">Open draft PR</button></div>
-      </div>
-      <div class="tw-cols">
-        <div class="tw-panel">
-          <h3 class="tw-h">What it did</h3>
-          <ol class="steps">
-            <li><code>Edit crates/storage/tests/checkpoint_recovery.rs</code></li>
-            <li class="saved">Progress saved · Confirmed flaky; wait for durability</li>
-            <li class="told"><b>Told Ducter · needs you to decide</b>The rerun passes. But the branch is 23 commits behind main: rebase before merging?</li>
-            <li><code>git fetch origin &amp;&amp; git rebase origin/main</code></li>
-            <li><code>cargo test --workspace</code></li>
-            <li class="saved">Progress saved · Rebased; full suite green</li>
-            <li><code>git push -u origin ducter/fix-ci</code></li>
-          </ol>
-          <div class="talk">Talk to this task</div>
+      <div class="tw-page">
+        <div class="standing"><Fragment set:html={check} /><b>Done</b><span>· started 14 min ago</span></div>
+        <p class="said">Rebased; all 412 tests pass and CI is green. The cause was a fixed sleep in the test, now a wait for durability.</p>
+        <div class="proof">
+          <span class="mk"><Fragment set:html={check} />20 local reruns</span>
+          <span class="mk"><Fragment set:html={check} />CI run #48219 · green</span>
+          <span class="qlink">1 file changed ›</span>
         </div>
-        <div class="tw-panel">
-          <h3 class="tw-h">Changes · 2 files</h3>
+        <div class="proof"><span class="mk"><Fragment set:html={out} />git push -u origin ducter/fix-ci</span></div>
+        <div class="actions"><button class="btn md" type="button" tabindex="-1">Merge into main</button><button class="btn secondary md" type="button" tabindex="-1">Open draft PR</button></div>
+
+        <h3 class="tw-h">What it did</h3>
+        <ol class="steps">
+          <li class="said-small"><small>What Ducter asked for</small>Find out why HawDB #1592's CI fails, and fix it.</li>
+          <li class="fold">› Ran 3 commands</li>
+          <li>All three failures are in <code>checkpoint_recovery</code>: it sleeps a fixed 50&nbsp;ms for the flush.</li>
+          <li class="fold">› Edited 1 file</li>
+          <li class="note">Progress saved · Confirmed flaky; wait for durability</li>
+          <li class="said-small"><small>Told Ducter · needs you to decide</small>The rerun passes. But the branch is 23 commits behind main: rebase before merging?</li>
+          <li class="fold">› Ran 3 commands</li>
+        </ol>
+
+        <div class="tw-changes">
+          <h3 class="tw-h">Changes <small>1 file <span class="add">+3</span> <span class="del">−3</span></small></h3>
           <div class="diff" aria-label="Diff of crates/storage/tests/checkpoint_recovery.rs">
-            <div class="file">crates/storage/tests/checkpoint_recovery.rs <span>+3 −3</span></div>
+            <div class="file"><span>⌄ crates/storage/tests/checkpoint_recovery.rs</span> <span class="n"><span class="add">+3</span> <span class="del">−3</span></span></div>
 <pre><span>    let wal = Wal::open(&amp;dir, WalOptions::fsync_each())?;</span><span>    let seq = wal.append(b"hello")?;</span><span class="del">-   std::thread::sleep(Duration::from_millis(50));</span><span class="add">+   // wait for the flusher instead of a fixed sleep</span><span class="add">+   wal.wait_durable(seq)?;</span><span>    crash_and_reopen(&amp;dir)?;</span><span>    assert_eq!(recovered.last_seq(), seq);</span></pre>
           </div>
-          <dl class="sheet" style="margin-top:14px">
-            <div><dt>How I know</dt><dd><span class="ev"><Fragment set:html={check} />20 local reruns</span><span class="ev"><Fragment set:html={check} />CI run #48219 · green</span></dd></div>
-            <div><dt>Why Codex</dt><dd><span class="sent" style="font-family:var(--body);font-size:13px">Your rule "backend goes to Codex"; this Mac has hawdb cached.</span></dd></div>
-          </dl>
         </div>
+        <div class="tw-details">Details ›</div>
+        <div class="talk">Talk to this task</div>
       </div>
     </div>
   </div>
@@ -325,7 +316,6 @@ const ld = {
   <div class="wrap">
     <div class="split" style="margin-bottom: clamp(56px, 8vw, 104px)">
       <div class="sec-head" style="margin:0">
-        <span class="tag">Memory</span>
         <h2>It remembers you.</h2>
         <p class="lede">With <a href="https://mem.nowledge.co" rel="noopener">Nowledge Mem</a>, your partner starts with the identity and context you already keep there, shared with the other AIs you use. Switch models whenever you like; it's still the same partner.</p>
       </div>
@@ -338,7 +328,6 @@ const ld = {
     </div>
 
     <div class="sec-head">
-      <span class="tag">Open source</span>
       <h2>Yours, all the way down.</h2>
     </div>
     <div class="cards3">

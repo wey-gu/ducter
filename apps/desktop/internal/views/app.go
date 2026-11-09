@@ -737,7 +737,7 @@ func clock(ts string) string {
 	if t.IsZero() {
 		return ""
 	}
-	return t.Local().Format("15:04")
+	return i18n.Clock(t)
 }
 
 func harnessName(h string) string {

@@ -7,6 +7,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
@@ -119,18 +120,37 @@ func (a *App) waitReason(task *store.Task) string {
 
 // when is a time of day, with the weekday when it is not today.
 func (a *App) when(at time.Time) string {
-	at = at.Local()
-	now := a.Now().Local()
-	if at.YearDay() == now.YearDay() && at.Year() == now.Year() {
-		return at.Format("15:04")
+	return i18n.When(a.L.Lang, at, a.Now())
+}
+
+// day is a date in words: 今天, 周五, 12 月 9 日 (i18n.Day).
+func (a *App) day(at time.Time) string {
+	return i18n.Day(a.L.Lang, at, a.Now())
+}
+
+// tp is a.L.T with a time or name padded from the Chinese around it, and
+// no stray space at either end or before full-width punctuation.
+func (a *App) tp(key string, v string) string {
+	s := strings.TrimSpace(a.L.T(key, a.pad(v)))
+	for _, p := range []string{"，", "。", "；", "："} {
+		s = strings.ReplaceAll(s, " "+p, p)
 	}
-	if at.Sub(now) < 36*time.Hour && at.YearDay() == now.Add(24*time.Hour).YearDay() {
-		return a.L.T("time.tomorrow", at.Format("15:04"))
+	return s
+}
+
+// pad spaces a time or name that starts or ends in Latin letters or digits
+// from the Chinese around it ("最多等到" + "12 月 1 日 9:00" + "，…").
+func (a *App) pad(s string) string {
+	if a.L.Lang != i18n.ZH || s == "" {
+		return s
 	}
-	if at.Sub(now) < 7*24*time.Hour && at.After(now) {
-		return a.L.T(fmt.Sprintf("weekday.%d", int(at.Weekday())), at.Format("15:04"))
+	if s[0] < 0x80 {
+		s = " " + s
 	}
-	return at.Format("01-02 15:04")
+	if s[len(s)-1] < 0x80 {
+		s += " "
+	}
+	return s
 }
 
 // waiterRow is a task-less waiter: one compact line in the Waiting lane.
@@ -440,7 +460,31 @@ func (a *App) workingCard(c *ui.Context, task *store.Task) {
 	t := a.T
 	card := ui.Column(c).Padding(t.S4, t.S4).Gap(t.S3).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color)
 	a.cardLink(c, card, task)
+	// Its wait just came true (D115): it springs in from the Waiting lane (at once, fading
+	// only, when the Mac asks for less motion), its bubble popping as it lands.
+	arrived := a.arrived(c, task.ID)
+	if arrived {
+		entered := ui.Local(card, "arrived", func() bool { return false })
+		p := ui.Pose{}
+		if !*entered {
+			p, *entered = ui.Pose{X: 360, Scale: 0.98, Fade: 0.6}, true
+			c.Invalidate()
+		}
+		card.AnimatePose(p, t.Bouncy)
+	}
 	card.Children(func() {
+		if arrived {
+			pop := ui.Box(c.Key("pop")).Absolute().Left(-10).Top(-10).Size(40, 36).Radius(40).Background(t.SurfaceRaised).PassThrough().AccessHidden(true)
+			grown := ui.Local(pop, "grown", func() bool { return false })
+			p := ui.Pose{}
+			if !*grown {
+				*grown = true
+				c.Invalidate()
+			} else {
+				p = ui.Pose{Scale: 1.4, Fade: 1}
+			}
+			pop.AnimatePose(p, ui.Animation{Duration: 320 * time.Millisecond})
+		}
 		ui.Text(c, task.Title()).FontSize(t.MD).FontWeight(800)
 		if u := task.Card; u != nil && u.Until != nil && u.Until.State == "on" {
 			// A keep-going loop (D113): its tries, then where it stands.

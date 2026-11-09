@@ -8,6 +8,7 @@ import { stepOf, type Step } from "@ducter/protocol/src/steps.ts";
 import { useEffect, useState } from "preact/hooks";
 import type { JSX } from "preact";
 import { A } from "./app.ts";
+import { Coin } from "./coin.tsx";
 import { clock, duration, harnessName, modelName } from "./format.ts";
 import { markdown } from "./markdown.ts";
 import { attention, finished, harnessOf, modelOf, type Task } from "./store.ts";
@@ -372,7 +373,7 @@ export function TaskBar({ task, stateLabel, opened }: { task: Task; stateLabel: 
   }
   return (
     <div class={`task-bar st-${a}`}>
-      {h && <img src={`app/art/${h === "claude-code" ? "token_orange" : "token_ink"}.webp`} alt="" width="20" height="20" />}
+      {h && <Coin harness={h} size={20} motion={working ? "working" : a === "needs_you" ? "needs_you" : "still"} />}
       <span class="who">{who}</span>
       <span class="grow" />
       <b>{stateLabel}</b>

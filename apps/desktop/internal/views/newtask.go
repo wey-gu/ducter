@@ -470,9 +470,9 @@ func (a *App) whoChips(c *ui.Context) {
 				e.Tooltip(a.L.T("newtask.picked", name))
 			}
 			e.Children(func() {
-				if bmp := theme.Clay(tokenArt(cd.Harness)); bmp != nil {
+				if bmp := theme.Clay(coinArt(cd.Harness, 26, off)); bmp != nil {
 					img := ui.Image(c, bmp).Size(26, 26).Shrink(0).AccessHidden(true)
-					if off {
+					if off && !coinKnown(cd.Harness) {
 						img.Grayscale()
 					}
 				}

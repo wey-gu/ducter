@@ -20,6 +20,7 @@ const clay = (name) => resolve(repo, "design/art/assets/alpha", name + ".png");
 // The not-yet look of an ability (desaturated, a little see-through) has no alpha master: it is
 // made for the app at 640 (apps/desktop/internal/theme/art/clay), which is plenty for the web.
 const app = (name) => resolve(repo, "apps/desktop/internal/theme/art/clay", name + "@640.png");
+const coin = (name) => resolve(repo, "apps/desktop/internal/theme/art/clay", name + "@256.png");
 const jobs = [
   // name, source, widths
   ["ducter_idle", clay("ducter_idle"), [160, 320, 480]],
@@ -42,8 +43,12 @@ const jobs = [
   ["ab_phone_later", app("ab_phone_later"), [128, 256]],
   ["ab_call_later", app("ab_call_later"), [128, 256]],
   ["slot_empty", clay("slot_empty"), [160, 320]],
-  ["token_orange", clay("token_orange"), [96, 192]],
-  ["token_ink", clay("token_ink"), [96, 192]],
+  // Each AI agent's own coin (tools/art/coins.py makes them at 256 for the app; no larger master).
+  ["coin_claude_code", coin("coin_claude_code"), [96, 192]],
+  ["coin_codex", coin("coin_codex"), [96, 192]],
+  // Below 72px a printed name is a smudge: the plain body, the name beside it.
+  ["coin_claude_code_plain", coin("coin_claude_code_plain"), [96]],
+  ["coin_codex_plain", coin("coin_codex_plain"), [96]],
   // What a wait waits for (On hand): a cloud for a CI run.
   ["wait_ci", clay("wait_ci"), [64, 128]],
 ];

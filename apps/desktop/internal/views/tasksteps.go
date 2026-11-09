@@ -462,7 +462,7 @@ func (a *App) taskBar(c *ui.Context, task *store.Task) {
 	ui.Row(c.Key("footer")).Justify(ui.Center).Padding(t.S2, t.S5, 0, t.S5).Children(func() {
 		ui.Row(c).Grow(1).MaxWidth(convWidth).Gap(t.S2).AlignItems(ui.Center).Padding(0, t.S3).Children(func() {
 			if h := task.Harness(); h != "" {
-				a.coin(c, h, 20)
+				a.coin(c, h, 20, coinMotionOf(att))
 			}
 			if who != "" {
 				ui.Text(c, who).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().MinWidth(0).Shrink(1)

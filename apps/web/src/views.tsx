@@ -9,6 +9,7 @@ import type { JSX } from "preact";
 import { A, candKey, placeKey } from "./app.ts";
 import { ago, cjkPad, deviceLabel, duration, firstClause, harnessName, modelName, placeLine, sameWords, splitOutcome, when } from "./format.ts";
 import { markdown } from "./markdown.ts";
+import { Coin } from "./coin.tsx";
 import { disablePush, enablePush } from "./push-client.ts";
 import { inApp } from "./native.ts";
 import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, WaitBubble, waitCaption, WaitDetails, waitLine } from "./work.tsx";
@@ -366,7 +367,7 @@ function DecisionCard({ d, taskId, inTask }: { d: DecisionState; taskId?: string
       {task && title(task) && !inTask && (
         // Who asks and about what (D127): the agent's coin and the task's short title, the way into it.
         <button class="asker" title={title(task)} onClick={() => ((A.sheet = null), A.go({ name: "task", id: task.id }))}>
-          {harnessOf(task) && <img src={`app/art/${harnessOf(task) === "claude-code" ? "token_orange" : "token_ink"}.webp`} alt="" width="20" height="20" />}
+          {harnessOf(task) && <Coin harness={harnessOf(task)} size={20} motion="needs_you" />}
           <span>{shortTitle(title(task))} ›</span>
         </button>
       )}
@@ -1388,7 +1389,7 @@ function SwitchList({ task }: { task: Task }) {
         const off = !!c.blocked;
         return (
           <button key={key} role="radio" aria-checked={pick === key} disabled={off || c.current} class={`cand${off ? " off" : ""}${pick === key ? " on" : ""}`} onClick={() => setPick(key)}>
-            <img src={`app/art/${c.harness === "claude-code" ? "token_orange" : "token_ink"}.webp`} alt="" width="36" height="36" />
+            <Coin harness={c.harness} size={36} off={off} />
             <span class="grow">
               <b>{candName(c)}</b>
               <small>{candReason(c)}</small>
@@ -1881,7 +1882,7 @@ function Loadout() {
       <section class="set">
         <h3>{t("loadout.brain.title")}</h3>
         <div class="agent">
-          <img src={`app/art/${brain.harness === "claude-code" ? "token_orange" : "token_ink"}.webp`} alt="" width="40" height="40" />
+          <Coin harness={brain.harness} size={40} />
           <span class="grow">
             <b>{harnessName(brain.harness)}</b>
             <small>{reserve}</small>
@@ -1912,7 +1913,7 @@ function Loadout() {
               const isBrain = h.harness === brain.harness;
               return (
                 <div class="agent" key={h.harness}>
-                  <img class={h.installed && h.loggedIn ? "" : "dim"} src={`app/art/${h.harness === "claude-code" ? "token_orange" : "token_ink"}.webp`} alt="" width="40" height="40" />
+                  <Coin harness={h.harness} size={40} off={!(h.installed && h.loggedIn)} />
                   <span class="grow">
                     <b>{harnessName(h.harness)}</b>
                     <small>{agentLine(h, isBrain)}</small>
@@ -2167,8 +2168,6 @@ function SettingsSheet() {
 
 // ---------- 开一件事 / New task (D128) ----------
 
-const tokenArt = (h: string) => `app/art/${h === "claude-code" ? "token_orange" : "token_ink"}.webp`;
-
 /** The New task sheet: Where (place chips; the chosen repo's chip names its base branch and
  *  opens the branches), Who does it (the agents' coins, the best fit chosen and tagged Suggested),
  *  What (the words, given as they are). Start opens the task; back returns. */
@@ -2267,7 +2266,7 @@ function NewTaskSheet() {
                     title={tip || undefined}
                     onClick={() => ((nt.pick = best ? "" : candKey(c)), A.changed())}
                   >
-                    <img src={tokenArt(c.harness)} alt="" width="26" height="26" />
+                    <Coin harness={c.harness} size={26} off={off} />
                     <b>{candName(c)}</b>
                     {best && <small class="suggested">{t("newtask.suggested")}</small>}
                   </button>

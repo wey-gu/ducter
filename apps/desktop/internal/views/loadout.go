@@ -124,13 +124,6 @@ func (a *App) taskReady(h protocol.DeviceHarness) bool {
 	return true
 }
 
-func tokenArt(h string) string {
-	if h == "claude-code" {
-		return "token_orange"
-	}
-	return "token_ink"
-}
-
 type modelChoice struct {
 	id    string
 	label string
@@ -285,7 +278,7 @@ func (a *App) socket(c *ui.Context) {
 		well.Children(func() {
 			// The token sits in the well, unless it is the one in flight.
 			if !flying {
-				if bmp := theme.Clay(tokenArt(b.Harness)); bmp != nil {
+				if bmp := theme.Clay(coinArt(b.Harness, 84, false)); bmp != nil {
 					ui.Image(c, bmp).Size(84, 84).Absolute().Left(14).Top(14)
 				}
 			}
@@ -372,12 +365,17 @@ func (a *App) trayToken(c *ui.Context, h protocol.DeviceHarness, b protocol.Brai
 	tok.Children(func() {
 		coin := ui.Box(c.Key("coin")).Size(84, 84).Draw(a.limitRing(h, isBrain)).AccessHidden(true)
 		coin.Children(func() {
-			if bmp := theme.Clay(tokenArt(h.Harness)); bmp != nil && !flying {
+			off := !h.Installed || !h.LoggedIn
+			if bmp := theme.Clay(coinArt(h.Harness, 62, off)); bmp != nil && !flying {
 				img := ui.Image(c, bmp).Size(62, 62).Absolute().Left(11).Top(11)
-				if !h.Installed {
-					img.Opacity(0.35)
-				} else if !h.LoggedIn {
-					img.Grayscale().Opacity(0.8)
+				// An agent's own coin has its unavailable look drawn in; the generic
+				// token is dimmed here.
+				if !coinKnown(h.Harness) {
+					if !h.Installed {
+						img.Opacity(0.35)
+					} else if !h.LoggedIn {
+						img.Grayscale().Opacity(0.8)
+					}
 				}
 			}
 			if lo.choosing && canGo || lo.acct == h.Harness && !lo.choosing {
@@ -459,7 +457,7 @@ func (a *App) brainFlyer(c *ui.Context) {
 	to := shrink(fx.to, 84.0/112)
 	pose := equipFx{start: fx.start, from: from, to: to}
 	x, y, s, rot, sy := a.flightPose(&pose, min(max(q, 0), 1), still)
-	bmp := theme.Clay(tokenArt(lo.fxTo.Harness))
+	bmp := theme.Clay(coinArt(lo.fxTo.Harness, 84, false))
 	if bmp == nil {
 		return
 	}
@@ -493,7 +491,7 @@ func (a *App) brainCard(c *ui.Context) {
 	}
 	a.sheetCard(c, "brain", a.L.T("loadout.brain.title"), func() {
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-			if bmp := theme.Clay(tokenArt(b.Harness)); bmp != nil {
+			if bmp := theme.Clay(coinArt(b.Harness, 46, false)); bmp != nil {
 				ui.Image(c, bmp).Size(46, 46).Shrink(0).AccessHidden(true)
 			}
 			ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
@@ -631,7 +629,7 @@ func (a *App) acctLine(c *ui.Context) {
 	ui.Column(c.Key("acct:"+h.Harness)).Gap(t.S2).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.SurfaceSunken).
 		Role(ui.RoleGroup).Label(name).Children(func() {
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-			if bmp := theme.Clay(tokenArt(h.Harness)); bmp != nil {
+			if bmp := theme.Clay(coinArt(h.Harness, 28, false)); bmp != nil {
 				ui.Image(c, bmp).Size(28, 28).Shrink(0).AccessHidden(true)
 			}
 			ui.Text(c, name).FontSize(t.MD).FontWeight(800).Grow(1).MinWidth(0)
@@ -904,9 +902,9 @@ func (a *App) switchSheet(c *ui.Context, task *store.Task) {
 					row.InsetShadow(0, 0, 0, 2, t.Ink)
 				}
 				row.Children(func() {
-					if bmp := theme.Clay(tokenArt(cd.Harness)); bmp != nil {
+					if bmp := theme.Clay(coinArt(cd.Harness, 40, off)); bmp != nil {
 						img := ui.Image(c, bmp).Size(40, 40).Shrink(0).AccessHidden(true)
-						if off {
+						if off && !coinKnown(cd.Harness) {
 							img.Grayscale()
 						}
 					}

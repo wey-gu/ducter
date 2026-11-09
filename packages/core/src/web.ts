@@ -37,6 +37,21 @@ import artDone from "../../../apps/web/static/art/done.webp" with { type: "file"
 import artNapping from "../../../apps/web/static/art/napping.webp" with { type: "file" };
 import tokenOrange from "../../../apps/web/static/art/token_orange.webp" with { type: "file" };
 import tokenInk from "../../../apps/web/static/art/token_ink.webp" with { type: "file" };
+// Each AI agent's own coin (tools/art/coins.py): printed, plain (small sizes), unavailable; the rim sheen.
+import coinClaudeCode from "../../../apps/web/static/art/coin_claude_code.webp" with { type: "file" };
+import coinClaudeCodePlain from "../../../apps/web/static/art/coin_claude_code_plain.webp" with { type: "file" };
+import coinClaudeCodeOff from "../../../apps/web/static/art/coin_claude_code_off.webp" with { type: "file" };
+import coinCodex from "../../../apps/web/static/art/coin_codex.webp" with { type: "file" };
+import coinCodexPlain from "../../../apps/web/static/art/coin_codex_plain.webp" with { type: "file" };
+import coinCodexOff from "../../../apps/web/static/art/coin_codex_off.webp" with { type: "file" };
+import coinPi from "../../../apps/web/static/art/coin_pi.webp" with { type: "file" };
+import coinPiPlain from "../../../apps/web/static/art/coin_pi_plain.webp" with { type: "file" };
+import coinPiOff from "../../../apps/web/static/art/coin_pi_off.webp" with { type: "file" };
+import coinDeepseekHarness from "../../../apps/web/static/art/coin_deepseek_harness.webp" with { type: "file" };
+import coinDeepseekHarnessPlain from "../../../apps/web/static/art/coin_deepseek_harness_plain.webp" with { type: "file" };
+import coinDeepseekHarnessOff from "../../../apps/web/static/art/coin_deepseek_harness_off.webp" with { type: "file" };
+import coinOffPlain from "../../../apps/web/static/art/coin_off_plain.webp" with { type: "file" };
+import coinSheen from "../../../apps/web/static/art/coin_sheen.webp" with { type: "file" };
 // Work over time (D112): Ducter waiting, and the clay things it waits for.
 import artWaiting from "../../../apps/web/static/art/waiting.webp" with { type: "file" };
 import waitPr from "../../../apps/web/static/art/wait_pr.webp" with { type: "file" };
@@ -69,6 +84,20 @@ const ASSETS: Record<string, [string, string]> = {
   "art/token_orange.webp": [tokenOrange, "image/webp"],
   "art/token_ink.webp": [tokenInk, "image/webp"],
   "art/napping.webp": [artNapping, "image/webp"],
+  "art/coin_claude_code.webp": [coinClaudeCode, "image/webp"],
+  "art/coin_claude_code_plain.webp": [coinClaudeCodePlain, "image/webp"],
+  "art/coin_claude_code_off.webp": [coinClaudeCodeOff, "image/webp"],
+  "art/coin_codex.webp": [coinCodex, "image/webp"],
+  "art/coin_codex_plain.webp": [coinCodexPlain, "image/webp"],
+  "art/coin_codex_off.webp": [coinCodexOff, "image/webp"],
+  "art/coin_pi.webp": [coinPi, "image/webp"],
+  "art/coin_pi_plain.webp": [coinPiPlain, "image/webp"],
+  "art/coin_pi_off.webp": [coinPiOff, "image/webp"],
+  "art/coin_deepseek_harness.webp": [coinDeepseekHarness, "image/webp"],
+  "art/coin_deepseek_harness_plain.webp": [coinDeepseekHarnessPlain, "image/webp"],
+  "art/coin_deepseek_harness_off.webp": [coinDeepseekHarnessOff, "image/webp"],
+  "art/coin_off_plain.webp": [coinOffPlain, "image/webp"],
+  "art/coin_sheen.webp": [coinSheen, "image/webp"],
   "art/waiting.webp": [artWaiting, "image/webp"],
   "art/wait_pr.webp": [waitPr, "image/webp"],
   "art/wait_ci.webp": [waitCi, "image/webp"],

@@ -7,8 +7,6 @@ import (
 	"math"
 
 	"github.com/egoist/mygo/ui"
-
-	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
 const glyphStroke = 1.6
@@ -167,9 +165,8 @@ func drawRing(rim, left ui.Color, frac float32) func(p *ui.Painter, r ui.Rect) {
 	}
 }
 
-// coin is an AI agent's clay token, small: who is doing it.
-func (a *App) coin(c *ui.Context, harness string, size float32) {
-	if bmp := theme.Clay(tokenArt(harness)); bmp != nil {
-		ui.Image(c, bmp).Size(size, size).Shrink(0).AccessHidden(true)
-	}
+// coin is an AI agent's clay coin, small: who is doing it, moving as its
+// task does (a light over the rim while it works, a bob while it waits on you).
+func (a *App) coin(c *ui.Context, harness string, size float32, m coinMotion) {
+	a.coinBox(c, "who", harness, size, false, m)
 }

@@ -35,9 +35,12 @@ export function userText(e: LogEvent): string | undefined {
   return e.kind === "user_msg" ? (e.body as Bodies["user_msg"]).text : undefined;
 }
 
-/** A finished topic: the user merged a task's work or opened its PR by button. */
-function topicDone(e: LogEvent): boolean {
-  return e.kind === "job_status" && e.origin === "user" && /\b(merged|pull request|PR)\b/i.test((e.body as Bodies["job_status"]).text);
+/** A finished topic: the user merged a task's work or opened its PR by button. Keyed on the
+ *  action the core logs (`act_<task>_merge` / `act_<task>_open_pr`, done), never on its words. */
+export function topicDone(e: LogEvent): boolean {
+  if (e.kind !== "job_status" || e.origin !== "user") return false;
+  const b = e.body as Bodies["job_status"];
+  return b.state === "done" && /^act_.+_(merge|open_pr)$/.test(b.jobId);
 }
 
 /**

@@ -55,7 +55,7 @@ already; treat them as your own memory of the conversation and carry on naturall
       runs), as a rough usual, never a promise: zh 「一般」「大概」, en "usually", "about".
       No grounds: no number at all. Good: "好，我去查 CI 为什么挂了，一般十来分钟，查清楚了
       告诉你。" / "On it: checking why CI failed, usually about 10 min; I'll tell you when
-      it's clear." / no grounds: "我去看看 ~/dev/foo 里那个不稳定的测试，弄清楚了告诉你。"
+      it's clear." / no grounds: "我去看看那个时好时坏的测试，弄清楚了告诉你。"
       Bad: "Fixed it.", "The test is flaky because …", "5 分钟搞定", a guessed number, the
       steps or settings spelled out ("按上次的跑法" is enough; the details go in the brief).
    b. THEN call task_open in the same reply (title, then place, then the brief: the task

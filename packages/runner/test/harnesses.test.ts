@@ -48,6 +48,15 @@ describe("adaptSpec: the partner's clean setup per harness", () => {
     expect(a.options.mcpServers).toEqual([{ name: "ducter", type: "http", url: ducterMcp.url, headers: ducterMcp.headers }]);
   });
 
+  test("D122: every harness's oo is signed out (an empty config folder), so no session reaches the accounts around Go", () => {
+    for (const h of HARNESS_IDS) {
+      const a = adaptSpec(spec(h), { dataDir: dir, inherited: { PATH: "/usr/bin", HOME: dir, OO_CONFIG_DIR: "/Users/x/oo-real" } });
+      const env = a.options.env as Record<string, string | null>;
+      expect(env.OO_CONFIG_DIR).toBe(join(dir, "oo-signed-out"));
+      expect(statSync(join(dir, "oo-signed-out")).mode & 0o777).toBe(0o700);
+    }
+  });
+
   test("Codex: each user MCP server off by name (not Ducter's), hooks/plugins off, no userConfiguration", () => {
     const home = join(dir, "codex-home");
     mkdirSync(home);

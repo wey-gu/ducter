@@ -455,7 +455,12 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
     async search(who, query, o = {}) {
       const pool = o.connection ? [find(o.connection)].filter(Boolean) as Record_[] : records;
       const usable = pool.filter((r) => allowedFor(who, r));
-      if (!usable.length) return err(o.connection ? NOT_FOUND : "No connections yet. The user can add their accounts on the Partner page (Accounts it can read; one tap with oo).");
+      if (!usable.length) {
+        if (o.connection) return err(NOT_FOUND);
+        // A task sees only what the partner shared: say so, not "none yet" (the user may have some).
+        if (who.role === "task" && records.length) return err("No account was shared with this task. Don't look elsewhere (no CLI, no skill): report what you need and the partner can share one (connection_share).");
+        return err("No connections yet. The user can add their accounts on the Partner page (Accounts it can read; one tap with oo).");
+      }
       const out: unknown[] = [];
       for (const r of usable) {
         try {

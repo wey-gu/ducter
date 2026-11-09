@@ -44,14 +44,19 @@ record. Silence still means success.
 
 **Rule 3. The effect ladder (defaults)** [doc where tagged, else I]:
 
+> **D132 (2026-11-09):** a task may push its own branch and open a PR itself; neither is gated.
+> The push and draft-PR rows below are superseded as gates: they run and are recorded in Sent
+> out. The gate stays for effects that reach people with no way back (messages, posts, forms,
+> payments, calls).
+
 | Effect | Example (author's work) | Reaches people | Comes back? | Default |
 |---|---|---|---|---|
 | Commit in the task's worktree | HawDB `ducter/checkpoint-30s` | no | yes | Runs, not shown as outside [doc] |
-| Push `ducter/*`, personal repo | `wey-gu/ducter` | no | yes (delete the branch) | Runs at checkpoints; recorded [doc D26] |
-| Push `ducter/*`, org repo | `nowledge-co/mem` | org members can see it | yes | Ask once per repo, then runs [doc D26] |
+| Push `ducter/*`, personal repo | `wey-gu/ducter` | no | yes (delete the branch) | Runs; recorded [doc D26, D132] |
+| Push `ducter/*`, org repo | `nowledge-co/mem` | org members can see it | yes | Runs; recorded [D132; was: ask once per repo, D26] |
 | Push to any other branch; force-push | `main` | maybe | hard | Always ask, no countdown [I] |
-| Open a draft PR, personal repo | `wey-gu/ducter` | barely | yes (close it) | Ask with a 30-min countdown, then opens [doc D52 Q6] |
-| Open a draft PR, org repo | `nowledge-co/mem` | watchers | yes | Waits for Go [doc D52 Q6] |
+| Open a draft PR, personal repo | `wey-gu/ducter` | barely | yes (close it) | Runs when the task opens it; recorded [D132; was: 30-min countdown, D52 Q6] |
+| Open a draft PR, org repo | `nowledge-co/mem` | watchers | yes | Runs when the task opens it; recorded [D132; was: waits for Go, D52 Q6] |
 | PR comment, mark ready, request review | HawDB #1601 | yes (notifications) | no | Ask, no countdown [I] |
 | Merge | | yes | revert only | Never, unless a Rule allows it [doc] |
 | Email or chat message to a person | load-test numbers to a HawDB contributor | yes | 30 s before it leaves, then no | Ask, no countdown; 30 s Undo after Go [I] |
@@ -211,8 +216,9 @@ Reused: `decision.*`, `decision.no_default_line`, `intent.pr_draft.*`, `intent.p
 - **Tonight:** none of the gate exists yet; the runner does not push. The client must not
   claim more than it knows: decision cards say "能撤销 / can be undone" only when the
   decision is reversible, and show no countdown otherwise (desktop change 1 in the report).
-- **Next:** the `intent` Log event and gate in the runner for `git push` and `gh pr create`
-  (the developer's two common effects); the push and draft-PR cards with previews.
+- **Next:** ~~the `intent` Log event and gate in the runner for `git push` and `gh pr create`~~
+  (superseded by D132: a task's own push and PR are not gated); the gate for messages, posts
+  and forms.
 - **Later:** email, posts, forms via the env-gate; Edit; the learned-rule offer.
 
 ---

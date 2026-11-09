@@ -39,7 +39,9 @@ app to TestFlight. Pull requests and `main` run `.github/workflows/ci.yml`.
    is a Release build, so it subscribes with `env: production`, and the core then sends through
    `api.push.apple.com`. The core still needs its APNs key (`<dataDir>/apns.json` or `DUCTER_APNS_*`).
 
-After this, every release is: bump the version, commit, `git tag vX.Y.Z`, push the tag.
+After this, every release is: bump the version, commit, `git tag vX.Y.Z`, push the tag. An rc tag
+is no exception: bump `packages/cli/package.json` to the rc version (`0.1.0-rc.2`) and commit
+before tagging `v0.1.0-rc.2`, or `meta` fails on the mismatch.
 
 ## What a tag does
 

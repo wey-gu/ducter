@@ -1,7 +1,8 @@
 # AI loadout: what the partner thinks with, and who does the tasks
 
 > 2026-11-09 · **Decided as D89 (defaults approved "按建议 go") and built on branch
-> `ai-loadout`**; the opened task's layout that came with it is D90. §9 lists the decisions as
+> `ai-loadout`**, except quota: the reserve, limit-based ranking and the quota fallback are not
+> built, since no harness reports its limit yet (D133, roadmap); the opened task's layout that came with it is D90. §9 lists the decisions as
 > they were proposed; `design/decisions.md` has them as decided. Build evidence:
 > `~/dev/ducter-evidence/ai-loadout-build/`. Prototype: https://claude.ai/artifact/GCok6tfLJ91Vgkevz3yD6a (private; recommended
 > and runner-up, three kinds of user, Claude Code's limit plenty or almost out, zh/en, Still

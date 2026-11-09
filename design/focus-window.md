@@ -44,8 +44,9 @@ instead of asking the main AI.
 - `summary`: at most 600 characters
 - `questions[]`: each has `blocking`, a `default`, and whether the default is reversible
 - `evidence[]`: refs such as CI run, artifact, diff, URL
-- `wait?`: a typed waiter
-- `transcript`: a pointer to the full transcript
+
+A wait is not a report field: the task calls `wait_for` (D112). The transcript is the task's
+own stream in the Log (`task_history`), not a pointer in the report.
 
 The report is the only way a window wakes the main AI. Reads never wake anyone.
 

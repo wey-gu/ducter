@@ -1741,7 +1741,7 @@ function Loadout() {
     A.setSettings({ brain: { harness: harness as never, ...(m ? { model: m } : {}) } });
     A.toast(t("loadout.toast.brain", name, harnessName(harness)));
   };
-  const reserve = b?.allowance ? (b.allowance.left <= PARTNER_RESERVE ? t("loadout.left.reserve", pct(b.allowance.left), name) : `${t("loadout.left", pct(b.allowance.left))} · ${t("loadout.brain.reserve", name)}`) : t("loadout.signed_in"); // no limit reported: no reserve to claim (D132)
+  const reserve = b?.allowance ? (b.allowance.left <= PARTNER_RESERVE ? t("loadout.left.reserve", pct(b.allowance.left), name) : `${t("loadout.left", pct(b.allowance.left))} · ${t("loadout.brain.reserve", name)}`) : t("loadout.signed_in"); // no limit reported: no reserve to claim (D133)
   return (
     <>
       <section class="set">

@@ -34,7 +34,7 @@ only after a mechanical audit and are never re-summarized. [14][15]
 Estimate whether the cache is still warm. Resume when that is cheaper; otherwise re-cut
 from a clean channel cut point, even while warm once history dwarfs the rebuild. Settings
 change only at a cut. A re-cut reads as an ongoing conversation, never "you were reset".
-[2][12]
+[2][12] *Built: a heuristic (55 min, 120K); the cost model is not (`context.md`).*
 
 **5. The tail is a working set: shrink on the way in, fold when a sub-topic ends.**
 Cap every read before it enters. Do bulky reads in a side context that shares the cache, and
@@ -50,7 +50,7 @@ AI never blocks. [16]
 People harvest in batches. While unread, the main AI's latest report is one living message
 revised in place; a read receipt freezes it. It is rendered from typed reports, with decisions
 first, each carrying a default. Only decisions earn a push. "Done" is a claim backed by
-evidence. [1][16]
+evidence. [1][16] *Built: the core renders it; the partner's own words never change.*
 
 ## Focus Windows · `design/focus-window.md`, `design/focus-window-states.md`
 

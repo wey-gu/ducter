@@ -4,10 +4,12 @@
 
 ## Decision
 
-**Pebble is the default theme.** Volt, Paper, Signal, and Midnight ship as alternative
-themes. Every theme is a **token set**; components never hard-code a color, font, radius, or
-shadow, so adding or switching a theme is pure data. The same tokens drive MyGo native UI
-(desktop/web) and Expo (mobile).
+**Pebble is the default theme.** Volt, Paper, Signal, and Midnight are designed as
+alternative themes; only Pebble ships. Pebble is light; **Midnight** (dark) is planned for the
+Mac app (D134, roadmap); web and iPhone follow the system's dark mode today, and the Mac app is
+light only for now. Every theme is a **token set**; components never hard-code a color, font,
+radius, or shadow, so adding or switching a theme is pure data. The same tokens drive the MyGo
+desktop UI, the phone web client and the iPhone app's own screens.
 
 ## Token schema (every theme fills all of it)
 
@@ -19,7 +21,7 @@ shadow, so adding or switching a theme is pure data. The same tokens drive MyGo 
 | depth | `shadow-style`: `press` (Pebble: solid offset under), `offset` (Volt: hard drop), `hairline` (Paper/Signal), `glow` (Midnight); plus values |
 | motion | `personality`: `bouncy` (Pebble), `snappy` (Volt), `calm` (Paper/Midnight), `stepped` (Signal); durations and easing |
 | density | `comfortable` (default) / `compact` |
-| mode | each theme declares light/dark variants. Midnight is dark-only. Pebble dark = Pebble shapes and motion on Midnight-like surfaces |
+| mode | each theme declares light/dark variants. Midnight is dark-only. Pebble dark = Pebble shapes and motion on Midnight-like surfaces; web and iPhone follow the system's dark mode with it today; the Mac app is light only for now (Midnight planned, D134) |
 
 ## Pebble (default) values
 
@@ -51,7 +53,7 @@ brows when something needs you. Other themes render the same states in their own
   in lightness and shape (waiting = dashed outline), not only in hue.
 - **Voices (D129):** a messaging app with one partner. The user's messages are accent bubbles
   (`user-bubble` `#FF8A3D` with ink, 6.9:1); the partner's are soft bubbles (`partner-bubble`:
-  white on the paper, `#2A221B` in Pebble dark). Corners `bubble-shape` 20/20/6/20, mirrored
+  white on the paper, `#2A221B` in Pebble dark on web and iPhone; the Mac app is light only for now). Corners `bubble-shape` 20/20/6/20, mirrored
   for the partner (tail bottom-left); a bubble stacked on one of its voice tucks its tail
   side's top corner to `bubble-join` 6. One body size for both (16), at most `bubble-measure`
   ~38em wide. An ask's buttons sit in one compact tray under its bubble, a white card on a 3pt

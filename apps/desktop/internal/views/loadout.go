@@ -505,7 +505,7 @@ func (a *App) brainCard(c *ui.Context) {
 						line = a.L.T("loadout.left.reserve", pct(h.Allowance.Left), a.S.PersonaName)
 					}
 				} else {
-					line = a.L.T("loadout.signed_in") // no limit reported: no reserve to claim (D132)
+					line = a.L.T("loadout.signed_in") // no limit reported: no reserve to claim (D133)
 				}
 				ui.Text(c, line).FontSize(t.SM).TextColor(t.InkMuted).MaxLines(2)
 			})

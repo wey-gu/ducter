@@ -71,7 +71,7 @@ One table (`packages/protocol/src/harnesses.ts`), one adapter (`packages/runner/
 | Partner prompt | system prompt | `baseInstructions` | system prompt | `$DSH_HOME/AGENTS.md` (OAR refuses its system prompt) |
 | Task brief | append | `developerInstructions` | append | first message, `<instructions>…</instructions>` |
 | Ducter's MCP | HTTP + bearer | HTTP + bearer | HTTP + bearer | stdio bridge (`mcp-bridge.ts`), target in a 0600 file |
-| Tool denial | built-ins | MCP tools only | `--exclude-tools` | none (refused) |
+| Tool denial | built-ins | MCP tools only | none wired (pi's `--exclude-tools` unverified) | none (refused) |
 | Runs as | `claude` | `codex app-server` | `node <OAR's bundled pi rpc-entry>` (Bun cannot host it), else the user's `pi` | `dsh --profile acp` |
 | Signed in | `claude auth status`, or a `CLAUDE_CODE_OAUTH_TOKEN` in `<dataDir>/keys.env` | `codex login status` | a provider key in `~/.pi/agent`, the env or `keys.env` | a DeepSeek key in the env, `<dataDir>/keys.env`, or DSH's credential file |
 | Keys it is given (D102) | `CLAUDE_CODE_OAUTH_TOKEN`, `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN` | `OPENAI_API_KEY`, `CODEX_API_KEY`, the `env_key` its `config.toml` names | its provider keys, not `DEEPSEEK_API_KEY` | `DEEPSEEK_API_KEY` |
@@ -79,7 +79,9 @@ One table (`packages/protocol/src/harnesses.ts`), one adapter (`packages/runner/
 - **The brain** is `Settings.brain = { harness, model? }` (default Claude Code + opus). The
   partner reads it at each session start; a session id never crosses harnesses (the prompt
   hash covers the harness; Claude Code keeps the prompt-only hash so upgrades still resume).
-- **Tasks** take the partner's choice, else the first account `Settings.taskAccounts` leaves on.
+- **Tasks** take the partner's choice, else the top of `fw_candidates` (D89: rules, then the tier
+  table) among the accounts `Settings.taskAccounts` leaves on. Its limit-left step needs a
+  limit a harness reports; none does yet (D133).
 - **One tool-name form:** an MCP tool is `mcp__<server>__<tool>` whatever the harness reports;
   reasoning a model writes into its reply (`…</think>`) is dropped before the Log.
 - **Keys for API-key harnesses** live in `<dataDir>/keys.env` (0600, `KEY=value`; D102), never
@@ -169,8 +171,10 @@ changes.
 - **No per-call approvals.** Harnesses run with approvals off.
 - **Scope what a window holds.** Credentials are issued per environment through a proxy and
   never enter model env, args, or files.
-- **Gate the effects.** High-stakes external effects that Ducter mediates (pushes, PRs,
-  messages, calls, spending) are logged as intents before they run. A user policy decides
+- **Gate the effects.** High-stakes external effects that Ducter mediates (messages, posts,
+  calls, spending) are logged as intents before they run. A task's own `git push` and pull
+  request are not gated (D132): a task may push its branch and open a PR itself, and what went
+  out is recorded where Ducter sees it (the report, the transcript, Sent out). A user policy decides
   which need approval and defaults to mostly auto-approve. A resumed worker checks the world
   against its intents before repeating anything.
 - **Isolation is only as strong as the environment.** A sandbox is strong; the user's Mac is
@@ -226,7 +230,9 @@ changes.
   - Web (D58): `apps/web`, a Preact bundle served by the main process at `/app`, phone first,
     with Web Push from `packages/core/src/push.ts`. It shares the desktop's i18n keys and Pebble
     tokens. A MyGo WASM web client is not planned.
-  - Native mobile later: Expo.
+  - iPhone (D131): a native SwiftUI shell (`apps/ios`) around the same phone client, with APNs
+    and Go / Hold / Reply on a decision's notification; TestFlight, internal for now
+    (`design/release/ios.md`). Expo is not planned.
   - The client protocol comes first; the two UI codebases share only the protocol, the state
     model, and design tokens.
 

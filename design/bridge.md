@@ -4,11 +4,11 @@
 > the result reply, names, copy, follow-through, the Mem asks); still open: J-Q1–3, J-Q5, J-Q8, J-Q14 ·
 > Evidence: `research/31` (public), `research/37` (dogfood), private `31` and `10`.
 >
-> Nowledge Bridge is Mem's agent mailbox. This note describes how Ducter uses it. The first slice (receive,
-> ask, reply) is on `main` behind `DUCTER_BRIDGE=1`. Branch `bridge-spike` adds the linked result reply (J2,
-> D107), outbound messages through a card (J4, D105), the outgoing ledger and recovery (D106) and follow-through
-> (S3, D110). It is proven with real models over a fake Bridge (research/37 §3, §3.2), not yet against Mem, and
-> stays behind `DUCTER_BRIDGE=1` until `bun run bridge:live -- --real` passes.
+> Nowledge Bridge is Mem's agent mailbox. This note describes how Ducter uses it. All of it is in `main`
+> behind `DUCTER_BRIDGE=1`: receive, ask and reply, the linked result reply (J2, D107), outbound messages
+> through a card (J4, D105), the outgoing ledger and recovery (D106) and follow-through (S3, D110). It is
+> proven with real models over a fake Bridge (research/37 §3, §3.2); the live trial against Mem is pending,
+> and it stays behind `DUCTER_BRIDGE=1` until `bun run bridge:live -- --real` passes (roadmap).
 
 ## Chosen scenarios (dogfood, 2026-11-09)
 

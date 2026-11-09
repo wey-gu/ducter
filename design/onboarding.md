@@ -103,7 +103,7 @@ from the test harness signalling its own wrapper shell, not from Ducter.
   elsewhere right now).
 - The partner doesn't read `firstrun.json`, so "I found 14 repos; the most active is …" (the
   target in A1 step 6) is only shown, not said.
-- There is no rename in the desktop yet (the name is asked once, in the terminal or the app).
+- ~~There is no rename in the desktop yet~~: the partner is renamed in place on Partner (D71).
 - ~~A double-clickable app doesn't exist~~: see the app path below.
 
 ## What ships today: the app path (2026-11-09)

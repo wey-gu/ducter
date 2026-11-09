@@ -18,6 +18,8 @@ import (
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
+	// MyGo's own words (the Edit and Window menus, Hide, Quit, its dialogs) in Chinese.
+	_ "github.com/egoist/mygo/locales/zh-Hans"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/client"
 	"github.com/wey-gu/ducter/apps/desktop/internal/hints"
@@ -60,6 +62,11 @@ func main() {
 	if l := local0.Lang(); (l == "zh" || l == "en") && !i18n.Fixed() {
 		lang, chosen = i18n.Lang(l), true
 	}
+	// MyGo's own menu items (Hide, Quit, Edit, Window…) and the text engine
+	// follow the window's language: without this they stayed English beside
+	// Ducter's Chinese menus.
+	mygo.App.SetLanguages("en", "zh-Hans")
+	mygo.App.SetLocale(mygoLocale(lang))
 	app := views.New(s, theme.Pebble(), i18n.New(lang))
 	app.LocaleFixed = i18n.Fixed() || chosen
 	app.Local = local0
@@ -214,6 +221,7 @@ func main() {
 		mygo.App.SetMenu(lc.menu)
 		tray = newTray(app, win)
 		app.OnLanguage = func(l *i18n.Strings) {
+			mygo.App.SetLocale(mygoLocale(l.Lang))
 			lc.l = l
 			lc.menu = appMenu(app, l, win, lc)
 			mygo.App.SetMenu(lc.menu)
@@ -293,6 +301,14 @@ func main() {
 // View: the four places (⌘1–⌘4). Help: the docs and Report a problem.
 // lc adds the update line (after About) and Help's Report a problem (D72);
 // Stop Ducter only when this app runs the Ducter of this Mac.
+// mygoLocale is the language tag MyGo knows a window language by.
+func mygoLocale(l i18n.Lang) string {
+	if l == i18n.ZH {
+		return "zh-Hans"
+	}
+	return "en"
+}
+
 func appMenu(app *views.App, l *i18n.Strings, win *mygo.Window, lc *lifecycle) *mygo.Menu {
 	ours := lc.host != nil
 	show := func(fn func()) func(*mygo.MenuItem, *mygo.Window) {

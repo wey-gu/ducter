@@ -137,8 +137,9 @@ What the window writes is what the user reads when they open the task, in one co
 - the latest **report** is said once, at the top: a finished task's report is its outcome
   (with its evidence as a line of proof and what went out), an unfinished one's is the line
   of where it stands. Earlier reports stay in What it did as "Told {name}" lines;
-- the **transcript** becomes What it did: the window's own words, with tool calls folded into
-  one line per stretch and failed calls said in words;
-- **checkpoints** are a quiet "Progress saved" line in What it did and a plain list in
-  Details;
+- the **transcript** becomes What it did: the window's own words, each tool call one quiet
+  line (a verb and a short summary, the same kinds on every harness:
+  `packages/protocol/src/steps.ts`), thinking as its headings, a failed call one Error line
+  in words with its raw text on a click (D127);
+- **checkpoints** are a tiny flag line in What it did and a plain list in Details;
 - the diff of the worktree is a list of files; a diff shows only when the user opens a file.

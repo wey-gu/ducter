@@ -221,6 +221,7 @@ export interface HarnessEvent {
   role: "assistant" | "user" | "tool" | "system";
   text?: string;
   tool?: { name: string; input?: unknown; output?: string; ok?: boolean };
+  thinking?: string[]; // the headings of a stretch of thinking (D127)
   // Totals are the session's running bill. contextTokens is what the context held at the turn's
   // last model call, as the harness reported it (input + cache read + cache write), when it did.
   usage?: { inputTokens?: number; cacheRead?: number; cacheWrite?: number; outputTokens?: number; contextTokens?: number };

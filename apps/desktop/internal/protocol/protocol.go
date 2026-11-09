@@ -203,8 +203,10 @@ type TaskEvent struct {
 	From   string `json:"from,omitempty"` // user | partner | runner
 	Text   string `json:"text,omitempty"`
 	// ClientID is the client's id for a user's task_send (resends are deduped by it).
-	ClientID string          `json:"clientId,omitempty"`
-	Tool     *ToolCall       `json:"tool,omitempty"`
+	ClientID string    `json:"clientId,omitempty"`
+	Tool     *ToolCall `json:"tool,omitempty"`
+	// Thinking is a stretch of the model's thinking, its headings only (D127).
+	Thinking []string        `json:"thinking,omitempty"`
 	Usage    *Usage          `json:"usage,omitempty"` // present on turn ends
 	Raw      json.RawMessage `json:"raw,omitempty"`
 }

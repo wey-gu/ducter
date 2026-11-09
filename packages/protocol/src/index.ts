@@ -103,6 +103,7 @@ export interface Bodies {
     text?: string;
     clientId?: string; // a user's task_send carries the client's id (resends are deduped by it)
     tool?: { name: string; input?: unknown; output?: string; ok?: boolean };
+    thinking?: string[]; // a stretch of the model's thinking: its headings only, never its text (D127)
     usage?: Usage; // present on turn ends
     raw?: unknown;
   };

@@ -12,6 +12,7 @@ import { markdown } from "./markdown.ts";
 import { disablePush, enablePush } from "./push-client.ts";
 import { inApp } from "./native.ts";
 import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, WaitBubble, waitCaption, WaitDetails, waitLine } from "./work.tsx";
+import { saidSince, shortGo, shortTitle, TaskBar, TimerPie, WhatItDid } from "./transcript.tsx";
 import {
   attention,
   bodyReasonOf,
@@ -228,11 +229,29 @@ function defaultInfo(d: DecisionState, now: number): { line: string; frac?: numb
   return { line: t("decision.default.go", duration(A.L, left), label), frac };
 }
 
-/** The Go button's words: the action itself when the decision names one ("Rebase"; zh "好，rebase"). */
+/** The Go button's words: the action itself when it is a short verb ("Rebase"; zh "好，rebase"),
+ *  else Go / 好: never a sentence (D127). */
 export function goLabel(d: DecisionState): string {
-  if (!d.goLabel) return t("decision.go");
-  const l = A.L.lang === "zh" ? d.goLabel : d.goLabel.charAt(0).toUpperCase() + d.goLabel.slice(1);
-  return t("decision.go.label", l);
+  return shortGo(d.goLabel);
+}
+
+/** An ask's default on a card (D127): a small timer of the time left and one caption
+ *  ("28 分钟后按默认：等你登录后继续"); a default that holds, or none, in words alone. */
+function DefaultRow({ d }: { d: DecisionState }) {
+  const at = d.defaultAt ? Date.parse(d.defaultAt) : NaN;
+  if (!d.reversible || d.defaultOption !== "go" || Number.isNaN(at)) return <div class="dl">{defaultInfo(d, Date.now()).line}</div>;
+  const left = at - Date.now();
+  let g = (d.goLabel || t("decision.go")).trim().replace(/[.。]+$/, "");
+  if (A.L.lang !== "zh" && /^[A-Z][a-z]/.test(g)) g = g.charAt(0).toLowerCase() + g.slice(1);
+  const asked = d.askedAt ? Date.parse(d.askedAt) : NaN;
+  const frac = Number.isNaN(asked) || at <= asked ? 1 : left / (at - asked);
+  const words = left <= 0 ? t("decision.default.due") : t("decision.default.in", duration(A.L, left), g);
+  return (
+    <div class="dl timer" title={words}>
+      <TimerPie frac={frac} />
+      <span>{words}</span>
+    </div>
+  );
 }
 
 function useTick(ms: number) {
@@ -260,7 +279,6 @@ function Resolved({ d }: { d: DecisionState }) {
 export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string }) {
   useTick(1000);
   const open = !d.resolved && !d.pending;
-  const info = defaultInfo(d, Date.now());
   const about = (() => {
     const task = d.taskId ? A.S.tasks.get(d.taskId) : undefined;
     return task && title(task) ? title(task) : d.question.slice(0, 40);
@@ -271,12 +289,7 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
     <>
       <div class="q">{d.question}</div>
       {d.routineId && <RoutineFacts routineId={d.routineId} />}
-      {open && <div class="dl">{info.line}</div>}
-      {open && info.frac !== undefined && (
-        <div class="countdown" aria-hidden="true">
-          <i style={{ width: `${info.frac * 100}%` }} />
-        </div>
-      )}
+      {open && <DefaultRow d={d} />}
       {open ? (
         // Reply… · Hold · Go, the primary last (D76). Hold and Go stay one pair; a long Go
         // sends Reply… to its own line under them (.btns.decide).
@@ -341,9 +354,10 @@ function DecisionCard({ d, taskId, inTask }: { d: DecisionState; taskId?: string
   return (
     <div ref={ref} class={`decision${flash ? " flash" : ""}`} id={`d-${d.decisionId}`}>
       {task && title(task) && !inTask && (
-        // On the phone the asking task's title is the way into it (no Details button to wrap).
-        <button class="asker" onClick={() => ((A.sheet = null), A.go({ name: "task", id: task.id }))}>
-          {title(task)} ›
+        // Who asks and about what (D127): the agent's coin and the task's short title, the way into it.
+        <button class="asker" title={title(task)} onClick={() => ((A.sheet = null), A.go({ name: "task", id: task.id }))}>
+          {harnessOf(task) && <img src={`app/art/${harnessOf(task) === "claude-code" ? "token_orange" : "token_ink"}.webp`} alt="" width="20" height="20" />}
+          <span>{shortTitle(title(task))} ›</span>
         </button>
       )}
       <DecisionBody d={d} taskId={taskId} />
@@ -1113,7 +1127,7 @@ function Row({ task, meta }: { task: Task; meta: string }) {
       {arrived && <span class="pop-bub" aria-hidden="true" />}
       {w && <WaitBubble w={w} />}
       <span class="main">
-        <span class="t">{title(task) || t("task.unknown")}</span>
+        <span class="t">{shortTitle(title(task)) || t("task.unknown")}</span>
         {u && !finished(task) && <Goal u={u} />}
         {w && <Groove w={w} />}
         <span class="m">{meta}</span>
@@ -1228,114 +1242,6 @@ function reportLabel(r: Bodies["report"]) {
   return t(k, A.S.personaName);
 }
 
-type Tool = NonNullable<Bodies["task_event"]["tool"]>;
-
-function toolArg(tool: Tool): string {
-  const input = tool.input as Record<string, unknown> | string | undefined;
-  const arg = typeof input === "string" ? input : input ? String(input.command ?? input.file_path ?? input.path ?? input.url ?? input.pattern ?? "") : "";
-  return arg.split("\n")[0] ?? "";
-}
-
-/** A stretch of tool calls counted in words: "Ran 2 commands, edited 1 file". */
-function foldLine(tools: Tool[]): string {
-  let ran = 0, other = 0;
-  const edited = new Set<string>(), read = new Set<string>();
-  for (const tool of tools) {
-    const name = tool.name.startsWith("mcp__") ? tool.name.slice(tool.name.lastIndexOf("__") + 2) : tool.name;
-    const input = tool.input as Record<string, unknown> | undefined;
-    const path = String((typeof input === "object" && input && (input.file_path ?? input.path)) || "");
-    if (["Bash", "shell", "exec_command"].includes(name)) ran++;
-    else if (["Edit", "Write", "MultiEdit", "apply_patch"].includes(name)) edited.add(path);
-    else if (name === "Read") read.add(path);
-    else other++;
-  }
-  const parts: string[] = [];
-  const count = (key: string, n: number) => n === 1 ? parts.push(t(`${key}.one`)) : n > 1 && parts.push(t(key, n));
-  count("task.fold.ran", ran);
-  count("task.fold.edited", edited.size);
-  count("task.fold.read", read.size);
-  count("task.fold.other", other);
-  const s = parts.join(t("task.fold.and"));
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
-
-function Fold({ tools }: { tools: Tool[] }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div class="fold">
-      <button class={`fold-line${open ? " open" : ""}`} aria-expanded={open} onClick={() => setOpen(!open)}>
-        <span class="chev">›</span>
-        {foldLine(tools)}
-      </button>
-      {open && tools.map((tool, i) => <div key={i} class="tool">{`${tool.name}${toolArg(tool) ? " · " + toolArg(tool) : ""}`}</div>)}
-    </div>
-  );
-}
-
-/** What the task did, as a short narrative: its own words; tool calls that went fine folded
- *  into one line per stretch; a step that didn't work in words. The latest report is said
- *  above (the outcome, or where it stands). */
-function WhatItDid({ task }: { task: Task }) {
-  if (!task.historyLoaded && !task.events.length) return <div class="small">{t("task.loading")}</div>;
-  const items: JSX.Element[] = [];
-  const lastReport = task.events.filter((ev) => ev.kind === "report").at(-1)?.seq;
-  let fold: Tool[] | undefined;
-  for (const ev of task.events) {
-    if (ev.kind === "task_event") {
-      const b = ev.body as Bodies["task_event"];
-      // Ducter's own plumbing is not something the task did: its reports and saved progress say
-      // themselves, and a call to them that went wrong is Ducter's to fix, not the person's.
-      if (b.tool && isPlumbing(b.tool.name)) continue;
-      // The runner's kickoff (the brief again in tags, "Report via report_to_main…") is not what
-      // anyone said: the brief shows once, above, as what the partner asked for.
-      if (b.role === "user" && (b.from === "runner" || (!b.from && /^(<brief>|Start the task ")/.test(b.text ?? "")))) continue;
-      if (b.tool && b.tool.ok !== false) {
-        if (fold) fold.push(b.tool);
-        else items.push(<Fold key={ev.seq} tools={(fold = [b.tool])} />);
-        continue;
-      }
-    }
-    fold = undefined;
-    // A task opened before its brief was written (D120) logs an empty one first: the briefed one follows.
-    if (ev.kind === "task_open") (ev.body as Bodies["task_open"]).brief.trim() && items.push(<div key={ev.seq} class="tx said"><small>{t("task.brief", A.S.personaName)}</small>{(ev.body as Bodies["task_open"]).brief}</div>);
-    else if (ev.kind === "checkpoint") items.push(<div key={ev.seq} class="tx note">{t("task.checkpoint", (ev.body as Bodies["checkpoint"]).text)}</div>);
-    else if (ev.kind === "report" && ev.seq !== lastReport) {
-      const r = ev.body as Bodies["report"];
-      items.push(<div key={ev.seq} class="tx said"><small>{reportLabel(r)}</small>{r.summary}</div>);
-    } else if (ev.kind === "task_event") {
-      const b = ev.body as Bodies["task_event"];
-      if (b.tool) {
-        items.push(
-          <div key={ev.seq} class="tx failed">
-            <span class="mk">
-              <Cross />
-              {t("task.step.failed", toolArg(b.tool) || b.tool.name)}
-            </span>
-            {b.tool.output && <code>{b.tool.output.split("\n")[0]}</code>}
-          </div>,
-        );
-      } else if (b.role === "user" && b.text) {
-        const sd = task.sends.find((s) => s.seq === ev.seq);
-        items.push(
-          <div key={ev.seq} class="tx you">
-            {b.text}
-            <small>{b.from === "partner" ? t("task.from.partner", A.S.personaName) : sd?.delivered ? t(`delivery.${sd.delivered}`) : t("task.you")}</small>
-          </div>,
-        );
-      } else if (b.role === "assistant" && b.text) items.push(<div key={ev.seq} class="tx assistant">{b.text}</div>);
-    }
-  }
-  const tail = items.slice(-40); // a read-only tail; the full transcript is the desktop's job
-  for (const sd of task.sends.filter((s) => !s.seq))
-    tail.push(
-      <div key={`s${sd.at}`} class="tx you">
-        {sd.text}
-        <small>{sd.failed ? t("delivery.failed", sd.failed) : sd.delivered ? t(`delivery.${sd.delivered}`) : t("delivery.sending")}</small>
-      </div>,
-    );
-  return <div class="tx-list">{tail}</div>;
-}
-
 /** A quiet disclosure at the bottom: who is doing it, where (repo and branch), saved progress,
  *  what went out. A row with nothing to say is left out. */
 /** Who does a task and why, as one sentence for Details (D89). */
@@ -1410,6 +1316,12 @@ function SwitchList({ task }: { task: Task }) {
   );
 }
 
+/** The folder a task works in, as a path: on hover only, never spelled out (D127). */
+function placePath(task: Task): string {
+  const p = placeOf(task) as { repoPath?: string; path?: string };
+  return p.repoPath || p.path || "";
+}
+
 function TaskDetails({ task }: { task: Task }) {
   const [open, setOpen] = useState(false);
   const who = whoSentence(task);
@@ -1442,7 +1354,7 @@ function TaskDetails({ task }: { task: Task }) {
           {where && (
             <>
               <dt>{t("task.dossier.where")}</dt>
-              <dd>{where}</dd>
+              <dd title={placePath(task) || undefined}>{where}</dd>
             </>
           )}
           {cps.length > 0 && (
@@ -1491,7 +1403,8 @@ export function TaskView({ id }: { id: string }) {
   const a = attention(task);
   const d = A.S.pendingDecision(id);
   const r = reportOf(task);
-  const detail = !finished(task) && r ? r.summary.split("\n")[0] : "";
+  // Where it stands: what it said or saved since its latest report when it has moved on (D127).
+  const detail = !finished(task) ? (a === "working" && saidSince(task)) || (r ? r.summary.split("\n")[0]! : "") : "";
   const [headline, lede] = finished(task) && r ? splitOutcome(r.summary) : ["", ""];
   return (
     <>
@@ -1507,9 +1420,8 @@ export function TaskView({ id }: { id: string }) {
               <StateMark a={a} />
               <b>{stateLabel(a)}</b>
               {task.openedAt && <span class="when">· {t("task.opened", ago(A.L, task.openedAt))}</span>}
-              {!finished(task) && whoLine(task)[0] && <span class="when">· {whoLine(task)[0]}</span>}
             </div>
-            <h1>{title(task) || t("task.unknown")}</h1>
+            <h1 title={title(task)}>{shortTitle(title(task)) || t("task.unknown")}</h1>
             {a === "blocked" && A.S.waiterFor(id) && (
               <p class="waitline">{waitLine(A.S.waiterFor(id)!.reason)}</p>
             )}
@@ -1548,6 +1460,7 @@ export function TaskView({ id }: { id: string }) {
         </section>
         <TaskDetails task={task} />
       </main>
+      <TaskBar task={task} stateLabel={stateLabel(a)} opened={task.openedAt ? t("task.opened", ago(A.L, task.openedAt)) : ""} />
       <Composer taskId={id} />
     </>
   );

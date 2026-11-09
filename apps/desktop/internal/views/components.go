@@ -765,20 +765,10 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 	}
 }
 
-// goLabel is the Go button's words: the action itself when the decision
-// names one ("Rebase"; zh "好，rebase"), else Go / 好.
+// goLabel is the Go button's words: the action itself when it is a short
+// verb ("Rebase"; zh "好，rebase"), else Go / 好: never a sentence (D127).
 func (a *App) goLabel(d *store.DecisionState) string {
-	if d.GoLabel == "" {
-		return a.L.T("decision.go")
-	}
-	l := d.GoLabel
-	if a.L.Lang != i18n.ZH {
-		// Sentence case: the button starts with a capital.
-		r := []rune(l)
-		r[0] = []rune(strings.ToUpper(string(r[0])))[0]
-		l = string(r)
-	}
-	return a.L.T("decision.go.label", l)
+	return a.shortGo(d.GoLabel)
 }
 
 // defaultLine says what happens if the user doesn't answer.

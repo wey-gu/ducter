@@ -114,7 +114,7 @@ func TestTaskSaysWordsNotPlumbing(t *testing.T) {
 			t.Errorf("%q shows in the opened task: %q", not, all)
 		}
 	}
-	for _, want := range []string{"bun test before fix", "bun test after fix", "1 file changed", "Ran 2 commands, edited 1 file, read 1 file"} {
+	for _, want := range []string{"bun test before fix", "bun test after fix", "1 file changed", "bun test", "src/cart.ts"} {
 		if !strings.Contains(all, want) {
 			t.Errorf("no %q in the opened task: %q", want, all)
 		}

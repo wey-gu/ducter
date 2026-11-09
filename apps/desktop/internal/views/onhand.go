@@ -182,14 +182,11 @@ func (a *App) waiterRow(c *ui.Context, w *protocol.Waiter) {
 }
 
 // forecastBand says when the user will be needed next: defaults taking
-// effect and waits coming due. It is left out when there is nothing to say.
+// effect and waits coming due, as one quiet line of muted words, and only
+// when more than one thing is coming (one is already its own card, D127).
 func (a *App) forecastBand(c *ui.Context, b store.Board) {
 	t := a.T
-	type chip struct {
-		key, text string
-		sc        theme.StateColors
-	}
-	var chips []chip
+	var items []string
 	for _, task := range b.Lanes[store.LaneNeedsYou] {
 		d := a.S.PendingDecision(task.ID)
 		if d == nil {
@@ -199,33 +196,25 @@ func (a *App) forecastBand(c *ui.Context, b store.Board) {
 		if at.IsZero() || !d.Reversible || d.DefaultOption != "go" {
 			continue
 		}
-		label := d.GoLabel
-		if label == "" {
-			label = a.L.T("decision.go")
-		}
-		chips = append(chips, chip{task.ID, a.when(at) + " " + a.L.T("decision.default.label", label) + " · " + task.Title(), t.NeedsYou})
+		items = append(items, a.when(at)+" "+shortTitle(task.Title()))
 	}
 	for _, task := range b.Lanes[store.LaneWaiting] {
-		if r := a.waitReason(task); r != "" {
-			chips = append(chips, chip{task.ID, task.Title() + " · " + r, t.Waiting})
+		if w := a.S.WaiterFor(task.ID); w != nil {
+			if at := store.ParseTime(firstNonEmpty(w.Until, w.At)); !at.IsZero() {
+				items = append(items, a.when(at)+" "+shortTitle(task.Title()))
+			}
 		}
 	}
 	for _, w := range a.looseWaiters() {
 		if at := store.ParseTime(w.At); !at.IsZero() {
-			chips = append(chips, chip{"w:" + w.WaiterID, a.when(at) + " · " + w.Reason, t.Waiting})
+			items = append(items, a.when(at)+" "+w.Reason)
 		}
 	}
-	if len(chips) == 0 {
+	if len(items) < 2 {
 		return
 	}
-	// Plain words, one per coming moment, in the state's ink: no capsules.
-	ui.Row(c.Key("forecast")).Gap(t.S5).Wrap().Padding(t.S3, t.S4).Radius(t.RadiusLG).Background(t.Surface).
-		Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).AlignItems(ui.Center).Children(func() {
-		ui.Text(c, a.L.T("onhand.forecast")).FontSize(t.SM).FontWeight(800).TextColor(t.InkMuted)
-		for _, ch := range chips {
-			ui.Text(c.Key(ch.key), ch.text).FontSize(t.SM).TextColor(ch.sc.Ink)
-		}
-	})
+	line := a.L.T("onhand.next") + "  " + strings.Join(items, " · ")
+	ui.Text(c.Key("forecast"), line).FontSize(t.SM).TextColor(t.InkMuted).SingleLine().Tooltip(line).Padding(0, t.S1)
 }
 
 func (a *App) lane(c *ui.Context, lane store.Lane, tasks []*store.Task, grow, basis float32) {
@@ -327,35 +316,16 @@ func firstClause(s string) string {
 }
 
 // needsCard is a task's ask on On hand, one clay card in the needs-you
-// tint like the ask in the conversation: the task's title as a small link
-// (the way into the task), the question, its default and countdown,
-// Reply… / Hold / Go, and where it runs and why in one muted line.
+// tint, read at one glance (D127): who and what (the agent's coin and the
+// task's short title, the way into the task), one plain question, its
+// default as a small clock ring and a caption, then Reply… / Hold / Go.
+// Where it runs and why are in the opened task, on the coin's hover.
 func (a *App) needsCard(c *ui.Context, task *store.Task) {
 	t := a.T
 	d := a.S.PendingDecision(task.ID)
 	ui.Column(c).Padding(t.S5, t.S5).Gap(t.S3).Radius(t.RadiusXL).Background(t.NeedsYou.Surface).
 		Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge).Children(func() {
-		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-			title := task.Title()
-			if p := task.Project(); p != "" {
-				title = p + " · " + title
-			}
-			l := ui.Text(c, title+" ›").FontSize(t.SM).FontWeight(800).TextColor(t.NeedsYou.Ink).Grow(1).MinWidth(0).SingleLine().
-				Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(task.Title()).Focusable()
-			if l.Hovered() || l.Pressed() {
-				l.Underline()
-			}
-			if l.Clicked() {
-				a.OpenTask(task.ID)
-			}
-			if at := store.ParseTime(task.OpenedAt); !at.IsZero() {
-				opened := a.L.T("time.opened.now")
-				if d := a.Now().Sub(at); d >= time.Minute {
-					opened = a.L.T("time.opened", a.duration(d))
-				}
-				ui.Text(c, opened).FontSize(t.XS).TextColor(t.InkMuted).Shrink(0)
-			}
-		})
+		a.askerRow(c, task)
 		rep := task.Report()
 		q := ""
 		if d != nil {
@@ -364,19 +334,70 @@ func (a *App) needsCard(c *ui.Context, task *store.Task) {
 			q = rep.Questions[0].Text
 		}
 		if q != "" {
-			a.heading(c, autospace(q), t.XL).LineHeight(1.35)
-		}
-		if rep != nil && rep.Summary != "" && rep.Summary != q {
-			ui.Text(c, rep.Summary).FontSize(t.SM).LineHeight(1.6).TextColor(t.InkSoft).MaxLines(4).Tooltip(rep.Summary)
+			a.heading(c, autospace(q), t.LG).LineHeight(1.4).MaxLines(4).Tooltip(q)
 		}
 		if d != nil {
-			a.countdown(c, d)
-			a.decisionButtons(c, d, decisionStyle{height: 48, quietBg: t.NeedsYou.Surface})
-		}
-		if line := a.whereWhy(task); line != "" {
-			ui.Text(c, line).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Tooltip(line)
+			a.defaultRow(c, d)
+			a.decisionButtons(c, d, decisionStyle{height: 40, quietBg: t.NeedsYou.Surface})
 		}
 	})
+}
+
+// askerRow is who asks and about what: the agent's coin (its hover says
+// who and where), the task's short title as a link, and how long ago.
+func (a *App) askerRow(c *ui.Context, task *store.Task) {
+	t := a.T
+	ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+		if h := task.Harness(); h != "" {
+			ui.Box(c.Key("coin")).Shrink(0).Tooltip(a.whereWhy(task)).Children(func() { a.coin(c, h, 22) })
+		}
+		title := shortTitle(task.Title())
+		l := ui.Text(c, title+" ›").FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).Grow(1).MinWidth(0).SingleLine().
+			Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(task.Title()).Focusable().Tooltip(task.Title())
+		if l.Hovered() || l.Pressed() {
+			l.TextColor(t.Ink).Underline()
+		}
+		if l.Clicked() {
+			a.OpenTask(task.ID)
+		}
+		if at := store.ParseTime(task.OpenedAt); !at.IsZero() {
+			opened := a.L.T("time.opened.now")
+			if d := a.Now().Sub(at); d >= time.Minute {
+				opened = a.L.T("time.opened", a.duration(d))
+			}
+			ui.Text(c, opened).FontSize(t.XS).TextColor(t.InkMuted).Shrink(0)
+		}
+	})
+}
+
+// shortTitle is a task's title as a card says it: what it is, without the
+// parenthetical details ("准备 App Store Connect（截图、描述、隐私）" →
+// "准备 App Store Connect"). The full title is on hover and in the task.
+func shortTitle(title string) string {
+	s := strings.TrimSpace(title)
+	for _, pair := range [][2]string{{"（", "）"}, {"(", ")"}, {"【", "】"}, {"[", "]"}} {
+		for {
+			i := strings.Index(s, pair[0])
+			if i < 0 {
+				break
+			}
+			j := strings.Index(s[i:], pair[1])
+			if j < 0 {
+				break
+			}
+			cut := strings.TrimSpace(s[:i] + " " + s[i+j+len(pair[1]):])
+			if cut == "" {
+				break
+			}
+			s = cut
+		}
+	}
+	s = strings.Join(strings.Fields(s), " ")
+	s = strings.TrimRight(s, " ,，:：-—·")
+	if s == "" {
+		return strings.TrimSpace(title)
+	}
+	return s
 }
 
 // nonEmpty keeps the strings that say something.
@@ -390,41 +411,36 @@ func nonEmpty(s ...string) []string {
 	return out
 }
 
-// countdown is the default's bar: how much of the wait has passed.
-func (a *App) countdown(c *ui.Context, d *store.DecisionState) {
+// defaultRow is what happens if the user doesn't answer (D127): for a
+// default that goes ahead, a small clock ring of the time left and one
+// caption ("28 分钟后按默认：等你登录后继续"); else the words alone.
+func (a *App) defaultRow(c *ui.Context, d *store.DecisionState) {
 	t := a.T
 	left, ok := a.defaultIn(d)
-	label := a.L.T("decision.default.hold")
-	if !d.Reversible {
-		label = a.L.T("decision.no_default")
+	if !ok || d.DefaultOption != "go" {
+		a.mark(c.Key("default"), drawClock, a.defaultLine(c, d), t.NeedsYou.Ink)
+		return
 	}
-	frac := float32(0)
-	right := ""
-	if ok && d.DefaultOption == "go" {
-		g := d.GoLabel
-		if g == "" {
-			g = a.L.T("decision.go")
-		}
-		label = a.L.T("decision.default.label", g)
-		total := store.ParseTime(d.DefaultAt).Sub(a.decisionTime(d))
-		if total > 0 {
-			frac = 1 - float32(left)/float32(total)
-		}
-		right = a.duration(max(left, 0))
-		c.After(min(max(left%time.Minute, time.Second), time.Minute))
+	g := strings.TrimRight(strings.TrimSpace(d.GoLabel), ".。")
+	if g == "" {
+		g = a.L.T("decision.go")
 	}
-	ui.Column(c).Gap(t.S2).Children(func() {
-		ui.Row(c).Children(func() {
-			ui.Text(c, label).FontSize(t.XS).FontWeight(700).TextColor(t.NeedsYou.Ink).Grow(1)
-			if right != "" {
-				ui.Text(c, right).FontSize(t.XS).FontWeight(700).TextColor(t.NeedsYou.Ink)
-			}
-		})
-		if ok {
-			ui.Box(c).Height(8).Radius(4).Background(t.NeedsYou.Dot.Alpha(0.22)).Children(func() {
-				ui.Box(c).Height(8).Radius(4).Background(t.Accent).WidthPercent(min(max(frac, 0.02), 1) * 100)
-			})
-		}
+	// "In 6 min: wait for you…": a capital that only starts its own sentence goes.
+	if a.L.Lang != i18n.ZH && len(g) > 1 && g[0] >= 'A' && g[0] <= 'Z' && g[1] >= 'a' && g[1] <= 'z' {
+		g = strings.ToLower(g[:1]) + g[1:]
+	}
+	frac := float32(1)
+	if total := store.ParseTime(d.DefaultAt).Sub(a.decisionTime(d)); total > 0 {
+		frac = float32(left) / float32(total)
+	}
+	c.After(min(max(left%time.Minute, time.Second), time.Minute))
+	words := a.L.T("decision.default.due")
+	if left > 0 {
+		words = a.L.T("decision.default.in", a.duration(left), g)
+	}
+	ui.Row(c.Key("default")).Gap(t.S2).AlignItems(ui.Center).MinWidth(0).Children(func() {
+		ui.Box(c).Size(16, 16).Shrink(0).Draw(drawRing(t.NeedsYou.Ink.Alpha(0.45), t.Accent, frac)).AccessHidden(true)
+		ui.Text(c, words).FontSize(t.SM).TextColor(t.NeedsYou.Ink).SingleLine().MinWidth(0).Shrink(1).Tooltip(words)
 	})
 }
 
@@ -485,7 +501,7 @@ func (a *App) workingCard(c *ui.Context, task *store.Task) {
 			}
 			pop.AnimatePose(p, ui.Animation{Duration: 320 * time.Millisecond})
 		}
-		ui.Text(c, keepWords(autospace(task.Title()))).FontSize(t.MD).FontWeight(800).Balance()
+		ui.Text(c, keepWords(autospace(shortTitle(task.Title())))).FontSize(t.MD).FontWeight(800).Balance()
 		if u := task.Card; u != nil && u.Until != nil && u.Until.State == "on" {
 			// A keep-going loop (D113): its tries, then where it stands.
 			a.goal(c, u.Until, false)
@@ -515,7 +531,7 @@ func (a *App) waitingCard(c *ui.Context, task *store.Task) {
 	card := ui.Column(c).Padding(t.S4, t.S4).Gap(t.S2).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color)
 	a.cardLink(c, card, task)
 	card.Children(func() {
-		ui.Text(c, keepWords(autospace(task.Title()))).FontSize(t.MD).FontWeight(800).Balance()
+		ui.Text(c, keepWords(autospace(shortTitle(task.Title())))).FontSize(t.MD).FontWeight(800).Balance()
 		reason := a.waitReason(task)
 		if reason == "" {
 			reason = a.stateLabel(protocol.Blocked)
@@ -583,14 +599,14 @@ func (a *App) partnerDecisionCard(c *ui.Context, d *store.DecisionState) {
 	ui.Column(c).Padding(t.S5, t.S5).Gap(t.S3).Radius(t.RadiusXL).Background(t.NeedsYou.Surface).
 		Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge).Children(func() {
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-			a.avatar(c, theme.NeedsYou, 32)
-			ui.Text(c, a.S.PersonaName).FontSize(t.SM).FontWeight(800).TextColor(t.NeedsYou.Ink)
+			a.avatar(c, theme.NeedsYou, 28)
+			ui.Text(c, a.S.PersonaName).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 		})
-		a.heading(c, autospace(d.Question), t.XL).LineHeight(1.35)
+		a.heading(c, autospace(d.Question), t.LG).LineHeight(1.4).MaxLines(4)
 		if d.RoutineID != "" {
 			a.routineFacts(c, d.RoutineID, t.NeedsYou.Ink)
 		}
-		a.countdown(c, d)
-		a.decisionButtons(c, d, decisionStyle{height: 48, quietBg: t.NeedsYou.Surface})
+		a.defaultRow(c, d)
+		a.decisionButtons(c, d, decisionStyle{height: 40, quietBg: t.NeedsYou.Surface})
 	})
 }

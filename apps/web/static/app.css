@@ -800,11 +800,25 @@ a {
 }
 .decision .asker {
   align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
   font-size: var(--sm);
   font-weight: 700;
-  color: var(--needs-ink);
+  color: var(--ink-soft);
   text-align: left;
   min-height: 24px;
+}
+.decision .asker img {
+  flex: none;
+  border-radius: 50%;
+}
+.decision .asker span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .decision .asker:active {
   text-decoration: underline;
@@ -828,6 +842,26 @@ a {
   font-size: var(--sm);
   color: var(--needs-ink);
   line-height: 1.45;
+}
+/* The default as a small timer and one caption (D127), never a bar and the words twice. */
+.decision .dl.timer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.decision .dl.timer span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pie {
+  flex: none;
+  color: var(--needs-ink);
+}
+.pie .left {
+  fill: var(--accent);
 }
 /* Secondary on a tinted card: white, standing on the card's own ledge color, no rim. */
 .decision .btn.secondary {
@@ -1272,11 +1306,6 @@ a {
   font-size: 11px;
   margin-top: 3px;
 }
-.fold {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
 .fold-line {
   display: inline-flex;
   align-items: center;
@@ -1295,12 +1324,146 @@ a {
 .fold-line.open .chev {
   transform: rotate(90deg);
 }
-.fold .tool {
+/* What it did (D127): each step one quiet line, a mark, a verb, a one-line summary. */
+.steps {
+  display: flex;
+  flex-direction: column;
+}
+.step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 400;
+  min-height: 28px;
+  min-width: 0;
+  font-size: var(--sm);
+  line-height: 1.3;
+  color: var(--ink-muted);
+  text-align: left;
+  width: 100%;
+}
+.step .g {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--ink-muted);
+}
+.step b {
+  flex: none;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.step .sum {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.step .sum.code {
   font-family: var(--mono);
   font-size: var(--xs);
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--sunken);
+}
+.step .times {
+  flex: none;
+  font-size: var(--xs);
+  font-variant-numeric: tabular-nums;
+}
+.step .chev {
+  flex: none;
+  font-weight: 700;
+  opacity: 0;
+  transition: transform var(--t-fast) var(--ease), opacity var(--t-fast) var(--ease);
+}
+.step:hover .chev,
+.step:focus-visible .chev,
+.step.bad .chev,
+.step.open .chev {
+  opacity: 1;
+}
+.step.open .chev {
+  transform: rotate(90deg);
+}
+.step.bad {
+  padding: 0 8px 0 4px;
+  margin: 0 -8px 0 -4px;
+  width: calc(100% + 12px);
+  border-radius: var(--r-xs);
+  background: color-mix(in srgb, var(--failed-surface) 60%, transparent);
+}
+.step.bad .g,
+.step.bad b {
+  color: var(--failed-ink);
+}
+.step.bad .sum {
   color: var(--ink-soft);
-  padding-left: 16px;
+}
+.step.saved,
+.step.note {
+  font-size: var(--xs);
+}
+.step.saved .g {
+  color: var(--faint);
+}
+.step.saved .times {
+  color: var(--faint);
+}
+.step.more .g {
+  display: inline-block;
+}
+.raw {
+  margin: 2px 0 6px 24px;
+  padding: 8px 12px;
+  border-radius: var(--r-xs);
+  background: var(--sunken);
+  font-family: var(--mono);
+  font-size: var(--xs);
+  line-height: 1.5;
+  color: var(--ink-soft);
+  white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+.tx.assistant.md {
+  white-space: normal;
+}
+.tx.assistant.md p {
+  margin: 0;
+}
+.tx.assistant.md p + p {
+  margin-top: 8px;
+}
+/* The bar over the composer (D127): who is doing it, then where it stands and for how long. */
+.task-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 24px 2px;
+  background: var(--bg);
+  font-size: var(--xs);
+  color: var(--ink-muted);
+}
+.task-bar img {
+  flex: none;
+  border-radius: 50%;
+}
+.task-bar .who {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.task-bar .grow {
+  flex: 1;
+}
+.task-bar b {
+  font-weight: 700;
+  color: var(--state-ink, var(--ink));
+}
+.task-bar .when {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .details-box .fold-line {
   font-weight: 700;

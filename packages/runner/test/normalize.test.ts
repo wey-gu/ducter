@@ -46,3 +46,19 @@ test("tool_call_started flushes held text and emits an early tool event", () => 
   const end = n.push({ kind: "tool_call_ended", callId: "c1", result: "ok", content: [{ type: "text", text: "{}" }] });
   expect(end[0]!.tool).toMatchObject({ name: "mcp__ducter__task_open", ok: true, output: "{}" });
 });
+
+test("thinking is kept as its headings only, before the words that follow it (D127)", () => {
+  const n = new Normalizer(() => undefined);
+  expect(n.push({ kind: "reasoning", content: { kind: "text", text: "**Opening App Store Connect**\n\nI need the login page first, then" } })).toEqual([]);
+  n.push({ kind: "reasoning", content: { kind: "text", text: " the app record.\n\n**Checking the build**\n" } });
+  n.push({ kind: "reasoning", content: { kind: "redacted" } });
+  n.push({ kind: "text_delta", text: "Opening the site." });
+  const out = n.push({ kind: "tool_call_started", callId: "c1", tool: "commandExecution" });
+  expect(out.slice(0, 2)).toEqual([
+    { role: "assistant", thinking: ["Opening App Store Connect", "Checking the build"] },
+    { role: "assistant", text: "Opening the site." },
+  ]);
+  // Thinking with no heading says nothing.
+  n.push({ kind: "reasoning", content: { kind: "text", text: "just musing about it" } });
+  expect(n.flush()).toEqual([]);
+});

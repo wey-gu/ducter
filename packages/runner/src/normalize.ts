@@ -77,6 +77,7 @@ export function headBefore(partial: string, key: string): Record<string, unknown
  */
 export class Normalizer {
   private text = "";
+  private thought = "";
   private tools = new Map<string, PendingTool>();
 
   constructor(private readonly usage: () => HarnessEvent["usage"] | undefined) {}
@@ -114,7 +115,12 @@ export class Normalizer {
       }
       return out;
     }
-    if (ev.kind === "reasoning" || ev.kind === "usage" || ev.kind === "tool_call_progress") {
+    if (ev.kind === "reasoning") {
+      // Thinking is kept as its headings only, for the opened task's Thinking lines (D127).
+      if (ev.content?.kind === "text" && typeof ev.content.text === "string") this.thought += ev.content.text;
+      return out;
+    }
+    if (ev.kind === "usage" || ev.kind === "tool_call_progress") {
       return out; // not logged; usage is folded into turnEnd
     }
     this.flushText(out);
@@ -186,10 +192,29 @@ export class Normalizer {
   }
 
   private flushText(out: HarnessEvent[]) {
+    const heads = thinkingHeadings(this.thought);
+    this.thought = "";
+    if (heads.length) out.push({ role: "assistant", thinking: heads });
     const text = stripThinking(this.text);
     if (text.trim()) out.push({ role: "assistant", text });
     this.text = "";
   }
+}
+
+/**
+ * The headings of a stretch of thinking (Codex's reasoning summaries open each part with a bold
+ * line: "**Opening App Store Connect**"); a markdown heading counts too. Its body is never kept:
+ * the opened task shows the headings alone (D127). At most three, each once.
+ */
+export function thinkingHeadings(text: string): string[] {
+  const out: string[] = [];
+  for (const line of text.split("\n")) {
+    const m = /^\s*\*\*([^*\n]{2,120}?)\*\*\s*$/.exec(line) ?? /^\s*#{1,4}\s+(.{2,120}?)\s*#*\s*$/.exec(line);
+    const h = m?.[1]?.trim().replace(/[:：]$/, "");
+    if (h && !out.includes(h)) out.push(h);
+    if (out.length === 3) break;
+  }
+  return out;
 }
 
 /**

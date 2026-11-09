@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/egoist/mygo/transfer"
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/editor"
-	"github.com/egoist/mygo/ui/markdown"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/diff"
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
@@ -87,7 +87,7 @@ func (a *App) taskHeader(c *ui.Context, task *store.Task) {
 	a.chrome(c, "task", func() {
 		a.crumb(c, a.L.T("nav.conversation"), RouteConversation)
 		a.crumb(c, a.L.T("nav.onhand"), RouteOnHand)
-		title := task.Title()
+		title := shortTitle(task.Title())
 		if title == "" {
 			title = a.L.T("task.unknown")
 		}
@@ -128,13 +128,7 @@ func (a *App) taskStanding(c *ui.Context, task *store.Task) {
 	if task.OpenedAt != "" {
 		parts = append(parts, a.L.T("task.opened", a.ago(task.OpenedAt)))
 	}
-	if who, _ := a.whoLine(task); who != "" && !finished(task) {
-		parts = append(parts, who)
-	}
-	// A wait's head stays short (D90): who does it is in Details.
-	if w := a.S.WaiterFor(task.ID); w != nil && att == protocol.Blocked && (w.Check != nil || w.Event != nil) && len(parts) > 1 {
-		parts = parts[:1]
-	}
+	// Who does it is said once, in the footer over the composer (D127).
 	ui.Row(c.Key("meta")).Gap(t.S1).Wrap().AlignItems(ui.Baseline).Children(func() {
 		ui.Text(c, a.stateLabel(att)).FontSize(t.SM).FontWeight(800).TextColor(t.State(string(att)).Ink)
 		if len(parts) > 0 {
@@ -158,6 +152,11 @@ func (a *App) taskHeadline(c *ui.Context, task *store.Task) {
 		if w := a.S.WaiterFor(task.ID); w != nil && (w.Check != nil || w.Event != nil) {
 			line = a.waitLine(w.Reason)
 		}
+	}
+	// What it said or saved since its latest report is newer than the
+	// report: after a Go, "it needs a sign-in" is no longer where it stands.
+	if line == "" && a.saidSinceReport(task) {
+		line = a.lastSaid(task)
 	}
 	if line == "" {
 		if rep := task.Report(); rep != nil && rep.Summary != "" {
@@ -194,6 +193,29 @@ func (a *App) lastSaid(task *store.Task) string {
 		}
 	}
 	return ""
+}
+
+// saidSinceReport reports whether the task wrote words or saved progress
+// after its latest report (a working task that has moved on).
+func (a *App) saidSinceReport(task *store.Task) bool {
+	if task.Attention() != protocol.Working {
+		return false
+	}
+	for i := len(task.Events) - 1; i >= 0; i-- {
+		ev := task.Events[i]
+		switch ev.Kind {
+		case protocol.KindReport:
+			return false
+		case protocol.KindCheckpoint:
+			return true
+		case protocol.KindTaskEvent:
+			body, _ := ev.Typed()
+			if b, _ := body.(*protocol.TaskEvent); b != nil && b.Role == "assistant" && strings.TrimSpace(b.Text) != "" && b.Tool == nil {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // The measures of the opened task (D78): a headline and a paragraph stay
@@ -316,206 +338,7 @@ func (a *App) sectionTitle(c *ui.Context, text string) ui.Element {
 	return a.heading(c, text, a.T.LG) // one step above the body's 15, not a jump
 }
 
-// ---------- what it did ----------
-
-// step is one beat of what the task did: an event, or a stretch of tool
-// calls that went fine, folded into one line.
-type step struct {
-	ev    protocol.LogEvent
-	tools []*protocol.ToolCall
-	seq   int64
-}
-
-// steps groups the task's events: consecutive tool calls that went fine
-// fold into one step; a failed one stands on its own, in words.
-func (a *App) steps(task *store.Task) []step {
-	var out []step
-	// The latest report is said above: the outcome of a finished task,
-	// else the line of where it stands.
-	last := int64(-1)
-	for _, ev := range task.Events {
-		if ev.Kind == protocol.KindReport {
-			last = ev.Seq
-		}
-	}
-	for _, ev := range task.Events {
-		switch ev.Kind {
-		case protocol.KindTaskOpen, protocol.KindCheckpoint:
-		case protocol.KindReport:
-			if ev.Seq == last {
-				continue
-			}
-		case protocol.KindTaskEvent:
-			body, _ := ev.Typed()
-			b, _ := body.(*protocol.TaskEvent)
-			if b == nil {
-				continue
-			}
-			// Ducter's own tools are plumbing, not what the task did (their
-			// reports and saved progress say themselves), failed or not.
-			if b.Tool != nil && isPlumbing(b.Tool.Name) {
-				continue
-			}
-			if b.Tool != nil && (b.Tool.OK == nil || *b.Tool.OK) {
-				if n := len(out); n > 0 && out[n-1].tools != nil {
-					out[n-1].tools = append(out[n-1].tools, b.Tool)
-					continue
-				}
-				out = append(out, step{tools: []*protocol.ToolCall{b.Tool}, seq: ev.Seq})
-				continue
-			}
-			if b.Role == "system" && b.Text == "" && b.Usage != nil {
-				continue // a turn's usage alone says nothing here
-			}
-		default:
-			continue
-		}
-		out = append(out, step{ev: ev, seq: ev.Seq})
-	}
-	return out
-}
-
-func (a *App) whatItDid(c *ui.Context, task *store.Task) {
-	t := a.T
-	steps := a.steps(task)
-	ui.Column(c.Key("did")).Gap(t.S4).MaxWidth(readMeasure).Children(func() {
-		a.sectionTitle(c, a.L.T("task.transcript"))
-		if len(steps) == 0 && len(task.Sends) == 0 {
-			ui.Text(c, a.L.T("task.loading")).FontSize(t.SM).TextColor(t.InkMuted)
-		}
-		for _, st := range steps {
-			if st.tools != nil {
-				a.toolFold(c.Key(st.seq), task, st)
-				continue
-			}
-			a.transcriptRow(c.Key(st.seq), task, st.ev)
-		}
-		for _, sd := range task.Sends {
-			if sd.Seq == 0 {
-				a.sentBubble(c, sd.Text, sd)
-			}
-		}
-	})
-}
-
-// toolFold is a stretch of tool calls as one line ("Ran 2 commands,
-// edited 1 file ›") that opens in place onto each call.
-func (a *App) toolFold(c *ui.Context, task *store.Task, st step) {
-	t := a.T
-	key := fmt.Sprintf("fold:%s:%d", task.ID, st.seq)
-	open := a.open[key]
-	ui.Column(c).Gap(t.S2).Children(func() {
-		l := ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Label(a.foldLine(st.tools))
-		l.Children(func() {
-			ui.Text(c, "›").FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).Rotate(map[bool]float32{true: 90, false: 0}[open]).AccessHidden(true)
-			tx := ui.Text(c, a.foldLine(st.tools)).FontSize(t.SM).TextColor(t.InkMuted).AccessHidden(true)
-			if l.Hovered() {
-				tx.TextColor(t.Ink)
-			}
-		})
-		if l.Clicked() {
-			a.open[key] = !open
-		}
-		if open {
-			ui.Column(c).Gap(t.S1).Padding(0, 0, 0, t.S4).Children(func() {
-				for i, tool := range st.tools {
-					a.toolRow(c.Key(i), tool)
-				}
-			})
-		}
-	})
-}
-
-// foldLine counts a stretch of tool calls in words: commands run, files
-// edited, files read, and other tools.
-func (a *App) foldLine(tools []*protocol.ToolCall) string {
-	ran, other := 0, 0
-	edited, read := map[string]bool{}, map[string]bool{}
-	for _, tool := range tools {
-		var in map[string]any
-		_ = json.Unmarshal(tool.Input, &in)
-		path, _ := in["file_path"].(string)
-		if path == "" {
-			path, _ = in["path"].(string)
-		}
-		switch toolName(tool.Name) {
-		case "Bash", "shell", "exec_command":
-			ran++
-		case "Edit", "Write", "MultiEdit", "apply_patch":
-			edited[path] = true
-		case "Read":
-			read[path] = true
-		default:
-			other++
-		}
-	}
-	var parts []string
-	count := func(key string, n int) {
-		if n == 1 {
-			parts = append(parts, a.L.T(key+".one"))
-		} else if n > 1 {
-			parts = append(parts, a.L.T(key, n))
-		}
-	}
-	count("task.fold.ran", ran)
-	count("task.fold.edited", len(edited))
-	count("task.fold.read", len(read))
-	count("task.fold.other", other)
-	s := strings.Join(parts, a.L.T("task.fold.and"))
-	if r := []rune(s); len(r) > 0 {
-		s = strings.ToUpper(string(r[0])) + string(r[1:])
-	}
-	return s
-}
-
-func (a *App) transcriptRow(c *ui.Context, task *store.Task, ev protocol.LogEvent) {
-	t := a.T
-	body, _ := ev.Typed()
-	switch b := body.(type) {
-	case *protocol.TaskOpen:
-		if strings.TrimSpace(b.Brief) == "" {
-			return // opened before its brief was written (D120): the briefed one follows
-		}
-		// What the partner asked for: its words, quoted under a small label.
-		ui.Column(c).Gap(t.S1).Children(func() {
-			ui.Text(c, a.L.T("task.brief", a.S.PersonaName)).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
-			ui.Text(c, b.Brief).FontSize(t.MD).LineHeight(1.55).TextColor(t.InkSoft).Selectable()
-		})
-	case *protocol.TaskEvent:
-		switch {
-		case b.Tool != nil:
-			// A step that didn't work stands on its own, in words.
-			ui.Column(c).Gap(t.S1).Children(func() {
-				a.mark(c, drawCross, a.L.T("task.step.failed", toolWords(b.Tool)), t.Failed.Ink)
-				if out := strings.TrimSpace(b.Tool.Output); out != "" {
-					ui.Text(c, firstLine(out)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkSoft).Padding(0, 0, 0, t.S5).Selectable()
-				}
-			})
-		case b.Role == "user" && (b.From == "runner" || b.From == "" && (strings.HasPrefix(b.Text, `Start the task "`) || strings.HasPrefix(b.Text, "<brief>"))):
-			// The runner's own kickoff, not something anyone said.
-		case b.Role == "user" && (b.From == "partner" || ev.Origin == protocol.OriginPartner):
-			// The partner talking to the task: its words, not the user's.
-			ui.Column(c).Gap(t.S1).Children(func() {
-				ui.Text(c, a.L.T("task.from.partner", a.S.PersonaName)).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
-				ui.Text(c, b.Text).FontSize(t.MD).LineHeight(1.55).TextColor(t.InkSoft).Selectable()
-			})
-		case b.Role == "user":
-			a.sentBubble(c, b.Text, task.SendFor(ev.Seq))
-		case b.Role == "system":
-			a.systemLine(c, b)
-		case b.Text != "":
-			ui.Column(c).Children(func() { markdown.View(c, b.Text, &a.mdTask) })
-		}
-	case *protocol.Checkpoint:
-		ui.Text(c, a.L.T("task.checkpoint", b.Text)).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
-	case *protocol.Report:
-		// An earlier word to the partner (the last one is the outcome).
-		ui.Column(c).Gap(t.S1).Children(func() {
-			ui.Text(c, a.reportLabel(b)).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
-			ui.Text(c, b.Summary).FontSize(t.MD).LineHeight(1.55).TextColor(t.InkSoft).Selectable()
-		})
-	}
-}
+// ---------- what it did (tasksteps.go) ----------
 
 func (a *App) reportLabel(r *protocol.Report) string {
 	key := "task.report"
@@ -540,6 +363,7 @@ func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 		a.aboveComposer(c, func() { a.heldLine(c) })
 	}
 	draft := a.taskDrafts[task.ID]
+	a.taskBar(c, task)
 	ui.Row(c).Justify(ui.Center).Padding(t.S2, t.S5, t.S5, t.S5).Children(func() {
 		ui.Row(c).Grow(1).MaxWidth(convWidth).Gap(t.S3).AlignItems(ui.Center).Padding(t.S2, t.S2, t.S2, t.S5).
 			Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Children(func() {
@@ -609,62 +433,9 @@ func (a *App) sentBubble(c *ui.Context, text string, sd *store.Send) {
 	})
 }
 
-// systemLine is a harness's own note, as a turn ending: a thin divider,
-// in words for people.
-func (a *App) systemLine(c *ui.Context, b *protocol.TaskEvent) {
-	t := a.T
-	text := b.Text
-	if strings.HasPrefix(text, "Looking at ") {
-		key := "browser.looking"
-		var raw struct {
-			Browser *struct {
-				Own bool `json:"own"`
-			} `json:"browser"`
-		}
-		if json.Unmarshal(b.Raw, &raw) == nil && raw.Browser != nil && raw.Browser.Own {
-			key = "browser.looking.own"
-		}
-		text = a.L.T(key, strings.TrimPrefix(text, "Looking at "))
-	}
-	switch strings.ToLower(strings.TrimSpace(text)) {
-	case "session started":
-		text = a.L.T("task.session.started")
-	case "turn completed", "turn complete", "turn ended":
-		text = a.L.T("task.turn.done")
-	}
-	// A turn's token counts are not for this line: bare numbers say nothing
-	// to a person. The task's total lives in Details, in words.
-	ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-		ui.Box(c).Height(1).Grow(1).Background(t.LineSoft)
-		ui.Text(c, text).FontSize(t.XS).TextColor(t.InkMuted).Shrink(0)
-		ui.Box(c).Height(1).Grow(1).Background(t.LineSoft)
-	})
-}
-
 // isLink reports whether an evidence ref opens somewhere.
 func isLink(ref string) bool {
 	return strings.HasPrefix(ref, "http://") || strings.HasPrefix(ref, "https://") || strings.HasPrefix(ref, "file:") || strings.HasPrefix(ref, "/")
-}
-
-// toolRow is one tool call inside an open fold: its command in mono; a
-// click shows its output.
-func (a *App) toolRow(c *ui.Context, tool *protocol.ToolCall) {
-	t := a.T
-	col := ui.Column(c).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(toolSummary(tool)).Focusable()
-	open := ui.Local(col, "open", func() bool { return false })
-	col.Children(func() {
-		tx := ui.Text(c, toolSummary(tool)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkSoft).MinWidth(0).MaxLines(2).Padding(t.S1, 0).AccessHidden(true)
-		if col.Hovered() {
-			tx.TextColor(t.Ink)
-		}
-		if *open && tool.Output != "" {
-			ui.Text(c, strings.TrimRight(tool.Output, "\n")).Font(t.Mono).FontSize(t.MonoSM).LineHeight(1.5).TextColor(t.InkMuted).
-				Padding(0, 0, t.S2, t.S3).Selectable().MaxLines(40)
-		}
-	})
-	if col.Clicked() {
-		*open = !*open
-	}
 }
 
 // toolName is a tool's name for people: an MCP tool loses its
@@ -695,7 +466,7 @@ func toolSummary(tool *protocol.ToolCall) string {
 	}
 	var in map[string]any
 	if json.Unmarshal(tool.Input, &in) == nil {
-		for _, k := range []string{"command", "cmd", "file_path", "path", "pattern", "url", "query"} {
+		for _, k := range []string{"command", "cmd", "code", "file_path", "path", "pattern", "url", "query"} {
 			if v, ok := in[k].(string); ok && v != "" {
 				return s + "  " + firstLine(v)
 			}
@@ -829,6 +600,11 @@ func (a *App) changes(c *ui.Context, task *store.Task) {
 		return
 	}
 	pane := a.diffs[task.ID]
+	// Nothing changed yet (or a task that changes no code, D127): no section,
+	// no "no changes" and no Refresh to push.
+	if pane == nil || len(pane.files) == 0 {
+		return
+	}
 	ui.Column(c.Key("changes")).Gap(t.S3).Children(func() {
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 			a.sectionTitle(c, a.L.T("task.side.changes"))
@@ -951,9 +727,11 @@ func (a *App) taskDetails(c *ui.Context, task *store.Task) {
 		p := task.Place()
 		if line := a.placeLine(p); line != "" {
 			row(a.L.T("task.dossier.where"), func() {
-				value(line)
+				// The repo and its branch; the path itself on hover, and copied
+				// with ⌘C (never a home folder spelled out, D127).
+				tx := ui.Text(c, line).FontSize(t.MD).LineHeight(leadingFor(line, 1.5)).TextColor(t.InkSoft).Selectable()
 				if s := firstNonEmpty(p.RepoPath, p.Path); s != "" {
-					ui.Text(c, s).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkMuted).Selectable()
+					tx.Tooltip(s).CopyData(func([]ui.SelectedText) transfer.Data { return transfer.TextData(s) })
 				}
 			})
 		}
@@ -977,7 +755,7 @@ func (a *App) taskDetails(c *ui.Context, task *store.Task) {
 		}
 		if u := task.Usage; u.InputTokens+u.OutputTokens+u.CacheRead > 0 {
 			row(a.L.T("task.dossier.usage"), func() {
-				value(a.L.T("task.usage", a.aboutTokens(u.InputTokens+u.CacheRead+u.CacheWrite+u.OutputTokens)))
+				ui.Text(c, a.L.T("task.usage", a.aboutTokens(u.InputTokens+u.CacheRead+u.CacheWrite+u.OutputTokens))).FontSize(t.SM).TextColor(t.InkMuted)
 			})
 		}
 	})

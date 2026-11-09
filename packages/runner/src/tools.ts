@@ -28,7 +28,7 @@ export const reportToMainSchema = {
           id: { type: "string" },
           text: { type: "string" },
           blocking: { type: "boolean" },
-          default: { type: "string", description: "What you will do if nobody answers." },
+          default: { type: "string", description: "What you will do if nobody answers, as a short verb in the user's language (at most 6 Chinese characters or 3 English words, no full stop): it is the label of the user's Go button, e.g. 继续 / Continue, 先填描述 / Fill in the text." },
           reversible: { type: "boolean", description: "Whether the default can be undone." },
         },
         required: ["id", "text", "blocking", "reversible"],

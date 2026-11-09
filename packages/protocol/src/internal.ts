@@ -217,6 +217,7 @@ export interface HarnessEvent {
   role: "assistant" | "user" | "tool" | "system";
   text?: string;
   tool?: { name: string; input?: unknown; output?: string; ok?: boolean };
+  thinking?: string[]; // the headings of a stretch of thinking (D127)
   usage?: { inputTokens?: number; cacheRead?: number; cacheWrite?: number; outputTokens?: number };
   turnEnd?: boolean;
   raw?: unknown;

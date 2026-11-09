@@ -296,7 +296,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const early = (ev.raw as { kind?: string } | undefined)?.kind;
     if (early === "tool_call_started" || early === "tool_call_title" || early === "tool_call_head") return; // the ended event logs the call
     if (ev.tool && /(^|__)report_to_main$/.test(ev.tool.name) && ev.tool.ok !== false) t.reportedThisTurn = true;
-    if (!ev.text && !ev.tool && !ev.turnEnd) return; // usage-only or empty
+    if (!ev.text && !ev.tool && !ev.turnEnd && !ev.thinking?.length) return; // usage-only or empty
     const raw = ev.turnEnd ? { turnEnd: true, ...(ev.raw as object | undefined) } : undefined;
     const tool = ev.tool
       ? { ...ev.tool, output: preview(ev.tool.output, PREVIEW_MAX), input: capInput(ev.tool.input) }
@@ -304,6 +304,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const body: Omit<Bodies["task_event"], "taskId"> = { role: ev.role };
     if (ev.text != null) body.text = preview(ev.text, 16 * 1024);
     if (tool) body.tool = tool;
+    if (ev.thinking?.length) body.thinking = ev.thinking.slice(0, 3).map((h) => h.slice(0, 120));
     if (ev.turnEnd && ev.usage) body.usage = ev.usage;
     if (raw) body.raw = raw;
     logEvent(t, body);

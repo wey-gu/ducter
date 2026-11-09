@@ -51,7 +51,7 @@ brows when something needs you. Other themes render the same states in their own
   in lightness and shape (waiting = dashed outline), not only in hue.
 - **Voices:** the user's messages are cocoa bubbles (`#2B2118` on cream text). Ducter speaks
   bubble-less in 18px body type on the paper, so it reads like a person talking, not a chat
-  app. Structured things (decisions, files, summaries) are white cards on a soft shadow.
+  app. Structured things (decisions, files, summaries) are white cards on the clay base (D76).
 - **Task line:** a task in the partner's words is one quiet line: a drawn mark of where it
   stands, its title as a link, its status in muted words. No fill, no capsule, no dot (D69,
   D73).

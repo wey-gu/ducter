@@ -220,6 +220,14 @@ thing; nothing to learn, any key goes on.
 | 6.6 s | 按任意键开始 / PRESS ANY KEY, small and letter-spaced, then breathing 60–100% | the tail fades to silence |
 | key or click | Before 6.6 s: 0.3 s; after: 0.7 s, the dawn floods the window into the paper, then the setup card (Ducter awake) | fades 0.3 / 0.5 s |
 
+**Sound.** Six candidates (`tools/sound/build.sh`; levels by ffmpeg ebur128, all about −20 LUFS,
+true peak −4.5 to −9.6 dBTP, the tone's onset within 7 ms of 3.55 s): A felt piano + strings
+(IV(add9) → V(sus4) → I, the major third arriving with the eyes; shipped until the author picks),
+B glass + breath pad, C bowed vibraphone + low organ (a real 4–3 suspension on the beat), and the
+endings of Chopin's Nocturne Op. 27 No. 2, Schubert's Sonata D 664/II and Chopin's Prelude
+Op. 28 No. 13 in Musopen's CC0 / public-domain recordings, cut so the final chord lands on the
+beat. All six are in the prototype's sound picker.
+
 **Rules.** Once per Mac (`desktop.json` `titleSeenAt`, written when it is left); Settings › About
 has 再看一次开场 / Replay the intro and the Sound switch. Not shown when macOS opened the app at
 login (`WasOpenedAtLogin`, asked once the app has launched); it waits for a real open. Its clock

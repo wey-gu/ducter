@@ -2,7 +2,8 @@
 # Renders the title sound (D87) from recorded instruments: three produced
 # variants (a, b, c; see title2.py) plus the curated music excerpts (m1..;
 # see excerpts.py), and writes:
-#   apps/desktop/internal/theme/sound/title-<v>.wav   48 kHz / 16-bit, for the app
+#   $OUT/app/title-<v>.wav                             48 kHz / 16-bit, each a candidate for the app
+#   apps/desktop/internal/theme/sound/title.wav        the one the app ships ($TITLE_SOUND, default a)
 #   $OUT/title-<v>.wav                                 48 kHz / 24-bit master
 #   $OUT/title-<v>.m4a and .mp4 (same bytes)           AAC 256 kbps, for the web prototype
 #   $OUT/title-<v>.{waveform,spectrogram}.png, .measure.json, .ebur128.txt
@@ -19,7 +20,8 @@ set -eu
 root=$(cd "$(dirname "$0")/../.." && pwd)
 out=${2:-${DUCTER_SHOTS_DIR:-$root/.shots}/sound}
 src=${1:-$out/src}
-app=$root/apps/desktop/internal/theme/sound
+app=$out/app
+mkdir -p "$app"
 mkdir -p "$out" "$src"
 sh "$root/tools/sound/fetch.sh" "$src"
 venv=$out/.venv
@@ -46,3 +48,5 @@ for f in "$app"/title-*.wav; do
   n=$(wc -c < "$f")
   [ "$n" -lt 1950000 ] || { echo "$f is $n bytes, over 1,950,000" >&2; exit 1; }
 done
+# The app ships one: the variant the author picked (D87).
+cp "$app/title-${TITLE_SOUND:-a}.wav" "$root/apps/desktop/internal/theme/sound/title.wav"

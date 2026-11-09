@@ -370,6 +370,7 @@ func (a *App) aboutCard(c *ui.Context) {
 		if on, changed := a.switchRow(c, "sound", a.L.T("settings.sound"), a.L.T("settings.sound.note"), a.Local.Sound()); changed {
 			a.Local.SetSound(on)
 		}
+		a.note(c, a.L.T("settings.sound.credits"))
 	})
 }
 

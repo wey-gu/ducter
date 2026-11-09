@@ -100,6 +100,7 @@ var zhIA = Table{
 	"settings.about.title_replay": "再看一次开场",
 	"settings.sound":              "声音",
 	"settings.sound.note":         "开场时的声音。跟着 Mac 的音量；减少动态效果时不出声。",
+	"settings.sound.credits":      "The intro's sound uses recordings from VSCO 2 Community Edition (CC0) and the University of Iowa Musical Instrument Samples; its reverb is St George's Episcopal Church from OpenAIR (Adam Townsell, public domain).",
 	"title.prompt":                "按任意键开始",
 	"title.label":                 "Ducter 醒来，看着你。按任意键开始。",
 
@@ -225,6 +226,7 @@ var enIA = Table{
 	"settings.about.title_replay": "Replay the intro",
 	"settings.sound":              "Sound",
 	"settings.sound.note":         "The sound of the intro. It follows the Mac's volume, and stays silent with Reduce motion.",
+	"settings.sound.credits":      "The intro's sound uses recordings from VSCO 2 Community Edition (CC0) and the University of Iowa Musical Instrument Samples; its reverb is St George's Episcopal Church from OpenAIR (Adam Townsell, public domain).",
 	"title.prompt":                "PRESS ANY KEY",
 	"title.label":                 "Ducter wakes up and looks at you. Press any key to start.",
 

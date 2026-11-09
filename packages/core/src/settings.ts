@@ -4,8 +4,8 @@
 // and quiet hours in push.json (push.ts), the rest in settings.json.
 import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Bodies, MemView, QuietHours, Settings, SettingsPatch, TalkLanguage } from "@ducter/protocol";
-import { DEFAULT_AFTER_CHOICES } from "@ducter/protocol";
+import type { Bodies, Brain, MemView, QuietHours, Settings, SettingsPatch, TalkLanguage } from "@ducter/protocol";
+import { DEFAULT_AFTER_CHOICES, HARNESSES, isHarnessId, type HarnessId } from "@ducter/protocol";
 import type { LogStore, SettingsApi } from "@ducter/protocol/src/internal.ts";
 import type { PushStore } from "./push.ts";
 
@@ -18,6 +18,9 @@ interface SettingsFile {
   language?: TalkLanguage;
   memory?: boolean;
   defaultAfterMin?: number;
+  /** D85/D89: what the partner thinks with, and which accounts tasks may use. */
+  brain?: Brain;
+  taskAccounts?: Partial<Record<HarnessId, { enabled: boolean }>>;
   /** 记下了 lines forgotten here, by seq (Mem forgot them, or they are only hidden). */
   hidden?: number[];
 }
@@ -48,6 +51,8 @@ export function openSettings(opts: {
   persona: { name: string; identity: string };
   /** DUCTER_MEMORY=off pins memory off for this run. */
   memoryPinnedOff?: boolean;
+  /** DUCTER_PARTNER_HARNESS / DUCTER_PARTNER_MODEL pick the brain until the user sets one (default process.env). */
+  env?: Record<string, string | undefined>;
 }): SettingsStore {
   const path = join(opts.dataDir, SETTINGS_FILE);
   let data: SettingsFile = {};
@@ -78,6 +83,8 @@ export function openSettings(opts: {
       notify: !p.off,
       quiet: p.quiet,
       defaultAfterMin: data.defaultAfterMin ?? 30,
+      brain: data.brain ?? defaultBrain(opts.env ?? process.env),
+      ...(data.taskAccounts ? { taskAccounts: data.taskAccounts } : {}),
     };
   };
 
@@ -144,6 +151,28 @@ export function openSettings(opts: {
       if (typeof patch.defaultAfterMin === "number" && (DEFAULT_AFTER_CHOICES as readonly number[]).includes(patch.defaultAfterMin)) {
         if ((data.defaultAfterMin ?? 30) !== patch.defaultAfterMin) (data.defaultAfterMin = patch.defaultAfterMin), did.push("defaultAfterMin");
       }
+      // What it thinks with (D89): only a harness that can be the partner; a new harness starts
+      // on its own default model unless one is given. Whether it is signed in on the home Mac is
+      // checked by the socket before it gets here (ws.ts).
+      const b = patch.brain;
+      if (b && typeof b === "object" && isHarnessId(b.harness) && HARNESSES[b.harness].partner) {
+        const model = typeof b.model === "string" && b.model.trim() ? b.model.trim().slice(0, 120) : undefined;
+        const now = get().brain;
+        if (now.harness !== b.harness || now.model !== model) {
+          data.brain = { harness: b.harness, ...(model ? { model } : {}) };
+          did.push("brain");
+        }
+      }
+      const ta = patch.taskAccounts;
+      if (ta && typeof ta === "object") {
+        for (const [id, v] of Object.entries(ta)) {
+          if (!isHarnessId(id) || typeof v?.enabled !== "boolean") continue;
+          const was = data.taskAccounts?.[id]?.enabled !== false;
+          if (was === v.enabled) continue;
+          data.taskAccounts = { ...data.taskAccounts, [id]: { enabled: v.enabled } };
+          did.push("taskAccounts");
+        }
+      }
       const push: Parameters<PushStore["setSettings"]>[0] = {};
       if (typeof patch.notify === "boolean" && !opts.push.settings().off !== patch.notify) (push.off = !patch.notify), did.push("notify");
       if (patch.quiet === null || (patch.quiet && typeof patch.quiet === "object")) {
@@ -177,6 +206,14 @@ export function openSettings(opts: {
       return () => listeners.delete(fn);
     },
   };
+}
+
+/** The brain before the user picks one: env for tests and the CLI, else Claude Code with Opus. */
+export function defaultBrain(env: Record<string, string | undefined>): Brain {
+  const h = env.DUCTER_PARTNER_HARNESS;
+  const harness: HarnessId = isHarnessId(h) && HARNESSES[h].partner ? h : "claude-code";
+  const model = env.DUCTER_PARTNER_MODEL?.trim() || (harness === "claude-code" ? "opus" : undefined);
+  return { harness, ...(model ? { model } : {}) };
 }
 
 function parseQuiet(q: unknown): QuietHours | null | undefined {

@@ -2,6 +2,11 @@
 // Changes here go through the lead. The Go client mirrors these types in
 // apps/desktop/internal/protocol (keep field names identical; JSON is the wire format).
 
+export * from "./harnesses.ts";
+import type { HarnessId } from "./harnesses.ts";
+export * from "./loadout.ts";
+import type { BodyWhy, Candidate, RuleView, TaskBody } from "./loadout.ts";
+
 // ---------- States (design/focus-window-states.md) ----------
 
 export type Attention =
@@ -66,12 +71,15 @@ export interface Bodies {
     title: string;
     project: string; // "" = Loose
     place: Place;
-    harness: string; // "claude-code" | "codex" | "pi"
+    harness: string; // a HarnessId (harnesses.ts)
     model?: string;
     brief: string;
     bodyReason?: string; // why this harness/model
   };
   task_state: { taskId: string; attention: Attention; residency: Residency; reason?: string };
+  // Who does the task and why (D89, focus-window.md "Choosing a body"): appended when it opens
+  // and on every switch. The card shows the latest one.
+  body_selected: { taskId: string; harness: string; model?: string; why: BodyWhy };
   // role "user" + from "user" = text the user sent straight into the task (logged by the runner).
   task_event: {
     taskId: string;
@@ -141,6 +149,8 @@ export interface TaskCard {
   harness: string;
   model?: string;
   bodyReason?: string;
+  /** Who does it now and why (the latest body_selected); absent on tasks from before D89. */
+  body?: TaskBody;
   attention: Attention;
   residency: Residency;
   reason?: string;
@@ -201,7 +211,19 @@ export type ClientFrame =
   // memory's id and Mem forgets it, otherwise only hidden from this list (the frame says which).
   | { t: "settings" }
   | { t: "settings_set"; patch: SettingsPatch }
-  | { t: "memory_forget"; seq: number };
+  | { t: "memory_forget"; seq: number }
+  // Who does the tasks (D89): "rules" answers with a rules frame and keeps the socket subscribed;
+  // rule_remove (不要这条 / Remove) drops one, then every subscriber gets a fresh rules frame.
+  // Rules are added only by saying them in the conversation (the partner's rule_save tool).
+  | { t: "rules" }
+  | { t: "rule_remove"; id: string }
+  // candidates: who could do this task, best first (换谁来做 / Switch who does it); answered with
+  // a candidates frame. task_switch moves the task to another AI agent (换到 X 接着做 / Continue
+  // on X): a pin, and a handoff from saved progress if it is running; answered with action_result
+  // (action "switch"). After two switches the same way the partner asks once whether to make it
+  // a rule (a partner-level decision).
+  | { t: "candidates"; taskId: string }
+  | { t: "task_switch"; taskId: string; harness: string; model?: string };
 
 export type ServerFrame =
   // machine: a hash of the machine the main runs on (core/src/machine.ts); a client that computes
@@ -217,6 +239,8 @@ export type ServerFrame =
   | { t: "pair_code"; code: string; expiresAt: string; address?: string; link?: string; qr?: string[] }
   | { t: "rename_result"; device: string; ok: boolean; name?: string; reason?: "unknown_device" | "empty" | "name_taken" | "home" }
   | { t: "settings"; settings: Settings; mem: MemView; forgot?: { seq: number; how: "mem" | "hidden" } }
+  | { t: "rules"; rules: RuleView[] }
+  | { t: "candidates"; taskId: string; candidates: Candidate[] }
   | { t: "error"; message: string };
 
 export type Delivery = "steered" | "prompted" | "queued";
@@ -247,10 +271,16 @@ export interface Allowance {
 }
 
 export interface DeviceHarness {
-  harness: string; // "claude-code" | "codex" | "pi"
+  harness: string; // a HarnessId (harnesses.ts)
   installed: boolean;
   loggedIn: boolean;
   allowance?: Allowance; // only when the harness reports it; never estimated
+  /** Models this account offers, when it lists them. */
+  models?: { id: string; label: string }[];
+  /** This harness may carry the partner here (D85: HARNESSES[id].partner, and signed in). */
+  canBePartner: boolean;
+  /** plan: a subscription's allowance; usage: paid per token (an API key). */
+  billing?: "plan" | "usage";
 }
 
 export interface DeviceAbility {
@@ -299,6 +329,18 @@ export interface Settings {
   notify: boolean; // notifications on (phones and the Mac)
   quiet: QuietHours | null; // 免打扰 / Quiet hours; null = none
   defaultAfterMin: number; // how long a reversible decision waits before its default goes ahead
+  /**
+   * What the partner itself thinks with (D85, design/ai-loadout.md): a harness that can be the
+   * partner (HARNESSES[id].partner) and its model. Default Claude Code + opus.
+   */
+  brain: Brain;
+  /** Which signed-in accounts tasks may use; a missing entry means enabled. */
+  taskAccounts?: Partial<Record<HarnessId, { enabled: boolean }>>;
+}
+
+export interface Brain {
+  harness: HarnessId;
+  model?: string;
 }
 
 export type SettingsPatch = Partial<Settings>;

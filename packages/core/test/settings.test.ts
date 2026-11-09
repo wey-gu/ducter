@@ -48,7 +48,7 @@ test("defaults: follow the user, remember, notifications on, no quiet hours, 30 
   const c = await client(core.url);
   c.send({ t: "settings" });
   const f = await c.until<SettingsFrame>((x) => x.t === "settings");
-  expect(f.settings).toEqual({ name: "Ducter", language: "auto", memory: true, notify: true, quiet: null, defaultAfterMin: 30 });
+  expect(f.settings).toEqual({ name: "Ducter", language: "auto", memory: true, notify: true, quiet: null, defaultAfterMin: 30, brain: { harness: "claude-code", model: "opus" } });
   expect(f.mem.state).toBe("missing"); // nothing has answered from Mem yet
   expect(f.mem.noted).toEqual([]);
 });

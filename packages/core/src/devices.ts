@@ -6,7 +6,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { hostname as osHostname, platform as osPlatform } from "node:os";
 import { join } from "node:path";
 import QRCode from "qrcode";
-import type { AbilityId, AbilityReason, DeviceAbility, DeviceHarness, DeviceKind, DeviceView, Reach, ServerFrame } from "@ducter/protocol";
+import { deviceHarness, type AbilityId, type AbilityReason, type DeviceAbility, type DeviceHarness, type DeviceKind, type DeviceView, type Reach, type ServerFrame } from "@ducter/protocol";
 import { readAbilitySettings, writeAbilitySettings } from "@ducter/protocol/src/abilities.ts";
 import type { DeviceAuth } from "./auth.ts";
 import type { Workers } from "./workers.ts";
@@ -23,8 +23,8 @@ export type CuaProbe = () => Promise<{ version: string } | { missing: string }>;
 
 export interface DeviceProbes {
   cua: CuaProbe;
-  /** Harness logins on this machine (as `ducter doctor` checks them). */
-  harnesses(): Promise<DeviceHarness[]>;
+  /** Harness logins on this machine (as `ducter doctor` checks them); canBePartner is filled in. */
+  harnesses(): Promise<(Omit<DeviceHarness, "canBePartner"> & { canBePartner?: boolean })[]>;
   /** laptop | mini | server for this machine. */
   kind(): Promise<DeviceKind>;
 }
@@ -146,24 +146,24 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
       o.probes?.harnesses ??
       (async () => {
         const [claude, codex] = await Promise.all([
-          (async (): Promise<DeviceHarness> => {
+          (async (): Promise<Omit<DeviceHarness, "canBePartner">> => {
             if (!which("claude")) return { harness: "claude-code", installed: false, loggedIn: false };
             const r = await exec(["claude", "auth", "status"], 15_000);
             return { harness: "claude-code", installed: true, loggedIn: r.code === 0 && parseJson(r.out.slice(r.out.indexOf("{"), r.out.lastIndexOf("}") + 1))?.loggedIn === true };
           })(),
-          (async (): Promise<DeviceHarness> => {
+          (async (): Promise<Omit<DeviceHarness, "canBePartner">> => {
             if (!which("codex")) return { harness: "codex", installed: false, loggedIn: false };
             const r = await exec(["codex", "login", "status"], 15_000);
             return { harness: "codex", installed: true, loggedIn: r.code === 0 && /logged in/i.test(r.out) && !/not logged in/i.test(r.out) };
           })(),
         ]);
-        return [claude, codex];
+        return [claude, codex].map((h) => deviceHarness(h));
       }),
     kind: o.probes?.kind ?? (() => localDeviceKind(exec)),
   };
 
   // Probe results are reused for cacheMs: harness CLIs can take seconds.
-  type Cached = { at: number; cua: Awaited<ReturnType<CuaProbe>>; harnesses: DeviceHarness[]; kind: DeviceKind };
+  type Cached = { at: number; cua: Awaited<ReturnType<CuaProbe>>; harnesses: Awaited<ReturnType<DeviceProbes["harnesses"]>>; kind: DeviceKind };
   let cached: Cached | undefined;
   let inflight: Promise<Cached> | undefined;
   const local = async (): Promise<Cached> => {
@@ -171,7 +171,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
     inflight ??= (async () => {
       const [cua, harnesses, kind] = await Promise.all([
         probes.cua().catch((e) => ({ missing: String((e as Error).message ?? e) })),
-        probes.harnesses().catch(() => [] as DeviceHarness[]),
+        probes.harnesses().catch(() => [] as Awaited<ReturnType<DeviceProbes["harnesses"]>>),
         probes.kind().catch(() => "laptop" as DeviceKind),
       ]);
       cached = { at: now(), cua, harnesses, kind };
@@ -226,7 +226,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
       kind: me.kind,
       home: true,
       state: "awake", // this answer comes from it
-      harnesses: me.harnesses,
+      harnesses: me.harnesses.map((h) => deviceHarness(h)),
       abilities: [webAbility(me.cua), later("computer"), { id: "remote", state: remoteOn ? "on" : "off" }, later("phone"), later("call")],
     };
     const online = new Map(o.workers.online().map((w) => [w.deviceId, w]));
@@ -251,7 +251,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
           state,
           ...(lastSeen ? { lastSeen } : {}),
           ...(hello?.version ? { version: hello.version } : {}),
-          harnesses: (hello?.harnesses ?? []).map((h) => ({ harness: h.id, installed: h.installed, loggedIn: h.loggedIn })),
+          harnesses: (hello?.harnesses ?? []).map((h) => deviceHarness({ harness: h.id, installed: h.installed, loggedIn: h.loggedIn })),
           // Browser places run on the machine Ducter lives on only, for now (runner.ts).
           abilities: [{ id: "web", state: "unavailable", reason: "home_only" }, later("computer"), later("phone"), later("call")],
         } satisfies DeviceView;

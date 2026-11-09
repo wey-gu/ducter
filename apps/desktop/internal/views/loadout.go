@@ -548,7 +548,13 @@ func (a *App) brainCard(c *ui.Context) {
 		ui.Row(c).Gap(t.S4).AlignItems(ui.Center).Children(func() {
 			a.socketWell(c, b)
 			ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
-				ui.Text(c, a.brainLine(b)).Font(t.Display).FontSize(t.LG).FontWeight(800).SingleLine()
+				head := a.brainLine(b)
+				if b.Model == "" && len(a.brainModels(b, h)) == 0 {
+					// No model to pick: the AI agent's own default, said on the
+					// line it belongs to rather than as a stray note.
+					head += " · " + a.L.T("loadout.model.default")
+				}
+				ui.Text(c, head).Font(t.Display).FontSize(t.LG).FontWeight(800).SingleLine()
 				if bn := a.S.BrainNow; bn != nil && bn.Why == "only_codex" && a.lo.pending == nil {
 					// D150: core picked it, the user didn't: say so.
 					ui.Text(c, a.L.T("loadout.brain.auto", harnessName(b.Harness))).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).MaxLines(2)
@@ -596,8 +602,6 @@ func (a *App) brainCard(c *ui.Context) {
 				a.setBrain(protocol.Brain{Harness: b.Harness, Model: ms[i].id})
 				lo.toast, lo.toastAt = a.L.T("loadout.toast.brain", a.S.PersonaName, harnessName(b.Harness)+" · "+ms[i].label), a.Now()
 			}
-		} else if b.Model == "" {
-			a.note(c, a.L.T("loadout.model.default"))
 		}
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Start).Children(func() {
 			ui.Box(c).Size(18, 18).Draw(drawCheck(t.Done.Ink)).Shrink(0).Margin(2, 0, 0, 0)

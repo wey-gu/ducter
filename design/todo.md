@@ -528,3 +528,8 @@ Codex first, once OAR is near 1.0. See `research/17`.
       next change to browser.ts.
 - [ ] D139: DeepSeek Harness's partner session is not read-only (no per-session tool denial in
       OAR; its read-only permission mode unverified). Trigger: dsh installed for a check.
+
+- **Chinese product name.** 「搭子」 is on hold: Baidu's AI office agent 百度搭子 (March 2026) is in
+  Ducter's category (`research/41-zh-name.md`). Decide between "Ducter 搭子" and another name after a
+  manual CNIPA search (classes 9, 42, 35, 38); the full zh pass is ready on branch
+  `worktree-agent-a55f33cfcf026e6c1` (commit 702fa74). Trigger: the author picks a name.

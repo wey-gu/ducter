@@ -1922,9 +1922,31 @@ function DecisionSheet({ id }: { id: string }) {
 }
 
 // A segmented choice: flat, the chosen one on the surface with an ink hairline (no ledge, no pill).
+// Options sit side by side while every label fits on one line; when they don't (a narrow phone,
+// longer words in the other language), the options stack, one per row, and never spill.
 function Seg<V extends string | number>(p: { label: string; value: V | undefined; options: { v: V; label: string }[]; onPick: (v: V) => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const words = p.options.map((o) => o.label).join("\n");
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const fit = () => {
+      el.classList.remove("stack");
+      el.classList.toggle("stack", el.scrollWidth > el.clientWidth + 1);
+    };
+    fit();
+    if (typeof ResizeObserver === "undefined") return;
+    let w = el.clientWidth;
+    const ro = new ResizeObserver(() => {
+      if (el.clientWidth !== w) (w = el.clientWidth), fit();
+    });
+    ro.observe(el);
+    // Fonts arriving late change the words' widths.
+    document.fonts?.ready.then(fit).catch(() => {});
+    return () => ro.disconnect();
+  }, [words]);
   return (
-    <div class="seg" role="radiogroup" aria-label={p.label}>
+    <div class="seg" role="radiogroup" aria-label={p.label} ref={ref}>
       {p.options.map((o) => (
         <button key={String(o.v)} role="radio" aria-checked={o.v === p.value} class={o.v === p.value ? "on" : ""} onClick={() => o.v !== p.value && p.onPick(o.v)}>
           {o.label}

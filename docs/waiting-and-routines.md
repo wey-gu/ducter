@@ -35,8 +35,8 @@ and **Look now** are on the same page.
 
 Ducter starts a task and keeps at it, one try after another. On **On hand** the task shows how
 close it is: when the goal is a set of checks, a row of little lights that turn green as they
-pass ("4 of 6 lights on · Try 3"); otherwise Ducter climbs steps toward a flag that turns green
-when it's done. It stops when it works, after 20 tries, or when a
+pass ("4 of 6 lights on · Try 3"), or as the things to fix get fixed ("12 of 16 done");
+otherwise it says how the latest try went. It stops when it works, after 20 tries, or when a
 few tries in a row make no progress; then it tells you. **Stop** is on the task's page.
 
 ## "Every Monday …"

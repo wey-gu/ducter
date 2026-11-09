@@ -235,7 +235,7 @@ Two primitives plus one property cover every case.
   - oscillation.
 
   The card shows how close the goal is: clay lights for checks that must pass ("6 盏灯里亮了 4 盏"),
-  or a staircase to a flag when it can't be counted; the try is a caption (D115). A try's own done report
+  or items a judge counted; when nothing can be counted, the latest try in words (D115). A try's own done report
   doesn't finish the task.
 - **Routine / 例行**: "every Monday at 9, draft the weekly report", "when someone replies to
   this thread, summarize it".

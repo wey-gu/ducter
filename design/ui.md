@@ -159,9 +159,9 @@ no leading zero on the hour; never 12-01 09:00. A groove's "now" caption sits un
 the start it takes the start's place, near the deadline it gives way.
 
 **A keep-going loop shows its goal; a routine shows its next day (D115, legible).** A counted
-goal is a row of clay lights lit as its checks pass (`goal_light_on/off`); one that can't be
-counted is a staircase of six steps to a clay flag (`goal_flag_off/on`), Ducter on the step of
-its latest try. A time routine leads with a tear-off clay calendar (`routine_calendar`) showing
+goal is a row of clay lights lit as its checks pass (`goal_light_on/off`); items a judge counts
+use the same lights; when nothing can be counted, Ducter at work and the latest try in one line
+(no invented progress picture). A time routine leads with a tear-off clay calendar (`routine_calendar`) showing
 the next date big, its cadence in words beside it.
 
 **Time is drawn; words are its caption (D115).** A wait with a deadline is a sunken groove from

@@ -406,8 +406,10 @@ examples.
   - Quiet hours shows as a small moon sign by the tray.
   - Still mode stops all of it, and every state still reads.
 - **Equip, as built.** On Partner, **加一个 / Add one** → where (OOMOL 托管 / Hosted by
-  OOMOL · 自己部署的 / Self-hosted · 其他 MCP / Other MCP) → 地址 / Address, 钥匙 / Key →
-  **检查并加上 / Check and add**.
+  OOMOL · 自己部署的 / Self-hosted · 其他服务 / Something else) → 地址 / Address, 钥匙 / Key →
+  **检查并加上 / Check and add**. The setup steps (OpenConnector's Access page, Create Token,
+  an MCP server's token) sit behind a quiet **怎么连 / How to connect** fold; the default
+  surface says only what it does for the person.
   - The result line is "Ducter 现在能看 {name} 里的账号了 / Ducter can now read the accounts in
     {name}".
   - 钥匙 / Key is OpenConnector's own word on its Access page. It is proposed for the

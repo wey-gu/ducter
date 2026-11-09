@@ -416,6 +416,11 @@ a {
     transform: scale(1.012, 1.03);
   }
 }
+/* How to connect: numbered steps, one per line. */
+.accounts .steps {
+  white-space: pre-line;
+}
+
 /* The blink's closed frame, over the open one: hidden but for a blink. */
 .avatar .idle .shut {
   position: absolute;

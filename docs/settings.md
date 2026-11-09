@@ -53,12 +53,14 @@ top of the conversation. On a phone, tap your partner at the top of the conversa
   accounts through [OpenConnector](https://github.com/oomol-lab/open-connector). Connect the
   accounts there first, make a key for Ducter on OpenConnector's Access page (Create Token), then choose
   **Add one**, pick where your OpenConnector runs, and paste its address and the key.
+  **How to connect**, under the key, lists these steps for the choice you picked.
   - **Hosted by OOMOL** needs no setup with Google, but your mail and sign-ins pass through
     OOMOL's servers.
   - **Self-hosted** keeps them on your own machine. For Gmail and similar accounts, you then
     set up your own app with Google in OpenConnector.
-  - If OOMOL's `oo` command line is set up with your own OpenConnector, choose **Use the
-    OpenConnector from oo** instead.
+  - If OOMOL's `oo` command line is set up with your own OpenConnector, choose **Use the one
+    you set up in oo** instead.
+  - **Something else** takes any other MCP server.
   - Your partner reads on its own, and asks you first before anything is sent or changed.
   - What it reads is shown to your AI account to understand it; no one else gets it.
   - **Remove** takes an account away, and the key with it. The key is kept only in

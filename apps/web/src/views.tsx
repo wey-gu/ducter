@@ -1777,6 +1777,7 @@ function Accounts() {
   const [where, setWhere] = useState<"oomol" | "self" | "mcp">("oomol");
   const [url, setUrl] = useState(HOSTED_URL);
   const [token, setToken] = useState("");
+  const [how, setHow] = useState(false); // How to connect: the setup steps behind a fold
   useEffect(() => {
     if (!A.connections) A.askConnections();
   }, []);
@@ -1827,6 +1828,10 @@ function Accounts() {
             <span class="small">{t("acct.key")}</span>
             <input id="acct-token" type="password" autoComplete="off" spellcheck={false} value={token} onInput={(e) => setToken((e.target as HTMLInputElement).value)} />
           </label>
+          <button class="qlink" aria-expanded={how} onClick={() => setHow(!how)}>
+            {t(how ? "acct.how.hide" : "acct.how")} ›
+          </button>
+          {how && <div class="small sub steps">{t(`acct.how.${where}`)}</div>}
           <div class="row">
             <Btn kind="text" label={t("acct.cancel")} onClick={() => (setAdding(false), setToken(""))} />
             <Btn kind="primary" label={A.connecting ? t("acct.checking") : t("acct.check")} disabled={A.connecting || !url.trim()} onClick={() => A.addConnection(url.trim(), token.trim())} />

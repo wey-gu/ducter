@@ -41,6 +41,12 @@ export interface EvidenceRef {
   kind: "ci" | "diff" | "file" | "url" | "log" | "test";
   label: string;
   ref: string;
+  /**
+   * Set by Ducter when a done report lands, never by the task (focus-window-states done? -> done):
+   * verified: the commit is on the task branch, or the file is in its place; missing: it isn't;
+   * absent: not checkable mechanically (a test count, a CI line, a URL), the task's word only.
+   */
+  check?: "verified" | "missing";
 }
 
 /** A task branch against its base: commits only it has, and work not yet committed. */

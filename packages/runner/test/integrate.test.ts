@@ -188,6 +188,46 @@ test("a done report carries the branch check: a task that changed nothing says s
   await runner.dispose();
 });
 
+// focus-window-states done? -> done: C checks the refs mechanically; the task's word alone stays "Done · checking".
+test("a done report's evidence is checked: a commit on the task branch or a file in the place makes it done", async () => {
+  const repo = join(dir, "repo");
+  Bun.spawnSync(["git", "init", "-q", "-b", "main", repo]);
+  writeFileSync(join(repo, "a.txt"), "a\n");
+  sh(repo, "add", ".");
+  sh(repo, "commit", "-qm", "init");
+  const onMain = (await git(repo, ["rev-parse", "HEAD"])).out;
+  sh(repo, "switch", "-q", "-c", "elsewhere");
+  writeFileSync(join(repo, "x.txt"), "x\n");
+  sh(repo, "add", ".");
+  sh(repo, "commit", "-qm", "x");
+  const offBranch = (await git(repo, ["rev-parse", "HEAD"])).out;
+  sh(repo, "switch", "-q", "main");
+  const { core, runner, taskId } = await bootWithTask({ kind: "repo", device: "local", repoPath: repo }, { branchChecks: true });
+  const wt = (core.tasks.get(taskId)!.place as Extract<Place, { kind: "repo" }>).worktree!;
+  writeFileSync(join(wt, "b.txt"), "b\n");
+  sh(wt, "add", ".");
+  sh(wt, "commit", "-qm", "b");
+  const sha = (await git(wt, ["rev-parse", "HEAD"])).out;
+  const done = async (evidence: unknown[]) => {
+    await core.mcp.call({ role: "task", taskId }, "report_to_main", { state: "done", summary: "Added b.", evidence });
+    await Bun.sleep(5);
+    return { attention: core.tasks.get(taskId)!.attention, evidence: core.tasks.get(taskId)!.lastReport!.evidence };
+  };
+  // The task's word only (a test count; a check it set itself is dropped).
+  expect(await done([{ kind: "test", label: "bun test", ref: "12 passed", check: "verified" }])).toEqual({ attention: "done_claimed", evidence: [{ kind: "test", label: "bun test", ref: "12 passed" }] });
+  // A commit that isn't on the task branch, and one that doesn't exist.
+  expect((await done([{ kind: "diff", label: "commit", ref: offBranch.slice(0, 10) }])).evidence[0]!.check).toBe("missing");
+  expect(await done([{ kind: "diff", label: "commit", ref: "deadbeef00" }])).toMatchObject({ attention: "done_claimed", evidence: [{ check: "missing" }] });
+  // The commit on its branch (an ancestor counts too), and a file in its worktree.
+  expect(await done([{ kind: "diff", label: "commit", ref: sha.slice(0, 8) }, { kind: "test", label: "t", ref: "ok" }])).toMatchObject({ attention: "done", evidence: [{ check: "verified" }, {}] });
+  expect((await done([{ kind: "diff", label: "commit", ref: onMain }])).attention).toBe("done");
+  expect(await done([{ kind: "file", label: "b", ref: "b.txt" }])).toMatchObject({ attention: "done", evidence: [{ check: "verified" }] });
+  expect(await done([{ kind: "file", label: "b", ref: join(wt, "nope.txt") }])).toMatchObject({ attention: "done_claimed", evidence: [{ check: "missing" }] });
+  // A path outside its place isn't Ducter's to vouch for.
+  expect((await done([{ kind: "file", label: "a", ref: join(repo, "a.txt") }])).evidence[0]!.check).toBeUndefined();
+  await runner.dispose();
+});
+
 test("archiveWorktree: removes only a clean worktree Ducter made, never forced; the branch stays", async () => {
   const p = repoWithTaskBranch(); // its worktree is outside any data folder
   const data = join(dir, "data");
@@ -323,7 +363,7 @@ async function bootWithTask(place: Place, opts: { gh?: string; branchChecks?: bo
   });
   core.setPartner({ onTrigger: () => {} });
   let late: ReturnType<typeof createRunner> | undefined;
-  registerTaskTools(core, opts.branchChecks ? { branchChanges: (id) => late!.branchChanges(id) } : {});
+  registerTaskTools(core, opts.branchChecks ? { branchChanges: (id) => late!.branchChanges(id), checkEvidence: (id, ev) => late!.checkEvidence(id, ev) } : {});
   const runner = createRunner(core, { harness: idlePort(), gh: opts.gh, newId: () => "t1", ...(opts.now ? { now: opts.now } : {}) });
   late = runner;
   core.setRunner(runner);

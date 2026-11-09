@@ -1,10 +1,11 @@
 import { randomBytes } from "node:crypto";
-import { HARNESS_IDS, harnessName, type Attention, type Bodies, type BranchChanges, type Delivery, type LogEvent, type Place, type Residency, type TaskCard } from "@ducter/protocol";
+import { HARNESS_IDS, harnessName, type Attention, type Bodies, type BranchChanges, type Delivery, type EvidenceRef, type LogEvent, type Place, type Residency, type TaskCard } from "@ducter/protocol";
 import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, SessionSpec } from "@ducter/protocol/src/internal.ts";
 import { NUDGE, REOPENED, RESUME_AFTER_RESTART, briefTurn, handedOver, kickoff, seedThen, startedAfresh, taskBrief } from "./brief.ts";
 import { createOarHarnessPort } from "./oar.ts";
 import { cwdOf, planPlace, provisionPlace } from "./places.ts";
 import { browserSidecar, codexComputerBrief, computerUseGuard, type BrowserGuardHit, type BrowserOptions, type BrowserSidecar, type BrowserTool, type SidecarInput } from "./browser.ts";
+import { checkEvidence } from "./evidence.ts";
 import { PREVIEW_MAX, preview } from "./normalize.ts";
 import { archiveWorktree, branchChanges, mergeTaskBranch, openDraftPr, type ActionResult } from "./integrate.ts";
 import { DEVICE_BACK, DeviceOfflineError, deviceOf, isOffline, remoteOps, type PlaceOps } from "./remote.ts";
@@ -58,6 +59,8 @@ export interface RunnerExt extends Runner {
   openPr(taskId: string): Promise<ActionResult>;
   /** What the task's branch holds that its base doesn't; undefined when not a repo task or unknown. */
   branchChanges(taskId: string): Promise<BranchChanges | undefined>;
+  /** A done report's evidence with `check` set where it can be checked here (evidence.ts); a worker's task: unchecked. */
+  checkEvidence(taskId: string, evidence: EvidenceRef[]): Promise<EvidenceRef[]>;
   /** Archives finished tasks idle past the archive horizon now; returns their ids (the timer runs it too). */
   sweepArchive(): Promise<string[]>;
   /** Alias of dispose, called by main on shutdown. */
@@ -808,6 +811,13 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     harness,
 
     sweepArchive,
+
+    async checkEvidence(taskId, evidence) {
+      const t = tasks.get(taskId);
+      // A worker's place lives on that machine: its refs stay the task's word for now.
+      if (!t || t.ops.device) return evidence;
+      return checkEvidence(core.tasks.get(taskId)?.place ?? t.card.place, t.spec.cwd, evidence);
+    },
 
     openTask: (input) => open(input, input.brief),
     // D120: the card, the place and the session start while the partner still writes the brief.

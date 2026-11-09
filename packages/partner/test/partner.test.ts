@@ -543,6 +543,25 @@ describe("activity while the user waits (D104)", () => {
     expect(seen).toEqual(["thinking", "recalling", "checking_task", null]);
   });
 
+  test("done? -> done: the partner's result turn confirms a claim the mechanical check left open, never a missing ref", async () => {
+    const { fc, partner } = setup((_i, s) => {
+      s.say("好了。");
+      s.end();
+    });
+    const card = (id: string) => ({ taskId: id, persona: "p", title: id, project: "", place: { kind: "none" as const }, harness: "claude-code", attention: "done_claimed" as const, residency: "warm" as const, openedAt: "", updatedAt: "" });
+    for (const [id, evidence] of [
+      ["t1", [{ kind: "test", label: "bun test", ref: "12 passed" }]],
+      ["t2", [{ kind: "diff", label: "commit", ref: "abc1234", check: "missing" }]],
+    ] as const) {
+      const body = { taskId: id, state: "done" as const, summary: "ok", questions: [], evidence: [...evidence] as Bodies["report"]["evidence"] };
+      fc.cards.set(id, { ...card(id), lastReport: body });
+      partner.onTrigger(fc.core.log.append({ stream: `task:${id}`, origin: "task", kind: "report", body }));
+    }
+    await partner.idle();
+    expect(fc.cards.get("t1")!.attention).toBe("done");
+    expect(fc.cards.get("t2")!.attention).toBe("done_claimed");
+  });
+
   test("a turn no one is waiting on (a task's report) shows nothing", async () => {
     const seen: unknown[] = [];
     const { fc, partner } = setup((_i, s) => {

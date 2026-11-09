@@ -31,7 +31,7 @@ export function renderTime(now: Date): string {
 function renderReport(r: Bodies["report"], title?: string): string {
   const head = `[task ${r.taskId}${title ? ` "${title}"` : ""} report: ${r.state}] ${clip(r.summary, 600)}`;
   const lines = [head];
-  for (const ev of r.evidence ?? []) lines.push(`  evidence (${ev.kind}): ${ev.label} -> ${ev.ref}`);
+  for (const ev of r.evidence ?? []) lines.push(`  evidence (${ev.kind}): ${ev.label} -> ${ev.ref}${ev.check === "verified" ? " [Ducter checked: there]" : ev.check === "missing" ? " [Ducter checked: NOT there; not done until it is]" : ""}`);
   for (const q of r.questions ?? []) {
     lines.push(
       `  question ${q.id}${q.blocking ? " (blocking)" : ""}: ${q.text}` +

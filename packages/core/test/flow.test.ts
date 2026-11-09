@@ -125,11 +125,21 @@ test("report states map to attention; done needs evidence", async () => {
   report(log, "t1", { state: "done", summary: "Fixed." });
   await tick();
   expect(tasks.get("t1")!.attention).toBe("done_claimed");
-  // Like runner's report_to_main: append, then set done_claimed itself; core reconciles to done.
+  // A test count is the task's word: not checkable, so it stays Done · checking.
   report(log, "t2", { state: "done", summary: "Fixed.", evidence: [{ kind: "test", label: "bun test", ref: "10/10 pass" }] });
   tasks.setState("t2", "done_claimed", "hot", "report: done");
   await tick();
+  expect(tasks.get("t2")!.attention).toBe("done_claimed");
+  // Like runner's report_to_main: it checked a ref (set `check`), appended, set done_claimed; core reconciles to done.
+  report(log, "t2", { state: "done", summary: "Fixed.", evidence: [{ kind: "test", label: "bun test", ref: "10/10 pass" }, { kind: "diff", label: "commit", ref: "abc1234", check: "verified" }] });
+  tasks.setState("t2", "done_claimed", "hot", "report: done");
+  await tick();
   expect(tasks.get("t2")!.attention).toBe("done");
+  // A ref Ducter found missing keeps it Done · checking, whatever else verified.
+  report(log, "t2", { state: "done", summary: "Fixed.", evidence: [{ kind: "file", label: "f", ref: "a.ts", check: "verified" }, { kind: "diff", label: "commit", ref: "def5678", check: "missing" }] });
+  tasks.setState("t2", "done_claimed", "hot", "report: done");
+  await tick();
+  expect(tasks.get("t2")!.attention).toBe("done_claimed");
   report(log, "t1", { state: "blocked", summary: "Waiting on CI" });
   await tick();
   expect(tasks.get("t1")).toMatchObject({ attention: "blocked", reason: "Waiting on CI" });

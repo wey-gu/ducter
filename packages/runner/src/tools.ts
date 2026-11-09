@@ -77,6 +77,7 @@ export function normalizeReport(taskId: string, args: any): Bodies["report"] {
         kind: EVIDENCE_KINDS.includes(e?.kind) ? e.kind : "log",
         label: String(e?.label ?? ""),
         ref: String(e?.ref ?? ""),
+        // never the task's own `check`: only Ducter sets it
       }))
     : [];
   return { taskId, state, summary, questions, evidence };
@@ -86,20 +87,26 @@ export interface TaskToolOptions {
   /** What the task's branch holds that its base doesn't, checked when a done or failed report
    *  lands (the runner's branchChanges). Clients offer Merge / Open draft PR only when it has some. */
   branchChanges?(taskId: string): Promise<BranchChanges | undefined>;
+  /** A done report's evidence with `check` set where Ducter can check it (the runner's
+   *  checkEvidence): a commit on the task branch, a file in its place. */
+  checkEvidence?(taskId: string, evidence: EvidenceRef[]): Promise<EvidenceRef[] | undefined>;
 }
 
 /** The branch check must never hold a report up: past this it is left unknown. */
 const BRANCH_CHECK_MS = 3_000;
 
-async function branchOf(opts: TaskToolOptions, taskId: string): Promise<BranchChanges | undefined> {
-  if (!opts.branchChanges) return undefined;
+async function inTime<T>(p: Promise<T | undefined>): Promise<T | undefined> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const late = new Promise<undefined>((r) => (timer = setTimeout(() => r(undefined), BRANCH_CHECK_MS)));
   try {
-    return await Promise.race([opts.branchChanges(taskId).catch(() => undefined), late]);
+    return await Promise.race([p.catch(() => undefined), late]);
   } finally {
     clearTimeout(timer);
   }
+}
+
+async function branchOf(opts: TaskToolOptions, taskId: string): Promise<BranchChanges | undefined> {
+  return opts.branchChanges ? inTime(opts.branchChanges(taskId)) : undefined;
 }
 
 export function registerTaskTools(core: CoreApi, opts: TaskToolOptions = {}): void {
@@ -123,6 +130,11 @@ export function registerTaskTools(core: CoreApi, opts: TaskToolOptions = {}): vo
       if (body.state === "done" || body.state === "failed") {
         const branch = await branchOf(opts, ctx.taskId);
         if (branch) body.branch = branch;
+      }
+      // The mechanical check of done? -> done; a check that can't finish in time leaves refs unchecked.
+      if (body.state === "done" && body.evidence.length && opts.checkEvidence) {
+        const checked = await inTime(opts.checkEvidence(ctx.taskId, body.evidence));
+        if (checked?.length === body.evidence.length) body.evidence = checked;
       }
       core.log.append({ persona, stream: `task:${ctx.taskId}`, origin: "task", kind: "report", body });
       const card = core.tasks.get(ctx.taskId);

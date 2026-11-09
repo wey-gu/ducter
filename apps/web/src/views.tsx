@@ -164,8 +164,8 @@ const Back = () => (
   </svg>
 );
 
-// A finished task reads "Done": done_claimed means nothing checked it yet, and no check runs
-// today, so "Done · checking" would promise one that never comes (desktop: stateLabel).
+// A finished task reads "Done": done_claimed means Ducter couldn't check its evidence and the
+// partner hasn't confirmed it yet, usually for seconds (desktop: stateLabel).
 const stateLabel = (a: Attention) => t(`state.${a === "done_claimed" ? "done" : a}`);
 
 /** One clay button family (D76): primary last in a row, at most one per group. */

@@ -46,6 +46,15 @@ Terminal states: `failed · dropped · superseded`. `done` is resting, not termi
 waiter, C notifies M. The window's state does not change. M climbs the read ladder (8), then
 steers, waits, or drops it.
 
+**`done?` as built** (`done_claimed`, shown as Done). When a done report lands, the runner
+checks each ref where that is cheap and reliable and sets its `check`: a commit sha (`diff` /
+`log` ref) must exist and be on the task branch; a `file` path inside the place must exist;
+tests, CI lines, URLs and logs are the task's word and stay unchecked (a task can't set `check`
+itself). A ref verified and none missing → `done`. Otherwise the task stays `done?` until the
+partner's result turn confirms it: it read the report and neither sent the task back nor asked
+(no tool call; "M judges" is implicit). A ref Ducter found missing is never confirmed so; the
+partner sees it marked and sends the task back. A worker's refs are not checked yet.
+
 **Missing report:** if a turn ends without `report_to_main`, C sends one cheap nudge ("report
 status"). If there is still no report, the window stays `working` and the stall rule applies.
 C never guesses `done`.

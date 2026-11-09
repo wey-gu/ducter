@@ -32,7 +32,11 @@
 | Routine | **例行 / Routine** | Recurring or triggered work |
 | Waiter | (shown as the reason for Waiting: "在等 PR 通过 / Waiting for the PR to be approved") | |
 | `until` loop | "一直…直到… / Keep … until …" on the task | |
-| Rule | **规则 / Rule** | A standing preference stated in words |
+| Rule | **规则 / Rule**; the list **你的规则 / Your rules** · **不要这条 / Remove** · **跟 {name} 说一条规则… / Tell {name} a rule…** | A standing preference stated in words. Added only by saying it in the conversation; listed and removed on Partner (D89). After two switches the same way the partner asks once "以后…也用 X？ / Use X for … from now on?" |
+| what the partner itself runs on (brain) | **它用什么想事情 / What it thinks with**; the socket **想事情用 / Thinks with** · **换一个 / Switch** · **挑一个放进去 / Pick one to put in** · "{name} 现在用 {agent} 想事情了 / {name} thinks with {agent} now" · **从你的下一句话开始用 / Takes over from your next message** · **换了以后，名字、记得的事和你们的对话都还在 / Switching keeps its name, what it remembers and your conversation** · models **最聪明 / Smartest** · **回得更快 / Faster replies** | D89. Never "brain", 脑子, "model settings" or "main AI" on screen. Only AI agents signed in on the Mac it lives on: "只能用 {name} 住的这台 Mac 上登录了的 AI agent" |
+| who does the tasks (`fw_candidates`) | **谁来做事 / Who does the tasks** · the tray **这台 Mac 上的 AI agent / AI agents on this Mac** · **用它做事 / Use it for tasks** (per account, on by default) · **按用量付费 / Pay per use** | D89. Default line: "每件事 {name} 挑一个：最合适、额度最够的那个 / For each task {name} picks one: the best fit with the most limit left" |
+| the partner's reserve | **其中 10% 给 {name} 留着 / 10% of it is kept for {name}**; when only it is left, "额度还剩 n% · 都是给 {name} 留着的 / n% left · all kept for {name}" | D89. One sentence says tasks and the partner share one limit: "做事和 {name} 想事情用的是同一份额度…" |
+| `body_selected` (who does a task, and why) | **谁在做 / Who's doing it**: "{agent} 在做，按你的规则「…」/ {agent} is doing it, by your rule "…"" · "…，因为 {agent} 额度不多了 / …, because {agent}'s limit is low" · "…，是你换的 / …; you switched it"; switching **换谁来做 / Switch who does it** · **现在 / Now** · reasons **你的规则 / Your rule** · **最适合这件事 / Best fit for this** · **快，省额度 / Fast, uses less of the limit** · "额度不够了 · 剩下的给 {name} 留着 / Not enough limit · the rest is kept for {name}" · **你关了「用它做事」/ Use it for tasks is off** · the button is the handoff's **换到 X 接着做 / Continue on X** | D89, D90. The conversation's task line ends with who (and why when it isn't the plain pick); the opened task's head says who in its meta line; the reason is a sentence in Details |
 | device states | **醒着 / Awake · 睡着了 / Asleep · 连不上 / Can't reach** · wake = **叫醒 / Wake** | Never "broken" or "offline" wording for sleep |
 | quota | **额度 / limit** ("额度还剩 80% / 80% of the limit left") | One per AI account, shared across its devices |
 | screen place controls | **画面 / Screen** tab · **接手 / Take over** · **还给它 / Give it back** | |
@@ -274,8 +278,9 @@ Each scenario needs a flow, states, copy (zh + en), and motion. Status is tracke
   quiet hours; escalation (badge → message → push → call); done with evidence; failed
   verification; failure; stall.
 - **E. Steering.** A follow-up in the conversation vs. inside the task; adding scope; switching
-  model or harness; handoff; pause or cancel; merging or splitting tasks; reopening days
-  later.
+  model or harness (换谁来做 / Switch who does it, D89); handoff; pause or cancel; merging or
+  splitting tasks; reopening days later; choosing what the partner thinks with and who does the
+  tasks (E6, D89).
 - **F. Memory and identity.** A rule created, edited, or forgotten; recalling something from
   weeks ago; Mem unavailable; switching or linking personas.
 - **G. Safety.** An intent that needs policy (push, send, pay, call); a credential request;

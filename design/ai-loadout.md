@@ -1,7 +1,9 @@
 # AI loadout: what the partner thinks with, and who does the tasks
 
-> Draft · 2026-11-09 · **Proposal, not decided.** Nothing here is a `Dn` yet; §9 lists the
-> decisions it asks for. Prototype: https://claude.ai/artifact/GCok6tfLJ91Vgkevz3yD6a (private; recommended
+> 2026-11-09 · **Decided as D89 (defaults approved "按建议 go") and built on branch
+> `ai-loadout`**; the opened task's layout that came with it is D90. §9 lists the decisions as
+> they were proposed; `design/decisions.md` has them as decided. Build evidence:
+> `~/dev/ducter-evidence/ai-loadout-build/`. Prototype: https://claude.ai/artifact/GCok6tfLJ91Vgkevz3yD6a (private; recommended
 > and runner-up, three kinds of user, Claude Code's limit plenty or almost out, zh/en, Still
 > mode, new words marked). Evidence (outside git, D75):
 > `~/dev/ducter-evidence/ai-loadout/` (`exp/` prompts, scripts, raw answers in `out/`, grades in

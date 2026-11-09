@@ -80,6 +80,27 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       with no default. Re-run the eval's ask scenarios after.
 - [ ] **Long paths in bubbles (D67):** middle-ellipsis with tap to expand, desktop and phone.
 
+### What it thinks with, and who does the tasks (D89, D90)
+
+- [ ] **The partner runs on `Settings.brain`.** UI, protocol and validation are built on
+      `ai-loadout`; starting the partner's session on the chosen harness and model is the
+      `harnesses` branch's. Trigger: merge both, then walk a switch live.
+- [ ] **Codex as what it thinks with** behind its config isolation (`-c` overrides, no user
+      `AGENTS.md`) and a pass of `packages/partner/eval`; pi and DeepSeek Harness the same,
+      each when it passes the eval.
+- [ ] **The partner's prompt sees Your rules** (today core applies them in `fw_candidates`;
+      the partner learns them only through `rule_list`). Trigger: a rule the partner ignores
+      when it pins a harness itself.
+- [ ] **Allowance on the tray is real** only where a harness reports it (`DeviceHarness.allowance`);
+      probes for Claude Code (`get_usage`) and Codex (`account/rateLimits`) are not built.
+- [ ] **Live handoff** between harnesses: verified with fake sessions only (runner test).
+- [ ] **Human comprehension test** of the socket and tray (`design/ai-loadout.md` §6: ≥ 80% on
+      key items, no boss or servant reads).
+- [ ] **Devices mark** is one status line (`BrainMark`); the rebuilt Devices stage (`isles`)
+      should place it so it isn't truncated ("Ducte…" at today's token width).
+- [ ] **The phone's opened task** keeps its title as the headline; D90's "what it is doing
+      now" headline is desktop-only so far.
+
 ## Long-term memory (`design/memory.md`)
 
 - [ ] **One live write** into a scratch Space, then archive it (the user's Mem is Cloud, so

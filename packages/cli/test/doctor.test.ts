@@ -64,6 +64,15 @@ describe("doctor", () => {
     expect(byId(r, "nmem").detail).toBe("connected (local)");
   });
 
+  test("D135: a harness version outside the verified range gets one quiet warning, nothing fails", async () => {
+    const r = await runDoctor(fake({ out: { "claude --version": { code: 0, stdout: "2.1.400 (Claude Code)\n" }, "codex --version": { code: 0, stdout: "codex-cli 0.167.0\n" } } }), en, opts);
+    expect(r.ok).toBe(true);
+    const warns = r.checks.filter((c) => c.id === "facts");
+    expect(warns).toHaveLength(1); // codex 0.167.0 is the verified one
+    expect(warns[0]).toMatchObject({ status: "warn", required: false, label: "Claude Code 2.1.400" });
+    expect(warns[0]!.detail).toContain("2.1.319");
+  });
+
   test("a fresh Mac: nothing installed, every missing item has one fix", async () => {
     const h = fake({ tools: [] });
     const r = await runDoctor(h, en, opts);

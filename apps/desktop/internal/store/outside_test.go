@@ -48,3 +48,19 @@ func TestBrowserStatus(t *testing.T) {
 		t.Error("still browsing when done")
 	}
 }
+
+func TestCompactionsCounted(t *testing.T) {
+	s := New()
+	c := func(seq int64, raw string) protocol.LogEvent {
+		return ev(seq, "task:c1", protocol.KindTaskEvent, protocol.TaskEvent{TaskID: "c1", Role: "system", Text: "compaction completed", Raw: json.RawMessage(raw)})
+	}
+	s.Apply(events(
+		c(1, `{"kind":"compaction_ended","outcome":"completed","compactions":1}`),
+		c(2, `{"kind":"compaction_started"}`),
+		c(3, `{"kind":"compaction_ended","outcome":"failed"}`),
+		c(4, `{"kind":"compaction_ended","outcome":"completed","compactions":2}`),
+	))
+	if n := s.Task("c1").Compactions; n != 2 {
+		t.Fatalf("compactions %d", n)
+	}
+}

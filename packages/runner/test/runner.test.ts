@@ -6,7 +6,7 @@ import { scriptedRuntime, type ScriptedTurn } from "@botiverse/oar/testing";
 import type { Runtime } from "@botiverse/oar/browser";
 import type { Bodies } from "@ducter/protocol";
 import type { HarnessEvent, HarnessPort, HarnessSession, SessionSpec } from "@ducter/protocol/src/internal.ts";
-import { createOarHarnessPort, createRunner, NUDGE, REOPENED, RESUME_AFTER_RESTART, registerTaskTools, taskBrief } from "../src/index.ts";
+import { afterCompaction, createOarHarnessPort, createRunner, NUDGE, PRECOMPACT_NOTE, REOPENED, RESUME_AFTER_RESTART, registerTaskTools, SAVE_BEFORE_COMPACT, taskBrief } from "../src/index.ts";
 import { git } from "../src/places.ts";
 import { createFakeCore, waitFor, type FakeCore } from "./fake-core.ts";
 
@@ -113,7 +113,7 @@ describe("session spec", () => {
     const card = await runner.openTask({ persona: "p1", title: "t", brief: "THE BRIEF TEXT", model: "haiku", language: "en" });
     await runner.whenStarted(card.taskId);
     const o = seen.options;
-    expect(o.model).toBe("haiku");
+    expect(o.model).toBe("claude-haiku-5-5"); // D135: the alias as its concrete id
     expect(o.appendSystemPrompt).toContain("**Language: English.**");
     expect((core.events.find((e) => e.kind === "task_open")!.body as { language?: string }).language).toBe("en");
     expect(o.appendSystemPrompt).toContain("THE BRIEF TEXT");
@@ -122,7 +122,14 @@ describe("session spec", () => {
     expect(o.mcpServers).toEqual([{ name: "ducter", type: "http", url: "http://127.0.0.1:0/mcp", headers: { Authorization: "Bearer task-token-tsk00001" } }]);
     expect(o.disallowedTools).toContain("AskUserQuestion");
     expect(o.userConfiguration).toBeUndefined(); // tasks keep the user's own Claude Code setup by default
-    expect(o.env?.CLAUDE_CODE_AUTO_COMPACT_WINDOW).toBeUndefined(); // the compactor bound is the partner's only
+    // D135: a 200K window on the standard (non-1M) model, compaction at 160K, a PreCompact note.
+    expect(o.env?.CLAUDE_CODE_DISABLE_1M_CONTEXT).toBe("1");
+    expect(o.env?.CLAUDE_CODE_AUTO_COMPACT_WINDOW).toBe("200000");
+    expect(Number(o.env?.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE)).toBeCloseTo(88.8889, 3); // (200K - 20K) x 88.89% = 160K
+    const settings = JSON.parse(o.launchArgs[o.launchArgs.indexOf("--settings") + 1]);
+    expect(settings.idleCompaction).toBe(false);
+    expect(settings.hooks.PreCompact[0].hooks[0].command).toContain("This is a Ducter task.");
+    expect(existsSync(join(o.cwd, ".claude"))).toBe(false); // the task's folder stays clean
     const open = core.events.find((e) => e.kind === "task_open")!;
     expect(open.stream).toBe("task:tsk00001");
     expect(open.origin).toBe("system");
@@ -628,5 +635,62 @@ describe("ack and go (D120): open before the brief is written", () => {
     expect(again.sessions).toHaveLength(0);
     expect(core.tasks.get(card2.taskId)).toMatchObject({ attention: "dropped" });
     await r2.dispose();
+  });
+});
+
+describe("small windows (D135): save before a compaction, the brief and progress again after it", () => {
+  const usage = (contextTokens: number): HarnessEvent => ({ role: "system", usage: { contextTokens }, raw: { kind: "usage" } });
+  const compacted: HarnessEvent = { role: "system", text: "compaction completed", raw: { kind: "compaction_ended", outcome: "completed", trigger: "auto" } };
+  const taskEvents = (id: string) => core.log.read({ stream: `task:${id}`, kinds: ["task_event"] }).map((e) => e.body as Bodies["task_event"]);
+  const compactions = (id: string) => taskEvents(id).filter((b) => (b.raw as { kind?: string } | undefined)?.kind === "compaction_ended");
+
+  test("mid-turn: one save ask near 140K, the compaction logged with its count, then brief + latest checkpoint steered in", async () => {
+    const fake = new FakePort();
+    const runner = createRunner(core, { harness: fake, newId: nextId });
+    const card = await runner.openTask({ persona: "p1", title: "Port the parser", brief: "Port the parser to Rust; tests green." });
+    await runner.whenStarted(card.taskId);
+    expect(fake.specs[0]).toMatchObject({ contextWindow: 200_000, harnessCompactAt: 160_000, preCompactNote: PRECOMPACT_NOTE });
+    const s = fake.sessions[0]!;
+    s.busyFlag = true;
+    s.emit(usage(90_000));
+    s.emit(usage(141_000));
+    s.emit(usage(150_000)); // asked once per compaction
+    await waitFor(() => s.sent.some((x) => x.text === SAVE_BEFORE_COMPACT));
+    expect(s.sent.filter((x) => x.text === SAVE_BEFORE_COMPACT)).toEqual([{ text: SAVE_BEFORE_COMPACT, mode: "steer" }]);
+    core.log.append({ persona: "p1", stream: `task:${card.taskId}`, origin: "task", kind: "checkpoint", body: { taskId: card.taskId, text: "lexer ported; parser next" } });
+    s.emit(compacted);
+    await waitFor(() => s.sent.length === 3);
+    const back = s.sent[2]!;
+    expect(back.mode).toBe("steer");
+    expect(back.text).toBe(afterCompaction("Port the parser to Rust; tests green.", "lexer ported; parser next"));
+    expect(back.text).toContain("<brief>\nPort the parser to Rust; tests green.\n</brief>");
+    expect(compactions(card.taskId)[0]).toMatchObject({ role: "system", text: "compaction completed", raw: { compactions: 1, contextTokens: 150_000, trigger: "auto" } });
+    // The next approach asks again; the next compaction counts 2.
+    s.emit(usage(145_000));
+    s.emit(compacted);
+    await waitFor(() => compactions(card.taskId).length === 2);
+    expect(compactions(card.taskId).map((b) => (b.raw as { compactions: number }).compactions)).toEqual([1, 2]);
+    expect(s.sent.filter((x) => x.text === SAVE_BEFORE_COMPACT)).toHaveLength(2);
+    await runner.dispose();
+  });
+
+  test("between turns: the brief and progress go first in the next turn, logged apart from the partner's words", async () => {
+    const fake = new FakePort();
+    const runner = createRunner(core, { harness: fake, newId: nextId });
+    const card = await runner.openTask({ persona: "p1", title: "t", brief: "THE BRIEF" });
+    await runner.whenStarted(card.taskId);
+    const s = fake.sessions[0]!;
+    s.emit(compacted); // idle: nothing steered
+    await waitFor(() => compactions(card.taskId).length === 1);
+    expect(s.sent).toHaveLength(1); // only the kickoff
+    await runner.send(card.taskId, "also update the README");
+    const turn = s.sent[1]!;
+    expect(turn.mode).toBe("turn");
+    expect(turn.text.startsWith(afterCompaction("THE BRIEF", undefined))).toBe(true);
+    expect(turn.text.endsWith("also update the README")).toBe(true);
+    const inputs = taskEvents(card.taskId).filter((b) => b.role === "user");
+    expect(inputs.at(-2)).toMatchObject({ from: "runner", raw: { delivered: "prefix" } });
+    expect(inputs.at(-1)).toMatchObject({ text: "also update the README" });
+    await runner.dispose();
   });
 });

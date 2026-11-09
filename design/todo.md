@@ -180,6 +180,18 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [ ] Bound pi's and DeepSeek Harness's own compactors for the partner (pi:
       `session_before_compact` → cancel, research/11 §7.3.7). Trigger: either becomes
       partner-capable.
+- [ ] D135 small windows on pi and DeepSeek Harness: pi has no per-session window or
+      compaction flag (settings.json `compaction.reserveTokens` only; a project `.pi/settings.json`
+      or an extension on `session_before_compact` could carry the save/re-inject); DeepSeek
+      Harness is unverified. Both run with their defaults. Trigger: a task on either runs long.
+- [ ] D135 periodic re-verify of `design/harnesses.md`: `bun scripts/probe-harnesses.ts --strict`
+      on each harness update (and in CI on a machine with them installed); widen `verified` only
+      after the live checks behind each fact are re-run. Trigger: `ducter doctor`'s warning, or
+      any probe drift.
+- [ ] D135 live checks owed: a task that actually reaches 160K on Claude Code and on Codex
+      (the save ask lands mid-turn, the PreCompact note shows in the summary, the brief comes
+      back, Details counts it); OAR's mid-turn `usage` events carrying a fresh context reading
+      (INFERRED; tests use fakes). Trigger: the next token budget for a long live run.
 - [ ] A long-running live check that the harness never compacts the partner: count
       `partner_session` `harness_compacted` events in real use. Trigger: the first one seen.
 - [ ] Read-fold and late fold (principle 5) are still not built.

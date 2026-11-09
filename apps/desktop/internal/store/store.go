@@ -105,6 +105,8 @@ type Task struct {
 	Sends []*Send
 	// Usage sums the token use of the turns seen.
 	Usage protocol.Usage
+	// Compactions is how many times the harness compacted the task's context (D135).
+	Compactions int
 	// Browser is what a browser task last looked at (task_event
 	// {role: system, raw.browser: {host, url}}), nil until one.
 	Browser *BrowserStatus
@@ -873,12 +875,19 @@ func (s *Store) applyTask(t *Task, ev protocol.LogEvent, body any) {
 	case *protocol.TaskEvent:
 		if b.Role == "system" && len(b.Raw) > 0 {
 			var raw struct {
-				Browser *BrowserStatus `json:"browser"`
+				Browser     *BrowserStatus `json:"browser"`
+				Kind        string         `json:"kind"`
+				Outcome     string         `json:"outcome"`
+				Compactions int            `json:"compactions"`
 			}
 			if json.Unmarshal(b.Raw, &raw) == nil && raw.Browser != nil && raw.Browser.Host != "" &&
 				(t.Browser == nil || t.Browser.Seq < ev.Seq) {
 				raw.Browser.Seq = ev.Seq
 				t.Browser = raw.Browser
+			}
+			// D135: the runner numbers each compaction of the task's context.
+			if raw.Kind == "compaction_ended" && (raw.Outcome == "" || raw.Outcome == "completed") {
+				t.Compactions = max(t.Compactions+1, raw.Compactions)
 			}
 		}
 		if u := b.Usage; u != nil {

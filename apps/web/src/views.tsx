@@ -1398,6 +1398,17 @@ function placePath(task: Task): string {
   return p.repoPath || p.path || "";
 }
 
+/** D135: how many times the task's harness compacted its context (the runner logs each, with its count). */
+export function compactions(task: Task): number {
+  let n = 0;
+  for (const ev of task.events) {
+    if (ev.kind !== "task_event") continue;
+    const raw = (ev.body as Bodies["task_event"]).raw as { kind?: string; outcome?: string; compactions?: number } | undefined;
+    if (raw?.kind === "compaction_ended" && (raw.outcome ?? "completed") === "completed") n = Math.max(n + 1, raw.compactions ?? 0);
+  }
+  return n;
+}
+
 function TaskDetails({ task }: { task: Task }) {
   const [open, setOpen] = useState(false);
   const who = whoSentence(task);
@@ -1406,6 +1417,7 @@ function TaskDetails({ task }: { task: Task }) {
   const where = placeLine(A.L, placeOf(task));
   const acts = task.historyLoaded ? outsideActs(task) : [];
   const cps = task.events.filter((ev) => ev.kind === "checkpoint");
+  const compacted = compactions(task);
   return (
     <section class="details-box">
       <button class={`fold-line${open ? " open" : ""}`} aria-expanded={open} onClick={() => setOpen(!open)}>
@@ -1433,13 +1445,14 @@ function TaskDetails({ task }: { task: Task }) {
               <dd title={placePath(task) || undefined}>{where}</dd>
             </>
           )}
-          {cps.length > 0 && (
+          {(cps.length > 0 || compacted > 0) && (
             <>
               <dt>{t("task.dossier.checkpoints")}</dt>
               <dd>
                 {cps.map((ev) => (
                   <div key={ev.seq}>{(ev.body as Bodies["checkpoint"]).text}</div>
                 ))}
+                {compacted > 0 && <div class="small">{compacted === 1 ? t("task.dossier.compacted.one") : t("task.dossier.compacted", compacted)}</div>}
               </dd>
             </>
           )}

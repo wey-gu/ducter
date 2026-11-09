@@ -1,7 +1,8 @@
 import { randomBytes } from "node:crypto";
 import { HARNESS_IDS, harnessName, type Attention, type Bodies, type BranchChanges, type Delivery, type LogEvent, type Place, type Residency, type TaskCard } from "@ducter/protocol";
 import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, SessionSpec } from "@ducter/protocol/src/internal.ts";
-import { NUDGE, REOPENED, RESUME_AFTER_RESTART, briefTurn, handedOver, kickoff, taskBrief } from "./brief.ts";
+import { NUDGE, PRECOMPACT_NOTE, REOPENED, RESUME_AFTER_RESTART, SAVE_BEFORE_COMPACT, afterCompaction, briefTurn, handedOver, kickoff, taskBrief } from "./brief.ts";
+import { resolveWindows, saveBeforeAt } from "@ducter/protocol/src/harness-facts.ts";
 import { createOarHarnessPort } from "./oar.ts";
 import { cwdOf, planPlace, provisionPlace } from "./places.ts";
 import { browserSidecar, codexComputerBrief, computerUseGuard, type BrowserGuardHit, type BrowserOptions, type BrowserSidecar, type BrowserTool, type SidecarInput } from "./browser.ts";
@@ -86,6 +87,12 @@ interface TaskRt {
   offlineTimer?: ReturnType<typeof setTimeout>;
   parkTimer?: ReturnType<typeof setTimeout>;
   offlineOff?: () => void;
+  // D135: the harness compacted this many times; asked to save before the next one; what the
+  // next turn starts with (the save ask, the brief and progress again after a compaction).
+  compactions: number;
+  saveAsked: boolean;
+  prefix: string[];
+  context?: number; // the harness's last context reading
 }
 
 /** The turn after a browser driver switch (D130): same task, now on Ducter's own browser. */
@@ -161,6 +168,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
   });
 
   const stream = (id: string) => `task:${id}`;
+  const taskWindows = () => (core.settings?.get().windows ?? resolveWindows(undefined, process.env).windows).tasks;
 
   function setState(t: TaskRt, attention: Attention, residency: Residency, reason?: string) {
     if (t.attention === attention && t.residency === residency && !reason) return;
@@ -221,9 +229,17 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
 
   /** Logs the text first (the Log is the record even if delivery fails), then delivers it. */
   async function deliver(t: TaskRt, text: string, mode: "turn" | "steer" | "queue", from: From, logged = false) {
+    // D135: what waits for the next turn (the save ask; the brief and progress after a
+    // compaction) goes first, logged as the runner's own words.
+    let sent = text;
+    if (mode === "turn" && t.prefix.length) {
+      const pre = t.prefix.splice(0).join("\n\n");
+      logInput(t, pre, "runner", "prefix");
+      sent = `${pre}\n\n---\n\n${text}`;
+    }
     if (!logged) logInput(t, text, from, mode);
     try {
-      await t.session!.send(text, mode);
+      await t.session!.send(sent, mode);
     } catch (err) {
       if (mode === "turn") t.running = false;
       logEvent(t, { role: "system", from: "runner", text: `delivery failed: ${preview(String(err), 500)}` });
@@ -274,6 +290,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const spec: SessionSpec = resume && t.sessionId ? { ...t.spec, resumeSessionId: t.sessionId } : t.spec;
     const session = await t.ops.harness.start(spec);
     t.session = session;
+    if (!spec.resumeSessionId) (t.context = undefined), (t.saveAsked = false); // a fresh context
     noteSessionId(t, session);
     void pump(t, session);
   }
@@ -347,12 +364,58 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     }
   }
 
+  // ---------- D135: small windows, compaction with save-before / re-inject-after ----------
+  /** Into the running turn when the harness takes input mid-turn; else first in the next turn. */
+  function sayBeforeNextInput(t: TaskRt, text: string) {
+    const s = t.session;
+    if (s && s.canSteer && isBusy(t)) {
+      void deliver(t, text, "steer", "runner").catch(() => t.prefix.push(text));
+      return;
+    }
+    t.prefix.push(text);
+  }
+
+  /** The brief as the task got it (D120: a later task_open carries it) and its latest checkpoint. */
+  function briefAndProgress(t: TaskRt): { brief: string | null; progress?: string } {
+    const opens = core.log.read({ stream: stream(t.id), kinds: ["task_open"], limit: 20 });
+    const brief = [...opens].reverse().map((e) => (e.body as Bodies["task_open"]).brief).find((b) => b?.trim()) ?? null;
+    const cps = core.log.read({ stream: stream(t.id), kinds: ["checkpoint"], limit: 500 });
+    const last = cps[cps.length - 1];
+    return { brief, ...(last ? { progress: (last.body as Bodies["checkpoint"]).text } : {}) };
+  }
+
+  function onCompacted(t: TaskRt) {
+    t.compactions++;
+    t.saveAsked = false;
+    t.context = undefined; // unknown until the harness's next call
+    t.prefix = t.prefix.filter((p) => p !== SAVE_BEFORE_COMPACT); // too late for it now
+    const { brief, progress } = briefAndProgress(t);
+    sayBeforeNextInput(t, afterCompaction(brief, progress));
+  }
+
   function handleEvent(t: TaskRt, ev: HarnessEvent) {
     const status = ev.tool && t.sidecar?.statusFor(ev.tool);
     if (status) logEvent(t, { role: "system", text: status.text, raw: { browser: { host: status.host, url: status.url, ...(status.own ? { own: true } : {}) } } });
     const early = (ev.raw as { kind?: string } | undefined)?.kind;
     if (early === "tool_call_started" || early === "tool_call_title" || early === "tool_call_head") return; // the ended event logs the call
     if (ev.tool && /(^|__)report_to_main$/.test(ev.tool.name) && ev.tool.ok !== false) t.reportedThisTurn = true;
+    // D135: save before the harness compacts; the brief and progress again after it.
+    if (ev.usage?.contextTokens) {
+      t.context = ev.usage.contextTokens;
+      if (!t.saveAsked && t.context >= saveBeforeAt(t.spec.harnessCompactAt ?? taskWindows().compactAt)) {
+        t.saveAsked = true;
+        sayBeforeNextInput(t, SAVE_BEFORE_COMPACT);
+      }
+    }
+    const compaction = early === "compaction_ended" || early === "compaction_started" ? (ev.raw as { kind: string; outcome?: string; trigger?: string }) : undefined;
+    const compacted = compaction?.kind === "compaction_ended" && (compaction.outcome ?? "completed") === "completed";
+    if (compaction) {
+      // Logged first (with the count and the size it had reached), then the brief goes back in.
+      const text = ev.text ?? (compaction.kind === "compaction_started" ? "compaction started" : `compaction ${compaction.outcome ?? "completed"}`);
+      logEvent(t, { role: "system", text, raw: { ...compaction, ...(compacted ? { compactions: t.compactions + 1 } : {}), ...(t.context ? { contextTokens: t.context } : {}) } });
+      if (compacted) onCompacted(t);
+      return;
+    }
     if (!ev.text && !ev.tool && !ev.turnEnd && !ev.thinking?.length) return; // usage-only or empty
     const raw = ev.turnEnd ? { turnEnd: true, ...(ev.raw as object | undefined) } : undefined;
     const tool = ev.tool
@@ -515,6 +578,11 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       isolateUserConfig: opts.isolateUserConfig ?? false,
       // D130: a task keeps Codex's own browser and Computer Use, also under the clean setup.
       keepNativeTools: true,
+      // D135: a small window on a standard-window model; the harness compacts at its point, with
+      // the PreCompact note where the harness has the hook (Settings.windows.tasks).
+      contextWindow: taskWindows().window,
+      harnessCompactAt: taskWindows().compactAt,
+      preCompactNote: PRECOMPACT_NOTE,
     };
     if (open.model) spec.model = open.model;
     return spec;
@@ -538,6 +606,9 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       started: Promise.resolve(),
       // Codex may use its own Computer Use in any place: the tripwire watches every Codex task.
       ...(spec.harness === "codex" ? { guard: computerUseGuard({ chromeOnly: true }) } : {}),
+      compactions: 0,
+      saveAsked: false,
+      prefix: [],
     };
   }
 
@@ -560,9 +631,10 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const now = card.body ? { ...open, harness: card.body.harness, model: card.body.model } : open;
     const t = newRt(open.taskId, e.persona, card, specFor(open.taskId, now, cwd), ops);
     for (const ev of core.log.read({ stream: stream(open.taskId), kinds: ["task_event"], limit: 50_000 })) {
-      const raw = (ev.body as Bodies["task_event"]).raw as { sessionId?: string; cwd?: string } | undefined;
+      const raw = (ev.body as Bodies["task_event"]).raw as { sessionId?: string; cwd?: string; kind?: string; compactions?: number } | undefined;
       if (raw?.sessionId) t.sessionId = t.loggedSessionId = raw.sessionId;
       if (raw?.sessionId && raw.cwd && ops.device) t.spec.cwd = t.base.cwd = raw.cwd;
+      if (raw?.kind === "compaction_ended" && raw.compactions) t.compactions = raw.compactions;
     }
     tasks.set(open.taskId, t);
     recovered.push(t);

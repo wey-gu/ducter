@@ -53,6 +53,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { HARNESSES, HARNESS_IDS, isHarnessId, type ActivityStep, type Bodies, type Brain, type EventKind, type HarnessId, type LogEvent, type Place, type TaskCard } from "../../protocol/src/index.ts";
 import type { CoreApi, HarnessEvent, HarnessSession, Partner, Runner } from "../../protocol/src/internal.ts";
+import { resolveWindows, WINDOW_MAX, WINDOW_MIN } from "../../protocol/src/harness-facts.ts";
 import { bridgeFromEnv, type BridgeClient, type BridgeContact, type BridgeOp } from "./bridge.ts";
 import { claimText, fixedOutcome, followCandidates, followLine, foldOut, inQuiet, lostLine, mayHaveGone, overAsks, whoForModel, whoForUser, zhJoin, FOLLOW_ACTIVE_MS, type OutKind, type OutOp, type OutState } from "./bridge-out.ts";
 import { createNmemClient, noMemory, type MemoryClient } from "./memory.ts";
@@ -100,8 +101,10 @@ export interface PartnerOptions {
    * with none (digests off, the writer failing), onto the verbatim window and pointers to the rest.
    */
   recutTokens?: number;
-  /** Where the harness's own compactor may start, kept above the re-cut (default max(200K, 1.5x re-cut)). */
+  /** Where the harness's own compactor may start, kept above the re-cut (default: the window). */
   harnessCompactAt?: number;
+  /** D135: the window the partner runs on (default Settings.windows.partner.window, 200K). */
+  contextWindow?: number;
 }
 
 export interface PartnerHandle extends Partner {
@@ -521,9 +524,13 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         })
       : null;
   const recallOn = opts.autoRecall ?? process.env.DUCTER_AUTO_RECALL === "1";
-  const recutTokens = opts.recutTokens ?? 120_000;
-  // Claude Code reads its window in 100K-1M (research/11 §7.3.7: bounded above our re-cut).
-  const harnessCompactAt = Math.min(1_000_000, Math.max(100_000, opts.harnessCompactAt ?? Math.max(200_000, Math.round(recutTokens * 1.5))));
+  // D135: a small window (200K by default, standard-window models), re-cut at 120K, the
+  // harness's own compactor capped at the window, so the re-cut always comes first (research/11
+  // §7.3.7). From Settings.windows (settings.json + DUCTER_PARTNER_* env); opts are the tests' seam.
+  const win = (core.settings?.get().windows ?? resolveWindows(undefined, process.env).windows).partner;
+  const recutTokens = opts.recutTokens ?? win.recutAt;
+  const contextWindow = Math.min(WINDOW_MAX, Math.max(WINDOW_MIN, opts.contextWindow ?? Math.max(win.window, opts.recutTokens ? Math.round(recutTokens * 1.5) : 0)));
+  const harnessCompactAt = Math.min(contextWindow, Math.max(recutTokens, opts.harnessCompactAt ?? (opts.recutTokens ? Math.max(win.compactAt, Math.round(recutTokens * 1.5)) : win.compactAt)));
   let recutting = false; // the fresh session being seeded is a re-cut
   const spineEvery = opts.spine ? (opts.spine.pokeMs ?? 15 * 60_000) : 15 * 60_000;
   const spineTimer = spine && spineEvery > 0 ? setInterval(() => void spine.poke(), spineEvery) : null;
@@ -778,6 +785,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       env: { ENABLE_TOOL_SEARCH: "false" },
       // The harness's own compactor stays above the re-cut and never runs while idle, so the
       // Log's digests, not the harness's summary, carry the long conversation (research/11 §7.3.7).
+      contextWindow,
       harnessCompactAt,
       ...(resumeSessionId ? { resumeSessionId } : {}),
     });

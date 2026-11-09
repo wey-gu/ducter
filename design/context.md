@@ -77,14 +77,19 @@ The design:
   re-cuts all the same. The spine's view gives the verbatim window and names the lines before
   it as not shown, with how to read them. With digests off, it gives the last 40 lines and the
   same pointer.
-- **The harness's own compactor** is bounded for the partner only (tasks keep their
-  harness's defaults), at max(200K, 1.5× the re-cut), so Ducter's re-cut always comes first:
-  - Claude Code (2.1.319): `CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000` (range 100K–1M; it
-    compacts a summary buffer below that), plus `idleCompaction: false` and
-    `precomputeCompactionEnabled: false` in the partner folder's `.claude/settings.local.json`
-    (the clean setup keeps the project and local setting sources).
-  - Codex (0.167): `-c model_auto_compact_token_limit=200000`.
-  - pi and DeepSeek Harness: not bounded yet.
+- **A small window (D135).** The partner runs on a 200K window with a standard-window model,
+  never a 1M variant, and its harness's own compactor is capped at that window, so Ducter's
+  re-cut at 120K always comes first. Values come from `Settings.windows` (settings.json, env
+  `DUCTER_PARTNER_WINDOW` / `_RECUT_AT` / `_COMPACT_AT`); the per-harness knobs come from
+  `packages/protocol/src/harness-facts.ts` (readable twin: `design/harnesses.md`):
+  - Claude Code (2.1.319): `CLAUDE_CODE_DISABLE_1M_CONTEXT=1` (without it every model name,
+    alias or full id, got a 1M window on a Max account; with it, 200K: VERIFIED live),
+    `CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000` (its own point is then 167K), the alias passed as
+    its concrete id (`opus` → `claude-opus-5-5`, `[1m]` stripped), plus `idleCompaction: false`
+    and `precomputeCompactionEnabled: false` in the partner folder's
+    `.claude/settings.local.json` (the clean setup keeps the project and local sources).
+  - Codex (0.167): `-c model_context_window=200000 -c model_auto_compact_token_limit=200000`.
+  - pi and DeepSeek Harness: no per-session knob yet (todo).
 - **If the harness compacts anyway** (a model with a smaller window, a harness that isn't
   bounded), the compaction is logged and the next turn re-cuts, so the harness's summary never
   stands in for the spine. Re-cuts and harness compactions are logged as `partner_session`

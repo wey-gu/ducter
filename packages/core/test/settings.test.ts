@@ -4,6 +4,7 @@ import { afterEach, expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { ServerFrame } from "@ducter/protocol";
+import { WINDOW_DEFAULTS } from "@ducter/protocol/src/harness-facts.ts";
 import { startCore, type Core } from "../src/core.ts";
 import { tempDir } from "./helpers.ts";
 
@@ -48,7 +49,7 @@ test("defaults: follow the user, remember, notifications on, no quiet hours, 30 
   const c = await client(core.url);
   c.send({ t: "settings" });
   const f = await c.until<SettingsFrame>((x) => x.t === "settings");
-  expect(f.settings).toEqual({ name: "Ducter", language: "auto", memory: true, notify: true, quiet: null, defaultAfterMin: 30, brain: { harness: "claude-code", model: "opus" } });
+  expect(f.settings).toEqual({ name: "Ducter", language: "auto", memory: true, notify: true, quiet: null, defaultAfterMin: 30, brain: { harness: "claude-code", model: "opus" }, windows: WINDOW_DEFAULTS });
   expect(f.mem.state).toBe("missing"); // nothing has answered from Mem yet
   expect(f.mem.noted).toEqual([]);
 });

@@ -4,7 +4,8 @@ import { accessSync, constants, existsSync, mkdirSync, readFileSync, rmSync, wri
 import { join } from "node:path";
 import type { MsgKey, T } from "./i18n.ts";
 import { probeHarnesses } from "@ducter/core/src/harness-probe.ts";
-import { CLAUDE_TOKEN_ENV } from "@ducter/protocol";
+import { CLAUDE_TOKEN_ENV, harnessName } from "@ducter/protocol";
+import { HARNESS_FACTS, versionStanding } from "@ducter/protocol/src/harness-facts.ts";
 import { readKeys } from "@ducter/protocol/src/keys.ts";
 
 export const MIN_BUN = "1.3.0";
@@ -40,7 +41,7 @@ export interface Host {
 const CUA_APP_BIN = "/Applications/CuaDriver.app/Contents/MacOS/cua-driver";
 const CUA_TOOLS = ["browser_prepare", "get_browser_state", "browser_navigate"];
 
-export type CheckId = "bun" | "git" | "claude" | "codex" | "pi" | "dsh" | "nmem" | "cua" | "port" | "data" | "service" | "devices";
+export type CheckId = "bun" | "git" | "claude" | "codex" | "pi" | "dsh" | "nmem" | "cua" | "port" | "data" | "service" | "devices" | "facts";
 export type CheckStatus = "ok" | "missing" | "warn";
 
 export interface Check {
@@ -166,9 +167,9 @@ export async function runDoctor(host: Host, t: T, opts: DoctorOptions): Promise<
       return { installed: true, loggedIn: (auth.code === 0 && j?.loggedIn === true) || kept, token, version: firstVersion(v.stdout) };
     })(),
     (async () => {
-      if (!host.which("codex")) return { installed: false, loggedIn: false };
-      const r = await host.run(["codex", "login", "status"], 15_000);
-      return { installed: true, loggedIn: r.code === 0 && /logged in/i.test(r.stdout) && !/not logged in/i.test(r.stdout) };
+      if (!host.which("codex")) return { installed: false, loggedIn: false, version: "" };
+      const [r, v] = await Promise.all([host.run(["codex", "login", "status"], 15_000), host.run(["codex", "--version"])]);
+      return { installed: true, loggedIn: r.code === 0 && /logged in/i.test(r.stdout) && !/not logged in/i.test(r.stdout), version: firstVersion(v.stdout) };
     })(),
     (async () => {
       // Off means off: no identity read, no recall, no saves (review 2 #14), so say that, not "connected".
@@ -251,6 +252,15 @@ export async function runDoctor(host: Host, t: T, opts: DoctorOptions): Promise<
   const anyReady = harnessReady || !!pi?.loggedIn || !!ds?.loggedIn;
   if (anyReady && !harnessReady) {
     claudeCheck.required = false;
+  }
+
+  // D135: a harness version outside what protocol/harness-facts.ts was verified against gets one
+  // quiet line; its window and compaction settings may have moved (bun scripts/probe-harnesses.ts).
+  for (const [h, version] of [["claude-code", claude.version], ["codex", codex.version]] as const) {
+    const standing = version ? versionStanding(h, version) : "unknown";
+    if (standing !== "newer" && standing !== "older") continue;
+    const f = HARNESS_FACTS[h].verified;
+    extra.push(c("facts", "check.facts", "warn", false, "check.facts.unverified", { harness: harnessName(h), version, verified: f.from === f.to ? f.from : `${f.from}–${f.to}` }));
   }
 
   const checks = [bun, git, claudeCheck, codexCheck, ...extra, nmem, cua, portCheck, dataCheck];

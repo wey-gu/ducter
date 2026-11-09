@@ -145,6 +145,7 @@ test("the harness's compactor is bounded for the partner, above the re-cut", asy
   await w.say("你好");
   const spec = w.fr.sessions[0]!.spec;
   expect(spec.harnessCompactAt).toBe(200_000);
+  expect(spec.contextWindow).toBe(200_000); // D135: a small window, standard-window model (runner/oar.ts)
   expect(spec.harnessCompactAt!).toBeGreaterThan(120_000);
   expect(spec.env).toEqual({ ENABLE_TOOL_SEARCH: "false" });
   await w.partner.close();

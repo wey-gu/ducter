@@ -56,6 +56,24 @@ The window writes a checkpoint after each meaningful step, while it is still hea
 records where the work stands, what is done, what comes next, open questions, and any
 intents in flight.
 
+**Small windows and compaction (D135).** A task runs on a 200K window with a standard-window
+model, and its harness compacts it at 160K (`Settings.windows.tasks`, env `DUCTER_TASK_WINDOW`
+/ `DUCTER_TASK_COMPACT_AT`). Around each compaction:
+1. **Before.** Once the harness's context reading passes 140K, the runner asks the task once to
+   call `checkpoint` now (steered into the running turn, else first in the next one). On
+   Claude Code a `PreCompact` hook (through `--settings`, so the worktree stays clean) adds
+   compact instructions: keep the ask, the latest checkpoint, files and commits, the next step.
+2. **After.** On `compaction_ended` the runner sends the brief again and the latest
+   checkpoint (steered, else as the next turn's prefix, logged as the runner's own input).
+3. **Logged.** Each compaction is a `task_event` (`raw.kind: "compaction_ended"`,
+   `compactions: n`, the size it had reached); the opened task's Details shows
+   **压缩过 n 次 / Compacted n times** under Saved progress, quietly.
+
+Knobs per harness: Claude Code `CLAUDE_CODE_DISABLE_1M_CONTEXT=1`,
+`CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000`, `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=88.8889`
+(threshold = (window − 20K) × pct = 160K); Codex `model_context_window=200000`,
+`model_auto_compact_token_limit=160000`; pi and DeepSeek Harness none yet.
+
 A handoff never depends on the old model still working. A new window is seeded from the
 brief + latest checkpoint + Log on the *same* environment, and the old one becomes
 `superseded`. Triggers: quota exhausted, a failure, a machine going offline, or a deliberate

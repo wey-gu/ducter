@@ -68,6 +68,8 @@ type devicesState struct {
 	// signH is the pairing sign's height, last frame (its post reaches down
 	// from it to the water).
 	signH float32
+	// signRight: the sign takes the stage's right side (else its bottom).
+	signRight bool
 	// refreshed: the sign-in jobs whose end already asked for fresh devices.
 	refreshed map[*local.Job]bool
 }

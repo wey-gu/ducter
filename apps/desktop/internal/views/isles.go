@@ -232,7 +232,8 @@ func (v view) r(r ui.Rect) ui.Rect {
 // sceneView fits what is on stage (the islands, what stands on them, the
 // words under them, and the spot a device is joining at) into the stage:
 // one device is shown large, six fill it. Never larger than 1.35.
-func sceneView(sw, sh float32, all []isle, spot *isle) view {
+func sceneView(area ui.Rect, all []isle, spot *isle) view {
+	sw, sh := area.W, area.H
 	bx0, by0, bx1, by1 := float32(1e9), float32(1e9), float32(-1e9), float32(-1e9)
 	add := func(s *isle) {
 		top := s.dev.Y
@@ -255,7 +256,7 @@ func sceneView(sw, sh float32, all []isle, spot *isle) view {
 	bx0, by0, bx1, by1 = bx0-pad, by0-pad, bx1+pad, by1+pad
 	bw, bh := bx1-bx0, by1-by0
 	k := min(sw/bw, sh/bh, 1.35)
-	return view{k: k, ox: (sw-bw*k)/2 - bx0*k, oy: (sh-bh*k)/2 - by0*k}
+	return view{k: k, ox: area.X + (sw-bw*k)/2 - bx0*k, oy: area.Y + (sh-bh*k)/2 - by0*k}
 }
 
 // easeView moves the scene's framing to v over 420 ms (a device joining
@@ -433,7 +434,11 @@ func (a *App) stage(c *ui.Context, dv *protocol.DeviceView) {
 		spot = newIsle(all)
 		a.noticeJoin(all)
 	}
-	v := a.easeView(sceneView(sw, sh, all, spot), now, still)
+	target := sceneView(ui.Rect{W: sw, H: sh}, all, spot)
+	if spot != nil {
+		target = a.makeRoomForSign(target, all, spot, sw, sh)
+	}
+	v := a.easeView(target, now, still)
 	if d.viewTo != v {
 		c.After(16 * time.Millisecond)
 	}
@@ -465,12 +470,12 @@ func (a *App) stage(c *ui.Context, dv *protocol.DeviceView) {
 				}
 			}
 			a.paintWaterRing(p, r, v, spot, grow)
-			if at, foot := a.signAt(v, spot, all, sw, sh); foot.Y > 0 {
-				// The sign's post, from the water up to the sign.
+			if at, foot := a.signAt(v, spot, sw, sh); foot.Y > 0 {
+				// The sign's post, from the water down to the sign.
 				x := r.X + foot.X - 4*v.k
-				top := r.Y + at.Y + at.H - 6
-				p.Fill(ui.Rect{X: x + 2*v.k, Y: top + 3*v.k, W: 8 * v.k, H: r.Y + foot.Y - top}, ui.RGBA(30, 80, 86, 0.18), 4*v.k)
-				p.Fill(ui.Rect{X: x, Y: top, W: 8 * v.k, H: (r.Y + foot.Y - top) * grow}, a.T.Isles.Plank, 4*v.k)
+				top, bot := r.Y+foot.Y, r.Y+at.Y+8
+				p.Fill(ui.Rect{X: x + 3*v.k, Y: top + 4*v.k, W: 8 * v.k, H: bot - top}, ui.RGBA(30, 80, 86, 0.16), 4*v.k)
+				p.Fill(ui.Rect{X: x, Y: top, W: 8 * v.k, H: (bot - top) * grow}, a.T.Isles.Plank, 4*v.k)
 			}
 			a.paintBridge(p, r, v, home, spot, lift[home.key], 0, 0.72*ui.EaseOut(grow), now, still)
 		}

@@ -53,7 +53,7 @@ func (a *App) pairSign(c *ui.Context, v view, spot *isle, all []isle, sw, sh flo
 	t := a.T
 	d := a.devState()
 	pc := a.S.PairCode
-	at, _ := a.signAt(v, spot, all, sw, sh)
+	at, _ := a.signAt(v, spot, sw, sh)
 	sign := ui.Column(c.Key("pair")).Absolute().Left(at.X).Top(at.Y).Width(at.W).
 		Padding(t.S3, t.S4, t.S4, t.S4).Gap(t.S2).Radius(t.RadiusLG).Background(t.Surface).
 		Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).ZIndex(10).
@@ -112,59 +112,43 @@ func (a *App) pairSign(c *ui.Context, v view, spot *isle, all []isle, sw, sh flo
 	}
 }
 
-// signAt is where the sign stands by the still water, kept inside the
-// stage: above it on a short post (foot is the post's foot, in the
-// water), else below, beside it right or left, whichever covers the
-// least of the islands.
-func (a *App) signAt(v view, spot *isle, all []isle, sw, sh float32) (ui.Rect, ui.Point) {
+// makeRoomForSign frames the scene beside the sign while the code is
+// out: the sign takes the stage's right side or its bottom, whichever
+// leaves the islands larger, and never covers one.
+func (a *App) makeRoomForSign(full view, all []isle, spot *isle, sw, sh float32) view {
 	d := a.devState()
-	w := min(sw-24, 290)
-	h := d.signH
+	w, h := a.signSize(sw)
+	right := sceneView(ui.Rect{W: sw - w - 24, H: sh}, all, spot)
+	bottom := sceneView(ui.Rect{W: sw, H: sh - h - 24}, all, spot)
+	d.signRight = right.k >= bottom.k && sw-w-24 > 200
+	if d.signRight {
+		return right
+	}
+	return bottom
+}
+
+func (a *App) signSize(sw float32) (float32, float32) {
+	h := a.devState().signH
 	if h == 0 {
-		h = 220
+		h = 260
 	}
-	ring := v.r(ui.Rect{X: spot.is.X + spot.is.W*0.08, Y: spot.is.Y + spot.is.H*0.18, W: spot.is.W * 0.84, H: spot.is.H * 0.64})
-	cx, cy := ring.X+ring.W/2, ring.Y+ring.H/2
-	clamp := func(r ui.Rect) ui.Rect {
-		r.X = min(max(r.X, 12), sw-r.W-12)
-		r.Y = min(max(r.Y, 12), sh-r.H-12)
-		return r
+	return min(sw-24, 320), h
+}
+
+// signAt is where the sign stands: in the room made for it, level with
+// the still water (on the right) or under it (at the bottom, on a short
+// post up to the water: foot is the post's top).
+func (a *App) signAt(v view, spot *isle, sw, sh float32) (ui.Rect, ui.Point) {
+	d := a.devState()
+	w, h := a.signSize(sw)
+	cx, cy := v.x(spot.is.X+spot.is.W/2), v.y(spot.is.Y+spot.is.H*0.5)
+	if d.signRight {
+		y := min(max(cy-h/2, 12), sh-h-12)
+		return ui.Rect{X: sw - w - 12, Y: y, W: w, H: h}, ui.Point{}
 	}
-	post := 30 * v.k
-	cands := []ui.Rect{
-		{X: cx - w/2, Y: ring.Y - post - h, W: w, H: h},
-		{X: cx - w/2, Y: ring.Y + ring.H + 10, W: w, H: h},
-		{X: ring.X + ring.W + 10, Y: cy - h/2, W: w, H: h},
-		{X: ring.X - 10 - w, Y: cy - h/2, W: w, H: h},
-	}
-	overlap := func(a, b ui.Rect) float32 {
-		x := min(a.X+a.W, b.X+b.W) - max(a.X, b.X)
-		y := min(a.Y+a.H, b.Y+b.H) - max(a.Y, b.Y)
-		if x <= 0 || y <= 0 {
-			return 0
-		}
-		return x * y
-	}
-	best, bestScore := 0, float32(-1)
-	for i, c := range cands {
-		r := clamp(c)
-		score := overlap(r, ring) * 4
-		for _, s := range all {
-			box := v.r(s.is)
-			dev := v.r(s.dev)
-			top := dev.Y
-			if s.home {
-				top -= 110 * v.k
-			}
-			score += overlap(r, ui.Rect{X: box.X, Y: top, W: box.W, H: box.Y + box.H + 30 - top})
-		}
-		score += (abs32(r.X-c.X) + abs32(r.Y-c.Y)) * 20 // moved away from the water
-		if bestScore < 0 || score < bestScore-1 {
-			best, bestScore = i, score
-		}
-	}
-	r := clamp(cands[best])
-	if best == 0 && r.Y+r.H < ring.Y {
+	x := min(max(cx-w/2, 12), sw-w-12)
+	r := ui.Rect{X: x, Y: sh - h - 12, W: w, H: h}
+	if cx > r.X+20 && cx < r.X+r.W-20 && cy < r.Y {
 		return r, ui.Point{X: cx, Y: cy}
 	}
 	return r, ui.Point{}

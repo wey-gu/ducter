@@ -8,7 +8,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
-// Devices › 上网 on a server (D150): what's in the way of Ducter's own
+// Devices › 上网 on a server (D151): what's in the way of Ducter's own
 // browser (the one command, or why the install failed, with Try again),
 // and once it is on, 已登录的网站 / Signed-in sites with 退出 / Sign out
 // per site and 全部清掉 / Clear all.

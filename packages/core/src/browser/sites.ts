@@ -1,4 +1,4 @@
-// 已登录的网站 / Signed-in sites in Ducter's browser (D150). The list is the sites the user signed
+// 已登录的网站 / Signed-in sites in Ducter's browser (D151). The list is the sites the user signed
 // in to through a live view (kept beside the profile in <profile>.sites.json), with how many
 // cookies the browser still holds for each. Cookie values never leave the browser: only counts.
 // 退出 / Sign out clears one site's cookies and stored data; 全部清掉 / Clear all clears every

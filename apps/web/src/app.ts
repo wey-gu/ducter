@@ -85,7 +85,7 @@ class AppState {
   /** D148: every device and every phone or window that reaches Ducter (Settings › Your devices), and
    *  why the last update or rename from here was refused. */
   devices?: DeviceView[];
-  /** D150: the signed-in sites of Ducter's browser on the home, once asked for. */
+  /** D151: the signed-in sites of Ducter's browser on the home, once asked for. */
   sites?: Extract<ServerFrame, { t: "browser_sites" }>;
   reach?: Reach;
   deviceAnswer?: { device: string; reason: UpdateReason | "name_taken" | "failed" };
@@ -102,7 +102,7 @@ class AppState {
   connecting = false;
   route: Route = { name: "conv" };
   sheet: Sheet = null;
-  /** D150: the live view of Ducter's browser, while the user signs in (never stored). */
+  /** D151: the live view of Ducter's browser, while the user signs in (never stored). */
   live?: { decisionId: string; site: string; state: "opening" | "open"; id?: string; src?: string; seq?: number; w?: number; h?: number; url?: string; title?: string };
   status: ConnStatus = "connecting";
   me?: Me;
@@ -629,7 +629,7 @@ class AppState {
     else this.sendMessage(h.text, true), (this.draft = "");
   }
 
-  /** D150: open the live view of Ducter's browser for a sign-in card, sized to this screen. */
+  /** D151: open the live view of Ducter's browser for a sign-in card, sized to this screen. */
   openLive(decisionId: string, site: string, size: { width: number; height: number; scale?: number }) {
     this.live = { decisionId, site, state: "opening" };
     this.send({ t: "live_open", decisionId, width: Math.round(size.width), height: Math.round(size.height), ...(size.scale ? { scale: size.scale } : {}) });

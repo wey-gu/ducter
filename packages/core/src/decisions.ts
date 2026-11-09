@@ -29,7 +29,7 @@ export interface Decisions {
 export const DEFAULT_DELAY_MS = 30 * 60 * 1000;
 
 export function forwardText(d: Bodies["decision"], r: Bodies["decision_resolved"]): string {
-  // D150: the user signed in themselves in the live view; the task checks the page again.
+  // D151: the user signed in themselves in the live view; the task checks the page again.
   if (r.option === "go" && d.signIn)
     return `The user says they're signed in to ${d.signIn.site} in Ducter's browser (they did it themselves; you saw nothing of it). browser_read the page to check, then carry on.`;
   if (r.option === "go") return `User says Go: ${d.goLabel}.`;

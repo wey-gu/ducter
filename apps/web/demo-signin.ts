@@ -1,4 +1,4 @@
-// A demo core for the sign-in card and the live view (D150): a real core with Ducter's own
+// A demo core for the sign-in card and the live view (D151): a real core with Ducter's own
 // browser (headless Chrome for Testing), a browser task that asked to sign in to a local test
 // site, stub partner and runner. Shots and manual checks only; no real site is signed into.
 //   DUCTER_CHROME=<Chrome for Testing> DUCTER_PORT=7796 DUCTER_DATA_DIR=/tmp/x DEMO_LANG=zh bun apps/web/demo-signin.ts

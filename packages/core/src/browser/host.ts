@@ -1,4 +1,4 @@
-// Ducter's own browser, held by the main process (D150). One headless Chrome per persona profile
+// Ducter's own browser, held by the main process (D151). One headless Chrome per persona profile
 // (<dataDir>/browser-profiles/<name>), started when a task or the user needs it and quit cleanly
 // (Browser.close, so cookies are saved) when nobody does. Tasks get tabs of their own; the live
 // view (live.ts) and the Sites list (sites.ts) reach the same browser.
@@ -188,7 +188,7 @@ export function createBrowserHost(o: HostOptions): BrowserHost {
       t.tabs.push(targetId);
       t.current = targetId;
       const sessionId = await api.session(b, targetId);
-      // Downloads land in the task's own folder (D150).
+      // Downloads land in the task's own folder (D151).
       mkdirSync(t.downloads, { recursive: true });
       await b.cdp.send("Browser.setDownloadBehavior", { behavior: "allow", downloadPath: t.downloads, eventsEnabled: true }).catch(() => {});
       return { b, targetId, sessionId };

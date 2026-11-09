@@ -704,7 +704,7 @@ type decisionStyle struct {
 func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decisionStyle) {
 	t := a.T
 	if d.SignIn != nil {
-		a.signInButtons(c, d, st) // D150: Sign in opens the live view
+		a.signInButtons(c, d, st) // D151: Sign in opens the live view
 		return
 	}
 	if d.Resolved != nil || d.Pending != "" {

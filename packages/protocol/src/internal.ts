@@ -116,7 +116,7 @@ export interface CoreApi {
   activity?: { set(a: PartnerActivity | null): void };
   /** Frozen digests of the channel (design/memory.md), in the Log's own database; absent in stubs. */
   spine?: SpineStore;
-  /** D150: Ducter's own browser (a server's 上网); absent in tests and stubs. */
+  /** D151: Ducter's own browser (a server's 上网); absent in tests and stubs. */
   browser?: DucterBrowserPort;
 }
 
@@ -204,7 +204,7 @@ export interface WorkerLink {
 }
 
 /**
- * D150: Ducter's own browser, owned by the main process: Chrome for Testing headless, one
+ * D151: Ducter's own browser, owned by the main process: Chrome for Testing headless, one
  * profile per persona, driven by Ducter's own browser tools on its MCP (core/src/browser).
  */
 export interface DucterBrowserPort {

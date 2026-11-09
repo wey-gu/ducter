@@ -1,4 +1,4 @@
-// A small Chrome DevTools Protocol client (D150): one WebSocket to the browser endpoint, flat
+// A small Chrome DevTools Protocol client (D151): one WebSocket to the browser endpoint, flat
 // sessions (Target.attachToTarget flatten), commands with timeouts, and events by method.
 // Used only for Ducter's own browser (core/src/browser); never exposed to a model.
 import { openMiniWs } from "./ws-client.ts";

@@ -320,7 +320,7 @@ func (a *App) ask(c *ui.Context, d *store.DecisionState, taskID string) {
 			})
 		}
 		if d.SignIn != nil {
-			// D150: Sign in opens the live view; answered, it says signed in or not now.
+			// D151: Sign in opens the live view; answered, it says signed in or not now.
 			a.underBubble(c, func() { a.signInButtons(c, d, decisionStyle{height: t.ControlSM, quietBg: t.Bg}) })
 			return
 		}

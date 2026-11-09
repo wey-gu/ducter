@@ -177,7 +177,7 @@ type App struct {
 	// setup on this Mac.
 	asks askState
 	web  webSetupState
-	// D150: the live view's bitmap and acks, a line to say once it closed, and the window size it asks for.
+	// D151: the live view's bitmap and acks, a line to say once it closed, and the window size it asks for.
 	live       liveState
 	liveNote   string
 	sites      sitesState

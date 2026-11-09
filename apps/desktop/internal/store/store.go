@@ -336,7 +336,7 @@ type Store struct {
 	// AbilityResults are ability_result frames not yet handled by the view.
 	AbilityResults []protocol.ServerFrame
 	// Live is the live view of Ducter's browser while the user signs in
-	// (D150); nil when none is open. LiveClosed is the last close the view
+	// (D151); nil when none is open. LiveClosed is the last close the view
 	// has not said yet. BrowserSites is Devices › 上网's signed-in sites.
 	Live         *LiveView
 	LiveClosed   *protocol.ServerFrame

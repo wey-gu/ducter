@@ -1,4 +1,4 @@
-// `ducter ability add browser` and `ducter browser sites | signout <site> | clear` (D150): the
+// `ducter ability add browser` and `ducter browser sites | signout <site> | clear` (D151): the
 // terminal's way to the same 上网 / Browse the web the Devices page adds, for a server set up over
 // SSH. Both talk to the running Ducter over its WebSocket, like the apps.
 import type { DeviceAbility, ServerFrame } from "@ducter/protocol";

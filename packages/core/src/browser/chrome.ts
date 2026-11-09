@@ -1,4 +1,4 @@
-// Ducter's own browser on a server (D150, research/39): Chrome for Testing, installed by Ducter
+// Ducter's own browser on a server (D151, research/39): Chrome for Testing, installed by Ducter
 // into <dataDir>/browser, started headless (new headless: the real browser, no window) with a
 // persistent profile per persona, reached over CDP on 127.0.0.1 only.
 //

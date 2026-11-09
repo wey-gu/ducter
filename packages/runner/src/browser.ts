@@ -97,7 +97,7 @@ export interface BrowserOptions {
   identity?: false | ((profileDir: string, pid: number) => Promise<unknown>);
   /** Test seam: whether a harness's own browser tools are ready on this machine (D126, D130). */
   nativeProbe?: NativeProbe;
-  /** D150: Ducter's own browser (core), used on a server (Linux) or with DUCTER_BROWSER_DRIVER=ducter. */
+  /** D151: Ducter's own browser (core), used on a server (Linux) or with DUCTER_BROWSER_DRIVER=ducter. */
   ducter?: DucterBrowserPort;
 }
 
@@ -398,7 +398,7 @@ export async function browserSidecar(input: SidecarInput, opts: BrowserOptions =
     const kind = await (opts.nativeProbe ?? defaultNativeProbe)(h, { env, ...(opts.which ? { which: opts.which } : {}) });
     if (kind) return nativeSidecar(input, kind);
   }
-  // D150: on a server (no desktop for cua-driver, no harness browser of its own) a browser place
+  // D151: on a server (no desktop for cua-driver, no harness browser of its own) a browser place
   // runs on Ducter's own browser; DUCTER_BROWSER_DRIVER=ducter asks for it anywhere.
   if (opts.ducter && !/^(cua|cua-driver)$/i.test((env.DUCTER_BROWSER_DRIVER ?? "").trim()) && ((opts.platform ?? process.platform) === "linux" || /^ducter$/i.test((env.DUCTER_BROWSER_DRIVER ?? "").trim()))) {
     const st = await opts.ducter.status();
@@ -556,7 +556,7 @@ function nativeSidecar(input: SidecarInput, kind: NativeKind): BrowserSidecar {
 }
 
 /**
- * A browser place on Ducter's own browser (D150): headless Chrome held by Ducter's main process,
+ * A browser place on Ducter's own browser (D151): headless Chrome held by Ducter's main process,
  * driven by the `browser_*` tools on Ducter's own MCP (no sidecar). Its profile is the persona's
  * (sign-ins persist); downloads land in the task's folder.
  */

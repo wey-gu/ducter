@@ -1,4 +1,4 @@
-// D150: a browser place on a Linux server runs on Ducter's own browser (core), for every harness.
+// D151: a browser place on a Linux server runs on Ducter's own browser (core), for every harness.
 import { describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -27,7 +27,7 @@ const input = (dataDir: string, harness = "codex"): SidecarInput => ({
   harness,
 });
 
-describe("Ducter's browser for browser places (D150)", () => {
+describe("Ducter's browser for browser places (D151)", () => {
   test("on Linux every harness gets it: no sidecar, the persona's profile, downloads in the task's folder", async () => {
     const dir = mkdtempSync(join(tmpdir(), "ducter-db-"));
     for (const h of ["codex", "claude-code", "pi", "deepseek-harness"]) {

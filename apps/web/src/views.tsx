@@ -377,7 +377,7 @@ function DecisionCard({ d, taskId, inTask }: { d: DecisionState; taskId?: string
   );
 }
 
-// ---------- signing in (D150) ----------
+// ---------- signing in (D151) ----------
 
 /** A closed eye: what it can't see while you sign in. */
 const EyeShut = () => (
@@ -421,7 +421,7 @@ export function SignInBody({ d, compact }: { d: DecisionState; compact?: boolean
 }
 
 /**
- * The live view of Ducter's browser (D150): the page as the server's browser paints it, your
+ * The live view of Ducter's browser (D151): the page as the server's browser paints it, your
  * taps and keys going straight into it. Over everything, until 好了 / Done or 先不登了 / Not now.
  * Nothing here is kept: frames are shown and dropped.
  */
@@ -920,7 +920,7 @@ function Ask({ d, taskId, buttons = true }: { d: DecisionState; taskId?: string;
   // The partner is putting a task's question into its own words (D129): its waiting presence
   // holds the place; the task's own wording never shows in the conversation first.
   if (wait > 0) return <Presence line={t("activity.relay")} />;
-  // D150: a sign-in ask opens the live view instead of Go.
+  // D151: a sign-in ask opens the live view instead of Go.
   if (d.signIn)
     return (
       <div ref={ref} class={`partner askq signin${flash ? " flash" : ""}`} id={`d-${d.decisionId}`}>
@@ -2537,7 +2537,7 @@ function DeviceCard({ dv }: { dv: DeviceView }) {
   );
 }
 
-/** D150: 上网 on a server (Ducter's own browser): getting it, what's in the way, then the sites signed in to. */
+/** D151: 上网 on a server (Ducter's own browser): getting it, what's in the way, then the sites signed in to. */
 function BrowserBlock({ dv }: { dv: DeviceView }) {
   const ab = dv.abilities.find((a) => a.id === "web");
   const [clearing, setClearing] = useState(false);

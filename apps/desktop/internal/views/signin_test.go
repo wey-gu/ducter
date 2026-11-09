@@ -18,7 +18,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
-// D150: a sign-in card opens the live view of Ducter's browser; frames are
+// D151: a sign-in card opens the live view of Ducter's browser; frames are
 // shown and acked one at a time, clicks and keys go in, 好了 / Done answers
 // the card. DUCTER_SIGNIN_SHOTS=1 writes the card and the live view (zh,
 // en) to shotsDir; DUCTER_LIVE_FRAME=<a JPEG> paints a real page into it.

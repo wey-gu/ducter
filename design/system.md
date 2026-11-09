@@ -584,7 +584,7 @@ What runs today, before sandboxes and spacesd:
   loses its window, but sign-ins finished more than ~30 s earlier are kept and the task
   reopens it.
 
-### On a server: Ducter's own browser (D150, research/39; built 2026-11-10, `packages/core/src/browser/`)
+### On a server: Ducter's own browser (D151, research/39; built 2026-11-10, `packages/core/src/browser/`)
 
 A headless Linux server has no desktop for cua-driver and neither harness brings a browser there,
 so the main process holds one.

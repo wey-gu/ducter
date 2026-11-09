@@ -13,7 +13,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 )
 
-// Signing in to a site in Ducter's own browser (D150). A task that needs
+// Signing in to a site in Ducter's own browser (D151). A task that needs
 // the user signed in asks with a sign-in card: 需要你登录一下 {site} /
 // Sign in to {site}. 去登录 / Sign in opens the live view: the server
 // browser's page, painted from its frames, with the user's clicks, scrolls

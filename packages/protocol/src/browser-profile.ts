@@ -1,4 +1,4 @@
-// Where a persona's browser profile lives (D47, D150): one profile per persona per device under
+// Where a persona's browser profile lives (D47, D151): one profile per persona per device under
 // <dataDir>/browser-profiles. Shared by the runner (cua-driver's isolated_named profile) and core
 // (Ducter's own browser on a server), so both drivers find the same sign-ins.
 import { join } from "node:path";

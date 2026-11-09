@@ -1,4 +1,4 @@
-// D150 without a Chrome: the live-view protocol over a fake CDP (blind first, one frame in flight,
+// D151 without a Chrome: the live-view protocol over a fake CDP (blind first, one frame in flight,
 // rate limit, input mapping, only the opener drives it, done = Go), the installer's choices, the
 // Sites grouping, and 上网 on a Linux server in Devices.
 import { describe, expect, test } from "bun:test";
@@ -74,7 +74,7 @@ function setup(o: { pending?: boolean; maxFps?: number } = {}) {
 
 const frame = (data: string, w = 390, h = 844): CdpEvent => ({ method: "Page.screencastFrame", sessionId: "S-live", params: { data, sessionId: 7, metadata: { deviceWidth: w, deviceHeight: h } } });
 
-describe("the live view (D150)", () => {
+describe("the live view (D151)", () => {
   test("opens on the task's own tab, blind before the first frame, sized to the viewer", async () => {
     const s = setup();
     const id = await s.live.open(s.sink, "d1", { width: 390, height: 844 });
@@ -188,7 +188,7 @@ describe("the live view (D150)", () => {
   });
 });
 
-describe("installing Ducter's browser (D150)", () => {
+describe("installing Ducter's browser (D151)", () => {
   test("platforms, deb.deps and t64 names", async () => {
     expect(cftPlatform("linux", "x64")).toBe("linux64");
     expect(cftPlatform("linux", "arm64")).toBe("linux-arm64");
@@ -295,7 +295,7 @@ describe("pieces", () => {
   });
 });
 
-describe("上网 on a Linux server (D150)", () => {
+describe("上网 on a Linux server (D151)", () => {
   const auth = { list: () => [], createCode: () => ({ code: "x", expiresAt: 0 }), rename: () => ({ error: "unknown_device" }) } as any;
   const workers = { online: () => [], away: () => new Map(), onChange: () => () => {}, renamed() {} } as any;
   const probes = { cua: async () => ({ missing: "cua-driver is not installed" }), native: async () => undefined, harnesses: async () => [], kind: async () => "server" as const };

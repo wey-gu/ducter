@@ -6,7 +6,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
-// LiveView is the live view of Ducter's browser (D150): the newest frame
+// LiveView is the live view of Ducter's browser (D151): the newest frame
 // (JPEG bytes, shown then dropped) and the page's size in CSS pixels.
 type LiveView struct {
 	ID, DecisionID, Site string

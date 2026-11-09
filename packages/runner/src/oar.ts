@@ -52,7 +52,34 @@ export function codexCleanArgs(config: { mcp_servers?: Record<string, unknown> }
   ];
 }
 
-type CodexConfig = { mcp_servers?: Record<string, unknown>; model_providers?: Record<string, { env_key?: unknown }> };
+/**
+ * The partner's bound on a harness's own compactor (SessionSpec.harnessCompactAt; research/11
+ * §7.3.7), checked against the installed builds:
+ *   - Claude Code 2.1.319: CLAUDE_CODE_AUTO_COMPACT_WINDOW (100k-1M tokens; the window is the
+ *     smaller of it and the model's, and compaction fires a summary buffer below it), and the
+ *     settings `idleCompaction: false` (no compaction while idle, before the cache expires) and
+ *     `precomputeCompactionEnabled: false` (no summary written in the background). The settings
+ *     go in the session's own folder (.claude/settings.local.json): the clean setup keeps the
+ *     project and local sources, and `--settings` is OAR's under userConfiguration "exclude".
+ *   - Codex 0.167: `-c model_auto_compact_token_limit=<n>` (a top-level config.toml key).
+ * pi and DeepSeek Harness: not bounded yet (design/todo.md).
+ */
+export const CLAUDE_COMPACT_SETTINGS = { idleCompaction: false, precomputeCompactionEnabled: false } as const;
+
+function writeClaudeCompactSettings(cwd: string): void {
+  const file = join(cwd, ".claude", "settings.local.json");
+  let cur: Record<string, unknown> = {};
+  try {
+    cur = JSON.parse(readFileSync(file, "utf8")) as Record<string, unknown>;
+  } catch {
+    /* none yet */
+  }
+  if (Object.entries(CLAUDE_COMPACT_SETTINGS).every(([k, v]) => cur[k] === v)) return;
+  mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(file, JSON.stringify({ ...cur, ...CLAUDE_COMPACT_SETTINGS }, null, 2) + "\n");
+}
+
+type CodexConfig ={ mcp_servers?: Record<string, unknown>; model_providers?: Record<string, { env_key?: unknown }> };
 
 function readCodexConfig(env: Record<string, string | null | undefined>): CodexConfig | undefined {
   const home = env.CODEX_HOME || process.env.CODEX_HOME || join(homedir(), ".codex");
@@ -199,11 +226,16 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
   switch (h) {
     case "claude-code":
       if (spec.launchArgs?.length) launchArgs = spec.launchArgs;
+      if (spec.harnessCompactAt) {
+        env = { ...env, CLAUDE_CODE_AUTO_COMPACT_WINDOW: String(Math.round(spec.harnessCompactAt)) };
+        writeClaudeCompactSettings(spec.cwd);
+      }
       break;
     case "codex":
       // Codex denies only MCP tools qualified as mcp__server__tool (OAR tool-denials).
       disallowed = disallowed.filter((n) => /^mcp__[\w-]+__.+$/.test(n));
       if (clean) launchArgs = codexCleanArgs(readCodexConfig(ctx.env ?? {}), mcpServers.map((m) => m.name));
+      if (spec.harnessCompactAt) launchArgs = [...(launchArgs ?? []), "-c", `model_auto_compact_token_limit=${Math.round(spec.harnessCompactAt)}`];
       break;
     case "pi":
       break; // the clean setup is the runtime variant's flags (defaultLoader)
@@ -279,7 +311,7 @@ export function createOarHarnessPort(opts: OarPortOptions = {}): HarnessPort {
       if (!inst || inst.kind !== "available") throw new Error(`harness ${spec.harness} is not installed`);
       const a = adaptSpec(spec, { env: opts.env, dataDir, refused: (rt as { refusedSessionOptions?: Record<string, string> }).refusedSessionOptions });
       const session = await rt.session(inst, { ...a.options, retainedBytes: opts.retainedBytes ?? 8 * 1024 * 1024 });
-      return wrapSession(session, spec.resumeSessionId ? undefined : a.preamble);
+      return wrapSession(session, spec.resumeSessionId ? undefined : a.preamble, spec.harness);
     },
 
     async available() {
@@ -329,10 +361,25 @@ export function withPreamble(preamble: string, text: string): string {
   return `<instructions>\n${preamble.trim()}\n</instructions>\n\n${text}`;
 }
 
-function wrapSession(s: Session, preamble?: string): HarnessSessionExt {
+/**
+ * What the context holds, as the harness last reported it (OAR contextUsage): on Claude Code the
+ * last request's input + cache read + cache write; on Codex `last.totalTokens`. Codex builds that
+ * report no `last` fall back to the cumulative input with no window: not a context size, unused.
+ */
+export function contextTokensOf(c: { tokens: number | null; contextWindow: number | null } | null | undefined, harness?: HarnessId): number | undefined {
+  if (!c || c.tokens === null || !(c.tokens > 0)) return undefined;
+  if (harness === "codex" && c.contextWindow === null) return undefined;
+  return c.tokens;
+}
+
+function wrapSession(s: Session, preamble?: string, harness?: HarnessId): HarnessSessionExt {
+  // At turn_ended OAR has already folded the turn's usage (live, claude 2.1.319: contextUsage()
+  // read in the turn_ended callback equals the usage record that follows it).
   const normalizer = new Normalizer(() => {
     const t = s.usage().value.total;
-    return t ? { inputTokens: t.input, outputTokens: t.output, cacheRead: t.cacheRead, cacheWrite: t.cacheWrite } : undefined;
+    const contextTokens = contextTokensOf(s.contextUsage?.().value, harness);
+    if (!t && contextTokens === undefined) return undefined;
+    return { ...(t ? { inputTokens: t.input, outputTokens: t.output, cacheRead: t.cacheRead, cacheWrite: t.cacheWrite } : {}), ...(contextTokens !== undefined ? { contextTokens } : {}) };
   });
   // One buffered queue feeding one async iterator; subscription starts at open (cursor 0).
   const buf: HarnessEvent[] = [];

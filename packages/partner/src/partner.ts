@@ -51,7 +51,7 @@
 //   that arrived while down) are queued again; user messages that already got a reply are not.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { HARNESSES, HARNESS_IDS, isHarnessId, type ActivityStep, type Bodies, type Brain, type HarnessId, type LogEvent, type Place, type TaskCard } from "../../protocol/src/index.ts";
+import { HARNESSES, HARNESS_IDS, isHarnessId, type ActivityStep, type Bodies, type Brain, type EventKind, type HarnessId, type LogEvent, type Place, type TaskCard } from "../../protocol/src/index.ts";
 import type { CoreApi, HarnessEvent, HarnessSession, Partner, Runner } from "../../protocol/src/internal.ts";
 import { bridgeFromEnv, type BridgeClient, type BridgeContact, type BridgeOp } from "./bridge.ts";
 import { claimText, fixedOutcome, followCandidates, followLine, foldOut, inQuiet, lostLine, mayHaveGone, overAsks, whoForModel, whoForUser, zhJoin, FOLLOW_ACTIVE_MS, type OutKind, type OutOp, type OutState } from "./bridge-out.ts";
@@ -95,8 +95,13 @@ export interface PartnerOptions {
   spine?: false | { writer?: DigestWriter; store?: SpineStore; cut?: Partial<CutOptions>; epochAfter?: number; epochSize?: number; pokeMs?: number };
   /** Pre-turn recall past a precision gate (spine/recall.ts). Default: DUCTER_AUTO_RECALL=1, else off (unmeasured). */
   autoRecall?: boolean;
-  /** Re-cut a warm session once its context passes this many tokens and a digest exists (default 120K). */
+  /**
+   * Re-cut once the live context passes this many tokens (default 120K): onto the digests, or,
+   * with none (digests off, the writer failing), onto the verbatim window and pointers to the rest.
+   */
   recutTokens?: number;
+  /** Where the harness's own compactor may start, kept above the re-cut (default max(200K, 1.5x re-cut)). */
+  harnessCompactAt?: number;
 }
 
 export interface PartnerHandle extends Partner {
@@ -104,7 +109,7 @@ export interface PartnerHandle extends Partner {
   idle(): Promise<void>;
   close(): Promise<void>;
   /** For tests and diagnostics. */
-  readonly stats: { turns: number; freshStarts: number; resumes: number; recuts?: number; sessionId?: string; bridgeOwedByCode?: number; bridgeRecovered?: number; bridgeFollowed?: number };
+  readonly stats: { turns: number; freshStarts: number; resumes: number; recuts?: number; contextTokens?: number; harnessCompactions?: number; sessionId?: string; bridgeOwedByCode?: number; bridgeRecovered?: number; bridgeFollowed?: number };
   /** The long-conversation memory, when on (tests and diagnostics). */
   readonly spine: Spine | null;
   /**
@@ -418,14 +423,22 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const stats: PartnerHandle["stats"] = { turns: 0, freshStarts: 0, resumes: 0 };
   const askedFor = new Map<string, string>(); // spike: decisionId -> the Bridge request it asked about
 
+  // What the live (or last) session's context holds, in tokens: the harness's own count after each
+  // turn where it reports one (the last request's input + cache read + cache write), else a
+  // running estimate of what went in and came out. Kept in state.json, so a resumed session keeps
+  // its size; zero when a session starts fresh.
+  let contextTokens = 0;
+  let harnessCompacted = false; // the harness compacted the live session itself: re-cut at the next turn
+
   if (persist) {
     try {
-      const s = JSON.parse(readFileSync(stateFile, "utf8")) as { sessionId?: string; lastActivity?: number; handledSeq?: number; promptHash?: string; inflight?: { seqs: number[]; from: number } };
+      const s = JSON.parse(readFileSync(stateFile, "utf8")) as { sessionId?: string; lastActivity?: number; handledSeq?: number; promptHash?: string; inflight?: { seqs: number[]; from: number }; contextTokens?: number };
       inflight = s.inflight;
       lastSessionId = s.sessionId;
       lastPromptHash = s.promptHash;
       lastActivity = s.lastActivity ?? 0;
       handledSeq = s.handledSeq;
+      if (typeof s.contextTokens === "number" && s.contextTokens >= 0) contextTokens = s.contextTokens;
     } catch {
       /* first run */
     }
@@ -433,7 +446,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const saveState = () => {
     if (!persist) return;
     try {
-      writeFileSync(stateFile, JSON.stringify({ sessionId: lastSessionId, lastActivity, handledSeq, promptHash: lastPromptHash, ...(inflight ? { inflight } : {}) }));
+      writeFileSync(stateFile, JSON.stringify({ sessionId: lastSessionId, lastActivity, handledSeq, promptHash: lastPromptHash, contextTokens, ...(inflight ? { inflight } : {}) }));
     } catch (err) {
       onError(err);
     }
@@ -508,9 +521,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       : null;
   const recallOn = opts.autoRecall ?? process.env.DUCTER_AUTO_RECALL === "1";
   const recutTokens = opts.recutTokens ?? 120_000;
-  // The live session's context, estimated from what went in and came out (harness usage is a
-  // cumulative bill, not a context size). Reset when a session starts.
-  let contextTokens = 0;
+  // Claude Code reads its window in 100K-1M (research/11 §7.3.7: bounded above our re-cut).
+  const harnessCompactAt = Math.min(1_000_000, Math.max(100_000, opts.harnessCompactAt ?? Math.max(200_000, Math.round(recutTokens * 1.5))));
+  let recutting = false; // the fresh session being seeded is a re-cut
   const spineEvery = opts.spine ? (opts.spine.pokeMs ?? 15 * 60_000) : 15 * 60_000;
   const spineTimer = spine && spineEvery > 0 ? setInterval(() => void spine.poke(), spineEvery) : null;
   (spineTimer as { unref?: () => void } | null)?.unref?.();
@@ -605,6 +618,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const onHarnessEvent = (ev: HarnessEvent) => {
     if (ev.role === "assistant" && ev.text) contextTokens += estTokens(ev.text);
     if (ev.tool?.output) contextTokens += estTokens(ev.tool.output.slice(0, 40_000));
+    // The harness's own count replaces the estimate: it has the system prompt, tool schemas,
+    // tool inputs and thinking the estimate cannot see.
+    if (ev.usage?.contextTokens) contextTokens = ev.usage.contextTokens;
+    if ((ev.raw as { kind?: string } | undefined)?.kind === "compaction_ended") onHarnessCompacted(ev.raw as { outcome?: string; trigger?: string });
     if (!turn) return;
     // A task_open after its line: the ack goes out now and ends the waiting line (D120), so no
     // "Setting up a task…" flashes before it.
@@ -697,6 +714,22 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   }
 
   // ---------- session ----------
+  /** Recorded on the "partner" stream: never shown, there to be seen (research/11 §7.3.8). */
+  function logSession(body: Bodies["partner_session"]) {
+    try {
+      core.log.append({ stream: "partner", origin: "system", kind: "partner_session", body });
+    } catch (err) {
+      onError(err);
+    }
+  }
+  // The harness compacted the live session although its compactor is bounded above the re-cut
+  // (a model with a smaller window, a harness Ducter cannot bound yet). Its summary now competes
+  // with the spine, so it is recorded and the next turn re-cuts onto Ducter's own projection.
+  function onHarnessCompacted(raw: { outcome?: string; trigger?: string }) {
+    stats.harnessCompactions = (stats.harnessCompactions ?? 0) + 1;
+    logSession({ event: "harness_compacted", harness: partnerRun().harness, ...(lastSessionId ? { sessionId: lastSessionId } : {}), contextTokens, ...(raw.outcome ? { outcome: raw.outcome } : {}), ...(raw.trigger ? { trigger: raw.trigger } : {}) });
+    if (raw.outcome === undefined || raw.outcome === "completed") harnessCompacted = true;
+  }
   async function startSession(resumeSessionId?: string): Promise<void> {
     const run = partnerRun();
     const s = await runner.harness.start({
@@ -712,11 +745,16 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       // Ducter's handful of tools load up front: deferring them behind ToolSearch cost a full
       // model round trip (~3 s) before the ack on a fresh session (live, sonnet).
       env: { ENABLE_TOOL_SEARCH: "false" },
+      // The harness's own compactor stays above the re-cut and never runs while idle, so the
+      // Log's digests, not the harness's summary, carry the long conversation (research/11 §7.3.7).
+      harnessCompactAt,
       ...(resumeSessionId ? { resumeSessionId } : {}),
     });
     session = s;
     iter = null;
-    contextTokens = 0;
+    harnessCompacted = false;
+    // A resumed session keeps the size it had (state.json); a fresh one starts empty.
+    if (!resumeSessionId) contextTokens = 0;
     lastPromptHash = promptHash();
     liveModel = run.model;
     lastSessionId = s.id || resumeSessionId;
@@ -727,6 +765,16 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     session = null;
     iter = null;
     if (s) await s.close().catch(() => {});
+  }
+  /** Drop the live session and start a fresh one from the projection, logged before it applies. */
+  async function recut(): Promise<void> {
+    logSession({ event: "recut", harness: partnerRun().harness, ...(lastSessionId ? { sessionId: lastSessionId } : {}), contextTokens, digested: !!spine?.digests().length });
+    await dropSession();
+    lastSessionId = undefined;
+    await startSession();
+    stats.freshStarts++;
+    stats.recuts = (stats.recuts ?? 0) + 1;
+    recutting = true;
   }
   /** Returns true when the session is fresh (needs the projection seed). */
   async function ensureSession(): Promise<boolean> {
@@ -749,17 +797,22 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     }
     const warm = lastActivity > 0 && now() - lastActivity <= idleColdMs;
     // Principle 4: once the live history dwarfs what a re-cut would rebuild, re-cut even while
-    // warm (between turns only). The new session reads as the same conversation.
-    if (session && warm && spine && contextTokens > recutTokens && spine.digests().length) {
-      await dropSession();
-      lastSessionId = undefined;
-      await startSession();
-      stats.freshStarts++;
-      stats.recuts = (stats.recuts ?? 0) + 1;
+    // warm (between turns only). The new session reads as the same conversation. With no digest
+    // yet (digests off, the writer behind or failing) it re-cuts all the same, onto the verbatim
+    // window and pointers to the rest: an unbounded session would reach the harness's compactor.
+    // A session the harness compacted itself is re-cut too, so its summary does not stand.
+    const tooBig = contextTokens > recutTokens || harnessCompacted;
+    if (session && warm && tooBig) {
+      await recut();
       return true;
     }
     if (session && warm) return false;
     if (session && !warm) await dropSession();
+    // Resuming a session past the re-cut size would only re-cut on the next turn.
+    if (!session && warm && canResume() && tooBig) {
+      await recut();
+      return true;
+    }
     if (!session && warm && canResume()) {
       try {
         await startSession(lastSessionId);
@@ -843,6 +896,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const devices = renderDevices(core.workers?.list() ?? []);
     if (devices) deltas.push(devices);
     if (!fresh) return deltas.join("\n");
+    const isRecut = recutting;
+    recutting = false;
     if (view) {
       const batchSeqs = new Set(batch.map((e) => e.seq));
       const window = view.window.filter((e) => !batchSeqs.has(e.seq));
@@ -850,17 +905,17 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       return background ? `${background}\n\n${deltas.join("\n")}` : deltas.join("\n");
     }
     const batchSeqs = new Set(batch.map((e) => e.seq));
+    const kinds: EventKind[] = ["user_msg", "ai_msg", "ack", "job_status", "report", "decision", "decision_resolved", "waiter", "memory_noted", "bridge_msg"];
     const history = core.log
-      .read({
-        stream: "channel",
-        beforeSeq: core.log.head() + 1,
-        limit: historyLimit + batch.length,
-        kinds: ["user_msg", "ai_msg", "ack", "job_status", "report", "decision", "decision_resolved", "waiter", "memory_noted", "bridge_msg"],
-      })
+      .read({ stream: "channel", beforeSeq: core.log.head() + 1, limit: historyLimit + batch.length, kinds })
       .filter((e) => !batchSeqs.has(e.seq))
       .sort((a, b) => a.seq - b.seq)
       .slice(-historyLimit);
-    const background = renderProjection(history, core.tasks.list(), ctx);
+    // A re-cut with no spine (digests off): the window, and a pointer to the lines before it, so
+    // the partner knows to look them up rather than take the window for the whole conversation.
+    const first = isRecut && history.length ? core.log.read({ stream: "channel", fromSeq: 1, limit: 1, kinds })[0] : undefined;
+    const gap = first && first.seq < history[0]!.seq ? { from: first.seq, to: history[0]!.seq - 1 } : undefined;
+    const background = renderProjection(history, core.tasks.list(), ctx, gap ? { earlier: "", ledger: "", gap } : undefined);
     return background ? `${background}\n\n${deltas.join("\n")}` : deltas.join("\n");
   }
 
@@ -960,6 +1015,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       turn = null;
       inflight = undefined;
       lastActivity = now();
+      stats.contextTokens = contextTokens;
       saveState();
       // Close and digest what is due, in the background (never awaited by a turn).
       void spine?.poke();
@@ -1929,6 +1985,11 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       try {
         await opts.ready?.catch(() => {});
         const warm = lastActivity > 0 && now() - lastActivity <= idleColdMs;
+        if (warm && canResume() && contextTokens > recutTokens) {
+          await recut();
+          unseeded = true;
+          return;
+        }
         if (warm && canResume()) {
           try {
             await startSession(lastSessionId);

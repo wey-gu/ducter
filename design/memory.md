@@ -98,7 +98,8 @@ is written again.
   digest, at least 8K (overlapping the newest digest when the tail is short), at most 24K; when
   the writer is behind, the lines between are named as not shown, with how to read them. The
   live session is never edited: a new digest is used from the next cut. A warm session whose
-  estimated context passes 120K re-cuts from the spine (principle 4, between turns).
+  context passes 120K, by the harness's own count, re-cuts from the spine. It re-cuts with or
+  without a digest (principle 4, between turns; `context.md`, "Session size and re-cut").
 - **Search** (`log_search`): a second FTS5 index over CJK bigrams and words (`unicode61` over
   text tokenized in code: Chinese runs become overlapping bigrams), BM25-ranked, fused by
   reciprocal rank with the exact-substring list and recency, the user's own words boosted

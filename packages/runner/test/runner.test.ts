@@ -122,6 +122,7 @@ describe("session spec", () => {
     expect(o.mcpServers).toEqual([{ name: "ducter", type: "http", url: "http://127.0.0.1:0/mcp", headers: { Authorization: "Bearer task-token-tsk00001" } }]);
     expect(o.disallowedTools).toContain("AskUserQuestion");
     expect(o.userConfiguration).toBeUndefined(); // tasks keep the user's own Claude Code setup by default
+    expect(o.env?.CLAUDE_CODE_AUTO_COMPACT_WINDOW).toBeUndefined(); // the compactor bound is the partner's only
     const open = core.events.find((e) => e.kind === "task_open")!;
     expect(open.stream).toBe("task:tsk00001");
     expect(open.origin).toBe("system");

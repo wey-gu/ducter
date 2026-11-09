@@ -10,7 +10,7 @@ import type { Runtime } from "@botiverse/oar/browser";
 import { dshRuntime } from "@botiverse/oar/runtimes/dsh";
 import { HARNESSES, HARNESS_IDS } from "@ducter/protocol";
 import type { SessionSpec } from "@ducter/protocol/src/internal.ts";
-import { adaptSpec, codexCleanArgs, createOarHarnessPort, PI_CLEAN_FLAGS, withPreamble } from "../src/oar.ts";
+import { adaptSpec, codexCleanArgs, contextTokensOf, createOarHarnessPort, PI_CLEAN_FLAGS, withPreamble } from "../src/oar.ts";
 import { Normalizer, stripThinking } from "../src/normalize.ts";
 import { runBridge } from "../src/mcp-bridge.ts";
 
@@ -75,6 +75,39 @@ describe("adaptSpec: the partner's clean setup per harness", () => {
   test("Codex task (not clean): no overrides at all", () => {
     const a = adaptSpec(spec("codex", { isolateUserConfig: false }), { dataDir: dir });
     expect(a.options.launchArgs).toBeUndefined();
+  });
+
+  test("the partner's harness compactor bound: Claude Code env + idle/precompute off in its own folder; Codex -c; none without it", () => {
+    const cc = adaptSpec(spec("claude-code", { harnessCompactAt: 200_000 }), { dataDir: dir });
+    expect((cc.options.env as Record<string, string | null>).CLAUDE_CODE_AUTO_COMPACT_WINDOW).toBe("200000");
+    const file = join(dir, "partner", ".claude", "settings.local.json");
+    expect(JSON.parse(readFileSync(file, "utf8"))).toEqual({ idleCompaction: false, precomputeCompactionEnabled: false });
+    // A setting already in that file is kept.
+    writeFileSync(file, JSON.stringify({ other: 1, idleCompaction: true }));
+    adaptSpec(spec("claude-code", { harnessCompactAt: 200_000 }), { dataDir: dir });
+    expect(JSON.parse(readFileSync(file, "utf8"))).toEqual({ other: 1, idleCompaction: false, precomputeCompactionEnabled: false });
+
+    const cx = adaptSpec(spec("codex", { harnessCompactAt: 200_000 }), { dataDir: dir });
+    const args = cx.options.launchArgs!;
+    expect(args.slice(-2)).toEqual(["-c", "model_auto_compact_token_limit=200000"]);
+    expect(args).toContain("features.hooks=false"); // the clean setup stays
+
+    // Tasks never carry it: no env, no settings file, no -c.
+    const taskDir = join(dir, "task");
+    const t1 = adaptSpec(spec("claude-code", { cwd: taskDir, isolateUserConfig: false }), { dataDir: dir });
+    expect((t1.options.env as Record<string, string | null>).CLAUDE_CODE_AUTO_COMPACT_WINDOW).toBeUndefined();
+    expect(() => readFileSync(join(taskDir, ".claude", "settings.local.json"))).toThrow();
+    const t2 = adaptSpec(spec("codex", { isolateUserConfig: false }), { dataDir: dir });
+    expect(t2.options.launchArgs).toBeUndefined();
+  });
+
+  test("context size: the harness's reading, but never Codex's cumulative fallback", () => {
+    expect(contextTokensOf({ tokens: 17_908, contextWindow: 1_000_000 }, "claude-code")).toBe(17_908);
+    expect(contextTokensOf({ tokens: 17_908, contextWindow: null }, "claude-code")).toBe(17_908);
+    expect(contextTokensOf({ tokens: 44_200, contextWindow: null }, "codex")).toBeUndefined(); // no `last`: cumulative input
+    expect(contextTokensOf({ tokens: 30_000, contextWindow: 258_000 }, "codex")).toBe(30_000);
+    expect(contextTokensOf({ tokens: null, contextWindow: 1_000_000 }, "claude-code")).toBeUndefined(); // right after a compaction
+    expect(contextTokensOf(null)).toBeUndefined();
   });
 
   test("codexCleanArgs with no user config still turns hooks and plugins off", () => {
@@ -235,6 +268,17 @@ describe("one tool-name form, no leaked reasoning", () => {
     const n = new Normalizer(() => undefined);
     const out = n.push({ kind: "tool_call_started", callId: "c1", tool: "mcp", server: "ducter", toolName: "task_open" });
     expect(out[0]!.tool!.name).toBe("mcp__ducter__task_open");
+  });
+
+  test("a harness compaction surfaces with its outcome and trigger, so the partner can record it", () => {
+    const n = new Normalizer(() => undefined);
+    expect(n.push({ kind: "compaction_ended", outcome: "completed", trigger: "auto" })).toEqual([{ role: "system", text: "compaction completed", raw: { kind: "compaction_ended", outcome: "completed", trigger: "auto" } }]);
+  });
+
+  test("the turn end carries the harness's context reading next to the running totals", () => {
+    const n = new Normalizer(() => ({ inputTokens: 17_908, outputTokens: 4, contextTokens: 17_908 }));
+    const out = n.push({ kind: "turn_ended", outcome: { kind: "completed" } });
+    expect(out[0]).toMatchObject({ turnEnd: true, usage: { contextTokens: 17_908 } });
   });
 
   test("reasoning written into the reply is dropped", () => {

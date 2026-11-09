@@ -211,13 +211,19 @@ export interface SessionSpec {
   disallowedTools?: string[];
   launchArgs?: string[];
   userConfiguration?: "include" | "exclude";
+  // The partner only (research/11 §7.3.7): the harness's own compactor waits until the context
+  // holds this many tokens, and compacts nothing while idle, so Ducter's re-cut runs first and the
+  // harness's summary never competes with the spine. Each harness maps it in runner/oar.ts.
+  harnessCompactAt?: number;
 }
 
 export interface HarnessEvent {
   role: "assistant" | "user" | "tool" | "system";
   text?: string;
   tool?: { name: string; input?: unknown; output?: string; ok?: boolean };
-  usage?: { inputTokens?: number; cacheRead?: number; cacheWrite?: number; outputTokens?: number };
+  // Totals are the session's running bill. contextTokens is what the context held at the turn's
+  // last model call, as the harness reported it (input + cache read + cache write), when it did.
+  usage?: { inputTokens?: number; cacheRead?: number; cacheWrite?: number; outputTokens?: number; contextTokens?: number };
   turnEnd?: boolean;
   raw?: unknown;
 }

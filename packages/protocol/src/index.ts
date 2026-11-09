@@ -188,7 +188,8 @@ export type ClientFrame =
   // (on: true, 装上) or removes (on: false, 取下) an ability on a device; it is answered with
   // ability_result, then a fresh devices frame. "pair_code" mints a one-time pairing code for
   // 远程打开 / Reach from anywhere (D54), answered with a pair_code frame.
-  | { t: "devices" }
+  // refresh: probe the harness sign-ins again now (after signing in or out from the app).
+  | { t: "devices"; refresh?: boolean }
   | { t: "ability"; device: string; ability: AbilityId; on: boolean }
   | { t: "pair_code" }
   // The partner's and the app's settings (D71): "settings" answers with a settings frame and

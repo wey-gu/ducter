@@ -261,6 +261,7 @@ export function createWsHandler(deps: WsDeps) {
         if (!v) throw new Error("devices are not available");
         watchDevices();
         ws.data.devices = true;
+        if (f.refresh) v.refresh();
         send(ws, await v.frame());
         return;
       }

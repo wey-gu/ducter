@@ -96,8 +96,11 @@ func (a *App) settle(j *local.Job) {
 		return
 	}
 	a.setup.settled[j] = true
-	if j.OK() || j.Trouble() == "" {
-		a.check() // a failed sign-in may still have signed in (closed late)
+	// A failed sign-in may still have signed in (closed late): check the
+	// Mac again, but only while Ducter isn't up (a check would start it).
+	// Up and running, Devices asks for fresh sign-ins instead.
+	if (j.OK() || j.Trouble() == "") && !a.S.Welcomed {
+		a.check()
 	}
 }
 

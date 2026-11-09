@@ -444,6 +444,9 @@ type TaskHistoryReq struct {
 // subscribed: a fresh devices frame comes whenever something changes.
 type DevicesReq struct {
 	T string `json:"t"` // "devices"
+	// Refresh probes the harness sign-ins again now (after signing in or
+	// out from the app).
+	Refresh bool `json:"refresh,omitempty"`
 }
 
 // AbilityReq adds (On, 装上) or removes (取下) an ability on a device. The
@@ -460,6 +463,103 @@ type AbilityReq struct {
 type PairCodeReq struct {
 	T string `json:"t"` // "pair_code"
 }
+
+// ---------- Settings (D71: the Partner page and Settings) ----------
+
+// SettingsReq asks for the partner's settings and keeps this socket told
+// of every change.
+type SettingsReq struct {
+	T string `json:"t"` // "settings"
+}
+
+// SettingsSet changes some settings; the server answers with a fresh
+// settings frame (to every subscriber).
+type SettingsSet struct {
+	T     string        `json:"t"` // "settings_set"
+	Patch SettingsPatch `json:"patch"`
+}
+
+// MemoryForget forgets one 记下了 / Noted line, by its seq.
+type MemoryForget struct {
+	T   string `json:"t"` // "memory_forget"
+	Seq int64  `json:"seq"`
+}
+
+// QuietHours is 免打扰 / Quiet hours: "23:00" to "08:00" in a zone.
+type QuietHours struct {
+	Start string `json:"start"`
+	End   string `json:"end"`
+	TZ    string `json:"tz"`
+}
+
+// Settings are the partner's settings, as the server keeps them.
+type Settings struct {
+	Name            string      `json:"name"`
+	Language        string      `json:"language"` // auto | zh | en
+	Memory          bool        `json:"memory"`
+	Notify          bool        `json:"notify"`
+	Quiet           *QuietHours `json:"quiet"`
+	DefaultAfterMin int         `json:"defaultAfterMin"`
+}
+
+// SettingsPatch is a change to some settings. Quiet is sent as given, so
+// a patch that sets ClearQuiet sends "quiet": null.
+type SettingsPatch struct {
+	Name            *string     `json:"name,omitempty"`
+	Language        string      `json:"language,omitempty"`
+	Memory          *bool       `json:"memory,omitempty"`
+	Notify          *bool       `json:"notify,omitempty"`
+	Quiet           *QuietHours `json:"-"`
+	ClearQuiet      bool        `json:"-"`
+	DefaultAfterMin int         `json:"defaultAfterMin,omitempty"`
+}
+
+// MarshalJSON writes Quiet only when it is set or cleared.
+func (p SettingsPatch) MarshalJSON() ([]byte, error) {
+	type plain SettingsPatch
+	b, err := json.Marshal(plain(p))
+	if err != nil || (p.Quiet == nil && !p.ClearQuiet) {
+		return b, err
+	}
+	q := []byte("null")
+	if p.Quiet != nil {
+		if q, err = json.Marshal(p.Quiet); err != nil {
+			return nil, err
+		}
+	}
+	out := append([]byte{}, b[:len(b)-1]...)
+	if len(b) > 2 {
+		out = append(out, ',')
+	}
+	out = append(out, []byte(`"quiet":`)...)
+	out = append(out, q...)
+	return append(out, '}'), nil
+}
+
+// Noted is one 记下了 / Noted line the partner saved.
+type Noted struct {
+	Seq      int64  `json:"seq"`
+	Title    string `json:"title"`
+	At       string `json:"at"`
+	MemoryID string `json:"memoryId,omitempty"`
+}
+
+// MemView is what the partner remembers, as far as this Ducter can tell:
+// State is connected, missing (no Nowledge Mem) or off.
+type MemView struct {
+	State string  `json:"state"`
+	Noted []Noted `json:"noted"`
+}
+
+// Forgot says how a memory_forget went: "mem" (Mem forgot it) or
+// "hidden" (only no longer shown here).
+type Forgot struct {
+	Seq int64  `json:"seq"`
+	How string `json:"how"`
+}
+
+// DefaultAfterChoices are the choices for Settings.DefaultAfterMin.
+var DefaultAfterChoices = []int{10, 30, 60, 120}
 
 // ---------- Devices and abilities (D43, D51) ----------
 
@@ -602,6 +702,10 @@ type ServerFrame struct {
 	Address   string   `json:"address,omitempty"`
 	Link      string   `json:"link,omitempty"`
 	QR        []string `json:"qr,omitempty"`
+	// settings: the partner's settings, its memory, and how a forget went.
+	Settings *Settings `json:"settings,omitempty"`
+	Mem      *MemView  `json:"mem,omitempty"`
+	Forgot   *Forgot   `json:"forgot,omitempty"`
 }
 
 // Delivery is how a task_send reached its task: steered in mid-turn, as
@@ -622,7 +726,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	}
 	switch f.T {
 	case "welcome", "events", "on_hand", "task_history", "sent", "action_result", "error",
-		"devices", "ability_result", "pair_code":
+		"devices", "ability_result", "pair_code", "settings":
 	default:
 		return f, fmt.Errorf("unknown server frame %q", f.T)
 	}

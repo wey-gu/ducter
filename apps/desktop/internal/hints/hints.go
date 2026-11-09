@@ -45,6 +45,9 @@ type state struct {
 	// Asks are the gentle one-time offers (notifications, the phone,
 	// Nowledge Mem): the answer and when, by name.
 	Asks map[string]Ask `json:"asks,omitempty"`
+	// Lang is the window's language from Settings: "zh", "en", or empty
+	// (follow macOS).
+	Lang string `json:"lang,omitempty"`
 }
 
 // Ask is one answer to a gentle offer: "yes", "no", or "later" (asked
@@ -142,6 +145,27 @@ func (l *Local) CLIOffer() string {
 		return ""
 	}
 	return l.st.CLIOffer
+}
+
+// Lang is the window's language chosen in Settings: "zh", "en" or
+// "auto" (follow macOS).
+func (l *Local) Lang() string {
+	if l == nil || l.st.Lang == "" {
+		return "auto"
+	}
+	return l.st.Lang
+}
+
+// SetLang remembers the window's language ("auto" forgets it).
+func (l *Local) SetLang(lang string) {
+	if l == nil {
+		return
+	}
+	if lang == "auto" {
+		lang = ""
+	}
+	l.st.Lang = lang
+	l.save()
 }
 
 // SetCLIOffer remembers that answer.

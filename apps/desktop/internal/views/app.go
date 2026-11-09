@@ -27,8 +27,12 @@ const (
 	RouteConversation Route = iota
 	RouteOnHand
 	RouteTask
-	// RouteDevices is 你的设备和本事 / Your devices and abilities.
+	// RouteDevices is 你的设备，和它们会做的事 / Your devices and what they can do.
 	RouteDevices
+	// RoutePartner is 伙伴 / Partner: the partner's character sheet (D71).
+	RoutePartner
+	// RouteSettings is 设置 / Settings: the app's own (D71).
+	RouteSettings
 )
 
 // Updater runs a function on the UI thread and draws a frame
@@ -146,6 +150,20 @@ type App struct {
 	// setup on this Mac.
 	asks askState
 	web  webSetupState
+	// partner and settings are the Partner page's and Settings' own state.
+	partner  partnerState
+	settings settingsState
+	// SystemLang is macOS's language, for Settings' "follow the system";
+	// OnLanguage is told when the window's language changes (the menus).
+	SystemLang i18n.Lang
+	OnLanguage func(*i18n.Strings)
+	// Version and Commit are this build's (Settings › About).
+	Version, Commit string
+	// CheckUpdates checks for a new version; nil hides Updates.
+	CheckUpdates func()
+	// OpenExternal opens a link when no Backend does (a window connected
+	// to a Ducter elsewhere); nil in tests.
+	OpenExternal func(url string) error
 }
 
 // UndoWindow is how long a drop can be undone (D52).
@@ -290,6 +308,10 @@ func (a *App) View(c *ui.Context) {
 			a.task(c)
 		case a.Route == RouteDevices:
 			a.devicesView(c)
+		case a.Route == RoutePartner:
+			a.partnerView(c)
+		case a.Route == RouteSettings:
+			a.settingsView(c)
 		default:
 			a.conversation(c)
 		}
@@ -297,8 +319,8 @@ func (a *App) View(c *ui.Context) {
 }
 
 // shortcuts: Esc goes up one level, Cmd+1 the conversation, Cmd+2 On
-// hand, Cmd+3 Your devices and abilities, Cmd+K the composer of the level
-// shown.
+// hand, Cmd+3 Devices, Cmd+4 Partner, Cmd+, Settings, Cmd+K the composer
+// of the level shown. (In Ducter.app the menu bar holds the same keys.)
 func (a *App) shortcuts(c *ui.Context) {
 	switch {
 	case c.Shortcut(ui.Cmd, ui.Key1):
@@ -307,8 +329,12 @@ func (a *App) shortcuts(c *ui.Context) {
 		a.Route = RouteOnHand
 	case c.Shortcut(ui.Cmd, ui.Key3):
 		a.OpenDevices()
+	case c.Shortcut(ui.Cmd, ui.Key4):
+		a.OpenPartner()
+	case c.Shortcut(ui.Cmd, ui.KeyComma):
+		a.OpenSettings()
 	case c.Shortcut(ui.Cmd, ui.KeyK):
-		if a.Route == RouteOnHand || a.Route == RouteDevices {
+		if a.Route != RouteConversation && a.Route != RouteTask {
 			a.Route = RouteConversation
 		}
 		a.focusComposer = true
@@ -323,7 +349,7 @@ func (a *App) Up() {
 	switch a.Route {
 	case RouteTask:
 		a.Route = RouteOnHand
-	case RouteOnHand, RouteDevices:
+	case RouteOnHand, RouteDevices, RoutePartner, RouteSettings:
 		a.Route = RouteConversation
 	}
 }
@@ -546,8 +572,13 @@ func (a *App) Welcomed() {
 		a.send(protocol.TaskHistoryReq{T: "task_history", TaskID: a.TaskID, Limit: 500})
 	}
 	// Devices are pushed only to sockets that asked: ask again on a new one.
-	if a.Route == RouteDevices || !a.S.DevicesAt.IsZero() {
+	if a.Route == RouteDevices || a.Route == RoutePartner || !a.S.DevicesAt.IsZero() {
 		a.send(protocol.DevicesReq{T: "devices"})
+	}
+	// Settings, too: the Partner page, and whether (and when) this Mac
+	// shows notifications.
+	if a.S.Settings != nil || a.Route == RoutePartner || a.Desktop != nil {
+		a.send(protocol.SettingsReq{T: "settings"})
 	}
 }
 

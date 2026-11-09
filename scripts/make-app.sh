@@ -56,7 +56,7 @@ sh "$ROOT/packages/cli/build.sh" "$WORK/cli/ducter"
 say "2/5 the desktop app"
 command -v go >/dev/null 2>&1 || { echo "Go is needed: brew install go" >&2; exit 1; }
 (cd "$ROOT/apps/desktop" && go build -trimpath \
-  -ldflags "-s -w -X github.com/egoist/mygo.production=1" \
+  -ldflags "-s -w -X github.com/egoist/mygo.production=1 -X main.version=$VERSION -X main.commit=$COMMIT" \
   -o "$WORK/app/$NAME" .)
 
 say "3/5 the icon"

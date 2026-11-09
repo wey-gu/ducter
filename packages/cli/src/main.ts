@@ -18,6 +18,8 @@ import { parentPid, watchParent } from "./parent.ts";
 import { scriptedRunnerModule } from "./scripted.ts";
 import { hostname } from "node:os";
 import { openDeviceAuth } from "@ducter/core/src/auth.ts";
+import { probeHarnesses } from "@ducter/core/src/harness-probe.ts";
+import { harnessName } from "@ducter/protocol";
 
 declare const DUCTER_COMMIT: string | undefined; // set by build.sh via --define
 
@@ -107,11 +109,31 @@ async function cmdStatus(ctx: Ctx): Promise<number> {
   return 0;
 }
 
+/** The AI agents on this machine that outlive Ducter (pi ships inside it): what Remove may
+ *  promise stays. A failed probe says nothing rather than guessing. */
+async function installedAgents(dataDir: string): Promise<{ name: string; signedIn: boolean }[] | undefined> {
+  const host = realHost();
+  try {
+    const found = await probeHarnesses({
+      exec: async (argv, ms) => {
+        const r = await host.run(argv, ms);
+        return { code: r.code, out: r.stdout };
+      },
+      which: (c) => host.which(c),
+      dataDir,
+    });
+    return found.filter((h) => h.harness !== "pi" && h.installed).map((h) => ({ name: harnessName(h.harness), signedIn: h.loggedIn }));
+  } catch {
+    return undefined;
+  }
+}
+
 async function cmdUninstall(ctx: Ctx): Promise<number> {
   const { t, args } = ctx;
   const home = homedir();
   const label = agentLabel(process.env, process.execPath);
-  const plan = planUninstall({ home, dataDir: ctx.dataDir, platform: process.platform, agentLabel: label, execPath: process.execPath, all: Boolean(args.all), fromApp: process.env.DUCTER_FROM_APP === "1", t });
+  const agents = await installedAgents(ctx.dataDir);
+  const plan = planUninstall({ home, dataDir: ctx.dataDir, platform: process.platform, agentLabel: label, execPath: process.execPath, all: Boolean(args.all), fromApp: process.env.DUCTER_FROM_APP === "1", t, agents });
   const { repos: _repos, ...shown } = plan;
   if (args.dryRun) {
     console.log(args.json ? JSON.stringify(shown, null, 2) : formatPlan(plan, t, home));

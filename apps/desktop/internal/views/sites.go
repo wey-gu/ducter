@@ -34,6 +34,35 @@ func (a *App) ducterBrowserTrouble(c *ui.Context, dv *protocol.DeviceView, ab *p
 	}
 }
 
+// browserBlock is the device card's 上网 part when the device browses with
+// Ducter's own browser (a server): getting it ready, what's in the way, the
+// add button, or once on, the sites signed in to.
+func (a *App) browserBlock(c *ui.Context, dv *protocol.DeviceView) {
+	t := a.T
+	ab := dv.Ability(protocol.AbilityWeb)
+	if ab == nil || ab.Where != protocol.WhereDucter {
+		return
+	}
+	ui.Column(c.Key("browser:"+dv.ID)).Gap(t.S2).Margin(t.S3, 0, 0, 0).Children(func() {
+		if ab.State != protocol.AbilityOn || ab.Setup != "" {
+			ui.Text(c, a.L.T("ability.web")).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted)
+		}
+		switch {
+		case ab.Setup == "installing":
+			a.reasonLine(c, a.L.T("web.installing"))
+		case ab.State == protocol.AbilityUnavailable && ab.Reason != "env_off":
+			a.ducterBrowserTrouble(c, dv, ab)
+		case ab.State == protocol.AbilityOff:
+			ui.Text(c, a.L.T("ability.web.about.ducter")).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.5)
+			if dv.State == protocol.DeviceAwake && a.buttonFor(c, a.L.T("ability.add", a.deviceNameIn(dv)), a.L.T("ability.web"), btnSecondary, t.ControlSM, t.Surface) {
+				a.send(protocol.AbilityReq{T: "ability", Device: dv.ID, Ability: protocol.AbilityWeb, On: true})
+			}
+		case ab.State == protocol.AbilityOn:
+			a.sitesList(c)
+		}
+	})
+}
+
 // sitesList is 已登录的网站 / Signed-in sites: asked for when it shows
 // (and again after a minute), each row with 退出 / Sign out.
 func (a *App) sitesList(c *ui.Context) {

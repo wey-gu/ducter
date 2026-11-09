@@ -742,8 +742,6 @@ func (a *App) abilityDetail(c *ui.Context, dv *protocol.DeviceView) {
 			a.reasonLine(c, a.L.T("ability.later"))
 		case id == protocol.AbilityWeb && a.webNeedsSetup(dv) && dv.State == protocol.DeviceAwake:
 			a.webSetupEntry(c, dv)
-		case id == protocol.AbilityWeb && ab.Where == protocol.WhereDucter && ab.State == protocol.AbilityUnavailable && ab.Reason != "env_off":
-			a.ducterBrowserTrouble(c, dv, ab)
 		case ab.State == protocol.AbilityUnavailable:
 			a.unavailable(c, ab)
 		case on && id == protocol.AbilityRemote:
@@ -769,13 +767,9 @@ func (a *App) abilityDetail(c *ui.Context, dv *protocol.DeviceView) {
 					d.removing = id
 				}
 			})
-			// D150: Ducter's own browser: getting ready, then the sites signed in to.
-			if id == protocol.AbilityWeb && ab != nil && ab.Where == protocol.WhereDucter {
-				if ab.Setup == "installing" {
-					a.reasonLine(c, a.L.T("web.installing"))
-				} else {
-					a.sitesList(c)
-				}
+			// D150: Ducter's own browser getting ready (its sites are in the device card).
+			if id == protocol.AbilityWeb && ab != nil && ab.Setup == "installing" {
+				a.reasonLine(c, a.L.T("web.installing"))
 			}
 		case dv.State != protocol.DeviceAwake:
 			a.reasonLine(c, a.L.T("ability.reason.asleep"))
@@ -802,7 +796,7 @@ func (a *App) reasonLine(c *ui.Context, text string) {
 
 func (a *App) reasonText(reason string) string {
 	switch reason {
-	case "cua_missing", "cua_old", "env_off", "failed":
+	case "cua_missing", "cua_old", "env_off", "failed", "browser_deps":
 		return a.L.T("ability.reason." + reason)
 	case "home_only":
 		return a.L.T("ability.reason.home_only", a.S.PersonaName)

@@ -3337,3 +3337,12 @@ button.dev-name {
 .live-bottom { border-top: 1px solid var(--line-soft); min-height: 72px; }
 .live-bottom .btns { flex: 1; display: flex; gap: 10px; }
 .live-bottom .btns .btn { flex: 1; }
+/* D150: 上网 on a server in the device card (Ducter's own browser, its signed-in sites). */
+.dev-web { display: flex; flex-direction: column; gap: var(--s2); margin-top: var(--s2); }
+.dev-web > .btn { align-self: flex-start; }
+.dev-sub { font-size: var(--xs); font-weight: 800; color: var(--ink-muted); }
+.dev-note { font-size: var(--sm); line-height: 1.5; color: var(--ink-soft); padding: var(--s2) var(--s3); border-radius: var(--r-sm); background: var(--bg); }
+.dev-cmd { display: block; font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 12px; padding: var(--s2) var(--s3); border-radius: var(--r-sm); background: var(--sunken); overflow-wrap: anywhere; user-select: all; }
+.dev-site { display: flex; align-items: center; gap: var(--s3); padding: var(--s2) var(--s3); border-radius: var(--r-sm); background: var(--bg); }
+.dev-site-what { flex: 1; min-width: 0; }
+.dev-site-name { font-size: var(--sm); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

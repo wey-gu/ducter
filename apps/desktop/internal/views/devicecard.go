@@ -108,6 +108,7 @@ func (a *App) deviceDetail(c *ui.Context, dv *protocol.DeviceView) {
 			})
 		}
 
+		a.browserBlock(c, dv) // D150: 上网 on a server, Ducter's own browser
 		a.versionBlock(c, dv)
 		if !dv.Home {
 			a.disconnectRow(c, dv.ID, name, false)

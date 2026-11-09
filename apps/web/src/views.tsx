@@ -2526,12 +2526,76 @@ function DeviceCard({ dv }: { dv: DeviceView }) {
           ))}
         </div>
       )}
+      <BrowserBlock dv={dv} />
       <VersionBlock dv={dv} />
       {!dv.home && (
         <div class="dev-actions">
           <Disconnect id={dv.id} name={dv.name} />
         </div>
       )}
+    </div>
+  );
+}
+
+/** D150: 上网 on a server (Ducter's own browser): getting it, what's in the way, then the sites signed in to. */
+function BrowserBlock({ dv }: { dv: DeviceView }) {
+  const ab = dv.abilities.find((a) => a.id === "web");
+  const [clearing, setClearing] = useState(false);
+  const on = ab?.where === "ducter" && ab.state === "on" && !ab.setup;
+  useEffect(() => {
+    if (on) A.send({ t: "browser_sites" });
+  }, [on]);
+  if (!ab || ab.where !== "ducter") return null;
+  const add = () => A.send({ t: "ability", device: dv.id, ability: "web", on: true });
+  const sites = A.sites?.sites ?? [];
+  return (
+    <div class="dev-web">
+      {!on && <div class="dev-sub">{t("web.title")}</div>}
+      {ab.setup === "installing" ? (
+        <div class="dev-note">{t("web.installing")}</div>
+      ) : ab.state === "unavailable" && ab.reason === "browser_deps" ? (
+        <>
+          <div class="dev-note">{t("web.deps")}</div>
+          <code class="dev-cmd">{ab.detail}</code>
+          <Btn kind="secondary" size="sm" label={t("web.retry")} onClick={add} />
+        </>
+      ) : ab.state === "unavailable" && ab.reason === "browser_failed" ? (
+        <>
+          <div class="dev-note">{t("web.failed", ab.detail ?? "")}</div>
+          <Btn kind="secondary" size="sm" label={t("web.retry")} onClick={add} />
+        </>
+      ) : ab.state === "off" ? (
+        <>
+          <div class="small">{t("web.about")}</div>
+          {dv.state === "awake" && <Btn kind="secondary" size="sm" label={t("web.add")} about={t("web.title")} onClick={add} />}
+        </>
+      ) : on ? (
+        <>
+          <div class="dev-sub">{t("sites.title")}</div>
+          {!sites.length && <div class="small">{t("sites.none")}</div>}
+          {sites.map((s) => (
+            <div class="dev-site" key={s.site}>
+              <div class="dev-site-what">
+                <div class="dev-site-name">{s.site}</div>
+                <div class="small">{s.cookies ? t("sites.when", ago(A.L, s.signedInAt)) : t("sites.gone")}</div>
+              </div>
+              <Btn kind="text" size="sm" label={t("sites.signout")} about={s.site} onClick={() => A.send({ t: "browser_site_signout", site: s.site })} />
+            </div>
+          ))}
+          {!!sites.length &&
+            (clearing ? (
+              <>
+                <div class="small">{t("sites.clear.ask")}</div>
+                <div class="btns">
+                  <Btn kind="secondary" size="sm" label={t("sites.keep")} onClick={() => setClearing(false)} />
+                  <Btn kind="primary" size="sm" label={t("sites.clear.go")} onClick={() => (setClearing(false), A.send({ t: "browser_sites_clear" }))} />
+                </div>
+              </>
+            ) : (
+              <Btn kind="text" size="sm" label={t("sites.clear")} onClick={() => setClearing(true)} />
+            ))}
+        </>
+      ) : null}
     </div>
   );
 }

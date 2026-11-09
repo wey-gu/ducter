@@ -85,6 +85,8 @@ class AppState {
   /** D148: every device and every phone or window that reaches Ducter (Settings › Your devices), and
    *  why the last update or rename from here was refused. */
   devices?: DeviceView[];
+  /** D150: the signed-in sites of Ducter's browser on the home, once asked for. */
+  sites?: Extract<ServerFrame, { t: "browser_sites" }>;
   reach?: Reach;
   deviceAnswer?: { device: string; reason: UpdateReason | "name_taken" | "failed" };
   candidates = new Map<string, Candidate[]>();
@@ -191,6 +193,10 @@ class AppState {
       this.conn?.rehello();
     }
     if (f.t === "live" || f.t === "live_frame") return this.liveFrame(f);
+    if (f.t === "browser_sites") {
+      if (f.ok === false && f.message) this.toast(f.message);
+      return void ((this.sites = f), this.changed());
+    }
     if (f.t === "settings") return this.applySettings(f);
     if (f.t === "rules") return void ((this.rules = f.rules), this.changed());
     if (f.t === "devices") {

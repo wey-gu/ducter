@@ -53,6 +53,11 @@ describe("the phone/web client", () => {
       expect(r.status).toBe(200);
       expect(r.headers.get("content-type")).toContain(type!);
     }
+    // Every piece of art the web client names is served (idle_closed.webp was a 404 on every load).
+    const src = await Bun.file(new URL("../../../apps/web/src/views.tsx", import.meta.url)).text();
+    const named = [...new Set([...src.matchAll(/app\/art\/([a-z_]+)\.webp/g)].map((m) => m[1]!))];
+    expect(named).toContain("idle_closed");
+    for (const n of named) expect([n, (await fetch(`${base}/app/art/${n}.webp`, { headers: REMOTE })).status]).toEqual([n, 200]);
     expect((await fetch(`${base}/app/../devices.db`, { headers: REMOTE })).status).not.toBe(200);
     expect((await fetch(`${base}/app/nope.js`, { headers: REMOTE })).status).toBe(404);
     const root = await fetch(`${base}/`, { headers: REMOTE, redirect: "manual" });

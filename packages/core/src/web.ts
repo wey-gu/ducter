@@ -30,6 +30,7 @@ import touchIcon from "../../../apps/web/static/apple-touch-icon.png" with { typ
 import monoFont from "../../../apps/web/static/fonts/jetbrains-mono.woff2" with { type: "file" };
 import roundedFont from "../../../apps/web/static/fonts/rounded-sc-bold.woff2" with { type: "file" };
 import artIdle from "../../../apps/web/static/art/idle.webp" with { type: "file" };
+import artIdleClosed from "../../../apps/web/static/art/idle_closed.webp" with { type: "file" };
 import artWorking from "../../../apps/web/static/art/working.webp" with { type: "file" };
 import artNeeds from "../../../apps/web/static/art/needsyou.webp" with { type: "file" };
 import artDone from "../../../apps/web/static/art/done.webp" with { type: "file" };
@@ -61,6 +62,7 @@ const ASSETS: Record<string, [string, string]> = {
   "fonts/jetbrains-mono.woff2": [monoFont, "font/woff2"],
   "fonts/rounded-sc-bold.woff2": [roundedFont, "font/woff2"],
   "art/idle.webp": [artIdle, "image/webp"],
+  "art/idle_closed.webp": [artIdleClosed, "image/webp"],
   "art/working.webp": [artWorking, "image/webp"],
   "art/needsyou.webp": [artNeeds, "image/webp"],
   "art/done.webp": [artDone, "image/webp"],

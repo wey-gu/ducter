@@ -1,14 +1,14 @@
 // merge / open_pr / undrop over real git (no model calls), and the "no done with an open
 // question" rule against the real core.
 import { afterEach, beforeEach, expect, test } from "bun:test";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Place } from "@ducter/protocol";
 import type { HarnessEvent, HarnessPort, HarnessSession, SessionSpec } from "@ducter/protocol/src/internal.ts";
 import { startCore, type Core } from "../../core/src/core.ts";
 import { createRunner, mergeTaskBranch, openDraftPr, registerTaskTools } from "../src/index.ts";
-import { branchChanges, mergeRefusal } from "../src/integrate.ts";
+import { archiveWorktree, branchChanges, mergeRefusal } from "../src/integrate.ts";
 import { hasBranchChanges, type Bodies } from "@ducter/protocol";
 import { git } from "../src/places.ts";
 
@@ -162,6 +162,75 @@ test("a done report carries the branch check: a task that changed nothing says s
   // A progress report isn't checked (nothing is offered on one).
   await core.mcp.call({ role: "task", taskId }, "report_to_main", { state: "progress", summary: "More." });
   expect(core.tasks.get(taskId)!.lastReport?.branch).toBeUndefined();
+  await runner.dispose();
+});
+
+test("archiveWorktree: removes only a clean worktree Ducter made, never forced; the branch stays", async () => {
+  const p = repoWithTaskBranch(); // its worktree is outside any data folder
+  const data = join(dir, "data");
+  expect(await archiveWorktree(p, data)).toMatchObject({ ok: true, removed: false, message: expect.stringContaining("didn't make") });
+  const wt = join(data, "worktrees", "t9");
+  sh(p.repoPath, "worktree", "add", "-q", wt, "-b", "ducter/other", "main");
+  const ours = { ...p, worktree: wt, branch: "ducter/other" };
+  writeFileSync(join(wt, "left.txt"), "leftover\n");
+  expect(await archiveWorktree(ours, data)).toMatchObject({ ok: false, removed: false, message: expect.stringContaining("1 uncommitted or untracked file") });
+  expect(existsSync(join(wt, "left.txt"))).toBe(true);
+  rmSync(join(wt, "left.txt"));
+  expect(await archiveWorktree(ours, data)).toMatchObject({ ok: true, removed: true });
+  expect(existsSync(wt)).toBe(false);
+  expect((await git(p.repoPath, ["rev-parse", "--verify", "ducter/other"])).ok).toBe(true);
+  expect(await archiveWorktree(ours, data)).toMatchObject({ ok: true, removed: false });
+});
+
+// Fresh-user QA: worktrees were never removed after a merge (product-model "Archive and disk").
+test("merge archives a done task: session closed, worktree removed, branch kept; a follow-up adds it back", async () => {
+  const repo = join(dir, "repo");
+  Bun.spawnSync(["git", "init", "-q", "-b", "main", repo]);
+  sh(repo, "config", "user.name", "t");
+  sh(repo, "config", "user.email", "t@t");
+  writeFileSync(join(repo, "a.txt"), "a\n");
+  sh(repo, "add", ".");
+  sh(repo, "commit", "-qm", "init");
+  const { core, runner, taskId } = await bootWithTask({ kind: "repo", device: "local", repoPath: repo });
+  const place = core.tasks.get(taskId)!.place as Extract<Place, { kind: "repo" }>;
+  expect(place.worktree).toBe(join(dir, "data", "worktrees", "t1"));
+  writeFileSync(join(place.worktree!, "b.txt"), "b\n");
+  sh(place.worktree!, "add", ".");
+  sh(place.worktree!, "commit", "-qm", "b");
+  await core.mcp.call({ role: "task", taskId }, "report_to_main", { state: "done", summary: "Added b." });
+  expect(await runner.merge(taskId)).toMatchObject({ ok: true });
+  expect(existsSync(place.worktree!)).toBe(false);
+  expect((await git(repo, ["rev-parse", "--verify", place.branch!])).ok).toBe(true);
+  expect(core.tasks.get(taskId)).toMatchObject({ attention: "done", residency: "archived" });
+  const said = core.log.read({ stream: `task:${taskId}`, kinds: ["task_event"] }).map((e) => (e.body as Bodies["task_event"]).text);
+  expect(said).toContain(`Removed the worktree; ${place.branch} stays.`);
+  // A follow-up on the merged task: the worktree comes back from its branch, the session resumes.
+  await runner.send(taskId, "One more thing.");
+  expect(existsSync(join(place.worktree!, "b.txt"))).toBe(true);
+  expect(core.tasks.get(taskId)!.attention).toBe("working");
+  await runner.dispose();
+});
+
+test("merge keeps a worktree with leftovers and says so on the task", async () => {
+  const repo = join(dir, "repo");
+  Bun.spawnSync(["git", "init", "-q", "-b", "main", repo]);
+  sh(repo, "config", "user.name", "t");
+  sh(repo, "config", "user.email", "t@t");
+  writeFileSync(join(repo, "a.txt"), "a\n");
+  sh(repo, "add", ".");
+  sh(repo, "commit", "-qm", "init");
+  const { core, runner, taskId } = await bootWithTask({ kind: "repo", device: "local", repoPath: repo });
+  const wt = (core.tasks.get(taskId)!.place as Extract<Place, { kind: "repo" }>).worktree!;
+  writeFileSync(join(wt, "b.txt"), "b\n");
+  sh(wt, "add", ".");
+  sh(wt, "commit", "-qm", "b");
+  writeFileSync(join(wt, "notes.txt"), "scratch\n"); // untracked: merge allows it, removal must not lose it
+  await core.mcp.call({ role: "task", taskId }, "report_to_main", { state: "done", summary: "Added b." });
+  expect(await runner.merge(taskId)).toMatchObject({ ok: true });
+  expect(existsSync(join(wt, "notes.txt"))).toBe(true);
+  expect(core.tasks.get(taskId)).toMatchObject({ attention: "done", residency: "parked" });
+  const last = core.log.read({ stream: `task:${taskId}`, kinds: ["task_event"] }).at(-1)!.body as Bodies["task_event"];
+  expect(last).toMatchObject({ role: "system", raw: { archive: "kept" }, text: expect.stringContaining("uncommitted or untracked") });
   await runner.dispose();
 });
 

@@ -6,7 +6,7 @@
 // token beside the task's role token on /mcp, nowhere else).
 import type { HarnessEvent, HarnessPort, HarnessSession, SessionSpec } from "@ducter/protocol/src/internal.ts";
 import { runCheck } from "@ducter/protocol/src/checks-run.ts";
-import { branchChanges, mergeTaskBranch, openDraftPr } from "./integrate.ts";
+import { archiveWorktree, branchChanges, mergeTaskBranch, openDraftPr } from "./integrate.ts";
 import { planPlace, provisionPlace } from "./places.ts";
 
 export interface WorkerHostOptions {
@@ -119,6 +119,7 @@ export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
     merge: (a) => mergeTaskBranch(a.place),
     openPr: (a) => openDraftPr(a.place, { gh: o.gh }),
     changes: (a) => branchChanges(a.place),
+    archive: (a) => archiveWorktree(a.place, o.dataDir),
     // D112: a waiter's check runs here when the task works on this device (read-only, validated
     // again here: the worker never trusts the main to have checked).
     check: (a) => runCheck(a.spec),

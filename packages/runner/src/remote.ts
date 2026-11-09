@@ -19,6 +19,8 @@ export interface PlaceOps {
   openPr(place: Place): Promise<ActionResult>;
   /** What the task branch holds that its base doesn't (undefined: can't tell). */
   changes(place: Place): Promise<BranchChanges | undefined>;
+  /** After a merge: remove the clean worktree Ducter made, keep the branch (integrate.ts). */
+  archive(place: Place): Promise<ActionResult & { removed: boolean }>;
 }
 
 /** The device a place names; "local", empty, or absent mean this machine. */
@@ -110,5 +112,7 @@ export function remoteOps(link: WorkerLink): PlaceOps {
     openPr: (place) => guard(link.call<ActionResult>("openPr", { place }, 5 * 60_000)),
     // An older worker doesn't know "changes": unknown, never an error in a report.
     changes: (place) => link.call<BranchChanges | undefined>("changes", { place }, 10_000).catch(() => undefined),
+    // An older worker doesn't know "archive": its worktree stays, as before.
+    archive: (place) => link.call<ActionResult & { removed: boolean }>("archive", { place }, 60_000).catch((err) => ({ ok: false, removed: false, message: `Kept the worktree on ${link.name}: ${err instanceof Error ? err.message : String(err)}` })),
   };
 }

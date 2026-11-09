@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/egoist/mygo/transfer"
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/editor"
+	"github.com/wey-gu/ducter/apps/desktop/internal/redact"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/diff"
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
@@ -59,6 +59,10 @@ func (a *App) task(c *ui.Context) {
 								a.taskHeadline(c, task)
 							}
 						})
+						if a.yourTurn(task) {
+							// Waiting on you with nothing to answer: say what it wants, plainly (D148).
+							ui.Text(c.Key("yourturn"), a.L.T("task.your.turn.hint")).FontSize(t.SM).TextColor(t.InkSoft)
+						}
 						if d := a.S.PendingDecision(task.ID); d != nil {
 							if d.Resolved != nil || d.Pending != "" {
 								a.decisionAnswered(c, d)
@@ -71,9 +75,12 @@ func (a *App) task(c *ui.Context) {
 				})
 				a.waitPanel(c, task)
 				a.tryStrip(c, task)
-				a.whatItDid(c, task)
+				blocks := a.blocks(task)
+				a.briefCard(c, task, blocks)
+				a.whatItDid(c, task, blocks)
 				a.changes(c, task)
-				a.taskDetails(c, task)
+				a.outsideActs(c, task)
+				a.waitFacts(c, task)
 			})
 		})
 	})
@@ -124,16 +131,18 @@ func (a *App) taskActions(c *ui.Context, task *store.Task) {
 func (a *App) taskStanding(c *ui.Context, task *store.Task) {
 	t := a.T
 	att := task.Attention()
-	parts := []string{}
-	if task.OpenedAt != "" {
-		parts = append(parts, a.L.T("task.opened", a.ago(task.OpenedAt)))
+	state := a.stateLabel(att)
+	if a.yourTurn(task) {
+		state = a.L.T("task.your.turn")
 	}
-	// Who does it is said once, in the footer over the composer (D127).
-	ui.Row(c.Key("meta")).Gap(t.S1).Wrap().AlignItems(ui.Baseline).Children(func() {
-		ui.Text(c, a.stateLabel(att)).FontSize(t.SM).FontWeight(800).TextColor(t.State(string(att)).Ink)
-		if len(parts) > 0 {
-			ui.Text(c, "· "+strings.Join(parts, " · ")).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
+	when := a.taskClock(c, task)
+	// One quiet line (D148): where it stands and its one clock, then who does it and where.
+	ui.Row(c.Key("meta")).Gap(t.S1).Wrap().AlignItems(ui.Center).Children(func() {
+		ui.Text(c, state).FontSize(t.SM).FontWeight(800).TextColor(t.State(string(att)).Ink)
+		if when != "" {
+			ui.Text(c, "· "+when).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").MinWidth(0)
 		}
+		a.taskWho(c, task)
 	})
 }
 
@@ -169,7 +178,7 @@ func (a *App) taskHeadline(c *ui.Context, task *store.Task) {
 	if line == "" {
 		line = task.Title()
 	}
-	a.heading(c, autospace(line), t.XXL).LineHeight(1.25).Balance().MaxWidth(headMeasure).Selectable()
+	a.heading(c, autospace(redact.Text(line)), t.XXL).LineHeight(1.25).Balance().MaxWidth(headMeasure).Selectable()
 }
 
 // lastSaid is where the work stands in a sentence: the latest progress it
@@ -284,7 +293,7 @@ func (a *App) outcome(c *ui.Context, task *store.Task) {
 			a.heading(c, autospace(task.Title()), t.Title).LineHeight(1.18).Balance().MaxWidth(headMeasure)
 		}
 		if rep != nil && rep.Summary != "" {
-			head, rest := headline(rep.Summary)
+			head, rest := headline(redact.Text(rep.Summary))
 			a.heading(c, autospace(head), t.Title).LineHeight(1.18).Balance().MaxWidth(headMeasure)
 			if rest != "" {
 				ui.Text(c, autospace(rest)).FontSize(t.PartnerSize).LineHeight(leadingFor(rest, 1.65)).TextColor(t.InkSoft).MaxWidth(readMeasure)
@@ -356,7 +365,6 @@ func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 		a.aboveComposer(c, func() { a.heldLine(c) })
 	}
 	draft := a.taskDrafts[task.ID]
-	a.taskBar(c, task)
 	ui.Row(c).Justify(ui.Center).Padding(t.S2, t.S5, t.S5, t.S5).Children(func() {
 		ui.Row(c).Grow(1).MaxWidth(convWidth).Gap(t.S3).AlignItems(ui.Center).Padding(t.S2, t.S2, t.S2, t.S5).
 			Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Children(func() {
@@ -684,98 +692,22 @@ func (a *App) fileRow(c *ui.Context, task *store.Task, f *diffFile) {
 
 // ---------- details ----------
 
-// taskDetails is a quiet disclosure at the bottom: who is doing it and
-// why, where (the repo's name and branch, its path as the user named it),
-// the saved progress, what went out, and the usage. A row with nothing to
-// say is left out.
-func (a *App) taskDetails(c *ui.Context, task *store.Task) {
+// waitFacts are how a wait or an until loop checks (D112, D113), when
+// the task has one: the one table left of the old Details (D148). Who does
+// it, where and its clock are the head's lines; saved progress is in the
+// transcript, said once.
+func (a *App) waitFacts(c *ui.Context, task *store.Task) {
 	t := a.T
-	key := "details:" + task.ID
-	open := a.open[key]
-	ui.Column(c.Key("details")).Gap(t.S3).Children(func() {
-		l := ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Label(a.L.T("task.side.details"))
-		l.Children(func() {
-			tx := ui.Text(c, a.L.T("task.side.details")).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).AccessHidden(true)
-			ui.Text(c, "›").FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).Rotate(map[bool]float32{true: 90, false: 0}[open]).AccessHidden(true)
-			if l.Hovered() {
-				tx.TextColor(t.Ink)
-			}
+	row := func(label string, body func()) {
+		ui.Column(c.Key(label)).Gap(t.S1).MaxWidth(readMeasure).Children(func() {
+			ui.Text(c, label).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
+			body()
 		})
-		if l.Clicked() {
-			a.open[key] = !open
-		}
-		if !open {
-			return
-		}
-		// A fixed label column; label and value share a first baseline, and
-		// the values start where the head's words do (the face's width and
-		// its gap), so the page reads on one left edge.
-		row := func(label string, body func()) {
-			ui.Row(c.Key(label)).Gap(t.S4).AlignItems(ui.Baseline).Children(func() {
-				ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).Width(taskFaceW + t.S5 - t.S4).Shrink(0)
-				ui.Column(c).Gap(t.S1).Grow(1).MinWidth(0).MaxWidth(readMeasure).Children(body)
-			})
-		}
-		value := func(s string) {
-			ui.Text(c, s).FontSize(t.MD).LineHeight(leadingFor(s, 1.5)).TextColor(t.InkSoft).Selectable()
-		}
-		if who := a.whoSentence(task); who != "" {
-			row(a.L.T("task.dossier.body"), func() {
-				ui.Row(c).Gap(t.S2).Wrap().AlignItems(ui.Baseline).Children(func() {
-					value(who)
-					if canSwitch(task) && a.quietLink(c, "who-details:"+task.ID, a.L.T("who.switch"), a.L.T("who.switch")) {
-						a.openSwitch(task.ID)
-					}
-				})
-				if r := task.BodyReason(); r != "" {
-					value(r)
-				}
-			})
-		}
-		a.waitRows(c, task, row, value)
-		p := task.Place()
-		if line := a.placeLine(p); line != "" {
-			row(a.L.T("task.dossier.where"), func() {
-				// The repo and its branch; the path itself on hover, and copied
-				// with ⌘C (never a home folder spelled out, D127).
-				tx := ui.Text(c, line).FontSize(t.MD).LineHeight(leadingFor(line, 1.5)).TextColor(t.InkSoft).Selectable()
-				if s := firstNonEmpty(p.RepoPath, p.Path); s != "" {
-					tx.Tooltip(s).CopyData(func([]ui.SelectedText) transfer.Data { return transfer.TextData(s) })
-				}
-			})
-		}
-		if len(task.Checkpoints) > 0 || task.Compactions > 0 {
-			row(a.L.T("task.dossier.checkpoints"), func() {
-				// Each with its time beside it, not stranded at the far edge.
-				for _, cp := range task.Checkpoints {
-					ui.Row(c.Key(cp.Seq)).Gap(t.S2).Wrap().AlignItems(ui.Baseline).Children(func() {
-						ui.Text(c, cp.Text).FontSize(t.MD).LineHeight(leadingFor(cp.Text, 1.5)).TextColor(t.InkSoft).Shrink(1).MinWidth(0)
-						ui.Text(c, "· "+clock(cp.TS)).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0)
-					})
-				}
-				// D135: quietly, how often its context was compacted (it carried on from here).
-				if n := task.Compactions; n > 0 {
-					s := a.L.T("task.dossier.compacted", n)
-					if n == 1 {
-						s = a.L.T("task.dossier.compacted.one")
-					}
-					ui.Text(c.Key("compacted"), s).FontSize(t.SM).TextColor(t.InkMuted)
-				}
-			})
-		}
-		if acts := task.Outside(); task.HistoryLoaded && len(acts) > 0 {
-			row(a.L.T("outside.title"), func() {
-				for _, act := range acts {
-					ui.Text(c.Key(act.Seq), act.Command).Font(t.Mono).FontSize(t.MonoSM).LineHeight(1.45).TextColor(t.InkSoft).Selectable().MaxLines(3)
-				}
-			})
-		}
-		if u := task.Usage; u.InputTokens+u.OutputTokens+u.CacheRead > 0 {
-			row(a.L.T("task.dossier.usage"), func() {
-				ui.Text(c, a.L.T("task.usage", a.aboutTokens(u.InputTokens+u.CacheRead+u.CacheWrite+u.OutputTokens))).FontSize(t.SM).TextColor(t.InkMuted)
-			})
-		}
-	})
+	}
+	value := func(s string) {
+		ui.Text(c, s).FontSize(t.SM).LineHeight(leadingFor(s, 1.5)).TextColor(t.InkSoft).Selectable()
+	}
+	ui.Column(c.Key("waitfacts")).Gap(t.S3).Children(func() { a.waitRows(c, task, row, value) })
 }
 
 // aboutTokens is a rough token count in the reader's own units, one token as one

@@ -223,6 +223,7 @@ func TestOpenedTaskTranscript(t *testing.T) {
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
 		f := appStoreTask(t, lang, true)
 		f.app.OpenTask("t_asc")
+		openStretches(f.app, "t_asc")
 		f.tt.Frame()
 		f.tt.Frame()
 		all := texts(f.tt)
@@ -232,8 +233,8 @@ func TestOpenedTaskTranscript(t *testing.T) {
 			}
 		}
 		want := map[i18n.Lang][]string{
-			i18n.ZH: {"思考", "运行", "读取", "搜索", "浏览", "操作", "出错", "xcrun altool", "在 Chrome 里打开 appstoreconnect.apple.com/login", "在 Chrome 里按 ⌘T", "好", "Codex · gpt-5.5", "在做"},
-			i18n.EN: {"Thinking", "Ran", "Read", "Searched", "Browsed", "Used", "Error", "xcrun altool", "appstoreconnect.apple.com/login in Chrome", "pressed ⌘T in Chrome", "Go", "Codex · gpt-5.5", "Working"},
+			i18n.ZH: {"思考", "运行", "读取", "搜索", "出错", "xcrun altool", "在 Chrome 里打开 appstoreconnect.apple.com/login", "在 Chrome 里按 ⌘T", "好", "Codex · gpt-5.5", "在做", "Ducter 交代的事", "保存了进度"},
+			i18n.EN: {"Thinking", "Ran", "Read", "Searched", "Error", "xcrun altool", "appstoreconnect.apple.com/login in Chrome", "pressed ⌘T in Chrome", "Go", "Codex · gpt-5.5", "Working", "What Ducter asked", "Progress saved"},
 		}[lang]
 		for _, w := range want {
 			if !strings.Contains(all, w) {
@@ -242,7 +243,7 @@ func TestOpenedTaskTranscript(t *testing.T) {
 		}
 		shotTo(t, f.tt, "task-asc-desktop-"+string(lang))
 		// The error opens onto what it printed.
-		if err := f.tt.Click(map[i18n.Lang]string{i18n.ZH: "出错 在 Chrome 里按 ⌘T", i18n.EN: "Error pressed ⌘T in Chrome"}[lang]); err != nil {
+		if err := f.tt.Click(map[i18n.Lang]string{i18n.ZH: "在 Chrome 里按 ⌘T", i18n.EN: "pressed ⌘T in Chrome"}[lang]); err != nil {
 			t.Fatal(err)
 		}
 		f.tt.Frame()
@@ -253,6 +254,7 @@ func TestOpenedTaskTranscript(t *testing.T) {
 
 		f.addCodeTask(lang)
 		f.app.OpenTask("t_flaky")
+		openStretches(f.app, "t_flaky")
 		f.tt.Frame()
 		f.tt.Frame()
 		all = texts(f.tt)

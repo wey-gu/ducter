@@ -1,10 +1,13 @@
 package views
 
-// What it did, as a compact transcript (D127): the agent's own sentences as
-// normal text; between them each step one quiet line (a small drawn mark, a
-// verb, a one-line summary, truncated); thinking as its headings; an error
-// as one red-tinted line whose raw text opens on a click; saved progress as
-// a tiny mark. The same on every harness: steps.go names the steps.
+// What it did, as the agent tells it (D148, after D127): the agent's own
+// words are the readable layer; each stretch of steps between two things
+// it said folds under one gist line ("查看了一圈 · 5 步"), opened on a
+// click, the stretch under way live with a spinner and its latest step; a
+// step is one sentence (the agent's own words for it when the harness
+// carries them), a probe that found nothing is neutral, only a real
+// failure is red and shows even folded. transcript.go builds the blocks,
+// steps.go names the steps; keys are hidden in both.
 
 import (
 	"fmt"
@@ -16,22 +19,9 @@ import (
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
+	"github.com/wey-gu/ducter/apps/desktop/internal/redact"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 )
-
-// txLine is one line of the transcript: a step (a tool call, repeated n
-// times in a row), the model's thinking, or another event said in words.
-type txLine struct {
-	ev      protocol.LogEvent
-	step    *Step
-	tool    *protocol.ToolCall
-	failed  bool
-	n       int
-	thought string
-	seq     int64
-}
-
-func (l txLine) isStep() bool { return l.step != nil || l.thought != "" }
 
 // goRelay is the label of a Go the user gave, from the text Ducter relays
 // to the task ("User says Go: …."), or false.
@@ -43,116 +33,80 @@ func goRelay(text string) (string, bool) {
 	return strings.TrimRight(strings.TrimSpace(rest), ".。"), true
 }
 
-// quietSystem is a harness's note that says nothing to a person: a turn
-// ending, a session starting, a browser status the steps already say.
-func quietSystem(text string) bool {
-	s := strings.ToLower(strings.TrimSpace(text))
-	switch s {
-	case "session started", "turn completed", "turn complete", "turn ended", "turn aborted":
-		return true
-	}
-	return strings.HasPrefix(s, "looking at ") || strings.HasPrefix(s, "compaction ")
+// blocks is the opened task's transcript as blocks.
+func (a *App) blocks(task *store.Task) []Block {
+	att := task.Attention()
+	return blocksOf(task.Harness(), task.Events, att == protocol.Working || att == protocol.Queued)
 }
 
-// transcript is the task's events as lines.
-func (a *App) transcript(task *store.Task) []txLine {
-	var out []txLine
-	last := int64(-1)
-	for _, ev := range task.Events {
-		if ev.Kind == protocol.KindReport {
-			last = ev.Seq
-		}
-	}
-	harness, app := task.Harness(), ""
-	for _, ev := range task.Events {
-		switch ev.Kind {
-		case protocol.KindTaskOpen, protocol.KindCheckpoint:
-		case protocol.KindReport:
-			if ev.Seq == last {
-				continue // said above: the outcome, or where it stands
-			}
-		case protocol.KindTaskEvent:
-			body, _ := ev.Typed()
-			b, _ := body.(*protocol.TaskEvent)
-			if b == nil {
-				continue
-			}
-			if len(b.Thinking) > 0 {
-				out = append(out, txLine{ev: ev, thought: strings.Join(b.Thinking, " · "), seq: ev.Seq})
-				continue
-			}
-			if b.Tool != nil {
-				st := stepOf(harness, b.Tool)
-				if st.Hidden {
-					continue
-				}
-				// The app a run of browser and computer steps works in carries
-				// over to the steps that don't name it ("在 Chrome 里打开 …").
-				if st.Kind == "browsed" || st.Kind == "computer" {
-					if st.App == "" {
-						st.App = app
-					} else {
-						app = st.App
-					}
-				}
-				failed := b.Tool.OK != nil && !*b.Tool.OK
-				if n := len(out); n > 0 && !failed && out[n-1].step != nil && !out[n-1].failed && *out[n-1].step == st {
-					out[n-1].n++
-					continue
-				}
-				out = append(out, txLine{ev: ev, step: &st, tool: b.Tool, failed: failed, n: 1, seq: ev.Seq})
-				continue
-			}
-			if b.Role == "system" && (b.Text == "" || quietSystem(b.Text)) {
-				continue
-			}
-			if b.Role == "user" && (b.From == "runner" || b.From == "" && (strings.HasPrefix(b.Text, `Start the task "`) || strings.HasPrefix(b.Text, "<brief>"))) {
-				continue // the runner's kickoff, not something anyone said
-			}
-		default:
-			continue
-		}
-		out = append(out, txLine{ev: ev, seq: ev.Seq})
-	}
-	return out
-}
-
-func (a *App) whatItDid(c *ui.Context, task *store.Task) {
+// briefCard is what you (or the partner) asked, quiet and folded to three
+// lines; a key in it is hidden and said so.
+func (a *App) briefCard(c *ui.Context, task *store.Task, blocks []Block) {
 	t := a.T
-	lines := a.transcript(task)
-	ui.Column(c.Key("did")).Gap(t.S2).MaxWidth(readMeasure).Children(func() {
-		a.sectionTitle(c, a.L.T("task.transcript")).Margin(0, 0, t.S2, 0)
-		if len(lines) == 0 && len(task.Sends) == 0 {
-			ui.Text(c, a.L.T("task.loading")).FontSize(t.SM).TextColor(t.InkMuted)
+	var b *Block
+	for i := range blocks {
+		if blocks[i].K == "brief" {
+			b = &blocks[i]
+			break
 		}
-		for i := 0; i < len(lines); {
-			if !lines[i].isStep() {
-				a.transcriptRow(c.Key(lines[i].seq), task, lines[i].ev)
-				i++
-				continue
-			}
-			// A run of steps between the agent's words: a long one shows its
-			// latest few, the earlier ones behind one quiet line.
-			j := i
-			for j < len(lines) && lines[j].isStep() {
-				j++
-			}
-			run := lines[i:j]
-			key := fmt.Sprintf("run:%s:%d", task.ID, run[0].seq)
-			ui.Column(c.Key(key)).Gap(0).Children(func() {
-				shown := run
-				if len(run) > 6 && !a.open[key] {
-					hidden := len(run) - 4
-					if a.quietRow(c, key, a.L.T("step.more", hidden)) {
-						a.open[key] = true
-					}
-					shown = run[hidden:]
+	}
+	if b == nil {
+		return
+	}
+	key := "brief:" + task.ID
+	open := a.open[key]
+	label := a.L.T("task.asked", a.S.PersonaName)
+	if b.By == "you" {
+		label = a.L.T("task.asked.you")
+	}
+	long := strings.Count(b.Text, "\n") > 2 || len([]rune(b.Text)) > 180
+	ui.Column(c.Key("brief")).Gap(t.S2).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.SurfaceSunken).MaxWidth(readMeasure).Children(func() {
+		ui.Text(c, label).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
+		tx := ui.Text(c, b.Text).FontSize(t.SM).LineHeight(leadingFor(b.Text, 1.55)).TextColor(t.InkSoft).Selectable()
+		if !open {
+			tx.MaxLines(3)
+		}
+		if redact.Has(b.Text) || long {
+			ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
+				if redact.Has(b.Text) {
+					ui.Row(c).Gap(t.S1).AlignItems(ui.Center).Children(func() {
+						a.glyph(c, 14, drawKey(t.InkMuted))
+						ui.Text(c, a.L.T("secret.hidden")).FontSize(t.XS).TextColor(t.InkMuted)
+					})
 				}
-				for _, l := range shown {
-					a.stepLine(c.Key(l.seq), task, l)
+				ui.Spacer(c)
+				if long {
+					more := a.L.T("task.asked.more")
+					if open {
+						more = a.L.T("task.asked.less")
+					}
+					l := ui.Text(c.Key("brief-more"), more).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Label(more)
+					if l.Hovered() {
+						l.TextColor(t.Ink)
+					}
+					if l.Clicked() {
+						a.open[key] = !open
+					}
 				}
 			})
-			i = j
+		}
+	})
+}
+
+// whatItDid is the transcript under the brief: the agent's voice, its
+// steps folded per stretch, your words, its earlier reports.
+func (a *App) whatItDid(c *ui.Context, task *store.Task, blocks []Block) {
+	t := a.T
+	ui.Column(c.Key("did")).Gap(t.S4).MaxWidth(readMeasure).Children(func() {
+		if len(blocks) == 0 && len(task.Sends) == 0 {
+			ui.Text(c, a.L.T("task.loading")).FontSize(t.SM).TextColor(t.InkMuted)
+		}
+		for i := range blocks {
+			b := &blocks[i]
+			if b.K == "brief" {
+				continue
+			}
+			ui.Column(c.Key(fmt.Sprintf("b:%d", b.Seq))).Gap(t.S1).Children(func() { a.block(c, task, b) })
 		}
 		for _, sd := range task.Sends {
 			if sd.Seq == 0 {
@@ -162,19 +116,192 @@ func (a *App) whatItDid(c *ui.Context, task *store.Task) {
 	})
 }
 
-// quietRow is a muted line that opens something: "前面还有 12 步 ›".
-func (a *App) quietRow(c *ui.Context, key, text string) bool {
+func (a *App) block(c *ui.Context, task *store.Task, b *Block) {
 	t := a.T
-	r := ui.Row(c.Key("more:" + key)).Gap(t.S2).Height(26).AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable().Label(text)
-	r.Children(func() {
-		ui.Box(c).Width(16).Shrink(0)
-		tx := ui.Text(c, text).FontSize(t.SM).TextColor(t.InkMuted).AccessHidden(true)
-		a.glyph(c, 12, drawChevron(t.InkMuted, false))
-		if r.Hovered() {
-			tx.TextColor(t.Ink)
+	switch b.K {
+	case "voice":
+		markdown.View(c, b.Text, &a.mdTask)
+		if b.Saved {
+			// Saved progress: its words were said once, above; a small mark under them.
+			ui.Row(c).Gap(t.S1).AlignItems(ui.Center).Children(func() {
+				a.glyph(c, 14, drawFlag(t.Faint))
+				ui.Text(c, a.L.T("task.saved")).FontSize(t.XS).TextColor(t.InkMuted).Tooltip(clock(a.tsOf(task, b.Seq)))
+			})
 		}
+	case "steps":
+		a.stretch(c, task, b)
+	case "you":
+		text := b.Text
+		if b.Go != nil {
+			text = a.shortGo(*b.Go) // the user's Go, said as they said it
+		}
+		a.sentBubble(c, text, task.SendFor(b.Seq))
+	case "partner":
+		ui.Text(c, a.L.T("task.from.partner", a.S.PersonaName)).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
+		ui.Text(c, b.Text).FontSize(t.MD).LineHeight(leadingFor(b.Text, 1.55)).TextColor(t.InkSoft).Selectable()
+	case "report":
+		ui.Text(c, a.reportLabel(&protocol.Report{State: b.State})).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
+		ui.Text(c, b.Text).FontSize(t.MD).LineHeight(leadingFor(b.Text, 1.55)).TextColor(t.InkSoft).Selectable()
+	case "note":
+		ui.Row(c).Gap(t.S2).Height(26).AlignItems(ui.Center).MinWidth(0).Children(func() {
+			if b.Bad {
+				a.glyph(c, 16, drawCross(t.Failed.Ink))
+				ui.Text(c, a.L.T("step.label.error")).FontSize(t.SM).FontWeight(600).TextColor(t.Failed.Ink).Shrink(0)
+			} else {
+				a.glyph(c, 16, drawDot(t.Faint))
+			}
+			ui.Text(c, b.Text).FontSize(t.SM).TextColor(t.InkMuted).SingleLine().MinWidth(0).Shrink(1).Tooltip(b.Text)
+		})
+	}
+}
+
+// tsOf is when the event with seq happened.
+func (a *App) tsOf(task *store.Task, seq int64) string {
+	for _, ev := range task.Events {
+		if ev.Seq == seq {
+			return ev.TS
+		}
+	}
+	return ""
+}
+
+// gistWords is a stretch's one line: "查看了一圈", "改了 2 个文件".
+func (a *App) gistWords(g *Gist) string {
+	switch g.Kind {
+	case "look":
+		return a.L.T("gist.look")
+	case "edit":
+		if g.Files == 1 {
+			return a.L.T("gist.edit.one")
+		}
+		return a.L.T("gist.edit", g.Files)
+	case "browse":
+		if g.App != "" {
+			return a.L.T("gist.browse", g.App)
+		}
+		return a.L.T("gist.browse.any")
+	case "think":
+		return a.L.T("gist.think")
+	}
+	return a.L.T("gist.run")
+}
+
+func (a *App) stepsCount(n int) string {
+	if n == 1 {
+		return a.L.T("gist.steps.one")
+	}
+	return a.L.T("gist.steps", n)
+}
+
+func gistGlyph(kind string) func(ui.Color) func(*ui.Painter, ui.Rect) {
+	switch kind {
+	case "look":
+		return drawLens
+	case "edit":
+		return drawPencil
+	case "browse":
+		return drawGlobe
+	case "think":
+		return drawThought
+	}
+	return drawPrompt
+}
+
+// stretch is a run of steps between two things the agent said. One step
+// is its own line; more fold under the gist, open while live.
+func (a *App) stretch(c *ui.Context, task *store.Task, b *Block) {
+	t := a.T
+	rows := b.Rows
+	if len(rows) == 1 && !b.Live {
+		a.stepRow(c, task, &rows[0], false)
+		return
+	}
+	key := fmt.Sprintf("stretch:%s:%d", task.ID, b.Seq)
+	open, set := a.open[key]
+	if !set {
+		open = b.Live // the stretch under way shows its steps; a settled one folds
+	}
+	g, was := b.Gist, open
+	p := ui.CollapsibleBase(c.Key("fold"), &open)
+	tr := p.Trigger.Gap(t.S2).MinHeight(28).Padding(2, 6).Margin(0, -6).Radius(t.RadiusSM).AlignSelf(ui.Start).MaxWidth(readMeasure + 12).MinWidth(0).Cursor(ui.CursorPointer)
+	if tr.Hovered() {
+		tr.Background(t.SurfaceSunken)
+	}
+	label := a.gistWords(g)
+	if b.Live {
+		// Under way: the latest step in its own words, a spinner beside it.
+		last := &rows[len(rows)-1]
+		w, code := a.rowWords(last)
+		label = strings.TrimSpace(w + " " + code)
+	}
+	tr.Label(label + " · " + a.stepsCount(g.Steps))
+	tr.Children(func() {
+		if b.Live {
+			ui.Box(c).Size(16, 16).Shrink(0).Children(func() { ui.Spinner(c).Size(12, 12) })
+		} else {
+			a.glyph(c, 16, gistGlyph(g.Kind)(t.InkMuted))
+		}
+		ink := t.InkSoft
+		if b.Live {
+			ink = t.Ink
+		}
+		ui.Text(c, label).FontSize(t.SM).FontWeight(600).TextColor(ink).SingleLine().MinWidth(0).Shrink(1).AccessHidden(true)
+		ui.Text(c, "· "+a.stepsCount(g.Steps)).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0).AccessHidden(true)
+		if g.Errors > 0 {
+			ui.Text(c, "· "+a.L.T("gist.errors", g.Errors)).FontSize(t.SM).FontWeight(600).TextColor(t.Failed.Ink).Shrink(0).AccessHidden(true)
+		}
+		ui.Box(c).Size(12, 12).Shrink(0).Rotate(90 * p.Progress()).Draw(drawChevron(t.InkMuted, false))
 	})
-	return r.Clicked()
+	if open != was { // only a click keeps it: a live stretch that settles folds again
+		a.open[key] = open
+	}
+	if panel := p.Panel(func() {
+		for i := range rows {
+			a.stepRow(c.Key(rows[i].Seq), task, &rows[i], true)
+		}
+	}); panel.Valid() {
+		panel.Padding(t.S1, 0, t.S1, 22).Gap(0)
+	} else {
+		// Folded, a real failure still shows: never hidden behind a gist.
+		ui.Column(c).Padding(0, 0, 0, 22).Children(func() {
+			for i := range rows {
+				if rows[i].Outcome == "error" {
+					a.stepRow(c.Key(rows[i].Seq), task, &rows[i], true)
+				}
+			}
+		})
+	}
+}
+
+// rowWords is a step's sentence and, apart, the code it names (in mono):
+// the agent's own words when its harness gave them; "没找到 nmem" for a
+// probe that found nothing; "运行 nmem doctor" for a command.
+func (a *App) rowWords(r *StepRow) (string, string) {
+	if r.Step == nil {
+		return a.L.T("step.label.thought") + " · " + r.Thought, ""
+	}
+	st := *r.Step
+	if r.Outcome == "missing" {
+		base := "step." + st.Kind
+		if st.Act != "" {
+			base += "." + st.Act
+		}
+		k := base + ".missing"
+		if st.Act == "cmd" && strings.Contains(st.Target, " ") {
+			k += ".some"
+		}
+		if v := a.L.T(k, st.Target); !strings.HasPrefix(v, "step.") {
+			return v, ""
+		}
+		return a.L.T("step.missing"), st.Target
+	}
+	if st.Says != "" {
+		return st.Says, ""
+	}
+	if codeLike(st) {
+		return a.L.T("step.label." + st.Kind), st.Target
+	}
+	return a.stepWords(st), ""
 }
 
 // stepWords is a step's summary in words: "在 Chrome 里打开 appstoreconnect.apple.com".
@@ -201,9 +328,17 @@ func (a *App) stepWords(st Step) string {
 			return v
 		}
 	}
+	if st.Target == "" {
+		if v, ok := tr(key + ".bare"); ok {
+			return v
+		}
+	}
 	// A template that needs a target it hasn't got falls back to the bare target.
 	if v, ok := tr(key); ok && (st.Target != "" || !strings.Contains(a.L.T(key), "%[1]")) {
 		return v
+	}
+	if st.Target == "" {
+		return a.L.T("step.label." + st.Kind)
 	}
 	return st.Target
 }
@@ -212,85 +347,82 @@ func (a *App) stepWords(st Step) string {
 // path, a pattern): it reads in mono on the inline code tint.
 func codeLike(st Step) bool {
 	switch st.Kind {
-	case "ran", "read", "edited":
+	case "ran", "read", "edited", "searched":
 		return st.Target != "" && st.Act == ""
-	case "searched":
-		return st.Act == "" && st.Target != ""
 	}
 	return false
 }
 
-// stepLine is one step: a mark, a verb, its summary on one line.
-func (a *App) stepLine(c *ui.Context, task *store.Task, l txLine) {
+// stepRow is one step: a mark, its sentence, the code it names in mono;
+// what ran and what it printed open on a click.
+func (a *App) stepRow(c *ui.Context, task *store.Task, r *StepRow, inner bool) {
 	t := a.T
-	if l.thought != "" {
-		ui.Row(c).Gap(t.S2).Height(26).AlignItems(ui.Center).MinWidth(0).Children(func() {
-			a.glyph(c, 16, drawThought(t.InkMuted))
-			ui.Text(c, a.L.T("step.label.thought")).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).Shrink(0)
-			ui.Text(c, l.thought).FontSize(t.SM).TextColor(t.InkMuted).SingleLine().MinWidth(0).Shrink(1).Tooltip(l.thought)
-		})
-		return
-	}
-	st := *l.step
-	words := a.stepWords(st)
-	key := fmt.Sprintf("step:%s:%d", task.ID, l.seq)
+	words, code := a.rowWords(r)
+	key := fmt.Sprintf("step:%s:%d", task.ID, r.Seq)
 	open := a.open[key]
-	raw := ""
-	if l.tool != nil {
-		raw = strings.TrimRight(l.tool.Output, "\n")
-		if st.Kind == "ran" || l.failed {
-			if full := toolWords(l.tool); full != "" && !strings.HasPrefix(raw, full) {
-				raw = strings.TrimSpace(full + "\n\n" + raw)
+	detail := ""
+	if r.Step != nil {
+		parts := []string{}
+		if r.Command != "" {
+			parts = append(parts, "$ "+unwrapShell(r.Command))
+		}
+		if r.Output != "" {
+			parts = append(parts, r.Output)
+		}
+		detail = strings.Join(parts, "\n")
+	}
+	bad, missing := r.Outcome == "error", r.Outcome == "missing"
+	size := t.SM
+	ui.Column(c).Gap(t.S1).Children(func() {
+		row := ui.Row(c).Gap(t.S2).MinHeight(26).Padding(1, 6).Margin(0, -6).Radius(t.RadiusSM).AlignItems(ui.Center).MinWidth(0).Label(strings.TrimSpace(words + " " + code))
+		if detail != "" {
+			row.Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable()
+			if row.Hovered() {
+				row.Background(t.SurfaceSunken)
 			}
 		}
-	}
-	label := a.L.T("step.label." + st.Kind)
-	ink, labelInk := t.InkMuted, t.InkSoft
-	if l.failed {
-		label, labelInk = a.L.T("step.label.error"), t.Failed.Ink
-	}
-	ui.Column(c).Gap(t.S1).Children(func() {
-		row := ui.Row(c).Gap(t.S2).Height(26).AlignItems(ui.Center).MinWidth(0).Label(label + " " + words)
-		if raw != "" {
-			row.Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable()
-		}
-		if l.failed {
-			row.Padding(0, t.S2, 0, t.S1).Radius(t.RadiusSM).Background(t.Failed.Surface.Alpha(0.55))
+		if bad {
+			row.Background(t.Failed.Surface.Alpha(0.55))
 		}
 		row.Children(func() {
-			if l.failed {
+			switch {
+			case bad:
 				a.glyph(c, 16, drawCross(t.Failed.Ink))
-			} else {
-				a.glyph(c, 16, stepGlyph(st.Kind)(t.InkMuted))
+			case r.Step == nil:
+				a.glyph(c, 16, drawThought(t.InkMuted))
+			default:
+				a.glyph(c, 16, stepGlyph(r.Step.Kind)(t.InkMuted))
 			}
-			ui.Text(c, label).FontSize(t.SM).FontWeight(600).TextColor(labelInk).Shrink(0).AccessHidden(true)
-			if words != "" {
-				tx := ui.Text(c, words).FontSize(t.SM).TextColor(ink).SingleLine().MinWidth(0).Shrink(1).Tooltip(words).AccessHidden(true)
-				if codeLike(st) {
-					tx.Font(t.Mono).FontSize(t.MonoSM).Padding(1, 6).Radius(6).Background(t.Sunken)
-				}
-				if l.failed {
-					tx.TextColor(t.InkSoft)
-				}
-				if row.Hovered() {
-					tx.TextColor(t.Ink)
-				}
+			ink := t.InkSoft
+			if missing || r.Step == nil {
+				ink = t.InkMuted
 			}
-			if l.n > 1 {
-				ui.Text(c, fmt.Sprintf("×%d", l.n)).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0)
+			tx := ui.Text(c, words).FontSize(size).TextColor(ink).SingleLine().MinWidth(0).Shrink(1).Tooltip(words).AccessHidden(true)
+			if row.Hovered() && detail != "" {
+				tx.TextColor(t.Ink)
 			}
-			if raw != "" && (row.Hovered() || open || l.failed) {
+			if code != "" {
+				ui.Text(c, code).Font(t.Mono).FontSize(t.MonoSM).Padding(1, 6).Radius(6).Background(t.Sunken).TextColor(ink).SingleLine().MinWidth(0).Shrink(1).Tooltip(code).AccessHidden(true)
+			}
+			if r.N > 1 {
+				ui.Text(c, fmt.Sprintf("×%d", r.N)).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0)
+			}
+			if bad {
+				ui.Text(c, a.L.T("step.label.error")).FontSize(t.XS).FontWeight(700).TextColor(t.Failed.Ink).Shrink(0)
+			}
+			if detail != "" && (row.Hovered() || open) {
 				a.glyph(c, 12, drawChevron(t.InkMuted, open))
 			}
 		})
-		if raw != "" && row.Clicked() {
+		if detail != "" && row.Clicked() {
 			a.open[key] = !open
 		}
-		if open && raw != "" {
-			ui.Text(c, raw).Font(t.Mono).FontSize(t.MonoSM).LineHeight(1.5).TextColor(t.InkSoft).
-				Padding(t.S2, t.S3).Margin(0, 0, t.S1, 24).Radius(t.RadiusSM).Background(t.Sunken).Selectable().MaxLines(24)
+		if open && detail != "" {
+			ui.Text(c, detail).Font(t.Mono).FontSize(t.MonoSM).LineHeight(1.5).TextColor(t.InkSoft).
+				Padding(t.S2, t.S3).Margin(0, 0, t.S1, 22).Radius(t.RadiusSM).Background(t.Sunken).Selectable().MaxLines(24)
 		}
 	})
+	_ = inner
 }
 
 // stepGlyph is a step's drawn mark, in muted ink, never on a tile (D73).
@@ -314,77 +446,6 @@ func stepGlyph(kind string) func(ui.Color) func(*ui.Painter, ui.Rect) {
 		return drawArrow
 	}
 	return drawDot
-}
-
-func (a *App) transcriptRow(c *ui.Context, task *store.Task, ev protocol.LogEvent) {
-	t := a.T
-	body, _ := ev.Typed()
-	switch b := body.(type) {
-	case *protocol.TaskOpen:
-		if strings.TrimSpace(b.Brief) == "" {
-			return // opened before its brief was written (D120): the briefed one follows
-		}
-		// What the partner asked for (or the user, D128): its words, quoted under a small label.
-		label := a.L.T("task.brief", a.S.PersonaName)
-		if b.Origin == "you" {
-			label = a.L.T("task.brief.you")
-		}
-		ui.Column(c).Gap(t.S1).Padding(0, 0, t.S2, 0).Children(func() {
-			ui.Text(c, label).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
-			ui.Text(c, b.Brief).FontSize(t.MD).LineHeight(1.55).TextColor(t.InkSoft).Selectable()
-		})
-	case *protocol.TaskEvent:
-		switch {
-		case b.Role == "user" && (b.From == "partner" || ev.Origin == protocol.OriginPartner):
-			// The partner talking to the task: its words, not the user's.
-			ui.Column(c).Gap(t.S1).Padding(t.S2, 0).Children(func() {
-				ui.Text(c, a.L.T("task.from.partner", a.S.PersonaName)).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
-				ui.Text(c, b.Text).FontSize(t.MD).LineHeight(1.55).TextColor(t.InkSoft).Selectable()
-			})
-		case b.Role == "user":
-			text := b.Text
-			if label, ok := goRelay(text); ok {
-				// The user's Go, relayed to the task: said as the user said it.
-				text = a.shortGo(label)
-			}
-			ui.Column(c).Padding(t.S1, 0).Children(func() { a.sentBubble(c, text, task.SendFor(ev.Seq)) })
-		case b.Role == "system":
-			a.systemLine(c, b)
-		case b.Text != "":
-			ui.Column(c).Padding(t.S2, 0).Children(func() { markdown.View(c, b.Text, &a.mdTask) })
-		}
-	case *protocol.Checkpoint:
-		// Saved progress: a tiny quiet mark on the timeline.
-		ui.Row(c).Gap(t.S2).Height(24).AlignItems(ui.Center).MinWidth(0).Children(func() {
-			a.glyph(c, 16, drawFlag(t.Faint))
-			ui.Text(c, a.L.T("task.checkpoint", b.Text)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().MinWidth(0).Shrink(1).Tooltip(b.Text)
-			ui.Text(c, clock(ev.TS)).FontSize(t.XS).TextColor(t.Faint).FontFeatures("tnum").Shrink(0)
-		})
-	case *protocol.Report:
-		// An earlier word to the partner (the last one is the outcome).
-		ui.Column(c).Gap(t.S1).Padding(t.S2, 0).Children(func() {
-			ui.Text(c, a.reportLabel(b)).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
-			ui.Text(c, b.Summary).FontSize(t.MD).LineHeight(1.55).TextColor(t.InkSoft).Selectable()
-		})
-	}
-}
-
-// systemLine is a harness's own note that says something to a person (it
-// moved, its machine dropped, a delivery failed): one quiet line. A turn
-// that failed is an error line.
-func (a *App) systemLine(c *ui.Context, b *protocol.TaskEvent) {
-	t := a.T
-	text := strings.TrimSpace(b.Text)
-	failed := strings.HasPrefix(text, "turn failed") || strings.HasPrefix(text, "delivery failed") || strings.HasPrefix(text, "failed to") || strings.HasPrefix(text, "event stream error")
-	ui.Row(c).Gap(t.S2).Height(26).AlignItems(ui.Center).MinWidth(0).Children(func() {
-		if failed {
-			a.glyph(c, 16, drawCross(t.Failed.Ink))
-			ui.Text(c, a.L.T("step.label.error")).FontSize(t.SM).FontWeight(600).TextColor(t.Failed.Ink).Shrink(0)
-		} else {
-			a.glyph(c, 16, drawDot(t.Faint))
-		}
-		ui.Text(c, text).FontSize(t.SM).TextColor(t.InkMuted).SingleLine().MinWidth(0).Shrink(1).Tooltip(text)
-	})
 }
 
 // shortGo is the Go button's words (D127): the action when it is a short
@@ -439,39 +500,93 @@ func lastAt(task *store.Task) time.Time {
 	return time.Time{}
 }
 
-// taskBar is the quiet line over the composer: who is doing it (its
-// coin, the agent and the model), then where it stands and for how long.
-func (a *App) taskBar(c *ui.Context, task *store.Task) {
-	t := a.T
-	att := task.Attention()
-	who := a.bodyLine(task)
+// yourTurn: it waits on you with nothing to answer (its turn ended on a
+// question in its own words, or a wait ran out): say so, never a mystery.
+func (a *App) yourTurn(task *store.Task) bool {
+	return task.Attention() == protocol.NeedsYou && a.S.PendingDecision(task.ID) == nil
+}
+
+// taskClock is the task's one clock (D148): how long since it started,
+// ticking until it finishes; once finished, how long it took.
+func (a *App) taskClock(c *ui.Context, task *store.Task) string {
 	started := store.ParseTime(task.OpenedAt)
-	state := a.stateLabel(att)
-	when := ""
-	switch {
-	case att == protocol.Working && !started.IsZero():
-		when = elapsed(a.Now().Sub(started))
-		c.After(time.Second)
-	case finished(task) && !started.IsZero():
-		if end := lastAt(task); end.After(started) {
-			when = a.L.T("task.footer.took", a.duration(end.Sub(started)))
-		}
-	case task.OpenedAt != "":
-		when = a.L.T("task.opened", a.ago(task.OpenedAt))
+	if started.IsZero() {
+		return ""
 	}
-	ui.Row(c.Key("footer")).Justify(ui.Center).Padding(t.S2, t.S5, 0, t.S5).Children(func() {
-		ui.Row(c).Grow(1).MaxWidth(convWidth).Gap(t.S2).AlignItems(ui.Center).Padding(0, t.S3).Children(func() {
-			if h := task.Harness(); h != "" {
-				a.coin(c, h, 20, coinMotionOf(att))
-			}
-			if who != "" {
-				ui.Text(c, who).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().MinWidth(0).Shrink(1)
-			}
-			ui.Spacer(c)
-			ui.Text(c, state).FontSize(t.XS).FontWeight(700).TextColor(t.State(string(att)).Ink).Shrink(0)
-			if when != "" {
-				ui.Text(c, "· "+when).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0)
-			}
-		})
+	if finished(task) {
+		if end := lastAt(task); end.After(started) {
+			return a.L.T("task.footer.took", a.duration(end.Sub(started)))
+		}
+		return ""
+	}
+	c.After(time.Second)
+	return elapsed(a.Now().Sub(started))
+}
+
+// whereLine is where it runs, in a few words: the repo and its branch, the
+// folder, or the machine when it isn't this one; nothing for no place.
+func (a *App) whereLine(p protocol.Place) string {
+	parts := []string{}
+	switch p.Kind {
+	case "repo":
+		if r := lastPath(p.RepoPath); r != "" {
+			parts = append(parts, r)
+		}
+		if p.Branch != "" {
+			parts = append(parts, p.Branch)
+		}
+	case "folder":
+		if f := lastPath(p.Path); f != "" {
+			parts = append(parts, f)
+		}
+	case "browser":
+		if p.Profile != "" {
+			parts = append(parts, p.Profile)
+		}
+	}
+	if p.Device != "" && p.Device != "local" {
+		parts = append(parts, a.L.T("task.where.on", p.Device))
+	}
+	return strings.Join(parts, " · ")
+}
+
+// taskWho is the meta line's second half: who does it (its coin, the agent
+// and the model), where, and Switch who does it as a small action.
+func (a *App) taskWho(c *ui.Context, task *store.Task) {
+	t := a.T
+	who := a.bodyLine(task)
+	where := a.whereLine(task.Place())
+	if who == "" && where == "" {
+		return
+	}
+	ui.Row(c.Key("who")).Gap(t.S1).AlignItems(ui.Center).MinWidth(0).Shrink(1).Children(func() {
+		ui.Text(c, "·").FontSize(t.SM).TextColor(t.InkMuted)
+		if h := task.Harness(); h != "" {
+			ui.Box(c).Padding(0, 2).Children(func() { a.coin(c, h, 16, coinMotionOf(task.Attention())) })
+		}
+		line := strings.Join(nonEmpty(who, where), " · ")
+		tx := ui.Text(c, line).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0).Shrink(1)
+		p := task.Place()
+		if s := firstNonEmpty(p.RepoPath, p.Path); s != "" {
+			tx.Tooltip(s)
+		}
+		if canSwitch(task) && a.quietLink(c.Key("sw"), "who:"+task.ID, a.L.T("who.switch"), a.L.T("who.switch")) {
+			a.openSwitch(task.ID)
+		}
+	})
+}
+
+// outsideActs is what went out of the machine (D?): its commands, quiet.
+func (a *App) outsideActs(c *ui.Context, task *store.Task) {
+	t := a.T
+	acts := task.Outside()
+	if !task.HistoryLoaded || len(acts) == 0 {
+		return
+	}
+	ui.Column(c.Key("outside")).Gap(t.S1).MaxWidth(readMeasure).Children(func() {
+		ui.Text(c, a.L.T("outside.title")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
+		for _, act := range acts {
+			ui.Text(c.Key(act.Seq), redact.Text(act.Command)).Font(t.Mono).FontSize(t.MonoSM).LineHeight(1.45).TextColor(t.InkSoft).Selectable().MaxLines(3)
+		}
 	})
 }

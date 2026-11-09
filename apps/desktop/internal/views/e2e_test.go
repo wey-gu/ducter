@@ -180,17 +180,16 @@ func TestScenarioEndToEnd(t *testing.T) {
 		t.Fatalf("route %v task %q", h.app.Route, h.app.TaskID)
 	}
 	h.until("history", func() bool { return s.Task("t-ci-1").HistoryLoaded })
-	// One column: what it did, the changes as files, then Details, closed.
-	for _, want := range []string{"过程", "改动", "细节"} {
+	// One column (D148): who and where under the headline, what it was
+	// asked, what it did, the changes as files; no Details table.
+	for _, want := range []string{"Codex · gpt-5 · hawdb · ducter/fix-ci · 在 MacBook 上", "换谁来做", "改动"} {
 		if !h.tt.HasText(want) {
 			t.Errorf("task view lacks %q: %q", want, h.tt.Texts())
 		}
 	}
-	h.app.open["details:t-ci-1"] = true // below the fold in the test window
-	h.tt.Frame()
-	for _, want := range []string{"谁在做", "在哪儿做"} {
-		if !h.tt.HasText(want) {
-			t.Errorf("task details lack %q: %q", want, h.tt.Texts())
+	for _, not := range []string{"细节", "谁在做", "在哪儿做"} {
+		if h.tt.HasText(not) {
+			t.Errorf("task view still has %q", not)
 		}
 	}
 	if pane := h.app.diffs["t-ci-1"]; pane == nil || len(pane.files) == 0 {

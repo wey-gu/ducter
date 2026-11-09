@@ -9,7 +9,7 @@ const KEY = "nmem_ct_8fK2pQx7Lm4vRz9TbW3y";
 const T0 = Date.parse("2026-11-10T06:58:00Z");
 
 function stream(taskId: string, items: [number, string, LogEvent["origin"], unknown][]): LogEvent[] {
-  return items.map(([sec, kind, origin, body], i) => ({ seq: 100 + i, ts: new Date(T0 + sec * 1000).toISOString(), persona: "default", stream: `task:${taskId}`, origin, kind, body }) as LogEvent);
+  return items.map(([sec, kind, origin, body], i) => ({ seq: 100 + i, ts: new Date(T0 + sec * 1000).toISOString(), persona: "default", stream: `task:${taskId}`, origin, kind, body: kind === "task_event" ? { taskId, ...(body as object) } : body }) as LogEvent);
 }
 const sh = (cmd: string, output: string, ok = true, extra: Record<string, unknown> = {}) => ({ role: "tool", tool: { name: "exec_command", input: { cmd: `/bin/bash -lc '${cmd}'`, ...extra }, output, ok } });
 const say = (text: string) => ({ role: "assistant", text });

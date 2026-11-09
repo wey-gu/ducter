@@ -103,6 +103,7 @@ func writeShot(t *testing.T, tt *ui.Tester, name string) {
 func TestTaskSaysWordsNotPlumbing(t *testing.T) {
 	app, tt := tinycart(t, i18n.EN, 3*time.Minute)
 	app.OpenTask("t_fix")
+	openStretches(app, "t_fix")
 	tt.Frame()
 	tt.Frame()
 	all := texts(tt)

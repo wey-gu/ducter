@@ -123,6 +123,22 @@ func drawFlag(col ui.Color) func(p *ui.Painter, r ui.Rect) {
 	}
 }
 
+// drawKey is a small key: a key was hidden here (D148).
+func drawKey(col ui.Color) func(p *ui.Painter, r ui.Rect) {
+	return func(p *ui.Painter, r ui.Rect) {
+		cx, cy := r.X+r.W/2, r.Y+r.H/2
+		var m ui.Path
+		m.Circle(cx-3, cy, 2.8)
+		m.MoveTo(cx-0.2, cy)
+		m.LineTo(cx+6, cy)
+		m.MoveTo(cx+4, cy)
+		m.LineTo(cx+4, cy+2.6)
+		m.MoveTo(cx+6, cy)
+		m.LineTo(cx+6, cy+2)
+		p.StrokePath(&m, glyphStroke, col)
+	}
+}
+
 // drawDot is a small dot: a step of another kind, a note.
 func drawDot(col ui.Color) func(p *ui.Painter, r ui.Rect) {
 	return func(p *ui.Painter, r ui.Rect) {

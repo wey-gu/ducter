@@ -392,6 +392,8 @@ function printHeadless(ctx: Ctx, name: string, port: number) {
 }
 
 export async function run(argv: string[]): Promise<number | "running"> {
+  // Internal: a harness that takes stdio MCP only reaches Ducter through this (D85). Not in help.
+  if (argv[0] === "mcp-bridge") return (await import("@ducter/runner/src/mcp-bridge.ts")).bridgeMain(argv[1]);
   const t = translator(detectLocale());
   const parsed = parseArgs(argv);
   if (!parsed.ok) {

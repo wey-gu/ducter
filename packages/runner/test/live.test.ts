@@ -1,5 +1,7 @@
-// Live smoke test: real Claude Code (haiku) via OAR, a temp git repo, and a minimal fake core
-// serving the task MCP tools over HTTP. Run with: DUCTER_LIVE=1 bun test test/live.test.ts
+// Live smoke test: a real harness via OAR, a temp git repo, and a minimal fake core serving the
+// task MCP tools over HTTP. Run with: DUCTER_LIVE=1 bun test test/live.test.ts (Claude Code,
+// haiku). D85: DUCTER_LIVE_HARNESSES=codex,pi,deepseek-harness runs the same task on each, with
+// DUCTER_LIVE_MODEL_<HARNESS> (e.g. DUCTER_LIVE_MODEL_PI) or the table's cheap model.
 import { expect, test } from "bun:test";
 import { existsSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
@@ -7,7 +9,8 @@ import { join } from "node:path";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
-import type { Bodies } from "@ducter/protocol";
+import { HARNESSES, isHarnessId, type Bodies, type HarnessId } from "@ducter/protocol";
+import { createOarHarnessPort } from "../src/oar.ts";
 import { createRunner, registerTaskTools } from "../src/index.ts";
 import { createFakeCore, waitFor, type FakeCore } from "./fake-core.ts";
 
@@ -62,8 +65,11 @@ function cleanupClaudeProjects(root: string): string[] {
   return removed;
 }
 
-test.skipIf(!live)(
-  "live: claude-code haiku creates hello.txt in a worktree and reports done",
+const harnesses: HarnessId[] = (process.env.DUCTER_LIVE_HARNESSES ?? "claude-code").split(",").map((h) => h.trim()).filter(isHarnessId);
+const modelFor = (h: HarnessId) => process.env[`DUCTER_LIVE_MODEL_${h.replace(/-/g, "_").toUpperCase()}`] ?? (h === "claude-code" ? "haiku" : HARNESSES[h].cheapModel);
+
+for (const harness of harnesses) test.skipIf(!live)(
+  `live: ${harness} creates hello.txt in a worktree and reports done`,
   async () => {
     const root = mkdtempSync(join(tmpdir(), "ducter-live-"));
     const core = createFakeCore(join(root, "data"));
@@ -76,14 +82,15 @@ test.skipIf(!live)(
     Bun.spawnSync(["git", "-C", repo, "add", "."]);
     Bun.spawnSync(["git", "-C", repo, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "init"]);
 
-    const runner = createRunner(core);
+    const runner = createRunner(core, { harness: createOarHarnessPort({ dataDir: join(root, "data") }) });
     try {
       const card = await runner.openTask({
         persona: "p1",
         title: "hello file",
         brief: "Create a file hello.txt containing exactly 'hi' in your working directory, then report done via report_to_main with the file as evidence. Do not commit.",
         place: { kind: "repo", device: "mac", repoPath: repo },
-        model: "haiku",
+        harness,
+        ...(modelFor(harness) ? { model: modelFor(harness) } : {}),
       });
       await runner.whenStarted(card.taskId);
       const report = await waitFor(() => core.events.find((e) => e.kind === "report"), "report", 150_000);
@@ -92,7 +99,7 @@ test.skipIf(!live)(
       const evs = core.events.filter((e) => e.kind === "task_event").map((e) => e.body as Bodies["task_event"]);
       const wt = (card.place as any).worktree as string;
       console.log(
-        `[live] events=${evs.length} tools=${evs.filter((e) => e.tool).map((e) => e.tool!.name).join(",")} ` +
+        `[live] ${harness} events=${evs.length} tools=${evs.filter((e) => e.tool).map((e) => e.tool!.name).join(",")} ` +
           `report=${JSON.stringify((report.body as any).state)} states=${core.states(card.taskId).join(" > ")}`,
       );
       expect(evs.some((e) => e.role === "assistant" || e.tool)).toBe(true);
@@ -108,5 +115,5 @@ test.skipIf(!live)(
       rmSync(root, { recursive: true, force: true });
     }
   },
-  240_000,
+  300_000,
 );

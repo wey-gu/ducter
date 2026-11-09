@@ -146,6 +146,14 @@ D81 and D82 are held for the Devices stage (Isles) on branch `devices-world`.
 |---|---|---|---|
 | D88 | **The harnesses are "AI agents"** as a category, in zh and en (Chinese users already say "AI agent"); each is named by its own product name. Not "coding agent" / 编程助手: people use them for work that isn't code. D81–D87 are held by open branches | U | `design/product-model.md`, the site, `docs/` |
 
+## 2026-11-09: First-wave harnesses (the author's "第一波要支持 DeepSeek Harness 和 pi……harness adapter 的主 ai 的工作也要做好")
+
+DRAFT, for the author's review. D81–D84 are left for work on other branches.
+
+| # | Decision | Source | Reflected in |
+|---|---|---|---|
+| D85 | **Four first-wave harnesses: Claude Code, Codex, pi, DeepSeek Harness, each able to carry tasks, and the partner on any of them through one code path.** (1) One capability table in the protocol (`protocol/harnesses.ts`): each product's own name, what it may carry, how its clean setup is made, how its prompt and Ducter's tools reach it. (2) The partner always runs with Ducter's clean setup, made per harness: Claude Code OAR's native exclude; Codex `-c` overrides on its app-server (every user MCP server off by name, hooks, plugins, apps, memories off; `CODEX_HOME`, login and resume kept); pi its own CLI flags (`--no-skills --no-context-files --no-extensions --no-prompt-templates --no-themes`) on its RPC process, run under node; DeepSeek Harness a Ducter-owned `DSH_HOME` whose `AGENTS.md` is the persona. Ducter's MCP goes over HTTP, or over Ducter's stdio bridge where the harness takes stdio only (DeepSeek Harness), the token in a 0600 file. (3) What the partner thinks with is a setting, **`Settings.brain = { harness, model? }`** (default Claude Code + opus; `DUCTER_PARTNER_MODEL` stays a test override); a session never resumes across harnesses (the prompt hash covers the harness). (4) **v1 rule** (design/ai-loadout.md, approved): only Claude Code and Codex may be the brain; pi and DeepSeek Harness are tasks-only until each passes the full partner eval (`canBePartner` on each device's account). (5) Tasks: the partner may name a harness per task; else the first account the user lets tasks use (**`Settings.taskAccounts`**, default every signed-in account on). (6) Each device reports all four: installed, signed in, `canBePartner`, `billing` (plan or usage), from presence only. (7) **Proposal, keys for API-key harnesses:** a key lives in Ducter's env file `<dataDir>/env` (0600, `KEY=value`; the file a server's systemd unit already reads), never in the Log, a setting, a task brief or the harness's own config; Ducter passes it only to the harness session that needs it. The Devices card for such an account says "需要一个 DeepSeek 密钥 / Needs a DeepSeek key" and takes it in a masked field that writes that file (not built). Smoke evidence: 10 partner scenarios, Claude Code haiku 8/10, Codex gpt-6-luna 9/10, pi MiniMax-M3 8/10, DeepSeek Harness flash 9/10; an end-to-end task passed on all four | U + research/34 | `packages/protocol/src/harnesses.ts`, `packages/runner/src/oar.ts`, `mcp-bridge.ts`, `packages/core/src/harness-probe.ts`, `settings.ts`, `packages/partner/src/partner.ts`, `design/system.md`, `design/product-model.md`, `docs/` |
+
 ## Superseded
 
 - **"Main AI asks windows instead of unfolding"** (first principle-3 draft). Superseded by D3:
@@ -186,3 +194,6 @@ D81 and D82 are held for the Devices stage (Isles) on branch `devices-world`.
 - **D69's "no perpetual alive animation"** as a rule for art. Narrowed by D77: the clay
   partner and scene may breathe; status never animates.
 - **D23's 手头 as the overview's zh label.** Superseded by D80: 手头的事.
+- **"The partner runs on Claude Code only"** and system.md's "if Codex is ever the partner …
+  (not built)". Superseded by D85: the partner on any partner-capable harness, each with its
+  own clean setup.

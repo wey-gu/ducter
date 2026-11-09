@@ -2,7 +2,8 @@
 //   core    owns: Log (SQLite), bus, task registry + state machine, decisions, living message,
 //                 WS server (/ws), MCP HTTP server (/mcp), main.ts wiring.
 //   runner  owns: HarnessPort over OAR, worktrees, task sessions, event normalization.
-//   partner owns: the main AI (persona prompt, projection, turn loop) on Claude Code via runner's HarnessPort.
+//   partner owns: the main AI (persona prompt, projection, turn loop) on any first-wave harness (D85) via runner's HarnessPort.
+import type { HarnessId } from "./harnesses.ts";
 import type { Attention, Bodies, Delivery, EventKind, LogEvent, OnHand, Origin, Place, Residency, Settings, TaskCard } from "./index.ts";
 
 // ---------- core ----------
@@ -143,7 +144,7 @@ export interface StdioMcpConfig {
 }
 
 export interface SessionSpec {
-  harness: "claude-code" | "codex" | "pi";
+  harness: HarnessId;
   model?: string;
   cwd: string;
   systemPrompt?: string; // replaces the harness default where supported

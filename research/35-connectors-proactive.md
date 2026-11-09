@@ -1,4 +1,4 @@
-# 34. Connectors and restrained proactive help
+# 35. Connectors and restrained proactive help
 
 > 2026-11-09 · Branch `connectors` · Feeds `design/connectors.md` (draft) and proposals D96–D103.
 > Tags: **VERIFIED** (read the primary source or the code myself today), **DOCUMENTED** (an

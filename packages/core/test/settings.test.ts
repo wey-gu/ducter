@@ -43,12 +43,12 @@ async function client(url: string) {
 
 type SettingsFrame = Extract<ServerFrame, { t: "settings" }>;
 
-test("defaults: follow the user, remember, notifications on, no quiet hours, 30 minutes", async () => {
+test("defaults: follow the user, remember, notifications on, no quiet hours, 30 minutes, Claude Code", async () => {
   const { core } = boot();
   const c = await client(core.url);
   c.send({ t: "settings" });
   const f = await c.until<SettingsFrame>((x) => x.t === "settings");
-  expect(f.settings).toEqual({ name: "Ducter", language: "auto", memory: true, notify: true, quiet: null, defaultAfterMin: 30 });
+  expect(f.settings).toEqual({ name: "Ducter", language: "auto", memory: true, notify: true, quiet: null, defaultAfterMin: 30, brain: { harness: "claude-code", model: "opus" } });
   expect(f.mem.state).toBe("missing"); // nothing has answered from Mem yet
   expect(f.mem.noted).toEqual([]);
 });
@@ -104,6 +104,21 @@ test("forget: Mem forgets it when it has the id, otherwise it is only hidden her
   expect(f2.forgot!.how).toBe("hidden");
   expect(f2.mem.noted).toEqual([]);
   expect(existsSync(join(dir, "settings.json"))).toBe(true);
+});
+
+test("D85: the brain is a setting, partner-capable harnesses only; task accounts switch on and off", () => {
+  const { core } = boot();
+  expect(core.settings.set({ brain: { harness: "codex", model: "gpt-6-luna" } })).toEqual(["brain"]);
+  expect(core.settings.get().brain).toEqual({ harness: "codex", model: "gpt-6-luna" });
+  expect(core.settings.set({ brain: { harness: "codex", model: "gpt-6-luna" } })).toEqual([]);
+  // v1: pi and DeepSeek Harness are tasks only (ai-loadout), and unknown ids are ignored.
+  expect(core.settings.set({ brain: { harness: "pi" } })).toEqual([]);
+  expect(core.settings.set({ brain: { harness: "nope" as any } })).toEqual([]);
+  expect(core.settings.set({ brain: { harness: "claude-code" } })).toEqual(["brain"]);
+  expect(core.settings.get().brain).toEqual({ harness: "claude-code" });
+  expect(core.settings.set({ taskAccounts: { codex: { enabled: false } } })).toEqual(["taskAccounts"]);
+  expect(core.settings.set({ taskAccounts: { codex: { enabled: false }, nope: { enabled: true } } as any })).toEqual([]);
+  expect(core.settings.get().taskAccounts).toEqual({ codex: { enabled: false } });
 });
 
 test("memory off: the view says off", async () => {

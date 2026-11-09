@@ -65,7 +65,8 @@ you and answer each question with **Go** or **Hold**, or choose **Open Ducter**.
 
 ## Devices: AI accounts and connecting a phone
 
-In **Devices**, the AI accounts under this Mac (Claude Code, Codex) open when you click them.
+In **Devices**, the AI accounts under this Mac (Claude Code, Codex; pi and DeepSeek Harness when
+they're set up) open when you click them.
 From there you can install the tool, sign in with its own sign-in in your browser, or sign out.
 Ducter never sees your password. To add your phone or another computer, click **Connect a phone
 or computer**. The app shows a one-time code for it (see [Your phone](phone.md)).

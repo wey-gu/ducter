@@ -1,7 +1,7 @@
 # Connectors and Restrained Proactive Help (DRAFT)
 
 > Draft 1 · 2026-11-09 · Branch `connectors` · Status: **drafted, nothing decided**. Proposals
-> D96–D103 at the end wait for the author. Evidence: `research/34` (prior art, Google access,
+> D96–D103 at the end wait for the author. Evidence: `research/35` (prior art, Google access,
 > open-connector, metaphor test). Builds on principles 7, 15, 16, 17 and 18, D43, D61 (the
 > effect ladder), D65/D81 (the devices world), routines (`product-model.md` §4) and
 > `flows/D-decisions-attention.md` D3 (quiet hours).
@@ -109,7 +109,7 @@ setup.
   `watch(account, trigger, checkpoint)`.
   - Every adapter declares its actions as **read**, **draft**, or **effect** (reaches people,
     can't be taken back, or spends; the D61 ladder).
-- **Engine: open-connector's headless runtime, embedded** (research/34 §4) [I].
+- **Engine: open-connector's headless runtime, embedded** (research/35 §4) [I].
   - Pinned, with a selected-provider build: Gmail, Google Calendar, Drive, GitHub, Slack,
     Notion, Outlook.
   - Ducter supplies its encryption key from the Keychain.
@@ -284,7 +284,7 @@ with Go, never a background action [I].
 | GitHub | Sign in through GitHub (a Ducter GitHub OAuth app, or the user's own; GitHub has no restricted-scope audit) or paste a token | 30 s |
 | Slack | Sign in; a workspace admin may need to approve | 30 s to days |
 | Notion, Linear | Sign in through their remote MCP OAuth | 30 s |
-| Outlook | Sign in (a Ducter publisher-verified Microsoft app is feasible: free, no audit, research/34) | 30 s |
+| Outlook | Sign in (a Ducter publisher-verified Microsoft app is feasible: free, no audit, research/35) | 30 s |
 | Fastmail | Paste an API token | 30 s |
 
 ### 7.2 The guided Google client
@@ -325,7 +325,7 @@ Scores 1–5: **U** usefulness, **R** restraint (low noise risk), **T** trust (l
 wrong), **F** feasibility in v1.x.
 
 The two lead scenarios are the author's own dots moments (first-hand report, 2026-11-09;
-research/34 §1.1). Both are aha for the same two reasons:
+research/35 §1.1). Both are aha for the same two reasons:
 - **Missing it costs a lot**: a lost domain, or a night with no room in another country.
 - **It is a join the person can't easily make themselves.** The renewal notice and the payment
   status live in different mails (or on the registrar's site). The flight and the hotel live
@@ -411,7 +411,7 @@ examples.
 
 ## 9. Game-like settings (D43)
 
-- **The metaphor: mailboxes on the Mac's island, and a 3-slot tray on its shore** (research/34
+- **The metaphor: mailboxes on the Mac's island, and a 3-slot tray on its shore** (research/35
   §5) [I].
 - **Literal labels always state the thing:**
   - "Gmail · wei@example.com · 登录在这台 Mac 上 / Signed in on This Mac";

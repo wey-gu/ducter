@@ -381,6 +381,7 @@ section { position: relative; }
 .points { list-style: none; padding: 0; margin: 28px 0 0; display: grid; gap: 14px; }
 .points li { color: var(--ink-2); padding-left: 16px; border-left: 3px solid var(--line-2); }
 .points li b { color: var(--ink); font-weight: 700; }
+.points .when { color: var(--muted); }
 
 /* ---------- devices stage ---------- */
 .stage-wrap { display: grid; gap: 18px; }
@@ -544,6 +545,7 @@ section { position: relative; }
 .noted i { width: 16px; height: 16px; display: grid; place-items: center; }
 .noted svg { width: 14px; height: 14px; color: var(--ok-ink); }
 .memory-card { background: var(--bg); border-radius: var(--r-xl); padding: 22px; box-shadow: var(--base-card); display: grid; gap: 12px; }
+.sec:not(.deep) .memory-card { background: var(--surface); }
 .cards3 { display: grid; gap: 14px; }
 @media (min-width: 820px) { .cards3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .card { display: grid; gap: 8px; align-content: start; padding: 22px 24px 26px; border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--base-card); }

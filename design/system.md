@@ -47,8 +47,8 @@ are kept). `--bare` is not usable: it drops OAuth / subscription login.
   live: the author's global `~/.claude/CLAUDE.md` ("chat in Chinese") beat "reply in the
   user's language", user plugins' SessionStart hooks injected extra context, and user MCP
   servers pushed Ducter's tools behind ToolSearch, all on the ack's critical path (20 s
-  acks). Isolation cut a trivial turn from 12 s to 5 s (lead's experiment). If Codex is ever
-  the partner, the same needs `-c` overrides and no user `AGENTS.md` (not built).
+  acks). Isolation cut a trivial turn from 12 s to 5 s (lead's experiment). Every harness has
+  its own way to the same clean setup (D85, below).
 - **Tasks: inherit by default** (runner option `isolateUserConfig`, default false). A task
   works in the user's repo the way the user codes there: their skills, hooks, `CLAUDE.md`
   and MCP servers are deliberate choices, and a power user expects a Ducter task to behave
@@ -57,7 +57,36 @@ are kept). `--bare` is not usable: it drops OAuth / subscription login.
   shared-machine setups.
 
 - **Task model:** the partner may pass a model per task. If it passes none, `DUCTER_TASK_MODEL`
-  applies; if that is unset, the harness's own default applies.
+  applies (Claude Code); if that is unset, the harness's own default applies.
+
+### First-wave harnesses (D85, research/34)
+
+One table (`packages/protocol/src/harnesses.ts`), one adapter (`packages/runner/src/oar.ts`
+`adaptSpec`). What differs per harness:
+
+| | Claude Code | Codex | pi | DeepSeek Harness |
+|---|---|---|---|---|
+| Partner (v1) | yes | yes | tasks only until it passes the partner eval | same |
+| Clean setup | OAR `userConfiguration: "exclude"` | `-c` overrides: each user MCP server `enabled=false` by name, `features.{hooks,plugins,apps,memories,…}=false`, `notify=[]`; partner also drops goals, subagents, images, computer use | pi flags `--no-skills --no-context-files --no-prompt-templates --no-extensions --no-themes` on its RPC process | Ducter-owned `DSH_HOME` + `DSH_AGENTS_HOME` under `<dataDir>/harness/deepseek-harness` |
+| Partner prompt | system prompt | `baseInstructions` | system prompt | `$DSH_HOME/AGENTS.md` (OAR refuses its system prompt) |
+| Task brief | append | `developerInstructions` | append | first message, `<instructions>…</instructions>` |
+| Ducter's MCP | HTTP + bearer | HTTP + bearer | HTTP + bearer | stdio bridge (`mcp-bridge.ts`), target in a 0600 file |
+| Tool denial | built-ins | MCP tools only | `--exclude-tools` | none (refused) |
+| Runs as | `claude` | `codex app-server` | `node <OAR's bundled pi rpc-entry>` (Bun cannot host it), else the user's `pi` | `dsh --profile acp` |
+| Signed in | `claude auth status` | `codex login status` | a provider key in `~/.pi/agent` or the env | a DeepSeek key in the env, `<dataDir>/env`, or DSH's credential file |
+
+- **The brain** is `Settings.brain = { harness, model? }` (default Claude Code + opus). The
+  partner reads it at each session start; a session id never crosses harnesses (the prompt
+  hash covers the harness; Claude Code keeps the prompt-only hash so upgrades still resume).
+- **Tasks** take the partner's choice, else the first account `Settings.taskAccounts` leaves on.
+- **One tool-name form:** an MCP tool is `mcp__<server>__<tool>` whatever the harness reports;
+  reasoning a model writes into its reply (`…</think>`) is dropped before the Log.
+- **Keys for API-key harnesses** live in `<dataDir>/env` (0600), never in the Log or a setting,
+  and go only to the session that needs them (D85 proposal; the Devices field is not built).
+- **Known gaps:** Codex's global `AGENTS.md` and `personality` are not left out (unverified);
+  Codex lists the partner's sessions in the user's own history; pi's model list does not test
+  its keys; in its owned home DeepSeek Harness sees only the DeepSeek key, not the user's other
+  provider routes.
 - **Browser tasks: isolated** (W5-2, D62): only the curated cua-driver tools, no user MCP
   servers (which would include a path to the user's real Chrome), measured 332k → 140k input
   tokens on one lookup. Their `log_search` / `log_read` are scoped to their own task (D62; to

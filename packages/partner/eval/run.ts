@@ -1,9 +1,9 @@
-// Partner behavior eval. `bun run eval:partner [--model sonnet|haiku] [--floor] [--only a,b]
-//   [--concurrency 4] [--label x] [--no-judge] [--judge haiku]`
+// Partner behavior eval. `bun run eval:partner [--harness claude-code|codex|pi|deepseek-harness]
+//   [--model sonnet|haiku|...] [--floor] [--only a,b] [--concurrency 4] [--label x] [--no-judge] [--judge haiku]`
 //
 // Real partner code path (createPartner) + real core (Log, decisions, waiters, MCP hub on a
-// random port) + REAL model through the same Claude Code harness the partner uses (OAR,
-// isolated user config). Only task execution is fake: openTask/send are recorded, and task
+// random port) + REAL model through the harness the partner runs on (OAR, its clean setup per
+// harness, D85). Only task execution is fake: openTask/send are recorded, and task
 // reports are injected as scripted Log events. Each scenario gets a scratch DUCTER_DATA_DIR.
 //
 // Safety: repo paths in scenarios (~/dev/foo, ~/dev/hawdb) do not exist on this machine, and
@@ -14,7 +14,7 @@
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import type { Bodies, LogEvent, Place, TaskCard } from "../../protocol/src/index.ts";
+import { HARNESSES, HARNESS_IDS, isHarnessId, type Bodies, type HarnessId, type LogEvent, type Place, type TaskCard } from "../../protocol/src/index.ts";
 import type { HarnessEvent, HarnessPort, HarnessSession, Runner } from "../../protocol/src/internal.ts";
 import { startCore, type Core } from "../../core/src/index.ts";
 import { createOarHarnessPort, shortId } from "../../runner/src/index.ts";
@@ -30,7 +30,12 @@ const arg = (name: string, d?: string) => {
   return i >= 0 ? argv[i + 1] : d;
 };
 const flag = (name: string) => argv.includes(`--${name}`);
-const MODEL = arg("model", "sonnet")!;
+// D85: the partner on any first-wave harness (`--harness codex --model gpt-6-luna`). The judge
+// stays on Claude Code. Model defaults: sonnet on Claude Code, the table's cheap model elsewhere.
+const HARNESS_ARG = arg("harness", "claude-code")!;
+if (!isHarnessId(HARNESS_ARG)) throw new Error(`--harness: one of ${HARNESS_IDS.join(", ")}`);
+const HARNESS: HarnessId = HARNESS_ARG;
+const MODEL = arg("model", HARNESS === "claude-code" ? "sonnet" : (HARNESSES[HARNESS].cheapModel ?? ""))!;
 const JUDGE = arg("judge", "haiku")!;
 const CONC = Number(arg("concurrency", "4"));
 const LABEL = arg("label", "");
@@ -43,6 +48,12 @@ const PRICE: Record<string, { in: number; out: number; cw: number; cr: number }>
   sonnet: { in: 2, out: 10, cw: 2.5, cr: 0.2 },
   haiku: { in: 0.1, out: 0.5, cw: 0.125, cr: 0.01 },
   opus: { in: 4, out: 20, cw: 5, cr: 0.2 },
+  // DeepSeek's list price is in CNY (api-docs.deepseek.com/zh-cn/quick_start/pricing, read
+  // 2026-11-09): flash peak 2 / 0.04 (cache hit) / 8 元 per 1M; here at ≈7.1 元 per $.
+  "deepseek-official/deepseek-flash": { in: 0.28, out: 1.13, cw: 0.28, cr: 0.0056 },
+  // Plan-metered (a ChatGPT plan, MiniMax's coding plan): no per-token price to show.
+  "gpt-6-luna": { in: 0, out: 0, cw: 0, cr: 0 },
+  "minimax-coding-plan/MiniMax-M3": { in: 0, out: 0, cw: 0, cr: 0 },
 };
 
 const HOME = homedir();
@@ -191,7 +202,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   const perSession = new Map<number, Usage>();
   const tools: ToolCall[] = [];
   const cur = { step: -1 };
-  const port = teePort(createOarHarnessPort(), (ev, idx) => {
+  const port = teePort(createOarHarnessPort({ dataDir }), (ev, idx) => {
     if (ev.turnEnd && ev.usage) perSession.set(idx, { inputTokens: ev.usage.inputTokens ?? 0, outputTokens: ev.usage.outputTokens ?? 0, cacheRead: ev.usage.cacheRead ?? 0, cacheWrite: ev.usage.cacheWrite ?? 0 });
     if (ev.tool && ev.tool.input !== undefined && ev.tool.output === undefined) tools.push({ name: ev.tool.name, input: ev.tool.input, step: cur.step });
   });
@@ -241,7 +252,8 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   await Bun.sleep(20);
 
   const partner = createPartner(core, fr.runner, {
-    model: MODEL,
+    harness: HARNESS,
+    ...(MODEL ? { model: MODEL } : {}),
     persistState: false,
     fs: placeFs,
     turnTimeoutMs: 180_000,
@@ -367,7 +379,8 @@ function applyStep(st: Step, core: Core, idOf: Map<string, string>, waiters: Map
 // ---------- deterministic checks ----------
 const CJK = /[㐀-鿿豈-﫿]/;
 const CLAIMS_CHOICE = /(选|点|按|回复?|回)\s*[「“"]?\s*(Go|Hold|好|先等等)\b|\b(tap|press|choose|pick|select|reply|hit|say)\s+["“]?(Go|Hold)\b|\bGo\s*\/\s*Hold\b/i;
-const DO_WORK_TOOLS = /^(Bash|Write|Edit|MultiEdit|NotebookEdit)$/;
+// The tools that do work, as each harness names them (Claude Code, Codex, pi, DeepSeek Harness).
+const DO_WORK_TOOLS = /^(Bash|Write|Edit|MultiEdit|NotebookEdit|exec_command|commandExecution|fileChange|shell|apply_patch|write_stdin|write_file|edit_file)$/i;
 
 function check(r: RunResult): string[] {
   const fails: string[] = [];
@@ -532,7 +545,7 @@ async function main() {
   const before = new Set(existsSync(projectsDir) ? readdirSync(projectsDir) : []);
   const root = realpathSync(mkdtempSync(join(process.env.DUCTER_EVAL_DIR ?? tmpdir(), "ducter-eval-run-")));
   const personaTokens = Math.round(buildSystemPrompt({ id: "p", name: "Ducter", identity: "" }).length / 3.2);
-  console.log(`partner eval: ${list.length} scenarios · model ${MODEL} · judge ${NO_JUDGE ? "off" : JUDGE} · persona ≈${personaTokens} tokens (${buildSystemPrompt({ id: "p", name: "Ducter", identity: "" }).length} chars)`);
+  console.log(`partner eval: ${list.length} scenarios · ${HARNESS} · model ${MODEL || "(harness default)"} · judge ${NO_JUDGE ? "off" : JUDGE} · persona ≈${personaTokens} tokens (${buildSystemPrompt({ id: "p", name: "Ducter", identity: "" }).length} chars)`);
 
   const rows: { r: RunResult; det: string[]; j?: { pass: boolean; reason: string; cost: number } }[] = [];
   try {
@@ -551,7 +564,7 @@ async function main() {
   }
 
   rows.sort((a, b) => scenarios.indexOf(a.r.sc) - scenarios.indexOf(b.r.sc));
-  const p = PRICE[MODEL] ?? PRICE.sonnet!;
+  const p = PRICE[MODEL] ?? (HARNESS === "claude-code" ? PRICE.sonnet! : { in: 0, out: 0, cw: 0, cr: 0 });
   const tot = rows.reduce((u, { r }) => ({ inputTokens: u.inputTokens + r.usage.inputTokens, outputTokens: u.outputTokens + r.usage.outputTokens, cacheRead: u.cacheRead + r.usage.cacheRead, cacheWrite: u.cacheWrite + r.usage.cacheWrite }), { inputTokens: 0, outputTokens: 0, cacheRead: 0, cacheWrite: 0 });
   // inputTokens includes cache reads and writes (OAR totals); bill only the uncached rest at the input price.
   const uncached = Math.max(0, tot.inputTokens - tot.cacheRead - tot.cacheWrite);
@@ -567,7 +580,7 @@ async function main() {
   }
   const date = new Date().toLocaleDateString("sv"); // local YYYY-MM-DD
   const md: string[] = [
-    `# Partner eval · ${date} · ${MODEL}${LABEL ? ` · ${LABEL}` : ""}`,
+    `# Partner eval · ${date} · ${HARNESS} · ${MODEL}${LABEL ? ` · ${LABEL}` : ""}`,
     "",
     `Pass: **${passed}/${rows.length}** (${((100 * passed) / rows.length).toFixed(0)}%). Judge: ${NO_JUDGE ? "off" : JUDGE}. Persona: ${buildSystemPrompt({ id: "p", name: "Ducter", identity: "" }).length} chars (≈${personaTokens} tokens).`,
     `Tokens (partner): in ${tot.inputTokens}, out ${tot.outputTokens}, cache read ${tot.cacheRead}, cache write ${tot.cacheWrite} → ≈$${partnerCost.toFixed(2)} at list price; judge $${judgeCost.toFixed(3)}.`,
@@ -590,7 +603,7 @@ async function main() {
   ];
   const dir = resolve(import.meta.dir, "results");
   mkdirSync(dir, { recursive: true });
-  const file = join(dir, `${date}-${MODEL}${LABEL ? `-${LABEL}` : ""}.md`);
+  const file = join(dir, `${date}-${HARNESS === "claude-code" ? "" : `${HARNESS}-`}${MODEL.replace(/[^A-Za-z0-9.-]+/g, "_")}${LABEL ? `-${LABEL}` : ""}.md`);
   writeFileSync(file, md.join("\n"));
   console.log(`\n${passed}/${rows.length} pass · partner ≈$${partnerCost.toFixed(2)} (in ${tot.inputTokens} / out ${tot.outputTokens} / cache r ${tot.cacheRead} w ${tot.cacheWrite}) · judge $${judgeCost.toFixed(3)}\n→ ${file}`);
   for (const [c, [a, b]] of cats) console.log(`  ${c.padEnd(12)} ${a}/${b}`);

@@ -969,21 +969,22 @@ func (a *App) taskDetails(c *ui.Context, task *store.Task) {
 	})
 }
 
-// aboutTokens is a rough token count in the reader's own units: "4.5 万",
-// "120 万" in Chinese; "45k", "1.2M" in English. Rough on purpose: the
+// aboutTokens is a rough token count in the reader's own units, one token as one
+// word: "4.5 万字",
+// "120 万字" in Chinese; "45k", "1.2M" in English. Rough on purpose: the
 // sentence says "about".
 func (a *App) aboutTokens(n int64) string {
 	trim := func(f float64) string { return strings.TrimSuffix(fmt.Sprintf("%.1f", f), ".0") }
 	if a.L.Lang == i18n.ZH {
 		switch {
 		case n >= 100_000_000:
-			return trim(float64(n)/1e8) + " 亿"
+			return trim(float64(n)/1e8) + " 亿字"
 		case n >= 1_000_000:
-			return fmt.Sprintf("%.0f 万", float64(n)/1e4)
+			return fmt.Sprintf("%.0f 万字", float64(n)/1e4)
 		case n >= 10_000:
-			return trim(float64(n)/1e4) + " 万"
+			return trim(float64(n)/1e4) + " 万字"
 		}
-		return fmt.Sprint(n)
+		return fmt.Sprint(n) + " 字"
 	}
 	switch {
 	case n >= 1_000_000:

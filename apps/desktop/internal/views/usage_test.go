@@ -15,11 +15,11 @@ func TestUsageInWords(t *testing.T) {
 		n      int64
 		zh, en string
 	}{
-		{48, "用了大约 48 token", "About 48 tokens"},
-		{4500, "用了大约 4500 token", "About 4.5k tokens"},
-		{45_000, "用了大约 4.5 万 token", "About 45k tokens"},
-		{120_000, "用了大约 12 万 token", "About 120k tokens"},
-		{1_230_000, "用了大约 123 万 token", "About 1.2M tokens"},
+		{48, "用了大约 48 字的额度", "About 48 words' worth of the limit"},
+		{4500, "用了大约 4500 字的额度", "About 4.5k words' worth of the limit"},
+		{45_000, "用了大约 4.5 万字的额度", "About 45k words' worth of the limit"},
+		{120_000, "用了大约 12 万字的额度", "About 120k words' worth of the limit"},
+		{1_230_000, "用了大约 123 万字的额度", "About 1.2M words' worth of the limit"},
 	}
 	for _, c := range cases {
 		if got := zh.L.T("task.usage", zh.aboutTokens(c.n)); got != c.zh {

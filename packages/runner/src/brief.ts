@@ -5,7 +5,7 @@ export interface BriefInput {
   partnerName: string; // e.g. "Ducter"
   taskId: string;
   title: string;
-  brief: string; // verbatim from the partner
+  brief: string | null; // verbatim from the partner; null: it arrives as the first turn (D120)
   place: Place;
   cwd: string;
   project?: string;
@@ -34,9 +34,7 @@ ${b.partnerName} is the user's personal AI partner. The user talks only to ${b.p
 
 ## The brief (verbatim from ${b.partnerName})
 
-<brief>
-${b.brief}
-</brief>
+${b.brief === null ? `It is your first message, between <brief> tags: ${b.partnerName} opened you while still writing it.` : `<brief>\n${b.brief}\n</brief>`}
 
 ## Where you work
 
@@ -72,6 +70,11 @@ Use the \`report_to_main\` tool on the \`${s}\` MCP server. It is the only way $
 }
 
 /** First user turn of a fresh task session. */
+/** The first turn of a task opened before its brief was written (D120): the brief, then the kickoff. */
+export function briefTurn(brief: string, title: string): string {
+  return `<brief>\n${brief}\n</brief>\n\n${kickoff(title)}`;
+}
+
 export function kickoff(title: string): string {
   return `Start the task "${title}" now, following your task brief. Report via report_to_main when done, blocked, or needing a decision.`;
 }
@@ -86,3 +89,12 @@ export const REOPENED =
 
 /** The one nudge after a turn ends with no report (stall rule). */
 export const NUDGE = "Report status via report_to_main.";
+
+/**
+ * First turn of a task handed to another AI agent (D89, 换到 X 接着做 / Continue on X): the new
+ * session has the same brief and worktree; this says where the work stood.
+ */
+export function handedOver(from: string, progress: string[]): string {
+  const where = progress.length ? `\n\nWhere it stood (saved progress, oldest first):\n${progress.map((p) => `- ${p}`).join("\n")}` : "";
+  return `This task was started by ${from}; the user moved it to you to carry on. The worktree has its changes so far. Check where the work stands (git status, git log, the files), then continue with the brief from there. Don't start over.${where}\n\nReport via report_to_main when done, blocked, or needing a decision.`;
+}

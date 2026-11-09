@@ -22,16 +22,21 @@
 | job | (no card; just an ack and a status line) | Any work not answered at once. Executed in turn, in a fork, or in a window (principle 6) |
 | Focus Window, window | **事 / Task** | A job big enough to need its own session and place. **Only windows get cards** |
 | workspace view | "展开 / Open" (no name of its own) | A task opened to full depth |
-| overview board | **手头 / On hand** | Every task across all personas |
+| overview board | **手头的事 / On hand** | Every task across all personas |
 | attention states | 等你 / Needs you · 在做 / Working · 在等 / Waiting · 做完了 / Done · 没成 / Didn't work · 放下了 / Dropped | `done?` shows as "做完了 · 在检查 / Done · checking" only while a check runs, else as Done (D68); `queued` shows as "还没开始 / Not started yet" |
 | decision actions | **好 / Go** · **先等等 / Hold** · **回复… / Reply…** · **看细节 / Details** | The Go button may name the action: en says the action alone in sentence case ("Rebase"), zh keeps 好 in front ("好，rebase") (D73). An ask's small heading is the asking task's title; the count is said once, "2 件等你 / 2 need you" |
 | Project | **项目 / Project**; no project = **其他 / Other** | An editable grouping label |
 | Place | **在哪儿做 / Where** | Where a task works |
 | Device (machine, runner) | **设备 / Devices** | |
-| Routine | **例行 / Routine** | Recurring or triggered work |
-| Waiter | (shown as the reason for Waiting: "在等 PR 通过 / Waiting for the PR to be approved") | |
-| `until` loop | "一直…直到… / Keep … until …" on the task | |
-| Rule | **规则 / Rule** | A standing preference stated in words |
+| harness (Claude Code, Codex, pi, DeepSeek Harness, …) | each by its own product name; as a category **AI agent / AI agent** (D88) | The AI tools Ducter hands work to. Not "coding agent": people use them for much more than code |
+| Routine | **例行 / Routine**; the shelf **例行 / Routines**; a run says **来自例行：{name} / From the routine: {name}**; **暂停 / Pause** · **接着来 / Resume**; paused: "停着：连着 3 次没成 / Paused: 3 runs in a row didn't work" · "停着：连着 3 次你没看 / Paused: 3 reports unread" · "停着：到期了，等你说还要不要 / Paused: up for review"; the review card "还要吗？/ Keep this?" with **留着 / Keep it**; the proposal card's rows **什么时候 / When** · **做什么 / Does** · **怎么告诉你 / Reports** · **能动什么 / Can touch** · **花多少 / Cost** ("每次用一点你的 AI 额度 / A little of your AI allowance each time") · **到期 / Review**, Go **好，开始 / Go: Start** | Recurring or triggered work (D114, D115). Its next runs are beads on one strip, not a list |
+| Waiter | named as awaited: **等 {what} / Waiting until {what}** ("等 PR #1592 通过", "等域名续费的邮件"), never as if done; its deadline **最多等到 {time} / Until {time}**; **不等了 / Stop waiting** · **现在看一眼 / Look now**; in Details only, **怎么判断的 / How it checks** | D112, D115. How often it looks, the command and whether a model judges are never on a card, the head, a proposal card or the conversation |
+| `until` loop | "一直…直到… / Keep … until …" on the task; each try **第 n 次 / Try n**; **最多 20 / up to 20**; **停下 / Stop** | D113 |
+| Rule | **规则 / Rule**; the list **你的规则 / Your rules** · **不要这条 / Remove** · **跟 {name} 说一条规则… / Tell {name} a rule…** | A standing preference stated in words. Added only by saying it in the conversation; listed and removed on Partner (D89). After two switches the same way the partner asks once "以后…也用 X？ / Use X for … from now on?" |
+| what the partner itself runs on (brain) | **它用什么想事情 / What it thinks with**; the socket **想事情用 / Thinks with** · **换一个 / Switch** · **挑一个放进去 / Pick one to put in** · "{name} 现在用 {agent} 想事情了 / {name} thinks with {agent} now" · **从你的下一句话开始用 / Takes over from your next message** · **换了以后，名字、记得的事和你们的对话都还在 / Switching keeps its name, what it remembers and your conversation** · models **最聪明 / Smartest** · **回得更快 / Faster replies** | D89. Never "brain", 脑子, "model settings" or "main AI" on screen. Only AI agents signed in on the Mac it lives on: "只能用 {name} 住的这台 Mac 上登录了的 AI agent" |
+| who does the tasks (`fw_candidates`) | **谁来做事 / Who does the tasks** · the tray **这台 Mac 上的 AI agent / AI agents on this Mac** · **用它做事 / Use it for tasks** (per account, on by default) · **按用量付费 / Pay per use** | D89. Default line: "每件事 {name} 挑一个：最合适、额度最够的那个 / For each task {name} picks one: the best fit with the most limit left" |
+| the partner's reserve | **其中 10% 给 {name} 留着 / 10% of it is kept for {name}**; when only it is left, "额度还剩 n% · 都是给 {name} 留着的 / n% left · all kept for {name}" | D89. One sentence says tasks and the partner share one limit: "做事和 {name} 想事情用的是同一份额度…" |
+| `body_selected` (who does a task, and why) | **谁在做 / Who's doing it**: "{agent} 在做，按你的规则「…」/ {agent} is doing it, by your rule "…"" · "…，因为 {agent} 额度不多了 / …, because {agent}'s limit is low" · "…，是你换的 / …; you switched it"; switching **换谁来做 / Switch who does it** · **现在 / Now** · reasons **你的规则 / Your rule** · **最适合这件事 / Best fit for this** · **快，省额度 / Fast, uses less of the limit** · "额度不够了 · 剩下的给 {name} 留着 / Not enough limit · the rest is kept for {name}" · **你关了「用它做事」/ Use it for tasks is off** · the button is the handoff's **换到 X 接着做 / Continue on X** | D89, D90. The conversation's task line ends with who (and why when it isn't the plain pick); the opened task's head says who in its meta line; the reason is a sentence in Details |
 | device states | **醒着 / Awake · 睡着了 / Asleep · 连不上 / Can't reach** · wake = **叫醒 / Wake** | Never "broken" or "offline" wording for sleep |
 | quota | **额度 / limit** ("额度还剩 80% / 80% of the limit left") | One per AI account, shared across its devices |
 | screen place controls | **画面 / Screen** tab · **接手 / Take over** · **还给它 / Give it back** | |
@@ -43,16 +48,35 @@
 | non-git draft copy | **草稿副本 / Draft copy** | |
 | routine fields | **{date} 再问你 / Ask you again {date}** (review date) · **可以碰 / May touch** (also on every task, D61) | |
 | default outcomes | **按默认做了 / Went with the default** · **都按默认 / Go on all defaults** | |
-| outcomes | **停下了 / Stopped** · **撤销 / Undo** · **再试一次 / Try again** · **检查没过 / Check didn't pass** | |
+| the quiet row under a message (D104) | **看细节 / Details ›** · **收起 / Hide** · **合进 main / Merge into main** | 看细节 opens, in place, what stands behind a message: the line of proof, the task's title, 开草稿 PR / Open draft PR, the 记下了 / Noted lines with 忘掉 / Forget. Merge into main is a text button there when it is the next step |
+| open asks gathered behind the one being asked (D104) | **还有 n 件等你定 / n more waiting on you** | One line under the ask whose default comes soonest |
+| a task in the living message that didn't work, or came back (D104) | **{title}没做成：{text} / {title} didn't work: {text}** · **{title}做完了：{text} / {title} is done: {text}** | Said as one sentence, never a status row |
+| the time line (D104) | **10:40** · **你不在的时候 · 10:40 / While you were away · 10:40** | Small and centered, like a messaging app; before the first message and where 15 minutes passed |
+| what the partner is doing while you wait (D104) | **在想… / Thinking…** · **在翻之前聊过的… / Looking back at what we said…** · **在看那件事做到哪了… / Checking on that task…** · **在安排一件事去做… / Setting up a task…** · **在跟那件事说… / Passing it on to the task…** · **在想怎么安排… / Working out the timing…** · **在查… / Looking into it…**; past 15 s **比平常久一点，还在弄 / Taking a bit longer than usual**; past 45 s **还在弄。你可以先忙别的，好了我说 / Still on it. Carry on with something else; I'll say when it's ready** | Beside the clay partner where its reply will land; gone when the reply lands. Never a tool name |
+| the partner's sentence when it takes on work (ack, D120) | **好，我去{做的事}，{一般 / 大概 + 多久，有依据才说}，{查清楚了 / 弄好了}告诉你。 / On it: {the action}, {usually about + how long, only when grounded}; I'll tell you when it's clear.** | One sentence, replacing the waiting line; never an outcome, never a promised time; then nothing until the result |
+| the display setting (D104) | **对话里的细节 / Details in the conversation**: **收起 / Folded** · **展开 / Shown** | Per client, in Settings (the Mac) and the Settings sheet (the phone) |
+| outcomes | **停下了 / Stopped** · **撤销 / Undo** · **再试一次 / Try again** · **告诉它怎么做… / Tell it what to do** · **检查没过 / Check didn't pass** | 告诉它怎么做… sits beside 再试一次 on a task that didn't work and opens the task's composer (D76) |
 | a merge / draft PR whose result was lost with the connection | **不确定做成没有，看一下 / Not sure it went through — check** · **再试一次 / Try again** | Only when the Log doesn't show it done after reconnecting. Never "failed" wording: it may have happened |
 | quiet hours | **免打扰 / Quiet hours** ("免打扰 23:00–08:00") | The word the user's phone already uses |
 | remote access ability | **在哪儿都能用 / Reach from anywhere** | Done: "MacBook 现在在哪儿都能用了" |
 | pairing a client with a server (D54) | **连接到你的 Ducter / Connect to your Ducter** · **地址 / Address** · **连接码 / Code** · **连上 / Connect** · **断开 / Disconnect** · again: **再连一次 / Connect it again** | The desktop card, the phone and the CLI (`ducter pair`, `ducter devices disconnect`). Sentences say "这个码只能用一次 / The code works once". Never "token", "配对 / pair", "授权 / authorize" or "绑定" in UI |
-| a device that runs tasks for a main elsewhere (worker) | (a **设备 / Device**; in the CLI "让这台电脑替另一个 Ducter 干活 / lend this machine to another Ducter"; the main is "Ducter 住的那台电脑 / the computer Ducter lives on") | Shown with the device states (醒着 / Awake …). "Worker" stays internal |
+| a device that runs tasks for a main elsewhere (worker) | (a **设备 / Device**; its card: its own name, renamable (**改名字 / Rename**), and **另一台电脑 · 替 Ducter 做事 / Another computer · does tasks for Ducter**, the second half replaced by its state when something is wrong (睡着了 · 醒来就接着做, 连不上 · {time}); in the CLI "让这台电脑替另一个 Ducter 做事 / make this computer do tasks for another Ducter"; the main is "Ducter 住的那台电脑 / the computer Ducter lives on") | D84. Shown with the device states (醒着 / Awake …). "Worker" stays internal to UI copy; the CLI verb is `ducter worker <address> --code <code>` (its reader is a developer, D83). Never a name containing "ducter" plus a role (reads as Ducter's own background program) |
+| does tasks for Ducter | **替 Ducter 做事 / does tasks for Ducter** | What another computer is for (D84); Ducter = the partner's name |
+| the code card while it waits | **等它连上… / Waiting for it to connect…** | On the code card and in `ducter pair` (D83) |
+| another computer while tasks run on it | **另一台电脑 · 在做 1 件事 / Another computer · working on 1 task** (n: 在做 n 件事 / working on n tasks); under its island alone: **在做 1 件事 / Working on 1 task** | D81, D84: the state replaces the second half |
+| a phone (or an app window elsewhere) that reaches Ducter | its own name, and **在哪儿都能找到 Ducter / Reaches Ducter from anywhere**; not seen lately: **最后在线 {time} / Last seen {time}** | D81. A phone never runs tasks; it has no bridge parcels |
+| an AI account on several devices | **N 台设备共用 / shared by N devices**, after its state ("已登录 · 2 台设备共用") | D81, D82: N counts the devices where that AI agent is signed in |
+| what the chosen device can do | **{device} 会：上网 · 在哪儿都能用 / {device} can: Browse the web · Reach from anywhere** | The device card beside the stage (D81) |
 | server keeps running (systemd service) | **一直开着 / Stays on** (doctor row) | |
 | capability (browser, computer use, phone, calls, remote access) | **no noun on screen** (D66). Headings: **你的设备，和它们会做的事 / Your devices and what they can do** · **还能装上的 / You can also add** | Equip = **装上 / Add to <device>**; remove = **取下 / Remove**; result = "MacBook 现在会上网了 / MacBook can now browse the web"; device detail "MacBook 会：… / can: …". Item names are ability phrases (上网, 用电脑, 在哪儿都能用). Never 学会/教会/赋予/授权 (they read as ordering a subordinate). Never 装备/Gear (reads as armour; rhymes with 设备). Claude Code skills stay **技能 / Skills** on their own page, never on the rack |
-| the partner saved something to long-term memory (Mem) | **记下了 · <title> / Noted · <title>** | One quiet line under the reply, no card, no action. Never "已存入记忆 / saved to memory" in the partner's words; recall is never shown at all |
+| the partner saved something to long-term memory (Mem) | **记下了 · <title> / Noted · <title>** | Inside the Details of the reply it belongs to, with 忘掉 / Forget (D104); all of them under 伙伴 / Partner › 记得什么. Never a card, never a notification. Never "已存入记忆 / saved to memory" in the partner's words; recall is never shown at all |
 | a request from another agent through Nowledge Bridge (`bridge_msg` in) | **<X> 发来请求 · <gist> / Request from <X> · <gist>** (pending user OK, J-Q5) | One quiet line, then the partner's own Go/Hold question if it would act. Never 交接 / hand-off (that is a task changing body). Never "Bridge", "mailbox", "contact", "Space" in UI |
+| the partner messaging an agent the user named (`bridge_send` card) | **发给 <X>？「<gist>」· 发送 / Send this to <X>? "<gist>" · Send** (D105); after: **已发给 <X> / Sent to <X>**; its answer: **<X> 回复了 / <X> replied** (quiet lines pending user OK, J-Q5) | Default wait, can't be undone. Sent by Ducter's code on the tap, once (D106) |
+| another agent that belongs to the user (same member as the persona's owner) | **你的 <agent> / your <agent>** (D108) | A teammate's agent: **<agent> (<name>)**. The user is never named to the user |
+| the claim Ducter sends when a task opens for another agent's request | **接了：「<title>」。做完把结果回你。 / Taken: "<title>". I'll send you the result when it's done.** (D109) | In the requester's language; the title quoted. The other agent sees it, not the user |
+| the outcome a teammate's agent gets when the partner didn't reply itself | **「<title>」：做完了 / 没做成** / **"<title>": done / not done** (D107) | Until a sharing rule exists |
+| follow-through on a confirmed message with no answer (S3) | **你的 <agent> 还没回你 <n> 小时前问的「…」，它可能停了。回了我马上告诉你。 / Your <agent> hasn't answered what you asked <n> hours ago ("…"); it may have stopped. I'll tell you as soon as it does.** Read but unanswered: **…看过你 <n> 小时前问的「…」，还没回。… / …read what you asked … but hasn't answered yet. …** (D110) | One line, once, ≥ 2 h, while the user is around, never in quiet hours. Never "reminded" (提醒): nothing wakes the other side |
+| an outgoing message that couldn't be confirmed, or was refused | **没能确认<what>是否到了 <X> 那里。我没有重发；需要的话再跟我说一次。 / I couldn't confirm <what> reached <X>. I didn't resend it; ask me again if you need it.**; refused: **<what>没能发给 <X>：被拒绝了。 / I couldn't send <what> to <X>: it was refused.** (D106) | <what> = 你让我发的消息 / the message you asked me to send · 「接了」的回复 / the reply saying I took it · 任务的结果 / the task's result · 回复 / the reply |
 | the partner answered that agent | **已回复 <X> / Replied to <X>** (pending user OK) | "Replied" is not "done"; nothing promises the other side has seen it |
 | Intent | (shown as a decision or a policy line: "要推送到 ducter/fix-ci / Will push to …") | |
 | a task message to the partner (report) | **告诉 {name} / Told {name}** (· 要你定 · 做完了 · 在等 · 没成); freshness "{time}更新 / updated {time}" | Never 汇报 or 交回给 (reporting up) |
@@ -73,11 +97,14 @@
 | the partner's page (D71) | **伙伴 / Partner** (nav, ⌘4; also the partner's own face and name in the conversation's bar) · **改名字 / Rename** · faces **在呢 / Here · 在做事 / Working · 有事找你 / Needs you · 刚做完 / Just done · 歇着了 / Resting** · **住在{device} 上 / Lives on {device}** | A character sheet, not a form. Never "profile", "persona", "agent settings" |
 | how the partner talks | **怎么说话 / How it talks**: **跟着我 / Follow me** · 中文 · English | Follow me = the language of the user's message |
 | notifications and the default wait | **什么时候找你 / When it comes to you**: **通知 / Notifications** · **免打扰 / Quiet hours** ({start} 到 {end} / to) · **你没回的时候 / If you don't answer** · "等多久再按默认做 / How long before it goes with the default" | Only reversible decisions wait; irreversible ones always wait for the user |
+| a connection (the user's OpenConnector or another MCP server, D96) | **它能看的账号 / Accounts it can read** (Partner, for now) · **加一个 / Add one** · where: **OOMOL 托管 / Hosted by OOMOL** · **自己部署的 / Self-hosted** · **其他 MCP / Other MCP** · **地址 / Address** · **钥匙 / Key** · **检查并加上 / Check and add** · **移除 / Remove** · **用 oo 里的 OpenConnector / Use the OpenConnector from oo** · result "Ducter 现在能看 {name} 里的账号了 / Ducter can now read the accounts in {name}" | 钥匙 / Key: OpenConnector calls it a token (its Access page's Create Token); the UI names that button and otherwise says key, because "token" is retired in UI copy (D66). Decided 2026-11-09 (the author, "按建议") Never "connector", 授权, 接入. 连上 / Connect stays for devices. Each one says where mail passes |
 | memory, as the user controls it | **记得什么 / What it remembers** · **记住事情 / Remember things** (switch) · **最近记下的 / Noted lately** · **忘掉 / Forget** ("忘掉了：{title} / Forgotten: {title}"; when Mem can't: "这里不再显示…；Nowledge Mem 里那条还在 / … is hidden here; it's still in Nowledge Mem") · **装上 Nowledge Mem / Get Nowledge Mem** | Never "delete memory", "knowledge base", "记忆库" |
 | what runs without asking | **自己就做，还是先问你 / On its own, or asks you first** · **自己就做 / On its own** · **先问你 / Asks you first** | Read-only today; the items say the property (发给别人的 / reaches other people, 收不回的 / can't be taken back) |
 | the app's own settings (D71) | **设置 / Settings** (⌘,; Settings… in the menus) · **外观 / Look** · **界面语言 / Language** (**跟着系统 / Follow the system**) · **关窗以后 / When you close the window** · **更新 / Updates** · **数据和记录 / Data and logs** (打开数据文件夹 · 打开记录 · **检查一遍 / Run checks** · 都好 / All good) · **关于 / About** | What the partner is like lives on Partner, not here |
 | AI accounts on Devices | **登录 / Sign in** · **退出登录 / Sign out** · **装上 / Install** (an account card on this Mac) | The tool's own sign-in, in the browser; Ducter never sees the password |
-| adding a device | **连上手机或另一台电脑 / Connect a phone or computer** (opens the one-time code) | Same words as D54's Connect |
+| the first-wave harnesses (D85) | **Claude Code** · **Codex** · **pi** · **DeepSeek Harness**, each product's own name, the same in zh and en | Never "harness", "runtime" or "adapter" on screen. pi is written lower-case, as its makers write it |
+| an account that runs on an API key (pi, DeepSeek Harness) | **需要一个 DeepSeek 密钥 / Needs a DeepSeek key** · **有 DeepSeek 密钥 / Has a DeepSeek key** · pi: **有能用的模型 / Has a model it can use** | The key is typed into a masked field and kept on this machine only (D85 proposal); never shown again, never in the conversation |
+| adding a device | **连上手机或另一台电脑 / Connect a phone or computer** (opens the one-time code) | Same words as D54's Connect. One code for any device (D83); the card says both ways: **手机或 Ducter 应用 / On a phone or in the Ducter app** (scan, or open the address and type the code) and **另一台电脑 / Another computer** (run one command) |
 | the menu bar extra | the clay partner in the macOS menu bar; its menu: **等你 · {n} / Needs you · {n}** or **没有要你定的事 / Nothing needs you**, each question with **好：{action} / Go: {action}** · **先等等 / Hold** · **回复… / Reply…**, then **打开 Ducter / Open Ducter** | |
 | a sandboxed place | **no noun**: the property, **碰不到你的文件 / Can't touch your files** | 沙盒 retired (D66, GQ8) |
 | Artifact | **做好的 / Finished**; the list **做好的东西 / Everything finished** | 成果 retired (report-speak) |
@@ -194,8 +221,12 @@ Every task shows two editable things on its card and header.
 
 Two primitives plus one property cover every case.
 
-- **Waiter** on a task: "tell me when the PR is approved". It is code where possible; a quiet
-  check costs no model turn. While waiting, the task shows **在等 / Waiting** with the reason.
+- **Waiter** on a task: "tell me when the PR is approved" (D112). A time, or a condition compiled
+  into a small read-only check run where the task works (no model turn per look), or a
+  connection's event (OpenConnector triggers); a cheap model judges only what code can't, only
+  on change. It may have a deadline; past it the task needs you. While waiting, the task shows
+  **在等 / Waiting** with what it waits for, Ducter sitting on its bench, and a groove from start
+  to deadline (D115).
 - **`until` on a task**: "keep fixing until CI is green". A cheap model judges the condition
   after each turn. The loop stops on any of:
   - the condition holding;
@@ -203,7 +234,8 @@ Two primitives plus one property cover every case.
   - no progress;
   - oscillation.
 
-  The card shows a per-iteration strip.
+  The card shows a clay pebble per try (第 n 次 · 最多 20, D113); a try's own done report
+  doesn't finish the task.
 - **Routine / 例行**: "every Monday at 9, draft the weekly report", "when someone replies to
   this thread, summarize it".
   - Each firing creates a **run**: a fresh task by default. A "babysit one thing" routine
@@ -271,8 +303,9 @@ Each scenario needs a flow, states, copy (zh + en), and motion. Status is tracke
   quiet hours; escalation (badge → message → push → call); done with evidence; failed
   verification; failure; stall.
 - **E. Steering.** A follow-up in the conversation vs. inside the task; adding scope; switching
-  model or harness; handoff; pause or cancel; merging or splitting tasks; reopening days
-  later.
+  model or harness (换谁来做 / Switch who does it, D89); handoff; pause or cancel; merging or
+  splitting tasks; reopening days later; choosing what the partner thinks with and who does the
+  tasks (E6, D89).
 - **F. Memory and identity.** A rule created, edited, or forgotten; recalling something from
   weeks ago; Mem unavailable; switching or linking personas.
 - **G. Safety.** An intent that needs policy (push, send, pay, call); a credential request;

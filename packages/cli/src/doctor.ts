@@ -1,8 +1,11 @@
 // `ducter doctor`: what this Mac has, what's missing, and the one command that fixes it.
 // Every probe goes through `Host`, so tests fake the machine (no real logins, no model calls).
-import { accessSync, constants, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { accessSync, constants, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { MsgKey, T } from "./i18n.ts";
+import { probeHarnesses } from "@ducter/core/src/harness-probe.ts";
+import { CLAUDE_TOKEN_ENV } from "@ducter/protocol";
+import { readKeys } from "@ducter/protocol/src/keys.ts";
 
 export const MIN_BUN = "1.3.0";
 
@@ -29,12 +32,15 @@ export interface Host {
   pairedDevices?(): number;
   /** Whether a file exists (CuaDriver.app in /Applications, off PATH). */
   exists?(path: string): boolean;
+  /** The environment and a file reader, for pi's and DeepSeek Harness's keys (presence only). Absent: none. */
+  env?: Record<string, string | undefined>;
+  read?(path: string): string | undefined;
 }
 
 const CUA_APP_BIN = "/Applications/CuaDriver.app/Contents/MacOS/cua-driver";
 const CUA_TOOLS = ["browser_prepare", "get_browser_state", "browser_navigate"];
 
-export type CheckId = "bun" | "git" | "claude" | "codex" | "nmem" | "cua" | "port" | "data" | "service" | "devices";
+export type CheckId = "bun" | "git" | "claude" | "codex" | "pi" | "dsh" | "nmem" | "cua" | "port" | "data" | "service" | "devices";
 export type CheckStatus = "ok" | "missing" | "warn";
 
 export interface Check {
@@ -87,6 +93,8 @@ export const FIX = {
   cua: '/bin/bash -c "$(curl -fsSL https://cua.ai/driver/install.sh)" -- --no-connect --no-test --no-modify-path',
   cuaUpdate: "cua-driver update --apply",
   cuaGrant: "cua-driver permissions grant",
+  // DeepSeek Harness reads its key from the env; Ducter passes it from its key file (0600, D102).
+  dshKey: "DEEPSEEK_API_KEY=… in ~/.ducter/keys.env (chmod 600)",
   port: (p: number) => `DUCTER_PORT=${p + 1} ducter up`,
   data: (d: string) => `mkdir -p "${d}" && chmod u+w "${d}"`,
 };
@@ -149,8 +157,11 @@ export async function runDoctor(host: Host, t: T, opts: DoctorOptions): Promise<
       if (!host.which("claude")) return { installed: false, loggedIn: false, token: false, version: "" };
       const [v, auth] = await Promise.all([host.run(["claude", "--version"]), host.run(["claude", "auth", "status"], 15_000)]);
       const j = parseJson(auth.stdout);
-      // A CLAUDE_CODE_OAUTH_TOKEN counts as logged in without being checked (research/29).
-      return { installed: true, loggedIn: auth.code === 0 && j?.loggedIn === true, token: j?.authMethod === "oauth_token", version: firstVersion(v.stdout) };
+      // A CLAUDE_CODE_OAUTH_TOKEN counts as logged in without being checked (research/29). Ducter
+      // keeps it in keys.env and passes it to Claude Code only (D102), so this shell may not have it.
+      const kept = !!readKeys(opts.dataDir, host.read ?? (() => undefined))[CLAUDE_TOKEN_ENV];
+      const token = j?.authMethod === "oauth_token" || kept;
+      return { installed: true, loggedIn: (auth.code === 0 && j?.loggedIn === true) || kept, token, version: firstVersion(v.stdout) };
     })(),
     (async () => {
       if (!host.which("codex")) return { installed: false, loggedIn: false };
@@ -216,9 +227,32 @@ export async function runDoctor(host: Host, t: T, opts: DoctorOptions): Promise<
     ? c("data", "check.data", "ok", true, "check.data.ok", { dir: tildePath(opts.dataDir) })
     : c("data", "check.data", "missing", true, "check.data.bad", { dir: opts.dataDir }, FIX.data(opts.dataDir));
 
-  const checks = [bun, git, claudeCheck, codexCheck, nmem, cua, portCheck, dataCheck];
+  // pi and DeepSeek Harness (D85): a line only when there is something to say, so a machine
+  // without them reads as before. Either one signed in is a harness Ducter can work with.
+  const more = await probeHarnesses({
+    exec: async (argv, ms) => {
+      const r = await host.run(argv, ms);
+      return { code: r.code, out: r.stdout };
+    },
+    which: (x) => host.which(x),
+    env: host.env ?? {},
+    read: host.read ?? (() => undefined),
+    dataDir: opts.dataDir,
+    only: ["pi", "deepseek-harness"],
+  }).catch(() => []);
+  const pi = more.find((h) => h.harness === "pi");
+  const ds = more.find((h) => h.harness === "deepseek-harness");
+  const extra: Check[] = [];
+  if (pi?.loggedIn) extra.push(c("pi", "check.pi", "ok", false, "check.pi.ok"));
+  if (ds?.installed) extra.push(ds.loggedIn ? c("dsh", "check.dsh", "ok", false, "check.dsh.ok") : c("dsh", "check.dsh", "missing", false, "check.dsh.nokey", {}, FIX.dshKey));
+  const anyReady = harnessReady || !!pi?.loggedIn || !!ds?.loggedIn;
+  if (anyReady && !harnessReady) {
+    claudeCheck.required = false;
+  }
+
+  const checks = [bun, git, claudeCheck, codexCheck, ...extra, nmem, cua, portCheck, dataCheck];
   if (server) checks.push(...(await serverChecks(host, c)));
-  return { checks, ok: checks.every((k) => !k.required || k.status === "ok"), harnessReady };
+  return { checks, ok: checks.every((k) => !k.required || k.status === "ok"), harnessReady: anyReady };
 }
 
 type Mk = (id: CheckId, labelKey: MsgKey, status: CheckStatus, required: boolean, detailKey: MsgKey, vars?: Record<string, string | number>, fix?: string, action?: Check["action"]) => Check;
@@ -328,6 +362,14 @@ export function tildePath(p: string, home = process.env.HOME || ""): string {
 export function realHost(): Host {
   return {
     which: (cmd) => Bun.which(cmd),
+    env: process.env,
+    read: (p) => {
+      try {
+        return existsSync(p) ? readFileSync(p, "utf8") : undefined;
+      } catch {
+        return undefined;
+      }
+    },
     async run(cmd, timeoutMs = 5_000) {
       try {
         const proc = Bun.spawn(cmd, { env: { ...process.env }, stdout: "pipe", stderr: "pipe", stdin: "ignore" });

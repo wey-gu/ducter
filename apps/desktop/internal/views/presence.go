@@ -1,6 +1,7 @@
 package views
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -23,6 +24,9 @@ func (a *App) presence(c *ui.Context) theme.Presence {
 		return theme.NeedsYou
 	case len(b.Lanes[store.LaneWorking]) > 0 || a.thinking():
 		return theme.Working
+	case len(b.Lanes[store.LaneWaiting]) > 0 || a.watching():
+		// Nothing moving, something it waits for (D112): on its bench, looking out.
+		return theme.Waiting
 	}
 	if left := a.doneAt.Add(DoneGlow).Sub(a.Now()); !a.doneAt.IsZero() && left > 0 {
 		c.After(left)
@@ -33,7 +37,17 @@ func (a *App) presence(c *ui.Context) theme.Presence {
 
 var presenceLabel = map[theme.Presence]string{
 	theme.Idle: "face.idle", theme.Working: "face.working", theme.NeedsYou: "face.needs_you",
-	theme.Done: "face.done", theme.Napping: "face.napping",
+	theme.Done: "face.done", theme.Napping: "face.napping", theme.Waiting: "face.waiting",
+}
+
+// watching: a wait for a condition (a check or an event) is armed.
+func (a *App) watching() bool {
+	for _, w := range a.S.ArmedWaiters() {
+		if w.Check != nil || w.Event != nil {
+			return true
+		}
+	}
+	return false
 }
 
 // avatar is the clay character in a presence, cross-fading between
@@ -65,7 +79,15 @@ func (a *App) avatar(c *ui.Context, p theme.Presence, size float32) {
 			if op < 0.01 {
 				continue
 			}
-			ui.Image(c.Key(q), bmp).Size(size, size).Absolute().Top(0).Left(0).Opacity(op)
+			// It breathes, and blinks while idle (D77).
+			var lids *[2]theme.Lid
+			if q == theme.Idle {
+				lids = &squareLids
+			}
+			phase := phaseOf(fmt.Sprint("avatar", size))
+			ui.Box(c.Key(q)).Size(size, size).Absolute().Top(0).Left(0).Opacity(op).Draw(func(p *ui.Painter, r ui.Rect) {
+				clayArt(p, r, bmp, idleBreathe, phase, lids)
+			})
 		}
 	})
 }
@@ -83,3 +105,16 @@ func (a *App) noteResults(f protocol.ServerFrame) {
 		}
 	}
 }
+
+// squareLids are the idle face's eyelids on the square art (theme.Art),
+// mapped through where the cut-out idle art sits in it.
+var squareLids = func() [2]theme.Lid {
+	sq := theme.IdleSquareContent
+	var out [2]theme.Lid
+	for i, l := range theme.FaceLids {
+		l.X, l.Y = sq.X+l.X*sq.W, sq.Y+l.Y*sq.H
+		l.W, l.H = l.W*sq.W, l.H*sq.H
+		out[i] = l
+	}
+	return out
+}()

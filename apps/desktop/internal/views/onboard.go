@@ -281,7 +281,7 @@ func (a *App) setupOptions(c *ui.Context, blocking []local.Check) {
 		face = theme.Working
 	}
 	a.avatar(c, face, 100)
-	ui.Text(c, a.L.T("setup.blocked")).FontSize(t.XXL).FontWeight(800).LetterSpacing(-0.4)
+	a.heading(c, a.L.T("setup.blocked"), t.XXL)
 	rows := blocking
 	body := "setup.blocked.body"
 	if k, ok := a.setup.report.Get("codex"); ok && !a.setup.report.HarnessReady && k.Status != "ok" && k.Action != "" && !k.Required {
@@ -298,7 +298,7 @@ func (a *App) setupOptions(c *ui.Context, blocking []local.Check) {
 func (a *App) setupReady(c *ui.Context) {
 	t := a.T
 	a.avatar(c, theme.Done, 120)
-	ui.Text(c, a.L.T("setup.ready")).FontSize(28).FontWeight(800).LetterSpacing(-0.4)
+	a.heading(c, a.L.T("setup.ready"), t.XXL)
 	var ready []string
 	for _, id := range []string{"claude", "codex"} {
 		if k, ok := a.setup.report.Get(id); ok && k.Status == "ok" {
@@ -390,15 +390,15 @@ func (a *App) backgroundLine(c *ui.Context) bool {
 						ui.Text(c, a.L.T("bg.off.body")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.45)
 					}
 				})
-				if !b.allowed && a.button(c, a.L.T("bg.open"), btnPrimary, 40, t.Surface) {
-					_ = a.Backend.OpenSettings(local.SettingsLoginItems)
-				}
 				label := a.L.T("ask.later")
 				if b.allowed {
 					label = a.L.T("cli.ok")
 				}
 				if a.button(c, label, btnText, 40, t.Surface) {
 					b.closed = true
+				}
+				if !b.allowed && a.button(c, a.L.T("bg.open"), btnPrimary, 40, t.Surface) {
+					_ = a.Backend.OpenSettings(local.SettingsLoginItems)
 				}
 			})
 		})

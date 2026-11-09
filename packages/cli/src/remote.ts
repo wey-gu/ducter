@@ -6,6 +6,7 @@ import { homedir, hostname, userInfo } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import QR from "qrcode";
 import { openDeviceAuth, CODE_TTL_MS, type Device } from "@ducter/core/src/auth.ts";
+import { migrateKeys } from "@ducter/protocol/src/keys.ts";
 import { width, type Host, type Style } from "./doctor.ts";
 import type { T } from "./i18n.ts";
 
@@ -35,18 +36,28 @@ export function tunnelCommand(port: number, env: Record<string, string | undefin
   return `ssh -N -L ${port}:127.0.0.1:${port} ${user}@${host}`;
 }
 
-/** `ducter pair`: a fresh one-time code, how to use it, and (on a TTY) a wait for the device. */
+/** The one command that makes another computer do tasks for this Ducter, with a code (D83). */
+export function workerCommand(address: string, code: string): string {
+  return `ducter worker ${address} --code ${code}`;
+}
+
+/**
+ * `ducter pair`: a fresh one-time code, both ways to use it (a phone or app window; another
+ * computer), and (on a TTY) a wait for the device. One code serves either (D83); the hidden
+ * `--worker` keeps the old code fixed to a computer and prints only that way.
+ */
 export async function cmdPair(o: { t: T; style: Style; dataDir: string; port: number; json: boolean; running: boolean; wait: boolean; worker?: boolean }): Promise<number> {
   const { t, style } = o;
   const auth = openDeviceAuth(o.dataDir);
   try {
     const before = new Set(auth.list().map((d) => d.id));
-    const { code, expiresAt } = auth.createCode({ kind: o.worker ? "worker" : "client" });
+    const { code, expiresAt } = auth.createCode(o.worker ? { kind: "worker" } : {});
     const base = publicUrl(o.dataDir);
     const address = base ?? `http://127.0.0.1:${o.port}`;
     const link = pairLink(address, code);
+    const command = workerCommand(base ?? "<address>", code);
     if (o.json) {
-      console.log(JSON.stringify({ code, expiresAt: new Date(expiresAt).toISOString(), address, link }));
+      console.log(JSON.stringify({ code, expiresAt: new Date(expiresAt).toISOString(), address, link, command }));
       return 0;
     }
     const min = Math.round(CODE_TTL_MS / 60_000);
@@ -55,10 +66,14 @@ export async function cmdPair(o: { t: T; style: Style; dataDir: string; port: nu
       `  ${style.ok("●")} ${style.bold(t("pair.title"))}   ${style.bold(code)}   ${style.dim(t("pair.once", { min }))}`,
       "",
     ];
+    // Another computer dials out to this Ducter: it needs a reachable address, never a tunnel to here.
+    const computer = () => {
+      const out = [`  ${t("pair.worker.how")}`, `    ${style.bold(command)}`, ""];
+      if (!base) out.push(`  ${style.dim(t("pair.worker.noAddress"))}`, "");
+      return out;
+    };
     if (o.worker) {
-      // A worker dials out to this Ducter: it needs a reachable address, never a tunnel to here.
-      lines.push(`  ${t("pair.worker.how")}`, "", `    ducter worker --join ${base ?? "<address>"} --code ${code}`, "");
-      if (!base) lines.push(`  ${style.dim(t("pair.worker.noAddress"))}`, "");
+      lines.push(...computer());
       console.log(lines.join("\n"));
     } else if (!base) {
       // Over SSH this is a server and "your computer" is the one they typed on; on the Mac
@@ -80,6 +95,7 @@ export async function cmdPair(o: { t: T; style: Style; dataDir: string; port: nu
         lines.push(`  ${style.dim(t("pair.noPhone"))}`, "");
         console.log(lines.join("\n"));
       }
+      console.log(computer().join("\n"));
     }
     if (!o.running) console.log(style.dim(t("pair.notRunning")));
     if (!o.wait) return 0;
@@ -133,7 +149,7 @@ async function awakeWorkers(port: number): Promise<Set<string>> {
   }
 }
 
-/** `ducter devices` and `ducter devices disconnect <id|name>`. */
+/** `ducter devices`, `ducter devices disconnect <id|name>` and `ducter devices rename <id|name> <new name>`. */
 export async function cmdDevices(o: { t: T; style: Style; dataDir: string; json: boolean; rest: string[]; port: number }): Promise<number> {
   const { t } = o;
   const auth = openDeviceAuth(o.dataDir);
@@ -150,6 +166,16 @@ export async function cmdDevices(o: { t: T; style: Style; dataDir: string; json:
       const gone = auth.revoke(what);
       if (!gone.length) return console.log(t("devices.revokeNone", { what })), 1;
       for (const d of gone) console.log(t("devices.revoked", { device: `${d.name} (${d.id})` }));
+      return 0;
+    }
+    if (verb === "rename") {
+      const name = o.rest.slice(2).join(" ").trim();
+      if (!what || !name) return console.log(t("devices.renameUsage")), 2;
+      // The machine Ducter lives on answers to its own name and to "local" (tasks placed there).
+      const home = hostname().replace(/\.local$/, "").toLowerCase();
+      const r = [home, "local"].includes(name.toLowerCase()) ? ({ error: "name_taken" } as const) : auth.rename(what, name);
+      if ("error" in r) return console.log(t(r.error === "name_taken" ? "devices.renameTaken" : r.error === "empty" ? "devices.renameUsage" : "devices.revokeNone", { what, name })), 1;
+      console.log(t("devices.renamed", { device: r.device.name }));
       return 0;
     }
     console.log(t("devices.revokeUsage"));
@@ -173,7 +199,11 @@ export interface UnitSpec {
 
 const sdQuote = (s: string) => (/[\s"\\]/.test(s) ? `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"` : s);
 
-/** The unit file: journald gets stdout/stderr; secrets for harness logins go in ~/.ducter/env (0600), never here. */
+/**
+ * The unit file: journald gets stdout/stderr. Its EnvironmentFile (<dataDir>/env) is for
+ * non-secret settings only; keys for harness logins live in <dataDir>/keys.env (0600), which the
+ * unit never loads: Ducter reads it and hands each key only to its harness (D102).
+ */
 export function systemdUnit(u: UnitSpec): string {
   const args = u.worker
     ? [...u.execStart, "worker"]
@@ -195,6 +225,7 @@ export function systemdUnit(u: UnitSpec): string {
     `Environment=${sdQuote(`DUCTER_DATA_DIR=${u.dataDir}`)}`,
     `Environment=${sdQuote(`PATH=${u.path}`)}`,
     "Environment=NO_COLOR=1",
+    "# Settings only. Keys go in keys.env next to it, never here (Ducter moves any it finds).",
     `EnvironmentFile=-${join(u.dataDir, "env")}`,
     "",
     "[Install]",
@@ -269,6 +300,8 @@ export async function cmdService(o: {
     return 0;
   }
 
+  // D102: keys an older install left in the unit's EnvironmentFile move to keys.env first.
+  migrateKeys(o.dataDir);
   const unit = systemdUnit({ execStart: selfCommand(host.compiled), dataDir: o.dataDir, path: servicePath(), port: o.port, host: o.bindHost, worker: o.worker });
   mkdirSync(dirname(unitPath()), { recursive: true });
   writeFileSync(unitPath(), unit);

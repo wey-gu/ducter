@@ -9,8 +9,16 @@ struct DucterApp: App {
 
     var body: some Scene {
         WindowGroup {
+            #if DEBUG
+            if UserDefaults.standard.bool(forKey: "buttonSpecimen") {
+                ButtonSpecimen()
+            } else {
+                Root(state: state, shell: shell).tint(Pebble.accent)
+            }
+            #else
             Root(state: state, shell: shell)
                 .tint(Pebble.accent)
+            #endif
         }
     }
 }
@@ -51,18 +59,30 @@ struct Root: View {
 
 /// Between launch and the page's first paint: the partner, standing by (no white flash).
 struct Loading: View {
-    @State private var breathe = false
     var body: some View {
         VStack(spacing: 18) {
-            Image("Idle").resizable().scaledToFit().frame(width: 120)
-                .scaleEffect(breathe ? 1.03 : 1, anchor: .bottom)
-                .animation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true), value: breathe)
-            Text(L("conn.connecting")).font(.subheadline).foregroundStyle(Pebble.inkMuted)
+            Image("Idle").resizable().scaledToFit().frame(width: 120).breathing()
+            Text(L("conn.connecting")).font(Pebble.text(13, .bold, relativeTo: .subheadline)).foregroundStyle(Pebble.inkMuted)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Pebble.bg)
-        .onAppear { breathe = true }
     }
+}
+
+/// The partner breathes (D77): 3.8 s, from its feet; still under Reduce Motion.
+private struct Breathing: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var still
+    @State private var up = false
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(x: up ? 1.012 : 1, y: up ? 1.03 : 1, anchor: .bottom)
+            .animation(still ? nil : .easeInOut(duration: 1.9).repeatForever(autoreverses: true), value: up)
+            .onAppear { if !still { up = true } }
+    }
+}
+
+extension View {
+    func breathing() -> some View { modifier(Breathing()) }
 }
 
 /// The page couldn't load at all (the main is asleep, or the tunnel is closed).
@@ -73,13 +93,13 @@ struct Unreachable: View {
     var body: some View {
         VStack(spacing: 16) {
             Spacer()
-            Image("Napping").resizable().scaledToFit().frame(width: 150)
+            Image("Napping").resizable().scaledToFit().frame(width: 150).breathing()
             Text(L("connect.err.unreachable", host))
-                .font(.body).foregroundStyle(Pebble.inkSoft).multilineTextAlignment(.center)
+                .font(Pebble.text(16, relativeTo: .body)).lineSpacing(5).foregroundStyle(Pebble.inkSoft).multilineTextAlignment(.center)
                 .padding(.horizontal, 8)
             Spacer()
-            Button(L("task.action.retry"), action: retry).buttonStyle(PrimaryButtonStyle())
             Button(L("connect.other"), action: other).buttonStyle(QuietButtonStyle())
+            Button(L("task.action.retry"), action: retry).buttonStyle(PrimaryButtonStyle())
         }
         .padding(24)
         .background(Pebble.bg)
@@ -101,17 +121,17 @@ struct ConnectView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 14) {
-                Image("Idle").resizable().scaledToFit().frame(width: 132).padding(.top, 36)
-                Text(L("connect.title")).font(Pebble.display(30)).foregroundStyle(Pebble.ink).multilineTextAlignment(.center)
-                Text(L("connect.app.body")).font(.body).foregroundStyle(Pebble.inkSoft).multilineTextAlignment(.center)
+                Image("Idle").resizable().scaledToFit().frame(width: 132).breathing().padding(.top, 36)
+                Text(L("connect.title")).font(Pebble.display(28)).foregroundStyle(Pebble.ink).multilineTextAlignment(.center)
+                Text(L("connect.app.body")).font(Pebble.text(16, relativeTo: .body)).lineSpacing(5).foregroundStyle(Pebble.inkSoft).multilineTextAlignment(.center)
                     .padding(.bottom, 8)
                 if canScan {
                     Button { scanning = true } label: { Label(L("connect.app.scan"), systemImage: "qrcode.viewfinder") }
                         .buttonStyle(PrimaryButtonStyle())
-                    Text(L("connect.app.or")).font(.footnote).foregroundStyle(Pebble.inkMuted).padding(.vertical, 4)
+                    Text(L("connect.app.or")).font(Pebble.text(13, relativeTo: .footnote)).foregroundStyle(Pebble.inkMuted).padding(.vertical, 4)
                 }
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(L("connect.address")).font(.footnote.weight(.medium)).foregroundStyle(Pebble.inkMuted)
+                    Text(L("connect.address")).font(Pebble.text(13, .bold, relativeTo: .footnote)).foregroundStyle(Pebble.inkMuted)
                     HStack(spacing: 8) {
                         TextField(L("connect.address.placeholder"), text: $address)
                             .textContentType(.URL).keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
@@ -126,21 +146,21 @@ struct ConnectView: View {
                     .field()
                 }
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(L("connect.code")).font(.footnote.weight(.medium)).foregroundStyle(Pebble.inkMuted)
+                    Text(L("connect.code")).font(Pebble.text(13, .bold, relativeTo: .footnote)).foregroundStyle(Pebble.inkMuted)
                     TextField(L("connect.code.placeholder"), text: $code)
                         .textContentType(.oneTimeCode).textInputAutocapitalization(.characters).autocorrectionDisabled()
-                        .font(.body.monospaced()).submitLabel(.go).focused($focus, equals: .code)
+                        .font(.system(.body, design: .monospaced)).submitLabel(.go).focused($focus, equals: .code)
                         .onSubmit(submit)
                         .field()
                 }
                 if let error {
-                    Text(error).font(.footnote).foregroundStyle(Pebble.failedInk).frame(maxWidth: .infinity, alignment: .leading)
+                    Text(error).font(Pebble.text(13, .bold, relativeTo: .footnote)).foregroundStyle(Pebble.failedInk).frame(maxWidth: .infinity, alignment: .leading)
                 }
                 Button(L("connect.go"), action: submit)
                     .buttonStyle(canScan ? AnyButtonStyle(QuietButtonStyle()) : AnyButtonStyle(PrimaryButtonStyle()))
                     .disabled(address.trimmingCharacters(in: .whitespaces).isEmpty)
                     .padding(.top, 4)
-                Text(L("connect.phone.safe")).font(.footnote).foregroundStyle(Pebble.inkMuted).multilineTextAlignment(.center)
+                Text(L("connect.phone.safe")).font(Pebble.text(13, relativeTo: .footnote)).foregroundStyle(Pebble.inkMuted).multilineTextAlignment(.center)
                     .padding(.top, 8)
             }
             .padding(.horizontal, 24)
@@ -185,9 +205,10 @@ struct ConnectView: View {
 private struct FieldStyle: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .padding(.horizontal, 14).frame(minHeight: 50)
+            .padding(.horizontal, 14).frame(minHeight: 52)
+            .font(Pebble.text(16, relativeTo: .body))
             .background(Pebble.surface, in: RoundedRectangle(cornerRadius: Pebble.radiusSmall, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: Pebble.radiusSmall, style: .continuous).stroke(Pebble.line, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: Pebble.radiusSmall, style: .continuous).stroke(Pebble.line2, lineWidth: 1))
             .foregroundStyle(Pebble.ink)
     }
 }

@@ -98,6 +98,10 @@ type App struct {
 	diffs      map[string]*diffPane
 	taskLists  map[string]*ui.ListState
 	md, mdTask markdown.Options
+	mdLang     i18n.Lang // the language md's themes were made for
+	// pressAll draws every button as pressed: the button specimen's
+	// pressed row (tests only).
+	pressAll bool
 	// chipOwner is the entry that shows each task's chip.
 	chipOwner map[string]int64
 	uiTheme   *ui.Theme
@@ -115,6 +119,11 @@ type App struct {
 	// livingAway remembers, per living message, whether it came while
 	// the user was away.
 	livingAway map[int64]bool
+	// forgotten are the Noted lines forgotten from a message's Details.
+	forgotten map[int64]bool
+	// thinkingSince is when this app sent the message it waits on (the
+	// presence row's clock before the partner names a step, D104).
+	thinkingSince time.Time
 	// LocaleFixed keeps the language as given (DUCTER_LOCALE); otherwise
 	// it follows the user's first message (localeSet once it did).
 	LocaleFixed bool
@@ -154,6 +163,12 @@ type App struct {
 	// partner and settings are the Partner page's and Settings' own state.
 	partner  partnerState
 	settings settingsState
+	// title is the title moment's own state (D87); PlayTitle starts its
+	// sound (nil: silent, as in tests).
+	title     titleState
+	PlayTitle func() TitleSound
+	// lo is what the partner thinks with and who does the tasks (D89).
+	lo loadoutState
 	// SystemLang is macOS's language, for Settings' "follow the system";
 	// OnLanguage is told when the window's language changes (the menus).
 	SystemLang i18n.Lang
@@ -295,16 +310,24 @@ func (a *App) flushOutbox() {
 
 // View is the window's content.
 func (a *App) View(c *ui.Context) {
-	if a.uiTheme == nil {
-		a.uiTheme = a.T.UITheme(c.Theme())
-		a.md.Theme = a.markdownTheme(a.T.PartnerSize, 1.65)
-		a.mdTask.Theme = a.markdownTheme(a.T.MD, 1.55)
+	if a.uiTheme == nil || a.mdLang != a.L.Lang {
+		if a.uiTheme == nil {
+			a.uiTheme = a.T.UITheme(c.Theme())
+		}
+		// Chinese reading text is 1.75 high (D78).
+		a.mdLang = a.L.Lang
+		a.md.Theme = a.markdownTheme(a.T.PartnerSize, a.leading(1.65))
+		a.mdTask.Theme = a.markdownTheme(a.T.MD, a.leading(1.55))
 	}
 	c.SetTheme(a.uiTheme)
 	a.drainActionResults(c)
 	a.shortcuts(c)
+	a.titleTick(c)
 	ui.Column(c).Fill().Background(a.T.Bg).TextColor(a.T.Ink).Font(a.T.Body).Children(a.page(c, func() {
 		switch {
+		case a.title.on:
+			a.setupActive() // the first check runs under the title
+			a.titleView(c)
 		case a.Unauthorized || (!a.S.Welcomed && a.conn.open):
 			a.connect(c)
 		case a.setupActive():
@@ -374,7 +397,9 @@ func (a *App) markdownTheme(size, leading float32) *markdown.Theme {
 	th.Strong = a.T.Ink
 	th.StrongWeight = 700
 	th.Code = a.T.Ink
-	th.CodeBackground = a.T.SurfaceSunken
+	th.CodeBackground = a.T.Sunken
+	th.CodeFont = a.T.Mono
+	th.CodeSize = 0.86
 	th.CodeBlockBackground = a.T.SurfaceRaised
 	th.CodeBlockBorder = a.T.Line
 	th.QuoteBar = a.T.Line
@@ -417,6 +442,7 @@ func (a *App) sendMessage(text string) {
 	a.nextClient++
 	id := fmt.Sprintf("c%d-%d", a.Now().UnixMilli(), a.nextClient)
 	a.pending = append(a.pending, pendingMsg{clientID: id, text: text})
+	a.thinkingSince = a.Now()
 	a.markRead()
 	a.send(protocol.Send{T: "send", Text: text, ClientID: id})
 	a.list.ScrollToEnd()
@@ -589,6 +615,10 @@ func (a *App) Welcomed() {
 	if a.S.Settings != nil || a.Route == RoutePartner || a.Desktop != nil {
 		a.send(protocol.SettingsReq{T: "settings"})
 	}
+	// Connections (D96): same, once the Partner page asked.
+	if a.S.ConnAsked || a.Route == RoutePartner {
+		a.send(protocol.ConnectionsReq{T: "connections"})
+	}
 }
 
 // Receive applies a server frame on the UI thread. A welcome from a Log
@@ -605,7 +635,7 @@ func (a *App) Receive(f protocol.ServerFrame) {
 		if a.Route == RouteTask {
 			a.Route = RouteConversation
 		}
-		a.send(protocol.Hello{T: "hello", Locale: string(a.L.Lang)})
+		a.send(protocol.Hello{T: "hello", Locale: string(a.L.Lang), TZ: localZone()})
 	}
 	a.noteResults(f)
 	a.S.Apply(f)
@@ -707,7 +737,7 @@ func clock(ts string) string {
 	if t.IsZero() {
 		return ""
 	}
-	return t.Local().Format("15:04")
+	return i18n.Clock(t)
 }
 
 func harnessName(h string) string {
@@ -718,6 +748,8 @@ func harnessName(h string) string {
 		return "Codex"
 	case "pi":
 		return "pi"
+	case "deepseek-harness":
+		return "DeepSeek Harness"
 	}
 	return h
 }
@@ -728,6 +760,8 @@ func harnessBadge(h string) string {
 		return "cc"
 	case "codex":
 		return "cx"
+	case "deepseek-harness":
+		return "ds"
 	}
 	if len(h) >= 2 {
 		return h[:2]
@@ -741,7 +775,7 @@ func (a *App) bodyLine(t *store.Task) string {
 		parts = append(parts, h)
 	}
 	if m := t.Model(); m != "" {
-		parts = append(parts, m)
+		parts = append(parts, modelLabel(a.trayHarness(t.Harness()), m))
 	}
 	return strings.Join(parts, " · ")
 }

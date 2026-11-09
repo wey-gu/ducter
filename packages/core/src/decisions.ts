@@ -46,6 +46,8 @@ export function createDecisions(opts: {
   /** The user's setting (D71), read when a decision is asked; defaultDelayMs (env, tests) wins. */
   delayMs?: () => number;
   onDecision?: DecisionHook;
+  /** A task whose done reports don't finish it (a keep-going loop that is still on, D113). */
+  holds?: (taskId: string) => boolean;
 }): Decisions {
   const { log, tasks } = opts;
   const clock = opts.clock ?? realClock;
@@ -125,6 +127,8 @@ export function createDecisions(opts: {
         case "progress":
           return setAttention(r.taskId, "working");
         case "done":
+          // A try of a keep-going loop (D113): the loop decides when it is done, not the try.
+          if (opts.holds?.(r.taskId)) return setAttention(r.taskId, "working");
           // C checks evidence mechanically: refs present -> done; none -> stays "Done · checking".
           return setAttention(r.taskId, r.evidence.some((e) => e.ref.trim()) ? "done" : "done_claimed");
       }

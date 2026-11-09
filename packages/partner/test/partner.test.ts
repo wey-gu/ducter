@@ -287,6 +287,70 @@ describe("turn loop", () => {
     expect(p2.stats.resumes).toBe(0);
   });
 
+  test("D85: the partner runs on Settings.brain; a switch starts fresh, isolated", async () => {
+    const clock = new FakeClock();
+    const dir = tmp();
+    const fc = fakeCore(clock, dir);
+    const fr = fakeRunner((_i, s) => {
+      s.say("ok");
+      s.end();
+    });
+    let settings: any = { brain: { harness: "codex", model: "gpt-6-luna" } };
+    const withSettings = (c: typeof fc.core) => ({ ...c, settings: { get: () => settings, setForgetter() {}, setMemState() {} } as any });
+    const p1 = createPartner(withSettings(fc.core), fr.runner, { now: clock.now, onError: () => {} });
+    p1.onTrigger(fc.core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "hi" } }));
+    await p1.idle();
+    await p1.close();
+    expect(fr.sessions[0]!.spec).toMatchObject({ harness: "codex", model: "gpt-6-luna", isolateUserConfig: true });
+    clock.advance(5 * 60 * 1000);
+    // A brain the partner may not use (v1: pi is tasks only) falls back to Claude Code + opus.
+    settings = { brain: { harness: "pi" } };
+    const p2 = createPartner(withSettings({ ...fc.core, mcp: fakeCore(clock, dir).core.mcp }), fr.runner, { now: clock.now, onError: () => {} });
+    p2.onTrigger(fc.core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "again" } }));
+    await p2.idle();
+    expect(fr.sessions[1]!.spec).toMatchObject({ harness: "claude-code", model: "opus" }); // never the codex model
+    expect(fr.sessions[1]!.spec.resumeSessionId).toBeUndefined(); // a codex session id means nothing to Claude Code
+    expect(p2.stats.resumes).toBe(0);
+  });
+
+  test("D89: Switch on Partner while a session is live: the next message starts fresh on the new pick", async () => {
+    const clock = new FakeClock();
+    const dir = tmp();
+    const fc = fakeCore(clock, dir);
+    const fr = fakeRunner((_i, s) => {
+      s.say("ok");
+      s.end();
+    });
+    let settings: any = { brain: { harness: "claude-code", model: "opus" } };
+    const core = { ...fc.core, settings: { get: () => settings, setForgetter() {}, setMemState() {} } as any };
+    const p = createPartner(core, fr.runner, { now: clock.now, onError: () => {} });
+    p.onTrigger(fc.core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "hi" } }));
+    await p.idle();
+    clock.advance(60 * 1000); // still warm: without a switch the live session would carry on
+    settings = { brain: { harness: "codex", model: "gpt-6-luna" } };
+    p.onTrigger(fc.core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "and now?" } }));
+    await p.idle();
+    const last = fr.sessions.at(-1)!;
+    expect(fr.sessions.length).toBeGreaterThanOrEqual(2);
+    expect(fr.sessions[0]!.spec).toMatchObject({ harness: "claude-code", model: "opus" });
+    expect(fr.sessions[0]!.closed).toBe(true);
+    expect(last.spec).toMatchObject({ harness: "codex", model: "gpt-6-luna", isolateUserConfig: true });
+    expect(last.spec.resumeSessionId).toBeUndefined();
+    // The model alone changes: also a fresh session, on the same harness.
+    clock.advance(60 * 1000);
+    settings = { brain: { harness: "codex", model: "gpt-6.1-sol" } };
+    p.onTrigger(fc.core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "smarter" } }));
+    await p.idle();
+    expect(fr.sessions.at(-1)!.spec).toMatchObject({ harness: "codex", model: "gpt-6.1-sol" });
+    // No switch: the live session carries on.
+    const n = fr.sessions.length;
+    clock.advance(60 * 1000);
+    p.onTrigger(fc.core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "same" } }));
+    await p.idle();
+    expect(fr.sessions.length).toBe(n);
+    await p.close();
+  });
+
   test("wait_until: armed waiter now, [timer fired] trigger when core fires it", async () => {
     const { fc, fr, partner, user, channel } = setup(async (input, s, n) => {
       if (n === 0) {
@@ -459,3 +523,33 @@ describe("place", () => {
   });
 });
 
+
+describe("activity while the user waits (D104)", () => {
+  test("a user turn shows thinking, then each tool as a plain step, then nothing; tool names never leave", async () => {
+    const seen: (string | null)[] = [];
+    const { fc, partner, user } = setup(async (_i, s) => {
+      s.emit({ role: "assistant", tool: { name: "mcp__ducter__log_search", input: { query: "CI" } } });
+      s.emit({ role: "assistant", tool: { name: "ToolSearch", input: {} } });
+      s.emit({ role: "assistant", tool: { name: "mcp__ducter__task_read", input: {} } });
+      s.say("它还在跑。");
+      s.end();
+    });
+    fc.core.activity = { set: (a) => void seen.push(a ? a.step : null) };
+    user("CI 那件事怎么样了");
+    await partner.idle();
+    expect(seen).toEqual(["thinking", "recalling", "checking_task", null]);
+  });
+
+  test("a turn no one is waiting on (a task's report) shows nothing", async () => {
+    const seen: unknown[] = [];
+    const { fc, partner } = setup((_i, s) => {
+      s.say("好了。");
+      s.end();
+    });
+    fc.core.activity = { set: (a) => void seen.push(a) };
+    const e = fc.core.log.append({ stream: "task:t9", origin: "task", kind: "report", body: { taskId: "t9", state: "done", summary: "ok", questions: [], evidence: [] } });
+    partner.onTrigger(e);
+    await partner.idle();
+    expect(seen).toEqual([]);
+  });
+});

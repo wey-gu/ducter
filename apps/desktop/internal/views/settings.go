@@ -93,6 +93,7 @@ func (a *App) settingsView(c *ui.Context) {
 			ui.Column(c).Grow(1).MaxWidth(680).Gap(t.S5).Children(func() {
 				a.lookCard(c)
 				a.langCard(c)
+				a.detailsCard(c)
 				a.runCard(c)
 				a.updateCard(c)
 				a.dataCard(c)
@@ -146,6 +147,28 @@ func (a *App) langCard(c *ui.Context) {
 	})
 }
 
+// detailsCard: 对话里的细节 / Details in the conversation (D104), this
+// window's own: folded (the default) or shown under every message.
+func (a *App) detailsCard(c *ui.Context) {
+	a.sheetCard(c, "details", a.L.T("settings.details.title"), func() {
+		sel := 0
+		if a.Local.DetailsShown() {
+			sel = 1
+		}
+		labels := []string{a.L.T("settings.details.folded"), a.L.T("settings.details.shown")}
+		if i := a.choices(c, "details", a.L.T("settings.details.title"), labels, sel); i >= 0 {
+			a.Local.SetDetailsShown(i == 1)
+			// The preference applies anew: no message keeps a flip.
+			for k := range a.open {
+				if strings.HasPrefix(k, "det:") {
+					delete(a.open, k)
+				}
+			}
+		}
+		a.note(c, a.L.T("settings.details.note"))
+	})
+}
+
 // runCard: what happens when the window closes (D56), as it is now, and
 // the one full stop.
 func (a *App) runCard(c *ui.Context) {
@@ -153,7 +176,14 @@ func (a *App) runCard(c *ui.Context) {
 	name := a.personaName()
 	a.sheetCard(c, "run", a.L.T("settings.run.title"), func() {
 		if a.Backend == nil {
-			ui.Text(c, a.L.T("settings.run.remote", hostOf(a.URL))).FontSize(t.MD).LineHeight(1.5)
+			// The window talks to a Ducter it didn't start: say where it lives and that
+			// closing the window doesn't stop it (never a bare or empty address).
+			host := hostOf(a.URL)
+			line := a.L.T("settings.run.apart", name)
+			if host != "" && !isLoopback(host) {
+				line = a.L.T("settings.run.remote", name, host)
+			}
+			ui.Text(c, line).FontSize(t.MD).LineHeight(1.5)
 			return
 		}
 		var line string
@@ -225,6 +255,11 @@ func (a *App) updateCard(c *ui.Context) {
 			a.note(c, a.L.T("update.checked", a.agoLong(st.CheckedAt.UTC().Format(time.RFC3339))))
 		}
 		ui.Row(c).Gap(t.S2).Wrap().Children(func() {
+			busy := ss.updating || st.State == update.Checking || st.State == update.Downloading
+			if !busy && a.button(c, a.L.T("update.checknow"), btnSecondary, t.ControlMD, t.Surface) {
+				ss.updating = true
+				a.async(func() { u.CheckNow(context.Background()) }, func() { ss.updating = false })
+			}
 			switch {
 			case st.State == update.Ready && a.RestartToUpdate != nil:
 				if a.button(c, a.L.T("update.restart"), btnPrimary, t.ControlMD, t.Surface) {
@@ -234,11 +269,6 @@ func (a *App) updateCard(c *ui.Context) {
 				if a.button(c, a.L.T("update.download"), btnSecondary, t.ControlMD, t.Surface) {
 					a.openLink(st.Page)
 				}
-			}
-			busy := ss.updating || st.State == update.Checking || st.State == update.Downloading
-			if !busy && a.button(c, a.L.T("update.checknow"), btnSecondary, t.ControlMD, t.Surface) {
-				ss.updating = true
-				a.async(func() { u.CheckNow(context.Background()) }, func() { ss.updating = false })
 			}
 		})
 		if v, ch := a.switchRow(c, "oninquit", a.L.T("update.oninquit"), "", st.InstallOnQuit); ch {
@@ -310,9 +340,10 @@ func (a *App) checkRows(c *ui.Context, r local.Report) {
 			// A drawn mark in its state's ink, no tile (D73).
 			glyph := drawCheck(t.Done.Ink)
 			if k.Status != "ok" {
-				glyph = drawBang(t.Waiting.Ink)
+				// A check that isn't met: × in its ink, never an alarm "!".
+				glyph = drawCross(t.Waiting.Ink)
 				if k.Required {
-					glyph = drawBang(t.NeedsYou.Ink)
+					glyph = drawCross(t.NeedsYou.Ink)
 				}
 			}
 			ui.Row(c.Key("check:" + k.ID)).Gap(t.S3).AlignItems(ui.Start).Children(func() {
@@ -355,7 +386,14 @@ func (a *App) aboutCard(c *ui.Context) {
 					a.openLink(ReportURL)
 				}
 			}
+			if a.button(c, a.L.T("settings.about.title_replay"), btnText, t.ControlSM, t.Surface) {
+				a.ShowTitle()
+			}
 		})
+		if on, changed := a.switchRow(c, "sound", a.L.T("settings.sound"), a.L.T("settings.sound.note"), a.Local.Sound()); changed {
+			a.Local.SetSound(on)
+		}
+		a.note(c, a.L.T("settings.sound.credits"))
 	})
 }
 
@@ -369,6 +407,16 @@ func (a *App) versionText() string {
 		v += " (" + a.Commit + ")"
 	}
 	return v
+}
+
+// isLoopback reports whether host (with or without a port) is this computer.
+func isLoopback(host string) bool {
+	h := host
+	if i := strings.LastIndex(h, ":"); i > 0 && !strings.HasSuffix(h, "]") {
+		h = h[:i]
+	}
+	h = strings.Trim(h, "[]")
+	return h == "localhost" || h == "::1" || strings.HasPrefix(h, "127.")
 }
 
 func hostOf(u string) string {

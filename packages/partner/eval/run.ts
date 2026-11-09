@@ -1,9 +1,9 @@
-// Partner behavior eval. `bun run eval:partner [--model sonnet|haiku] [--floor] [--only a,b]
-//   [--concurrency 4] [--label x] [--no-judge] [--judge haiku]`
+// Partner behavior eval. `bun run eval:partner [--harness claude-code|codex|pi|deepseek-harness]
+//   [--model sonnet|haiku|...] [--floor] [--only a,b] [--concurrency 4] [--label x] [--no-judge] [--judge haiku]`
 //
 // Real partner code path (createPartner) + real core (Log, decisions, waiters, MCP hub on a
-// random port) + REAL model through the same Claude Code harness the partner uses (OAR,
-// isolated user config). Only task execution is fake: openTask/send are recorded, and task
+// random port) + REAL model through the harness the partner runs on (OAR, its clean setup per
+// harness, D85). Only task execution is fake: openTask/send are recorded, and task
 // reports are injected as scripted Log events. Each scenario gets a scratch DUCTER_DATA_DIR.
 //
 // Safety: repo paths in scenarios (~/dev/foo, ~/dev/hawdb) do not exist on this machine, and
@@ -11,14 +11,14 @@
 // partner sessions create (named after the scratch dir, "ducter-eval-") are deleted at the end.
 // Memory is a FAKE Mem per scenario (scenario.memories, test/fakes.ts fakeMemory): the eval
 // never reads or writes the user's real Nowledge Mem.
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import type { Bodies, LogEvent, Place, TaskCard } from "../../protocol/src/index.ts";
+import { HARNESSES, HARNESS_IDS, isHarnessId, type Bodies, type HarnessId, type LogEvent, type Place, type TaskCard } from "../../protocol/src/index.ts";
 import type { HarnessEvent, HarnessPort, HarnessSession, Runner } from "../../protocol/src/internal.ts";
 import { startCore, type Core } from "../../core/src/index.ts";
 import { createOarHarnessPort, shortId } from "../../runner/src/index.ts";
-import { buildSystemPrompt, createPartner, isChinese } from "../src/index.ts";
+import { buildSystemPrompt, createNmemBridge, createPartner, isChinese } from "../src/index.ts";
 import { scenarios, type Expect, type Scenario, type Step } from "./scenarios.ts";
 import { fakeMemory } from "../test/fakes.ts";
 import type { MemoryAdd } from "../src/memory.ts";
@@ -30,7 +30,12 @@ const arg = (name: string, d?: string) => {
   return i >= 0 ? argv[i + 1] : d;
 };
 const flag = (name: string) => argv.includes(`--${name}`);
-const MODEL = arg("model", "sonnet")!;
+// D85: the partner on any first-wave harness (`--harness codex --model gpt-6-luna`). The judge
+// stays on Claude Code. Model defaults: sonnet on Claude Code, the table's cheap model elsewhere.
+const HARNESS_ARG = arg("harness", "claude-code")!;
+if (!isHarnessId(HARNESS_ARG)) throw new Error(`--harness: one of ${HARNESS_IDS.join(", ")}`);
+const HARNESS: HarnessId = HARNESS_ARG;
+const MODEL = arg("model", HARNESS === "claude-code" ? "sonnet" : (HARNESSES[HARNESS].cheapModel ?? ""))!;
 const JUDGE = arg("judge", "haiku")!;
 const CONC = Number(arg("concurrency", "4"));
 const LABEL = arg("label", "");
@@ -43,6 +48,12 @@ const PRICE: Record<string, { in: number; out: number; cw: number; cr: number }>
   sonnet: { in: 2, out: 10, cw: 2.5, cr: 0.2 },
   haiku: { in: 0.1, out: 0.5, cw: 0.125, cr: 0.01 },
   opus: { in: 4, out: 20, cw: 5, cr: 0.2 },
+  // DeepSeek's list price is in CNY (api-docs.deepseek.com/zh-cn/quick_start/pricing, read
+  // 2026-11-09): flash peak 2 / 0.04 (cache hit) / 8 元 per 1M; here at ≈7.1 元 per $.
+  "deepseek-official/deepseek-flash": { in: 0.28, out: 1.13, cw: 0.28, cr: 0.0056 },
+  // Plan-metered (a ChatGPT plan, MiniMax's coding plan): no per-token price to show.
+  "gpt-6-luna": { in: 0, out: 0, cw: 0, cr: 0 },
+  "minimax-coding-plan/MiniMax-M3": { in: 0, out: 0, cw: 0, cr: 0 },
 };
 
 const HOME = homedir();
@@ -118,6 +129,21 @@ function fakeRunner(core: Core, harness: HarnessPort, cur: { step: number }) {
       openCard(taskId, input.title, place, input.brief);
       return core.tasks.get(taskId) as TaskCard;
     },
+    // D120: the partner opens from the call's head; the task counts as opened once briefed.
+    async openTaskEarly(input, brief) {
+      const taskId = shortId();
+      const place = placeFor(taskId, input.title, input.place);
+      const step = cur.step;
+      openCard(taskId, input.title, place, "");
+      brief.then(
+        (b) => {
+          opened.push({ taskId, title: input.title, brief: b, place: input.place, step });
+          core.log.append({ stream: `task:${taskId}`, origin: "system", kind: "task_open", body: { taskId, title: input.title, project: "", place, harness: "claude-code", brief: b } });
+        },
+        () => core.tasks.setState(taskId, "dropped", "archived", "not started"),
+      );
+      return core.tasks.get(taskId) as TaskCard;
+    },
     async send(taskId, text, _mode, from = "partner") {
       if (!core.tasks.get(taskId)) throw new Error(`unknown task ${taskId}`);
       sent.push({ taskId, text, step: cur.step });
@@ -153,7 +179,37 @@ interface RunResult {
   recalls: { query: string; step: number }[];
   remembered: MemoryAdd[]; // saved (accepted by the fake Mem)
   memAttempts: { input: unknown; step: number }[]; // every memory_add call, refused ones too
+  /** Work over time (D112-D114): a keep-going loop started, a routine proposed. */
+  work?: { until: boolean; routine: boolean };
   retitles: { key: string; title: string; step: number }[]; // task_retitle, as new task_open events
+  bridgeSent: FakeMsg[]; // what Ducter sent through the fake Bridge
+}
+
+// ---------- fake Bridge (scenario.bridge): the fake nmem CLI over one JSON mailbox file ----------
+interface FakeMsg { id: string; from: string; to: string; body: string; in_reply_to?: string; created_at: string; pending?: boolean }
+const BRIDGE_IDENTITIES = {
+  "ducter-main": { agent: "Ducter", member: "Weyl", member_id: "m-weyl", description: "Weyl's personal AI partner (always on)" },
+  "terminal-claude": { agent: "terminal-claude", member: "Weyl", member_id: "m-weyl", description: "Weyl's Claude Code in a terminal, ~/dev/ducter" },
+  "alex-reviewer": { agent: "reviewer", member: "Alex", member_id: "m-alex", description: "Alex's long-running code reviewer" },
+};
+function fakeBridge(dir: string) {
+  const bin = join(dir, "nmem");
+  writeFileSync(bin, `#!/bin/sh\nexec bun ${resolve(import.meta.dir, "fake-bridge-nmem.ts")} "$@"\n`);
+  chmodSync(bin, 0o755);
+  const state = join(dir, "bridge-state.json");
+  writeFileSync(state, JSON.stringify({ seq: 0, messages: [], identities: BRIDGE_IDENTITIES }));
+  const env = { ...process.env, FAKE_BRIDGE_STATE: state, DUCTER_BRIDGE_MEMBER: "m-weyl" } as Record<string, string>;
+  const read = () => JSON.parse(readFileSync(state, "utf8")) as { seq: number; messages: FakeMsg[] };
+  return {
+    client: createNmemBridge({ context: "ducter-main", bin, env }),
+    sent: () => read().messages.filter((m) => m.from === "ducter-main"),
+    deliver(from: string, text: string, answer?: boolean) {
+      const s = read() as any;
+      const last = [...s.messages].reverse().find((m: FakeMsg) => m.from === "ducter-main" && m.to === from);
+      s.messages.push({ id: `msg-${String(++s.seq).padStart(3, "0")}`, op: `op-${s.seq}`, from, to: "ducter-main", body: text, ...(answer && last ? { in_reply_to: last.id } : {}), created_at: new Date().toISOString() });
+      writeFileSync(state, JSON.stringify(s));
+    },
+  };
 }
 
 const PARTNER_KINDS = new Set(["ack", "ai_msg", "decision"]);
@@ -191,7 +247,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   const perSession = new Map<number, Usage>();
   const tools: ToolCall[] = [];
   const cur = { step: -1 };
-  const port = teePort(createOarHarnessPort(), (ev, idx) => {
+  const port = teePort(createOarHarnessPort({ dataDir }), (ev, idx) => {
     if (ev.turnEnd && ev.usage) perSession.set(idx, { inputTokens: ev.usage.inputTokens ?? 0, outputTokens: ev.usage.outputTokens ?? 0, cacheRead: ev.usage.cacheRead ?? 0, cacheWrite: ev.usage.cacheWrite ?? 0 });
     if (ev.tool && ev.tool.input !== undefined && ev.tool.output === undefined) tools.push({ name: ev.tool.name, input: ev.tool.input, step: cur.step });
   });
@@ -205,6 +261,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   };
   core.setRunner(fr.runner);
   core.setPartner({ onTrigger() {} }); // history is background, not new work
+  const fb = sc.bridge ? fakeBridge(dataDir) : undefined;
 
   const idOf = new Map<string, string>(); // key -> taskId
   const keyOf = new Map<string, string>();
@@ -241,11 +298,13 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   await Bun.sleep(20);
 
   const partner = createPartner(core, fr.runner, {
-    model: MODEL,
+    harness: HARNESS,
+    ...(MODEL ? { model: MODEL } : {}),
     persistState: false,
     fs: placeFs,
     turnTimeoutMs: 180_000,
     memory: memWrapped,
+    ...(fb ? { bridge: fb.client, bridgeIntervalMs: 0 } : { bridge: null }),
     onError: (err) => console.error(`[${sc.id}]`, err instanceof Error ? err.message : err),
   });
   core.setPartner(partner);
@@ -257,7 +316,11 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     for (const [i, st] of sc.steps.entries()) {
       cur.step = i;
       stepStarts.push(core.log.head());
-      applyStep(st, core, idOf, waiters, fr.opened);
+      if ("peer" in st) {
+        if (!fb) throw new Error("a peer step needs scenario.bridge");
+        fb.deliver(st.peer.from, st.peer.text, st.peer.answer);
+        await partner.checkBridge();
+      } else applyStep(st, core, idOf, waiters, fr.opened);
       await settle(partner);
     }
   } catch (err) {
@@ -279,6 +342,10 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     if (e.origin === "partner" && PARTNER_KINDS.has(e.kind)) visible.push({ seq: e.seq, kind: e.kind as Visible["kind"], text: visibleText(e), step: stepOf(e.seq) });
     else if (e.kind === "waiter" && (e.body as Bodies["waiter"]).state === "armed") visible.push({ seq: e.seq, kind: "waiter", text: visibleText(e), step: stepOf(e.seq) });
   }
+  const work = {
+    until: core.log.read({ fromSeq: startSeq + 1, kinds: ["until"], limit: 100 }).some((e) => (e.body as Bodies["until"]).state === "on"),
+    routine: core.log.read({ fromSeq: startSeq + 1, kinds: ["routine"], limit: 100 }).some((e) => (e.body as Bodies["routine"]).state === "proposed"),
+  };
   // Decisions made by the partner keep their full shape for the judge.
   const decisions = core.log.read({ stream: "channel", fromSeq: startSeq + 1, kinds: ["decision"], limit: 100 }).filter((e) => e.origin === "partner");
   const retitles = core.log
@@ -327,11 +394,16 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     const other = [...new Set(tools.filter((x) => x.step === i).map((x) => x.name.replace(/^mcp__ducter__/, "")).filter((n) => !["task_open", "task_send", "task_retitle", "ask", "wait_until", "ToolSearch", "memory_search", "memory_add"].includes(n)))];
     if (other.length) lines.push(`  [also used tools] ${other.join(", ")}`);
   }
+  const bridgeSent = fb?.sent() ?? [];
+  if (fb) {
+    lines.push("--- what Ducter sent through Bridge (other agents see this, the user doesn't):");
+    for (const m of bridgeSent) lines.push(`  [to ${m.to}${m.in_reply_to ? " (a reply)" : ""}] ${m.body.replace(/\n/g, " ⏎ ").slice(0, 600)}`);
+  }
   if (error) lines.push(`ERROR: ${error}`);
 
   await partner.close().catch(() => {});
   await core.stop().catch(() => {});
-  return { sc, visible, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n"), recalls, remembered: mem.added, memAttempts, retitles };
+  return { sc, visible, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n"), recalls, remembered: mem.added, memAttempts, retitles, bridgeSent, work };
 }
 
 const r_opened = (o: Opened[], step: number) => o.filter((x) => x.step === step);
@@ -340,11 +412,12 @@ function describeStep(st: Step): string {
   if ("user" in st) return `user says: ${st.user}`;
   if ("report" in st) return `task "${st.report.task}" reports ${st.report.body.state}: ${st.report.body.summary}${st.report.body.questions.length ? ` | its question (already shown to the user with Go / Hold / Reply buttons): ${st.report.body.questions.map((q) => q.text).join(" / ")}` : ""}${st.report.body.evidence.length ? "" : " | (no evidence attached)"}`;
   if ("reports" in st) return st.reports.map((r) => `task "${r.task}" reports ${r.body.state}: ${r.body.summary}`).join(" || ") + " (both within the same second)";
+  if ("peer" in st) return `${st.peer.from} (${st.peer.from === "alex-reviewer" ? "a teammate's agent" : "the user's own Claude Code in a terminal"}) sends a Bridge message${st.peer.answer ? " answering the one Ducter sent it" : ""}: ${st.peer.text}`;
   if ("resolve" in st) return `user answers the open decision: ${st.resolve.option}${st.resolve.text ? ` "${st.resolve.text}"` : ""}`;
   return `a reminder the partner set earlier is due: ${st.timerFired.reason}`;
 }
 
-function applyStep(st: Step, core: Core, idOf: Map<string, string>, waiters: Map<string, Bodies["waiter"]>, opened: Opened[]) {
+function applyStep(st: Exclude<Step, { peer: unknown }>, core: Core, idOf: Map<string, string>, waiters: Map<string, Bodies["waiter"]>, opened: Opened[]) {
   const tid = (key: string) => (key.startsWith("$opened") ? opened[Number(key.slice(7))]?.taskId : idOf.get(key)) ?? key;
   const report = (r: { task: string; body: Omit<Bodies["report"], "taskId"> }) => {
     const taskId = tid(r.task);
@@ -367,7 +440,8 @@ function applyStep(st: Step, core: Core, idOf: Map<string, string>, waiters: Map
 // ---------- deterministic checks ----------
 const CJK = /[㐀-鿿豈-﫿]/;
 const CLAIMS_CHOICE = /(选|点|按|回复?|回)\s*[「“"]?\s*(Go|Hold|好|先等等)\b|\b(tap|press|choose|pick|select|reply|hit|say)\s+["“]?(Go|Hold)\b|\bGo\s*\/\s*Hold\b/i;
-const DO_WORK_TOOLS = /^(Bash|Write|Edit|MultiEdit|NotebookEdit)$/;
+// The tools that do work, as each harness names them (Claude Code, Codex, pi, DeepSeek Harness).
+const DO_WORK_TOOLS = /^(Bash|Write|Edit|MultiEdit|NotebookEdit|exec_command|commandExecution|fileChange|shell|apply_patch|write_stdin|write_file|edit_file)$/i;
 
 function check(r: RunResult): string[] {
   const fails: string[] = [];
@@ -433,7 +507,11 @@ function check(r: RunResult): string[] {
   if (e.ask && !r.visible.some((v) => v.kind === "decision")) fails.push("no ask (decision)");
   if (e.waiter && !r.visible.some((v) => v.kind === "waiter")) fails.push("no reminder set");
   if (e.noWaiter && r.visible.some((v) => v.kind === "waiter")) fails.push("set a reminder nobody asked for");
+  if (e.until && !r.work?.until) fails.push("no keep-going loop on the task");
+  if (e.routine && !r.work?.routine) fails.push("no routine proposal card");
   for (const re of e.forbid ?? []) if (re.test(all)) fails.push(`says ${re}`);
+  const prose = r.visible.filter((v) => v.kind === "ai_msg" || v.kind === "ack").map((v) => v.text).join("\n");
+  for (const re of e.proseForbid ?? []) if (re.test(prose)) fails.push(`says ${re} in its own lines`);
   for (const re of e.require ?? []) if (!re.test(all)) fails.push(`missing ${re}`);
   const briefs = [...r.opened.map((o) => o.brief), ...r.sent.map((s) => s.text)].join("\n");
   for (const re of e.briefForbid ?? []) if (re.test(briefs)) fails.push(`task brief/send contains ${re}`);
@@ -450,6 +528,15 @@ function check(r: RunResult): string[] {
   const attempted = r.memAttempts.map((a) => JSON.stringify(a.input)).join("\n");
   for (const re of e.rememberForbid ?? []) if (re.test(attempted)) fails.push(`memory_add carried ${re}`);
   for (const m of r.remembered) if (m.provenance.logSeq === undefined || !m.provenance.persona) fails.push("memory saved without provenance");
+  // Bridge.
+  if (e.bridgeSent) {
+    const b = e.bridgeSent;
+    const msgs = r.bridgeSent.filter((m) => !b.to || m.to === b.to);
+    if (b.count && (msgs.length < b.count[0] || msgs.length > b.count[1])) fails.push(`bridge sends to ${b.to ?? "anyone"} ×${msgs.length} (want ${b.count[0] === b.count[1] ? b.count[0] : `${b.count[0]}-${b.count[1]}`})`);
+    const text = msgs.map((m) => m.body).join("\n\n");
+    for (const re of b.require ?? []) if (!re.test(text)) fails.push(`bridge send lacks ${re}`);
+    for (const m of msgs) for (const re of b.forbid ?? []) if (re.test(m.body)) fails.push(`bridge send contains ${re}: "${clip(m.body)}"`);
+  }
   return [...new Set(fails)];
 }
 const clip = (s: string, n = 60) => (s.length > n ? s.slice(0, n - 1) + "…" : s).replace(/\n/g, " ");
@@ -465,7 +552,7 @@ const realpathSafe = (p: string) => {
 const JUDGE_SYSTEM = `You grade one scenario of a personal AI "partner" (the only AI the user talks to; its real work runs as background tasks it opens, and tasks report back to it).
 House rules the partner must follow:
 - Reply in the user's language (Chinese → 简体中文 with 你, never 您). Short, warm, direct; no headings, no filler, no apologies, no "as an AI".
-- Small questions: answer directly. Work that needs a place or writes: one short ack line naming the ACTION (never the outcome), open a task, then say nothing more.
+- Small questions: answer directly. Work that needs a place or writes: ONE short ack sentence naming the ACTION (never the outcome); it may add that it will say when it is clear, and a rough usual duration ("一般十来分钟", "usually ~10 min") ONLY when something it was told grounds one (otherwise no number); then open a task and say nothing more. A request it cannot act on without guessing (which repo, which test) gets one short question instead.
 - Follow-ups on a task's recent work go to that task. Never invent results of work still running.
 - Results: the app renders evidence chips ("How I know"), an Outside line and a Merge button under a result message from the task's typed report. So the prose is the outcome in ≤2 lines in the user's terms, plus a "left out" line only if something wasn't done (with why); it does not repeat evidence, commit ids, branches, outside or merge. Unverified claims are called unverified. Failures are honest with one next step; naming the failing command or host and what was tried is fine there.
 - A task's question is already shown to the user with buttons: don't repeat it. Choices go through a decision card (ask), never prose like "reply Go" or a description of buttons/defaults. One suggested next step phrased as an offer ("want me to retry when the network is back?") is NOT a prose choice and is fine.
@@ -532,7 +619,7 @@ async function main() {
   const before = new Set(existsSync(projectsDir) ? readdirSync(projectsDir) : []);
   const root = realpathSync(mkdtempSync(join(process.env.DUCTER_EVAL_DIR ?? tmpdir(), "ducter-eval-run-")));
   const personaTokens = Math.round(buildSystemPrompt({ id: "p", name: "Ducter", identity: "" }).length / 3.2);
-  console.log(`partner eval: ${list.length} scenarios · model ${MODEL} · judge ${NO_JUDGE ? "off" : JUDGE} · persona ≈${personaTokens} tokens (${buildSystemPrompt({ id: "p", name: "Ducter", identity: "" }).length} chars)`);
+  console.log(`partner eval: ${list.length} scenarios · ${HARNESS} · model ${MODEL || "(harness default)"} · judge ${NO_JUDGE ? "off" : JUDGE} · persona ≈${personaTokens} tokens (${buildSystemPrompt({ id: "p", name: "Ducter", identity: "" }).length} chars)`);
 
   const rows: { r: RunResult; det: string[]; j?: { pass: boolean; reason: string; cost: number } }[] = [];
   try {
@@ -551,7 +638,7 @@ async function main() {
   }
 
   rows.sort((a, b) => scenarios.indexOf(a.r.sc) - scenarios.indexOf(b.r.sc));
-  const p = PRICE[MODEL] ?? PRICE.sonnet!;
+  const p = PRICE[MODEL] ?? (HARNESS === "claude-code" ? PRICE.sonnet! : { in: 0, out: 0, cw: 0, cr: 0 });
   const tot = rows.reduce((u, { r }) => ({ inputTokens: u.inputTokens + r.usage.inputTokens, outputTokens: u.outputTokens + r.usage.outputTokens, cacheRead: u.cacheRead + r.usage.cacheRead, cacheWrite: u.cacheWrite + r.usage.cacheWrite }), { inputTokens: 0, outputTokens: 0, cacheRead: 0, cacheWrite: 0 });
   // inputTokens includes cache reads and writes (OAR totals); bill only the uncached rest at the input price.
   const uncached = Math.max(0, tot.inputTokens - tot.cacheRead - tot.cacheWrite);
@@ -567,7 +654,7 @@ async function main() {
   }
   const date = new Date().toLocaleDateString("sv"); // local YYYY-MM-DD
   const md: string[] = [
-    `# Partner eval · ${date} · ${MODEL}${LABEL ? ` · ${LABEL}` : ""}`,
+    `# Partner eval · ${date} · ${HARNESS} · ${MODEL}${LABEL ? ` · ${LABEL}` : ""}`,
     "",
     `Pass: **${passed}/${rows.length}** (${((100 * passed) / rows.length).toFixed(0)}%). Judge: ${NO_JUDGE ? "off" : JUDGE}. Persona: ${buildSystemPrompt({ id: "p", name: "Ducter", identity: "" }).length} chars (≈${personaTokens} tokens).`,
     `Tokens (partner): in ${tot.inputTokens}, out ${tot.outputTokens}, cache read ${tot.cacheRead}, cache write ${tot.cacheWrite} → ≈$${partnerCost.toFixed(2)} at list price; judge $${judgeCost.toFixed(3)}.`,
@@ -590,7 +677,7 @@ async function main() {
   ];
   const dir = resolve(import.meta.dir, "results");
   mkdirSync(dir, { recursive: true });
-  const file = join(dir, `${date}-${MODEL}${LABEL ? `-${LABEL}` : ""}.md`);
+  const file = join(dir, `${date}-${HARNESS === "claude-code" ? "" : `${HARNESS}-`}${MODEL.replace(/[^A-Za-z0-9.-]+/g, "_")}${LABEL ? `-${LABEL}` : ""}.md`);
   writeFileSync(file, md.join("\n"));
   console.log(`\n${passed}/${rows.length} pass · partner ≈$${partnerCost.toFixed(2)} (in ${tot.inputTokens} / out ${tot.outputTokens} / cache r ${tot.cacheRead} w ${tot.cacheWrite}) · judge $${judgeCost.toFixed(3)}\n→ ${file}`);
   for (const [c, [a, b]] of cats) console.log(`  ${c.padEnd(12)} ${a}/${b}`);

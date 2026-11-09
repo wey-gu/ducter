@@ -1,6 +1,7 @@
 // The service worker: shows pushes, opens the app at the item on tap, and on Android answers
 // Go / Hold straight from the notification (POST api/decide). iOS shows no action buttons on web
-// push (D52 Q11), so a tap there always opens the decision.
+// push (D52 Q11), so a tap there always opens the decision. It also keeps the fonts and the clay
+// art on the phone (cache first): they are stable, and the rounded CJK face is 0.7 MB.
 import { kvGet } from "./idb.ts";
 
 declare const self: any;
@@ -16,8 +17,35 @@ interface Msg {
 
 const scope = () => new URL(self.registration.scope as string);
 
+// Bump when a font or art file changes under the same name.
+const ASSETS = "ducter-assets-v1";
+const STABLE = /\/app\/(fonts\/[\w.-]+\.woff2|bricolage\.woff|art\/[\w.-]+\.webp)$/;
+
 self.addEventListener("install", () => self.skipWaiting());
-self.addEventListener("activate", (e: any) => e.waitUntil(self.clients.claim()));
+self.addEventListener("activate", (e: any) =>
+  e.waitUntil(
+    caches
+      .keys()
+      .then((keys) => Promise.all(keys.filter((k) => k.startsWith("ducter-assets-") && k !== ASSETS).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim()),
+  ),
+);
+
+self.addEventListener("fetch", (e: any) => {
+  const req = e.request as Request;
+  if (req.method !== "GET") return;
+  const url = new URL(req.url);
+  if (url.origin !== scope().origin || !STABLE.test(url.pathname)) return;
+  e.respondWith(
+    caches.open(ASSETS).then(async (c) => {
+      const hit = await c.match(req, { ignoreVary: true });
+      if (hit) return hit;
+      const res = await fetch(req);
+      if (res.ok && res.status === 200) await c.put(req, res.clone());
+      return res;
+    }),
+  );
+});
 
 self.addEventListener("push", (e: any) => {
   let m: Msg;

@@ -1,0 +1,236 @@
+// D85: the four first-wave harnesses. What each spec becomes per harness (no process starts),
+// DeepSeek Harness against OAR's own declared contract on the scripted runtime, the stdio MCP
+// bridge, and the one tool-name form.
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { scriptedRuntime, type ScriptedTurn } from "@botiverse/oar/testing";
+import type { Runtime } from "@botiverse/oar/browser";
+import { dshRuntime } from "@botiverse/oar/runtimes/dsh";
+import { HARNESSES, HARNESS_IDS } from "@ducter/protocol";
+import type { SessionSpec } from "@ducter/protocol/src/internal.ts";
+import { adaptSpec, codexCleanArgs, createOarHarnessPort, PI_CLEAN_FLAGS, withPreamble } from "../src/oar.ts";
+import { Normalizer, stripThinking } from "../src/normalize.ts";
+import { runBridge } from "../src/mcp-bridge.ts";
+
+let dir: string;
+beforeEach(() => {
+  dir = mkdtempSync(join(tmpdir(), "ducter-harness-test-"));
+});
+afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+const ducterMcp = { name: "ducter", url: "http://127.0.0.1:7777/mcp", headers: { Authorization: "Bearer dtk.test.sig" } };
+const spec = (harness: SessionSpec["harness"], over: Partial<SessionSpec> = {}): SessionSpec => ({
+  harness,
+  cwd: join(dir, "partner"),
+  systemPrompt: "You are Ducter.",
+  mcp: [ducterMcp],
+  permissionMode: "bypass",
+  isolateUserConfig: true,
+  ...over,
+});
+
+test("the capability table covers the four, each task-capable", () => {
+  expect([...HARNESS_IDS]).toEqual(["claude-code", "codex", "pi", "deepseek-harness"]);
+  for (const id of HARNESS_IDS) expect(HARNESSES[id]).toMatchObject({ id, task: true });
+  // v1 rule (ai-loadout): only Claude Code and Codex may be the partner until the others pass the eval.
+  expect(HARNESS_IDS.filter((id) => HARNESSES[id].partner)).toEqual(["claude-code", "codex"]);
+  expect(HARNESSES["deepseek-harness"].name).toBe("DeepSeek Harness");
+});
+
+describe("adaptSpec: the partner's clean setup per harness", () => {
+  test("Claude Code: OAR's native exclude, and the features that compete with Ducter denied", () => {
+    const a = adaptSpec(spec("claude-code"), { dataDir: dir });
+    expect(a.options.userConfiguration).toBe("exclude");
+    expect(a.options.disallowedTools).toContain("AskUserQuestion");
+    expect(a.options.systemPrompt).toBe("You are Ducter.");
+    expect(a.options.mcpServers).toEqual([{ name: "ducter", type: "http", url: ducterMcp.url, headers: ducterMcp.headers }]);
+  });
+
+  test("Codex: each user MCP server off by name (not Ducter's), hooks/plugins off, no userConfiguration", () => {
+    const home = join(dir, "codex-home");
+    mkdirSync(home);
+    writeFileSync(join(home, "config.toml"), 'model = "x"\n[mcp_servers.context7]\ncommand = "npx"\n[mcp_servers."my.server"]\nurl = "https://e"\n[mcp_servers.ducter]\nurl = "http://old"\n');
+    const a = adaptSpec(spec("codex", { disallowedTools: ["Bash", "mcp__x__y"] }), { dataDir: dir, env: { CODEX_HOME: home } });
+    const args = a.options.launchArgs!;
+    expect(args).toContain("mcp_servers.context7.enabled=false");
+    expect(args).toContain('mcp_servers."my.server".enabled=false');
+    expect(args.join(" ")).not.toContain("mcp_servers.ducter");
+    for (const f of ["hooks", "plugins", "apps", "memories"]) expect(args).toContain(`features.${f}=false`);
+    expect(args).toContain("notify=[]");
+    expect(a.options.userConfiguration).toBeUndefined();
+    expect(a.options.disallowedTools).toEqual(["mcp__x__y"]); // codex denies MCP tools only
+  });
+
+  test("Codex task (not clean): no overrides at all", () => {
+    const a = adaptSpec(spec("codex", { isolateUserConfig: false }), { dataDir: dir });
+    expect(a.options.launchArgs).toBeUndefined();
+  });
+
+  test("codexCleanArgs with no user config still turns hooks and plugins off", () => {
+    expect(codexCleanArgs(undefined)).toContain("features.hooks=false");
+  });
+
+  test("pi: the clean setup is CLI flags on its RPC process; options stay plain", () => {
+    expect(PI_CLEAN_FLAGS).toEqual(["--no-skills", "--no-context-files", "--no-prompt-templates", "--no-extensions", "--no-themes"]);
+    const a = adaptSpec(spec("pi", { model: "minimax-coding-plan/MiniMax-M3" }), { dataDir: dir });
+    expect(a.options.userConfiguration).toBeUndefined();
+    expect(a.options.systemPrompt).toBe("You are Ducter.");
+    expect(a.options.model).toBe("minimax-coding-plan/MiniMax-M3");
+  });
+
+  test("DeepSeek Harness: own home with the prompt as its AGENTS.md, the key from Ducter's file, MCP over the bridge", () => {
+    writeFileSync(join(dir, "keys.env"),"# keys\nDEEPSEEK_API_KEY=\"sk-test-not-real\"\n", { mode: 0o600 });
+    const a = adaptSpec(spec("deepseek-harness", { model: "deepseek-flash" }), { dataDir: dir, env: {}, refused: dshRuntime.refusedSessionOptions as Record<string, string> });
+    const home = join(dir, "harness", "deepseek-harness");
+    expect(a.options.env).toMatchObject({ DSH_HOME: home, DSH_AGENTS_HOME: join(home, "agents"), DEEPSEEK_API_KEY: "sk-test-not-real" });
+    expect(readFileSync(join(home, "AGENTS.md"), "utf8")).toBe("You are Ducter.\n");
+    expect(a.preamble).toBeUndefined();
+    expect(a.options.model).toBe("deepseek-official/deepseek-flash");
+    // Nothing OAR's dsh runtime refuses is sent.
+    for (const k of Object.keys(dshRuntime.refusedSessionOptions)) expect(k in a.options).toBe(false);
+    const [m] = a.options.mcpServers as { name: string; command: string; args: string[] }[];
+    expect(m!.name).toBe("ducter");
+    expect("url" in m! || "headers" in m! || "env" in m!).toBe(false);
+    const file = m!.args.at(-1)!;
+    expect(JSON.parse(readFileSync(file, "utf8"))).toEqual({ url: ducterMcp.url, headers: ducterMcp.headers });
+    expect(statSync(file).mode & 0o777).toBe(0o600);
+    expect(m!.args.join(" ")).not.toContain("dtk."); // the token is never on the command line
+  });
+
+  test("DeepSeek Harness task (not clean): the user's own home, instructions ride on the first message", () => {
+    const a = adaptSpec(spec("deepseek-harness", { isolateUserConfig: false, systemPrompt: undefined, appendSystemPrompt: "Task brief." }), { dataDir: dir, env: {} });
+    expect(a.options.env?.DSH_HOME).toBeUndefined();
+    expect(a.preamble).toBe("Task brief.");
+    expect(a.options.appendSystemPrompt).toBeUndefined();
+  });
+});
+
+/** A scripted runtime that keeps OAR's dsh contract: it refuses by presence what dsh refuses, and has no authStatus. */
+function dshLike(seen: { options?: any; inputs: string[] }, turn: (t: ScriptedTurn) => Promise<void> = async (t) => t.say("ok")): Runtime {
+  const rt = scriptedRuntime({
+    id: "dsh",
+    turn: async (t) => {
+      seen.inputs.push(t.input);
+      await turn(t);
+    },
+  });
+  return new Proxy(rt, {
+    get(target, prop, recv) {
+      if (prop === "refusedSessionOptions") return dshRuntime.refusedSessionOptions;
+      if (prop === "authStatus") return undefined;
+      if (prop === "session")
+        return (inst: any, options: any, ctx: any) => {
+          for (const k of Object.keys(dshRuntime.refusedSessionOptions)) if (k in options) throw new Error(`refused: ${k}`);
+          if ((options.mcpServers ?? []).some((s: any) => s.url || s.headers || s.env)) throw new Error("refused: mcpServers");
+          seen.options = options;
+          return target.session(inst, options, ctx);
+        };
+      return Reflect.get(target, prop, recv);
+    },
+  });
+}
+
+async function drain(s: { events(): AsyncIterable<any> }, until: (e: any) => boolean) {
+  for await (const e of s.events()) if (until(e)) return;
+}
+
+describe("DeepSeek Harness on OAR's scripted runtime", () => {
+  test("a task's instructions arrive once, with its first message; a resumed session gets none", async () => {
+    const seen = { inputs: [] as string[] } as { options?: any; inputs: string[] };
+    const port = createOarHarnessPort({ loadRuntime: async () => dshLike(seen), dataDir: dir });
+    const s = await port.start(spec("deepseek-harness", { isolateUserConfig: false, systemPrompt: undefined, appendSystemPrompt: "Brief: fix the test." }));
+    const it = s.events()[Symbol.asyncIterator]();
+    await s.send("Start.");
+    while (!(await it.next()).value?.turnEnd);
+    await s.send("And then?");
+    while (!(await it.next()).value?.turnEnd);
+    expect(seen.inputs[0]).toBe(withPreamble("Brief: fix the test.", "Start."));
+    expect(seen.inputs[1]).toBe("And then?");
+    await s.close();
+
+    const r = await port.start(spec("deepseek-harness", { isolateUserConfig: false, systemPrompt: undefined, appendSystemPrompt: "Brief.", resumeSessionId: s.id }));
+    await r.send("Carry on.").catch(() => {});
+    await Bun.sleep(30);
+    expect(seen.inputs.at(-1)).toBe("Carry on.");
+    await r.close();
+  });
+
+  test("the partner opens clean: no refused option sent, Ducter's tool reached over stdio", async () => {
+    const seen = { inputs: [] as string[] } as { options?: any; inputs: string[] };
+    const port = createOarHarnessPort({ loadRuntime: async () => dshLike(seen), dataDir: dir });
+    const s = await port.start(spec("deepseek-harness"));
+    expect(seen.options.mcpServers[0].command).toBeTruthy();
+    expect(seen.options.env.DSH_HOME).toBe(join(dir, "harness", "deepseek-harness"));
+    await s.send("hi");
+    await drain(s, (e) => e.turnEnd);
+    expect(seen.inputs[0]).toBe("hi"); // the prompt is the home's AGENTS.md, not the message
+    await s.close();
+  });
+
+  test("available(): installed via the scripted runtime; signed in only with a DeepSeek key", async () => {
+    const port = createOarHarnessPort({ loadRuntime: async (h) => (h === "deepseek-harness" ? dshLike({ inputs: [] }) : undefined), dataDir: dir, env: { DEEPSEEK_API_KEY: null, DSH_HOME: join(dir, "nohome") } });
+    const prev = process.env.DEEPSEEK_API_KEY;
+    delete process.env.DEEPSEEK_API_KEY;
+    try {
+      let ds = (await port.available()).find((h) => h.harness === "deepseek-harness")!;
+      expect(ds).toMatchObject({ installed: true, loggedIn: false });
+      // An older install's env file, not yet migrated, still counts (readKeys).
+      writeFileSync(join(dir, "env"), "# keys\nDEEPSEEK_API_KEY=\"sk-test-not-real\"\n", { mode: 0o600 });
+      ds = (await port.available()).find((h) => h.harness === "deepseek-harness")!;
+      expect(ds.loggedIn).toBe(true);
+    } finally {
+      if (prev !== undefined) process.env.DEEPSEEK_API_KEY = prev;
+    }
+  });
+});
+
+describe("the stdio MCP bridge", () => {
+  test("forwards requests with the headers, answers by id, ignores notifications' bodies", async () => {
+    const calls: { url: string; headers: any; body: string }[] = [];
+    const fakeFetch = (async (url: string, init: any) => {
+      calls.push({ url, headers: init.headers, body: init.body });
+      const msg = JSON.parse(init.body);
+      if (msg.id === undefined) return new Response(null, { status: 202 });
+      return new Response(JSON.stringify({ jsonrpc: "2.0", id: msg.id, result: { ok: true } }), { headers: { "content-type": "application/json" } });
+    }) as unknown as typeof fetch;
+    const out: string[] = [];
+    async function* lines() {
+      yield JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} });
+      yield JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" });
+      yield "not json";
+      yield JSON.stringify({ jsonrpc: "2.0", id: "b", method: "tools/list" });
+    }
+    await runBridge({ url: ducterMcp.url, headers: ducterMcp.headers }, { lines: lines(), write: (l) => out.push(l), fetch: fakeFetch });
+    expect(calls).toHaveLength(3);
+    expect(calls[0]!.headers.Authorization).toBe("Bearer dtk.test.sig");
+    expect(out.map((l) => JSON.parse(l).id).sort()).toEqual([1, "b"].sort() as any);
+  });
+
+  test("an unreachable Ducter answers the request with an error, not silence", async () => {
+    const out: string[] = [];
+    async function* lines() {
+      yield JSON.stringify({ jsonrpc: "2.0", id: 7, method: "tools/list" });
+    }
+    const failing = (async () => {
+      throw new Error("ECONNREFUSED");
+    }) as unknown as typeof fetch;
+    await runBridge({ url: ducterMcp.url, headers: {} }, { lines: lines(), write: (l) => out.push(l), fetch: failing });
+    expect(JSON.parse(out[0]!)).toMatchObject({ id: 7, error: { code: -32603 } });
+  });
+});
+
+describe("one tool-name form, no leaked reasoning", () => {
+  test("a tool reported as server + tool becomes mcp__server__tool", () => {
+    const n = new Normalizer(() => undefined);
+    const out = n.push({ kind: "tool_call_started", callId: "c1", tool: "mcp", server: "ducter", toolName: "task_open" });
+    expect(out[0]!.tool!.name).toBe("mcp__ducter__task_open");
+  });
+
+  test("reasoning written into the reply is dropped", () => {
+    expect(stripThinking("The user asks… let me check.</think>\n\nNo.")).toBe("No.");
+    expect(stripThinking("<think>hmm</think>On it.")).toBe("On it.");
+    expect(stripThinking("Plain reply.")).toBe("Plain reply.");
+  });
+});

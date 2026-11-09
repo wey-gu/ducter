@@ -6,14 +6,16 @@ import { existsSync, readFileSync } from "node:fs";
 import { hostname as osHostname, platform as osPlatform } from "node:os";
 import { join } from "node:path";
 import QRCode from "qrcode";
-import type { AbilityId, AbilityReason, DeviceAbility, DeviceHarness, DeviceKind, DeviceView, Reach, ServerFrame } from "@ducter/protocol";
+import { deviceHarness, type AbilityId, type AbilityReason, type DeviceAbility, type DeviceHarness, type DeviceKind, type DeviceView, type Reach, type ServerFrame } from "@ducter/protocol";
 import { readAbilitySettings, writeAbilitySettings } from "@ducter/protocol/src/abilities.ts";
 import type { DeviceAuth } from "./auth.ts";
 import type { Workers } from "./workers.ts";
+import { probeHarnesses } from "./harness-probe.ts";
 
 export type DevicesFrame = Extract<ServerFrame, { t: "devices" }>;
 export type AbilityResult = Extract<ServerFrame, { t: "ability_result" }>;
 export type PairCodeFrame = Extract<ServerFrame, { t: "pair_code" }>;
+export type RenameResult = Extract<ServerFrame, { t: "rename_result" }>;
 
 export type Exec = (argv: string[], timeoutMs?: number) => Promise<{ code: number; out: string }>;
 
@@ -22,8 +24,8 @@ export type CuaProbe = () => Promise<{ version: string } | { missing: string }>;
 
 export interface DeviceProbes {
   cua: CuaProbe;
-  /** Harness logins on this machine (as `ducter doctor` checks them). */
-  harnesses(): Promise<DeviceHarness[]>;
+  /** Harness logins on this machine (as `ducter doctor` checks them); canBePartner is filled in. */
+  harnesses(): Promise<(Omit<DeviceHarness, "canBePartner"> & { canBePartner?: boolean })[]>;
   /** laptop | mini | server for this machine. */
   kind(): Promise<DeviceKind>;
 }
@@ -48,6 +50,8 @@ export interface DevicesView {
   frame(): Promise<DevicesFrame>;
   setAbility(device: string, ability: AbilityId, on: boolean): Promise<AbilityResult>;
   pairCode(): Promise<PairCodeFrame>;
+  /** 改名字 / Rename a paired device (D84). The machine Ducter lives on keeps its host name. */
+  rename(device: string, name: string): RenameResult;
   onChange(fn: () => void): () => void;
   /** Something changed (a device paired, a socket came or went): tell the subscribers. */
   changed(): void;
@@ -139,28 +143,17 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
         if (REQUIRED_TOOLS.some((t) => !names.has(t))) return { missing: `cua-driver ${version} has no typed browser tools` };
         return { version };
       }),
+    // The four first-wave harnesses (D85, harness-probe.ts).
+    // Claude Code and Codex always show (one can be installed from here); pi and DeepSeek Harness
+    // only once set up, so a Mac without them reads as before.
     harnesses:
       o.probes?.harnesses ??
-      (async () => {
-        const [claude, codex] = await Promise.all([
-          (async (): Promise<DeviceHarness> => {
-            if (!which("claude")) return { harness: "claude-code", installed: false, loggedIn: false };
-            const r = await exec(["claude", "auth", "status"], 15_000);
-            return { harness: "claude-code", installed: true, loggedIn: r.code === 0 && parseJson(r.out.slice(r.out.indexOf("{"), r.out.lastIndexOf("}") + 1))?.loggedIn === true };
-          })(),
-          (async (): Promise<DeviceHarness> => {
-            if (!which("codex")) return { harness: "codex", installed: false, loggedIn: false };
-            const r = await exec(["codex", "login", "status"], 15_000);
-            return { harness: "codex", installed: true, loggedIn: r.code === 0 && /logged in/i.test(r.out) && !/not logged in/i.test(r.out) };
-          })(),
-        ]);
-        return [claude, codex];
-      }),
+      (async () => (await probeHarnesses({ exec, which, env, dataDir: o.dataDir })).filter((h) => (h.harness === "pi" ? h.loggedIn : h.harness === "deepseek-harness" ? h.installed : true))),
     kind: o.probes?.kind ?? (() => localDeviceKind(exec)),
   };
 
   // Probe results are reused for cacheMs: harness CLIs can take seconds.
-  type Cached = { at: number; cua: Awaited<ReturnType<CuaProbe>>; harnesses: DeviceHarness[]; kind: DeviceKind };
+  type Cached = { at: number; cua: Awaited<ReturnType<CuaProbe>>; harnesses: Awaited<ReturnType<DeviceProbes["harnesses"]>>; kind: DeviceKind };
   let cached: Cached | undefined;
   let inflight: Promise<Cached> | undefined;
   const local = async (): Promise<Cached> => {
@@ -168,7 +161,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
     inflight ??= (async () => {
       const [cua, harnesses, kind] = await Promise.all([
         probes.cua().catch((e) => ({ missing: String((e as Error).message ?? e) })),
-        probes.harnesses().catch(() => [] as DeviceHarness[]),
+        probes.harnesses().catch(() => [] as Awaited<ReturnType<DeviceProbes["harnesses"]>>),
         probes.kind().catch(() => "laptop" as DeviceKind),
       ]);
       cached = { at: now(), cua, harnesses, kind };
@@ -223,7 +216,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
       kind: me.kind,
       home: true,
       state: "awake", // this answer comes from it
-      harnesses: me.harnesses,
+      harnesses: me.harnesses.map((h) => deviceHarness(h)),
       abilities: [webAbility(me.cua), later("computer"), { id: "remote", state: remoteOn ? "on" : "off" }, later("phone"), later("call")],
     };
     const online = new Map(o.workers.online().map((w) => [w.deviceId, w]));
@@ -238,15 +231,17 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
         const state = on?.hello ? "awake" : gone?.asleep ? "asleep" : "unreachable";
         const lastSeen = state === "awake" ? undefined : (gone?.lastSeen ?? d.lastSeenAt);
         const kind = hello?.kind === "laptop" || hello?.kind === "mini" || hello?.kind === "server" ? hello.kind : kindFromPlatform(hello?.os ?? d.platform);
+        // The paired name, which the person can change (D84); a hello never renames a device.
+        if (on && on.name !== d.name) o.workers.renamed(d.id, d.name);
         return {
           id: d.id,
-          name: hello?.name || d.name,
+          name: d.name,
           kind,
           home: false,
           state,
           ...(lastSeen ? { lastSeen } : {}),
           ...(hello?.version ? { version: hello.version } : {}),
-          harnesses: (hello?.harnesses ?? []).map((h) => ({ harness: h.id, installed: h.installed, loggedIn: h.loggedIn })),
+          harnesses: (hello?.harnesses ?? []).map((h) => deviceHarness({ harness: h.id, installed: h.installed, loggedIn: h.loggedIn })),
           // Browser places run on the machine Ducter lives on only, for now (runner.ts).
           abilities: [{ id: "web", state: "unavailable", reason: "home_only" }, later("computer"), later("phone"), later("call")],
         } satisfies DeviceView;
@@ -305,7 +300,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
   }
 
   async function pairCode(): Promise<PairCodeFrame> {
-    const { code, expiresAt } = o.auth.createCode({ kind: "client" });
+    const { code, expiresAt } = o.auth.createCode(); // one code for a phone, an app window or a computer (D83)
     const address = publicAddress(o.dataDir, env);
     const link = address ? `${address}/pair#c=${code}` : undefined;
     return {
@@ -316,10 +311,24 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
     };
   }
 
+  function rename(device: string, name: string): RenameResult {
+    if (device === "local") return { t: "rename_result", device, ok: false, reason: "home" };
+    // The machine Ducter lives on answers to its own name and to "local": a task placed there
+    // must never land on another computer by a rename.
+    const want = name.trim().toLowerCase();
+    if (want === "local" || want === host.toLowerCase()) return { t: "rename_result", device, ok: false, reason: "name_taken" };
+    const r = o.auth.rename(device, name);
+    if ("error" in r) return { t: "rename_result", device, ok: false, reason: r.error };
+    o.workers.renamed(r.device.id, r.device.name);
+    changed();
+    return { t: "rename_result", device: r.device.id, ok: true, name: r.device.name };
+  }
+
   return {
     frame,
     setAbility,
     pairCode,
+    rename,
     onChange(fn) {
       fns.add(fn);
       return () => fns.delete(fn);

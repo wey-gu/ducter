@@ -7,6 +7,7 @@ import { Api, baseUrl, codeFromHash, pair, storage, type Me, type PairError } fr
 import { kvSet } from "./idb.ts";
 import { registerWorker } from "./push-client.ts";
 import { inApp, tellApp } from "./native.ts";
+import { startAutospace } from "./autospace.ts";
 import { Avatar, Conversation, OnHand, Sheets, TaskView, Toasts } from "./views.tsx";
 
 const base = baseUrl();
@@ -66,7 +67,7 @@ function Pairing({ initial, onPaired }: { initial: PairView; onPaired: () => voi
   return (
     <div class="pairing">
       <div class="face">
-        <Avatar size={140} state={v.busy ? "working" : "idle"} big={!v.busy} />
+        <Avatar size={140} state={v.busy ? "working" : "idle"} />
       </div>
       <h1>{v.busy ? t("connect.pairing") : t("connect.title")}</h1>
       {!v.busy && (
@@ -96,7 +97,7 @@ function Pairing({ initial, onPaired }: { initial: PairView; onPaired: () => voi
                 {err}
               </div>
             )}
-            <button class="btn primary" type="submit" disabled={!v.code.trim()}>
+            <button class="btn primary lg" type="submit" disabled={!v.code.trim()}>
               {t("connect.go")}
             </button>
           </form>
@@ -111,6 +112,7 @@ function Pairing({ initial, onPaired }: { initial: PairView; onPaired: () => voi
 }
 
 const root = document.getElementById("app")!;
+startAutospace(document.body); // the CJK-Latin gap where the browser lacks text-autospace (D78)
 
 async function boot(pairing?: PairView) {
   if (pairing) {

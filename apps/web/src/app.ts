@@ -1,5 +1,5 @@
 // The phone app's state and actions (the views read it and call these). One store, one socket.
-import type { ClientFrame, MemView, ServerFrame, Settings, SettingsPatch } from "@ducter/protocol";
+import type { Candidate, ClientFrame, ConnectionView, DeviceHarness, MemView, OoDetect, RuleView, ServerFrame, Settings, SettingsPatch } from "@ducter/protocol";
 import { Api, Connection, type ConnStatus, type Me, wsUrl } from "./conn.ts";
 import { detectLang, langOfText, strings, type Lang, type Strings } from "./i18n.ts";
 import { pushState, type PushState } from "./push-client.ts";
@@ -29,16 +29,46 @@ export function savedUiLang(): UiLang {
   }
 }
 export const UNDO_MS = 10_000;
+
+/** 对话里的细节 / Details in the conversation (D104): folded (the default) or shown, per client. */
+const DETAILS = "ducter.details";
+export type DetailsPref = "folded" | "shown";
+export function savedDetails(): DetailsPref {
+  try {
+    return localStorage.getItem(DETAILS) === "shown" ? "shown" : "folded";
+  } catch {
+    return "folded";
+  }
+}
 export const DONE_GLOW_MS = 6_000;
 
 class AppState {
   S = new Store();
   uiLang: UiLang = savedUiLang();
+  details: DetailsPref = savedDetails();
+  /** Living messages whose gathered asks the person opened (D104). */
+  moreAsks = new Set<number>();
+  /** When this client sent the message it is waiting on (the Presence clock before a step). */
+  thinkingSince?: number;
+  /** Messages whose Details the person flipped from the default (D104). */
+  flipped = new Set<string>();
   L: Strings = strings(this.uiLang === "auto" ? detectLang() : this.uiLang);
   localeSet = this.uiLang !== "auto";
   /** The partner's settings (D71), once the server sent them; mem is what it remembers. */
   settings?: Settings;
   mem?: MemView;
+  /** Who does the tasks (D89): Your rules, this Mac's AI agents (from devices), and who could
+   *  do the task whose Switch who does it is open. */
+  rules?: RuleView[];
+  agents?: DeviceHarness[];
+  candidates = new Map<string, Candidate[]>();
+  switchFor = "";
+  switching = "";
+  /** The user's connections (D96) and what oo is set up with, once asked for. */
+  connections?: ConnectionView[];
+  oo?: OoDetect;
+  /** A connection being checked (the add button waits). */
+  connecting = false;
   route: Route = { name: "conv" };
   sheet: Sheet = null;
   status: ConnStatus = "connecting";
@@ -86,7 +116,7 @@ class AppState {
     this.conn = new Connection(
       wsUrl(base),
       token,
-      () => ({ t: "hello", ...(this.S.cursor > 0 ? { cursor: this.S.cursor } : {}), locale: this.L.lang }),
+      () => ({ t: "hello", ...(this.S.cursor > 0 ? { cursor: this.S.cursor } : {}), locale: this.L.lang, ...(zone() ? { tz: zone() } : {}) }),
       (f) => this.receive(f),
       (s) => ((this.status = s), this.changed()),
     );
@@ -100,6 +130,17 @@ class AppState {
   async refreshPush() {
     this.push = await pushState().catch(() => "unsupported" as PushState);
     this.changed();
+  }
+
+  /** Work over time (D112-D114): Look now / Stop waiting, Pause / Resume / End, Stop the loop. */
+  waiterAction(waiterId: string, action: "look" | "cancel") {
+    this.send({ t: "waiter_action", waiterId, action });
+  }
+  routineAction(routineId: string, action: "pause" | "resume" | "end") {
+    this.send({ t: "routine_action", routineId, action });
+  }
+  untilAction(taskId: string) {
+    this.send({ t: "until_action", taskId, action: "stop" });
   }
 
   send(f: ClientFrame) {
@@ -119,6 +160,17 @@ class AppState {
       this.conn?.rehello();
     }
     if (f.t === "settings") return this.applySettings(f);
+    if (f.t === "rules") return void ((this.rules = f.rules), this.changed());
+    if (f.t === "devices") return void ((this.agents = f.devices.find((d) => d.home)?.harnesses ?? []), this.changed());
+    if (f.t === "candidates") return void (this.candidates.set(f.taskId, f.candidates), this.changed());
+    if (f.t === "connections") return (this.connections = f.connections), (this.oo = f.oo), this.changed();
+    if (f.t === "connection_result") {
+      this.connecting = false;
+      if (!f.ok && f.reason) this.toast(this.L.t(`acct.err.${f.reason}`));
+      const added = f.ok && this.connections?.find((c) => c.id === f.id);
+      if (added) this.toast(this.L.t("acct.added", added.name));
+      return this.changed();
+    }
     const before = new Map([...this.S.tasks].map(([id, t]) => [id, attention(t)]));
     this.S.apply(f);
     for (const [id, t] of this.S.tasks) if (finished(t) && before.has(id) && !["done", "done_claimed", "failed"].includes(before.get(id)!)) this.doneAt = Date.now();
@@ -132,7 +184,8 @@ class AppState {
       for (const r of this.S.resends(this.pending)) this.send(r);
       if (this.route.name === "task") this.history(this.route.id, true);
       // Settings are pushed only to sockets that asked: ask again on a new one.
-      if (this.settings || this.sheet?.kind === "settings") this.send({ t: "settings" });
+      if (this.settings || this.sheet?.kind === "settings") this.askLoadout();
+      if (this.connections) this.send({ t: "connections" });
     }
     // on_hand closes the replay that follows a welcome.
     if (f.t === "on_hand" && this.inDoubt) this.S.settleInDoubt(this.inDoubt), (this.inDoubt = undefined);
@@ -157,8 +210,37 @@ class AppState {
   /** Opens this phone's Settings sheet, asking for the partner's settings. */
   openSettings() {
     this.sheet = { kind: "settings" };
-    if (this.S.welcomed) this.send({ t: "settings" });
+    if (this.S.welcomed) this.askLoadout();
     this.changed();
+  }
+
+  /** The settings, Your rules and this Mac's AI agents (each socket asks for itself). */
+  askLoadout() {
+    this.send({ t: "settings" });
+    this.send({ t: "rules" });
+    this.send({ t: "devices" });
+  }
+
+  /** 换谁来做 / Switch who does it: opens (or closes) the list for a task, asking who could. */
+  openSwitch(taskId: string) {
+    if (this.switchFor === taskId) this.switchFor = "";
+    else (this.switchFor = taskId), this.send({ t: "candidates", taskId });
+    this.changed();
+  }
+
+  /** 换到 X 接着做 / Continue on X. */
+  switchTask(taskId: string, harness: string, model: string | undefined, name: string) {
+    this.switching = name;
+    this.send({ t: "task_switch", taskId, harness, ...(model ? { model } : {}) });
+    this.changed();
+  }
+
+  /** 跟 Ducter 说一条规则… / Tell Ducter a rule…: the conversation, with the words started. */
+  tellRule() {
+    this.sheet = null;
+    this.draft = this.L.t("loadout.rule.prefill");
+    this.go({ name: "conv" });
+    setTimeout(() => document.getElementById("composer")?.focus(), 50);
   }
 
   /** Changes partner settings: shown at once, then confirmed by the server's frame. */
@@ -169,13 +251,68 @@ class AppState {
     this.changed();
   }
 
+  /** Connections (D96): ask once; the server keeps this socket up to date. */
+  askConnections() {
+    if (this.S.welcomed) this.send({ t: "connections" });
+  }
+  addConnection(url: string, token: string) {
+    this.connecting = true;
+    this.send({ t: "connection_add", url, ...(token ? { token } : {}) });
+    this.changed();
+  }
+  useOoConnection() {
+    this.connecting = true;
+    this.send({ t: "connection_oo" });
+    this.changed();
+  }
+  removeConnection(id: string) {
+    if (this.connections) this.connections = this.connections.filter((c) => c.id !== id);
+    this.send({ t: "connection_remove", id });
+    this.changed();
+  }
+  /**
+   * For the devices stage (Isles, being rebuilt on the isles branch): the mailboxes that stand on
+   * the island of the computer Ducter lives on. Connections always live there (D96).
+   */
+  homeMailboxes(): { id: string; name: string; source: ConnectionView["source"]; trouble: boolean }[] {
+    return (this.connections ?? []).map((c) => ({ id: c.id, name: c.name, source: c.source, trouble: c.state === "unreachable" || c.state === "unauthorized" }));
+  }
+
   /** Titles of the noted lines being forgotten, for the toast that answers. */
   private forgetting = new Map<number, string>();
   forget(seq: number) {
     const n = this.mem?.noted.find((x) => x.seq === seq);
-    if (n) this.forgetting.set(seq, n.title);
+    const title = n?.title ?? this.S.noted.find((x) => x.seq === seq)?.title;
+    if (title) this.forgetting.set(seq, title);
+    this.S.noted = this.S.noted.filter((x) => x.seq !== seq);
     if (this.mem) this.mem = { ...this.mem, noted: this.mem.noted.filter((n) => n.seq !== seq) };
     this.send({ t: "memory_forget", seq });
+    this.changed();
+  }
+
+  /** The 记下了 / Noted lines a message's Details carry: those answering the same user message,
+   *  under the last partner message that answers it (D104). */
+  notedFor(e: Entry): { seq: number; title: string }[] {
+    const replyTo = e.ai?.replyTo ?? e.job?.ack?.replyTo;
+    if (replyTo == null) return [];
+    const last = [...this.S.channel].reverse().find((x) => (x.ai?.replyTo ?? x.job?.ack?.replyTo) === replyTo);
+    return last === e ? this.S.noted.filter((n) => n.replyTo === replyTo) : [];
+  }
+
+  /** Is this message's Details open? The preference, flipped where the person tapped. */
+  detailsOpen(key: string): boolean {
+    return (this.details === "shown") !== this.flipped.has(key);
+  }
+  toggleDetails(key: string) {
+    this.flipped.has(key) ? this.flipped.delete(key) : this.flipped.add(key);
+    this.changed();
+  }
+  setDetails(v: DetailsPref) {
+    this.details = v;
+    this.flipped.clear();
+    try {
+      localStorage.setItem(DETAILS, v);
+    } catch {}
     this.changed();
   }
 
@@ -209,7 +346,11 @@ class AppState {
       const name = t ? title(t) : "";
       if (f.ok && f.action === "merge") this.toast(this.L.t("result.merged.toast", name, short(f.ref ?? "")));
       else if (f.ok && f.action === "open_pr") this.toast(this.L.t("result.pr.toast", f.ref ?? ""));
-      else if (!f.ok) this.toast(this.L.t("result.action.failed", f.message ?? ""));
+      else if (f.action === "switch") {
+        if (f.ok) (this.switchFor = ""), this.toast(this.L.t("who.done", this.switching));
+        else this.toast(this.L.t("who.failed", f.message ?? ""));
+        this.switching = "";
+      } else if (!f.ok) this.toast(this.L.t("result.action.failed", f.message ?? ""));
     }
   }
 
@@ -301,6 +442,7 @@ class AppState {
     this.held = undefined;
     const clientId = `p${Date.now()}-${++this.nextClient}`;
     this.pending.push({ clientId, text });
+    this.thinkingSince = Date.now();
     this.markRead();
     this.send({ t: "send", text, clientId });
     this.changed();
@@ -385,17 +527,20 @@ class AppState {
     if (this.pending.length) return true;
     for (let i = this.S.channel.length - 1; i >= 0; i--) {
       const e = this.S.channel[i]!;
-      if (e.user) return true;
-      if (e.ai || e.job) return false;
+      // A turn that ended after the message without a word (an ask, or nothing to say) answered it.
+      if (e.user) return e.firstSeq > this.S.activityEndedAt;
+      if (e.ai || e.job || (e.decision && !e.decision.taskId)) return false;
     }
     return false;
   }
 
-  presence(): "idle" | "working" | "needsyou" | "done" | "napping" {
+  presence(): "idle" | "working" | "needsyou" | "done" | "napping" | "waiting" {
     if (this.status === "offline") return "napping";
     if (this.S.openDecisions().length) return "needsyou";
     const b = this.S.board();
     if (b.lanes[LANE.working]!.length || this.thinking()) return "working";
+    // Nothing moving, something it waits for (D112): it sits and looks out.
+    if (b.lanes[LANE.waiting]!.length || this.S.armedWaiters().some((w) => w.check || w.event)) return "waiting";
     if (this.doneAt && Date.now() - this.doneAt < DONE_GLOW_MS) {
       setTimeout(() => this.changed(), DONE_GLOW_MS);
       return "done";
@@ -419,15 +564,15 @@ class AppState {
     const parts: string[] = [];
     const needs = b.lanes[LANE.needs]!.length + this.S.partnerDecisions().length;
     if (needs) parts.push(L.t("header.needs", needs));
+    // Thinking is said where the reply will appear (Presence, D104), not here.
     if (b.lanes[LANE.working]!.length) parts.push(L.t("header.working", b.lanes[LANE.working]!.length));
-    else if (this.thinking()) parts.push(L.t("header.thinking"));
+    // What it waits for is felt here, not in the conversation (D104, D115).
+    const waiting = b.lanes[LANE.waiting]!.length + this.S.armedWaiters().filter((w) => !w.taskId).length;
+    if (waiting && parts.length < 2) parts.push(L.t("header.waiting", waiting));
     const done = this.doneToday();
     // A phone header has room for two things: what needs you and what's moving come first.
     if (done && parts.length < 2) parts.push(L.t("header.done", done));
-    if (parts.length) return parts.join(" · ");
-    // A reminder or a waiting task is still something on hand.
-    const waiting = b.lanes[LANE.waiting]!.length + this.S.armedWaiters().filter((w) => !w.taskId).length;
-    return waiting ? L.t("header.waiting", waiting) : L.t("header.summary.none");
+    return parts.length ? parts.join(" · ") : L.t("header.summary.none");
   }
 
   /** The conversation's rows (desktop rows()): decisions inside a living message show once,
@@ -466,3 +611,12 @@ function short(ref: string) {
 
 export const A = new AppState();
 export { laneOf };
+
+/** This device's time zone: personal-time routines follow it (D114). */
+function zone(): string | undefined {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined;
+  } catch {
+    return undefined;
+  }
+}

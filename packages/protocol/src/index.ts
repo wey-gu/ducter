@@ -2,6 +2,11 @@
 // Changes here go through the lead. The Go client mirrors these types in
 // apps/desktop/internal/protocol (keep field names identical; JSON is the wire format).
 
+export * from "./harnesses.ts";
+import type { HarnessId } from "./harnesses.ts";
+export * from "./loadout.ts";
+import type { BodyWhy, Candidate, RuleView, TaskBody } from "./loadout.ts";
+
 // ---------- States (design/focus-window-states.md) ----------
 
 export type Attention =
@@ -58,6 +63,7 @@ export interface Bodies {
     defaultOption: "go" | "hold";
     defaultAt?: string; // ISO time the default applies (only if reversible)
     reversible: boolean;
+    routineId?: string; // a routine's proposal card (D114): Go activates it
   };
   decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default" };
   read_receipt: { upToSeq: number };
@@ -66,12 +72,15 @@ export interface Bodies {
     title: string;
     project: string; // "" = Loose
     place: Place;
-    harness: string; // "claude-code" | "codex" | "pi"
+    harness: string; // a HarnessId (harnesses.ts)
     model?: string;
     brief: string;
     bodyReason?: string; // why this harness/model
   };
   task_state: { taskId: string; attention: Attention; residency: Residency; reason?: string };
+  // Who does the task and why (D89, focus-window.md "Choosing a body"): appended when it opens
+  // and on every switch. The card shows the latest one.
+  body_selected: { taskId: string; harness: string; model?: string; why: BodyWhy };
   // role "user" + from "user" = text the user sent straight into the task (logged by the runner).
   task_event: {
     taskId: string;
@@ -93,7 +102,47 @@ export interface Bodies {
   checkpoint: { taskId: string; text: string; gitRef?: string };
   // A waiter is a cheap wait that wakes the partner (wait_until). Shown on On hand as a compact row.
   // decisionId: a wait tied to a question (an ask); it is cancelled when the question is answered.
-  waiter: { waiterId: string; taskId?: string; decisionId?: string; at?: string; reason: string; state: "armed" | "fired" | "cancelled" };
+  // D112: a waiter waits for a condition, not only a time. kind "check" runs a small read-only
+  // command on a schedule (no model); "event" reads new items from a connection's trigger;
+  // judge adds a cheap model's yes/no over what a check or event fetched. `reason` is always
+  // the condition in the user's words; `check` is shown only in the opened task's Details.
+  // `until` is the deadline: past it the waiter is "expired" and the partner is told.
+  waiter: {
+    waiterId: string;
+    taskId?: string;
+    decisionId?: string;
+    routineId?: string; // a condition routine's watch (D114): firing starts a run, then it re-arms
+    at?: string;
+    reason: string;
+    state: "armed" | "fired" | "cancelled" | "expired";
+    kind?: WaitKind; // absent = "timer"
+    check?: CheckSpec;
+    event?: EventSpec;
+    judge?: string; // the yes/no question a cheap model answers over the fetched data
+    everyMs?: number; // how often it looks (check/event); backs off on errors
+    until?: string; // ISO deadline
+    observed?: string; // fired/expired: what it saw last (<= 200 chars)
+    held?: boolean; // a routine's watch re-armed while the condition still holds: fires only once it stops and holds again
+  };
+  // One look of a check/event waiter, logged only when what it saw changed (or it began failing),
+  // on the task's stream (task waiters) or the channel. Clients fold them into Details.
+  waiter_look: { waiterId: string; taskId?: string; ok: boolean; met: boolean; summary: string; error?: string; checkpoint?: unknown };
+  // D113: `until` on a task: keep going until the condition holds. One snapshot per change.
+  until: {
+    taskId: string;
+    condition: string; // in the user's words
+    check?: CheckSpec; // when the condition compiles to a check, it decides before any model
+    maxTries: number; // default 20
+    state: "on" | "met" | "stopped";
+    stop?: "met" | "max" | "no_progress" | "oscillation" | "user" | "task_finished";
+  };
+  // One try's verdict, after the task's turn ended with a report.
+  until_try: { taskId: string; n: number; verdict: "met" | "better" | "same" | "worse" | "unknown"; summary: string; by: "check" | "judge"; tokens?: number };
+  // D114: a routine (例行). One snapshot per change; the latest wins.
+  routine: RoutineBody;
+  // A firing: "started" opens a run task; "skipped" records a firing that could not run (with how
+  // many were coalesced into it); "done"/"failed" close a run from its task's final report.
+  routine_run: { routineId: string; runId: string; scheduledFor: string; state: "started" | "skipped" | "done" | "failed"; taskId?: string; catchUp?: boolean; coalesced?: number; reason?: string; tokens?: number };
   // The partner saved something durable to the user's long-term memory (Nowledge Mem). Clients
   // show one quiet line under the reply: "记下了 · <title>" / "Noted · <title>". Never a card,
   // never a notification. Provenance lives in Mem, not here.
@@ -103,7 +152,53 @@ export interface Bodies {
   // permission. "out": the partner's reply to one (origin "partner"). Clients show one quiet
   // line (copy pending the glossary): "<from> 发来请求" / "Request from <from>", and
   // "已回复 <to>" / "Replied to <to>". Not "交接 / hand-off": that word is a task changing body.
-  bridge_msg: { direction: "in" | "out"; messageId: string; from?: string; to?: string; text: string; inReplyTo?: string; sentAt?: string };
+  // Spike (bridge-spike): "out" may also be a NEW message the user confirmed on a card
+  // (decisionId); `taskId` links an exchange to the task opened for it, so the result reply is
+  // owed by code, not by prompt. An "in" with `inReplyTo` answers one of ours.
+  // `agent` is the other agent's own name and `mine` says it belongs to the user, so it is called
+  // "你的 <agent>" / "your <agent>"; a teammate's stays "<agent> (<member>)" in `from`/`to` (D108).
+  // Outgoing operations (D106): every "out" carries `opId`, and one op is logged once per `state`
+  // it passes through: "pending" (a send card is up; `contact` is the handle), "held" (the user
+  // held it), "sending" (logged before the CLI call), then "sent", "failed" (definitely not
+  // sent), "unknown" (no answer; recovered by outbox → inspect → resume on the same
+  // `operation`, never a second send) or "unconfirmed" (recovery gave up; never resent).
+  // "followed" marks the one follow-through line said about an unanswered sent message (D110).
+  // No `state` = "sent" (events logged before D106).
+  bridge_msg: {
+    direction: "in" | "out";
+    messageId: string;
+    from?: string;
+    to?: string;
+    text: string;
+    inReplyTo?: string;
+    sentAt?: string;
+    taskId?: string;
+    decisionId?: string;
+    agent?: string;
+    mine?: boolean;
+    state?: "pending" | "held" | "sending" | "sent" | "failed" | "unknown" | "unconfirmed" | "followed";
+    opId?: string;
+    contact?: string;
+    operation?: string;
+  };
+  // A call into one of the user's connections (D96, design/connectors.md): their OpenConnector or
+  // another MCP server, reached only through Ducter's broker. Reads run and are recorded here;
+  // a write is recorded "needs_go" with its input, waits for the user's Go on a decision card,
+  // and runs once after it ("done"/"failed"). Never carries a token. On the channel for the
+  // partner, on the task's stream for a task. Clients stay quiet about reads.
+  connection_call: {
+    callId: string;
+    connectionId: string;
+    connection: string; // its name, for display
+    action: string; // an OpenConnector action id (gmail.search_threads) or an MCP tool name
+    op: "read" | "write";
+    state: "done" | "failed" | "denied" | "needs_go" | "held";
+    taskId?: string;
+    decisionId?: string;
+    input?: unknown; // writes only: what Go runs
+    summary?: string; // ≤ 200 chars, never the provider's full output
+    error?: string;
+  };
 }
 
 export interface Usage { inputTokens?: number; outputTokens?: number; cacheRead?: number; cacheWrite?: number }
@@ -141,6 +236,8 @@ export interface TaskCard {
   harness: string;
   model?: string;
   bodyReason?: string;
+  /** Who does it now and why (the latest body_selected); absent on tasks from before D89. */
+  body?: TaskBody;
   attention: Attention;
   residency: Residency;
   reason?: string;
@@ -149,12 +246,110 @@ export interface TaskCard {
   pendingDecision?: Bodies["decision"] & { askedAt: string }; // the open decision, for On hand
   openedAt: string;
   updatedAt: string;
+  until?: UntilView; // D113
+  fromRoutine?: { routineId: string; name: string }; // a routine's run (D114)
 }
 
 export interface OnHand {
   tasks: TaskCard[];
   counts: Record<"needs_you" | "working" | "waiting" | "done_today", number>;
-  waiters: Bodies["waiter"][]; // armed waiters (task-less ones render as compact rows)
+  waiters: WaiterView[]; // armed waiters (task-less ones render as compact rows)
+  /** D114: every routine that isn't ended or dismissed, proposed ones included (their card). */
+  routines?: RoutineView[];
+}
+
+/** An armed waiter plus what it has seen so far (kept by core, not logged per look). */
+export type WaiterView = Bodies["waiter"] & { armedAt?: string; lastLookAt?: string; lastSummary?: string; looks?: number; nextLookAt?: string; changes?: number };
+
+// ---------- Work over time (D112-D115, design/product-model.md section 4) ----------
+
+export type WaitKind = "timer" | "check" | "event" | "judge";
+
+/**
+ * A compiled condition: a read-only command (argv, never a shell line) run where the task works,
+ * and what counts as met. The allowed commands are in protocol/src/checks.ts.
+ */
+export interface CheckSpec {
+  argv: string[];
+  device?: string; // "local" (default) or a worker's device
+  cwd?: string; // default: the task's place
+  succeedWhen: Predicate;
+}
+
+/**
+ * What counts as met. path: a JSON path into stdout ("state", "[].state"; "[]" maps over an
+ * array, and every item must match unless `any`). equals / oneOf / contains / matches test the
+ * value (or stdout when there is no path). exitCode is checked only when given, or when nothing
+ * else is (then 0).
+ */
+export interface Predicate {
+  exitCode?: number;
+  path?: string;
+  equals?: string | number | boolean | null;
+  oneOf?: (string | number | boolean | null)[];
+  contains?: string;
+  matches?: string;
+  any?: boolean;
+}
+
+/** New items from a connection's trigger (OpenConnector Provider Triggers, design/connectors.md 4.5). */
+export interface EventSpec {
+  connection: string; // a connection id or name
+  service: string; // "gmail"
+  trigger: string; // "gmail.on_message_received"
+  config?: unknown;
+  contains?: string; // a cheap code filter on each item's text before any judge
+}
+
+export type RoutineTrigger =
+  | {
+      kind: "time";
+      every: "day" | "weekday" | "week" | "month" | "hours";
+      days?: number[]; // week: 0 = Sunday ... 6
+      dayOfMonth?: number; // month
+      hours?: number; // hours: every n hours, starting at `time`
+      time: string; // "09:00"
+      zone: "personal" | "world"; // personal follows the user; world stays pinned (D29)
+      tz: string; // IANA zone; for personal, replaced by the user's current zone at each firing
+    }
+  | { kind: "condition"; condition: string; check?: CheckSpec; event?: EventSpec; judge?: string; everyMs: number };
+
+export interface RoutineBody {
+  routineId: string;
+  name: string; // short, in the user's language
+  trigger: RoutineTrigger;
+  triggerWords: string; // the trigger in words ("每周一 9:00 · 跟着你的时区")
+  brief: string; // what each run does, self-contained
+  place?: Place;
+  reports: "every" | "on_change" | "needs_you"; // digests the user asked for are "every"
+  effect: "read_only" | "drafts" | "local_writes"; // anything beyond it becomes a question
+  budget: { perRunTokens?: number; monthTokens: number }; // perRun: 2x the first run's, once known
+  state: "proposed" | "active" | "paused" | "ended" | "dismissed";
+  decisionId?: string; // its proposal card
+  createdAt: string;
+  reviewAt: string; // 30 days after it starts; then it asks "Keep this?"
+  pausedBy?: "user" | "partner" | "system";
+  pauseReason?: "asked" | "failures" | "unread" | "review" | "budget";
+}
+
+export interface RoutineView extends RoutineBody {
+  nextAt?: string; // the next firing (time triggers, while active)
+  upcoming?: string[]; // the next 5 firings (time triggers), for the proposal card
+  dryRun?: { met: boolean; summary: string; at: string }; // condition triggers: a live look
+  lastRun?: Bodies["routine_run"] & { at: string };
+  running?: string; // the task id of a run in progress
+  monthTokens?: number; // used this month
+}
+
+/** A task's `until` with its tries, for the try strip. */
+export interface UntilView {
+  condition: string;
+  maxTries: number;
+  state: Bodies["until"]["state"];
+  stop?: Bodies["until"]["stop"];
+  check?: CheckSpec;
+  tries: { n: number; verdict: Bodies["until_try"]["verdict"]; summary: string; by: "check" | "judge"; at: string }[];
+  tokens?: number;
 }
 
 // ---------- Client <-> main process WebSocket (ws://127.0.0.1:7777/ws) ----------
@@ -172,7 +367,8 @@ export interface OnHand {
 //    otherwise as the next turn ("prompted") or queued behind the current turn.
 
 export type ClientFrame =
-  | { t: "hello"; persona?: string; cursor?: number; locale?: "zh" | "en" }
+  // tz: the client's IANA zone; personal-time routines follow the latest one (D114).
+  | { t: "hello"; persona?: string; cursor?: number; locale?: "zh" | "en"; tz?: string }
   | { t: "send"; text: string; clientId: string }
   | { t: "decide"; decisionId: string; option: "go" | "hold" | "reply"; text?: string }
   // clientId (optional): a resend with the same id is not delivered twice; it gets the same "sent".
@@ -192,13 +388,42 @@ export type ClientFrame =
   | { t: "devices"; refresh?: boolean }
   | { t: "ability"; device: string; ability: AbilityId; on: boolean }
   | { t: "pair_code" }
+  // rename_device: 改名字 / Rename a paired device (another computer, a phone; D84). Answered with
+  // rename_result, then a fresh devices frame. The machine Ducter lives on keeps its own name.
+  | { t: "rename_device"; device: string; name: string }
   // The partner's and the app's settings (D71): "settings" answers with a settings frame and
   // keeps the socket subscribed (every change goes to every subscriber). "settings_set" changes
   // some of them. "memory_forget" forgets one 记下了 / Noted line: in Nowledge Mem when it has the
   // memory's id and Mem forgets it, otherwise only hidden from this list (the frame says which).
   | { t: "settings" }
   | { t: "settings_set"; patch: SettingsPatch }
-  | { t: "memory_forget"; seq: number };
+  | { t: "memory_forget"; seq: number }
+  // Who does the tasks (D89): "rules" answers with a rules frame and keeps the socket subscribed;
+  // rule_remove (不要这条 / Remove) drops one, then every subscriber gets a fresh rules frame.
+  // Rules are added only by saying them in the conversation (the partner's rule_save tool).
+  | { t: "rules" }
+  | { t: "rule_remove"; id: string }
+  // candidates: who could do this task, best first (换谁来做 / Switch who does it); answered with
+  // a candidates frame. task_switch moves the task to another AI agent (换到 X 接着做 / Continue
+  // on X): a pin, and a handoff from saved progress if it is running; answered with action_result
+  // (action "switch"). After two switches the same way the partner asks once whether to make it
+  // a rule (a partner-level decision).
+  | { t: "candidates"; taskId: string }
+  | { t: "task_switch"; taskId: string; harness: string; model?: string }
+  // Connections (D96): the user's OpenConnector or another MCP server. "connections" answers with
+  // a connections frame and keeps the socket subscribed. "connection_add" checks the address and
+  // token before saving (answered with connection_result, then a fresh frame). "connection_oo"
+  // uses the self-hosted OpenConnector that the user's oo CLI is set up with, only on this tap.
+  | { t: "connections" }
+  | { t: "connection_add"; url: string; token?: string; name?: string }
+  | { t: "connection_remove"; id: string }
+  | { t: "connection_oo" }
+  // Work over time (D112-D114), each answered with action_result (taskId = the waiter or routine
+  // id). waiter_action look: look now; cancel: 不等了 / Stop waiting. routine_action pause, resume
+  // (only a person resumes), end. until_action stop: stop the loop after this try.
+  | { t: "waiter_action"; waiterId: string; action: "look" | "cancel" }
+  | { t: "routine_action"; routineId: string; action: "pause" | "resume" | "end" }
+  | { t: "until_action"; taskId: string; action: "stop" };
 
 export type ServerFrame =
   // machine: a hash of the machine the main runs on (core/src/machine.ts); a client that computes
@@ -212,8 +437,30 @@ export type ServerFrame =
   | { t: "devices"; devices: DeviceView[]; reach: Reach }
   | { t: "ability_result"; device: string; ability: AbilityId; on: boolean; ok: boolean; reason?: AbilityReason; detail?: string }
   | { t: "pair_code"; code: string; expiresAt: string; address?: string; link?: string; qr?: string[] }
+  | { t: "rename_result"; device: string; ok: boolean; name?: string; reason?: "unknown_device" | "empty" | "name_taken" | "home" }
   | { t: "settings"; settings: Settings; mem: MemView; forgot?: { seq: number; how: "mem" | "hidden" } }
+  | { t: "rules"; rules: RuleView[] }
+  | { t: "candidates"; taskId: string; candidates: Candidate[] }
+  | { t: "connections"; connections: ConnectionView[]; oo: OoDetect }
+  | { t: "connection_result"; ok: boolean; id?: string; reason?: ConnectionReason }
+  // What the partner is doing while the user waits for its reply (D104): sent on every change and
+  // after each welcome, null when the turn ends. Never logged: it is presence, not history.
+  | { t: "activity"; activity: PartnerActivity | null }
   | { t: "error"; message: string };
+
+/**
+ * The step of a partner turn the user is waiting on, as a plain verb the client words (D104).
+ * Mapped from the partner's own tool calls; tool names never reach a client.
+ * thinking: no tool yet · recalling: reading the Log or memory · checking_task: reading a task ·
+ * opening_task: starting one · messaging_task: passing something to one · planning: setting a
+ * reminder or an ask · looking: any other lookup.
+ */
+export type ActivityStep = "thinking" | "recalling" | "checking_task" | "opening_task" | "messaging_task" | "planning" | "looking";
+export interface PartnerActivity {
+  step: ActivityStep;
+  since: string; // ISO: when the turn started
+  stepSince: string; // ISO: when this step started
+}
 
 export type Delivery = "steered" | "prompted" | "queued";
 
@@ -243,10 +490,16 @@ export interface Allowance {
 }
 
 export interface DeviceHarness {
-  harness: string; // "claude-code" | "codex" | "pi"
+  harness: string; // a HarnessId (harnesses.ts)
   installed: boolean;
   loggedIn: boolean;
   allowance?: Allowance; // only when the harness reports it; never estimated
+  /** Models this account offers, when it lists them. */
+  models?: { id: string; label: string }[];
+  /** This harness may carry the partner here (D85: HARNESSES[id].partner, and signed in). */
+  canBePartner: boolean;
+  /** plan: a subscription's allowance; usage: paid per token (an API key). */
+  billing?: "plan" | "usage";
 }
 
 export interface DeviceAbility {
@@ -274,6 +527,35 @@ export interface Reach {
   clients: { id: string; name: string; platform: string; connected: boolean; lastSeen?: string }[];
 }
 
+// ---------- Connections (D96, design/connectors.md) ----------
+// Where the user's accounts are reached: their own OpenConnector (OOMOL Hosted or self-hosted) or
+// another MCP server. The token stays in Ducter's data folder (0600), never in a frame.
+
+/** oomol: OOMOL Hosted (mail and sign-ins pass through OOMOL); self: the user's own OpenConnector; mcp: any other MCP server. */
+export type ConnectionSource = "oomol" | "self" | "mcp";
+
+export interface ConnectionView {
+  id: string;
+  name: string;
+  url: string; // the MCP endpoint, without any secret
+  source: ConnectionSource;
+  addedAt: string;
+  via: "manual" | "oo";
+  state: "ok" | "unreachable" | "unauthorized" | "unknown";
+  checkedAt?: string;
+}
+
+/** What the user's oo CLI is set up with, as far as Ducter can tell without reading a secret. */
+export interface OoDetect {
+  installed: boolean;
+  /** A self-hosted OpenConnector in oo's connector.toml or OO_CONNECTOR_URL: its address only. */
+  selfHosted?: { url: string; hasToken: boolean };
+  /** Signed in to an OOMOL account (auth.toml). Not offered for one tap: that key can do more than connections. */
+  account: boolean;
+}
+
+export type ConnectionReason = "bad_url" | "unreachable" | "unauthorized" | "not_mcp" | "duplicate" | "unknown_connection" | "no_oo";
+
 // ---------- Settings (D71: the Partner page and Settings) ----------
 // Persisted in the data folder: the name in persona.json (shared with the CLI), notifications
 // and quiet hours in push.json (shared with the phone's own endpoints), the rest in
@@ -295,6 +577,18 @@ export interface Settings {
   notify: boolean; // notifications on (phones and the Mac)
   quiet: QuietHours | null; // 免打扰 / Quiet hours; null = none
   defaultAfterMin: number; // how long a reversible decision waits before its default goes ahead
+  /**
+   * What the partner itself thinks with (D85, design/ai-loadout.md): a harness that can be the
+   * partner (HARNESSES[id].partner) and its model. Default Claude Code + opus.
+   */
+  brain: Brain;
+  /** Which signed-in accounts tasks may use; a missing entry means enabled. */
+  taskAccounts?: Partial<Record<HarnessId, { enabled: boolean }>>;
+}
+
+export interface Brain {
+  harness: HarnessId;
+  model?: string;
 }
 
 export type SettingsPatch = Partial<Settings>;
@@ -322,6 +616,8 @@ export interface ToolArgs {
   log_search: { query: string; stream?: string; limit?: number };
   log_read: { stream: string; fromSeq?: number; limit?: number };
   wait_until: { taskId?: string; at?: string; reason: string };
+  wait_for: { reason: string; taskId?: string; check?: CheckSpec; event?: EventSpec; judge?: string; everyMinutes?: number; untilISO?: string };
+  keep_going: { taskId: string; condition: string; check?: CheckSpec; maxTries?: number };
   reply: { text: string };
   report_to_main: Bodies["report"] extends infer R ? Omit<R & object, "taskId"> : never;
   checkpoint: { text: string };

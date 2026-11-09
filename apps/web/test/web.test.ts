@@ -4,7 +4,8 @@ import type { LogEvent } from "@ducter/protocol";
 import { buildWeb } from "../build.ts";
 import { baseUrl, codeFromHash, deviceName, wsUrl } from "../src/conn.ts";
 import { format, joinHan, langOfText, strings, TABLES } from "../src/i18n.ts";
-import { sameWords } from "../src/format.ts";
+import { sameWords, splitOutcome } from "../src/format.ts";
+import { autospace, unspace } from "../src/autospace.ts";
 import { markdown } from "../src/markdown.ts";
 import { headlineEvidence, isOutside, Store, title } from "../src/store.ts";
 
@@ -259,5 +260,46 @@ describe("settings (D71)", () => {
     A.setSettings({ language: "zh", defaultAfterMin: 60 });
     expect(A.settings).toMatchObject({ language: "zh", defaultAfterMin: 60 });
     expect(sent).toEqual([{ t: "settings_set", patch: { language: "zh", defaultAfterMin: 60 } }]);
+  });
+});
+
+describe("brand pass (D74, D78)", () => {
+  test("the outcome's first sentence is its headline; the rest is said under it", () => {
+    expect(splitOutcome("改成等 flush 完成的信号，不再写死 200ms。连跑 50 遍全过。")).toEqual(["改成等 flush 完成的信号，不再写死 200ms。", "连跑 50 遍全过。"]);
+    expect(splitOutcome("1.41 removed TcpStream::into_std; 4 places don't build. main is untouched.")).toEqual(["1.41 removed TcpStream::into_std; 4 places don't build.", "main is untouched."]);
+    expect(splitOutcome("Done")).toEqual(["Done", ""]);
+    expect(splitOutcome("x".repeat(120))).toEqual(["", "x".repeat(120)]);
+  });
+  test("CJK and Latin get a display-only quarter-em gap that copying takes back out", () => {
+    const shown = autospace("在MacBook上跑了50遍，已有 space 的不动。");
+    expect(shown).toBe("在\u2005MacBook\u2005上跑了\u200550\u2005遍，已有 space 的不动。");
+    expect(unspace(shown)).toBe("在MacBook上跑了50遍，已有 space 的不动。");
+    expect(autospace("plain English 1.41")).toBe("plain English 1.41");
+  });
+});
+
+describe("the quiet conversation (D104)", () => {
+  test("activity frames keep the step and when this client first saw it; null ends the turn at the channel head", () => {
+    const S = new Store();
+    S.apply({ t: "events", events: [ev("user_msg", { text: "hi" })] });
+    const at = new Date().toISOString();
+    S.apply({ t: "activity", activity: { step: "thinking", since: at, stepSince: at } });
+    const first = S.activity!;
+    expect(first.step).toBe("thinking");
+    S.apply({ t: "activity", activity: { step: "thinking", since: at, stepSince: at } });
+    expect(S.activity).toBe(first); // the same step keeps its clock
+    S.apply({ t: "activity", activity: { step: "recalling", since: at, stepSince: at } });
+    expect(S.activity!.step).toBe("recalling");
+    S.apply({ t: "events", events: [ev("ack", { jobId: "j1", text: "On it.", replyTo: seq - 1 })] });
+    S.apply({ t: "activity", activity: null });
+    expect(S.activity).toBeUndefined();
+    expect(S.activityEndedAt).toBe(S.channelSeq);
+  });
+  test("noted lines are kept for Details, not as channel rows", () => {
+    const S = new Store();
+    const u = ev("user_msg", { text: "fix it" });
+    S.apply({ t: "events", events: [u, ev("ai_msg", { text: "Fixed.", replyTo: u.seq }), ev("memory_noted", { title: "Tests use a fake clock", replyTo: u.seq })] });
+    expect(S.channel.length).toBe(2);
+    expect(S.noted.map((n) => [n.title, n.replyTo])).toEqual([["Tests use a fake clock", u.seq]]);
   });
 });

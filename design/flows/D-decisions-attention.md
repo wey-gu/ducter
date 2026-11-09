@@ -380,7 +380,7 @@ the card says so plainly (principle 14: never skip silently) [I].
 | `quiet.moved_deadline` | 那时你在休息，我改到 {time} 再定 | You'll be resting then, so I moved it to {time} |
 | `push.morning` | 早上好。{n} 件等你，最早的 {time} 到点。 | Morning. {n} need you; the first is due at {time}. |
 | `mute.menu` | 这类别告诉我了 | Don't tell me about these |
-| `mute.propose` | 以后{kind}做完了我不单独说，只记在手头里。需要你定的时候照样找你。 | From now on I won't mention it when {kind} finishes; it'll just be in On hand. I'll still come to you when you need to decide something. |
+| `mute.propose` | 以后{kind}做完了我不单独说，只记在「手头的事」里。需要你定的时候照样找你。 | From now on I won't mention it when {kind} finishes; it'll just be in On hand. I'll still come to you when you need to decide something. |
 | `mute.scope.this` | 只这个{thing} | Just this {thing} |
 | `mute.scope.project` | {project} 里的 | In {project} |
 | `mute.scope.all` | 所有类似的 | Everything like this |

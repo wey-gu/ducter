@@ -16,21 +16,51 @@ export function ago(L: Strings, iso: string | undefined, now = Date.now()): stri
   return L.t("time.ago.hour", Math.round(s / 3600));
 }
 
+// Human times (packages/protocol/fixtures/when.json, the same rule as the desktop's
+// i18n/when.go): a time of day without a leading zero; today / tomorrow / yesterday by name; the
+// next six days by weekday; else the date in words ("12 月 1 日" / "Dec 1"), with the year only
+// when it isn't this one. Never "12-01 09:00".
+const ZH_WD = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+const EN_WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const EN_MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const midnight = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+const dayDiff = (d: Date, now: Date) => Math.round((midnight(d) - midnight(now)) / 86_400_000);
+
 export function clock(iso: string | undefined): string {
   if (!iso) return "";
   const d = new Date(iso);
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  return `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
-/** "18:30", or "明天 08:00" when it isn't today. */
+/** The date in words: 今天 / 明天 / 昨天, a weekday within six days ahead, else "12 月 1 日" / "Dec 1". */
+export function day(L: Strings, iso: string | undefined, now = Date.now()): string {
+  if (!iso) return "";
+  const zh = L.lang === "zh";
+  const d = new Date(iso), n = new Date(now);
+  const k = dayDiff(d, n);
+  if (k === 0) return zh ? "今天" : "today";
+  if (k === 1) return zh ? "明天" : "tomorrow";
+  if (k === -1) return zh ? "昨天" : "yesterday";
+  if (k > 1 && k < 7) return (zh ? ZH_WD : EN_WD)[d.getDay()]!;
+  const year = d.getFullYear() !== n.getFullYear();
+  if (zh) return `${year ? `${d.getFullYear()} 年 ` : ""}${d.getMonth() + 1} 月 ${d.getDate()} 日`;
+  return `${EN_MON[d.getMonth()]} ${d.getDate()}${year ? ` ${d.getFullYear()}` : ""}`;
+}
+
+/** A moment: "今天 18:00", "明天 9:00", "周五 9:00", "12 月 1 日 9:00" / "today 18:00", "Dec 1, 9:00". */
 export function when(L: Strings, iso: string | undefined, now = Date.now()): string {
   if (!iso) return "";
+  const dd = day(L, iso, now);
+  const named = dayDiff(new Date(iso), new Date(now));
+  const sep = L.lang !== "zh" && (named > 6 || named < -1) ? ", " : " ";
+  return `${dd}${sep}${clock(iso)}`;
+}
+
+/** A date on a strip of beads: "11/16". */
+export function md(iso: string | undefined): string {
+  if (!iso) return "";
   const d = new Date(iso);
-  const today = new Date(now);
-  if (d.toDateString() === today.toDateString()) return clock(iso);
-  const tomorrow = new Date(now + 86_400_000);
-  if (d.toDateString() === tomorrow.toDateString()) return L.t("time.tomorrow", clock(iso));
-  return `${d.getMonth() + 1}/${d.getDate()} ${clock(iso)}`;
+  return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
 const lastPath = (p: string) => p.replace(/\/+$/, "").split("/").pop() ?? p;
@@ -52,8 +82,26 @@ export function placeLine(L: Strings, p: Place): string {
   return L.t("place.none");
 }
 
+/** A reason's first clause: up to its first comma or full stop outside quotes. */
+export function firstClause(s: string): string {
+  let depth = 0;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i]!;
+    if ("「“(（".includes(c)) depth++;
+    else if ("」”)）".includes(c)) depth--;
+    else if (c === '"') depth += depth > 0 ? -1 : 1;
+    else if (depth <= 0 && ("，。；".includes(c) || (",;.".includes(c) && (i + 1 === s.length || s[i + 1] === " ")))) return s.slice(0, i).trim();
+  }
+  return s.trim();
+}
+
 export function harnessName(h: string): string {
-  return { "claude-code": "Claude Code", codex: "Codex", pi: "pi" }[h] ?? h;
+  return { "claude-code": "Claude Code", codex: "Codex", pi: "pi", "deepseek-harness": "DeepSeek Harness" }[h] ?? h;
+}
+
+/** A model as people say it: Claude Code's aliases capitalized, other ids as they are. */
+export function modelName(m: string): string {
+  return ["opus", "sonnet", "haiku"].includes(m) ? m[0]!.toUpperCase() + m.slice(1) : m;
 }
 
 /** A Latin word in Chinese text gets a space on each side ("在 MacBook 上"). */
@@ -69,3 +117,12 @@ export const sameWords = (detail: string | undefined, title: string) => {
   const norm = (s: string) => s.split(/\s+/).filter(Boolean).join(" ").replace(/[.。…]+$/, "").toLowerCase();
   return !!detail && norm(detail) !== "" && norm(detail) === norm(title);
 };
+
+/** The outcome said once (D74): its first sentence as the headline, the rest in the partner's
+ *  voice under it. A one-sentence report is all headline. */
+export function splitOutcome(summary: string): [string, string] {
+  const text = summary.trim();
+  const m = /^(.+?(?:[。！？]|[.!?](?=\s|$)))\s*/su.exec(text);
+  if (m && m[1]!.length < text.length && m[1]!.length <= 90) return [m[1]!, text.slice(m[0].length)];
+  return text.length <= 90 ? [text, ""] : ["", text];
+}

@@ -23,14 +23,18 @@ shadow, so adding or switching a theme is pure data. The same tokens drive MyGo 
 
 ## Pebble (default) values
 
-- color: bg `#FFF6EA`, surface `#FFFFFF`, ink `#2B2118`, ink-muted `#7A6A58`, accent `#FF8A3D`,
-  decide-surface `#FFE3CF`, decide `#9A3F0E`, ok-surface `#C9F2C7`, progress-surface `#DCEFFF`,
-  user-bubble `#7CC6FF`, line `#E8D9C4`, highlight `#FFE9A8`
-- type: Bricolage Grotesque (500/700/800) + Noto Sans SC
-- shape: radius 8/12/16/22/28/pill (Components below), chunky and slightly irregular avatar
-- depth: a 3px ledge under every filled button only; containers rest on a soft shadow
-  (Components below)
-- motion: bouncy; buttons press down on tap
+> Restored 2026-11-09 from the approved artifacts (D76–D78). Prototype:
+> https://claude.ai/artifact/51djLTYeekc14y1GsP7Wn5.
+
+- color: bg `#FFF6EA`, bg-deep `#FCECD7`, surface `#FFFFFF`, sunken `#F7EBDA`, ink `#2B2118`,
+  ink-2 `#4A3D30`, muted `#75654F`, line `#E8D9C4`, line-2 `#E0C9B0`, accent `#FF8A3D` (ledge
+  `#C9642A`), decide-surface `#FFE3CF` / ink `#8A3A0C` / ledge `#F0C29E`, ok `#D6F5DC` / `#1F5E2F`,
+  fail `#FBDDE4` / `#8A1F3B`, user-bubble `#2B2118` on cream
+- type: Bricolage Grotesque (400/700/800) everywhere in the apps; zh body Noto Sans SC (PingFang
+  SC on Apple); zh headings Resource Han Rounded CN Bold (D78); mono JetBrains Mono
+- shape: radius 12/14/18 (buttons) · 16 (sheets) · 24 (cards) · 28 (hero cards, composer)
+- depth: clay (D76): cards on a solid 4pt base, buttons on a ledge with a drop and a highlight
+- motion: bouncy; buttons sink on press; character and scene breathe, status never (D77)
 
 ## Persona face
 
@@ -47,7 +51,7 @@ brows when something needs you. Other themes render the same states in their own
   in lightness and shape (waiting = dashed outline), not only in hue.
 - **Voices:** the user's messages are cocoa bubbles (`#2B2118` on cream text). Ducter speaks
   bubble-less in 18px body type on the paper, so it reads like a person talking, not a chat
-  app. Structured things (decisions, files, summaries) are white cards on a soft shadow.
+  app. Structured things (decisions, files, summaries) are white cards on the clay base (D76).
 - **Task line:** a task in the partner's words is one quiet line: a drawn mark of where it
   stands, its title as a link, its status in muted words. No fill, no capsule, no dot (D69,
   D73).
@@ -65,47 +69,51 @@ components and tokens; a value not in the scales below needs a token first.
 
 | Scale | Values | Use |
 |---|---|---|
-| type | 12 · 13 · 15 · 18 · 22 · 28 · 34 (`XS SM MD LG XL XXL Title`); mono 12 | captions/labels · secondary and small controls · body, controls, the user's bubble, the composer · the partner's voice, questions · card and lane titles · screen titles · hero |
+| type | 12 · 13 · 15 · 16 · 18 · 20 · 28 · 34 · 56; mono 13 (JetBrains Mono) | captions · labels and small controls · body and controls · the user's bubble and the composer · the partner's voice · card titles and asks · section titles · screen titles and a task's outcome · hero numbers |
 | space | 4 · 8 · 12 · 16 · 24 · 32 · 48 (`S1…S7`) | inside a group S2–S3; between groups S4–S5; a screen's sections S6–S7 |
-| radius | 8 · 12 · 16 · 22 · 28 · pill (`XS SM MD LG XL`) | chips, glyph tiles · buttons, fields · sheets, inset cards, notices · cards · hero cards, the composer · progress bars and dots |
-| controls | 32 · 40 · 48 (`ControlSM/MD/LG`) | chrome and inline lines · cards and the conversation · setup screens |
+| radius | 8 · 12 · 14 · 16 · 18 · 24 · 28 | inline code, diff boxes · small buttons, fields · buttons · sheets, notices · large buttons · cards · hero cards, the composer |
+| controls | 36 · 44 · 52 | chrome and inline lines · cards and the conversation · setup screens and the equip |
 | chips | 24 · 28 · 32 (`ChipSM/Chip/ChipLG`) | a state tag · evidence and metadata · a task in the conversation |
 | motion | press 70 ms · hover/lift `Snappy` · enter 220 ms (6-pt rise + fade) · `Bouncy` for the living message and the equip | reduced motion: no movement, colors still change |
 
-**Depth: the ledge means "this can be pressed".** Every filled button (primary, secondary,
-accent, any size) stands on the same 3px ledge in a darker shade of its own fill and sinks
-into it (translate 3, ledge to 0) while pressed. Nothing else has a ledge.
-- Containers (cards, the living message, the composer, sheets, notices, On hand cards, the
-  dossier) are never pressable-looking: they rest on `Raised` (0 2 10, ink at 7%) or, for a
-  sheet over the page, `Floating` (0 10 32, ink at 14%). Inline sheets (a result's proof) are
-  flat, hung from a 2px hairline.
+**Depth: one clay (D76).** Every solid thing stands on clay; how it stands says what it does.
+- A **card** (the living message, the composer, On hand cards, Devices cards, a page's cards)
+  rests on a solid 4pt base in `line`: `0 4 0 #E8D9C4`. It never moves or presses. A tinted
+  card's base is its own ledge color (needs you: `#F0C29E`). A sheet over the page adds
+  `Floating` (0 10 32, ink at 14%). Inline parts (a file list, a diff, a proof line) are flat.
+- A **button** stands on a 3pt ledge in a darker shade of its fill, with a soft drop (`0 7 12 −4`,
+  ink at 28%) and a 1.5pt inner top highlight; pressed, it sinks (translate 3, ledge 0, drop
+  `0 1 3` at 22%, 70 ms). The drop and the highlight are what keep an ink button standing on
+  an ink surface, where an ink ledge alone disappears.
 - Text buttons (回复… / Reply…, 不用了 / No thanks, 看细节 / Details, 都按默认 / Go on all
   defaults in a section's header) are flat: ink only, a soft tint under them on hover and
   press.
 - There are no chips for status, evidence or metadata (D73, "No pills" below).
 
-**Buttons** (one family): primary (ink on cream text), secondary (surface with a 1px `line`
-hairline), accent (the composer's send), text, and icon (a square of any of them). One radius
-(12), three heights, one type size per height (13 at 32, 15 at 40/48), the same hover (a shade
-lighter or a sunken tint), press (sink into the ledge) and keyboard focus ring on all of them.
+**Buttons** (one family): primary (ink filled from `#3B2D22` at the top, cream text, highlight cream at 26%, a 1pt rim of `#FFECD6` at 8%, a 1pt warm seam `#5A4434` above a `#140D07` ledge, drop at 38%: an ink ledge alone vanishes),
+secondary (cream `#FFF6EA` with a 1pt inner rim of ink at 9%, ledge `#CDAE8C` under a 1pt `#EAD6BC` seam (darker than the paper so it reads as tall as the ink button); on a tinted card
+it turns white on the card's ledge deepened 45% toward the state's strong tone, e.g. `#E99A65` on Needs you), accent (orange, ledge `#C9642A` under a 1pt `#FFA466` seam, highlight white at
+38%: the composer's send, the equip), text (flat), and icon (a square of any of them). Heights
+36 / 44 / 52 with radius 12 / 14 / 18 and type 13 / 15 / 16 (700); the 52 size stands on a 4pt
+ledge. The same hover (a shade lighter), press (sink) and keyboard focus ring on all of them.
 In a row the primary is last (macOS) and at most one primary shows per group.
 
-**Task lines.** A task in the partner's words says its title once, then where it stands: the
-job's status line when it adds something, else the state (a status line that only repeats the
-title falls back to the state). A finished task reads 做完了 / Done: `done?` shows as Done until
-something actually checks the result ("在检查 / checking" only while a check runs).
+**Task lines.** A task line says its title once, then where it stands: the job's status line
+when it adds something, else the state (a status line that only repeats the title falls back to
+the state). A finished task reads 做完了 / Done: `done?` shows as Done until something actually
+checks the result ("在检查 / checking" only while a check runs). In the conversation a task line
+lives inside a message's Details (D104); On hand and the opened task show it directly.
 
-**Results (D73).** The partner's result message already says the outcome in words, so nothing
-under it restates the state (no task chip). Under it:
-1. one quiet line of proof in muted ink at 13: a drawn ✓ (× for a task that didn't work) and
-   plain words per check ("✓ 50/50 cargo test"), then "2 files changed ›" as a text link
-   (opens the task at its changes), then the task's title as a quiet link ("Fix the flaky
-   compaction test ›"). It wraps on a narrow screen and never truncates;
-2. only when something went out, the same kind of line with a drawn ↗ and the literal action
-   ("↗ git push -u origin ducter/fix-ci");
-3. the actions: Merge into main (primary), Open draft PR (secondary). "See changes" is the
-   "2 files changed ›" link, so it is not repeated.
-No blockquote rule, no label column, no capsules.
+**Results (D104; was D73).** The partner's result message already says the outcome in words. In
+the conversation, under it: what went out only when something did (a drawn ↗ and the literal
+action, "↗ git push -u origin ducter/fix-ci"; never folded), then one quiet row of 13pt text
+buttons on the paper: **合进 main / Merge into main** (ink 700) when it is the next step, and
+**看细节 / Details ›** (**收起 / Hide** while open). Details opens in place, set in from a 1.5pt
+`line` hairline: the line of proof (a drawn ✓, × for a task that didn't work, and plain words per
+check; "2 files changed ›" opening the task at its changes; the task's title as a quiet link),
+**开草稿 PR / Open draft PR** as a quiet link, and the message's **记下了 / Noted** lines with
+**忘掉 / Forget**. The opened task (D74) keeps Merge into main / Open draft PR as clay buttons.
+No blockquote rule, no label column, no capsules. Full note: `design/quiet-conversation.md`.
 
 **Notices: the app speaking, never the partner.** The partner speaks in 18px on the paper and
 in cards; a system notice (the CLI offer, the first-result celebration, a held message) is a
@@ -114,28 +122,95 @@ failed-surface), a drawn glyph at its start (no tile), 13/12px text, small (32) 
 Something that needs no answer ("ducter now works in Terminal") is a toast instead.
 
 **Shown, not dotted; no pills (anti-slop rule, D69, D73).** No pulsing or glowing status dots,
-no decorative identity-color dots, no perpetual "alive" animation (breathing rings, gliding
-bars, ticking clocks). **Status and evidence are never capsules**, on any surface: no state
+no decorative identity-color dots, no status that animates on its own (breathing rings, gliding
+bars, ticking clocks); only the clay character and scene may breathe (D77). **Status and evidence are never capsules**, on any surface: no state
 chip, no evidence chip, no metadata pill, no tag row. State is said in words (in its ink when
 it is the exception), evidence is a drawn mark and words, metadata is plain muted text or
 lives in Details. On hand needs no state chip: the lane is the state.
 - State is shown by the thing itself (D43): the clay art (an awake laptop, the napping one
   under its blanket, a filled or empty slot), the chip's tint and its own words, the face.
 - Words appear only for exceptions, plainly ("睡着了 · 醒来就接着做", "连不上 · 2 小时前");
-  the normal state says nothing (an awake worker has no status line; Ducter's home says
-  "Ducter 在这儿" quietly).
-- A state in text is plain text in the state's ink (a lane's count, a failed status line,
-  "Didn't work" on a Done row), never a chip and never with a dot in front.
-- A mark is a drawn glyph that means something (✓ done, clock waiting, → under way, × didn't
-  work, ! look at this, ↗ went out), in muted ink (or the state's ink for an exception),
-  never on a colored tile, never a colored dot.
+  the normal state says nothing more (an awake worker's line only says what it is, "另一台电脑 ·
+  替 Ducter 做事", D84; Ducter's home says "Ducter 在这儿" quietly).
+- A state in text is plain text in the state's ink (a failed status line, "Didn't work" on a
+  Done row), never a chip and never with a dot in front. Counts are never colored by state: a
+  lane's count is in muted ink, and the lane's name says which lane it is.
+- A mark is a drawn glyph that means something (✓ done, clock waiting, → under way, a small
+  speech bubble for asking you (needs you, and the "asks you first" list), × didn't work or a
+  check not met, ↗ went out), in muted ink (or the state's ink for an exception), never on a
+  colored tile, never a colored dot. "!" is never a state's mark (it reads as an alarm); it is
+  only the glyph of an alert notice (a held message).
+- A small action at the end of a line ("How I know") is a text button like every other one:
+  flat, no underline.
 - A one-time highlight (a decision found from a notification) deepens the card's own tint;
   it never glows.
 - Selection on a card is a 2-point ink hairline (cards are containers: no ledge).
-- On the devices stage, a slot is labelled by its ability's name only and is laid out so the
-  label never leaves the stage; AI-account cards shrink to fit; the accessible name carries
-  the full state.
+- On the devices stage (D81), every word sits on a small clay tag (a cream card on a 2pt base)
+  and no two overlap at 1280 or 900 wide; an ability is labelled by its name only; under an
+  island only what is unusual; the accessible name carries the full state. The chosen island
+  is shown by brighter foam and an ink hairline on its tag, never a ring round the island.
 - The partner's clay face may blink or breathe: it is the thing itself, not a status dot.
+- A passed check's ✓ is drawn in the done ink (D76); other marks stay muted.
+
+**Times read like a person says them (D115).** One rule on the desktop and the phone, tested
+against the same cases (`packages/protocol/fixtures/when.json`): 今天 18:00 · 明天 9:00 · 周五
+9:00 · 12 月 1 日 9:00 · 2027 年 1 月 4 日 / today 18:00 · tomorrow 9:00 · Fri 9:00 · Dec 1, 9:00;
+no leading zero on the hour; never 12-01 09:00. A groove's "now" caption sits under Ducter; near
+the start it takes the start's place, near the deadline it gives way.
+
+**Time is drawn; words are its caption (D115).** A wait with a deadline is a sunken groove from
+when it started to its deadline with the little Ducter on its bench at now. Every routine shows
+its next runs on one strip: today an ink mark at its left, a clay bead per run with its date
+under it. A keep-going loop is one clay pebble per try. No ticking numbers; nothing moves on its
+own. Waiting is Ducter's sixth pose (on a bench, looking out) with a small cream bubble holding
+the clay thing awaited (PR, cloud, envelope, clock, file; `design/art/assets/alpha/wait_*`).
+
+**Motion: character and scene may breathe; status never blinks (D77).**
+
+| Thing | Idle motion |
+|---|---|
+| the clay partner | breathes (scale 1.012 × 1.03 from its feet, 3.8 s); blinks with an eyelid over its eyes (150 ms, every 3–6 s, sometimes twice) |
+| an awake device | floats 5pt (5.6 s) |
+| a cloud machine | drifts ±4pt (11 s) |
+| a sleeping device | its blanket rises and falls (scale-y 1.045 from the bottom, 4.8 s) |
+| an ability that is on (Devices stage) | floats 5pt like an awake device (5.6 s), its own phase |
+| the sea and sky (Devices stage) | clouds drift ±16pt (70 s); slow light on the water drifts and fades (11–19 s); repainted at 12 fps |
+| parcels on a bridge | cross at a steady 40 scene-points a second, only while a task runs on that device (a state that is true, not decoration); still mode freezes them in place so "working" still reads |
+| a device that joins | its island rises out of the water (0.55 s), then the device drops on with the equip's squash and sparkles |
+| the equip | peel (14%) → arc (50%) → snap (62–69%), 0.82 s, a tock and a 10 ms haptic |
+| the title moment (D87) | once per Mac: dawn rises, a 3% push-in with parallax, the eyes open on the tone, the logotype lit by a passing light; see `onboarding.md` |
+
+Delays are staggered so nothing moves in unison. A device that can't be reached is still and a
+little grey. One exception (D87): the title moment's "Press any key" breathes (60–100%, 3.4 s); it
+is an invitation, not a status. Status, chips, lines and buttons never animate on their own. Reduced motion: all
+of it stops; the equip cross-fades; colors and words are unchanged.
+
+**Chinese typography (D78).** Bricolage sets Latin and digits; Chinese has its own faces and rules.
+- Faces: headings (≥ 20, where Latin is 800) Resource Han Rounded CN Bold (OFL 1.1) at 94%
+  (`size-adjust`); a native client that can't scale one fallback face sets zh heading sizes one
+  step down (34→32, 28→26, 20→19). Body Noto Sans SC (PingFang SC on Apple); controls 700.
+  Fallback for headings: Noto Sans SC 800. One token swaps the heading face.
+- Letter-spacing on CJK is always 0; Latin tightening (−0.5pt at ≥ 28) applies to Latin runs only.
+- Line-height for zh reading text 1.75 (Latin 1.55–1.65); same component, per language.
+- A 1/4-em gap between CJK and Latin or digits: written into copy (zh strings have spaces);
+  dynamic text (the partner's words, user input, titles) gets it at display time
+  (`text-autospace` where supported, else an inserted U+2005); copied text is unchanged.
+- Kinsoku: 。，、？！）」』 never start a line, （「『 never end one (`line-break: strict`);
+  adjacent punctuation is compressed (`text-spacing-trim`).
+- Balanced wrapping (`text-wrap: balance`) is for short headings only (names, screen and
+  section titles). A question or an outcome is a sentence: it fills the measure
+  (`text-wrap: pretty`), since balancing a long CJK sentence leaves short ragged lines. On a
+  phone (≤ 600) a decision's question is set one step down, 18 instead of 20.
+- Inline code in a zh line: JetBrains Mono at 0.86em on the same baseline, the same 1/4-em gap,
+  short tokens never broken (D73).
+
+**On hand cards.** A task's ask is one clay card in the needs-you tint, the same as the ask in
+the conversation: the task's title as a small link in the needs-you ink at its top (no solid
+colored band), the question, the default and its bar, Reply… · Hold · Go. Working, Waiting
+and Done items are the normal card (no dashed outline; a dashed border is not a state). Under
+a card, at most one short muted line of where it runs and why ("Codex · MacBook · 你的规则
+「后端用 Codex」"); the model, the repo, the branch and the full reason are in the opened task's
+Details.
 
 **Conversation rhythm.** Top-aligned (no empty band above a short conversation). 12 between
 two things one voice says, 24 where the turn passes; 12 inside a message (text → chip → sheet
@@ -145,15 +220,23 @@ two things one voice says, 24 where the turn passes; 12 inside a message (text �
 muted, the level's name 18/800). Right: what you can do (small secondary buttons). Metadata
 (model, place, project) is never in the chrome: it is in the task's Details (D74).
 
-**Decisions in the conversation (D73).** The living message's title "你不在的时候 / While you
-were away" shows only when the user was away: it came before the window opened and was
-unread, or while the window was in the background. The count shows once, in the section's
-header ("2 件等你 / 2 need you"), with 都按默认 / Go on all defaults as a text button at its
-end. Each ask names the task that asks as plain small words in the needs-you ink (nothing for
-the partner's own asks); its buttons are Go-as-the-action, Hold, Reply…, and Details right
-after them (on the phone, where four don't fit, and on On hand, the asking task's title is
-the link instead). The other items are one line each: a drawn mark in muted ink, no tile.
-Short code tokens in a message never break mid-word; only a long path may wrap.
+**Decisions in the conversation (D104; was D73).** The living message has no card. When the
+user was away (it came before the window opened and was unread, or while the window was in the
+background), a centered 12pt time line "你不在的时候 · 10:40 / While you were away · 10:40". A
+task that didn't work is one sentence in the partner's voice with Details; work under way and
+waits are not said. Each ask is the partner's words (18, regular), then its default in one 13pt
+line in the needs-you ink with Details, then, on the ask whose default comes soonest only, one
+36pt row: Reply… (text) · Hold (secondary) · Go-as-the-action (primary, last; zh "好，rebase").
+The other open asks gather in one 13pt line, "还有 1 件等你定 › / 1 more waiting on you ›" and
+"都按默认 · 2 / Go on all defaults · 2". The count shows only in the header. An answered ask
+keeps its question and says the outcome once. Time lines (12pt, centered, muted) stand before
+the first message and wherever 15 minutes passed. Short code tokens in a message never break
+mid-word; only a long path may wrap.
+
+**The waiting line (D104).** While the user waits on a reply, the clay partner (32pt, working
+face, breathing) and one 15pt muted line sit where the reply will land, from the moment of
+sending; the line follows the partner's step and a 13pt reassurance joins it past 15 s and
+45 s on one step. Words in `design/quiet-conversation.md`. The header no longer says 在想….
 
 ## Places (D71)
 
@@ -162,28 +245,37 @@ v1 has five places, and every one is reachable from the menu bar, a shortcut and
 | Place | Reach it | What it is for |
 |---|---|---|
 | 对话 / Conversation | ⌘1, Esc from any other place | Home: talk, decide, see results |
-| 手头 / On hand | ⌘2, the button in the conversation's bar | Every task and what waits for you |
+| 手头的事 / On hand | ⌘2, the button in the conversation's bar | Every task and what waits for you |
 | 设备 / Devices | ⌘3, the clay device button | The setup surface: devices, what they can do, AI accounts (sign in, install, sign out on this Mac), Connect a phone or computer |
-| 伙伴 / Partner | ⌘4, the partner's own face and name | A character sheet: the clay partner large with its five faces (hover one to see it big), the name renamed in place, then How it talks · When it comes to you · What it remembers · On its own, or asks you first |
+| 伙伴 / Partner | ⌘4, the partner's own face and name | A character sheet across the whole hero card: on the left the clay partner large, its name (renamed in place) and where it lives; on the right its five faces as a row filling the card (hover one to see it big); no status line under the name. Beside the clay partner, a clay socket holds the AI agent it thinks with (D89), labelled 想事情用 / Thinks with, the account and model in words under it. Then the tray of this Mac's AI agents (clay tokens with a limit ring each; on the partner's own account the last 10%, kept for it, is the darker accent; not installed: a dashed ring), then two cards: What it thinks with · Who does the tasks. Then How it talks · When it comes to you · What it remembers · On its own, or asks you first |
 | 设置 / Settings | ⌘, and Settings… in the app menu and the menu bar extra | The app's own, calm: Look, Language, When you close the window, Updates, Data and logs, About, Remove Ducter (last, a quiet text button) |
 
 An opened task is the third zoom level under On hand. The **menu bar extra** (the clay partner
 as a template icon) is the handheld moment: with the window closed, its menu lists what needs
 you, each with Go / Hold / Reply…, then Open Ducter. The phone has one **Settings sheet**
-(tap the partner) with the partner's settings and the phone's own language.
+(tap the partner) with the partner's settings and the phone's own language; What it thinks with and Who does the tasks are lists there (an agent's row: its clay token, name, one line, Use it for tasks), with no stage (D89).
 
-**Choices** (talk language, interface language, the default wait) are a row of flat choices, the
-chosen one in ink; switches are the platform's. A page's cards are containers on `Raised`; an
+**Switching what it thinks with** (D89) is the one game moment on Partner: Switch lifts the
+tray tokens that can go in (the others step back and say why: Install first, Pick a model
+first, Coming later), a tap flies the token into the socket with the equip's lift → arc →
+tock (`research/26`; reduced motion: a cross-fade), then one line: "{name} thinks with {agent}
+now". Nothing blinks; only the partner breathes.
+
+**Choices** (talk language, interface language, the default wait) are a segmented clay control
+(D76): a sunken track (`#F3E6D3`, radius 16, 4pt inset), the chosen one a white surface on a 2pt
+`#E0C9B0` base in ink 700, the others muted 500; switches are the platform's. A page's cards
+stand on the card base; an
 empty list (no noted lines) is left out with its heading. Screenshots:
 `.shots/ia-2026-11-09/` (native zh/en, full-length headless, the phone sheet).
 
 ## Three zoom levels (Core UI canvas: https://claude.ai/artifact/U9r15Tpm8AL7aGQZwrtbDL)
 
-1. **The conversation** (default). One partner, no machinery. Tasks appear only as quiet
-   task lines inside the partner's messages; the header line says in words what needs you and what is
-   being worked on, and **手头 / On hand** is a plain button. The living message carries decisions inline with Go / Hold / Reply, so most days
-   the user never leaves this view.
-2. **手头 / On hand** (overview for decisions, all personas).
+1. **The conversation** (default). One partner, no machinery: its words, and one quiet row
+   (Merge into main, Details) under a message with something behind it (D104). The header line
+   says in words what needs you and what is being worked on, and **手头的事 / On hand** is a plain
+   button. The ask due soonest carries Go / Hold / Reply in one small row, so most days the user
+   never leaves this view.
+2. **手头的事 / On hand** (overview for decisions, all personas).
    - The top band is the **attention forecast** in plain words: when each task will next need
      you (defaults taking effect, waits coming due). The lanes' headers carry the counts.
    - Below it are four lanes: **等你 / Needs you** (wide decision cards with the question,
@@ -195,11 +287,16 @@ empty list (no noted lines) is left out with its heading. Screenshots:
    - On mobile, decisions are a swipeable stack: swipe left takes the default, swipe right
      means later.
    - Routines appear as one card each, with the next firing time.
-3. **An opened task** (conductor depth; D74). One centered column on the conversation's
-   measure and rhythm, read top to bottom; the header is the breadcrumb and the title only.
-   1. Where it stands, in words in the state's ink (a drawn mark, "Done · started 14 min
-      ago"; for a task under way, its latest status line).
-   2. A pending ask, as in the conversation.
+3. **An opened task** (conductor depth; D74, D90). One centered column on the conversation's
+   measure and rhythm, read top to bottom; the window's header is the breadcrumb and the title only.
+   1. **The head is one block** (D90): the state face (96 pt) beside one quiet meta line,
+      the state in its ink, then "{time}开始的 / started {time}" and who does it ("· Codex"),
+      and a headline that is always there: while it works, what it is doing now in a
+      sentence (why it waits, its latest report, its latest saved progress, else its title)
+      at 28/800; finished, the outcome at 34/800. No link chain in the head.
+   2. A pending ask, as in the conversation; **换谁来做 / Switch who does it** opens here as
+      a card (D89): who does it now, the top three others with why and the limit each, the
+      ones that can't greyed with why, then Continue on X.
    3. The outcome, said once: the report in the partner's size, the line of proof, what went
       out, then Merge / Open draft PR (Try again for one that didn't work). It replaces the
       result banner and the "Told Ducter · done" card.
@@ -210,10 +307,16 @@ empty list (no noted lines) is left out with its heading. Screenshots:
    5. **改动 / Changes**: the changed files, each with +added −removed; a file opens its diff
       in place, full width, under a quiet header. No diff shows by default; a task in no repo
       has no section. The phone names the changes in the proof line and shows no diff.
-   6. A quiet **细节 / Details ›** disclosure: who is doing it and why, where (repo and
-      branch; the path as the user named it, never a scratch absolute path), saved progress
-      as a plain list, what went out, usage only if there is any. A row with nothing to say
-      is left out.
+   6. A quiet **细节 / Details ›** disclosure: who is doing it and why as one sentence
+      ("Codex is doing it, because Claude Code's limit is low." · Switch who does it), where
+      (repo and branch; the path as the user named it, never a scratch absolute path), saved
+      progress as a plain list with each time beside its item, what went out, usage only if
+      there is any. A row with nothing to say is left out. Labels sit in a fixed column on
+      the value's first baseline; values start on the head's left edge.
+
+   Type and rhythm (D90): section headings 18/800, one step above the 15 body; gaps 8 / 16 /
+   24 / 32; a headline or paragraph at most about 68 Latin or 36 Chinese characters a line
+   (D78 Chinese rules: leading 1.75, no tracking).
    The box to talk to the task stays at the bottom of the window, as the conversation's
    composer does.
 
@@ -226,6 +329,8 @@ empty list (no noted lines) is left out with its heading. Screenshots:
 | Flows | https://claude.ai/artifact/LKuVp3knPDJ4EdoyWBGSWN | 21 key screens for groups A, B, D, E, C | draft |
 | Concept art | https://claude.ai/artifact/HAPoyBbrSkm6sYjqGoNMze | character and screen art directions, rounds 1–2 | round 2 recommended: puffy matte clay |
 | Loadout (2D) | https://claude.ai/artifact/CUpw7P1bPjKQKQYeLkUVzG | devices / AI accounts / ability-sticker interaction | grammar prototype; art to be replaced |
+| Work over time | https://claude.ai/artifact/CMBoqncshR96q9fzgUhpXy | waits, keep-going tries, routines: On hand, the opened task, proposal cards, the phone (D112–D115) | v5, reviewed by the lead; author review pending |
+| Quiet conversation (D104) | https://claude.ai/artifact/8ZaW9XS7a7NEBX1ATD4Khr | before / after on the demo seed, the waiting line, where each removed line went, three users (zh/en) | proposal, pending the author's review |
 | Phone web (built) | `.shots/phone-*.png` (390×844, zh/en, light/dark) | the real `apps/web` client: conversation, decisions, On hand, opened task, pairing, notifications | built, pending review |
 
 ### Screenshots of the built clients (2026-11-09)
@@ -247,123 +352,36 @@ relative paths as before), and each review is shown as a published gallery.
 | Taste review | `.shots/desktop/review-{before,after}-{zh-1280,en-900}-*.png` | headless renderer, mock (`DUCTER_REVIEW`) | every screen at 1280 and 900 px, before and after the taste pass |
 | Phone web | `.shots/phone-*.png` | headless browser at 390×844 on a demo core; `phone-real-sonnet-result-zh` from a real sonnet run | conversation, decision sheet, decided, On hand, task, result, pairing, notify ask, iOS hint, offline; dark variants |
 | Design QA (D73, D74) | `.shots/qa-2026-11-09/{before,after}-*.png`, index in its `README.md` | native desktop window (cua-driver) on the demo seed, iOS Simulator, headless Chromium at 390 and 1440 (phone web, site) | no pills, the result line, the living message, On hand, the one-column task (done, working, didn't work), devices, setup, the site |
+| Quiet conversation (D104) | `~/dev/ducter-evidence/quiet-conversation/{desktop,web}/` | native desktop window (cua-driver) on the demo seed with its scripted partner, scratch HOME; headless Chromium at 390 | before / after zh and en, Details open, the waiting line at 0.15–3.2 s and past 15 s / 45 s, Settings |
 
-## Capability map (D43): the hybrid (D65)
+## Devices stage: the Isles (D81)
 
-> Status: **decided D65**: the literal playset's world with the loadout's equip snap, still to
-> pass a human comprehension test before it ships. No category noun on screen (D66): headings
-> say 你的设备，和它们会做的事 / Your devices and what they can do. The research summary below is
-> the evidence (`research/24`, `26`, `28`).
-> - **research/26 (loadout, the user's mecha/equip feel):**
->   - Loadout as first proposed reads as military: the user as commander (3/3), combat, pilots
->     that can't share a plan, and a floating partner that's still reachable while home sleeps.
->   - **Recommended hybrid:** the playset's world (real device shapes on a sunny mat, literal
->     cards when zoomed out) plus the loadout's characters and **equip snap**.
->   - The partner **rides in a seat on the home device and shares its pulse light**; "home
->     sleeps, so the partner is unavailable" read correctly 3/3 (needs a human test).
->   - Never: weapons, stats, slot limits, hangar or roster screens, "mission", kneeling as
->     sleep, a floating partner, a charging cradle.
->   - **Equip motion:** about 0.6–0.8 s. Lift → drag with lag → slot opens → magnetic pull →
->     50 ms freeze + "tock" + light haptic → bounce → device blinks and nods. The chime fires
->     only once the capability actually works. Reduced motion = cross-fade.
-> - **Recommendation:** a *literal playset*. The user's real devices are drawn as chunky toys on
->   a table, with plain cards at zoom-out.
->   - Each AI plan is one block per account, with cords to every device signed into it
->     (shared quota read correctly 11/12 times with cords, vs 0/2 for the Isles woodpile).
->   - Capabilities are cartridges that click into devices.
->   - The partner sits on its home device and naps with it.
->   - Memory is a book in the partner's backpack (read correctly 18/18; the lighthouse got 0/2).
->   - The phone used to reach home is a walkie-talkie (20/20).
-> - **Scores:** playset 90, literal cards 80, Isles and the others 66–71, orchestra 55.
-> - **Pitfalls found:** sleep reads as "broken"; battery and fuel read as device power; an apron
->   reads as "servant", a baton as "boss".
-> - **Caveats:** text-proxy raters only; humans are needed (pass bar ≥80% on key items, no
->   boss or servant reads).
->
-> The Isles text below is candidate A, kept for comparison.
+The decision is D81 (and D82 for the shared line); the evidence is `research/33` (seven scene
+metaphors, 96 rater calls: Isles 129/180 against the literal floor's 106, felt better 16 vs 11
+of 20), building on `research/24`, `26`, `28` and D65's equip snap. Built in
+`apps/desktop/internal/views/isles.go` (the scene), `pairing.go` (the jetty and its sign) and
+`devicecard.go` (the chosen device's card); the scripted demo has a scene for every state
+(`MOCK_SCENE` / `GET /demo/scene?name=…` on the mock server).
 
-### Candidate A: The Isles
-
-**The problem:** "devices, harnesses, subscriptions, browser, computer use, memory, remote
-access" is a wall of concepts. Settings lists never make it land.
-
-**The answer:** draw the user's setup as a small archipelago they can see and play with.
-
-#### Why islands (first draft reasoning, not validated)
-
-- **It grows from the theme.** The partner and every task are pebbles, and pebbles live on
-  shores and in water, so a sea of islands is their natural world.
-- **It encodes real architecture, not decoration.**
-  - Devices are separate, isolated islands. They connect only by explicit piers and boats,
-    which matches "devices dial out only" and honest isolation.
-  - The sea is the network.
-- **The verbs are universal and delightful.** Handing work to a device is *skipping a stone*
-  (打水漂) from the home isle to another island. Every culture knows it; no pun is needed.
-- **It scales:** more devices are more islands, a phone is a boat at the pier, calls later
-  are a lighthouse radio.
-- **It restyles per theme:**
-  - Pebble: a sunny cozy sea.
-  - Paper: an old ink sea chart.
-  - Midnight: a night sea with sweeping lighthouse beams.
-  - Signal: a sonar schematic.
-  - Volt: a bold poster map.
-- *Rejected:*
-  - **Town:** buildings flatten everything into "places", and a town loses isolation and
-    distance.
-  - **Courtyard:** warm, but cramped beyond 2–3 devices, and cloud machines don't belong in
-    a yard.
-
-### The rule: pictures metaphorical, words plain
-
-Labels always say exactly what a thing is ("MacBook · Claude Code", "Browser"). The metaphor
-makes things graspable at a glance; it never makes the user guess.
-
-### Mapping
-
-| Picture | Real thing | States shown in the picture |
+| In the scene | What it is | States |
 |---|---|---|
-| **Home isle**, where the partner(s) live | The device running the main process | Faces of all personas idle here |
-| **Isle** | Any device. A VPS floats slightly above the water, held up by a small cloud | Fog = asleep; storm-grey = offline; a tiny "z" |
-| **Workshop hut** on an isle | A harness logged in on that device (Claude Code, Codex, pi) | Chimney smoke = working; **woodpile** = remaining quota; "sign in" sign = logged out |
-| **Spyglass** | Browser use on that device | Looking out = in use |
-| **Little hands at a desk** | Computer use (cua) on that device | Hands moving = in use; VM bubble around them = isolated VM |
-| **Lighthouse** on Home | Nowledge Mem | Beam = connected; dark = unavailable |
-| **Pier** + **boats** | Remote access (Ducter Edge or own domain); each paired phone or laptop is a boat | Boat docked = paired; a paper boat floating in = a notification |
-| **Pebbles** | Tasks | Skipping across = being handed to a device; resting on an isle = working there; **orange flag** = needs you; mint = done |
+| the big island in the middle, Ducter on its grass beside the laptop | the Mac (or server) Ducter lives on | Ducter's face: idle, working (reading), done after an equip, napping when home sleeps |
+| a smaller island round it, far ones smaller | another computer (D84), or a phone / app window that reaches Ducter | awake floats; asleep under its blanket; can't reach: soft mist, the device a little grey, one line of words |
+| a plank-and-rope bridge from home | the connection (only ever to home) | pale when the device can't be reached; relaxed when asleep; never slack or broken |
+| parcels crossing a bridge | a task running on that device now | none when nothing runs there |
+| small clay tokens on an island, names on tags | the AI agents signed in on that device | tap one: every island where it is signed in lifts; the card says "N 台设备共用" |
+| full-size clay objects on the water in front of the island (a globe in a browser frame, a hand on a laptop, a little lighthouse, a hand tapping a phone, a handset on its base) | abilities that are on | bob gently; the equip flies in; not yet: the same object desaturated and a little see-through (the list beside the stage) |
+| a stitched clay socket beside them, the object faint inside it | an ability that can be added (or needs a fix first) | dashed accent ring while one is held over the stage, hovered or in flight |
+| small clay mailboxes on home's right rim | the user's connections (D96), at most three | |
+| a jetty from home, a ring of still water, a sign | the one-time code is out, waiting for a device (D83) | the scene makes room for the sign; the new island rises in that water |
 
-### Enabling a capability ("place a piece")
-
-1. A **driftwood shelf** at the bottom holds the available pieces. A locked piece says exactly
-   what it needs ("Needs a Mac", "Sign in to Codex").
-2. Tap a piece and the **island where it will live glows**. A card shows *what it does* as one
-   line plus a 3-second looping mini scene (the spyglass finds a page and fills a form).
-3. Confirm. The piece **floats out over the water and lands** on its island with a soft
-   bounce and a ripple. Setup steps (official login, permissions) run in a sheet.
-   Progress is a tiny scaffold around the piece; health is a small lantern.
-4. Problems appear **where they live**: an empty woodpile, a broken pier plank, a fogged isle
-   holding a waiting pebble. Tapping one opens the fix.
-
-### Where the Isles appear
-
-- **Onboarding:** the cartoon's last scene pulls back into the Isles, which *is* the live setup
-  checklist: Home, this device's isle, at least one workshop, the lighthouse (optional).
-- **Devices / settings:** the Isles are that page, with a plain list view beside them for
-  accessibility and power users.
-- **Anywhere something is missing:** the partner says so in words and links to the Isles,
-  zoomed to that island.
-
-### Name
-
-**群岛 / The Isles.** The page title reads "你的群岛 / Your isles". In conversation the
-partner says "我放到你的 VPS 那座岛上了 / I sent it over to your VPS isle" only when the
-user is on the Isles view. Elsewhere it uses the plain device names.
-
-### Constraints
-
-- Renders in MyGo native UI: flat vector shapes, transforms, and a light isometric tilt. No
-  3D engine.
-- Every element has a text label and an i18n key.
-- Respects reduced motion: stones teleport instead of skipping.
+Layout: home in the middle; six spots round it (back right, back left, front right, front
+left, far left, far right), an island keeps its spot while it is there; the abilities' row sits
+under home's name and below the front islands' words. The scene frames itself to fit what is on
+stage (one device large, up to 1.35×; six fill it) and eases when that changes. Art: the islands
+are clay renders (`design/art/assets/alpha/island_big.png`, `island_small.png`, 1600 wide,
+runtime @1280); the sea, sky, foam, reflections, bridges and parcels are drawn from the
+`Isles` tokens (`theme.go`).
 
 ## Art direction (D53)
 
@@ -373,9 +391,10 @@ user is on the Isles view. Elsewhere it uses the plain device names.
   contact shadows. Never glow, neon, bloom, rainbow gradients, lens flare, or over-gloss.
 - **Character:** the round-2 clay Ducter (`design/art/concepts/r2/r2_char_clay.jpg`) is the
   identity reference for every pose.
-- **Capability screen:** round-2 board v2 (`r2_board_2.jpg`): device cards on the left, the
-  hero device on a pedestal with slots, the ability grid on the right, AI-account tokens with
-  allowance rings at the bottom.
+- **Capability screen:** device cards on the left, the Isles scene in the middle (D81), the
+  chosen device's card and the ability grid on the right. (First drafted as round-2 board v2,
+  `r2_board_2.jpg`: the hero device on a pedestal with slots, AI-account tokens with
+  allowance rings at the bottom.)
 - **Equip motion:** sticker peel-and-stick (`research/26`, `research/28` timings).
 - **Asset pipeline:** generate with the reference images for consistency, select, clean up,
   and export at 1×/2×/3× with transparent backgrounds. Only final exports go into git, plain

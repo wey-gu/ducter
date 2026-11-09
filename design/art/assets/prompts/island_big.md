@@ -1,0 +1,5 @@
+A clay island for a toy diorama, seen from slightly above (three-quarter top view, the same camera and the same soft top-left key light as the reference renders), wide and low, about three times wider than tall. Rich hand-made clay detail, crisp and high resolution:
+- Top: a flat meadow of sage-mint clay grass, with soft rounded grass tufts pressed in by hand, subtle fingerprints and tool marks, a few tiny clay pebbles (cream, butter, pale grey) and one tiny clay flower (white petals, butter centre) near the back-left edge. The middle of the meadow stays clear and flat (a laptop and a character will stand there later).
+- Rim: a thick, rolled rim of warm sand clay all the way round, with fine sandy grain and gentle tool marks; it catches a soft rim light on its top-left edge and falls into gentle shade at the lower right.
+- Underside: a puffy pale-cream clay base made of soft rounded lobes, with soft ambient occlusion where it meets the rim.
+Matte, velvety, slightly imperfect, clearly made by hand; premium Nintendo/Pixar product-render quality. Clean silhouette, no water, no reflection, no background objects, no people, no buildings, no text.

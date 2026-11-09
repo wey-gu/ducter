@@ -1,14 +1,17 @@
-// The phone's screens: the conversation (default), 手头 / On hand, an opened task, and the
+// The phone's screens: the conversation (default), 手头的事 / On hand, an opened task, and the
 // sheets (a decision opened from a notification; this phone's settings). Behavior follows the
 // desktop client (apps/desktop/internal/views); copy comes only from i18n.ts.
-import type { Attention, Bodies, EvidenceRef, LivingItem } from "@ducter/protocol";
+import type { Attention, Bodies, Candidate, DeviceHarness, EvidenceRef, LivingItem } from "@ducter/protocol";
+import { Fragment } from "preact";
+import { PARTNER_RESERVE } from "@ducter/protocol/src/loadout.ts";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { JSX } from "preact";
 import { A } from "./app.ts";
-import { ago, cjkPad, deviceLabel, duration, harnessName, placeLine, sameWords, when } from "./format.ts";
+import { ago, cjkPad, deviceLabel, duration, firstClause, harnessName, modelName, placeLine, sameWords, splitOutcome, when } from "./format.ts";
 import { markdown } from "./markdown.ts";
 import { disablePush, enablePush } from "./push-client.ts";
 import { inApp } from "./native.ts";
+import { Beads, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, WaitBubble, waitCaption, WaitDetails, waitLine } from "./work.tsx";
 import {
   attention,
   bodyReasonOf,
@@ -26,6 +29,7 @@ import {
   headlineEvidence,
   resultEvidence,
   title,
+  whoOf,
   type DecisionState,
   type Entry,
   type Task,
@@ -36,18 +40,62 @@ const coarse = () => matchMedia("(pointer: coarse)").matches;
 
 // ---------- small pieces ----------
 
-const ART = ["idle", "working", "needsyou", "done", "napping"] as const;
-const FACE_KEY = { idle: "face.idle", working: "face.working", needsyou: "face.needs_you", done: "face.done", napping: "face.napping" };
+const ART = ["idle", "working", "needsyou", "done", "napping", "waiting"] as const;
+type Face = (typeof ART)[number];
+const FACE_KEY = { idle: "face.idle", working: "face.working", needsyou: "face.needs_you", done: "face.done", napping: "face.napping", waiting: "face.waiting" };
+const stillMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-export function Avatar({ size, state, big }: { size: number; state?: (typeof ART)[number]; big?: boolean }) {
+/** Blinks the idle face's eyelids every 3-6 s, sometimes twice (D77). Character only. */
+function useBlink(ref: { current: HTMLElement | null }, on: boolean) {
+  useEffect(() => {
+    if (!on || stillMotion()) return;
+    let h: ReturnType<typeof setTimeout>;
+    const blink = () => {
+      for (const lid of ref.current?.querySelectorAll<HTMLElement>(".idle.on .lid") ?? [])
+        lid.animate?.([{ transform: "scaleY(0)" }, { transform: "scaleY(1)", offset: 0.45 }, { transform: "scaleY(1)", offset: 0.55 }, { transform: "scaleY(0)" }], { duration: 150, easing: "ease-in-out" });
+    };
+    const next = (ms: number) =>
+      (h = setTimeout(() => {
+        blink();
+        if (Math.random() < 0.2) setTimeout(blink, 260);
+        next(3000 + Math.random() * 3200);
+      }, ms));
+    next(800 + Math.random() * 2500);
+    return () => clearTimeout(h);
+  }, [on]);
+}
+
+/** The clay partner: the face for its state (or the one given), breathing; the idle face blinks.
+ *  Faces cross-fade on a change, standing on the box's bottom edge. */
+export function Avatar({ size, state, still }: { size: number; state?: Face; still?: boolean }) {
   const p = state ?? A.presence();
+  const ref = useRef<HTMLSpanElement>(null);
+  useBlink(ref, !still);
   return (
-    <span class="avatar" style={{ width: size, height: size }} role="img" aria-label={t(FACE_KEY[p], A.S.personaName)}>
-      {ART.map((n) => (
-        <img key={n} class={n === p ? "on" : ""} src={big && n === "idle" ? "app/art/idle-lg.png" : `app/art/${n}.png`} alt="" draggable={false} />
-      ))}
+    <span ref={ref} class={`avatar${still ? "" : " breathe"}`} style={{ width: size, height: size }} role="img" aria-label={t(FACE_KEY[p], A.S.personaName)}>
+      {ART.map((n) =>
+        n === "idle" ? (
+          <span key={n} class={`idle${n === p ? " on" : ""}`}>
+            <img src="app/art/idle.webp" alt="" draggable={false} />
+            <i class="lid l" />
+            <i class="lid r" />
+          </span>
+        ) : (
+          <img key={n} class={n === p ? "on" : ""} src={`app/art/${n}.webp`} alt="" draggable={false} />
+        ),
+      )}
     </span>
   );
+}
+
+/** An opened task's face: how the partner looks about it (D76). */
+function faceOf(a: Attention): Face {
+  if (a === "needs_you" || a === "failed") return "needsyou";
+  if (a === "done" || a === "done_claimed") return "done";
+  if (a === "working") return "working";
+  if (a === "dropped" || a === "superseded") return "napping";
+  if (a === "blocked") return "waiting"; // D112: on its bench, looking out
+  return "idle";
 }
 
 // No status dots (ui.md, "Shown, not dotted"): state is the thing itself, its words, or a
@@ -79,21 +127,26 @@ const Arrow = () => (
     <path d="M10 15V5M5.5 9.5L10 5l4.5 4.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
   </svg>
 );
+const Chev = () => (
+  <svg class="chev" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+    <path d="M4.5 2.5 8 6l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+  </svg>
+);
 const Out = () => (
   <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
     <path d="M3.5 10.5l7-7M5.5 3.5h5v5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
   </svg>
 );
-const Bang = () => (
+/** A small speech bubble: it is asking you (the calm mark of needs you; "!" reads as an alarm). */
+const AskMark = () => (
   <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
-    <path d="M7 2.8v5.4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
-    <circle cx="7" cy="11" r="1.3" fill="currentColor" />
+    <path d="M3.6 2h6.8A2.1 2.1 0 0 1 12.5 4.1v3.6a2.1 2.1 0 0 1-2.1 2.1H6.2L3.6 12.3V9.8A2.1 2.1 0 0 1 1.5 7.7V4.1A2.1 2.1 0 0 1 3.6 2z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" />
   </svg>
 );
-/** The drawn mark of an attention state: → under way, clock waiting, ! needs you, ✓ done, × didn't work. */
+/** The drawn mark of an attention state: → under way, clock waiting, a speech bubble asking you, ✓ done, × didn't work. */
 function StateMark({ a }: { a: Attention }) {
   if (a === "blocked" || a === "queued") return <Clock />;
-  if (a === "needs_you") return <Bang />;
+  if (a === "needs_you") return <AskMark />;
   if (a === "done" || a === "done_claimed") return <Check />;
   if (a === "failed" || a === "dropped" || a === "superseded") return <Cross />;
   return <Forward />;
@@ -108,10 +161,17 @@ const Back = () => (
 // today, so "Done · checking" would promise one that never comes (desktop: stateLabel).
 const stateLabel = (a: Attention) => t(`state.${a === "done_claimed" ? "done" : a}`);
 
-function Btn(p: { kind: "primary" | "quiet" | "text" | "accent"; onClick: () => void; label: string; about?: string; disabled?: boolean; grow?: boolean; class?: string }) {
+/** One clay button family (D76): primary last in a row, at most one per group. */
+function Btn(p: { kind: "primary" | "secondary" | "text" | "accent"; size?: "sm" | "lg"; onClick: () => void; label: string; about?: string; disabled?: boolean; grow?: boolean; class?: string }) {
   return (
-    <button class={`btn ${p.kind}${p.grow ? " grow" : ""}${p.class ? ` ${p.class}` : ""}`} onClick={p.onClick} aria-label={p.about ? `${p.label} · ${p.about}` : undefined} disabled={p.disabled}>
-      {p.label}
+    <button
+      class={`btn ${p.kind}${p.size ? ` ${p.size}` : ""}${p.grow ? " grow" : ""}${p.class ? ` ${p.class}` : ""}`}
+      onClick={p.onClick}
+      title={p.kind === "primary" ? p.label : undefined}
+      aria-label={p.about ? `${p.label} · ${p.about}` : undefined}
+      disabled={p.disabled}
+    >
+      <span class="lbl">{p.label}</span>
     </button>
   );
 }
@@ -205,6 +265,7 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
   return (
     <>
       <div class="q">{d.question}</div>
+      {d.routineId && <RoutineFacts routineId={d.routineId} />}
       {open && <div class="dl">{info.line}</div>}
       {open && info.frac !== undefined && (
         <div class="countdown" aria-hidden="true">
@@ -212,9 +273,9 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
         </div>
       )}
       {open ? (
-        <div class="btns">
-          <Btn kind="primary" label={goText} about={about} onClick={() => A.decide(d.decisionId, "go")} />
-          <Btn kind="quiet" label={t("decision.hold")} about={about} onClick={() => A.decide(d.decisionId, "hold")} />
+        // Reply… · Hold · Go, the primary last (D76). Hold and Go stay one pair; a long Go
+        // sends Reply… to its own line under them (.btns.decide).
+        <div class="btns decide">
           <Btn
             kind="text"
             label={t("decision.reply")}
@@ -224,6 +285,10 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
               A.changed();
             }}
           />
+          <span class="pair">
+            <Btn kind="secondary" label={t("decision.hold")} about={about} onClick={() => A.decide(d.decisionId, "hold")} />
+            <Btn kind="primary" label={goText} about={about} onClick={() => A.decide(d.decisionId, "go")} />
+          </span>
         </div>
       ) : (
         <Resolved d={d} />
@@ -239,7 +304,7 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
             onEnter={() => draft.trim() && (A.decide(d.decisionId, "reply", draft.trim()), A.replyDraft.delete(d.decisionId))}
           />
           <button
-            class="send"
+            class="btn accent icon send"
             aria-label={t("composer.send")}
             disabled={!draft.trim()}
             onClick={() => {
@@ -287,7 +352,10 @@ function DecisionCard({ d, taskId, inTask }: { d: DecisionState; taskId?: string
  *  words. No fill, no capsule (D73). */
 function TaskLine({ task, detail }: { task: Task; detail?: string }) {
   const a = attention(task);
-  const d = (!sameWords(detail, title(task)) && detail) || stateLabel(a);
+  let d = (!sameWords(detail, title(task)) && detail) || stateLabel(a);
+  // Who is doing it ends the line while it is under way, with why when it isn't the plain pick (D89).
+  const [who, why] = whoLine(task);
+  if (who && !finished(task) && a !== "dropped") d += ` · ${who}${why ? ` · ${why}` : ""}`;
   return (
     <button class="taskline" onClick={() => A.go({ name: "task", id: task.id })}>
       <span class="ic">
@@ -324,7 +392,7 @@ function ProofLine({ task, evs, withTitle, max = 4 }: { task: Task; evs: Evidenc
           </button>
         ) : (
           <span key={i} class="mk" title={ev.ref}>
-            {failed ? <Cross /> : machineChecked(ev.kind) ? <Check /> : null}
+            {failed ? <Cross /> : machineChecked(ev.kind) ? <span class="ok"><Check /></span> : null}
             {ev.label}
           </span>
         ),
@@ -374,7 +442,7 @@ function ResultActions({ task, inTask }: { task: Task; inTask?: boolean }) {
         // offer to try again, never claim a failure.
         <>
           <span class="small">{t("result.unsure")}</span>
-          <Btn kind="quiet" label={t("task.action.retry")} about={title(task)} onClick={() => A.retryAction(task.id)} />
+          <Btn kind="secondary" label={t("task.action.retry")} about={title(task)} onClick={() => A.retryAction(task.id)} />
         </>
       ) : task.acted?.ok && task.acted.action === "merge" ? (
         <span class="small" style={{ color: "var(--done-ink)", fontWeight: 700 }}>
@@ -382,8 +450,8 @@ function ResultActions({ task, inTask }: { task: Task; inTask?: boolean }) {
         </span>
       ) : (
         <>
+          <Btn kind="secondary" label={t("result.pr")} about={title(task)} onClick={() => A.taskAction(task.id, "open_pr")} />
           <Btn kind="primary" label={t("result.merge", base)} about={title(task)} onClick={() => A.taskAction(task.id, "merge")} />
-          <Btn kind="quiet" label={t("result.pr")} about={title(task)} onClick={() => A.taskAction(task.id, "open_pr")} />
         </>
       )}
     </div>
@@ -404,40 +472,131 @@ function SentLine({ task }: { task: Task }) {
   );
 }
 
-/** Under a message about a task. Under way: one quiet line. Finished: the result message
- *  already says the outcome, so no state is restated: one line of proof, what went out, then
- *  Merge / Open draft PR (D73). */
-function TaskFooter({ task, detail }: { task: Task; detail?: string }) {
+// ---------- the quiet conversation (D104) ----------
+// By default the conversation is the partner's words. What stands behind a message (its task, the
+// proof, the changes, what went out, what it noted) is one tap away under a single quiet
+// Details; Merge into main stays one tap as a text button when it is the next step.
+
+/** The single quiet affordance under a message: Details, or Hide once open. */
+function DetailsToggle({ k, about }: { k: string; about?: string }) {
+  const open = A.detailsOpen(k);
+  return (
+    <button class="tb" aria-expanded={open} aria-label={about ? `${t(open ? "details.hide" : "details.show")} · ${about}` : undefined} onClick={() => A.toggleDetails(k)}>
+      {t(open ? "details.hide" : "details.show")}
+      <Chev />
+    </button>
+  );
+}
+
+/** Merge into main as a text button when it is the task's next step; its state in words after. */
+function MergeAction({ task }: { task: Task }) {
+  const p = placeOf(task);
+  if (!finished(task) || attention(task) === "failed" || p.kind !== "repo" || !p.branch) return null;
+  const base = p.baseBranch || "main";
+  if (task.acting) return <span class="qs">{t(`result.acting.${task.acting}`, base)}</span>;
+  if (task.unsure) return <Btn kind="text" size="sm" class="tb act" label={t("task.action.retry")} about={t("result.unsure")} onClick={() => A.retryAction(task.id)} />;
+  if (task.acted?.ok && task.acted.action === "merge")
+    return (
+      <span class="qs done">
+        <Check />
+        {t("result.merged", base)}
+      </span>
+    );
+  return <button class="tb act" aria-label={`${t("result.merge", base)} · ${title(task)}`} onClick={() => A.taskAction(task.id, "merge")}>{t("result.merge", base)}</button>;
+}
+
+/** A task's lines inside Details: under way, its status line; finished, the proof with the
+ *  changes and its title as links, and Open draft PR. What went out shows above the row. */
+function ResultDetails({ task, detail }: { task: Task; detail?: string }) {
   if (!finished(task)) return <TaskLine task={task} detail={detail} />;
   A.history(task.id);
+  const p = placeOf(task);
+  const pr = attention(task) !== "failed" && p.kind === "repo" && !!p.branch && !task.acting && !(task.acted?.ok && task.acted.action === "merge");
   return (
-    <div class="footer">
+    <>
       <ProofLine task={task} evs={resultEvidence(task)} withTitle />
-      <SentLine task={task} />
-      <ResultActions task={task} />
+      {pr && (
+        <div class="proof">
+          <button class="qlink" onClick={() => A.taskAction(task.id, "open_pr")}>
+            {t("result.pr")}
+          </button>
+        </div>
+      )}
+    </>
+  );
+}
+
+function NotedLine({ n }: { n: { seq: number; title: string } }) {
+  return (
+    <div class="proof">
+      <span class="mk">{t("memory.noted", n.title)}</span>
+      <button class="qlink" onClick={() => A.forget(n.seq)}>
+        {t("partner.memory.forget")}
+      </button>
     </div>
   );
 }
 
-function JobRow({ e, chipOwner }: { e: Entry; chipOwner: Map<string, number> }) {
+/** Under a partner message: one quiet row (Merge into main, Details), then Details when open. */
+function Quiet({ k, tasks, detail, noted = [] }: { k: string; tasks: Task[]; detail?: string; noted?: { seq: number; title: string }[] }) {
+  if (!tasks.length && !noted.length) return null;
+  const open = A.detailsOpen(k);
+  return (
+    <>
+      {/* What went out is never folded away (D104): the exception that matters to trust. */}
+      {tasks.filter(finished).map((task) => (
+        <SentLine key={task.id} task={task} />
+      ))}
+      <div class="qrow">
+        {tasks.map((task) => (
+          <MergeAction key={task.id} task={task} />
+        ))}
+        <DetailsToggle k={k} about={tasks[0] ? title(tasks[0]) : undefined} />
+      </div>
+      {open && (
+        <div class="det">
+          {tasks.map((task) => (
+            <ResultDetails key={task.id} task={task} detail={detail} />
+          ))}
+          {noted.map((n) => (
+            <NotedLine key={n.seq} n={n} />
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+function JobRow({ e, chipOwner, noted }: { e: Entry; chipOwner: Map<string, number>; noted: { seq: number; title: string }[] }) {
   const j = e.job!;
   const st = j.status;
   const task = st?.taskId ? A.S.tasks.get(st.taskId) : undefined;
+  const own = task && title(task) && chipOwner.get(task.id) === e.firstSeq;
   return (
     <div class="partner">
       {j.ack && <div>{j.ack.text}</div>}
-      {st &&
-        (task && title(task) ? (
-          chipOwner.get(task.id) === e.firstSeq && (
-            <div class="footer">
-              <TaskFooter task={task} detail={st.text} />
-            </div>
-          )
-        ) : (
-          <div class={`status-line${st.state === "failed" ? " failed" : ""}`} style={{ marginTop: 8 }}>
-            {st.text}
-          </div>
-        ))}
+      {st && !(task && title(task)) && <div class={`status-line${st.state === "failed" ? " failed" : ""}`}>{st.text}</div>}
+      <Quiet k={`m${e.firstSeq}`} tasks={own ? [task!] : []} detail={st?.text} noted={noted} />
+    </div>
+  );
+}
+
+/** A living item the partner didn't report itself, said as one sentence (D104): a task that
+ *  didn't work, or one that came back. Work under way and waits are not said; the header and
+ *  On hand carry them (with Details shown, they show as lines). */
+function News({ it, k }: { it: LivingItem; k: string }) {
+  const task = A.S.tasks.get(it.taskId);
+  const text = it.title ? t(it.kind === "failed" ? "living.failed" : "living.done", it.title, it.text) : it.text;
+  return (
+    <div class="partner">
+      <div>{text}</div>
+      {task ? (
+        <Quiet k={k} tasks={[task]} />
+      ) : (
+        <div class="qrow">
+          <DetailsToggle k={k} />
+        </div>
+      )}
     </div>
   );
 }
@@ -452,85 +611,193 @@ function LivingLine({ it }: { it: LivingItem }) {
   );
 }
 
+const openAsk = (d?: DecisionState) => !!d && !d.resolved && !d.pending;
+const dueAt = (d: DecisionState) => (d.defaultAt ? Date.parse(d.defaultAt) : Infinity);
+
+/** One ask in the partner's words (D104): the question as it speaks, its default in one muted
+ *  line with Details, and, when it is the one being asked, Reply… · Hold · Go in one small row. */
+function Ask({ d, taskId, buttons = true }: { d: DecisionState; taskId?: string; buttons?: boolean }) {
+  useTick(1000);
+  const ref = useRef<HTMLDivElement>(null);
+  const flash = A.flash === d.decisionId;
+  useEffect(() => {
+    if (flash) {
+      ref.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+      A.flash = undefined;
+    }
+  }, [flash]);
+  const id = taskId || d.taskId;
+  const task = id ? A.S.tasks.get(id) : undefined;
+  const open = openAsk(d);
+  const k = `d${d.decisionId}`;
+  const about = task && title(task) ? title(task) : d.question.slice(0, 40);
+  const draft = A.replyDraft.get(d.decisionId) ?? "";
+  return (
+    <div ref={ref} class={`partner askq${flash ? " flash" : ""}`} id={`d-${d.decisionId}`}>
+      <div>{d.question}</div>
+      {/* A routine's proposal card (D29, D114): what it would do, before one Go. */}
+      {d.routineId && open && <RoutineFacts routineId={d.routineId} />}
+      {open ? (
+        <>
+          <div class="dflt">
+            <span>{defaultInfo(d, Date.now()).line}</span>
+            {task && title(task) && <DetailsToggle k={k} about={about} />}
+          </div>
+          {task && A.detailsOpen(k) && (
+            <div class="det">
+              <TaskLine task={task} />
+            </div>
+          )}
+          {buttons && (
+            <div class="ans">
+              <Btn kind="text" size="sm" label={t("decision.reply")} about={about} onClick={() => (A.replyOpen.has(d.decisionId) ? A.replyOpen.delete(d.decisionId) : A.replyOpen.add(d.decisionId), A.changed())} />
+              <Btn kind="secondary" size="sm" label={t("decision.hold")} about={about} onClick={() => A.decide(d.decisionId, "hold")} />
+              <Btn kind="primary" size="sm" label={goLabel(d)} about={about} onClick={() => A.decide(d.decisionId, "go")} />
+            </div>
+          )}
+          {A.replyOpen.has(d.decisionId) && (
+            <div class="reply">
+              <AutoText
+                value={draft}
+                autoFocus
+                label={t("decision.reply.placeholder")}
+                placeholder={t("decision.reply.placeholder")}
+                onInput={(v) => (A.replyDraft.set(d.decisionId, v), A.changed())}
+                onEnter={() => draft.trim() && (A.decide(d.decisionId, "reply", draft.trim()), A.replyDraft.delete(d.decisionId))}
+              />
+              <button
+                class="btn accent icon send"
+                aria-label={t("composer.send")}
+                disabled={!draft.trim()}
+                onClick={() => {
+                  A.decide(d.decisionId, "reply", draft.trim());
+                  A.replyDraft.delete(d.decisionId);
+                }}
+              >
+                <Arrow />
+              </button>
+            </div>
+          )}
+        </>
+      ) : (
+        <Resolved d={d} />
+      )}
+    </div>
+  );
+}
+
+/** The living message without its card (D104): a small divider when the person was away, what
+ *  didn't work or came back as sentences, then the asks: the one whose default comes soonest
+ *  with its buttons, the rest gathered in one line until it is answered or opened. */
 function Living({ e, items }: { e: Entry; items: LivingItem[] }) {
-  // "While you were away" only when the user was: it came before this page loaded and they
-  // hadn't read it, or it came while the page was hidden (app.ts records that as it lands).
-  // Latched the first time it shows: reading it must not take the title away.
   if (!A.livingAway.has(e.firstSeq)) A.livingAway.set(e.firstSeq, e.firstSeq <= A.S.headSeq && A.S.unread(e));
   const away = A.livingAway.get(e.firstSeq)!;
-  const decisions = items.filter((it) => it.kind === "decision");
-  const open = decisions.filter((it) => {
-    const d = it.decisionId ? A.S.decisions.get(it.decisionId) : undefined;
-    return d && !d.resolved && !d.pending && d.reversible;
-  }).length;
+  const shown = A.details === "shown";
+  const asks = items
+    .filter((it) => it.kind === "decision")
+    .map((it) => ({ it, d: it.decisionId ? A.S.decisions.get(it.decisionId) : undefined }))
+    .filter((x): x is { it: LivingItem; d: DecisionState } => !!x.d);
+  const answered = asks.filter((x) => !openAsk(x.d));
+  const waiting = asks.filter((x) => openAsk(x.d)).sort((a, b) => dueAt(a.d) - dueAt(b.d) || a.d.seq - b.d.seq);
+  const all = shown || A.moreAsks.has(e.firstSeq);
+  const head = all ? waiting : waiting.slice(0, 1);
+  const rest = waiting.length - head.length;
+  const defaults = waiting.filter((x) => x.d.reversible).length;
+  const news = items.filter((it) => it.kind === "failed" || it.kind === "done");
+  const lines = shown ? items.filter((it) => it.kind === "progress" || it.kind === "blocked") : [];
+  if (!asks.length && !news.length && !lines.length) return null;
   return (
     <section class="living" key={`${e.firstSeq}:${e.revision}`} aria-label={t("living.title")}>
-      {away && <h2>{t("living.title")}</h2>}
-      {decisions.length > 0 && (
-        <div class="needs-head">
-          <span>{t("header.needs", decisions.length)}</span>
-          {open >= 2 && <Btn kind="text" label={t("decision.goall", A.defaultable().length)} onClick={() => A.goOnAllDefaults()} />}
+      {away && <div class="when">{t("living.away.at", clockOf(e.ev.ts))}</div>}
+      {news.map((it, i) => (
+        <News key={`n${i}`} it={it} k={`l${e.firstSeq}:${it.taskId}`} />
+      ))}
+      {lines.length > 0 && (
+        <div class="det lines">
+          {lines.map((it, i) => (
+            <LivingLine key={i} it={it} />
+          ))}
         </div>
       )}
-      {decisions.map((it, i) => {
-        const d = it.decisionId ? A.S.decisions.get(it.decisionId) : undefined;
-        return d ? (
-          <DecisionCard key={i} d={d} taskId={it.taskId} />
-        ) : (
-          <div class="decision" key={i}>
-            <div class="q">{it.text}</div>
-          </div>
-        );
-      })}
-      {items
-        .filter((it) => it.kind !== "decision")
-        .map((it, i) => (
-          <LivingLine key={i} it={it} />
-        ))}
+      {answered.map(({ it, d }) => (
+        <Ask key={d.decisionId} d={d} taskId={it.taskId} />
+      ))}
+      {head.map(({ it, d }) => (
+        <Ask key={d.decisionId} d={d} taskId={it.taskId} />
+      ))}
+      {(rest > 0 || (head.length >= 2 && defaults >= 2)) && (
+        <div class="qrow gather">
+          {rest > 0 && (
+            <button class="tb" aria-expanded="false" onClick={() => (A.moreAsks.add(e.firstSeq), A.changed())}>
+              {t("living.more", rest)}
+              <Chev />
+            </button>
+          )}
+          {defaults >= 2 && <button class="tb" onClick={() => A.goOnAllDefaults()}>{t("decision.goall", A.defaultable().length)}</button>}
+        </div>
+      )}
     </section>
   );
 }
+
+const clockOf = (iso: string) => {
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+};
 
 function EntryView({ e, chipOwner, livingItems }: { e: Entry; chipOwner: Map<string, number>; livingItems: (e: Entry) => LivingItem[] }) {
   if (e.user) return <div class="user">{e.user.text}</div>;
   if (e.ai) {
     const ids = e.ai.replyTo ? A.S.tasksOfReply(e.ai.replyTo).filter((id) => chipOwner.get(id) === e.firstSeq) : [];
+    const tasks = ids.map((id) => A.S.tasks.get(id)).filter((x): x is Task => !!x);
     return (
       <div class="partner">
         <div dangerouslySetInnerHTML={{ __html: markdown(e.ai.text) }} />
-        {ids.map((id) => {
-          const task = A.S.tasks.get(id);
-          return task ? (
-            <div class="footer" key={id}>
-              <TaskFooter task={task} />
-            </div>
-          ) : null;
-        })}
+        <Quiet k={`m${e.firstSeq}`} tasks={tasks} noted={A.notedFor(e)} />
       </div>
     );
   }
-  if (e.job) return <JobRow e={e} chipOwner={chipOwner} />;
+  if (e.job) return <JobRow e={e} chipOwner={chipOwner} noted={A.notedFor(e)} />;
   if (e.living) return <Living e={e} items={livingItems(e)} />;
   if (e.decision) {
     const d = A.S.decisions.get(e.decision.decisionId);
     if (!d) return null;
-    return <DecisionCard d={d} />;
+    return <Ask d={d} />;
   }
   return null;
+}
+
+/** While the user waits on a reply (D104): the clay partner where its words will appear, and
+ *  one plain line of what it is doing, updated in place, gone when the reply lands. A step past
+ *  15 s adds a reassuring line; past 45 s, that it will say when it's ready. */
+function Presence() {
+  useTick(1000);
+  const a = A.S.activity;
+  const lastUser = [...A.S.channel].reverse().find((e) => e.user);
+  const since = a?.at ?? A.thinkingSince ?? (lastUser ? Date.parse(lastUser.ev.ts) : Date.now());
+  const s = (Date.now() - since) / 1000;
+  const sub = s >= 45 ? t("activity.long") : s >= 15 ? t("activity.slow") : "";
+  return (
+    <div class="presence" role="status" aria-live="polite">
+      <span class="bob">
+        <Avatar size={32} state="working" still />
+      </span>
+      <span class="pline">
+        {t(`activity.${a?.step ?? "thinking"}`)}
+        {sub && <span class="sub">{sub}</span>}
+      </span>
+    </div>
+  );
 }
 
 // ---------- header, composer ----------
 
 function OnHandButton() {
   // Just the word: the header line says what needs you, in words; no row of colored dots.
-  return (
-    <button class="onhand-btn" onClick={() => A.go({ name: "onhand" })}>
-      {t("nav.onhand")}
-    </button>
-  );
+  return <Btn kind="secondary" size="sm" label={t("nav.onhand")} onClick={() => A.go({ name: "onhand" })} />;
 }
 
-function Top({ back }: { back?: string }) {
+function Top({ back, face = true }: { back?: string; face?: boolean }) {
   if (back)
     return (
       <header class="top">
@@ -539,13 +806,13 @@ function Top({ back }: { back?: string }) {
           {back}
         </button>
         <span style={{ flex: 1 }} />
-        <Avatar size={36} />
+        {face && <Avatar size={40} />}
       </header>
     );
   return (
     <header class="top">
       <button class="who" onClick={() => A.openSettings()} aria-label={t("settings.title")}>
-        <Avatar size={46} />
+        <Avatar size={52} />
         <span style={{ minWidth: 0 }}>
           <div class="name">{A.S.personaName}</div>
           <div class="sum" role="status">
@@ -563,8 +830,8 @@ function Held() {
   return (
     <div class="held" role="alert">
       <span>{t("secret.held")}</span>
-      <Btn kind="quiet" label={t("secret.cancel")} onClick={() => ((A.held = undefined), A.changed())} />
-      <Btn kind="text" label={t("secret.send")} onClick={() => A.sendHeld()} />
+      <Btn kind="text" size="sm" label={t("secret.send")} onClick={() => A.sendHeld()} />
+      <Btn kind="secondary" size="sm" label={t("secret.cancel")} onClick={() => ((A.held = undefined), A.changed())} />
     </div>
   );
 }
@@ -586,7 +853,7 @@ function Composer({ taskId }: { taskId?: string }) {
       {(A.held?.taskId ?? "") === (taskId ?? "") && <Held />}
       <div class="composer">
         <AutoText id="composer" value={value} onInput={set} onEnter={submit} label={label} placeholder={taskId ? t("composer.task") : t("composer.placeholder", A.S.personaName)} />
-        <button class="send" aria-label={t("composer.send")} disabled={!value.trim()} onClick={submit}>
+        <button class="btn accent icon send" aria-label={t("composer.send")} disabled={!value.trim()} onClick={submit}>
           <Arrow />
         </button>
       </div>
@@ -647,6 +914,7 @@ function NotifyAsk() {
       <div class="q">{t("notify.ask")}</div>
       <div class="note">{t("notify.ask.note", "23:00", "08:00")}</div>
       <div class="btns">
+        <Btn kind="secondary" label={t("notify.later")} onClick={dismiss} />
         <Btn
           kind="primary"
           label={t("notify.on")}
@@ -659,13 +927,19 @@ function NotifyAsk() {
             if (A.push === "on") A.toast(t("notify.enabled"));
           }}
         />
-        <Btn kind="quiet" label={t("notify.later")} onClick={dismiss} />
       </div>
     </div>
   );
 }
 
 // ---------- the conversation ----------
+
+/** A messaging app's time line: before the first message, and wherever 15 minutes passed. */
+const GAP_MS = 15 * 60_000;
+function timeGap(prev: Entry | undefined, e: Entry): boolean {
+  if (!prev) return true;
+  return Date.parse(e.ev.ts) - Date.parse(prev.ev.ts) >= GAP_MS;
+}
 
 export function Conversation() {
   const { rows, livingItems, chipOwner } = A.rows();
@@ -694,14 +968,18 @@ export function Conversation() {
       >
         <div class="spacer" />
         {empty && <Hello />}
-        {rows.map((e) => (
-          <EntryView key={e.firstSeq} e={e} chipOwner={chipOwner} livingItems={livingItems} />
+        {rows.map((e, i) => (
+          <Fragment key={e.firstSeq}>
+            {timeGap(rows[i - 1], e) && !(e.living && A.livingAway.get(e.firstSeq)) && <div class="when">{when(A.L, e.ev.ts)}</div>}
+            <EntryView e={e} chipOwner={chipOwner} livingItems={livingItems} />
+          </Fragment>
         ))}
         {A.pending.map((p) => (
           <div key={p.clientId} class="user pending">
             {p.text}
           </div>
         ))}
+        {A.thinking() && <Presence />}
         <NotifyAsk />
       </main>
       <Composer />
@@ -712,7 +990,7 @@ export function Conversation() {
 function Hello() {
   return (
     <div class="hello">
-      <Avatar size={150} state="idle" big />
+      <Avatar size={150} state="idle" />
       <h1>{t("empty.conversation.title", A.S.personaName)}</h1>
       <p>{t("empty.conversation")}</p>
       <div class="try">
@@ -720,7 +998,7 @@ function Hello() {
         {[1, 2, 3].map((i) => (
           <button
             key={i}
-            class="suggest press"
+            class="btn secondary suggest"
             onClick={() => {
               A.draft = t(`suggest.${i}`); // fills the composer; never sends
               A.changed();
@@ -737,23 +1015,42 @@ function Hello() {
 
 // ---------- On hand ----------
 
+/** Where a task runs and why there, in one short muted line ("Codex · MacBook · Your rule …");
+ *  the model, the repo, the branch and the rest of the reason are in the task's Details. */
 function metaLine(task: Task): string {
-  const project = task.open?.project ?? task.card?.project ?? "";
-  return [project || t("onhand.loose"), placeLine(A.L, placeOf(task))].filter(Boolean).join(" · ");
+  const p = placeOf(task);
+  const where = p.kind === "none" ? "" : deviceLabel(A.L, p.device);
+  return [harnessName(harnessOf(task)), where, firstClause(bodyReasonOf(task))].filter(Boolean).join(" · ");
 }
 
+/** What a waiting task waits for, said once: the lane already says it is waiting. */
 function waitReason(task: Task): string {
   const w = A.S.waiterFor(task.id);
-  if (w) return t("onhand.waiting.for", w.at ? `${w.reason} · ${t("waiter.at", when(A.L, w.at))}` : w.reason);
-  const r = reasonOf(task);
-  return r ? t("onhand.waiting.for", r) : metaLine(task);
+  if (w) return [waitLine(w.reason), waitCaption(w)].filter(Boolean).join(" · ");
+  return reasonOf(task) || metaLine(task);
 }
 
-function Row({ task, meta, waiting }: { task: Task; meta: string; waiting?: boolean }) {
+/** A working row's line: a keep-going loop's try, or a routine's run, else where and who. */
+function workLine(task: Task): string {
+  const u = A.S.untilOf(task);
+  if (u) return untilLine(u);
+  const from = task.card?.fromRoutine;
+  return [from ? t("routine.from", from.name) : "", metaLine(task)].filter(Boolean).join(" · ");
+}
+
+function Row({ task, meta }: { task: Task; meta: string }) {
+  const w = attention(task) === "blocked" ? A.S.waiterFor(task.id) : undefined;
+  const u = A.S.untilOf(task);
+  // Its wait just came true (D115): the bubble pops and the card springs into Working.
+  const arrived = attention(task) !== "blocked" && A.S.justArrived(task.id);
   return (
-    <button class={`row${waiting ? " waiting" : ""}`} onClick={() => A.go({ name: "task", id: task.id })}>
+    <button class={`row${arrived ? " arrived" : ""}`} onClick={() => A.go({ name: "task", id: task.id })}>
+      {arrived && <span class="pop-bub" aria-hidden="true" />}
+      {w && <WaitBubble w={w} />}
       <span class="main">
         <span class="t">{title(task) || t("task.unknown")}</span>
+        {u && !finished(task) && <Beads u={u} />}
+        {w && <Groove w={w} />}
         <span class="m">{meta}</span>
       </span>
       <span class="chev" aria-hidden="true">
@@ -771,7 +1068,8 @@ export function OnHand() {
   const waiting = b.lanes[LANE.waiting]!;
   const done = b.lanes[LANE.done]!;
   const loose = A.S.armedWaiters().filter((w) => !w.taskId);
-  const nothing = !needs.length && !partnerDs.length && !working.length && !waiting.length && !done.length && !loose.length;
+  const routines = A.S.routines().filter((r) => r.state === "active" || r.state === "paused");
+  const nothing = !needs.length && !partnerDs.length && !working.length && !waiting.length && !done.length && !loose.length && !routines.length;
   const openCount = A.defaultable().length;
   return (
     <>
@@ -787,7 +1085,7 @@ export function OnHand() {
                 {t("lane.needs_you")} <span class="n">{needs.length + partnerDs.length || ""}</span>
                 {openCount >= 2 && (
                   <span style={{ marginLeft: "auto" }}>
-                    <Btn kind="text" label={t("decision.goall", openCount)} onClick={() => A.goOnAllDefaults()} />
+                    <Btn kind="text" size="sm" label={t("decision.goall", openCount)} onClick={() => A.goOnAllDefaults()} />
                   </span>
                 )}
               </h3>
@@ -808,7 +1106,7 @@ export function OnHand() {
                   {t("lane.working")} <span class="n">{working.length}</span>
                 </h3>
                 {working.map((task) => (
-                  <Row key={task.id} task={task} meta={metaLine(task)} />
+                  <Row key={task.id} task={task} meta={workLine(task)} />
                 ))}
               </section>
             )}
@@ -818,15 +1116,17 @@ export function OnHand() {
                   {t("lane.waiting")} <span class="n">{waiting.length + loose.length}</span>
                 </h3>
                 {waiting.map((task) => (
-                  <Row key={task.id} task={task} meta={waitReason(task)} waiting />
+                  <Row key={task.id} task={task} meta={waitReason(task)} />
                 ))}
                 {loose.map((w) => (
-                  <div class="row waiting" key={w.waiterId}>
-                    <Clock />
+                  <div class="row" key={w.waiterId}>
+                    {w.check || w.event ? <WaitBubble w={w} /> : <Clock />}
                     <span class="main">
-                      <span class="t">{w.reason}</span>
-                      {w.at && <span class="m">{t("waiter.at", when(A.L, w.at))}</span>}
+                      <span class="t">{w.check || w.event ? waitLine(w.reason) : w.reason}</span>
+                      {(w.check || w.event) && <Groove w={w} />}
+                      {waitCaption(w) && <span class="m">{waitCaption(w)}</span>}
                     </span>
+                    {(w.check || w.event) && <Btn kind="text" size="sm" label={t("wait.cancel")} about={w.reason} onClick={() => A.waiterAction(w.waiterId, "cancel")} />}
                   </div>
                 ))}
               </section>
@@ -845,6 +1145,7 @@ export function OnHand() {
                 })}
               </section>
             )}
+            <RoutineShelf />
           </>
         )}
       </main>
@@ -853,6 +1154,9 @@ export function OnHand() {
 }
 
 // ---------- an opened task ----------
+
+/** A face that only shows a state holds still; the partner's own presence breathes. */
+const stillFace = (a: Attention) => a === "dropped" || a === "superseded";
 
 function reportLabel(r: Bodies["report"]) {
   const k = { needs_input: "task.report.needs_input", done: "task.report.done", blocked: "task.report.blocked", failed: "task.report.failed" }[r.state as string] ?? "task.report";
@@ -921,7 +1225,8 @@ function WhatItDid({ task }: { task: Task }) {
       }
     }
     fold = undefined;
-    if (ev.kind === "task_open") items.push(<div key={ev.seq} class="tx said"><small>{t("task.brief", A.S.personaName)}</small>{(ev.body as Bodies["task_open"]).brief}</div>);
+    // A task opened before its brief was written (D120) logs an empty one first: the briefed one follows.
+    if (ev.kind === "task_open") (ev.body as Bodies["task_open"]).brief.trim() && items.push(<div key={ev.seq} class="tx said"><small>{t("task.brief", A.S.personaName)}</small>{(ev.body as Bodies["task_open"]).brief}</div>);
     else if (ev.kind === "checkpoint") items.push(<div key={ev.seq} class="tx note">{t("task.checkpoint", (ev.body as Bodies["checkpoint"]).text)}</div>);
     else if (ev.kind === "report" && ev.seq !== lastReport) {
       const r = ev.body as Bodies["report"];
@@ -962,10 +1267,83 @@ function WhatItDid({ task }: { task: Task }) {
 
 /** A quiet disclosure at the bottom: who is doing it, where (repo and branch), saved progress,
  *  what went out. A row with nothing to say is left out. */
+/** Who does a task and why, as one sentence for Details (D89). */
+function whoSentence(task: Task): string {
+  const who = whoLine(task)[0];
+  if (!who) return "";
+  const w = whoOf(task)?.why;
+  if (w?.kind === "rule" && w.text) return t("who.sentence.rule", who, w.text);
+  if (w?.kind === "limit" && w.ruleId) return t("who.sentence.limit.rule", who, harnessName(w.from ?? ""));
+  if (w?.kind === "limit" && w.from) return t("who.sentence.limit", who, harnessName(w.from));
+  if (w?.kind === "you") return t("who.sentence.you", who);
+  if (w?.kind === "default") return t("who.sentence.default", who, A.S.personaName);
+  return t("who.sentence", who);
+}
+
+/** Who does a task, in words ("Codex · gpt-5"), and why when it isn't Ducter's plain pick (D89). */
+function whoLine(task: Task): [string, string] {
+  const m = modelOf(task);
+  const who = [harnessName(harnessOf(task)), m && modelName(m)].filter(Boolean).join(" · ");
+  const w = whoOf(task)?.why;
+  if (!w) return [who, ""];
+  if (w.kind === "rule" && w.text) return [who, t("who.why.rule", w.text)];
+  if (w.kind === "limit") return [who, w.ruleId ? t("who.why.limit.rule", harnessName(w.from ?? "")) : w.from ? t("who.why.limit", harnessName(w.from)) : ""];
+  if (w.kind === "you") return [who, t("who.why.you")];
+  return [who, ""];
+}
+
+const pct = (f: number) => Math.round(f * 100);
+const candName = (c: Candidate) => [harnessName(c.harness), c.model && modelName(c.model)].filter(Boolean).join(" · ");
+
+function candReason(c: Candidate): string {
+  if (c.blocked === "reserve") return [t("cand.reserve", A.S.personaName), c.resetsAt && t("cand.resets", when(A.L, c.resetsAt))].filter(Boolean).join(" · ");
+  if (c.blocked) return t(`cand.${c.blocked}`);
+  const why = { rule: t("cand.rule"), fit: t("cand.fit"), fast: t("cand.fast") }[c.reason.kind as string] ?? "";
+  return [why, c.left != null && t("cand.left", pct(c.left)), c.billing === "usage" && t("cand.paid")].filter(Boolean).join(" · ");
+}
+
+/** 换谁来做 / Switch who does it: who does it now, who else could with why and the limit each,
+ *  the ones that can't greyed with why, and 换到 X 接着做 / Continue on X. */
+function SwitchList({ task }: { task: Task }) {
+  const [pick, setPick] = useState("");
+  const list = A.candidates.get(task.id);
+  const running = ["working", "queued"].includes(attention(task));
+  if (!list) return <div class="small sub">{t("who.loading")}</div>;
+  const chosen = list.find((c) => !c.blocked && !c.current && `${c.harness}/${c.model ?? ""}` === pick);
+  const free = list.filter((c) => !c.blocked && !c.current).length;
+  return (
+    <div class="switch-list" role="radiogroup" aria-label={t("who.switch")}>
+      <div class="small sub">{t(running ? "who.switch.note" : "who.switch.note.idle")}</div>
+      {list.map((c) => {
+        const key = `${c.harness}/${c.model ?? ""}`;
+        const off = !!c.blocked;
+        return (
+          <button key={key} role="radio" aria-checked={pick === key} disabled={off || c.current} class={`cand${off ? " off" : ""}${pick === key ? " on" : ""}`} onClick={() => setPick(key)}>
+            <img src={`app/art/${c.harness === "claude-code" ? "token_orange" : "token_ink"}.webp`} alt="" width="36" height="36" />
+            <span class="grow">
+              <b>{candName(c)}</b>
+              <small>{candReason(c)}</small>
+            </span>
+            {c.current && <small class="now">{t("who.now")}</small>}
+          </button>
+        );
+      })}
+      {free === 0 && <div class="small sub">{t("cand.none")}</div>}
+      {chosen &&
+        (A.switching ? (
+          <div class="small sub">{t("who.go", candName(chosen))}…</div>
+        ) : (
+          <Btn kind="primary" label={t("who.go", candName(chosen))} about={title(task)} onClick={() => A.switchTask(task.id, chosen.harness, chosen.model, candName(chosen))} />
+        ))}
+    </div>
+  );
+}
+
 function TaskDetails({ task }: { task: Task }) {
   const [open, setOpen] = useState(false);
-  const who = [harnessName(harnessOf(task)), modelOf(task)].filter(Boolean).join(" · ");
+  const who = whoSentence(task);
   const why = bodyReasonOf(task);
+  const canSwitch = !!harnessOf(task) && !["dropped", "superseded"].includes(attention(task));
   const where = placeLine(A.L, placeOf(task));
   const acts = task.historyLoaded ? outsideActs(task) : [];
   const cps = task.events.filter((ev) => ev.kind === "checkpoint");
@@ -982,6 +1360,11 @@ function TaskDetails({ task }: { task: Task }) {
               <dd>
                 {who}
                 {why && <div>{why}</div>}
+                {canSwitch && (
+                  <button class="inline-link" aria-expanded={A.switchFor === task.id} onClick={() => A.openSwitch(task.id)}>
+                    {t("who.switch")} ›
+                  </button>
+                )}
               </dd>
             </>
           )}
@@ -1013,6 +1396,7 @@ function TaskDetails({ task }: { task: Task }) {
           )}
         </dl>
       )}
+      {open && A.switchFor === task.id && <SwitchList task={task} />}
     </section>
   );
 }
@@ -1037,28 +1421,42 @@ export function TaskView({ id }: { id: string }) {
   const d = A.S.pendingDecision(id);
   const r = reportOf(task);
   const detail = !finished(task) && r ? r.summary.split("\n")[0] : "";
+  const [headline, lede] = finished(task) && r ? splitOutcome(r.summary) : ["", ""];
   return (
     <>
-      <Top back={t("nav.back")} />
+      <Top back={t("nav.back")} face={false} />
       <main class="scroll task-page" ref={scroller}>
         <div class="task-head">
-          <h1>{title(task) || t("task.unknown")}</h1>
-          <div class={`standing st-${a}`}>
-            <StateMark a={a} />
-            <b>{stateLabel(a)}</b>
-            {detail && <span>· {detail}</span>}
-            {task.openedAt && <span class="when">· {t("task.opened", ago(A.L, task.openedAt))}</span>}
+          <span class="face">
+            <Avatar size={96} state={faceOf(a)} still={stillFace(a)} />
+            {a === "blocked" && A.S.waiterFor(id) && <WaitBubble w={A.S.waiterFor(id)} size="lg" />}
+          </span>
+          <div class="head-words">
+            <div class={`standing st-${a}`}>
+              <StateMark a={a} />
+              <b>{stateLabel(a)}</b>
+              {task.openedAt && <span class="when">· {t("task.opened", ago(A.L, task.openedAt))}</span>}
+              {!finished(task) && whoLine(task)[0] && <span class="when">· {whoLine(task)[0]}</span>}
+            </div>
+            <h1>{title(task) || t("task.unknown")}</h1>
+            {a === "blocked" && A.S.waiterFor(id) && (
+              <p class="waitline">{waitLine(A.S.waiterFor(id)!.reason)}</p>
+            )}
           </div>
+          {headline && <p class="headline">{headline}</p>}
         </div>
+        {detail && <div class="outcome"><div class="said">{detail}</div></div>}
         {d && !d.resolved && <DecisionCard d={d} taskId={id} inTask />}
         {finished(task) && (
           <div class="outcome">
-            {r && <div class="said">{r.summary}</div>}
+            {lede && <div class="said">{lede}</div>}
             <ProofLine task={task} evs={resultEvidence(task)} />
             <SentLine task={task} />
             {a === "failed" ? (
+              // Didn't work (D76): try the same again, or tell it how; that opens its composer.
               <div class="btns">
-                <Btn kind="quiet" label={t("task.action.retry")} onClick={() => A.taskAction(id, "reopen")} />
+                <Btn kind="secondary" label={t("task.action.retry")} onClick={() => A.taskAction(id, "reopen")} />
+                <Btn kind="primary" label={t("task.action.tell")} onClick={() => document.getElementById("composer")?.focus()} />
               </div>
             ) : (
               <ResultActions task={task} inTask />
@@ -1071,6 +1469,8 @@ export function TaskView({ id }: { id: string }) {
             {!["dropped", "superseded", "done"].includes(a) && <Btn kind="text" label={t("task.action.drop")} onClick={() => A.drop(id)} />}
           </div>
         )}
+        <WaitDetails task={task} />
+        <TryStrip task={task} />
         <section class="section">
           <h2 class="sec-title">{t("task.transcript")}</h2>
           <WhatItDid task={task} />
@@ -1097,7 +1497,7 @@ function Sheet({ children, label }: { children: preact.ComponentChildren; label:
       <div class="sheet" role="dialog" aria-modal="true" aria-label={label}>
         <div class="grab" />
         {children}
-        <Btn kind="quiet" class="sheet-close" label={t("sheet.close")} onClick={close} />
+        <Btn kind="secondary" class="sheet-close" label={t("sheet.close")} onClick={close} />
       </div>
     </>
   );
@@ -1250,6 +1650,194 @@ function PartnerSettings() {
   );
 }
 
+function agentLine(h: DeviceHarness, brain: boolean): string {
+  if (!h.installed) return t("loadout.missing");
+  if (h.harness === "pi" && !h.loggedIn) return t("loadout.pi");
+  if (!h.loggedIn) return t("loadout.signed_out");
+  const al = h.allowance;
+  if (!al) return t("loadout.signed_in");
+  const left = brain && al.left <= PARTNER_RESERVE ? t("loadout.left.reserve", pct(al.left), A.S.personaName) : t("loadout.left", pct(al.left));
+  return [left, al.sharedBy && al.sharedBy > 1 ? t("loadout.acct.shared", al.sharedBy) : t("loadout.acct.only"), al.resetsAt && t("loadout.acct.resets", when(A.L, al.resetsAt))].filter(Boolean).join(" · ");
+}
+
+const MODELS: Record<string, { id: string; label: string }[]> = { "claude-code": [{ id: "opus", label: "Opus" }, { id: "sonnet", label: "Sonnet" }] };
+const isFast = (id: string) => /sonnet|haiku|mini|luna|flash/i.test(id);
+
+/** What it thinks with, and who does the tasks (D89), as lists: no stage on the phone. */
+function Loadout() {
+  const s = A.settings;
+  const agents = A.agents ?? [];
+  if (!s) return null;
+  const brain = s.brain ?? { harness: "claude-code", model: "opus" };
+  const b = agents.find((h) => h.harness === brain.harness);
+  const models = b?.models?.length ? b.models : (MODELS[brain.harness] ?? []);
+  const brains = agents.filter((h) => h.canBePartner);
+  const ready = agents.filter((h) => h.installed && h.loggedIn);
+  const name = A.S.personaName;
+  const setBrain = (harness: string, model?: string) => {
+    const h = agents.find((x) => x.harness === harness);
+    const m = model ?? (h?.models?.[0]?.id || MODELS[harness]?.[0]?.id);
+    A.setSettings({ brain: { harness: harness as never, ...(m ? { model: m } : {}) } });
+    A.toast(t("loadout.toast.brain", name, harnessName(harness)));
+  };
+  const reserve = b?.allowance ? (b.allowance.left <= PARTNER_RESERVE ? t("loadout.left.reserve", pct(b.allowance.left), name) : `${t("loadout.left", pct(b.allowance.left))} · ${t("loadout.brain.reserve", name)}`) : t("loadout.brain.reserve", name);
+  return (
+    <>
+      <section class="set">
+        <h3>{t("loadout.brain.title")}</h3>
+        <div class="agent">
+          <img src={`app/art/${brain.harness === "claude-code" ? "token_orange" : "token_ink"}.webp`} alt="" width="40" height="40" />
+          <span class="grow">
+            <b>{harnessName(brain.harness)}</b>
+            <small>{reserve}</small>
+          </span>
+        </div>
+        {brains.length > 1 && (
+          <Seg label={t("loadout.socket")} value={brain.harness} options={brains.map((h) => ({ v: h.harness, label: harnessName(h.harness) }))} onPick={(v) => setBrain(v)} />
+        )}
+        {models.length > 0 && (
+          <Seg
+            label={t("loadout.brain.model")}
+            value={brain.model}
+            options={models.map((m, i) => ({ v: m.id, label: `${m.label || m.id} · ${t(i > 0 || isFast(m.id) ? "loadout.model.fast" : "loadout.model.smart")}` }))}
+            onPick={(m) => setBrain(brain.harness, m)}
+          />
+        )}
+        <div class="small sub">{t("loadout.brain.keep")}</div>
+      </section>
+      <section class="set">
+        <h3>{t("loadout.tasks.title")}</h3>
+        {ready.length <= 1 && !(A.rules ?? []).length ? (
+          <div class="small sub">{t("loadout.tasks.one", harnessName(ready[0]?.harness ?? brain.harness), name)}</div>
+        ) : (
+          <>
+            <div class="small sub">{t("loadout.tasks.default", name)}</div>
+            {agents.map((h) => {
+              const on = (s.taskAccounts as Record<string, { enabled: boolean }> | undefined)?.[h.harness]?.enabled !== false;
+              const isBrain = h.harness === brain.harness;
+              return (
+                <div class="agent" key={h.harness}>
+                  <img class={h.installed && h.loggedIn ? "" : "dim"} src={`app/art/${h.harness === "claude-code" ? "token_orange" : "token_ink"}.webp`} alt="" width="40" height="40" />
+                  <span class="grow">
+                    <b>{harnessName(h.harness)}</b>
+                    <small>{agentLine(h, isBrain)}</small>
+                    {h.loggedIn && h.billing === "usage" && <small class="paid">{t("loadout.acct.paid")}</small>}
+                  </span>
+                  {h.installed && h.loggedIn && (
+                    <input
+                      type="checkbox"
+                      role="switch"
+                      aria-label={`${t("loadout.acct.tasks")} · ${harnessName(h.harness)}`}
+                      checked={on}
+                      onChange={(e) => A.setSettings({ taskAccounts: { ...s.taskAccounts, [h.harness]: { enabled: (e.target as HTMLInputElement).checked } } })}
+                    />
+                  )}
+                </div>
+              );
+            })}
+            {b && <div class="small sub">{t("loadout.acct.same", name, name)}</div>}
+            <h3>{t("loadout.rules")}</h3>
+            {!(A.rules ?? []).length && <div class="small sub">{t("loadout.rules.none")}</div>}
+            {(A.rules ?? []).map((r) => (
+              <div class="noted-row" key={r.id}>
+                <span>{r.text}</span>
+                <Btn kind="text" label={t("loadout.rule.remove")} about={r.text} onClick={() => (A.send({ t: "rule_remove", id: r.id }), A.toast(t("loadout.rule.removed", r.text)))} />
+              </div>
+            ))}
+            <Btn kind="text" label={t("loadout.rule.add", name)} onClick={() => A.tellRule()} />
+          </>
+        )}
+      </section>
+    </>
+  );
+}
+
+/** A small clay mailbox (the prototype's look, design/connectors.md §9): no flag, the lid shows the source. */
+function Mailbox(p: { source: "oomol" | "self" | "mcp" }) {
+  const body = p.source === "oomol" ? "var(--accent)" : p.source === "self" ? "var(--working-dot)" : "var(--ink-muted)";
+  return (
+    <svg class="mailbox" width="30" height="46" viewBox="0 0 52 84" aria-hidden="true">
+      <ellipse cx="26" cy="80" rx="12" ry="3.5" fill="rgba(70,46,20,.25)" />
+      <rect x="22" y="44" width="8" height="37" rx="3" fill="var(--line-2)" />
+      <path d="M6 46 V26 a20 18 0 0 1 40 0 V46 Z" fill={body} />
+      <path d="M6 46 h40" stroke="rgba(0,0,0,.22)" stroke-width="3" stroke-linecap="round" />
+      <path d="M10 44 V28 a16 14 0 0 1 32 0 V44 Z" fill="var(--surface)" opacity=".92" />
+      <rect x="15" y="27" width="22" height="15" rx="2.5" fill={body} />
+      <path d="M15.5 28l10.5 8 10.5-8" fill="none" stroke="rgba(0,0,0,.28)" stroke-width="2" stroke-linejoin="round" />
+      <path d="M12 12 q6 -5 14 -5" stroke="rgba(255,255,255,.55)" stroke-width="3" stroke-linecap="round" fill="none" />
+    </svg>
+  );
+}
+
+const HOSTED_URL = "https://connector.oomol.com";
+
+/** 它能看的账号 / Accounts it can read (D96): the user's OpenConnector, hosted or self-hosted, or another MCP server. */
+function Accounts() {
+  const [adding, setAdding] = useState(false);
+  const [where, setWhere] = useState<"oomol" | "self" | "mcp">("oomol");
+  const [url, setUrl] = useState(HOSTED_URL);
+  const [token, setToken] = useState("");
+  useEffect(() => {
+    if (!A.connections) A.askConnections();
+  }, []);
+  useEffect(() => {
+    // A connection arrived: close the form and drop the typed token.
+    if (adding && !A.connecting && A.connections?.some((c) => c.url.startsWith(url.replace(/\/+$/, "")))) setAdding(false), setToken("");
+  }, [A.connections?.length]);
+  const list = A.connections;
+  const oo = A.oo;
+  const pick = (w: "oomol" | "self" | "mcp") => {
+    setWhere(w);
+    setUrl(w === "oomol" ? HOSTED_URL : w === "self" ? "http://localhost:3000" : "");
+  };
+  return (
+    <section class="set accounts">
+      <h3>{t("acct.title")}</h3>
+      <div class="small sub">{t("acct.lede")}</div>
+      {list && !list.length && <div class="small sub">{t("acct.none")}</div>}
+      {list?.map((c) => (
+        <div class="acct-row" key={c.id}>
+          <Mailbox source={c.source} />
+          <div class="grow">
+            <div class="acct-name">{c.name}</div>
+            <div class="small sub">{t(`acct.src.${c.source}`)}</div>
+            {(c.state === "unreachable" || c.state === "unauthorized") && <div class="small warn">{t(`acct.state.${c.state}`)}</div>}
+          </div>
+          <Btn kind="text" label={t("acct.remove")} about={c.name} onClick={() => A.removeConnection(c.id)} />
+        </div>
+      ))}
+      {oo?.selfHosted && !list?.some((c) => c.via === "oo") && (
+        <div class="acct-oo">
+          <Btn kind="secondary" label={t("acct.oo")} disabled={A.connecting} onClick={() => A.useOoConnection()} />
+          <div class="small sub">{t("acct.oo.note", oo.selfHosted.url)}</div>
+        </div>
+      )}
+      {oo?.account && !oo.selfHosted && <div class="small sub">{t("acct.oo.account")}</div>}
+      {!adding ? (
+        <Btn kind="secondary" label={t("acct.add")} onClick={() => setAdding(true)} />
+      ) : (
+        <div class="acct-form">
+          <Seg label={t("acct.where")} value={where} options={(["oomol", "self", "mcp"] as const).map((v) => ({ v, label: t(`acct.where.${v}`) }))} onPick={pick} />
+          <div class="small sub">{t(`acct.where.${where}.note`)}</div>
+          <label class="acct-field">
+            <span class="small">{t("acct.address")}</span>
+            <input id="acct-url" type="url" inputMode="url" autoComplete="off" spellcheck={false} value={url} onInput={(e) => setUrl((e.target as HTMLInputElement).value)} />
+          </label>
+          <label class="acct-field">
+            <span class="small">{t("acct.key")}</span>
+            <input id="acct-token" type="password" autoComplete="off" spellcheck={false} value={token} onInput={(e) => setToken((e.target as HTMLInputElement).value)} />
+          </label>
+          <div class="row">
+            <Btn kind="text" label={t("acct.cancel")} onClick={() => (setAdding(false), setToken(""))} />
+            <Btn kind="primary" label={A.connecting ? t("acct.checking") : t("acct.check")} disabled={A.connecting || !url.trim()} onClick={() => A.addConnection(url.trim(), token.trim())} />
+          </div>
+        </div>
+      )}
+      <div class="small sub">{t("acct.honest")}</div>
+    </section>
+  );
+}
+
 function PhoneSettings() {
   const [push, setPush] = useState<{ done: boolean } | null>(null);
   useEffect(() => {
@@ -1261,6 +1849,8 @@ function PhoneSettings() {
       <div class="small">{A.me?.via === "device" ? `${A.me.deviceName ?? ""}` : deviceLabel(A.L, "local")}</div>
       <div class="small sub">{t("settings.lang.title")}</div>
       <Seg label={t("settings.lang.title")} value={A.uiLang} options={(["auto", "zh", "en"] as const).map((v) => ({ v, label: t(`settings.lang.${v}`) }))} onPick={(v) => A.setUiLang(v)} />
+      <div class="small sub">{t("settings.details.title")}</div>
+      <Seg label={t("settings.details.title")} value={A.details} options={(["folded", "shown"] as const).map((v) => ({ v, label: t(`settings.details.${v}`) }))} onPick={(v) => A.setDetails(v)} />
       {A.settings?.notify !== false && (
         <>
           {A.push === "ios-install" && <div class="hint">{t("notify.ios")}</div>}
@@ -1290,19 +1880,19 @@ function PhoneSettings() {
               />
               <div class="btns">
                 <Btn
-                  kind="quiet"
-                  label={t("notify.test")}
-                  onClick={async () => {
-                    const r = await A.api.call("api/push/test", { method: "POST" });
-                    A.toast(r.status === 200 ? t("notify.test.sent") : t("result.action.failed", String(r.status)));
-                  }}
-                />
-                <Btn
                   kind="text"
                   label={t("notify.off")}
                   onClick={async () => {
                     A.push = await disablePush(A.api);
                     A.changed();
+                  }}
+                />
+                <Btn
+                  kind="secondary"
+                  label={t("notify.test")}
+                  onClick={async () => {
+                    const r = await A.api.call("api/push/test", { method: "POST" });
+                    A.toast(r.status === 200 ? t("notify.test.sent") : t("result.action.failed", String(r.status)));
                   }}
                 />
               </div>
@@ -1321,7 +1911,9 @@ function SettingsSheet() {
   return (
     <Sheet label={t("settings.title")}>
       <NameRow />
+      <Loadout />
       <PartnerSettings />
+      <Accounts />
       <PhoneSettings />
     </Sheet>
   );

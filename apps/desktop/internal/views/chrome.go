@@ -71,12 +71,12 @@ func (a *App) crumb(c *ui.Context, label string, to Route) {
 	if l.Clicked() {
 		a.Route = to
 	}
-	ui.Text(c, "/").FontSize(t.MD).TextColor(t.Line.Mix(t.InkMuted, 0.4)).Shrink(0)
+	ui.Text(c, "/").FontSize(t.MD).TextColor(t.Faint).Shrink(0)
 }
 
 // chromeTitle is the current level's name in the bar.
 func (a *App) chromeTitle(c *ui.Context, title string) ui.Element {
-	return ui.Text(c, title).FontSize(a.T.LG).FontWeight(800).LetterSpacing(-0.2).SingleLine().Shrink(1).MinWidth(0)
+	return a.heading(c, autospace(title), a.T.XL).SingleLine().Shrink(1).MinWidth(0)
 }
 
 // routeEnter plays a zoom level's entrance as the route changes: a short

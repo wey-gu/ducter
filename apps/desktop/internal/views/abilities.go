@@ -26,9 +26,6 @@ import (
 // gridAbilities are the abilities shown on the right, in order.
 var gridAbilities = []string{protocol.AbilityWeb, protocol.AbilityComputer, protocol.AbilityRemote, protocol.AbilityPhone, protocol.AbilityCall}
 
-// slotSpots are where the slots sit on the stage (centers, as fractions).
-var slotSpots = [4][2]float32{{0.16, 0.27}, {0.84, 0.27}, {0.14, 0.58}, {0.86, 0.58}}
-
 // abilityDrag is what an ability tile drags onto the stage.
 type abilityDrag struct{ id string }
 
@@ -49,19 +46,40 @@ type devicesState struct {
 	sparkAt  time.Time // the sparkles round the slot
 	sparkAt0 ui.Rect
 	pair     pairState
+	rename   renameState
 	tiles    map[string]ui.Rect // the ability art in the grid, last frame
 	slots    map[string]ui.Rect // the slots' wells, last frame
 	hover    string             // the tile under the pointer
 	// account is the AI account whose sheet is open (sign in, sign out).
 	account string
+	// lit is the AI account tapped on the stage: every island it's
+	// signed in on is lifted, since litAt.
+	lit   string
+	litAt time.Time
+	// selClient is the phone (or window elsewhere) chosen, instead of a device.
+	selClient string
+	// The scene's framing, easing from viewFrom to viewTo since viewAt.
+	viewFrom, viewTo view
+	viewAt           time.Time
+	// labels are the words in the scene, last frame (no two may overlap).
+	labels map[string]ui.Rect
+	// slotOf is where each island stands round home: kept while it is there.
+	slotOf map[string]int
+	// signH is the pairing sign's height, last frame (its post reaches down
+	// from it to the water).
+	signH float32
+	// signRight: the sign takes the stage's right side (else its bottom).
+	signRight bool
 	// refreshed: the sign-in jobs whose end already asked for fresh devices.
 	refreshed map[*local.Job]bool
 }
 
-type pairState struct {
-	open    bool
-	asked   time.Time
-	clients int // paired clients when it opened
+// renameState is 改名字 / Rename on another computer's card (D84).
+type renameState struct {
+	device  string // the device being renamed; "" = none
+	draft   string
+	focused bool
+	failed  string // why the server said no (rename_result reason)
 }
 
 type equipFx struct {
@@ -79,6 +97,8 @@ type equipFx struct {
 func (a *App) OpenDevices() {
 	a.Route = RouteDevices
 	a.send(protocol.DevicesReq{T: "devices"})
+	// The connections stand on the home island as mailboxes (D96).
+	a.send(protocol.ConnectionsReq{T: "connections"})
 }
 
 func (a *App) devState() *devicesState {
@@ -194,8 +214,13 @@ func (a *App) devicesView(c *ui.Context) {
 				ui.Row(c).Gap(t.S3).Wrap().AlignItems(ui.Center).Children(func() { a.deviceCards(c, 230); a.connectEntry(c) })
 				ui.Column(c).Height(560).Children(func() { a.stage(c, dev) })
 				ui.Row(c).Gap(t.S4).AlignItems(ui.Start).Children(func() {
-					ui.Column(c).Grow(1).Basis(0).Gap(t.S3).Children(func() { a.abilityGrid(c, dev, 3) })
-					ui.Column(c).Grow(1).Basis(0).Children(func() { a.abilityDetail(c, dev) })
+					ui.Column(c).Grow(1).Basis(0).Gap(t.S3).Children(func() { a.deviceDetail(c, dev) })
+					ui.Column(c).Grow(1).Basis(0).Gap(t.S3).Children(func() {
+						if d.selClient == "" {
+							a.abilityGrid(c, dev, 3)
+							a.abilityDetail(c, dev)
+						}
+					})
 				})
 			default:
 				ui.Row(c).Grow(1).MinHeight(0).Gap(t.S4).AlignItems(ui.Stretch).Children(func() {
@@ -207,8 +232,11 @@ func (a *App) devicesView(c *ui.Context) {
 					ui.Column(c).Grow(1).MinWidth(0).Children(func() { a.stage(c, dev) })
 					ui.Scroll(c.Key("abilities")).Width(300).Shrink(0).Children(func() {
 						ui.Column(c).Gap(t.S3).Padding(0, 0, t.S2, 0).Children(func() {
-							a.abilityGrid(c, dev, 2)
-							a.abilityDetail(c, dev)
+							a.deviceDetail(c, dev)
+							if d.selClient == "" {
+								a.abilityGrid(c, dev, 2)
+								a.abilityDetail(c, dev)
+							}
 						})
 					})
 				})
@@ -261,9 +289,10 @@ func (a *App) devicesWaiting(c *ui.Context) {
 func (a *App) deviceCards(c *ui.Context, width float32) {
 	t := a.T
 	shown := a.shownDevice()
+	d := a.devState()
 	for i := range a.S.Devices {
 		dv := &a.S.Devices[i]
-		sel := shown != nil && shown.ID == dv.ID
+		sel := shown != nil && shown.ID == dv.ID && d.selClient == ""
 		name := a.deviceName(dv)
 		chip, sc := a.deviceChip(dv)
 		_ = chip
@@ -275,29 +304,137 @@ func (a *App) deviceCards(c *ui.Context, width float32) {
 		a.selectable(c, card, sel)
 		card.Children(func() {
 			ui.Box(c).Size(72, 72).Radius(t.RadiusMD).Background(t.Clay).Padding(t.S2).Shrink(0).Children(func() {
-				if b := theme.Clay(deviceArt(dv)); b != nil {
-					ui.Image(c, b).Grow(1).AccessHidden(true)
-				}
+				a.deviceClay(c, "card:"+dv.ID, dv).Grow(1)
 			})
 			ui.Column(c).Gap(t.S1).Grow(1).MinWidth(0).Children(func() {
-				ui.Text(c, name).FontSize(t.MD).FontWeight(800).SingleLine()
+				ui.Text(c, name).FontSize(t.Bubble).FontWeight(800).SingleLine()
 				// Shown, not explained (D43): the clay says awake or asleep,
 				// Ducter on the stage says where it lives. Words only for
 				// what is unusual, plainly, in the state's ink; no pill.
-				if line, ink := a.deviceLine(dv, sc); line != "" {
+				// Another computer always says what it is (D84).
+				if !dv.Home {
+					a.otherComputerLine(c, dv, sc)
+				} else if line, ink := a.deviceLine(dv, sc); line != "" {
 					ui.Text(c, line).FontSize(t.XS).FontWeight(700).TextColor(ink).LineHeight(1.4).MaxLines(2)
 				}
 			})
 		})
 		if card.Clicked() {
-			a.devState().sel = dv.ID
-			a.devState().removing = ""
+			d.sel, d.selClient = dv.ID, ""
+			d.removing = ""
+		}
+		if sel && !dv.Home {
+			a.renameRow(c, dv, width)
+		}
+	}
+	if a.S.Reach == nil {
+		return
+	}
+	// The phones (and windows elsewhere) that reach Ducter.
+	for i := range a.S.Reach.Clients {
+		cl := &a.S.Reach.Clients[i]
+		sel := d.selClient == cl.ID
+		line := a.clientLine(cl)
+		card := ui.Row(c.Key("cl:" + cl.ID)).Gap(t.S3).Padding(t.S3).Radius(t.RadiusLG).Background(t.Surface).AlignItems(ui.Center).
+			Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(cl.Name + " · " + line).AccessSelected(sel)
+		if width > 0 {
+			card.Width(width)
+		}
+		a.selectable(c, card, sel)
+		card.Children(func() {
+			ui.Box(c).Size(72, 72).Radius(t.RadiusMD).Background(t.Clay).Padding(t.S2).Shrink(0).Children(func() {
+				a.clientClay(c, "card:"+cl.ID, cl, clientArt(cl)).Grow(1)
+			})
+			ui.Column(c).Gap(t.S1).Grow(1).MinWidth(0).Children(func() {
+				ui.Text(c, cl.Name).FontSize(t.Bubble).FontWeight(800).SingleLine()
+				ui.Text(c, line).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).LineHeight(1.4).MaxLines(2)
+			})
+		})
+		if card.Clicked() {
+			d.selClient, d.removing = cl.ID, ""
 		}
 	}
 }
 
+// otherComputerLine is the subtitle of a computer that isn't the one
+// Ducter lives on: 另一台电脑 · 替 Ducter 做事, the second half replaced by
+// its state, in the state's ink, when something is wrong (D84).
+func (a *App) otherComputerLine(c *ui.Context, dv *protocol.DeviceView, sc theme.StateColors) {
+	t := a.T
+	if dv.State != protocol.DeviceAsleep && dv.State != protocol.DeviceUnreachable {
+		line, _ := a.deviceLine(dv, sc)
+		ui.Text(c, line).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).LineHeight(1.4).MaxLines(2)
+		return
+	}
+	state, _ := a.deviceChip(dv)
+	ui.Row(c).Gap(t.S1).Wrap().Children(func() {
+		ui.Text(c, a.L.T("device.other")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).LineHeight(1.4)
+		ui.Text(c, "·").FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).LineHeight(1.4)
+		ui.Text(c, state).FontSize(t.XS).FontWeight(700).TextColor(sc.Ink).LineHeight(1.4).MaxLines(2)
+	})
+}
+
+// renameRow is 改名字 / Rename under the chosen computer's card: one tap,
+// then the name is a field in place (as on Partner, D71).
+func (a *App) renameRow(c *ui.Context, dv *protocol.DeviceView, width float32) {
+	t := a.T
+	r := &a.devState().rename
+	if res := a.S.Renamed; res != nil {
+		a.S.Renamed = nil
+		if res.OK {
+			r.device, r.failed = "", ""
+		} else if res.Device == r.device {
+			r.failed = res.Reason
+		}
+	}
+	row := ui.Row(c.Key("rename:" + dv.ID)).Gap(t.S2).AlignItems(ui.Center).Wrap()
+	if width > 0 {
+		row.Width(width)
+	}
+	if r.device != dv.ID {
+		row.Children(func() {
+			if a.button(c, a.L.T("device.rename"), btnText, t.ControlSM, t.Bg) {
+				*r = renameState{device: dv.ID, draft: dv.Name}
+			}
+		})
+		return
+	}
+	save := func() {
+		name := strings.TrimSpace(r.draft)
+		if name == "" || name == dv.Name {
+			r.device = ""
+			return
+		}
+		r.failed = ""
+		a.send(protocol.RenameDeviceReq{T: "rename_device", Device: dv.ID, Name: name})
+	}
+	row.Children(func() {
+		in := ui.TextInput(c.Key("input:device-name:"+dv.ID), &r.draft).Placeholder(dv.Name).Label(a.L.T("device.rename")).
+			FontSize(t.MD).FontWeight(700).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.Surface).Border(1, t.Line).
+			Grow(1).MinWidth(140).OnSubmit(save)
+		if !r.focused {
+			in.Focus()
+			r.focused = true
+		}
+		if a.button(c, a.L.T("device.rename.cancel"), btnText, t.ControlSM, t.Bg) {
+			r.device = ""
+		}
+		if a.button(c, a.L.T("device.rename.ok"), btnPrimary, t.ControlSM, t.Bg) {
+			save()
+		}
+	})
+	switch r.failed {
+	case "":
+	case "name_taken":
+		a.reasonLine(c, a.L.T("device.rename.name_taken", strings.TrimSpace(r.draft)))
+	default:
+		a.reasonLine(c, a.L.T("device.rename."+r.failed))
+	}
+}
+
 // connectEntry is the way to add a device: a phone or another computer
-// connects with a one-time code (D54). The code's sheet opens on the stage.
+// connects with a one-time code (D54). The code shows in the scene, on a
+// sign at the end of a jetty from home (D81, pairing.go).
 func (a *App) connectEntry(c *ui.Context) {
 	t := a.T
 	if a.button(c, a.L.T("devices.connect"), btnSecondary, t.ControlSM, t.Bg) {
@@ -325,8 +462,9 @@ func (a *App) deviceChip(dv *protocol.DeviceView) (string, theme.StateColors) {
 }
 
 // deviceLine is the one quiet line under a device's name: why it is
-// asleep or can't be reached, or, for the home device, that Ducter lives
-// there. An awake worker says nothing.
+// asleep or can't be reached; for the home device, that Ducter lives
+// there; for another computer, what it is and that it does tasks for
+// Ducter, or how many it is doing (research/33 §7b).
 func (a *App) deviceLine(dv *protocol.DeviceView, sc theme.StateColors) (string, ui.Color) {
 	switch {
 	case dv.State == protocol.DeviceAsleep || dv.State == protocol.DeviceUnreachable:
@@ -334,8 +472,18 @@ func (a *App) deviceLine(dv *protocol.DeviceView, sc theme.StateColors) (string,
 		return text, sc.Ink
 	case dv.Home:
 		return a.L.T("device.home.line", a.S.PersonaName), a.T.InkMuted
+	case dv.Kind == "phone":
+		return a.L.T("device.client.line", a.S.PersonaName), a.T.InkMuted
 	}
-	return "", a.T.InkMuted
+	// Another computer says what it is, and what it does or is doing (D84).
+	switch n := a.runningOn(dv); n {
+	case 0:
+		return a.L.T("device.other") + " · " + a.L.T("device.other.does", a.S.PersonaName), a.T.InkMuted
+	case 1:
+		return a.L.T("device.other") + " · " + a.L.T("device.other.working.one"), a.T.InkMuted
+	default:
+		return a.L.T("device.other") + " · " + a.L.T("device.other.working", n), a.T.InkMuted
+	}
 }
 
 // selectable styles a card that can be chosen (a device, an ability): a
@@ -383,210 +531,22 @@ func deviceArt(d *protocol.DeviceView) string {
 	return kind + "_awake"
 }
 
+// abilityArt is an ability's clay object (D81: one family of standalone clay
+// toys: a globe in a browser frame, a hand on a laptop, a little lighthouse,
+// a hand tapping a phone, a handset on its base).
 func abilityArt(id string) string {
 	switch id {
-	case protocol.AbilityWeb:
-		return "ab_web"
-	case protocol.AbilityComputer:
-		return "ab_computer"
-	case protocol.AbilityRemote:
-		return "ab_remote"
-	case protocol.AbilityPhone:
-		return "ab_phone_locked"
+	case protocol.AbilityWeb, protocol.AbilityComputer, protocol.AbilityRemote, protocol.AbilityPhone, protocol.AbilityCall:
+		return "ab_" + id
 	}
-	return "ab_call_locked"
+	return "ab_call"
 }
+
+// abilityLaterArt is the same object not yet available: desaturated and a
+// little see-through.
+func abilityLaterArt(id string) string { return abilityArt(id) + "_later" }
 
 // ---------- the stage ----------
-
-// rig is where things sit on the stage, in its own coordinates.
-type rig struct {
-	k                   float32
-	ped, device, ducter ui.Rect
-	tokensTop, sw, sh   float32
-	duckerBottom        float32
-}
-
-func (a *App) layoutRig(sw, sh float32, dv *protocol.DeviceView, pose theme.Presence) rig {
-	k := min(sw/620, sh/660, 1.2)
-	k = max(k, 0.55)
-	r := rig{k: k, sw: sw, sh: sh}
-	r.tokensTop = sh - 20 - 66
-	pw := 430 * k
-	ph := pw * 405 / 640
-	r.ped = ui.Rect{X: (sw - pw) / 2, Y: r.tokensTop - 26*k - ph, W: pw, H: ph}
-	art := deviceArt(dv)
-	dw, aspect := float32(300), float32(491.0/640)
-	switch art {
-	case "laptop_asleep":
-		dw, aspect = 300, 419.0/640
-	case "mini_awake":
-		dw, aspect = 220, 638.0/574
-	case "mini_asleep":
-		dw, aspect = 280, 443.0/640
-	case "server_awake":
-		dw, aspect = 290, 511.0/640
-	case "server_asleep":
-		dw, aspect = 260, 436.0/562
-	case "device_unreachable":
-		dw, aspect = 290, 546.0/640
-	case "phone":
-		dw, aspect = 150, 640.0/416
-	}
-	dw *= k
-	dh := dw * aspect
-	bottom := r.ped.Y + 0.6*ph
-	r.device = ui.Rect{X: (sw - dw) / 2, Y: bottom - dh, W: dw, H: dh}
-	// Ducter's feet on the device's top edge; each pose's feet sit at a
-	// different height of its square.
-	s := 180 * k
-	feet := map[theme.Presence]float32{theme.Idle: 0.795, theme.Done: 0.855, theme.Napping: 0.86}[pose]
-	if feet == 0 {
-		feet = 0.8
-	}
-	topInset := r.device.H * 0.025
-	r.ducter = ui.Rect{X: sw/2 - s/2 + 4*k, Y: r.device.Y + topInset - feet*s + 9*k, W: s, H: s}
-	return r
-}
-
-func (a *App) stage(c *ui.Context, dv *protocol.DeviceView) {
-	t := a.T
-	d := a.devState()
-	if dv == nil {
-		return
-	}
-	now := a.Now()
-	still := c.Preferences().ReduceMotion
-	stage := ui.Box(c.Key("stage")).Grow(1).MinHeight(420).Radius(36).Background(t.Clay).Clip().
-		Role(ui.RoleGroup).Label(a.deviceName(dv))
-	if over, ok := ui.DragOver[abilityDrag](stage); ok && a.canAdd(dv, over.id) {
-		d.hover = over.id
-	}
-	if got, ok := ui.Drop[abilityDrag](stage); ok && a.canAdd(dv, got.id) {
-		x, y, _ := stage.PointerPosition()
-		sb := stage.Bounds()
-		size := float32(110)
-		a.startEquip(dv, got.id, ui.Rect{X: sb.X + x - size/2, Y: sb.Y + y - size/2, W: size, H: size}, true)
-	}
-	b := stage.LayoutBounds()
-	sw, sh := b.W, b.H
-	if sw == 0 || sh == 0 {
-		c.Invalidate()
-		sw, sh = 620, 640
-	}
-	pose := theme.Idle
-	switch {
-	case dv.State == protocol.DeviceAsleep:
-		pose = theme.Napping
-	case !d.doneAt.IsZero() && now.Sub(d.doneAt) < t.Equip.DoneFace:
-		pose = theme.Done
-		c.After(t.Equip.DoneFace - now.Sub(d.doneAt))
-	}
-	r := a.layoutRig(sw, sh, dv, pose)
-	dim := dv.State != protocol.DeviceAwake
-	harnesses := dv.Harnesses
-
-	stage.Draw(func(p *ui.Painter, rect ui.Rect) {
-		// Soft contact shadow under the pedestal.
-		cx := rect.X + r.ped.X + r.ped.W/2
-		cy := rect.Y + r.ped.Y + r.ped.H*0.92
-		for i := 0; i < 24; i++ {
-			f := 1 - float32(i)/24
-			var e ui.Path
-			ellipse(&e, cx, cy, r.ped.W*0.47*f+6, r.ped.H*0.12*f+2)
-			p.FillPath(&e, ui.RGBA(120, 72, 30, 0.012))
-		}
-		// Cords: a signed-in AI account is tied to this device.
-		n := len(harnesses)
-		for i, h := range harnesses {
-			if !h.LoggedIn || dim { // a device that isn't awake: what it last said, untied
-				continue
-			}
-			tx := rect.X + tokenCenter(sw, n, i, r.k)
-			ty := rect.Y + r.tokensTop
-			ex := cx + (float32(i)-float32(n-1)/2)*24*r.k
-			ey := rect.Y + r.ped.Y + r.ped.H*0.88
-			col := t.Accent
-			if h.Harness != "claude-code" {
-				col = t.Ink
-			}
-			dottedCurve(p, tx, ty, tx, ty-30*r.k, ex, ey+26*r.k, ex, ey, col.Alpha(0.8), 2.6*r.k)
-		}
-	})
-	stage.Children(func() {
-		// Pedestal, device, Ducter.
-		img := func(key, name string, at ui.Rect) ui.Element {
-			e := ui.Box(c.Key(key)).Absolute().Left(at.X).Top(at.Y).Size(at.W, at.H)
-			e.Children(func() {
-				if bmp := theme.Clay(name); bmp != nil {
-					ui.Image(c, bmp).Grow(1).AccessHidden(true)
-				}
-			})
-			return e
-		}
-		img("pedestal", "pedestal", r.ped)
-		devEl := img("device:"+dv.ID, deviceArt(dv), r.device).Role(ui.RoleImage).Label(a.deviceName(dv)).TransformOrigin(0.5, 1)
-		if !d.squash.IsZero() && !still {
-			if el := now.Sub(d.squash); el < t.Equip.Squash {
-				sx, sy := squashAt(float32(el) / float32(t.Equip.Squash))
-				devEl.Scale(sx, sy)
-				c.After(16 * time.Millisecond)
-			}
-		}
-		if dv.Home {
-			if bmp := theme.Art(pose, 360); bmp != nil {
-				ui.Image(c.Key("ducter"), bmp).Absolute().Left(r.ducter.X).Top(r.ducter.Y).Size(r.ducter.W, r.ducter.H).
-					Role(ui.RoleImage).Label(a.S.PersonaName)
-			}
-		}
-		// Slots around the device.
-		for i, id := range a.slotAbilities(dv) {
-			if i >= len(slotSpots) {
-				break
-			}
-			a.slot(c, dv, id, slotSpots[i][0]*sw, slotSpots[i][1]*sh, r.k, sw, dim)
-		}
-		// AI accounts below.
-		a.tokens(c, dv, r)
-		// The line at the top: what changed, or why the device is quiet.
-		a.stageLine(c, dv, sw)
-		if d.pair.open {
-			a.pairSheet(c, dv, sw, sh)
-		} else if d.account != "" {
-			a.accountSheet(c, dv, sw, sh)
-		} else if a.web.open && a.webSetupOwned(dv) {
-			a.webSheet(c, dv, sw, sh)
-		}
-	})
-	a.sparkles(c)
-}
-
-// slotAbilities are the abilities a device shows slots for: the first
-// four it has.
-func (a *App) slotAbilities(dv *protocol.DeviceView) []string {
-	var out []string
-	for _, ab := range dv.Abilities {
-		out = append(out, ab.ID)
-	}
-	if len(out) > 4 {
-		out = out[:4]
-	}
-	return out
-}
-
-// tokenWidth is an AI account card's width: 250 at full size, narrower
-// so that every card fits inside the stage.
-func tokenWidth(sw float32, n int, k float32) float32 {
-	gap := float32(22) * k
-	return max(min(250*k, (sw-32-float32(max(n-1, 0))*gap)/float32(max(n, 1))), 120)
-}
-
-func tokenCenter(sw float32, n, i int, k float32) float32 {
-	w := tokenWidth(sw, n, k)
-	gap := float32(22) * k
-	total := float32(n)*w + float32(max(n-1, 0))*gap
-	return (sw-total)/2 + float32(i)*(w+gap) + w/2
-}
 
 // squashAt is the device's squash at progress q: wider and shorter, then
 // a little taller, then still.
@@ -613,188 +573,17 @@ func ellipse(m *ui.Path, cx, cy, rx, ry float32) {
 	m.Close()
 }
 
-// dottedCurve paints dots along a cubic curve.
-func dottedCurve(p *ui.Painter, x0, y0, x1, y1, x2, y2, x3, y3 float32, col ui.Color, r float32) {
-	pt := func(s float32) (float32, float32) {
-		u := 1 - s
-		return u*u*u*x0 + 3*u*u*s*x1 + 3*u*s*s*x2 + s*s*s*x3, u*u*u*y0 + 3*u*u*s*y1 + 3*u*s*s*y2 + s*s*s*y3
-	}
-	length := float32(math.Hypot(float64(x3-x0), float64(y3-y0))) * 1.15
-	n := int(length / (r * 3.2))
-	for i := 0; i <= n; i++ {
-		x, y := pt(float32(i) / float32(max(n, 1)))
-		var m ui.Path
-		m.Circle(x, y, r/2)
-		p.FillPath(&m, col)
-	}
-}
-
-func (a *App) slot(c *ui.Context, dv *protocol.DeviceView, id string, cx, cy, k, sw float32, dim bool) {
-	t := a.T
-	d := a.devState()
-	ab := dv.Ability(id)
-	on := a.shownOn(dv, id)
-	flying := d.fx != nil && d.fx.ability == id && d.fx.device == dv.ID && !d.fx.back
-	well := max(76, 104*k)
-	name := a.L.T("ability." + id)
-	label := a.L.T("ability.slot", name)
-	switch {
-	case on:
-		label = a.L.T("ability.slot.on", name)
-	case ab != nil && ab.State == protocol.AbilityLater:
-		label = a.L.T("ability.slot.later", name)
-	case ab != nil && ab.State == protocol.AbilityUnavailable:
-		label = a.L.T("ability.slot.unavailable", name)
-	}
-	addable := !on && !flying && a.canAdd(dv, id)
-	target := flying || (addable && (d.ability == id || d.hover == id))
-	// The column keeps inside the stage: near an edge the label moves in
-	// rather than being cut (its well moves with it, a little).
-	colW := max(well+t.S5, 140*k)
-	left := min(max(cx-colW/2, t.S3), sw-colW-t.S3)
-	col := ui.Column(c.Key("slot:" + id)).Absolute().Left(left).Top(cy - well/2).Width(colW).AlignItems(ui.Center).Gap(t.S2).
-		Role(ui.RoleButton).Label(label).Cursor(ui.CursorPointer)
-	if dim || (ab != nil && ab.State == protocol.AbilityLater) {
-		col.Opacity(0.72)
-	}
-	col.Children(func() {
-		w := ui.Box(c.Key("well")).Size(well, well)
-		w.Children(func() {
-			art := "slot_empty"
-			if on || (ab != nil && ab.State == protocol.AbilityLater) {
-				art = abilityArt(id)
-			}
-			if bmp := theme.Clay(art); bmp != nil {
-				ui.Image(c, bmp).Grow(1).AccessHidden(true)
-			}
-			if target {
-				// The dashed ring that says "this goes here"; it breathes
-				// while an ability is held over the stage or hovered.
-				live := (d.hover == id) && !c.Preferences().ReduceMotion
-				ring := ui.Box(c.Key("ring")).Absolute().Left(-6).Top(-6).Size(well+12, well+12)
-				ph := float32(0)
-				if live {
-					ph = float32(math.Sin(float64(c.Now().UnixMilli())/255)) * 0.5
-					c.After(33 * time.Millisecond)
-				}
-				ring.Draw(func(p *ui.Painter, r ui.Rect) {
-					grow := float32(0)
-					if flying {
-						grow = 14 // the slot opens for the sticker
-					} else if d.hover == id {
-						grow = 5 + 3*ph
-						var halo ui.Path
-						halo.Circle(r.X+r.W/2, r.Y+r.H/2, r.W/2+grow)
-						p.FillPath(&halo, t.Accent.Alpha(0.12))
-					}
-					p.StrokeDashed(ui.Rect{X: r.X - grow/2, Y: r.Y - grow/2, W: r.W + grow, H: r.H + grow}, t.Accent, (r.W+grow)/2, 3)
-				})
-			}
-		})
-		d.slots[id] = w.Bounds()
-		// Just the name: the art says added (filled), can add (empty
-		// well) or later (dimmed); the full state is the accessible name.
-		ui.Text(c, name).FontSize(t.SM).FontWeight(800).TextAlign(ui.Center).MaxLines(2).AccessHidden(true)
-	})
-	if on && dv.State == protocol.DeviceAwake && ab != nil && id == protocol.AbilityWeb {
-		col.ContextMenu(func(m *ui.Menu) {
-			if m.Item(a.L.T("ability.remove")).Chosen() {
-				d.ability, d.removing = id, id
-			}
-		})
-	}
-	if col.Clicked() {
-		d.ability = id
-		if addable {
-			a.startEquip(dv, id, d.tiles[id], false)
-		}
-	}
-}
-
-// tokens: the AI accounts on the device, as clay tokens with what the
-// server knows (signed in or not; an allowance only if it was reported).
-func (a *App) tokens(c *ui.Context, dv *protocol.DeviceView, r rig) {
-	t := a.T
-	n := len(dv.Harnesses)
-	if n == 0 {
-		return
-	}
-	k := r.k
-	for i, h := range dv.Harnesses {
-		status := a.L.T("token.signed_in")
-		switch {
-		case !h.Installed:
-			status = a.L.T("token.missing")
-		case !h.LoggedIn:
-			status = a.L.T("token.signed_out")
-		case h.Allowance != nil:
-			status += " · " + a.L.T("token.allowance", int(h.Allowance.Left*100+0.5))
-		}
-		art := "token_ink"
-		if h.Harness == "claude-code" {
-			art = "token_orange"
-		}
-		w := tokenWidth(r.sw, n, k)
-		x := tokenCenter(r.sw, n, i, k) - w/2
-		tok := ui.Row(c.Key("tok:"+h.Harness)).Absolute().Left(x).Top(r.tokensTop).Width(w).Height(66).Gap(t.S3).
-			Padding(t.S2, t.S3, t.S2, t.S2).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).AlignItems(ui.Center).
-			Role(ui.RoleGroup).Label(harnessName(h.Harness) + " · " + status)
-		if !h.LoggedIn || dv.State != protocol.DeviceAwake {
-			tok.Opacity(0.6)
-		}
-		// On the Mac this app runs Ducter on, an account card opens its
-		// sheet: sign in, install, or sign out (D71).
-		manage := a.Backend != nil && dv.Home && dv.State == protocol.DeviceAwake && accountCheck(h.Harness) != ""
-		if manage {
-			tok.Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable()
-			a.lift(c, tok, 2)
-			if tok.Clicked() {
-				a.devState().account = h.Harness
-			}
-		}
-		tok.Children(func() {
-			if bmp := theme.Clay(art); bmp != nil {
-				ui.Image(c, bmp).Size(52, 52).Shrink(0).AccessHidden(true)
-			}
-			ui.Column(c).Gap(2).MinWidth(0).Shrink(1).Children(func() {
-				ui.Text(c, harnessName(h.Harness)).FontSize(t.SM).FontWeight(800).SingleLine()
-				line, ink := status, t.InkMuted
-				if manage && (!h.Installed || !h.LoggedIn) {
-					line, ink = a.L.T("token.signin"), t.NeedsYou.Ink
-					if !h.Installed {
-						line = a.L.T("token.install")
-					}
-				}
-				ui.Text(c, line).FontSize(t.XS).FontWeight(700).TextColor(ink).SingleLine()
-			})
-		})
-	}
-}
-
-// stageLine is the one line at the top of the stage: what just changed,
-// or why the device is quiet.
+// stageLine is the one line at the top of the stage when something just
+// changed (an ability added or removed). Why a device is quiet is said
+// under its island and in its card, not here.
 func (a *App) stageLine(c *ui.Context, dv *protocol.DeviceView, sw float32) {
 	t := a.T
 	d := a.devState()
-	var text string
-	var sc theme.StateColors
-	check := false
-	switch {
-	case dv.State == protocol.DeviceAsleep:
-		text, sc = a.L.T("device.asleep.line", a.deviceName(dv)), t.Asleep
-	case dv.State == protocol.DeviceUnreachable:
-		if ago := a.agoLong(dv.LastSeen); ago != "" {
-			text = a.L.T("device.unreachable.line", a.deviceNameIn(dv), ago)
-		} else {
-			text = a.L.T("device.unreachable.line.never", a.deviceNameIn(dv))
-		}
-		sc = t.Away
-	case d.line != "" && a.Now().Sub(d.lineAt) < 8*time.Second:
-		text, sc, check = d.line, t.Awake, true
-		c.After(8*time.Second - a.Now().Sub(d.lineAt))
-	default:
+	if d.line == "" || a.Now().Sub(d.lineAt) >= 8*time.Second {
 		return
 	}
+	text, sc, check := d.line, t.Awake, true
+	c.After(8*time.Second - a.Now().Sub(d.lineAt))
 	line := ui.Row(c.Key("line:" + text)).Absolute().Top(18).Left(16).Width(sw - 32).Justify(ui.Center)
 	line.Children(func() {
 		pill := ui.Row(c.Key("pill")).Gap(t.S3).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).
@@ -864,7 +653,11 @@ func (a *App) abilityGrid(c *ui.Context, dv *protocol.DeviceView, cols int) {
 			tile.Children(func() {
 				well := ui.Box(c.Key("well")).WidthPercent(100).Height(84).Radius(t.RadiusMD).Background(t.Clay).Padding(t.S2)
 				well.Children(func() {
-					if bmp := theme.Clay(abilityArt(id)); bmp != nil {
+					art := abilityArt(id)
+					if locked {
+						art = abilityLaterArt(id)
+					}
+					if bmp := theme.Clay(art); bmp != nil {
 						im := ui.Image(c, bmp).Grow(1).AccessHidden(true)
 						if flying {
 							im.Opacity(0)
@@ -912,7 +705,7 @@ func (a *App) abilityDetail(c *ui.Context, dv *protocol.DeviceView) {
 	card := ui.Column(c.Key("detail:"+id)).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Padding(t.S4).Gap(t.S3).
 		Role(ui.RoleGroup).Label(name)
 	card.Children(func() {
-		ui.Text(c, name).FontSize(t.LG).FontWeight(800)
+		a.heading(c, name, t.XL)
 		on := a.shownOn(dv, id)
 		if !(on && d.removing == id) {
 			ui.Text(c, a.L.T("ability."+id+".about")).FontSize(t.MD).LineHeight(1.6).TextColor(t.InkSoft)
@@ -937,11 +730,11 @@ func (a *App) abilityDetail(c *ui.Context, dv *protocol.DeviceView) {
 		case on && d.removing == id:
 			ui.Text(c, a.L.T("ability.remove."+id, a.deviceNameIn(dv))).FontSize(t.MD).LineHeight(1.55).TextColor(t.Ink)
 			ui.Row(c).Gap(t.S3).Children(func() {
-				if a.buttonFor(c, a.L.T("ability.remove"), name, btnPrimary, t.ControlMD, t.Surface) {
-					a.removeAbility(dv, id)
-				}
 				if a.button(c, a.L.T("ability.remove.keep"), btnSecondary, t.ControlMD, t.Bg) {
 					d.removing = ""
+				}
+				if a.buttonFor(c, a.L.T("ability.remove"), name, btnPrimary, t.ControlMD, t.Surface) {
+					a.removeAbility(dv, id)
 				}
 			})
 		case on:
@@ -1101,7 +894,7 @@ func (a *App) drainAbilityResults() {
 	}
 	// A device that paired while the code was showing: 远程打开 is on.
 	if d.pair.open && a.S.Reach != nil && len(a.S.Reach.Clients) > d.pair.clients {
-		d.pair.open = false
+		a.joined("cl:" + a.S.Reach.Clients[len(a.S.Reach.Clients)-1].ID)
 		if home := a.homeDevice(); home != nil {
 			d.ability = protocol.AbilityRemote
 			d.optimistic[home.ID+"/"+protocol.AbilityRemote] = a.Now()
@@ -1295,92 +1088,6 @@ func star(p *ui.Painter, x, y, r float32, col ui.Color) {
 	p.FillPath(&m, col)
 }
 
-// ---------- 远程打开: the pairing code ----------
-
-func (a *App) openPair() {
-	d := a.devState()
-	d.pair.open, d.pair.asked = true, a.Now()
-	d.pair.clients = 0
-	if a.S.Reach != nil {
-		d.pair.clients = len(a.S.Reach.Clients)
-	}
-	a.S.PairCode = nil
-	a.send(protocol.PairCodeReq{T: "pair_code"})
-}
-
-func (a *App) pairSheet(c *ui.Context, dv *protocol.DeviceView, sw, sh float32) {
-	t := a.T
-	d := a.devState()
-	pc := a.S.PairCode
-	w := min(sw-48, 420)
-	sheet := ui.Column(c.Key("pair")).Absolute().Left((sw-w)/2).Top(40).Width(w).MaxHeight(sh-80).
-		Padding(t.S5, t.S5).Gap(t.S3).Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).ZIndex(10).
-		Role(ui.RoleDialog).Label(a.L.T("pair.title"))
-	a.enter(c, sheet)
-	sheet.Children(func() {
-		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, a.L.T("pair.title")).FontSize(t.LG).FontWeight(800).Grow(1).MinWidth(0)
-			if a.button(c, a.L.T("pair.close"), btnSecondary, t.ControlSM, t.Surface) {
-				d.pair.open = false
-			}
-		})
-		if pc == nil {
-			ui.Text(c, a.L.T("devices.loading")).FontSize(t.SM).TextColor(t.InkMuted)
-			return
-		}
-		exp := store.ParseTime(pc.ExpiresAt)
-		left := exp.Sub(a.Now())
-		if !exp.IsZero() && left <= 0 {
-			a.reasonLine(c, a.L.T("pair.expired"))
-			if a.button(c, a.L.T("pair.again"), btnPrimary, t.ControlMD, t.Surface) {
-				a.openPair()
-			}
-			return
-		}
-		if left > 0 {
-			c.After(min(left, time.Minute))
-		}
-		ui.Row(c).Gap(t.S4).AlignItems(ui.Center).Children(func() {
-			if len(pc.QR) > 0 {
-				qrBox(c, pc.QR, 132, t.Ink, t.Surface)
-			}
-			ui.Column(c).Gap(t.S2).Grow(1).MinWidth(0).Children(func() {
-				ui.Text(c, a.L.T("pair.code")).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted)
-				ui.Text(c, pc.Code).Font(t.Mono).FontSize(t.XXL).FontWeight(800).LetterSpacing(1).Selectable()
-				mins := int(math.Ceil(left.Minutes()))
-				ui.Text(c, a.L.T("pair.once", mins)).FontSize(t.XS).TextColor(t.InkMuted)
-				if pc.Address != "" {
-					ui.Text(c, a.L.T("pair.address")).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted).Margin(6, 0, 0, 0)
-					ui.Text(c, pc.Address).Font(t.Mono).FontSize(t.SM).Selectable().MaxLines(2)
-				}
-			})
-		})
-		if pc.Address != "" {
-			ui.Text(c, a.L.T("pair.scan")).FontSize(t.SM).LineHeight(1.55).TextColor(t.InkSoft)
-		} else {
-			a.reasonLine(c, a.L.T("pair.noaddress"))
-		}
-		ui.Text(c, a.L.T("pair.waiting")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
-	})
-}
-
-// qrBox draws a QR code from rows of "1" and "0", with its quiet zone.
-func qrBox(c *ui.Context, rows []string, size float32, ink, paper ui.Color) {
-	n := len(rows)
-	ui.Box(c).Size(size, size).Radius(12).Background(paper).Border(1.5, ink.Alpha(0.12)).Shrink(0).Role(ui.RoleImage).Label("QR").
-		Draw(func(p *ui.Painter, r ui.Rect) {
-			cell := (r.W - 16) / float32(n)
-			ox, oy := r.X+8, r.Y+8
-			for y, row := range rows {
-				for x := 0; x < len(row); x++ {
-					if row[x] == '1' {
-						p.Fill(ui.Rect{X: ox + float32(x)*cell, Y: oy + float32(y)*cell, W: cell + 0.3, H: cell + 0.3}, ink, 0)
-					}
-				}
-			}
-		})
-}
-
 // ---------- AI accounts: sign in, install, sign out (D71) ----------
 
 // accountCheck is the doctor's check id of a harness ("" if none).
@@ -1461,7 +1168,7 @@ func (a *App) accountSheet(c *ui.Context, dv *protocol.DeviceView, sw, sh float3
 			if bmp := theme.Clay(art); bmp != nil {
 				ui.Image(c, bmp).Size(44, 44).Shrink(0).AccessHidden(true)
 			}
-			ui.Text(c, name).FontSize(t.LG).FontWeight(800).Grow(1).MinWidth(0)
+			a.heading(c, name, t.XL).Grow(1).MinWidth(0)
 			if a.button(c, a.L.T("pair.close"), btnSecondary, t.ControlSM, t.Surface) {
 				d.account = ""
 			}
@@ -1488,5 +1195,36 @@ func (a *App) accountSheet(c *ui.Context, dv *protocol.DeviceView, sw, sh float3
 				_, _ = a.Backend.Run(id+".signout", signout)
 			}
 		}
+	})
+}
+
+// deviceIdle is how a device's clay moves while nothing happens (D77): an
+// awake one floats, a cloud machine (a server) drifts, a sleeping one's
+// blanket rises and falls, and one that can't be reached is still.
+func deviceIdle(dv *protocol.DeviceView) idleKind {
+	switch dv.State {
+	case protocol.DeviceAwake:
+		if dv.Kind == "server" {
+			return idleDrift
+		}
+		return idleFloat
+	case protocol.DeviceAsleep:
+		return idleBlanket
+	}
+	return idleStill
+}
+
+// deviceClay is a device's clay art, moving by its state, a little grey
+// when it can't be reached. Each drawing has its own phase (key).
+func (a *App) deviceClay(c *ui.Context, key string, dv *protocol.DeviceView) ui.Element {
+	bmp := theme.Clay(deviceArt(dv))
+	kind, phase := deviceIdle(dv), phaseOf(key)
+	box := ui.Box(c.Key("clay:" + key)).AccessHidden(true)
+	if dv.State == protocol.DeviceUnreachable {
+		box.Grayscale().Opacity(0.8)
+	}
+	return box.Draw(func(p *ui.Painter, r ui.Rect) {
+		at := fitIn(bmp, r)
+		clayArt(p, at, bmp, kind, phase, nil)
 	})
 }

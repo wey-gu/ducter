@@ -75,6 +75,12 @@ describe("server and pairing commands", () => {
       code: "K7QM-4XPA",
       name: "vps-2",
     });
+    // D83: the address is positional; --join stays as a hidden alias.
+    expect(ok(["worker", "https://d.example.com", "--code", "K7QM-4XPA"])).toMatchObject({ command: "worker", join: "https://d.example.com", code: "K7QM-4XPA" });
+    expect(ok(["worker", "--code", "K7QM-4XPA", "d.example.com"])).toMatchObject({ join: "d.example.com", code: "K7QM-4XPA" });
+    expect(ok(["worker"]).join).toBeUndefined();
+    expect(err(["worker", "a.example", "b.example"]).key).toBe("err.unknownCommand");
+    expect(ok(["devices", "rename", "vps-2", "Build box"]).rest).toEqual(["rename", "vps-2", "Build box"]);
     expect(err(["pair", "extra"]).key).toBe("err.unknownCommand");
   });
   test("uninstall and report flags", () => {

@@ -1,12 +1,15 @@
 // Client WebSocket protocol (ClientFrame / ServerFrame) over Bun's built-in WS.
 import type { ServerWebSocket } from "bun";
-import type { Bodies, ClientFrame, Delivery, LogEvent, ServerFrame } from "@ducter/protocol";
+import type { Bodies, ClientFrame, Delivery, LogEvent, PartnerActivity, ServerFrame } from "@ducter/protocol";
 import type { CoreApi, Runner } from "@ducter/protocol/src/internal.ts";
 import type { Decisions } from "./decisions.ts";
 import type { DevicesView } from "./devices.ts";
 import { PROJECTED_KINDS, taskStream } from "./registry.ts";
 import { machineId } from "./machine.ts";
 import type { SettingsStore } from "./settings.ts";
+import type { RulesStore } from "./rules.ts";
+import type { Loadout } from "./loadout.ts";
+import type { ConnectionsStore } from "./connections.ts";
 
 export interface WsData {
   live: boolean;
@@ -16,6 +19,10 @@ export interface WsData {
   devices?: boolean;
   /** Asked for settings: gets a fresh settings frame whenever they change. */
   settings?: boolean;
+  /** Asked for rules: gets a fresh rules frame whenever they change. */
+  rules?: boolean;
+  /** Asked for connections: gets a fresh connections frame whenever they change. */
+  connections?: boolean;
   /** The paired device behind a remote socket (core.ts). */
   device?: { id: string };
 }
@@ -36,7 +43,22 @@ export interface WsDeps {
   devices?: () => DevicesView | undefined;
   /** The partner's settings (settings.ts); absent in tests that don't need it. */
   settings?: SettingsStore;
+  /** Your rules and who does the tasks (D89); absent in tests that don't need them. */
+  rules?: RulesStore;
+  loadout?: Loadout;
+  /** The user's connections (connections.ts); absent in tests that don't need it. */
+  connections?: ConnectionsStore;
+  /** Work over time (D112-D114): waiters, until loops, routines; absent in tests that don't need it. */
+  work?: WorkFrames;
   batchMs?: number;
+}
+
+/** What the client frames for work over time do (core.ts wires them to waiters, untils, routines). */
+export interface WorkFrames {
+  zone(tz: string): void;
+  waiter(waiterId: string, action: "look" | "cancel"): Promise<boolean>;
+  routine(routineId: string, action: "pause" | "resume" | "end"): boolean;
+  until(taskId: string, action: "stop"): boolean;
 }
 
 /** Drops living_msg revisions that a later event in the same batch supersedes. */
@@ -94,6 +116,16 @@ export function createWsHandler(deps: WsDeps) {
     if (!subs.length) return;
     void settingsFrame().then((f) => subs.forEach((ws) => sockets.has(ws) && send(ws, f)));
   });
+  const rulesFrame = (): ServerFrame => ({ t: "rules", rules: deps.rules!.list() });
+  const offRules = deps.rules?.onChange(() => {
+    const f = rulesFrame();
+    for (const ws of sockets) if (ws.data.rules) send(ws, f);
+  });
+  // Connections: same pattern. The frame never carries a token.
+  const connectionsFrame = (): ServerFrame => ({ t: "connections", connections: deps.connections!.view(), oo: deps.connections!.oo() });
+  const offConnections = deps.connections?.onChange(() => {
+    for (const ws of sockets) if (ws.data.connections) send(ws, connectionsFrame());
+  });
   // Memory_noted lines change the noted list: subscribers hear about it too.
   const offNoted = log.subscribe((e) => {
     if (e.kind !== "memory_noted" || !deps.settings) return;
@@ -131,6 +163,20 @@ export function createWsHandler(deps: WsDeps) {
     if (any && !flushTimer) flushTimer = setTimeout(flush, batchMs);
   });
 
+  // What the partner is doing while the user waits (D104). Presence, not history: never logged.
+  // Buffered events go first, so a reply and the activity that ends with it arrive in order.
+  let activity: PartnerActivity | null = null;
+  const setActivity = (a: PartnerActivity | null) => {
+    if (a === null && activity === null) return;
+    if (a && activity && a.step === activity.step && a.since === activity.since) return;
+    activity = a;
+    for (const ws of sockets) {
+      if (!ws.data.live) continue;
+      if (ws.data.buf.length) send(ws, { t: "events", events: ws.data.buf.splice(0) });
+      send(ws, { t: "activity", activity: a });
+    }
+  };
+
   const handle = async (ws: ServerWebSocket<WsData>, f: ClientFrame) => {
     if (f.t !== "hello" && !ws.data.live) throw new Error("send hello first");
     switch (f.t) {
@@ -144,7 +190,9 @@ export function createWsHandler(deps: WsDeps) {
             : log.read({ stream: "channel", limit: REPLAY_FRESH });
         send(ws, { t: "events", events: dropSuperseded(events) });
         send(ws, { t: "on_hand", onHand: tasks.onHand() });
+        if (activity) send(ws, { t: "activity", activity });
         ws.data.live = true; // synchronous since the read: no event can be missed in between
+        if (typeof f.tz === "string" && f.tz) deps.work?.zone(f.tz);
         return;
       }
       case "send": {
@@ -278,6 +326,13 @@ export function createWsHandler(deps: WsDeps) {
         send(ws, await v.pairCode());
         return;
       }
+      case "rename_device": {
+        const v = devicesView();
+        if (!v) throw new Error("devices are not available");
+        watchDevices();
+        send(ws, v.rename(String(f.device ?? ""), String(f.name ?? "")));
+        return; // a rename pushes a fresh devices frame to every subscriber
+      }
       case "settings": {
         if (!deps.settings) throw new Error("settings are not available");
         ws.data.settings = true;
@@ -287,6 +342,18 @@ export function createWsHandler(deps: WsDeps) {
       case "settings_set": {
         if (!deps.settings) throw new Error("settings are not available");
         ws.data.settings = true;
+        // What it thinks with must be an AI agent signed in on the Mac Ducter lives on, and one
+        // that can be the partner (D89).
+        const b = f.patch?.brain;
+        if (b && devicesView()) {
+          const home = (await devicesView()!.frame()).devices.find((d) => d.home);
+          const h = home?.harnesses.find((x) => x.harness === b.harness);
+          if (!h?.canBePartner) {
+            send(ws, { t: "error", message: `settings_set: ${b.harness} can't be what the partner thinks with here (it must be signed in on this computer and able to be the partner)` });
+            send(ws, await settingsFrame());
+            return;
+          }
+        }
         // A change pushes a fresh frame to every subscriber; nothing changed: answer this one.
         if (!deps.settings.set(f.patch ?? {}).length) send(ws, await settingsFrame());
         return;
@@ -296,6 +363,74 @@ export function createWsHandler(deps: WsDeps) {
         ws.data.settings = true;
         const how = await deps.settings.forget(f.seq);
         send(ws, await settingsFrame(how ? { seq: f.seq, how } : undefined));
+        return;
+      }
+      case "rules": {
+        if (!deps.rules) throw new Error("rules are not available");
+        ws.data.rules = true;
+        send(ws, rulesFrame());
+        return;
+      }
+      case "rule_remove": {
+        if (!deps.rules) throw new Error("rules are not available");
+        ws.data.rules = true;
+        // A removal pushes a fresh frame to every subscriber; an unknown id: answer this one.
+        if (!deps.rules.remove(String(f.id ?? ""))) send(ws, rulesFrame());
+        return;
+      }
+      case "candidates": {
+        if (!deps.loadout) throw new Error("candidates are not available");
+        send(ws, { t: "candidates", taskId: f.taskId, candidates: await deps.loadout.candidates(f.taskId) });
+        return;
+      }
+      case "task_switch": {
+        if (!deps.loadout) throw new Error("switching is not available");
+        let r: { ok: boolean; message?: string };
+        try {
+          r = await deps.loadout.switchTask(f.taskId, String(f.harness ?? ""), f.model || undefined, deps.runner());
+        } catch (err) {
+          r = { ok: false, message: (err as Error).message };
+        }
+        send(ws, { t: "action_result", taskId: f.taskId, action: "switch", ok: r.ok, ...(r.message ? { message: r.message } : {}) });
+        return;
+      }
+      case "connections": {
+        if (!deps.connections) throw new Error("connections are not available");
+        ws.data.connections = true;
+        send(ws, connectionsFrame());
+        void deps.connections.recheck().catch(() => {});
+        return;
+      }
+      case "connection_add":
+      case "connection_oo": {
+        if (!deps.connections) throw new Error("connections are not available");
+        ws.data.connections = true;
+        const r = f.t === "connection_add" ? await deps.connections.add({ url: String(f.url ?? ""), token: f.token, name: f.name }) : await deps.connections.addFromOo();
+        send(ws, r.ok ? { t: "connection_result", ok: true, id: r.id } : { t: "connection_result", ok: false, reason: r.reason });
+        if (!r.ok) send(ws, connectionsFrame());
+        return;
+      }
+      case "connection_remove": {
+        if (!deps.connections) throw new Error("connections are not available");
+        ws.data.connections = true;
+        const ok = deps.connections.remove(String(f.id ?? ""));
+        send(ws, ok ? { t: "connection_result", ok: true, id: f.id } : { t: "connection_result", ok: false, reason: "unknown_connection" });
+        if (!ok) send(ws, connectionsFrame());
+        return;
+      }
+      case "waiter_action":
+      case "routine_action":
+      case "until_action": {
+        if (!deps.work) throw new Error("work over time is not available");
+        const id = f.t === "waiter_action" ? f.waiterId : f.t === "routine_action" ? f.routineId : f.taskId;
+        const action = f.action;
+        const ok =
+          f.t === "waiter_action" ? await deps.work.waiter(String(id ?? ""), f.action)
+          : f.t === "routine_action" ? deps.work.routine(String(id ?? ""), f.action)
+          : deps.work.until(String(id ?? ""), f.action);
+        send(ws, { t: "action_result", taskId: String(id ?? ""), action, ok, ...(ok ? {} : { message: "not found or already finished" }) });
+        // A look that changed nothing logs nothing: send the fresh view anyway.
+        if (f.t === "waiter_action") send(ws, { t: "on_hand", onHand: tasks.onHand() });
         return;
       }
       case "task_history": {
@@ -310,6 +445,7 @@ export function createWsHandler(deps: WsDeps) {
   };
 
   return {
+    setActivity,
     newData: (): WsData => ({ live: false, buf: [], onHandDirty: false }),
     websocket: {
       open(ws: ServerWebSocket<WsData>) {
@@ -344,6 +480,8 @@ export function createWsHandler(deps: WsDeps) {
     stop() {
       offDevices?.();
       offSettings?.();
+      offRules?.();
+      offConnections?.();
       offNoted();
       unsubscribe();
       if (flushTimer) clearTimeout(flushTimer);

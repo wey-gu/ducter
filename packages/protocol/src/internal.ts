@@ -2,8 +2,9 @@
 //   core    owns: Log (SQLite), bus, task registry + state machine, decisions, living message,
 //                 WS server (/ws), MCP HTTP server (/mcp), main.ts wiring.
 //   runner  owns: HarnessPort over OAR, worktrees, task sessions, event normalization.
-//   partner owns: the main AI (persona prompt, projection, turn loop) on Claude Code via runner's HarnessPort.
-import type { Attention, Bodies, Delivery, EventKind, LogEvent, OnHand, Origin, Place, Residency, Settings, TaskCard } from "./index.ts";
+//   partner owns: the main AI (persona prompt, projection, turn loop) on any first-wave harness (D85) via runner's HarnessPort.
+import type { HarnessId } from "./harnesses.ts";
+import type { Attention, Bodies, BodyWhy, Delivery, EventKind, LogEvent, OnHand, Origin, PartnerActivity, Place, Residency, Settings, TaskCard } from "./index.ts";
 
 // ---------- core ----------
 
@@ -50,6 +51,54 @@ export interface CoreApi {
   workers?: WorkerLinks;
   /** The partner's settings (D71); absent in tests and stubs (then: follow the user, remember). */
   settings?: SettingsApi;
+  /** Who does a new task (D89, core/src/loadout.ts); absent in tests and stubs (then: the runner's default). */
+  bodies?: BodyChooser;
+  /** The user's connections (D96, core/src/connections.ts); absent in tests and stubs. */
+  connections?: ConnectionsApi;
+  /** What the partner is doing while the user waits (D104); absent in tests and stubs. */
+  activity?: { set(a: PartnerActivity | null): void };
+}
+
+/**
+ * Who does a new task and why. undefined: nothing to choose by (no device info), the runner keeps
+ * its own default; { none }: no AI agent can take it, the open fails with that reason.
+ */
+export interface BodyChooser {
+  choose(work: { title: string; brief?: string; place?: Place; harness?: string; model?: string }): Promise<{ harness: string; model?: string; why: BodyWhy } | { none: string } | undefined>;
+}
+
+/** Who is calling into a connection: the partner, or one task (which must have been granted it). */
+export type ConnectionCaller = { role: "partner" } | { role: "task"; taskId: string };
+
+export interface ConnectionInfo {
+  id: string;
+  name: string;
+  source: "oomol" | "self" | "mcp";
+  /** For a task: whether it may read this one. */
+  granted?: boolean;
+}
+
+export type ConnectionOutcome =
+  | { ok: true; op: "read" | "write"; result: unknown }
+  | { ok: false; error: string; op?: "read" | "write" };
+
+/** The broker as the partner and tasks see it (design/connectors.md §4). */
+export interface ConnectionsApi {
+  list(who: ConnectionCaller): ConnectionInfo[];
+  /** Find actions (OpenConnector) or tools (other MCP servers), each marked read or write. */
+  search(who: ConnectionCaller, query: string, opts?: { connection?: string; service?: string }): Promise<ConnectionOutcome>;
+  /** One action's guide: its input, and whether it reads or writes. */
+  guide(who: ConnectionCaller, connection: string, action: string): Promise<ConnectionOutcome>;
+  /** read or write, from the server's own metadata; unknown counts as write. */
+  classify(connection: string, action: string): Promise<"read" | "write">;
+  /** Runs a read. A write is refused here: it needs stage() and the user's Go. */
+  read(who: ConnectionCaller, connection: string, action: string, input: unknown, account?: string): Promise<ConnectionOutcome>;
+  /** Records a write that waits for Go on decisionId (the partner made the card). */
+  stage(connection: string, action: string, input: unknown, decisionId: string, account?: string): { ok: true; callId: string } | { ok: false; error: string };
+  /** Runs the write staged on decisionId, once, only if the user said Go. */
+  runApproved(decisionId: string): Promise<ConnectionOutcome>;
+  /** Lets a task read one connection (the partner decides; recorded). */
+  grant(taskId: string, connection: string): { ok: true } | { ok: false; error: string };
 }
 
 /** What the partner reads of the settings, and how it lets the user forget a memory. */
@@ -107,7 +156,7 @@ export interface StdioMcpConfig {
 }
 
 export interface SessionSpec {
-  harness: "claude-code" | "codex" | "pi";
+  harness: HarnessId;
   model?: string;
   cwd: string;
   systemPrompt?: string; // replaces the harness default where supported
@@ -153,6 +202,10 @@ export interface HarnessPort {
 export interface Runner {
   harness: HarnessPort;
   openTask(input: { persona: string; title: string; brief: string; place?: Place; project?: string; harness?: string; model?: string }): Promise<TaskCard>;
+  // Optional (D120, ack and go): open a task while its brief is still being written. The card,
+  // the place and the session start now; the brief becomes the session's first turn when it
+  // settles. If it rejects, the task is dropped before it did anything.
+  openTaskEarly?(input: { persona: string; title: string; place?: Place; project?: string; harness?: string; model?: string }, brief: Promise<string>): Promise<TaskCard>;
   // Logs the text as task_event {role:"user", from, clientId} before delivering it.
   send(taskId: string, text: string, mode?: "steer" | "queue", from?: "user" | "partner", clientId?: string): Promise<{ delivered: Delivery }>;
   interrupt(taskId: string): Promise<void>;
@@ -163,6 +216,10 @@ export interface Runner {
   undrop?(taskId: string): Promise<{ ok: boolean; message: string; ref?: string }>;
   merge?(taskId: string): Promise<{ ok: boolean; message: string; ref?: string }>;
   openPr?(taskId: string): Promise<{ ok: boolean; message: string; ref?: string }>;
+  // Optional (D89): move a task to another AI agent. A running task is handed off: its session
+  // closes and the new one starts from the brief and the saved progress. ok:false with a
+  // user-facing message when it can't.
+  switchBody?(taskId: string, harness: string, model?: string): Promise<{ ok: boolean; message?: string }>;
   drop(taskId: string): Promise<void>;
 }
 

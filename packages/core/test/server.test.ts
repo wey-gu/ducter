@@ -176,7 +176,7 @@ test("mcp: report_to_main round trip drives the card, decision and living messag
 
   const task = await mcpClient(core, { taskId: "t1" });
   const tools = (await task.listTools()).tools.map((t) => t.name).sort();
-  expect(tools).toEqual(["log_read", "log_search", "report_to_main"]);
+  expect(tools).toEqual(["log_read", "log_search", "report_to_main", "wait_for"]);
   const res: any = await task.callTool({
     name: "report_to_main",
     arguments: {
@@ -199,7 +199,7 @@ test("mcp: report_to_main round trip drives the card, decision and living messag
   expect(bad.isError).toBe(true);
 
   const partner = await mcpClient(core, "partner");
-  expect((await partner.listTools()).tools.map((t) => t.name).sort()).toEqual(["log_read", "log_search", "task_read"]);
+  expect((await partner.listTools()).tools.map((t) => t.name).sort()).toEqual(["keep_going", "log_read", "log_search", "routine_list", "routine_pause", "routine_propose", "rule_list", "rule_save", "task_read", "wait_cancel", "wait_for"]);
   const found: any = await partner.callTool({ name: "log_search", arguments: { query: "race in setup" } });
   expect(JSON.parse(found.content[0].text)[0].kind).toBe("report");
   const card: any = await partner.callTool({ name: "task_read", arguments: { taskId: "t1" } });
@@ -225,4 +225,49 @@ test("partner triggers: held until wired; progress reports don't wake it", () =>
   rep("progress");
   rep("done");
   expect(got).toEqual(["user_msg", "report"]);
+});
+
+test("connections over real sockets: add over WS without the token ever coming back; task tools appear, read-only, granted", async () => {
+  const { fakeOpenConnector } = await import("./fake-mcp.ts");
+  const TOKEN = "oct_ws_secret_987";
+  const oc = fakeOpenConnector(
+    [
+      { id: "github.list_my_prs", operationType: "read", run: () => ({ pulls: [{ n: 1 }] }) },
+      { id: "gmail.send_email", operationType: "write", run: () => ({ id: "m1" }) },
+    ],
+    TOKEN,
+  );
+  stops.push(() => oc.stop());
+  const core = boot();
+  const ws = new WsClient(core.url);
+  await ws.open();
+  ws.send({ t: "hello" });
+  await ws.until((f) => f.t === "welcome");
+  ws.send({ t: "connections" });
+  await ws.until((f) => f.t === "connections" && f.connections.length === 0);
+  ws.send({ t: "connection_add", url: oc.url, token: "nope" });
+  expect(await ws.until((f) => f.t === "connection_result")).toMatchObject({ ok: false, reason: "unauthorized" });
+  ws.frames = [];
+  ws.send({ t: "connection_add", url: oc.url, token: TOKEN });
+  const r = await ws.until<Extract<ServerFrame, { t: "connection_result" }>>((f) => f.t === "connection_result");
+  expect(r.ok).toBe(true);
+  const view = await ws.until<Extract<ServerFrame, { t: "connections" }>>((f) => f.t === "connections" && f.connections.length === 1);
+  expect(view.connections[0]).toMatchObject({ source: "self", state: "ok" });
+
+  openTask(core.log, "t1");
+  const task = await mcpClient(core, { taskId: "t1" });
+  const names = (await task.listTools()).tools.map((x) => x.name).sort();
+  expect(names).toEqual(["connection_read", "connection_search", "log_read", "log_search", "wait_for"]);
+  const denied: any = await task.callTool({ name: "connection_read", arguments: { connection: "OpenConnector", action: "github.list_my_prs" } });
+  expect(denied.content[0].text).toContain("No such connection");
+  expect(core.connections.grant("t1", "OpenConnector").ok).toBe(true);
+  const ok: any = await task.callTool({ name: "connection_read", arguments: { connection: "OpenConnector", action: "github.list_my_prs" } });
+  expect(JSON.parse(ok.content[0].text)).toMatchObject({ ok: true, op: "read" });
+  const write: any = await task.callTool({ name: "connection_read", arguments: { connection: "OpenConnector", action: "gmail.send_email", input: {} } });
+  expect(JSON.parse(write.content[0].text)).toMatchObject({ ok: false, op: "write" });
+
+  // Nothing a client or the Log ever saw carries the token.
+  expect(JSON.stringify(ws.frames)).not.toContain(TOKEN);
+  expect(JSON.stringify(core.log.read({ limit: 5000 }))).not.toContain(TOKEN);
+  expect(oc.executed.filter((e) => e.name === "execute_action").map((e) => e.args.actionId)).toEqual(["github.list_my_prs"]);
 });

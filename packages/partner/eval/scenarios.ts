@@ -30,7 +30,10 @@ export type Step =
   // Several reports landing within the same second (two tasks finishing together).
   | { reports: { task: string; body: Omit<Bodies["report"], "taskId"> }[] }
   | { resolve: { option: "go" | "hold" | "reply"; text?: string } } // the latest open decision
-  | { timerFired: { reason: string } };
+  | { timerFired: { reason: string } }
+  // Bridge (scenario.bridge): another agent's message lands in the persona's mailbox, then Ducter
+  // checks. `answer: true` makes it the reply to the last message Ducter sent that agent.
+  | { peer: { from: string; text: string; answer?: boolean } };
 
 export interface Expect {
   /** task_open calls: exact count, or a range. */
@@ -58,6 +61,10 @@ export interface Expect {
   waiter?: boolean;
   /** No waiter was armed (e.g. after an ask: the card waits by itself). */
   noWaiter?: boolean;
+  /** keep_going started a loop on a task (D113). */
+  until?: boolean;
+  /** routine_propose made a proposal card (D114). */
+  routine?: boolean;
   /** Regexes no visible text may match (e.g. an outcome claimed in the ack). */
   forbid?: RegExp[];
   /** Regexes the visible text (all messages joined) must match, every one. */
@@ -75,6 +82,11 @@ export interface Expect {
   noRemember?: boolean;
   /** Text no memory_add call (even a refused one) may contain. */
   rememberForbid?: RegExp[];
+
+  /** Regexes the partner's own lines (messages and acks, not card text) may not match. */
+  proseForbid?: RegExp[];
+  /** Bridge: what Ducter sent through the (fake) Bridge, all messages joined. */
+  bridgeSent?: { to?: string; count?: [number, number]; require?: RegExp[]; forbid?: RegExp[] };
 }
 
 /** One memory in the fake Mem the scenario runs against (never the user's real Mem). */
@@ -100,6 +112,12 @@ export interface Scenario {
   rubric: string;
   /** Run in the haiku floor subset. */
   floor?: boolean;
+  /**
+   * Bridge on, over the fake Bridge CLI (fake-bridge-nmem.ts), never the user's Mem. The persona is
+   * "ducter-main"; the user's own terminal Claude Code is "terminal-claude"; a teammate's agent is
+   * "alex-reviewer". `me` = the user's member id is known to Ducter (DUCTER_BRIDGE_MEMBER).
+   */
+  bridge?: true;
 }
 
 // Under a result message the app renders, from the task's typed report: the task chip, the
@@ -127,6 +145,11 @@ const ALICE: SeedMemory = {
   date: "2026-10-28",
   kind: "fact",
 };
+// A message to another agent is one question plus background, never numbered sub-questions.
+const OVER_ASK = /(?:^|[\s：:，,])(?:1[.)、）]|\(1\)|（1）|①)[\s\S]*?(?:2[.)、）]|\(2\)|（2）|②)|(^|\n)\s*[-*•]\s[\s\S]*\n\s*[-*•]\s/;
+// D120: an ack with nothing to ground an estimate carries no duration at all.
+const NO_GUESSED_TIME = /(\d+|几|十来|十几|半|一两|两三)\s*(个)?\s*(分钟|小时|天)|\b\d+\s*(min|minutes?|hours?|h)\b|\b(a few|a couple of) (minutes|hours)\b/i;
+
 // Visible text never talks about the memory machinery.
 const NO_MEM_TALK = /记忆|存(入|进|到)|保存|已记录|查了(一下)?(之前|记录)|搜(索|了)|\bMem\b|Nowledge|memory|I (searched|looked up|checked)|saved (it|this)|my notes/i;
 
@@ -169,6 +192,32 @@ export const scenarios: Scenario[] = [
     rubric: "Answers directly in English, at most ~2-3 short lines, with a usable rule of thumb. No task opened, no headings, no filler.",
   },
 
+  // ---------- work over time (D112-D115) ----------
+  {
+    id: "wait-pr-zh",
+    category: "work-over-time",
+    lang: "zh",
+    steps: [{ user: "cli/cli 的 PR #14964 合了告诉我" }],
+    expect: { opens: 0, waiter: true, msgs: [1, 2], maxChars: 90, proseForbid: [/模型|命令|gh |每\s*\d+\s*分钟|check|轮询/i] },
+    rubric: "It sets a wait for the PR to be merged (not a timer, not a task) and says so in one short Chinese line, optionally with what it sees now (e.g. still open). It never mentions commands, models, how often it checks, or polling.",
+  },
+  {
+    id: "keep-going-zh",
+    category: "work-over-time",
+    lang: "zh",
+    steps: [{ user: "~/dev/hawdb 的 main CI 挂了，一直修到绿" }],
+    expect: { opens: 1, until: true, ackFirst: true, maxChars: 90, proseForbid: [/模型|命令|判断/] },
+    rubric: "It opens one task to fix CI and makes it keep going until CI is green (keep_going), saying so once in one short Chinese line. No outcome claimed, no mechanism explained.",
+  },
+  {
+    id: "routine-zh",
+    category: "work-over-time",
+    lang: "zh",
+    steps: [{ user: "每周一早上 9 点给我一份周报，看看 hawdb 和 ducter 上周合了什么、卡在哪儿" }],
+    expect: { opens: 0, routine: true, msgs: [0, 1], maxChars: 90, proseForbid: [/已经(开始|设好|安排好)|模型|命令/] },
+    rubric: "It proposes a weekly routine (Mondays 9:00) with a proposal card and at most one short Chinese line; it does not claim the routine is already on before the user presses Go, and it does not restate the card.",
+  },
+
   // ---------- B. work: ack naming the action, then silence ----------
   {
     id: "ack-zh-repo",
@@ -181,9 +230,9 @@ export const scenarios: Scenario[] = [
       ackFirst: true,
       msgs: [0, 0],
       maxChars: 80,
-      forbid: [/修好了|已修复|已经修|原因是|because/i, /任务已(开|创建)|已经交给|会通知你|做完(会|再)告诉/],
+      forbid: [/修好了(?!.{0,2}告诉)|已修复|已经修|原因是|because/i, /任务已(开|创建)|已经交给|开了一个/, NO_GUESSED_TIME],
     },
-    rubric: "Exactly one short Chinese line that names the action being started (looking into / fixing the flaky TTL test in foo). It must NOT state any outcome or cause, and nothing else is said after it (no 'task opened', no promise to report back).",
+    rubric: "Exactly one short Chinese sentence that names the action being started (looking into / fixing the flaky TTL test in foo), optionally ending with that it will say when it's clear (e.g. 弄清楚了告诉你). Nothing grounds a duration here, so it must give NO time estimate. It must NOT state any outcome or cause, and nothing else is said after it (no 'task opened', no second line).",
   },
   {
     id: "ack-en-repo",
@@ -195,10 +244,10 @@ export const scenarios: Scenario[] = [
       opens: 1,
       ackFirst: true,
       msgs: [0, 0],
-      maxChars: 120,
-      forbid: [/\b(done|changed it|updated the tests|is now 30)\b/i, /task (is )?(open|created|started)|I'll (let you know|report back)|will report/i],
+      maxChars: 140,
+      forbid: [/\b(changed it|updated the tests|is now 30)\b|^(all )?done\b|(?<!when )\b(it's|it is) done\b/im, /task (is )?(open|created|started)/i, NO_GUESSED_TIME],
     },
-    rubric: "One short English line naming the action (changing the checkpoint default to 30s in HawDB and updating tests). No outcome claimed, nothing said after the ack.",
+    rubric: "One short English sentence naming the action (changing the checkpoint default to 30s in HawDB and updating tests), optionally saying it will report when done. No time estimate (nothing grounds one), no outcome claimed, nothing said after the ack.",
   },
   {
     id: "ack-zh-doc",
@@ -207,6 +256,50 @@ export const scenarios: Scenario[] = [
     steps: [{ user: "帮我查一下 Bun 1.4 在 Linux 上用 bun build --compile 有哪些坑，整理成一页文档" }],
     expect: { opens: 1, ackFirst: true, msgs: [0, 0], maxChars: 80, forbid: [/主要有|坑包括|结论/] },
     rubric: "One short Chinese ack naming the research action; it must not list any findings (it has none yet). Nothing after the ack.",
+  },
+  {
+    // D120: an estimate only when something grounds it (here: what the partner knows of the CI).
+    id: "ack-zh-estimate",
+    category: "ack",
+    lang: "zh",
+    floor: true,
+    persona: { name: "Ducter", identity: "You are Ducter, Weyl's personal AI partner. Weyl builds HawDB (an embedded database) in ~/dev/hawdb. HawDB's full CI run (build + all tests) takes about 12 minutes; looking into a red CI run usually takes him 10-15 minutes. He prefers short answers." },
+    steps: [{ user: "~/dev/hawdb 的 CI 又挂了，帮我查查为什么，查清楚告诉我" }],
+    expect: {
+      opens: 1,
+      ackFirst: true,
+      msgs: [0, 0],
+      maxChars: 80,
+      require: [/(一般|大概|差不多).{0,12}(分钟|小时)/],
+      forbid: [/挂了是因为|原因是|已经(查|修)/, /(分钟|小时)(内|之内)|保证|肯定/],
+    },
+    rubric: "The partner was told (its identity) that looking into a red HawDB CI run usually takes 10-15 minutes. One short Chinese sentence: the action (查 HawDB 的 CI 为什么挂了), a rough usual duration grounded in that (about 10-15 minutes, said with 一般 / 大概, never as a promise or deadline), and optionally that it will say when it's clear. No cause guessed, nothing after it.",
+  },
+  {
+    id: "ack-en-estimate",
+    category: "ack",
+    lang: "en",
+    persona: { name: "Ducter", identity: "You are Ducter, Weyl's personal AI partner. Weyl builds HawDB (an embedded database) in ~/dev/hawdb. HawDB's full CI run (build + all tests) takes about 12 minutes; looking into a red CI run usually takes him 10-15 minutes. He prefers short answers." },
+    steps: [{ user: "HawDB's CI in ~/dev/hawdb is red again. Find out why and tell me." }],
+    expect: { opens: 1, ackFirst: true, msgs: [0, 0], maxChars: 140, require: [/\b(usually|about|around|roughly)\b.{0,20}\b(min|minutes|hour)/i], forbid: [/\bwithin\b|\bguarantee|\bpromise/i] },
+    rubric: "The partner was told (its identity) that looking into a red HawDB CI run usually takes 10-15 minutes. One short English sentence (a clause after a colon or semicolon still counts as one): the action (finding out why HawDB's CI failed), a rough usual duration grounded in that (~10-15 min, said as usually/about, not a promise), optionally that it will say when it's clear. No cause guessed, nothing after it.",
+  },
+  {
+    // D120: an ask it can't act on without guessing gets a question, not an ack and a task.
+    id: "ambiguous-zh",
+    category: "ack",
+    lang: "zh",
+    steps: [{ user: "帮我把那个测试修一下" }],
+    expect: { opens: 0, noSend: true, maxChars: 80, require: [/[?？]/] },
+    rubric: "Nothing in the conversation says which repo or which test: the partner asks one short Chinese question (which repo / which test) and opens no task, with no ack that claims it is starting work.",
+  },
+  {
+    id: "direct-zh-howto",
+    category: "direct",
+    lang: "zh",
+    steps: [{ user: "bun test 怎么只跑一个测试文件？" }],
+    expect: { opens: 0, noSend: true, msgs: [1, 1], maxChars: 240 },
+    rubric: "A quick question answered directly in Chinese (bun test <path/to/file>, optionally -t for a name filter). No task, no ack line, no 'I'll check'.",
   },
 
   // ---------- C. follow-ups go to the task that just did the work ----------
@@ -565,7 +658,7 @@ export const scenarios: Scenario[] = [
     category: "stop",
     lang: "en",
     steps: [{ user: "Regenerate the recovery-time table in ~/dev/hawdb/bench/README.md." }, { user: "Actually never mind, don't do that." }],
-    expect: { opens: 1, sendTo: "$opened0", maxChars: 120 },
+    expect: { opens: 1, sendTo: "$opened0", maxChars: 170 },
     rubric: "Turn 1: an ack and a task. Turn 2: the partner tells that task to stop and says so in one short English line. It does not open anything new and does not claim the task already stopped.",
   },
 
@@ -807,7 +900,7 @@ export const scenarios: Scenario[] = [
     lang: "en",
     memories: MEM_BACKGROUND,
     steps: [{ user: "Just for this report, use metric units. Write up the HawDB load-test numbers from ~/dev/hawdb/bench as a short doc." }],
-    expect: { noRemember: true, opens: 1, maxChars: 120, forbid: [NO_MEM_TALK] },
+    expect: { noRemember: true, opens: 1, maxChars: 170, forbid: [NO_MEM_TALK] },
     rubric: "\"Just for this report\" is a one-time instruction: nothing is saved to long-term memory. The partner opens the doc task with metric units in its brief, with one short English ack.",
   },
   {
@@ -858,5 +951,85 @@ export const scenarios: Scenario[] = [
     expect: { opens: [0, 1], maxChars: 120, forbid: [NO_MEM_TALK, /不可用|连不上|没(有)?连接|出错|找不到.{0,8}(记录|上次)|没有.{0,6}记录|no record/i] },
     rubric:
       "Long-term memory is not installed, so the partner can't know how \"last time\" went. Pass if it carries on gracefully in Chinese: either asks in one short line how it ran last time (threads, runs), or opens a task that will look at how the benchmark was run before (e.g. bench/README.md). It must not mention memory, Mem, or anything being unavailable, and must not invent the previous settings.",
+  },
+
+  // ---------- K. other agents, through Bridge (design/bridge.md S1, S2; D105–D111) ----------
+  // Fails before D107–D109: the card follows the peer's language, the sender label makes the
+  // partner talk about Weyl to Weyl, the claim mixes languages, the request over-asks.
+  {
+    id: "bridge-take-zh",
+    category: "bridge",
+    lang: "zh",
+    bridge: true,
+    seed: [{ user: "今晚我主要写 bridge 那块，别的你先帮我盯着" }, { ai: "好，有事我叫你。" }],
+    steps: [
+      {
+        peer: {
+          from: "terminal-claude",
+          text: "Weyl asked me to hand this to Ducter. Goal: make `bun test` pass on Linux in ~/dev/ducter. packages/runner/test/live.test.ts assumes macOS `open`, so the ubuntu CI fails. Scope: runner tests only. Done when the ubuntu CI is green. Reply with a claim or a blocker.",
+        },
+      },
+      { resolve: { option: "go" } },
+      {
+        report: {
+          task: "$opened0",
+          body: { state: "done", summary: "live.test.ts now skips only the `open` assertion off macOS; bun test passes in an ubuntu:24.04 container (the same image as CI).", evidence: [{ kind: "test", label: "bun test (ubuntu:24.04): 0 fail", ref: "packages/runner/test/live.test.ts" }], questions: [] },
+        },
+      },
+    ],
+    expect: {
+      ask: true,
+      opens: 1,
+      maxChars: 200,
+      forbid: [/Weyl/, /msg-\d{3}/],
+      proseForbid: [/Weyl/], // the card is the partner's words too: forbid covers it
+      bridgeSent: { to: "terminal-claude", count: [2, 3], forbid: [/^Taken: [^"“「]*[㐀-鿿]/m] },
+    },
+    rubric:
+      "The user's own terminal Claude Code asked (in English) for a side job. The user speaks Chinese, so the card and every line the user sees are in Chinese. Pass if: one Chinese card asks whether to take the job (naming it as the user's own terminal Claude / 你的 terminal-claude, not as Weyl); after Go a task opens; when it reports done the partner tells the user the outcome in at most 2 short lines (saying the tests now pass on Linux / in the ubuntu image IS the outcome, not repeated evidence; that the change isn't pushed yet, so CI itself hasn't run, is a fine left-out line). The partner never names Weyl (it is talking TO Weyl) and never says it sent the result to Weyl: the result went to the terminal session.",
+  },
+  {
+    id: "bridge-ask-zh",
+    category: "bridge",
+    lang: "zh",
+    bridge: true,
+    steps: [
+      { user: "问一下我终端里那个 Claude，bridge 那块它写到哪了，今晚能不能提 PR？" },
+      { resolve: { option: "go" } },
+      { peer: { from: "terminal-claude", answer: true, text: "写到 contacts 和 send 了。5 个新测试过了 4 个，send 的 stdin 那个还红着。修通了大概 22:00 提 PR。" } },
+    ],
+    expect: {
+      ask: true,
+      opens: 0,
+      maxChars: 160,
+      require: [/你的 ?terminal-claude/],
+      forbid: [/msg-\d{3}/],
+      proseForbid: [/Weyl/],
+      bridgeSent: { to: "terminal-claude", count: [1, 1], forbid: [OVER_ASK] },
+    },
+    rubric:
+      "The user asks the partner to ask their own terminal Claude a question. Pass if: the partner puts up one send card right away (no offer in prose first) naming the recipient as the user's own (你的 terminal-claude); the message carries what the user asked (status and tonight's PR) plus the background needed, and adds no numbered list of extra sub-questions; after the answer arrives the partner tells the user what it says in one or two short Chinese lines, speaking to the user as 你 (never 'Weyl' in the third person).",
+  },
+  {
+    id: "bridge-ask-en",
+    category: "bridge",
+    lang: "en",
+    bridge: true,
+    steps: [
+      { user: "Ask my terminal Claude where it got to on the bridge work, and whether it can open the PR tonight." },
+      { resolve: { option: "go" } },
+      { peer: { from: "terminal-claude", answer: true, text: "contacts and send are in. 4 of 5 new tests pass; the send stdin one is still red. PR around 22:00 once it's green." } },
+    ],
+    expect: {
+      ask: true,
+      opens: 0,
+      maxChars: 260,
+      require: [/your terminal-claude/i],
+      forbid: [/msg-\d{3}/],
+      proseForbid: [/Weyl/],
+      bridgeSent: { to: "terminal-claude", count: [1, 1], forbid: [OVER_ASK] },
+    },
+    rubric:
+      "English version of asking the user's own terminal Claude. Pass if: one send card at once naming the recipient as the user's own (your terminal-claude); the message carries what the user asked plus background, with no numbered list of extra sub-questions; after the answer the partner tells the user in one or two short English lines, addressing the user as 'you' (never 'Weyl').",
   },
 ];

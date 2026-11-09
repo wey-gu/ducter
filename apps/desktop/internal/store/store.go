@@ -90,6 +90,9 @@ type Task struct {
 	seqs   map[int64]bool
 	// HistoryLoaded is set once a task_history frame arrived.
 	HistoryLoaded bool
+	// Body is who does it now and why (the latest body_selected, D89).
+	Body    *protocol.TaskBody
+	bodySeq int64
 	// OpenedAt is the time of task_open, when known.
 	OpenedAt string
 	openSeq  int64 // seq of the task_open in Open (a retitle is a later one)
@@ -200,8 +203,24 @@ func (t *Task) Report() *protocol.Report {
 	return nil
 }
 
-// Harness, Model, Project, BodyReason come from task_open or the card.
+// Who returns who does the task now and why: the latest body_selected,
+// else the card's, else nil (a task from before D89).
+func (t *Task) Who() *protocol.TaskBody {
+	if t.Body != nil {
+		return t.Body
+	}
+	if t.Card != nil {
+		return t.Card.Body
+	}
+	return nil
+}
+
+// Harness, Model, Project, BodyReason come from who does it now, task_open
+// or the card.
 func (t *Task) Harness() string {
+	if w := t.Who(); w != nil {
+		return w.Harness
+	}
 	if t.Open != nil {
 		return t.Open.Harness
 	}
@@ -212,6 +231,9 @@ func (t *Task) Harness() string {
 }
 
 func (t *Task) Model() string {
+	if w := t.Who(); w != nil {
+		return w.Model
+	}
 	if t.Open != nil && t.Open.Model != "" {
 		return t.Open.Model
 	}
@@ -268,6 +290,8 @@ type Store struct {
 	// Waiters are the waiters known, by id (from waiter events and the
 	// snapshot's armed list).
 	Waiters map[string]*protocol.Waiter
+	// Arrived is when a task's wait came true (D115): its card pops and glides into Working.
+	Arrived map[string]time.Time
 	// Errors are the server's error frames, newest last.
 	Errors []string
 	// Welcomed is set once the server said welcome on this store.
@@ -282,12 +306,38 @@ type Store struct {
 	AbilityResults []protocol.ServerFrame
 	// PairCode is the newest pairing code the server minted for this app.
 	PairCode *protocol.ServerFrame
+	// Renamed is the server's answer to the last 改名字 / Rename.
+	Renamed *protocol.ServerFrame
 	// Settings and Mem are the partner's settings and memory, as last sent
 	// (nil until the first settings frame); Forgot the last forget's
 	// outcome, until the view shows it.
 	Settings *protocol.Settings
 	Mem      *protocol.MemView
-	Forgot   *protocol.Forgot
+	// Connections (D96), once asked for; nil means not yet. Oo is what the
+	// oo CLI is set up with. ConnResult is the last add/remove answer, for
+	// the page to turn into one line.
+	Connections []protocol.ConnectionView
+	ConnAsked   bool
+	Oo          *protocol.OoDetect
+	ConnResult  *protocol.ServerFrame
+	Forgot      *protocol.Forgot
+	// Rules are 你的规则 / Your rules, as last sent (nil until a rules
+	// frame; RulesAt says one came). Candidates are who could do a task,
+	// by task id, as last asked; SwitchResults the switch answers not yet
+	// shown (D89).
+	Rules         []protocol.RuleView
+	RulesAt       time.Time
+	Candidates    map[string][]protocol.Candidate
+	SwitchResults []protocol.ServerFrame
+
+	// Activity is what the partner is doing while the user waits on its
+	// reply (D104), nil between turns; ActivityAt is when this app first
+	// saw that step (its own clock, so a skewed server can't make it look
+	// slow); ActivityEndedAt is the channel seq at which a turn last ended:
+	// a user message at or before it has had its turn.
+	Activity        *protocol.PartnerActivity
+	ActivityAt      time.Time
+	ActivityEndedAt int64
 }
 
 // Device returns a device of Your devices and abilities by id, or nil.
@@ -340,6 +390,9 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 	case "pair_code":
 		fc := f
 		s.PairCode = &fc
+	case "rename_result":
+		fc := f
+		s.Renamed = &fc
 	case "settings":
 		if f.Settings != nil {
 			s.Settings = f.Settings
@@ -353,6 +406,14 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		if f.Forgot != nil {
 			s.Forgot = f.Forgot
 		}
+	case "connections":
+		s.Connections, s.Oo, s.ConnAsked = f.Connections, f.Oo, true
+		if s.Connections == nil {
+			s.Connections = []protocol.ConnectionView{}
+		}
+	case "connection_result":
+		fc := f
+		s.ConnResult = &fc
 	case "sent":
 		if t := s.Tasks[f.TaskID]; t != nil {
 			for _, sd := range t.Sends {
@@ -362,7 +423,19 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 				}
 			}
 		}
+	case "rules":
+		s.Rules, s.RulesAt = f.Rules, time.Now()
+	case "candidates":
+		if s.Candidates == nil {
+			s.Candidates = map[string][]protocol.Candidate{}
+		}
+		s.Candidates[f.TaskID] = f.Candidates
 	case "action_result":
+		// A switch is not a task action the result line shows (Merge stays as it was).
+		if f.Action == "switch" {
+			s.SwitchResults = append(s.SwitchResults, f)
+			return
+		}
 		if t := s.Tasks[f.TaskID]; t != nil {
 			fc := f
 			t.Acting, t.Unsure, t.Acted, t.ActedSeq = "", "", &fc, s.HeadSeq
@@ -383,6 +456,14 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 			s.ApplyEvent(ev)
 		}
 		t.HistoryLoaded = true
+	case "activity":
+		switch {
+		case f.Activity == nil:
+			s.Activity = nil
+			s.ActivityEndedAt = s.ChannelSeq
+		case s.Activity == nil || s.Activity.Step != f.Activity.Step:
+			s.Activity, s.ActivityAt = f.Activity, time.Now()
+		}
 	case "error":
 		s.Errors = append(s.Errors, f.Message)
 		// A refused task_send fails the oldest unacked send.
@@ -480,7 +561,17 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 		}
 	}
 	if w, ok := body.(*protocol.Waiter); ok {
-		if w.State == protocol.WaiterArmed {
+		if w.State == protocol.WaiterFired && w.TaskID != "" && (w.Check != nil || w.Event != nil) {
+			if s.Arrived == nil {
+				s.Arrived = map[string]time.Time{}
+			}
+			s.Arrived[w.TaskID] = time.Now()
+		}
+		// A routine's watch lives on its routine card (D114), not as a wait.
+		if w.State == protocol.WaiterArmed && w.RoutineID == "" {
+			if prev := s.Waiters[w.WaiterID]; prev != nil {
+				w.LastLookAt, w.LastSummary, w.Looks, w.Changes = prev.LastLookAt, prev.LastSummary, prev.Looks, prev.Changes
+			}
 			s.Waiters[w.WaiterID] = w
 		} else {
 			delete(s.Waiters, w.WaiterID)
@@ -512,6 +603,12 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 		j.Ack = b
 		s.add(&Entry{Event: ev, Job: j})
 	case *protocol.JobStatus:
+		// A "body_<task>_…" note tells the partner the user switched who does a task; the
+		// task's own line already says it (D89).
+		if ev.Origin == protocol.OriginUser && strings.HasPrefix(b.JobID, "body_") {
+			s.bySeq[ev.Seq] = nil
+			return
+		}
 		// A user-origin "act_<task>_<action>" status records what the user did by button
 		// (merge, open_pr): the durable form of an action_result, so it survives restarts.
 		if ev.Origin == protocol.OriginUser && b.TaskID != "" && strings.HasPrefix(b.JobID, "act_"+b.TaskID+"_") {
@@ -697,6 +794,8 @@ func taskOf(ev protocol.LogEvent, body any) string {
 		return b.TaskID
 	case *protocol.Checkpoint:
 		return b.TaskID
+	case *protocol.BodySelected:
+		return b.TaskID
 	}
 	if len(ev.Stream) > 5 && ev.Stream[:5] == "task:" {
 		return ev.Stream[5:]
@@ -754,6 +853,10 @@ func (s *Store) applyTask(t *Task, ev protocol.LogEvent, body any) {
 		t.Evidence = mergeEvidence(t.Evidence, b.Evidence)
 		if t.Acted != nil && ev.Seq > t.ActedSeq {
 			t.Acted = nil
+		}
+	case *protocol.BodySelected:
+		if t.Body == nil || ev.Seq >= t.bodySeq {
+			t.Body, t.bodySeq = &protocol.TaskBody{Harness: b.Harness, Model: b.Model, Why: b.Why}, ev.Seq
 		}
 	case *protocol.Checkpoint:
 		t.Checkpoints = append(t.Checkpoints, CheckpointAt{Checkpoint: *b, Seq: ev.Seq, TS: ev.TS})

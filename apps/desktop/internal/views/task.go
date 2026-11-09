@@ -13,6 +13,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/diff"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
+	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
 // task is an opened task, at conductor depth: one centered column on
@@ -32,19 +33,43 @@ func (a *App) task(c *ui.Context) {
 	ui.Scroll(c.Key("taskpage:" + task.ID)).Grow(1).MinHeight(0).Children(func() {
 		ui.Row(c).Justify(ui.Center).Padding(t.S5, t.S5, t.S6, t.S5).Children(func() {
 			ui.Column(c).Grow(1).MaxWidth(convWidth).MinWidth(0).Gap(t.S6).Children(func() {
-				ui.Column(c).Gap(t.S4).Children(func() {
-					a.taskStanding(c, task)
-					if d := a.S.PendingDecision(task.ID); d != nil {
-						if d.Resolved != nil || d.Pending != "" {
-							a.decisionAnswered(c, d)
-						} else {
-							a.decisionCard(c, d, task.ID)
+				// The head (D74, D89 layout): the clay partner's state face
+				// beside one block that reads top to bottom: one quiet meta
+				// line (state · when · who), the headline (what it is doing
+				// now, or the outcome), then a pending ask and what to do.
+				ui.Row(c.Key("head")).Gap(t.S5).AlignItems(ui.Start).Children(func() {
+					ui.Box(c.Key("facebox")).Shrink(0).Children(func() {
+						a.partnerFace(c, "task:"+task.ID, taskPresence(task), taskFaceW)
+						// What it waits for, in a bubble by its head (D112).
+						if w := a.S.WaiterFor(task.ID); w != nil && task.Attention() == protocol.Blocked && (w.Check != nil || w.Event != nil) {
+							ui.Box(c.Key("bubble")).Absolute().Left(taskFaceW - 30).Top(-12).Children(func() {
+								a.waitBubble(c, waitGlyph(w.Check, w.Event), 46)
+							})
 						}
-					}
-					if finished(task) {
-						a.outcome(c, task)
-					}
+					})
+					ui.Column(c).Grow(1).MinWidth(0).Gap(t.S4).Children(func() {
+						// The meta line sits 8 above the headline, the outcome's
+						// included: one block whatever the state.
+						ui.Column(c).Gap(t.S2).Children(func() {
+							a.taskStanding(c, task)
+							if finished(task) {
+								a.outcome(c, task)
+							} else {
+								a.taskHeadline(c, task)
+							}
+						})
+						if d := a.S.PendingDecision(task.ID); d != nil {
+							if d.Resolved != nil || d.Pending != "" {
+								a.decisionAnswered(c, d)
+							} else {
+								a.decisionCard(c, d, task.ID)
+							}
+						}
+						a.switchSheet(c, task) // 换谁来做 / Switch who does it (D89)
+					})
 				})
+				a.waitPanel(c, task)
+				a.tryStrip(c, task)
 				a.whatItDid(c, task)
 				a.changes(c, task)
 				a.taskDetails(c, task)
@@ -92,43 +117,155 @@ func (a *App) taskActions(c *ui.Context, task *store.Task) {
 	}
 }
 
-// taskStanding is where the task stands, in words: the state in its ink,
-// then what it is doing or waiting for, then when it started.
+// taskStanding is the head's one quiet meta line: the state in its ink,
+// then when it started and who is doing it, in muted words. No links: who
+// and why, and switching, live in Details.
 func (a *App) taskStanding(c *ui.Context, task *store.Task) {
 	t := a.T
 	att := task.Attention()
-	detail := ""
-	switch {
-	case task.Browsing() != "":
-		detail = a.L.T("browser.looking", task.Browsing())
-	case att == protocol.Blocked:
-		detail = a.waitReason(task)
-	case !finished(task):
-		if rep := task.Report(); rep != nil {
-			detail = summaryLine(rep.Summary)
-		}
+	parts := []string{}
+	if task.OpenedAt != "" {
+		parts = append(parts, a.L.T("task.opened", a.ago(task.OpenedAt)))
 	}
-	ui.Row(c).Gap(t.S2).Wrap().AlignItems(ui.Center).Children(func() {
-		ui.Box(c).Size(18, 18).Draw(stateMark(att)(t.State(string(att)).Ink)).Shrink(0)
-		ui.Text(c, a.stateLabel(att)).FontSize(t.MD).FontWeight(800).TextColor(t.State(string(att)).Ink)
-		if detail != "" {
-			ui.Text(c, "· "+detail).FontSize(t.MD).TextColor(t.InkSoft).MinWidth(0)
-		}
-		if task.OpenedAt != "" {
-			ui.Text(c, "· "+a.L.T("task.opened", a.ago(task.OpenedAt))).FontSize(t.MD).TextColor(t.InkMuted)
+	if who, _ := a.whoLine(task); who != "" && !finished(task) {
+		parts = append(parts, who)
+	}
+	// A wait's head stays short (D90): who does it is in Details.
+	if w := a.S.WaiterFor(task.ID); w != nil && att == protocol.Blocked && (w.Check != nil || w.Event != nil) && len(parts) > 1 {
+		parts = parts[:1]
+	}
+	ui.Row(c.Key("meta")).Gap(t.S1).Wrap().AlignItems(ui.Baseline).Children(func() {
+		ui.Text(c, a.stateLabel(att)).FontSize(t.SM).FontWeight(800).TextColor(t.State(string(att)).Ink)
+		if len(parts) > 0 {
+			ui.Text(c, "· "+strings.Join(parts, " · ")).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0)
 		}
 	})
 }
 
-// outcome is the task's result, said once: its report in the partner's
-// size, how it knows on one quiet line, what went out, then what to do
-// next (Merge / Open draft PR; Try again for one that didn't work).
+// taskHeadline is the head's one big line, always there: the outcome's
+// first sentence once it is finished (outcome says it), else what it is
+// doing now in a sentence: why it waits, the latest word it sent, the
+// latest thing it said, or its title.
+func (a *App) taskHeadline(c *ui.Context, task *store.Task) {
+	t := a.T
+	line := ""
+	switch {
+	case task.Browsing() != "":
+		line = a.L.T("browser.looking", task.Browsing())
+	case task.Attention() == protocol.Blocked:
+		line = a.waitReason(task)
+		if w := a.S.WaiterFor(task.ID); w != nil && (w.Check != nil || w.Event != nil) {
+			line = a.waitLine(w.Reason)
+		}
+	}
+	if line == "" {
+		if rep := task.Report(); rep != nil && rep.Summary != "" {
+			line, _ = headline(rep.Summary)
+		}
+	}
+	if line == "" {
+		line = a.lastSaid(task)
+	}
+	if line == "" {
+		line = task.Title()
+	}
+	a.heading(c, autospace(line), t.XXL).LineHeight(1.25).Balance().MaxWidth(headMeasure).Selectable()
+}
+
+// lastSaid is where the work stands in a sentence: the latest progress it
+// saved, or the first sentence of the latest thing it said, whichever is newer.
+func (a *App) lastSaid(task *store.Task) string {
+	for i := len(task.Events) - 1; i >= 0; i-- {
+		ev := task.Events[i]
+		if ev.Kind == protocol.KindCheckpoint {
+			var cp protocol.Checkpoint
+			if ev.Decode(&cp) == nil && strings.TrimSpace(cp.Text) != "" {
+				return cp.Text
+			}
+		}
+		if ev.Kind != protocol.KindTaskEvent {
+			continue
+		}
+		body, _ := ev.Typed()
+		if b, _ := body.(*protocol.TaskEvent); b != nil && b.Role == "assistant" && strings.TrimSpace(b.Text) != "" && b.Tool == nil {
+			head, _ := headline(strings.TrimLeft(firstLine(b.Text), "#*>- "))
+			return head
+		}
+	}
+	return ""
+}
+
+// The measures of the opened task (D78): a headline and a paragraph stay
+// near 68 Latin or 36 Chinese characters a line.
+const (
+	headMeasure = 620
+	readMeasure = 640
+)
+
+// taskFaceW is the width of an opened task's state face: about the height
+// of the meta line and a headline of two lines, so they read as one block.
+const taskFaceW = 96
+
+// taskPresence is the face an opened task shows: done, needs you (also
+// for one that didn't work: it frowns and holds up its flag), working,
+// napping while it waits, idle otherwise.
+func taskPresence(task *store.Task) theme.Presence {
+	switch task.Attention() {
+	case protocol.Done, protocol.DoneClaimed:
+		return theme.Done
+	case protocol.NeedsYou, protocol.Failed:
+		return theme.NeedsYou
+	case protocol.Working:
+		return theme.Working
+	case protocol.Blocked:
+		return theme.Waiting
+	}
+	return theme.Idle
+}
+
+// headline splits a report's summary into its first sentence, said as
+// the outcome at 34, and the rest, said under it at the partner's size.
+func headline(s string) (head, rest string) {
+	s = strings.TrimSpace(s)
+	rs := []rune(s)
+	for i, r := range rs {
+		end := false
+		switch r {
+		case '。', '！', '？':
+			end = true
+		case '.', '!', '?':
+			end = i+1 == len(rs) || rs[i+1] == ' ' || rs[i+1] == '\n'
+		case '\n':
+			end = true
+		}
+		if end {
+			head, rest = strings.TrimSpace(string(rs[:i+1])), strings.TrimSpace(string(rs[i+1:]))
+			if r == '\n' {
+				head = strings.TrimSpace(string(rs[:i]))
+			}
+			return head, rest
+		}
+	}
+	return s, ""
+}
+
+// outcome is the task's result, said once: its first sentence at 34/800,
+// the rest of its report in the partner's size, how it knows on one quiet
+// line, what went out, then what to do next (Open draft PR / Merge; for
+// one that didn't work, Try again / Tell it what to do).
 func (a *App) outcome(c *ui.Context, task *store.Task) {
 	t := a.T
 	rep := task.Report()
-	ui.Column(c.Key("outcome")).Gap(t.S3).Children(func() {
+	ui.Column(c.Key("outcome")).Gap(t.S3).Selectable().CopyData(autospaceCopy).Children(func() {
+		if rep == nil || rep.Summary == "" {
+			a.heading(c, autospace(task.Title()), t.Title).LineHeight(1.18).Balance().MaxWidth(headMeasure)
+		}
 		if rep != nil && rep.Summary != "" {
-			ui.Text(c, rep.Summary).FontSize(t.PartnerSize).LineHeight(1.6).Selectable()
+			head, rest := headline(rep.Summary)
+			a.heading(c, autospace(head), t.Title).LineHeight(1.18).Balance().MaxWidth(headMeasure)
+			if rest != "" {
+				ui.Text(c, autospace(rest)).FontSize(t.PartnerSize).LineHeight(leadingFor(rest, 1.65)).TextColor(t.InkSoft).MaxWidth(readMeasure)
+			}
 		}
 		evs := task.Evidence
 		if rep != nil && len(rep.Evidence) > 0 {
@@ -139,9 +276,14 @@ func (a *App) outcome(c *ui.Context, task *store.Task) {
 		}
 		a.sentLine(c, task)
 		if task.Attention() == protocol.Failed {
-			ui.Row(c).Children(func() {
+			// Try again, or tell it what to do instead: the primary
+			// opens the task's composer (D76).
+			ui.Row(c).Gap(t.S3).Wrap().AlignItems(ui.Center).Padding(t.S2, 0, 0, 0).Children(func() {
 				if a.buttonFor(c, a.L.T("task.action.retry"), task.Title(), btnSecondary, t.ControlMD, t.Bg) {
 					a.TaskAction(task.ID, "reopen")
+				}
+				if a.buttonFor(c, a.L.T("task.action.tell"), task.Title(), btnPrimary, t.ControlMD, t.Bg) {
+					a.focusComposer = true
 				}
 			})
 			return
@@ -170,7 +312,7 @@ func (a *App) decisionAnswered(c *ui.Context, d *store.DecisionState) {
 
 // sectionTitle heads a section of the opened task.
 func (a *App) sectionTitle(c *ui.Context, text string) ui.Element {
-	return ui.Text(c, text).FontSize(a.T.XL).FontWeight(800).LetterSpacing(-0.2)
+	return a.heading(c, text, a.T.LG) // one step above the body's 15, not a jump
 }
 
 // ---------- what it did ----------
@@ -230,7 +372,7 @@ func (a *App) steps(task *store.Task) []step {
 func (a *App) whatItDid(c *ui.Context, task *store.Task) {
 	t := a.T
 	steps := a.steps(task)
-	ui.Column(c.Key("did")).Gap(t.S3).Children(func() {
+	ui.Column(c.Key("did")).Gap(t.S4).MaxWidth(readMeasure).Children(func() {
 		a.sectionTitle(c, a.L.T("task.transcript"))
 		if len(steps) == 0 && len(task.Sends) == 0 {
 			ui.Text(c, a.L.T("task.loading")).FontSize(t.SM).TextColor(t.InkMuted)
@@ -325,6 +467,9 @@ func (a *App) transcriptRow(c *ui.Context, task *store.Task, ev protocol.LogEven
 	body, _ := ev.Typed()
 	switch b := body.(type) {
 	case *protocol.TaskOpen:
+		if strings.TrimSpace(b.Brief) == "" {
+			return // opened before its brief was written (D120): the briefed one follows
+		}
 		// What the partner asked for: its words, quoted under a small label.
 		ui.Column(c).Gap(t.S1).Children(func() {
 			ui.Text(c, a.L.T("task.brief", a.S.PersonaName)).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
@@ -391,10 +536,10 @@ func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 	draft := a.taskDrafts[task.ID]
 	ui.Row(c).Justify(ui.Center).Padding(t.S2, t.S5, t.S5, t.S5).Children(func() {
 		ui.Row(c).Grow(1).MaxWidth(convWidth).Gap(t.S3).AlignItems(ui.Center).Padding(t.S2, t.S2, t.S2, t.S5).
-			Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Children(func() {
+			Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Children(func() {
 			ta := ui.TextArea(c.Key("taskcomposer:"+task.ID), &draft).Lines(1, 6).MinHeight(0).Placeholder(a.L.T("composer.task")).
 				Label(a.L.T("composer.task")).
-				Background(ui.Transparent).Border(0, ui.Transparent).Padding(t.S3, 0).Grow(1).FontSize(t.MD).
+				Background(ui.Transparent).Border(0, ui.Transparent).Padding(t.S3, 0).Grow(1).FontSize(t.Bubble).
 				OnTextKey(func(k ui.TextKey) bool {
 					if k.Key == ui.KeyEnter && k.Mods == 0 {
 						if a.SendToTask(task.ID, k.Text()) {
@@ -763,21 +908,32 @@ func (a *App) taskDetails(c *ui.Context, task *store.Task) {
 		if !open {
 			return
 		}
+		// A fixed label column; label and value share a first baseline, and
+		// the values start where the head's words do (the face's width and
+		// its gap), so the page reads on one left edge.
 		row := func(label string, body func()) {
-			ui.Row(c.Key(label)).Gap(t.S4).AlignItems(ui.Start).Children(func() {
-				ui.Text(c, label).FontSize(t.SM).TextColor(t.InkMuted).Width(132).Shrink(0)
-				ui.Column(c).Gap(t.S1).Grow(1).MinWidth(0).Children(body)
+			ui.Row(c.Key(label)).Gap(t.S4).AlignItems(ui.Baseline).Children(func() {
+				ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).Width(taskFaceW + t.S5 - t.S4).Shrink(0)
+				ui.Column(c).Gap(t.S1).Grow(1).MinWidth(0).MaxWidth(readMeasure).Children(body)
 			})
 		}
-		value := func(s string) { ui.Text(c, s).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft).Selectable() }
-		if b := a.bodyLine(task); b != "" {
+		value := func(s string) {
+			ui.Text(c, s).FontSize(t.MD).LineHeight(leadingFor(s, 1.5)).TextColor(t.InkSoft).Selectable()
+		}
+		if who := a.whoSentence(task); who != "" {
 			row(a.L.T("task.dossier.body"), func() {
-				value(b)
+				ui.Row(c).Gap(t.S2).Wrap().AlignItems(ui.Baseline).Children(func() {
+					value(who)
+					if canSwitch(task) && a.quietLink(c, "who-details:"+task.ID, a.L.T("who.switch"), a.L.T("who.switch")) {
+						a.openSwitch(task.ID)
+					}
+				})
 				if r := task.BodyReason(); r != "" {
 					value(r)
 				}
 			})
 		}
+		a.waitRows(c, task, row, value)
 		p := task.Place()
 		if line := a.placeLine(p); line != "" {
 			row(a.L.T("task.dossier.where"), func() {
@@ -789,10 +945,11 @@ func (a *App) taskDetails(c *ui.Context, task *store.Task) {
 		}
 		if len(task.Checkpoints) > 0 {
 			row(a.L.T("task.dossier.checkpoints"), func() {
+				// Each with its time beside it, not stranded at the far edge.
 				for _, cp := range task.Checkpoints {
-					ui.Row(c.Key(cp.Seq)).Gap(t.S3).Children(func() {
-						ui.Text(c, cp.Text).FontSize(t.SM).TextColor(t.InkSoft).Grow(1).MinWidth(0)
-						ui.Text(c, clock(cp.TS)).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum")
+					ui.Row(c.Key(cp.Seq)).Gap(t.S2).Wrap().AlignItems(ui.Baseline).Children(func() {
+						ui.Text(c, cp.Text).FontSize(t.MD).LineHeight(leadingFor(cp.Text, 1.5)).TextColor(t.InkSoft).Shrink(1).MinWidth(0)
+						ui.Text(c, "· "+clock(cp.TS)).FontSize(t.SM).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0)
 					})
 				}
 			})

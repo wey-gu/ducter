@@ -15,9 +15,9 @@ There are four ways to have Ducter, and you can mix them:
 | [A Linux server](#a-linux-server-that-stays-on) | Keeping your partner working while your Mac sleeps | Ready |
 | [Your phone](#your-phone) | Answering decisions and checking results on the go | Ready in the phone's browser; an iPhone app is coming soon |
 
-Whichever you choose, you need **Claude Code or Codex** installed and signed in on the computer
-that does the work. Ducter uses your own plan through them; it never asks for an API key to get
-started.
+Whichever you choose, you need an AI agent, **Claude Code or Codex** today, installed and
+signed in on the computer that does the work ([which agents](faq.md#which-ai-agents-does-it-work-with)).
+Ducter uses your own plan through it; it never asks for an API key to get started.
 
 ## The Mac app
 
@@ -74,7 +74,7 @@ Messages follow your system language. Set `DUCTER_LOCALE=zh` or `DUCTER_LOCALE=e
 ## A Linux server that stays on
 
 A Mac sleeps; a small server doesn't. Put Ducter on a Linux server you own and your partner
-keeps working through the night, while your Mac and phone simply connect to it.
+keeps working through the night, while your Mac and phone connect to it.
 
 **1. On your Mac, make the Linux files** (from the source):
 
@@ -98,6 +98,19 @@ install ends by showing a code to connect your first device.
 browser: `claude auth login` prints a link to open on any device and waits for the code, and
 `codex login --device-auth` works the same way.
 
+If you'd rather use a sign-in token or an API key (for example `CLAUDE_CODE_OAUTH_TOKEN` from
+`claude setup-token`, or `DEEPSEEK_API_KEY` for DeepSeek Harness), put it in
+`~/.ducter/keys.env`, one `NAME=value` per line, and make the file private:
+
+```sh
+chmod 600 ~/.ducter/keys.env
+```
+
+Ducter gives each key only to the AI agent that signs in with it. Your DeepSeek key reaches
+DeepSeek Harness and nothing else. Other keys and tokens on the server, such as one in your
+shell, aren't passed to tasks either. If an older Ducter had you put keys in `~/.ducter/env`,
+Ducter moves them to `keys.env` the next time it starts.
+
 **3. Choose how to reach it:**
 
 - **Your own domain (recommended).** Point a DNS record at the server, open ports 80 and 443,
@@ -119,10 +132,18 @@ Ducter's own messages on the server go to the system journal:
 ### Lend another computer
 
 A second server or Mac can do tasks for your Ducter. On the computer Ducter lives on, run
-`ducter pair --worker`; on the other one, run `ducter worker --join <address> --code <code>`
-(add `ducter service install --worker` on a Linux server to keep it running). Then just say
-where: *"run it on vps-2"*. If that computer drops off, its task waits and carries on when it's
-back.
+`ducter pair` (or choose **Connect a phone or computer** in the app). It prints one command for
+the other computer; run it there:
+
+```sh
+ducter worker https://ducter.example.com --code K7QM-4XPA
+```
+
+It's the same one-time code a phone uses. On a Linux server, add
+`ducter service install --worker` to keep it running. Then just say where: *"run it on vps-2"*.
+The computer shows up under its own name; rename it in the app, or with
+`ducter devices rename vps-2 "Build box"`. If that computer drops off, its task waits and
+carries on when it's back.
 
 ## Your phone
 

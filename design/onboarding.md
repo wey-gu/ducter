@@ -198,6 +198,55 @@ app, launched with a scratch `dev.env`, ran doctor and `ducter up` under the har
 and served in ~5 s; quitting stopped the helper. The first-open "downloaded from the Internet"
 dialog itself was not clicked through (it needs a person).
 
+## The title moment (D87, 2026-11-09)
+
+The macOS app's first launch opens on a few seconds of title before the setup card. Code:
+`apps/desktop/internal/views/title.go`; art `apps/desktop/internal/theme/art/title` (made by
+`tools/art/`), sound `apps/desktop/internal/theme/sound` (made by `tools/sound/`, sources in
+`tools/sound/SOURCES.md`). Prototype (the same renderer in a canvas, three art directions and the
+sound variants side by side): https://claude.ai/artifact/BC1i6YEt8EKQ5VtMeCjEw8
+
+**Who, and what they feel.** All three users meet it once, before anything is asked of them.
+Before: a download, a new app, a little wariness. After: the sense of being greeted by someone who
+was already there, waiting (放心, 惊喜, 赏心悦目). It starts with zero setup: it *is* the first
+thing; nothing to learn, any key goes on.
+
+| t | Picture | Sound |
+|---|---|---|
+| 0–0.3 s | Night, nearly black | silence |
+| 0.3–3.7 s | Light rises from under the clouds at the left; the sky, the far islands, Ducter's island appear in layers; the view pushes in 3% over 9 s with parallax and rises slightly; Ducter sleeps, breathing (4.4 s); motes drift into the light | the swell |
+| 3.5 s | Eyes open: half, a beat, wide; a small look up; a breath of light around it | the tone at 3.55 s, the chord resolves |
+| 4.3–6.2 s | The clay logotype lit from the left, then a light passes over it | the tone blooms in the room |
+| 6.6 s | 按任意键开始 / PRESS ANY KEY, small and letter-spaced, then breathing 60–100% | the tail fades to silence |
+| key or click | Before 6.6 s: 0.3 s; after: 0.7 s, the dawn floods the window into the paper, then the setup card (Ducter awake) | fades 0.3 / 0.5 s |
+
+**Sound.** Six candidates (`tools/sound/build.sh`; levels by ffmpeg ebur128, all about −20 LUFS,
+true peak −4.5 to −9.6 dBTP, the tone's onset within 7 ms of 3.55 s): A felt piano + strings
+(IV(add9) → V(sus4) → I, the major third arriving with the eyes; **the author's pick, shipped**),
+B glass + breath pad, C bowed vibraphone + low organ (a real 4–3 suspension on the beat), and the
+endings of Chopin's Nocturne Op. 27 No. 2, Schubert's Sonata D 664/II and Chopin's Prelude
+Op. 28 No. 13 in Musopen's CC0 / public-domain recordings, cut so the final chord lands on the
+beat. All six are in the prototype's sound picker; only A is in git, the others stay in the
+evidence folder. The art direction picked is A, dawn on the island.
+
+**Rules.** Once per Mac (`desktop.json` `titleSeenAt`, written when it is left); Settings › About
+has 再看一次开场 / Replay the intro and the Sound switch. Not shown when macOS opened the app at
+login (`WasOpenedAtLogin`, asked once the app has launched); it waits for a real open. Its clock
+starts when the window is active, and only then does the sound start. ⌘ shortcuts pass through
+(⌘Q quits). The first check of this Mac (doctor) runs underneath, so the setup card is usually
+ready when the title ends.
+
+**Verified** (2026-11-09, macOS 15.7, the desktop binary on a scratch `HOME` and data folder,
+driven with cua-driver): the title shows on a fresh data folder and not on the next launch; Space
+leaves it and writes `titleSeenAt`; `--mygo-opened-at-login` shows no title and leaves
+`titleSeenAt` unset; while it plays, coreaudiod holds an audio-out assertion for the app's process
+(BuiltInSpeakerDevice), so the sound reaches the output; CPU about 10–20% of one core during the
+moment, about 4% once it only breathes (30 fps). Headless (`go test ./internal/views -run Title`):
+skip and leave timing, the sound's start and fades, silence under reduced motion and with sounds
+off, waiting for an active window; frames with `DUCTER_TITLE_SHOTS=1`. Evidence:
+`~/dev/ducter-evidence/title/`. **Not verified:** that it sounds right (nobody listened; levels
+were checked by numbers), a real Retina full-screen window, the signed bundle.
+
 ## No terminal, start to finish (D70, 2026-11-09)
 
 From double-clicking the disk image to the first result, a person who has never opened
@@ -313,7 +362,7 @@ text walls, just one short line per scene (zh + en).
 | 4 | *(to redo once the metaphor is chosen; `research/24`: a battery reads as device power and must not be used. Likely an AI-plan block with cords to each device)* | 用的是你自己的 AI。 / Powered by your own AI plan. | Subscriptions stay yours |
 | 5 | The pebbles work quietly. One turns orange, raises a tiny hand, and Ducter carries it to you | 只有需要你时，我才来找你。 / I only come to you when it matters. | Attention; silence means success |
 | 6 | You tap **好 / Go**. The pebble bounces, turns mint green, and returns holding a tiny receipt | 做完了，还会告诉你我怎么确认的。 / Done, and how I checked. | Decisions with defaults; done = evidence |
-| 7 | All the pebbles roll into a tray labelled **手头 / On hand** | 想看全部，随时打开。 / See everything, anytime. | The overview exists, optionally |
+| 7 | All the pebbles roll into a tray labelled **手头的事 / On hand** | 想看全部，随时打开。 / See everything, anytime. | The overview exists, optionally |
 | 8 | The tray slides aside and a checklist assembles from the pebbles | 开始前只需要三样。 / Three things and we're ready. | *Becomes the real setup screen* |
 
 **The signature moment:** scene 8's last frame *is* the live setup screen, the **Isles** map (`ui.md`). The cartoon doesn't

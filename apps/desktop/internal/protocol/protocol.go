@@ -101,6 +101,7 @@ const (
 	KindReport           = "report"
 	KindCheckpoint       = "checkpoint"
 	KindWaiter           = "waiter"
+	KindWaiterLook       = "waiter_look"
 	KindMemoryNoted      = "memory_noted"
 	KindBridgeMsg        = "bridge_msg"
 )
@@ -149,6 +150,9 @@ type Decision struct {
 	DefaultOption string `json:"defaultOption"` // go | hold
 	DefaultAt     string `json:"defaultAt,omitempty"`
 	Reversible    bool   `json:"reversible"`
+	// RoutineID marks a routine's proposal or review card (D114): Go
+	// activates or keeps it.
+	RoutineID string `json:"routineId,omitempty"`
 }
 
 type DecisionResolved struct {
@@ -210,14 +214,161 @@ type Usage struct {
 	CacheWrite   int64 `json:"cacheWrite,omitempty"`
 }
 
-// Waiter is a cheap wait that wakes the partner (wait_until). A task-less
-// waiter renders as a compact row on On hand.
+// Waiter is a cheap wait (D28, D112): a time (wait_until), or a condition
+// compiled into a read-only check, a connection's event, or either plus a
+// cheap model's judgement. A task-less waiter renders as a compact row on
+// On hand; the On hand snapshot adds what it has seen so far.
 type Waiter struct {
+	WaiterID  string     `json:"waiterId"`
+	TaskID    string     `json:"taskId,omitempty"`
+	RoutineID string     `json:"routineId,omitempty"`
+	At        string     `json:"at,omitempty"`
+	Reason    string     `json:"reason"`
+	State     string     `json:"state"`          // armed | fired | cancelled | expired
+	Kind      string     `json:"kind,omitempty"` // timer | check | event | judge
+	Check     *CheckSpec `json:"check,omitempty"`
+	Event     *EventSpec `json:"event,omitempty"`
+	Judge     string     `json:"judge,omitempty"`
+	EveryMs   int64      `json:"everyMs,omitempty"`
+	Until     string     `json:"until,omitempty"`
+	Observed  string     `json:"observed,omitempty"`
+	// From the On hand snapshot (WaiterView).
+	ArmedAt     string `json:"armedAt,omitempty"`
+	LastLookAt  string `json:"lastLookAt,omitempty"`
+	LastSummary string `json:"lastSummary,omitempty"`
+	Looks       int    `json:"looks,omitempty"`
+	Changes     int    `json:"changes,omitempty"`
+	NextLookAt  string `json:"nextLookAt,omitempty"`
+}
+
+// CheckSpec is a condition compiled into one read-only command and what
+// counts as met (protocol/src/checks.ts).
+type CheckSpec struct {
+	Argv        []string  `json:"argv"`
+	Device      string    `json:"device,omitempty"`
+	Cwd         string    `json:"cwd,omitempty"`
+	SucceedWhen Predicate `json:"succeedWhen"`
+}
+
+type Predicate struct {
+	ExitCode *int   `json:"exitCode,omitempty"`
+	Path     string `json:"path,omitempty"`
+	Equals   any    `json:"equals,omitempty"`
+	OneOf    []any  `json:"oneOf,omitempty"`
+	Contains string `json:"contains,omitempty"`
+	Matches  string `json:"matches,omitempty"`
+	Any      bool   `json:"any,omitempty"`
+}
+
+// EventSpec is new items from a connection's trigger (OpenConnector).
+type EventSpec struct {
+	Connection string `json:"connection"`
+	Service    string `json:"service"`
+	Trigger    string `json:"trigger"`
+	Contains   string `json:"contains,omitempty"`
+}
+
+// WaiterLook is one look of a check or event, logged when what it saw
+// changed (on the task's stream for a task's wait).
+type WaiterLook struct {
 	WaiterID string `json:"waiterId"`
 	TaskID   string `json:"taskId,omitempty"`
-	At       string `json:"at,omitempty"`
-	Reason   string `json:"reason"`
-	State    string `json:"state"` // armed | fired | cancelled
+	OK       bool   `json:"ok"`
+	Met      bool   `json:"met"`
+	Summary  string `json:"summary"`
+	Error    string `json:"error,omitempty"`
+}
+
+// Until is a task's keep-going loop with its tries (D113), for the try strip.
+type Until struct {
+	Condition string     `json:"condition"`
+	MaxTries  int        `json:"maxTries"`
+	State     string     `json:"state"` // on | met | stopped
+	Stop      string     `json:"stop,omitempty"`
+	Check     *CheckSpec `json:"check,omitempty"`
+	Tries     []UntilTry `json:"tries"`
+}
+
+type UntilTry struct {
+	N       int    `json:"n"`
+	Verdict string `json:"verdict"` // met | better | same | worse | unknown
+	Summary string `json:"summary"`
+	By      string `json:"by"`
+	At      string `json:"at,omitempty"`
+}
+
+// Routine is a routine (例行, D114) as On hand shows it (RoutineView).
+type Routine struct {
+	RoutineID    string         `json:"routineId"`
+	Name         string         `json:"name"`
+	Trigger      RoutineTrigger `json:"trigger"`
+	TriggerWords string         `json:"triggerWords"`
+	Brief        string         `json:"brief"`
+	Reports      string         `json:"reports"` // every | on_change | needs_you
+	Effect       string         `json:"effect"`  // read_only | drafts | local_writes
+	State        string         `json:"state"`   // proposed | active | paused | ended | dismissed
+	DecisionID   string         `json:"decisionId,omitempty"`
+	CreatedAt    string         `json:"createdAt"`
+	ReviewAt     string         `json:"reviewAt"`
+	PausedBy     string         `json:"pausedBy,omitempty"`
+	PauseReason  string         `json:"pauseReason,omitempty"`
+	NextAt       string         `json:"nextAt,omitempty"`
+	Upcoming     []string       `json:"upcoming,omitempty"`
+	DryRun       *RoutineDryRun `json:"dryRun,omitempty"`
+	LastRun      *RoutineRun    `json:"lastRun,omitempty"`
+	Running      string         `json:"running,omitempty"`
+}
+
+type RoutineTrigger struct {
+	Kind      string     `json:"kind"` // time | condition
+	Every     string     `json:"every,omitempty"`
+	Time      string     `json:"time,omitempty"`
+	Zone      string     `json:"zone,omitempty"`
+	TZ        string     `json:"tz,omitempty"`
+	Condition string     `json:"condition,omitempty"`
+	Check     *CheckSpec `json:"check,omitempty"`
+	Event     *EventSpec `json:"event,omitempty"`
+}
+
+type RoutineDryRun struct {
+	Met     bool   `json:"met"`
+	Summary string `json:"summary"`
+	At      string `json:"at"`
+}
+
+type RoutineRun struct {
+	RoutineID    string `json:"routineId"`
+	RunID        string `json:"runId"`
+	ScheduledFor string `json:"scheduledFor"`
+	State        string `json:"state"` // started | skipped | done | failed
+	TaskID       string `json:"taskId,omitempty"`
+	At           string `json:"at,omitempty"`
+}
+
+// FromRoutine marks a routine's run task.
+type FromRoutine struct {
+	RoutineID string `json:"routineId"`
+	Name      string `json:"name"`
+}
+
+// WaiterAction, RoutineAction and UntilAction are the work-over-time
+// buttons (D112-D114), each answered with action_result.
+type WaiterAction struct {
+	T        string `json:"t"` // "waiter_action"
+	WaiterID string `json:"waiterId"`
+	Action   string `json:"action"` // look | cancel
+}
+
+type RoutineAction struct {
+	T         string `json:"t"` // "routine_action"
+	RoutineID string `json:"routineId"`
+	Action    string `json:"action"` // pause | resume | end
+}
+
+type UntilAction struct {
+	T      string `json:"t"` // "until_action"
+	TaskID string `json:"taskId"`
+	Action string `json:"action"` // stop
 }
 
 // MemoryNoted is the partner saving something durable to the user's
@@ -307,6 +458,8 @@ func (e LogEvent) Typed() (any, error) {
 		v = &Waiter{}
 	case KindBridgeMsg:
 		v = &BridgeMsg{}
+	case KindBodySelected:
+		v = &BodySelected{}
 	default:
 		return nil, nil
 	}
@@ -319,13 +472,21 @@ func (e LogEvent) Typed() (any, error) {
 // BridgeMsg is a Nowledge Bridge message in or out (DUCTER_BRIDGE=1). Direction "in" text is
 // untrusted: it comes from another agent, not the user. Not rendered yet (design/bridge.md).
 type BridgeMsg struct {
-	Direction string `json:"direction"`
-	MessageID string `json:"messageId"`
-	From      string `json:"from,omitempty"`
-	To        string `json:"to,omitempty"`
-	Text      string `json:"text"`
-	InReplyTo string `json:"inReplyTo,omitempty"`
-	SentAt    string `json:"sentAt,omitempty"`
+	Direction  string `json:"direction"`
+	MessageID  string `json:"messageId"`
+	From       string `json:"from,omitempty"`
+	To         string `json:"to,omitempty"`
+	Text       string `json:"text"`
+	InReplyTo  string `json:"inReplyTo,omitempty"`
+	SentAt     string `json:"sentAt,omitempty"`
+	TaskID     string `json:"taskId,omitempty"`
+	DecisionID string `json:"decisionId,omitempty"`
+	Agent      string `json:"agent,omitempty"`
+	Mine       bool   `json:"mine,omitempty"`
+	State      string `json:"state,omitempty"` // out: pending|held|sending|sent|failed|unknown|unconfirmed|followed; empty = sent
+	OpID       string `json:"opId,omitempty"`
+	Contact    string `json:"contact,omitempty"`
+	Operation  string `json:"operation,omitempty"`
 }
 
 // NewEvent builds an event with body encoded from v (for the mock server
@@ -346,6 +507,7 @@ type TaskCard struct {
 	Harness           string    `json:"harness"`
 	Model             string    `json:"model,omitempty"`
 	BodyReason        string    `json:"bodyReason,omitempty"`
+	Body              *TaskBody `json:"body,omitempty"` // who does it now and why (D89)
 	Attention         Attention `json:"attention"`
 	Residency         Residency `json:"residency"`
 	Reason            string    `json:"reason,omitempty"`
@@ -355,6 +517,8 @@ type TaskCard struct {
 	PendingDecision *PendingDecision `json:"pendingDecision,omitempty"`
 	OpenedAt        string           `json:"openedAt"`
 	UpdatedAt       string           `json:"updatedAt"`
+	Until           *Until           `json:"until,omitempty"`       // D113
+	FromRoutine     *FromRoutine     `json:"fromRoutine,omitempty"` // D114
 }
 
 // PendingDecision is Bodies["decision"] & { askedAt }.
@@ -376,6 +540,8 @@ type OnHand struct {
 	// Waiters are the armed waiters; task-less ones render as compact
 	// rows.
 	Waiters []Waiter `json:"waiters"`
+	// Routines (D114), proposed ones included (their proposal card).
+	Routines []Routine `json:"routines,omitempty"`
 }
 
 // ---------- Client <-> main process WebSocket ----------
@@ -399,6 +565,7 @@ type Hello struct {
 	Persona string `json:"persona,omitempty"`
 	Cursor  *int64 `json:"cursor,omitempty"`
 	Locale  string `json:"locale,omitempty"` // zh | en
+	TZ      string `json:"tz,omitempty"`     // IANA zone; personal routines follow it (D114)
 }
 
 type Send struct {
@@ -464,6 +631,68 @@ type PairCodeReq struct {
 	T string `json:"t"` // "pair_code"
 }
 
+// RenameDeviceReq is 改名字 / Rename for a paired device (another
+// computer; D84). The server answers rename_result, then a fresh devices
+// frame. The machine Ducter lives on keeps its own name.
+type RenameDeviceReq struct {
+	T      string `json:"t"` // "rename_device"
+	Device string `json:"device"`
+	Name   string `json:"name"`
+}
+
+// ---------- Connections (D96: the user's OpenConnector or other MCP servers) ----------
+
+// ConnectionsReq asks for the user's connections and keeps this socket told
+// of every change.
+type ConnectionsReq struct {
+	T string `json:"t"` // "connections"
+}
+
+// ConnectionAdd checks an address and token, then saves the connection.
+// The token goes to the server once and is never sent back.
+type ConnectionAdd struct {
+	T     string `json:"t"` // "connection_add"
+	URL   string `json:"url"`
+	Token string `json:"token,omitempty"`
+	Name  string `json:"name,omitempty"`
+}
+
+// ConnectionRemove removes one connection (and its token).
+type ConnectionRemove struct {
+	T  string `json:"t"` // "connection_remove"
+	ID string `json:"id"`
+}
+
+// ConnectionOo uses the self-hosted OpenConnector the user's oo CLI is set
+// up with; the server reads oo's setup only on this request.
+type ConnectionOo struct {
+	T string `json:"t"` // "connection_oo"
+}
+
+// ConnectionView is one connection, without any secret. Source: "oomol"
+// (OOMOL Hosted: mail and sign-ins pass through OOMOL), "self" (the user's
+// own OpenConnector), "mcp" (another MCP server).
+type ConnectionView struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	URL       string `json:"url"`
+	Source    string `json:"source"`
+	AddedAt   string `json:"addedAt"`
+	Via       string `json:"via"`   // "manual" | "oo"
+	State     string `json:"state"` // "ok" | "unreachable" | "unauthorized" | "unknown"
+	CheckedAt string `json:"checkedAt,omitempty"`
+}
+
+// OoDetect is what the oo CLI is set up with, without its secrets.
+type OoDetect struct {
+	Installed  bool `json:"installed"`
+	SelfHosted *struct {
+		URL      string `json:"url"`
+		HasToken bool   `json:"hasToken"`
+	} `json:"selfHosted,omitempty"`
+	Account bool `json:"account"`
+}
+
 // ---------- Settings (D71: the Partner page and Settings) ----------
 
 // SettingsReq asks for the partner's settings and keeps this socket told
@@ -500,18 +729,24 @@ type Settings struct {
 	Notify          bool        `json:"notify"`
 	Quiet           *QuietHours `json:"quiet"`
 	DefaultAfterMin int         `json:"defaultAfterMin"`
+	// Brain is what the partner thinks with (D89); TaskAccounts are the
+	// Use it for tasks switches (a missing entry is on).
+	Brain        *Brain                 `json:"brain,omitempty"`
+	TaskAccounts map[string]TaskAccount `json:"taskAccounts,omitempty"`
 }
 
 // SettingsPatch is a change to some settings. Quiet is sent as given, so
 // a patch that sets ClearQuiet sends "quiet": null.
 type SettingsPatch struct {
-	Name            *string     `json:"name,omitempty"`
-	Language        string      `json:"language,omitempty"`
-	Memory          *bool       `json:"memory,omitempty"`
-	Notify          *bool       `json:"notify,omitempty"`
-	Quiet           *QuietHours `json:"-"`
-	ClearQuiet      bool        `json:"-"`
-	DefaultAfterMin int         `json:"defaultAfterMin,omitempty"`
+	Name            *string                `json:"name,omitempty"`
+	Language        string                 `json:"language,omitempty"`
+	Memory          *bool                  `json:"memory,omitempty"`
+	Notify          *bool                  `json:"notify,omitempty"`
+	Quiet           *QuietHours            `json:"-"`
+	ClearQuiet      bool                   `json:"-"`
+	DefaultAfterMin int                    `json:"defaultAfterMin,omitempty"`
+	Brain           *Brain                 `json:"brain,omitempty"`
+	TaskAccounts    map[string]TaskAccount `json:"taskAccounts,omitempty"`
 }
 
 // MarshalJSON writes Quiet only when it is set or cleared.
@@ -601,6 +836,11 @@ type DeviceHarness struct {
 	Installed bool       `json:"installed"`
 	LoggedIn  bool       `json:"loggedIn"`
 	Allowance *Allowance `json:"allowance,omitempty"`
+	// Models this account offers, when it lists them; CanBePartner: it can
+	// be what the partner thinks with here; Billing: plan | usage.
+	Models       []HarnessModel `json:"models,omitempty"`
+	CanBePartner bool           `json:"canBePartner"`
+	Billing      string         `json:"billing,omitempty"`
 }
 
 type DeviceAbility struct {
@@ -649,22 +889,27 @@ type Reach struct {
 // ClientFrame is any client -> server frame, decoded by its tag (for the
 // mock server). Fields of all variants share one struct.
 type ClientFrame struct {
-	T          string `json:"t"`
-	Persona    string `json:"persona,omitempty"`
-	Cursor     *int64 `json:"cursor,omitempty"`
-	Locale     string `json:"locale,omitempty"`
-	Text       string `json:"text,omitempty"`
-	ClientID   string `json:"clientId,omitempty"`
-	DecisionID string `json:"decisionId,omitempty"`
-	Option     string `json:"option,omitempty"`
-	TaskID     string `json:"taskId,omitempty"`
-	Action     string `json:"action,omitempty"`
-	UpToSeq    int64  `json:"upToSeq,omitempty"`
-	BeforeSeq  int64  `json:"beforeSeq,omitempty"`
-	Limit      int    `json:"limit,omitempty"`
-	Device     string `json:"device,omitempty"`
-	Ability    string `json:"ability,omitempty"`
-	On         bool   `json:"on,omitempty"`
+	T          string         `json:"t"`
+	Persona    string         `json:"persona,omitempty"`
+	Cursor     *int64         `json:"cursor,omitempty"`
+	Locale     string         `json:"locale,omitempty"`
+	Text       string         `json:"text,omitempty"`
+	ClientID   string         `json:"clientId,omitempty"`
+	DecisionID string         `json:"decisionId,omitempty"`
+	Option     string         `json:"option,omitempty"`
+	TaskID     string         `json:"taskId,omitempty"`
+	Action     string         `json:"action,omitempty"`
+	UpToSeq    int64          `json:"upToSeq,omitempty"`
+	BeforeSeq  int64          `json:"beforeSeq,omitempty"`
+	Limit      int            `json:"limit,omitempty"`
+	Device     string         `json:"device,omitempty"`
+	Ability    string         `json:"ability,omitempty"`
+	On         bool           `json:"on,omitempty"`
+	Name       string         `json:"name,omitempty"` // rename_device
+	ID         string         `json:"id,omitempty"`   // rule_remove
+	Harness    string         `json:"harness,omitempty"`
+	Model      string         `json:"model,omitempty"` // task_switch
+	Patch      *SettingsPatch `json:"patch,omitempty"`
 }
 
 // ---------- Server -> client frames ----------
@@ -690,6 +935,9 @@ type ServerFrame struct {
 	Devices []DeviceView `json:"devices,omitempty"`
 	Reach   *Reach       `json:"reach,omitempty"`
 	// ability_result: Device, Ability, On, OK, Reason, Detail.
+	// rename_result: Device, OK, Name, Reason (unknown_device | empty |
+	// name_taken | home).
+	Name    string `json:"name,omitempty"`
 	Device  string `json:"device,omitempty"`
 	Ability string `json:"ability,omitempty"`
 	On      bool   `json:"on,omitempty"`
@@ -706,6 +954,26 @@ type ServerFrame struct {
 	Settings *Settings `json:"settings,omitempty"`
 	Mem      *MemView  `json:"mem,omitempty"`
 	Forgot   *Forgot   `json:"forgot,omitempty"`
+	// rules: Your rules. candidates: who could do TaskID, best first.
+	Rules      []RuleView  `json:"rules,omitempty"`
+	Candidates []Candidate `json:"candidates,omitempty"`
+	// connections: the user's connections and what oo is set up with;
+	// connection_result: OK, ID, Reason.
+	Connections []ConnectionView `json:"connections,omitempty"`
+	Oo          *OoDetect        `json:"oo,omitempty"`
+	ID          string           `json:"id,omitempty"`
+	// activity: what the partner is doing while the user waits (D104); nil
+	// when its turn ended. Never logged.
+	Activity *PartnerActivity `json:"activity,omitempty"`
+}
+
+// PartnerActivity is the step of a partner turn the user waits on (D104):
+// thinking | recalling | checking_task | opening_task | messaging_task |
+// planning | looking. Clients word it; tool names never reach them.
+type PartnerActivity struct {
+	Step      string `json:"step"`
+	Since     string `json:"since"`
+	StepSince string `json:"stepSince"`
 }
 
 // Delivery is how a task_send reached its task: steered in mid-turn, as
@@ -726,7 +994,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	}
 	switch f.T {
 	case "welcome", "events", "on_hand", "task_history", "sent", "action_result", "error",
-		"devices", "ability_result", "pair_code", "settings":
+		"devices", "ability_result", "pair_code", "rename_result", "settings", "connections", "connection_result", "rules", "candidates", "activity":
 	default:
 		return f, fmt.Errorf("unknown server frame %q", f.T)
 	}

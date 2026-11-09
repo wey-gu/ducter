@@ -1,5 +1,6 @@
-// `ducter worker --join <address> --code <code>`: this machine joins a Ducter running elsewhere
-// as a worker. It dials OUT (no inbound port here), says which harnesses it has, and stays
+// `ducter worker <address> --code <code>`: this machine joins a Ducter running elsewhere as a
+// worker, with the same one-time code a phone or an app window uses (D83; `--join` is a hidden
+// alias for the address). It dials OUT (no inbound port here), says which harnesses it has, and stays
 // connected. The main places tasks here over that socket; @ducter/runner's worker host runs
 // them on this disk with this machine's harnesses (design/system.md "Workers").
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -12,6 +13,8 @@ import type { T } from "./i18n.ts";
 import * as runnerMod from "@ducter/runner";
 import { scriptedHarness } from "./scripted.ts";
 import { localDeviceKind } from "@ducter/core/src/devices.ts";
+import { probeHarnesses as probeLocalHarnesses } from "@ducter/core/src/harness-probe.ts";
+import { migrateKeys, readKeys, scrubKeysFromEnv } from "@ducter/protocol/src/keys.ts";
 
 /** Exit status when the main refuses this worker; the unit sets RestartPreventExitStatus to it. */
 export const EXIT_REFUSED = 3;
@@ -24,7 +27,7 @@ export interface WorkerSaved {
   name: string;
 }
 
-/** Address as typed or the whole `ducter pair --worker` link → http(s) base and maybe a code. */
+/** Address as typed or the whole pairing link (…/pair#c=CODE) → http(s) base and maybe a code. */
 export function parseJoin(raw: string): { base: string; code?: string } {
   let s = raw.trim();
   const m = /[#?&]c=([A-Za-z0-9-]+)/.exec(s);
@@ -55,12 +58,18 @@ function save(file: string, s: WorkerSaved) {
   chmodSync(file, 0o600);
 }
 
-async function probeHarnesses(t: T, dataDir: string) {
-  const r = await runDoctor(realHost(), t, { port: 0, dataDir });
-  return (["claude", "codex"] as const).map((id) => {
-    const c = r.checks.find((k) => k.id === id)!;
-    return { id: id === "claude" ? "claude-code" : "codex", installed: c.detail !== t(`check.${id}.missing`), loggedIn: c.status === "ok" };
+/** The four first-wave harnesses on this machine (D85), as the main's Your devices shows them. */
+async function probeHarnesses(_t: T, dataDir: string) {
+  const host = realHost();
+  const found = await probeLocalHarnesses({
+    exec: async (argv, ms) => {
+      const r = await host.run(argv, ms);
+      return { code: r.code, out: r.stdout };
+    },
+    which: (c) => host.which(c),
+    dataDir,
   });
+  return found.map((h) => ({ id: h.harness, installed: h.installed, loggedIn: h.loggedIn }));
 }
 
 export async function cmdWorker(o: { t: T; style: Style; args: Args; dataDir: string }): Promise<number> {
@@ -78,7 +87,8 @@ export async function cmdWorker(o: { t: T; style: Style; args: Args; dataDir: st
       res = await fetch(`${base}/pair`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ code, name, platform: `${platform()}-${arch()}` }),
+        // role: the code is open to any device (D83); this one joins to do tasks.
+        body: JSON.stringify({ code, name, platform: `${platform()}-${arch()}`, role: "worker" }),
         signal: AbortSignal.timeout(10_000),
       });
     } catch {
@@ -92,6 +102,13 @@ export async function cmdWorker(o: { t: T; style: Style; args: Args; dataDir: st
     console.log(`  ${style.ok("✓")} ${t("worker.joined", { name, persona: saved.persona, url: base })}`);
   }
   if (!saved) return console.log(t("worker.usage")), 2;
+  // D102: a worker's keys live in its own <dataDir>/keys.env, as on the main.
+  try {
+    migrateKeys(o.dataDir);
+    scrubKeysFromEnv(readKeys(o.dataDir));
+  } catch {
+    /* an unreadable data folder fails louder below */
+  }
 
   const hello = {
     t: "hello",
@@ -103,7 +120,7 @@ export async function cmdWorker(o: { t: T; style: Style; args: Args; dataDir: st
     harnesses: await probeHarnesses(t, o.dataDir),
   };
   // DUCTER_SCRIPTED_MODEL=1: canned model words, real tools (scripted.ts), for demos and e2e.
-  const harness = process.env.DUCTER_SCRIPTED_MODEL === "1" ? scriptedHarness(runnerMod) : runnerMod.createOarHarnessPort();
+  const harness = process.env.DUCTER_SCRIPTED_MODEL === "1" ? scriptedHarness(runnerMod) : runnerMod.createOarHarnessPort({ dataDir: o.dataDir });
   const s = saved;
   return stayConnected(s, hello, t, style, (send) => runnerMod.createWorkerHost({ dataDir: o.dataDir, harness, mainBase: s.url, deviceToken: s.token, send }));
 }
@@ -119,7 +136,7 @@ async function stayConnected(
   let backoff = 1000;
   let announced = false;
   for (;;) {
-    const outcome = await new Promise<"closed" | "refused">((resolve) => {
+    const outcome = await new Promise<"closed" | "refused" | "app">((resolve) => {
       const ws = new WebSocket(`${wsBase(s.url)}/worker`, { headers: { authorization: `Bearer ${s.token}` } } as any);
       let ping: ReturnType<typeof setInterval> | undefined;
       const host = makeHost((f) => {
@@ -146,10 +163,16 @@ async function stayConnected(
         try {
           const r = await fetch(`${s.url}/worker`, { headers: { authorization: `Bearer ${s.token}` }, signal: AbortSignal.timeout(5000) });
           if (r.status === 401) return resolve("refused");
+          // Joined as an app (a Ducter older than D83 ignores role): it can't do tasks with this token.
+          if (r.status === 403) return resolve("app");
         } catch {}
         resolve("closed");
       };
     });
+    if (outcome === "app") {
+      console.log(t("worker.asApp", { url: s.url }));
+      return EXIT_REFUSED;
+    }
     if (outcome === "refused") {
       console.log(t("worker.refused", { url: s.url }));
       return EXIT_REFUSED;

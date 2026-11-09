@@ -2,7 +2,7 @@
 // clients fold the same events the same way: living messages revised in place, jobs folded into
 // their acks, decisions with their resolutions, tasks with their streams, the On hand snapshot.
 // Pure data; tested without a DOM.
-import type { Attention, Bodies, ClientFrame, Delivery, EvidenceRef, LogEvent, OnHand, Place, ServerFrame, TaskCard } from "@ducter/protocol";
+import type { ActivityStep, Attention, Bodies, ClientFrame, Delivery, EvidenceRef, LogEvent, OnHand, Place, RoutineView, ServerFrame, TaskBody, TaskCard, UntilView, WaiterView } from "@ducter/protocol";
 
 export type Ev<K extends keyof Bodies = keyof Bodies> = LogEvent<K>;
 
@@ -61,6 +61,9 @@ export interface Task {
   acted?: { action: string; ok: boolean; message?: string; ref?: string };
   /** The seq the action was logged at: a done report after it is new, unmerged work. */
   actedSeq?: number;
+  /** Who does it now and why: the latest body_selected (D89). */
+  body?: TaskBody;
+  bodySeq?: number;
 }
 
 export const LANE = { needs: 0, working: 1, waiting: 2, done: 3, hidden: 4 } as const;
@@ -88,15 +91,16 @@ export const attention = (t: Task): Attention => t.state?.attention ?? t.card?.a
 export const reasonOf = (t: Task) => t.state?.reason || t.card?.reason || "";
 export const placeOf = (t: Task): Place => t.open?.place ?? t.card?.place ?? { kind: "none" };
 export const reportOf = (t: Task) => t.lastReport ?? t.card?.lastReport;
-export const harnessOf = (t: Task) => t.open?.harness || t.card?.harness || "";
-export const modelOf = (t: Task) => t.open?.model || t.card?.model || "";
+export const whoOf = (t: Task): TaskBody | undefined => t.body ?? t.card?.body;
+export const harnessOf = (t: Task) => whoOf(t)?.harness || t.open?.harness || t.card?.harness || "";
+export const modelOf = (t: Task) => { const w = whoOf(t); return w ? w.model ?? "" : t.open?.model || t.card?.model || ""; };
 export const projectOf = (t: Task) => t.open?.project ?? t.card?.project ?? "";
 export const bodyReasonOf = (t: Task) => t.open?.bodyReason || t.card?.bodyReason || "";
 export const finished = (t: Task) => ["done", "done_claimed", "failed"].includes(attention(t));
 
 function taskOf(ev: LogEvent): string {
   const b = ev.body as { taskId?: string };
-  if (["task_open", "task_state", "task_event", "report", "checkpoint"].includes(ev.kind) && b.taskId) return b.taskId;
+  if (["task_open", "task_state", "task_event", "report", "checkpoint", "body_selected"].includes(ev.kind) && b.taskId) return b.taskId;
   return ev.stream.startsWith("task:") ? ev.stream.slice(5) : "";
 }
 
@@ -114,8 +118,17 @@ export class Store {
   decisions = new Map<string, DecisionState>();
   tasks = new Map<string, Task>();
   onHand?: OnHand;
-  waiters = new Map<string, Bodies["waiter"]>();
+  waiters = new Map<string, WaiterView>();
+  /** Tasks whose wait just came true, and when (for the pop and glide, D115). */
+  arrived = new Map<string, number>();
   errors: string[] = [];
+  /** 记下了 / Noted lines in the channel, shown inside the Details of the reply they belong to (D104). */
+  noted: { seq: number; title: string; memoryId?: string; replyTo?: number }[] = [];
+  /** What the partner is doing while the user waits (D104): its step, when this client first saw
+   *  that step (local clock, so a skewed server clock can't make it look slow), and the channel
+   *  seq at which a turn last ended (a user message at or before it has had its turn). */
+  activity?: { step: ActivityStep; at: number };
+  activityEndedAt = 0;
   actionResults: Extract<ServerFrame, { t: "action_result" }>[] = [];
 
   /** A welcome from a Log that no longer holds what we've seen (its data was reset). */
@@ -146,6 +159,8 @@ export class Store {
         return;
       }
       case "action_result": {
+        // A switch (D89) is not a result action: Merge and the rest stay as they were.
+        if (f.action === "switch") return void this.actionResults.push(f);
         const t = this.tasks.get(f.taskId);
         if (t) (t.acting = undefined), (t.unsure = undefined), (t.acted = { action: f.action, ok: f.ok, message: f.message, ref: f.ref }), (t.actedSeq = this.cursor);
         this.actionResults.push(f);
@@ -166,6 +181,12 @@ export class Store {
         t.historyLoaded = true;
         return;
       }
+      case "activity":
+        if (!f.activity) {
+          this.activity = undefined;
+          this.activityEndedAt = this.channelSeq;
+        } else if (this.activity?.step !== f.activity.step) this.activity = { step: f.activity.step, at: Date.now() };
+        return;
       case "error": {
         this.errors.push(f.message);
         if (f.message.startsWith("task_send:")) {
@@ -219,7 +240,10 @@ export class Store {
     }
     if (ev.kind === "waiter") {
       const w = ev.body as Bodies["waiter"];
-      if (w.state === "armed") this.waiters.set(w.waiterId, w);
+      // The moment a task's wait comes true (D115): its card pops and glides to Working.
+      if (w.state === "fired" && w.taskId && (w.check || w.event)) this.arrived.set(w.taskId, Date.now());
+      // A routine's watch lives on its card (D114), not as a wait.
+      if (w.state === "armed" && !w.routineId) this.waiters.set(w.waiterId, { ...this.waiters.get(w.waiterId), ...w });
       else this.waiters.delete(w.waiterId);
     }
     if (ev.stream !== "channel") {
@@ -243,6 +267,9 @@ export class Store {
       }
       case "job_status": {
         const b = ev.body as Bodies["job_status"];
+        // A body_<task>_… note tells the partner the user switched who does a task (D89); the
+        // task's own line says it.
+        if (ev.origin === "user" && b.jobId.startsWith("body_")) return void this.bySeq.set(ev.seq, null);
         // A user-origin act_<task>_<action> status is the durable record of a button action.
         if (ev.origin === "user" && b.taskId && b.jobId.startsWith(`act_${b.taskId}_`)) {
           // On (re)connect the channel replays before on_hand lists the task: keep it anyway.
@@ -286,6 +313,11 @@ export class Store {
       case "decision_resolved":
         this.resolve(ev.body as Bodies["decision_resolved"]);
         return void this.bySeq.set(ev.seq, null);
+      case "memory_noted": {
+        const b = ev.body as Bodies["memory_noted"];
+        this.noted.push({ seq: ev.seq, title: b.title, ...(b.memoryId ? { memoryId: b.memoryId } : {}), ...(b.replyTo != null ? { replyTo: b.replyTo } : {}) });
+        return void this.bySeq.set(ev.seq, null);
+      }
       case "read_receipt":
         this.readUpTo = Math.max(this.readUpTo, (ev.body as Bodies["read_receipt"]).upToSeq);
         return void this.bySeq.set(ev.seq, null);
@@ -355,6 +387,12 @@ export class Store {
         for (const e of b.evidence ?? []) if (!t.evidence.some((h) => h.ref === e.ref && h.label === e.label)) t.evidence.push(e);
         break;
       }
+      case "body_selected":
+        if (!t.body || ev.seq >= (t.bodySeq ?? 0)) {
+          const b = ev.body as Bodies["body_selected"];
+          (t.body = { harness: b.harness, ...(b.model ? { model: b.model } : {}), why: b.why }), (t.bodySeq = ev.seq);
+        }
+        break;
       case "checkpoint":
         t.checkpoints.push({ text: (ev.body as Bodies["checkpoint"]).text, seq: ev.seq, ts: ev.ts });
         t.checkpoints.sort((a, b) => a.seq - b.seq);
@@ -423,6 +461,31 @@ export class Store {
 
   waiterFor(taskId: string) {
     return this.armedWaiters().find((w) => w.taskId === taskId);
+  }
+
+  /** Routines (D114), proposed ones included (their proposal card), newest last. */
+  routines(): RoutineView[] {
+    return this.onHand?.routines ?? [];
+  }
+
+  routine(id: string | undefined): RoutineView | undefined {
+    return id ? this.routines().find((r) => r.routineId === id) : undefined;
+  }
+
+  /** Whether a task's wait came true in the last moment: its card arrives with the pop and glide. */
+  justArrived(taskId: string, now = Date.now()): boolean {
+    const at = this.arrived.get(taskId);
+    return at !== undefined && now - at < 1600;
+  }
+
+  /** A task's `until` loop and its tries (D113). */
+  untilOf(t: Task): UntilView | undefined {
+    return t.card?.until;
+  }
+
+  /** What a waiting task's checks saw, oldest first (waiter_look on its stream). */
+  looksOf(t: Task): Bodies["waiter_look"][] {
+    return t.events.filter((e) => e.kind === "waiter_look").map((e) => e.body as Bodies["waiter_look"]);
   }
 
   /** Tasks by lane (snapshot order, stream-only tasks first, newest first) and counts. */

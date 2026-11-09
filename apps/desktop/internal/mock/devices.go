@@ -1,6 +1,7 @@
 package mock
 
 import (
+	"strings"
 	"sync"
 	"time"
 
@@ -18,6 +19,8 @@ type devices struct {
 	subs   map[*conn]bool
 	codeN  int
 	refuse map[string]string // ability -> reason the next add is refused with
+	// conns are the user's connections (D96) a scene shows as mailboxes.
+	conns []protocol.ConnectionView
 }
 
 func defaultDevices() []protocol.DeviceView {
@@ -116,7 +119,8 @@ func (h *hub) pushDevices() {
 	}
 }
 
-// handleDevices answers devices, ability and pair_code; false for others.
+// handleDevices answers devices, ability, pair_code and rename_device;
+// false for others.
 func (h *hub) handleDevices(c *conn, f protocol.ClientFrame) bool {
 	d := h.devs()
 	switch f.T {
@@ -146,11 +150,50 @@ func (h *hub) handleDevices(c *conn, f protocol.ClientFrame) bool {
 			time.Sleep(50 * time.Millisecond)
 			h.pushDevices()
 		}()
+	case "connections":
+		d.mu.Lock()
+		d.subs[c] = true
+		conns := append([]protocol.ConnectionView{}, d.conns...)
+		d.mu.Unlock()
+		c.send(map[string]any{"t": "connections", "connections": conns})
 	case "pair_code":
 		d.mu.Lock()
 		d.codeN++
 		d.mu.Unlock()
 		c.send(map[string]any{"t": "pair_code", "code": "K7QM-4XPA", "expiresAt": time.Now().Add(10 * time.Minute).UTC().Format(time.RFC3339)})
+	case "rename_device":
+		name := strings.TrimSpace(f.Name)
+		d.mu.Lock()
+		reason := ""
+		hit := -1
+		for i := range d.list {
+			if d.list[i].ID == f.Device {
+				hit = i
+			} else if d.list[i].Name == name {
+				reason = "name_taken"
+			}
+		}
+		switch {
+		case f.Device == "local":
+			reason = "home"
+		case hit < 0:
+			reason = "unknown_device"
+		case name == "":
+			reason = "empty"
+		}
+		if reason == "" {
+			d.list[hit].Name = name
+		}
+		d.mu.Unlock()
+		if reason != "" {
+			c.send(map[string]any{"t": "rename_result", "device": f.Device, "ok": false, "reason": reason})
+			return true
+		}
+		c.send(map[string]any{"t": "rename_result", "device": f.Device, "ok": true, "name": name})
+		go func() {
+			time.Sleep(50 * time.Millisecond)
+			h.pushDevices()
+		}()
 	default:
 		return false
 	}

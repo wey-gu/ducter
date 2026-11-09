@@ -22,6 +22,8 @@ const convWidth = 760
 type row struct {
 	entry   *store.Entry
 	pending *pendingMsg
+	// presence is the partner at work while the user waits (D104).
+	presence bool
 }
 
 func (a *App) rows() []row {
@@ -32,6 +34,10 @@ func (a *App) rows() []row {
 			echoed[e.User.ClientID] = true
 		}
 		if e.Decision != nil && a.S.DecisionShownInLiving(e.Decision.DecisionID) {
+			continue
+		}
+		// A Noted line lives in the Details of the reply it belongs to (D104).
+		if e.Noted != nil {
 			continue
 		}
 		rows = append(rows, row{entry: e})
@@ -87,6 +93,9 @@ func (a *App) rows() []row {
 	for i := range a.pending {
 		rows = append(rows, row{pending: &a.pending[i]})
 	}
+	if a.thinking() {
+		rows = append(rows, row{presence: true})
+	}
 	return rows
 }
 
@@ -102,6 +111,9 @@ func (a *App) conversation(c *ui.Context) {
 		if p := rows[i].pending; p != nil {
 			return "p:" + p.clientID
 		}
+		if rows[i].presence {
+			return "presence"
+		}
 		return rows[i].entry.FirstSeq
 	}
 	a.list.FollowEnd = true
@@ -112,7 +124,7 @@ func (a *App) conversation(c *ui.Context) {
 	}
 	// Rhythm: S3 between two things the same voice says, S5 where the
 	// turn passes from one to the other.
-	userTurn := func(i int) bool { return rows[i].pending != nil || rows[i].entry.User != nil }
+	userTurn := func(i int) bool { return rows[i].pending != nil || (rows[i].entry != nil && rows[i].entry.User != nil) }
 	ui.List(c, &a.list, len(rows), func(i int) {
 		top := float32(0)
 		if i > 0 && userTurn(i) != userTurn(i-1) {
@@ -124,7 +136,21 @@ func (a *App) conversation(c *ui.Context) {
 					a.userBubble(c, p.text, true)
 					return
 				}
-				a.entry(c, rows[i].entry)
+				if rows[i].presence {
+					a.presenceRow(c)
+					return
+				}
+				e := rows[i].entry
+				// A time line before the first message and wherever 15 minutes
+				// passed, as a messaging app has (D104); the away divider is one.
+				var prev *store.Entry
+				if i > 0 {
+					prev = rows[i-1].entry
+				}
+				if a.timeLineBefore(prev, e) {
+					a.timeLine(c, a.whenOf(e.Event.TS))
+				}
+				a.entry(c, e)
 			})
 		})
 	}).Grow(1).Padding(t.S5, t.S5, t.S4, t.S5).Gap(t.S3).Children(func() {
@@ -150,7 +176,7 @@ func (a *App) emptyConversation(c *ui.Context) {
 	a.enter(c, col)
 	col.Children(func() {
 		a.avatar(c, theme.Idle, 180)
-		ui.Text(c, a.L.T("empty.conversation.title", a.S.PersonaName)).FontSize(t.XXL).FontWeight(800).LetterSpacing(-0.3)
+		a.heading(c, a.L.T("empty.conversation.title", a.S.PersonaName), t.XXL)
 		ui.Text(c, a.L.T("empty.conversation")).FontSize(t.LG).TextAlign(ui.Center).TextColor(t.InkSoft).LineHeight(1.6)
 		ui.Column(c).Gap(t.S2).Margin(t.S3, 0, 0, 0).AlignItems(ui.Stretch).Width(460).MaxWidthPercent(100).Children(func() {
 			ui.Text(c, a.L.T("empty.try")).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted).LetterSpacing(0.5)
@@ -192,10 +218,11 @@ func (a *App) header(c *ui.Context) {
 			who.Background(t.SurfaceSunken.Mix(t.Chrome, 0.45))
 		}
 		who.Children(func() {
-			a.avatar(c, a.presence(c), 40)
+			// The clay partner, 52 points: it breathes and blinks (D77).
+			a.partnerFace(c, "bar", a.presence(c), 52)
 			ui.Column(c).Gap(1).MinWidth(0).Children(func() {
-				ui.Text(c, a.S.PersonaName).FontSize(t.MD).FontWeight(800).LetterSpacing(-0.2).SingleLine()
-				ui.Text(c, a.summary(b)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
+				a.heading(c, a.S.PersonaName, t.XL).LineHeight(1.1).SingleLine()
+				ui.Text(c, a.summary(b)).FontSize(t.SM).TextColor(t.InkMuted).SingleLine()
 			})
 		})
 		if who.Clicked() {
@@ -249,19 +276,19 @@ func (a *App) summary(b store.Board) string {
 	if n := len(b.Lanes[store.LaneNeedsYou]) + len(a.partnerDecisions()); n > 0 {
 		parts = append(parts, a.L.T("header.needs", n))
 	}
+	// Thinking is said where the reply will appear (the presence row,
+	// D104), not here.
 	if n := len(b.Lanes[store.LaneWorking]); n > 0 {
 		parts = append(parts, a.L.T("header.working", n))
-	} else if a.thinking() {
-		parts = append(parts, a.L.T("header.thinking"))
+	}
+	// What it waits for is felt here, not in the conversation (D104, D115).
+	if n := len(b.Lanes[store.LaneWaiting]) + len(a.looseWaiters()); n > 0 {
+		parts = append(parts, a.L.T("header.waiting", n))
 	}
 	if n := a.doneToday(b); n > 0 {
 		parts = append(parts, a.L.T("header.done", n))
 	}
 	if len(parts) == 0 {
-		// A reminder or a waiting task is still something on hand.
-		if n := len(b.Lanes[store.LaneWaiting]) + len(a.looseWaiters()); n > 0 {
-			return a.L.T("header.waiting", n)
-		}
 		return a.L.T("header.summary.none")
 	}
 	return strings.Join(parts, " · ")
@@ -277,8 +304,10 @@ func (a *App) thinking() bool {
 		e := a.S.Channel[i]
 		switch {
 		case e.User != nil:
-			return true
-		case e.AI != nil || e.Job != nil:
+			// A turn that ended after it without a word (an ask, or
+			// nothing to say) answered it.
+			return e.FirstSeq > a.S.ActivityEndedAt
+		case e.AI != nil || e.Job != nil || (e.Decision != nil && e.Decision.TaskID == ""):
 			return false
 		}
 	}
@@ -322,7 +351,7 @@ func (a *App) userBubble(c *ui.Context, text string, pending bool) {
 	ui.Row(c).Children(func() {
 		ui.Spacer(c)
 		r := t.BubbleRadius
-		b := ui.Text(c, text).Selectable().SelectionColor(t.InkSoft).FontSize(t.MD).LineHeight(1.55).
+		b := ui.Text(c, text).Selectable().SelectionColor(t.InkSoft).FontSize(t.Bubble).LineHeight(leadingFor(text, 1.6)).
 			TextColor(t.OnUserBubble).Background(t.UserBubble).Padding(t.S3, t.S4).Radius(r[0], r[1], r[2], r[3]).
 			MaxWidthPercent(72)
 		if pending {
@@ -337,28 +366,28 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 	case e.User != nil:
 		a.userBubble(c, e.User.Text, false)
 	case e.AI != nil:
-		ui.Column(c).MaxWidthPercent(88).Gap(t.S3).Children(func() {
-			markdown.View(c, e.AI.Text, &a.md)
-			a.chipsFor(c, e)
+		// The partner's words get the CJK-Latin gap at display time; a
+		// copy leaves it out (D78).
+		ui.Column(c).MaxWidthPercent(88).MaxWidth(readingMeasure).Gap(t.S2).CopyData(autospaceCopy).Children(func() {
+			markdown.View(c, autospace(e.AI.Text), &a.md)
+			a.quiet(c, "m"+itoa(e.FirstSeq), a.replyTasks(e), "", a.notedFor(e))
 		})
 	case e.Job != nil:
-		a.job(c, e.Job, e.FirstSeq)
-	case e.Noted != nil:
-		// Shown, not explained (D43): one quiet line, no card, no action.
-		ui.Text(c, a.L.T("memory.noted", e.Noted.Title)).FontSize(t.XS).TextColor(t.InkMuted)
+		a.job(c, e)
 	case e.Living != nil:
 		a.living(c, e)
 	case e.Decision != nil:
 		if d := a.S.Decisions[e.Decision.DecisionID]; d != nil {
-			a.decisionCard(c, d, "")
+			a.ask(c, d, "")
 		}
 	}
 }
 
-// chipsFor shows the chips of the tasks an AI message's reply started.
-func (a *App) chipsFor(c *ui.Context, e *store.Entry) {
+// replyTasks are the tasks an AI message's reply started whose lines show
+// under it (each under the newest message about it).
+func (a *App) replyTasks(e *store.Entry) []*store.Task {
 	if e.AI == nil || e.AI.ReplyTo == 0 {
-		return
+		return nil
 	}
 	var tasks []*store.Task
 	for _, id := range a.tasksOfReply(e.AI.ReplyTo) {
@@ -366,14 +395,7 @@ func (a *App) chipsFor(c *ui.Context, e *store.Entry) {
 			tasks = append(tasks, t)
 		}
 	}
-	if len(tasks) == 0 {
-		return
-	}
-	ui.Column(c).Gap(a.T.S3).Children(func() {
-		for _, t := range tasks {
-			a.taskFooter(c, t, "")
-		}
-	})
+	return tasks
 }
 
 // tasksOfReply are the tasks the jobs answering a user message started.
@@ -388,36 +410,35 @@ func (a *App) tasksOfReply(replyTo int64) []string {
 	return ids
 }
 
-// job is an ack in the partner's voice, then the job's status line and the
-// chip of its task.
-func (a *App) job(c *ui.Context, j *store.Job, firstSeq int64) {
+// job is an ack in the partner's voice, then the quiet row: the task's
+// line lives in Details (D104).
+func (a *App) job(c *ui.Context, e *store.Entry) {
 	t := a.T
-	ui.Column(c).MaxWidthPercent(88).Gap(t.S3).Children(func() {
+	j := e.Job
+	ui.Column(c).MaxWidthPercent(88).MaxWidth(readingMeasure).Gap(t.S2).Children(func() {
 		if j.Ack != nil {
-			ui.Text(c, j.Ack.Text).Selectable().FontSize(t.PartnerSize).LineHeight(1.65)
+			ui.Text(c, autospace(j.Ack.Text)).Selectable().CopyData(autospaceCopy).FontSize(t.PartnerSize).LineHeight(leadingFor(j.Ack.Text, 1.65))
 		}
 		st := j.Status
-		if st == nil {
-			return
-		}
 		var task *store.Task
-		if st.TaskID != "" {
+		if st != nil && st.TaskID != "" {
 			task = a.S.Task(st.TaskID)
 		}
-		if task != nil && task.Title() != "" && a.chipOwner[task.ID] != firstSeq {
-			return // a later message shows its chip
+		if st != nil && (task == nil || task.Title() == "") {
+			// A status line of no task: its words, in the state's ink when
+			// it failed (the exception), muted otherwise. No dot.
+			col := t.InkMuted
+			if st.State == "failed" {
+				col = t.Failed.Ink
+			}
+			ui.Text(c, st.Text).FontSize(t.SM).TextColor(col)
 		}
-		if task != nil && task.Title() != "" {
-			a.taskFooter(c, task, st.Text)
-			return
+		var tasks []*store.Task
+		detail := ""
+		if task != nil && task.Title() != "" && a.chipOwner[task.ID] == e.FirstSeq {
+			tasks, detail = append(tasks, task), st.Text
 		}
-		// A status line of no task: its words, in the state's ink when it
-		// failed (the exception), muted otherwise. No dot.
-		col := t.InkMuted
-		if st.State == "failed" {
-			col = t.Failed.Ink
-		}
-		ui.Text(c, st.Text).FontSize(t.SM).TextColor(col)
+		a.quiet(c, "m"+itoa(e.FirstSeq), tasks, detail, a.notedFor(e))
 	})
 }
 
@@ -444,8 +465,6 @@ func (a *App) livingItems(e *store.Entry) []protocol.LivingItem {
 func livingKey(it protocol.LivingItem) string { return it.TaskID + "|" + it.Kind + "|" + it.Text }
 
 func (a *App) living(c *ui.Context, e *store.Entry) {
-	t := a.T
-	items := a.livingItems(e)
 	// "While you were away" only for what came while the user was away:
 	// it arrived before this window opened and they hadn't read it yet,
 	// or it arrived while the window was in the background.
@@ -454,56 +473,20 @@ func (a *App) living(c *ui.Context, e *store.Entry) {
 		away = (e.FirstSeq <= a.S.HeadSeq && a.S.Unread(e)) || !c.WindowActive() || c.WindowHidden()
 		a.livingAway[e.FirstSeq] = away
 	}
-	card := ui.Column(c.Key("living")).Padding(t.S5).Gap(t.S4).Radius(t.RadiusXL).Background(t.Surface).
-		Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Label(a.L.T("living.title"))
-	a.resettle(c, card, e.Revision)
-	card.Children(func() {
-		if away {
-			ui.Text(c, a.L.T("living.title")).FontSize(t.XL).FontWeight(800).LetterSpacing(-0.2)
-		}
-		needs, open := 0, 0
-		for _, it := range items {
-			if it.Kind == "decision" {
-				needs++
-				if d := a.S.Decisions[it.DecisionID]; d != nil && d.Resolved == nil && d.Pending == "" && d.Reversible {
-					open++
-				}
-			}
-		}
-		// The count once, in the section's header, with Go on all defaults
-		// at its end as a text button.
-		if needs > 0 {
-			ui.Row(c).Gap(t.S3).AlignItems(ui.Center).MinHeight(t.ControlSM).Children(func() {
-				ui.Text(c, a.L.T("header.needs", needs)).FontSize(t.SM).FontWeight(800).TextColor(t.NeedsYou.Ink).Grow(1)
-				if open >= 2 && a.button(c, a.L.T("decision.goall", len(a.defaultable())), btnText, t.ControlSM, t.Surface) {
-					a.GoOnAllDefaults()
-				}
-			})
-		}
-		// Needs-you first, each with its default; then the rest, one line
-		// each.
-		for i, it := range items {
-			if it.Kind != "decision" {
-				continue
-			}
-			d := a.S.Decisions[it.DecisionID]
-			if d == nil {
-				ui.Column(c.Key(i)).Padding(t.S4, t.S5).Radius(t.RadiusLG).Background(t.NeedsYou.Surface).Children(func() {
-					ui.Text(c, it.Text).FontSize(t.LG).LineHeight(1.5).FontWeight(500)
-				})
-				continue
-			}
-			a.decisionCard(c.Key(i), d, it.TaskID)
-		}
-		ui.Column(c).Gap(t.S3).Children(func() {
-			for i, it := range items {
-				if it.Kind == "decision" {
-					continue
-				}
-				a.livingLine(c.Key(i), it)
-			}
-		})
-	})
+	a.livingQuiet(c, e, away)
+}
+
+// timeLineBefore says whether a time line goes before e: before the first
+// row and wherever 15 minutes passed, but not where the away divider is.
+func (a *App) timeLineBefore(prev, e *store.Entry) bool {
+	if e.Living != nil && a.livingAway[e.FirstSeq] {
+		return false
+	}
+	if prev == nil {
+		return true
+	}
+	p, n := store.ParseTime(prev.Event.TS), store.ParseTime(e.Event.TS)
+	return !p.IsZero() && !n.IsZero() && n.Sub(p) >= timeGap
 }
 
 // decisionCard is one ask in the conversation: the asking task's title
@@ -511,9 +494,10 @@ func (a *App) living(c *ui.Context, e *store.Entry) {
 // question, its default, and Go / Hold / Reply… / Details.
 func (a *App) decisionCard(c *ui.Context, d *store.DecisionState, taskID string) {
 	t := a.T
-	ui.Column(c).Padding(t.S4, t.S5).Gap(t.S2).Radius(t.RadiusLG).Background(t.NeedsYou.Surface).Children(func() {
+	ui.Column(c).Padding(t.S5-4, t.S5-2).Gap(t.S2+2).Radius(t.RadiusLG).Background(t.NeedsYou.Surface).
+		Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge).Children(func() {
 		if task := a.S.Task(firstNonEmpty(taskID, d.TaskID)); task != nil && task.Title() != "" {
-			ui.Text(c, task.Title()).FontSize(t.XS).FontWeight(700).TextColor(t.NeedsYou.Ink)
+			ui.Text(c, task.Title()).FontSize(t.SM).FontWeight(700).TextColor(t.NeedsYou.Ink)
 		}
 		a.decisionBody(c, d, taskID)
 	})
@@ -537,11 +521,14 @@ func (a *App) resettle(c *ui.Context, e ui.Element, revision int) {
 
 func (a *App) decisionBody(c *ui.Context, d *store.DecisionState, taskID string) {
 	t := a.T
-	ui.Text(c, d.Question).FontSize(t.LG).LineHeight(1.5).FontWeight(500)
+	a.heading(c, autospace(d.Question), t.XL).LineHeight(1.35)
+	if d.RoutineID != "" && d.Resolved == nil {
+		a.routineFacts(c, d.RoutineID, t.NeedsYou.Ink)
+	}
 	if d.Resolved == nil {
 		ui.Text(c, a.defaultLine(c, d)).FontSize(t.SM).TextColor(t.NeedsYou.Ink)
 	}
-	st := decisionStyle{height: t.ControlMD, quietBg: t.Surface}
+	st := decisionStyle{height: t.ControlMD, quietBg: t.NeedsYou.Surface}
 	if id := firstNonEmpty(taskID, d.TaskID); id != "" && !(a.Route == RouteTask && a.TaskID == id) {
 		// Details sits after Reply…, a text button like it.
 		st.after = func() {
@@ -578,9 +565,8 @@ func (a *App) livingLine(c *ui.Context, it protocol.LivingItem) {
 		}
 		if len(it.Evidence) > 0 {
 			ev := it.Evidence[0]
-			l := ui.Text(c.Key("ev"), a.L.T("living.evidence")).FontSize(t.SM).FontWeight(700).Role(ui.RoleLink).
-				Cursor(ui.CursorPointer).Underline().Tooltip(ev.Label).Shrink(0)
-			if l.Clicked() {
+			// A text button like every other one: flat, no underline.
+			if a.buttonFor(c.Key("ev"), a.L.T("living.evidence"), ev.Label, btnText, t.ControlSM, t.Surface) {
 				a.openEvidence(c, ev)
 			}
 		}
@@ -629,11 +615,11 @@ func (a *App) composer(c *ui.Context) {
 	}
 	ui.Row(c).Justify(ui.Center).Padding(t.S2, t.S5, t.S5, t.S5).Children(func() {
 		box := ui.Row(c).Grow(1).MaxWidth(convWidth).Gap(t.S3).AlignItems(ui.Center).Padding(t.S2, t.S2, t.S2, t.S5).
-			Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color)
+			Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color)
 		box.Children(func() {
 			ta := ui.TextArea(c.Key("composer"), &a.draft).Lines(1, 8).MinHeight(0).Placeholder(a.L.T("composer.placeholder", a.S.PersonaName)).
 				Label(a.L.T("composer.label", a.S.PersonaName)).AutoFocus().
-				Background(ui.Transparent).Border(0, ui.Transparent).Padding(t.S3, 0).Grow(1).FontSize(t.MD).
+				Background(ui.Transparent).Border(0, ui.Transparent).Padding(t.S3, 0).Grow(1).FontSize(t.Bubble).
 				OnTextKey(func(k ui.TextKey) bool {
 					if k.Key == ui.KeyEnter && k.Mods == 0 {
 						if a.SendMessage(k.Text()) {
@@ -674,11 +660,11 @@ func (a *App) heldLine(c *ui.Context) {
 	}, func() {
 		ui.Text(c, a.L.T("secret.held")).FontSize(t.SM).FontWeight(700).LineHeight(1.45).TextColor(t.Failed.Ink)
 	}, func() {
-		if a.button(c, a.L.T("secret.cancel"), btnSecondary, t.ControlSM, t.Surface) {
-			a.held = nil
-		}
 		if a.button(c, a.L.T("secret.send"), btnText, t.ControlSM, t.Surface) {
 			a.SendHeld()
+		}
+		if a.button(c, a.L.T("secret.cancel"), btnSecondary, t.ControlSM, t.Surface) {
+			a.held = nil
 		}
 	})
 }

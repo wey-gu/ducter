@@ -12,8 +12,23 @@ and other Macs can connect to it to talk and decide.
 
 ## Your devices and what they can do
 
-In the app, **Your devices and what they can do** shows each device with its state and what it
-can do, and **You can also add** shows what else it could learn.
+In the app, **Your devices and what they can do** shows all your devices as little clay islands
+on a calm sea. The computer Ducter lives on is the big one in the middle, with Ducter sitting
+beside it. Each other computer, and each phone you connected, has its own island with a bridge
+back to the middle one, because everything connects through the computer Ducter lives on.
+
+- **Little parcels cross a bridge** while a task is running on that computer. When it's done
+  they stop; the bridge stays.
+- **The AI agents signed in on a device** stand on its island. Tap one and every island where it
+  is signed in lifts a little; the card beside the scene says, for example, *"Signed in · shared
+  by 2 devices"*.
+- **What a device can do** stands in front of its island at full size. An empty spot is
+  something you can add: tap it, or drag it from **You can also add**.
+- **A device that can't be reached** sits in a soft mist with one line, such as *"Can't reach ·
+  2 h ago"*. Nothing needs fixing on your side; it shows up again when it's back.
+
+Choose an island (or its card on the left) to see that device's card: what it is, what it can
+do, and which AI agents are signed in on it.
 
 Each device is in one of three states:
 
@@ -21,6 +36,11 @@ Each device is in one of three states:
 - **Asleep · carries on when it wakes:** a laptop with its lid closed, for example. Its tasks
   pause and pick up again when it wakes. Nothing is lost.
 - **Can't reach:** Ducter can't get to it right now, with when it was last seen.
+
+Another computer you lent Ducter shows its own name and the line *Another computer · does tasks
+for Ducter*. When it is asleep or can't be reached, the second half says that instead. To give it
+a name you'll recognise, choose it and then **Rename**; Ducter knows it by the new name from then
+on, and tasks you started there before keep going.
 
 What a device can do:
 
@@ -77,13 +97,21 @@ stops it for good.
 
 ## Connect another device
 
-On the computer Ducter lives on, choose **Connect another device** in the app, or run
-`ducter pair` in Terminal. You get an **Address** and a **Code**, plus a QR code for your phone.
-On the other device, choose **Connect to your Ducter** and enter them. The code works once, for
-10 minutes.
+On the computer Ducter lives on, choose **Connect a phone or computer** in the app, or run
+`ducter pair` in Terminal. You get one **Code**, and it works for any kind of device, once, for
+10 minutes. In the app, a small jetty grows out of the middle island and the code stands on a
+sign beside it, with *"Waiting for it to connect…"*; when the device connects, its island rises
+there and the device lands on it. The sign shows both ways to use the code:
 
-`ducter devices` lists everything connected, and `ducter devices disconnect <name>` removes a
-device at once. To bring it back, connect it again with a new code.
+- **A phone or the Ducter app:** scan the QR code or open the **Address**, then type the code
+  (in the app, choose **Connect to your Ducter** first).
+- **Another computer that should do tasks for Ducter:** run the one command shown there, for
+  example `ducter worker https://ducter.example.com --code K7QM-4XPA`. See
+  [Lend another computer](install.md#lend-another-computer) to keep it running.
 
-To have another computer *do* tasks for your Ducter, see
-[Lend another computer](install.md#lend-another-computer).
+A computer connected this way can only do tasks for Ducter: it can't read your conversation or
+decide anything for you.
+
+`ducter devices` lists everything connected, `ducter devices rename <name> <new name>` renames
+one, and `ducter devices disconnect <name>` removes a device at once. To bring it back, connect
+it again with a new code.

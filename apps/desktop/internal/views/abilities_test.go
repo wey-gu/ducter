@@ -96,7 +96,11 @@ func TestAbilitiesScreen(t *testing.T) {
 			}
 			h.shotAs(fmt.Sprintf("abilities-%s-added", lang))
 
-			// 取下 is quiet and says what it means.
+			// 取下 is quiet and says what it means. (The right column scrolls:
+			// the device's card, then the grid, then this; a tall window
+			// keeps it in view.)
+			h.tt.SetSize(1280, 1200)
+			h.settle(100 * time.Millisecond)
 			h.clickFound(L.T("ability.remove") + " · " + L.T("ability.web"))
 			if !h.tt.HasText(L.T("ability.remove.web", L.T("device.local.inline"))) {
 				t.Fatalf("no consequence text: %q", h.tt.Texts())

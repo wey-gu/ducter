@@ -1,14 +1,14 @@
 ---
 title: Your phone
 description: Connect your phone to Ducter, get notified only when something needs you, and keep your nights quiet.
-order: 5
+order: 6
 ---
 
 # Your phone
 
 On your phone you can do almost everything you do on your Mac: read the conversation, write to
-your partner, answer decisions, look at **On hand**, and open a task. Its main job, though, is
-simple: to tell you when something truly needs you, and to let you answer in one tap.
+your partner, answer decisions, look at **On hand**, and open a task. Mostly, though, it tells
+you when something needs you and lets you answer in one tap.
 
 The phone version opens in your phone's browser. An iPhone app is coming soon.
 
@@ -18,8 +18,8 @@ Your phone needs an address it can reach from anywhere: Ducter on a server with 
 (see [Install](install.md#a-linux-server-that-stays-on)). A zero-setup address with no domain
 of your own is coming soon.
 
-1. On the computer Ducter lives on, run `ducter pair`, or choose **Connect another device** in
-   the Mac app.
+1. On the computer Ducter lives on, run `ducter pair`, or choose **Connect a phone or computer**
+   in the Mac app.
 2. Scan the QR code with your phone's camera, or open the link it shows. You can also go to the
    address and type the **Code**.
 3. The phone says **Connected**.
@@ -52,12 +52,13 @@ Screen icon from then on. Ducter reminds you of this when it matters.
 
 ## Quiet hours
 
-Every night from **23:00 to 08:00**, in your phone's time zone, Ducter doesn't notify you at
-all. Nothing breaks through. When quiet hours end, you get at most one notification about what
-waited overnight.
+From **23:00 to 08:00**, in your phone's time zone, Ducter doesn't notify you at all. Nothing
+breaks through. When quiet hours end, you get at most one notification about what waited
+overnight.
 
-Your tasks keep working through the night; only the notifications wait. A decision that has a
-default still goes ahead with its default if you don't answer in time, and you'll see
-**Went with the default** on it.
+Your tasks keep working through the night; only the notifications wait. A decision that can be
+undone still goes ahead with its default if you don't answer in time, and you'll see **Went with
+the default** on it. Anything that can't be undone waits for you.
 
-Choosing your own quiet hours is coming soon.
+To change the hours or turn them off, open **Partner** and use **Quiet hours** (see
+[Your partner and settings](settings.md#partner)).

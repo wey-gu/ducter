@@ -279,6 +279,14 @@ textarea {
   font-weight: 800;
   text-wrap: balance;
 }
+/* Balance is for short headings only. A question or an outcome is a sentence: balancing a long
+   CJK one cuts it into short ragged lines and splits words ("调 / 用"); it fills the measure
+   instead, with no lone last character. */
+.decision .q,
+.ask .q,
+.task-head .headline {
+  text-wrap: pretty;
+}
 :lang(zh) .top .name,
 :lang(zh) .living h2,
 :lang(zh) .decision .q,
@@ -804,6 +812,13 @@ a {
   font-size: var(--t20);
   line-height: 1.35;
   letter-spacing: -0.2px;
+}
+/* On a phone the question is a sentence read in a card, not a title: one step down (18). */
+@media (max-width: 600px) {
+  .decision .q,
+  .ask .q {
+    font-size: var(--lg);
+  }
 }
 :lang(zh) .decision .q {
   line-height: 1.45;

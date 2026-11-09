@@ -174,6 +174,10 @@ of it stops; the equip cross-fades; colors and words are unchanged.
   (`text-autospace` where supported, else an inserted U+2005); copied text is unchanged.
 - Kinsoku: 。，、？！）」』 never start a line, （「『 never end one (`line-break: strict`);
   adjacent punctuation is compressed (`text-spacing-trim`).
+- Balanced wrapping (`text-wrap: balance`) is for short headings only (names, screen and
+  section titles). A question or an outcome is a sentence: it fills the measure
+  (`text-wrap: pretty`), since balancing a long CJK sentence leaves short ragged lines. On a
+  phone (≤ 600) a decision's question is set one step down, 18 instead of 20.
 - Inline code in a zh line: JetBrains Mono at 0.86em on the same baseline, the same 1/4-em gap,
   short tokens never broken (D73).
 

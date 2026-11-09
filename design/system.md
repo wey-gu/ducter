@@ -142,8 +142,14 @@ changes.
 
 ## Identity and Mem boundary (principle 17)
 
-- **Persona and windows.** A persona is one Mem AI Identity. Its windows run as that same
-  identity, selected by setting `NMEM_AGENT_ID` in the window's environment.
+- **Persona and windows (D141).** A persona is one Mem AI Identity, bound once and kept in
+  `persona.json` (`mem {agentId, space?, owned, label?}`): the user's own `NMEM_AGENT_ID` (with
+  their `NMEM_SPACE`) when Ducter runs with one, adopted and never edited; else `ducter`,
+  adopted if it exists, else enrolled with the partner's name and source app `ducter`, no Space
+  of its own. A key that may not enroll (a Cloud team member's) binds the id without a profile:
+  Mem records the id on writes either way. Its windows run as that same identity: the session
+  spec sets `NMEM_AGENT_ID` (and `NMEM_SPACE` when bound) explicitly, and no other NMEM_*
+  reaches them. A rename keeps the id and, for an identity Ducter enrolled, updates its name.
 - **L1** is built from the identity's stable sections (read without Working Memory) and
   hashed by Ducter. Changes are adopted only at cut points. Working Memory enters as an L4
   delta.
@@ -161,10 +167,11 @@ changes.
   *As built (partner memory slice, `packages/partner/src/memory.ts`):* writes go through the
   user's own `nmem` CLI: `nmem m add --stdin --title … --source ducter --source-app ducter
   --source-msg "ducter;persona=<id>;log=<seq>[;task=<id>]"` (nmem keeps the last under
-  `metadata.source_message_id`; the CLI has no general metadata flag). Ducter passes no
-  `--agent-id` and no `--space`: nmem takes the identity from `NMEM_AGENT_ID` and the Space
-  from `NMEM_SPACE` or its own default, so Ducter never enrolls an identity or picks a Space.
-  Missing or unreachable Mem: the tools answer "not available" and the partner carries on.
+  `metadata.source_message_id`; the CLI has no general metadata flag) `--agent-id <persona's
+  identity>` and `--space` only when the binding has one; search passes the same `--space`, and
+  the L1 bundle is read with `--agent-id`. Verified live (D141 (6)): the stored record carries
+  `metadata.agent_id`, `metadata.source_app = ducter` and `metadata.source_message_id`. Missing
+  or unreachable Mem: the tools answer "not available" and the partner carries on.
 - **Bridge (DRAFT, `bridge.md`).** Agents Ducter didn't start reach the persona through its Mem
   Agent mailbox, never a harness session. Ducter only reads that inbox and replies to messages
   already in the Log, under a named Agent Context the user approved. It never runs setup, enrolls an

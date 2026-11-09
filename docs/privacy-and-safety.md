@@ -66,8 +66,10 @@ If you use [Nowledge Mem](https://mem.nowledge.co), your partner starts out know
 and what you're working on, from the same memory your other AI tools share. When it saves
 something worth keeping, its reply's **Details** shows one quiet line: **Noted · <what it
 saved>**, with **Forget**. **Partner › What it remembers** lists all of them.
-Every memory records that it came from Ducter and which conversation it came from, so you can
-always trace it back. If you edit a memory in Nowledge Mem, your edit wins.
+Every memory records that it came from Ducter, which partner wrote it (its own name in
+Nowledge Mem, the same for its tasks) and which conversation it came from, so you can always
+trace it back. If you already chose an AI identity for Nowledge Mem on this computer, Ducter
+uses that one and never changes it. If you edit a memory in Nowledge Mem, your edit wins.
 
 ## Tasks run as you
 

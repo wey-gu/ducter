@@ -43,7 +43,8 @@ top of the conversation. On a phone, tap your partner at the top of the conversa
     suggested default: 10 minutes, 30 minutes, 1 hour or 2 hours. This applies only to things
     that can be undone. Anything that can't be undone always waits for you.
 - **What it remembers.** With [Nowledge Mem](https://mem.nowledge.co) connected, your partner
-  remembers what you've told it across conversations. **Noted lately** lists what it wrote
+  remembers what you've told it across conversations, kept in Nowledge Mem under your
+  partner's name (renaming it keeps the same memories). **Noted lately** lists what it wrote
   down. **Forget** removes a line: Nowledge Mem forgets it when it can, and otherwise the line
   is only hidden here (the app tells you which). To stop it from recalling or noting anything,
   turn off **Remember things**.

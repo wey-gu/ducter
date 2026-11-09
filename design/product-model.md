@@ -291,6 +291,8 @@ Two primitives plus one property cover every case.
 ## 5. Personas
 
 - Each persona has its own conversation and Mem identity. Its tasks run under that identity.
+  The identity is bound once (the user's own if they set one, else Ducter's `ducter`) and
+  survives a rename: the name is only its label (D141).
 - **Attention is the person's.** On hand aggregates every persona, and each card carries its
   persona's face and color. Conversations stay separate.
 - **Isolated by default.** A persona reads or asks another only after the user links them.

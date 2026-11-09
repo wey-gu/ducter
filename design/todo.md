@@ -147,15 +147,19 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 
 ## Long-term memory (`design/memory.md`)
 
-- [ ] **One live write** into a scratch Space, then archive it (the user's Mem is Cloud, so
-      creating a Space is not a local op). Decided D63: a Space named `ducter-scratch`.
-- [ ] Confirm `--source-msg` provenance lands in `metadata.source_message_id` on Cloud
-      (documented by `nmem m add --help`, unverified live). Trigger: the first live write.
+- [x] **One live write**, read back, then removed (D63, D141 (6), 2026-11-09): identity,
+      `source_app` and `metadata.source_message_id` verified on Cloud. The key may not create
+      Spaces, so it went to the Personal zone, not a `ducter-scratch` Space.
+- [ ] Re-run `mem-live.ts --real` with a key that may create Spaces and Agent profiles, to check
+      the `ducter-scratch` Space and the rename (`nmem agents set`) live. Trigger: an owner key
+      or a local Mem.
+- [ ] The Bridge's named Agent Context names the persona's identity (D141 (7)): at bind time,
+      adopt the context's identity, or say when they differ. Trigger: Bridge on by default.
 - [ ] Outbox with idempotency keys when Mem is down (research/private/10 §"Mem down ≠ Ducter
       down"). Today a save while Mem is down is dropped and nothing is shown.
 - [ ] Search before writing, to supersede instead of duplicating (`nmem m supersede`).
 - [ ] Undo on the Noted line (archive the memory, never delete).
-- [ ] Tasks (windows) as the same identity: set `NMEM_AGENT_ID` in task environments.
+- [x] Tasks (windows) as the same identity: `NMEM_AGENT_ID` in the task's session spec (D141).
 
 ## The conversation's own memory: digest, window, recall (`design/memory.md`, D123)
 

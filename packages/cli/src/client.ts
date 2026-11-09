@@ -2,6 +2,7 @@
 // commands that talk to it: task, say, tail, answer, open <task>. It says hello as a CLI, so
 // Ducter never asks it to show a task (open_task goes to the apps).
 import type { ClientFrame, LogEvent, OnHand, ServerFrame } from "@ducter/protocol";
+import { openSocket, type Target } from "./home.ts";
 
 export interface Conn {
   personaName: string;
@@ -20,12 +21,12 @@ export interface Conn {
   close(): void;
 }
 
-/** Connects and greets; undefined when nothing answers on the port within timeoutMs. */
-export async function connect(port: number, opts: { cursor?: number; timeoutMs?: number; url?: string } = {}): Promise<Conn | undefined> {
-  const url = opts.url ?? `ws://127.0.0.1:${port}/ws`;
+/** Connects and greets; undefined when nothing answers within timeoutMs. A port is this
+ *  machine; a remote target goes over http(s)/ws(s) with its device token (D146). */
+export async function connect(target: Target | number, opts: { cursor?: number; timeoutMs?: number; url?: string } = {}): Promise<Conn | undefined> {
   let ws: WebSocket;
   try {
-    ws = new WebSocket(url);
+    ws = opts.url ? new WebSocket(opts.url) : openSocket(target);
   } catch {
     return undefined;
   }
@@ -44,7 +45,7 @@ export async function connect(port: number, opts: { cursor?: number; timeoutMs?:
           ws.close();
         } catch {}
       }
-    }, opts.timeoutMs ?? 3000);
+    }, opts.timeoutMs ?? (typeof target === "object" && target.kind === "remote" ? 10_000 : 3000));
     ws.onopen = () => ws.send(JSON.stringify({ t: "hello", client: "cli", ...(opts.cursor != null ? { cursor: opts.cursor } : {}) } satisfies ClientFrame));
     ws.onerror = () => {
       if (!greeted) {

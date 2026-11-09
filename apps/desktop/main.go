@@ -292,6 +292,7 @@ func main() {
 				}
 			}
 			c.Retarget(saved.URL, saved.Token)
+			go followCLI(saved, false) // D146: `ducter` in Terminal follows the app
 			return nil
 		}
 		app.ReadClipboard = mygo.Clipboard.ReadText
@@ -303,9 +304,18 @@ func main() {
 					log.Printf("ducter: could not forget the connection: %v", err)
 				}
 			}
+			// The command line follows back to this Mac (D146).
+			if err := remote.ClearHome(hints.DataDir()); err != nil {
+				log.Printf("ducter: could not point the command line back here: %v", err)
+			}
 			mygo.App.Relaunch()
 		}
 		app.StartLocal() // no-op without a Backend
+		// A saved connection elsewhere (from before D146, or a CLI device the
+		// home since disconnected): the command line gets its own device too.
+		if os.Getenv("DUCTER_URL") == "" && token != "" {
+			go followCLI(remote.Saved{URL: url, Token: token}, true)
+		}
 		go c.Run(context.Background())
 	})
 	if err := mygo.App.Run(); err != nil {
@@ -493,6 +503,20 @@ func buildVersion() (string, string) {
 		}
 	}
 	return v, c
+}
+
+// followCLI points `ducter` on this Mac at the Ducter the app connected to
+// (D146): its own device and <dataDir>/home.json, or no home.json for this
+// Mac's own. A developer's DUCTER_URL leaves the command line alone.
+func followCLI(s remote.Saved, relaunch bool) {
+	if os.Getenv("DUCTER_URL") != "" {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 40*time.Second)
+	defer cancel()
+	if err := remote.AppConnected(ctx, hints.DataDir(), s, client.DefaultURL(), remote.DeviceName(), time.Now(), relaunch); err != nil {
+		log.Printf("ducter: the command line couldn't connect there too (ducter connect does it by hand): %v", err)
+	}
 }
 
 // target is the server to dial and its device token: DUCTER_URL (and

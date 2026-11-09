@@ -135,7 +135,7 @@ To start over as a brand-new user, `ducter uninstall --all` (or use a fresh `--d
 
 Options: `--port` (default 7777, or `DUCTER_PORT`), `--data-dir` (default `~/.ducter`, or
 `DUCTER_DATA_DIR`), `--no-desktop`, `--json`. `task`, `say`, `tail`, `answer` and `open <task>`
-speak the client protocol to the running Ducter on `--port`, so a lead agent can work a
+speak the client protocol to the running Ducter on `--port` (or the home the CLI follows, D146, below), so a lead agent can work a
 scratch Ducter (`--port 7791 --data-dir <scratch>`) without anyone relaying. Messages follow your locale (`LANG`); set
 `DUCTER_LOCALE=zh` or `en` to choose.
 
@@ -197,6 +197,27 @@ it's back.
 | `ducter domain <name> [--remove \| --print \| --no-dns-check] [--json]` | HTTPS at that name with Caddy, DNS checked first, then a pair code |
 | `ducter devices` | Connected devices; `disconnect <id>` removes one, `rename <id> <name>` renames one (D84) |
 | `ducter worker <address> --code <code>` | Make this machine a worker of that Ducter, with the same one-time code a phone uses (D83; `service install --worker` keeps it running; `--join <address>` and `pair --worker` are hidden aliases) |
+| `ducter connect <address\|pair link> --code <code>` | Make this machine's home commands go to that Ducter (D146): trades the code at `POST /pair` for the CLI's own device token, writes `<dataDir>/home.json` (0600). A loopback address (a tunnel) needs no code |
+| `ducter disconnect` | Remove `home.json`: home commands go to this machine's Ducter again (the CLI device stays listed there until it's disconnected there) |
+
+**The CLI follows the active home (D146).** Machine commands (`up`, `service`, `uninstall`,
+`worker`, `doctor`, `domain`, `report`, `update` without `--all`) act on this machine. Home
+commands (`status`, `say`, `task`, `tail`, `answer`, `merge`, `undo`, `open`, `pair`, `devices`,
+`update --all`) go to the Ducter in `<dataDir>/home.json`
+(`{address, token, name, since, deviceId?, by}`), else to `127.0.0.1:--port`. Each prints
+`→ <host>` / `→ this computer` first (human mode) and carries `home` in `--json`. `--local` or
+an explicit `--port` forces this machine; `--home <address>` goes elsewhere once, with the
+token `home.json` holds for it (no token and not loopback: exit 1 with the exact
+`ducter connect` line). Remote transport is the client WebSocket over `wss://<address>/ws` with
+`Authorization: Bearer dvc.…`; a failure is diagnosed with a `GET /ws` (401 → the device was
+disconnected; no answer → unreachable). `pair` asks the home for a code with the `pair_code`
+frame; `devices` reads the `devices` frame (`rename` uses `rename_device`; `disconnect` only on
+the home's own machine). The Mac app writes `home.json` when it connects elsewhere
+(`apps/desktop/internal/remote/home.go`): over its authenticated socket it asks for a second
+code and redeems it as the device **CLI on <Mac>**; at launch it re-pairs only when that token
+stopped working, and leaves a `home.json` written by `ducter connect` alone. Back to this Mac,
+the app removes it. `ducter doctor` adds two rows: what the CLI follows, and whether this
+`ducter` is the app's helper (updates with the app) or a copy / a checkout that won't.
 
 `DUCTER_SCRIPTED_MODEL=1 ducter up` runs with a canned model (OAR's scripted runtime) over the
 real tools, for demos on a box with no AI signed in. Every reply says so.

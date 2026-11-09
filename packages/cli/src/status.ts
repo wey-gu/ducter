@@ -2,6 +2,7 @@
 import type { Bodies, LogEvent, OnHand, ServerFrame, TaskCard } from "@ducter/protocol";
 import type { T } from "./i18n.ts";
 import { plainStyle, type Style } from "./doctor.ts";
+import { appAddress, openSocket, type Target } from "./home.ts";
 
 export interface Snapshot {
   personaName: string;
@@ -11,12 +12,13 @@ export interface Snapshot {
 }
 
 /** Says hello, collects welcome + replayed events + on_hand, then closes. */
-export async function fetchSnapshot(port: number, timeoutMs = 3000): Promise<Snapshot | undefined> {
-  const url = `ws://127.0.0.1:${port}/ws`;
+export async function fetchSnapshot(target: Target | number, timeoutMs?: number): Promise<Snapshot | undefined> {
+  const t: Target = typeof target === "number" ? { kind: "local", port: target } : target;
+  timeoutMs ??= t.kind === "remote" ? 10_000 : 3000;
   return new Promise((resolve) => {
     let ws: WebSocket;
     try {
-      ws = new WebSocket(url);
+      ws = openSocket(t);
     } catch {
       return resolve(undefined);
     }
@@ -46,7 +48,7 @@ export async function fetchSnapshot(port: number, timeoutMs = 3000): Promise<Sna
       if (f.t === "welcome") personaName = f.personaName;
       else if (f.t === "events") events = events.concat(f.events);
       // The header shows what a person opens, not the client socket.
-      else if (f.t === "on_hand") done({ personaName, url: `http://127.0.0.1:${port}/app`, onHand: f.onHand, decisions: openDecisions(events) });
+      else if (f.t === "on_hand") done({ personaName, url: appAddress(t), onHand: f.onHand, decisions: openDecisions(events) });
     };
   });
 }
@@ -82,11 +84,11 @@ export function pickTask(cards: TaskCard[], name: string): TaskCard[] {
 type ActionResult = { ok: boolean; message?: string; ref?: string; confirm?: { count: number; files: string[] } };
 
 /** Sends one task_action over the client socket and waits for its action_result. */
-export async function taskAction(port: number, taskId: string, action: "merge" | "undo", timeoutMs = 5 * 60_000, extra: { force?: boolean } = {}): Promise<ActionResult | undefined> {
+export async function taskAction(target: Target | number, taskId: string, action: "merge" | "undo", timeoutMs = 5 * 60_000, extra: { force?: boolean } = {}): Promise<ActionResult | undefined> {
   return new Promise((resolve) => {
     let ws: WebSocket;
     try {
-      ws = new WebSocket(`ws://127.0.0.1:${port}/ws`);
+      ws = openSocket(target);
     } catch {
       return resolve(undefined);
     }

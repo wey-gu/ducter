@@ -108,14 +108,49 @@ run the one command it prints.
 | `ducter domain <your domain>` | On a server: HTTPS at your domain, then a code to connect your devices from anywhere. `--remove` undoes it |
 | `ducter devices` | The devices connected to your Ducter; `ducter devices disconnect <name>` removes one |
 | `ducter devices rename <name> <new name>` | Give a device a name you'll recognize |
+| `ducter connect <address> --code <code>` | Send this computer's `ducter` commands to a Ducter on a server (the code comes from `ducter pair` there) |
+| `ducter disconnect` | Send them to this computer's own Ducter again |
 | `ducter report` | Writes a diagnostics folder you can look through and attach to an issue. Nothing is uploaded |
 | `ducter uninstall` | Removes Ducter from this computer; add `--dry-run` to see what it would remove first |
 | `ducter version` | Which version you have |
 
 Messages follow your system language. Set `DUCTER_LOCALE=zh` or `DUCTER_LOCALE=en` to choose.
 
+**Which Ducter do they talk to?** `status`, `say`, `task`, `tail`, `answer`, `merge`, `undo`,
+`open`, `pair` and `devices` talk to the Ducter you use: the one on this computer, or the one on
+a server once you've connected to it (see [below](#using-the-command-line-with-a-ducter-on-a-server)).
+Each one says where first: `→ this computer`, `→ hel.example.com`. `up`, `doctor`, `domain`,
+`service`, `worker`, `report` and `uninstall` always act on this computer.
+
 **Started on another port?** Add `--port 7790` (or set `DUCTER_PORT`) to every command, for
-example `ducter status --port 7790`.
+example `ducter status --port 7790`. A `--port` always means this computer.
+
+### Using the command line with a Ducter on a server
+
+When the Mac app connects to a Ducter on a server, `ducter` in Terminal follows it: the app
+connects the command line too, as its own device, **CLI on <your Mac>**, which you can see and
+disconnect on its own in `ducter devices`. Switch the app back to the Ducter on this Mac and the
+command line comes back with it.
+
+No app, or another computer? Get a code on the server and connect by hand:
+
+```sh
+ducter pair                                        # on the server: prints a code (and the connect line)
+ducter connect https://hel.example.com --code K7QM-4XPA   # on your computer
+ducter status                                      # → hel.example.com
+ducter disconnect                                  # back to this computer's own Ducter
+```
+
+Just once, without switching: `--local` uses this computer's Ducter, `--home <address>` the one
+at that address. A task you start with `ducter task` while connected to a server has no folder
+unless you name one with `--repo`, and a folder on this Mac works only if this Mac does tasks for
+that Ducter (`ducter worker`).
+
+When something is off, the command says what to do: a server it can't reach (check that it's up;
+`ducter doctor` on it), or one that no longer accepts this command line (it was disconnected
+there: `ducter connect` again with a new code). `ducter doctor` shows which Ducter the command
+line uses, and whether this `ducter` is the app's own (it updates with the app) or a separate
+copy that won't.
 
 ## A Linux server that stays on
 
@@ -235,6 +270,7 @@ them over is on the roadmap).
 2. On the Mac, open **Settings** and choose **Connect to a Ducter on another computer**. Paste
    the link from `ducter pair` (or type the address and the code). The app now uses the server.
    It asks once whether to stop the Ducter on this Mac; its data in `~/.ducter` stays either way.
+   `ducter` in Terminal now talks to the server too.
 3. Want tasks to use the repos on your Mac? Run the `ducter worker` command that `ducter pair`
    printed, on the Mac.
 

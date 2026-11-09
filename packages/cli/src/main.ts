@@ -9,7 +9,10 @@ import { launchDesktop, planDesktop, sourceRepoRoot, type Launched } from "./des
 import { ansiStyle, formatBlocked, formatReport, formatSummary, realHost, runDoctor, width, type DoctorReport, type Host, type Style } from "./doctor.ts";
 import { buildHints, cleanName, readPersonaFile, writeHints, writePersonaFile } from "./firstrun.ts";
 import { commandsFor, commandWith, detectLocale, translator, type T } from "./i18n.ts";
-import { cmdAnswer, cmdOpenTask, cmdSay, cmdTail, cmdTask, type TalkCtx } from "./talk.ts";
+import { cmdAnswer, cmdOpenTask, cmdSay, cmdTail, cmdTask, notReached, type TalkCtx } from "./talk.ts";
+import { commandClass, homeJson, resolveTarget, type Target } from "./home.ts";
+import { cliChecks, cmdConnect, cmdDevicesAt, cmdDisconnect, cmdPairAt, targetLine } from "./homecmds.ts";
+import { realpathSync } from "node:fs";
 import { fetchSnapshot, formatSnapshot, pickTask, taskAction, toMerge } from "./status.ts";
 import { cmdDevices, cmdPair, cmdService, ducterCommand, fetchPublicIp, isLoopback, publicUrl } from "./remote.ts";
 import { caddyfileFor, cmdDomain, realDomainSys, removeDucterSite } from "./domain.ts";
@@ -53,6 +56,8 @@ export function helpText(t: T): string {
     cmd("version", t("help.version")),
     cmd("pair", t("help.pair")),
     cmd("devices", t("help.devices")),
+    cmd("connect", t("help.connect")),
+    cmd("disconnect", t("help.disconnect")),
     cmd("service", t("help.service")),
     cmd("domain", t("help.domain")),
     cmd("worker", t("help.worker")),
@@ -71,6 +76,8 @@ export function helpText(t: T): string {
     opt("--base <branch>", t("help.base")),
     opt("--timeout <s>", t("help.timeout")),
     opt("--json", t("help.json")),
+    opt("--local", t("help.local")),
+    opt("--home <address>", t("help.homeFlag")),
     opt("--remove", t("help.remove")),
     opt("--print", t("help.print")),
     opt("--no-dns-check", t("help.noDnsCheck")),
@@ -109,10 +116,21 @@ interface Ctx {
   host: Host;
   port: number;
   dataDir: string;
+  /** Where a home command goes (D146): the Ducter the CLI follows, else this machine's. */
+  target: Target;
 }
+
+const remoteAt = (ctx: Ctx) => (ctx.target.kind === "remote" ? ctx.target : undefined);
 
 async function cmdDoctor(ctx: Ctx): Promise<number> {
   const report = await runDoctor(ctx.host, ctx.t, { port: ctx.port, dataDir: ctx.dataDir });
+  // D146: which Ducter the command line follows, and whether this ducter updates with the app.
+  let real = process.execPath;
+  try {
+    real = realpathSync(real);
+  } catch {}
+  const appCli = ["/Applications/Ducter.app", join(homedir(), "Applications", "Ducter.app")].map((a) => join(a, "Contents", "Helpers", "ducter")).find((p) => existsSync(p));
+  report.checks.push(...cliChecks(ctx.t, { dataDir: ctx.dataDir, realExecPath: real, compiled: ctx.host.compiled, platform: process.platform, appInstalled: Boolean(appCli), ...(appCli ? { appCli } : {}) }));
   if (ctx.args.json) console.log(JSON.stringify(report, null, 2));
   else console.log(formatReport(report, ctx.t, ctx.style));
   if (report.ok) writeFileSync(join(ctx.dataDir, DOCTOR_MARKER), new Date().toISOString());
@@ -120,12 +138,13 @@ async function cmdDoctor(ctx: Ctx): Promise<number> {
 }
 
 async function cmdStatus(ctx: Ctx): Promise<number> {
-  const snap = await fetchSnapshot(ctx.port);
+  const snap = await fetchSnapshot(ctx.target);
   if (!snap) {
-    console.log(ctx.t("status.notRunning", { port: ctx.port }));
+    if (ctx.args.json) console.log(JSON.stringify({ running: false, home: homeJson(ctx.target) }));
+    else console.log(await notReached(ctx.t, ctx.target));
     return 1;
   }
-  console.log(ctx.args.json ? JSON.stringify(snap, null, 2) : formatSnapshot(snap, ctx.t, ctx.style));
+  console.log(ctx.args.json ? JSON.stringify({ ...snap, home: homeJson(ctx.target) }, null, 2) : formatSnapshot(snap, ctx.t, ctx.style));
   return 0;
 }
 
@@ -134,14 +153,14 @@ async function cmdMerge(ctx: Ctx): Promise<number> {
   const { t } = ctx;
   const name = (ctx.args.rest ?? []).join(" ").trim();
   if (!name) return console.log(t("merge.usage")), 2;
-  const snap = await fetchSnapshot(ctx.port);
-  if (!snap) return console.log(t("status.notRunning", { port: ctx.port })), 1;
+  const snap = await fetchSnapshot(ctx.target);
+  if (!snap) return console.log(await notReached(t, ctx.target)), 1;
   const found = pickTask(snap.onHand.tasks.filter(toMerge), name);
   if (!found.length) return console.log(t("merge.none", { name })), 1;
   if (found.length > 1) return console.log(t("merge.many", { name, titles: found.map((c) => c.title).join(" · ") })), 1;
-  const r = await taskAction(ctx.port, found[0]!.taskId, "merge");
-  if (!r) return console.log(t("merge.failed", { port: ctx.port })), 1;
-  if (ctx.args.json) console.log(JSON.stringify(r, null, 2));
+  const r = await taskAction(ctx.target, found[0]!.taskId, "merge");
+  if (!r) return console.log(remoteAt(ctx) ? await notReached(t, ctx.target) : t("merge.failed", { port: ctx.port })), 1;
+  if (ctx.args.json) console.log(JSON.stringify({ ...r, home: homeJson(ctx.target) }, null, 2));
   else console.log(r.message ?? "");
   return r.ok ? 0 : 1;
 }
@@ -152,14 +171,14 @@ async function cmdUndo(ctx: Ctx): Promise<number> {
   const { t } = ctx;
   const name = (ctx.args.rest ?? []).join(" ").trim();
   if (!name) return console.log(t("undo.usage")), 2;
-  const snap = await fetchSnapshot(ctx.port);
-  if (!snap) return console.log(t("status.notRunning", { port: ctx.port })), 1;
+  const snap = await fetchSnapshot(ctx.target);
+  if (!snap) return console.log(await notReached(t, ctx.target)), 1;
   const found = pickTask(snap.onHand.tasks.filter((c) => c.place.kind === "folder" && c.folder?.undo === "open"), name);
   if (!found.length) return console.log(t("undo.none", { name })), 1;
   if (found.length > 1) return console.log(t("merge.many", { name, titles: found.map((c) => c.title).join(" · ") })), 1;
-  const r = await taskAction(ctx.port, found[0]!.taskId, "undo", 5 * 60_000, ctx.args.yes ? { force: true } : {});
-  if (!r) return console.log(t("undo.failed", { port: ctx.port })), 1;
-  if (ctx.args.json) console.log(JSON.stringify(r, null, 2));
+  const r = await taskAction(ctx.target, found[0]!.taskId, "undo", 5 * 60_000, ctx.args.yes ? { force: true } : {});
+  if (!r) return console.log(remoteAt(ctx) ? await notReached(t, ctx.target) : t("undo.failed", { port: ctx.port })), 1;
+  if (ctx.args.json) console.log(JSON.stringify({ ...r, home: homeJson(ctx.target) }, null, 2));
   else console.log(r.message ?? "", r.confirm ? `\n${t("undo.confirm")}` : "");
   return r.ok ? 0 : 1;
 }
@@ -263,6 +282,7 @@ function talk(ctx: Ctx): TalkCtx {
     t: ctx.t,
     style: ctx.style,
     port: ctx.port,
+    target: ctx.target,
     json: a.json,
     rest: a.rest ?? [],
     ...(a.repo ? { repo: a.repo } : {}),
@@ -287,7 +307,8 @@ function desktopPlan(ctx: Ctx) {
 async function cmdOpen(ctx: Ctx): Promise<number> {
   // `ducter open <part of a title or id>` (D128): show that task in the app.
   if (ctx.args.rest?.length) return cmdOpenTask(talk(ctx));
-  if ((await ctx.host.port(ctx.port)) !== "ducter") {
+  // Following a Ducter elsewhere (D146): the app connects there by itself; nothing runs here.
+  if (!remoteAt(ctx) && (await ctx.host.port(ctx.port)) !== "ducter") {
     console.log(ctx.t("open.notRunning"));
     return 1;
   }
@@ -520,7 +541,21 @@ export async function run(argv: string[]): Promise<number | "running"> {
   const dataDir = process.env.DUCTER_DATA_DIR || join(homedir(), ".ducter");
   fixEnv();
   const style = ansiStyle(Boolean(process.stdout.isTTY) && !process.env.NO_COLOR && !args.json);
-  const ctx: Ctx = { args, t, style, host, port, dataDir };
+  const ctx: Ctx = { args, t, style, host, port, dataDir, target: { kind: "local", port } };
+  // The CLI itself: which Ducter it follows (D146).
+  if (args.command === "connect") return cmdConnect({ t, style, dataDir, json: args.json, rest: args.rest ?? [], ...(args.code ? { code: args.code } : {}) });
+  if (args.command === "disconnect") return cmdDisconnect({ t, style, dataDir, json: args.json });
+  // A home command goes to the Ducter the CLI follows; a machine command stays here (D146).
+  if (commandClass(args.command, { all: args.all }) === "home") {
+    const r = resolveTarget({ dataDir, port, local: args.local, home: args.home, portGiven: args.port != null });
+    if (!r.ok) {
+      if (args.json) console.log(JSON.stringify({ ok: false, error: r.key === "home.needsConnect" ? "not_connected" : "bad_address", ...r.vars }));
+      else console.log(t(r.key, r.vars));
+      return 1;
+    }
+    ctx.target = r.target;
+    if (!args.json) console.log(targetLine(t, r.target, style));
+  }
   // Neither creates the data folder: one takes it away, the other only reads it.
   if (args.command === "uninstall") return cmdUninstall(ctx);
   if (args.command === "report") return cmdReport(ctx);
@@ -558,6 +593,7 @@ export async function run(argv: string[]): Promise<number | "running"> {
     case "up":
       return cmdUp(ctx);
     case "pair":
+      if (ctx.target.kind === "remote") return cmdPairAt({ t, style, target: ctx.target, json: args.json });
       return cmdPair({ t, style, dataDir, port, json: args.json, running: (await host.port(port)) === "ducter", wait: Boolean(process.stdout.isTTY) && !args.json, worker: args.worker, publicIp: fetchPublicIp, self: ducterCommand() });
     case "domain":
       return cmdDomain({
@@ -574,6 +610,7 @@ export async function run(argv: string[]): Promise<number | "running"> {
         pair: () => cmdPair({ t, style, dataDir, port, json: false, running: true, wait: Boolean(process.stdout.isTTY) }),
       });
     case "devices":
+      if (ctx.target.kind === "remote") return cmdDevicesAt({ t, style, target: ctx.target, json: args.json, rest: args.rest ?? [] });
       return cmdDevices({ t, style, dataDir, json: args.json, rest: args.rest ?? [], port });
     case "service":
       return cmdService({

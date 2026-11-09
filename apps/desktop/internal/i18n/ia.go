@@ -55,6 +55,7 @@ var zhIA = Table{
 	"partner.face.needs_you": "有事找你",
 	"partner.face.done":      "刚做完",
 	"partner.face.napping":   "歇着了",
+	"partner.face.waiting":   "在等",
 	"partner.loading":        "正在问 %s…",
 
 	"partner.talk.title":      "怎么说话",
@@ -218,6 +219,7 @@ var enIA = Table{
 	"partner.face.needs_you": "Needs you",
 	"partner.face.done":      "Just done",
 	"partner.face.napping":   "Resting",
+	"partner.face.waiting":   "Waiting",
 	"partner.loading":        "Asking %s…",
 
 	"partner.talk.title":      "How it talks",

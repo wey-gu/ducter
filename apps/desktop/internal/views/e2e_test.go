@@ -35,6 +35,9 @@ type harness struct {
 	hub *mock.Hub
 	// wait is how long until waits; 10 s when zero.
 	wait time.Duration
+	// got counts the frames applied, by type (a barrier: frames on the
+	// socket arrive in the order the hub sent them).
+	got map[string]int
 }
 
 func newHarness(t *testing.T, lang i18n.Lang) *harness {
@@ -63,6 +66,14 @@ func newHarness(t *testing.T, lang i18n.Lang) *harness {
 	return h
 }
 
+func (h *harness) receive(f protocol.ServerFrame) {
+	if h.got == nil {
+		h.got = map[string]int{}
+	}
+	h.got[f.T]++
+	h.app.Receive(f)
+}
+
 // until applies frames until cond holds.
 func (h *harness) until(what string, cond func() bool) {
 	h.t.Helper()
@@ -80,7 +91,7 @@ func (h *harness) until(what string, cond func() bool) {
 			}
 			select {
 			case f := <-h.frames:
-				h.app.Receive(f)
+				h.receive(f)
 				continue
 			default:
 			}
@@ -90,7 +101,7 @@ func (h *harness) until(what string, cond func() bool) {
 	for drain(); !cond(); drain() {
 		select {
 		case f := <-h.frames:
-			h.app.Receive(f)
+			h.receive(f)
 		case <-tick.C:
 			h.tt.Frame()
 		case <-deadline:

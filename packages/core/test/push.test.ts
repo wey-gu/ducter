@@ -218,7 +218,6 @@ describe("the pusher", () => {
     stops.push(() => pusher.stop(), () => log.close(), t.cleanup);
     return { log, store, sub, sent, pusher, clock, r };
   }
-  const flush = () => Bun.sleep(60); // key generation and encryption are real (async) WebCrypto
   const decision = (log: Awaited<ReturnType<typeof setup>>["log"], id: string) =>
     log.append({ stream: "channel", origin: "system", kind: "decision", body: { decisionId: id, taskId: "t1", question: "要 rebase 吗？", goLabel: "rebase", defaultOption: "go", reversible: true } });
 
@@ -228,10 +227,10 @@ describe("the pusher", () => {
     s.store.subscribe(s.sub);
     decision(s.log, "d1");
     s.clock.advance(29_000);
-    await flush();
+    await s.pusher.idle();
     expect(s.sent.length).toBe(0);
     s.clock.advance(2_000);
-    await flush();
+    await s.pusher.idle();
     expect(s.sent.length).toBe(1);
     const msg = JSON.parse(await decrypt(s.sent[0]!.body, r));
     expect(msg).toMatchObject({ title: "Ducter · 修 fix-ci", url: "app#d=d1" });
@@ -242,7 +241,7 @@ describe("the pusher", () => {
     decision(s.log, "d3");
     s.log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body: { decisionId: "d3", option: "go", by: "user" } });
     s.clock.advance(60 * 60_000);
-    await flush();
+    await s.pusher.idle();
     expect(s.sent.length).toBe(1);
   });
 
@@ -252,15 +251,15 @@ describe("the pusher", () => {
     s.store.subscribe(s.sub);
     decision(s.log, "d1");
     s.clock.advance(31_000);
-    await flush();
+    await s.pusher.idle();
     expect(s.sent.length).toBe(1);
     decision(s.log, "d2");
     decision(s.log, "d3");
     s.clock.advance(60_000);
-    await flush();
+    await s.pusher.idle();
     expect(s.sent.length).toBe(1);
     s.clock.advance(15 * 60_000);
-    await flush();
+    await s.pusher.idle();
     expect(s.sent.length).toBe(2);
     expect(JSON.parse(await decrypt(s.sent[1]!.body, r)).body).toBe("2 件等你");
   });
@@ -272,10 +271,10 @@ describe("the pusher", () => {
     s.store.subscribe(s.sub);
     decision(s.log, "d1");
     s.clock.advance(4 * 3600_000);
-    await flush();
+    await s.pusher.idle();
     expect(s.sent.length).toBe(0);
     s.clock.advance(5 * 3600_000 + 120_000); // past 08:00
-    await flush();
+    await s.pusher.idle();
     expect(s.sent.length).toBe(1);
     expect(JSON.parse(await decrypt(s.sent[0]!.body, r)).body).toBe("早上好。1 件等你。");
   });
@@ -285,12 +284,12 @@ describe("the pusher", () => {
     s.store.subscribe(s.sub);
     s.log.append({ stream: "task:t1", origin: "system", kind: "task_state", body: { taskId: "t1", attention: "done", residency: "warm" } });
     s.clock.advance(60_000);
-    await flush();
+    await s.pusher.idle();
     expect(s.sent.length).toBe(0);
     s.store.setSettings({ done: true });
     s.log.append({ stream: "task:t2", origin: "system", kind: "task_state", body: { taskId: "t2", attention: "done", residency: "warm" } });
     s.clock.advance(60_000);
-    await flush();
+    await s.pusher.idle();
     expect(s.sent.length).toBe(1);
   });
 

@@ -406,6 +406,8 @@ interface Item {
 export interface Pusher {
   /** What would go out now (for tests and /api/push/test). */
   pending(): string[];
+  /** Resolves once every send the policy has started is done (tests advance a fake clock, then wait on this). */
+  idle(): Promise<void>;
   /** Sends a message to every subscription now (bypasses the policy). */
   sendNow(msg: (sub: PushSub) => PushMessage, only?: (s: PushSub) => boolean): Promise<SendResult[]>;
   stop(): void;
@@ -437,6 +439,9 @@ export function createPusher(opts: {
   let lastPushAt = -Infinity;
   let heldByQuiet = false;
   let timer: unknown;
+  // Ticks run one at a time: a tick that fires while a send is still in
+  // flight waits for it, so an item is never delivered twice.
+  let running: Promise<void> = Promise.resolve();
 
   const seen = (it: Item) => maxRead >= it.seq;
 
@@ -444,7 +449,7 @@ export function createPusher(opts: {
     if (timer) clock.clearTimeout(timer);
     timer = clock.setTimeout(() => {
       timer = undefined;
-      void tick();
+      running = running.then(tick).catch((err) => console.warn(`[push] tick failed: ${(err as Error).message}`));
     }, Math.max(0, ms));
   };
 
@@ -544,6 +549,10 @@ export function createPusher(opts: {
 
   return {
     pending: () => [...items.keys()].filter((k) => !pushed.has(k)),
+    async idle() {
+      // Until the chain stops growing: a tick queued while we wait is waited for too.
+      for (let last: Promise<void> | undefined; last !== running; ) await (last = running);
+    },
     async sendNow(make, only) {
       const v = await opts.store.vapid();
       const subs = liveSubs().filter((s) => !only || only(s));

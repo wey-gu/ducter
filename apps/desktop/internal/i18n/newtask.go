@@ -7,6 +7,7 @@ package i18n
 
 var zhNewTask = Table{
 	"newtask.button":         "开一件事",
+	"task.brief.you":         "你交代的",
 	"newtask.menu":           "开一件事…",
 	"newtask.title":          "开一件事",
 	"newtask.where":          "在哪儿做",
@@ -39,6 +40,7 @@ var zhNewTask = Table{
 
 var enNewTask = Table{
 	"newtask.button":         "New task",
+	"task.brief.you":         "What you asked for",
 	"newtask.menu":           "New Task…",
 	"newtask.title":          "New task",
 	"newtask.where":          "Where",

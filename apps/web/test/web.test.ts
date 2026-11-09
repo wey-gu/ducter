@@ -318,3 +318,86 @@ describe("the quiet conversation (D104)", () => {
     expect(S.noted.map((n) => [n.title, n.replyTo])).toEqual([["Tests use a fake clock", u.seq]]);
   });
 });
+
+describe("New task (D128)", () => {
+  const options = {
+    t: "task_new_options",
+    places: [
+      { place: { kind: "repo", device: "local", repoPath: "/r/ducter" }, name: "ducter", defaultBranch: "main", branches: ["main", "release/0.0.1"] },
+      { place: { kind: "none" }, name: "" },
+    ],
+    candidates: [
+      { harness: "claude-code", model: "opus", reason: { kind: "fit" } },
+      { harness: "codex", reason: { kind: "fast" } },
+      { harness: "pi", reason: { kind: "fit" }, blocked: "signed_out" },
+    ],
+  } as any;
+
+  test("the sheet asks what it offers, starts with the user's pick, and says a refusal in place", async () => {
+    const { A } = await import("../src/app.ts");
+    A.L = strings("zh");
+    const sent: any[] = [];
+    A.send = (f) => void sent.push(f);
+    A.S.welcomed = true;
+    A.status = "connected";
+    A.openNewTask();
+    expect(A.sheet).toEqual({ kind: "newtask" });
+    expect(sent.at(-1)).toEqual({ t: "task_new_options" });
+    A.receive(options);
+    expect(A.chosenPlace().name).toBe("ducter");
+    expect(A.chosenCandidate()).toMatchObject({ c: { harness: "claude-code" }, picked: false });
+    expect(A.startNewTask()).toBe(false);
+    expect(A.nt.err).toBe("先写一句要它做什么。");
+    A.nt.words = "  把结算按钮藏起来  ";
+    A.nt.pick = "codex/";
+    A.nt.branch = "release/0.0.1";
+    expect(A.startNewTask()).toBe(true);
+    const f = sent.at(-1);
+    expect(f).toMatchObject({ t: "task_new", words: "把结算按钮藏起来", place: { kind: "repo", repoPath: "/r/ducter", baseBranch: "release/0.0.1" }, harness: "codex" });
+    A.receive({ t: "task_new_result", ok: false, clientId: f.clientId, reason: "offline", message: "MacBook is offline" } as any);
+    expect(A.nt.err).toBe("那台设备现在连不上。");
+    expect(A.nt.words).toContain("结算");
+    expect(A.sheet).toEqual({ kind: "newtask" });
+  });
+
+  test("the top candidate is never sent as a pick; no particular place sends no place", async () => {
+    const { A } = await import("../src/app.ts");
+    const sent: any[] = [];
+    A.send = (f) => void sent.push(f);
+    A.S.welcomed = true;
+    A.status = "connected";
+    A.openNewTask({ kind: "none" });
+    A.receive(options);
+    A.nt.words = "查下周五去上海最早的高铁";
+    A.startNewTask();
+    const f = sent.at(-1);
+    expect(f.place).toBeUndefined();
+    expect(f.harness).toBeUndefined();
+  });
+
+  test("an opened task and `ducter open` show the task", async () => {
+    const g = globalThis as any;
+    const had = { location: g.location, history: g.history, scrollTo: g.scrollTo };
+    g.location = { hash: "", pathname: "/" };
+    g.history = { pushState: (_: unknown, __: string, h: string) => void (g.location.hash = h) };
+    g.scrollTo = () => {};
+    try {
+      const { A } = await import("../src/app.ts");
+      const sent: any[] = [];
+      A.send = (f) => void sent.push(f);
+      A.S.welcomed = true;
+      A.status = "connected";
+      A.openNewTask();
+      A.receive(options);
+      A.nt.words = "修一下 CI";
+      A.startNewTask();
+      A.receive({ t: "task_new_result", ok: true, clientId: sent.at(-1).clientId, taskId: "t9" } as any);
+      expect(A.route).toEqual({ name: "task", id: "t9" });
+      expect(A.sheet).toBeNull();
+      A.receive({ t: "open_task", taskId: "t3" } as any);
+      expect(A.route).toEqual({ name: "task", id: "t3" });
+    } finally {
+      Object.assign(g, had);
+    }
+  });
+});

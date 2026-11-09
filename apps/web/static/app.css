@@ -2740,3 +2740,160 @@ ol.tries b {
   line-break: strict;
   text-wrap: pretty;
 }
+
+/* ---------- 开一件事 / New task (D128): a quiet ＋ on On hand, a bottom sheet ---------- */
+.top .plus {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--pill);
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  flex: none;
+}
+.top .plus:hover,
+.top .plus:active {
+  background: var(--surface-sunken);
+}
+.sheet.newtask {
+  gap: var(--s4);
+}
+.sheet.newtask h2 {
+  margin-top: 2px;
+}
+.nt-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+.nt-row h3 {
+  margin: 0;
+  font-size: var(--sm);
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+.nt-row .chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+.nt-row .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  max-width: 100%;
+  padding: 0 14px;
+  border-radius: var(--r-sm);
+  background: var(--surface-sunken);
+  color: var(--ink-soft);
+  font-size: var(--md);
+}
+.nt-row .chip b {
+  font-weight: 700;
+  white-space: nowrap;
+}
+.nt-row .chip.on {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1.5px var(--ink);
+}
+.nt-row .chip code {
+  font-family: var(--mono);
+  font-size: var(--xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.nt-row .chip .dot {
+  color: var(--faint);
+}
+.nt-row .chip svg {
+  transform: rotate(90deg);
+  width: 12px;
+  height: 12px;
+  color: var(--ink-muted);
+  flex: none;
+}
+.nt-row .chip.coin {
+  padding-left: 7px;
+}
+.nt-row .chip.off {
+  opacity: 0.55;
+}
+.nt-row .chip.off img {
+  filter: grayscale(1);
+}
+.nt-row .why {
+  line-height: 1.45;
+}
+.nt-row .branches {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--s2);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: var(--base);
+  max-height: 240px;
+  overflow-y: auto;
+}
+.nt-row .branches > small {
+  font-size: var(--xs);
+  font-weight: 700;
+  color: var(--ink-muted);
+  padding: 4px 10px;
+}
+.nt-row .branches button {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  min-height: 40px;
+  padding: 0 10px;
+  border-radius: var(--r-sm);
+  text-align: left;
+}
+.nt-row .branches button code {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--mono);
+  font-size: var(--sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nt-row .branches button small {
+  font-size: var(--xs);
+  color: var(--ink-muted);
+}
+.nt-row .branches button.on {
+  background: var(--surface-sunken);
+}
+.nt-row textarea {
+  width: 100%;
+  min-height: 112px;
+  resize: none;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  padding: 12px 14px;
+  font-size: var(--body);
+  line-height: var(--lh-read);
+  color: var(--ink);
+}
+.nt-row textarea::placeholder {
+  color: var(--ink-muted);
+}
+.nt-row textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.nt-err {
+  color: var(--failed-ink);
+  font-size: var(--sm);
+  line-height: 1.45;
+}
+.sheet.newtask .btns {
+  flex-wrap: nowrap;
+}

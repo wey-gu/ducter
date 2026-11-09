@@ -415,6 +415,13 @@ Cloned with `git clone --depth 1` and read only. VERIFIED from `docs/self-hosted
     2.1 only). The Cloudflare deployment docs describe OAuth with dynamic client registration
     for ChatGPT.
   - If it is OAuth-only, Ducter needs an MCP OAuth sign-in for hosted (not built).
+  - **Probed again later that day.** VERIFIED, no credentials:
+    - with no Authorization: `401 token not found`;
+    - with a made-up Bearer: `401 invalid token`;
+    - both OAuth discovery documents: 404.
+
+    INFERRED: a static key sent as Bearer, not MCP OAuth. Confirming it needs a key the author
+    makes in the OOMOL console.
 
 ## 5. Metaphor process (AGENTS.md rules), short form
 

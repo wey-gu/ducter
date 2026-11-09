@@ -147,8 +147,10 @@ type Tokens struct {
 // planks, their dark edge and its ropes; a parcel crossing it.
 type IslesTokens struct {
 	Sky, SeaFar, Sea, SeaNear, Glint, Foam, Mist ui.Color
-	Plank, PlankDark, PlankPale, Rope            ui.Color
-	Parcel, ParcelEdge                           ui.Color
+	// SkyTop is the sky's top, Haze the horizon's, Cloud the soft clouds.
+	SkyTop, Haze, Cloud               ui.Color
+	Plank, PlankDark, PlankPale, Rope ui.Color
+	Parcel, ParcelEdge                ui.Color
 	// ParcelSpeed is how fast parcels cross, in scene points a second.
 	ParcelSpeed float32
 }
@@ -203,7 +205,8 @@ func Pebble() *Tokens {
 		Away:     StateColors{Dot: hex("#A99C8B"), Surface: hex("#EFEAE3"), Ink: hex("#5E5448"), Strong: hex("#8C7F6E")},
 		Clay:     hex("#FFF4E6"),
 		Isles: IslesTokens{
-			Sky: hex("#FBEFDF"), SeaFar: hex("#BFE3DC"), Sea: hex("#A6D8D0"), SeaNear: hex("#8FCBC3"),
+			Sky: hex("#FCEBD6"), SeaFar: hex("#C4E6DF"), Sea: hex("#A6D8D0"), SeaNear: hex("#86C4BC"),
+			SkyTop: hex("#E9EEEA"), Haze: hex("#FFF6EA"), Cloud: hex("#FFFDF8"),
 			Glint: hex("#FFFFFA"), Foam: hex("#FFFFFF"), Mist: hex("#FFF9F0"),
 			Plank: hex("#D9A76A"), PlankDark: hex("#A8743E"), PlankPale: hex("#EADCC6"), Rope: hex("#8A6236"),
 			Parcel: hex("#FFF3E0"), ParcelEdge: hex("#C98F4E"),

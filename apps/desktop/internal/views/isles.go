@@ -30,11 +30,15 @@ const sceneW, sceneH = 760, 560
 // right, back left, front right, front left, far left, far right. cx is
 // the island's middle, top its top edge, w its width (far ones smaller).
 var isleSlots = [6]struct{ cx, top, w float32 }{
-	{628, 196, 170}, {126, 206, 170}, {650, 404, 170}, {110, 404, 170}, {262, 58, 140}, {506, 54, 140},
+	{640, 190, 170}, {120, 200, 170}, {700, 410, 170}, {60, 410, 170}, {262, 50, 140}, {506, 46, 140},
 }
 
 // The home island.
-var homeIsle = struct{ cx, top, w float32 }{380, 318, 330}
+var homeIsle = struct{ cx, top, w float32 }{380, 300, 340}
+
+// dockSize is an ability's clay token in front of its island (design
+// points; about 110 to 150 on screen), and the gap between two.
+const dockSize, dockGap = 116, 20
 
 // isle is one island: a device (dv) or a client that reaches Ducter (cl).
 type isle struct {
@@ -49,15 +53,21 @@ type isle struct {
 	seat float32
 	dev  ui.Rect
 	art  string // the device's clay
+	// ducter is where Ducter sits, beside the device on the home island.
+	ducter ui.Rect
+	// dock are the abilities shown at full size in front of the island
+	// (on, or a place to fill), in dockR.
+	dock  []string
+	dockR ui.Rect
 }
 
 // islandArt is the island's clay and where a device's foot sits on it,
 // as a fraction of its height.
 func islandArt(home bool) (string, float32, float32) {
 	if home {
-		return "island_big", 274.0 / 640, 0.37
+		return "island_big", 614.0 / 1280, 0.5
 	}
-	return "island_small", 395.0 / 640, 0.43
+	return "island_small", 754.0 / 1280, 0.47
 }
 
 // deviceSize is a device's clay width as a share of its island's, and the
@@ -66,14 +76,14 @@ func deviceSize(art string, home bool) (float32, float32) {
 	switch art {
 	case "laptop_awake":
 		if home {
-			return 0.65, 491.0 / 640
+			return 0.54, 491.0 / 640
 		}
-		return 0.82, 491.0 / 640
+		return 0.7, 491.0 / 640
 	case "laptop_asleep":
 		if home {
-			return 0.65, 419.0 / 640
+			return 0.56, 419.0 / 640
 		}
-		return 0.82, 419.0 / 640
+		return 0.7, 419.0 / 640
 	case "mini_awake":
 		if home {
 			return 0.42, 638.0 / 574
@@ -174,6 +184,10 @@ func (a *App) isles() []isle {
 	}
 	for i := range out {
 		placeIsle(&out[i])
+		if out[i].home && out[i].dv != nil {
+			out[i].dock = a.dockAbilities(out[i].dv)
+			placeDock(&out[i])
+		}
 	}
 	return out
 }
@@ -198,7 +212,43 @@ func placeIsle(s *isle) {
 	}
 	dw := w * share
 	dh := dw * da
-	s.dev = ui.Rect{X: cx - dw/2, Y: s.seat - dh, W: dw, H: dh}
+	dcx := cx
+	if s.home {
+		dcx = cx + 0.11*w // the device a little right; Ducter sits on its left
+		const size = 128
+		feetX, feetY := cx-0.27*w, s.seat+0.12*h
+		s.ducter = ui.Rect{X: feetX - size/2, Y: feetY - 0.8*size, W: size, H: size}
+	}
+	s.dev = ui.Rect{X: dcx - dw/2, Y: s.seat - dh, W: dw, H: dh}
+}
+
+// placeDock lays an island's dock out: a row of ability tokens on the
+// water in front of it, under its name.
+func placeDock(s *isle) {
+	n := float32(len(s.dock))
+	if n == 0 {
+		s.dockR = ui.Rect{}
+		return
+	}
+	w := n*dockSize + (n-1)*dockGap
+	s.dockR = ui.Rect{X: s.is.X + s.is.W/2 - w/2, Y: s.is.Y + s.is.H + 44, W: w, H: dockSize + 30}
+}
+
+// dockAbilities are the abilities a device shows at full size: those that
+// are on and those that can be added (or need a fix first). The ones that
+// come later stay in the list beside the stage.
+func (a *App) dockAbilities(dv *protocol.DeviceView) []string {
+	var out []string
+	for _, ab := range dv.Abilities {
+		if ab.State == protocol.AbilityLater || (ab.State == protocol.AbilityUnavailable && ab.Reason == "home_only") {
+			continue
+		}
+		out = append(out, ab.ID)
+		if len(out) == 4 {
+			break
+		}
+	}
+	return out
 }
 
 // newIsle is the empty spot a joining device will rise in (the first
@@ -238,10 +288,14 @@ func sceneView(area ui.Rect, all []isle, spot *isle) view {
 	add := func(s *isle) {
 		top := s.dev.Y
 		if s.home {
-			top -= 0.85 * 124 // Ducter sitting on it
+			top = min(top, s.ducter.Y)
 		}
 		bx0, bx1 = min(bx0, s.is.X-0.1*s.is.W), max(bx1, s.is.X+1.1*s.is.W)
 		by0, by1 = min(by0, top), max(by1, s.is.Y+s.is.H+44)
+		if s.dockR.W > 0 {
+			bx0, bx1 = min(bx0, s.dockR.X), max(bx1, s.dockR.X+s.dockR.W)
+			by1 = max(by1, s.dockR.Y+s.dockR.H)
+		}
 	}
 	for i := range all {
 		add(&all[i])
@@ -446,7 +500,7 @@ func (a *App) stage(c *ui.Context, dv *protocol.DeviceView) {
 	d.labels = map[string]ui.Rect{}
 
 	stage.Draw(func(p *ui.Painter, r ui.Rect) {
-		a.paintSea(p, r, v, skyTop(all))
+		a.paintSea(p, r, v, skyTop(all), still)
 		if home == nil {
 			return
 		}
@@ -574,6 +628,16 @@ func (a *App) noticeJoin(all []isle) {
 	if d.pair.known == nil {
 		return
 	}
+	// One that left while the code was out counts as new if it comes back.
+	here := map[string]bool{}
+	for _, s := range all {
+		here[s.key] = true
+	}
+	for k := range d.pair.known {
+		if !here[k] {
+			delete(d.pair.known, k)
+		}
+	}
 	for _, s := range all {
 		if !d.pair.known[s.key] {
 			a.joined(s.key)
@@ -595,37 +659,66 @@ func (a *App) joined(key string) {
 
 // ---------- painting the scene ----------
 
-// paintSea is the place: a pale sky band, the horizon, a clay sea that
-// deepens toward you, one light from the top left, and a few still
-// ripples.
-func (a *App) paintSea(p *ui.Painter, r ui.Rect, v view, top float32) {
+// paintSea is the place: a sky with soft clouds over a hazy horizon, a
+// clay sea that deepens toward you with slow light on it, one light from
+// the top left. The clouds and the light on the water drift slowly (the
+// scene may breathe, D77); reduced motion holds them still.
+func (a *App) paintSea(p *ui.Painter, r ui.Rect, v view, top float32, still bool) {
 	is := a.T.Isles
-	horizon := min(max(v.y(top)-8, r.H*0.1), r.H*0.24)
+	horizon := min(max(v.y(top)-10, r.H*0.12), r.H*0.26)
 	h := r.H
 	at := func(y float32) float32 { return min(max(y/h, 0), 1) }
 	p.FillGradient(r, ui.LinearGradient{Angle: 180, Stops: []ui.GradientStop{
-		{Color: is.Sky, At: 0},
-		{Color: is.Sky, At: at(horizon - 26)},
-		{Color: is.SeaFar, At: at(horizon)},
+		{Color: is.SkyTop, At: 0},
+		{Color: is.Sky, At: at(horizon * 0.7)},
+		{Color: is.Haze, At: at(horizon - 2)},
+		{Color: is.SeaFar, At: at(horizon + 6)},
 		{Color: is.Sea, At: at(horizon + (h-horizon)*0.45)},
 		{Color: is.SeaNear, At: 1},
 	}}, 36)
-	// The light on the water, top left.
-	glint := ui.Rect{X: r.X - 0.08*r.W, Y: r.Y + horizon - 10, W: r.W * 0.7, H: r.H * 0.55}
-	softEllipse(p, glint, is.Glint.Alpha(0.42))
+	now := p.Now()
+	drift := func(period time.Duration, phase float64) float32 {
+		if still {
+			return 0
+		}
+		return float32(math.Sin(2 * math.Pi * cycle(now, period, phase)))
+	}
+	// Soft clouds over the horizon, slowly drifting.
+	for i, cl := range [][4]float32{{0.12, 0.45, 1.0, 0.1}, {0.42, 0.25, 0.75, 0.6}, {0.74, 0.5, 1.15, 0.35}, {0.93, 0.2, 0.7, 0.8}} {
+		cw := r.W * 0.2 * cl[2]
+		cx := r.X + r.W*cl[0] + drift(70*time.Second, float64(cl[3]))*16
+		cy := r.Y + horizon*cl[1] + 6
+		for j, b := range [][3]float32{{-0.32, 0.1, 0.45}, {-0.05, -0.12, 0.6}, {0.25, 0.02, 0.5}, {0, 0.18, 0.9}} {
+			bw := cw * b[2]
+			softEllipse(p, ui.Rect{X: cx + cw*b[0] - bw/2, Y: cy + cw*b[1]*0.4 - bw*0.22, W: bw, H: bw * 0.44}, is.Cloud.Alpha(0.85-0.08*float32((i+j)%3)))
+		}
+	}
+	// Haze on the horizon.
+	softEllipse(p, ui.Rect{X: r.X - r.W*0.1, Y: r.Y + horizon - 14, W: r.W * 1.2, H: 30}, is.Haze.Alpha(0.9))
+	// The light from the top left on the water.
+	softEllipse(p, ui.Rect{X: r.X, Y: r.Y + horizon, W: r.W * 0.62, H: r.H * 0.5}, is.Glint.Alpha(0.36))
+	// Slow light on the water: long soft glints that drift and fade.
+	for i := 0; i < 14; i++ {
+		f := float32(i)
+		gx := float32(math.Mod(float64(f*0.381+0.07), 1))
+		gy := float32(math.Mod(float64(f*0.617+0.13), 1))
+		y := r.Y + horizon + 18 + gy*(r.H-horizon-30)
+		depth := (y - r.Y - horizon) / (r.H - horizon) // far small, near large
+		w := (26 + 46*depth) * max(v.k, 0.7)
+		x := r.X + gx*r.W + drift(19*time.Second, float64(f)*0.13)*10*(0.4+depth)
+		alpha := 0.16 + 0.1*drift(11*time.Second, float64(f)*0.29)
+		if still {
+			alpha = 0.16
+		}
+		softEllipse(p, ui.Rect{X: x - w/2, Y: y - w*0.07, W: w, H: w * 0.14}, is.Glint.Alpha(alpha))
+	}
 	// Darker away from the light.
 	p.FillRadialGradient(r, ui.RadialGradient{Center: ui.Point{X: 0.22, Y: 0.18}, Stops: []ui.GradientStop{
 		{Color: is.SeaNear.Alpha(0), At: 0.55},
 		{Color: ui.RGBA(30, 90, 96, 0.16), At: 1},
 	}}, 36)
-	// A few still ripples.
-	for _, rp := range [][3]float32{{60, 300, 40}, {700, 330, 34}, {480, 520, 56}, {250, 535, 34}, {610, 480, 24}, {40, 520, 30}} {
-		x, y := r.X+v.x(rp[0]), r.Y+v.y(rp[1])
-		w := rp[2] * v.k
-		if x < r.X+12 || x+w > r.X+r.W-12 || y < r.Y+horizon+8 || y > r.Y+r.H-12 {
-			continue
-		}
-		p.Fill(ui.Rect{X: x, Y: y, W: w, H: max(4*v.k, 3)}, is.Foam.Alpha(0.42), 3)
+	if !still {
+		p.AnimationFrameRate(12) // slow drift: a few frames a second is smooth
 	}
 }
 
@@ -864,19 +957,31 @@ func (a *App) island(c *ui.Context, v view, s *isle, shown *protocol.DeviceView,
 	ir := v.r(s.is)
 	ir.Y += dy * v.k
 	// The island: its foam, its shadow on the water, the clay.
-	isl := ui.Box(c.Key("isle:"+s.key)).Absolute().Left(ir.X-ir.W*0.12).Top(ir.Y).Size(ir.W*1.24, ir.H*1.25).
+	isl := ui.Box(c.Key("isle:"+s.key)).Absolute().Left(ir.X-ir.W*0.12).Top(ir.Y).Size(ir.W*1.24, ir.H*1.3).
 		Role(ui.RoleButton).Label(name).Cursor(ui.CursorPointer).AccessSelected(sel)
 	isl.Draw(func(p *ui.Painter, rr ui.Rect) {
 		is := t.Isles
 		box := ui.Rect{X: rr.X + ir.W*0.12, Y: rr.Y, W: ir.W, H: ir.H}
-		foam := float32(0.55)
-		if sel {
-			foam = 0.95
-		}
-		softEllipse(p, ui.Rect{X: box.X - box.W*0.1, Y: box.Y + box.H*0.38, W: box.W * 1.2, H: box.H * 0.86}, is.Foam.Alpha(foam*rs.island))
-		softEllipse(p, ui.Rect{X: box.X + box.W*0.02, Y: box.Y + box.H*0.62, W: box.W * 1.04, H: box.H * 0.5}, ui.RGBA(30, 80, 86, 0.14*rs.island))
 		art, _, _ := islandArt(s.home)
-		if bmp := theme.Clay(art); bmp != nil {
+		bmp := theme.Clay(art)
+		// Its shadow in the water, down and right of the light; a calm
+		// reflection under it; a ring of foam where it meets the water.
+		softEllipse(p, ui.Rect{X: box.X + box.W*0.04, Y: box.Y + box.H*0.6, W: box.W * 1.06, H: box.H * 0.62}, ui.RGBA(30, 80, 86, 0.16*rs.island))
+		if bmp != nil {
+			ref := ui.Rect{X: box.X, Y: box.Y + box.H*0.78, W: box.W, H: box.H * 0.42}
+			p.ImageRegion(bmp, ui.Rect{}, ref, ui.ImageOptions{FlipY: true, Tint: ui.RGBA(255, 255, 255, 0.14*rs.island)})
+		}
+		foam := float32(0.5)
+		if sel {
+			foam = 0.85
+		}
+		cx, cy := box.X+box.W/2, box.Y+box.H*0.84
+		softEllipse(p, ui.Rect{X: cx - box.W*0.6, Y: cy - box.H*0.3, W: box.W * 1.2, H: box.H * 0.6}, is.Foam.Alpha(0.35*foam*rs.island))
+		var ring ui.Path
+		ellipse(&ring, cx, cy, box.W*0.43, box.H*0.1)
+		p.StrokePath(&ring, max(5*v.k, 3), is.Foam.Alpha(0.3*foam*rs.island))
+		p.StrokePath(&ring, max(1.6*v.k, 1.2), is.Foam.Alpha(0.75*foam*rs.island))
+		if bmp != nil {
 			p.ImageRegion(bmp, ui.Rect{}, box, ui.ImageOptions{Tint: ui.RGBA(255, 255, 255, rs.island)})
 		}
 	})
@@ -914,14 +1019,19 @@ func (a *App) island(c *ui.Context, v view, s *isle, shown *protocol.DeviceView,
 		d.sparkAt, d.sparkAt0 = now, devEl.Bounds()
 	}
 	// Ducter, on the device where it lives.
-	if s.home && s.dv != nil {
-		a.homeDucter(c, v, s, dr)
-	}
-	// Abilities that are on, stuck to the island's front left; the next
-	// free spot is where an ability being added flies.
 	right, bottom := ir.X, ir.Y+ir.H
-	if s.dv != nil {
-		right = a.badges(c, v, s, ir, sel)
+	if s.home && s.dv != nil {
+		dk := v.r(s.ducter)
+		dk.Y += dy * v.k
+		a.homeDucter(c, s, dk)
+		right = dk.X + dk.W*0.78
+	}
+	// Abilities: at full size in front of home (the dock); on another
+	// island, stuck to its rim.
+	if s.dv != nil && len(s.dock) > 0 {
+		a.dockRow(c, v, s, dy, sel, now, still)
+	} else if s.dv != nil {
+		right = max(right, a.badges(c, v, s, ir, sel))
 	}
 	// AI accounts standing on the island, in front of the device.
 	if s.dv != nil {
@@ -939,23 +1049,36 @@ func (a *App) island(c *ui.Context, v view, s *isle, shown *protocol.DeviceView,
 	nw := float32(220)
 	cx := ir.X + ir.W/2
 	left := min(max(cx-nw/2, 4), sw-nw-4)
-	nc := ui.Column(c.Key("name:" + s.key)).Absolute().Left(left).Top(bottom + 2).Width(nw).AlignItems(ui.Center).Gap(1).PassThrough().AccessHidden(true)
+	nc := ui.Column(c.Key("name:" + s.key)).Absolute().Left(left).Top(bottom + 4).Width(nw).AlignItems(ui.Center).PassThrough().AccessHidden(true)
 	if rs.island < 1 {
 		nc.Opacity(rs.island)
 	}
 	nc.Children(func() {
-		nameInk := t.InkSoft
-		if sel {
-			nameInk = t.Ink
-		}
-		d.labels["name:"+s.key] = ui.Text(c, name).FontSize(t.SM).FontWeight(800).TextColor(nameInk).SingleLine().TextAlign(ui.Center).Bounds()
-		if line != "" {
-			if ink == t.InkMuted {
-				ink = t.InkSoft
+		tag := a.sceneTag(c, sel)
+		tag.Children(func() {
+			d.labels["name:"+s.key] = ui.Text(c, name).FontSize(t.SM).FontWeight(800).TextColor(t.Ink).SingleLine().TextAlign(ui.Center).Bounds()
+			if line != "" {
+				if ink == t.InkMuted {
+					ink = t.InkSoft
+				}
+				d.labels["line:"+s.key] = ui.Text(c, line).FontSize(t.XS).FontWeight(700).TextColor(ink).SingleLine().TextAlign(ui.Center).Bounds()
 			}
-			d.labels["line:"+s.key] = ui.Text(c, line).FontSize(t.XS).FontWeight(700).TextColor(ink).SingleLine().TextAlign(ui.Center).Bounds()
-		}
+		})
+		d.labels["tag:"+s.key] = tag.Bounds()
 	})
+}
+
+// sceneTag is a word in the scene on its own small clay tag: a cream
+// card on a 2-point base, like the brand's cards, so words never sit bare
+// on the 3D. The chosen island's tag has the ink hairline of a chosen card.
+func (a *App) sceneTag(c *ui.Context, sel bool) ui.Element {
+	t := a.T
+	tag := ui.Column(c.Key("tag")).AlignItems(ui.Center).Padding(3, 10, 4, 10).Radius(10).Background(t.Surface).
+		Shadow(0, 2, 0, 0, t.Line)
+	if sel {
+		tag.Border(1.5, t.Ink)
+	}
+	return tag
 }
 
 // selectIsle chooses an island: its device's card and abilities on the
@@ -984,8 +1107,9 @@ func (a *App) clientClay(c *ui.Context, key string, cl *protocol.ReachClient, ar
 	})
 }
 
-// homeDucter is Ducter sitting on the device where it lives.
-func (a *App) homeDucter(c *ui.Context, v view, s *isle, dr ui.Rect) {
+// homeDucter is Ducter sitting on the grass beside the device where it
+// lives, with its contact shadow.
+func (a *App) homeDucter(c *ui.Context, s *isle, at ui.Rect) {
 	pose := a.homePose(s.dv, a.Now())
 	bmp := theme.Art(pose, 360)
 	if bmp == nil {
@@ -994,21 +1118,132 @@ func (a *App) homeDucter(c *ui.Context, v view, s *isle, dr ui.Rect) {
 	if bmp == nil {
 		return
 	}
-	size := max(124*v.k, 84)
 	feet := map[theme.Presence]float32{theme.Idle: 0.795, theme.Done: 0.855, theme.Napping: 0.86}[pose]
 	if feet == 0 {
 		feet = 0.8
 	}
-	x := dr.X + dr.W/2 - size/2 + 4*v.k
-	y := dr.Y + dr.H*0.025 - feet*size + 8*v.k
+	// at was laid out for feet at 0.8 of the square; each pose's feet sit
+	// a little differently.
+	at.Y += (0.8 - feet) * at.H
 	var lids *[2]theme.Lid
 	if pose == theme.Idle {
 		lids = &squareLids
 	}
-	ui.Box(c.Key("ducter")).Absolute().Left(x).Top(y).Size(size, size).PassThrough().
+	ui.Box(c.Key("ducter-shadow")).Absolute().Left(at.X+at.W*0.18).Top(at.Y+at.H*(feet-0.06)).Size(at.W*0.66, at.H*0.14).PassThrough().AccessHidden(true).
+		Draw(func(p *ui.Painter, r ui.Rect) {
+			softEllipse(p, r, ui.RGBA(60, 50, 20, 0.34))
+		})
+	ui.Box(c.Key("ducter")).Absolute().Left(at.X).Top(at.Y).Size(at.W, at.H).PassThrough().
 		Role(ui.RoleImage).Label(a.S.PersonaName).Draw(func(p *ui.Painter, rr ui.Rect) {
 		clayArt(p, rr, bmp, idleBreathe, phaseOf("stage-ducter"), lids)
 	})
+}
+
+// dockRow are the abilities of the chosen device at full size, on the
+// water in front of its island: one that is on is its clay token, gently
+// bobbing; one that can be added is an empty well to fill (tap it, or
+// drag the ability onto the stage). The equip flies into its well.
+func (a *App) dockRow(c *ui.Context, v view, s *isle, dy float32, sel bool, now time.Time, still bool) {
+	t := a.T
+	d := a.devState()
+	size := max(dockSize*v.k, 92)
+	gap := max(dockGap*v.k, 14)
+	// Each takes the room of its token or of its name, whichever is wider.
+	widths := make([]float32, len(s.dock))
+	total := float32(0)
+	for i, id := range s.dock {
+		lw, _ := c.MeasureText(0, ui.Span{Text: a.L.T("ability." + id), Size: t.SM, Weight: 800})
+		widths[i] = max(size, lw+28)
+		total += widths[i]
+	}
+	total += float32(len(s.dock)-1) * gap
+	x := v.x(s.dockR.X+s.dockR.W/2) - total/2
+	y0 := v.y(s.dockR.Y + dy)
+	for i, id := range s.dock {
+		slotW := widths[i]
+		x += slotW + gap
+		ab := s.dv.Ability(id)
+		on := a.shownOn(s.dv, id)
+		flying := d.fx != nil && d.fx.ability == id && d.fx.device == s.dv.ID && !d.fx.back
+		addable := !on && !flying && a.canAdd(s.dv, id)
+		name := a.L.T("ability." + id)
+		label := a.L.T("ability.slot", name)
+		switch {
+		case on:
+			label = a.L.T("ability.slot.on", name)
+		case ab != nil && ab.State == protocol.AbilityUnavailable:
+			label = a.L.T("ability.slot.unavailable", name)
+		}
+		left := x - gap - slotW
+		col := ui.Column(c.Key("dock:" + id)).Absolute().Left(left).Top(y0).Width(slotW).AlignItems(ui.Center).Gap(4).
+			Role(ui.RoleButton).Label(label).Cursor(ui.CursorPointer)
+		if s.dv.State != protocol.DeviceAwake {
+			col.Opacity(0.75)
+		}
+		target := flying || (addable && (d.ability == id || d.hover == id))
+		col.Children(func() {
+			well := ui.Box(c.Key("well")).Size(size, size)
+			art := "slot_empty"
+			if on {
+				art = abilityArt(id)
+			}
+			bmp := theme.Clay(art)
+			kind := idleStill
+			if on {
+				kind = idleFloat
+			}
+			phase := phaseOf("dock:" + id)
+			well.Draw(func(p *ui.Painter, r ui.Rect) {
+				// Its shadow on the water.
+				softEllipse(p, ui.Rect{X: r.X + r.W*0.14, Y: r.Y + r.H*0.8, W: r.W * 0.8, H: r.H * 0.2}, ui.RGBA(30, 80, 86, 0.22))
+				if bmp != nil {
+					clayArt(p, fitIn(bmp, r), bmp, kind, phase, nil)
+				}
+				if target {
+					grow := float32(6)
+					if flying {
+						grow = 14
+					}
+					if d.hover == id && !flying {
+						var halo ui.Path
+						halo.Circle(r.X+r.W/2, r.Y+r.H/2, r.W/2+grow)
+						p.FillPath(&halo, t.Accent.Alpha(0.14))
+					}
+					p.StrokeDashed(ui.Rect{X: r.X - grow/2, Y: r.Y - grow/2, W: r.W + grow, H: r.H + grow}, t.Accent, (r.W+grow)/2, 3)
+				}
+			})
+			if sel {
+				d.slots[id] = well.Bounds()
+			}
+			tag := a.sceneTag(c, false)
+			if !on {
+				tag.Opacity(0.85)
+			}
+			tag.Children(func() {
+				ink := t.Ink
+				if !on {
+					ink = t.InkSoft
+				}
+				ui.Text(c, name).FontSize(t.SM).FontWeight(800).TextColor(ink).SingleLine().AccessHidden(true)
+			})
+			d.labels["dock:"+id] = tag.Bounds()
+		})
+		if on && s.dv.State == protocol.DeviceAwake && id == protocol.AbilityWeb {
+			col.ContextMenu(func(m *ui.Menu) {
+				if m.Item(a.L.T("ability.remove")).Chosen() {
+					a.selectIsle(s)
+					d.ability, d.removing = id, id
+				}
+			})
+		}
+		if col.Clicked() {
+			a.selectIsle(s)
+			d.ability = id
+			if addable {
+				a.startEquip(s.dv, id, d.tiles[id], false)
+			}
+		}
+	}
 }
 
 // badges are the abilities on a device, stuck to its island's left rim,
@@ -1116,15 +1351,12 @@ func (a *App) isleTokens(c *ui.Context, v view, s *isle, ir ui.Rect, minX float3
 	if len(hs) == 0 {
 		return ir.Y + ir.H
 	}
-	art := max(40*v.k, 30)
-	if !s.home {
-		art = max(34*v.k, 28)
-	}
-	const gap, labelH = float32(8), float32(17)
+	art := max(30*v.k, 24)
+	const gap, labelH = float32(6), float32(24)
 	widths := make([]float32, len(hs))
 	for i, h := range hs {
 		lw, _ := c.MeasureText(0, ui.Span{Text: harnessName(h.Harness), Size: t.XS, Weight: 800})
-		widths[i] = max(art, lw+6)
+		widths[i] = max(art, lw+18)
 	}
 	// Rows that fit between the badges and the island's right rim, each
 	// centered in front of the device.
@@ -1170,7 +1402,11 @@ func (a *App) isleTokens(c *ui.Context, v view, s *isle, ir ui.Rect, minX float3
 					p.StrokePath(&m, 2, t.Ink)
 				}
 			})
-			d.labels["tok:"+s.key+":"+h.Harness] = ui.Text(c, name).FontSize(t.XS).FontWeight(800).TextColor(t.Ink).SingleLine().TextAlign(ui.Center).Margin(-1, 0, 0, 0).Bounds()
+			tag := ui.Row(c.Key("tag")).Padding(1, 6, 2, 6).Radius(8).Background(t.Surface).Shadow(0, 1.5, 0, 0, t.Line).Margin(-3, 0, 0, 0)
+			tag.Children(func() {
+				ui.Text(c, name).FontSize(t.XS).FontWeight(800).TextColor(t.Ink).SingleLine()
+			})
+			d.labels["tok:"+s.key+":"+h.Harness] = tag.Bounds()
 		})
 		if tok.Clicked() {
 			a.selectIsle(s)

@@ -3,6 +3,7 @@ package views
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -47,6 +48,10 @@ func checkLabels(t *testing.T, scene string, labels map[string]ui.Rect) {
 	sort.Strings(keys)
 	for i, a := range keys {
 		for _, b := range keys[i+1:] {
+			// An island's name and line sit inside its own tag.
+			if strings.SplitN(a, ":", 2)[1] == strings.SplitN(b, ":", 2)[1] {
+				continue
+			}
 			ra, rb := labels[a], labels[b]
 			if ra.W == 0 || rb.W == 0 {
 				continue

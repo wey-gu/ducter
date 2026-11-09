@@ -137,7 +137,8 @@ export interface Bodies {
     stop?: "met" | "max" | "no_progress" | "oscillation" | "user" | "task_finished";
   };
   // One try's verdict, after the task's turn ended with a report.
-  until_try: { taskId: string; n: number; verdict: "met" | "better" | "same" | "worse" | "unknown"; summary: string; by: "check" | "judge"; tokens?: number };
+  // progress: how much of a countable goal holds after the try (4 of 6 checks pass), when known.
+  until_try: { taskId: string; n: number; verdict: "met" | "better" | "same" | "worse" | "unknown"; summary: string; by: "check" | "judge"; tokens?: number; progress?: { done: number; total: number } };
   // D114: a routine (例行). One snapshot per change; the latest wins.
   routine: RoutineBody;
   // A firing: "started" opens a run task; "skipped" records a firing that could not run (with how
@@ -348,7 +349,7 @@ export interface UntilView {
   state: Bodies["until"]["state"];
   stop?: Bodies["until"]["stop"];
   check?: CheckSpec;
-  tries: { n: number; verdict: Bodies["until_try"]["verdict"]; summary: string; by: "check" | "judge"; at: string }[];
+  tries: { n: number; verdict: Bodies["until_try"]["verdict"]; summary: string; by: "check" | "judge"; at: string; progress?: { done: number; total: number } }[];
   tokens?: number;
 }
 

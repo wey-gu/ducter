@@ -106,6 +106,10 @@ export function createUntils(opts: {
       }
       if (!loops.has(l.u.taskId)) return; // stopped while it judged
       const t: Bodies["until_try"] = { taskId: l.u.taskId, n, verdict, summary: clip(summary, 160), by, ...(l.tokens ? { tokens: l.tokens } : {}) };
+      // A countable goal (4 of 6 checks pass): the lights the user sees (D115).
+      const counted = /(\d+) of (\d+) match/.exec(summary);
+      if (counted) t.progress = { done: Number(counted[1]), total: Number(counted[2]) };
+      else if (met && l.tries.at(-1)?.progress) t.progress = { done: l.tries.at(-1)!.progress!.total, total: l.tries.at(-1)!.progress!.total };
       l.tries.push(t);
       l.tokens = 0;
       log.append({ stream: `task:${l.u.taskId}`, origin: "system", kind: "until_try", body: t });

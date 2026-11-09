@@ -146,7 +146,11 @@ class AppState {
     this.settings = f.settings;
     this.mem = f.mem;
     if (f.settings.name) this.S.personaName = f.settings.name;
-    if (f.forgot) this.toast(this.L.t(f.forgot.how === "mem" ? "partner.memory.forgot" : "partner.memory.hidden"));
+    if (f.forgot) {
+      const title = this.forgetting.get(f.forgot.seq) ?? "";
+      this.forgetting.delete(f.forgot.seq);
+      this.toast(this.L.t(f.forgot.how === "mem" ? "partner.memory.forgot" : "partner.memory.hidden", title));
+    }
     this.changed();
   }
 
@@ -165,7 +169,11 @@ class AppState {
     this.changed();
   }
 
+  /** Titles of the noted lines being forgotten, for the toast that answers. */
+  private forgetting = new Map<number, string>();
   forget(seq: number) {
+    const n = this.mem?.noted.find((x) => x.seq === seq);
+    if (n) this.forgetting.set(seq, n.title);
     if (this.mem) this.mem = { ...this.mem, noted: this.mem.noted.filter((n) => n.seq !== seq) };
     this.send({ t: "memory_forget", seq });
     this.changed();
@@ -253,13 +261,17 @@ class AppState {
     this.changed();
   }
 
-  /** #onhand, #task=<id>, #d=<id> (a decision, opened from a notification). */
+  /** #onhand, #task=<id>, #d=<id> (a decision, opened from a notification), #settings. */
   fromHash(hash = location.hash) {
     const task = /^#task=(.+)$/.exec(hash);
     const d = /^#d=(.+)$/.exec(hash);
     if (task) return this.applyRoute({ name: "task", id: decodeURIComponent(task[1]!) });
     if (hash === "#onhand") return this.applyRoute({ name: "onhand" });
     this.route = { name: "conv" };
+    if (hash === "#settings") {
+      history.replaceState(null, "", location.pathname);
+      return this.openSettings();
+    }
     if (d) {
       this.sheet = { kind: "decision", id: decodeURIComponent(d[1]!) };
       this.flash = this.sheet.id;

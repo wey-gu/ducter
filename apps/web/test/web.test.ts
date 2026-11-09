@@ -241,12 +241,14 @@ describe("settings (D71)", () => {
     A.send = (f) => void sent.push(f);
     A.receive(frame());
     A.forget(7);
-    expect(sent).toEqual([{ t: "memory_forget", seq: 7 }]);
+    expect(sent[0]).toEqual({ t: "memory_forget", seq: 7 });
     expect(A.mem?.noted).toEqual([]); // gone at once
     A.receive(frame({ mem: { state: "connected", noted: [] }, forgot: { seq: 7, how: "mem" } }));
-    expect(A.toasts.at(-1)?.text).toBe("忘掉了");
+    expect(A.toasts.at(-1)?.text).toBe("忘掉了：测试统一用假时钟");
+    A.receive(frame({ mem: { state: "connected", noted: [{ seq: 8, title: "回复要短", at: "2026-11-09T10:00:00Z" }] } }));
+    A.forget(8);
     A.receive(frame({ mem: { state: "connected", noted: [] }, forgot: { seq: 8, how: "hidden" } }));
-    expect(A.toasts.at(-1)?.text).toBe("这里不再显示了；Nowledge Mem 里那条还在");
+    expect(A.toasts.at(-1)?.text).toBe("这里不再显示「回复要短」；Nowledge Mem 里那条还在。");
   });
 
   test("a change shows at once and goes to the server", async () => {

@@ -1014,7 +1014,7 @@ function NameRow() {
             class="name-input"
             value={draft}
             maxLength={24}
-            aria-label={t("partner.name.edit")}
+            aria-label={t("partner.rename")}
             autoFocus
             onInput={(e) => setDraft((e.target as HTMLInputElement).value)}
             onKeyDown={(e) => {
@@ -1022,12 +1022,13 @@ function NameRow() {
               if (e.key === "Escape") e.stopPropagation(), setEditing(false);
             }}
           />
-          <Btn kind="primary" label={t("partner.name.save")} onClick={save} />
+          <Btn kind="text" label={t("partner.rename.cancel")} onClick={() => setEditing(false)} />
+          <Btn kind="primary" label={t("partner.rename")} onClick={save} />
         </>
       ) : (
         <>
           <h2 class="grow">{A.S.personaName}</h2>
-          {A.settings && <Btn kind="text" label={t("partner.name.edit")} onClick={() => (setDraft(A.S.personaName), setEditing(true))} />}
+          {A.settings && <Btn kind="text" label={t("partner.rename")} onClick={() => (setDraft(A.S.personaName), setEditing(true))} />}
         </>
       )}
     </div>
@@ -1050,10 +1051,12 @@ function PartnerSettings() {
           options={(["auto", "zh", "en"] as const).map((v) => ({ v, label: t(`partner.talk.${v}`) }))}
           onPick={(language) => A.setSettings({ language })}
         />
+        <div class="small sub">{s.language === "auto" ? t("partner.talk.auto.note") : t("partner.talk.fixed.note", t(`partner.talk.${s.language}`))}</div>
       </section>
       <section class="set">
         <h3>{t("partner.notify.title")}</h3>
         <Toggle label={t("partner.notify.on")} checked={s.notify} onChange={(notify) => A.setSettings({ notify })} />
+        <div class="small sub">{t(s.notify ? "partner.notify.on.note" : "partner.notify.off.note")}</div>
         <Toggle label={t("partner.quiet")} checked={!!quiet} onChange={(on) => A.setSettings({ quiet: on ? { start: "23:00", end: "08:00", tz: tz() } : null })} />
         {quiet && (
           <div class="quiet-range">
@@ -1062,20 +1065,30 @@ function PartnerSettings() {
             <input type="time" aria-label={`${t("partner.quiet")} ${t("partner.quiet.to")}`} value={quiet.end} onChange={(e) => setQuiet(quiet.start, (e.target as HTMLInputElement).value || quiet.end)} />
           </div>
         )}
-        <div class="small sub">{t("partner.default.title")}</div>
+        {quiet && <div class="small sub">{t("partner.quiet.note")}</div>}
+      </section>
+      <section class="set">
+        <h3>{t("partner.default.title")}</h3>
+        <div class="small sub">{t("partner.default.line")}</div>
         <Seg
-          label={t("partner.default.title")}
+          label={t("partner.default.line")}
           value={s.defaultAfterMin}
           options={[10, 30, 60, 120].map((v) => ({ v, label: v < 60 ? t("partner.default.min", v) : t("partner.default.hour", v / 60) }))}
           onPick={(defaultAfterMin) => A.setSettings({ defaultAfterMin })}
         />
+        <div class="small sub">{t("partner.default.note")}</div>
       </section>
       <section class="set">
         <h3>{t("partner.memory.title")}</h3>
-        {mem && <div class="small">{t(`partner.memory.${mem.state}`)}</div>}
+        {mem && <div class="small sub">{t(`partner.memory.${mem.state}`)}</div>}
+        {mem?.state === "missing" && (
+          <a class="more" href="https://mem.nowledge.co" target="_blank" rel="noopener">
+            {t("partner.memory.connect")}
+          </a>
+        )}
         <Toggle label={t("partner.memory.switch")} checked={s.memory} onChange={(memory) => A.setSettings({ memory })} />
         {s.memory && !!mem?.noted.length && (
-          <div class="noted">
+          <div class="noted" aria-label={t("partner.memory.recent")}>
             {mem.noted.map((n) => (
               <div class="noted-row" key={n.seq}>
                 <span>{n.title}</span>

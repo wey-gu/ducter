@@ -1146,7 +1146,8 @@ a {
   font-weight: 800;
   color: var(--ink-muted);
 }
-.set .sub {
+.set .sub,
+.set .more {
   margin: var(--s1) 2px 0;
 }
 .seg {

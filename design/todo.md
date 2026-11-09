@@ -105,9 +105,15 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 
 ## The quiet conversation (D104, `design/quiet-conversation.md`)
 
-- [ ] The ack says how long work usually takes and that it will say when it's done ("一般十来
-      分钟，查清楚了告诉你"): a partner prompt change against rule 2c ("write nothing more"), so
-      it goes through `bun run eval:partner` first. Trigger: the author approves D104.
+- [x] The ack says how long work usually takes and that it will say when it's clear (D120):
+      persona rule 2, the partner eval's ack scenarios (`ack-*-estimate`, `ambiguous-zh`).
+- [ ] Estimates grounded in the user's own history: today the partner has "took about N min"
+      on recently finished tasks and what it was told; a per-project median of past task
+      durations would ground more acks. Trigger: acks without a number feel vague in dogfood.
+- [ ] Ack and go on harnesses that stream no tool-call input (the head never arrives): the task
+      then opens when the call does, as before D120. Check Codex, pi and DeepSeek Harness live
+      with `packages/partner/eval/latency.ts --harness …` once it takes that flag. Trigger: a
+      partner on one of them.
 - [ ] The waiting line on a real partner turn (opus), timed end to end: first step, each step,
       the ack. Verified so far on the demo's scripted partner and in unit tests. Trigger: a
       live run with a signed-in harness.

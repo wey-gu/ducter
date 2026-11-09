@@ -21,7 +21,7 @@ partner eval (real model, fake tasks and Mem; `research/30`) · **unit** = unit 
 | A5 | Second persona | draft | draft | draft | draft | — | — | |
 | B1 | Quick answer in turn | draft | draft | draft | draft | draft | live + eval | Core UI · Talk |
 | B2 | Research, no place | draft | draft | draft | draft | — | — | |
-| B3 | Code change in a repo | draft | draft | draft | draft | draft | live: Claude Code and Codex tasks in a worktree, result with evidence; native (demo seed): the one-column task, done / working / didn't work (`.shots/qa-2026-11-09`) | Core UI · Workspace. Opened task is one column, diff on demand (D74); the result is one line of proof (D73) |
+| B3 | Code change in a repo | draft | draft | draft | draft | draft | live: Claude Code and Codex tasks in a worktree, result with evidence; ack and go (D120): ack 1.2 s / 2.3 s and task spawn 1.8 s / 3.0 s after Send on sonnet / opus (`packages/partner/eval/latency.ts`); native (demo seed): the one-column task, done / working / didn't work (`.shots/qa-2026-11-09`) | Core UI · Workspace. Opened task is one column, diff on demand (D74); the result is one line of proof (D73) |
 | B4 | Multi-repo change | draft | draft | draft | draft | — | — | |
 | B5 | Browser work needing login | draft | draft | draft | draft | — | live: host-Mac browser via cua-driver 0.44, sign-in by the user in Ducter's browser | |
 | B6 | Phone / call task | — | — | — | — | — | — | |

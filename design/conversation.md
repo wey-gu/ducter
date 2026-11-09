@@ -7,8 +7,11 @@
 The human sees one conversation: text now, voice later. Focus Windows are hidden unless the
 human opens them.
 
-1. **Ack.** It names the *action* ("I'll check the CI"), never the outcome. OpenAI documents
-   that models invent results for calls still pending.
+1. **Ack.** One sentence that names the *action* ("I'll check the CI"), never the outcome, and
+   may say it will report back and, when something grounds it, how long it usually takes
+   (D120). OpenAI documents that models invent results for calls still pending. The task starts
+   with the ack, from the streamed head of its `task_open` call, not after the brief
+   (`quiet-conversation.md`).
 2. **Job.** Kept as a status line by the control plane, shown inside the message's Details and
    on On hand (D104); while the user waits, the partner's step shows as the waiting line. A
    cheap model may write the line. The main AI sees each open job as an explicit pending

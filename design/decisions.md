@@ -205,6 +205,14 @@ D81–D104 are taken or held by other branches. This dogfood report was numbered
 | D110 | **Follow-through on silence (S3, J-Q10).** At most one line per message the user confirmed that got no answer: no earlier than 2 h after it went out, only while the user is around (they did something in the last 15 min), never in quiet hours, one line per moment, nothing after 7 days. Said before the partner's reply to the user's message, so the partner knows and doesn't repeat it: **你的 <agent> 还没回你 <n> 小时前问的「…」，它可能停了。回了我马上告诉你。** (read but unanswered: **…看过你 <n> 小时前问的「…」，还没回。…**). It never says the other side was "reminded": Bridge wakes nobody | U, R37 | `bridge-out.ts` (`followCandidates`, `followLine`, `inQuiet`), `partner.ts` `followThrough`, glossary |
 | D111 | **The Mem asks are filed (J-Q9)** through Nowledge Mem's `report_mem_issue`, concepts and repro only, no source or account ids: B1–B10 filed 2026-11-09 (B6–B10 an hour later, after the tool's rate limit). **The live trial is one command** (`bun run bridge:live -- --real`): passive preflight, never `--enable`, the real JSON kept outside git, exit 0 only when S1, S2 and S3 pass | U | research/37 §4, `packages/partner/eval/bridge-live.ts`, `design/bridge.md` |
 
+## 2026-11-09: Ack and go (the author: "接活时候并行先回一句并行启动 focus window")
+
+DRAFT, for the author's review. D112–D119 are held for other branches (work-over-time may use D112+), so this is D120.
+
+| # | Decision | Source | Reflected in |
+|---|---|---|---|
+| D120 | **Ack and go: one sentence at once, the task starting with it.** (1) Work that becomes a task gets **one** short sentence in the user's language: the action (never its outcome), that the partner will say when it's clear, and a rough usual duration **only when something grounds it** (a similar task here took that long, the repo's size, how long its CI runs): zh 「一般」「大概」, en "usually", "about", never a promise; no grounds, no number. Then nothing until the result. An ask it can't act on without guessing gets one short question instead. (2) The sentence ends the waiting line (the partner sends `activity: null` with the ack, and no "Setting up a task…" flashes before it); the header's **在做 1 件 / 1 under way** follows from the task's card. (3) **The task does not wait for its brief.** `task_open` takes title, then place, then brief; the runner's normalizer emits the call's head (the fields before `"brief"`) as it streams, and `Runner.openTaskEarly` makes the card, the place and the session from the title (when the user's words name the place) or the head; the brief becomes the session's first turn and is logged as a second `task_open`. An early task whose place or AI the head or the call contradicts, or whose call never comes, is dropped before it did anything (reason `not started`, never in the partner's task list), and the right one opens. Recovery reads the latest `task_open` and never starts an unbriefed task. (4) Finished tasks show "took about N min" in the partner's task list, as grounds for the next estimate. Measured live (one run each, warm session, zh request, scratch repo): sonnet ack 1.2 s, task session spawn 1.8 s (before: 1.2 s / 4.7–5.1 s); opus ack 2.3 s, spawn 3.0 s (before: 2.1 s / 7.5 s). Partner eval subset (14): sonnet 10 → 14, haiku 9 → 14; full sonnet 54/55 | U, L | `packages/partner/src/{persona,partner,render}.ts`, `packages/runner/src/{normalize,runner,brief}.ts`, `design/quiet-conversation.md`, `design/conversation.md` |
+
 ## Superseded
 
 - **"Main AI asks windows instead of unfolding"** (first principle-3 draft). Superseded by D3:
@@ -264,3 +272,7 @@ D81–D104 are taken or held by other branches. This dogfood report was numbered
   Details, one ask at a time. D73 still governs On hand, the opened task and the rule of no pills.
 - **"Thinking…" in the header line** as the only sign the partner is answering. Superseded by
   D104's waiting line.
+- **Persona rule 2c's "write nothing more this turn: no 'I'll tell you when it's done'",
+  the ack as "one short line that names the action", and the task opened only when the full
+  task_open call arrives.** Superseded by D120: one sentence that may say it will report back
+  and, when grounded, how long it usually takes; the task opens from the call's streamed head.

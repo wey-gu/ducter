@@ -30,6 +30,7 @@ import {
   outsideActs,
   placeOf,
   canIntegrate,
+  countsChanges,
   reasonOf,
   reportOf,
   sortEvidence,
@@ -427,7 +428,7 @@ function ProofLine({ task, evs, withTitle, max = 4 }: { task: Task; evs: Evidenc
   // The changes are one item, "2 files changed ›" (D73): commits and changed files fold into it.
   const changed = list.filter((e) => e.kind === "diff" || (e.kind === "file" && !/^https?:/.test(e.ref)));
   const rest = list.filter((e) => !changed.includes(e));
-  const changes = changed.length ? changesLabel(task, changed) : "";
+  const changes = changed.length && countsChanges(task) ? changesLabel(task, changed) : "";
   if (!rest.length && !changes && !withTitle) return null;
   return (
     <div class="proof">

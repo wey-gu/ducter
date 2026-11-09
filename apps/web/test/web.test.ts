@@ -7,7 +7,7 @@ import { format, joinHan, langOfText, strings, TABLES } from "../src/i18n.ts";
 import { sameWords, splitOutcome } from "../src/format.ts";
 import { autospace, unspace } from "../src/autospace.ts";
 import { markdown } from "../src/markdown.ts";
-import { canIntegrate, headlineEvidence, isOutside, Store, title } from "../src/store.ts";
+import { canIntegrate, countsChanges, headlineEvidence, isOutside, Store, title } from "../src/store.ts";
 
 let seq = 0;
 const ev = (kind: string, body: unknown, o: Partial<LogEvent> = {}): LogEvent =>
@@ -66,6 +66,14 @@ describe("markdown-lite", () => {
 });
 
 describe("store (parity with the desktop store)", () => {
+  test("a folder task's result has no change count beside its sentence (D142)", () => {
+    const s = new Store();
+    const place = (id: string, p: unknown) => ev("task_open", { taskId: id, title: "x", harness: "claude-code", place: p }, { stream: `task:${id}`, origin: "partner" });
+    s.apply({ t: "welcome", persona: "default", personaName: "Ducter", headSeq: 0 });
+    s.apply({ t: "events", events: [place("f1", { kind: "folder", device: "local", path: "/tmp/发票" }), place("r1", { kind: "repo", device: "local", repoPath: "/r", branch: "ducter/x", baseBranch: "main" })] });
+    expect(countsChanges(s.tasks.get("f1")!)).toBe(false);
+    expect(countsChanges(s.tasks.get("r1")!)).toBe(true);
+  });
   test("a living message is revised in place; jobs fold into their acks; decisions resolve", () => {
     const s = new Store();
     const u = ev("user_msg", { text: "修测试", clientId: "c1" }, { origin: "user" });

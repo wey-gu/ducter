@@ -54,8 +54,9 @@ interface LayoutSpec {
   /** An ability's object in front of home, and the room between two. */
   dockSize: number;
   dockGap: number;
-  /** An AI account's token. */
+  /** An AI account's token, and the room between two on one island. */
   token: number;
+  tokenGap: number;
   /** The widest a tag under an island may be (it wraps past this). */
   tagMax: number;
   /** One design unit in CSS pixels at the size this layout is usually seen (to size words). */
@@ -72,7 +73,7 @@ export const specs: Record<"wide" | "narrow", LayoutSpec> = {
       mini: { cx: 146, top: 190, w: 196 },
       phone: { cx: 312, top: 58, w: 112 },
     },
-    dockSize: 140, dockGap: 30, token: 34, tagMax: 230,
+    dockSize: 140, dockGap: 30, token: 34, tokenGap: 6, tagMax: 230,
   },
   narrow: {
     W: 400, H: 780, px: 0.9,
@@ -82,7 +83,7 @@ export const specs: Record<"wide" | "narrow", LayoutSpec> = {
       mini: { cx: 88, top: 150, w: 152 },
       phone: { cx: 204, top: 50, w: 92 },
     },
-    dockSize: 124, dockGap: 18, token: 30, tagMax: 164,
+    dockSize: 124, dockGap: 18, token: 30, tokenGap: 16, tagMax: 164,
   },
 };
 
@@ -144,7 +145,7 @@ function place(d: Device, s: LayoutSpec): Placed {
   // The AI accounts stand in front of the device, in one row centred on the island.
   const a = s.token;
   const ws = d.tokens.map((t) => Math.max(a, wordW(accounts[t].name, 12) / s.px + 18));
-  const gap = 6;
+  const gap = s.tokenGap;
   const rowW = ws.reduce((x, y) => x + y, 0) + gap * Math.max(0, ws.length - 1);
   const hi = is.x + is.w * 1.02;
   let x = Math.min(Math.max(cx - rowW / 2 + (d.home ? 0.06 * w : 0), lo), hi - rowW);

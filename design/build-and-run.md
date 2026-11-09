@@ -60,7 +60,9 @@ started at login, restarted if it crashes), so ⌘Q quits only the window app. T
 and every task: **Ducter menu → Stop Ducter** (让 Ducter 歇着); it stays off, at login too,
 until **Wake Ducter** or the next time you open the app. Run from the disk image instead of
 Applications, Ducter stops with the app. If Ducter was already running (from `ducter up` in a
-terminal), the app just connects and leaves it alone. Data lives in `~/.ducter`, as with the
+terminal), the app just connects and leaves it alone. Dragged in by hand over an older Ducter.app, the app restarts
+the background Ducter on its own helper when it opens (`/health` says which build runs), so the
+window never talks to the old one. Data lives in `~/.ducter`, as with the
 CLI; Ducter's output from the app is in `~/.ducter/app.log`.
 
 **Updates.** The app checks GitHub Releases at launch and once a day, downloads and checks a

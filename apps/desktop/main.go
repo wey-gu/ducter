@@ -91,6 +91,22 @@ func main() {
 		// child and stops with it.
 		if local.Settled(bundle.CLI) {
 			sup.Agent = &local.Agent{Label: local.AgentLabel(bid), BundleID: bid, CLI: bundle.CLI, DataDir: sup.DataDir, Dir: local.LaunchAgentsDir()}
+			// Dragged in over an older Ducter.app: launchd still runs the old helper.
+			// Restart it on this one before the window connects (it resumes from the Log).
+			if _, c := buildVersion(); sup.Agent.Stale(sup.Port, c) {
+				log.Printf("ducter: the background Ducter runs another build; restarting it on %s", c)
+				if err := sup.Agent.Restart(); err != nil {
+					log.Printf("ducter: %v", err)
+				} else {
+					// The old one may still answer while it stops; wait for this build (≤ 8 s).
+					for i := 0; i < 40; i++ {
+						if b, ok := local.HealthBuild(sup.Port, 250*time.Millisecond); ok && b == c {
+							break
+						}
+						time.Sleep(200 * time.Millisecond)
+					}
+				}
+			}
 		}
 		host = &local.Host{
 			Supervisor: sup,

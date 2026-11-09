@@ -2,6 +2,8 @@ package local
 
 import (
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -111,5 +113,45 @@ func TestBundleID(t *testing.T) {
 	os.WriteFile(filepath.Join(app, "Contents", "Info.plist"), []byte("<dict>\n\t<key>CFBundleIdentifier</key>\n\t<string>co.nowledge.ducter</string>\n</dict>"), 0o644)
 	if got := BundleID(app); got != "co.nowledge.ducter" {
 		t.Errorf("BundleID = %q", got)
+	}
+}
+
+func TestAgentStaleAndRestart(t *testing.T) {
+	a, f := newAgent(t)
+	if err := a.Install(map[string]string{"PATH": "/usr/bin"}); err != nil {
+		t.Fatal(err)
+	}
+	build := ""
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if build == "-" {
+			w.Write([]byte(`{"ok":true,"headSeq":3}`)) // a Ducter older than the build field
+			return
+		}
+		w.Write([]byte(`{"ok":true,"headSeq":3,"build":"` + build + `"}`))
+	}))
+	defer srv.Close()
+	port, _ := strconv.Atoi(srv.URL[strings.LastIndex(srv.URL, ":")+1:])
+	for _, c := range []struct {
+		running, own string
+		stale        bool
+	}{{"cb1e94f", "cb1e94f", false}, {"fd5b7cc", "cb1e94f", true}, {"-", "cb1e94f", true}, {"fd5b7cc", "", false}, {"fd5b7cc", "dev", false}} {
+		build = c.running
+		if got := a.Stale(port, c.own); got != c.stale {
+			t.Errorf("running %q, own %q: stale %v, want %v", c.running, c.own, got, c.stale)
+		}
+	}
+	// Nothing answers: not stale (the app starts its own as usual).
+	if a.Stale(1, "cb1e94f") {
+		t.Error("stale with nothing on the port")
+	}
+	// Not the app's agent (Stop Ducter took it away): a Terminal Ducter is left alone.
+	build = "fd5b7cc"
+	f.loaded = false
+	if a.Stale(port, "cb1e94f") {
+		t.Error("stale without the agent loaded")
+	}
+	f.calls = nil
+	if err := a.Restart(); err != nil || f.calls[0] != "kickstart -k gui/"+strconv.Itoa(os.Getuid())+"/co.nowledge.ducter.agent" {
+		t.Errorf("restart: %v %q", err, f.calls)
 	}
 }

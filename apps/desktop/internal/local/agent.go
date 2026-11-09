@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Agent is Ducter running as a per-user LaunchAgent (the keep-running decision): it keeps
@@ -137,6 +138,29 @@ func (a *Agent) Install(env map[string]string) error {
 	}
 	if out, err := a.launchctl("bootstrap", a.domain(), a.PlistPath()); err != nil {
 		return fmt.Errorf("launchctl bootstrap: %v %s", err, strings.TrimSpace(out))
+	}
+	return nil
+}
+
+// Stale reports whether the background Ducter answering on the port runs
+// another build than this app's: the app was replaced by hand (dragged in
+// from a newer disk image) while launchd kept the old helper running. A
+// Ducter that doesn't say its build is older than this check, so it counts
+// as another build. An unknown own build (a dev run) never counts.
+func (a *Agent) Stale(port int, build string) bool {
+	if build == "" || build == "unknown" || build == "dev" || !a.Installed() || !a.Loaded() {
+		return false
+	}
+	running, ok := HealthBuild(port, time.Second)
+	return ok && running != build
+}
+
+// Restart has launchd stop the background Ducter and start it again on the
+// helper now on disk; it carries on from the Log (as after an update).
+func (a *Agent) Restart() error {
+	out, err := a.launchctl("kickstart", "-k", a.service())
+	if err != nil {
+		return fmt.Errorf("launchctl kickstart -k: %v %s", err, strings.TrimSpace(out))
 	}
 	return nil
 }

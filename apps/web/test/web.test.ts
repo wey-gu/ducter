@@ -216,3 +216,46 @@ describe("task chip", () => {
     expect(sameWords(undefined, "x")).toBe(false);
   });
 });
+
+describe("settings (D71)", () => {
+  const frame = (over: Record<string, unknown> = {}) =>
+    ({
+      t: "settings",
+      settings: { name: "小鸭", language: "auto", memory: true, notify: true, quiet: { start: "23:00", end: "08:00", tz: "Asia/Shanghai" }, defaultAfterMin: 30 },
+      mem: { state: "connected", noted: [{ seq: 7, title: "测试统一用假时钟", at: "2026-11-09T10:00:00Z", memoryId: "m_1" }] },
+      ...over,
+    }) as any;
+
+  test("a settings frame sets the settings, what it remembers, and the partner's name", async () => {
+    const { A } = await import("../src/app.ts");
+    A.receive(frame());
+    expect(A.settings?.defaultAfterMin).toBe(30);
+    expect(A.mem?.noted.map((n) => n.title)).toEqual(["测试统一用假时钟"]);
+    expect(A.S.personaName).toBe("小鸭");
+  });
+
+  test("forgetting says how: in Mem, or only hidden here", async () => {
+    const { A } = await import("../src/app.ts");
+    A.L = strings("zh");
+    const sent: unknown[] = [];
+    A.send = (f) => void sent.push(f);
+    A.receive(frame());
+    A.forget(7);
+    expect(sent).toEqual([{ t: "memory_forget", seq: 7 }]);
+    expect(A.mem?.noted).toEqual([]); // gone at once
+    A.receive(frame({ mem: { state: "connected", noted: [] }, forgot: { seq: 7, how: "mem" } }));
+    expect(A.toasts.at(-1)?.text).toBe("忘掉了");
+    A.receive(frame({ mem: { state: "connected", noted: [] }, forgot: { seq: 8, how: "hidden" } }));
+    expect(A.toasts.at(-1)?.text).toBe("这里不再显示了；Nowledge Mem 里那条还在");
+  });
+
+  test("a change shows at once and goes to the server", async () => {
+    const { A } = await import("../src/app.ts");
+    const sent: unknown[] = [];
+    A.send = (f) => void sent.push(f);
+    A.receive(frame());
+    A.setSettings({ language: "zh", defaultAfterMin: 60 });
+    expect(A.settings).toMatchObject({ language: "zh", defaultAfterMin: 60 });
+    expect(sent).toEqual([{ t: "settings_set", patch: { language: "zh", defaultAfterMin: 60 } }]);
+  });
+});

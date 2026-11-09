@@ -165,7 +165,34 @@ const zh: Record<string, string> = {
   "notify.off": "不再通知",
   "quiet.band_label": "免打扰 %s–%s",
   "sheet.close": "关上",
-  "settings.title": "这台手机",
+  "settings.title": "设置",
+  "settings.phone": "这台手机",
+  "settings.lang.title": "界面语言",
+  "settings.lang.auto": "跟着系统",
+  "settings.lang.zh": "中文",
+  "settings.lang.en": "English",
+  "partner.name.edit": "改名字",
+  "partner.name.save": "好",
+  "partner.talk.title": "怎么说话",
+  "partner.talk.auto": "跟着我",
+  "partner.talk.zh": "中文",
+  "partner.talk.en": "English",
+  "partner.notify.title": "什么时候找你",
+  "partner.notify.on": "通知",
+  "partner.quiet": "免打扰",
+  "partner.quiet.off": "不设",
+  "partner.quiet.to": "到",
+  "partner.default.title": "先等多久再按默认做",
+  "partner.default.min": "%d 分钟",
+  "partner.default.hour": "%d 小时",
+  "partner.memory.title": "记得什么",
+  "partner.memory.connected": "记得你说过的事，存在 Nowledge Mem 里",
+  "partner.memory.missing": "还没连上 Nowledge Mem，所以每次都从头认识你",
+  "partner.memory.off": "记性关掉了：不回想，也不记新的",
+  "partner.memory.switch": "记住事情",
+  "partner.memory.forget": "忘掉",
+  "partner.memory.forgot": "忘掉了",
+  "partner.memory.hidden": "这里不再显示了；Nowledge Mem 里那条还在",
 };
 
 const en: Record<string, string> = {
@@ -327,7 +354,34 @@ const en: Record<string, string> = {
   "notify.off": "Stop notifications",
   "quiet.band_label": "Quiet hours %s–%s",
   "sheet.close": "Close",
-  "settings.title": "This phone",
+  "settings.title": "Settings",
+  "settings.phone": "This phone",
+  "settings.lang.title": "Language",
+  "settings.lang.auto": "Follow the system",
+  "settings.lang.zh": "中文",
+  "settings.lang.en": "English",
+  "partner.name.edit": "Rename",
+  "partner.name.save": "Done",
+  "partner.talk.title": "How it talks",
+  "partner.talk.auto": "Follow me",
+  "partner.talk.zh": "中文",
+  "partner.talk.en": "English",
+  "partner.notify.title": "When it may find you",
+  "partner.notify.on": "Notifications",
+  "partner.quiet": "Quiet hours",
+  "partner.quiet.off": "None",
+  "partner.quiet.to": "to",
+  "partner.default.title": "How long before going with the default",
+  "partner.default.min": "%d min",
+  "partner.default.hour": "%d h",
+  "partner.memory.title": "What it remembers",
+  "partner.memory.connected": "Remembers what you've told it, in Nowledge Mem",
+  "partner.memory.missing": "Not connected to Nowledge Mem, so it starts fresh each time",
+  "partner.memory.off": "Memory is off: it won't recall or note anything",
+  "partner.memory.switch": "Remember things",
+  "partner.memory.forget": "Forget",
+  "partner.memory.forgot": "Forgotten",
+  "partner.memory.hidden": "Hidden here; it's still in Nowledge Mem",
 };
 
 export const TABLES: Record<Lang, Record<string, string>> = { zh, en };
@@ -365,7 +419,7 @@ export function strings(lang: Lang): Strings {
   };
 }
 
-export function detectLang(langs: readonly string[] = typeof navigator !== "undefined" ? navigator.languages : []): Lang {
+export function detectLang(langs: readonly string[] = (typeof navigator !== "undefined" && navigator.languages) || []): Lang {
   for (const l of langs) {
     const s = l.toLowerCase();
     if (s.startsWith("zh")) return "zh";

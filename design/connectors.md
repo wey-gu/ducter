@@ -203,17 +203,25 @@ OOMOL account key"). `packages/core/src/oo-link.ts`.
 - **Narrower access** is now oo's job: OOMOL's own console sets which actions a member may run
   (permission groups). Ducter's per-connection `policy` rules (§4.1) apply on top.
 
-### 4.5 Watching (built in core as D112's event waits; not yet run against a live OpenConnector)
+### 4.5 Watching (partly built: event waits on a self-hosted OpenConnector only; never run against a live one)
 
 OpenConnector's Provider Triggers HTTP API carries the watchers (research/35 §4):
 - `POST <base>/v1/providers/<service>/triggers/<triggerId>/execute` with
   `{operation: "read", config, checkpoint}`.
-  - The first read takes `checkpoint: null`. Later reads pass back the returned checkpoint, and
-    `hasMore` drains the next page.
+  - The first read takes `checkpoint: null`. Later reads pass back the returned checkpoint
+    (built, `readTrigger` in `packages/core/src/connections.ts`).
+  - `hasMore` should drain the next page. **Not built:** one read per look, so a burst larger
+    than a page waits for the next look.
   - The checkpoint lives in Ducter's waiter table (principle 16), never in a model.
 - A **trigger-scoped runtime token** (`allowedTriggers: ["gmail.on_message_received"]`,
-  `blockedActions: ["*"]`) is the watcher's own credential: it can read new-mail events and run
-  nothing. The user makes it on the Access page; Ducter stores it like the MCP token.
+  `blockedActions: ["*"]`) should be the watcher's own credential: it can read new-mail events
+  and run nothing. **Not built:** the watch uses the connection's own token.
+- **oo accounts can't be watched (as built).** oo (D122) reaches accounts through its CLI, and oo
+  1.9 has no triggers (`oo connector` is search / schema / run / proxy / apps). `wait_for` and
+  `routine_propose` refuse an event on an oo account before any wait is set, and say what to do
+  instead: a check that looks every few minutes, or a routine on a schedule that reads it. A read
+  of one (an older wait) gets the same answer and never posts to `oo:`. Revisit when oo grows
+  triggers.
 - Webhook triggers (`reconcile`) need a public URL. They are for later.
 - What a watcher finds goes through the cascade in §5. The watcher's caller is read-only by
   construction.

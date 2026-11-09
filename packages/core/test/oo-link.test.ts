@@ -4,7 +4,7 @@ import { existsSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Bodies } from "@ducter/protocol";
-import { LinkError, ooSource, openConnections } from "../src/connections.ts";
+import { LinkError, OO_NOT_WATCHABLE, ooSource, openConnections } from "../src/connections.ts";
 import { ooCli, ooEnv, ooExec, ooLinker, ooOp } from "../src/oo-link.ts";
 import { openLog } from "../src/log.ts";
 import { fakeOo, type FakeOoState } from "./fake-oo.ts";
@@ -209,6 +209,17 @@ describe("the one tap, through the broker", () => {
     c.grant("t1", "oo");
     expect((await c.read(T, "oo", "gmail.fetch_emails", {})).ok).toBe(true);
     expect(await c.read(T, "oo", "gmail.send_email", {})).toMatchObject({ ok: false, op: "write" });
+  });
+
+  test("an oo account can't be watched: refused with the way out, nothing is fetched", async () => {
+    const { c } = setup();
+    await c.addFromOo();
+    const w = c.watchable("oo");
+    expect(w).toEqual({ ok: false, error: OO_NOT_WATCHABLE });
+    expect(OO_NOT_WATCHABLE).toContain("Use a check instead");
+    const before = fake.calls().length;
+    expect(await c.readTrigger("oo", "gmail", "new_email", {}, null)).toEqual({ ok: false, error: OO_NOT_WATCHABLE });
+    expect(fake.calls().length).toBe(before);
   });
 
   test("signed out: the tap says so; an added one goes unauthorized", async () => {

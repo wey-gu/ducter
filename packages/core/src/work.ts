@@ -90,6 +90,11 @@ export function createWork(o: WorkOptions): Work {
       return { ok: false, met: false, summary: (err as Error).message, error: (err as Error).message };
     }
   };
+  /** Why an event can't be watched (an oo account, an MCP server), before any wait is set. */
+  const eventRefusal = (ev: EventSpec): string | undefined => {
+    const w = o.connections?.watchable?.(ev.connection);
+    return w && !w.ok ? w.error : undefined;
+  };
   const readEvent: WaiterDeps["readEvent"] = o.connections ? (spec, cp) => o.connections!.readTrigger(spec.connection, spec.service, spec.trigger, spec.config, cp) : undefined;
 
   const waiters = createWaiters({ log, clock: o.clock, check, readEvent, minEveryMs: o.minEveryMs, judgeMinMs: o.judgeMinMs, restartLookMs: o.restartLookMs });
@@ -163,6 +168,8 @@ export function createWork(o: WorkOptions): Work {
       const v = validateCheck(a.check);
       if (!v.ok) return { ok: false, error: v.error };
     }
+    const unwatchable = a.event ? eventRefusal(a.event) : undefined;
+    if (unwatchable) return { ok: false, error: unwatchable };
     // Look once now: it may already hold, and the user hears what it sees today.
     const first = await waiters.dryRun({ reason, ...(a.check ? { check: a.check } : {}), ...(a.event ? { event: a.event } : {}), ...(a.judge ? { judge: a.judge } : {}), ...(taskId ? { taskId } : {}) });
     if (first.met) return { ok: true, met: true, now: first.summary, note: "It already holds; nothing was set. Tell the user in one line." };
@@ -260,6 +267,8 @@ export function createWork(o: WorkOptions): Work {
       required: ["name", "trigger", "brief"],
     },
     async (a: { name: string; trigger: RoutineTrigger; triggerWords?: string; brief: string; place?: Place; reports?: "every" | "on_change" | "needs_you"; effect?: "read_only" | "drafts" | "local_writes"; monthTokens?: number }) => {
+      const unwatchable = a.trigger?.kind === "condition" && a.trigger.event ? eventRefusal(a.trigger.event) : undefined;
+      if (unwatchable) return { ok: false, error: unwatchable };
       try {
         const v = await routines.propose(a);
         return {

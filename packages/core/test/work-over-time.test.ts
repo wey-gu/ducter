@@ -13,6 +13,7 @@ import { createMcpHub } from "../src/mcp.ts";
 import { createRegistry } from "../src/registry.ts";
 import { describeTrigger, nextFirings } from "../src/schedule.ts";
 import { createWork, cwdOfCheck } from "../src/work.ts";
+import { OO_NOT_WATCHABLE } from "../src/connections.ts";
 import { parseVerdict } from "../src/judge.ts";
 import type { Judge } from "../src/waiters.ts";
 import { openTask, report, tempDir, tick } from "./helpers.ts";
@@ -53,7 +54,10 @@ function setup(o: { exec?: Exec; judge?: Judge; readEvent?: boolean; start?: num
   } as unknown as Runner;
   const events: { items: { id: string; text: string }[]; checkpoint: unknown }[] = [];
   const connections = o.readEvent
-    ? ({ readTrigger: async (_k: string, _s: string, _t: string, _c: unknown, cp: unknown) => events.shift() ?? { ok: true, items: [], checkpoint: cp } } as never)
+    ? ({
+        readTrigger: async (_k: string, _s: string, _t: string, _c: unknown, cp: unknown) => events.shift() ?? { ok: true, items: [], checkpoint: cp },
+        watchable: (k: string) => (k === "oo" ? { ok: false, error: OO_NOT_WATCHABLE } : { ok: true }),
+      } as never)
     : undefined;
   const work = createWork({ log, tasks, mcp, runner: () => runner, clock, persona: "default", exec: o.exec, minEveryMs: 1000, judgeMinMs: 60_000, restartLookMs: 10, defaultZone: "Asia/Shanghai", connections });
   if (o.judge) work.setJudge(o.judge);
@@ -66,7 +70,7 @@ function setup(o: { exec?: Exec; judge?: Judge; readEvent?: boolean; start?: num
       c();
     };
   })();
-  return { dir: t.dir, clock, log, tasks, work, sent, opened, events: (e: (typeof events)[number]) => events.push({ ...e, ok: true } as never) };
+  return { dir: t.dir, clock, log, tasks, work, mcp, sent, opened, events: (e: (typeof events)[number]) => events.push({ ...e, ok: true } as never) };
 }
 
 const kinds = (log: ReturnType<typeof openLog>, k: "waiter" | "waiter_look" | "until" | "until_try" | "routine" | "routine_run") => log.read({ kinds: [k], limit: 1000 }).map((e) => e.body);
@@ -214,6 +218,16 @@ test("an armed check survives a restart and looks again", async () => {
   expect(looked).toBe(1);
   expect((kinds(log, "waiter").at(-1) as Bodies["waiter"]).state).toBe("fired");
   work2.stop();
+});
+
+test("an event wait on an oo account is refused with the way out; no wait is set", async () => {
+  const s = setup({ readEvent: true });
+  const P = { role: "partner" } as const;
+  const r = (await s.mcp.call(P, "wait_for", { reason: "Lina 回邮件了", event: { connection: "oo", service: "gmail", trigger: "new_email" } })) as { ok: boolean; error?: string };
+  expect(r).toEqual({ ok: false, error: OO_NOT_WATCHABLE });
+  const p = (await s.mcp.call(P, "routine_propose", { name: "邮件", brief: "x", trigger: { kind: "condition", condition: "新邮件", event: { connection: "oo", service: "gmail", trigger: "new_email" } } })) as { ok: boolean; error?: string };
+  expect(p).toEqual({ ok: false, error: OO_NOT_WATCHABLE });
+  expect(kinds(s.log, "waiter")).toEqual([]);
 });
 
 test("an event wait with a judge: code filters, the model judges only new things, rate-limited", async () => {

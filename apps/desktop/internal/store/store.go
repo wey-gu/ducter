@@ -559,7 +559,11 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 		}
 	}
 	if w, ok := body.(*protocol.Waiter); ok {
-		if w.State == protocol.WaiterArmed {
+		// A routine's watch lives on its routine card (D114), not as a wait.
+		if w.State == protocol.WaiterArmed && w.RoutineID == "" {
+			if prev := s.Waiters[w.WaiterID]; prev != nil {
+				w.LastLookAt, w.LastSummary, w.Looks, w.Changes = prev.LastLookAt, prev.LastSummary, prev.Looks, prev.Changes
+			}
 			s.Waiters[w.WaiterID] = w
 		} else {
 			delete(s.Waiters, w.WaiterID)

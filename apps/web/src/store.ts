@@ -2,7 +2,7 @@
 // clients fold the same events the same way: living messages revised in place, jobs folded into
 // their acks, decisions with their resolutions, tasks with their streams, the On hand snapshot.
 // Pure data; tested without a DOM.
-import type { ActivityStep, Attention, Bodies, ClientFrame, Delivery, EvidenceRef, LogEvent, OnHand, Place, ServerFrame, TaskBody, TaskCard } from "@ducter/protocol";
+import type { ActivityStep, Attention, Bodies, ClientFrame, Delivery, EvidenceRef, LogEvent, OnHand, Place, RoutineView, ServerFrame, TaskBody, TaskCard, UntilView, WaiterView } from "@ducter/protocol";
 
 export type Ev<K extends keyof Bodies = keyof Bodies> = LogEvent<K>;
 
@@ -118,7 +118,7 @@ export class Store {
   decisions = new Map<string, DecisionState>();
   tasks = new Map<string, Task>();
   onHand?: OnHand;
-  waiters = new Map<string, Bodies["waiter"]>();
+  waiters = new Map<string, WaiterView>();
   errors: string[] = [];
   /** 记下了 / Noted lines in the channel, shown inside the Details of the reply they belong to (D104). */
   noted: { seq: number; title: string; memoryId?: string; replyTo?: number }[] = [];
@@ -238,7 +238,8 @@ export class Store {
     }
     if (ev.kind === "waiter") {
       const w = ev.body as Bodies["waiter"];
-      if (w.state === "armed") this.waiters.set(w.waiterId, w);
+      // A routine's watch lives on its card (D114), not as a wait.
+      if (w.state === "armed" && !w.routineId) this.waiters.set(w.waiterId, { ...this.waiters.get(w.waiterId), ...w });
       else this.waiters.delete(w.waiterId);
     }
     if (ev.stream !== "channel") {
@@ -456,6 +457,25 @@ export class Store {
 
   waiterFor(taskId: string) {
     return this.armedWaiters().find((w) => w.taskId === taskId);
+  }
+
+  /** Routines (D114), proposed ones included (their proposal card), newest last. */
+  routines(): RoutineView[] {
+    return this.onHand?.routines ?? [];
+  }
+
+  routine(id: string | undefined): RoutineView | undefined {
+    return id ? this.routines().find((r) => r.routineId === id) : undefined;
+  }
+
+  /** A task's `until` loop and its tries (D113). */
+  untilOf(t: Task): UntilView | undefined {
+    return t.card?.until;
+  }
+
+  /** What a waiting task's checks saw, oldest first (waiter_look on its stream). */
+  looksOf(t: Task): Bodies["waiter_look"][] {
+    return t.events.filter((e) => e.kind === "waiter_look").map((e) => e.body as Bodies["waiter_look"]);
   }
 
   /** Tasks by lane (snapshot order, stream-only tasks first, newest first) and counts. */

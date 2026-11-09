@@ -1,0 +1,8 @@
+{"jobs": 3, "tasks": [
+  {"id": "ducter_waiting", "promptFiles": ["prompts/_style.md", "prompts/ducter_waiting.md"], "image": "raw/ducter_waiting.png", "ar": "1:1", "quality": "2k", "ref": ["alpha/ducter_idle.png", "alpha/ducter_working.png", "../concepts/r2/r2_char_clay.jpg"]},
+  {"id": "wait_pr", "promptFiles": ["prompts/_style_abilities.md", "prompts/wait_pr.md"], "image": "raw/wait_pr.png", "ar": "1:1", "quality": "2k", "ref": ["alpha/ab_web.png", "alpha/ab_computer.png"]},
+  {"id": "wait_ci", "promptFiles": ["prompts/_style_abilities.md", "prompts/wait_ci.md"], "image": "raw/wait_ci.png", "ar": "1:1", "quality": "2k", "ref": ["alpha/ab_web.png", "alpha/ab_computer.png"]},
+  {"id": "wait_mail", "promptFiles": ["prompts/_style_abilities.md", "prompts/wait_mail.md"], "image": "raw/wait_mail.png", "ar": "1:1", "quality": "2k", "ref": ["alpha/ab_web.png", "alpha/ab_computer.png"]},
+  {"id": "wait_clock", "promptFiles": ["prompts/_style_abilities.md", "prompts/wait_clock.md"], "image": "raw/wait_clock.png", "ar": "1:1", "quality": "2k", "ref": ["alpha/ab_web.png", "alpha/ab_computer.png"]},
+  {"id": "wait_file", "promptFiles": ["prompts/_style_abilities.md", "prompts/wait_file.md"], "image": "raw/wait_file.png", "ar": "1:1", "quality": "2k", "ref": ["alpha/ab_web.png", "alpha/ab_computer.png"]}
+]}

@@ -32,6 +32,8 @@ These pages are for using Ducter. If you want to build it or change it, start wi
 - **[Your partner and settings](settings.md):** rename your partner, choose what it thinks with
   and who does the tasks, how it talks, when it may come to you and what it remembers, and the
   app's own settings and menus.
+- **[Waiting, keep going, routines](waiting-and-routines.md):** "tell me when…", "keep fixing
+  until it works", and "every Monday…".
 - **[Your phone](phone.md):** connect your phone, get a nudge when something needs you, and
   keep your nights quiet.
 - **[Privacy and safety](privacy-and-safety.md):** what Ducter never does by itself, what runs

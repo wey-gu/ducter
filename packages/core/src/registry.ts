@@ -3,7 +3,7 @@ import type { Attention, Bodies, LogEvent, OnHand, Residency, TaskCard } from "@
 import type { LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import { realClock, type Clock } from "./clock.ts";
 
-export const PROJECTED_KINDS = ["task_open", "task_state", "body_selected", "report", "decision", "decision_resolved", "waiter"] as const;
+export const PROJECTED_KINDS = ["task_open", "task_state", "body_selected", "report", "decision", "decision_resolved", "waiter", "waiter_look", "until", "until_try", "routine", "routine_run"] as const;
 
 const ACTIVE: Attention[] = ["queued", "working", "needs_you", "blocked", "done_claimed"];
 const ORDER: Attention[] = ["needs_you", "blocked", "working", "queued", "done_claimed", "done", "failed", "dropped", "superseded"];
@@ -17,6 +17,8 @@ export interface CoreRegistry extends TaskRegistry {
   pendingDecisions(taskId: string): string[];
   /** Armed waiters, oldest first. */
   waiters(): Bodies["waiter"][];
+  /** Adds what only live parts of core know (waiter looks, routine views) to On hand. */
+  setDecorator(fn: (o: OnHand) => OnHand): void;
 }
 
 export function createRegistry(log: LogStore, clock: Clock = realClock): CoreRegistry {
@@ -25,6 +27,9 @@ export function createRegistry(log: LogStore, clock: Clock = realClock): CoreReg
   const decisionTask = new Map<string, string>(); // decisionId -> taskId
   const decisionBody = new Map<string, Bodies["decision"] & { askedAt: string }>();
   const waiters = new Map<string, Bodies["waiter"]>(); // armed only
+  const routineNames = new Map<string, string>();
+  const runOf = new Map<string, { routineId: string; name: string }>(); // a routine's run task
+  let decorate: (o: OnHand) => OnHand = (o) => o;
 
   const apply = (e: LogEvent) => {
     switch (e.kind) {
@@ -49,7 +54,40 @@ export function createRegistry(log: LogStore, clock: Clock = realClock): CoreReg
           pendingDecision: prev?.pendingDecision,
           openedAt: prev?.openedAt ?? e.ts,
           updatedAt: e.ts,
+          ...(prev?.until ? { until: prev.until } : {}),
+          ...((prev?.fromRoutine ?? runOf.get(b.taskId)) ? { fromRoutine: prev?.fromRoutine ?? runOf.get(b.taskId) } : {}),
         });
+        break;
+      }
+      case "until": {
+        const b = e.body as Bodies["until"];
+        const c = cards.get(b.taskId);
+        if (!c) return;
+        c.until = { condition: b.condition, maxTries: b.maxTries, state: b.state, tries: c.until?.tries ?? [], ...(b.stop ? { stop: b.stop } : {}), ...(b.check ? { check: b.check } : {}), ...(c.until?.tokens ? { tokens: c.until.tokens } : {}) };
+        c.updatedAt = e.ts;
+        break;
+      }
+      case "until_try": {
+        const b = e.body as Bodies["until_try"];
+        const c = cards.get(b.taskId);
+        if (!c?.until) return;
+        c.until.tries.push({ n: b.n, verdict: b.verdict, summary: b.summary, by: b.by, at: e.ts });
+        if (b.tokens) c.until.tokens = (c.until.tokens ?? 0) + b.tokens;
+        c.updatedAt = e.ts;
+        break;
+      }
+      case "routine": {
+        const b = e.body as Bodies["routine"];
+        routineNames.set(b.routineId, b.name);
+        break;
+      }
+      case "routine_run": {
+        const b = e.body as Bodies["routine_run"];
+        if (!b.taskId) return;
+        const from = { routineId: b.routineId, name: routineNames.get(b.routineId) ?? "" };
+        runOf.set(b.taskId, from);
+        const c = cards.get(b.taskId);
+        if (c) c.fromRoutine = from;
         break;
       }
       case "task_state": {
@@ -147,7 +185,10 @@ export function createRegistry(log: LogStore, clock: Clock = realClock): CoreReg
       tasks.sort(
         (a, b) => ORDER.indexOf(a.attention) - ORDER.indexOf(b.attention) || b.updatedAt.localeCompare(a.updatedAt),
       );
-      return { tasks, counts, waiters: [...waiters.values()].map((w) => ({ ...w })) };
+      return decorate({ tasks, counts, waiters: [...waiters.values()].map((w) => ({ ...w })) });
+    },
+    setDecorator(fn) {
+      decorate = fn;
     },
     setState(taskId: string, attention: Attention, residency: Residency, reason?: string) {
       if (!cards.has(taskId)) throw new Error(`unknown task ${taskId}`);

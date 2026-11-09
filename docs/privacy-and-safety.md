@@ -1,7 +1,7 @@
 ---
 title: Privacy and safety
 description: What Ducter never does by itself, what runs where, how it uses your AI plans, memory with Nowledge Mem, and who can reach your Ducter.
-order: 6
+order: 7
 ---
 
 # Privacy and safety

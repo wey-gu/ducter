@@ -1,0 +1,1 @@
+Same orange pebble character sitting on a tiny cream clay bench, little feet dangling, leaning forward slightly and looking far off to the right with one small hand raised flat above its eyes (shading its eyes to see something coming), patient and hopeful, a small calm smile. Nothing else in the scene.

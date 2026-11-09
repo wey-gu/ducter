@@ -25,9 +25,9 @@ partner eval (real model, fake tasks and Mem; `research/30`) · **unit** = unit 
 | B4 | Multi-repo change | draft | draft | draft | draft | — | — | |
 | B5 | Browser work needing login | draft | draft | draft | draft | — | live: host-Mac browser via cua-driver 0.44, sign-in by the user in Ducter's browser | |
 | B6 | Phone / call task | — | — | — | — | — | — | |
-| B7 | `until` loop | draft | draft | draft | draft | — | — (only the timer waiter exists) | |
-| B8 | Waiter | draft | draft | draft | draft | draft | live: `wait_until` timer, survives restart | Core UI · On hand (Waiting lane) |
-| B9 | Routine: one-off / recurring / monitor | draft | draft | draft | draft | draft | — | Core UI · On hand (weekly report) |
+| B7 | `until` loop | draft | draft | draft | draft | draft | unit (fake clock, fake judge: met, no progress, circles, cap); headless 390 + native desktop on the scripted demo (`apps/web/demo-work.ts`): try pebbles, a try's done report held back. Not live with a real task yet (D113) | Work over time (https://claude.ai/artifact/CMBoqncshR96q9fzgUhpXy) v5 · keep going |
+| B8 | Waiter | draft | draft | draft | draft | draft | live: `wait_until` timer, survives restart; check waits live on this Mac (`gh pr view/checks` on cli/cli#14976, a file appearing; `gh pr merge` refused); unit: checks, backoff, deadline, restart, event + judge with a fake OpenConnector; headless 390 + native desktop on the scripted demo, including the moment it comes true. Not live: OpenConnector triggers, a real judge model, a worker's check (D112) | Work over time (https://claude.ai/artifact/CMBoqncshR96q9fzgUhpXy) v5 · On hand, opened task |
+| B9 | Routine: one-off / recurring / monitor | draft | draft | draft | draft | draft | unit: proposal card, Go, a firing as a run, coalesced missed firings, pause after 3 failures, resume, review date, condition routine on the change to true; headless 390 + native desktop on the scripted demo (shelf, strip of runs, proposal card). Not live with a real run yet (D114) | Work over time (https://claude.ai/artifact/CMBoqncshR96q9fzgUhpXy) v5 · proposal cards, shelf |
 | C1 | First mention of a new repo / path | draft | draft | draft | draft | — | — | |
 | C2 | Non-git folder (draft copy) | draft | draft | draft | draft | — | — | |
 | C3 | Recipe setup / failure | draft | draft | draft | draft | — | — | |

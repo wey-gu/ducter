@@ -176,7 +176,7 @@ test("mcp: report_to_main round trip drives the card, decision and living messag
 
   const task = await mcpClient(core, { taskId: "t1" });
   const tools = (await task.listTools()).tools.map((t) => t.name).sort();
-  expect(tools).toEqual(["log_read", "log_search", "report_to_main"]);
+  expect(tools).toEqual(["log_read", "log_search", "report_to_main", "wait_for"]);
   const res: any = await task.callTool({
     name: "report_to_main",
     arguments: {
@@ -199,7 +199,7 @@ test("mcp: report_to_main round trip drives the card, decision and living messag
   expect(bad.isError).toBe(true);
 
   const partner = await mcpClient(core, "partner");
-  expect((await partner.listTools()).tools.map((t) => t.name).sort()).toEqual(["log_read", "log_search", "rule_list", "rule_save", "task_read"]);
+  expect((await partner.listTools()).tools.map((t) => t.name).sort()).toEqual(["keep_going", "log_read", "log_search", "routine_list", "routine_pause", "routine_propose", "rule_list", "rule_save", "task_read", "wait_cancel", "wait_for"]);
   const found: any = await partner.callTool({ name: "log_search", arguments: { query: "race in setup" } });
   expect(JSON.parse(found.content[0].text)[0].kind).toBe("report");
   const card: any = await partner.callTool({ name: "task_read", arguments: { taskId: "t1" } });
@@ -257,7 +257,7 @@ test("connections over real sockets: add over WS without the token ever coming b
   openTask(core.log, "t1");
   const task = await mcpClient(core, { taskId: "t1" });
   const names = (await task.listTools()).tools.map((x) => x.name).sort();
-  expect(names).toEqual(["connection_read", "connection_search", "log_read", "log_search"]);
+  expect(names).toEqual(["connection_read", "connection_search", "log_read", "log_search", "wait_for"]);
   const denied: any = await task.callTool({ name: "connection_read", arguments: { connection: "OpenConnector", action: "github.list_my_prs" } });
   expect(denied.content[0].text).toContain("No such connection");
   expect(core.connections.grant("t1", "OpenConnector").ok).toBe(true);

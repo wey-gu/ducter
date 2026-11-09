@@ -281,14 +281,14 @@ func (a *App) summary(b store.Board) string {
 	if n := len(b.Lanes[store.LaneWorking]); n > 0 {
 		parts = append(parts, a.L.T("header.working", n))
 	}
+	// What it waits for is felt here, not in the conversation (D104, D115).
+	if n := len(b.Lanes[store.LaneWaiting]) + len(a.looseWaiters()); n > 0 {
+		parts = append(parts, a.L.T("header.waiting", n))
+	}
 	if n := a.doneToday(b); n > 0 {
 		parts = append(parts, a.L.T("header.done", n))
 	}
 	if len(parts) == 0 {
-		// A reminder or a waiting task is still something on hand.
-		if n := len(b.Lanes[store.LaneWaiting]) + len(a.looseWaiters()); n > 0 {
-			return a.L.T("header.waiting", n)
-		}
 		return a.L.T("header.summary.none")
 	}
 	return strings.Join(parts, " · ")
@@ -522,6 +522,9 @@ func (a *App) resettle(c *ui.Context, e ui.Element, revision int) {
 func (a *App) decisionBody(c *ui.Context, d *store.DecisionState, taskID string) {
 	t := a.T
 	a.heading(c, autospace(d.Question), t.XL).LineHeight(1.35)
+	if d.RoutineID != "" && d.Resolved == nil {
+		a.routineFacts(c, d.RoutineID, t.NeedsYou.Ink)
+	}
 	if d.Resolved == nil {
 		ui.Text(c, a.defaultLine(c, d)).FontSize(t.SM).TextColor(t.NeedsYou.Ink)
 	}

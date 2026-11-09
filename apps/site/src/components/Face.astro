@@ -1,6 +1,7 @@
 ---
 // The clay Ducter, one pose per state, stacked so the face can change without a reload.
-// State is shown by the character itself (D53), never by a dot.
+// State is shown by the character itself (D53), never by a dot. The clay body breathes and,
+// in the idle pose, blinks (D77, CSS only; still under reduced motion).
 import Art from "./Art.astro";
 
 type FaceName = "idle" | "working" | "done" | "needsyou" | "napping";
@@ -22,7 +23,10 @@ const alt: Record<FaceName, string> = {
 };
 ---
 <div class={`mascot ${cls}`} id={id} data-face={start} role="img" aria-label={alt[start]}>
-  {faces.map((f) => (
-    <Art class={`f-${f}`} name={`ducter_${f}`} alt="" sizes={sizes} eager={eager && f === start} />
-  ))}
+  <span class="clay">
+    {faces.map((f) => (
+      <Art class={`f-${f}`} name={`ducter_${f}`} alt="" sizes={sizes} eager={eager && f === start} />
+    ))}
+    {faces.includes("idle") && <><i class="lid l"></i><i class="lid r"></i></>}
+  </span>
 </div>

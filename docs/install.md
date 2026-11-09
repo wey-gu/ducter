@@ -16,7 +16,7 @@ There are four ways to have Ducter, and you can mix them:
 | [Your phone](#your-phone) | Answering decisions and checking results on the go | Ready in the phone's browser; an iPhone app is coming soon |
 
 Whichever you choose, you need an AI agent, **Claude Code or Codex** today, installed and
-signed in on the computer that does the work ([which agents](faq.md#which-coding-agents-does-it-work-with)).
+signed in on the computer that does the work ([which agents](faq.md#which-ai-agents-does-it-work-with)).
 Ducter uses your own plan through it; it never asks for an API key to get started.
 
 ## The Mac app

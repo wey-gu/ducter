@@ -390,15 +390,15 @@ func (a *App) backgroundLine(c *ui.Context) bool {
 						ui.Text(c, a.L.T("bg.off.body")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.45)
 					}
 				})
-				if !b.allowed && a.button(c, a.L.T("bg.open"), btnPrimary, 40, t.Surface) {
-					_ = a.Backend.OpenSettings(local.SettingsLoginItems)
-				}
 				label := a.L.T("ask.later")
 				if b.allowed {
 					label = a.L.T("cli.ok")
 				}
 				if a.button(c, label, btnText, 40, t.Surface) {
 					b.closed = true
+				}
+				if !b.allowed && a.button(c, a.L.T("bg.open"), btnPrimary, 40, t.Surface) {
+					_ = a.Backend.OpenSettings(local.SettingsLoginItems)
 				}
 			})
 		})

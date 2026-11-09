@@ -508,11 +508,11 @@ func (a *App) setupName(c *ui.Context) {
 		a.setup.nameFocused = true
 	}
 	ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Margin(4, 0, 0, 0).Children(func() {
-		if a.button(c, a.L.T("setup.name.ok"), btnPrimary, t.ControlLG, t.Surface) {
-			submit()
-		}
 		if a.button(c, a.L.T("setup.name.keep", "Ducter"), btnText, t.ControlLG, t.Surface) {
 			a.SaveName("")
+		}
+		if a.button(c, a.L.T("setup.name.ok"), btnPrimary, t.ControlLG, t.Surface) {
+			submit()
 		}
 	})
 }

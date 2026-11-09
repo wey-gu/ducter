@@ -114,11 +114,11 @@ func (a *App) connect(c *ui.Context) {
 				if a.conn.busy {
 					label = a.L.T("connect.busy")
 				}
-				if a.button(c, label, btnPrimary, t.ControlLG, t.Bg) {
-					a.submitConnect()
-				}
 				if !a.Unauthorized && a.button(c, a.L.T("connect.back"), btnText, t.ControlLG, t.Surface) {
 					a.conn.open = false
+				}
+				if a.button(c, label, btnPrimary, t.ControlLG, t.Bg) {
+					a.submitConnect()
 				}
 			})
 			ui.Text(c, a.L.T("connect.safe")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)

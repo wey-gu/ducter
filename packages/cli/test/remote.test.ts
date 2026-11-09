@@ -1,12 +1,12 @@
 // Server-mode helpers: the systemd unit, the tunnel line, the pair link, the devices list. No systemd, no network.
 import { describe, expect, test } from "bun:test";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { plainStyle } from "../src/doctor.ts";
 import { translator } from "../src/i18n.ts";
 import { openDeviceAuth } from "@ducter/core/src/auth.ts";
-import { cmdDevices, cmdPair, formatDevices, isLoopback, pairLink, publicUrl, servicePath, systemdUnit, tunnelCommand } from "../src/remote.ts";
+import { cmdDevices, cmdPair, ducterCommand, formatDevices, isLoopback, pairLink, publicUrl, servicePath, systemdUnit, tunnelCommand } from "../src/remote.ts";
 
 const en = translator("en");
 const zh = translator("zh");
@@ -55,6 +55,21 @@ describe("pairing text", () => {
     }
   });
 
+  test("printed commands work in the same shell: ducter when PATH finds this binary, else its path", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ducter-self-"));
+    const self = join(dir, ".local/bin/ducter");
+    mkdirSync(join(dir, ".local/bin"), { recursive: true });
+    writeFileSync(self, "");
+    try {
+      expect(ducterCommand({ execPath: self, compiled: true, home: dir, which: () => null })).toBe("~/.local/bin/ducter");
+      expect(ducterCommand({ execPath: self, compiled: true, home: dir, which: () => self })).toBe("ducter");
+      expect(ducterCommand({ execPath: "/opt/ducter", compiled: true, home: dir, which: () => self })).toBe("/opt/ducter");
+      expect(ducterCommand({ compiled: false })).toBe("ducter");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   test("isLoopback", () => {
     expect(isLoopback(undefined)).toBe(true);
     expect(isLoopback("127.0.0.1")).toBe(true);
@@ -63,7 +78,7 @@ describe("pairing text", () => {
 });
 
 describe("ducter pair without a public address", () => {
-  const run = async (env: { SSH_CONNECTION?: string; DUCTER_PUBLIC_URL?: string }, o: { worker?: boolean; t?: typeof en; json?: boolean } = {}) => {
+  const run = async (env: { SSH_CONNECTION?: string; DUCTER_PUBLIC_URL?: string }, o: { worker?: boolean; t?: typeof en; json?: boolean; server?: boolean; ip?: string } = {}) => {
     const dir = mkdtempSync(join(tmpdir(), "ducter-pair-"));
     const saved = { ssh: process.env.SSH_CONNECTION, pub: process.env.DUCTER_PUBLIC_URL };
     const out: string[] = [];
@@ -74,7 +89,7 @@ describe("ducter pair without a public address", () => {
       else delete process.env.SSH_CONNECTION;
       if (env.DUCTER_PUBLIC_URL) process.env.DUCTER_PUBLIC_URL = env.DUCTER_PUBLIC_URL;
       else delete process.env.DUCTER_PUBLIC_URL;
-      await cmdPair({ t: o.t ?? en, style: plainStyle, dataDir: dir, port: 7777, json: o.json ?? false, running: true, wait: false, worker: o.worker });
+      await cmdPair({ t: o.t ?? en, style: plainStyle, dataDir: dir, port: 7777, json: o.json ?? false, running: true, wait: false, worker: o.worker, server: o.server ?? Boolean(env.SSH_CONNECTION), publicIp: async () => o.ip });
     } finally {
       console.log = log;
       if (saved.ssh === undefined) delete process.env.SSH_CONNECTION;
@@ -91,9 +106,31 @@ describe("ducter pair without a public address", () => {
     expect(out).toContain("A phone can't reach this address");
     expect(out).not.toContain("scan this with your phone");
   });
-  test("over SSH (a server): the tunnel from your computer; with a public address the QR is back", async () => {
-    expect(await run({ SSH_CONNECTION: "203.0.113.5 50122 198.51.100.7 22" })).toContain("From your computer");
+  test("a server leads with ducter domain and its public IP, then the tunnel for a Mac alone; with an address the QR is back", async () => {
+    const out = await run({}, { server: true, ip: "203.0.113.7" });
+    const lead = out.indexOf("To use it from your phone and Mac anywhere:");
+    expect(lead).toBeGreaterThan(0);
+    expect(out).toContain("point a domain at this server's public IP 203.0.113.7 (an A record), then run:\n    ducter domain ducter.example.com");
+    expect(out.indexOf("Just your Mac, no domain:")).toBeGreaterThan(lead);
+    expect(out).toMatch(/ssh -N -L 7777:127\.0\.0\.1:7777 \S+@203\.0\.113\.7/);
+    expect(out).not.toContain("caddy-setup");
+    // Over SSH the tunnel names the address the user typed.
+    expect(await run({ SSH_CONNECTION: "203.0.113.5 50122 198.51.100.7 22" }, { ip: "203.0.113.7" })).toMatch(/@198\.51\.100\.7/);
+    const zhOut = await run({}, { server: true, ip: "203.0.113.7", t: zh });
+    expect(zhOut).toContain("把一个域名指向这台服务器的公网 IP 203.0.113.7（加一条 A 记录），然后运行：");
+    expect(zhOut).toContain("只连你的 Mac、不用域名");
     expect(await run({ DUCTER_PUBLIC_URL: "https://d.example.com" })).toContain("scan this with your phone");
+  });
+  test("pair --json without an address: the public IP and the two next steps, as commands", async () => {
+    const j = JSON.parse((await run({}, { json: true, server: true, ip: "203.0.113.7" })).trim());
+    expect(j.reachable).toBe(false);
+    expect(j.publicIp).toBe("203.0.113.7");
+    expect(j.steps.map((x: { command: string }) => x.command)).toEqual(["ducter domain <your domain>", j.tunnel]);
+    expect(j.code).toMatch(/^[A-Z2-9]{4}-[A-Z2-9]{4}$/);
+    const k = JSON.parse((await run({ DUCTER_PUBLIC_URL: "https://d.example.com" }, { json: true })).trim());
+    expect(k.reachable).toBe(true);
+    expect(k.link).toBe(`https://d.example.com/pair#c=${k.code}`);
+    expect(k.steps).toBeUndefined();
   });
   test("D83: one code, both ways to use it: a phone or app window, and another computer's one command", async () => {
     const pub = { DUCTER_PUBLIC_URL: "https://d.example.com" };

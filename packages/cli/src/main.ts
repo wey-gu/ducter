@@ -11,7 +11,8 @@ import { buildHints, cleanName, readPersonaFile, writeHints, writePersonaFile } 
 import { commandsFor, commandWith, detectLocale, translator, type T } from "./i18n.ts";
 import { cmdAnswer, cmdOpenTask, cmdSay, cmdTail, cmdTask, type TalkCtx } from "./talk.ts";
 import { fetchSnapshot, formatSnapshot, pickTask, taskAction, toMerge } from "./status.ts";
-import { cmdDevices, cmdPair, cmdService, isLoopback, publicUrl } from "./remote.ts";
+import { cmdDevices, cmdPair, cmdService, ducterCommand, fetchPublicIp, isLoopback, publicUrl } from "./remote.ts";
+import { caddyfileFor, cmdDomain, realDomainSys, removeDucterSite } from "./domain.ts";
 import { cmdWorker } from "./worker.ts";
 import { agentLabel, executeUninstall, formatPlan, planUninstall } from "./uninstall.ts";
 import { osText, versionsText, writeReport } from "./report.ts";
@@ -53,6 +54,7 @@ export function helpText(t: T): string {
     cmd("pair", t("help.pair")),
     cmd("devices", t("help.devices")),
     cmd("service", t("help.service")),
+    cmd("domain", t("help.domain")),
     cmd("worker", t("help.worker")),
     cmd("uninstall", t("help.uninstall")),
     cmd("report", t("help.report")),
@@ -183,7 +185,11 @@ async function cmdUninstall(ctx: Ctx): Promise<number> {
   const home = homedir();
   const label = agentLabel(process.env, process.execPath);
   const agents = await installedAgents(ctx.dataDir);
-  const plan = planUninstall({ home, dataDir: ctx.dataDir, platform: process.platform, agentLabel: label, execPath: process.execPath, all: Boolean(args.all), fromApp: process.env.DUCTER_FROM_APP === "1", t, agents });
+  const sys = realDomainSys();
+  const cfPath = args.all ? await caddyfileFor(sys) : undefined;
+  const cfText = cfPath ? sys.read(cfPath) : undefined;
+  const caddyfile = cfPath && cfText !== undefined ? { path: cfPath, text: cfText } : undefined;
+  const plan = planUninstall({ home, dataDir: ctx.dataDir, platform: process.platform, agentLabel: label, execPath: process.execPath, all: Boolean(args.all), fromApp: process.env.DUCTER_FROM_APP === "1", t, agents, caddyfile });
   const { repos: _repos, ...shown } = plan;
   if (args.dryRun) {
     console.log(args.json ? JSON.stringify(shown, null, 2) : formatPlan(plan, t, home));
@@ -208,6 +214,10 @@ async function cmdUninstall(ctx: Ctx): Promise<number> {
     runner: {
       uid: process.getuid?.() ?? 0,
       run: (cmd) => ctx.host.run(cmd, 15_000),
+      removeCaddySite: async (path) => {
+        const r = await removeDucterSite(sys, path);
+        return r.error ? { ok: false, error: r.error === "root" ? "needs root: sudo ducter domain --remove" : r.error } : { ok: true };
+      },
       healthy: async (p) => (await ctx.host.port(p)) === "ducter",
     },
   });
@@ -545,7 +555,21 @@ export async function run(argv: string[]): Promise<number | "running"> {
     case "up":
       return cmdUp(ctx);
     case "pair":
-      return cmdPair({ t, style, dataDir, port, json: args.json, running: (await host.port(port)) === "ducter", wait: Boolean(process.stdout.isTTY) && !args.json, worker: args.worker });
+      return cmdPair({ t, style, dataDir, port, json: args.json, running: (await host.port(port)) === "ducter", wait: Boolean(process.stdout.isTTY) && !args.json, worker: args.worker, publicIp: fetchPublicIp, self: ducterCommand() });
+    case "domain":
+      return cmdDomain({
+        t,
+        style,
+        sys: realDomainSys(),
+        dataDir,
+        port,
+        json: args.json,
+        domain: args.rest?.[0],
+        remove: args.remove,
+        print: args.print,
+        dnsCheck: args.dnsCheck,
+        pair: () => cmdPair({ t, style, dataDir, port, json: false, running: true, wait: Boolean(process.stdout.isTTY) }),
+      });
     case "devices":
       return cmdDevices({ t, style, dataDir, json: args.json, rest: args.rest ?? [], port });
     case "service":
@@ -562,7 +586,7 @@ export async function run(argv: string[]): Promise<number | "running"> {
           const auth = openDeviceAuth(dataDir);
           const none = auth.list().length === 0;
           auth.close();
-          if (none) await cmdPair({ t, style, dataDir, port, json: false, running: true, wait: Boolean(process.stdout.isTTY) });
+          if (none) await cmdPair({ t, style, dataDir, port, json: false, running: true, wait: Boolean(process.stdout.isTTY), publicIp: fetchPublicIp, self: ducterCommand() });
         },
       });
     case "worker":

@@ -1,6 +1,8 @@
 #!/bin/sh
 # Puts Caddy in front of Ducter so your devices reach it at https://<your domain>,
 # with certificates Caddy gets and renews by itself (Let's Encrypt / ZeroSSL).
+# With an installed ducter, `ducter domain <name>` does the same and more (DNS and port checks,
+# a pair code at the end, --remove); this script is for running from a checkout.
 #
 #   sh scripts/caddy-setup.sh ducter.example.com          # Ducter on 127.0.0.1:7777
 #   sh scripts/caddy-setup.sh ducter.example.com 7790     # another port
@@ -30,17 +32,19 @@ for a in "$@"; do
   esac
 done
 if [ -z "$DOMAIN" ] || [ "${DOMAIN#-}" != "$DOMAIN" ]; then
-  sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'
   exit 2
 fi
 
-BLOCK="# ducter: written by scripts/caddy-setup.sh
+# Same block and markers as `ducter domain` (packages/cli/src/domain.ts), so either removes it.
+BLOCK="# ducter: begin (written by ducter domain; remove with: ducter domain --remove)
 $DOMAIN {
 	encode zstd gzip
 	# WebSocket upgrades pass through as-is. Caddy adds X-Forwarded-For, which is how Ducter
 	# knows a request came from outside even though Caddy connects from 127.0.0.1.
 	reverse_proxy 127.0.0.1:$PORT
-}"
+}
+# ducter: end"
 
 if [ "$PRINT" = 1 ]; then
   printf '%s\n' "$BLOCK"
@@ -48,6 +52,8 @@ if [ "$PRINT" = 1 ]; then
 fi
 
 say() { printf '%s\n' "$*"; }
+# As root (a fresh server), no sudo; otherwise sudo for the privileged steps.
+if [ "$(id -u)" = 0 ]; then sudo() { "$@"; }; fi
 step() { printf '\n==> %s\n' "$*"; }
 
 step "Checking DNS for $DOMAIN"

@@ -1,22 +1,37 @@
 // Ducter on a server: `ducter pair`, `ducter devices`, `ducter service`, and the headless
 // banner. Pairing state lives in <dataDir>/devices.db (core/src/auth.ts), shared with the
 // running service, so these commands work whether or not it is up.
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, hostname, userInfo } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import QR from "qrcode";
 import { openDeviceAuth, CODE_TTL_MS, type Device } from "@ducter/core/src/auth.ts";
 import { migrateKeys } from "@ducter/protocol/src/keys.ts";
-import { width, type Host, type Style } from "./doctor.ts";
+import { isCompiled, width, type Host, type Style } from "./doctor.ts";
 import type { T } from "./i18n.ts";
 
 export const UNIT_NAME = "ducter.service";
 export const unitPath = (home = homedir()) => join(home, ".config", "systemd", "user", UNIT_NAME);
 
-/** Where remote clients reach this Ducter: DUCTER_PUBLIC_URL, else <dataDir>/public-url (written by scripts/caddy-setup.sh). */
+/** Where remote clients reach this Ducter: DUCTER_PUBLIC_URL, else <dataDir>/public-url (written by `ducter domain`). */
 export function publicUrl(dataDir: string, env: Record<string, string | undefined> = process.env): string | undefined {
   const raw = env.DUCTER_PUBLIC_URL?.trim() || (existsSync(join(dataDir, "public-url")) ? readFileSync(join(dataDir, "public-url"), "utf8").trim() : "");
   return raw ? raw.replace(/\/+$/, "") : undefined;
+}
+
+/**
+ * How to type this ducter in the shell it was started from: `ducter` when that finds this very
+ * binary on PATH, else its path (right after `curl … | sh`, ~/.local/bin may not be on PATH yet).
+ */
+export function ducterCommand(o: { execPath?: string; which?: (c: string) => string | null; compiled?: boolean; home?: string } = {}): string {
+  const exec = o.execPath ?? process.execPath;
+  if (!(o.compiled ?? isCompiled())) return "ducter";
+  const found = (o.which ?? Bun.which)("ducter");
+  try {
+    if (found && realpathSync(found) === realpathSync(exec)) return "ducter";
+  } catch {}
+  const home = o.home ?? homedir();
+  return exec.startsWith(home + "/") ? "~" + exec.slice(home.length) : exec;
 }
 
 /** The one string a client can paste: the address plus the code in the fragment (never sent to a server). */
@@ -28,10 +43,11 @@ export function isLoopback(host: string | undefined): boolean {
   return !host || /^(127\.\d+\.\d+\.\d+|localhost|::1)$/.test(host);
 }
 
-/** The SSH line to run on the user's computer. Inside an SSH session, SSH_CONNECTION names the address they used. */
-export function tunnelCommand(port: number, env: Record<string, string | undefined> = process.env): string {
+/** The SSH line to run on the user's computer. Inside an SSH session, SSH_CONNECTION names the
+ *  address they used; else this machine's public address, else its name. */
+export function tunnelCommand(port: number, env: Record<string, string | undefined> = process.env, publicIp?: string): string {
   const user = env.USER || userInfo().username;
-  const server = env.SSH_CONNECTION?.trim().split(/\s+/)[2];
+  const server = env.SSH_CONNECTION?.trim().split(/\s+/)[2] || publicIp;
   const host = server ? (server.includes(":") ? `[${server}]` : server) : hostname();
   return `ssh -N -L ${port}:127.0.0.1:${port} ${user}@${host}`;
 }
@@ -41,23 +57,84 @@ export function workerCommand(address: string, code: string): string {
   return `ducter worker ${address} --code ${code}`;
 }
 
+export interface Pairing {
+  code: string;
+  expiresAt: string;
+  /** Where a phone or the app opens: the public address, else 127.0.0.1 (through a tunnel). */
+  address: string;
+  link: string;
+  /** Another computer's one command (D83). */
+  command: string;
+}
+
+/** A fresh one-time code and the ways to use it (shared by `pair` and `domain`). */
+export function newPairing(dataDir: string, port: number, worker?: boolean): Pairing {
+  const auth = openDeviceAuth(dataDir);
+  try {
+    const { code, expiresAt } = auth.createCode(worker ? { kind: "worker" } : {});
+    const base = publicUrl(dataDir);
+    const address = base ?? `http://127.0.0.1:${port}`;
+    return { code, expiresAt: new Date(expiresAt).toISOString(), address, link: pairLink(address, code), command: workerCommand(base ?? "<address>", code) };
+  } finally {
+    auth.close();
+  }
+}
+
+/** This machine's public IPv4 as the internet sees it, or undefined (offline, or no answer in 3 s). */
+export async function fetchPublicIp(): Promise<string | undefined> {
+  try {
+    const r = await fetch("https://api.ipify.org", { signal: AbortSignal.timeout(3000) });
+    const ip = (await r.text()).trim();
+    return r.ok && /^[\d.]+$/.test(ip) ? ip : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * `ducter pair`: a fresh one-time code, both ways to use it (a phone or app window; another
  * computer), and (on a TTY) a wait for the device. One code serves either (D83); the hidden
- * `--worker` keeps the old code fixed to a computer and prints only that way.
+ * `--worker` keeps the old code fixed to a computer and prints only that way. A server with no
+ * public address yet leads with `ducter domain`, then the SSH tunnel for a Mac alone.
  */
-export async function cmdPair(o: { t: T; style: Style; dataDir: string; port: number; json: boolean; running: boolean; wait: boolean; worker?: boolean }): Promise<number> {
+export async function cmdPair(o: {
+  t: T;
+  style: Style;
+  dataDir: string;
+  port: number;
+  json: boolean;
+  running: boolean;
+  wait: boolean;
+  worker?: boolean;
+  /** This machine's public IP; only asked when there is no public address yet. */
+  publicIp?: () => Promise<string | undefined>;
+  /** A server (Linux, or reached over SSH) rather than the Mac in front of you. */
+  server?: boolean;
+  /** How to type ducter here (see ducterCommand); default "ducter". */
+  self?: string;
+}): Promise<number> {
   const { t, style } = o;
   const auth = openDeviceAuth(o.dataDir);
   try {
     const before = new Set(auth.list().map((d) => d.id));
-    const { code, expiresAt } = auth.createCode(o.worker ? { kind: "worker" } : {});
+    const p = newPairing(o.dataDir, o.port, o.worker);
+    const { code, address, link, command } = p;
+    const expiresAt = Date.parse(p.expiresAt);
     const base = publicUrl(o.dataDir);
-    const address = base ?? `http://127.0.0.1:${o.port}`;
-    const link = pairLink(address, code);
-    const command = workerCommand(base ?? "<address>", code);
+    const server = o.server ?? (process.platform === "linux" || Boolean(process.env.SSH_CONNECTION));
+    const ip = base ? undefined : await o.publicIp?.();
+    const tunnel = tunnelCommand(o.port, process.env, ip);
     if (o.json) {
-      console.log(JSON.stringify({ code, expiresAt: new Date(expiresAt).toISOString(), address, link, command }));
+      const out: Record<string, unknown> = { ...p, reachable: Boolean(base) };
+      if (!base) {
+        out.publicIp = ip ?? null;
+        out.tunnel = tunnel;
+        out.steps = [
+          { id: "domain", text: t("pair.json.domain", { ip: ip ?? "<public IP>" }), command: "ducter domain <your domain>" },
+          { id: "tunnel", text: t("pair.json.tunnel"), command: tunnel },
+        ];
+      }
+      console.log(JSON.stringify(out));
       return 0;
     }
     const min = Math.round(CODE_TTL_MS / 60_000);
@@ -66,6 +143,8 @@ export async function cmdPair(o: { t: T; style: Style; dataDir: string; port: nu
       `  ${style.ok("●")} ${style.bold(t("pair.title"))}   ${style.bold(code)}   ${style.dim(t("pair.once", { min }))}`,
       "",
     ];
+    const lw = Math.max(width(t("pair.address")), width(t("pair.code"))) + 2;
+    const row = (k: string, v: string) => `    ${k}${" ".repeat(lw - width(k))}${style.bold(v)}`;
     // Another computer dials out to this Ducter: it needs a reachable address, never a tunnel to here.
     const computer = () => {
       const out = [`  ${t("pair.worker.how")}`, `    ${style.bold(command)}`, ""];
@@ -75,30 +154,41 @@ export async function cmdPair(o: { t: T; style: Style; dataDir: string; port: nu
     if (o.worker) {
       lines.push(...computer());
       console.log(lines.join("\n"));
-    } else if (!base) {
-      // Over SSH this is a server and "your computer" is the one they typed on; on the Mac
-      // itself the tunnel comes from another computer.
-      const local = !process.env.SSH_CONNECTION;
-      lines.push(`  ${t(local ? "pair.tunnel.local" : "pair.tunnel")}`, "", `    ${tunnelCommand(o.port)}`, "", `  ${style.dim(t("pair.tunnelNote", { port: o.port }))}`, "");
-    }
-    if (!o.worker) {
-      const lw = Math.max(width(t("pair.address")), width(t("pair.code"))) + 2;
-      const row = (k: string, v: string) => `    ${k}${" ".repeat(lw - width(k))}${style.bold(v)}`;
+    } else if (base) {
       lines.push(`  ${t("pair.howApp")}`, row(t("pair.address"), address), row(t("pair.code"), code), "");
-      if (base) {
-        lines.push(`  ${t("pair.orLink")}`, `    ${link}`, "");
-        console.log(lines.join("\n"));
-        const qr = await QR.toString(link, { type: "terminal", small: true, errorCorrectionLevel: "L" });
-        console.log(qr.split("\n").map((l) => "  " + l).join("\n"));
-      } else {
-        // 127.0.0.1 on a phone is the phone itself: a QR here would open a page that can't load.
-        lines.push(`  ${style.dim(t("pair.noPhone"))}`, "");
-        console.log(lines.join("\n"));
-      }
+      lines.push(`  ${t("pair.orLink")}`, `    ${link}`, "");
+      console.log(lines.join("\n"));
+      const qr = await QR.toString(link, { type: "terminal", small: true, errorCorrectionLevel: "L" });
+      console.log(qr.split("\n").map((l) => "  " + l).join("\n"));
+      console.log(computer().join("\n"));
+    } else if (server) {
+      // First the way that works from anywhere, then the tunnel for a Mac alone.
+      lines.push(
+        `  ${style.bold(t("pair.domain.lead"))}`,
+        `  ${t(ip ? "pair.domain.record" : "pair.domain.recordNoIp", { ip: ip ?? "" })}`,
+        `    ${style.bold(`${o.self ?? "ducter"} domain ducter.example.com`)}`,
+        `  ${style.dim(t("pair.domain.what"))}`,
+        "",
+        `  ${t("pair.tunnel")}`,
+        `    ${tunnel}`,
+        `  ${t("pair.tunnel.then")}`,
+        row(t("pair.address"), address),
+        row(t("pair.code"), code),
+        "",
+      );
+      console.log(lines.join("\n"));
+      console.log(computer().join("\n"));
+    } else {
+      // The Mac itself: the tunnel comes from another computer; 127.0.0.1 on a phone is the phone.
+      lines.push(`  ${t("pair.tunnel.local")}`, "", `    ${tunnel}`, "", `  ${style.dim(t("pair.tunnelNote", { port: o.port }))}`, "");
+      lines.push(`  ${t("pair.howApp")}`, row(t("pair.address"), address), row(t("pair.code"), code), "");
+      lines.push(`  ${style.dim(t("pair.noPhone"))}`, "");
+      console.log(lines.join("\n"));
       console.log(computer().join("\n"));
     }
     if (!o.running) console.log(style.dim(t("pair.notRunning")));
-    if (!o.wait) return 0;
+    // Nothing reaches a server without an address or a tunnel yet: don't hold the terminal.
+    if (!o.wait || (!base && server && !o.worker)) return 0;
 
     console.log(style.dim(t("pair.waiting")));
     while (Date.now() < expiresAt) {

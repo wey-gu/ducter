@@ -3,7 +3,10 @@
 //   (no --all)  the background item only: the LaunchAgent (macOS) or the systemd user unit (Linux).
 //               Data stays; the app or `ducter up` brings it back.
 //   --all       also the data folder (the Log, worktrees, browser profiles, scratch), the
-//               ~/.local/bin/ducter link Ducter.app made, and the app's own Library folders.
+//               ~/.local/bin/ducter link Ducter.app made (or this very binary, copied there by
+//               install.sh), the /usr/local/bin/ducter link the installer made, the PATH lines it
+//               added to a shell profile, Ducter's site in Caddy's Caddyfile (Caddy stays), and
+//               the app's own Library folders.
 //
 // One Ducter at a time: `--data-dir <dir>` removes that one only. The background item goes only
 // when it runs that data folder (its DUCTER_DATA_DIR; none named = ~/.ducter). What exists once
@@ -12,14 +15,15 @@
 //
 // Nothing outside that list is ever touched: repos and their ducter/* branches, harness logins,
 // Nowledge Mem and cua-driver stay. Ducter.app itself is moved to the Trash by the app, last.
-import { existsSync, lstatSync, readdirSync, readFileSync, readlinkSync, realpathSync, rmSync, statSync } from "node:fs";
+import { existsSync, lstatSync, readdirSync, readFileSync, readlinkSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import type { T } from "./i18n.ts";
+import { stripDucterBlocks } from "./domain.ts";
 import { UNIT_NAME, unitPath } from "./remote.ts";
 
 export const DEFAULT_BUNDLE_ID = "co.nowledge.ducter";
 
-export type ItemKind = "agent" | "service" | "data" | "worktree" | "link" | "appdata";
+export type ItemKind = "agent" | "service" | "data" | "worktree" | "link" | "appdata" | "rc" | "caddy";
 export interface Item {
   path: string;
   what: string;
@@ -60,6 +64,32 @@ export interface PlanInput {
    *  leaves with it, so it isn't one). Each gets a keep line saying what is actually true;
    *  absent (not probed) or empty: no line, never a claim we didn't check. */
   agents?: { name: string; signedIn: boolean }[];
+  /** Caddy's Caddyfile as read on this machine (absent: no Caddy, or not readable). */
+  caddyfile?: { path: string; text: string };
+  /** Where the installer links `ducter` for every PATH (root, or a writable /usr/local/bin). */
+  globalBin?: string;
+}
+
+/** The lines install.sh adds to a shell profile when ~/.local/bin isn't on PATH. */
+export const RC_BEGIN = "# added by Ducter";
+export const RC_END = "# end of Ducter's lines";
+export const RC_FILES = [".zshrc", ".bashrc", ".bash_profile", ".profile", ".config/fish/config.fish"];
+
+/** A profile without the lines the installer added (from RC_BEGIN through RC_END). */
+export function stripRcBlock(text: string): string {
+  const lines = text.split("\n");
+  const out: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (!lines[i]!.startsWith(RC_BEGIN)) {
+      out.push(lines[i]!);
+      continue;
+    }
+    let j = i + 1;
+    while (j < lines.length && !lines[j]!.startsWith(RC_END) && j - i < 4) j++;
+    i = lines[j]?.startsWith(RC_END) ? j : i + 1;
+    if (out[out.length - 1] === "") out.pop(); // the blank line the installer put before it
+  }
+  return out.join("\n");
 }
 
 export function realGit(dir: string, args: string[]): string | null {
@@ -149,6 +179,30 @@ export function isAppLink(p: string, execPath: string): boolean {
   }
 }
 
+/** The `ducter` at p is this very binary (a copy install.sh put there), not a link. */
+export function isThisBinary(p: string, execPath: string): boolean {
+  try {
+    if (lstatSync(p).isSymbolicLink()) return false;
+    return realpathSync(p) === realpathSync(execPath);
+  } catch {
+    return false;
+  }
+}
+
+/** A symlink the installer made: to this binary, to ~/.local/bin/ducter, or into a Ducter.app
+ *  (an app that's gone counts; another existing copy's link stays). */
+export function pointsAtDucter(p: string, execPath: string, userBin: string): boolean {
+  try {
+    if (!lstatSync(p).isSymbolicLink()) return false;
+    const to = readlinkSync(p);
+    if (to === userBin) return true;
+    if (to.endsWith("/Contents/Helpers/ducter")) return isAppLink(p, execPath);
+    return existsSync(to) && realpathSync(to) === realpathSync(execPath);
+  } catch {
+    return false;
+  }
+}
+
 /** The data folder a background item (LaunchAgent plist or systemd unit) runs; null: none named. */
 export function backgroundDataDir(file: string): string | null {
   let text = "";
@@ -228,12 +282,32 @@ export function planUninstall(i: PlanInput): Plan {
     if (!ownsGlobal) {
       if (exists(link)) keep.push({ what: link, detail: others });
     } else if (isAppLink(link, i.execPath)) remove.push({ path: link, what: t("uninstall.item.link"), kind: "link" });
+    else if (isThisBinary(link, i.execPath)) remove.push({ path: link, what: t("uninstall.item.link"), kind: "link" });
     else if (exists(link)) {
       let to = "";
       try {
         if (lstatSync(link).isSymbolicLink()) to = readlinkSync(link);
       } catch {}
       keep.push({ what: link, detail: to ? t("uninstall.keep.otherLink", { path: link, to }) : t("uninstall.keep.copied", { path: link }) });
+    }
+
+    if (ownsGlobal) {
+      // The installer's /usr/local/bin link, when it leads to this Ducter (or to nothing now).
+      const g = join(i.globalBin ?? "/usr/local/bin", "ducter");
+      if (pointsAtDucter(g, i.execPath, link)) remove.push({ path: g, what: t("uninstall.item.link"), kind: "link" });
+      for (const f of RC_FILES) {
+        const p = join(home, f);
+        let text = "";
+        try {
+          text = readFileSync(p, "utf8");
+        } catch {
+          continue;
+        }
+        if (text.split("\n").some((l) => l.startsWith(RC_BEGIN))) remove.push({ path: p, what: t("uninstall.item.rc"), kind: "rc" });
+      }
+      const cf = i.caddyfile;
+      const domains = cf ? stripDucterBlocks(cf.text).domains : [];
+      if (cf && domains.length) remove.push({ path: cf.path, what: t("uninstall.item.caddy", { domains: domains.join(", ") }), kind: "caddy" });
     }
 
     if (i.platform === "darwin" && !ownsGlobal) {
@@ -252,6 +326,7 @@ export function planUninstall(i: PlanInput): Plan {
 
   keep.push(
     { what: t("uninstall.keep.repos"), detail: t("uninstall.keep.repos.detail") },
+    ...(i.all && i.caddyfile ? [{ what: "Caddy", detail: t("uninstall.keep.caddy.detail") }] : []),
     ...(i.agents ?? []).map((a) => ({ what: a.name, detail: t(a.signedIn ? "uninstall.keep.agent.signedIn" : "uninstall.keep.agent.installed") })),
     { what: "Nowledge Mem", detail: t("uninstall.keep.mem.detail") },
     { what: "cua-driver", detail: t("uninstall.keep.cua.detail") },
@@ -263,6 +338,8 @@ export function planUninstall(i: PlanInput): Plan {
 export interface Runner {
   /** launchctl / systemctl; never throws. */
   run(cmd: string[]): Promise<{ code: number; stdout: string }>;
+  /** Takes Ducter's site out of the Caddyfile at path and reloads Caddy (needs root). */
+  removeCaddySite?(path: string): Promise<{ ok: boolean; error?: string }>;
   /** Whether a Ducter still answers /health on the port. */
   healthy(port: number): Promise<boolean>;
   uid: number;
@@ -304,7 +381,21 @@ export async function executeUninstall(plan: Plan, o: { runner: Runner; port: nu
       return res;
     }
   }
-  for (const it of rest) rm(it.path);
+  for (const it of rest) {
+    if (it.kind === "rc") {
+      // A shell profile is the user's: only Ducter's lines leave it.
+      try {
+        writeFileSync(it.path, stripRcBlock(readFileSync(it.path, "utf8")));
+        res.removed.push(it.path);
+      } catch (e) {
+        res.failed.push({ path: it.path, error: e instanceof Error ? e.message : String(e) });
+      }
+    } else if (it.kind === "caddy") {
+      const r = o.runner.removeCaddySite ? await o.runner.removeCaddySite(it.path) : { ok: false, error: "no way to edit Caddy here" };
+      if (r.ok) res.removed.push(it.path);
+      else res.failed.push({ path: it.path, error: r.error ?? "" });
+    } else rm(it.path);
+  }
   const git = o.git ?? realGit;
   for (const repo of plan.repos ?? []) if (existsSync(repo)) git(repo, ["worktree", "prune"]);
   return res;

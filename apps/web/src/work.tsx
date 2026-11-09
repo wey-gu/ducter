@@ -6,7 +6,9 @@
 import type { Bodies, CheckSpec, RoutineView, UntilView, WaiterView } from "@ducter/protocol";
 import { describeCheck, describePredicate } from "@ducter/protocol/src/checks.ts";
 import { A } from "./app.ts";
-import { when } from "./format.ts";
+import { cjkPad, clock, day, md, when } from "./format.ts";
+
+const pad = (s: string) => cjkPad(A.L, s);
 import type { Task } from "./store.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -40,7 +42,7 @@ export function waitLine(reason: string): string {
 
 /** What a wait's card says under it, in words: its deadline, or when a timer is due. */
 export function waitCaption(w: WaiterView): string {
-  if (w.until) return t("wait.until.cap", when(A.L, w.until));
+  if (w.until) return t("wait.until.cap", pad(when(A.L, w.until)));
   if (w.at && !w.check && !w.event) return t("waiter.at", when(A.L, w.at));
   return "";
 }
@@ -67,14 +69,28 @@ export function Groove({ w, big }: { w: WaiterView; big?: boolean }) {
         </span>
         <span class="end" />
       </span>
-      {big && (
-        <span class="tcap">
-          <span>{t("wait.started", when(A.L, w.armedAt))}</span>
-          <span>{t("wait.now", when(A.L, new Date().toISOString()))}</span>
-          <span>{t("wait.until.ask", when(A.L, w.until))}</span>
+      {big && <GrooveCaptions w={w} f={f} />}
+    </>
+  );
+}
+
+/** The groove's captions, placed by time: when it started at the left, its deadline at the
+ *  right, and "now" under Ducter. Near either end "now" gives way: by the start it takes the start's
+ *  place (the head already says when it started); by the deadline it is left out. */
+function GrooveCaptions({ w, f }: { w: WaiterView; f: number }) {
+  const nowText = t("wait.now", pad(clock(new Date().toISOString())));
+  const start = f < 0.22 ? nowText : t("wait.started", pad(clock(w.armedAt)));
+  const middle = f >= 0.22 && f <= 0.62;
+  return (
+    <span class="tcap">
+      <span>{start}</span>
+      {middle && (
+        <span class="tnow" style={{ left: `${Math.round(f * 1000) / 10}%` }}>
+          {nowText}
         </span>
       )}
-    </>
+      <span class="tend">{t("wait.until.ask", pad(when(A.L, w.until)))}</span>
+    </span>
   );
 }
 
@@ -173,7 +189,7 @@ export function WaitDetails({ task }: { task: Task }) {
             {w.judge && <span class="sub">{t("wait.judge", w.judge)}</span>}
           </span>
           <span class="k">{t("wait.often")}</span>
-          <span class="v">{w.event ? t("wait.each_new") : t("wait.every", minutes(w.everyMs))}{w.lastLookAt ? ` · ${t("wait.last", when(A.L, w.lastLookAt))}` : ""}</span>
+          <span class="v">{w.event ? t("wait.each_new") : t("wait.every", minutes(w.everyMs))}{w.lastLookAt ? ` · ${t("wait.last", pad(when(A.L, w.lastLookAt)))}` : ""}</span>
           {looks.length > 0 && (
             <>
               <span class="k">{t("wait.looks")}</span>
@@ -194,11 +210,6 @@ export function WaitDetails({ task }: { task: Task }) {
     </section>
   );
 }
-
-const md = (iso: string) => {
-  const d = new Date(iso);
-  return `${d.getMonth() + 1}/${d.getDate()}`;
-};
 
 /** One strip for every routine: a line, today an ink mark at its left, a clay bead per run with
  *  its date under it, spaced by time. */
@@ -225,15 +236,22 @@ export function RunStrip({ r, n = 5 }: { r: RoutineView; n?: number }) {
   );
 }
 
+/** Why a routine is paused, in words: "停着：连着 3 次你没看", "停着：你暂停的". */
+export function pausedWhy(r: RoutineView): string {
+  const why = r.pauseReason ?? "asked";
+  if (why !== "asked") return t(`routine.paused.${why}`);
+  return r.pausedBy === "user" ? t("routine.paused.by_you") : t("routine.paused.by_partner", A.S.personaName);
+}
+
 /** One routine on the shelf: its name and when in words, its next runs as beads, then where it
  *  stands, with Pause / Resume. */
 export function RoutineRow({ r }: { r: RoutineView }) {
   const paused = r.state === "paused";
   const lines: string[] = [];
-  if (paused) lines.push(t(`routine.paused.${r.pauseReason ?? "asked"}`));
+  if (paused) lines.push(pausedWhy(r));
   else if (r.running) lines.push(t("routine.running"));
-  else if (r.nextAt) lines.push(t("routine.next", when(A.L, r.nextAt)));
-  if (r.lastRun) lines.push(t(`routine.last.${r.lastRun.state}`, when(A.L, r.lastRun.at)));
+  else if (r.nextAt) lines.push(t("routine.next", pad(when(A.L, r.nextAt))));
+  if (r.lastRun) lines.push(t(`routine.last.${r.lastRun.state}`, pad(day(A.L, r.lastRun.at))));
   return (
     <div class={`row routine${paused ? " paused" : ""}`}>
       {r.trigger.kind === "time" ? (
@@ -245,7 +263,7 @@ export function RoutineRow({ r }: { r: RoutineView }) {
       )}
       <span class="main">
         <span class="t">{r.name}</span>
-        <span class="m">{r.triggerWords}</span>
+        {!r.name.includes(r.triggerWords) && <span class="m">{r.triggerWords}</span>}
         {!paused && r.trigger.kind === "time" && <RunStrip r={r} n={3} />}
         {lines.length > 0 && <span class="m cap">{lines.join(" · ")}</span>}
       </span>
@@ -295,7 +313,7 @@ export function RoutineFacts({ routineId }: { routineId: string }) {
       <span class="k">{t("routine.budget")}</span>
       <span class="v">{t("routine.cost")}</span>
       <span class="k">{t("routine.review")}</span>
-      <span class="v">{t("routine.review.v", when(A.L, r.reviewAt))}</span>
+      <span class="v">{t("routine.review.v", pad(day(A.L, r.reviewAt)))}</span>
     </div>
   );
 }

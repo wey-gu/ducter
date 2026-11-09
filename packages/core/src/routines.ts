@@ -42,7 +42,7 @@ export interface ProposeInput {
 
 export interface Routines {
   propose(input: ProposeInput): Promise<RoutineView>;
-  pause(routineId: string, by: "user" | "partner", reason?: RoutineBody["pauseReason"]): boolean;
+  pause(routineId: string, by: "user" | "partner" | "system", reason?: RoutineBody["pauseReason"]): boolean;
   resume(routineId: string): boolean;
   end(routineId: string): boolean;
   get(routineId: string): RoutineView | undefined;

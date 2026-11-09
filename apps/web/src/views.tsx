@@ -1041,8 +1041,11 @@ function workLine(task: Task): string {
 function Row({ task, meta }: { task: Task; meta: string }) {
   const w = attention(task) === "blocked" ? A.S.waiterFor(task.id) : undefined;
   const u = A.S.untilOf(task);
+  // Its wait just came true (D115): the bubble pops and the card springs into Working.
+  const arrived = attention(task) !== "blocked" && A.S.justArrived(task.id);
   return (
-    <button class="row" onClick={() => A.go({ name: "task", id: task.id })}>
+    <button class={`row${arrived ? " arrived" : ""}`} onClick={() => A.go({ name: "task", id: task.id })}>
+      {arrived && <span class="pop-bub" aria-hidden="true" />}
       {w && <WaitBubble w={w} />}
       <span class="main">
         <span class="t">{title(task) || t("task.unknown")}</span>

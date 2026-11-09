@@ -30,7 +30,7 @@ export function savedUiLang(): UiLang {
 }
 export const UNDO_MS = 10_000;
 
-/** 对话里的详情 / Details in the conversation (D104): folded (the default) or shown, per client. */
+/** 对话里的细节 / Details in the conversation (D104): folded (the default) or shown, per client. */
 const DETAILS = "ducter.details";
 export type DetailsPref = "folded" | "shown";
 export function savedDetails(): DetailsPref {

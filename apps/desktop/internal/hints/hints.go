@@ -48,7 +48,7 @@ type state struct {
 	// Lang is the window's language from Settings: "zh", "en", or empty
 	// (follow macOS).
 	Lang string `json:"lang,omitempty"`
-	// Details is 对话里的详情 / Details in the conversation (D104): "shown",
+	// Details is 对话里的细节 / Details in the conversation (D104): "shown",
 	// or empty (folded, the default).
 	Details string `json:"details,omitempty"`
 }

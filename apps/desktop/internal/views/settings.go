@@ -147,7 +147,7 @@ func (a *App) langCard(c *ui.Context) {
 	})
 }
 
-// detailsCard: 对话里的详情 / Details in the conversation (D104), this
+// detailsCard: 对话里的细节 / Details in the conversation (D104), this
 // window's own: folded (the default) or shown under every message.
 func (a *App) detailsCard(c *ui.Context) {
 	a.sheetCard(c, "details", a.L.T("settings.details.title"), func() {

@@ -43,7 +43,7 @@
 | non-git draft copy | **草稿副本 / Draft copy** | |
 | routine fields | **{date} 再问你 / Ask you again {date}** (review date) · **可以碰 / May touch** (also on every task, D61) | |
 | default outcomes | **按默认做了 / Went with the default** · **都按默认 / Go on all defaults** | |
-| outcomes | **停下了 / Stopped** · **撤销 / Undo** · **再试一次 / Try again** · **检查没过 / Check didn't pass** | |
+| outcomes | **停下了 / Stopped** · **撤销 / Undo** · **再试一次 / Try again** · **告诉它怎么做… / Tell it what to do** · **检查没过 / Check didn't pass** | 告诉它怎么做… sits beside 再试一次 on a task that didn't work and opens the task's composer (D75) |
 | a merge / draft PR whose result was lost with the connection | **不确定做成没有，看一下 / Not sure it went through — check** · **再试一次 / Try again** | Only when the Log doesn't show it done after reconnecting. Never "failed" wording: it may have happened |
 | quiet hours | **免打扰 / Quiet hours** ("免打扰 23:00–08:00") | The word the user's phone already uses |
 | remote access ability | **在哪儿都能用 / Reach from anywhere** | Done: "MacBook 现在在哪儿都能用了" |

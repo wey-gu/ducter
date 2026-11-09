@@ -23,6 +23,7 @@ import {
   modelOf,
   outsideActs,
   placeOf,
+  canIntegrate,
   reasonOf,
   reportOf,
   sortEvidence,
@@ -431,7 +432,7 @@ function outsideLine(task: Task): string {
 
 function ResultActions({ task, inTask }: { task: Task; inTask?: boolean }) {
   const p = placeOf(task);
-  if (attention(task) === "failed" || p.kind !== "repo" || !p.branch) return null;
+  if (!canIntegrate(task) || p.kind !== "repo") return null;
   const base = p.baseBranch || "main";
   return (
     <div class="btns">
@@ -491,7 +492,7 @@ function DetailsToggle({ k, about }: { k: string; about?: string }) {
 /** Merge into main as a text button when it is the task's next step; its state in words after. */
 function MergeAction({ task }: { task: Task }) {
   const p = placeOf(task);
-  if (!finished(task) || attention(task) === "failed" || p.kind !== "repo" || !p.branch) return null;
+  if (!finished(task) || !canIntegrate(task) || p.kind !== "repo") return null;
   const base = p.baseBranch || "main";
   if (task.acting) return <span class="qs">{t(`result.acting.${task.acting}`, base)}</span>;
   if (task.unsure) return <Btn kind="text" size="sm" class="tb act" label={t("task.action.retry")} about={t("result.unsure")} onClick={() => A.retryAction(task.id)} />;
@@ -510,8 +511,7 @@ function MergeAction({ task }: { task: Task }) {
 function ResultDetails({ task, detail }: { task: Task; detail?: string }) {
   if (!finished(task)) return <TaskLine task={task} detail={detail} />;
   A.history(task.id);
-  const p = placeOf(task);
-  const pr = attention(task) !== "failed" && p.kind === "repo" && !!p.branch && !task.acting && !(task.acted?.ok && task.acted.action === "merge");
+  const pr = canIntegrate(task) && !task.acting && !(task.acted?.ok && task.acted.action === "merge");
   return (
     <>
       <ProofLine task={task} evs={resultEvidence(task)} withTitle />

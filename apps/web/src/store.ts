@@ -3,6 +3,7 @@
 // their acks, decisions with their resolutions, tasks with their streams, the On hand snapshot.
 // Pure data; tested without a DOM.
 import type { ActivityStep, Attention, Bodies, ClientFrame, Delivery, EvidenceRef, LogEvent, OnHand, Place, RoutineView, ServerFrame, TaskBody, TaskCard, UntilView, WaiterView } from "@ducter/protocol";
+import { hasBranchChanges } from "@ducter/protocol";
 
 export type Ev<K extends keyof Bodies = keyof Bodies> = LogEvent<K>;
 
@@ -91,6 +92,12 @@ export const attention = (t: Task): Attention => t.state?.attention ?? t.card?.a
 export const reasonOf = (t: Task) => t.state?.reason || t.card?.reason || "";
 export const placeOf = (t: Task): Place => t.open?.place ?? t.card?.place ?? { kind: "none" };
 export const reportOf = (t: Task) => t.lastReport ?? t.card?.lastReport;
+/** Merge into main / Open draft PR make sense: a repo task with a branch that holds something its
+ *  base doesn't (core checks at report time; unknown counts as yes). Never on a failed task. */
+export const canIntegrate = (t: Task): boolean => {
+  const p = placeOf(t);
+  return attention(t) !== "failed" && p.kind === "repo" && !!p.branch && hasBranchChanges(reportOf(t));
+};
 export const whoOf = (t: Task): TaskBody | undefined => t.body ?? t.card?.body;
 export const harnessOf = (t: Task) => whoOf(t)?.harness || t.open?.harness || t.card?.harness || "";
 export const modelOf = (t: Task) => { const w = whoOf(t); return w ? w.model ?? "" : t.open?.model || t.card?.model || ""; };

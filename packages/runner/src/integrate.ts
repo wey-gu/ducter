@@ -1,7 +1,7 @@
 // Integrating a task's branch outside its worktree: merge into the base branch in the user's
 // checkout (local, reversible with git) and open a draft PR (push + gh: an outside effect).
 // Never forces anything; every refusal says what to do in plain words.
-import type { Place } from "@ducter/protocol";
+import type { BranchChanges, Place } from "@ducter/protocol";
 import { git } from "./places.ts";
 
 export interface ActionResult {
@@ -43,6 +43,21 @@ export function mergeRefusal(out: string, branch: string, base: string, started:
     return `${branch} doesn't merge cleanly into ${base}: both changed the same lines. Nothing changed; ask the task to rebase onto ${base}.`;
   const first = out.split("\n").map((l) => l.trim()).find((l) => /^(fatal|error):/.test(l)) ?? out.trim().split("\n")[0] ?? "";
   return `git couldn't merge ${branch} into ${base}: ${first.replace(/^(fatal|error):\s*/, "")}. Nothing changed.`;
+}
+
+/** What the task branch holds that its base doesn't: commits ahead and uncommitted work in its
+ *  worktree. Cheap (two git calls); undefined when it can't tell (no base, no worktree). */
+export async function branchChanges(place: Place): Promise<BranchChanges | undefined> {
+  const p = repoOf(place);
+  if (!p || !p.baseBranch) return undefined;
+  const [ahead, status] = await Promise.all([
+    git(p.worktree!, ["rev-list", "--count", `${p.baseBranch}..${p.branch}`]),
+    git(p.worktree!, ["status", "--porcelain"]),
+  ]);
+  if (!ahead.ok || !status.ok) return undefined;
+  const commits = Number(ahead.out);
+  if (!Number.isFinite(commits)) return undefined;
+  return { commits, uncommitted: status.out.length > 0 };
 }
 
 /** Merge the task branch into its base branch in the user's own checkout. */

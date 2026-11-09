@@ -203,6 +203,14 @@ func (t *Task) Report() *protocol.Report {
 	return nil
 }
 
+// CanIntegrate is whether Merge into main / Open draft PR make sense: a
+// repo task with a branch that holds something its base doesn't (core
+// checks at report time; unknown counts as yes). Never on a failed task.
+func (t *Task) CanIntegrate() bool {
+	p := t.Place()
+	return t.Attention() != protocol.Failed && p.Kind == "repo" && p.Branch != "" && protocol.HasBranchChanges(t.Report())
+}
+
 // Who returns who does the task now and why: the latest body_selected,
 // else the card's, else nil (a task from before D89).
 func (t *Task) Who() *protocol.TaskBody {

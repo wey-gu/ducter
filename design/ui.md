@@ -113,6 +113,9 @@ buttons on the paper: **合进 main / Merge into main** (ink 700) when it is the
 check; "2 files changed ›" opening the task at its changes; the task's title as a quiet link),
 **开草稿 PR / Open draft PR** as a quiet link, and the message's **记下了 / Noted** lines with
 **忘掉 / Forget**. The opened task (D74) keeps Merge into main / Open draft PR as clay buttons.
+Neither action shows when the task's branch holds nothing its base doesn't: core checks the
+branch (commits ahead, uncommitted work) when a done or failed report lands and carries it on the
+report (`branch`); unknown keeps them, and the action itself still refuses in words.
 No blockquote rule, no label column, no capsules. Full note: `design/quiet-conversation.md`.
 
 **Notices: the app speaking, never the partner.** The partner speaks in 18px on the paper and

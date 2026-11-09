@@ -61,6 +61,10 @@ export interface Expect {
   waiter?: boolean;
   /** No waiter was armed (e.g. after an ask: the card waits by itself). */
   noWaiter?: boolean;
+  /** keep_going started a loop on a task (D113). */
+  until?: boolean;
+  /** routine_propose made a proposal card (D114). */
+  routine?: boolean;
   /** Regexes no visible text may match (e.g. an outcome claimed in the ack). */
   forbid?: RegExp[];
   /** Regexes the visible text (all messages joined) must match, every one. */
@@ -186,6 +190,32 @@ export const scenarios: Scenario[] = [
     steps: [{ user: "In two lines: when should I rebase instead of merge?" }],
     expect: { opens: 0, noSend: true, msgs: [1, 1], maxChars: 400 },
     rubric: "Answers directly in English, at most ~2-3 short lines, with a usable rule of thumb. No task opened, no headings, no filler.",
+  },
+
+  // ---------- work over time (D112-D115) ----------
+  {
+    id: "wait-pr-zh",
+    category: "work-over-time",
+    lang: "zh",
+    steps: [{ user: "cli/cli 的 PR #14964 合了告诉我" }],
+    expect: { opens: 0, waiter: true, msgs: [1, 2], maxChars: 90, proseForbid: [/模型|命令|gh |每\s*\d+\s*分钟|check|轮询/i] },
+    rubric: "It sets a wait for the PR to be merged (not a timer, not a task) and says so in one short Chinese line, optionally with what it sees now (e.g. still open). It never mentions commands, models, how often it checks, or polling.",
+  },
+  {
+    id: "keep-going-zh",
+    category: "work-over-time",
+    lang: "zh",
+    steps: [{ user: "~/dev/hawdb 的 main CI 挂了，一直修到绿" }],
+    expect: { opens: 1, until: true, ackFirst: true, maxChars: 90, proseForbid: [/模型|命令|判断/] },
+    rubric: "It opens one task to fix CI and makes it keep going until CI is green (keep_going), saying so once in one short Chinese line. No outcome claimed, no mechanism explained.",
+  },
+  {
+    id: "routine-zh",
+    category: "work-over-time",
+    lang: "zh",
+    steps: [{ user: "每周一早上 9 点给我一份周报，看看 hawdb 和 ducter 上周合了什么、卡在哪儿" }],
+    expect: { opens: 0, routine: true, msgs: [0, 1], maxChars: 90, proseForbid: [/已经(开始|设好|安排好)|模型|命令/] },
+    rubric: "It proposes a weekly routine (Mondays 9:00) with a proposal card and at most one short Chinese line; it does not claim the routine is already on before the user presses Go, and it does not restate the card.",
   },
 
   // ---------- B. work: ack naming the action, then silence ----------

@@ -40,16 +40,16 @@ const user = (text: string) => log.append({ stream: "channel", origin: "user", k
 
 // 1. "#1592's CI passes, tell me": a task waits on a check.
 const u1 = user(zh ? "#1592 的 CI 过了告诉我，过了就合" : "Tell me when #1592's CI passes, then merge it");
-await task("t_pr", zh ? "HawDB PR #1592：修 compaction 测试" : "HawDB PR #1592: fix the compaction test", repo("~/dev/hawdb", "ducter/compaction-fix"), "Merge #1592 once CI is green.");
+await task("t_pr", zh ? "HawDB PR #1592：修 compaction 测试" : "HawDB PR #1592: fix the compaction test", repo("~/dev/hawdb", "ducter/compaction-fix"), zh ? "#1592 的 CI 全绿了就合进 main。" : "Merge #1592 once CI is green.");
 const prCheck = { argv: ["gh", "pr", "checks", "1592", "--repo", "nowledge-co/hawdb", "--json", "state"], succeedWhen: { path: "[].state", equals: "SUCCESS" } };
-core.work.waiters.arm({ reason: zh ? "PR #1592 通过" : "PR #1592 passes", taskId: "t_pr", check: prCheck, everyMs: 5 * 60_000, until: new Date(Date.now() + 6 * 3600_000).toISOString() });
+core.work.waiters.arm({ reason: zh ? "PR #1592 通过" : "PR #1592 passes", taskId: "t_pr", check: prCheck, everyMs: 5 * 60_000, until: new Date(Date.now() + Number(process.env.DEMO_UNTIL_MIN ?? 360) * 60_000).toISOString() });
 say(zh ? "好，现在 6 项里还有 2 项在跑，全绿了我就合，再告诉你。" : "Will do. Two of the six checks are still running; I'll merge when it's all green and tell you.", u1.seq);
 void core.work.waiters.look(core.work.waiters.views()[0]!.waiterId);
 await tick();
 
 // 2. "Keep fixing until CI is green": two tries in, the third under way.
 const u2 = user(zh ? "main 的 CI 挂了，一直修到绿" : "main's CI is red; keep fixing until it's green");
-await task("t_ci", zh ? "一直修到 CI 绿：hawdb main" : "Keep fixing until CI is green: hawdb main", repo("~/dev/hawdb", "ducter/ci-green"), "Fix main's CI.");
+await task("t_ci", zh ? "一直修到 CI 绿：hawdb main" : "Keep fixing until CI is green: hawdb main", repo("~/dev/hawdb", "ducter/ci-green"), zh ? "把 main 的 CI 修绿。" : "Fix main's CI.");
 core.work.untils.start({ taskId: "t_ci", condition: zh ? "main 的 CI 全绿" : "main's CI is all green" });
 say(zh ? "好，我一直修，绿了告诉你。" : "On it. I'll keep at it until it's green.", u2.seq);
 report("t_ci", { state: "done", summary: zh ? "修了 3 个测试里的超时" : "Fixed the timeouts in 3 tests", questions: [], evidence: [] });
@@ -90,7 +90,7 @@ const nightly = await core.work.routines.propose({
   reports: "on_change",
 });
 log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body: { decisionId: nightly.decisionId!, option: "go", by: "user" } });
-core.work.routines.pause(nightly.routineId, "partner", "asked");
+core.work.routines.pause(nightly.routineId, "system", "unread"); // as if its last 3 reports went unread
 const u4 = user(zh ? "每个月 1 号早上把上个月的开销整理一下" : "On the 1st of each month, sort out last month's spending");
 say(zh ? "可以，这样安排：" : "Sure, like this:", u4.seq);
 await core.work.routines.propose({

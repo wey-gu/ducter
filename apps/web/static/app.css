@@ -2264,3 +2264,57 @@ details.how summary {
 :lang(zh) .routine-facts .v {
   line-break: strict;
 }
+
+/* The moment a wait comes true (D115): the bubble pops, the card springs up into Working.
+   Reduced motion: a crossfade. */
+.row.arrived {
+  position: relative;
+  animation: arrive 560ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes arrive {
+  from {
+    transform: translateY(56px) scale(0.98);
+    opacity: 0.4;
+  }
+}
+.pop-bub {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  width: 40px;
+  height: 36px;
+  margin-top: -18px;
+  border-radius: 50%;
+  background: var(--surface-raised);
+  box-shadow: 0 2px 0 var(--line-2);
+  animation: pop 320ms ease-out both;
+  pointer-events: none;
+}
+@keyframes pop {
+  to {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .row.arrived {
+    animation: arrive-fade 300ms ease-out both;
+  }
+  .pop-bub {
+    display: none;
+  }
+}
+@keyframes arrive-fade {
+  from {
+    opacity: 0;
+  }
+}
+/* The groove's captions sit by time: "now" under Ducter. */
+.tcap {
+  position: relative;
+}
+.tcap .tnow {
+  position: absolute;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}

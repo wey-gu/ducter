@@ -179,6 +179,8 @@ interface RunResult {
   recalls: { query: string; step: number }[];
   remembered: MemoryAdd[]; // saved (accepted by the fake Mem)
   memAttempts: { input: unknown; step: number }[]; // every memory_add call, refused ones too
+  /** Work over time (D112-D114): a keep-going loop started, a routine proposed. */
+  work?: { until: boolean; routine: boolean };
   retitles: { key: string; title: string; step: number }[]; // task_retitle, as new task_open events
   bridgeSent: FakeMsg[]; // what Ducter sent through the fake Bridge
 }
@@ -340,6 +342,10 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     if (e.origin === "partner" && PARTNER_KINDS.has(e.kind)) visible.push({ seq: e.seq, kind: e.kind as Visible["kind"], text: visibleText(e), step: stepOf(e.seq) });
     else if (e.kind === "waiter" && (e.body as Bodies["waiter"]).state === "armed") visible.push({ seq: e.seq, kind: "waiter", text: visibleText(e), step: stepOf(e.seq) });
   }
+  const work = {
+    until: core.log.read({ fromSeq: startSeq + 1, kinds: ["until"], limit: 100 }).some((e) => (e.body as Bodies["until"]).state === "on"),
+    routine: core.log.read({ fromSeq: startSeq + 1, kinds: ["routine"], limit: 100 }).some((e) => (e.body as Bodies["routine"]).state === "proposed"),
+  };
   // Decisions made by the partner keep their full shape for the judge.
   const decisions = core.log.read({ stream: "channel", fromSeq: startSeq + 1, kinds: ["decision"], limit: 100 }).filter((e) => e.origin === "partner");
   const retitles = core.log
@@ -397,7 +403,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
 
   await partner.close().catch(() => {});
   await core.stop().catch(() => {});
-  return { sc, visible, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n"), recalls, remembered: mem.added, memAttempts, retitles, bridgeSent };
+  return { sc, visible, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n"), recalls, remembered: mem.added, memAttempts, retitles, bridgeSent, work };
 }
 
 const r_opened = (o: Opened[], step: number) => o.filter((x) => x.step === step);
@@ -501,6 +507,8 @@ function check(r: RunResult): string[] {
   if (e.ask && !r.visible.some((v) => v.kind === "decision")) fails.push("no ask (decision)");
   if (e.waiter && !r.visible.some((v) => v.kind === "waiter")) fails.push("no reminder set");
   if (e.noWaiter && r.visible.some((v) => v.kind === "waiter")) fails.push("set a reminder nobody asked for");
+  if (e.until && !r.work?.until) fails.push("no keep-going loop on the task");
+  if (e.routine && !r.work?.routine) fails.push("no routine proposal card");
   for (const re of e.forbid ?? []) if (re.test(all)) fails.push(`says ${re}`);
   const prose = r.visible.filter((v) => v.kind === "ai_msg" || v.kind === "ack").map((v) => v.text).join("\n");
   for (const re of e.proseForbid ?? []) if (re.test(prose)) fails.push(`says ${re} in its own lines`);

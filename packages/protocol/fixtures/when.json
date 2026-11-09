@@ -1,0 +1,23 @@
+{
+  "_": "Human times, one rule for the desktop (apps/desktop/internal/i18n/when.go) and the phone (apps/web/src/format.ts); both test against these cases. Times are local wall clock. when: a moment; day: a date; clock: a time of day.",
+  "now": "2026-11-09T13:42:00",
+  "cases": [
+    { "fn": "clock", "at": "2026-11-09T09:05:00", "zh": "9:05", "en": "9:05" },
+    { "fn": "clock", "at": "2026-11-09T18:00:00", "zh": "18:00", "en": "18:00" },
+    { "fn": "when", "at": "2026-11-09T18:00:00", "zh": "今天 18:00", "en": "today 18:00" },
+    { "fn": "when", "at": "2026-11-08T09:40:00", "zh": "昨天 9:40", "en": "yesterday 9:40" },
+    { "fn": "when", "at": "2026-11-10T09:00:00", "zh": "明天 9:00", "en": "tomorrow 9:00" },
+    { "fn": "when", "at": "2026-11-13T09:00:00", "zh": "周五 9:00", "en": "Fri 9:00" },
+    { "fn": "when", "at": "2026-11-16T09:00:00", "zh": "11 月 16 日 9:00", "en": "Nov 16, 9:00" },
+    { "fn": "when", "at": "2026-12-01T09:00:00", "zh": "12 月 1 日 9:00", "en": "Dec 1, 9:00" },
+    { "fn": "when", "at": "2026-11-02T09:00:00", "zh": "11 月 2 日 9:00", "en": "Nov 2, 9:00" },
+    { "fn": "when", "at": "2027-01-04T09:00:00", "zh": "2027 年 1 月 4 日 9:00", "en": "Jan 4 2027, 9:00" },
+    { "fn": "day", "at": "2026-11-09T18:00:00", "zh": "今天", "en": "today" },
+    { "fn": "day", "at": "2026-11-10T09:00:00", "zh": "明天", "en": "tomorrow" },
+    { "fn": "day", "at": "2026-11-08T09:00:00", "zh": "昨天", "en": "yesterday" },
+    { "fn": "day", "at": "2026-11-12T09:00:00", "zh": "周四", "en": "Thu" },
+    { "fn": "day", "at": "2026-12-09T13:42:00", "zh": "12 月 9 日", "en": "Dec 9" },
+    { "fn": "day", "at": "2027-03-01T08:30:00", "zh": "2027 年 3 月 1 日", "en": "Mar 1 2027" },
+    { "fn": "md", "at": "2026-11-16T09:00:00", "zh": "11/16", "en": "11/16" }
+  ]
+}

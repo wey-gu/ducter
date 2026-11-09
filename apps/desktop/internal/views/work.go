@@ -9,9 +9,11 @@ import (
 	"fmt"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 
+	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
@@ -62,7 +64,7 @@ func (a *App) waitCadence(w *protocol.Waiter) string {
 		parts = append(parts, a.L.T("wait.every", max(1, int((w.EveryMs+30_000)/60_000))))
 	}
 	if at := store.ParseTime(w.LastLookAt); !at.IsZero() {
-		parts = append(parts, a.L.T("wait.last", a.when(at)))
+		parts = append(parts, a.tp("wait.last", (a.when(at))))
 	}
 	return strings.Join(parts, " · ")
 }
@@ -70,7 +72,7 @@ func (a *App) waitCadence(w *protocol.Waiter) string {
 // waitCaption is what a wait's card says in words: its deadline, or when a timer is due.
 func (a *App) waitCaption(w *protocol.Waiter) string {
 	if at := store.ParseTime(w.Until); !at.IsZero() {
-		return a.L.T("wait.until.cap", a.when(at))
+		return a.tp("wait.until.cap", (a.when(at)))
 	}
 	if at := store.ParseTime(w.At); !at.IsZero() && w.Check == nil && w.Event == nil {
 		return a.L.T("waiter.at", a.when(at))
@@ -83,6 +85,10 @@ func (a *App) waitLine(reason string) string {
 	r := strings.TrimSpace(reason)
 	if a.L.Lang == "zh" && r != "" && (r[0] < 0x80) {
 		r = " " + r
+	}
+	// "Waiting until the domain renewal email arrives": a capital that only starts the sentence goes.
+	if a.L.Lang != "zh" && len(r) > 1 && r[0] >= 'A' && r[0] <= 'Z' && r[1] >= 'a' && r[1] <= 'z' {
+		r = strings.ToLower(r[:1]) + r[1:]
 	}
 	return a.L.T("wait.line", r)
 }
@@ -98,6 +104,8 @@ func (a *App) groove(c *ui.Context, w *protocol.Waiter, big bool) {
 	}
 	f := float32(a.Now().Sub(from)) / float32(to.Sub(from))
 	f = min(1, max(0, f))
+	// Ducter moves only as time does: look again after about a three-hundredth of the wait.
+	c.After(max(time.Second, to.Sub(from)/300))
 	h, gh, who := float32(30), float32(8), float32(26)
 	if big {
 		h, gh, who = 40, 10, 36
@@ -117,11 +125,26 @@ func (a *App) groove(c *ui.Context, w *protocol.Waiter, big bool) {
 		}
 	})
 	if big {
+		// Captions by time: "now" under Ducter. Near the start it takes the start's place
+		// (the head says when it started); near the deadline it gives way.
+		cap := func(s string) ui.Element {
+			return ui.Text(c, s).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").Shrink(0)
+		}
+		nowText := a.tp("wait.now", (i18n.Clock(a.Now())))
+		start := a.tp("wait.started", (i18n.Clock(from)))
+		if f < 0.22 {
+			start = nowText
+		}
+		if f >= 0.22 && f <= 0.62 {
+			ui.Row(c.Key("tnow")).Children(func() {
+				ui.Box(c).Grow(f).Basis(0)
+				cap(nowText).TextColor(t.InkSoft)
+				ui.Box(c).Grow(1 - f).Basis(0)
+			})
+		}
 		ui.Row(c.Key("tcap")).Justify(ui.SpaceBetween).Gap(t.S2).Children(func() {
-			cap := func(s string) { ui.Text(c, s).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum") }
-			cap(a.L.T("wait.started", a.when(from)))
-			cap(a.L.T("wait.now", a.when(a.Now())))
-			cap(a.L.T("wait.until.ask", a.when(to)))
+			cap(start)
+			cap(a.tp("wait.until.ask", (a.when(to))))
 		})
 	}
 }
@@ -364,6 +387,32 @@ func describePredicate(p protocol.Predicate) string {
 	return strings.Join(parts, ", ")
 }
 
+// pausedWhy is why a routine is paused, in words: "停着：连着 3 次你没看".
+func (a *App) pausedWhy(r *protocol.Routine) string {
+	switch {
+	case r.PauseReason != "" && r.PauseReason != "asked":
+		return a.L.T("routine.paused." + r.PauseReason)
+	case r.PausedBy == "user":
+		return a.L.T("routine.paused.by_you")
+	}
+	return a.L.T("routine.paused.by_partner", a.S.PersonaName)
+}
+
+// arrived is how long ago a task's wait came true, if within the moment
+// its card pops and glides into Working (D115).
+func (a *App) arrived(c *ui.Context, taskID string) bool {
+	at, ok := a.S.Arrived[taskID]
+	if !ok {
+		return false
+	}
+	left := 1600*time.Millisecond - time.Since(at)
+	if left <= 0 {
+		return false
+	}
+	c.After(left)
+	return true
+}
+
 // routines are the routines on the shelf: on or paused.
 func (a *App) routines() []protocol.Routine {
 	if a.S.OnHand == nil {
@@ -432,25 +481,24 @@ func (a *App) routineCard(c *ui.Context, r *protocol.Routine) {
 			if paused {
 				name.TextColor(t.InkMuted)
 			}
-			ui.Text(c, r.TriggerWords).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(2)
+			// A condition routine's name already says its condition.
+			if r.Trigger.Kind == "time" && !strings.Contains(r.Name, r.TriggerWords) {
+				ui.Text(c, r.TriggerWords).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(2)
+			}
 			if !paused && r.Trigger.Kind == "time" {
 				a.runStrip(c, r, 3)
 			}
 			line := ""
 			switch {
 			case paused:
-				reason := r.PauseReason
-				if reason == "" {
-					reason = "asked"
-				}
-				line = a.L.T("routine.paused." + reason)
+				line = a.pausedWhy(r)
 			case r.Running != "":
 				line = a.L.T("routine.running")
 			case r.NextAt != "":
-				line = a.L.T("routine.next", a.when(store.ParseTime(r.NextAt)))
+				line = a.tp("routine.next", (a.when(store.ParseTime(r.NextAt))))
 			}
 			if r.LastRun != nil && r.LastRun.At != "" {
-				line = strings.Join(nonEmpty(line, a.L.T("routine.last."+r.LastRun.State, a.when(store.ParseTime(r.LastRun.At)))), " · ")
+				line = strings.Join(nonEmpty(line, a.tp("routine.last."+r.LastRun.State, (a.day(store.ParseTime(r.LastRun.At))))), " · ")
 			}
 			if line != "" {
 				ui.Text(c, line).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(2)
@@ -493,6 +541,6 @@ func (a *App) routineFacts(c *ui.Context, id string, ink ui.Color) {
 		row(a.L.T("routine.reports"), func() { text(a.L.T("routine.reports." + r.Reports)) })
 		row(a.L.T("routine.touch"), func() { text(a.L.T("routine.effect." + r.Effect)) })
 		row(a.L.T("routine.budget"), func() { text(a.L.T("routine.cost")) })
-		row(a.L.T("routine.review"), func() { text(a.L.T("routine.review.v", a.when(store.ParseTime(r.ReviewAt)))) })
+		row(a.L.T("routine.review"), func() { text(a.tp("routine.review.v", (a.day(store.ParseTime(r.ReviewAt))))) })
 	})
 }

@@ -119,6 +119,8 @@ export class Store {
   tasks = new Map<string, Task>();
   onHand?: OnHand;
   waiters = new Map<string, WaiterView>();
+  /** Tasks whose wait just came true, and when (for the pop and glide, D115). */
+  arrived = new Map<string, number>();
   errors: string[] = [];
   /** 记下了 / Noted lines in the channel, shown inside the Details of the reply they belong to (D104). */
   noted: { seq: number; title: string; memoryId?: string; replyTo?: number }[] = [];
@@ -238,6 +240,8 @@ export class Store {
     }
     if (ev.kind === "waiter") {
       const w = ev.body as Bodies["waiter"];
+      // The moment a task's wait comes true (D115): its card pops and glides to Working.
+      if (w.state === "fired" && w.taskId && (w.check || w.event)) this.arrived.set(w.taskId, Date.now());
       // A routine's watch lives on its card (D114), not as a wait.
       if (w.state === "armed" && !w.routineId) this.waiters.set(w.waiterId, { ...this.waiters.get(w.waiterId), ...w });
       else this.waiters.delete(w.waiterId);
@@ -466,6 +470,12 @@ export class Store {
 
   routine(id: string | undefined): RoutineView | undefined {
     return id ? this.routines().find((r) => r.routineId === id) : undefined;
+  }
+
+  /** Whether a task's wait came true in the last moment: its card arrives with the pop and glide. */
+  justArrived(taskId: string, now = Date.now()): boolean {
+    const at = this.arrived.get(taskId);
+    return at !== undefined && now - at < 1600;
   }
 
   /** A task's `until` loop and its tries (D113). */

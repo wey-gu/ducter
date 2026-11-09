@@ -303,7 +303,7 @@ function carriedTask(c: Carried, title: unknown, take: boolean): Carried["tasks"
   return take ? c.tasks.splice(i, 1)[0] : c.tasks[i];
 }
 
-const OPENED_NOTE = "Task opened. It reports back on its own. Your turn is done: write nothing more and call nothing else (no wait_until for it, no checking on it).";
+const OPENED_NOTE = "Task opened. It reports back on its own. Your turn is done: write nothing more and call nothing else (no wait_until for it, no checking on it), except keep_going on it when the user asked to keep at it until something holds (\"一直修到 CI 绿\").";
 const generatedAck = (zh: boolean, title: string) => (zh ? `好，我去做：${title}` : `On it: ${title}`);
 
 let idCounter = 0;

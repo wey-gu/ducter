@@ -251,7 +251,7 @@ export function createWork(o: WorkOptions): Work {
           triggerWords: v.triggerWords,
           ...(v.upcoming ? { next: v.upcoming } : {}),
           ...(v.dryRun ? { now: v.dryRun.summary } : {}),
-          note: "The proposal card is in front of the user with Go / Hold. Say one short line and end your turn; it starts only on Go.",
+          note: "The proposal card is in front of the user. Say at most one short line that does not repeat the card (no times, no what, no buttons, never that it is on), e.g. 这样安排，你看看 / Here is how it would go. Then end your turn.",
         };
       } catch (err) {
         return { ok: false, error: (err as Error).message };

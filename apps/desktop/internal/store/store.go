@@ -290,6 +290,8 @@ type Store struct {
 	// Waiters are the waiters known, by id (from waiter events and the
 	// snapshot's armed list).
 	Waiters map[string]*protocol.Waiter
+	// Arrived is when a task's wait came true (D115): its card pops and glides into Working.
+	Arrived map[string]time.Time
 	// Errors are the server's error frames, newest last.
 	Errors []string
 	// Welcomed is set once the server said welcome on this store.
@@ -559,6 +561,12 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 		}
 	}
 	if w, ok := body.(*protocol.Waiter); ok {
+		if w.State == protocol.WaiterFired && w.TaskID != "" && (w.Check != nil || w.Event != nil) {
+			if s.Arrived == nil {
+				s.Arrived = map[string]time.Time{}
+			}
+			s.Arrived[w.TaskID] = time.Now()
+		}
 		// A routine's watch lives on its routine card (D114), not as a wait.
 		if w.State == protocol.WaiterArmed && w.RoutineID == "" {
 			if prev := s.Waiters[w.WaiterID]; prev != nil {

@@ -63,6 +63,14 @@ async function turn(t: ScriptedTurn) {
       t.signal.addEventListener("abort", () => (clearTimeout(timer), r()));
     });
     if (t.signal.aborted) return;
+    // "改 / change" in the brief: really commit one small file in a repo place, so Merge into
+    // main has something to merge (a task that changed nothing offers no Merge).
+    const cwd = String((t.options as { cwd?: string }).cwd ?? "");
+    if (!resumed && /改|change|edit/i.test(t.input) && cwd && Bun.spawnSync(["git", "-C", cwd, "rev-parse", "--git-dir"]).exitCode === 0) {
+      await Bun.write(`${cwd}/SCRIPTED-DEMO.md`, cn ? "演示模式写的文件。\n" : "Written by the scripted demo.\n");
+      Bun.spawnSync(["git", "-C", cwd, "add", "SCRIPTED-DEMO.md"]);
+      Bun.spawnSync(["git", "-C", cwd, "-c", "user.name=Ducter demo", "-c", "user.email=demo@ducter.invalid", "commit", "-qm", "Scripted demo change"]);
+    }
     const summary = cn ? "做完了（演示模式：没有真实模型，这是脚本写的结果）。" : "Done (scripted demo: no real model; this result is canned).";
     if (mcp) await t.tool("mcp__ducter__report_to_main", JSON.stringify({ state: "done" }), () => callTool(mcp, "report_to_main", { state: "done", summary }));
     return;
@@ -83,7 +91,8 @@ async function turn(t: ScriptedTurn) {
     const names = [...(t.input.match(/^\[devices\].*$/m)?.[0] ?? "").matchAll(/· ([^\s(·]+) \(/g)].map((m) => m[1]!);
     const device = names.find((n) => said.includes(n));
     const repo = said.match(/~\/[\w./-]+/)?.[0]; // "在 vps-worker 上改 ~/dev/demo"
-    const place = device ? (repo ? { kind: "repo", device, repoPath: repo } : { kind: "none", device }) : undefined;
+    // A repo named without a device works on this machine.
+    const place = repo ? { kind: "repo", device: device ?? "local", repoPath: repo } : device ? { kind: "none", device } : undefined;
     const args = { title, brief: said, ...(place ? { place } : {}) };
     t.say(cn ? `好，我去做：${title}${device ? `（在 ${device} 上）` : ""}` : `On it: ${title}${device ? ` (on ${device})` : ""}`);
     await t.tool("mcp__ducter__task_open", JSON.stringify(args), () => callTool(mcp, "task_open", args));

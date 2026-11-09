@@ -146,6 +146,20 @@ note and a `Dn`) before it is built.
       boundary, action allow/block policy, MCP surface, license: modified Apache 2.0 that
       bars offering it as a hosted service, which embedding in Ducter is not). Trigger: the
       first user scenario that needs mail or calendar.
+- [ ] **oo's own read/write hint and action list** (D122, `connectors.md` §4.4). oo has no "list
+      actions" and `connector schema` carries no read/write; OOMOL has both (its generated
+      `oo-gmail` skill tags `[write]` / `[destructive]`). Ask OOMOL to expose them, then use
+      them over the verb rule (keep the rule as the fallback). Trigger: the next oo release, or
+      a conversation with OOMOL.
+- [ ] **A task loaded the user's own Claude skills** (`oo-gmail`) although the clean setup sets
+      `userConfiguration: "exclude"`. oo is now signed out for every session (D122 (6)), but
+      other user skills that act on accounts are still reachable. Check what OAR's exclude
+      covers for skills and close it. Trigger: the next harness change.
+- [ ] **Connections in the CLI** (`ducter accounts`, the oo tap and the address form) for a
+      server with no app attached. Trigger: the first headless user who wants mail.
+- [ ] **Partner eval cases for accounts**: share with a task in the same turn; a Go label in one
+      language (the live trial got "存为草稿 / Save as draft", against D109); read message bodies
+      before flagging, not only snippets. Trigger: the next eval round.
 - [ ] **Nowledge Bridge live** (`design/bridge.md`): the live J1 round trip, then outbound
       (J4). Trigger: the account is enabled for Bridge.
 

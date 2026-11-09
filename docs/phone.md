@@ -1,7 +1,7 @@
 ---
 title: Your phone
 description: Connect your phone to Ducter, get notified only when something needs you, and keep your nights quiet.
-order: 6
+order: 7
 ---
 
 # Your phone

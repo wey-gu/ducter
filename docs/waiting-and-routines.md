@@ -1,7 +1,7 @@
 ---
 title: Waiting, keep going, routines
 description: Ask Ducter to tell you when something happens, to keep at a task until it works, or to do something every week.
-order: 5
+order: 6
 ---
 
 # Waiting, keep going, routines

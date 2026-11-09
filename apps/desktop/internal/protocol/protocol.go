@@ -290,11 +290,19 @@ type Until struct {
 }
 
 type UntilTry struct {
-	N       int    `json:"n"`
-	Verdict string `json:"verdict"` // met | better | same | worse | unknown
-	Summary string `json:"summary"`
-	By      string `json:"by"`
-	At      string `json:"at,omitempty"`
+	// Progress is how much of a countable goal holds after the try (4 of 6 checks pass).
+	Progress *Progress `json:"progress,omitempty"`
+	N        int       `json:"n"`
+	Verdict  string    `json:"verdict"` // met | better | same | worse | unknown
+	Summary  string    `json:"summary"`
+	By       string    `json:"by"`
+	At       string    `json:"at,omitempty"`
+}
+
+// Progress is a countable goal's state: Done of Total.
+type Progress struct {
+	Done  int `json:"done"`
+	Total int `json:"total"`
 }
 
 // Routine is a routine (例行, D114) as On hand shows it (RoutineView).

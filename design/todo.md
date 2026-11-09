@@ -272,11 +272,11 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [x] One Bun for everything: 1.4.4 for CI, the web bundle and the CLI (build:web fetches it
       with npx when the Mac has another).
 - [ ] Intel Mac DMG (a `macos-15-intel` job). Trigger: someone asks for Intel.
-- [ ] Linux CI on GitHub: the first run (2026-11-09) failed on machine-dependent tests only (git
+- [ ] CI on GitHub: the first run (2026-11-09) failed on machine-dependent tests only (git
       identity, installed harnesses), now fixed and reproduced on the Mac with a clean env
-      (`design/release/README.md`, "Tests are hermetic"). Close once a GitHub run is green.
-- [ ] Release notes for v0.0.1: no `CHANGELOG.md`, so the first tag's notes would list every
-      commit in history (~430). Trigger: before the first tag, add a `## 0.0.1` section.
+      (`design/release/README.md`, "Tests are hermetic"). The second found the Go job can't run
+      on Linux (the views' text measures differently; plutil is macOS-only), so it runs on
+      macos-15. Close once a GitHub run is green.
 
 ## App lifecycle (D72)
 

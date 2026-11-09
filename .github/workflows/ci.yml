@@ -1,11 +1,12 @@
 name: CI
 
-# Every PR and every push to main. Two Linux jobs in parallel, a few minutes each:
+# Every PR and every push to main. Two jobs in parallel, a few minutes each:
 #   ts  bun test (0 failures), both tsc configs, the committed web bundle is fresh, Markdown links
 #       resolve, no work evidence in git
 #   go  apps/desktop: gofmt, go vet (darwin + linux), go test, and a darwin build
-# MyGo binds AppKit through purego (no cgo), so the darwin build cross-compiles on Linux and the
-# tests run there too; nothing here needs a macOS runner (10x the minutes on a private repo).
+# The Go job runs on macOS, the app's only platform: its view tests measure text with the real
+# font stack and use macOS tools (plutil). On Linux the same layout measured differently and
+# failed. macOS runners cost 10x the minutes on a private repo; they are free on a public one.
 # The macOS app, the Linux bundles and the iPhone app are built by release.yml on a v* tag.
 
 on:
@@ -72,7 +73,7 @@ jobs:
 
   go:
     name: desktop (Go)
-    runs-on: ubuntu-latest
+    runs-on: macos-15
     timeout-minutes: 15
     defaults:
       run:
@@ -100,7 +101,7 @@ jobs:
           go vet ./...
 
       - name: go build (darwin/arm64, the app's target)
-        run: GOOS=darwin GOARCH=arm64 go build -trimpath -o /dev/null .
+        run: go build -trimpath -o /dev/null .
 
       - name: go test
         run: go test ./...

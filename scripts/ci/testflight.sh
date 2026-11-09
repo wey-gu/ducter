@@ -8,6 +8,7 @@
 #
 #   DUCTER_TESTFLIGHT_DRY_RUN=1   archive unsigned and stop: proves the Release build compiles,
 #                                 needs no key and touches no Apple account.
+#   DUCTER_TESTFLIGHT_PUBLIC=0    upload only: don't add it to "Public Beta" or submit it for review.
 #
 # Signing is Xcode's automatic signing with the API key (-allowProvisioningUpdates plus
 # -authenticationKey*): Xcode registers the App ID and its Push capability if needed, makes a
@@ -98,3 +99,15 @@ xcodebuild -exportArchive -archivePath "$WORK/$SCHEME.xcarchive" \
 
 echo "uploaded $SCHEME $MARKETING_VERSION ($BUILD_NUMBER). App Store Connect processes it for"
 echo "TestFlight in about 5-15 minutes; internal testers get it as soon as it is processed."
+
+# The public beta: once processed, into the external group "Public Beta" and submitted for Beta
+# App Review (scripts/ci/testflight-beta.ts). A problem there is a warning, never a failed release.
+if [ "${DUCTER_TESTFLIGHT_PUBLIC:-1}" = 1 ]; then
+  BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' \
+    "$WORK/$SCHEME.xcarchive/Products/Applications/$SCHEME.app/Info.plist" 2>/dev/null || true)"
+  if command -v bun >/dev/null 2>&1 && [ -n "$BUNDLE_ID" ]; then
+    ASC_KEY_PATH="$KEY" bun "$ROOT/scripts/ci/testflight-beta.ts" "$BUNDLE_ID" "$MARKETING_VERSION" "$BUILD_NUMBER" || true
+  else
+    echo "::warning::TestFlight Public Beta: no bun or no bundle id; add the build to Public Beta by hand."
+  fi
+fi

@@ -81,6 +81,14 @@ xcrun altool --upload-app -f "$RUNNER_TEMP/export/Ducter.ipa" -t ios \
    is a known limit (see research/32, "Push for other people's Ducters").
 5. **TestFlight testers.** App Store Connect → the app → TestFlight → Internal Testing → add
    yourself. Internal builds need no review.
+6. **Public beta.** An external group named **Public Beta** with a public link
+   (https://testflight.apple.com/join/Z4GvWt7t; first build submitted 2026-11-10). After each
+   upload `scripts/ci/testflight.sh` runs `scripts/ci/testflight-beta.ts`: it waits (up to 20
+   minutes, `TESTFLIGHT_WAIT_MINUTES`) for the build's `processingState` to be `VALID`, adds it to
+   that group and submits it for Beta App Review through the App Store Connect API with the same
+   key. A missing group, a refused submission or a timeout is a `::warning::`, never a failed
+   release; then add the build in App Store Connect › TestFlight by hand.
+   `DUCTER_TESTFLIGHT_PUBLIC=0` uploads only. The key needs App Manager or Admin.
 
 ## Putting it on a phone before TestFlight
 

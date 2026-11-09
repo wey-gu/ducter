@@ -736,6 +736,15 @@ type DeviceUpdateReq struct {
 	Check  bool   `json:"check,omitempty"`
 }
 
+// AgentUpdateReq is 更新 / Update on an AI agent's row (D153). Answered with
+// agent_update_result; progress comes as fresh devices frames.
+type AgentUpdateReq struct {
+	T       string `json:"t"` // "agent_update"
+	Device  string `json:"device"`
+	Harness string `json:"harness"`
+	Check   bool   `json:"check,omitempty"`
+}
+
 // ---------- Connections (D96: the user's OpenConnector or other MCP servers) ----------
 
 // ConnectionsReq asks for the user's connections and keeps this socket told
@@ -975,6 +984,35 @@ type DeviceHarness struct {
 	Models       []HarnessModel `json:"models,omitempty"`
 	CanBePartner bool           `json:"canBePartner"`
 	Billing      string         `json:"billing,omitempty"`
+	// D153: the installed version, how it was installed (npm, brew,
+	// installer, app, ducter, unknown), the newest on that channel, whether
+	// it can be updated from here, where it stands against the versions
+	// Ducter verified, and an update under way.
+	Version        string       `json:"version,omitempty"`
+	How            string       `json:"how,omitempty"`
+	Latest         string       `json:"latest,omitempty"`
+	Available      bool         `json:"available,omitempty"`
+	Standing       string       `json:"standing,omitempty"`
+	LatestVerified *bool        `json:"latestVerified,omitempty"`
+	Update         *AgentUpdate `json:"update,omitempty"`
+}
+
+// AgentUpdate is one AI agent's update on a device (D153): waiting,
+// updating, checking, done or failed with a reason.
+type AgentUpdate struct {
+	Phase      string `json:"phase"`
+	From       string `json:"from"`
+	To         string `json:"to,omitempty"`
+	Reason     string `json:"reason,omitempty"`
+	Detail     string `json:"detail,omitempty"`
+	RolledBack bool   `json:"rolledBack,omitempty"`
+	At         string `json:"at,omitempty"`
+	By         string `json:"by,omitempty"`
+}
+
+// Running reports an agent update under way.
+func (u *AgentUpdate) Running() bool {
+	return u != nil && (u.Phase == "waiting" || u.Phase == "updating" || u.Phase == "checking")
 }
 
 type DeviceAbility struct {
@@ -1166,6 +1204,8 @@ type ServerFrame struct {
 	// update_result (D148): Device, OK, Reason, Detail, and with a check the
 	// device's Update. disconnect_result: Device, OK, Reason.
 	Update *DeviceUpdate `json:"update,omitempty"`
+	// agent_update_result (D153): Device, Harness, OK, Reason, Detail.
+	Harness string `json:"harness,omitempty"`
 	// first_screen (D149): the empty conversation's words from the home.
 	First *FirstScreen `json:"first,omitempty"`
 	// D151 live view: live (ID, DecisionID, State open|closed, Site, URL, Title,
@@ -1319,7 +1359,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	}
 	switch f.T {
 	case "welcome", "events", "on_hand", "task_history", "sent", "action_result", "error",
-		"devices", "ability_result", "pair_code", "rename_result", "disconnect_result", "update_result", "settings", "connections", "connection_result", "rules", "candidates", "activity",
+		"devices", "ability_result", "pair_code", "rename_result", "disconnect_result", "update_result", "agent_update_result", "settings", "connections", "connection_result", "rules", "candidates", "activity",
 		"task_new_options", "task_new_result", "open_task", "open_result":
 	default:
 		return f, fmt.Errorf("unknown server frame %q", f.T)

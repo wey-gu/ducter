@@ -3,6 +3,7 @@
 // errors and model catalogs. No model calls, no logins, nothing written.
 //   bun scripts/probe-harnesses.ts            # print what holds and what drifted
 //   bun scripts/probe-harnesses.ts --strict   # exit 1 on any drift (for a periodic re-verify)
+//   bun scripts/probe-harnesses.ts --offline  # skip reading each channel's latest version (D153)
 // A version outside the verified range is drift until someone re-runs the live checks behind the
 // facts (design/harnesses.md) and widens `verified`.
 import { readFileSync, realpathSync } from "node:fs";
@@ -99,6 +100,33 @@ for (const h of HARNESS_IDS) {
 }
 probeClaude();
 probeCodex();
+if (!process.argv.includes("--offline")) await probeChannels();
+
+/**
+ * D153: the latest version on every channel each agent ships on (harness-facts `channels`), and
+ * whether Ducter verified it, so widening `verified` starts from what users will get. How this
+ * Mac's own copy was installed is said too. Reads only; `--offline` skips it.
+ */
+async function probeChannels() {
+  const { agentHow } = await import("../packages/core/src/harness-probe.ts");
+  const { parseLatest, latestUrl, inVerified } = await import("../packages/core/src/agents.ts");
+  for (const h of HARNESS_IDS) {
+    const bin = binaryOf(HARNESS_FACTS[h].version.command[0]!);
+    if (bin) say(h, "installed via", null, agentHow(h, bin).how);
+    for (const how of ["npm", "brew", "installer"] as const) {
+      const url = latestUrl(h, how);
+      if (!url) continue;
+      try {
+        const r = await fetch(url, { headers: { accept: "application/json, text/plain", "user-agent": "ducter-probe" }, signal: AbortSignal.timeout(10_000) });
+        const v = r.ok ? parseLatest(await r.text()) : undefined;
+        if (!v) say(h, `latest (${how})`, null, `${url}: ${r.status}`);
+        else say(h, `latest (${how})`, inVerified(h, v) ? true : null, `${v}${inVerified(h, v) ? " (verified)" : " (not verified yet)"}`);
+      } catch (err) {
+        say(h, `latest (${how})`, null, `${url}: ${(err as Error).message}`);
+      }
+    }
+  }
+}
 
 const mark = (ok: boolean | null) => (ok === true ? "ok   " : ok === false ? "DRIFT" : "skip ");
 for (const l of lines) console.log(`${mark(l.ok)} ${l.harness.padEnd(17)} ${l.what}${l.detail ? `: ${l.detail}` : ""}`);

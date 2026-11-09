@@ -201,6 +201,15 @@ func (h *hub) handleDevices(c *conn, f protocol.ClientFrame) bool {
 				time.Sleep(80 * time.Millisecond)
 			}
 		}()
+	case "agent_update":
+		// D153: an AI agent's steps, a beat each (AgentStep sets one directly for pictures).
+		c.send(map[string]any{"t": "agent_update_result", "device": f.Device, "harness": f.Harness, "ok": true})
+		go func() {
+			for _, p := range []string{"waiting", "updating", "checking", "done"} {
+				h.AgentStep(f.Device, f.Harness, p)
+				time.Sleep(80 * time.Millisecond)
+			}
+		}()
 	case "rename_device":
 		name := strings.TrimSpace(f.Name)
 		d.mu.Lock()
@@ -271,6 +280,37 @@ func (h *hub) UpdateStep(device, phase string, progress float64) {
 				nu.Reason, nu.RolledBack = "health", true
 			}
 			list[i].Update = &nu
+		}
+		return list
+	})
+}
+
+// AgentStep sets one AI agent's update step on a device's card (D153), as
+// the main would after agent_update; done moves its version to latest.
+func (h *hub) AgentStep(device, harness, phase string) {
+	h.SetDevices(func(list []protocol.DeviceView, _ *protocol.Reach) []protocol.DeviceView {
+		for i := range list {
+			if list[i].ID != device {
+				continue
+			}
+			for j := range list[i].Harnesses {
+				ah := &list[i].Harnesses[j]
+				if ah.Harness != harness {
+					continue
+				}
+				from := ah.Version
+				if ah.Update != nil && ah.Update.From != "" {
+					from = ah.Update.From
+				}
+				u := &protocol.AgentUpdate{Phase: phase, From: from, To: ah.Latest, At: time.Now().UTC().Format(time.RFC3339), By: "user"}
+				switch phase {
+				case "done":
+					ah.Version, ah.Available, ah.Standing = ah.Latest, false, "unknown"
+				case "failed":
+					u.Reason, u.RolledBack = "version", true
+				}
+				ah.Update = u
+			}
 		}
 		return list
 	})

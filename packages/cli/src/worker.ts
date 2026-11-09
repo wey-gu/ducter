@@ -13,11 +13,12 @@ import type { T } from "./i18n.ts";
 import * as runnerMod from "@ducter/runner";
 import { scriptedHarness } from "./scripted.ts";
 import { localDeviceKind } from "@ducter/core/src/devices.ts";
-import { probeHarnesses as probeLocalHarnesses } from "@ducter/core/src/harness-probe.ts";
+import { detectAgent, probeHarnesses as probeLocalHarnesses } from "@ducter/core/src/harness-probe.ts";
+import { createWorkerAgentUpdater } from "@ducter/core/src/agents.ts";
 import { migrateKeys, readKeys, scrubKeysFromEnv } from "@ducter/protocol/src/keys.ts";
 import { isCompiled } from "./doctor.ts";
 import { createWorkerUpdater, lastOutcome, type WorkerUpdater } from "./update.ts";
-import { updateHow, writeAlive } from "@ducter/core/src/update.ts";
+import { realSys, updateHow, writeAlive } from "@ducter/core/src/update.ts";
 
 /** Exit status when the main refuses this worker; the unit sets RestartPreventExitStatus to it. */
 export const EXIT_REFUSED = 3;
@@ -72,7 +73,24 @@ async function probeHarnesses(_t: T, dataDir: string) {
     which: (c) => host.which(c),
     dataDir,
   });
-  return found.map((h) => ({ id: h.harness, installed: h.installed, loggedIn: h.loggedIn }));
+  // D153: each agent's version and how it was installed ride along; the main reads its latest.
+  return found.map((h) => ({ id: h.harness, installed: h.installed, loggedIn: h.loggedIn, ...(h.version ? { version: h.version } : {}), ...(h.how ? { how: h.how } : {}) }));
+}
+
+/** D153: the main's `agent_update` op on this machine (core agents.ts), with the real updaters. */
+function workerAgentUpdater(t: T, dataDir: string) {
+  const host = realHost();
+  const exec = async (argv: string[], ms?: number) => {
+    const r = await realSys.run(argv, { timeoutMs: ms ?? 15_000 });
+    return { code: r.code, out: r.out };
+  };
+  const probe = { exec, which: (c: string) => host.which(c), env: process.env, dataDir };
+  return createWorkerAgentUpdater({
+    sys: realSys,
+    detect: (h) => detectAgent(h, probe),
+    loggedIn: async (h) => (await probeLocalHarnesses({ ...probe, only: [h] }))[0]?.loggedIn ?? false,
+    probe: () => probeHarnesses(t, dataDir),
+  });
 }
 
 export async function cmdWorker(o: { t: T; style: Style; args: Args; dataDir: string }): Promise<number> {
@@ -131,7 +149,8 @@ export async function cmdWorker(o: { t: T; style: Style; args: Args; dataDir: st
   const s = saved;
   const dataDir = o.dataDir;
   const updater = createWorkerUpdater({ dataDir, version: pkg.version, how: hello.how });
-  const code = await stayConnected(s, hello, t, style, (send) => runnerMod.createWorkerHost({ dataDir, harness, mainBase: s.url, deviceToken: s.token, send }), updater, () => {
+  const agentUpdater = workerAgentUpdater(t, dataDir);
+  const code = await stayConnected(s, hello, t, style, (send) => runnerMod.createWorkerHost({ dataDir, harness, mainBase: s.url, deviceToken: s.token, send }), updater, agentUpdater, () => {
     // Reached the main: a restart after an update is healthy now (update.ts waitHealthy).
     writeAlive(dataDir, pkg.version);
     lastOutcome(dataDir, { markReported: true });
@@ -156,6 +175,7 @@ async function stayConnected(
   style: Style,
   makeHost: (send: (f: object) => void) => runnerMod.WorkerHost,
   updater?: WorkerUpdater,
+  agentUpdater?: ReturnType<typeof createWorkerAgentUpdater>,
   onWelcome?: () => void,
 ): Promise<number> {
   let backoff = 1000;
@@ -175,10 +195,13 @@ async function stayConnected(
         const f = JSON.parse(String(m.data));
         // D148: the update op runs beside the host; it reports over whichever socket is up.
         if (f.t === "req" && f.op === "update" && updater) return void updater.handle(f, (x) => ws.readyState === WebSocket.OPEN && ws.send(JSON.stringify(x)), host);
+        // D153: updating one of this machine's AI agents, the same way.
+        if (f.t === "req" && f.op === "agent_update" && agentUpdater) return void agentUpdater.handle(f, (x) => ws.readyState === WebSocket.OPEN && ws.send(JSON.stringify(x)), host);
         if (f.t === "req") return void host.handle(f);
         if (f.t === "welcome") {
           backoff = 1000;
           updater?.attach((x) => ws.readyState === WebSocket.OPEN && ws.send(JSON.stringify(x)));
+          agentUpdater?.attach((x) => ws.readyState === WebSocket.OPEN && ws.send(JSON.stringify(x)));
           onWelcome?.();
           if (!announced) console.log(`  ${style.ok("●")} ${t("worker.connected", { url: s.url, name: s.name })}`);
           announced = true;

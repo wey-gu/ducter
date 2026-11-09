@@ -21,6 +21,7 @@ type cardState struct {
 	more      map[string]bool       // devices whose not-signed-in AI accounts are shown
 	answer    *protocol.ServerFrame // the last update_result that said no
 	asked     string                // the device an update was asked for
+	agent     *protocol.ServerFrame // the last agent_update_result that said no (D153)
 }
 
 // drainDeviceResults reads the server's answer to the last disconnect or
@@ -44,6 +45,13 @@ func (a *App) drainDeviceResults() {
 			}
 		} else {
 			d.card.cutFailed = res.Reason
+		}
+	case "agent_update_result":
+		if res.OK {
+			d.card.agent = nil
+		} else {
+			fc := *res
+			d.card.agent = &fc
 		}
 	case "update_result":
 		if res.Update != nil {

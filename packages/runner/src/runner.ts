@@ -414,6 +414,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
 
   async function startSession(t: TaskRt, resume: boolean) {
     await prepareSpec(t);
+    // D153: its agent is being updated on this machine: start once the updater is done (at most 15 min).
+    for (const end = Date.now() + 15 * 60_000; harnessHold.has(t.spec.harness) && !t.ops.device && Date.now() < end; ) await Bun.sleep(1000);
     const spec: SessionSpec = resume && t.sessionId ? { ...t.spec, resumeSessionId: t.sessionId } : t.spec;
     const session = await t.ops.harness.start(spec);
     t.session = session;
@@ -1052,6 +1054,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
   // D148: what a restart mustn't cut short (a merge, an undo, a keep), and the hold an update
   // sets while it restarts Ducter.
   const inCritical = new Map<string, number>();
+  const harnessHold = new Set<string>();
   let criticalHold: string | undefined;
   async function critical<R>(taskId: string, refused: R, fn: () => Promise<R>): Promise<R> {
     if (criticalHold) return refused;
@@ -1069,6 +1072,10 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     critical: () => [...inCritical.keys()],
     holdCritical(why) {
       criticalHold = why;
+    },
+    holdHarness(h, on) {
+      if (on) harnessHold.add(h);
+      else harnessHold.delete(h);
     },
     harness,
 

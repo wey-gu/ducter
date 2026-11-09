@@ -69,7 +69,36 @@ export interface HarnessFacts {
   resume: Fact<{ supported: boolean; how: string }>;
   /** Its own browser / computer use (research/38). */
   browser: Fact<string>;
+  /** D153: where it's installed from and how each copy updates (research/42). */
+  channels: Fact<AgentChannels>;
 }
+
+/**
+ * How one AI agent is installed and updated (D153, research/42). A copy's real path decides its
+ * channel; each channel names where its latest version is read and how it updates. `{v}` in a
+ * command is the version to install.
+ */
+export interface AgentChannels {
+  /** The npm package (`npm install -g <pkg>@<v>`, which pins). */
+  npm?: string;
+  /** The Homebrew cask (`brew upgrade --cask <token>`; no pinning). */
+  cask?: string;
+  /** The agent's own installer: a path segment that marks its copies, its updater, and a pinned install when it has one. */
+  installer?: {
+    /** A real-path segment, or a marker file found in a parent folder ("file:<name>"). */
+    mark: string;
+    update: string[];
+    pin?: string[];
+    /** Where the installer's latest version is read: a URL answering a bare version or JSON {version}. */
+    latest: string;
+  };
+  /** Real-path segments of copies a desktop app carries (never touched), and the app's name. */
+  app?: { marks: string[]; name: string };
+}
+
+/** Where a channel's latest version is read (research/42). */
+export const NPM_LATEST = (pkg: string) => `https://registry.npmjs.org/${pkg}/latest`;
+export const CASK_LATEST = (token: string) => `https://formulae.brew.sh/api/cask/${token}.json`;
 
 const D = "2026-11-09";
 const cc = (how: string): Evidence => ({ kind: "VERIFIED", how, date: D, version: "2.1.319" });
@@ -133,6 +162,20 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
       value: "Claude in Chrome via --chrome (the user's real Chrome, needs the extension); computer use is not available in -p",
       evidence: { kind: "VERIFIED", how: "research/38 §1", date: D, version: "2.1.319" },
     },
+    channels: {
+      value: {
+        npm: "@anthropic-ai/claude-code",
+        cask: "claude-code",
+        installer: { mark: "/claude/versions/", update: ["claude", "update"], pin: ["claude", "install", "{v}"], latest: "https://downloads.claude.ai/claude-code-releases/latest" },
+        app: { marks: ["/Application Support/Claude/claude-code/", "/Claude.app/Contents/"], name: "Claude" },
+      },
+      evidence: {
+        kind: "VERIFIED",
+        how: "research/42 §1: `claude update|install --help` (install [target]: stable, latest or a version), ~/.local/share/claude/versions/<v>, the releases pointer, brew info --cask, the Claude app's own copy (read-only)",
+        date: "2026-11-10",
+        version: "2.1.321",
+      },
+    },
   },
   codex: {
     harness: "codex",
@@ -172,6 +215,25 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
       value: "Computer Use (cua_repl) works headless under OAR and reaches the user's real Chrome as an app; the in-app browser and Chrome extension do not; only features.plugins=false removes it",
       evidence: { kind: "VERIFIED", how: "research/38 §1", date: D, version: "0.167.0" },
     },
+    channels: {
+      value: {
+        npm: "@openai/codex",
+        cask: "codex",
+        installer: {
+          mark: "/packages/standalone/",
+          update: ["codex", "update"],
+          pin: ["sh", "-c", "curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh -s -- --release {v}"],
+          latest: "https://registry.npmjs.org/@openai/codex/latest",
+        },
+        app: { marks: ["/Codex.app/Contents/", ".app/Contents/"], name: "Codex" },
+      },
+      evidence: {
+        kind: "VERIFIED",
+        how: "research/42 §2: `codex update --help`, `codex doctor --json` (install context npm, update action npm install -g @openai/codex), install.sh --help (--release VERSION, CODEX_NON_INTERACTIVE), brew info --cask (read-only)",
+        date: "2026-11-10",
+        version: "0.167.0",
+      },
+    },
   },
   pi: {
     harness: "pi",
@@ -190,6 +252,13 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
     toolSearch: { value: "MCP through Ducter's extension; loaded directly", evidence: { kind: "INFERRED", why: "no deferral in pi" } },
     resume: { value: { supported: true, how: "session file path (OAR)" }, evidence: { kind: "INFERRED", why: "OAR pi runtime" } },
     browser: { value: "none (read, bash, edit, write; extensions only)", evidence: pi("`pi --help` (research/38)") },
+    channels: {
+      value: {
+        npm: "@earendil-works/pi-coding-agent",
+        installer: { mark: "file:managed-install.json", update: ["pi", "update", "--self"], latest: "https://pi.dev/api/latest-version" },
+      },
+      evidence: { kind: "DOCUMENTED", source: "pi 1.4.0's own updater (dist/config.js, package-manager-cli.js, utils/version-check.js); research/42 §3" },
+    },
   },
   "deepseek-harness": {
     harness: "deepseek-harness",
@@ -205,6 +274,10 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
     toolSearch: { value: "stdio MCP through Ducter's bridge", evidence: { kind: "INFERRED", why: "runner/oar.ts" } },
     resume: { value: { supported: true, how: "OAR SessionOptions.resume" }, evidence: { kind: "INFERRED", why: "OAR dsh runtime" } },
     browser: { value: "none known", evidence: { kind: "INFERRED", why: "research/38" } },
+    channels: {
+      value: { npm: "@deepseek-ai/dsh" },
+      evidence: { kind: "DOCUMENTED", source: "OAR 0.95.1 runtimes/dsh/install.js (npm package @deepseek-ai/dsh); research/34, research/42 §4" },
+    },
   },
 };
 

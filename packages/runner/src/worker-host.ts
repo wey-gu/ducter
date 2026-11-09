@@ -30,6 +30,8 @@ export interface WorkerHost {
   critical(): number;
   /** Sessions in the middle of a turn. */
   turning(): number;
+  /** D153: sessions on this AI agent in the middle of a turn. */
+  turningOn(harness: string): number;
 }
 
 /** The ops an update waits for before it restarts this worker (D148 (4)). */
@@ -68,6 +70,7 @@ function wireEvent(ev: HarnessEvent): HarnessEvent {
 
 export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
   const sessions = new Map<string, HarnessSession>();
+  const harnessOf = new Map<string, string>(); // session key -> its AI agent (D153)
   // D142: the copy of a non-git folder lives here, beside the folder (folder.ts).
   const folders = createFolderStore({ root: join(o.dataDir, "snapshots") });
   folders.sweep();
@@ -109,6 +112,7 @@ export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
     async start(a) {
       const s = await o.harness.start(rewriteMcp(a.spec, o.mainBase, o.deviceToken));
       sessions.set(a.key, s);
+      harnessOf.set(a.key, String(a.spec?.harness ?? ""));
       // Answer first, then stream: the main registers its listener when the answer lands.
       setTimeout(() => void pump(a.key, s), 0);
       return { sessionId: idOf(s), canSteer: s.canSteer };
@@ -170,5 +174,6 @@ export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
     sessions: () => sessions.size,
     critical: () => inCritical,
     turning: () => [...sessions.values()].filter(busyOf).length,
+    turningOn: (h) => [...sessions.entries()].filter(([k, s]) => harnessOf.get(k) === h && busyOf(s)).length,
   };
 }

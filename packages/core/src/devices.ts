@@ -6,7 +6,7 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { hostname as osHostname, platform as osPlatform } from "node:os";
 import { join } from "node:path";
 import QRCode from "qrcode";
-import { deviceHarness, type AbilityId, type AbilityReason, type DeviceAbility, type DeviceHarness, type DeviceKind, type DeviceView, type Reach, type ServerFrame } from "@ducter/protocol";
+import { deviceHarness, type AbilityId, type AgentHow, type AbilityReason, type DeviceAbility, type DeviceHarness, type DeviceKind, type DeviceView, type Reach, type ServerFrame } from "@ducter/protocol";
 import { readAbilitySettings, writeAbilitySettings } from "@ducter/protocol/src/abilities.ts";
 import { claudeInChromeConnected, codexNative } from "@ducter/protocol/src/native-browser.ts";
 import { deviceForm, type DeviceAuth } from "./auth.ts";
@@ -59,6 +59,10 @@ export interface DevicesOptions {
   browser?: { setup(): BrowserSetup; install(): Promise<unknown>; onChange(fn: () => void): () => void };
   /** The machine Ducter lives on (default: this one). */
   platform?: string;
+  /** D153: each device's AI agents: latest per channel, standing, an update under way. */
+  agents?: () => import("./agents.ts").AgentUpdates | undefined;
+  /** D153: the pi inside this Ducter (harness-probe bundledPiVersion). */
+  piBundled?: () => string | undefined;
 }
 
 export interface DevicesView {
@@ -184,7 +188,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
     // only once set up, so a Mac without them reads as before.
     harnesses:
       o.probes?.harnesses ??
-      (async () => (await probeHarnesses({ exec, which, env, dataDir: o.dataDir })).filter((h) => (h.harness === "pi" ? h.loggedIn : h.harness === "deepseek-harness" ? h.installed : true))),
+      (async () => (await probeHarnesses({ exec, which, env, dataDir: o.dataDir, ...(o.piBundled ? { piBundled: o.piBundled } : {}) })).filter((h) => (h.harness === "pi" ? h.loggedIn : h.harness === "deepseek-harness" ? h.installed : true))),
     kind: o.probes?.kind ?? (() => localDeviceKind(exec)),
   };
 
@@ -273,6 +277,9 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
 
   const later = (id: AbilityId): DeviceAbility => ({ id, state: "later" });
 
+  // D153: latest per channel, standing and any update under way, on every device's agents.
+  const agentsView = (id: string, list: DeviceHarness[]) => o.agents?.()?.view(id, list) ?? list;
+
   async function frame(): Promise<DevicesFrame> {
     const me = await local();
     const remoteOn = clients().length > 0;
@@ -282,7 +289,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
       kind: me.kind,
       home: true,
       state: "awake", // this answer comes from it
-      harnesses: me.harnesses.map((h) => deviceHarness(h)),
+      harnesses: agentsView("local", me.harnesses.map((h) => deviceHarness(h))),
       abilities: [webAbility(me.cua, me.native), later("computer"), { id: "remote", state: remoteOn ? "on" : "off" }, later("phone"), later("call")],
       ...(o.self ? { version: o.self.version, platform: o.self.platform } : {}),
     };
@@ -317,7 +324,10 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
             const u = up?.view(d.id, hello?.version, hello?.how === "self" || hello?.how === "app" || hello?.how === "source" ? hello.how : "manual");
             return u ? { update: u } : {};
           })(),
-          harnesses: (hello?.harnesses ?? []).map((h) => deviceHarness({ harness: h.id, installed: h.installed, loggedIn: h.loggedIn })),
+          harnesses: agentsView(
+            d.id,
+            (hello?.harnesses ?? []).map((h) => deviceHarness({ harness: h.id, installed: h.installed, loggedIn: h.loggedIn, ...(h.version ? { version: h.version } : {}), ...(h.how ? { how: h.how as AgentHow } : {}) })),
+          ),
           // Browser places run on the machine Ducter lives on only, for now (runner.ts).
           abilities: [{ id: "web", state: "unavailable", reason: "home_only" }, later("computer"), later("phone"), later("call")],
         } satisfies DeviceView;

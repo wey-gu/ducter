@@ -251,6 +251,9 @@ export interface Bodies {
   // "local" for the home or a paired device id; name is its name then. Clients show the latest
   // on the device's card; the partner reads it only when asked.
   device_update: { device: string; name: string; phase: UpdatePhase; from: string; to: string; reason?: UpdateReason; detail?: string; rolledBack?: boolean };
+  // D153: one step of updating an AI agent on a device (same stream, same rules). by: a tap or
+  // the night-time update.
+  agent_update: { device: string; name: string; harness: string; phase: AgentPhase; from: string; to?: string; reason?: AgentReason; detail?: string; rolledBack?: boolean; by?: "user" | "night" };
   // Nowledge Bridge (behind DUCTER_BRIDGE=1, design/bridge.md). "in": a message another agent
   // sent the persona (origin "peer"); its text is untrusted task context, never the user's
   // permission. "out": the partner's reply to one (origin "partner"). Clients show one quiet
@@ -539,6 +542,10 @@ export type ClientFrame =
   // arrives as fresh devices frames and device_update events.
   | { t: "disconnect_device"; device: string }
   | { t: "device_update"; device: string; to?: string; check?: boolean }
+  // D153: agent_update: update one AI agent on a device with its own updater, at a safe point
+  // (check: read the latest versions again and only report). Answered with agent_update_result;
+  // progress arrives as fresh devices frames and agent_update events.
+  | { t: "agent_update"; device: string; harness: string; check?: boolean }
   // The partner's and the app's settings (D71): "settings" answers with a settings frame and
   // keeps the socket subscribed (every change goes to every subscriber). "settings_set" changes
   // some of them. "memory_forget" forgets one 记下了 / Noted line: in Nowledge Mem when it has the
@@ -657,6 +664,7 @@ export type ServerFrame =
   | { t: "rename_result"; device: string; ok: boolean; name?: string; reason?: "unknown_device" | "empty" | "name_taken" | "home" }
   | { t: "disconnect_result"; device: string; ok: boolean; reason?: "unknown_device" | "home" }
   | { t: "update_result"; device: string; ok: boolean; reason?: UpdateReason; detail?: string; update?: DeviceUpdate }
+  | { t: "agent_update_result"; device: string; harness: string; ok: boolean; reason?: AgentReason; detail?: string }
   | { t: "settings"; settings: Settings; mem: MemView; brainNow?: BrainNow; forgot?: { seq: number; how: "mem" | "hidden" } }
   | { t: "rules"; rules: RuleView[] }
   | { t: "candidates"; taskId: string; candidates: Candidate[] }
@@ -790,6 +798,54 @@ export interface DeviceHarness {
   canBePartner: boolean;
   /** plan: a subscription's allowance; usage: paid per token (an API key). */
   billing?: "plan" | "usage";
+  /** D153: the installed version, as the agent's own --version says it. */
+  version?: string;
+  /** D153: how this copy was installed, which decides how it updates (research/42). */
+  how?: AgentHow;
+  /** D153: the newest version on this copy's own channel (npm, Homebrew, its installer). */
+  latest?: string;
+  /** D153: latest is newer than version and Ducter can update this copy from here. */
+  available?: boolean;
+  /** D153: where the installed version stands against the versions Ducter verified (harness-facts). */
+  standing?: VersionStanding;
+  /** D153: latest is inside the verified range (only then does the night-time update take it). */
+  latestVerified?: boolean;
+  /** D153: an update of this agent under way or just finished; absent when idle. */
+  update?: AgentUpdate;
+}
+
+// ---------- The AI agents' own versions (D153, design/system.md "Updating the AI agents") ----------
+
+/**
+ * npm: a global npm package; brew: a Homebrew cask; installer: the agent's own installer and
+ * updater (Claude Code's native install, Codex's standalone, pi's managed install); app: a copy
+ * inside a desktop app (updates with the app, never touched); ducter: ships inside Ducter (pi
+ * from a checkout; updates with Ducter); unknown: can't tell, so never updated.
+ */
+export type AgentHow = "npm" | "brew" | "installer" | "app" | "ducter" | "unknown";
+export type VersionStanding = "verified" | "newer" | "older" | "unknown";
+/** 等它手上的事停好 · 在更新 · 在检查 · 好了 · 没更新成 */
+export type AgentPhase = "waiting" | "updating" | "checking" | "done" | "failed";
+/**
+ * Why an agent update didn't happen or didn't hold. how: this copy updates elsewhere (app,
+ * ducter, unknown); offline: the device isn't connected; running: already updating; busy: work
+ * on it didn't settle; network: its channel couldn't be reached; no_update: nothing newer;
+ * unverified: the night-time update won't take a version Ducter hasn't verified; version: the
+ * new copy didn't answer its --version; signed_out: it updated but its login no longer answers;
+ * unchanged: the updater ran and the version didn't move; failed: anything else (detail).
+ */
+export type AgentReason = "how" | "offline" | "running" | "busy" | "network" | "no_update" | "unverified" | "version" | "signed_out" | "unchanged" | "failed";
+
+export interface AgentUpdate {
+  phase: AgentPhase;
+  from: string;
+  to?: string;
+  reason?: AgentReason;
+  detail?: string;
+  /** failed after the install: the previous version runs again. */
+  rolledBack?: boolean;
+  at: string; // ISO, when phase was entered
+  by?: "user" | "night";
 }
 
 export interface DeviceAbility {

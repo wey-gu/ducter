@@ -34,6 +34,8 @@ import { createChanges, type Changes } from "./changes.ts";
 import { newTaskOptions, openYourTask, type GitRun, type NewTaskInput } from "./newtask.ts";
 import { createReleaseWatch, type Fetch as ReleaseFetch, type ReleaseWatch } from "./release.ts";
 import { createUpdates, type Updates, type UpdatesDeps } from "./updates.ts";
+import { createAgentLatest, createAgentUpdates, type AgentUpdates, type AgentUpdatesDeps } from "./agents.ts";
+import { bundledPiVersion, detectAgent, probeHarnesses } from "./harness-probe.ts";
 import { realSys, updateHow, type UpdateSys } from "./update.ts";
 import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 import { createDucterBrowser, type DucterBrowser, type DucterBrowserOptions } from "./browser/index.ts";
@@ -66,6 +68,8 @@ export interface CoreOptions {
   git?: GitRun;
   /** D148 test seams: the release feed, the update side effects, how this process updates. */
   update?: { fetch?: ReleaseFetch; sys?: UpdateSys; run?: UpdatesDeps["run"]; how?: import("@ducter/protocol").UpdateHow; version?: string; homeName?: string; execPath?: string; autoEveryMs?: number; graceMs?: number; criticalWaitMs?: number };
+  /** D153 test seams: the channels' feed, the agents' updaters, this machine's copies. */
+  agents?: { fetch?: ReleaseFetch; sys?: UpdateSys; which?: (c: string) => string | null; detect?: AgentUpdatesDeps["detect"]; loggedIn?: AgentUpdatesDeps["loggedIn"]; exists?: (p: string) => boolean; settleMs?: number; autoEveryMs?: number };
   /** D151 test seams for Ducter's own browser (false: none). */
   browser?: false | Partial<Omit<DucterBrowserOptions, "mcp" | "log" | "tasks" | "decisions" | "persona" | "dataDir">>;
   /** The machine's platform as Devices sees it (tests: "linux"). */
@@ -101,6 +105,8 @@ export interface Core extends CoreApi {
   /** D148: updating devices in place, and the newest release. */
   updates: Updates;
   release: ReleaseWatch;
+  /** D153: the AI agents' own versions and their updates. */
+  agents: AgentUpdates;
   /** D151: Ducter's own browser. */
   ducterBrowser?: DucterBrowser;
   port: number;
@@ -271,9 +277,16 @@ export function startCore(opts: CoreOptions = {}): Core {
   // 开一件事 / New task (D128): the one opening path the card and `ducter task` share.
   const newTaskDeps = { log, tasks, runner: () => runner, persona, dataDir, loadout, settings, ...(opts.git ? { git: opts.git } : {}) };
   const newTask = { open: (i: NewTaskInput) => openYourTask(newTaskDeps, i), options: (p?: Place) => newTaskOptions(newTaskDeps, p) };
-  const ws = createWsHandler({ core: api, decisions, runner: () => runner, devices: () => devicesView, settings, connections, rules, loadout, work: work.frames, newTask, updates: () => updatesRef, batchMs: opts.batchMs, ...(browser ? { browser } : {}) });
+  const ws = createWsHandler({ core: api, decisions, runner: () => runner, devices: () => devicesView, settings, connections, rules, loadout, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, batchMs: opts.batchMs, ...(browser ? { browser } : {}) });
   onHandChanged = ws.onHandChanged;
-  api.activity = { set: ws.setActivity };
+  // D153: a partner turn in flight keeps an update of the agent it thinks with waiting.
+  let partnerTurn = false;
+  api.activity = {
+    set: (a) => {
+      partnerTurn = !!a;
+      ws.setActivity(a);
+    },
+  };
   const devices = openDeviceAuth(dataDir);
   // A device that pairs changes Your devices and abilities (远程打开 / Reach from anywhere).
   const gateAuth = {
@@ -286,9 +299,11 @@ export function startCore(opts: CoreOptions = {}): Core {
   };
   const gate = createGate({ auth: gateAuth, personaName: () => persona.name });
   let updatesRef: Updates | undefined;
+  let agentsRef: AgentUpdates | undefined;
   const workers = createWorkers({
     personaName: () => persona.name,
     onUpdate: (id, name, f) => updatesRef?.fromWorker(id, name, f),
+    onAgentUpdate: (id, name, f) => agentsRef?.fromWorker(id, name, f),
     // A disconnected (revoked) worker still resolves, as a link that is never online: its tasks
     // show 连不上 / Can't reach and new ones are refused, instead of silently running here.
     find: (d) => {
@@ -334,8 +349,50 @@ export function startCore(opts: CoreOptions = {}): Core {
     ...(u.criticalWaitMs !== undefined ? { criticalWaitMs: u.criticalWaitMs } : {}),
   });
   updatesRef = updates;
-  devicesView = createDevicesView({ dataDir, auth: devices, workers, connected: () => ws.connected(), probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` }, ...(browser ? { browser } : {}), ...(opts.platform ? { platform: opts.platform } : {}) });
+  // D153: the AI agents' own versions and their updates (agents.ts). No channel is read in tests
+  // unless a fetch is given.
+  const a = opts.agents ?? {};
+  const agentTesting = process.env.NODE_ENV === "test";
+  const agentSys = a.sys ?? u.sys ?? realSys;
+  const agentLatest = createAgentLatest({ dataDir, ...(a.fetch ? { fetch: a.fetch } : agentTesting ? {} : { fetch: (x, i) => fetch(x, i) }), env: process.env });
+  const agentProbe = { exec: (argv: string[], ms?: number) => agentSys.run(argv, { timeoutMs: ms ?? 15_000 }), which: a.which ?? ((c: string) => Bun.which(c)), env: process.env, dataDir, ...(agentTesting ? {} : { piBundled: bundledPiVersion }) };
+  const isWorker = (dev: string) => devices.list().some((x) => x.kind === "worker" && (x.id === dev || x.name === dev));
+  const agents = createAgentUpdates({
+    log,
+    sys: agentSys,
+    latest: agentLatest,
+    name: () => u.homeName ?? osHostname().replace(/\.local$/, ""),
+    detect: a.detect ?? ((h) => detectAgent(h, agentProbe)),
+    loggedIn: a.loggedIn ?? (async (h) => (await probeHarnesses({ ...agentProbe, only: [h] }))[0]?.loggedIn ?? false),
+    busy: (device, h) => {
+      const here = (c: { place?: Place }) => {
+        const dev = c.place && "device" in c.place ? c.place.device : undefined;
+        return device === "local" ? !dev || dev === "local" || !isWorker(dev) : dev === device || (!!dev && devices.list().some((x) => x.id === device && x.name === dev));
+      };
+      const n = tasks.list().filter((c) => c.attention === "working" && c.harness === h && here(c)).length;
+      const partner = device === "local" && partnerTurn && effectiveBrain(settings.get().brain, settings.brainChosen(), devicesView?.harnessesNow()).harness === h ? 1 : 0;
+      return n + partner;
+    },
+    hold: (h, on) => runner?.holdHarness?.(h, on),
+    workers: () => ({
+      online: () => workers.online().map((w) => ({ id: w.deviceId, name: w.name })),
+      update: async (id, args) => {
+        const link = workers.link(id);
+        if (!link) return { ok: false, reason: "offline" };
+        return link.call<{ ok: boolean; reason?: import("@ducter/protocol").AgentReason; detail?: string }>("agent_update", args, 30_000);
+      },
+    }),
+    settings: () => settings.get(),
+    devices: async () => ((await devicesView?.frame())?.devices ?? []).map((x) => ({ id: x.id, name: x.name, awake: x.state === "awake", harnesses: x.harnesses })),
+    probed: () => devicesView?.refresh(),
+    ...(a.settleMs !== undefined ? { settleMs: a.settleMs } : {}),
+    ...(a.autoEveryMs !== undefined ? { autoEveryMs: a.autoEveryMs } : agentTesting ? { autoEveryMs: 0 } : {}),
+    ...(a.exists ? { exists: a.exists } : {}),
+  });
+  agentsRef = agents;
+  devicesView = createDevicesView({ dataDir, auth: devices, workers, connected: () => ws.connected(), probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, agents: () => agents, ...(agentTesting ? {} : { piBundled: bundledPiVersion }), self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` }, ...(browser ? { browser } : {}), ...(opts.platform ? { platform: opts.platform } : {}) });
   updates.onChange(() => devicesView?.changed());
+  agents.onChange(() => devicesView?.changed());
   devicesView.harnessesNow(); // probe once at start, so the partner's first turn knows who is signed in
   const sockets = splitSockets(ws.websocket, workers, { isLive: (id) => devices.isLive(id), nameOf: (id) => devices.list().find((d) => d.id === id)?.name, sweepMs: opts.sweepMs });
   const apns = opts.apns ?? createApnsSender(loadApnsConfig(dataDir));
@@ -412,6 +469,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     changes,
     updates,
     release,
+    agents,
     ...(browser ? { ducterBrowser: browser } : {}),
     port,
     url: `ws://127.0.0.1:${port}/ws`,
@@ -445,6 +503,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       changes.stop();
       pusher.stop();
       updates.stop();
+      agents.stop();
       release.stop();
       void server.stop(true); // awaiting hangs in Bun 1.3 when a WebSocket was open
       log.close();

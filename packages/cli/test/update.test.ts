@@ -69,3 +69,49 @@ test("without --yes, off a terminal, it changes nothing and asks for --yes", asy
   }
   expect(out.join("\n")).toContain("--yes");
 });
+
+// D153: `ducter update --agents` through a running Ducter: a fake registry, a fake npm.
+function bootAgents() {
+  const t = tempDir();
+  const m = { version: "0.167.0" };
+  const runs: string[][] = [];
+  const fetch = async (u: string) => (u === "https://registry.npmjs.org/@openai/codex/latest" ? new Response('{"version":"0.168.0"}') : new Response("", { status: 404 }));
+  const core = startCore({
+    dataDir: t.dir,
+    port: 0,
+    batchMs: 5,
+    deviceProbes: {
+      cua: async () => ({ missing: "no" }),
+      native: async () => undefined,
+      harnesses: async () => [{ harness: "codex", installed: true, loggedIn: true, version: m.version, how: "npm" }],
+      kind: async () => "server",
+    },
+    update: { autoEveryMs: 0 },
+    agents: {
+      fetch: fetch as any,
+      sys: { fetch: fetch as any, run: async (argv) => (runs.push(argv), (m.version = argv.at(-1)!.split("@").at(-1)!), { code: 0, out: "" }), freeBytes: () => undefined, sleep: async () => {}, now: () => Date.now() },
+      detect: async () => ({ how: "npm", version: m.version }),
+      loggedIn: async () => true,
+      exists: () => false,
+      autoEveryMs: 0,
+    },
+  });
+  stops.push(t.cleanup, () => core.stop());
+  core.setPartner({ onTrigger: () => {} });
+  return { core, runs, m };
+}
+
+test("--agents --check --json: each AI agent's version, channel and latest; --agents --yes updates the ones behind", async () => {
+  expect(args(["--agents", "--check"])).toMatchObject({ agents: true, check: true });
+  const { core, runs, m } = bootAgents();
+  const out: string[] = [];
+  expect(await cmdUpdate({ t, style, args: args(["--agents", "--check", "--json"]), port: core.port, dataDir: core.dataDir, log: (s) => out.push(s) })).toBe(0);
+  const j = JSON.parse(out.join("\n"));
+  expect(j.agents).toEqual([{ device: "local", deviceName: expect.any(String), harness: "codex", version: "0.167.0", how: "npm", latest: "0.168.0", available: true, standing: "verified", latestVerified: false }]);
+  out.length = 0;
+  core.devicesView.refresh();
+  expect(await cmdUpdate({ t, style, args: args(["--agents", "--yes", "--json"]), port: core.port, dataDir: core.dataDir, log: (s) => out.push(s) })).toBe(0);
+  expect(JSON.parse(out.join("\n"))).toEqual({ ok: true, updated: [{ device: expect.any(String), harness: "codex", ok: true, version: "0.168.0" }] });
+  expect(runs).toEqual([["npm", "install", "-g", "@openai/codex@0.168.0"]]);
+  expect(m.version).toBe("0.168.0");
+});

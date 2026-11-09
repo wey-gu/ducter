@@ -8,9 +8,9 @@ test("a machine with all four: logins read from their own commands and files", a
   const r = await probeHarnesses({
     which: (c) => (["claude", "codex", "node", "dsh"].includes(c) ? `/bin/${c}` : null),
     exec: async (argv) =>
-      argv[0] === "claude"
+      argv[0]!.endsWith("claude")
         ? { code: 0, out: '{"loggedIn": true}' }
-        : argv[0] === "codex"
+        : argv[0]!.endsWith("codex")
           ? { code: 0, out: "Logged in using ChatGPT" }
           : { code: 0, out: "0.2.2-rc.1" },
     env: {},
@@ -22,7 +22,8 @@ test("a machine with all four: logins read from their own commands and files", a
     { harness: "claude-code", installed: true, loggedIn: true, canBePartner: true, billing: "plan" },
     { harness: "codex", installed: true, loggedIn: true, canBePartner: true, billing: "plan" },
     { harness: "pi", installed: true, loggedIn: true, canBePartner: false, billing: "usage" },
-    { harness: "deepseek-harness", installed: true, loggedIn: true, canBePartner: false, billing: "usage" },
+    // D153: a copy that answers --version says it; /bin/dsh is no channel Ducter knows.
+    { harness: "deepseek-harness", installed: true, loggedIn: true, canBePartner: false, billing: "usage", version: "0.2.2-rc.1", how: "unknown" },
   ]);
 });
 
@@ -34,7 +35,7 @@ test("pi with no provider and DeepSeek Harness too old or without a key are not 
     { harness: "deepseek-harness", installed: false, loggedIn: false, canBePartner: false },
   ]);
   const nokey = await probeHarnesses({ ...base, exec: async () => ({ code: 0, out: "0.2.2-rc.1" }), read: files({}), only: ["deepseek-harness"] });
-  expect(nokey).toEqual([{ harness: "deepseek-harness", installed: true, loggedIn: false, canBePartner: false }]);
+  expect(nokey).toEqual([{ harness: "deepseek-harness", installed: true, loggedIn: false, canBePartner: false, version: "0.2.2-rc.1", how: "unknown" }]);
   const envKey = await probeHarnesses({ ...base, env: { DEEPSEEK_API_KEY: "sk" }, exec: async () => ({ code: 0, out: "dsh 0.2.1-rc.5" }), read: files({}), only: ["deepseek-harness"] });
   expect(envKey[0]!.loggedIn).toBe(true);
 });

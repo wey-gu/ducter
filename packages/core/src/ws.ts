@@ -70,6 +70,8 @@ export interface WsDeps {
   newTask?: NewTaskFrames;
   /** D148: updating devices in place (updates.ts); absent in tests that don't need it. */
   updates?: () => import("./updates.ts").Updates | undefined;
+  /** D153: updating the AI agents on each device (agents.ts); absent in tests that don't need it. */
+  agents?: () => import("./agents.ts").AgentUpdates | undefined;
   /** D151: Ducter's own browser (live view, Sites); absent in tests that don't need it. */
   browser?: DucterBrowser;
   batchMs?: number;
@@ -449,6 +451,21 @@ export function createWsHandler(deps: WsDeps) {
         }
         const r = await u.start(device, typeof f.to === "string" && f.to ? { to: f.to } : {});
         send(ws, r.ok ? { t: "update_result", device, ok: true } : { t: "update_result", device, ok: false, reason: r.reason, ...(r.detail ? { detail: r.detail } : {}) });
+        return; // progress pushes fresh devices frames to every subscriber
+      }
+      case "agent_update": {
+        const ag = deps.agents?.();
+        const device = String(f.device ?? "local");
+        const harness = String(f.harness ?? "");
+        if (!ag) return send(ws, { t: "agent_update_result", device, harness, ok: false, reason: "failed", detail: "agent updates are not available" });
+        watchDevices();
+        if (f.check) {
+          await ag.check();
+          devicesView()?.changed();
+          return send(ws, { t: "agent_update_result", device, harness, ok: true });
+        }
+        const r = await ag.start(device, harness, { by: "user" });
+        send(ws, r.ok ? { t: "agent_update_result", device, harness, ok: true } : { t: "agent_update_result", device, harness, ok: false, reason: r.reason, ...(r.detail ? { detail: r.detail } : {}) });
         return; // progress pushes fresh devices frames to every subscriber
       }
       case "settings": {

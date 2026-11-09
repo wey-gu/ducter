@@ -1,7 +1,7 @@
 // The phone's screens: the conversation (default), 手头的事 / On hand, an opened task, and the
 // sheets (a decision opened from a notification; this phone's settings). Behavior follows the
 // desktop client (apps/desktop/internal/views); copy comes only from i18n.ts.
-import type { Attention, Bodies, Candidate, DeviceHarness, DeviceUpdate, DeviceView, EvidenceRef, FolderChange, FolderSummary, LivingItem, OoDetect, Reach } from "@ducter/protocol";
+import type { AgentUpdate, Attention, Bodies, Candidate, DeviceHarness, DeviceUpdate, DeviceView, EvidenceRef, FolderChange, FolderSummary, LivingItem, OoDetect, Reach } from "@ducter/protocol";
 import { Fragment } from "preact";
 import { PARTNER_RESERVE } from "@ducter/protocol/src/loadout.ts";
 import { inTongue, proofLabel, sayable } from "@ducter/protocol/src/say.ts";
@@ -2547,6 +2547,8 @@ function VersionBlock({ dv }: { dv: DeviceView }) {
   const answer = A.deviceAnswer?.device === dv.id ? A.deviceAnswer.reason : undefined;
   return (
     <div class="dev-ver">
+      {/* D153: the agents above carry versions too; this one is Ducter's own. */}
+      <div class="dev-sub">Ducter</div>
       <div class="dev-ver-row">
         <span>{t("devup.version", current)}</span>
         {u && behind(u) && (
@@ -2580,6 +2582,69 @@ function VersionBlock({ dv }: { dv: DeviceView }) {
   );
 }
 
+/** D153: an agent update under way. */
+const agentRunning = (u?: AgentUpdate) => !!u && (u.phase === "waiting" || u.phase === "updating" || u.phase === "checking");
+
+function agentPhase(u: AgentUpdate): string {
+  switch (u.phase) {
+    case "waiting":
+      return t("agentv.phase.waiting");
+    case "updating":
+      return t("agentv.phase.updating", u.to ?? "");
+    case "checking":
+      return t("agentv.phase.checking", u.to ?? "");
+    case "done":
+      return t("agentv.phase.done", u.to ?? u.from);
+    case "failed":
+      return u.rolledBack ? t("agentv.phase.rolledback", u.from) : t("agentv.phase.failed");
+  }
+  return "";
+}
+
+/**
+ * D153: one AI agent on a device card: its coin and name, its version quietly; a dot and 有新版本
+ * with 更新 when it's behind; an honest line when Ducter hasn't checked the version; a copy in
+ * an app or inside Ducter says where its update comes from.
+ */
+function AgentRow({ dv, h }: { dv: DeviceView; h: DeviceHarness }) {
+  const u = h.update;
+  const behindNow = !!h.available && !!h.latest && !agentRunning(u) && u?.phase !== "failed";
+  const retry = u?.phase === "failed" && !!h.available;
+  const answer = A.agentAnswer?.device === dv.id && A.agentAnswer.harness === h.harness ? A.agentAnswer.reason : undefined;
+  return (
+    <div class="dev-agent">
+      <Coin harness={h.harness} size={28} />
+      <div class="dev-agent-what">
+        <div class="dev-agent-name">{harnessName(h.harness)}</div>
+        {h.version && (
+          <div class="dev-agent-ver">
+            <span>{t("agentv.version", h.version)}</span>
+            {h.how === "app" && <span>{t("agentv.how.app", h.harness === "claude-code" ? "Claude" : "Codex")}</span>}
+            {h.how === "ducter" && <span>{t("agentv.how.ducter")}</span>}
+            {behindNow && (
+              <>
+                <span class="dot" aria-hidden="true" />
+                <b>{t("agentv.available", h.latest)}</b>
+              </>
+            )}
+          </div>
+        )}
+        {(h.standing === "newer" || h.standing === "older") && <div class="dev-agent-note">{t("agentv.unverified")}</div>}
+        {u && agentPhase(u) && <div class={`dev-phase small ${u.phase}`}>{agentPhase(u)}</div>}
+        {u?.phase === "failed" && u.reason && <div class="dev-agent-note">{t(`agentv.why.${u.reason}`)}</div>}
+        {(behindNow || retry) && h.latestVerified === false && <div class="dev-agent-note">{t("agentv.latest.unverified", h.latest)}</div>}
+        {(behindNow || retry) &&
+          (dv.state === "awake" ? (
+            <Btn kind="secondary" size="sm" label={t(retry ? "agentv.retry" : "agentv.button")} about={harnessName(h.harness)} onClick={() => A.updateAgent(dv.id, h.harness)} />
+          ) : (
+            <div class="dev-agent-note">{t("agentv.away", dv.name)}</div>
+          ))}
+        {answer && <div class="small warn">{t(`agentv.why.${answer}`)}</div>}
+      </div>
+    </div>
+  );
+}
+
 function DeviceCard({ dv, folded }: { dv: DeviceView; folded: Client[] }) {
   const state =
     dv.state === "awake" ? t("device.state.awake") : dv.state === "asleep" ? t("device.state.asleep") : dv.lastSeen ? t("device.state.unreachable", ago(A.L, dv.lastSeen)) : t("device.state.unreachable.never");
@@ -2593,12 +2658,9 @@ function DeviceCard({ dv, folded }: { dv: DeviceView; folded: Client[] }) {
       <div class={`dev-state ${dv.state}`}>{state}</div>
       <Folded list={folded} computer={dv.computer || dv.name} />
       {!!signedIn.length && (
-        <div class="dev-coins">
+        <div class="dev-agents">
           {signedIn.map((h) => (
-            <span class="dev-coin" key={h.harness}>
-              <Coin harness={h.harness} size={22} />
-              {harnessName(h.harness)}
-            </span>
+            <AgentRow dv={dv} h={h} key={h.harness} />
           ))}
         </div>
       )}

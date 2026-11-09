@@ -151,7 +151,7 @@ func (a *App) accountRow(c *ui.Context, dv *protocol.DeviceView, h protocol.Devi
 	}
 	manage := a.Backend != nil && dv.Home && dv.State == protocol.DeviceAwake && accountCheck(h.Harness) != ""
 	lit := d.lit == h.Harness
-	row := ui.Row(c.Key("acct:"+dv.ID+":"+h.Harness)).Gap(t.S3).Padding(t.S2, 0).AlignItems(ui.Center).
+	row := ui.Row(c.Key("acct:"+dv.ID+":"+h.Harness)).Gap(t.S3).Padding(t.S2, 0).AlignItems(ui.Start).
 		Role(ui.RoleButton).Label(name + " · " + status).Cursor(ui.CursorPointer).AccessSelected(lit)
 	if !h.LoggedIn || dv.State != protocol.DeviceAwake {
 		row.Opacity(0.7)
@@ -171,6 +171,7 @@ func (a *App) accountRow(c *ui.Context, dv *protocol.DeviceView, h protocol.Devi
 		ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
 			ui.Text(c, name).FontSize(t.MD).FontWeight(800).SingleLine()
 			ui.Text(c, status).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).LineHeight(1.4).MaxLines(2)
+			a.agentVersion(c, dv, h) // D153
 		})
 		if manage {
 			label := a.L.T("token.signout")

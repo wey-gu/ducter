@@ -340,6 +340,8 @@ export interface Runner {
   // with (undefined lets them through again).
   critical?(): string[];
   holdCritical?(why: string | undefined): void;
+  // Optional (D153): while an AI agent's updater runs on this machine, a session on it waits to start.
+  holdHarness?(harness: string, on: boolean): void;
 }
 
 export function createRunnerSignature(_core: CoreApi): Runner {

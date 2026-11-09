@@ -237,6 +237,32 @@ const ld = {
   </div>
 </section>
 
+<!-- ============ CONNECTED: memory, accounts, other AI agents ============ -->
+<section class="sec" id="connected">
+  <div class="wrap split">
+    <div>
+      <div class="sec-head">
+        <h2>It doesn't start from zero.</h2>
+      </div>
+      <p class="lede">Much of what your partner needs to know is somewhere else: in your mail, your calendar, and last week's sessions with your other AI tools. Some of that it can use today. The rest is on the way, and none of it needs your passwords.</p>
+      <ul class="points">
+        <li><span><b>One memory for all your AIs.</b> <a href="https://mem.nowledge.co" rel="noopener">Nowledge Mem</a> keeps what you've decided and what you're working on, from every AI tool you connect to it. Your partner reads from it and adds to it, and you see Noted when it does. <span class="when">Works today. Without Mem, it remembers your conversation.</span></span></li>
+        <li><span><b>Your accounts, on your own computer.</b> Gmail, Google Calendar and other services will connect through <a href="https://github.com/oomol-lab/open-connector" rel="noopener">OpenConnector</a>, running where Ducter runs. Your passwords and tokens stay there, and the AI agents never see them. Reading your inbox is fine; anything that would send waits for your Go. <span class="when">Coming soon.</span></span></li>
+        <li><span><b>Your AI agents, reaching each other.</b> With Nowledge Bridge, the Claude Code session in your terminal can hand your partner a job, and your partner can ask that session what it knows. It checks with you before it takes the job or sends the question. <span class="when">Early, and coming soon.</span></span></li>
+      </ul>
+    </div>
+    <div class="memory-card reveal" aria-label="Example">
+      <div class="msg user" style="align-self:end;justify-self:end">Rebase, never merge commits. Remember that for every repo.</div>
+      <div class="msg ducter" style="margin-top:4px">Will do. From now on I'll rebase before merging, in every repo.
+        <div class="noted"><i><Fragment set:html={check} /></i>Noted · Rebase before merging, every repo</div>
+      </div>
+      <div class="quiet" style="justify-self:center"><span class="clock"></span>9 days later</div>
+      <div class="msg user" style="align-self:end;justify-self:end">Get the docs branch in <code>~/dev/hawdb</code> ready to merge.</div>
+      <div class="msg ducter" style="margin-top:4px">It's rebased onto main, the way you like, and CI is green. It's ready for you to merge.</div>
+    </div>
+  </div>
+</section>
+
 <!-- ============ TRUST ============ -->
 <section class="sec ink-band" id="trust">
   <div class="wrap split">
@@ -318,22 +344,9 @@ const ld = {
   </div>
 </section>
 
-<!-- ============ MEMORY + OPEN ============ -->
+<!-- ============ OPEN ============ -->
 <section class="sec deep" id="open">
   <div class="wrap">
-    <div class="split" style="margin-bottom: clamp(56px, 8vw, 104px)">
-      <div class="sec-head" style="margin:0">
-        <h2>It remembers you.</h2>
-        <p class="lede">Your partner remembers your conversation. Connect <a href="https://mem.nowledge.co" rel="noopener">Nowledge Mem</a> and it also knows who you are and what you're working on, from the same memory your other AI tools use.</p>
-      </div>
-      <div class="memory-card reveal" aria-label="Example">
-        <div class="msg user" style="align-self:end;justify-self:end">Rebase, never merge commits. Remember that for every repo.</div>
-        <div class="msg ducter" style="margin-top:4px">Will do. From now on I'll rebase before merging, in every repo.
-          <div class="noted"><i><Fragment set:html={check} /></i>Noted · Rebase before merging, every repo</div>
-        </div>
-      </div>
-    </div>
-
     <div class="sec-head">
         <h2>Yours to read and run.</h2>
     </div>

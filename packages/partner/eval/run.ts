@@ -198,7 +198,7 @@ function fakeBridge(dir: string) {
   chmodSync(bin, 0o755);
   const state = join(dir, "bridge-state.json");
   writeFileSync(state, JSON.stringify({ seq: 0, messages: [], identities: BRIDGE_IDENTITIES }));
-  const env = { ...process.env, FAKE_BRIDGE_STATE: state, DUCTER_BRIDGE_MEMBER: "m-weyl" } as Record<string, string>;
+  const env = { ...process.env, NMEM_FAKE_BRIDGE_STATE: state, DUCTER_BRIDGE_MEMBER: "m-weyl" } as Record<string, string>;
   const read = () => JSON.parse(readFileSync(state, "utf8")) as { seq: number; messages: FakeMsg[] };
   return {
     client: createNmemBridge({ context: "ducter-main", bin, env }),

@@ -1,12 +1,14 @@
 // `ducter doctor`: what this Mac has, what's missing, and the one command that fixes it.
 // Every probe goes through `Host`, so tests fake the machine (no real logins, no model calls).
 import { accessSync, constants, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import type { MsgKey, T } from "./i18n.ts";
 import { probeHarnesses } from "@ducter/core/src/harness-probe.ts";
 import { CLAUDE_TOKEN_ENV, harnessName } from "@ducter/protocol";
 import { HARNESS_FACTS, versionStanding } from "@ducter/protocol/src/harness-facts.ts";
 import { readKeys } from "@ducter/protocol/src/keys.ts";
+import { gitEnv, nmemEnv, toolEnv } from "@ducter/protocol/src/tool-env.ts";
+import { childEnvironment } from "@ducter/runner/src/child-env.ts";
 
 export const MIN_BUN = "1.3.0";
 
@@ -372,6 +374,21 @@ export function tildePath(p: string, home = process.env.HOME || ""): string {
 
 // ---------- The real machine ----------
 
+/**
+ * What a probe runs with (D102): a harness sees what its session would (the harness's own
+ * allowlist and keys), nmem and git their own, anything else the basics. Never the whole of
+ * Ducter's environment.
+ */
+export function probeEnv(cmd: string[], inherited: Record<string, string | undefined> = process.env): Record<string, string> {
+  const name = basename(cmd[0] ?? "").replace(/\.exe$/i, "");
+  const harness = ({ claude: "claude-code", codex: "codex", pi: "pi", dsh: "deepseek-harness" } as const)[name as "claude"];
+  if (harness) return childEnvironment(harness, { inherited });
+  if (name === "nmem") return nmemEnv(inherited);
+  if (name === "git") return gitEnv(inherited);
+  // cua-driver and systemctl --user talk to the desktop session bus.
+  return toolEnv({ inherited, extra: ["DISPLAY", "WAYLAND_DISPLAY", "DBUS_SESSION_BUS_ADDRESS", "XPC_FLAGS", "XPC_SERVICE_NAME"] });
+}
+
 export function realHost(): Host {
   return {
     which: (cmd) => Bun.which(cmd),
@@ -385,7 +402,7 @@ export function realHost(): Host {
     },
     async run(cmd, timeoutMs = 5_000) {
       try {
-        const proc = Bun.spawn(cmd, { env: { ...process.env }, stdout: "pipe", stderr: "pipe", stdin: "ignore" });
+        const proc = Bun.spawn(cmd, { env: probeEnv(cmd), stdout: "pipe", stderr: "pipe", stdin: "ignore" });
         const timer = setTimeout(() => proc.kill(), timeoutMs);
         const [stdout, stderr] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
         const code = await proc.exited;

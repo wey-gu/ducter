@@ -102,6 +102,16 @@ One table (`packages/protocol/src/harnesses.ts`), one adapter (`packages/runner/
   - Claude Code and Codex sign in from their own stored logins (Keychain or
     `~/.claude/.credentials.json`; `CODEX_HOME/auth.json`); the live task test passes on both.
   - A task no longer inherits tokens such as `GITHUB_TOKEN` from the shell Ducter started in.
+- **Helpers Ducter runs itself get an allowlist too** (D102, `packages/protocol/src/tool-env.ts`):
+  the basics (paths, user, locale, temp folder, proxies, CA bundles, `XDG_*`) plus the helper's own
+  settings, and no other secret-shaped name.
+  - nmem (memory and Bridge): `NMEM_*`, its own API key included.
+  - git in the user's repo (worktrees, merge, push): `GIT_*` settings, the SSH agent, GnuPG.
+  - gh (a draft PR): git's, plus `GH_*` and the user's own `GH_TOKEN` / `GITHUB_TOKEN`.
+  - The doctor's probes: a harness sees what its session would (the list above), nmem and git
+    their own, anything else the basics.
+  - A check (D112) has its own, narrower list (`packages/protocol/src/checks-run.ts`).
+  - Not yet scoped: the cua-driver spawns of the browser (`packages/runner/src/browser.ts`).
 - **Known gaps:** Codex's global `AGENTS.md` and `personality` are not left out (unverified);
   Codex lists the partner's sessions in the user's own history; pi's model list does not test
   its keys; in its owned home DeepSeek Harness sees only the DeepSeek key, not the user's other

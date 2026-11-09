@@ -7,6 +7,7 @@ import { mkdirSync, existsSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import type { Place } from "@ducter/protocol";
+import { gitEnv } from "@ducter/protocol/src/tool-env.ts";
 
 export function expandHome(p: string): string {
   if (p === "~") return homedir();
@@ -26,7 +27,8 @@ export function slugify(title: string, max = 40): string {
 }
 
 export async function git(cwd: string, args: string[]): Promise<{ ok: boolean; out: string; err: string }> {
-  const p = Bun.spawn(["git", "-C", cwd, ...args], { stdout: "pipe", stderr: "pipe", stdin: "ignore" });
+  // D102: git in the user's repo gets the basics and its own GIT_* settings, never Ducter's keys.
+  const p = Bun.spawn(["git", "-C", cwd, ...args], { env: gitEnv(), stdout: "pipe", stderr: "pipe", stdin: "ignore" });
   const [out, err, code] = await Promise.all([new Response(p.stdout).text(), new Response(p.stderr).text(), p.exited]);
   return { ok: code === 0, out: out.trim(), err: err.trim() };
 }

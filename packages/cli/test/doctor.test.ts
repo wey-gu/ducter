@@ -1,6 +1,6 @@
 // Doctor against a fake machine: no real CLIs, logins, or network.
 import { describe, expect, test } from "bun:test";
-import { formatReport, formatSummary, runDoctor, versionAtLeast, width, type Host, type RunResult } from "../src/doctor.ts";
+import { formatReport, formatSummary, probeEnv, runDoctor, versionAtLeast, width, type Host, type RunResult } from "../src/doctor.ts";
 import { STRINGS, commandsFor, detectLocale, translator } from "../src/i18n.ts";
 import { helpText } from "../src/main.ts";
 
@@ -308,4 +308,15 @@ describe("hints carry the flags used", () => {
     expect(rows.length).toBeGreaterThan(5);
     expect(new Set(rows.map(col)).size).toBe(1);
   });
+});
+
+test("probes run with a scoped environment (D102): a harness sees its own keys, nothing else does", () => {
+  const env = { PATH: "/usr/bin", HOME: "/h", ANTHROPIC_API_KEY: "sk-ant", OPENAI_API_KEY: "sk-oa", NMEM_API_KEY: "nm", DUCTER_MCP_SECRET: "m", AWS_SECRET_ACCESS_KEY: "a" };
+  const claude = probeEnv(["claude", "auth", "status"], env);
+  expect(claude.ANTHROPIC_API_KEY).toBe("sk-ant");
+  expect(claude.OPENAI_API_KEY).toBeUndefined();
+  expect(probeEnv(["/opt/bin/codex", "login", "status"], env).OPENAI_API_KEY).toBe("sk-oa");
+  expect(probeEnv(["codex"], env).ANTHROPIC_API_KEY).toBeUndefined();
+  expect(probeEnv(["nmem", "--json", "status"], env)).toEqual({ PATH: "/usr/bin", HOME: "/h", NMEM_API_KEY: "nm" });
+  for (const cmd of ["git", "cua-driver", "systemctl"]) expect(probeEnv([cmd], env)).toEqual({ PATH: "/usr/bin", HOME: "/h" });
 });

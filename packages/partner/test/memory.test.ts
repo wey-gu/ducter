@@ -232,6 +232,17 @@ describe("nmem client (stub binary)", () => {
     expect(s.stdin()).toBe("--all time tests use a fake clock");
   });
 
+  test("nmem gets the basics and NMEM_*, never Ducter's keys (D102)", async () => {
+    const s = stub(`env > "$(dirname "$0")/env"; echo '{"memories":[]}'`);
+    const env = { PATH: process.env.PATH, HOME: "/h", NMEM_API_KEY: "nm-1", NMEM_SPACE: "work", ANTHROPIC_API_KEY: "sk-ant", OPENAI_API_KEY: "sk-oa", DUCTER_MCP_SECRET: "x", GH_TOKEN: "ghp" };
+    await createNmemClient({ bin: s.bin, env }).search("x", 1);
+    const seen = readFileSync(join(s.dir, "env"), "utf8");
+    expect(seen).toContain("NMEM_API_KEY=nm-1");
+    expect(seen).toContain("NMEM_SPACE=work");
+    expect(seen).toContain("HOME=/h");
+    for (const k of ["ANTHROPIC_API_KEY", "OPENAI_API_KEY", "DUCTER_MCP_SECRET", "GH_TOKEN"]) expect(seen).not.toContain(k);
+  });
+
   test("missing binary and auth errors read as not configured; others as unavailable", async () => {
     const missing = await createNmemClient({ bin: join(tmp(), "nope") }).search("x", 1);
     expect(missing).toMatchObject({ ok: false, reason: "not_configured" });

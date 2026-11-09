@@ -6,11 +6,11 @@
 // open/reply/outbox/inspect/resume`); the JSON shapes are GUESSES (research/37): replace them with
 // the real ones from the author's live trial.
 //
-//   FAKE_BRIDGE_STATE=/path/state.json nmem [--json] --agent-context NAME bridge <verb> ...
+//   NMEM_FAKE_BRIDGE_STATE=/path/state.json nmem [--json] --agent-context NAME bridge <verb> ...
 //
-// Lost responses (J-Q6 tests): FAKE_BRIDGE_LOSE="send" (or "reply", or "send,reply") makes the
+// Lost responses (J-Q6 tests): NMEM_FAKE_BRIDGE_LOSE="send" (or "reply", or "send,reply") makes the
 // next such call keep its operation but answer like a dropped connection (exit 1, no JSON).
-// FAKE_BRIDGE_LOSE_MODE="pending" keeps it undelivered until `resume`; the default "delivered"
+// NMEM_FAKE_BRIDGE_LOSE_MODE="pending" keeps it undelivered until `resume`; the default "delivered"
 // delivers it and only the answer is lost. Each lose applies once (state.lost counts them).
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 
@@ -18,9 +18,9 @@ interface Msg { id: string; op: string; from: string; to: string; body: string; 
 interface Ident { agent: string; member: string; member_id?: string; description: string }
 interface State { identities: Record<string, Ident>; messages: Msg[]; seq: number; lost?: string[] }
 
-const statePath = process.env.FAKE_BRIDGE_STATE;
+const statePath = process.env.NMEM_FAKE_BRIDGE_STATE;
 if (!statePath) {
-  console.error("FAKE_BRIDGE_STATE is not set");
+  console.error("NMEM_FAKE_BRIDGE_STATE is not set");
   process.exit(2);
 }
 const load = (): State => JSON.parse(readFileSync(statePath, "utf8"));
@@ -66,11 +66,11 @@ const body = async (): Promise<string> => {
 const newId = () => `msg-${String(++s.seq).padStart(3, "0")}`;
 // A lost answer: the operation is kept (delivered, or pending until resume), the caller hears nothing.
 const lose = (kind: "send" | "reply", m: Msg): boolean => {
-  const want = (process.env.FAKE_BRIDGE_LOSE ?? "").split(",").includes(kind);
+  const want = (process.env.NMEM_FAKE_BRIDGE_LOSE ?? "").split(",").includes(kind);
   const done = (s.lost ?? []).filter((k) => k === kind).length;
   if (!want || done > 0) return false;
   s.lost = [...(s.lost ?? []), kind];
-  if (process.env.FAKE_BRIDGE_LOSE_MODE === "pending") m.pending = true;
+  if (process.env.NMEM_FAKE_BRIDGE_LOSE_MODE === "pending") m.pending = true;
   return true;
 };
 const opView = (m: Msg) => ({ operation: m.op, state: m.pending ? "pending" : "sent", message: m.pending ? undefined : m.id, to: card(m.to), ...(m.in_reply_to ? { in_reply_to: m.in_reply_to } : {}), created_at: m.created_at });

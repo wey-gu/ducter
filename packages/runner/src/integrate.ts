@@ -4,6 +4,7 @@
 import { existsSync } from "node:fs";
 import { resolve, sep } from "node:path";
 import type { BranchChanges, Place } from "@ducter/protocol";
+import { ghEnv } from "@ducter/protocol/src/tool-env.ts";
 import { git } from "./places.ts";
 
 export interface ActionResult {
@@ -106,7 +107,8 @@ export async function mergeTaskBranch(place: Place): Promise<ActionResult> {
 
 async function run(cmd: string[], cwd: string): Promise<{ ok: boolean; out: string; err: string }> {
   try {
-    const proc = Bun.spawn(cmd, { cwd, stdout: "pipe", stderr: "pipe", stdin: "ignore" });
+    // D102: gh gets git's environment and its own GH_* settings and token, never Ducter's keys.
+    const proc = Bun.spawn(cmd, { cwd, env: ghEnv(), stdout: "pipe", stderr: "pipe", stdin: "ignore" });
     const [out, err, code] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text(), proc.exited]);
     return { ok: code === 0, out: out.trim(), err: err.trim() };
   } catch (err) {

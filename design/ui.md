@@ -162,7 +162,7 @@ v1 has five places, and every one is reachable from the menu bar, a shortcut and
 | Place | Reach it | What it is for |
 |---|---|---|
 | 对话 / Conversation | ⌘1, Esc from any other place | Home: talk, decide, see results |
-| 手头 / On hand | ⌘2, the button in the conversation's bar | Every task and what waits for you |
+| 手头的事 / On hand | ⌘2, the button in the conversation's bar | Every task and what waits for you |
 | 设备 / Devices | ⌘3, the clay device button | The setup surface: devices, what they can do, AI accounts (sign in, install, sign out on this Mac), Connect a phone or computer |
 | 伙伴 / Partner | ⌘4, the partner's own face and name | A character sheet: the clay partner large with its five faces (hover one to see it big), the name renamed in place, then How it talks · When it comes to you · What it remembers · On its own, or asks you first |
 | 设置 / Settings | ⌘, and Settings… in the app menu and the menu bar extra | The app's own, calm: Look, Language, When you close the window, Updates, Data and logs, About, Remove Ducter (last, a quiet text button) |
@@ -181,9 +181,9 @@ empty list (no noted lines) is left out with its heading. Screenshots:
 
 1. **The conversation** (default). One partner, no machinery. Tasks appear only as quiet
    task lines inside the partner's messages; the header line says in words what needs you and what is
-   being worked on, and **手头 / On hand** is a plain button. The living message carries decisions inline with Go / Hold / Reply, so most days
+   being worked on, and **手头的事 / On hand** is a plain button. The living message carries decisions inline with Go / Hold / Reply, so most days
    the user never leaves this view.
-2. **手头 / On hand** (overview for decisions, all personas).
+2. **手头的事 / On hand** (overview for decisions, all personas).
    - The top band is the **attention forecast** in plain words: when each task will next need
      you (defaults taking effect, waits coming due). The lanes' headers carry the counts.
    - Below it are four lanes: **等你 / Needs you** (wide decision cards with the question,

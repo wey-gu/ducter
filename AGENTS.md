@@ -122,7 +122,7 @@ Design notes:
 
 - **Vocabulary:** partners, not hierarchy. Every word translates cleanly between zh and en,
   with no concept to learn first. i18n keys from day one, and zh + en designed together.
-- **UX shape:** three zoom levels: the conversation (default), 手头 / On hand (overview and
+- **UX shape:** three zoom levels: the conversation (default), 手头的事 / On hand (overview and
   decisions), and an opened task (conductor depth). Silence means success. Decisions carry
   defaults.
 - **Concepts are shown, not explained:** enabling a capability is game-like and visual. You see

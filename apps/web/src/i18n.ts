@@ -8,7 +8,7 @@ export type Lang = "zh" | "en";
 
 const zh: Record<string, string> = {
   "app.title": "Ducter",
-  "nav.onhand": "手头",
+  "nav.onhand": "手头的事",
   "nav.back": "回到对话",
   "header.working": "在做 %d 件",
   "header.needs": "%d 件等你",
@@ -60,7 +60,7 @@ const zh: Record<string, string> = {
   "lane.working": "在做",
   "lane.waiting": "在等",
   "lane.done": "今天做完",
-  "onhand.title": "手头",
+  "onhand.title": "手头的事",
   "onhand.calm": "现在没有要你定的事。",
   "onhand.calm.working": "现在没有要你定的事。%s 在做 %d 件，做完会告诉你。",
   "onhand.empty": "手头没事。在对话里说一句，%s 就会接着做。",
@@ -196,7 +196,7 @@ const zh: Record<string, string> = {
   "partner.notify.title": "什么时候找你",
   "partner.notify.on": "通知",
   "partner.notify.on.note": "有事要你定的时候，发通知到这台 Mac 和你连上的手机。",
-  "partner.notify.off.note": "不发通知。有事要你定，就在对话和手头里等你。",
+  "partner.notify.off.note": "不发通知。有事要你定，就在对话和「手头的事」里等你。",
   "partner.quiet": "免打扰",
   "partner.quiet.note": "这段时间里不发通知，结束时一起告诉你。",
   "partner.quiet.to": "到",

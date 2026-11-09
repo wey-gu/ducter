@@ -1,4 +1,4 @@
-// The phone's screens: the conversation (default), 手头 / On hand, an opened task, and the
+// The phone's screens: the conversation (default), 手头的事 / On hand, an opened task, and the
 // sheets (a decision opened from a notification; this phone's settings). Behavior follows the
 // desktop client (apps/desktop/internal/views); copy comes only from i18n.ts.
 import type { Attention, Bodies, EvidenceRef, LivingItem } from "@ducter/protocol";

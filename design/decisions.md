@@ -112,6 +112,12 @@ type scale, clay presence, idle motion). Only the structure below is decided.
 |---|---|---|---|
 | D75 | **Git holds source; work evidence lives outside it.** A binary is committed only if an app loads it at runtime or a build derives from it (theme art and fonts, app icons, the site's public files, the alpha art masters, the two reference images the art batches name), plus the README's own images, each ≤ 2 MB. Screenshots, before/after pairs, recordings, raw and normalized generations, concept explorations and build output are evidence or output: tools write them to `.shots/` (gitignored, `DUCTER_SHOTS_DIR` overrides), reviews are shown to the author as published galleries, and Markdown records cite them by file name. `scripts/check-binaries.ts` enforces this in CI. The existing archive moved to `~/dev/ducter-evidence` (the maintainer's machine), and the history rewrite before going public drops those paths from every commit. Supersedes the half of D64 that kept raw generations reachable from git history | U | `.gitignore`, `scripts/check-binaries.ts`, `.github/workflows/ci.yml`, `design/README.md`, `design/ui.md`, `AGENTS.md`, `todo.md` |
 
+## 2026-11-09: The overview's zh name (the author's "要不就叫手头的事吧")
+
+| # | Decision | Source | Reflected in |
+|---|---|---|---|
+| D80 | **The overview is 「手头的事」 in zh** (en stays On hand). 「手头」 alone reads as money at hand (手头紧) and as a fragment, not a place; 「当下」 was considered and rejected because it implies only what is happening now (done tasks, waiting decisions and next runs live here too) and reads as literary. Sentences that already say 手头没事 / 手头 n 件事 stay: they are speech, not the label. D76–D79 are taken by the brand rollout | U | `design/product-model.md`, `design/ui.md`, the desktop, phone web and CLI i18n |
+
 ## Superseded
 
 - **"Main AI asks windows instead of unfolding"** (first principle-3 draft). Superseded by D3:
@@ -146,3 +152,4 @@ type scale, clay presence, idle motion). Only the structure below is decided.
   no restated state.
 - **D64's "raw generations live in the concept-art canvas" with raw images still in git
   history.** Superseded by D75: evidence and explorations are out of git, history included.
+- **D23's 手头 as the overview's zh label.** Superseded by D80: 手头的事.

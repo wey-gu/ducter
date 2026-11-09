@@ -22,14 +22,17 @@ export interface RuleView {
  *  - default: Ducter picked the best fit with the most limit left (no reason line);
  *  - rule:    the person's rule (ruleId, text);
  *  - limit:   the first choice was short of limit (from: who it would have been);
- *  - you:     the person switched it;
+ *  - unavailable: the first choice (the partner's pick or a rule's) can't take it for another
+ *             reason (from, blocked: signed out, off, not installed, …);
+ *  - you:     the person switched it, or picked it on New task;
  *  - partner: the partner picked it in the moment (text: its words, e.g. "you asked for Codex").
  */
 export interface BodyWhy {
-  kind: "default" | "rule" | "limit" | "you" | "partner";
+  kind: "default" | "rule" | "limit" | "unavailable" | "you" | "partner";
   ruleId?: string;
   text?: string;
   from?: string;
+  blocked?: CandidateBlock;
 }
 
 export interface TaskBody {

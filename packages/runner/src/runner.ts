@@ -708,7 +708,15 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const picked = await core.bodies?.choose({ title: input.title, brief: input.brief, place: input.place, harness: input.harness, model: input.model, ...(you ? { by: "you" as const } : {}) });
     if (picked && "none" in picked) throw new Error(picked.none);
     const pick = picked && HARNESSES.includes(picked.harness as HarnessId) ? picked : undefined;
-    if (pick) input = { ...input, harness: pick.harness, ...(pick.model ? { model: pick.model } : {}) };
+    // The pick's model goes with it (the card says what runs); a model the caller named for
+    // another agent never rides along when the pick moved.
+    if (pick) {
+      const { model: asked, ...rest } = input;
+      const keep = pick.model ?? (pick.harness === input.harness ? asked : undefined);
+      input = { ...rest, harness: pick.harness, ...(keep ? { model: keep } : {}) };
+    }
+    // A model from the tier table alone (no rule, no pin) gives way to DUCTER_TASK_MODEL below.
+    const ranked = !!pick && ["default", "limit", "unavailable"].includes(pick.why.kind);
     // D85: the partner's choice; else the first account the user lets tasks use (Settings
     // taskAccounts; a missing entry is enabled), in first-wave order.
     const accounts = core.settings?.get().taskAccounts ?? {};
@@ -732,8 +740,10 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const sidecarInput: SidecarInput = { place: resolved.place, persona, taskId: id, dataDir: core.dataDir, partnerName, harness: h };
     const sidecar = await browserSidecar(sidecarInput, opts.browser);
 
-    // The partner's choice wins; else DUCTER_TASK_MODEL; else the harness default.
-    const model = input.model || (h === "claude-code" ? (opts.defaultModel ?? opts.taskModel ?? process.env.DUCTER_TASK_MODEL) || undefined : undefined);
+    // The partner's, a rule's or the person's choice wins; else DUCTER_TASK_MODEL; else the
+    // ranking's model; else the harness default.
+    const fixed = h === "claude-code" ? (opts.defaultModel ?? opts.taskModel ?? process.env.DUCTER_TASK_MODEL) || undefined : undefined;
+    const model = (ranked && fixed) || input.model || fixed;
     const later = typeof briefIn !== "string";
     const body: Bodies["task_open"] = { taskId: id, title, project, place: resolved.place, harness: h, model, brief: later ? "" : briefIn, ...(input.language ? { language: input.language } : {}), ...(you ? { origin: "you" as const } : {}) };
     const opened = core.log.append({ persona, stream: stream(id), origin: "system", kind: "task_open", body });
@@ -801,9 +811,19 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
   }
 
   // The archive horizon: once soon after start (tasks recovered from the Log), then periodically.
-  const sweep = () => void sweepArchive().catch((err) => console.warn("[runner] archive sweep:", (err as Error).message));
-  const sweepFirst = archiveIdleMs > 0 ? setTimeout(sweep, 5_000) : undefined;
-  const sweepTimer = archiveIdleMs > 0 ? setInterval(sweep, opts.archiveSweepMs ?? 3600_000) : undefined;
+  // archiveSweepMs 0: no timer (tests call sweepArchive themselves).
+  let sweeping = false;
+  const sweep = () => {
+    if (sweeping) return;
+    sweeping = true;
+    void sweepArchive()
+      .catch((err) => console.warn("[runner] archive sweep:", (err as Error).message))
+      .finally(() => (sweeping = false));
+  };
+  const sweepMs = opts.archiveSweepMs ?? 3600_000;
+  const timed = archiveIdleMs > 0 && sweepMs > 0;
+  const sweepFirst = timed ? setTimeout(sweep, 5_000) : undefined;
+  const sweepTimer = timed ? setInterval(sweep, sweepMs) : undefined;
   (sweepFirst as { unref?: () => void } | undefined)?.unref?.();
   (sweepTimer as { unref?: () => void } | undefined)?.unref?.();
 

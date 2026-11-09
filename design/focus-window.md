@@ -115,9 +115,15 @@ default), the reserve, and a model picked (pi); then the person's rules (a rule 
 that mark its kind of work, matched in the title and brief, newest first); then the shipped
 tier table (Claude Code Opus and Codex "smart", Sonnet and the per-use agents "fast"); then
 the most limit left, plan before pay-per-use. The pick is logged as `body_selected {harness,
-model, why}` with `why` one of default · rule · limit · you · partner, and the card, the
-conversation's task line and Details say it. Nobody left: the open fails with one line the
-partner says, never a silent fallback.
+model, why}` with `why` one of default · rule · limit · unavailable · you · partner, and the
+card, the conversation's task line and Details say it. The pick's model goes with it (a
+default pick's gives way to `DUCTER_TASK_MODEL`), so the card names what runs. A rule or the
+partner's pin that can't run moves to the next best with the real reason: `limit` only for
+the partner's reserve, else `unavailable {from, blocked}` (signed out, off, not installed;
+"{X} 现在用不了 / {X} can't take it now"). The person's own pick (New task, `--agent`) never
+moves: the open fails with one line, "Codex can't take this task: it isn't signed in. Pick
+another AI agent, or fix that first." Nobody left: the open fails with one line the partner
+says, never a silent fallback.
 
 **Switching (换谁来做 / Switch who does it).** The list is the one doing it now, the top three
 others with why and the limit each, and the ones that can't, greyed with why. **换到 X 接着做 /

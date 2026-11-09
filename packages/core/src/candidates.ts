@@ -3,7 +3,7 @@
 // for tasks, the partner's reserve, a model picked), then the person's rules, then the shipped
 // tier table, then the limit left. A pin (the partner's or the person's choice) wins over all of
 // it unless a hard filter says no, and then the move is said, never silent.
-import { HARNESSES, isHarnessId, PARTNER_RESERVE, type BodyWhy, type Candidate, type CandidateBlock, type DeviceHarness, type RuleView, type Settings } from "@ducter/protocol";
+import { HARNESSES, harnessName, isHarnessId, PARTNER_RESERVE, type BodyWhy, type Candidate, type CandidateBlock, type DeviceHarness, type RuleView, type Settings } from "@ducter/protocol";
 import { ruleFor } from "./rules.ts";
 
 /** One AI agent and model, as the tier table knows it. smart: the strongest; fast: quick and light on the limit. */
@@ -96,15 +96,41 @@ export function fwCandidates(inp: CandidateInput): Candidate[] {
   return out;
 }
 
+/** Why the first choice moved: a short limit, or whatever else stops it (said, never silent). */
+function movedWhy(from: string, b: CandidateBlock, rule?: RuleView): BodyWhy {
+  const r = rule ? { ruleId: rule.id, text: rule.text } : {};
+  return b === "reserve" ? { kind: "limit", from, ...r } : { kind: "unavailable", from, blocked: b, ...r };
+}
+
+const BLOCK_WORDS: Record<CandidateBlock, string> = {
+  not_installed: "it isn't installed on that device",
+  signed_out: "it isn't signed in",
+  off: "Use it for tasks is off for it",
+  reserve: "only the part of its limit kept for the partner is left",
+  no_model: "no model is picked for it yet",
+  offline: "its device can't be reached",
+};
+
+/** The one line the New task card / `ducter task --agent` shows when the person's own pick can't run. */
+export function pinProblem(harness: string, b: CandidateBlock): string {
+  return `${harnessName(harness)} can't take this task: ${BLOCK_WORDS[b]}. Pick another AI agent, or fix that first.`;
+}
+
 /**
- * Who does a new task, and why (the body_selected the card shows). pinned: the partner's choice in
- * the moment. Undefined when no AI agent can take it: the caller says so in one line.
+ * Who does a new task, and why (the body_selected the card shows). pinned: a choice in the
+ * moment, the partner's or the person's own (pinnedBy "you": the New task card, `--agent`).
+ * The partner's pin or a rule that can't run moves to the next best, with why. The person's own
+ * pick never moves silently: `problem` is the one line to show them. Undefined when no AI agent
+ * can take it: the caller says so in one line.
  */
-export function chooseBody(inp: Omit<CandidateInput, "current"> & { pinned?: { harness: string; model?: string }; pinnedBy?: "you" }): { harness: string; model?: string; why: BodyWhy } | undefined {
+export function chooseBody(
+  inp: Omit<CandidateInput, "current"> & { pinned?: { harness: string; model?: string }; pinnedBy?: "you" },
+): { harness: string; model?: string; why: BodyWhy } | { problem: string } | undefined {
   const list = fwCandidates(inp);
   const ok = list.filter((c) => !c.blocked);
   const rule = ruleFor(inp.rules, inp.work);
   const byHarness = (h: string) => inp.harnesses.find((x) => x.harness === h);
+  const pick = (c: Candidate, why: BodyWhy) => ({ harness: c.harness, ...(c.model ? { model: c.model } : {}), why });
   if (inp.pinned) {
     const b = blockOf(byHarness(inp.pinned.harness), inp.settings);
     if (!b) {
@@ -112,24 +138,26 @@ export function chooseBody(inp: Omit<CandidateInput, "current"> & { pinned?: { h
       const why: BodyWhy = inp.pinnedBy === "you" ? { kind: "you" } : rule && rule.harness === inp.pinned.harness ? { kind: "rule", ruleId: rule.id, text: rule.text } : { kind: "partner" };
       return { harness: inp.pinned.harness, ...(inp.pinned.model ? { model: inp.pinned.model } : {}), why };
     }
+    if (inp.pinnedBy === "you") return { problem: pinProblem(inp.pinned.harness, b) };
     const next = ok[0];
     if (!next) return undefined;
-    return { harness: next.harness, why: { kind: "limit", from: inp.pinned.harness } };
+    return pick(next, movedWhy(inp.pinned.harness, b));
   }
   if (rule) {
     const b = blockOf(byHarness(rule.harness), inp.settings);
     if (!b) return { harness: rule.harness, ...(rule.model ? { model: rule.model } : {}), why: { kind: "rule", ruleId: rule.id, text: rule.text } };
     const next = ok[0];
     if (!next) return undefined;
-    return { harness: next.harness, why: { kind: "limit", from: rule.harness, ruleId: rule.id, text: rule.text } };
+    return pick(next, movedWhy(rule.harness, b, rule));
   }
   const best = ok[0];
   if (!best) return undefined;
   // The brain's own account was the natural first choice but only its reserve is left: say it.
   const brain = byHarness(inp.settings.brain.harness);
   if (best.harness !== inp.settings.brain.harness && brain && blockOf(brain, inp.settings) === "reserve") {
-    return { harness: best.harness, why: { kind: "limit", from: inp.settings.brain.harness } };
+    return pick(best, { kind: "limit", from: inp.settings.brain.harness });
   }
-  // The model is left to the harness (and DUCTER_TASK_MODEL) unless a rule or a pin names one.
-  return { harness: best.harness, why: { kind: "default" } };
+  // The model the ranking chose goes with it, so the card says what runs (the runner may put
+  // DUCTER_TASK_MODEL in its place for a default pick, and logs what it actually ran).
+  return pick(best, { kind: "default" });
 }

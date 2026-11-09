@@ -57,6 +57,8 @@ export function createLoadout(o: {
         ...(work.harness ? { pinned: { harness: work.harness, ...(work.model ? { model: work.model } : {}) } } : {}),
         ...(work.by ? { pinnedBy: work.by } : {}),
       });
+      // The person's own pick can't run: their one line, never a silent move.
+      if (pick && "problem" in pick) return { none: pick.problem };
       if (pick) return pick;
       const why = hs.map((h) => `${harnessName(h.harness)}: ${blockOf(h, o.settings.get()) ?? "ok"}`).join(", ");
       return { none: `no AI agent can take this task right now (${why}). Tell the user in one line and offer what would make one available.` };

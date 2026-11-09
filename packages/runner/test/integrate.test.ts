@@ -364,7 +364,7 @@ async function bootWithTask(place: Place, opts: { gh?: string; branchChecks?: bo
   core.setPartner({ onTrigger: () => {} });
   let late: ReturnType<typeof createRunner> | undefined;
   registerTaskTools(core, opts.branchChecks ? { branchChanges: (id) => late!.branchChanges(id), checkEvidence: (id, ev) => late!.checkEvidence(id, ev) } : {});
-  const runner = createRunner(core, { harness: idlePort(), gh: opts.gh, newId: () => "t1", ...(opts.now ? { now: opts.now } : {}) });
+  const runner = createRunner(core, { harness: idlePort(), gh: opts.gh, newId: () => "t1", archiveSweepMs: 0, ...(opts.now ? { now: opts.now } : {}) });
   late = runner;
   core.setRunner(runner);
   const card = await runner.openTask({ persona: "default", title: "fix", brief: "b", place });
@@ -395,3 +395,40 @@ function idlePort(): HarnessPort {
     available: async () => [],
   };
 }
+
+// D89 / focus-window.md "Choosing a body": a pin that can't run says the real reason; the
+// person's own pick never moves silently; the pick's model is what runs.
+test("who does it: a blocked pin moves with the real reason, the person's own pick is refused in one line, the model carries", async () => {
+  const core: Core = startCore({
+    dataDir: join(dir, "data"),
+    port: 0,
+    deviceProbes: {
+      cua: async () => ({ missing: "test" }),
+      harnesses: async () => [
+        { harness: "claude-code", installed: true, loggedIn: true, canBePartner: true },
+        { harness: "codex", installed: true, loggedIn: false, canBePartner: true },
+      ],
+      kind: async () => "laptop",
+    },
+  });
+  stops.push(() => core.stop());
+  core.setPartner({ onTrigger: () => {} });
+  registerTaskTools(core);
+  const ids = ["t1", "t2", "t3"];
+  const runner = createRunner(core, { harness: idlePort(), newId: () => ids.shift()!, taskModel: "", archiveSweepMs: 0 });
+  core.setRunner(runner);
+  await expect(runner.openTask({ persona: "default", title: "x", brief: "b", harness: "codex", origin: "you" })).rejects.toThrow("Codex can't take this task: it isn't signed in.");
+  const moved = await runner.openTask({ persona: "default", title: "x", brief: "b", harness: "codex", model: "gpt-5" });
+  const sel = (id: string) => core.log.read({ stream: `task:${id}`, kinds: ["body_selected"] }).at(-1)!.body as Bodies["body_selected"];
+  expect(sel(moved.taskId)).toEqual({ taskId: moved.taskId, harness: "claude-code", model: "opus", why: { kind: "unavailable", from: "codex", blocked: "signed_out" } });
+  expect(core.tasks.get(moved.taskId)).toMatchObject({ harness: "claude-code", model: "opus" });
+  await runner.drop(moved.taskId); // so the next runner doesn't recover it mid-work
+  await runner.dispose();
+  // DUCTER_TASK_MODEL (a cheap model for runs and evals) still wins over the ranking's model.
+  const cheap = createRunner(core, { harness: idlePort(), newId: () => ids.shift()!, taskModel: "haiku", archiveSweepMs: 0 });
+  const c = await cheap.openTask({ persona: "default", title: "y", brief: "b" });
+  await cheap.whenStarted(c.taskId);
+  expect(sel(c.taskId)).toMatchObject({ harness: "claude-code", model: "haiku", why: { kind: "default" } });
+  await cheap.drop(c.taskId);
+  await cheap.dispose();
+});

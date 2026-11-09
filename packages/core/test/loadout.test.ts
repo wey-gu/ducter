@@ -56,14 +56,38 @@ test("candidates: Use it for tasks off, and the partner's reserve, are hard filt
 test("choose: rule > default; a rule that can't be met moves with why, never silently", () => {
   const r = rule("codex", ["backend"]);
   expect(chooseBody({ work: { title: "Backend refactor" }, harnesses: [cc(), cx()], settings: settings(), rules: [r] })).toEqual({ harness: "codex", why: { kind: "rule", ruleId: r.id, text: r.text } });
-  expect(chooseBody({ work: { title: "Write the README" }, harnesses: [cc(), cx()], settings: settings(), rules: [r] })).toEqual({ harness: "claude-code", why: { kind: "default" } });
+  // The ranking's model goes with the pick, so the card says what runs.
+  expect(chooseBody({ work: { title: "Write the README" }, harnesses: [cc(), cx()], settings: settings(), rules: [r] })).toEqual({ harness: "claude-code", model: "opus", why: { kind: "default" } });
+  // A rule whose agent is switched off moves, and says the real reason (not "limit").
   const moved = chooseBody({ work: { title: "Backend refactor" }, harnesses: [cc(), cx()], settings: settings({ taskAccounts: { codex: { enabled: false } } }), rules: [r] });
-  expect(moved).toEqual({ harness: "claude-code", why: { kind: "limit", from: "codex", ruleId: r.id, text: r.text } });
+  expect(moved).toEqual({ harness: "claude-code", model: "opus", why: { kind: "unavailable", from: "codex", blocked: "off", ruleId: r.id, text: r.text } });
   // Only the reserve left on the brain's account: the task goes elsewhere and says why.
   expect(chooseBody({ work: { title: "x" }, harnesses: [cc(0.08), cx()], settings: settings(), rules: [] })).toEqual({ harness: "codex", why: { kind: "limit", from: "claude-code" } });
   // A pin wins; nobody left: undefined (the caller says it in one line).
   expect(chooseBody({ work: { title: "Backend" }, harnesses: [cc(), cx()], settings: settings(), rules: [r], pinned: { harness: "claude-code", model: "sonnet" } })).toEqual({ harness: "claude-code", model: "sonnet", why: { kind: "partner" } });
   expect(chooseBody({ work: { title: "x" }, harnesses: [cc(0.02), pi], settings: settings(), rules: [] })).toBeUndefined();
+});
+
+test("choose: a blocked pin says the real reason; the person's own pick never moves silently", () => {
+  const signedOut = cx(0.5, { loggedIn: false });
+  // The partner's pin of a signed-out agent moves, with why "unavailable: signed_out", not "limit".
+  expect(chooseBody({ work: { title: "x" }, harnesses: [cc(), signedOut], settings: settings(), rules: [], pinned: { harness: "codex" } })).toEqual({
+    harness: "claude-code",
+    model: "opus",
+    why: { kind: "unavailable", from: "codex", blocked: "signed_out" },
+  });
+  // The reserve is still a limit.
+  expect(chooseBody({ work: { title: "x" }, harnesses: [cc(0.05), cx()], settings: settings(), rules: [], pinned: { harness: "claude-code" } })).toEqual({ harness: "codex", why: { kind: "limit", from: "claude-code" } });
+  // The person picked it (New task, --agent): a one-line problem, no move.
+  for (const [h, extra, words] of [
+    [cx(0.5, { loggedIn: false }), undefined, "isn't signed in"],
+    [cx(), { taskAccounts: { codex: { enabled: false } } }, "Use it for tasks is off"],
+    [cx(0.5, { installed: false }), undefined, "isn't installed"],
+  ] as const) {
+    const r = chooseBody({ work: { title: "x" }, harnesses: [cc(), h], settings: settings(extra ?? {}), rules: [], pinned: { harness: "codex" }, pinnedBy: "you" });
+    expect(r).toEqual({ problem: expect.stringContaining(words) });
+    expect((r as { problem: string }).problem).toStartWith("Codex can't take this task:");
+  }
 });
 
 test("rules: whole Latin words, Chinese as written; the same kind of work said again replaces the old rule", () => {

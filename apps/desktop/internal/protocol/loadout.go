@@ -39,12 +39,14 @@ type RuleView struct {
 }
 
 // BodyWhy is why a task is on the AI agent it is on: default | rule | limit
-// | you | partner (From: who it would have been, or was).
+// | unavailable | you | partner (From: who it would have been, or was;
+// Blocked: why From couldn't take it, for unavailable).
 type BodyWhy struct {
-	Kind   string `json:"kind"`
-	RuleID string `json:"ruleId,omitempty"`
-	Text   string `json:"text,omitempty"`
-	From   string `json:"from,omitempty"`
+	Kind    string `json:"kind"`
+	RuleID  string `json:"ruleId,omitempty"`
+	Text    string `json:"text,omitempty"`
+	From    string `json:"from,omitempty"`
+	Blocked string `json:"blocked,omitempty"`
 }
 
 // TaskBody is who does a task now, and why.

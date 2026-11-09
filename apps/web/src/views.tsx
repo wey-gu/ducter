@@ -2,6 +2,7 @@
 // sheets (a decision opened from a notification; this phone's settings). Behavior follows the
 // desktop client (apps/desktop/internal/views); copy comes only from i18n.ts.
 import type { Attention, Bodies, Candidate, DeviceHarness, EvidenceRef, LivingItem } from "@ducter/protocol";
+import { Fragment } from "preact";
 import { PARTNER_RESERVE } from "@ducter/protocol/src/loadout.ts";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { JSX } from "preact";
@@ -124,13 +125,18 @@ const Arrow = () => (
     <path d="M10 15V5M5.5 9.5L10 5l4.5 4.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
   </svg>
 );
+const Chev = () => (
+  <svg class="chev" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+    <path d="M4.5 2.5 8 6l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+  </svg>
+);
 const Out = () => (
   <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
     <path d="M3.5 10.5l7-7M5.5 3.5h5v5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
   </svg>
 );
 /** A small speech bubble: it is asking you (the calm mark of needs you; "!" reads as an alarm). */
-const Ask = () => (
+const AskMark = () => (
   <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
     <path d="M3.6 2h6.8A2.1 2.1 0 0 1 12.5 4.1v3.6a2.1 2.1 0 0 1-2.1 2.1H6.2L3.6 12.3V9.8A2.1 2.1 0 0 1 1.5 7.7V4.1A2.1 2.1 0 0 1 3.6 2z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" />
   </svg>
@@ -138,7 +144,7 @@ const Ask = () => (
 /** The drawn mark of an attention state: → under way, clock waiting, a speech bubble asking you, ✓ done, × didn't work. */
 function StateMark({ a }: { a: Attention }) {
   if (a === "blocked" || a === "queued") return <Clock />;
-  if (a === "needs_you") return <Ask />;
+  if (a === "needs_you") return <AskMark />;
   if (a === "done" || a === "done_claimed") return <Check />;
   if (a === "failed" || a === "dropped" || a === "superseded") return <Cross />;
   return <Forward />;
@@ -463,40 +469,131 @@ function SentLine({ task }: { task: Task }) {
   );
 }
 
-/** Under a message about a task. Under way: one quiet line. Finished: the result message
- *  already says the outcome, so no state is restated: one line of proof, what went out, then
- *  Merge / Open draft PR (D73). */
-function TaskFooter({ task, detail }: { task: Task; detail?: string }) {
+// ---------- the quiet conversation (D104) ----------
+// By default the conversation is the partner's words. What stands behind a message (its task, the
+// proof, the changes, what went out, what it noted) is one tap away under a single quiet
+// Details; Merge into main stays one tap as a text button when it is the next step.
+
+/** The single quiet affordance under a message: Details, or Hide once open. */
+function DetailsToggle({ k, about }: { k: string; about?: string }) {
+  const open = A.detailsOpen(k);
+  return (
+    <button class="tb" aria-expanded={open} aria-label={about ? `${t(open ? "details.hide" : "details.show")} · ${about}` : undefined} onClick={() => A.toggleDetails(k)}>
+      {t(open ? "details.hide" : "details.show")}
+      <Chev />
+    </button>
+  );
+}
+
+/** Merge into main as a text button when it is the task's next step; its state in words after. */
+function MergeAction({ task }: { task: Task }) {
+  const p = placeOf(task);
+  if (!finished(task) || attention(task) === "failed" || p.kind !== "repo" || !p.branch) return null;
+  const base = p.baseBranch || "main";
+  if (task.acting) return <span class="qs">{t(`result.acting.${task.acting}`, base)}</span>;
+  if (task.unsure) return <Btn kind="text" size="sm" class="tb act" label={t("task.action.retry")} about={t("result.unsure")} onClick={() => A.retryAction(task.id)} />;
+  if (task.acted?.ok && task.acted.action === "merge")
+    return (
+      <span class="qs done">
+        <Check />
+        {t("result.merged", base)}
+      </span>
+    );
+  return <button class="tb act" aria-label={`${t("result.merge", base)} · ${title(task)}`} onClick={() => A.taskAction(task.id, "merge")}>{t("result.merge", base)}</button>;
+}
+
+/** A task's lines inside Details: under way, its status line; finished, the proof with the
+ *  changes and its title as links, and Open draft PR. What went out shows above the row. */
+function ResultDetails({ task, detail }: { task: Task; detail?: string }) {
   if (!finished(task)) return <TaskLine task={task} detail={detail} />;
   A.history(task.id);
+  const p = placeOf(task);
+  const pr = attention(task) !== "failed" && p.kind === "repo" && !!p.branch && !task.acting && !(task.acted?.ok && task.acted.action === "merge");
   return (
-    <div class="footer">
+    <>
       <ProofLine task={task} evs={resultEvidence(task)} withTitle />
-      <SentLine task={task} />
-      <ResultActions task={task} />
+      {pr && (
+        <div class="proof">
+          <button class="qlink" onClick={() => A.taskAction(task.id, "open_pr")}>
+            {t("result.pr")}
+          </button>
+        </div>
+      )}
+    </>
+  );
+}
+
+function NotedLine({ n }: { n: { seq: number; title: string } }) {
+  return (
+    <div class="proof">
+      <span class="mk">{t("memory.noted", n.title)}</span>
+      <button class="qlink" onClick={() => A.forget(n.seq)}>
+        {t("partner.memory.forget")}
+      </button>
     </div>
   );
 }
 
-function JobRow({ e, chipOwner }: { e: Entry; chipOwner: Map<string, number> }) {
+/** Under a partner message: one quiet row (Merge into main, Details), then Details when open. */
+function Quiet({ k, tasks, detail, noted = [] }: { k: string; tasks: Task[]; detail?: string; noted?: { seq: number; title: string }[] }) {
+  if (!tasks.length && !noted.length) return null;
+  const open = A.detailsOpen(k);
+  return (
+    <>
+      {/* What went out is never folded away (D104): the exception that matters to trust. */}
+      {tasks.filter(finished).map((task) => (
+        <SentLine key={task.id} task={task} />
+      ))}
+      <div class="qrow">
+        {tasks.map((task) => (
+          <MergeAction key={task.id} task={task} />
+        ))}
+        <DetailsToggle k={k} about={tasks[0] ? title(tasks[0]) : undefined} />
+      </div>
+      {open && (
+        <div class="det">
+          {tasks.map((task) => (
+            <ResultDetails key={task.id} task={task} detail={detail} />
+          ))}
+          {noted.map((n) => (
+            <NotedLine key={n.seq} n={n} />
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+function JobRow({ e, chipOwner, noted }: { e: Entry; chipOwner: Map<string, number>; noted: { seq: number; title: string }[] }) {
   const j = e.job!;
   const st = j.status;
   const task = st?.taskId ? A.S.tasks.get(st.taskId) : undefined;
+  const own = task && title(task) && chipOwner.get(task.id) === e.firstSeq;
   return (
     <div class="partner">
       {j.ack && <div>{j.ack.text}</div>}
-      {st &&
-        (task && title(task) ? (
-          chipOwner.get(task.id) === e.firstSeq && (
-            <div class="footer">
-              <TaskFooter task={task} detail={st.text} />
-            </div>
-          )
-        ) : (
-          <div class={`status-line${st.state === "failed" ? " failed" : ""}`} style={{ marginTop: 8 }}>
-            {st.text}
-          </div>
-        ))}
+      {st && !(task && title(task)) && <div class={`status-line${st.state === "failed" ? " failed" : ""}`}>{st.text}</div>}
+      <Quiet k={`m${e.firstSeq}`} tasks={own ? [task!] : []} detail={st?.text} noted={noted} />
+    </div>
+  );
+}
+
+/** A living item the partner didn't report itself, said as one sentence (D104): a task that
+ *  didn't work, or one that came back. Work under way and waits are not said; the header and
+ *  On hand carry them (with Details shown, they show as lines). */
+function News({ it, k }: { it: LivingItem; k: string }) {
+  const task = A.S.tasks.get(it.taskId);
+  const text = it.title ? t(it.kind === "failed" ? "living.failed" : "living.done", it.title, it.text) : it.text;
+  return (
+    <div class="partner">
+      <div>{text}</div>
+      {task ? (
+        <Quiet k={k} tasks={[task]} />
+      ) : (
+        <div class="qrow">
+          <DetailsToggle k={k} />
+        </div>
+      )}
     </div>
   );
 }
@@ -511,71 +608,181 @@ function LivingLine({ it }: { it: LivingItem }) {
   );
 }
 
+const openAsk = (d?: DecisionState) => !!d && !d.resolved && !d.pending;
+const dueAt = (d: DecisionState) => (d.defaultAt ? Date.parse(d.defaultAt) : Infinity);
+
+/** One ask in the partner's words (D104): the question as it speaks, its default in one muted
+ *  line with Details, and, when it is the one being asked, Reply… · Hold · Go in one small row. */
+function Ask({ d, taskId, buttons = true }: { d: DecisionState; taskId?: string; buttons?: boolean }) {
+  useTick(1000);
+  const ref = useRef<HTMLDivElement>(null);
+  const flash = A.flash === d.decisionId;
+  useEffect(() => {
+    if (flash) {
+      ref.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+      A.flash = undefined;
+    }
+  }, [flash]);
+  const id = taskId || d.taskId;
+  const task = id ? A.S.tasks.get(id) : undefined;
+  const open = openAsk(d);
+  const k = `d${d.decisionId}`;
+  const about = task && title(task) ? title(task) : d.question.slice(0, 40);
+  const draft = A.replyDraft.get(d.decisionId) ?? "";
+  return (
+    <div ref={ref} class={`partner askq${flash ? " flash" : ""}`} id={`d-${d.decisionId}`}>
+      <div>{d.question}</div>
+      {open ? (
+        <>
+          <div class="dflt">
+            <span>{defaultInfo(d, Date.now()).line}</span>
+            {task && title(task) && <DetailsToggle k={k} about={about} />}
+          </div>
+          {task && A.detailsOpen(k) && (
+            <div class="det">
+              <TaskLine task={task} />
+            </div>
+          )}
+          {buttons && (
+            <div class="ans">
+              <Btn kind="text" size="sm" label={t("decision.reply")} about={about} onClick={() => (A.replyOpen.has(d.decisionId) ? A.replyOpen.delete(d.decisionId) : A.replyOpen.add(d.decisionId), A.changed())} />
+              <Btn kind="secondary" size="sm" label={t("decision.hold")} about={about} onClick={() => A.decide(d.decisionId, "hold")} />
+              <Btn kind="primary" size="sm" label={goLabel(d)} about={about} onClick={() => A.decide(d.decisionId, "go")} />
+            </div>
+          )}
+          {A.replyOpen.has(d.decisionId) && (
+            <div class="reply">
+              <AutoText
+                value={draft}
+                autoFocus
+                label={t("decision.reply.placeholder")}
+                placeholder={t("decision.reply.placeholder")}
+                onInput={(v) => (A.replyDraft.set(d.decisionId, v), A.changed())}
+                onEnter={() => draft.trim() && (A.decide(d.decisionId, "reply", draft.trim()), A.replyDraft.delete(d.decisionId))}
+              />
+              <button
+                class="btn accent icon send"
+                aria-label={t("composer.send")}
+                disabled={!draft.trim()}
+                onClick={() => {
+                  A.decide(d.decisionId, "reply", draft.trim());
+                  A.replyDraft.delete(d.decisionId);
+                }}
+              >
+                <Arrow />
+              </button>
+            </div>
+          )}
+        </>
+      ) : (
+        <Resolved d={d} />
+      )}
+    </div>
+  );
+}
+
+/** The living message without its card (D104): a small divider when the person was away, what
+ *  didn't work or came back as sentences, then the asks: the one whose default comes soonest
+ *  with its buttons, the rest gathered in one line until it is answered or opened. */
 function Living({ e, items }: { e: Entry; items: LivingItem[] }) {
-  // "While you were away" only when the user was: it came before this page loaded and they
-  // hadn't read it, or it came while the page was hidden (app.ts records that as it lands).
-  // Latched the first time it shows: reading it must not take the title away.
   if (!A.livingAway.has(e.firstSeq)) A.livingAway.set(e.firstSeq, e.firstSeq <= A.S.headSeq && A.S.unread(e));
   const away = A.livingAway.get(e.firstSeq)!;
-  const decisions = items.filter((it) => it.kind === "decision");
-  const open = decisions.filter((it) => {
-    const d = it.decisionId ? A.S.decisions.get(it.decisionId) : undefined;
-    return d && !d.resolved && !d.pending && d.reversible;
-  }).length;
+  const shown = A.details === "shown";
+  const asks = items
+    .filter((it) => it.kind === "decision")
+    .map((it) => ({ it, d: it.decisionId ? A.S.decisions.get(it.decisionId) : undefined }))
+    .filter((x): x is { it: LivingItem; d: DecisionState } => !!x.d);
+  const answered = asks.filter((x) => !openAsk(x.d));
+  const waiting = asks.filter((x) => openAsk(x.d)).sort((a, b) => dueAt(a.d) - dueAt(b.d) || a.d.seq - b.d.seq);
+  const all = shown || A.moreAsks.has(e.firstSeq);
+  const head = all ? waiting : waiting.slice(0, 1);
+  const rest = waiting.length - head.length;
+  const defaults = waiting.filter((x) => x.d.reversible).length;
+  const news = items.filter((it) => it.kind === "failed" || it.kind === "done");
+  const lines = shown ? items.filter((it) => it.kind === "progress" || it.kind === "blocked") : [];
+  if (!asks.length && !news.length && !lines.length) return null;
   return (
     <section class="living" key={`${e.firstSeq}:${e.revision}`} aria-label={t("living.title")}>
-      {away && <h2>{t("living.title")}</h2>}
-      {decisions.length > 0 && (
-        <div class="needs-head">
-          <span>{t("header.needs", decisions.length)}</span>
-          {open >= 2 && <Btn kind="text" size="sm" label={t("decision.goall", A.defaultable().length)} onClick={() => A.goOnAllDefaults()} />}
+      {away && <div class="when">{t("living.away.at", clockOf(e.ev.ts))}</div>}
+      {news.map((it, i) => (
+        <News key={`n${i}`} it={it} k={`l${e.firstSeq}:${it.taskId}`} />
+      ))}
+      {lines.length > 0 && (
+        <div class="det lines">
+          {lines.map((it, i) => (
+            <LivingLine key={i} it={it} />
+          ))}
         </div>
       )}
-      {decisions.map((it, i) => {
-        const d = it.decisionId ? A.S.decisions.get(it.decisionId) : undefined;
-        return d ? (
-          <DecisionCard key={i} d={d} taskId={it.taskId} />
-        ) : (
-          <div class="decision" key={i}>
-            <div class="q">{it.text}</div>
-          </div>
-        );
-      })}
-      {items
-        .filter((it) => it.kind !== "decision")
-        .map((it, i) => (
-          <LivingLine key={i} it={it} />
-        ))}
+      {answered.map(({ it, d }) => (
+        <Ask key={d.decisionId} d={d} taskId={it.taskId} />
+      ))}
+      {head.map(({ it, d }) => (
+        <Ask key={d.decisionId} d={d} taskId={it.taskId} />
+      ))}
+      {(rest > 0 || (head.length >= 2 && defaults >= 2)) && (
+        <div class="qrow gather">
+          {rest > 0 && (
+            <button class="tb" aria-expanded="false" onClick={() => (A.moreAsks.add(e.firstSeq), A.changed())}>
+              {t("living.more", rest)}
+              <Chev />
+            </button>
+          )}
+          {defaults >= 2 && <button class="tb" onClick={() => A.goOnAllDefaults()}>{t("decision.goall", A.defaultable().length)}</button>}
+        </div>
+      )}
     </section>
   );
 }
+
+const clockOf = (iso: string) => {
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+};
 
 function EntryView({ e, chipOwner, livingItems }: { e: Entry; chipOwner: Map<string, number>; livingItems: (e: Entry) => LivingItem[] }) {
   if (e.user) return <div class="user">{e.user.text}</div>;
   if (e.ai) {
     const ids = e.ai.replyTo ? A.S.tasksOfReply(e.ai.replyTo).filter((id) => chipOwner.get(id) === e.firstSeq) : [];
+    const tasks = ids.map((id) => A.S.tasks.get(id)).filter((x): x is Task => !!x);
     return (
       <div class="partner">
         <div dangerouslySetInnerHTML={{ __html: markdown(e.ai.text) }} />
-        {ids.map((id) => {
-          const task = A.S.tasks.get(id);
-          return task ? (
-            <div class="footer" key={id}>
-              <TaskFooter task={task} />
-            </div>
-          ) : null;
-        })}
+        <Quiet k={`m${e.firstSeq}`} tasks={tasks} noted={A.notedFor(e)} />
       </div>
     );
   }
-  if (e.job) return <JobRow e={e} chipOwner={chipOwner} />;
+  if (e.job) return <JobRow e={e} chipOwner={chipOwner} noted={A.notedFor(e)} />;
   if (e.living) return <Living e={e} items={livingItems(e)} />;
   if (e.decision) {
     const d = A.S.decisions.get(e.decision.decisionId);
     if (!d) return null;
-    return <DecisionCard d={d} />;
+    return <Ask d={d} />;
   }
   return null;
+}
+
+/** While the user waits on a reply (D104): the clay partner where its words will appear, and
+ *  one plain line of what it is doing, updated in place, gone when the reply lands. A step past
+ *  15 s adds a reassuring line; past 45 s, that it will say when it's ready. */
+function Presence() {
+  useTick(1000);
+  const a = A.S.activity;
+  const lastUser = [...A.S.channel].reverse().find((e) => e.user);
+  const since = a?.at ?? A.thinkingSince ?? (lastUser ? Date.parse(lastUser.ev.ts) : Date.now());
+  const s = (Date.now() - since) / 1000;
+  const sub = s >= 45 ? t("activity.long") : s >= 15 ? t("activity.slow") : "";
+  return (
+    <div class="presence" role="status" aria-live="polite">
+      <span class="bob">
+        <Avatar size={32} state="working" still />
+      </span>
+      <span class="pline">
+        {t(`activity.${a?.step ?? "thinking"}`)}
+        {sub && <span class="sub">{sub}</span>}
+      </span>
+    </div>
+  );
 }
 
 // ---------- header, composer ----------
@@ -722,6 +929,13 @@ function NotifyAsk() {
 
 // ---------- the conversation ----------
 
+/** A messaging app's time line: before the first message, and wherever 15 minutes passed. */
+const GAP_MS = 15 * 60_000;
+function timeGap(prev: Entry | undefined, e: Entry): boolean {
+  if (!prev) return true;
+  return Date.parse(e.ev.ts) - Date.parse(prev.ev.ts) >= GAP_MS;
+}
+
 export function Conversation() {
   const { rows, livingItems, chipOwner } = A.rows();
   const scroller = useRef<HTMLDivElement>(null);
@@ -749,14 +963,18 @@ export function Conversation() {
       >
         <div class="spacer" />
         {empty && <Hello />}
-        {rows.map((e) => (
-          <EntryView key={e.firstSeq} e={e} chipOwner={chipOwner} livingItems={livingItems} />
+        {rows.map((e, i) => (
+          <Fragment key={e.firstSeq}>
+            {timeGap(rows[i - 1], e) && !(e.living && A.livingAway.get(e.firstSeq)) && <div class="when">{when(A.L, e.ev.ts)}</div>}
+            <EntryView e={e} chipOwner={chipOwner} livingItems={livingItems} />
+          </Fragment>
         ))}
         {A.pending.map((p) => (
           <div key={p.clientId} class="user pending">
             {p.text}
           </div>
         ))}
+        {A.thinking() && <Presence />}
         <NotifyAsk />
       </main>
       <Composer />
@@ -1599,6 +1817,8 @@ function PhoneSettings() {
       <div class="small">{A.me?.via === "device" ? `${A.me.deviceName ?? ""}` : deviceLabel(A.L, "local")}</div>
       <div class="small sub">{t("settings.lang.title")}</div>
       <Seg label={t("settings.lang.title")} value={A.uiLang} options={(["auto", "zh", "en"] as const).map((v) => ({ v, label: t(`settings.lang.${v}`) }))} onPick={(v) => A.setUiLang(v)} />
+      <div class="small sub">{t("settings.details.title")}</div>
+      <Seg label={t("settings.details.title")} value={A.details} options={(["folded", "shown"] as const).map((v) => ({ v, label: t(`settings.details.${v}`) }))} onPick={(v) => A.setDetails(v)} />
       {A.settings?.notify !== false && (
         <>
           {A.push === "ios-install" && <div class="hint">{t("notify.ios")}</div>}

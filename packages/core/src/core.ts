@@ -223,6 +223,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const loadout = createLoadout({ log, tasks, settings, rules, devices: () => devicesView });
   const api = { log, tasks, mcp, persona, dataDir, settings, connections, bodies: loadout } as CoreApi;
   const ws = createWsHandler({ core: api, decisions, runner: () => runner, devices: () => devicesView, settings, connections, rules, loadout, work: work.frames, batchMs: opts.batchMs });
+  api.activity = { set: ws.setActivity };
   const devices = openDeviceAuth(dataDir);
   // A device that pairs changes Your devices and abilities (远程打开 / Reach from anywhere).
   const gateAuth = {

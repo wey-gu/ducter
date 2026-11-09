@@ -98,22 +98,22 @@ it turns white with the card's ledge color), accent (orange, ledge `#C9642A` und
 ledge. The same hover (a shade lighter), press (sink) and keyboard focus ring on all of them.
 In a row the primary is last (macOS) and at most one primary shows per group.
 
-**Task lines.** A task in the partner's words says its title once, then where it stands: the
-job's status line when it adds something, else the state (a status line that only repeats the
-title falls back to the state). A finished task reads 做完了 / Done: `done?` shows as Done until
-something actually checks the result ("在检查 / checking" only while a check runs).
+**Task lines.** A task line says its title once, then where it stands: the job's status line
+when it adds something, else the state (a status line that only repeats the title falls back to
+the state). A finished task reads 做完了 / Done: `done?` shows as Done until something actually
+checks the result ("在检查 / checking" only while a check runs). In the conversation a task line
+lives inside a message's Details (D104); On hand and the opened task show it directly.
 
-**Results (D73).** The partner's result message already says the outcome in words, so nothing
-under it restates the state (no task chip). Under it:
-1. one quiet line of proof in muted ink at 13: a drawn ✓ (× for a task that didn't work) and
-   plain words per check ("✓ 50/50 cargo test"), then "2 files changed ›" as a text link
-   (opens the task at its changes), then the task's title as a quiet link ("Fix the flaky
-   compaction test ›"). It wraps on a narrow screen and never truncates;
-2. only when something went out, the same kind of line with a drawn ↗ and the literal action
-   ("↗ git push -u origin ducter/fix-ci");
-3. the actions: Merge into main (primary), Open draft PR (secondary). "See changes" is the
-   "2 files changed ›" link, so it is not repeated.
-No blockquote rule, no label column, no capsules.
+**Results (D104; was D73).** The partner's result message already says the outcome in words. In
+the conversation, under it: what went out only when something did (a drawn ↗ and the literal
+action, "↗ git push -u origin ducter/fix-ci"; never folded), then one quiet row of 13pt text
+buttons on the paper: **合进 main / Merge into main** (ink 700) when it is the next step, and
+**看细节 / Details ›** (**收起 / Hide** while open). Details opens in place, set in from a 1.5pt
+`line` hairline: the line of proof (a drawn ✓, × for a task that didn't work, and plain words per
+check; "2 files changed ›" opening the task at its changes; the task's title as a quiet link),
+**开草稿 PR / Open draft PR** as a quiet link, and the message's **记下了 / Noted** lines with
+**忘掉 / Forget**. The opened task (D74) keeps Merge into main / Open draft PR as clay buttons.
+No blockquote rule, no label column, no capsules. Full note: `design/quiet-conversation.md`.
 
 **Notices: the app speaking, never the partner.** The partner speaks in 18px on the paper and
 in cards; a system notice (the CLI offer, the first-result celebration, a held message) is a
@@ -207,15 +207,23 @@ two things one voice says, 24 where the turn passes; 12 inside a message (text �
 muted, the level's name 18/800). Right: what you can do (small secondary buttons). Metadata
 (model, place, project) is never in the chrome: it is in the task's Details (D74).
 
-**Decisions in the conversation (D73).** The living message's title "你不在的时候 / While you
-were away" shows only when the user was away: it came before the window opened and was
-unread, or while the window was in the background. The count shows once, in the section's
-header ("2 件等你 / 2 need you"), with 都按默认 / Go on all defaults as a text button at its
-end. Each ask names the task that asks as plain small words in the needs-you ink (nothing for
-the partner's own asks); its buttons are Go-as-the-action, Hold, Reply…, and Details right
-after them (on the phone, where four don't fit, and on On hand, the asking task's title is
-the link instead). The other items are one line each: a drawn mark in muted ink, no tile.
-Short code tokens in a message never break mid-word; only a long path may wrap.
+**Decisions in the conversation (D104; was D73).** The living message has no card. When the
+user was away (it came before the window opened and was unread, or while the window was in the
+background), a centered 12pt time line "你不在的时候 · 10:40 / While you were away · 10:40". A
+task that didn't work is one sentence in the partner's voice with Details; work under way and
+waits are not said. Each ask is the partner's words (18, regular), then its default in one 13pt
+line in the needs-you ink with Details, then, on the ask whose default comes soonest only, one
+36pt row: Reply… (text) · Hold (secondary) · Go-as-the-action (primary, last; zh "好，rebase").
+The other open asks gather in one 13pt line, "还有 1 件等你定 › / 1 more waiting on you ›" and
+"都按默认 · 2 / Go on all defaults · 2". The count shows only in the header. An answered ask
+keeps its question and says the outcome once. Time lines (12pt, centered, muted) stand before
+the first message and wherever 15 minutes passed. Short code tokens in a message never break
+mid-word; only a long path may wrap.
+
+**The waiting line (D104).** While the user waits on a reply, the clay partner (32pt, working
+face, breathing) and one 15pt muted line sit where the reply will land, from the moment of
+sending; the line follows the partner's step and a 13pt reassurance joins it past 15 s and
+45 s on one step. Words in `design/quiet-conversation.md`. The header no longer says 在想….
 
 ## Places (D71)
 
@@ -249,10 +257,11 @@ empty list (no noted lines) is left out with its heading. Screenshots:
 
 ## Three zoom levels (Core UI canvas: https://claude.ai/artifact/U9r15Tpm8AL7aGQZwrtbDL)
 
-1. **The conversation** (default). One partner, no machinery. Tasks appear only as quiet
-   task lines inside the partner's messages; the header line says in words what needs you and what is
-   being worked on, and **手头的事 / On hand** is a plain button. The living message carries decisions inline with Go / Hold / Reply, so most days
-   the user never leaves this view.
+1. **The conversation** (default). One partner, no machinery: its words, and one quiet row
+   (Merge into main, Details) under a message with something behind it (D104). The header line
+   says in words what needs you and what is being worked on, and **手头的事 / On hand** is a plain
+   button. The ask due soonest carries Go / Hold / Reply in one small row, so most days the user
+   never leaves this view.
 2. **手头的事 / On hand** (overview for decisions, all personas).
    - The top band is the **attention forecast** in plain words: when each task will next need
      you (defaults taking effect, waits coming due). The lanes' headers carry the counts.
@@ -307,6 +316,7 @@ empty list (no noted lines) is left out with its heading. Screenshots:
 | Flows | https://claude.ai/artifact/LKuVp3knPDJ4EdoyWBGSWN | 21 key screens for groups A, B, D, E, C | draft |
 | Concept art | https://claude.ai/artifact/HAPoyBbrSkm6sYjqGoNMze | character and screen art directions, rounds 1–2 | round 2 recommended: puffy matte clay |
 | Loadout (2D) | https://claude.ai/artifact/CUpw7P1bPjKQKQYeLkUVzG | devices / AI accounts / ability-sticker interaction | grammar prototype; art to be replaced |
+| Quiet conversation (D104) | https://claude.ai/artifact/8ZaW9XS7a7NEBX1ATD4Khr | before / after on the demo seed, the waiting line, where each removed line went, three users (zh/en) | proposal, pending the author's review |
 | Phone web (built) | `.shots/phone-*.png` (390×844, zh/en, light/dark) | the real `apps/web` client: conversation, decisions, On hand, opened task, pairing, notifications | built, pending review |
 
 ### Screenshots of the built clients (2026-11-09)
@@ -328,6 +338,7 @@ relative paths as before), and each review is shown as a published gallery.
 | Taste review | `.shots/desktop/review-{before,after}-{zh-1280,en-900}-*.png` | headless renderer, mock (`DUCTER_REVIEW`) | every screen at 1280 and 900 px, before and after the taste pass |
 | Phone web | `.shots/phone-*.png` | headless browser at 390×844 on a demo core; `phone-real-sonnet-result-zh` from a real sonnet run | conversation, decision sheet, decided, On hand, task, result, pairing, notify ask, iOS hint, offline; dark variants |
 | Design QA (D73, D74) | `.shots/qa-2026-11-09/{before,after}-*.png`, index in its `README.md` | native desktop window (cua-driver) on the demo seed, iOS Simulator, headless Chromium at 390 and 1440 (phone web, site) | no pills, the result line, the living message, On hand, the one-column task (done, working, didn't work), devices, setup, the site |
+| Quiet conversation (D104) | `~/dev/ducter-evidence/quiet-conversation/{desktop,web}/` | native desktop window (cua-driver) on the demo seed with its scripted partner, scratch HOME; headless Chromium at 390 | before / after zh and en, Details open, the waiting line at 0.15–3.2 s and past 15 s / 45 s, Settings |
 
 ## Devices stage: the Isles (D81)
 

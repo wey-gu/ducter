@@ -456,7 +456,12 @@ a {
   padding: 6px 16px 16px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 12px;
+}
+/* Rhythm (ui.md): 12 between two things one voice says, 24 where the turn passes. */
+.scroll > .user + :not(.user),
+.scroll > :not(.user):not(.when):not(.spacer) + .user {
+  margin-top: 12px;
 }
 .scroll > .spacer {
   flex: 1;
@@ -751,15 +756,11 @@ a {
 }
 
 /* ---------- living message and decisions ---------- */
+/* The living message has no card (D104): the partner speaking, its asks, a divider when away. */
 .living {
-  background: var(--surface);
-  border-radius: var(--r-xl);
-  box-shadow: var(--base);
-  padding: 20px 16px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  animation: settle 420ms var(--spring);
+  gap: 12px;
 }
 .living h2 {
   margin: 0 2px;
@@ -1691,6 +1692,160 @@ a {
     transition: none !important;
   }
 }
+
+/* ---------- the quiet conversation (D104) ---------- */
+/* The partner's words keep a reading measure (~36 CJK characters, ~68 Latin). */
+.partner {
+  max-width: min(100%, 36em);
+}
+/* A messaging app's time line: small, centered, muted; the away divider is one too. */
+.when {
+  align-self: center;
+  margin: 12px 0 0;
+  font-size: var(--xs);
+  color: var(--ink-muted);
+  letter-spacing: 0.2px;
+  font-variant-numeric: tabular-nums;
+}
+:lang(zh) .when {
+  letter-spacing: 0;
+}
+.living > .when {
+  margin-bottom: 0;
+}
+/* The one quiet row under a message: Merge into main, Details. Text buttons, 13, no fill. */
+.qrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 16px;
+  margin-top: 4px;
+}
+.tb {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  font-size: var(--sm);
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--ink-muted);
+  text-align: left;
+}
+.tb.act {
+  font-weight: 700;
+  color: var(--ink);
+}
+.tb .chev {
+  transition: transform var(--t-fast) var(--ease);
+}
+.tb[aria-expanded="true"] .chev {
+  transform: rotate(90deg);
+}
+@media (hover: hover) {
+  .tb:hover {
+    color: var(--ink);
+  }
+}
+.tb:active {
+  text-decoration: underline;
+}
+.qs {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 32px;
+  font-size: var(--sm);
+  color: var(--ink-muted);
+}
+.qs.done {
+  color: var(--done-ink);
+  font-weight: 700;
+}
+/* Details, open in place: the same quiet lines as before, set in from a hairline. */
+.det {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 2px 0 2px;
+  padding: 4px 0 4px 14px;
+  box-shadow: inset 1.5px 0 0 var(--line);
+}
+.det.lines {
+  gap: 4px;
+}
+/* An ask in the partner's words: the question as speech, its default in one muted line, and
+   one small row (Reply… · Hold · Go, the primary last). */
+.askq .dflt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 12px;
+  margin-top: 4px;
+  font-size: var(--sm);
+  line-height: 1.45;
+  color: var(--needs-ink);
+}
+.askq .ans {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+.askq .ans .btn.text {
+  margin-left: -10px;
+}
+.askq .resolved {
+  margin-top: 6px;
+}
+.askq.flash {
+  animation: flash 1.4s var(--ease);
+  border-radius: var(--r-sm);
+}
+.gather {
+  margin-top: -4px;
+}
+/* While the user waits: the clay partner where its words will appear, one line beside it. */
+.presence {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 40px;
+  margin-top: 12px;
+}
+.presence .pline {
+  padding-top: 7px;
+  font-size: var(--md);
+  color: var(--ink-muted);
+  line-height: 1.4;
+}
+.presence .sub {
+  display: block;
+  font-size: var(--sm);
+}
+/* Character may move; status never blinks (D77): the partner bobs while it works. */
+.presence .bob {
+  display: inline-flex;
+  transform-origin: 50% 100%;
+  animation: bob 1.4s ease-in-out infinite;
+}
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0);
+  }
+  30% {
+    transform: translateY(-2px) rotate(-3deg);
+  }
+  65% {
+    transform: translateY(0) rotate(2deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .presence .bob {
+    animation: none;
+  }
 /* What it thinks with, and who does the tasks (D89): an AI agent's row (its clay token, its
    name, one line) and a task's Switch who does it list. */
 .agent {

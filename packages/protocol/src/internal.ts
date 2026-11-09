@@ -4,7 +4,7 @@
 //   runner  owns: HarnessPort over OAR, worktrees, task sessions, event normalization.
 //   partner owns: the main AI (persona prompt, projection, turn loop) on any first-wave harness (D85) via runner's HarnessPort.
 import type { HarnessId } from "./harnesses.ts";
-import type { Attention, Bodies, BodyWhy, Delivery, EventKind, LogEvent, OnHand, Origin, Place, Residency, Settings, TaskCard } from "./index.ts";
+import type { Attention, Bodies, BodyWhy, Delivery, EventKind, LogEvent, OnHand, Origin, PartnerActivity, Place, Residency, Settings, TaskCard } from "./index.ts";
 
 // ---------- core ----------
 
@@ -55,6 +55,8 @@ export interface CoreApi {
   bodies?: BodyChooser;
   /** The user's connections (D96, core/src/connections.ts); absent in tests and stubs. */
   connections?: ConnectionsApi;
+  /** What the partner is doing while the user waits (D104); absent in tests and stubs. */
+  activity?: { set(a: PartnerActivity | null): void };
 }
 
 /**

@@ -141,3 +141,5 @@ detected; phone web pairing, push, and reconnect all work. Tests cover the origi
 stable across restarts.
 
 **Read first:** `research/21-v1-topology-remote-access.md` and `design/system.md`.
+
+- **Move your Ducter between computers** (`ducter move`, Mac → server and back): see `todo.md`.

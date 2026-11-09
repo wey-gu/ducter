@@ -227,12 +227,10 @@ note and a `Dn`) before it is built.
       (today the rule lives only in the task brief). First slice done: 10 allowed cua tools,
       Claude built-ins Bash/Read/Write/ToolSearch, no user Claude config (W5-2; HN lookup 332k →
       140k input tokens).
-- [ ] **Hostile pages and the Log.** Task tokens can `log_search` / `log_read` the whole Log on
-      purpose (progressive pull). A page that talks a browser task into searching the Log and
-      putting what it finds into a form or URL could leak conversations. Scope browser tasks'
-      log tools to their own stream (plus what the brief carries); code tasks stay as they are.
-      Trigger: the env-gate proxy work, or the first browser task that posts or submits on its
-      own. Decided with W5-2 (D62).
+- [x] **Hostile pages and the Log.** A browser task's `log_search` / `log_read` reach only its
+      own stream (D62); other tasks reach their own stream, their person's conversation and
+      that person's other tasks, never another person's (`packages/core/src/tools.ts`,
+      `packages/core/test/log-reach.test.ts`).
 - [ ] Sign-in handoff: the driver ends an idle browser session after 300 s (SIGKILL; verified
       live), so a slow sign-in while the task waits on needs_input loses the window. The
       env-gate proxy can keep the session alive while the task waits.

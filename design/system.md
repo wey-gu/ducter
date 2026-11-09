@@ -108,7 +108,7 @@ One table (`packages/protocol/src/harnesses.ts`), one adapter (`packages/runner/
   provider routes.
 - **Browser tasks: a clean setup** (W5-2, D62): only the curated cua-driver tools and no user
   MCP servers, measured 332k → 140k input tokens on one lookup. Their `log_search` / `log_read`
-  are scoped to their own task (D62; to build, `todo.md`). Reaching the user's own Chrome is
+  are scoped to their own task (D62; built in `packages/core/src/tools.ts`). Reaching the user's own Chrome is
   allowed since D126; the harness's own browser tools are in "Screen places" below.
 - **Codex tasks keep Codex's own Computer Use and browser use** (D130): `cua_repl` (a bundled
   plugin) reaches any app, including the user's signed-in Chrome. Under a clean setup a task

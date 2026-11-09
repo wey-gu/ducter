@@ -28,6 +28,11 @@ Windows get the same `log.search` / `log.read` tools as the main AI. Scope: the 
 channel, sibling windows, and memory. A window that is missing context fetches it itself
 instead of asking the main AI.
 
+As built (`packages/core/src/tools.ts`): a task's `log_search` / `log_read` reach its own
+stream, its persona's `channel` events and that persona's other tasks; any other stream is
+refused with one line. A browser task reaches only its own stream (D62). The partner's tools
+read the whole Log.
+
 ## Before spawning
 
 - **Dedupe on the work key** (PR, branch, artifact, thread). If a window already holds that

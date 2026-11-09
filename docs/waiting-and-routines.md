@@ -28,7 +28,7 @@ and what you can do next. The wait stays under **Done today** for the rest of th
 Watching your email needs a connection to your mail ([Settings](settings.md)). Waiting for a
 PR or a website needs nothing more than what Ducter already uses.
 
-To see how a wait checks, open it and look under **Details › How it checks**. **Stop waiting**
+To see how a wait checks, open it and look under **How it checks**. **Stop waiting**
 and **Look now** are on the same page.
 
 ## "Keep going until …"

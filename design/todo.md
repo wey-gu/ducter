@@ -505,6 +505,16 @@ Codex first, once OAR is near 1.0. See `research/17`.
       until the place says it has no remote (the protocol field). Trigger: that field lands.
 - [ ] The partner says when it is putting a result into words (an `activity` for report turns), so
       the waiting line needs no 2-minute guess. Trigger: a partner slower than 2 minutes.
+- [ ] D148's summarizer and probe list (command -v, which, test, ls, grep) and the harness
+      description fields (Claude Code `description`, Codex `justification`) were checked on
+      fixtures shaped like the author's run, not a live Codex 0.167 / Claude Code session; check
+      both, and whether Codex's exec events carry a reason field. Trigger: the next live dogfood run.
+- [ ] D148 hides keys by pattern; a key with no known head and no telling field name (a bare
+      32-character hex in prose) still shows. Consider hiding values the user marked as keys in
+      Settings or the brief's own words ("this token: …"). Trigger: a reported leak.
+- [ ] D148: a needs-you task with no visible ask was seen in the author's run; the clients now
+      say **Over to you**, but the cause in core (which path set needs_you without a decision)
+      wasn't reproduced. Trigger: the next time it happens, read the task's Log.
 - [ ] D127's step table was built from the shapes the author's App Store Connect run showed and
       from OAR's per-runtime tool names; check it against a live Codex computer-use run and a pi
       run, and add what reads as **用了 / Used {tool}**. Trigger: the next live dogfood run.

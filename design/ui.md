@@ -346,9 +346,11 @@ empty list (no noted lines) is left out with its heading. Screenshots:
    - Routines appear as one card each, with the next firing time.
 3. **An opened task** (conductor depth; D74, D90). One centered column on the conversation's
    measure and rhythm, read top to bottom; the window's header is the breadcrumb and the title only.
-   1. **The head is one block** (D90): the state face (96 pt) beside one quiet meta line,
-      the state in its ink, then "{time}开始的 / started {time}" (who does it is in the bar
-      over the composer, D127), and a headline that is always there: while it works, what it is doing now in a
+   1. **The head is one block** (D90): the state face (96 pt) beside one quiet meta line
+      (D148): the state in its ink, the task's one clock (since it started, ticking; once
+      finished "用了 18 分钟 / took 18 min"), the agent's coin, the agent and the model, where
+      (repo · branch, a folder, "在 hel 上 / on hel" for another machine; nothing for no
+      place), and **换谁来做 / Switch who does it ›** as a small action; then a headline that is always there: while it works, what it is doing now in a
       sentence (why it waits, its latest report, its latest saved progress, else its title)
       at 28/800; finished, the outcome at 34/800. No link chain in the head.
    2. A pending ask, as in the conversation; **换谁来做 / Switch who does it** opens here as
@@ -357,30 +359,32 @@ empty list (no noted lines) is left out with its heading. Screenshots:
    3. The outcome, said once: the report in the partner's size, the line of proof, what went
       out, then Merge / Open draft PR (Try again for one that didn't work). It replaces the
       result banner and the "Told Ducter · done" card.
-   4. **过程 / What it did** (D127): the task's own words as normal text; between them each
-      step is one quiet line: a small drawn mark, a verb (思考 Thinking · 运行 Ran · 读取 Read ·
-      编辑 Edited · 搜索 Searched · 浏览 Browsed · 操作 Used · 等待 Waited · 交给 Handed off) and
-      a one-line summary, truncated (a command, path or pattern in mono on the inline-code
-      tint); thinking shows its headings only; **出错 / Error** is one red-tinted line in words
-      whose raw text opens on a click; ×n for a repeat; a run of more than six shows its latest
-      four behind **前面还有 n 条 / n more above ›**; saved progress is a tiny flag line; the
+   4. **你交代的事 / What you asked** (D148): the brief on a quiet sunken card (Surface
+      Sunken, radius MD, no base), SM, three lines until **展开 / Show all**; a hidden key says
+      **隐藏了一段密钥 / A key is hidden** with a small drawn key.
+   5. **What it did** (D148, after D127), no heading: the agent's voice is the readable layer,
+      its messages and saved progress (said once, a small flag and **保存了进度 / Progress
+      saved** under them) in body ink at the reading measure. Each stretch of steps between
+      two things it said is one gist line (a drawn mark, the gist at SM/600, "· 5 步", "· 1
+      处出错" in the failed ink, a chevron that turns): folded when settled, open while under
+      way, where the gist is the latest step beside a spinner (the only thing that moves).
+      Under it, indented 22, each step one sentence: the agent's own words for it, else a
+      verb and the code in mono on the inline-code tint ("运行 `nmem doctor`"); a probe that
+      found nothing in muted ink ("没找到 nmem"); a real failure the one red-tinted line, shown
+      even folded, its command and output opening on a click in mono; ×n for a repeat. The
       user's Go is their own bubble; turn endings are not shown.
-   5. **改动 / Changes**: the changed files, each with +added −removed; a file opens its diff
+   6. **改动 / Changes**: the changed files, each with +added −removed; a file opens its diff
       in place, full width, under a quiet header. No diff shows by default; a task in no repo,
       or with nothing changed yet, has no section (D127). The phone names the changes in the proof line and shows no diff.
-   6. A quiet **细节 / Details ›** disclosure: who is doing it and why as one sentence
-      ("Codex is doing it, because Claude Code's limit is low." · Switch who does it), where
-      (repo and branch; the path on hover and copied, never spelled out, D127), saved
-      progress as a plain list with each time beside its item, what went out, usage only if
-      there is any. A row with nothing to say is left out. Labels sit in a fixed column on
-      the value's first baseline; values start on the head's left edge.
+   7. **发出去的 / Sent out**, only when something went out, and a wait's **怎么判断的 / How it
+      checks**, only when there is a wait. No Details table (D148).
 
    Type and rhythm (D90): section headings 18/800, one step above the 15 body; gaps 8 / 16 /
    24 / 32; a headline or paragraph at most about 68 Latin or 36 Chinese characters a line
    (D78 Chinese rules: leading 1.75, no tracking).
    The box to talk to the task stays at the bottom of the window, as the conversation's
-   composer does; over it one quiet bar: the agent's coin, the agent and the model, then the
-   state and for how long ("在做 · 12:34", "做完了 · 用了 18 分钟") (D127).
+   composer does, with nothing over it (D148). Header actions: **先停 / Pause** while it works,
+   **放下 / Drop** until it finishes.
 
 ## Prototype canvases
 

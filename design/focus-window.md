@@ -176,9 +176,13 @@ What the window writes is what the user reads when they open the task, in one co
 - the latest **report** is said once, at the top: a finished task's report is its outcome
   (with its evidence as a line of proof and what went out), an unfinished one's is the line
   of where it stands. Earlier reports stay in What it did as "Told {name}" lines;
-- the **transcript** becomes What it did: the window's own words, each tool call one quiet
-  line (a verb and a short summary, the same kinds on every harness:
-  `packages/protocol/src/steps.ts`), thinking as its headings, a failed call one Error line
-  in words with its raw text on a click (D127);
-- **checkpoints** are a tiny flag line in What it did and a plain list in Details;
+- the **transcript** becomes What it did (D148, after D127): the window's own words are the
+  readable layer; each stretch of tool calls between two of them folds under one gist line
+  (`packages/protocol/src/transcript.ts`), each call one sentence (the agent's own words for
+  it, else a verb and a short summary, the same kinds on every harness:
+  `packages/protocol/src/steps.ts`), thinking as its headings, a probe that found nothing in
+  neutral words, a real failure one Error line with its raw text on a click;
+- **checkpoints** are the window's words said once, marked saved (D148);
+- **keys** in the brief, a command or its output never leave the home: the projection hides
+  them in every frame and push it sends; the Log keeps them for the task (D148);
 - the diff of the worktree is a list of files; a diff shows only when the user opens a file.

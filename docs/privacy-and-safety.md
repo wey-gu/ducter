@@ -45,8 +45,12 @@ exactly what it will and won't do. This page lists it.
   tab of its own, checks that it's the one in front before typing, and closes it when it's done.
   It's signed in as you there, so it asks before anything that would act for you.
 - **It never hides what went out.** When a result sent something out, a line marked ↗ says
-  what, right under the message (never folded away). An opened task's **Details** always lists
-  **Sent out**, often **Nothing**.
+  what, right under the message (never folded away). An opened task lists it again under
+  **Sent out**, below what the task did.
+- **It never shows a key.** If a key, token or password turns up in what you asked a task or in
+  what it ran or printed, every screen shows only its first few letters, then dots, with **A key
+  is hidden** beside it. The task itself still gets the key, so it can do the work; the key stays
+  on the computer Ducter lives on.
 - **It never decides silently for you.** When something is your call, it asks, with a
   suggested default you can take, hold, or change. If it goes with the default, it says so:
   **No answer, so I went ahead**. Anything that can't be undone waits: **I'll do it once you

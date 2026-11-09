@@ -84,6 +84,7 @@ describe("planUninstall", () => {
     mkdirSync(join(home, ".local", "bin"), { recursive: true });
     symlinkSync(join(other, "ducter"), join(home, ".local", "bin", "ducter"));
     expect(plan(true).remove.some((x) => x.kind === "link")).toBe(false);
+    expect(plan(true).keep.some((k) => k.detail.includes("another copy"))).toBe(true);
     expect(plan(true, { execPath: join(other, "ducter") }).remove.some((x) => x.kind === "link")).toBe(true);
   });
 

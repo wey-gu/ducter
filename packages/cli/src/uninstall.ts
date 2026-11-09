@@ -187,7 +187,13 @@ export function planUninstall(i: PlanInput): Plan {
     }
     const link = join(home, ".local", "bin", "ducter");
     if (isAppLink(link, i.execPath)) remove.push({ path: link, what: t("uninstall.item.link"), kind: "link" });
-    else if (exists(link)) keep.push({ what: link, detail: t("uninstall.keep.copied", { path: link }) });
+    else if (exists(link)) {
+      let to = "";
+      try {
+        if (lstatSync(link).isSymbolicLink()) to = readlinkSync(link);
+      } catch {}
+      keep.push({ what: link, detail: to ? t("uninstall.keep.otherLink", { path: link, to }) : t("uninstall.keep.copied", { path: link }) });
+    }
 
     if (i.platform === "darwin") {
       const lib = join(home, "Library");

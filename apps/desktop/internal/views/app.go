@@ -171,6 +171,10 @@ type App struct {
 	PlayTitle func() TitleSound
 	// lo is what the partner thinks with and who does the tasks (D89).
 	lo loadoutState
+	// nt is 开一件事 / New task's card (D128); back is where Esc goes from
+	// a task opened by it or by `ducter open`.
+	nt   newTaskState
+	back *returnTo
 	// SystemLang is macOS's language, for Settings' "follow the system";
 	// OnLanguage is told when the window's language changes (the menus).
 	SystemLang i18n.Lang
@@ -350,13 +354,21 @@ func (a *App) View(c *ui.Context) {
 			a.conversation(c)
 		}
 	}))
+	if a.S.Welcomed {
+		a.newTaskCard(c)
+	}
 }
 
 // shortcuts: Esc goes up one level, Cmd+1 the conversation, Cmd+2 On
 // hand, Cmd+3 Devices, Cmd+4 Partner, Cmd+, Settings, Cmd+K the composer
 // of the level shown. (In Ducter.app the menu bar holds the same keys.)
 func (a *App) shortcuts(c *ui.Context) {
+	if a.nt.open {
+		return // the New task card has the keys (Esc closes it)
+	}
 	switch {
+	case c.Shortcut(ui.Cmd, ui.KeyN):
+		a.NewTaskShortcut()
 	case c.Shortcut(ui.Cmd, ui.Key1):
 		a.Route = RouteConversation
 	case c.Shortcut(ui.Cmd, ui.Key2):
@@ -382,6 +394,19 @@ func (a *App) shortcuts(c *ui.Context) {
 func (a *App) Up() {
 	switch a.Route {
 	case RouteTask:
+		// A task the user just opened (New task, `ducter open`): back to
+		// where they were.
+		if b := a.back; b != nil && b.task == a.TaskID {
+			a.back = nil
+			if b.route == RouteTask && b.from != "" {
+				a.OpenTask(b.from)
+				return
+			}
+			if b.route != RouteTask {
+				a.Route = b.route
+				return
+			}
+		}
 		a.Route = RouteOnHand
 	case RouteOnHand, RouteDevices, RoutePartner, RouteSettings:
 		a.Route = RouteConversation
@@ -637,7 +662,7 @@ func (a *App) Receive(f protocol.ServerFrame) {
 		if a.Route == RouteTask {
 			a.Route = RouteConversation
 		}
-		a.send(protocol.Hello{T: "hello", Locale: string(a.L.Lang), TZ: localZone()})
+		a.send(protocol.Hello{T: "hello", Locale: string(a.L.Lang), TZ: localZone(), Client: "desktop"})
 	}
 	a.noteResults(f)
 	a.S.Apply(f)

@@ -594,21 +594,29 @@ func (a *App) changes(c *ui.Context, task *store.Task) {
 	}
 	pane := a.diffs[task.ID]
 	// Nothing changed yet (or a task that changes no code, D127): no section,
-	// no "no changes" and no Refresh to push.
-	if pane == nil || len(pane.files) == 0 {
+	// no "no changes" and no Refresh to push. Core's count (D128) shows the
+	// header before the files are read.
+	counted := taskChanges(task)
+	if (pane == nil || len(pane.files) == 0) && (counted == nil || pane == nil || !pane.loading) {
 		return
 	}
 	ui.Column(c.Key("changes")).Gap(t.S3).Children(func() {
-		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
+		// 改动 · 3 个文件 +42 −7 (D128): the files read here, else core's count.
+		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 			a.sectionTitle(c, a.L.T("task.side.changes"))
+			files, added, deleted := 0, 0, 0
 			if pane != nil && len(pane.files) > 0 {
-				added, deleted := 0, 0
+				files = len(pane.files)
 				for _, f := range pane.files {
 					added += f.added
 					deleted += f.deleted
 				}
-				ui.Text(c, a.filesLabel(len(pane.files))).FontSize(t.SM).TextColor(t.InkMuted)
-				ui.Text(c, fmt.Sprintf("+%d", added)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Done.Ink)
+			} else if counted != nil {
+				files, added, deleted = counted.Files, counted.Adds, counted.Dels
+			}
+			if files > 0 {
+				ui.Text(c, "· "+a.filesLabel(files)).FontSize(t.SM).TextColor(t.InkMuted)
+				ui.Text(c, fmt.Sprintf("+%d", added)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Done.Ink).Margin(0, 0, 0, t.S1)
 				ui.Text(c, fmt.Sprintf("−%d", deleted)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Failed.Ink)
 			}
 			ui.Spacer(c)

@@ -138,7 +138,10 @@ type Tokens struct {
 	// sinks into it. Chips and text buttons are flat.
 	PressPrimary, PressSecondary, PressAccent Press
 	Raised, Floating                          Elevation
-	Drop, DropPressed                         Elevation
+	// Scrim dims the page under a dialog (the New task card): the same
+	// warm dark as the phone's sheet scrim.
+	Scrim             ui.Color
+	Drop, DropPressed Elevation
 
 	// motion: Snappy for hover and lift, PressDur for a press, EnterDur
 	// for a screen or a notice coming in, Bouncy for the living message
@@ -252,6 +255,7 @@ func Pebble() *Tokens {
 		PressAccent:    Press{Offset: 3, Color: hex("#C9642A"), Seam: hex("#FFA466"), Hi: hex("#FFFFFF").Alpha(0.38), Rim: ui.Transparent},
 		Raised:         Elevation{Y: 4, Blur: 0, Color: hex("#E8D9C4")},
 		Floating:       Elevation{Y: 10, Blur: 32, Color: hex("#2B2118").Alpha(0.14)},
+		Scrim:          hex("#17120E").Alpha(0.26),
 		Drop:           Elevation{Y: 7, Blur: 12, Color: hex("#2B2118").Alpha(0.28)},
 		DropPressed:    Elevation{Y: 1, Blur: 3, Color: hex("#2B2118").Alpha(0.22)},
 

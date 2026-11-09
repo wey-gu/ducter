@@ -21,7 +21,24 @@ func (a *App) onHand(c *ui.Context) {
 		a.crumb(c, a.L.T("nav.conversation"), RouteConversation)
 		a.chromeTitle(c, a.L.T("onhand.title"))
 		ui.Text(c, a.summary(b)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0).Margin(0, 0, 0, 4)
-	}, nil)
+	}, func() {
+		// 按状态 / 按项目 (D128): remembered on this Mac, not a setting.
+		if !a.boardEmpty(b) {
+			by := 0
+			if a.Local.ByProject() {
+				by = 1
+			}
+			ui.Row(c.Key("onhand-by")).Shrink(0).Children(func() {
+				if i := a.choices(c, "onhand-by", a.L.T("onhand.by"), []string{a.L.T("onhand.by.state"), a.L.T("onhand.by.project")}, by); i >= 0 {
+					a.Local.SetByProject(i == 1)
+				}
+			})
+		}
+		// 开一件事 / New task: a quiet text button, never a FAB (D128).
+		if a.button(c, a.L.T("newtask.button"), btnText, t.ControlSM, t.Chrome) {
+			a.OpenNewTask(nil)
+		}
+	})
 	ui.Scroll(c).Grow(1).Children(func() {
 		ui.Column(c).Gap(t.S5).Padding(t.S5, t.S6, t.S6, t.S6).Children(func() {
 			if a.boardEmpty(b) && len(a.partnerDecisions()) == 0 {
@@ -32,6 +49,11 @@ func (a *App) onHand(c *ui.Context) {
 				return
 			}
 			a.forecastBand(c, b)
+			if a.Local.ByProject() {
+				a.byProject(c, b)
+				a.routineShelf(c)
+				return
+			}
 			needs := len(b.Lanes[store.LaneNeedsYou]) + len(a.partnerDecisions())
 			if needs == 0 {
 				// Nothing needs the user: one warm line, not an empty lane.

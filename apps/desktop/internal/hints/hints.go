@@ -56,6 +56,9 @@ type state struct {
 	TitleSeenAt string `json:"titleSeenAt,omitempty"`
 	// SoundOff turns the app's sounds off (Settings); on by default.
 	SoundOff bool `json:"soundOff,omitempty"`
+	// OnHandBy is how On hand groups its tasks (D128): "project", or
+	// empty (by state, the default).
+	OnHandBy string `json:"onHandBy,omitempty"`
 }
 
 // Ask is one answer to a gentle offer: "yes", "no", or "later" (asked
@@ -216,6 +219,23 @@ func (l *Local) SetDetailsShown(on bool) {
 	l.st.Details = ""
 	if on {
 		l.st.Details = "shown"
+	}
+	l.save()
+}
+
+// ByProject says whether On hand groups its tasks by project (D128).
+func (l *Local) ByProject() bool {
+	return l != nil && l.st.OnHandBy == "project"
+}
+
+// SetByProject remembers how On hand groups its tasks.
+func (l *Local) SetByProject(on bool) {
+	if l == nil {
+		return
+	}
+	l.st.OnHandBy = ""
+	if on {
+		l.st.OnHandBy = "project"
 	}
 	l.save()
 }

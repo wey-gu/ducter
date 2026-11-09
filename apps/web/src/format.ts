@@ -1,5 +1,5 @@
 // Time and place wording, the same rules as the desktop (views/app.go formatting).
-import type { Place } from "@ducter/protocol";
+import type { DeviceUpdate, Place } from "@ducter/protocol";
 import type { Strings } from "./i18n.ts";
 
 export function duration(L: Strings, ms: number): string {
@@ -125,4 +125,25 @@ export function splitOutcome(summary: string): [string, string] {
   const m = /^(.+?(?:[。！？]|[.!?](?=\s|$)))\s*/su.exec(text);
   if (m && m[1]!.length < text.length && m[1]!.length <= 90) return [m[1]!, text.slice(m[0].length)];
   return text.length <= 90 ? [text, ""] : ["", text];
+}
+
+// D146: an update under way; a device that is behind (one quiet dot); the step in words.
+export const updating = (u?: DeviceUpdate) => !!u && ["downloading", "verifying", "waiting", "restarting"].includes(u.phase ?? "");
+export const behind = (u?: DeviceUpdate) => !!u && u.available && !updating(u) && u.phase !== "failed";
+export function phaseLine(L: Strings, u: DeviceUpdate): string {
+  switch (u.phase) {
+    case "downloading":
+      return u.progress && u.progress > 0.01 ? L.t("devup.phase.downloading.pct", u.to, Math.round(u.progress * 100)) : L.t("devup.phase.downloading", u.to);
+    case "verifying":
+      return L.t("devup.phase.verifying", u.to);
+    case "waiting":
+      return L.t("devup.phase.waiting");
+    case "restarting":
+      return L.t("devup.phase.restarting");
+    case "done":
+      return L.t("devup.phase.done", u.to || u.current);
+    case "failed":
+      return u.rolledBack ? L.t("devup.phase.rolledback", u.from) : L.t("devup.phase.failed");
+  }
+  return "";
 }

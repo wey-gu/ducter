@@ -2946,4 +2946,146 @@ ol.tries b {
 @media (prefers-reduced-motion: reduce) {
   .coin-art .sheen,
   .coin-art.m-needs_you { animation: none; }
+/* 你的设备 / Your devices (D146): one card per device; its name renamed in place, a quiet clay
+   dot when it's behind, the update's step in words, Disconnect at the bottom. */
+.dev-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--s3) var(--s3) var(--s2) 14px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: var(--base);
+}
+.dev-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+.dev-name {
+  min-width: 0;
+  padding: 0;
+  font-family: var(--head);
+  font-size: var(--lg);
+  font-weight: 800;
+  color: var(--ink);
+  text-align: start;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+button.dev-name {
+  cursor: text;
+}
+.dev-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+.dev-input {
+  height: 40px;
+  padding: 0 var(--s2);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-sm);
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit;
+  font-family: var(--head);
+  font-size: var(--lg);
+  font-weight: 800;
+}
+.dev-card .dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--accent);
+}
+.dev-kind {
+  font-size: var(--sm);
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.dev-state {
+  font-size: var(--sm);
+  color: var(--ink-muted);
+}
+.dev-state.awake {
+  color: var(--done-ink);
+}
+.dev-coins {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin-top: 4px;
+  font-size: var(--sm);
+  font-weight: 700;
+}
+.dev-coins .dev-coin {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.dev-ver {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: var(--s1);
+}
+.dev-ver-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+  font-size: var(--sm);
+  color: var(--ink-soft);
+}
+.dev-ver-row b {
+  color: var(--ink);
+}
+.dev-ver .btn,
+.dev-actions .btn {
+  align-self: flex-start;
+}
+.dev-phase {
+  font-size: var(--sm);
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.dev-phase.done {
+  color: var(--done-ink);
+}
+.dev-phase.failed {
+  color: var(--failed-ink);
+}
+.dev-bar {
+  height: 4px;
+  max-width: 220px;
+  border-radius: 2px;
+  background: var(--line-2);
+  overflow: hidden;
+}
+.dev-bar i {
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+.dev-actions {
+  display: flex;
+  margin-inline-start: -8px;
+}
+.dev-cut {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: var(--s1);
+  padding: var(--s2) var(--s3);
+  border-radius: var(--r-sm);
+  background: var(--bg);
+}
+.dev-cut-q {
+  font-size: var(--sm);
+  font-weight: 800;
 }

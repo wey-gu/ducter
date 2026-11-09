@@ -1,13 +1,13 @@
 // The phone's screens: the conversation (default), 手头的事 / On hand, an opened task, and the
 // sheets (a decision opened from a notification; this phone's settings). Behavior follows the
 // desktop client (apps/desktop/internal/views); copy comes only from i18n.ts.
-import type { Attention, Bodies, Candidate, DeviceHarness, EvidenceRef, FolderChange, FolderSummary, LivingItem, OoDetect } from "@ducter/protocol";
+import type { Attention, Bodies, Candidate, DeviceHarness, DeviceUpdate, DeviceView, EvidenceRef, FolderChange, FolderSummary, LivingItem, OoDetect, Reach } from "@ducter/protocol";
 import { Fragment } from "preact";
 import { PARTNER_RESERVE } from "@ducter/protocol/src/loadout.ts";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { JSX } from "preact";
 import { A, candKey, placeKey } from "./app.ts";
-import { ago, cjkPad, deviceLabel, duration, firstClause, harnessName, modelName, placeLine, sameWords, splitOutcome, when } from "./format.ts";
+import { ago, behind, cjkPad, deviceLabel, duration, firstClause, harnessName, modelName, phaseLine as phaseWords, placeLine, sameWords, splitOutcome, when } from "./format.ts";
 import { markdown } from "./markdown.ts";
 import { Coin } from "./coin.tsx";
 import { disablePush, enablePush } from "./push-client.ts";
@@ -2085,6 +2085,195 @@ function Accounts() {
   );
 }
 
+// ---------- 你的设备 / Your devices (D146): each card renamed in place, its version and update ----------
+
+/** What a device is and what it's for, in plain words (the desktop's kindLine). */
+function kindLine(dv: DeviceView): string {
+  const who = A.S.personaName;
+  let what = t("device.what.computer");
+  if (dv.kind === "server") what = t("device.what.cloud");
+  else if ((dv.platform ?? "").startsWith("darwin") || dv.kind === "laptop" || dv.kind === "mini") what = t("device.what.mac");
+  if (dv.home) return t("device.what.home", what, who);
+  return t("device.what.worker", dv.kind === "server" ? what : t("device.other"), who);
+}
+
+function clientWhat(platform: string): string {
+  const p = platform.toLowerCase();
+  if (p.includes("ios") || p.includes("iphone")) return p.includes("safari") || p.includes("web") ? "iPhone · Safari" : t("device.client.iphone");
+  if (p.includes("android")) return t("device.client.android");
+  if (p.includes("darwin") || p.includes("mac")) return t("device.client.mac");
+  return p ? t("device.client.browser") : t("device.client.other");
+}
+
+const phaseLine = (u: DeviceUpdate) => phaseWords(A.L, u);
+
+/** A card's name: a tap makes it a field; Enter keeps it, Esc puts it back. */
+function CardName({ id, name, renamable }: { id: string; name: string; renamable: boolean }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const save = () => {
+    const next = (draft ?? "").trim();
+    if (next && next !== name) A.renameDevice(id, next);
+    setDraft(null);
+  };
+  if (draft === null)
+    return renamable ? (
+      <button class="dev-name" aria-label={`${t("device.rename")} · ${name}`} onClick={() => setDraft(name)}>
+        {name}
+      </button>
+    ) : (
+      <div class="dev-name">{name}</div>
+    );
+  return (
+    <div class="dev-edit">
+      <input
+        class="dev-input"
+        value={draft}
+        aria-label={t("device.rename")}
+        autoFocus
+        onInput={(e) => setDraft((e.target as HTMLInputElement).value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") save();
+          if (e.key === "Escape") e.stopPropagation(), setDraft(null);
+        }}
+        onBlur={save}
+      />
+      <div class="small sub">{t("device.rename.keys")}</div>
+    </div>
+  );
+}
+
+function Disconnect({ id, name, client }: { id: string; name: string; client?: boolean }) {
+  const [asking, setAsking] = useState(false);
+  if (!asking) return <Btn kind="text" size="sm" label={t("device.disconnect")} about={name} onClick={() => setAsking(true)} />;
+  return (
+    <div class="dev-cut">
+      <div class="dev-cut-q">{t("device.disconnect.ask", name)}</div>
+      <div class="small sub">{t(client ? "device.disconnect.means.client" : "device.disconnect.means")}</div>
+      <div class="btns">
+        <Btn kind="secondary" size="sm" label={t("device.disconnect.ok")} about={name} onClick={() => (A.disconnectDevice(id), setAsking(false))} />
+        <Btn kind="text" size="sm" label={t("device.disconnect.cancel")} onClick={() => setAsking(false)} />
+      </div>
+    </div>
+  );
+}
+
+function VersionBlock({ dv }: { dv: DeviceView }) {
+  const u = dv.update;
+  if (!u && !dv.version) return null;
+  const current = u?.current ?? dv.version ?? "";
+  const line = u ? phaseLine(u) : "";
+  const offer = !!u && (behind(u) || (u.phase === "failed" && u.available));
+  const answer = A.deviceAnswer?.device === dv.id ? A.deviceAnswer.reason : undefined;
+  return (
+    <div class="dev-ver">
+      <div class="dev-ver-row">
+        <span>{t("devup.version", current)}</span>
+        {u && behind(u) && (
+          <>
+            <span class="dot" aria-hidden="true" />
+            <b>{t("devup.available", u.latest)}</b>
+          </>
+        )}
+        {u && !u.available && u.latest && !u.phase && <span class="sub">{t("devup.current")}</span>}
+      </div>
+      {line && <div class={`dev-phase ${u!.phase}`}>{line}</div>}
+      {u?.phase === "failed" && u.reason && <div class="small sub">{t(`devup.why.${u.reason}`)}</div>}
+      {u?.phase === "downloading" && !!u.progress && (
+        <div class="dev-bar">
+          <i style={{ width: `${Math.round(u.progress * 100)}%` }} />
+        </div>
+      )}
+      {offer && u!.phase !== "failed" && u!.how === "self" && u!.notes?.map((n) => <div class="small sub">{n}</div>)}
+      {offer &&
+        (u!.how === "self" ? (
+          dv.state === "awake" ? (
+            <Btn kind="secondary" size="sm" label={t(u!.phase === "failed" ? "devup.retry" : "devup.button")} about={dv.name} onClick={() => A.updateDevice(dv.id)} />
+          ) : (
+            <div class="small sub">{t("devup.how.away", dv.name)}</div>
+          )
+        ) : (
+          <div class="small sub">{u!.how === "app" ? t("devup.how.app", dv.name) : u!.how === "manual" ? t("devup.how.manual", dv.name) : t("devup.how.source")}</div>
+        ))}
+      {answer && <div class="small warn">{t(answer === "name_taken" ? "device.rename.name_taken" : `devup.why.${answer}`)}</div>}
+    </div>
+  );
+}
+
+function DeviceCard({ dv }: { dv: DeviceView }) {
+  const state =
+    dv.state === "awake" ? t("device.state.awake") : dv.state === "asleep" ? t("device.state.asleep") : dv.lastSeen ? t("device.state.unreachable", ago(A.L, dv.lastSeen)) : t("device.state.unreachable.never");
+  const signedIn = dv.harnesses.filter((h) => h.installed && h.loggedIn);
+  return (
+    <div class="dev-card" role="group" aria-label={dv.name}>
+      <div class="dev-head">
+        <CardName id={dv.id} name={dv.name} renamable={!dv.home} />
+      </div>
+      <div class="dev-kind">{kindLine(dv)}</div>
+      <div class={`dev-state ${dv.state}`}>{state}</div>
+      {!!signedIn.length && (
+        <div class="dev-coins">
+          {signedIn.map((h) => (
+            <span class="dev-coin" key={h.harness}>
+              <Coin harness={h.harness} size={22} />
+              {harnessName(h.harness)}
+            </span>
+          ))}
+        </div>
+      )}
+      <VersionBlock dv={dv} />
+      {!dv.home && (
+        <div class="dev-actions">
+          <Disconnect id={dv.id} name={dv.name} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ClientCard({ cl }: { cl: Reach["clients"][number] }) {
+  const mine = A.me?.deviceId === cl.id;
+  return (
+    <div class="dev-card" role="group" aria-label={cl.name}>
+      <div class="dev-head">
+        <CardName id={cl.id} name={cl.name} renamable />
+      </div>
+      <div class="dev-kind">
+        {clientWhat(cl.platform)} · {t("device.client.for", A.S.personaName)}
+      </div>
+      <div class={`dev-state ${cl.connected ? "awake" : ""}`}>{mine ? t("device.client.this") : cl.connected ? t("device.client.now") : cl.lastSeen ? t("device.client.seen", ago(A.L, cl.lastSeen)) : t("device.client.notnow")}</div>
+      <div class="dev-actions">
+        <Disconnect id={cl.id} name={cl.name} client />
+      </div>
+    </div>
+  );
+}
+
+/** 你的设备 / Your devices: a self-contained section, so the Settings page can place it. */
+export function DevicesSection() {
+  useEffect(() => {
+    if (!A.devices && A.S.welcomed) A.send({ t: "devices" });
+  }, []);
+  const list = A.devices;
+  if (!list?.length) return null;
+  return (
+    <section class="set devices">
+      <h3>{t("devices.title")}</h3>
+      {list.map((dv) => (
+        <DeviceCard dv={dv} key={dv.id} />
+      ))}
+      {A.reach?.clients.map((cl) => (
+        <ClientCard cl={cl} key={cl.id} />
+      ))}
+      {A.settings && (
+        <>
+          <Toggle label={t("settings.versions.night")} checked={!!A.settings.autoUpdate} onChange={(v) => A.setSettings({ autoUpdate: v })} />
+          <div class="small sub">{t("settings.versions.night.note")}</div>
+        </>
+      )}
+    </section>
+  );
+}
+
 function PhoneSettings() {
   const [push, setPush] = useState<{ done: boolean } | null>(null);
   useEffect(() => {
@@ -2161,6 +2350,7 @@ function SettingsSheet() {
       <Loadout />
       <PartnerSettings />
       <Accounts />
+      <DevicesSection />
       <PhoneSettings />
     </Sheet>
   );

@@ -63,7 +63,7 @@ export interface CoreOptions {
   /** Test seam for New task (D128): how newtask.ts runs its repo commands. */
   git?: GitRun;
   /** D146 test seams: the release feed, the update side effects, how this process updates. */
-  update?: { fetch?: ReleaseFetch; sys?: UpdateSys; run?: UpdatesDeps["run"]; how?: import("@ducter/protocol").UpdateHow; version?: string; execPath?: string; autoEveryMs?: number; graceMs?: number; criticalWaitMs?: number };
+  update?: { fetch?: ReleaseFetch; sys?: UpdateSys; run?: UpdatesDeps["run"]; how?: import("@ducter/protocol").UpdateHow; version?: string; homeName?: string; execPath?: string; autoEveryMs?: number; graceMs?: number; criticalWaitMs?: number };
   /** Work over time test seams (D112-D114): fake commands, a lower look floor, the judge. */
   work?: { exec?: import("@ducter/protocol/src/checks-run.ts").Exec; minEveryMs?: number; judgeMinMs?: number; restartLookMs?: number; defaultZone?: string; judge?: import("./waiters.ts").Judge; connectionFetch?: (url: string, init: RequestInit) => Promise<Response> };
 }
@@ -301,7 +301,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     release,
     sys: u.sys ?? realSys,
     self: { execPath: u.execPath ?? process.execPath, how: selfHow, arch: process.arch, port: opts.port ?? Number(process.env.DUCTER_PORT || 7777), env: process.env },
-    name: () => osHostname().replace(/\.local$/, ""),
+    name: () => u.homeName ?? osHostname().replace(/\.local$/, ""),
     version,
     workers: () => ({
       online: () =>
@@ -322,7 +322,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     ...(u.criticalWaitMs !== undefined ? { criticalWaitMs: u.criticalWaitMs } : {}),
   });
   updatesRef = updates;
-  devicesView = createDevicesView({ dataDir, auth: devices, workers, connected: () => ws.connected(), probes: opts.deviceProbes, updates: () => updates, self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` } });
+  devicesView = createDevicesView({ dataDir, auth: devices, workers, connected: () => ws.connected(), probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` } });
   updates.onChange(() => devicesView?.changed());
   devicesView.harnessesNow(); // probe once at start, so the partner's first turn knows who is signed in
   const sockets = splitSockets(ws.websocket, workers, { isLive: (id) => devices.isLive(id), nameOf: (id) => devices.list().find((d) => d.id === id)?.name, sweepMs: opts.sweepMs });

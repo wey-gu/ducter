@@ -6,10 +6,11 @@ import { existsSync, readFileSync } from "node:fs";
 import { hostname as osHostname, platform as osPlatform } from "node:os";
 import { join } from "node:path";
 import QRCode from "qrcode";
-import type { AbilityId, AbilityReason, DeviceAbility, DeviceHarness, DeviceKind, DeviceView, Reach, ServerFrame } from "@ducter/protocol";
+import { deviceHarness, type AbilityId, type AbilityReason, type DeviceAbility, type DeviceHarness, type DeviceKind, type DeviceView, type Reach, type ServerFrame } from "@ducter/protocol";
 import { readAbilitySettings, writeAbilitySettings } from "@ducter/protocol/src/abilities.ts";
 import type { DeviceAuth } from "./auth.ts";
 import type { Workers } from "./workers.ts";
+import { probeHarnesses } from "./harness-probe.ts";
 
 export type DevicesFrame = Extract<ServerFrame, { t: "devices" }>;
 export type AbilityResult = Extract<ServerFrame, { t: "ability_result" }>;
@@ -142,23 +143,12 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
         if (REQUIRED_TOOLS.some((t) => !names.has(t))) return { missing: `cua-driver ${version} has no typed browser tools` };
         return { version };
       }),
+    // The four first-wave harnesses (D85, harness-probe.ts).
+    // Claude Code and Codex always show (one can be installed from here); pi and DeepSeek Harness
+    // only once set up, so a Mac without them reads as before.
     harnesses:
       o.probes?.harnesses ??
-      (async () => {
-        const [claude, codex] = await Promise.all([
-          (async (): Promise<DeviceHarness> => {
-            if (!which("claude")) return { harness: "claude-code", installed: false, loggedIn: false };
-            const r = await exec(["claude", "auth", "status"], 15_000);
-            return { harness: "claude-code", installed: true, loggedIn: r.code === 0 && parseJson(r.out.slice(r.out.indexOf("{"), r.out.lastIndexOf("}") + 1))?.loggedIn === true };
-          })(),
-          (async (): Promise<DeviceHarness> => {
-            if (!which("codex")) return { harness: "codex", installed: false, loggedIn: false };
-            const r = await exec(["codex", "login", "status"], 15_000);
-            return { harness: "codex", installed: true, loggedIn: r.code === 0 && /logged in/i.test(r.out) && !/not logged in/i.test(r.out) };
-          })(),
-        ]);
-        return [claude, codex];
-      }),
+      (async () => (await probeHarnesses({ exec, which, env, dataDir: o.dataDir })).filter((h) => (h.harness === "pi" ? h.loggedIn : h.harness === "deepseek-harness" ? h.installed : true))),
     kind: o.probes?.kind ?? (() => localDeviceKind(exec)),
   };
 
@@ -226,7 +216,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
       kind: me.kind,
       home: true,
       state: "awake", // this answer comes from it
-      harnesses: me.harnesses,
+      harnesses: me.harnesses.map((h) => deviceHarness(h)),
       abilities: [webAbility(me.cua), later("computer"), { id: "remote", state: remoteOn ? "on" : "off" }, later("phone"), later("call")],
     };
     const online = new Map(o.workers.online().map((w) => [w.deviceId, w]));
@@ -251,7 +241,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
           state,
           ...(lastSeen ? { lastSeen } : {}),
           ...(hello?.version ? { version: hello.version } : {}),
-          harnesses: (hello?.harnesses ?? []).map((h) => ({ harness: h.id, installed: h.installed, loggedIn: h.loggedIn })),
+          harnesses: (hello?.harnesses ?? []).map((h) => deviceHarness({ harness: h.id, installed: h.installed, loggedIn: h.loggedIn })),
           // Browser places run on the machine Ducter lives on only, for now (runner.ts).
           abilities: [{ id: "web", state: "unavailable", reason: "home_only" }, later("computer"), later("phone"), later("call")],
         } satisfies DeviceView;

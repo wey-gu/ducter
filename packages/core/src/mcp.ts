@@ -12,6 +12,8 @@ interface Tool {
   description: string;
   inputSchema: object;
   handler: ToolHandler;
+  /** Listed only when this says so (checked on each tools/list); calls are checked by the handler. */
+  visible?: (ctx: Ctx) => boolean;
 }
 export interface Ctx {
   role: Role;
@@ -23,6 +25,8 @@ export interface CoreMcpHub extends McpHub {
   setPort(port: number): void;
   verify(token: string): Ctx | undefined;
   tools(role: Role): string[];
+  /** A tool listed only while `visible` holds for the caller (e.g. connection tools for tasks). */
+  registerWhen(role: Role, name: string, description: string, inputSchema: object, handler: ToolHandler, visible: (ctx: Ctx) => boolean): void;
   /** Calls a tool in-process, exactly as an MCP client would (tests, stubs). */
   call(ctx: Ctx, name: string, args: unknown): Promise<unknown>;
 }
@@ -76,7 +80,7 @@ export function createMcpHub(opts: { secret: string; port?: number; version?: st
   const serverFor = (ctx: Ctx) => {
     const server = new Server({ name: "ducter", version: opts.version ?? "0.0.1" }, { capabilities: { tools: {} } });
     server.setRequestHandler(ListToolsRequestSchema, async () => ({
-      tools: [...registry[ctx.role]].map(([name, t]) => ({ name, description: t.description, inputSchema: t.inputSchema as any })),
+      tools: [...registry[ctx.role]].filter(([, t]) => !t.visible || t.visible(ctx)).map(([name, t]) => ({ name, description: t.description, inputSchema: t.inputSchema as any })),
     }));
     server.setRequestHandler(CallToolRequestSchema, async (req) => {
       try {
@@ -93,6 +97,9 @@ export function createMcpHub(opts: { secret: string; port?: number; version?: st
   return {
     register(role, name, description, inputSchema, handler) {
       registry[role].set(name, { description, inputSchema, handler });
+    },
+    registerWhen(role, name, description, inputSchema, handler, visible) {
+      registry[role].set(name, { description, inputSchema, handler, visible });
     },
     configFor(role) {
       const payload = role === "partner" ? "partner" : `task:${role.taskId}`;

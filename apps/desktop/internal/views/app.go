@@ -599,6 +599,10 @@ func (a *App) Welcomed() {
 	if a.S.Settings != nil || a.Route == RoutePartner || a.Desktop != nil {
 		a.send(protocol.SettingsReq{T: "settings"})
 	}
+	// Connections (D96): same, once the Partner page asked.
+	if a.S.ConnAsked || a.Route == RoutePartner {
+		a.send(protocol.ConnectionsReq{T: "connections"})
+	}
 }
 
 // Receive applies a server frame on the UI thread. A welcome from a Log
@@ -728,6 +732,8 @@ func harnessName(h string) string {
 		return "Codex"
 	case "pi":
 		return "pi"
+	case "deepseek-harness":
+		return "DeepSeek Harness"
 	}
 	return h
 }
@@ -738,6 +744,8 @@ func harnessBadge(h string) string {
 		return "cc"
 	case "codex":
 		return "cx"
+	case "deepseek-harness":
+		return "ds"
 	}
 	if len(h) >= 2 {
 		return h[:2]

@@ -32,6 +32,22 @@ top of the conversation. On a phone, tap your partner at the top of the conversa
   down. **Forget** removes a line: Nowledge Mem forgets it when it can, and otherwise the line
   is only hidden here (the app tells you which). To stop it from recalling or noting anything,
   turn off **Remember things**.
+- **Accounts it can read.** Your partner can read your Gmail, calendar, GitHub and other
+  accounts through [OpenConnector](https://github.com/oomol-lab/open-connector). Connect the
+  accounts there first, make a key for Ducter on OpenConnector's Access page (Create Token), then choose
+  **Add one**, pick where your OpenConnector runs, and paste its address and the key.
+  - **Hosted by OOMOL** needs no setup with Google, but your mail and sign-ins pass through
+    OOMOL's servers.
+  - **Self-hosted** keeps them on your own machine. For Gmail and similar accounts, you then
+    set up your own app with Google in OpenConnector.
+  - If OOMOL's `oo` command line is set up with your own OpenConnector, choose **Use the
+    OpenConnector from oo** instead.
+  - Your partner reads on its own, and asks you first before anything is sent or changed.
+  - What it reads is shown to your AI account to understand it; no one else gets it.
+  - **Remove** takes an account away, and the key with it. The key is kept only in
+    Ducter's own data folder.
+  - This is new and still being tried out. Your partner doesn't yet watch your accounts on
+    its own; it looks when you ask.
 - **On its own, or asks you first.** This list shows what your partner does without asking
   (changing code in its own copy, reading your projects, browsing in its own browser) and what it
   always asks you about first (anything that reaches other people, anything that can't be taken
@@ -65,7 +81,8 @@ you and answer each question with **Go** or **Hold**, or choose **Open Ducter**.
 
 ## Devices: AI accounts and connecting a phone
 
-In **Devices**, the AI accounts under this Mac (Claude Code, Codex) open when you click them.
+In **Devices**, the AI accounts under this Mac (Claude Code, Codex; pi and DeepSeek Harness when
+they're set up) open when you click them.
 From there you can install the tool, sign in with its own sign-in in your browser, or sign out.
 Ducter never sees your password. To add your phone or another computer, click **Connect a phone
 or computer**. The app shows a one-time code for it (see [Your phone](phone.md)).

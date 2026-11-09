@@ -2,6 +2,9 @@
 // Changes here go through the lead. The Go client mirrors these types in
 // apps/desktop/internal/protocol (keep field names identical; JSON is the wire format).
 
+export * from "./harnesses.ts";
+import type { HarnessId } from "./harnesses.ts";
+
 // ---------- States (design/focus-window-states.md) ----------
 
 export type Attention =
@@ -66,7 +69,7 @@ export interface Bodies {
     title: string;
     project: string; // "" = Loose
     place: Place;
-    harness: string; // "claude-code" | "codex" | "pi"
+    harness: string; // a HarnessId (harnesses.ts)
     model?: string;
     brief: string;
     bodyReason?: string; // why this harness/model
@@ -104,6 +107,24 @@ export interface Bodies {
   // line (copy pending the glossary): "<from> 发来请求" / "Request from <from>", and
   // "已回复 <to>" / "Replied to <to>". Not "交接 / hand-off": that word is a task changing body.
   bridge_msg: { direction: "in" | "out"; messageId: string; from?: string; to?: string; text: string; inReplyTo?: string; sentAt?: string };
+  // A call into one of the user's connections (D96, design/connectors.md): their OpenConnector or
+  // another MCP server, reached only through Ducter's broker. Reads run and are recorded here;
+  // a write is recorded "needs_go" with its input, waits for the user's Go on a decision card,
+  // and runs once after it ("done"/"failed"). Never carries a token. On the channel for the
+  // partner, on the task's stream for a task. Clients stay quiet about reads.
+  connection_call: {
+    callId: string;
+    connectionId: string;
+    connection: string; // its name, for display
+    action: string; // an OpenConnector action id (gmail.search_threads) or an MCP tool name
+    op: "read" | "write";
+    state: "done" | "failed" | "denied" | "needs_go" | "held";
+    taskId?: string;
+    decisionId?: string;
+    input?: unknown; // writes only: what Go runs
+    summary?: string; // ≤ 200 chars, never the provider's full output
+    error?: string;
+  };
 }
 
 export interface Usage { inputTokens?: number; outputTokens?: number; cacheRead?: number; cacheWrite?: number }
@@ -201,7 +222,15 @@ export type ClientFrame =
   // memory's id and Mem forgets it, otherwise only hidden from this list (the frame says which).
   | { t: "settings" }
   | { t: "settings_set"; patch: SettingsPatch }
-  | { t: "memory_forget"; seq: number };
+  | { t: "memory_forget"; seq: number }
+  // Connections (D96): the user's OpenConnector or another MCP server. "connections" answers with
+  // a connections frame and keeps the socket subscribed. "connection_add" checks the address and
+  // token before saving (answered with connection_result, then a fresh frame). "connection_oo"
+  // uses the self-hosted OpenConnector that the user's oo CLI is set up with, only on this tap.
+  | { t: "connections" }
+  | { t: "connection_add"; url: string; token?: string; name?: string }
+  | { t: "connection_remove"; id: string }
+  | { t: "connection_oo" };
 
 export type ServerFrame =
   // machine: a hash of the machine the main runs on (core/src/machine.ts); a client that computes
@@ -217,6 +246,8 @@ export type ServerFrame =
   | { t: "pair_code"; code: string; expiresAt: string; address?: string; link?: string; qr?: string[] }
   | { t: "rename_result"; device: string; ok: boolean; name?: string; reason?: "unknown_device" | "empty" | "name_taken" | "home" }
   | { t: "settings"; settings: Settings; mem: MemView; forgot?: { seq: number; how: "mem" | "hidden" } }
+  | { t: "connections"; connections: ConnectionView[]; oo: OoDetect }
+  | { t: "connection_result"; ok: boolean; id?: string; reason?: ConnectionReason }
   | { t: "error"; message: string };
 
 export type Delivery = "steered" | "prompted" | "queued";
@@ -247,10 +278,16 @@ export interface Allowance {
 }
 
 export interface DeviceHarness {
-  harness: string; // "claude-code" | "codex" | "pi"
+  harness: string; // a HarnessId (harnesses.ts)
   installed: boolean;
   loggedIn: boolean;
   allowance?: Allowance; // only when the harness reports it; never estimated
+  /** Models this account offers, when it lists them. */
+  models?: { id: string; label: string }[];
+  /** This harness may carry the partner here (D85: HARNESSES[id].partner, and signed in). */
+  canBePartner: boolean;
+  /** plan: a subscription's allowance; usage: paid per token (an API key). */
+  billing?: "plan" | "usage";
 }
 
 export interface DeviceAbility {
@@ -278,6 +315,35 @@ export interface Reach {
   clients: { id: string; name: string; platform: string; connected: boolean; lastSeen?: string }[];
 }
 
+// ---------- Connections (D96, design/connectors.md) ----------
+// Where the user's accounts are reached: their own OpenConnector (OOMOL Hosted or self-hosted) or
+// another MCP server. The token stays in Ducter's data folder (0600), never in a frame.
+
+/** oomol: OOMOL Hosted (mail and sign-ins pass through OOMOL); self: the user's own OpenConnector; mcp: any other MCP server. */
+export type ConnectionSource = "oomol" | "self" | "mcp";
+
+export interface ConnectionView {
+  id: string;
+  name: string;
+  url: string; // the MCP endpoint, without any secret
+  source: ConnectionSource;
+  addedAt: string;
+  via: "manual" | "oo";
+  state: "ok" | "unreachable" | "unauthorized" | "unknown";
+  checkedAt?: string;
+}
+
+/** What the user's oo CLI is set up with, as far as Ducter can tell without reading a secret. */
+export interface OoDetect {
+  installed: boolean;
+  /** A self-hosted OpenConnector in oo's connector.toml or OO_CONNECTOR_URL: its address only. */
+  selfHosted?: { url: string; hasToken: boolean };
+  /** Signed in to an OOMOL account (auth.toml). Not offered for one tap: that key can do more than connections. */
+  account: boolean;
+}
+
+export type ConnectionReason = "bad_url" | "unreachable" | "unauthorized" | "not_mcp" | "duplicate" | "unknown_connection" | "no_oo";
+
 // ---------- Settings (D71: the Partner page and Settings) ----------
 // Persisted in the data folder: the name in persona.json (shared with the CLI), notifications
 // and quiet hours in push.json (shared with the phone's own endpoints), the rest in
@@ -299,6 +365,18 @@ export interface Settings {
   notify: boolean; // notifications on (phones and the Mac)
   quiet: QuietHours | null; // 免打扰 / Quiet hours; null = none
   defaultAfterMin: number; // how long a reversible decision waits before its default goes ahead
+  /**
+   * What the partner itself thinks with (D85, design/ai-loadout.md): a harness that can be the
+   * partner (HARNESSES[id].partner) and its model. Default Claude Code + opus.
+   */
+  brain: Brain;
+  /** Which signed-in accounts tasks may use; a missing entry means enabled. */
+  taskAccounts?: Partial<Record<HarnessId, { enabled: boolean }>>;
+}
+
+export interface Brain {
+  harness: HarnessId;
+  model?: string;
 }
 
 export type SettingsPatch = Partial<Settings>;

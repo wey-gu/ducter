@@ -18,8 +18,14 @@ so it counts against that plan's limits like any other session.
 
 ### Which AI agents does it work with?
 
-Today, Claude Code and Codex, signed in with your own account. You need at least one. pi and
-DeepSeek Harness are coming soon, and more agents after that.
+Claude Code and Codex, signed in with your own account. You need at least one. Your partner
+thinks with Claude Code; choosing Codex for it instead is coming soon.
+
+Ducter can also hand tasks to **pi** and **DeepSeek Harness**, which run on an API key you pay
+for by use rather than a plan. If one of them is installed and has its key, ask your partner to
+use it for a task ("do this with DeepSeek Harness"). Choosing them from the app, and typing a
+DeepSeek key into Devices, are coming soon. Your partner itself running on pi or DeepSeek
+Harness is coming soon too, once each has been checked as carefully as Claude Code and Codex.
 
 ### What does it run on?
 

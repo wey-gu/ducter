@@ -473,6 +473,59 @@ type RenameDeviceReq struct {
 	Name   string `json:"name"`
 }
 
+// ---------- Connections (D96: the user's OpenConnector or other MCP servers) ----------
+
+// ConnectionsReq asks for the user's connections and keeps this socket told
+// of every change.
+type ConnectionsReq struct {
+	T string `json:"t"` // "connections"
+}
+
+// ConnectionAdd checks an address and token, then saves the connection.
+// The token goes to the server once and is never sent back.
+type ConnectionAdd struct {
+	T     string `json:"t"` // "connection_add"
+	URL   string `json:"url"`
+	Token string `json:"token,omitempty"`
+	Name  string `json:"name,omitempty"`
+}
+
+// ConnectionRemove removes one connection (and its token).
+type ConnectionRemove struct {
+	T  string `json:"t"` // "connection_remove"
+	ID string `json:"id"`
+}
+
+// ConnectionOo uses the self-hosted OpenConnector the user's oo CLI is set
+// up with; the server reads oo's setup only on this request.
+type ConnectionOo struct {
+	T string `json:"t"` // "connection_oo"
+}
+
+// ConnectionView is one connection, without any secret. Source: "oomol"
+// (OOMOL Hosted: mail and sign-ins pass through OOMOL), "self" (the user's
+// own OpenConnector), "mcp" (another MCP server).
+type ConnectionView struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	URL       string `json:"url"`
+	Source    string `json:"source"`
+	AddedAt   string `json:"addedAt"`
+	Via       string `json:"via"`   // "manual" | "oo"
+	State     string `json:"state"` // "ok" | "unreachable" | "unauthorized" | "unknown"
+	CheckedAt string `json:"checkedAt,omitempty"`
+}
+
+// OoDetect is what the oo CLI is set up with, without its secrets.
+type OoDetect struct {
+	Installed  bool `json:"installed"`
+	SelfHosted *struct {
+		URL      string `json:"url"`
+		HasToken bool   `json:"hasToken"`
+	} `json:"selfHosted,omitempty"`
+	Account bool `json:"account"`
+}
+
 // ---------- Settings (D71: the Partner page and Settings) ----------
 
 // SettingsReq asks for the partner's settings and keeps this socket told
@@ -719,6 +772,11 @@ type ServerFrame struct {
 	Settings *Settings `json:"settings,omitempty"`
 	Mem      *MemView  `json:"mem,omitempty"`
 	Forgot   *Forgot   `json:"forgot,omitempty"`
+	// connections: the user's connections and what oo is set up with;
+	// connection_result: OK, ID, Reason.
+	Connections []ConnectionView `json:"connections,omitempty"`
+	Oo          *OoDetect        `json:"oo,omitempty"`
+	ID          string           `json:"id,omitempty"`
 }
 
 // Delivery is how a task_send reached its task: steered in mid-turn, as
@@ -739,7 +797,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	}
 	switch f.T {
 	case "welcome", "events", "on_hand", "task_history", "sent", "action_result", "error",
-		"devices", "ability_result", "pair_code", "rename_result", "settings":
+		"devices", "ability_result", "pair_code", "rename_result", "settings", "connections", "connection_result":
 	default:
 		return f, fmt.Errorf("unknown server frame %q", f.T)
 	}

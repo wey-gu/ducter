@@ -84,18 +84,19 @@ look.
 ## It doesn't start from zero
 
 Much of what your partner needs to know is somewhere else: in your mail, your calendar, and
-last week's sessions with your other AI tools. Some of that it can use today. The rest is on
-the way, and none of it needs your passwords.
+last week's sessions with your other AI tools. Most of that it can use today, and none of it
+needs your passwords.
 
 - **One memory for all your AIs (works today).** [Nowledge Mem](https://mem.nowledge.co) keeps
   what you've decided and what you're working on, from every AI tool you connect to it. Your
   partner reads from it and adds to it, and you see *Noted* when it does. Without Mem, it
   remembers your conversation.
-- **Your accounts, through your OpenConnector (coming soon).** Gmail, Google Calendar and
-  other services will connect through [OpenConnector](https://github.com/oomol-lab/open-connector):
-  OOMOL's hosted one, or your own on your own machine. Ducter holds its key, and the AI agents
-  never see your passwords or tokens. Reading your inbox is fine; anything that would send waits
-  for your Go.
+- **Your mail, calendar and other accounts (works today).** Ask, and your partner reads your
+  Gmail, calendar, Slack or GitHub. On **Partner › Accounts it can read**, tap **Use these
+  accounts** if you use oo, or add an address and key from your
+  [OpenConnector](https://github.com/oomol-lab/open-connector). The AI agents never see your
+  passwords. Reading just happens; sending or changing anything waits for your Go.
+  [Accounts your partner can read](docs/accounts.md).
 - **Your AI agents, reaching each other (early, coming soon).** With Nowledge Bridge, the
   Claude Code session in your terminal can hand your partner a job, and your partner can ask
   that session what it knows. It checks with you before it takes the job or sends the question.
@@ -109,11 +110,9 @@ yet, the app installs one and walks you through signing in.
 
 ### Download the Mac app
 
-Signed and notarized builds will be on
-[GitHub Releases](https://github.com/wey-gu/ducter/releases). The first release is on its way;
-until then, build the app from source (below).
-
-Open the `.dmg`, drag **Ducter** to **Applications**, and open it. It checks your Mac, sets up
+Download `Ducter-<version>-arm64.dmg` from the
+[latest release on GitHub](https://github.com/wey-gu/ducter/releases/latest). It's signed and
+notarized for Macs with Apple silicon. Open the `.dmg`, drag **Ducter** to **Applications**, and open it. It checks your Mac, sets up
 what's missing without a Terminal, and opens the conversation. Closing the window doesn't stop
 it; **Stop Ducter** in the menu does. [Getting started](docs/getting-started.md) walks you
 through the first five minutes.

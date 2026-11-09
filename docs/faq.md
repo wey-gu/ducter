@@ -35,8 +35,9 @@ the phone version opens in your phone's browser.
 
 ### Where do I download it?
 
-A download is coming soon. For now, the Mac app is built once from the source, and the result
-can be shared with anyone. See [Install](install.md).
+From the [latest release on GitHub](https://github.com/wey-gu/ducter/releases/latest): download
+the `.dmg`, drag **Ducter** to **Applications**, and open it. You can also build it from the
+source. See [Install](install.md).
 
 ### Do I need to know about git or "agents"?
 
@@ -78,12 +79,9 @@ submitting forms and paying are left to you. See [Browsing the web](devices.md#b
 
 ### Can it read my email or calendar?
 
-Not yet; it's coming soon. Gmail, Google Calendar and other services will connect through
-[OpenConnector](https://github.com/oomol-lab/open-connector), an open-source connector gateway.
-Use OOMOL's hosted one (quickest; your mail passes through their servers) or run your own (it
-stays on your machine, and you set up the sign-in apps yourself). Ducter holds the key to it,
-and the AI agents never see your passwords or tokens. Reading is fine, and anything that would send an email or change your calendar
-will wait for your **Go**, the way everything Ducter sends out does today.
+Yes, when you ask. On **Partner › Accounts it can read**, tap **Use these accounts** if you use
+oo, or add an address and key. Reading just happens; sending or changing anything waits for
+your **Go**. See [Accounts your partner can read](accounts.md).
 
 ### Can it work with the AI agent in my terminal?
 

@@ -533,10 +533,53 @@ export const machineChecked = (kind: string) => ["test", "ci", "diff", "file"].i
 /** The evidence a Done row names, as on the desktop: the best machine-checked kind, its latest
  *  entry (a task reports "bun test before" then "bun test after": the row says after). */
 export function headlineEvidence(evs: EvidenceRef[]): EvidenceRef | undefined {
-  const sorted = sortEvidence(evs);
+  const sorted = sortEvidence(evs.filter((e) => !isRepro(e)));
   const first = sorted[0];
   if (!first || !machineChecked(first.kind)) return undefined;
   return sorted.filter((e) => e.kind === first.kind).at(-1);
+}
+
+/** A run that shows the problem before the fix (a reproduction): it failed on purpose, so it never
+ *  gets a ✓. A report carries no pass or fail per check, so its label says it: "bun test before
+ *  fix", "repro", "修之前", or failing words with no pass in them ("3 failing"). */
+export function isRepro(e: EvidenceRef): boolean {
+  if (!["test", "ci", "log"].includes(e.kind)) return false;
+  const l = e.label;
+  if (/\b(after)\b|修好后|改完|之后/i.test(l)) return false;
+  if (/\b(before|repro\w*|reproduc\w*)\b|修之前|修复前|改之前|复现/i.test(l)) return true;
+  return /\b(fails|failing|failed|broken)\b|失败|报错|没过/i.test(l) && !/\bpass|通过|全过/i.test(l);
+}
+
+/** Ducter's own tools a task calls (its reports, saved progress, reading the Log): plumbing,
+ *  never shown as something the task did. Every harness's MCP tool is mcp__<server>__<tool>. */
+export function isPlumbing(name: string): boolean {
+  return /^mcp__ducter[\w-]*__/.test(name) || ["report_to_main", "checkpoint", "log_search", "log_read"].includes(name);
+}
+
+/** How many files the task's edits touched, from its transcript (the phone has no diff). */
+export function editedFiles(t: Task): number {
+  const files = new Set<string>();
+  for (const ev of t.events) {
+    const tool = ev.kind === "task_event" ? (ev.body as Bodies["task_event"]).tool : undefined;
+    if (!tool || tool.ok === false || !["Edit", "Write", "MultiEdit", "NotebookEdit"].includes(tool.name)) continue;
+    const input = tool.input as Record<string, unknown> | undefined;
+    const path = input && typeof input === "object" ? String(input.file_path ?? input.path ?? input.notebook_path ?? "") : "";
+    if (path) files.add(path);
+  }
+  return files.size;
+}
+
+/** When the task's latest final report (done, or didn't work) came in; NaN when not known. */
+export function finalAt(t: Task): number {
+  for (let i = t.events.length - 1; i >= 0; i--) {
+    const ev = t.events[i]!;
+    if (ev.kind !== "report") continue;
+    const st = (ev.body as Bodies["report"]).state;
+    if (st === "done" || st === "failed") return Date.parse(ev.ts);
+  }
+  // The stream isn't loaded (a task's events come on demand): the card says when it last changed.
+  const r = t.card?.lastReport;
+  return r && (r.state === "done" || r.state === "failed") && t.card?.updatedAt ? Date.parse(t.card.updatedAt) : NaN;
 }
 
 /** A result's How I know: its own report's evidence. A follow-up's result doesn't re-show the

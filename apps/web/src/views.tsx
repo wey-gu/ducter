@@ -15,7 +15,11 @@ import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, WaitBubb
 import {
   attention,
   bodyReasonOf,
+  editedFiles,
+  finalAt,
   finished,
+  isPlumbing,
+  isRepro,
   harnessOf,
   LANE,
   latestByLabel,
@@ -375,14 +379,27 @@ function openEvidence(ev: EvidenceRef, task?: Task) {
   A.toast(`${ev.label} · ${ev.ref}`);
 }
 
+/** The changes in words: "2 files changed". A label that already counts them stands; else they
+ *  are counted from the task's edits, else from the files it named; "See changes" when nothing
+ *  counts them (a bare "commit" or a hash says nothing to a person). */
+function changesLabel(task: Task, changed: EvidenceRef[]): string {
+  const counted = changed.find((e) => e.kind === "diff" && /\d+\s*(files?\b|个文件)/i.test(e.label));
+  if (counted) return counted.label;
+  const n = editedFiles(task) || changed.filter((e) => e.kind === "file").length;
+  if (n) return n === 1 ? t("result.files.one") : t("result.files", n);
+  return t("result.changes");
+}
+
 /** How the task knows, as one quiet line that wraps: a drawn ✓ (× for a task that didn't work)
  *  and plain words per check, the changes as "2 files changed ›", and, withTitle, the task's
  *  title as a link at its end. */
 function ProofLine({ task, evs, withTitle, max = 4 }: { task: Task; evs: EvidenceRef[]; withTitle?: boolean; max?: number }) {
   const list = sortEvidence(latestByLabel(evs));
   const failed = attention(task) === "failed";
-  const changes = list.find((e) => e.kind === "diff");
-  const rest = list.filter((e) => e.kind !== "diff");
+  // The changes are one item, "2 files changed ›" (D73): commits and changed files fold into it.
+  const changed = list.filter((e) => e.kind === "diff" || (e.kind === "file" && !/^https?:/.test(e.ref)));
+  const rest = list.filter((e) => !changed.includes(e));
+  const changes = changed.length ? changesLabel(task, changed) : "";
   if (!rest.length && !changes && !withTitle) return null;
   return (
     <div class="proof">
@@ -393,7 +410,8 @@ function ProofLine({ task, evs, withTitle, max = 4 }: { task: Task; evs: Evidenc
           </button>
         ) : (
           <span key={i} class="mk" title={ev.ref}>
-            {failed ? <Cross /> : machineChecked(ev.kind) ? <span class="ok"><Check /></span> : null}
+            {/* A reproduction failed on purpose: a quiet ×, never a ✓ (the run after it carries the ✓). */}
+            {failed ? <Cross /> : isRepro(ev) ? <span class="repro"><Cross /></span> : machineChecked(ev.kind) ? <span class="ok"><Check /></span> : null}
             {ev.label}
           </span>
         ),
@@ -406,10 +424,10 @@ function ProofLine({ task, evs, withTitle, max = 4 }: { task: Task; evs: Evidenc
       {changes &&
         (withTitle ? (
           <button class="qlink" onClick={() => A.go({ name: "task", id: task.id })}>
-            {changes.label} ›
+            {changes} ›
           </button>
         ) : (
-          <span class="mk">{changes.label}</span>
+          <span class="mk">{changes}</span>
         ))}
       {withTitle && (
         <button class="qlink" onClick={() => A.go({ name: "task", id: task.id })}>
@@ -430,11 +448,33 @@ function outsideLine(task: Task): string {
   return `${acts[0]!.command}${acts.length > 1 ? " · " + t("result.more", acts.length - 1) : ""}`;
 }
 
+/** Why the last Open draft PR didn't work, in words, or "". It stays on the task until the next
+ *  try or the next result, not a toast that is gone in 4 seconds. */
+function prFailure(task: Task): string {
+  const a = task.acted;
+  if (!a || a.ok || a.action !== "open_pr") return "";
+  return noRemote(task) ? t("result.pr.noremote") : t("result.pr.failed", a.message ?? "");
+}
+
+/** The repo has nowhere to push to, so a PR can't be opened: Open draft PR isn't offered. */
+function noRemote(task: Task): boolean {
+  if ((placeOf(task) as { hasRemote?: boolean }).hasRemote === false) return true;
+  const a = task.acted;
+  return !!a && !a.ok && a.action === "open_pr" && /no (origin )?remote/i.test(a.message ?? "");
+}
+
+function PrFailure({ task }: { task: Task }) {
+  const why = prFailure(task);
+  // No remote is how the repo is, not something that went wrong: muted, not the failed ink.
+  return why ? <div class={`small${noRemote(task) ? "" : " fail-line"}`} role="status">{why}</div> : null;
+}
+
 function ResultActions({ task, inTask }: { task: Task; inTask?: boolean }) {
   const p = placeOf(task);
   if (!canIntegrate(task) || p.kind !== "repo") return null;
   const base = p.baseBranch || "main";
   return (
+    <>
     <div class="btns">
       {task.acting ? (
         <span class="small">{t(`result.acting.${task.acting}`, base)}</span>
@@ -451,11 +491,13 @@ function ResultActions({ task, inTask }: { task: Task; inTask?: boolean }) {
         </span>
       ) : (
         <>
-          <Btn kind="secondary" label={t("result.pr")} about={title(task)} onClick={() => A.taskAction(task.id, "open_pr")} />
+          {!noRemote(task) && <Btn kind="secondary" label={t("result.pr")} about={title(task)} onClick={() => A.taskAction(task.id, "open_pr")} />}
           <Btn kind="primary" label={t("result.merge", base)} about={title(task)} onClick={() => A.taskAction(task.id, "merge")} />
         </>
       )}
     </div>
+    {!task.acting && <PrFailure task={task} />}
+    </>
   );
 }
 
@@ -515,13 +557,14 @@ function ResultDetails({ task, detail }: { task: Task; detail?: string }) {
   return (
     <>
       <ProofLine task={task} evs={resultEvidence(task)} withTitle />
-      {pr && (
+      {pr && !noRemote(task) && (
         <div class="proof">
           <button class="qlink" onClick={() => A.taskAction(task.id, "open_pr")}>
             {t("result.pr")}
           </button>
         </div>
       )}
+      {!task.acting && <PrFailure task={task} />}
     </>
   );
 }
@@ -581,17 +624,38 @@ function JobRow({ e, chipOwner, noted }: { e: Entry; chipOwner: Map<string, numb
   );
 }
 
+/** How long the partner usually needs to say a finished task in its own words (measured: 30–75 s). */
+const WORDS_MS = 120_000;
+
+/** Milliseconds until a finished task's line may stand in for the partner's words: while the
+ *  partner is putting its result into words, the place shows its waiting presence instead. Zero
+ *  once it is late (or offline): then the line says it plainly. */
+function wordsDueIn(task: Task): number {
+  if (A.status === "offline") return 0;
+  const at = finalAt(task);
+  return Number.isNaN(at) ? 0 : Math.max(0, at + WORDS_MS - Date.now());
+}
+
 /** A living item the partner didn't report itself, said as one sentence (D104): a task that
  *  didn't work, or one that came back. Work under way and waits are not said; the header and
  *  On hand carry them (with Details shown, they show as lines). */
-function News({ it, k }: { it: LivingItem; k: string }) {
+function News({ it, k, owns }: { it: LivingItem; k: string; owns: boolean }) {
   const task = A.S.tasks.get(it.taskId);
+  const wait = task ? wordsDueIn(task) : 0;
+  useEffect(() => {
+    if (wait <= 0) return;
+    const h = setTimeout(() => A.changed(), wait + 50);
+    return () => clearTimeout(h);
+  }, [wait > 0]);
+  // The partner is putting the result into its own words (D124): its waiting presence holds the
+  // place, not a template line that its message replaces a minute later.
+  if (wait > 0) return <Presence line={t("activity.result")} />;
   const text = it.title ? t(it.kind === "failed" ? "living.failed" : "living.done", it.title, it.text) : it.text;
   return (
     <div class="partner">
       <div>{text}</div>
       {task ? (
-        <Quiet k={k} tasks={[task]} />
+        <Quiet k={k} tasks={owns ? [task] : []} />
       ) : (
         <div class="qrow">
           <DetailsToggle k={k} />
@@ -689,7 +753,7 @@ function Ask({ d, taskId, buttons = true }: { d: DecisionState; taskId?: string;
 /** The living message without its card (D104): a small divider when the person was away, what
  *  didn't work or came back as sentences, then the asks: the one whose default comes soonest
  *  with its buttons, the rest gathered in one line until it is answered or opened. */
-function Living({ e, items }: { e: Entry; items: LivingItem[] }) {
+function Living({ e, items, chipOwner }: { e: Entry; items: LivingItem[]; chipOwner: Map<string, number> }) {
   if (!A.livingAway.has(e.firstSeq)) A.livingAway.set(e.firstSeq, e.firstSeq <= A.S.headSeq && A.S.unread(e));
   const away = A.livingAway.get(e.firstSeq)!;
   const shown = A.details === "shown";
@@ -710,7 +774,7 @@ function Living({ e, items }: { e: Entry; items: LivingItem[] }) {
     <section class="living" key={`${e.firstSeq}:${e.revision}`} aria-label={t("living.title")}>
       {away && <div class="when">{t("living.away.at", clockOf(e.ev.ts))}</div>}
       {news.map((it, i) => (
-        <News key={`n${i}`} it={it} k={`l${e.firstSeq}:${it.taskId}`} />
+        <News key={`n${i}`} it={it} k={`l${e.firstSeq}:${it.taskId}`} owns={chipOwner.get(it.taskId) === e.firstSeq} />
       ))}
       {lines.length > 0 && (
         <div class="det lines">
@@ -758,7 +822,7 @@ function EntryView({ e, chipOwner, livingItems }: { e: Entry; chipOwner: Map<str
     );
   }
   if (e.job) return <JobRow e={e} chipOwner={chipOwner} noted={A.notedFor(e)} />;
-  if (e.living) return <Living e={e} items={livingItems(e)} />;
+  if (e.living) return <Living e={e} items={livingItems(e)} chipOwner={chipOwner} />;
   if (e.decision) {
     const d = A.S.decisions.get(e.decision.decisionId);
     if (!d) return null;
@@ -770,20 +834,21 @@ function EntryView({ e, chipOwner, livingItems }: { e: Entry; chipOwner: Map<str
 /** While the user waits on a reply (D104): the clay partner where its words will appear, and
  *  one plain line of what it is doing, updated in place, gone when the reply lands. A step past
  *  15 s adds a reassuring line; past 45 s, that it will say when it's ready. */
-function Presence() {
+function Presence({ line }: { line?: string }) {
   useTick(1000);
   const a = A.S.activity;
   const lastUser = [...A.S.channel].reverse().find((e) => e.user);
   const since = a?.at ?? A.thinkingSince ?? (lastUser ? Date.parse(lastUser.ev.ts) : Date.now());
   const s = (Date.now() - since) / 1000;
-  const sub = s >= 45 ? t("activity.long") : s >= 15 ? t("activity.slow") : "";
+  // A result being put into words has its own line and no "taking longer" (it ends in 2 minutes).
+  const sub = line ? "" : s >= 45 ? t("activity.long") : s >= 15 ? t("activity.slow") : "";
   return (
     <div class="presence" role="status" aria-live="polite">
       <span class="bob">
         <Avatar size={32} state="working" still />
       </span>
       <span class="pline">
-        {t(`activity.${a?.step ?? "thinking"}`)}
+        {line ?? t(`activity.${a?.step ?? "thinking"}`)}
         {sub && <span class="sub">{sub}</span>}
       </span>
     </div>
@@ -1218,6 +1283,12 @@ function WhatItDid({ task }: { task: Task }) {
   for (const ev of task.events) {
     if (ev.kind === "task_event") {
       const b = ev.body as Bodies["task_event"];
+      // Ducter's own plumbing is not something the task did: its reports and saved progress say
+      // themselves, and a call to them that went wrong is Ducter's to fix, not the person's.
+      if (b.tool && isPlumbing(b.tool.name)) continue;
+      // The runner's kickoff (the brief again in tags, "Report via report_to_main…") is not what
+      // anyone said: the brief shows once, above, as what the partner asked for.
+      if (b.role === "user" && (b.from === "runner" || (!b.from && /^(<brief>|Start the task ")/.test(b.text ?? "")))) continue;
       if (b.tool && b.tool.ok !== false) {
         if (fold) fold.push(b.tool);
         else items.push(<Fold key={ev.seq} tools={(fold = [b.tool])} />);

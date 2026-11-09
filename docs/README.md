@@ -55,6 +55,9 @@ These pages are for using Ducter. If you want to build it or change it, start wi
 | **Task** | Something big enough that your partner hands it off to work on by itself. Each one gets a card. |
 | **On hand** | Every task at a glance, and what is waiting for you. |
 | **Needs you** | A task or question that is waiting for your decision. |
+| **Waiting** | A task that is waiting for something to happen, such as "Waiting until PR #1592 passes". It looks by itself and carries on when it does. |
+| **Routine** | Work that comes back on its own: every Monday at 9, or whenever something happens. You say yes to each one once, and can pause it any time. |
+| **Accounts it can read** | Your mail, calendar and other accounts your partner can look in when you ask. Reading just happens; sending or changing anything waits for your Go. |
 | **Go · Hold · Reply…** | Your answers to a decision. Go takes the suggested default, Hold says "not yet", Reply lets you say it in your own words. |
 | **How I know** | The proof under a finished result: tests that ran, checks, the changes. |
 | **Devices** | The computers (and phone) Ducter can use: **Awake**, **Asleep**, or **Can't reach**. |

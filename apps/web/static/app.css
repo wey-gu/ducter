@@ -587,6 +587,16 @@ a {
   display: inline-flex;
   color: var(--done-ink);
 }
+/* A reproduction (the run before the fix) failed on purpose: a quiet ×, muted, never red. */
+.mk .repro {
+  display: inline-flex;
+  color: var(--ink-muted);
+}
+/* Why an action didn't work stays on the task, in the failed ink. */
+.small.fail-line {
+  color: var(--failed-ink);
+  overflow-wrap: anywhere;
+}
 .qlink {
   font-size: var(--sm);
   font-weight: 700;

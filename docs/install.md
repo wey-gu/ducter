@@ -10,7 +10,7 @@ There are four ways to have Ducter, and you can mix them:
 
 | | Best for | Status |
 |---|---|---|
-| [The Mac app](#the-mac-app) | Most people. Double-click and go | Ready, built from source for now |
+| [The Mac app](#the-mac-app) | Most people. Double-click and go | Ready: download it from GitHub |
 | [The `ducter` command](#the-ducter-command) | People who live in Terminal | Ready |
 | [A Linux server](#a-linux-server-that-stays-on) | Keeping your partner working while your Mac sleeps | Ready |
 | [Your phone](#your-phone) | Answering decisions and checking results on the go | Ready in the phone's browser; an iPhone app is coming soon |
@@ -21,8 +21,18 @@ Ducter uses your own plan through it; it never asks for an API key to get starte
 
 ## The Mac app
 
-A ready-made download is coming soon. Until then the app is built once from the source, on a
-Mac with [Bun](https://bun.sh) and [Go](https://go.dev) installed:
+Download `Ducter-<version>-arm64.dmg` from the
+[latest release on GitHub](https://github.com/wey-gu/ducter/releases/latest). It runs on Macs
+with Apple silicon, and it's signed and notarized, so macOS asks only once whether to open an
+app from the Internet; choose **Open**.
+
+To install: open the `.dmg`, drag **Ducter** onto **Applications**, and open it from there.
+The app updates itself: when a new version is ready, the menu says so, and it installs the next
+time you quit.
+
+### Build it from the source instead
+
+On a Mac with [Bun](https://bun.sh) and [Go](https://go.dev) installed:
 
 ```sh
 git clone https://github.com/wey-gu/ducter && cd ducter
@@ -30,11 +40,8 @@ scripts/make-app.sh        # makes dist/Ducter.app and a .dmg
 ```
 
 The `.dmg` can go to anyone with an Apple silicon Mac (AirDrop, a link, a USB stick). They
-need no build tools.
-
-To install: open the `.dmg`, drag **Ducter** onto **Applications**, and open it from there.
-If whoever built it signed it with an Apple Developer ID, macOS asks once whether to open an app
-from the Internet; choose **Open**. If not, see
+need no build tools. Without an Apple Developer ID the app isn't notarized, so macOS
+needs one extra step the first time: see
 [Ducter can't be opened](troubleshooting.md#ducter-not-opened).
 
 What happens next is in [Getting started](getting-started.md). In short: Ducter checks your Mac,
@@ -67,9 +74,15 @@ run the one command it prints.
 | `ducter doctor` | The check-up (see [Troubleshooting](troubleshooting.md)) |
 | `ducter pair` | A one-time code to connect your phone or another computer |
 | `ducter devices` | The devices connected to your Ducter; `ducter devices disconnect <name>` removes one |
+| `ducter devices rename <name> <new name>` | Give a device a name you'll recognize |
+| `ducter report` | Writes a diagnostics folder you can look through and attach to an issue. Nothing is uploaded |
+| `ducter uninstall` | Removes Ducter from this computer; add `--dry-run` to see what it would remove first |
 | `ducter version` | Which version you have |
 
 Messages follow your system language. Set `DUCTER_LOCALE=zh` or `DUCTER_LOCALE=en` to choose.
+
+**Started on another port?** Add `--port 7790` (or set `DUCTER_PORT`) to every command, for
+example `ducter status --port 7790`.
 
 ## A Linux server that stays on
 

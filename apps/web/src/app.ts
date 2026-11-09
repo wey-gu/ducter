@@ -350,7 +350,8 @@ class AppState {
         if (f.ok) (this.switchFor = ""), this.toast(this.L.t("who.done", this.switching));
         else this.toast(this.L.t("who.failed", f.message ?? ""));
         this.switching = "";
-      } else if (!f.ok) this.toast(this.L.t("result.action.failed", f.message ?? ""));
+        // A draft PR that didn't open says why on the task itself (it stays), not in a toast.
+      } else if (!f.ok && f.action !== "open_pr") this.toast(this.L.t("result.action.failed", f.message ?? ""));
     }
   }
 
@@ -596,9 +597,12 @@ class AppState {
       (e.living?.items ?? []).filter((it) => !((it.kind === "done" || it.kind === "failed") && resultShown.has(it.taskId)) && (it.kind === "decision" || (livingNewest.get(key(it)) ?? 0) <= e.firstSeq));
     rows = rows.filter((e) => !e.living || livingItems(e).length > 0);
     const chipOwner = new Map<string, number>();
+    // The action row shows once, under the newest message about the task: the ack, then the
+    // living message's done line, then the partner's own result.
     for (const e of rows) {
       if (e.job?.status?.taskId) chipOwner.set(e.job.status.taskId, e.firstSeq);
       else if (e.ai?.replyTo) for (const id of S.tasksOfReply(e.ai.replyTo)) chipOwner.set(id, e.firstSeq);
+      else if (e.living) for (const it of livingItems(e)) if (it.kind === "done" || it.kind === "failed") chipOwner.set(it.taskId, e.firstSeq);
     }
     this.pending = this.pending.filter((p) => !echoed.has(p.clientId));
     return { rows, livingItems, chipOwner };

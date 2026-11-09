@@ -394,3 +394,13 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] Editing a routine by saying it ("改成 8:30") as a diff card (research/20 §7.3).
 - [ ] The partner eval: scenarios for "PR 过了告诉我", "一直修到 CI 绿", "每周一给我周报".
 
+
+## A result in words (D124)
+
+- [ ] Evidence carries pass or fail per check (`EvidenceRef.ok`, set by the task in
+      `report_to_main`), so a reproduction is told by its result, not by its label. Trigger: a
+      reproduction whose label the heuristic misses, or a passing run it calls one.
+- [ ] A failed Open draft PR is client state only; a second client (or a reload) offers it again
+      until the place says it has no remote (the protocol field). Trigger: that field lands.
+- [ ] The partner says when it is putting a result into words (an `activity` for report turns), so
+      the waiting line needs no 2-minute guess. Trigger: a partner slower than 2 minutes.

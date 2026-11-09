@@ -73,23 +73,23 @@ func (a *App) proofLine(c *ui.Context, task *store.Task, evs []protocol.Evidence
 	failed := task.Attention() == protocol.Failed
 	const max = 4
 	ui.Row(c.Key("proof:" + task.ID)).Gap(t.S4).Wrap().AlignItems(ui.Center).MinWidth(0).Children(func() {
-		var changes *protocol.EvidenceRef
-		shown := 0
-		for i := range evs {
-			ev := evs[i]
-			if ev.Kind == "diff" {
-				if changes == nil {
-					changes = &evs[i]
-				}
-				continue
+		// The changes are one item, "2 files changed ›" (D73): commits and
+		// changed files fold into it.
+		var changed, rest []protocol.EvidenceRef
+		for _, ev := range evs {
+			if ev.Kind == "diff" || (ev.Kind == "file" && !strings.HasPrefix(ev.Ref, "http")) {
+				changed = append(changed, ev)
+			} else {
+				rest = append(rest, ev)
 			}
-			if shown == max {
-				if a.quietLink(c, "more", a.L.T("result.more", len(evs)-max), task.Title()) {
+		}
+		for i, ev := range rest {
+			if i == max {
+				if a.quietLink(c, "more", a.L.T("result.more", len(rest)-max), task.Title()) {
 					a.OpenTask(task.ID)
 				}
 				break
 			}
-			shown++
 			if isLink(ev.Ref) {
 				if a.quietLink(c.Key(i), "ev", ev.Label, ev.Label) {
 					a.openEvidence(c, ev)
@@ -97,14 +97,15 @@ func (a *App) proofLine(c *ui.Context, task *store.Task, evs []protocol.Evidence
 				continue
 			}
 			var draw func(ui.Color) func(*ui.Painter, ui.Rect)
+			glyph := t.InkMuted
 			switch {
 			case failed:
 				draw = drawCross
+			case isRepro(ev):
+				// A reproduction failed on purpose: a quiet ×, never a ✓.
+				draw = drawCross
 			case store.MachineChecked(ev.Kind):
 				draw = drawCheck
-			}
-			glyph := t.InkMuted
-			if !failed && store.MachineChecked(ev.Kind) {
 				glyph = t.Done.Ink // a passed check's ✓ in the done ink (D76)
 			}
 			m := a.markIn(c.Key(i), draw, glyph, ev.Label, t.InkMuted).Tooltip(ev.Ref)
@@ -112,8 +113,11 @@ func (a *App) proofLine(c *ui.Context, task *store.Task, evs []protocol.Evidence
 				a.openEvidence(c, ev)
 			}
 		}
-		if changes != nil && a.quietLink(c, "changes", changes.Label, changes.Label+" · "+task.Title()) {
-			a.openChanges(task.ID)
+		if len(changed) > 0 {
+			words := a.changesWords(task, changed)
+			if a.quietLink(c, "changes", words, words+" · "+task.Title()) {
+				a.openChanges(task.ID)
+			}
 		}
 		if withTitle {
 			if a.quietLink(c, "title", task.Title(), task.Title()) {
@@ -186,8 +190,9 @@ func (a *App) resultActions(c *ui.Context, task *store.Task) {
 		} else if done := task.Acted; done != nil && done.OK && done.Action == "merge" {
 			ui.Text(c.Key("acted"), a.L.T("result.merged", base)).FontSize(t.SM).FontWeight(700).TextColor(t.Done.Ink)
 		} else {
-			// The primary last, as macOS orders a group (D76).
-			if a.buttonFor(c, a.L.T("result.pr"), task.Title(), btnSecondary, t.ControlMD, t.Surface) {
+			// The primary last, as macOS orders a group (D76). No remote,
+			// no PR to open: only Merge.
+			if !noRemote(task) && a.buttonFor(c, a.L.T("result.pr"), task.Title(), btnSecondary, t.ControlMD, t.Surface) {
 				act("open_pr")
 			}
 			if a.buttonFor(c, a.L.T("result.merge", base), task.Title(), btnPrimary, t.ControlMD, t.Surface) {
@@ -195,6 +200,20 @@ func (a *App) resultActions(c *ui.Context, task *store.Task) {
 			}
 		}
 	})
+	a.prFailureLine(c, task)
+}
+
+// prFailureLine says why Open draft PR didn't work, under the actions, and
+// keeps saying it (not a toast that is gone in seconds).
+func (a *App) prFailureLine(c *ui.Context, task *store.Task) {
+	if why := a.prFailure(task); why != "" {
+		// No remote is how the repo is, not something that went wrong: muted.
+		col := a.T.Failed.Ink
+		if noRemote(task) {
+			col = a.T.InkMuted
+		}
+		ui.Text(c.Key("prfail:"+task.ID), why).FontSize(a.T.SM).LineHeight(1.5).TextColor(col).Selectable()
+	}
 }
 
 // summaryLine is the first line of a report's summary.
@@ -224,7 +243,13 @@ func (a *App) cjkPad(s string) string {
 // headlineEvidence is the one machine check a Done row shows: the last
 // of the strongest kind (an "after" test run beats a "before").
 func headlineEvidence(evs []protocol.EvidenceRef) (protocol.EvidenceRef, bool) {
-	sorted := store.SortEvidence(evs)
+	var checks []protocol.EvidenceRef
+	for _, e := range evs {
+		if !isRepro(e) {
+			checks = append(checks, e)
+		}
+	}
+	sorted := store.SortEvidence(checks)
 	if len(sorted) == 0 || !store.MachineChecked(sorted[0].Kind) {
 		return protocol.EvidenceRef{}, false
 	}
@@ -249,6 +274,8 @@ func (a *App) drainActionResults(c *ui.Context) {
 			c.Toast(a.L.T("result.merged.toast", title, short(f.Ref)))
 		case f.OK && f.Action == "open_pr":
 			c.Toast(a.L.T("result.pr.toast", f.Ref))
+		case !f.OK && f.Action == "open_pr":
+			// Said on the task itself, where it stays (prFailureLine).
 		case !f.OK:
 			c.Toast(a.L.T("result.action.failed", f.Message))
 		}

@@ -9,8 +9,8 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// TitleSound is the title moment's sound (D87): variant A, felt piano and
-// strings, 16-bit 48 kHz WAV, about -20 LUFS. Made by tools/sound (sources
+// TitleSound is the title moment's sound (D87, update 2026-11-09): variant C,
+// bowed vibraphone over a low organ, 16-bit 48 kHz WAV, about -20 LUFS. Made by tools/sound (sources
 // and credits in tools/sound/SOURCES.md); never edit by hand.
 //
 //go:embed sound/title.wav

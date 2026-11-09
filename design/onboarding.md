@@ -222,8 +222,9 @@ thing; nothing to learn, any key goes on.
 
 **Sound.** Six candidates (`tools/sound/build.sh`; levels by ffmpeg ebur128, all about −20 LUFS,
 true peak −4.5 to −9.6 dBTP, the tone's onset within 7 ms of 3.55 s): A felt piano + strings
-(IV(add9) → V(sus4) → I, the major third arriving with the eyes; **the author's pick, shipped**),
-B glass + breath pad, C bowed vibraphone + low organ (a real 4–3 suspension on the beat), and the
+(IV(add9) → V(sus4) → I, the major third arriving with the eyes; the first pick),
+B glass + breath pad, C bowed vibraphone + low organ (a real 4–3 suspension on the beat; **the
+author's pick after hearing them in the app, shipped since 2026-11-09**), and the
 endings of Chopin's Nocturne Op. 27 No. 2, Schubert's Sonata D 664/II and Chopin's Prelude
 Op. 28 No. 13 in Musopen's CC0 / public-domain recordings, cut so the final chord lands on the
 beat. All six are in the prototype's sound picker; only A is in git, the others stay in the

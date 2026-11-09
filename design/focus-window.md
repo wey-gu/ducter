@@ -50,6 +50,12 @@ read the whole Log.
 - `questions[]`: each has `blocking`, a `default`, and whether the default is reversible
 - `evidence[]`: refs such as CI run, artifact, diff, URL
 
+Ducter adds two fields when a done or failed report is logged, never the task: `branch` (what
+a repo task's branch holds, D125) and `folder` (what a task changed in a non-git folder against
+the copy kept before its first change, and until when it can be undone, D142). A task in such a
+folder that can't be copied cheaply gets a runner-written `needs_input` report before its first
+turn (Hold by default); its first turn waits for the answer.
+
 A wait is not a report field: the task calls `wait_for` (D112). The transcript is the task's
 own stream in the Log (`task_history`), not a pointer in the report.
 

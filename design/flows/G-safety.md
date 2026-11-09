@@ -2,7 +2,7 @@
 
 > Draft 1 · 2026-11-09 · Status: **drafted; its open questions were decided 2026-11-09 (D60, D61), words per D66**. Covers scenarios G1–G7
 > (`product-model.md` §6 "G. Safety", widened). Builds on principle 18, D16 (no per-call
-> approvals), D26 (push and PR defaults), D27 (draft copies), D47/D48 and `system.md`
+> approvals), D26 (push and PR defaults), D142 (a folder's copy and undo; D27 superseded), D47/D48 and `system.md`
 > (env-gate, credentials, isolation), `research/25` (vault, per-site policy, audit),
 > D52 Q6 (draft PR countdown on personal repos) and Q12 (quiet hours), D3 in
 > `D-decisions-attention.md` (quiet hours for attention), B5 in `B-kinds-of-work.md` (sign-in
@@ -65,8 +65,8 @@ record. Silence still means success.
 | Payment | renewing a domain | — | no | **The user pays, by taking over the screen. Ducter never pays, and no Rule can change that** [doc system.md] |
 | Sign in | Cloudflare dashboard | — | sign out | **Ducter never types a password**: takeover, or a vault fill with the agent paused [doc D48, B5] |
 | Share link | the Bun research | anyone with it | turn off (not unread) | Ask; expires in 7 days (I5) [I] |
-| Write outside a worktree on your device | `~/Notes/hawdb-bench/` | no | yes | Draft copy + one Go, unless the folder is trusted [doc D27] |
-| Delete many files (> 10) | | no | from snapshot | Always ask, even in a trusted folder [doc EC C2] |
+| Write outside a worktree on your device | `~/Notes/hawdb-bench/` | no | yes | Works in the folder; a copy from before makes it undoable with one tap (D142). A folder that can't be copied asks first |
+| Delete many files (> 10) | | no | from the copy | Asked in the brief (Codex: sandboxed to the folder; Claude Code: not held); undoable either way (D142) |
 | Spend allowance or API money | routine runs | no | no | Budget caps; over the cap → ask [doc D29] |
 | Phone call | | yes | no | Roadmap; always an intent [doc D35] |
 
@@ -245,7 +245,7 @@ Mail has a similar delay. Ducter applies the same idea to every effect that can 
 | Social post | 30 s held before it posts | 删掉这条 / Delete the post, with "可能已经有人看到了 / people may have seen it" |
 | Push `ducter/*` | none needed | 撤销 removes the branch from the remote (it's Ducter's own branch) |
 | Draft PR | none needed | 关掉 PR / Close the PR |
-| Draft copy applied (D27) | 7 days [doc EC C2] | Then gone |
+| A folder's copy from before a task (D142) | 7 days after the task finished, or until Keep the changes | Then gone |
 | Share link | none | 关掉链接 / Turn off the link (I5) |
 | Form submit, payment | none: the ask happens before | — |
 
@@ -718,8 +718,7 @@ Every task shows 可以碰 / May touch in its dossier, literally [I]:
 |---|---|
 | Worktree on your device | 这个分支上的改动 · 你在这台 {device} 上能碰的文件也能碰到 / Changes on this branch · it can also reach any file you can on {device} |
 | A sandbox (gVisor Linux, Lume VM) | 碰不到你的文件 / Can't touch your files |
-| A non-git folder, draft copy | 草稿副本；原文件要你说好才改 / A draft copy; originals change only when you say Go |
-| A trusted folder | 这个文件夹，直接改 / This folder, directly |
+| A non-git folder | 直接改，随时能改回去 / Changes it directly; you can undo it all |
 | The browser profile | 这个浏览器里登录过的网站 / Sites signed in to in this browser |
 | Your real Chrome (v1.x opt-in) | 你的真 Chrome，不隔开 / Your real Chrome, no separation (red chip) [doc system.md] |
 
@@ -740,7 +739,7 @@ None. `Place.isolation` is a typed field already proposed in `system.md` hooks [
 | `reach.title` | 可以碰 | May touch |
 | `reach.worktree` | 这个分支上的改动 · 你在这台 {device} 上能碰的文件也能碰到 | Changes on this branch · it can also reach any file you can on {device} |
 | `reach.sandbox` | 碰不到你的文件 | Can't touch your files |
-| `reach.draft_copy` | 草稿副本；原文件要你说好才改 | A draft copy; originals change only when you say Go |
+| `reach.folder` | 直接改，随时能改回去 | Changes it directly; you can undo it all |
 | `reach.trusted` | 这个文件夹，直接改 | This folder, directly |
 | `reach.browser` | 这个浏览器里登录过的网站 | Sites signed in to in this browser |
 | `reach.real_chrome` | 你的真 Chrome，不隔开 | Your real Chrome, no separation |

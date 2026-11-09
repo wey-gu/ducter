@@ -106,7 +106,7 @@ including what the check changed, is in `design/decisions.md`.
 | Handoff to another body or device | 换到 X 接着做 / Continue on X |
 | Pause | 先停 / Pause (shown as a waiting reason, not a new state) |
 | Recipe | 准备方法 / Setup steps |
-| Draft copy (non-git) | 草稿副本 / Draft copy |
+| Changes in a non-git folder (D142; was 草稿副本 / Draft copy, D27) | 改回去 / Undo all changes · 就这样 / Keep the changes |
 | Default applied | 按默认做了 / Went with the default |
 | Stopped / Undo / Try again | 停下了 / Stopped · 撤销 / Undo · 再试一次 / Try again |
 | Batch defaults | 都按默认 / Go on all defaults |

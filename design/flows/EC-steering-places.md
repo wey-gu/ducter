@@ -504,66 +504,65 @@ not a separate task.
 
 ---
 
-## C2 · A non-git folder (draft copy, apply with one Go, mark trusted)
+## C2 · A non-git folder (works in place, undo with one tap; D142)
 
 ### Scenario card
 | | |
 |---|---|
 | **Who** | Consumer and fresh user mostly ("把下载文件夹里的发票按月份整理"); developer for loose script dirs |
-| **Feels before → after** | "What if it messes up my files?" → "I saw every change before it touched anything, and I can undo it" |
-| **Emotional value** | 放心 above all; 赏心悦目 in a clear before/after list |
-| **First time** | The first write task on a non-git folder. The card says, once, "改动先放在草稿副本里" |
+| **Feels before → after** | "What if it messes up my files?" → "It's done, I can see it in Finder, and one tap puts it all back" |
+| **Emotional value** | 放心 above all; 顺滑 (no apply step, results show at once) |
+| **First time** | The first task in a folder. Nothing to learn: the result says it can be undone and until when |
 
 ### Flow
-1. The task starts; the card's Where chip reads "~/Downloads/发票 · MacBook · 草稿副本".
-2. Ducter makes a draft copy (APFS clone where possible, so it's instant and cheap).
-3. The task works only in the copy. Reads of the original are allowed.
-4. Done → the task reports `done?`; C checks the copy differs; the partner posts the **apply
-   card**:
-   - counts (moved 23, renamed 23, new 2 folders, deleted 0), each expandable to a file list;
-   - a highlighted row for anything destructive (deletes, overwrites);
-   - `应用 / Apply` (Go), `先等等 / Hold`, `回复… / Reply…`;
-   - a checkbox: "以后这个文件夹直接改 / Edit this folder directly from now on" (mark trusted).
-5. Apply → changes land; a snapshot of the touched originals is kept; "撤销 / Undo" stays on
-   the result for 7 days.
-6. Hold → the draft stays; the card waits in Needs you (no countdown: applying is not
-   reversible by default policy, so no auto-apply).
-7. **Trusted folder:** later tasks write in place; a snapshot of each touched file is still
-   kept so writes stay reversible. The Where chip reads "直接改 / Edits directly".
+1. Before the task's first turn, Ducter keeps a copy of the folder on the machine that holds it
+   (an APFS clone or a reflink: near-zero space and time; a plain copy only when small). The
+   user never sees it named.
+2. The task works in the folder itself; Finder shows the result at once.
+3. Done → the report carries what changed; the partner's result says it in a line and adds
+   **随时能改回去，留到 11 月 16 日 / You can undo this until Nov 16**.
+4. The opened task's **改动 / Changes**: one sentence (**把 42 个文件整理进 6 个新文件夹，改了 3 个文件名**),
+   the quiet until-line, **改回去 / Undo all changes** and **就这样 / Keep the changes**; **看看改了哪些 /
+   See what changed** opens the list (moves as *from → to*, new, changed, deleted), each with
+   **改回这个 / Undo this** on hover.
+5. Undo all → the folder is exactly as before (checked by hash); the section says
+   **改回去了，文件夹和它动手之前一模一样**. If the folder changed after the task finished, the undo asks
+   first and names what would be lost.
+6. Keep → the copy is freed; **留下了这些改动**. Untouched, the copy goes 7 days after the task
+   finished (**过了 7 天，已经改不回去了**).
+
+### When it asks first
+- The folder can't be copied cheaply: cloud-synced (iCloud Drive, Dropbox, Google Drive,
+  OneDrive, Box), a network or external drive, too big, or it holds Ducter's own data. The task
+  waits on a question (Hold by default, can't be undone); Go lets it change the folder directly.
+- Deleting more than 10 files at once, or writing outside the folder: asked in the task's brief.
+  Codex can't write outside the folder (its sandbox); Claude Code is asked, not held. Deletions
+  inside the folder are undoable either way.
 
 ### States touched
-`working → done? → needs-you` (apply decision) `→ done`. Read-only tasks: no copy, no card.
+`working → done? → done`; the ask-first case `queued → needs-you → working`.
 
 ### Copy
 | Key | zh | en |
 |---|---|---|
-| `folder.draft.where` † | 草稿副本 | Draft copy |
-| `folder.draft.explain` | 改动先放在草稿副本里，最后你说好了再应用 | Changes go to a draft copy; they apply when you say Go |
-| `folder.apply.title` | 要把这些改动应用到 {folder} 吗？ | Apply these changes to {folder}? |
-| `folder.apply.go` | 应用 | Apply |
-| `folder.apply.counts` | 移动 {m} · 改名 {r} · 新建 {n} · 删除 {d} | Moved {m} · renamed {r} · new {n} · deleted {d} |
-| `folder.apply.destructive` | 会覆盖 {n} 个文件 | Overwrites {n} files |
-| `folder.trust` | 以后这个文件夹直接改 | Edit this folder directly from now on |
-| `folder.trusted.where` † | 直接改 | Edits directly |
-| `folder.applied` | 应用好了。7 天内可以撤销 | Applied. You can undo for 7 days |
-| `folder.conflict` | 你这期间改过 {n} 个文件，这些先不动 | You changed {n} files meanwhile; those stay as you left them |
+| `folder.movedInto` | 把 {n} 个文件整理进 {k} 个新文件夹 | Moved {n} files into {k} new folders |
+| `folder.until` | 随时能改回去，留到 {date} | You can undo this until {date} |
+| `folder.undo` | 改回去 | Undo all changes |
+| `folder.keep` | 就这样 | Keep the changes |
+| `folder.undone` | 改回去了，文件夹和它动手之前一模一样 | Undone: the folder is exactly as it was before |
+| `folder.confirm` | 它做完之后，又有 {n} 个文件被改过（{files}）。改回去的话，这些也会变回它动手之前的样子。 | {n} files changed after it finished ({files}). Undoing puts those back to how they were before the task too. |
+| `folder.row.restore` | 改回这个 | Undo this |
+| ask (runner) | 动手之前先问你：这个文件夹在 {Dropbox} 里同步，没法先留一份，改了就改不回去。 | Before changing anything: this folder syncs with {Dropbox}, so Ducter can't keep a copy to undo with. |
 
-### Motion
-- Apply: the file-list rows slide from the "copy" side into the folder icon in a short
-  stagger (40 ms each, capped at 8 visible), then the card presses-and-settles to Done.
-- Undo: rows slide back out.
+The full set is `apps/desktop/internal/i18n/folder.go` (the web client has the same keys).
 
 ### Edge cases
-- The user edited originals meanwhile → per-file conflict; default: keep the user's version.
-- The folder is huge (> disk budget for copies) → ask: copy only the files it will touch
-  (default) or mark trusted.
-- The folder is on an external drive that's unplugged at apply time → Waiting · reason.
 - The folder becomes a git repo later → treated as a repo from then on.
-- Trusted folder plus a destructive op (delete > 10 files) → still a decision (intent policy).
+- A follow-up after Keep or Undo takes a fresh copy before its first change.
+- A worker that predates D142 can't keep a copy: its folder tasks ask first.
 
 ### Open questions
-- Is "草稿副本 / Draft copy" plain enough for the fresh user? Alternatives: 副本 / A copy.
-- Undo window (7 days proposed) vs. disk budget (C6).
+- None blocking. Motion for Undo (rows sliding back) is not designed yet.
 
 ---
 
@@ -819,7 +818,7 @@ A small disk gauge on the decision card drains down as Go is pressed (the freed 
 | pause | 先停 / Pause (as Waiting reason, not a state) | E4 |
 | merged task | 已并进 / Merged into | E5 |
 | Recipe | 准备步骤 / Setup | C3 |
-| draft copy / trusted | 草稿副本 / Draft copy · 直接改 / Edits directly | C2 |
+| a folder's changes | 改回去 / Undo all changes · 就这样 / Keep the changes | C2 |
 
 ## Artboards (scratchpad `flows/project/`)
 
@@ -828,5 +827,5 @@ A small disk gauge on the decision card drains down as Go is pressed (the freed 
 | `ESwitchModel.dc.html` | desktop 1440×900 | Opened task, model chip open as a sheet: why, candidates, pin vs rule, handoff line |
 | `CNewTaskPicker.dc.html` | desktop 1440×900 | On hand with + 新事 picker: project → repo/folder → device → base branch → model, each prefilled with a reason |
 | `CNewProjectChip.dc.html` | phone 390×844 | First mention of tuwa: task chip + 新项目 · Tuwa with 改名 (editing) / 撤销 |
-| `CDraftCopyApply.dc.html` | phone 390×844 | Non-git folder apply card with counts, file list, trust checkbox |
+| `CDraftCopyApply.dc.html` | phone 390×844 | Non-git folder apply card (D27, superseded by D142: the built Changes replace it) |
 | `CRecipeProposal.dc.html` | phone 390×844 | Recipe proposal card with proof, exclusive port, commit offer, default |

@@ -234,6 +234,24 @@ note and a `Dn`) before it is built.
 - [ ] **Nowledge Bridge live** (`design/bridge.md`): the live J1 round trip, then outbound
       (J4). Trigger: the account is enabled for Bridge.
 
+## Folders that aren't repos (D142)
+
+- [ ] **Live run with a model** (owed: skipped for the token budget). A scratch Ducter, a cheap
+      model, a scratch folder of fake invoices sorted into month folders, then Undo from the app
+      and from `ducter undo`. The flow is proven with temp folders and a scripted harness
+      (`packages/runner/demo-folder.ts`). Trigger: the next budget window.
+- [ ] **Claude Code: keep writes inside the folder.** Under bypass nothing holds it there; try
+      Claude Code's own sandbox (`--settings` with `sandbox.enabled`) for Bash and check it in a
+      live run (the experiment was not allowed this session). Trigger: a report of a task writing
+      outside its folder, or the live run above.
+- [ ] **More than 10 deletes at once, after the fact.** Today asked in the brief only. Detect it
+      at the turn end against the copy and offer the deleted files back in one card. Trigger: a
+      task deletes many files without asking.
+- [ ] **The proof line under a folder result** still counts `file` evidence ("改了 1 个文件") next
+      to the Changes sentence; show the folder's own count there. Trigger: next pass on results.
+- [ ] **Linux check:** reflink on btrfs/xfs and the network/external mount detection were
+      written from the mount table, not run on Linux. Trigger: the first Linux server user.
+
 ## Browser places (W5)
 
 `packages/runner/src/browser.ts` attaches cua-driver directly (D47). Verified live on 0.44.0

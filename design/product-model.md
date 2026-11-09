@@ -45,7 +45,7 @@
 | handoff | **换到 X 接着做 / Continue on X** | Never "superseded" in UI |
 | pause | **先停 / Pause** | Shown as a waiting reason |
 | Recipe | **准备步骤 / Setup steps** | |
-| non-git draft copy | **草稿副本 / Draft copy** | |
+| a non-git folder's changes | **改回去 / Undo all changes** · **就这样 / Keep the changes** · **改回这个 / Undo this** · **随时能改回去，留到 {date} / You can undo this until {date}** | D142; the copy behind it is never named |
 | routine fields | **{date} 再问你 / Ask you again {date}** (review date) · **可以碰 / May touch** (also on every task, D61) | |
 | default outcomes | **你没回，我照原计划做了 / No answer, so I went ahead** · **都按默认 / Go on all defaults** | D129 |
 | an answered ask, in the conversation (D129) | **你说：{Go 的字} / You said: {the Go words}** ("你说：好，创建") · **你说：先等等 / You said: Hold** · **你说：{回复} / You said: {reply}** | One tiny line on the user's side; never "已经说好 / Agreed" |
@@ -233,8 +233,11 @@ Every task shows two editable things on its card and header.
   anything else needs Go.
 
 *Folders that aren't git*
-- Writes go to a **draft copy** and are applied with one Go at the end, unless you mark the
-  folder trusted. Either way, writes stay reversible.
+- The task works in the folder itself, so results show at once. Before its first change Ducter
+  keeps a copy (a clone, near-zero space); its **改动 / Changes** say what it did in plain words
+  and offer **改回去 / Undo all changes** (exact, checked by hash) and **就这样 / Keep the
+  changes**, until 7 days after it finished (D142). A folder that can't be copied cheaply
+  (cloud-synced, a network or external drive, too big) asks first. No Merge for a folder.
 
 ## 4. Work over time
 

@@ -284,10 +284,11 @@ empty list (no noted lines) is left out with its heading. Screenshots:
    button. The ask due soonest carries Go / Hold / Reply in one small row, so most days the user
    never leaves this view.
 2. **手头的事 / On hand** (overview for decisions, all personas).
-   - The top band is the **attention forecast** in plain words: when each task will next need
-     you (defaults taking effect, waits coming due). The lanes' headers carry the counts.
-   - Below it are four lanes: **等你 / Needs you** (wide decision cards with the question,
-     default, countdown, and Go / Hold / Reply), **在做 / Working**, **在等 / Waiting**
+   - The top is one quiet line, **接下来 / Next**, only when more than one thing is coming
+     (defaults taking effect, waits coming due; D127). The lanes' headers carry the counts.
+   - Below it are four lanes: **等你 / Needs you** (wide decision cards read at one glance,
+     D127: the agent's coin and the task's short title, one question, the default as a small
+     timer and one caption, Reply… · Hold · a short Go), **在做 / Working**, **在等 / Waiting**
      (dashed, showing what it waits for), and **做完了 / Done** (with "在检查 / checking"
      for `done?`).
    - Lanes can be grouped by state, time, device, project, or persona. "Go on all defaults"
@@ -298,8 +299,8 @@ empty list (no noted lines) is left out with its heading. Screenshots:
 3. **An opened task** (conductor depth; D74, D90). One centered column on the conversation's
    measure and rhythm, read top to bottom; the window's header is the breadcrumb and the title only.
    1. **The head is one block** (D90): the state face (96 pt) beside one quiet meta line,
-      the state in its ink, then "{time}开始的 / started {time}" and who does it ("· Codex"),
-      and a headline that is always there: while it works, what it is doing now in a
+      the state in its ink, then "{time}开始的 / started {time}" (who does it is in the bar
+      over the composer, D127), and a headline that is always there: while it works, what it is doing now in a
       sentence (why it waits, its latest report, its latest saved progress, else its title)
       at 28/800; finished, the outcome at 34/800. No link chain in the head.
    2. A pending ask, as in the conversation; **换谁来做 / Switch who does it** opens here as
@@ -308,16 +309,20 @@ empty list (no noted lines) is left out with its heading. Screenshots:
    3. The outcome, said once: the report in the partner's size, the line of proof, what went
       out, then Merge / Open draft PR (Try again for one that didn't work). It replaces the
       result banner and the "Told Ducter · done" card.
-   4. **过程 / What it did**: the task's own words as a short narrative; tool calls that went
-      fine fold into one line per stretch ("跑了 2 条命令，改了 1 个文件 / Ran 2 commands,
-      edited 1 file ›") that opens in place; a step that didn't work stands on its own, in
-      words, with its first line of output.
+   4. **过程 / What it did** (D127): the task's own words as normal text; between them each
+      step is one quiet line: a small drawn mark, a verb (思考 Thinking · 运行 Ran · 读取 Read ·
+      编辑 Edited · 搜索 Searched · 浏览 Browsed · 操作 Used · 等待 Waited · 交给 Handed off) and
+      a one-line summary, truncated (a command, path or pattern in mono on the inline-code
+      tint); thinking shows its headings only; **出错 / Error** is one red-tinted line in words
+      whose raw text opens on a click; ×n for a repeat; a run of more than six shows its latest
+      four behind **前面还有 n 条 / n more above ›**; saved progress is a tiny flag line; the
+      user's Go is their own bubble; turn endings are not shown.
    5. **改动 / Changes**: the changed files, each with +added −removed; a file opens its diff
-      in place, full width, under a quiet header. No diff shows by default; a task in no repo
-      has no section. The phone names the changes in the proof line and shows no diff.
+      in place, full width, under a quiet header. No diff shows by default; a task in no repo,
+      or with nothing changed yet, has no section (D127). The phone names the changes in the proof line and shows no diff.
    6. A quiet **细节 / Details ›** disclosure: who is doing it and why as one sentence
       ("Codex is doing it, because Claude Code's limit is low." · Switch who does it), where
-      (repo and branch; the path as the user named it, never a scratch absolute path), saved
+      (repo and branch; the path on hover and copied, never spelled out, D127), saved
       progress as a plain list with each time beside its item, what went out, usage only if
       there is any. A row with nothing to say is left out. Labels sit in a fixed column on
       the value's first baseline; values start on the head's left edge.
@@ -326,7 +331,8 @@ empty list (no noted lines) is left out with its heading. Screenshots:
    24 / 32; a headline or paragraph at most about 68 Latin or 36 Chinese characters a line
    (D78 Chinese rules: leading 1.75, no tracking).
    The box to talk to the task stays at the bottom of the window, as the conversation's
-   composer does.
+   composer does; over it one quiet bar: the agent's coin, the agent and the model, then the
+   state and for how long ("在做 · 12:34", "做完了 · 用了 18 分钟") (D127).
 
 ## Prototype canvases
 

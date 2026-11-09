@@ -416,3 +416,8 @@ Codex first, once OAR is near 1.0. See `research/17`.
       until the place says it has no remote (the protocol field). Trigger: that field lands.
 - [ ] The partner says when it is putting a result into words (an `activity` for report turns), so
       the waiting line needs no 2-minute guess. Trigger: a partner slower than 2 minutes.
+- [ ] D127's step table was built from the shapes the author's App Store Connect run showed and
+      from OAR's per-runtime tool names; check it against a live Codex computer-use run and a pi
+      run, and add what reads as **用了 / Used {tool}**. Trigger: the next live dogfood run.
+- [ ] Older Logs have no thinking headings (`task_event.thinking` is new); a session resumed
+      across the change shows Thinking lines only from then on. Trigger: none needed.

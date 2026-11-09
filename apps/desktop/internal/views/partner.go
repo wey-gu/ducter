@@ -384,9 +384,6 @@ func (a *App) memoryCard(c *ui.Context, st *protocol.Settings) {
 			state = "off"
 		}
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-			if b := theme.Clay("token_ink"); b != nil && state == "connected" {
-				ui.Image(c, b).Size(36, 36).Shrink(0).AccessHidden(true)
-			}
 			ui.Text(c, a.L.T("partner.memory."+state)).FontSize(t.MD).LineHeight(1.5).Grow(1).MinWidth(0)
 		})
 		if state == "missing" {

@@ -55,11 +55,12 @@ func main() {
 	lang := system
 	local0 := hints.Open(hints.DataDir())
 	// Settings › Language pins the window's language (DUCTER_LOCALE still wins).
+	chosen := false
 	if l := local0.Lang(); (l == "zh" || l == "en") && !i18n.Fixed() {
-		lang = i18n.Lang(l)
+		lang, chosen = i18n.Lang(l), true
 	}
 	app := views.New(s, theme.Pebble(), i18n.New(lang))
-	app.LocaleFixed = i18n.Fixed() || lang != system
+	app.LocaleFixed = i18n.Fixed() || chosen
 	app.Local = local0
 	app.SystemLang = system
 	app.Version, app.Commit = buildVersion()

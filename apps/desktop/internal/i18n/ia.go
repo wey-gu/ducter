@@ -240,7 +240,7 @@ var enIA = Table{
 	"token.installing":   "Installing…",
 	"token.signingout":   "Signing out…",
 	"token.failed":       "Didn't work; try again",
-	"devices.connect":    "Connect a phone or another computer",
+	"devices.connect":    "Connect a phone or computer",
 }
 
 func init() {

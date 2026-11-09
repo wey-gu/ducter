@@ -295,7 +295,11 @@ func (a *App) dataCard(c *ui.Context) {
 // All good says so in one line, and the rows still show what was checked.
 func (a *App) checkRows(c *ui.Context, r local.Report) {
 	t := a.T
-	if len(r.Blocking()) == 0 {
+	all := true
+	for _, k := range r.Checks {
+		all = all && k.Status == "ok"
+	}
+	if all {
 		ui.Text(c, a.L.T("settings.data.allgood")).FontSize(t.MD).FontWeight(800).TextColor(t.Done.Ink)
 	}
 	ui.Column(c.Key("checks")).Gap(t.S2).Children(func() {

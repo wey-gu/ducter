@@ -300,7 +300,7 @@ func (a *App) deviceCards(c *ui.Context, width float32) {
 // connects with a one-time code (D54). The code's sheet opens on the stage.
 func (a *App) connectEntry(c *ui.Context) {
 	t := a.T
-	if a.button(c, a.L.T("devices.connect"), btnSecondary, t.ControlMD, t.Bg) {
+	if a.button(c, a.L.T("devices.connect"), btnSecondary, t.ControlSM, t.Bg) {
 		a.devState().account = ""
 		a.openPair()
 	}

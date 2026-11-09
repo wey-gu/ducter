@@ -1535,6 +1535,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         const dup = [...foldOut(loggedBridge()).values()].some((o) => o.last.inReplyTo === messageId && o.last.text.trim() === text && mayHaveGone(o.state));
         if (dup) return { ok: true, note: "Already sent; not sent again. End your turn without repeating anything." };
         const taskId = linkedTask(messageId);
+        // While the task runs, the claim Ducter sent is the reply; the outcome is owed when it
+        // reports (live eval: sonnet sent a second "started on it" after the claim, 1 of 3).
+        if (taskId && !core.log.read({ stream: `task:${taskId}`, kinds: ["report"], limit: 500 }).some((e) => (e.body as Bodies["report"]).state !== "progress" && (e.body as Bodies["report"]).state !== "needs_input"))
+          return { ok: true, sent: false, note: "Not sent: Ducter already told it the task is taken, and you'll be asked to send the outcome when the task reports. End your turn." };
         const state = await deliver({ ...peerOf(original), text, inReplyTo: messageId, ...(taskId ? { taskId } : {}) }, "reply");
         const to = original.agent ?? original.from ?? "the sender";
         if (state === "sent") return { ok: true, note: `Sent to ${to}. The user sees a small line saying so; don't mention the reply. If you haven't told the user yet, do it now in one message; if you have, end your turn without repeating it.` };

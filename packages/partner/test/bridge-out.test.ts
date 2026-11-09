@@ -194,9 +194,10 @@ describe("S1: the result goes back to the agent that asked (J-Q7, D107)", () => 
     tap(r[0].decisionId);
     await partner.idle();
     expect(r[1].note).toContain("don't reply to it now");
+    expect(r[2].sent).toBe(false); // a second claim while the task runs is not sent
     report("t1");
     await partner.idle();
-    expect(w.replies.map((x) => x.text)).toEqual(["接了：「修 runner 测试」。做完把结果回你。", "Claimed. Working on it.", "runner 测试修好了。"]);
+    expect(w.replies.map((x) => x.text)).toEqual(["接了：「修 runner 测试」。做完把结果回你。", "runner 测试修好了。"]);
   }, 20_000);
 
   test("the same reply twice goes out once", async () => {

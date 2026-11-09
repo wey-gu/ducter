@@ -165,11 +165,15 @@ The author approved the §J defaults. Built on `bridge-spike`, all over the fake
   | before the fixes, haiku ×2 | 0/2 | 0/2 | 0/2 |
   | after, haiku ×3 | 1/3 (deterministic checks 3/3; two judge fails on general result shape: branch and merge talk) | 3/3 | 3/3 |
   | after, sonnet ×3 | 3/3 | 3/3 | 3/3 |
+  | after merging main, final guards: haiku ×3 | 3/3 | 3/3 | 3/3 |
+  | same: sonnet ×3 | 2/3 (a second "started on it" reply while the task ran; now refused in code) | 3/3 | 3/3 |
+  | after that guard, take-zh only: sonnet ×3 / haiku ×3 | 3/3 / 1/3 (judge: merge and push choice in prose, general result shape) | — | — |
 
 - **What prompting alone didn't hold, now code** (research/30's lesson again):
   - an `ask` in the wrong language, or naming the user, in a turn woken by a peer is refused;
   - a `bridge_send` with numbered sub-questions is refused (haiku also wrote "1）2）3）" with full-width parens);
-  - the same reply twice goes once (sonnet sent its outcome twice);
+  - the same reply twice goes once (sonnet sent its outcome twice), and a reply to a request whose task is still
+    running is not sent (the claim already went);
   - a reply while the task runs (haiku sent a second "Claimed") no longer counts as the outcome, which had
     silently cancelled the owed result;
   - "[reply owed]" now says reply first, then tell the user once: telling first made haiku say the result twice.

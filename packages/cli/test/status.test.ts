@@ -1,8 +1,8 @@
 import { afterAll, describe, expect, test } from "bun:test";
 import type { LogEvent, OnHand, TaskCard } from "@ducter/protocol";
-import { fetchSnapshot, formatSnapshot, openDecisions } from "../src/status.ts";
+import { fetchSnapshot, formatSnapshot, openDecisions, pickTask, toMerge } from "../src/status.ts";
 import { planDesktop } from "../src/desktop.ts";
-import { translator } from "../src/i18n.ts";
+import { commandsFor, translator } from "../src/i18n.ts";
 
 const en = translator("en");
 const zh = translator("zh");
@@ -51,6 +51,25 @@ describe("status", () => {
     expect(text).toContain("Waiting (1)");
     expect(text).toContain("Needs you (1)\n  ? Rebase on main?\n    [Go: Rebase] [Hold]");
     expect(text).toContain("Done today: 2");
+  });
+
+  // Fresh-user QA: three finished, unmerged tasks; status said only "Done today: 3".
+  test("finished work not merged yet has its own lane, with the merge command", () => {
+    const repo = { kind: "repo" as const, device: "local", repoPath: "/r", worktree: "/w", branch: "ducter/x", baseBranch: "main" };
+    const committed = { state: "done" as const, summary: "Fixed.", questions: [], evidence: [{ kind: "diff" as const, label: "commit", ref: "b6726b1" }] };
+    const tasks = [
+      card({ taskId: "a", title: "Fix failing tests in tinycart", place: repo, attention: "done", residency: "parked", lastReport: committed }),
+      card({ taskId: "b", title: "Merged already", place: repo, attention: "done", residency: "archived", lastReport: committed }),
+      card({ taskId: "c", title: "Nothing to merge", place: repo, attention: "done", residency: "parked", lastReport: { ...committed, branch: { commits: 0, uncommitted: false } } }),
+      card({ taskId: "d", title: "Answer only", attention: "done", residency: "parked", lastReport: committed }),
+    ];
+    expect(tasks.filter(toMerge).map((c) => c.taskId)).toEqual(["a"]);
+    const t = translator("en", commandsFor({ port: 7798 }));
+    const text = formatSnapshot({ personaName: "Ducter", url: "x", onHand: { tasks, counts: { needs_you: 0, working: 0, waiting: 0, done_today: 4 } }, decisions: [] }, t);
+    expect(text).toContain("Done, waiting for you to merge (1)\n  • Fix failing tests in tinycart");
+    expect(text).toContain("ducter merge --port 7798 <part of its title>");
+    expect(pickTask(tasks, "TINYCART").map((c) => c.taskId)).toEqual(["a"]);
+    expect(pickTask(tasks, "b").map((c) => c.taskId)).toEqual(["b"]); // an id wins over a title match
   });
 
   test("quiet, in zh", () => {

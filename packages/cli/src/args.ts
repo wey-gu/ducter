@@ -1,6 +1,6 @@
 // Argument parsing for `ducter`. Pure: no env, no I/O, so it is easy to test.
 
-export type Command = "up" | "open" | "doctor" | "status" | "version" | "help" | "pair" | "devices" | "service" | "worker" | "uninstall" | "report";
+export type Command = "up" | "open" | "doctor" | "status" | "version" | "help" | "pair" | "devices" | "service" | "worker" | "uninstall" | "report" | "merge";
 
 export interface Args {
   command: Command;
@@ -24,9 +24,9 @@ export interface Args {
 
 export type ParseResult = { ok: true; args: Args } | { ok: false; error: { key: "err.unknownCommand" | "err.unknownFlag" | "err.missingValue" | "err.badPort"; vars: Record<string, string> } };
 
-const COMMANDS = new Set<Command>(["up", "open", "doctor", "status", "version", "help", "pair", "devices", "service", "worker", "uninstall", "report"]);
+const COMMANDS = new Set<Command>(["up", "open", "doctor", "status", "version", "help", "pair", "devices", "service", "worker", "uninstall", "report", "merge"]);
 /** Commands that take words after them (`ducter devices revoke a1b2`, `ducter service install`). */
-const WITH_REST = new Set<Command>(["devices", "service"]);
+const WITH_REST = new Set<Command>(["devices", "service", "merge"]);
 const ALIASES: Record<string, Command> = {
   "-v": "version",
   "--version": "version",

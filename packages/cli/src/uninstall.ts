@@ -5,6 +5,11 @@
 //   --all       also the data folder (the Log, worktrees, browser profiles, scratch), the
 //               ~/.local/bin/ducter link Ducter.app made, and the app's own Library folders.
 //
+// One Ducter at a time: `--data-dir <dir>` removes that one only. The background item goes only
+// when it runs that data folder (its DUCTER_DATA_DIR; none named = ~/.ducter). What exists once
+// per user (the app's folders, the ducter link) goes only with the Ducter the background item
+// runs, or ~/.ducter when there is none. The plan names what stays and whose it is.
+//
 // Nothing outside that list is ever touched: repos and their ducter/* branches, harness logins,
 // Nowledge Mem and cua-driver stay. Ducter.app itself is moved to the Trash by the app, last.
 import { existsSync, lstatSync, readdirSync, readFileSync, readlinkSync, realpathSync, rmSync, statSync } from "node:fs";
@@ -144,6 +149,32 @@ export function isAppLink(p: string, execPath: string): boolean {
   }
 }
 
+/** The data folder a background item (LaunchAgent plist or systemd unit) runs; null: none named. */
+export function backgroundDataDir(file: string): string | null {
+  let text = "";
+  try {
+    text = readFileSync(file, "utf8");
+  } catch {
+    return null;
+  }
+  const plist = /<key>DUCTER_DATA_DIR<\/key>\s*<string>([^<]+)<\/string>/.exec(text);
+  if (plist) return plist[1]!.trim();
+  const unit = /^Environment="?DUCTER_DATA_DIR=([^"\n]+)"?\s*$/m.exec(text);
+  return unit ? unit[1]!.trim() : null;
+}
+
+/** The same folder, with symlinks resolved where it exists (/tmp is /private/tmp on macOS). */
+export function sameDir(a: string, b: string): boolean {
+  const real = (p: string) => {
+    try {
+      return realpathSync(p);
+    } catch {
+      return resolve(p);
+    }
+  };
+  return resolve(a) === resolve(b) || real(a) === real(b);
+}
+
 const exists = (p: string) => {
   try {
     lstatSync(p);
@@ -161,14 +192,18 @@ export function planUninstall(i: PlanInput): Plan {
   const warnings: Warning[] = [];
   const repos: string[] = [];
 
-  // The background item.
-  if (i.platform === "darwin") {
-    const p = plistPath(home, i.agentLabel);
-    if (exists(p)) remove.push({ path: p, what: t("uninstall.item.agent"), kind: "agent" });
-  } else if (i.platform === "linux") {
-    const p = unitPath(home);
-    if (exists(p)) remove.push({ path: p, what: t("uninstall.item.service"), kind: "service" });
-  }
+  // The background item, when it runs this data folder; another Ducter's stays.
+  const defaultDir = join(home, ".ducter");
+  const bg = i.platform === "darwin" ? plistPath(home, i.agentLabel) : i.platform === "linux" ? unitPath(home) : undefined;
+  const bgKind: "agent" | "service" = i.platform === "darwin" ? "agent" : "service";
+  const bgDir = bg && exists(bg) ? (backgroundDataDir(bg) ?? defaultDir) : undefined;
+  const ownsBackground = bgDir !== undefined && sameDir(bgDir, i.dataDir);
+  // What exists once per user belongs to the Ducter the background item runs, else the default one.
+  const owner = bgDir ?? defaultDir;
+  const ownsGlobal = sameDir(owner, i.dataDir);
+  const others = t("uninstall.keep.otherInstance", { dir: owner });
+  if (bg && ownsBackground) remove.push({ path: bg, what: t(`uninstall.item.${bgKind}`), kind: bgKind });
+  else if (bgDir !== undefined) keep.push({ what: t(`uninstall.item.${bgKind}`), detail: others });
 
   if (i.all) {
     if (exists(i.dataDir)) {
@@ -190,7 +225,9 @@ export function planUninstall(i: PlanInput): Plan {
       }
     }
     const link = join(home, ".local", "bin", "ducter");
-    if (isAppLink(link, i.execPath)) remove.push({ path: link, what: t("uninstall.item.link"), kind: "link" });
+    if (!ownsGlobal) {
+      if (exists(link)) keep.push({ what: link, detail: others });
+    } else if (isAppLink(link, i.execPath)) remove.push({ path: link, what: t("uninstall.item.link"), kind: "link" });
     else if (exists(link)) {
       let to = "";
       try {
@@ -199,7 +236,9 @@ export function planUninstall(i: PlanInput): Plan {
       keep.push({ what: link, detail: to ? t("uninstall.keep.otherLink", { path: link, to }) : t("uninstall.keep.copied", { path: link }) });
     }
 
-    if (i.platform === "darwin") {
+    if (i.platform === "darwin" && !ownsGlobal) {
+      keep.push({ what: t("uninstall.item.appdata"), detail: others });
+    } else if (i.platform === "darwin") {
       const lib = join(home, "Library");
       const id = i.agentLabel.replace(/\.agent$/, "");
       // Ducter.app's folder is "Ducter"; another build's (a scratch copy) is its bundle id.
@@ -217,7 +256,7 @@ export function planUninstall(i: PlanInput): Plan {
     { what: "Nowledge Mem", detail: t("uninstall.keep.mem.detail") },
     { what: "cua-driver", detail: t("uninstall.keep.cua.detail") },
   );
-  if (i.platform === "darwin") keep.push({ what: "Ducter.app", detail: t(i.fromApp ? "uninstall.keep.app.fromApp" : "uninstall.keep.app") });
+  if (i.platform === "darwin" && ownsGlobal) keep.push({ what: "Ducter.app", detail: t(i.fromApp ? "uninstall.keep.app.fromApp" : "uninstall.keep.app") });
   return { remove, keep, warnings, repos };
 }
 

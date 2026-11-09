@@ -53,6 +53,17 @@ export function checkArgs(tool: string, schema: object, args: unknown) {
 
 const b64 = (s: string) => Buffer.from(s).toString("base64url");
 
+/**
+ * Every Ducter tool is loaded up front, in every session Ducter starts. Claude Code defers MCP
+ * tools behind its tool search by default; a deferred tool's schema isn't in the prompt, so a
+ * task called checkpoint with `{}` ("This tool's input schema was not in your prompt") and then
+ * guessed report_to_main's shape (fresh-user QA, haiku). This per-tool `_meta` key is Claude
+ * Code's own opt-out (2.1.319: same as defer_loading: false on the API); OAR's MCP config has no
+ * per-server alwaysLoad, and ENABLE_TOOL_SEARCH=false would load the user's own servers up front
+ * too. Codex and pi load MCP tools directly; other clients ignore the key.
+ */
+const ALWAYS_LOAD = { "anthropic/alwaysLoad": true } as const;
+
 export function createMcpHub(opts: { secret: string; port?: number; version?: string }): CoreMcpHub {
   let port = opts.port ?? 7777;
   const registry: Record<Role, Map<string, Tool>> = { partner: new Map(), task: new Map() };
@@ -80,7 +91,9 @@ export function createMcpHub(opts: { secret: string; port?: number; version?: st
   const serverFor = (ctx: Ctx) => {
     const server = new Server({ name: "ducter", version: opts.version ?? "0.0.1" }, { capabilities: { tools: {} } });
     server.setRequestHandler(ListToolsRequestSchema, async () => ({
-      tools: [...registry[ctx.role]].filter(([, t]) => !t.visible || t.visible(ctx)).map(([name, t]) => ({ name, description: t.description, inputSchema: t.inputSchema as any })),
+      tools: [...registry[ctx.role]]
+        .filter(([, t]) => !t.visible || t.visible(ctx))
+        .map(([name, t]) => ({ name, description: t.description, inputSchema: t.inputSchema as any, _meta: ALWAYS_LOAD })),
     }));
     server.setRequestHandler(CallToolRequestSchema, async (req) => {
       try {

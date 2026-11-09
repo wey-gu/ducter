@@ -54,6 +54,8 @@ type Place struct {
 	BaseBranch string `json:"baseBranch,omitempty"`
 	Path       string `json:"path,omitempty"`
 	Profile    string `json:"profile,omitempty"`
+	// HasRemote: the repo has an origin to push to (nil: unknown, a task from before it).
+	HasRemote *bool `json:"hasRemote,omitempty"`
 }
 
 // ---------- Log events ----------
@@ -175,6 +177,7 @@ type TaskOpen struct {
 	Model      string `json:"model,omitempty"`
 	Brief      string `json:"brief"`
 	BodyReason string `json:"bodyReason,omitempty"`
+	Language   string `json:"language,omitempty"` // "zh" | "en": the language the user reads its reports in
 }
 
 type TaskState struct {

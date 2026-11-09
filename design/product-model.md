@@ -208,8 +208,10 @@ Every task shows two editable things on its card and header.
 - Ducter never merges unless a rule allows it.
 
 *Archive and disk*
-- Archiving commits leftovers, removes the worktree, and keeps the branch. The device's own
-  runner does this when it next wakes.
+- A merge (the Merge button or `ducter merge`) archives its task: the device's own runner
+  removes the clean worktree Ducter made and keeps the branch. A worktree with leftovers is
+  kept, never force-removed, and the task says why (D125). A follow-up adds it back from the
+  branch.
 - Each device has a disk budget. Reclaiming archived worktrees is automatic; deleting
   anything else needs Go.
 

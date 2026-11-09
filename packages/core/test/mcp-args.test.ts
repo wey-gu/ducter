@@ -22,3 +22,22 @@ test("required args are checked before the handler runs, with a helpful message"
   expect(calls).toEqual([{ taskId: "t1", text: "hi" }]);
   expect(() => checkArgs("x", { type: "object" }, {})).not.toThrow();
 });
+
+// Fresh-user QA: Claude Code deferred Ducter's tools behind tool search, so a task called
+// checkpoint with `{}` without its schema. Every listed tool asks to be loaded up front.
+test("every listed tool carries Claude Code's always-load key", async () => {
+  const hub = createMcpHub({ secret: "s" });
+  hub.register("task", "checkpoint", "c", { type: "object", properties: { text: { type: "string" } }, required: ["text"] }, async () => "ok");
+  hub.register("task", "report_to_main", "r", { type: "object" }, async () => "ok");
+  const { headers } = hub.configFor({ taskId: "t1" });
+  const res = await hub.handle(
+    new Request("http://127.0.0.1/mcp", {
+      method: "POST",
+      headers: { "content-type": "application/json", accept: "application/json, text/event-stream", ...headers },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} }),
+    }),
+  );
+  const tools = ((await res.json()) as { result: { tools: { name: string; _meta?: Record<string, unknown> }[] } }).result.tools;
+  expect(tools.map((t) => t.name)).toEqual(["checkpoint", "report_to_main"]);
+  for (const t of tools) expect(t._meta?.["anthropic/alwaysLoad"]).toBe(true);
+});

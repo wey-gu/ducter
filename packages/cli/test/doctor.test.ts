@@ -1,7 +1,8 @@
 // Doctor against a fake machine: no real CLIs, logins, or network.
 import { describe, expect, test } from "bun:test";
-import { formatReport, runDoctor, versionAtLeast, width, type Host, type RunResult } from "../src/doctor.ts";
-import { STRINGS, detectLocale, translator } from "../src/i18n.ts";
+import { formatReport, formatSummary, runDoctor, versionAtLeast, width, type Host, type RunResult } from "../src/doctor.ts";
+import { STRINGS, commandsFor, detectLocale, translator } from "../src/i18n.ts";
+import { helpText } from "../src/main.ts";
 
 const en = translator("en");
 const zh = translator("zh");
@@ -116,7 +117,7 @@ describe("doctor", () => {
     expect(byId(busy, "port")).toMatchObject({ status: "missing", required: true, fix: "DUCTER_PORT=7784 ducter up" });
     expect(busy.ok).toBe(false);
     const ours = await runDoctor(fake({ port: "ducter" }), en, opts);
-    expect(byId(ours, "port")).toMatchObject({ status: "warn", detail: "Ducter is already running here" });
+    expect(byId(ours, "port")).toMatchObject({ status: "ok", detail: "Ducter is already running here" });
     expect(ours.ok).toBe(true);
   });
 
@@ -270,5 +271,32 @@ describe("doctor on a Linux server", () => {
   test("a Mac shows no server rows", async () => {
     const r = await runDoctor(fake(), en, opts);
     expect(r.checks.some((c) => c.id === "service" || c.id === "devices")).toBe(false);
+  });
+});
+
+// Fresh-user QA (`up --port 7798 --data-dir <scratch>`): every hint dropped the flags, the
+// first-run line called Mem ready with memory off, and --help ran an option into its text.
+describe("hints carry the flags used", () => {
+  test("commands keep --port and --data-dir; none given, the bare command", () => {
+    const t = translator("en", commandsFor({ port: 7798, dataDir: "/tmp/qa data" }));
+    expect(t("up.hintNoDesktop", { name: "Ducter" })).toContain("ducter status --port 7798 --data-dir '/tmp/qa data' shows");
+    expect(t("status.notRunning", { port: 7798 })).toBe("Ducter isn't running on port 7798. Start it with: ducter up --port 7798 --data-dir '/tmp/qa data'");
+    expect(t("up.reach.value")).toContain("ducter pair --port 7798");
+    expect(en("doctor.allGood")).toBe("All set. Start with: ducter up");
+    expect(translator("zh", commandsFor({ port: 7798 }))("doctor.allGood")).toBe("一切就绪。开始：ducter up --port 7798");
+  });
+
+  test("memory off is never listed as ready", async () => {
+    const line = formatSummary(await runDoctor(fake(), en, { ...opts, memoryOff: true }), en);
+    expect(line).toContain("Claude Code");
+    expect(line).not.toContain("Nowledge Mem");
+    expect(formatSummary(await runDoctor(fake(), en, { ...opts, memoryOff: false }), en)).toContain("Nowledge Mem");
+  });
+
+  test("--help: every option's text starts in the same column", () => {
+    const rows = helpText(en).split("\n").filter((l) => l.startsWith("  --"));
+    const col = (l: string) => l.search(/(?<=\S) {2,}\S/) + l.slice(l.search(/(?<=\S) {2,}\S/)).search(/\S/);
+    expect(rows.length).toBeGreaterThan(5);
+    expect(new Set(rows.map(col)).size).toBe(1);
   });
 });

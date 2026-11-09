@@ -17,6 +17,11 @@ Target about 2K tokens, in this order:
 The brief gets no skills list, because windows inherit the user's harness config
 (principle 17).
 
+The runner's frame around the brief also names **the language the user reads reports in**
+(`task_open.language`: the Partner-page setting, else the user's words that turn, else their
+last message). The task writes its summary, questions and evidence labels in it, whatever
+language the code or tool output is in; those labels show on On hand as they are (D125).
+
 ## Pull tools
 
 Windows get the same `log.search` / `log.read` tools as the main AI. Scope: the persona's

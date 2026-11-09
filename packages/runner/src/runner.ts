@@ -6,7 +6,7 @@ import { createOarHarnessPort } from "./oar.ts";
 import { cwdOf, planPlace, provisionPlace } from "./places.ts";
 import { browserSidecar, type BrowserOptions, type BrowserSidecar } from "./browser.ts";
 import { PREVIEW_MAX, preview } from "./normalize.ts";
-import { branchChanges, mergeTaskBranch, openDraftPr, type ActionResult } from "./integrate.ts";
+import { archiveWorktree, branchChanges, mergeTaskBranch, openDraftPr, type ActionResult } from "./integrate.ts";
 import { DEVICE_BACK, DeviceOfflineError, deviceOf, isOffline, remoteOps, type PlaceOps } from "./remote.ts";
 
 /** task_state reason for a task whose worker dropped; clients render it as "<device> 连不上 / Can't reach <device>". */
@@ -110,6 +110,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     merge: (place) => mergeTaskBranch(place),
     openPr: (place) => openDraftPr(place, { gh: opts.gh }),
     changes: (place) => branchChanges(place),
+    archive: (place) => archiveWorktree(place, core.dataDir),
   };
   /** A paired worker's ops when the place names one; any other name (e.g. "mac") is this machine. */
   function opsFor(place: Place | undefined): PlaceOps {
@@ -344,6 +345,30 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     }
   }
 
+  /**
+   * A merged task is done and archived (product-model "Archive and disk", EC-steering-places
+   * step 7): its session closes, its clean worktree goes, its branch stays. A task still working
+   * (a follow-up in flight) keeps everything. A worktree with leftovers is kept and the reason
+   * logged on the task; a follow-up later adds the worktree back from the branch (send).
+   */
+  async function archiveAfterMerge(t: TaskRt, place: Place) {
+    if (place.kind !== "repo" || t.dropped || isBusy(t) || !["done_claimed", "done"].includes(currentAttention(t))) return;
+    clearTimeout(t.parkTimer);
+    const s = t.session;
+    t.session = undefined;
+    t.running = false;
+    await s?.close().catch(() => {});
+    let a: ActionResult & { removed: boolean };
+    try {
+      a = await t.ops.archive(place);
+    } catch (err) {
+      a = { ok: false, removed: false, message: `Kept the worktree: ${preview(err instanceof Error ? err.message : String(err), 300)}` };
+    }
+    if (a.removed || !a.ok) logEvent(t, { role: "system", from: "runner", text: a.message, raw: { archive: a.removed ? "removed" : "kept" } });
+    // Archived either way: merged work is finished; a kept worktree only holds its leftovers.
+    setState(t, "done", "archived");
+  }
+
   function get(taskId: string): TaskRt {
     const t = tasks.get(taskId);
     if (!t) throw new Error(`unknown task ${taskId}`);
@@ -365,6 +390,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         cwd,
         project: open.project || undefined,
         mcpServerName: mcp.name,
+        ...(open.language ? { language: open.language } : {}),
       }),
       mcp: [mcp],
       permissionMode: "bypass",
@@ -483,7 +509,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     // The partner's choice wins; else DUCTER_TASK_MODEL; else the harness default.
     const model = input.model || (h === "claude-code" ? (opts.defaultModel ?? opts.taskModel ?? process.env.DUCTER_TASK_MODEL) || undefined : undefined);
     const later = typeof briefIn !== "string";
-    const body: Bodies["task_open"] = { taskId: id, title, project, place: resolved.place, harness: h, model, brief: later ? "" : briefIn };
+    const body: Bodies["task_open"] = { taskId: id, title, project, place: resolved.place, harness: h, model, brief: later ? "" : briefIn, ...(input.language ? { language: input.language } : {}) };
     const opened = core.log.append({ persona, stream: stream(id), origin: "system", kind: "task_open", body });
     core.log.append({ persona, stream: stream(id), origin: "system", kind: "body_selected", body: { taskId: id, harness: h, ...(model ? { model } : {}), why: pick?.why ?? { kind: input.harness ? "partner" : "default" } } });
     const card: TaskCard = {
@@ -578,8 +604,11 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         // Resuming takes seconds (measured ~10 s for Claude Code): log the text now so the
         // transcript shows it at once; a resumed session is idle, so it becomes the next turn.
         logInput(t, text, from, "turn", clientId);
+        const archived = t.residency === "archived";
         setState(t, currentAttention(t), "provisioning");
         try {
+          // Archived after a merge: its worktree was removed; add it back from the kept branch.
+          if (archived) await t.ops.provision({ place: core.tasks.get(taskId)?.place ?? t.card.place, cwd: t.spec.cwd });
           await startSession(t, true);
         } catch (err) {
           setState(t, currentAttention(t), "parked");
@@ -722,7 +751,9 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       const t = get(taskId);
       const card = core.tasks.get(taskId) ?? t.card;
       const r = await t.ops.merge(card.place);
-      if (r.ok) logEvent(t, { role: "system", from: "runner", text: r.message, raw: { effect: "merge", ref: r.ref } });
+      if (!r.ok) return r;
+      logEvent(t, { role: "system", from: "runner", text: r.message, raw: { effect: "merge", ref: r.ref } });
+      await archiveAfterMerge(t, card.place);
       return r;
     },
 
@@ -732,6 +763,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       const r = await t.ops.openPr(card.place);
       // Pushing and opening a PR leave the user's machines: an outside effect (I-results "Outside").
       if (r.ok) logEvent(t, { role: "system", from: "runner", text: r.message, raw: { effect: "outside", what: "draft_pr", ref: r.ref } });
+      // A failure stays on the task, not only in a toast that fades (fresh-user QA: no origin).
+      else logEvent(t, { role: "system", from: "runner", text: r.message, raw: { failed: "draft_pr" } });
       return r;
     },
 

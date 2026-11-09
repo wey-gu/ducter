@@ -2,14 +2,14 @@
 // `ducter`: the one command a person runs. up · open · doctor · status · version.
 import { appendFileSync, existsSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import pkg from "../package.json" with { type: "json" };
 import { parseArgs, type Args } from "./args.ts";
 import { launchDesktop, planDesktop, sourceRepoRoot, type Launched } from "./desktop.ts";
 import { ansiStyle, formatBlocked, formatReport, formatSummary, realHost, runDoctor, width, type DoctorReport, type Host, type Style } from "./doctor.ts";
 import { buildHints, cleanName, readPersonaFile, writeHints, writePersonaFile } from "./firstrun.ts";
-import { detectLocale, translator, type T } from "./i18n.ts";
-import { fetchSnapshot, formatSnapshot } from "./status.ts";
+import { commandsFor, detectLocale, translator, type T } from "./i18n.ts";
+import { fetchSnapshot, formatSnapshot, pickTask, taskAction, toMerge } from "./status.ts";
 import { cmdDevices, cmdPair, cmdService, isLoopback, publicUrl } from "./remote.ts";
 import { cmdWorker } from "./worker.ts";
 import { agentLabel, executeUninstall, formatPlan, planUninstall } from "./uninstall.ts";
@@ -32,7 +32,8 @@ export function versionLine(compiled: boolean): string {
 
 export function helpText(t: T): string {
   const cmd = (name: string, desc: string) => `  ${name.padEnd(10)}${desc}`;
-  const opt = (name: string, desc: string) => `  ${name.padEnd(18)}${desc}`;
+  // Wide enough for the longest option (--include-conversation ran into its text).
+  const opt = (name: string, desc: string) => `  ${name.padEnd(24)}${desc}`;
   return [
     t("help.usage"),
     "",
@@ -41,6 +42,7 @@ export function helpText(t: T): string {
     cmd("open", t("help.open")),
     cmd("doctor", t("help.doctor")),
     cmd("status", t("help.status")),
+    cmd("merge", t("help.merge")),
     cmd("version", t("help.version")),
     cmd("pair", t("help.pair")),
     cmd("devices", t("help.devices")),
@@ -75,6 +77,9 @@ function fixEnv() {
   }
 }
 
+/** What a person opens: the web app this Ducter serves (the ws address is for clients). */
+export const appUrl = (port: number) => `http://127.0.0.1:${port}/app`;
+
 const tilde = (p: string) => (p.startsWith(homedir()) ? "~" + p.slice(homedir().length) : p);
 
 function box(title: string, rows: [string, string][], style: Style): string {
@@ -107,6 +112,23 @@ async function cmdStatus(ctx: Ctx): Promise<number> {
   }
   console.log(ctx.args.json ? JSON.stringify(snap, null, 2) : formatSnapshot(snap, ctx.t, ctx.style));
   return 0;
+}
+
+/** `ducter merge <part of a title>`: the same Merge the app's button does, for one finished task. */
+async function cmdMerge(ctx: Ctx): Promise<number> {
+  const { t } = ctx;
+  const name = (ctx.args.rest ?? []).join(" ").trim();
+  if (!name) return console.log(t("merge.usage")), 2;
+  const snap = await fetchSnapshot(ctx.port);
+  if (!snap) return console.log(t("status.notRunning", { port: ctx.port })), 1;
+  const found = pickTask(snap.onHand.tasks.filter(toMerge), name);
+  if (!found.length) return console.log(t("merge.none", { name })), 1;
+  if (found.length > 1) return console.log(t("merge.many", { name, titles: found.map((c) => c.title).join(" · ") })), 1;
+  const r = await taskAction(ctx.port, found[0]!.taskId, "merge");
+  if (!r) return console.log(t("merge.failed", { port: ctx.port })), 1;
+  if (ctx.args.json) console.log(JSON.stringify(r, null, 2));
+  else console.log(r.message ?? "");
+  return r.ok ? 0 : 1;
 }
 
 /** The AI agents on this machine that outlive Ducter (pi ships inside it): what Remove may
@@ -182,6 +204,7 @@ async function cmdReport(ctx: Ctx): Promise<number> {
     doctor,
     versions: versionsText({ versionLine: versionLine(ctx.host.compiled), env: process.env, os: osText(process.platform) }),
     locale: detectLocale(),
+    fromApp: Boolean(process.env.DUCTER_APP_VERSION) || process.env.DUCTER_FROM_APP === "1",
   });
   if (args.json) console.log(JSON.stringify(res, null, 2));
   else {
@@ -230,7 +253,7 @@ async function cmdUp(ctx: Ctx): Promise<number | "running"> {
   const state = await ctx.host.port(ctx.port);
   if (state === "ducter") {
     const snap = await fetchSnapshot(ctx.port);
-    console.log(t("up.already", { name: snap?.personaName ?? "Ducter", url: `ws://127.0.0.1:${ctx.port}/ws` }));
+    console.log(t("up.already", { name: snap?.personaName ?? "Ducter", url: appUrl(ctx.port) }));
     if (ctx.args.desktop) await cmdOpen(ctx);
     return 0;
   }
@@ -282,7 +305,7 @@ async function cmdUp(ctx: Ctx): Promise<number | "running"> {
   let desktopLine: string;
   const plan = ctx.args.desktop ? desktopPlan(ctx) : ({ kind: "none" } as const);
   if (!ctx.args.desktop) desktopLine = t("up.desktop.off");
-  else if (plan.kind === "none") desktopLine = t("up.desktop.none", { url: core.url });
+  else if (plan.kind === "none") desktopLine = t("up.desktop.none", { url: appUrl(core.port) });
   else {
     const r = await launchDesktop(plan, { port: core.port, dataDir: core.dataDir, onBuild: () => console.log(style.dim(t("up.desktop.building"))) });
     if (r && !("error" in r)) {
@@ -303,7 +326,7 @@ async function cmdUp(ctx: Ctx): Promise<number | "running"> {
         // Core doesn't wait for Mem (~6 s); "loading" means nmem answered slowly, not that it's missing.
         [t("up.memory"), booted.identitySource === "off" ? t("up.memory.off") : booted.identitySource === "nowledge-mem" ? t("up.memory.mem") : booted.identitySource === "loading" ? t("up.memory.loading") : t("up.memory.default")],
         [t("up.desktop"), desktopLine],
-        ...(desktop ? [] : ([[t("up.address"), core.url]] as [string, string][])),
+        ...(desktop ? [] : ([[t("up.address"), appUrl(core.port)]] as [string, string][])),
         [t("up.reach"), t("up.reach.value")],
       ], style) +
       "\n\n  " +
@@ -416,13 +439,15 @@ function printHeadless(ctx: Ctx, name: string, port: number) {
 export async function run(argv: string[]): Promise<number | "running"> {
   // Internal: a harness that takes stdio MCP only reaches Ducter through this (D85). Not in help.
   if (argv[0] === "mcp-bridge") return (await import("@ducter/runner/src/mcp-bridge.ts")).bridgeMain(argv[1]);
-  const t = translator(detectLocale());
+  const t0 = translator(detectLocale());
   const parsed = parseArgs(argv);
   if (!parsed.ok) {
-    console.error(t(parsed.error.key, parsed.error.vars) + "\n\n" + helpText(t));
+    console.error(t0(parsed.error.key, parsed.error.vars) + "\n\n" + helpText(t0));
     return 2;
   }
   const { args } = parsed;
+  // Every hint names the commands with the --port / --data-dir given here.
+  const t = translator(detectLocale(), commandsFor({ port: args.port, dataDir: args.dataDir ? resolve(args.dataDir) : undefined }));
   if (args.command === "help") return console.log(helpText(t)), 0;
   const host = realHost();
   if (args.command === "version") return console.log(versionLine(host.compiled)), 0;
@@ -454,6 +479,8 @@ export async function run(argv: string[]): Promise<number | "running"> {
   switch (args.command) {
     case "doctor":
       return cmdDoctor(ctx);
+    case "merge":
+      return cmdMerge(ctx);
     case "status":
       return cmdStatus(ctx);
     case "open":

@@ -57,6 +57,10 @@ export interface Expect {
   askReversible?: boolean;
   /** A partner-level decision (ask) was made. */
   ask?: boolean;
+  /** A task's question was said in the partner's own words, tied to its decision (D129). */
+  relayed?: boolean;
+  /** Max visible characters of a decision card's question the partner wrote (D129). */
+  questionMax?: number;
   /** Max visible characters per partner message. */
   maxChars?: number;
   /** wait_until armed a waiter. */
@@ -126,6 +130,9 @@ export interface Scenario {
 // "How I know" evidence chips, the "Outside" line and the result actions (Merge, Open PR).
 // The prose carries what only words can: the outcome, what was left out, what is unverified.
 const NO_PLUMBING = /\b[0-9a-f]{7}\b|ducter\/[a-z]|对外[:：]|Outside:|合回 main|Merge (it )?into main\?/i;
+// D129, consumer voice: what a person who never wrote code would not say. File and repo paths,
+// file names, bundle-style ids, task branches, commit ids, the names of the agents doing the work.
+const CONSUMER_PLUMBING = /~\/|\/Users\/|\b[\w-]+\.(md|ts|rs|go|json|toml|yml)\b|\b[a-z]{2,}\.[a-z]{2,}\.[a-z]{2,}\b|\bducter\/[a-z]|\b(Claude Code|Codex|MCP|harness|worktree)\b|\b[0-9a-f]{7,40}\b/i;
 const RESULT_SHAPE =
   "The app renders evidence chips, an Outside line and a Merge button under the message from the task's typed report, so the prose must NOT repeat commit ids, branch names, an 'Outside:'/'对外' line or a 'Merge into main?' question. It is just the outcome in the user's terms in at most 2 lines";
 
@@ -547,9 +554,9 @@ export const scenarios: Scenario[] = [
         },
       },
     ],
-    expect: { opens: 0, noSend: true, msgs: [0, 1], maxChars: 120 },
+    expect: { opens: 0, noSend: true, msgs: [1, 1], maxChars: 80, relayed: true, forbid: [CONSUMER_PLUMBING, /test\/lru\.test\.ts|fake clock/] },
     rubric:
-      "The user already sees the task's question with its buttons. The partner should stay quiet or add at most one short line of context (e.g. what is already done). It must NOT restate the question (\"要不要把 lru.test.ts …\"), must not tell the user which button to press, and must not answer the question itself.",
+      "D129: the user sees the task's question only through the partner, with its buttons under the partner's words. One short Chinese message (at most 2 short sentences) that asks it in the partner's own everyday words (e.g. 'lru 的测试也是靠 sleep 等的，要一起改掉吗？'), never pasting the task's wording or its file path, never naming the buttons, never answering the question itself.",
   },
   {
     id: "needs-input-en",
@@ -572,8 +579,8 @@ export const scenarios: Scenario[] = [
         },
       },
     ],
-    expect: { opens: 0, noSend: true, msgs: [0, 1], maxChars: 160 },
-    rubric: "Silence or one short line of context. Must not repeat the task's question, must not say 'tap Go/Hold', must not answer it on the user's behalf.",
+    expect: { opens: 0, noSend: true, msgs: [1, 1], maxChars: 160, relayed: true, forbid: [CONSUMER_PLUMBING, /bench\/README\.md/] },
+    rubric: "D129: one short English message (at most 2 short sentences) that asks the task's question in the partner's own everyday words (the benchmark table, about 6 minutes), without the file path, without saying 'tap Go/Hold', without answering it on the user's behalf.",
   },
 
   // ---------- G. failure ----------
@@ -1043,5 +1050,67 @@ export const scenarios: Scenario[] = [
     },
     rubric:
       "English version of asking the user's own terminal Claude. Pass if: one send card at once naming the recipient as the user's own (your terminal-claude); the message carries what the user asked plus background, with no numbered list of extra sub-questions; after the answer the partner tells the user in one or two short English lines, addressing the user as 'you' (never 'Weyl').",
+  },
+
+  // ---------- consumer voice (D129): the App Store Connect run the author tested ----------
+  {
+    id: "consumer-asc-ask-zh",
+    category: "consumer",
+    lang: "zh",
+    steps: [{ user: "帮我把 App Store Connect 准备好，让 Ducter 能上 TestFlight。步骤都在 iOS 发布指南里。" }],
+    expect: { maxChars: 80, questionMax: 70, forbid: [CONSUMER_PLUMBING, /这件不会自己动|等你定/] },
+    rubric:
+      "Creating the app record in App Store Connect can't be undone, so the partner either asks first (a decision card) or opens a task with a one-line ack. Everything the user sees reads like a friend texting a non-developer: the question (if any) is at most 2 short everyday sentences (what it would create, and plainly that it can't be deleted), with no file or repo paths, no bundle ids, no names of the AI agents or tools, no list of steps. Fail on jargon dumps or a dense paragraph.",
+  },
+  {
+    id: "consumer-relay-zh",
+    category: "consumer",
+    lang: "zh",
+    seed: [
+      { user: "帮我把 App Store Connect 准备好，让 Ducter 能上 TestFlight。" },
+      { task: { key: "asc", title: "准备 App Store Connect", ack: "好，我去 App Store Connect 弄，弄好了告诉你。", state: "working" } },
+    ],
+    steps: [
+      {
+        report: {
+          task: "asc",
+          body: {
+            state: "needs_input",
+            summary: "Blocked on Apple sign-in in Chrome.",
+            questions: [{ id: "q1", text: "请先在当前 Chrome 的 App Store Connect 页面登录目标 Apple 账号；完成后我将继续创建 co.nowledge.ducter.ios 的 Bundle ID 并开启 Push Notifications。", blocking: true, default: "接着建", reversible: false }],
+            evidence: [],
+          },
+        },
+      },
+    ],
+    expect: { opens: 0, noSend: true, msgs: [1, 1], maxChars: 70, relayed: true, forbid: [CONSUMER_PLUMBING, /Bundle ID|Push Notifications|请先/i] },
+    rubric:
+      "The task needs the user to sign in to their Apple account in the browser before it can go on. The partner says this in its own words, one short Chinese message (at most 2 short sentences) a non-developer understands at a glance (e.g. '得先在浏览器里登录你的苹果账号，我才能接着建。'). Fail if it pastes the task's wording, names the bundle id or 'Push Notifications', names the buttons, or answers for the user.",
+  },
+  {
+    id: "consumer-result-zh",
+    category: "consumer",
+    lang: "zh",
+    seed: [
+      { user: "帮我把 App Store Connect 准备好，让 Ducter 能上 TestFlight。" },
+      { task: { key: "asc", title: "准备 App Store Connect", ack: "好，我去 App Store Connect 弄，弄好了告诉你。", state: "working" } },
+    ],
+    steps: [
+      {
+        report: {
+          task: "asc",
+          body: {
+            state: "done",
+            summary:
+              "Registered bundle id co.nowledge.ducter.ios with Push Notifications, created the Ducter app record (SKU ducter-ios) and the Internal TestFlight group. Not done (needs the account holder): Apple Distribution signing certificate, App Store provisioning profile, App Store Connect API key for CI uploads, APNs auth key (.p8).",
+            questions: [],
+            evidence: [{ kind: "url", label: "App Store Connect · Ducter", ref: "https://appstoreconnect.apple.com/apps" }],
+          },
+        },
+      },
+    ],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 110, forbid: [CONSUMER_PLUMBING, /APNs|provisioning|描述文件|签名证书|上传凭据|SKU|\.p8/i] },
+    rubric:
+      "A result for someone who isn't a developer: the outcome first in everyday words (the app and the testing group are set up in App Store Connect), then at most one line that a few things still need the user on Apple's side, without listing them as terms of art (certificates, provisioning profiles, API keys, APNs). At most 2 short lines, one message, no ids, no paths.",
   },
 ];

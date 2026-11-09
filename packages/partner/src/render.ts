@@ -39,6 +39,8 @@ function renderReport(r: Bodies["report"], title?: string): string {
     );
   }
   if (r.state === "done" && (r.evidence ?? []).length === 0) lines.push("  (no evidence attached)");
+  if (r.state === "needs_input")
+    lines.push("  (Your words are what the user sees of this question; its buttons show under them. Ask it in your own words, rule 7: only what the user must decide or do, not what the task will do after it, no ids or settings, at most 2 short sentences.)");
   return lines.join("\n");
 }
 

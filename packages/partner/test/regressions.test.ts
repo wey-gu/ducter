@@ -316,7 +316,21 @@ describe("partner eval regressions", () => {
     expect(fc.events.filter((e) => e.kind === "decision").map((e) => (e.body as any).question)).toEqual(["把 Cache 改名叫 TtlCache 吗？", "Call it breaking?"]);
   });
 
-  test("a turn woken only by a task's question stays quiet (the card shows it)", async () => {
+  test("a task's question is said in the partner's words, tied to its decision (D129)", async () => {
+    const { fc, partner } = setup((_i, s) => {
+      s.say("Changing the default moves the recovery numbers too. Want me to redo that table?");
+      s.end();
+    }, { settleMs: 0 });
+    const report = fc.core.log.append({ stream: "task:t1", origin: "task", kind: "report", body: { taskId: "t1", state: "needs_input", summary: "s", questions: [{ id: "q", text: "Should I also regenerate the recovery-time table in bench/README.md?", blocking: true, reversible: true }], evidence: [] } });
+    // As core's decisions module does on the report.
+    fc.core.log.append({ stream: "channel", origin: "system", kind: "decision", body: { decisionId: "d1", taskId: "t1", question: "Should I also regenerate the recovery-time table in bench/README.md?", goLabel: "Continue", defaultOption: "hold", reversible: true } });
+    partner.onTrigger(report);
+    await partner.idle();
+    const said = fc.events.filter((e) => e.kind === "ai_msg").map((e) => e.body as any);
+    expect(said).toEqual([{ text: "Changing the default moves the recovery numbers too. Want me to redo that table?", decisionId: "d1" }]);
+  });
+
+  test("a quiet turn says each question once; with no question to say, it stays quiet", async () => {
     const { fc, partner } = setup((_i, s) => {
       s.say("The task is waiting on one question: regenerate the table? Go or Hold on the card.");
       s.end();

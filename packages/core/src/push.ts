@@ -250,9 +250,9 @@ export function quietEndsAt(at: number, q: Quiet | null): number {
 const COPY = {
   zh: {
     go: "好",
-    defaultGo: (inText: string, label: string) => `你不回的话，${inText}后我会${/^[\x00-\x7f]/.test(label) ? " " + label : label}，之后也能撤销。`,
-    defaultHold: "你不回的话，我会先停着等你。",
-    noDefault: "这件不会自己动，等你定",
+    defaultGo: (inText: string, label: string) => `${inText}后你没回，我就${/^[\x00-\x7f]/.test(label) ? " " + label : label}，之后还能改回来。`,
+    defaultHold: "你没回之前，我先放着。",
+    noDefault: "你说好，我再做。",
     min: (n: number) => `${n} 分钟`,
     hour: (n: number) => `${n} 小时`,
     done: (s: string) => `做完了：${s}`,
@@ -265,8 +265,8 @@ const COPY = {
   en: {
     go: "Go",
     defaultGo: (inText: string, label: string) => `If you don't answer, I'll ${label} in ${inText}. It can be undone.`,
-    defaultHold: "If you don't answer, I'll hold and wait for you.",
-    noDefault: "I won't go ahead on this without you",
+    defaultHold: "I'll leave it until you answer.",
+    noDefault: "I'll do it once you say so.",
     min: (n: number) => `${n} min`,
     hour: (n: number) => `${n} h`,
     done: (s: string) => `Done: ${s}`,

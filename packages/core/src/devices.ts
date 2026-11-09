@@ -55,7 +55,7 @@ export interface DevicesOptions {
   updates?: () => import("./updates.ts").Updates | undefined;
   /** The home's own Ducter version and how it updates. */
   self?: { version: string; how: import("@ducter/protocol").UpdateHow; platform: string };
-  /** D144: Ducter's own browser (a server's 上网): whether it is installed, and installing it. */
+  /** D150: Ducter's own browser (a server's 上网): whether it is installed, and installing it. */
   browser?: { setup(): BrowserSetup; install(): Promise<unknown>; onChange(fn: () => void): () => void };
   /** The machine Ducter lives on (default: this one). */
   platform?: string;
@@ -206,7 +206,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
 
   // DUCTER_BROWSER_DRIVER=cua: browser tasks use Ducter's own browser only (runner browser.ts).
   const cuaOnly = () => /^(cua|cua-driver)$/i.test((env.DUCTER_BROWSER_DRIVER ?? "").trim());
-  // D144: on a server (Linux), or when asked for, Browse the web is Ducter's own browser.
+  // D150: on a server (Linux), or when asked for, Browse the web is Ducter's own browser.
   const ducterMode = () => !!o.browser && ((o.platform ?? osPlatform()) === "linux" || /^ducter$/i.test((env.DUCTER_BROWSER_DRIVER ?? "").trim()));
   const savedOff = () => readAbilitySettings(o.dataDir).web === false;
 
@@ -349,7 +349,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
       if (a?.state !== "unavailable") changed();
     }
     if (!a || a.state === "later") return res(false, "failed");
-    // D144: adding Browse the web on a server installs Ducter's browser (again, after a failure or
+    // D150: adding Browse the web on a server installs Ducter's browser (again, after a failure or
     // once the missing libraries are there). The choice is saved at once; the frame says
     // 正在准备 / Getting it ready until it is.
     if (ability === "web" && on && d.home && a.where === "ducter" && (a.state === "off" || a.reason === "browser_deps" || a.reason === "browser_failed")) {

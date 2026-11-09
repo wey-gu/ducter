@@ -37,7 +37,7 @@ export interface WsData {
   greeting?: Promise<void>;
   /** What connected (hello.client); absent = an app. */
   client?: ClientKind;
-  /** D144: this socket's end of its live views (frames go only to the socket that opened one). */
+  /** D150: this socket's end of its live views (frames go only to the socket that opened one). */
   sink?: LiveSink;
 }
 
@@ -68,7 +68,7 @@ export interface WsDeps {
   newTask?: NewTaskFrames;
   /** D148: updating devices in place (updates.ts); absent in tests that don't need it. */
   updates?: () => import("./updates.ts").Updates | undefined;
-  /** D144: Ducter's own browser (live view, Sites); absent in tests that don't need it. */
+  /** D150: Ducter's own browser (live view, Sites); absent in tests that don't need it. */
   browser?: DucterBrowser;
   batchMs?: number;
 }
@@ -600,7 +600,7 @@ export function createWsHandler(deps: WsDeps) {
         send(ws, { t: "folder_changes", taskId: f.taskId, changes });
         return;
       }
-      // D144: the live view of Ducter's browser, and its signed-in sites.
+      // D150: the live view of Ducter's browser, and its signed-in sites.
       case "live_open":
       case "live_input":
       case "live_ack":

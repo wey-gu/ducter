@@ -118,12 +118,12 @@ export interface Question {
   blocking: boolean;
   default?: string; // the action taken if the user doesn't answer
   reversible: boolean; // a default applies on its own only if reversible
-  /** D144: the task needs the user to sign in to a site in Ducter's browser (set by Ducter's
+  /** D150: the task needs the user to sign in to a site in Ducter's browser (set by Ducter's
    *  browser_ask_sign_in tool, never by report_to_main). */
   signIn?: SignInAsk;
 }
 
-/** D144: 需要你登录一下 {site} / Sign in to {site}: the card opens a live view of Ducter's browser. */
+/** D150: 需要你登录一下 {site} / Sign in to {site}: the card opens a live view of Ducter's browser. */
 export interface SignInAsk {
   site: string; // the host the user signs in to, e.g. "github.com"
   url?: string; // the sign-in page the task opened
@@ -146,7 +146,7 @@ export interface Bodies {
     defaultAt?: string; // ISO time the default applies (only if reversible)
     reversible: boolean;
     routineId?: string; // a routine's proposal card (D114): Go activates it
-    signIn?: SignInAsk; // D144: a sign-in card; Go = 好了 / Done in the live view
+    signIn?: SignInAsk; // D150: a sign-in card; Go = 好了 / Done in the live view
   };
   decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default" };
   read_receipt: { upToSeq: number };
@@ -585,7 +585,7 @@ export type ClientFrame =
   // open_task: show this task in the apps (`ducter open <task>`): pushed to every connected app
   // as an open_task frame; the sender gets open_result with how many apps were told.
   | { t: "open_task"; taskId: string }
-  // D144, the live view of Ducter's browser (a sign-in). live_open: show the page the task
+  // D150, the live view of Ducter's browser (a sign-in). live_open: show the page the task
   // waiting on this sign-in card is on; answered with a live frame (state open or closed), then
   // live_frame frames. Each frame is acked with live_ack before the next one is sent. While a
   // view is open the task's browser tools read nothing (the agent is blind). live_input:
@@ -595,12 +595,12 @@ export type ClientFrame =
   | { t: "live_input"; id: string; input: LiveInput }
   | { t: "live_ack"; id: string; seq: number }
   | { t: "live_close"; id: string; done?: boolean }
-  // D144, 已登录的网站 / Signed-in sites in Ducter's browser: answered with a browser_sites frame.
+  // D150, 已登录的网站 / Signed-in sites in Ducter's browser: answered with a browser_sites frame.
   | { t: "browser_sites" }
   | { t: "browser_site_signout"; site: string }
   | { t: "browser_sites_clear" };
 
-/** D144: input into the live view. x, y: fractions of the frame (0..1). */
+/** D150: input into the live view. x, y: fractions of the frame (0..1). */
 export type LiveInput =
   | { kind: "mouse"; type: "down" | "up" | "move"; x: number; y: number; button?: "left" | "right"; clicks?: number }
   | { kind: "wheel"; x: number; y: number; dx: number; dy: number }
@@ -611,7 +611,7 @@ export type LiveInput =
 
 export type LiveKey = "Enter" | "Tab" | "Backspace" | "Delete" | "Escape" | "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight" | "Home" | "End" | "PageUp" | "PageDown" | "Space";
 
-/** D144: one site the user signed in to in Ducter's browser. cookies 0 = the site signed it out. */
+/** D150: one site the user signed in to in Ducter's browser. cookies 0 = the site signed it out. */
 export interface SiteView {
   site: string;
   signedInAt: string; // ISO: when the user last signed in through a live view
@@ -667,7 +667,7 @@ export type ServerFrame =
   | { t: "open_result"; taskId: string; ok: boolean; apps: number; message?: string }
   // D149: the empty conversation's words, after each app's hello (never to a CLI).
   | { t: "first_screen"; first: FirstScreen }
-  // D144: a live view opened (with the page's size in CSS pixels) or closed (reason: done, closed,
+  // D150: a live view opened (with the page's size in CSS pixels) or closed (reason: done, closed,
   // replaced = another window opened one, gone = the browser went away, failed with message).
   | { t: "live"; id: string; decisionId: string; state: "open" | "closed"; site?: string; url?: string; title?: string; width?: number; height?: number; reason?: "done" | "closed" | "replaced" | "gone" | "failed"; message?: string }
   // One JPEG frame (base64). The next comes only after live_ack for this seq.
@@ -732,7 +732,7 @@ export type AbilityState = "on" | "off" | "unavailable" | "later";
  * Why an ability is unavailable (or why adding it failed). Clients word it; detail carries a
  * version or a path. cua_missing / cua_old: cua-driver isn't there or lacks the browser tools;
  * env_off: DUCTER_BROWSER=0 pins it off; home_only: only on the device Ducter lives on;
- * no_address: nothing outside can reach this Ducter yet (remote). D144, Ducter's own browser on a
+ * no_address: nothing outside can reach this Ducter yet (remote). D150, Ducter's own browser on a
  * server: browser_deps = system libraries are missing and Ducter can't install them (not root):
  * detail is the one command to run; browser_failed = the install or the first start failed (detail).
  */
@@ -768,7 +768,7 @@ export interface DeviceAbility {
    * own browser (cua-driver).
    */
   where?: "chrome" | "ducter";
-  /** web only (D144): Ducter is installing its own browser on this device right now. */
+  /** web only (D150): Ducter is installing its own browser on this device right now. */
   setup?: "installing";
 }
 

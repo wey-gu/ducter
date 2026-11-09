@@ -1,4 +1,4 @@
-// Ducter's own browser (D144): installed on one tap, held by the main process, driven by Ducter's
+// Ducter's own browser (D150): installed on one tap, held by the main process, driven by Ducter's
 // browser tools, signed into by the user through a live view, with a Sites list.
 import type { DucterBrowserPort, LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import type { CoreMcpHub } from "../mcp.ts";

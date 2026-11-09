@@ -100,7 +100,7 @@ class AppState {
   connecting = false;
   route: Route = { name: "conv" };
   sheet: Sheet = null;
-  /** D144: the live view of Ducter's browser, while the user signs in (never stored). */
+  /** D150: the live view of Ducter's browser, while the user signs in (never stored). */
   live?: { decisionId: string; site: string; state: "opening" | "open"; id?: string; src?: string; seq?: number; w?: number; h?: number; url?: string; title?: string };
   status: ConnStatus = "connecting";
   me?: Me;
@@ -623,7 +623,7 @@ class AppState {
     else this.sendMessage(h.text, true), (this.draft = "");
   }
 
-  /** D144: open the live view of Ducter's browser for a sign-in card, sized to this screen. */
+  /** D150: open the live view of Ducter's browser for a sign-in card, sized to this screen. */
   openLive(decisionId: string, site: string, size: { width: number; height: number; scale?: number }) {
     this.live = { decisionId, site, state: "opening" };
     this.send({ t: "live_open", decisionId, width: Math.round(size.width), height: Math.round(size.height), ...(size.scale ? { scale: size.scale } : {}) });

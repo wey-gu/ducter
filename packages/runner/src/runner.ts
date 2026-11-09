@@ -194,7 +194,7 @@ export function shortId(): string {
 
 export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt {
   const harness = opts.harness ?? createOarHarnessPort({ dataDir: core.dataDir });
-  // D144: a server's browser places run on Ducter's own browser, held by core.
+  // D150: a server's browser places run on Ducter's own browser, held by core.
   const browserOpts: BrowserOptions = { ...opts.browser, ...(opts.browser?.ducter ?? core.browser ? { ducter: opts.browser?.ducter ?? core.browser } : {}) };
   const now = opts.now ?? (() => new Date());
   const newId = opts.newId ?? shortId;

@@ -520,7 +520,7 @@ var zh = Table{
 	"token.signed_out":               "没登录",
 	"token.missing":                  "没装",
 	"token.allowance":                "额度还剩 %d%%",
-	// D144: 上网 on a server is Ducter's own browser; signing in through the live view.
+	// D150: 上网 on a server is Ducter's own browser; signing in through the live view.
 	"ability.web.about.ducter":      "让这台电脑用 Ducter 自己的浏览器替你上网：查资料、看网页、整理找到的东西。它和你自己的 Chrome 分开。要登录的网站由你自己登录，提交和付款都留给你。",
 	"web.where.ducter":              "Ducter 自己的浏览器",
 	"web.installing":                "正在装浏览器……第一次要下载一会儿",

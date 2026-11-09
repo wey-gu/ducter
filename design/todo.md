@@ -296,13 +296,13 @@ note and a `Dn`) before it is built.
       visible; in a `bun build --compile` binary the avatar file is not bundled, so there is no
       Dock tile.
 - [ ] Find what triggers macOS's "CuaDriver was prevented from modifying apps" notification.
-- [ ] **Server browser, real-server checks (D144).** Built and tested on a Mac with Chrome for
+- [ ] **Server browser, real-server checks (D150).** Built and tested on a Mac with Chrome for
       Testing 157 (`DUCTER_TEST_CHROME`): tools, blind, live view, sign-out, persistence. Still
       to run on Hetzner Ubuntu 24.04: the install as root and as a user (the t64 names, the
       `sudo` line), `--no-sandbox` as root, a live view from the phone through `ducter domain`'s
       HTTPS, a real sign-in with 2FA, and how often a datacenter IP meets CAPTCHAs or "this
       browser may not be secure". Trigger: v0.0.4 on the author's server.
-- [ ] **Server browser, later (D144):** Xvfb + headed Chrome when a site refuses headless;
+- [ ] **Server browser, later (D150):** Xvfb + headed Chrome when a site refuses headless;
       a pending live view that survives a socket reconnect; a Codex Computer Use brief that
       isn't appended on Linux for non-browser places; Chrome updates (re-run the install when
       CfT Stable moves); browser places on a worker. Trigger: the first such report.

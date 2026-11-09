@@ -1,4 +1,4 @@
-// The live view of Ducter's browser (D144): what a sign-in card opens on the Mac app or the
+// The live view of Ducter's browser (D150): what a sign-in card opens on the Mac app or the
 // phone. The page is streamed as JPEG frames (CDP Page.startScreencast) over the client's own
 // authenticated WebSocket, and the user's pointer and keys go back in (Input.*). The user signs
 // in themselves: what they type goes from their keyboard to the page and nowhere else.

@@ -161,12 +161,12 @@ type Decision struct {
 	// RoutineID marks a routine's proposal or review card (D114): Go
 	// activates or keeps it.
 	RoutineID string `json:"routineId,omitempty"`
-	// SignIn marks a sign-in card (D144): Go is 好了 / Done in the live view of
+	// SignIn marks a sign-in card (D150): Go is 好了 / Done in the live view of
 	// Ducter's browser.
 	SignIn *SignInAsk `json:"signIn,omitempty"`
 }
 
-// SignInAsk: 需要你登录一下 {Site} / Sign in to {Site} (D144).
+// SignInAsk: 需要你登录一下 {Site} / Sign in to {Site} (D150).
 type SignInAsk struct {
 	Site string `json:"site"`
 	URL  string `json:"url,omitempty"`
@@ -985,7 +985,7 @@ type DeviceAbility struct {
 	// web only (D130): where browser tasks run. WhereChrome = the user's own Chrome through an
 	// AI agent's own browser tools (no cua-driver needed); WhereDucter = Ducter's own browser.
 	Where string `json:"where,omitempty"`
-	// Setup (D144): "installing" while Ducter installs its own browser here.
+	// Setup (D150): "installing" while Ducter installs its own browser here.
 	Setup string `json:"setup,omitempty"`
 }
 
@@ -1160,7 +1160,7 @@ type ServerFrame struct {
 	Update *DeviceUpdate `json:"update,omitempty"`
 	// first_screen (D149): the empty conversation's words from the home.
 	First *FirstScreen `json:"first,omitempty"`
-	// D144 live view: live (ID, DecisionID, State open|closed, Site, URL, Title,
+	// D150 live view: live (ID, DecisionID, State open|closed, Site, URL, Title,
 	// Width, Height, Reason, Message) and live_frame (ID, Seq, Data = a base64
 	// JPEG, Width, Height, URL). browser_sites: Ready, Sites (and OK, Message
 	// after a sign-out).
@@ -1208,7 +1208,7 @@ type Starter struct {
 	Words Words  `json:"words"`
 }
 
-// SiteView is a site signed in to in Ducter's browser (D144); Cookies 0 =
+// SiteView is a site signed in to in Ducter's browser (D150); Cookies 0 =
 // the site signed it out.
 type SiteView struct {
 	Site       string `json:"site"`
@@ -1216,7 +1216,7 @@ type SiteView struct {
 	Cookies    int    `json:"cookies"`
 }
 
-// LiveOpenReq opens the live view for a sign-in card (D144).
+// LiveOpenReq opens the live view for a sign-in card (D150).
 type LiveOpenReq struct {
 	T          string  `json:"t"` // "live_open"
 	DecisionID string  `json:"decisionId"`
@@ -1242,7 +1242,7 @@ type LiveInput struct {
 	Action string  `json:"action,omitempty"` // nav: back | forward | reload
 }
 
-// LiveInputReq, LiveAckReq and LiveCloseReq drive a live view (D144).
+// LiveInputReq, LiveAckReq and LiveCloseReq drive a live view (D150).
 type LiveInputReq struct {
 	T     string    `json:"t"` // "live_input"
 	ID    string    `json:"id"`
@@ -1262,7 +1262,7 @@ type LiveCloseReq struct {
 }
 
 // BrowserSitesReq asks for, signs out of (Site), or clears (T
-// browser_sites_clear) the signed-in sites of Ducter's browser (D144).
+// browser_sites_clear) the signed-in sites of Ducter's browser (D150).
 type BrowserSitesReq struct {
 	T    string `json:"t"` // browser_sites | browser_site_signout | browser_sites_clear
 	Site string `json:"site,omitempty"`

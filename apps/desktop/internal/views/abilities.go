@@ -628,7 +628,7 @@ func (a *App) abilityGrid(c *ui.Context, dv *protocol.DeviceView, cols int) {
 					sub += " · " + a.L.T("web.where.chrome")
 				}
 				if id == protocol.AbilityWeb && ab != nil && ab.Setup == "installing" {
-					sub = a.L.T("web.installing.short") // D144: Ducter is installing its browser
+					sub = a.L.T("web.installing.short") // D150: Ducter is installing its browser
 				}
 			case id == protocol.AbilityWeb && ab != nil && ab.Reason == "browser_deps":
 				sub = a.L.T("ability.oneStep")
@@ -728,7 +728,7 @@ func (a *App) abilityDetail(c *ui.Context, dv *protocol.DeviceView) {
 				about = "ability.web.about.chrome" // an AI agent's own browser, in the user's Chrome (D130)
 			}
 			if id == protocol.AbilityWeb && ab != nil && ab.Where == protocol.WhereDucter {
-				about = "ability.web.about.ducter" // Ducter's own browser, on a server (D144)
+				about = "ability.web.about.ducter" // Ducter's own browser, on a server (D150)
 			}
 			ui.Text(c, a.L.T(about)).FontSize(t.MD).LineHeight(1.6).TextColor(t.InkSoft)
 		}
@@ -769,7 +769,7 @@ func (a *App) abilityDetail(c *ui.Context, dv *protocol.DeviceView) {
 					d.removing = id
 				}
 			})
-			// D144: Ducter's own browser: getting ready, then the sites signed in to.
+			// D150: Ducter's own browser: getting ready, then the sites signed in to.
 			if id == protocol.AbilityWeb && ab != nil && ab.Where == protocol.WhereDucter {
 				if ab.Setup == "installing" {
 					a.reasonLine(c, a.L.T("web.installing"))

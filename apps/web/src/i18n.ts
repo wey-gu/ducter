@@ -1334,7 +1334,7 @@ const devup: Record<Lang, Record<string, string>> = {
   },
 };
 
-// D144: signing in to a site in Ducter's browser, through the live view.
+// D150: signing in to a site in Ducter's browser, through the live view.
 const signin: Record<Lang, Record<string, string>> = {
   zh: {
     "signin.title": "需要你登录一下 %s",

@@ -10,7 +10,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
-// D144: 上网 on a server in Devices: getting ready, the one command when
+// D150: 上网 on a server in Devices: getting ready, the one command when
 // libraries are missing, and 已登录的网站 / Signed-in sites with 退出.
 func serverWith(web protocol.DeviceAbility) protocol.ServerFrame {
 	return protocol.ServerFrame{T: "devices", Devices: []protocol.DeviceView{{

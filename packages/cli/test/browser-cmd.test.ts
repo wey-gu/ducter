@@ -1,4 +1,4 @@
-// D144: `ducter ability add browser` and `ducter browser …` against a running core on a Linux
+// D150: `ducter ability add browser` and `ducter browser …` against a running core on a Linux
 // server (fake installer; no Chrome).
 import { afterEach, expect, spyOn, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";

@@ -1,4 +1,4 @@
-// A minimal WebSocket client (RFC 6455) for Chrome's DevTools endpoint on 127.0.0.1 (D144).
+// A minimal WebSocket client (RFC 6455) for Chrome's DevTools endpoint on 127.0.0.1 (D150).
 // Why not the global WebSocket: Bun 1.3's client offers permessage-deflate, Chrome accepts, and
 // Bun then failed inflating some of Chrome's frames ("Invalid compressed data", code 1002), which
 // closed the browser's socket mid-task (seen in bun test, 2026-11-10). This one never offers an

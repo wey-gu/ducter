@@ -1,4 +1,4 @@
-// D144 against a real headless Chrome: the browser tools on a local test page, the agent blind
+// D150 against a real headless Chrome: the browser tools on a local test page, the agent blind
 // while the live view is open, a sign-in typed only through the live view, the cookie kept
 // across a browser restart, and 退出 / Sign out.
 //
@@ -21,7 +21,7 @@ const PAGE_LOGIN = `<!doctype html><meta charset="utf-8"><title>Sign in · Test<
 <label for="p">Password</label><input id="p" name="p" type="password" value="prefilled-secret">
 <button type="submit">Sign in</button></form>`;
 
-run("Ducter's browser on a real Chrome (D144)", () => {
+run("Ducter's browser on a real Chrome (D150)", () => {
   let site: ReturnType<typeof Bun.serve>;
   let core: Core;
   let td: ReturnType<typeof tempDir>;

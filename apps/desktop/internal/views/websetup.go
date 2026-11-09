@@ -85,7 +85,7 @@ func (a *App) webNeedsSetup(dv *protocol.DeviceView) bool {
 		return false
 	}
 	// An AI agent's own browser is ready (Codex, or Claude in Chrome connected): nothing to
-	// set up, cua-driver or not (D130). Ducter's own browser installs itself on the server (D144).
+	// set up, cua-driver or not (D130). Ducter's own browser installs itself on the server (D150).
 	if ab.Where == protocol.WhereChrome || ab.Where == protocol.WhereDucter {
 		return false
 	}

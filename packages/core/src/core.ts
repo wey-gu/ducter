@@ -66,7 +66,7 @@ export interface CoreOptions {
   git?: GitRun;
   /** D148 test seams: the release feed, the update side effects, how this process updates. */
   update?: { fetch?: ReleaseFetch; sys?: UpdateSys; run?: UpdatesDeps["run"]; how?: import("@ducter/protocol").UpdateHow; version?: string; homeName?: string; execPath?: string; autoEveryMs?: number; graceMs?: number; criticalWaitMs?: number };
-  /** D144 test seams for Ducter's own browser (false: none). */
+  /** D150 test seams for Ducter's own browser (false: none). */
   browser?: false | Partial<Omit<DucterBrowserOptions, "mcp" | "log" | "tasks" | "decisions" | "persona" | "dataDir">>;
   /** The machine's platform as Devices sees it (tests: "linux"). */
   platform?: string;
@@ -101,7 +101,7 @@ export interface Core extends CoreApi {
   /** D148: updating devices in place, and the newest release. */
   updates: Updates;
   release: ReleaseWatch;
-  /** D144: Ducter's own browser. */
+  /** D150: Ducter's own browser. */
   ducterBrowser?: DucterBrowser;
   port: number;
   url: string; // ws URL for clients
@@ -255,7 +255,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     else if (early.length < 100) early.push(e);
   });
 
-  // D144: Ducter's own browser (a server's 上网): its tools are listed only for tasks attached to it.
+  // D150: Ducter's own browser (a server's 上网): its tools are listed only for tasks attached to it.
   const browser =
     opts.browser === false
       ? undefined

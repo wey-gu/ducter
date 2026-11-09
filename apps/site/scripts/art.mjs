@@ -1,5 +1,5 @@
-// Regenerates public/art/* from the repo's clay art (design/art/assets/alpha) and app
-// screenshots. Each asset is trimmed to its alpha bounds and exported as AVIF + WebP at a
+// Regenerates public/art/* from the repo's clay art (design/art/assets/alpha, and the app's
+// runtime art for the not-yet abilities). Each asset is trimmed to its alpha bounds and exported as AVIF + WebP at a
 // few widths; src/art.json records the intrinsic sizes so <Art> can reserve space (no CLS).
 // The idle face also gets its closed eyes (D77's blink): tools/art/eyes.py makes them from the
 // same trimmed render, as a layer that is transparent everywhere but the eyes, and gives the lid
@@ -17,6 +17,9 @@ const out = resolve(here, "../public/art");
 mkdirSync(out, { recursive: true });
 
 const clay = (name) => resolve(repo, "design/art/assets/alpha", name + ".png");
+// The not-yet look of an ability (desaturated, a little see-through) has no alpha master: it is
+// made for the app at 640 (apps/desktop/internal/theme/art/clay), which is plenty for the web.
+const app = (name) => resolve(repo, "apps/desktop/internal/theme/art/clay", name + "@640.png");
 const jobs = [
   // name, source, widths
   ["ducter_idle", clay("ducter_idle"), [160, 320, 480]],
@@ -24,19 +27,25 @@ const jobs = [
   ["ducter_done", clay("ducter_done"), [160, 320, 480]],
   ["ducter_needsyou", clay("ducter_needsyou"), [160, 320, 480]],
   ["ducter_napping", clay("ducter_napping"), [160, 320, 480]],
+  // The Isles (D81): the islands, the devices standing on them, the abilities' objects on the
+  // water in front of home, the AI accounts' tokens.
+  ["island_big", clay("island_big"), [480, 960]],
+  ["island_small", clay("island_small"), [240, 480]],
   ["laptop_awake", clay("laptop_awake"), [320, 640]],
   ["mini_asleep", clay("mini_asleep"), [240, 480]],
   ["server_awake", clay("server_awake"), [240, 480]],
-  ["pedestal", clay("pedestal"), [400, 800]],
-  ["phone", clay("phone"), [240, 480]],
-  ["ab_web", clay("ab_web"), [128, 256]],
-  ["ab_remote", clay("ab_remote"), [128, 256]],
-  ["ab_computer", clay("ab_computer"), [128, 256]],
-  ["ab_phone_locked", clay("ab_phone_locked"), [128, 256]],
-  ["ab_call_locked", clay("ab_call_locked"), [128, 256]],
-  ["slot_empty", clay("slot_empty"), [128, 256]],
+  ["phone", clay("phone"), [120, 240]],
+  ["ab_web", clay("ab_web"), [160, 320]],
+  ["ab_remote", clay("ab_remote"), [160, 320]],
+  ["ab_web_later", app("ab_web_later"), [128, 256]],
+  ["ab_computer_later", app("ab_computer_later"), [128, 256]],
+  ["ab_phone_later", app("ab_phone_later"), [128, 256]],
+  ["ab_call_later", app("ab_call_later"), [128, 256]],
+  ["slot_empty", clay("slot_empty"), [160, 320]],
   ["token_orange", clay("token_orange"), [96, 192]],
   ["token_ink", clay("token_ink"), [96, 192]],
+  // What a wait waits for (On hand): a cloud for a CI run.
+  ["wait_ci", clay("wait_ci"), [64, 128]],
 ];
 
 const manifest = {};

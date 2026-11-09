@@ -226,8 +226,8 @@ document.querySelectorAll(".reveal").forEach((el) => revealer.observe(el));
       def: "If you don't answer, I'll change them in 30 min. It can be undone.",
       go: "Change them",
       goDone: "Changing them now",
-      goStatus: "Changing the 3 calls · cloud-1",
-      before: "Reading the changelog · cloud-1",
+      goStatus: "Changing the 3 calls · Claude Code · cloud-1",
+      before: "Reading the changelog · Claude Code · cloud-1",
     },
     {
       row: "prs",
@@ -236,8 +236,8 @@ document.querySelectorAll(".reveal").forEach((el) => revealer.observe(el));
       def: "If you don't answer, I'll rebase in 30 min. It can be undone.",
       go: "Rebase",
       goDone: "Rebasing now",
-      goStatus: "Rebasing onto main · MacBook",
-      before: "Read 2; the third is waiting on CI · MacBook",
+      goStatus: "Rebasing onto main · Codex · MacBook",
+      before: "Read 2; the third is waiting on CI · Codex · MacBook",
     },
   ];
   let answer: "go" | "hold" | null = null;
@@ -307,7 +307,7 @@ document.querySelectorAll(".reveal").forEach((el) => revealer.observe(el));
   sc.onVisible((v) => { if (v && !started) { started = true; quiet(cycle(0)); } });
 })();
 
-/* ---------------------------------------------------------------- devices: peel → arc → snap */
+/* ---------------------------------------------------------------- devices: the Isles (D81) */
 (() => {
   const stage = $("stage");
   if (!stage) return;
@@ -317,13 +317,14 @@ document.querySelectorAll(".reveal").forEach((el) => revealer.observe(el));
   const stickerImg = sticker.querySelector<HTMLElement>("picture")!;
   const btn = $<HTMLButtonElement>("equip");
   const toast = $("toast");
+  const toastText = $("toast-text");
   const face = $("stage-face");
   const laptop = $("laptop");
   const small = $("web-small");
-  const slotSub = $("slot-sub");
   let state: "idle" | "busy" | "done" = "idle";
   let touched = false;
   let ac: AudioContext | null = null;
+  let toastTimer = 0;
 
   const tone = (f0: number, f1: number, dur: number, type: OscillatorType, vol: number, delay = 0) => {
     try {
@@ -341,6 +342,57 @@ document.querySelectorAll(".reveal").forEach((el) => revealer.observe(el));
     } catch { /* sound is a garnish */ }
   };
 
+  /** One line at the top of the scene, on its own tag: a result (with a ✓), or what a token says. */
+  function say(text: string, ok: boolean, ms = 0) {
+    clearTimeout(toastTimer);
+    toastText.textContent = text;
+    toast.classList.toggle("plain", !ok);
+    toast.classList.add("show");
+    if (ms) toastTimer = window.setTimeout(() => toast.classList.remove("show"), ms);
+  }
+
+  /* --- the AI accounts: tapping one lifts every island where it's signed in --- */
+  const tokens = [...stage.querySelectorAll<HTMLButtonElement>(".tok")];
+  const names: Record<string, string> = {};
+  const islesOf = (acc: string) => new Set(tokens.filter((t) => t.dataset.acc === acc).map((t) => t.dataset.isle!));
+  let lit = "";
+  function light(acc: string) {
+    lit = lit === acc ? "" : acc;
+    const on = lit ? islesOf(lit) : new Set<string>();
+    stage.querySelectorAll<HTMLElement>(".p[data-isle]").forEach((el) => el.classList.toggle("lift", on.has(el.dataset.isle!)));
+    tokens.forEach((t) => t.setAttribute("aria-pressed", String(!!lit && t.dataset.acc === lit)));
+    if (!lit) { toast.classList.remove("show"); return; }
+    const n = on.size;
+    say(`${names[lit]} · Signed in${n > 1 ? ` · shared by ${n} devices` : ""}`, false);
+  }
+  for (const t of tokens) {
+    names[t.dataset.acc!] = t.querySelector(".mini-tag")!.textContent!;
+    t.addEventListener("click", () => { touched = true; light(t.dataset.acc!); });
+  }
+
+  /* --- parcels cross cloud-1's bridge: a task really runs there --- */
+  const SPEED = 40; // design units a second (theme.go ParcelSpeed)
+  const rides = [...stage.querySelectorAll<SVGGElement>(".parcels")].map((g) => ({
+    path: g.querySelector<SVGPathElement>(".ride")!,
+    parcels: [...g.querySelectorAll<SVGGElement>(".parcel")],
+    svg: g.ownerSVGElement!,
+  }));
+  let raf = 0;
+  const tick = (now: number) => {
+    for (const r of rides) {
+      if (!r.svg.getBoundingClientRect().width) continue;
+      let L = 0;
+      try { L = r.path.getTotalLength(); } catch { continue; }
+      r.parcels.forEach((p, i) => {
+        const f = ((now / 1000) * (SPEED / L) + i / 3) % 1;
+        const q = r.path.getPointAtLength(Math.min(Math.max(f * L, 10), L - 10));
+        p.setAttribute("transform", `translate(${q.x.toFixed(1)} ${q.y.toFixed(1)})`);
+      });
+    }
+    raf = requestAnimationFrame(tick);
+  };
+
+  /* --- the equip: the object peels off its card, arcs over, and snaps into the well --- */
   function makeFlyer(from: DOMRect) {
     const fly = document.createElement("div");
     fly.className = "flyer";
@@ -351,25 +403,27 @@ document.querySelectorAll(".reveal").forEach((el) => revealer.observe(el));
     return fly;
   }
   const center = (r: DOMRect) => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
+  // The object in the card has padding round it; the flyer lands on the well's own box.
+  const target = () => well.getBoundingClientRect();
 
   function settle(fly: HTMLElement, sound: boolean) {
     fly.remove();
     stickerImg.style.visibility = "";
     slot.classList.remove("open");
     slot.classList.add("filled");
+    slot.setAttribute("aria-label", "Browse the web · added");
+    slot.setAttribute("aria-disabled", "true");
     sticker.classList.add("used");
     sticker.setAttribute("aria-disabled", "true");
-    small.textContent = "Added to this Mac";
-    slotSub.textContent = "added";
+    small.textContent = "On this Mac";
     btn.textContent = "Remove from this Mac";
     state = "done";
+    if (lit) light(lit);
     setTimeout(() => {
-      toast.classList.add("show");
+      say("This Mac can browse the web now", true);
       if (sound) { tone(660, 660, 0.35, "triangle", 0.08); tone(990, 990, 0.4, "triangle", 0.07, 0.09); }
     }, reduced ? 0 : 140);
-    setTimeout(() => setFace(face, "idle"), 2400);
-    // on a phone the line would sit over the art; let it go after it's been read
-    if (matchMedia("(max-width: 639px)").matches) setTimeout(() => toast.classList.remove("show"), 4200);
+    setTimeout(() => setFace(face, "working"), 2400);
   }
 
   function snapFx(sound: boolean) {
@@ -377,7 +431,7 @@ document.querySelectorAll(".reveal").forEach((el) => revealer.observe(el));
     try { navigator.vibrate?.(10); } catch { /* not everywhere */ }
     setFace(face, "done");
     if (reduced) return;
-    const c = center(well.getBoundingClientRect());
+    const c = center(target());
     const colors = ["#FF8A3D", "#FFC94D", "#4BA8F0", "#7FD99A"];
     for (let i = 0; i < 14; i++) {
       const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -395,18 +449,15 @@ document.querySelectorAll(".reveal").forEach((el) => revealer.observe(el));
         { duration: 620, easing: "cubic-bezier(.2,.7,.3,1)" },
       ).onfinish = () => s.remove();
     }
-    laptop.animate(
-      [{ transform: "translate(-50%,-100%) scale(1)" }, { transform: "translate(-50%,-100%) scale(1.03,.95)" }, { transform: "translate(-50%,-100%) scale(.99,1.03)" }, { transform: "translate(-50%,-100%) scale(1)" }],
-      { duration: 420, easing: "ease-out" },
-    );
+    // the device it went onto takes the snap (the equip's squash)
+    laptop.animate([{ scale: "1 1" }, { scale: "1.03 0.95" }, { scale: "0.99 1.03" }, { scale: "1 1" }], { duration: 420, easing: "ease-out" });
   }
 
-  /** Tap or button: the sticker peels off, arcs over, and snaps into the slot. */
   function equip(sound: boolean) {
     if (state !== "idle") return;
     state = "busy";
     const a = stickerImg.getBoundingClientRect();
-    const b = well.getBoundingClientRect();
+    const b = target();
     const fly = makeFlyer(a);
     const ca = center(a), cb = center(b);
     const dx = cb.x - ca.x, dy = cb.y - ca.y, sc = b.width / a.width;
@@ -431,44 +482,20 @@ document.querySelectorAll(".reveal").forEach((el) => revealer.observe(el));
     if (state !== "done") return;
     toast.classList.remove("show");
     slot.classList.remove("filled");
+    slot.setAttribute("aria-label", "Browse the web · can add");
+    slot.removeAttribute("aria-disabled");
     sticker.classList.remove("used");
     sticker.removeAttribute("aria-disabled");
-    small.textContent = "Drag it onto your Mac";
-    slotSub.textContent = "fits here";
+    small.textContent = "Drag onto this Mac, or tap";
     btn.textContent = "Add to this Mac";
     state = "idle";
   }
 
-  // cords: each AI account is wired to every device signed into it (one plan, shared)
-  const cords = $("cords");
-  const ped = stage.querySelector<HTMLElement>(".pedestal")!;
-  const srv = $("server").querySelector<HTMLElement>("picture")!;
-  const drawCords = () => {
-    const st = stage.getBoundingClientRect();
-    if (!st.width) return;
-    cords.setAttribute("viewBox", `0 0 ${st.width} ${st.height}`);
-    const top = (el: HTMLElement, fx = 0.5) => { const r = el.getBoundingClientRect(); return { x: r.left - st.left + r.width * fx, y: r.top - st.top + 4 }; };
-    const pedIn = (fx: number) => { const r = ped.getBoundingClientRect(); return { x: r.left - st.left + r.width * fx, y: r.top - st.top + r.height * 0.6 }; };
-    const srvIn = () => { const r = srv.getBoundingClientRect(); return { x: r.left - st.left + r.width * 0.84, y: r.bottom - st.top - r.height * 0.3 }; };
-    const cc = $("tok-cc"), cx = $("tok-cx");
-    // each cord is drawn twice: the dotted cord, then a sheen that runs along it once every 9 s (CSS)
-    const cord = (d: string, color: string) =>
-      `<path d="${d}" fill="none" stroke="${color}" stroke-width="2.5" stroke-dasharray="2 6" stroke-linecap="round"/><path class="sheen" d="${d}" pathLength="100"/>`;
-    const up = (a: { x: number; y: number }, b: { x: number; y: number }, color: string) =>
-      cord(`M${a.x} ${a.y} C ${a.x} ${a.y - 50}, ${b.x} ${b.y + 60}, ${b.x} ${b.y}`, color);
-    const r = cc.getBoundingClientRect();
-    const side = { x: r.right - st.left - 4, y: r.top - st.top + r.height / 2 };
-    const s = srvIn();
-    // the shared plan's cord runs out along the floor, then up to the server
-    const toServer = cord(`M${side.x} ${side.y} C ${side.x + (s.x - side.x) * 0.8} ${side.y}, ${s.x} ${side.y - 20}, ${s.x} ${s.y}`, "#FF8A3D");
-    cords.innerHTML = up(top(cx, 0.5), pedIn(0.42), "#2B2118") + up(top(cc, 0.4), pedIn(0.6), "#FF8A3D") + (st.width >= 640 ? toServer : "");
-  };
-  new ResizeObserver(drawCords).observe(stage);
-  addEventListener("load", drawCords);
-
   btn.addEventListener("click", () => { touched = true; state === "done" ? unequip() : equip(true); });
+  slot.addEventListener("click", () => { touched = true; if (state === "idle") equip(true); });
+  slot.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && state === "idle") { e.preventDefault(); touched = true; equip(true); } });
 
-  // drag: lift, follow with a little lag, feel the slot's pull, snap or spring home
+  // drag: lift, follow with a little lag, feel the well's pull, snap or spring home
   let drag: null | { id: number; x0: number; y0: number; moved: boolean; fly?: HTMLElement; home?: DOMRect; x: number; y: number; cx: number; cy: number; raf: number } = null;
   sticker.addEventListener("pointerdown", (e) => {
     if (state !== "idle" || e.button !== 0) return;
@@ -493,10 +520,10 @@ document.querySelectorAll(".reveal").forEach((el) => revealer.observe(el));
       const step = () => {
         if (!drag?.fly || !drag.home) return;
         const h = center(drag.home);
-        const w = center(well.getBoundingClientRect());
+        const wr = target();
+        const w = center(wr);
         let tx = drag.x - h.x, ty = drag.y - h.y;
-        const dist = Math.hypot(drag.x - w.x, drag.y - w.y);
-        const near = dist < well.getBoundingClientRect().width * 1.25;
+        const near = Math.hypot(drag.x - w.x, drag.y - w.y) < wr.width * 1.1;
         slot.classList.toggle("open", near);
         if (near) { tx += (w.x - drag.x) * 0.45; ty += (w.y - drag.y) * 0.45; }
         drag.cx += (tx - drag.cx) * 0.28;
@@ -514,7 +541,7 @@ document.querySelectorAll(".reveal").forEach((el) => revealer.observe(el));
     cancelAnimationFrame(d.raf);
     if (!d.moved) { equip(true); return; }
     const fly = d.fly!, home = d.home!;
-    const w = well.getBoundingClientRect();
+    const w = target();
     const near = slot.classList.contains("open");
     const from = `translate(${d.cx}px, ${d.cy}px)`;
     if (near) {
@@ -543,10 +570,12 @@ document.querySelectorAll(".reveal").forEach((el) => revealer.observe(el));
   sticker.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); touched = true; equip(true); } });
   sticker.addEventListener("click", (e) => e.preventDefault());
 
-  // if nobody plays with it, show it once (only when both ends are on screen)
-  const sc = scene(stage, 0.6);
+  // the parcels move only while the scene is on screen; if nobody plays with it, show the equip once
+  const sc = scene(stage, 0.5);
   let shown = false;
   sc.onVisible((v) => {
+    cancelAnimationFrame(raf);
+    if (v && !reduced && rides.length) raf = requestAnimationFrame(tick);
     if (!v || shown || reduced) return;
     shown = true;
     const g = sc.restart();
@@ -554,7 +583,8 @@ document.querySelectorAll(".reveal").forEach((el) => revealer.observe(el));
       (async () => {
         await sc.wait(2600, g);
         const r = stickerImg.getBoundingClientRect();
-        if (!touched && state === "idle" && r.top > 0 && r.bottom < innerHeight) equip(false);
+        const t = target();
+        if (!touched && state === "idle" && r.top > 0 && r.bottom < innerHeight && t.top > 0 && t.bottom < innerHeight) equip(false);
       })(),
     );
   });

@@ -90,9 +90,9 @@ components and tokens; a value not in the scales below needs a token first.
   press.
 - There are no chips for status, evidence or metadata (D73, "No pills" below).
 
-**Buttons** (one family): primary (ink, cream text, ledge #000, highlight cream at 22%),
-secondary (cream `#FFF6EA` with a 1pt inner rim of ink at 9%, ledge `#E0C9B0`; on a tinted card
-it turns white with the card's ledge color), accent (orange, ledge `#C9642A`, highlight white at
+**Buttons** (one family): primary (ink filled from `#3B2D22` at the top, cream text, highlight cream at 26%, a 1pt rim of `#FFECD6` at 8%, a 1pt warm seam `#5A4434` above a `#140D07` ledge, drop at 38%: an ink ledge alone vanishes),
+secondary (cream `#FFF6EA` with a 1pt inner rim of ink at 9%, ledge `#E0C9B0` under a 1pt `#F3E3CC` seam; on a tinted card
+it turns white with the card's ledge color), accent (orange, ledge `#C9642A` under a 1pt `#FFA466` seam, highlight white at
 38%: the composer's send, the equip), text (flat), and icon (a square of any of them). Heights
 36 / 44 / 52 with radius 12 / 14 / 18 and type 13 / 15 / 16 (700); the 52 size stands on a 4pt
 ledge. The same hover (a shade lighter), press (sink) and keyboard focus ring on all of them.

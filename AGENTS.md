@@ -175,4 +175,5 @@ calling v1 done; new work must not widen the gap.
 - [ ] Each scenario in the first slice has its flow, states, zh/en copy keys, and motion
       reviewed (`design/scenarios.md`).
 - [ ] Prototypes of the first slice reviewed.
-- [ ] The memory digest (`design/memory.md`) is built, with its eval suite (`research/15`).
+- [x] The memory digest (`design/memory.md`) is built, with its eval suite (`research/15`)
+      (D122, draft for review; the eval corpus is small, a real-channel replay is in `todo.md`).

@@ -61,8 +61,11 @@ Onboarding and defaults meet the ordinary-person bar.
 **In scope**
 - The main AI with expire-aware projection and memory (digest, window, recall).
   *Built:* the long-term memory slice on Nowledge Mem (`memory_search`, `memory_add`, the
-  记下了 / Noted line), measured with a fake Mem only. The digest, re-cut and folds are not
-  built yet (the projection is the simplified one from `design/plan/v1-tonight.md`).
+  记下了 / Noted line), measured with a fake Mem only. *Built (D122):* the conversation's own
+  memory: segment digests with the mechanical audit, the obligation ledger, epoch roll-up, the
+  [digests][ledger][window] projection, a re-cut past 120K, CJK search with rank fusion, and
+  gated pre-turn recall (off by default); measured with fakes in `bun test` and once with real
+  models. Folds are not built yet.
 - Tasks on Claude Code and Codex (pi if cheap), with places, projects, worktrees, recipes, and
   ports.
 - On hand with the attention forecast, the living message, and decisions.

@@ -308,11 +308,11 @@ func (a *App) checkRows(c *ui.Context, r local.Report) {
 				continue
 			}
 			// A drawn mark in its state's ink, no tile (D73).
-			sc, glyph := t.Done, drawCheck(t.Done.Ink)
+			glyph := drawCheck(t.Done.Ink)
 			if k.Status != "ok" {
-				sc, glyph = t.Waiting, drawBang(t.Waiting.Ink)
+				glyph = drawBang(t.Waiting.Ink)
 				if k.Required {
-					sc, glyph = t.NeedsYou, drawBang(t.NeedsYou.Ink)
+					glyph = drawBang(t.NeedsYou.Ink)
 				}
 			}
 			ui.Row(c.Key("check:" + k.ID)).Gap(t.S3).AlignItems(ui.Start).Children(func() {

@@ -294,7 +294,5 @@ Codex first, once OAR is near 1.0. See `research/17`.
       passive `setup`) with the real shapes from that run's `raw-<time>/` folder. Trigger: the live run.
 - [ ] Turn `DUCTER_BRIDGE` on by default behind a Partner-page toggle (J-Q1). Trigger: the live run passes.
 - [ ] Clients render the quiet lines (发来请求 / 已发给 / 回复了 / 已回复). Trigger: J-Q5 answered.
-- [ ] File B6–B10 (`research/private/bridge-issues.md`; the Mem tool rate-limited them on 2026-11-09).
-      Trigger: an hour after the first five, or the next session.
 - [ ] Follow-through by a time the user named ("今晚前告诉我"). Trigger: a user asks for it; `wait_until`
       covers it today.

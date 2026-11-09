@@ -185,8 +185,8 @@ The author approved the §J defaults. Built on `bridge-spike`, all over the fake
 
 ## 4. Dogfood findings for the Nowledge team (filed 2026-11-09)
 
-B1–B5 were filed through Nowledge Mem's `report_mem_issue` (concepts and repro only). B6–B10 hit the tool's rate
-limit and wait, ready to file, in `research/private/bridge-issues.md` (D111).
+All ten were filed through Nowledge Mem's `report_mem_issue` (concepts and repro only), B6–B10 an hour after B1–B5
+because of the tool's rate limit (D111).
 
 Each one has a repro, what was expected, and what happened. Already-known items from #9445 (cold-prompt CLI
 discovery, address-file exchange) are not repeated.
@@ -283,6 +283,6 @@ Ducter decides what to run.
 - After D105–D111 (§3.2): the copy defects are fixed in code and tested (eval 0/6 before; after, sonnet 9/9 and
   haiku 7/9 with every deterministic check passing); lost sends are recovered; follow-through is built; the live
   trial is one command, waiting on the account.
-- Ten dogfood findings for the Nowledge team: five filed, five rate-limited and ready. The most important: an unavailable backend exits 0
+- Ten dogfood findings for the Nowledge team, all filed. The most important: an unavailable backend exits 0
   (B1), there is no context list (B2), there is no account-level readiness (B3), and there are two send contracts
   and three overlapping surfaces (B4, B5).

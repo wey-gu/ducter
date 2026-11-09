@@ -131,6 +131,15 @@ approved all five proposals ("按照建议来吧").
 |---|---|---|---|
 | D80 | **The overview is 「手头的事」 in zh** (en stays On hand). 「手头」 alone reads as money at hand (手头紧) and as a fragment, not a place; 「当下」 was considered and rejected because it implies only what is happening now (done tasks, waiting decisions and next runs live here too) and reads as literary. Sentences that already say 手头没事 / 手头 n 件事 stay: they are speech, not the label. D76–D79 are taken by the brand rollout | U | `design/product-model.md`, `design/ui.md`, the desktop, phone web and CLI i18n |
 
+## 2026-11-09: One code, and naming another computer (research/33 §7b–7c; the author's "按照建议")
+
+| # | Decision | Source | Reflected in |
+|---|---|---|---|
+| D83 | **One connection code for phones, app windows and computers.** A code carries no kind; the device says what it joins as when it redeems the code (`/pair` `role`: `"worker"` from `ducter worker`; no role = an app, so the web, iOS and desktop clients don't change). A computer joining this way gets no more than an app: a worker token opens only `/worker` and `/mcp`. One-time use, the 10-minute expiry and the lockouts are unchanged. This fixes the desktop's 连上手机或另一台电脑 / Connect a phone or computer code, which `/worker` refused (403). **CLI:** `ducter worker <address> --code <code>` (the address is positional; `worker` stays the verb: 10/10 developers read it as "this server will run its tasks", `join` 2/10); `--join` and `ducter pair --worker` stay as hidden aliases. `ducter pair` and the app's code card print both ways to use the code: a phone or app opens the address and types the code; a computer runs the one command | research/33 §7c, U | `packages/core/src/auth.ts`, `packages/cli`, `apps/desktop` pairing card, `design/system.md` Workers, `docs/devices.md`, `docs/install.md` |
+| D84 | **Another computer's card: its own name, and what it is.** Name = the machine's name, renamable (改名字 / Rename, one tap on its card; `ducter devices rename`). Subtitle = **另一台电脑 · 替 Ducter 做事 / Another computer · does tasks for Ducter**; when something is wrong its state replaces the second half (睡着了 · 醒来就接着做, 连不上 · {time}). Saying what kind of thing it is removed the "Ducter's own background program" reading (0/20 vs 16/20). A rename keeps the old names resolving, so tasks placed earlier still find their computer; names stay unique and can't be the home machine's name or `local` | research/33 §7b, U | `packages/core/src/auth.ts` (rename, former names), protocol `rename_device`, `apps/desktop` device card, glossary |
+
+D81 and D82 are held for the Devices stage (Isles) on branch `devices-world`.
+
 ## Superseded
 
 - **"Main AI asks windows instead of unfolding"** (first principle-3 draft). Superseded by D3:

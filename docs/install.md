@@ -119,10 +119,18 @@ Ducter's own messages on the server go to the system journal:
 ### Lend another computer
 
 A second server or Mac can do tasks for your Ducter. On the computer Ducter lives on, run
-`ducter pair --worker`; on the other one, run `ducter worker --join <address> --code <code>`
-(add `ducter service install --worker` on a Linux server to keep it running). Then just say
-where: *"run it on vps-2"*. If that computer drops off, its task waits and carries on when it's
-back.
+`ducter pair` (or choose **Connect a phone or computer** in the app). It prints one command for
+the other computer; run it there:
+
+```sh
+ducter worker https://ducter.example.com --code K7QM-4XPA
+```
+
+It's the same one-time code a phone uses. On a Linux server, add
+`ducter service install --worker` to keep it running. Then just say where: *"run it on vps-2"*.
+The computer shows up under its own name; rename it in the app, or with
+`ducter devices rename vps-2 "Build box"`. If that computer drops off, its task waits and
+carries on when it's back.
 
 ## Your phone
 

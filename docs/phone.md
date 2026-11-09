@@ -18,8 +18,8 @@ Your phone needs an address it can reach from anywhere: Ducter on a server with 
 (see [Install](install.md#a-linux-server-that-stays-on)). A zero-setup address with no domain
 of your own is coming soon.
 
-1. On the computer Ducter lives on, run `ducter pair`, or choose **Connect another device** in
-   the Mac app.
+1. On the computer Ducter lives on, run `ducter pair`, or choose **Connect a phone or computer**
+   in the Mac app.
 2. Scan the QR code with your phone's camera, or open the link it shows. You can also go to the
    address and type the **Code**.
 3. The phone says **Connected**.

@@ -17,7 +17,8 @@ Onboarding and defaults meet the ordinary-person bar.
 - The **main process** runs on a VPS or a Mac: control plane, main AI loop, Log store
   (SQLite), waiters, push.
 - **Workers** are VPS and Mac runners: the single-binary OAR runner, which dials out only.
-  *Built (D54):* `ducter worker --join`, presence, and task placement by `Place.device`, with
+  *Built (D54, D83):* `ducter worker <address> --code <code>` with the same one-time code a
+  phone uses, presence, and task placement by `Place.device`, with
   offline/resume (`design/system.md` Workers).
 - **Clients:**
   - Desktop: MyGo native UI. *Built:* the three zoom levels, Connect to your Ducter, and

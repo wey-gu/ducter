@@ -103,7 +103,7 @@ func (a *App) proofLine(c *ui.Context, task *store.Task, evs []protocol.Evidence
 			case store.MachineChecked(ev.Kind):
 				draw = drawCheck
 			}
-			m := a.mark(c.Key(i), draw, ev.Label, t.InkMuted).Tooltip(ev.Ref).Margin(0, t.S2, 0, 0)
+			m := a.mark(c.Key(i), draw, ev.Label, t.InkMuted).Tooltip(ev.Ref)
 			if ev.Ref != "" && m.Clicked() {
 				a.openEvidence(c, ev)
 			}

@@ -70,7 +70,7 @@ test("without --yes, off a terminal, it changes nothing and asks for --yes", asy
   expect(out.join("\n")).toContain("--yes");
 });
 
-// D153: `ducter update --agents` through a running Ducter: a fake registry, a fake npm.
+// D156: `ducter update --agents` through a running Ducter: a fake registry, a fake npm.
 function bootAgents() {
   const t = tempDir();
   const m = { version: "0.167.0" };

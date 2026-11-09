@@ -171,7 +171,7 @@ func (a *App) accountRow(c *ui.Context, dv *protocol.DeviceView, h protocol.Devi
 		ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
 			ui.Text(c, name).FontSize(t.MD).FontWeight(800).SingleLine()
 			ui.Text(c, status).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).LineHeight(1.4).MaxLines(2)
-			a.agentVersion(c, dv, h) // D153
+			a.agentVersion(c, dv, h) // D156
 		})
 		if manage {
 			label := a.L.T("token.signout")

@@ -59,9 +59,9 @@ export interface DevicesOptions {
   browser?: { setup(): BrowserSetup; install(): Promise<unknown>; onChange(fn: () => void): () => void };
   /** The machine Ducter lives on (default: this one). */
   platform?: string;
-  /** D153: each device's AI agents: latest per channel, standing, an update under way. */
+  /** D156: each device's AI agents: latest per channel, standing, an update under way. */
   agents?: () => import("./agents.ts").AgentUpdates | undefined;
-  /** D153: the pi inside this Ducter (harness-probe bundledPiVersion). */
+  /** D156: the pi inside this Ducter (harness-probe bundledPiVersion). */
   piBundled?: () => string | undefined;
 }
 
@@ -277,7 +277,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
 
   const later = (id: AbilityId): DeviceAbility => ({ id, state: "later" });
 
-  // D153: latest per channel, standing and any update under way, on every device's agents.
+  // D156: latest per channel, standing and any update under way, on every device's agents.
   const agentsView = (id: string, list: DeviceHarness[]) => o.agents?.()?.view(id, list) ?? list;
 
   async function frame(): Promise<DevicesFrame> {

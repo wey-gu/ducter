@@ -3447,7 +3447,7 @@ button.dev-name {
 .dev-state.awake {
   color: var(--done-ink);
 }
-/* D153: each AI agent on a device card, with its own version. */
+/* D156: each AI agent on a device card, with its own version. */
 .dev-agents {
   display: flex;
   flex-direction: column;

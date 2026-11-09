@@ -1,4 +1,4 @@
-// Updating the AI agents themselves (D153, design/system.md "Updating the AI agents"): which
+// Updating the AI agents themselves (D156, design/system.md "Updating the AI agents"): which
 // version each device's Codex, Claude Code, pi and DeepSeek Harness runs, the newest on the
 // channel that copy came from, and an update with the agent's own updater at a safe point, read
 // back and rolled back where the channel can pin. Facts per agent: harness-facts `channels`
@@ -476,7 +476,7 @@ export function createAgentUpdates(d: AgentUpdatesDeps): AgentUpdates {
     });
   }
 
-  /** D153 (4): in quiet hours, nothing working, only to versions Ducter verified; one at a time. */
+  /** D156 (4): in quiet hours, nothing working, only to versions Ducter verified; one at a time. */
   async function nightly() {
     const s = d.settings?.();
     if (!s?.autoUpdate || !inQuiet(now(), s.quiet ?? null)) return;

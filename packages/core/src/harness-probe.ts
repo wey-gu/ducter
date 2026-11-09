@@ -9,7 +9,7 @@
 //   DeepSeek Harness: `dsh --version` at or above OAR's floor; signed in = a DeepSeek key in the
 //                     env, Ducter's key file (<dataDir>/keys.env, D102), or DSH's own credential file
 // Every probe reads presence only, never a secret's value into any output.
-// D153: each installed agent also gets its version (its own --version) and how it was installed
+// D156: each installed agent also gets its version (its own --version) and how it was installed
 // (`how`, from where its binary really lives; research/42).
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
@@ -32,14 +32,14 @@ export interface HarnessProbeEnv {
   read?: (path: string) => string | undefined;
   /** Probe only these (the rest are left out of the answer). */
   only?: readonly string[];
-  /** D153: a binary's real path (default: the file system's), and whether a file exists. */
+  /** D156: a binary's real path (default: the file system's), and whether a file exists. */
   realpath?: (p: string) => string;
   exists?: (p: string) => boolean;
-  /** D153: the pi that ships inside Ducter, when this Ducter runs one (its version); see bundledPiVersion. */
+  /** D156: the pi that ships inside Ducter, when this Ducter runs one (its version); see bundledPiVersion. */
   piBundled?: () => string | undefined;
 }
 
-// ---------- versions and how each copy was installed (D153) ----------
+// ---------- versions and how each copy was installed (D156) ----------
 
 /** One AI agent's copy on this machine: its version, how it was installed, and where. */
 export interface AgentInstall {
@@ -205,7 +205,7 @@ export async function probeHarnesses(o: HarnessProbeEnv): Promise<DeviceHarness[
     ["pi", pi],
     ["deepseek-harness", dsh],
   ];
-  // D153: an installed copy that answers --version says which version it is and how it updates.
+  // D156: an installed copy that answers --version says which version it is and how it updates.
   const withVersion = async (h: RawHarness): Promise<RawHarness> => {
     if (!h.installed) return h;
     const a = await detectAgent(h.harness as HarnessId, { ...o, env }).catch(() => undefined);

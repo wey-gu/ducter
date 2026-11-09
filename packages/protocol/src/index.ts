@@ -251,7 +251,7 @@ export interface Bodies {
   // "local" for the home or a paired device id; name is its name then. Clients show the latest
   // on the device's card; the partner reads it only when asked.
   device_update: { device: string; name: string; phase: UpdatePhase; from: string; to: string; reason?: UpdateReason; detail?: string; rolledBack?: boolean };
-  // D153: one step of updating an AI agent on a device (same stream, same rules). by: a tap or
+  // D156: one step of updating an AI agent on a device (same stream, same rules). by: a tap or
   // the night-time update.
   agent_update: { device: string; name: string; harness: string; phase: AgentPhase; from: string; to?: string; reason?: AgentReason; detail?: string; rolledBack?: boolean; by?: "user" | "night" };
   // Nowledge Bridge (behind DUCTER_BRIDGE=1, design/bridge.md). "in": a message another agent
@@ -542,7 +542,7 @@ export type ClientFrame =
   // arrives as fresh devices frames and device_update events.
   | { t: "disconnect_device"; device: string }
   | { t: "device_update"; device: string; to?: string; check?: boolean }
-  // D153: agent_update: update one AI agent on a device with its own updater, at a safe point
+  // D156: agent_update: update one AI agent on a device with its own updater, at a safe point
   // (check: read the latest versions again and only report). Answered with agent_update_result;
   // progress arrives as fresh devices frames and agent_update events.
   | { t: "agent_update"; device: string; harness: string; check?: boolean }
@@ -798,23 +798,23 @@ export interface DeviceHarness {
   canBePartner: boolean;
   /** plan: a subscription's allowance; usage: paid per token (an API key). */
   billing?: "plan" | "usage";
-  /** D153: the installed version, as the agent's own --version says it. */
+  /** D156: the installed version, as the agent's own --version says it. */
   version?: string;
-  /** D153: how this copy was installed, which decides how it updates (research/42). */
+  /** D156: how this copy was installed, which decides how it updates (research/42). */
   how?: AgentHow;
-  /** D153: the newest version on this copy's own channel (npm, Homebrew, its installer). */
+  /** D156: the newest version on this copy's own channel (npm, Homebrew, its installer). */
   latest?: string;
-  /** D153: latest is newer than version and Ducter can update this copy from here. */
+  /** D156: latest is newer than version and Ducter can update this copy from here. */
   available?: boolean;
-  /** D153: where the installed version stands against the versions Ducter verified (harness-facts). */
+  /** D156: where the installed version stands against the versions Ducter verified (harness-facts). */
   standing?: VersionStanding;
-  /** D153: latest is inside the verified range (only then does the night-time update take it). */
+  /** D156: latest is inside the verified range (only then does the night-time update take it). */
   latestVerified?: boolean;
-  /** D153: an update of this agent under way or just finished; absent when idle. */
+  /** D156: an update of this agent under way or just finished; absent when idle. */
   update?: AgentUpdate;
 }
 
-// ---------- The AI agents' own versions (D153, design/system.md "Updating the AI agents") ----------
+// ---------- The AI agents' own versions (D156, design/system.md "Updating the AI agents") ----------
 
 /**
  * npm: a global npm package; brew: a Homebrew cask; installer: the agent's own installer and

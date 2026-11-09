@@ -54,7 +54,7 @@ pi has no per-session window or compaction flag (`pi --help`); its compaction li
 settings.json, and `session_before_compact` can cancel or replace a summary (research/11).
 DeepSeek Harness is not installed on the verifying Mac. Both run with their defaults (todo).
 
-## Where each copy comes from, and how it updates (D153, 2026-11-10)
+## Where each copy comes from, and how it updates (D156, 2026-11-10)
 
 `channels` in harness-facts (research/42). The real path of the binary decides `how`; each
 channel names where its latest is read and how it updates. Ducter never touches an app's copy.

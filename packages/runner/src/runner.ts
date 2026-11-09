@@ -414,7 +414,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
 
   async function startSession(t: TaskRt, resume: boolean) {
     await prepareSpec(t);
-    // D153: its agent is being updated on this machine: start once the updater is done (at most 15 min).
+    // D156: its agent is being updated on this machine: start once the updater is done (at most 15 min).
     for (const end = Date.now() + 15 * 60_000; harnessHold.has(t.spec.harness) && !t.ops.device && Date.now() < end; ) await Bun.sleep(1000);
     const spec: SessionSpec = resume && t.sessionId ? { ...t.spec, resumeSessionId: t.sessionId } : t.spec;
     const session = await t.ops.harness.start(spec);

@@ -73,11 +73,11 @@ async function probeHarnesses(_t: T, dataDir: string) {
     which: (c) => host.which(c),
     dataDir,
   });
-  // D153: each agent's version and how it was installed ride along; the main reads its latest.
+  // D156: each agent's version and how it was installed ride along; the main reads its latest.
   return found.map((h) => ({ id: h.harness, installed: h.installed, loggedIn: h.loggedIn, ...(h.version ? { version: h.version } : {}), ...(h.how ? { how: h.how } : {}) }));
 }
 
-/** D153: the main's `agent_update` op on this machine (core agents.ts), with the real updaters. */
+/** D156: the main's `agent_update` op on this machine (core agents.ts), with the real updaters. */
 function workerAgentUpdater(t: T, dataDir: string) {
   const host = realHost();
   const exec = async (argv: string[], ms?: number) => {
@@ -195,7 +195,7 @@ async function stayConnected(
         const f = JSON.parse(String(m.data));
         // D148: the update op runs beside the host; it reports over whichever socket is up.
         if (f.t === "req" && f.op === "update" && updater) return void updater.handle(f, (x) => ws.readyState === WebSocket.OPEN && ws.send(JSON.stringify(x)), host);
-        // D153: updating one of this machine's AI agents, the same way.
+        // D156: updating one of this machine's AI agents, the same way.
         if (f.t === "req" && f.op === "agent_update" && agentUpdater) return void agentUpdater.handle(f, (x) => ws.readyState === WebSocket.OPEN && ws.send(JSON.stringify(x)), host);
         if (f.t === "req") return void host.handle(f);
         if (f.t === "welcome") {

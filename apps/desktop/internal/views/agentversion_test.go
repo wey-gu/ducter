@@ -11,7 +11,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
-// D153: each AI agent's version in the device card: quiet when current,
+// D156: each AI agent's version in the device card: quiet when current,
 // a dot and 有新版本 with 更新 when behind, an honest line when Ducter
 // hasn't checked the version, a copy inside an app or inside Ducter saying
 // where its update comes from, and the steps after a tap.

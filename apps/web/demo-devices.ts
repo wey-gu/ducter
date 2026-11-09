@@ -1,4 +1,4 @@
-// A demo core for the phone's 你的设备 / Your devices pictures (D148, D153): a home on a VPS one
+// A demo core for the phone's 你的设备 / Your devices pictures (D148, D156): a home on a VPS one
 // version behind, with Codex one version behind on npm and Claude Code on a version Ducter hasn't
 // checked; a Mac mini doing tasks (it updates with its app; its Codex is the Codex app's copy), a
 // phone, and the update's steps on cue. Real core and real web client; the release feed, the

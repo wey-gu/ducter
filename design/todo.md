@@ -23,7 +23,7 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       and of a Linux worker from the card and with `ducter update --all`, including one forced
       rollback (a release whose binary fails `/health`) and the helper surviving `systemctl
       restart`. All steps are tested with fakes only. Trigger: the 0.0.5 release.
-- [ ] **Updating the AI agents (D153) for real:** an npm Codex and a native Claude Code on a
+- [ ] **Updating the AI agents (D156) for real:** an npm Codex and a native Claude Code on a
       server updated from the card and with `ducter update --agents --yes`, one forced rollback
       (a pinned npm version that fails `--version`), a worker's agent over its socket, and a
       night round inside the verified range. Only fakes so far; no real install was run. Also

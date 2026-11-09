@@ -2547,7 +2547,7 @@ function VersionBlock({ dv }: { dv: DeviceView }) {
   const answer = A.deviceAnswer?.device === dv.id ? A.deviceAnswer.reason : undefined;
   return (
     <div class="dev-ver">
-      {/* D153: the agents above carry versions too; this one is Ducter's own. */}
+      {/* D156: the agents above carry versions too; this one is Ducter's own. */}
       <div class="dev-sub">Ducter</div>
       <div class="dev-ver-row">
         <span>{t("devup.version", current)}</span>
@@ -2582,7 +2582,7 @@ function VersionBlock({ dv }: { dv: DeviceView }) {
   );
 }
 
-/** D153: an agent update under way. */
+/** D156: an agent update under way. */
 const agentRunning = (u?: AgentUpdate) => !!u && (u.phase === "waiting" || u.phase === "updating" || u.phase === "checking");
 
 function agentPhase(u: AgentUpdate): string {
@@ -2602,7 +2602,7 @@ function agentPhase(u: AgentUpdate): string {
 }
 
 /**
- * D153: one AI agent on a device card: its coin and name, its version quietly; a dot and 有新版本
+ * D156: one AI agent on a device card: its coin and name, its version quietly; a dot and 有新版本
  * with 更新 when it's behind; an honest line when Ducter hasn't checked the version; a copy in
  * an app or inside Ducter says where its update comes from.
  */

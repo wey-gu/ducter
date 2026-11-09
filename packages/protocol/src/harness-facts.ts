@@ -69,12 +69,12 @@ export interface HarnessFacts {
   resume: Fact<{ supported: boolean; how: string }>;
   /** Its own browser / computer use (research/38). */
   browser: Fact<string>;
-  /** D153: where it's installed from and how each copy updates (research/42). */
+  /** D156: where it's installed from and how each copy updates (research/42). */
   channels: Fact<AgentChannels>;
 }
 
 /**
- * How one AI agent is installed and updated (D153, research/42). A copy's real path decides its
+ * How one AI agent is installed and updated (D156, research/42). A copy's real path decides its
  * channel; each channel names where its latest version is read and how it updates. `{v}` in a
  * command is the version to install.
  */

@@ -1,6 +1,6 @@
 package i18n
 
-// D153: each AI agent's version on a device card, the update with its own
+// D156: each AI agent's version on a device card, the update with its own
 // updater, and its steps. Glossary: design/product-model.md.
 var zhAgentVer = Table{
 	"agentv.version":           "版本 %s",

@@ -6,7 +6,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
-// D153: an AI agent's own version under its row in a device card. Quiet
+// D156: an AI agent's own version under its row in a device card. Quiet
 // by default (版本 0.167.0); one clay dot and 有新版本 x with 更新 when it's
 // behind; an honest line when Ducter hasn't checked that version; a copy
 // inside an app or inside Ducter says where its update comes from instead

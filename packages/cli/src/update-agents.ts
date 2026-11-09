@@ -1,4 +1,4 @@
-// `ducter update --agents` (D153): the AI agents' own versions on this machine (or --all
+// `ducter update --agents` (D156): the AI agents' own versions on this machine (or --all
 // devices), and an update of the ones behind with each one's own updater.
 //
 //   ducter update --agents --check [--json]   where each agent stands (agents read --json)

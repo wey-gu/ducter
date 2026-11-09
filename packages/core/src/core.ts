@@ -68,7 +68,7 @@ export interface CoreOptions {
   git?: GitRun;
   /** D148 test seams: the release feed, the update side effects, how this process updates. */
   update?: { fetch?: ReleaseFetch; sys?: UpdateSys; run?: UpdatesDeps["run"]; how?: import("@ducter/protocol").UpdateHow; version?: string; homeName?: string; execPath?: string; autoEveryMs?: number; graceMs?: number; criticalWaitMs?: number };
-  /** D153 test seams: the channels' feed, the agents' updaters, this machine's copies. */
+  /** D156 test seams: the channels' feed, the agents' updaters, this machine's copies. */
   agents?: { fetch?: ReleaseFetch; sys?: UpdateSys; which?: (c: string) => string | null; detect?: AgentUpdatesDeps["detect"]; loggedIn?: AgentUpdatesDeps["loggedIn"]; exists?: (p: string) => boolean; settleMs?: number; autoEveryMs?: number };
   /** D151 test seams for Ducter's own browser (false: none). */
   browser?: false | Partial<Omit<DucterBrowserOptions, "mcp" | "log" | "tasks" | "decisions" | "persona" | "dataDir">>;
@@ -105,7 +105,7 @@ export interface Core extends CoreApi {
   /** D148: updating devices in place, and the newest release. */
   updates: Updates;
   release: ReleaseWatch;
-  /** D153: the AI agents' own versions and their updates. */
+  /** D156: the AI agents' own versions and their updates. */
   agents: AgentUpdates;
   /** D151: Ducter's own browser. */
   ducterBrowser?: DucterBrowser;
@@ -279,7 +279,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const newTask = { open: (i: NewTaskInput) => openYourTask(newTaskDeps, i), options: (p?: Place) => newTaskOptions(newTaskDeps, p) };
   const ws = createWsHandler({ core: api, decisions, runner: () => runner, devices: () => devicesView, settings, connections, rules, loadout, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, batchMs: opts.batchMs, ...(browser ? { browser } : {}) });
   onHandChanged = ws.onHandChanged;
-  // D153: a partner turn in flight keeps an update of the agent it thinks with waiting.
+  // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.
   let partnerTurn = false;
   api.activity = {
     set: (a) => {
@@ -349,7 +349,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     ...(u.criticalWaitMs !== undefined ? { criticalWaitMs: u.criticalWaitMs } : {}),
   });
   updatesRef = updates;
-  // D153: the AI agents' own versions and their updates (agents.ts). No channel is read in tests
+  // D156: the AI agents' own versions and their updates (agents.ts). No channel is read in tests
   // unless a fetch is given.
   const a = opts.agents ?? {};
   const agentTesting = process.env.NODE_ENV === "test";

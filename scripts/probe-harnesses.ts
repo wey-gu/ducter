@@ -3,7 +3,7 @@
 // errors and model catalogs. No model calls, no logins, nothing written.
 //   bun scripts/probe-harnesses.ts            # print what holds and what drifted
 //   bun scripts/probe-harnesses.ts --strict   # exit 1 on any drift (for a periodic re-verify)
-//   bun scripts/probe-harnesses.ts --offline  # skip reading each channel's latest version (D153)
+//   bun scripts/probe-harnesses.ts --offline  # skip reading each channel's latest version (D156)
 // A version outside the verified range is drift until someone re-runs the live checks behind the
 // facts (design/harnesses.md) and widens `verified`.
 import { readFileSync, realpathSync } from "node:fs";
@@ -103,7 +103,7 @@ probeCodex();
 if (!process.argv.includes("--offline")) await probeChannels();
 
 /**
- * D153: the latest version on every channel each agent ships on (harness-facts `channels`), and
+ * D156: the latest version on every channel each agent ships on (harness-facts `channels`), and
  * whether Ducter verified it, so widening `verified` starts from what users will get. How this
  * Mac's own copy was installed is said too. Reads only; `--offline` skips it.
  */

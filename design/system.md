@@ -477,7 +477,7 @@ working and nothing critical: behind workers first, then the home.
 fetch, a fixture tarball, fake systemctl and `/health`, a fake worker socket); the end-to-end on
 Linux waits for the 0.0.4 release.
 
-## Updating the AI agents (D153, draft, built 2026-11-10)
+## Updating the AI agents (D156, draft, built 2026-11-10)
 
 **Who and when.** The same VPS owner, a week later: Codex shipped a new version, a task on the
 server still runs the old one, and they don't want to SSH in to run npm. Or a fresh user who

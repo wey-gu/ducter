@@ -70,7 +70,7 @@ export interface WsDeps {
   newTask?: NewTaskFrames;
   /** D148: updating devices in place (updates.ts); absent in tests that don't need it. */
   updates?: () => import("./updates.ts").Updates | undefined;
-  /** D153: updating the AI agents on each device (agents.ts); absent in tests that don't need it. */
+  /** D156: updating the AI agents on each device (agents.ts); absent in tests that don't need it. */
   agents?: () => import("./agents.ts").AgentUpdates | undefined;
   /** D151: Ducter's own browser (live view, Sites); absent in tests that don't need it. */
   browser?: DucterBrowser;

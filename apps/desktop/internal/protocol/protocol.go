@@ -736,7 +736,7 @@ type DeviceUpdateReq struct {
 	Check  bool   `json:"check,omitempty"`
 }
 
-// AgentUpdateReq is 更新 / Update on an AI agent's row (D153). Answered with
+// AgentUpdateReq is 更新 / Update on an AI agent's row (D156). Answered with
 // agent_update_result; progress comes as fresh devices frames.
 type AgentUpdateReq struct {
 	T       string `json:"t"` // "agent_update"
@@ -984,7 +984,7 @@ type DeviceHarness struct {
 	Models       []HarnessModel `json:"models,omitempty"`
 	CanBePartner bool           `json:"canBePartner"`
 	Billing      string         `json:"billing,omitempty"`
-	// D153: the installed version, how it was installed (npm, brew,
+	// D156: the installed version, how it was installed (npm, brew,
 	// installer, app, ducter, unknown), the newest on that channel, whether
 	// it can be updated from here, where it stands against the versions
 	// Ducter verified, and an update under way.
@@ -997,7 +997,7 @@ type DeviceHarness struct {
 	Update         *AgentUpdate `json:"update,omitempty"`
 }
 
-// AgentUpdate is one AI agent's update on a device (D153): waiting,
+// AgentUpdate is one AI agent's update on a device (D156): waiting,
 // updating, checking, done or failed with a reason.
 type AgentUpdate struct {
 	Phase      string `json:"phase"`
@@ -1204,7 +1204,7 @@ type ServerFrame struct {
 	// update_result (D148): Device, OK, Reason, Detail, and with a check the
 	// device's Update. disconnect_result: Device, OK, Reason.
 	Update *DeviceUpdate `json:"update,omitempty"`
-	// agent_update_result (D153): Device, Harness, OK, Reason, Detail.
+	// agent_update_result (D156): Device, Harness, OK, Reason, Detail.
 	Harness string `json:"harness,omitempty"`
 	// first_screen (D149): the empty conversation's words from the home.
 	First *FirstScreen `json:"first,omitempty"`

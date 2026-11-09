@@ -30,7 +30,7 @@ export interface Args {
   local?: boolean; // --local: a home command acts on this machine's Ducter (D147)
   home?: string; // --home <address>: a home command goes there, this once (D147)
   check?: boolean; // update --check: only report
-  agents?: boolean; // update --agents: the AI agents' own versions (D153)
+  agents?: boolean; // update --agents: the AI agents' own versions (D156)
   to?: string; // update --to <version>: this version, even an older one
   finish?: string; // update --finish <plan.json> (internal: the restart helper, D148)
 }

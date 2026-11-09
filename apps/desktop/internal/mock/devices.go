@@ -202,7 +202,7 @@ func (h *hub) handleDevices(c *conn, f protocol.ClientFrame) bool {
 			}
 		}()
 	case "agent_update":
-		// D153: an AI agent's steps, a beat each (AgentStep sets one directly for pictures).
+		// D156: an AI agent's steps, a beat each (AgentStep sets one directly for pictures).
 		c.send(map[string]any{"t": "agent_update_result", "device": f.Device, "harness": f.Harness, "ok": true})
 		go func() {
 			for _, p := range []string{"waiting", "updating", "checking", "done"} {
@@ -285,7 +285,7 @@ func (h *hub) UpdateStep(device, phase string, progress float64) {
 	})
 }
 
-// AgentStep sets one AI agent's update step on a device's card (D153), as
+// AgentStep sets one AI agent's update step on a device's card (D156), as
 // the main would after agent_update; done moves its version to latest.
 func (h *hub) AgentStep(device, harness, phase string) {
 	h.SetDevices(func(list []protocol.DeviceView, _ *protocol.Reach) []protocol.DeviceView {

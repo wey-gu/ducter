@@ -1,4 +1,4 @@
-// D153: the AI agents' own versions and their updates. Fakes only: a fake registry (fetch), a
+// D156: the AI agents' own versions and their updates. Fakes only: a fake registry (fetch), a
 // fake npm / brew / claude (a run that changes a fake installed version), a fake clock. No
 // network, no install, nothing on this Mac's own CLIs is touched.
 import { afterEach, expect, test } from "bun:test";

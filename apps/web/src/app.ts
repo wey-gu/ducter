@@ -89,7 +89,7 @@ class AppState {
   sites?: Extract<ServerFrame, { t: "browser_sites" }>;
   reach?: Reach;
   deviceAnswer?: { device: string; reason: UpdateReason | "name_taken" | "failed" };
-  /** D153: the last agent update that was refused, on its row. */
+  /** D156: the last agent update that was refused, on its row. */
   agentAnswer?: { device: string; harness: string; reason: AgentReason };
   candidates = new Map<string, Candidate[]>();
   /** New task (D128): what the sheet offers (places, who could), as last sent; the draft. */
@@ -422,7 +422,7 @@ class AppState {
     this.send({ t: "device_update", device });
     this.changed();
   }
-  /** D153: update one AI agent on a device with its own updater. */
+  /** D156: update one AI agent on a device with its own updater. */
   updateAgent(device: string, harness: string) {
     this.agentAnswer = undefined;
     this.send({ t: "agent_update", device, harness });

@@ -22,7 +22,7 @@ test("a machine with all four: logins read from their own commands and files", a
     { harness: "claude-code", installed: true, loggedIn: true, canBePartner: true, billing: "plan" },
     { harness: "codex", installed: true, loggedIn: true, canBePartner: true, billing: "plan" },
     { harness: "pi", installed: true, loggedIn: true, canBePartner: false, billing: "usage" },
-    // D153: a copy that answers --version says it; /bin/dsh is no channel Ducter knows.
+    // D156: a copy that answers --version says it; /bin/dsh is no channel Ducter knows.
     { harness: "deepseek-harness", installed: true, loggedIn: true, canBePartner: false, billing: "usage", version: "0.2.2-rc.1", how: "unknown" },
   ]);
 });

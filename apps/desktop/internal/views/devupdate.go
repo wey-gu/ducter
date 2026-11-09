@@ -21,7 +21,7 @@ type cardState struct {
 	more      map[string]bool       // devices whose not-signed-in AI accounts are shown
 	answer    *protocol.ServerFrame // the last update_result that said no
 	asked     string                // the device an update was asked for
-	agent     *protocol.ServerFrame // the last agent_update_result that said no (D153)
+	agent     *protocol.ServerFrame // the last agent_update_result that said no (D156)
 }
 
 // drainDeviceResults reads the server's answer to the last disconnect or

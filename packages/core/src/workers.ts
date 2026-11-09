@@ -22,7 +22,7 @@ export interface WorkerHello {
   version?: string;
   /** laptop | mini | server: how the device is drawn on Your devices and abilities. */
   kind?: string;
-  /** D153: version and how each agent was installed ride along. */
+  /** D156: version and how each agent was installed ride along. */
   harnesses?: { id: string; installed: boolean; loggedIn: boolean; version?: string; how?: string }[];
   /** D148: how it updates (self · app · source), and the outcome of its last update when it restarted for one. */
   how?: string;
@@ -136,7 +136,7 @@ export function createWorkers(opts: {
   find?: (idOrName: string) => Device | undefined;
   /** D148: a worker said how its update goes (a frame, or the outcome in its hello). */
   onUpdate?: (deviceId: string, name: string, f: import("./updates.ts").WorkerUpdateFrame) => void;
-  /** D153: a worker said how an agent update goes. */
+  /** D156: a worker said how an agent update goes. */
   onAgentUpdate?: (deviceId: string, name: string, f: import("./agents.ts").WorkerAgentFrame) => void;
 }): Workers {
   const now = opts.now ?? (() => new Date());
@@ -300,7 +300,7 @@ export function createWorkers(opts: {
         // not 连不上 / Can't reach (A3: "Asleep" only when the device told us).
         else if (f?.t === "sleep") sleeping.add(ws.data.device.id), changed();
         else if (f?.t === "update") opts.onUpdate?.(ws.data.device.id, nameOf(st), f);
-        // D153: an agent update on that worker, and its agents as they are after it.
+        // D156: an agent update on that worker, and its agents as they are after it.
         else if (f?.t === "agent_update") opts.onAgentUpdate?.(ws.data.device.id, nameOf(st), f);
         else if (f?.t === "agents") {
           const entry = live.get(ws.data.device.id);

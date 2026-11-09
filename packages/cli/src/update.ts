@@ -4,7 +4,7 @@
 //   ducter update --all          the computers that do tasks for it first, then Ducter's home
 //   ducter update --check        only say where each stands (--json for agents)
 //   ducter update --to 0.0.3     that version, even an older one
-//   ducter update --agents       the AI agents' own versions instead (D153, update-agents.ts)
+//   ducter update --agents       the AI agents' own versions instead (D156, update-agents.ts)
 //   ducter update --finish <p>   internal: the restart helper (update.ts finish), run by systemd-run
 //
 // With a Ducter running here, the work goes through it (it waits for a safe point and logs every
@@ -167,7 +167,7 @@ export async function cmdUpdate(c: UpdateCtx): Promise<number> {
 
   const conn = await (c.connect ?? ((p) => connect(p, { timeoutMs: 2000 })))(c.port);
   if (args.agents) {
-    // D153: the AI agents' own versions, not Ducter's.
+    // D156: the AI agents' own versions, not Ducter's.
     try {
       return await cmdUpdateAgents(c, conn);
     } finally {

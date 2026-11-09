@@ -30,7 +30,7 @@ export interface WorkerHost {
   critical(): number;
   /** Sessions in the middle of a turn. */
   turning(): number;
-  /** D153: sessions on this AI agent in the middle of a turn. */
+  /** D156: sessions on this AI agent in the middle of a turn. */
   turningOn(harness: string): number;
 }
 
@@ -70,7 +70,7 @@ function wireEvent(ev: HarnessEvent): HarnessEvent {
 
 export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
   const sessions = new Map<string, HarnessSession>();
-  const harnessOf = new Map<string, string>(); // session key -> its AI agent (D153)
+  const harnessOf = new Map<string, string>(); // session key -> its AI agent (D156)
   // D142: the copy of a non-git folder lives here, beside the folder (folder.ts).
   const folders = createFolderStore({ root: join(o.dataDir, "snapshots") });
   folders.sweep();

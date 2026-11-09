@@ -13,7 +13,7 @@ There are four ways to have Ducter, and you can mix them:
 | [The Mac app](#the-mac-app) | Most people. One line in Terminal, or a download | Ready |
 | [The `ducter` command](#the-ducter-command) | People who live in Terminal | Ready |
 | [A Linux server](#a-linux-server-that-stays-on) | Keeping your partner working while your Mac sleeps | Ready |
-| [Your phone](#your-phone) | Answering decisions and checking results on the go | Ready in the phone's browser; an iPhone app is coming soon |
+| [Your phone](#your-phone) | Answering decisions and checking results on the go | Ready in the phone's browser; the iPhone app is in public beta (TestFlight) |
 
 Whichever you choose, you need an AI agent, **Claude Code or Codex** today, installed and
 signed in on the computer that does the work ([which agents](faq.md#which-ai-agents-does-it-work-with)).
@@ -72,8 +72,11 @@ ducter up               # starts your partner (on a Mac, the app opens too)
 
 On a Mac, `ducter` comes with the app: the link points at the command inside **Ducter** in
 Applications, so it updates with the app. On Linux the same line installs the `ducter` bundle
-for your server's CPU. If `~/.local/bin` isn't on your `PATH` yet, the installer prints the one
-line to add it. A `ducter` you put there yourself is left alone. To install the app without the
+for your server's CPU. So that `ducter` works right away: as root, the installer also links
+`/usr/local/bin/ducter`, which is on every `PATH`; otherwise, if `~/.local/bin` isn't on your
+`PATH` yet, it adds it in your shell's profile (one block marked `# added by Ducter`) and prints
+the line that does the same in the terminal you're in. A `ducter` you put there yourself is left
+alone. To install the app without the
 command, add `-s -- --no-cli` after `sh`.
 
 Installed the app another way? After your partner's first reply it offers *"Use ducter in
@@ -102,6 +105,7 @@ run the one command it prints.
 | `ducter open <part of a task's title>` | Show that task in the app (or, if the app isn't open, where it is) |
 | `ducter doctor` | The check-up (see [Troubleshooting](troubleshooting.md)) |
 | `ducter pair` | A one-time code to connect your phone or another computer |
+| `ducter domain <your domain>` | On a server: HTTPS at your domain, then a code to connect your devices from anywhere. `--remove` undoes it |
 | `ducter devices` | The devices connected to your Ducter; `ducter devices disconnect <name>` removes one |
 | `ducter devices rename <name> <new name>` | Give a device a name you'll recognize |
 | `ducter report` | Writes a diagnostics folder you can look through and attach to an issue. Nothing is uploaded |
@@ -118,6 +122,16 @@ example `ducter status --port 7790`.
 A Mac sleeps; a small server doesn't. Put Ducter on a Linux server you own and your partner
 keeps working through the night, while your Mac and phone connect to it.
 
+In short, in this order:
+
+1. **DNS:** an A record for your name (say `ducter.example.com`) → the server's public IP.
+2. **Firewall:** allow TCP 22, 80 and 443 in. Never 7777.
+3. **Install:** `curl -fsSL https://ducter.ai/install.sh | sh -s -- --service`. It checks that
+   Ducter answers on the server before it says what's next.
+4. **Domain:** `ducter domain ducter.example.com`: HTTPS, then a code.
+5. **Sign in an AI agent** on the server: `codex login --device-auth` or `claude auth login`.
+6. **Connect** your Mac and phone with the code (`ducter pair` gives a new one any time).
+
 **1. On the server, install it as a service** (x64 or arm64 Linux):
 
 ```sh
@@ -133,11 +147,20 @@ copy the folder over.
 
 Ducter now starts with the server and restarts if it ever crashes. It only listens on the
 server itself (`127.0.0.1`), so nobody reaches it from outside until you choose how. The
-install ends by showing a code to connect your first device.
+install ends with this server's public IP address and the next step:
+
+```
+To use it from your phone and Mac anywhere:
+point a domain at this server's public IP 203.0.113.7 (an A record), then run:
+  ducter domain ducter.example.com
+```
+
+As `root` the data lives in `/root/.ducter`, and `ducter` works in the same shell right away.
 
 `ducter doctor` also tells you how to sign in Claude Code or Codex on a server that has no
 browser: `claude auth login` prints a link to open on any device and waits for the code, and
-`codex login --device-auth` works the same way.
+`codex login --device-auth` works the same way. One is enough. With only Codex signed in,
+your partner thinks with Codex and Codex does the tasks; Claude Code is optional.
 
 If you'd rather use a sign-in token or an API key (for example `CLAUDE_CODE_OAUTH_TOKEN` from
 `claude setup-token`, or `DEEPSEEK_API_KEY` for DeepSeek Harness), put it in
@@ -152,23 +175,69 @@ DeepSeek Harness and nothing else. Other keys and tokens on the server, such as 
 shell, aren't passed to tasks either. If an older Ducter had you put keys in `~/.ducter/env`,
 Ducter moves them to `keys.env` the next time it starts.
 
-**2. Choose how to reach it:**
+**2. Give it your domain** (recommended; it's also how your phone reaches it):
 
-- **Your own domain (recommended).** Point a DNS record at the server, open ports 80 and 443,
-  copy `scripts/caddy-setup.sh` from the source to the server, and run
-  `sh caddy-setup.sh ducter.example.com` there. It sets up HTTPS for you. This is also the way
-  to reach Ducter from your phone.
-- **No domain.** Open an SSH tunnel from your Mac:
-  `ssh -N -L 7777:127.0.0.1:7777 you@server`. The address is then `http://127.0.0.1:7777`.
-  This works for your Mac, not your phone.
-- A zero-setup address with no domain of your own is coming soon.
+1. At your domain's DNS provider, add an **A record** for a name such as
+   `ducter.example.com`, pointing at the server's public IP (the install printed it). If your
+   DNS is on Cloudflare, set the record to **DNS only**, not proxied.
+2. In your cloud provider's firewall, allow inbound **TCP 80 and 443** (and 22 for SSH). Never
+   open 7777. If `ufw` is on: `ufw allow 80,443/tcp`.
+3. On the server:
+
+   ```sh
+   ducter domain ducter.example.com
+   ```
+
+It checks the name points at this server first (if not, it says exactly which record to add and
+stops), checks nothing else holds ports 80 and 443, installs [Caddy](https://caddyserver.com)
+(Debian and Ubuntu), adds Ducter's site to it, waits for the HTTPS certificate (up to a
+minute), and ends with a code, a link and a QR code to connect your devices. Running it again
+is safe. `ducter domain --remove` takes Ducter's site out of Caddy again.
+
+Already run a web server such as nginx on 80 and 443? `ducter domain ducter.example.com --print`
+shows what to forward to Ducter (`127.0.0.1:7777`, WebSocket upgrades included); after you've
+set that up, put `https://ducter.example.com` in `~/.ducter/public-url` and run `ducter pair`.
+
+**No domain?** Your Mac alone can reach it through an SSH tunnel. On the Mac (leave it
+running):
+
+```sh
+ssh -N -L 7777:127.0.0.1:7777 root@203.0.113.7
+```
+
+The address is then `http://127.0.0.1:7777`. This works for your Mac, not your phone.
 
 **3. Connect your Mac.** Open the Mac app and choose **My Ducter is on another computer**, then
-**Connect to your Ducter**. On the server, run `ducter pair`, and type the **Address** and
-**Code** it shows (or paste the whole link). The code works once, for 10 minutes.
+**Connect to your Ducter**. Type the **Address** and **Code** that `ducter domain` (or
+`ducter pair`) showed, or paste the whole link. A code works once, for 10 minutes; `ducter pair`
+gives you a new one any time.
 
 Ducter's own messages on the server go to the system journal:
 `journalctl --user -u ducter`.
+
+**Which part isn't working?** Ask your domain from any computer:
+`curl -sS -o /dev/null -w '%{http_code}\n' https://ducter.example.com/health`
+
+| You get | What it means | What to do |
+|---|---|---|
+| `200` | Everything works | Connect with a code from `ducter pair` |
+| `502`, `503` or `504` | HTTPS works, but Ducter behind it isn't answering | On the server: `systemctl --user status ducter`, then `ducter doctor`; `systemctl --user restart ducter` |
+| `308` or `301` for `http://…` | Caddy is there and sends you to HTTPS: normal | Ask the `https://` address |
+| `000`, or a certificate error | No HTTPS yet: the DNS record, ports 80 and 443, or the firewall | Check the A record points at the server and 80 and 443 are open, then `ducter domain ducter.example.com` again; Caddy's log: `journalctl -u caddy -n 50` |
+
+### Already using Ducter on your Mac, and want it on a server
+
+Start the server as a fresh Ducter: your conversation and tasks on the Mac stay on the Mac (moving
+them over is on the roadmap).
+
+1. Set up the server as above: install, `ducter domain`, sign in an AI agent.
+2. On the Mac, open **Settings** and choose **Connect to a Ducter on another computer**. Paste
+   the link from `ducter pair` (or type the address and the code). The app now uses the server.
+   It asks once whether to stop the Ducter on this Mac; its data in `~/.ducter` stays either way.
+3. Want tasks to use the repos on your Mac? Run the `ducter worker` command that `ducter pair`
+   printed, on the Mac.
+
+To go back, **Settings › Use the Ducter on this Mac again**.
 
 ### Lend another computer
 
@@ -192,8 +261,13 @@ Your phone connects to the Ducter on your server through your own domain. On the
 `ducter pair` and scan the QR code it shows, or open the link. The phone opens Ducter in its
 browser, connects, and asks whether to notify you when something needs you.
 
+**iPhone app (public beta).** The iPhone app is in public beta through Apple's TestFlight:
+[join the beta](https://testflight.apple.com/join/Z4GvWt7t), install TestFlight if asked, then
+open Ducter and type the address and code from `ducter pair`. Beta builds can change and expire
+after 90 days; TestFlight offers the next one.
+
 Everything about the phone, including notifications and quiet hours, is on
-[Your phone](phone.md). An iPhone app is coming soon.
+[Your phone](phone.md).
 
 ## Updates
 
@@ -206,10 +280,12 @@ carry on.
 
 - **Mac app:** choose **Stop Ducter** in the menu, then drag Ducter from Applications to the
   Trash.
-- **Server:** `ducter service uninstall`.
+- **Server:** `ducter service uninstall` stops the service and keeps your data.
 - **Everything, in one go:** `ducter uninstall --all`. It first lists exactly what it removes
   (Ducter in the background, `~/.ducter` with your conversation and tasks, its browser profiles,
-  the `ducter` command it put in `~/.local/bin`) and what it keeps (your repos and their
-  `ducter/*` branches, your Claude Code and Codex sign-ins, Nowledge Mem, cua-driver), and
+  the `ducter` command it put in `~/.local/bin` and `/usr/local/bin`, the `PATH` lines it added to
+  your shell profile, and on a server Ducter's site in Caddy) and what it keeps (your repos and
+  their `ducter/*` branches, your Claude Code and Codex sign-ins, Nowledge Mem, cua-driver, Caddy
+  itself), and
   asks you to type `remove`. A task's changes that were never committed are named before
   anything goes. It cannot be undone. Without `--all` it only stops Ducter in the background.

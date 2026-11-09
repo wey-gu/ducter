@@ -193,6 +193,9 @@ jobs:
             echo "ship=true" >>"$GITHUB_OUTPUT"
           fi
 
+      - uses: oven-sh/setup-bun@v2
+        if: steps.gate.outputs.ship == 'true'
+
       - name: Archive, sign, upload (scripts/ci/testflight.sh)
         if: steps.gate.outputs.ship == 'true'
         env:

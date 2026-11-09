@@ -182,7 +182,7 @@ const ld = {
         <h2>One thumb is enough.</h2>
       </div>
       <p class="lede">Your phone buzzes only when a decision is waiting for you, and never during your quiet hours. Answer it in one tap, or let the default happen and read about it in the morning.</p>
-      <p class="body note">Quiet hours are 23:00 to 08:00 until you change them. With two decisions waiting, Go on all defaults answers both. For now the phone opens Ducter in its browser and needs Ducter on a server with your own domain. An iPhone app is coming soon.</p>
+      <p class="body note">Quiet hours are 23:00 to 08:00 until you change them. With two decisions waiting, Go on all defaults answers both. The phone opens Ducter in its browser, or in the iPhone app, in public beta on <a href="https://testflight.apple.com/join/Z4GvWt7t" rel="noopener">TestFlight</a>. Either way it needs Ducter on a server with your own domain.</p>
     </div>
     <div class="phone-scene">
       <div class="phone" id="phone">
@@ -344,12 +344,14 @@ const ld = {
           <button role="tab" id="tab-mac" aria-controls="p-mac" aria-selected="true">Mac app</button>
           <button role="tab" id="tab-cli" aria-controls="p-cli" aria-selected="false" tabindex="-1">Command line</button>
           <button role="tab" id="tab-srv" aria-controls="p-srv" aria-selected="false" tabindex="-1">Server</button>
+          <button role="tab" id="tab-ios" aria-controls="p-ios" aria-selected="false" tabindex="-1">iPhone</button>
+          <button role="tab" id="tab-agent" aria-controls="p-agent" aria-selected="false" tabindex="-1">Your AI agent</button>
         </div>
         <div class="panel" id="p-mac" role="tabpanel" aria-labelledby="tab-mac" style="margin-top:14px">
           <p>Paste this into Terminal. It downloads the signed app, checks it, puts it in Applications and opens it:</p>
           <div class="term"><button class="btn sm copy" type="button" data-copy="curl -fsSL https://ducter.ai/install.sh | sh">Copy</button><pre><span class="p">$ </span>curl -fsSL https://ducter.ai/install.sh | sh</pre></div>
           <p>Ducter checks your Mac, then opens the conversation. Closing the window doesn't stop it. It needs a Mac with Apple silicon.</p>
-          <p>Or <a href={facts.dmgUrl ?? RELEASES_URL}>download the .dmg</a> and drag Ducter to Applications, or <a href="/docs/install#build-it-from-the-source-instead">build it from the source</a>.</p>
+          <p>Or <a href={facts.dmgUrl ?? RELEASES_URL}>download the .dmg</a> and drag Ducter to Applications, or <a href="/docs/install#build-it-from-the-source-instead">build it from the source</a>. On your iPhone: <a href="https://testflight.apple.com/join/Z4GvWt7t" rel="noopener">join the iPhone beta</a>.</p>
         </div>
         <div class="panel" id="p-cli" role="tabpanel" aria-labelledby="tab-cli" style="margin-top:14px" hidden>
           <p>The same line installs the <code>ducter</code> command in <code>~/.local/bin</code>. On a Mac it comes with the app; on Linux it's the <code>ducter</code> bundle:</p>
@@ -362,11 +364,21 @@ const ld = {
           <p><code>ducter status</code> shows your tasks and the decisions waiting for you. Or <a href="/docs/install#the-ducter-command">build it from the source</a>.</p>
         </div>
         <div class="panel" id="p-srv" role="tabpanel" aria-labelledby="tab-srv" style="margin-top:14px" hidden>
-          <div class="term"><button class="btn sm copy" type="button" data-copy="curl -fsSL https://ducter.ai/install.sh | sh -s -- --service&#10;ducter pair">Copy</button><pre><span class="c"># on the server (x64 or arm64 Linux): runs as a service</span>
+          <div class="term"><button class="btn sm copy" type="button" data-copy="curl -fsSL https://ducter.ai/install.sh | sh -s -- --service&#10;ducter domain ducter.example.com">Copy</button><pre><span class="c"># on the server (x64 or arm64 Linux): runs as a service</span>
 <span class="p">$ </span>curl -fsSL https://ducter.ai/install.sh | sh -s -- --service
-<span class="c"># a one-time code for your Mac or phone</span>
-<span class="p">$ </span>ducter pair</pre></div>
-          <p>Your partner keeps working while your Mac sleeps. It only listens on the server itself (127.0.0.1); reach it through your own domain or an SSH tunnel.</p>
+<span class="c"># point an A record at the server, then: HTTPS, and a code for your Mac and phone</span>
+<span class="p">$ </span>ducter domain ducter.example.com</pre></div>
+          <p>Your partner keeps working while your Mac sleeps. It only listens on the server itself (127.0.0.1); <code>ducter domain</code> checks your DNS, sets up HTTPS with Caddy and gives you a code. No domain? An SSH tunnel works for your Mac.</p>
+        </div>
+        <div class="panel" id="p-ios" role="tabpanel" aria-labelledby="tab-ios" style="margin-top:14px" hidden>
+          <p>The iPhone app is in public beta through Apple's TestFlight. It connects to Ducter on your server with the address and code from <code>ducter pair</code>.</p>
+          <p><a class="btn" href="https://testflight.apple.com/join/Z4GvWt7t" rel="noopener">Join the iPhone beta</a></p>
+          <p>Or open the same address in your phone's browser. <a href="/docs/phone">Your phone</a> has the details.</p>
+        </div>
+        <div class="panel" id="p-agent" role="tabpanel" aria-labelledby="tab-agent" style="margin-top:14px" hidden>
+          <p>Let Claude Code, Codex or another agent set Ducter up for you. Ask it:</p>
+          <div class="term"><button class="btn sm copy" type="button" data-copy="Install the ducter-deploy skill from github.com/wey-gu/ducter/tree/main/skills and deploy Ducter on my server.">Copy</button><pre>Install the ducter-deploy skill from github.com/wey-gu/ducter/tree/main/skills and deploy Ducter on my server.</pre></div>
+          <p>The skills are also at <code>https://ducter.ai/skills/ducter-deploy/SKILL.md</code> (and <code>ducter-operate</code>, <code>ducter-troubleshoot</code>). <a href="/docs/for-agents">For AI agents</a> says what they do.</p>
         </div>
       </div>
     </div>

@@ -77,6 +77,16 @@ type App struct {
 	// a token from an old pairing): the connect card shows, with a line.
 	Unauthorized bool
 	conn         connectState
+	// UseLocal forgets the connection to another computer and starts the
+	// app again on this Mac's own Ducter (set by main).
+	UseLocal func()
+	// ReadClipboard is the clipboard's text, for a pair link copied before
+	// the connect card opened (set by main).
+	ReadClipboard func() string
+	// hereBackend is this Mac's own Ducter after the app switched to one on
+	// another computer; askStopHere asks once whether to stop it.
+	hereBackend Backend
+	askStopHere bool
 	// Backend is the Ducter this app runs itself (Ducter.app); nil when
 	// the window only connects.
 	Backend Backend
@@ -340,7 +350,7 @@ func (a *App) View(c *ui.Context) {
 		case a.title.on:
 			a.setupActive() // the first check runs under the title
 			a.titleView(c)
-		case a.Unauthorized || (!a.S.Welcomed && a.conn.open):
+		case a.Unauthorized || a.conn.open:
 			a.connect(c)
 		case a.setupActive():
 			a.setupView(c)
@@ -654,20 +664,26 @@ func (a *App) Welcomed() {
 	}
 }
 
+// forgetShown drops everything shown from a Log: it started over, or the
+// app now talks to another Ducter.
+func (a *App) forgetShown() {
+	a.S.Reset()
+	a.pending, a.diffs = nil, map[string]*diffPane{}
+	a.actSent, a.inDoubt = nil, nil
+	a.taskLists = map[string]*ui.ListState{}
+	a.historyAsked = map[string]bool{}
+	a.livingAway = map[int64]bool{}
+	if a.Route == RouteTask {
+		a.Route = RouteConversation
+	}
+}
+
 // Receive applies a server frame on the UI thread. A welcome from a Log
 // that started over (its head behind our cursor) resets the store and
 // says hello again from the start.
 func (a *App) Receive(f protocol.ServerFrame) {
 	if a.S.Stale(f) {
-		a.S.Reset()
-		a.pending, a.diffs = nil, map[string]*diffPane{}
-		a.actSent, a.inDoubt = nil, nil
-		a.taskLists = map[string]*ui.ListState{}
-		a.historyAsked = map[string]bool{}
-		a.livingAway = map[int64]bool{}
-		if a.Route == RouteTask {
-			a.Route = RouteConversation
-		}
+		a.forgetShown()
 		a.send(protocol.Hello{T: "hello", Locale: string(a.L.Lang), TZ: localZone(), Client: "desktop"})
 	}
 	a.noteResults(f)

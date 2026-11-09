@@ -352,7 +352,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const envH = process.env.DUCTER_PARTNER_HARNESS;
     const fallback: Brain = isHarnessId(envH) && HARNESSES[envH].partner && envH !== "claude-code" ? { harness: envH } : { harness: "claude-code", model: "opus" };
     const set = core.settings?.get().brain;
-    const brain = set && isHarnessId(set.harness) && HARNESSES[set.harness].partner ? set : fallback;
+    const brain = core.partnerFallback?.() ?? (set && isHarnessId(set.harness) && HARNESSES[set.harness].partner ? set : fallback);
     const harness = opts.harness ?? brain.harness;
     const model =
       opts.model ?? process.env.DUCTER_PARTNER_MODEL ?? (harness === brain.harness ? brain.model : undefined) ?? (harness === "claude-code" ? "opus" : undefined);

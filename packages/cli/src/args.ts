@@ -1,6 +1,6 @@
 // Argument parsing for `ducter`. Pure: no env, no I/O, so it is easy to test.
 
-export type Command = "up" | "open" | "doctor" | "status" | "version" | "help" | "pair" | "devices" | "service" | "worker" | "uninstall" | "report" | "merge" | "undo" | "task" | "say" | "tail" | "answer";
+export type Command = "up" | "open" | "doctor" | "status" | "version" | "help" | "pair" | "devices" | "service" | "domain" | "worker" | "uninstall" | "report" | "merge" | "undo" | "task" | "say" | "tail" | "answer";
 
 export interface Args {
   command: Command;
@@ -24,13 +24,16 @@ export interface Args {
   agent?: string; // task --agent <name>: who does it (pinned for this task)
   base?: string; // task --base <branch>: what it starts from
   timeout?: number; // say --timeout <seconds>
+  remove?: boolean; // domain --remove: take Ducter's site out of Caddy
+  print?: boolean; // domain <name> --print: only print the Caddy block
+  dnsCheck?: boolean; // false with domain --no-dns-check
 }
 
 export type ParseResult = { ok: true; args: Args } | { ok: false; error: { key: "err.unknownCommand" | "err.unknownFlag" | "err.missingValue" | "err.badPort" | "err.badTimeout"; vars: Record<string, string> } };
 
-const COMMANDS = new Set<Command>(["up", "open", "doctor", "status", "version", "help", "pair", "devices", "service", "worker", "uninstall", "report", "merge", "undo", "task", "say", "tail", "answer"]);
+const COMMANDS = new Set<Command>(["up", "open", "doctor", "status", "version", "help", "pair", "devices", "service", "domain", "worker", "uninstall", "report", "merge", "undo", "task", "say", "tail", "answer"]);
 /** Commands that take words after them (`ducter devices revoke a1b2`, `ducter service install`). */
-const WITH_REST = new Set<Command>(["devices", "service", "merge", "undo", "open", "task", "say", "tail", "answer"]);
+const WITH_REST = new Set<Command>(["devices", "service", "domain", "merge", "undo", "open", "task", "say", "tail", "answer"]);
 const ALIASES: Record<string, Command> = {
   "-v": "version",
   "--version": "version",
@@ -106,6 +109,15 @@ export function parseArgs(argv: string[]): ParseResult {
       case "--yes":
       case "-y":
         args.yes = true;
+        continue;
+      case "--remove":
+        args.remove = true;
+        continue;
+      case "--print":
+        args.print = true;
+        continue;
+      case "--no-dns-check":
+        args.dnsCheck = false;
         continue;
       case "--include-conversation":
         args.includeConversation = true;

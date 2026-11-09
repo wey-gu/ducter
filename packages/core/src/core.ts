@@ -239,6 +239,12 @@ export function startCore(opts: CoreOptions = {}): Core {
   let devicesView: DevicesView | undefined;
   const loadout = createLoadout({ log, tasks, settings, rules, devices: () => devicesView });
   const api = { log, tasks, mcp, persona, dataDir, settings, connections, bodies: loadout, spine: log.spine } as CoreApi;
+  api.partnerFallback = () => {
+    if (settings.brainChosen()) return undefined;
+    const hs = devicesView?.harnessesNow();
+    const signedIn = (id: string) => Boolean(hs?.find((h) => h.harness === id)?.loggedIn);
+    return hs && !signedIn("claude-code") && signedIn("codex") ? { harness: "codex" } : undefined;
+  };
   // 开一件事 / New task (D128): the one opening path the card and `ducter task` share.
   const newTaskDeps = { log, tasks, runner: () => runner, persona, dataDir, loadout, settings, ...(opts.git ? { git: opts.git } : {}) };
   const newTask = { open: (i: NewTaskInput) => openYourTask(newTaskDeps, i), options: (p?: Place) => newTaskOptions(newTaskDeps, p) };
@@ -270,6 +276,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   workersRef = workers;
   api.workers = workers; // the runner places tasks on workers through this (runner/src/remote.ts)
   devicesView = createDevicesView({ dataDir, auth: devices, workers, connected: () => ws.connected(), probes: opts.deviceProbes });
+  devicesView.harnessesNow(); // probe once at start, so the partner's first turn knows who is signed in
   const sockets = splitSockets(ws.websocket, workers, { isLive: (id) => devices.isLive(id), nameOf: (id) => devices.list().find((d) => d.id === id)?.name, sweepMs: opts.sweepMs });
   const apns = opts.apns ?? createApnsSender(loadApnsConfig(dataDir));
   const pusher = createPusher({

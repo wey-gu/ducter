@@ -106,6 +106,9 @@ export const title = (t: Task) => t.open?.title || t.card?.title || "";
 export const attention = (t: Task): Attention => t.state?.attention ?? t.card?.attention ?? "queued";
 export const reasonOf = (t: Task) => t.state?.reason || t.card?.reason || "";
 export const placeOf = (t: Task): Place => t.open?.place ?? t.card?.place ?? { kind: "none" };
+/** The proof line counts the changes ("1 file changed"), except for a folder (D142): its own
+ *  sentence says them, with Undo and Keep, and a count beside it would say it twice. */
+export const countsChanges = (t: Task): boolean => placeOf(t).kind !== "folder";
 export const reportOf = (t: Task) => t.lastReport ?? t.card?.lastReport;
 /** Merge into main / Open draft PR make sense: a repo task with a branch that holds something its
  *  base doesn't (core checks at report time; unknown counts as yes). Never on a failed task. */

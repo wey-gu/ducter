@@ -74,7 +74,8 @@ func TestFolderChanges(t *testing.T) {
 				t.Errorf("%s: no %q in the opened task: %q", lang, w, all)
 			}
 		}
-		for _, not := range []string{"合并", "Merge", "/Users/someone"} {
+		// No stray proof count next to the sentence (the report named one file).
+		for _, not := range []string{"合并", "Merge", "/Users/someone", "1 个文件有改动", "改了 1 个文件", "1 file changed"} {
 			if strings.Contains(all, not) {
 				t.Errorf("%s: %q shows for a folder task", lang, not)
 			}

@@ -113,7 +113,9 @@ func (a *App) proofLine(c *ui.Context, task *store.Task, evs []protocol.Evidence
 				a.openEvidence(c, ev)
 			}
 		}
-		if len(changed) > 0 {
+		// A folder (D142) says its changes in its own sentence, with Undo
+		// and Keep: no count here too.
+		if len(changed) > 0 && task.Place().Kind != "folder" {
 			words := a.changesWords(task, changed)
 			if a.quietLink(c, "changes", words, words+" · "+task.Title()) {
 				a.openChanges(task.ID)

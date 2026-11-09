@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { translator } from "../src/i18n.ts";
-import { agentLabel, bundleIdAround, dataDirIsOurs, executeUninstall, formatPlan, planUninstall, type Runner } from "../src/uninstall.ts";
+import { agentLabel, bundleIdAround, dataDirIsOurs, executeUninstall, formatPlan, planUninstall, RC_BEGIN, RC_END, stripRcBlock, type Runner } from "../src/uninstall.ts";
+import { caddyBlock } from "../src/domain.ts";
 
 const t = translator("en");
 const git = (dir: string, ...args: string[]) => {
@@ -210,6 +211,46 @@ describe("executeUninstall", () => {
       ["systemctl", "--user", "daemon-reload"],
     ]);
     expect(existsSync(unit)).toBe(false);
+  });
+});
+
+describe("a clean reinstall on a Linux server (uninstall --all as root)", () => {
+  test("the unit, this binary, the /usr/local/bin link, the PATH lines and Ducter's Caddy site go; other sites, Caddy and the rest of the profile stay", async () => {
+    const unit = join(home, ".config", "systemd", "user", "ducter.service");
+    mkdirSync(join(unit, ".."), { recursive: true });
+    writeFileSync(unit, "[Unit]");
+    const bin = join(home, ".local", "bin");
+    mkdirSync(bin, { recursive: true });
+    const self = join(bin, "ducter");
+    writeFileSync(self, "binary");
+    const global = join(home, "usr-local-bin");
+    mkdirSync(global);
+    symlinkSync(self, join(global, "ducter"));
+    const profile = `alias ll='ls -l'\n\n${RC_BEGIN} (ducter uninstall --all removes these lines)\nexport PATH="$HOME/.local/bin:$PATH"\n${RC_END}\n`;
+    writeFileSync(join(home, ".bashrc"), profile);
+    const other = "shop.example.com {\n\treverse_proxy 127.0.0.1:3000\n}\n";
+    const caddyfile = { path: "/etc/caddy/Caddyfile", text: other + "\n" + caddyBlock("ducter.example.com", 7777) + "\n" };
+    const p = plan(true, { platform: "linux", execPath: self, globalBin: global, caddyfile });
+    expect(p.remove.map((x) => x.kind).sort()).toEqual(["caddy", "data", "link", "link", "rc", "service"]);
+    expect(p.remove.find((x) => x.kind === "caddy")!.what).toBe("Ducter's site in Caddy (ducter.example.com)");
+    expect(p.keep.some((k) => k.what === "Caddy")).toBe(true);
+    const sites: string[] = [];
+    const { r } = fakeRunner();
+    r.removeCaddySite = async (path) => (sites.push(path), { ok: true });
+    const res = await executeUninstall(p, { runner: r, port: 1, label, t, git: () => "" });
+    expect(res.failed).toEqual([]);
+    for (const gone of [unit, self, join(global, "ducter"), dataDir]) expect(existsSync(gone)).toBe(false);
+    expect(readFileSync(join(home, ".bashrc"), "utf8")).toBe("alias ll='ls -l'\n");
+    expect(sites).toEqual(["/etc/caddy/Caddyfile"]);
+  });
+  test("the profile lines come out once, whatever else is there; a link to someone else's ducter stays", () => {
+    const block = `${RC_BEGIN}\nexport PATH="$HOME/.local/bin:$PATH"\n${RC_END}`;
+    expect(stripRcBlock(`a\n${block}\nb\n`)).toBe("a\nb\n");
+    expect(stripRcBlock("a\nb\n")).toBe("a\nb\n");
+    const global = join(home, "usr-local-bin");
+    mkdirSync(global);
+    symlinkSync("/opt/other/ducter", join(global, "ducter"));
+    expect(plan(true, { platform: "linux", globalBin: global }).remove.some((x) => x.path === join(global, "ducter"))).toBe(false);
   });
 });
 

@@ -13,7 +13,9 @@ you when something needs you and lets you answer in one tap.
 One thing stays on the Mac: the changes themselves. On the phone, a finished task names them
 in its line of proof ("2 files changed"); to read them line by line, open the task on your Mac.
 
-The phone version opens in your phone's browser. An iPhone app is in testing and coming soon.
+The phone version opens in your phone's browser. The iPhone app is in public beta through
+TestFlight: [join the beta](https://testflight.apple.com/join/Z4GvWt7t), then connect it with
+the same address and code.
 
 ## Connect your phone
 
@@ -45,7 +47,7 @@ doesn't buzz over and over.
 - **Send a test** checks that notifications reach this phone.
 - **Stop notifications** turns them off for this phone.
 - On **Android**, you can answer with **Go** or **Hold** straight from the notification. In
-  the iPhone's browser, tapping it opens the decision. The iPhone app (in testing, coming soon)
+  the iPhone's browser, tapping it opens the decision. The iPhone app (public beta on TestFlight)
   lets you answer **Go**, **Hold** or **Reply** right from the notification.
 
 ### On iPhone

@@ -180,10 +180,17 @@ func (a *App) runCard(c *ui.Context) {
 			// closing the window doesn't stop it (never a bare or empty address).
 			host := hostOf(a.URL)
 			line := a.L.T("settings.run.apart", name)
-			if host != "" && !isLoopback(host) {
+			remoteHome := host != "" && !isLoopback(host)
+			if remoteHome {
 				line = a.L.T("settings.run.remote", name, host)
 			}
 			ui.Text(c, line).FontSize(t.MD).LineHeight(1.5)
+			if a.askStopHere && a.hereBackend != nil {
+				a.askStopHereCard(c, host)
+			}
+			if remoteHome && a.UseLocal != nil && a.button(c, a.L.T("settings.home.useHere"), btnText, t.ControlMD, t.Surface) {
+				a.UseLocal()
+			}
 			return
 		}
 		var line string
@@ -213,6 +220,30 @@ func (a *App) runCard(c *ui.Context) {
 		if !a.Resting() {
 			a.note(c, a.L.T("menu.rest.sub"))
 		}
+		if a.Pair != nil && a.button(c, a.L.T("settings.home.elsewhere"), btnText, t.ControlMD, t.Surface) {
+			a.connectElsewhere()
+		}
+	})
+}
+
+// askStopHereCard: the app now uses a Ducter on another computer; asked
+// once whether this Mac's own keeps running. Keep is the default: nothing
+// is lost either way, and its data stays in ~/.ducter.
+func (a *App) askStopHereCard(c *ui.Context, host string) {
+	t := a.T
+	ui.Column(c.Key("ask-stop-here")).Gap(t.S2).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.SurfaceSunken).Children(func() {
+		ui.Text(c, a.L.T("settings.home.ask")).FontSize(t.MD).FontWeight(700).LineHeight(1.4)
+		ui.Text(c, a.L.T("settings.home.ask.body", host)).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
+		ui.Row(c).Gap(t.S2).Wrap().Children(func() {
+			if a.button(c, a.L.T("settings.home.keep"), btnPrimary, t.ControlMD, t.Surface) {
+				a.askStopHere = false
+			}
+			if a.button(c, a.L.T("settings.home.stop"), btnSecondary, t.ControlMD, t.Surface) {
+				a.askStopHere = false
+				b := a.hereBackend
+				a.async(func() { _ = b.Rest() }, func() {})
+			}
+		})
 	})
 }
 

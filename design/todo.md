@@ -17,11 +17,11 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 
 **Verify for real**
 - [ ] **Move your Ducter to another computer (`ducter move`)**: a Mac-first user moves the home to a server: one-time move code from the new (empty) home; moves the Log, persona, settings, rules, routines, connections and the Mem binding over HTTPS with a verified count; not harness sign-ins (re-sign on the server, guided); running tasks parked first; the old machine becomes a worker for its local repos, its app connects to the new home; old data kept 30 days with a one-tap move back. Trigger: the author's Mac → Hetzner case (2026-11-10); design first, then v0.0.4.
-- [ ] **Phone opened task overflows horizontally** (seen 2026-11-09 on a folder task, .shots/folder-undo/phone-zh.png): the headline, the brief text and the footer are cut on the right at 390px. Find the element forcing the width (min-width: 0 on flex children / long CJK lines) and test at 390px.
-- [ ] **Folder result shows a stray proof line** "1 file changed" next to D142's plain sentence; folder tasks should show only the sentence.
+- [x] **Phone opened task overflows horizontally**: not the layout. The shot was taken with headless Chrome's `--window-size=390,…`, which lays out at its minimum window width (~500 px) and crops to 390. With device emulation at 390 px (CDP `Emulation.setDeviceMetricsOverride`) the folder task and a long zh title + long brief with unbreakable paths and URLs wrap, and `scrollWidth` is 390. Take phone shots with device emulation, never `--window-size`.
+- [x] **Folder result shows a stray proof line**: a folder task's proof line no longer counts the changes (desktop and web); D142's sentence says them.
 - [ ] One real-harness task on a worker (`claude auth login` / `codex login --device-auth` on
       the worker). Trigger: the user signs in on a worker.
-- [ ] `scripts/caddy-setup.sh` on a real VPS + domain (ACME, renewal, WebSocket through Caddy
+- [ ] `ducter domain` on a real VPS + domain as root (DNS check, apt Caddy, ACME, renewal, WebSocket through Caddy
       with TLS). Trigger: the first real VPS install.
 - [ ] Phone web on real phones: iOS Home Screen push (16.4+), and whether a token paired in
       Safari carries into the Home Screen app (if not, pair from the installed app);

@@ -25,8 +25,11 @@ its own.
 | `working` | `needs-you` | M | W asks a blocking question that M can't answer from the Log (12). If M can answer, it steers the answer in and the window stays `working` |
 | `needs-you` | `working` | U / C | U answers, in the window or in the channel. Or the deadline passes and C applies a *reversible* default |
 | `working` | `blocked` | C | W reports a typed wait (CI, external party), or the harness reports quota exhausted. C registers the waiter |
-| `blocked` | `working` | T | the waiter fires |
-| `blocked` | `needs-you` | C→M | the waiter's deadline passes. M decides whether to escalate |
+| `working` | `blocked` | C | the task (or M for it) arms a condition wait (`wait_for`, D112): the reason is what it waits for |
+| `blocked` | `working` | T | the waiter fires; for a task's own check or event, C wakes the task with what it saw (the partner is not woken) |
+| `blocked` | `needs-you` | C→M | the waiter's deadline passes (`expired`): C sets needs-you with the reason and wakes M, which tells the user once |
+| `working` | `working` | C | an `until` loop's try ends (D113): the report is judged; not yet → the next try is sent, and a `done` report does not move the task to `done?` |
+| `working` | `done` / `needs-you` | C | the `until` condition holds (`done`), or the loop stops short: max tries, no progress, circles (`needs-you`) |
 | `working` | `done?` | W→C | W reports done with evidence refs |
 | `done?` | `done` | C + M | C checks the refs mechanically (CI green, artifact exists, diff non-empty); M judges whether they meet the done-criteria in the brief |
 | `done?` | `working` | M | evidence is insufficient but fixable, so M sends a follow-up |

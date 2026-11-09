@@ -320,3 +320,17 @@ Codex first, once OAR is near 1.0. See `research/17`.
   remaining commit's tree, force-push, and set the description and topics. Trigger: the last
   open branch merged.
 
+### Work over time (D112–D115)
+
+- [ ] A round of the waiting pose with real people, children included (LLM proxies: 5/10 for
+      the pose alone; the words carry it). Trigger: before calling v1 done.
+- [ ] The moment a wait comes true: the bubble pops and the card glides from Waiting to Working
+      (prototyped; the apps move the card without the spring yet).
+- [ ] Live: an OpenConnector Gmail trigger watch, a real judge model on a wait, a check on a
+      worker device, a routine's real run and its per-run cap. Trigger: an OpenConnector account
+      on the test Mac.
+- [ ] Routines on another device, waking a sleeping one, the cloud fallback (D29). Trigger: a
+      routine missed because its device slept.
+- [ ] Editing a routine by saying it ("改成 8:30") as a diff card (research/20 §7.3).
+- [ ] The partner eval: scenarios for "PR 过了告诉我", "一直修到 CI 绿", "每周一给我周报".
+

@@ -29,9 +29,9 @@
 | Place | **在哪儿做 / Where** | Where a task works |
 | Device (machine, runner) | **设备 / Devices** | |
 | harness (Claude Code, Codex, pi, DeepSeek Harness, …) | each by its own product name; as a category **AI agent / AI agent** (D88) | The AI tools Ducter hands work to. Not "coding agent": people use them for much more than code |
-| Routine | **例行 / Routine** | Recurring or triggered work |
-| Waiter | (shown as the reason for Waiting: "在等 PR 通过 / Waiting for the PR to be approved") | |
-| `until` loop | "一直…直到… / Keep … until …" on the task | |
+| Routine | **例行 / Routine**; the shelf **例行 / Routines**; a run says **来自例行：{name} / From the routine: {name}**; **暂停 / Pause** · **接着来 / Resume**; paused: "停着：连着 3 次没成 / Paused: 3 runs in a row didn't work" · "停着：连着 3 次你没看 / Paused: 3 reports unread" · "停着：到期了，等你说还要不要 / Paused: up for review"; the review card "还要吗？/ Keep this?" with **留着 / Keep it**; the proposal card's rows **什么时候 / When** · **做什么 / Does** · **怎么告诉你 / Reports** · **能动什么 / Can touch** · **花多少 / Cost** ("每次用一点你的 AI 额度 / A little of your AI allowance each time") · **到期 / Review**, Go **好，开始 / Go: Start** | Recurring or triggered work (D114, D115). Its next runs are beads on one strip, not a list |
+| Waiter | named as awaited: **等 {what} / Waiting until {what}** ("等 PR #1592 通过", "等域名续费的邮件"), never as if done; its deadline **最多等到 {time} / Until {time}**; **不等了 / Stop waiting** · **现在看一眼 / Look now**; in Details only, **怎么判断的 / How it checks** | D112, D115. How often it looks, the command and whether a model judges are never on a card, the head, a proposal card or the conversation |
+| `until` loop | "一直…直到… / Keep … until …" on the task; each try **第 n 次 / Try n**; **最多 20 / up to 20**; **停下 / Stop** | D113 |
 | Rule | **规则 / Rule**; the list **你的规则 / Your rules** · **不要这条 / Remove** · **跟 {name} 说一条规则… / Tell {name} a rule…** | A standing preference stated in words. Added only by saying it in the conversation; listed and removed on Partner (D89). After two switches the same way the partner asks once "以后…也用 X？ / Use X for … from now on?" |
 | what the partner itself runs on (brain) | **它用什么想事情 / What it thinks with**; the socket **想事情用 / Thinks with** · **换一个 / Switch** · **挑一个放进去 / Pick one to put in** · "{name} 现在用 {agent} 想事情了 / {name} thinks with {agent} now" · **从你的下一句话开始用 / Takes over from your next message** · **换了以后，名字、记得的事和你们的对话都还在 / Switching keeps its name, what it remembers and your conversation** · models **最聪明 / Smartest** · **回得更快 / Faster replies** | D89. Never "brain", 脑子, "model settings" or "main AI" on screen. Only AI agents signed in on the Mac it lives on: "只能用 {name} 住的这台 Mac 上登录了的 AI agent" |
 | who does the tasks (`fw_candidates`) | **谁来做事 / Who does the tasks** · the tray **这台 Mac 上的 AI agent / AI agents on this Mac** · **用它做事 / Use it for tasks** (per account, on by default) · **按用量付费 / Pay per use** | D89. Default line: "每件事 {name} 挑一个：最合适、额度最够的那个 / For each task {name} picks one: the best fit with the most limit left" |
@@ -214,8 +214,12 @@ Every task shows two editable things on its card and header.
 
 Two primitives plus one property cover every case.
 
-- **Waiter** on a task: "tell me when the PR is approved". It is code where possible; a quiet
-  check costs no model turn. While waiting, the task shows **在等 / Waiting** with the reason.
+- **Waiter** on a task: "tell me when the PR is approved" (D112). A time, or a condition compiled
+  into a small read-only check run where the task works (no model turn per look), or a
+  connection's event (OpenConnector triggers); a cheap model judges only what code can't, only
+  on change. It may have a deadline; past it the task needs you. While waiting, the task shows
+  **在等 / Waiting** with what it waits for, Ducter sitting on its bench, and a groove from start
+  to deadline (D115).
 - **`until` on a task**: "keep fixing until CI is green". A cheap model judges the condition
   after each turn. The loop stops on any of:
   - the condition holding;
@@ -223,7 +227,8 @@ Two primitives plus one property cover every case.
   - no progress;
   - oscillation.
 
-  The card shows a per-iteration strip.
+  The card shows a clay pebble per try (第 n 次 · 最多 20, D113); a try's own done report
+  doesn't finish the task.
 - **Routine / 例行**: "every Monday at 9, draft the weekly report", "when someone replies to
   this thread, summarize it".
   - Each firing creates a **run**: a fresh task by default. A "babysit one thing" routine

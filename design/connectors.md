@@ -160,7 +160,7 @@ user taps **用 oo 里的 OpenConnector / Use the OpenConnector from oo**:
 - **The narrow token is better, and the page says so.** Rather than reusing oo's, make a token
   just for Ducter on OpenConnector's Access page, with `allowedActions` / `allowedConnections`.
 
-### 4.5 Watching (v1.x, designed, not built)
+### 4.5 Watching (built in core as D112's event waits; not yet run against a live OpenConnector)
 
 OpenConnector's Provider Triggers HTTP API carries the watchers (research/35 §4):
 - `POST <base>/v1/providers/<service>/triggers/<triggerId>/execute` with

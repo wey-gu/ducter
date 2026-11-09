@@ -152,6 +152,13 @@ lives in Details. On hand needs no state chip: the lane is the state.
 - The partner's clay face may blink or breathe: it is the thing itself, not a status dot.
 - A passed check's ✓ is drawn in the done ink (D76); other marks stay muted.
 
+**Time is drawn; words are its caption (D115).** A wait with a deadline is a sunken groove from
+when it started to its deadline with the little Ducter on its bench at now. Every routine shows
+its next runs on one strip: today an ink mark at its left, a clay bead per run with its date
+under it. A keep-going loop is one clay pebble per try. No ticking numbers; nothing moves on its
+own. Waiting is Ducter's sixth pose (on a bench, looking out) with a small cream bubble holding
+the clay thing awaited (PR, cloud, envelope, clock, file; `design/art/assets/alpha/wait_*`).
+
 **Motion: character and scene may breathe; status never blinks (D77).**
 
 | Thing | Idle motion |
@@ -316,6 +323,7 @@ empty list (no noted lines) is left out with its heading. Screenshots:
 | Flows | https://claude.ai/artifact/LKuVp3knPDJ4EdoyWBGSWN | 21 key screens for groups A, B, D, E, C | draft |
 | Concept art | https://claude.ai/artifact/HAPoyBbrSkm6sYjqGoNMze | character and screen art directions, rounds 1–2 | round 2 recommended: puffy matte clay |
 | Loadout (2D) | https://claude.ai/artifact/CUpw7P1bPjKQKQYeLkUVzG | devices / AI accounts / ability-sticker interaction | grammar prototype; art to be replaced |
+| Work over time | https://claude.ai/artifact/CMBoqncshR96q9fzgUhpXy | waits, keep-going tries, routines: On hand, the opened task, proposal cards, the phone (D112–D115) | v5, reviewed by the lead; author review pending |
 | Quiet conversation (D104) | https://claude.ai/artifact/8ZaW9XS7a7NEBX1ATD4Khr | before / after on the demo seed, the waiting line, where each removed line went, three users (zh/en) | proposal, pending the author's review |
 | Phone web (built) | `.shots/phone-*.png` (390×844, zh/en, light/dark) | the real `apps/web` client: conversation, decisions, On hand, opened task, pairing, notifications | built, pending review |
 

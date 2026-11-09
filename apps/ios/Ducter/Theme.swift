@@ -14,10 +14,11 @@ enum Pebble {
     static let onAccent = dynamic(0x2B2118, 0x2B2118)
     static let line = dynamic(0xE8D9C4, 0x3A3027)
     static let failedInk = dynamic(0x8A1F3B, 0xF8A9BC)
-    /// The UI is flat; the clay art carries the depth (ui.md, D73). A press darkens a
-    /// button's fill this much and scales it to `pressScale`; nothing moves down.
-    static let pressDarken: Double = 0.06
-    static let pressScale: CGFloat = 0.98
+    /// Ledges: a darker shade of each filled button's fill (app.css --press-*).
+    static let pressAccent = dynamic(0xC9642A, 0xC9642A)
+    static let pressQuiet = dynamic(0xE0C9B0, 0x0D0A07)
+    /// Every filled button has this ledge and presses down into it (ui.md, depth).
+    static let ledge: CGFloat = 3
 
     static let radius: CGFloat = 16
     static let radiusSmall: CGFloat = 12
@@ -42,36 +43,37 @@ extension UIColor {
     }
 }
 
-/// A flat button (D73): a solid fill, or the surface with a hairline. Pressing darkens
-/// the fill a little and scales it to 0.98; no ledge, no shadow.
-private struct FlatButton: View {
+/// A filled button: its fill on a ledge of a darker shade; pressing sinks it into the ledge.
+private struct LedgeButton: View {
     let configuration: ButtonStyle.Configuration
-    let fill: Color, ink: Color
+    let fill: Color, ledge: Color, ink: Color
     var hairline: Color? = nil
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: Pebble.buttonRadius, style: .continuous)
+        let down = configuration.isPressed ? Pebble.ledge : 0
         configuration.label
             .font(.body.weight(.semibold))
             .foregroundStyle(ink)
             .frame(maxWidth: .infinity, minHeight: Pebble.buttonHeight)
             .background(fill, in: shape)
-            .overlay(shape.fill(Color.black.opacity(configuration.isPressed ? Pebble.pressDarken : 0)))
             .overlay(shape.stroke(hairline ?? .clear, lineWidth: 1))
-            .scaleEffect(configuration.isPressed ? Pebble.pressScale : 1)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+            .background(ledge, in: shape.offset(y: Pebble.ledge - down))
+            .offset(y: down)
+            .padding(.bottom, Pebble.ledge)
+            .animation(.spring(response: 0.18, dampingFraction: 0.7), value: configuration.isPressed)
     }
 }
 
-/// The primary button: the one thing to do. A solid ink fill, full width, one thumb.
+/// The primary button: the accent, full width, one thumb.
 struct PrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        FlatButton(configuration: configuration, fill: Pebble.ink, ink: Pebble.bg)
+        LedgeButton(configuration: configuration, fill: Pebble.accent, ledge: Pebble.pressAccent, ink: Pebble.onAccent)
     }
 }
 
-/// A secondary button: ink on the surface, with a hairline.
+/// A secondary button: ink on the surface.
 struct QuietButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        FlatButton(configuration: configuration, fill: Pebble.surface, ink: Pebble.ink, hairline: Pebble.line)
+        LedgeButton(configuration: configuration, fill: Pebble.surface, ledge: Pebble.pressQuiet, ink: Pebble.ink, hairline: Pebble.line)
     }
 }

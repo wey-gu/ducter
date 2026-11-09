@@ -40,12 +40,13 @@
   --failed-surface: #fbdde4;
   --failed-ink: #8a1f3b;
 
-  /* Depth (design/ui.md, Components; D73): the clay art carries the depth, the UI is flat.
-     No button has a ledge or a shadow; a press darkens its fill (--press-mix) and scales it
-     to --press-scale. Containers rest on --raised or float on --floating. */
-  --press-mix: #000000;
-  --press-darken: 6%;
-  --press-scale: 0.98;
+  /* Depth (design/ui.md, Components): a ledge means "this can be pressed"; every
+     filled button has the same one (--ledge, in a darker shade of its fill) and sinks into
+     it. Containers never have a ledge: they rest on --raised or float on --floating. */
+  --ledge: 3px;
+  --press-primary: #000000;
+  --press-quiet: #e0c9b0; /* secondary */
+  --press-accent: #c9642a;
   --raised: 0 2px 10px rgba(43, 33, 24, 0.07);
   --elev: var(--raised); /* the name some rules use */
   --floating: 0 10px 32px rgba(43, 33, 24, 0.14);
@@ -112,7 +113,8 @@
     --failed-ink: #f8a9bc;
     --raised: 0 2px 10px rgba(0, 0, 0, 0.35);
     --floating: 0 10px 32px rgba(0, 0, 0, 0.5);
-    --press-mix: #000000;
+    --press-primary: #8a7a66;
+    --press-quiet: #0d0a07;
   }
 }
 :root[data-theme="dark"] {
@@ -141,7 +143,8 @@
   --failed-ink: #f8a9bc;
   --raised: 0 2px 10px rgba(0, 0, 0, 0.35);
   --floating: 0 10px 32px rgba(0, 0, 0, 0.5);
-  --press-mix: #000000;
+  --press-primary: #8a7a66;
+  --press-quiet: #0d0a07;
 }
 
 * {
@@ -253,26 +256,24 @@ a {
   opacity: 1;
 }
 
-/* A chrome button: quiet, its word in soft ink, no fill until it is touched. */
 .onhand-btn {
   display: flex;
   align-items: center;
   gap: 8px;
   height: 44px;
-  padding: 0 12px;
-  border-radius: var(--r-sm);
-  color: var(--ink-soft);
+  padding: 0 12px 0 10px;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: 0 var(--ledge) 0 var(--press-quiet);
   font-weight: 700;
-  font-size: var(--sm);
   flex-shrink: 0;
-  transition: background-color var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
-}
-.onhand-btn:active {
-  background: var(--surface-sunken);
+  transition: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
 }
 .press:active,
 .onhand-btn:active {
-  transform: scale(var(--press-scale));
+  transform: translateY(var(--ledge));
+  box-shadow: 0 0 0 transparent;
 }
 .conn {
   margin: 0 16px 6px;
@@ -452,46 +453,35 @@ a {
   border-radius: var(--r-sm);
   font-weight: 700;
   font-size: var(--md);
-  transition: background-color var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
+  transition: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
   white-space: nowrap;
 }
-/* Flat (D73): primary is a solid ink fill, secondary the surface with a hairline, text is
-   accent-ink words; a press darkens the fill and scales to 0.98, nothing moves down. */
 .btn.primary {
   background: var(--ink);
   color: var(--bg);
-}
-.btn.primary:active:not(:disabled) {
-  background: color-mix(in srgb, var(--ink) calc(100% - var(--press-darken)), var(--press-mix));
+  box-shadow: 0 var(--ledge) 0 var(--press-primary);
 }
 .btn.quiet {
   background: var(--surface);
   border: 1px solid var(--line);
-}
-.btn.quiet:active:not(:disabled) {
-  background: color-mix(in srgb, var(--surface) calc(100% - var(--press-darken)), var(--ink));
+  box-shadow: 0 var(--ledge) 0 var(--press-quiet);
 }
 .btn.accent {
   background: var(--accent);
   color: var(--on-accent);
-}
-.btn.accent:active:not(:disabled) {
-  background: color-mix(in srgb, var(--accent) calc(100% - var(--press-darken)), var(--press-mix));
+  box-shadow: 0 var(--ledge) 0 var(--press-accent);
 }
 .btn.text {
   padding: 0 10px;
-  color: var(--needs-ink);
+  color: var(--ink-soft);
 }
-.btn:active:not(:disabled) {
-  transform: scale(var(--press-scale));
+.btn:active:not(:disabled):not(.text) {
+  transform: translateY(var(--ledge));
+  box-shadow: 0 0 0 transparent;
 }
-.btn.text:active:not(:disabled) {
-  background: color-mix(in srgb, var(--needs-ink) 10%, transparent); /* flat: a soft tint only */
-}
-@media (hover: hover) {
-  .btn.text:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--needs-ink) 7%, transparent);
-  }
+.btn.text:active:not(:disabled),
+.btn.text:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ink) 7%, transparent); /* flat: a soft tint only */
 }
 .btn:disabled {
   opacity: 0.5;
@@ -507,11 +497,11 @@ a {
 }
 
 /* ---------- living message and decisions ---------- */
-/* A light container on the paper: a hairline, no slab, no shadow (D73). */
 .living {
-  border: 1px solid var(--line);
+  background: var(--surface);
   border-radius: var(--r-xl);
-  padding: 18px 14px;
+  box-shadow: var(--raised);
+  padding: 18px 16px;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -634,7 +624,7 @@ a {
   text-align: left;
   width: 100%;
 }
-/* A plain mark in muted ink: no tile, no state color (D73). */
+/* A plain mark in muted ink: no tile. */
 .line .ic {
   width: 18px;
   height: 18px;
@@ -706,15 +696,16 @@ a {
   border-radius: var(--r-sm);
   background: var(--accent);
   color: var(--on-accent);
+  box-shadow: 0 var(--ledge) 0 var(--press-accent);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: background-color var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
+  transition: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
 }
-.send:active:not(:disabled) {
-  background: color-mix(in srgb, var(--accent) calc(100% - var(--press-darken)), var(--press-mix));
-  transform: scale(var(--press-scale));
+.send:active {
+  transform: translateY(var(--ledge));
+  box-shadow: none;
 }
 .send:disabled {
   opacity: 0.45;
@@ -764,9 +755,10 @@ a {
   border-radius: var(--r-sm);
   background: var(--surface);
   border: 1px solid var(--line);
+  box-shadow: 0 var(--ledge) 0 var(--press-quiet);
   font-size: var(--md);
   text-align: left;
-  transition: transform var(--t-fast) var(--ease);
+  transition: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
 }
 
 /* ---------- ask cards (notifications) ---------- */
@@ -812,11 +804,11 @@ a {
   letter-spacing: -0.3px;
 }
 .section h3 {
-  margin: 8px 2px 0;
-  min-height: 36px;
-  font-size: var(--md);
+  margin: 4px 2px 0;
+  font-size: var(--xs);
   font-weight: 800;
-  color: var(--ink);
+  letter-spacing: 0.5px;
+  color: var(--ink-muted);
   display: flex;
   gap: 8px;
   align-items: center;

@@ -195,7 +195,7 @@ func (a *App) devicesView(c *ui.Context) {
 			default:
 				ui.Row(c).Grow(1).MinHeight(0).Gap(t.S4).AlignItems(ui.Stretch).Children(func() {
 					ui.Column(c).Width(260).Shrink(0).Gap(t.S3).Children(func() {
-						ui.Text(c, a.L.T("devices.list")).FontSize(t.SM).FontWeight(800).TextColor(t.InkSoft)
+						ui.Text(c, a.L.T("devices.list")).FontSize(t.XS).FontWeight(800).LetterSpacing(1.2).TextColor(t.InkMuted)
 						a.deviceCards(c, 0)
 					})
 					ui.Column(c).Grow(1).MinWidth(0).Children(func() { a.stage(c, dev) })
@@ -779,7 +779,7 @@ func (a *App) stageLine(c *ui.Context, dv *protocol.DeviceView, sw float32) {
 func (a *App) abilityGrid(c *ui.Context, dv *protocol.DeviceView, cols int) {
 	t := a.T
 	d := a.devState()
-	ui.Text(c, a.L.T("devices.grid")).FontSize(t.SM).FontWeight(800).TextColor(t.InkSoft)
+	ui.Text(c, a.L.T("devices.grid")).FontSize(t.XS).FontWeight(800).LetterSpacing(1.2).TextColor(t.InkMuted)
 	hovered := ""
 	ui.Grid(c).Columns(cols).Gap(t.S3).Children(func() {
 		for _, id := range gridAbilities {

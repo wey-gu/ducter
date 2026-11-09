@@ -25,6 +25,7 @@
   --line: #e8d9c4;
   --line-strong: #dcc7aa;
   --accent: #ff8a3d;
+  --accent-ledge: #d9681f;
   --accent-ink: #9a3f0e;
   --highlight: #ffe9a8;
   --decide: #ff8a3d;
@@ -53,10 +54,10 @@
   --r-md: 16px;
   --r-lg: 22px;
   --r-xl: 28px;
-  /* depth: the clay art carries it; the UI is flat. Containers rest on a soft shadow,
-     buttons are flat and only darken and scale a little when pressed (D73) */
+  /* depth: containers rest, buttons stand on a ledge */
   --raised: 0 2px 10px rgb(43 33 24 / 0.07);
   --floating: 0 10px 32px rgb(43 33 24 / 0.14);
+  --ledge: 3px;
   /* motion: Pebble is bouncy */
   --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --out: cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -109,7 +110,7 @@ h1 {
   letter-spacing: -0.035em;
   text-wrap: balance;
 }
-h1 .line { display: block; }
+h1 .soft { color: var(--accent-ink); display: block; }
 h2 {
   font-weight: 800;
   font-size: clamp(34px, 5.4vw, 64px);
@@ -121,24 +122,25 @@ h3 { font-weight: 800; font-size: 22px; line-height: 1.15; letter-spacing: -0.01
 .lede { font-size: clamp(18px, 1.6vw, 21px); line-height: 1.5; color: var(--ink-2); max-width: 36em; text-wrap: pretty; }
 .lede b, .body b { color: var(--ink); font-weight: 650; }
 .body { color: var(--ink-2); max-width: 34em; text-wrap: pretty; }
-/* ---------- buttons: one family, flat (D73) ---------- */
+/* ---------- buttons: one family, the ledge means "press me" ---------- */
 .btn {
-  --fill: var(--ink); --on: var(--bg);
+  --fill: var(--ink); --on: var(--bg); --ledge-c: #000;
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   height: 48px; padding: 0 20px; border: 0; border-radius: var(--r-sm);
   background: var(--fill); color: var(--on);
   font-family: var(--display); font-weight: 700; font-size: 16px; line-height: 1.15; text-align: center;
   text-decoration: none; cursor: pointer;
-  transition: transform var(--press) ease-out, background-color 0.15s;
+  box-shadow: 0 var(--ledge) 0 var(--ledge-c);
+  transition: transform var(--press) ease-out, box-shadow var(--press) ease-out, background-color 0.15s;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
 }
 .btn:hover { background: color-mix(in srgb, var(--fill) 90%, white); }
-.btn:active, .btn.is-pressed { transform: scale(0.98); background: color-mix(in srgb, var(--fill) 94%, black); }
-.btn.secondary { --fill: var(--surface); --on: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+.btn:active, .btn.is-pressed { transform: translateY(var(--ledge)); box-shadow: 0 0 0 var(--ledge-c); }
+.btn.secondary { --fill: var(--surface); --on: var(--ink); --ledge-c: var(--line-strong); box-shadow: inset 0 0 0 1px var(--line), 0 var(--ledge) 0 var(--ledge-c); }
 .btn.secondary:hover { background: #fffaf3; }
-.btn.secondary:active, .btn.secondary.is-pressed { background: color-mix(in srgb, var(--surface) 94%, var(--ink)); }
-.btn.accent { --fill: var(--accent); --on: var(--ink); }
+.btn.secondary:active, .btn.secondary.is-pressed { box-shadow: inset 0 0 0 1px var(--line), 0 0 0 var(--ledge-c); }
+.btn.accent { --fill: var(--accent); --on: var(--ink); --ledge-c: var(--accent-ledge); }
 .btn.sm { height: 32px; padding: 0 12px; font-size: 13px; border-radius: 10px; }
 .btn.md { height: 40px; padding: 0 16px; font-size: 15px; }
 .btn.lg { height: 56px; padding: 0 26px; font-size: 18px; border-radius: 14px; }
@@ -234,7 +236,7 @@ section { position: relative; }
 .presence span { display: inline-block; transition: opacity 0.2s; }
 .onhand {
   margin-left: auto; display: inline-flex; align-items: center; height: 34px; padding: 0 12px;
-  border-radius: 10px; color: var(--ink-2);
+  border-radius: 10px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line), 0 3px 0 var(--line-strong);
   font-family: var(--display); font-weight: 700; font-size: 13px; flex: none;
 }
 .convo { position: relative; overflow: hidden; mask-image: linear-gradient(to bottom, transparent 0, #000 36px); -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 36px); }
@@ -346,7 +348,7 @@ section { position: relative; }
 .board-wrap .board { margin-top: -30px; }
 .hint { font-family: var(--display); font-weight: 700; font-size: 13px; color: var(--accent-ink); }.note { margin-top: 22px; font-size: 15.5px; }
 .points { list-style: none; padding: 0; margin: 28px 0 0; display: grid; gap: 14px; }
-.points li { color: var(--ink-2); }
+.points li { color: var(--ink-2); padding-left: 16px; border-left: 3px solid var(--line-strong); }
 .points li b { color: var(--ink); font-weight: 650; }
 
 /* ---------- devices stage ---------- */
@@ -477,7 +479,7 @@ section { position: relative; }
 .ink-band { background: var(--ink); color: var(--bg); }
 .ink-band h2 { color: var(--bg); }
 .ink-band .lede, .ink-band .body { color: #e9dccb; }
-.ledger { background: var(--bg); color: var(--ink); border-radius: var(--r-xl); padding: 8px; box-shadow: 0 10px 32px rgb(0 0 0 / 0.3); }
+.ledger { background: var(--bg); color: var(--ink); border-radius: var(--r-xl); padding: 8px; box-shadow: 0 24px 60px rgb(0 0 0 / 0.35); }
 .ledger-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 14px 10px; }
 .ledger-head b { font-family: var(--display); font-weight: 800; font-size: 18px; }
 .ledger-head small { color: var(--muted); font-size: 13px; }
@@ -497,7 +499,7 @@ section { position: relative; }
 .js .ledger li.step { opacity: 0; transform: translateY(8px); }
 .js .ledger li.step.in { opacity: 1; transform: none; transition: opacity 0.35s, transform 0.5s var(--spring); }
 .nevers { list-style: none; padding: 0; margin: 36px 0 0; display: grid; gap: 22px; }
-.nevers li { display: grid; gap: 4px; }
+.nevers li { display: grid; gap: 4px; padding-left: 18px; border-left: 3px solid var(--accent); }
 .nevers b { font-family: var(--display); font-weight: 800; font-size: 22px; letter-spacing: -0.01em; color: var(--bg); }
 .nevers span { color: #d9cab6; font-size: 15px; }
 
@@ -523,13 +525,13 @@ section { position: relative; }
 @media (min-width: 980px) { .install { grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); align-items: start; } }
 .tabs { display: flex; gap: 6px; padding: 5px; border-radius: 14px; background: var(--sunken); width: max-content; max-width: 100%; flex-wrap: wrap; }
 .tabs button { border: 0; background: transparent; cursor: pointer; font-family: var(--display); font-weight: 700; font-size: 14px; padding: 8px 14px; border-radius: 10px; color: var(--muted); }
-.tabs button[aria-selected="true"] { background: var(--surface); color: var(--ink); }
+.tabs button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 2px 0 var(--line-strong); }
 .term { background: var(--ink); color: #f3e7d6; border-radius: var(--r-lg); padding: 18px 18px; font-family: var(--mono); font-size: 13.5px; line-height: 1.7; position: relative; padding-top: 50px; }
 .term pre { margin: 0; font: inherit; white-space: pre-wrap; overflow-wrap: anywhere; }
 .term .c { color: #a8977f; }
 .term .p { color: var(--accent); user-select: none; }
 .term .copy { position: absolute; right: 10px; top: 10px; }
-.term .copy.btn.sm { --fill: #3d3127; --on: #f3e7d6; }
+.term .copy.btn.sm { --fill: #3d3127; --on: #f3e7d6; --ledge-c: #120d09; }
 .panel[hidden] { display: none; }
 .panel { display: grid; gap: 12px; }
 .panel p { margin: 0; color: var(--ink-2); font-size: 15px; }

@@ -10,6 +10,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
+	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
 // ---------- the persona face ----------
@@ -223,17 +224,17 @@ func (a *App) lift(c *ui.Context, e ui.Element, by float32) {
 
 // The one button family (design/ui.md, Components):
 //
-//   - primary: the one thing to do. A solid ink fill, cream words.
-//   - secondary: a choice beside it. The surface, with a 1px hairline.
-//   - accent: the composer's send. A solid orange fill.
-//   - text (quiet): accent-ink words only, a soft tint under them on hover
-//     and press.
+//   - primary: the one thing to do. Ink.
+//   - secondary: a choice beside it. The surface, with a hairline.
+//   - accent: the composer's send.
+//   - text (quiet): words only, a soft tint under them on hover and press.
 //   - icon: a square of any of these (iconButton).
 //
-// Flat (D73): no ledge, no shadow. A press darkens the fill a little and
-// scales the button to 0.98; nothing moves down. The clay art carries the
-// depth. Three heights (ControlSM/MD/LG); one radius; hover, press and
-// keyboard focus look the same on all of them.
+// Every filled button stands on the same ledge (a darker shade of its own
+// fill, 3 points) and sinks into it as it is pressed: the ledge means
+// "this can be pressed", and only buttons have one. Text buttons, chips
+// and containers are flat. Three heights (ControlSM/MD/LG); one radius;
+// hover, press and keyboard focus look the same on all of them.
 type btnKind int
 
 const (
@@ -291,34 +292,35 @@ func (a *App) buttonFor(c *ui.Context, label, about string, kind btnKind, height
 }
 
 // buttonLook styles b as a button of kind on onSurface, h tall: its
-// background, edge and hover/press states. It returns the ink for what is
-// on it.
+// background, edge, depth and hover/press states. It returns the ink for
+// what is on it.
 func (a *App) buttonLook(c *ui.Context, b ui.Element, kind btnKind, h float32, onSurface ui.Color) ui.Color {
 	t := a.T
 	hover, down := b.Hovered(), b.Pressed()
-	// fill is a filled button's background: a shade lighter on hover, a
-	// little darker while pressed.
-	fill := func(base, lighter ui.Color, lift float32) ui.Color {
-		switch {
-		case down:
-			return base.Mix(pressInk, t.Press.Darken)
-		case hover:
-			return base.Mix(lighter, lift)
-		}
-		return base
-	}
 	switch kind {
 	case btnPrimary:
-		b.Background(fill(t.Ink, t.InkSoft, 0.45))
-		a.press(c, b)
+		bg := t.Ink
+		if hover && !down {
+			bg = t.Ink.Mix(t.InkSoft, 0.45)
+		}
+		b.Background(bg)
+		a.press(c, b, t.PressPrimary)
 		return t.OnUserBubble
 	case btnAccent:
-		b.Background(fill(t.Accent, t.NeedsYou.Strong, 0.35))
-		a.press(c, b)
+		bg := t.Accent
+		if hover && !down {
+			bg = t.Accent.Mix(t.NeedsYou.Strong, 0.35)
+		}
+		b.Background(bg)
+		a.press(c, b, t.PressAccent)
 		return t.OnAccent
 	case btnSecondary:
-		b.Background(fill(t.Surface, t.SurfaceSunken, 0.4)).Border(1, t.Line)
-		a.press(c, b)
+		bg := t.Surface
+		if hover && !down {
+			bg = t.SurfaceSunken.Mix(t.Surface, 0.6)
+		}
+		b.Background(bg).Border(1, t.Line)
+		a.press(c, b, t.PressSecondary)
 		return t.Ink
 	}
 	// Text: no edge until the pointer comes over it.
@@ -332,52 +334,55 @@ func (a *App) buttonLook(c *ui.Context, b ui.Element, kind btnKind, h float32, o
 	return t.NeedsYou.Ink
 }
 
-// pressInk is what a pressed fill darkens toward.
-var pressInk = ui.Hex("#000000")
-
-// sink is the press of a control drawn outside the family (a starter, a
-// row): the same 0.98 scale as a button.
+// sink moves a flat control a point down while it is pressed.
 func (a *App) sink(c *ui.Context, e ui.Element, down bool) {
 	if c.Preferences().ReduceMotion {
 		return
 	}
-	p := ui.Pose{}
+	y := float32(0)
 	if down {
-		p = ui.Pose{Scale: a.T.Press.Scale}
+		y = 1
 	}
-	e.AnimatePose(p, ui.Animation{Duration: a.T.PressDur})
+	e.Translate(0, e.AnimateTo("sink", y, ui.Animation{Duration: a.T.PressDur}))
 }
 
-// press scales a button to Press.Scale while it is pressed (its fill
-// darkens in buttonLook). Under reduced motion only the color changes.
-func (a *App) press(c *ui.Context, e ui.Element) {
-	a.sink(c, e, e.Pressed())
+// press gives an element the Pebble depth: a solid offset under it that it
+// sinks into while pressed.
+func (a *App) press(c *ui.Context, e ui.Element, press theme.Press) {
+	if press.Offset == 0 {
+		return
+	}
+	down := e.Pressed()
+	off := press.Offset
+	y := float32(0)
+	if down {
+		y = press.Offset - 1
+		off = 1
+	}
+	if c.Preferences().ReduceMotion {
+		e.Shadow(0, off, 0, 0, press.Color)
+		return
+	}
+	y = e.AnimateTo("press", y, ui.Animation{Duration: a.T.PressDur})
+	e.Translate(0, y).Shadow(0, press.Offset-y, 0, 0, press.Color)
 }
 
-// navButton is a button of the window's chrome (Devices, On hand): quiet,
-// an optional glyph and its word in ink, no fill or edge until the pointer
-// comes over it (then the sunken tint), so the chrome never competes with
-// the page.
+// navButton is a button of the window's chrome (Devices, On hand): a
+// secondary button at the small height with a glyph before its word.
 func (a *App) navButton(c *ui.Context, key, label, name string, glyph func()) bool {
 	t := a.T
 	left := t.S3
 	if glyph != nil {
-		left = t.S2
+		left = t.S2 - 2 // a glyph sits close to the edge, as in a chip
 	}
 	b := ui.Row(c.Key("nav:"+key)).Gap(t.S2).Height(t.ControlSM).Padding(0, t.S3, 0, left).Radius(t.RadiusSM).
 		AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(name).Focusable().Shrink(0)
-	switch {
-	case b.Pressed():
-		b.Background(t.SurfaceSunken)
-	case b.Hovered():
-		b.Background(t.SurfaceSunken.Mix(t.Chrome, 0.45))
-	}
-	a.press(c, b)
+	fg := a.buttonLook(c, b, btnSecondary, t.ControlSM, t.Chrome)
 	b.Children(func() {
 		if glyph != nil {
 			glyph()
 		}
-		ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).SingleLine().AccessHidden(true)
+		ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(fg).SingleLine().AccessHidden(true)
 	})
 	return b.Clicked()
 }

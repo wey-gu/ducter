@@ -442,10 +442,8 @@ func (a *App) living(c *ui.Context, e *store.Entry) {
 		away = (e.FirstSeq <= a.S.HeadSeq && a.S.Unread(e)) || !c.WindowActive() || c.WindowHidden()
 		a.livingAway[e.FirstSeq] = away
 	}
-	// A light container on the paper: a hairline, no slab and no shadow
-	// (D73), so the decisions inside are the only tinted things.
-	card := ui.Column(c.Key("living")).Padding(t.S5).Gap(t.S4).Radius(t.RadiusXL).Border(1, t.Line).
-		Label(a.L.T("living.title"))
+	card := ui.Column(c.Key("living")).Padding(t.S5).Gap(t.S4).Radius(t.RadiusXL).Background(t.Surface).
+		Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Label(a.L.T("living.title"))
 	a.resettle(c, card, e.Revision)
 	card.Children(func() {
 		if away {
@@ -556,7 +554,7 @@ func (a *App) livingLine(c *ui.Context, it protocol.LivingItem) {
 	}
 	line := ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Cursor(ui.CursorPointer)
 	line.Children(func() {
-		// A plain mark in muted ink: no tile, no state color (D73).
+		// A plain mark in muted ink: no tile.
 		a.glyph(c, 18, icon(t.InkMuted))
 		text := it.Text
 		if it.Title != "" {

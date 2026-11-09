@@ -67,7 +67,7 @@ CLI; Ducter's output from the app is in `~/.ducter/app.log`.
 newer version in the background, and says so in one line of the app menu (and Settings): "Update
 0.2.0 ready · restart to finish". It installs when you next quit, or right away with Restart
 Now; Ducter in the background is restarted on the new version and carries on from the Log.
-Details and a local test: [release/README.md](release/README.md#how-the-app-updates-itself-d71).
+Details and a local test: [release/README.md](release/README.md#how-the-app-updates-itself-d72).
 
 For a scratch run of the real app: `~/Library/Application Support/Ducter/dev.env` (a build with another bundle id reads
 `~/Library/Application Support/<bundle id>/dev.env`) with lines

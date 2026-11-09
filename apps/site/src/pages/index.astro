@@ -1,6 +1,7 @@
 ---
 import "../styles/site.css";
 import Art from "../components/Art.astro";
+import Blink from "../components/Blink.astro";
 import Face from "../components/Face.astro";
 import Head from "../components/Head.astro";
 import Nav from "../components/Nav.astro";
@@ -57,7 +58,7 @@ const ld = {
       <Face id="hero-face" faces={["idle", "working", "done"]} start="done" sizes="132px" eager />
       <div class="win">
         <div class="win-bar">
-          <span class="avatar mascot" data-face="idle"><span class="clay"><Art class="f-idle" name="ducter_idle" alt="" sizes="52px" eager /><i class="lid l"></i><i class="lid r"></i></span></span>
+          <span class="avatar mascot" data-face="idle"><span class="clay"><Art class="f-idle" name="ducter_idle" alt="" sizes="52px" eager /><Blink sizes="52px" /></span></span>
           <div class="who"><b>Ducter</b><span class="presence" id="presence"><span>just finished something</span></span></div>
         </div>
         <div class="convo">

@@ -1,0 +1,47 @@
+---
+// The idle face's blink (D77), as the desktop app draws it (apps/desktop/internal/views/lids.go).
+// The closed face is the same render with each eye filled from the clay round it
+// (tools/art/eyes.py, via scripts/art.mjs). Each eye is a copy of it laid exactly over the open
+// face (same box, same fit), cut to an ellipse 12% past the eye's lid box (art.json "lids") and
+// shown through a lid that slides down from the top while a smaller one rises from below; a
+// crease rides the upper lid's edge. Past the eye both faces are the same pixels, so only the
+// lid's edge ever shows. It sits in a .mascot's .clay, over the f-idle pose, which is drawn full
+// width on the bottom of a square box. How shut the eyes are is --k (0 open … 1 shut), animated
+// in site.css.
+import Art from "./Art.astro";
+import manifest from "../art.json";
+
+interface Props {
+  sizes: string;
+}
+const { sizes } = Astro.props;
+const { w, h, lids } = manifest.ducter_idle_closed;
+const a = h / w; // the art's height in the square box
+const pct = (v: number) => `${+(v * 100).toFixed(4)}%`;
+const eyes = lids.map(([x, y, bw, bh]) => {
+  // The lid box in the square box.
+  const top = 1 - a + y * a;
+  const lh = bh * a;
+  // The crease's box: the lid box 12% larger, its viewBox 100 wide and of the box's shape.
+  const cw = 1.12 * bw;
+  const ch = 1.12 * lh;
+  const vh = +((100 * ch) / cw).toFixed(3);
+  // The crease at the shut edge, in lid-box units: x 0.22…0.78, y 0.80 in the middle and 0.0255
+  // higher at its ends (the lid's edge is the bottom of an ellipse 1.0 × 0.638 of the lid box).
+  const Y = (v: number) => +(((v + 0.06) / 1.12) * vh).toFixed(3);
+  const yc = Y(0.8);
+  const ye = Y(0.8 - 0.0255);
+  return {
+    lid: `--ex:${pct(x + bw / 2)};--et:${pct(top)};--ew:${pct(bw)};--eh:${pct(lh)}`,
+    crease: `left:${pct(x + bw / 2 - cw / 2)};top:${pct(top + lh / 2 - ch / 2)};width:${pct(cw)};height:${pct(ch)};--sw:${+(7 * bw).toFixed(4)}cqw`,
+    viewBox: `0 0 100 ${vh}`,
+    d: `M25 ${ye} Q50 ${+(2 * yc - ye).toFixed(3)} 75 ${ye}`,
+  };
+});
+---
+<span class="blink" aria-hidden="true">
+  {eyes.map((e) => <Art class="shut" name="ducter_idle_closed" alt="" sizes={sizes} style={e.lid} loading="eager" />)}
+  {eyes.map((e) => (
+    <svg class="crease" style={e.crease} viewBox={e.viewBox} preserveAspectRatio="none"><path d={e.d} /></svg>
+  ))}
+</span>

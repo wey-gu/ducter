@@ -592,20 +592,60 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
 #board-face .clay { animation-delay: -1.4s; }
 #stage-face .clay { animation-delay: -2.7s; }
 #final-face .clay, #task-face .clay { animation-delay: -0.9s; }
-/* eyelids over the idle pose's eyes, placed on the trimmed ducter_idle drawn bottom-aligned in a
-   square box (its height is 0.898 of the width): a 150 ms blink every few seconds */
-.lid { position: absolute; z-index: 2; border-radius: 50%; transform: scaleY(0); transform-origin: 50% 0; pointer-events: none;
-  animation: blink var(--blink, 4.6s) linear infinite; animation-delay: var(--blink-at, -1s); }
-.lid.l { left: 34.6%; top: 32.43%; width: 10.8%; height: 23.53%; background: linear-gradient(90deg, #f4a065, #f19562); }
-.lid.r { left: 62.1%; top: 31.98%; width: 10.6%; height: 23.71%; background: linear-gradient(90deg, #e17938, #cb6026); }
-.mascot:not([data-face="idle"]) .lid { display: none; }
-@keyframes blink { 0%, 96.6% { transform: scaleY(0); } 97.9%, 98.1% { transform: scaleY(1); } 99.4%, 100% { transform: scaleY(0); } }
-@keyframes blink2 { 0%, 93.4% { transform: scaleY(0); } 94.2%, 94.4% { transform: scaleY(1); } 95.2%, 96.5% { transform: scaleY(0); } 97.6%, 97.8% { transform: scaleY(1); } 98.8%, 100% { transform: scaleY(0); } }
-#hero-face { --blink: 4.6s; --blink-at: -2.2s; }
-#stage-face { --blink: 5.7s; --blink-at: -0.6s; }
-#stage-face .lid { animation-name: blink2; }
-.win-bar .avatar { --blink: 3.4s; --blink-at: -1.7s; }
-#final-face { --blink: 5.1s; --blink-at: -3.1s; }
+/* the blink (Blink.astro): the closed face shows through a lid sliding down over each eye, as the
+   desktop app draws it (lids.go). --k is how shut the eyes are: 150 ms, sin-shaped, three blinks
+   in each 13.5 s, 3.9–5.3 s apart; each face starts at its own point; the stage's blinks twice */
+@property --k { syntax: "<number>"; inherits: true; initial-value: 0; }
+.mascot .blink {
+  position: absolute; inset: 0; pointer-events: none; container-type: inline-size;
+  opacity: 0; transform: translateY(8px) scale(0.92);
+  transition: opacity 0.28s ease, transform 0.5s var(--spring);
+  animation: blink 13.5s linear infinite; animation-delay: var(--blink-at, -1s);
+}
+.mascot[data-face="idle"] .blink { opacity: 1; transform: none; }
+/* each eye: the closed face in the open one's very box, cut to an ellipse 12% past the eye's lid
+   box (--ex its middle, --et its top, --ew × --eh its size; past the filled eye the two faces are
+   the same pixels). The upper lid comes down to the closed eye's line (0.8 of the lid box), the
+   lower one rises to it late (k cubed); each edge is the bottom of an ellipse 1.0 × 0.638 of the
+   lid box, so both bow down, as lids do */
+.mascot .blink .shut {
+  opacity: 1; transform: none; transition: none;
+  clip-path: ellipse(calc(var(--ew) * 0.56) calc(var(--eh) * 0.56) at var(--ex) calc(var(--et) + var(--eh) * 0.5));
+  --lid: radial-gradient(var(--ew) calc(var(--eh) * 0.638) at var(--ex) calc(var(--et) + var(--eh) * (0.86 * var(--k) - 0.698)), #000 calc(100% - 1px), transparent 100%),
+    radial-gradient(var(--ew) calc(var(--eh) * 0.638) at var(--ex) calc(var(--et) + var(--eh) * (0.522 - 0.36 * var(--k) * var(--k) * var(--k))), transparent calc(100% - 1px), #000 100%);
+  -webkit-mask-image: var(--lid); mask-image: var(--lid);
+}
+.mascot .blink .shut img { filter: none; }
+/* the crease rides the upper lid's edge from a third shut, and stays as the closed eye's line */
+.blink .crease {
+  position: absolute; overflow: visible;
+  --c: clamp(0, (var(--k) - 0.3) * 2, 1);
+  opacity: calc(0.9 * var(--c) * var(--c) * (3 - 2 * var(--c)));
+  transform: translateY(calc((var(--k) - 1) * 76.79%));
+}
+.blink .crease path {
+  fill: none; stroke: rgb(58 33 22); stroke-linecap: round;
+  stroke-width: max(1px, var(--sw)); vector-effect: non-scaling-stroke;
+}
+@keyframes blink {
+  0%, 8.89%, 10%, 37.78%, 38.89%, 77.04%, 78.15%, 100% { --k: 0; }
+  9.03%, 9.86%, 37.92%, 38.75%, 77.18%, 78.01% { --k: 0.383; }
+  9.17%, 9.72%, 38.06%, 38.61%, 77.31%, 77.87% { --k: 0.707; }
+  9.31%, 9.58%, 38.19%, 38.47%, 77.45%, 77.73% { --k: 0.924; }
+  9.44%, 38.33%, 77.59% { --k: 1; }
+}
+@keyframes blink2 {
+  0%, 8.89%, 10%, 37.78%, 38.89%, 39.7%, 40.81%, 77.04%, 78.15%, 100% { --k: 0; }
+  9.03%, 9.86%, 37.92%, 38.75%, 39.84%, 40.68%, 77.18%, 78.01% { --k: 0.383; }
+  9.17%, 9.72%, 38.06%, 38.61%, 39.98%, 40.54%, 77.31%, 77.87% { --k: 0.707; }
+  9.31%, 9.58%, 38.19%, 38.47%, 40.12%, 40.4%, 77.45%, 77.73% { --k: 0.924; }
+  9.44%, 38.33%, 40.26%, 77.59% { --k: 1; }
+}
+#hero-face { --blink-at: -2.2s; }
+.win-bar .avatar { --blink-at: -4.6s; }
+#stage-face { --blink-at: -7.9s; }
+#stage-face .blink { animation-name: blink2; }
+#final-face { --blink-at: -11.3s; }
 .rig .laptop picture { animation: float 5.6s ease-in-out infinite; animation-delay: -1.37s; }
 @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
 .it.server picture { animation: drift 11s ease-in-out infinite; animation-delay: -4.1s; }
@@ -625,8 +665,9 @@ footer a:hover { color: var(--ink); text-decoration: underline; }
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.12s !important; transition-property: opacity, background-color, color !important; }
   .js .reveal { transform: none; }
-  .mascot .clay, .lid, .rig .laptop picture, .it.server picture, .it.mini picture, .cords .sheen { animation: none !important; }
+  .mascot .clay, .mascot .blink, .rig .laptop picture, .it.server picture, .it.mini picture, .cords .sheen { animation: none !important; }
   .cords .sheen { display: none; }
+  .mascot .blink { display: none; }
 }
 
 .track.fading { opacity: 0; transition: opacity 0.5s ease; }

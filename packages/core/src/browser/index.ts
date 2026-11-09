@@ -7,6 +7,9 @@ import { createBrowserHost, type BrowserHost, type HostOptions } from "./host.ts
 import { createLive, type Live, type LiveDeps } from "./live.ts";
 import { createSites, type Sites } from "./sites.ts";
 import { registerBrowserTools } from "./tools.ts";
+import { checkBrowser, checkLine } from "./check.ts";
+import type { BrowserAbout, BrowserCheck } from "@ducter/protocol";
+import { profileName } from "@ducter/protocol/src/browser-profile.ts";
 
 export type BrowserSetup =
   | { state: "ready"; version: string }
@@ -21,6 +24,10 @@ export interface DucterBrowser {
   sites: Sites;
   port: DucterBrowserPort;
   setup(): BrowserSetup;
+  /** D154: start it on the persona's profile, load a page (example.com), quit; which browser and how long. */
+  check(url?: string): Promise<BrowserCheck>;
+  /** D154: which browser the persona's profile runs on. */
+  about(): BrowserAbout;
   /** Start installing (once at a time); resolves with the result. */
   install(): Promise<InstallResult>;
   onChange(fn: () => void): () => void;
@@ -95,12 +102,30 @@ export function createDucterBrowser(o: DucterBrowserOptions): DucterBrowser {
     release: (taskId) => host.release(taskId),
   };
 
+  const profile = () => profileName(o.persona);
+  const check = (url?: string) => checkBrowser(host, setup(), profile(), url);
+
+  // D154: asked whether browsing works, the partner looks itself (no task): on a server, or
+  // wherever Ducter's own browser is the one tasks use.
+  const env = o.env ?? process.env;
+  const ducterMode = () => (o.platform ?? process.platform) === "linux" || /^ducter$/i.test((env.DUCTER_BROWSER_DRIVER ?? "").trim());
+  if (ducterMode())
+    o.mcp.register(
+      "partner",
+      "browser_check",
+      "Check that Ducter's own browser on this machine works, with no task: it starts the browser, opens a harmless page and closes it again (a few seconds). Use it when the user asks you to verify browsing or the browser they just added, instead of opening a task. Returns which browser it is and how long it took; say that to the user in one plain sentence in their language.",
+      { type: "object", properties: {} },
+      async () => checkLine(await check()),
+    );
+
   return {
     host,
     live,
     sites,
     port,
     setup,
+    check,
+    about: () => host.about(profile()),
     install,
     onChange(fn) {
       fns.add(fn);

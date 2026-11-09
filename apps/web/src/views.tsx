@@ -4,9 +4,11 @@
 import type { Attention, Bodies, Candidate, DeviceHarness, DeviceUpdate, DeviceView, EvidenceRef, FolderChange, FolderSummary, LivingItem, OoDetect, Reach } from "@ducter/protocol";
 import { Fragment } from "preact";
 import { PARTNER_RESERVE } from "@ducter/protocol/src/loadout.ts";
+import { inTongue, proofLabel, sayable } from "@ducter/protocol/src/say.ts";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { JSX } from "preact";
 import { A, candKey, placeKey, type SettingsPage } from "./app.ts";
+import { TRY_LIVE } from "@ducter/protocol";
 import { ago, behind, cjkPad, deviceLabel, duration, firstClause, harnessName, modelName, phaseLine as phaseWords, placeLine, sameWords, splitOutcome, when } from "./format.ts";
 import { markdown } from "./markdown.ts";
 import { Coin } from "./coin.tsx";
@@ -454,19 +456,26 @@ export function LiveView() {
     }
   })();
   return (
-    <div class="live" role="dialog" aria-modal="true" aria-label={t("signin.title", lv.site)}>
+    <div class="live" role="dialog" aria-modal="true" aria-label={lv.try ? t("web.try") : t("signin.title", lv.site)}>
       <div class="live-top">
         <button class="btn text sm" aria-label={t("live.back")} onClick={() => A.liveInput({ kind: "nav", action: "back" })}>
           <Back />
         </button>
         <div class="live-where">
           <div class="live-host">{host}</div>
-          {/* Whose browser this is, and that the partner is blind while you're in it. */}
+          {/* Whose browser this is, and that the partner is blind while you're in it; for Try it,
+              which browser on which machine (D154). */}
           <div class="live-sub">
-            <EyeShut />
-            <span>
-              {t("live.where")} · {t("live.blind")}
-            </span>
+            {lv.try && lv.browser ? (
+              <span>{t("live.try.where", lv.browser.device, `${lv.browser.name}${lv.browser.version ? ` ${lv.browser.version.split(".")[0]}` : ""}`)}</span>
+            ) : (
+              <>
+                <EyeShut />
+                <span>
+                  {t("live.where")} · {t("live.blind")}
+                </span>
+              </>
+            )}
           </div>
         </div>
         <button class="btn text sm" onClick={() => A.liveInput({ kind: "nav", action: "reload" })}>
@@ -552,8 +561,9 @@ export function LiveView() {
         />
       </div>
       <div class="live-bottom">
+        {lv.try && <div class="live-note">{t("live.try.note", lv.browser?.device ?? "")}</div>}
         <div class="btns">
-          <Btn kind="secondary" label={t("live.notnow")} onClick={() => A.closeLive(false)} />
+          {!lv.try && <Btn kind="secondary" label={t("live.notnow")} onClick={() => A.closeLive(false)} />}
           <Btn kind="primary" label={t("live.done")} onClick={() => A.closeLive(true)} />
         </div>
       </div>
@@ -599,7 +609,10 @@ function openEvidence(ev: EvidenceRef, task?: Task) {
  *  counts them (a bare "commit" or a hash says nothing to a person). */
 function changesLabel(task: Task, changed: EvidenceRef[]): string {
   const counted = changed.find((e) => e.kind === "diff" && /\d+\s*(files?\b|个文件)/i.test(e.label));
-  if (counted) return counted.label;
+  if (counted && inTongue(counted.label, A.L.lang)) return counted.label;
+  // D154: a count in the task's language, said in the reader's.
+  const k = counted ? Number(/(\d+)\s*(files?\b|个文件)/i.exec(counted.label)![1]) : 0;
+  if (k) return k === 1 ? t("result.files.one") : t("result.files", k);
   const n = editedFiles(task) || changed.filter((e) => e.kind === "file").length;
   if (n) return n === 1 ? t("result.files.one") : t("result.files", n);
   return t("result.changes");
@@ -621,13 +634,14 @@ function ProofLine({ task, evs, withTitle, max = 4 }: { task: Task; evs: Evidenc
       {rest.slice(0, max).map((ev, i) =>
         /^https?:/.test(ev.ref) ? (
           <button key={i} class="qlink" onClick={() => openEvidence(ev, task)}>
-            {ev.label} ›
+            {proofLabel(ev, A.L.lang)} ›
           </button>
         ) : (
           <span key={i} class="mk" title={ev.ref}>
             {/* A reproduction failed on purpose: a quiet ×, never a ✓ (the run after it carries the ✓). */}
             {failed ? <Cross /> : isRepro(ev) ? <span class="repro"><Cross /></span> : machineChecked(ev.kind) ? <span class="ok"><Check /></span> : null}
-            {ev.label}
+            {/* D154: the task's label when it is in the reader's language or a name, else neutral. */}
+            {proofLabel(ev, A.L.lang)}
           </span>
         ),
       )}
@@ -865,7 +879,11 @@ function News({ it, k, owns }: { it: LivingItem; k: string; owns: boolean }) {
   // The partner is putting the result into its own words (D124): its waiting presence holds the
   // place, not a template line that its message replaces a minute later.
   if (wait > 0) return <Presence line={t("activity.result")} />;
-  const text = it.title ? t(it.kind === "failed" ? "living.failed" : "living.done", it.title, it.text) : it.text;
+  // D154: the task's own sentence only when it is in the reader's language; else just what came
+  // of it, by its title (the opened task keeps its words).
+  const said = sayable(it.text, A.L.lang);
+  const kind = it.kind === "failed" ? "living.failed" : "living.done";
+  const text = said ? (it.title ? t(kind, it.title, said) : said) : t(`${kind}.short`, it.title || t("living.it"));
   return (
     <div class="partner">
       <div class="bubble">{text}</div>
@@ -1549,7 +1567,9 @@ export function OnHand() {
                   const ev = headlineEvidence(task.evidence.length ? task.evidence : (r?.evidence ?? []));
                   // The lane says Done; only the exception (Didn't work) is said, in words.
                   const failed = attention(task) === "failed";
-                  return <Row key={task.id} task={task} meta={[failed ? stateLabel("failed") : "", (!failed && ev?.label) || (r?.summary.split("\n")[0] ?? "")].filter(Boolean).join(" · ")} />;
+                  // D154: the task's own words only when they are in the reader's language.
+                  const meta = (!failed && ev && proofLabel(ev, A.L.lang)) || (sayable(r?.summary.split("\n")[0], A.L.lang) ?? "");
+                  return <Row key={task.id} task={task} meta={[failed ? stateLabel("failed") : "", meta].filter(Boolean).join(" · ")} />;
                 })}
               </section>
             )}
@@ -2535,6 +2555,13 @@ function BrowserBlock({ dv }: { dv: DeviceView }) {
         </>
       ) : on ? (
         <>
+          {/* D154: 试一下 / Try it, the live view on a harmless page: see it browse. */}
+          {dv.state === "awake" && (
+            <div class="dev-try">
+              <div class="small">{t("web.try.about")}</div>
+              <Btn kind="secondary" size="sm" label={t("web.try")} about={t("web.title")} onClick={() => A.openLive(TRY_LIVE, "example.com", liveSize(), true)} />
+            </div>
+          )}
           <div class="dev-sub">{t("sites.title")}</div>
           {!sites.length && <div class="small">{t("sites.none")}</div>}
           {sites.map((s) => (

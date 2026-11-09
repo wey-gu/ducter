@@ -72,6 +72,38 @@ func (a *App) OpenLive(decisionID, site string) {
 	a.send(protocol.LiveOpenReq{T: "live_open", DecisionID: decisionID, Width: w, Height: h, Scale: 2})
 }
 
+// OpenTry is 试一下 / Try it on the 上网 block (D154): the same live view
+// on a harmless page, with no card behind it, so the user sees Ducter's
+// own browser working with their own eyes.
+func (a *App) OpenTry() {
+	a.S.OpenLive(protocol.TryLive, "example.com")
+	a.live = liveState{sentAt: protocol.TryLive}
+	w, h := a.liveSize()
+	a.send(protocol.LiveOpenReq{T: "live_open", DecisionID: protocol.TryLive, Width: w, Height: h, Scale: 2, Try: true})
+}
+
+// liveTitle names the view for assistive tech: the sign-in, or Try it.
+func (a *App) liveTitle(lv *store.LiveView) string {
+	if lv.Try() {
+		return a.L.T("web.try")
+	}
+	return a.L.T("signin.title", lv.Site)
+}
+
+// liveWhere is the view's small line: whose browser and that the partner
+// can't see it; for Try it, which browser on which machine (D154).
+func (a *App) liveWhere(lv *store.LiveView) string {
+	if lv.Try() && lv.Browser != nil {
+		b := lv.Browser
+		name := b.Name
+		if b.Version != "" {
+			name += " " + strings.SplitN(b.Version, ".", 2)[0]
+		}
+		return a.L.T("live.try.where", b.Device, name)
+	}
+	return a.L.T("live.where") + " · " + a.L.T("live.blind")
+}
+
 // liveSize is the page size the live view asks for: the window less its
 // two bars, at most 1280 wide.
 func (a *App) liveSize() (int, int) {
@@ -157,7 +189,7 @@ func (a *App) liveView(c *ui.Context) {
 		a.send(protocol.LiveAckReq{T: "live_ack", ID: lv.ID, Seq: lv.Seq})
 	}
 	ui.Column(c.Key("live")).Absolute().Left(0).Top(0).Right(0).Bottom(0).ZIndex(2000).Background(t.Bg).
-		Role(ui.RoleDialog).Label(a.L.T("signin.title", lv.Site)).Children(func() {
+		Role(ui.RoleDialog).Label(a.liveTitle(lv)).Children(func() {
 		// The top line: back, whose browser this is and that the partner can't
 		// see it, reload.
 		ui.Row(c).Padding(t.S2, t.S4).Gap(t.S3).AlignItems(ui.Center).Children(func() {
@@ -167,8 +199,10 @@ func (a *App) liveView(c *ui.Context) {
 			ui.Column(c).Grow(1).MinWidth(0).AlignItems(ui.Center).Gap(2).Children(func() {
 				ui.Text(c, host).FontSize(t.MD).FontWeight(800).SingleLine()
 				ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
-					a.glyph(c, 14, drawEyeShut(t.InkMuted))
-					ui.Text(c, a.L.T("live.where")+" · "+a.L.T("live.blind")).FontSize(t.XS).TextColor(t.InkMuted)
+					if !lv.Try() {
+						a.glyph(c, 14, drawEyeShut(t.InkMuted))
+					}
+					ui.Text(c, a.liveWhere(lv)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
 				})
 			})
 			if a.buttonFor(c, a.L.T("live.reload"), host, btnText, t.ControlSM, t.Bg) {
@@ -227,7 +261,14 @@ func (a *App) liveView(c *ui.Context) {
 			}).TextCaret(ui.Rect{X: 0, Y: 0, W: 1, H: 16})
 		})
 		ui.Row(c).Padding(t.S3, t.S4).Gap(t.S3).Justify(ui.End).AlignItems(ui.Center).Children(func() {
-			if a.buttonFor(c, a.L.T("live.notnow"), host, btnSecondary, t.ControlMD, t.Bg) {
+			if lv.Try() {
+				// Try it has nothing to answer: what this is, and Done.
+				device := ""
+				if lv.Browser != nil {
+					device = lv.Browser.Device
+				}
+				ui.Text(c, a.L.T("live.try.note", device)).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.45).Grow(1).MinWidth(0)
+			} else if a.buttonFor(c, a.L.T("live.notnow"), host, btnSecondary, t.ControlMD, t.Bg) {
 				a.CloseLive(false)
 			}
 			if a.buttonFor(c, a.L.T("live.done"), host, btnPrimary, t.ControlMD, t.Bg) {

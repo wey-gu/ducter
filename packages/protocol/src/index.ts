@@ -591,14 +591,19 @@ export type ClientFrame =
   // view is open the task's browser tools read nothing (the agent is blind). live_input:
   // pointer and key input, x/y as fractions of the frame (0..1). live_close: done = 好了 / Done
   // (resolves the card with Go). Nothing in a live view is logged.
-  | { t: "live_open"; decisionId: string; width?: number; height?: number; scale?: number }
+  // try (D154, 试一下 / Try it on the 上网 block): no card behind it; a harmless page
+  // (example.com) in its own tab on the persona's profile, closed with the view. decisionId is
+  // TRY_LIVE, and the answering live frames carry it.
+  | { t: "live_open"; decisionId: string; width?: number; height?: number; scale?: number; try?: boolean }
   | { t: "live_input"; id: string; input: LiveInput }
   | { t: "live_ack"; id: string; seq: number }
   | { t: "live_close"; id: string; done?: boolean }
   // D151, 已登录的网站 / Signed-in sites in Ducter's browser: answered with a browser_sites frame.
   | { t: "browser_sites" }
   | { t: "browser_site_signout"; site: string }
-  | { t: "browser_sites_clear" };
+  | { t: "browser_sites_clear" }
+  // D154, `ducter browser check`: start Ducter's browser, load a page, quit. Answered with browser_check.
+  | { t: "browser_check"; url?: string };
 
 /** D151: input into the live view. x, y: fractions of the frame (0..1). */
 export type LiveInput =
@@ -669,12 +674,41 @@ export type ServerFrame =
   | { t: "first_screen"; first: FirstScreen }
   // D151: a live view opened (with the page's size in CSS pixels) or closed (reason: done, closed,
   // replaced = another window opened one, gone = the browser went away, failed with message).
-  | { t: "live"; id: string; decisionId: string; state: "open" | "closed"; site?: string; url?: string; title?: string; width?: number; height?: number; reason?: "done" | "closed" | "replaced" | "gone" | "failed"; message?: string }
+  // browser (D154): which browser it is, for the view's top line.
+  | { t: "live"; id: string; decisionId: string; state: "open" | "closed"; site?: string; url?: string; title?: string; width?: number; height?: number; reason?: "done" | "closed" | "replaced" | "gone" | "failed"; message?: string; browser?: BrowserAbout }
   // One JPEG frame (base64). The next comes only after live_ack for this seq.
   | { t: "live_frame"; id: string; seq: number; data: string; width: number; height: number; url?: string; title?: string }
   // ready: Ducter's browser is installed here; sites: the ones signed in through a live view.
   | { t: "browser_sites"; ready: boolean; sites: SiteView[]; ok?: boolean; message?: string }
+  | ({ t: "browser_check" } & BrowserCheck)
   | { t: "error"; message: string };
+
+/** D154: the decisionId of a 试一下 / Try it live view (no card behind it). */
+export const TRY_LIVE = "try";
+
+/**
+ * D154: which browser Ducter's own browser tools drive, said the same way everywhere
+ * (browser_open's first line, the check, the live view's top line). name: "Chrome for Testing"
+ * (the one Ducter installed), "Chrome" (DUCTER_CHROME), "system Chrome" (one on PATH).
+ */
+export interface BrowserAbout {
+  device: string; // the machine it runs on ("hel")
+  name: string;
+  version?: string; // 157.0.8103.38
+  profile: string; // the persona's profile
+}
+
+/** D154: one start of Ducter's browser that loads a page and quits. */
+export interface BrowserCheck {
+  ok: boolean;
+  /** Why not: not installed, being installed, missing libraries (message: the command), or failed. */
+  reason?: "missing" | "installing" | "deps" | "failed";
+  message?: string;
+  browser?: BrowserAbout;
+  url: string;
+  title?: string;
+  ms: number; // asked to page loaded
+}
 
 /** The same words in both languages: the client shows its own. */
 export interface Words {

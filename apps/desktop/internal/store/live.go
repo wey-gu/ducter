@@ -15,7 +15,12 @@ type LiveView struct {
 	Width, Height        int
 	Seq                  int64
 	Frame                []byte
+	// Browser is which browser it is (D154), from the open frame.
+	Browser *protocol.BrowserAbout
 }
+
+// Try says this is 试一下 / Try it (D154): no card behind it.
+func (lv *LiveView) Try() bool { return lv != nil && lv.DecisionID == protocol.TryLive }
 
 // OpenLive starts a live view for a sign-in card (the view sends live_open).
 func (s *Store) OpenLive(decisionID, site string) {
@@ -30,7 +35,7 @@ func (s *Store) applyLive(f protocol.ServerFrame) {
 			return
 		}
 		if f.State == "open" {
-			lv.ID, lv.Open, lv.URL, lv.Title, lv.Width, lv.Height = f.ID, true, f.URL, f.Title, f.Width, f.Height
+			lv.ID, lv.Open, lv.URL, lv.Title, lv.Width, lv.Height, lv.Browser = f.ID, true, f.URL, f.Title, f.Width, f.Height, f.Browser
 			return
 		}
 		s.Live = nil

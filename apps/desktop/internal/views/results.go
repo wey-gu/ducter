@@ -91,7 +91,7 @@ func (a *App) proofLine(c *ui.Context, task *store.Task, evs []protocol.Evidence
 				break
 			}
 			if isLink(ev.Ref) {
-				if a.quietLink(c.Key(i), "ev", ev.Label, ev.Label) {
+				if a.quietLink(c.Key(i), "ev", a.proofLabel(ev), a.proofLabel(ev)) {
 					a.openEvidence(c, ev)
 				}
 				continue
@@ -108,7 +108,7 @@ func (a *App) proofLine(c *ui.Context, task *store.Task, evs []protocol.Evidence
 				draw = drawCheck
 				glyph = t.Done.Ink // a passed check's ✓ in the done ink (D76)
 			}
-			m := a.markIn(c.Key(i), draw, glyph, ev.Label, t.InkMuted).Tooltip(ev.Ref)
+			m := a.markIn(c.Key(i), draw, glyph, a.proofLabel(ev), t.InkMuted).Tooltip(ev.Ref)
 			if ev.Ref != "" && m.Clicked() {
 				a.openEvidence(c, ev)
 			}

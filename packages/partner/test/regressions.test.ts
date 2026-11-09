@@ -289,7 +289,9 @@ describe("partner eval regressions", () => {
     await partner.idle();
     partner.onTrigger(report(fc, "t1", "done"));
     await partner.idle();
-    expect(fr.sessions[0]!.inputs[3]).not.toContain("[language]");
+    // D154: a Chinese user's report turn names Chinese too (a task reports in English as often as not).
+    expect(fr.sessions[0]!.inputs[3]).toContain("[language] The user speaks Chinese");
+    expect(fr.sessions[0]!.inputs[3]).not.toContain("in English: reply in English");
   });
 
   test("a pasted key never reaches a task: briefs and task_send are redacted", async () => {

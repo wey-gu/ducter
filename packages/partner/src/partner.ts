@@ -60,6 +60,7 @@ import { createNmemClient, noMemory, type MemoryClient } from "./memory.ts";
 import { buildSystemPrompt } from "./persona.ts";
 import { realFs, resolvePlace, type PlaceFs } from "./place.ts";
 import { isChinese, renderHistoryLine, renderProjection, renderTime, renderTrigger, type RenderCtx } from "./render.ts";
+import { inTongue } from "../../protocol/src/say.ts";
 import type { SpineStore } from "../../protocol/src/internal.ts";
 import { autoRecall, renderRecall } from "./spine/recall.ts";
 import type { CutOptions } from "./spine/segment.ts";
@@ -578,15 +579,14 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     return undefined;
   };
   const corrections: string[] = [];
+  const relang: { text: string; replyTo?: number }[] = []; // D154: results held back for their language
   const openDecisionExists = () => {
     const evs = core.log.read({ stream: "channel", kinds: ["decision", "decision_resolved"], limit: 500 });
     const done = new Set(evs.filter((e) => e.kind === "decision_resolved").map((e) => (e.body as Bodies["decision_resolved"]).decisionId));
     return evs.some((e) => e.kind === "decision" && !done.has((e.body as Bodies["decision"]).decisionId));
   };
   let syntheticSeq = 0;
-  const queueCorrections = () => {
-    if (!corrections.length) return;
-    const said = corrections.splice(0).join(" / ");
+  const synthetic = (text: string, replyTo?: number) =>
     queue.push({
       seq: --syntheticSeq, // never in the Log
       ts: new Date(now()).toISOString(),
@@ -594,8 +594,36 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       stream: "channel",
       origin: "system",
       kind: "ai_msg",
-      body: { text: `You told the user they have a Go / Hold choice ("${said.slice(0, 300)}"), but no such choice exists, so they see no buttons. Call ask now with that question and its default, without repeating it in text. If no choice is really needed, say in one short line what you will do instead.` },
+      body: replyTo !== undefined ? { text, replyTo } : { text },
     });
+  const queueCorrections = () => {
+    if (relang.length) {
+      // D154: a result in a language the user doesn't read was held back; say it once more.
+      const held = relang.splice(0);
+      const said = held.map((h) => h.text).join(" / ");
+      const zh = userZh() !== false;
+      synthetic(
+        `Your message about the task's result was not in the user's language, so it wasn't shown: "${said.slice(0, 400)}". The user reads ${zh ? "Chinese" : "English"}. Say it again now in ${zh ? "Chinese (中文)" : "English"}, in your own words, the outcome first, at most 2 short lines, nothing else.`,
+        held.find((h) => h.replyTo !== undefined)?.replyTo,
+      );
+    }
+    if (!corrections.length) return;
+    const said = corrections.splice(0).join(" / ");
+    synthetic(`You told the user they have a Go / Hold choice ("${said.slice(0, 300)}"), but no such choice exists, so they see no buttons. Call ask now with that question and its default, without repeating it in text. If no choice is really needed, say in one short line what you will do instead.`);
+  };
+  /**
+   * D154: a result the partner said in a language the user doesn't read (the task's English
+   * report pasted for a Chinese user) is held back and asked for once more. Only for a turn woken
+   * by reports with no user words in it, and never in the correction turn itself.
+   */
+  const heldForLanguage = (t: TurnState, text: string): boolean => {
+    if (t.userTexts.length || t.quiet) return false;
+    if (t.triggers.some((e) => e.seq < 0)) return false;
+    if (!t.triggers.some((e) => e.kind === "report" && (e.body as Bodies["report"]).state !== "progress")) return false;
+    const zh = userZh();
+    if (zh === undefined || text.trim().length < 16 || inTongue(text, zh ? "zh" : "en")) return false;
+    relang.push({ text: text.trim(), ...(t.replyTo !== undefined ? { replyTo: t.replyTo } : {}) });
+    return true;
   };
   const replyToFor = (t: TurnState) => t.replyTo ?? t.triggers[t.triggers.length - 1]?.seq ?? core.log.head();
   const appendAck = (t: TurnState, text: string): { jobId: string } => {
@@ -623,6 +651,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       if (d) return appendAiMsg(p, d);
       if (turn.relayed || p.trim().length < 300) return;
     }
+    if (heldForLanguage(turn, p)) return;
     // Several results at once: the app renders each one's evidence, Outside and Merge under
     // the message, so clauses about tests, commits, branches or merging only repeat or guess
     // (eval two-done-zh, 0/4 under the prompt alone).
@@ -911,7 +940,18 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       // failure report). The user's last message decides.
       const prev = core.log.read({ stream: "channel", kinds: ["user_msg"], beforeSeq: core.log.head() + 1, limit: 1 });
       const t = (prev[prev.length - 1]?.body as Bodies["user_msg"] | undefined)?.text;
-      if (t && !isChinese(t)) deltas.push("[language] The user's last message was in English: reply in English.");
+      // D154: a task reports in its own words, often English whatever the user speaks (a Codex
+      // run's "Installed standalone CLI 0.10.116…" reached a Chinese user verbatim). Name the
+      // user's language for a report either way, and that the report is not for pasting.
+      const reports = batch.some((e) => e.kind === "report");
+      if (t && !isChinese(t))
+        deltas.push(
+          reports
+            ? "[language] The user's last message was in English: reply in English. A task's report above is its own words, maybe in another language: say what came of it in your own English words; never paste or quote it."
+            : "[language] The user's last message was in English: reply in English.",
+        );
+      else if (t && reports)
+        deltas.push("[language] The user speaks Chinese: reply in Chinese (中文). A task's report above is its own words, often in English: say what came of it in your own Chinese words, short and plain; never paste, quote or translate it line by line.");
     }
     if (note) deltas.unshift(note);
     // What Ducter's code told the user since the last turn (follow-through, a lost send), so the
@@ -997,7 +1037,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   async function runTurn(batch: LogEvent[]) {
     const userEvents = batch.filter((e) => e.kind === "user_msg");
     const userTexts = userEvents.map((e) => (e.body as Bodies["user_msg"]).text);
-    let replyTo = userEvents[userEvents.length - 1]?.seq;
+    let replyTo: number | undefined = userEvents[userEvents.length - 1]?.seq;
+    // D154: a result said again in the user's language answers what the first one did.
+    for (const e of batch) if (replyTo === undefined && e.seq < 0 && e.kind === "ai_msg") replyTo = (e.body as Bodies["ai_msg"]).replyTo;
     if (replyTo === undefined) {
       for (const e of batch) {
         if (e.kind === "report") {
@@ -1049,7 +1091,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       confirmResults(batch);
       handledSeq = Math.max(handledSeq ?? 0, ...batch.map((e) => e.seq));
       if (!batch.some((e) => e.seq < 0)) queueCorrections(); // one correction round, never a loop
-      else corrections.length = 0;
+      else (corrections.length = 0), (relang.length = 0);
     } finally {
       // An early task whose call never came (the turn was cut off or changed course).
       for (const e of turn?.early ?? []) if (!e.used) e.brief.reject(new Error("task_open never arrived"));

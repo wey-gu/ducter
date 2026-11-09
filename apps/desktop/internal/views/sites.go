@@ -58,7 +58,23 @@ func (a *App) browserBlock(c *ui.Context, dv *protocol.DeviceView) {
 				a.send(protocol.AbilityReq{T: "ability", Device: dv.ID, Ability: protocol.AbilityWeb, On: true})
 			}
 		case ab.State == protocol.AbilityOn:
+			a.tryRow(c, dv)
 			a.sitesList(c)
+		}
+	})
+}
+
+// tryRow is 试一下 / Try it (D154): one tap opens the live view on a
+// harmless page, so the user sees Ducter's own browser working.
+func (a *App) tryRow(c *ui.Context, dv *protocol.DeviceView) {
+	t := a.T
+	if dv.State != protocol.DeviceAwake {
+		return
+	}
+	ui.Row(c.Key("try:" + dv.ID)).Gap(t.S3).AlignItems(ui.Center).Children(func() {
+		ui.Text(c, a.L.T("web.try.about")).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.5).Grow(1).MinWidth(0)
+		if a.buttonFor(c, a.L.T("web.try"), a.L.T("ability.web"), btnSecondary, t.ControlSM, t.Surface) {
+			a.OpenTry()
 		}
 	})
 }

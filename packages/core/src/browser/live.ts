@@ -10,7 +10,9 @@
 //   - one frame in flight per view: the next goes only after the client acks (and at most
 //     `maxFps` a second), so a slow phone link gets fewer frames, not a queue;
 //   - only the socket that opened a view can drive it.
-import type { LiveInput, ServerFrame } from "@ducter/protocol";
+import { TRY_LIVE, type LiveInput, type ServerFrame } from "@ducter/protocol";
+import { CHECK_URL } from "./check.ts";
+import { hostOf } from "./tools.ts";
 import { profileName } from "@ducter/protocol/src/browser-profile.ts";
 import type { CdpEvent } from "./cdp.ts";
 import type { BrowserHost, RunningBrowser } from "./host.ts";
@@ -63,6 +65,8 @@ interface View {
 
 export interface Live {
   open(sink: LiveSink, decisionId: string, size?: { width?: number; height?: number; scale?: number }): Promise<string | undefined>;
+  /** D154, 试一下 / Try it: a harmless page in a tab of its own on the persona's profile (no card). */
+  tryIt(sink: LiveSink, size?: { width?: number; height?: number; scale?: number }): Promise<string | undefined>;
   input(sink: LiveSink, id: string, input: LiveInput): Promise<void>;
   ack(sink: LiveSink, id: string, seq: number): void;
   close(sink: LiveSink, id: string, done?: boolean): Promise<void>;
@@ -115,7 +119,7 @@ export function createLive(d: LiveDeps): Live {
     await send("Page.stopScreencast");
     await send("Emulation.clearDeviceMetricsOverride");
     await v.b.cdp.send("Target.detachFromTarget", { sessionId: v.sessionId }).catch(() => {});
-    if (v.ownTarget && reason !== "done") await v.b.cdp.send("Target.closeTarget", { targetId: v.targetId }).catch(() => {});
+    if (v.ownTarget && (reason !== "done" || !v.taskId)) await v.b.cdp.send("Target.closeTarget", { targetId: v.targetId }).catch(() => {});
     // Only now does the task see the browser again.
     if ([...views.values()].every((x) => x.profile !== v.profile)) d.host.setLive(v.profile, undefined);
     v.sink.send({ t: "live", id: v.id, decisionId: v.decisionId, state: "closed", site: v.site, reason, ...(message ? { message } : {}) });
@@ -126,41 +130,40 @@ export function createLive(d: LiveDeps): Live {
     return undefined;
   };
 
-  return {
-    async open(sink, decisionId, size) {
-      const dec = d.decisions.get(decisionId);
-      if (!dec?.signIn || !dec.taskId) return fail(sink, decisionId, "this card doesn't open a browser");
-      if (!d.decisions.isPending(decisionId)) return fail(sink, decisionId, "this card is already answered");
-      const card = d.tasks.get(dec.taskId);
-      if (card?.place?.kind !== "browser") return fail(sink, decisionId, "this task has no browser");
-      const profile = profileName(card.persona ?? d.persona, card.place.profile);
-      // One live view per browser: a second window takes it over.
-      for (const other of [...views.values()]) if (other.profile === profile) await finish(other, "replaced");
-      d.host.setLive(profile, decisionId); // blind before anything is shown
-      let b: RunningBrowser;
-      try {
-        b = await d.host.ensure(profile);
-      } catch (e) {
-        d.host.setLive(profile, undefined);
-        return fail(sink, decisionId, (e as Error).message);
-      }
-      const tb = d.host.task(dec.taskId);
-      let targetId = tb?.current && tb.tabs.includes(tb.current) ? tb.current : undefined;
-      let ownTarget = false;
-      if (!targetId) {
-        const r = await b.cdp.send("Target.createTarget", { url: dec.signIn.url ?? `https://${dec.signIn.site}` }).catch(() => undefined);
-        targetId = r?.targetId;
-        ownTarget = true;
-        if (tb && targetId) tb.tabs.push(targetId), (tb.current = targetId), (ownTarget = false);
-      }
-      if (!targetId) {
-        d.host.setLive(profile, undefined);
-        return fail(sink, decisionId, "couldn't open the sign-in page");
-      }
+  /**
+   * Show one tab of a profile's browser to this socket. task: the sign-in card's task (its own
+   * tab, else a new one it keeps); none: Try it (a tab of the view's own, closed with it).
+   */
+  async function show(sink: LiveSink, a: { decisionId: string; taskId?: string; profile: string; site: string; url: string }, size?: { width?: number; height?: number; scale?: number }): Promise<string | undefined> {
+    const { decisionId, profile } = a;
+    // One live view per browser: a second window takes it over.
+    for (const other of [...views.values()]) if (other.profile === profile) await finish(other, "replaced");
+    d.host.setLive(profile, decisionId); // blind before anything is shown
+    let b: RunningBrowser;
+    try {
+      b = await d.host.ensure(profile);
+    } catch (e) {
+      d.host.setLive(profile, undefined);
+      return fail(sink, decisionId, (e as Error).message);
+    }
+    const tb = a.taskId ? d.host.task(a.taskId) : undefined;
+    let targetId = tb?.current && tb.tabs.includes(tb.current) ? tb.current : undefined;
+    let ownTarget = false;
+    if (!targetId) {
+      const r = await b.cdp.send("Target.createTarget", { url: a.url }).catch(() => undefined);
+      targetId = r?.targetId;
+      ownTarget = true;
+      if (tb && targetId) tb.tabs.push(targetId), (tb.current = targetId), (ownTarget = false);
+    }
+    if (!targetId) {
+      d.host.setLive(profile, undefined);
+      return fail(sink, decisionId, a.taskId ? "couldn't open the sign-in page" : "couldn't open a page");
+    }
+    {
       const { sessionId } = await b.cdp.send("Target.attachToTarget", { targetId, flatten: true });
       const id = newId();
       const v: View = {
-        id, sink, decisionId, taskId: dec.taskId, profile, site: dec.signIn.site, b, targetId, sessionId, ownTarget,
+        id, sink, decisionId, taskId: a.taskId ?? "", profile, site: a.site, b, targetId, sessionId, ownTarget,
         seq: 0, inflight: false, inflightAt: 0, lastSent: 0, width: size?.width ?? 1280, height: size?.height ?? 800, off: [], closed: false, buttons: 0,
       };
       views.set(id, v);
@@ -197,8 +200,24 @@ export function createLive(d: LiveDeps): Live {
         await finish(v, "failed", (e as Error).message);
         return undefined;
       }
-      sink.send({ t: "live", id, decisionId, state: "open", site: v.site, ...(v.url ? { url: v.url } : {}), ...(v.title ? { title: v.title } : {}), width: v.width, height: v.height });
+      sink.send({ t: "live", id, decisionId, state: "open", site: v.site, ...(v.url ? { url: v.url } : {}), ...(v.title ? { title: v.title } : {}), width: v.width, height: v.height, browser: d.host.about(profile) });
       return id;
+    }
+  }
+
+  return {
+    async open(sink, decisionId, size) {
+      const dec = d.decisions.get(decisionId);
+      if (!dec?.signIn || !dec.taskId) return fail(sink, decisionId, "this card doesn't open a browser");
+      if (!d.decisions.isPending(decisionId)) return fail(sink, decisionId, "this card is already answered");
+      const card = d.tasks.get(dec.taskId);
+      if (card?.place?.kind !== "browser") return fail(sink, decisionId, "this task has no browser");
+      const profile = profileName(card.persona ?? d.persona, card.place.profile);
+      return show(sink, { decisionId, taskId: dec.taskId, profile, site: dec.signIn.site, url: dec.signIn.url ?? `https://${dec.signIn.site}` }, size);
+    },
+
+    tryIt(sink, size) {
+      return show(sink, { decisionId: TRY_LIVE, profile: profileName(d.persona), site: hostOf(CHECK_URL)!, url: CHECK_URL }, size);
     },
 
     async input(sink, id, input) {
@@ -258,7 +277,7 @@ export function createLive(d: LiveDeps): Live {
       const v = views.get(id);
       if (!v || v.sink !== sink) return;
       await finish(v, done ? "done" : "closed");
-      if (!done) return;
+      if (!done || !v.taskId) return; // Try it (D154) has no card to answer and signs in to nothing
       if (d.decisions.isPending(v.decisionId)) d.decisions.decide(v.decisionId, "go");
       try {
         rememberSite(d.host.dataDir, v.profile, v.site);

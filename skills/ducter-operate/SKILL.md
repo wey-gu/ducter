@@ -78,6 +78,7 @@ in the middle of something.
 
 ```sh
 ducter ability add browser        # Ducter installs its own headless Chrome; tasks can browse
+ducter browser check --json       # start it, open example.com, quit: {ok, browser: {device, name, version, profile}, ms}
 ducter browser sites --json       # the sites the user signed into in Ducter's browser
 ducter browser signout <site>     # forget one; `ducter browser clear` forgets all (ask first)
 ```

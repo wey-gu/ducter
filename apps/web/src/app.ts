@@ -103,7 +103,7 @@ class AppState {
   route: Route = { name: "conv" };
   sheet: Sheet = null;
   /** D151: the live view of Ducter's browser, while the user signs in (never stored). */
-  live?: { decisionId: string; site: string; state: "opening" | "open"; id?: string; src?: string; seq?: number; w?: number; h?: number; url?: string; title?: string };
+  live?: { decisionId: string; site: string; state: "opening" | "open"; id?: string; src?: string; seq?: number; w?: number; h?: number; url?: string; title?: string; try?: boolean; browser?: import("@ducter/protocol").BrowserAbout };
   status: ConnStatus = "connecting";
   me?: Me;
   api!: Api;
@@ -630,9 +630,10 @@ class AppState {
   }
 
   /** D151: open the live view of Ducter's browser for a sign-in card, sized to this screen. */
-  openLive(decisionId: string, site: string, size: { width: number; height: number; scale?: number }) {
-    this.live = { decisionId, site, state: "opening" };
-    this.send({ t: "live_open", decisionId, width: Math.round(size.width), height: Math.round(size.height), ...(size.scale ? { scale: size.scale } : {}) });
+  openLive(decisionId: string, site: string, size: { width: number; height: number; scale?: number }, tryIt = false) {
+    // D154: Try it is the same view on a harmless page, with no card behind it.
+    this.live = { decisionId, site, state: "opening", ...(tryIt ? { try: true } : {}) };
+    this.send({ t: "live_open", decisionId, width: Math.round(size.width), height: Math.round(size.height), ...(size.scale ? { scale: size.scale } : {}), ...(tryIt ? { try: true } : {}) });
     haptic("light");
     this.changed();
   }
@@ -641,7 +642,7 @@ class AppState {
     const lv = this.live;
     if (f.t === "live") {
       if (!lv || lv.decisionId !== f.decisionId) return;
-      if (f.state === "open") Object.assign(lv, { id: f.id, state: "open", url: f.url, title: f.title, w: f.width, h: f.height });
+      if (f.state === "open") Object.assign(lv, { id: f.id, state: "open", url: f.url, title: f.title, w: f.width, h: f.height, ...(f.browser ? { browser: f.browser } : {}) });
       else {
         // Done answers the card; anything else just closes the view (the card stays).
         if (f.reason === "failed" && f.message) this.toast(this.L.t("live.failed", f.message));

@@ -1175,6 +1175,8 @@ type ServerFrame struct {
 	Data       string     `json:"data,omitempty"`
 	Ready      bool       `json:"ready,omitempty"`
 	Sites      []SiteView `json:"sites,omitempty"`
+	// D154: live (open) says which browser it is.
+	Browser *BrowserAbout `json:"browser,omitempty"`
 }
 
 // Words are the same words in both languages: the client shows its own.
@@ -1210,6 +1212,18 @@ type Starter struct {
 
 // SiteView is a site signed in to in Ducter's browser (D151); Cookies 0 =
 // the site signed it out.
+// BrowserAbout is which browser Ducter's own browser is (D154): on which
+// machine, Chrome for Testing and its version, the persona's profile.
+type BrowserAbout struct {
+	Device  string `json:"device"`
+	Name    string `json:"name"`
+	Version string `json:"version,omitempty"`
+	Profile string `json:"profile"`
+}
+
+// TryLive is the decisionId of a 试一下 / Try it live view (no card).
+const TryLive = "try"
+
 type SiteView struct {
 	Site       string `json:"site"`
 	SignedInAt string `json:"signedInAt"`
@@ -1223,6 +1237,8 @@ type LiveOpenReq struct {
 	Width      int     `json:"width,omitempty"`
 	Height     int     `json:"height,omitempty"`
 	Scale      float64 `json:"scale,omitempty"`
+	// Try (D154): 试一下 / Try it, a harmless page with no card (DecisionID TryLive).
+	Try bool `json:"try,omitempty"`
 }
 
 // LiveInput is one pointer, wheel, text, key or nav input; X, Y are fractions

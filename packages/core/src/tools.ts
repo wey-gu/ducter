@@ -16,11 +16,28 @@ const compact = (e: LogEvent) => {
 };
 const clampLimit = (n: unknown, d: number) => Math.min(MAX_LIMIT, Math.max(1, Number(n) || d));
 
+// Principle 5: a read is capped before it enters. A search hit is a pointer with enough text to
+// judge it; log_read on its seq gives the whole event.
+const HIT_CHARS = 1200;
+const clipStrings = (v: unknown): unknown => {
+  if (typeof v === "string") return v.length <= HIT_CHARS ? v : `${v.slice(0, HIT_CHARS - 1)}…`;
+  if (Array.isArray(v)) return v.map(clipStrings);
+  if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, clipStrings(x)]));
+  return v;
+};
+const hit = (e: LogEvent) => {
+  const c = compact(e);
+  return { ...c, body: clipStrings(c.body) };
+};
+
 export function registerCoreTools(mcp: CoreMcpHub, log: LogStore, tasks: CoreRegistry) {
   const logSearch = {
     type: "object",
     properties: {
-      query: { type: "string", description: "Words to find (substring match, any language)" },
+      query: {
+        type: "string",
+        description: "Words to find, any language. Use the distinctive words the person likely used (their own language and terms, names, ids), not a paraphrase.",
+      },
       stream: { type: "string", description: '"channel" or "task:<id>"; omit for all' },
       limit: { type: "number" },
     },
@@ -36,8 +53,12 @@ export function registerCoreTools(mcp: CoreMcpHub, log: LogStore, tasks: CoreReg
     required: ["stream"],
   };
   for (const role of ["partner", "task"] as const) {
-    mcp.register(role, "log_search", "Full-text search over the Ducter Log (conversation and tasks). Newest first.", logSearch, async (a) =>
-      log.search(String(a.query ?? ""), { stream: a.stream, limit: clampLimit(a.limit, 20) }).map(compact),
+    mcp.register(
+      role,
+      "log_search",
+      "Search the whole Ducter Log (the conversation, from its first day, and every task). Best matches first; each hit has its seq, and log_read from near that seq gives the context.",
+      logSearch,
+      async (a) => log.search(String(a.query ?? ""), { stream: a.stream, limit: clampLimit(a.limit, 12) }).map(hit),
     );
     mcp.register(role, "log_read", "Read events from one Log stream in order.", logRead, async (a) =>
       log.read({ stream: String(a.stream), fromSeq: a.fromSeq, limit: clampLimit(a.limit, 50) }).map(compact),

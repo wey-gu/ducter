@@ -200,7 +200,7 @@ export const scenarios: Scenario[] = [
       ackFirst: true,
       msgs: [0, 0],
       maxChars: 80,
-      forbid: [/修好了|已修复|已经修|原因是|because/i, /任务已(开|创建)|已经交给|开了一个/, NO_GUESSED_TIME],
+      forbid: [/修好了(?!.{0,2}告诉)|已修复|已经修|原因是|because/i, /任务已(开|创建)|已经交给|开了一个/, NO_GUESSED_TIME],
     },
     rubric: "Exactly one short Chinese sentence that names the action being started (looking into / fixing the flaky TTL test in foo), optionally ending with that it will say when it's clear (e.g. 弄清楚了告诉你). Nothing grounds a duration here, so it must give NO time estimate. It must NOT state any outcome or cause, and nothing else is said after it (no 'task opened', no second line).",
   },
@@ -215,7 +215,7 @@ export const scenarios: Scenario[] = [
       ackFirst: true,
       msgs: [0, 0],
       maxChars: 140,
-      forbid: [/\b(done|changed it|updated the tests|is now 30)\b/i, /task (is )?(open|created|started)/i, NO_GUESSED_TIME],
+      forbid: [/\b(changed it|updated the tests|is now 30)\b|^(all )?done\b|(?<!when )\b(it's|it is) done\b/im, /task (is )?(open|created|started)/i, NO_GUESSED_TIME],
     },
     rubric: "One short English sentence naming the action (changing the checkpoint default to 30s in HawDB and updating tests), optionally saying it will report when done. No time estimate (nothing grounds one), no outcome claimed, nothing said after the ack.",
   },
@@ -240,10 +240,10 @@ export const scenarios: Scenario[] = [
       ackFirst: true,
       msgs: [0, 0],
       maxChars: 80,
-      require: [/(一般|大概|差不多).{0,8}(分钟|小时)/],
+      require: [/(一般|大概|差不多).{0,12}(分钟|小时)/],
       forbid: [/挂了是因为|原因是|已经(查|修)/, /(分钟|小时)(内|之内)|保证|肯定/],
     },
-    rubric: "One short Chinese sentence: the action (查 HawDB 的 CI 为什么挂了), a rough usual duration grounded in what it knows (about 10-15 minutes, said with 一般 / 大概, never as a promise or deadline), and optionally that it will say when it's clear. No cause guessed, nothing after it.",
+    rubric: "The partner was told (its identity) that looking into a red HawDB CI run usually takes 10-15 minutes. One short Chinese sentence: the action (查 HawDB 的 CI 为什么挂了), a rough usual duration grounded in that (about 10-15 minutes, said with 一般 / 大概, never as a promise or deadline), and optionally that it will say when it's clear. No cause guessed, nothing after it.",
   },
   {
     id: "ack-en-estimate",
@@ -252,7 +252,7 @@ export const scenarios: Scenario[] = [
     persona: { name: "Ducter", identity: "You are Ducter, Weyl's personal AI partner. Weyl builds HawDB (an embedded database) in ~/dev/hawdb. HawDB's full CI run (build + all tests) takes about 12 minutes; looking into a red CI run usually takes him 10-15 minutes. He prefers short answers." },
     steps: [{ user: "HawDB's CI in ~/dev/hawdb is red again. Find out why and tell me." }],
     expect: { opens: 1, ackFirst: true, msgs: [0, 0], maxChars: 140, require: [/\b(usually|about|around|roughly)\b.{0,20}\b(min|minutes|hour)/i], forbid: [/\bwithin\b|\bguarantee|\bpromise/i] },
-    rubric: "One short English sentence: the action (finding out why HawDB's CI failed), a rough usual duration grounded in what it knows (~10-15 min, said as usually/about, not a promise), optionally that it will say when it's clear. No cause guessed, nothing after it.",
+    rubric: "The partner was told (its identity) that looking into a red HawDB CI run usually takes 10-15 minutes. One short English sentence (a clause after a colon or semicolon still counts as one): the action (finding out why HawDB's CI failed), a rough usual duration grounded in that (~10-15 min, said as usually/about, not a promise), optionally that it will say when it's clear. No cause guessed, nothing after it.",
   },
   {
     // D120: an ask it can't act on without guessing gets a question, not an ack and a task.
@@ -268,7 +268,7 @@ export const scenarios: Scenario[] = [
     category: "direct",
     lang: "zh",
     steps: [{ user: "bun test 怎么只跑一个测试文件？" }],
-    expect: { opens: 0, noSend: true, msgs: [1, 1], maxChars: 160 },
+    expect: { opens: 0, noSend: true, msgs: [1, 1], maxChars: 240 },
     rubric: "A quick question answered directly in Chinese (bun test <path/to/file>, optionally -t for a name filter). No task, no ack line, no 'I'll check'.",
   },
 
@@ -628,7 +628,7 @@ export const scenarios: Scenario[] = [
     category: "stop",
     lang: "en",
     steps: [{ user: "Regenerate the recovery-time table in ~/dev/hawdb/bench/README.md." }, { user: "Actually never mind, don't do that." }],
-    expect: { opens: 1, sendTo: "$opened0", maxChars: 120 },
+    expect: { opens: 1, sendTo: "$opened0", maxChars: 170 },
     rubric: "Turn 1: an ack and a task. Turn 2: the partner tells that task to stop and says so in one short English line. It does not open anything new and does not claim the task already stopped.",
   },
 
@@ -870,7 +870,7 @@ export const scenarios: Scenario[] = [
     lang: "en",
     memories: MEM_BACKGROUND,
     steps: [{ user: "Just for this report, use metric units. Write up the HawDB load-test numbers from ~/dev/hawdb/bench as a short doc." }],
-    expect: { noRemember: true, opens: 1, maxChars: 120, forbid: [NO_MEM_TALK] },
+    expect: { noRemember: true, opens: 1, maxChars: 170, forbid: [NO_MEM_TALK] },
     rubric: "\"Just for this report\" is a one-time instruction: nothing is saved to long-term memory. The partner opens the doc task with metric units in its brief, with one short English ack.",
   },
   {

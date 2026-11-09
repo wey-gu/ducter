@@ -6,7 +6,7 @@ import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from "
 import { join } from "node:path";
 import type { Bodies, MemView, QuietHours, Settings, SettingsPatch, TalkLanguage } from "@ducter/protocol";
 import { DEFAULT_AFTER_CHOICES, HARNESSES, isHarnessId, type Brain, type HarnessId } from "@ducter/protocol";
-import type { LogStore, SettingsApi } from "@ducter/protocol/src/internal.ts";
+import type { LogStore, MemIdentity, SettingsApi } from "@ducter/protocol/src/internal.ts";
 import { resolveWindows, type WindowsInput } from "@ducter/protocol/src/harness-facts.ts";
 import type { PushStore } from "./push.ts";
 
@@ -43,6 +43,8 @@ export interface SettingsStore extends SettingsApi {
   /** Forgets one noted line: in Mem when possible, else hidden here. */
   forget(seq: number): Promise<"mem" | "hidden" | undefined>;
   onChange(fn: () => void): () => void;
+  /** The persona's Mem identity was bound (D141): clients show whose name its memories are under. */
+  memIdentityChanged(): void;
   /** A reversible decision's wait, from the setting. */
   defaultAfterMs(): number;
 }
@@ -51,7 +53,7 @@ export function openSettings(opts: {
   dataDir: string;
   log: LogStore;
   push: PushStore;
-  persona: { name: string; identity: string };
+  persona: { name: string; identity: string; mem?: MemIdentity };
   /** DUCTER_MEMORY=off pins memory off for this run. */
   memoryPinnedOff?: boolean;
   /** DUCTER_PARTNER_HARNESS picks the brain until the user sets one (default process.env). */
@@ -141,7 +143,10 @@ export function openSettings(opts: {
     async view() {
       const s = get();
       const state: MemView["state"] = !s.memory ? "off" : memSeen ?? (forgetter ? "connected" : "missing");
-      return { settings: s, mem: { state, noted: noted() } };
+      // An identity Ducter enrolled carries the partner's name (kept in step on rename, D141).
+      const m = opts.persona.mem;
+      const keptUnder = state === "connected" && m ? (m.owned ? opts.persona.name : m.label || m.agentId) : undefined;
+      return { settings: s, mem: { state, noted: noted(), ...(keptUnder ? { keptUnder } : {}) } };
     },
     set(patch) {
       const did: string[] = [];
@@ -213,6 +218,7 @@ export function openSettings(opts: {
       changed();
       return how;
     },
+    memIdentityChanged: changed,
     onChange(fn) {
       listeners.add(fn);
       return () => listeners.delete(fn);

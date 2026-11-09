@@ -1706,7 +1706,7 @@ function PartnerSettings() {
       </section>
       <section class="set">
         <h3>{t("partner.memory.title")}</h3>
-        {mem && <div class="small sub">{t(`partner.memory.${mem.state}`)}</div>}
+        {mem && <div class="small sub">{mem.state === "connected" && mem.keptUnder ? t("partner.memory.under", mem.keptUnder) : t(`partner.memory.${mem.state}`)}</div>}
         {mem?.state === "missing" && (
           <a class="more" href="https://mem.nowledge.co" target="_blank" rel="noopener">
             {t("partner.memory.connect")}

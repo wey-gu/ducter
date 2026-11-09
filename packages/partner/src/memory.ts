@@ -4,11 +4,10 @@
 // Boundary
 //   - Mem is optional and swappable. Every failure comes back as { ok: false, reason } and the
 //     partner carries on; nothing here throws into a turn.
-//   - Identity and Space are the user's configuration: nmem reads NMEM_AGENT_ID / NMEM_SPACE
-//     from the environment it inherits, and its own config for the default Space. Ducter never
-//     names an identity or a Space of its own (no --agent-id, no --space), so it can't invent
-//     or enroll one.
-//   - Provenance on every write: who = the identity above (nmem stamps it); through what =
+//   - Identity (D141): the persona's own Mem AI Identity, bound once by core (mem-identity.ts),
+//     named on every write (--agent-id) and, when the user chose one, its Space (--space). Until
+//     it is bound, nmem's own fallback applies. Ducter never picks a Space of its own.
+//   - Provenance on every write: who = the identity above; through what =
 //     source / source_app "ducter"; from where = persona, Log seq and task id, carried in Mem's
 //     source metadata (--source-msg, kept under metadata.source_message_id), never in the text.
 //   - Tests inject a fake MemoryClient or point `bin` at a stub; nothing in tests reaches the
@@ -88,6 +87,8 @@ export interface NmemOptions {
   bin?: string; // default "nmem"
   timeoutMs?: number; // default 15 s (a Cloud search takes ~4 s)
   env?: Record<string, string | undefined>; // default process.env
+  /** The persona's Mem AI Identity (D141), read on every call: named explicitly, never taken from the env. */
+  identity?: () => { agentId: string; space?: string } | undefined;
 }
 
 /** MemoryClient over the nmem CLI (the user's own binary and its own connection config). */
@@ -123,7 +124,8 @@ export function createNmemClient(opts: NmemOptions = {}): MemoryClient {
   };
   return {
     async search(query, limit) {
-      const r = await run(["m", "search", "-n", String(limit), "--", query]);
+      const space = opts.identity?.()?.space;
+      const r = await run(["m", "search", "-n", String(limit), ...(space ? ["--space", space] : []), "--", query]);
       if ("missing" in r || r.code !== 0) return failure(r);
       try {
         const j = JSON.parse(r.out);
@@ -137,6 +139,9 @@ export function createNmemClient(opts: NmemOptions = {}): MemoryClient {
       const imp = Math.min(1, Math.max(0, m.importance ?? 0.6));
       // Content goes through stdin: a positional argument starting with "-" would parse as a flag.
       const args = ["m", "add", "--stdin", `--title=${m.title}`, "-i", imp.toFixed(2), "--source", "ducter", "--source-app", "ducter", "--source-msg", provenanceRef(m.provenance)];
+      // Who: the persona's identity, always named (D141); with none bound yet, nmem's own fallback.
+      const who = opts.identity?.();
+      if (who) args.push("--agent-id", who.agentId, ...(who.space ? ["--space", who.space] : []));
       const r = await run(args, m.content);
       if ("missing" in r || r.code !== 0) return failure(r);
       let id: string | undefined;

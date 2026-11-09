@@ -678,6 +678,10 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       preCompactNote: PRECOMPACT_NOTE,
     };
     if (open.model) spec.model = open.model;
+    // D141 (system.md): the user's own nmem (a skill, a hook) runs as the persona's identity.
+    // Only these two, set explicitly; every other NMEM_* the host has stays out (child-env.ts).
+    const mem = core.persona.mem;
+    if (mem) spec.env = { NMEM_AGENT_ID: mem.agentId, ...(mem.space ? { NMEM_SPACE: mem.space } : {}) };
     return spec;
   }
 

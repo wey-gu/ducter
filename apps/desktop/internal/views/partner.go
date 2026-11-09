@@ -425,8 +425,13 @@ func (a *App) memoryCard(c *ui.Context, st *protocol.Settings) {
 		if !st.Memory {
 			state = "off"
 		}
+		line := a.L.T("partner.memory." + state)
+		if state == "connected" && mem != nil && mem.KeptUnder != "" {
+			// D141: whose name its memories are kept under in Mem.
+			line = a.L.T("partner.memory.under", mem.KeptUnder)
+		}
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, a.L.T("partner.memory."+state)).FontSize(t.MD).LineHeight(1.5).Grow(1).MinWidth(0)
+			ui.Text(c, line).FontSize(t.MD).LineHeight(1.5).Grow(1).MinWidth(0)
 		})
 		if state == "missing" {
 			ui.Row(c).Children(func() {

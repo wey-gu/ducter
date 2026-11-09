@@ -296,6 +296,38 @@ describe("send: steer vs queue", () => {
     await runner.dispose();
   });
 
+  test("D141: a task runs as the persona's Mem identity (NMEM_AGENT_ID / NMEM_SPACE only); none bound, none set", async () => {
+    const fake = new FakePort();
+    const runner = createRunner(core, { harness: fake, newId: nextId });
+    const plain = await runner.openTask({ persona: "p1", title: "a", brief: "b" });
+    await runner.whenStarted(plain.taskId);
+    expect(fake.specs[0]!.env).toBeUndefined();
+    core.persona.mem = { agentId: "ducter", space: "ducter-scratch", owned: true };
+    const bound = await runner.openTask({ persona: "p1", title: "c", brief: "d" });
+    await runner.whenStarted(bound.taskId);
+    expect(fake.specs[1]!.env).toEqual({ NMEM_AGENT_ID: "ducter", NMEM_SPACE: "ducter-scratch" });
+    delete core.persona.mem;
+    await runner.dispose();
+  });
+
+  test("D141: through the real port, a task gets the identity env and none of the host's NMEM_* set", async () => {
+    const seen: { options?: any } = {};
+    const port = createOarHarnessPort({ loadRuntime: async () => trippedRuntime((t) => t.say("ok"), seen), dataDir: join(dir, "data") });
+    const host = { NMEM_AGENT_ID: "the-users-own", NMEM_SPACE: "Work", NMEM_API_KEY: "nmem-fake-key-0010", NMEM_API_URL: "https://example.invalid/mem" };
+    const prev = Object.fromEntries(Object.keys(host).map((k) => [k, process.env[k]]));
+    Object.assign(process.env, host);
+    try {
+      const s = await port.start({ harness: "claude-code", cwd: dir, mcp: [], permissionMode: "bypass", env: { NMEM_AGENT_ID: "ducter" } });
+      await s.close();
+    } finally {
+      for (const [k, v] of Object.entries(prev)) if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+    const env = seen.options.env as Record<string, string | null>;
+    expect(env.NMEM_AGENT_ID).toBe("ducter");
+    for (const k of ["NMEM_SPACE", "NMEM_API_KEY", "NMEM_API_URL"]) expect(env[k] ?? null).toBeNull();
+  });
+
   test("who does it (D89): core's pick reaches the session and the card; nobody left fails the open", async () => {
     const fake = new FakePort();
     (core as any).bodies = { choose: async () => ({ harness: "codex", why: { kind: "rule", ruleId: "r1", text: "后端的事 → Codex" } }) };

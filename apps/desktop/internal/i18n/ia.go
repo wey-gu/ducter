@@ -95,6 +95,7 @@ var zhIA = Table{
 
 	"partner.memory.title":     "记得什么",
 	"partner.memory.connected": "记得你说过的事，存在 Nowledge Mem 里。",
+	"partner.memory.under":     "你说过的事，它记在 Nowledge Mem 的「%s」名下。",
 	"partner.memory.missing":   "还没连上 Nowledge Mem，所以每次都从头认识你。",
 	"partner.memory.off":       "记性关掉了：不回想，也不记新的。",
 	"partner.memory.connect":   "装上 Nowledge Mem",
@@ -274,6 +275,7 @@ var enIA = Table{
 
 	"partner.memory.title":     "What it remembers",
 	"partner.memory.connected": "Remembers what you've told it, in Nowledge Mem.",
+	"partner.memory.under":     "What you've told it is kept in Nowledge Mem under “%s”.",
 	"partner.memory.missing":   "Not connected to Nowledge Mem, so it starts fresh each time.",
 	"partner.memory.off":       "Memory is off: it won't recall or note anything.",
 	"partner.memory.connect":   "Get Nowledge Mem",

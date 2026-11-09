@@ -23,18 +23,18 @@ shadow, so adding or switching a theme is pure data. The same tokens drive MyGo 
 
 ## Pebble (default) values
 
-> Restored 2026-11-09 from the approved artifacts (D75–D77). Prototype:
-> https://claude.ai/artifact/51djLTYeekc14y1GsP7Wn5 (`design/screens/brand-2026-11-09/`).
+> Restored 2026-11-09 from the approved artifacts (D76–D78). Prototype:
+> https://claude.ai/artifact/51djLTYeekc14y1GsP7Wn5.
 
 - color: bg `#FFF6EA`, bg-deep `#FCECD7`, surface `#FFFFFF`, sunken `#F7EBDA`, ink `#2B2118`,
   ink-2 `#4A3D30`, muted `#75654F`, line `#E8D9C4`, line-2 `#E0C9B0`, accent `#FF8A3D` (ledge
   `#C9642A`), decide-surface `#FFE3CF` / ink `#8A3A0C` / ledge `#F0C29E`, ok `#D6F5DC` / `#1F5E2F`,
   fail `#FBDDE4` / `#8A1F3B`, user-bubble `#2B2118` on cream
 - type: Bricolage Grotesque (400/700/800) everywhere in the apps; zh body Noto Sans SC (PingFang
-  SC on Apple); zh headings Resource Han Rounded CN Bold (D77); mono JetBrains Mono
+  SC on Apple); zh headings Resource Han Rounded CN Bold (D78); mono JetBrains Mono
 - shape: radius 12/14/18 (buttons) · 16 (sheets) · 24 (cards) · 28 (hero cards, composer)
-- depth: clay (D75): cards on a solid 4pt base, buttons on a ledge with a drop and a highlight
-- motion: bouncy; buttons sink on press; character and scene breathe, status never (D76)
+- depth: clay (D76): cards on a solid 4pt base, buttons on a ledge with a drop and a highlight
+- motion: bouncy; buttons sink on press; character and scene breathe, status never (D77)
 
 ## Persona face
 
@@ -76,7 +76,7 @@ components and tokens; a value not in the scales below needs a token first.
 | chips | 24 · 28 · 32 (`ChipSM/Chip/ChipLG`) | a state tag · evidence and metadata · a task in the conversation |
 | motion | press 70 ms · hover/lift `Snappy` · enter 220 ms (6-pt rise + fade) · `Bouncy` for the living message and the equip | reduced motion: no movement, colors still change |
 
-**Depth: one clay (D75).** Every solid thing stands on clay; how it stands says what it does.
+**Depth: one clay (D76).** Every solid thing stands on clay; how it stands says what it does.
 - A **card** (the living message, the composer, On hand cards, Devices cards, a page's cards)
   rests on a solid 4pt base in `line`: `0 4 0 #E8D9C4`. It never moves or presses. A tinted
   card's base is its own ledge color (needs you: `#F0C29E`). A sheet over the page adds
@@ -123,7 +123,7 @@ Something that needs no answer ("ducter now works in Terminal") is a toast inste
 
 **Shown, not dotted; no pills (anti-slop rule, D69, D73).** No pulsing or glowing status dots,
 no decorative identity-color dots, no status that animates on its own (breathing rings, gliding
-bars, ticking clocks); only the clay character and scene may breathe (D76). **Status and evidence are never capsules**, on any surface: no state
+bars, ticking clocks); only the clay character and scene may breathe (D77). **Status and evidence are never capsules**, on any surface: no state
 chip, no evidence chip, no metadata pill, no tag row. State is said in words (in its ink when
 it is the exception), evidence is a drawn mark and words, metadata is plain muted text or
 lives in Details. On hand needs no state chip: the lane is the state.
@@ -144,9 +144,9 @@ lives in Details. On hand needs no state chip: the lane is the state.
   label never leaves the stage; AI-account cards shrink to fit; the accessible name carries
   the full state.
 - The partner's clay face may blink or breathe: it is the thing itself, not a status dot.
-- A passed check's ✓ is drawn in the done ink (D75); other marks stay muted.
+- A passed check's ✓ is drawn in the done ink (D76); other marks stay muted.
 
-**Motion: character and scene may breathe; status never blinks (D76).**
+**Motion: character and scene may breathe; status never blinks (D77).**
 
 | Thing | Idle motion |
 |---|---|
@@ -161,7 +161,7 @@ Delays are staggered so nothing moves in unison. A device that can't be reached 
 little grey. Status, chips, lines and buttons never animate on their own. Reduced motion: all
 of it stops; the equip cross-fades; colors and words are unchanged.
 
-**Chinese typography (D77).** Bricolage sets Latin and digits; Chinese has its own faces and rules.
+**Chinese typography (D78).** Bricolage sets Latin and digits; Chinese has its own faces and rules.
 - Faces: headings (≥ 20, where Latin is 800) Resource Han Rounded CN Bold (OFL 1.1) at 94%
   (`size-adjust`); a native client that can't scale one fallback face sets zh heading sizes one
   step down (34→32, 28→26, 20→19). Body Noto Sans SC (PingFang SC on Apple); controls 700.
@@ -212,7 +212,7 @@ you, each with Go / Hold / Reply…, then Open Ducter. The phone has one **Setti
 (tap the partner) with the partner's settings and the phone's own language.
 
 **Choices** (talk language, interface language, the default wait) are a segmented clay control
-(D75): a sunken track (`#F3E6D3`, radius 16, 4pt inset), the chosen one a white surface on a 2pt
+(D76): a sunken track (`#F3E6D3`, radius 16, 4pt inset), the chosen one a white surface on a 2pt
 `#E0C9B0` base in ink 700, the others muted 500; switches are the platform's. A page's cards
 stand on the card base; an
 empty list (no noted lines) is left out with its heading. Screenshots:

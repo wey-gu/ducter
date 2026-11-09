@@ -8,6 +8,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
+	"github.com/wey-gu/ducter/apps/desktop/internal/say"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
@@ -256,6 +257,26 @@ func dueAt(d *store.DecisionState) time.Time {
 	return time.Unix(math.MaxInt32, 0)
 }
 
+// livingWords is a living item as one sentence. The task's own words
+// stand only when they are in the reader's language (D154); else just
+// what came of it, by its title: the opened task keeps its words.
+func (a *App) livingWords(it protocol.LivingItem) string {
+	k := "living.done"
+	if it.Kind == "failed" {
+		k = "living.failed"
+	}
+	said := say.Sayable(it.Text, a.tongue())
+	switch {
+	case said != "" && it.Title != "":
+		return a.L.T(k, it.Title, said)
+	case said != "":
+		return said
+	case it.Title != "":
+		return a.L.T(k+".short", it.Title)
+	}
+	return a.L.T(k+".short", a.L.T("living.it"))
+}
+
 // news is a living item the partner didn't report itself, said as one
 // sentence: a task that didn't work, or one that came back.
 func (a *App) news(c *ui.Context, key string, it protocol.LivingItem, owns bool) {
@@ -271,14 +292,7 @@ func (a *App) news(c *ui.Context, key string, it protocol.LivingItem, owns bool)
 			return
 		}
 	}
-	text := it.Text
-	if it.Title != "" {
-		k := "living.done"
-		if it.Kind == "failed" {
-			k = "living.failed"
-		}
-		text = a.L.T(k, it.Title, it.Text)
-	}
+	text := a.livingWords(it)
 	ui.Column(c.Key("news:" + key)).Gap(t.S1).Children(func() {
 		a.partnerWords(c, text)
 		// The action row shows once, under the newest message about the task.

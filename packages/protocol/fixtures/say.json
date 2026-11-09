@@ -1,0 +1,24 @@
+{
+  "_": "D154: a task's words in front of a reader of another language. inTongue: is the text in that language. proof: what a proof line shows for an evidence item. The TypeScript (packages/protocol/src/say.ts) and Go (apps/desktop/internal/say) versions both pass these cases.",
+  "tongue": [
+    { "text": "Installed standalone CLI 0.10.116 and native Codex plugin 0.1.49 with hooks enabled; all doctor checks pass.", "zh": false, "en": true },
+    { "text": "Nowledge Mem is connected.", "zh": false, "en": true },
+    { "text": "Mem 已经连上了，检查都过了。", "zh": true, "en": false },
+    { "text": "装好了 nowledge-mem-cli 0.10.116", "zh": true, "en": false },
+    { "text": "OK", "zh": false, "en": true },
+    { "text": "", "zh": false, "en": true }
+  ],
+  "proof": [
+    { "kind": "log", "label": "Connection verification", "ref": "nmem status", "zh": "运行记录", "en": "Connection verification" },
+    { "kind": "url", "label": "Live MCP Context Bundle", "ref": "https://mem.nowledge.co/mcp/context", "zh": "mem.nowledge.co", "en": "Live MCP Context Bundle" },
+    { "kind": "test", "label": "All tests pass", "ref": "bun test", "zh": "测试结果", "en": "All tests pass" },
+    { "kind": "test", "label": "测试全过", "ref": "bun test", "zh": "测试全过", "en": "Test results" },
+    { "kind": "file", "label": "Release guide written", "ref": "/home/me/repo/docs/release.md", "zh": "release.md", "en": "Release guide written" },
+    { "kind": "test", "label": "bun test", "ref": "bun test", "zh": "bun test", "en": "bun test" },
+    { "kind": "ci", "label": "PR #12 checks", "ref": "https://github.com/a/b/pull/12", "zh": "PR #12 checks", "en": "PR #12 checks" },
+    { "kind": "file", "label": "README.md", "ref": "README.md", "zh": "README.md", "en": "README.md" },
+    { "kind": "log", "label": "nmem doctor", "ref": "nmem doctor", "zh": "nmem doctor", "en": "nmem doctor" },
+    { "kind": "diff", "label": "Two files changed", "ref": "abc1234", "zh": "改动", "en": "Two files changed" },
+    { "kind": "url", "label": "example.com", "ref": "https://www.example.com/", "zh": "example.com", "en": "example.com" }
+  ]
+}

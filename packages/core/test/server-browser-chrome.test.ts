@@ -69,6 +69,15 @@ run("Ducter's browser on a real Chrome (D151)", () => {
     await expect(core.mcp.call({ role: "task", taskId: "other" }, "browser_read", {})).rejects.toThrow(/no browser/);
   });
 
+  test("D154: the check loads a page and says which Chrome answered; browser_open says which browser", async () => {
+    const r = await core.ducterBrowser!.check(`${base}/`);
+    expect(r).toMatchObject({ ok: true, title: "Home", browser: { name: "Chrome for Testing", profile: core.persona.id } });
+    expect(r.browser!.version).toMatch(/^\d+\.\d+\.\d+\.\d+$/);
+    expect(r.ms).toBeGreaterThan(0);
+    const out = await call("browser_open", { url: `${base}/` });
+    expect(out.split("\n")[0]).toContain(`Ducter's own browser on ${r.browser!.device} (Chrome for Testing ${r.browser!.version}`);
+  });
+
   test("reads give numbers to what can be acted on, never a password's value", async () => {
     const out = await call("browser_open", { url: `${base}/login` });
     expect(out).toContain("Page: Sign in · Test");

@@ -11,6 +11,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/client"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/remote"
+	"github.com/wey-gu/ducter/apps/desktop/internal/say"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
@@ -612,9 +613,14 @@ func (a *App) livingLine(c *ui.Context, it protocol.LivingItem) {
 	line.Children(func() {
 		// A plain mark in muted ink: no tile.
 		a.glyph(c, 18, icon(t.InkMuted))
+		// D154: the task's words only in the reader's language; else its title.
 		text := it.Text
-		if it.Title != "" {
-			text = it.Title + " · " + it.Text
+		if said := say.Sayable(it.Text, a.tongue()); said == "" && it.Title != "" {
+			text = it.Title
+		} else if said == "" {
+			text = a.L.T("living.it")
+		} else if it.Title != "" {
+			text = it.Title + " · " + said
 		}
 		tx := ui.Text(c, text).FontSize(t.MD).TextColor(t.InkSoft).Grow(1).MinWidth(0).LineHeight(1.45).MaxLines(3).Tooltip(text)
 		if line.Hovered() {
@@ -623,7 +629,7 @@ func (a *App) livingLine(c *ui.Context, it protocol.LivingItem) {
 		if len(it.Evidence) > 0 {
 			ev := it.Evidence[0]
 			// A text button like every other one: flat, no underline.
-			if a.buttonFor(c.Key("ev"), a.L.T("living.evidence"), ev.Label, btnText, t.ControlSM, t.Surface) {
+			if a.buttonFor(c.Key("ev"), a.L.T("living.evidence"), a.proofLabel(ev), btnText, t.ControlSM, t.Surface) {
 				a.openEvidence(c, ev)
 			}
 		}

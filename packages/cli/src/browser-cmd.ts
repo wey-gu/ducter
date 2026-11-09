@@ -100,8 +100,52 @@ export async function cmdAbility(o: Opts): Promise<number> {
 
 const when = (iso: string) => iso.slice(0, 16).replace("T", " ");
 
+/** D154: `ducter browser check`: start Ducter's browser on the home, open a page, close it. */
+async function cmdCheck(o: Opts): Promise<number> {
+  const c = await open(o);
+  if (!c) return 1;
+  try {
+    if (!o.json) {
+      c.send({ t: "devices" });
+      const d = await c.next(isFrame("devices"), 15_000);
+      console.log(o.t("browser.check.checking", { device: d ? webOf(d).name : "this computer", host: "example.com" }));
+    }
+    c.send({ t: "browser_check" });
+    const r = await c.next(isFrame("browser_check"), 90_000);
+    if (!r) return 1;
+    const { t: _t, ...check } = r;
+    if (o.json) {
+      console.log(JSON.stringify(check, null, 2));
+      return r.ok ? 0 : 1;
+    }
+    const b = r.browser;
+    const device = b?.device ?? "this computer";
+    if (r.ok && b) {
+      const host = (() => {
+        try {
+          return new URL(r.url).hostname.replace(/^www\./, "");
+        } catch {
+          return r.url;
+        }
+      })();
+      console.log(o.t("browser.check.ok", { device, browser: `${b.name}${b.version ? ` ${b.version}` : ""}`, profile: b.profile, host, secs: (r.ms / 1000).toFixed(1) }));
+      return 0;
+    }
+    if (r.reason === "missing") console.log(o.t("browser.notReady"));
+    else if (r.reason === "installing") console.log(o.t("browser.check.installing"));
+    else if (r.reason === "deps") {
+      console.log(o.t("ability.deps"));
+      console.log(`  ${r.message ?? ""}`);
+    } else console.log(o.t("browser.check.failed", { device, reason: r.message ?? "?" }));
+    return 1;
+  } finally {
+    if (!o.conn) c.close();
+  }
+}
+
 export async function cmdBrowser(o: Opts): Promise<number> {
   const [verb, site] = o.rest;
+  if (verb === "check") return cmdCheck(o);
   const frame =
     verb === "sites" || verb === undefined
       ? ({ t: "browser_sites" } as const)

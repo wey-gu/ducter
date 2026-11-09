@@ -628,6 +628,22 @@ so the main process holds one.
 - **Sites (`sites.ts`):** the remembered sites with their cookie counts (`Storage.getCookies`),
   sign-out by `Network.deleteCookies` + `Storage.clearDataForOrigin`, clear all by
   `Storage.clearCookies`.
+- **Which browser, and the check (D154, `check.ts`):** `host.about(profile)` is
+  `{device, name, version, profile}`: the machine as Devices names it, "Chrome for Testing"
+  (Ducter's install), "Chrome" (`DUCTER_CHROME`) or "system Chrome", the version CDP's
+  `Browser.getVersion` answered at start (else `installed.json`'s). `browser_open`'s result
+  starts with it ("Browser: Ducter's own browser on hel (Chrome for Testing 157.0.8103.38,
+  profile "ducter"), headless on that machine; not the user's own Chrome"), so a task and the
+  partner can say which browser they used. `checkBrowser` starts the persona's profile, opens
+  `https://example.com/` in a tab of its own, reads the title, closes the tab, and quits the
+  browser when it started it and nothing else holds it; `{ok, reason?, message?, browser, url,
+  title, ms}`. Three doors: `browser_check` on the client socket (`ducter browser check
+  [--json]`), the partner's `browser_check` tool (registered on Linux or with
+  `DUCTER_BROWSER_DRIVER=ducter`; the persona's rule 16 prefers it to a task), and
+  **试一下 / Try it** on the 上网 block: `live_open {try: true}` → `live.tryIt`, the same live
+  view on example.com in a tab of its own (decisionId `"try"`, no card), blind while open like
+  any view, its tab closed with it, nothing answered or remembered. The open frame carries
+  `browser` for the view's top line.
 - **Not built:** Xvfb for sites that refuse headless; a vault that fills passwords, TOTP,
   session probes, per-site rate limits (research/25 §3); browser places on a worker.
 

@@ -164,6 +164,82 @@ describe("ack → job → result", () => {
   });
 });
 
+describe("results in the user's language (D154)", () => {
+  // A Codex task on a Linux home reported in English to a user who writes Chinese; the partner
+  // relayed it verbatim ("Installed standalone CLI 0.10.116…").
+  const REPORT = "Installed standalone CLI 0.10.116 and native Codex plugin 0.1.49 with hooks enabled; all doctor checks pass. Nowledge Mem is connected.";
+  const run = (first: string, second?: string) => {
+    let turn = 0;
+    const s = setup(async (input, sess) => {
+      turn++;
+      if (turn === 1) {
+        sess.say("好，我去把 Mem 连上，弄好了告诉你。");
+        await s.fc.callTool("task_open", { title: "连上 Nowledge Mem", brief: "b" });
+      } else if (turn === 2) sess.say(first);
+      else sess.say(second ?? "");
+      sess.end();
+    });
+    return s;
+  };
+  const report = (s: ReturnType<typeof setup>) => {
+    const rep = s.fc.core.log.append({
+      stream: "task:t1",
+      origin: "task",
+      kind: "report",
+      body: { taskId: "t1", state: "done", summary: REPORT, questions: [], evidence: [{ kind: "log", label: "Connection verification", ref: "nmem status" }] },
+    });
+    s.partner.onTrigger(rep);
+  };
+
+  test("a report turn for a Chinese user names the language and that the report is not for pasting", async () => {
+    const s = run("Mem 连上了，检查都过了。");
+    const u = s.user("帮我把 Nowledge Mem 连上 Codex");
+    await s.partner.idle();
+    report(s);
+    await s.partner.idle();
+    const input = s.fr.sessions[0]!.inputs[1]!;
+    expect(input).toContain(REPORT); // the partner reads the task's words…
+    expect(input).toContain("[language] The user speaks Chinese: reply in Chinese (中文). A task's report above is its own words");
+    expect(input).toContain("never paste");
+    const said = s.channel().filter((e) => e.kind === "ai_msg").map((e) => e.body as Bodies["ai_msg"]);
+    expect(said.map((b) => b.text)).toEqual(["Mem 连上了，检查都过了。"]); // …and the user reads the partner's
+    expect(said[0]!.replyTo).toBe(u.seq);
+  });
+
+  test("the task's English pasted for a Chinese user is held back and said again, once, in Chinese", async () => {
+    const s = run(REPORT, "Mem 连上了：命令行和 Codex 插件都装好了，检查全过。");
+    const u = s.user("帮我把 Nowledge Mem 连上 Codex");
+    await s.partner.idle();
+    report(s);
+    await s.partner.idle();
+    const said = s.channel().filter((e) => e.kind === "ai_msg").map((e) => e.body as Bodies["ai_msg"]);
+    expect(said.map((b) => b.text)).toEqual(["Mem 连上了：命令行和 Codex 插件都装好了，检查全过。"]);
+    expect(said[0]!.replyTo).toBe(u.seq); // still the answer to the ask, so its chips sit under it
+    expect(s.fr.sessions[0]!.inputs[2]).toContain("The user reads Chinese. Say it again now in Chinese (中文)");
+  });
+
+  test("never a loop: the second try stands even if it is still in English", async () => {
+    const s = run(REPORT, "Mem is connected.");
+    s.user("帮我把 Nowledge Mem 连上 Codex");
+    await s.partner.idle();
+    report(s);
+    await s.partner.idle();
+    expect(s.fr.sessions[0]!.inputs).toHaveLength(3);
+    expect(s.channel().filter((e) => e.kind === "ai_msg").map((e) => (e.body as Bodies["ai_msg"]).text)).toEqual(["Mem is connected."]);
+  });
+
+  test("an English user's result in English is not held", async () => {
+    const s = run("Mem is connected to Codex now, and every check passes.");
+    s.user("Connect Nowledge Mem to Codex please");
+    await s.partner.idle();
+    report(s);
+    await s.partner.idle();
+    expect(s.fr.sessions[0]!.inputs[1]).toContain("[language] The user's last message was in English: reply in English. A task's report above is its own words");
+    expect(s.channel().filter((e) => e.kind === "ai_msg")).toHaveLength(1);
+    expect(s.fr.sessions[0]!.inputs).toHaveLength(2);
+  });
+});
+
 describe("turn loop", () => {
   test("triggers arriving mid-turn are coalesced into ONE next turn, origin-tagged", async () => {
     let release!: () => void;

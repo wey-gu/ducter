@@ -3,10 +3,13 @@ package views
 import (
 	"encoding/json"
 	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/client"
+	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
+	"github.com/wey-gu/ducter/apps/desktop/internal/say"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 )
 
@@ -21,6 +24,7 @@ var (
 	reproFail  = regexp.MustCompile(`(?i)\b(fails|failing|failed|broken)\b|失败|报错|没过`)
 	reproPass  = regexp.MustCompile(`(?i)\bpass|通过|全过`)
 	countsFile = regexp.MustCompile(`(?i)\d+\s*(files?\b|个文件)`)
+	countsNum  = regexp.MustCompile(`(?i)(\d+)\s*(?:files?\b|个文件)`)
 	noRemoteRe = regexp.MustCompile(`(?i)no (origin )?remote`)
 	plumbingRe = regexp.MustCompile(`^mcp__ducter[\w-]*__`)
 )
@@ -86,11 +90,33 @@ func editedFiles(task *store.Task) int {
 // that already counts them stands; else the diff read for the opened task,
 // the task's edits, or the files it named; "See changes" when nothing
 // counts them (a bare "commit" or a hash says nothing to a person).
+// tongue is the reader's language for package say ("zh" or "en").
+func (a *App) tongue() string {
+	if a.L.Lang == i18n.ZH {
+		return "zh"
+	}
+	return "en"
+}
+
+// proofLabel is an evidence label as this reader sees it (D154).
+func (a *App) proofLabel(ev protocol.EvidenceRef) string {
+	return say.ProofLabel(ev.Kind, ev.Label, ev.Ref, a.tongue())
+}
+
 func (a *App) changesWords(task *store.Task, changed []protocol.EvidenceRef) string {
 	files := 0
 	for _, e := range changed {
 		if e.Kind == "diff" && countsFile.MatchString(e.Label) {
-			return e.Label
+			if say.InTongue(e.Label, a.tongue()) {
+				return e.Label
+			}
+			// D154: the task's count, said in the reader's language.
+			if k, err := strconv.Atoi(countsNum.FindStringSubmatch(e.Label)[1]); err == nil && k > 0 {
+				if k == 1 {
+					return a.L.T("result.files.one")
+				}
+				return a.L.T("result.files", k)
+			}
 		}
 		if e.Kind == "file" {
 			files++

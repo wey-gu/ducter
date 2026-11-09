@@ -658,6 +658,36 @@ export const scenarios: Scenario[] = [
     rubric: `Both tasks finished at the same moment: ONE short Chinese message covering both (values() and keys() added, non-expired only). ${RESULT_SHAPE} for the pair. Not two messages, no prose choice.`,
   },
 
+  // D154: a Codex task on a Linux home reported in English to a Chinese user; the partner relayed it
+  // verbatim. Its outcome is said in Chinese, short, with none of the task's versions or checks.
+  {
+    id: "en-report-zh",
+    category: "settle",
+    lang: "zh",
+    floor: true,
+    seed: [
+      { user: "帮我把 Nowledge Mem 连上 Codex" },
+      { task: { key: "mem", title: "连上 Nowledge Mem", ack: "好，我去把 Mem 连上，弄好了告诉你。", state: "working" } },
+    ],
+    steps: [
+      {
+        reports: [
+          {
+            task: "mem",
+            body: {
+              state: "done",
+              summary: "Installed standalone CLI 0.10.116 and native Codex plugin 0.1.49 with hooks enabled; all doctor checks pass. Nowledge Mem is connected: a live MCP context bundle call returned the user's working memory.",
+              questions: [],
+              evidence: [{ kind: "log", label: "Connection verification", ref: "nmem doctor" }, { kind: "log", label: "Live MCP Context Bundle", ref: "nmem status" }],
+            },
+          },
+        ],
+      },
+    ],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 80, forbid: [/Installed|standalone|doctor|plugin|hooks|0\.10\.116|0\.1\.49|MCP/i] },
+    rubric: "One short Chinese message saying Mem is connected now (it can remember things for them in Codex), in everyday words. None of the task's English, versions, plugin or hook names, or check names; not a translation of the report line by line.",
+  },
+
   // ---------- I. stop / never mind ----------
   {
     id: "stop-zh",

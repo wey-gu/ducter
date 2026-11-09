@@ -46,6 +46,7 @@ function fakeHost(dataDir: string, cdp: CdpConn) {
     ensure: async () => b,
     task: (id: string) => (id === "t1" ? { taskId: "t1", profile: "default", evidenceDir: "", downloads: "", tabs: ["T-task"], current: "T-task" } : undefined),
     touch() {},
+    about: (profile: string) => ({ device: "hel", name: "Chrome for Testing", version: "157.0.8103.38", profile }),
   } as unknown as BrowserHost;
   return { host, live };
 }

@@ -614,10 +614,19 @@ export function createWsHandler(deps: WsDeps) {
         if (!b) throw new Error("Ducter's browser isn't available here");
         ws.data.sink ??= { send: (fr) => sockets.has(ws) && send(ws, fr) };
         const sink = ws.data.sink;
-        if (f.t === "live_open") await b.live.open(sink, String(f.decisionId ?? ""), { ...(f.width ? { width: f.width } : {}), ...(f.height ? { height: f.height } : {}), ...(f.scale ? { scale: f.scale } : {}) });
+        const size = f.t === "live_open" ? { ...(f.width ? { width: f.width } : {}), ...(f.height ? { height: f.height } : {}), ...(f.scale ? { scale: f.scale } : {}) } : undefined;
+        if (f.t === "live_open" && f.try) await b.live.tryIt(sink, size);
+        else if (f.t === "live_open") await b.live.open(sink, String(f.decisionId ?? ""), size);
         else if (f.t === "live_input") await b.live.input(sink, String(f.id ?? ""), f.input);
         else if (f.t === "live_ack") b.live.ack(sink, String(f.id ?? ""), Number(f.seq));
         else await b.live.close(sink, String(f.id ?? ""), !!f.done);
+        return;
+      }
+      case "browser_check": {
+        // D154: one look at Ducter's own browser (`ducter browser check`), no task.
+        const b = deps.browser;
+        if (!b) throw new Error("Ducter's browser isn't available here");
+        send(ws, { t: "browser_check", ...(await b.check(typeof f.url === "string" && f.url ? f.url : undefined)) });
         return;
       }
       case "browser_sites":

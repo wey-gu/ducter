@@ -119,6 +119,14 @@ brings one: **Ducter's own browser**, a real Chrome that runs on the server with
   sign into stay signed in for later tasks.
 - **Files a page downloads** land in the task's own folder.
 
+**Seeing it work.** Once it's added, **Try it** (under Browse the web on the server, in the Mac
+app or on your phone) opens a test page in the server's browser, live, so you can see it browse
+for yourself. The top line says whose browser it is and where it runs: **Ducter's own browser ·
+on hel · Chrome for Testing 157**. Tap **Done** to close it. You can also just ask Ducter
+"I just added the browser, can you check it works?": it opens a test page itself and tells you
+in a sentence, no task needed. From a terminal: `ducter browser check` (add `--json` for a
+script) starts it, opens example.com, says which Chrome and how long it took, and closes it.
+
 **Signing in.** When a task needs you signed in to a site, it pauses and asks: **Sign in to
 github.com** (the site it needs). Tap **Sign in**, in the Mac app or on your phone, and the
 server's browser opens right there, live: the page as the server sees it, and your taps, scrolls

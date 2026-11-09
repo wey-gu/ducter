@@ -7,6 +7,8 @@
 // every task tool on it refuses before touching the page (tools.ts).
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { hostname as osHostname } from "node:os";
+import type { BrowserAbout } from "@ducter/protocol";
 import { profileRoot } from "@ducter/protocol/src/browser-profile.ts";
 import { connectCdp, type CdpConn } from "./cdp.ts";
 import { findChrome, launchChrome, type LaunchOptions, type Launched } from "./chrome.ts";
@@ -29,6 +31,8 @@ export interface RunningBrowser {
   sessions: Map<string, string>;
   /** Each launch gets a new generation: tab ids from an older one are gone. */
   gen: number;
+  /** What CDP said it is (Browser.getVersion): "HeadlessChrome/157.0.8103.38". */
+  product?: string;
 }
 
 export interface HostOptions {
@@ -38,7 +42,9 @@ export interface HostOptions {
   /** Running as root: Chrome needs --no-sandbox. */
   root?: boolean;
   /** Test seams. */
-  find?: () => { path: string; version?: string } | undefined;
+  find?: () => { path: string; version?: string; source?: "env" | "ducter" | "system" } | undefined;
+  /** The machine this runs on, as Devices names it (D154: the tools say "on hel"). */
+  device?: () => string;
   launch?: (o: LaunchOptions) => Promise<Launched>;
   connect?: (url: string) => Promise<CdpConn | undefined>;
   /** Quit a browser nobody uses after this long (default 5 min). */
@@ -49,7 +55,11 @@ export interface HostOptions {
 
 export interface BrowserHost {
   dataDir: string;
-  find(): { path: string; version?: string } | undefined;
+  find(): { path: string; version?: string; source?: "env" | "ducter" | "system" } | undefined;
+  /** D154: which browser this profile runs on, in the words every surface uses. */
+  about(profile: string): BrowserAbout;
+  /** A task or a live view holds this profile now. */
+  inUse(profile: string): boolean;
   /** The running browser for a profile, started if it isn't. */
   ensure(profile: string): Promise<RunningBrowser>;
   running(profile: string): RunningBrowser | undefined;
@@ -123,7 +133,9 @@ export function createBrowserHost(o: HostOptions): BrowserHost {
       launched.proc.kill();
       throw new Error("Ducter's browser started but its DevTools port didn't answer");
     }
+    const v = await cdp.send("Browser.getVersion", {}, undefined, 5_000).catch(() => undefined);
     const b: RunningBrowser = { name: profile, dir, cdp, launched, sessions: new Map(), gen: ++gen };
+    if (v?.product) b.product = String(v.product);
     cdp.onClose(() => forget(profile, b));
     void launched.proc.exited?.then(() => forget(profile, b));
     // Pages a task's tab opens (target=_blank, window.open) become that task's tabs.
@@ -147,9 +159,18 @@ export function createBrowserHost(o: HostOptions): BrowserHost {
     return b;
   }
 
+  const device = o.device ?? (() => osHostname().replace(/\.local$/, ""));
   const api: BrowserHost = {
     dataDir: o.dataDir,
     find,
+    about(profile) {
+      const c = find();
+      const running = browsers.get(profile)?.product?.split("/")[1];
+      const version = running ?? c?.version;
+      const name = c?.source === "env" ? "Chrome" : c?.source === "system" ? "system Chrome" : "Chrome for Testing";
+      return { device: device(), name, ...(version ? { version } : {}), profile };
+    },
+    inUse,
     async ensure(profile) {
       const b = browsers.get(profile);
       if (b && !b.cdp.closed()) {

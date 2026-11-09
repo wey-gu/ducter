@@ -124,7 +124,8 @@ propagates while you install.
    Chrome (Chrome for Testing, ~170 MB, into `~/.ducter/browser`) so tasks can browse. As root it
    installs Chrome's system libraries with apt-get itself; as a normal user it prints one
    `sudo apt-get install …` line: run it, then the same command again. Verify: it ends with
-   "… can browse the web now (Chrome <version>)". The user does the same with one tap in Devices
+   "… can browse the web now (Chrome <version>)", and `ducter browser check` opens a page with
+   it and says which Chrome answered. The user does the same with one tap in Devices
    › Browse the web. Sites that need a sign-in are signed into by the user, in the app's live
    view; never sign in for them. `ducter browser sites` lists them.
 

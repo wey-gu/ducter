@@ -33,19 +33,22 @@ and **Look now** are on the same page.
 
 > main's CI is red; keep fixing until it's green.
 
-Ducter starts a task and keeps at it, one try after another. On **On hand** the task shows one
-small pebble per try: **Try 3 · up to 20**. It stops when it works, after 20 tries, or when a
+Ducter starts a task and keeps at it, one try after another. On **On hand** the task shows how
+close it is: when the goal is a set of checks, a row of little lights that turn green as they
+pass ("4 of 6 lights on · Try 3"); otherwise Ducter climbs steps toward a flag that turns green
+when it's done. It stops when it works, after 20 tries, or when a
 few tries in a row make no progress; then it tells you. **Stop** is on the task's page.
 
 ## "Every Monday …"
 
 > Give me a weekly report every Monday at 9.
 
-Ducter answers with a card: when (with the next runs marked on a line), what it will do, how it
+Ducter answers with a card: when (with the next date on a little calendar), what it will do, how it
 will tell you, what it may touch and what it costs. Nothing starts until you press **Go:
 Start**.
 
-Your routines sit at the bottom of **On hand**, each with its next runs. **Pause** stops one;
+Your routines sit at the bottom of **On hand**, each with a little desk calendar showing when it
+runs next. **Pause** stops one;
 only you can **Resume** it. Ducter pauses a routine by itself if three runs in a row don't work
 or you haven't read its last three reports, and after 30 days it asks whether to keep it.
 

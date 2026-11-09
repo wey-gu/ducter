@@ -63,8 +63,8 @@ test("this machine: awake, home, harness logins as probed, no allowance, web on,
   const home = f.devices[0]!;
   expect(home).toMatchObject({ id: "local", home: true, state: "awake", kind: "laptop" });
   expect(home.harnesses).toEqual([
-    { harness: "claude-code", installed: true, loggedIn: true },
-    { harness: "codex", installed: true, loggedIn: false },
+    { harness: "claude-code", installed: true, loggedIn: true, canBePartner: true, billing: "plan" },
+    { harness: "codex", installed: true, loggedIn: false, canBePartner: false },
   ]);
   expect(home.harnesses.some((h) => "allowance" in h)).toBe(false);
   expect(ability(home, "web")).toMatchObject({ state: "on" });
@@ -153,7 +153,7 @@ test("workers: awake with their hello, then can't reach with a last-seen time, o
   let n = c.frames.length;
   const w1 = await join(vps.token, { name: "ducter-vps", kind: "server", harnesses: [{ id: "claude-code", installed: true, loggedIn: true }] });
   const awake = await c.until<Devices>((x) => x.t === "devices" && x.devices.some((d) => d.name === "ducter-vps" && d.state === "awake"), n);
-  expect(awake.devices.find((d) => d.name === "ducter-vps")!.harnesses).toEqual([{ harness: "claude-code", installed: true, loggedIn: true }]);
+  expect(awake.devices.find((d) => d.name === "ducter-vps")!.harnesses).toEqual([{ harness: "claude-code", installed: true, loggedIn: true, canBePartner: true, billing: "plan" }]);
 
   n = c.frames.length;
   w1.close();

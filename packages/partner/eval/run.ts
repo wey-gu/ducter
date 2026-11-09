@@ -191,7 +191,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   const perSession = new Map<number, Usage>();
   const tools: ToolCall[] = [];
   const cur = { step: -1 };
-  const port = teePort(createOarHarnessPort(), (ev, idx) => {
+  const port = teePort(createOarHarnessPort({ dataDir }), (ev, idx) => {
     if (ev.turnEnd && ev.usage) perSession.set(idx, { inputTokens: ev.usage.inputTokens ?? 0, outputTokens: ev.usage.outputTokens ?? 0, cacheRead: ev.usage.cacheRead ?? 0, cacheWrite: ev.usage.cacheWrite ?? 0 });
     if (ev.tool && ev.tool.input !== undefined && ev.tool.output === undefined) tools.push({ name: ev.tool.name, input: ev.tool.input, step: cur.step });
   });

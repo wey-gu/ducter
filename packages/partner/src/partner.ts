@@ -42,7 +42,7 @@
 //   that arrived while down) are queued again; user messages that already got a reply are not.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Bodies, LogEvent, Place } from "../../protocol/src/index.ts";
+import { HARNESSES, HARNESS_IDS, isHarnessId, type Bodies, type Brain, type HarnessId, type LogEvent, type Place } from "../../protocol/src/index.ts";
 import type { CoreApi, HarnessEvent, HarnessSession, Partner, Runner } from "../../protocol/src/internal.ts";
 import { bridgeFromEnv, type BridgeClient } from "./bridge.ts";
 import { createNmemClient, noMemory, type MemoryClient } from "./memory.ts";
@@ -54,7 +54,9 @@ export interface PartnerOptions {
   now?: () => number;
   idleColdMs?: number; // default 55 min
   historyLimit?: number; // channel events in a cold seed, default 40
-  model?: string; // default env DUCTER_PARTNER_MODEL or "opus"
+  /** D85: the harness the partner runs on; default the Partner setting, else DUCTER_PARTNER_HARNESS, else Claude Code. */
+  harness?: HarnessId;
+  model?: string; // default the Partner setting, else env DUCTER_PARTNER_MODEL; on Claude Code "opus", elsewhere the harness's own
   turnTimeoutMs?: number; // max silence inside a turn before interrupting, default 10 min
   fs?: PlaceFs;
   persistState?: boolean; // write <dataDir>/partner/state.json, default true
@@ -234,7 +236,19 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const now = opts.now ?? (() => Date.now());
   const idleColdMs = opts.idleColdMs ?? COLD_MS;
   const historyLimit = opts.historyLimit ?? 40;
-  const model = opts.model ?? process.env.DUCTER_PARTNER_MODEL ?? "opus";
+  // D85: what the partner thinks with (Settings.brain), read at each session start (the setting
+  // can change between sessions). Only a partner-capable harness is taken from the setting;
+  // opts.harness is the eval's seam and may name any. DUCTER_PARTNER_MODEL stays a test override.
+  const partnerRun = (): { harness: HarnessId; model?: string } => {
+    const envH = process.env.DUCTER_PARTNER_HARNESS;
+    const fallback: Brain = isHarnessId(envH) && HARNESSES[envH].partner && envH !== "claude-code" ? { harness: envH } : { harness: "claude-code", model: "opus" };
+    const set = core.settings?.get().brain;
+    const brain = set && isHarnessId(set.harness) && HARNESSES[set.harness].partner ? set : fallback;
+    const harness = opts.harness ?? brain.harness;
+    const model =
+      opts.model ?? process.env.DUCTER_PARTNER_MODEL ?? (harness === brain.harness ? brain.model : undefined) ?? (harness === "claude-code" ? "opus" : undefined);
+    return { harness, ...(model ? { model } : {}) };
+  };
   const turnTimeoutMs = opts.turnTimeoutMs ?? 10 * 60 * 1000;
   const fs = opts.fs ?? realFs;
   const persist = opts.persistState ?? true;
@@ -277,8 +291,14 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   // different persona (an upgrade, a rename, the identity arriving) is not resumed: its history
   // speaks in the old voice and its cache is gone anyway (live: 您 and branch talk survived a
   // persona fix because the partner resumed yesterday's session).
+  // The hash covers the harness too (D85): a session id means nothing to another harness, so a
+  // switch starts fresh. Claude Code keeps the prompt-only form, so an upgrade does not.
   let lastPromptHash: string | undefined;
-  const promptHash = () => String(Bun.hash(buildSystemPrompt(core.persona)));
+  const promptHash = () => {
+    const { harness } = partnerRun();
+    const prompt = buildSystemPrompt(core.persona);
+    return String(Bun.hash(harness === "claude-code" ? prompt : `${harness}\n${prompt}`));
+  };
   const canResume = () => !!lastSessionId && lastPromptHash === promptHash();
   let handledSeq: number | undefined; // highest trigger seq covered by a finished turn
   // The turn in flight: its trigger seqs and the Log head when it started (state.json). A turn
@@ -467,14 +487,17 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
 
   // ---------- session ----------
   async function startSession(resumeSessionId?: string): Promise<void> {
+    const run = partnerRun();
     const s = await runner.harness.start({
-      harness: "claude-code",
-      model,
+      harness: run.harness,
+      ...(run.model ? { model: run.model } : {}),
       cwd,
       systemPrompt: buildSystemPrompt(core.persona), // built per start: identity may arrive after boot
       mcp: [core.mcp.configFor("partner")],
       permissionMode: "bypass",
-      isolateUserConfig: true, // never the user's CLAUDE.md, hooks or MCP servers (live: zh replies, 20 s acks)
+      // Never the user's own instructions, skills, plugins, hooks or MCP servers (live: zh
+      // replies, 20 s acks), on every harness by its own method (D85, runner/oar.ts).
+      isolateUserConfig: true,
       // Ducter's handful of tools load up front: deferring them behind ToolSearch cost a full
       // model round trip (~3 s) before the ack on a fresh session (live, sonnet).
       env: { ENABLE_TOOL_SEARCH: "false" },
@@ -734,8 +757,12 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           required: ["kind"],
         },
         project: { type: "string" },
-        harness: { type: "string", enum: ["claude-code", "codex", "pi"] },
-        model: { type: "string" },
+        harness: {
+          type: "string",
+          enum: [...HARNESS_IDS],
+          description: `Which AI runs the task (${HARNESS_IDS.map((h) => `${h} = ${HARNESSES[h].name}`).join(", ")}). Omit it: the user's default runs it. Name one only when the user asks for it, or a [devices] line shows the device has only that one signed in.`,
+        },
+        model: { type: "string", description: "Only with harness, and only when the user names a model; written the way that harness names its models." },
       },
       required: ["title", "brief"],
     },

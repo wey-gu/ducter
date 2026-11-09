@@ -2,6 +2,9 @@
 // Changes here go through the lead. The Go client mirrors these types in
 // apps/desktop/internal/protocol (keep field names identical; JSON is the wire format).
 
+export * from "./harnesses.ts";
+import type { HarnessId } from "./harnesses.ts";
+
 // ---------- States (design/focus-window-states.md) ----------
 
 export type Attention =
@@ -66,7 +69,7 @@ export interface Bodies {
     title: string;
     project: string; // "" = Loose
     place: Place;
-    harness: string; // "claude-code" | "codex" | "pi"
+    harness: string; // a HarnessId (harnesses.ts)
     model?: string;
     brief: string;
     bodyReason?: string; // why this harness/model
@@ -243,10 +246,16 @@ export interface Allowance {
 }
 
 export interface DeviceHarness {
-  harness: string; // "claude-code" | "codex" | "pi"
+  harness: string; // a HarnessId (harnesses.ts)
   installed: boolean;
   loggedIn: boolean;
   allowance?: Allowance; // only when the harness reports it; never estimated
+  /** Models this account offers, when it lists them. */
+  models?: { id: string; label: string }[];
+  /** This harness may carry the partner here (D85: HARNESSES[id].partner, and signed in). */
+  canBePartner: boolean;
+  /** plan: a subscription's allowance; usage: paid per token (an API key). */
+  billing?: "plan" | "usage";
 }
 
 export interface DeviceAbility {
@@ -295,6 +304,18 @@ export interface Settings {
   notify: boolean; // notifications on (phones and the Mac)
   quiet: QuietHours | null; // 免打扰 / Quiet hours; null = none
   defaultAfterMin: number; // how long a reversible decision waits before its default goes ahead
+  /**
+   * What the partner itself thinks with (D85, design/ai-loadout.md): a harness that can be the
+   * partner (HARNESSES[id].partner) and its model. Default Claude Code + opus.
+   */
+  brain: Brain;
+  /** Which signed-in accounts tasks may use; a missing entry means enabled. */
+  taskAccounts?: Partial<Record<HarnessId, { enabled: boolean }>>;
+}
+
+export interface Brain {
+  harness: HarnessId;
+  model?: string;
 }
 
 export type SettingsPatch = Partial<Settings>;

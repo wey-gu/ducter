@@ -200,15 +200,21 @@ describe("against a Ducter that needs a device token", () => {
   test("the main entry: → first, home in --json, --local stays here", async () => {
     const main = resolve(import.meta.dir, "../src/main.ts");
     const env = { ...process.env, DUCTER_LOCALE: "en", NO_COLOR: "1", DUCTER_PORT: "1" };
-    const human = Bun.spawnSync(["bun", main, "status", "--data-dir", cliData], { env, stdout: "pipe", stderr: "pipe" });
-    expect(human.stdout.toString().split("\n")[0]).toBe(`→ localhost:${core.port}`);
-    expect(human.exitCode).toBe(0);
-    const json = Bun.spawnSync(["bun", main, "status", "--json", "--data-dir", cliData], { env, stdout: "pipe" });
-    expect(JSON.parse(json.stdout.toString()).home).toEqual({ kind: "remote", address: base, name: `localhost:${core.port}` });
-    const here = Bun.spawnSync(["bun", main, "status", "--local", "--data-dir", cliData], { env, stdout: "pipe" });
-    expect(here.stdout.toString()).toContain("→ this computer");
-    expect(here.stdout.toString()).toContain("isn't running on port 1");
-  });
+    // Async spawns: the home under test runs in this process, so a sync spawn would block it.
+    const run = async (args: string[]) => {
+      const p = Bun.spawn(["bun", main, ...args, "--data-dir", cliData], { env, stdout: "pipe", stderr: "pipe" });
+      const [out, code] = await Promise.all([new Response(p.stdout).text(), p.exited]);
+      return { out, code };
+    };
+    const human = await run(["status"]);
+    expect(human.out.split("\n")[0]).toBe(`→ localhost:${core.port}`);
+    expect(human.code).toBe(0);
+    const json = await run(["status", "--json"]);
+    expect(JSON.parse(json.out).home).toEqual({ kind: "remote", address: base, name: `localhost:${core.port}` });
+    const here = await run(["status", "--local"]);
+    expect(here.out).toContain("→ this computer");
+    expect(here.out).toContain("isn't running on port 1");
+  }, 30_000);
 
   test("a disconnected CLI device is told to connect again; disconnect goes back here", async () => {
     const a = openDeviceAuth(join(dir, "home"));

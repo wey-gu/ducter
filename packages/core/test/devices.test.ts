@@ -27,7 +27,7 @@ const probes = (over: Partial<DeviceProbes> = {}): Partial<DeviceProbes> => ({
 
 function boot(over: Partial<DeviceProbes> = {}): Core {
   const t = tempDir();
-  const core = startCore({ dataDir: t.dir, port: 0, batchMs: 5, sweepMs: 50, deviceProbes: probes(over) });
+  const core = startCore({ dataDir: t.dir, port: 0, batchMs: 5, sweepMs: 50, deviceProbes: probes(over), platform: "darwin" });
   stops.push(t.cleanup, () => core.stop());
   core.setPartner({ onTrigger: () => {} });
   return core;

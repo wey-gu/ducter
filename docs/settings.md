@@ -21,13 +21,11 @@ top of the conversation. On a phone, tap your partner at the top of the conversa
   your conversation; the new choice takes over from your next message. **Switch** lets you
   drop another AI agent signed in on this Mac into the socket. Today your partner can think
   with Claude Code; Codex is coming soon. Other AI agents do tasks only.
-- **Who does the tasks.** Under the socket is a tray of the AI agents on this Mac, each with a
-  ring showing how much of its limit is left. For each task your partner picks one: the best fit
-  with the most limit left. Click an AI agent to see its limit, how many devices share it, when
-  it comes back, and **Use it for tasks** (on unless you turn it off). One limit is shared by
-  your partner's own thinking and the tasks, so 10% of your partner's own account is kept for
-  it: tasks can't use that part, and it can always answer you. An AI agent you pay per use says
-  **Pay per use**.
+- **Who does the tasks.** Under the socket is a tray of the AI agents on this Mac. For each task
+  your partner picks the best fit. Click an AI agent to see where it's signed in, how many
+  devices share it, and **Use it for tasks** (on unless you turn it off). An AI agent you pay
+  per use says **Pay per use**. Seeing how much of each plan's limit is left, and picking by
+  it, is coming soon.
 - **Your rules.** Say a rule in the conversation, like "backend work on Codex", and your
   partner repeats it back and keeps it. Your rules are listed here; **Remove** drops one. If you
   move the same kind of task to another AI agent twice, your partner asks once whether to make
@@ -103,6 +101,6 @@ you and answer each question with **Go** or **Hold**, or choose **Open Ducter**.
 
 In **Devices**, the AI accounts under this Mac (Claude Code, Codex; pi and DeepSeek Harness when
 they're set up) open when you click them.
-From there you can install the tool, sign in with its own sign-in in your browser, or sign out.
+From there you can install the AI agent, sign in with its own sign-in in your browser, or sign out.
 Ducter never sees your password. To add your phone or another computer, click **Connect a phone
 or computer**. The app shows a one-time code for it (see [Your phone](phone.md)).

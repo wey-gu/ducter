@@ -11,7 +11,8 @@
 # own "Use ducter in Terminal" does: only where there's no `ducter` yet or it's a link into a
 # Ducter.app; any other file or link is left alone.
 # Linux (x64, arm64): downloads the `ducter` bundle, checks its SHA-256, and runs the bundle's own
-# install.sh (it puts `ducter` in ~/.local/bin); arguments after `sh -s --` go to that script.
+# install.sh (it puts `ducter` in ~/.local/bin); arguments after `sh -s --` go to that script,
+# except the Mac's --no-cli, which is dropped.
 #
 #   DUCTER_VERSION=0.0.1   install that version instead of the latest release
 #
@@ -178,6 +179,10 @@ install_linux() {
   need tar "Install tar with your package manager."
   tar -xzf "$TMP/$name.tar.gz" -C "$TMP" || fail "couldn't unpack $name.tar.gz."
   [ -f "$TMP/$name/install.sh" ] || fail "$name.tar.gz has no install.sh."
+
+  # --no-cli is the Mac's (the app without a link); Linux always installs the command, and the
+  # bundle's install.sh refuses flags it doesn't know.
+  for a; do shift; [ "$a" = --no-cli ] || set -- "$@" "$a"; done
 
   sh "$TMP/$name/install.sh" "$@" </dev/null
   say ""

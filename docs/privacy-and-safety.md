@@ -12,7 +12,9 @@ exactly what it will and won't do. This page lists it.
 ## What Ducter never does by itself
 
 - **It never merges your code.** A finished coding task offers **Merge into main** or **Open
-  draft PR**. Nothing lands until you choose.
+  draft PR**. Nothing lands in your main branch until you choose. A task may push its own
+  branch or open a pull request itself when the work calls for it; when it does, the result
+  says so under **Sent out**.
 - **It never works in your own checkout.** Each coding task works in its own copy of the project,
   on its own branch (`ducter/…`). Your checkout changes only when you choose **Merge into main**.
 - **It never types your passwords.** When a website needs a login, you type it yourself, in

@@ -22,6 +22,15 @@ test("release.yml still names the files the installer downloads", () => {
   expect(bundler).toContain('cp "$0" "$LINUX/linux-$arch/install.sh"'); // the folder holds install.sh
 });
 
+// The bundle's own install.sh refuses flags it doesn't know, so the Mac-only --no-cli is dropped
+// before Linux forwards the rest (`sh -s -- --no-cli --service` on a server).
+test("Linux drops the Mac's --no-cli and forwards the other arguments as they are", () => {
+  const line = installer.split("\n").find((l) => l.includes('[ "$a" = --no-cli ]'));
+  expect(line).toBeDefined();
+  const out = spawnSync("sh", ["-c", `${line}\nprintf '%s|' "$@"`, "sh", "--no-cli", "--service", "a b", "--no-cli"]).stdout.toString();
+  expect(out).toBe("--service|a b|");
+});
+
 test("install.sh asks for exactly those names", () => {
   expect(installer).toContain("releases/download/v$VERSION");
   expect(installer).toContain('dmg="Ducter-$VERSION-arm64.dmg"');

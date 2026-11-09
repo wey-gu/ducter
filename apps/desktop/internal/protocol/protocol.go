@@ -301,8 +301,9 @@ type UntilTry struct {
 
 // Progress is a countable goal's state: Done of Total.
 type Progress struct {
-	Done  int `json:"done"`
-	Total int `json:"total"`
+	Done  int    `json:"done"`
+	Total int    `json:"total"`
+	Unit  string `json:"unit,omitempty"` // checks (default) | items
 }
 
 // Routine is a routine (例行, D114) as On hand shows it (RoutineView).

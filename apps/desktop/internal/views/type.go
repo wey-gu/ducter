@@ -208,3 +208,33 @@ func leadingFor(text string, latin float32) float32 {
 	}
 	return latin
 }
+
+// keepWords applies D78's line breaking to a title Core Text would split
+// anywhere between Chinese characters ("修 compaction 测 / 试"): a short
+// Chinese word (a run of up to four characters) is joined with word joiners
+// so it stays whole, Latin words already do, and a line then breaks at a
+// space, the autospace gap or punctuation. Longer Chinese runs keep their
+// breaks, so a long title still wraps.
+func keepWords(s string) string {
+	rs := []rune(s)
+	var b strings.Builder
+	for i := 0; i < len(rs); {
+		j := i
+		for j < len(rs) && isHan(rs[j]) {
+			j++
+		}
+		if j > i {
+			for k := i; k < j; k++ {
+				b.WriteRune(rs[k])
+				if j-i <= 4 && k < j-1 {
+					b.WriteRune('\u2060')
+				}
+			}
+			i = j
+			continue
+		}
+		b.WriteRune(rs[i])
+		i++
+	}
+	return b.String()
+}

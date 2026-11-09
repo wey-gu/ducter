@@ -28,8 +28,9 @@ curl -fsSL https://ducter.ai/install.sh | sh
 ```
 
 It downloads the latest release from GitHub, checks the download's checksum and that Apple
-notarized it, puts **Ducter** in **Applications** (replacing an older copy), and opens it. It
-asks for your password only if your account can't write to Applications.
+notarized it, puts **Ducter** in **Applications** (replacing an older copy), puts the
+[`ducter` command](#the-ducter-command) in `~/.local/bin`, and opens it. It asks for your
+password only if your account can't write to Applications.
 
 ### Or download it yourself
 
@@ -61,15 +62,27 @@ when you close the window.
 
 ## The `ducter` command
 
-The app already includes the command: after your partner's first reply it offers *"Use ducter
-in Terminal too?"*, and **Yes** puts `ducter` in `~/.local/bin`.
+The same line that installs the app puts `ducter` in `~/.local/bin`:
 
-Without the app, from the source (needs Bun; Go too if you want the desktop window):
+```sh
+curl -fsSL https://ducter.ai/install.sh | sh
+ducter doctor           # checks this computer; anything missing comes with the command that fixes it
+ducter up               # starts your partner (on a Mac, the app opens too)
+```
+
+On a Mac, `ducter` comes with the app: the link points at the command inside **Ducter** in
+Applications, so it updates with the app. On Linux the same line installs the `ducter` bundle
+for your server's CPU. If `~/.local/bin` isn't on your `PATH` yet, the installer prints the one
+line to add it. A `ducter` you put there yourself is left alone. To install the app without the
+command, add `-s -- --no-cli` after `sh`.
+
+Installed the app another way? After your partner's first reply it offers *"Use ducter in
+Terminal too?"*, and **Yes** does the same.
+
+From the source instead (needs Bun; Go too if you want the desktop window):
 
 ```sh
 scripts/install.sh      # puts ducter (and the desktop app) in ~/.local/bin
-ducter doctor           # checks this Mac; anything missing comes with the command that fixes it
-ducter up               # starts your partner and opens the desktop window
 ```
 
 To hand the command to a friend who doesn't build anything, run

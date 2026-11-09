@@ -17,8 +17,8 @@ write to a colleague.
   ([which agents](faq.md#which-ai-agents-does-it-work-with)). Ducter does its work through
   the plan you already have. If neither is set up yet, Ducter installs one for you in the next
   step.
-- **The Ducter app.** In Terminal, `curl -fsSL https://ducter.ai/install.sh | sh` installs it
-  and opens it. You can also download the `.dmg` from the
+- **The Ducter app.** In Terminal, `curl -fsSL https://ducter.ai/install.sh | sh` installs it,
+  puts the `ducter` command in `~/.local/bin`, and opens the app. You can also download the `.dmg` from the
   [latest release on GitHub](https://github.com/wey-gu/ducter/releases/latest), or build it
   from the source: see [Install](install.md).
 
@@ -103,8 +103,9 @@ In our own runs, a small "fix the failing tests" task came back done in under a 
   Mac when you need to decide something (after your first result), finding Ducter on
   [your phone](phone.md), and [Nowledge Mem](privacy-and-safety.md#memory-with-nowledge-mem) so
   your partner remembers for longer.
-- **Use it from Terminal too.** After your partner's first reply, Ducter offers once: *"Use
-  ducter in Terminal too?"* Say yes, and `ducter status` works in any new Terminal window.
+- **Use it from Terminal too.** The one line in Terminal already put `ducter` there. If you
+  installed from the `.dmg`, after your partner's first reply Ducter offers once: *"Use ducter
+  in Terminal too?"* Say yes, and `ducter status` works in any new Terminal window.
 
 Next: put Ducter on [your phone](phone.md), or on [a server that stays on](install.md#a-linux-server-that-stays-on)
 so it keeps working while your Mac sleeps.

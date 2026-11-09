@@ -95,12 +95,41 @@ func (h *hub) Scene(name string) bool {
 	if len(clients) > 0 {
 		setAbility(list, "local", protocol.AbilityRemote, protocol.AbilityOn)
 	}
+	// Connections (D96): the phone and six scenes have the user's mail and
+	// calendar through their OpenConnector.
+	var conns []protocol.ConnectionView
+	if name == "phone" || name == "joined" || name == "six" {
+		conns = []protocol.ConnectionView{
+			{ID: "oo-gmail", Name: "Gmail", Source: "oomol", Via: "oo", State: "ok"},
+			{ID: "oo-cal", Name: "Google Calendar", Source: "oomol", Via: "oo", State: "ok"},
+		}
+	}
+	d := h.devs()
+	d.mu.Lock()
+	d.conns = conns
+	d.mu.Unlock()
 	h.SetDevices(func(_ []protocol.DeviceView, reach *protocol.Reach) []protocol.DeviceView {
 		reach.Clients = append([]protocol.ReachClient{}, clients...)
 		return list
 	})
 	h.cloudTask(working)
+	h.pushConnections()
 	return true
+}
+
+// pushConnections tells every subscriber the scene's connections.
+func (h *hub) pushConnections() {
+	d := h.devs()
+	d.mu.Lock()
+	var subs []*conn
+	for c := range d.subs {
+		subs = append(subs, c)
+	}
+	conns := append([]protocol.ConnectionView{}, d.conns...)
+	d.mu.Unlock()
+	for _, c := range subs {
+		c.send(map[string]any{"t": "connections", "connections": conns})
+	}
 }
 
 // cloudTask starts (or finishes) a task placed on cloud-1.

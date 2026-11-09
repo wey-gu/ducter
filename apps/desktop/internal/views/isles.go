@@ -1042,13 +1042,18 @@ func (a *App) island(c *ui.Context, v view, s *isle, shown *protocol.DeviceView,
 	// Abilities: at full size in front of home (the dock); on another
 	// island, stuck to its rim.
 	if s.dv != nil && len(s.dock) > 0 {
-		a.dockRow(c, v, s, dy, sel, now, still)
+		// laid out below, under the island's name
 	} else if s.dv != nil {
 		right = max(right, a.badges(c, v, s, ir, sel))
 	}
+	// The connections (D96) stand on home's right rim as small clay mailboxes.
+	maxX := ir.X + ir.W*1.02
+	if s.home {
+		maxX = a.mailboxes(c, v, s, ir)
+	}
 	// AI accounts standing on the island, in front of the device.
 	if s.dv != nil {
-		bottom = max(bottom, a.isleTokens(c, v, s, ir, right+6))
+		bottom = max(bottom, a.isleTokens(c, v, s, ir, right+6, maxX-4))
 	}
 	// Can't reach: a soft mist over it (never a broken bridge).
 	if away {
@@ -1079,6 +1084,15 @@ func (a *App) island(c *ui.Context, v view, s *isle, shown *protocol.DeviceView,
 		})
 		d.labels["tag:"+s.key] = tag.Bounds()
 	})
+	if s.dv != nil && len(s.dock) > 0 {
+		// Under the name, never on it: the name's tag grows when the
+		// accounts take two rows.
+		minY := bottom + 4 + 34
+		if h := nc.Bounds().H; h > 0 {
+			minY = bottom + 4 + h
+		}
+		a.dockRow(c, v, s, dy, sel, now, still, minY+10)
+	}
 }
 
 // sceneTag is a word in the scene on its own small clay tag: a cream
@@ -1092,6 +1106,31 @@ func (a *App) sceneTag(c *ui.Context, sel bool) ui.Element {
 		tag.Border(1.5, t.Ink)
 	}
 	return tag
+}
+
+// mailboxes are the user's connections, each a small clay mailbox on the
+// home island's right rim (at most three; the Partner page lists them all).
+func (a *App) mailboxes(c *ui.Context, v view, s *isle, ir ui.Rect) float32 {
+	d := a.devState()
+	cs := a.HomeMailboxes()
+	w := max(26*v.k, 20)
+	h := w * 84 / 52
+	left := ir.X + ir.W*1.02
+	for i, cv := range cs {
+		if i == 3 {
+			break
+		}
+		x := ir.X + ir.W*0.9 - float32(i)*w*1.1
+		left = x
+		y := ir.Y + ir.H*(0.5+0.06*float32(i)) - h
+		box := ui.Box(c.Key("mail:"+cv.ID)).Absolute().Left(x).Top(y).Size(w, h).Role(ui.RoleImage).Label(cv.Name)
+		box.Draw(func(p *ui.Painter, r ui.Rect) {
+			softEllipse(p, ui.Rect{X: r.X + r.W*0.1, Y: r.Y + r.H*0.9, W: r.W * 0.9, H: r.H * 0.14}, ui.RGBA(60, 50, 20, 0.3))
+			a.drawMailbox(cv.Source)(p, r)
+		})
+		d.labels["mail:"+cv.ID] = box.Bounds()
+	}
+	return left
 }
 
 // selectIsle chooses an island: its device's card and abilities on the
@@ -1156,7 +1195,7 @@ func (a *App) homeDucter(c *ui.Context, s *isle, at ui.Rect) {
 // water in front of its island: one that is on is its clay token, gently
 // bobbing; one that can be added is an empty well to fill (tap it, or
 // drag the ability onto the stage). The equip flies into its well.
-func (a *App) dockRow(c *ui.Context, v view, s *isle, dy float32, sel bool, now time.Time, still bool) {
+func (a *App) dockRow(c *ui.Context, v view, s *isle, dy float32, sel bool, now time.Time, still bool, minY float32) {
 	t := a.T
 	d := a.devState()
 	size := min(max(dockSize*v.k, 92), 140)
@@ -1171,7 +1210,7 @@ func (a *App) dockRow(c *ui.Context, v view, s *isle, dy float32, sel bool, now 
 	}
 	total += float32(len(s.dock)-1) * gap
 	x := v.x(s.dockR.X+s.dockR.W/2) - total/2
-	y0 := v.y(s.dockR.Y + dy)
+	y0 := max(v.y(s.dockR.Y+dy), minY)
 	for i, id := range s.dock {
 		slotW := widths[i]
 		x += slotW + gap
@@ -1201,6 +1240,11 @@ func (a *App) dockRow(c *ui.Context, v view, s *isle, dy float32, sel bool, now 
 				art = abilityArt(id)
 			}
 			bmp := theme.Clay(art)
+			// An empty slot shows, faintly, what goes in it.
+			var ghost *ui.Bitmap
+			if !on && !flying {
+				ghost = theme.Clay(abilityLaterArt(id))
+			}
 			kind := idleStill
 			if on {
 				kind = idleFloat
@@ -1211,6 +1255,10 @@ func (a *App) dockRow(c *ui.Context, v view, s *isle, dy float32, sel bool, now 
 				softEllipse(p, ui.Rect{X: r.X + r.W*0.14, Y: r.Y + r.H*0.8, W: r.W * 0.8, H: r.H * 0.2}, ui.RGBA(30, 80, 86, 0.22))
 				if bmp != nil {
 					clayArt(p, fitIn(bmp, r), bmp, kind, phase, nil)
+				}
+				if ghost != nil {
+					g := fitIn(ghost, ui.Rect{X: r.X + r.W*0.24, Y: r.Y + r.H*0.12, W: r.W * 0.52, H: r.H * 0.52})
+					p.ImageRegion(ghost, ui.Rect{}, g, ui.ImageOptions{Tint: ui.RGBA(255, 255, 255, 0.7)})
 				}
 				if target {
 					grow := float32(6)
@@ -1355,7 +1403,7 @@ func (a *App) badges(c *ui.Context, v view, s *isle, ir ui.Rect, sel bool) float
 // isleTokens are the AI accounts signed in on a device, standing on its
 // island's front right with their names under them, in rows that never
 // overlap. Tapping one lifts every island it's signed in on.
-func (a *App) isleTokens(c *ui.Context, v view, s *isle, ir ui.Rect, minX float32) float32 {
+func (a *App) isleTokens(c *ui.Context, v view, s *isle, ir ui.Rect, minX, maxX float32) float32 {
 	t := a.T
 	d := a.devState()
 	var hs []protocol.DeviceHarness
@@ -1376,7 +1424,7 @@ func (a *App) isleTokens(c *ui.Context, v view, s *isle, ir ui.Rect, minX float3
 	}
 	// Rows that fit between the badges and the island's right rim, each
 	// centered in front of the device.
-	lo, hi := max(minX, ir.X+ir.W*0.02), ir.X+ir.W*1.02
+	lo, hi := max(minX, ir.X+ir.W*0.02), min(ir.X+ir.W*1.02, maxX)
 	var rows [][]int
 	var rowW []float32
 	for i := range hs {

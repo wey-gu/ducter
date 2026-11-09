@@ -151,6 +151,9 @@ note and a `Dn`) before it is built.
       headless renderer only; this machine's setting was left alone). Trigger: the next design QA.
 - [ ] "Shared by N devices" from the AI agent itself, per account (D82). Trigger: an AI agent
       reports its account or allowance.
+- [ ] The site's ability stickers: `design/art/assets/alpha/ab_*.png` are now the clay objects
+      (D81); `apps/site/public/art` still holds the old rings until `apps/site/scripts/art.mjs`
+      runs. Trigger: the next site build.
 - [ ] One small mark on the AI agent Ducter thinks with (a separate proposal); the token has
       room for it. Trigger: that proposal is decided.
 

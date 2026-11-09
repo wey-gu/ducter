@@ -97,6 +97,8 @@ type equipFx struct {
 func (a *App) OpenDevices() {
 	a.Route = RouteDevices
 	a.send(protocol.DevicesReq{T: "devices"})
+	// The connections stand on the home island as mailboxes (D96).
+	a.send(protocol.ConnectionsReq{T: "connections"})
 }
 
 func (a *App) devState() *devicesState {
@@ -529,19 +531,20 @@ func deviceArt(d *protocol.DeviceView) string {
 	return kind + "_awake"
 }
 
+// abilityArt is an ability's clay object (D81: one family of standalone clay
+// toys: a globe in a browser frame, a hand on a laptop, a little lighthouse,
+// a hand tapping a phone, a handset on its base).
 func abilityArt(id string) string {
 	switch id {
-	case protocol.AbilityWeb:
-		return "ab_web"
-	case protocol.AbilityComputer:
-		return "ab_computer"
-	case protocol.AbilityRemote:
-		return "ab_remote"
-	case protocol.AbilityPhone:
-		return "ab_phone_locked"
+	case protocol.AbilityWeb, protocol.AbilityComputer, protocol.AbilityRemote, protocol.AbilityPhone, protocol.AbilityCall:
+		return "ab_" + id
 	}
-	return "ab_call_locked"
+	return "ab_call"
 }
+
+// abilityLaterArt is the same object not yet available: desaturated and a
+// little see-through.
+func abilityLaterArt(id string) string { return abilityArt(id) + "_later" }
 
 // ---------- the stage ----------
 
@@ -650,7 +653,11 @@ func (a *App) abilityGrid(c *ui.Context, dv *protocol.DeviceView, cols int) {
 			tile.Children(func() {
 				well := ui.Box(c.Key("well")).WidthPercent(100).Height(84).Radius(t.RadiusMD).Background(t.Clay).Padding(t.S2)
 				well.Children(func() {
-					if bmp := theme.Clay(abilityArt(id)); bmp != nil {
+					art := abilityArt(id)
+					if locked {
+						art = abilityLaterArt(id)
+					}
+					if bmp := theme.Clay(art); bmp != nil {
 						im := ui.Image(c, bmp).Grow(1).AccessHidden(true)
 						if flying {
 							im.Opacity(0)

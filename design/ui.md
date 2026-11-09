@@ -326,8 +326,9 @@ of 20), building on `research/24`, `26`, `28` and D65's equip snap. Built in
 | a plank-and-rope bridge from home | the connection (only ever to home) | pale when the device can't be reached; relaxed when asleep; never slack or broken |
 | parcels crossing a bridge | a task running on that device now | none when nothing runs there |
 | small clay tokens on an island, names on tags | the AI agents signed in on that device | tap one: every island where it is signed in lifts; the card says "N 台设备共用" |
-| full-size clay tokens on the water in front of the island | abilities that are on | bob gently; the equip flies in |
-| an empty clay well beside them | an ability that can be added (or needs a fix first) | dashed accent ring while one is held over the stage, hovered or in flight |
+| full-size clay objects on the water in front of the island (a globe in a browser frame, a hand on a laptop, a little lighthouse, a hand tapping a phone, a handset on its base) | abilities that are on | bob gently; the equip flies in; not yet: the same object desaturated and a little see-through (the list beside the stage) |
+| a stitched clay socket beside them, the object faint inside it | an ability that can be added (or needs a fix first) | dashed accent ring while one is held over the stage, hovered or in flight |
+| small clay mailboxes on home's right rim | the user's connections (D96), at most three | |
 | a jetty from home, a ring of still water, a sign | the one-time code is out, waiting for a device (D83) | the scene makes room for the sign; the new island rises in that water |
 
 Layout: home in the middle; six spots round it (back right, back left, front right, front

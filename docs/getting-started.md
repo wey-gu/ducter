@@ -13,9 +13,10 @@ write to a colleague.
 ## What you need
 
 - **A Mac with Apple silicon** (M1 or later).
-- **Claude Code or Codex**, installed and signed in with your own account. Ducter does its work
-  through the AI plan you already have. If neither is set up yet, Ducter tells you exactly what
-  to run.
+- **A coding agent:** Claude Code or Codex, signed in with your own account
+  ([which agents](faq.md#which-coding-agents-does-it-work-with)). Ducter does its work through
+  the plan you already have. If neither is set up yet, Ducter installs one for you in the next
+  step.
 - **The Ducter app.** A download is coming soon. Until then, someone builds it once from the
   source and hands you `Ducter.dmg`, or you build it yourself: see [Install](install.md).
 
@@ -67,12 +68,11 @@ done. Everything I finish comes back to you like this, with how I checked it."*
 A finished result tells you:
 
 - what it did, in a few lines;
-- **How I know:** the proof, such as the tests it ran before and after;
-- **Sent out:** anything that left your computer (often **Nothing**);
-- **Left out:** what it chose not to do.
+- how it checked, in one short line, such as *412 tests pass*;
+- how many files changed (click it to see the changes);
+- anything that left your computer, on a line marked ↗. If nothing did, there's no such line.
 
-Then you choose: **Merge into main**, **Open draft PR**, or **See changes**. Merging is always
-your call.
+Then you choose: **Merge into main** or **Open draft PR**. Merging is always your call.
 
 In our own runs, a small "fix the failing tests" task came back done in under a minute.
 

@@ -15,6 +15,8 @@ and other Macs can connect to it to talk and decide.
 In the app, **Your devices and what they can do** shows each device with its state and what it
 can do, and **You can also add** shows what else it could learn.
 
+![Your devices and what they can do: this Mac on its stage, what it can do around it, Claude Code and Codex signed in, and what you can also add](images/devices.png)
+
 Each device is in one of three states:
 
 - **Awake:** ready to work.

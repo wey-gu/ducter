@@ -1,136 +1,187 @@
-# Ducter
+<h1 align="center">Ducter</h1>
 
-Ducter is a personal AI you run yourself. You talk to one partner; it hands the real work to
-Claude Code or Codex on your own machines, using the AI plans you already pay for, and comes
-back when the work is done, with proof.
-
-It asks for your attention only when a decision is truly yours, and every task stays open for
-you to look into and steer whenever you want.
-
-<p>
-  <img src="apps/desktop/docs/chrome-headless-en-900-conversation-done.png" width="49%" alt="The conversation: a finished task reports its cause, fix and checks, with evidence and Merge, Open draft PR and See changes">
-  <img src="apps/desktop/docs/chrome-headless-en-900-task-done.png" width="49%" alt="An opened task: its transcript with checkpoints, the diff, and a Merge into main decision">
-</p>
-<p>
-  <img src="apps/desktop/docs/abilities-en-home.png" width="61%" alt="Your devices and abilities: this Mac and a worker, the AIs signed in on each, and abilities you can add">
-  <img src="design/screens/phone-conversation-en.png" width="37%" alt="The phone client: two decisions waiting, each with a default, and Go on all defaults">
+<p align="center">
+  <b>One partner for your real work, running on your own machines.</b><br>
+  You say what you want. It hands the work to Claude Code or Codex, on the plans you already
+  pay for, and comes back when it's done, with how it checked.
 </p>
 
-> **Status: early preview.** Ducter works end to end on macOS and on a Linux server, but expect
-> rough edges and breaking changes. The desktop app is macOS only.
+<p align="center">
+  <a href="https://github.com/wey-gu/ducter/actions/workflows/ci.yml"><img src="https://github.com/wey-gu/ducter/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="License: Apache-2.0"></a>
+</p>
+
+<p align="center">
+  <a href="https://ducter.ai">ducter.ai</a> ·
+  <a href="docs/getting-started.md">Getting started</a> ·
+  <a href="docs/README.md">Docs</a> ·
+  <a href="#中文">中文</a>
+</p>
+
+<p align="center">
+  <img src="docs/images/hero.png" width="100%" alt="Ducter on a Mac and a phone. On the Mac, a finished task: the flaky compaction test is fixed, with How I know (50 of 50 runs pass, 412 workspace tests pass, a two-file diff) and Merge into main. Below it, a question with a default: rebase fix-ci, with Go, Hold and Reply. The same question is open on the phone.">
+</p>
 
 ## What it feels like
 
-- **One conversation.** You write the way you'd write to a colleague: "Fix the flaky test in
-  ~/dev/foo, then tell me." Quick questions get a quick answer; bigger work becomes a task.
-- **Silence means it's going fine.** Tasks run in the background. You hear back when one is
-  done, or when it needs a decision from you.
-- **Decisions come with a default.** "Rebase before merging? Default: rebase, in 29 min." Press
-  Go, Hold, or reply in your own words, or let the default happen.
-- **Results come with proof.** A finished task says what it changed and how it checked (tests,
-  CI runs, the diff), then offers Merge, a draft PR, or a look at the changes.
-- **Open anything, any time.** *On hand* shows every task at a glance. Open one to read its
-  transcript, see its diff, and talk to it directly.
-- **Your machines, your plans.** Tasks run on your Mac or on a server you own, each in its own
-  git worktree and branch, on the Claude Code or Codex login you already have. Merging is
-  always your call.
-- **It remembers you.** With [Nowledge Mem](https://mem.nowledge.co), your partner starts with
-  the identity and context you already keep there, shared with the other AIs you use.
-- **English and 中文** throughout, following your system language.
+You write to Ducter the way you'd write to a colleague: *"Fix the flaky compaction test in
+HawDB and tell me when it's done."* It says it's on it, and then it's quiet. The work happens
+in the background, on your Mac or a server you own, in a separate copy of your project.
 
-## Quickstart
+When it's done, it tells you what it did in a line or two, shows **how it knows** (the tests
+it ran, the diff), and waits for you to **Merge into main**. When it needs you, it asks one
+plain question with a default, *"Rebase it? If you don't answer, I'll rebase in 29 min,"* and
+you press **Go**, **Hold**, or reply in your own words, on the Mac or on your phone.
 
-You need at least one of [Claude Code](https://docs.anthropic.com/en/docs/claude-code) or
-[Codex](https://github.com/openai/codex) installed and signed in.
+Silence means it's going fine. Everything it's doing is one click away whenever you want to
+look.
 
-### The Mac app
+## What you can do today
 
-Build it once (needs [Bun](https://bun.sh) and [Go](https://go.dev)):
+- **Hand off coding work.** "Fix the failing tests in my-app." "Upgrade OAR to 0.96 and fix
+  what breaks." Each task gets its own git worktree and `ducter/…` branch; merging is your
+  call.
+- **Ask for reviews and write-ups.** "Review this week's open PRs." "Write the v0.4 release
+  notes once CI is green." A task can wait for something and pick up again by itself.
+- **Look things up on the web.** On a Mac, Ducter reads pages in its own Chrome window, separate
+  from yours. Logins, forms and payments stay with you.
+- **Answer from your phone.** Decisions arrive with the default already chosen, and your nights
+  stay quiet.
+- **Keep it working while your Mac sleeps.** Run Ducter on a Linux server, and lend it other
+  machines to work on.
+- **Use what you already have.** Your Claude Code or Codex login, settings and skills, and, if
+  you use [Nowledge Mem](https://mem.nowledge.co), the memory your other AI tools share.
+  English and 中文 throughout.
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/on-hand.png" alt="On hand: every task in four lanes, Needs you, Working, Waiting and Done today, with the open decision in its card"></td>
+    <td width="50%"><img src="docs/images/task.png" alt="An opened task: what it did step by step, the diff of the two files it changed, and How I know"></td>
+  </tr>
+  <tr>
+    <td><b>On hand.</b> Every task at a glance, and what is waiting for you.</td>
+    <td><b>An opened task.</b> What it did, its changes, and a box to talk to it directly.</td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+    <td width="64%"><img src="docs/images/devices.png" alt="Your devices and what they can do: this Mac on its stage with what it can do around it, and Claude Code and Codex signed in"></td>
+    <td width="36%"><img src="docs/images/phone-decision.png" alt="Ducter on a phone with a decision open: Rebase it? with Go, Hold and Reply"></td>
+  </tr>
+  <tr>
+    <td><b>Your devices.</b> The computers Ducter works on, and what each one can do.</td>
+    <td><b>Your phone.</b> The same decisions, wherever you are.</td>
+  </tr>
+</table>
+
+> **Early preview.** Ducter works end to end on a Mac and on a Linux server. Expect rough edges
+> and breaking changes. The desktop app is macOS (Apple silicon) only;
+> the phone version runs in your phone's browser, and an iPhone app is coming.
+
+## Get Ducter
+
+Ducter works through [Claude Code](https://docs.anthropic.com/en/docs/claude-code) or
+[Codex](https://github.com/openai/codex), with your own account. If neither is on your Mac yet,
+the app installs it and walks you through signing in.
+
+### Download the Mac app
+
+Signed and notarized builds will be on
+[GitHub Releases](https://github.com/wey-gu/ducter/releases). The first release is on its way;
+until then, build the app from source (below).
+
+Open the `.dmg`, drag **Ducter** to **Applications**, and open it. It checks your Mac, sets up
+what's missing without a Terminal, and opens the conversation. Closing the window doesn't stop
+it; **Stop Ducter** in the menu does. [Getting started](docs/getting-started.md) walks you
+through the first five minutes.
+
+### Build from source
+
+With [Bun](https://bun.sh) and [Go](https://go.dev) installed:
 
 ```sh
 git clone https://github.com/wey-gu/ducter && cd ducter
 scripts/make-app.sh        # dist/Ducter.app and a .dmg
 ```
 
-Open `Ducter.app`. It checks your Mac, shows the one thing to fix if anything blocks, and opens
-the conversation. Ducter keeps working when you close the window; **Stop Ducter** in the menu
-stops it. Built without an Apple Developer ID, the app is signed ad hoc, so the first open
-goes through **System Settings → Privacy & Security → Open Anyway**
-([details](docs/troubleshooting.md#ducter-not-opened)). The user guide is in
-[`docs/`](docs/README.md), starting with [Getting started](docs/getting-started.md).
-
-### The command line
-
-```sh
-scripts/install.sh      # builds `ducter` (and the desktop app if Go is present) into ~/.local/bin
-ducter doctor           # checks this Mac; every missing item comes with the command that fixes it
-ducter up               # starts your partner and opens the desktop app
-```
-
-`ducter status` shows tasks and open decisions from a terminal. From a checkout you can also
-skip the install: `bun install && bun packages/cli/src/main.ts up`.
+Without a Developer ID the app is signed ad hoc, so macOS needs one extra step the first time
+([what to do](docs/troubleshooting.md#ducter-not-opened)). If you'd rather use a terminal,
+`scripts/install.sh` puts the `ducter` command in `~/.local/bin`; `ducter doctor` checks your
+Mac and `ducter up` starts your partner.
 
 ### On a server
 
-Keep your partner awake while your Mac sleeps: build the Linux binary on your Mac, install it
-as a systemd user service on the server, and pair the Mac app or your phone with a one-time
-code.
+Keep your partner awake while your Mac sleeps. Ducter runs as a systemd user service and listens
+on `127.0.0.1` only; you reach it through your own domain or an SSH tunnel, and your phone and
+Mac connect with a one-time code.
 
 ```sh
-scripts/install.sh --linux ducter-linux    # on your Mac, then copy the folder for your server's CPU
+scripts/install.sh --linux ducter-linux    # on your Mac; copy the folder for your server's CPU
 sh ducter/install.sh --service             # on the server
 ```
 
-The server listens on `127.0.0.1` only; reach it through your own domain (a one-line Caddy
-setup) or an SSH tunnel. Other machines can join as workers, and tasks can run on them. The
-walkthrough is in [`docs/install.md`](docs/install.md), and every command and option in
-[`design/build-and-run.md`](design/build-and-run.md).
+The walkthrough is in [Install](docs/install.md#a-linux-server-that-stays-on).
 
 ## How it works
 
 ```mermaid
 flowchart LR
-  you(["You<br/>desktop · phone · terminal"]) <-->|one WebSocket| partner
-  subgraph main["Ducter main process (your Mac or server)"]
-    partner["Partner<br/>Claude Code loop + Ducter tools"]
-    log[("The Log<br/>SQLite, append-only")]
+  you(["You<br/>Mac · phone · terminal"]) <-->|one connection| partner
+  subgraph main["Ducter, on your Mac or your server"]
+    partner["Your partner<br/>Claude Code + Ducter's tools"]
+    log[("The Log<br/>local SQLite")]
     partner <--> log
   end
-  partner -->|tasks via OAR| t1["Task: Claude Code<br/>own git worktree and branch"]
-  partner -->|tasks via OAR| t2["Task: Codex<br/>on a worker machine"]
-  partner <-.->|identity and memory| mem[("Nowledge Mem<br/>optional")]
+  partner -->|task| t1["Claude Code<br/>its own worktree and branch"]
+  partner -->|task| t2["Codex<br/>on a machine you lend it"]
 ```
 
-- **One partner.** It runs on Claude Code as its loop, with Ducter's own tools and persona.
-- **Tasks run on real harnesses.** Each task is a Claude Code or Codex session started through
-  [OAR](https://github.com/botiverse/oar), in its own git worktree on a `ducter/<slug>` branch.
-  Tasks report back with a summary, evidence, and questions that carry a default.
-- **The Log is the truth.** Your messages, replies, task events, reports and decisions are
-  appended to one local SQLite log. The conversation, *On hand* and every task view are read
-  from it, so nothing is lost when a harness session ends.
-- **Clients.** The desktop app is a native UI built with [MyGo](https://github.com/egoist/mygo);
-  the phone client is a small web app served by the main process. Both speak the same
-  protocol.
+- **One partner talks with you.** It runs on Claude Code with Ducter's own tools, answers
+  quick things itself, and turns bigger work into tasks.
+- **Tasks run on real harnesses.** Each is a Claude Code or Codex session started through
+  [OAR](https://github.com/botiverse/oar), in its own worktree. It reports back with a summary,
+  how it checked, and questions that carry a default.
+- **One local log holds everything.** The conversation, On hand and every task view are read
+  from it, so nothing is lost when a session ends or a window closes.
+- **Clients are thin.** The Mac app is native ([MyGo](https://github.com/egoist/mygo), no
+  webview); the phone client is a small web app. Both speak the same protocol.
 
-The ideas behind the design are in [`design/principles.md`](design/principles.md) and the
-mechanics in [`design/`](design/); start at [`design/README.md`](design/README.md). Why
-Ducter exists is in [`motivation.md`](motivation.md), and what comes next is in
-[`design/roadmap.md`](design/roadmap.md).
+## Privacy and safety
+
+- **Nothing lands without you.** Ducter never merges, never works in your own checkout, and never
+  types your passwords. Every result says what was sent out.
+- **Your machines, your accounts.** There is no Ducter cloud and no Ducter account. Work reaches
+  Anthropic or OpenAI only through your own Claude Code or Codex login.
+- **Only your devices get in.** A server listens on itself only; a phone or another computer
+  connects with a one-time code, and you can disconnect it at any time.
+
+The details are in [Privacy and safety](docs/privacy-and-safety.md).
+
+## Docs
+
+- **Using Ducter:** [Getting started](docs/getting-started.md) · [Install](docs/install.md) ·
+  [Your devices](docs/devices.md) · [Your phone](docs/phone.md) ·
+  [Privacy and safety](docs/privacy-and-safety.md) · [FAQ](docs/faq.md) ·
+  [Troubleshooting](docs/troubleshooting.md)
+- **Building Ducter:** [why it exists](motivation.md), the
+  [principles](design/principles.md), the [design notes](design/README.md), every command in
+  [build and run](design/build-and-run.md), and the [roadmap](design/roadmap.md).
 
 ## Contributing
 
-Ducter is young and opinionated, and its design is written down before its code. Read
-[CONTRIBUTING.md](CONTRIBUTING.md) to get started, and report security issues as described in
+Ducter writes its design down before its code. [CONTRIBUTING.md](CONTRIBUTING.md) explains how a
+change is made and what is wanted now. Report security issues as described in
 [SECURITY.md](SECURITY.md).
 
 ## 中文
 
-Ducter 是一个自己部署的个人 AI。你只跟一个伙伴说话，它把真正的活儿交给你自己机器上的
-Claude Code 或 Codex 去做，用的是你已经在付费的 AI 订阅，做完了带着证据回来告诉你。只有真正需要你拍板的事才会打扰你，而每件事你随时都能点开、查看、接手。
+Ducter 是跑在你自己机器上的个人 AI。你只跟一个伙伴说话，它把活儿交给你电脑上的 Claude Code 或
+Codex 去做，用的是你本来就在付的订阅。做完了，它告诉你结果，也告诉你它是怎么确认的。只有真要你拍板的事才来找你，而且先替你想好默认的做法。哪件事你想看，随时点开就行。
 
-目前是早期预览版：macOS 桌面端和 Linux 服务器都能用，界面中英双语。上手方法见上面的
-Quickstart，设计思路见 [`design/principles.md`](design/principles.md)。
+现在是早期预览版：Mac（Apple 芯片）和 Linux 服务器都能用，手机上可以看进展、做决定，界面中英双语。上手请看
+[Getting started](docs/getting-started.md)。
 
 ## License
 
-[Apache License 2.0](LICENSE).
+[Apache License 2.0](LICENSE)

@@ -16,8 +16,10 @@ write to a colleague.
 - **Claude Code or Codex**, installed and signed in with your own account. Ducter does its work
   through the AI plan you already have. If neither is set up yet, Ducter tells you exactly what
   to run.
-- **The Ducter app.** A download is coming soon. Until then, someone builds it once from the
-  source and hands you `Ducter.dmg`, or you build it yourself: see [Install](install.md).
+- **The Ducter app.** Signed downloads will be on
+  [GitHub Releases](https://github.com/wey-gu/ducter/releases); the first release is on its way.
+  Until then, someone builds it once from the source and hands you `Ducter.dmg`, or you build it
+  yourself: see [Install](install.md).
 
 ## 1. Open Ducter
 
@@ -74,6 +76,8 @@ A finished result tells you:
 Then you choose: **Merge into main**, **Open draft PR**, or **See changes**. Merging is always
 your call.
 
+![A finished result in the conversation: what was fixed, How I know with the test runs and the diff, and Merge into main. Below it, a decision with Go, Hold and Reply](images/conversation.png)
+
 In our own runs, a small "fix the failing tests" task came back done in under a minute.
 
 ## What happens next
@@ -83,6 +87,10 @@ In our own runs, a small "fix the failing tests" task came back done in under a 
   or **Reply…** in your own words.
 - **On hand** shows every task at a glance and what's waiting for you. Open any task to read
   *What it did*, see its changes, and talk to it directly.
+
+  ![On hand: tasks in four lanes, Needs you, Working, Waiting and Done today](images/on-hand.png)
+
+  ![An opened task: what it did, the diff, and How I know](images/task.png)
 - **Close the window whenever you like.** Ducter keeps working. The Dock icon brings the window
   back, and its badge counts what is waiting for you.
 - **A few small offers come later, one at a time,** each with **Later**: notifications on this

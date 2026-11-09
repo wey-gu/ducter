@@ -16,6 +16,7 @@ import { saidSince, shortGo, shortTitle, TaskBar, TimerPie, WhatItDid } from "./
 import {
   attention,
   bodyReasonOf,
+  browsing,
   editedFiles,
   finalAt,
   finished,
@@ -379,6 +380,8 @@ function DecisionCard({ d, taskId, inTask }: { d: DecisionState; taskId?: string
  *  words. No fill, no capsule (D73). */
 function TaskLine({ task, detail }: { task: Task; detail?: string }) {
   const a = attention(task);
+  const br = browsing(task);
+  if (br) detail = browsingLine(br);
   let d = (!sameWords(detail, title(task)) && detail) || stateLabel(a);
   // Who is doing it ends the line while it is under way, with why when it isn't the plain pick (D89).
   const [who, why] = whoLine(task);
@@ -393,6 +396,9 @@ function TaskLine({ task, detail }: { task: Task; detail?: string }) {
     </button>
   );
 }
+
+/** Where its browser is looking: Ducter's own, or the user's Chrome (D126). */
+const browsingLine = (br: { host: string; own?: boolean }) => t(br.own ? "browser.looking.own" : "browser.looking", br.host);
 
 function openEvidence(ev: EvidenceRef, task?: Task) {
   if (ev.kind === "diff" && task) return A.go({ name: "task", id: task.id });
@@ -1474,7 +1480,8 @@ export function TaskView({ id }: { id: string }) {
   const d = A.S.pendingDecision(id);
   const r = reportOf(task);
   // Where it stands: what it said or saved since its latest report when it has moved on (D127).
-  const detail = !finished(task) ? (a === "working" && saidSince(task)) || (r ? r.summary.split("\n")[0]! : "") : "";
+  const br = browsing(task);
+  const detail = !finished(task) ? (br && browsingLine(br)) || (a === "working" && saidSince(task)) || (r ? r.summary.split("\n")[0]! : "") : "";
   const [headline, lede] = finished(task) && r ? splitOutcome(r.summary) : ["", ""];
   return (
     <>
@@ -1734,7 +1741,7 @@ function Loadout() {
     A.setSettings({ brain: { harness: harness as never, ...(m ? { model: m } : {}) } });
     A.toast(t("loadout.toast.brain", name, harnessName(harness)));
   };
-  const reserve = b?.allowance ? (b.allowance.left <= PARTNER_RESERVE ? t("loadout.left.reserve", pct(b.allowance.left), name) : `${t("loadout.left", pct(b.allowance.left))} · ${t("loadout.brain.reserve", name)}`) : t("loadout.brain.reserve", name);
+  const reserve = b?.allowance ? (b.allowance.left <= PARTNER_RESERVE ? t("loadout.left.reserve", pct(b.allowance.left), name) : `${t("loadout.left", pct(b.allowance.left))} · ${t("loadout.brain.reserve", name)}`) : t("loadout.signed_in"); // no limit reported: no reserve to claim (D132)
   return (
     <>
       <section class="set">
@@ -1789,7 +1796,7 @@ function Loadout() {
                 </div>
               );
             })}
-            {b && <div class="small sub">{t("loadout.acct.same", name, name)}</div>}
+            {b && <div class="small sub">{t("loadout.acct.same", name)}</div>}
             <h3>{t("loadout.rules")}</h3>
             {!(A.rules ?? []).length && <div class="small sub">{t("loadout.rules.none")}</div>}
             {(A.rules ?? []).map((r) => (

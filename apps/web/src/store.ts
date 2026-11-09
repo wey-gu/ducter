@@ -67,6 +67,16 @@ export interface Task {
   /** Who does it now and why: the latest body_selected (D89). */
   body?: TaskBody;
   bodySeq?: number;
+  /** Where a browser task's browser last was (task_event {role: system, raw.browser}); `own`:
+   *  the user's own Chrome, through the AI agent's own tools (D126). */
+  browser?: { host: string; own?: boolean; seq: number };
+}
+
+/** Where a running task's browser is looking, or undefined (D126). */
+export function browsing(task: Task): { host: string; own?: boolean } | undefined {
+  const a = attention(task);
+  if (!task.browser || (a !== "working" && a !== "queued" && a !== "needs_you" && a !== "blocked")) return undefined;
+  return task.browser;
 }
 
 export const LANE = { needs: 0, working: 1, waiting: 2, done: 3, hidden: 4 } as const;
@@ -397,6 +407,8 @@ export class Store {
           const sd = t.sends.find((s) => !s.seq && (b.clientId ? s.clientId === b.clientId : s.text === b.text));
           if (sd) sd.seq = ev.seq;
         }
+        const br = b.role === "system" ? (b.raw as { browser?: { host?: string; own?: boolean } } | undefined)?.browser : undefined;
+        if (br?.host && (!t.browser || t.browser.seq < ev.seq)) t.browser = { host: br.host, ...(br.own ? { own: true } : {}), seq: ev.seq };
         break;
       }
       case "report": {

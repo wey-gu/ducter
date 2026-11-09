@@ -7,6 +7,8 @@ import type { DevicesView } from "./devices.ts";
 import { PROJECTED_KINDS, taskStream } from "./registry.ts";
 import { machineId } from "./machine.ts";
 import type { SettingsStore } from "./settings.ts";
+import type { RulesStore } from "./rules.ts";
+import type { Loadout } from "./loadout.ts";
 import type { ConnectionsStore } from "./connections.ts";
 
 export interface WsData {
@@ -17,6 +19,8 @@ export interface WsData {
   devices?: boolean;
   /** Asked for settings: gets a fresh settings frame whenever they change. */
   settings?: boolean;
+  /** Asked for rules: gets a fresh rules frame whenever they change. */
+  rules?: boolean;
   /** Asked for connections: gets a fresh connections frame whenever they change. */
   connections?: boolean;
   /** The paired device behind a remote socket (core.ts). */
@@ -39,6 +43,9 @@ export interface WsDeps {
   devices?: () => DevicesView | undefined;
   /** The partner's settings (settings.ts); absent in tests that don't need it. */
   settings?: SettingsStore;
+  /** Your rules and who does the tasks (D89); absent in tests that don't need them. */
+  rules?: RulesStore;
+  loadout?: Loadout;
   /** The user's connections (connections.ts); absent in tests that don't need it. */
   connections?: ConnectionsStore;
   batchMs?: number;
@@ -98,6 +105,11 @@ export function createWsHandler(deps: WsDeps) {
     const subs = [...sockets].filter((ws) => ws.data.settings);
     if (!subs.length) return;
     void settingsFrame().then((f) => subs.forEach((ws) => sockets.has(ws) && send(ws, f)));
+  });
+  const rulesFrame = (): ServerFrame => ({ t: "rules", rules: deps.rules!.list() });
+  const offRules = deps.rules?.onChange(() => {
+    const f = rulesFrame();
+    for (const ws of sockets) if (ws.data.rules) send(ws, f);
   });
   // Connections: same pattern. The frame never carries a token.
   const connectionsFrame = (): ServerFrame => ({ t: "connections", connections: deps.connections!.view(), oo: deps.connections!.oo() });
@@ -304,6 +316,18 @@ export function createWsHandler(deps: WsDeps) {
       case "settings_set": {
         if (!deps.settings) throw new Error("settings are not available");
         ws.data.settings = true;
+        // What it thinks with must be an AI agent signed in on the Mac Ducter lives on, and one
+        // that can be the partner (D89).
+        const b = f.patch?.brain;
+        if (b && devicesView()) {
+          const home = (await devicesView()!.frame()).devices.find((d) => d.home);
+          const h = home?.harnesses.find((x) => x.harness === b.harness);
+          if (!h?.canBePartner) {
+            send(ws, { t: "error", message: `settings_set: ${b.harness} can't be what the partner thinks with here (it must be signed in on this computer and able to be the partner)` });
+            send(ws, await settingsFrame());
+            return;
+          }
+        }
         // A change pushes a fresh frame to every subscriber; nothing changed: answer this one.
         if (!deps.settings.set(f.patch ?? {}).length) send(ws, await settingsFrame());
         return;
@@ -313,6 +337,35 @@ export function createWsHandler(deps: WsDeps) {
         ws.data.settings = true;
         const how = await deps.settings.forget(f.seq);
         send(ws, await settingsFrame(how ? { seq: f.seq, how } : undefined));
+        return;
+      }
+      case "rules": {
+        if (!deps.rules) throw new Error("rules are not available");
+        ws.data.rules = true;
+        send(ws, rulesFrame());
+        return;
+      }
+      case "rule_remove": {
+        if (!deps.rules) throw new Error("rules are not available");
+        ws.data.rules = true;
+        // A removal pushes a fresh frame to every subscriber; an unknown id: answer this one.
+        if (!deps.rules.remove(String(f.id ?? ""))) send(ws, rulesFrame());
+        return;
+      }
+      case "candidates": {
+        if (!deps.loadout) throw new Error("candidates are not available");
+        send(ws, { t: "candidates", taskId: f.taskId, candidates: await deps.loadout.candidates(f.taskId) });
+        return;
+      }
+      case "task_switch": {
+        if (!deps.loadout) throw new Error("switching is not available");
+        let r: { ok: boolean; message?: string };
+        try {
+          r = await deps.loadout.switchTask(f.taskId, String(f.harness ?? ""), f.model || undefined, deps.runner());
+        } catch (err) {
+          r = { ok: false, message: (err as Error).message };
+        }
+        send(ws, { t: "action_result", taskId: f.taskId, action: "switch", ok: r.ok, ...(r.message ? { message: r.message } : {}) });
         return;
       }
       case "connections": {
@@ -385,6 +438,7 @@ export function createWsHandler(deps: WsDeps) {
     stop() {
       offDevices?.();
       offSettings?.();
+      offRules?.();
       offConnections?.();
       offNoted();
       unsubscribe();

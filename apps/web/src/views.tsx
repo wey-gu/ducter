@@ -1,11 +1,12 @@
 // The phone's screens: the conversation (default), 手头的事 / On hand, an opened task, and the
 // sheets (a decision opened from a notification; this phone's settings). Behavior follows the
 // desktop client (apps/desktop/internal/views); copy comes only from i18n.ts.
-import type { Attention, Bodies, EvidenceRef, LivingItem } from "@ducter/protocol";
+import type { Attention, Bodies, Candidate, DeviceHarness, EvidenceRef, LivingItem } from "@ducter/protocol";
+import { PARTNER_RESERVE } from "@ducter/protocol/src/loadout.ts";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { JSX } from "preact";
 import { A } from "./app.ts";
-import { ago, cjkPad, deviceLabel, duration, firstClause, harnessName, placeLine, sameWords, splitOutcome, when } from "./format.ts";
+import { ago, cjkPad, deviceLabel, duration, firstClause, harnessName, modelName, placeLine, sameWords, splitOutcome, when } from "./format.ts";
 import { markdown } from "./markdown.ts";
 import { disablePush, enablePush } from "./push-client.ts";
 import { inApp } from "./native.ts";
@@ -26,6 +27,7 @@ import {
   headlineEvidence,
   resultEvidence,
   title,
+  whoOf,
   type DecisionState,
   type Entry,
   type Task,
@@ -341,7 +343,10 @@ function DecisionCard({ d, taskId, inTask }: { d: DecisionState; taskId?: string
  *  words. No fill, no capsule (D73). */
 function TaskLine({ task, detail }: { task: Task; detail?: string }) {
   const a = attention(task);
-  const d = (!sameWords(detail, title(task)) && detail) || stateLabel(a);
+  let d = (!sameWords(detail, title(task)) && detail) || stateLabel(a);
+  // Who is doing it ends the line while it is under way, with why when it isn't the plain pick (D89).
+  const [who, why] = whoLine(task);
+  if (who && !finished(task) && a !== "dropped") d += ` · ${who}${why ? ` · ${why}` : ""}`;
   return (
     <button class="taskline" onClick={() => A.go({ name: "task", id: task.id })}>
       <span class="ic">
@@ -1018,10 +1023,83 @@ function WhatItDid({ task }: { task: Task }) {
 
 /** A quiet disclosure at the bottom: who is doing it, where (repo and branch), saved progress,
  *  what went out. A row with nothing to say is left out. */
+/** Who does a task and why, as one sentence for Details (D89). */
+function whoSentence(task: Task): string {
+  const who = whoLine(task)[0];
+  if (!who) return "";
+  const w = whoOf(task)?.why;
+  if (w?.kind === "rule" && w.text) return t("who.sentence.rule", who, w.text);
+  if (w?.kind === "limit" && w.ruleId) return t("who.sentence.limit.rule", who, harnessName(w.from ?? ""));
+  if (w?.kind === "limit" && w.from) return t("who.sentence.limit", who, harnessName(w.from));
+  if (w?.kind === "you") return t("who.sentence.you", who);
+  if (w?.kind === "default") return t("who.sentence.default", who, A.S.personaName);
+  return t("who.sentence", who);
+}
+
+/** Who does a task, in words ("Codex · gpt-5"), and why when it isn't Ducter's plain pick (D89). */
+function whoLine(task: Task): [string, string] {
+  const m = modelOf(task);
+  const who = [harnessName(harnessOf(task)), m && modelName(m)].filter(Boolean).join(" · ");
+  const w = whoOf(task)?.why;
+  if (!w) return [who, ""];
+  if (w.kind === "rule" && w.text) return [who, t("who.why.rule", w.text)];
+  if (w.kind === "limit") return [who, w.ruleId ? t("who.why.limit.rule", harnessName(w.from ?? "")) : w.from ? t("who.why.limit", harnessName(w.from)) : ""];
+  if (w.kind === "you") return [who, t("who.why.you")];
+  return [who, ""];
+}
+
+const pct = (f: number) => Math.round(f * 100);
+const candName = (c: Candidate) => [harnessName(c.harness), c.model && modelName(c.model)].filter(Boolean).join(" · ");
+
+function candReason(c: Candidate): string {
+  if (c.blocked === "reserve") return [t("cand.reserve", A.S.personaName), c.resetsAt && t("cand.resets", when(A.L, c.resetsAt))].filter(Boolean).join(" · ");
+  if (c.blocked) return t(`cand.${c.blocked}`);
+  const why = { rule: t("cand.rule"), fit: t("cand.fit"), fast: t("cand.fast") }[c.reason.kind as string] ?? "";
+  return [why, c.left != null && t("cand.left", pct(c.left)), c.billing === "usage" && t("cand.paid")].filter(Boolean).join(" · ");
+}
+
+/** 换谁来做 / Switch who does it: who does it now, who else could with why and the limit each,
+ *  the ones that can't greyed with why, and 换到 X 接着做 / Continue on X. */
+function SwitchList({ task }: { task: Task }) {
+  const [pick, setPick] = useState("");
+  const list = A.candidates.get(task.id);
+  const running = ["working", "queued"].includes(attention(task));
+  if (!list) return <div class="small sub">{t("who.loading")}</div>;
+  const chosen = list.find((c) => !c.blocked && !c.current && `${c.harness}/${c.model ?? ""}` === pick);
+  const free = list.filter((c) => !c.blocked && !c.current).length;
+  return (
+    <div class="switch-list" role="radiogroup" aria-label={t("who.switch")}>
+      <div class="small sub">{t(running ? "who.switch.note" : "who.switch.note.idle")}</div>
+      {list.map((c) => {
+        const key = `${c.harness}/${c.model ?? ""}`;
+        const off = !!c.blocked;
+        return (
+          <button key={key} role="radio" aria-checked={pick === key} disabled={off || c.current} class={`cand${off ? " off" : ""}${pick === key ? " on" : ""}`} onClick={() => setPick(key)}>
+            <img src={`app/art/${c.harness === "claude-code" ? "token_orange" : "token_ink"}.webp`} alt="" width="36" height="36" />
+            <span class="grow">
+              <b>{candName(c)}</b>
+              <small>{candReason(c)}</small>
+            </span>
+            {c.current && <small class="now">{t("who.now")}</small>}
+          </button>
+        );
+      })}
+      {free === 0 && <div class="small sub">{t("cand.none")}</div>}
+      {chosen &&
+        (A.switching ? (
+          <div class="small sub">{t("who.go", candName(chosen))}…</div>
+        ) : (
+          <Btn kind="primary" label={t("who.go", candName(chosen))} about={title(task)} onClick={() => A.switchTask(task.id, chosen.harness, chosen.model, candName(chosen))} />
+        ))}
+    </div>
+  );
+}
+
 function TaskDetails({ task }: { task: Task }) {
   const [open, setOpen] = useState(false);
-  const who = [harnessName(harnessOf(task)), modelOf(task)].filter(Boolean).join(" · ");
+  const who = whoSentence(task);
   const why = bodyReasonOf(task);
+  const canSwitch = !!harnessOf(task) && !["dropped", "superseded"].includes(attention(task));
   const where = placeLine(A.L, placeOf(task));
   const acts = task.historyLoaded ? outsideActs(task) : [];
   const cps = task.events.filter((ev) => ev.kind === "checkpoint");
@@ -1038,6 +1116,11 @@ function TaskDetails({ task }: { task: Task }) {
               <dd>
                 {who}
                 {why && <div>{why}</div>}
+                {canSwitch && (
+                  <button class="inline-link" aria-expanded={A.switchFor === task.id} onClick={() => A.openSwitch(task.id)}>
+                    {t("who.switch")} ›
+                  </button>
+                )}
               </dd>
             </>
           )}
@@ -1069,6 +1152,7 @@ function TaskDetails({ task }: { task: Task }) {
           )}
         </dl>
       )}
+      {open && A.switchFor === task.id && <SwitchList task={task} />}
     </section>
   );
 }
@@ -1107,6 +1191,7 @@ export function TaskView({ id }: { id: string }) {
               <StateMark a={a} />
               <b>{stateLabel(a)}</b>
               {task.openedAt && <span class="when">· {t("task.opened", ago(A.L, task.openedAt))}</span>}
+              {!finished(task) && whoLine(task)[0] && <span class="when">· {whoLine(task)[0]}</span>}
             </div>
             <h1>{title(task) || t("task.unknown")}</h1>
           </div>
@@ -1315,6 +1400,108 @@ function PartnerSettings() {
   );
 }
 
+function agentLine(h: DeviceHarness, brain: boolean): string {
+  if (!h.installed) return t("loadout.missing");
+  if (h.harness === "pi" && !h.loggedIn) return t("loadout.pi");
+  if (!h.loggedIn) return t("loadout.signed_out");
+  const al = h.allowance;
+  if (!al) return t("loadout.signed_in");
+  const left = brain && al.left <= PARTNER_RESERVE ? t("loadout.left.reserve", pct(al.left), A.S.personaName) : t("loadout.left", pct(al.left));
+  return [left, al.sharedBy && al.sharedBy > 1 ? t("loadout.acct.shared", al.sharedBy) : t("loadout.acct.only"), al.resetsAt && t("loadout.acct.resets", when(A.L, al.resetsAt))].filter(Boolean).join(" · ");
+}
+
+const MODELS: Record<string, { id: string; label: string }[]> = { "claude-code": [{ id: "opus", label: "Opus" }, { id: "sonnet", label: "Sonnet" }] };
+const isFast = (id: string) => /sonnet|haiku|mini|luna|flash/i.test(id);
+
+/** What it thinks with, and who does the tasks (D89), as lists: no stage on the phone. */
+function Loadout() {
+  const s = A.settings;
+  const agents = A.agents ?? [];
+  if (!s) return null;
+  const brain = s.brain ?? { harness: "claude-code", model: "opus" };
+  const b = agents.find((h) => h.harness === brain.harness);
+  const models = b?.models?.length ? b.models : (MODELS[brain.harness] ?? []);
+  const brains = agents.filter((h) => h.canBePartner);
+  const ready = agents.filter((h) => h.installed && h.loggedIn);
+  const name = A.S.personaName;
+  const setBrain = (harness: string, model?: string) => {
+    const h = agents.find((x) => x.harness === harness);
+    const m = model ?? (h?.models?.[0]?.id || MODELS[harness]?.[0]?.id);
+    A.setSettings({ brain: { harness: harness as never, ...(m ? { model: m } : {}) } });
+    A.toast(t("loadout.toast.brain", name, harnessName(harness)));
+  };
+  const reserve = b?.allowance ? (b.allowance.left <= PARTNER_RESERVE ? t("loadout.left.reserve", pct(b.allowance.left), name) : `${t("loadout.left", pct(b.allowance.left))} · ${t("loadout.brain.reserve", name)}`) : t("loadout.brain.reserve", name);
+  return (
+    <>
+      <section class="set">
+        <h3>{t("loadout.brain.title")}</h3>
+        <div class="agent">
+          <img src={`app/art/${brain.harness === "claude-code" ? "token_orange" : "token_ink"}.webp`} alt="" width="40" height="40" />
+          <span class="grow">
+            <b>{harnessName(brain.harness)}</b>
+            <small>{reserve}</small>
+          </span>
+        </div>
+        {brains.length > 1 && (
+          <Seg label={t("loadout.socket")} value={brain.harness} options={brains.map((h) => ({ v: h.harness, label: harnessName(h.harness) }))} onPick={(v) => setBrain(v)} />
+        )}
+        {models.length > 0 && (
+          <Seg
+            label={t("loadout.brain.model")}
+            value={brain.model}
+            options={models.map((m, i) => ({ v: m.id, label: `${m.label || m.id} · ${t(i > 0 || isFast(m.id) ? "loadout.model.fast" : "loadout.model.smart")}` }))}
+            onPick={(m) => setBrain(brain.harness, m)}
+          />
+        )}
+        <div class="small sub">{t("loadout.brain.keep")}</div>
+      </section>
+      <section class="set">
+        <h3>{t("loadout.tasks.title")}</h3>
+        {ready.length <= 1 && !(A.rules ?? []).length ? (
+          <div class="small sub">{t("loadout.tasks.one", harnessName(ready[0]?.harness ?? brain.harness), name)}</div>
+        ) : (
+          <>
+            <div class="small sub">{t("loadout.tasks.default", name)}</div>
+            {agents.map((h) => {
+              const on = (s.taskAccounts as Record<string, { enabled: boolean }> | undefined)?.[h.harness]?.enabled !== false;
+              const isBrain = h.harness === brain.harness;
+              return (
+                <div class="agent" key={h.harness}>
+                  <img class={h.installed && h.loggedIn ? "" : "dim"} src={`app/art/${h.harness === "claude-code" ? "token_orange" : "token_ink"}.webp`} alt="" width="40" height="40" />
+                  <span class="grow">
+                    <b>{harnessName(h.harness)}</b>
+                    <small>{agentLine(h, isBrain)}</small>
+                    {h.loggedIn && h.billing === "usage" && <small class="paid">{t("loadout.acct.paid")}</small>}
+                  </span>
+                  {h.installed && h.loggedIn && (
+                    <input
+                      type="checkbox"
+                      role="switch"
+                      aria-label={`${t("loadout.acct.tasks")} · ${harnessName(h.harness)}`}
+                      checked={on}
+                      onChange={(e) => A.setSettings({ taskAccounts: { ...s.taskAccounts, [h.harness]: { enabled: (e.target as HTMLInputElement).checked } } })}
+                    />
+                  )}
+                </div>
+              );
+            })}
+            {b && <div class="small sub">{t("loadout.acct.same", name, name)}</div>}
+            <h3>{t("loadout.rules")}</h3>
+            {!(A.rules ?? []).length && <div class="small sub">{t("loadout.rules.none")}</div>}
+            {(A.rules ?? []).map((r) => (
+              <div class="noted-row" key={r.id}>
+                <span>{r.text}</span>
+                <Btn kind="text" label={t("loadout.rule.remove")} about={r.text} onClick={() => (A.send({ t: "rule_remove", id: r.id }), A.toast(t("loadout.rule.removed", r.text)))} />
+              </div>
+            ))}
+            <Btn kind="text" label={t("loadout.rule.add", name)} onClick={() => A.tellRule()} />
+          </>
+        )}
+      </section>
+    </>
+  );
+}
+
 /** A small clay mailbox (the prototype's look, design/connectors.md §9): no flag, the lid shows the source. */
 function Mailbox(p: { source: "oomol" | "self" | "mcp" }) {
   const body = p.source === "oomol" ? "var(--accent)" : p.source === "self" ? "var(--working-dot)" : "var(--ink-muted)";
@@ -1472,6 +1659,7 @@ function SettingsSheet() {
   return (
     <Sheet label={t("settings.title")}>
       <NameRow />
+      <Loadout />
       <PartnerSettings />
       <Accounts />
       <PhoneSettings />

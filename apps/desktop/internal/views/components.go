@@ -133,6 +133,14 @@ func (a *App) taskLine(c *ui.Context, t *store.Task, detail string) {
 	if detail == "" {
 		detail = a.stateLabel(att)
 	}
+	// Who is doing it ends the line while it is under way, with why when it
+	// isn't Ducter's plain pick (D89).
+	if who, why := a.whoLine(t); who != "" && !finished(t) && att != protocol.Dropped {
+		detail += " · " + who
+		if why != "" {
+			detail += " · " + why
+		}
+	}
 	name := title
 	if detail != "" {
 		name += " · " + detail

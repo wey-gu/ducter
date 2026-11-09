@@ -199,7 +199,7 @@ test("mcp: report_to_main round trip drives the card, decision and living messag
   expect(bad.isError).toBe(true);
 
   const partner = await mcpClient(core, "partner");
-  expect((await partner.listTools()).tools.map((t) => t.name).sort()).toEqual(["log_read", "log_search", "task_read"]);
+  expect((await partner.listTools()).tools.map((t) => t.name).sort()).toEqual(["log_read", "log_search", "rule_list", "rule_save", "task_read"]);
   const found: any = await partner.callTool({ name: "log_search", arguments: { query: "race in setup" } });
   expect(JSON.parse(found.content[0].text)[0].kind).toBe("report");
   const card: any = await partner.callTool({ name: "task_read", arguments: { taskId: "t1" } });

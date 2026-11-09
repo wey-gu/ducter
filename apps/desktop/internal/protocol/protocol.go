@@ -307,6 +307,8 @@ func (e LogEvent) Typed() (any, error) {
 		v = &Waiter{}
 	case KindBridgeMsg:
 		v = &BridgeMsg{}
+	case KindBodySelected:
+		v = &BodySelected{}
 	default:
 		return nil, nil
 	}
@@ -346,6 +348,7 @@ type TaskCard struct {
 	Harness           string    `json:"harness"`
 	Model             string    `json:"model,omitempty"`
 	BodyReason        string    `json:"bodyReason,omitempty"`
+	Body              *TaskBody `json:"body,omitempty"` // who does it now and why (D89)
 	Attention         Attention `json:"attention"`
 	Residency         Residency `json:"residency"`
 	Reason            string    `json:"reason,omitempty"`
@@ -562,18 +565,24 @@ type Settings struct {
 	Notify          bool        `json:"notify"`
 	Quiet           *QuietHours `json:"quiet"`
 	DefaultAfterMin int         `json:"defaultAfterMin"`
+	// Brain is what the partner thinks with (D89); TaskAccounts are the
+	// Use it for tasks switches (a missing entry is on).
+	Brain        *Brain                 `json:"brain,omitempty"`
+	TaskAccounts map[string]TaskAccount `json:"taskAccounts,omitempty"`
 }
 
 // SettingsPatch is a change to some settings. Quiet is sent as given, so
 // a patch that sets ClearQuiet sends "quiet": null.
 type SettingsPatch struct {
-	Name            *string     `json:"name,omitempty"`
-	Language        string      `json:"language,omitempty"`
-	Memory          *bool       `json:"memory,omitempty"`
-	Notify          *bool       `json:"notify,omitempty"`
-	Quiet           *QuietHours `json:"-"`
-	ClearQuiet      bool        `json:"-"`
-	DefaultAfterMin int         `json:"defaultAfterMin,omitempty"`
+	Name            *string                `json:"name,omitempty"`
+	Language        string                 `json:"language,omitempty"`
+	Memory          *bool                  `json:"memory,omitempty"`
+	Notify          *bool                  `json:"notify,omitempty"`
+	Quiet           *QuietHours            `json:"-"`
+	ClearQuiet      bool                   `json:"-"`
+	DefaultAfterMin int                    `json:"defaultAfterMin,omitempty"`
+	Brain           *Brain                 `json:"brain,omitempty"`
+	TaskAccounts    map[string]TaskAccount `json:"taskAccounts,omitempty"`
 }
 
 // MarshalJSON writes Quiet only when it is set or cleared.
@@ -663,6 +672,11 @@ type DeviceHarness struct {
 	Installed bool       `json:"installed"`
 	LoggedIn  bool       `json:"loggedIn"`
 	Allowance *Allowance `json:"allowance,omitempty"`
+	// Models this account offers, when it lists them; CanBePartner: it can
+	// be what the partner thinks with here; Billing: plan | usage.
+	Models       []HarnessModel `json:"models,omitempty"`
+	CanBePartner bool           `json:"canBePartner"`
+	Billing      string         `json:"billing,omitempty"`
 }
 
 type DeviceAbility struct {
@@ -711,23 +725,27 @@ type Reach struct {
 // ClientFrame is any client -> server frame, decoded by its tag (for the
 // mock server). Fields of all variants share one struct.
 type ClientFrame struct {
-	T          string `json:"t"`
-	Persona    string `json:"persona,omitempty"`
-	Cursor     *int64 `json:"cursor,omitempty"`
-	Locale     string `json:"locale,omitempty"`
-	Text       string `json:"text,omitempty"`
-	ClientID   string `json:"clientId,omitempty"`
-	DecisionID string `json:"decisionId,omitempty"`
-	Option     string `json:"option,omitempty"`
-	TaskID     string `json:"taskId,omitempty"`
-	Action     string `json:"action,omitempty"`
-	UpToSeq    int64  `json:"upToSeq,omitempty"`
-	BeforeSeq  int64  `json:"beforeSeq,omitempty"`
-	Limit      int    `json:"limit,omitempty"`
-	Device     string `json:"device,omitempty"`
-	Ability    string `json:"ability,omitempty"`
-	On         bool   `json:"on,omitempty"`
-	Name       string `json:"name,omitempty"` // rename_device
+	T          string         `json:"t"`
+	Persona    string         `json:"persona,omitempty"`
+	Cursor     *int64         `json:"cursor,omitempty"`
+	Locale     string         `json:"locale,omitempty"`
+	Text       string         `json:"text,omitempty"`
+	ClientID   string         `json:"clientId,omitempty"`
+	DecisionID string         `json:"decisionId,omitempty"`
+	Option     string         `json:"option,omitempty"`
+	TaskID     string         `json:"taskId,omitempty"`
+	Action     string         `json:"action,omitempty"`
+	UpToSeq    int64          `json:"upToSeq,omitempty"`
+	BeforeSeq  int64          `json:"beforeSeq,omitempty"`
+	Limit      int            `json:"limit,omitempty"`
+	Device     string         `json:"device,omitempty"`
+	Ability    string         `json:"ability,omitempty"`
+	On         bool           `json:"on,omitempty"`
+	Name       string         `json:"name,omitempty"` // rename_device
+	ID         string         `json:"id,omitempty"`   // rule_remove
+	Harness    string         `json:"harness,omitempty"`
+	Model      string         `json:"model,omitempty"` // task_switch
+	Patch      *SettingsPatch `json:"patch,omitempty"`
 }
 
 // ---------- Server -> client frames ----------
@@ -772,6 +790,9 @@ type ServerFrame struct {
 	Settings *Settings `json:"settings,omitempty"`
 	Mem      *MemView  `json:"mem,omitempty"`
 	Forgot   *Forgot   `json:"forgot,omitempty"`
+	// rules: Your rules. candidates: who could do TaskID, best first.
+	Rules      []RuleView  `json:"rules,omitempty"`
+	Candidates []Candidate `json:"candidates,omitempty"`
 	// connections: the user's connections and what oo is set up with;
 	// connection_result: OK, ID, Reason.
 	Connections []ConnectionView `json:"connections,omitempty"`
@@ -797,7 +818,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	}
 	switch f.T {
 	case "welcome", "events", "on_hand", "task_history", "sent", "action_result", "error",
-		"devices", "ability_result", "pair_code", "rename_result", "settings", "connections", "connection_result":
+		"devices", "ability_result", "pair_code", "rename_result", "settings", "connections", "connection_result", "rules", "candidates":
 	default:
 		return f, fmt.Errorf("unknown server frame %q", f.T)
 	}

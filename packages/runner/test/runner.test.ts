@@ -279,6 +279,40 @@ describe("send: steer vs queue", () => {
     await runner.dispose();
   });
 
+  test("who does it (D89): core's pick reaches the session and the card; nobody left fails the open", async () => {
+    const fake = new FakePort();
+    (core as any).bodies = { choose: async () => ({ harness: "codex", why: { kind: "rule", ruleId: "r1", text: "后端的事 → Codex" } }) };
+    const runner = createRunner(core, { harness: fake, newId: nextId });
+    const card = await runner.openTask({ persona: "p1", title: "后端重构", brief: "b" });
+    await runner.whenStarted(card.taskId);
+    expect(fake.specs[0]!.harness).toBe("codex");
+    const sel = core.events.find((e) => e.kind === "body_selected")!.body as Bodies["body_selected"];
+    expect(sel).toEqual({ taskId: card.taskId, harness: "codex", why: { kind: "rule", ruleId: "r1", text: "后端的事 → Codex" } });
+    (core as any).bodies = { choose: async () => ({ none: "no AI agent can take this task right now" }) };
+    await expect(runner.openTask({ persona: "p1", title: "x", brief: "b" })).rejects.toThrow("no AI agent");
+    delete (core as any).bodies;
+    await runner.dispose();
+  });
+
+  test("switching a running task hands it off: the old session closes, the new one starts from saved progress", async () => {
+    const fake = new FakePort();
+    const runner = createRunner(core, { harness: fake, newId: nextId });
+    const card = await runner.openTask({ persona: "p1", title: "Fix CI", brief: "b", harness: "codex" });
+    await runner.whenStarted(card.taskId);
+    core.log.append({ stream: `task:${card.taskId}`, origin: "task", kind: "checkpoint", body: { taskId: card.taskId, text: "found the failing test" } });
+    fake.sessions[0]!.busyFlag = true;
+    expect(await runner.switchBody!(card.taskId, "claude-code", "opus")).toEqual({ ok: true });
+    expect(fake.sessions[0]!.closed).toBe(true);
+    expect(fake.specs[1]).toMatchObject({ harness: "claude-code", model: "opus" });
+    expect(fake.specs[1]!.resumeSessionId).toBeUndefined();
+    const first = fake.sessions[1]!.sent[0]!.text;
+    expect(first).toContain("started by codex");
+    expect(first).toContain("found the failing test");
+    expect(core.tasks.get(card.taskId)).toMatchObject({ attention: "working", residency: "hot" });
+    expect(await runner.switchBody!(card.taskId, "nope")).toMatchObject({ ok: false });
+    await runner.dispose();
+  });
+
   test("parked task resumes by session id on send", async () => {
     const fake = new FakePort();
     const runner = createRunner(core, { harness: fake, newId: nextId });

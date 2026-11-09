@@ -4,7 +4,7 @@
 //   runner  owns: HarnessPort over OAR, worktrees, task sessions, event normalization.
 //   partner owns: the main AI (persona prompt, projection, turn loop) on any first-wave harness (D85) via runner's HarnessPort.
 import type { HarnessId } from "./harnesses.ts";
-import type { Attention, Bodies, Delivery, EventKind, LogEvent, OnHand, Origin, Place, Residency, Settings, TaskCard } from "./index.ts";
+import type { Attention, Bodies, BodyWhy, Delivery, EventKind, LogEvent, OnHand, Origin, Place, Residency, Settings, TaskCard } from "./index.ts";
 
 // ---------- core ----------
 
@@ -51,8 +51,18 @@ export interface CoreApi {
   workers?: WorkerLinks;
   /** The partner's settings (D71); absent in tests and stubs (then: follow the user, remember). */
   settings?: SettingsApi;
+  /** Who does a new task (D89, core/src/loadout.ts); absent in tests and stubs (then: the runner's default). */
+  bodies?: BodyChooser;
   /** The user's connections (D96, core/src/connections.ts); absent in tests and stubs. */
   connections?: ConnectionsApi;
+}
+
+/**
+ * Who does a new task and why. undefined: nothing to choose by (no device info), the runner keeps
+ * its own default; { none }: no AI agent can take it, the open fails with that reason.
+ */
+export interface BodyChooser {
+  choose(work: { title: string; brief?: string; place?: Place; harness?: string; model?: string }): Promise<{ harness: string; model?: string; why: BodyWhy } | { none: string } | undefined>;
 }
 
 /** Who is calling into a connection: the partner, or one task (which must have been granted it). */
@@ -200,6 +210,10 @@ export interface Runner {
   undrop?(taskId: string): Promise<{ ok: boolean; message: string; ref?: string }>;
   merge?(taskId: string): Promise<{ ok: boolean; message: string; ref?: string }>;
   openPr?(taskId: string): Promise<{ ok: boolean; message: string; ref?: string }>;
+  // Optional (D89): move a task to another AI agent. A running task is handed off: its session
+  // closes and the new one starts from the brief and the saved progress. ok:false with a
+  // user-facing message when it can't.
+  switchBody?(taskId: string, harness: string, model?: string): Promise<{ ok: boolean; message?: string }>;
   drop(taskId: string): Promise<void>;
 }
 

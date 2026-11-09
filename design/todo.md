@@ -80,6 +80,29 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       with no default. Re-run the eval's ask scenarios after.
 - [ ] **Long paths in bubbles (D67):** middle-ellipsis with tap to expand, desktop and phone.
 
+### What it thinks with, and who does the tasks (D89, D90)
+
+- [x] **The partner runs on `Settings.brain`** (harnesses, D85) and a live session ends at the
+      next message after a switch (ai-loadout): unit (fake runner) and end to end on OAR's
+      scripted runtime (`packages/cli/test/brain-switch.test.ts`). A live Codex partner turn is
+      still to walk.
+- [ ] **Codex as what it thinks with** behind its config isolation (`-c` overrides, no user
+      `AGENTS.md`) and a pass of `packages/partner/eval`; pi and DeepSeek Harness the same,
+      each when it passes the eval.
+- [ ] **The partner's prompt sees Your rules** (today core applies them in `fw_candidates`;
+      the partner learns them only through `rule_list`). Trigger: a rule the partner ignores
+      when it pins a harness itself.
+- [ ] **Allowance on the tray is real** only where a harness reports it (`DeviceHarness.allowance`);
+      probes for Claude Code (`get_usage`) and Codex (`account/rateLimits`) are not built.
+- [ ] **Live handoff** between harnesses: verified with fake sessions only (runner test).
+- [ ] **Human comprehension test** of the socket and tray (`design/ai-loadout.md` §6: ≥ 80% on
+      key items, no boss or servant reads).
+- [x] **Devices mark** is an icon-only badge on the coin (`BrainBadge`, tooltip and accessible
+      name "{name} 想事情用"); the rebuilt Devices stage (`isles`) only has to keep calling it
+      inside a token's coin box.
+- [ ] **The phone's opened task** keeps its title as the headline; D90's "what it is doing
+      now" headline is desktop-only so far.
+
 ## Long-term memory (`design/memory.md`)
 
 - [ ] **One live write** into a scratch Space, then archive it (the user's Mem is Cloud, so

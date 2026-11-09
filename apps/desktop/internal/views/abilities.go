@@ -831,6 +831,10 @@ func (a *App) tokens(c *ui.Context, dv *protocol.DeviceView, r rig) {
 		case h.Allowance != nil:
 			status += " · " + a.L.T("token.allowance", int(h.Allowance.Left*100+0.5))
 		}
+		label := harnessName(h.Harness) + " · " + status
+		if m := a.BrainMark(dv, h.Harness); m != "" {
+			label += " · " + m // D89: said to screen readers; drawn as a badge on the coin
+		}
 		art := "token_ink"
 		if h.Harness == "claude-code" {
 			art = "token_orange"
@@ -839,7 +843,7 @@ func (a *App) tokens(c *ui.Context, dv *protocol.DeviceView, r rig) {
 		x := tokenCenter(r.sw, n, i, k) - w/2
 		tok := ui.Row(c.Key("tok:"+h.Harness)).Absolute().Left(x).Top(r.tokensTop).Width(w).Height(66).Gap(t.S3).
 			Padding(t.S2, t.S3, t.S2, t.S2).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).AlignItems(ui.Center).
-			Role(ui.RoleGroup).Label(harnessName(h.Harness) + " · " + status)
+			Role(ui.RoleGroup).Label(label)
 		if !h.LoggedIn || dv.State != protocol.DeviceAwake {
 			tok.Opacity(0.6)
 		}
@@ -854,9 +858,12 @@ func (a *App) tokens(c *ui.Context, dv *protocol.DeviceView, r rig) {
 			}
 		}
 		tok.Children(func() {
-			if bmp := theme.Clay(art); bmp != nil {
-				ui.Image(c, bmp).Size(52, 52).Shrink(0).AccessHidden(true)
-			}
+			ui.Box(c.Key("coin")).Size(52, 52).Shrink(0).Children(func() {
+				if bmp := theme.Clay(art); bmp != nil {
+					ui.Image(c, bmp).Size(52, 52).AccessHidden(true)
+				}
+				a.BrainBadge(c, dv, h.Harness)
+			})
 			ui.Column(c).Gap(2).MinWidth(0).Shrink(1).Children(func() {
 				ui.Text(c, harnessName(h.Harness)).FontSize(t.SM).FontWeight(800).SingleLine()
 				line, ink := status, t.InkMuted

@@ -24,8 +24,8 @@ export type CuaProbe = () => Promise<{ version: string } | { missing: string }>;
 
 export interface DeviceProbes {
   cua: CuaProbe;
-  /** Harness logins on this machine (as `ducter doctor` checks them). */
-  harnesses(): Promise<DeviceHarness[]>;
+  /** Harness logins on this machine (as `ducter doctor` checks them); canBePartner is filled in. */
+  harnesses(): Promise<(Omit<DeviceHarness, "canBePartner"> & { canBePartner?: boolean })[]>;
   /** laptop | mini | server for this machine. */
   kind(): Promise<DeviceKind>;
 }
@@ -153,7 +153,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
   };
 
   // Probe results are reused for cacheMs: harness CLIs can take seconds.
-  type Cached = { at: number; cua: Awaited<ReturnType<CuaProbe>>; harnesses: DeviceHarness[]; kind: DeviceKind };
+  type Cached = { at: number; cua: Awaited<ReturnType<CuaProbe>>; harnesses: Awaited<ReturnType<DeviceProbes["harnesses"]>>; kind: DeviceKind };
   let cached: Cached | undefined;
   let inflight: Promise<Cached> | undefined;
   const local = async (): Promise<Cached> => {
@@ -161,7 +161,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
     inflight ??= (async () => {
       const [cua, harnesses, kind] = await Promise.all([
         probes.cua().catch((e) => ({ missing: String((e as Error).message ?? e) })),
-        probes.harnesses().catch(() => [] as DeviceHarness[]),
+        probes.harnesses().catch(() => [] as Awaited<ReturnType<DeviceProbes["harnesses"]>>),
         probes.kind().catch(() => "laptop" as DeviceKind),
       ]);
       cached = { at: now(), cua, harnesses, kind };

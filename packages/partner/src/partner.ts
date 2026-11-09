@@ -300,6 +300,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     return String(Bun.hash(harness === "claude-code" ? prompt : `${harness}\n${prompt}`));
   };
   const canResume = () => !!lastSessionId && lastPromptHash === promptHash();
+  // The model the live session was started with (a model switch on the same harness restarts too).
+  let liveModel: string | undefined;
+  const runKey = () => (partnerRun().model === liveModel ? "" : "!");
   let handledSeq: number | undefined; // highest trigger seq covered by a finished turn
   // The turn in flight: its trigger seqs and the Log head when it started (state.json). A turn
   // cut off by a restart is run again with all of its triggers, and what it already did is
@@ -506,6 +509,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     session = s;
     iter = null;
     lastPromptHash = promptHash();
+    liveModel = run.model;
     lastSessionId = s.id || resumeSessionId;
     stats.sessionId = lastSessionId;
   }
@@ -521,6 +525,14 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     if (warming) {
       await warming;
       warming = null;
+    }
+    // What it thinks with changed (D89 Switch on Partner) while a session is live: that session
+    // runs on the old harness or model. It ends here, and the next one starts fresh on the new
+    // pick from the projection (principle 9: nothing moves but the Log).
+    if (session && lastPromptHash !== promptHash() + runKey()) {
+      await dropSession();
+      unseeded = false;
+      lastSessionId = undefined;
     }
     if (session && unseeded) {
       unseeded = false;

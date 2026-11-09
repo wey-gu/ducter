@@ -275,12 +275,10 @@ func (a *App) deviceCards(c *ui.Context, width float32) {
 		a.selectable(c, card, sel)
 		card.Children(func() {
 			ui.Box(c).Size(72, 72).Radius(t.RadiusMD).Background(t.Clay).Padding(t.S2).Shrink(0).Children(func() {
-				if b := theme.Clay(deviceArt(dv)); b != nil {
-					ui.Image(c, b).Grow(1).AccessHidden(true)
-				}
+				a.deviceClay(c, "card:"+dv.ID, dv).Grow(1)
 			})
 			ui.Column(c).Gap(t.S1).Grow(1).MinWidth(0).Children(func() {
-				ui.Text(c, name).FontSize(t.MD).FontWeight(800).SingleLine()
+				ui.Text(c, name).FontSize(t.Bubble).FontWeight(800).SingleLine()
 				// Shown, not explained (D43): the clay says awake or asleep,
 				// Ducter on the stage says where it lives. Words only for
 				// what is unusual, plainly, in the state's ink; no pill.
@@ -457,7 +455,7 @@ func (a *App) stage(c *ui.Context, dv *protocol.DeviceView) {
 	}
 	now := a.Now()
 	still := c.Preferences().ReduceMotion
-	stage := ui.Box(c.Key("stage")).Grow(1).MinHeight(420).Radius(36).Background(t.Clay).Clip().
+	stage := ui.Box(c.Key("stage")).Grow(1).MinHeight(420).Radius(36).Background(t.BgDeep).Clip().
 		Role(ui.RoleGroup).Label(a.deviceName(dv))
 	if over, ok := ui.DragOver[abilityDrag](stage); ok && a.canAdd(dv, over.id) {
 		d.hover = over.id
@@ -511,6 +509,9 @@ func (a *App) stage(c *ui.Context, dv *protocol.DeviceView) {
 				col = t.Ink
 			}
 			dottedCurve(p, tx, ty, tx, ty-30*r.k, ex, ey+26*r.k, ex, ey, col.Alpha(0.8), 2.6*r.k)
+			// Once every 9 s a sheen runs up the cord (D77); the two
+			// cords half a period apart.
+			cordSheen(p, float64(i)/2, tx, ty, tx, ty-30*r.k, ex, ey+26*r.k, ex, ey, 3*r.k)
 		}
 	})
 	stage.Children(func() {
@@ -525,7 +526,8 @@ func (a *App) stage(c *ui.Context, dv *protocol.DeviceView) {
 			return e
 		}
 		img("pedestal", "pedestal", r.ped)
-		devEl := img("device:"+dv.ID, deviceArt(dv), r.device).Role(ui.RoleImage).Label(a.deviceName(dv)).TransformOrigin(0.5, 1)
+		devEl := a.deviceClay(c, "device:"+dv.ID, dv).Absolute().Left(r.device.X).Top(r.device.Y).Size(r.device.W, r.device.H).
+			Role(ui.RoleImage).Label(a.deviceName(dv)).TransformOrigin(0.5, 1)
 		if !d.squash.IsZero() && !still {
 			if el := now.Sub(d.squash); el < t.Equip.Squash {
 				sx, sy := squashAt(float32(el) / float32(t.Equip.Squash))
@@ -535,8 +537,15 @@ func (a *App) stage(c *ui.Context, dv *protocol.DeviceView) {
 		}
 		if dv.Home {
 			if bmp := theme.Art(pose, 360); bmp != nil {
-				ui.Image(c.Key("ducter"), bmp).Absolute().Left(r.ducter.X).Top(r.ducter.Y).Size(r.ducter.W, r.ducter.H).
-					Role(ui.RoleImage).Label(a.S.PersonaName)
+				// Ducter breathes from its feet, and blinks while idle (D77).
+				var lids *[2]theme.Lid
+				if pose == theme.Idle {
+					lids = &squareLids
+				}
+				ui.Box(c.Key("ducter")).Absolute().Left(r.ducter.X).Top(r.ducter.Y).Size(r.ducter.W, r.ducter.H).
+					Role(ui.RoleImage).Label(a.S.PersonaName).Draw(func(p *ui.Painter, rr ui.Rect) {
+					clayArt(p, rr, bmp, idleBreathe, phaseOf("stage-ducter"), lids)
+				})
 			}
 		}
 		// Slots around the device.
@@ -912,7 +921,7 @@ func (a *App) abilityDetail(c *ui.Context, dv *protocol.DeviceView) {
 	card := ui.Column(c.Key("detail:"+id)).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Padding(t.S4).Gap(t.S3).
 		Role(ui.RoleGroup).Label(name)
 	card.Children(func() {
-		ui.Text(c, name).FontSize(t.LG).FontWeight(800)
+		a.heading(c, name, t.XL)
 		on := a.shownOn(dv, id)
 		if !(on && d.removing == id) {
 			ui.Text(c, a.L.T("ability."+id+".about")).FontSize(t.MD).LineHeight(1.6).TextColor(t.InkSoft)
@@ -1319,7 +1328,7 @@ func (a *App) pairSheet(c *ui.Context, dv *protocol.DeviceView, sw, sh float32) 
 	a.enter(c, sheet)
 	sheet.Children(func() {
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, a.L.T("pair.title")).FontSize(t.LG).FontWeight(800).Grow(1).MinWidth(0)
+			a.heading(c, a.L.T("pair.title"), t.XL).Grow(1).MinWidth(0)
 			if a.button(c, a.L.T("pair.close"), btnSecondary, t.ControlSM, t.Surface) {
 				d.pair.open = false
 			}
@@ -1461,7 +1470,7 @@ func (a *App) accountSheet(c *ui.Context, dv *protocol.DeviceView, sw, sh float3
 			if bmp := theme.Clay(art); bmp != nil {
 				ui.Image(c, bmp).Size(44, 44).Shrink(0).AccessHidden(true)
 			}
-			ui.Text(c, name).FontSize(t.LG).FontWeight(800).Grow(1).MinWidth(0)
+			a.heading(c, name, t.XL).Grow(1).MinWidth(0)
 			if a.button(c, a.L.T("pair.close"), btnSecondary, t.ControlSM, t.Surface) {
 				d.account = ""
 			}
@@ -1489,4 +1498,70 @@ func (a *App) accountSheet(c *ui.Context, dv *protocol.DeviceView, sw, sh float3
 			}
 		}
 	})
+}
+
+// deviceIdle is how a device's clay moves while nothing happens (D77): an
+// awake one floats, a cloud machine (a server) drifts, a sleeping one's
+// blanket rises and falls, and one that can't be reached is still.
+func deviceIdle(dv *protocol.DeviceView) idleKind {
+	switch dv.State {
+	case protocol.DeviceAwake:
+		if dv.Kind == "server" {
+			return idleDrift
+		}
+		return idleFloat
+	case protocol.DeviceAsleep:
+		return idleBlanket
+	}
+	return idleStill
+}
+
+// deviceClay is a device's clay art, moving by its state, a little grey
+// when it can't be reached. Each drawing has its own phase (key).
+func (a *App) deviceClay(c *ui.Context, key string, dv *protocol.DeviceView) ui.Element {
+	bmp := theme.Clay(deviceArt(dv))
+	kind, phase := deviceIdle(dv), phaseOf(key)
+	box := ui.Box(c.Key("clay:" + key)).AccessHidden(true)
+	if dv.State == protocol.DeviceUnreachable {
+		box.Grayscale().Opacity(0.8)
+	}
+	return box.Draw(func(p *ui.Painter, r ui.Rect) {
+		at := fitIn(bmp, r)
+		clayArt(p, at, bmp, kind, phase, nil)
+	})
+}
+
+// cordSheen paints the short light that runs up an AI account's cord once
+// every 9 s (the first 16% of the period), phase apart from the others.
+func cordSheen(p *ui.Painter, phase float64, x0, y0, x1, y1, x2, y2, x3, y3, w float32) {
+	if p.Preferences().ReduceMotion {
+		return
+	}
+	const period = 9 * time.Second
+	f := cycle(p.Now(), period, phase)
+	const run = 0.16
+	if f >= run {
+		p.After(time.Duration((1 - f) * float64(period)))
+		return
+	}
+	pt := func(s float32) (float32, float32) {
+		u := 1 - s
+		return u*u*u*x0 + 3*u*u*s*x1 + 3*u*s*s*x2 + s*s*s*x3, u*u*u*y0 + 3*u*u*s*y1 + 3*u*s*s*y2 + s*s*s*y3
+	}
+	head := float32(f / run)
+	var m ui.Path
+	for i := 0; i <= 6; i++ {
+		s := head - 0.06*float32(i)/6
+		if s < 0 {
+			s = 0
+		}
+		x, y := pt(s)
+		if i == 0 {
+			m.MoveTo(x, y)
+		} else {
+			m.LineTo(x, y)
+		}
+	}
+	p.StrokePath(&m, w, ui.RGBA(255, 252, 245, 0.95))
+	p.AnimationFrameRate(idleFPS)
 }

@@ -202,7 +202,7 @@ func (a *App) lane(c *ui.Context, lane store.Lane, tasks []*store.Task, grow, ba
 	colors := [...]theme.StateColors{t.NeedsYou, t.Working, t.Waiting, t.Done}
 	ui.Column(c.Key(lane)).Grow(grow).Basis(basis).MinWidth(0).MaxWidth(basis * 2.2).Gap(t.S3).Children(func() {
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, a.L.T(names[lane])).FontSize(t.XL).FontWeight(800)
+			a.heading(c, a.L.T(names[lane]), t.XL)
 			n := len(tasks)
 			switch lane {
 			case store.LaneNeedsYou:
@@ -210,7 +210,7 @@ func (a *App) lane(c *ui.Context, lane store.Lane, tasks []*store.Task, grow, ba
 			case store.LaneWaiting:
 				n += len(a.looseWaiters())
 			}
-			ui.Text(c, fmt.Sprint(n)).FontSize(t.XL).FontWeight(800).TextColor(colors[lane].Ink).FontFeatures("tnum")
+			a.heading(c, fmt.Sprint(n), t.XL).TextColor(colors[lane].Ink).FontFeatures("tnum")
 			if lane == store.LaneNeedsYou {
 				ui.Spacer(c)
 				// 都按默认 / Go on all defaults: only worth it with two or more.
@@ -304,7 +304,7 @@ func (a *App) needsCard(c *ui.Context, task *store.Task) {
 				q = rep.Questions[0].Text
 			}
 			if q != "" {
-				ui.Text(c, q).FontSize(t.LG).LineHeight(1.55).FontWeight(500)
+				a.heading(c, autospace(q), t.XL).LineHeight(1.35)
 			}
 			if rep != nil && rep.Summary != "" && rep.Summary != q {
 				ui.Text(c, rep.Summary).FontSize(t.SM).LineHeight(1.6).TextColor(t.InkSoft).MaxLines(4).Tooltip(rep.Summary)
@@ -476,13 +476,14 @@ func (a *App) doneList(c *ui.Context, tasks []*store.Task) {
 // its default, and Go / Hold / Reply.
 func (a *App) partnerDecisionCard(c *ui.Context, d *store.DecisionState) {
 	t := a.T
-	ui.Column(c).Padding(t.S5, t.S5).Gap(t.S3).Radius(t.RadiusXL).Background(t.NeedsYou.Surface).Children(func() {
+	ui.Column(c).Padding(t.S5, t.S5).Gap(t.S3).Radius(t.RadiusXL).Background(t.NeedsYou.Surface).
+		Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge).Children(func() {
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 			a.avatar(c, theme.NeedsYou, 32)
 			ui.Text(c, a.S.PersonaName).FontSize(t.SM).FontWeight(800).TextColor(t.NeedsYou.Ink)
 		})
-		ui.Text(c, d.Question).FontSize(t.LG).LineHeight(1.5).FontWeight(500)
+		a.heading(c, autospace(d.Question), t.XL).LineHeight(1.35)
 		a.countdown(c, d)
-		a.decisionButtons(c, d, decisionStyle{height: 48, quietBg: t.Surface})
+		a.decisionButtons(c, d, decisionStyle{height: 48, quietBg: t.NeedsYou.Surface})
 	})
 }

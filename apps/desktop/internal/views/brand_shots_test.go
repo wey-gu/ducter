@@ -111,13 +111,15 @@ func failedEvents(lang i18n.Lang) []protocol.LogEvent {
 		}
 		return en
 	}
-	ts := func(m int) string { return time.Now().Add(time.Duration(m-30) * time.Minute).UTC().Format(time.RFC3339) }
+	ts := func(m int) string {
+		return time.Now().Add(time.Duration(m-30) * time.Minute).UTC().Format(time.RFC3339)
+	}
 	ok, bad := true, false
 	stream := protocol.TaskStream("t-tokio")
 	return []protocol.LogEvent{
 		protocol.NewEvent(101, ts(0), "default", stream, protocol.OriginSystem, protocol.KindTaskOpen, protocol.TaskOpen{TaskID: "t-tokio",
 			Title: l("升级 tokio 到 1.41", "Bump tokio to 1.41"), Project: "HawDB", Harness: "codex", Model: "gpt-5",
-			Place: protocol.Place{Kind: "repo", Device: "MacBook", RepoPath: "~/code/hawdb", Branch: "ducter/tokio-1.41", BaseBranch: "main"},
+			Place:      protocol.Place{Kind: "repo", Device: "MacBook", RepoPath: "~/code/hawdb", Branch: "ducter/tokio-1.41", BaseBranch: "main"},
 			BodyReason: l("你的规则「后端用 Codex」", "Your rule \"backend goes to Codex\"")}),
 		protocol.NewEvent(102, ts(1), "default", stream, protocol.OriginTask, protocol.KindTaskEvent, protocol.TaskEvent{TaskID: "t-tokio", Role: "assistant",
 			Text: l("把 tokio 升到 1.41，依赖一起更新。", "Bumping tokio to 1.41 with its dependencies.")}),

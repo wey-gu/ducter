@@ -25,24 +25,32 @@ func TestIslesScenes(t *testing.T) {
 				h := openDevices(t, lang, false)
 				h.tt.SetSize(size[0], size[1])
 				for _, scene := range mock.Scenes {
-					if !h.hub.Scene(scene) {
-						t.Fatalf("no scene %s", scene)
-					}
-					h.settle(400 * time.Millisecond)
-					h.until(scene, func() bool { return len(h.app.devState().labels) > 0 })
+					h.scene(scene)
 					checkLabels(t, scene, h.app.devState().labels)
 					h.shotAs(fmt.Sprintf("isles-%s-%d-%s", lang, size[0], scene))
 				}
 				// Six devices arriving in another order: every spot filled afresh.
 				h.app.devState().slotOf = nil
-				h.hub.Scene("one")
-				h.settle(200 * time.Millisecond)
-				h.hub.Scene("six")
-				h.settle(400 * time.Millisecond)
+				h.scene("one")
+				h.scene("six")
 				checkLabels(t, "six-fresh", h.app.devState().labels)
 			})
 		}
 	}
+}
+
+// scene sets a demo scene and waits until the app has all of it: the hub
+// sends the scene's connections last, so once that frame is applied the
+// scene is whole. Then the layout settles: the scene's words are measured
+// a frame late, so they are read only after frames with nothing new.
+func (h *harness) scene(name string) {
+	h.t.Helper()
+	n := h.got["connections"]
+	if !h.hub.Scene(name) {
+		h.t.Fatalf("no scene %s", name)
+	}
+	h.until("scene "+name, func() bool { return h.got["connections"] > n })
+	h.settle(400 * time.Millisecond)
 }
 
 // checkLabels fails when two words in the scene overlap.

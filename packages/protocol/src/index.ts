@@ -199,6 +199,20 @@ export interface Bodies {
     contact?: string;
     operation?: string;
   };
+  // The partner's own harness session, on the "partner" stream (never shown; clients skip it).
+  // "recut": Ducter started a fresh session from the projection because the live context grew
+  // past the re-cut size (principle 4). "harness_compacted": the harness's own compactor ran
+  // anyway, although it is bounded above the re-cut (research/11 §7.3.7); its summary now
+  // competes with the spine, so it is recorded to be seen.
+  partner_session: {
+    event: "recut" | "harness_compacted";
+    harness: string;
+    sessionId?: string;
+    contextTokens?: number; // what the context held, by the harness's count when it gave one
+    digested?: boolean; // recut: onto digests (true) or onto the window and pointers only (false)
+    outcome?: string; // harness_compacted: the harness's own outcome and trigger
+    trigger?: string;
+  };
   // A call into one of the user's connections (D96, design/connectors.md): their OpenConnector or
   // another MCP server, reached only through Ducter's broker. Reads run and are recorded here;
   // a write is recorded "needs_go" with its input, waits for the user's Go on a decision card,

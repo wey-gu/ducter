@@ -170,7 +170,7 @@ export class Normalizer {
         out.push({ role: "system", text: `retry ${ev.attempt}${ev.reason ? `: ${ev.reason}` : ""}`, raw: { kind: "retry" } });
         break;
       case "compaction_ended":
-        out.push({ role: "system", text: `compaction ${ev.outcome}`, raw: { kind: "compaction_ended" } });
+        out.push({ role: "system", text: `compaction ${ev.outcome}`, raw: { kind: "compaction_ended", outcome: ev.outcome, trigger: ev.trigger } });
         break;
       default:
         break; // model/effort/turn_started/etc. are lifecycle noise for the Log

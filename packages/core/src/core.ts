@@ -156,6 +156,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const api = { log, tasks, mcp, persona, dataDir, settings } as CoreApi;
   let devicesView: DevicesView | undefined;
   const ws = createWsHandler({ core: api, decisions, runner: () => runner, devices: () => devicesView, settings, batchMs: opts.batchMs });
+  api.activity = { set: ws.setActivity };
   const devices = openDeviceAuth(dataDir);
   // A device that pairs changes Your devices and abilities (远程打开 / Reach from anywhere).
   const gateAuth = {

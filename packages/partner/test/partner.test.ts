@@ -485,3 +485,33 @@ describe("place", () => {
   });
 });
 
+
+describe("activity while the user waits (D104)", () => {
+  test("a user turn shows thinking, then each tool as a plain step, then nothing; tool names never leave", async () => {
+    const seen: (string | null)[] = [];
+    const { fc, partner, user } = setup(async (_i, s) => {
+      s.emit({ role: "assistant", tool: { name: "mcp__ducter__log_search", input: { query: "CI" } } });
+      s.emit({ role: "assistant", tool: { name: "ToolSearch", input: {} } });
+      s.emit({ role: "assistant", tool: { name: "mcp__ducter__task_read", input: {} } });
+      s.say("它还在跑。");
+      s.end();
+    });
+    fc.core.activity = { set: (a) => void seen.push(a ? a.step : null) };
+    user("CI 那件事怎么样了");
+    await partner.idle();
+    expect(seen).toEqual(["thinking", "recalling", "checking_task", null]);
+  });
+
+  test("a turn no one is waiting on (a task's report) shows nothing", async () => {
+    const seen: unknown[] = [];
+    const { fc, partner } = setup((_i, s) => {
+      s.say("好了。");
+      s.end();
+    });
+    fc.core.activity = { set: (a) => void seen.push(a) };
+    const e = fc.core.log.append({ stream: "task:t9", origin: "task", kind: "report", body: { taskId: "t9", state: "done", summary: "ok", questions: [], evidence: [] } });
+    partner.onTrigger(e);
+    await partner.idle();
+    expect(seen).toEqual([]);
+  });
+});

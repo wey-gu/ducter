@@ -220,7 +220,24 @@ export type ServerFrame =
   | { t: "pair_code"; code: string; expiresAt: string; address?: string; link?: string; qr?: string[] }
   | { t: "rename_result"; device: string; ok: boolean; name?: string; reason?: "unknown_device" | "empty" | "name_taken" | "home" }
   | { t: "settings"; settings: Settings; mem: MemView; forgot?: { seq: number; how: "mem" | "hidden" } }
+  // What the partner is doing while the user waits for its reply (D104): sent on every change and
+  // after each welcome, null when the turn ends. Never logged: it is presence, not history.
+  | { t: "activity"; activity: PartnerActivity | null }
   | { t: "error"; message: string };
+
+/**
+ * The step of a partner turn the user is waiting on, as a plain verb the client words (D104).
+ * Mapped from the partner's own tool calls; tool names never reach a client.
+ * thinking: no tool yet · recalling: reading the Log or memory · checking_task: reading a task ·
+ * opening_task: starting one · messaging_task: passing something to one · planning: setting a
+ * reminder or an ask · looking: any other lookup.
+ */
+export type ActivityStep = "thinking" | "recalling" | "checking_task" | "opening_task" | "messaging_task" | "planning" | "looking";
+export interface PartnerActivity {
+  step: ActivityStep;
+  since: string; // ISO: when the turn started
+  stepSince: string; // ISO: when this step started
+}
 
 export type Delivery = "steered" | "prompted" | "queued";
 

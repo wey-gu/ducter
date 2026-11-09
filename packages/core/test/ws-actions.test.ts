@@ -136,3 +136,25 @@ test("a localhost Origin with a trailing slash is accepted; other sites are not"
   const bad = await fetch(`http://127.0.0.1:${core.port}/ws`, { headers: { Origin: "https://evil.example/" } });
   expect(bad.status).toBe(403);
 });
+
+test("activity (D104): live sockets hear each step after the events before it; a new socket gets the current one; null ends it", async () => {
+  const core = boot();
+  const a = await client(core);
+  const since = new Date().toISOString();
+  core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "hi" } });
+  core.activity!.set({ step: "thinking", since, stepSince: since });
+  const f1 = await a.until((f) => f.t === "activity");
+  // The user's message came first, then the activity.
+  const idxEv = a.frames.findIndex((f) => f.t === "events" && f.events.some((e) => e.kind === "user_msg"));
+  expect(idxEv).toBeGreaterThan(-1);
+  expect(idxEv).toBeLessThan(a.frames.indexOf(f1));
+  core.activity!.set({ step: "recalling", since, stepSince: since });
+  const b = await client(core);
+  const fb = (await b.until((f) => f.t === "activity")) as Extract<ServerFrame, { t: "activity" }>;
+  expect(fb.activity?.step).toBe("recalling");
+  core.activity!.set(null);
+  await a.until((f) => f.t === "activity" && f.activity === null);
+  const c = await client(core);
+  await Bun.sleep(20);
+  expect(c.frames.some((f) => f.t === "activity")).toBe(false);
+});

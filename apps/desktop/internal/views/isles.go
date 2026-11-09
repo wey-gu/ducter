@@ -38,7 +38,7 @@ var homeIsle = struct{ cx, top, w float32 }{380, 300, 340}
 
 // dockSize is an ability's clay token in front of its island (design
 // points; about 110 to 150 on screen), and the gap between two.
-const dockSize, dockGap = 116, 20
+const dockSize, dockGap = 150, 26
 
 // isle is one island: a device (dv) or a client that reaches Ducter (cl).
 type isle struct {
@@ -975,10 +975,10 @@ func (a *App) island(c *ui.Context, v view, s *isle, shown *protocol.DeviceView,
 		if sel {
 			foam = 0.85
 		}
-		cx, cy := box.X+box.W/2, box.Y+box.H*0.84
+		cx, cy := box.X+box.W/2, box.Y+box.H*0.87
 		softEllipse(p, ui.Rect{X: cx - box.W*0.6, Y: cy - box.H*0.3, W: box.W * 1.2, H: box.H * 0.6}, is.Foam.Alpha(0.35*foam*rs.island))
 		var ring ui.Path
-		ellipse(&ring, cx, cy, box.W*0.43, box.H*0.1)
+		ellipse(&ring, cx, cy, box.W*0.39, box.H*0.075)
 		p.StrokePath(&ring, max(5*v.k, 3), is.Foam.Alpha(0.3*foam*rs.island))
 		p.StrokePath(&ring, max(1.6*v.k, 1.2), is.Foam.Alpha(0.75*foam*rs.island))
 		if bmp != nil {
@@ -1146,7 +1146,7 @@ func (a *App) homeDucter(c *ui.Context, s *isle, at ui.Rect) {
 func (a *App) dockRow(c *ui.Context, v view, s *isle, dy float32, sel bool, now time.Time, still bool) {
 	t := a.T
 	d := a.devState()
-	size := max(dockSize*v.k, 92)
+	size := min(max(dockSize*v.k, 92), 140)
 	gap := max(dockGap*v.k, 14)
 	// Each takes the room of its token or of its name, whichever is wider.
 	widths := make([]float32, len(s.dock))

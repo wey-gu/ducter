@@ -2,6 +2,7 @@
 // clients fold the same events the same way: living messages revised in place, jobs folded into
 // their acks, decisions with their resolutions, tasks with their streams, the On hand snapshot.
 // Pure data; tested without a DOM.
+import { endedUnmet } from "@ducter/protocol";
 import type { ActivityStep, Attention, Bodies, ClientFrame, Delivery, EvidenceRef, FolderChanges, LogEvent, OnHand, Place, RoutineView, ServerFrame, TaskBody, TaskCard, UndoConfirm, UntilView, WaiterView } from "@ducter/protocol";
 import { hasBranchChanges } from "@ducter/protocol";
 
@@ -144,6 +145,8 @@ export class Store {
   tasks = new Map<string, Task>();
   onHand?: OnHand;
   waiters = new Map<string, WaiterView>();
+  /** D145: task-less waits that ended unmet today: the finished area keeps them, with Keep waiting. */
+  missed = new Map<string, Bodies["waiter"] & { endedAt: string }>();
   /** Tasks whose wait just came true, and when (for the pop and glide, D115). */
   arrived = new Map<string, number>();
   errors: string[] = [];
@@ -249,6 +252,7 @@ export class Store {
       for (const w of o.waiters) this.waiters.set(w.waiterId, w);
       for (const [id, w] of this.waiters) if (w.state === "armed" && !armed.has(id)) this.waiters.delete(id);
     }
+    if (o.missed) this.missed = new Map(o.missed.map((w) => [w.waiterId, w]));
     for (const card of o.tasks) {
       const t = this.task(card.taskId);
       t.card = card;
@@ -281,6 +285,8 @@ export class Store {
       // A routine's watch lives on its card (D114), not as a wait.
       if (w.state === "armed" && !w.routineId) this.waiters.set(w.waiterId, { ...this.waiters.get(w.waiterId), ...w });
       else this.waiters.delete(w.waiterId);
+      if (w.state === "armed") this.missed.delete(w.waiterId);
+      else if (endedUnmet(w)) this.missed.set(w.waiterId, { ...w, endedAt: ev.ts });
     }
     if (ev.stream !== "channel") {
       if (ev.kind === "decision") this.addDecision(ev as Ev<"decision">);
@@ -505,6 +511,12 @@ export class Store {
 
   armedWaiters() {
     return [...this.waiters.values()].filter((w) => w.state === "armed").sort((a, b) => (a.at ?? "").localeCompare(b.at ?? "") || a.waiterId.localeCompare(b.waiterId));
+  }
+
+  /** D145: waits that ended unmet today, newest first. */
+  missedToday(now = Date.now()) {
+    const day = new Date(now).toDateString();
+    return [...this.missed.values()].filter((w) => new Date(w.endedAt).toDateString() === day).sort((a, b) => b.endedAt.localeCompare(a.endedAt));
   }
 
   waiterFor(taskId: string) {

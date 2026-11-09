@@ -112,8 +112,11 @@ propagates while you install.
    - `httpStatus` 0: no HTTPS yet: ports 80/443 closed in the cloud firewall, or DNS; `journalctl -u caddy -n 50`.
    - Not Debian/Ubuntu: install Caddy yourself, add the `--print` block to the Caddyfile.
    Rerunning is safe; `ducter domain --remove` undoes it (Caddy stays).
-6. **Connect the user's devices.** `ducter pair --json` → `code`, `link`, `address` (fresh code
-   any time). Mac app: Settings › Connect to a Ducter on another computer (or "My Ducter is on
+6. **Connect the user's devices.** `ducter pair --json` → `code`, `link`, `address`. **One code
+   per device:** it works once, for 10 minutes; run `ducter pair --json` again for each next
+   device (or the user picks Devices › Connect a phone or computer / 设备 › 连上手机或另一台电脑
+   in the Mac app, also when it is connected to a server home). The code `ducter domain` printed
+   is spent once the Mac uses it. Mac app: Settings › Connect to a Ducter on another computer (or "My Ducter is on
    another computer" on first run), paste the link. Phone: open the link, or the iPhone app
    (TestFlight: https://testflight.apple.com/join/Z4GvWt7t) with address + code. Verify:
    `ducter devices --json` lists it.

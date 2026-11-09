@@ -20,8 +20,10 @@ running; I'll tell you when it's all green"). Then it waits quietly. On **On han
 sits under **Waiting**, with the thing it waits for beside Ducter on its little bench. If it
 has a deadline, a groove runs from when it started to the deadline, with Ducter at "now".
 
-When it happens, Ducter tells you in one line, and the card moves on by itself. If the
-deadline passes first, it asks you whether to keep waiting.
+When it happens, Ducter tells you in one line, and the card moves on by itself. If it can't
+happen any more (a check failed) or the deadline passes first, Ducter tells you what happened
+and what you can do next. The wait stays under **Done today** for the rest of the day, with
+**Didn't happen** and the reason; **Keep waiting** starts the same wait again.
 
 Watching your email needs a connection to your mail ([Settings](settings.md)). Waiting for a
 PR or a website needs nothing more than what Ducter already uses.

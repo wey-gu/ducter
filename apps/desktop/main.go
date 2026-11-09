@@ -141,7 +141,7 @@ func main() {
 		if in, err := update.ReadInfo(bundle.App); err == nil {
 			lc.version = in.Version
 		}
-		lc.upd = newUpdater(bundle, bid, host, lc.showStatus)
+		lc.upd = newUpdater(bundle, bid, host, i18n.New(lang).T("update.owner.prompt"), lc.showStatus)
 	}
 	mygo.App.OnQuit(lc.quit) // after the handlers above: Ducter's child has stopped
 	// Settings shows the same updates, and Remove Ducter quits after (D71, D72).
@@ -217,6 +217,13 @@ func main() {
 		}
 		// The menu bar, in the window's language; rebuilt when it changes.
 		lc.win = win
+		lc.openUpdate = func() {
+			win.Update(func() {
+				app.OpenUpdate()
+				win.Show()
+				win.Focus()
+			})
+		}
 		lc.menu = appMenu(app, app.L, win, lc)
 		mygo.App.SetMenu(lc.menu)
 		tray = newTray(app, win)
@@ -332,7 +339,7 @@ func appMenu(app *views.App, l *i18n.Strings, win *mygo.Window, lc *lifecycle) *
 		}
 	}
 	appItems := []*mygo.MenuItem{
-		{Label: l.T("menu.about"), Click: show(app.OpenSettings)},
+		{Label: l.T("menu.about"), Click: show(app.OpenAbout)},
 	}
 	appItems = append(appItems, lc.appMenuItems()...)
 	appItems = append(appItems, []*mygo.MenuItem{
@@ -354,11 +361,12 @@ func appMenu(app *views.App, l *i18n.Strings, win *mygo.Window, lc *lifecycle) *
 	appItems = append(appItems,
 		&mygo.MenuItem{Role: mygo.RoleServices},
 		mygo.Separator(),
-		&mygo.MenuItem{Role: mygo.RoleHide},
+		// Ours, not MyGo's: its zh 隐藏{app} / 退出{app} run Han into the name (D78).
+		&mygo.MenuItem{Role: mygo.RoleHide, Label: l.T("menu.hide")},
 		&mygo.MenuItem{Role: mygo.RoleHideOthers},
 		&mygo.MenuItem{Role: mygo.RoleUnhide},
 		mygo.Separator(),
-		&mygo.MenuItem{Role: mygo.RoleQuit},
+		&mygo.MenuItem{Role: mygo.RoleQuit, Label: l.T("menu.quit")},
 	)
 	menu := mygo.NewMenu([]*mygo.MenuItem{
 		{Role: mygo.RoleAppMenu, Submenu: appItems},

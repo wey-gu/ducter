@@ -7,11 +7,13 @@
 //   judge  a check or event plus a yes/no question a cheap model answers over what was fetched,
 //          only when what was fetched changed, and at most once per judgeMinMs.
 // `waiter {state:"armed"}` arms it; core appends "fired" (met), "expired" (past `until`) or
-// "cancelled". A look is logged (`waiter_look`, on the task's stream or `waiter:<id>`) only when
+// "cancelled". D145: a wait that can no longer come true (a check's failWhen holds, or the partner
+// cancels it with why) ends "cancelled" with `unmet`, its reason in the user's words; such a
+// task-less wait, or one that expired, can be re-armed as it was (rearm: 接着等 / Keep waiting). A look is logged (`waiter_look`, on the task's stream or `waiter:<id>`) only when
 // what it saw changed. Errors back off
 // by doubling up to 30 min. Everything is rebuilt from the Log on start, so armed waiters survive
 // a restart; overdue timers fire at once, checks look again soon (staggered).
-import type { Attention, Bodies, CheckSpec, EventSpec, LogEvent, WaiterView } from "@ducter/protocol";
+import { endedUnmet, type Attention, type Bodies, type CheckSpec, type EventSpec, type LogEvent, type Origin, type WaiterView } from "@ducter/protocol";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
 import { DEFAULT_EVERY_MS, MAX_BACKOFF_MS, MIN_EVERY_MS, validateCheck } from "@ducter/protocol/src/checks.ts";
 import type { CheckResult } from "@ducter/protocol/src/checks-run.ts";
@@ -38,6 +40,8 @@ export interface ArmInput {
   everyMs?: number;
   until?: string;
   held?: boolean;
+  /** D145: what to say if it can no longer come true (check.failWhen), in the user's words. */
+  unmetSays?: string;
 }
 
 export interface Waiters {
@@ -45,10 +49,15 @@ export interface Waiters {
   arm(input: ArmInput): Bodies["waiter"];
   /** Looks now (Look now), instead of at the next scheduled time. */
   look(waiterId: string): Promise<boolean>;
-  cancel(waiterId: string): boolean;
+  /** unmet: it can't come true, and why in the user's words (D145); by: who cancelled it. */
+  cancel(waiterId: string, why?: { unmet?: string; by?: Origin }): boolean;
+  /** D145: 接着等 / Keep waiting: arms a wait that ended unmet again, as it was. */
+  rearm(waiterId: string): boolean;
   /** One look of a check or event, outside any waiter: the dry run on a proposal card. */
   dryRun(input: { check?: CheckSpec; event?: EventSpec; judge?: string; reason: string; taskId?: string }): Promise<{ met: boolean; summary: string }>;
   views(): WaiterView[];
+  /** D145: task-less waits that ended unmet on the given day (toDateString), newest first. */
+  missed(day?: string): (Bodies["waiter"] & { endedAt: string })[];
   setJudge(j: Judge | undefined): void;
   stop(): void;
 }
@@ -110,6 +119,7 @@ export function createWaiters(opts: WaiterDeps): Waiters {
   const judgeMin = opts.judgeMinMs ?? JUDGE_MIN_MS;
   let judge = opts.judge;
   const armed = new Map<string, Entry>();
+  const ended = new Map<string, { w: Bodies["waiter"]; at: string }>(); // D145: ended unmet, re-armable
   let stopped = false;
 
   const clear = (a: Entry) => {
@@ -118,15 +128,16 @@ export function createWaiters(opts: WaiterDeps): Waiters {
     a.timer = a.deadline = undefined;
   };
 
-  const close = (waiterId: string, state: "fired" | "cancelled" | "expired", observed?: string) => {
+  const close = (waiterId: string, state: "fired" | "cancelled" | "expired", observed?: string, why: { unmet?: string; by?: Origin } = {}) => {
     const a = armed.get(waiterId);
     if (!a) return;
     armed.delete(waiterId);
     clear(a);
     const body: Bodies["waiter"] = { ...a.w, state };
     const seen = observed ?? a.lastSummary;
-    if (seen && state !== "cancelled") body.observed = clip(seen);
-    log.append({ stream: "channel", origin: "waiter", kind: "waiter", body });
+    if (seen && (state !== "cancelled" || why.unmet)) body.observed = clip(seen);
+    if (why.unmet?.trim()) body.unmet = clip(why.unmet.trim(), 160);
+    log.append({ stream: "channel", origin: why.by ?? "waiter", kind: "waiter", body });
   };
 
   /** A timer that may be longer than setTimeout allows: hops in <= 24.8-day steps. */
@@ -160,11 +171,11 @@ export function createWaiters(opts: WaiterDeps): Waiters {
   };
 
   /** Fetch what the condition is about: a check's result, or new items from an event. */
-  async function fetchOnce(w: Pick<Bodies["waiter"], "check" | "event" | "taskId">, checkpoint: unknown): Promise<{ ok: boolean; met: boolean; summary: string; data: string; checkpoint?: unknown; error?: string }> {
+  async function fetchOnce(w: Pick<Bodies["waiter"], "check" | "event" | "taskId">, checkpoint: unknown): Promise<{ ok: boolean; met: boolean; failed?: boolean; summary: string; data: string; checkpoint?: unknown; error?: string }> {
     if (w.check) {
       if (!opts.check) return { ok: false, met: false, summary: "checks can't run here", data: "", error: "no check runner" };
       const r = await opts.check(w.check, { taskId: w.taskId });
-      return { ok: r.ok, met: r.met, summary: r.summary, data: r.output ?? r.summary, ...(r.error ? { error: r.error } : {}) };
+      return { ok: r.ok, met: r.met, ...(r.failed ? { failed: true } : {}), summary: r.summary, data: r.output ?? r.summary, ...(r.error ? { error: r.error } : {}) };
     }
     if (w.event) {
       if (!opts.readEvent) return { ok: false, met: false, summary: "no connections to watch", data: "", error: "no event source" };
@@ -227,6 +238,8 @@ export function createWaiters(opts: WaiterDeps): Waiters {
       const rising = w.routineId ? met && !a.lastMet : met;
       a.lastMet = met;
       if (rising) return close(w.waiterId, "fired", summary);
+      // D145: it can no longer come true (a check failed): end it unmet, never look on in vain.
+      if (got.failed && !met && !w.routineId) return close(w.waiterId, "cancelled", summary, { unmet: w.unmetSays ?? summary });
       scheduleLook(a, deferMs ?? every(w));
     } catch (err) {
       a.lastSummary = (err as Error).message;
@@ -267,6 +280,8 @@ export function createWaiters(opts: WaiterDeps): Waiters {
         if (a) clear(a);
         armed.delete(w.waiterId);
       }
+      if (w.state === "armed") ended.delete(w.waiterId);
+      else if (endedUnmet(w)) ended.set(w.waiterId, { w, at: e.ts });
     } else if (e.kind === "task_state") {
       const b = e.body as Bodies["task_state"];
       if (!FINISHED.includes(b.attention)) return;
@@ -288,8 +303,11 @@ export function createWaiters(opts: WaiterDeps): Waiters {
     if (e.kind === "decision_resolved") answered.add((e.body as Bodies["decision_resolved"]).decisionId);
     else if (e.kind === "waiter") {
       const w = e.body as Bodies["waiter"];
-      if (w.state === "armed") open.set(w.waiterId, w), armedTs.set(w.waiterId, e.ts);
-      else open.delete(w.waiterId), lastLook.delete(w.waiterId);
+      if (w.state === "armed") open.set(w.waiterId, w), armedTs.set(w.waiterId, e.ts), ended.delete(w.waiterId);
+      else {
+        open.delete(w.waiterId), lastLook.delete(w.waiterId);
+        if (endedUnmet(w)) ended.set(w.waiterId, { w, at: e.ts });
+      }
     } else if (e.kind === "waiter_look") {
       const l = e.body as Bodies["waiter_look"];
       const prev = lastLook.get(l.waiterId);
@@ -349,6 +367,7 @@ export function createWaiters(opts: WaiterDeps): Waiters {
       if (input.decisionId) body.decisionId = input.decisionId;
       if (input.routineId) body.routineId = input.routineId;
       if (input.held) body.held = true;
+      if (input.unmetSays?.trim()) body.unmetSays = clip(input.unmetSays.trim(), 160);
       log.append({ stream: "channel", origin: "waiter", kind: "waiter", body });
       return body;
     },
@@ -359,9 +378,19 @@ export function createWaiters(opts: WaiterDeps): Waiters {
       await lookOnce(a);
       return true;
     },
-    cancel(waiterId) {
+    cancel(waiterId, why) {
       if (!armed.has(waiterId)) return false;
-      close(waiterId, "cancelled");
+      close(waiterId, "cancelled", undefined, why);
+      return true;
+    },
+    rearm(waiterId) {
+      const w = ended.get(waiterId)?.w;
+      if (!w || armed.has(waiterId)) return false;
+      const { unmet: _u, observed: _o, ...rest } = w;
+      const body: Bodies["waiter"] = { ...rest, state: "armed" };
+      // A deadline already past would end it at once: keep waiting means without it.
+      if (body.until && Date.parse(body.until) <= clock.now()) delete body.until;
+      log.append({ stream: "channel", origin: "user", kind: "waiter", body });
       return true;
     },
     async dryRun(input) {
@@ -385,6 +414,12 @@ export function createWaiters(opts: WaiterDeps): Waiters {
         if (a.nextLookAt !== undefined && a.timer !== undefined) v.nextLookAt = new Date(a.nextLookAt).toISOString();
         return v;
       });
+    },
+    missed(day = new Date(clock.now()).toDateString()) {
+      return [...ended.values()]
+        .filter((x) => new Date(x.at).toDateString() === day)
+        .sort((a, b) => b.at.localeCompare(a.at))
+        .map((x) => ({ ...x.w, endedAt: x.at }));
     },
     setJudge(j) {
       judge = j;

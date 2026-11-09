@@ -30,20 +30,23 @@ type lifecycle struct {
 	menu     *mygo.Menu
 	relaunch bool
 	win      *mygo.Window
+	// openUpdate shows Settings' update card (views.App.OpenUpdate).
+	openUpdate func()
 }
 
 // newUpdater sets up updates for the bundle. Not from a disk image or a
 // translocated copy (they say so in Status); a test serves its own feed
 // with DUCTER_UPDATE_FEED (http only from this Mac) and may accept a
 // signed but not notarized build with DUCTER_UPDATE_SKIP_GATEKEEPER=1.
-func newUpdater(bundle local.Bundle, bid string, host *local.Host, onChange func(update.Status)) *update.Updater {
+func newUpdater(bundle local.Bundle, bid string, host *local.Host, prompt string, onChange func(update.Status)) *update.Updater {
 	cfg := update.Config{
-		App:   bundle.App,
-		Feed:  os.Getenv("DUCTER_UPDATE_FEED"),
-		Dir:   filepath.Join(local.SupportDir(bid), "updates"),
-		HTTP:  &http.Client{Transport: netproxy.Transport(), Timeout: 15 * time.Minute},
-		Check: update.Codesign{SkipGatekeeper: os.Getenv("DUCTER_UPDATE_SKIP_GATEKEEPER") == "1"},
-		Logf:  log.Printf,
+		App:       bundle.App,
+		Feed:      os.Getenv("DUCTER_UPDATE_FEED"),
+		Dir:       filepath.Join(local.SupportDir(bid), "updates"),
+		HTTP:      &http.Client{Transport: netproxy.Transport(), Timeout: 15 * time.Minute},
+		Check:     update.Codesign{SkipGatekeeper: os.Getenv("DUCTER_UPDATE_SKIP_GATEKEEPER") == "1"},
+		Authorize: update.AuthorizeOwner(prompt),
+		Logf:      log.Printf,
 		// The menu line follows the state.
 		OnChange: onChange,
 	}
@@ -58,12 +61,18 @@ func newUpdater(bundle local.Bundle, bid string, host *local.Host, onChange func
 	return u
 }
 
-// appMenuItems are the lifecycle rows of the app menu: one update line.
+// appMenuItems are the lifecycle rows of the app menu: one update line,
+// which opens Settings' update card (one flow, one place for its progress
+// and Restart to update).
 func (lc *lifecycle) appMenuItems() []*mygo.MenuItem {
 	if lc.upd == nil {
 		return nil
 	}
-	return []*mygo.MenuItem{{ID: "update", Label: lc.l.T("menu.update.check"), Click: func(*mygo.MenuItem, *mygo.Window) { go lc.updateClicked() }}}
+	return []*mygo.MenuItem{{ID: "update", Label: lc.l.T("menu.update.check"), Click: func(*mygo.MenuItem, *mygo.Window) {
+		if lc.openUpdate != nil {
+			lc.openUpdate()
+		}
+	}}}
 }
 
 // helpMenu is Help: the docs, and Report a problem….
@@ -102,59 +111,20 @@ func (lc *lifecycle) showStatus(st update.Status) {
 	it.SetEnabled(enabled)
 }
 
-// updateClicked: restart into a ready update, open the page of one this
-// copy can't install, or check now and say what came of it (the person
-// asked, so a dialog answers).
-func (lc *lifecycle) updateClicked() {
-	st := lc.upd.Status()
-	switch st.State {
-	case update.Ready:
-		lc.restartToUpdate()
-		return
-	case update.Available:
-		if st.Page != "" {
-			_ = local.OpenURL(st.Page)
-		}
-		return
-	}
-	st = lc.upd.CheckNow(context.Background())
-	msg := mygo.MessageOptions{Parent: lc.win, Type: mygo.MessageInfo, Buttons: []string{lc.l.T("update.ok")}}
-	switch st.State {
-	case update.UpToDate:
-		msg.Title = lc.l.T("update.uptodate", st.Current)
-	case update.NoFeed:
-		msg.Title, msg.Detail = lc.l.T("update.nofeed"), lc.l.T("update.nofeed.body")
-	case update.Ready:
-		msg.Title, msg.Detail = lc.l.T("menu.update.ready", st.Version), lc.l.T("update.ready.body")
-		msg.Buttons = []string{lc.l.T("update.restart"), lc.l.T("update.later")}
-	case update.Available:
-		msg.Title, msg.Detail = lc.l.T("menu.update.available", st.Version), lc.l.T("update.reason."+string(st.Reason))
-		msg.Buttons = []string{lc.l.T("update.download"), lc.l.T("update.later")}
-	case update.Failed:
-		msg.Type, msg.Title, msg.Detail = mygo.MessageWarning, lc.l.T("update.failed"), lc.l.T("update.reason."+string(st.Reason))
-	default:
-		return
-	}
-	r, err := mygo.Dialog.Message(msg)
-	if err != nil || r.Button != 0 {
-		return
-	}
-	switch st.State {
-	case update.Ready:
-		lc.restartToUpdate()
-	case update.Available:
-		if st.Page != "" {
-			_ = local.OpenURL(st.Page)
-		}
-	}
-}
-
 // restartToUpdate quits; the swap runs once the app is gone and opens the
 // new version (not mygo's Relaunch, which would open the old bundle before
 // the swap).
 func (lc *lifecycle) restartToUpdate() {
-	lc.relaunch = true
-	mygo.App.Quit()
+	go func() {
+		// Installed by an administrator: the password first, while the app
+		// still runs; without it the app stays open and Settings says why.
+		if err := lc.upd.PrepareRestart(); err != nil {
+			log.Printf("ducter: update not installed: %v", err)
+			return
+		}
+		lc.relaunch = true
+		mygo.App.Quit()
+	}()
 }
 
 // quit runs as the app quits: a ready update goes in once it has exited.

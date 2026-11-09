@@ -207,6 +207,11 @@ export interface Bodies {
     until?: string; // ISO deadline
     observed?: string; // fired/expired: what it saw last (<= 200 chars)
     held?: boolean; // a routine's watch re-armed while the condition still holds: fires only once it stops and holds again
+    // D144: a wait that ended without its condition says why, in the user's words (有一项检查挂了 /
+    // a check failed). unmetSays is given at arm time for failWhen; unmet is set when it ends
+    // ("cancelled" with unmet = it can't come true; "expired" = it ran out of time).
+    unmetSays?: string;
+    unmet?: string;
   };
   // One look of a check/event waiter, logged only when what it saw changed (or it began failing),
   // on the task's stream (task waiters) or the channel. Clients fold them into Details.
@@ -356,6 +361,8 @@ export interface OnHand {
   tasks: TaskCard[];
   counts: Record<"needs_you" | "working" | "waiting" | "done_today", number>;
   waiters: WaiterView[]; // armed waiters (task-less ones render as compact rows)
+  /** D144: task-less waits that ended unmet today: kept in the finished area with Keep waiting. */
+  missed?: (Bodies["waiter"] & { endedAt: string })[];
   /** D114: every routine that isn't ended or dismissed, proposed ones included (their card). */
   routines?: RoutineView[];
 }
@@ -376,6 +383,9 @@ export interface CheckSpec {
   device?: string; // "local" (default) or a worker's device
   cwd?: string; // default: the task's place
   succeedWhen: Predicate;
+  // D144: what shows it can no longer come true (a check FAILURE). When it holds, the wait ends
+  // unmet instead of looking on.
+  failWhen?: Predicate;
 }
 
 /**
@@ -538,8 +548,8 @@ export type ClientFrame =
   | { t: "connection_oo" }
   // Work over time (D112-D114), each answered with action_result (taskId = the waiter or routine
   // id). waiter_action look: look now; cancel: 不等了 / Stop waiting. routine_action pause, resume
-  // (only a person resumes), end. until_action stop: stop the loop after this try.
-  | { t: "waiter_action"; waiterId: string; action: "look" | "cancel" }
+  // (only a person resumes), end. waiter_action rearm: 接着等 / Keep waiting, on a missed wait (D144). until_action stop: stop the loop after this try.
+  | { t: "waiter_action"; waiterId: string; action: "look" | "cancel" | "rearm" }
   | { t: "routine_action"; routineId: string; action: "pause" | "resume" | "end" }
   | { t: "until_action"; taskId: string; action: "stop" }
   // 开一件事 / New task (D128). task_new_options: what the card offers (places, recent first,
@@ -790,6 +800,10 @@ export interface MemView {
 }
 
 /** The choices offered for defaultAfterMin, in minutes. */
+/** D144: a task-less wait that ended without its condition (it can't come true, or ran out of time). */
+export const endedUnmet = (w: Pick<Bodies["waiter"], "state" | "unmet" | "taskId" | "routineId">): boolean =>
+  !w.taskId && !w.routineId && (w.state === "expired" || (w.state === "cancelled" && Boolean(w.unmet)));
+
 export const DEFAULT_AFTER_CHOICES = [10, 30, 60, 120] as const;
 
 // ---------- Ducter MCP tools (HTTP MCP served by core at /mcp, role-scoped by token) ----------

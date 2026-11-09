@@ -102,6 +102,7 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
       // D112: a condition wait. Tell the user once, in one short line, in their terms.
       if (b.state === "fired") return `[wait over] ${b.reason}${on}${b.observed ? ` · it saw: ${b.observed}` : ""}`;
       if (b.state === "expired") return `[wait ran out] ${b.reason}${on}: still not true at the deadline${b.observed ? ` · last saw: ${b.observed}` : ""}. Tell the user plainly and ask whether to keep waiting.`;
+      if (b.state === "cancelled" && b.unmet) return `[wait can't happen] ${b.reason}${on}: ${b.unmet}${b.observed ? ` · last saw: ${b.observed}` : ""}. Tell the user in one short sentence what happened and the one next step they can take; no internals.`;
       return `[wait ${b.state}] ${b.reason}${on}`;
     }
     case "until": {

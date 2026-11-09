@@ -44,7 +44,9 @@ type settingsState struct {
 	report   *local.Report
 	err      string
 	updating bool
-	remove   removeState
+	// first: the card opened from the app menu (update, about) comes first.
+	first  string
+	remove removeState
 }
 
 type removeState struct {
@@ -59,7 +61,29 @@ type removeState struct {
 }
 
 // OpenSettings shows Settings.
-func (a *App) OpenSettings() { a.Route = RouteSettings }
+func (a *App) OpenSettings() { a.Route, a.settings.first = RouteSettings, "" }
+
+// OpenAbout is the app menu's About Ducter: Settings with About first.
+func (a *App) OpenAbout() { a.Route, a.settings.first = RouteSettings, "about" }
+
+// OpenUpdate is the app menu's update line: Settings with its update card
+// first, checking now unless a version is already on its way or ready. The
+// one update flow: its progress, Restart to update and the reasons are all
+// that card's.
+func (a *App) OpenUpdate() {
+	a.Route, a.settings.first = RouteSettings, "update"
+	u := a.Updates
+	if u == nil || a.settings.updating {
+		return
+	}
+	switch u.Status().State {
+	case update.Ready, update.Available, update.Checking, update.Downloading:
+		return
+	}
+	ss := &a.settings
+	ss.updating = true
+	a.async(func() { u.CheckNow(context.Background()) }, func() { ss.updating = false })
+}
 
 // SetInterfaceLanguage switches the window's language: "auto" follows
 // macOS (and, as before, the first message), "zh" or "en" pin it.
@@ -91,13 +115,23 @@ func (a *App) settingsView(c *ui.Context) {
 	ui.Scroll(c.Key("settings-scroll")).Grow(1).Children(func() {
 		ui.Row(c).Justify(ui.Center).Padding(t.S6, t.S6, t.S7, t.S6).Children(func() {
 			ui.Column(c).Grow(1).MaxWidth(680).Gap(t.S5).Children(func() {
+				switch a.settings.first {
+				case "update":
+					a.updateCard(c)
+				case "about":
+					a.aboutCard(c)
+				}
 				a.lookCard(c)
 				a.langCard(c)
 				a.detailsCard(c)
 				a.runCard(c)
-				a.updateCard(c)
+				if a.settings.first != "update" {
+					a.updateCard(c)
+				}
 				a.dataCard(c)
-				a.aboutCard(c)
+				if a.settings.first != "about" {
+					a.aboutCard(c)
+				}
 				a.removeEntry(c)
 			})
 		})
@@ -267,9 +301,9 @@ func (a *App) updateCard(c *ui.Context) {
 		case update.Downloading:
 			line = a.L.T("menu.update.downloading", st.Version)
 		case update.Ready:
-			line, why = a.L.T("menu.update.ready", st.Version), a.L.T("update.ready.body")
+			line, why = a.L.T("update.line.ready", st.Version), a.L.T("update.ready.body")
 		case update.Available:
-			line, why = a.L.T("menu.update.available", st.Version), a.L.T("update.reason."+string(st.Reason))
+			line, why = a.L.T("update.line.available", st.Version), a.L.T("update.reason."+string(st.Reason))
 		case update.Failed:
 			line, why = a.L.T("update.failed"), a.L.T("update.reason."+string(st.Reason))
 		case update.NoFeed:
@@ -279,6 +313,9 @@ func (a *App) updateCard(c *ui.Context) {
 			c.After(500e6)
 		}
 		ui.Text(c, line).FontSize(t.MD).FontWeight(700)
+		if st.State == update.Ready && st.Reason == update.ReasonOwner {
+			why = a.L.T("update.reason.owner")
+		}
 		if why != "" && st.Reason != update.ReasonNone || st.State == update.Ready || st.State == update.NoFeed {
 			a.note(c, why)
 		}

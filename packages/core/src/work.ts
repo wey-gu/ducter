@@ -120,6 +120,12 @@ export function createWork(o: WorkOptions): Work {
       tasks.setState(w.taskId, "needs_you", card.residency, zh ? `等到最后也没等到：${w.reason}` : `Waited until the deadline: ${w.reason}`);
     } else if (w.state === "cancelled" && card.attention === "blocked") {
       tasks.setState(w.taskId, "working", card.residency);
+      // D144: it can no longer come true: the task hears why and decides what is next.
+      if (w.unmet && e.origin === "waiter") {
+        const zh = zhOf(w.reason);
+        const text = zh ? `没等到：「${w.reason}」，${w.unmet}。看看接下来怎么做。` : `This won't happen: "${w.reason}": ${w.unmet}. Decide what to do next.`;
+        void o.runner()?.send(w.taskId, text, undefined, "partner").catch((err) => console.warn(`[work] could not wake ${w.taskId}: ${(err as Error).message}`));
+      }
     }
   });
 
@@ -147,6 +153,10 @@ export function createWork(o: WorkOptions): Work {
           any: { type: "boolean" },
         },
       },
+      failWhen: {
+        type: "object",
+        description: 'Same shape as succeedWhen: what shows it can no longer come true, so the wait ends instead of looking on. PR checks: {"path":"[].state","oneOf":["FAILURE","ERROR","CANCELLED"],"any":true}. Give unmetSays with it.',
+      },
     },
     required: ["argv", "succeedWhen"],
   };
@@ -158,7 +168,7 @@ export function createWork(o: WorkOptions): Work {
     required: ["connection", "service", "trigger"],
   };
 
-  const waitFor = async (a: { reason?: string; taskId?: string; check?: CheckSpec; event?: EventSpec; judge?: string; everyMinutes?: number; untilISO?: string }, ctx: { role: string; taskId?: string }) => {
+  const waitFor = async (a: { reason?: string; taskId?: string; check?: CheckSpec; event?: EventSpec; judge?: string; everyMinutes?: number; untilISO?: string; unmetSays?: string }, ctx: { role: string; taskId?: string }) => {
     const taskId = ctx.role === "task" ? ctx.taskId : a.taskId;
     const reason = String(a.reason ?? "").trim();
     if (!reason) return { ok: false, error: "wait_for needs reason: the condition in the user's words (在等 PR #1592 通过 / PR #1592 passes)." };
@@ -182,6 +192,7 @@ export function createWork(o: WorkOptions): Work {
         ...(a.judge ? { judge: a.judge } : {}),
         ...(a.everyMinutes ? { everyMs: a.everyMinutes * 60_000 } : {}),
         ...(a.untilISO ? { until: a.untilISO } : {}),
+        ...(a.unmetSays && a.check?.failWhen ? { unmetSays: String(a.unmetSays) } : {}),
       });
       return {
         ok: true,
@@ -206,6 +217,7 @@ export function createWork(o: WorkOptions): Work {
     judge: { type: "string", description: "Only when code can't decide: a yes/no question a cheap model answers over what the check or event fetched (是不是域名续费的提醒邮件？). Rate-limited, only on change." },
     everyMinutes: { type: "number", description: "How often to look (default 5, at least 1). CI ≈ 2–5, mail ≈ 5, a page ≈ 15–60" },
     untilISO: { type: "string", description: "Give up at this time (ISO); the user is asked then. Default none; set one for anything that may never happen" },
+    unmetSays: { type: "string", description: "With check.failWhen: what happened if it can no longer come true, plain, in the user's language (有一项检查挂了 / a check failed). Shown on On hand after 没等到 / Didn't happen" },
   };
   mcp.register(
     "partner",
@@ -224,9 +236,9 @@ export function createWork(o: WorkOptions): Work {
   mcp.register(
     "partner",
     "wait_cancel",
-    "Stop a wait you set (the user said never mind).",
-    { type: "object", properties: { waiterId: { type: "string" } }, required: ["waiterId"] },
-    async (a: { waiterId: string }) => ({ ok: waiters.cancel(String(a.waiterId)) }),
+    "Stop a wait you set: the user said never mind, or you can see it can no longer come true (a check failed, the PR was closed); then give unmet, so On hand keeps it for the day with Keep waiting.",
+    { type: "object", properties: { waiterId: { type: "string" }, unmet: { type: "string", description: "Only when it can't come true: why, plain, in the user's language (有一项检查挂了 / a check failed)" } }, required: ["waiterId"] },
+    async (a: { waiterId: string; unmet?: string }) => ({ ok: waiters.cancel(String(a.waiterId), { by: "partner", ...(a.unmet ? { unmet: String(a.unmet) } : {}) }) }),
   );
   mcp.register(
     "partner",
@@ -301,7 +313,7 @@ export function createWork(o: WorkOptions): Work {
     routines,
     frames: {
       zone: (tz) => routines.setUserZone(tz),
-      waiter: (id, action) => (action === "look" ? waiters.look(id) : Promise.resolve(waiters.cancel(id))),
+      waiter: (id, action) => (action === "look" ? waiters.look(id) : action === "rearm" ? Promise.resolve(waiters.rearm(id)) : Promise.resolve(waiters.cancel(id, { by: "user" }))),
       routine: (id, action) => (action === "pause" ? routines.pause(id, "user", "asked") : action === "resume" ? routines.resume(id) : routines.end(id)),
       until: (id) => untils.stop(id, "user"),
     },
@@ -312,6 +324,7 @@ export function createWork(o: WorkOptions): Work {
         // A routine's own watch is shown on its routine card, not as a wait.
         waiters: on.waiters.filter((w) => !w.routineId).map((w) => views.get(w.waiterId) ?? w),
         routines: routines.views(),
+        missed: waiters.missed(),
       };
     },
     wakes(e) {

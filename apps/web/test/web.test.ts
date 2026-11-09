@@ -33,6 +33,15 @@ describe("copy", () => {
   test("zh and en have the same keys", () => {
     expect(Object.keys(TABLES.zh).sort()).toEqual(Object.keys(TABLES.en).sort());
   });
+  test("zh puts a space between Han and Latin letters or digits (D78)", () => {
+    // Printf verbs are left out: what fills them decides. ALLOWED: keys that run them together on purpose.
+    const ALLOWED = new Set<string>([]);
+    const verb = /%(\d+\$)?[-+# 0]*\d*(\.\d+)?[sdfv]/g;
+    const hits = Object.entries(TABLES.zh)
+      .filter(([k, v]) => !ALLOWED.has(k) && /\p{Script=Han}[A-Za-z0-9]|[A-Za-z0-9]\p{Script=Han}/u.test(v.replace(verb, "\u0000")))
+      .map(([k, v]) => `${k}: ${v}`);
+    expect(hits).toEqual([]);
+  });
   test("printf verbs, positional args, and Han joining around a name", () => {
     expect(format("If you don't answer, I'll %[2]s in %[1]s.", ["30 min", "rebase"])).toBe("If you don't answer, I'll rebase in 30 min.");
     expect(strings("zh").t("face.working", "小鸭")).toBe("小鸭正在做事");
@@ -73,6 +82,18 @@ describe("store (parity with the desktop store)", () => {
     s.apply({ t: "events", events: [place("f1", { kind: "folder", device: "local", path: "/tmp/发票" }), place("r1", { kind: "repo", device: "local", repoPath: "/r", branch: "ducter/x", baseBranch: "main" })] });
     expect(countsChanges(s.tasks.get("f1")!)).toBe(false);
     expect(countsChanges(s.tasks.get("r1")!)).toBe(true);
+  });
+  test("a wait that ended unmet stays in the finished area today; re-armed, it leaves it (D145)", () => {
+    const s = new Store();
+    const w = { waiterId: "w1", reason: "PR #9950 的 CI 通过", kind: "check", check: { argv: ["gh"], succeedWhen: { exitCode: 0 } } };
+    s.apply({ t: "welcome", persona: "default", personaName: "Ducter", headSeq: 0 });
+    s.apply({ t: "events", events: [ev("waiter", { ...w, state: "armed" }, { origin: "waiter" }), ev("waiter", { ...w, state: "cancelled", unmet: "有一项检查挂了" }, { origin: "waiter" }), ev("waiter", { waiterId: "w2", reason: "x", state: "cancelled" }, { origin: "user" })] });
+    expect(s.armedWaiters()).toEqual([]);
+    expect(s.missedToday().map((x) => [x.waiterId, x.unmet])).toEqual([["w1", "有一项检查挂了"]]);
+    expect(s.missedToday(Date.now() + 2 * 86_400_000)).toEqual([]);
+    s.apply({ t: "events", events: [ev("waiter", { ...w, state: "armed" }, { origin: "user" })] });
+    expect(s.missedToday()).toEqual([]);
+    expect(s.armedWaiters().map((x) => x.waiterId)).toEqual(["w1"]);
   });
   test("a living message is revised in place; jobs fold into their acks; decisions resolve", () => {
     const s = new Store();

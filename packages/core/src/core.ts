@@ -103,6 +103,8 @@ export function triggersPartner(e: LogEvent): boolean {
     // A routine's watch starts a run; a task's own check wakes that task, not the partner.
     if (w.routineId) return false;
     if (w.state === "expired") return true;
+    // D145: it can no longer come true (a check failed): said once, by the partner.
+    if (w.state === "cancelled" && w.unmet && e.origin === "waiter" && !w.taskId) return true;
     return w.state === "fired" && !(w.taskId && (w.check || w.event));
   }
   // An `until` loop that ends (met or stopped short) is said once, by the partner (D113).

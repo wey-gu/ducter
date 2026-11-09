@@ -65,6 +65,8 @@ const (
 	ReasonGatekeep  Reason = "gatekeeper" // macOS wouldn't open it
 	ReasonBundle    Reason = "bundle"     // another app, or another version than the feed said
 	ReasonDisk      Reason = "disk"       // couldn't write the download or the copy
+	ReasonInstall   Reason = "install"    // the swap after quitting didn't happen: the old version came back
+	ReasonOwner     Reason = "owner"      // Ducter.app belongs to an administrator and the password was not given
 )
 
 // Status is what Settings and the app menu show.
@@ -100,6 +102,12 @@ type Config struct {
 	Logf     func(format string, args ...any)
 	// Pid is the process the swap waits for (default: this one).
 	Pid int
+	// Authorize makes the running app the person's own when it isn't
+	// (installed with sudo: then the swap's rename would fail and the old
+	// version would open again). It asks for an administrator's password,
+	// so it runs only when the person asked to restart into the update.
+	// Default: AuthorizeOwner.
+	Authorize func(app string) error
 }
 
 // Updater is the one updater of the running app.
@@ -164,6 +172,9 @@ func New(cfg Config) (*Updater, error) {
 	if cfg.Pid == 0 {
 		cfg.Pid = os.Getpid()
 	}
+	if cfg.Authorize == nil {
+		cfg.Authorize = AuthorizeOwner("")
+	}
 	if err := os.MkdirAll(cfg.Dir, 0o755); err != nil {
 		return nil, err
 	}
@@ -171,8 +182,14 @@ func New(cfg Config) (*Updater, error) {
 	u.load()
 	u.st = Status{State: Idle, Current: info.Version, CheckedAt: u.saved.CheckedAt, InstallOnQuit: u.installOnQuit(), CanRollBack: u.previousOK()}
 	if r, err := os.ReadFile(u.resultPath()); err == nil {
-		cfg.Logf("ducter: last update: %s", strings.TrimSpace(string(r)))
+		res := strings.TrimSpace(string(r))
+		cfg.Logf("ducter: last update: %s", res)
 		os.Remove(u.resultPath())
+		// The swap ran but this is still the old version: say so in Settings,
+		// never open the old app again as if it had updated.
+		if !strings.HasSuffix(res, ": installed") {
+			u.st.State, u.st.Reason, u.st.Detail = Failed, ReasonInstall, res
+		}
 	}
 	// A version staged by an earlier run: ready again if it is still newer
 	// and still there. It is checked again before every swap.
@@ -559,6 +576,12 @@ func (u *Updater) Quit(relaunch bool) (bool, error) {
 	if err := os.MkdirAll(filepath.Dir(p.prev), 0o755); err != nil {
 		return false, err
 	}
+	// A bundle that isn't the person's own can't be renamed away (the swap
+	// would open the old version again): it stays ready until
+	// PrepareRestart has made it theirs.
+	if !writable(u.cfg.App) {
+		return false, fmt.Errorf("%s isn't yours to replace; the update stays ready", u.cfg.App)
+	}
 	rl := "0"
 	if relaunch {
 		rl = "1"
@@ -576,6 +599,25 @@ func (u *Updater) Quit(relaunch bool) (bool, error) {
 	u.save()
 	u.cfg.Logf("ducter: %s starts once the app has quit", p.note)
 	return true, nil
+}
+
+// PrepareRestart readies the swap before the app quits to restart into the
+// update: a bundle installed by an administrator (sudo) is made the
+// person's own, with macOS's password prompt. On an error the app should
+// not quit: the update stays ready, and Settings says why.
+func (u *Updater) PrepareRestart() error {
+	if writable(u.cfg.App) {
+		return nil
+	}
+	if err := u.cfg.Authorize(u.cfg.App); err != nil || !writable(u.cfg.App) {
+		if err == nil {
+			err = errors.New("still not writable")
+		}
+		u.set(func(s *Status) { s.Reason, s.Detail = ReasonOwner, err.Error() })
+		return err
+	}
+	u.set(func(s *Status) { s.Reason, s.Detail = ReasonNone, "" })
+	return nil
 }
 
 // swapScript: $1 pid, $2 the running app, $3 the new bundle, $4 where the
@@ -610,8 +652,38 @@ fi
 if [ -n "$ok" ] && [ -n "$label" ] && [ -f "$plist" ]; then
 	/bin/launchctl kickstart -k "gui/$(id -u)/$label" >/dev/null 2>&1
 fi
+# Launch Services still holds the old bundle's record for this path: refresh it, so the open
+# below starts the new version with its own Info.plist, as a launch from the Dock would.
+ls=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
+if [ -n "$ok" ] && [ -x "$ls" ]; then "$ls" -f "$target" >/dev/null 2>&1; fi
 if [ "$relaunch" = 1 ]; then exec /usr/bin/open "$target"; fi
 `
+
+// writable reports whether the person may rename the bundle away: moving a
+// folder to another parent needs write access to the folder itself.
+func writable(app string) bool { return syscall.Access(app, 2 /* W_OK */) == nil }
+
+// AuthorizeOwner gives the bundle to the person running the app, asking
+// macOS for an administrator's password (the standard prompt, with
+// prompt as its line when given).
+func AuthorizeOwner(prompt string) func(app string) error {
+	return func(app string) error {
+		script := []string{"-e", "on run argv",
+			"-e", `set p to "/usr/sbin/chown -R " & (item 1 of argv) & " " & quoted form of (item 2 of argv)`,
+			"-e", `if (item 3 of argv) is "" then`,
+			"-e", "do shell script p with administrator privileges",
+			"-e", "else",
+			"-e", "do shell script p with prompt (item 3 of argv) with administrator privileges",
+			"-e", "end if",
+			"-e", "end run",
+			fmt.Sprint(os.Getuid()), app, prompt}
+		out, err := exec.Command("/usr/bin/osascript", script...).CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("%v: %s", err, strings.TrimSpace(string(out)))
+		}
+		return nil
+	}
+}
 
 // previousPath is where the version before this one is kept: in Dir when
 // that is on the app's volume (a rename), else next to the app.

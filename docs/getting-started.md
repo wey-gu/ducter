@@ -17,16 +17,15 @@ write to a colleague.
   ([which agents](faq.md#which-ai-agents-does-it-work-with)). Ducter does its work through
   the plan you already have. If neither is set up yet, Ducter installs one for you in the next
   step.
-- **The Ducter app.** Signed downloads will be on
-  [GitHub Releases](https://github.com/wey-gu/ducter/releases); the first release is on its way.
-  Until then, someone builds it once from the source and hands you `Ducter.dmg`, or you build it
-  yourself: see [Install](install.md).
+- **The Ducter app.** Download the `.dmg` from the
+  [latest release on GitHub](https://github.com/wey-gu/ducter/releases/latest). You can also
+  build it from the source: see [Install](install.md).
 
 ## 1. Open Ducter
 
 Open the `.dmg`, drag **Ducter** onto **Applications**, and open it from there. The first time,
 macOS asks whether you want to open an app downloaded from the Internet: choose **Open**. (If
-your copy wasn't signed by its builder, macOS needs one extra step; [Troubleshooting](troubleshooting.md#ducter-not-opened)
+you built it yourself without an Apple Developer ID, macOS needs one extra step; [Troubleshooting](troubleshooting.md#ducter-not-opened)
 shows it.)
 
 Ducter then looks around your Mac for a few seconds:
@@ -72,8 +71,11 @@ you see at most one small row:
 
 - **Merge into main**, when the task changed code. Merging is always your call.
 - **Details**, which opens right there: how it checked (such as *412 tests pass*), how many files
-  changed (click it to see the changes), the task itself, **Open draft PR**, and anything your
-  partner noted to remember.
+  changed (on the Mac, click it to see the changes; the phone just names them), the task itself,
+  **Open draft PR**, and anything your partner noted to remember.
+
+For a moment before the result, you may see *"Looking over what it came back with…"*: your
+partner is reading what the task did so it can tell you in its own words.
 
 If anything left your computer, a line marked ↗ says what, above that row. It is never hidden
 behind Details.

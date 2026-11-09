@@ -13,8 +13,8 @@ exactly what it will and won't do. This page lists it.
 
 - **It never merges your code.** A finished coding task offers **Merge into main** or **Open
   draft PR**. Nothing lands until you choose.
-- **It never touches your own checkout.** Each coding task works in its own copy of the project,
-  on its own branch (`ducter/…`).
+- **It never works in your own checkout.** Each coding task works in its own copy of the project,
+  on its own branch (`ducter/…`). Your checkout changes only when you choose **Merge into main**.
 - **It never types your passwords.** When a website needs a login, you type it yourself in
   Ducter's browser window; the AI never sees it. Submitting forms and paying are always left to
   you.

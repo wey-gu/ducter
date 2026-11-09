@@ -61,7 +61,8 @@ for Ducter. Ducter notices by itself and moves to the background once nothing is
 ### Ducter says the port is in use
 
 Something else is using port 7777. Either quit it, or start Ducter on another port:
-`ducter up --port 7790`.
+`ducter up --port 7790`. Started on another port? Add `--port 7790` (or set `DUCTER_PORT`) to
+every command, for example `ducter status --port 7790`.
 
 ### `ducter: command not found`
 

@@ -10,6 +10,9 @@ On your phone you can do almost everything you do on your Mac: read the conversa
 your partner, answer decisions, look at **On hand**, and open a task. Mostly, though, it tells
 you when something needs you and lets you answer in one tap.
 
+One thing stays on the Mac: the changes themselves. On the phone, a finished task names them
+in its line of proof ("2 files changed"); to read them line by line, open the task on your Mac.
+
 The phone version opens in your phone's browser. An iPhone app is coming soon.
 
 ## Connect your phone

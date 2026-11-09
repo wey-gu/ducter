@@ -9,7 +9,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
-// deviceDetail is the chosen island's card beside the stage (D81, D146):
+// deviceDetail is the chosen island's card beside the stage (D81, D148):
 // one header (its name, renamed in place; what it is, in plain words), a
 // short state line, what it can do, its AI accounts (the signed-in ones;
 // the rest folded behind + 再登录一个 AI unless none is signed in), its

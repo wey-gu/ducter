@@ -47,7 +47,7 @@ type devicesState struct {
 	sparkAt0 ui.Rect
 	pair     pairState
 	rename   renameState
-	card     cardState          // D146: the device card's disconnect confirm, folded accounts, update answer
+	card     cardState          // D148: the device card's disconnect confirm, folded accounts, update answer
 	tiles    map[string]ui.Rect // the ability art in the grid, last frame
 	slots    map[string]ui.Rect // the slots' wells, last frame
 	hover    string             // the tile under the pointer
@@ -319,7 +319,7 @@ func (a *App) deviceCards(c *ui.Context, width float32) {
 				// what is unusual, plainly, in the state's ink; no pill.
 				// Another computer always says what it is (D84).
 				if dv.Update.Running() {
-					// D146: while it updates, the step is its line.
+					// D148: while it updates, the step is its line.
 					ui.Text(c, a.phaseLine(dv.Update)).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).LineHeight(1.4).MaxLines(2)
 					c.After(500e6)
 				} else if !dv.Home {

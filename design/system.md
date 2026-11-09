@@ -399,7 +399,7 @@ the worker only holds the place (disk, checkouts, worktrees) and runs the harnes
   queueing a task for an asleep worker instead of refusing it; reattaching a session that
   survived a socket blip (today it's closed and resumed by id).
 
-## Updating in place (D146, built 2026-11-10)
+## Updating in place (D148, built 2026-11-10)
 
 **Who and when.** The heavy developer with a VPS home and a worker or two, and anyone the
 partner once helped onto a server: a new version is out and they want it everywhere, with one

@@ -62,7 +62,7 @@ export interface CoreOptions {
   ooSource?: OoSource;
   /** Test seam for New task (D128): how newtask.ts runs its repo commands. */
   git?: GitRun;
-  /** D146 test seams: the release feed, the update side effects, how this process updates. */
+  /** D148 test seams: the release feed, the update side effects, how this process updates. */
   update?: { fetch?: ReleaseFetch; sys?: UpdateSys; run?: UpdatesDeps["run"]; how?: import("@ducter/protocol").UpdateHow; version?: string; homeName?: string; execPath?: string; autoEveryMs?: number; graceMs?: number; criticalWaitMs?: number };
   /** Work over time test seams (D112-D114): fake commands, a lower look floor, the judge. */
   work?: { exec?: import("@ducter/protocol/src/checks-run.ts").Exec; minEveryMs?: number; judgeMinMs?: number; restartLookMs?: number; defaultZone?: string; judge?: import("./waiters.ts").Judge; connectionFetch?: (url: string, init: RequestInit) => Promise<Response> };
@@ -92,7 +92,7 @@ export interface Core extends CoreApi {
   connections: ConnectionsStore;
   /** What each repo task changed so far (D128). */
   changes: Changes;
-  /** D146: updating devices in place, and the newest release. */
+  /** D148: updating devices in place, and the newest release. */
   updates: Updates;
   release: ReleaseWatch;
   port: number;
@@ -288,7 +288,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   });
   workersRef = workers;
   api.workers = workers; // the runner places tasks on workers through this (runner/src/remote.ts)
-  // D146: the newest release (no network in tests unless a feed is given) and updating in place.
+  // D148: the newest release (no network in tests unless a feed is given) and updating in place.
   const u = opts.update ?? {};
   const testing = process.env.NODE_ENV === "test" && !u.fetch;
   const release = createReleaseWatch({ dataDir, fetch: u.fetch, timer: !testing, env: testing ? { ...process.env, DUCTER_UPDATE_CHECK: "off" } : process.env });

@@ -127,7 +127,7 @@ export function splitOutcome(summary: string): [string, string] {
   return text.length <= 90 ? [text, ""] : ["", text];
 }
 
-// D146: an update under way; a device that is behind (one quiet dot); the step in words.
+// D148: an update under way; a device that is behind (one quiet dot); the step in words.
 export const updating = (u?: DeviceUpdate) => !!u && ["downloading", "verifying", "waiting", "restarting"].includes(u.phase ?? "");
 export const behind = (u?: DeviceUpdate) => !!u && u.available && !updating(u) && u.phase !== "failed";
 export function phaseLine(L: Strings, u: DeviceUpdate): string {

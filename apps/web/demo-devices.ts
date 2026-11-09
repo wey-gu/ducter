@@ -1,4 +1,4 @@
-// A demo core for the phone's 你的设备 / Your devices pictures (D146): a home on a VPS one version
+// A demo core for the phone's 你的设备 / Your devices pictures (D148): a home on a VPS one version
 // behind, a Mac mini doing tasks (it updates with its app), a phone, and the update's steps on cue.
 // Real core and real web client; the release feed and the install are fakes (no network).
 //   DUCTER_PORT=7798 DUCTER_DATA_DIR=$(mktemp -d) bun apps/web/demo-devices.ts

@@ -1,6 +1,6 @@
 package i18n
 
-// D146: the device card (what it is, rename in place, disconnect) and
+// D148: the device card (what it is, rename in place, disconnect) and
 // updating each device in place. Glossary: design/product-model.md.
 var zhDevup = Table{
 	"device.what.cloud":              "云上的电脑",

@@ -237,7 +237,7 @@ export interface Bodies {
   // show one quiet line under the reply: "记下了 · <title>" / "Noted · <title>". Never a card,
   // never a notification. Provenance lives in Mem, not here.
   memory_noted: { title: string; memoryId?: string; replyTo?: number };
-  // D146: one step of a device's update, on the "devices" stream (origin "system"). device is
+  // D148: one step of a device's update, on the "devices" stream (origin "system"). device is
   // "local" for the home or a paired device id; name is its name then. Clients show the latest
   // on the device's card; the partner reads it only when asked.
   device_update: { device: string; name: string; phase: UpdatePhase; from: string; to: string; reason?: UpdateReason; detail?: string; rolledBack?: boolean };
@@ -521,7 +521,7 @@ export type ClientFrame =
   // rename_device: 改名字 / Rename a paired device (another computer, a phone; D84). Answered with
   // rename_result, then a fresh devices frame. The machine Ducter lives on keeps its own name.
   | { t: "rename_device"; device: string; name: string }
-  // D146: disconnect_device: 断开 / Disconnect a paired device (the same revoke as `ducter devices
+  // D148: disconnect_device: 断开 / Disconnect a paired device (the same revoke as `ducter devices
   // disconnect`); answered with disconnect_result, then a fresh devices frame. The home can't be.
   // device_update: update that device in place (to: a version, only to go back or pin; check:
   // read the latest release again and only report). Answered with update_result; progress
@@ -702,13 +702,13 @@ export interface DeviceView {
   version?: string; // the Ducter version it runs (the home's own; a worker's from its hello)
   harnesses: DeviceHarness[];
   abilities: DeviceAbility[];
-  /** D146: where its Ducter stands against the latest release, and an update under way. */
+  /** D148: where its Ducter stands against the latest release, and an update under way. */
   update?: DeviceUpdate;
   /** linux-x64, darwin-arm64…: what it is, for its card's plain words. */
   platform?: string;
 }
 
-// ---------- Updating in place (D146, design/system.md "Updating in place") ----------
+// ---------- Updating in place (D148, design/system.md "Updating in place") ----------
 
 /**
  * self: a Linux `ducter` that updates itself (the server bundle). app: a Mac whose ducter lives
@@ -828,7 +828,7 @@ export interface Settings {
   taskAccounts?: Partial<Record<HarnessId, { enabled: boolean }>>;
   /** D135: the context windows the partner and tasks run on (settings.json + env; no UI yet). */
   windows?: ContextWindows;
-  /** D146: update Ducter and its computers at night, in quiet hours, when nothing is working. Off by default. */
+  /** D148: update Ducter and its computers at night, in quiet hours, when nothing is working. Off by default. */
   autoUpdate?: boolean;
 }
 

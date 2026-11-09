@@ -2085,7 +2085,7 @@ function Accounts() {
   );
 }
 
-// ---------- 你的设备 / Your devices (D146): each card renamed in place, its version and update ----------
+// ---------- 你的设备 / Your devices (D148): each card renamed in place, its version and update ----------
 
 /** What a device is and what it's for, in plain words (the desktop's kindLine). */
 function kindLine(dv: DeviceView): string {

@@ -57,7 +57,7 @@ export interface WsDeps {
   work?: WorkFrames;
   /** 开一件事 / New task (D128, newtask.ts); absent in tests that don't need it. */
   newTask?: NewTaskFrames;
-  /** D146: updating devices in place (updates.ts); absent in tests that don't need it. */
+  /** D148: updating devices in place (updates.ts); absent in tests that don't need it. */
   updates?: () => import("./updates.ts").Updates | undefined;
   batchMs?: number;
 }

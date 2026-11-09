@@ -1,4 +1,4 @@
-// Updating in place (D146): versions, the release feed, the staged update (checksum, self-check,
+// Updating in place (D148): versions, the release feed, the staged update (checksum, self-check,
 // swap) and the restart helper's rollback, all with fakes: no network, no systemctl, no model.
 // A real Linux box with systemd is the one thing these can't stand in for.
 import { afterEach, describe, expect, test } from "bun:test";

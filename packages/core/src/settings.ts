@@ -26,7 +26,7 @@ interface SettingsFile {
   windows?: WindowsInput;
   /** 记下了 lines forgotten here, by seq (Mem forgot them, or they are only hidden). */
   hidden?: number[];
-  /** D146: update at night (off by default). */
+  /** D148: update at night (off by default). */
   autoUpdate?: boolean;
 }
 

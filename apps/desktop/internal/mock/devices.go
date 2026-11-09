@@ -193,7 +193,7 @@ func (h *hub) handleDevices(c *conn, f protocol.ClientFrame) bool {
 			h.pushDevices()
 		}()
 	case "device_update":
-		// D146: the steps, a beat each (UpdateStep sets one directly for pictures).
+		// D148: the steps, a beat each (UpdateStep sets one directly for pictures).
 		c.send(map[string]any{"t": "update_result", "device": f.Device, "ok": true})
 		go func() {
 			for _, p := range []string{"downloading", "verifying", "waiting", "restarting", "done"} {
@@ -248,7 +248,7 @@ func (h *hub) handleDevices(c *conn, f protocol.ClientFrame) bool {
 	return true
 }
 
-// UpdateStep puts a device's update at a step (D146), as the real main
+// UpdateStep puts a device's update at a step (D148), as the real main
 // reports it: done moves its version to the latest; failed is a rollback.
 func (h *hub) UpdateStep(device, phase string, progress float64) {
 	h.SetDevices(func(list []protocol.DeviceView, _ *protocol.Reach) []protocol.DeviceView {

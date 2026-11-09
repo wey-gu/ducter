@@ -50,7 +50,7 @@ export interface DevicesOptions {
   /** How long probe results are reused (default 60 s); `refresh` drops them. */
   cacheMs?: number;
   now?: () => number;
-  /** D146: version and update state per device. */
+  /** D148: version and update state per device. */
   updates?: () => import("./updates.ts").Updates | undefined;
   /** The home's own Ducter version and how it updates. */
   self?: { version: string; how: import("@ducter/protocol").UpdateHow; platform: string };
@@ -62,7 +62,7 @@ export interface DevicesView {
   pairCode(): Promise<PairCodeFrame>;
   /** 改名字 / Rename a paired device (D84). The machine Ducter lives on keeps its host name. */
   rename(device: string, name: string): RenameResult;
-  /** 断开 / Disconnect a paired device (D146 (11)): the same revoke as `ducter devices disconnect`. */
+  /** 断开 / Disconnect a paired device (D148 (11)): the same revoke as `ducter devices disconnect`. */
   disconnect(device: string): DisconnectResult;
   onChange(fn: () => void): () => void;
   /** Something changed (a device paired, a socket came or went): tell the subscribers. */

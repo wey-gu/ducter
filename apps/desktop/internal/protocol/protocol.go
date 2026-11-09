@@ -710,7 +710,7 @@ type RenameDeviceReq struct {
 	Name   string `json:"name"`
 }
 
-// DisconnectDeviceReq is 断开 / Disconnect on a device's card (D146): the
+// DisconnectDeviceReq is 断开 / Disconnect on a device's card (D148): the
 // same revoke as `ducter devices disconnect`. Answered with
 // disconnect_result, then a fresh devices frame.
 type DisconnectDeviceReq struct {
@@ -718,7 +718,7 @@ type DisconnectDeviceReq struct {
 	Device string `json:"device"`
 }
 
-// DeviceUpdateReq is 更新 / Update on a device's card (D146). Check only
+// DeviceUpdateReq is 更新 / Update on a device's card (D148). Check only
 // reads the latest release again. Answered with update_result; progress
 // comes as fresh devices frames.
 type DeviceUpdateReq struct {
@@ -834,7 +834,7 @@ type Settings struct {
 	// Use it for tasks switches (a missing entry is on).
 	Brain        *Brain                 `json:"brain,omitempty"`
 	TaskAccounts map[string]TaskAccount `json:"taskAccounts,omitempty"`
-	// AutoUpdate: update at night, in quiet hours, when nothing is working (D146).
+	// AutoUpdate: update at night, in quiet hours, when nothing is working (D148).
 	AutoUpdate bool `json:"autoUpdate,omitempty"`
 }
 
@@ -974,13 +974,13 @@ type DeviceView struct {
 	Version   string          `json:"version,omitempty"`
 	Harnesses []DeviceHarness `json:"harnesses"`
 	Abilities []DeviceAbility `json:"abilities"`
-	// Update is where its Ducter stands against the latest release (D146).
+	// Update is where its Ducter stands against the latest release (D148).
 	Update   *DeviceUpdate `json:"update,omitempty"`
 	Platform string        `json:"platform,omitempty"` // linux-x64, darwin-arm64…
 }
 
 // DeviceUpdate is a device's version against the latest release, and an
-// update under way (D146). How: self (it updates itself, a Linux server) |
+// update under way (D148). How: self (it updates itself, a Linux server) |
 // app (through Ducter.app on that Mac) | source (run from source) | manual
 // (too old to update from here). Phase: downloading | verifying | waiting |
 // restarting | done | failed; empty when idle.
@@ -1122,7 +1122,7 @@ type ServerFrame struct {
 	ClientID string        `json:"clientId,omitempty"`
 	Card     *TaskCard     `json:"card,omitempty"`
 	Apps     int           `json:"apps,omitempty"`
-	// update_result (D146): Device, OK, Reason, Detail, and with a check the
+	// update_result (D148): Device, OK, Reason, Detail, and with a check the
 	// device's Update. disconnect_result: Device, OK, Reason.
 	Update *DeviceUpdate `json:"update,omitempty"`
 }

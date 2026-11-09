@@ -1117,7 +1117,7 @@ const folder: Record<Lang, Record<string, string>> = {
   },
 };
 
-// D146: device cards (rename in place, Disconnect) and updating each device in place. The same
+// D148: device cards (rename in place, Disconnect) and updating each device in place. The same
 // keys and words as the desktop's i18n/devupdate.go.
 const devup: Record<Lang, Record<string, string>> = {
   zh: {

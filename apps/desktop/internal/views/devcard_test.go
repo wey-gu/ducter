@@ -11,7 +11,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
-// D146: each device card (the home on a server, a Mac doing tasks, a
+// D148: each device card (the home on a server, a Mac doing tasks, a
 // phone), the quiet dot of a device that's behind, the update's steps in
 // words, rename in place and 断开 with a confirm, against the mock main.
 //

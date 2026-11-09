@@ -1,9 +1,9 @@
-// 你的设备 / Your devices on the phone (D146): every device and phone kept from the devices
+// 你的设备 / Your devices on the phone (D148): every device and phone kept from the devices
 // frame, the update's step in words, the card's actions sent to the server.
 import { describe, expect, test } from "bun:test";
 import { strings, TABLES } from "../src/i18n.ts";
 
-describe("your devices (D146)", () => {
+describe("your devices (D148)", () => {
   const home = (update: Record<string, unknown>) =>
     ({
       t: "devices",

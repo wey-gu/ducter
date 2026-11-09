@@ -1,4 +1,4 @@
-// What the newest Ducter release is (D146). The home reads GitHub's releases/latest for
+// What the newest Ducter release is (D148). The home reads GitHub's releases/latest for
 // wey-gu/ducter (else the releases/latest redirect, which names the version but carries no
 // notes), at most every 6 h, and keeps the answer in <dataDir>/updates/latest.json. Offline,
 // rate-limited or refused: silent, the last answer stays. DUCTER_UPDATE_CHECK=off never asks.

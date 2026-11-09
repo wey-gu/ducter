@@ -1,4 +1,4 @@
-// The Ducter version this build is (D146). The release tag must equal packages/cli/package.json's
+// The Ducter version this build is (D148). The release tag must equal packages/cli/package.json's
 // version (release.yml's `meta` job), so that file is the one source for every part of Ducter.
 import pkg from "../../cli/package.json" with { type: "json" };
 

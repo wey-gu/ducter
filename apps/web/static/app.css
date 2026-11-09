@@ -2946,7 +2946,8 @@ ol.tries b {
 @media (prefers-reduced-motion: reduce) {
   .coin-art .sheen,
   .coin-art.m-needs_you { animation: none; }
-/* 你的设备 / Your devices (D146): one card per device; its name renamed in place, a quiet clay
+}
+/* 你的设备 / Your devices (D148): one card per device; its name renamed in place, a quiet clay
    dot when it's behind, the update's step in words, Disconnect at the bottom. */
 .dev-card {
   display: flex;

@@ -121,7 +121,7 @@ export async function cmdWorker(o: { t: T; style: Style; args: Args; dataDir: st
     kind: await localDeviceKind(),
     version: pkg.version,
     harnesses: await probeHarnesses(t, o.dataDir),
-    // D146: how this computer updates, and how its last update went (once, after its restart).
+    // D148: how this computer updates, and how its last update went (once, after its restart).
     how: updateHow({ compiled: isCompiled(), platform: platform(), execPath: process.execPath }),
     ...((u) => (u ? { update: u } : {}))(lastOutcome(o.dataDir)),
   };
@@ -162,7 +162,7 @@ async function stayConnected(
       };
       ws.onmessage = (m) => {
         const f = JSON.parse(String(m.data));
-        // D146: the update op runs beside the host; it reports over whichever socket is up.
+        // D148: the update op runs beside the host; it reports over whichever socket is up.
         if (f.t === "req" && f.op === "update" && updater) return void updater.handle(f, (x) => ws.readyState === WebSocket.OPEN && ws.send(JSON.stringify(x)), host);
         if (f.t === "req") return void host.handle(f);
         if (f.t === "welcome") {

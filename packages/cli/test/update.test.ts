@@ -1,4 +1,4 @@
-// `ducter update` (D146) against a running Ducter (a real core with a fake feed and a fake
+// `ducter update` (D148) against a running Ducter (a real core with a fake feed and a fake
 // install): --check --json for agents, and --yes required off a terminal.
 import { afterEach, expect, test } from "bun:test";
 import { parseArgs } from "../src/args.ts";

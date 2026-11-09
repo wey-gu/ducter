@@ -1,4 +1,4 @@
-// The home's side of updating in place (D146), over the real client and worker sockets: the
+// The home's side of updating in place (D148), over the real client and worker sockets: the
 // version and "update to" on each card, the steps in the Log, the safe point, the outcome after a
 // restart, the worker's update op round trip (with the CLI's own worker updater and a fake
 // install), and 断开 / Disconnect. No network, no systemctl, no model.

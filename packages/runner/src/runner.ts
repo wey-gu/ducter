@@ -1047,7 +1047,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     return r;
   }
 
-  // D146: what a restart mustn't cut short (a merge, an undo, a keep), and the hold an update
+  // D148: what a restart mustn't cut short (a merge, an undo, a keep), and the hold an update
   // sets while it restarts Ducter.
   const inCritical = new Map<string, number>();
   let criticalHold: string | undefined;

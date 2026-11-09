@@ -31,7 +31,7 @@ export interface Args {
   home?: string; // --home <address>: a home command goes there, this once (D147)
   check?: boolean; // update --check: only report
   to?: string; // update --to <version>: this version, even an older one
-  finish?: string; // update --finish <plan.json> (internal: the restart helper, D146)
+  finish?: string; // update --finish <plan.json> (internal: the restart helper, D148)
 }
 
 export type ParseResult = { ok: true; args: Args } | { ok: false; error: { key: "err.unknownCommand" | "err.unknownFlag" | "err.missingValue" | "err.badPort" | "err.badTimeout"; vars: Record<string, string> } };

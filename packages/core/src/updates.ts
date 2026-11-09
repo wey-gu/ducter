@@ -1,4 +1,4 @@
-// The home's side of updating in place (D146): what each device stands at against the latest
+// The home's side of updating in place (D148): what each device stands at against the latest
 // release, the update of the home itself (staged, at a safe point, restarted from a helper), the
 // update op sent down a worker's socket, every step in the Log, and the night-time auto-update.
 // The mechanics are in update.ts; the release check in release.ts.
@@ -56,7 +56,7 @@ export interface UpdatesDeps {
   self: { execPath: string; how: UpdateHow; arch: string; port: number; env?: Record<string, string | undefined> };
   name: () => string; // the home's name
   workers?: () => WorkerSide | undefined;
-  /** The runner's critical sections (merge, undo, keep, archive) and its hold (D146 (4)). */
+  /** The runner's critical sections (merge, undo, keep, archive) and its hold (D148 (4)). */
   critical?: () => string[];
   holdCritical?: (why: string | undefined) => void;
   /** Tasks in the middle of a turn right now. */
@@ -249,7 +249,7 @@ export function createUpdates(d: UpdatesDeps): Updates {
     set(id, name, { phase: f.phase, from: f.from, to: f.to, ...(f.progress !== undefined ? { progress: f.progress } : {}), ...(f.reason ? { reason: f.reason } : {}), ...(f.detail ? { detail: f.detail } : {}), ...(f.rolledBack !== undefined ? { rolledBack: f.rolledBack } : {}) }, quiet);
   }
 
-  /** D146 (10): in quiet hours, nothing working, nothing critical: workers first, then the home. */
+  /** D148 (10): in quiet hours, nothing working, nothing critical: workers first, then the home. */
   async function nightly() {
     const s = d.settings?.();
     if (!s?.autoUpdate || !inQuiet(now(), s.quiet ?? null)) return;

@@ -1,4 +1,4 @@
-// Updating Ducter in place (D146, design/system.md "Updating in place"). One code path for the
+// Updating Ducter in place (D148, design/system.md "Updating in place"). One code path for the
 // home, a worker and `ducter update`:
 //
 //   stage:   download ducter-<v>-linux-<arch>.tar.gz + SHA256SUMS.txt from the official release
@@ -62,7 +62,7 @@ export const realSys: UpdateSys = {
   now: () => Date.now(),
 };
 
-/** How this ducter is updated (D146 (2)). */
+/** How this ducter is updated (D148 (2)). */
 export function updateHow(o: { compiled: boolean; platform: string; execPath: string }): UpdateHow {
   if (!o.compiled) return "source";
   if (o.platform === "darwin") return /\.app\/Contents\//.test(o.execPath) ? "app" : "source";

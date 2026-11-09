@@ -1,4 +1,4 @@
-// `ducter update` (D146): update Ducter in place, here or everywhere.
+// `ducter update` (D148): update Ducter in place, here or everywhere.
 //
 //   ducter update                this machine (asks first; --yes doesn't)
 //   ducter update --all          the computers that do tasks for it first, then Ducter's home

@@ -320,7 +320,7 @@ export interface Runner {
   folderChanges?(taskId: string, opts?: { files?: boolean }): Promise<FolderChanges | undefined>;
   undoFolder?(taskId: string, opts?: { path?: string; force?: boolean }): Promise<{ ok: boolean; message: string; confirm?: UndoConfirm }>;
   keepFolder?(taskId: string): Promise<{ ok: boolean; message: string }>;
-  // Optional (D146): what a restart mustn't cut short right now (a merge, an undo, a keep, an
+  // Optional (D148): what a restart mustn't cut short right now (a merge, an undo, a keep, an
   // archive), as task ids; and, while an update restarts Ducter, a reason new ones are refused
   // with (undefined lets them through again).
   critical?(): string[];

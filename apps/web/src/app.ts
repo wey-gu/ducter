@@ -77,7 +77,7 @@ class AppState {
    *  do the task whose Switch who does it is open. */
   rules?: RuleView[];
   agents?: DeviceHarness[];
-  /** D146: every device and every phone or window that reaches Ducter (Settings › Your devices), and
+  /** D148: every device and every phone or window that reaches Ducter (Settings › Your devices), and
    *  why the last update or rename from here was refused. */
   devices?: DeviceView[];
   reach?: Reach;
@@ -389,7 +389,7 @@ class AppState {
     this.send({ t: "connection_oo" });
     this.changed();
   }
-  /** D146: the device card's actions. */
+  /** D148: the device card's actions. */
   renameDevice(device: string, name: string) {
     this.send({ t: "rename_device", device, name });
   }

@@ -9,7 +9,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/update"
 )
 
-// D146: a device card's header (its name, renamed in place), what it is in
+// D148: a device card's header (its name, renamed in place), what it is in
 // plain words, its Ducter version with one quiet dot when it's behind, the
 // update's steps in words, and 断开 / Disconnect with a confirm. The same
 // pieces serve a phone or a window elsewhere. Settings shows the versions
@@ -167,7 +167,7 @@ func (a *App) kindLine(dv *protocol.DeviceView) string {
 	return a.L.T("device.what.worker", what, who)
 }
 
-// behind: one quiet dot by a device's name, and nothing louder (D146 (9)).
+// behind: one quiet dot by a device's name, and nothing louder (D148 (9)).
 func behind(dv *protocol.DeviceView) bool {
 	u := dv.Update
 	return u != nil && u.Available && !u.Running() && u.Phase != "failed"
@@ -408,7 +408,7 @@ func (a *App) clientCard(c *ui.Context, cl *protocol.ReachClient) {
 }
 
 // updateSection is Settings' list of every computer's Ducter version
-// (D146 (9)): a self-contained card, so the Settings page can place it.
+// (D148 (9)): a self-contained card, so the Settings page can place it.
 // It shows only when the server says versions.
 func (a *App) updateSection(c *ui.Context) {
 	t := a.T

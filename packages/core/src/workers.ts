@@ -23,7 +23,7 @@ export interface WorkerHello {
   /** laptop | mini | server: how the device is drawn on Your devices and abilities. */
   kind?: string;
   harnesses?: { id: string; installed: boolean; loggedIn: boolean }[];
-  /** D146: how it updates (self · app · source), and the outcome of its last update when it restarted for one. */
+  /** D148: how it updates (self · app · source), and the outcome of its last update when it restarted for one. */
   how?: string;
   update?: import("./updates.ts").WorkerUpdateFrame;
 }
@@ -133,7 +133,7 @@ export function createWorkers(opts: {
   now?: () => Date;
   /** Paired devices by id or name, for links to workers that are offline right now. */
   find?: (idOrName: string) => Device | undefined;
-  /** D146: a worker said how its update goes (a frame, or the outcome in its hello). */
+  /** D148: a worker said how its update goes (a frame, or the outcome in its hello). */
   onUpdate?: (deviceId: string, name: string, f: import("./updates.ts").WorkerUpdateFrame) => void;
 }): Workers {
   const now = opts.now ?? (() => new Date());

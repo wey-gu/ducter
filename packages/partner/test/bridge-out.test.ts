@@ -536,15 +536,15 @@ describe("S3 / D96: follow-through on silence", () => {
     expect(t.said().length).toBe(1);
     t.user("CI 怎么样了");
     await t.partner.idle();
-    expect(t.said()).toEqual(["好。", "好。", "你的 codex-mem 还没回你 2 小时前问的「bridge 那块写到哪了？今晚能提 PR 吗？」，它可能停了。回了我马上告诉你。"]);
+    // Said before this turn's reply, in the user's own words, so the turn knows it was said.
+    expect(t.said()).toEqual(["好。", "你的 codex-mem 还没回你 2 小时前问的「问问我那个 Codex bridge 写到哪了，今晚能不能提 PR」，它可能停了。回了我马上告诉你。", "好。"]);
+    expect(t.fr.sessions.at(-1)!.inputs.at(-1)).toContain("[Ducter told the user, for you] 你的 codex-mem 还没回你");
     t.clock.advance(HOUR);
     t.user("嗯");
     await t.partner.idle();
     await t.partner.checkBridge();
     expect(t.said().filter((x) => x.includes("还没回")).length).toBe(1);
     expect(t.partner.stats.bridgeFollowed).toBe(1);
-    // The next turn knows what was said on its behalf.
-    expect(t.fr.sessions.at(-1)!.inputs.at(-1)).toContain("[Ducter told the user, for you] 你的 codex-mem 还没回你");
   });
 
   test("answered, or in quiet hours: nothing", async () => {

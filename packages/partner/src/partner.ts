@@ -584,7 +584,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     if (note) deltas.unshift(note);
     // What Ducter's code told the user since the last turn (follow-through, a lost send), so the
     // partner knows what an answer like "好" refers to.
-    for (const t of codeSaid.splice(0)) deltas.push(`[Ducter told the user, for you] ${t}`);
+    for (const t of codeSaid.splice(0)) deltas.push(`[Ducter told the user, for you] ${t} (Already on screen: don't say it again or restate it.)`);
     const done = batch.filter((e) => e.kind === "report" && (e.body as Bodies["report"]).state === "done").length;
     if (done >= 2 && !lastUser)
       deltas.push(`[results] ${done} tasks finished together: one message, one short line per task saying what now works, in the user's terms. The app shows tests, commits, branches and Merge under it.`);
@@ -663,6 +663,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       zh = t ? isChinese(t) : true;
     }
 
+    // S3: the user is here now. Say a due follow-through first, so this turn knows it was said
+    // and doesn't say it again (live: the partner and the code both said it).
+    if (userEvents.length) followThrough();
     const fresh = await ensureSession();
     const redo = carried && batch.some((e) => carried!.seqs.has(e.seq)) ? carried : undefined;
     if (redo) carried = undefined;
@@ -684,7 +687,6 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       flushPending();
       appendNoted(turn);
       await settleOwed(batch, turnFrom);
-      if (batch.some((e) => e.kind === "user_msg")) followThrough(); // the user is here now
       handledSeq = Math.max(handledSeq ?? 0, ...batch.map((e) => e.seq));
       if (!batch.some((e) => e.seq < 0)) queueCorrections(); // one correction round, never a loop
       else corrections.length = 0;
@@ -1334,7 +1336,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     if (!(t - at <= FOLLOW_ACTIVE_MS)) return;
     const due = followCandidates(loggedBridge(), t)[0]; // one at a time: never a burst of lines
     if (!due) return;
-    const line = followLine(due, t, userZh() ?? true, lastReads[due.last.messageId]);
+    // The user's own words that led to the card, when the Log has them.
+    const card = core.log.read({ stream: "channel", kinds: ["decision"], limit: 2000 }).find((e) => (e.body as Bodies["decision"]).decisionId === due.last.decisionId);
+    const asked = card ? core.log.read({ stream: "channel", kinds: ["user_msg"], beforeSeq: card.seq, limit: 1 })[0] : undefined;
+    const line = followLine(due, t, userZh() ?? true, lastReads[due.last.messageId], (asked?.body as Bodies["user_msg"] | undefined)?.text);
     core.log.append({ stream: "channel", origin: "partner", kind: "bridge_msg", body: { ...due.last, direction: "out", state: "followed", text: line } });
     tellUser(line);
     stats.bridgeFollowed = (stats.bridgeFollowed ?? 0) + 1;

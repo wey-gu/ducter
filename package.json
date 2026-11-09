@@ -9,6 +9,7 @@
     "build:cli": "sh packages/cli/build.sh",
     "test": "bun test",
     "eval:partner": "bun packages/partner/eval/run.ts",
+    "bridge:live": "bun packages/partner/eval/bridge-live.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p apps/web/tsconfig.json",
     "build:web": "sh scripts/build-web.sh"
   },

@@ -166,9 +166,13 @@ export function zhJoin(...parts: string[]): string {
  * The one line (D96). It reports silence and never claims the other side was reminded: Bridge
  * wakes nobody. Read and unread are different facts, said only when the inbox told us.
  */
-export function followLine(op: OutOp, now: number, zh: boolean, read?: boolean): string {
+export function followLine(op: OutOp, now: number, zh: boolean, read?: boolean, asked?: string): string {
   const who = whoForUser({ ...op.last, label: op.last.to }, zh);
-  const first = op.last.text.split("\n").find((l) => l.trim())?.trim() ?? op.last.text;
+  // The user's own words when we have them ("问问它：<question>" → the question), else ours.
+  const src = asked ?? op.last.text;
+  const line = src.split("\n").find((l) => l.trim())?.trim() ?? src;
+  const colon = line.search(/[：:]/);
+  const first = colon >= 0 && colon < 40 && line.slice(colon + 1).trim() ? line.slice(colon + 1).trim() : line;
   const gist = [...first].length > 36 ? [...first].slice(0, 35).join("") + "…" : first;
   const when = ago(now - Date.parse(op.sentTs!), zh);
   if (zh) {

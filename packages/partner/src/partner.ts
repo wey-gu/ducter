@@ -1129,8 +1129,12 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       flushPending(); // keep the line before the status line
       // Review 2 #4: after its own ask the partner armed "等你决定…". The card comes back on
       // its own; a reminder in the same turn is only for one the user asked for.
-      if (turn?.asked && !turn.userTexts.some((t) => /提醒|叫我|remind|alarm|\d\s*(点|:|pm|am)|明天|tomorrow/i.test(t)))
+      const askedForTime = turn?.userTexts.some((t) => /提醒|叫我|remind|alarm|\d\s*(点|:|pm|am)|明天|tomorrow|小时|分钟|待会|稍后|\b(later|hours?|minutes?)\b/i.test(t));
+      if (turn?.asked && !askedForTime)
         return { ok: false, error: "No reminder needed: the decision card stays on screen until the user answers. End your turn." };
+      // D120 live (sonnet): two wait_until calls on the task it had just opened, after the ack.
+      if (turn?.acked && !askedForTime)
+        return { ok: false, error: "No timer needed: the task you opened reports back on its own and wakes you. End your turn now; call nothing else." };
       if (!args.at) {
         if (args.taskId) return { ok: true, note: "The task's next report will wake you; no timer set." };
         return { ok: false, error: "wait_until needs `at` (ISO time) tonight." };

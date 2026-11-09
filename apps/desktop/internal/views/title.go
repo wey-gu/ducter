@@ -348,6 +348,12 @@ func (a *App) drawTitle(p *ui.Painter, r ui.Rect) {
 		// The sky, the island.
 		ps := at(0.45)
 		img(art.Sky, ui.Rect{X: ps.ox, Y: ps.oy, W: ps.z, H: FH * ps.z}, 1)
+		// The sun's bloom lives in the sky, behind the island and Ducter,
+		// so the subject stays crisp.
+		sunX, sunY := ps.ox+0.01*ps.z, ps.oy+0.475*FH*ps.z
+		glow(p, r, sunX, sunY, max(W, H)*0.55, 1, []ui.GradientStop{
+			{Color: rgba(255, 200, 140, 0.18*f.exp), At: 0}, {Color: rgba(255, 200, 140, 0), At: 1},
+		})
 		pi := at(1.0)
 		img(art.Island, rectOf(pi, L.Island), 1)
 
@@ -366,12 +372,11 @@ func (a *App) drawTitle(p *ui.Painter, r ui.Rect) {
 		})
 
 		// The night, lifting: darkest away from the sun; a vignette stays.
-		sunX, sunY := ps.ox+0.01*ps.z, ps.oy+0.475*FH*ps.z
 		n := 1 - f.exp
 		far := float32(math.Hypot(float64(W), float64(H)))
 		glow(p, r, sunX, sunY, far*1.1, 1, []ui.GradientStop{
 			{Color: rgba(5, 4, 10, 0.86*n), At: 0},
-			{Color: rgba(5, 4, 10, 0.94*n+0.05*f.exp), At: 0.5},
+			{Color: rgba(5, 4, 10, 0.94*n), At: 0.5},
 			{Color: rgba(5, 4, 10, 0.97*n+0.30*f.exp), At: 1},
 		})
 		vr := far * 0.62
@@ -379,10 +384,7 @@ func (a *App) drawTitle(p *ui.Painter, r ui.Rect) {
 		glow(p, r, r.X+W/2, r.Y+H*0.48, vr, 1, []ui.GradientStop{
 			{Color: rgba(8, 5, 10, 0), At: 0}, {Color: rgba(8, 5, 10, 0), At: inner}, {Color: rgba(8, 5, 10, 0.5*f.exp), At: 1},
 		})
-		// The sun's bloom, and the breath of light at the tone.
-		glow(p, r, sunX, sunY, max(W, H)*0.55, 1, []ui.GradientStop{
-			{Color: rgba(255, 200, 140, 0.18*f.exp), At: 0}, {Color: rgba(255, 200, 140, 0), At: 1},
-		})
+		// The breath of light at the tone.
 		if f.bloom > 0.002 {
 			glow(p, r, dr.X+dr.W/2, dr.Y+dr.H*0.45, dr.W*1.6, 1, []ui.GradientStop{
 				{Color: rgba(255, 226, 180, f.bloom), At: 0}, {Color: rgba(255, 226, 180, 0), At: 1},
@@ -421,7 +423,8 @@ func (a *App) drawTitle(p *ui.Painter, r ui.Rect) {
 			bw, bh := art.Logo.Size()
 			lw := min(W*0.30, 620)
 			lh := lw * float32(bh) / float32(bw)
-			lx, ly := r.X+W/2-lw/2, r.Y+H*0.10+u*0.8*float32(1-outCubic(f.logo))
+			// On Ducter's axis, with air above.
+			lx, ly := dr.X+dr.W/2-lw/2, r.Y+H*0.14+u*0.8*float32(1-outCubic(f.logo))
 			const n = 48
 			sw := float32(bw) / n
 			for i := 0; i < n; i++ {
@@ -455,7 +458,7 @@ func (a *App) drawTitle(p *ui.Painter, r ui.Rect) {
 			oy := float32(int(t*24)%5) * 47
 			for y := r.Y - oy; y < r.Y+H; y += 256 {
 				for x := r.X - ox; x < r.X+W; x += 256 {
-					p.ImageRegion(g, ui.Rect{}, ui.Rect{X: x, Y: y, W: 256, H: 256}, ui.ImageOptions{Tint: rgba(255, 255, 255, 0.03)})
+					p.ImageRegion(g, ui.Rect{}, ui.Rect{X: x, Y: y, W: 256, H: 256}, ui.ImageOptions{Tint: rgba(255, 255, 255, 0.016)})
 				}
 			}
 		}

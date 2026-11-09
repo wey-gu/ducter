@@ -55,7 +55,13 @@ def grade(x):
 
 
 key, empty, sky = (grade(rgb(n)) for n in ("a_island.png", "layers/a_empty.png", "layers/a_sky.png"))
+# The island may come from its own plate (a_island_plate.png: the empty
+# picture with the island restyled, here clay grass for the fur-like
+# grass); Ducter is always matted against a_empty, which matches its key.
+plate = (src / "layers/a_island_plate.png").exists()
+island_img = grade(rgb("layers/a_island_plate.png")) if plate else empty
 m_all, m_island = mask("layers/a-mask-1.png"), mask("layers/empty-mask-1.png")
+m_plate = mask("layers/plate-mask-1.png") if (src / "layers/plate-mask-1.png").exists() else m_island
 H, W, _ = key.shape
 
 # Ducter: in the subject mask and not the island, plus, where it stands on
@@ -128,7 +134,22 @@ def unblend(img, alpha, plate):
 
 
 duc_rgb = unblend(key, a_duc, empty)
-isl_rgb = unblend(empty, m_island, sky)
+isl_rgb = unblend(island_img, m_plate, sky)
+
+
+def clarity(rgb_, alpha, radius=24, amount=0.22):
+    """Local contrast for the subject: an unsharp mask with a wide radius
+    (computed on color premultiplied by alpha, so the edge doesn't pick up
+    the dark outside), so the clay keeps its form under the haze."""
+    pm = np.clip(rgb_ * alpha[..., None], 0, 1)
+    blur = np.stack([np.asarray(Image.fromarray((pm[..., i] * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(radius))).astype(np.float32) / 255 for i in range(3)], axis=2)
+    ab = np.asarray(Image.fromarray((alpha * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(radius))).astype(np.float32)[..., None] / 255
+    local = blur / np.maximum(ab, 1e-3)
+    return np.clip(rgb_ + amount * (rgb_ - local), 0, 1)
+
+
+duc_rgb = clarity(duc_rgb, a_duc)
+isl_rgb = clarity(isl_rgb, m_plate, radius=30, amount=0.15)
 
 
 def bbox(alpha, pad=8):
@@ -158,9 +179,13 @@ def save_layer(name, color, alpha):
 
 
 layout = {"frame": [width, round(H * s)]}
-Image.fromarray((sky * 255 + 0.5).astype(np.uint8)).resize((width, round(H * s)), Image.LANCZOS).save(
-    out / "sky.webp", quality=94, method=6)
-layout["island"] = save_layer("island", isl_rgb, m_island)
+# The sky is a long, dark gradient: resize in float, then add triangular
+# dither of one 8-bit step before quantizing, so it doesn't band.
+sk = np.stack([np.asarray(Image.fromarray(sky[..., i].astype(np.float32), "F").resize((width, round(H * s)), Image.LANCZOS)) for i in range(3)], axis=2)
+rng = np.random.default_rng(87)
+tri = (rng.random(sk.shape) - rng.random(sk.shape)).astype(np.float32)
+Image.fromarray(np.clip(sk * 255 + 0.5 + tri, 0, 255).astype(np.uint8)).save(out / "sky.webp", quality=95, method=6)
+layout["island"] = save_layer("island", isl_rgb, m_plate)
 layout["ducter"] = save_layer("ducter", duc_rgb, a_duc)
 
 # The eyes: the two biggest dark blobs in Ducter's upper half, found on the

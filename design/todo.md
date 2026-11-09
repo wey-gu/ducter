@@ -155,7 +155,15 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       cost or its rewrite rate in real use.
 - [ ] Roll-up loss over months (level-2 epochs are not built; stop at level 1 until measured).
 - [ ] Re-cut by expected cost with P(warm) (principle 4): today a warm session re-cuts on one
-      threshold (estimated context past 120K, and a digest exists).
+      threshold (the harness's context count past 120K, digest or not; `context.md`).
+- [x] The partner's harness compactor bounded above the re-cut (Claude Code window + no idle or
+      precomputed compaction; Codex token limit), the context size taken from the harness's own
+      count and kept across a resume, and a re-cut with no digest (research/11 §7.3.7).
+- [ ] Bound pi's and DeepSeek Harness's own compactors for the partner (pi:
+      `session_before_compact` → cancel, research/11 §7.3.7). Trigger: either becomes
+      partner-capable.
+- [ ] A long-running live check that the harness never compacts the partner: count
+      `partner_session` `harness_compacted` events in real use. Trigger: the first one seen.
 - [ ] Read-fold and late fold (principle 5) are still not built.
 - [ ] Meter the digest writer's cost (the eval records answer cost only).
 

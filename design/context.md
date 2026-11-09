@@ -53,6 +53,36 @@
   never carries a reset notice. Raft found such a notice made 13 of 13 sessions open by
   rebuilding state.
 
+### Session size and re-cut: as built
+
+- **Size.** The live context is the harness's own count after each turn: OAR's context
+  reading, which is the last request's input + cache read + cache write on Claude Code and
+  `last.totalTokens` on Codex. Codex builds with no `last` report only a running total, so
+  that figure is not used. Between turns, and on a harness that reports nothing, a character
+  estimate adds what went in and came out. The estimate misses the system prompt, tool schemas,
+  tool inputs and thinking: a one-line hello measured 41K on Claude Code (haiku, the partner's
+  prompt and tools) and 19K on Codex. The size is kept in `partner/state.json`, so a resumed
+  session keeps it; a fresh one starts at zero.
+- **Re-cut.** Between turns, a warm session past 120K is dropped and a fresh one starts from
+  the projection. A restart that would resume a session already past 120K starts fresh
+  instead. With no digest (`DUCTER_DIGEST=off`, or a writer that is behind or failing), it
+  re-cuts all the same. The spine's view gives the verbatim window and names the lines before
+  it as not shown, with how to read them. With digests off, it gives the last 40 lines and the
+  same pointer.
+- **The harness's own compactor** is bounded for the partner only (tasks keep their
+  harness's defaults), at max(200K, 1.5× the re-cut), so Ducter's re-cut always comes first:
+  - Claude Code (2.1.319): `CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000` (range 100K–1M; it
+    compacts a summary buffer below that), plus `idleCompaction: false` and
+    `precomputeCompactionEnabled: false` in the partner folder's `.claude/settings.local.json`
+    (the clean setup keeps the project and local setting sources).
+  - Codex (0.167): `-c model_auto_compact_token_limit=200000`.
+  - pi and DeepSeek Harness: not bounded yet.
+- **If the harness compacts anyway** (a model with a smaller window, a harness that isn't
+  bounded), the compaction is logged and the next turn re-cuts, so the harness's summary never
+  stands in for the spine. Re-cuts and harness compactions are logged as `partner_session`
+  events on the `partner` stream, before the re-cut applies. They carry the size, the session,
+  and whether the re-cut had digests. Clients never show them.
+
 ## Working set and folds (principle 5)
 
 Folding is mostly about quality, not price: cache reads cost 0.05× on Opus/Sonnet 5.5, and
@@ -78,4 +108,4 @@ finished topics distract every later turn. Options, in order of preference:
 - Codex ephemeral threads can't fork or revert, so there the options are keep or
   `thread/sample`.
 - Each harness's own compactor is bounded to Ducter's budget. Claude Code defaults to about
-  967K and also compacts on idle; both must be configured off or down.
+  967K and also compacts on idle. Both are bounded for the partner (see "as built" above).

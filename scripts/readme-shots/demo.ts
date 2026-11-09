@@ -1,37 +1,54 @@
 // The README's screenshots: the real core (Log, decisions, living message, devices, web) with a
 // silent partner and a stub runner, seeded in English with work like the author's. One finished result
 // whose diff is real (a small git fixture), one decision with a default, and tasks in every lane.
-//   DUCTER_PORT=7797 DUCTER_DATA_DIR=<scratch> bun scripts/readme-shots/demo.ts
+//   DUCTER_PORT=7797 DUCTER_DATA_DIR=<scratch> bun scripts/readme-shots/demo.ts   # seeds, exits
+//   DUCTER_PORT=7797 DUCTER_DATA_DIR=<scratch> bun scripts/readme-shots/demo.ts   # serves
 // Then:
-//   - the desktop app, light theme, English, its own scratch data folder:
-//     DUCTER_DATA_DIR=<scratch2> DUCTER_URL=ws://127.0.0.1:7797/ws DUCTER_LOCALE=en go run ./apps/desktop
-//     sized 1280x960 (conversation) or 1280x820 (the rest) and captured at 2x without bringing it
-//     forward (cua-driver set_window_frame, then get_window_state --screenshot-out-file);
+//   - the desktop views, rendered headless at 2x (no window to keep visible):
+//     DUCTER_README_URL=ws://127.0.0.1:7797/ws DUCTER_README_CWD=<parent of the fixture's "~">
+//     DUCTER_SHOTS_DIR=~/dev/ducter-evidence/readme/raw go test ./internal/views -run ReadmeShots  (in apps/desktop)
 //   - the phone: the iOS Simulator with the pairing command printed below, then
-//     -open 'app#d=<decision id>' for the decision sheet, captured with xcrun simctl io screenshot;
-//   - python3 scripts/readme-shots/compose.py ~/dev/ducter-evidence/readme/raw ~/dev/ducter-evidence/readme,
-//     then copy the WebPs the README shows into .github/readme (D75: nothing else is committed)
-// Set DEMO_WORKTREE_AS="~/.ducter/worktrees/t_flaky" (with the fixture created at that path under
-// the desktop app's working folder) so the opened task shows a real-looking path.
+//     -open 'app#d=<decision id>' for the decision sheet, saved as phone-sheet.png;
+//   - python3 scripts/readme-shots/compose.py ~/dev/ducter-evidence/readme/raw ~/dev/ducter-evidence/readme/out,
+//     then copy the WebPs the README shows into .github/readme (D75: nothing else is committed).
+// DEMO_WORKTREE is where the fixture is made; DEMO_WORKTREE_AS="~/.ducter/worktrees/t_flaky" is the
+// path the task records, read relative to DUCTER_README_CWD, so the opened task shows a real path.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { startCore, stubRunner } from "../../packages/core/src/index.ts";
 import type { Bodies, Place } from "../../packages/protocol/src/index.ts";
 
-const core = startCore({
-  persona: { id: "default", name: "Ducter", identity: "" },
-  hostname: process.env.DUCTER_HOST || "127.0.0.1",
-  deviceProbes: {
-    kind: async () => "laptop",
-    harnesses: async () => [
-      { harness: "claude-code", installed: true, loggedIn: true },
-      { harness: "codex", installed: true, loggedIn: true },
-    ],
-  },
-});
-core.setRunner(stubRunner(core));
-core.setPartner({ onTrigger() {} }); // silent: the seeded conversation is the whole story
+const boot = (dataDir?: string) => {
+  const c = startCore({
+    persona: { id: "default", name: "Ducter", identity: "" },
+    hostname: process.env.DUCTER_HOST || "127.0.0.1",
+    dataDir,
+    deviceProbes: {
+      kind: async () => "laptop",
+      harnesses: async () => [
+        { harness: "claude-code", installed: true, loggedIn: true },
+        { harness: "codex", installed: true, loggedIn: true },
+      ],
+    },
+  });
+  c.setRunner(stubRunner(c));
+  c.setPartner({ onTrigger() {} }); // silent: the seeded conversation is the whole story
+  return c;
+};
+const core = boot();
 const log = core.log;
+// Run twice: the first run seeds the Log and exits; the second serves it. Routines are read from
+// the Log when the core starts, and a core restarted in the same process can crash Bun.
+if (log.head() > 0) {
+  const pair = await core.devicesView.pairCode();
+  console.log(`[demo] up at http://127.0.0.1:${core.port}/app (data: ${core.dataDir})`);
+  console.log(`[demo] phone: xcrun simctl launch booted co.nowledge.ducter.ios -pairLink 'http://127.0.0.1:${core.port}/pair#c=${pair.code}'`);
+  process.on("SIGINT", async () => {
+    await core.stop();
+    process.exit(0);
+  });
+  await new Promise(() => {});
+}
 const tick = () => Bun.sleep(30);
 
 // The finished task's worktree: a tiny HawDB-shaped repo whose branch holds the fix.
@@ -135,7 +152,7 @@ const report = (id: string, r: Omit<Bodies["report"], "taskId">) => log.append({
 // 1. A result that came back: the flaky compaction test.
 const ask = "Fix the flaky compaction test in HawDB and tell me when it's done";
 const u = log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: ask } });
-log.append({ stream: "channel", origin: "partner", kind: "ack", body: { jobId: "j1", text: "On it. I'm giving it its own task in hawdb on the MacBook.", replyTo: u.seq } });
+log.append({ stream: "channel", origin: "partner", kind: "ack", body: { jobId: "j1", text: "Fixing the flaky compaction test in hawdb now. I'll tell you when it's clear.", replyTo: u.seq } });
 await task("t_flaky", "Fix the flaky compaction test", "HawDB", repo("~/dev/hawdb", "ducter/compaction-fix", worktreeAs), ask);
 log.append({ stream: "channel", origin: "partner", kind: "job_status", body: { jobId: "j1", text: "Working", state: "running", taskId: "t_flaky" } });
 ev("t_flaky", { role: "assistant", text: "Running it 50 times first to see how often it fails." });
@@ -202,10 +219,28 @@ log.append({ stream: "channel", origin: "partner", kind: "waiter", body: { waite
 report("t_notes", { state: "blocked", summary: "Waiting for the v0.4 CI run", questions: [], evidence: [] });
 await tick();
 
-const pair = await core.devicesView.pairCode();
-console.log(`[demo] up at http://127.0.0.1:${core.port}/app (data: ${core.dataDir})`);
-console.log(`[demo] phone: xcrun simctl launch booted co.nowledge.ducter.ios -pairLink 'http://127.0.0.1:${core.port}/pair#c=${pair.code}'`);
-process.on("SIGINT", async () => {
-  await core.stop();
-  process.exit(0);
-});
+// 3. Two routines on the shelf under the lanes, each with a run behind it.
+const day = 24 * 60 * 60_000;
+const todayAt = (hhmm: string) => {
+  const [h, m] = hhmm.split(":").map(Number);
+  const d = new Date();
+  d.setHours(h!, m!, 0, 0);
+  return d.getTime();
+};
+const routine = (id: string, name: string, trigger: Bodies["routine"]["trigger"], triggerWords: string, brief: string, place: Place | undefined, lastRun: number) => {
+  log.append({
+    stream: `routine:${id}`,
+    origin: "schedule",
+    kind: "routine",
+    body: { routineId: id, name, trigger, triggerWords, brief, place, reports: "on_change", effect: "read_only", budget: { monthTokens: 2_000_000 }, state: "active", createdAt: new Date(Date.now() - 20 * day).toISOString(), reviewAt: new Date(Date.now() + 10 * day).toISOString() },
+  });
+  log.append({ stream: `routine:${id}`, origin: "schedule", kind: "routine_run", body: { routineId: id, runId: `${id}-1`, scheduledFor: new Date(lastRun).toISOString(), state: "done" } });
+};
+const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+routine("r_deps", "HawDB dependency check", { kind: "time", every: "week", days: [1], time: "09:00", zone: "personal", tz }, "Mondays 9:00", "Check HawDB's Rust dependencies for new releases and security advisories; tell me only if something needs an upgrade.", repo("~/dev/hawdb", "main"), todayAt("09:00"));
+routine("r_prs", "Open PRs digest", { kind: "time", every: "weekday", time: "09:30", zone: "personal", tz }, "Weekdays 9:30", "List the open PRs on wey-gu/ducter that wait on me, oldest first.", undefined, todayAt("09:30"));
+await tick();
+
+await core.stop();
+console.log(`[demo] seeded ${core.dataDir}; run again with the same DUCTER_DATA_DIR to serve it`);
+process.exit(0);

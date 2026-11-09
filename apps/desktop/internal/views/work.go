@@ -202,11 +202,11 @@ func nextFew(r *protocol.Routine) string {
 	return strings.Join(ds, " · ")
 }
 
-// goal is a keep-going loop's goal as everyone reads it (D115): a counted
-// goal is a row of clay lights for the checks that must pass, lit as they
-// pass ("6 盏灯里亮了 4 盏"); one that can't be counted is a staircase of six
-// steps to a clay flag, Ducter on the step of its latest try, the flag green
-// when it holds. The try count is a quiet caption.
+// goal is a keep-going loop's goal as everyone reads it (D115): when it can
+// be counted (checks that must pass, or items a judge counted), a row of clay
+// lights lit as they pass ("6 盏灯里亮了 4 盏", "16 处里好了 12 处"); when
+// nothing can be counted, no picture of progress: Ducter at work and the
+// latest try in one line ("第 2 次 · 还在改").
 func (a *App) goal(c *ui.Context, u *protocol.Until, big bool) {
 	t := a.T
 	met := u.State == "met"
@@ -225,17 +225,22 @@ func (a *App) goal(c *ui.Context, u *protocol.Until, big bool) {
 	if big {
 		scale = 1.6
 	}
-	if last != nil && last.Total <= 12 {
+	if last != nil && last.Total > 0 {
 		done := last.Done
 		if met {
 			done = last.Total
 		}
-		words := a.lightsWords(done, last.Total)
+		// More than twelve: ten lights, each a tenth.
+		slots, lit := last.Total, done
+		if last.Total > 12 {
+			slots, lit = 10, int(float32(done)/float32(last.Total)*10+0.5)
+		}
+		words := a.countWords(done, last.Total, last.Unit)
 		ui.Column(c.Key("goal")).Gap(t.S1).Role(ui.RoleImage).Label(words).Children(func() {
 			ui.Row(c).Gap(4 * scale).AlignItems(ui.End).Children(func() {
-				for i := 0; i < last.Total; i++ {
+				for i := 0; i < slots; i++ {
 					name := "goal_light_off"
-					if i < done {
+					if i < lit {
 						name = "goal_light_on"
 					}
 					if bmp := theme.Clay(name); bmp != nil {
@@ -247,55 +252,39 @@ func (a *App) goal(c *ui.Context, u *protocol.Until, big bool) {
 		})
 		return
 	}
-	const slots = 6
-	steps := slots
+	line := a.L.T("until.met", len(u.Tries))
 	if !met {
-		steps = min(max(len(u.Tries), 1), slots-1)
+		latest := a.L.T("until.now")
+		if k := len(u.Tries); k > 0 {
+			latest = u.Tries[k-1].Summary
+		}
+		line = a.L.T("until.n", n) + " · " + latest
 	}
-	stepW, stepH := 14*scale, 5*scale
-	caption := a.L.T("until.try", n, u.MaxTries)
-	if met {
-		caption = a.L.T("until.met", len(u.Tries))
-	}
-	ui.Column(c.Key("goal")).Gap(t.S1).Role(ui.RoleImage).Label(caption).Children(func() {
-		ui.Row(c).Gap(2).AlignItems(ui.End).Padding(24*scale, 0, 0, 0).Children(func() {
-			for i := 0; i < slots; i++ {
-				b := ui.Box(c.Key(i)).Size(stepW, float32(i+1)*stepH).Radius(4)
-				if i < steps {
-					b.Background(t.Line2).Shadow(0, 2, 0, 0, ui.RGBA(120, 90, 60, 0.35))
-				} else {
-					b.Border(1.5, t.Line2)
-				}
-				if i == steps-1 && !met {
-					b.Children(func() {
-						if face := theme.Face(theme.Working, 24*scale*2); face != nil {
-							ui.Image(c, face).Absolute().Left(-5*scale).Top(-24*scale).Size(24*scale, 24*scale).AccessHidden(true)
-						}
-					})
-				}
+	ui.Row(c.Key("goal")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+		if !met {
+			if face := theme.Face(theme.Working, 26*scale*2); face != nil {
+				ui.Image(c, face).Size(26*scale, 26*scale).Shrink(0).AccessHidden(true)
 			}
-			flag := "goal_flag_off"
-			if met {
-				flag = "goal_flag_on"
-			}
-			if bmp := theme.Clay(flag); bmp != nil {
-				ui.Image(c, bmp).Size(30*scale, 40*scale).Margin(0, 0, 0, 14*scale).AccessHidden(true)
-			}
-		})
-		ui.Text(c, caption).FontSize(t.SM).TextColor(t.InkSoft).AccessHidden(true)
+		}
+		ui.Text(c, autospace(line)).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft).Shrink(1).MinWidth(0)
 	})
 }
 
-// lightsWords is "6 盏灯里亮了 4 盏" / "4 of 6 lights on".
-func (a *App) lightsWords(done, total int) string {
-	if a.L.Lang == i18n.ZH {
-		return a.L.T("until.lights", total, done)
+// countWords is "6 盏灯里亮了 4 盏" / "4 of 6 lights on", or for items a
+// judge counted "16 处里好了 12 处" / "12 of 16 done".
+func (a *App) countWords(done, total int, unit string) string {
+	key := "until.lights"
+	if unit == "items" {
+		key = "until.items"
 	}
-	return a.L.T("until.lights", done, total)
+	if a.L.Lang == i18n.ZH {
+		return a.L.T(key, total, done)
+	}
+	return a.L.T(key, done, total)
 }
 
-// untilLine is where a keep-going loop stands in a line, when the goal
-// doesn't already say it: "上一次：还剩 4 处".
+// untilLine is a keep-going loop's line under its goal: only how it ended
+// (while it runs, the goal says it).
 func (a *App) untilLine(u *protocol.Until) string {
 	switch u.State {
 	case "met":
@@ -307,11 +296,7 @@ func (a *App) untilLine(u *protocol.Until) string {
 		}
 		return a.L.T("until.stop."+stop, len(u.Tries))
 	}
-	n := len(u.Tries)
-	if n == 0 || u.Tries[n-1].Progress != nil {
-		return ""
-	}
-	return a.L.T("until.last", u.Tries[n-1].Summary)
+	return ""
 }
 
 // tryStrip is an opened task's keep-going loop: the goal first, then each
@@ -329,7 +314,7 @@ func (a *App) tryStrip(c *ui.Context, task *store.Task) {
 			for _, x := range u.Tries {
 				words := x.Summary
 				if x.Progress != nil {
-					words = a.lightsWords(x.Progress.Done, x.Progress.Total)
+					words = a.countWords(x.Progress.Done, x.Progress.Total, x.Progress.Unit)
 				}
 				ui.Text(c.Key(x.N), a.L.T("until.n", x.N)+"  "+words).FontSize(t.SM).TextColor(t.InkMuted)
 			}
@@ -538,7 +523,7 @@ func (a *App) routineCard(c *ui.Context, r *protocol.Routine) {
 			a.waitBubble(c, waitGlyph(r.Trigger.Check, r.Trigger.Event), 40)
 		}
 		ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
-			name := ui.Text(c, r.Name).FontSize(t.MD).FontWeight(800).MaxLines(2)
+			name := ui.Text(c, keepWords(autospace(r.Name))).FontSize(t.MD).FontWeight(800).MaxLines(2).Balance()
 			if paused {
 				name.TextColor(t.InkMuted)
 			}

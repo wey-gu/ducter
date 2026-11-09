@@ -2344,52 +2344,6 @@ details.how summary {
   width: 32px;
   height: 38px;
 }
-.goal.climb .hill {
-  position: relative;
-  display: inline-flex;
-  align-self: flex-start;
-  align-items: flex-end;
-  gap: 2px;
-  height: 56px;
-  padding-top: 24px;
-}
-.goal.climb .hill i {
-  display: block;
-  width: 14px;
-  border-radius: 5px 5px 2px 2px;
-  background: linear-gradient(180deg, #f0dcc2, #d9bb97);
-  box-shadow: 0 2px 0 #c4a07a, inset 0 1px 0 rgba(255, 255, 255, 0.6);
-}
-.goal.climb .climber {
-  position: absolute;
-  bottom: var(--climb, 0);
-  width: 24px;
-  height: 24px;
-  object-fit: contain;
-  margin-left: -6px;
-  align-self: flex-end;
-}
-.goal.climb .flag {
-  width: 30px;
-  height: 40px;
-  margin-left: 18px;
-  object-fit: contain;
-}
-.goal.climb.big .hill {
-  height: 92px;
-  padding-top: 36px;
-}
-.goal.climb.big .hill i {
-  width: 22px;
-}
-.goal.climb.big .climber {
-  width: 36px;
-  height: 36px;
-}
-.goal.climb.big .flag {
-  width: 44px;
-  height: 58px;
-}
 ol.tries {
   margin: 4px 0 0;
   padding-left: 0;
@@ -2463,7 +2417,30 @@ ol.tries b {
   gap: 12px;
   align-items: center;
 }
-.goal.climb .hill i.ahead {
-  background: transparent;
-  box-shadow: inset 0 0 0 1.5px var(--line-2);
+
+/* Nothing countable: Ducter at work and the latest try in one line (D115). */
+.goal.plain {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+.goal.plain .worker {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+}
+.goal.plain.big .worker {
+  width: 40px;
+  height: 40px;
+}
+/* D78 line breaking for titles that wrap: Latin words and short Chinese words stay whole, breaks
+   prefer spaces and punctuation, and two-line titles are balanced. */
+.task-head h1,
+.task-head .waitline,
+.decision .q,
+.askq > div:first-child {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  line-break: strict;
+  text-wrap: balance;
 }

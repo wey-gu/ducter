@@ -11,8 +11,10 @@ let green = false;
 let ciLooks = 0;
 const checks = (s: string[]) => JSON.stringify(s.map((state, i) => ({ name: `job${i}`, state })));
 const verdicts = [
-  { met: false, reason: zh ? "还剩 4 处" : "4 left", progress: "better" as const },
-  { met: true, reason: zh ? "干净了" : "clean" },
+  // The typo loop: the report counts the work, so the judge does too (the lights).
+  { met: false, reason: zh ? "还剩 4 处" : "4 left", progress: "better" as const, done: 12, left: 4 },
+  // The copy loop: nothing to count (Ducter at work and the latest try in words).
+  { met: false, reason: zh ? "开头顺了，结尾还有点硬" : "The opening reads well; the ending is still stiff", progress: "better" as const },
 ];
 const core = startCore({
   persona: { id: "default", name: "Ducter", identity: "" },
@@ -74,6 +76,14 @@ await task("t_typo", zh ? "一直改到没有错别字：ducter docs" : "Keep fi
 core.work.untils.start({ taskId: "t_typo", condition: zh ? "docs 里没有错别字了" : "no typos left in docs" });
 say(zh ? "好，我一直改到干净。" : "On it, until they're clean.", u2b.seq);
 report("t_typo", { state: "done", summary: zh ? "改了 12 处" : "Fixed 12", questions: [], evidence: [] });
+await Bun.sleep(80);
+
+// 2c. A goal nothing can count: Ducter at work, the latest try in one line.
+const u2c = user(zh ? "首页那段介绍一直改到读着顺为止" : "Keep reworking the homepage intro until it reads smoothly");
+await task("t_copy", zh ? "一直改到读着顺：首页介绍" : "Keep reworking until smooth: homepage intro", repo("~/dev/ducter", "ducter/intro"), zh ? "把首页介绍改顺。" : "Make the homepage intro read smoothly.");
+core.work.untils.start({ taskId: "t_copy", condition: zh ? "首页介绍读着顺" : "the homepage intro reads smoothly" });
+say(zh ? "好，我一直改到顺。" : "On it, until it reads smoothly.", u2c.seq);
+report("t_copy", { state: "done", summary: zh ? "重写了开头" : "Rewrote the opening", questions: [], evidence: [] });
 await Bun.sleep(80);
 
 // 3. "When the domain renewal email arrives, tell me": an event wait (OpenConnector's Gmail trigger).

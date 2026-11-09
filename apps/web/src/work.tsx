@@ -107,67 +107,53 @@ function GrooveCaptions({ w, f }: { w: WaiterView; f: number }) {
   );
 }
 
-/** A keep-going loop's goal, as everyone reads it (D115): when the goal can be counted, a row of
- *  clay lights for the checks that must pass, lit as they pass ("6 盏灯里亮了 4 盏"); when it
- *  can't, a clay flag with Ducter climbing one step per try, the flag green when it holds. The
- *  try count is a quiet caption. */
+/** A keep-going loop's goal, as everyone reads it (D115): when it can be counted (checks that
+ *  must pass, or items a judge counted), a row of clay lights lit as they pass ("6 盏灯里亮了 4
+ *  盏", "16 处里好了 12 处"); when nothing can be counted, no picture of progress at all: Ducter
+ *  at work and the latest try in one line ("第 2 次 · 还在改"). */
 export function Goal({ u, big }: { u: UntilView; big?: boolean }) {
   const last = [...u.tries].reverse().find((x) => x.progress);
   const met = u.state === "met";
   const n = u.tries.length + (u.state === "on" ? 1 : 0);
-  if (last?.progress && last.progress.total <= 12) {
-    const { total } = last.progress;
+  if (last?.progress && last.progress.total > 0) {
+    const { total, unit } = last.progress;
     const done = met ? total : last.progress.done;
+    // More than twelve: ten lights, each a tenth.
+    const slots = total <= 12 ? total : 10;
+    const lit = total <= 12 ? done : Math.round((done / total) * 10);
+    const words = countWords(done, total, unit);
     return (
-      <span class={`goal lights${big ? " big" : ""}`} role="img" aria-label={lightsWords(done, total)}>
+      <span class={`goal lights${big ? " big" : ""}`} role="img" aria-label={words}>
         <span class="row-of">
-          {Array.from({ length: total }, (_, i) => (
-            <img key={i} src={`app/art/${i < done ? "goal_light_on" : "goal_light_off"}.webp`} alt="" draggable={false} />
+          {Array.from({ length: slots }, (_, i) => (
+            <img key={i} src={`app/art/${i < lit ? "goal_light_on" : "goal_light_off"}.webp`} alt="" draggable={false} />
           ))}
         </span>
-        <span class="cap">{[lightsWords(done, total), t("until.n", n)].join(" · ")}</span>
+        <span class="cap">{[words, t("until.n", n)].join(" · ")}</span>
       </span>
     );
   }
-  // A staircase of six steps up to the flag; Ducter stands on the step of its latest try (the
-  // steps behind it are solid, the ones ahead faint). At the flag it holds.
-  const SLOTS = 6;
-  const steps = met ? SLOTS : Math.min(Math.max(u.tries.length, 1), SLOTS - 1);
+  const latest = u.tries.at(-1);
+  const line = met ? t("until.met", u.tries.length) : [t("until.n", n), latest ? latest.summary : t("until.now")].join(" · ");
   return (
-    <span class={`goal climb${big ? " big" : ""}`} role="img" aria-label={met ? t("until.met", u.tries.length) : t("until.n", n)}>
-      <span class="hill">
-        {Array.from({ length: SLOTS }, (_, i) => (
-          <i key={i} class={i < steps ? "" : "ahead"} style={{ height: `${(i + 1) * (big ? 7 : 5)}px` }} />
-        ))}
-        {!met && (
-          // Ducter stands on the top step: one step per try.
-          <img
-            class="climber"
-            src="app/art/working.webp"
-            alt=""
-            draggable={false}
-            style={{ left: `${(steps - 1) * ((big ? 22 : 14) + 2)}px`, bottom: `${steps * (big ? 7 : 5)}px` }}
-          />
-        )}
-        <img class="flag" src={`app/art/${met ? "goal_flag_on" : "goal_flag_off"}.webp`} alt="" draggable={false} />
-      </span>
-      <span class="cap">{met ? t("until.met", u.tries.length) : t("until.try", n, u.maxTries)}</span>
+    <span class={`goal plain${big ? " big" : ""}`}>
+      {!met && <img class="worker" src="app/art/working.webp" alt="" draggable={false} />}
+      <span class="cap">{line}</span>
     </span>
   );
 }
 
-/** "6 盏灯里亮了 4 盏" / "4 of 6 lights on". */
-function lightsWords(done: number, total: number): string {
-  return A.L.lang === "zh" ? t("until.lights", total, done) : t("until.lights", done, total);
+/** "6 盏灯里亮了 4 盏" / "4 of 6 lights on", or for items a judge counted "16 处里好了 12 处" / "12 of 16 done". */
+function countWords(done: number, total: number, unit?: "checks" | "items"): string {
+  const key = unit === "items" ? "until.items" : "until.lights";
+  return A.L.lang === "zh" ? t(key, total, done) : t(key, done, total);
 }
 
+/** A keep-going loop's line under its goal: only how it ended (while it runs, the goal says it). */
 export function untilLine(u: UntilView): string {
-  const last = u.tries.at(-1);
   if (u.state === "met") return t("until.met", u.tries.length);
   if (u.state === "stopped") return t(`until.stop.${u.stop ?? "max"}`, u.tries.length);
-  // A counted goal already shows in its lights; the check's own words stay in How it checks.
-  if (last?.progress) return "";
-  return last ? t("until.last", last.summary) : t("until.now");
+  return "";
 }
 
 /** The keep-going loop in an opened task: the goal first, then each try in a quiet line; how it
@@ -182,7 +168,7 @@ export function TryStrip({ task }: { task: Task }) {
       <ol class="tries">
         {u.tries.map((x) => (
           <li key={x.n}>
-            <b>{t("until.n", x.n)}</b> {x.progress ? lightsWords(x.progress.done, x.progress.total) : x.summary}
+            <b>{t("until.n", x.n)}</b> {x.progress ? countWords(x.progress.done, x.progress.total, x.progress.unit) : x.summary}
           </li>
         ))}
       </ol>

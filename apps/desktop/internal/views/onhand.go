@@ -170,7 +170,7 @@ func (a *App) waiterRow(c *ui.Context, w *protocol.Waiter) {
 			if w.Check != nil || w.Event != nil {
 				title = a.waitLine(w.Reason)
 			}
-			ui.Text(c, title).FontSize(t.MD).FontWeight(800).MaxLines(3)
+			ui.Text(c, keepWords(autospace(title))).FontSize(t.MD).FontWeight(800).MaxLines(3).Balance()
 			if w.Check != nil || w.Event != nil {
 				a.groove(c, w, false)
 			}
@@ -485,7 +485,7 @@ func (a *App) workingCard(c *ui.Context, task *store.Task) {
 			}
 			pop.AnimatePose(p, ui.Animation{Duration: 320 * time.Millisecond})
 		}
-		ui.Text(c, task.Title()).FontSize(t.MD).FontWeight(800)
+		ui.Text(c, keepWords(autospace(task.Title()))).FontSize(t.MD).FontWeight(800).Balance()
 		if u := task.Card; u != nil && u.Until != nil && u.Until.State == "on" {
 			// A keep-going loop (D113): its tries, then where it stands.
 			a.goal(c, u.Until, false)
@@ -515,7 +515,7 @@ func (a *App) waitingCard(c *ui.Context, task *store.Task) {
 	card := ui.Column(c).Padding(t.S4, t.S4).Gap(t.S2).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color)
 	a.cardLink(c, card, task)
 	card.Children(func() {
-		ui.Text(c, task.Title()).FontSize(t.MD).FontWeight(800)
+		ui.Text(c, keepWords(autospace(task.Title()))).FontSize(t.MD).FontWeight(800).Balance()
 		reason := a.waitReason(task)
 		if reason == "" {
 			reason = a.stateLabel(protocol.Blocked)
@@ -551,7 +551,7 @@ func (a *App) doneList(c *ui.Context, tasks []*store.Task) {
 			row := ui.Column(c.Key(task.ID)).Gap(t.S2).Padding(t.S3, 0).Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(task.Title())
 			row.Children(func() {
 				ui.Row(c).Gap(t.S2).AlignItems(ui.Start).Children(func() {
-					ui.Text(c, task.Title()).FontSize(t.MD).FontWeight(700).Grow(1).MinWidth(0).MaxLines(2)
+					ui.Text(c, keepWords(autospace(task.Title()))).FontSize(t.MD).FontWeight(700).Grow(1).MinWidth(0).MaxLines(2).Balance()
 					if task.Attention() == protocol.Failed {
 						// The exception, in words in its ink; no capsule.
 						ui.Text(c, a.stateLabel(protocol.Failed)).FontSize(t.XS).FontWeight(700).TextColor(t.Failed.Ink).Shrink(0)

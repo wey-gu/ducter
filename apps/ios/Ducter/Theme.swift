@@ -6,6 +6,7 @@ import UIKit
 enum Pebble {
     static let bg = dynamic(0xFFF6EA, 0x17120E)
     static let surface = dynamic(0xFFFFFF, 0x231C16)
+    static let sunken = dynamic(0xF7EBDA, 0x1D1712)
     static let surfaceSunken = dynamic(0xF3E6D3, 0x1D1712)
     static let ink = dynamic(0x2B2118, 0xF6EBDD)
     static let inkSoft = dynamic(0x4A3D30, 0xDCCBB6)
@@ -13,21 +14,44 @@ enum Pebble {
     static let accent = dynamic(0xFF8A3D, 0xFF8A3D)
     static let onAccent = dynamic(0x2B2118, 0x2B2118)
     static let line = dynamic(0xE8D9C4, 0x3A3027)
+    static let line2 = dynamic(0xE0C9B0, 0x0D0A07)
     static let failedInk = dynamic(0x8A1F3B, 0xF8A9BC)
     /// Ledges: a darker shade of each filled button's fill (app.css --press-*).
+    static let pressPrimary = dynamic(0x000000, 0x8A7A66)
     static let pressAccent = dynamic(0xC9642A, 0xC9642A)
     static let pressQuiet = dynamic(0xE0C9B0, 0x0D0A07)
-    /// Every filled button has this ledge and presses down into it (ui.md, depth).
-    static let ledge: CGFloat = 3
+    /// Clay depth (D76): a card rests on a solid 4pt base; a button stands on a ledge (4pt at
+    /// the 52 size), with a soft drop and a 1.5pt top highlight, and sinks into it when pressed.
+    static let base: CGFloat = 4
+    static let ledge: CGFloat = 4
+    static let dropColor = Color(UIColor(hex: 0x2B2118).withAlphaComponent(0.28))
+    static let dropPressedColor = Color(UIColor(hex: 0x2B2118).withAlphaComponent(0.22))
 
-    static let radius: CGFloat = 16
+    static let radius: CGFloat = 24
     static let radiusSmall: CGFloat = 12
-    /// Buttons share the desktop/web component system (ui.md "Components and tokens").
-    static let buttonRadius: CGFloat = 12
-    static let buttonHeight: CGFloat = 48
+    /// The setup screens use the large control (ui.md: 52, radius 18, type 16).
+    static let buttonRadius: CGFloat = 18
+    static let buttonHeight: CGFloat = 52
 
-    static func display(_ size: CGFloat, _ weight: Font.Weight = .bold) -> Font {
-        Font.custom("Bricolage Grotesque", size: size, relativeTo: .title).weight(weight)
+    /// Titles: Bricolage 800 (CJK falls back to PingFang SC). zh titles one step down (D78:
+    /// native clients can't scale one face, so 34→32, 28→26, 20→19).
+    static func display(_ size: CGFloat, _ weight: Font.Weight = .heavy) -> Font {
+        Font.custom("Bricolage Grotesque", size: zhStep(size), relativeTo: .title).weight(weight)
+    }
+
+    /// Reading and controls: Bricolage, PingFang SC for Chinese (the system's CJK fallback).
+    static func text(_ size: CGFloat, _ weight: Font.Weight = .regular, relativeTo style: Font.TextStyle = .body) -> Font {
+        Font.custom("Bricolage Grotesque", size: size, relativeTo: style).weight(weight)
+    }
+
+    private static func zhStep(_ size: CGFloat) -> CGFloat {
+        guard Locale.preferredLanguages.first?.hasPrefix("zh") == true else { return size }
+        switch size {
+        case 34: return 32
+        case 28: return 26
+        case 20: return 19
+        default: return size
+        }
     }
 
     static let uiBg = UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: 0x17120E) : UIColor(hex: 0xFFF6EA) }
@@ -43,37 +67,43 @@ extension UIColor {
     }
 }
 
-/// A filled button: its fill on a ledge of a darker shade; pressing sinks it into the ledge.
+/// A clay button (D76): its fill on a ledge of a darker shade, a soft drop, a 1.5pt top
+/// highlight; pressing sinks it into the ledge (70 ms).
 private struct LedgeButton: View {
     let configuration: ButtonStyle.Configuration
-    let fill: Color, ledge: Color, ink: Color
-    var hairline: Color? = nil
+    let fill: Color, ledge: Color, ink: Color, highlight: Color
+    var rim: Color = .clear
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: Pebble.buttonRadius, style: .continuous)
-        let down = configuration.isPressed ? Pebble.ledge : 0
+        let pressed = configuration.isPressed
+        let down = pressed ? Pebble.ledge : 0
         configuration.label
-            .font(.body.weight(.semibold))
+            .font(Pebble.text(16, .bold, relativeTo: .headline))
             .foregroundStyle(ink)
             .frame(maxWidth: .infinity, minHeight: Pebble.buttonHeight)
             .background(fill, in: shape)
-            .overlay(shape.stroke(hairline ?? .clear, lineWidth: 1))
+            .overlay(shape.inset(by: 0.5).stroke(rim, lineWidth: 1))
+            .overlay(alignment: .top) {
+                shape.stroke(highlight, lineWidth: 1.5).mask(alignment: .top) { Rectangle().frame(height: 1.5) }.padding(.horizontal, 6)
+            }
             .background(ledge, in: shape.offset(y: Pebble.ledge - down))
+            .shadow(color: pressed ? Pebble.dropPressedColor : Pebble.dropColor, radius: pressed ? 1.5 : 6, y: pressed ? 1 : 7 + Pebble.ledge - down)
             .offset(y: down)
             .padding(.bottom, Pebble.ledge)
-            .animation(.spring(response: 0.18, dampingFraction: 0.7), value: configuration.isPressed)
+            .animation(.easeOut(duration: 0.07), value: pressed)
     }
 }
 
-/// The primary button: the accent, full width, one thumb.
+/// The primary button: ink, cream words, on a black ledge. One per screen, last.
 struct PrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        LedgeButton(configuration: configuration, fill: Pebble.accent, ledge: Pebble.pressAccent, ink: Pebble.onAccent)
+        LedgeButton(configuration: configuration, fill: Pebble.ink, ledge: Pebble.pressPrimary, ink: Pebble.bg, highlight: Color(UIColor(hex: 0xFFF6EA).withAlphaComponent(0.22)))
     }
 }
 
-/// A secondary button: ink on the surface.
+/// A secondary button: cream with a hairline rim, on a warm ledge.
 struct QuietButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        LedgeButton(configuration: configuration, fill: Pebble.surface, ledge: Pebble.pressQuiet, ink: Pebble.ink, hairline: Pebble.line)
+        LedgeButton(configuration: configuration, fill: Pebble.bg, ledge: Pebble.pressQuiet, ink: Pebble.ink, highlight: Color.white.opacity(0.95), rim: Pebble.ink.opacity(0.09))
     }
 }

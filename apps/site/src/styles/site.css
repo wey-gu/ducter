@@ -114,7 +114,7 @@ a { color: inherit; }
 code, kbd { font-family: var(--mono); font-size: 0.86em; }
 /* Chinese (D78): CJK is never tracked, reads at 1.75, kinsoku, compressed punctuation, a 1/4-em CJK-Latin gap */
 :lang(zh) { line-break: strict; text-spacing-trim: normal; text-autospace: normal; }
-:lang(zh) h1, :lang(zh) h2, :lang(zh) h3 { letter-spacing: 0; }
+:lang(zh) h1, :lang(zh) h2, :lang(zh) h3 { letter-spacing: 0; line-height: 1.15; }
 :lang(zh) body, :lang(zh) .lede, :lang(zh) .body, :lang(zh) .prose { line-height: 1.75; }
 :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
 ::selection { background: var(--highlight); color: var(--ink); }

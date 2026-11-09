@@ -455,7 +455,9 @@ function LivingLine({ it }: { it: LivingItem }) {
 function Living({ e, items }: { e: Entry; items: LivingItem[] }) {
   // "While you were away" only when the user was: it came before this page loaded and they
   // hadn't read it, or it came while the page was hidden (app.ts records that as it lands).
-  const away = A.livingAway.get(e.firstSeq) ?? (e.firstSeq <= A.S.headSeq && A.S.unread(e));
+  // Latched the first time it shows: reading it must not take the title away.
+  if (!A.livingAway.has(e.firstSeq)) A.livingAway.set(e.firstSeq, e.firstSeq <= A.S.headSeq && A.S.unread(e));
+  const away = A.livingAway.get(e.firstSeq)!;
   const decisions = items.filter((it) => it.kind === "decision");
   const open = decisions.filter((it) => {
     const d = it.decisionId ? A.S.decisions.get(it.decisionId) : undefined;

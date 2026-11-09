@@ -56,12 +56,11 @@ sign-in and the same first find (§6).
 - **The token lives only in Ducter.** It is kept in `<dataDir>/connection-tokens.json` (0600).
   It never appears in a harness's config, env, args or files, never in the Log, and never in
   a client frame.
-  - Why not D85's `<dataDir>/env`: on a server, that file is the systemd unit's
-    `EnvironmentFile`. It lands in the core's environment, and from there in every harness
-    child.
-  - The one rule for every secret: a 0600 file in the data folder, read only by the code that
-    uses it. `env` holds the keys a harness itself needs, and the token file holds what only
-    the broker needs.
+  - The one rule for every secret (D102): a 0600 file in the data folder, read only by the code
+    that uses it. `keys.env` holds the keys a harness itself needs (each passed only to that
+    harness), and the token file holds what only the broker needs. Nothing loads either into a
+    process environment, and every harness child's environment is an allowlist that strips
+    any other key or token, so the token can't leak through one either.
   - macOS Keychain is a later option for both.
 - **Shown on Devices as mailboxes on the main's island** (the prototype; the Isles stage is
   being rebuilt on `isles`). For now the list lives on Partner → 它能看的账号 / Accounts it can

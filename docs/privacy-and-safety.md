@@ -43,6 +43,10 @@ Ducter works through each AI agent's own official app, signed in with your own a
 doesn't proxy your login, share it, or pretend to be anything else. That's also why Ducter is
 something you run yourself rather than a hosted service.
 
+If you give Ducter an API key or a sign-in token, it's kept in a private file in `~/.ducter` and
+handed only to the AI agent that signs in with it, never to the others or to every task. A task
+doesn't get the keys or tokens from the environment Ducter was started in, either.
+
 Tasks use your plan's limits like any other session would. Your agent's own settings, skills and
 tools apply to tasks too, so a Ducter task in your project behaves the way your own session
 there does.

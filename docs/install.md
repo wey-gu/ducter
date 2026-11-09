@@ -98,6 +98,19 @@ install ends by showing a code to connect your first device.
 browser: `claude auth login` prints a link to open on any device and waits for the code, and
 `codex login --device-auth` works the same way.
 
+If you'd rather use a sign-in token or an API key (for example `CLAUDE_CODE_OAUTH_TOKEN` from
+`claude setup-token`, or `DEEPSEEK_API_KEY` for DeepSeek Harness), put it in
+`~/.ducter/keys.env`, one `NAME=value` per line, and make the file private:
+
+```sh
+chmod 600 ~/.ducter/keys.env
+```
+
+Ducter gives each key only to the AI agent that signs in with it. Your DeepSeek key reaches
+DeepSeek Harness and nothing else. Other keys and tokens on the server, such as one in your
+shell, aren't passed to tasks either. If an older Ducter had you put keys in `~/.ducter/env`,
+Ducter moves them to `keys.env` the next time it starts.
+
 **3. Choose how to reach it:**
 
 - **Your own domain (recommended).** Point a DNS record at the server, open ports 80 and 443,

@@ -30,7 +30,10 @@ export type Step =
   // Several reports landing within the same second (two tasks finishing together).
   | { reports: { task: string; body: Omit<Bodies["report"], "taskId"> }[] }
   | { resolve: { option: "go" | "hold" | "reply"; text?: string } } // the latest open decision
-  | { timerFired: { reason: string } };
+  | { timerFired: { reason: string } }
+  // Bridge (scenario.bridge): another agent's message lands in the persona's mailbox, then Ducter
+  // checks. `answer: true` makes it the reply to the last message Ducter sent that agent.
+  | { peer: { from: string; text: string; answer?: boolean } };
 
 export interface Expect {
   /** task_open calls: exact count, or a range. */
@@ -75,6 +78,11 @@ export interface Expect {
   noRemember?: boolean;
   /** Text no memory_add call (even a refused one) may contain. */
   rememberForbid?: RegExp[];
+
+  /** Regexes the partner's own lines (messages and acks, not card text) may not match. */
+  proseForbid?: RegExp[];
+  /** Bridge: what Ducter sent through the (fake) Bridge, all messages joined. */
+  bridgeSent?: { to?: string; count?: [number, number]; require?: RegExp[]; forbid?: RegExp[] };
 }
 
 /** One memory in the fake Mem the scenario runs against (never the user's real Mem). */
@@ -100,6 +108,12 @@ export interface Scenario {
   rubric: string;
   /** Run in the haiku floor subset. */
   floor?: boolean;
+  /**
+   * Bridge on, over the fake Bridge CLI (fake-bridge-nmem.ts), never the user's Mem. The persona is
+   * "ducter-main"; the user's own terminal Claude Code is "terminal-claude"; a teammate's agent is
+   * "alex-reviewer". `me` = the user's member id is known to Ducter (DUCTER_BRIDGE_MEMBER).
+   */
+  bridge?: true;
 }
 
 // Under a result message the app renders, from the task's typed report: the task chip, the
@@ -127,6 +141,8 @@ const ALICE: SeedMemory = {
   date: "2026-10-28",
   kind: "fact",
 };
+// A message to another agent is one question plus background, never numbered sub-questions.
+const OVER_ASK = /(?:^|[\s：:，,])(?:1[.)、）]|\(1\)|（1）|①)[\s\S]*?(?:2[.)、）]|\(2\)|（2）|②)|(^|\n)\s*[-*•]\s[\s\S]*\n\s*[-*•]\s/;
 // Visible text never talks about the memory machinery.
 const NO_MEM_TALK = /记忆|存(入|进|到)|保存|已记录|查了(一下)?(之前|记录)|搜(索|了)|\bMem\b|Nowledge|memory|I (searched|looked up|checked)|saved (it|this)|my notes/i;
 
@@ -858,5 +874,85 @@ export const scenarios: Scenario[] = [
     expect: { opens: [0, 1], maxChars: 120, forbid: [NO_MEM_TALK, /不可用|连不上|没(有)?连接|出错|找不到.{0,8}(记录|上次)|没有.{0,6}记录|no record/i] },
     rubric:
       "Long-term memory is not installed, so the partner can't know how \"last time\" went. Pass if it carries on gracefully in Chinese: either asks in one short line how it ran last time (threads, runs), or opens a task that will look at how the benchmark was run before (e.g. bench/README.md). It must not mention memory, Mem, or anything being unavailable, and must not invent the previous settings.",
+  },
+
+  // ---------- K. other agents, through Bridge (design/bridge.md S1, S2; D105–D111) ----------
+  // Fails before D107–D109: the card follows the peer's language, the sender label makes the
+  // partner talk about Weyl to Weyl, the claim mixes languages, the request over-asks.
+  {
+    id: "bridge-take-zh",
+    category: "bridge",
+    lang: "zh",
+    bridge: true,
+    seed: [{ user: "今晚我主要写 bridge 那块，别的你先帮我盯着" }, { ai: "好，有事我叫你。" }],
+    steps: [
+      {
+        peer: {
+          from: "terminal-claude",
+          text: "Weyl asked me to hand this to Ducter. Goal: make `bun test` pass on Linux in ~/dev/ducter. packages/runner/test/live.test.ts assumes macOS `open`, so the ubuntu CI fails. Scope: runner tests only. Done when the ubuntu CI is green. Reply with a claim or a blocker.",
+        },
+      },
+      { resolve: { option: "go" } },
+      {
+        report: {
+          task: "$opened0",
+          body: { state: "done", summary: "live.test.ts now skips only the `open` assertion off macOS; bun test passes in an ubuntu:24.04 container (the same image as CI).", evidence: [{ kind: "test", label: "bun test (ubuntu:24.04): 0 fail", ref: "packages/runner/test/live.test.ts" }], questions: [] },
+        },
+      },
+    ],
+    expect: {
+      ask: true,
+      opens: 1,
+      maxChars: 200,
+      forbid: [/Weyl/, /msg-\d{3}/],
+      proseForbid: [/Weyl/], // the card is the partner's words too: forbid covers it
+      bridgeSent: { to: "terminal-claude", count: [2, 3], forbid: [/^Taken: [^"“「]*[㐀-鿿]/m] },
+    },
+    rubric:
+      "The user's own terminal Claude Code asked (in English) for a side job. The user speaks Chinese, so the card and every line the user sees are in Chinese. Pass if: one Chinese card asks whether to take the job (naming it as the user's own terminal Claude / 你的 terminal-claude, not as Weyl); after Go a task opens; when it reports done the partner tells the user the outcome in at most 2 short lines (saying the tests now pass on Linux / in the ubuntu image IS the outcome, not repeated evidence; that the change isn't pushed yet, so CI itself hasn't run, is a fine left-out line). The partner never names Weyl (it is talking TO Weyl) and never says it sent the result to Weyl: the result went to the terminal session.",
+  },
+  {
+    id: "bridge-ask-zh",
+    category: "bridge",
+    lang: "zh",
+    bridge: true,
+    steps: [
+      { user: "问一下我终端里那个 Claude，bridge 那块它写到哪了，今晚能不能提 PR？" },
+      { resolve: { option: "go" } },
+      { peer: { from: "terminal-claude", answer: true, text: "写到 contacts 和 send 了。5 个新测试过了 4 个，send 的 stdin 那个还红着。修通了大概 22:00 提 PR。" } },
+    ],
+    expect: {
+      ask: true,
+      opens: 0,
+      maxChars: 160,
+      require: [/你的 ?terminal-claude/],
+      forbid: [/msg-\d{3}/],
+      proseForbid: [/Weyl/],
+      bridgeSent: { to: "terminal-claude", count: [1, 1], forbid: [OVER_ASK] },
+    },
+    rubric:
+      "The user asks the partner to ask their own terminal Claude a question. Pass if: the partner puts up one send card right away (no offer in prose first) naming the recipient as the user's own (你的 terminal-claude); the message carries what the user asked (status and tonight's PR) plus the background needed, and adds no numbered list of extra sub-questions; after the answer arrives the partner tells the user what it says in one or two short Chinese lines, speaking to the user as 你 (never 'Weyl' in the third person).",
+  },
+  {
+    id: "bridge-ask-en",
+    category: "bridge",
+    lang: "en",
+    bridge: true,
+    steps: [
+      { user: "Ask my terminal Claude where it got to on the bridge work, and whether it can open the PR tonight." },
+      { resolve: { option: "go" } },
+      { peer: { from: "terminal-claude", answer: true, text: "contacts and send are in. 4 of 5 new tests pass; the send stdin one is still red. PR around 22:00 once it's green." } },
+    ],
+    expect: {
+      ask: true,
+      opens: 0,
+      maxChars: 260,
+      require: [/your terminal-claude/i],
+      forbid: [/msg-\d{3}/],
+      proseForbid: [/Weyl/],
+      bridgeSent: { to: "terminal-claude", count: [1, 1], forbid: [OVER_ASK] },
+    },
+    rubric:
+      "English version of asking the user's own terminal Claude. Pass if: one send card at once naming the recipient as the user's own (your terminal-claude); the message carries what the user asked plus background, with no numbered list of extra sub-questions; after the answer the partner tells the user in one or two short English lines, addressing the user as 'you' (never 'Weyl').",
   },
 ];

@@ -472,13 +472,21 @@ func (e LogEvent) Typed() (any, error) {
 // BridgeMsg is a Nowledge Bridge message in or out (DUCTER_BRIDGE=1). Direction "in" text is
 // untrusted: it comes from another agent, not the user. Not rendered yet (design/bridge.md).
 type BridgeMsg struct {
-	Direction string `json:"direction"`
-	MessageID string `json:"messageId"`
-	From      string `json:"from,omitempty"`
-	To        string `json:"to,omitempty"`
-	Text      string `json:"text"`
-	InReplyTo string `json:"inReplyTo,omitempty"`
-	SentAt    string `json:"sentAt,omitempty"`
+	Direction  string `json:"direction"`
+	MessageID  string `json:"messageId"`
+	From       string `json:"from,omitempty"`
+	To         string `json:"to,omitempty"`
+	Text       string `json:"text"`
+	InReplyTo  string `json:"inReplyTo,omitempty"`
+	SentAt     string `json:"sentAt,omitempty"`
+	TaskID     string `json:"taskId,omitempty"`
+	DecisionID string `json:"decisionId,omitempty"`
+	Agent      string `json:"agent,omitempty"`
+	Mine       bool   `json:"mine,omitempty"`
+	State      string `json:"state,omitempty"` // out: pending|held|sending|sent|failed|unknown|unconfirmed|followed; empty = sent
+	OpID       string `json:"opId,omitempty"`
+	Contact    string `json:"contact,omitempty"`
+	Operation  string `json:"operation,omitempty"`
 }
 
 // NewEvent builds an event with body encoded from v (for the mock server

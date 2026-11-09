@@ -143,6 +143,9 @@ const ALICE: SeedMemory = {
 };
 // A message to another agent is one question plus background, never numbered sub-questions.
 const OVER_ASK = /(?:^|[\s：:，,])(?:1[.)、）]|\(1\)|（1）|①)[\s\S]*?(?:2[.)、）]|\(2\)|（2）|②)|(^|\n)\s*[-*•]\s[\s\S]*\n\s*[-*•]\s/;
+// D120: an ack with nothing to ground an estimate carries no duration at all.
+const NO_GUESSED_TIME = /(\d+|几|十来|十几|半|一两|两三)\s*(个)?\s*(分钟|小时|天)|\b\d+\s*(min|minutes?|hours?|h)\b|\b(a few|a couple of) (minutes|hours)\b/i;
+
 // Visible text never talks about the memory machinery.
 const NO_MEM_TALK = /记忆|存(入|进|到)|保存|已记录|查了(一下)?(之前|记录)|搜(索|了)|\bMem\b|Nowledge|memory|I (searched|looked up|checked)|saved (it|this)|my notes/i;
 
@@ -197,9 +200,9 @@ export const scenarios: Scenario[] = [
       ackFirst: true,
       msgs: [0, 0],
       maxChars: 80,
-      forbid: [/修好了|已修复|已经修|原因是|because/i, /任务已(开|创建)|已经交给|会通知你|做完(会|再)告诉/],
+      forbid: [/修好了|已修复|已经修|原因是|because/i, /任务已(开|创建)|已经交给|开了一个/, NO_GUESSED_TIME],
     },
-    rubric: "Exactly one short Chinese line that names the action being started (looking into / fixing the flaky TTL test in foo). It must NOT state any outcome or cause, and nothing else is said after it (no 'task opened', no promise to report back).",
+    rubric: "Exactly one short Chinese sentence that names the action being started (looking into / fixing the flaky TTL test in foo), optionally ending with that it will say when it's clear (e.g. 弄清楚了告诉你). Nothing grounds a duration here, so it must give NO time estimate. It must NOT state any outcome or cause, and nothing else is said after it (no 'task opened', no second line).",
   },
   {
     id: "ack-en-repo",
@@ -211,10 +214,10 @@ export const scenarios: Scenario[] = [
       opens: 1,
       ackFirst: true,
       msgs: [0, 0],
-      maxChars: 120,
-      forbid: [/\b(done|changed it|updated the tests|is now 30)\b/i, /task (is )?(open|created|started)|I'll (let you know|report back)|will report/i],
+      maxChars: 140,
+      forbid: [/\b(done|changed it|updated the tests|is now 30)\b/i, /task (is )?(open|created|started)/i, NO_GUESSED_TIME],
     },
-    rubric: "One short English line naming the action (changing the checkpoint default to 30s in HawDB and updating tests). No outcome claimed, nothing said after the ack.",
+    rubric: "One short English sentence naming the action (changing the checkpoint default to 30s in HawDB and updating tests), optionally saying it will report when done. No time estimate (nothing grounds one), no outcome claimed, nothing said after the ack.",
   },
   {
     id: "ack-zh-doc",
@@ -223,6 +226,50 @@ export const scenarios: Scenario[] = [
     steps: [{ user: "帮我查一下 Bun 1.4 在 Linux 上用 bun build --compile 有哪些坑，整理成一页文档" }],
     expect: { opens: 1, ackFirst: true, msgs: [0, 0], maxChars: 80, forbid: [/主要有|坑包括|结论/] },
     rubric: "One short Chinese ack naming the research action; it must not list any findings (it has none yet). Nothing after the ack.",
+  },
+  {
+    // D120: an estimate only when something grounds it (here: what the partner knows of the CI).
+    id: "ack-zh-estimate",
+    category: "ack",
+    lang: "zh",
+    floor: true,
+    persona: { name: "Ducter", identity: "You are Ducter, Weyl's personal AI partner. Weyl builds HawDB (an embedded database) in ~/dev/hawdb. HawDB's full CI run (build + all tests) takes about 12 minutes; looking into a red CI run usually takes him 10-15 minutes. He prefers short answers." },
+    steps: [{ user: "~/dev/hawdb 的 CI 又挂了，帮我查查为什么，查清楚告诉我" }],
+    expect: {
+      opens: 1,
+      ackFirst: true,
+      msgs: [0, 0],
+      maxChars: 80,
+      require: [/(一般|大概|差不多).{0,8}(分钟|小时)/],
+      forbid: [/挂了是因为|原因是|已经(查|修)/, /(分钟|小时)(内|之内)|保证|肯定/],
+    },
+    rubric: "One short Chinese sentence: the action (查 HawDB 的 CI 为什么挂了), a rough usual duration grounded in what it knows (about 10-15 minutes, said with 一般 / 大概, never as a promise or deadline), and optionally that it will say when it's clear. No cause guessed, nothing after it.",
+  },
+  {
+    id: "ack-en-estimate",
+    category: "ack",
+    lang: "en",
+    persona: { name: "Ducter", identity: "You are Ducter, Weyl's personal AI partner. Weyl builds HawDB (an embedded database) in ~/dev/hawdb. HawDB's full CI run (build + all tests) takes about 12 minutes; looking into a red CI run usually takes him 10-15 minutes. He prefers short answers." },
+    steps: [{ user: "HawDB's CI in ~/dev/hawdb is red again. Find out why and tell me." }],
+    expect: { opens: 1, ackFirst: true, msgs: [0, 0], maxChars: 140, require: [/\b(usually|about|around|roughly)\b.{0,20}\b(min|minutes|hour)/i], forbid: [/\bwithin\b|\bguarantee|\bpromise/i] },
+    rubric: "One short English sentence: the action (finding out why HawDB's CI failed), a rough usual duration grounded in what it knows (~10-15 min, said as usually/about, not a promise), optionally that it will say when it's clear. No cause guessed, nothing after it.",
+  },
+  {
+    // D120: an ask it can't act on without guessing gets a question, not an ack and a task.
+    id: "ambiguous-zh",
+    category: "ack",
+    lang: "zh",
+    steps: [{ user: "帮我把那个测试修一下" }],
+    expect: { opens: 0, noSend: true, maxChars: 80, require: [/[?？]/] },
+    rubric: "Nothing in the conversation says which repo or which test: the partner asks one short Chinese question (which repo / which test) and opens no task, with no ack that claims it is starting work.",
+  },
+  {
+    id: "direct-zh-howto",
+    category: "direct",
+    lang: "zh",
+    steps: [{ user: "bun test 怎么只跑一个测试文件？" }],
+    expect: { opens: 0, noSend: true, msgs: [1, 1], maxChars: 160 },
+    rubric: "A quick question answered directly in Chinese (bun test <path/to/file>, optionally -t for a name filter). No task, no ack line, no 'I'll check'.",
   },
 
   // ---------- C. follow-ups go to the task that just did the work ----------

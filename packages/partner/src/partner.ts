@@ -17,6 +17,15 @@
 //   taskId, which is how clients and the partner bind the two. If the model calls task_open
 //   without writing a line first, a short localized ack is generated from the title.
 //
+// Ack and go (D120)
+//   The ack is the end of the user's wait: the waiting line ends with it. And the task does not
+//   wait for the brief: runner.openTaskEarly makes the card, the place and the session as soon as
+//   the streamed call has its title, when the user's words name the place, else its title and
+//   place (the fields before "brief", runner/normalize.ts tool_call_head); the brief, once the
+//   call arrives, becomes the session's first turn. An early task whose place (or AI) the head or
+//   the call contradicts, or whose call never comes, is dropped before it did anything, and the
+//   right one opens instead.
+//
 // Session / expiry (principle 4, simplified)
 //   Warm (idle ≤ 55 min): keep the live session, or resume it by id after a restart.
 //   Cold: start a fresh session whose first input is the projection (last N channel events +
@@ -42,7 +51,7 @@
 //   that arrived while down) are queued again; user messages that already got a reply are not.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { HARNESSES, HARNESS_IDS, isHarnessId, type ActivityStep, type Bodies, type Brain, type HarnessId, type LogEvent, type Place } from "../../protocol/src/index.ts";
+import { HARNESSES, HARNESS_IDS, isHarnessId, type ActivityStep, type Bodies, type Brain, type HarnessId, type LogEvent, type Place, type TaskCard } from "../../protocol/src/index.ts";
 import type { CoreApi, HarnessEvent, HarnessSession, Partner, Runner } from "../../protocol/src/internal.ts";
 import { bridgeFromEnv, type BridgeClient, type BridgeContact, type BridgeOp } from "./bridge.ts";
 import { claimText, fixedOutcome, followCandidates, followLine, foldOut, inQuiet, lostLine, mayHaveGone, overAsks, whoForModel, whoForUser, zhJoin, FOLLOW_ACTIVE_MS, type OutKind, type OutOp, type OutState } from "./bridge-out.ts";
@@ -106,6 +115,28 @@ interface TurnState {
   recalls: number; // memory_search calls this turn
   noted: { title: string; memoryId?: string }[]; // memory_add successes, shown after the turn's text
   carried?: Carried; // this turn redoes one a restart cut off
+  early: EarlyOpen[]; // tasks opened from the streamed head of a task_open call (D120)
+}
+
+/** A task opened before its brief was written (D120), waiting for its task_open call. */
+interface EarlyOpen {
+  jobId: string;
+  title: string;
+  place: Place;
+  who: { project?: string; harness?: string; model?: string };
+  callId?: string; // the streamed call it was opened from
+  card: Promise<TaskCard | null>; // null: the early open failed; the call opens it the usual way
+  brief: { resolve(text: string): void; reject(err: Error): void };
+  used?: boolean; // its task_open call arrived
+}
+
+/** Two resolved places name the same place (the early one vs. the call's). */
+function samePlace(a: Place, b: Place): boolean {
+  const k = (p: Place) => {
+    const x = p as { kind: string; device?: string; repoPath?: string; path?: string; profile?: string; baseBranch?: string };
+    return JSON.stringify([x.kind, x.device ?? "local", x.repoPath ?? "", x.path ?? "", x.profile ?? "", x.baseBranch ?? ""]);
+  };
+  return k(a) === k(b);
 }
 
 interface Job {
@@ -254,6 +285,7 @@ function carriedTask(c: Carried, title: unknown, take: boolean): Carried["tasks"
   return take ? c.tasks.splice(i, 1)[0] : c.tasks[i];
 }
 
+const OPENED_NOTE = "Task opened. It reports back on its own. Your turn is done: write nothing more and call nothing else (no wait_until for it, no checking on it).";
 const generatedAck = (zh: boolean, title: string) => (zh ? `好，我去做：${title}` : `On it: ${title}`);
 
 let idCounter = 0;
@@ -460,6 +492,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const jobId = newId("job");
     core.log.append({ stream: "channel", origin: "partner", kind: "ack", body: { jobId, text: text.trim(), replyTo: replyToFor(t) } });
     t.acked = true;
+    endWaiting(); // D120: the ack is the reply the user waited for
     return { jobId };
   };
   const flushPending = () => {
@@ -491,6 +524,11 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   // Only a turn the user is waiting on (it answers their message) shows; each tool call becomes a
   // plain step; the tool's name never leaves this process.
   let shown: { since: string; step: ActivityStep } | null = null;
+  function endWaiting() {
+    if (!shown) return;
+    shown = null;
+    core.activity?.set(null);
+  }
   const showStep = (step: ActivityStep) => {
     if (!shown || shown.step === step) return;
     shown.step = step;
@@ -500,7 +538,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   // ---------- harness events ----------
   const onHarnessEvent = (ev: HarnessEvent) => {
     if (!turn) return;
-    if (ev.tool) {
+    // A task_open after its line: the ack goes out now and ends the waiting line (D120), so no
+    // "Setting up a task…" flashes before it.
+    if (ev.tool && !(TASK_OPEN_RE.test(ev.tool.name) && turn.pending?.trim())) {
       const step = activityStep(ev.tool.name);
       if (step) showStep(step);
     }
@@ -533,6 +573,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           // after the whole brief is written (live: 5 s).
           const title = (ev.tool.input as { title?: unknown } | undefined)?.title;
           if (!ack && typeof title === "string" && title.trim()) turn.unboundAck = appendAck(turn, generatedAck(turn.zh, title.trim()));
+          // Title and place are written, the brief is still coming: start the task now (D120).
+          const callId = (ev.raw as { callId?: string } | undefined)?.callId;
+          if (kind === "tool_call_title" || kind === "tool_call_head") openEarly(turn, ev.tool.input as Record<string, unknown>, kind === "tool_call_head" ? "head" : "title", callId);
         }
       } else if (QUIET_TOOL_RE.test(ev.tool.name)) {
         // Lookups between the ack line and task_open (Claude Code's deferred-tool ToolSearch,
@@ -542,6 +585,48 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       }
     }
   };
+
+  // ---------- ack and go (D120) ----------
+  // At the title: only when the user's words already name the place (a repo or folder path).
+  // At the head (title + place written): the call's own place; a speculative open that guessed
+  // another place (or another AI) is dropped and this one opens instead.
+  function openEarly(t: TurnState, head: Record<string, unknown>, at: "title" | "head", callId: string | undefined) {
+    if (!runner.openTaskEarly || bridgeOnly(t)) return;
+    const title = typeof head.title === "string" ? head.title.trim() : "";
+    if (!title) return;
+    const s = (k: string) => (typeof head[k] === "string" && (head[k] as string).trim() ? { [k]: (head[k] as string).trim() } : {});
+    const who = { ...s("project"), ...s("harness"), ...s("model") };
+    let place: Place;
+    if (at === "title") {
+      place = resolvePlace(undefined, [title, ...t.userTexts], core.tasks.list(), fs);
+      if (place.kind === "none") return;
+    } else {
+      const given = head.place as Place | undefined;
+      // Without a place in the head, where it works may only be in the brief: wait for the call.
+      if (!given || typeof given !== "object" || typeof given.kind !== "string") return;
+      place = resolvePlace(given, [title, ...t.userTexts], core.tasks.list(), fs);
+    }
+    const prev = t.early.find((e) => !e.used && e.callId === callId);
+    if (prev && samePlace(prev.place, place) && JSON.stringify(prev.who) === JSON.stringify(who)) return;
+    if (prev) {
+      prev.used = true;
+      prev.brief.reject(new Error("the call names another place"));
+    }
+    const jobId = prev?.jobId ?? (claimAck(t) ?? appendAck(t, generatedAck(t.zh, title))).jobId;
+    let settle!: EarlyOpen["brief"];
+    const brief = new Promise<string>((resolve, reject) => (settle = { resolve, reject }));
+    brief.catch(() => {});
+    const replyTo = replyToFor(t);
+    const card = runner.openTaskEarly({ persona: core.persona.id, title, place, ...who }, brief).then(
+      (c) => {
+        jobs.set(c.taskId, { jobId, title: c.title || title, replyTo, state: "running" });
+        core.log.append({ stream: "channel", origin: "partner", kind: "job_status", body: { jobId, text: c.title || title, state: "running", taskId: c.taskId } });
+        return c;
+      },
+      () => null,
+    );
+    t.early.push({ jobId, title, place, who, callId, card, brief: settle });
+  }
 
   // ---------- session ----------
   async function startSession(resumeSessionId?: string): Promise<void> {
@@ -753,7 +838,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     // (eval: restated in 4 of 4 runs whatever the persona said).
     const quiet = batch.length > 0 && batch.every((e) => e.kind === "report" && (e.body as Bodies["report"]).state === "needs_input");
     const results = batch.filter((e) => e.kind === "report" && (e.body as Bodies["report"]).state === "done").length;
-    turn = { triggers: batch, userTexts, replyTo, pending: null, unboundAck: null, opensSeen: 0, opensHandled: 0, zh, quiet, results, recalls: 0, noted: [] };
+    turn = { triggers: batch, userTexts, replyTo, pending: null, unboundAck: null, opensSeen: 0, opensHandled: 0, zh, quiet, results, recalls: 0, noted: [], early: [] };
     if (redo) turn.carried = redo;
     const real = batch.map((e) => e.seq).filter((n) => n > 0);
     if (real.length) inflight = { seqs: real, from: core.log.head() }, saveState();
@@ -770,7 +855,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       if (!batch.some((e) => e.seq < 0)) queueCorrections(); // one correction round, never a loop
       else corrections.length = 0;
     } finally {
-      if (shown) (shown = null), core.activity?.set(null);
+      // An early task whose call never came (the turn was cut off or changed course).
+      for (const e of turn?.early ?? []) if (!e.used) e.brief.reject(new Error("task_open never arrived"));
+      endWaiting();
       turn = null;
       inflight = undefined;
       lastActivity = now();
@@ -835,7 +922,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   core.mcp.register(
     "partner",
     "task_open",
-    "Open a task: a separate working session in its own place (repo, folder, browser) for anything that needs a place, writes, or takes more than ~10s. A follow-up on recent work (same repo, builds on what a task just did) is NOT a new task: task_send it to that task, even if it is done; it keeps its branch, worktree and session. Open a new task only for separate work; if it must build on an unmerged task branch, set place.baseBranch to that branch. Write a one-line ack naming the action BEFORE calling this. The brief must quote the user's words verbatim and list decisions, done-criteria, out of scope, and the place. " +
+    "Open a task: a separate working session in its own place (repo, folder, browser) for anything that needs a place, writes, or takes more than ~10s. A follow-up on recent work (same repo, builds on what a task just did) is NOT a new task: task_send it to that task, even if it is done; it keeps its branch, worktree and session. Open a new task only for separate work; if it must build on an unmerged task branch, set place.baseBranch to that branch. Write the one-sentence ack BEFORE calling this. Fill the fields in this order: title, place ({\"kind\":\"none\"} when it has none), then brief last: the task starts as soon as its title and place are written. The brief must quote the user's words verbatim and list decisions, done-criteria, out of scope, and the place. " +
       'Choose place {"kind":"browser"} when the work happens on the web: looking something up, checking or reading a page or site, comparing products, filling a form. The browser keeps its sign-ins between tasks. ' +
       "A browser task never signs in, submits, posts, buys, or pays by itself: it stops and asks the user with a question, so put that in the brief's out of scope. " +
       "Returns at once; the task reports back on its own. Never wait on it.",
@@ -843,11 +930,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       type: "object",
       properties: {
         title: { type: "string", description: "Short title in the user's language" },
-        brief: { type: "string", description: "User's verbatim words, decisions, done-criteria, out of scope, place" },
         place: {
           type: "object",
           description:
-            'Where it works: {"kind":"repo","device":"local","repoPath":"~/dev/foo"}, {"kind":"folder","device":"local","path":"~/Documents/x"}, or {"kind":"browser","device":"local","profile":"default"} for web work. Omit if none.',
+            'Where it works, written before the brief: {"kind":"repo","device":"local","repoPath":"~/dev/foo"}, {"kind":"folder","device":"local","path":"~/Documents/x"}, {"kind":"browser","device":"local","profile":"default"} for web work, or {"kind":"none"}.',
           properties: {
             kind: { type: "string", enum: ["none", "repo", "folder", "browser"] },
             device: { type: "string", description: '"local" (default). Another device only when the user asks for it or the task needs what only it has; names come from the [devices] line' },
@@ -866,6 +952,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           description: `Which AI runs the task (${HARNESS_IDS.map((h) => `${h} = ${HARNESSES[h].name}`).join(", ")}). Omit it: the user's default runs it. Name one only when the user asks for it, or a [devices] line shows the device has only that one signed in.`,
         },
         model: { type: "string", description: "Only with harness, and only when the user names a model; written the way that harness names its models." },
+        brief: { type: "string", description: "Last, after title and place: the user's verbatim words, decisions, done-criteria, out of scope, place" },
       },
       required: ["title", "brief"],
     },
@@ -898,7 +985,32 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         return { ok: true, taskId: again.taskId, title: again.title, note: "This task was already opened for this message; it was not opened again. It reports back on its own." };
       }
       let jobId: string;
-      if (t) {
+      const userTexts = t?.userTexts ?? [];
+      const place = resolvePlace(args.place, [args.brief, args.title, ...userTexts], core.tasks.list(), fs);
+      const brief = redactSecrets(withVerbatim(args.brief, userTexts));
+      const note = forOriginal
+        ? `Task opened. Ducter already told ${forOriginal.agent ?? forOriginal.from ?? "the agent that asked"} it is taken; don't reply to it now. When the task reports, you'll be told to send the outcome.`
+        : OPENED_NOTE;
+      // Spike (J-Q7, J-Q8): the user's Go plus this claim is the work agreement, and the
+      // link (taskId on the claim) makes the outcome reply owed by code, not by prompt.
+      const claimFor = async (card: TaskCard) => {
+        if (forOriginal && bridge) await deliver({ ...peerOf(forOriginal), text: claimText(forOriginal.text, card.title || args.title), inReplyTo: forOriginal.messageId, taskId: card.taskId }, "reply");
+      };
+      const early = t?.early.find((e) => !e.used);
+      if (t && early) {
+        // Opened from the streamed head already (D120): this call only brings its brief.
+        early.used = true;
+        t.unboundAck = null;
+        t.opensHandled++;
+        jobId = early.jobId;
+        const card = await early.card;
+        if (card && samePlace(place, early.place) && (args.harness ?? "") === (early.who.harness ?? "") && (args.model ?? "") === (early.who.model ?? "")) {
+          early.brief.resolve(brief);
+          await claimFor(card);
+          return { ok: true, taskId: card.taskId, title: card.title, place: card.place, attention: card.attention, note };
+        }
+        early.brief.reject(new Error("the call names another place")); // dropped; opened below instead
+      } else if (t) {
         let ack = claimAck(t);
         if (!ack) {
           // The MCP call can overtake the streamed text; give the stream a moment.
@@ -915,9 +1027,6 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       } else {
         jobId = newId("job");
       }
-      const userTexts = t?.userTexts ?? [];
-      const place = resolvePlace(args.place, [args.brief, args.title, ...userTexts], core.tasks.list(), fs);
-      const brief = redactSecrets(withVerbatim(args.brief, userTexts));
       try {
         const card = await runner.openTask({
           persona: core.persona.id,
@@ -935,22 +1044,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           kind: "job_status",
           body: { jobId, text: card.title || args.title, state: "running", taskId: card.taskId },
         });
-        // Spike (J-Q7, J-Q8): the user's Go plus this claim is the work agreement, and the
-        // link (taskId on the claim) makes the outcome reply owed by code, not by prompt.
-        if (forOriginal && bridge) {
-          const claim = claimText(forOriginal.text, card.title || args.title);
-          await deliver({ ...peerOf(forOriginal), text: claim, inReplyTo: forOriginal.messageId, taskId: card.taskId }, "reply");
-        }
-        return {
-          ok: true,
-          taskId: card.taskId,
-          title: card.title,
-          place: card.place,
-          attention: card.attention,
-          note: forOriginal
-            ? `Task opened. Ducter already told ${forOriginal.agent ?? forOriginal.from ?? "the agent that asked"} it is taken; don't reply to it now. When the task reports, you'll be told to send the outcome.`
-            : "Task opened. It reports back on its own; do not wait on it or guess its result.",
-        };
+        await claimFor(card);
+        return { ok: true, taskId: card.taskId, title: card.title, place: card.place, attention: card.attention, note };
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         core.log.append({ stream: "channel", origin: "partner", kind: "job_status", body: { jobId, text: `${args.title}: ${msg}`, state: "failed" } });

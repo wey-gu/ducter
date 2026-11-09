@@ -1,0 +1,594 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Where a task runs</title>
+<!--
+  Prototype for design/where.md (draft D157). Decides nothing: it shows the note.
+  Open from the repo (art loads by relative path from apps/site, apps/web and apps/desktop).
+  Tokens are Pebble's (apps/web/static/app.css); components read only these vars.
+-->
+<style>
+@font-face { font-family: "Bricolage Grotesque"; src: url("../../apps/web/static/bricolage.woff") format("woff"); font-weight: 200 800; }
+@font-face { font-family: "Ducter Rounded SC"; src: url("../../apps/web/static/fonts/rounded-sc-bold.woff2") format("woff2"); font-weight: 700 900; size-adjust: 94%; unicode-range: U+2E80-9FFF, U+3000-303F, U+F900-FAFF, U+FF00-FFEF; }
+@font-face { font-family: "JetBrains Mono"; src: url("../../apps/web/static/fonts/jetbrains-mono.woff2") format("woff2"); }
+:root {
+  --bg: #fff6ea; --bg-deep: #fcecd7; --surface: #ffffff; --sunken: #f7ebda; --surface-sunken: #f3e6d3;
+  --ink: #2b2118; --ink-soft: #4a3d30; --ink-muted: #75654f; --faint: #c7b49a; --accent: #ff8a3d;
+  --line: #e8d9c4; --line-2: #e0c9b0; --line-soft: #f3e6d3;
+  --working-dot: #4ba8f0; --working-surface: #dcefff; --working-ink: #174a75;
+  --waiting-dot: #ffc94d; --waiting-surface: #fff0bf; --waiting-ink: #6b5000;
+  --needs-surface: #ffe3cf; --needs-ink: #8a3a0c;
+  --done-ink: #1f5e2f; --dusk-ink: #4b4a7a;
+  --base: 0 4px 0 var(--line); --press-primary: #140d07; --primary-top: #3b2d22; --press-quiet: #cdae8c;
+  --drop: 0 7px 12px -4px rgba(43,33,24,.28); --floating: 0 10px 32px rgba(43,33,24,.14);
+  --scrim: rgba(60,40,20,.14);
+  --sea-top: #cfe9e3; --sea: #8fcbc4; --sea-deep: #6fb5ae; --sky: #fbefe0;
+  --font: "Bricolage Grotesque", "PingFang SC", "Noto Sans SC", system-ui, sans-serif;
+  --head: "Bricolage Grotesque", "Ducter Rounded SC", "PingFang SC", "Noto Sans SC", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --r-sm: 12px; --r-btn: 14px; --r-md: 16px; --r-lg: 24px; --r-xl: 28px;
+  --spring: cubic-bezier(.34,1.56,.64,1); --ease: cubic-bezier(.2,.8,.2,1);
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 var(--font); padding: 0 24px 80px; }
+:lang(zh) body, body:lang(zh) { line-height: 1.75; }
+h1, h2, h3 { font-family: var(--head); margin: 0; }
+button { font: inherit; color: inherit; }
+
+/* Page chrome (prototype only) */
+.top { position: sticky; top: 0; z-index: 50; display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; padding: 16px 0 12px; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(8px); }
+.top h1 { font-size: 20px; font-weight: 800; }
+.top .sub { color: var(--ink-muted); font-size: 13px; }
+.seg { display: inline-flex; background: var(--surface-sunken); border-radius: var(--r-md); padding: 4px; gap: 2px; }
+.seg button { border: 0; background: transparent; padding: 6px 14px; border-radius: 12px; font-weight: 700; font-size: 13px; color: var(--ink-muted); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 2px 0 var(--line); }
+.board { max-width: 1240px; margin: 28px auto 0; }
+.board > header { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.board > header h2 { font-size: 20px; font-weight: 800; }
+.board > header .id { font: 700 12px var(--mono); color: var(--ink-muted); background: var(--surface-sunken); border-radius: 8px; padding: 2px 8px; }
+.board > header p { margin: 0; color: var(--ink-muted); font-size: 13px; flex: 1 0 100%; max-width: none; }
+.row { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+.cap { font-size: 12px; color: var(--ink-muted); margin: 8px 4px 0; max-width: 520px; }
+.frame { background: var(--bg-deep); border-radius: var(--r-xl); padding: 28px; position: relative; }
+
+/* Cards and chips (Pebble) */
+.card { background: var(--surface); border-radius: var(--r-xl); box-shadow: var(--floating); padding: 28px 32px; }
+.card h3 { font-size: 20px; font-weight: 800; margin-bottom: 20px; }
+.nt { width: 540px; max-width: 100%; padding: 26px 26px; }
+.nt .r { grid-template-columns: 80px 1fr !important; }
+.nt .r { display: grid; grid-template-columns: 96px 1fr; gap: 12px; margin-bottom: 18px; align-items: start; }
+.nt .r > label { font-size: 13px; font-weight: 700; color: var(--ink-muted); padding-top: 9px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; position: relative; }
+.chip { display: inline-flex; align-items: center; gap: 7px; height: 38px; padding: 0 14px; border-radius: 12px; background: var(--surface-sunken); border: 0; font-weight: 700; font-size: 14px; color: var(--ink); cursor: pointer; white-space: nowrap; }
+.chip.on { background: var(--surface); box-shadow: inset 0 0 0 2px var(--ink); }
+.chip .part { font: 500 13px var(--mono); color: var(--ink-muted); }
+.chip .sep { color: var(--faint); }
+.chip .pc { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; color: var(--ink); transition: transform .32s var(--ease), opacity .2s; }
+.chip .pc.slide { transform: translateY(-6px); opacity: 0; }
+.chip .caret { width: 10px; height: 10px; border-right: 1.6px solid currentColor; border-bottom: 1.6px solid currentColor; transform: translateY(-2px) rotate(45deg); margin-left: 3px; opacity: .8; }
+.chip img.coin { width: 24px; height: 24px; }
+.chip.quiet { color: var(--ink-muted); background: color-mix(in srgb, var(--surface-sunken) 55%, transparent); }
+.chip.quiet img.coin { opacity: .72; }
+.chip .tagel { font-size: 11px; font-weight: 700; color: var(--ink-muted); background: var(--surface); border-radius: 6px; padding: 1px 6px; }
+.chip .sug { font-size: 11px; font-weight: 800; color: var(--needs-ink); background: var(--needs-surface); border-radius: 6px; padding: 1px 6px; }
+.under { font-size: 12px; color: var(--ink-muted); margin-top: 8px; }
+.field { background: #fdf4e6; border: 1px solid #f3e2c8; border-radius: 18px; min-height: 92px; padding: 14px 16px; font-size: 15px; }
+.foot { display: flex; justify-content: flex-end; align-items: center; gap: 18px; margin-top: 8px; }
+.btn { border: 0; cursor: pointer; font-weight: 800; font-size: 15px; border-radius: var(--r-btn); padding: 10px 20px; }
+.btn.primary { color: #fff6ea; background: linear-gradient(var(--primary-top), var(--ink)); box-shadow: 0 3px 0 var(--press-primary), var(--drop); }
+.btn.secondary { background: var(--surface); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line-2), 0 3px 0 var(--press-quiet); }
+.btn.text { background: none; padding: 10px 6px; color: var(--ink-soft); }
+.pop { position: absolute; z-index: 5; top: 46px; left: 0; width: 360px; background: var(--surface); border-radius: var(--r-md); box-shadow: var(--floating), inset 0 0 0 1px var(--line); padding: 10px; }
+.pop h4 { margin: 4px 8px 8px; font: 800 13px var(--head); color: var(--ink-muted); }
+.opt { display: grid; grid-template-columns: 56px 1fr auto; gap: 12px; align-items: center; padding: 8px; border-radius: 12px; cursor: pointer; }
+.opt:hover { background: var(--surface-sunken); }
+.opt.on { box-shadow: inset 0 0 0 2px var(--ink); }
+.opt img { width: 56px; height: 44px; object-fit: contain; }
+.opt b { display: block; font-size: 15px; }
+.opt small { display: block; color: var(--ink-muted); font-size: 12px; line-height: 1.5; }
+.opt small.asleep { color: var(--dusk-ink); }
+
+/* The opened task's meta line (D152) */
+.task { width: 600px; max-width: 100%; background: var(--surface); border-radius: var(--r-lg); box-shadow: var(--base); padding: 20px 24px; }
+.task h4 { font: 800 18px var(--head); margin: 0 0 8px; }
+.meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 13px; color: var(--ink-muted); }
+.meta .st { font-weight: 800; border-radius: 8px; padding: 1px 8px; }
+.st.working { color: var(--working-ink); background: var(--working-surface); }
+.st.waiting { color: var(--waiting-ink); background: var(--waiting-surface); }
+.meta img.coin { width: 18px; height: 18px; vertical-align: -4px; }
+.meta .dot { color: var(--faint); }
+.meta .where { color: var(--ink-soft); font-weight: 700; border-bottom: 1px dotted var(--faint); cursor: help; position: relative; }
+.meta .act { margin-left: auto; font-weight: 800; color: var(--ink); cursor: pointer; }
+.tip { position: absolute; left: 0; top: 24px; background: var(--ink); color: #fff6ea; font-size: 12px; font-weight: 600; padding: 6px 10px; border-radius: 10px; white-space: nowrap; z-index: 3; }
+.tip::before { content: ""; position: absolute; left: 14px; top: -5px; border: 5px solid transparent; border-top: 0; border-bottom-color: var(--ink); }
+
+/* The switch sheet: who and where together */
+.sheet { width: 560px; max-width: 100%; padding: 24px; }
+.sheet h3 { margin-bottom: 4px; }
+.sheet .why { font-size: 13px; color: var(--ink-muted); margin-bottom: 14px; }
+.grp { margin-top: 14px; }
+.grp > .gh { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 800; color: var(--ink-soft); padding: 0 8px 6px; }
+.grp > .gh img { width: 34px; height: 26px; object-fit: contain; }
+.grp > .gh small { font-weight: 600; color: var(--ink-muted); }
+.grp > .gh small.asleep { color: var(--dusk-ink); }
+.cand { display: grid; grid-template-columns: 32px 1fr auto; gap: 10px; align-items: center; padding: 9px 10px; border-radius: 14px; cursor: pointer; }
+.cand:hover { background: var(--surface-sunken); }
+.cand.sel { box-shadow: inset 0 0 0 2px var(--ink); }
+.cand img { width: 32px; height: 32px; }
+.cand b { font-size: 15px; }
+.cand small { display: block; font-size: 12px; color: var(--ink-muted); line-height: 1.45; }
+.cand .now { font-size: 11px; font-weight: 800; color: var(--working-ink); background: var(--working-surface); border-radius: 6px; padding: 1px 7px; }
+.cand.no { cursor: default; opacity: .55; }
+.cand.no:hover { background: none; }
+.consq { margin-top: 14px; background: var(--sunken); border-radius: var(--r-md); padding: 12px 14px; font-size: 13px; color: var(--ink-soft); }
+.consq p { margin: 0; }
+.consq p + p { margin-top: 4px; }
+.consq .widen { color: var(--needs-ink); font-weight: 700; }
+.scope { display: flex; gap: 8px; margin-top: 12px; }
+.sheet .foot { margin-top: 14px; }
+
+/* Conversation bubbles (D129) */
+.convo { width: 520px; max-width: 100%; display: flex; flex-direction: column; gap: 10px; }
+.bub { max-width: 88%; padding: 12px 16px; font-size: 16px; line-height: 1.65; }
+.bub.you { align-self: flex-end; background: var(--accent); color: var(--ink); border-radius: 20px 20px 6px 20px; }
+.bub.partner { align-self: flex-start; background: var(--surface); border-radius: 20px 20px 20px 6px; box-shadow: var(--base); }
+.bub .acts { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+.bub .def { font-size: 12px; color: var(--ink-muted); margin-top: 8px; }
+.bub .note { font-size: 13px; color: var(--ink-muted); margin-top: 6px; }
+.who { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-muted); font-weight: 700; }
+.who img { width: 26px; height: 26px; }
+.waitrow { display: flex; align-items: center; gap: 10px; background: var(--surface); border-radius: 16px; box-shadow: var(--base); padding: 10px 14px; font-size: 14px; font-weight: 700; width: fit-content; }
+
+/* The islands (D81 vocabulary, nothing new) */
+.stagewrap { width: 100%; max-width: 880px; position: relative; }
+.stage { position: relative; width: 880px; height: 470px; transform-origin: 0 0; border-radius: 28px; overflow: hidden;
+  background: radial-gradient(120% 70% at 50% 0%, var(--sky) 0 18%, var(--sea-top) 34%, var(--sea) 70%, var(--sea-deep) 100%); }
+.stage .p { position: absolute; }
+.stage .p img { display: block; width: 100%; height: auto; }
+.stage .dev img { filter: drop-shadow(0 5px 5px rgb(60 50 20 / .18)); }
+.stage svg.bridges { position: absolute; inset: 0; width: 100%; height: 100%; }
+.stage .tag { position: absolute; transform: translateX(-50%); background: #fffbf0; border-radius: 12px; box-shadow: 0 2px 0 var(--line); padding: 3px 12px 4px; text-align: center; white-space: nowrap; }
+.stage .tag b { display: block; font-size: 13px; font-weight: 800; }
+.stage .tag small { display: block; font-size: 12px; font-weight: 700; color: var(--ink-soft); }
+.stage .tag small.asleep { color: var(--dusk-ink); }
+.stage .tag.chosen { box-shadow: inset 0 0 0 1.5px var(--ink), 0 2px 0 var(--line); }
+.stage .tok { position: absolute; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; }
+.stage .tok img { width: 34px; height: 34px; filter: drop-shadow(0 3px 2px rgb(60 50 20 / .25)); transition: transform .2s var(--spring); }
+.stage .tok:hover img { transform: translateY(-4px); }
+.stage .tok.on img { box-shadow: 0 0 0 2px var(--ink); border-radius: 50%; }
+.stage .tok span { font-size: 11px; font-weight: 800; background: #fffbf0; border-radius: 8px; padding: 0 6px; box-shadow: 0 1.5px 0 var(--line); }
+.float { animation: float 5.6s ease-in-out infinite; }
+.drift { animation: drift 11s ease-in-out infinite; }
+@keyframes float { 50% { transform: translateY(-5px); } }
+@keyframes drift { 50% { transform: translateX(4px); } }
+.blanket { animation: blanket 4.8s ease-in-out infinite; transform-origin: 50% 100%; }
+@keyframes blanket { 50% { transform: scaleY(1.03); } }
+.ducter.breathe { animation: breathe 3.8s ease-in-out infinite; transform-origin: 50% 100%; }
+@keyframes breathe { 50% { transform: scale(1.012, 1.03); } }
+.parcel { position: absolute; left: 0; top: 0; width: 22px; height: 18px; offset-rotate: 0deg; z-index: 6; pointer-events: none; }
+.parcel i { position: absolute; inset: 0; border-radius: 6px; background: linear-gradient(#fff8ec, #f2dfc2); box-shadow: 0 3px 0 #d9bf98, 0 5px 6px rgb(60 50 20 / .25); }
+.parcel i::after { content: ""; position: absolute; left: 9px; top: 0; bottom: 0; width: 4px; background: #e9b98c; border-radius: 2px; }
+.parcel .ptag { position: absolute; bottom: 26px; left: 50%; transform: translateX(-50%); background: #fffbf0; border-radius: 10px; box-shadow: 0 2px 0 var(--line); font-size: 12px; font-weight: 800; padding: 2px 9px; white-space: nowrap; transition: opacity .3s; }
+.parcel .ptag.wait { color: var(--waiting-ink); background: var(--waiting-surface); box-shadow: 0 2px 0 #f0d78e; }
+.flow { position: absolute; width: 14px; height: 11px; border-radius: 4px; background: linear-gradient(#fff8ec, #f2dfc2); box-shadow: 0 2px 0 #d9bf98; offset-rotate: 0deg; left: 0; top: 0; z-index: 4; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; align-items: center; }
+.controls .lbl { font-size: 12px; color: var(--ink-muted); margin-right: 4px; }
+.mini .stage { border-radius: 20px; }
+
+/* Phone frame */
+.phone { width: 390px; background: var(--bg); border-radius: 36px; box-shadow: 0 0 0 10px #2b2118, var(--floating); overflow: hidden; position: relative; min-height: 700px; }
+.phone .bar { height: 44px; }
+.phone .sheetp { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); border-radius: 24px 24px 0 0; box-shadow: var(--floating); padding: 10px 18px 28px; }
+.phone .grab { width: 40px; height: 5px; border-radius: 3px; background: var(--line-2); margin: 0 auto 12px; }
+.phone .dim { position: absolute; inset: 0; background: var(--scrim); }
+
+@media (prefers-reduced-motion: reduce) { .float, .drift, .blanket, .ducter.breathe { animation: none; } }
+body.still .float, body.still .drift, body.still .blanket, body.still .ducter.breathe { animation: none; }
+</style>
+</head>
+<body>
+<div class="top">
+  <h1 data-t="title"></h1>
+  <span class="sub" data-t="subtitle"></span>
+  <span style="flex:1"></span>
+  <div class="seg" role="group" aria-label="language"><button data-lang="zh" aria-pressed="true">中文</button><button data-lang="en" aria-pressed="false">English</button></div>
+  <div class="seg" role="group" aria-label="motion"><button data-motion="full" aria-pressed="true" data-t="motionFull"></button><button data-motion="still" aria-pressed="false" data-t="motionStill"></button></div>
+</div>
+
+<section class="board" id="b-newtask">
+  <header><span class="id">W · New task</span><h2 data-t="ntH"></h2><p data-t="ntP"></p></header>
+  <div class="row">
+    <div><div class="frame"><div class="card nt" id="nt1"></div></div><p class="cap" data-t="nt1Cap"></p></div>
+    <div><div class="frame"><div class="card nt" id="nt2"></div></div><p class="cap" data-t="nt2Cap"></p></div>
+  </div>
+</section>
+
+<section class="board" id="b-meta">
+  <header><span class="id">W · meta line</span><h2 data-t="metaH"></h2><p data-t="metaP"></p></header>
+  <div class="frame" style="display:flex;flex-direction:column;gap:16px" id="metas"></div>
+</section>
+
+<section class="board" id="b-switch">
+  <header><span class="id">W · switch</span><h2 data-t="swH"></h2><p data-t="swP"></p></header>
+  <div class="row">
+    <div><div class="frame"><div class="card sheet" id="sheet"></div></div><p class="cap" data-t="swCap"></p>
+      <div class="frame" style="margin-top:16px;width:560px;max-width:100%"><div class="card" style="padding:20px 24px" id="widen"></div></div><p class="cap" data-t="widenCap"></p></div>
+    <div><div class="phone" id="phoneSheet"></div><p class="cap" data-t="swPhoneCap"></p></div>
+  </div>
+</section>
+
+<section class="board" id="b-ask">
+  <header><span class="id">W2b · W3</span><h2 data-t="askH"></h2><p data-t="askP"></p></header>
+  <div class="row">
+    <div><div class="frame"><div class="convo" id="ask1"></div></div><p class="cap" data-t="ask1Cap"></p></div>
+    <div><div class="frame"><div class="convo" id="ask2"></div></div><p class="cap" data-t="ask2Cap"></p></div>
+  </div>
+</section>
+
+<section class="board" id="b-isles">
+  <header><span class="id">W · islands</span><h2 data-t="islesH"></h2><p data-t="islesP"></p></header>
+  <div class="stagewrap" id="bigStageWrap"></div>
+  <div class="controls">
+    <span class="lbl" data-t="play"></span>
+    <button class="btn secondary" data-play="land" data-t="pLand"></button>
+    <button class="btn secondary" data-play="wait" data-t="pWait"></button>
+    <button class="btn secondary" data-play="wake" data-t="pWake"></button>
+    <button class="btn secondary" data-play="move" data-t="pMove"></button>
+  </div>
+  <p class="cap" data-t="islesCap" style="max-width:860px"></p>
+</section>
+
+<section class="board" id="b-close">
+  <header><span class="id">W6</span><h2 data-t="closeH"></h2><p data-t="closeP"></p></header>
+  <div class="frame"><div class="convo" id="close1"></div></div>
+</section>
+
+<script>
+const ART = {
+  islandBig: "../../apps/site/public/art/island_big-960.webp",
+  islandSmall: "../../apps/site/public/art/island_small-480.webp",
+  server: "../../apps/site/public/art/server_awake-480.webp",
+  laptop: "../../apps/site/public/art/laptop_awake-640.webp",
+  laptopAsleep: "../../apps/desktop/internal/theme/art/clay/laptop_asleep@640.png",
+  phone: "../../apps/site/public/art/phone-240.webp",
+  ducter: "../../apps/site/public/art/ducter_idle-320.webp",
+  ducterWorking: "../../apps/site/public/art/ducter_working-320.webp",
+  codex: "../../apps/web/static/art/coin_codex.webp",
+  claude: "../../apps/web/static/art/coin_claude_code.webp",
+  claudeOff: "../../apps/web/static/art/coin_claude_code_off.webp",
+};
+let lang = "zh";
+const L = (zh, en) => (lang === "zh" ? zh : en);
+
+const T = {
+  title: ["在哪台电脑上做", "Where a task runs"],
+  subtitle: ["草稿 D157 · design/where.md · hel 是家（服务器），MacBook 替 hel 做事", "Draft D157 · design/where.md · hel is the home (a server), MacBook does tasks for it"],
+  motionFull: ["动起来", "Motion"], motionStill: ["静止", "Still"],
+  ntH: ["开一件事：只有真有得选，才出现电脑", "New task: the computer appears only when there's a choice"],
+  ntP: ["左：只有一台电脑，卡片和今天一模一样。右：两台电脑，「不用文件夹」带上电脑那一段；谁来做里，只在 MacBook 上的 Claude Code 也在，点它，电脑跟着换过去。", "Left: one computer, the card is exactly today's. Right: two computers; No folder gains a computer part, and Claude Code, which lives only on MacBook, is in the Who row: picking it brings its computer along."],
+  nt1Cap: ["新用户、只有一台电脑：不出现任何「电脑」的字眼。", "A fresh user with one computer: no word about computers anywhere."],
+  nt2Cap: ["点电脑那一段打开「在哪台电脑上做」；点 Claude Code 试试一次换两样。", "Click the computer part to open On which computer; click Claude Code to see one pick change both."],
+  metaH: ["打开的任务：一行说清在哪儿", "The opened task: one line says where"],
+  metaP: ["两台电脑以后，每件事都写；鼠标停在「在 … 上」看为什么。", "With two computers, every task says it; hover the where part for why."],
+  swH: ["换谁来做：谁和在哪儿，一次选", "Switch who does it: who and where in one pick"],
+  swP: ["上面是用户认识的小岛：岛上的币就是这台电脑上登录着的 AI；任务的小包裹在它干活的岛上。下面是同一件事的文字清单。选 MacBook 上的一行，看换过去会怎样。", "On top, the islands the user knows: a coin on an island is an AI signed in on that computer; the task's parcel sits where it works. Below, the same as a literal list. Pick a MacBook row to see what moving does."],
+  swCap: ["选另一台电脑的一行：上面的包裹会跳过去（经过家）；底下一句话说清代价，扩大权限时多一句。", "Pick a row on the other computer: the parcel travels (by way of home); one line says the cost, and a second when access widens."],
+  widenCap: ["往更大的权限搬（Ducter 自己的浏览器 → 你的 Chrome），永远是你点了才算，并且明说。", "Moving toward more access (Ducter's own browser → your Chrome) only ever happens on your tap, and says so."],
+  swPhoneCap: ["手机上只有清单，没有小岛（窄屏）；这一张是 MacBook 睡着的时候。", "On the phone the sheet is the list alone (narrow); this one is while MacBook sleeps."],
+  askH: ["只有睡着的那台能做：一句话问，带默认", "Only the sleeping computer can: one line, with a default"],
+  askP: ["左（W2b）：hel 也能做，但那边没登录淘宝，所以问，默认等。右（W3）：Keynote 只有 MacBook 有，没得选就不问，直接说一声。", "Left (W2b): hel could do it but isn't signed in to the site, so it asks, defaulting to wait. Right (W3): only MacBook has Keynote; no choice, so no question, just one line."],
+  ask1Cap: ["不回就等它醒，什么都不会丢；没有倒计时。", "No answer means it waits; nothing is lost; no countdown."],
+  ask2Cap: ["手头的事里它显示「在等 · MacBook 睡着了」。", "On hand shows it as Waiting · MacBook is asleep."],
+  islesH: ["小岛上的包裹：落下、等着、搬家", "The parcel on the islands: lands, waits, moves"],
+  islesP: ["设备页本来就有：桥只连着家，包裹过桥 = 那台电脑上正在做事。这里只加三个时刻，没有新东西。", "Devices already has it: bridges only to home, parcels crossing = a task runs there. This adds three moments, nothing new."],
+  play: ["播放：", "Play:"], pLand: ["落在 MacBook 上", "Land on MacBook"], pWait: ["MacBook 睡着了，等", "MacBook asleep: wait"], pWake: ["醒了，过桥", "Wakes: crosses"], pMove: ["搬到 hel 上", "Move to hel"],
+  islesCap: ["搬家走「回家再出去」：岛和岛之间没有桥，登录和文件也不会从一台直接跑到另一台。选「静止」看减少动态的版本：包裹淡出、淡入，标签换字。", "A move goes home and out again: there is no bridge between islands, and sign-ins and files never travel from one to the other. Choose Still for reduced motion: the parcel fades out and in, the tag changes."],
+  closeH: ["「我要合电脑了」：一个决定管整台电脑", "\"I'm closing the laptop\": one decision for the whole computer"],
+  closeP: ["默认搬（你已经说了要合上）；搬不走的点名，不扩大权限的才搬。", "Default: move (you said you're closing it); what can't move is named; nothing that would widen access moves."],
+};
+
+function applyT() {
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-t]").forEach((el) => { const v = T[el.dataset.t]; if (v) el.textContent = lang === "zh" ? v[0] : v[1]; });
+}
+
+/* ---------- New task ---------- */
+let nt2 = { device: "hel", agent: "codex", pop: false };
+function ntCard(el, two) {
+  const one = !two;
+  const where = one
+    ? `<button class="chip"><span>ducter</span><span class="sep">·</span><span class="part">main</span></button>
+       <button class="chip">hawdb</button><button class="chip on">${L("不用文件夹", "No folder")}</button>`
+    : `<button class="chip"><span>ducter</span><span class="sep">·</span><span class="part">main</span><span class="sep">·</span><span>hel</span></button>
+       <button class="chip">hawdb</button>
+       <button class="chip on" id="ntWhere">${L("不用文件夹", "No folder")}<span class="sep">·</span><span class="pc" id="pc">${nt2.device === "hel" ? "hel" : "MacBook"}</span><span class="caret"></span></button>
+       ${nt2.pop ? popComputers() : ""}`;
+  const agents = one
+    ? `<button class="chip on"><img class="coin" src="${ART.claude}" alt="">Claude Code · Opus <span class="sug">${L("推荐", "Suggested")}</span></button>
+       <button class="chip"><img class="coin" src="${ART.codex}" alt="">Codex</button>`
+    : nt2.device === "hel"
+      ? `<button class="chip ${nt2.agent === "codex" ? "on" : ""}" data-ag="codex"><img class="coin" src="${ART.codex}" alt="">Codex <span class="sug">${L("推荐", "Suggested")}</span></button>
+         <button class="chip quiet" data-ag="claude"><img class="coin" src="${ART.claude}" alt="">Claude Code <span class="tagel">${L("在 MacBook 上", "on MacBook")}</span></button>`
+      : `<button class="chip ${nt2.agent === "claude" ? "on" : ""}" data-ag="claude"><img class="coin" src="${ART.claude}" alt="">Claude Code · Opus</button>
+         <button class="chip ${nt2.agent === "codex" ? "on" : ""}" data-ag="codex"><img class="coin" src="${ART.codex}" alt="">Codex</button>`;
+  const under = two && nt2.device === "mac"
+    ? `<div class="under" style="color:var(--dusk-ink)">${L("MacBook 睡着了 · 醒了就开始", "MacBook is asleep · starts when it wakes")}</div>` : "";
+  const words = one
+    ? L("把这周的读书笔记整理成一页", "Turn this week's reading notes into one page")
+    : L("把 hawdb 的 README 改得更好读一点，然后做成 Keynote 讲稿", "Make hawdb's README easier to read, then turn it into a Keynote talk");
+  el.innerHTML = `<h3>${L("开一件事", "New task")}</h3>
+    <div class="r"><label>${L("在哪儿做", "Where")}</label><div class="chips">${where}</div></div>
+    <div class="r"><label>${L("谁来做", "Who does it")}</label><div><div class="chips">${agents}</div>${under}</div></div>
+    <div class="r"><label>${L("做什么", "What")}</label><div><div class="field">${words}</div><div class="under">${L("原话会交给它", "It gets your words as they are")}</div></div></div>
+    <div class="foot"><button class="btn text">${L("取消", "Cancel")}</button><button class="btn primary">${L("开始", "Start")}</button></div>`;
+  if (two) {
+    el.querySelector("#ntWhere").onclick = (e) => { e.stopPropagation(); nt2.pop = !nt2.pop; ntCard(el, true); };
+    el.querySelectorAll("[data-ag]").forEach((b) => b.onclick = () => {
+      const ag = b.dataset.ag;
+      const dev = ag === "claude" ? "mac" : nt2.device;
+      const moved = dev !== nt2.device;
+      nt2.agent = ag; nt2.device = dev; nt2.pop = false;
+      ntCard(el, true);
+      if (moved) { const pc = el.querySelector("#pc"); pc.classList.add("slide"); requestAnimationFrame(() => requestAnimationFrame(() => pc.classList.remove("slide"))); }
+    });
+    el.querySelectorAll("[data-dev]").forEach((o) => o.onclick = (e) => {
+      e.stopPropagation(); nt2.device = o.dataset.dev; if (nt2.device === "hel" && nt2.agent === "claude") nt2.agent = "codex"; nt2.pop = false; ntCard(el, true);
+    });
+  }
+}
+function popComputers() {
+  return `<div class="pop"><h4>${L("在哪台电脑上做", "On which computer")}</h4>
+    <div class="opt ${nt2.device === "hel" ? "on" : ""}" data-dev="hel"><img src="${ART.server}" alt=""><div><b>hel</b><small>${L("一直醒着 · Codex", "Always awake · Codex")}</small></div><span class="chip" style="height:24px;padding:0 8px;font-size:11px;background:var(--needs-surface);color:var(--needs-ink)">${L("推荐", "Suggested")}</span></div>
+    <div class="opt ${nt2.device === "mac" ? "on" : ""}" data-dev="mac"><img src="${ART.laptopAsleep}" alt=""><div><b>MacBook</b><small>${L("有你的 Chrome 和 Mac 应用 · Claude Code、Codex", "Has your Chrome and Mac apps · Claude Code, Codex")}</small><small class="asleep">${L("睡着了 · 醒了就开始", "Asleep · starts when it wakes")}</small></div><span></span></div>
+  </div>`;
+}
+
+/* ---------- Meta lines ---------- */
+function metas() {
+  const rows = [
+    { t: L("查一下 HN 今天关于 OAR 的讨论", "Look up today's HN threads on OAR"), st: "working", clock: L("2 分钟", "2 min"), coin: ART.codex, ag: "Codex · gpt-6", where: L("在 hel 上 · 用 Ducter 自己的浏览器", "on hel · in Ducter's own browser"), why: L("为什么在 hel 上：公开网页，用不着你的 Chrome", "Why hel: public pages; your Chrome isn't needed") },
+    { t: L("看看淘宝那单到哪了", "Where's my Taobao order"), st: "working", clock: L("40 秒", "40 s"), coin: ART.codex, ag: "Codex · gpt-6", where: L("在 MacBook 上 · 用你的 Chrome", "on MacBook · in your Chrome"), why: L("为什么在 MacBook 上：要用你登录着的淘宝", "Why MacBook: needs your signed-in Taobao") },
+    { t: L("修一下 ducter 的 CI", "Fix ducter's CI"), st: "working", clock: L("14 分钟", "14 min"), coin: ART.codex, ag: "Codex · gpt-6", where: L("ducter · main · 在 hel 上", "ducter · main · on hel"), why: L("为什么在 hel 上：一直醒着，合上 MacBook 也不停", "Why hel: always awake; keeps going when MacBook closes"), open: true },
+    { t: L("把周报做成 Keynote", "Turn the weekly report into Keynote"), st: "waiting", stw: L("在等 · MacBook 睡着了", "Waiting · MacBook is asleep"), clock: "", coin: ART.claude, ag: "Claude Code · Sonnet", where: L("在 MacBook 上 · 用 Keynote", "on MacBook · in Keynote"), why: L("为什么在 MacBook 上：只有 MacBook 有 Keynote", "Why MacBook: only MacBook has Keynote") },
+  ];
+  document.getElementById("metas").innerHTML = rows.map((r) => `<div class="task"><h4>${r.t}</h4><div class="meta">
+      <span class="st ${r.st}">${r.st === "working" ? L("在做", "Working") : r.stw}</span>${r.clock ? `<span>${r.clock}</span>` : ""}<span class="dot">·</span>
+      <span><img class="coin" src="${r.coin}" alt=""> ${r.ag}</span><span class="dot">·</span>
+      <span class="where" tabindex="0">${r.where}${r.open ? `<span class="tip">${r.why}</span>` : ""}</span>
+      <span class="act">${L("换谁来做", "Switch who does it")}</span></div></div>`).join("");
+  document.querySelectorAll("#metas .where").forEach((w, i) => {
+    w.onmouseenter = () => { if (!w.querySelector(".tip")) w.insertAdjacentHTML("beforeend", `<span class="tip">${rows[i].why}</span>`); };
+    w.onmouseleave = () => { if (!rows[i].open) w.querySelector(".tip")?.remove(); };
+  });
+}
+
+/* ---------- Islands stage (shared by the sheet and the big board) ---------- */
+// Design units: 880 × 470. hel (home, a server) in the middle, MacBook left, iPhone back.
+const G = {
+  home: { x: 330, y: 200, w: 400 }, // island box
+  mac: { x: 30, y: 150, w: 220 },
+  phone: { x: 385, y: 30, w: 110 },
+};
+const BR = {
+  mac: "M 356 296 C 320 280, 286 252, 238 232",       // home rim → MacBook rim
+  phone: "M 478 226 C 466 180, 452 130, 442 92",      // home rim → phone
+};
+const ON_HOME = { x: 524, y: 318 };   // where a parcel sits on hel's grass, beside Ducter
+const MAC_END = { x: 200, y: 224 };   // on MacBook's grass
+function stageHTML(id, s) {
+  // s: { macAsleep, chosen: "home"|"mac", tokens: true, interactive }
+  const hb = G.home, mb = G.mac, pb = G.phone;
+  const hh = hb.w * 456 / 960, mh = mb.w * 281 / 480, ph = pb.w * 281 / 480;
+  const macImg = s.macAsleep ? ART.laptopAsleep : ART.laptop;
+  const macAsp = s.macAsleep ? 419 / 640 : 485 / 640;
+  const mw = mb.w * 0.66, mhh = mw * macAsp;
+  const sw = 170, sh = sw * 380 / 480;
+  const tok = (x, y, img, name, key) => `<div class="tok ${s.sel === key ? "on" : ""}" data-key="${key}" style="left:${x}px;top:${y}px"><img src="${img}" alt=""><span>${name}</span></div>`;
+  return `<div class="stage" id="${id}">
+    <svg class="bridges" viewBox="0 0 880 470" aria-hidden="true">
+      <defs><pattern id="${id}pl" width="10" height="10" patternUnits="userSpaceOnUse"><rect width="10" height="10" fill="#d9b884"/><rect x="0" y="0" width="6" height="10" fill="#e9cf9f"/></pattern></defs>
+      ${Object.values(BR).map((d) => `<path d="${d}" stroke="#b58f5c" stroke-width="24" fill="none" stroke-linecap="round" opacity=".55"/><path d="${d}" stroke="#ecd09c" stroke-width="18" fill="none" stroke-dasharray="6 3" stroke-linecap="butt"/><path d="${d}" stroke="#a07a48" stroke-width="1.5" fill="none" transform="translate(0,-10)"/><path d="${d}" stroke="#a07a48" stroke-width="1.5" fill="none" transform="translate(0,10)"/>`).join("")}
+    </svg>
+    <div class="p" style="left:${pb.x}px;top:${pb.y}px;width:${pb.w}px"><img src="${ART.islandSmall}" alt=""></div>
+    <div class="p dev float" style="left:${pb.x + pb.w * 0.38}px;top:${pb.y - 34}px;width:${pb.w * 0.24}px"><img src="${ART.phone}" alt=""></div>
+    <div class="p" style="left:${mb.x}px;top:${mb.y}px;width:${mb.w}px"><img src="${ART.islandSmall}" alt=""></div>
+    <div class="p dev ${s.macAsleep ? "blanket" : "float"}" id="${id}-mac" style="left:${mb.x + (mb.w - mw) / 2}px;top:${mb.y + mh * 0.47 - mhh}px;width:${mw}px"><img src="${macImg}" alt=""></div>
+    <div class="p" style="left:${hb.x}px;top:${hb.y}px;width:${hb.w}px"><img src="${ART.islandBig}" alt=""></div>
+    <div class="p dev drift" style="left:${hb.x + hb.w * 0.5}px;top:${hb.y + hh * 0.5 - sh}px;width:${sw}px"><img src="${ART.server}" alt=""></div>
+    <div class="p ducter breathe" style="left:${hb.x + hb.w * 0.12}px;top:${hb.y + hh * 0.18}px;width:${hb.w * 0.25}px"><img src="${ART.ducter}" alt=""></div>
+    ${s.tokens ? tok(hb.x + hb.w * 0.62, hb.y + hh * 0.52, ART.codex, "Codex", "home-codex") + tok(mb.x + mb.w * 0.24, mb.y + mh * 0.34, ART.claude, "Claude Code", "mac-claude") + tok(mb.x + mb.w * 0.56, mb.y + mh * 0.34, ART.codex, "Codex", "mac-codex") : ""}
+    <div class="tag ${s.chosen === "home" ? "chosen" : ""}" style="left:${hb.x + hb.w / 2}px;top:${hb.y + hh + 6}px"><b>hel</b></div>
+    <div class="tag ${s.chosen === "mac" ? "chosen" : ""}" id="${id}-mactag" style="left:${mb.x + mb.w / 2}px;top:${mb.y + mh + 4}px"><b>MacBook</b>${s.macLine ? `<small class="${s.macAsleep ? "asleep" : ""}">${s.macLine}</small>` : ""}</div>
+    <div class="tag" style="left:${pb.x + pb.w / 2}px;top:${pb.y + ph + 2}px"><b>iPhone</b></div>
+  </div>`;
+}
+function fitStage(wrap) {
+  const st = wrap.querySelector(".stage"); if (!st) return;
+  const k = Math.min(1, wrap.clientWidth / 880); st.style.transform = `scale(${k})`; wrap.style.height = 470 * k + "px";
+}
+const reduced = () => document.body.classList.contains("still") || matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// A parcel with its task's title on a tag. Paths: out along a bridge, back, onto home's grass.
+function parcel(stage, label, waitTag) {
+  const p = document.createElement("div"); p.className = "parcel";
+  p.innerHTML = `<i></i><span class="ptag ${waitTag ? "wait" : ""}">${label}</span>`;
+  stage.appendChild(p); return p;
+}
+function at(p, pt) { p.getAnimations().forEach((a) => a.cancel()); p.style.offsetPath = "none"; p.style.transform = `translate(${pt.x - 11}px, ${pt.y - 18}px)`; }
+function along(p, d, from, to, ms) {
+  p.getAnimations().forEach((a) => a.cancel());
+  p.style.transform = "translate(-11px,-18px)"; p.style.offsetPath = `path("${d}")`; p.style.offsetDistance = from + "%";
+  p.animate([{ offsetDistance: from + "%" }, { offsetDistance: to + "%" }], { duration: ms, easing: "cubic-bezier(.2,.8,.2,1)" });
+  // Timers, not .finished: the same in a browser and under a headless screenshot's virtual time.
+  return new Promise((r) => setTimeout(() => { p.style.offsetDistance = to + "%"; r(); }, ms));
+}
+function squash(p) { return p.querySelector("i").animate([{ transform: "scale(1)" }, { transform: "scale(1.08,.94)" }, { transform: "scale(1)" }], { duration: 240, easing: "ease-out" }); return new Promise((r) => setTimeout(r, 240)); }
+function hop(p, a, b, ms) {
+  return p.animate([{ transform: `translate(${a.x - 11}px, ${a.y - 18}px)` }, { transform: `translate(${(a.x + b.x) / 2 - 11}px, ${Math.min(a.y, b.y) - 50}px)` }, { transform: `translate(${b.x - 11}px, ${b.y - 18}px)` }], { duration: ms, easing: "ease-in-out", fill: "forwards" }).finished;
+}
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const MAC_D = "M 356 296 C 320 280, 286 252, 238 232 L 200 224";   // home → MacBook's grass
+const HOME_GRASS_D = "M 356 296 L 524 318";
+function flowOn(stage, on) {
+  stage.querySelectorAll(".flow").forEach((f) => f.remove());
+  if (!on || reduced()) return;
+  for (let i = 0; i < 3; i++) {
+    const f = document.createElement("div"); f.className = "flow"; f.style.offsetPath = `path("${BR.mac}")`; f.style.transform = "translate(-7px,-10px)";
+    stage.appendChild(f);
+    f.animate([{ offsetDistance: "0%" }, { offsetDistance: "100%" }], { duration: 3600, iterations: Infinity, delay: i * 1200 });
+  }
+}
+
+/* ---------- Big islands board ---------- */
+let big = { macAsleep: false, macLine: "", parcel: null, busy: false };
+function renderBig() {
+  const wrap = document.getElementById("bigStageWrap");
+  wrap.innerHTML = stageHTML("big", { macAsleep: big.macAsleep, macLine: big.macLine, tokens: true, chosen: big.chosen });
+  fitStage(wrap); big.parcel = null;
+}
+async function play(kind) {
+  if (big.busy) return; big.busy = true;
+  const title = L("修 CI", "Fix CI");
+  try {
+    if (kind === "land") {
+      big = { ...big, macAsleep: false, macLine: "", chosen: "mac" }; renderBig();
+      const st = document.getElementById("big"); const p = parcel(st, title);
+      if (reduced()) { at(p, MAC_END); p.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200 }); }
+      else { at(p, { x: 356, y: 296 }); await along(p, MAC_D, 0, 100, 900); await squash(p); }
+      setLine(L("在做 1 件事", "Working on 1 task"), false); await sleep(1200); p.querySelector(".ptag").style.opacity = 0; flowOn(st, true);
+    }
+    if (kind === "wait") {
+      big = { ...big, macAsleep: true, macLine: L("睡着了 · 醒来就接着做", "Asleep · carries on when it wakes"), chosen: "mac" }; renderBig();
+      const st = document.getElementById("big"); const p = parcel(st, L("在等", "Waiting"), true); at(p, { x: 352, y: 294 });
+      if (!reduced()) p.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 400, fill: "forwards" });
+    }
+    if (kind === "wake") {
+      big = { ...big, macAsleep: false, macLine: "", chosen: "mac" }; renderBig();
+      const st = document.getElementById("big"); const p = parcel(st, title);
+      if (reduced()) { at(p, MAC_END); } else { at(p, { x: 352, y: 294 }); await along(p, MAC_D, 0, 100, 900); await squash(p); }
+      setLine(L("在做 1 件事", "Working on 1 task"), false); await sleep(1000); p.querySelector(".ptag").style.opacity = 0; flowOn(st, true);
+    }
+    if (kind === "move") {
+      big = { ...big, macAsleep: false, macLine: L("在做 1 件事", "Working on 1 task"), chosen: "home" }; renderBig();
+      const st = document.getElementById("big"); const p = parcel(st, title); at(p, MAC_END);
+      if (reduced()) {
+        p.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, fill: "forwards" }); await sleep(200); at(p, ON_HOME); p.querySelector(".ptag").textContent = L("搬到 hel 上了", "Now on hel");
+        p.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, fill: "forwards" }); await sleep(200);
+      } else {
+        await sleep(300);
+        await along(p, MAC_D, 100, 0, 700);          // back across the bridge to home
+        await sleep(150);                             // the hand-over, beside Ducter
+        await along(p, HOME_GRASS_D, 0, 100, 400);    // onto hel's grass (home is where it now runs)
+        await squash(p); p.querySelector(".ptag").textContent = L("搬到 hel 上了", "Now on hel");
+      }
+      setLine("", false); await sleep(1400); p.querySelector(".ptag").style.opacity = 0;
+    }
+  } finally { big.busy = false; }
+}
+function setLine(text, asleep) {
+  const t = document.getElementById("big-mactag"); if (!t) return;
+  t.innerHTML = `<b>MacBook</b>${text ? `<small class="${asleep ? "asleep" : ""}">${text}</small>` : ""}`;
+}
+
+/* ---------- Switch sheet ---------- */
+let sw = { sel: "home-codex" };
+function sheet() {
+  const el = document.getElementById("sheet");
+  const rows = {
+    home: [
+      { key: "home-codex", coin: ART.codex, name: "Codex · gpt-6", why: L("一直醒着，合上 MacBook 也不停", "Always awake; keeps going when MacBook closes"), now: true },
+      { key: "home-codex-luna", coin: ART.codex, name: "Codex · gpt-6-luna", why: L("快，省额度", "Fast, uses less of the limit") },
+    ],
+    mac: [
+      { key: "mac-claude", coin: ART.claude, name: "Claude Code · Opus", why: L("最适合这件事", "Best fit for this") },
+      { key: "mac-codex", coin: ART.codex, name: "Codex · gpt-6", why: L("改动在 MacBook 上", "The changes are on MacBook") },
+    ],
+  };
+  const row = (r) => `<div class="cand ${sw.sel === r.key ? "sel" : ""}" data-key="${r.key}"><img src="${r.coin}" alt=""><div><b>${r.name}</b><small>${r.why}</small></div>${r.now ? `<span class="now">${L("现在", "Now")}</span>` : "<span></span>"}</div>`;
+  const onMac = sw.sel.startsWith("mac");
+  el.innerHTML = `<h3>${L("换谁来做", "Switch who does it")}</h3>
+    <div class="why">${L("现在：Codex 在 hel 上做，因为一直醒着，合上 MacBook 也不停。", "Now: Codex on hel, because it's always awake and keeps going when MacBook closes.")}</div>
+    <div class="stagewrap mini" id="miniWrap">${stageHTML("mini", { tokens: true, chosen: onMac ? "mac" : "home", sel: sw.sel })}</div>
+    <div class="grp"><div class="gh"><img src="${ART.server}" alt="">hel <small>· ${L("醒着 · 一直醒着", "Awake · always awake")}</small></div>${rows.home.map(row).join("")}</div>
+    <div class="grp"><div class="gh"><img src="${ART.laptop}" alt="">MacBook <small>· ${L("醒着", "Awake")}</small></div>${rows.mac.map(row).join("")}
+      <div class="cand no"><img src="${ART.claudeOff}" alt=""><div><b>Claude Code · Sonnet</b><small>${L("你关了「用它做事」", "Use it for tasks is off")}</small></div><span></span></div></div>
+    ${onMac ? `<div class="consq"><p>${L("从最近保存的进度接着做；分支会先推到 GitHub。", "Continues from its last saved progress; the branch is pushed to GitHub first.")}</p><p>${L("MacBook 合上盖子会睡着，到时候它会停下来等。", "MacBook sleeps when its lid closes; it would pause then and wait.")}</p></div>
+      <div class="scope"><button class="chip on">${L("只这件", "Just this task")}</button><button class="chip">${L("以后这类都用", "For tasks like this")}</button></div>` : ""}
+    <div class="foot"><button class="btn text">${L("取消", "Cancel")}</button>${onMac ? `<button class="btn primary">${L("换到 MacBook 上接着做", "Continue on MacBook")}</button>` : ""}</div>`;
+  const wrap = el.querySelector("#miniWrap"); fitStage(wrap);
+  const st = el.querySelector("#mini");
+  const p = parcel(st, L("修 CI", "Fix CI")); p.querySelector(".ptag").style.opacity = 0;
+  if (sw.prev && sw.prev.startsWith("mac") !== onMac && !reduced()) {
+    at(p, onMac ? ON_HOME : MAC_END);
+    (async () => { if (onMac) { await along(p, HOME_GRASS_D, 100, 0, 350); await along(p, MAC_D, 0, 100, 800); } else { await along(p, MAC_D, 100, 0, 700); await along(p, HOME_GRASS_D, 0, 100, 350); } squash(p); })();
+  } else at(p, onMac ? MAC_END : ON_HOME);
+  const pick = (k) => { if (!k || k === sw.sel) return; sw.prev = sw.sel; sw.sel = k; sheet(); };
+  el.querySelectorAll(".cand:not(.no)").forEach((c) => c.onclick = () => pick(c.dataset.key));
+  el.querySelectorAll(".tok").forEach((t) => t.onclick = () => pick(t.dataset.key));
+}
+function widen() {
+  document.getElementById("widen").innerHTML = `<div style="font:800 15px var(--head);margin-bottom:8px">${L("查一下 HN 今天关于 OAR 的讨论", "Look up today's HN threads on OAR")}</div>
+    <div class="cand sel"><img src="${ART.codex}" alt=""><div><b>Codex · gpt-6 · ${L("在 MacBook 上 · 用你的 Chrome", "on MacBook · in your Chrome")}</b><small>${L("你选的", "You picked it")}</small></div><span></span></div>
+    <div class="consq"><p>${L("从最近保存的进度接着做。", "Continues from its last saved progress.")}</p><p class="widen">${L("会用你的 Chrome，你登录着的网站它都能用。", "It will use your Chrome, with every site you're signed in to.")}</p></div>
+    <div class="foot" style="margin-top:12px"><button class="btn text">${L("取消", "Cancel")}</button><button class="btn primary">${L("换到 MacBook 上接着做", "Continue on MacBook")}</button></div>`;
+}
+function phoneSheet() {
+  document.getElementById("phoneSheet").innerHTML = `<div class="bar"></div>
+    <div style="padding:0 20px"><div style="font:800 20px var(--head);margin:8px 0 4px">${L("修一下 ducter 的 CI", "Fix ducter's CI")}</div>
+    <div class="meta"><span class="st working">${L("在做", "Working")}</span><span>${L("14 分钟", "14 min")}</span><span class="dot">·</span><span><img class="coin" src="${ART.codex}" alt=""> Codex</span><span class="dot">·</span><span class="where">${L("在 hel 上", "on hel")}</span></div></div>
+    <div class="dim"></div>
+    <div class="sheetp"><div class="grab"></div>
+      <div style="font:800 18px var(--head)">${L("换谁来做", "Switch who does it")}</div>
+      <div class="why" style="font-size:13px;color:var(--ink-muted);margin:2px 0 6px">${L("现在：Codex 在 hel 上，一直醒着。", "Now: Codex on hel, always awake.")}</div>
+      <div class="grp"><div class="gh"><img src="${ART.server}" alt="">hel <small>· ${L("醒着", "Awake")}</small></div>
+        <div class="cand"><img src="${ART.codex}" alt=""><div><b>Codex · gpt-6</b><small>${L("一直醒着，合上 MacBook 也不停", "Always awake; keeps going when MacBook closes")}</small></div><span class="now">${L("现在", "Now")}</span></div></div>
+      <div class="grp"><div class="gh"><img src="${ART.laptopAsleep}" alt="">MacBook <small class="asleep">· ${L("睡着了", "Asleep")}</small></div>
+        <div class="cand"><img src="${ART.claude}" alt=""><div><b>Claude Code · Opus</b><small>${L("睡着了 · 醒了再做", "Asleep · starts when it wakes")}</small></div><span></span></div>
+        <div class="cand"><img src="${ART.codex}" alt=""><div><b>Codex · gpt-6</b><small>${L("睡着了 · 醒了再做", "Asleep · starts when it wakes")}</small></div><span></span></div></div>
+    </div>`;
+}
+
+/* ---------- Asks ---------- */
+function asks() {
+  const face = `<div class="who"><img src="${ART.ducter}" alt="">${L("小鸭", "小鸭")}</div>`;
+  document.getElementById("ask1").innerHTML = `
+    <div class="bub you">${L("看看我淘宝上那单到哪了", "Where's my Taobao order?")}</div>${face}
+    <div class="bub partner">${L("MacBook 睡着了。等它醒了用你的 Chrome 查，还是现在在 hel 上查？", "MacBook is asleep. Wait and use your Chrome there, or look on hel now?")}
+      <div class="note">${L("hel 那边没登录淘宝，得你登一下。", "hel isn't signed in to Taobao; you'd sign in there.")}</div>
+      <div class="acts"><button class="btn primary">${L("等它醒", "Wait for it")}</button><button class="btn secondary">${L("现在在 hel 上查", "Look on hel now")}</button></div>
+      <div class="def">${L("不回的话就等它醒，什么都不会丢", "If you don't answer, it waits. Nothing is lost")}</div></div>`;
+  document.getElementById("ask2").innerHTML = `
+    <div class="bub you">${L("把这份周报做成 Keynote", "Turn this weekly report into Keynote")}</div>${face}
+    <div class="bub partner">${L("得用 MacBook 上的 Keynote，它醒了我就开始。", "This needs Keynote on MacBook. I'll start when it wakes.")}</div>
+    <div class="waitrow"><span class="st waiting" style="border-radius:8px;padding:1px 8px">${L("在等", "Waiting")}</span>${L("把周报做成 Keynote · MacBook 睡着了", "Weekly report into Keynote · MacBook is asleep")}</div>`;
+  document.getElementById("close1").innerHTML = `
+    <div class="bub you">${L("我要合电脑了", "I'm closing the laptop")}</div>${face}
+    <div class="bub partner">${L("合上之前：「修 CI」「英译」搬到 hel 上接着做；「做 Keynote」只能在 MacBook 上做，醒了接着。", "Before you close it: \"Fix CI\" and \"Translate\" move to hel and carry on; \"Keynote\" can only run on MacBook and continues when it wakes.")}
+      <div class="acts"><button class="btn primary">${L("好，搬过去", "Go, move them")}</button><button class="btn secondary">${L("先不搬", "Leave them")}</button></div>
+      <div class="def">${L("「看淘宝订单」用的是你的 Chrome，不会搬到 hel 上。", "\"Taobao order\" uses your Chrome, so it won't move to hel.")}</div></div>`;
+}
+
+function renderAll() {
+  applyT(); ntCard(document.getElementById("nt1"), false); ntCard(document.getElementById("nt2"), true);
+  metas(); sheet(); widen(); phoneSheet(); asks(); renderBig();
+}
+document.querySelectorAll("[data-lang]").forEach((b) => b.onclick = () => { lang = b.dataset.lang; document.querySelectorAll("[data-lang]").forEach((x) => x.setAttribute("aria-pressed", x === b)); renderAll(); });
+document.querySelectorAll("[data-motion]").forEach((b) => b.onclick = () => { document.body.classList.toggle("still", b.dataset.motion === "still"); document.querySelectorAll("[data-motion]").forEach((x) => x.setAttribute("aria-pressed", x === b)); });
+document.querySelectorAll("[data-play]").forEach((b) => b.onclick = () => play(b.dataset.play));
+document.addEventListener("click", () => { if (nt2.pop) { nt2.pop = false; ntCard(document.getElementById("nt2"), true); } });
+addEventListener("resize", () => { document.querySelectorAll(".stagewrap").forEach(fitStage); });
+const q = new URLSearchParams(location.search);
+if (q.get("lang") === "en") lang = "en";
+if (q.get("still")) document.body.classList.add("still");
+renderAll();
+if (q.get("lang") === "en") document.querySelectorAll("[data-lang]").forEach((x) => x.setAttribute("aria-pressed", x.dataset.lang === "en"));
+if (q.get("pop")) { nt2.pop = true; ntCard(document.getElementById("nt2"), true); }
+if (q.get("mac")) { sw.sel = "mac-claude"; sheet(); }
+if (q.get("only")) document.querySelectorAll("section.board").forEach((b) => { b.hidden = b.id !== "b-" + q.get("only"); });
+if (q.get("stage")) { setTimeout(() => play(q.get("stage")), +(q.get("delay") || 0)); }
+</script>
+</body>
+</html>

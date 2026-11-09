@@ -323,6 +323,31 @@ note and a `Dn`) before it is built.
       task there would overwrite it. Give tasks a home of their own per task, then set it in
       runner `withBrowser`. Trigger: the first DeepSeek Harness browser task.
 
+## Where a task runs (draft D157, `design/where.md`)
+
+Trigger for all of it: the author approves D157. Order matters: step 1 unblocks the Mac worker.
+
+- [ ] **Browser places on a worker** (`runner.ts:924` refuses them; D155 (3) keeps browser and
+      computer use home-only): the worker's runner hosts the browser place (native driver on a
+      Mac, D130; Ducter's own browser on Linux, D151) and reports 上网 with `where`. Trigger: the
+      first Mac switched on with D155's 让这台 Mac 也替 hel 做事.
+- [ ] **Devices frame facts:** `alwaysOn` (a server; a Mac on power with the power assertion) and
+      a worker's Signed-in sites.
+- [ ] **`fw_candidates` over (computer × agent):** `Candidate.device`, `waits`, `BodyWhy.where`,
+      the ranking in `where.md` §4.3, table tests (equal computers, sleeping best, widen never
+      automatic, a pin that pins its computer, long work to a server).
+- [ ] **`task_open {needs}`** and the partner's `[devices]` line with abilities and sleep; a
+      persona rule: pass needs, name a computer only when the user did; partner eval scenarios
+      for W1–W6 (zh/en).
+- [ ] **Queue a task for a sleeping worker** instead of refusing it (`system.md` "Not yet").
+- [ ] **The where line** on both clients whenever two or more computers run tasks (amends
+      D152 (2)); the reason on hover/tap.
+- [ ] **Switch who does it:** the island strip (desktop) and the grouped list; the move and widen
+      lines. **New task:** the computer part and an agent on another computer.
+- [ ] **Move before closing** on a laptop's card and the partner's one decision; the parcel's
+      Lands / Waits / Moves on the Devices stage.
+- [ ] **Comprehension check** of Lands and Moves with D81's owed human test of the stage.
+
 ## Devices stage: the Isles (D81)
 
 - [ ] Human comprehension test of the Isles scene (owed since D65; research/33 used LLM proxy

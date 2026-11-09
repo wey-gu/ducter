@@ -25,14 +25,16 @@ shot against `apps/web/demo-newtask.ts`). Not yet reviewed by the user.
 ## The card
 
 On the Mac it is a card over the page (a soft scrim, Esc or a click outside closes it and keeps
-the words); on the phone, a bottom sheet opened by a **＋** at the top right of On hand. Three
+the words); on the phone, a bottom sheet opened by a **＋** at the top right of On hand, in the
+system's light or dark, over a page that only dims slightly (the `--scrim` token: a light warm
+brown in light, a deeper dim in dark, D144). Three
 rows, top to bottom, each a row of flat chips (the chosen one white with an ink hairline):
 
 | Row | Default | List |
 |---|---|---|
-| 在哪儿做 / Where | the most recently used repo | repos tasks used, most recent first, then the ones `ducter up` noticed (`firstrun.json`), then 不用特定的地方 / No particular place. The repo chip has a branch part: the repo's default branch (origin's, else main or master, else the checkout's), pickable from its 30 most recently committed branches |
-| 谁来做 / Who does it | the top candidate, with its one-line reason (the same reasons as 换谁来做 / Switch who does it) | the agent coins from fw_candidates at that place, best first; a blocked one greyed with why. Picking another pins it for this task: "…，是你选的 / …; you picked it" |
-| 做什么 / What | empty, focused | a text field; under it, quiet: 原话会交给它 / It gets your words as they are |
+| 在哪儿做 / Where | the most recently used repo | repos tasks used, most recent first, then the ones `ducter up` noticed (`firstrun.json`), then 不用文件夹 / No folder. The repo chip has a branch part: the repo's default branch (origin's, else main or master, else the checkout's), pickable from its 30 most recently committed branches |
+| 谁来做 / Who does it | the top candidate, its coin tagged 推荐 / Suggested; its one-line reason on hover (the same reasons as 换谁来做 / Switch who does it). No line under the row (D144) | the agent coins from fw_candidates at that place, best first; a blocked one greyed with why on hover. Picking another pins it for this task; its coin says "…，是你选的 / …; you picked it" on hover |
+| 做什么 / What | empty, focused | a text field; under it, quiet: 你写的话会原样交给它 / It gets your words as you wrote them |
 
 **开始 / Start** (Return; ⌘Return in a multi-line field) sends `task_new` and, on
 `task_new_result` ok, opens that task (Esc returns to where the user was). A failed open keeps

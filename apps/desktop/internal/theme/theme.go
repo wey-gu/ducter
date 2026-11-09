@@ -138,8 +138,8 @@ type Tokens struct {
 	// sinks into it. Chips and text buttons are flat.
 	PressPrimary, PressSecondary, PressAccent Press
 	Raised, Floating                          Elevation
-	// Scrim dims the page under a dialog (the New task card): the same
-	// warm dark as the phone's sheet scrim.
+	// Scrim dims the page under a dialog (the New task card), in warm
+	// dark; the phone's sheet scrim (--scrim) is lighter still.
 	Scrim             ui.Color
 	Drop, DropPressed Elevation
 

@@ -29,7 +29,7 @@ func (a *App) firstRun(c *ui.Context) {
 			} else {
 				a.sleepyFace(c, 72)
 			}
-			ui.Text(c, a.L.T("firstrun.title")).FontSize(t.XXL).FontWeight(800).LetterSpacing(-0.4)
+			a.heading(c, a.L.T("firstrun.title"), t.XXL)
 			ui.Text(c, a.L.T("firstrun.body")).FontSize(t.LG).LineHeight(1.55).TextColor(t.InkSoft)
 			a.commandBox(c, StartCommand)
 			ui.Box(c).Height(1).Background(t.LineSoft).Margin(4, 0)

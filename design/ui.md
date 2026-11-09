@@ -23,14 +23,18 @@ shadow, so adding or switching a theme is pure data. The same tokens drive MyGo 
 
 ## Pebble (default) values
 
-- color: bg `#FFF6EA`, surface `#FFFFFF`, ink `#2B2118`, ink-muted `#7A6A58`, accent `#FF8A3D`,
-  decide-surface `#FFE3CF`, decide `#9A3F0E`, ok-surface `#C9F2C7`, progress-surface `#DCEFFF`,
-  user-bubble `#7CC6FF`, line `#E8D9C4`, highlight `#FFE9A8`
-- type: Bricolage Grotesque (500/700/800) + Noto Sans SC
-- shape: radius 8/12/16/22/28/pill (Components below), chunky and slightly irregular avatar
-- depth: a 3px ledge under every filled button only; containers rest on a soft shadow
-  (Components below)
-- motion: bouncy; buttons press down on tap
+> Restored 2026-11-09 from the approved artifacts (D76–D78). Prototype:
+> https://claude.ai/artifact/51djLTYeekc14y1GsP7Wn5.
+
+- color: bg `#FFF6EA`, bg-deep `#FCECD7`, surface `#FFFFFF`, sunken `#F7EBDA`, ink `#2B2118`,
+  ink-2 `#4A3D30`, muted `#75654F`, line `#E8D9C4`, line-2 `#E0C9B0`, accent `#FF8A3D` (ledge
+  `#C9642A`), decide-surface `#FFE3CF` / ink `#8A3A0C` / ledge `#F0C29E`, ok `#D6F5DC` / `#1F5E2F`,
+  fail `#FBDDE4` / `#8A1F3B`, user-bubble `#2B2118` on cream
+- type: Bricolage Grotesque (400/700/800) everywhere in the apps; zh body Noto Sans SC (PingFang
+  SC on Apple); zh headings Resource Han Rounded CN Bold (D78); mono JetBrains Mono
+- shape: radius 12/14/18 (buttons) · 16 (sheets) · 24 (cards) · 28 (hero cards, composer)
+- depth: clay (D76): cards on a solid 4pt base, buttons on a ledge with a drop and a highlight
+- motion: bouncy; buttons sink on press; character and scene breathe, status never (D77)
 
 ## Persona face
 
@@ -47,7 +51,7 @@ brows when something needs you. Other themes render the same states in their own
   in lightness and shape (waiting = dashed outline), not only in hue.
 - **Voices:** the user's messages are cocoa bubbles (`#2B2118` on cream text). Ducter speaks
   bubble-less in 18px body type on the paper, so it reads like a person talking, not a chat
-  app. Structured things (decisions, files, summaries) are white cards on a soft shadow.
+  app. Structured things (decisions, files, summaries) are white cards on the clay base (D76).
 - **Task line:** a task in the partner's words is one quiet line: a drawn mark of where it
   stands, its title as a link, its status in muted words. No fill, no capsule, no dot (D69,
   D73).
@@ -65,29 +69,33 @@ components and tokens; a value not in the scales below needs a token first.
 
 | Scale | Values | Use |
 |---|---|---|
-| type | 12 · 13 · 15 · 18 · 22 · 28 · 34 (`XS SM MD LG XL XXL Title`); mono 12 | captions/labels · secondary and small controls · body, controls, the user's bubble, the composer · the partner's voice, questions · card and lane titles · screen titles · hero |
+| type | 12 · 13 · 15 · 16 · 18 · 20 · 28 · 34 · 56; mono 13 (JetBrains Mono) | captions · labels and small controls · body and controls · the user's bubble and the composer · the partner's voice · card titles and asks · section titles · screen titles and a task's outcome · hero numbers |
 | space | 4 · 8 · 12 · 16 · 24 · 32 · 48 (`S1…S7`) | inside a group S2–S3; between groups S4–S5; a screen's sections S6–S7 |
-| radius | 8 · 12 · 16 · 22 · 28 · pill (`XS SM MD LG XL`) | chips, glyph tiles · buttons, fields · sheets, inset cards, notices · cards · hero cards, the composer · progress bars and dots |
-| controls | 32 · 40 · 48 (`ControlSM/MD/LG`) | chrome and inline lines · cards and the conversation · setup screens |
+| radius | 8 · 12 · 14 · 16 · 18 · 24 · 28 | inline code, diff boxes · small buttons, fields · buttons · sheets, notices · large buttons · cards · hero cards, the composer |
+| controls | 36 · 44 · 52 | chrome and inline lines · cards and the conversation · setup screens and the equip |
 | chips | 24 · 28 · 32 (`ChipSM/Chip/ChipLG`) | a state tag · evidence and metadata · a task in the conversation |
 | motion | press 70 ms · hover/lift `Snappy` · enter 220 ms (6-pt rise + fade) · `Bouncy` for the living message and the equip | reduced motion: no movement, colors still change |
 
-**Depth: the ledge means "this can be pressed".** Every filled button (primary, secondary,
-accent, any size) stands on the same 3px ledge in a darker shade of its own fill and sinks
-into it (translate 3, ledge to 0) while pressed. Nothing else has a ledge.
-- Containers (cards, the living message, the composer, sheets, notices, On hand cards, the
-  dossier) are never pressable-looking: they rest on `Raised` (0 2 10, ink at 7%) or, for a
-  sheet over the page, `Floating` (0 10 32, ink at 14%). Inline sheets (a result's proof) are
-  flat, hung from a 2px hairline.
+**Depth: one clay (D76).** Every solid thing stands on clay; how it stands says what it does.
+- A **card** (the living message, the composer, On hand cards, Devices cards, a page's cards)
+  rests on a solid 4pt base in `line`: `0 4 0 #E8D9C4`. It never moves or presses. A tinted
+  card's base is its own ledge color (needs you: `#F0C29E`). A sheet over the page adds
+  `Floating` (0 10 32, ink at 14%). Inline parts (a file list, a diff, a proof line) are flat.
+- A **button** stands on a 3pt ledge in a darker shade of its fill, with a soft drop (`0 7 12 −4`,
+  ink at 28%) and a 1.5pt inner top highlight; pressed, it sinks (translate 3, ledge 0, drop
+  `0 1 3` at 22%, 70 ms). The drop and the highlight are what keep an ink button standing on
+  an ink surface, where an ink ledge alone disappears.
 - Text buttons (回复… / Reply…, 不用了 / No thanks, 看细节 / Details, 都按默认 / Go on all
   defaults in a section's header) are flat: ink only, a soft tint under them on hover and
   press.
 - There are no chips for status, evidence or metadata (D73, "No pills" below).
 
-**Buttons** (one family): primary (ink on cream text), secondary (surface with a 1px `line`
-hairline), accent (the composer's send), text, and icon (a square of any of them). One radius
-(12), three heights, one type size per height (13 at 32, 15 at 40/48), the same hover (a shade
-lighter or a sunken tint), press (sink into the ledge) and keyboard focus ring on all of them.
+**Buttons** (one family): primary (ink filled from `#3B2D22` at the top, cream text, highlight cream at 26%, a 1pt rim of `#FFECD6` at 8%, a 1pt warm seam `#5A4434` above a `#140D07` ledge, drop at 38%: an ink ledge alone vanishes),
+secondary (cream `#FFF6EA` with a 1pt inner rim of ink at 9%, ledge `#E0C9B0` under a 1pt `#F3E3CC` seam; on a tinted card
+it turns white with the card's ledge color), accent (orange, ledge `#C9642A` under a 1pt `#FFA466` seam, highlight white at
+38%: the composer's send, the equip), text (flat), and icon (a square of any of them). Heights
+36 / 44 / 52 with radius 12 / 14 / 18 and type 13 / 15 / 16 (700); the 52 size stands on a 4pt
+ledge. The same hover (a shade lighter), press (sink) and keyboard focus ring on all of them.
 In a row the primary is last (macOS) and at most one primary shows per group.
 
 **Task lines.** A task in the partner's words says its title once, then where it stands: the
@@ -114,8 +122,8 @@ failed-surface), a drawn glyph at its start (no tile), 13/12px text, small (32) 
 Something that needs no answer ("ducter now works in Terminal") is a toast instead.
 
 **Shown, not dotted; no pills (anti-slop rule, D69, D73).** No pulsing or glowing status dots,
-no decorative identity-color dots, no perpetual "alive" animation (breathing rings, gliding
-bars, ticking clocks). **Status and evidence are never capsules**, on any surface: no state
+no decorative identity-color dots, no status that animates on its own (breathing rings, gliding
+bars, ticking clocks); only the clay character and scene may breathe (D77). **Status and evidence are never capsules**, on any surface: no state
 chip, no evidence chip, no metadata pill, no tag row. State is said in words (in its ink when
 it is the exception), evidence is a drawn mark and words, metadata is plain muted text or
 lives in Details. On hand needs no state chip: the lane is the state.
@@ -136,6 +144,37 @@ lives in Details. On hand needs no state chip: the lane is the state.
   label never leaves the stage; AI-account cards shrink to fit; the accessible name carries
   the full state.
 - The partner's clay face may blink or breathe: it is the thing itself, not a status dot.
+- A passed check's ✓ is drawn in the done ink (D76); other marks stay muted.
+
+**Motion: character and scene may breathe; status never blinks (D77).**
+
+| Thing | Idle motion |
+|---|---|
+| the clay partner | breathes (scale 1.012 × 1.03 from its feet, 3.8 s); blinks with an eyelid over its eyes (150 ms, every 3–6 s, sometimes twice) |
+| an awake device | floats 5pt (5.6 s) |
+| a cloud machine | drifts ±4pt (11 s) |
+| a sleeping device | its blanket rises and falls (scale-y 1.045 from the bottom, 4.8 s) |
+| an AI account's cords | a sheen runs along once every 9 s |
+| the equip | peel (14%) → arc (50%) → snap (62–69%), 0.82 s, a tock and a 10 ms haptic |
+
+Delays are staggered so nothing moves in unison. A device that can't be reached is still and a
+little grey. Status, chips, lines and buttons never animate on their own. Reduced motion: all
+of it stops; the equip cross-fades; colors and words are unchanged.
+
+**Chinese typography (D78).** Bricolage sets Latin and digits; Chinese has its own faces and rules.
+- Faces: headings (≥ 20, where Latin is 800) Resource Han Rounded CN Bold (OFL 1.1) at 94%
+  (`size-adjust`); a native client that can't scale one fallback face sets zh heading sizes one
+  step down (34→32, 28→26, 20→19). Body Noto Sans SC (PingFang SC on Apple); controls 700.
+  Fallback for headings: Noto Sans SC 800. One token swaps the heading face.
+- Letter-spacing on CJK is always 0; Latin tightening (−0.5pt at ≥ 28) applies to Latin runs only.
+- Line-height for zh reading text 1.75 (Latin 1.55–1.65); same component, per language.
+- A 1/4-em gap between CJK and Latin or digits: written into copy (zh strings have spaces);
+  dynamic text (the partner's words, user input, titles) gets it at display time
+  (`text-autospace` where supported, else an inserted U+2005); copied text is unchanged.
+- Kinsoku: 。，、？！）」』 never start a line, （「『 never end one (`line-break: strict`);
+  adjacent punctuation is compressed (`text-spacing-trim`).
+- Inline code in a zh line: JetBrains Mono at 0.86em on the same baseline, the same 1/4-em gap,
+  short tokens never broken (D73).
 
 **Conversation rhythm.** Top-aligned (no empty band above a short conversation). 12 between
 two things one voice says, 24 where the turn passes; 12 inside a message (text → chip → sheet
@@ -172,8 +211,10 @@ as a template icon) is the handheld moment: with the window closed, its menu lis
 you, each with Go / Hold / Reply…, then Open Ducter. The phone has one **Settings sheet**
 (tap the partner) with the partner's settings and the phone's own language.
 
-**Choices** (talk language, interface language, the default wait) are a row of flat choices, the
-chosen one in ink; switches are the platform's. A page's cards are containers on `Raised`; an
+**Choices** (talk language, interface language, the default wait) are a segmented clay control
+(D76): a sunken track (`#F3E6D3`, radius 16, 4pt inset), the chosen one a white surface on a 2pt
+`#E0C9B0` base in ink 700, the others muted 500; switches are the platform's. A page's cards
+stand on the card base; an
 empty list (no noted lines) is left out with its heading. Screenshots:
 `.shots/ia-2026-11-09/` (native zh/en, full-length headless, the phone sheet).
 

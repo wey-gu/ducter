@@ -5,7 +5,7 @@ import type { Attention, Bodies, EvidenceRef, LivingItem } from "@ducter/protoco
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { JSX } from "preact";
 import { A } from "./app.ts";
-import { ago, cjkPad, deviceLabel, duration, harnessName, placeLine, sameWords, when } from "./format.ts";
+import { ago, cjkPad, deviceLabel, duration, harnessName, placeLine, sameWords, splitOutcome, when } from "./format.ts";
 import { markdown } from "./markdown.ts";
 import { disablePush, enablePush } from "./push-client.ts";
 import { inApp } from "./native.ts";
@@ -37,17 +37,60 @@ const coarse = () => matchMedia("(pointer: coarse)").matches;
 // ---------- small pieces ----------
 
 const ART = ["idle", "working", "needsyou", "done", "napping"] as const;
+type Face = (typeof ART)[number];
 const FACE_KEY = { idle: "face.idle", working: "face.working", needsyou: "face.needs_you", done: "face.done", napping: "face.napping" };
+const stillMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-export function Avatar({ size, state, big }: { size: number; state?: (typeof ART)[number]; big?: boolean }) {
+/** Blinks the idle face's eyelids every 3-6 s, sometimes twice (D77). Character only. */
+function useBlink(ref: { current: HTMLElement | null }, on: boolean) {
+  useEffect(() => {
+    if (!on || stillMotion()) return;
+    let h: ReturnType<typeof setTimeout>;
+    const blink = () => {
+      for (const lid of ref.current?.querySelectorAll<HTMLElement>(".idle.on .lid") ?? [])
+        lid.animate?.([{ transform: "scaleY(0)" }, { transform: "scaleY(1)", offset: 0.45 }, { transform: "scaleY(1)", offset: 0.55 }, { transform: "scaleY(0)" }], { duration: 150, easing: "ease-in-out" });
+    };
+    const next = (ms: number) =>
+      (h = setTimeout(() => {
+        blink();
+        if (Math.random() < 0.2) setTimeout(blink, 260);
+        next(3000 + Math.random() * 3200);
+      }, ms));
+    next(800 + Math.random() * 2500);
+    return () => clearTimeout(h);
+  }, [on]);
+}
+
+/** The clay partner: the face for its state (or the one given), breathing; the idle face blinks.
+ *  Faces cross-fade on a change, standing on the box's bottom edge. */
+export function Avatar({ size, state, still }: { size: number; state?: Face; still?: boolean }) {
   const p = state ?? A.presence();
+  const ref = useRef<HTMLSpanElement>(null);
+  useBlink(ref, !still);
   return (
-    <span class="avatar" style={{ width: size, height: size }} role="img" aria-label={t(FACE_KEY[p], A.S.personaName)}>
-      {ART.map((n) => (
-        <img key={n} class={n === p ? "on" : ""} src={big && n === "idle" ? "app/art/idle-lg.png" : `app/art/${n}.png`} alt="" draggable={false} />
-      ))}
+    <span ref={ref} class={`avatar${still ? "" : " breathe"}`} style={{ width: size, height: size }} role="img" aria-label={t(FACE_KEY[p], A.S.personaName)}>
+      {ART.map((n) =>
+        n === "idle" ? (
+          <span key={n} class={`idle${n === p ? " on" : ""}`}>
+            <img src="app/art/idle.webp" alt="" draggable={false} />
+            <i class="lid l" />
+            <i class="lid r" />
+          </span>
+        ) : (
+          <img key={n} class={n === p ? "on" : ""} src={`app/art/${n}.webp`} alt="" draggable={false} />
+        ),
+      )}
     </span>
   );
+}
+
+/** An opened task's face: how the partner looks about it (D76). */
+function faceOf(a: Attention): Face {
+  if (a === "needs_you" || a === "failed") return "needsyou";
+  if (a === "done" || a === "done_claimed") return "done";
+  if (a === "working") return "working";
+  if (a === "dropped" || a === "superseded") return "napping";
+  return "idle";
 }
 
 // No status dots (ui.md, "Shown, not dotted"): state is the thing itself, its words, or a
@@ -108,10 +151,17 @@ const Back = () => (
 // today, so "Done · checking" would promise one that never comes (desktop: stateLabel).
 const stateLabel = (a: Attention) => t(`state.${a === "done_claimed" ? "done" : a}`);
 
-function Btn(p: { kind: "primary" | "quiet" | "text" | "accent"; onClick: () => void; label: string; about?: string; disabled?: boolean; grow?: boolean; class?: string }) {
+/** One clay button family (D76): primary last in a row, at most one per group. */
+function Btn(p: { kind: "primary" | "secondary" | "text" | "accent"; size?: "sm" | "lg"; onClick: () => void; label: string; about?: string; disabled?: boolean; grow?: boolean; class?: string }) {
   return (
-    <button class={`btn ${p.kind}${p.grow ? " grow" : ""}${p.class ? ` ${p.class}` : ""}`} onClick={p.onClick} aria-label={p.about ? `${p.label} · ${p.about}` : undefined} disabled={p.disabled}>
-      {p.label}
+    <button
+      class={`btn ${p.kind}${p.size ? ` ${p.size}` : ""}${p.grow ? " grow" : ""}${p.class ? ` ${p.class}` : ""}`}
+      onClick={p.onClick}
+      title={p.kind === "primary" ? p.label : undefined}
+      aria-label={p.about ? `${p.label} · ${p.about}` : undefined}
+      disabled={p.disabled}
+    >
+      <span class="lbl">{p.label}</span>
     </button>
   );
 }
@@ -212,9 +262,9 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
         </div>
       )}
       {open ? (
-        <div class="btns">
-          <Btn kind="primary" label={goText} about={about} onClick={() => A.decide(d.decisionId, "go")} />
-          <Btn kind="quiet" label={t("decision.hold")} about={about} onClick={() => A.decide(d.decisionId, "hold")} />
+        // Reply… · Hold · Go, the primary last (D76). Hold and Go stay one pair; a long Go
+        // sends Reply… to its own line under them (.btns.decide).
+        <div class="btns decide">
           <Btn
             kind="text"
             label={t("decision.reply")}
@@ -224,6 +274,10 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
               A.changed();
             }}
           />
+          <span class="pair">
+            <Btn kind="secondary" label={t("decision.hold")} about={about} onClick={() => A.decide(d.decisionId, "hold")} />
+            <Btn kind="primary" label={goText} about={about} onClick={() => A.decide(d.decisionId, "go")} />
+          </span>
         </div>
       ) : (
         <Resolved d={d} />
@@ -239,7 +293,7 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
             onEnter={() => draft.trim() && (A.decide(d.decisionId, "reply", draft.trim()), A.replyDraft.delete(d.decisionId))}
           />
           <button
-            class="send"
+            class="btn accent icon send"
             aria-label={t("composer.send")}
             disabled={!draft.trim()}
             onClick={() => {
@@ -324,7 +378,7 @@ function ProofLine({ task, evs, withTitle, max = 4 }: { task: Task; evs: Evidenc
           </button>
         ) : (
           <span key={i} class="mk" title={ev.ref}>
-            {failed ? <Cross /> : machineChecked(ev.kind) ? <Check /> : null}
+            {failed ? <Cross /> : machineChecked(ev.kind) ? <span class="ok"><Check /></span> : null}
             {ev.label}
           </span>
         ),
@@ -374,7 +428,7 @@ function ResultActions({ task, inTask }: { task: Task; inTask?: boolean }) {
         // offer to try again, never claim a failure.
         <>
           <span class="small">{t("result.unsure")}</span>
-          <Btn kind="quiet" label={t("task.action.retry")} about={title(task)} onClick={() => A.retryAction(task.id)} />
+          <Btn kind="secondary" label={t("task.action.retry")} about={title(task)} onClick={() => A.retryAction(task.id)} />
         </>
       ) : task.acted?.ok && task.acted.action === "merge" ? (
         <span class="small" style={{ color: "var(--done-ink)", fontWeight: 700 }}>
@@ -382,8 +436,8 @@ function ResultActions({ task, inTask }: { task: Task; inTask?: boolean }) {
         </span>
       ) : (
         <>
+          <Btn kind="secondary" label={t("result.pr")} about={title(task)} onClick={() => A.taskAction(task.id, "open_pr")} />
           <Btn kind="primary" label={t("result.merge", base)} about={title(task)} onClick={() => A.taskAction(task.id, "merge")} />
-          <Btn kind="quiet" label={t("result.pr")} about={title(task)} onClick={() => A.taskAction(task.id, "open_pr")} />
         </>
       )}
     </div>
@@ -469,7 +523,7 @@ function Living({ e, items }: { e: Entry; items: LivingItem[] }) {
       {decisions.length > 0 && (
         <div class="needs-head">
           <span>{t("header.needs", decisions.length)}</span>
-          {open >= 2 && <Btn kind="text" label={t("decision.goall", A.defaultable().length)} onClick={() => A.goOnAllDefaults()} />}
+          {open >= 2 && <Btn kind="text" size="sm" label={t("decision.goall", A.defaultable().length)} onClick={() => A.goOnAllDefaults()} />}
         </div>
       )}
       {decisions.map((it, i) => {
@@ -523,14 +577,10 @@ function EntryView({ e, chipOwner, livingItems }: { e: Entry; chipOwner: Map<str
 
 function OnHandButton() {
   // Just the word: the header line says what needs you, in words; no row of colored dots.
-  return (
-    <button class="onhand-btn" onClick={() => A.go({ name: "onhand" })}>
-      {t("nav.onhand")}
-    </button>
-  );
+  return <Btn kind="secondary" size="sm" label={t("nav.onhand")} onClick={() => A.go({ name: "onhand" })} />;
 }
 
-function Top({ back }: { back?: string }) {
+function Top({ back, face = true }: { back?: string; face?: boolean }) {
   if (back)
     return (
       <header class="top">
@@ -539,13 +589,13 @@ function Top({ back }: { back?: string }) {
           {back}
         </button>
         <span style={{ flex: 1 }} />
-        <Avatar size={36} />
+        {face && <Avatar size={40} />}
       </header>
     );
   return (
     <header class="top">
       <button class="who" onClick={() => A.openSettings()} aria-label={t("settings.title")}>
-        <Avatar size={46} />
+        <Avatar size={52} />
         <span style={{ minWidth: 0 }}>
           <div class="name">{A.S.personaName}</div>
           <div class="sum" role="status">
@@ -563,8 +613,8 @@ function Held() {
   return (
     <div class="held" role="alert">
       <span>{t("secret.held")}</span>
-      <Btn kind="quiet" label={t("secret.cancel")} onClick={() => ((A.held = undefined), A.changed())} />
-      <Btn kind="text" label={t("secret.send")} onClick={() => A.sendHeld()} />
+      <Btn kind="secondary" size="sm" label={t("secret.cancel")} onClick={() => ((A.held = undefined), A.changed())} />
+      <Btn kind="text" size="sm" label={t("secret.send")} onClick={() => A.sendHeld()} />
     </div>
   );
 }
@@ -586,7 +636,7 @@ function Composer({ taskId }: { taskId?: string }) {
       {(A.held?.taskId ?? "") === (taskId ?? "") && <Held />}
       <div class="composer">
         <AutoText id="composer" value={value} onInput={set} onEnter={submit} label={label} placeholder={taskId ? t("composer.task") : t("composer.placeholder", A.S.personaName)} />
-        <button class="send" aria-label={t("composer.send")} disabled={!value.trim()} onClick={submit}>
+        <button class="btn accent icon send" aria-label={t("composer.send")} disabled={!value.trim()} onClick={submit}>
           <Arrow />
         </button>
       </div>
@@ -647,6 +697,7 @@ function NotifyAsk() {
       <div class="q">{t("notify.ask")}</div>
       <div class="note">{t("notify.ask.note", "23:00", "08:00")}</div>
       <div class="btns">
+        <Btn kind="secondary" label={t("notify.later")} onClick={dismiss} />
         <Btn
           kind="primary"
           label={t("notify.on")}
@@ -659,7 +710,6 @@ function NotifyAsk() {
             if (A.push === "on") A.toast(t("notify.enabled"));
           }}
         />
-        <Btn kind="quiet" label={t("notify.later")} onClick={dismiss} />
       </div>
     </div>
   );
@@ -712,7 +762,7 @@ export function Conversation() {
 function Hello() {
   return (
     <div class="hello">
-      <Avatar size={150} state="idle" big />
+      <Avatar size={150} state="idle" />
       <h1>{t("empty.conversation.title", A.S.personaName)}</h1>
       <p>{t("empty.conversation")}</p>
       <div class="try">
@@ -720,7 +770,7 @@ function Hello() {
         {[1, 2, 3].map((i) => (
           <button
             key={i}
-            class="suggest press"
+            class="btn secondary suggest"
             onClick={() => {
               A.draft = t(`suggest.${i}`); // fills the composer; never sends
               A.changed();
@@ -742,11 +792,11 @@ function metaLine(task: Task): string {
   return [project || t("onhand.loose"), placeLine(A.L, placeOf(task))].filter(Boolean).join(" · ");
 }
 
+/** What a waiting task waits for, said once: the lane already says it is waiting. */
 function waitReason(task: Task): string {
   const w = A.S.waiterFor(task.id);
-  if (w) return t("onhand.waiting.for", w.at ? `${w.reason} · ${t("waiter.at", when(A.L, w.at))}` : w.reason);
-  const r = reasonOf(task);
-  return r ? t("onhand.waiting.for", r) : metaLine(task);
+  if (w) return w.at ? `${w.reason} · ${t("waiter.at", when(A.L, w.at))}` : w.reason;
+  return reasonOf(task) || metaLine(task);
 }
 
 function Row({ task, meta, waiting }: { task: Task; meta: string; waiting?: boolean }) {
@@ -787,7 +837,7 @@ export function OnHand() {
                 {t("lane.needs_you")} <span class="n">{needs.length + partnerDs.length || ""}</span>
                 {openCount >= 2 && (
                   <span style={{ marginLeft: "auto" }}>
-                    <Btn kind="text" label={t("decision.goall", openCount)} onClick={() => A.goOnAllDefaults()} />
+                    <Btn kind="text" size="sm" label={t("decision.goall", openCount)} onClick={() => A.goOnAllDefaults()} />
                   </span>
                 )}
               </h3>
@@ -853,6 +903,9 @@ export function OnHand() {
 }
 
 // ---------- an opened task ----------
+
+/** A face that only shows a state holds still; the partner's own presence breathes. */
+const stillFace = (a: Attention) => a === "dropped" || a === "superseded";
 
 function reportLabel(r: Bodies["report"]) {
   const k = { needs_input: "task.report.needs_input", done: "task.report.done", blocked: "task.report.blocked", failed: "task.report.failed" }[r.state as string] ?? "task.report";
@@ -1037,28 +1090,37 @@ export function TaskView({ id }: { id: string }) {
   const d = A.S.pendingDecision(id);
   const r = reportOf(task);
   const detail = !finished(task) && r ? r.summary.split("\n")[0] : "";
+  const [headline, lede] = finished(task) && r ? splitOutcome(r.summary) : ["", ""];
   return (
     <>
-      <Top back={t("nav.back")} />
+      <Top back={t("nav.back")} face={false} />
       <main class="scroll task-page" ref={scroller}>
         <div class="task-head">
-          <h1>{title(task) || t("task.unknown")}</h1>
-          <div class={`standing st-${a}`}>
-            <StateMark a={a} />
-            <b>{stateLabel(a)}</b>
-            {detail && <span>· {detail}</span>}
-            {task.openedAt && <span class="when">· {t("task.opened", ago(A.L, task.openedAt))}</span>}
+          <span class="face">
+            <Avatar size={96} state={faceOf(a)} still={stillFace(a)} />
+          </span>
+          <div class="head-words">
+            <div class={`standing st-${a}`}>
+              <StateMark a={a} />
+              <b>{stateLabel(a)}</b>
+              {task.openedAt && <span class="when">· {t("task.opened", ago(A.L, task.openedAt))}</span>}
+            </div>
+            <h1>{title(task) || t("task.unknown")}</h1>
           </div>
+          {headline && <p class="headline">{headline}</p>}
         </div>
+        {detail && <div class="outcome"><div class="said">{detail}</div></div>}
         {d && !d.resolved && <DecisionCard d={d} taskId={id} inTask />}
         {finished(task) && (
           <div class="outcome">
-            {r && <div class="said">{r.summary}</div>}
+            {lede && <div class="said">{lede}</div>}
             <ProofLine task={task} evs={resultEvidence(task)} />
             <SentLine task={task} />
             {a === "failed" ? (
+              // Didn't work (D76): try the same again, or tell it how; that opens its composer.
               <div class="btns">
-                <Btn kind="quiet" label={t("task.action.retry")} onClick={() => A.taskAction(id, "reopen")} />
+                <Btn kind="secondary" label={t("task.action.retry")} onClick={() => A.taskAction(id, "reopen")} />
+                <Btn kind="primary" label={t("task.action.tell")} onClick={() => document.getElementById("composer")?.focus()} />
               </div>
             ) : (
               <ResultActions task={task} inTask />
@@ -1097,7 +1159,7 @@ function Sheet({ children, label }: { children: preact.ComponentChildren; label:
       <div class="sheet" role="dialog" aria-modal="true" aria-label={label}>
         <div class="grab" />
         {children}
-        <Btn kind="quiet" class="sheet-close" label={t("sheet.close")} onClick={close} />
+        <Btn kind="secondary" class="sheet-close" label={t("sheet.close")} onClick={close} />
       </div>
     </>
   );
@@ -1290,7 +1352,7 @@ function PhoneSettings() {
               />
               <div class="btns">
                 <Btn
-                  kind="quiet"
+                  kind="secondary"
                   label={t("notify.test")}
                   onClick={async () => {
                     const r = await A.api.call("api/push/test", { method: "POST" });

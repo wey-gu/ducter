@@ -187,11 +187,17 @@ func (a *App) quietLink(c *ui.Context, key, text, name string) bool {
 // mark is a drawn glyph and plain words in one color: a line of proof
 // ("✓ 50/50 pass"), or what went out ("↗ git push …").
 func (a *App) mark(c *ui.Context, draw func(ui.Color) func(*ui.Painter, ui.Rect), text string, col ui.Color) ui.Element {
+	return a.markIn(c, draw, col, text, col)
+}
+
+// markIn is a mark whose glyph has its own ink: a passed check's ✓ in the
+// done ink beside muted words (D76).
+func (a *App) markIn(c *ui.Context, draw func(ui.Color) func(*ui.Painter, ui.Rect), glyph ui.Color, text string, col ui.Color) ui.Element {
 	t := a.T
 	row := ui.Row(c).Gap(t.S1 + 2).AlignItems(ui.Center).MinWidth(0)
 	row.Children(func() {
 		if draw != nil {
-			ui.Box(c).Size(16, 16).Draw(draw(col)).Shrink(0)
+			ui.Box(c).Size(16, 16).Draw(draw(glyph)).Shrink(0)
 		}
 		ui.Text(c, text).FontSize(t.SM).TextColor(col).MinWidth(0)
 	})
@@ -222,30 +228,34 @@ func (a *App) lift(c *ui.Context, e ui.Element, by float32) {
 
 // ---------- buttons ----------
 
-// The one button family (design/ui.md, Components):
+// The one button family (design/ui.md, Components; D76):
 //
-//   - primary: the one thing to do. Ink.
-//   - secondary: a choice beside it. The surface, with a hairline.
-//   - accent: the composer's send.
-//   - text (quiet): words only, a soft tint under them on hover and press.
+//   - primary: the one thing to do. Ink, cream words.
+//   - secondary: a choice beside it. Cream with a 1-point inner rim; on a
+//     tinted card, white on the card's own ledge color.
+//   - accent: the composer's send and the equip. Orange.
+//   - text (quiet): words only, a soft ink tint under them on hover and
+//     press; in a needs-you card, in its ink.
 //   - icon: a square of any of these (iconButton).
 //
-// Every filled button stands on the same ledge (a darker shade of its own
-// fill, 3 points) and sinks into it as it is pressed: the ledge means
-// "this can be pressed", and only buttons have one. Text buttons, chips
-// and containers are flat. Three heights (ControlSM/MD/LG); one radius;
-// hover, press and keyboard focus look the same on all of them.
+// Every filled button is clay: it stands on a ledge in a darker shade of
+// its fill (3 points; 4 at the large height), with a soft drop under it
+// and a 1.5-point highlight along its inner top edge, and sinks into the
+// ledge as it is pressed (70 ms). Text buttons, chips and containers are
+// flat. Three heights (ControlSM/MD/LG: 36/44/52) with their own radius
+// (12/14/18) and type (13/15/16, 700).
 type btnKind int
 
 const (
-	btnPrimary   btnKind = iota // dark press-down pebble button
-	btnSecondary                // light, flat, hairline
+	btnPrimary   btnKind = iota // ink clay button
+	btnSecondary                // cream clay button
 	btnText                     // text button
-	btnAccent                   // accent, as the composer's send
+	btnAccent                   // orange clay button: the composer's send
 )
 
 // controlHeight snaps a height to the family's three: small (chrome,
-// inline lines), medium (cards, the conversation), large (setup screens).
+// inline lines), medium (cards, the conversation), large (setup screens,
+// the composer's send, the equip).
 func (a *App) controlHeight(h float32) float32 {
 	t := a.T
 	switch {
@@ -255,6 +265,18 @@ func (a *App) controlHeight(h float32) float32 {
 		return t.ControlMD
 	}
 	return t.ControlLG
+}
+
+// buttonRadius is the corner radius of a button h tall.
+func (a *App) buttonRadius(h float32) float32 {
+	t := a.T
+	switch a.controlHeight(h) {
+	case t.ControlSM:
+		return t.ButtonRadius[0]
+	case t.ControlMD:
+		return t.ButtonRadius[1]
+	}
+	return t.ButtonRadius[2]
 }
 
 // button is a button of the family. It reports a click.
@@ -272,17 +294,20 @@ func (a *App) buttonFor(c *ui.Context, label, about string, kind btnKind, height
 		name = label + " · " + about
 	}
 	h := a.controlHeight(height)
-	size, padX := t.MD, t.S4
+	size, padX := t.MD, t.S5-4 // 15 / 20
 	switch h {
 	case t.ControlSM:
-		size, padX = t.SM, t.S3
+		size, padX = t.SM, t.S3+2 // 13 / 14
 	case t.ControlLG:
-		padX = t.S5
+		size, padX = t.Bubble, t.S5 // 16 / 24
 	}
 	if kind == btnText {
-		padX = t.S2 + 2
+		padX = t.S3
+		if h == t.ControlSM {
+			padX = t.S2 + 2
+		}
 	}
-	b := ui.Row(c.Key("btn:"+name)).Height(h).Padding(0, padX).Radius(t.RadiusSM).
+	b := ui.Row(c.Key("btn:"+name)).Height(h).Padding(0, padX).Radius(a.buttonRadius(h)).
 		Justify(ui.Center).AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(name).Focusable().Shrink(0)
 	fg := a.buttonLook(c, b, kind, h, onSurface)
 	b.Children(func() {
@@ -291,47 +316,77 @@ func (a *App) buttonFor(c *ui.Context, label, about string, kind btnKind, height
 	return b.Clicked()
 }
 
+// onTint reports whether a surface is a tinted card's (needs you, done,
+// didn't work), where a secondary button turns white on the card's ledge.
+func (a *App) onTint(s ui.Color) (theme.StateColors, bool) {
+	t := a.T
+	for _, st := range []theme.StateColors{t.NeedsYou, t.Done, t.Failed, t.Working, t.Waiting} {
+		if s == st.Surface {
+			return st, true
+		}
+	}
+	return theme.StateColors{}, false
+}
+
 // buttonLook styles b as a button of kind on onSurface, h tall: its
-// background, edge, depth and hover/press states. It returns the ink for
-// what is on it.
+// fill, clay depth and hover/press states. It returns the ink for what is
+// on it.
 func (a *App) buttonLook(c *ui.Context, b ui.Element, kind btnKind, h float32, onSurface ui.Color) ui.Color {
 	t := a.T
 	hover, down := b.Hovered(), b.Pressed()
+	ledge := float32(3)
+	if h >= t.ControlLG {
+		ledge = 4
+	}
 	switch kind {
 	case btnPrimary:
-		bg := t.Ink
+		p := t.PressPrimary
+		p.Offset = ledge
+		top, bottom := p.Top, t.Ink
 		if hover && !down {
-			bg = t.Ink.Mix(t.InkSoft, 0.45)
+			top, bottom = top.Mix(t.InkSoft, 0.4), bottom.Mix(t.InkSoft, 0.4)
 		}
-		b.Background(bg)
-		a.press(c, b, t.PressPrimary)
-		return t.OnUserBubble
+		// A vertical gradient: lighter at the top, ink at the bottom.
+		b.Gradient(top, bottom, 180)
+		a.press(c, b, p)
+		return t.Bg
 	case btnAccent:
 		bg := t.Accent
 		if hover && !down {
-			bg = t.Accent.Mix(t.NeedsYou.Strong, 0.35)
+			bg = t.Accent.Mix(t.Surface, 0.1)
 		}
 		b.Background(bg)
-		a.press(c, b, t.PressAccent)
+		p := t.PressAccent
+		p.Offset = ledge
+		a.press(c, b, p)
 		return t.OnAccent
 	case btnSecondary:
-		bg := t.Surface
-		if hover && !down {
-			bg = t.SurfaceSunken.Mix(t.Surface, 0.6)
+		p := t.PressSecondary
+		p.Offset = ledge
+		bg := t.Bg
+		if st, ok := a.onTint(onSurface); ok {
+			bg, p.Color, p.Rim = t.Surface, st.Ledge, ui.Transparent
 		}
-		b.Background(bg).Border(1, t.Line)
-		a.press(c, b, t.PressSecondary)
+		if hover && !down {
+			bg = bg.Mix(t.Surface, 0.6)
+		}
+		b.Background(bg)
+		a.press(c, b, p)
 		return t.Ink
 	}
 	// Text: no edge until the pointer comes over it.
-	if hover || down {
-		tint := 0.08
-		if down {
-			tint = 0.14
-		}
-		b.Background(t.NeedsYou.Ink.Alpha(float32(tint)))
+	fg := t.InkSoft
+	if st, ok := a.onTint(onSurface); ok {
+		fg = st.Ink
 	}
-	return t.NeedsYou.Ink
+	if hover || down {
+		tint := 0.06
+		if down {
+			tint = 0.11
+		}
+		b.Background(t.Ink.Alpha(float32(tint)))
+	}
+	return fg
 }
 
 // sink moves a flat control a point down while it is pressed.
@@ -346,25 +401,47 @@ func (a *App) sink(c *ui.Context, e ui.Element, down bool) {
 	e.Translate(0, e.AnimateTo("sink", y, ui.Animation{Duration: a.T.PressDur}))
 }
 
-// press gives an element the Pebble depth: a solid offset under it that it
-// sinks into while pressed.
+// press gives a button its clay (D76): the highlight along its inner top
+// edge and its rim, the ledge under it, and a soft drop; pressed, it
+// sinks into the ledge (the ledge goes to 0, the drop tightens). Reduced
+// motion keeps the change without the movement.
 func (a *App) press(c *ui.Context, e ui.Element, press theme.Press) {
 	if press.Offset == 0 {
 		return
 	}
-	down := e.Pressed()
-	off := press.Offset
-	y := float32(0)
-	if down {
-		y = press.Offset - 1
-		off = 1
+	t := a.T
+	target := float32(0)
+	if e.Pressed() || a.pressAll {
+		target = 1
 	}
-	if c.Preferences().ReduceMotion {
-		e.Shadow(0, off, 0, 0, press.Color)
-		return
+	k := target
+	if !c.Preferences().ReduceMotion {
+		k = e.AnimateTo("press", target, ui.Animation{Duration: t.PressDur})
 	}
-	y = e.AnimateTo("press", y, ui.Animation{Duration: a.T.PressDur})
-	e.Translate(0, y).Shadow(0, press.Offset-y, 0, 0, press.Color)
+	y := press.Offset * k
+	lerp := func(a, b float32) float32 { return a + (b-a)*k }
+	if k > 0 && !c.Preferences().ReduceMotion {
+		e.Translate(0, y)
+	}
+	e.InsetShadow(0, 1.5, 0, 0, press.Hi)
+	if press.Rim.A > 0 {
+		e.InsetShadow(0, 0, 0, 1, press.Rim)
+	}
+	// MyGo paints a later shadow over an earlier one (CSS is the other
+	// way round): the soft drop first, then the ledge, then the seam (1
+	// point, right under the fill); seam and ledge sink to nothing as it
+	// is pressed.
+	d, dp := t.Drop, t.DropPressed
+	if press.Drop.A > 0 {
+		d.Color = press.Drop
+	}
+	e.Shadow(0, lerp(d.Y, dp.Y), lerp(d.Blur, dp.Blur), lerp(-4, 0), d.Color.Mix(dp.Color, k))
+	if l := press.Offset - y; l > 0.01 {
+		e.Shadow(0, l, 0, 0, press.Color)
+		if press.Seam.A > 0 {
+			e.Shadow(0, min(1, l), 0, 0, press.Seam)
+		}
+	}
 }
 
 // navButton is a button of the window's chrome (Devices, On hand): a
@@ -391,7 +468,7 @@ func (a *App) navButton(c *ui.Context, key, label, name string, glyph func()) bo
 // family's kinds.
 func (a *App) iconButton(c *ui.Context, label string, size float32, kind btnKind, draw func(fg ui.Color) func(p *ui.Painter, r ui.Rect)) bool {
 	t := a.T
-	b := ui.Box(c.Key("icon:"+label)).Size(size, size).Radius(t.RadiusSM).Label(label).
+	b := ui.Box(c.Key("icon:"+label)).Size(size, size).Radius(a.buttonRadius(size)).Label(label).
 		Role(ui.RoleButton).Cursor(ui.CursorPointer).Focusable().Shrink(0)
 	fg := a.buttonLook(c, b, kind, size, t.Surface)
 	b.Draw(draw(fg))

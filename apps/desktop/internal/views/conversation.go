@@ -150,7 +150,7 @@ func (a *App) emptyConversation(c *ui.Context) {
 	a.enter(c, col)
 	col.Children(func() {
 		a.avatar(c, theme.Idle, 180)
-		ui.Text(c, a.L.T("empty.conversation.title", a.S.PersonaName)).FontSize(t.XXL).FontWeight(800).LetterSpacing(-0.3)
+		a.heading(c, a.L.T("empty.conversation.title", a.S.PersonaName), t.XXL)
 		ui.Text(c, a.L.T("empty.conversation")).FontSize(t.LG).TextAlign(ui.Center).TextColor(t.InkSoft).LineHeight(1.6)
 		ui.Column(c).Gap(t.S2).Margin(t.S3, 0, 0, 0).AlignItems(ui.Stretch).Width(460).MaxWidthPercent(100).Children(func() {
 			ui.Text(c, a.L.T("empty.try")).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted).LetterSpacing(0.5)
@@ -192,10 +192,11 @@ func (a *App) header(c *ui.Context) {
 			who.Background(t.SurfaceSunken.Mix(t.Chrome, 0.45))
 		}
 		who.Children(func() {
-			a.avatar(c, a.presence(c), 40)
+			// The clay partner, 52 points: it breathes and blinks (D77).
+			a.partnerFace(c, "bar", a.presence(c), 52)
 			ui.Column(c).Gap(1).MinWidth(0).Children(func() {
-				ui.Text(c, a.S.PersonaName).FontSize(t.MD).FontWeight(800).LetterSpacing(-0.2).SingleLine()
-				ui.Text(c, a.summary(b)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
+				a.heading(c, a.S.PersonaName, t.XL).LineHeight(1.1).SingleLine()
+				ui.Text(c, a.summary(b)).FontSize(t.SM).TextColor(t.InkMuted).SingleLine()
 			})
 		})
 		if who.Clicked() {
@@ -322,7 +323,7 @@ func (a *App) userBubble(c *ui.Context, text string, pending bool) {
 	ui.Row(c).Children(func() {
 		ui.Spacer(c)
 		r := t.BubbleRadius
-		b := ui.Text(c, text).Selectable().SelectionColor(t.InkSoft).FontSize(t.MD).LineHeight(1.55).
+		b := ui.Text(c, text).Selectable().SelectionColor(t.InkSoft).FontSize(t.Bubble).LineHeight(leadingFor(text, 1.6)).
 			TextColor(t.OnUserBubble).Background(t.UserBubble).Padding(t.S3, t.S4).Radius(r[0], r[1], r[2], r[3]).
 			MaxWidthPercent(72)
 		if pending {
@@ -337,8 +338,10 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 	case e.User != nil:
 		a.userBubble(c, e.User.Text, false)
 	case e.AI != nil:
-		ui.Column(c).MaxWidthPercent(88).Gap(t.S3).Children(func() {
-			markdown.View(c, e.AI.Text, &a.md)
+		// The partner's words get the CJK-Latin gap at display time; a
+		// copy leaves it out (D78).
+		ui.Column(c).MaxWidthPercent(88).Gap(t.S3).CopyData(autospaceCopy).Children(func() {
+			markdown.View(c, autospace(e.AI.Text), &a.md)
 			a.chipsFor(c, e)
 		})
 	case e.Job != nil:
@@ -394,7 +397,7 @@ func (a *App) job(c *ui.Context, j *store.Job, firstSeq int64) {
 	t := a.T
 	ui.Column(c).MaxWidthPercent(88).Gap(t.S3).Children(func() {
 		if j.Ack != nil {
-			ui.Text(c, j.Ack.Text).Selectable().FontSize(t.PartnerSize).LineHeight(1.65)
+			ui.Text(c, autospace(j.Ack.Text)).Selectable().CopyData(autospaceCopy).FontSize(t.PartnerSize).LineHeight(leadingFor(j.Ack.Text, 1.65))
 		}
 		st := j.Status
 		if st == nil {
@@ -459,7 +462,7 @@ func (a *App) living(c *ui.Context, e *store.Entry) {
 	a.resettle(c, card, e.Revision)
 	card.Children(func() {
 		if away {
-			ui.Text(c, a.L.T("living.title")).FontSize(t.XL).FontWeight(800).LetterSpacing(-0.2)
+			a.heading(c, a.L.T("living.title"), t.XL)
 		}
 		needs, open := 0, 0
 		for _, it := range items {
@@ -488,8 +491,9 @@ func (a *App) living(c *ui.Context, e *store.Entry) {
 			}
 			d := a.S.Decisions[it.DecisionID]
 			if d == nil {
-				ui.Column(c.Key(i)).Padding(t.S4, t.S5).Radius(t.RadiusLG).Background(t.NeedsYou.Surface).Children(func() {
-					ui.Text(c, it.Text).FontSize(t.LG).LineHeight(1.5).FontWeight(500)
+				ui.Column(c.Key(i)).Padding(t.S5-4, t.S5-2).Radius(t.RadiusLG).Background(t.NeedsYou.Surface).
+					Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge).Children(func() {
+					a.heading(c, autospace(it.Text), t.XL).LineHeight(1.35)
 				})
 				continue
 			}
@@ -511,9 +515,10 @@ func (a *App) living(c *ui.Context, e *store.Entry) {
 // question, its default, and Go / Hold / Reply… / Details.
 func (a *App) decisionCard(c *ui.Context, d *store.DecisionState, taskID string) {
 	t := a.T
-	ui.Column(c).Padding(t.S4, t.S5).Gap(t.S2).Radius(t.RadiusLG).Background(t.NeedsYou.Surface).Children(func() {
+	ui.Column(c).Padding(t.S5-4, t.S5-2).Gap(t.S2+2).Radius(t.RadiusLG).Background(t.NeedsYou.Surface).
+		Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge).Children(func() {
 		if task := a.S.Task(firstNonEmpty(taskID, d.TaskID)); task != nil && task.Title() != "" {
-			ui.Text(c, task.Title()).FontSize(t.XS).FontWeight(700).TextColor(t.NeedsYou.Ink)
+			ui.Text(c, task.Title()).FontSize(t.SM).FontWeight(700).TextColor(t.NeedsYou.Ink)
 		}
 		a.decisionBody(c, d, taskID)
 	})
@@ -537,11 +542,11 @@ func (a *App) resettle(c *ui.Context, e ui.Element, revision int) {
 
 func (a *App) decisionBody(c *ui.Context, d *store.DecisionState, taskID string) {
 	t := a.T
-	ui.Text(c, d.Question).FontSize(t.LG).LineHeight(1.5).FontWeight(500)
+	a.heading(c, autospace(d.Question), t.XL).LineHeight(1.35)
 	if d.Resolved == nil {
 		ui.Text(c, a.defaultLine(c, d)).FontSize(t.SM).TextColor(t.NeedsYou.Ink)
 	}
-	st := decisionStyle{height: t.ControlMD, quietBg: t.Surface}
+	st := decisionStyle{height: t.ControlMD, quietBg: t.NeedsYou.Surface}
 	if id := firstNonEmpty(taskID, d.TaskID); id != "" && !(a.Route == RouteTask && a.TaskID == id) {
 		// Details sits after Reply…, a text button like it.
 		st.after = func() {
@@ -629,11 +634,11 @@ func (a *App) composer(c *ui.Context) {
 	}
 	ui.Row(c).Justify(ui.Center).Padding(t.S2, t.S5, t.S5, t.S5).Children(func() {
 		box := ui.Row(c).Grow(1).MaxWidth(convWidth).Gap(t.S3).AlignItems(ui.Center).Padding(t.S2, t.S2, t.S2, t.S5).
-			Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color)
+			Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color)
 		box.Children(func() {
 			ta := ui.TextArea(c.Key("composer"), &a.draft).Lines(1, 8).MinHeight(0).Placeholder(a.L.T("composer.placeholder", a.S.PersonaName)).
 				Label(a.L.T("composer.label", a.S.PersonaName)).AutoFocus().
-				Background(ui.Transparent).Border(0, ui.Transparent).Padding(t.S3, 0).Grow(1).FontSize(t.MD).
+				Background(ui.Transparent).Border(0, ui.Transparent).Padding(t.S3, 0).Grow(1).FontSize(t.Bubble).
 				OnTextKey(func(k ui.TextKey) bool {
 					if k.Key == ui.KeyEnter && k.Mods == 0 {
 						if a.SendMessage(k.Text()) {

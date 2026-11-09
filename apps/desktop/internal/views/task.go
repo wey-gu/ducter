@@ -13,6 +13,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/diff"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
+	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
 // task is an opened task, at conductor depth: one centered column on
@@ -32,18 +33,26 @@ func (a *App) task(c *ui.Context) {
 	ui.Scroll(c.Key("taskpage:" + task.ID)).Grow(1).MinHeight(0).Children(func() {
 		ui.Row(c).Justify(ui.Center).Padding(t.S5, t.S5, t.S6, t.S5).Children(func() {
 			ui.Column(c).Grow(1).MaxWidth(convWidth).MinWidth(0).Gap(t.S6).Children(func() {
-				ui.Column(c).Gap(t.S4).Children(func() {
-					a.taskStanding(c, task)
-					if d := a.S.PendingDecision(task.ID); d != nil {
-						if d.Resolved != nil || d.Pending != "" {
-							a.decisionAnswered(c, d)
-						} else {
-							a.decisionCard(c, d, task.ID)
+				// The head: the clay partner's state face at the column's
+				// start, beside where it stands, a pending ask and the
+				// outcome (D76; still one column, D74).
+				ui.Row(c).Gap(t.S5).AlignItems(ui.Start).Children(func() {
+					ui.Column(c).Padding(t.S1, 0, 0, 0).Shrink(0).Children(func() {
+						a.partnerFace(c, "task:"+task.ID, taskPresence(task), taskFaceW)
+					})
+					ui.Column(c).Grow(1).MinWidth(0).Gap(t.S4).Children(func() {
+						a.taskStanding(c, task)
+						if d := a.S.PendingDecision(task.ID); d != nil {
+							if d.Resolved != nil || d.Pending != "" {
+								a.decisionAnswered(c, d)
+							} else {
+								a.decisionCard(c, d, task.ID)
+							}
 						}
-					}
-					if finished(task) {
-						a.outcome(c, task)
-					}
+						if finished(task) {
+							a.outcome(c, task)
+						}
+					})
 				})
 				a.whatItDid(c, task)
 				a.changes(c, task)
@@ -108,27 +117,78 @@ func (a *App) taskStanding(c *ui.Context, task *store.Task) {
 			detail = summaryLine(rep.Summary)
 		}
 	}
+	// The state in its ink, in words (the face beside it shows it too).
 	ui.Row(c).Gap(t.S2).Wrap().AlignItems(ui.Center).Children(func() {
-		ui.Box(c).Size(18, 18).Draw(stateMark(att)(t.State(string(att)).Ink)).Shrink(0)
-		ui.Text(c, a.stateLabel(att)).FontSize(t.MD).FontWeight(800).TextColor(t.State(string(att)).Ink)
+		ui.Text(c, a.stateLabel(att)).FontSize(t.SM).FontWeight(800).TextColor(t.State(string(att)).Ink)
 		if detail != "" {
-			ui.Text(c, "· "+detail).FontSize(t.MD).TextColor(t.InkSoft).MinWidth(0)
+			ui.Text(c, "· "+autospace(detail)).FontSize(t.SM).TextColor(t.InkSoft).MinWidth(0)
 		}
 		if task.OpenedAt != "" {
-			ui.Text(c, "· "+a.L.T("task.opened", a.ago(task.OpenedAt))).FontSize(t.MD).TextColor(t.InkMuted)
+			ui.Text(c, "· "+a.L.T("task.opened", a.ago(task.OpenedAt))).FontSize(t.SM).TextColor(t.InkMuted)
 		}
 	})
 }
 
-// outcome is the task's result, said once: its report in the partner's
-// size, how it knows on one quiet line, what went out, then what to do
-// next (Merge / Open draft PR; Try again for one that didn't work).
+// taskFaceW is the width of an opened task's state face.
+const taskFaceW = 112
+
+// taskPresence is the face an opened task shows: done, needs you (also
+// for one that didn't work: it frowns and holds up its flag), working,
+// napping while it waits, idle otherwise.
+func taskPresence(task *store.Task) theme.Presence {
+	switch task.Attention() {
+	case protocol.Done, protocol.DoneClaimed:
+		return theme.Done
+	case protocol.NeedsYou, protocol.Failed:
+		return theme.NeedsYou
+	case protocol.Working:
+		return theme.Working
+	case protocol.Blocked:
+		return theme.Napping
+	}
+	return theme.Idle
+}
+
+// headline splits a report's summary into its first sentence, said as
+// the outcome at 34, and the rest, said under it at the partner's size.
+func headline(s string) (head, rest string) {
+	s = strings.TrimSpace(s)
+	rs := []rune(s)
+	for i, r := range rs {
+		end := false
+		switch r {
+		case '。', '！', '？':
+			end = true
+		case '.', '!', '?':
+			end = i+1 == len(rs) || rs[i+1] == ' ' || rs[i+1] == '\n'
+		case '\n':
+			end = true
+		}
+		if end {
+			head, rest = strings.TrimSpace(string(rs[:i+1])), strings.TrimSpace(string(rs[i+1:]))
+			if r == '\n' {
+				head = strings.TrimSpace(string(rs[:i]))
+			}
+			return head, rest
+		}
+	}
+	return s, ""
+}
+
+// outcome is the task's result, said once: its first sentence at 34/800,
+// the rest of its report in the partner's size, how it knows on one quiet
+// line, what went out, then what to do next (Open draft PR / Merge; for
+// one that didn't work, Try again / Tell it what to do).
 func (a *App) outcome(c *ui.Context, task *store.Task) {
 	t := a.T
 	rep := task.Report()
-	ui.Column(c.Key("outcome")).Gap(t.S3).Children(func() {
+	ui.Column(c.Key("outcome")).Gap(t.S3).Selectable().CopyData(autospaceCopy).Children(func() {
 		if rep != nil && rep.Summary != "" {
-			ui.Text(c, rep.Summary).FontSize(t.PartnerSize).LineHeight(1.6).Selectable()
+			head, rest := headline(rep.Summary)
+			a.heading(c, autospace(head), t.Title).LineHeight(1.18).Balance()
+			if rest != "" {
+				ui.Text(c, autospace(rest)).FontSize(t.PartnerSize).LineHeight(leadingFor(rest, 1.65)).TextColor(t.InkSoft)
+			}
 		}
 		evs := task.Evidence
 		if rep != nil && len(rep.Evidence) > 0 {
@@ -139,9 +199,14 @@ func (a *App) outcome(c *ui.Context, task *store.Task) {
 		}
 		a.sentLine(c, task)
 		if task.Attention() == protocol.Failed {
-			ui.Row(c).Children(func() {
+			// Try again, or tell it what to do instead: the primary
+			// opens the task's composer (D76).
+			ui.Row(c).Gap(t.S3).Wrap().AlignItems(ui.Center).Padding(t.S2, 0, 0, 0).Children(func() {
 				if a.buttonFor(c, a.L.T("task.action.retry"), task.Title(), btnSecondary, t.ControlMD, t.Bg) {
 					a.TaskAction(task.ID, "reopen")
+				}
+				if a.buttonFor(c, a.L.T("task.action.tell"), task.Title(), btnPrimary, t.ControlMD, t.Bg) {
+					a.focusComposer = true
 				}
 			})
 			return
@@ -170,7 +235,7 @@ func (a *App) decisionAnswered(c *ui.Context, d *store.DecisionState) {
 
 // sectionTitle heads a section of the opened task.
 func (a *App) sectionTitle(c *ui.Context, text string) ui.Element {
-	return ui.Text(c, text).FontSize(a.T.XL).FontWeight(800).LetterSpacing(-0.2)
+	return a.heading(c, text, a.T.XL)
 }
 
 // ---------- what it did ----------
@@ -391,10 +456,10 @@ func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 	draft := a.taskDrafts[task.ID]
 	ui.Row(c).Justify(ui.Center).Padding(t.S2, t.S5, t.S5, t.S5).Children(func() {
 		ui.Row(c).Grow(1).MaxWidth(convWidth).Gap(t.S3).AlignItems(ui.Center).Padding(t.S2, t.S2, t.S2, t.S5).
-			Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Children(func() {
+			Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Children(func() {
 			ta := ui.TextArea(c.Key("taskcomposer:"+task.ID), &draft).Lines(1, 6).MinHeight(0).Placeholder(a.L.T("composer.task")).
 				Label(a.L.T("composer.task")).
-				Background(ui.Transparent).Border(0, ui.Transparent).Padding(t.S3, 0).Grow(1).FontSize(t.MD).
+				Background(ui.Transparent).Border(0, ui.Transparent).Padding(t.S3, 0).Grow(1).FontSize(t.Bubble).
 				OnTextKey(func(k ui.TextKey) bool {
 					if k.Key == ui.KeyEnter && k.Mods == 0 {
 						if a.SendToTask(task.ID, k.Text()) {

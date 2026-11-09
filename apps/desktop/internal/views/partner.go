@@ -108,7 +108,8 @@ func (a *App) partnerHero(c *ui.Context, wide bool) {
 			shown = theme.Napping
 		}
 	}
-	ui.Row(c.Key("partner-hero")).Gap(t.S6).Wrap().AlignItems(ui.Center).Padding(t.S5).Radius(t.RadiusXL).Background(t.Clay).Children(func() {
+	ui.Row(c.Key("partner-hero")).Gap(t.S6).Wrap().AlignItems(ui.Center).Padding(t.S5).Radius(t.RadiusXL).Background(t.Clay).
+		Shadow(0, t.Raised.Y, 0, 0, t.Raised.Color).Children(func() {
 		ui.Column(c).Gap(t.S3).AlignItems(ui.Center).Shrink(0).Children(func() {
 			a.avatar(c, shown, 220)
 			ui.Row(c.Key("faces")).Gap(t.S2).Role(ui.RoleGroup).Children(func() {
@@ -167,7 +168,7 @@ func (a *App) partnerName(c *ui.Context) {
 	ps := &a.partner
 	if !ps.editing {
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Wrap().Children(func() {
-			ui.Text(c, a.S.PersonaName).FontSize(t.Title).FontWeight(800).LetterSpacing(-0.6).SingleLine().Shrink(1).MinWidth(0)
+			a.heading(c, a.S.PersonaName, t.Title).SingleLine().Shrink(1).MinWidth(0)
 			if a.S.Settings != nil && a.button(c, a.L.T("partner.rename"), btnText, t.ControlSM, t.Clay) {
 				ps.editing, ps.nameDraft, ps.focused = true, "", false
 			}
@@ -207,7 +208,7 @@ func (a *App) sheetCard(c *ui.Context, key, title string, body func()) {
 	t := a.T
 	ui.Column(c.Key("card:"+key)).Gap(t.S4).Padding(t.S5).Radius(t.RadiusLG).Background(t.Surface).
 		Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Role(ui.RoleGroup).Label(title).Children(func() {
-		ui.Text(c, title).FontSize(t.XL).FontWeight(800).LetterSpacing(-0.2)
+		a.heading(c, title, t.XL)
 		body()
 	})
 }
@@ -218,35 +219,38 @@ func (a *App) note(c *ui.Context, text string) {
 	ui.Text(c, text).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkMuted)
 }
 
-// choices is a row of flat choices, one of them chosen: a radio group.
-// It returns the index clicked, or -1.
+// choices is a segmented clay control (D76): a sunken track, the chosen
+// one a white surface standing on a 2-point base, in ink 700, the others
+// muted 500: a radio group. It returns the index clicked, or -1.
 func (a *App) choices(c *ui.Context, key, name string, labels []string, sel int) int {
 	t := a.T
 	hit := -1
-	ui.Row(c.Key("choices:" + key)).Gap(t.S2).Wrap().Role(ui.RoleRadioGroup).Label(name).Children(func() {
-		for i, l := range labels {
-			on := i == sel
-			b := ui.Row(c.Key("choice:"+l)).Height(t.ControlMD).Padding(0, t.S4).Radius(t.RadiusSM).AlignItems(ui.Center).
-				Cursor(ui.CursorPointer).Role(ui.RoleRadio).Label(l).AccessSelected(on).Focusable().Shrink(0)
-			fg := t.Ink
-			switch {
-			case on:
-				b.Background(t.Ink)
-				fg = t.OnUserBubble
-			case b.Pressed():
-				b.Background(t.SurfaceSunken)
-			case b.Hovered():
-				b.Background(t.SurfaceSunken.Mix(t.Surface, 0.4))
-			default:
-				b.Background(t.SurfaceSunken.Mix(t.Surface, 0.55))
+	ui.Row(c).Children(func() {
+		ui.Row(c.Key("choices:" + key)).Gap(t.S1).Padding(t.S1).Radius(t.RadiusMD).Background(t.SurfaceSunken).
+			Role(ui.RoleRadioGroup).Label(name).Shrink(1).MinWidth(0).Wrap().Children(func() {
+			for i, l := range labels {
+				on := i == sel
+				b := ui.Row(c.Key("choice:"+l)).Height(t.ControlSM).Padding(0, t.S4).Radius(t.RadiusSM).AlignItems(ui.Center).
+					Justify(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleRadio).Label(l).AccessSelected(on).Focusable().Shrink(0)
+				fg, weight := t.InkMuted, 500
+				switch {
+				case on:
+					b.Background(t.Surface).Shadow(0, 2, 0, 0, t.Line2)
+					fg, weight = t.Ink, 700
+				case b.Pressed():
+					b.Background(t.Ink.Alpha(0.08))
+				case b.Hovered():
+					b.Background(t.Ink.Alpha(0.04))
+					fg = t.InkSoft
+				}
+				b.Children(func() {
+					ui.Text(c, l).FontSize(t.MD).FontWeight(weight).TextColor(fg).SingleLine().AccessHidden(true)
+				})
+				if b.Clicked() && !on {
+					hit = i
+				}
 			}
-			b.Children(func() {
-				ui.Text(c, l).FontSize(t.MD).FontWeight(700).TextColor(fg).SingleLine().AccessHidden(true)
-			})
-			if b.Clicked() && !on {
-				hit = i
-			}
-		}
+		})
 	})
 	return hit
 }

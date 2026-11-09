@@ -69,3 +69,12 @@ export const sameWords = (detail: string | undefined, title: string) => {
   const norm = (s: string) => s.split(/\s+/).filter(Boolean).join(" ").replace(/[.。…]+$/, "").toLowerCase();
   return !!detail && norm(detail) !== "" && norm(detail) === norm(title);
 };
+
+/** The outcome said once (D74): its first sentence as the headline, the rest in the partner's
+ *  voice under it. A one-sentence report is all headline. */
+export function splitOutcome(summary: string): [string, string] {
+  const text = summary.trim();
+  const m = /^(.+?(?:[。！？]|[.!?](?=\s|$)))\s*/su.exec(text);
+  if (m && m[1]!.length < text.length && m[1]!.length <= 90) return [m[1]!, text.slice(m[0].length)];
+  return text.length <= 90 ? [text, ""] : ["", text];
+}

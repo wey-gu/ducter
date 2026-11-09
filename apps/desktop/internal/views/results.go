@@ -103,7 +103,11 @@ func (a *App) proofLine(c *ui.Context, task *store.Task, evs []protocol.Evidence
 			case store.MachineChecked(ev.Kind):
 				draw = drawCheck
 			}
-			m := a.mark(c.Key(i), draw, ev.Label, t.InkMuted).Tooltip(ev.Ref)
+			glyph := t.InkMuted
+			if !failed && store.MachineChecked(ev.Kind) {
+				glyph = t.Done.Ink // a passed check's ✓ in the done ink (D76)
+			}
+			m := a.markIn(c.Key(i), draw, glyph, ev.Label, t.InkMuted).Tooltip(ev.Ref)
 			if ev.Ref != "" && m.Clicked() {
 				a.openEvidence(c, ev)
 			}
@@ -182,11 +186,12 @@ func (a *App) resultActions(c *ui.Context, task *store.Task) {
 		} else if done := task.Acted; done != nil && done.OK && done.Action == "merge" {
 			ui.Text(c.Key("acted"), a.L.T("result.merged", base)).FontSize(t.SM).FontWeight(700).TextColor(t.Done.Ink)
 		} else {
-			if a.buttonFor(c, a.L.T("result.merge", base), task.Title(), btnPrimary, t.ControlMD, t.Surface) {
-				act("merge")
-			}
+			// The primary last, as macOS orders a group (D76).
 			if a.buttonFor(c, a.L.T("result.pr"), task.Title(), btnSecondary, t.ControlMD, t.Surface) {
 				act("open_pr")
+			}
+			if a.buttonFor(c, a.L.T("result.merge", base), task.Title(), btnPrimary, t.ControlMD, t.Surface) {
+				act("merge")
 			}
 		}
 	})

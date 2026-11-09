@@ -248,18 +248,22 @@ note and a `Dn`) before it is built.
       visible; in a `bun build --compile` binary the avatar file is not bundled, so there is no
       Dock tile.
 - [ ] Find what triggers macOS's "CuaDriver was prevented from modifying apps" notification.
-- [ ] **Native browser by default (D126).** The switch is built (`DUCTER_BROWSER_DRIVER=native`);
-      the default stays cua-driver until a native path passes (research/38). Claude Code: check
-      that Claude in Chrome is connected at task open (one `tabs_context_mcp` call, or a status
-      read if Claude Code exposes one) and fall back to cua-driver when it is not, then a live
-      HN lookup and a sign-in handoff pass. Codex: its Browser / Chrome surfaces answering under
-      `codex app-server` without the ChatGPT app; desktop Computer Use alone types into the
-      user's front tab and should not carry browser places. Then flip `DEFAULT_BROWSER_DRIVER`,
-      and let Your devices and abilities and the 上网 setup treat a ready native driver as
-      enough (they require cua-driver today).
-- [ ] Tell the partner that a Codex task (any place) carries the user's Codex Computer Use and
-      can drive any app and the user's own Chrome (research/38), so it briefs Go rules on
-      repo tasks that touch the web too.
+- [ ] **Native browser, live checks (D130).** Native is the default and unit-tested with fakes;
+      what is still unseen live: (1) a Claude in Chrome run with the extension connected to
+      Claude Code (HN lookup, then a sign-in handoff), and the in-place move to cua-driver on a
+      real "not connected"; (2) Codex's browser tools with Ducter started under the desktop app
+      (access host passed through), in the in-app browser only; (3) whether a socket-only Claude
+      in Chrome connection shows in `list_connected_browsers`. Computer Use stays out of live
+      tests (rule).
+- [ ] **Restrict Codex Computer Use to the browser surface when the access host is there.**
+      `-c plugins.unified-computer-use@openai-bundled.mcp_servers.cua_repl.env.CUA_REPL_ENABLED_SURFACES="browser"`
+      would make app-level keystrokes impossible in a browser place; the `mcp_servers.<name>.enabled`
+      path is verified, the `env` one is not (it might replace the server's whole env and break
+      it). Trigger: the first live run of (2) above.
+- [ ] **A clean setup for DeepSeek Harness browser tasks.** Its clean home
+      (`<dataDir>/harness/deepseek-harness`, AGENTS.md = instructions) is the partner's; a browser
+      task there would overwrite it. Give tasks a home of their own per task, then set it in
+      runner `withBrowser`. Trigger: the first DeepSeek Harness browser task.
 
 ## Devices stage: the Isles (D81)
 

@@ -225,7 +225,7 @@ var enIA = Table{
 	"settings.about.title_replay": "Replay the intro",
 	"settings.sound":              "Sound",
 	"settings.sound.note":         "The sound of the intro. It follows the Mac's volume, and stays silent with Reduce motion.",
-	"title.prompt":                "Press any key",
+	"title.prompt":                "PRESS ANY KEY",
 	"title.label":                 "Ducter wakes up and looks at you. Press any key to start.",
 
 	"menu.about":             "About Ducter",

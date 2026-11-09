@@ -1,7 +1,11 @@
 package views
 
 import (
+	"image"
+	"image/color"
 	"math"
+	"math/rand"
+	"sync"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -9,36 +13,42 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
-// The title moment (D87): the first launch opens on a warm dark field. A
-// light rises like dawn, the clay Ducter is there asleep and breathing, a
-// low chord swells, and on one clear tone it opens its eyes and looks at
-// you. The name settles, then a quiet "Press any key". Any key or click
-// leaves at once (the sound fades in 0.3 s); from the prompt the light
-// fills the window and turns into the paper of the first setup card.
+// The title moment (D87). Before dawn, above a sea of clouds, the clay
+// Ducter sleeps on its small island, breathing. Light rises from under the
+// clouds at the left, the view pushes in a little and rises with it, each
+// layer at its own depth; motes drift in the light. On one clear tone
+// Ducter opens its eyes (half, a beat, then wide) and looks at you; a
+// breath of light around it. Its clay name is lit from the left and a
+// light passes over it. Once the music settles, a small, letter-spaced
+// "Press any key" breathes in and out. Any key or click leaves at once
+// (the sound fades); from the prompt the dawn floods the window and turns
+// into the paper of the first setup card.
 //
-// The picture is drawn at paint time from one clock, as idle motion is
-// (motion.go), with the same numbers as the prototype
-// (https://claude.ai/artifact/BC1i6YEt8EKQ5VtMeCjEw8) and the sound
-// (tools/sound/title.py: the tone at 3.55 s).
+// Everything is drawn at paint time from one clock, with the numbers of
+// the prototype's renderer (https://claude.ai/artifact/BC1i6YEt8EKQ5VtMeCjEw8,
+// render.js). The art is theme.Title(): key art cut into layers by
+// tools/art/title_layers.py.
 //
 // It plays once per Mac (desktop.json titleSeenAt), again from Settings ›
 // About. No sound when Settings turned sounds off, under reduced motion,
-// when the app was opened at login, or when the window isn't active when
-// it starts. Reduced motion: the last frame, still, faded in over 0.4 s.
+// when the app was opened at login (then no title at all), or when the
+// window isn't active when it starts. Reduced motion: the settled frame,
+// still, faded in over 0.4 s; the prompt doesn't breathe.
 
 // The timeline, in seconds.
 const (
-	titleLightFrom  = 0.4  // the light starts to rise
-	titleLightTo    = 3.4  // and is up
-	titleDucFrom    = 0.6  // Ducter is lit by it from here
-	titleDucTo      = 3.0  // fully
+	titleExpFrom    = 0.3  // the light comes up
+	titleExpTo      = 3.7  // and is up
 	titleEyes       = 3.5  // the eyes open (the tone is at 3.55)
 	titleBell       = 3.55 // the tone
-	titleFirstBlink = 5.3  // the first ordinary blink: it's alive
-	titleWordFrom   = 4.2  // the name
-	titleWordTo     = 5.4
-	titlePrompt     = 6.1 // "Press any key"
-	titlePromptIn   = 0.9
+	titleFirstBlink = 5.6  // the first ordinary blink: it's alive
+	titleLogoFrom   = 4.3  // the name, lit from the left
+	titleLogoDur    = 1.4
+	titleSheenFrom  = 5.0 // then a light passes over it
+	titleSheenDur   = 1.2
+	titlePrompt     = 6.6 // "Press any key", once the music settles
+	titlePromptIn   = 1.0
+	titlePushDur    = 9.0  // the camera's slow push-in
 	titleRest       = 99.0 // any time after everything settled
 )
 
@@ -52,9 +62,8 @@ const (
 type TitleSound interface{ Stop(fade time.Duration) }
 
 type titleState struct {
-	on     bool
-	played bool // this launch: the checking card shows Ducter awake
-	// quiet: opened at login, so no sound (and no title, see ShowTitle).
+	on      bool
+	played  bool // this launch: the checking card shows Ducter awake
 	start   time.Time
 	leaveAt time.Time
 	leaveT  float64 // where the timeline was when it left
@@ -167,19 +176,6 @@ func (a *App) titleView(c *ui.Context) {
 
 // ---------- the picture ----------
 
-// Colors of the night and the dawn (Pebble's ink, deepened; its accent,
-// warmed).
-var (
-	titleNight    = ui.Hex("#0F0A06")
-	titleEarth    = ui.Hex("#28180C")
-	titleDawn     = ui.Hex("#FFBA7A")
-	titleEmber    = ui.Hex("#D66E30")
-	titleUmber    = ui.Hex("#3C200E")
-	titleCream    = ui.Hex("#FFF1DD")
-	titleCreamDim = ui.Hex("#BFA78A")
-	titleLash     = ui.Hex("#3A2116")
-)
-
 func clamp01(x float64) float64 { return math.Max(0, math.Min(1, x)) }
 
 func smooth01(x float64) float64 { return 0.5 - 0.5*math.Cos(math.Pi*clamp01(x)) }
@@ -189,7 +185,7 @@ func outCubic(x float64) float64 { x = clamp01(x); return 1 - math.Pow(1-x, 3) }
 // outBack overshoots a little and settles: the small look up.
 func outBack(x float64) float64 {
 	x = clamp01(x)
-	const c = 1.4
+	const c = 1.3
 	return 1 + (c+1)*math.Pow(x-1, 3) + c*math.Pow(x-1, 2)
 }
 
@@ -211,7 +207,7 @@ func titleLids(t float64) float64 {
 		return 0.4 * (1 - outCubic((a-0.36)/0.26))
 	}
 	if t >= titleFirstBlink {
-		if b := math.Mod(t-titleFirstBlink, 4.1); b < 0.15 {
+		if b := math.Mod(t-titleFirstBlink, 4.3); b < 0.15 {
 			return math.Sin(math.Pi * b / 0.15)
 		}
 	}
@@ -220,60 +216,106 @@ func titleLids(t float64) float64 {
 
 // titleFrame is everything the picture needs at t.
 type titleFrame struct {
-	light, bloom float64 // the dawn: 0..1, and the swell after the tone
-	show, lit    float64 // Ducter: there (alpha), and how lit (brightness)
-	sx, sy, lift float64 // its breath, and the look up (in units)
+	exp          float64 // the dawn: 0 night, 1 up
+	push, crane  float64 // the camera: push-in, and its rise
+	bloom        float64 // the breath of light at the tone
+	sx, sy, lift float64 // Ducter's breath, and its look up
 	lids         float64
-	word, wordY  float64 // the name: alpha, and how far below its place (units)
+	logo, sheen  float64 // the name's reveal, and the light passing over it
 	prompt       float64
+	breath       float64 // the prompt's slow breath, 0.6..1
 }
 
 func titleAt(t float64) titleFrame {
 	var f titleFrame
-	f.light = smooth01((t - titleLightFrom) / (titleLightTo - titleLightFrom))
-	f.bloom = 0.18 * smooth01((t-titleBell)/1.2)
-	f.show = smooth01((t - 0.3) / 0.8)
-	f.lit = 0.1 + 0.9*smooth01((t-titleDucFrom)/(titleDucTo-titleDucFrom))
+	f.exp = smooth01((t - titleExpFrom) / (titleExpTo - titleExpFrom))
+	f.push = 0.03*smooth01(t/titlePushDur) + 0.004*clamp01((t-titlePushDur)/30)
+	f.crane = smooth01(t / 7)
+	if t >= titleBell {
+		f.bloom = 0.16 * math.Exp(-(t-titleBell)/1.6) * smooth01((t-titleBell)/0.12)
+	}
 	awake := smooth01((t - titleEyes) / 0.8)
-	sleepW, idleW := waveAt(t, 4.4), waveAt(t-titleEyes, 3.8)
-	f.sx = 1 + 0.016*sleepW*(1-awake) + 0.012*idleW*awake
-	f.sy = 1 + 0.04*sleepW*(1-awake) + 0.03*idleW*awake
+	sw, iw := waveAt(t, 4.4), waveAt(t-titleEyes, 3.8)
+	f.sx = 1 + 0.014*sw*(1-awake) + 0.010*iw*awake
+	f.sy = 1 + 0.032*sw*(1-awake) + 0.024*iw*awake
 	if t > titleEyes {
-		f.lift = -1.6 * outBack((t-titleEyes)/0.7)
+		f.lift = outBack((t - titleEyes) / 0.7)
 	}
 	f.lids = titleLids(t)
-	f.word = smooth01((t - titleWordFrom) / (titleWordTo - titleWordFrom))
-	f.wordY = 1.4 * (1 - outCubic((t-titleWordFrom)/1.4))
+	f.logo = clamp01((t - titleLogoFrom) / titleLogoDur)
+	f.sheen = (t - titleSheenFrom) / titleSheenDur
 	f.prompt = smooth01((t - titlePrompt) / titlePromptIn)
+	f.breath = 1
+	if t > titlePrompt+titlePromptIn {
+		f.breath = 0.8 + 0.2*math.Cos(2*math.Pi*(t-titlePrompt-titlePromptIn)/3.4)
+	}
 	return f
 }
 
-// dim multiplies a color's channels by k and its alpha by alpha.
-func dim(c ui.Color, k, alpha float64) ui.Color {
-	m := func(v uint8) uint8 { return uint8(math.Round(float64(v) * clamp01(k))) }
-	return ui.RGBA(m(c.R), m(c.G), m(c.B), float32(float64(c.A)/255*clamp01(alpha)))
-}
+// rgba is a color with alpha a (clamped).
+func rgba(r, g, b uint8, a float64) ui.Color { return ui.RGBA(r, g, b, float32(clamp01(a))) }
 
-// ellipseGlow fills a radial gradient stretched into an ellipse of radii
-// rx, ry around (cx, cy).
-func ellipseGlow(p *ui.Painter, r ui.Rect, cx, cy, rx, ry float32, stops []ui.GradientStop) {
-	if rx <= 0 || ry <= 0 {
+// glow fills a radial gradient of radius rad around (cx, cy), squashed
+// vertically by sy (1 for a circle), clipped to clip.
+func glow(p *ui.Painter, clip ui.Rect, cx, cy, rad, sy float32, stops []ui.GradientStop) {
+	if rad <= 0 {
 		return
 	}
-	sx := rx / ry
-	p.Clip(r, 0, func() {
-		p.Transform(ui.Scaling(sx, 1), cx, cy, func() {
-			box := ui.Rect{X: cx - r.W/sx, Y: r.Y, W: 2 * r.W / sx, H: r.H}
-			p.FillRadialGradient(box, ui.RadialGradient{
-				Stops:  stops,
-				Center: ui.Point{X: (cx - box.X) / box.W, Y: (cy - box.Y) / box.H},
-				Radius: ry,
-			}, 0)
-		})
+	draw := func() {
+		box := ui.Rect{X: cx - rad, Y: cy - rad, W: 2 * rad, H: 2 * rad}
+		p.FillRadialGradient(box, ui.RadialGradient{Stops: stops, Center: ui.Point{X: 0.5, Y: 0.5}, Radius: rad}, 0)
+	}
+	p.Clip(clip, 0, func() {
+		if sy == 1 {
+			draw()
+			return
+		}
+		p.Transform(ui.Scaling(1, sy), cx, cy, draw)
 	})
 }
 
+// A mote of dust or pollen, drifting up and right through the light.
+type titleMote struct {
+	x, y, d, vx, vy, ph, sw, a float64
+	big                        bool
+}
+
+var titleMotes = func() []titleMote {
+	r := rand.New(rand.NewSource(87))
+	m := make([]titleMote, 54)
+	for i := range m {
+		d := 0.5 + r.Float64()*1.1
+		m[i] = titleMote{x: r.Float64(), y: 0.12 + r.Float64()*0.8, d: d, vx: 0.004 + r.Float64()*0.006,
+			vy: -(0.006 + r.Float64()*0.01), ph: r.Float64() * 6.28, sw: 0.004 + r.Float64()*0.008, a: 0.25 + r.Float64()*0.6, big: d > 1.4}
+	}
+	return m
+}()
+
+var (
+	grainOnce sync.Once
+	grainBmp  *ui.Bitmap
+)
+
+// titleGrain is a 256-pixel tile of film grain.
+func titleGrain() *ui.Bitmap {
+	grainOnce.Do(func() {
+		img := image.NewRGBA(image.Rect(0, 0, 256, 256))
+		r := rand.New(rand.NewSource(5))
+		for i := 0; i < 256*256; i++ {
+			v := uint8(r.Intn(256))
+			img.Set(i%256, i/256, color.RGBA{v, v, v, 255})
+		}
+		grainBmp = ui.NewBitmap(img)
+	})
+	return grainBmp
+}
+
 func (a *App) drawTitle(p *ui.Painter, r ui.Rect) {
+	art := theme.Title()
+	p.Fill(r, ui.Hex("#05040A"), 0)
+	if art == nil {
+		return
+	}
 	rm := p.Preferences().ReduceMotion
 	t := a.titleT()
 	fade := 1.0
@@ -282,119 +324,224 @@ func (a *App) drawTitle(p *ui.Painter, r ui.Rect) {
 		t = titleRest
 	}
 	f := titleAt(t)
-	// One unit is a hundredth of the width, bounded by the height (the
-	// prototype's 16:10 stage).
-	u := min(r.W/100, r.H/62.5)
+	L := art.Layout
+	W, H := r.W, r.H
+	FH := L.Frame[1] / L.Frame[0]
+	base := max(W, H/FH) * 1.05 // cover, with room to move
+	u := min(W/100, H/62.5)
 
-	p.Fill(r, titleNight, 0)
-	// The ground warms as the light comes up.
-	p.FillGradient(r, ui.LinearGradient{Angle: 0, Stops: []ui.GradientStop{
-		{Color: dim(titleEarth, 1, 0.9*f.light*fade), At: 0},
-		{Color: titleNight.Alpha(0), At: 0.7},
-	}}, 0)
-	// The dawn: low at first, rising to behind Ducter's feet.
-	gy := float32(1.18-0.50*f.light) * r.H
-	gr := float32(24+30*f.light+6*f.bloom) / 100
-	a1 := (0.85*f.light + 0.6*f.bloom) * fade
-	a2 := (0.34*f.light + 0.3*f.bloom) * fade
-	ellipseGlow(p, r, r.X+r.W/2, r.Y+gy, gr*1.25*r.W, gr*r.H, []ui.GradientStop{
-		{Color: dim(titleDawn, 1, a1), At: 0},
-		{Color: dim(titleEmber, 1, a2), At: 0.38},
-		{Color: dim(titleUmber, 1, 0.25*f.light*fade), At: 0.70},
-		{Color: titleNight.Alpha(0), At: 1},
-	})
+	// A layer's placement: zoomed about the frame's middle by its depth,
+	// and the rise (far things move less).
+	type place struct{ z, ox, oy float32 }
+	at := func(d float64) place {
+		z := base * float32(1+f.push*d)
+		return place{z, r.X + W/2 - 0.5*z, r.Y + H/2 - 0.5*FH*z + 0.010*H*float32(f.crane*(d-0.4))}
+	}
+	rectOf := func(pl place, b theme.TitleBox) ui.Rect {
+		return ui.Rect{X: pl.ox + b.X*pl.z, Y: pl.oy + b.Y*FH*pl.z, W: b.W * pl.z, H: b.H * FH * pl.z}
+	}
+	img := func(b *ui.Bitmap, dst ui.Rect, alpha float64) {
+		p.ImageRegion(b, ui.Rect{}, dst, ui.ImageOptions{Tint: rgba(255, 255, 255, alpha)})
+	}
 
-	// Ducter, standing with its feet at 67% of the height.
-	hero := theme.Hero()
-	dw := min(24*u, 256)
-	if hero != nil {
-		bw, bh := hero.Size()
-		dh := dw * float32(bh) / float32(bw)
-		feet := r.Y + 0.67*r.H
-		at := ui.Rect{X: r.X + (r.W-dw)/2, Y: feet - dh, W: dw, H: dh}
-		// Its shadow on the floor, as lit as the floor is.
-		ellipseGlow(p, r, r.X+r.W/2, feet+0.4*u, 15*u, 2*u, []ui.GradientStop{
-			{Color: ui.RGBA(0, 0, 0, float32(0.55*f.show*f.light*fade)), At: 0},
-			{Color: ui.RGBA(0, 0, 0, 0), At: 1},
+	p.Clip(r, 0, func() {
+		// The sky, the island.
+		ps := at(0.45)
+		img(art.Sky, ui.Rect{X: ps.ox, Y: ps.oy, W: ps.z, H: FH * ps.z}, 1)
+		pi := at(1.0)
+		img(art.Island, rectOf(pi, L.Island), 1)
+
+		// Ducter: its contact shadow, then the clay, breathing from its feet.
+		pd := at(1.04)
+		dr := rectOf(pd, L.Ducter)
+		feetX, feetY := dr.X+dr.W*0.5, dr.Y+dr.H*0.985
+		glow(p, r, feetX+dr.W*0.06, feetY, dr.W*0.5, 0.16, []ui.GradientStop{
+			{Color: rgba(40, 18, 6, 0.55), At: 0}, {Color: rgba(40, 18, 6, 0.18), At: 0.6}, {Color: rgba(40, 18, 6, 0), At: 1},
 		})
-		show := f.show * fade
-		p.Transform(ui.Translation(0, float32(f.lift)*u), 0, 0, func() {
-			p.Transform(ui.Scaling(float32(f.sx), float32(f.sy)), at.X+at.W/2, at.Y+at.H, func() {
-				p.ImageRegion(hero, ui.Rect{}, at, ui.ImageOptions{Tint: dim(ui.RGB(255, 255, 255), f.lit, show)})
-				drawTitleLids(p, at, f.lids, f.lit, show)
+		p.Transform(ui.Translation(0, -float32(f.lift)*0.012*dr.H), 0, 0, func() {
+			p.Transform(ui.Scaling(float32(f.sx), float32(f.sy)), feetX, feetY, func() {
+				img(art.Ducter, dr, 1)
+				titleLidsDraw(p, art, dr, f.lids)
 			})
 		})
-	}
 
-	// The name, and under it the prompt.
-	if f.word > 0.001 {
-		word := ui.Span{Text: "Ducter", Font: a.T.Display, Size: 7.4 * u, Weight: 800, Color: dim(titleCream, 1, f.word*fade)}
-		w, _ := p.MeasureText(0, word)
-		p.RichText(r.X+(r.W-w)/2, r.Y+0.71*r.H+float32(f.wordY)*u, 0, word)
-	}
-	if f.prompt > 0.001 {
-		line := ui.Span{Text: a.L.T("title.prompt"), Font: a.T.Body, Size: max(1.75*u, 13), Weight: 500, Color: dim(titleCreamDim, 1, f.prompt*fade)}
-		w, _ := p.MeasureText(0, line)
-		p.RichText(r.X+(r.W-w)/2, r.Y+0.835*r.H, 0, line)
-	}
-
-	// Leaving: the light fills the window and becomes the paper the setup
-	// card stands on.
-	tl := &a.title
-	if !tl.leaveAt.IsZero() {
-		k := clamp01(float64(a.Now().Sub(tl.leaveAt)) / float64(a.titleLeaveDur()))
-		// The dawn grows past the edges first (warm, never grey), then
-		// the paper comes.
-		g := float32(smooth01(k / 0.7))
-		ellipseGlow(p, r, r.X+r.W/2, r.Y+0.68*r.H, (0.7+1.6*g)*r.W, (0.55+1.3*g)*r.H, []ui.GradientStop{
-			{Color: dim(titleDawn, 1, float64(g)), At: 0},
-			{Color: dim(a.T.Bg, 1, float64(g)), At: 0.5},
-			{Color: dim(titleEmber, 1, 0.6*float64(g)), At: 1},
+		// The night, lifting: darkest away from the sun; a vignette stays.
+		sunX, sunY := ps.ox+0.01*ps.z, ps.oy+0.475*FH*ps.z
+		n := 1 - f.exp
+		far := float32(math.Hypot(float64(W), float64(H)))
+		glow(p, r, sunX, sunY, far*1.1, 1, []ui.GradientStop{
+			{Color: rgba(5, 4, 10, 0.86*n), At: 0},
+			{Color: rgba(5, 4, 10, 0.94*n+0.05*f.exp), At: 0.5},
+			{Color: rgba(5, 4, 10, 0.97*n+0.30*f.exp), At: 1},
 		})
-		p.Fill(r, a.T.Bg.Alpha(float32(smooth01((k-0.35)/0.65))), 0)
-		p.AnimationFrame()
-		return
-	}
+		vr := far * 0.62
+		inner := min(W, H) * 0.3 / vr
+		glow(p, r, r.X+W/2, r.Y+H*0.48, vr, 1, []ui.GradientStop{
+			{Color: rgba(8, 5, 10, 0), At: 0}, {Color: rgba(8, 5, 10, 0), At: inner}, {Color: rgba(8, 5, 10, 0.5*f.exp), At: 1},
+		})
+		// The sun's bloom, and the breath of light at the tone.
+		glow(p, r, sunX, sunY, max(W, H)*0.55, 1, []ui.GradientStop{
+			{Color: rgba(255, 200, 140, 0.18*f.exp), At: 0}, {Color: rgba(255, 200, 140, 0), At: 1},
+		})
+		if f.bloom > 0.002 {
+			glow(p, r, dr.X+dr.W/2, dr.Y+dr.H*0.45, dr.W*1.6, 1, []ui.GradientStop{
+				{Color: rgba(255, 226, 180, f.bloom), At: 0}, {Color: rgba(255, 226, 180, 0), At: 1},
+			})
+		}
+
+		// Motes, catching the light.
+		tt := t
+		if rm {
+			tt = 0
+		}
+		for _, m := range titleMotes {
+			x := math.Mod(m.x+m.vx*tt+m.sw*math.Sin(tt*0.6+m.ph), 1)
+			y := math.Mod(math.Mod(m.y+m.vy*tt-0.05, 0.9)+0.9, 0.9) + 0.05
+			pl := at(m.d)
+			X, Y := pl.ox+float32(x)*pl.z, pl.oy+float32(y)*FH*pl.z
+			near := math.Max(0.25, 1-math.Hypot(float64(X-sunX), float64(Y-sunY))/float64(far))
+			k := 0.8
+			if m.big {
+				k = 0.22
+			}
+			alpha := m.a * f.exp * near * k * (0.7 + 0.3*math.Sin(tt*1.3+m.ph))
+			if alpha < 0.01 {
+				continue
+			}
+			rad := u * float32(0.08+0.12*m.d)
+			if m.big {
+				rad = u * float32(0.9+m.d*0.8)
+			}
+			glow(p, r, X, Y, rad, 1, []ui.GradientStop{{Color: rgba(255, 236, 205, alpha), At: 0}, {Color: rgba(255, 236, 205, 0), At: 1}})
+		}
+
+		// The clay name, lit from the left, then a light passing over it:
+		// drawn in 48 slices, each with its own light.
+		if f.logo > 0 {
+			bw, bh := art.Logo.Size()
+			lw := min(W*0.30, 620)
+			lh := lw * float32(bh) / float32(bw)
+			lx, ly := r.X+W/2-lw/2, r.Y+H*0.10+u*0.8*float32(1-outCubic(f.logo))
+			const n = 48
+			sw := float32(bw) / n
+			for i := 0; i < n; i++ {
+				xn := (float64(i) + 0.5) / n
+				av := clamp01((f.logo*1.5 - xn) / 0.5)
+				if av <= 0 {
+					continue
+				}
+				src := ui.Rect{X: float32(i) * sw, W: sw, H: float32(bh)}
+				dst := ui.Rect{X: lx + float32(i)*lw/n, Y: ly, W: lw/n + 0.5, H: lh}
+				p.ImageRegion(art.Logo, src, dst, ui.ImageOptions{Tint: rgba(255, 255, 255, smooth01(av)*fade)})
+				if f.sheen > 0 && f.sheen < 1 {
+					sa := 0.9 * math.Max(0, 1-math.Abs(xn-(-0.25+1.5*f.sheen))/0.14)
+					if sa > 0.01 {
+						p.ImageRegion(art.LogoLit, src, dst, ui.ImageOptions{Tint: rgba(255, 255, 255, sa*smooth01(av))})
+					}
+				}
+			}
+		}
+		if f.prompt > 0.001 {
+			breath := f.breath
+			if rm {
+				breath = 1
+			}
+			a.titlePrompt(p, r, u, rgba(255, 236, 212, 0.82*f.prompt*breath*fade))
+		}
+
+		// Film grain, a new tile offset 24 times a second.
+		if g := titleGrain(); g != nil && !rm {
+			ox := float32(int(t*24)%8) * 31
+			oy := float32(int(t*24)%5) * 47
+			for y := r.Y - oy; y < r.Y+H; y += 256 {
+				for x := r.X - ox; x < r.X+W; x += 256 {
+					p.ImageRegion(g, ui.Rect{}, ui.Rect{X: x, Y: y, W: 256, H: 256}, ui.ImageOptions{Tint: rgba(255, 255, 255, 0.03)})
+				}
+			}
+		}
+
+		// Leaving: the dawn floods the window, then the paper.
+		tl := &a.title
+		if !tl.leaveAt.IsZero() {
+			k := clamp01(float64(a.Now().Sub(tl.leaveAt)) / float64(a.titleLeaveDur()))
+			g := smooth01(k / 0.7)
+			glow(p, r, r.X+W/2, r.Y+H*0.55, far*float32(0.3+0.9*g), 1, []ui.GradientStop{
+				{Color: rgba(255, 214, 160, g), At: 0}, {Color: rgba(255, 246, 234, g), At: 0.5}, {Color: rgba(255, 190, 130, 0.6*g), At: 1},
+			})
+			p.Fill(r, a.T.Bg.Alpha(float32(smooth01((k-0.35)/0.65))), 0)
+		}
+		if rm && fade < 1 {
+			p.Fill(r, rgba(5, 4, 10, 1-fade), 0)
+		}
+	})
+
+	// Frames: the display's rate while it moves; slower once it only
+	// breathes.
+	tl := &a.title
 	switch {
-	case tl.at != 0:
+	case tl.at != 0, tl.start.IsZero() && tl.leaveAt.IsZero():
+	case !tl.leaveAt.IsZero():
+		p.AnimationFrame()
 	case rm:
-		if t := a.titleT(); t < 0.4 {
+		if a.titleT() < 0.4 {
 			p.AnimationFrame()
 		}
-	case tl.start.IsZero():
-		// Waiting for the window to be active (titleTick).
-	case t >= titleEyes-0.1 && t < titleEyes+1 || t < titleLightFrom:
-		p.AnimationFrame() // the eyes open: the display's rate
-	case t < titlePrompt+titlePromptIn:
-		p.AnimationFrameRate(idleFPS * 2)
+	case t < titlePrompt+titlePromptIn+0.5:
+		p.AnimationFrame()
 	default:
-		p.AnimationFrameRate(idleFPS) // it only breathes and blinks now
+		p.AnimationFrameRate(idleFPS) // motes, breath, blinks
 	}
 }
 
-// drawTitleLids draws the eyelids over the eyes, shut by k (1 shut), with
-// the closed eye's line riding the lid's lower edge and fading as it lifts.
-func drawTitleLids(p *ui.Painter, at ui.Rect, k, lit, show float64) {
+// titleLidsDraw shuts Ducter's eyes by k (1 shut): the sleeping face shows
+// through a lid whose lower edge rises as the eyes open, with the closed
+// eye's line riding just above it, fading as it lifts.
+func titleLidsDraw(p *ui.Painter, art *theme.TitleArt, dr ui.Rect, k float64) {
 	if k <= 0.005 {
 		return
 	}
-	for _, l := range theme.FaceLids {
-		box := ui.Rect{X: at.X + l.X*at.W, Y: at.Y + l.Y*at.H, W: l.W * at.W, H: l.H * at.H * float32(k)}
-		var m ui.Path
-		ellipse(&m, box.X+box.W/2, box.Y+box.H/2, box.W/2, box.H/2)
-		p.FillPathGradient(&m, ui.LinearGradient{From: dim(l.From, lit, show), To: dim(l.To, lit, show), Angle: 90})
-
-		// The line: the prototype's lash (a 100×40 drawing, 12.4% of the
-		// art wide), its top at 66% of the lid's height.
-		la := smooth01((k - 0.5) / 0.5)
-		if la < 0.01 {
-			continue
+	for _, l := range art.Layout.Lids {
+		bx, by, bw, bh := dr.X+l.X*dr.W, dr.Y+l.Y*dr.H, l.W*dr.W, l.H*dr.H
+		ye := by + bh*float32(k)
+		var clip ui.Path
+		clip.MoveTo(bx-bw*0.1, by-bh*0.15).LineTo(bx+bw*1.1, by-bh*0.15).LineTo(bx+bw*1.1, ye).
+			QuadTo(bx+bw/2, ye+bh*0.18*float32(k), bx-bw*0.1, ye).Close()
+		p.ClipPath(&clip, func() {
+			p.ImageRegion(art.Closed, ui.Rect{}, dr, ui.ImageOptions{})
+		})
+		if la := smooth01((k - 0.45) / 0.5); la > 0.01 {
+			ly := by + bh*0.56*float32(k)
+			var lash ui.Path
+			lash.MoveTo(bx+bw*0.12, ly).QuadTo(bx+bw/2, ly+bh*0.16, bx+bw*0.88, ly).Cap(ui.RoundCap)
+			p.StrokePath(&lash, max(1, bw*0.085), rgba(58, 33, 22, la))
 		}
-		s := 0.124 * at.W / 100
-		x0 := at.X + (l.X-0.008)*at.W
-		y0 := at.Y + (l.Y+l.H*float32(k)*0.66-0.026)*at.H + (0.07*at.H-40*s)/2
-		var lash ui.Path
-		lash.MoveTo(x0+8*s, y0+8*s).QuadTo(x0+50*s, y0+40*s, x0+92*s, y0+8*s).Cap(ui.RoundCap)
-		p.StrokePath(&lash, 9*s, dim(titleLash, lit, show*la))
+	}
+}
+
+// titlePrompt draws "Press any key", small and letter-spaced, centered at
+// 93% of the height: one glyph run per character, so the spacing is ours.
+func (a *App) titlePrompt(p *ui.Painter, r ui.Rect, u float32, c ui.Color) {
+	size := max(11, 1.2*u)
+	font := a.T.Display
+	track := float32(0.22)
+	if a.L.Lang == "zh" {
+		font, track = a.T.Body, 0.35
+	}
+	text := []rune(a.L.T("title.prompt"))
+	var widths []float32
+	total := float32(0)
+	for i, ch := range text {
+		w, _ := p.MeasureText(0, ui.Span{Text: string(ch), Font: font, Size: size, Weight: 500})
+		widths = append(widths, w)
+		total += w
+		if i < len(text)-1 {
+			total += track * size
+		}
+	}
+	_, h := p.MeasureText(0, ui.Span{Text: "M", Font: font, Size: size, Weight: 500})
+	x, y := r.X+(r.W-total)/2, r.Y+r.H*0.93-h/2
+	for i, ch := range text {
+		p.RichText(x, y, 0, ui.Span{Text: string(ch), Font: font, Size: size, Weight: 500, Color: c})
+		x += widths[i] + track*size
 	}
 }

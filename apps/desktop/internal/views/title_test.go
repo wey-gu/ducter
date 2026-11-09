@@ -124,11 +124,14 @@ func TestTitleTimeline(t *testing.T) {
 	if titleLids(3.4) != 1 || titleLids(4.3) != 0 {
 		t.Fatalf("lids at 3.4 = %v, at 4.3 = %v; want shut, then open", titleLids(3.4), titleLids(4.3))
 	}
-	if f := titleAt(titleBell - 0.1); f.word != 0 || f.prompt != 0 {
+	if f := titleAt(titleBell - 0.1); f.logo != 0 || f.prompt != 0 {
 		t.Fatalf("the name or prompt shows before the tone")
 	}
-	if f := titleAt(titlePrompt + titlePromptIn); f.word != 1 || f.prompt != 1 || f.lit != 1 {
-		t.Fatalf("at the prompt: word %v prompt %v lit %v, want all 1", f.word, f.prompt, f.lit)
+	if f := titleAt(titlePrompt + titlePromptIn); f.logo != 1 || f.prompt != 1 || f.exp != 1 {
+		t.Fatalf("at the prompt: logo %v prompt %v light %v, want all 1", f.logo, f.prompt, f.exp)
+	}
+	if f := titleAt(30); f.push > 0.035 || f.breath < 0.6 || f.breath > 1 {
+		t.Fatalf("at rest: push %v breath %v; want ≤ 3.5%% and 0.6..1", f.push, f.breath)
 	}
 	if titlePrompt+titlePromptIn > 8 {
 		t.Fatalf("the prompt is up at %v s, over the 8 s the moment may take", titlePrompt+titlePromptIn)
@@ -143,7 +146,7 @@ func TestTitleShots(t *testing.T) {
 	}
 	dir := shotsDir(t)
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
-		for _, at := range []float64{0.2, 1.5, 3.0, 3.62, 3.75, 4.6, 7.0} {
+		for _, at := range []float64{0.8, 1.8, 3.0, 3.62, 3.75, 4.9, 5.5, 8.0} {
 			app, tt, _ := titleApp(t, lang, ui.Preferences{})
 			app.title.at = at
 			tt.Frame()

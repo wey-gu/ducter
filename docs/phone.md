@@ -13,7 +13,7 @@ you when something needs you and lets you answer in one tap.
 One thing stays on the Mac: the changes themselves. On the phone, a finished task names them
 in its line of proof ("2 files changed"); to read them line by line, open the task on your Mac.
 
-The phone version opens in your phone's browser. An iPhone app is coming soon.
+The phone version opens in your phone's browser. An iPhone app is in testing and coming soon.
 
 ## Connect your phone
 
@@ -44,8 +44,9 @@ doesn't buzz over and over.
   you want them.
 - **Send a test** checks that notifications reach this phone.
 - **Stop notifications** turns them off for this phone.
-- On **Android**, you can answer with **Go** or **Hold** straight from the notification. On
-  iPhone, tapping it opens the decision.
+- On **Android**, you can answer with **Go** or **Hold** straight from the notification. In
+  the iPhone's browser, tapping it opens the decision. The iPhone app (in testing, coming soon)
+  lets you answer **Go**, **Hold** or **Reply** right from the notification.
 
 ### On iPhone
 
@@ -60,8 +61,8 @@ breaks through. When quiet hours end, you get at most one notification about wha
 overnight.
 
 Your tasks keep working through the night; only the notifications wait. A decision that can be
-undone still goes ahead with its default if you don't answer in time, and you'll see **Went with
-the default** on it. Anything that can't be undone waits for you.
+undone still goes ahead with its default if you don't answer in time, and you'll see **No answer, so I
+went ahead** on it. Anything that can't be undone waits for you.
 
 To change the hours or turn them off, open **Partner** and use **Quiet hours** (see
 [Your partner and settings](settings.md#partner)).

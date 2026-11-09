@@ -505,7 +505,7 @@ func (a *App) brainCard(c *ui.Context) {
 						line = a.L.T("loadout.left.reserve", pct(h.Allowance.Left), a.S.PersonaName)
 					}
 				} else {
-					line = a.L.T("loadout.brain.reserve", a.S.PersonaName)
+					line = a.L.T("loadout.signed_in") // no limit reported: no reserve to claim (D133)
 				}
 				ui.Text(c, line).FontSize(t.SM).TextColor(t.InkMuted).MaxLines(2)
 			})
@@ -665,7 +665,7 @@ func (a *App) acctLine(c *ui.Context) {
 			}
 			say(strings.Join(parts, " · "))
 			if brain {
-				say(a.L.T("loadout.acct.same", a.S.PersonaName, a.S.PersonaName))
+				say(a.L.T("loadout.acct.same", a.S.PersonaName))
 			}
 			if h.Billing == "usage" {
 				ui.Text(c, a.L.T("loadout.acct.paid")).FontSize(t.SM).FontWeight(700).LineHeight(1.5).TextColor(t.NeedsYou.Ink)

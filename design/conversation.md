@@ -56,6 +56,9 @@ time, 10 min unless the work suggests otherwise; only effect-ladder asks (`flows
 
 **Executors.** All three return the same report, so they look the same to the human.
 
+*As built, only two executors run: the main AI in turn, and a task (Focus Window). Forks and
+promotion are not built.*
+
 | Executor | Use when (starting budget; logged and tuned) |
 |---|---|
 | Main AI, in turn | no environment, read-only, ≤3 calls, ~10s |
@@ -103,7 +106,11 @@ time, 10 min unless the work suggests otherwise; only effect-ladder asks (`flows
 - The human can say "don't tell me about this kind of thing". That becomes a ledger
   constraint.
 
-**Mechanics**
-- Each revision is a superseding Log event.
-- In the session, a revision is a tail operation: truncate to before the message, then
-  append the new version.
+**Mechanics (as built)**
+- The core renders the living message (`packages/core/src/living.ts`) from task cards,
+  reports and decisions; each revision is a superseding `living_msg` Log event, and a read
+  receipt freezes it.
+- The partner's own words are never revised: an `ai_msg` is immutable once logged. Only the
+  core-rendered living message changes in place.
+- Not built: revising inside the partner's session (truncate to before the message, then
+  append the new version).

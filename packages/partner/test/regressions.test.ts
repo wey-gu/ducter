@@ -148,6 +148,26 @@ describe("live-run regressions", () => {
     expect(p).toContain("even when the user said to ask\n   first");
   });
 
+  // D67 (2): a reversible ask whose default the model left out is Go in 10 min, never a
+  // timeless Hold; an explicit hold stays hold.
+  test("a reversible ask with no default is Go in 10 min; an explicit hold stays", async () => {
+    const r = setup(async (_i, s, n) => {
+      if (n === 0) await r.fc.callTool("ask", { question: "Name the helper subtotal or lineTotal?", goLabel: "Use subtotal", reversible: true });
+      if (n === 1) await r.fc.callTool("ask", { question: "Use tabs or spaces?", goLabel: "Use spaces", default: "hold", reversible: true });
+      s.end();
+    });
+    const { fc, partner, user } = r;
+    user("In ~/dev/tinycart, add a subtotal-per-item helper. Ask me the name first.");
+    await partner.idle();
+    user("And ask me about indentation.");
+    await partner.idle();
+    const [a, b] = fc.events.filter((e) => e.kind === "decision").map((e) => e.body as import("@ducter/protocol").Bodies["decision"]);
+    expect(a).toMatchObject({ defaultOption: "go", reversible: true });
+    expect(Date.parse(a!.defaultAt!) - Date.parse("2026-11-08T14:00:00Z")).toBe(10 * 60_000);
+    expect(b).toMatchObject({ defaultOption: "hold", reversible: true });
+    expect(b!.defaultAt).toBeUndefined();
+  });
+
   test("persona: result anatomy, no internals, ask for choices, silence after the ack", () => {
     const p = buildSystemPrompt({ id: "p", name: "Ducter", identity: "ID" });
     expect(p).toMatchSnapshot();

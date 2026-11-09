@@ -1353,7 +1353,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       properties: {
         question: { type: "string", description: "One question in the user's language" },
         goLabel: { type: "string", description: "What Go does, short, in the user's language (e.g. 改签名 / Change the signature)" },
-        default: { type: "string", enum: ["go", "hold"], description: "What happens if the user doesn't answer: go (the option you'd pick) for a reversible choice; hold only when it isn't reversible" },
+        default: { type: "string", enum: ["go", "hold"], description: "What happens if the user doesn't answer: go (the option you'd pick) for a reversible choice (left out on a reversible choice, it is go); hold only when it isn't reversible" },
         reversible: {
           type: "boolean",
           description: "true for a choice about how to do the work (design, name, format, approach): it lands on a task's own branch and nothing is merged without the user. false only for what reaches other people or can't be taken back (push, PR, post, send, delete, pay)",
@@ -1388,7 +1388,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         // own default line (live: "默认：直接改名" on a card that waits for the user).
         question: stripDefault(args.question),
         goLabel: args.goLabel.trim(),
-        defaultOption: args.default === "go" && reversible ? "go" : "hold",
+        // D67 (2): every reversible ask has a default and a time, so reversible means Go unless
+        // the model explicitly chose hold (an omitted default waited forever on Hold).
+        defaultOption: reversible && args.default !== "hold" ? "go" : "hold",
         reversible,
       };
       // D67 (2): a reversible ask about how to do the work always carries a time, 10 min unless

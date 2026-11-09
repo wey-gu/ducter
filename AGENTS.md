@@ -177,3 +177,8 @@ calling v1 done; new work must not widen the gap.
 - [ ] Prototypes of the first slice reviewed.
 - [x] The memory digest (`design/memory.md`) is built, with its eval suite (`research/15`)
       (D123, draft for review; the eval corpus is small, a real-channel replay is in `todo.md`).
+- [ ] Connectors (accounts through oo or OpenConnector): live checks per `design/roadmap.md`.
+- [ ] Nowledge Bridge: the live trial against Mem (`design/bridge.md`, `design/roadmap.md`).
+- [ ] Devices: the Isles view on the phone, and the native browser's live checks (`design/roadmap.md`).
+- [ ] Release: the first tagged release end to end, and the iPhone app public
+      (`design/release/`, `design/roadmap.md`).

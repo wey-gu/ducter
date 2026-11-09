@@ -48,6 +48,8 @@ at cut points, and changes between cuts arrive as L4 deltas.
   the model searched 22 of 23 times when it needed to and never searched needlessly.
 - **Index**: SQLite FTS5 with a CJK-aware tokenizer (jieba or bigram) plus vectors, fused by
   rank. It indexes raw turns, including the assistant's own words, not only extracted facts.
+  *As built:* CJK bigrams, exact substrings and recency, fused by rank; **no vectors yet**.
+  Automatic recall is built and off by default (D123, "as built" below).
 - **Quotes**: a search for "what exactly did the user say" runs lexically on distinctive
   terms, not on paraphrase.
 

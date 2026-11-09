@@ -38,6 +38,14 @@
 
 ## Resume vs. re-cut (principle 4)
 
+*As built: a heuristic, not the expected-cost model below.* A session idle at most 55 minutes
+counts as warm and is kept (or resumed by id after a restart); a colder one starts fresh from
+the projection; a warm one past 120K re-cuts (the size is the harness's own count, with the
+estimate as the fallback; "as built" below). P(warm) from cache signals and the cost comparison
+are not built.
+
+The design:
+
 - Estimate P(warm) from the last request time, the TTL, and harness signals (Claude Code
   statusline `prompt_cache.warm` / `expires_at`).
 - Choose by expected cost: resume, where only the delta is paid on a hit, against re-cut,
@@ -84,6 +92,8 @@
   and whether the re-cut had digests. Clients never show them.
 
 ## Working set and folds (principle 5)
+
+*Not built:* folds (read-fold, late fold) and forks. Today the only bound is the re-cut above.
 
 Folding is mostly about quality, not price: cache reads cost 0.05× on Opus/Sonnet 5.5, and
 finished topics distract every later turn. Options, in order of preference:

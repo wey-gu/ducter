@@ -35,7 +35,7 @@
 | Rule | **规则 / Rule**; the list **你的规则 / Your rules** · **不要这条 / Remove** · **跟 {name} 说一条规则… / Tell {name} a rule…** | A standing preference stated in words. Added only by saying it in the conversation; listed and removed on Partner (D89). After two switches the same way the partner asks once "以后…也用 X？ / Use X for … from now on?" |
 | what the partner itself runs on (brain) | **它用什么想事情 / What it thinks with**; the socket **想事情用 / Thinks with** · **换一个 / Switch** · **挑一个放进去 / Pick one to put in** · "{name} 现在用 {agent} 想事情了 / {name} thinks with {agent} now" · **从你的下一句话开始用 / Takes over from your next message** · **换了以后，名字、记得的事和你们的对话都还在 / Switching keeps its name, what it remembers and your conversation** · models **最聪明 / Smartest** · **回得更快 / Faster replies** | D89. Never "brain", 脑子, "model settings" or "main AI" on screen. Only AI agents signed in on the Mac it lives on: "只能用 {name} 住的这台 Mac 上登录了的 AI agent" |
 | who does the tasks (`fw_candidates`) | **谁来做事 / Who does the tasks** · the tray **这台 Mac 上的 AI agent / AI agents on this Mac** · **用它做事 / Use it for tasks** (per account, on by default) · **按用量付费 / Pay per use** | D89. Default line: "每件事 {name} 挑一个：最合适、额度最够的那个 / For each task {name} picks one: the best fit with the most limit left" |
-| the partner's reserve | **其中 10% 给 {name} 留着 / 10% of it is kept for {name}**; when only it is left, "额度还剩 n% · 都是给 {name} 留着的 / n% left · all kept for {name}" | D89. One sentence says tasks and the partner share one limit: "做事和 {name} 想事情用的是同一份额度…" |
+| the partner's reserve | **其中 10% 给 {name} 留着 / 10% of it is kept for {name}**; when only it is left, "额度还剩 n% · 都是给 {name} 留着的 / n% left · all kept for {name}" | D89. One sentence says tasks and the partner share one limit: "做事和 {name} 想事情用的是同一份额度…" *Not built (D133): not shown until a harness reports its limit.* |
 | `body_selected` (who does a task, and why) | **谁在做 / Who's doing it**: "{agent} 在做，按你的规则「…」/ {agent} is doing it, by your rule "…"" · "…，因为 {agent} 额度不多了 / …, because {agent}'s limit is low" · "…，是你换的 / …; you switched it"; switching **换谁来做 / Switch who does it** · **现在 / Now** · reasons **你的规则 / Your rule** · **最适合这件事 / Best fit for this** · **快，省额度 / Fast, uses less of the limit** · "额度不够了 · 剩下的给 {name} 留着 / Not enough limit · the rest is kept for {name}" · **你关了「用它做事」/ Use it for tasks is off** · the button is the handoff's **换到 X 接着做 / Continue on X** | D89, D90. The conversation's task line ends with who (and why when it isn't the plain pick); the opened task's head says who in its meta line; the reason is a sentence in Details |
 | device states | **醒着 / Awake · 睡着了 / Asleep · 连不上 / Can't reach** · wake = **叫醒 / Wake** | Never "broken" or "offline" wording for sleep |
 | quota | **额度 / limit** ("额度还剩 80% / 80% of the limit left") | One per AI account, shared across its devices |
@@ -71,7 +71,7 @@
 | a phone (or an app window elsewhere) that reaches Ducter | its own name, and **在哪儿都能找到 Ducter / Reaches Ducter from anywhere**; not seen lately: **最后在线 {time} / Last seen {time}** | D81. A phone never runs tasks; it has no bridge parcels |
 | an AI account on several devices | **N 台设备共用 / shared by N devices**, after its state ("已登录 · 2 台设备共用") | D81, D82: N counts the devices where that AI agent is signed in |
 | what the chosen device can do | **{device} 会：上网 · 在哪儿都能用 / {device} can: Browse the web · Reach from anywhere** | The device card beside the stage (D81) |
-| where browser tasks run (an AI agent's own browser, D130) | **在你的 Chrome 里 / In your Chrome** (上网 tile and detail); status line **在你的 Chrome 里看 {host} / Looking at {host} in your Chrome**; the move to Ducter's browser: **Claude in Chrome isn't connected; switched to Ducter's own browser** (system line) | Literal: it is the user's own Chrome, signed in as them. Ducter's own browser stays **Ducter 的浏览器 / Ducter's own browser** |
+| where browser tasks run (an AI agent's own browser, D130) | **在你的 Chrome 里 / In your Chrome** (上网 tile and detail); status line **在你的 Chrome 里看 {host} / Looking at {host} in your Chrome**, or on Ducter's own **在 Ducter 的浏览器里看 {host} / Looking at {host} in Ducter's browser** (a running task's line on the Mac and the phone, never a transcript line, D127); the move to Ducter's browser: **Claude in Chrome isn't connected; switched to Ducter's own browser** (system line) | Literal: it is the user's own Chrome, signed in as them. Ducter's own browser stays **Ducter 的浏览器 / Ducter's own browser** |
 | server keeps running (systemd service) | **一直开着 / Stays on** (doctor row) | |
 | capability (browser, computer use, phone, calls, remote access) | **no noun on screen** (D66). Headings: **你的设备，和它们会做的事 / Your devices and what they can do** · **还能装上的 / You can also add** | Equip = **装上 / Add to <device>**; remove = **取下 / Remove**; result = "MacBook 现在会上网了 / MacBook can now browse the web"; device detail "MacBook 会：… / can: …". Item names are ability phrases (上网, 用电脑, 在哪儿都能用). Never 学会/教会/赋予/授权 (they read as ordering a subordinate). Never 装备/Gear (reads as armour; rhymes with 设备). Claude Code skills stay **技能 / Skills** on their own page, never on the rack |
 | the partner saved something to long-term memory (Mem) | **记下了 · <title> / Noted · <title>** | Inside the Details of the reply it belongs to, with 忘掉 / Forget (D104); all of them under 伙伴 / Partner › 记得什么. Never a card, never a notification. Never "已存入记忆 / saved to memory" in the partner's words; recall is never shown at all |
@@ -108,6 +108,7 @@
 | memory, as the user controls it | **记得什么 / What it remembers** · **记住事情 / Remember things** (switch) · **最近记下的 / Noted lately** · **忘掉 / Forget** ("忘掉了：{title} / Forgotten: {title}"; when Mem can't: "这里不再显示…；Nowledge Mem 里那条还在 / … is hidden here; it's still in Nowledge Mem") · **装上 Nowledge Mem / Get Nowledge Mem** | Never "delete memory", "knowledge base", "记忆库" |
 | what runs without asking | **自己就做，还是先问你 / On its own, or asks you first** · **自己就做 / On its own** · **先问你 / Asks you first** | Read-only today; the items say the property (发给别人的 / reaches other people, 收不回的 / can't be taken back) |
 | the app's own settings (D71) | **设置 / Settings** (⌘,; Settings… in the menus) · **外观 / Look** · **界面语言 / Language** (**跟着系统 / Follow the system**) · **关窗以后 / When you close the window** · **更新 / Updates** · **数据和记录 / Data and logs** (打开数据文件夹 · 打开记录 · **检查一遍 / Run checks** · 都好 / All good) · **关于 / About** | What the partner is like lives on Partner, not here |
+| the look (theme) that ships | **Pebble** (a proper name, the same in zh and en; shown under 外观 / Look) | The only theme that ships. Pebble is light; web and iPhone follow the system's dark mode today; **Midnight** (dark) is planned for the Mac (D134, roadmap) |
 | AI accounts on Devices | **登录 / Sign in** · **退出登录 / Sign out** · **装上 / Install** (an account card on this Mac) | The tool's own sign-in, in the browser; Ducter never sees the password |
 | the first-wave harnesses (D85) | **Claude Code** · **Codex** · **pi** · **DeepSeek Harness**, each product's own name, the same in zh and en | Never "harness", "runtime" or "adapter" on screen. pi is written lower-case, as its makers write it |
 | an account that runs on an API key (pi, DeepSeek Harness) | **需要一个 DeepSeek 密钥 / Needs a DeepSeek key** · **有 DeepSeek 密钥 / Has a DeepSeek key** · pi: **有能用的模型 / Has a model it can use** | The key is typed into a masked field and kept on this machine only (D85 proposal); never shown again, never in the conversation |
@@ -213,6 +214,8 @@ Every task shows two editable things on its card and header.
   - personal repos automatically;
   - org repos after asking once per repo.
 - This push is what makes moving a task to another device possible.
+- A task may also push its branch and open a PR itself when the work calls for it (D132); it
+  isn't gated, and what went out shows in Sent out.
 - A revert appends to the Log; history is never deleted.
 
 *PRs*
@@ -294,7 +297,8 @@ Two primitives plus one property cover every case.
 - **Recognizable at a glance:** its own face, accent color, and optionally theme.
 - **Creating one is light:** a name plus one sentence. Mem's birth-draft flow does the rest.
 - **Quota:** subscriptions belong to the user. The main-AI reserve is kept per subscription,
-  shared by all personas' main turns.
+  shared by all personas' main turns. *Not built (D133): no harness reports its limit yet, so
+  the reserve and limit-based picking are on the roadmap.*
 
 ## 6. Scenario catalog
 
@@ -325,7 +329,8 @@ Each scenario needs a flow, states, copy (zh + en), and motion. Status is tracke
   tasks (E6, D89).
 - **F. Memory and identity.** A rule created, edited, or forgotten; recalling something from
   weeks ago; Mem unavailable; switching or linking personas.
-- **G. Safety.** An intent that needs policy (push, send, pay, call); a credential request;
+- **G. Safety.** An intent that needs policy (send, post, pay, call; a task's own push or PR is
+  not gated, D132); a credential request;
   honesty about isolation.
 - **H. Across devices.** Starting on the phone and continuing on the desktop; voice; acting
   on a lock-screen notification.

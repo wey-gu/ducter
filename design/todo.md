@@ -52,9 +52,9 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 
 ## Mac app and first run (`design/onboarding.md`)
 
-- [ ] D56: Ducter keeps running when the window closes; Quit is the explicit stop. In
-      progress in another workstream; then update `design/onboarding.md` "Lifetime" and the
-      README's app section to the as-built behavior.
+- [x] D56: Ducter keeps running when the window closes; Quit is the explicit stop. Built as a
+      per-user LaunchAgent (`apps/desktop/internal/local/agent.go`); `design/onboarding.md`
+      "Lifetime" describes it.
 - [ ] Walk a really blocked Mac through the app (blocked, name and failed screens are verified
       headless only), and check an ad-hoc build's helper loses its quarantine flag after
       Open Anyway. Trigger: the first friend install.
@@ -137,8 +137,8 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [ ] A push for a task's question goes out with the task's wording, before the partner has said
       it (D129 holds only the conversation). Hold the push for the relay, up to the same 60 s.
       Trigger: push dogfood.
-- [ ] Desktop Pebble dark: the phone has it, the Mac app has one light token set. Trigger: the
-      author asks for dark on the Mac.
+- [ ] Mac dark through the **Midnight** theme (D134, roadmap): the phone has Pebble dark, the
+      Mac app has one light token set. Trigger: the roadmap slot for themes.
 
 ## Long-term memory (`design/memory.md`)
 

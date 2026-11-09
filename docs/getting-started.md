@@ -33,7 +33,7 @@ Ducter then looks around your Mac for a few seconds:
 
 - **"Checking this Mac…"** It looks for Claude Code and Codex and whether you're signed in.
 - **If neither is ready,** you see *"Pick one, install it and sign in"*, with one row for Claude
-  Code and one for Codex. Click **Install**: Ducter runs the tool's official installer into your
+  Code and one for Codex. Click **Install**: Ducter runs the AI agent's official installer into your
   own folders (no administrator password, no Terminal) and shows how long it's been. Then click
   **Sign in** and finish in your browser. *"This continues by itself"*: when it's done, you see
   **All set**. If something goes wrong, the row says what happened in plain words, with **Try

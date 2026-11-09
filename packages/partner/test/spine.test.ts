@@ -9,7 +9,7 @@ import { openLog, type SqliteLog } from "../../core/src/log.ts";
 import { audit } from "../src/spine/audit.ts";
 import { computeLedger, renderDigest, type SegmentDigest } from "../src/spine/digest.ts";
 import { autoRecall, recallIntent } from "../src/spine/recall.ts";
-import { chooseCut, identifiers, type Unit } from "../src/spine/segment.ts";
+import { chooseCut, identifiers, topicDone, type Unit } from "../src/spine/segment.ts";
 import { createSpine, memorySpineStore } from "../src/spine/spine.ts";
 import { assemble, parseDigest, type DigestWriter, type WriterInput } from "../src/spine/writer.ts";
 import { renderHistoryLine, type RenderCtx } from "../src/render.ts";
@@ -102,6 +102,17 @@ test("a segment closes at a turn boundary past the budget, and never after the u
   expect(chooseCut(some, Date.parse(some[7]!.e.ts) + 2 * 3600_000, SMALL)).toMatchObject({ reason: "quiet", to: some[7]!.e.seq });
   // A trailing user message is never closed on quiet: it is still waiting for its answer.
   expect(chooseCut(us.slice(0, 7), Date.parse(us[6]!.e.ts) + 2 * 3600_000, SMALL)).toBeNull();
+});
+
+test("a topic is done on the user's merge or PR action, whatever its words say", () => {
+  const ev = (jobId: string, text: string, origin: LogEvent["origin"] = "user", state: "done" | "failed" = "done") =>
+    ({ seq: 1, ts: "2026-11-03T09:00:00Z", stream: "channel", origin, kind: "job_status", body: { jobId, taskId: "t1", state, text } }) as unknown as LogEvent;
+  expect(topicDone(ev("act_t1_merge", "合进去了"))).toBe(true);
+  expect(topicDone(ev("act_t1_open_pr", "the user opened a draft PR for this task"))).toBe(true);
+  // English words alone no longer count: a stop that says "PR", or the partner's own status.
+  expect(topicDone(ev("act_t1_interrupt", "stopped before the PR"))).toBe(false);
+  expect(topicDone(ev("job_t1", "merged upstream", "partner"))).toBe(false);
+  expect(topicDone(ev("act_t1_merge", "merge failed", "user", "failed"))).toBe(false);
 });
 
 test("identifiers: paths, files, hashes, versions, numbers with units; not plain words", () => {

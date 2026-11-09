@@ -35,7 +35,7 @@ your accounts are connected:
 - **Hosted by OOMOL**: no setup with Google, but your mail and sign-ins pass through OOMOL's
   servers.
 - **Self-hosted**: your own [OpenConnector](https://github.com/oomol-lab/open-connector). Your mail
-  and sign-ins stay on your own machine; for Gmail and similar accounts you set up your own
+  and sign-ins stay on your own computer or server; for Gmail and similar accounts you set up your own
   app with Google in OpenConnector.
 - **Something else**: any other MCP server.
 

@@ -12,7 +12,7 @@ and other Macs can connect to it to talk and decide.
 
 ## Your devices and what they can do
 
-In the app, **Your devices and what they can do** shows all your devices as little clay islands
+In the Mac app, **Your devices and what they can do** shows all your devices as little clay islands
 on a calm sea. The computer Ducter lives on is the big one in the middle, with Ducter sitting
 beside it. Each other computer, and each phone you connected, has its own island with a bridge
 back to the middle one, because everything connects through the computer Ducter lives on.
@@ -29,6 +29,9 @@ back to the middle one, because everything connects through the computer Ducter 
 
 Choose an island (or its card on the left) to see that device's card: what it is, what it can
 do, and which AI agents are signed in on it.
+
+This view is on the Mac for now. The phone shows your conversation, **On hand** and your tasks,
+but not the devices.
 
 Each device is in one of three states:
 

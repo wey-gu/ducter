@@ -14,8 +14,8 @@ hands the work to AI agents on your own machines and comes back when it's done, 
 - One conversation with a named partner. It answers right away and starts the work at the same
   time; you see its words, not its plumbing.
 - The partner thinks with Claude Code or Codex, signed in as you, on your existing plan.
-- It remembers what matters across days through Nowledge Mem, and keeps long conversations in
-  view on its own.
+- It can remember what matters across days through Nowledge Mem if you use it, and keeps long
+  conversations in view on its own.
 
 **Work that runs while you're away**
 - Tasks run on Claude Code, Codex, pi or DeepSeek Harness, each in its own copy of your repo.

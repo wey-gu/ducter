@@ -49,7 +49,9 @@ heard of a subagent.
   doing tasks for its local repos.
 - **Browse and use apps on your Mac from a server-hosted Ducter.** When your Ducter lives on a
   server, tasks that need your own Chrome, sign-ins or Mac apps run on your Mac (as a helper
-  computer), with the same safety rules. Research first.
+  computer), with the same safety rules. Research first. The first half exists (D155): one tap
+  in the Mac app makes the Mac a worker of the server (its AI agents and repos), kept running by
+  a LaunchAgent; browser and computer use on that worker are still the home's only.
 - **Real-world checks.** A long-conversation replay on real models, live runs of folder undo
   and native browser use, and the Nowledge Bridge live trial (today behind a flag).
 - **Mac dark mode** through the Midnight theme. Web and iPhone already follow the system.

@@ -192,7 +192,7 @@ it's back.
 | Command | What it does |
 |---|---|
 | `ducter up --headless` | Run as a server: no window. Binds 127.0.0.1 unless `--host` says otherwise |
-| `ducter service install \| uninstall \| status` | systemd user service with restart on failure; logs in `journalctl --user -u ducter` |
+| `ducter service install \| uninstall \| status` | systemd user service with restart on failure; logs in `journalctl --user -u ducter`. With `--worker` on a Mac: the LaunchAgent `co.nowledge.ducter.worker` running `ducter worker` (login start, KeepAlive, `<dataDir>/worker.log`; D155) |
 | `ducter pair` | One-time pairing code (10 min) for any device: address, link and QR for a phone or app, and the `ducter worker` command for another computer (D83). With no public address on a server it leads with `ducter domain` and the public IP, then the SSH tunnel; `--json` adds `reachable`, `publicIp`, `tunnel` and `steps` |
 | `ducter domain <name> [--remove \| --print \| --no-dns-check] [--json]` | HTTPS at that name with Caddy, DNS checked first, then a pair code |
 | `ducter devices` | Connected devices; `disconnect <id>` removes one, `rename <id> <name>` renames one (D84) |

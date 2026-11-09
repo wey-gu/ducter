@@ -147,8 +147,10 @@ IP too; a tailnet-only HTTPS proxy is the user's own setup (forward to 127.0.0.1
 ## Add a worker
 
 On the home: `ducter pair --json` → `command` (`ducter worker <address> --code <code>`). Run that
-on the worker (install the CLI there first with the one-liner, without `--service`); on a Linux
-worker then `ducter service install --worker` to keep it running. The worker needs its own
+on the worker (install the CLI there first with the one-liner, without `--service`); on the
+worker then `ducter service install --worker` to keep it running (a systemd unit on Linux, a
+LaunchAgent on a Mac; a Mac with the Ducter app connected to the home can instead turn on "Let this
+Mac do tasks" on its card). The worker needs its own
 signed-in Claude Code/Codex. Verify on the home: `ducter devices --json` → the worker with
 `"awake": true`. A server that is the home does tasks itself: no worker needed there.
 

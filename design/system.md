@@ -353,14 +353,36 @@ the worker only holds the place (disk, checkouts, worktrees) and runs the harnes
   `/mcp` only), so letting the code holder choose grants nothing new. `ducter pair` and the
   app's code card print both ways to use the code. `ducter pair --worker` (a code fixed to
   `worker`, for older workers that send no role) and `--join <address>` stay as hidden aliases.
-  Then `ducter service install --worker` keeps it running (no listening port on the worker). It
+  Then `ducter service install --worker` keeps it running (no listening port on the worker): a
+  systemd user unit on Linux, a LaunchAgent `co.nowledge.ducter.worker` on a Mac (D155: RunAtLoad,
+  KeepAlive on an unclean exit, `<dataDir>/worker.log`; a worker the main refused exits 0 under
+  launchd, `DUCTER_SUPERVISOR=launchd`, so it isn't restarted). It
   keeps the token in `~/.ducter/worker.json` (0600) and holds one outbound WebSocket to
   `<main>/worker`, reconnecting with backoff. A client token can't open `/worker` (403, which
   `ducter worker` reports as "joined as an app" and stops), a worker token can't open `/ws`.
+- **The Mac app's one tap (D155).** With the app connected to a home elsewhere, **让这台 Mac 也替
+  {home} 做事 / Let this Mac do tasks for {home}** (this Mac's card, Settings › 在哪儿运行) asks the
+  home for a code over the app's authenticated socket (`pair_code`, as for the CLI in D147),
+  redeems it with `role: "worker"` and `computer: <host>`, writes `<dataDir>/worker.json` (0600,
+  the file `ducter worker` reads) and loads the LaunchAgent above with the bundled helper
+  (`apps/desktop/internal/local/worker.go`). Off: the LaunchAgent is booted out and removed,
+  `worker.json` goes, and the app sends `disconnect_device` for the worker. The token never
+  enters the plist. Only from a settled Ducter.app (not the disk image).
+- **One computer, one card (D155).** `/pair` takes `form` (`"cli"` for the command line,
+  `"app"`) and `computer` (the host it runs on), kept in `devices.db` (`form`, `computer`
+  columns) and sent as `reach.clients[].form/computer` and `devices[].computer`. A CLI paired
+  before D155 is known by its name `CLI on <host>`. Clients fold: a CLI into the worker or app
+  window on its computer, an app window into a worker on its computer; each folded device keeps
+  its own token and its own 断开 (a quiet line in the computer's card). A lone CLI shows as a
+  computer named after its host.
 - **Name (D84).** A worker is known by its paired name (the machine's hostname unless `--name`),
   never by what its hello says. The person can rename it: `rename_device` from the app (改名字 on
-  its card) or `ducter devices rename <id|name> <new name>`. Names stay unique among live
-  devices and can't be this machine's host name or `local`. Former names are kept
+  its card) or `ducter devices rename <id|name> <new name>`. Renamed names stay unique among live
+  devices and can't be this machine's host name or `local`. D155: a default name another live
+  device of the same kind already has gets ` · 2`, ` · 3`… at pairing (an app window and a worker
+  on one computer may share their computer's name). Phones and windows rename the same way, and
+  so does the home: its name is a display name in `<dataDir>/device-name`, while it still
+  answers to its host name and `local`. Former names are kept
   (`former_names` in `devices.db`), so a task placed by the old name still finds its worker; a
   rename from the CLI reaches the running main on its next device sweep (10 s).
 - **Hello.** Hostname, OS/arch, Ducter version, and which harnesses are installed and signed in.

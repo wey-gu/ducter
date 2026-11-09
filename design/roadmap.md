@@ -47,6 +47,9 @@ heard of a subagent.
 - **Move your Ducter between computers.** Start on a Mac, move to a server later (and back):
   one command moves the conversation, settings, routines and accounts; the old machine keeps
   doing tasks for its local repos.
+- **Browse and use apps on your Mac from a server-hosted Ducter.** When your Ducter lives on a
+  server, tasks that need your own Chrome, sign-ins or Mac apps run on your Mac (as a helper
+  computer), with the same safety rules. Research first.
 - **Real-world checks.** A long-conversation replay on real models, live runs of folder undo
   and native browser use, and the Nowledge Bridge live trial (today behind a flag).
 - **Mac dark mode** through the Midnight theme. Web and iPhone already follow the system.

@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { HARNESS_IDS, harnessName, type Attention, type Bodies, type BranchChanges, type Delivery, type LogEvent, type Place, type Residency, type TaskCard } from "@ducter/protocol";
 import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, SessionSpec } from "@ducter/protocol/src/internal.ts";
-import { NUDGE, REOPENED, RESUME_AFTER_RESTART, briefTurn, handedOver, kickoff, taskBrief } from "./brief.ts";
+import { NUDGE, REOPENED, RESUME_AFTER_RESTART, briefTurn, handedOver, kickoff, seedThen, startedAfresh, taskBrief } from "./brief.ts";
 import { createOarHarnessPort } from "./oar.ts";
 import { cwdOf, planPlace, provisionPlace } from "./places.ts";
 import { browserSidecar, codexComputerBrief, computerUseGuard, type BrowserGuardHit, type BrowserOptions, type BrowserSidecar, type BrowserTool, type SidecarInput } from "./browser.ts";
@@ -36,6 +36,13 @@ export interface RunnerOptions {
    * 0 = never park. Default env DUCTER_PARK_IDLE_MS, else 15 min.
    */
   parkIdleMs?: number;
+  /**
+   * The archive horizon: a finished task idle this long is archived (focus-window-states,
+   * default 14 days; env DUCTER_ARCHIVE_IDLE_MS). 0 = never. Checked at start and every
+   * archiveSweepMs (default 1 h).
+   */
+  archiveIdleMs?: number;
+  archiveSweepMs?: number;
 }
 
 /** Runner plus test/ops helpers that are not part of the contract. */
@@ -51,6 +58,8 @@ export interface RunnerExt extends Runner {
   openPr(taskId: string): Promise<ActionResult>;
   /** What the task's branch holds that its base doesn't; undefined when not a repo task or unknown. */
   branchChanges(taskId: string): Promise<BranchChanges | undefined>;
+  /** Archives finished tasks idle past the archive horizon now; returns their ids (the timer runs it too). */
+  sweepArchive(): Promise<string[]>;
   /** Alias of dispose, called by main on shutdown. */
   stop(): Promise<void>;
   /** Close all sessions and stop listening. */
@@ -68,6 +77,10 @@ interface TaskRt {
   session?: HarnessSession;
   sessionId?: string;
   loggedSessionId?: string;
+  /** Moved to another agent (D89) and no session there yet: the harness it came from. */
+  handedFrom?: string;
+  /** The archive horizon kept its worktree (leftovers) at this card updatedAt: don't retry until it changes. */
+  archiveKeptAt?: string;
   running: boolean; // our view: a turn is in flight
   reportedThisTurn: boolean;
   nudged: boolean;
@@ -135,6 +148,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
   const tasks = new Map<string, TaskRt>();
   const graceMs = opts.offlineGraceMs ?? Number(process.env.DUCTER_OFFLINE_GRACE_MS || 120_000);
   const parkMs = opts.parkIdleMs ?? Number(process.env.DUCTER_PARK_IDLE_MS || 15 * 60_000);
+  const archiveIdleMs = opts.archiveIdleMs ?? Number(process.env.DUCTER_ARCHIVE_IDLE_MS ?? 14 * 24 * 3600_000);
   const localOps: PlaceOps = {
     plan: (place, id, title) => planPlace(place, id, title, core.dataDir),
     provision: (r) => provisionPlace(r),
@@ -233,6 +247,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
 
   /** Records the native session id once known, so a restarted runner can resume it. */
   function noteSessionId(t: TaskRt, session: HarnessSession) {
+    // Only the task's current session: a closing old one (after a switch) must not put its id back.
+    if (t.session !== session) return;
     let id: string | undefined;
     try {
       id = session.id || undefined;
@@ -242,6 +258,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     if (!id || id === t.loggedSessionId) return;
     t.sessionId = id;
     t.loggedSessionId = id;
+    t.handedFrom = undefined; // the new agent has its own session now
     // On a worker, the cwd was planned there: record it, a restarted main resumes from it.
     logEvent(t, { role: "system", from: "runner", text: "session started", raw: { sessionId: id, ...(t.ops.device ? { cwd: t.spec.cwd, device: t.ops.device.id } : {}) } });
   }
@@ -276,6 +293,38 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     t.session = session;
     noteSessionId(t, session);
     void pump(t, session);
+  }
+
+  /** Every checkpoint the task saved, oldest first: what a new session is seeded with. */
+  function progressOf(t: TaskRt): string[] {
+    return core.log
+      .read({ stream: stream(t.id), kinds: ["checkpoint"], limit: 10_000 })
+      .map((e) => preview((e.body as Bodies["checkpoint"]).text, 2000) ?? "")
+      .filter(Boolean);
+  }
+
+  /**
+   * Brings a parked task's session back: by its native id when it has one; else, or when the
+   * harness rejects the resume, a new session in the same task seeded from the brief (in the
+   * system prompt) + every checkpoint (focus-window-states parked -> hot). Returns that seed, to
+   * go before the next turn's text, or "" when the old session resumed.
+   */
+  async function resumeOrSeed(t: TaskRt): Promise<string> {
+    if (t.sessionId) {
+      try {
+        await startSession(t, true);
+        return "";
+      } catch (err) {
+        if (isOffline(err)) throw err;
+        const why = preview(err instanceof Error ? err.message : String(err), 300);
+        logEvent(t, { role: "system", from: "runner", text: `could not resume the session (${why}); started a new one from the brief and saved progress`, raw: { fresh: "resume_rejected" } });
+        t.sessionId = undefined;
+      }
+    }
+    const progress = progressOf(t);
+    const seed = t.handedFrom ? handedOver(t.handedFrom, progress) : startedAfresh(progress);
+    await startSession(t, false);
+    return seed;
   }
 
   async function pump(t: TaskRt, session: HarnessSession) {
@@ -331,9 +380,9 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     t.resumeOnBack = false;
     logEvent(t, { role: "system", from: "runner", text: `${d.name} is back; resuming the session`, raw: { device: d.id, offline: false } });
     try {
-      if (t.sessionId) {
-        await startSession(t, true);
-        await sendTurn(t, DEVICE_BACK, "runner");
+      if (t.sessionId || t.handedFrom) {
+        const seed = await resumeOrSeed(t);
+        await sendTurn(t, seed || DEVICE_BACK, "runner");
       } else {
         await t.ops.provision({ place: t.card.place, cwd: t.spec.cwd });
         await startSession(t, false);
@@ -487,6 +536,47 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     setState(t, "done", "archived");
   }
 
+  /**
+   * The archive horizon (focus-window-states parked -> archived): a finished task (done, done ·
+   * checking, failed) left alone for archiveIdleMs is archived. Its clean worktree goes (never
+   * --force), its branch, transcript and Log stay, and a follow-up adds the worktree back. A
+   * worktree with leftovers is kept and the task stays parked: unmerged edits are never reclaimed.
+   * Dropped tasks keep their worktree on purpose (Undo), so the horizon skips them.
+   */
+  async function sweepArchive(): Promise<string[]> {
+    if (!(archiveIdleMs > 0)) return [];
+    const archived: string[] = [];
+    for (const t of tasks.values()) {
+      const card = core.tasks.get(t.id);
+      if (!card || t.dropped || isBusy(t) || !["parked", "warm"].includes(card.residency)) continue;
+      if (!["done", "done_claimed", "failed"].includes(card.attention)) continue;
+      if (now().getTime() - Date.parse(card.updatedAt) < archiveIdleMs) continue;
+      if (t.archiveKeptAt === card.updatedAt) continue; // kept last time and untouched since
+      if (t.ops.device && !t.ops.device.online()) continue;
+      clearTimeout(t.parkTimer);
+      const s = t.session;
+      t.session = undefined;
+      t.running = false;
+      await s?.close().catch(() => {});
+      let a: ActionResult & { removed: boolean };
+      try {
+        a = await t.ops.archive(card.place);
+      } catch {
+        if (card.residency !== "parked") setState(t, card.attention, "parked");
+        continue; // e.g. the worker dropped: try again on the next sweep
+      }
+      if (!a.removed && !a.ok) {
+        if (card.residency !== "parked") setState(t, card.attention, "parked");
+        t.archiveKeptAt = core.tasks.get(t.id)?.updatedAt ?? card.updatedAt;
+        continue;
+      }
+      if (a.removed) logEvent(t, { role: "system", from: "runner", text: a.message, raw: { archive: "removed", horizon: true } });
+      setState(t, card.attention, "archived");
+      archived.push(t.id);
+    }
+    return archived;
+  }
+
   function get(taskId: string): TaskRt {
     const t = tasks.get(taskId);
     if (!t) throw new Error(`unknown task ${taskId}`);
@@ -560,9 +650,17 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const now = card.body ? { ...open, harness: card.body.harness, model: card.body.model } : open;
     const t = newRt(open.taskId, e.persona, card, specFor(open.taskId, now, cwd), ops);
     for (const ev of core.log.read({ stream: stream(open.taskId), kinds: ["task_event"], limit: 50_000 })) {
-      const raw = (ev.body as Bodies["task_event"]).raw as { sessionId?: string; cwd?: string } | undefined;
-      if (raw?.sessionId) t.sessionId = t.loggedSessionId = raw.sessionId;
+      const raw = (ev.body as Bodies["task_event"]).raw as { sessionId?: string; cwd?: string; switched?: { from: string } } | undefined;
+      if (raw?.sessionId) {
+        t.sessionId = t.loggedSessionId = raw.sessionId;
+        t.handedFrom = undefined;
+      }
       if (raw?.sessionId && raw.cwd && ops.device) t.spec.cwd = t.base.cwd = raw.cwd;
+      // Moved to another agent (D89): the session ids before it are the old agent's; ignore them.
+      if (raw?.switched) {
+        t.sessionId = t.loggedSessionId = undefined;
+        t.handedFrom = raw.switched.from;
+      }
     }
     tasks.set(open.taskId, t);
     recovered.push(t);
@@ -580,10 +678,10 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     t.started = (async () => {
       try {
         await Bun.sleep(0); // let the caller finish wiring (registerTaskTools, partner)
-        if (t.sessionId) {
+        if (t.sessionId || t.handedFrom) {
           logEvent(t, { role: "system", from: "runner", text: "main process restarted; resuming the session" });
-          await startSession(t, true);
-          await sendTurn(t, RESUME_AFTER_RESTART, "runner");
+          const seed = await resumeOrSeed(t);
+          await sendTurn(t, seed || RESUME_AFTER_RESTART, "runner");
         } else {
           await t.ops.provision({ place: t.card.place, cwd: t.spec.cwd });
           await startSession(t, false);
@@ -699,8 +797,17 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     return core.tasks.get(id) ?? card;
   }
 
+  // The archive horizon: once soon after start (tasks recovered from the Log), then periodically.
+  const sweep = () => void sweepArchive().catch((err) => console.warn("[runner] archive sweep:", (err as Error).message));
+  const sweepFirst = archiveIdleMs > 0 ? setTimeout(sweep, 5_000) : undefined;
+  const sweepTimer = archiveIdleMs > 0 ? setInterval(sweep, opts.archiveSweepMs ?? 3600_000) : undefined;
+  (sweepFirst as { unref?: () => void } | undefined)?.unref?.();
+  (sweepTimer as { unref?: () => void } | undefined)?.unref?.();
+
   const runner: RunnerExt = {
     harness,
+
+    sweepArchive,
 
     openTask: (input) => open(input, input.brief),
     // D120: the card, the place and the session start while the partner still writes the brief.
@@ -716,24 +823,25 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       if (!t.session) {
         // Its worker is away: say so, and deliver nothing (the partner tells the user).
         if (t.ops.device && !t.ops.device.online()) throw new DeviceOfflineError(t.ops.device.name);
-        // Parked (process gone or restarted): resume by native session id, or fail loudly.
-        if (!t.sessionId) throw new Error(`task ${taskId} has no session to resume`);
+        // Parked (process gone or restarted): resume by native session id; with none (moved to
+        // another agent) or a rejected resume, a new session from the brief + saved progress.
         // Resuming takes seconds (measured ~10 s for Claude Code): log the text now so the
         // transcript shows it at once; a resumed session is idle, so it becomes the next turn.
         logInput(t, text, from, "turn", clientId);
         const archived = t.residency === "archived";
         setState(t, currentAttention(t), "provisioning");
+        let seed: string;
         try {
           // Archived after a merge: its worktree was removed; add it back from the kept branch.
           if (archived) await t.ops.provision({ place: core.tasks.get(taskId)?.place ?? t.card.place, cwd: t.spec.cwd });
-          await startSession(t, true);
+          seed = await resumeOrSeed(t);
         } catch (err) {
           setState(t, currentAttention(t), "parked");
-          logEvent(t, { role: "system", from: "runner", text: `delivery failed: could not resume the session: ${preview(String(err), 400)}` });
+          logEvent(t, { role: "system", from: "runner", text: `delivery failed: could not start the session: ${preview(String(err), 400)}` });
           throw err;
         }
         setState(t, "working", "hot");
-        await sendTurn(t, text, from, true);
+        await sendTurn(t, seed ? seedThen(seed, text) : text, from, true);
         return { delivered: "prompted" };
       }
       if (isBusy(t)) {
@@ -758,7 +866,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       const t = get(taskId);
       await t.started.catch(() => {});
       t.dropped = false;
-      if (t.session || t.sessionId) return runner.send(taskId, REOPENED, undefined, "user");
+      if (t.session || t.sessionId || t.handedFrom) return runner.send(taskId, REOPENED, undefined, "user");
       // Never got a session (e.g. failed to start): start one from the brief.
       t.started = (async () => {
         await t.ops.provision({ place: t.card.place, cwd: t.spec.cwd });
@@ -786,27 +894,27 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       const old = t.session;
       t.session = undefined;
       t.running = false;
-      t.sessionId = undefined;
+      t.sessionId = t.loggedSessionId = undefined;
+      t.handedFrom = from;
       await old?.close().catch(() => {});
       // The next session start rebuilds the spec (and a browser place's browser) for it.
       t.base = { ...t.base, harness: harness as HarnessId };
       if (model) t.base.model = model;
       else delete t.base.model;
       t.spec = withBrowser(t.base, t.sidecarInput?.harness === harness ? t.sidecar : undefined, partnerNameOf());
-      logEvent(t, { role: "system", from: "runner", text: `moved from ${from} to ${harness}${model ? ` (${model})` : ""}` });
+      // raw.switched: recovery ignores the session ids logged before it (the old agent's).
+      logEvent(t, { role: "system", from: "runner", text: `moved from ${from} to ${harness}${model ? ` (${model})` : ""}`, raw: { switched: { from, to: harness } } });
       // Something left to do: carry on there now, from the saved progress. A finished or waiting
-      // task keeps its state; the next message starts the new session.
+      // task keeps its state; the next message (an answer, a follow-up) starts the new session
+      // from the brief + saved progress (send -> resumeOrSeed).
       if (!wasRunning && att !== "working" && att !== "queued") {
         setState(t, att, "parked");
         return { ok: true };
       }
-      const progress = core.log
-        .read({ stream: stream(taskId), kinds: ["checkpoint"], limit: 20 })
-        .map((e) => (e.body as Bodies["checkpoint"]).text);
       t.started = (async () => {
-        await startSession(t, false);
+        const seed = await resumeOrSeed(t);
         setState(t, "working", "hot");
-        await sendTurn(t, handedOver(from, progress), "runner");
+        await sendTurn(t, seed, "runner");
       })();
       try {
         await t.started;
@@ -904,6 +1012,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
 
     async dispose() {
       unsubscribe();
+      clearTimeout(sweepFirst);
+      clearInterval(sweepTimer);
       for (const t of tasks.values()) {
         clearTimeout(t.offlineTimer);
         clearTimeout(t.parkTimer);

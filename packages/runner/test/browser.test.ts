@@ -782,7 +782,7 @@ describe("browser place: the browser comes back after a restart, on reopen, and 
     expect(all[0].launchArgs).toContain("--chrome");
     await core.call("report_to_main", { state: "progress", summary: "half" }, card.taskId);
     core.tasks.setState(card.taskId, "working", "hot");
-    expect((await runner.switchBody(card.taskId, "codex")).ok).toBe(true);
+    expect(await runner.switchBody(card.taskId, "codex")).toEqual({ ok: true });
     const o = all.at(-1);
     expect(o.mcpServers.map((m: any) => m.name)).toEqual(["ducter", "browser"]); // Codex has no own tools here: cua-driver
     expect(o.appendSystemPrompt).not.toContain("Claude in Chrome");

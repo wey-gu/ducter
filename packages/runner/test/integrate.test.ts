@@ -257,6 +257,41 @@ test("merge keeps a worktree with leftovers and says so on the task", async () =
   await runner.dispose();
 });
 
+// focus-window-states parked -> archived: the archive horizon (default 14 days).
+test("archive horizon: a finished task idle 14 days is archived (clean worktree removed, branch kept); leftovers keep it parked", async () => {
+  const repo = join(dir, "repo");
+  Bun.spawnSync(["git", "init", "-q", "-b", "main", repo]);
+  sh(repo, "config", "user.name", "t");
+  sh(repo, "config", "user.email", "t@t");
+  writeFileSync(join(repo, "a.txt"), "a\n");
+  sh(repo, "add", ".");
+  sh(repo, "commit", "-qm", "init");
+  let clock = Date.now();
+  const { core, runner, taskId } = await bootWithTask({ kind: "repo", device: "local", repoPath: repo }, { now: () => new Date(clock) });
+  const place = core.tasks.get(taskId)!.place as Extract<Place, { kind: "repo" }>;
+  writeFileSync(join(place.worktree!, "notes.txt"), "scratch\n");
+  await core.mcp.call({ role: "task", taskId }, "report_to_main", { state: "done", summary: "Added b." });
+  await Bun.sleep(5);
+  core.tasks.setState(taskId, core.tasks.get(taskId)!.attention, "warm"); // its turn ended (idlePort emits no turn end)
+  expect(await runner.sweepArchive()).toEqual([]); // not idle long enough
+  clock += 15 * 24 * 3600_000;
+  expect(await runner.sweepArchive()).toEqual([]); // leftovers: kept, stays parked
+  expect(existsSync(join(place.worktree!, "notes.txt"))).toBe(true);
+  expect(core.tasks.get(taskId)!.residency).toBe("parked");
+  rmSync(join(place.worktree!, "notes.txt"));
+  expect(await runner.sweepArchive()).toEqual([]); // untouched since it was kept: not retried
+  core.tasks.setState(taskId, core.tasks.get(taskId)!.attention, "parked", "touched");
+  clock += 15 * 24 * 3600_000;
+  expect(await runner.sweepArchive()).toEqual([taskId]);
+  expect(existsSync(place.worktree!)).toBe(false);
+  expect((await git(repo, ["rev-parse", "--verify", place.branch!])).ok).toBe(true);
+  expect(core.tasks.get(taskId)!.residency).toBe("archived");
+  // A follow-up adds the worktree back from the branch.
+  await runner.send(taskId, "One more thing.");
+  expect(existsSync(place.worktree!)).toBe(true);
+  await runner.dispose();
+});
+
 test("a task with an open question cannot report done; undrop restores the card", async () => {
   const p = repoWithTaskBranch();
   const { core, runner, taskId } = await bootWithTask(p);
@@ -278,7 +313,7 @@ test("a task with an open question cannot report done; undrop restores the card"
   await runner.dispose();
 });
 
-async function bootWithTask(place: Place, opts: { gh?: string; branchChecks?: boolean } = {}) {
+async function bootWithTask(place: Place, opts: { gh?: string; branchChecks?: boolean; now?: () => Date } = {}) {
   // A fake device with Claude Code signed in: who does the task never depends on which agents
   // are installed on the machine running the tests (a CI runner has none).
   const core: Core = startCore({
@@ -289,7 +324,7 @@ async function bootWithTask(place: Place, opts: { gh?: string; branchChecks?: bo
   core.setPartner({ onTrigger: () => {} });
   let late: ReturnType<typeof createRunner> | undefined;
   registerTaskTools(core, opts.branchChecks ? { branchChanges: (id) => late!.branchChanges(id) } : {});
-  const runner = createRunner(core, { harness: idlePort(), gh: opts.gh, newId: () => "t1" });
+  const runner = createRunner(core, { harness: idlePort(), gh: opts.gh, newId: () => "t1", ...(opts.now ? { now: opts.now } : {}) });
   late = runner;
   core.setRunner(runner);
   const card = await runner.openTask({ persona: "default", title: "fix", brief: "b", place });

@@ -75,6 +75,11 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [ ] Greetings sometimes give two examples (eval `first_words` 3/4).
 - [ ] Re-verify live that a task never phrases Hold as "no" (brief changed, not re-run).
 - [ ] Parked Claude Code sessions take ~10 s to resume; nothing prewarms tasks.
+- [ ] **Archive horizon for dropped and failed-to-start tasks.** The sweep archives only `done`,
+      `done?` and `failed` tasks idle 14 days; a dropped task keeps its worktree for Undo.
+      Trigger: worktrees of dropped tasks pile up on disk.
+- [ ] **A resume rejected after it started** (the harness accepts the id, then its stream
+      errors) still parks the task; only a refusal at start falls back to a new session.
 - [ ] Tasks can write outside their place (one used `/tmp/flk`); no sandbox on the Mac.
 - [ ] Branch slugs from Chinese titles keep only the ASCII words (`ducter/foo-…`).
 - [ ] The honesty guard is a regex over zh/en wording; it can miss paraphrases.

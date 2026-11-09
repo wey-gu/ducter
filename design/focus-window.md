@@ -118,7 +118,10 @@ partner says, never a silent fallback.
 others with why and the limit each, and the ones that can't, greyed with why. **换到 X 接着做 /
 Continue on X** closes the old session and starts the new agent from the brief and the saved
 progress (a handoff; the native session can't carry across harnesses); a waiting or finished
-task keeps its state and the next message starts it there. Each switch leaves a hidden note
+task keeps its state and the next message (an answer, a follow-up, reopen) starts it there,
+seeded from the brief + every checkpoint and then that message. As built, the switch is logged
+as a system line with `raw.switched {from, to}`, and a restarted runner ignores the session ids
+logged before it, so the new agent never resumes the old one's session. Each switch leaves a hidden note
 for the partner; after the second switch the same way (from → to), the partner is woken once
 to offer a rule: it names the kind of work in a few words and asks with Go / Hold, default
 hold, and saves it with `rule_save` on Go.

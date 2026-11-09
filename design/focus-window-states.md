@@ -68,6 +68,14 @@ C never guesses `done`.
 
 C may wake a sleeping machine when input arrives for a parked window on it.
 
+**As built (runner).** A rejected resume, and a task moved to another agent (D89, no session
+there yet), start a new session in the same task: the brief stays in its system prompt, every
+checkpoint and then the waking message are its first turn, and a system line says so
+(`raw.fresh: "resume_rejected"`). The archive horizon is a sweep at start and hourly: a
+`done`, `done?` or `failed` task idle 14 days (`DUCTER_ARCHIVE_IDLE_MS`) is archived; a
+worktree with leftovers is kept and the task stays parked, never force-removed. Dropped tasks
+keep their worktree for Undo and are not swept yet (`todo.md`).
+
 ## Cross-axis invariants
 
 1. Residency never changes attention, with three explicit exceptions (D52 adds the third):

@@ -48,6 +48,9 @@ type state struct {
 	// Lang is the window's language from Settings: "zh", "en", or empty
 	// (follow macOS).
 	Lang string `json:"lang,omitempty"`
+	// Details is 对话里的细节 / Details in the conversation (D104): "shown",
+	// or empty (folded, the default).
+	Details string `json:"details,omitempty"`
 	// TitleSeenAt is when the title moment (D87) last played to its end
 	// or was skipped: it plays on the first launch only.
 	TitleSeenAt string `json:"titleSeenAt,omitempty"`
@@ -196,6 +199,24 @@ func (l *Local) SetLang(lang string) {
 		lang = ""
 	}
 	l.st.Lang = lang
+	l.save()
+}
+
+// DetailsShown says whether the conversation shows each message's Details
+// open by default (D104); folded unless chosen in Settings.
+func (l *Local) DetailsShown() bool {
+	return l != nil && l.st.Details == "shown"
+}
+
+// SetDetailsShown remembers that choice.
+func (l *Local) SetDetailsShown(on bool) {
+	if l == nil {
+		return
+	}
+	l.st.Details = ""
+	if on {
+		l.st.Details = "shown"
+	}
 	l.save()
 }
 

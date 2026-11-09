@@ -103,6 +103,19 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [ ] **The phone's opened task** keeps its title as the headline; D90's "what it is doing
       now" headline is desktop-only so far.
 
+## The quiet conversation (D104, `design/quiet-conversation.md`)
+
+- [ ] The ack says how long work usually takes and that it will say when it's done ("一般十来
+      分钟，查清楚了告诉你"): a partner prompt change against rule 2c ("write nothing more"), so
+      it goes through `bun run eval:partner` first. Trigger: the author approves D104.
+- [ ] The waiting line on a real partner turn (opus), timed end to end: first step, each step,
+      the ack. Verified so far on the demo's scripted partner and in unit tests. Trigger: a
+      live run with a signed-in harness.
+- [ ] The iOS shell (`apps/ios`) renders `apps/web`, so it should follow; check it in the
+      Simulator. Trigger: the next iOS build.
+- [ ] A ↗ line in the demo seed, to show what went out stays in view (the seed sends nothing
+      out). Trigger: the next demo-seed change.
+
 ## Long-term memory (`design/memory.md`)
 
 - [ ] **One live write** into a scratch Space, then archive it (the user's Mem is Cloud, so
@@ -164,6 +177,21 @@ note and a `Dn`) before it is built.
       visible; in a `bun build --compile` binary the avatar file is not bundled, so there is no
       Dock tile.
 - [ ] Find what triggers macOS's "CuaDriver was prevented from modifying apps" notification.
+
+## Devices stage: the Isles (D81)
+
+- [ ] Human comprehension test of the Isles scene (owed since D65; research/33 used LLM proxy
+      raters only). Pass bar: 80% on where Ducter lives, what a bridge means, work running, can't
+      reach, and where a new device goes. Trigger: before v1 is called done.
+- [ ] Reduced motion checked on the native window with the system setting on (verified in the
+      headless renderer only; this machine's setting was left alone). Trigger: the next design QA.
+- [ ] "Shared by N devices" from the AI agent itself, per account (D82). Trigger: an AI agent
+      reports its account or allowance.
+- [ ] The site's ability stickers: `design/art/assets/alpha/ab_*.png` are now the clay objects
+      (D81); `apps/site/public/art` still holds the old rings until `apps/site/scripts/art.mjs`
+      runs. Trigger: the next site build.
+- [ ] One small mark on the AI agent Ducter thinks with (a separate proposal); the token has
+      room for it. Trigger: that proposal is decided.
 
 ## Art assets: production export
 
@@ -264,11 +292,18 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] Verify Codex leaves out a non-empty global `~/.codex/AGENTS.md` and the user's
       `personality` (this Mac's AGENTS.md is empty). Trigger: a scratch `CODEX_HOME` copy with
       a test AGENTS.md, or a user with one.
-- [ ] The Devices key field for API-key accounts: masked input, writes `<dataDir>/env` (0600),
-      never echoed or logged; "需要一个 DeepSeek 密钥 / Needs a DeepSeek key". Trigger: the
-      ai-loadout Devices work.
-- [ ] Pass pi's provider keys from `<dataDir>/env` too (today only DeepSeek Harness's key is
-      read from there). Trigger: a pi user without the key in their login env.
+- [ ] The Devices key field for API-key accounts: masked input, writes `<dataDir>/keys.env`
+      (0600, D102), never echoed or logged; "需要一个 DeepSeek 密钥 / Needs a DeepSeek key".
+      Trigger: the ai-loadout Devices work.
+- [x] Pass pi's provider keys from Ducter's key file too (D102: `HARNESS_KEYS.pi`, from the
+      env or `keys.env`, never the DeepSeek key).
+- [ ] A way for the user to give tasks a named env token on purpose (e.g. `GITHUB_TOKEN` for
+      `gh`), now that a harness child's environment is an allowlist (D102). Trigger: a task
+      fails because a tool it runs relied on a token from Ducter's shell.
+- [ ] pi's in-process fallback (no `node` and no `pi` on PATH) runs inside Ducter's process and
+      reads its environment directly; the allowlist covers only pi's bash tool there. Ducter's
+      own keys are scrubbed from that environment, a shell key is not. Trigger: a machine
+      without node that runs pi tasks.
 - [ ] Label the partner's Codex sessions (`SessionOptions.name`) so they read as Ducter's in the
       user's Codex history. Trigger: a user asks what they are.
 - [ ] Qwen Code, Qoder, Grok as the next harnesses (cheapest per research/34). Trigger: a user
@@ -288,7 +323,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
 
 ## Nowledge Bridge (D105–D111, `design/bridge.md`)
 
-- [ ] Run `bun run bridge:live -- --real` and record the result in research/33. Trigger: the author says the
+- [ ] Run `bun run bridge:live -- --real` and record the result in research/37. Trigger: the author says the
       account and both contexts are ready (J-Q14 steps 1–4).
 - [ ] Replace the tolerant JSON parsing (`inbox`, `open`, `outbox`, `inspect`, send/reply results, the member in
       passive `setup`) with the real shapes from that run's `raw-<time>/` folder. Trigger: the live run.

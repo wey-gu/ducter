@@ -125,6 +125,25 @@ report("t_tokio", {
 });
 await tick();
 
+// After the seed, a scripted partner answers new messages the way a real one paces itself, so
+// the waiting moments can be seen and timed (D104): thinking at once, a look back at the Log at
+// 0.4 s, a task being set up at 1.5 s, the ack at 2.3 s, then the turn ends.
+core.setPartner({
+  onTrigger(e) {
+    if (e.kind !== "user_msg") return;
+    const at = () => new Date().toISOString();
+    const since = at();
+    core.activity?.set({ step: "thinking", since, stepSince: since });
+    setTimeout(() => core.activity?.set({ step: "recalling", since, stepSince: at() }), 400);
+    setTimeout(() => core.activity?.set({ step: "opening_task", since, stepSince: at() }), 1500);
+    setTimeout(() => {
+      const text = zh ? "好，我开一件事去查，在 MacBook 上。一般十来分钟，查清楚了告诉你。" : "On it. I'm opening a task to look into it on the MacBook. That usually takes about ten minutes; I'll tell you what I find.";
+      log.append({ stream: "channel", origin: "partner", kind: "ack", body: { jobId: `j${e.seq}`, text, replyTo: e.seq } });
+      core.activity?.set(null);
+    }, Number(process.env.DEMO_REPLY_MS ?? 2300));
+  },
+});
+
 console.log(`[demo] Ducter demo is up at http://127.0.0.1:${core.port}/app (data: ${core.dataDir})`);
 process.on("SIGINT", async () => {
   await core.stop();

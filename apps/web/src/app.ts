@@ -29,11 +29,29 @@ export function savedUiLang(): UiLang {
   }
 }
 export const UNDO_MS = 10_000;
+
+/** 对话里的细节 / Details in the conversation (D104): folded (the default) or shown, per client. */
+const DETAILS = "ducter.details";
+export type DetailsPref = "folded" | "shown";
+export function savedDetails(): DetailsPref {
+  try {
+    return localStorage.getItem(DETAILS) === "shown" ? "shown" : "folded";
+  } catch {
+    return "folded";
+  }
+}
 export const DONE_GLOW_MS = 6_000;
 
 class AppState {
   S = new Store();
   uiLang: UiLang = savedUiLang();
+  details: DetailsPref = savedDetails();
+  /** Living messages whose gathered asks the person opened (D104). */
+  moreAsks = new Set<number>();
+  /** When this client sent the message it is waiting on (the Presence clock before a step). */
+  thinkingSince?: number;
+  /** Messages whose Details the person flipped from the default (D104). */
+  flipped = new Set<string>();
   L: Strings = strings(this.uiLang === "auto" ? detectLang() : this.uiLang);
   localeSet = this.uiLang !== "auto";
   /** The partner's settings (D71), once the server sent them; mem is what it remembers. */
@@ -253,9 +271,37 @@ class AppState {
   private forgetting = new Map<number, string>();
   forget(seq: number) {
     const n = this.mem?.noted.find((x) => x.seq === seq);
-    if (n) this.forgetting.set(seq, n.title);
+    const title = n?.title ?? this.S.noted.find((x) => x.seq === seq)?.title;
+    if (title) this.forgetting.set(seq, title);
+    this.S.noted = this.S.noted.filter((x) => x.seq !== seq);
     if (this.mem) this.mem = { ...this.mem, noted: this.mem.noted.filter((n) => n.seq !== seq) };
     this.send({ t: "memory_forget", seq });
+    this.changed();
+  }
+
+  /** The 记下了 / Noted lines a message's Details carry: those answering the same user message,
+   *  under the last partner message that answers it (D104). */
+  notedFor(e: Entry): { seq: number; title: string }[] {
+    const replyTo = e.ai?.replyTo ?? e.job?.ack?.replyTo;
+    if (replyTo == null) return [];
+    const last = [...this.S.channel].reverse().find((x) => (x.ai?.replyTo ?? x.job?.ack?.replyTo) === replyTo);
+    return last === e ? this.S.noted.filter((n) => n.replyTo === replyTo) : [];
+  }
+
+  /** Is this message's Details open? The preference, flipped where the person tapped. */
+  detailsOpen(key: string): boolean {
+    return (this.details === "shown") !== this.flipped.has(key);
+  }
+  toggleDetails(key: string) {
+    this.flipped.has(key) ? this.flipped.delete(key) : this.flipped.add(key);
+    this.changed();
+  }
+  setDetails(v: DetailsPref) {
+    this.details = v;
+    this.flipped.clear();
+    try {
+      localStorage.setItem(DETAILS, v);
+    } catch {}
     this.changed();
   }
 
@@ -385,6 +431,7 @@ class AppState {
     this.held = undefined;
     const clientId = `p${Date.now()}-${++this.nextClient}`;
     this.pending.push({ clientId, text });
+    this.thinkingSince = Date.now();
     this.markRead();
     this.send({ t: "send", text, clientId });
     this.changed();
@@ -469,8 +516,9 @@ class AppState {
     if (this.pending.length) return true;
     for (let i = this.S.channel.length - 1; i >= 0; i--) {
       const e = this.S.channel[i]!;
-      if (e.user) return true;
-      if (e.ai || e.job) return false;
+      // A turn that ended after the message without a word (an ask, or nothing to say) answered it.
+      if (e.user) return e.firstSeq > this.S.activityEndedAt;
+      if (e.ai || e.job || (e.decision && !e.decision.taskId)) return false;
     }
     return false;
   }
@@ -503,8 +551,8 @@ class AppState {
     const parts: string[] = [];
     const needs = b.lanes[LANE.needs]!.length + this.S.partnerDecisions().length;
     if (needs) parts.push(L.t("header.needs", needs));
+    // Thinking is said where the reply will appear (Presence, D104), not here.
     if (b.lanes[LANE.working]!.length) parts.push(L.t("header.working", b.lanes[LANE.working]!.length));
-    else if (this.thinking()) parts.push(L.t("header.thinking"));
     const done = this.doneToday();
     // A phone header has room for two things: what needs you and what's moving come first.
     if (done && parts.length < 2) parts.push(L.t("header.done", done));

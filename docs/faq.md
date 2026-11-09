@@ -68,7 +68,7 @@ write to it directly while it works.
 
 It remembers your conversation. With [Nowledge Mem](https://mem.nowledge.co) it also starts out
 knowing who you are and what you're working on, from the same memory your other AI tools use,
-and you see **Noted** when it saves something.
+and its reply's **Details** shows **Noted** when it saves something.
 See [Privacy and safety](privacy-and-safety.md#memory-with-nowledge-mem).
 
 ### Can it use the web?

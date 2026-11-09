@@ -14,7 +14,7 @@
 // - The user's taps and the task's report are scripted. S3 moves a shared clock forward 2 h.
 // - --real never sets anything up: a passive `bridge setup` per context first, and it stops unless
 //   both say ready. Every real nmem call's stdout is kept under OUT/raw-<time>/ (outside git), so the
-//   real JSON shapes can replace the tolerant parsing (research/33 B8).
+//   real JSON shapes can replace the tolerant parsing (research/37 B8).
 // - Exit 0 only if every scenario's checks pass: that is the gate for turning DUCTER_BRIDGE on.
 // Nothing touches the user's Claude config; the ~/.claude/projects folders this run creates (named
 // after its scratch dir) are removed at the end.

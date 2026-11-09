@@ -8,7 +8,7 @@ Canvas: https://claude.ai/artifact/LKuVp3knPDJ4EdoyWBGSWN
 
 ## Waiting for you
 
-### J. Nowledge Bridge (2026-11-09 evening, draft; `../bridge.md`, `research/31`, `research/33`)
+### J. Nowledge Bridge (2026-11-09 evening, draft; `../bridge.md`, `research/31`, `research/37`)
 
 J-Q4, J-Q6, J-Q7 and J-Q9 to J-Q13 are answered (D105–D111, below). What is still open:
 
@@ -48,7 +48,7 @@ J-Q4, J-Q6, J-Q7 and J-Q9 to J-Q13 are answered (D105–D111, below). What is st
 - *Default:* accept; revisit for Team (J3).
 
 **J-Q14. The live trial (needs you, on Mem's side).**
-- *Status:* the Cloud IM backend reported unavailable in all 8 Spaces, and no Agent Context existed (research/33
+- *Status:* the Cloud IM backend reported unavailable in all 8 Spaces, and no Agent Context existed (research/37
   §1, read-only). You are setting this up (steps 1–4).
 - *Steps:*
   1. admit the account to the Bridge cohort, or bring the backend up;

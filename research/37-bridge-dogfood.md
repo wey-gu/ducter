@@ -1,4 +1,4 @@
-# 33 · Bridge dogfood: scenarios, a two-model spike, and rough edges
+# 37 · Bridge dogfood: scenarios, a two-model spike, and rough edges
 
 > 2026-11-09. Public. Follows `31-bridge-in-ducter.md` (and private `31`). Built from:
 > - the author's real `nmem 0.10.116` connection, **read-only and passive commands only** (no context created,

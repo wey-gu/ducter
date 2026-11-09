@@ -1,1 +1,1 @@
-An empty round slot socket: a soft recessed circle in cream with a dashed orange ring, seen from the front, puffy clay.
+An empty round clay socket: a low cream clay pedestal disc with a shallow circular hollow on top, the hollow's edge stitched with small orange clay dashes, waiting for a small toy. Low, seen from slightly above.

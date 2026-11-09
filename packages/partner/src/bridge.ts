@@ -44,7 +44,7 @@ export interface BridgeContact {
   space?: string; // the exact Space the card came from, when the CLI says
 }
 
-/** One outgoing operation as `bridge outbox` / `inspect` report it (tolerant; research/33 B8). */
+/** One outgoing operation as `bridge outbox` / `inspect` report it (tolerant; research/37 B8). */
 export interface BridgeOp {
   operation: string; // the selector `inspect` and `resume` take
   state: "sent" | "pending" | "failed" | "unknown";

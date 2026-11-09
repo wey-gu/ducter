@@ -2,17 +2,17 @@
 
 > Design note · 2026-11-09 · Principles 1, 7, 12, 17, 18 · Decided: D105–D111 (outbound, the outgoing ledger,
 > the result reply, names, copy, follow-through, the Mem asks); still open: J-Q1–3, J-Q5, J-Q8, J-Q14 ·
-> Evidence: `research/31` (public), `research/33` (dogfood), private `31` and `10`.
+> Evidence: `research/31` (public), `research/37` (dogfood), private `31` and `10`.
 >
 > Nowledge Bridge is Mem's agent mailbox. This note describes how Ducter uses it. The first slice (receive,
 > ask, reply) is on `main` behind `DUCTER_BRIDGE=1`. Branch `bridge-spike` adds the linked result reply (J2,
 > D107), outbound messages through a card (J4, D105), the outgoing ledger and recovery (D106) and follow-through
-> (S3, D110). It is proven with real models over a fake Bridge (research/33 §3, §3.2), not yet against Mem, and
+> (S3, D110). It is proven with real models over a fake Bridge (research/37 §3, §3.2), not yet against Mem, and
 > stays behind `DUCTER_BRIDGE=1` until `bun run bridge:live -- --real` passes.
 
 ## Chosen scenarios (dogfood, 2026-11-09)
 
-From 14 scored candidates (research/33 §2), four are chosen. The J-numbered details below still hold:
+From 14 scored candidates (research/37 §2), four are chosen. The J-numbered details below still hold:
 - **S1 = J1 + J2, "Ducter, take this one".** The result goes back by code. Proven live on Ducter's side.
 - **S2 = J4, "ask the one who knows".** The user names an agent, the partner shows a card, Ducter sends on Go and
   reports the answer. Proven live on Ducter's side.
@@ -301,7 +301,7 @@ Clients don't render the quiet lines yet. Unknown kinds are skipped.
 
 ## Try it live (the author runs this)
 
-**Status 2026-11-09 (research/33 §1, VERIFIED, read-only).**
+**Status 2026-11-09 (research/37 §1, VERIFIED, read-only).**
 - The account's Cloud IM backend answers `cloud_agent_im_backend_unavailable` in all 8 Spaces.
 - No Agent Context exists.
 

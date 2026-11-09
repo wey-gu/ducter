@@ -56,12 +56,11 @@ sign-in and the same first find (§6).
 - **The token lives only in Ducter.** It is kept in `<dataDir>/connection-tokens.json` (0600).
   It never appears in a harness's config, env, args or files, never in the Log, and never in
   a client frame.
-  - Why not D85's `<dataDir>/env`: on a server, that file is the systemd unit's
-    `EnvironmentFile`. It lands in the core's environment, and from there in every harness
-    child.
-  - The one rule for every secret: a 0600 file in the data folder, read only by the code that
-    uses it. `env` holds the keys a harness itself needs, and the token file holds what only
-    the broker needs.
+  - The one rule for every secret (D102): a 0600 file in the data folder, read only by the code
+    that uses it. `keys.env` holds the keys a harness itself needs (each passed only to that
+    harness), and the token file holds what only the broker needs. Nothing loads either into a
+    process environment, and every harness child's environment is an allowlist that strips
+    any other key or token, so the token can't leak through one either.
   - macOS Keychain is a later option for both.
 - **Shown on Devices as mailboxes on the main's island** (the prototype; the Isles stage is
   being rebuilt on `isles`). For now the list lives on Partner → 它能看的账号 / Accounts it can
@@ -462,8 +461,43 @@ connectors live, how they reach sessions, the engine, and Google access.
   - task grants, with writes refused;
   - the user's rules;
   - oo's `connector.toml` and env precedence.
-- **Not yet live against a real OpenConnector.** Docker isn't running on this Mac. Running
-  OpenConnector's release binary is the next step, with the author's OK (third-party code),
-  using a GitHub token from `gh auth token` with read-only scope.
-- OOMOL Hosted's `/mcp` answers 401 without a token (checked unauthenticated). Whether it
-  accepts a console-made token as Bearer is unverified.
+- **Live end to end** (evidence in `~/dev/ducter-evidence/connectors/live-2026-11-09/`). The
+  setup:
+  - OpenConnector's official v1.9.9 release binary (SHA256 checked), bound to 127.0.0.1 only,
+    with its own scratch data.
+  - GitHub stored there as an API-key connection.
+  - A Ducter runtime token made on its admin API, limited to the 81 GitHub actions whose
+    `operationType` is `read`.
+  - A scratch Ducter on 127.0.0.1, with the partner on Claude Code haiku and memory off. The
+    connection was added with the same `connection_add` frame the Settings page sends.
+
+  Results:
+  - **Added as self-hosted, state ok.** A wrong token earlier in tests was refused.
+  - **Read.** "我在 GitHub 上有哪些打开的、等我 review 或者我自己开的 PR？" The partner searched,
+    called `github.search_issues_and_pull_requests` four times, and answered with real PRs
+    (8 waiting on review, 114 open). Eight `connection_call` lines were logged, each with a
+    summary only ("50 items").
+  - **Write.** "在 wey-gu/ducter 的 issue #1 下面帮我评论一句…". The broker classified
+    `github.create_issue_comment` as a write from OpenConnector's own metadata, even though
+    the token's policy denied it. The partner made one Go / Hold card ("在 wey-gu/ducter 的
+    issue #1 下发一条评论…", Go label 发出评论, default Hold) and logged one `needs_go` line.
+    **Go was never pressed.** OpenConnector's run log shows only the four reads.
+  - **Secrets.** Neither the runtime token nor the GitHub token appears in the Log, a client
+    frame or the Ducter log. The only file holding a token is `connection-tokens.json`, mode
+    600.
+  - **Cleanup.** Both servers were stopped, the scratch data deleted, and the
+    `~/.claude/projects` folder the partner created removed. Nothing of the author's was
+    revoked or written.
+- **Not done live:** the desktop app's form, and pressing Go on a real write (by design). The
+  partner's Q1 answer said it "only fetched details for a few"; tightening that prompt is a
+  later polish.
+- **OOMOL Hosted** (`https://connector.oomol.com/mcp`, probed without the author's
+  credentials):
+  - With no Authorization it answers `401 token not found`.
+  - With a made-up Bearer it answers `401 invalid token`, so it reads a Bearer token.
+  - `/.well-known/oauth-protected-resource` and `/.well-known/oauth-authorization-server` are
+    404, so it is not MCP OAuth. A static key as Bearer is the likely shape, which is what the
+    broker sends.
+  - **To confirm:** the author makes a key for Ducter in the OOMOL console and adds it on
+    Partner → Accounts it can read (Hosted by OOMOL). That's one tap and a paste. Ducter
+    doesn't take oo's account key.

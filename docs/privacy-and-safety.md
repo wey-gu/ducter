@@ -19,7 +19,8 @@ exactly what it will and won't do. This page lists it.
   Ducter's browser window; the AI never sees it. Submitting forms and paying are always left to
   you.
 - **It never hides what went out.** When a result sent something out, a line marked ↗ says
-  what. An opened task's **Details** always lists **Sent out**, often **Nothing**.
+  what, right under the message (never folded away). An opened task's **Details** always lists
+  **Sent out**, often **Nothing**.
 - **It never decides silently for you.** When something is your call, it asks, with a
   suggested default you can take, hold, or change. If it goes with the default, it says so:
   **Went with the default**.
@@ -43,6 +44,10 @@ Ducter works through each AI agent's own official app, signed in with your own a
 doesn't proxy your login, share it, or pretend to be anything else. That's also why Ducter is
 something you run yourself rather than a hosted service.
 
+If you give Ducter an API key or a sign-in token, it's kept in a private file in `~/.ducter` and
+handed only to the AI agent that signs in with it, never to the others or to every task. A task
+doesn't get the keys or tokens from the environment Ducter was started in, either.
+
 Tasks use your plan's limits like any other session would. Your agent's own settings, skills and
 tools apply to tasks too, so a Ducter task in your project behaves the way your own session
 there does.
@@ -53,7 +58,8 @@ Memory is optional. Without it, Ducter works fine and remembers your conversatio
 
 If you use [Nowledge Mem](https://mem.nowledge.co), your partner starts out knowing who you are
 and what you're working on, from the same memory your other AI tools share. When it saves
-something worth keeping, you see one quiet line under its reply: **Noted · <what it saved>**.
+something worth keeping, its reply's **Details** shows one quiet line: **Noted · <what it
+saved>**, with **Forget**. **Partner › What it remembers** lists all of them.
 Every memory records that it came from Ducter and which conversation it came from, so you can
 always trace it back. If you edit a memory in Nowledge Mem, your edit wins.
 

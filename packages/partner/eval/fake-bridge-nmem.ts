@@ -3,7 +3,7 @@
 // local mailboxes in one JSON file, so a real Ducter partner and a real Claude Code session (an
 // agent Ducter didn't start) can talk without touching the user's Mem. It implements only the
 // Agent-mailbox verbs Ducter uses and mirrors the public help (`bridge setup/contacts/send/inbox/
-// open/reply/outbox/inspect/resume`); the JSON shapes are GUESSES (research/33): replace them with
+// open/reply/outbox/inspect/resume`); the JSON shapes are GUESSES (research/37): replace them with
 // the real ones from the author's live trial.
 //
 //   FAKE_BRIDGE_STATE=/path/state.json nmem [--json] --agent-context NAME bridge <verb> ...

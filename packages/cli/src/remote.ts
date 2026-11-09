@@ -6,6 +6,7 @@ import { homedir, hostname, userInfo } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import QR from "qrcode";
 import { openDeviceAuth, CODE_TTL_MS, type Device } from "@ducter/core/src/auth.ts";
+import { migrateKeys } from "@ducter/protocol/src/keys.ts";
 import { width, type Host, type Style } from "./doctor.ts";
 import type { T } from "./i18n.ts";
 
@@ -198,7 +199,11 @@ export interface UnitSpec {
 
 const sdQuote = (s: string) => (/[\s"\\]/.test(s) ? `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"` : s);
 
-/** The unit file: journald gets stdout/stderr; secrets for harness logins go in ~/.ducter/env (0600), never here. */
+/**
+ * The unit file: journald gets stdout/stderr. Its EnvironmentFile (<dataDir>/env) is for
+ * non-secret settings only; keys for harness logins live in <dataDir>/keys.env (0600), which the
+ * unit never loads: Ducter reads it and hands each key only to its harness (D102).
+ */
 export function systemdUnit(u: UnitSpec): string {
   const args = u.worker
     ? [...u.execStart, "worker"]
@@ -220,6 +225,7 @@ export function systemdUnit(u: UnitSpec): string {
     `Environment=${sdQuote(`DUCTER_DATA_DIR=${u.dataDir}`)}`,
     `Environment=${sdQuote(`PATH=${u.path}`)}`,
     "Environment=NO_COLOR=1",
+    "# Settings only. Keys go in keys.env next to it, never here (Ducter moves any it finds).",
     `EnvironmentFile=-${join(u.dataDir, "env")}`,
     "",
     "[Install]",
@@ -294,6 +300,8 @@ export async function cmdService(o: {
     return 0;
   }
 
+  // D102: keys an older install left in the unit's EnvironmentFile move to keys.env first.
+  migrateKeys(o.dataDir);
   const unit = systemdUnit({ execStart: selfCommand(host.compiled), dataDir: o.dataDir, path: servicePath(), port: o.port, host: o.bindHost, worker: o.worker });
   mkdirSync(dirname(unitPath()), { recursive: true });
   writeFileSync(unitPath(), unit);

@@ -4,6 +4,8 @@ import { accessSync, constants, existsSync, mkdirSync, readFileSync, rmSync, wri
 import { join } from "node:path";
 import type { MsgKey, T } from "./i18n.ts";
 import { probeHarnesses } from "@ducter/core/src/harness-probe.ts";
+import { CLAUDE_TOKEN_ENV } from "@ducter/protocol";
+import { readKeys } from "@ducter/protocol/src/keys.ts";
 
 export const MIN_BUN = "1.3.0";
 
@@ -91,8 +93,8 @@ export const FIX = {
   cua: '/bin/bash -c "$(curl -fsSL https://cua.ai/driver/install.sh)" -- --no-connect --no-test --no-modify-path',
   cuaUpdate: "cua-driver update --apply",
   cuaGrant: "cua-driver permissions grant",
-  // DeepSeek Harness reads its key from the env; Ducter passes it from its env file (0600, D85).
-  dshKey: "DEEPSEEK_API_KEY=… in ~/.ducter/env (chmod 600)",
+  // DeepSeek Harness reads its key from the env; Ducter passes it from its key file (0600, D102).
+  dshKey: "DEEPSEEK_API_KEY=… in ~/.ducter/keys.env (chmod 600)",
   port: (p: number) => `DUCTER_PORT=${p + 1} ducter up`,
   data: (d: string) => `mkdir -p "${d}" && chmod u+w "${d}"`,
 };
@@ -155,8 +157,11 @@ export async function runDoctor(host: Host, t: T, opts: DoctorOptions): Promise<
       if (!host.which("claude")) return { installed: false, loggedIn: false, token: false, version: "" };
       const [v, auth] = await Promise.all([host.run(["claude", "--version"]), host.run(["claude", "auth", "status"], 15_000)]);
       const j = parseJson(auth.stdout);
-      // A CLAUDE_CODE_OAUTH_TOKEN counts as logged in without being checked (research/29).
-      return { installed: true, loggedIn: auth.code === 0 && j?.loggedIn === true, token: j?.authMethod === "oauth_token", version: firstVersion(v.stdout) };
+      // A CLAUDE_CODE_OAUTH_TOKEN counts as logged in without being checked (research/29). Ducter
+      // keeps it in keys.env and passes it to Claude Code only (D102), so this shell may not have it.
+      const kept = !!readKeys(opts.dataDir, host.read ?? (() => undefined))[CLAUDE_TOKEN_ENV];
+      const token = j?.authMethod === "oauth_token" || kept;
+      return { installed: true, loggedIn: (auth.code === 0 && j?.loggedIn === true) || kept, token, version: firstVersion(v.stdout) };
     })(),
     (async () => {
       if (!host.which("codex")) return { installed: false, loggedIn: false };

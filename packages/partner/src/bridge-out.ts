@@ -41,7 +41,7 @@ export function fixedOutcome(requestText: string, title: string, done: boolean):
 
 /**
  * A request to another agent asks what the user asked, with background, not a numbered list
- * of extra sub-questions (dogfood: 3 of 3 runs, research/33 §3.1).
+ * of extra sub-questions (dogfood: 3 of 3 runs, research/37 §3.1).
  */
 const NUMBERED = /(?:^|[\s：:，,])(?:1[.)、）]|\(1\)|（1）|①)[\s\S]*?(?:2[.)、）]|\(2\)|（2）|②)|(^|\n)\s*[-*•]\s[\s\S]*\n\s*[-*•]\s/;
 export function overAsks(text: string): boolean {

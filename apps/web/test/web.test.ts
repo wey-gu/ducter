@@ -277,3 +277,29 @@ describe("brand pass (D74, D78)", () => {
     expect(autospace("plain English 1.41")).toBe("plain English 1.41");
   });
 });
+
+describe("the quiet conversation (D104)", () => {
+  test("activity frames keep the step and when this client first saw it; null ends the turn at the channel head", () => {
+    const S = new Store();
+    S.apply({ t: "events", events: [ev("user_msg", { text: "hi" })] });
+    const at = new Date().toISOString();
+    S.apply({ t: "activity", activity: { step: "thinking", since: at, stepSince: at } });
+    const first = S.activity!;
+    expect(first.step).toBe("thinking");
+    S.apply({ t: "activity", activity: { step: "thinking", since: at, stepSince: at } });
+    expect(S.activity).toBe(first); // the same step keeps its clock
+    S.apply({ t: "activity", activity: { step: "recalling", since: at, stepSince: at } });
+    expect(S.activity!.step).toBe("recalling");
+    S.apply({ t: "events", events: [ev("ack", { jobId: "j1", text: "On it.", replyTo: seq - 1 })] });
+    S.apply({ t: "activity", activity: null });
+    expect(S.activity).toBeUndefined();
+    expect(S.activityEndedAt).toBe(S.channelSeq);
+  });
+  test("noted lines are kept for Details, not as channel rows", () => {
+    const S = new Store();
+    const u = ev("user_msg", { text: "fix it" });
+    S.apply({ t: "events", events: [u, ev("ai_msg", { text: "Fixed.", replyTo: u.seq }), ev("memory_noted", { title: "Tests use a fake clock", replyTo: u.seq })] });
+    expect(S.channel.length).toBe(2);
+    expect(S.noted.map((n) => [n.title, n.replyTo])).toEqual([["Tests use a fake clock", u.seq]]);
+  });
+});

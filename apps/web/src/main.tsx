@@ -8,7 +8,7 @@ import { kvSet } from "./idb.ts";
 import { registerWorker } from "./push-client.ts";
 import { inApp, tellApp } from "./native.ts";
 import { startAutospace } from "./autospace.ts";
-import { Avatar, Conversation, OnHand, Sheets, TaskView, Toasts } from "./views.tsx";
+import { Avatar, Conversation, LiveView, OnHand, Sheets, TaskView, Toasts } from "./views.tsx";
 
 const base = baseUrl();
 const token = () => storage.get()?.token;
@@ -34,6 +34,7 @@ function App() {
       {r.name === "onhand" && <OnHand />}
       {r.name === "task" && <TaskView id={r.id} />}
       <Sheets />
+      <LiveView />
       <Toasts />
     </>
   );

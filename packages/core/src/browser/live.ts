@@ -62,7 +62,7 @@ interface View {
 }
 
 export interface Live {
-  open(sink: LiveSink, decisionId: string, size?: { width?: number; height?: number }): Promise<string | undefined>;
+  open(sink: LiveSink, decisionId: string, size?: { width?: number; height?: number; scale?: number }): Promise<string | undefined>;
   input(sink: LiveSink, id: string, input: LiveInput): Promise<void>;
   ack(sink: LiveSink, id: string, seq: number): void;
   close(sink: LiveSink, id: string, done?: boolean): Promise<void>;
@@ -73,6 +73,8 @@ export interface Live {
 }
 
 const newId = () => "lv_" + crypto.randomUUID().replaceAll("-", "").slice(0, 10);
+/** The viewer's pixel ratio, at most 2 (sharper text; frames stay small enough for a phone link). */
+const dpr = (s: unknown) => (typeof s === "number" && s > 0 ? Math.min(2, Math.max(1, s)) : 1);
 const clamp = (v: number) => (Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0);
 
 export function createLive(d: LiveDeps): Live {
@@ -183,7 +185,7 @@ export function createLive(d: LiveDeps): Live {
         if (size?.width && size?.height) {
           const w = Math.round(Math.max(320, Math.min(1600, size.width)));
           const h = Math.round(Math.max(320, Math.min(2000, size.height)));
-          await send("Emulation.setDeviceMetricsOverride", { width: w, height: h, deviceScaleFactor: 0, mobile: w < 700 });
+          await send("Emulation.setDeviceMetricsOverride", { width: w, height: h, deviceScaleFactor: dpr(size.scale), mobile: w < 700 });
           v.width = w;
           v.height = h;
         }
@@ -236,7 +238,7 @@ export function createLive(d: LiveDeps): Live {
         case "resize": {
           const w = Math.round(Math.max(320, Math.min(1600, Number(input.width) || 0)));
           const h = Math.round(Math.max(320, Math.min(2000, Number(input.height) || 0)));
-          await send("Emulation.setDeviceMetricsOverride", { width: w, height: h, deviceScaleFactor: 0, mobile: w < 700 }).catch(() => {});
+          await send("Emulation.setDeviceMetricsOverride", { width: w, height: h, deviceScaleFactor: dpr(input.scale), mobile: w < 700 }).catch(() => {});
           v.width = w;
           v.height = h;
           return;

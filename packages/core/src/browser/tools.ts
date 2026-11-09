@@ -297,7 +297,8 @@ export function registerBrowserTools(d: BrowserToolsDeps): void {
       const site = hostOf(url)!;
       const send = await page(taskId, true);
       const here = await evaluate(send, "location.href").catch(() => "");
-      if (hostOf(here) !== site) {
+      // Already on that page (it asked to sign in right there): keep it; else open the sign-in page.
+      if (String(here).split("#")[0] !== url.split("#")[0]) {
         await send("Page.navigate", { url });
         await settle(send);
       }

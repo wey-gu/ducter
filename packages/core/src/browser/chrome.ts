@@ -9,7 +9,7 @@
 //      ones with apt-get (t64 names on Ubuntu 24.04) plus CJK fonts; as a normal user it says the
 //      one `sudo apt-get install` line to run;
 //   4. one headless start that answers CDP, then installed.json records it.
-import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, readlinkSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 type Env = Record<string, string | undefined>;
@@ -249,6 +249,8 @@ export interface LaunchOptions {
   platform?: string;
   /** Show a window (debugging on a Mac); default headless. */
   headed?: boolean;
+  /** More flags (DUCTER_CHROME_FLAGS: demos and tests, e.g. --host-resolver-rules). */
+  extra?: string[];
 }
 
 /** Chrome's flags for Ducter's browser. Everything on 127.0.0.1; nothing syncs or phones home. */
@@ -271,6 +273,7 @@ export function chromeArgs(o: LaunchOptions): string[] {
     ...((o.platform ?? process.platform) === "darwin" ? ["--use-mock-keychain"] : []),
     // Chrome refuses to run as root with its sandbox; Ducter run as a normal user keeps it.
     ...(o.root ? ["--no-sandbox"] : []),
+    ...(o.extra ?? []),
     "about:blank",
   ];
   return args.filter(Boolean);
@@ -281,9 +284,47 @@ export interface Launched {
   wsUrl: string;
 }
 
+/**
+ * A Ducter browser left running on this profile by a Ducter that didn't stop cleanly (a crash, a
+ * kill -9) holds the profile, and a new Chrome on it exits at once. Chrome's SingletonLock names
+ * its pid ("<host>-<pid>"); when that process is a Chrome on this very profile, quit it.
+ */
+export async function quitStale(profileDir: string, exec: Exec = defaultExec): Promise<boolean> {
+  let target: string;
+  try {
+    target = readlinkSync(join(profileDir, "SingletonLock"));
+  } catch {
+    return false;
+  }
+  const pid = Number(target.split("-").pop());
+  if (!Number.isInteger(pid) || pid <= 1 || pid === process.pid) return false;
+  const ps = await exec(["ps", "-o", "command=", "-p", String(pid)], { timeoutMs: 5_000 });
+  if (ps.code !== 0 || !ps.out.includes(`--user-data-dir=${profileDir}`)) return false;
+  try {
+    process.kill(pid, "SIGTERM");
+  } catch {
+    return false;
+  }
+  for (let i = 0; i < 50; i++) {
+    try {
+      process.kill(pid, 0);
+    } catch {
+      return true;
+    }
+    await Bun.sleep(100);
+  }
+  try {
+    process.kill(pid, "SIGKILL");
+  } catch {
+    /* gone */
+  }
+  return true;
+}
+
 /** Start Chrome on a profile and wait for its DevTools endpoint (a fresh DevToolsActivePort). */
 export async function launchChrome(o: LaunchOptions, timeoutMs = 20_000): Promise<Launched> {
   mkdirSync(o.profileDir, { recursive: true, mode: 0o700 });
+  await quitStale(o.profileDir);
   const portFile = join(o.profileDir, "DevToolsActivePort");
   rmSync(portFile, { force: true });
   // Chrome's own messages go beside the profile (a file, so a full pipe never stalls it).

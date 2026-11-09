@@ -100,6 +100,8 @@ class AppState {
   connecting = false;
   route: Route = { name: "conv" };
   sheet: Sheet = null;
+  /** D144: the live view of Ducter's browser, while the user signs in (never stored). */
+  live?: { decisionId: string; site: string; state: "opening" | "open"; id?: string; src?: string; seq?: number; w?: number; h?: number; url?: string; title?: string };
   status: ConnStatus = "connecting";
   me?: Me;
   api!: Api;
@@ -188,6 +190,7 @@ class AppState {
       this.route = { name: "conv" };
       this.conn?.rehello();
     }
+    if (f.t === "live" || f.t === "live_frame") return this.liveFrame(f);
     if (f.t === "settings") return this.applySettings(f);
     if (f.t === "rules") return void ((this.rules = f.rules), this.changed());
     if (f.t === "devices") {
@@ -618,6 +621,55 @@ class AppState {
     if (!h) return;
     if (h.taskId) this.sendToTask(h.taskId, h.text, true), this.taskDrafts.set(h.taskId, "");
     else this.sendMessage(h.text, true), (this.draft = "");
+  }
+
+  /** D144: open the live view of Ducter's browser for a sign-in card, sized to this screen. */
+  openLive(decisionId: string, site: string, size: { width: number; height: number; scale?: number }) {
+    this.live = { decisionId, site, state: "opening" };
+    this.send({ t: "live_open", decisionId, width: Math.round(size.width), height: Math.round(size.height), ...(size.scale ? { scale: size.scale } : {}) });
+    haptic("light");
+    this.changed();
+  }
+
+  liveFrame(f: Extract<ServerFrame, { t: "live" | "live_frame" }>) {
+    const lv = this.live;
+    if (f.t === "live") {
+      if (!lv || lv.decisionId !== f.decisionId) return;
+      if (f.state === "open") Object.assign(lv, { id: f.id, state: "open", url: f.url, title: f.title, w: f.width, h: f.height });
+      else {
+        // Done answers the card; anything else just closes the view (the card stays).
+        if (f.reason === "failed" && f.message) this.toast(this.L.t("live.failed", f.message));
+        if (f.reason === "replaced") this.toast(this.L.t("live.replaced"));
+        this.live = undefined;
+      }
+      return this.changed();
+    }
+    if (!lv || lv.id !== f.id) return;
+    lv.src = `data:image/jpeg;base64,${f.data}`;
+    lv.seq = f.seq;
+    lv.w = f.width;
+    lv.h = f.height;
+    if (f.url) lv.url = f.url;
+    this.changed();
+  }
+
+  /** The frame is on screen: ask for the next (one frame in flight). */
+  liveShown(seq: number) {
+    if (this.live?.id) this.send({ t: "live_ack", id: this.live.id, seq });
+  }
+
+  liveInput(input: import("@ducter/protocol").LiveInput) {
+    if (this.live?.id) this.send({ t: "live_input", id: this.live.id, input });
+  }
+
+  /** 好了 / Done (done) or 先不登了 / Not now. */
+  closeLive(done: boolean) {
+    const lv = this.live;
+    if (!lv) return;
+    if (lv.id) this.send({ t: "live_close", id: lv.id, done });
+    if (done) haptic("success");
+    this.live = undefined;
+    this.changed();
   }
 
   decide(id: string, option: "go" | "hold" | "reply", text?: string) {

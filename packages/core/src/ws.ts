@@ -609,7 +609,7 @@ export function createWsHandler(deps: WsDeps) {
         if (!b) throw new Error("Ducter's browser isn't available here");
         ws.data.sink ??= { send: (fr) => sockets.has(ws) && send(ws, fr) };
         const sink = ws.data.sink;
-        if (f.t === "live_open") await b.live.open(sink, String(f.decisionId ?? ""), { ...(f.width ? { width: f.width } : {}), ...(f.height ? { height: f.height } : {}) });
+        if (f.t === "live_open") await b.live.open(sink, String(f.decisionId ?? ""), { ...(f.width ? { width: f.width } : {}), ...(f.height ? { height: f.height } : {}), ...(f.scale ? { scale: f.scale } : {}) });
         else if (f.t === "live_input") await b.live.input(sink, String(f.id ?? ""), f.input);
         else if (f.t === "live_ack") b.live.ack(sink, String(f.id ?? ""), Number(f.seq));
         else await b.live.close(sink, String(f.id ?? ""), !!f.done);

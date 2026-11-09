@@ -1334,7 +1334,47 @@ const devup: Record<Lang, Record<string, string>> = {
   },
 };
 
-export const TABLES: Record<Lang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh }, en: { ...en, ...folder.en, ...devup.en } };
+// D144: signing in to a site in Ducter's browser, through the live view.
+const signin: Record<Lang, Record<string, string>> = {
+  zh: {
+    "signin.title": "需要你登录一下 %s",
+    "signin.why": "你自己登录。登录的时候它看不见这个页面，也碰不到你的密码。",
+    "signin.open": "去登录",
+    "signin.later": "先不用",
+    "signin.resolved": "登录好了",
+    "signin.resolved.hold": "先不登录",
+    "live.done": "好了",
+    "live.notnow": "先不登了",
+    "live.blind": "它现在看不见",
+    "live.where": "Ducter 的浏览器",
+    "live.opening": "正在打开 %s…",
+    "live.back": "后退",
+    "live.reload": "刷新",
+    "live.keyboard": "键盘",
+    "live.failed": "没打开：%s",
+    "live.replaced": "已经在另一个窗口里打开了",
+  },
+  en: {
+    "signin.title": "Sign in to %s",
+    "signin.why": "You sign in yourself. While you do, it can't see the page or your password.",
+    "signin.open": "Sign in",
+    "signin.later": "Not now",
+    "signin.resolved": "Signed in",
+    "signin.resolved.hold": "Not signing in for now",
+    "live.done": "Done",
+    "live.notnow": "Not now",
+    "live.blind": "it can't see this now",
+    "live.where": "Ducter's browser",
+    "live.opening": "Opening %s…",
+    "live.back": "Back",
+    "live.reload": "Reload",
+    "live.keyboard": "Keyboard",
+    "live.failed": "Couldn't open it: %s",
+    "live.replaced": "Opened in another window",
+  },
+};
+
+export const TABLES: Record<Lang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en } };
 
 /** Drops a space between two Chinese characters (zh copy spaces around a name for Latin names). */
 /** D78: a space where a Chinese character touches a Latin letter or a digit ("住在%s 上" with "hel"). */

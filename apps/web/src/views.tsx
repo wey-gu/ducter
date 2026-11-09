@@ -296,6 +296,7 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
   })();
   const goText = goLabel(d);
   const draft = A.replyDraft.get(d.decisionId) ?? "";
+  if (d.signIn) return <SignInBody d={d} />;
   return (
     <>
       <div class="q">{d.question}</div>
@@ -372,6 +373,190 @@ function DecisionCard({ d, taskId, inTask }: { d: DecisionState; taskId?: string
         </button>
       )}
       <DecisionBody d={d} taskId={taskId} />
+    </div>
+  );
+}
+
+// ---------- signing in (D144) ----------
+
+/** A closed eye: what it can't see while you sign in. */
+const EyeShut = () => (
+  <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+    <path d="M2 6.5c1.6 2 3.6 3 6 3s4.4-1 6-3M4.2 8.9 3 10.6M8 9.6v2M11.8 8.9l1.2 1.7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+  </svg>
+);
+
+/** The size the page is shown at in the live view (CSS pixels): this screen, less the two bars. */
+const liveSize = () => ({ width: Math.min(innerWidth, 1280), height: Math.max(360, Math.min(innerHeight, 1600) - 128), scale: devicePixelRatio || 1 });
+
+/** 需要你登录一下 {site} / Sign in to {site}: what it is, who does it, and the way in. */
+export function SignInBody({ d, compact }: { d: DecisionState; compact?: boolean }) {
+  const site = d.signIn!.site;
+  const open = !d.resolved && !d.pending;
+  return (
+    <>
+      {!compact && <div class="q">{t("signin.title", site)}</div>}
+      <div class="signin-why">
+        <EyeShut />
+        <span>{t("signin.why")}</span>
+      </div>
+      {open ? (
+        <div class={compact ? "tray" : "btns decide"}>
+          <Btn kind={compact ? "text" : "secondary"} size={compact ? "sm" : undefined} label={t("signin.later")} about={site} onClick={() => A.decide(d.decisionId, "hold")} />
+          {compact && <span class="grow" />}
+          <Btn kind="primary" size={compact ? "sm" : undefined} label={t("signin.open")} about={site} onClick={() => A.openLive(d.decisionId, site, liveSize())} />
+        </div>
+      ) : (
+        <div class={compact ? "said" : "resolved"} role="status">
+          {!compact && (
+            <span class="tick">
+              <Check />
+            </span>
+          )}
+          {d.resolved?.option === "hold" ? t("signin.resolved.hold") : t("signin.resolved")}
+        </div>
+      )}
+    </>
+  );
+}
+
+/**
+ * The live view of Ducter's browser (D144): the page as the server's browser paints it, your
+ * taps and keys going straight into it. Over everything, until 好了 / Done or 先不登了 / Not now.
+ * Nothing here is kept: frames are shown and dropped.
+ */
+export function LiveView() {
+  const lv = A.live;
+  const img = useRef<HTMLImageElement>(null);
+  const keys = useRef<HTMLInputElement>(null);
+  const touch = useRef<{ x: number; y: number; lastY: number; moved: boolean } | undefined>(undefined);
+  const composing = useRef(false);
+  useEffect(() => {
+    if (!lv) return;
+    const onResize = () => A.liveInput({ kind: "resize", ...liveSize() });
+    addEventListener("resize", onResize);
+    return () => removeEventListener("resize", onResize);
+  }, [!!lv]);
+  if (!lv) return null;
+  const at = (e: { clientX: number; clientY: number }) => {
+    const r = img.current!.getBoundingClientRect();
+    return { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height };
+  };
+  const focusKeys = () => keys.current?.focus({ preventScroll: true });
+  const SPECIAL: Record<string, import("@ducter/protocol").LiveKey> = {
+    Enter: "Enter", Tab: "Tab", Backspace: "Backspace", Delete: "Delete", Escape: "Escape", ArrowUp: "ArrowUp", ArrowDown: "ArrowDown", ArrowLeft: "ArrowLeft", ArrowRight: "ArrowRight", Home: "Home", End: "End", PageUp: "PageUp", PageDown: "PageDown",
+  };
+  const host = (() => {
+    try {
+      return new URL(lv.url ?? "").hostname.replace(/^www\./, "") || lv.site;
+    } catch {
+      return lv.site;
+    }
+  })();
+  return (
+    <div class="live" role="dialog" aria-modal="true" aria-label={t("signin.title", lv.site)}>
+      <div class="live-top">
+        <button class="btn text sm" aria-label={t("live.back")} onClick={() => A.liveInput({ kind: "nav", action: "back" })}>
+          <Back />
+        </button>
+        <div class="live-where">
+          <div class="live-host">{host}</div>
+          {/* Whose browser this is, and that the partner is blind while you're in it. */}
+          <div class="live-sub">
+            <EyeShut />
+            <span>
+              {t("live.where")} · {t("live.blind")}
+            </span>
+          </div>
+        </div>
+        <button class="btn text sm" onClick={() => A.liveInput({ kind: "nav", action: "reload" })}>
+          <span class="lbl">{t("live.reload")}</span>
+        </button>
+      </div>
+      <div class="live-page" onClick={focusKeys}>
+        {lv.src ? (
+          <img
+            ref={img}
+            src={lv.src}
+            alt={lv.title ?? host}
+            draggable={false}
+            onLoad={() => lv.seq != null && A.liveShown(lv.seq)}
+            onContextMenu={(e) => e.preventDefault()}
+            onPointerDown={(e) => {
+              e.preventDefault();
+              if (e.pointerType === "touch") return void (touch.current = { x: e.clientX, y: e.clientY, lastY: e.clientY, moved: false });
+              A.liveInput({ kind: "mouse", type: "down", ...at(e), button: e.button === 2 ? "right" : "left" });
+              focusKeys();
+            }}
+            onPointerMove={(e) => {
+              const tc = touch.current;
+              if (tc) {
+                if (Math.abs(e.clientY - tc.y) > 8 || Math.abs(e.clientX - tc.x) > 8) tc.moved = true;
+                if (tc.moved) {
+                  const r = img.current!.getBoundingClientRect();
+                  const scale = (lv.h ?? r.height) / r.height;
+                  A.liveInput({ kind: "wheel", ...at(e), dx: 0, dy: (tc.lastY - e.clientY) * scale });
+                  tc.lastY = e.clientY;
+                }
+                return;
+              }
+              if (e.buttons) A.liveInput({ kind: "mouse", type: "move", ...at(e) });
+            }}
+            onPointerUp={(e) => {
+              const tc = touch.current;
+              touch.current = undefined;
+              if (tc) {
+                if (!tc.moved) {
+                  A.liveInput({ kind: "mouse", type: "down", ...at(e) });
+                  A.liveInput({ kind: "mouse", type: "up", ...at(e) });
+                  focusKeys();
+                }
+                return;
+              }
+              A.liveInput({ kind: "mouse", type: "up", ...at(e), button: e.button === 2 ? "right" : "left" });
+            }}
+            onWheel={(e) => (e.preventDefault(), A.liveInput({ kind: "wheel", ...at(e), dx: e.deltaX, dy: e.deltaY }))}
+          />
+        ) : (
+          <div class="live-wait">{t("live.opening", lv.site)}</div>
+        )}
+        {/* What you type goes straight to the page, a key or a word at a time; nothing is kept here. */}
+        <input
+          ref={keys}
+          class="live-keys"
+          aria-label={t("live.keyboard")}
+          autoComplete="off"
+          autoCapitalize="off"
+          spellcheck={false}
+          onCompositionStart={() => (composing.current = true)}
+          onCompositionEnd={(e) => {
+            composing.current = false;
+            const v = (e.currentTarget as HTMLInputElement).value;
+            if (v) A.liveInput({ kind: "text", text: v });
+            (e.currentTarget as HTMLInputElement).value = "";
+          }}
+          onInput={(e) => {
+            if (composing.current) return;
+            const el = e.currentTarget as HTMLInputElement;
+            if (el.value) A.liveInput({ kind: "text", text: el.value });
+            el.value = "";
+          }}
+          onKeyDown={(e) => {
+            if (composing.current) return;
+            const k = SPECIAL[e.key];
+            if (k) {
+              e.preventDefault();
+              A.liveInput({ kind: "key", key: k, ...(e.shiftKey ? { shift: true } : {}) });
+            }
+          }}
+        />
+      </div>
+      <div class="live-bottom">
+        <div class="btns">
+          <Btn kind="secondary" label={t("live.notnow")} onClick={() => A.closeLive(false)} />
+          <Btn kind="primary" label={t("live.done")} onClick={() => A.closeLive(true)} />
+        </div>
+      </div>
     </div>
   );
 }
@@ -735,6 +920,14 @@ function Ask({ d, taskId, buttons = true }: { d: DecisionState; taskId?: string;
   // The partner is putting a task's question into its own words (D129): its waiting presence
   // holds the place; the task's own wording never shows in the conversation first.
   if (wait > 0) return <Presence line={t("activity.relay")} />;
+  // D144: a sign-in ask opens the live view instead of Go.
+  if (d.signIn)
+    return (
+      <div ref={ref} class={`partner askq signin${flash ? " flash" : ""}`} id={`d-${d.decisionId}`}>
+        <div class="bubble">{d.said || t("signin.title", d.signIn.site)}</div>
+        {(buttons || !open) && <SignInBody d={d} compact />}
+      </div>
+    );
   return (
     <div ref={ref} class={`partner askq${flash ? " flash" : ""}`} id={`d-${d.decisionId}`}>
       <div class="bubble">{d.said || d.question}</div>

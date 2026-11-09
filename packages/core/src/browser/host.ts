@@ -115,6 +115,8 @@ export function createBrowserHost(o: HostOptions): BrowserHost {
       lang: o.lang?.() ?? "en-US",
       root: o.root ?? process.getuid?.() === 0,
       ...(o.platform ? { platform: o.platform } : {}),
+      // One flag per "--…", so a value may hold spaces (--host-resolver-rules=MAP a b).
+      extra: ((o.env ?? process.env).DUCTER_CHROME_FLAGS ?? "").trim().split(/\s+(?=--)/).filter(Boolean),
     });
     const cdp = await connect(launched.wsUrl);
     if (!cdp) {

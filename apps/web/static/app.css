@@ -3317,3 +3317,23 @@ button.dev-name {
 .sheet > * {
   flex-shrink: 0;
 }
+/* ---------- D144: signing in to a site, and the live view of Ducter's browser ---------- */
+.signin-why { display: flex; gap: 8px; align-items: flex-start; font-size: var(--sm); line-height: 1.5; color: var(--ink-soft); }
+.signin-why svg { flex: none; margin-top: 2px; color: var(--ink-muted); }
+.askq.signin > .signin-why { padding: 2px 4px 0; }
+.askq.signin > .tray, .askq.signin > .said { margin-top: 2px; }
+.live { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; background: var(--bg); padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
+.live-top, .live-bottom { flex: none; display: flex; align-items: center; gap: 10px; padding: 8px 12px; }
+.live-top { min-height: 56px; border-bottom: 1px solid var(--line-soft); }
+.live-where { flex: 1; min-width: 0; text-align: center; }
+.live-host { font-weight: 800; font-size: var(--md); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.live-sub { display: flex; align-items: center; justify-content: center; gap: 5px; font-size: var(--xs); color: var(--ink-muted); }
+.live-sub svg { flex: none; }
+.live-page { position: relative; flex: 1; min-height: 0; overflow: hidden; display: flex; align-items: flex-start; justify-content: center; background: var(--sunken); }
+.live-page img { display: block; max-width: 100%; max-height: 100%; object-fit: contain; touch-action: none; user-select: none; -webkit-user-select: none; background: #fff; }
+.live-wait { margin: auto; color: var(--ink-muted); font-size: var(--sm); }
+/* Takes the keyboard (a phone's too) without showing: what it gets goes to the page and is cleared. */
+.live-keys { position: absolute; left: 0; bottom: 0; width: 1px; height: 1px; opacity: 0; border: 0; padding: 0; font-size: 16px; }
+.live-bottom { border-top: 1px solid var(--line-soft); min-height: 72px; }
+.live-bottom .btns { flex: 1; display: flex; gap: 10px; }
+.live-bottom .btns .btn { flex: 1; }

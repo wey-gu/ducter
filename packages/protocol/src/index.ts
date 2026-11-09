@@ -591,7 +591,7 @@ export type ClientFrame =
   // view is open the task's browser tools read nothing (the agent is blind). live_input:
   // pointer and key input, x/y as fractions of the frame (0..1). live_close: done = 好了 / Done
   // (resolves the card with Go). Nothing in a live view is logged.
-  | { t: "live_open"; decisionId: string; width?: number; height?: number }
+  | { t: "live_open"; decisionId: string; width?: number; height?: number; scale?: number }
   | { t: "live_input"; id: string; input: LiveInput }
   | { t: "live_ack"; id: string; seq: number }
   | { t: "live_close"; id: string; done?: boolean }
@@ -607,7 +607,7 @@ export type LiveInput =
   | { kind: "text"; text: string }
   | { kind: "key"; key: LiveKey; shift?: boolean }
   | { kind: "nav"; action: "back" | "forward" | "reload" }
-  | { kind: "resize"; width: number; height: number };
+  | { kind: "resize"; width: number; height: number; scale?: number };
 
 export type LiveKey = "Enter" | "Tab" | "Backspace" | "Delete" | "Escape" | "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight" | "Home" | "End" | "PageUp" | "PageDown" | "Space";
 

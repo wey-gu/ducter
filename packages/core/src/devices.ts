@@ -12,6 +12,7 @@ import { claudeInChromeConnected, codexNative } from "@ducter/protocol/src/nativ
 import type { DeviceAuth } from "./auth.ts";
 import type { Workers } from "./workers.ts";
 import { probeHarnesses } from "./harness-probe.ts";
+import type { BrowserSetup } from "./browser/index.ts";
 
 export type DevicesFrame = Extract<ServerFrame, { t: "devices" }>;
 export type AbilityResult = Extract<ServerFrame, { t: "ability_result" }>;
@@ -54,6 +55,10 @@ export interface DevicesOptions {
   updates?: () => import("./updates.ts").Updates | undefined;
   /** The home's own Ducter version and how it updates. */
   self?: { version: string; how: import("@ducter/protocol").UpdateHow; platform: string };
+  /** D144: Ducter's own browser (a server's 上网): whether it is installed, and installing it. */
+  browser?: { setup(): BrowserSetup; install(): Promise<unknown>; onChange(fn: () => void): () => void };
+  /** The machine Ducter lives on (default: this one). */
+  platform?: string;
 }
 
 export interface DevicesView {
@@ -201,6 +206,24 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
 
   // DUCTER_BROWSER_DRIVER=cua: browser tasks use Ducter's own browser only (runner browser.ts).
   const cuaOnly = () => /^(cua|cua-driver)$/i.test((env.DUCTER_BROWSER_DRIVER ?? "").trim());
+  // D144: on a server (Linux), or when asked for, Browse the web is Ducter's own browser.
+  const ducterMode = () => !!o.browser && ((o.platform ?? osPlatform()) === "linux" || /^ducter$/i.test((env.DUCTER_BROWSER_DRIVER ?? "").trim()));
+  const savedOff = () => readAbilitySettings(o.dataDir).web === false;
+
+  const ducterAbility = (s: BrowserSetup): DeviceAbility => {
+    switch (s.state) {
+      case "ready":
+        return { id: "web", state: envPinned() === "on" || !savedOff() ? "on" : "off", detail: s.version, where: "ducter" };
+      case "installing":
+        return { id: "web", state: "on", where: "ducter", setup: "installing" };
+      case "deps":
+        return { id: "web", state: "unavailable", reason: "browser_deps", detail: s.command, where: "ducter" };
+      case "failed":
+        return { id: "web", state: "unavailable", reason: "browser_failed", detail: s.message, where: "ducter" };
+      case "missing":
+        return { id: "web", state: "off", where: "ducter" };
+    }
+  };
 
   const webAbility = (cua: Cached["cua"], native: Cached["native"]): DeviceAbility => {
     const pinned = envPinned();
@@ -211,6 +234,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
       const state = pinned === "on" ? "on" : readAbilitySettings(o.dataDir).web === false ? "off" : "on";
       return { id: "web", state, detail: native, where: "chrome" };
     }
+    if (ducterMode() && !cuaOnly()) return ducterAbility(o.browser!.setup());
     if ("missing" in cua) {
       const old = /no typed browser tools|does not run/.test(cua.missing);
       return { id: "web", state: "unavailable", reason: old ? "cua_old" : "cua_missing", detail: cua.missing };
@@ -299,6 +323,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
     }, 50);
   };
   const offWorkers = o.workers.onChange(changed);
+  const offBrowser = o.browser?.onChange(changed);
 
   async function setAbility(device: string, ability: AbilityId, on: boolean): Promise<AbilityResult> {
     const res = (ok: boolean, reason?: AbilityReason, detail?: string): AbilityResult => ({
@@ -324,6 +349,16 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
       if (a?.state !== "unavailable") changed();
     }
     if (!a || a.state === "later") return res(false, "failed");
+    // D144: adding Browse the web on a server installs Ducter's browser (again, after a failure or
+    // once the missing libraries are there). The choice is saved at once; the frame says
+    // 正在准备 / Getting it ready until it is.
+    if (ability === "web" && on && d.home && a.where === "ducter" && (a.state === "off" || a.reason === "browser_deps" || a.reason === "browser_failed")) {
+      if (envPinned() === "off") return res(false, "env_off");
+      writeAbilitySettings(o.dataDir, { web: true });
+      if (o.browser!.setup().state !== "ready") void o.browser!.install();
+      changed();
+      return res(true);
+    }
     if (a.state === "unavailable") return res(false, a.reason ?? "failed", a.detail);
     switch (ability) {
       case "web":
@@ -391,6 +426,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
     },
     stop() {
       offWorkers();
+      offBrowser?.();
       if (timer) clearTimeout(timer);
       fns.clear();
     },

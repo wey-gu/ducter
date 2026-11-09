@@ -36,6 +36,7 @@ import { createReleaseWatch, type Fetch as ReleaseFetch, type ReleaseWatch } fro
 import { createUpdates, type Updates, type UpdatesDeps } from "./updates.ts";
 import { realSys, updateHow, type UpdateSys } from "./update.ts";
 import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
+import { createDucterBrowser, type DucterBrowser, type DucterBrowserOptions } from "./browser/index.ts";
 
 declare const DUCTER_COMMIT: string | undefined; // set by packages/cli/build.sh via --define
 /** The build this core runs ("dev" from a checkout): /health says it, so Ducter.app can tell a background
@@ -65,6 +66,10 @@ export interface CoreOptions {
   git?: GitRun;
   /** D148 test seams: the release feed, the update side effects, how this process updates. */
   update?: { fetch?: ReleaseFetch; sys?: UpdateSys; run?: UpdatesDeps["run"]; how?: import("@ducter/protocol").UpdateHow; version?: string; homeName?: string; execPath?: string; autoEveryMs?: number; graceMs?: number; criticalWaitMs?: number };
+  /** D144 test seams for Ducter's own browser (false: none). */
+  browser?: false | Partial<Omit<DucterBrowserOptions, "mcp" | "log" | "tasks" | "decisions" | "persona" | "dataDir">>;
+  /** The machine's platform as Devices sees it (tests: "linux"). */
+  platform?: string;
   /** Work over time test seams (D112-D114): fake commands, a lower look floor, the judge. */
   work?: { exec?: import("@ducter/protocol/src/checks-run.ts").Exec; minEveryMs?: number; judgeMinMs?: number; restartLookMs?: number; defaultZone?: string; judge?: import("./waiters.ts").Judge; connectionFetch?: (url: string, init: RequestInit) => Promise<Response> };
 }
@@ -96,6 +101,8 @@ export interface Core extends CoreApi {
   /** D148: updating devices in place, and the newest release. */
   updates: Updates;
   release: ReleaseWatch;
+  /** D144: Ducter's own browser. */
+  ducterBrowser?: DucterBrowser;
   port: number;
   url: string; // ws URL for clients
   setRunner(r: Runner): void;
@@ -248,9 +255,14 @@ export function startCore(opts: CoreOptions = {}): Core {
     else if (early.length < 100) early.push(e);
   });
 
+  // D144: Ducter's own browser (a server's 上网): its tools are listed only for tasks attached to it.
+  const browser =
+    opts.browser === false
+      ? undefined
+      : createDucterBrowser({ dataDir, mcp, log, tasks, decisions, persona: persona.id, lang: () => (settings.get().language === "zh" ? "zh-CN" : "en-US"), ...(opts.browser ?? {}) });
   let devicesView: DevicesView | undefined;
   const loadout = createLoadout({ log, tasks, settings, rules, devices: () => devicesView });
-  const api = { log, tasks, mcp, persona, dataDir, settings, connections, bodies: loadout, spine: log.spine } as CoreApi;
+  const api = { log, tasks, mcp, persona, dataDir, settings, connections, bodies: loadout, spine: log.spine, ...(browser ? { browser: browser.port } : {}) } as CoreApi;
   // D150: the one helper (brain.ts) the runner and the settings frame share.
   api.partnerFallback = () => {
     const e = effectiveBrain(settings.get().brain, settings.brainChosen(), devicesView?.harnessesNow());
@@ -259,7 +271,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   // 开一件事 / New task (D128): the one opening path the card and `ducter task` share.
   const newTaskDeps = { log, tasks, runner: () => runner, persona, dataDir, loadout, settings, ...(opts.git ? { git: opts.git } : {}) };
   const newTask = { open: (i: NewTaskInput) => openYourTask(newTaskDeps, i), options: (p?: Place) => newTaskOptions(newTaskDeps, p) };
-  const ws = createWsHandler({ core: api, decisions, runner: () => runner, devices: () => devicesView, settings, connections, rules, loadout, work: work.frames, newTask, updates: () => updatesRef, batchMs: opts.batchMs });
+  const ws = createWsHandler({ core: api, decisions, runner: () => runner, devices: () => devicesView, settings, connections, rules, loadout, work: work.frames, newTask, updates: () => updatesRef, batchMs: opts.batchMs, ...(browser ? { browser } : {}) });
   onHandChanged = ws.onHandChanged;
   api.activity = { set: ws.setActivity };
   const devices = openDeviceAuth(dataDir);
@@ -322,7 +334,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     ...(u.criticalWaitMs !== undefined ? { criticalWaitMs: u.criticalWaitMs } : {}),
   });
   updatesRef = updates;
-  devicesView = createDevicesView({ dataDir, auth: devices, workers, connected: () => ws.connected(), probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` } });
+  devicesView = createDevicesView({ dataDir, auth: devices, workers, connected: () => ws.connected(), probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` }, ...(browser ? { browser } : {}), ...(opts.platform ? { platform: opts.platform } : {}) });
   updates.onChange(() => devicesView?.changed());
   devicesView.harnessesNow(); // probe once at start, so the partner's first turn knows who is signed in
   const sockets = splitSockets(ws.websocket, workers, { isLive: (id) => devices.isLive(id), nameOf: (id) => devices.list().find((d) => d.id === id)?.name, sweepMs: opts.sweepMs });
@@ -400,6 +412,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     changes,
     updates,
     release,
+    ...(browser ? { ducterBrowser: browser } : {}),
     port,
     url: `ws://127.0.0.1:${port}/ws`,
     setRunner(r) {
@@ -421,6 +434,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     },
     async stop() {
       ws.stop();
+      await browser?.stop().catch(() => {});
       devicesView?.stop();
       workers.stop();
       sockets.stop();

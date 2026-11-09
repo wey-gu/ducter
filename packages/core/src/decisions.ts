@@ -29,6 +29,9 @@ export interface Decisions {
 export const DEFAULT_DELAY_MS = 30 * 60 * 1000;
 
 export function forwardText(d: Bodies["decision"], r: Bodies["decision_resolved"]): string {
+  // D144: the user signed in themselves in the live view; the task checks the page again.
+  if (r.option === "go" && d.signIn)
+    return `The user says they're signed in to ${d.signIn.site} in Ducter's browser (they did it themselves; you saw nothing of it). browser_read the page to check, then carry on.`;
   if (r.option === "go") return `User says Go: ${d.goLabel}.`;
   // Hold is not forwarded: the task already ended its turn waiting, and a "pause" turn would
   // only flip it back to working and earn a nudge. The card shows Waiting (Hold).
@@ -121,6 +124,7 @@ export function createDecisions(opts: {
           goLabel: hasDefault ? q.default!.trim() : "Continue",
           defaultOption: hasDefault ? "go" : "hold",
           reversible: q.reversible,
+          ...(q.signIn ? { signIn: q.signIn } : {}),
         };
         if (q.reversible && hasDefault) body.defaultAt = new Date(clock.now() + delay()).toISOString();
         log.append({ stream: "channel", origin: "system", kind: "decision", body });

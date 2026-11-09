@@ -15,6 +15,9 @@ import type { Loadout } from "./loadout.ts";
 import type { ConnectionsStore } from "./connections.ts";
 import { firstScreen, type FirstScreenInput } from "./first-screen.ts";
 import type { FirstScreen } from "@ducter/protocol";
+import type { DucterBrowser } from "./browser/index.ts";
+import type { LiveSink } from "./browser/live.ts";
+import { profileName } from "@ducter/protocol/src/browser-profile.ts";
 
 export interface WsData {
   live: boolean;
@@ -34,6 +37,8 @@ export interface WsData {
   greeting?: Promise<void>;
   /** What connected (hello.client); absent = an app. */
   client?: ClientKind;
+  /** D144: this socket's end of its live views (frames go only to the socket that opened one). */
+  sink?: LiveSink;
 }
 
 const ON_HAND_KINDS = new Set<string>(PROJECTED_KINDS);
@@ -63,6 +68,8 @@ export interface WsDeps {
   newTask?: NewTaskFrames;
   /** D148: updating devices in place (updates.ts); absent in tests that don't need it. */
   updates?: () => import("./updates.ts").Updates | undefined;
+  /** D144: Ducter's own browser (live view, Sites); absent in tests that don't need it. */
+  browser?: DucterBrowser;
   batchMs?: number;
 }
 
@@ -593,6 +600,41 @@ export function createWsHandler(deps: WsDeps) {
         send(ws, { t: "folder_changes", taskId: f.taskId, changes });
         return;
       }
+      // D144: the live view of Ducter's browser, and its signed-in sites.
+      case "live_open":
+      case "live_input":
+      case "live_ack":
+      case "live_close": {
+        const b = deps.browser;
+        if (!b) throw new Error("Ducter's browser isn't available here");
+        ws.data.sink ??= { send: (fr) => sockets.has(ws) && send(ws, fr) };
+        const sink = ws.data.sink;
+        if (f.t === "live_open") await b.live.open(sink, String(f.decisionId ?? ""), { ...(f.width ? { width: f.width } : {}), ...(f.height ? { height: f.height } : {}) });
+        else if (f.t === "live_input") await b.live.input(sink, String(f.id ?? ""), f.input);
+        else if (f.t === "live_ack") b.live.ack(sink, String(f.id ?? ""), Number(f.seq));
+        else await b.live.close(sink, String(f.id ?? ""), !!f.done);
+        return;
+      }
+      case "browser_sites":
+      case "browser_site_signout":
+      case "browser_sites_clear": {
+        const b = deps.browser;
+        if (!b) throw new Error("Ducter's browser isn't available here");
+        const profile = profileName(core.persona.id);
+        const ready = b.setup().state === "ready";
+        let message: string | undefined;
+        let ok = true;
+        try {
+          if (f.t === "browser_site_signout") await b.sites.signOut(profile, String(f.site ?? ""));
+          else if (f.t === "browser_sites_clear") await b.sites.clearAll(profile);
+        } catch (err) {
+          ok = false;
+          message = (err as Error).message;
+        }
+        const sites = ready ? await b.sites.list(profile).catch(() => []) : [];
+        send(ws, { t: "browser_sites", ready, sites, ...(f.t !== "browser_sites" ? { ok } : {}), ...(message ? { message } : {}) });
+        return;
+      }
       default:
         throw new Error(`unknown frame ${(f as { t?: string }).t}`);
     }
@@ -614,6 +656,7 @@ export function createWsHandler(deps: WsDeps) {
       },
       close(ws: ServerWebSocket<WsData>) {
         sockets.delete(ws);
+        if (ws.data.sink) void deps.browser?.live.drop(ws.data.sink);
         if (ws.data.device) devicesView()?.changed();
       },
       async message(ws: ServerWebSocket<WsData>, raw: string | Buffer) {

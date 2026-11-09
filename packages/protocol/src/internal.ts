@@ -116,6 +116,8 @@ export interface CoreApi {
   activity?: { set(a: PartnerActivity | null): void };
   /** Frozen digests of the channel (design/memory.md), in the Log's own database; absent in stubs. */
   spine?: SpineStore;
+  /** D144: Ducter's own browser (a server's 上网); absent in tests and stubs. */
+  browser?: DucterBrowserPort;
 }
 
 /**
@@ -199,6 +201,19 @@ export interface WorkerLink {
   onSession(key: string, fn: (f: WorkerSessionFrame) => void): () => void;
   /** Runs fn each time the worker (re)connects and says hello. */
   onOnline(fn: () => void): () => void;
+}
+
+/**
+ * D144: Ducter's own browser, owned by the main process: Chrome for Testing headless, one
+ * profile per persona, driven by Ducter's own browser tools on its MCP (core/src/browser).
+ */
+export interface DucterBrowserPort {
+  /** Installed and able to start here, or why not (words for the partner and the task). */
+  status(): Promise<{ ok: true; version: string } | { ok: false; why: string }>;
+  /** Turns the task's browser tools on (listed on Ducter's MCP) for this profile. Downloads land in `downloads`. */
+  attach(taskId: string, a: { profile: string; evidenceDir: string; downloads: string }): void;
+  /** The task is done with the browser: quits it cleanly (sign-ins saved) when nobody else uses it. */
+  release(taskId: string): Promise<boolean>;
 }
 
 export interface WorkerLinks {

@@ -146,7 +146,7 @@ export function withBrowser(base: SessionSpec, sc: BrowserSidecar | undefined, p
     if (h === "codex") spec.userConfiguration = "exclude";
     if (h === "pi") spec.isolateUserConfig = true;
   }
-  if (h === "codex" && sc?.driver !== "native") spec.appendSystemPrompt = (spec.appendSystemPrompt ?? "") + codexComputerBrief(partnerName);
+  if (h === "codex" && sc?.driver !== "native" && sc?.driver !== "ducter") spec.appendSystemPrompt = (spec.appendSystemPrompt ?? "") + codexComputerBrief(partnerName);
   return spec;
 }
 
@@ -194,6 +194,8 @@ export function shortId(): string {
 
 export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt {
   const harness = opts.harness ?? createOarHarnessPort({ dataDir: core.dataDir });
+  // D144: a server's browser places run on Ducter's own browser, held by core.
+  const browserOpts: BrowserOptions = { ...opts.browser, ...(opts.browser?.ducter ?? core.browser ? { ducter: opts.browser?.ducter ?? core.browser } : {}) };
   const now = opts.now ?? (() => new Date());
   const newId = opts.newId ?? shortId;
   const tasks = new Map<string, TaskRt>();
@@ -400,7 +402,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     if (t.card.place?.kind === "browser" && !t.ops.device && (!t.sidecar || t.sidecarInput?.harness !== h)) {
       const prev = t.sidecarInput?.harness === h ? t.sidecarInput : undefined;
       const input: SidecarInput = { place: t.card.place, persona: t.persona, taskId: t.id, dataDir: core.dataDir, partnerName: partnerNameOf(), harness: h, ...(prev?.forceCua ? { forceCua: true } : {}) };
-      const sc = await browserSidecar(input, opts.browser);
+      const sc = await browserSidecar(input, browserOpts);
       if (!sc) throw new Error("this browser place could not be prepared");
       await sc.ready();
       t.sidecar = sc;
@@ -619,7 +621,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     t.running = true;
     let cua: BrowserSidecar | undefined;
     try {
-      cua = await browserSidecar({ ...input, forceCua: true }, opts.browser);
+      cua = await browserSidecar({ ...input, forceCua: true }, browserOpts);
     } catch (err) {
       cua = undefined;
       const reason = preview(err instanceof Error ? err.message : String(err), 400);
@@ -929,7 +931,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const partnerName = opts.partnerName ?? core.persona.name ?? "Ducter";
     // Throws before the task exists when a browser place is unavailable (the partner says why).
     const sidecarInput: SidecarInput = { place: resolved.place, persona, taskId: id, dataDir: core.dataDir, partnerName, harness: h };
-    const sidecar = await browserSidecar(sidecarInput, opts.browser);
+    const sidecar = await browserSidecar(sidecarInput, browserOpts);
 
     // The partner's, a rule's or the person's choice wins; else DUCTER_TASK_MODEL; else the
     // ranking's model; else the harness default.

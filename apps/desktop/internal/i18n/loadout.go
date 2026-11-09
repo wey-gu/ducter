@@ -35,7 +35,7 @@ var zhLoadout = Table{
 	"loadout.tray":           "这台 Mac 上的 AI agent",
 	"loadout.left":           "额度还剩 %d%%",
 	"loadout.left.reserve":   "额度还剩 %d%% · 都是给 %s 留着的",
-	"loadout.signed_in":      "登录了",
+	"loadout.signed_in":      "已登录",
 	"loadout.pi":             "装好了 · 先选模型",
 	"loadout.missing":        "还没装",
 	"loadout.signed_out":     "没登录",

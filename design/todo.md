@@ -82,9 +82,10 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 
 ### What it thinks with, and who does the tasks (D89, D90)
 
-- [ ] **The partner runs on `Settings.brain`.** UI, protocol and validation are built on
-      `ai-loadout`; starting the partner's session on the chosen harness and model is the
-      `harnesses` branch's. Trigger: merge both, then walk a switch live.
+- [x] **The partner runs on `Settings.brain`** (harnesses, D85) and a live session ends at the
+      next message after a switch (ai-loadout): unit (fake runner) and end to end on OAR's
+      scripted runtime (`packages/cli/test/brain-switch.test.ts`). A live Codex partner turn is
+      still to walk.
 - [ ] **Codex as what it thinks with** behind its config isolation (`-c` overrides, no user
       `AGENTS.md`) and a pass of `packages/partner/eval`; pi and DeepSeek Harness the same,
       each when it passes the eval.
@@ -96,8 +97,9 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [ ] **Live handoff** between harnesses: verified with fake sessions only (runner test).
 - [ ] **Human comprehension test** of the socket and tray (`design/ai-loadout.md` §6: ≥ 80% on
       key items, no boss or servant reads).
-- [ ] **Devices mark** is one status line (`BrainMark`); the rebuilt Devices stage (`isles`)
-      should place it so it isn't truncated ("Ducte…" at today's token width).
+- [x] **Devices mark** is an icon-only badge on the coin (`BrainBadge`, tooltip and accessible
+      name "{name} 想事情用"); the rebuilt Devices stage (`isles`) only has to keep calling it
+      inside a token's coin box.
 - [ ] **The phone's opened task** keeps its title as the headline; D90's "what it is doing
       now" headline is desktop-only so far.
 

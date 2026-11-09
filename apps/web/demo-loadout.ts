@@ -116,4 +116,22 @@ if (multi) {
   ev("t_api", { role: "assistant", text: zh ? "接着上一个的进度，先跑一遍测试。" : "Picking up from the saved progress; running the tests first." });
 }
 
+// 3. A finished task: its outcome is the headline.
+const fl = zh ? "修 compaction 偶发失败的测试" : "Fix the flaky compaction test";
+await task("t_done", fl, repo("~/dev/hawdb", "ducter/compaction-fix"), fl, "claude-code", "sonnet", { kind: "default" });
+log.append({ stream: "task:t_done", origin: "task", kind: "checkpoint", body: { taskId: "t_done", text: zh ? "测试改成等 flush 完成" : "Test waits for the flush signal" } });
+log.append({
+  stream: "task:t_done",
+  origin: "task",
+  kind: "report",
+  body: {
+    taskId: "t_done",
+    state: "done",
+    summary: zh ? "compaction 的偶发失败修好了。测试里写死等 200ms，现在改成等 flush 完成的信号，连跑 50 遍全过。" : "The flaky compaction test is fixed. It slept a fixed 200 ms; it now waits for the flush signal, and 50 runs in a row pass.",
+    questions: [],
+    evidence: [{ kind: "test", label: zh ? "cargo test · 连跑 50 遍全过" : "cargo test · 50/50 pass", ref: "cargo test -p hawdb-storage compaction" }],
+  },
+});
+core.tasks.setState("t_done", "done", "warm");
+
 console.log(`demo-loadout on ${core.url} · ${zh ? "zh" : "en"} · ${multi ? "multi" : "one"} · ${low ? "low" : "plenty"}`);

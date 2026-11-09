@@ -40,9 +40,15 @@ func (a *App) task(c *ui.Context) {
 				ui.Row(c.Key("head")).Gap(t.S5).AlignItems(ui.Start).Children(func() {
 					a.partnerFace(c, "task:"+task.ID, taskPresence(task), taskFaceW)
 					ui.Column(c).Grow(1).MinWidth(0).Gap(t.S4).Children(func() {
+						// The meta line sits 8 above the headline, the outcome's
+						// included: one block whatever the state.
 						ui.Column(c).Gap(t.S2).Children(func() {
 							a.taskStanding(c, task)
-							a.taskHeadline(c, task)
+							if finished(task) {
+								a.outcome(c, task)
+							} else {
+								a.taskHeadline(c, task)
+							}
 						})
 						if d := a.S.PendingDecision(task.ID); d != nil {
 							if d.Resolved != nil || d.Pending != "" {
@@ -50,9 +56,6 @@ func (a *App) task(c *ui.Context) {
 							} else {
 								a.decisionCard(c, d, task.ID)
 							}
-						}
-						if finished(task) {
-							a.outcome(c, task)
 						}
 						a.switchSheet(c, task) // 换谁来做 / Switch who does it (D89)
 					})
@@ -131,13 +134,6 @@ func (a *App) taskStanding(c *ui.Context, task *store.Task) {
 // latest thing it said, or its title.
 func (a *App) taskHeadline(c *ui.Context, task *store.Task) {
 	t := a.T
-	if finished(task) {
-		if rep := task.Report(); rep != nil && rep.Summary != "" {
-			return // the outcome says it at 34
-		}
-		a.heading(c, autospace(task.Title()), t.Title).LineHeight(1.18).Balance().MaxWidth(headMeasure)
-		return
-	}
 	line := ""
 	switch {
 	case task.Browsing() != "":
@@ -244,6 +240,9 @@ func (a *App) outcome(c *ui.Context, task *store.Task) {
 	t := a.T
 	rep := task.Report()
 	ui.Column(c.Key("outcome")).Gap(t.S3).Selectable().CopyData(autospaceCopy).Children(func() {
+		if rep == nil || rep.Summary == "" {
+			a.heading(c, autospace(task.Title()), t.Title).LineHeight(1.18).Balance().MaxWidth(headMeasure)
+		}
 		if rep != nil && rep.Summary != "" {
 			head, rest := headline(rep.Summary)
 			a.heading(c, autospace(head), t.Title).LineHeight(1.18).Balance().MaxWidth(headMeasure)

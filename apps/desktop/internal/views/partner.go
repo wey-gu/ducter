@@ -86,7 +86,6 @@ func (a *App) partnerView(c *ui.Context) {
 				}
 				// What it thinks with and who does the tasks (D89): the tray
 				// of this Mac's AI agents, then the two cards.
-				a.loadoutToast(c)
 				a.tray(c)
 				loadout := []func(){func() { a.brainCard(c) }, func() { a.tasksCard(c) }}
 				if wide {
@@ -118,6 +117,7 @@ func (a *App) partnerView(c *ui.Context) {
 			})
 		})
 	})
+	a.loadoutToast(c, w)
 	a.brainFlyer(c)
 }
 

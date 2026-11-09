@@ -75,6 +75,24 @@ func (a *App) BrainMark(dv *protocol.DeviceView, harness string) string {
 	return a.L.T("loadout.mark", a.S.PersonaName)
 }
 
+// BrainBadge draws the mark as an icon only, so it fits any token: the
+// clay partner's face in a small round badge at the bottom-right of the
+// parent (a coin), with the words as its tooltip and accessible name. Put
+// it inside the coin's box; it draws nothing for other tokens.
+func (a *App) BrainBadge(c *ui.Context, dv *protocol.DeviceView, harness string) {
+	t := a.T
+	m := a.BrainMark(dv, harness)
+	if m == "" {
+		return
+	}
+	ui.Box(c.Key("brain-badge")).Absolute().Right(-6).Bottom(-6).Size(26, 26).Radius(13).Background(t.Surface).
+		Shadow(0, 2, 0, 0, t.Line2).Role(ui.RoleImage).Label(m).Tooltip(m).Children(func() {
+		if bmp := theme.Face(theme.Idle, 48); bmp != nil {
+			ui.Image(c, bmp).Size(20, 20).Absolute().Left(3).Top(3).AccessHidden(true)
+		}
+	})
+}
+
 // trayHarnesses are this Mac's AI agents, as Devices reports them.
 func (a *App) trayHarnesses() []protocol.DeviceHarness {
 	if home := a.homeDevice(); home != nil {
@@ -679,17 +697,28 @@ func (a *App) acctLine(c *ui.Context) {
 }
 
 // loadoutToast is the page's one line after a change (a switch, a rule
-// removed), for 6 s.
-func (a *App) loadoutToast(c *ui.Context) {
+// removed), for 6 s. It floats over the page, centered under the window's
+// bar, so nothing below it moves.
+func (a *App) loadoutToast(c *ui.Context, w float32) {
 	t := a.T
 	lo := &a.lo
 	if lo.toast == "" || a.Now().Sub(lo.toastAt) >= 6*time.Second || lo.fx != nil {
 		return
 	}
 	c.After(6*time.Second - a.Now().Sub(lo.toastAt))
-	a.notice(c, "loadout-toast", noticeDone, func() { a.glyph(c, 22, drawCheck(t.Done.Ink)) }, func() {
-		ui.Text(c, lo.toast).FontSize(t.SM).FontWeight(700).MaxLines(2)
-	}, nil)
+	if w <= 0 {
+		w = 1040
+	}
+	width := min(w-2*t.S5, 520)
+	ui.Row(c.Key("loadout-toast")).Absolute().Top(76).Left((w - width) / 2).Width(width).Justify(ui.Center).ZIndex(900).PassThrough().Children(func() {
+		pill := ui.Row(c.Key("pill")).Gap(t.S3).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.Surface).
+			Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).AlignItems(ui.Center).Role(ui.RoleStatus).Label(lo.toast).MaxWidthPercent(100)
+		a.enter(c, pill)
+		pill.Children(func() {
+			a.glyph(c, 20, drawCheck(t.Done.Ink))
+			ui.Text(c, lo.toast).FontSize(t.MD).FontWeight(800).MaxLines(2)
+		})
+	})
 }
 
 // ---------- on a task: who is doing it, why, and switching ----------

@@ -136,7 +136,7 @@ func (a *App) taskLine(c *ui.Context, t *store.Task, detail string) {
 	if detail != "" {
 		name += " · " + detail
 	}
-	row := ui.Row(c.Key("task:"+t.ID)).Gap(th.S2).Wrap().AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleLink).
+	row := ui.Row(c.Key("task:" + t.ID)).Gap(th.S2).Wrap().AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleLink).
 		Label(name).Focusable().MinWidth(0)
 	hover := row.Hovered()
 	row.Children(func() {

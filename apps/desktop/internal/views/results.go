@@ -72,7 +72,7 @@ func (a *App) proofLine(c *ui.Context, task *store.Task, evs []protocol.Evidence
 	evs = store.SortEvidence(latestByLabel(evs))
 	failed := task.Attention() == protocol.Failed
 	const max = 4
-	ui.Row(c.Key("proof:"+task.ID)).Gap(t.S2).Wrap().AlignItems(ui.Center).MinWidth(0).Children(func() {
+	ui.Row(c.Key("proof:" + task.ID)).Gap(t.S2).Wrap().AlignItems(ui.Center).MinWidth(0).Children(func() {
 		var changes *protocol.EvidenceRef
 		shown := 0
 		for i := range evs {

@@ -1,6 +1,6 @@
 // Argument parsing for `ducter`. Pure: no env, no I/O, so it is easy to test.
 
-export type Command = "up" | "open" | "doctor" | "status" | "version" | "help" | "pair" | "devices" | "service" | "worker";
+export type Command = "up" | "open" | "doctor" | "status" | "version" | "help" | "pair" | "devices" | "service" | "worker" | "uninstall" | "report";
 
 export interface Args {
   command: Command;
@@ -15,11 +15,16 @@ export interface Args {
   join?: string; // worker: the main process's URL
   code?: string; // worker: a pairing code
   rest?: string[]; // words after devices / service (e.g. "revoke <id>")
+  all?: boolean; // uninstall --all: everything, not only the background item
+  dryRun?: boolean; // uninstall --dry-run: only the plan
+  yes?: boolean; // uninstall --all --yes: no typed confirmation
+  includeConversation?: boolean; // report --include-conversation
+  out?: string; // report --out <dir>
 }
 
 export type ParseResult = { ok: true; args: Args } | { ok: false; error: { key: "err.unknownCommand" | "err.unknownFlag" | "err.missingValue" | "err.badPort"; vars: Record<string, string> } };
 
-const COMMANDS = new Set<Command>(["up", "open", "doctor", "status", "version", "help", "pair", "devices", "service", "worker"]);
+const COMMANDS = new Set<Command>(["up", "open", "doctor", "status", "version", "help", "pair", "devices", "service", "worker", "uninstall", "report"]);
 /** Commands that take words after them (`ducter devices revoke a1b2`, `ducter service install`). */
 const WITH_REST = new Set<Command>(["devices", "service"]);
 const ALIASES: Record<string, Command> = {
@@ -88,6 +93,25 @@ export function parseArgs(argv: string[]): ParseResult {
       case "--json":
         args.json = true;
         continue;
+      case "--all":
+        args.all = true;
+        continue;
+      case "--dry-run":
+        args.dryRun = true;
+        continue;
+      case "--yes":
+      case "-y":
+        args.yes = true;
+        continue;
+      case "--include-conversation":
+        args.includeConversation = true;
+        continue;
+      case "--out": {
+        const v = value();
+        if (v === undefined || !v.trim()) return { ok: false, error: { key: "err.missingValue", vars: { flag: a } } };
+        args.out = v;
+        continue;
+      }
       case "-h":
       case "--help":
         args.command = "help";

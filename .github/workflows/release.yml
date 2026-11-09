@@ -221,6 +221,10 @@ jobs:
         run: |
           set -eu
           (cd assets && sha256sum -- * >SHA256SUMS.txt && cat SHA256SUMS.txt)
+          # The app's updater (apps/desktop/internal/update) reads this release through the API
+          # and needs exactly these names: Ducter-<version>-arm64.dmg, listed in SHA256SUMS.txt.
+          grep -q "  Ducter-${GITHUB_REF_NAME#v}-arm64.dmg\$" assets/SHA256SUMS.txt ||
+            { echo "::error::SHA256SUMS.txt doesn't list Ducter-${GITHUB_REF_NAME#v}-arm64.dmg (the updater needs it)"; exit 1; }
           scripts/ci/release-notes.sh "$GITHUB_REF_NAME" >"$RUNNER_TEMP/notes.md"
           v="${GITHUB_REF_NAME#v}"
           cat >>"$RUNNER_TEMP/notes.md" <<EOF

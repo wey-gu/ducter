@@ -26,6 +26,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/remote"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
+	"github.com/wey-gu/ducter/apps/desktop/internal/update"
 	"github.com/wey-gu/ducter/apps/desktop/internal/views"
 )
 
@@ -34,8 +35,13 @@ func main() {
 	// port), so everything below sees it.
 	exe, _ := os.Executable()
 	bundle, inApp := local.FindBundle(exe)
+	bid := ""
 	if inApp {
-		if keys := local.LoadDevEnv(local.DevEnvPath()); len(keys) > 0 {
+		if bid = local.BundleID(bundle.App); bid == "" {
+			bid = local.DefaultBundleID
+		}
+		// Per bundle id: a scratch build never reads the real app's file.
+		if keys := local.LoadDevEnv(local.DevEnvPathFor(bid)); len(keys) > 0 {
 			log.Printf("ducter: dev.env sets %v", keys)
 		}
 	}
@@ -58,10 +64,6 @@ func main() {
 		// translocated copy, whose path goes away: then it is the app's
 		// child and stops with it.
 		if local.Settled(bundle.CLI) {
-			bid := local.BundleID(bundle.App)
-			if bid == "" {
-				bid = "co.nowledge.ducter"
-			}
 			sup.Agent = &local.Agent{Label: local.AgentLabel(bid), BundleID: bid, CLI: bundle.CLI, DataDir: sup.DataDir, Dir: local.LaunchAgentsDir()}
 		}
 		host = &local.Host{
@@ -70,6 +72,8 @@ func main() {
 			Scratch:    filepath.Join(os.TempDir(), "ducter-fix"),
 			After:      i18n.New(lang).T("setup.after"),
 			App:        local.BundleID(bundle.App),
+			AppPath:    bundle.App,
+			Trash:      mygo.Shell.TrashItem,
 		}
 		app.Backend = host
 		// A child Ducter (no LaunchAgent) stops with the app; a background
@@ -80,6 +84,17 @@ func main() {
 			host.Stop(8 * time.Second)
 		})
 	}
+
+	// Updates and Help (D72): the app updates itself whether its Ducter
+	// is on this Mac or elsewhere.
+	lc := &lifecycle{l: i18n.New(lang), host: host}
+	if inApp {
+		if in, err := update.ReadInfo(bundle.App); err == nil {
+			lc.version = in.Version
+		}
+		lc.upd = newUpdater(bundle, bid, host, lc.showStatus)
+	}
+	mygo.App.OnQuit(lc.quit) // after the handlers above: Ducter's child has stopped
 
 	mygo.App.WhenReady(func() {
 		win := mygo.NewWindow(mygo.WindowOptions{
@@ -133,9 +148,12 @@ func main() {
 				mygo.App.SetBadgeCount(n)
 			}
 		}
-		if host != nil {
-			mygo.App.SetMenu(appMenu(app, i18n.New(lang), win))
+		lc.win = win
+		if host != nil || lc.upd != nil {
+			lc.menu = appMenu(app, i18n.New(lang), win, lc)
+			mygo.App.SetMenu(lc.menu)
 		}
+		lc.start()
 
 		// The store lives on the UI thread; the client's goroutine hands
 		// each frame over with Update. Cursor is read there too.
@@ -200,34 +218,37 @@ func main() {
 // appMenu is the standard menu bar with one addition in the app menu:
 // Stop Ducter, the rare full stop (every task stops; it stays off, at
 // login too, until woken). It turns into Wake Ducter while resting.
-func appMenu(app *views.App, l *i18n.Strings, win *mygo.Window) *mygo.Menu {
+func appMenu(app *views.App, l *i18n.Strings, win *mygo.Window, lc *lifecycle) *mygo.Menu {
+	top := []*mygo.MenuItem{{Role: mygo.RoleAbout}}
+	top = append(top, lc.appMenuItems()...)
+	top = append(top, mygo.Separator())
+	if lc.host != nil {
+		top = append(top, &mygo.MenuItem{ID: "rest", Label: l.T("menu.rest"), Subtitle: l.T("menu.rest.sub"), Click: func(*mygo.MenuItem, *mygo.Window) {
+			win.Update(func() {
+				if app.Resting() {
+					app.Wake()
+				} else {
+					app.Rest()
+				}
+				win.Show()
+			})
+		}}, mygo.Separator())
+	}
 	menu := mygo.NewMenu([]*mygo.MenuItem{
-		{Role: mygo.RoleAppMenu, Submenu: []*mygo.MenuItem{
-			{Role: mygo.RoleAbout},
+		{Role: mygo.RoleAppMenu, Submenu: append(top,
+			&mygo.MenuItem{Role: mygo.RoleServices},
 			mygo.Separator(),
-			{ID: "rest", Label: l.T("menu.rest"), Subtitle: l.T("menu.rest.sub"), Click: func(*mygo.MenuItem, *mygo.Window) {
-				win.Update(func() {
-					if app.Resting() {
-						app.Wake()
-					} else {
-						app.Rest()
-					}
-					win.Show()
-				})
-			}},
+			&mygo.MenuItem{Role: mygo.RoleHide},
+			&mygo.MenuItem{Role: mygo.RoleHideOthers},
+			&mygo.MenuItem{Role: mygo.RoleUnhide},
 			mygo.Separator(),
-			{Role: mygo.RoleServices},
-			mygo.Separator(),
-			{Role: mygo.RoleHide},
-			{Role: mygo.RoleHideOthers},
-			{Role: mygo.RoleUnhide},
-			mygo.Separator(),
-			{Role: mygo.RoleQuit},
-		}},
+			&mygo.MenuItem{Role: mygo.RoleQuit},
+		)},
 		{Role: mygo.RoleFileMenu},
 		{Role: mygo.RoleEditMenu},
 		{Role: mygo.RoleViewMenu},
 		{Role: mygo.RoleWindowMenu},
+		lc.helpMenu(),
 	})
 	// The item says what it will do: stop, or wake while resting.
 	app.OnResting = func(resting bool) {

@@ -6,7 +6,9 @@ import { join } from "node:path";
 import { plainStyle } from "../src/doctor.ts";
 import { translator } from "../src/i18n.ts";
 import { openDeviceAuth } from "@ducter/core/src/auth.ts";
-import { cmdDevices, cmdPair, ducterCommand, formatDevices, isLoopback, pairLink, publicUrl, servicePath, systemdUnit, tunnelCommand } from "../src/remote.ts";
+import { cmdDevices, cmdPair, cmdService, ducterCommand, formatDevices, isLoopback, launchAgentPath, launchdWorkerPlist, pairLink, publicUrl, servicePath, systemdUnit, tunnelCommand, WORKER_LABEL } from "../src/remote.ts";
+import { refusedExit, EXIT_REFUSED } from "../src/worker.ts";
+import type { Host } from "../src/doctor.ts";
 
 const en = translator("en");
 const zh = translator("zh");
@@ -201,5 +203,76 @@ describe("devices list", () => {
     expect(out).toContain("client · darwin · last seen 2m · a1b2c3d4e5");
     expect(out).toContain("worker · not seen yet · f6a7b8c9d0");
     expect(formatDevices([], zh, plainStyle)).toBe("还没有连接的设备。用这条命令连一台：ducter pair");
+  });
+});
+
+// D155: a Mac doing tasks for a Ducter elsewhere keeps running under launchd. A fake launchctl and
+// a scratch home: no real LaunchAgent is ever written or loaded.
+describe("service install --worker on a Mac (launchd)", () => {
+  test("the plist: ducter worker, at login, kept alive, logs in the data folder", () => {
+    const p = launchdWorkerPlist({ execStart: ["/Applications/Ducter.app/Contents/MacOS/ducter"], dataDir: "/Users/me/Library/Application Support/Ducter", path: "/usr/bin:/bin", home: "/Users/me" });
+    expect(p).toContain(`<string>${WORKER_LABEL}</string>`);
+    expect(p).toContain("<string>/Applications/Ducter.app/Contents/MacOS/ducter</string>\n\t\t<string>worker</string>");
+    expect(p).toContain("<key>RunAtLoad</key>\n\t<true/>");
+    expect(p).toContain("<key>SuccessfulExit</key>\n\t\t<false/>");
+    expect(p).toContain("<string>/Users/me/Library/Application Support/Ducter/worker.log</string>");
+    expect(p).toContain("<key>DUCTER_SUPERVISOR</key>\n\t\t<string>launchd</string>");
+    expect(launchdWorkerPlist({ execStart: ["/a&b"], dataDir: "/d", path: "/p", home: "/h" })).toContain("<string>/a&amp;b</string>");
+    // Refused by the main: exit 0 under launchd (not started again), 3 under systemd.
+    expect(refusedExit(EXIT_REFUSED, { DUCTER_SUPERVISOR: "launchd" })).toBe(0);
+    expect(refusedExit(EXIT_REFUSED, {})).toBe(EXIT_REFUSED);
+    expect(refusedExit(1, { DUCTER_SUPERVISOR: "launchd" })).toBe(1);
+  });
+
+  test("install, status and uninstall talk to launchctl only; install needs the worker to have joined", async () => {
+    const root = mkdtempSync(join(tmpdir(), "ducter-launchd-"));
+    const home = join(root, "home");
+    const dataDir = join(root, "data");
+    mkdirSync(dataDir, { recursive: true });
+    const calls: string[][] = [];
+    let loaded = false;
+    const host = {
+      compiled: true,
+      bunVersion: "1",
+      which: () => null,
+      writable: () => true,
+      port: async () => "free" as const,
+      run: async (cmd: string[]) => {
+        calls.push(cmd);
+        if (cmd[0] !== "launchctl") return { code: 127, stdout: "" };
+        if (cmd[1] === "bootstrap") loaded = true;
+        if (cmd[1] === "bootout") loaded = false;
+        if (cmd[1] === "print") return loaded ? { code: 0, stdout: "state = running\n" } : { code: 113, stdout: "Could not find service" };
+        return { code: 0, stdout: "" };
+      },
+    } as unknown as Host;
+    const logs: string[] = [];
+    const log = console.log;
+    console.log = (...a: unknown[]) => void logs.push(a.join(" "));
+    try {
+      const svc = (verb: string) => cmdService({ t: en, style: plainStyle, host, dataDir, port: 7777, worker: true, rest: [verb], platform: "darwin", home, uid: 501 });
+      expect(await svc("install")).toBe(1);
+      expect(logs.join("\n")).toContain("ducter worker <address> --code <code>");
+      expect(calls).toEqual([]);
+
+      writeFileSync(join(dataDir, "worker.json"), JSON.stringify({ url: "https://hel.example.com", token: "dvc.x", deviceId: "x", persona: "Ducter", name: "mac" }));
+      expect(await svc("install")).toBe(0);
+      const plist = launchAgentPath(home);
+      expect(await Bun.file(plist).text()).toContain("<string>worker</string>");
+      expect(calls.at(-1)).toEqual(["launchctl", "bootstrap", "gui/501", plist]);
+      expect(await svc("status")).toBe(0);
+      expect(calls.at(-1)).toEqual(["launchctl", "print", `gui/501/${WORKER_LABEL}`]);
+
+      expect(await svc("uninstall")).toBe(0);
+      expect(calls.at(-1)).toEqual(["launchctl", "bootout", `gui/501/${WORKER_LABEL}`]);
+      expect(await Bun.file(plist).exists()).toBe(false);
+      expect(await svc("status")).toBe(1);
+      // Not a worker: a Mac's own Ducter is the app's to keep running.
+      expect(await cmdService({ t: en, style: plainStyle, host, dataDir, port: 7777, rest: ["install"], platform: "darwin", home })).toBe(1);
+      expect(calls.every((c) => c[0] === "launchctl")).toBe(true);
+    } finally {
+      console.log = log;
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });

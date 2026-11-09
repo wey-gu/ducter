@@ -2387,12 +2387,81 @@ function kindLine(dv: DeviceView): string {
   return t("device.what.worker", dv.kind === "server" ? what : t("device.other"), who);
 }
 
-function clientWhat(platform: string): string {
-  const p = platform.toLowerCase();
-  if (p.includes("ios") || p.includes("iphone")) return p.includes("safari") || p.includes("web") ? "iPhone · Safari" : t("device.client.iphone");
-  if (p.includes("android")) return t("device.client.android");
-  if (p.includes("darwin") || p.includes("mac")) return t("device.client.mac");
-  return p ? t("device.client.browser") : t("device.client.other");
+type Client = Reach["clients"][number];
+
+// D155: one computer, one card. The command line (and the app window on a computer that does tasks)
+// folds into its computer's card as one quiet line, with its own 断开; alone, it stands as its
+// computer, never as "CLI on …".
+const isCli = (cl: Client) => cl.form === "cli" || (!cl.form && cl.name.startsWith("CLI on "));
+function clientComputer(cl: Client): string {
+  if (cl.computer) return cl.computer;
+  if (isCli(cl)) return cl.name.replace(/^CLI on /, "").trim();
+  return /^(darwin|linux|win)/i.test(cl.platform) ? cl.name : "";
+}
+const clientName = (cl: Client) => (isCli(cl) && cl.name.startsWith("CLI on ") ? clientComputer(cl) || cl.name : cl.name);
+
+/** Which clients fold into which card ("dev:id" | "cl:id"), and which get none of their own. */
+export function foldClients(devices: DeviceView[], clients: Client[]): { hidden: Set<string>; members: Map<string, Client[]> } {
+  const key = (s: string) => s.trim().toLowerCase();
+  const workers = new Map<string, string>();
+  for (const dv of devices) if (!dv.home) workers.set(key(dv.computer || dv.name), `dev:${dv.id}`);
+  const apps = new Map<string, string>();
+  for (const cl of clients) {
+    const k = key(clientComputer(cl));
+    if (k && !isCli(cl) && !apps.has(k)) apps.set(k, `cl:${cl.id}`);
+  }
+  const hidden = new Set<string>();
+  const members = new Map<string, Client[]>();
+  for (const cl of clients) {
+    const k = key(clientComputer(cl));
+    if (!k) continue;
+    const owner = workers.get(k) ?? (isCli(cl) ? apps.get(k) : undefined);
+    if (!owner) continue;
+    hidden.add(cl.id);
+    members.set(owner, [...(members.get(owner) ?? []), cl]);
+  }
+  return { hidden, members };
+}
+
+function clientKind(cl: Client): string {
+  const p = cl.platform.toLowerCase();
+  if (isCli(cl)) return t("device.kind.cli");
+  if (p.includes("ios") || p.includes("iphone")) return t(p.includes("safari") || p.includes("web") ? "device.kind.iphone.safari" : "device.kind.iphone.app");
+  if (p.includes("android")) return t("device.kind.android");
+  if (p.startsWith("darwin") || p.includes("mac")) return t("device.kind.mac.app");
+  return p ? t("device.kind.browser") : t("device.kind.other");
+}
+
+function clientDoes(cl: Client): string {
+  const p = cl.platform.toLowerCase();
+  const who = A.S.personaName;
+  if (isCli(cl)) return t("device.does.cli");
+  if (/ios|iphone|android/.test(p)) return t("device.does.phone", who);
+  if (p.startsWith("darwin") || p.includes("mac")) return t("device.does.app", who);
+  return t("device.does.browser", who);
+}
+
+/** A computer card's quiet lines: the command line (and the app) on it, each with its own 断开. */
+function Folded({ list, computer, alone }: { list: Client[]; computer: string; alone?: boolean }) {
+  if (!list.length) return null;
+  return (
+    <div class="dev-folded">
+      {list.map((cl) => {
+        const cli = isCli(cl);
+        const name = t(cli ? "device.cli.name" : "device.app.name", computer);
+        return (
+          <div class="dev-fold" key={cl.id}>
+            <div class="dev-fold-line">
+              <span class={`dev-fold-dot ${cl.connected ? "on" : ""}`} aria-hidden="true" />
+              <span>{t(cli ? (alone ? "device.cli.only" : "device.cli.too") : "device.app.too")}</span>
+              {!cl.connected && cl.lastSeen && <span class="small sub"> · {ago(A.L, cl.lastSeen)}</span>}
+            </div>
+            <Disconnect id={cl.id} name={name} means={cli ? "device.disconnect.means.cli" : "device.disconnect.means.client"} />
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 const phaseLine = (u: DeviceUpdate) => phaseWords(A.L, u);
@@ -2432,13 +2501,13 @@ function CardName({ id, name, renamable }: { id: string; name: string; renamable
   );
 }
 
-function Disconnect({ id, name, client }: { id: string; name: string; client?: boolean }) {
+function Disconnect({ id, name, client, means }: { id: string; name: string; client?: boolean; means?: string }) {
   const [asking, setAsking] = useState(false);
   if (!asking) return <Btn kind="text" size="sm" label={t("device.disconnect")} about={name} onClick={() => setAsking(true)} />;
   return (
     <div class="dev-cut">
       <div class="dev-cut-q">{t("device.disconnect.ask", name)}</div>
-      <div class="small sub">{t(client ? "device.disconnect.means.client" : "device.disconnect.means")}</div>
+      <div class="small sub">{t(means ?? (client ? "device.disconnect.means.client" : "device.disconnect.means"))}</div>
       <div class="btns">
         <Btn kind="secondary" size="sm" label={t("device.disconnect.ok")} about={name} onClick={() => (A.disconnectDevice(id), setAsking(false))} />
         <Btn kind="text" size="sm" label={t("device.disconnect.cancel")} onClick={() => setAsking(false)} />
@@ -2489,17 +2558,18 @@ function VersionBlock({ dv }: { dv: DeviceView }) {
   );
 }
 
-function DeviceCard({ dv }: { dv: DeviceView }) {
+function DeviceCard({ dv, folded }: { dv: DeviceView; folded: Client[] }) {
   const state =
     dv.state === "awake" ? t("device.state.awake") : dv.state === "asleep" ? t("device.state.asleep") : dv.lastSeen ? t("device.state.unreachable", ago(A.L, dv.lastSeen)) : t("device.state.unreachable.never");
   const signedIn = dv.harnesses.filter((h) => h.installed && h.loggedIn);
   return (
     <div class="dev-card" role="group" aria-label={dv.name}>
       <div class="dev-head">
-        <CardName id={dv.id} name={dv.name} renamable={!dv.home} />
+        <CardName id={dv.id} name={dv.name} renamable />
       </div>
       <div class="dev-kind">{kindLine(dv)}</div>
       <div class={`dev-state ${dv.state}`}>{state}</div>
+      <Folded list={folded} computer={dv.computer || dv.name} />
       {!!signedIn.length && (
         <div class="dev-coins">
           {signedIn.map((h) => (
@@ -2591,20 +2661,33 @@ function BrowserBlock({ dv }: { dv: DeviceView }) {
   );
 }
 
-function ClientCard({ cl }: { cl: Reach["clients"][number] }) {
+/** A phone's, a window's or a lone command line's card in the D148 language (D155). */
+function ClientCard({ cl, folded }: { cl: Client; folded: Client[] }) {
   const mine = A.me?.deviceId === cl.id;
+  const name = clientName(cl);
+  const computer = clientComputer(cl);
+  const cli = isCli(cl);
   return (
-    <div class="dev-card" role="group" aria-label={cl.name}>
+    <div class="dev-card" role="group" aria-label={name}>
       <div class="dev-head">
-        <CardName id={cl.id} name={cl.name} renamable />
+        <CardName id={cl.id} name={name} renamable />
       </div>
-      <div class="dev-kind">
-        {clientWhat(cl.platform)} · {t("device.client.for", A.S.personaName)}
-      </div>
-      <div class={`dev-state ${cl.connected ? "awake" : ""}`}>{mine ? t("device.client.this") : cl.connected ? t("device.client.now") : cl.lastSeen ? t("device.client.seen", ago(A.L, cl.lastSeen)) : t("device.client.notnow")}</div>
-      <div class="dev-actions">
-        <Disconnect id={cl.id} name={cl.name} client />
-      </div>
+      <div class="dev-kind">{clientKind(cl)}</div>
+      {cli ? (
+        <Folded list={[cl]} computer={computer} alone />
+      ) : (
+        <>
+          <div class={`dev-state ${cl.connected ? "awake" : ""}`}>{mine ? t("device.client.this") : cl.connected ? t("device.client.now") : cl.lastSeen ? t("device.client.seen", ago(A.L, cl.lastSeen)) : t("device.client.notnow")}</div>
+          <Folded list={folded} computer={computer} />
+        </>
+      )}
+      <div class="dev-sub">{t("device.does")}</div>
+      <div class="small">{clientDoes(cl)}</div>
+      {!cli && (
+        <div class="dev-actions">
+          <Disconnect id={cl.id} name={name} client />
+        </div>
+      )}
     </div>
   );
 }
@@ -2619,12 +2702,18 @@ export function DevicesSection() {
   return (
     <section class="set devices">
       <h3>{t("devices.title")}</h3>
-      {list.map((dv) => (
-        <DeviceCard dv={dv} key={dv.id} />
-      ))}
-      {A.reach?.clients.map((cl) => (
-        <ClientCard cl={cl} key={cl.id} />
-      ))}
+      {((f) => (
+        <>
+          {list.map((dv) => (
+            <DeviceCard dv={dv} key={dv.id} folded={f.members.get(`dev:${dv.id}`) ?? []} />
+          ))}
+          {A.reach?.clients
+            .filter((cl) => !f.hidden.has(cl.id))
+            .map((cl) => (
+              <ClientCard cl={cl} key={cl.id} folded={f.members.get(`cl:${cl.id}`) ?? []} />
+            ))}
+        </>
+      ))(foldClients(list, A.reach?.clients ?? []))}
       {A.settings && (
         <>
           <Toggle label={t("settings.versions.night")} checked={!!A.settings.autoUpdate} onChange={(v) => A.setSettings({ autoUpdate: v })} />

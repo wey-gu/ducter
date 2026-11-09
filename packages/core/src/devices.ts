@@ -2,14 +2,14 @@
 // device is, whether it is awake, which AI accounts are signed in on it, and which abilities it
 // has. Only what the server knows: probes on this machine (cua-driver, harness logins, a
 // battery = a laptop), and what workers said in their hello. No allowance is ever estimated.
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { hostname as osHostname, platform as osPlatform } from "node:os";
 import { join } from "node:path";
 import QRCode from "qrcode";
 import { deviceHarness, type AbilityId, type AbilityReason, type DeviceAbility, type DeviceHarness, type DeviceKind, type DeviceView, type Reach, type ServerFrame } from "@ducter/protocol";
 import { readAbilitySettings, writeAbilitySettings } from "@ducter/protocol/src/abilities.ts";
 import { claudeInChromeConnected, codexNative } from "@ducter/protocol/src/native-browser.ts";
-import type { DeviceAuth } from "./auth.ts";
+import { deviceForm, type DeviceAuth } from "./auth.ts";
 import type { Workers } from "./workers.ts";
 import { probeHarnesses } from "./harness-probe.ts";
 import type { BrowserSetup } from "./browser/index.ts";
@@ -65,7 +65,7 @@ export interface DevicesView {
   frame(): Promise<DevicesFrame>;
   setAbility(device: string, ability: AbilityId, on: boolean): Promise<AbilityResult>;
   pairCode(): Promise<PairCodeFrame>;
-  /** 改名字 / Rename a paired device (D84). The machine Ducter lives on keeps its host name. */
+  /** 改名字 / Rename any device (D84); the home's is a display name beside its host name (D155). */
   rename(device: string, name: string): RenameResult;
   /** 断开 / Disconnect a paired device (D148 (11)): the same revoke as `ducter devices disconnect`. */
   disconnect(device: string): DisconnectResult;
@@ -111,6 +111,16 @@ export function kindFromPlatform(p: string | undefined): DeviceKind {
   if (/ios|iphone|android/.test(s)) return "phone";
   if (s.startsWith("linux")) return "server";
   return "laptop";
+}
+
+/** D155: the home's own name, when the person gave it one (else its host name). */
+export const homeNameFile = (dataDir: string) => join(dataDir, "device-name");
+export function homeName(dataDir: string): string | undefined {
+  try {
+    return readFileSync(homeNameFile(dataDir), "utf8").trim() || undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 export function publicAddress(dataDir: string, env: Record<string, string | undefined> = process.env): string | undefined {
@@ -256,6 +266,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
         platform: d.platform,
         connected: live.has(d.id),
         ...(d.lastSeenAt ? { lastSeen: d.lastSeenAt } : {}),
+        ...deviceForm(d), // D155: a CLI says so, and which computer it belongs to
       })),
     };
   };
@@ -267,7 +278,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
     const remoteOn = clients().length > 0;
     const home: DeviceView = {
       id: "local",
-      name: host,
+      name: homeName(o.dataDir) ?? host,
       kind: me.kind,
       home: true,
       state: "awake", // this answer comes from it
@@ -301,6 +312,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
           ...(lastSeen ? { lastSeen } : {}),
           ...(hello?.version ? { version: hello.version } : {}),
           ...(d.platform ? { platform: d.platform } : {}),
+          ...(d.computer ? { computer: d.computer } : {}),
           ...((): { update?: DeviceView["update"] } => {
             const u = up?.view(d.id, hello?.version, hello?.how === "self" || hello?.how === "app" || hello?.how === "source" ? hello.how : "manual");
             return u ? { update: u } : {};
@@ -387,11 +399,23 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
   }
 
   function rename(device: string, name: string): RenameResult {
-    if (device === "local") return { t: "rename_result", device, ok: false, reason: "home" };
-    // The machine Ducter lives on answers to its own name and to "local": a task placed there
-    // must never land on another computer by a rename.
     const want = name.trim().toLowerCase();
-    if (want === "local" || want === host.toLowerCase()) return { t: "rename_result", device, ok: false, reason: "name_taken" };
+    const live = o.auth.list();
+    if (device === "local") {
+      // D155: the home's name is a display name. It still answers to its host name and to
+      // "local"; it never takes a paired device's name (a task placed by that name goes there).
+      const next = name.replace(/[\p{Cc}\p{Cf}]+/gu, " ").replace(/\s+/g, " ").trim().slice(0, 64);
+      if (!next) return { t: "rename_result", device: "local", ok: false, reason: "empty" };
+      if (want === "local" || live.some((d) => d.name.toLowerCase() === want)) return { t: "rename_result", device: "local", ok: false, reason: "name_taken" };
+      if (next === host) rmSync(homeNameFile(o.dataDir), { force: true });
+      else writeFileSync(homeNameFile(o.dataDir), next + "\n", { mode: 0o600 });
+      changed();
+      return { t: "rename_result", device: "local", ok: true, name: next };
+    }
+    // The machine Ducter lives on answers to its own name, its display name and "local": a task
+    // placed there must never land on another computer by a rename.
+    const shown = homeName(o.dataDir)?.toLowerCase();
+    if (want === "local" || want === host.toLowerCase() || want === shown) return { t: "rename_result", device, ok: false, reason: "name_taken" };
     const r = o.auth.rename(device, name);
     if ("error" in r) return { t: "rename_result", device, ok: false, reason: r.error };
     o.workers.renamed(r.device.id, r.device.name);

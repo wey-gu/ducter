@@ -358,7 +358,76 @@ export async function lingerOn(host: Host, user: string): Promise<boolean> {
   return /Linger=yes/.test(r.stdout);
 }
 
-/** `ducter service install | uninstall | status` (Linux, systemd --user). */
+// ---------- launchd (a Mac doing tasks for a Ducter elsewhere, D155) ----------
+
+/** The worker's LaunchAgent label: the same one the Mac app's "Let this Mac do tasks" uses. */
+export const WORKER_LABEL = "co.nowledge.ducter.worker";
+export const launchAgentPath = (home = homedir(), label = WORKER_LABEL) => join(home, "Library", "LaunchAgents", `${label}.plist`);
+
+const xmlEsc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+/**
+ * The worker's launchd property list: `ducter worker` (it reads <dataDir>/worker.json), started at
+ * login, restarted when it stops uncleanly (KeepAlive), logs in <dataDir>/worker.log. A worker the
+ * main refused exits 0 under launchd (DUCTER_SUPERVISOR) and so stays stopped.
+ */
+export function launchdWorkerPlist(u: { execStart: string[]; dataDir: string; path: string; home: string; label?: string }): string {
+  const log = join(u.dataDir, "worker.log");
+  const env: Record<string, string> = { DUCTER_DATA_DIR: u.dataDir, DUCTER_SUPERVISOR: "launchd", HOME: u.home, NO_COLOR: "1", PATH: u.path };
+  const str = (k: string, v: string) => `\t<key>${xmlEsc(k)}</key>\n\t<string>${xmlEsc(v)}</string>\n`;
+  return (
+    `<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n` +
+    str("Label", u.label ?? WORKER_LABEL) +
+    `\t<key>ProgramArguments</key>\n\t<array>\n${[...u.execStart, "worker"].map((a) => `\t\t<string>${xmlEsc(a)}</string>\n`).join("")}\t</array>\n` +
+    str("WorkingDirectory", u.home) +
+    str("StandardOutPath", log) +
+    str("StandardErrorPath", log) +
+    `\t<key>RunAtLoad</key>\n\t<true/>\n` +
+    `\t<key>KeepAlive</key>\n\t<dict>\n\t\t<key>SuccessfulExit</key>\n\t\t<false/>\n\t</dict>\n` +
+    `\t<key>ThrottleInterval</key>\n\t<integer>10</integer>\n` +
+    `\t<key>EnvironmentVariables</key>\n\t<dict>\n${Object.keys(env)
+      .sort()
+      .map((k) => `\t\t<key>${xmlEsc(k)}</key>\n\t\t<string>${xmlEsc(env[k]!)}</string>\n`)
+      .join("")}\t</dict>\n</dict>\n</plist>\n`
+  );
+}
+
+/** `ducter service install --worker | uninstall --worker | status --worker` on a Mac (launchd). */
+export async function cmdLaunchdWorker(o: { t: T; style: Style; host: Host; dataDir: string; verb: string; home?: string; uid?: number }): Promise<number> {
+  const { t, style, host } = o;
+  const home = o.home ?? homedir();
+  const plist = launchAgentPath(home);
+  const domain = `gui/${o.uid ?? process.getuid?.() ?? 501}`;
+  const service = `${domain}/${WORKER_LABEL}`;
+  if (o.verb === "status") {
+    const r = await sh(host, ["launchctl", "print", service]);
+    if (r.code !== 0) return console.log(t("service.mac.off")), 1;
+    const state = /state = (\w+)/.exec(r.stdout)?.[1] ?? "?";
+    console.log(`  ${state === "running" ? style.ok("●") : "○"} ${t("service.mac.state", { state })}`);
+    console.log("  " + style.dim(t("service.mac.logs", { log: join(o.dataDir, "worker.log") })));
+    return state === "running" ? 0 : 1;
+  }
+  if (o.verb === "uninstall") {
+    await sh(host, ["launchctl", "bootout", service]);
+    rmSync(plist, { force: true });
+    console.log(t("service.mac.removed", { dir: o.dataDir }));
+    return 0;
+  }
+  // install: the worker must have joined first (worker.json), as on Linux.
+  if (!existsSync(join(o.dataDir, "worker.json"))) return console.log(t("service.mac.joinFirst")), 1;
+  migrateKeys(o.dataDir);
+  mkdirSync(dirname(plist), { recursive: true });
+  writeFileSync(plist, launchdWorkerPlist({ execStart: selfCommand(host.compiled), dataDir: o.dataDir, path: servicePath(process.env, home), home }));
+  console.log(style.dim(t("service.installed", { unit: plist })));
+  await sh(host, ["launchctl", "bootout", service]); // a previous one, if any
+  const r = await sh(host, ["launchctl", "bootstrap", domain, plist]);
+  if (r.code !== 0) return console.log(`launchctl bootstrap ${domain}: ${r.stdout.trim()}`), 1;
+  console.log(`\n  ${style.ok("●")} ${t("service.mac.started")}`);
+  console.log("  " + style.dim(t("service.mac.logs", { log: join(o.dataDir, "worker.log") })));
+  return 0;
+}
+
+/** `ducter service install | uninstall | status` (Linux, systemd --user; a Mac worker, launchd). */
 export async function cmdService(o: {
   t: T;
   style: Style;
@@ -369,11 +438,17 @@ export async function cmdService(o: {
   worker?: boolean;
   rest: string[];
   onInstalled?: () => Promise<void>;
+  /** Tests: the platform, and the home folder a LaunchAgent goes under. */
+  platform?: string;
+  home?: string;
+  uid?: number;
 }): Promise<number> {
   const { t, style, host } = o;
   const verb = o.rest[0] ?? "status";
-  if (process.platform !== "linux") return console.log(t("service.linuxOnly")), 1;
+  const platform = o.platform ?? process.platform;
   if (!["install", "uninstall", "status"].includes(verb)) return console.log(t("service.usage")), 2;
+  if (platform === "darwin" && o.worker) return cmdLaunchdWorker({ t, style, host, dataDir: o.dataDir, verb, home: o.home, uid: o.uid });
+  if (platform !== "linux") return console.log(t("service.linuxOnly")), 1;
   const probe = await sh(host, ["systemctl", "--user", "show-environment"]);
   if (probe.code !== 0) return console.log(t("service.noSystemd", { reason: probe.stdout.trim().split("\n")[0] || `exit ${probe.code}` })), 1;
   const user = process.env.USER || userInfo().username;

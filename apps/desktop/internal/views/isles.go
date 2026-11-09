@@ -133,8 +133,12 @@ func (a *App) isles() []isle {
 		others = append(others, isle{key: "dev:" + dv.ID, dv: dv, art: deviceArt(dv)})
 	}
 	if a.S.Reach != nil {
+		hidden := a.fold().hidden // D155: folded into its computer's island
 		for i := range a.S.Reach.Clients {
 			cl := &a.S.Reach.Clients[i]
+			if hidden[cl.ID] {
+				continue
+			}
 			others = append(others, isle{key: "cl:" + cl.ID, cl: cl, art: clientArt(cl)})
 		}
 	}
@@ -404,7 +408,7 @@ func (a *App) isleName(s *isle) string {
 	if s.dv != nil {
 		return a.deviceName(s.dv)
 	}
-	return s.cl.Name
+	return a.clientName(s.cl)
 }
 
 func (a *App) isleLine(s *isle) (string, ui.Color) {
@@ -436,13 +440,20 @@ func (a *App) isleLine(s *isle) (string, ui.Color) {
 }
 
 // clientLine says what a phone (or a window elsewhere) is for.
+// D155: in plain words, what it is (你的 iPhone · 用 Safari 连着), or for a
+// command line alone, that it is the command line; then when it was last
+// here.
 func (a *App) clientLine(cl *protocol.ReachClient) string {
+	what := a.clientKind(cl)
+	if isCLI(cl) {
+		what = a.L.T("device.cli.only")
+	}
 	if !cl.Connected {
 		if ago := a.agoLong(cl.LastSeen); ago != "" {
-			return a.L.T("device.client.seen", a.S.PersonaName, ago)
+			return what + " · " + ago
 		}
 	}
-	return a.L.T("device.client.line", a.S.PersonaName)
+	return what
 }
 
 // homePose is Ducter's face on its island.

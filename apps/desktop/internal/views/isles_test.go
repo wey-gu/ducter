@@ -138,7 +138,7 @@ func TestIslesPhone(t *testing.T) {
 	h.hub.Scene("phone")
 	h.until("phone", func() bool { return h.app.S.Reach != nil && len(h.app.S.Reach.Clients) == 1 })
 	h.settle(200 * time.Millisecond)
-	line := L.T("device.client.line", h.app.S.PersonaName)
+	line := L.T("device.kind.iphone.app") // D155: what it is, in plain words
 	h.click("iPhone · " + line)
 	h.settle(200 * time.Millisecond)
 	if h.app.devState().selClient != "c-iphone" || h.tt.HasText(L.T("devices.grid")) {

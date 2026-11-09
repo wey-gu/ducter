@@ -114,7 +114,7 @@ func TestDeviceCards(t *testing.T) {
 			// The phone: what it is, when it was last here, and 断开 with a confirm.
 			d.selClient = "c1"
 			h.settle(200 * time.Millisecond)
-			if !h.tt.HasText("iPhone · Safari · " + L.T("device.client.for", h.app.S.PersonaName)) {
+			if !h.tt.HasText(L.T("device.kind.iphone.safari")) || !h.tt.HasText(L.T("device.does.phone", h.app.S.PersonaName)) {
 				t.Fatalf("phone card: %q", h.tt.Texts())
 			}
 			shot("phone")

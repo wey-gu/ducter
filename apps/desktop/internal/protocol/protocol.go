@@ -1007,6 +1007,9 @@ type DeviceView struct {
 	// Update is where its Ducter stands against the latest release (D148).
 	Update   *DeviceUpdate `json:"update,omitempty"`
 	Platform string        `json:"platform,omitempty"` // linux-x64, darwin-arm64…
+	// Computer is the computer it runs on (D155): an app window and the
+	// command line on it fold into its card.
+	Computer string `json:"computer,omitempty"`
 }
 
 // DeviceUpdate is a device's version against the latest release, and an
@@ -1053,6 +1056,11 @@ type ReachClient struct {
 	Platform  string `json:"platform"`
 	Connected bool   `json:"connected"`
 	LastSeen  string `json:"lastSeen,omitempty"`
+	// Form is what kind of client it is (D155): "cli" for the command line
+	// on a computer; "app", "web", "ios" or empty for an app.
+	Form string `json:"form,omitempty"`
+	// Computer is the computer it runs on (its host name), when it said.
+	Computer string `json:"computer,omitempty"`
 }
 
 // Reach is who can reach this Ducter from elsewhere, and the address.

@@ -265,7 +265,7 @@ test("D84: 改名字 renames another computer; tasks placed by its old name stil
   expect(core.workers.link("Build box")?.name).toBe("Build box");
 
   for (const [frame, reason] of [
-    [{ device: "local", name: "x" }, "home"],
+    [{ device: "local", name: "iPhone" }, "name_taken"], // D155: the home renames, but never to a paired name
     [{ device: w.device.id, name: "iPhone" }, "name_taken"],
     [{ device: w.device.id, name: "Local" }, "name_taken"], // what the partner calls the machine Ducter lives on
     [{ device: "nobody", name: "x" }, "unknown_device"],
@@ -295,6 +295,67 @@ test("a pairing code with a public address carries the link and a QR", async () 
   expect(p.link).toBe(`https://ducter.example.com/pair#c=${p.code}`);
   expect(p.qr!.length).toBeGreaterThan(20);
   expect(p.qr!.every((r) => r.length === p.qr!.length && /^[01]+$/.test(r))).toBe(true);
+});
+
+test("D155: a phone and the home rename in place; the home still answers to its host name", async () => {
+  const core = boot();
+  const phone = core.devices.redeem(core.devices.createCode().code, { name: "iPhone · Safari", platform: "ios-safari" }) as { device: { id: string } };
+  const w = core.devices.redeem(core.devices.createCode().code, { name: "Build box", role: "worker" }) as { device: { id: string } };
+  const c = await client(core.url);
+  c.send({ t: "devices" });
+  const first = await c.until<Devices>((x) => x.t === "devices");
+  const host = first.devices.find((d) => d.home)!.name;
+
+  let n = c.frames.length;
+  c.send({ t: "rename_device", device: phone.device.id, name: "Wey's iPhone" });
+  expect(await c.until((x) => x.t === "rename_result", n)).toEqual({ t: "rename_result", device: phone.device.id, ok: true, name: "Wey's iPhone" });
+  await c.until<Devices>((x) => x.t === "devices" && x.reach.clients.some((cl) => cl.name === "Wey's iPhone"), n);
+
+  n = c.frames.length;
+  c.send({ t: "rename_device", device: "local", name: "hel" });
+  expect(await c.until((x) => x.t === "rename_result", n)).toEqual({ t: "rename_result", device: "local", ok: true, name: "hel" });
+  await c.until<Devices>((x) => x.t === "devices" && x.devices.some((d) => d.home && d.name === "hel"), n);
+  // Its host name and "local" stay its own; nobody else can take its new name.
+  for (const [frame, reason] of [
+    [{ device: w.device.id, name: "hel" }, "name_taken"],
+    [{ device: w.device.id, name: host }, "name_taken"],
+    [{ device: "local", name: "Build box" }, "name_taken"],
+    [{ device: "local", name: "  " }, "empty"],
+  ] as const) {
+    n = c.frames.length;
+    c.send({ t: "rename_device", ...frame });
+    expect(await c.until((x) => x.t === "rename_result", n)).toMatchObject({ ok: false, reason });
+  }
+  // Back to its host name: the display name goes.
+  n = c.frames.length;
+  c.send({ t: "rename_device", device: "local", name: host });
+  expect(await c.until((x) => x.t === "rename_result", n)).toMatchObject({ ok: true, name: host });
+  expect(await Bun.file(`${core.dataDir}/device-name`).exists()).toBe(false);
+});
+
+test("D155: a CLI says it's a CLI and which computer it's on; a default name never repeats", async () => {
+  const core = boot();
+  const code = async () => (await core.devicesView.pairCode()).code;
+  const REMOTE = { "x-forwarded-for": "203.0.113.9" };
+  const pair = async (body: object): Promise<any> => (await fetch(`http://127.0.0.1:${core.port}/pair`, { method: "POST", headers: REMOTE, body: JSON.stringify({ code: await code(), ...body }) })).json();
+  await pair({ name: "Siweis-MacBook-Pro", platform: "darwin", form: "app", computer: "Siweis-MacBook-Pro" });
+  await pair({ name: "CLI on Siweis-MacBook-Pro", platform: "darwin", form: "cli", computer: "Siweis-MacBook-Pro" });
+  // Paired before D155: only its name says so.
+  core.devices.redeem(core.devices.createCode().code, { name: "CLI on mini", platform: "darwin" });
+  const a = await pair({ name: "iPhone · Safari", platform: "ios-safari" });
+  const b = await pair({ name: "iPhone · Safari", platform: "ios-safari" });
+  expect([a.name, b.name]).toEqual(["iPhone · Safari", "iPhone · Safari · 2"]);
+  // A worker on the same Mac keeps its computer's name (another kind).
+  const w = await pair({ name: "Siweis-MacBook-Pro", platform: "darwin-arm64", role: "worker", computer: "Siweis-MacBook-Pro" });
+  expect(w.name).toBe("Siweis-MacBook-Pro");
+
+  const f = await core.devicesView.frame();
+  const by = (name: string) => f.reach.clients.find((c) => c.name === name)!;
+  expect(by("Siweis-MacBook-Pro")).toMatchObject({ form: "app", computer: "Siweis-MacBook-Pro" });
+  expect(by("CLI on Siweis-MacBook-Pro")).toMatchObject({ form: "cli", computer: "Siweis-MacBook-Pro" });
+  expect(by("CLI on mini")).toMatchObject({ form: "cli", computer: "mini" });
+  expect(by("iPhone · Safari").form).toBeUndefined();
+  expect(f.devices.find((d) => d.id === w.deviceId)).toMatchObject({ computer: "Siweis-MacBook-Pro" });
 });
 
 test("helpers", () => {

@@ -528,8 +528,9 @@ export type ClientFrame =
   | { t: "devices"; refresh?: boolean }
   | { t: "ability"; device: string; ability: AbilityId; on: boolean }
   | { t: "pair_code" }
-  // rename_device: 改名字 / Rename a paired device (another computer, a phone; D84). Answered with
-  // rename_result, then a fresh devices frame. The machine Ducter lives on keeps its own name.
+  // rename_device: 改名字 / Rename any device (another computer, a phone, a window; D84), and since
+  // D155 the home too ("local": a display name; it still answers to its host name and to "local").
+  // Answered with rename_result, then a fresh devices frame.
   | { t: "rename_device"; device: string; name: string }
   // D148: disconnect_device: 断开 / Disconnect a paired device (the same revoke as `ducter devices
   // disconnect`); answered with disconnect_result, then a fresh devices frame. The home can't be.
@@ -820,6 +821,8 @@ export interface DeviceView {
   update?: DeviceUpdate;
   /** linux-x64, darwin-arm64…: what it is, for its card's plain words. */
   platform?: string;
+  /** D155: the computer it runs on (its host name), when it said: a CLI on it folds into its card. */
+  computer?: string;
 }
 
 // ---------- Updating in place (D148, design/system.md "Updating in place") ----------
@@ -865,7 +868,8 @@ export interface DeviceUpdate {
 /** Who can reach this Ducter from elsewhere (paired clients), and the address they use. */
 export interface Reach {
   address?: string; // the public address, when one is set (DUCTER_PUBLIC_URL or <dataDir>/public-url)
-  clients: { id: string; name: string; platform: string; connected: boolean; lastSeen?: string }[];
+  /** form "cli": the command line on a computer, shown inside that computer's card (D155); computer: the host it runs on. */
+  clients: { id: string; name: string; platform: string; connected: boolean; lastSeen?: string; form?: "cli" | "app"; computer?: string }[];
 }
 
 // ---------- Connections (D96, design/connectors.md) ----------

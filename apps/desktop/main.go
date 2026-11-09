@@ -153,6 +153,13 @@ func main() {
 		app.Version = lc.version
 	}
 	app.Quit = func() { mygo.App.Quit() }
+	// D155: Let this Mac do tasks for the Ducter the window talks to, as a
+	// LaunchAgent running the bundled helper (only from a settled app: the
+	// disk image's path goes away).
+	app.ThisComputer = remote.DeviceName()
+	if inApp && local.Settled(bundle.CLI) {
+		app.MacWorker = appWorker{local.NewMacWorker(bid, bundle.CLI, hints.DataDir(), string(lang))}
+	}
 	if host != nil {
 		app.ReportProblem = func() { go lc.reportProblem() }
 	}
@@ -518,6 +525,27 @@ func followCLI(s remote.Saved, relaunch bool) {
 		log.Printf("ducter: the command line couldn't connect there too (ducter connect does it by hand): %v", err)
 	}
 }
+
+// appWorker is "Let this Mac do tasks" for the Ducter this window talks to
+// (D155): the address and token are the saved connection's, read each time
+// (a new pairing changes them).
+type appWorker struct{ w *local.MacWorker }
+
+func (a appWorker) On() (bool, string) {
+	url, _ := target()
+	return a.w.On(url)
+}
+
+func (a appWorker) Start(ctx context.Context) error {
+	url, token := target()
+	ctx, cancel := context.WithTimeout(ctx, 40*time.Second)
+	defer cancel()
+	_, err := a.w.Start(ctx, url, token)
+	return err
+}
+
+func (a appWorker) Stop() (string, error) { return a.w.Stop() }
+func (a appWorker) Log() string           { return a.w.Agent.LogPath() }
 
 // target is the server to dial and its device token: DUCTER_URL (and
 // DUCTER_TOKEN) win; then the saved connection; then the local default.

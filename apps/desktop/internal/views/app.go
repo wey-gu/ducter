@@ -84,6 +84,12 @@ type App struct {
 	// ReadClipboard is the clipboard's text, for a pair link copied before
 	// the connect card opened (set by main).
 	ReadClipboard func() string
+	// MacWorker is "Let this Mac do tasks for <home>" (D155): set by main
+	// when the app runs as Ducter.app; nil hides it. ThisComputer is this
+	// Mac's name (its host name), how its devices are found on a home.
+	MacWorker    MacWorker
+	ThisComputer string
+	work         workState
 	// hereBackend is this Mac's own Ducter after the app switched to one on
 	// another computer; askStopHere asks once whether to stop it.
 	hereBackend Backend

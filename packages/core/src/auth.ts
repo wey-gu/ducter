@@ -37,6 +37,21 @@ export interface Device {
   createdAt: string;
   lastSeenAt?: string;
   revokedAt?: string;
+  /** D155: "cli" for the command line on a computer (`ducter connect`, or the Mac app's pairing for it). */
+  form?: DeviceForm;
+  /** D155: the computer it runs on (its host name), when it said. A CLI belongs to its computer's card. */
+  computer?: string;
+}
+
+/** What kind of client a device is (D155). Only "cli" changes how it shows; the rest are apps. */
+export type DeviceForm = "cli" | "app";
+
+/** A device's form and computer, also for a CLI paired before D155 by its name "CLI on <computer>". */
+export function deviceForm(d: Pick<Device, "name" | "kind" | "form" | "computer">): { form?: DeviceForm; computer?: string } {
+  const legacy = /^CLI on (.+)$/.exec(d.name);
+  const form = d.form ?? (d.kind === "client" && legacy ? "cli" : undefined);
+  const computer = d.computer || (form === "cli" && legacy ? legacy[1]!.trim() : undefined);
+  return { ...(form ? { form } : {}), ...(computer ? { computer } : {}) };
 }
 
 export type RedeemError = "invalid" | "expired" | "locked";
@@ -49,7 +64,7 @@ export interface DeviceAuth {
    * Trades a code for a device token. `key` identifies the caller for rate limiting. `role` is
    * what the device joins as when the code leaves it open (no role = an app, "client").
    */
-  redeem(code: string, info: { name: string; platform?: string; role?: DeviceKind }, key?: string): { token: string; device: Device } | { error: RedeemError };
+  redeem(code: string, info: { name: string; platform?: string; role?: DeviceKind; form?: DeviceForm; computer?: string }, key?: string): { token: string; device: Device } | { error: RedeemError };
   /** The live (not revoked) device a token belongs to. */
   verify(token: string): Device | undefined;
   list(opts?: { all?: boolean }): Device[];
@@ -107,6 +122,11 @@ export function openDeviceAuth(dataDir: string, opts: { now?: () => number } = {
       name TEXT NOT NULL, device_id TEXT NOT NULL, renamed_at INTEGER NOT NULL);
   `);
 
+  // D155: what kind of client, and which computer it runs on (older databases gain the columns).
+  const cols = new Set((db.query("PRAGMA table_info(devices)").all() as { name: string }[]).map((c) => c.name));
+  if (!cols.has("form")) db.exec("ALTER TABLE devices ADD COLUMN form TEXT NOT NULL DEFAULT ''");
+  if (!cols.has("computer")) db.exec("ALTER TABLE devices ADD COLUMN computer TEXT NOT NULL DEFAULT ''");
+
   const fails = new Map<string, number[]>();
   const seenAt = new Map<string, number>();
   const iso = (ms: number | null | undefined) => (ms == null ? undefined : new Date(ms).toISOString());
@@ -118,6 +138,8 @@ export function openDeviceAuth(dataDir: string, opts: { now?: () => number } = {
     createdAt: iso(r.created_at)!,
     ...(r.last_seen_at != null ? { lastSeenAt: iso(r.last_seen_at) } : {}),
     ...(r.revoked_at != null ? { revokedAt: iso(r.revoked_at) } : {}),
+    ...(r.form === "cli" || r.form === "app" ? { form: r.form } : {}),
+    ...(r.computer ? { computer: r.computer } : {}),
   });
 
   const recentFails = (key: string) => {
@@ -138,15 +160,21 @@ export function openDeviceAuth(dataDir: string, opts: { now?: () => number } = {
     }
   };
 
-  const insertDevice = db.transaction((codeHash: string, d: { id: string; name: string; platform: string; tokenHash: string; role?: DeviceKind }) => {
+  const insertDevice = db.transaction((codeHash: string, d: { id: string; name: string; platform: string; tokenHash: string; role?: DeviceKind; form?: string; computer?: string }) => {
     const c = db.query("SELECT kind, expires_at FROM pair_codes WHERE code_hash = ?").get(codeHash) as any;
     if (!c) return { error: "invalid" as const };
     db.run("DELETE FROM pair_codes WHERE code_hash = ?", [codeHash]);
     if (c.expires_at <= now()) return { error: "expired" as const };
     // An open code takes the role the device asked for; a fixed one (pair --worker) keeps its own.
     const kind: DeviceKind = c.kind === "any" ? (d.role === "worker" ? "worker" : "client") : c.kind;
-    db.run("INSERT INTO devices (id, name, kind, platform, token_hash, created_at) VALUES (?, ?, ?, ?, ?, ?)", [
-      d.id, d.name, kind, d.platform, d.tokenHash, now(),
+    // D155: a default name another live device of the same kind already has gets " · 2", " · 3"…
+    // (two phones both "iPhone · Safari"). An app window and a worker on one computer may share
+    // their computer's name: they show as one computer.
+    const taken = new Set((db.query("SELECT name FROM devices WHERE revoked_at IS NULL AND kind = ?").all(kind) as { name: string }[]).map((r) => r.name));
+    let name = d.name;
+    for (let n = 2; taken.has(name); n++) name = `${d.name.slice(0, 56)} · ${n}`;
+    db.run("INSERT INTO devices (id, name, kind, platform, token_hash, created_at, form, computer) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", [
+      d.id, name, kind, d.platform, d.tokenHash, now(), d.form ?? "", d.computer ?? "",
     ]);
     return { kind };
   });
@@ -171,7 +199,9 @@ export function openDeviceAuth(dataDir: string, opts: { now?: () => number } = {
       // Names are printed in terminals (`ducter devices`) and shown to the partner.
       const name = cleanName(info.name || "device").slice(0, 64) || "device";
       const platform = cleanName(info.platform ?? "").slice(0, 32);
-      const r = insertDevice(sha(raw), { id, name, platform, tokenHash: sha(secret), role: info.role }) as { error: RedeemError } | { kind: DeviceKind };
+      const form = info.form === "cli" || info.form === "app" ? info.form : undefined;
+      const computer = cleanName(info.computer ?? "").slice(0, 64);
+      const r = insertDevice(sha(raw), { id, name, platform, tokenHash: sha(secret), role: info.role, form, computer }) as { error: RedeemError } | { kind: DeviceKind };
       if ("error" in r) {
         fail(key);
         return { error: r.error };
@@ -319,7 +349,10 @@ export function createGate(opts: { auth: DeviceAuth; trustLoopback?: boolean; pe
         const key = rateKey(req, peerIp);
         // role: "worker" from `ducter worker`; anything else (or nothing: web, iOS, desktop) is an app.
         const role = body?.role === "worker" ? "worker" : "client";
-        const r = opts.auth.redeem(String(body?.code ?? ""), { name: String(body?.name ?? ""), platform: String(body?.platform ?? ""), role }, key);
+        // D155: form "cli" = the command line on a computer; computer = the host it runs on.
+        const form = body?.form === "cli" || body?.form === "app" ? body.form : undefined;
+        const computer = typeof body?.computer === "string" ? body.computer : undefined;
+        const r = opts.auth.redeem(String(body?.code ?? ""), { name: String(body?.name ?? ""), platform: String(body?.platform ?? ""), role, form, computer }, key);
         if ("error" in r) return { pass: false, response: json(r.error === "locked" ? 429 : 401, { error: r.error }) };
         return { pass: false, response: json(200, { token: r.token, deviceId: r.device.id, name: r.device.name, personaName: opts.personaName?.() ?? "Ducter" }) };
       }

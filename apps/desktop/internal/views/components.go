@@ -374,7 +374,10 @@ func (a *App) buttonLook(c *ui.Context, b ui.Element, kind btnKind, h float32, o
 		p.Offset = ledge
 		bg := t.Bg
 		if st, ok := a.onTint(onSurface); ok {
-			bg, p.Color, p.Rim = t.Surface, st.Ledge, ui.Transparent
+			// On a tinted card the ledge is a deeper shade of the card's own
+			// tint, so a white button reads as tall as an ink one (its base
+			// would otherwise vanish into the card).
+			bg, p.Color, p.Rim = t.Surface, st.Ledge.Mix(st.Strong, 0.45), ui.Transparent
 		}
 		if hover && !down {
 			bg = bg.Mix(t.Surface, 0.6)

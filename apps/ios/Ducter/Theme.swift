@@ -18,7 +18,7 @@ enum Pebble {
     static let failedInk = dynamic(0x8A1F3B, 0xF8A9BC)
     /// Ledges: a darker shade of each filled button's fill (app.css --press-*).
     static let pressAccent = dynamic(0xC9642A, 0xC9642A)
-    static let pressQuiet = dynamic(0xE0C9B0, 0x0D0A07)
+    static let pressQuiet = dynamic(0xCDAE8C, 0x0D0A07)
     /// Clay depth (D76): a card rests on a solid 4pt base; a button stands on a ledge (4pt at
     /// the 52 size), with a soft drop and a 1.5pt top highlight, and sinks into it when pressed.
     static let base: CGFloat = 4
@@ -82,7 +82,7 @@ struct Clay {
     static let secondary = Clay(
         top: Pebble.bg, bottom: Pebble.bg, ink: Pebble.ink,
         highlight: dynA(0xFFFFFF, 0.95, 0xFFFFFF, 0.06), rim: dynA(0x2B2118, 0.09, 0xFFFFFF, 0.06),
-        seam: dyn(0xF3E3CC, 0x2C241D), ledge: Pebble.pressQuiet)
+        seam: dyn(0xEAD6BC, 0x2C241D), ledge: Pebble.pressQuiet)
     static let accent = Clay(
         top: Pebble.accent, bottom: Pebble.accent, ink: Pebble.onAccent,
         highlight: Color.white.opacity(0.38),

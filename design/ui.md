@@ -91,8 +91,8 @@ components and tokens; a value not in the scales below needs a token first.
 - There are no chips for status, evidence or metadata (D73, "No pills" below).
 
 **Buttons** (one family): primary (ink filled from `#3B2D22` at the top, cream text, highlight cream at 26%, a 1pt rim of `#FFECD6` at 8%, a 1pt warm seam `#5A4434` above a `#140D07` ledge, drop at 38%: an ink ledge alone vanishes),
-secondary (cream `#FFF6EA` with a 1pt inner rim of ink at 9%, ledge `#E0C9B0` under a 1pt `#F3E3CC` seam; on a tinted card
-it turns white with the card's ledge color), accent (orange, ledge `#C9642A` under a 1pt `#FFA466` seam, highlight white at
+secondary (cream `#FFF6EA` with a 1pt inner rim of ink at 9%, ledge `#CDAE8C` under a 1pt `#EAD6BC` seam (darker than the paper so it reads as tall as the ink button); on a tinted card
+it turns white on the card's ledge deepened 45% toward the state's strong tone, e.g. `#E99A65` on Needs you), accent (orange, ledge `#C9642A` under a 1pt `#FFA466` seam, highlight white at
 38%: the composer's send, the equip), text (flat), and icon (a square of any of them). Heights
 36 / 44 / 52 with radius 12 / 14 / 18 and type 13 / 15 / 16 (700); the 52 size stands on a 4pt
 ledge. The same hover (a shade lighter), press (sink) and keyboard focus ring on all of them.

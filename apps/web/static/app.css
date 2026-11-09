@@ -66,13 +66,13 @@
   --base: 0 4px 0 var(--line);
   --ledge: 3px;
   --press-primary: #140d07;
-  --press-quiet: #e0c9b0; /* secondary */
+  --press-quiet: #cdae8c; /* secondary */
   --press-accent: #c9642a;
   /* The ink button reads as clay too: a lighter top, a warm seam above its ledge. */
   --primary-top: #3b2d22;
   --seam-primary: #5a4434;
   --rim-primary: rgba(255, 236, 214, 0.08);
-  --seam-quiet: #f3e3cc;
+  --seam-quiet: #ead6bc;
   --seam-accent: #ffa466;
   --hi-primary: rgba(255, 246, 234, 0.26);
   --drop-primary: 0 7px 12px -4px rgba(43, 33, 24, 0.38);
@@ -833,7 +833,7 @@ a {
 .decision .btn.secondary {
   --fill: var(--surface);
   --rim-c: transparent;
-  --ledge-c: var(--needs-ledge);
+  --ledge-c: #e99a65; /* the card's ledge deepened toward its strong tone, as tall-looking as ink */
   --seam: var(--needs-ledge);
 }
 .decision .btn.text {

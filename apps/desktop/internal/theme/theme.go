@@ -235,7 +235,7 @@ func Pebble() *Tokens {
 		// Ink: "brown seam" (a #000 ledge under #2B2118 disappeared).
 		PressPrimary: Press{Offset: 3, Color: hex("#140D07"), Seam: hex("#5A4434"), Top: hex("#3B2D22"),
 			Hi: hex("#FFF6EA").Alpha(0.26), Rim: hex("#FFECD6").Alpha(0.08), Drop: hex("#2B2118").Alpha(0.38)},
-		PressSecondary: Press{Offset: 3, Color: hex("#E0C9B0"), Seam: hex("#F3E3CC"), Hi: hex("#FFFFFF").Alpha(0.95), Rim: hex("#2B2118").Alpha(0.09)},
+		PressSecondary: Press{Offset: 3, Color: hex("#CDAE8C"), Seam: hex("#EAD6BC"), Hi: hex("#FFFFFF").Alpha(0.95), Rim: hex("#2B2118").Alpha(0.09)},
 		PressAccent:    Press{Offset: 3, Color: hex("#C9642A"), Seam: hex("#FFA466"), Hi: hex("#FFFFFF").Alpha(0.38), Rim: ui.Transparent},
 		Raised:         Elevation{Y: 4, Blur: 0, Color: hex("#E8D9C4")},
 		Floating:       Elevation{Y: 10, Blur: 32, Color: hex("#2B2118").Alpha(0.14)},

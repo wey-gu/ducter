@@ -16,6 +16,8 @@ Built and verified in Ubuntu VMs: systemd user service, code pairing, token gate
 SSH-tunnel paths, desktop connect card, worker enrollment, presence and task placement.
 
 **Verify for real**
+- [ ] **Phone opened task overflows horizontally** (seen 2026-11-09 on a folder task, .shots/folder-undo/phone-zh.png): the headline, the brief text and the footer are cut on the right at 390px. Find the element forcing the width (min-width: 0 on flex children / long CJK lines) and test at 390px.
+- [ ] **Folder result shows a stray proof line** "1 file changed" next to D142's plain sentence; folder tasks should show only the sentence.
 - [ ] One real-harness task on a worker (`claude auth login` / `codex login --device-auth` on
       the worker). Trigger: the user signs in on a worker.
 - [ ] `scripts/caddy-setup.sh` on a real VPS + domain (ACME, renewal, WebSocket through Caddy

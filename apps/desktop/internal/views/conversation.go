@@ -368,7 +368,7 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 	case e.AI != nil:
 		// The partner's words get the CJK-Latin gap at display time; a
 		// copy leaves it out (D78).
-		ui.Column(c).MaxWidthPercent(88).Gap(t.S2).CopyData(autospaceCopy).Children(func() {
+		ui.Column(c).MaxWidthPercent(88).MaxWidth(readingMeasure).Gap(t.S2).CopyData(autospaceCopy).Children(func() {
 			markdown.View(c, autospace(e.AI.Text), &a.md)
 			a.quiet(c, "m"+itoa(e.FirstSeq), a.replyTasks(e), "", a.notedFor(e))
 		})
@@ -415,7 +415,7 @@ func (a *App) tasksOfReply(replyTo int64) []string {
 func (a *App) job(c *ui.Context, e *store.Entry) {
 	t := a.T
 	j := e.Job
-	ui.Column(c).MaxWidthPercent(88).Gap(t.S2).Children(func() {
+	ui.Column(c).MaxWidthPercent(88).MaxWidth(readingMeasure).Gap(t.S2).Children(func() {
 		if j.Ack != nil {
 			ui.Text(c, autospace(j.Ack.Text)).Selectable().CopyData(autospaceCopy).FontSize(t.PartnerSize).LineHeight(leadingFor(j.Ack.Text, 1.65))
 		}

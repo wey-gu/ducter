@@ -263,7 +263,7 @@ func (a *App) news(c *ui.Context, key string, it protocol.LivingItem) {
 		}
 		text = a.L.T(k, it.Title, it.Text)
 	}
-	ui.Column(c.Key("news:" + key)).MaxWidthPercent(88).Gap(t.S1).Children(func() {
+	ui.Column(c.Key("news:" + key)).MaxWidthPercent(88).MaxWidth(readingMeasure).Gap(t.S1).Children(func() {
 		ui.Text(c, autospace(text)).Selectable().CopyData(autospaceCopy).FontSize(t.PartnerSize).LineHeight(leadingFor(text, 1.65))
 		var tasks []*store.Task
 		if task := a.S.Task(it.TaskID); task != nil {
@@ -283,7 +283,7 @@ func (a *App) ask(c *ui.Context, d *store.DecisionState, taskID string) {
 	id := firstNonEmpty(taskID, d.TaskID)
 	task := a.S.Task(id)
 	key := "d" + d.DecisionID
-	ui.Column(c.Key("ask:" + d.DecisionID)).MaxWidthPercent(88).Gap(t.S1 + 2).Children(func() {
+	ui.Column(c.Key("ask:" + d.DecisionID)).MaxWidthPercent(88).MaxWidth(readingMeasure).Gap(t.S1 + 2).Children(func() {
 		ui.Text(c, autospace(d.Question)).Selectable().CopyData(autospaceCopy).FontSize(t.PartnerSize).LineHeight(leadingFor(d.Question, 1.65))
 		if !openAsk(d) {
 			a.decisionButtons(c, d, decisionStyle{height: t.ControlSM, quietBg: t.Bg})
@@ -464,3 +464,7 @@ func (a *App) lastUserAt() time.Time {
 	}
 	return time.Time{}
 }
+
+// readingMeasure is the partner's line length: 36em at its 18pt voice,
+// about 36 Chinese characters or 68 Latin ones (D104).
+const readingMeasure = 36 * 18

@@ -1,0 +1,1 @@
+A small chunky clay tear-off desk calendar seen from the front: a cream clay top page that is completely blank (no numbers, no letters, no lines), an orange clay binding strip across the top with two cream clay rings, and two or three slightly darker cream pages peeking out behind and below it, slightly fanned, to show it is a pad of many days.

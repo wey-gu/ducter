@@ -1,0 +1,7 @@
+{"jobs": 5, "tasks": [
+  {"id": "goal_light_off", "promptFiles": ["prompts/_style_abilities.md", "prompts/goal_light_off.md"], "image": "raw/goal_light_off.png", "ar": "1:1", "quality": "2k", "ref": ["alpha/wait_ci.png", "alpha/wait_clock.png"]},
+  {"id": "goal_light_on", "promptFiles": ["prompts/_style_abilities.md", "prompts/goal_light_on.md"], "image": "raw/goal_light_on.png", "ar": "1:1", "quality": "2k", "ref": ["alpha/wait_ci.png", "alpha/wait_clock.png"]},
+  {"id": "goal_flag_off", "promptFiles": ["prompts/_style_abilities.md", "prompts/goal_flag_off.md"], "image": "raw/goal_flag_off.png", "ar": "1:1", "quality": "2k", "ref": ["alpha/wait_ci.png", "alpha/wait_clock.png"]},
+  {"id": "goal_flag_on", "promptFiles": ["prompts/_style_abilities.md", "prompts/goal_flag_on.md"], "image": "raw/goal_flag_on.png", "ar": "1:1", "quality": "2k", "ref": ["alpha/wait_ci.png", "alpha/wait_clock.png"]},
+  {"id": "routine_calendar", "promptFiles": ["prompts/_style_abilities.md", "prompts/routine_calendar.md"], "image": "raw/routine_calendar.png", "ar": "1:1", "quality": "2k", "ref": ["alpha/wait_clock.png", "alpha/wait_file.png"]}
+]}

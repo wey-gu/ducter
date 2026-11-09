@@ -43,6 +43,12 @@ import waitCi from "../../../apps/web/static/art/wait_ci.webp" with { type: "fil
 import waitMail from "../../../apps/web/static/art/wait_mail.webp" with { type: "file" };
 import waitClock from "../../../apps/web/static/art/wait_clock.webp" with { type: "file" };
 import waitFile from "../../../apps/web/static/art/wait_file.webp" with { type: "file" };
+// D115 (legible): the goal's lights and flag for a keep-going loop; the routine's calendar.
+import goalLightOn from "../../../apps/web/static/art/goal_light_on.webp" with { type: "file" };
+import goalLightOff from "../../../apps/web/static/art/goal_light_off.webp" with { type: "file" };
+import goalFlagOn from "../../../apps/web/static/art/goal_flag_on.webp" with { type: "file" };
+import goalFlagOff from "../../../apps/web/static/art/goal_flag_off.webp" with { type: "file" };
+import routineCalendar from "../../../apps/web/static/art/routine_calendar.webp" with { type: "file" };
 
 const INDEX = indexHtml as unknown as string; // Bun types an .html import as an HTMLBundle; with type "file" it is a path
 
@@ -69,6 +75,11 @@ const ASSETS: Record<string, [string, string]> = {
   "art/wait_mail.webp": [waitMail, "image/webp"],
   "art/wait_clock.webp": [waitClock, "image/webp"],
   "art/wait_file.webp": [waitFile, "image/webp"],
+  "art/goal_light_on.webp": [goalLightOn, "image/webp"],
+  "art/goal_light_off.webp": [goalLightOff, "image/webp"],
+  "art/goal_flag_on.webp": [goalFlagOn, "image/webp"],
+  "art/goal_flag_off.webp": [goalFlagOff, "image/webp"],
+  "art/routine_calendar.webp": [routineCalendar, "image/webp"],
 };
 
 // The page loads only its own scripts and styles; it talks only to this origin.

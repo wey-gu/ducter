@@ -66,8 +66,10 @@ every command, for example `ducter status --port 7790`.
 
 ### `ducter: command not found`
 
-`~/.local/bin` isn't on your `PATH` yet. Ducter prints the one line to add when you install it;
-after adding it, open a new Terminal window. Until then you can run `~/.local/bin/ducter`.
+`~/.local/bin` isn't on your `PATH` in this terminal yet. The installer added it to your shell's
+profile, so a new Terminal window has it; in this one, run
+`export PATH="$HOME/.local/bin:$PATH"`, or use `~/.local/bin/ducter`. (As `root` on a server
+the installer also links `/usr/local/bin/ducter`, which every shell finds.)
 
 ### Ducter is resting and nothing happens
 
@@ -135,3 +137,19 @@ with the basics filled in. Nothing is uploaded: you attach the .zip yourself. On
 Or open an issue on [GitHub](https://github.com/wey-gu/ducter/issues) yourself with what you
 did, what you expected, and the last lines of the log. Leave out anything private (codes,
 addresses, tokens).
+
+## Start over on a server
+
+To remove Ducter from a Linux server completely and install it fresh (as the same user, for
+example `root`):
+
+```sh
+ducter uninstall --all --yes     # the service, the ducter command, ~/.ducter, the PATH lines, Ducter's site in Caddy
+curl -fsSL https://ducter.ai/install.sh | sh -s -- --service
+ducter domain ducter.example.com # if you use a domain: HTTPS again, and a new code
+```
+
+It says what it removed and what it kept: Caddy stays installed, and so do your Claude Code and
+Codex sign-ins, so the fresh install can use them right away. Devices you connected before
+need a new code.
+

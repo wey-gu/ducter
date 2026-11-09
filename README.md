@@ -79,7 +79,8 @@ look.
 
 > **Early preview.** Ducter works end to end on a Mac and on a Linux server. Expect rough edges
 > and breaking changes. The desktop app is macOS (Apple silicon) only;
-> the phone version runs in your phone's browser, and an iPhone app is coming.
+> the phone version runs in your phone's browser, and the iPhone app is in public beta on
+> [TestFlight](https://testflight.apple.com/join/Z4GvWt7t).
 
 ## It doesn't start from zero
 
@@ -146,12 +147,32 @@ Mac connect with a one-time code.
 
 ```sh
 curl -fsSL https://ducter.ai/install.sh | sh -s -- --service    # on the server (x64 or arm64)
+ducter domain ducter.example.com     # after an A record points that name at the server: HTTPS, then a code
 ```
 
 From the source instead: `scripts/install.sh --linux ducter-linux` on your Mac, copy the folder
 for your server's CPU, and run `sh ducter/install.sh --service` there.
 
 The walkthrough is in [Install](docs/install.md#a-linux-server-that-stays-on).
+
+### iPhone app (public beta)
+
+The iPhone app is in public beta: [join it on TestFlight](https://testflight.apple.com/join/Z4GvWt7t),
+then connect it with the address and code from `ducter pair`. Your phone's browser works too.
+
+### For AI agents
+
+Let your AI agent (Claude Code, Codex, or another) set Ducter up and run it for you. The
+[`skills/`](skills/) folder holds three [Agent Skills](https://docs.anthropic.com/en/docs/claude-code/skills):
+**ducter-deploy** (install on a Mac or a server, domain, pairing, workers, clean reinstall),
+**ducter-operate** (talk to a running Ducter from a terminal) and **ducter-troubleshoot**.
+Copy them to `~/.claude/skills/` (or your agent's skills folder), or point your agent at the
+folder; each is also at `https://ducter.ai/skills/<name>/SKILL.md`. Then ask:
+
+> Install the ducter-deploy skill from github.com/wey-gu/ducter/tree/main/skills and deploy
+> Ducter on my server.
+
+More in [For AI agents](docs/for-agents.md).
 
 ## How it works
 
@@ -197,7 +218,7 @@ The details are in [Privacy and safety](docs/privacy-and-safety.md).
   [Your devices](docs/devices.md) ·
   [Your phone](docs/phone.md) ·
   [Privacy and safety](docs/privacy-and-safety.md) · [FAQ](docs/faq.md) ·
-  [Troubleshooting](docs/troubleshooting.md)
+  [Troubleshooting](docs/troubleshooting.md) · [For AI agents](docs/for-agents.md)
 - **Building Ducter:** [why it exists](motivation.md), the
   [principles](design/principles.md), the [design notes](design/README.md), every command in
   [build and run](design/build-and-run.md), and the [roadmap](design/roadmap.md).

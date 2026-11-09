@@ -30,8 +30,9 @@ Harness is coming soon too, once each has been checked as carefully as Claude Co
 ### What does it run on?
 
 The app runs on Macs with Apple silicon. Ducter also runs on a Linux server, which you reach
-from your Mac or your phone. Windows isn't supported. An iPhone app is coming soon; until then
-the phone version opens in your phone's browser.
+from your Mac or your phone. Windows isn't supported. The iPhone app is in public beta through
+[TestFlight](https://testflight.apple.com/join/Z4GvWt7t); the phone version also opens in your
+phone's browser.
 
 ### Where do I download it?
 

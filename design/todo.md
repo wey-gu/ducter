@@ -21,7 +21,7 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [x] **Folder result shows a stray proof line**: a folder task's proof line no longer counts the changes (desktop and web); D142's sentence says them.
 - [ ] One real-harness task on a worker (`claude auth login` / `codex login --device-auth` on
       the worker). Trigger: the user signs in on a worker.
-- [ ] `scripts/caddy-setup.sh` on a real VPS + domain (ACME, renewal, WebSocket through Caddy
+- [ ] `ducter domain` on a real VPS + domain as root (DNS check, apt Caddy, ACME, renewal, WebSocket through Caddy
       with TLS). Trigger: the first real VPS install.
 - [ ] Phone web on real phones: iOS Home Screen push (16.4+), and whether a token paired in
       Safari carries into the Home Screen app (if not, pair from the installed app);

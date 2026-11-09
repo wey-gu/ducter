@@ -152,15 +152,20 @@ scripts/install.sh --linux ducter-linux            # ducter-linux/linux-x64 and 
 scp -r ducter-linux/linux-x64 you@server:ducter    # pick the server's CPU (uname -m)
 
 # on the server
-sh ducter/install.sh --service   # systemd user service on 127.0.0.1:7777, then a pairing code
+sh ducter/install.sh --service   # systemd user service on 127.0.0.1:7777; ends with the public IP and `ducter domain`
 ducter doctor                    # says how to sign in Claude Code / Codex without a browser there
 ```
 
 Reach it one of two ways:
 
-- **Your own domain (recommended):** point a DNS record at the server, open ports 80/443, then
-  `sh scripts/caddy-setup.sh ducter.example.com` on the server. Caddy gets the HTTPS
-  certificate; Ducter stays on 127.0.0.1.
+- **Your own domain (recommended):** point an A record at the server, open ports 80/443, then
+  `ducter domain ducter.example.com` on the server (`packages/cli/src/domain.ts`). It checks the
+  record against the server's public IP (api.ipify.org) and that nothing but Caddy holds 80/443,
+  installs Caddy (apt, as root without sudo), writes a marked site block
+  (`# ducter: begin` … `# ducter: end`), waits for `https://<name>/health`, writes
+  `<dataDir>/public-url` and pairs. Idempotent; `--remove` takes the block out, `--print` prints
+  it, `--json` for agents. `scripts/caddy-setup.sh` writes the same block from a checkout.
+  Caddy gets the certificate; Ducter stays on 127.0.0.1.
 - **No domain:** an SSH tunnel from your Mac, `ssh -N -L 7777:127.0.0.1:7777 you@server`, then
   the address is `http://127.0.0.1:7777`.
 
@@ -188,9 +193,18 @@ it's back.
 |---|---|
 | `ducter up --headless` | Run as a server: no window. Binds 127.0.0.1 unless `--host` says otherwise |
 | `ducter service install \| uninstall \| status` | systemd user service with restart on failure; logs in `journalctl --user -u ducter` |
-| `ducter pair` | One-time pairing code (10 min) for any device: address, link and QR for a phone or app, and the `ducter worker` command for another computer (D83) |
+| `ducter pair` | One-time pairing code (10 min) for any device: address, link and QR for a phone or app, and the `ducter worker` command for another computer (D83). With no public address on a server it leads with `ducter domain` and the public IP, then the SSH tunnel; `--json` adds `reachable`, `publicIp`, `tunnel` and `steps` |
+| `ducter domain <name> [--remove \| --print \| --no-dns-check] [--json]` | HTTPS at that name with Caddy, DNS checked first, then a pair code |
 | `ducter devices` | Connected devices; `disconnect <id>` removes one, `rename <id> <name>` renames one (D84) |
 | `ducter worker <address> --code <code>` | Make this machine a worker of that Ducter, with the same one-time code a phone uses (D83; `service install --worker` keeps it running; `--join <address>` and `pair --worker` are hidden aliases) |
 
 `DUCTER_SCRIPTED_MODEL=1 ducter up` runs with a canned model (OAR's scripted runtime) over the
 real tools, for demos on a box with no AI signed in. Every reply says so.
+
+Installers and `PATH`: as root (or with a writable `/usr/local/bin`) the bundle's `install.sh`
+links `/usr/local/bin/ducter`; otherwise both installers append one block between
+`# added by Ducter` and `# end of Ducter's lines` to the shell's profile (zsh, bash, fish or
+`~/.profile`), once. `ducter uninstall --all` removes the link, that block, the binary
+`install.sh` copied, and Ducter's Caddy site (Caddy stays). The Agent Skills in `skills/` are
+copied to the site's `public/skills/` at build time (`apps/site/scripts/skills.mjs`).
+

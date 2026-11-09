@@ -6,8 +6,8 @@
     "node": ">=22.23"
   },
   "scripts": {
-    "dev": "astro dev",
-    "build": "astro build",
+    "dev": "node scripts/skills.mjs && astro dev",
+    "build": "node scripts/skills.mjs && astro build",
     "preview": "astro preview",
     "art": "node scripts/art.mjs"
   },

@@ -46,6 +46,8 @@ These pages are for using Ducter. If you want to build it or change it, start wi
 - **[Questions people ask](faq.md)**
 - **[When something goes wrong](troubleshooting.md):** the check-up, where the logs are, and the
   usual fixes.
+- **[For AI agents](for-agents.md):** let Claude Code, Codex or another agent install Ducter,
+  set up your server and run it for you.
 
 ## Words you'll see
 

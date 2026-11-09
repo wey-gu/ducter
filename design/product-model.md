@@ -66,6 +66,9 @@
 | devices, by the user's own words | **这台 Mac / This Mac** · **这台手机 / This phone** · **另一台电脑 / another computer** | Never 机器 / machine in UI copy |
 | presence | **{name} 在呢 / is here** · **在做事 / is working** · **有事找你 / needs you** · **刚做完一件事 / just finished something** · **还没醒 / isn't up yet** | Never 待命 |
 | stopping Ducter on a Mac (D56) | **让 Ducter 歇着 / Stop Ducter** (menu) · **{name} 歇着了 / {name} is resting** · **叫醒 {name} / Wake {name}** | Closing the window or ⌘Q never stops Ducter; this is the one explicit stop. 叫醒 is the same verb as for a device, on purpose |
+| updating the app (D72) | **检查更新… / Check for Updates…** · **有新版本 {v} · 重启时更新 / Update {v} ready · restart to finish** · **有新版本 {v} · 去下载 / Version {v} is out · Download** · **现在重启 / Restart Now** · **退出时自动更新 / Update automatically when quitting** | One quiet line in the app menu and Settings; never a pop-up the person didn't ask for |
+| removing Ducter (D72) | **彻底移除 Ducter / Remove Ducter** · **会删掉 / Removes** · **会留着 / Keeps** · **只停下并移除后台项 / Only stop and remove the background item** · **全部移除 / Remove everything** · **任务的工作副本 / tasks' working copies** (the worktrees) | The page names each path; never "uninstall" in copy. 后台项 matches macOS's own "后台项目 / background items" |
+| help (D72) | **Ducter 使用指南 / Ducter docs** · **报告问题… / Report a problem…** · **也带上最近的对话 / Include the last conversation** (off by default) | Nothing is uploaded; the person attaches the .zip themselves |
 | a sandboxed place | **no noun**: the property, **碰不到你的文件 / Can't touch your files** | 沙盒 retired (D66, GQ8) |
 | Artifact | **做好的 / Finished**; the list **做好的东西 / Everything finished** | 成果 retired (report-speak) |
 

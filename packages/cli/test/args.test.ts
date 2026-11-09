@@ -77,4 +77,11 @@ describe("server and pairing commands", () => {
     });
     expect(err(["pair", "extra"]).key).toBe("err.unknownCommand");
   });
+  test("uninstall and report flags", () => {
+    expect(ok(["uninstall"])).toEqual({ command: "uninstall", desktop: true, json: false });
+    expect(ok(["uninstall", "--all", "--dry-run", "--json"])).toMatchObject({ command: "uninstall", all: true, dryRun: true, json: true });
+    expect(ok(["uninstall", "--all", "-y"]).yes).toBe(true);
+    expect(ok(["report", "--include-conversation", "--out", "/tmp/r"])).toMatchObject({ command: "report", includeConversation: true, out: "/tmp/r" });
+    expect(err(["report", "--out"]).key).toBe("err.missingValue");
+  });
 });

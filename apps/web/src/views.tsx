@@ -127,16 +127,16 @@ const Out = () => (
     <path d="M3.5 10.5l7-7M5.5 3.5h5v5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
   </svg>
 );
-const Bang = () => (
+/** A small speech bubble: it is asking you (the calm mark of needs you; "!" reads as an alarm). */
+const Ask = () => (
   <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
-    <path d="M7 2.8v5.4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
-    <circle cx="7" cy="11" r="1.3" fill="currentColor" />
+    <path d="M3.6 2h6.8A2.1 2.1 0 0 1 12.5 4.1v3.6a2.1 2.1 0 0 1-2.1 2.1H6.2L3.6 12.3V9.8A2.1 2.1 0 0 1 1.5 7.7V4.1A2.1 2.1 0 0 1 3.6 2z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" />
   </svg>
 );
-/** The drawn mark of an attention state: → under way, clock waiting, ! needs you, ✓ done, × didn't work. */
+/** The drawn mark of an attention state: → under way, clock waiting, a speech bubble asking you, ✓ done, × didn't work. */
 function StateMark({ a }: { a: Attention }) {
   if (a === "blocked" || a === "queued") return <Clock />;
-  if (a === "needs_you") return <Bang />;
+  if (a === "needs_you") return <Ask />;
   if (a === "done" || a === "done_claimed") return <Check />;
   if (a === "failed" || a === "dropped" || a === "superseded") return <Cross />;
   return <Forward />;

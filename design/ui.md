@@ -135,9 +135,13 @@ lives in Details. On hand needs no state chip: the lane is the state.
 - A state in text is plain text in the state's ink (a failed status line, "Didn't work" on a
   Done row), never a chip and never with a dot in front. Counts are never colored by state: a
   lane's count is in muted ink, and the lane's name says which lane it is.
-- A mark is a drawn glyph that means something (✓ done, clock waiting, → under way, × didn't
-  work, ! look at this, ↗ went out), in muted ink (or the state's ink for an exception),
-  never on a colored tile, never a colored dot.
+- A mark is a drawn glyph that means something (✓ done, clock waiting, → under way, a small
+  speech bubble for asking you (needs you, and the "asks you first" list), × didn't work or a
+  check not met, ↗ went out), in muted ink (or the state's ink for an exception), never on a
+  colored tile, never a colored dot. "!" is never a state's mark (it reads as an alarm); it is
+  only the glyph of an alert notice (a held message).
+- A small action at the end of a line ("How I know") is a text button like every other one:
+  flat, no underline.
 - A one-time highlight (a decision found from a notification) deepens the card's own tint;
   it never glows.
 - Selection on a card is a 2-point ink hairline (cards are containers: no ledge).

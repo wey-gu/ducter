@@ -157,13 +157,14 @@ func (a *App) taskLine(c *ui.Context, t *store.Task, detail string) {
 }
 
 // stateMark is the drawn mark of an attention state: → under way, clock
-// waiting, ! needs you, ✓ done, × didn't work.
+// waiting, a speech bubble asking you, ✓ done, × didn't work. "!" is never
+// a state's mark: it reads as an alarm.
 func stateMark(att protocol.Attention) func(ui.Color) func(*ui.Painter, ui.Rect) {
 	switch att {
 	case protocol.Blocked, protocol.Queued:
 		return drawClock
 	case protocol.NeedsYou:
-		return drawBang
+		return drawAsk
 	case protocol.Done, protocol.DoneClaimed:
 		return drawCheck
 	case protocol.Failed, protocol.Dropped, protocol.Superseded:
@@ -626,7 +627,32 @@ func drawCross(col ui.Color) func(p *ui.Painter, r ui.Rect) {
 	}
 }
 
-// drawBang is an !: look at this.
+// drawAsk is a small speech bubble: it is asking you. The calm mark of
+// needs you, beside ✓ for what it does on its own.
+func drawAsk(col ui.Color) func(p *ui.Painter, r ui.Rect) {
+	return func(p *ui.Painter, r ui.Rect) {
+		cx, cy := r.X+r.W/2, r.Y+r.H/2
+		l, rt, top, bot, k := cx-6, cx+6, cy-5.5, cy+3, float32(3)
+		var m ui.Path
+		m.MoveTo(l+k, top)
+		m.LineTo(rt-k, top)
+		m.QuadTo(rt, top, rt, top+k)
+		m.LineTo(rt, bot-k)
+		m.QuadTo(rt, bot, rt-k, bot)
+		m.LineTo(cx-1, bot)
+		m.LineTo(cx-4, cy+6.5)
+		m.LineTo(cx-3.8, bot)
+		m.LineTo(l+k, bot)
+		m.QuadTo(l, bot, l, bot-k)
+		m.LineTo(l, top+k)
+		m.QuadTo(l, top, l+k, top)
+		m.Close()
+		p.StrokePath(&m, 1.9, col)
+	}
+}
+
+// drawBang is an !: an alert notice's glyph (a held message), never a
+// state's mark.
 func drawBang(col ui.Color) func(p *ui.Painter, r ui.Rect) {
 	return func(p *ui.Painter, r ui.Rect) {
 		cx, cy := r.X+r.W/2, r.Y+r.H/2

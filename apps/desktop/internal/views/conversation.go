@@ -583,9 +583,8 @@ func (a *App) livingLine(c *ui.Context, it protocol.LivingItem) {
 		}
 		if len(it.Evidence) > 0 {
 			ev := it.Evidence[0]
-			l := ui.Text(c.Key("ev"), a.L.T("living.evidence")).FontSize(t.SM).FontWeight(700).Role(ui.RoleLink).
-				Cursor(ui.CursorPointer).Underline().Tooltip(ev.Label).Shrink(0)
-			if l.Clicked() {
+			// A text button like every other one: flat, no underline.
+			if a.buttonFor(c.Key("ev"), a.L.T("living.evidence"), ev.Label, btnText, t.ControlSM, t.Surface) {
 				a.openEvidence(c, ev)
 			}
 		}

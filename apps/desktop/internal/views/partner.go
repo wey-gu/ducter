@@ -458,7 +458,7 @@ func (a *App) trustCard(c *ui.Context) {
 			})
 		}
 		list(a.L.T("partner.trust.own"), "partner.trust.own.", t.Done, drawCheck)
-		list(a.L.T("partner.trust.asks"), "partner.trust.asks.", t.NeedsYou, drawBang)
+		list(a.L.T("partner.trust.asks"), "partner.trust.asks.", t.NeedsYou, drawAsk)
 	})
 }
 

@@ -352,13 +352,14 @@ const ld = {
           <p>Or <a href={facts.dmgUrl ?? RELEASES_URL}>download the .dmg</a> and drag Ducter to Applications, or <a href="/docs/install#build-it-from-the-source-instead">build it from the source</a>.</p>
         </div>
         <div class="panel" id="p-cli" role="tabpanel" aria-labelledby="tab-cli" style="margin-top:14px" hidden>
-          <div class="term"><button class="btn sm copy" type="button" data-copy="scripts/install.sh&#10;ducter doctor&#10;ducter up">Copy</button><pre><span class="c"># puts `ducter` in ~/.local/bin</span>
-<span class="p">$ </span>scripts/install.sh
-<span class="c"># every missing piece comes with its fix</span>
+          <p>The same line installs the <code>ducter</code> command in <code>~/.local/bin</code>. On a Mac it comes with the app; on Linux it's the <code>ducter</code> bundle:</p>
+          <div class="term"><button class="btn sm copy" type="button" data-copy="curl -fsSL https://ducter.ai/install.sh | sh">Copy</button><pre><span class="p">$ </span>curl -fsSL https://ducter.ai/install.sh | sh</pre></div>
+          <p>Then check this computer, and start your partner (on a Mac, the app opens too):</p>
+          <div class="term"><button class="btn sm copy" type="button" data-copy="ducter doctor&#10;ducter up">Copy</button><pre><span class="c"># every missing piece comes with its fix</span>
 <span class="p">$ </span>ducter doctor
 <span class="c"># starts your partner</span>
 <span class="p">$ </span>ducter up</pre></div>
-          <p><code>ducter status</code> shows your tasks and the decisions waiting for you.</p>
+          <p><code>ducter status</code> shows your tasks and the decisions waiting for you. Or <a href="/docs/install#the-ducter-command">build it from the source</a>.</p>
         </div>
         <div class="panel" id="p-srv" role="tabpanel" aria-labelledby="tab-srv" style="margin-top:14px" hidden>
           <div class="term"><button class="btn sm copy" type="button" data-copy="curl -fsSL https://ducter.ai/install.sh | sh -s -- --service&#10;ducter pair">Copy</button><pre><span class="c"># on the server (x64 or arm64 Linux): runs as a service</span>

@@ -3,9 +3,13 @@
 #
 #   curl -fsSL https://ducter.ai/install.sh | sh
 #   curl -fsSL https://ducter.ai/install.sh | sh -s -- --service   # Linux: also run it as a service
+#   curl -fsSL https://ducter.ai/install.sh | sh -s -- --no-cli     # Mac: the app only, no `ducter` link
 #
 # Mac (Apple silicon): downloads the signed app from the latest GitHub release, checks its
-# SHA-256 and its notarization, and puts Ducter.app in /Applications.
+# SHA-256 and its notarization, and puts Ducter.app in /Applications. Then it links
+# ~/.local/bin/ducter to the app's own `ducter` command (Contents/Helpers/ducter), as the app's
+# own "Use ducter in Terminal" does: only where there's no `ducter` yet or it's a link into a
+# Ducter.app; any other file or link is left alone.
 # Linux (x64, arm64): downloads the `ducter` bundle, checks its SHA-256, and runs the bundle's own
 # install.sh (it puts `ducter` in ~/.local/bin); arguments after `sh -s --` go to that script.
 #
@@ -14,6 +18,7 @@
 # Internal, for testing this script (design/release/README.md):
 #   DUCTER_DOWNLOAD_BASE   where the release files are (e.g. file:///tmp/mirror); needs DUCTER_VERSION
 #   DUCTER_APP_DIR         install Ducter.app here instead of /Applications
+#   DUCTER_BIN_DIR         put the `ducter` link here instead of ~/.local/bin
 #   DUCTER_NO_OPEN=1       don't open the app afterwards
 #
 # The asset names below must match .github/workflows/release.yml (scripts/install-sh.test.ts checks it).
@@ -100,6 +105,8 @@ install_mac() {
     launchctl kickstart -k "gui/$(id -u)/co.nowledge.ducter.agent" >/dev/null 2>&1 || true
   fi
 
+  [ "$NO_CLI" = 1 ] || link_cli "$dest/Contents/Helpers/ducter"
+
   say ""
   say "Ducter $VERSION is installed."
   if [ "${DUCTER_NO_OPEN:-}" = 1 ]; then
@@ -107,6 +114,53 @@ install_mac() {
   else
     open "$dest" && say "Opening it now. It checks this Mac, then opens the conversation."
   fi
+}
+
+# link_cli cli: make $BIN/ducter a link to the app's CLI. A link into a Ducter.app (an older or
+# moved copy) is replaced; a regular file (a from-source install) or another tool's link is kept.
+# Mirrors LinkCLI in apps/desktop/internal/local/shell.go.
+link_cli() {
+  cli="$1"
+  bin="${DUCTER_BIN_DIR:-$HOME/.local/bin}"
+  link="$bin/ducter"
+  [ -x "$cli" ] || { say "  This app has no ducter command; skipped the link."; return 0; }
+  case "$cli" in /Volumes/* | */AppTranslocation/*) # a link there would break once it's unmounted
+    say "  Ducter isn't in a folder it stays in, so the ducter link was skipped."; return 0 ;;
+  esac
+  if [ -L "$link" ]; then
+    to="$(readlink "$link" 2>/dev/null || true)"
+    if [ "$to" = "$cli" ]; then
+      say "  ducter → $(tilde "$link") (already linked)"
+      on_path "$bin"
+      return 0
+    fi
+    case "$to" in
+      */Ducter.app/Contents/Helpers/ducter) rm -f "$link" ;;
+      *) say "  $(tilde "$link") already links to $to, so it was left alone."
+         say "  The app's own: $cli"
+         return 0 ;;
+    esac
+  elif [ -e "$link" ]; then
+    say "  $(tilde "$link") is already there (not from the app), so it was left alone."
+    say "  The app's own: $cli"
+    return 0
+  fi
+  if ! { mkdir -p "$bin" && ln -s "$cli" "$link"; }; then
+    say "  Couldn't link $(tilde "$link"); skipped."
+    return 0
+  fi
+  say "  ducter → $(tilde "$link")"
+  on_path "$bin"
+}
+
+tilde() { case "$1" in "$HOME"/*) printf '~%s' "${1#"$HOME"}" ;; *) printf '%s' "$1" ;; esac; }
+
+on_path() { # dir
+  case ":$PATH:" in *":$1:"* | *":$1/:"*) return 0 ;; esac
+  shown="$1"
+  case "$1" in "$HOME"/*) shown="\$HOME${1#"$HOME"}" ;; esac
+  say "  $(tilde "$1") isn't on your PATH yet. To use ducter in Terminal, run this once:"
+  say "    echo 'export PATH=\"$shown:\$PATH\"' >> ~/.zshrc && exec zsh"
 }
 
 install_linux() {
@@ -161,7 +215,18 @@ main() {
   trap 'cleanup' EXIT
   trap 'exit 130' INT TERM
 
-  if [ "$os" = Darwin ]; then install_mac; else install_linux "$@"; fi
+  NO_CLI=0
+  if [ "$os" = Darwin ]; then
+    for a in "$@"; do
+      case "$a" in
+        --no-cli) NO_CLI=1 ;;
+        *) say "Ignoring $a: on a Mac the only option is --no-cli." ;;
+      esac
+    done
+    install_mac
+  else
+    install_linux "$@"
+  fi
 }
 
 cleanup() {

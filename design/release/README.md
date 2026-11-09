@@ -62,18 +62,27 @@ the same steps.
 `Ducter-<v>-arm64.dmg` or `ducter-<v>-linux-<arch>.tar.gz` plus `SHA256SUMS.txt` from
 `releases/download/v<v>/`, and checks the SHA-256. On a Mac it also requires `spctl` to say
 "Notarized Developer ID" before it copies the app into `/Applications` (sudo only when that
-isn't writable), then restarts the background LaunchAgent if it runs from there and opens the
-app. On Linux it runs the tarball's own `install.sh` with the arguments after `sh -s --`.
+isn't writable), then restarts the background LaunchAgent if it runs from there, links the CLI,
+and opens the app. The link is `~/.local/bin/ducter` → `<app>/Contents/Helpers/ducter`, with the
+rules of the app's own LinkCLI (`apps/desktop/internal/local/shell.go`), slightly stricter: it is
+made when nothing is there and replaced only when it is a symlink into a `Ducter.app`; a regular
+file (a from-source `scripts/install.sh`) or another tool's link is left alone and the script says
+so. Off `PATH`, it prints the zsh line to add `$HOME/.local/bin`. `--no-cli` (`sh -s -- --no-cli`)
+skips the link; other options are ignored on a Mac. Since the link exists, the app's "Use ducter
+in Terminal too?" offer doesn't appear. On Linux it runs the tarball's own `install.sh` with the arguments after `sh -s --`.
 
 **It downloads files by the names this workflow gives them.** Rename an asset here and the
 installer must follow in the same change; `scripts/install-sh.test.ts` (part of `bun test`)
 fails when the two drift, and CI parses the script. To test it without touching
-`/Applications` or a running Ducter, mirror a release and point the script at it:
+`/Applications`, `~/.local/bin` or a running Ducter, point it at temp folders
+(`DUCTER_BIN_DIR` moves the link), against the live release or a mirror of one:
 
 ```sh
-gh release download v0.0.1-rc.1 -R wey-gu/ducter -D /tmp/mirror
-DUCTER_VERSION=0.0.1-rc.1 DUCTER_DOWNLOAD_BASE=file:///tmp/mirror \
-  DUCTER_APP_DIR=/tmp/apps DUCTER_NO_OPEN=1 sh apps/site/public/install.sh
+DUCTER_APP_DIR=/tmp/apps DUCTER_BIN_DIR=/tmp/bin DUCTER_NO_OPEN=1 sh apps/site/public/install.sh
+
+gh release download v0.0.1 -R wey-gu/ducter -D /tmp/mirror
+DUCTER_VERSION=0.0.1 DUCTER_DOWNLOAD_BASE=file:///tmp/mirror \
+  DUCTER_APP_DIR=/tmp/apps DUCTER_BIN_DIR=/tmp/bin DUCTER_NO_OPEN=1 sh apps/site/public/install.sh
 ```
 
 ## How the app updates itself (D72)

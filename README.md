@@ -117,7 +117,8 @@ curl -fsSL https://ducter.ai/install.sh | sh
 ```
 
 It downloads the latest release, checks its checksum and notarization, puts **Ducter** in
-**Applications**, and opens it. Or download `Ducter-<version>-arm64.dmg` from the
+**Applications**, links the `ducter` command into `~/.local/bin`, and opens it. In a terminal,
+`ducter doctor` checks your Mac and `ducter up` starts your partner. Or download `Ducter-<version>-arm64.dmg` from the
 [latest release on GitHub](https://github.com/wey-gu/ducter/releases/latest) (signed and
 notarized), open it, and drag **Ducter** to **Applications**. Ducter checks your Mac, sets up
 what's missing without a Terminal, and opens the conversation. Closing the window doesn't stop
@@ -134,9 +135,8 @@ scripts/make-app.sh        # dist/Ducter.app and a .dmg
 ```
 
 Without a Developer ID the app is signed ad hoc, so macOS needs one extra step the first time
-([what to do](docs/troubleshooting.md#ducter-not-opened)). If you'd rather use a terminal,
-`scripts/install.sh` puts the `ducter` command in `~/.local/bin`; `ducter doctor` checks your
-Mac and `ducter up` starts your partner.
+([what to do](docs/troubleshooting.md#ducter-not-opened)). For the `ducter` command alone,
+`scripts/install.sh` builds it and puts it in `~/.local/bin`.
 
 ### On a server
 

@@ -135,11 +135,11 @@ func (a *App) quiet(c *ui.Context, key string, tasks []*store.Task, detail strin
 	if len(tasks) > 0 {
 		about = tasks[0].Title()
 	}
-	a.underBubble(c, func() { a.quietRow(c, key, tasks, detail, notes, about) })
+	a.underBubble(c, func() { a.messageRow(c, key, tasks, detail, notes, about) })
 }
 
-// quietRow is the quiet row and, when open, Details, under a bubble.
-func (a *App) quietRow(c *ui.Context, key string, tasks []*store.Task, detail string, notes []noted, about string) {
+// messageRow is the quiet row and, when open, Details, under a bubble.
+func (a *App) messageRow(c *ui.Context, key string, tasks []*store.Task, detail string, notes []noted, about string) {
 	t := a.T
 	ui.Row(c.Key("qrow:" + key)).Gap(t.S4).Wrap().AlignItems(ui.Center).Children(func() {
 		for _, task := range tasks {

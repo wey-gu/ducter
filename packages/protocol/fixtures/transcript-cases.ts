@@ -1,4 +1,4 @@
-// The cases behind fixtures/transcript.json (D148): a real kind of run, written as its Log
+// The cases behind fixtures/transcript.json (D152): a real kind of run, written as its Log
 // events. `bun packages/protocol/fixtures/transcript-cases.ts` rewrites the JSON from the model
 // (review the diff: it is the expected output both ports must match).
 import { writeFileSync } from "node:fs";
@@ -20,7 +20,7 @@ export const memEvents = (taskId = "mem1", upTo = Infinity) =>
     taskId,
     (
       [
-        [0, "task_open", "user", { taskId, title: "Connect Nowledge Mem for Codex", project: "", place: { kind: "none" }, harness: "codex", model: "gpt-6-luna", origin: "you", brief: `Set up Nowledge Mem for Codex on this machine so Codex can search and save memories.\n\n1. Install the nmem CLI if it isn't there.\n2. Connect it to my space with this connect token: ${KEY}\n3. Install the Mem plugin into Codex and check that a search works.\n\nThis is a headless Linux box, no browser. Don't touch my other Codex settings.` }],
+        [0, "task_open", "user", { taskId, title: "Connect Nowledge Mem for Codex", project: "", place: { kind: "none", device: "hel" }, harness: "codex", model: "gpt-6-luna", origin: "you", brief: `Set up Nowledge Mem for Codex on this machine so Codex can search and save memories.\n\n1. Install the nmem CLI if it isn't there.\n2. Connect it to my space with this connect token: ${KEY}\n3. Install the Mem plugin into Codex and check that a search works.\n\nThis is a headless Linux box, no browser. Don't touch my other Codex settings.` }],
         [2, "task_event", "runner", { role: "user", from: "runner", text: '<brief>…</brief>\nStart the task "Connect Nowledge Mem for Codex".' }],
         [9, "task_event", "task", { role: "assistant", text: "Starting Nowledge Mem setup on this headless Linux host. First I'll see what's already installed." }],
         [11, "task_event", "task", { role: "tool", tool: { name: "mcp__ducter__checkpoint", input: { text: "x" }, ok: true } }],

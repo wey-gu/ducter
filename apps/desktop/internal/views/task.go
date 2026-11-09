@@ -3,11 +3,13 @@ package views
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
 	"github.com/egoist/mygo/ui"
 	"github.com/egoist/mygo/ui/editor"
+
 	"github.com/wey-gu/ducter/apps/desktop/internal/redact"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/diff"
@@ -31,7 +33,20 @@ func (a *App) task(c *ui.Context) {
 		task = &store.Task{ID: a.TaskID}
 	}
 	a.taskHeader(c, task)
-	ui.Scroll(c.Key("taskpage:" + task.ID)).Grow(1).MinHeight(0).Children(func() {
+	if a.taskScroll == nil {
+		a.taskScroll = map[string]*ui.ScrollState{}
+	}
+	sc := a.taskScroll[task.ID]
+	if sc == nil {
+		sc = &ui.ScrollState{}
+		a.taskScroll[task.ID] = sc
+	}
+	// While it works, a reader at the end follows the newest step; one who
+	// scrolled up stays where they are, and the page opens at its head.
+	if att := task.Attention(); (att == protocol.Working || att == protocol.Queued) && sc.MaxY > 0 && sc.Y >= sc.MaxY-4 {
+		sc.Y = math.MaxFloat32
+	}
+	ui.Scroll(c.Key("taskpage:" + task.ID)).TrackScroll(sc).Grow(1).MinHeight(0).Children(func() {
 		ui.Row(c).Justify(ui.Center).Padding(t.S5, t.S5, t.S6, t.S5).Children(func() {
 			ui.Column(c).Grow(1).MaxWidth(convWidth).MinWidth(0).Gap(t.S6).Children(func() {
 				// The head (D74, D89 layout): the clay partner's state face
@@ -60,15 +75,13 @@ func (a *App) task(c *ui.Context) {
 							}
 						})
 						if a.yourTurn(task) {
-							// Waiting on you with nothing to answer: say what it wants, plainly (D148).
+							// Waiting on you with nothing to answer: say what it wants, plainly (D152).
 							ui.Text(c.Key("yourturn"), a.L.T("task.your.turn.hint")).FontSize(t.SM).TextColor(t.InkSoft)
 						}
-						if d := a.S.PendingDecision(task.ID); d != nil {
-							if d.Resolved != nil || d.Pending != "" {
-								a.decisionAnswered(c, d)
-							} else {
-								a.decisionCard(c, d, task.ID)
-							}
+						// An answered ask is one line here; a pending one sits over
+						// the composer, where the answer is typed (D152).
+						if d := a.S.PendingDecision(task.ID); d != nil && (d.Resolved != nil || d.Pending != "") {
+							a.decisionAnswered(c, d)
 						}
 						a.switchSheet(c, task) // 换谁来做 / Switch who does it (D89)
 					})
@@ -136,7 +149,7 @@ func (a *App) taskStanding(c *ui.Context, task *store.Task) {
 		state = a.L.T("task.your.turn")
 	}
 	when := a.taskClock(c, task)
-	// One quiet line (D148): where it stands and its one clock, then who does it and where.
+	// One quiet line (D152): where it stands and its one clock, then who does it and where.
 	ui.Row(c.Key("meta")).Gap(t.S1).Wrap().AlignItems(ui.Center).Children(func() {
 		ui.Text(c, state).FontSize(t.SM).FontWeight(800).TextColor(t.State(string(att)).Ink)
 		if when != "" {
@@ -162,21 +175,10 @@ func (a *App) taskHeadline(c *ui.Context, task *store.Task) {
 			line = a.waitLine(w.Reason)
 		}
 	}
-	// What it said or saved since its latest report is newer than the
-	// report: after a Go, "it needs a sign-in" is no longer where it stands.
-	if line == "" && a.saidSinceReport(task) {
-		line = a.lastSaid(task)
-	}
+	// Else what the task is (D152): the agent's latest words are the
+	// transcript's, in its own language, and are never said twice.
 	if line == "" {
-		if rep := task.Report(); rep != nil && rep.Summary != "" {
-			line, _ = headline(rep.Summary)
-		}
-	}
-	if line == "" {
-		line = a.lastSaid(task)
-	}
-	if line == "" {
-		line = task.Title()
+		line = shortTitle(task.Title())
 	}
 	a.heading(c, autospace(redact.Text(line)), t.XXL).LineHeight(1.25).Balance().MaxWidth(headMeasure).Selectable()
 }
@@ -363,6 +365,9 @@ func (a *App) taskComposer(c *ui.Context, task *store.Task) {
 	t := a.T
 	if a.held != nil && a.held.taskID == task.ID {
 		a.aboveComposer(c, func() { a.heldLine(c) })
+	}
+	if d := a.S.PendingDecision(task.ID); d != nil && d.Resolved == nil && d.Pending == "" {
+		a.aboveComposer(c, func() { a.decisionCard(c, d, task.ID) })
 	}
 	draft := a.taskDrafts[task.ID]
 	ui.Row(c).Justify(ui.Center).Padding(t.S2, t.S5, t.S5, t.S5).Children(func() {
@@ -693,7 +698,7 @@ func (a *App) fileRow(c *ui.Context, task *store.Task, f *diffFile) {
 // ---------- details ----------
 
 // waitFacts are how a wait or an until loop checks (D112, D113), when
-// the task has one: the one table left of the old Details (D148). Who does
+// the task has one: the one table left of the old Details (D152). Who does
 // it, where and its clock are the head's lines; saved progress is in the
 // transcript, said once.
 func (a *App) waitFacts(c *ui.Context, task *store.Task) {

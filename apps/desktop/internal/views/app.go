@@ -113,7 +113,11 @@ type App struct {
 	folderConfirm map[string]*protocol.UndoConfirm
 	taskLists     map[string]*ui.ListState
 	md, mdTask    markdown.Options
-	mdLang        i18n.Lang // the language md's themes were made for
+	// taskScroll is where each opened task's page is scrolled to: it
+	// follows the newest step while the task works and the reader is at
+	// the end (D152).
+	taskScroll map[string]*ui.ScrollState
+	mdLang     i18n.Lang // the language md's themes were made for
 	// pressAll draws every button as pressed: the button specimen's
 	// pressed row (tests only).
 	pressAll bool

@@ -1,6 +1,6 @@
 package views
 
-// An opened task as blocks (D148): what you asked, the agent's own voice
+// An opened task as blocks (D152): what you asked, the agent's own voice
 // (what it said, the progress it saved) as the readable layer, each
 // stretch of steps between two things it said folded under one gist line,
 // the stretch under way live. The Go port of

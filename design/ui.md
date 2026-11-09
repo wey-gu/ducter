@@ -347,10 +347,10 @@ empty list (no noted lines) is left out with its heading. Screenshots:
 3. **An opened task** (conductor depth; D74, D90). One centered column on the conversation's
    measure and rhythm, read top to bottom; the window's header is the breadcrumb and the title only.
    1. **The head is one block** (D90): the state face (96 pt) beside one quiet meta line
-      (D148): the state in its ink, the task's one clock (since it started, ticking; once
+      (D152): the state in its ink, the task's one clock (since it started, ticking; once
       finished "用了 18 分钟 / took 18 min"), the agent's coin, the agent and the model, where
       (repo · branch, a folder, "在 hel 上 / on hel" for another machine; nothing for no
-      place), and **换谁来做 / Switch who does it ›** as a small action; then a headline that is always there: while it works, what it is doing now in a
+      place), and **换谁来做 / Switch who does it ›** as a small action; then a headline that is always there (D152: the task's short title, or where a browser or a wait stands; never the agent's latest sentence, which the transcript says): before D152, while it works, what it is doing now in a
       sentence (why it waits, its latest report, its latest saved progress, else its title)
       at 28/800; finished, the outcome at 34/800. No link chain in the head.
    2. A pending ask, as in the conversation; **换谁来做 / Switch who does it** opens here as
@@ -359,10 +359,10 @@ empty list (no noted lines) is left out with its heading. Screenshots:
    3. The outcome, said once: the report in the partner's size, the line of proof, what went
       out, then Merge / Open draft PR (Try again for one that didn't work). It replaces the
       result banner and the "Told Ducter · done" card.
-   4. **你交代的事 / What you asked** (D148): the brief on a quiet sunken card (Surface
+   4. **你交代的事 / What you asked** (D152): the brief on a quiet sunken card (Surface
       Sunken, radius MD, no base), SM, three lines until **展开 / Show all**; a hidden key says
       **隐藏了一段密钥 / A key is hidden** with a small drawn key.
-   5. **What it did** (D148, after D127), no heading: the agent's voice is the readable layer,
+   5. **What it did** (D152, after D127), no heading: the agent's voice is the readable layer,
       its messages and saved progress (said once, a small flag and **保存了进度 / Progress
       saved** under them) in body ink at the reading measure. Each stretch of steps between
       two things it said is one gist line (a drawn mark, the gist at SM/600, "· 5 步", "· 1
@@ -377,13 +377,14 @@ empty list (no noted lines) is left out with its heading. Screenshots:
       in place, full width, under a quiet header. No diff shows by default; a task in no repo,
       or with nothing changed yet, has no section (D127). The phone names the changes in the proof line and shows no diff.
    7. **发出去的 / Sent out**, only when something went out, and a wait's **怎么判断的 / How it
-      checks**, only when there is a wait. No Details table (D148).
+      checks**, only when there is a wait. No Details table (D152).
 
    Type and rhythm (D90): section headings 18/800, one step above the 15 body; gaps 8 / 16 /
    24 / 32; a headline or paragraph at most about 68 Latin or 36 Chinese characters a line
    (D78 Chinese rules: leading 1.75, no tracking).
    The box to talk to the task stays at the bottom of the window, as the conversation's
-   composer does, with nothing over it (D148). Header actions: **先停 / Pause** while it works,
+   composer does; a pending ask sits over it (D152), and while the task works a reader at the
+   page's end follows the newest step. Header actions: **先停 / Pause** while it works,
    **放下 / Drop** until it finishes.
 
 ## Prototype canvases

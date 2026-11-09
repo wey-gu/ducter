@@ -19,10 +19,10 @@ export interface Step {
   /** Not a step of the work: Ducter's own tools and a harness's bookkeeping (D124). */
   hidden?: boolean;
   /** A look that may find nothing (`command -v`, `which`, `test -e`, `ls`, `grep`): a non-zero
-   *  exit is "not there", said in neutral ink, never an error (D148). */
+   *  exit is "not there", said in neutral ink, never an error (D152). */
   probe?: boolean;
   /** What the agent said the step is for, when its harness carries it (Claude Code's Bash
-   *  `description`, Codex's `justification`): the row's words before any summary (D148). */
+   *  `description`, Codex's `justification`): the row's words before any summary (D152). */
   says?: string;
 }
 
@@ -190,6 +190,18 @@ export function mainCommand(cmd: string): string[] {
   return first;
 }
 
+/** Commands said by what they do, not by name (D152): "prog sub" or "prog sub subsub" → act. */
+const KNOWN: Record<string, string> = {
+  "nmem connect": "mem_connect",
+  "nmem doctor": "mem_check",
+  "nmem status": "mem_check",
+  "nmem search": "mem_search",
+  "gh pr create": "pr_open",
+  "gh pr checks": "pr_look",
+  "gh pr view": "pr_look",
+  "gh pr merge": "pr_merge",
+};
+
 const base = (p: string) => unquote(p).split("/").filter(Boolean).at(-1) ?? p;
 const isFlag = (t: string) => t.startsWith("-");
 const SUBWORD = /^[a-z][a-z0-9:._-]*$/;
@@ -299,6 +311,9 @@ export function commandStep(cmd: string): Step {
       return { kind: "computer", act: "script", ...(m ? { app: appName(m[1]!) } : {}) };
     }
   }
+  // A command a person knows by what it does (D152): `nmem connect` connects Mem.
+  const known = KNOWN[`${prog} ${plain[0] ?? ""}`] ?? KNOWN[`${prog} ${plain[0] ?? ""} ${plain[1] ?? ""}`];
+  if (known) return { kind: "ran", act: known };
   // `python3 -c "…"`, `node -e "…"`: a snippet, not a script by name.
   if (/^(?:python[\d.]*|node|bun|deno|ruby|perl)$/.test(prog) && (args[0] === "-c" || args[0] === "-e")) return { kind: "ran", act: "snippet", target: prog };
   const words: string[] = [];
@@ -417,7 +432,7 @@ function editPaths(input: unknown): string[] {
 
 // ---------- the step ----------
 
-/** The agent's own short words for a shell step, when its harness carries them (D148). */
+/** The agent's own short words for a shell step, when its harness carries them (D152). */
 function saysOf(o: Record<string, unknown>): string {
   const d = firstStr(o, ["description", "justification"]).split("\n")[0]!.trim().replace(/[.。]$/, "");
   return d.length >= 3 && [...d].length <= 80 ? d : "";

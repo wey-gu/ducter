@@ -1,6 +1,6 @@
 package views
 
-// What it did, as the agent tells it (D148, after D127): the agent's own
+// What it did, as the agent tells it (D152, after D127): the agent's own
 // words are the readable layer; each stretch of steps between two things
 // it said folds under one gist line ("查看了一圈 · 5 步"), opened on a
 // click, the stretch under way live with a spinner and its latest step; a
@@ -166,7 +166,8 @@ func (a *App) tsOf(task *store.Task, seq int64) string {
 }
 
 // gistWords is a stretch's one line: "查看了一圈", "改了 2 个文件".
-func (a *App) gistWords(g *Gist) string {
+func (a *App) gistWords(b *Block) string {
+	g := b.Gist
 	switch g.Kind {
 	case "look":
 		return a.L.T("gist.look")
@@ -183,7 +184,37 @@ func (a *App) gistWords(g *Gist) string {
 	case "think":
 		return a.L.T("gist.think")
 	}
+	if w := a.achieved(b); w != "" {
+		return w
+	}
 	return a.L.T("gist.run")
+}
+
+// notableActs are steps that say what a stretch got done: an install, Mem
+// connected, a PR opened or merged (and any step in the agent's own words).
+var notableActs = map[string]bool{"install": true, "installer": true, "mem_connect": true, "mem_check": true, "pr_open": true, "pr_merge": true}
+
+// achieved is what a stretch of commands got done, in at most two of its
+// steps' words ("安装 x，连上 Mem"), or "".
+func (a *App) achieved(b *Block) string {
+	var ws []string
+	seen := map[string]bool{}
+	for i := range b.Rows {
+		r := &b.Rows[i]
+		if r.Step == nil || r.Outcome != "ok" || r.Step.Says == "" && !notableActs[r.Step.Act] {
+			continue
+		}
+		w, _ := a.rowWords(r)
+		if seen[w] || len(ws) == 2 {
+			continue
+		}
+		seen[w] = true
+		if len(ws) > 0 && a.L.Lang != i18n.ZH {
+			w = strings.ToLower(w[:1]) + w[1:]
+		}
+		ws = append(ws, w)
+	}
+	return strings.Join(ws, a.L.T("gist.and"))
 }
 
 func (a *App) stepsCount(n int) string {
@@ -227,7 +258,7 @@ func (a *App) stretch(c *ui.Context, task *store.Task, b *Block) {
 	if tr.Hovered() {
 		tr.Background(t.SurfaceSunken)
 	}
-	label := a.gistWords(g)
+	label := a.gistWords(b)
 	if b.Live {
 		// Under way: the latest step in its own words, a spinner beside it.
 		last := &rows[len(rows)-1]
@@ -506,7 +537,7 @@ func (a *App) yourTurn(task *store.Task) bool {
 	return task.Attention() == protocol.NeedsYou && a.S.PendingDecision(task.ID) == nil
 }
 
-// taskClock is the task's one clock (D148): how long since it started,
+// taskClock is the task's one clock (D152): how long since it started,
 // ticking until it finishes; once finished, how long it took.
 func (a *App) taskClock(c *ui.Context, task *store.Task) string {
 	started := store.ParseTime(task.OpenedAt)

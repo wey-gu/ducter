@@ -1,4 +1,4 @@
-// Keys never render (D148). A task's brief, its commands and their output can carry a credential
+// Keys never render (D152). A task's brief, its commands and their output can carry a credential
 // the user pasted ("connect with nmem_ct_…") or one a tool printed. The Log keeps them as they
 // are (the task needs the key to do its work, and the Log stays on the home), and the home
 // hides them in everything it sends to a client (core/src/ws.ts, the projection), so no screen,

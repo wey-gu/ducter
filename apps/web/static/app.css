@@ -1545,7 +1545,7 @@ a {
 .tx.assistant.md p + p {
   margin-top: 8px;
 }
-/* D148: the opened task as the agent tells it. */
+/* D152: the opened task as the agent tells it. */
 .standing .sep {
   color: var(--ink-muted);
 }
@@ -1564,6 +1564,12 @@ a {
 }
 .standing .inline-link {
   font-size: var(--sm);
+}
+/* A pending ask over the task's composer (D152). */
+.ask-dock {
+  padding: 8px 16px 0;
+  max-height: 55vh;
+  overflow-y: auto;
 }
 /* What you asked: a quiet sunken card, three lines until opened. */
 .brief {
@@ -1669,7 +1675,7 @@ a {
   font-weight: 600;
   color: var(--ink-soft);
 }
-.stretch.live .gist .sum {
+.stretch.underway .gist .sum {
   color: var(--ink);
 }
 .gist .n {

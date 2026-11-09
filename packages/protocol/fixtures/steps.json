@@ -57,10 +57,12 @@
   {"harness": "codex", "tool": {"name": "commandExecution", "input": {"command": "/bin/bash -lc 'python3 -c \"import json,sys; print(json.load(open(sys.argv[1]))[\\\"space\\\"])\" ~/.nowledge-mem/config.json'"}}, "want": {"kind": "ran", "act": "snippet", "target": "python3"}},
   {"harness": "codex", "tool": {"name": "commandExecution", "input": {"command": "/bin/bash -lc 'mkdir -p ~/.codex/plugins/nowledge-mem'"}}, "want": {"kind": "edited", "act": "mkdir", "target": "plugins/nowledge-mem"}},
   {"harness": "codex", "tool": {"name": "commandExecution", "input": {"command": "/bin/bash -lc 'codex plugin add nowledge-mem'"}}, "want": {"kind": "ran", "target": "codex plugin add"}},
-  {"harness": "codex", "tool": {"name": "commandExecution", "input": {"command": "/bin/bash -lc 'nmem doctor'"}}, "want": {"kind": "ran", "target": "nmem doctor"}},
+  {"harness": "codex", "tool": {"name": "commandExecution", "input": {"command": "/bin/bash -lc 'nmem doctor'"}}, "want": {"kind": "ran", "act": "mem_check"}},
   {"harness": "claude-code", "tool": {"name": "Bash", "input": {"command": "command git status --short"}}, "want": {"kind": "ran", "target": "git status"}},
   {"harness": "claude-code", "tool": {"name": "Bash", "input": {"command": "bun install"}}, "want": {"kind": "ran", "act": "install"}},
   {"harness": "claude-code", "tool": {"name": "Bash", "input": {"command": "brew install gh jq ripgrep"}}, "want": {"kind": "ran", "act": "install", "target": "gh jq", "more": 1}},
-  {"harness": "claude-code", "tool": {"name": "Bash", "input": {"command": "nmem doctor --json", "description": "Check that Mem answers from this machine"}}, "want": {"kind": "ran", "target": "nmem doctor", "says": "Check that Mem answers from this machine"}},
-  {"harness": "codex", "tool": {"name": "exec_command", "input": {"cmd": "codex plugin add nowledge-mem", "justification": "Install the Mem plugin into Codex."}}, "want": {"kind": "ran", "target": "codex plugin add", "says": "Install the Mem plugin into Codex"}}
+  {"harness": "claude-code", "tool": {"name": "Bash", "input": {"command": "nmem doctor --json", "description": "Check that Mem answers from this machine"}}, "want": {"kind": "ran", "act": "mem_check", "says": "Check that Mem answers from this machine"}},
+  {"harness": "codex", "tool": {"name": "exec_command", "input": {"cmd": "codex plugin add nowledge-mem", "justification": "Install the Mem plugin into Codex."}}, "want": {"kind": "ran", "target": "codex plugin add", "says": "Install the Mem plugin into Codex"}},
+  {"harness": "codex", "tool": {"name": "commandExecution", "input": {"command": "/bin/bash -lc 'nmem connect --token nmem_ct_8fK2pQx7Lm4vRz9TbW3y'"}}, "want": {"kind": "ran", "act": "mem_connect"}},
+  {"harness": "claude-code", "tool": {"name": "Bash", "input": {"command": "gh pr checks 9950 --watch"}}, "want": {"kind": "ran", "act": "pr_look"}}
 ]

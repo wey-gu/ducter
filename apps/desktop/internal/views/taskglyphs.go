@@ -123,7 +123,7 @@ func drawFlag(col ui.Color) func(p *ui.Painter, r ui.Rect) {
 	}
 }
 
-// drawKey is a small key: a key was hidden here (D148).
+// drawKey is a small key: a key was hidden here (D152).
 func drawKey(col ui.Color) func(p *ui.Painter, r ui.Rect) {
 	return func(p *ui.Painter, r ui.Rect) {
 		cx, cy := r.X+r.W/2, r.Y+r.H/2

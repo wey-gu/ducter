@@ -23,7 +23,7 @@ type Step struct {
 	More   int    `json:"more,omitempty"`
 	Hidden bool   `json:"hidden,omitempty"`
 	// Probe is a look that may find nothing (command -v, which, test -e,
-	// ls, grep): a non-zero exit is "not there", never an error (D148).
+	// ls, grep): a non-zero exit is "not there", never an error (D152).
 	Probe bool `json:"probe,omitempty"`
 	// Says is what the agent said the step is for, when its harness
 	// carries it (Claude Code's description, Codex's justification).
@@ -318,6 +318,18 @@ func baseName(p string) string {
 	return parts[len(parts)-1]
 }
 
+// knownCmds are commands said by what they do, not by name (D152).
+var knownCmds = map[string]string{
+	"nmem connect": "mem_connect",
+	"nmem doctor":  "mem_check",
+	"nmem status":  "mem_check",
+	"nmem search":  "mem_search",
+	"gh pr create": "pr_open",
+	"gh pr checks": "pr_look",
+	"gh pr view":   "pr_look",
+	"gh pr merge":  "pr_merge",
+}
+
 var (
 	osaRe     = regexp.MustCompile(`tell application\s+\\?"([^"\\]+)`)
 	pythonRe  = regexp.MustCompile(`^python[\d.]*$`)
@@ -488,6 +500,19 @@ func commandStep(cmd string) Step {
 			s.App = appName(m[1])
 		}
 		return s
+	}
+	// A command a person knows by what it does (D152): `nmem connect` connects Mem.
+	at := func(i int) string {
+		if i < len(plain) {
+			return plain[i]
+		}
+		return ""
+	}
+	if act, ok := knownCmds[prog+" "+at(0)]; ok {
+		return Step{Kind: "ran", Act: act}
+	}
+	if act, ok := knownCmds[prog+" "+at(0)+" "+at(1)]; ok {
+		return Step{Kind: "ran", Act: act}
 	}
 	// `python3 -c "…"`, `node -e "…"`: a snippet, not a script by name.
 	if snippetRe.MatchString(prog) && len(args) > 0 && (args[0] == "-c" || args[0] == "-e") {
@@ -804,7 +829,7 @@ func stepOf(harness string, t *protocol.ToolCall) Step {
 }
 
 // saysOf is the agent's own short words for a shell step, when its harness
-// carries them (D148).
+// carries them (D152).
 func saysOf(o map[string]any) string {
 	d := firstStr(o, "description", "justification")
 	if i := strings.IndexByte(d, '\n'); i >= 0 {

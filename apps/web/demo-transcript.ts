@@ -1,4 +1,4 @@
-// A demo core for the opened task as the agent tells it (D148): Codex connecting Nowledge Mem on a
+// A demo core for the opened task as the agent tells it (D152): Codex connecting Nowledge Mem on a
 // Linux server home, its brief carrying a connect token (hidden on the way out), from
 // packages/protocol/fixtures/transcript-cases.ts, the same run the desktop renders
 // (apps/desktop/internal/views/task_mem_test.go).

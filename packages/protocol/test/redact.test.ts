@@ -1,4 +1,4 @@
-// Keys never render (D148): every rendered surface gets text with credentials hidden. The desktop
+// Keys never render (D152): every rendered surface gets text with credentials hidden. The desktop
 // (apps/desktop/internal/redact) passes the same cases (fixtures/redact.json).
 import { expect, test } from "bun:test";
 import cases from "../fixtures/redact.json";

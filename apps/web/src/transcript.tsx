@@ -1,4 +1,4 @@
-// An opened task, as the agent tells it (D148, after D127): what you asked as a quiet folded card
+// An opened task, as the agent tells it (D152, after D127): what you asked as a quiet folded card
 // (a key in it hidden, and said so); the agent's own words as the readable layer, saved progress
 // marked once; each stretch of steps between two things it said folded under one gist line, the
 // stretch under way open and live; a step in one sentence (the agent's own words for it when its
@@ -110,7 +110,17 @@ function gistWords(b: Extract<Block, { k: "steps" }>): string {
     case "think":
       return t("gist.think");
   }
-  return t("gist.run");
+  return achieved(b) || t("gist.run");
+}
+
+/** Steps that say what a stretch got done: the agent's own words for a step, an install, Mem
+ *  connected, a PR opened or merged. */
+const NOTABLE = new Set(["install", "installer", "mem_connect", "mem_check", "pr_open", "pr_merge"]);
+
+/** What a stretch of commands got done, in at most two of its steps' words ("安装 x，连上 Mem"), or "". */
+function achieved(b: Extract<Block, { k: "steps" }>): string {
+  const ws = [...new Set(b.rows.filter((r) => r.step && r.outcome === "ok" && (r.step.says || NOTABLE.has(r.step.act ?? ""))).map((r) => rowWords(r)[0]))].slice(0, 2);
+  return ws.map((w, i) => (i && A.L.lang !== "zh" ? w.charAt(0).toLowerCase() + w.slice(1) : w)).join(t("gist.and"));
 }
 const stepsCount = (n: number) => (n === 1 ? t("gist.steps.one") : t("gist.steps", n));
 
@@ -234,7 +244,7 @@ function Stretch({ b }: { b: Extract<Block, { k: "steps" }> }) {
   const last = b.rows.at(-1)!;
   const label = b.live ? rowWords(last).filter(Boolean).join(" ") : gistWords(b);
   return (
-    <div class={`stretch${b.live ? " live" : ""}`}>
+    <div class={`stretch${b.live ? " underway" : ""}`}>
       <button class={`gist${open ? " open" : ""}`} aria-expanded={open} onClick={() => setPicked(!open)}>
         {b.live ? <span class="spin" aria-hidden="true" /> : GLYPHS[GIST_GLYPH[b.gist.kind]!]!()}
         <span class="sum">{label}</span>
@@ -306,7 +316,7 @@ function BlockView({ task, b }: { task: Task; b: Block }) {
   return null;
 }
 
-/** What the task did (D148): the agent's voice, its steps folded per stretch, your words. */
+/** What the task did (D152): the agent's voice, its steps folded per stretch, your words. */
 export function WhatItDid({ task, blocks }: { task: Task; blocks: Block[] }) {
   if (!task.historyLoaded && !task.events.length) return <div class="small">{t("task.loading")}</div>;
   const items = blocks.filter((b) => b.k !== "brief").slice(-80).map((b) => <BlockView key={`${b.k}${b.seq}`} task={task} b={b} />);
@@ -345,7 +355,7 @@ export function whereLine(p: Place): string {
   return parts.filter(Boolean).join(" · ");
 }
 
-/** One quiet line (D148): where it stands and its one clock (since it started, ticking until it
+/** One quiet line (D152): where it stands and its one clock (since it started, ticking until it
  *  finishes; then how long it took), who does it, where, and Switch who does it. */
 export function TaskMeta({ task, stateLabel, mark, onSwitch }: { task: Task; stateLabel: string; mark?: JSX.Element; onSwitch?: () => void }) {
   const a = attention(task);

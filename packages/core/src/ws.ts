@@ -102,7 +102,7 @@ export function createWsHandler(deps: WsDeps) {
   const batchMs = deps.batchMs ?? 50;
   let flushTimer: ReturnType<typeof setTimeout> | undefined;
 
-  // What the Log holds goes out with every key in it hidden (D148): the Log keeps them (a task
+  // What the Log holds goes out with every key in it hidden (D152): the Log keeps them (a task
   // needs the key it was given), no client ever shows one. The frames that carry Log text: events,
   // a task's history, On hand (titles, reports, questions).
   const send = (ws: ServerWebSocket<WsData>, f: ServerFrame) => ws.send(JSON.stringify(REDACTED.has(f.t) ? redactDeep(f) : f));

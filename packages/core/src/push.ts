@@ -365,7 +365,7 @@ export interface SendResult {
  */
 export const MAX_PUSH_PLAINTEXT = 3993;
 export function fitMessage(msg: PushMessage, max = MAX_PUSH_PLAINTEXT): Bytes {
-  msg = redactDeep(msg); // keys never render, a lock screen least of all (D148)
+  msg = redactDeep(msg); // keys never render, a lock screen least of all (D152)
   const enc = (m: PushMessage) => te.encode(JSON.stringify(m));
   let m = msg;
   let bytes = enc(m);

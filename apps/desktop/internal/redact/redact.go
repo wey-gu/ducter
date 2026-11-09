@@ -1,4 +1,4 @@
-// Package redact hides keys in text before it renders (D148): a pasted
+// Package redact hides keys in text before it renders (D152): a pasted
 // connect token, an API key in a command, a bearer header a tool printed.
 // The home already hides them in what it sends (packages/core/src/ws.ts);
 // the app hides again for a home that predates that. The port of

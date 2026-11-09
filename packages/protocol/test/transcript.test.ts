@@ -1,4 +1,4 @@
-// An opened task as blocks (D148): the agent's voice, its steps folded per stretch, keys hidden.
+// An opened task as blocks (D152): the agent's voice, its steps folded per stretch, keys hidden.
 // The desktop (apps/desktop/internal/views/transcript_test.go) passes the same cases.
 import { expect, test } from "bun:test";
 import cases from "../fixtures/transcript.json";

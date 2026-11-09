@@ -1666,7 +1666,7 @@ export function compactions(task: Task): number {
   return n;
 }
 
-/** What went out of the machine: its commands, quiet (the one row left of the old Details, D148;
+/** What went out of the machine: its commands, quiet (the one row left of the old Details, D152;
  *  who, where and the clock are the meta line, saved progress is in the transcript once). */
 function OutsideActs({ task }: { task: Task }) {
   const acts = task.historyLoaded ? outsideActs(task) : [];
@@ -1788,6 +1788,13 @@ function FolderChangesView({ task }: { task: Task }) {
 export function TaskView({ id }: { id: string }) {
   const task = A.S.tasks.get(id);
   const scroller = useRef<HTMLDivElement>(null);
+  // D152: while it works, a reader at the end follows the newest step; one who scrolled up stays.
+  const atEnd = useRef(false);
+  const moving = !!task && ["working", "queued"].includes(attention(task));
+  useEffect(() => {
+    const el = scroller.current;
+    if (el && moving && atEnd.current) el.scrollTop = el.scrollHeight;
+  }, [task?.events.length, moving]);
   useEffect(() => A.history(id), [id, A.S.welcomed]);
   // D142: a folder task's list, again whenever its count or an undo / keep moved on.
   const isFolder = !!task && placeOf(task).kind === "folder";
@@ -1806,17 +1813,18 @@ export function TaskView({ id }: { id: string }) {
   const r = reportOf(task);
   // Where it stands: what it said or saved since its latest report when it has moved on (D127).
   const br = browsing(task);
-  const detail = !finished(task) ? (br && browsingLine(br)) || (a === "working" && saidSince(task)) || (r ? r.summary.split("\n")[0]! : "") : "";
+  // Only a browser's place or a wait is said here: the agent's words are the transcript's, said once (D152).
+  const detail = !finished(task) ? (br && browsingLine(br)) || "" : "";
   const [headline, lede] = finished(task) && r ? splitOutcome(safe(r.summary)) : ["", ""];
   const blocks = taskBlocks(task);
   // Waiting on you with nothing to answer (its turn ended on a question in its own words, or a
-  // wait ran out): say so, never a mystery (D148).
+  // wait ran out): say so, never a mystery (D152).
   const yourTurn = a === "needs_you" && !d;
   const canSwitch = !!harnessOf(task) && !["dropped", "superseded"].includes(a);
   return (
     <>
       <Top back={t("nav.back")} face={false} />
-      <main class="scroll task-page" ref={scroller}>
+      <main class="scroll task-page" ref={scroller} onScroll={(e) => { const el = e.currentTarget; atEnd.current = el.scrollHeight - el.scrollTop - el.clientHeight < 48; }}>
         <div class="task-head">
           <span class="face">
             <Avatar size={96} state={faceOf(a)} still={stillFace(a)} />
@@ -1834,7 +1842,6 @@ export function TaskView({ id }: { id: string }) {
         {detail && <div class="outcome"><div class="said">{safe(detail)}</div></div>}
         {yourTurn && <div class="small sub">{t("task.your.turn.hint")}</div>}
         {A.switchFor === id && <SwitchList task={task} />}
-        {d && !d.resolved && <DecisionCard d={d} taskId={id} inTask />}
         {finished(task) && (
           <div class="outcome">
             {lede && <div class="said">{lede}</div>}
@@ -1864,6 +1871,12 @@ export function TaskView({ id }: { id: string }) {
         <WhatItDid task={task} blocks={blocks} />
         <OutsideActs task={task} />
       </main>
+      {/* A pending ask sits over the composer, where the answer is typed (D152). */}
+      {d && !d.resolved && (
+        <div class="ask-dock">
+          <DecisionCard d={d} taskId={id} inTask />
+        </div>
+      )}
       <Composer taskId={id} />
     </>
   );

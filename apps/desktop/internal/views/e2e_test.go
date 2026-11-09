@@ -180,7 +180,7 @@ func TestScenarioEndToEnd(t *testing.T) {
 		t.Fatalf("route %v task %q", h.app.Route, h.app.TaskID)
 	}
 	h.until("history", func() bool { return s.Task("t-ci-1").HistoryLoaded })
-	// One column (D148): who and where under the headline, what it was
+	// One column (D152): who and where under the headline, what it was
 	// asked, what it did, the changes as files; no Details table.
 	for _, want := range []string{"Codex · gpt-5 · hawdb · ducter/fix-ci · 在 MacBook 上", "换谁来做", "改动"} {
 		if !h.tt.HasText(want) {

@@ -115,7 +115,7 @@ test("ws: hello -> welcome, channel replay since cursor, on_hand, live push of e
   expect(sent).toEqual([["t1", "also check CI", "user"]]);
 });
 
-test("ws: a key in the Log never leaves the home: history, live events and On hand come out hidden (D148)", async () => {
+test("ws: a key in the Log never leaves the home: history, live events and On hand come out hidden (D152)", async () => {
   const core = boot();
   core.setRunner({ send: async () => ({ delivered: "prompted" }) } as unknown as Runner);
   const key = "nmem_ct_8fK2pQx7Lm4vRz9TbW3y";

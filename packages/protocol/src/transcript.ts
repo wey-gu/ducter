@@ -1,4 +1,4 @@
-// An opened task as blocks (D148, after D127): what you asked, then the agent's own voice (what
+// An opened task as blocks (D152, after D127): what you asked, then the agent's own voice (what
 // it said and the progress it saved) as the readable layer, each stretch of steps between two
 // things it said folded under one gist line ("查看了环境 · 6 步"), the stretch still under way
 // live. Pure and language-neutral: the clients word blocks from their fields in their i18n. The

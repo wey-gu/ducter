@@ -1,4 +1,4 @@
-# 39: How the best agent UIs draw one agent's live transcript
+# 40: How the best agent UIs draw one agent's live transcript
 
 Asked (2026-11-10): how should Ducter's opened task show one coding or ops agent's live
 transcript to a heavy multi-agent developer, on the Mac app and the phone web client? The
@@ -192,7 +192,7 @@ The author asked for Lorca as a reference for **how an agent's transcript is han
 **MyGo technique**, not for its look. So the implications split in two. Ducter's clay/Pebble
 language (`design/ui.md` tokens, the approved style artifacts, the coins and the mascot,
 Bricolage and Ducter's type scale, the warm cream ground) stays as it is. What was built from
-this is D148.
+this is D152.
 
 ### Handling details we adopt
 
@@ -248,7 +248,7 @@ type for every harness, narration as Markdown prose, reads and searches folded, 
 one line with a bounded output on a click, the long brief collapsed, and secrets stripped at the
 source. Orca adds grouping per stretch with honest failure counts; Codex adds the single elapsed
 clock. None uses the harness's own description as the row's words and none treats a "not found"
-exit as neutral; Ducter does both (D148). Ducter takes Lorca's handling and its MyGo techniques
+exit as neutral; Ducter does both (D152). Ducter takes Lorca's handling and its MyGo techniques
 (`CollapsibleBase`, the hover row, `ui.Spinner`, `c.After`) and none of its look: rows are drawn
 in Pebble's tokens, and keys are hidden at the home's projection rather than stripped from the
 Log.

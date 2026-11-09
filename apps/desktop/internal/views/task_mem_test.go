@@ -15,7 +15,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
-// The author's run (D148): Codex connecting Nowledge Mem on a Linux server
+// The author's run (D152): Codex connecting Nowledge Mem on a Linux server
 // home, the brief carrying a connect token. The events are
 // packages/protocol/fixtures/transcript.json's, moved to end `ago` before now.
 func memTask(t *testing.T, lang i18n.Lang, scenario string) (*App, *ui.Tester) {

@@ -316,6 +316,8 @@ type Store struct {
 	// Waiters are the waiters known, by id (from waiter events and the
 	// snapshot's armed list).
 	Waiters map[string]*protocol.Waiter
+	// Missed are the task-less waits that ended unmet (D144), by id.
+	Missed map[string]*protocol.Waiter
 	// Arrived is when a task's wait came true (D115): its card pops and glides into Working.
 	Arrived map[string]time.Time
 	// Errors are the server's error frames, newest last.
@@ -392,6 +394,7 @@ func New() *Store {
 		Decisions:   map[string]*DecisionState{},
 		Tasks:       map[string]*Task{},
 		Waiters:     map[string]*protocol.Waiter{},
+		Missed:      map[string]*protocol.Waiter{},
 	}
 }
 
@@ -563,6 +566,13 @@ func (s *Store) applyOnHand(o *protocol.OnHand) {
 			}
 		}
 	}
+	if o.Missed != nil {
+		s.Missed = map[string]*protocol.Waiter{}
+		for i := range o.Missed {
+			w := o.Missed[i]
+			s.Missed[w.WaiterID] = &w
+		}
+	}
 	for i := range o.Tasks {
 		card := o.Tasks[i]
 		t := s.task(card.TaskID)
@@ -621,6 +631,13 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 			s.Waiters[w.WaiterID] = w
 		} else {
 			delete(s.Waiters, w.WaiterID)
+		}
+		if w.State == protocol.WaiterArmed {
+			delete(s.Missed, w.WaiterID)
+		} else if w.EndedUnmet() {
+			m := *w
+			m.EndedAt = ev.TS
+			s.Missed[w.WaiterID] = &m
 		}
 	}
 	if ev.Stream != "channel" {
@@ -794,6 +811,21 @@ func (s *Store) ArmedWaiters() []*protocol.Waiter {
 		}
 		return out[i].WaiterID < out[j].WaiterID
 	})
+	return out
+}
+
+// MissedToday are the waits that ended unmet on now's day, newest first
+// (D144).
+func (s *Store) MissedToday(now time.Time) []*protocol.Waiter {
+	var out []*protocol.Waiter
+	y, m, d := now.Date()
+	for _, w := range s.Missed {
+		at := ParseTime(w.EndedAt).In(now.Location())
+		if ay, am, ad := at.Date(); ay == y && am == m && ad == d {
+			out = append(out, w)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].EndedAt > out[j].EndedAt })
 	return out
 }
 

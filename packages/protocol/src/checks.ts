@@ -177,11 +177,13 @@ export function validateCheck(spec: CheckSpec | undefined, ctx: CheckContext = {
   if (!spec || !Array.isArray(spec.argv) || !spec.argv.length || spec.argv.some((a) => typeof a !== "string"))
     return no("check.argv must be a non-empty list of strings (one command, no shell)");
   if (!spec.succeedWhen || typeof spec.succeedWhen !== "object") return no("check.succeedWhen is required");
-  if (spec.succeedWhen.matches) {
+  if (spec.failWhen !== undefined && (!spec.failWhen || typeof spec.failWhen !== "object")) return no("check.failWhen must be a predicate like succeedWhen");
+  for (const [name, p] of [["succeedWhen", spec.succeedWhen], ["failWhen", spec.failWhen]] as const) {
+    if (!p?.matches) continue;
     try {
-      new RegExp(spec.succeedWhen.matches);
+      new RegExp(p.matches);
     } catch {
-      return no(`succeedWhen.matches is not a valid pattern: ${spec.succeedWhen.matches}`);
+      return no(`${name}.matches is not a valid pattern: ${p.matches}`);
     }
   }
   if (spec.cwd !== undefined && typeof spec.cwd !== "string") return no("check.cwd must be a path");

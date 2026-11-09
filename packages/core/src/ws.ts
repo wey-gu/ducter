@@ -69,7 +69,7 @@ export interface NewTaskFrames {
 /** What the client frames for work over time do (core.ts wires them to waiters, untils, routines). */
 export interface WorkFrames {
   zone(tz: string): void;
-  waiter(waiterId: string, action: "look" | "cancel"): Promise<boolean>;
+  waiter(waiterId: string, action: "look" | "cancel" | "rearm"): Promise<boolean>;
   routine(routineId: string, action: "pause" | "resume" | "end"): boolean;
   until(taskId: string, action: "stop"): boolean;
 }

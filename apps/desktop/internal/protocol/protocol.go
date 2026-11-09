@@ -246,6 +246,11 @@ type Waiter struct {
 	EveryMs   int64      `json:"everyMs,omitempty"`
 	Until     string     `json:"until,omitempty"`
 	Observed  string     `json:"observed,omitempty"`
+	// Unmet (D144): it ended without its condition, and why, in the
+	// user's words ("cancelled" with Unmet: it can't come true).
+	Unmet string `json:"unmet,omitempty"`
+	// EndedAt is set on OnHand.Missed entries: when it ended.
+	EndedAt string `json:"endedAt,omitempty"`
 	// From the On hand snapshot (WaiterView).
 	ArmedAt     string `json:"armedAt,omitempty"`
 	LastLookAt  string `json:"lastLookAt,omitempty"`
@@ -407,7 +412,14 @@ const (
 	WaiterArmed     = "armed"
 	WaiterFired     = "fired"
 	WaiterCancelled = "cancelled"
+	WaiterExpired   = "expired"
 )
+
+// EndedUnmet is a task-less wait that ended without its condition: it
+// can't come true, or it ran out of time (D144).
+func (w *Waiter) EndedUnmet() bool {
+	return w.TaskID == "" && w.RoutineID == "" && (w.State == WaiterExpired || (w.State == WaiterCancelled && w.Unmet != ""))
+}
 
 type Report struct {
 	TaskID    string        `json:"taskId"`
@@ -591,6 +603,9 @@ type OnHand struct {
 	Waiters []Waiter `json:"waiters"`
 	// Routines (D114), proposed ones included (their proposal card).
 	Routines []Routine `json:"routines,omitempty"`
+	// Missed (D144) are the task-less waits that ended unmet today: the
+	// finished area keeps them, with Keep waiting.
+	Missed []Waiter `json:"missed,omitempty"`
 }
 
 // ---------- Client <-> main process WebSocket ----------

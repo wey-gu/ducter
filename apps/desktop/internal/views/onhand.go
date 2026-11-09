@@ -77,7 +77,7 @@ func (a *App) onHand(c *ui.Context) {
 				if len(b.Lanes[store.LaneWaiting]) > 0 || len(a.looseWaiters()) > 0 {
 					a.lane(c, store.LaneWaiting, b.Lanes[store.LaneWaiting], 1, 220)
 				}
-				if len(b.Lanes[store.LaneDone]) > 0 {
+				if len(b.Lanes[store.LaneDone]) > 0 || len(a.S.MissedToday(time.Now())) > 0 {
 					a.lane(c, store.LaneDone, b.Lanes[store.LaneDone], 1, 260)
 				}
 			})
@@ -104,7 +104,7 @@ func (a *App) boardEmpty(b store.Board) bool {
 			return false
 		}
 	}
-	return len(a.looseWaiters()) == 0
+	return len(a.looseWaiters()) == 0 && len(a.S.MissedToday(time.Now())) == 0
 }
 
 // looseWaiters are the armed waiters of no task: compact rows on On hand.
@@ -203,6 +203,28 @@ func (a *App) waiterRow(c *ui.Context, w *protocol.Waiter) {
 	})
 }
 
+// missedRow is a wait that ended without its condition (D144): kept in
+// the finished area for the day, with what happened in plain words and a
+// quiet Keep waiting that arms it again as it was.
+func (a *App) missedRow(c *ui.Context, w *protocol.Waiter) {
+	t := a.T
+	why := w.Unmet
+	if why == "" {
+		why = a.L.T("wait.missed.ranout")
+	}
+	ui.Row(c).Gap(t.S3).Padding(t.S4, t.S4).Radius(t.RadiusLG).Border(1, t.LineSoft).AlignItems(ui.Center).
+		Label(w.Reason).Children(func() {
+		a.waitBubble(c, waitGlyph(w.Check, w.Event), 32)
+		ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
+			ui.Text(c, keepWords(autospace(w.Reason))).FontSize(t.MD).FontWeight(700).MaxLines(2).Balance()
+			ui.Text(c, a.L.T("wait.missed", why)).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(2)
+		})
+		if a.button(c, a.L.T("wait.rearm"), btnText, t.ControlSM, t.Bg) {
+			a.send(protocol.WaiterAction{T: "waiter_action", WaiterID: w.WaiterID, Action: "rearm"})
+		}
+	})
+}
+
 // forecastBand says when the user will be needed next: defaults taking
 // effect and waits coming due, as one quiet line of muted words, and only
 // when more than one thing is coming (one is already its own card, D127).
@@ -251,6 +273,8 @@ func (a *App) lane(c *ui.Context, lane store.Lane, tasks []*store.Task, grow, ba
 				n += len(a.partnerDecisions())
 			case store.LaneWaiting:
 				n += len(a.looseWaiters())
+			case store.LaneDone:
+				n += len(a.S.MissedToday(time.Now()))
 			}
 			// The count in muted ink: the lane's name says which lane it is, not a color.
 			a.heading(c, fmt.Sprint(n), t.XL).TextColor(t.InkMuted).FontFeatures("tnum")
@@ -265,6 +289,9 @@ func (a *App) lane(c *ui.Context, lane store.Lane, tasks []*store.Task, grow, ba
 		waiters := []*protocol.Waiter(nil)
 		if lane == store.LaneWaiting {
 			waiters = a.looseWaiters()
+		}
+		if lane == store.LaneDone {
+			waiters = a.S.MissedToday(time.Now())
 		}
 		if len(tasks) == 0 && len(waiters) == 0 && lane != store.LaneNeedsYou {
 			ui.Box(c).Padding(t.S4, t.S4).Radius(t.RadiusLG).Border(2, t.LineSoft).BorderStyle(ui.BorderDashed).Children(func() {
@@ -292,7 +319,12 @@ func (a *App) lane(c *ui.Context, lane store.Lane, tasks []*store.Task, grow, ba
 				a.waiterRow(c.Key("w:"+w.WaiterID), w)
 			}
 		case store.LaneDone:
-			a.doneList(c, tasks)
+			for _, w := range waiters {
+				a.missedRow(c.Key("m:"+w.WaiterID), w)
+			}
+			if len(tasks) > 0 {
+				a.doneList(c, tasks)
+			}
 		}
 	})
 }

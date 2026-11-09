@@ -179,6 +179,51 @@ test("a deadline: the wait runs out, the task needs you, the partner is told", a
   expect(tasks.get("t1")!.attention).toBe("needs_you");
 });
 
+test("D144: a check that fails ends the wait unmet; On hand keeps it today; Keep waiting re-arms it as it was", async () => {
+  let states = ["PENDING", "PENDING"];
+  const { clock, log, tasks, work } = setup({ exec: async () => ({ exitCode: 1, stdout: checksJson(states) }) });
+  const failCheck = { ...prCheck, failWhen: { path: "[].state", oneOf: ["FAILURE", "ERROR"], any: true } };
+  const w = work.waiters.arm({ reason: "PR #9950 的 CI 通过", check: failCheck, everyMs: 60_000, unmetSays: "有一项检查挂了" });
+  clock.advance(60_000);
+  await flush();
+  expect(tasks.onHand().waiters.length).toBe(1); // pending: looks on
+  states = ["SUCCESS", "FAILURE"];
+  clock.advance(60_000);
+  await flush();
+  const ended = log.read({ kinds: ["waiter"] }).at(-1)!;
+  expect(ended).toMatchObject({ origin: "waiter", body: { state: "cancelled", unmet: "有一项检查挂了" } });
+  expect(triggersPartner(ended)).toBe(true);
+  const on = tasks.onHand();
+  expect(on.waiters).toEqual([]);
+  expect(on.missed).toMatchObject([{ waiterId: w.waiterId, reason: "PR #9950 的 CI 通过", unmet: "有一项检查挂了" }]);
+  expect(await work.frames.waiter("nope", "rearm")).toBe(false);
+  expect(await work.frames.waiter(w.waiterId, "rearm")).toBe(true);
+  const again = log.read({ kinds: ["waiter"] }).at(-1)!;
+  expect(again).toMatchObject({ origin: "user", body: { waiterId: w.waiterId, state: "armed", unmetSays: "有一项检查挂了" } });
+  expect((again.body as Bodies["waiter"]).unmet).toBeUndefined();
+  expect(tasks.onHand().missed).toEqual([]);
+  expect(tasks.onHand().waiters.map((x) => x.waiterId)).toEqual([w.waiterId]);
+  // It fails again: back in the finished area, and gone the next day.
+  clock.advance(60_000);
+  await flush();
+  expect(tasks.onHand().missed!.length).toBe(1);
+  clock.advance(2 * 24 * 3600_000);
+  expect(tasks.onHand().missed).toEqual([]);
+});
+
+test("D144: the partner cancels a wait that can't come true with why; a plain cancel leaves no trace", async () => {
+  const { log, tasks, work, mcp } = setup({ exec: async () => ({ exitCode: 0, stdout: checksJson(["PENDING"]) }) });
+  const a = work.waiters.arm({ reason: "CI 通过", check: prCheck });
+  const b = work.waiters.arm({ reason: "PR merged", check: prCheck });
+  await mcp.call({ role: "partner" }, "wait_cancel", { waiterId: a.waiterId, unmet: "PR 被关掉了" });
+  await work.frames.waiter(b.waiterId, "cancel");
+  const evs = log.read({ kinds: ["waiter"] }).slice(-2);
+  expect(evs[0]).toMatchObject({ origin: "partner", body: { state: "cancelled", unmet: "PR 被关掉了" } });
+  expect(triggersPartner(evs[0]!)).toBe(false); // the partner said it itself
+  expect(evs[1]).toMatchObject({ origin: "user", body: { state: "cancelled" } });
+  expect(tasks.onHand().missed!.map((x) => x.waiterId)).toEqual([a.waiterId]);
+});
+
 test("errors back off by doubling; a command that isn't there says so", async () => {
   let n = 0;
   const { clock, log, work } = setup({ exec: async () => (n++, Promise.reject(new Error("spawn gh ENOENT"))) });

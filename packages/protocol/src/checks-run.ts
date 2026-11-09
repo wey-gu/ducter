@@ -10,6 +10,7 @@ import { isSecretName } from "./keys.ts";
 export interface CheckResult {
   ok: boolean; // it ran (a non-zero exit still counts as ran)
   met: boolean;
+  failed?: boolean; // D144: failWhen held: it can no longer come true
   summary: string; // what it saw, <= 200 chars
   error?: string; // it could not run: refused, not found, timed out
   exitCode?: number;
@@ -73,7 +74,8 @@ export async function runCheck(spec: CheckSpec, opts: { cwd?: string; exec?: Exe
   try {
     const r = await (opts.exec ?? realExec)(argv, { cwd: spec.cwd ? tilde(spec.cwd, home) : opts.cwd, env: checkEnv(), timeoutMs: opts.timeoutMs ?? CHECK_TIMEOUT_MS });
     const e = evaluate(spec.succeedWhen, r.exitCode, r.stdout);
-    return { ok: true, met: e.met, summary: e.summary, exitCode: r.exitCode, output: r.stdout.slice(0, 4096) };
+    const failed = !e.met && spec.failWhen ? evaluate(spec.failWhen, r.exitCode, r.stdout).met : false;
+    return { ok: true, met: e.met, ...(failed ? { failed } : {}), summary: e.summary, exitCode: r.exitCode, output: r.stdout.slice(0, 4096) };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     const error = /ENOENT|not found|No such file/i.test(msg) ? `${spec.argv[0]} is not installed here` : msg;

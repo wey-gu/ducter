@@ -1224,8 +1224,9 @@ export function OnHand() {
   const waiting = b.lanes[LANE.waiting]!;
   const done = b.lanes[LANE.done]!;
   const loose = A.S.armedWaiters().filter((w) => !w.taskId);
+  const missed = A.S.missedToday();
   const routines = A.S.routines().filter((r) => r.state === "active" || r.state === "paused");
-  const nothing = !needs.length && !partnerDs.length && !working.length && !waiting.length && !done.length && !loose.length && !routines.length;
+  const nothing = !needs.length && !partnerDs.length && !working.length && !waiting.length && !done.length && !loose.length && !missed.length && !routines.length;
   const openCount = A.defaultable().length;
   return (
     <>
@@ -1287,11 +1288,21 @@ export function OnHand() {
                 ))}
               </section>
             )}
-            {done.length > 0 && (
+            {(done.length > 0 || missed.length > 0) && (
               <section class="section">
                 <h3>
-                  {t("lane.done")} <span class="n">{done.length}</span>
+                  {t("lane.done")} <span class="n">{done.length + missed.length}</span>
                 </h3>
+                {missed.map((w) => (
+                  <div class="row" key={w.waiterId}>
+                    <WaitBubble w={w} />
+                    <span class="main">
+                      <span class="t">{w.reason}</span>
+                      <span class="m">{t("wait.missed", w.unmet ?? t("wait.missed.ranout"))}</span>
+                    </span>
+                    <Btn kind="text" size="sm" label={t("wait.rearm")} about={w.reason} onClick={() => A.waiterAction(w.waiterId, "rearm")} />
+                  </div>
+                ))}
                 {done.map((task) => {
                   const r = reportOf(task);
                   const ev = headlineEvidence(task.evidence.length ? task.evidence : (r?.evidence ?? []));

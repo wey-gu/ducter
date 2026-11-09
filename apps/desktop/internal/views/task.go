@@ -717,8 +717,8 @@ func (a *App) fileRow(c *ui.Context, task *store.Task, f *diffFile) {
 	open := a.open[key]
 	ui.Column(c).Children(func() {
 		row := ui.Row(c).Gap(t.S3).Padding(t.S3, t.S4).AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleButton).
-			Label(f.name).Focusable().Selected(open)
-		if row.Hovered() {
+			Label(f.name).Focusable()
+		if open || row.Hovered() {
 			row.Background(t.SurfaceSunken.Mix(t.Surface, 0.5))
 		}
 		row.Children(func() {

@@ -48,7 +48,17 @@ export interface WsDeps {
   loadout?: Loadout;
   /** The user's connections (connections.ts); absent in tests that don't need it. */
   connections?: ConnectionsStore;
+  /** Work over time (D112-D114): waiters, until loops, routines; absent in tests that don't need it. */
+  work?: WorkFrames;
   batchMs?: number;
+}
+
+/** What the client frames for work over time do (core.ts wires them to waiters, untils, routines). */
+export interface WorkFrames {
+  zone(tz: string): void;
+  waiter(waiterId: string, action: "look" | "cancel"): Promise<boolean>;
+  routine(routineId: string, action: "pause" | "resume" | "end"): boolean;
+  until(taskId: string, action: "stop"): boolean;
 }
 
 /** Drops living_msg revisions that a later event in the same batch supersedes. */
@@ -167,6 +177,7 @@ export function createWsHandler(deps: WsDeps) {
         send(ws, { t: "events", events: dropSuperseded(events) });
         send(ws, { t: "on_hand", onHand: tasks.onHand() });
         ws.data.live = true; // synchronous since the read: no event can be missed in between
+        if (typeof f.tz === "string" && f.tz) deps.work?.zone(f.tz);
         return;
       }
       case "send": {
@@ -390,6 +401,21 @@ export function createWsHandler(deps: WsDeps) {
         const ok = deps.connections.remove(String(f.id ?? ""));
         send(ws, ok ? { t: "connection_result", ok: true, id: f.id } : { t: "connection_result", ok: false, reason: "unknown_connection" });
         if (!ok) send(ws, connectionsFrame());
+        return;
+      }
+      case "waiter_action":
+      case "routine_action":
+      case "until_action": {
+        if (!deps.work) throw new Error("work over time is not available");
+        const id = f.t === "waiter_action" ? f.waiterId : f.t === "routine_action" ? f.routineId : f.taskId;
+        const action = f.action;
+        const ok =
+          f.t === "waiter_action" ? await deps.work.waiter(String(id ?? ""), f.action)
+          : f.t === "routine_action" ? deps.work.routine(String(id ?? ""), f.action)
+          : deps.work.until(String(id ?? ""), f.action);
+        send(ws, { t: "action_result", taskId: String(id ?? ""), action, ok, ...(ok ? {} : { message: "not found or already finished" }) });
+        // A look that changed nothing logs nothing: send the fresh view anyway.
+        if (f.t === "waiter_action") send(ws, { t: "on_hand", onHand: tasks.onHand() });
         return;
       }
       case "task_history": {

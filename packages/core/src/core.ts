@@ -14,7 +14,9 @@ import { createMcpHub, type CoreMcpHub } from "./mcp.ts";
 import { DEFAULT_IDENTITY, type Persona } from "./persona.ts";
 import { createRegistry, type CoreRegistry } from "./registry.ts";
 import { registerCoreTools } from "./tools.ts";
-import { createWaiters, type Waiters } from "./waiters.ts";
+import type { Waiters } from "./waiters.ts";
+import { createWork, type Work } from "./work.ts";
+import { createHarnessJudge } from "./judge.ts";
 import { createWsHandler, type WsData } from "./ws.ts";
 import { createGate, openDeviceAuth, type DeviceAuth } from "./auth.ts";
 import { createWorkers, deviceRoutes, splitSockets, type Workers, type WorkerSocketData } from "./workers.ts";
@@ -47,6 +49,8 @@ export interface CoreOptions {
   /** Test seams for connections: the MCP link, and the oo CLI's config. */
   connectionLinker?: Linker;
   ooSource?: OoSource;
+  /** Work over time test seams (D112-D114): fake commands, a lower look floor, the judge. */
+  work?: { exec?: import("@ducter/protocol/src/checks-run.ts").Exec; minEveryMs?: number; judgeMinMs?: number; restartLookMs?: number; defaultZone?: string; judge?: import("./waiters.ts").Judge; connectionFetch?: (url: string, init: RequestInit) => Promise<Response> };
 }
 
 export interface Core extends CoreApi {
@@ -60,6 +64,8 @@ export interface Core extends CoreApi {
   /** 你的设备和本事 / Your devices and abilities. */
   devicesView: DevicesView;
   waiters: Waiters;
+  /** Waiters, until loops and routines (D112-D114). */
+  work: Work;
   push: PushStore;
   pusher: Pusher;
   /** The partner's settings (D71). */
@@ -81,7 +87,20 @@ export const defaultDataDir = () => process.env.DUCTER_DATA_DIR || join(homedir(
 /** Events that wake the partner (principle 6): user messages, resolutions, non-progress reports, fired waiters. */
 export function triggersPartner(e: LogEvent): boolean {
   if (e.kind === "user_msg" || e.kind === "decision_resolved") return true;
-  if (e.kind === "waiter") return (e.body as Bodies["waiter"]).state === "fired";
+  if (e.kind === "waiter") {
+    const w = e.body as Bodies["waiter"];
+    // A routine's watch starts a run; a task's own check wakes that task, not the partner.
+    if (w.routineId) return false;
+    if (w.state === "expired") return true;
+    return w.state === "fired" && !(w.taskId && (w.check || w.event));
+  }
+  // An `until` loop that ends (met or stopped short) is said once, by the partner (D113).
+  if (e.kind === "until") return (e.body as Bodies["until"]).state !== "on" && (e.body as Bodies["until"]).stop !== "user";
+  // A routine Ducter paused by itself (failures, unread, budget) is said once (D114).
+  if (e.kind === "routine") {
+    const r = e.body as Bodies["routine"];
+    return r.state === "paused" && r.pausedBy === "system" && r.pauseReason !== "review";
+  }
   if (e.kind === "report") return (e.body as Bodies["report"]).state !== "progress";
   if (e.kind === "bridge_msg") return (e.body as Bodies["bridge_msg"]).direction === "in";
   // The second switch the same way: the partner offers a rule once (loadout.ts).
@@ -160,13 +179,31 @@ export function startCore(opts: CoreOptions = {}): Core {
     },
   });
   const living = createLiving({ log, tasks, decisions, clock });
-  const waiters = createWaiters({ log, clock });
   const mcp = createMcpHub({ secret: loadSecret(dataDir) });
   registerCoreTools(mcp, log, tasks);
   const rules = openRules(dataDir);
   registerRuleTools(mcp, rules);
-  const connections = openConnections({ dataDir, log, linker: opts.connectionLinker, oo: opts.ooSource });
+  const connections = openConnections({ dataDir, log, linker: opts.connectionLinker, oo: opts.ooSource, fetcher: opts.work?.connectionFetch });
   registerConnectionTools(mcp, connections);
+  let workersRef: Workers | undefined;
+  const work = createWork({
+    log,
+    tasks,
+    mcp,
+    runner: () => runner,
+    workers: () => workersRef,
+    connections,
+    clock,
+    persona: persona.id,
+    exec: opts.work?.exec,
+    minEveryMs: opts.work?.minEveryMs,
+    judgeMinMs: opts.work?.judgeMinMs,
+    restartLookMs: opts.work?.restartLookMs,
+    defaultZone: opts.work?.defaultZone,
+  });
+  const waiters = work.waiters;
+  tasks.setDecorator((o) => work.decorate(o));
+  if (opts.work?.judge) work.setJudge(opts.work.judge);
 
   const early: LogEvent[] = []; // triggers that arrive before the partner is wired
   const trigger = (e: LogEvent) => {
@@ -177,7 +214,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     }
   };
   const unsubscribePartner = log.subscribe((e) => {
-    if (!triggersPartner(e)) return;
+    if (!triggersPartner(e) || !work.wakes(e)) return;
     if (partner) trigger(e);
     else if (early.length < 100) early.push(e);
   });
@@ -185,7 +222,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   let devicesView: DevicesView | undefined;
   const loadout = createLoadout({ log, tasks, settings, rules, devices: () => devicesView });
   const api = { log, tasks, mcp, persona, dataDir, settings, connections, bodies: loadout } as CoreApi;
-  const ws = createWsHandler({ core: api, decisions, runner: () => runner, devices: () => devicesView, settings, connections, rules, loadout, batchMs: opts.batchMs });
+  const ws = createWsHandler({ core: api, decisions, runner: () => runner, devices: () => devicesView, settings, connections, rules, loadout, work: work.frames, batchMs: opts.batchMs });
   const devices = openDeviceAuth(dataDir);
   // A device that pairs changes Your devices and abilities (远程打开 / Reach from anywhere).
   const gateAuth = {
@@ -208,6 +245,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       return devices.list().find(hit) ?? (was?.kind === "worker" ? was : undefined) ?? devices.list({ all: true }).reverse().find(hit);
     },
   });
+  workersRef = workers;
   api.workers = workers; // the runner places tasks on workers through this (runner/src/remote.ts)
   devicesView = createDevicesView({ dataDir, auth: devices, workers, connected: () => ws.connected(), probes: opts.deviceProbes });
   const sockets = splitSockets(ws.websocket, workers, { isLive: (id) => devices.isLive(id), nameOf: (id) => devices.list().find((d) => d.id === id)?.name, sweepMs: opts.sweepMs });
@@ -275,6 +313,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     workers,
     devicesView,
     waiters,
+    work,
     push,
     pusher,
     settings,
@@ -285,6 +324,9 @@ export function startCore(opts: CoreOptions = {}): Core {
     url: `ws://127.0.0.1:${port}/ws`,
     setRunner(r) {
       runner = r;
+      // The cheap judge (D112, D113) runs on the harness the partner thinks with, on its small model.
+      if (!opts.work?.judge)
+        work.setJudge(createHarnessJudge({ harness: () => runner?.harness, pick: () => settings.get().brain, dataDir }));
       // Answers that were resolved but never handed to their task before a restart (decisions.ts).
       for (const u of decisions.takeUnforwarded()) {
         console.warn(`[core] re-sending the answer to ${u.decisionId} that ${u.taskId} never got (restart)`);
@@ -305,7 +347,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       unsubscribePartner();
       decisions.stop();
       living.stop();
-      waiters.stop();
+      work.stop();
       pusher.stop();
       void server.stop(true); // awaiting hangs in Bun 1.3 when a WebSocket was open
       log.close();

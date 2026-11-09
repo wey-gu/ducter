@@ -63,6 +63,7 @@ export interface Bodies {
     defaultOption: "go" | "hold";
     defaultAt?: string; // ISO time the default applies (only if reversible)
     reversible: boolean;
+    routineId?: string; // a routine's proposal card (D114): Go activates it
   };
   decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default" };
   read_receipt: { upToSeq: number };
@@ -101,7 +102,47 @@ export interface Bodies {
   checkpoint: { taskId: string; text: string; gitRef?: string };
   // A waiter is a cheap wait that wakes the partner (wait_until). Shown on On hand as a compact row.
   // decisionId: a wait tied to a question (an ask); it is cancelled when the question is answered.
-  waiter: { waiterId: string; taskId?: string; decisionId?: string; at?: string; reason: string; state: "armed" | "fired" | "cancelled" };
+  // D112: a waiter waits for a condition, not only a time. kind "check" runs a small read-only
+  // command on a schedule (no model); "event" reads new items from a connection's trigger;
+  // judge adds a cheap model's yes/no over what a check or event fetched. `reason` is always
+  // the condition in the user's words; `check` is shown only in the opened task's Details.
+  // `until` is the deadline: past it the waiter is "expired" and the partner is told.
+  waiter: {
+    waiterId: string;
+    taskId?: string;
+    decisionId?: string;
+    routineId?: string; // a condition routine's watch (D114): firing starts a run, then it re-arms
+    at?: string;
+    reason: string;
+    state: "armed" | "fired" | "cancelled" | "expired";
+    kind?: WaitKind; // absent = "timer"
+    check?: CheckSpec;
+    event?: EventSpec;
+    judge?: string; // the yes/no question a cheap model answers over the fetched data
+    everyMs?: number; // how often it looks (check/event); backs off on errors
+    until?: string; // ISO deadline
+    observed?: string; // fired/expired: what it saw last (<= 200 chars)
+    held?: boolean; // a routine's watch re-armed while the condition still holds: fires only once it stops and holds again
+  };
+  // One look of a check/event waiter, logged only when what it saw changed (or it began failing),
+  // on the task's stream (task waiters) or the channel. Clients fold them into Details.
+  waiter_look: { waiterId: string; taskId?: string; ok: boolean; met: boolean; summary: string; error?: string; checkpoint?: unknown };
+  // D113: `until` on a task: keep going until the condition holds. One snapshot per change.
+  until: {
+    taskId: string;
+    condition: string; // in the user's words
+    check?: CheckSpec; // when the condition compiles to a check, it decides before any model
+    maxTries: number; // default 20
+    state: "on" | "met" | "stopped";
+    stop?: "met" | "max" | "no_progress" | "oscillation" | "user" | "task_finished";
+  };
+  // One try's verdict, after the task's turn ended with a report.
+  until_try: { taskId: string; n: number; verdict: "met" | "better" | "same" | "worse" | "unknown"; summary: string; by: "check" | "judge"; tokens?: number };
+  // D114: a routine (例行). One snapshot per change; the latest wins.
+  routine: RoutineBody;
+  // A firing: "started" opens a run task; "skipped" records a firing that could not run (with how
+  // many were coalesced into it); "done"/"failed" close a run from its task's final report.
+  routine_run: { routineId: string; runId: string; scheduledFor: string; state: "started" | "skipped" | "done" | "failed"; taskId?: string; catchUp?: boolean; coalesced?: number; reason?: string; tokens?: number };
   // The partner saved something durable to the user's long-term memory (Nowledge Mem). Clients
   // show one quiet line under the reply: "记下了 · <title>" / "Noted · <title>". Never a card,
   // never a notification. Provenance lives in Mem, not here.
@@ -177,12 +218,110 @@ export interface TaskCard {
   pendingDecision?: Bodies["decision"] & { askedAt: string }; // the open decision, for On hand
   openedAt: string;
   updatedAt: string;
+  until?: UntilView; // D113
+  fromRoutine?: { routineId: string; name: string }; // a routine's run (D114)
 }
 
 export interface OnHand {
   tasks: TaskCard[];
   counts: Record<"needs_you" | "working" | "waiting" | "done_today", number>;
-  waiters: Bodies["waiter"][]; // armed waiters (task-less ones render as compact rows)
+  waiters: WaiterView[]; // armed waiters (task-less ones render as compact rows)
+  /** D114: every routine that isn't ended or dismissed, proposed ones included (their card). */
+  routines?: RoutineView[];
+}
+
+/** An armed waiter plus what it has seen so far (kept by core, not logged per look). */
+export type WaiterView = Bodies["waiter"] & { lastLookAt?: string; lastSummary?: string; looks?: number; nextLookAt?: string; changes?: number };
+
+// ---------- Work over time (D112-D115, design/product-model.md section 4) ----------
+
+export type WaitKind = "timer" | "check" | "event" | "judge";
+
+/**
+ * A compiled condition: a read-only command (argv, never a shell line) run where the task works,
+ * and what counts as met. The allowed commands are in protocol/src/checks.ts.
+ */
+export interface CheckSpec {
+  argv: string[];
+  device?: string; // "local" (default) or a worker's device
+  cwd?: string; // default: the task's place
+  succeedWhen: Predicate;
+}
+
+/**
+ * What counts as met. path: a JSON path into stdout ("state", "[].state"; "[]" maps over an
+ * array, and every item must match unless `any`). equals / oneOf / contains / matches test the
+ * value (or stdout when there is no path). exitCode is checked only when given, or when nothing
+ * else is (then 0).
+ */
+export interface Predicate {
+  exitCode?: number;
+  path?: string;
+  equals?: string | number | boolean | null;
+  oneOf?: (string | number | boolean | null)[];
+  contains?: string;
+  matches?: string;
+  any?: boolean;
+}
+
+/** New items from a connection's trigger (OpenConnector Provider Triggers, design/connectors.md 4.5). */
+export interface EventSpec {
+  connection: string; // a connection id or name
+  service: string; // "gmail"
+  trigger: string; // "gmail.on_message_received"
+  config?: unknown;
+  contains?: string; // a cheap code filter on each item's text before any judge
+}
+
+export type RoutineTrigger =
+  | {
+      kind: "time";
+      every: "day" | "weekday" | "week" | "month" | "hours";
+      days?: number[]; // week: 0 = Sunday ... 6
+      dayOfMonth?: number; // month
+      hours?: number; // hours: every n hours, starting at `time`
+      time: string; // "09:00"
+      zone: "personal" | "world"; // personal follows the user; world stays pinned (D29)
+      tz: string; // IANA zone; for personal, replaced by the user's current zone at each firing
+    }
+  | { kind: "condition"; condition: string; check?: CheckSpec; event?: EventSpec; judge?: string; everyMs: number };
+
+export interface RoutineBody {
+  routineId: string;
+  name: string; // short, in the user's language
+  trigger: RoutineTrigger;
+  triggerWords: string; // the trigger in words ("每周一 9:00 · 跟着你的时区")
+  brief: string; // what each run does, self-contained
+  place?: Place;
+  reports: "every" | "on_change" | "needs_you"; // digests the user asked for are "every"
+  effect: "read_only" | "drafts" | "local_writes"; // anything beyond it becomes a question
+  budget: { perRunTokens?: number; monthTokens: number }; // perRun: 2x the first run's, once known
+  state: "proposed" | "active" | "paused" | "ended" | "dismissed";
+  decisionId?: string; // its proposal card
+  createdAt: string;
+  reviewAt: string; // 30 days after it starts; then it asks "Keep this?"
+  pausedBy?: "user" | "partner" | "system";
+  pauseReason?: "asked" | "failures" | "unread" | "review" | "budget";
+}
+
+export interface RoutineView extends RoutineBody {
+  nextAt?: string; // the next firing (time triggers, while active)
+  upcoming?: string[]; // the next 5 firings (time triggers), for the proposal card
+  dryRun?: { met: boolean; summary: string; at: string }; // condition triggers: a live look
+  lastRun?: Bodies["routine_run"] & { at: string };
+  running?: string; // the task id of a run in progress
+  monthTokens?: number; // used this month
+}
+
+/** A task's `until` with its tries, for the try strip. */
+export interface UntilView {
+  condition: string;
+  maxTries: number;
+  state: Bodies["until"]["state"];
+  stop?: Bodies["until"]["stop"];
+  check?: CheckSpec;
+  tries: { n: number; verdict: Bodies["until_try"]["verdict"]; summary: string; by: "check" | "judge"; at: string }[];
+  tokens?: number;
 }
 
 // ---------- Client <-> main process WebSocket (ws://127.0.0.1:7777/ws) ----------
@@ -200,7 +339,8 @@ export interface OnHand {
 //    otherwise as the next turn ("prompted") or queued behind the current turn.
 
 export type ClientFrame =
-  | { t: "hello"; persona?: string; cursor?: number; locale?: "zh" | "en" }
+  // tz: the client's IANA zone; personal-time routines follow the latest one (D114).
+  | { t: "hello"; persona?: string; cursor?: number; locale?: "zh" | "en"; tz?: string }
   | { t: "send"; text: string; clientId: string }
   | { t: "decide"; decisionId: string; option: "go" | "hold" | "reply"; text?: string }
   // clientId (optional): a resend with the same id is not delivered twice; it gets the same "sent".
@@ -249,7 +389,13 @@ export type ClientFrame =
   | { t: "connections" }
   | { t: "connection_add"; url: string; token?: string; name?: string }
   | { t: "connection_remove"; id: string }
-  | { t: "connection_oo" };
+  | { t: "connection_oo" }
+  // Work over time (D112-D114), each answered with action_result (taskId = the waiter or routine
+  // id). waiter_action look: look now; cancel: 不等了 / Stop waiting. routine_action pause, resume
+  // (only a person resumes), end. until_action stop: stop the loop after this try.
+  | { t: "waiter_action"; waiterId: string; action: "look" | "cancel" }
+  | { t: "routine_action"; routineId: string; action: "pause" | "resume" | "end" }
+  | { t: "until_action"; taskId: string; action: "stop" };
 
 export type ServerFrame =
   // machine: a hash of the machine the main runs on (core/src/machine.ts); a client that computes
@@ -425,6 +571,8 @@ export interface ToolArgs {
   log_search: { query: string; stream?: string; limit?: number };
   log_read: { stream: string; fromSeq?: number; limit?: number };
   wait_until: { taskId?: string; at?: string; reason: string };
+  wait_for: { reason: string; taskId?: string; check?: CheckSpec; event?: EventSpec; judge?: string; everyMinutes?: number; untilISO?: string };
+  keep_going: { taskId: string; condition: string; check?: CheckSpec; maxTries?: number };
   reply: { text: string };
   report_to_main: Bodies["report"] extends infer R ? Omit<R & object, "taskId"> : never;
   checkpoint: { text: string };

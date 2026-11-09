@@ -292,10 +292,26 @@ export interface ConnectionsStore extends ConnectionsApi {
   /** Re-checks stale connections in the background (for the Settings frame). */
   recheck(): Promise<void>;
   onChange(fn: () => void): () => void;
+  /**
+   * D112: new items from an OpenConnector Provider Trigger (design/connectors.md 4.5): a read with
+   * the checkpoint the last read returned (null the first time). Only for OpenConnector sources.
+   */
+  readTrigger(key: string, service: string, trigger: string, config: unknown, checkpoint: unknown): Promise<TriggerRead>;
 }
 
-export function openConnections(opts: { dataDir: string; log: LogStore; linker?: Linker; oo?: OoSource; now?: () => number }): ConnectionsStore {
+export type TriggerRead = { ok: true; items: { id: string; text: string }[]; checkpoint: unknown } | { ok: false; error: string };
+
+/** One item's text for a watcher: subject, sender, snippet when they are there; never a full body. */
+function itemText(x: unknown): string {
+  if (!x || typeof x !== "object") return String(x ?? "");
+  const o = x as Record<string, unknown>;
+  const pick = ["subject", "from", "sender", "title", "snippet", "summary", "text"].map((k) => (typeof o[k] === "string" ? `${k}: ${o[k]}` : "")).filter(Boolean);
+  return (pick.length ? pick.join(" · ") : JSON.stringify(o)).slice(0, 2000);
+}
+
+export function openConnections(opts: { dataDir: string; log: LogStore; linker?: Linker; oo?: OoSource; now?: () => number; fetcher?: (url: string, init: RequestInit) => Promise<Response> }): ConnectionsStore {
   const linker = opts.linker ?? httpLinker;
+  const fetcher = opts.fetcher ?? ((u: string, i: RequestInit) => fetch(u, i));
   const oo = opts.oo ?? ooSource();
   const now = opts.now ?? Date.now;
   const listPath = join(opts.dataDir, CONNECTIONS_FILE);
@@ -582,6 +598,29 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
     onChange(fn) {
       listeners.add(fn);
       return () => listeners.delete(fn);
+    },
+
+    async readTrigger(key, service, trigger, config, checkpoint) {
+      const r = find(key);
+      if (!r) return { ok: false, error: NOT_FOUND };
+      if (r.source === "mcp") return { ok: false, error: `${r.name} is not an OpenConnector: it has no triggers to watch` };
+      const base = r.url.replace(/\/mcp\/?$/, "").replace(/\/+$/, "");
+      const url = `${base}/v1/providers/${encodeURIComponent(service)}/triggers/${encodeURIComponent(trigger)}/execute`;
+      try {
+        const res = await fetcher(url, {
+          method: "POST",
+          headers: { "content-type": "application/json", ...(tokens[r.id] ? { authorization: `Bearer ${tokens[r.id]}` } : {}) },
+          body: JSON.stringify({ operation: "read", config: config ?? {}, checkpoint: checkpoint ?? null }),
+        });
+        if (res.status === 401 || res.status === 403) return { ok: false, error: `${r.name} refused the watch (its token may not allow ${trigger})` };
+        if (!res.ok) return { ok: false, error: `${r.name} answered ${res.status}` };
+        const j = (await res.json()) as { items?: unknown[]; events?: unknown[]; data?: unknown[]; checkpoint?: unknown };
+        const raw = j.items ?? j.events ?? j.data ?? [];
+        const items = raw.map((x, i) => ({ id: String((x as { id?: unknown })?.id ?? i), text: itemText(x) }));
+        return { ok: true, items, checkpoint: j.checkpoint ?? checkpoint ?? null };
+      } catch (e) {
+        return { ok: false, error: `${r.name} didn't answer (${(e as Error).message})` };
+      }
     },
   };
   return api;

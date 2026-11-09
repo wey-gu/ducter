@@ -11,7 +11,7 @@ var zhIA = Table{
 	"nav.settings": "设置",
 
 	// The Partner page: a character sheet.
-	"partner.lives":          "住在%s上",
+	"partner.lives":          "住在%s 上",
 	"partner.rename":         "改名字",
 	"partner.rename.cancel":  "不改了",
 	"partner.face.idle":      "在呢",

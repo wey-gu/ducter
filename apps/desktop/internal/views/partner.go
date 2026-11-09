@@ -40,6 +40,9 @@ type partnerState struct {
 func (a *App) OpenPartner() {
 	a.Route = RoutePartner
 	a.send(protocol.SettingsReq{T: "settings"})
+	if a.S.DevicesAt.IsZero() {
+		a.send(protocol.DevicesReq{T: "devices"}) // where it lives
+	}
 }
 
 // SetSettings sends a change to the partner's settings.
@@ -166,7 +169,7 @@ func (a *App) partnerName(c *ui.Context) {
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Wrap().Children(func() {
 			ui.Text(c, a.S.PersonaName).FontSize(t.Title).FontWeight(800).LetterSpacing(-0.6).SingleLine().Shrink(1).MinWidth(0)
 			if a.S.Settings != nil && a.button(c, a.L.T("partner.rename"), btnText, t.ControlSM, t.Clay) {
-				ps.editing, ps.nameDraft, ps.focused = true, a.S.PersonaName, false
+				ps.editing, ps.nameDraft, ps.focused = true, "", false
 			}
 		})
 		return
@@ -180,7 +183,7 @@ func (a *App) partnerName(c *ui.Context) {
 		ps.editing = false
 	}
 	ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Wrap().Children(func() {
-		in := ui.TextInput(c.Key("input:partner-name"), &ps.nameDraft).Placeholder("Ducter").Label(a.L.T("partner.rename")).
+		in := ui.TextInput(c.Key("input:partner-name"), &ps.nameDraft).Placeholder(a.S.PersonaName).Label(a.L.T("partner.rename")).
 			FontSize(t.XL).FontWeight(800).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.Surface).Border(1, t.Line).
 			Width(280).OnSubmit(save)
 		if !ps.focused {
@@ -386,8 +389,12 @@ func (a *App) memoryCard(c *ui.Context, st *protocol.Settings) {
 			}
 			ui.Text(c, a.L.T("partner.memory."+state)).FontSize(t.MD).LineHeight(1.5).Grow(1).MinWidth(0)
 		})
-		if state == "missing" && a.button(c, a.L.T("partner.memory.connect"), btnSecondary, t.ControlMD, t.Surface) {
-			a.openLink("https://mem.nowledge.co")
+		if state == "missing" {
+			ui.Row(c).Children(func() {
+				if a.button(c, a.L.T("partner.memory.connect"), btnSecondary, t.ControlMD, t.Surface) {
+					a.openLink("https://mem.nowledge.co")
+				}
+			})
 		}
 		if v, ch := a.switchRow(c, "memory", a.L.T("partner.memory.switch"), "", st.Memory); ch {
 			st.Memory = v

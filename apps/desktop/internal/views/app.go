@@ -629,6 +629,9 @@ func (a *App) followUserLanguage() {
 			a.localeSet = true
 			if l != a.L.Lang {
 				a.L = i18n.New(l)
+				if a.OnLanguage != nil {
+					a.OnLanguage(a.L) // the menus follow
+				}
 			}
 		}
 		return

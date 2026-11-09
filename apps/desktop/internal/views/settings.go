@@ -78,7 +78,7 @@ func (a *App) lookCard(c *ui.Context) {
 		ui.Row(c.Key("theme:pebble")).Gap(t.S4).Padding(t.S3).Radius(t.RadiusMD).Background(t.Bg).Border(2, t.Ink).
 			AlignItems(ui.Center).Role(ui.RoleRadio).AccessSelected(true).Label(a.L.T("settings.look.pebble")).Children(func() {
 			ui.Row(c).Gap(4).Shrink(0).Children(func() {
-				for _, col := range []ui.Color{t.Bg, t.Clay, t.Accent, t.UserBubble, t.Ink} {
+				for _, col := range []ui.Color{t.Bg, t.NeedsYou.Surface, t.Accent, t.Done.Surface, t.Ink} {
 					ui.Box(c).Size(22, 40).Radius(t.RadiusXS).Background(col).Border(1, t.Line)
 				}
 			})

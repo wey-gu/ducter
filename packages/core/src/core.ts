@@ -1,6 +1,6 @@
 // Assembles the control plane: Log, registry, decisions, living message, MCP hub, WS server.
 import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
+import { homedir, hostname as osHostname } from "node:os";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
 import type { Bodies, LogEvent, Place } from "@ducter/protocol";
@@ -31,6 +31,10 @@ import { openConnections, type ConnectionsStore, type Linker, type OoSource } fr
 import { registerConnectionTools } from "./connection-tools.ts";
 import { createChanges, type Changes } from "./changes.ts";
 import { newTaskOptions, openYourTask, type GitRun, type NewTaskInput } from "./newtask.ts";
+import { createReleaseWatch, type Fetch as ReleaseFetch, type ReleaseWatch } from "./release.ts";
+import { createUpdates, type Updates, type UpdatesDeps } from "./updates.ts";
+import { realSys, updateHow, type UpdateSys } from "./update.ts";
+import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 
 declare const DUCTER_COMMIT: string | undefined; // set by packages/cli/build.sh via --define
 /** The build this core runs ("dev" from a checkout): /health says it, so Ducter.app can tell a background
@@ -58,6 +62,8 @@ export interface CoreOptions {
   ooSource?: OoSource;
   /** Test seam for New task (D128): how newtask.ts runs its repo commands. */
   git?: GitRun;
+  /** D146 test seams: the release feed, the update side effects, how this process updates. */
+  update?: { fetch?: ReleaseFetch; sys?: UpdateSys; run?: UpdatesDeps["run"]; how?: import("@ducter/protocol").UpdateHow; version?: string; execPath?: string; autoEveryMs?: number; graceMs?: number; criticalWaitMs?: number };
   /** Work over time test seams (D112-D114): fake commands, a lower look floor, the judge. */
   work?: { exec?: import("@ducter/protocol/src/checks-run.ts").Exec; minEveryMs?: number; judgeMinMs?: number; restartLookMs?: number; defaultZone?: string; judge?: import("./waiters.ts").Judge; connectionFetch?: (url: string, init: RequestInit) => Promise<Response> };
 }
@@ -86,6 +92,9 @@ export interface Core extends CoreApi {
   connections: ConnectionsStore;
   /** What each repo task changed so far (D128). */
   changes: Changes;
+  /** D146: updating devices in place, and the newest release. */
+  updates: Updates;
+  release: ReleaseWatch;
   port: number;
   url: string; // ws URL for clients
   setRunner(r: Runner): void;
@@ -250,7 +259,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   // 开一件事 / New task (D128): the one opening path the card and `ducter task` share.
   const newTaskDeps = { log, tasks, runner: () => runner, persona, dataDir, loadout, settings, ...(opts.git ? { git: opts.git } : {}) };
   const newTask = { open: (i: NewTaskInput) => openYourTask(newTaskDeps, i), options: (p?: Place) => newTaskOptions(newTaskDeps, p) };
-  const ws = createWsHandler({ core: api, decisions, runner: () => runner, devices: () => devicesView, settings, connections, rules, loadout, work: work.frames, newTask, batchMs: opts.batchMs });
+  const ws = createWsHandler({ core: api, decisions, runner: () => runner, devices: () => devicesView, settings, connections, rules, loadout, work: work.frames, newTask, updates: () => updatesRef, batchMs: opts.batchMs });
   onHandChanged = ws.onHandChanged;
   api.activity = { set: ws.setActivity };
   const devices = openDeviceAuth(dataDir);
@@ -264,8 +273,10 @@ export function startCore(opts: CoreOptions = {}): Core {
     },
   };
   const gate = createGate({ auth: gateAuth, personaName: () => persona.name });
+  let updatesRef: Updates | undefined;
   const workers = createWorkers({
     personaName: () => persona.name,
+    onUpdate: (id, name, f) => updatesRef?.fromWorker(id, name, f),
     // A disconnected (revoked) worker still resolves, as a link that is never online: its tasks
     // show 连不上 / Can't reach and new ones are refused, instead of silently running here.
     find: (d) => {
@@ -277,7 +288,42 @@ export function startCore(opts: CoreOptions = {}): Core {
   });
   workersRef = workers;
   api.workers = workers; // the runner places tasks on workers through this (runner/src/remote.ts)
-  devicesView = createDevicesView({ dataDir, auth: devices, workers, connected: () => ws.connected(), probes: opts.deviceProbes });
+  // D146: the newest release (no network in tests unless a feed is given) and updating in place.
+  const u = opts.update ?? {};
+  const testing = process.env.NODE_ENV === "test" && !u.fetch;
+  const release = createReleaseWatch({ dataDir, fetch: u.fetch, timer: !testing, env: testing ? { ...process.env, DUCTER_UPDATE_CHECK: "off" } : process.env });
+  const compiled = import.meta.url.includes("$bunfs") || import.meta.path.includes("$bunfs");
+  const selfHow = u.how ?? updateHow({ compiled, platform: process.platform, execPath: u.execPath ?? process.execPath });
+  const version = u.version ?? DUCTER_VERSION;
+  const updates = createUpdates({
+    dataDir,
+    log,
+    release,
+    sys: u.sys ?? realSys,
+    self: { execPath: u.execPath ?? process.execPath, how: selfHow, arch: process.arch, port: opts.port ?? Number(process.env.DUCTER_PORT || 7777), env: process.env },
+    name: () => osHostname().replace(/\.local$/, ""),
+    version,
+    workers: () => ({
+      online: () =>
+        workers.online().map((w) => ({ id: w.deviceId, name: w.name, ...(w.hello?.version ? { version: w.hello.version } : {}), how: (w.hello?.how === "self" || w.hello?.how === "app" || w.hello?.how === "source" ? w.hello.how : "manual") as import("@ducter/protocol").UpdateHow })),
+      update: async (id, args) => {
+        const link = workers.link(id);
+        if (!link) return { ok: false, reason: "offline" };
+        return link.call<{ ok: boolean; reason?: import("@ducter/protocol").UpdateReason; detail?: string }>("update", args, 30_000);
+      },
+    }),
+    critical: () => runner?.critical?.() ?? [],
+    holdCritical: (why) => runner?.holdCritical?.(why),
+    working: () => tasks.list().filter((c) => c.attention === "working").length,
+    settings: () => settings.get(),
+    ...(u.run ? { run: u.run } : {}),
+    ...(u.autoEveryMs !== undefined ? { autoEveryMs: u.autoEveryMs } : testing ? { autoEveryMs: 0 } : {}),
+    ...(u.graceMs !== undefined ? { graceMs: u.graceMs } : {}),
+    ...(u.criticalWaitMs !== undefined ? { criticalWaitMs: u.criticalWaitMs } : {}),
+  });
+  updatesRef = updates;
+  devicesView = createDevicesView({ dataDir, auth: devices, workers, connected: () => ws.connected(), probes: opts.deviceProbes, updates: () => updates, self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` } });
+  updates.onChange(() => devicesView?.changed());
   devicesView.harnessesNow(); // probe once at start, so the partner's first turn knows who is signed in
   const sockets = splitSockets(ws.websocket, workers, { isLive: (id) => devices.isLive(id), nameOf: (id) => devices.list().find((d) => d.id === id)?.name, sweepMs: opts.sweepMs });
   const apns = opts.apns ?? createApnsSender(loadApnsConfig(dataDir));
@@ -325,7 +371,7 @@ export function startCore(opts: CoreOptions = {}): Core {
         return srv.upgrade(req, { data }) ? undefined : new Response("upgrade failed", { status: 400 });
       }
       if (url.pathname === "/mcp") return mcp.handle(req);
-      if (url.pathname === "/health") return Response.json({ ok: true, headSeq: log.head(), build: BUILD });
+      if (url.pathname === "/health") return Response.json({ ok: true, headSeq: log.head(), build: BUILD, version });
       return new Response("not found", { status: 404 });
     },
     websocket: sockets,
@@ -352,6 +398,8 @@ export function startCore(opts: CoreOptions = {}): Core {
     loadout,
     connections,
     changes,
+    updates,
+    release,
     port,
     url: `ws://127.0.0.1:${port}/ws`,
     setRunner(r) {
@@ -382,6 +430,8 @@ export function startCore(opts: CoreOptions = {}): Core {
       work.stop();
       changes.stop();
       pusher.stop();
+      updates.stop();
+      release.stop();
       void server.stop(true); // awaiting hangs in Bun 1.3 when a WebSocket was open
       log.close();
       devices.close();

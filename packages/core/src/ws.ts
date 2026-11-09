@@ -57,6 +57,8 @@ export interface WsDeps {
   work?: WorkFrames;
   /** 开一件事 / New task (D128, newtask.ts); absent in tests that don't need it. */
   newTask?: NewTaskFrames;
+  /** D146: updating devices in place (updates.ts); absent in tests that don't need it. */
+  updates?: () => import("./updates.ts").Updates | undefined;
   batchMs?: number;
 }
 
@@ -367,6 +369,28 @@ export function createWsHandler(deps: WsDeps) {
         watchDevices();
         send(ws, v.rename(String(f.device ?? ""), String(f.name ?? "")));
         return; // a rename pushes a fresh devices frame to every subscriber
+      }
+      case "disconnect_device": {
+        const v = devicesView();
+        if (!v) throw new Error("devices are not available");
+        watchDevices();
+        send(ws, v.disconnect(String(f.device ?? "")));
+        return; // pushes a fresh devices frame to every subscriber
+      }
+      case "device_update": {
+        const u = deps.updates?.();
+        const device = String(f.device ?? "local");
+        if (!u) return send(ws, { t: "update_result", device, ok: false, reason: "failed", detail: "updates are not available" });
+        watchDevices();
+        if (f.check) {
+          await u.check();
+          const v = devicesView();
+          const view = v ? (await v.frame()).devices.find((x) => x.id === device || x.name === device)?.update : undefined;
+          return send(ws, { t: "update_result", device, ok: true, ...(view ? { update: view } : {}) });
+        }
+        const r = await u.start(device, typeof f.to === "string" && f.to ? { to: f.to } : {});
+        send(ws, r.ok ? { t: "update_result", device, ok: true } : { t: "update_result", device, ok: false, reason: r.reason, ...(r.detail ? { detail: r.detail } : {}) });
+        return; // progress pushes fresh devices frames to every subscriber
       }
       case "settings": {
         if (!deps.settings) throw new Error("settings are not available");

@@ -1019,7 +1019,55 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
   (sweepFirst as { unref?: () => void } | undefined)?.unref?.();
   (sweepTimer as { unref?: () => void } | undefined)?.unref?.();
 
+  async function mergeNow(taskId: string) {
+    const t = get(taskId);
+    const card = core.tasks.get(taskId) ?? t.card;
+    const r = await t.ops.merge(card.place);
+    if (!r.ok) return r;
+    logEvent(t, { role: "system", from: "runner", text: r.message, raw: { effect: "merge", ref: r.ref } });
+    await archiveAfterMerge(t, card.place);
+    return r;
+  }
+
+  async function undoFolderNow(taskId: string, o: { path?: string; force?: boolean } = {}) {
+    const t = get(taskId);
+    if (!folderOf(t)) return { ok: false, message: "This task doesn't work in a folder." };
+    // While it works there, putting the folder back would race it.
+    if (isBusy(t)) return { ok: false, message: "It's still working in this folder. Stop it first, then undo." };
+    const r = await t.ops.folder.undo(taskId, o);
+    if (r.ok) logEvent(t, { role: "system", from: "runner", raw: { message: r.message, effect: o.path ? "folder_restore" : "folder_undo", ...(o.path ? { path: o.path } : {}) } });
+    return r;
+  }
+
+  async function keepFolderNow(taskId: string) {
+    const t = get(taskId);
+    if (!folderOf(t)) return { ok: false, message: "This task doesn't work in a folder." };
+    const r = await t.ops.folder.keep(taskId);
+    if (r.ok) logEvent(t, { role: "system", from: "runner", raw: { message: r.message, effect: "folder_keep" } });
+    return r;
+  }
+
+  // D146: what a restart mustn't cut short (a merge, an undo, a keep), and the hold an update
+  // sets while it restarts Ducter.
+  const inCritical = new Map<string, number>();
+  let criticalHold: string | undefined;
+  async function critical<R>(taskId: string, refused: R, fn: () => Promise<R>): Promise<R> {
+    if (criticalHold) return refused;
+    inCritical.set(taskId, (inCritical.get(taskId) ?? 0) + 1);
+    try {
+      return await fn();
+    } finally {
+      const n = (inCritical.get(taskId) ?? 1) - 1;
+      if (n > 0) inCritical.set(taskId, n);
+      else inCritical.delete(taskId);
+    }
+  }
+
   const runner: RunnerExt = {
+    critical: () => [...inCritical.keys()],
+    holdCritical(why) {
+      criticalHold = why;
+    },
     harness,
 
     sweepArchive,
@@ -1210,13 +1258,15 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     },
 
     async merge(taskId) {
-      const t = get(taskId);
-      const card = core.tasks.get(taskId) ?? t.card;
-      const r = await t.ops.merge(card.place);
-      if (!r.ok) return r;
-      logEvent(t, { role: "system", from: "runner", text: r.message, raw: { effect: "merge", ref: r.ref } });
-      await archiveAfterMerge(t, card.place);
-      return r;
+      return critical(taskId, { ok: false, message: criticalHold ?? "" }, () => mergeNow(taskId));
+    },
+
+    async undoFolder(taskId, o = {}) {
+      return critical(taskId, { ok: false, message: criticalHold ?? "" }, () => undoFolderNow(taskId, o));
+    },
+
+    async keepFolder(taskId) {
+      return critical(taskId, { ok: false, message: criticalHold ?? "" }, () => keepFolderNow(taskId));
     },
 
     async openPr(taskId) {
@@ -1254,23 +1304,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       return summary;
     },
 
-    async undoFolder(taskId, o = {}) {
-      const t = get(taskId);
-      if (!folderOf(t)) return { ok: false, message: "This task doesn't work in a folder." };
-      // While it works there, putting the folder back would race it.
-      if (isBusy(t)) return { ok: false, message: "It's still working in this folder. Stop it first, then undo." };
-      const r = await t.ops.folder.undo(taskId, o);
-      if (r.ok) logEvent(t, { role: "system", from: "runner", raw: { message: r.message, effect: o.path ? "folder_restore" : "folder_undo", ...(o.path ? { path: o.path } : {}) } });
-      return r;
-    },
 
-    async keepFolder(taskId) {
-      const t = get(taskId);
-      if (!folderOf(t)) return { ok: false, message: "This task doesn't work in a folder." };
-      const r = await t.ops.folder.keep(taskId);
-      if (r.ok) logEvent(t, { role: "system", from: "runner", raw: { message: r.message, effect: "folder_keep" } });
-      return r;
-    },
 
     whenStarted(taskId) {
       return get(taskId).started;

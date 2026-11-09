@@ -17,6 +17,7 @@ import { fetchSnapshot, formatSnapshot, pickTask, taskAction, toMerge } from "./
 import { cmdDevices, cmdPair, cmdService, ducterCommand, fetchPublicIp, isLoopback, publicUrl } from "./remote.ts";
 import { caddyfileFor, cmdDomain, realDomainSys, removeDucterSite } from "./domain.ts";
 import { cmdWorker } from "./worker.ts";
+import { cmdUpdate } from "./update.ts";
 import { agentLabel, executeUninstall, formatPlan, planUninstall } from "./uninstall.ts";
 import { osText, versionsText, writeReport } from "./report.ts";
 import { parentPid, watchParent } from "./parent.ts";
@@ -63,6 +64,7 @@ export function helpText(t: T): string {
     cmd("worker", t("help.worker")),
     cmd("uninstall", t("help.uninstall")),
     cmd("report", t("help.report")),
+    cmd("update", t("help.update")),
     "",
     t("help.options"),
     opt("--port <n>", t("help.port")),
@@ -84,6 +86,8 @@ export function helpText(t: T): string {
     opt("--all", t("help.all")),
     opt("--dry-run", t("help.dryRun")),
     opt("--yes", t("help.yes")),
+    opt("--check", t("help.check")),
+    opt("--to <version>", t("help.to")),
     opt("--include-conversation", t("help.includeConversation")),
     opt("--out <dir>", t("help.out")),
   ].join("\n");
@@ -631,6 +635,8 @@ export async function run(argv: string[]): Promise<number | "running"> {
       });
     case "worker":
       return cmdWorker({ t, style, args, dataDir });
+    case "update":
+      return cmdUpdate({ t, style, args, port, dataDir });
   }
 }
 

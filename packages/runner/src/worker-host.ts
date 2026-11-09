@@ -26,7 +26,14 @@ export interface WorkerHost {
   /** The socket to the main is gone: close every session (the main resumes them by id later). */
   closeAll(): Promise<void>;
   sessions(): number;
+  /** D146: ops a restart mustn't cut short (merge, archive, folder undo/keep) running now. */
+  critical(): number;
+  /** Sessions in the middle of a turn. */
+  turning(): number;
 }
+
+/** The ops an update waits for before it restarts this worker (D146 (4)). */
+const CRITICAL_OPS = new Set(["merge", "archive", "folderUndo", "folderKeep"]);
 
 /** Main's loopback MCP URL → the main's address as seen from here, plus the device token. */
 export function rewriteMcp(spec: SessionSpec, mainBase: string, deviceToken: string): SessionSpec {
@@ -138,16 +145,21 @@ export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
     check: (a) => runCheck(a.spec),
   };
 
+  let inCritical = 0;
   return {
     async handle(f) {
       if (f.t !== "req" || typeof f.id !== "number") return;
       const op = ops[f.op ?? ""];
+      const crit = CRITICAL_OPS.has(f.op ?? "");
+      if (crit) inCritical++;
       try {
         if (!op) throw new Error(`unknown op ${f.op}`);
         const result = await op(f.args ?? {});
         o.send({ t: "res", id: f.id, ok: true, result: result ?? null });
       } catch (err) {
         o.send({ t: "res", id: f.id, ok: false, error: err instanceof Error ? err.message : String(err) });
+      } finally {
+        if (crit) inCritical--;
       }
     },
     async closeAll() {
@@ -156,5 +168,7 @@ export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
       await Promise.all(all.map((s) => s.close().catch(() => {})));
     },
     sessions: () => sessions.size,
+    critical: () => inCritical,
+    turning: () => [...sessions.values()].filter(busyOf).length,
   };
 }

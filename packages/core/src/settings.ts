@@ -26,6 +26,8 @@ interface SettingsFile {
   windows?: WindowsInput;
   /** 记下了 lines forgotten here, by seq (Mem forgot them, or they are only hidden). */
   hidden?: number[];
+  /** D146: update at night (off by default). */
+  autoUpdate?: boolean;
 }
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -96,6 +98,7 @@ export function openSettings(opts: {
       brain: data.brain ?? defaultBrain(opts.env ?? process.env),
       ...(data.taskAccounts ? { taskAccounts: data.taskAccounts } : {}),
       windows: windowsNow().windows,
+      autoUpdate: data.autoUpdate === true,
     };
   };
 
@@ -163,6 +166,7 @@ export function openSettings(opts: {
       if (typeof patch.memory === "boolean" && !opts.memoryPinnedOff) {
         if ((data.memory !== false) !== patch.memory) (data.memory = patch.memory), did.push("memory");
       }
+      if (typeof patch.autoUpdate === "boolean" && (data.autoUpdate === true) !== patch.autoUpdate) (data.autoUpdate = patch.autoUpdate), did.push("autoUpdate");
       if (typeof patch.defaultAfterMin === "number" && (DEFAULT_AFTER_CHOICES as readonly number[]).includes(patch.defaultAfterMin)) {
         if ((data.defaultAfterMin ?? 30) !== patch.defaultAfterMin) (data.defaultAfterMin = patch.defaultAfterMin), did.push("defaultAfterMin");
       }

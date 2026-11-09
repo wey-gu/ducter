@@ -1,3 +1,4 @@
+import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 // Pairing codes, device tokens, and the gate in front of core's routes. No model calls.
 import { afterEach, describe, expect, test } from "bun:test";
 import { readFileSync, statSync } from "node:fs";
@@ -276,7 +277,7 @@ describe("gate on a real server", () => {
     expect((await fetch(`${base}/ws`, { headers: { ...REMOTE, upgrade: "websocket" } })).status).toBe(401);
     expect(await (await fetch(`${base}/health`, { headers: REMOTE })).json()).toEqual({ ok: true });
     // Locally it also says which build runs (Ducter.app restarts a background Ducter left on an old helper).
-    expect(await (await fetch(`${base}/health`)).json()).toEqual({ ok: true, headSeq: core.log.head(), build: "dev" });
+    expect(await (await fetch(`${base}/health`)).json()).toEqual({ ok: true, headSeq: core.log.head(), build: "dev", version: DUCTER_VERSION });
 
     const bad = await fetch(`${base}/pair`, { method: "POST", headers: REMOTE, body: JSON.stringify({ code: "AAAA-AAAA", name: "x" }) });
     expect(bad.status).toBe(401);

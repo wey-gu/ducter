@@ -17,6 +17,7 @@ export type DevicesFrame = Extract<ServerFrame, { t: "devices" }>;
 export type AbilityResult = Extract<ServerFrame, { t: "ability_result" }>;
 export type PairCodeFrame = Extract<ServerFrame, { t: "pair_code" }>;
 export type RenameResult = Extract<ServerFrame, { t: "rename_result" }>;
+export type DisconnectResult = Extract<ServerFrame, { t: "disconnect_result" }>;
 
 export type Exec = (argv: string[], timeoutMs?: number) => Promise<{ code: number; out: string }>;
 
@@ -49,6 +50,10 @@ export interface DevicesOptions {
   /** How long probe results are reused (default 60 s); `refresh` drops them. */
   cacheMs?: number;
   now?: () => number;
+  /** D146: version and update state per device. */
+  updates?: () => import("./updates.ts").Updates | undefined;
+  /** The home's own Ducter version and how it updates. */
+  self?: { version: string; how: import("@ducter/protocol").UpdateHow; platform: string };
 }
 
 export interface DevicesView {
@@ -57,6 +62,8 @@ export interface DevicesView {
   pairCode(): Promise<PairCodeFrame>;
   /** 改名字 / Rename a paired device (D84). The machine Ducter lives on keeps its host name. */
   rename(device: string, name: string): RenameResult;
+  /** 断开 / Disconnect a paired device (D146 (11)): the same revoke as `ducter devices disconnect`. */
+  disconnect(device: string): DisconnectResult;
   onChange(fn: () => void): () => void;
   /** Something changed (a device paired, a socket came or went): tell the subscribers. */
   changed(): void;
@@ -242,7 +249,11 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
       state: "awake", // this answer comes from it
       harnesses: me.harnesses.map((h) => deviceHarness(h)),
       abilities: [webAbility(me.cua, me.native), later("computer"), { id: "remote", state: remoteOn ? "on" : "off" }, later("phone"), later("call")],
+      ...(o.self ? { version: o.self.version, platform: o.self.platform } : {}),
     };
+    const up = o.updates?.();
+    const homeUpdate = o.self ? up?.view("local", o.self.version, o.self.how) : undefined;
+    if (homeUpdate) home.update = homeUpdate;
     const online = new Map(o.workers.online().map((w) => [w.deviceId, w]));
     const away = o.workers.away();
     const workers: DeviceView[] = o.auth
@@ -265,6 +276,11 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
           state,
           ...(lastSeen ? { lastSeen } : {}),
           ...(hello?.version ? { version: hello.version } : {}),
+          ...(d.platform ? { platform: d.platform } : {}),
+          ...((): { update?: DeviceView["update"] } => {
+            const u = up?.view(d.id, hello?.version, hello?.how === "self" || hello?.how === "app" || hello?.how === "source" ? hello.how : "manual");
+            return u ? { update: u } : {};
+          })(),
           harnesses: (hello?.harnesses ?? []).map((h) => deviceHarness({ harness: h.id, installed: h.installed, loggedIn: h.loggedIn })),
           // Browser places run on the machine Ducter lives on only, for now (runner.ts).
           abilities: [{ id: "web", state: "unavailable", reason: "home_only" }, later("computer"), later("phone"), later("call")],
@@ -348,11 +364,21 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
     return { t: "rename_result", device: r.device.id, ok: true, name: r.device.name };
   }
 
+  function disconnect(device: string): DisconnectResult {
+    if (device === "local") return { t: "disconnect_result", device, ok: false, reason: "home" };
+    const gone = o.auth.revoke(device);
+    if (!gone.length) return { t: "disconnect_result", device, ok: false, reason: "unknown_device" };
+    // Its live socket is closed by the next sweep (workers.ts splitSockets, ≤ 10 s).
+    changed();
+    return { t: "disconnect_result", device: gone[0]!.id, ok: true };
+  }
+
   return {
     frame,
     setAbility,
     pairCode,
     rename,
+    disconnect,
     onChange(fn) {
       fns.add(fn);
       return () => fns.delete(fn);

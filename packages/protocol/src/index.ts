@@ -237,6 +237,10 @@ export interface Bodies {
   // show one quiet line under the reply: "记下了 · <title>" / "Noted · <title>". Never a card,
   // never a notification. Provenance lives in Mem, not here.
   memory_noted: { title: string; memoryId?: string; replyTo?: number };
+  // D146: one step of a device's update, on the "devices" stream (origin "system"). device is
+  // "local" for the home or a paired device id; name is its name then. Clients show the latest
+  // on the device's card; the partner reads it only when asked.
+  device_update: { device: string; name: string; phase: UpdatePhase; from: string; to: string; reason?: UpdateReason; detail?: string; rolledBack?: boolean };
   // Nowledge Bridge (behind DUCTER_BRIDGE=1, design/bridge.md). "in": a message another agent
   // sent the persona (origin "peer"); its text is untrusted task context, never the user's
   // permission. "out": the partner's reply to one (origin "partner"). Clients show one quiet
@@ -517,6 +521,13 @@ export type ClientFrame =
   // rename_device: 改名字 / Rename a paired device (another computer, a phone; D84). Answered with
   // rename_result, then a fresh devices frame. The machine Ducter lives on keeps its own name.
   | { t: "rename_device"; device: string; name: string }
+  // D146: disconnect_device: 断开 / Disconnect a paired device (the same revoke as `ducter devices
+  // disconnect`); answered with disconnect_result, then a fresh devices frame. The home can't be.
+  // device_update: update that device in place (to: a version, only to go back or pin; check:
+  // read the latest release again and only report). Answered with update_result; progress
+  // arrives as fresh devices frames and device_update events.
+  | { t: "disconnect_device"; device: string }
+  | { t: "device_update"; device: string; to?: string; check?: boolean }
   // The partner's and the app's settings (D71): "settings" answers with a settings frame and
   // keeps the socket subscribed (every change goes to every subscriber). "settings_set" changes
   // some of them. "memory_forget" forgets one 记下了 / Noted line: in Nowledge Mem when it has the
@@ -596,6 +607,8 @@ export type ServerFrame =
   | { t: "ability_result"; device: string; ability: AbilityId; on: boolean; ok: boolean; reason?: AbilityReason; detail?: string }
   | { t: "pair_code"; code: string; expiresAt: string; address?: string; link?: string; qr?: string[] }
   | { t: "rename_result"; device: string; ok: boolean; name?: string; reason?: "unknown_device" | "empty" | "name_taken" | "home" }
+  | { t: "disconnect_result"; device: string; ok: boolean; reason?: "unknown_device" | "home" }
+  | { t: "update_result"; device: string; ok: boolean; reason?: UpdateReason; detail?: string; update?: DeviceUpdate }
   | { t: "settings"; settings: Settings; mem: MemView; forgot?: { seq: number; how: "mem" | "hidden" } }
   | { t: "rules"; rules: RuleView[] }
   | { t: "candidates"; taskId: string; candidates: Candidate[] }
@@ -686,9 +699,53 @@ export interface DeviceView {
   home: boolean; // Ducter lives here
   state: DeviceState;
   lastSeen?: string; // ISO; for a device that isn't awake
-  version?: string; // cua-driver or worker version, informational
+  version?: string; // the Ducter version it runs (the home's own; a worker's from its hello)
   harnesses: DeviceHarness[];
   abilities: DeviceAbility[];
+  /** D146: where its Ducter stands against the latest release, and an update under way. */
+  update?: DeviceUpdate;
+  /** linux-x64, darwin-arm64…: what it is, for its card's plain words. */
+  platform?: string;
+}
+
+// ---------- Updating in place (D146, design/system.md "Updating in place") ----------
+
+/**
+ * self: a Linux `ducter` that updates itself (the server bundle). app: a Mac whose ducter lives
+ * in Ducter.app; the app's own updater does it (D72). source: run from a checkout (git pull).
+ */
+export type UpdateHow = "self" | "app" | "source" | "manual"; // manual: a Ducter too old to update from here (before 0.0.4): run the installer there once
+/** 在下载 · 在核对 · 等手头的事停好 · 在重启 · 回来了 · 没更新成 */
+export type UpdatePhase = "downloading" | "verifying" | "waiting" | "restarting" | "done" | "failed";
+/**
+ * Why an update didn't happen. network: GitHub couldn't be reached; no_release: nothing newer is
+ * published; no_asset: the release has no file for this machine; checksum: the download doesn't
+ * match SHA256SUMS.txt; disk: too little free space; selfcheck: the new ducter didn't start;
+ * busy: a merge or an undo kept running; health: the new one didn't come up (rolled back);
+ * downgrade: older than this one without an explicit version; not_writable: its folder can't be
+ * written; app / source: updated another way (how); offline: the device isn't connected;
+ * running: an update is already under way; failed: anything else (detail).
+ */
+export type UpdateReason = "network" | "no_release" | "no_asset" | "checksum" | "disk" | "selfcheck" | "busy" | "health" | "downgrade" | "not_writable" | "app" | "source" | "manual" | "offline" | "running" | "failed";
+
+export interface DeviceUpdate {
+  current: string;
+  latest?: string;
+  available: boolean; // latest is newer than current
+  /** The release notes' first plain lines (what's new), at most two. */
+  notes?: string[];
+  security?: boolean; // the notes name a security fix
+  how: UpdateHow;
+  /** An update under way or just finished; absent when idle. */
+  phase?: UpdatePhase;
+  progress?: number; // downloading, 0..1
+  from?: string;
+  to?: string;
+  reason?: UpdateReason; // failed
+  detail?: string;
+  rolledBack?: boolean; // failed after the swap: the previous version runs again
+  at?: string; // ISO, when phase was entered
+  checkedAt?: string; // ISO, when the latest release was last read
 }
 
 /** Who can reach this Ducter from elsewhere (paired clients), and the address they use. */
@@ -771,6 +828,8 @@ export interface Settings {
   taskAccounts?: Partial<Record<HarnessId, { enabled: boolean }>>;
   /** D135: the context windows the partner and tasks run on (settings.json + env; no UI yet). */
   windows?: ContextWindows;
+  /** D146: update Ducter and its computers at night, in quiet hours, when nothing is working. Off by default. */
+  autoUpdate?: boolean;
 }
 
 /**

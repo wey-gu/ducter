@@ -1,6 +1,6 @@
 // Argument parsing for `ducter`. Pure: no env, no I/O, so it is easy to test.
 
-export type Command = "up" | "open" | "doctor" | "status" | "version" | "help" | "pair" | "devices" | "service" | "domain" | "worker" | "uninstall" | "report" | "merge" | "undo" | "task" | "say" | "tail" | "answer" | "connect" | "disconnect";
+export type Command = "up" | "open" | "doctor" | "status" | "version" | "help" | "pair" | "devices" | "service" | "domain" | "worker" | "uninstall" | "report" | "merge" | "undo" | "task" | "say" | "tail" | "answer" | "connect" | "disconnect" | "update";
 
 export interface Args {
   command: Command;
@@ -29,11 +29,14 @@ export interface Args {
   dnsCheck?: boolean; // false with domain --no-dns-check
   local?: boolean; // --local: a home command acts on this machine's Ducter (D147)
   home?: string; // --home <address>: a home command goes there, this once (D147)
+  check?: boolean; // update --check: only report
+  to?: string; // update --to <version>: this version, even an older one
+  finish?: string; // update --finish <plan.json> (internal: the restart helper, D146)
 }
 
 export type ParseResult = { ok: true; args: Args } | { ok: false; error: { key: "err.unknownCommand" | "err.unknownFlag" | "err.missingValue" | "err.badPort" | "err.badTimeout"; vars: Record<string, string> } };
 
-const COMMANDS = new Set<Command>(["up", "open", "doctor", "status", "version", "help", "pair", "devices", "service", "domain", "worker", "uninstall", "report", "merge", "undo", "task", "say", "tail", "answer", "connect", "disconnect"]);
+const COMMANDS = new Set<Command>(["up", "open", "doctor", "status", "version", "help", "pair", "devices", "service", "domain", "worker", "uninstall", "report", "merge", "undo", "task", "say", "tail", "answer", "connect", "disconnect", "update"]);
 /** Commands that take words after them (`ducter devices revoke a1b2`, `ducter service install`). */
 const WITH_REST = new Set<Command>(["devices", "service", "domain", "merge", "undo", "open", "task", "say", "tail", "answer", "connect"]);
 const ALIASES: Record<string, Command> = {
@@ -146,6 +149,16 @@ export function parseArgs(argv: string[]): ParseResult {
         if (v === undefined) return { ok: false, error: { key: "err.missingValue", vars: { flag: a } } };
         if (!/^\d+$/.test(v) || Number(v) < 1) return { ok: false, error: { key: "err.badTimeout", vars: { value: v } } };
         args.timeout = Number(v);
+        continue;
+      }
+      case "--check":
+        args.check = true;
+        continue;
+      case "--to":
+      case "--finish": {
+        const v = value();
+        if (v === undefined || !v.trim()) return { ok: false, error: { key: "err.missingValue", vars: { flag: a } } };
+        args[a.slice(2) as "to" | "finish"] = v.trim();
         continue;
       }
       case "--out": {

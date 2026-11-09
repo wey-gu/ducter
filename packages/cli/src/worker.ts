@@ -15,6 +15,9 @@ import { scriptedHarness } from "./scripted.ts";
 import { localDeviceKind } from "@ducter/core/src/devices.ts";
 import { probeHarnesses as probeLocalHarnesses } from "@ducter/core/src/harness-probe.ts";
 import { migrateKeys, readKeys, scrubKeysFromEnv } from "@ducter/protocol/src/keys.ts";
+import { isCompiled } from "./doctor.ts";
+import { createWorkerUpdater, lastOutcome, type WorkerUpdater } from "./update.ts";
+import { updateHow, writeAlive } from "@ducter/core/src/update.ts";
 
 /** Exit status when the main refuses this worker; the unit sets RestartPreventExitStatus to it. */
 export const EXIT_REFUSED = 3;
@@ -118,11 +121,20 @@ export async function cmdWorker(o: { t: T; style: Style; args: Args; dataDir: st
     kind: await localDeviceKind(),
     version: pkg.version,
     harnesses: await probeHarnesses(t, o.dataDir),
+    // D146: how this computer updates, and how its last update went (once, after its restart).
+    how: updateHow({ compiled: isCompiled(), platform: platform(), execPath: process.execPath }),
+    ...((u) => (u ? { update: u } : {}))(lastOutcome(o.dataDir)),
   };
   // DUCTER_SCRIPTED_MODEL=1: canned model words, real tools (scripted.ts), for demos and e2e.
   const harness = process.env.DUCTER_SCRIPTED_MODEL === "1" ? scriptedHarness(runnerMod) : runnerMod.createOarHarnessPort({ dataDir: o.dataDir });
   const s = saved;
-  return stayConnected(s, hello, t, style, (send) => runnerMod.createWorkerHost({ dataDir: o.dataDir, harness, mainBase: s.url, deviceToken: s.token, send }));
+  const dataDir = o.dataDir;
+  const updater = createWorkerUpdater({ dataDir, version: pkg.version, how: hello.how });
+  return stayConnected(s, hello, t, style, (send) => runnerMod.createWorkerHost({ dataDir, harness, mainBase: s.url, deviceToken: s.token, send }), updater, () => {
+    // Reached the main: a restart after an update is healthy now (update.ts waitHealthy).
+    writeAlive(dataDir, pkg.version);
+    lastOutcome(dataDir, { markReported: true });
+  });
 }
 
 /** One outbound socket, reconnecting with backoff; exits only when the main refuses this worker. */
@@ -132,6 +144,8 @@ async function stayConnected(
   t: T,
   style: Style,
   makeHost: (send: (f: object) => void) => runnerMod.WorkerHost,
+  updater?: WorkerUpdater,
+  onWelcome?: () => void,
 ): Promise<number> {
   let backoff = 1000;
   let announced = false;
@@ -148,9 +162,13 @@ async function stayConnected(
       };
       ws.onmessage = (m) => {
         const f = JSON.parse(String(m.data));
+        // D146: the update op runs beside the host; it reports over whichever socket is up.
+        if (f.t === "req" && f.op === "update" && updater) return void updater.handle(f, (x) => ws.readyState === WebSocket.OPEN && ws.send(JSON.stringify(x)), host);
         if (f.t === "req") return void host.handle(f);
         if (f.t === "welcome") {
           backoff = 1000;
+          updater?.attach((x) => ws.readyState === WebSocket.OPEN && ws.send(JSON.stringify(x)));
+          onWelcome?.();
           if (!announced) console.log(`  ${style.ok("●")} ${t("worker.connected", { url: s.url, name: s.name })}`);
           announced = true;
         }

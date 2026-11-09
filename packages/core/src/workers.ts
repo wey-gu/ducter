@@ -23,6 +23,9 @@ export interface WorkerHello {
   /** laptop | mini | server: how the device is drawn on Your devices and abilities. */
   kind?: string;
   harnesses?: { id: string; installed: boolean; loggedIn: boolean }[];
+  /** D146: how it updates (self · app · source), and the outcome of its last update when it restarted for one. */
+  how?: string;
+  update?: import("./updates.ts").WorkerUpdateFrame;
 }
 
 /** What the main last knew of a worker that isn't connected now. */
@@ -130,6 +133,8 @@ export function createWorkers(opts: {
   now?: () => Date;
   /** Paired devices by id or name, for links to workers that are offline right now. */
   find?: (idOrName: string) => Device | undefined;
+  /** D146: a worker said how its update goes (a frame, or the outcome in its hello). */
+  onUpdate?: (deviceId: string, name: string, f: import("./updates.ts").WorkerUpdateFrame) => void;
 }): Workers {
   const now = opts.now ?? (() => new Date());
   type Live = { ws: ServerWebSocket<WorkerSocketData>; hello?: WorkerHello };
@@ -286,10 +291,12 @@ export function createWorkers(opts: {
           send(ws, { t: "welcome", personaName: opts.personaName(), deviceId: ws.data.device.id, at: now().toISOString() });
           for (const fn of st.onOnline) queueMicrotask(fn);
           changed();
+          if (f.update?.t === "update") opts.onUpdate?.(ws.data.device.id, nameOf(st), f.update);
         } else if (f?.t === "ping") send(ws, { t: "pong" });
         // The worker's OS is putting it to sleep: when its socket goes, it is 睡着了 / Asleep,
         // not 连不上 / Can't reach (A3: "Asleep" only when the device told us).
         else if (f?.t === "sleep") sleeping.add(ws.data.device.id), changed();
+        else if (f?.t === "update") opts.onUpdate?.(ws.data.device.id, nameOf(st), f);
         else if (f?.t === "res") {
           const p = st.pending.get(f.id);
           if (!p) return;

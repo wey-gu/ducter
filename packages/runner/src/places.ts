@@ -48,9 +48,11 @@ export async function planPlace(place: Place | undefined, taskId: string, title:
     }
     case "repo": {
       const repoPath = resolve(expandHome(p.repoPath));
+      // Whether Open draft PR can work at all (fresh-user QA: offered on a repo with no origin).
+      const hasRemote = existsSync(repoPath) ? { hasRemote: (await git(repoPath, ["remote", "get-url", "origin"])).ok } : {};
       if (p.worktree) {
         const wt = resolve(expandHome(p.worktree));
-        return { place: { ...p, repoPath, worktree: wt }, cwd: wt };
+        return { place: { ...p, repoPath, worktree: wt, ...hasRemote }, cwd: wt };
       }
       const worktree = join(dataDir, "worktrees", taskId);
       let branch = p.branch ?? `ducter/${slugify(title)}`;
@@ -63,7 +65,7 @@ export async function planPlace(place: Place | undefined, taskId: string, title:
         const head = await git(repoPath, ["rev-parse", "--abbrev-ref", "HEAD"]);
         baseBranch = head.ok && head.out !== "HEAD" ? head.out : undefined;
       }
-      return { place: { ...p, repoPath, worktree, branch, baseBranch }, cwd: worktree };
+      return { place: { ...p, repoPath, worktree, branch, baseBranch, ...hasRemote }, cwd: worktree };
     }
     case "browser":
       // The browser itself is a sidecar (browser.ts); the task also gets a scratch dir.

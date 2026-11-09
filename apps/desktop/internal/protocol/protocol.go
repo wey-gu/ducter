@@ -54,6 +54,8 @@ type Place struct {
 	BaseBranch string `json:"baseBranch,omitempty"`
 	Path       string `json:"path,omitempty"`
 	Profile    string `json:"profile,omitempty"`
+	// HasRemote: the repo has an origin to push to (nil: unknown, a task from before it).
+	HasRemote *bool `json:"hasRemote,omitempty"`
 }
 
 // ---------- Log events ----------

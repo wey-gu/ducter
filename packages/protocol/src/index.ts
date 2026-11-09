@@ -26,7 +26,9 @@ export type Residency = "provisioning" | "hot" | "warm" | "parked" | "archived" 
 
 export type Place =
   | { kind: "none"; device?: string } // device: where a place-less task runs (a worker); default this machine
-  | { kind: "repo"; device: string; repoPath: string; worktree?: string; branch?: string; baseBranch?: string }
+  // hasRemote: whether the repo has an origin to push to (set when the task opens); false hides
+  // Open draft PR. Absent (tasks from before it): unknown, the action stays and says why if it fails.
+  | { kind: "repo"; device: string; repoPath: string; worktree?: string; branch?: string; baseBranch?: string; hasRemote?: boolean }
   | { kind: "folder"; device: string; path: string }
   | { kind: "browser"; device: string; profile: string };
 

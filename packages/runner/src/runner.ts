@@ -763,6 +763,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       const r = await t.ops.openPr(card.place);
       // Pushing and opening a PR leave the user's machines: an outside effect (I-results "Outside").
       if (r.ok) logEvent(t, { role: "system", from: "runner", text: r.message, raw: { effect: "outside", what: "draft_pr", ref: r.ref } });
+      // A failure stays on the task, not only in a toast that fades (fresh-user QA: no origin).
+      else logEvent(t, { role: "system", from: "runner", text: r.message, raw: { failed: "draft_pr" } });
       return r;
     },
 

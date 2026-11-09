@@ -10,7 +10,7 @@ import { startCore, type Core } from "../../core/src/core.ts";
 import { createRunner, mergeTaskBranch, openDraftPr, registerTaskTools } from "../src/index.ts";
 import { archiveWorktree, branchChanges, mergeRefusal } from "../src/integrate.ts";
 import { hasBranchChanges, type Bodies } from "@ducter/protocol";
-import { git } from "../src/places.ts";
+import { git, planPlace } from "../src/places.ts";
 
 let dir: string;
 beforeEach(() => void (dir = mkdtempSync(join(tmpdir(), "ducter-integrate-"))));
@@ -101,6 +101,26 @@ test("merge refusal copy: local changes in the way, many files, and anything els
   expect(mergeRefusal("\n*** Please tell me who you are.\nfatal: unable to auto-detect email address", "b", "main", false)).toBe(
     "git couldn't merge b into main: unable to auto-detect email address. Nothing changed.",
   );
+});
+
+// Fresh-user QA: Open draft PR was offered on a repo with no origin, and its failure faded.
+test("a repo place says whether it has a remote; a failed PR stays on the task", async () => {
+  const repo = join(dir, "repo");
+  Bun.spawnSync(["git", "init", "-q", "-b", "main", repo]);
+  sh(repo, "commit", "-q", "--allow-empty", "-m", "init");
+  const gh = join(dir, "gh");
+  writeFileSync(gh, "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+  const { core, runner, taskId } = await bootWithTask({ kind: "repo", device: "local", repoPath: repo }, { gh });
+  expect(core.tasks.get(taskId)!.place).toMatchObject({ kind: "repo", hasRemote: false });
+  const r = await runner.openPr(taskId);
+  expect(r).toMatchObject({ ok: false, message: "This repo has no origin remote to push to." });
+  const last = core.log.read({ stream: `task:${taskId}`, kinds: ["task_event"] }).at(-1)!.body as Bodies["task_event"];
+  expect(last).toMatchObject({ role: "system", text: "This repo has no origin remote to push to.", raw: { failed: "draft_pr" } });
+  await runner.dispose();
+  const other = join(dir, "other");
+  Bun.spawnSync(["git", "init", "-q", "-b", "main", other]);
+  sh(other, "remote", "add", "origin", join(dir, "remote.git"));
+  expect((await planPlace({ kind: "repo", device: "local", repoPath: other }, "t2", "x", join(dir, "data"))).place).toMatchObject({ hasRemote: true });
 });
 
 test("open_pr without the GitHub CLI says exactly how to fix it, and pushes nothing", async () => {

@@ -9,10 +9,10 @@ export interface Args {
   desktop: boolean; // false with --no-desktop
   json: boolean;
   headless?: boolean; // a server: no desktop, never opens anything
-  worker?: boolean; // pair --worker: a code for a worker device
+  worker?: boolean; // service install --worker; pair --worker (hidden alias: a code fixed to a worker)
   host?: string; // interface to bind; only ever set on purpose
   name?: string; // this device's name when joining as a worker
-  join?: string; // worker: the main process's URL
+  join?: string; // worker: the main process's address (`ducter worker <address>`; --join is a hidden alias)
   code?: string; // worker: a pairing code
   rest?: string[]; // words after devices / service (e.g. "revoke <id>")
   all?: boolean; // uninstall --all: everything, not only the background item
@@ -120,6 +120,11 @@ export function parseArgs(argv: string[]): ParseResult {
     if (a.startsWith("-")) return { ok: false, error: { key: "err.unknownFlag", vars: { flag: a } } };
     if (commandSeen && WITH_REST.has(args.command)) {
       (args.rest ??= []).push(a);
+      continue;
+    }
+    // `ducter worker <address> --code <code>` (D83): the address is the one word it takes.
+    if (commandSeen && args.command === "worker" && args.join === undefined) {
+      args.join = a;
       continue;
     }
     if (commandSeen) return { ok: false, error: { key: "err.unknownCommand", vars: { cmd: a } } };

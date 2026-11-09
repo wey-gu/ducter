@@ -192,6 +192,9 @@ export type ClientFrame =
   | { t: "devices"; refresh?: boolean }
   | { t: "ability"; device: string; ability: AbilityId; on: boolean }
   | { t: "pair_code" }
+  // rename_device: 改名字 / Rename a paired device (another computer, a phone; D84). Answered with
+  // rename_result, then a fresh devices frame. The machine Ducter lives on keeps its own name.
+  | { t: "rename_device"; device: string; name: string }
   // The partner's and the app's settings (D71): "settings" answers with a settings frame and
   // keeps the socket subscribed (every change goes to every subscriber). "settings_set" changes
   // some of them. "memory_forget" forgets one 记下了 / Noted line: in Nowledge Mem when it has the
@@ -212,6 +215,7 @@ export type ServerFrame =
   | { t: "devices"; devices: DeviceView[]; reach: Reach }
   | { t: "ability_result"; device: string; ability: AbilityId; on: boolean; ok: boolean; reason?: AbilityReason; detail?: string }
   | { t: "pair_code"; code: string; expiresAt: string; address?: string; link?: string; qr?: string[] }
+  | { t: "rename_result"; device: string; ok: boolean; name?: string; reason?: "unknown_device" | "empty" | "name_taken" | "home" }
   | { t: "settings"; settings: Settings; mem: MemView; forgot?: { seq: number; how: "mem" | "hidden" } }
   | { t: "error"; message: string };
 

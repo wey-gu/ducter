@@ -319,7 +319,10 @@ now". Nothing blinks; only the partner breathes.
 
 **Choices** (talk language, interface language, the default wait) are a segmented clay control
 (D76): a sunken track (`#F3E6D3`, radius 16, 4pt inset), the chosen one a white surface on a 2pt
-`#E0C9B0` base in ink 700, the others muted 500; switches are the platform's. A page's cards
+`#E0C9B0` base in ink 700, the others muted 500; switches are the platform's. The options
+share the track equally while every label fits on one line; when they don't (a 320 phone, the
+longer language), the control stacks its options one per row, under its label, and a label longer
+than its row wraps inside it. Nothing ever spills out of the track. A page's cards
 stand on the card base; an
 empty list (no noted lines) is left out with its heading. Screenshots:
 `.shots/ia-2026-11-09/` (native zh/en, full-length headless, the phone sheet).
@@ -442,6 +445,10 @@ of 20), building on `research/24`, `26`, `28` and D65's equip snap. Built in
 | a stitched clay socket beside them, the object faint inside it | an ability that can be added (or needs a fix first) | dashed accent ring while one is held over the stage, hovered or in flight |
 | small clay mailboxes on home's right rim | the user's connections (D96), at most three | |
 | a jetty from home, a ring of still water, a sign | the one-time code is out, waiting for a device (D83) | the scene makes room for the sign; the new island rises in that water |
+
+The website draws the same scene (`apps/site`, a wide and a narrow layout). Its narrow layout is
+spaced for a ~360 px stage; on a smaller phone the words on the tags shrink with the stage, down
+to 11 px (10 px on an account's tag), so neighbouring tags never meet.
 
 Layout: home in the middle; six spots round it (back right, back left, front right, front
 left, far left, far right), an island keeps its spot while it is there; the abilities' row sits

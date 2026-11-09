@@ -17,14 +17,14 @@ import (
 
 // Your devices and abilities against the mock main:
 //
-//	DUCTER_SHOTS=1 go test ./internal/views -run Abilities   # writes docs/abilities-*.png
+//	DUCTER_SHOTS=1 go test ./internal/views -run Abilities   # writes .shots/desktop/abilities-*.png
 
 func (h *harness) shotAs(name string) {
 	h.t.Helper()
 	if os.Getenv("DUCTER_SHOTS") == "" {
 		return
 	}
-	f, err := os.Create(filepath.Join("..", "..", "docs", name+".png"))
+	f, err := os.Create(filepath.Join(shotsDir(h.t), name+".png"))
 	if err != nil {
 		h.t.Fatal(err)
 	}
@@ -210,7 +210,7 @@ func TestAbilitiesNarrow(t *testing.T) {
 //	  go test ./internal/views -run AbilitiesLive -v
 //
 // It removes 上网 if it is on, adds it back by tapping, and shows the
-// pairing code of 远程打开; screenshots go to docs/abilities-live-*.png.
+// pairing code of 远程打开; screenshots go to .shots/desktop/abilities-live-*.png.
 func TestAbilitiesLive(t *testing.T) {
 	url := os.Getenv("DUCTER_LIVE_URL")
 	if url == "" {

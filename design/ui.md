@@ -175,7 +175,7 @@ you, each with Go / Hold / Reply…, then Open Ducter. The phone has one **Setti
 **Choices** (talk language, interface language, the default wait) are a row of flat choices, the
 chosen one in ink; switches are the platform's. A page's cards are containers on `Raised`; an
 empty list (no noted lines) is left out with its heading. Screenshots:
-`design/screens/ia-2026-11-09/` (native zh/en, full-length headless, the phone sheet).
+`.shots/ia-2026-11-09/` (native zh/en, full-length headless, the phone sheet).
 
 ## Three zoom levels (Core UI canvas: https://claude.ai/artifact/U9r15Tpm8AL7aGQZwrtbDL)
 
@@ -226,25 +226,27 @@ empty list (no noted lines) is left out with its heading. Screenshots:
 | Flows | https://claude.ai/artifact/LKuVp3knPDJ4EdoyWBGSWN | 21 key screens for groups A, B, D, E, C | draft |
 | Concept art | https://claude.ai/artifact/HAPoyBbrSkm6sYjqGoNMze | character and screen art directions, rounds 1–2 | round 2 recommended: puffy matte clay |
 | Loadout (2D) | https://claude.ai/artifact/CUpw7P1bPjKQKQYeLkUVzG | devices / AI accounts / ability-sticker interaction | grammar prototype; art to be replaced |
-| Phone web (built) | `design/screens/phone-*.png` (390×844, zh/en, light/dark) | the real `apps/web` client: conversation, decisions, On hand, opened task, pairing, notifications | built, pending review |
+| Phone web (built) | `.shots/phone-*.png` (390×844, zh/en, light/dark) | the real `apps/web` client: conversation, decisions, On hand, opened task, pairing, notifications | built, pending review |
 
 ### Screenshots of the built clients (2026-11-09)
 
 These are screenshots of the real clients, not canvases. Like the canvases, they decide nothing;
-they show what the code does today, for review against the docs.
+they show what the code does today, for review against the docs. They are not in git (D75): the
+tools write to `.shots/` (gitignored), the maintainer's archive is `~/dev/ducter-evidence` (same
+relative paths as before), and each review is shown as a published gallery.
 
 | Set | Files | How it was made | Shows |
 |---|---|---|---|
-| Desktop, mock | `apps/desktop/docs/{conversation,conversation-done,onhand,task,task-sent,task-done}.png` | headless renderer, mock server | the three zoom levels; README images |
-| Desktop, first run | `apps/desktop/docs/firstrun*.png` (`firstrun-empty-{zh,en,fresh}`, `firstrun-first-result`) | headless renderer | empty conversation with repo starters, the first-result line |
-| Desktop, first run live | `apps/desktop/docs/firstrun-live-{empty,ack,first-result,result-message}.png` | live: real `ducter up` + sonnet (`onboarding.md`) | the first five minutes, timed |
-| Desktop, live | `apps/desktop/docs/live-*.png` | live backend, real harness | ack, early send, task sent/done/result, On hand, reconnecting |
-| Desktop, remote | `apps/desktop/docs/remote-{conversation,onhand,device-unreachable}.png`, `connect{,-badcode,-revoked}.png` | VM over an SSH tunnel (`research/29`); connect cards headless | Connect to your Ducter, a worker that can't be reached |
-| Ducter.app | `apps/desktop/docs/app-*.png` | setup screens headless (fake backend); `app-live-first-reply` live; `app-dmg-finder`, `app-gatekeeper-macos15` real macOS screenshots; `app-icon` the drawn icon | checking, blocked, name, starting, stopped, CLI offer, Gatekeeper |
-| Polish pass | `apps/desktop/docs/polish-{before,after}-*.png` | native window (cua-driver) on a scripted backend, plus the headless renderer | the components above: buttons, chips, notices, the result sheet, rhythm |
-| Taste review | `apps/desktop/docs/review-{before,after}-{zh-1280,en-900}-*.png` | headless renderer, mock (`DUCTER_REVIEW`) | every screen at 1280 and 900 px, before and after the taste pass |
-| Phone web | `design/screens/phone-*.png` | headless browser at 390×844 on a demo core; `phone-real-sonnet-result-zh` from a real sonnet run | conversation, decision sheet, decided, On hand, task, result, pairing, notify ask, iOS hint, offline; dark variants |
-| Design QA (D73, D74) | `design/screens/qa-2026-11-09/{before,after}-*.png`, index in its `README.md` | native desktop window (cua-driver) on the demo seed, iOS Simulator, headless Chromium at 390 and 1440 (phone web, site) | no pills, the result line, the living message, On hand, the one-column task (done, working, didn't work), devices, setup, the site |
+| Desktop, mock | `.shots/desktop/{conversation,conversation-done,onhand,task,task-sent,task-done}.png` | headless renderer, mock server | the three zoom levels; README images |
+| Desktop, first run | `.shots/desktop/firstrun*.png` (`firstrun-empty-{zh,en,fresh}`, `firstrun-first-result`) | headless renderer | empty conversation with repo starters, the first-result line |
+| Desktop, first run live | `.shots/desktop/firstrun-live-{empty,ack,first-result,result-message}.png` | live: real `ducter up` + sonnet (`onboarding.md`) | the first five minutes, timed |
+| Desktop, live | `.shots/desktop/live-*.png` | live backend, real harness | ack, early send, task sent/done/result, On hand, reconnecting |
+| Desktop, remote | `.shots/desktop/remote-{conversation,onhand,device-unreachable}.png`, `connect{,-badcode,-revoked}.png` | VM over an SSH tunnel (`research/29`); connect cards headless | Connect to your Ducter, a worker that can't be reached |
+| Ducter.app | `.shots/desktop/app-*.png` | setup screens headless (fake backend); `app-live-first-reply` live; `app-dmg-finder`, `app-gatekeeper-macos15` real macOS screenshots; `app-icon` the drawn icon | checking, blocked, name, starting, stopped, CLI offer, Gatekeeper |
+| Polish pass | `.shots/desktop/polish-{before,after}-*.png` | native window (cua-driver) on a scripted backend, plus the headless renderer | the components above: buttons, chips, notices, the result sheet, rhythm |
+| Taste review | `.shots/desktop/review-{before,after}-{zh-1280,en-900}-*.png` | headless renderer, mock (`DUCTER_REVIEW`) | every screen at 1280 and 900 px, before and after the taste pass |
+| Phone web | `.shots/phone-*.png` | headless browser at 390×844 on a demo core; `phone-real-sonnet-result-zh` from a real sonnet run | conversation, decision sheet, decided, On hand, task, result, pairing, notify ask, iOS hint, offline; dark variants |
+| Design QA (D73, D74) | `.shots/qa-2026-11-09/{before,after}-*.png`, index in its `README.md` | native desktop window (cua-driver) on the demo seed, iOS Simulator, headless Chromium at 390 and 1440 (phone web, site) | no pills, the result line, the living message, On hand, the one-column task (done, working, didn't work), devices, setup, the site |
 
 ## Capability map (D43): the hybrid (D65)
 

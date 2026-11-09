@@ -12,3 +12,11 @@ apps/desktop/bin/
 .gstack/
 .vercel/
 /apps/desktop/desktop
+# Work evidence (screenshots, before/after pairs, art explorations) is not source:
+# tools write it to $DUCTER_SHOTS (default .shots/); it never goes in git.
+/.shots/
+/apps/desktop/docs/
+/design/screens/
+/apps/ios/screens/
+/design/art/assets/raw/
+/design/art/assets/norm/

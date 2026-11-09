@@ -15,7 +15,7 @@ import (
 // The terminal-free first run against a fake Mac: the AI tool installed
 // and signed in from the window, 上网's three steps, and the macOS asks.
 //
-//	DUCTER_SHOTS=1 go test ./internal/views -run Onboard   # writes docs/onboard-*.png
+//	DUCTER_SHOTS=1 go test ./internal/views -run Onboard   # writes .shots/desktop/onboard-*.png
 
 func act(id, label, detail string, ok, required bool, fix, action string) local.Check {
 	k := check(id, label, detail, ok, required, fix)

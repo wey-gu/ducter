@@ -216,3 +216,15 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] The partner's name in its live session: a rename reaches new sessions (the identity is
       rewritten); the session already open keeps the old name until it restarts. Trigger: a
       user notices.
+
+## Before the repo goes public
+
+- **Rewrite history once (D75 and the motivation scrub).** After every branch is merged:
+  `git filter-repo` with the text replacements (motivation wording, personal paths, fake eval
+  keys) and `--invert-paths` for the evidence paths: `apps/desktop/docs/`, `design/screens/`,
+  `docs/design/screens/`, `docs/images/`, `apps/ios/screens/`, `apps/desktop/desktop`, the raw
+  and normalized generations and the concept explorations (keep the two `r2` reference images
+  named in `design/art/assets/batch.json`). Then run `bun scripts/check-binaries.ts` on every
+  remaining commit's tree, force-push, and set the description and topics. Trigger: the last
+  open branch merged.
+

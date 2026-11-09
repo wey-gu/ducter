@@ -8,12 +8,12 @@ It asks for your attention only when a decision is truly yours, and every task s
 you to look into and steer whenever you want.
 
 <p>
-  <img src="apps/desktop/docs/chrome-headless-en-900-conversation-done.png" width="49%" alt="The conversation: a finished task reports its cause, fix and checks, with evidence and Merge, Open draft PR and See changes">
-  <img src="apps/desktop/docs/chrome-headless-en-900-task-done.png" width="49%" alt="An opened task: its transcript with checkpoints, the diff, and a Merge into main decision">
+  <img src=".github/readme/chrome-headless-en-900-conversation-done.webp" width="49%" alt="The conversation: a finished task reports its cause, fix and checks, with evidence and Merge, Open draft PR and See changes">
+  <img src=".github/readme/chrome-headless-en-900-task-done.webp" width="49%" alt="An opened task: its transcript with checkpoints, the diff, and a Merge into main decision">
 </p>
 <p>
-  <img src="apps/desktop/docs/abilities-en-home.png" width="61%" alt="Your devices and abilities: this Mac and a worker, the AIs signed in on each, and abilities you can add">
-  <img src="design/screens/phone-conversation-en.png" width="37%" alt="The phone client: two decisions waiting, each with a default, and Go on all defaults">
+  <img src=".github/readme/abilities-en-home.webp" width="61%" alt="Your devices and abilities: this Mac and a worker, the AIs signed in on each, and abilities you can add">
+  <img src=".github/readme/phone-conversation-en.webp" width="37%" alt="The phone client: two decisions waiting, each with a default, and Go on all defaults">
 </p>
 
 > **Status: early preview.** Ducter works end to end on macOS and on a Linux server, but expect

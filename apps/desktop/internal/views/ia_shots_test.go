@@ -20,7 +20,7 @@ import (
 // native window can only show a screen of at a time. DUCTER_IA_SHOTS=<dir>
 // writes ia-<screen>-<lang>-full.png there:
 //
-//	DUCTER_IA_SHOTS=../../design/screens/ia-2026-11-09 go test ./internal/views -run IAShots
+//	DUCTER_IA_SHOTS=../../../../.shots/ia go test ./internal/views -run IAShots
 func TestIAShots(t *testing.T) {
 	dir := os.Getenv("DUCTER_IA_SHOTS")
 	if dir == "" {

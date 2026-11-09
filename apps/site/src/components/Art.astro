@@ -9,15 +9,17 @@ interface Props {
   sizes: string;
   class?: string;
   id?: string;
+  style?: string;
+  loading?: "eager" | "lazy";
   eager?: boolean;
   [key: `data-${string}`]: string | undefined;
 }
-const { name, alt, sizes, class: cls, id, eager = false, ...rest } = Astro.props;
+const { name, alt, sizes, class: cls, id, style, loading, eager = false, ...rest } = Astro.props;
 const a = manifest[name];
 const set = (ext: string) => a.widths.map((w) => `/art/${name}-${w}.${ext} ${w}w`).join(", ");
 const fallback = `/art/${name}-${a.widths[a.widths.length - 1]}.webp`;
 ---
-<picture class={cls} id={id} {...rest}>
+<picture class={cls} id={id} style={style} {...rest}>
   <source type="image/avif" srcset={set("avif")} sizes={sizes} />
   <img
     src={fallback}
@@ -26,7 +28,7 @@ const fallback = `/art/${name}-${a.widths[a.widths.length - 1]}.webp`;
     width={a.w}
     height={a.h}
     alt={alt}
-    loading={eager ? "eager" : "lazy"}
+    loading={loading ?? (eager ? "eager" : "lazy")}
     decoding="async"
     fetchpriority={eager ? "high" : undefined}
     draggable="false"

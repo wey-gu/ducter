@@ -18,6 +18,13 @@ writes crop/ducter_idle_closed@{128,256}.png and ducter_idle_closed@{160,400}.pn
 next to the open ones (and the phone's art/idle_closed.webp, with the
 closed eye's line drawn in: its blink is a frame swap) and prints the lid boxes for theme.FaceLids (fractions
 of the cropped art). title_layers.py uses close_eyes for the title moment.
+
+    python3 tools/art/eyes.py --layer <open.png> <layer.png>
+
+is the website's form (apps/site/scripts/art.mjs runs it): the closed eyes
+alone, as a layer over the open face (transparent everywhere but the eyes,
+so lossy encoding can never put a seam into the rest of the face), and the
+lid boxes as JSON fractions of the image on stdout.
 """
 
 import sys
@@ -219,5 +226,31 @@ def main(art, web=None):
         print(f"{{X: {f[0]:.4f}, Y: {f[1]:.4f}, W: {f[2] - f[0]:.4f}, H: {f[3] - f[1]:.4f}}},")
 
 
+def layer(src, dst):
+    """The closed eyes as a layer to lay over the open face: the closed face,
+    opaque over each eye's lid ellipse and a margin past it, transparent
+    elsewhere. The lid's clip (12% past the ellipse) cuts it where it is
+    opaque and where closed and open are the same pixels, so no edge of the
+    layer's own alpha (which lossy encoders smudge) can ever show."""
+    import json
+    img = _load(src)
+    h, w = img.shape[:2]
+    eyes = find_eyes(img)
+    assert len(eyes) == 2, eyes
+    boxes = [lid_box(e) for e in eyes]
+    closed = close_eyes(img, boxes)
+    cover = np.zeros((h, w), np.float32)
+    for b in boxes:
+        # Opaque to 25% past the ellipse close_eyes changed, beyond the
+        # clip at 12% even after the smallest resize spreads the edge.
+        cover = np.maximum(cover, (_ellipse((h, w), b) < 1.25 ** 2).astype(np.float32))
+    out = np.concatenate([closed[..., :3], cover[..., None] * img[..., 3:4]], axis=2)
+    _save(dst, out)
+    print(json.dumps([[round(b[0] / w, 4), round(b[1] / h, 4), round((b[2] - b[0]) / w, 4), round((b[3] - b[1]) / h, 4)] for b in boxes]))
+
+
 if __name__ == "__main__":
-    main(*sys.argv[1:3])
+    if sys.argv[1:2] == ["--layer"]:
+        layer(*sys.argv[2:4])
+    else:
+        main(*sys.argv[1:3])

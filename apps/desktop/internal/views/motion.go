@@ -130,10 +130,10 @@ func idleFrame(p *ui.Painter) {
 }
 
 // clayArt draws a clay bitmap in r (fitted, as ui.Image does) moving by
-// kind, with the idle face's eyelids when lids is set (lids are the lid
-// boxes as fractions of r). Grey draws it a little grey and still: a
+// kind, blinking when blink is set (the idle face's closed version and its
+// lids, as fractions of r). Grey draws it a little grey and still: a
 // device that can't be reached.
-func clayArt(p *ui.Painter, r ui.Rect, bmp *ui.Bitmap, kind idleKind, phase float64, lids *[2]theme.Lid) {
+func clayArt(p *ui.Painter, r ui.Rect, bmp *ui.Bitmap, kind idleKind, phase float64, lids *blinkArt) {
 	if bmp == nil {
 		return
 	}
@@ -145,12 +145,7 @@ func clayArt(p *ui.Painter, r ui.Rect, bmp *ui.Bitmap, kind idleKind, phase floa
 		}
 		k, next := blink(p.Now(), phase)
 		if k > 0.01 {
-			for _, l := range lids {
-				box := ui.Rect{X: r.X + l.X*r.W, Y: r.Y + l.Y*r.H, W: l.W * r.W, H: l.H * r.H * k}
-				var m ui.Path
-				ellipse(&m, box.X+box.W/2, box.Y+box.H/2, box.W/2, box.H/2)
-				p.FillPathGradient(&m, ui.LinearGradient{From: l.From, To: l.To, Angle: 90})
-			}
+			drawLids(p, lids, r, float64(k))
 			p.AnimationFrame() // a blink is quick: the display's rate
 		} else if next < time.Second/idleFPS {
 			p.After(next)
@@ -201,9 +196,9 @@ func (a *App) partnerFace(c *ui.Context, key string, p theme.Presence, w float32
 		// bottom edge.
 		at := fitIn(bmp, r)
 		at.Y = r.Y + r.H - at.H
-		var lids *[2]theme.Lid
+		var lids *blinkArt
 		if p == theme.Idle {
-			lids = &theme.FaceLids
+			lids = faceBlink(w * 2)
 		}
 		clayArt(pt, at, bmp, idleBreathe, phase, lids)
 	})

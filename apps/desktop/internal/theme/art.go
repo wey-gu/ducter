@@ -60,18 +60,38 @@ func Face(p Presence, px float32) *ui.Bitmap {
 	return load(fmt.Sprintf("art/crop/ducter_%s@%d.png", p, size))
 }
 
-// Lid is an eyelid over the idle face's eye, as fractions of the cropped
-// idle art (Face(Idle, …)): its box, and its colors left to right.
+// Lid is an eyelid's box over the idle face's eye (the eye and its
+// sculpted rim), as fractions of the cropped idle art (Face(Idle, …)).
 type Lid struct {
 	X, Y, W, H float32
-	From, To   ui.Color
 }
 
-// FaceLids are the idle face's two eyelids, for the blink (D77; the
-// prototype's .lid.l / .lid.r).
+// FaceLids are the idle face's two eyelids, for the blink (D77). Printed
+// by tools/art/eyes.py, which also makes the closed faces below.
 var FaceLids = [2]Lid{
-	{X: 0.346, Y: 0.248, W: 0.108, H: 0.262, From: ui.Hex("#F4A065"), To: ui.Hex("#F19562")},
-	{X: 0.621, Y: 0.243, W: 0.106, H: 0.264, From: ui.Hex("#E17938"), To: ui.Hex("#CB6026")},
+	{X: 0.3207, Y: 0.2352, W: 0.1633, H: 0.3078},
+	{X: 0.5941, Y: 0.2222, W: 0.1633, H: 0.3209},
+}
+
+// FaceClosed is the cut-out idle face with its eyes closed: the same
+// render, each eye filled from the clay round it (tools/art/eyes.py), the
+// size Face(Idle, px) picks.
+func FaceClosed(px float32) *ui.Bitmap {
+	size := 128
+	if px > 128 {
+		size = 256
+	}
+	return load(fmt.Sprintf("art/crop/ducter_idle_closed@%d.png", size))
+}
+
+// ArtClosed is the square idle art with its eyes closed, the size
+// Art(Idle, px) picks.
+func ArtClosed(px float32) *ui.Bitmap {
+	size := 160
+	if px > 160 {
+		size = 400
+	}
+	return load(fmt.Sprintf("art/ducter_idle_closed@%d.png", size))
 }
 
 // IdleSquareContent is where the cropped idle art sits in the square

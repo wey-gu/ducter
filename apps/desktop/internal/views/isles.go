@@ -1177,9 +1177,9 @@ func (a *App) homeDucter(c *ui.Context, s *isle, at ui.Rect) {
 	// at was laid out for feet at 0.8 of the square; each pose's feet sit
 	// a little differently.
 	at.Y += (0.8 - feet) * at.H
-	var lids *[2]theme.Lid
+	var lids *blinkArt
 	if pose == theme.Idle {
-		lids = &squareLids
+		lids = squareBlink(360) // the size bmp was picked at
 	}
 	ui.Box(c.Key("ducter-shadow")).Absolute().Left(at.X+at.W*0.18).Top(at.Y+at.H*(feet-0.06)).Size(at.W*0.66, at.H*0.14).PassThrough().AccessHidden(true).
 		Draw(func(p *ui.Painter, r ui.Rect) {

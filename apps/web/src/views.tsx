@@ -46,14 +46,15 @@ type Face = (typeof ART)[number];
 const FACE_KEY = { idle: "face.idle", working: "face.working", needsyou: "face.needs_you", done: "face.done", napping: "face.napping", waiting: "face.waiting" };
 const stillMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-/** Blinks the idle face's eyelids every 3-6 s, sometimes twice (D77). Character only. */
+/** Blinks the idle face every 3-6 s, sometimes twice (D77): its closed frame (the same render
+ *  with the eyes shut, tools/art/eyes.py) shows for a moment. Character only. */
 function useBlink(ref: { current: HTMLElement | null }, on: boolean) {
   useEffect(() => {
     if (!on || stillMotion()) return;
     let h: ReturnType<typeof setTimeout>;
     const blink = () => {
-      for (const lid of ref.current?.querySelectorAll<HTMLElement>(".idle.on .lid") ?? [])
-        lid.animate?.([{ transform: "scaleY(0)" }, { transform: "scaleY(1)", offset: 0.45 }, { transform: "scaleY(1)", offset: 0.55 }, { transform: "scaleY(0)" }], { duration: 150, easing: "ease-in-out" });
+      for (const shut of ref.current?.querySelectorAll<HTMLElement>(".idle.on .shut") ?? [])
+        shut.animate?.([{ opacity: 0 }, { opacity: 1, offset: 0.3 }, { opacity: 1, offset: 0.7 }, { opacity: 0 }], { duration: 150, easing: "ease-in-out" });
     };
     const next = (ms: number) =>
       (h = setTimeout(() => {
@@ -78,8 +79,7 @@ export function Avatar({ size, state, still }: { size: number; state?: Face; sti
         n === "idle" ? (
           <span key={n} class={`idle${n === p ? " on" : ""}`}>
             <img src="app/art/idle.webp" alt="" draggable={false} />
-            <i class="lid l" />
-            <i class="lid r" />
+            <img class="shut" src="app/art/idle_closed.webp" alt="" draggable={false} />
           </span>
         ) : (
           <img key={n} class={n === p ? "on" : ""} src={`app/art/${n}.webp`} alt="" draggable={false} />

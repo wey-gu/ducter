@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/audio"
-	_ "github.com/egoist/mygo/audio/vorbis" // Ogg Vorbis
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )

@@ -9,10 +9,11 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// TitleSound is the title moment's sound (D87). Made by tools/sound
-// (see tools/sound/SOURCES.md); never edit by hand.
+// TitleSound is the title moment's sound (D87): variant A, felt piano and
+// strings, 16-bit 48 kHz WAV, about -20 LUFS. Made by tools/sound (sources
+// and credits in tools/sound/SOURCES.md); never edit by hand.
 //
-//go:embed sound/title.ogg
+//go:embed sound/title.wav
 var TitleSound []byte
 
 //go:embed art/title/*.webp art/title/layers.json

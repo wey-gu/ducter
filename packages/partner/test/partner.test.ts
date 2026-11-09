@@ -287,6 +287,32 @@ describe("turn loop", () => {
     expect(p2.stats.resumes).toBe(0);
   });
 
+  test("D85: the partner runs on Settings.brain; a switch starts fresh, isolated", async () => {
+    const clock = new FakeClock();
+    const dir = tmp();
+    const fc = fakeCore(clock, dir);
+    const fr = fakeRunner((_i, s) => {
+      s.say("ok");
+      s.end();
+    });
+    let settings: any = { brain: { harness: "codex", model: "gpt-6-luna" } };
+    const withSettings = (c: typeof fc.core) => ({ ...c, settings: { get: () => settings, setForgetter() {}, setMemState() {} } as any });
+    const p1 = createPartner(withSettings(fc.core), fr.runner, { now: clock.now, onError: () => {} });
+    p1.onTrigger(fc.core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "hi" } }));
+    await p1.idle();
+    await p1.close();
+    expect(fr.sessions[0]!.spec).toMatchObject({ harness: "codex", model: "gpt-6-luna", isolateUserConfig: true });
+    clock.advance(5 * 60 * 1000);
+    // A brain the partner may not use (v1: pi is tasks only) falls back to Claude Code + opus.
+    settings = { brain: { harness: "pi" } };
+    const p2 = createPartner(withSettings({ ...fc.core, mcp: fakeCore(clock, dir).core.mcp }), fr.runner, { now: clock.now, onError: () => {} });
+    p2.onTrigger(fc.core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "again" } }));
+    await p2.idle();
+    expect(fr.sessions[1]!.spec).toMatchObject({ harness: "claude-code", model: "opus" }); // never the codex model
+    expect(fr.sessions[1]!.spec.resumeSessionId).toBeUndefined(); // a codex session id means nothing to Claude Code
+    expect(p2.stats.resumes).toBe(0);
+  });
+
   test("wait_until: armed waiter now, [timer fired] trigger when core fires it", async () => {
     const { fc, fr, partner, user, channel } = setup(async (input, s, n) => {
       if (n === 0) {

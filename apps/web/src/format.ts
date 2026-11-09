@@ -66,7 +66,7 @@ export function firstClause(s: string): string {
 }
 
 export function harnessName(h: string): string {
-  return { "claude-code": "Claude Code", codex: "Codex", pi: "pi" }[h] ?? h;
+  return { "claude-code": "Claude Code", codex: "Codex", pi: "pi", "deepseek-harness": "DeepSeek Harness" }[h] ?? h;
 }
 
 /** A Latin word in Chinese text gets a space on each side ("在 MacBook 上"). */

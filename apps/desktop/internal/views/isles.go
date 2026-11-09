@@ -182,11 +182,22 @@ func (a *App) isles() []isle {
 			out = append(out, o)
 		}
 	}
+	// The front islands' words reach down to about here: the dock goes
+	// below them so nothing stands on it.
+	front := float32(0)
 	for i := range out {
 		placeIsle(&out[i])
+		if sl := out[i].slot; sl == 2 || sl == 3 {
+			front = max(front, out[i].is.Y+out[i].is.H+64)
+		}
+	}
+	for i := range out {
 		if out[i].home && out[i].dv != nil {
 			out[i].dock = a.dockAbilities(out[i].dv)
 			placeDock(&out[i])
+			if out[i].dockR.W > 0 && out[i].dockR.Y < front {
+				out[i].dockR.Y = front
+			}
 		}
 	}
 	return out
@@ -1214,6 +1225,9 @@ func (a *App) dockRow(c *ui.Context, v view, s *isle, dy float32, sel bool, now 
 			})
 			if sel {
 				d.slots[id] = well.Bounds()
+			}
+			if wb := well.Bounds(); wb.W > 0 {
+				d.labels["dockwell:"+id] = wb
 			}
 			tag := a.sceneTag(c, false)
 			if !on {

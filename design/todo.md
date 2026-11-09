@@ -169,7 +169,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] Linux CI test runs (`bun test`, `go test` on ubuntu) were only compiled/planned on a Mac;
       if the first runs fail for platform reasons, move that job to `macos-15`.
 
-## App lifecycle (D71)
+## App lifecycle (D72)
 
 - [ ] **Settings rows** for updates (the status line, 退出时自动更新, 现在检查) and for 彻底移除
       Ducter (the page with Removes / Keeps, the two options, the typed confirmation), on the API

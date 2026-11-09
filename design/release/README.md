@@ -55,9 +55,9 @@ After this, every release is: bump the version, commit, `git tag vX.Y.Z`, push t
 Only Apple silicon gets a DMG for now. An Intel build would add a `macos-15-intel` job running
 the same steps.
 
-## How the app updates itself (D71)
+## How the app updates itself (D72)
 
-`apps/desktop/internal/update`, a small Go updater (not Sparkle; why in D71). Nothing extra is
+`apps/desktop/internal/update`, a small Go updater (not Sparkle; why in D72). Nothing extra is
 published for it: it reads this repo's newest published release through
 `https://api.github.com/repos/wey-gu/ducter/releases/latest`, unauthenticated, and needs exactly
 two assets, `Ducter-<version>-arm64.dmg` and `SHA256SUMS.txt` listing it. The `release` job checks

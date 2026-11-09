@@ -21,7 +21,7 @@ import (
 // DocsURL is where Help › Ducter Docs goes.
 const DocsURL = "https://ducter.ai/docs"
 
-// lifecycle is the app's updater and its Help menu (D71).
+// lifecycle is the app's updater and its Help menu (D72).
 type lifecycle struct {
 	l        *i18n.Strings
 	upd      *update.Updater // nil: this copy doesn't update (not a bundle)
@@ -66,7 +66,7 @@ func (lc *lifecycle) appMenuItems() []*mygo.MenuItem {
 	return []*mygo.MenuItem{{ID: "update", Label: lc.l.T("menu.update.check"), Click: func(*mygo.MenuItem, *mygo.Window) { go lc.updateClicked() }}}
 }
 
-// helpMenu is Help: the docs, and Report a Problem….
+// helpMenu is Help: the docs, and Report a problem….
 func (lc *lifecycle) helpMenu() *mygo.MenuItem {
 	items := []*mygo.MenuItem{
 		{Label: lc.l.T("menu.help.docs"), Click: func(*mygo.MenuItem, *mygo.Window) { _ = local.OpenURL(DocsURL) }},

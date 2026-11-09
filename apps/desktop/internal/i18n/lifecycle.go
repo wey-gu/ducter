@@ -1,6 +1,6 @@
 package i18n
 
-// The app's lifecycle (D71): updates (internal/update), Help & feedback, and
+// The app's lifecycle (D72): updates (internal/update), Help & feedback, and
 // removing Ducter (local.Host.Uninstall*). The menu items are wired in
 // main.go; the remove.* and update.* rows are for the Settings window.
 
@@ -11,7 +11,7 @@ var zhLifecycle = Table{
 	"menu.update.ready":        "有新版本 %s · 重启时更新",
 	"menu.update.ready.sub":    "点一下现在重启；不点，退出时也会装好",
 	"menu.update.available":    "有新版本 %s · 去下载",
-	"menu.help.docs":           "Ducter 使用说明",
+	"menu.help.docs":           "Ducter 使用指南",
 	"menu.help.report":         "报告问题…",
 	"update.uptodate":          "Ducter %s 是最新的",
 	"update.nofeed":            "现在还查不到新版本",
@@ -69,8 +69,8 @@ var enLifecycle = Table{
 	"menu.update.ready":        "Update %s ready · restart to finish",
 	"menu.update.ready.sub":    "Restart now, or it installs when you quit",
 	"menu.update.available":    "Version %s is out · Download",
-	"menu.help.docs":           "Ducter Docs",
-	"menu.help.report":         "Report a Problem…",
+	"menu.help.docs":           "Ducter docs",
+	"menu.help.report":         "Report a problem…",
 	"update.uptodate":          "Ducter %s is up to date",
 	"update.nofeed":            "No new version to find yet",
 	"update.nofeed.body":       "Ducter looks once a day and finds new versions on its own once they're out.",

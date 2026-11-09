@@ -85,7 +85,7 @@ func main() {
 		})
 	}
 
-	// Updates and Help (D71): the app updates itself whether its Ducter
+	// Updates and Help (D72): the app updates itself whether its Ducter
 	// is on this Mac or elsewhere.
 	lc := &lifecycle{l: i18n.New(lang), host: host}
 	if inApp {

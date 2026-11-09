@@ -121,7 +121,7 @@ only do it if you mean it. The next start is a first run.
 
 ## Still stuck?
 
-In the Mac app, choose **Help → Report a Problem…**. Ducter collects its check of your Mac, the
+In the Mac app, choose **Help → Report a problem…**. Ducter collects its check of your Mac, the
 versions and its recent log lines with secrets removed (your conversation only if you tick it),
 shows you what it would attach, saves it as a .zip on your Desktop, and opens a GitHub issue
 with the basics filled in. Nothing is uploaded: you attach the .zip yourself. On a server,

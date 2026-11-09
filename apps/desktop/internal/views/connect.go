@@ -6,6 +6,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/remote"
@@ -21,12 +22,36 @@ type connectState struct {
 	address, code string
 	busy          bool
 	err           string
+	// moving: opened from Settings while this Mac runs its own Ducter; on
+	// success the app switches to the other one.
+	moving bool
 }
 
-// openConnect shows the connect card, prefilled with what a pasted link held.
+// openConnect shows the connect card, prefilled with a pair link the
+// clipboard holds (copied from `ducter pair` or the phone's page).
 func (a *App) openConnect() {
 	a.conn.open = true
 	a.conn.err = ""
+	if a.conn.address == "" && a.ReadClipboard != nil {
+		if s := strings.TrimSpace(a.ReadClipboard()); IsPairLink(s) {
+			a.conn.address = s
+		}
+	}
+}
+
+// IsPairLink: the whole link `ducter pair` prints (…/pair#c=CODE).
+func IsPairLink(s string) bool {
+	if len(s) > 512 || strings.ContainsAny(s, " \n") {
+		return false
+	}
+	_, code, err := remote.Parse(s, "")
+	return err == nil && code != "" && (strings.HasPrefix(s, "http://") || strings.HasPrefix(s, "https://"))
+}
+
+// connectElsewhere is Settings' way to the card while this Mac runs its own Ducter.
+func (a *App) connectElsewhere() {
+	a.conn.moving = a.Backend != nil
+	a.openConnect()
 }
 
 // submitConnect pairs off the UI thread; Pair (set by main) saves the
@@ -44,11 +69,21 @@ func (a *App) submitConnect() {
 		a.conn.code = code
 	}
 	a.conn.busy, a.conn.err = true, ""
+	moving := a.conn.moving
 	done := func(err error) {
 		a.conn.busy = false
 		if err != nil {
 			a.conn.err = a.connectError(err, base)
 			return
+		}
+		if moving {
+			// Another Ducter: nothing of this Mac's conversation carries over.
+			// A hello from the start, in case the new connection asked from
+			// this Mac's cursor.
+			a.forgetShown()
+			a.send(protocol.Hello{T: "hello", Locale: string(a.L.Lang), TZ: localZone(), Client: "desktop"})
+			a.hereBackend, a.Backend, a.askStopHere = a.Backend, nil, true
+			a.Route = RouteSettings
 		}
 		a.conn = connectState{}
 		a.Unauthorized = false

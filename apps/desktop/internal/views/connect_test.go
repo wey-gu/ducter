@@ -86,3 +86,67 @@ func TestRevokedDeviceSeesConnectCard(t *testing.T) {
 	}
 	h.shot("connect-revoked")
 }
+
+// Settings › Connect to a Ducter on another computer, while this Mac runs
+// its own: the card opens with a pair link from the clipboard, the app
+// switches to the other Ducter (nothing of this Mac's conversation shown),
+// asks once whether to keep this Mac's running (keep is the default), and
+// offers the way back.
+func TestSettingsConnectElsewhere(t *testing.T) {
+	here := mock.NewHub(40)
+	hereMux := http.NewServeMux()
+	hereMux.Handle("/ws", here.Handler())
+	hereSrv := httptest.NewServer(hereMux)
+	t.Cleanup(hereSrv.Close)
+	there := mock.NewHub(2)
+	thereMux := http.NewServeMux()
+	thereMux.Handle("/ws", there.Handler())
+	thereSrv := httptest.NewServer(thereMux)
+	t.Cleanup(thereSrv.Close)
+
+	h := dial(t, "ws"+strings.TrimPrefix(hereSrv.URL, "http")+"/ws", i18n.EN)
+	h.until("welcome here", func() bool { return h.app.S.Welcomed && h.app.S.OnHand != nil })
+	fb := &fakeBackend{background: true}
+	h.app.Backend = fb
+	h.app.ReadClipboard = func() string { return "https://hel.example.com/pair#c=K7QM-4XPA" }
+	var paired string
+	h.app.Pair = func(base, code string) error {
+		paired = base + " " + code
+		h.c.Retarget("ws"+strings.TrimPrefix(thereSrv.URL, "http")+"/ws", "dvc.test.token")
+		return nil
+	}
+	used := false
+	h.app.UseLocal = func() { used = true }
+	h.app.Route = RouteSettings
+	h.tt.Frame()
+	h.click("Connect to a Ducter on another computer")
+	if h.app.conn.address != "https://hel.example.com/pair#c=K7QM-4XPA" || !h.tt.HasText("Connect to your Ducter") {
+		t.Fatalf("card not prefilled: %q", h.app.conn.address)
+	}
+	h.click("Connect")
+	if paired != "https://hel.example.com K7QM-4XPA" {
+		t.Fatalf("paired %q", paired)
+	}
+	h.until("welcome there", func() bool { return h.app.S.Welcomed && h.app.S.OnHand != nil })
+	h.tt.SetSize(1280, 1400)
+	if h.app.Backend != nil || h.app.Route != RouteSettings {
+		t.Fatalf("still on this Mac's Ducter")
+	}
+	for _, want := range []string{"Keep the Ducter on this Mac running?", "Keep it running", "Stop it", "Use the Ducter on this Mac again"} {
+		if !h.tt.HasText(want) {
+			t.Errorf("lacks %q: %q", want, h.tt.Texts())
+		}
+	}
+	h.shot("settings-connect-elsewhere")
+	h.click("Keep it running")
+	if fb.rested != 0 || h.tt.HasText("Stop it") {
+		t.Errorf("keep stopped it (rested %d) or asked again", fb.rested)
+	}
+	h.click("Use the Ducter on this Mac again")
+	if !used {
+		t.Error("no way back")
+	}
+	if !IsPairLink("https://d.example.com/pair#c=AB2C-DE3F") || IsPairLink("hello world") || IsPairLink("https://d.example.com") {
+		t.Error("IsPairLink")
+	}
+}

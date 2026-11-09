@@ -287,6 +287,17 @@ func main() {
 			c.Retarget(saved.URL, saved.Token)
 			return nil
 		}
+		app.ReadClipboard = mygo.Clipboard.ReadText
+		// Back to this Mac's own Ducter: forget the other one and start again, so
+		// the app runs (or wakes) the Ducter here as at any launch.
+		app.UseLocal = func() {
+			if p, err := remote.Path(); err == nil {
+				if err := remote.Clear(p); err != nil {
+					log.Printf("ducter: could not forget the connection: %v", err)
+				}
+			}
+			mygo.App.Relaunch()
+		}
 		app.StartLocal() // no-op without a Backend
 		go c.Run(context.Background())
 	})

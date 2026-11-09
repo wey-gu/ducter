@@ -228,7 +228,7 @@ test("merge keeps a worktree with leftovers and says so on the task", async () =
   await core.mcp.call({ role: "task", taskId }, "report_to_main", { state: "done", summary: "Added b." });
   expect(await runner.merge(taskId)).toMatchObject({ ok: true });
   expect(existsSync(join(wt, "notes.txt"))).toBe(true);
-  expect(core.tasks.get(taskId)).toMatchObject({ attention: "done", residency: "parked" });
+  expect(core.tasks.get(taskId)).toMatchObject({ attention: "done", residency: "archived" });
   const last = core.log.read({ stream: `task:${taskId}`, kinds: ["task_event"] }).at(-1)!.body as Bodies["task_event"];
   expect(last).toMatchObject({ role: "system", raw: { archive: "kept" }, text: expect.stringContaining("uncommitted or untracked") });
   await runner.dispose();

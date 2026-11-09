@@ -365,7 +365,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       a = { ok: false, removed: false, message: `Kept the worktree: ${preview(err instanceof Error ? err.message : String(err), 300)}` };
     }
     if (a.removed || !a.ok) logEvent(t, { role: "system", from: "runner", text: a.message, raw: { archive: a.removed ? "removed" : "kept" } });
-    setState(t, "done", a.ok ? "archived" : "parked");
+    // Archived either way: merged work is finished; a kept worktree only holds its leftovers.
+    setState(t, "done", "archived");
   }
 
   function get(taskId: string): TaskRt {

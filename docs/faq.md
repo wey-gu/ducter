@@ -19,7 +19,8 @@ so it counts against that plan's limits like any other session.
 ### Which AI agents does it work with?
 
 Claude Code and Codex, signed in with your own account. You need at least one. Your partner
-thinks with Claude Code; choosing Codex for it instead is coming soon.
+thinks with Claude Code, or with Codex when that's the only one signed in, so a server with just
+Codex works.
 
 Ducter can also hand tasks to **pi** and **DeepSeek Harness**, which run on an API key you pay
 for by use rather than a plan. If one of them is installed and has its key, ask your partner to

@@ -218,3 +218,23 @@ test("the second switch the same way wakes the partner once to offer a rule", as
   await core.loadout.switchTask("t3", "claude-code", undefined, undefined);
   expect(woke).toHaveLength(1); // asked once
 });
+
+// A Codex-only server (D143): nothing chosen, Claude Code not signed in, Codex is: the partner
+// thinks with Codex; once Claude Code signs in, or the user chooses, that wins.
+test("partner fallback: Codex when it's the only one signed in and nothing was chosen", async () => {
+  harnessesNow = [cc(0.5, { loggedIn: false }), cx()];
+  const core = boot();
+  for (let i = 0; i < 50 && !core.devicesView.harnessesNow(); i++) await Bun.sleep(10);
+  expect(core.partnerFallback?.()).toEqual({ harness: "codex" });
+  harnessesNow = [cc(), cx()];
+  core.devicesView.refresh();
+  core.devicesView.harnessesNow();
+  await Bun.sleep(30);
+  expect(core.partnerFallback?.()).toBeUndefined();
+  harnessesNow = [cc(0.5, { loggedIn: false }), cx()];
+  core.devicesView.refresh();
+  core.devicesView.harnessesNow();
+  await Bun.sleep(30);
+  core.settings.set({ brain: { harness: "claude-code", model: "sonnet" } });
+  expect(core.partnerFallback?.()).toBeUndefined();
+});

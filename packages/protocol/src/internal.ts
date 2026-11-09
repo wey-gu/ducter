@@ -105,6 +105,9 @@ export interface CoreApi {
   workers?: WorkerLinks;
   /** The partner's settings (D71); absent in tests and stubs (then: follow the user, remember). */
   settings?: SettingsApi;
+  /** What the partner thinks with when the user hasn't chosen and the default (Claude Code)
+   *  isn't signed in here but Codex is: a Codex-only server just works (D143). */
+  partnerFallback?(): { harness: "codex"; model?: string } | undefined;
   /** Who does a new task (D89, core/src/loadout.ts); absent in tests and stubs (then: the runner's default). */
   bodies?: BodyChooser;
   /** The user's connections (D96, core/src/connections.ts); absent in tests and stubs. */

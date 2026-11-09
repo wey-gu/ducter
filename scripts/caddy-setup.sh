@@ -97,15 +97,25 @@ sudo caddy validate --config "$CF" --adapter caddyfile >/dev/null
 sudo systemctl reload caddy || sudo systemctl restart caddy
 
 step "Waiting for https://$DOMAIN (certificate issuance takes up to a minute)"
-ok=0
-for _ in $(seq 1 30); do
-  if curl -fsS --max-time 5 "https://$DOMAIN/health" >/dev/null 2>&1; then ok=1; break; fi
+# What answers says which layer is broken: 000 = no HTTPS yet (DNS, ports 80/443, firewall),
+# 502/503/504 = HTTPS works but Ducter behind Caddy doesn't answer, 200 = done.
+code=000
+for _ in $(seq 1 20); do
+  code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 "https://$DOMAIN/health" 2>/dev/null || true)"
+  [ "$code" = 200 ] && break
   sleep 3
 done
-if [ "$ok" = 0 ]; then
-  say "Not answering yet. Check: sudo journalctl -u caddy -n 50 (ports 80/443 open? DNS pointing here?)"
-  exit 1
-fi
+case "$code" in
+  200) ;;
+  502|503|504)
+    say "HTTPS works (the certificate is there), but Caddy gets no answer from Ducter on 127.0.0.1:$PORT ($code)."
+    say "Check: systemctl --user status ducter; ducter doctor. Then run this again."
+    exit 1 ;;
+  *)
+    say "https://$DOMAIN doesn't answer yet ($code). Open TCP 80 and 443 in the cloud firewall, check the DNS"
+    say "record points here, and see: sudo journalctl -u caddy -n 50"
+    exit 1 ;;
+esac
 
 DATA="${DUCTER_DATA_DIR:-$HOME/.ducter}"
 mkdir -p "$DATA"

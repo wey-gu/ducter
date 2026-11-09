@@ -73,13 +73,19 @@ shell: `export PATH="$HOME/.local/bin:$PATH"` (the installer added it to the pro
 
 ## Linux server (home)
 
+The order matters: **DNS → firewall 80/443 → install `--service` → local health → `ducter domain`
+→ sign in an AI agent → `ducter pair`.** Ask for the domain name first, so the A record
+propagates while you install.
+
 1. **Firewall** (cloud provider's firewall, and `ufw` if on): inbound TCP 22, 80, 443; UDP 443
    optional (HTTP/3). Never 7777.
 2. **Install as a service** (x64 or arm64; as root is fine, data goes to `/root/.ducter`):
    ```sh
    curl -fsSL https://ducter.ai/install.sh | sh -s -- --service
    ```
-   Verify: `curl -fsS http://127.0.0.1:7777/health` → `{"ok":true,…}`; `systemctl --user is-active ducter` → `active`.
+   Verify: `curl -fsS http://127.0.0.1:7777/health` → `{"ok":true,…}`; `systemctl --user is-active ducter` → `active`;
+   `loginctl show-user $USER -p Linger` → `Linger=yes` (the service survives logout and reboot; if
+   not: `loginctl enable-linger $USER`). Not answering: `journalctl --user -u ducter -n 50 --no-pager`.
    As root it links `/usr/local/bin/ducter`; otherwise run the `export PATH=…` line it prints, or
    use `~/.local/bin/ducter`. Not root and `systemctl --user` fails: log in over SSH as that user
    (not `sudo su`). The end of the output shows the public IP and the next step.
@@ -87,6 +93,8 @@ shell: `export PATH="$HOME/.local/bin:$PATH"` (the installer added it to the pro
    `codex login --device-auth`; send the user the link it prints, wait for the code. Or put
    `CLAUDE_CODE_OAUTH_TOKEN=…` (from `claude setup-token` on any machine) in `~/.ducter/keys.env`,
    then `chmod 600 ~/.ducter/keys.env`. Never print or log tokens. Verify: `ducter doctor --json`.
+   One agent is enough. **Codex only is fine:** with Claude Code not signed in and Codex signed
+   in, the partner thinks with Codex and Codex does the tasks, with no setting to change.
 4. **DNS.** Ask the user for a name, e.g. `ducter.example.com`. They add an A record → the server's
    IPv4 (AAAA for IPv6). Cloudflare: "DNS only", not proxied. Check: `getent ahosts <name>`.
 5. **Domain + HTTPS + pair code:**
@@ -99,7 +107,9 @@ shell: `export PATH="$HOME/.local/bin:$PATH"` (the installer added it to the pro
    - Port 80/443 held by nginx/another proxy: keep it; `ducter domain <name> --print` shows the
      site; forward `https://<name>` → `http://127.0.0.1:7777` with WebSocket upgrades and
      `X-Forwarded-For`, then `echo https://<name> > ~/.ducter/public-url` and `ducter pair --json`.
-   - HTTPS never answered: ports 80/443 closed in the cloud firewall; `journalctl -u caddy -n 50`.
+   - `httpStatus` 502/503/504: HTTPS and the certificate are fine; Ducter behind Caddy isn't
+     answering: `systemctl --user status ducter`, `ducter doctor`, `systemctl --user restart ducter`, rerun.
+   - `httpStatus` 0: no HTTPS yet: ports 80/443 closed in the cloud firewall, or DNS; `journalctl -u caddy -n 50`.
    - Not Debian/Ubuntu: install Caddy yourself, add the `--print` block to the Caddyfile.
    Rerunning is safe; `ducter domain --remove` undoes it (Caddy stays).
 6. **Connect the user's devices.** `ducter pair --json` → `code`, `link`, `address` (fresh code
@@ -107,6 +117,15 @@ shell: `export PATH="$HOME/.local/bin:$PATH"` (the installer added it to the pro
    another computer" on first run), paste the link. Phone: open the link, or the iPhone app
    (TestFlight: https://testflight.apple.com/join/Z4GvWt7t) with address + code. Verify:
    `ducter devices --json` lists it.
+
+**Which layer is broken**, from any machine: `curl -sS -o /dev/null -w '%{http_code}' https://<name>/health`
+
+| Code | Layer | Fix |
+|---|---|---|
+| 200 | all good | `ducter pair --json` |
+| 502 / 503 / 504 | Caddy and TLS fine; Ducter down | `systemctl --user status ducter`; `ducter doctor`; `systemctl --user restart ducter`; `journalctl --user -u ducter -n 50 --no-pager` |
+| 308 / 301 on `http://` | Caddy redirecting to HTTPS (normal) | use `https://` |
+| 000 / TLS error | DNS, firewall 80/443, or no certificate yet | `getent ahosts <name>` = server IP; open 80/443; `journalctl -u caddy -n 50`; rerun `ducter domain` |
 
 **No domain:** the Mac alone can use an SSH tunnel; `ducter pair --json` gives `tunnel`
 (`ssh -N -L 7777:127.0.0.1:7777 user@ip`, run on the Mac, kept open); the address is then

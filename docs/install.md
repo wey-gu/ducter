@@ -122,6 +122,16 @@ example `ducter status --port 7790`.
 A Mac sleeps; a small server doesn't. Put Ducter on a Linux server you own and your partner
 keeps working through the night, while your Mac and phone connect to it.
 
+In short, in this order:
+
+1. **DNS:** an A record for your name (say `ducter.example.com`) → the server's public IP.
+2. **Firewall:** allow TCP 22, 80 and 443 in. Never 7777.
+3. **Install:** `curl -fsSL https://ducter.ai/install.sh | sh -s -- --service`. It checks that
+   Ducter answers on the server before it says what's next.
+4. **Domain:** `ducter domain ducter.example.com`: HTTPS, then a code.
+5. **Sign in an AI agent** on the server: `codex login --device-auth` or `claude auth login`.
+6. **Connect** your Mac and phone with the code (`ducter pair` gives a new one any time).
+
 **1. On the server, install it as a service** (x64 or arm64 Linux):
 
 ```sh
@@ -149,7 +159,8 @@ As `root` the data lives in `/root/.ducter`, and `ducter` works in the same shel
 
 `ducter doctor` also tells you how to sign in Claude Code or Codex on a server that has no
 browser: `claude auth login` prints a link to open on any device and waits for the code, and
-`codex login --device-auth` works the same way.
+`codex login --device-auth` works the same way. One is enough. With only Codex signed in,
+your partner thinks with Codex and Codex does the tasks; Claude Code is optional.
 
 If you'd rather use a sign-in token or an API key (for example `CLAUDE_CODE_OAUTH_TOKEN` from
 `claude setup-token`, or `DEEPSEEK_API_KEY` for DeepSeek Harness), put it in
@@ -203,6 +214,30 @@ gives you a new one any time.
 
 Ducter's own messages on the server go to the system journal:
 `journalctl --user -u ducter`.
+
+**Which part isn't working?** Ask your domain from any computer:
+`curl -sS -o /dev/null -w '%{http_code}\n' https://ducter.example.com/health`
+
+| You get | What it means | What to do |
+|---|---|---|
+| `200` | Everything works | Connect with a code from `ducter pair` |
+| `502`, `503` or `504` | HTTPS works, but Ducter behind it isn't answering | On the server: `systemctl --user status ducter`, then `ducter doctor`; `systemctl --user restart ducter` |
+| `308` or `301` for `http://…` | Caddy is there and sends you to HTTPS: normal | Ask the `https://` address |
+| `000`, or a certificate error | No HTTPS yet: the DNS record, ports 80 and 443, or the firewall | Check the A record points at the server and 80 and 443 are open, then `ducter domain ducter.example.com` again; Caddy's log: `journalctl -u caddy -n 50` |
+
+### Already using Ducter on your Mac, and want it on a server
+
+Start the server as a fresh Ducter: your conversation and tasks on the Mac stay on the Mac (moving
+them over is on the roadmap).
+
+1. Set up the server as above: install, `ducter domain`, sign in an AI agent.
+2. On the Mac, open **Settings** and choose **Connect to a Ducter on another computer**. Paste
+   the link from `ducter pair` (or type the address and the code). The app now uses the server.
+   It asks once whether to stop the Ducter on this Mac; its data in `~/.ducter` stays either way.
+3. Want tasks to use the repos on your Mac? Run the `ducter worker` command that `ducter pair`
+   printed, on the Mac.
+
+To go back, **Settings › Use the Ducter on this Mac again**.
 
 ### Lend another computer
 

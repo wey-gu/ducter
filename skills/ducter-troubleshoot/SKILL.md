@@ -49,7 +49,9 @@ upload it yourself.
 | Agent not signed in on a server | `claude auth login` or `codex login --device-auth` (a link to open anywhere); or `CLAUDE_CODE_OAUTH_TOKEN=…` in `~/.ducter/keys.env`, `chmod 600` |
 | `ducter domain` stops at DNS | Add/fix exactly the record it names (A → the server's public IP; Cloudflare: DNS only), wait, rerun |
 | `ducter domain`: port 80/443 taken | Another web server: forward through it (`ducter domain <name> --print`), or stop it if the user agrees |
-| HTTPS never answers | Cloud firewall must allow TCP 80 and 443; `ufw allow 80,443/tcp`; then the Caddy log |
+| `https://<domain>/health` gives 502/503/504 | HTTPS is fine; Ducter behind Caddy is down: `systemctl --user status ducter`, `ducter doctor`, `systemctl --user restart ducter` |
+| `https://<domain>/health` gives 000 or a TLS error | No certificate yet: DNS record, cloud firewall TCP 80/443 (`ufw allow 80,443/tcp`), then `journalctl -u caddy -n 50` |
+| Only Codex on the server | Fine: the partner and the tasks use Codex when Claude Code isn't signed in |
 | Phone: "That code is wrong or has expired" | Codes work once, 10 minutes: `ducter pair --json` for a new one |
 | "Can't reach" the address | SSH tunnel still open? Domain: `curl -fsS https://<domain>/health`; server: `ducter service status` |
 | A worker shows not awake | On the worker: `ducter service status` (or rerun `ducter worker <address> --code <new code>`); its own agent must be signed in (`ducter doctor` there) |

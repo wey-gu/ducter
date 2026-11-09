@@ -13,7 +13,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { join } from "node:path";
 import type { Style } from "./doctor.ts";
 import type { T } from "./i18n.ts";
-import { newPairing } from "./remote.ts";
+import { newPairing, unitPath } from "./remote.ts";
 
 export const MARK_BEGIN = "# ducter: begin";
 export const MARK_END = "# ducter: end";
@@ -94,8 +94,10 @@ export interface DomainSys {
   read(path: string): string | undefined;
   /** The program listening on a TCP port: null when free, "" when busy but unnamed. */
   listener(port: number): Promise<string | null>;
-  /** GET <url> answers 2xx. */
-  ok(url: string): Promise<boolean>;
+  /** GET <url>: its HTTP status, or 0 when no answer came (refused, TLS or DNS failure, timeout). */
+  status(url: string): Promise<number>;
+  /** Where `ducter service install` wrote the unit (Linux). */
+  unitPath?: string;
   sleep(ms: number): Promise<void>;
 }
 
@@ -114,6 +116,8 @@ export interface DomainResult {
   /** On failure: what went wrong and the exact command to run next. */
   error?: string;
   next?: string;
+  /** The last status https://<domain>/health gave (0: no answer, no certificate yet). */
+  httpStatus?: number;
   pair?: { code: string; expiresAt: string; address: string; link: string; command: string };
 }
 
@@ -191,9 +195,22 @@ export async function cmdDomain(o: Opts): Promise<number> {
   }
   say(`\n  ${style.bold(t("domain.title", { domain }))}\n`);
 
-  // 1. Ducter answers here: Caddy only forwards to it.
-  if (!(await sys.ok(`http://127.0.0.1:${o.port}/health`))) {
+  // 1. Ducter answers here: Caddy only forwards to it. An installed service that isn't running
+  // is started (and enabled at boot) first.
+  const local = `http://127.0.0.1:${o.port}/health`;
+  let alive = (await sys.status(local)) === 200;
+  const unit = sys.platform === "linux" ? (sys.unitPath ?? unitPath()) : undefined;
+  if (!alive && unit && sys.read(unit) !== undefined) {
+    say("  " + style.dim(t("domain.ducterStarting")));
+    await sys.run(["systemctl", "--user", "enable", "--now", "ducter.service"]);
+    for (let i = 0; i < 10 && !alive; i++) {
+      await sys.sleep(1500);
+      alive = (await sys.status(local)) === 200;
+    }
+  }
+  if (!alive) {
     step("ducter", false, t("domain.ducterDown", { port: o.port }));
+    if (unit && sys.read(unit) !== undefined) return fail(t("domain.ducterBroken"), "journalctl --user -u ducter -n 50 --no-pager");
     return fail(t("domain.ducterDown.why"), sys.platform === "linux" ? "ducter service install" : "ducter up");
   }
   step("ducter", true, t("domain.ducterUp", { port: o.port }));
@@ -274,14 +291,21 @@ export async function cmdDomain(o: Opts): Promise<number> {
 
   // 6. HTTPS answers: the certificate is issued and the proxy reaches Ducter.
   say("  " + style.dim(t("domain.waiting")));
+  // What answers tells which layer is broken: nothing (no certificate yet: DNS, ports 80/443,
+  // the firewall), 502/503/504 (HTTPS works, Ducter behind it doesn't answer), 200 (all good).
   const tries = Math.max(1, Math.round((o.waitS ?? 60) / 3));
-  let up = false;
-  for (let i = 0; i < tries && !up; i++) {
-    up = await sys.ok(`https://${domain}/health`);
-    if (!up && i < tries - 1) await sys.sleep(3000);
+  let code = 0;
+  for (let i = 0; i < tries && code !== 200; i++) {
+    code = await sys.status(`https://${domain}/health`);
+    if (code !== 200 && i < tries - 1) await sys.sleep(3000);
   }
-  if (!up) {
-    step("https", false, t("domain.httpsNo", { domain }));
+  res.httpStatus = code;
+  if (code === 502 || code === 503 || code === 504) {
+    step("https", false, t("domain.httpsUpstream", { domain, code }));
+    return fail(t("domain.httpsUpstream.why", { port: o.port }), sys.platform === "linux" ? "systemctl --user restart ducter && ducter doctor" : "ducter up");
+  }
+  if (code !== 200) {
+    step("https", false, code ? t("domain.httpsOdd", { domain, code }) : t("domain.httpsNo", { domain }));
     return fail(t("domain.httpsNo.why", { ip: ip ?? t("domain.thisServer") }), `ducter domain ${domain}`);
   }
   step("https", true, t("domain.httpsOk", { domain }));
@@ -393,12 +417,12 @@ export function realDomainSys(): DomainSys {
       if (!r.out.trim()) return null;
       return /users:\(\("([^"]+)"/.exec(r.out)?.[1] ?? "";
     },
-    async ok(url) {
+    async status(url) {
       try {
-        const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
-        return r.ok;
+        const r = await fetch(url, { signal: AbortSignal.timeout(5000), redirect: "manual" });
+        return r.status;
       } catch {
-        return false;
+        return 0;
       }
     },
   };

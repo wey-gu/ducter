@@ -19,8 +19,9 @@ top of the conversation. On a phone, tap your partner at the top of the conversa
   holds the AI agent your partner itself runs on, Claude Code with Opus at first. Pick **Opus ·
   Smartest** or **Sonnet · Faster replies**. Switching keeps its name, what it remembers and
   your conversation; the new choice takes over from your next message. **Switch** lets you
-  drop another AI agent signed in on this Mac into the socket. Today your partner can think
-  with Claude Code; Codex is coming soon. Other AI agents do tasks only.
+  drop another AI agent signed in on this Mac into the socket. Today your partner thinks
+  with Claude Code, or with Codex when Codex is the only one signed in (a server with just
+  Codex works as it is). Other AI agents do tasks only.
 - **Who does the tasks.** Under the socket is a tray of the AI agents on this Mac. For each task
   your partner picks the best fit. Click an AI agent to see where it's signed in, how many
   devices share it, and **Use it for tasks** (on unless you turn it off). An AI agent you pay

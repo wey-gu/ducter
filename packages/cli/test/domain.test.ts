@@ -12,7 +12,7 @@ const en = translator("en");
 const CF = "/etc/caddy/Caddyfile";
 const DEMO = ":80 {\n\troot * /usr/share/caddy\n\tfile_server\n}\n";
 
-function fakeSys(o: { dns?: string[]; ip?: string[]; caddy?: boolean; file?: string; listeners?: Record<number, string>; https?: boolean; root?: boolean } = {}) {
+function fakeSys(o: { dns?: string[]; ip?: string[]; caddy?: boolean; file?: string; listeners?: Record<number, string>; https?: number; local?: number; root?: boolean } = {}) {
   const files = new Map<string, string>();
   if (o.file !== undefined) files.set(CF, o.file);
   let caddy = o.caddy ?? true;
@@ -35,7 +35,8 @@ function fakeSys(o: { dns?: string[]; ip?: string[]; caddy?: boolean; file?: str
     },
     read: (p) => files.get(p),
     listener: async (p) => o.listeners?.[p] ?? (active ? "caddy" : null),
-    ok: async (url) => (url.startsWith("http://127.0.0.1") ? true : (o.https ?? true)),
+    status: async (url) => (url.startsWith("http://127.0.0.1") ? (o.local ?? 200) : (o.https ?? 200)),
+    unitPath: "/root/.config/systemd/user/ducter.service",
     sleep: async () => {},
   };
   return { sys, files, calls };
@@ -131,10 +132,30 @@ describe("ducter domain", () => {
     expect(calls).toContain(`sudo tee ${CF}`);
   });
   test("HTTPS never answers: the firewall step, with this server's IP", async () => {
-    const { sys } = fakeSys({ file: "", https: false });
+    const { sys } = fakeSys({ file: "", https: 0 });
     expect(await run(sys)).toBe(1);
     expect(out.join("\n")).toContain("Open TCP ports 80 and 443 to 203.0.113.7");
     expect(existsSync(join(dataDir, "public-url"))).toBe(false);
+  });
+  test("HTTPS works but Caddy answers 502: Ducter behind it is down, not the certificate", async () => {
+    const { sys } = fakeSys({ file: "", https: 502 });
+    expect(await run(sys, { json: true })).toBe(1);
+    const j = JSON.parse(out.join("\n"));
+    expect(j.httpStatus).toBe(502);
+    expect(j.error).toContain("systemctl --user status ducter");
+    expect(j.error).not.toContain("80 and 443");
+    expect(j.next).toBe("systemctl --user restart ducter && ducter doctor");
+  });
+  test("Ducter not answering locally: its installed service is started before Caddy is touched", async () => {
+    const f = fakeSys({ file: "", local: 0 });
+    f.files.set("/root/.config/systemd/user/ducter.service", "[Unit]");
+    expect(await run(f.sys)).toBe(1);
+    expect(f.calls).toEqual(["systemctl --user enable --now ducter.service"]);
+    expect(out.join("\n")).toContain("journalctl --user -u ducter -n 50 --no-pager");
+    const g = fakeSys({ file: "", local: 0 });
+    expect(await run(g.sys)).toBe(1);
+    expect(g.calls).toEqual([]);
+    expect(out.join("\n")).toContain("ducter service install");
   });
   test("--json on success carries the address and a fresh code", async () => {
     const { sys } = fakeSys({ file: "" });

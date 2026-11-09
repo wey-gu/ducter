@@ -47,6 +47,8 @@ export interface SettingsStore extends SettingsApi {
   memIdentityChanged(): void;
   /** A reversible decision's wait, from the setting. */
   defaultAfterMs(): number;
+  /** The user (or DUCTER_PARTNER_HARNESS) chose what the partner thinks with; else it's the default. */
+  brainChosen(): boolean;
 }
 
 export function openSettings(opts: {
@@ -131,6 +133,7 @@ export function openSettings(opts: {
 
   return {
     get,
+    brainChosen: () => data.brain !== undefined || Boolean(envHarness((opts.env ?? process.env).DUCTER_PARTNER_HARNESS)),
     setForgetter(fn) {
       forgetter = fn;
     },

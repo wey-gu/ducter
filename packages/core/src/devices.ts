@@ -62,6 +62,9 @@ export interface DevicesView {
   changed(): void;
   /** Forget cached probes (the next frame probes again). */
   refresh(): void;
+  /** This machine's AI agents as last probed (undefined before the first probe); a stale
+   *  result starts a fresh probe in the background. */
+  harnessesNow(): { harness: string; loggedIn: boolean }[] | undefined;
   stop(): void;
 }
 
@@ -356,6 +359,10 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
     },
     changed,
     refresh: () => void (cached = undefined),
+    harnessesNow() {
+      if (!cached || now() - cached.at >= cacheMs) void local().catch(() => {});
+      return cached?.harnesses;
+    },
     stop() {
       offWorkers();
       if (timer) clearTimeout(timer);

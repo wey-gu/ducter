@@ -66,7 +66,7 @@ func TestIslesWorkingAndAccount(t *testing.T) {
 	h.hub.Scene("cloud-working")
 	h.until("cloud", func() bool { return h.app.S.Device("cloud1") != nil && h.app.runningOn(h.app.S.Device("cloud1")) == 1 })
 	h.settle(200 * time.Millisecond)
-	if !h.tt.HasText(L.T("device.worker.working.one")) {
+	if !h.tt.HasText(L.T("device.other")+" · "+L.T("device.other.working.one")) || !h.tt.HasText(L.T("isles.working.one")) {
 		t.Fatalf("no working line: %q", h.tt.Texts())
 	}
 	h.click("Claude Code · " + L.T("token.signed_in") + " · " + L.T("token.shared", 2))

@@ -105,6 +105,89 @@ describe("pairing codes and device tokens", () => {
   });
 });
 
+describe("one code for every kind of device (D83)", () => {
+  test("a code carries no kind: the same kind of code joins an app or a computer, as the device asks", () => {
+    const { a } = auth();
+    const app = a.redeem(a.createCode().code, { name: "iPhone" }) as { token: string };
+    const asked = a.redeem(a.createCode().code, { name: "MacBook", role: "client" }) as { token: string };
+    const box = a.redeem(a.createCode().code, { name: "vps-2", platform: "linux-arm64", role: "worker" }) as { token: string };
+    expect(a.verify(app.token)?.kind).toBe("client"); // no role: web, iOS and the desktop are unchanged
+    expect(a.verify(asked.token)?.kind).toBe("client");
+    expect(a.verify(box.token)).toMatchObject({ kind: "worker", name: "vps-2", platform: "linux-arm64" });
+  });
+
+  test("a code fixed to a kind (ducter pair --worker, or one made before D83) keeps it, whatever the device asks", () => {
+    const { a } = auth();
+    const w = a.redeem(a.createCode({ kind: "worker" }).code, { name: "old-worker" }) as { token: string };
+    const c = a.redeem(a.createCode({ kind: "client" }).code, { name: "sly", role: "worker" }) as { token: string };
+    expect(a.verify(w.token)?.kind).toBe("worker");
+    expect(a.verify(c.token)?.kind).toBe("client");
+  });
+
+  test("works once across roles: a code an app used can't then join a computer, nor the other way round", () => {
+    const { a } = auth();
+    const c1 = a.createCode().code;
+    expect("token" in a.redeem(c1, { name: "phone" })).toBe(true);
+    expect(a.redeem(c1, { name: "vps-2", role: "worker" })).toEqual({ error: "invalid" });
+    const c2 = a.createCode().code;
+    expect("token" in a.redeem(c2, { name: "vps-2", role: "worker" })).toBe(true);
+    expect(a.redeem(c2, { name: "phone" })).toEqual({ error: "invalid" });
+    expect(a.list().map((d) => [d.name, d.kind])).toEqual([["phone", "client"], ["vps-2", "worker"]]);
+  });
+
+  test("expires after 10 minutes for a computer too", () => {
+    let t = 5_000_000;
+    const { a } = auth(() => t);
+    const { code } = a.createCode();
+    t += 10 * 60_000 + 1;
+    expect(a.redeem(code, { name: "vps-2", role: "worker" })).toEqual({ error: "expired" });
+    expect(a.list()).toEqual([]);
+  });
+
+  test("wrong codes lock a caller out whatever role it asks for", () => {
+    const { a } = auth();
+    const { code } = a.createCode();
+    for (let i = 0; i < 10; i++) expect(a.redeem("CCCC-CCCC", { name: "x", role: i % 2 ? "worker" : "client" }, "198.51.100.4")).toEqual({ error: "invalid" });
+    expect(a.redeem(code, { name: "x", role: "worker" }, "198.51.100.4")).toEqual({ error: "locked" });
+    expect(a.redeem(code, { name: "x" }, "198.51.100.4")).toEqual({ error: "locked" });
+    expect("token" in a.redeem(code, { name: "mine", role: "worker" }, "198.51.100.5")).toBe(true);
+  });
+
+  test("the gate reads role from /pair and nothing else: an unknown role is an app", async () => {
+    const { a } = auth();
+    const gate = createGate({ auth: a });
+    const pair = async (body: object) => {
+      const r = await gate.check(new Request("http://d.example.com/pair", { method: "POST", body: JSON.stringify({ code: a.createCode().code, name: "n", ...body }) }), "203.0.113.7");
+      if (r.pass) throw new Error("pair passed the gate");
+      return a.verify(((await r.response.json()) as { token: string }).token)!.kind;
+    };
+    expect(await pair({})).toBe("client");
+    expect(await pair({ role: "worker" })).toBe("worker");
+    expect(await pair({ role: "admin" })).toBe("client");
+    expect(await pair({ role: "client" })).toBe("client");
+  });
+});
+
+describe("renaming a device (D84)", () => {
+  test("renames by id or unique name; the old name still finds it; names stay unique among live devices", () => {
+    const { a } = auth();
+    const w = a.redeem(a.createCode().code, { name: "ip-172-31-4-9", role: "worker" }) as { token: string; device: { id: string } };
+    a.redeem(a.createCode().code, { name: "iPhone" });
+    const r = a.rename(w.device.id, "  Build\nbox  ");
+    expect(r).toMatchObject({ device: { id: w.device.id, name: "Build box", kind: "worker" } });
+    expect(a.verify(w.token)?.name).toBe("Build box");
+    expect(a.formerly("ip-172-31-4-9")?.id).toBe(w.device.id);
+    expect(a.rename("Build box", "iPhone")).toEqual({ error: "name_taken" });
+    expect(a.rename("Build box", "  ")).toEqual({ error: "empty" });
+    expect(a.rename("nobody", "x")).toEqual({ error: "unknown_device" });
+    expect(a.rename("Build box", "Build box")).toMatchObject({ device: { name: "Build box" } });
+    // Back to an old name: it is its own name again, not a former one.
+    a.rename("Build box", "ip-172-31-4-9");
+    expect(a.formerly("ip-172-31-4-9")).toBeUndefined();
+    expect(a.formerly("Build box")?.id).toBe(w.device.id);
+  });
+});
+
 describe("isLocalRequest", () => {
   const req = (host: string, headers: Record<string, string> = {}) => new Request(`http://${host}/ws`, { headers: { host, ...headers } });
   test.each([

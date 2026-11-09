@@ -5,7 +5,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { plainStyle } from "../src/doctor.ts";
 import { translator } from "../src/i18n.ts";
-import { cmdPair, formatDevices, isLoopback, pairLink, publicUrl, servicePath, systemdUnit, tunnelCommand } from "../src/remote.ts";
+import { openDeviceAuth } from "@ducter/core/src/auth.ts";
+import { cmdDevices, cmdPair, formatDevices, isLoopback, pairLink, publicUrl, servicePath, systemdUnit, tunnelCommand } from "../src/remote.ts";
 
 const en = translator("en");
 const zh = translator("zh");
@@ -59,7 +60,7 @@ describe("pairing text", () => {
 });
 
 describe("ducter pair without a public address", () => {
-  const run = async (env: { SSH_CONNECTION?: string; DUCTER_PUBLIC_URL?: string }) => {
+  const run = async (env: { SSH_CONNECTION?: string; DUCTER_PUBLIC_URL?: string }, o: { worker?: boolean; t?: typeof en; json?: boolean } = {}) => {
     const dir = mkdtempSync(join(tmpdir(), "ducter-pair-"));
     const saved = { ssh: process.env.SSH_CONNECTION, pub: process.env.DUCTER_PUBLIC_URL };
     const out: string[] = [];
@@ -70,7 +71,7 @@ describe("ducter pair without a public address", () => {
       else delete process.env.SSH_CONNECTION;
       if (env.DUCTER_PUBLIC_URL) process.env.DUCTER_PUBLIC_URL = env.DUCTER_PUBLIC_URL;
       else delete process.env.DUCTER_PUBLIC_URL;
-      await cmdPair({ t: en, style: plainStyle, dataDir: dir, port: 7777, json: false, running: true, wait: false });
+      await cmdPair({ t: o.t ?? en, style: plainStyle, dataDir: dir, port: 7777, json: o.json ?? false, running: true, wait: false, worker: o.worker });
     } finally {
       console.log = log;
       if (saved.ssh === undefined) delete process.env.SSH_CONNECTION;
@@ -90,6 +91,61 @@ describe("ducter pair without a public address", () => {
   test("over SSH (a server): the tunnel from your computer; with a public address the QR is back", async () => {
     expect(await run({ SSH_CONNECTION: "203.0.113.5 50122 198.51.100.7 22" })).toContain("From your computer");
     expect(await run({ DUCTER_PUBLIC_URL: "https://d.example.com" })).toContain("scan this with your phone");
+  });
+  test("D83: one code, both ways to use it: a phone or app window, and another computer's one command", async () => {
+    const pub = { DUCTER_PUBLIC_URL: "https://d.example.com" };
+    const out = await run(pub);
+    const code = /Code\s+([A-Z2-9]{4}-[A-Z2-9]{4})/.exec(out)![1]!;
+    expect(out).toContain("On a phone or in the Ducter app: open the address, then type the code.");
+    expect(out).toContain("Another computer: run this one command on it, and it does tasks for Ducter:");
+    expect(out).toContain(`ducter worker https://d.example.com --code ${code}`);
+    expect(out).not.toContain("--join");
+    const zhOut = await run(pub, { t: zh });
+    expect(zhOut).toContain("手机或 Ducter 应用：打开这个地址，再输入连接码。");
+    expect(zhOut).toContain("另一台电脑：在它上面运行这一条命令，它就会替 Ducter 做事：");
+    // No public address: the computer's line keeps a placeholder and says why.
+    const bare = await run({});
+    expect(bare).toMatch(/ducter worker <address> --code [A-Z2-9]{4}-[A-Z2-9]{4}/);
+    expect(bare).toContain("That computer dials out to this Ducter");
+    // The hidden --worker alias prints only the computer's way.
+    const w = await run(pub, { worker: true });
+    expect(w).toContain("ducter worker https://d.example.com --code");
+    expect(w).not.toContain("open the address");
+    // --json carries the command too.
+    const j = JSON.parse((await run(pub, { json: true })).trim());
+    expect(j.command).toBe(`ducter worker https://d.example.com --code ${j.code}`);
+  });
+});
+
+describe("ducter devices rename (D84)", () => {
+  test("renames by id or name; a taken name is refused", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "ducter-rename-"));
+    const a = openDeviceAuth(dir);
+    const w = a.redeem(a.createCode().code, { name: "ip-172-31-4-9", role: "worker" }) as { device: { id: string } };
+    a.redeem(a.createCode().code, { name: "iPhone" });
+    a.close();
+    const out: string[] = [];
+    const log = console.log;
+    console.log = (...x: unknown[]) => void out.push(x.join(" "));
+    const devices = (rest: string[]) => cmdDevices({ t: en, style: plainStyle, dataDir: dir, json: false, rest, port: 1 });
+    try {
+      expect(await devices(["rename", w.device.id, "Build", "box"])).toBe(0);
+      expect(await devices(["rename", "Build box", "iPhone"])).toBe(1);
+      expect(await devices(["rename", "Build box"])).toBe(2);
+      expect(await devices(["rename", "nobody", "x"])).toBe(1);
+    } finally {
+      console.log = log;
+    }
+    expect(out).toEqual([
+      "Renamed. It's Build box now.",
+      "Another device is already called iPhone. Pick another name.",
+      "Usage: ducter devices rename <id or name> <new name>",
+      "No connected device matches nobody. See the list with: ducter devices",
+    ]);
+    const b = openDeviceAuth(dir);
+    expect(b.list().map((d) => d.name)).toEqual(["Build box", "iPhone"]);
+    b.close();
+    rmSync(dir, { recursive: true, force: true });
   });
 });
 

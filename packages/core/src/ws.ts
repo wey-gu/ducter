@@ -278,6 +278,13 @@ export function createWsHandler(deps: WsDeps) {
         send(ws, await v.pairCode());
         return;
       }
+      case "rename_device": {
+        const v = devicesView();
+        if (!v) throw new Error("devices are not available");
+        watchDevices();
+        send(ws, v.rename(String(f.device ?? ""), String(f.name ?? "")));
+        return; // a rename pushes a fresh devices frame to every subscriber
+      }
       case "settings": {
         if (!deps.settings) throw new Error("settings are not available");
         ws.data.settings = true;

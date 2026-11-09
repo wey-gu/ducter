@@ -262,12 +262,25 @@ A worker is a machine that runs tasks for a main process elsewhere (a VPS next t
 main, or the reverse). Principle: **it dials out, never in.** All task state stays on the main;
 the worker only holds the place (disk, checkouts, worktrees) and runs the harness.
 
-- **Join.** On the main: `ducter pair --worker` (a code whose device kind is `worker`). On the
-  worker: `ducter worker --join <main address> --code <code> [--name vps-2]`, then
-  `ducter service install --worker` to keep it running (no listening port on the worker). It
-  pairs at `/pair`, keeps the token in `~/.ducter/worker.json` (0600), and holds one outbound
-  WebSocket to `<main>/worker`, reconnecting with backoff. A client token can't open `/worker`,
-  a worker token can't open `/ws`.
+- **Join (D83).** One code for every kind of device: `ducter pair`, or the app's 连上手机或另一台
+  电脑 / Connect a phone or computer, mints a code with no kind (`pair_codes.kind = "any"`). The
+  device says what it joins as when it redeems the code at `/pair`: `role: "worker"` from
+  `ducter worker <main address> --code <code> [--name vps-2]`; no role (the web, iOS and desktop
+  clients) is an app (`client`). Any other role value is an app. One-time use, the 10-minute
+  expiry and the lockouts don't change. A worker gets strictly less than an app (`/worker` and
+  `/mcp` only), so letting the code holder choose grants nothing new. `ducter pair` and the
+  app's code card print both ways to use the code. `ducter pair --worker` (a code fixed to
+  `worker`, for older workers that send no role) and `--join <address>` stay as hidden aliases.
+  Then `ducter service install --worker` keeps it running (no listening port on the worker). It
+  keeps the token in `~/.ducter/worker.json` (0600) and holds one outbound WebSocket to
+  `<main>/worker`, reconnecting with backoff. A client token can't open `/worker` (403, which
+  `ducter worker` reports as "joined as an app" and stops), a worker token can't open `/ws`.
+- **Name (D84).** A worker is known by its paired name (the machine's hostname unless `--name`),
+  never by what its hello says. The person can rename it: `rename_device` from the app (改名字 on
+  its card) or `ducter devices rename <id|name> <new name>`. Names stay unique among live
+  devices and can't be this machine's host name or `local`. Former names are kept
+  (`former_names` in `devices.db`), so a task placed by the old name still finds its worker; a
+  rename from the CLI reaches the running main on its next device sweep (10 s).
 - **Hello.** Hostname, OS/arch, Ducter version, and which harnesses are installed and signed in.
   `ducter devices` shows `awake` while the socket is up.
 - **Placement.** `Place.device` (or `{kind:"none", device}` for a place-less task) names a

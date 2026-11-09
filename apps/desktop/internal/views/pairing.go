@@ -94,9 +94,13 @@ func (a *App) pairSign(c *ui.Context, v view, spot *isle, all []isle, sw, sh flo
 				ui.Text(c, a.L.T("pair.once", mins)).FontSize(t.XS).TextColor(t.InkMuted)
 			})
 		})
+		// One code, two ways to use it (D83): a phone or an app window
+		// opens the address; another computer runs one command.
 		if pc.Address != "" {
 			ui.Text(c, pc.Address).Font(t.Mono).FontSize(t.XS).TextColor(t.InkSoft).Selectable().MaxLines(2)
 			ui.Text(c, a.L.T("pair.scan")).FontSize(t.XS).LineHeight(1.5).TextColor(t.InkSoft)
+			ui.Text(c, a.L.T("pair.computer", a.S.PersonaName)).FontSize(t.XS).LineHeight(1.5).TextColor(t.InkSoft)
+			a.commandBoxSized(c, workerCommand(pc.Address, pc.Code), t.XS)
 		} else {
 			ui.Text(c, a.L.T("pair.noaddress")).FontSize(t.XS).LineHeight(1.5).TextColor(t.InkSoft)
 		}
@@ -164,6 +168,12 @@ func (a *App) signAt(v view, spot *isle, all []isle, sw, sh float32) (ui.Rect, u
 		return r, ui.Point{X: cx, Y: cy}
 	}
 	return r, ui.Point{}
+}
+
+// workerCommand is what another computer runs to do tasks for this Ducter
+// with the code (D83; the CLI prints the same line).
+func workerCommand(address, code string) string {
+	return "ducter worker " + address + " --code " + code
 }
 
 // qrBox draws a QR code from rows of "1" and "0", with its quiet zone.

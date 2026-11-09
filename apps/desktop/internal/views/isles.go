@@ -1496,5 +1496,5 @@ func (a *App) isleTokens(c *ui.Context, v view, s *isle, ir ui.Rect, minX, maxX 
 // come from the server (data, not a fixed list): a known agent has its own
 // coin, any other the generic token.
 func accountArt(h string) string {
-	return coinArt(h, coinPrintMin, false)
+	return coinArt(h, 34, false) // the card's coin is 34 points
 }

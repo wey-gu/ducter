@@ -13,14 +13,15 @@ one grain. On the dome sits the print, applied flat like a pad-printed decal:
 
 Each agent gets three files:
 
-    coin_<id>        the coin with its print (shown at 36pt and up)
+    coin_<id>        the coin with its print (a name from 72pt, a logo from 24pt)
     coin_<id>_plain  the body alone, for 20-28pt where a print would only be a smudge;
                      the agent's name is always the text beside it
     coin_<id>_off    signed out or not installed: the body in one grey clay, the print unchanged,
                      then a separate dimming layer laid over the whole coin (the print itself
                      is never faded or recoloured)
 
-and one shared layer, coin_sheen: a soft highlight on the rim only (it never crosses the
+plus coin_off_plain, the unavailable look below the print sizes (one grey body for all), and
+one shared layer, coin_sheen: a soft highlight on the rim only (it never crosses the
 dome where the print sits), which the apps turn slowly round the coin while that agent is
 working (D77: clay may move, status and words never).
 
@@ -57,7 +58,7 @@ COINS = {
     # OpenAI publishes no Codex logo file, and its brand page could not be read: the name.
     "codex": ("#262626", 1.15, ("name", ["Codex"], "#F7F5F2")),
     # pi's press kit offers its vector logo for editorial placements: the logo.
-    "pi": ("#EFE8DC", 0.75, ("logo", "pi.svg", 0.92)),
+    "pi": ("#EFE8DC", 0.75, ("logo", "pi.svg", 1.0)),
     # DeepSeek's terms forbid its marks and logo without permission: the name.
     "deepseek_harness": ("#4D6BFE", 0.95, ("name", ["DeepSeek", "Harness"], "#FFFFFF")),
 }
@@ -240,6 +241,10 @@ def build(only=None):
         save(f"coin_{cid}", coin)
         save(f"coin_{cid}_plain", body)
         save(f"coin_{cid}_off", off)
+    # Unavailable and small: every agent's is the same grey body under the veil.
+    off_plain = recolour(tok, OFF, 0.8)
+    off_plain.alpha_composite(dimmer(off_plain))
+    save("coin_off_plain", off_plain)
     save("coin_sheen", sheen())
 
 

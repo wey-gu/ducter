@@ -187,6 +187,20 @@
    192
   ]
  },
+ "coin_claude_code_plain": {
+  "w": 256,
+  "h": 256,
+  "widths": [
+   96
+  ]
+ },
+ "coin_codex_plain": {
+  "w": 256,
+  "h": 256,
+  "widths": [
+   96
+  ]
+ },
  "wait_ci": {
   "w": 770,
   "h": 560,

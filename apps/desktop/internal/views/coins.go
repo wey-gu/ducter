@@ -24,19 +24,32 @@ var coinIDs = map[string]string{
 }
 
 // coinPrintMin is the size in points below which a coin's print would be a
-// smudge: smaller coins show the plain body.
-const coinPrintMin = 32
+// smudge: smaller coins show the plain body. A logo of a few bold shapes
+// (pi's) still reads down to coinLogoMin; a printed name needs coinPrintMin.
+const (
+	coinPrintMin = 72
+	coinLogoMin  = 24
+)
+
+// coinLogos are the coins printed with a logo rather than a name.
+var coinLogos = map[string]bool{"pi": true}
 
 // coinArt names an agent's coin at a size in points; off: signed out or not
 // installed (grey clay, the print unchanged, a pale layer over it all).
 func coinArt(harness string, size float32, off bool) string {
 	id, ok := coinIDs[harness]
+	least := float32(coinPrintMin)
+	if coinLogos[harness] {
+		least = coinLogoMin
+	}
 	switch {
 	case !ok:
 		return "token_ink"
+	case off && size < least:
+		return "coin_off_plain" // one grey body for every agent
 	case off:
 		return "coin_" + id + "_off"
-	case size < coinPrintMin:
+	case size < least:
 		return "coin_" + id + "_plain"
 	}
 	return "coin_" + id

@@ -46,6 +46,9 @@ const jobs = [
   // Each AI agent's own coin (tools/art/coins.py makes them at 256 for the app; no larger master).
   ["coin_claude_code", coin("coin_claude_code"), [96, 192]],
   ["coin_codex", coin("coin_codex"), [96, 192]],
+  // Below 72px a printed name is a smudge: the plain body, the name beside it.
+  ["coin_claude_code_plain", coin("coin_claude_code_plain"), [96]],
+  ["coin_codex_plain", coin("coin_codex_plain"), [96]],
   // What a wait waits for (On hand): a cloud for a CI run.
   ["wait_ci", clay("wait_ci"), [64, 128]],
 ];

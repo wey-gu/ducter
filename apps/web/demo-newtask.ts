@@ -44,6 +44,7 @@ const harnesses: DeviceHarness[] = [
   { harness: "claude-code", installed: true, loggedIn: true, canBePartner: true, billing: "plan", allowance: { left: 0.64, resetsAt: new Date(Date.now() + 18 * 3600_000).toISOString() }, models: [{ id: "opus", label: "Opus" }, { id: "sonnet", label: "Sonnet" }] },
   { harness: "codex", installed: true, loggedIn: true, canBePartner: true, billing: "plan", allowance: { left: 0.48, resetsAt: new Date(Date.now() + 3 * 86400_000).toISOString() } },
   { harness: "pi", installed: true, loggedIn: false, canBePartner: false },
+  { harness: "deepseek-harness", installed: true, loggedIn: true, canBePartner: false, billing: "usage" },
 ];
 
 const core = startCore({

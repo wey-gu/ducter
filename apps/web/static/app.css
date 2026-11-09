@@ -2925,6 +2925,12 @@ ol.tries b {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-2px); }
 }
+/* In the dark an unavailable coin's pale veil would read as lit: a second veil of the page's own
+   colour lies over the whole coin (never a fade of the print itself). */
+:root[data-theme="dark"] .coin-art.off::after { content: ""; position: absolute; inset: 1%; border-radius: 50%; background: var(--bg); opacity: 0.5; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .coin-art.off::after { content: ""; position: absolute; inset: 1%; border-radius: 50%; background: var(--bg); opacity: 0.5; }
+}
 @media (prefers-reduced-motion: reduce) {
   .coin-art .sheen,
   .coin-art.m-needs_you { animation: none; }

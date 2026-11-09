@@ -14,9 +14,12 @@ func TestCoinArt(t *testing.T) {
 		off  bool
 		want string
 	}{
-		{"claude-code", 62, false, "coin_claude_code"},
+		{"claude-code", 84, false, "coin_claude_code"},
+		{"claude-code", 62, false, "coin_claude_code_plain"},
 		{"codex", 20, false, "coin_codex_plain"},
 		{"pi", 40, true, "coin_pi_off"},
+		{"pi", 26, false, "coin_pi"},
+		{"deepseek-harness", 26, true, "coin_off_plain"},
 		{"deepseek-harness", 84, false, "coin_deepseek_harness"},
 		{"someone-new", 40, false, "token_ink"},
 	}

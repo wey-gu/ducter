@@ -124,12 +124,19 @@ To start over as a brand-new user, `ducter uninstall --all` (or use a fresh `--d
 | `ducter doctor` | Check bun, git, Claude Code, Codex, Nowledge Mem, cua-driver, the port, and the data folder |
 | `ducter status` | Tasks and open decisions from the running Ducter, with finished work still waiting to be merged (`--json` for scripts). Hints repeat the `--port` / `--data-dir` given |
 | `ducter merge <part of a title>` | Merge one finished task's branch into its base branch, as the app's Merge does (its worktree is then removed, the branch kept) |
+| `ducter task "<words>" [--repo <dir>\|none] [--agent <name>] [--base <branch>]` | Open a task yourself (D128): your words go to it as they are, as its brief. `--repo` defaults to the current folder when it is a git repo (else one line says how to name one; `none` = no particular place); `--agent` pins who does it (`codex`, `claude-code/haiku`, `sonnet`: a harness, harness/model, or a model on the candidate list), else the top candidate; `--base` defaults to the repo's default branch. Prints `开了：「…」· <repo> · <agent>（你选的）` and the next commands. Nothing appears in the conversation |
+| `ducter say "<words>" [--timeout <s>]` | Send a user message over the client WebSocket, exactly as an app does, and print the partner's words as they arrive; ends when its turn settles (activity ends), or after `--timeout` (default 300 s, exit 1). Prints any decision it raised with its id. `--json`: `{seq, settled, replies, decisions}` |
+| `ducter tail [task]` | Follow the conversation (the last dozen lines, then live), or one task's steps one line each (tools, its words, reports, state; Ducter's own MCP tools and the runner's kickoff left out). Ctrl-C stops; `--json` prints the raw events, one per line |
+| `ducter answer <id \| part of the question> go\|hold\|"<reply>"` | Answer an open decision, as the app's Go / Hold / Reply do |
+| `ducter open [part of a title or id]` | No argument: reopen the desktop app. With one: the connected apps show that task (`open_task` frame); with none connected, it prints where the task is and how to tail it |
 | `ducter version` | Version and build |
 | `ducter uninstall [--all]` | Stop and remove the background item; `--all` also removes `~/.ducter` (the Log, task working copies, browser profiles), the app's `~/.local/bin/ducter` link and the app's Library folders. `--dry-run` lists it first; repos, their `ducter/*` branches and the AI tools' logins stay. With `--data-dir <dir>` it removes that instance only: the background item only if it runs that folder, the app's folders and link only for the instance that owns them (the background item's, else `~/.ducter`). The app's **Remove Ducter** runs the same thing, then moves the app to the Trash |
 | `ducter report [--include-conversation]` | A diagnostics folder (doctor, versions, the last 500 log lines with secrets removed; the conversation only when asked) and a prefilled GitHub issue link. Nothing is uploaded. The app's **Help → Report a problem…** saves it as a .zip on the Desktop |
 
 Options: `--port` (default 7777, or `DUCTER_PORT`), `--data-dir` (default `~/.ducter`, or
-`DUCTER_DATA_DIR`), `--no-desktop`. Messages follow your locale (`LANG`); set
+`DUCTER_DATA_DIR`), `--no-desktop`, `--json`. `task`, `say`, `tail`, `answer` and `open <task>`
+speak the client protocol to the running Ducter on `--port`, so a lead agent can work a
+scratch Ducter (`--port 7791 --data-dir <scratch>`) without anyone relaying. Messages follow your locale (`LANG`); set
 `DUCTER_LOCALE=zh` or `en` to choose.
 
 From a checkout you can also skip the install: `bun install && bun packages/cli/src/main.ts up`.

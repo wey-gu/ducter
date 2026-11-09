@@ -42,11 +42,11 @@ const ld = {
 <section class="hero">
   <div class="wrap hero-grid">
     <div class="hero-copy">
-      <h1>Say it once. <span class="soft">Hear back when it's&nbsp;done.</span></h1>
+      <h1>Say it once. <span class="line">Hear back when it's&nbsp;done.</span></h1>
       <p class="lede">Ducter is a personal AI you run yourself. You talk to <b>one partner</b>. It hands the real work to <b>Claude Code and Codex on your own computers</b>, on the plans you already pay for, and comes to you only when a decision is truly yours.</p>
       <div class="cta-row">
-        <a class="btn lg" href={dl.href}>{dl.label}</a>
         <a class="btn secondary lg" href="#how">See how it works</a>
+        <a class="btn lg" href={dl.href}>{dl.label}</a>
       </div>
       <p class="cta-note">{dl.note}</p>
       <p class="facts">Open source under Apache 2.0. Runs on your Mac or a server you own, with Claude Code or Codex, in English or 中文.</p>
@@ -56,7 +56,7 @@ const ld = {
       <Face id="hero-face" faces={["idle", "working", "done"]} start="done" sizes="132px" eager />
       <div class="win">
         <div class="win-bar">
-          <Art class="avatar" name="ducter_idle" alt="" sizes="34px" eager />
+          <span class="avatar mascot" data-face="idle"><span class="clay"><Art class="f-idle" name="ducter_idle" alt="" sizes="52px" eager /><i class="lid l"></i><i class="lid r"></i></span></span>
           <div class="who"><b>Ducter</b><span class="presence" id="presence"><span>just finished something</span></span></div>
         </div>
         <div class="convo">
@@ -73,10 +73,10 @@ const ld = {
                 <span class="qlink">2 files changed ›</span>
                 <span class="qlink">Fix CI ›</span>
               </div>
-              <div class="proof"><span class="mk"><Fragment set:html={out} />git push -u origin ducter/fix-ci</span></div>
+              <div class="proof"><span class="mk out"><Fragment set:html={out} />git push -u origin ducter/fix-ci</span></div>
               <div class="actions">
-                <button class="btn md" type="button" tabindex="-1">Merge into main</button>
                 <button class="btn secondary md" type="button" tabindex="-1">Open draft PR</button>
+                <button class="btn md" type="button" tabindex="-1">Merge into main</button>
               </div>
             </div>
           </div>
@@ -101,7 +101,6 @@ const ld = {
   <div class="wrap split">
     <div>
       <div class="sec-head">
-        <span class="tag">Only when it matters</span>
         <h2>Silence means it's going fine.</h2>
       </div>
       <p class="lede">Tasks run in the background. You hear back when one is done, or when a decision is truly yours, and every decision arrives with a default, so not answering is an answer too.</p>
@@ -124,8 +123,8 @@ const ld = {
               <p class="def" id="ask-def">If you don't answer, I'll change them in 30 min. It can be undone.</p>
               <div class="bar"><i id="ask-bar"></i></div>
               <div class="actions">
-                <button class="btn md" type="button" id="ask-go">Change them</button>
                 <button class="btn secondary md" type="button" id="ask-hold">Hold</button>
+                <button class="btn md" type="button" id="ask-go">Change them</button>
                 <span class="hint" id="ask-hint">Try it: press Change them</span>
               </div>
               <div class="resolved" id="ask-resolved"><Fragment set:html={check} /><span>Changing them now</span></div>
@@ -145,7 +144,6 @@ const ld = {
 <section class="sec" id="devices">
   <div class="wrap">
     <div class="sec-head">
-      <span class="tag">Where the work happens</span>
         <h2>Your computers. Your plans.</h2>
       <p class="lede">Ducter lives on your Mac, or on a server you own. Every task runs there in its own git worktree and branch, on the Claude Code or Codex sign-in you already have. There's no Ducter cloud in the middle.</p>
     </div>
@@ -203,7 +201,6 @@ const ld = {
   <div class="wrap split flip">
     <div>
       <div class="sec-head">
-        <span class="tag">On your phone</span>
         <h2>One thumb is enough.</h2>
       </div>
       <p class="lede">Only decisions earn a push, and they wait out your quiet hours. Each one carries a default, so you can answer from the lock screen, or let the default happen and read about it over coffee.</p>
@@ -226,8 +223,8 @@ const ld = {
               <time>now</time>
             </div>
             <div class="nacts">
-              <button class="btn md" type="button" id="notif-go">Rebase</button>
               <button class="btn secondary md" type="button" id="notif-hold">Hold</button>
+              <button class="btn md" type="button" id="notif-go">Rebase</button>
             </div>
             <div class="done"><i><Fragment set:html={check} /></i><span id="notif-done">Rebasing. I'll tell you if CI doesn't pass.</span></div>
           </div>
@@ -244,7 +241,6 @@ const ld = {
   <div class="wrap split">
     <div>
       <div class="sec-head">
-        <span class="tag">Trust</span>
         <h2>It asks before anything leaves.</h2>
       </div>
       <p class="lede">No pop-up for every command. Each task holds only what it needs, everything that goes out is written down in plain words, and a few things are never its call.</p>
@@ -272,7 +268,6 @@ const ld = {
 <section class="sec" id="depth">
   <div class="wrap">
     <div class="sec-head">
-      <span class="tag">Full depth, when you want it</span>
         <h2>Open anything. Any time.</h2>
       <p class="lede">Most days you never leave the conversation. When you want the wheel, <b>On hand</b> shows every task at a glance, and any task opens into one page: what came of it and how it knows, what it did step by step, the changed files with each diff a tap away, and a box to talk to it directly.</p>
     </div>
@@ -281,15 +276,21 @@ const ld = {
         <span class="crumbs"><span>Conversation</span><span aria-hidden="true">/</span><span>On hand</span><span aria-hidden="true">/</span><b>Fix CI · #1592</b></span>
       </div>
       <div class="tw-page">
-        <div class="standing"><Fragment set:html={check} /><b>Done</b><span>· started 14 min ago</span></div>
-        <p class="said">Rebased; all 412 tests pass and CI is green. The cause was a fixed sleep in the test, now a wait for durability.</p>
-        <div class="proof">
-          <span class="mk"><Fragment set:html={check} />20 local reruns</span>
-          <span class="mk"><Fragment set:html={check} />CI run #48219 · green</span>
-          <span class="qlink">1 file changed ›</span>
+        <div class="tw-head">
+          <Face id="task-face" faces={["done"]} start="done" sizes="116px" />
+          <div>
+            <div class="standing"><b>Done</b><span>· started 14 min ago</span></div>
+            <p class="outcome">The flaky checkpoint test is fixed.</p>
+            <p class="said">Rebased; all 412 tests pass and CI is green. The cause was a fixed 50&nbsp;ms sleep in the test, now a wait for durability.</p>
+            <div class="proof">
+              <span class="mk"><Fragment set:html={check} />20 local reruns</span>
+              <span class="mk"><Fragment set:html={check} />CI run #48219 · green</span>
+              <span class="qlink">1 file changed ›</span>
+            </div>
+            <div class="proof"><span class="mk out"><Fragment set:html={out} />git push -u origin ducter/fix-ci</span></div>
+            <div class="actions"><button class="btn secondary md" type="button" tabindex="-1">Open draft PR</button><button class="btn md" type="button" tabindex="-1">Merge into main</button></div>
+          </div>
         </div>
-        <div class="proof"><span class="mk"><Fragment set:html={out} />git push -u origin ducter/fix-ci</span></div>
-        <div class="actions"><button class="btn md" type="button" tabindex="-1">Merge into main</button><button class="btn secondary md" type="button" tabindex="-1">Open draft PR</button></div>
 
         <h3 class="tw-h">What it did</h3>
         <ol class="steps">
@@ -321,7 +322,6 @@ const ld = {
   <div class="wrap">
     <div class="split" style="margin-bottom: clamp(56px, 8vw, 104px)">
       <div class="sec-head" style="margin:0">
-        <span class="tag">Memory</span>
         <h2>It remembers you.</h2>
         <p class="lede">With <a href="https://mem.nowledge.co" rel="noopener">Nowledge Mem</a>, your partner starts with the identity and context you already keep there, shared with the other AIs you use. Switch models whenever you like; it's still the same partner.</p>
       </div>
@@ -334,7 +334,6 @@ const ld = {
     </div>
 
     <div class="sec-head">
-      <span class="tag">Open source</span>
         <h2>Yours, all the way down.</h2>
     </div>
     <div class="cards3">
@@ -393,8 +392,8 @@ const ld = {
     <h2>Say it once.</h2>
     <p class="lede">Then get on with your day. Ducter will be here when it's done.</p>
     <div class="cta-row">
-      <a class="btn lg" href={dl.href}>{dl.label}</a>
       <a class="btn secondary lg" href={gh.href}>{facts.isPublic ? "Star on GitHub" : "Read how it works"}</a>
+      <a class="btn lg" href={dl.href}>{dl.label}</a>
     </div>
   </div>
 </section>

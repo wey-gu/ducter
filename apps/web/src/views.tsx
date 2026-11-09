@@ -6,7 +6,7 @@ import { Fragment } from "preact";
 import { PARTNER_RESERVE } from "@ducter/protocol/src/loadout.ts";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { JSX } from "preact";
-import { A } from "./app.ts";
+import { A, candKey, placeKey } from "./app.ts";
 import { ago, cjkPad, deviceLabel, duration, firstClause, harnessName, modelName, placeLine, sameWords, splitOutcome, when } from "./format.ts";
 import { markdown } from "./markdown.ts";
 import { disablePush, enablePush } from "./push-client.ts";
@@ -931,7 +931,13 @@ function OnHandButton() {
   return <Btn kind="secondary" size="sm" label={t("nav.onhand")} onClick={() => A.go({ name: "onhand" })} />;
 }
 
-function Top({ back, face = true }: { back?: string; face?: boolean }) {
+const Plus = () => (
+  <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+    <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
+  </svg>
+);
+
+function Top({ back, face = true, plus }: { back?: string; face?: boolean; plus?: boolean }) {
   if (back)
     return (
       <header class="top">
@@ -940,6 +946,12 @@ function Top({ back, face = true }: { back?: string; face?: boolean }) {
           {back}
         </button>
         <span style={{ flex: 1 }} />
+        {plus && (
+          // 开一件事 / New task (D128): a quiet ＋, never a floating button.
+          <button class="plus" aria-label={t("newtask.button")} title={t("newtask.button")} onClick={() => A.openNewTask()}>
+            <Plus />
+          </button>
+        )}
         {face && <Avatar size={40} />}
       </header>
     );
@@ -1210,7 +1222,7 @@ export function OnHand() {
   const openCount = A.defaultable().length;
   return (
     <>
-      <Top back={t("nav.back")} />
+      <Top back={t("nav.back")} plus />
       <main class="scroll" style={{ gap: 16 }}>
         <h1 class="page-title">{t("onhand.title")}</h1>
         {nothing ? (
@@ -2012,8 +2024,154 @@ function SettingsSheet() {
   );
 }
 
+// ---------- 开一件事 / New task (D128) ----------
+
+const tokenArt = (h: string) => `app/art/${h === "claude-code" ? "token_orange" : "token_ink"}.webp`;
+
+/** The New task sheet: Where (place chips; the chosen repo's chip names its base branch and
+ *  opens the branches), Who does it (the agents' coins, the best fit chosen with its reason),
+ *  What (the words, given as they are). Start opens the task; back returns. */
+function NewTaskSheet() {
+  const nt = A.nt;
+  const close = () => ((A.sheet = null), A.changed());
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => e.key === "Escape" && close();
+    addEventListener("keydown", k);
+    // The words are focused where a keyboard is at hand; a phone's would cover the sheet.
+    if (!coarse()) ref.current?.focus();
+    return () => removeEventListener("keydown", k);
+  }, []);
+  const opts = A.newTaskOptions;
+  const places = A.newTaskPlaces();
+  const chosen = A.chosenPlace(places);
+  const branch = nt.branch || chosen.defaultBranch || "";
+  const { c: who, picked } = A.chosenCandidate();
+  const pickable = (chosen.branches?.length ?? 0) > 1;
+  return (
+    <>
+      <div class="scrim" onClick={close} />
+      <div class="sheet newtask" role="dialog" aria-modal="true" aria-label={t("newtask.title")}>
+        <div class="grab" />
+        <h2>{t("newtask.title")}</h2>
+        <section class="nt-row" role="radiogroup" aria-label={t("newtask.where")}>
+          <h3>{t("newtask.where")}</h3>
+          <div class="chips">
+            {places.map((p) => {
+              const on = placeKey(p.place) === placeKey(chosen.place);
+              const name = p.place.kind === "repo" ? p.name || p.place.repoPath.split("/").pop() : t("newtask.nowhere");
+              return (
+                <button
+                  key={placeKey(p.place)}
+                  class={`chip${on ? " on" : ""}`}
+                  role="radio"
+                  aria-checked={on}
+                  aria-expanded={on && p.place.kind === "repo" && pickable ? nt.branchOpen : undefined}
+                  title={p.place.kind === "repo" ? p.place.repoPath : undefined}
+                  onClick={() => (on ? pickable && ((nt.branchOpen = !nt.branchOpen), A.changed()) : A.pickPlace(p))}
+                >
+                  <b>{name}</b>
+                  {on && p.place.kind === "repo" && branch && (
+                    <>
+                      <span class="dot">·</span>
+                      <code>{branch}</code>
+                      {pickable && <Chev />}
+                    </>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          {nt.branchOpen && pickable && (
+            <div class="branches" role="radiogroup" aria-label={t("newtask.branch.title")}>
+              <small>{t("newtask.branch.title")}</small>
+              {chosen.branches!.map((b) => (
+                <button
+                  key={b}
+                  role="radio"
+                  aria-checked={b === branch}
+                  class={b === branch ? "on" : ""}
+                  onClick={() => ((nt.branch = b === chosen.defaultBranch ? "" : b), (nt.branchOpen = false), A.changed())}
+                >
+                  <code>{b}</code>
+                  {b === chosen.defaultBranch && <small>{t("newtask.branch.default")}</small>}
+                  {b === branch && <Check />}
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+        <section class="nt-row" role="radiogroup" aria-label={t("newtask.who")}>
+          <h3>{t("newtask.who")}</h3>
+          {!opts ? (
+            <div class="small sub">{t("newtask.loading")}</div>
+          ) : !who ? (
+            <div class="small sub">{t("newtask.nobody")}</div>
+          ) : (
+            <>
+              <div class="chips">
+                {opts.candidates.map((c) => {
+                  const off = !!c.blocked;
+                  const on = !off && candKey(c) === candKey(who);
+                  const top = opts.candidates.find((x) => !x.blocked);
+                  return (
+                    <button
+                      key={candKey(c)}
+                      class={`chip coin${on ? " on" : ""}${off ? " off" : ""}`}
+                      role="radio"
+                      aria-checked={on}
+                      disabled={off}
+                      title={off ? candReason(c) : undefined}
+                      onClick={() => ((nt.pick = top && candKey(top) === candKey(c) ? "" : candKey(c)), A.changed())}
+                    >
+                      <img src={tokenArt(c.harness)} alt="" width="26" height="26" />
+                      <b>{candName(c)}</b>
+                    </button>
+                  );
+                })}
+              </div>
+              <div class="small sub why">{picked ? t("newtask.picked", candName(who)) : candReason(who)}</div>
+            </>
+          )}
+        </section>
+        <section class="nt-row">
+          <h3>
+            <label for="nt-words">{t("newtask.what")}</label>
+          </h3>
+          <textarea
+            ref={ref}
+            id="nt-words"
+            rows={4}
+            value={nt.words}
+            placeholder={t("newtask.placeholder")}
+            onInput={(e) => ((nt.words = (e.target as HTMLTextAreaElement).value), (nt.err = ""), A.changed())}
+            onKeyDown={(e) => {
+              // Return breaks the line; ⌘Return (Ctrl+Return) starts.
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                A.startNewTask();
+              }
+            }}
+          />
+          <div class="small sub">{t("newtask.verbatim")}</div>
+        </section>
+        {A.newTaskError() && (
+          <div class="nt-err" role="status">
+            {A.newTaskError()}
+          </div>
+        )}
+        <div class="btns">
+          <Btn kind="text" label={t("newtask.cancel")} onClick={close} />
+          <Btn kind="primary" grow label={nt.sending ? t("newtask.starting") : t("newtask.start")} disabled={!!nt.sending} onClick={() => A.startNewTask()} />
+        </div>
+      </div>
+    </>
+  );
+}
+
 export function Sheets() {
   if (!A.sheet) return null;
+  if (A.sheet.kind === "newtask") return <NewTaskSheet />;
   return A.sheet.kind === "decision" ? <DecisionSheet id={A.sheet.id} /> : <SettingsSheet />;
 }
 

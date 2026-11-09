@@ -1,5 +1,5 @@
 // The phone app's state and actions (the views read it and call these). One store, one socket.
-import type { Candidate, ClientFrame, ConnectionView, DeviceHarness, MemView, OoDetect, RuleView, ServerFrame, Settings, SettingsPatch } from "@ducter/protocol";
+import type { Candidate, ClientFrame, Place, PlaceChoice, ConnectionView, DeviceHarness, MemView, OoDetect, RuleView, ServerFrame, Settings, SettingsPatch } from "@ducter/protocol";
 import { Api, Connection, type ConnStatus, type Me, wsUrl } from "./conn.ts";
 import { detectLang, langOfText, strings, type Lang, type Strings } from "./i18n.ts";
 import { pushState, type PushState } from "./push-client.ts";
@@ -7,7 +7,23 @@ import { haptic } from "./native.ts";
 import { attention, finished, LANE, laneOf, looksSecret, Store, title, type DecisionState, type Entry } from "./store.ts";
 
 export type Route = { name: "conv" } | { name: "onhand" } | { name: "task"; id: string };
-export type Sheet = { kind: "decision"; id: string } | { kind: "settings" } | null;
+export type Sheet = { kind: "decision"; id: string } | { kind: "settings" } | { kind: "newtask" } | null;
+
+/** 开一件事 / New task's sheet (D128): what the user chose and typed, and how starting went. */
+export interface NewTaskDraft {
+  words: string;
+  placeKey: string; // "" = the first offered; "none" = no particular place
+  prefill?: Place;
+  branch: string; // "" = the repo's default
+  branchOpen: boolean;
+  pick: string; // a candidate key; "" = the top one
+  sending: string; // the clientId in flight
+  err: string;
+}
+
+export const placeKey = (p: Place): string => (p.kind === "repo" ? `${p.device || "local"} ${p.repoPath.replace(/\/+$/, "")}` : "none");
+export const candKey = (c: Candidate) => `${c.harness}/${c.model ?? ""}`;
+const freshDraft = (words = ""): NewTaskDraft => ({ words, placeKey: "", branch: "", branchOpen: false, pick: "", sending: "", err: "" });
 
 export interface Toast {
   id: number;
@@ -62,6 +78,9 @@ class AppState {
   rules?: RuleView[];
   agents?: DeviceHarness[];
   candidates = new Map<string, Candidate[]>();
+  /** New task (D128): what the sheet offers (places, who could), as last sent; the draft. */
+  newTaskOptions?: { places: PlaceChoice[]; candidates: Candidate[] };
+  nt: NewTaskDraft = freshDraft();
   switchFor = "";
   switching = "";
   /** The user's connections (D96) and what oo is set up with, once asked for. */
@@ -116,7 +135,7 @@ class AppState {
     this.conn = new Connection(
       wsUrl(base),
       token,
-      () => ({ t: "hello", ...(this.S.cursor > 0 ? { cursor: this.S.cursor } : {}), locale: this.L.lang, ...(zone() ? { tz: zone() } : {}) }),
+      () => ({ t: "hello", ...(this.S.cursor > 0 ? { cursor: this.S.cursor } : {}), locale: this.L.lang, ...(zone() ? { tz: zone() } : {}), client: "web" }),
       (f) => this.receive(f),
       (s) => ((this.status = s), this.changed()),
     );
@@ -163,6 +182,11 @@ class AppState {
     if (f.t === "rules") return void ((this.rules = f.rules), this.changed());
     if (f.t === "devices") return void ((this.agents = f.devices.find((d) => d.home)?.harnesses ?? []), this.changed());
     if (f.t === "candidates") return void (this.candidates.set(f.taskId, f.candidates), this.changed());
+    if (f.t === "task_new_options") return void ((this.newTaskOptions = { places: f.places, candidates: f.candidates }), this.changed());
+    if (f.t === "task_new_result") return this.newTaskResult(f);
+    // `ducter open <task>` (D128): show it as if tapped; back returns.
+    if (f.t === "open_task") return void ((this.sheet = null), this.go({ name: "task", id: f.taskId }));
+    if (f.t === "open_result") return;
     if (f.t === "connections") return (this.connections = f.connections), (this.oo = f.oo), this.changed();
     if (f.t === "connection_result") {
       this.connecting = false;
@@ -225,6 +249,99 @@ class AppState {
   openSwitch(taskId: string) {
     if (this.switchFor === taskId) this.switchFor = "";
     else (this.switchFor = taskId), this.send({ t: "candidates", taskId });
+    this.changed();
+  }
+
+  /** 开一件事 / New task (D128): opens the sheet, at a place when given, asking what it offers. */
+  openNewTask(at?: Place) {
+    this.nt = freshDraft(this.nt.words);
+    let ask: Place | undefined;
+    if (at?.kind === "none") this.nt.placeKey = "none";
+    if (at?.kind === "repo") {
+      ask = { kind: "repo", device: at.device, repoPath: at.repoPath };
+      this.nt.prefill = ask;
+      this.nt.placeKey = placeKey(ask);
+      if (at.baseBranch) this.nt.branch = at.baseBranch;
+    }
+    this.sheet = { kind: "newtask" };
+    this.send({ t: "task_new_options", ...(ask ? { place: ask } : {}) });
+    this.changed();
+  }
+
+  /** The places the sheet offers: the server's, a prefilled one first when it isn't listed. */
+  newTaskPlaces(): PlaceChoice[] {
+    const places = [...(this.newTaskOptions?.places ?? [])];
+    const pre = this.nt.prefill;
+    if (pre && pre.kind === "repo" && !places.some((p) => placeKey(p.place) === placeKey(pre)))
+      places.unshift({ place: pre, name: pre.repoPath.replace(/\/+$/, "").split("/").pop() ?? "" });
+    if (!places.length || places[places.length - 1]!.place.kind !== "none") places.push({ place: { kind: "none" }, name: "" });
+    return places;
+  }
+
+  chosenPlace(places = this.newTaskPlaces()): PlaceChoice {
+    return places.find((p) => this.nt.placeKey && placeKey(p.place) === this.nt.placeKey) ?? places[0]!;
+  }
+
+  /** Who does it: the user's pick, else the top candidate that can. */
+  chosenCandidate(): { c?: Candidate; picked: boolean } {
+    const list = this.newTaskOptions?.candidates ?? [];
+    const top = list.find((c) => !c.blocked);
+    const pick = this.nt.pick ? list.find((c) => !c.blocked && candKey(c) === this.nt.pick) : undefined;
+    if (pick) return { c: pick, picked: !top || candKey(top) !== this.nt.pick };
+    return { c: top, picked: false };
+  }
+
+  pickPlace(p: PlaceChoice) {
+    this.nt.placeKey = placeKey(p.place);
+    this.nt.branch = "";
+    this.nt.branchOpen = false;
+    this.nt.err = "";
+    this.send({ t: "task_new_options", ...(p.place.kind === "repo" ? { place: p.place } : {}) });
+    this.changed();
+  }
+
+  /** The line under Start: why it didn't open. "Say what it should do first" holds only while
+   *  there are no words. */
+  newTaskError(): string {
+    const nt = this.nt;
+    if (nt.err && nt.err === this.L.t("newtask.err.empty") && nt.words.trim()) nt.err = "";
+    return nt.err;
+  }
+
+  /** Start: sends task_new; the result opens the task or says why not, on the sheet. */
+  startNewTask(): boolean {
+    const nt = this.nt;
+    if (nt.sending) return false;
+    const words = nt.words.trim();
+    if (!words) return (nt.err = this.L.t("newtask.err.empty")), this.changed(), false;
+    if (this.status !== "connected" || !this.S.welcomed) return (nt.err = this.L.t("newtask.err.conn")), this.changed(), false;
+    const chosen = this.chosenPlace();
+    const cp = chosen.place;
+    const place: Place | undefined =
+      cp.kind === "repo" ? { kind: "repo", device: cp.device, repoPath: cp.repoPath, ...(nt.branch && nt.branch !== chosen.defaultBranch ? { baseBranch: nt.branch } : {}) } : undefined;
+    const { c, picked } = this.chosenCandidate();
+    nt.sending = `n${Date.now()}-${++this.nextClient}`;
+    nt.err = "";
+    this.send({ t: "task_new", words, ...(place ? { place } : {}), ...(c && picked ? { harness: c.harness, ...(c.model ? { model: c.model } : {}) } : {}), clientId: nt.sending });
+    this.changed();
+    return true;
+  }
+
+  private newTaskResult(f: Extract<ServerFrame, { t: "task_new_result" }>) {
+    if (!this.nt.sending || f.clientId !== this.nt.sending) return;
+    this.nt.sending = "";
+    if (f.ok && f.taskId) {
+      this.nt = freshDraft();
+      this.sheet = null;
+      return this.go({ name: "task", id: f.taskId });
+    }
+    const r = f.reason;
+    this.nt.err =
+      r === "empty" || r === "no_agent" || r === "not_repo" || r === "offline"
+        ? this.L.t(`newtask.err.${r}`)
+        : f.message
+          ? this.L.t("newtask.err.failed", f.message.replace(/[.\s]+$/, ""))
+          : this.L.t("newtask.err.unknown");
     this.changed();
   }
 

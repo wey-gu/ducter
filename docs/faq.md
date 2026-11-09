@@ -66,6 +66,15 @@ until you change them).
 Any time. **On hand** shows every task; open one to read *What it did*, see its changes, and
 write to it directly while it works.
 
+### Can I start a task myself, without asking Ducter?
+
+Yes. Press **⌘N** in the Mac app, or **New task** at the top of **On hand** (on the phone, the
+**＋**). Pick where it works (a repo and the branch it starts from, or no particular place), who
+does it (the best fit is already picked, with why), and write what to do. Your words go to it as
+they are. Ducter tells you the result when it's done, like any other task. On the Mac, **On
+hand** can also group tasks **By project**, with each task's branch and how many lines it
+changed; the **+** on a project starts a new task there.
+
 ### Does it remember me?
 
 It remembers your conversation. With [Nowledge Mem](https://mem.nowledge.co) it also starts out

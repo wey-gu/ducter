@@ -241,7 +241,7 @@ function Event({ task, ev }: { task: Task; ev: LogEvent }) {
     // A task opened before its brief was written (D120) logs an empty one first: the briefed one follows.
     return brief.trim() ? (
       <div class="tx said">
-        <small>{t("task.brief", A.S.personaName)}</small>
+        <small>{(ev.body as Bodies["task_open"]).origin === "you" ? t("task.brief.you") : t("task.brief", A.S.personaName)}</small>
         {brief}
       </div>
     ) : null;

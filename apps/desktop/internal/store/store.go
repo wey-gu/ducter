@@ -359,6 +359,13 @@ type Store struct {
 	Activity        *protocol.PartnerActivity
 	ActivityAt      time.Time
 	ActivityEndedAt int64
+
+	// New task (D128): what the card offers, as last sent (nil until asked);
+	// NewTaskResults the task_new answers and OpenRequests the open_task
+	// frames (`ducter open`) the view has not taken yet.
+	NewTaskOptions *protocol.ServerFrame
+	NewTaskResults []protocol.ServerFrame
+	OpenRequests   []string
 }
 
 // Device returns a device of Your devices and abilities by id, or nil.
@@ -451,6 +458,15 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 			s.Candidates = map[string][]protocol.Candidate{}
 		}
 		s.Candidates[f.TaskID] = f.Candidates
+	case "task_new_options":
+		fc := f
+		s.NewTaskOptions = &fc
+	case "task_new_result":
+		s.NewTaskResults = append(s.NewTaskResults, f)
+	case "open_task":
+		if f.TaskID != "" {
+			s.OpenRequests = append(s.OpenRequests, f.TaskID)
+		}
 	case "action_result":
 		// A switch is not a task action the result line shows (Merge stays as it was).
 		if f.Action == "switch" {

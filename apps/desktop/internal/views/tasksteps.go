@@ -324,9 +324,13 @@ func (a *App) transcriptRow(c *ui.Context, task *store.Task, ev protocol.LogEven
 		if strings.TrimSpace(b.Brief) == "" {
 			return // opened before its brief was written (D120): the briefed one follows
 		}
-		// What the partner asked for: its words, quoted under a small label.
+		// What the partner asked for (or the user, D128): its words, quoted under a small label.
+		label := a.L.T("task.brief", a.S.PersonaName)
+		if b.Origin == "you" {
+			label = a.L.T("task.brief.you")
+		}
 		ui.Column(c).Gap(t.S1).Padding(0, 0, t.S2, 0).Children(func() {
-			ui.Text(c, a.L.T("task.brief", a.S.PersonaName)).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
+			ui.Text(c, label).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
 			ui.Text(c, b.Brief).FontSize(t.MD).LineHeight(1.55).TextColor(t.InkSoft).Selectable()
 		})
 	case *protocol.TaskEvent:

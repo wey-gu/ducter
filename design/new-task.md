@@ -5,11 +5,12 @@ and the task starts at once. Never required: saying it to the partner still work
 the default. Decision: D128 in `decisions.md`. Glossary rows: `product-model.md` §1 ("a task the
 user opens themselves").
 
-**Status.** Core, protocol, runner, the Go protocol mirror and the CLI are built and tested
-(`packages/core/test/new-task.test.ts`, `packages/cli/test/talk.test.ts`), and checked live on
-a scratch Ducter. **The card, ⌘N, the By project grouping, the Changes header and `open_task`
-in the apps are not built**: they wait for the conversation and On hand redesigns in flight,
-and this note is their spec.
+**Status.** Built end to end. Core, protocol, runner, the Go protocol mirror and the CLI are
+tested (`packages/core/test/new-task.test.ts`, `packages/cli/test/talk.test.ts`) and checked
+live on a scratch Ducter. The desktop card, ⌘N, By project, the Changes header and `open_task`
+are in `apps/desktop/internal/views/{newtask,byproject}.go` (`newtask_test.go`, screenshots
+in `.shots/newtask-ui/`); the phone's sheet and `open_task` in `apps/web/src` (`web.test.ts`,
+shot against `apps/web/demo-newtask.ts`). Not yet reviewed by the user.
 
 ## Who and how it starts
 
@@ -21,9 +22,11 @@ and this note is their spec.
   or press ⌘N. The card's defaults are already right (last repo, its default branch, the best
   fit); typing and pressing Start is all it takes.
 
-## The card (desktop; the phone later)
+## The card
 
-Three rows, top to bottom, each a chip that opens a small list:
+On the Mac it is a card over the page (a soft scrim, Esc or a click outside closes it and keeps
+the words); on the phone, a bottom sheet opened by a **＋** at the top right of On hand. Three
+rows, top to bottom, each a row of flat chips (the chosen one white with an ink hairline):
 
 | Row | Default | List |
 |---|---|---|
@@ -33,11 +36,19 @@ Three rows, top to bottom, each a chip that opens a small list:
 
 **开始 / Start** (Return; ⌘Return in a multi-line field) sends `task_new` and, on
 `task_new_result` ok, opens that task (Esc returns to where the user was). A failed open keeps
-the card and its words, with `message` in one line under Start. The device is inferred as
-today; there is no device row, no model or effort picker, no tabs, no pin or search.
+the card and its words, with the reason in one line under Start (offline, not a repo, no agent,
+else `message`). The device is inferred as today; there is no device row, no model or effort
+picker, no tabs, no pin or search. The chosen repo's chip reads `ducter · main ▾`; a click on it
+opens 从哪个分支开始 / Start from which branch (the default marked 默认 / default), a popover on
+the Mac and an inline list on the phone. In the opened task, the words stand under 你交代的 /
+What you asked for (the partner's brief stays {name} 交代的).
 
 Inside an opened task, ⌘N opens the card with that task's place prefilled. On hand's group
 header "+" (By project) is 在这儿开一件 / New task here, prefilling that place.
+
+`open_task` (`ducter open`): the desktop opens the task as if tapped and brings its window
+forward; the phone shows it. Esc (or back) returns to where the user was. Both say
+`hello.client` ("desktop", "web").
 
 ## On hand by project
 
@@ -81,5 +92,5 @@ stat `{files, adds, dels, at}`.
 ## Not yet
 
 - Attachments on the card (todo, trigger: the first brief that needs a screenshot).
-- The phone's card.
+- By project on the phone (todo).
 - Enforcing "retitle once" in code (today the note asks for it).

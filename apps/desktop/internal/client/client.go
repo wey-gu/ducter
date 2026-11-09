@@ -194,7 +194,7 @@ func (c *Client) session(ctx context.Context) error {
 	stop := context.AfterFunc(ctx, func() { conn.Close() })
 	defer stop()
 
-	hello := protocol.Hello{T: "hello", Persona: c.opt.Persona, Locale: c.opt.Locale}
+	hello := protocol.Hello{T: "hello", Persona: c.opt.Persona, Locale: c.opt.Locale, Client: "desktop"}
 	if c.opt.Cursor != nil {
 		if cur := c.opt.Cursor(); cur > 0 {
 			hello.Cursor = &cur

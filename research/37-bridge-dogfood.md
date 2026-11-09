@@ -168,6 +168,7 @@ The author approved the §J defaults. Built on `bridge-spike`, all over the fake
   | after merging main, final guards: haiku ×3 | 3/3 | 3/3 | 3/3 |
   | same: sonnet ×3 | 2/3 (a second "started on it" reply while the task ran; now refused in code) | 3/3 | 3/3 |
   | after that guard, take-zh only: sonnet ×3 / haiku ×3 | 3/3 / 1/3 (judge: merge and push choice in prose, general result shape) | — | — |
+  | after merging main again (quiet conversation): haiku ×2 / sonnet ×2 | 1/2 / 2/2 (haiku: judge, repeated evidence) | 2/2 / 2/2 | 2/2 / 2/2 |
 
 - **What prompting alone didn't hold, now code** (research/30's lesson again):
   - an `ask` in the wrong language, or naming the user, in a turn woken by a peer is refused;

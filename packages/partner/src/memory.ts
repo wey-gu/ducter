@@ -39,6 +39,11 @@ export type MemoryResult<T> = ({ ok: true } & T) | { ok: false; reason: "not_con
 export interface MemoryClient {
   search(query: string, limit: number): Promise<MemoryResult<{ hits: MemoryHit[] }>>;
   add(m: MemoryAdd): Promise<MemoryResult<{ id?: string }>>;
+  /**
+   * Forgets one memory the user asked to forget (the Partner page, D71): `nmem m forget`, which
+   * hides it from recall and from reads by id. Not a hard delete. True when Mem did it.
+   */
+  forget?(id: string): Promise<boolean>;
 }
 
 /** The Log pointer Ducter stores in Mem's source metadata (never in the memory text). */
@@ -123,6 +128,11 @@ export function createNmemClient(opts: NmemOptions = {}): MemoryClient {
         /* written; no id to show */
       }
       return { ok: true, ...(id ? { id: String(id) } : {}) };
+    },
+    async forget(id) {
+      if (!/^[A-Za-z0-9_-]{1,80}$/.test(id)) return false;
+      const r = await run(["m", "forget", "--force", "--reason", "Forgotten from Ducter's Partner page", "--", id]);
+      return !("missing" in r) && r.code === 0;
     },
   };
 }

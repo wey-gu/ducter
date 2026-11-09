@@ -3,7 +3,7 @@
 //                 WS server (/ws), MCP HTTP server (/mcp), main.ts wiring.
 //   runner  owns: HarnessPort over OAR, worktrees, task sessions, event normalization.
 //   partner owns: the main AI (persona prompt, projection, turn loop) on Claude Code via runner's HarnessPort.
-import type { Attention, Bodies, Delivery, EventKind, LogEvent, OnHand, Origin, Place, Residency, TaskCard } from "./index.ts";
+import type { Attention, Bodies, Delivery, EventKind, LogEvent, OnHand, Origin, Place, Residency, Settings, TaskCard } from "./index.ts";
 
 // ---------- core ----------
 
@@ -48,6 +48,17 @@ export interface CoreApi {
   dataDir: string; // ~/.ducter
   /** Paired worker machines (system.md "Workers"); absent in tests and stubs. */
   workers?: WorkerLinks;
+  /** The partner's settings (D71); absent in tests and stubs (then: follow the user, remember). */
+  settings?: SettingsApi;
+}
+
+/** What the partner reads of the settings, and how it lets the user forget a memory. */
+export interface SettingsApi {
+  get(): Settings;
+  /** The partner registers how to forget a memory in Mem; true when Mem forgot it. */
+  setForgetter(fn: (memoryId: string) => Promise<boolean>): void;
+  /** The partner says whether Mem answers (connected) or not (missing), as it finds out. */
+  setMemState(state: "connected" | "missing"): void;
 }
 
 // ---------- workers (main ↔ worker over the worker's outbound /worker socket) ----------

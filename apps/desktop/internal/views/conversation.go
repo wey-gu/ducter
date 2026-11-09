@@ -184,11 +184,23 @@ func (a *App) header(c *ui.Context) {
 	t := a.T
 	b := a.S.Board()
 	a.chrome(c, "conversation", func() {
-		a.avatar(c, a.presence(c), 40)
-		ui.Column(c).Gap(1).MinWidth(0).Children(func() {
-			ui.Text(c, a.S.PersonaName).FontSize(t.MD).FontWeight(800).LetterSpacing(-0.2).SingleLine()
-			ui.Text(c, a.summary(b)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
+		// The partner itself opens its page (伙伴 / Partner): its face and
+		// name are the way in, as a character in a game.
+		who := ui.Row(c.Key("who")).Gap(t.S3).AlignItems(ui.Center).MinWidth(0).Padding(2, t.S2, 2, 2).Radius(t.RadiusMD).
+			Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(a.L.T("nav.partner") + " · " + a.S.PersonaName).Focusable()
+		if who.Hovered() || who.Pressed() {
+			who.Background(t.SurfaceSunken.Mix(t.Chrome, 0.45))
+		}
+		who.Children(func() {
+			a.avatar(c, a.presence(c), 40)
+			ui.Column(c).Gap(1).MinWidth(0).Children(func() {
+				ui.Text(c, a.S.PersonaName).FontSize(t.MD).FontWeight(800).LetterSpacing(-0.2).SingleLine()
+				ui.Text(c, a.summary(b)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
+			})
 		})
+		if who.Clicked() {
+			a.OpenPartner()
+		}
 	}, func() {
 		a.devicesButton(c)
 		a.onHandButton(c, b)

@@ -251,5 +251,38 @@ func (a *App) NeedsYouNotice(n int) (title, body string) {
 	if a.Local == nil || a.Local.Asked(askNotify).Answer != "yes" || n <= 0 {
 		return "", ""
 	}
+	// The Partner page's switch and quiet hours hold for this Mac too (D71).
+	if st := a.S.Settings; st != nil && (!st.Notify || InQuiet(a.Now(), st.Quiet)) {
+		return "", ""
+	}
 	return a.L.T("notify.needs", a.personaName()), a.L.T("notify.needs.body", n)
+}
+
+// InQuiet reports whether at falls in the quiet hours (in their zone; an
+// overnight range like 23:00–08:00 wraps midnight), as core's inQuiet.
+func InQuiet(at time.Time, q *protocol.QuietHours) bool {
+	if q == nil || q.Start == q.End {
+		return false
+	}
+	loc, err := time.LoadLocation(q.TZ)
+	if err != nil {
+		loc = time.Local
+	}
+	l := at.In(loc)
+	now := l.Hour()*60 + l.Minute()
+	mins := func(s string) int {
+		tm, err := time.Parse("15:04", s)
+		if err != nil {
+			return -1
+		}
+		return tm.Hour()*60 + tm.Minute()
+	}
+	s, e := mins(q.Start), mins(q.End)
+	if s < 0 || e < 0 {
+		return false
+	}
+	if s < e {
+		return now >= s && now < e
+	}
+	return now >= s || now < e
 }

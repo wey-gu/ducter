@@ -120,3 +120,19 @@ the zh push line for a decision's default (`packages/core/src/push.ts`).
 - The partner's own prose is steered by its persona, not by these tables. Its persona and the
   task brief use none of the replaced words (grep); the filter that keeps result plumbing out of
   its prose (`packages/partner/src/partner.ts`, `RESULT_PLUMBING`) now also catches 合进.
+
+## Added with D71 (the Partner page and Settings)
+
+The same test applied to the new words. Each is something a person would say; none names a
+mechanism.
+
+| Concept | Word (zh / en) | Why | Alternative considered |
+|---|---|---|---|
+| the partner's page | **伙伴 / Partner** | The category word already in the glossary; the page is about the one you talk to | 我的伙伴 (longer), 资料 / Profile (a form, not a character) |
+| follow the user's language | **跟着我 / Follow me** | What the partner already does; says whose language | 自动 / Auto (says nothing about whose) |
+| notifications section | **什么时候找你 / When it comes to you** | The question the user has; "bother" in en read as negative | 通知设置 / Notification settings |
+| the default wait | **你没回的时候 / If you don't answer** · 等多久再按默认做 | Says when it applies and what happens | 默认超时 / Default timeout (machine) |
+| memory section | **记得什么 / What it remembers** · **记住事情 / Remember things** · **忘掉 / Forget** | Spoken; "forget" is what a person asks a friend | 记忆 / Memory (a noun to learn), 删除 / Delete (not what Mem does) |
+| autonomy | **自己就做 / On its own** · **先问你 / Asks you first** | Two plain halves; no "permission", "policy", "autonomy level" | 权限 / Permissions |
+| app settings | **设置 / Settings**, **外观 / Look**, **界面语言 / Language**, **关窗以后 / When you close the window**, **数据和记录 / Data and logs**, **检查一遍 / Run checks** | What every Mac app says, or what happens, in words | 主题 / Theme (one theme ships), 诊断 / Diagnostics |
+| adding a device | **连上手机或另一台电脑 / Connect a phone or computer** | D54's verb, with the two things people actually connect | 添加设备 / Add device |

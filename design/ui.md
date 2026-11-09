@@ -134,6 +134,28 @@ two things one voice says, 24 where the turn passes; 12 inside a message (text �
 muted, the level's name 18/800). Right: what you can do (small secondary buttons; metadata
 such as the model and place as flat 32 chips, never as buttons).
 
+## Places (D71)
+
+v1 has five places, and every one is reachable from the menu bar, a shortcut and the window:
+
+| Place | Reach it | What it is for |
+|---|---|---|
+| 对话 / Conversation | ⌘1, Esc from any other place | Home: talk, decide, see results |
+| 手头 / On hand | ⌘2, the button in the conversation's bar | Every task and what waits for you |
+| 设备 / Devices | ⌘3, the clay device button | The setup surface: devices, what they can do, AI accounts (sign in, install, sign out on this Mac), Connect a phone or computer |
+| 伙伴 / Partner | ⌘4, the partner's own face and name | A character sheet: the clay partner large with its five faces (hover one to see it big), the name renamed in place, then How it talks · When it comes to you · What it remembers · On its own, or asks you first |
+| 设置 / Settings | ⌘, and Settings… in the app menu and the menu bar extra | The app's own, calm: Look, Language, When you close the window, Updates, Data and logs, About, Remove Ducter (last, a quiet text button) |
+
+An opened task is the third zoom level under On hand. The **menu bar extra** (the clay partner
+as a template icon) is the handheld moment: with the window closed, its menu lists what needs
+you, each with Go / Hold / Reply…, then Open Ducter. The phone has one **Settings sheet**
+(tap the partner) with the partner's settings and the phone's own language.
+
+**Choices** (talk language, interface language, the default wait) are a row of flat choices, the
+chosen one in ink; switches are the platform's. A page's cards are containers on `Raised`; an
+empty list (no noted lines) is left out with its heading. Screenshots:
+`design/screens/ia-2026-11-09/` (native zh/en, full-length headless, the phone sheet).
+
 ## Three zoom levels (Core UI canvas: https://claude.ai/artifact/U9r15Tpm8AL7aGQZwrtbDL)
 
 1. **The conversation** (default). One partner, no machinery. Tasks appear only as chips

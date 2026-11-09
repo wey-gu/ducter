@@ -31,6 +31,10 @@ hands the work to AI agents on your own machines and comes back when it's done, 
 - With OOMOL's `oo` signed in, one tap lets the partner read your mail, calendar and other
   accounts. Reads are logged; anything it would send or change waits for your Go.
 
+**Install**
+- `curl -fsSL https://ducter.ai/install.sh | sh` on a Mac with Apple silicon or a Linux machine.
+  It checks the download's checksum and, on a Mac, Apple's notarization before installing.
+
 **Known limits**
 - Early preview: expect rough edges. Intel Macs are not supported yet.
 - See the docs at https://ducter.ai/docs for install and what each page does.

@@ -137,7 +137,7 @@ var zhIA = Table{
 	"settings.about.title_replay": "再看一次开场",
 	"settings.sound":              "声音",
 	"settings.sound.note":         "开场时的声音。跟着 Mac 的音量；减少动态效果时不出声。",
-	"settings.sound.credits":      "The intro's sound uses recordings from VSCO 2 Community Edition (CC0) and the University of Iowa Musical Instrument Samples; its reverb is St George's Episcopal Church from OpenAIR (Adam Townsell, public domain).",
+	"settings.sound.credits":      "开场的声音用了 VSCO 2 Community Edition（CC0）和 University of Iowa Musical Instrument Samples 的录音；混响是 OpenAIR 的 St George's Episcopal Church（Adam Townsell，公有领域）。",
 	"title.prompt":                "按任意键开始",
 	"title.label":                 "Ducter 醒来，看着你。按任意键开始。",
 

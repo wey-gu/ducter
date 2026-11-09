@@ -24,7 +24,7 @@ const JUDGE_MIN_MS = 10 * 60_000;
 const JUDGE_DATA_MAX = 6000;
 
 /** A cheap model's yes/no over fetched data (core/src/judge.ts). */
-export type Judge = (q: { condition: string; question: string; data: string; previous?: string }) => Promise<{ met: boolean; reason: string; progress?: "better" | "same" | "worse" }>;
+export type Judge = (q: { condition: string; question: string; data: string; previous?: string }) => Promise<{ met: boolean; reason: string; progress?: "better" | "same" | "worse"; done?: number; left?: number }>;
 
 export interface ArmInput {
   reason: string;

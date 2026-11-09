@@ -13,6 +13,7 @@ import { createMcpHub } from "../src/mcp.ts";
 import { createRegistry } from "../src/registry.ts";
 import { describeTrigger, nextFirings } from "../src/schedule.ts";
 import { createWork } from "../src/work.ts";
+import { parseVerdict } from "../src/judge.ts";
 import type { Judge } from "../src/waiters.ts";
 import { openTask, report, tempDir, tick } from "./helpers.ts";
 
@@ -401,4 +402,28 @@ test("a routine reaches its review date: it pauses and asks Keep this?", async (
   expect(keep.question).toContain("还要吗");
   s.log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body: { decisionId: keep.decisionId, option: "go", by: "user" } });
   expect(s.tasks.onHand().routines![0]!.state).toBe("active");
+});
+
+test("until: a judge that counts what's left gives the same lights row, its total fixed from the first count", async () => {
+  const verdicts = [
+    { met: false, reason: "还剩 4 处", progress: "better" as const, done: 12, left: 4 },
+    { met: false, reason: "还剩 1 处", progress: "better" as const, left: 1 },
+    { met: true, reason: "干净了" },
+  ];
+  const { log, tasks, work } = setup({ judge: async () => verdicts.shift()! });
+  openTask(log, "t1");
+  tasks.setState("t1", "working", "hot");
+  work.untils.start({ taskId: "t1", condition: "docs 里没有错别字了" });
+  for (const _ of [1, 2, 3]) report(log, "t1", { state: "done", summary: "改了一些" }), await flush();
+  const tries = kinds(log, "until_try") as Bodies["until_try"][];
+  expect(tries.map((t) => t.progress)).toEqual([
+    { done: 12, total: 16, unit: "items" },
+    { done: 15, total: 16, unit: "items" },
+    { done: 16, total: 16, unit: "items" },
+  ]);
+});
+
+test("the judge's verdict: counts only when given as whole numbers", () => {
+  expect(parseVerdict('{"met": false, "reason": "4 left", "done": 12, "left": 4}')).toEqual({ met: false, reason: "4 left", left: 4, done: 12 });
+  expect(parseVerdict('{"met": false, "reason": "hm", "left": "some"}')).toEqual({ met: false, reason: "hm" });
 });

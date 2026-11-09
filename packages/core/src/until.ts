@@ -84,6 +84,7 @@ export function createUntils(opts: {
       let summary = "";
       let by: "check" | "judge" = "judge";
       let verdict: Bodies["until_try"]["verdict"] = "unknown";
+      let judged: { done?: number; left?: number } | undefined;
       if (l.u.check && opts.check) {
         by = "check";
         const r = await opts.check(l.u.check, { taskId: l.u.taskId });
@@ -97,6 +98,7 @@ export function createUntils(opts: {
           const v = await judge({ condition: l.u.condition, question: `Does this try show that "${l.u.condition}" now holds?`, data, ...(prev ? { previous: prev.summary } : {}) });
           met = v.met;
           summary = v.reason || clip(report.summary, 120);
+          if (v.left !== undefined) judged = { left: v.left, ...(v.done !== undefined ? { done: v.done } : {}) };
           verdict = met ? "met" : v.progress ?? (prev ? "same" : "unknown");
         } catch (err) {
           summary = `couldn't judge (${(err as Error).message})`;
@@ -109,7 +111,16 @@ export function createUntils(opts: {
       // A countable goal (4 of 6 checks pass): the lights the user sees (D115).
       const counted = /(\d+) of (\d+) match/.exec(summary);
       if (counted) t.progress = { done: Number(counted[1]), total: Number(counted[2]) };
-      else if (met && l.tries.at(-1)?.progress) t.progress = { done: l.tries.at(-1)!.progress!.total, total: l.tries.at(-1)!.progress!.total };
+      else if (judged?.left !== undefined) {
+        // A judged goal the report counts ("还剩 4 处"): the total is what the first counted try
+        // saw (done + left), so the lights stay the same row from try to try.
+        const first = l.tries.find((x) => x.progress)?.progress;
+        const total = Math.max(first?.total ?? (judged.done ?? 0) + judged.left, judged.left);
+        t.progress = { done: Math.max(0, total - judged.left), total, unit: "items" };
+      } else if (met && l.tries.at(-1)?.progress) {
+        const p = l.tries.at(-1)!.progress!;
+        t.progress = { done: p.total, total: p.total, ...(p.unit ? { unit: p.unit } : {}) };
+      }
       l.tries.push(t);
       l.tokens = 0;
       log.append({ stream: `task:${l.u.taskId}`, origin: "system", kind: "until_try", body: t });

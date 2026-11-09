@@ -96,8 +96,10 @@ func (a *App) partnerView(c *ui.Context) {
 	})
 }
 
-// partnerHero: the clay partner on its own warm stage, the faces it
-// makes under it, and its name, which a click turns into a field.
+// partnerHero: a character sheet across the whole card. The clay partner
+// large with its name (a click turns it into a field) and where it lives on
+// the left; the five faces it makes as a row filling the right, each one
+// shown large on hover or click.
 func (a *App) partnerHero(c *ui.Context, wide bool) {
 	t := a.T
 	ps := &a.partner
@@ -108,22 +110,21 @@ func (a *App) partnerHero(c *ui.Context, wide bool) {
 			shown = theme.Napping
 		}
 	}
-	ui.Row(c.Key("partner-hero")).Gap(t.S6).Wrap().AlignItems(ui.Center).Padding(t.S5).Radius(t.RadiusXL).Background(t.Clay).
+	ui.Row(c.Key("partner-hero")).Gap(t.S6).Wrap().AlignItems(ui.Center).Padding(t.S5, t.S6).Radius(t.RadiusXL).Background(t.Clay).
 		Shadow(0, t.Raised.Y, 0, 0, t.Raised.Color).Children(func() {
-		ui.Column(c).Gap(t.S3).AlignItems(ui.Center).Shrink(0).Children(func() {
-			a.avatar(c, shown, 220)
-			ui.Row(c.Key("faces")).Gap(t.S2).Role(ui.RoleGroup).Children(func() {
-				for _, p := range theme.Presences {
-					a.faceThumb(c, p, shown == p)
+		ui.Row(c).Gap(t.S5).AlignItems(ui.Center).Grow(1).Basis(400).MinWidth(0).Children(func() {
+			a.avatar(c, shown, 200)
+			ui.Column(c).Grow(1).MinWidth(0).Gap(t.S2).Children(func() {
+				a.partnerName(c)
+				if home := a.homeDevice(); home != nil {
+					ui.Text(c, a.L.T("partner.lives", a.deviceNameIn(home))).FontSize(t.LG).TextColor(t.InkSoft)
 				}
 			})
 		})
-		ui.Column(c).Grow(1).Basis(280).MinWidth(0).Gap(t.S3).Children(func() {
-			a.partnerName(c)
-			if home := a.homeDevice(); home != nil {
-				ui.Text(c, a.L.T("partner.lives", a.deviceNameIn(home))).FontSize(t.LG).TextColor(t.InkSoft)
+		ui.Row(c.Key("faces")).Gap(t.S2).Grow(1).Basis(400).MinWidth(0).Justify(ui.SpaceBetween).Role(ui.RoleGroup).Children(func() {
+			for _, p := range theme.Presences {
+				a.faceThumb(c, p, shown == p)
 			}
-			ui.Text(c, a.L.T(presenceLabel[shown], a.S.PersonaName)).FontSize(t.MD).FontWeight(700).TextColor(t.InkMuted)
 		})
 	})
 }
@@ -132,7 +133,7 @@ func (a *App) partnerHero(c *ui.Context, wide bool) {
 func (a *App) faceThumb(c *ui.Context, p theme.Presence, on bool) {
 	t := a.T
 	label := a.L.T("partner.face." + facekey(p))
-	b := ui.Column(c.Key("face:"+string(p))).Gap(2).AlignItems(ui.Center).Padding(t.S1, t.S1).Radius(t.RadiusSM).
+	b := ui.Column(c.Key("face:"+string(p))).Gap(t.S1).Grow(1).Basis(0).MinWidth(0).AlignItems(ui.Center).Padding(t.S2, t.S1).Radius(t.RadiusMD).
 		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(label).AccessSelected(on).Focusable()
 	if on {
 		b.Background(t.Surface.Alpha(0.7))
@@ -140,8 +141,8 @@ func (a *App) faceThumb(c *ui.Context, p theme.Presence, on bool) {
 		b.Background(t.Surface.Alpha(0.4))
 	}
 	b.Children(func() {
-		if bmp := theme.Art(p, 96); bmp != nil {
-			ui.Image(c, bmp).Size(44, 44).AccessHidden(true)
+		if bmp := theme.Art(p, 144); bmp != nil {
+			ui.Image(c, bmp).Size(72, 72).AccessHidden(true)
 		}
 		ui.Text(c, label).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).SingleLine().AccessHidden(true)
 	})

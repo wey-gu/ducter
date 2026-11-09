@@ -220,7 +220,7 @@ v1 has five places, and every one is reachable from the menu bar, a shortcut and
 | 对话 / Conversation | ⌘1, Esc from any other place | Home: talk, decide, see results |
 | 手头的事 / On hand | ⌘2, the button in the conversation's bar | Every task and what waits for you |
 | 设备 / Devices | ⌘3, the clay device button | The setup surface: devices, what they can do, AI accounts (sign in, install, sign out on this Mac), Connect a phone or computer |
-| 伙伴 / Partner | ⌘4, the partner's own face and name | A character sheet: the clay partner large with its five faces (hover one to see it big), the name renamed in place, then How it talks · When it comes to you · What it remembers · On its own, or asks you first |
+| 伙伴 / Partner | ⌘4, the partner's own face and name | A character sheet across the whole hero card: on the left the clay partner large, its name (renamed in place) and where it lives; on the right its five faces as a row filling the card (hover one to see it big); no status line under the name. Then How it talks · When it comes to you · What it remembers · On its own, or asks you first |
 | 设置 / Settings | ⌘, and Settings… in the app menu and the menu bar extra | The app's own, calm: Look, Language, When you close the window, Updates, Data and logs, About, Remove Ducter (last, a quiet text button) |
 
 An opened task is the third zoom level under On hand. The **menu bar extra** (the clay partner

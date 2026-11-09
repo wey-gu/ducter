@@ -5,8 +5,8 @@ import "testing"
 func TestAutospace(t *testing.T) {
 	for in, want := range map[string]string{
 		"升级tokio到1.41":       "升级 tokio 到 1.41",
-		"升级 tokio 到 1.41":    "升级 tokio 到 1.41",  // spaces already there
-		"用`checkpoint`的测试":   "用`checkpoint`的测试", // code spans are left alone
+		"升级 tokio 到 1.41":    "升级 tokio 到 1.41",          // spaces already there
+		"用`check点`的测试":       "用\u2005`check点`\u2005的测试", // the code span keeps its words
 		"Plain English text": "Plain English text",
 		"hawdb-net 有 3 个测试":  "hawdb⁠-⁠net 有 3 个测试",
 	} {

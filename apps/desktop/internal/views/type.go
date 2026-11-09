@@ -72,9 +72,19 @@ func autospace(s string) string {
 		}
 		for _, r := range line {
 			if r == '`' {
+				// Inline code gets the same gap from the Chinese around it.
+				if !inCode && isHan(prev) {
+					b.WriteRune(autospaceGap)
+				}
 				inCode = !inCode
+				b.WriteRune(r)
+				prev = 'a' // after a code span, as after a Latin word
+				if inCode {
+					prev = r
+				}
+				continue
 			}
-			if !inCode && r != '`' && prev != '`' && ((isHan(prev) && isLatinOrDigit(r)) || (isLatinOrDigit(prev) && isHan(r))) {
+			if !inCode && ((isHan(prev) && isLatinOrDigit(r)) || (isLatinOrDigit(prev) && isHan(r))) {
 				b.WriteRune(autospaceGap)
 			}
 			b.WriteRune(r)

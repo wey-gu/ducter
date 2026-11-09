@@ -4,7 +4,8 @@ import type { LogEvent } from "@ducter/protocol";
 import { buildWeb } from "../build.ts";
 import { baseUrl, codeFromHash, deviceName, wsUrl } from "../src/conn.ts";
 import { format, joinHan, langOfText, strings, TABLES } from "../src/i18n.ts";
-import { sameWords } from "../src/format.ts";
+import { sameWords, splitOutcome } from "../src/format.ts";
+import { autospace, unspace } from "../src/autospace.ts";
 import { markdown } from "../src/markdown.ts";
 import { headlineEvidence, isOutside, Store, title } from "../src/store.ts";
 
@@ -259,5 +260,20 @@ describe("settings (D71)", () => {
     A.setSettings({ language: "zh", defaultAfterMin: 60 });
     expect(A.settings).toMatchObject({ language: "zh", defaultAfterMin: 60 });
     expect(sent).toEqual([{ t: "settings_set", patch: { language: "zh", defaultAfterMin: 60 } }]);
+  });
+});
+
+describe("brand pass (D74, D78)", () => {
+  test("the outcome's first sentence is its headline; the rest is said under it", () => {
+    expect(splitOutcome("改成等 flush 完成的信号，不再写死 200ms。连跑 50 遍全过。")).toEqual(["改成等 flush 完成的信号，不再写死 200ms。", "连跑 50 遍全过。"]);
+    expect(splitOutcome("1.41 removed TcpStream::into_std; 4 places don't build. main is untouched.")).toEqual(["1.41 removed TcpStream::into_std; 4 places don't build.", "main is untouched."]);
+    expect(splitOutcome("Done")).toEqual(["Done", ""]);
+    expect(splitOutcome("x".repeat(120))).toEqual(["", "x".repeat(120)]);
+  });
+  test("CJK and Latin get a display-only quarter-em gap that copying takes back out", () => {
+    const shown = autospace("在MacBook上跑了50遍，已有 space 的不动。");
+    expect(shown).toBe("在\u2005MacBook\u2005上跑了\u200550\u2005遍，已有 space 的不动。");
+    expect(unspace(shown)).toBe("在MacBook上跑了50遍，已有 space 的不动。");
+    expect(autospace("plain English 1.41")).toBe("plain English 1.41");
   });
 });

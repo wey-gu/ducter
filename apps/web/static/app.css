@@ -1753,12 +1753,13 @@ a {
 /* While the user waits: the clay partner where its words will appear, one line beside it. */
 .presence {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   min-height: 40px;
   margin-top: 12px;
 }
-.presence .line {
+.presence .pline {
+  padding-top: 7px;
   font-size: var(--md);
   color: var(--ink-muted);
   line-height: 1.4;

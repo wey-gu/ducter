@@ -202,8 +202,8 @@ func (a *App) mergeAction(c *ui.Context, task *store.Task) {
 }
 
 // resultDetails are a task's lines inside Details: under way, its status
-// line; finished, what went out first, then the proof (with the changes
-// and its title as links), and Open draft PR.
+// line; finished, the proof (with the changes and its title as links) and
+// Open draft PR. What went out shows above the quiet row.
 func (a *App) resultDetails(c *ui.Context, task *store.Task, detail string) {
 	if !finished(task) {
 		a.taskLine(c, task, detail)
@@ -216,7 +216,6 @@ func (a *App) resultDetails(c *ui.Context, task *store.Task, detail string) {
 	} else if r := task.Card; r != nil && r.LastReport != nil && len(r.LastReport.Evidence) > 0 {
 		evs = r.LastReport.Evidence
 	}
-	a.sentLine(c, task)
 	a.proofLine(c, task, evs, true)
 	p := task.Place()
 	merged := task.Acted != nil && task.Acted.OK && task.Acted.Action == "merge"

@@ -498,7 +498,7 @@ function MergeAction({ task }: { task: Task }) {
 }
 
 /** A task's lines inside Details: under way, its status line; finished, the proof with the
- *  changes and its title as links, what went out, and Open draft PR. */
+ *  changes and its title as links, and Open draft PR. What went out shows above the row. */
 function ResultDetails({ task, detail }: { task: Task; detail?: string }) {
   if (!finished(task)) return <TaskLine task={task} detail={detail} />;
   A.history(task.id);
@@ -506,7 +506,6 @@ function ResultDetails({ task, detail }: { task: Task; detail?: string }) {
   const pr = attention(task) !== "failed" && p.kind === "repo" && !!p.branch && !task.acting && !(task.acted?.ok && task.acted.action === "merge");
   return (
     <>
-      <SentLine task={task} />
       <ProofLine task={task} evs={resultEvidence(task)} withTitle />
       {pr && (
         <div class="proof">
@@ -536,6 +535,10 @@ function Quiet({ k, tasks, detail, noted = [] }: { k: string; tasks: Task[]; det
   const open = A.detailsOpen(k);
   return (
     <>
+      {/* What went out is never folded away (D104): the exception that matters to trust. */}
+      {tasks.filter(finished).map((task) => (
+        <SentLine key={task.id} task={task} />
+      ))}
       <div class="qrow">
         {tasks.map((task) => (
           <MergeAction key={task.id} task={task} />
@@ -769,7 +772,7 @@ function Presence() {
       <span class="bob">
         <Avatar size={32} state="working" still />
       </span>
-      <span class="line">
+      <span class="pline">
         {t(`activity.${a?.step ?? "thinking"}`)}
         {sub && <span class="sub">{sub}</span>}
       </span>

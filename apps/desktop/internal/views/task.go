@@ -351,6 +351,11 @@ func (a *App) steps(task *store.Task) []step {
 			if b == nil {
 				continue
 			}
+			// Ducter's own tools are plumbing, not what the task did (their
+			// reports and saved progress say themselves), failed or not.
+			if b.Tool != nil && isPlumbing(b.Tool.Name) {
+				continue
+			}
 			if b.Tool != nil && (b.Tool.OK == nil || *b.Tool.OK) {
 				if n := len(out); n > 0 && out[n-1].tools != nil {
 					out[n-1].tools = append(out[n-1].tools, b.Tool)
@@ -486,7 +491,7 @@ func (a *App) transcriptRow(c *ui.Context, task *store.Task, ev protocol.LogEven
 					ui.Text(c, firstLine(out)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkSoft).Padding(0, 0, 0, t.S5).Selectable()
 				}
 			})
-		case b.Role == "user" && (b.From == "runner" || b.From == "" && strings.HasPrefix(b.Text, `Start the task "`)):
+		case b.Role == "user" && (b.From == "runner" || b.From == "" && (strings.HasPrefix(b.Text, `Start the task "`) || strings.HasPrefix(b.Text, "<brief>"))):
 			// The runner's own kickoff, not something anyone said.
 		case b.Role == "user" && (b.From == "partner" || ev.Origin == protocol.OriginPartner):
 			// The partner talking to the task: its words, not the user's.

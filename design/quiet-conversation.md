@@ -38,7 +38,11 @@ one tap away · 惊喜 the partner visibly working the moment you send.
 4. **The living message has no card.** When the user was away, a small centered time line
    **你不在的时候 · 10:40 / While you were away · 10:40**. Then, in this order:
    - a task that didn't work, as one sentence: "{title}没做成：{text}" / "{title} didn't
-     work: {text}" (a finished one: "{title}做完了：…" / "{title} is done: …"), with Details;
+     work: {text}" (a finished one: "{title}做完了：…" / "{title} is done: …"), with Details.
+     For the first 2 minutes after its final report this line is the waiting presence
+     (**在看它做完的结果… / Looking over what it came back with…**) until the partner's own
+     message replaces it; the sentence is the fallback when the partner is late (D124). The
+     action row shows once per task, under the newest message about it;
    - the asks, in the partner's words (18, regular, not a 20/800 heading on a tinted card): the
      question, then its default in one muted line in the needs-you ink with Details, then one
      small row **回复… · 先等等 · 好，rebase** (36pt, primary last, D76). Only the ask whose

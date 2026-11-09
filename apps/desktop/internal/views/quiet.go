@@ -218,12 +218,13 @@ func (a *App) resultDetails(c *ui.Context, task *store.Task, detail string) {
 	}
 	a.proofLine(c, task, evs, true)
 	merged := task.Acted != nil && task.Acted.OK && task.Acted.Action == "merge"
-	if task.CanIntegrate() && task.Acting == "" && !merged {
+	if task.CanIntegrate() && task.Acting == "" && !merged && !noRemote(task) {
 		if a.quietLink(c, "pr:"+task.ID, a.L.T("result.pr"), a.L.T("result.pr")+" · "+task.Title()) {
 			task.Acting = "open_pr"
 			a.TaskAction(task.ID, "open_pr")
 		}
 	}
+	a.prFailureLine(c, task)
 }
 
 // forgetNoted forgets a Noted line (D71's Forget) and hides it here.
@@ -252,8 +253,19 @@ func dueAt(d *store.DecisionState) time.Time {
 
 // news is a living item the partner didn't report itself, said as one
 // sentence: a task that didn't work, or one that came back.
-func (a *App) news(c *ui.Context, key string, it protocol.LivingItem) {
+func (a *App) news(c *ui.Context, key string, it protocol.LivingItem, owns bool) {
 	t := a.T
+	task := a.S.Task(it.TaskID)
+	if task != nil {
+		// The partner is putting the result into its own words (D124): its
+		// waiting presence holds the place, not a template line its message
+		// replaces a minute later.
+		if wait := a.wordsDueIn(task); wait > 0 {
+			c.After(wait + 50*time.Millisecond)
+			a.waitingRow(c.Key("words:"+key), a.L.T("activity.result"), "")
+			return
+		}
+	}
 	text := it.Text
 	if it.Title != "" {
 		k := "living.done"
@@ -264,12 +276,9 @@ func (a *App) news(c *ui.Context, key string, it protocol.LivingItem) {
 	}
 	ui.Column(c.Key("news:" + key)).MaxWidthPercent(88).MaxWidth(readingMeasure).Gap(t.S1).Children(func() {
 		ui.Text(c, autospace(text)).Selectable().CopyData(autospaceCopy).FontSize(t.PartnerSize).LineHeight(leadingFor(text, 1.65))
-		var tasks []*store.Task
-		if task := a.S.Task(it.TaskID); task != nil {
-			tasks = append(tasks, task)
-		}
-		if len(tasks) > 0 {
-			a.quiet(c, key, tasks, "", nil)
+		// The action row shows once, under the newest message about the task.
+		if task != nil && owns {
+			a.quiet(c, key, []*store.Task{task}, "", nil)
 		}
 	})
 }
@@ -360,7 +369,7 @@ func (a *App) livingQuiet(c *ui.Context, e *store.Entry, away bool) {
 			a.timeLine(c, a.L.T("living.away.at", clockOf(e.Event.TS)))
 		}
 		for i, it := range news {
-			a.news(c.Key(i), "l"+itoa(e.FirstSeq)+":"+it.TaskID, it)
+			a.news(c.Key(i), "l"+itoa(e.FirstSeq)+":"+it.TaskID, it, a.chipOwner[it.TaskID] == e.FirstSeq)
 		}
 		if len(lines) > 0 {
 			ui.Column(c).Gap(t.S2).Children(func() {
@@ -427,7 +436,6 @@ const timeGap = 15 * time.Minute
 // updated in place, gone when the reply lands. A step past 15 s adds a
 // reassuring line; past 45 s, that it will say when it's ready.
 func (a *App) presenceRow(c *ui.Context) {
-	t := a.T
 	step, since := "thinking", a.thinkingSince
 	if act := a.S.Activity; act != nil {
 		step, since = act.Step, a.S.ActivityAt
@@ -448,8 +456,14 @@ func (a *App) presenceRow(c *ui.Context) {
 	} else if el < 45*time.Second {
 		c.After(45*time.Second - el)
 	}
-	line := a.L.T("activity." + step)
-	ui.Row(c.Key("presence")).Gap(t.S3).AlignItems(ui.Center).MinHeight(40).Role(ui.RoleStatus).Label(line).Children(func() {
+	a.waitingRow(c.Key("presence"), a.L.T("activity."+step), sub)
+}
+
+// waitingRow is the clay partner at work and one plain line where its
+// words will land; sub is a second, reassuring line ("" for none).
+func (a *App) waitingRow(c *ui.Context, line, sub string) {
+	t := a.T
+	ui.Row(c).Gap(t.S3).AlignItems(ui.Center).MinHeight(40).Role(ui.RoleStatus).Label(line).Children(func() {
 		a.partnerFace(c, "presence", theme.Working, 32)
 		ui.Column(c).Gap(1).MinWidth(0).Children(func() {
 			ui.Text(c, line).FontSize(t.MD).TextColor(t.InkMuted)

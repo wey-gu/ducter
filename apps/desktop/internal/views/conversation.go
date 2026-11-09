@@ -81,6 +81,14 @@ func (a *App) rows() []row {
 			for _, id := range a.tasksOfReply(e.AI.ReplyTo) {
 				a.chipOwner[id] = e.FirstSeq
 			}
+		case e.Living != nil:
+			// The living message's done line is newer than the ack: the
+			// action row moves there, then to the partner's own result.
+			for _, it := range a.livingItems(e) {
+				if it.Kind == "done" || it.Kind == "failed" {
+					a.chipOwner[it.TaskID] = e.FirstSeq
+				}
+			}
 		}
 	}
 	keep := a.pending[:0]

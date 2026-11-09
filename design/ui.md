@@ -48,10 +48,11 @@ brows when something needs you. Other themes render the same states in their own
 - **Voices:** the user's messages are cocoa bubbles (`#2B2118` on cream text). Ducter speaks
   bubble-less in 18px body type on the paper, so it reads like a person talking, not a chat
   app. Structured things (decisions, files, summaries) are white cards on a soft shadow.
-- **Task chip:** a task shows as a flat chip in its state's tint, its title and its state in
-  words. No pebble or dot in front of it (D69).
-- **Decision buttons:** primary `Go / 好` (or the action itself, e.g. "Rebase") as a dark
-  press-down pebble button; secondary `Hold / 先等等` as a light press-down button; tertiary
+- **Task line:** a task in the partner's words is one quiet line: a drawn mark of where it
+  stands, its title as a link, its status in muted words. No fill, no capsule, no dot (D69,
+  D73).
+- **Decision buttons:** primary `Go / 好`, or the action itself in sentence case ("Rebase";
+  zh "好，rebase"), as a dark press-down pebble button; secondary `Hold / 先等等` as a light press-down button; tertiary
   `Reply… / 回复…` as a text button. No seals or stamps (D22).
 
 ## Components and tokens (canonical; polish pass 2026-11-09)
@@ -78,10 +79,10 @@ into it (translate 3, ledge to 0) while pressed. Nothing else has a ledge.
   dossier) are never pressable-looking: they rest on `Raised` (0 2 10, ink at 7%) or, for a
   sheet over the page, `Floating` (0 10 32, ink at 14%). Inline sheets (a result's proof) are
   flat, hung from a 2px hairline.
-- Text buttons (回复… / Reply…, 看改动 / See changes, 不用了 / No thanks, 看细节 / Details,
-  展开 / Open) are flat: ink only, a soft tint under them on hover and press.
-- Chips and tags are flat rounded rectangles (radius 8) in a state's or the paper's tint; a
-  chip that opens something lifts 2pt on hover, it never presses down.
+- Text buttons (回复… / Reply…, 不用了 / No thanks, 看细节 / Details, 都按默认 / Go on all
+  defaults in a section's header) are flat: ink only, a soft tint under them on hover and
+  press.
+- There are no chips for status, evidence or metadata (D73, "No pills" below).
 
 **Buttons** (one family): primary (ink on cream text), secondary (surface with a 1px `line`
 hairline), accent (the composer's send), text, and icon (a square of any of them). One radius
@@ -89,35 +90,45 @@ hairline), accent (the composer's send), text, and icon (a square of any of them
 lighter or a sunken tint), press (sink into the ledge) and keyboard focus ring on all of them.
 In a row the primary is last (macOS) and at most one primary shows per group.
 
-**Chips.** A task chip says its title once, then where it stands: the job's status line when
-it adds something, else the state (a status line that only repeats the title falls back to
-the state). A finished task reads 做完了 / Done: `done?` shows as Done until something actually
-checks the result (no check runs yet; "在检查 / checking" is shown only while one does).
+**Task lines.** A task in the partner's words says its title once, then where it stands: the
+job's status line when it adds something, else the state (a status line that only repeats the
+title falls back to the state). A finished task reads 做完了 / Done: `done?` shows as Done until
+something actually checks the result ("在检查 / checking" only while a check runs).
 
-**Results.** Under a result message: the chip, then a light two-column sheet (labels 84 wide,
-values aligned), then the actions. A row with nothing to say is left out, and with both rows
-gone the sheet is gone: 怎么知道的 / How I know only with evidence, 发出去的 / Sent out only
-when something was sent out (the opened task's Sent out card still says "Nothing sent out
-yet").
+**Results (D73).** The partner's result message already says the outcome in words, so nothing
+under it restates the state (no task chip). Under it:
+1. one quiet line of proof in muted ink at 13: a drawn ✓ (× for a task that didn't work) and
+   plain words per check ("✓ 50/50 cargo test"), then "2 files changed ›" as a text link
+   (opens the task at its changes), then the task's title as a quiet link ("Fix the flaky
+   compaction test ›"). It wraps on a narrow screen and never truncates;
+2. only when something went out, the same kind of line with a drawn ↗ and the literal action
+   ("↗ git push -u origin ducter/fix-ci");
+3. the actions: Merge into main (primary), Open draft PR (secondary). "See changes" is the
+   "2 files changed ›" link, so it is not repeated.
+No blockquote rule, no label column, no capsules.
 
 **Notices: the app speaking, never the partner.** The partner speaks in 18px on the paper and
 in cards; a system notice (the CLI offer, the first-result celebration, a held message) is a
 slim strip just above the composer: radius 16, a sunken tint (done: done-surface; alert:
-failed-surface), a 24–28 glyph tile at its start, 13/12px text, small (32) buttons at its end.
+failed-surface), a drawn glyph at its start (no tile), 13/12px text, small (32) buttons at its end.
 Something that needs no answer ("ducter now works in Terminal") is a toast instead.
 
-**Shown, not dotted (anti-slop rule, D69).** No pulsing or glowing status dots, no status
-pills or capsules with a leading dot, no decorative identity-color dots, no perpetual
-"alive" animation (breathing rings, gliding bars).
+**Shown, not dotted; no pills (anti-slop rule, D69, D73).** No pulsing or glowing status dots,
+no decorative identity-color dots, no perpetual "alive" animation (breathing rings, gliding
+bars, ticking clocks). **Status and evidence are never capsules**, on any surface: no state
+chip, no evidence chip, no metadata pill, no tag row. State is said in words (in its ink when
+it is the exception), evidence is a drawn mark and words, metadata is plain muted text or
+lives in Details. On hand needs no state chip: the lane is the state.
 - State is shown by the thing itself (D43): the clay art (an awake laptop, the napping one
   under its blanket, a filled or empty slot), the chip's tint and its own words, the face.
 - Words appear only for exceptions, plainly ("睡着了 · 醒来就接着做", "连不上 · 2 小时前");
   the normal state says nothing (an awake worker has no status line; Ducter's home says
   "Ducter 在这儿" quietly).
-- A state in text is plain text in the state's ink (a lane's count, a failed status line),
-  or a flat chip in the state's tint, never with a dot in front.
+- A state in text is plain text in the state's ink (a lane's count, a failed status line,
+  "Didn't work" on a Done row), never a chip and never with a dot in front.
 - A mark is a drawn glyph that means something (✓ done, clock waiting, → under way, × didn't
-  work, ! look at this), on a tile, never a colored dot.
+  work, ! look at this, ↗ went out), in muted ink (or the state's ink for an exception),
+  never on a colored tile, never a colored dot.
 - A one-time highlight (a decision found from a notification) deepens the card's own tint;
   it never glows.
 - Selection on a card is a 2-point ink hairline (cards are containers: no ledge).
@@ -131,8 +142,18 @@ two things one voice says, 24 where the turn passes; 12 inside a message (text �
 → actions); the composer 24 from the window's edges.
 
 **Chrome.** 60pt bar, the title region. Left: where you are (crumbs are text buttons, 15/700
-muted, the level's name 18/800). Right: what you can do (small secondary buttons; metadata
-such as the model and place as flat 32 chips, never as buttons).
+muted, the level's name 18/800). Right: what you can do (small secondary buttons). Metadata
+(model, place, project) is never in the chrome: it is in the task's Details (D74).
+
+**Decisions in the conversation (D73).** The living message's title "你不在的时候 / While you
+were away" shows only when the user was away: it came before the window opened and was
+unread, or while the window was in the background. The count shows once, in the section's
+header ("2 件等你 / 2 need you"), with 都按默认 / Go on all defaults as a text button at its
+end. Each ask names the task that asks as plain small words in the needs-you ink (nothing for
+the partner's own asks); its buttons are Go-as-the-action, Hold, Reply…, and Details right
+after them (on the phone, where four don't fit, and on On hand, the asking task's title is
+the link instead). The other items are one line each: a drawn mark in muted ink, no tile.
+Short code tokens in a message never break mid-word; only a long path may wrap.
 
 ## Places (D71)
 
@@ -158,32 +179,43 @@ empty list (no noted lines) is left out with its heading. Screenshots:
 
 ## Three zoom levels (Core UI canvas: https://claude.ai/artifact/U9r15Tpm8AL7aGQZwrtbDL)
 
-1. **The conversation** (default). One partner, no machinery. Tasks appear only as chips
-   inside the partner's messages; the header line says in words what needs you and what is
+1. **The conversation** (default). One partner, no machinery. Tasks appear only as quiet
+   task lines inside the partner's messages; the header line says in words what needs you and what is
    being worked on, and **手头 / On hand** is a plain button. The living message carries decisions inline with Go / Hold / Reply, so most days
    the user never leaves this view.
 2. **手头 / On hand** (overview for decisions, all personas).
-   - The top band is the **attention forecast**: counts per state, plus a timeline from now
-     showing when each task will next need you (defaults taking effect, expected completions,
-     conclusions due). The user's quiet hours are drawn as a band.
+   - The top band is the **attention forecast** in plain words: when each task will next need
+     you (defaults taking effect, waits coming due). The lanes' headers carry the counts.
    - Below it are four lanes: **等你 / Needs you** (wide decision cards with the question,
      default, countdown, and Go / Hold / Reply), **在做 / Working**, **在等 / Waiting**
      (dashed, showing what it waits for), and **做完了 / Done** (with "在检查 / checking"
      for `done?`).
-   - Lanes can be grouped by state, time, device, project, or persona. A "Go on all
-     defaults" batch action sits in the header.
+   - Lanes can be grouped by state, time, device, project, or persona. "Go on all defaults"
+     is a text button at the end of the Needs you lane's header.
    - On mobile, decisions are a swipeable stack: swipe left takes the default, swipe right
      means later.
    - Routines appear as one card each, with the next firing time.
-3. **An opened task** (conductor depth).
-   - A breadcrumb leads back up through the levels.
-   - The Where and Project chips are editable. The model chip opens switching or handoff.
-   - A decision banner is pinned on top.
-   - Three columns:
-     - the transcript: brief, collapsed tool calls, checkpoint dividers, report cards, and a
-       composer that talks to the task *directly*;
-     - tabs for changes, terminal, CI, browser, and results;
-     - a dossier: why this model, checkpoints, evidence, pending intents.
+3. **An opened task** (conductor depth; D74). One centered column on the conversation's
+   measure and rhythm, read top to bottom; the header is the breadcrumb and the title only.
+   1. Where it stands, in words in the state's ink (a drawn mark, "Done · started 14 min
+      ago"; for a task under way, its latest status line).
+   2. A pending ask, as in the conversation.
+   3. The outcome, said once: the report in the partner's size, the line of proof, what went
+      out, then Merge / Open draft PR (Try again for one that didn't work). It replaces the
+      result banner and the "Told Ducter · done" card.
+   4. **过程 / What it did**: the task's own words as a short narrative; tool calls that went
+      fine fold into one line per stretch ("跑了 2 条命令，改了 1 个文件 / Ran 2 commands,
+      edited 1 file ›") that opens in place; a step that didn't work stands on its own, in
+      words, with its first line of output.
+   5. **改动 / Changes**: the changed files, each with +added −removed; a file opens its diff
+      in place, full width, under a quiet header. No diff shows by default; a task in no repo
+      has no section. The phone names the changes in the proof line and shows no diff.
+   6. A quiet **细节 / Details ›** disclosure: who is doing it and why, where (repo and
+      branch; the path as the user named it, never a scratch absolute path), saved progress
+      as a plain list, what went out, usage only if there is any. A row with nothing to say
+      is left out.
+   The box to talk to the task stays at the bottom of the window, as the conversation's
+   composer does.
 
 ## Prototype canvases
 
@@ -212,6 +244,7 @@ they show what the code does today, for review against the docs.
 | Polish pass | `apps/desktop/docs/polish-{before,after}-*.png` | native window (cua-driver) on a scripted backend, plus the headless renderer | the components above: buttons, chips, notices, the result sheet, rhythm |
 | Taste review | `apps/desktop/docs/review-{before,after}-{zh-1280,en-900}-*.png` | headless renderer, mock (`DUCTER_REVIEW`) | every screen at 1280 and 900 px, before and after the taste pass |
 | Phone web | `design/screens/phone-*.png` | headless browser at 390×844 on a demo core; `phone-real-sonnet-result-zh` from a real sonnet run | conversation, decision sheet, decided, On hand, task, result, pairing, notify ask, iOS hint, offline; dark variants |
+| Design QA (D73, D74) | `design/screens/qa-2026-11-09/{before,after}-*.png`, index in its `README.md` | native desktop window (cua-driver) on the demo seed, iOS Simulator, headless Chromium at 390 and 1440 (phone web, site) | no pills, the result line, the living message, On hand, the one-column task (done, working, didn't work), devices, setup, the site |
 
 ## Capability map (D43): the hybrid (D65)
 

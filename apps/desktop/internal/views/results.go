@@ -35,101 +35,102 @@ func finished(t *store.Task) bool {
 	return false
 }
 
-// taskFooter is what follows a message about a task: its chip, and for a
-// finished task its result's proof, Outside line and next steps.
+// taskFooter is what follows a message about a task. A task still under
+// way is one quiet line (its mark, title and status). A finished task's
+// result message already says the outcome in words, so the footer never
+// restates the state: one quiet line of proof (drawn marks and plain
+// words, "2 files changed ›", the task's title as a link), a line of what
+// went out when something did, then Merge / Open draft PR (D73).
 func (a *App) taskFooter(c *ui.Context, task *store.Task, detail string) {
 	t := a.T
 	if !finished(task) {
-		ui.Row(c).Gap(t.S2).Wrap().AlignItems(ui.Center).Children(func() { a.taskChip(c, task, detail) })
+		a.taskLine(c, task, detail)
 		return
 	}
 	a.ensureHistory(task.ID)
 	ui.Column(c.Key("result:" + task.ID)).Gap(t.S3).Children(func() {
-		ui.Row(c).Gap(t.S2).Wrap().AlignItems(ui.Center).Children(func() {
-			a.taskChip(c, task, "")
-		})
 		// A result's own report's evidence: a follow-up's result doesn't
-		// re-show the first round's checks (the dossier keeps them all).
-		evs, line := task.Evidence, a.outsideLine(task)
+		// re-show the first round's checks (the task keeps them all).
+		evs := task.Evidence
 		if r := task.LastReport; r != nil && len(r.Evidence) > 0 {
 			evs = r.Evidence
 		} else if r := task.Card; r != nil && r.LastReport != nil && len(r.LastReport.Evidence) > 0 {
 			evs = r.LastReport.Evidence
 		}
-		if len(evs) > 0 || line != "" {
-			// Proof and reach as a light two-column sheet hung from a
-			// hairline: labels in one column, values aligned in the other.
-			// A row with nothing to say is left out, and with it the sheet.
-			ui.Column(c).Gap(t.S2).Padding(t.S1, 0, t.S1, t.S3+2).BorderWidth(0, 0, 0, 2).BorderColor(t.Line).Children(func() {
-				label := func(key string) {
-					ui.Text(c, a.L.T(key)).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Width(84).Shrink(0).
-						Padding(t.S2-1, 0, 0, 0) // centred on a chip's first row
-				}
-				if len(evs) > 0 {
-					ui.Row(c).Gap(t.S3).AlignItems(ui.Start).Children(func() {
-						label("result.howknow")
-						ui.Row(c).Gap(t.S2 - 2).Wrap().Grow(1).MinWidth(0).AlignItems(ui.Center).Children(func() {
-							a.evidenceChips(c, task, evs, 4)
-						})
-					})
-				}
-				if line != "" {
-					ui.Row(c).Gap(t.S3).AlignItems(ui.Start).Children(func() {
-						label("outside.title")
-						ui.Text(c, line).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft).Grow(1).MinWidth(0).
-							Padding(t.S1, 0, 0, 0)
-					})
-				}
-			})
-		}
+		a.proofLine(c, task, evs, true)
+		a.sentLine(c, task)
 		a.resultActions(c, task)
 	})
 }
 
-// evidenceChips shows up to max pieces of evidence, machine-checked
-// first, folding the rest into "+n".
-func (a *App) evidenceChips(c *ui.Context, task *store.Task, evs []protocol.EvidenceRef, max int) {
+// proofLine is how the task knows, as one quiet line that wraps: a drawn
+// ✓ (× for a task that didn't work) and plain words per check, the
+// changes as "2 files changed ›" (opens the task at its changes), and,
+// with withTitle, the task's title as a link at its end.
+func (a *App) proofLine(c *ui.Context, task *store.Task, evs []protocol.EvidenceRef, withTitle bool) {
 	t := a.T
 	evs = store.SortEvidence(latestByLabel(evs))
-	for i, ev := range evs {
-		if i == max {
-			l := ui.Text(c.Key("more"), a.L.T("result.more", len(evs)-max)).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted).
-				Cursor(ui.CursorPointer).Role(ui.RoleLink)
-			if l.Clicked() {
+	failed := task.Attention() == protocol.Failed
+	const max = 4
+	ui.Row(c.Key("proof:" + task.ID)).Gap(t.S4).Wrap().AlignItems(ui.Center).MinWidth(0).Children(func() {
+		var changes *protocol.EvidenceRef
+		shown := 0
+		for i := range evs {
+			ev := evs[i]
+			if ev.Kind == "diff" {
+				if changes == nil {
+					changes = &evs[i]
+				}
+				continue
+			}
+			if shown == max {
+				if a.quietLink(c, "more", a.L.T("result.more", len(evs)-max), task.Title()) {
+					a.OpenTask(task.ID)
+				}
+				break
+			}
+			shown++
+			if isLink(ev.Ref) {
+				if a.quietLink(c.Key(i), "ev", ev.Label, ev.Label) {
+					a.openEvidence(c, ev)
+				}
+				continue
+			}
+			var draw func(ui.Color) func(*ui.Painter, ui.Rect)
+			switch {
+			case failed:
+				draw = drawCross
+			case store.MachineChecked(ev.Kind):
+				draw = drawCheck
+			}
+			m := a.mark(c.Key(i), draw, ev.Label, t.InkMuted).Tooltip(ev.Ref)
+			if ev.Ref != "" && m.Clicked() {
+				a.openEvidence(c, ev)
+			}
+		}
+		if changes != nil && a.quietLink(c, "changes", changes.Label, changes.Label+" · "+task.Title()) {
+			a.openChanges(task.ID)
+		}
+		if withTitle {
+			if a.quietLink(c, "title", task.Title(), task.Title()) {
 				a.OpenTask(task.ID)
 			}
-			return
 		}
-		a.evidenceChip(c.Key(i), task, ev)
+	})
+}
+
+// sentLine is what went out, only when something did: a drawn ↗ and the
+// literal action.
+func (a *App) sentLine(c *ui.Context, task *store.Task) {
+	if line := a.outsideLine(task); line != "" {
+		a.mark(c.Key("sent:"+task.ID), drawOut, line, a.T.InkMuted)
 	}
 }
 
-// evidenceChip is one piece of proof: a check mark when a machine checked
-// it. It opens the thing itself: a link, the task's diff, or copies.
-func (a *App) evidenceChip(c *ui.Context, task *store.Task, ev protocol.EvidenceRef) {
-	t := a.T
-	checked := store.MachineChecked(ev.Kind)
-	bg, fg := t.SurfaceSunken, t.Ink
-	if checked {
-		bg, fg = t.Done.Surface, t.Done.Ink
-	}
-	chip := a.chipBox(c, t.Chip, bg).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(ev.Label).Tooltip(ev.Ref).Focusable()
-	if chip.Hovered() {
-		chip.Background(bg.Mix(fg, 0.06))
-	}
-	chip.Children(func() {
-		if checked {
-			ui.Box(c).Size(14, 14).Draw(drawCheck(t.Done.Ink)).Shrink(0)
-		}
-		ui.Text(c, ev.Label).FontSize(t.XS).FontWeight(700).TextColor(fg).SingleLine()
-	})
-	if chip.Clicked() {
-		if ev.Kind == "diff" && task != nil {
-			a.OpenTask(task.ID)
-			return
-		}
-		a.openEvidence(c, ev)
-	}
+// openChanges opens a task at its changes.
+func (a *App) openChanges(id string) {
+	a.open["changes:"+id] = true
+	a.OpenTask(id)
 }
 
 // outsideLine is what the task sent out, in one line, from what its log
@@ -148,7 +149,7 @@ func (a *App) outsideLine(task *store.Task) string {
 	if len(acts) > 1 {
 		s += " · " + a.L.T("result.more", len(acts)-1)
 	}
-	return s + " · " + a.L.T("outside.seen")
+	return s
 }
 
 // resultActions are the next steps a finished repo task offers. They go
@@ -187,30 +188,6 @@ func (a *App) resultActions(c *ui.Context, task *store.Task) {
 			if a.buttonFor(c, a.L.T("result.pr"), task.Title(), btnSecondary, t.ControlMD, t.Surface) {
 				act("open_pr")
 			}
-		}
-		if a.Route != RouteTask && a.buttonFor(c, a.L.T("result.changes"), task.Title(), btnText, t.ControlMD, t.Surface) {
-			a.OpenTask(task.ID)
-		}
-	})
-}
-
-// outsideCard is the dossier's "Outside": what the transcript shows the
-// task did beyond its place.
-func (a *App) outsideCard(c *ui.Context, task *store.Task) {
-	t := a.T
-	a.dossierCard(c, a.L.T("outside.title"), func() {
-		if !task.HistoryLoaded {
-			ui.Text(c, a.L.T("task.loading")).FontSize(t.SM).TextColor(t.InkMuted)
-			return
-		}
-		acts := task.Outside()
-		if len(acts) == 0 {
-			ui.Text(c, a.L.T("outside.none")).FontSize(t.SM).TextColor(t.InkMuted)
-			return
-		}
-		ui.Text(c, a.L.T("outside.seen")).FontSize(t.XS).FontWeight(800).TextColor(t.Waiting.Ink)
-		for _, act := range acts {
-			ui.Text(c.Key(act.Seq), act.Command).Font(t.Mono).FontSize(t.MonoSM).LineHeight(1.45).Selectable().MaxLines(3)
 		}
 	})
 }

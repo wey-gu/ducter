@@ -163,14 +163,22 @@ func TestScenarioEndToEnd(t *testing.T) {
 		t.Error("Hold of the bun upgrade has no unique accessible name")
 	}
 
-	h.click("展开 →")
+	h.click("修 CI · #1592") // the card's title opens the task
 	if h.app.Route != RouteTask || h.app.TaskID != "t-ci-1" {
 		t.Fatalf("route %v task %q", h.app.Route, h.app.TaskID)
 	}
 	h.until("history", func() bool { return s.Task("t-ci-1").HistoryLoaded })
-	for _, want := range []string{"过程", "保存的进度", "为什么是它", "发出去的"} {
+	// One column: what it did, the changes as files, then Details, closed.
+	for _, want := range []string{"过程", "改动", "细节"} {
 		if !h.tt.HasText(want) {
 			t.Errorf("task view lacks %q: %q", want, h.tt.Texts())
+		}
+	}
+	h.app.open["details:t-ci-1"] = true // below the fold in the test window
+	h.tt.Frame()
+	for _, want := range []string{"谁在做", "在哪儿做"} {
+		if !h.tt.HasText(want) {
+			t.Errorf("task details lack %q: %q", want, h.tt.Texts())
 		}
 	}
 	if pane := h.app.diffs["t-ci-1"]; pane == nil || len(pane.files) == 0 {

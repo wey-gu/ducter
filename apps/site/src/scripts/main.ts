@@ -183,7 +183,7 @@ document.querySelectorAll(".reveal").forEach((el) => revealer.observe(el));
     swapText(st, "· Done");
     setFace(face, "done");
     swapText(presence, "just finished something");
-    // the status chip hands over to the result's own chip
+    // the status line hands over to the result's proof line
     reveal(steps.result, () => steps.chip.classList.remove("in"));
     await sc.wait(1200, g);
     replay.hidden = false;
@@ -221,21 +221,21 @@ document.querySelectorAll(".reveal").forEach((el) => revealer.observe(el));
   const asks = [
     {
       row: "oar",
-      from: "Needs you · Port the runner to OAR 0.96",
+      from: "Port the runner to OAR 0.96 ›",
       q: "OAR 0.96 changed the steer API; 3 calls in the runner need to follow. Change them now?",
       def: "If you don't answer, I'll change them in 30 min. It can be undone.",
-      go: "Go: change them",
-      goDone: "Go · changing them now",
+      go: "Change them",
+      goDone: "Changing them now",
       goStatus: "Changing the 3 calls · cloud-1",
       before: "Reading the changelog · cloud-1",
     },
     {
       row: "prs",
-      from: "Needs you · Review this week's 3 open PRs",
+      from: "Review this week's 3 open PRs ›",
       q: "The rerun passes. But the branch is 23 commits behind main: rebase before merging?",
       def: "If you don't answer, I'll rebase in 30 min. It can be undone.",
-      go: "Go: rebase",
-      goDone: "Go · rebasing now",
+      go: "Rebase",
+      goDone: "Rebasing now",
       goStatus: "Rebasing onto main · MacBook",
       before: "Read 2; the third is waiting on CI · MacBook",
     },
@@ -257,6 +257,7 @@ document.querySelectorAll(".reveal").forEach((el) => revealer.observe(el));
     $("ask-q").textContent = a.q;
     $("ask-def").textContent = a.def;
     go.textContent = a.go;
+    hint.textContent = `Try it: press ${a.go}`;
     hint.hidden = false;
     time.textContent = "30 min";
     bar.getAnimations().forEach((x) => x.cancel());
@@ -280,7 +281,7 @@ document.querySelectorAll(".reveal").forEach((el) => revealer.observe(el));
     open = false;
     hint.hidden = true;
     ask.classList.add("settled");
-    $("ask-from").textContent = a.from.replace("Needs you · ", "");
+    $("ask-from").textContent = a.from;
     if (answer === "go") {
       resolved.textContent = a.goDone;
       row.dataset.state = "working";

@@ -136,7 +136,7 @@ class AppState {
     }
     // on_hand closes the replay that follows a welcome.
     if (f.t === "on_hand" && this.inDoubt) this.S.settleInDoubt(this.inDoubt), (this.inDoubt = undefined);
-    if (f.t === "events") for (const ev of f.events) if (!this.livingAway.has(ev.seq) && ev.kind === "living_msg") this.livingAway.set(ev.seq, ev.seq <= this.S.headSeq || document.hidden);
+    if (f.t === "events") for (const ev of f.events) if (!this.livingAway.has(ev.seq) && ev.kind === "living_msg") this.livingAway.set(ev.seq, (ev.seq <= this.S.headSeq && ev.seq > this.S.readUpTo) || document.hidden);
     this.followUserLanguage();
     this.drainActionResults();
     this.changed();

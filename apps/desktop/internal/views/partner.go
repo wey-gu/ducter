@@ -71,7 +71,7 @@ func (a *App) partnerView(c *ui.Context) {
 				}
 				if ps.toast != "" && a.Now().Sub(ps.toastAt) < 6*time.Second {
 					c.After(6*time.Second - a.Now().Sub(ps.toastAt))
-					a.notice(c, "partner-toast", noticeDone, func() { a.glyphTile(c, 26, t.Done.Surface, drawCheck(t.Done.Dot)) }, func() {
+					a.notice(c, "partner-toast", noticeDone, func() { a.glyph(c, 22, drawCheck(t.Done.Ink)) }, func() {
 						ui.Text(c, ps.toast).FontSize(t.SM).FontWeight(700).MaxLines(2)
 					}, nil)
 				}
@@ -447,7 +447,7 @@ func (a *App) trustCard(c *ui.Context) {
 				ui.Text(c, head).FontSize(t.SM).FontWeight(800).TextColor(sc.Ink)
 				for i := 1; i <= 4; i++ {
 					ui.Row(c).Gap(t.S3).AlignItems(ui.Start).Children(func() {
-						ui.Box(c).Size(22, 22).Radius(t.RadiusXS).Background(sc.Surface).Draw(glyph(sc.Dot)).Shrink(0).Margin(1, 0, 0, 0)
+						ui.Box(c).Size(20, 20).Draw(glyph(sc.Ink)).Shrink(0).Margin(1, 0, 0, 0)
 						ui.Text(c, a.L.T(prefix+itoa(int64(i)))).FontSize(t.MD).LineHeight(1.45).Grow(1).MinWidth(0)
 					})
 				}

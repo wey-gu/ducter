@@ -105,8 +105,9 @@ type App struct {
 	// conversation first showed something unread to the user.
 	readSent int64
 	unreadAt time.Time
-	// sideTab is the narrow task view's tab: "changes" or "details".
-	sideTab string
+	// open says which disclosures of an opened task are open:
+	// "changes:<id>", "file:<id>:<name>", "details:<id>", "fold:<id>:<seq>".
+	open map[string]bool
 	// livingNewest is, per living line, the newest living message with it.
 	livingNewest map[string]int64
 	// resultShown marks the tasks whose result the partner gave.
@@ -192,6 +193,7 @@ func New(s *store.Store, t *theme.Tokens, l *i18n.Strings) *App {
 		replyDraft:   map[string]string{},
 		diffs:        map[string]*diffPane{},
 		taskLists:    map[string]*ui.ListState{},
+		open:         map[string]bool{},
 		historyAsked: map[string]bool{},
 		livingAway:   map[int64]bool{},
 	}

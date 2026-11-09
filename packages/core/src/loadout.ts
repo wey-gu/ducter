@@ -18,8 +18,10 @@ export const RULE_HINT_SUFFIX = "_rule_hint";
 
 export interface Loadout {
   /** Who does a new task: the pick and why, "none" with a reason when nobody can, undefined without device info. */
-  choose(work: { title: string; brief?: string; place?: Place; harness?: string; model?: string }): Promise<{ harness: string; model?: string; why: BodyWhy } | { none: string } | undefined>;
+  choose(work: { title: string; brief?: string; place?: Place; harness?: string; model?: string; by?: "you" }): Promise<{ harness: string; model?: string; why: BodyWhy } | { none: string } | undefined>;
   candidates(taskId: string): Promise<Candidate[]>;
+  /** D128: who could do new work at this place, best first (the New task card's 谁来做 / Who does it). */
+  candidatesFor(work: { title: string; brief?: string; place?: Place }): Promise<Candidate[]>;
   /** 换到 X 接着做 / Continue on X. */
   switchTask(taskId: string, harness: string, model: string | undefined, runner: Runner | undefined): Promise<{ ok: boolean; message?: string }>;
 }
@@ -53,10 +55,16 @@ export function createLoadout(o: {
         settings: o.settings.get(),
         rules: o.rules.list(),
         ...(work.harness ? { pinned: { harness: work.harness, ...(work.model ? { model: work.model } : {}) } } : {}),
+        ...(work.by ? { pinnedBy: work.by } : {}),
       });
       if (pick) return pick;
       const why = hs.map((h) => `${harnessName(h.harness)}: ${blockOf(h, o.settings.get()) ?? "ok"}`).join(", ");
       return { none: `no AI agent can take this task right now (${why}). Tell the user in one line and offer what would make one available.` };
+    },
+
+    async candidatesFor(work) {
+      const hs = (await harnessesFor(work.place && "device" in work.place ? work.place.device : undefined)) ?? [];
+      return fwCandidates({ work, harnesses: hs, settings: o.settings.get(), rules: o.rules.list() });
     },
 
     async candidates(taskId) {

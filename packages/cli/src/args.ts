@@ -1,6 +1,6 @@
 // Argument parsing for `ducter`. Pure: no env, no I/O, so it is easy to test.
 
-export type Command = "up" | "open" | "doctor" | "status" | "version" | "help" | "pair" | "devices" | "service" | "worker" | "uninstall" | "report" | "merge";
+export type Command = "up" | "open" | "doctor" | "status" | "version" | "help" | "pair" | "devices" | "service" | "worker" | "uninstall" | "report" | "merge" | "task" | "say" | "tail" | "answer";
 
 export interface Args {
   command: Command;
@@ -20,13 +20,17 @@ export interface Args {
   yes?: boolean; // uninstall --all --yes: no typed confirmation
   includeConversation?: boolean; // report --include-conversation
   out?: string; // report --out <dir>
+  repo?: string; // task --repo <dir> (or "none": no particular place)
+  agent?: string; // task --agent <name>: who does it (pinned for this task)
+  base?: string; // task --base <branch>: what it starts from
+  timeout?: number; // say --timeout <seconds>
 }
 
-export type ParseResult = { ok: true; args: Args } | { ok: false; error: { key: "err.unknownCommand" | "err.unknownFlag" | "err.missingValue" | "err.badPort"; vars: Record<string, string> } };
+export type ParseResult = { ok: true; args: Args } | { ok: false; error: { key: "err.unknownCommand" | "err.unknownFlag" | "err.missingValue" | "err.badPort" | "err.badTimeout"; vars: Record<string, string> } };
 
-const COMMANDS = new Set<Command>(["up", "open", "doctor", "status", "version", "help", "pair", "devices", "service", "worker", "uninstall", "report", "merge"]);
+const COMMANDS = new Set<Command>(["up", "open", "doctor", "status", "version", "help", "pair", "devices", "service", "worker", "uninstall", "report", "merge", "task", "say", "tail", "answer"]);
 /** Commands that take words after them (`ducter devices revoke a1b2`, `ducter service install`). */
-const WITH_REST = new Set<Command>(["devices", "service", "merge"]);
+const WITH_REST = new Set<Command>(["devices", "service", "merge", "open", "task", "say", "tail", "answer"]);
 const ALIASES: Record<string, Command> = {
   "-v": "version",
   "--version": "version",
@@ -106,6 +110,21 @@ export function parseArgs(argv: string[]): ParseResult {
       case "--include-conversation":
         args.includeConversation = true;
         continue;
+      case "--repo":
+      case "--agent":
+      case "--base": {
+        const v = value();
+        if (v === undefined || !v.trim()) return { ok: false, error: { key: "err.missingValue", vars: { flag: a } } };
+        args[a.slice(2) as "repo" | "agent" | "base"] = v.trim();
+        continue;
+      }
+      case "--timeout": {
+        const v = value();
+        if (v === undefined) return { ok: false, error: { key: "err.missingValue", vars: { flag: a } } };
+        if (!/^\d+$/.test(v) || Number(v) < 1) return { ok: false, error: { key: "err.badTimeout", vars: { value: v } } };
+        args.timeout = Number(v);
+        continue;
+      }
       case "--out": {
         const v = value();
         if (v === undefined || !v.trim()) return { ok: false, error: { key: "err.missingValue", vars: { flag: a } } };

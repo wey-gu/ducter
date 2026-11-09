@@ -206,7 +206,9 @@ export function renderTasks(all: TaskCard[], maxDone = 8, ctx?: Pick<RenderCtx, 
       c.place.kind === "repo" ? ` · repo ${c.place.repoPath}${c.place.branch ? ` (branch ${c.place.branch})` : ""}` : c.place.kind === "folder" ? ` · folder ${c.place.path}` : c.place.kind === "browser" ? " · browser" : "";
     const last = c.lastReport ? ` · last report (${c.lastReport.state}): ${clip(c.lastReport.summary, 200)}` : "";
     const merged = ctx?.merged?.(c.taskId) ? ` · merged into ${ctx.taskBase?.(c.taskId) ?? "its base branch"} by the user (new work = a new task)` : "";
-    return `- ${c.taskId} "${c.title}" · ${c.attention}${took(c)}${merged}${where}${last}`;
+    // D128: one the user opened themselves (their words are its brief); you report it like any task.
+    const yours = c.openedBy === "you" ? " · the user opened this one themselves" : "";
+    return `- ${c.taskId} "${c.title}" · ${c.attention}${yours}${took(c)}${merged}${where}${last}`;
   };
   const out: string[] = [];
   out.push("Open:");

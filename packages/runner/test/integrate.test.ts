@@ -147,13 +147,16 @@ test("open_pr with a signed-in gh pushes the branch and logs an outside effect",
 
 test("branchChanges: commits ahead of the base and uncommitted work; nothing on a fresh branch", async () => {
   const p = repoWithTaskBranch();
-  expect(await branchChanges(p)).toEqual({ commits: 1, uncommitted: false });
+  expect(await branchChanges(p)).toEqual({ commits: 1, uncommitted: false, files: 1, adds: 1, dels: 0 });
   writeFileSync(join(p.worktree!, "c.txt"), "c\n"); // untracked counts: the task made it
-  expect(await branchChanges(p)).toEqual({ commits: 1, uncommitted: true });
+  expect(await branchChanges(p)).toEqual({ commits: 1, uncommitted: true, files: 1, adds: 1, dels: 0 });
+  // D128: the diff stat counts uncommitted work in tracked files too (a new file once added).
+  writeFileSync(join(p.worktree!, "a.txt"), "A\nmore\n");
+  expect(await branchChanges(p)).toEqual({ commits: 1, uncommitted: true, files: 2, adds: 3, dels: 1 });
   const fresh = join(dir, "fresh");
   sh(p.repoPath, "worktree", "add", "-q", fresh, "-b", "ducter/nothing", "main");
   const none = { ...p, worktree: fresh, branch: "ducter/nothing" };
-  expect(await branchChanges(none)).toEqual({ commits: 0, uncommitted: false });
+  expect(await branchChanges(none)).toEqual({ commits: 0, uncommitted: false, files: 0, adds: 0, dels: 0 });
   expect(hasBranchChanges({ branch: { commits: 0, uncommitted: false } })).toBe(false);
   expect(hasBranchChanges({ branch: { commits: 0, uncommitted: true } })).toBe(true);
   expect(hasBranchChanges({})).toBe(true); // unknown: the actions stay, and refuse in words if empty
@@ -170,15 +173,15 @@ test("a done report carries the branch check: a task that changed nothing says s
   const { core, runner, taskId } = await bootWithTask({ kind: "repo", device: "local", repoPath: repo }, { branchChecks: true });
   await core.mcp.call({ role: "task", taskId }, "report_to_main", { state: "done", summary: "Nothing to change: it already works." });
   const r = core.log.read({ stream: `task:${taskId}`, kinds: ["report"] }).at(-1)!.body as Bodies["report"];
-  expect(r.branch).toEqual({ commits: 0, uncommitted: false });
-  expect(core.tasks.get(taskId)!.lastReport?.branch).toEqual({ commits: 0, uncommitted: false });
+  expect(r.branch).toEqual({ commits: 0, uncommitted: false, files: 0, adds: 0, dels: 0 });
+  expect(core.tasks.get(taskId)!.lastReport?.branch).toEqual({ commits: 0, uncommitted: false, files: 0, adds: 0, dels: 0 });
   // The task commits something and reports again: now there is something to merge.
   const wt = (core.tasks.get(taskId)!.place as Extract<Place, { kind: "repo" }>).worktree!;
   writeFileSync(join(wt, "b.txt"), "b\n");
   sh(wt, "add", ".");
   sh(wt, "commit", "-qm", "b");
   await core.mcp.call({ role: "task", taskId }, "report_to_main", { state: "done", summary: "Added b." });
-  expect(core.tasks.get(taskId)!.lastReport?.branch).toEqual({ commits: 1, uncommitted: false });
+  expect(core.tasks.get(taskId)!.lastReport?.branch).toEqual({ commits: 1, uncommitted: false, files: 1, adds: 1, dels: 0 });
   // A progress report isn't checked (nothing is offered on one).
   await core.mcp.call({ role: "task", taskId }, "report_to_main", { state: "progress", summary: "More." });
   expect(core.tasks.get(taskId)!.lastReport?.branch).toBeUndefined();

@@ -100,7 +100,7 @@ export function fwCandidates(inp: CandidateInput): Candidate[] {
  * Who does a new task, and why (the body_selected the card shows). pinned: the partner's choice in
  * the moment. Undefined when no AI agent can take it: the caller says so in one line.
  */
-export function chooseBody(inp: Omit<CandidateInput, "current"> & { pinned?: { harness: string; model?: string } }): { harness: string; model?: string; why: BodyWhy } | undefined {
+export function chooseBody(inp: Omit<CandidateInput, "current"> & { pinned?: { harness: string; model?: string }; pinnedBy?: "you" }): { harness: string; model?: string; why: BodyWhy } | undefined {
   const list = fwCandidates(inp);
   const ok = list.filter((c) => !c.blocked);
   const rule = ruleFor(inp.rules, inp.work);
@@ -108,7 +108,8 @@ export function chooseBody(inp: Omit<CandidateInput, "current"> & { pinned?: { h
   if (inp.pinned) {
     const b = blockOf(byHarness(inp.pinned.harness), inp.settings);
     if (!b) {
-      const why: BodyWhy = rule && rule.harness === inp.pinned.harness ? { kind: "rule", ruleId: rule.id, text: rule.text } : { kind: "partner" };
+      // D128: the user picked it on the New task card (or `ducter task --agent`): "…，是你选的".
+      const why: BodyWhy = inp.pinnedBy === "you" ? { kind: "you" } : rule && rule.harness === inp.pinned.harness ? { kind: "rule", ruleId: rule.id, text: rule.text } : { kind: "partner" };
       return { harness: inp.pinned.harness, ...(inp.pinned.model ? { model: inp.pinned.model } : {}), why };
     }
     const next = ok[0];

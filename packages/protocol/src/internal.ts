@@ -4,7 +4,7 @@
 //   runner  owns: HarnessPort over OAR, worktrees, task sessions, event normalization.
 //   partner owns: the main AI (persona prompt, projection, turn loop) on any first-wave harness (D85) via runner's HarnessPort.
 import type { HarnessId } from "./harnesses.ts";
-import type { Attention, Bodies, BodyWhy, Delivery, EventKind, LogEvent, OnHand, Origin, PartnerActivity, Place, Residency, Settings, TaskCard } from "./index.ts";
+import type { Attention, Bodies, BodyWhy, BranchChanges, Delivery, EventKind, LogEvent, OnHand, Origin, PartnerActivity, Place, Residency, Settings, TaskCard } from "./index.ts";
 
 // ---------- core ----------
 
@@ -100,7 +100,8 @@ export interface CoreApi {
  * its own default; { none }: no AI agent can take it, the open fails with that reason.
  */
 export interface BodyChooser {
-  choose(work: { title: string; brief?: string; place?: Place; harness?: string; model?: string }): Promise<{ harness: string; model?: string; why: BodyWhy } | { none: string } | undefined>;
+  // by "you": the user picked harness/model themselves (D128 New task): the pin's why says so.
+  choose(work: { title: string; brief?: string; place?: Place; harness?: string; model?: string; by?: "you" }): Promise<{ harness: string; model?: string; why: BodyWhy } | { none: string } | undefined>;
 }
 
 /** Who is calling into a connection: the partner, or one task (which must have been granted it). */
@@ -246,7 +247,8 @@ export interface HarnessPort {
 export interface Runner {
   harness: HarnessPort;
   // language: the language the user reads the task's report in (from the conversation or their setting).
-  openTask(input: { persona: string; title: string; brief: string; place?: Place; project?: string; harness?: string; model?: string; language?: "zh" | "en" }): Promise<TaskCard>;
+  // origin "you" (D128): the user opened it themselves; logged on task_open, and a harness given is their pick.
+  openTask(input: { persona: string; title: string; brief: string; place?: Place; project?: string; harness?: string; model?: string; language?: "zh" | "en"; origin?: "you" }): Promise<TaskCard>;
   // Optional (D120, ack and go): open a task while its brief is still being written. The card,
   // the place and the session start now; the brief becomes the session's first turn when it
   // settles. If it rejects, the task is dropped before it did anything.
@@ -266,6 +268,9 @@ export interface Runner {
   // user-facing message when it can't.
   switchBody?(taskId: string, harness: string, model?: string): Promise<{ ok: boolean; message?: string }>;
   drop(taskId: string): Promise<void>;
+  // Optional: what a repo task's branch holds that its base doesn't, with its diff stat (D128:
+  // On hand by project). Undefined when not a repo task or it can't tell.
+  branchChanges?(taskId: string): Promise<BranchChanges | undefined>;
 }
 
 export function createRunnerSignature(_core: CoreApi): Runner {

@@ -59,7 +59,22 @@ export async function branchChanges(place: Place): Promise<BranchChanges | undef
   if (!ahead.ok || !status.ok) return undefined;
   const commits = Number(ahead.out);
   if (!Number.isFinite(commits)) return undefined;
-  return { commits, uncommitted: status.out.length > 0 };
+  return { commits, uncommitted: status.out.length > 0, ...(await diffStat(p.worktree!, p.baseBranch)) };
+}
+
+/** D128: files, lines added and removed since the branch left its base, committed or not
+ *  (tracked files; a new file counts once it is added). Two more git calls; {} on failure. */
+export async function diffStat(worktree: string, base: string): Promise<{ files?: number; adds?: number; dels?: number }> {
+  const mb = await git(worktree, ["merge-base", base, "HEAD"]);
+  if (!mb.ok || !mb.out) return {};
+  const d = await git(worktree, ["diff", "--shortstat", mb.out]);
+  return d.ok ? parseShortstat(d.out) : {};
+}
+
+/** " 3 files changed, 42 insertions(+), 7 deletions(-)" → { files: 3, adds: 42, dels: 7 }; "" → zeros. */
+export function parseShortstat(out: string): { files: number; adds: number; dels: number } {
+  const n = (re: RegExp) => Number(out.match(re)?.[1] ?? 0);
+  return { files: n(/(\d+) files? changed/), adds: n(/(\d+) insertions?\(\+\)/), dels: n(/(\d+) deletions?\(-\)/) };
 }
 
 /** Merge the task branch into its base branch in the user's own checkout. */

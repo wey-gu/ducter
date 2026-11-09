@@ -3,7 +3,7 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
-import type { Bodies, LogEvent } from "@ducter/protocol";
+import type { Bodies, LogEvent, Place } from "@ducter/protocol";
 import type { CoreApi, Partner, Runner } from "@ducter/protocol/src/internal.ts";
 import { migrateKeys, readKeys, scrubKeysFromEnv } from "@ducter/protocol/src/keys.ts";
 import { realClock, type Clock } from "./clock.ts";
@@ -29,6 +29,8 @@ import { openRules, type RulesStore } from "./rules.ts";
 import { createLoadout, isRuleHint, registerRuleTools, type Loadout } from "./loadout.ts";
 import { openConnections, type ConnectionsStore, type Linker, type OoSource } from "./connections.ts";
 import { registerConnectionTools } from "./connection-tools.ts";
+import { createChanges, type Changes } from "./changes.ts";
+import { newTaskOptions, openYourTask, type GitRun, type NewTaskInput } from "./newtask.ts";
 
 declare const DUCTER_COMMIT: string | undefined; // set by packages/cli/build.sh via --define
 /** The build this core runs ("dev" from a checkout): /health says it, so Ducter.app can tell a background
@@ -54,6 +56,8 @@ export interface CoreOptions {
   /** Test seams for connections: the MCP link, and the oo CLI's config. */
   connectionLinker?: Linker;
   ooSource?: OoSource;
+  /** Test seam for New task (D128): how newtask.ts runs its repo commands. */
+  git?: GitRun;
   /** Work over time test seams (D112-D114): fake commands, a lower look floor, the judge. */
   work?: { exec?: import("@ducter/protocol/src/checks-run.ts").Exec; minEveryMs?: number; judgeMinMs?: number; restartLookMs?: number; defaultZone?: string; judge?: import("./waiters.ts").Judge; connectionFetch?: (url: string, init: RequestInit) => Promise<Response> };
 }
@@ -80,6 +84,8 @@ export interface Core extends CoreApi {
   loadout: Loadout;
   /** The user's connections (D96). */
   connections: ConnectionsStore;
+  /** What each repo task changed so far (D128). */
+  changes: Changes;
   port: number;
   url: string; // ws URL for clients
   setRunner(r: Runner): void;
@@ -210,7 +216,10 @@ export function startCore(opts: CoreOptions = {}): Core {
   });
   workRef = work;
   const waiters = work.waiters;
-  tasks.setDecorator((o) => work.decorate(o));
+  // D128: what each repo task changed (cached counts), for On hand by project.
+  let onHandChanged = () => {};
+  const changes = createChanges({ log, tasks, runner: () => runner, onChange: () => onHandChanged() });
+  tasks.setDecorator((o) => changes.decorate(work.decorate(o)));
   if (opts.work?.judge) work.setJudge(opts.work.judge);
 
   const early: LogEvent[] = []; // triggers that arrive before the partner is wired
@@ -230,7 +239,11 @@ export function startCore(opts: CoreOptions = {}): Core {
   let devicesView: DevicesView | undefined;
   const loadout = createLoadout({ log, tasks, settings, rules, devices: () => devicesView });
   const api = { log, tasks, mcp, persona, dataDir, settings, connections, bodies: loadout, spine: log.spine } as CoreApi;
-  const ws = createWsHandler({ core: api, decisions, runner: () => runner, devices: () => devicesView, settings, connections, rules, loadout, work: work.frames, batchMs: opts.batchMs });
+  // 开一件事 / New task (D128): the one opening path the card and `ducter task` share.
+  const newTaskDeps = { log, tasks, runner: () => runner, persona, dataDir, loadout, settings, ...(opts.git ? { git: opts.git } : {}) };
+  const newTask = { open: (i: NewTaskInput) => openYourTask(newTaskDeps, i), options: (p?: Place) => newTaskOptions(newTaskDeps, p) };
+  const ws = createWsHandler({ core: api, decisions, runner: () => runner, devices: () => devicesView, settings, connections, rules, loadout, work: work.frames, newTask, batchMs: opts.batchMs });
+  onHandChanged = ws.onHandChanged;
   api.activity = { set: ws.setActivity };
   const devices = openDeviceAuth(dataDir);
   // A device that pairs changes Your devices and abilities (远程打开 / Reach from anywhere).
@@ -329,6 +342,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     rules,
     loadout,
     connections,
+    changes,
     port,
     url: `ws://127.0.0.1:${port}/ws`,
     setRunner(r) {
@@ -357,6 +371,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       decisions.stop();
       living.stop();
       work.stop();
+      changes.stop();
       pusher.stop();
       void server.stop(true); // awaiting hangs in Bun 1.3 when a WebSocket was open
       log.close();

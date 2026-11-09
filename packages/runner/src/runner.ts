@@ -480,7 +480,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const id = newId();
     // Who does it (D89): the person's rules, the limits and Use it for tasks, through core's
     // chooser; a pick this runner can't run (or no device info) keeps the old default.
-    const picked = await core.bodies?.choose({ title: input.title, brief: input.brief, place: input.place, harness: input.harness, model: input.model });
+    const you = input.origin === "you"; // D128: the user opened it; a harness given is their pick
+    const picked = await core.bodies?.choose({ title: input.title, brief: input.brief, place: input.place, harness: input.harness, model: input.model, ...(you ? { by: "you" as const } : {}) });
     if (picked && "none" in picked) throw new Error(picked.none);
     const pick = picked && HARNESSES.includes(picked.harness as HarnessId) ? picked : undefined;
     if (pick) input = { ...input, harness: pick.harness, ...(pick.model ? { model: pick.model } : {}) };
@@ -512,9 +513,9 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     // The partner's choice wins; else DUCTER_TASK_MODEL; else the harness default.
     const model = input.model || (h === "claude-code" ? (opts.defaultModel ?? opts.taskModel ?? process.env.DUCTER_TASK_MODEL) || undefined : undefined);
     const later = typeof briefIn !== "string";
-    const body: Bodies["task_open"] = { taskId: id, title, project, place: resolved.place, harness: h, model, brief: later ? "" : briefIn, ...(input.language ? { language: input.language } : {}) };
+    const body: Bodies["task_open"] = { taskId: id, title, project, place: resolved.place, harness: h, model, brief: later ? "" : briefIn, ...(input.language ? { language: input.language } : {}), ...(you ? { origin: "you" as const } : {}) };
     const opened = core.log.append({ persona, stream: stream(id), origin: "system", kind: "task_open", body });
-    core.log.append({ persona, stream: stream(id), origin: "system", kind: "body_selected", body: { taskId: id, harness: h, ...(model ? { model } : {}), why: pick?.why ?? { kind: input.harness ? "partner" : "default" } } });
+    core.log.append({ persona, stream: stream(id), origin: "system", kind: "body_selected", body: { taskId: id, harness: h, ...(model ? { model } : {}), why: pick?.why ?? { kind: input.harness ? (you ? "you" : "partner") : "default" } } });
     const card: TaskCard = {
       taskId: id,
       persona,

@@ -47,6 +47,20 @@ export interface EvidenceRef {
 export interface BranchChanges {
   commits: number;
   uncommitted: boolean;
+  /** D128: the diff against where the branch left its base (committed and uncommitted tracked
+   *  work): files touched, lines added and removed. Absent when it couldn't be counted. */
+  files?: number;
+  adds?: number;
+  dels?: number;
+}
+
+/** What a task changed so far, for On hand by project and the opened task's Changes header
+ *  ("改动 · 3 个文件 +42 −7"). Cached by core; `at` is when it was counted. */
+export interface DiffStat {
+  files: number;
+  adds: number;
+  dels: number;
+  at: string;
 }
 
 /** False only when Ducter checked and the branch holds nothing its base doesn't: nothing to merge
@@ -90,6 +104,9 @@ export interface Bodies {
     brief: string;
     bodyReason?: string; // why this harness/model
     language?: "zh" | "en"; // the language the user reads its reports in (the brief says so)
+    // D128: "you" = the user opened it themselves (开一件事 / New task, `ducter task`); the brief
+    // is their words as they are. Absent = the partner opened it.
+    origin?: "you";
   };
   task_state: { taskId: string; attention: Attention; residency: Residency; reason?: string };
   // Who does the task and why (D89, focus-window.md "Choosing a body"): appended when it opens
@@ -280,6 +297,8 @@ export interface TaskCard {
   updatedAt: string;
   until?: UntilView; // D113
   fromRoutine?: { routineId: string; name: string }; // a routine's run (D114)
+  openedBy?: "you"; // D128: the user opened it themselves; absent = the partner did
+  changes?: DiffStat; // D128: repo tasks, once counted (cached; refreshed after each turn)
 }
 
 export interface OnHand {
@@ -407,7 +426,8 @@ export interface UntilView {
 
 export type ClientFrame =
   // tz: the client's IANA zone; personal-time routines follow the latest one (D114).
-  | { t: "hello"; persona?: string; cursor?: number; locale?: "zh" | "en"; tz?: string }
+  // client: what is connecting (D128: `open_task` goes to the apps, never to a CLI); absent = an app.
+  | { t: "hello"; persona?: string; cursor?: number; locale?: "zh" | "en"; tz?: string; client?: ClientKind }
   | { t: "send"; text: string; clientId: string }
   | { t: "decide"; decisionId: string; option: "go" | "hold" | "reply"; text?: string }
   // clientId (optional): a resend with the same id is not delivered twice; it gets the same "sent".
@@ -464,7 +484,34 @@ export type ClientFrame =
   // (only a person resumes), end. until_action stop: stop the loop after this try.
   | { t: "waiter_action"; waiterId: string; action: "look" | "cancel" }
   | { t: "routine_action"; routineId: string; action: "pause" | "resume" | "end" }
-  | { t: "until_action"; taskId: string; action: "stop" };
+  | { t: "until_action"; taskId: string; action: "stop" }
+  // 开一件事 / New task (D128). task_new_options: what the card offers (places, recent first,
+  // and who could do it at `place`, best first); answered with a task_new_options frame.
+  // task_new: open a task with the user's words as they are, as its brief (no partner rewrite);
+  // answered with task_new_result. place absent = 不用特定的地方 / No particular place; a repo
+  // place without baseBranch starts from the repo's default branch. harness (and model) only
+  // when the user picked someone other than the top candidate: it is pinned for this task.
+  // clientId: a resend with the same id opens nothing twice and gets the same result.
+  | { t: "task_new_options"; place?: Place }
+  | { t: "task_new"; words: string; place?: Place; harness?: string; model?: string; clientId?: string }
+  // open_task: show this task in the apps (`ducter open <task>`): pushed to every connected app
+  // as an open_task frame; the sender gets open_result with how many apps were told.
+  | { t: "open_task"; taskId: string };
+
+/** desktop: the Mac app; web: the web or phone client; cli: a `ducter` command. */
+export type ClientKind = "desktop" | "web" | "cli";
+
+/** One place the New task card offers (D128). */
+export interface PlaceChoice {
+  place: Place; // kind "none" is 不用特定的地方 / No particular place (always last)
+  name: string; // the repo's folder name; "" for no particular place
+  usedAt?: string; // the last task there, or when the repo was last touched
+  defaultBranch?: string; // repo places on this machine: what a task starts from unless picked
+  branches?: string[]; // local branches, most recently committed first (at most 30)
+}
+
+/** Why a New task didn't open: empty words, nothing can do it, not a repo, its device is away, or anything else (message). */
+export type NewTaskReason = "empty" | "no_agent" | "not_repo" | "offline" | "failed";
 
 export type ServerFrame =
   // machine: a hash of the machine the main runs on (core/src/machine.ts); a client that computes
@@ -487,6 +534,12 @@ export type ServerFrame =
   // What the partner is doing while the user waits for its reply (D104): sent on every change and
   // after each welcome, null when the turn ends. Never logged: it is presence, not history.
   | { t: "activity"; activity: PartnerActivity | null }
+  // D128: New task. card: the task as On hand will show it; message: a reason in words (English).
+  | { t: "task_new_options"; places: PlaceChoice[]; candidates: Candidate[] }
+  | { t: "task_new_result"; ok: boolean; clientId?: string; taskId?: string; card?: TaskCard; reason?: NewTaskReason; message?: string }
+  // Show this task (the app opens it, Esc returns). open_result answers the sender: apps = how many apps were told.
+  | { t: "open_task"; taskId: string }
+  | { t: "open_result"; taskId: string; ok: boolean; apps: number; message?: string }
   | { t: "error"; message: string };
 
 /**

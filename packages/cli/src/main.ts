@@ -8,7 +8,8 @@ import { parseArgs, type Args } from "./args.ts";
 import { launchDesktop, planDesktop, sourceRepoRoot, type Launched } from "./desktop.ts";
 import { ansiStyle, formatBlocked, formatReport, formatSummary, realHost, runDoctor, width, type DoctorReport, type Host, type Style } from "./doctor.ts";
 import { buildHints, cleanName, readPersonaFile, writeHints, writePersonaFile } from "./firstrun.ts";
-import { commandsFor, detectLocale, translator, type T } from "./i18n.ts";
+import { commandsFor, commandWith, detectLocale, translator, type T } from "./i18n.ts";
+import { cmdAnswer, cmdOpenTask, cmdSay, cmdTail, cmdTask, type TalkCtx } from "./talk.ts";
 import { fetchSnapshot, formatSnapshot, pickTask, taskAction, toMerge } from "./status.ts";
 import { cmdDevices, cmdPair, cmdService, isLoopback, publicUrl } from "./remote.ts";
 import { cmdWorker } from "./worker.ts";
@@ -43,6 +44,10 @@ export function helpText(t: T): string {
     cmd("doctor", t("help.doctor")),
     cmd("status", t("help.status")),
     cmd("merge", t("help.merge")),
+    cmd("task", t("help.task")),
+    cmd("say", t("help.say")),
+    cmd("tail", t("help.tail")),
+    cmd("answer", t("help.answer")),
     cmd("version", t("help.version")),
     cmd("pair", t("help.pair")),
     cmd("devices", t("help.devices")),
@@ -58,6 +63,10 @@ export function helpText(t: T): string {
     opt("--headless", t("help.headless")),
     opt("--host <addr>", t("help.host")),
     opt("--worker", t("help.pairWorker")),
+    opt("--repo <dir>", t("help.repo")),
+    opt("--agent <name>", t("help.agent")),
+    opt("--base <branch>", t("help.base")),
+    opt("--timeout <s>", t("help.timeout")),
     opt("--json", t("help.json")),
     opt("--all", t("help.all")),
     opt("--dry-run", t("help.dryRun")),
@@ -215,6 +224,23 @@ async function cmdReport(ctx: Ctx): Promise<number> {
   return 0;
 }
 
+/** What the talking commands (talk.ts) need from this run. */
+function talk(ctx: Ctx): TalkCtx {
+  const a = ctx.args;
+  return {
+    t: ctx.t,
+    style: ctx.style,
+    port: ctx.port,
+    json: a.json,
+    rest: a.rest ?? [],
+    ...(a.repo ? { repo: a.repo } : {}),
+    ...(a.agent ? { agent: a.agent } : {}),
+    ...(a.base ? { base: a.base } : {}),
+    ...(a.timeout ? { timeoutS: a.timeout } : {}),
+    cmd: commandWith({ port: a.port, dataDir: a.dataDir ? resolve(a.dataDir) : undefined }),
+  };
+}
+
 function desktopPlan(ctx: Ctx) {
   return planDesktop({
     env: process.env,
@@ -227,6 +253,8 @@ function desktopPlan(ctx: Ctx) {
 }
 
 async function cmdOpen(ctx: Ctx): Promise<number> {
+  // `ducter open <part of a title or id>` (D128): show that task in the app.
+  if (ctx.args.rest?.length) return cmdOpenTask(talk(ctx));
   if ((await ctx.host.port(ctx.port)) !== "ducter") {
     console.log(ctx.t("open.notRunning"));
     return 1;
@@ -485,6 +513,14 @@ export async function run(argv: string[]): Promise<number | "running"> {
       return cmdStatus(ctx);
     case "open":
       return cmdOpen(ctx);
+    case "task":
+      return cmdTask(talk(ctx));
+    case "say":
+      return cmdSay(talk(ctx));
+    case "tail":
+      return cmdTail(talk(ctx));
+    case "answer":
+      return cmdAnswer(talk(ctx));
     case "up":
       return cmdUp(ctx);
     case "pair":

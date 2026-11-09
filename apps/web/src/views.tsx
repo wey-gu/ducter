@@ -272,7 +272,7 @@ function DecisionCard({ d, taskId, inTask }: { d: DecisionState; taskId?: string
     <div ref={ref} class={`decision${flash ? " flash" : ""}`} id={`d-${d.decisionId}`}>
       {task && title(task) && !inTask && (
         // On the phone the asking task's title is the way into it (no Details button to wrap).
-        <button class="eyebrow" onClick={() => ((A.sheet = null), A.go({ name: "task", id: task.id }))}>
+        <button class="asker" onClick={() => ((A.sheet = null), A.go({ name: "task", id: task.id }))}>
           {title(task)} ›
         </button>
       )}

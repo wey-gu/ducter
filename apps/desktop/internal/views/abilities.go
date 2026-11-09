@@ -195,7 +195,7 @@ func (a *App) devicesView(c *ui.Context) {
 			default:
 				ui.Row(c).Grow(1).MinHeight(0).Gap(t.S4).AlignItems(ui.Stretch).Children(func() {
 					ui.Column(c).Width(260).Shrink(0).Gap(t.S3).Children(func() {
-						ui.Text(c, a.L.T("devices.list")).FontSize(t.XS).FontWeight(800).LetterSpacing(1.2).TextColor(t.InkMuted)
+						ui.Text(c, a.L.T("devices.list")).FontSize(t.SM).FontWeight(800).TextColor(t.InkSoft)
 						a.deviceCards(c, 0)
 					})
 					ui.Column(c).Grow(1).MinWidth(0).Children(func() { a.stage(c, dev) })
@@ -767,7 +767,7 @@ func (a *App) stageLine(c *ui.Context, dv *protocol.DeviceView, sw float32) {
 		a.enter(c, pill)
 		pill.Children(func() {
 			if check {
-				ui.Box(c).Size(26, 26).Radius(t.RadiusXS).Background(sc.Surface).Draw(drawCheck(sc.Dot)).Shrink(0)
+				a.glyph(c, 20, drawCheck(sc.Ink))
 			}
 			ui.Text(c, text).FontSize(t.MD).FontWeight(800).TextColor(t.Ink).MaxLines(2)
 		})
@@ -779,7 +779,7 @@ func (a *App) stageLine(c *ui.Context, dv *protocol.DeviceView, sw float32) {
 func (a *App) abilityGrid(c *ui.Context, dv *protocol.DeviceView, cols int) {
 	t := a.T
 	d := a.devState()
-	ui.Text(c, a.L.T("devices.grid")).FontSize(t.XS).FontWeight(800).LetterSpacing(1.2).TextColor(t.InkMuted)
+	ui.Text(c, a.L.T("devices.grid")).FontSize(t.SM).FontWeight(800).TextColor(t.InkSoft)
 	hovered := ""
 	ui.Grid(c).Columns(cols).Gap(t.S3).Children(func() {
 		for _, id := range gridAbilities {
@@ -911,7 +911,7 @@ func (a *App) abilityDetail(c *ui.Context, dv *protocol.DeviceView) {
 			})
 		case on:
 			ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-				ui.Box(c).Size(22, 22).Radius(t.RadiusXS).Background(t.Awake.Surface).Draw(drawCheck(t.Awake.Dot)).Shrink(0)
+				a.glyph(c, 18, drawCheck(t.Awake.Ink))
 				ui.Text(c, a.L.T("ability.on.at", a.deviceNameIn(dv))).FontSize(t.SM).FontWeight(700).Grow(1).MinWidth(0)
 				if dv.State == protocol.DeviceAwake && a.buttonFor(c, a.L.T("ability.remove"), name, btnText, t.ControlSM, t.Surface) {
 					d.removing = id

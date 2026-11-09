@@ -554,7 +554,7 @@ a {
 .decision.flash {
   animation: flash 1.4s var(--ease);
 }
-.decision .eyebrow {
+.decision .asker {
   align-self: flex-start;
   font-size: var(--xs);
   font-weight: 700;
@@ -562,7 +562,7 @@ a {
   text-align: left;
   min-height: 24px;
 }
-.decision .eyebrow:active {
+.decision .asker:active {
   text-decoration: underline;
 }
 .decision .q {

@@ -15,7 +15,11 @@ scripts/make-app.sh            # dist/Ducter.app and dist/Ducter-0.0.1-arm64.dmg
 ```
 
 Send the `.dmg` (AirDrop, a link, a USB stick). It holds `Ducter.app` (the desktop app, with
-the `ducter` CLI inside it) and an Applications shortcut. The build is for your Mac's CPU
+the `ducter` CLI inside it) and an Applications shortcut, in a laid-out window: the app on its
+little island, a clay arrow, Applications on the right, and one line in both languages
+(`scripts/macos/dmg/background*.png` from `tools/art/dmg_background.py`; the window's
+`.DS_Store` is written by `scripts/macos/dmg-layout.ts`, no Finder or GUI session needed, so CI
+builds the same window). The build is for your Mac's CPU
 (Apple silicon builds run only on Apple silicon).
 
 **With an Apple Developer ID** in your keychain, `scripts/make-app.sh` signs the app with it

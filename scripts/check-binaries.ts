@@ -16,6 +16,7 @@ const ALLOW = [
   /^design\/art\/assets\/alpha\//,
   /^design\/art\/concepts\/r2\/r2_(char_clay|board_2)\.jpg$/, // reference images in batch.json
   /^packages\/runner\/assets\//,
+  /^scripts\/macos\/dmg\//, // the disk image's window background (make-app.sh)
   /^\.github\/readme\//,
 ];
 

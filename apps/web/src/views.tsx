@@ -613,8 +613,8 @@ function Held() {
   return (
     <div class="held" role="alert">
       <span>{t("secret.held")}</span>
-      <Btn kind="secondary" size="sm" label={t("secret.cancel")} onClick={() => ((A.held = undefined), A.changed())} />
       <Btn kind="text" size="sm" label={t("secret.send")} onClick={() => A.sendHeld()} />
+      <Btn kind="secondary" size="sm" label={t("secret.cancel")} onClick={() => ((A.held = undefined), A.changed())} />
     </div>
   );
 }
@@ -1352,19 +1352,19 @@ function PhoneSettings() {
               />
               <div class="btns">
                 <Btn
-                  kind="secondary"
-                  label={t("notify.test")}
-                  onClick={async () => {
-                    const r = await A.api.call("api/push/test", { method: "POST" });
-                    A.toast(r.status === 200 ? t("notify.test.sent") : t("result.action.failed", String(r.status)));
-                  }}
-                />
-                <Btn
                   kind="text"
                   label={t("notify.off")}
                   onClick={async () => {
                     A.push = await disablePush(A.api);
                     A.changed();
+                  }}
+                />
+                <Btn
+                  kind="secondary"
+                  label={t("notify.test")}
+                  onClick={async () => {
+                    const r = await A.api.call("api/push/test", { method: "POST" });
+                    A.toast(r.status === 200 ? t("notify.test.sent") : t("result.action.failed", String(r.status)));
                   }}
                 />
               </div>

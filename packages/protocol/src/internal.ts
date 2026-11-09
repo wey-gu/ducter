@@ -51,6 +51,42 @@ export interface CoreApi {
   workers?: WorkerLinks;
   /** The partner's settings (D71); absent in tests and stubs (then: follow the user, remember). */
   settings?: SettingsApi;
+  /** The user's connections (D96, core/src/connections.ts); absent in tests and stubs. */
+  connections?: ConnectionsApi;
+}
+
+/** Who is calling into a connection: the partner, or one task (which must have been granted it). */
+export type ConnectionCaller = { role: "partner" } | { role: "task"; taskId: string };
+
+export interface ConnectionInfo {
+  id: string;
+  name: string;
+  source: "oomol" | "self" | "mcp";
+  /** For a task: whether it may read this one. */
+  granted?: boolean;
+}
+
+export type ConnectionOutcome =
+  | { ok: true; op: "read" | "write"; result: unknown }
+  | { ok: false; error: string; op?: "read" | "write" };
+
+/** The broker as the partner and tasks see it (design/connectors.md §4). */
+export interface ConnectionsApi {
+  list(who: ConnectionCaller): ConnectionInfo[];
+  /** Find actions (OpenConnector) or tools (other MCP servers), each marked read or write. */
+  search(who: ConnectionCaller, query: string, opts?: { connection?: string; service?: string }): Promise<ConnectionOutcome>;
+  /** One action's guide: its input, and whether it reads or writes. */
+  guide(who: ConnectionCaller, connection: string, action: string): Promise<ConnectionOutcome>;
+  /** read or write, from the server's own metadata; unknown counts as write. */
+  classify(connection: string, action: string): Promise<"read" | "write">;
+  /** Runs a read. A write is refused here: it needs stage() and the user's Go. */
+  read(who: ConnectionCaller, connection: string, action: string, input: unknown, account?: string): Promise<ConnectionOutcome>;
+  /** Records a write that waits for Go on decisionId (the partner made the card). */
+  stage(connection: string, action: string, input: unknown, decisionId: string, account?: string): { ok: true; callId: string } | { ok: false; error: string };
+  /** Runs the write staged on decisionId, once, only if the user said Go. */
+  runApproved(decisionId: string): Promise<ConnectionOutcome>;
+  /** Lets a task read one connection (the partner decides; recorded). */
+  grant(taskId: string, connection: string): { ok: true } | { ok: false; error: string };
 }
 
 /** What the partner reads of the settings, and how it lets the user forget a memory. */

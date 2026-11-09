@@ -7,6 +7,7 @@ import type { DevicesView } from "./devices.ts";
 import { PROJECTED_KINDS, taskStream } from "./registry.ts";
 import { machineId } from "./machine.ts";
 import type { SettingsStore } from "./settings.ts";
+import type { ConnectionsStore } from "./connections.ts";
 
 export interface WsData {
   live: boolean;
@@ -16,6 +17,8 @@ export interface WsData {
   devices?: boolean;
   /** Asked for settings: gets a fresh settings frame whenever they change. */
   settings?: boolean;
+  /** Asked for connections: gets a fresh connections frame whenever they change. */
+  connections?: boolean;
   /** The paired device behind a remote socket (core.ts). */
   device?: { id: string };
 }
@@ -36,6 +39,8 @@ export interface WsDeps {
   devices?: () => DevicesView | undefined;
   /** The partner's settings (settings.ts); absent in tests that don't need it. */
   settings?: SettingsStore;
+  /** The user's connections (connections.ts); absent in tests that don't need it. */
+  connections?: ConnectionsStore;
   batchMs?: number;
 }
 
@@ -93,6 +98,11 @@ export function createWsHandler(deps: WsDeps) {
     const subs = [...sockets].filter((ws) => ws.data.settings);
     if (!subs.length) return;
     void settingsFrame().then((f) => subs.forEach((ws) => sockets.has(ws) && send(ws, f)));
+  });
+  // Connections: same pattern. The frame never carries a token.
+  const connectionsFrame = (): ServerFrame => ({ t: "connections", connections: deps.connections!.view(), oo: deps.connections!.oo() });
+  const offConnections = deps.connections?.onChange(() => {
+    for (const ws of sockets) if (ws.data.connections) send(ws, connectionsFrame());
   });
   // Memory_noted lines change the noted list: subscribers hear about it too.
   const offNoted = log.subscribe((e) => {
@@ -305,6 +315,30 @@ export function createWsHandler(deps: WsDeps) {
         send(ws, await settingsFrame(how ? { seq: f.seq, how } : undefined));
         return;
       }
+      case "connections": {
+        if (!deps.connections) throw new Error("connections are not available");
+        ws.data.connections = true;
+        send(ws, connectionsFrame());
+        void deps.connections.recheck().catch(() => {});
+        return;
+      }
+      case "connection_add":
+      case "connection_oo": {
+        if (!deps.connections) throw new Error("connections are not available");
+        ws.data.connections = true;
+        const r = f.t === "connection_add" ? await deps.connections.add({ url: String(f.url ?? ""), token: f.token, name: f.name }) : await deps.connections.addFromOo();
+        send(ws, r.ok ? { t: "connection_result", ok: true, id: r.id } : { t: "connection_result", ok: false, reason: r.reason });
+        if (!r.ok) send(ws, connectionsFrame());
+        return;
+      }
+      case "connection_remove": {
+        if (!deps.connections) throw new Error("connections are not available");
+        ws.data.connections = true;
+        const ok = deps.connections.remove(String(f.id ?? ""));
+        send(ws, ok ? { t: "connection_result", ok: true, id: f.id } : { t: "connection_result", ok: false, reason: "unknown_connection" });
+        if (!ok) send(ws, connectionsFrame());
+        return;
+      }
       case "task_history": {
         const stream = taskStream(f.taskId);
         const events = log.read({ stream, beforeSeq: f.beforeSeq, limit: Math.min(f.limit ?? 200, 2000) });
@@ -351,6 +385,7 @@ export function createWsHandler(deps: WsDeps) {
     stop() {
       offDevices?.();
       offSettings?.();
+      offConnections?.();
       offNoted();
       unsubscribe();
       if (flushTimer) clearTimeout(flushTimer);

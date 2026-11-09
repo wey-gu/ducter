@@ -599,6 +599,10 @@ func (a *App) Welcomed() {
 	if a.S.Settings != nil || a.Route == RoutePartner || a.Desktop != nil {
 		a.send(protocol.SettingsReq{T: "settings"})
 	}
+	// Connections (D96): same, once the Partner page asked.
+	if a.S.ConnAsked || a.Route == RoutePartner {
+		a.send(protocol.ConnectionsReq{T: "connections"})
+	}
 }
 
 // Receive applies a server frame on the UI thread. A welcome from a Log

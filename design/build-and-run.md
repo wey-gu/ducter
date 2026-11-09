@@ -63,7 +63,14 @@ Applications, Ducter stops with the app. If Ducter was already running (from `du
 terminal), the app just connects and leaves it alone. Data lives in `~/.ducter`, as with the
 CLI; Ducter's output from the app is in `~/.ducter/app.log`.
 
-For a scratch run of the real app: `~/Library/Application Support/Ducter/dev.env` with lines
+**Updates.** The app checks GitHub Releases at launch and once a day, downloads and checks a
+newer version in the background, and says so in one line of the app menu (and Settings): "Update
+0.2.0 ready · restart to finish". It installs when you next quit, or right away with Restart
+Now; Ducter in the background is restarted on the new version and carries on from the Log.
+Details and a local test: [release/README.md](release/README.md#how-the-app-updates-itself-d71).
+
+For a scratch run of the real app: `~/Library/Application Support/Ducter/dev.env` (a build with another bundle id reads
+`~/Library/Application Support/<bundle id>/dev.env`) with lines
 like `DUCTER_DATA_DIR=/tmp/ducter-scratch` and `DUCTER_PORT=7798` (only `DUCTER_*` keys are
 read). Delete the file afterwards.
 
@@ -97,8 +104,7 @@ Send it any way you like (AirDrop, a zip, a USB stick).
 | 1:00 | They tap a starter (it fills the box; it never sends by itself) and press Return. The partner says what it's starting (3–19 s in our two runs) and opens a task |
 | ~2:00 | The task comes back done (46–52 s after sending, for "fix the failing tests" in a small repo). The first time ever, a single line with the clay character: "Your first task is done. Everything I finish comes back to you like this, with proof." Then the partner's own short result with evidence (about a minute), and Merge / Draft PR / See changes |
 
-To start over as a brand-new user, stop Ducter and remove `~/.ducter` (or use a fresh
-`--data-dir`). Ducter's files there: `ducter.db` (the Log), `ducter.log` (its own log lines),
+To start over as a brand-new user, `ducter uninstall --all` (or use a fresh `--data-dir`). Ducter's files there: `ducter.db` (the Log), `ducter.log` (its own log lines),
 `persona.json` (the name they chose), `firstrun.json` (the repo names for the starters),
 `desktop.json` (whether the first result was celebrated).
 
@@ -109,6 +115,8 @@ To start over as a brand-new user, stop Ducter and remove `~/.ducter` (or use a 
 | `ducter doctor` | Check bun, git, Claude Code, Codex, Nowledge Mem, cua-driver, the port, and the data folder |
 | `ducter status` | Tasks and open decisions from the running Ducter (`--json` for scripts) |
 | `ducter version` | Version and build |
+| `ducter uninstall [--all]` | Stop and remove the background item; `--all` also removes `~/.ducter` (the Log, task working copies, browser profiles), the app's `~/.local/bin/ducter` link and the app's Library folders. `--dry-run` lists it first; repos, their `ducter/*` branches and the AI tools' logins stay. The app's **Remove Ducter** runs the same thing, then moves the app to the Trash |
+| `ducter report [--include-conversation]` | A diagnostics folder (doctor, versions, the last 500 log lines with secrets removed; the conversation only when asked) and a prefilled GitHub issue link. Nothing is uploaded. The app's **Help → Report a Problem…** saves it as a .zip on the Desktop |
 
 Options: `--port` (default 7777, or `DUCTER_PORT`), `--data-dir` (default `~/.ducter`, or
 `DUCTER_DATA_DIR`), `--no-desktop`. Messages follow your locale (`LANG`); set

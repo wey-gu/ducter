@@ -169,6 +169,23 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] Linux CI test runs (`bun test`, `go test` on ubuntu) were only compiled/planned on a Mac;
       if the first runs fail for platform reasons, move that job to `macos-15`.
 
+## App lifecycle (D71)
+
+- [ ] **Settings rows** for updates (the status line, 退出时自动更新, 现在检查) and for 彻底移除
+      Ducter (the page with Removes / Keeps, the two options, the typed confirmation), on the API
+      in `apps/desktop/internal/update` and `internal/local/lifecycle.go`. Trigger: the Settings
+      window lands (branch `ia`).
+- [ ] **Reset partner** (clear the conversation, keep devices and settings). Not built: the Log
+      holds the conversation and every task in one append-only file (principle 1), so it can't
+      be cut out safely. Proposal: a `conversation_reset` event that the projection and memory
+      window start after, so tasks, decisions and resume keep their history. Trigger: the user
+      asks for it; it goes through the change loop (`design/context.md`).
+- [ ] Rollback in the UI (`RollBackOnQuit` exists). Trigger: a bad release reaches someone.
+- [ ] A pre-release channel (the updater only reads `releases/latest`). Trigger: the first beta
+      testers.
+- [ ] First real update from GitHub (both checks against a notarized release, Gatekeeper on).
+      Trigger: the second tagged release after the repo is public.
+
 ## First run without a terminal (D70, `design/onboarding.md` "No terminal, start to finish")
 
 - [ ] A task that needs the web before 上网 is set up: open the three steps from the

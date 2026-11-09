@@ -73,9 +73,10 @@ submitting forms and paying are left to you. See [Browsing the web](devices.md#b
 ### Can it read my email or calendar?
 
 Not yet; it's coming soon. Gmail, Google Calendar and other services will connect through
-[OpenConnector](https://github.com/oomol-lab/open-connector), an open-source connector that
-runs on the same computer as Ducter. Your passwords and tokens stay there, and the AI agents
-never see them. Reading is fine, and anything that would send an email or change your calendar
+[OpenConnector](https://github.com/oomol-lab/open-connector), an open-source connector gateway.
+Use OOMOL's hosted one (quickest; your mail passes through their servers) or run your own (it
+stays on your machine, and you set up the sign-in apps yourself). Ducter holds the key to it,
+and the AI agents never see your passwords or tokens. Reading is fine, and anything that would send an email or change your calendar
 will wait for your **Go**, the way everything Ducter sends out does today.
 
 ### Can it work with the AI agent in my terminal?

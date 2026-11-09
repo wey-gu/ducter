@@ -46,10 +46,10 @@ the way, and none of it needs your passwords.
   what you've decided and what you're working on, from every AI tool you connect to it. Your
   partner reads from it and adds to it, and each save shows as one quiet *Noted* line. Without
   Mem, your partner remembers your conversation and nothing else.
-- **Your accounts, on your own computer (coming soon).** Gmail, Google Calendar and other
-  services will connect through [OpenConnector](https://github.com/oomol-lab/open-connector),
-  an open-source connector gateway running where Ducter runs. Your passwords and tokens stay
-  there, and the AI agents never see them. Reading your inbox is fine; anything that would
+- **Your accounts, through your OpenConnector (coming soon).** Gmail, Google Calendar and
+  other services will connect through [OpenConnector](https://github.com/oomol-lab/open-connector),
+  an open-source connector gateway: OOMOL's hosted one, or your own on your own machine. Ducter
+  holds the key to it, and the AI agents never see your passwords or tokens. Reading your inbox is fine; anything that would
   send waits for your Go, like everything else Ducter sends out.
 - **Your AI agents, reaching each other (early, coming soon).** With Nowledge Bridge, the
   Claude Code session in your terminal can hand your partner a job, and your partner can ask

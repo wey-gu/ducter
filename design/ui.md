@@ -152,6 +152,12 @@ lives in Details. On hand needs no state chip: the lane is the state.
 - The partner's clay face may blink or breathe: it is the thing itself, not a status dot.
 - A passed check's ✓ is drawn in the done ink (D76); other marks stay muted.
 
+**Times read like a person says them (D115).** One rule on the desktop and the phone, tested
+against the same cases (`packages/protocol/fixtures/when.json`): 今天 18:00 · 明天 9:00 · 周五
+9:00 · 12 月 1 日 9:00 · 2027 年 1 月 4 日 / today 18:00 · tomorrow 9:00 · Fri 9:00 · Dec 1, 9:00;
+no leading zero on the hour; never 12-01 09:00. A groove's "now" caption sits under Ducter; near
+the start it takes the start's place, near the deadline it gives way.
+
 **Time is drawn; words are its caption (D115).** A wait with a deadline is a sunken groove from
 when it started to its deadline with the little Ducter on its bench at now. Every routine shows
 its next runs on one strip: today an ink mark at its left, a clay bead per run with its date

@@ -342,8 +342,8 @@ Codex first, once OAR is near 1.0. See `research/17`.
 
 - [ ] A round of the waiting pose with real people, children included (LLM proxies: 5/10 for
       the pose alone; the words carry it). Trigger: before calling v1 done.
-- [ ] The moment a wait comes true: the bubble pops and the card glides from Waiting to Working
-      (prototyped; the apps move the card without the spring yet).
+- [x] The moment a wait comes true: the bubble pops and the card springs from Waiting to Working
+      (desktop and phone; reduced motion: a fade).
 - [ ] Live: an OpenConnector Gmail trigger watch, a real judge model on a wait, a check on a
       worker device, a routine's real run and its per-run cap. Trigger: an OpenConnector account
       on the test Mac.

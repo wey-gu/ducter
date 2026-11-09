@@ -119,6 +119,7 @@ func failedEvents(lang i18n.Lang) []protocol.LogEvent {
 	return []protocol.LogEvent{
 		protocol.NewEvent(101, ts(0), "default", stream, protocol.OriginSystem, protocol.KindTaskOpen, protocol.TaskOpen{TaskID: "t-tokio",
 			Title: l("升级 tokio 到 1.41", "Bump tokio to 1.41"), Project: "HawDB", Harness: "codex", Model: "gpt-5",
+			Brief:      l("把 HawDB 的 tokio 升到 1.41，测试都过了再告诉我", "Bump HawDB to tokio 1.41 and tell me once the tests pass"),
 			Place:      protocol.Place{Kind: "repo", Device: "MacBook", RepoPath: "~/code/hawdb", Branch: "ducter/tokio-1.41", BaseBranch: "main"},
 			BodyReason: l("你的规则「后端用 Codex」", "Your rule \"backend goes to Codex\"")}),
 		protocol.NewEvent(102, ts(1), "default", stream, protocol.OriginTask, protocol.KindTaskEvent, protocol.TaskEvent{TaskID: "t-tokio", Role: "assistant",

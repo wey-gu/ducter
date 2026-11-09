@@ -66,7 +66,12 @@ export function firstClause(s: string): string {
 }
 
 export function harnessName(h: string): string {
-  return { "claude-code": "Claude Code", codex: "Codex", pi: "pi" }[h] ?? h;
+  return { "claude-code": "Claude Code", codex: "Codex", pi: "pi", "deepseek-harness": "DeepSeek Harness" }[h] ?? h;
+}
+
+/** A model as people say it: Claude Code's aliases capitalized, other ids as they are. */
+export function modelName(m: string): string {
+  return ["opus", "sonnet", "haiku"].includes(m) ? m[0]!.toUpperCase() + m.slice(1) : m;
 }
 
 /** A Latin word in Chinese text gets a space on each side ("在 MacBook 上"). */

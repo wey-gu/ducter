@@ -1635,3 +1635,78 @@ a {
     transition: none !important;
   }
 }
+/* What it thinks with, and who does the tasks (D89): an AI agent's row (its clay token, its
+   name, one line) and a task's Switch who does it list. */
+.agent {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  min-height: 56px;
+  padding: var(--s2) var(--s1);
+}
+.agent + .agent {
+  border-top: 1px solid var(--line-soft);
+}
+.agent img.dim {
+  opacity: 0.45;
+  filter: grayscale(1);
+}
+.agent .grow,
+.cand .grow {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+.agent b,
+.cand b {
+  font-size: var(--md);
+  font-weight: 800;
+}
+.agent small,
+.cand small {
+  font-size: var(--sm);
+  color: var(--ink-muted);
+  line-height: 1.45;
+}
+.agent small.paid {
+  color: var(--needs-ink);
+  font-weight: 700;
+}
+.switch-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  margin-top: var(--s2);
+}
+.cand {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  min-height: 56px;
+  padding: var(--s2) var(--s3);
+  border-radius: var(--r-md);
+  background: var(--bg);
+  box-shadow: 0 3px 0 var(--line);
+  color: var(--ink);
+}
+.cand.on {
+  box-shadow: 0 3px 0 var(--line), inset 0 0 0 2px var(--ink);
+}
+.cand.off {
+  opacity: 0.55;
+}
+.cand.off img {
+  filter: grayscale(1);
+}
+.cand .now {
+  flex: none;
+  font-weight: 700;
+}
+.agent input {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  accent-color: var(--accent);
+}

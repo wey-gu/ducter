@@ -34,6 +34,8 @@ import artWorking from "../../../apps/web/static/art/working.webp" with { type: 
 import artNeeds from "../../../apps/web/static/art/needsyou.webp" with { type: "file" };
 import artDone from "../../../apps/web/static/art/done.webp" with { type: "file" };
 import artNapping from "../../../apps/web/static/art/napping.webp" with { type: "file" };
+import tokenOrange from "../../../apps/web/static/art/token_orange.webp" with { type: "file" };
+import tokenInk from "../../../apps/web/static/art/token_ink.webp" with { type: "file" };
 
 const INDEX = indexHtml as unknown as string; // Bun types an .html import as an HTMLBundle; with type "file" it is a path
 
@@ -51,6 +53,8 @@ const ASSETS: Record<string, [string, string]> = {
   "art/working.webp": [artWorking, "image/webp"],
   "art/needsyou.webp": [artNeeds, "image/webp"],
   "art/done.webp": [artDone, "image/webp"],
+  "art/token_orange.webp": [tokenOrange, "image/webp"],
+  "art/token_ink.webp": [tokenInk, "image/webp"],
   "art/napping.webp": [artNapping, "image/webp"],
 };
 

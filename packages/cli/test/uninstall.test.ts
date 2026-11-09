@@ -77,7 +77,7 @@ describe("planUninstall", () => {
     expect(p.remove.find((x) => x.kind === "data")!.bytes).toBeGreaterThan(0);
     expect(p.warnings.map((w) => w.id)).toEqual(["unsaved-worktree"]);
     expect(p.repos!.map((r) => r.replace("/private", ""))).toEqual([repo.replace("/private", "")]);
-    expect(p.keep.map((k) => k.what)).toEqual(expect.arrayContaining(["Your repos", "Nowledge Mem", "cua-driver", "Ducter.app"]));
+    expect(p.keep.map((k) => k.what)).toEqual(expect.arrayContaining(["Your repos and their ducter/* branches", "Nowledge Mem", "cua-driver", "Ducter.app"]));
     expect(formatPlan(p, t, home)).toContain("~/.ducter");
   });
 
@@ -128,6 +128,44 @@ describe("planUninstall", () => {
     const p = plan(false, { platform: "linux" });
     expect(p.remove).toEqual([{ path: unit, what: t("uninstall.item.service"), kind: "service" }]);
     expect(p.keep.some((k) => k.what === "Ducter.app")).toBe(false);
+  });
+
+  // Fresh-user QA: `uninstall --all --data-dir <scratch>` also took the real LaunchAgent and the
+  // app's Library folders. One instance at a time.
+  test("--data-dir of another instance: its data only; the background item and app files stay", () => {
+    const scratch = join(home, "scratch", "data");
+    mkdirSync(scratch, { recursive: true });
+    writeFileSync(join(scratch, "ducter.db"), "log");
+    const agent = join(home, "Library", "LaunchAgents", `${label}.plist`);
+    writeFileSync(agent, `<plist><dict><key>EnvironmentVariables</key><dict><key>DUCTER_DATA_DIR</key>\n\t<string>${dataDir}</string></dict></dict></plist>`);
+    mkdirSync(join(home, ".local", "bin"), { recursive: true });
+    symlinkSync(join(home, "Gone", "Ducter.app", "Contents", "Helpers", "ducter"), join(home, ".local", "bin", "ducter"));
+    const p = plan(true, { dataDir: scratch });
+    expect(p.remove.map((x) => x.path)).toEqual([scratch]);
+    const kept = p.keep.map((k) => `${k.what}: ${k.detail}`).join("\n");
+    expect(kept).toContain(`${t("uninstall.item.agent")}: ${t("uninstall.keep.otherInstance", { dir: dataDir })}`);
+    expect(kept).toContain(t("uninstall.item.appdata"));
+    expect(kept).toContain(join(home, ".local", "bin", "ducter"));
+    // Without --all nothing at all: the background item is the other instance's.
+    expect(plan(false, { dataDir: scratch }).remove).toEqual([]);
+    // The default instance still takes everything it owns.
+    expect(plan(true).remove.map((x) => x.kind)).toEqual(expect.arrayContaining(["agent", "data", "link", "appdata"]));
+  });
+
+  test("a background item that runs the given data folder goes with it", () => {
+    const scratch = join(home, "scratch", "data");
+    mkdirSync(scratch, { recursive: true });
+    writeFileSync(join(scratch, "ducter.db"), "log");
+    writeFileSync(join(home, "Library", "LaunchAgents", `${label}.plist`), `<key>DUCTER_DATA_DIR</key><string>${scratch}</string>`);
+    expect(plan(true, { dataDir: scratch }).remove.map((x) => x.kind)).toEqual(expect.arrayContaining(["agent", "data", "appdata"]));
+    // With no background item at all, only ~/.ducter owns the app's files.
+    rmSync(join(home, "Library", "LaunchAgents", `${label}.plist`));
+    expect(plan(true, { dataDir: scratch }).remove.map((x) => x.kind)).toEqual(["data"]);
+    const unit = join(home, ".config", "systemd", "user", "ducter.service");
+    mkdirSync(join(unit, ".."), { recursive: true });
+    writeFileSync(unit, `[Service]\nEnvironment="DUCTER_DATA_DIR=${dataDir}"\n`);
+    expect(plan(false, { platform: "linux", dataDir: scratch }).remove).toEqual([]);
+    expect(plan(false, { platform: "linux" }).remove.map((x) => x.kind)).toEqual(["service"]);
   });
 });
 

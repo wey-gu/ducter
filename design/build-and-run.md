@@ -121,7 +121,7 @@ To start over as a brand-new user, `ducter uninstall --all` (or use a fresh `--d
 | `ducter doctor` | Check bun, git, Claude Code, Codex, Nowledge Mem, cua-driver, the port, and the data folder |
 | `ducter status` | Tasks and open decisions from the running Ducter (`--json` for scripts) |
 | `ducter version` | Version and build |
-| `ducter uninstall [--all]` | Stop and remove the background item; `--all` also removes `~/.ducter` (the Log, task working copies, browser profiles), the app's `~/.local/bin/ducter` link and the app's Library folders. `--dry-run` lists it first; repos, their `ducter/*` branches and the AI tools' logins stay. The app's **Remove Ducter** runs the same thing, then moves the app to the Trash |
+| `ducter uninstall [--all]` | Stop and remove the background item; `--all` also removes `~/.ducter` (the Log, task working copies, browser profiles), the app's `~/.local/bin/ducter` link and the app's Library folders. `--dry-run` lists it first; repos, their `ducter/*` branches and the AI tools' logins stay. With `--data-dir <dir>` it removes that instance only: the background item only if it runs that folder, the app's folders and link only for the instance that owns them (the background item's, else `~/.ducter`). The app's **Remove Ducter** runs the same thing, then moves the app to the Trash |
 | `ducter report [--include-conversation]` | A diagnostics folder (doctor, versions, the last 500 log lines with secrets removed; the conversation only when asked) and a prefilled GitHub issue link. Nothing is uploaded. The app's **Help → Report a problem…** saves it as a .zip on the Desktop |
 
 Options: `--port` (default 7777, or `DUCTER_PORT`), `--data-dir` (default `~/.ducter`, or

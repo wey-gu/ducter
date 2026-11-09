@@ -159,8 +159,15 @@ type App struct {
 	OnLanguage func(*i18n.Strings)
 	// Version and Commit are this build's (Settings › About).
 	Version, Commit string
-	// CheckUpdates checks for a new version; nil hides Updates.
-	CheckUpdates func()
+	// Updates is the app's updater (D72); nil hides Updates (this copy
+	// doesn't update itself). RestartToUpdate quits so a ready update
+	// goes in; Quit quits the app (after Remove Ducter).
+	Updates         Updates
+	RestartToUpdate func()
+	Quit            func()
+	// ReportProblem collects diagnostics to attach (Help › Report a
+	// problem…); nil opens a new issue instead.
+	ReportProblem func()
 	// OpenExternal opens a link when no Backend does (a window connected
 	// to a Ducter elsewhere); nil in tests.
 	OpenExternal func(url string) error

@@ -1,6 +1,7 @@
 package views
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -12,6 +13,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
+	"github.com/wey-gu/ducter/apps/desktop/internal/update"
 )
 
 // D71: the Partner page and Settings, the menu bar extra's contents.
@@ -173,4 +175,27 @@ func TestTrayDecisions(t *testing.T) {
 	if app.TraySignature() == before {
 		t.Errorf("answering doesn't change the tray")
 	}
+}
+
+type fakeUpdates struct{ st update.Status }
+
+func (f *fakeUpdates) Status() update.Status                  { return f.st }
+func (f *fakeUpdates) CheckNow(context.Context) update.Status { return f.st }
+func (f *fakeUpdates) SetInstallOnQuit(on bool)               { f.st.InstallOnQuit = on }
+
+func TestSettingsUpdateReady(t *testing.T) {
+	app, _ := iaApp(t, i18n.EN)
+	app.Updates = &fakeUpdates{st: update.Status{State: update.Ready, Current: "0.3.0", Version: "0.3.1", InstallOnQuit: true}}
+	restarted := false
+	app.RestartToUpdate = func() { restarted = true }
+	app.OpenSettings()
+	tt := ui.NewTesterWith(app.View, 1280, 1600, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+	tt.Frame()
+	tt.Frame()
+	for _, want := range []string{"Update 0.3.1 ready · restart to finish", "Restart Now", "Update automatically when quitting"} {
+		if !tt.HasText(want) {
+			t.Errorf("no %q in %q", want, tt.Texts())
+		}
+	}
+	_ = restarted
 }

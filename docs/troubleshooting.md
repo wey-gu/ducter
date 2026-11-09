@@ -115,10 +115,18 @@ finished are remembered.
 
 ### Start over as a brand-new user
 
-Choose **Stop Ducter**, then delete the `~/.ducter` folder. This erases your conversation,
-tasks and settings for good, so only do it if you mean it. The next start is a first run.
+Run `ducter uninstall --all` (it lists what goes before asking), or choose **Stop Ducter** and
+delete the `~/.ducter` folder. This erases your conversation, tasks and settings for good, so
+only do it if you mean it. The next start is a first run.
 
 ## Still stuck?
 
-Open an issue on [GitHub](https://github.com/wey-gu/ducter/issues) with what you did, what you
-expected, and the last lines of the log. Leave out anything private (codes, addresses, tokens).
+In the Mac app, choose **Help → Report a problem…**. Ducter collects its check of your Mac, the
+versions and its recent log lines with secrets removed (your conversation only if you tick it),
+shows you what it would attach, saves it as a .zip on your Desktop, and opens a GitHub issue
+with the basics filled in. Nothing is uploaded: you attach the .zip yourself. On a server,
+`ducter report` does the same and prints the issue link.
+
+Or open an issue on [GitHub](https://github.com/wey-gu/ducter/issues) yourself with what you
+did, what you expected, and the last lines of the log. Leave out anything private (codes,
+addresses, tokens).

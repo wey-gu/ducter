@@ -23,6 +23,11 @@ type Host struct {
 	Jobs Jobs
 	// App is the app's bundle id (notification settings link).
 	App string
+	// AppPath is the running .app (moved to the Trash last by Uninstall).
+	AppPath string
+	// Trash moves a path to the Trash (mygo's Shell.TrashItem); nil leaves
+	// the app where it is.
+	Trash func(path string) error
 }
 
 // Run starts a fix in the background (one per id).

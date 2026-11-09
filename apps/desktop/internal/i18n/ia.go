@@ -106,8 +106,6 @@ var zhIA = Table{
 	"menu.view.devices":      "设备",
 	"menu.view.partner":      "伙伴",
 	"menu.help":              "帮助",
-	"menu.help.docs":         "Ducter 使用指南",
-	"menu.help.report":       "报告问题…",
 
 	// The menu bar extra: what needs you, while the window is closed.
 	"tray.open":  "打开 Ducter",
@@ -226,8 +224,6 @@ var enIA = Table{
 	"menu.view.devices":      "Devices",
 	"menu.view.partner":      "Partner",
 	"menu.help":              "Help",
-	"menu.help.docs":         "Ducter docs",
-	"menu.help.report":       "Report a problem…",
 
 	"tray.open":  "Open Ducter",
 	"tray.none":  "Nothing needs you",

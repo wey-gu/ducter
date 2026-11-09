@@ -12,6 +12,8 @@ import { detectLocale, translator, type T } from "./i18n.ts";
 import { fetchSnapshot, formatSnapshot } from "./status.ts";
 import { cmdDevices, cmdPair, cmdService, isLoopback, publicUrl } from "./remote.ts";
 import { cmdWorker } from "./worker.ts";
+import { agentLabel, executeUninstall, formatPlan, planUninstall } from "./uninstall.ts";
+import { osText, versionsText, writeReport } from "./report.ts";
 import { parentPid, watchParent } from "./parent.ts";
 import { scriptedRunnerModule } from "./scripted.ts";
 import { hostname } from "node:os";
@@ -42,6 +44,8 @@ export function helpText(t: T): string {
     cmd("devices", t("help.devices")),
     cmd("service", t("help.service")),
     cmd("worker", t("help.worker")),
+    cmd("uninstall", t("help.uninstall")),
+    cmd("report", t("help.report")),
     "",
     t("help.options"),
     opt("--port <n>", t("help.port")),
@@ -51,6 +55,11 @@ export function helpText(t: T): string {
     opt("--host <addr>", t("help.host")),
     opt("--worker", t("help.pairWorker")),
     opt("--json", t("help.json")),
+    opt("--all", t("help.all")),
+    opt("--dry-run", t("help.dryRun")),
+    opt("--yes", t("help.yes")),
+    opt("--include-conversation", t("help.includeConversation")),
+    opt("--out <dir>", t("help.out")),
   ].join("\n");
 }
 
@@ -95,6 +104,69 @@ async function cmdStatus(ctx: Ctx): Promise<number> {
     return 1;
   }
   console.log(ctx.args.json ? JSON.stringify(snap, null, 2) : formatSnapshot(snap, ctx.t, ctx.style));
+  return 0;
+}
+
+async function cmdUninstall(ctx: Ctx): Promise<number> {
+  const { t, args } = ctx;
+  const home = homedir();
+  const label = agentLabel(process.env, process.execPath);
+  const plan = planUninstall({ home, dataDir: ctx.dataDir, platform: process.platform, agentLabel: label, execPath: process.execPath, all: Boolean(args.all), fromApp: process.env.DUCTER_FROM_APP === "1", t });
+  const { repos: _repos, ...shown } = plan;
+  if (args.dryRun) {
+    console.log(args.json ? JSON.stringify(shown, null, 2) : formatPlan(plan, t, home));
+    return 0;
+  }
+  if (args.all && !args.yes) {
+    if (!process.stdin.isTTY || args.json) {
+      console.error(t("uninstall.needsYes"));
+      return 2;
+    }
+    console.log(formatPlan(plan, t, home) + "\n");
+    const answer = (prompt(t("uninstall.confirm")) ?? "").trim();
+    if (answer !== "remove" && answer !== "删除") {
+      console.log(t("uninstall.cancelled"));
+      return 1;
+    }
+  }
+  const res = await executeUninstall(plan, {
+    label,
+    port: ctx.port,
+    t,
+    runner: {
+      uid: process.getuid?.() ?? 0,
+      run: (cmd) => ctx.host.run(cmd, 15_000),
+      healthy: async (p) => (await ctx.host.port(p)) === "ducter",
+    },
+  });
+  if (args.json) console.log(JSON.stringify(res, null, 2));
+  else {
+    if (!args.all || args.yes) console.log(formatPlan(plan, t, home) + "\n");
+    for (const f of res.failed) console.log(t("uninstall.failed", f));
+    for (const w of res.warnings) if (w.id === "running-elsewhere") console.log(w.detail);
+    console.log(t("uninstall.done", { n: res.removed.length }));
+  }
+  return res.failed.length || res.warnings.some((w) => w.id === "running-elsewhere") ? 1 : 0;
+}
+
+async function cmdReport(ctx: Ctx): Promise<number> {
+  const { t, args } = ctx;
+  const doctor = await runDoctor(ctx.host, t, { port: ctx.port, dataDir: ctx.dataDir });
+  const res = writeReport({
+    dataDir: ctx.dataDir,
+    out: args.out,
+    home: homedir(),
+    includeConversation: Boolean(args.includeConversation),
+    doctor,
+    versions: versionsText({ versionLine: versionLine(ctx.host.compiled), env: process.env, os: osText(process.platform) }),
+    locale: detectLocale(),
+  });
+  if (args.json) console.log(JSON.stringify(res, null, 2));
+  else {
+    console.log(t("report.wrote", { dir: tilde(res.dir) }));
+    for (const f of res.files) console.log(`  ${f.name}  ${f.bytes} B`);
+    console.log("\n" + t("report.issue") + "\n" + res.issueUrl);
+  }
   return 0;
 }
 
@@ -340,6 +412,9 @@ export async function run(argv: string[]): Promise<number | "running"> {
   fixEnv();
   const style = ansiStyle(Boolean(process.stdout.isTTY) && !process.env.NO_COLOR && !args.json);
   const ctx: Ctx = { args, t, style, host, port, dataDir };
+  // Neither creates the data folder: one takes it away, the other only reads it.
+  if (args.command === "uninstall") return cmdUninstall(ctx);
+  if (args.command === "report") return cmdReport(ctx);
   host.writable(dataDir); // creates it; doctor reports if it can't
   host.pairedDevices = () => {
     try {

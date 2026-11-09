@@ -27,6 +27,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/remote"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
+	"github.com/wey-gu/ducter/apps/desktop/internal/update"
 	"github.com/wey-gu/ducter/apps/desktop/internal/views"
 )
 
@@ -38,8 +39,13 @@ func main() {
 	// port), so everything below sees it.
 	exe, _ := os.Executable()
 	bundle, inApp := local.FindBundle(exe)
+	bid := ""
 	if inApp {
-		if keys := local.LoadDevEnv(local.DevEnvPath()); len(keys) > 0 {
+		if bid = local.BundleID(bundle.App); bid == "" {
+			bid = local.DefaultBundleID
+		}
+		// Per bundle id: a scratch build never reads the real app's file.
+		if keys := local.LoadDevEnv(local.DevEnvPathFor(bid)); len(keys) > 0 {
 			log.Printf("ducter: dev.env sets %v", keys)
 		}
 	}
@@ -58,10 +64,6 @@ func main() {
 	app.SystemLang = system
 	app.Version, app.Commit = buildVersion()
 	app.OpenExternal = local.OpenURL
-	if os.Getenv("DUCTER_UPDATES") == "1" {
-		// The updater isn't in this build yet: the check opens the releases.
-		app.CheckUpdates = func() { _ = local.OpenURL("https://github.com/wey-gu/ducter/releases") }
-	}
 
 	// The app runs the Ducter of this Mac itself, unless the window is
 	// pointed somewhere else (DUCTER_URL, or a saved remote connection).
@@ -75,10 +77,6 @@ func main() {
 		// translocated copy, whose path goes away: then it is the app's
 		// child and stops with it.
 		if local.Settled(bundle.CLI) {
-			bid := local.BundleID(bundle.App)
-			if bid == "" {
-				bid = "co.nowledge.ducter"
-			}
 			sup.Agent = &local.Agent{Label: local.AgentLabel(bid), BundleID: bid, CLI: bundle.CLI, DataDir: sup.DataDir, Dir: local.LaunchAgentsDir()}
 		}
 		host = &local.Host{
@@ -87,6 +85,8 @@ func main() {
 			Scratch:    filepath.Join(os.TempDir(), "ducter-fix"),
 			After:      i18n.New(lang).T("setup.after"),
 			App:        local.BundleID(bundle.App),
+			AppPath:    bundle.App,
+			Trash:      mygo.Shell.TrashItem,
 		}
 		app.Backend = host
 		// A child Ducter (no LaunchAgent) stops with the app; a background
@@ -96,6 +96,29 @@ func main() {
 			host.Jobs.StopAll() // an installer or a sign-in still waiting
 			host.Stop(8 * time.Second)
 		})
+	}
+
+	// Updates and Help (D72): the app updates itself whether its Ducter
+	// is on this Mac or elsewhere.
+	lc := &lifecycle{l: i18n.New(lang), host: host}
+	if inApp {
+		if in, err := update.ReadInfo(bundle.App); err == nil {
+			lc.version = in.Version
+		}
+		lc.upd = newUpdater(bundle, bid, host, lc.showStatus)
+	}
+	mygo.App.OnQuit(lc.quit) // after the handlers above: Ducter's child has stopped
+	// Settings shows the same updates, and Remove Ducter quits after (D71, D72).
+	if lc.upd != nil {
+		app.Updates = lc.upd
+		app.RestartToUpdate = lc.restartToUpdate
+	}
+	if lc.version != "" {
+		app.Version = lc.version
+	}
+	app.Quit = func() { mygo.App.Quit() }
+	if host != nil {
+		app.ReportProblem = func() { go lc.reportProblem() }
 	}
 
 	mygo.App.WhenReady(func() {
@@ -153,15 +176,23 @@ func main() {
 			tray.refresh(false)
 		}
 		// The menu bar, in the window's language; rebuilt when it changes.
-		mygo.App.SetMenu(appMenu(app, app.L, win, host != nil))
+		lc.win = win
+		lc.menu = appMenu(app, app.L, win, lc)
+		mygo.App.SetMenu(lc.menu)
 		tray = newTray(app, win)
 		app.OnLanguage = func(l *i18n.Strings) {
-			mygo.App.SetMenu(appMenu(app, l, win, host != nil))
+			lc.l = l
+			lc.menu = appMenu(app, l, win, lc)
+			mygo.App.SetMenu(lc.menu)
+			if lc.upd != nil {
+				lc.showStatus(lc.upd.Status())
+			}
 			if app.Resting() && app.OnResting != nil {
 				app.OnResting(true)
 			}
 			tray.refresh(true)
 		}
+		lc.start()
 
 		// The store lives on the UI thread; the client's goroutine hands
 		// each frame over with Update. Cursor is read there too.
@@ -227,8 +258,10 @@ func main() {
 // Stop Ducter (the rare full stop: every task stops, and it stays off, at
 // login too, until woken; it turns into Wake Ducter while resting), Quit.
 // View: the four places (⌘1–⌘4). Help: the docs and Report a problem.
-// ours: this app runs the Ducter of this Mac (Stop Ducter only then).
-func appMenu(app *views.App, l *i18n.Strings, win *mygo.Window, ours bool) *mygo.Menu {
+// lc adds the update line (after About) and Help's Report a problem (D72);
+// Stop Ducter only when this app runs the Ducter of this Mac.
+func appMenu(app *views.App, l *i18n.Strings, win *mygo.Window, lc *lifecycle) *mygo.Menu {
+	ours := lc.host != nil
 	show := func(fn func()) func(*mygo.MenuItem, *mygo.Window) {
 		return func(*mygo.MenuItem, *mygo.Window) {
 			win.Update(func() {
@@ -240,10 +273,13 @@ func appMenu(app *views.App, l *i18n.Strings, win *mygo.Window, ours bool) *mygo
 	}
 	appItems := []*mygo.MenuItem{
 		{Label: l.T("menu.about"), Click: show(app.OpenSettings)},
+	}
+	appItems = append(appItems, lc.appMenuItems()...)
+	appItems = append(appItems, []*mygo.MenuItem{
 		mygo.Separator(),
 		{ID: "settings", Label: l.T("menu.settings"), Accelerator: "CmdOrCtrl+,", Click: show(app.OpenSettings)},
 		mygo.Separator(),
-	}
+	}...)
 	if ours {
 		appItems = append(appItems,
 			&mygo.MenuItem{ID: "rest", Label: l.T("menu.rest"), Subtitle: l.T("menu.rest.sub"), Click: show(func() {
@@ -276,10 +312,7 @@ func appMenu(app *views.App, l *i18n.Strings, win *mygo.Window, ours bool) *mygo
 			{Role: mygo.RoleToggleFullScreen},
 		}},
 		{Role: mygo.RoleWindowMenu},
-		{Role: mygo.RoleHelp, Label: l.T("menu.help"), Submenu: []*mygo.MenuItem{
-			{Label: l.T("menu.help.docs"), Click: func(*mygo.MenuItem, *mygo.Window) { _ = local.OpenURL(views.DocsURL) }},
-			{Label: l.T("menu.help.report"), Click: func(*mygo.MenuItem, *mygo.Window) { _ = local.OpenURL(views.ReportURL) }},
-		}},
+		lc.helpMenu(),
 	})
 	// The item says what it will do: stop, or wake while resting.
 	app.OnResting = func(resting bool) {

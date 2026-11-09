@@ -127,7 +127,7 @@ W (or a routine run) wants an outside effect ──► gate: classify against th
   ├─ policy: run ──► runs; recorded (G5); appears in the result's Sent out line (I1)
   ├─ policy: ask with countdown (reversible) ──► decision card (D1 shape) with the preview
   ├─ policy: ask (reaches people / can't come back / money / beyond May touch)
-  │     ──► decision card, no countdown: "这件不会自己动，等你定 / I won't go ahead on this without you"
+  │     ──► decision card, no countdown: "你说好，我再做。 / I'll do it once you say so." (D129)
   ├─ requested by untrusted content ──► ask, quoting the source: "这是邮件里要求的：『…』"
   └─ payment ──► G4 (the user pays, by takeover)
 

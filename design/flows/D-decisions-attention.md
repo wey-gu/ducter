@@ -114,7 +114,7 @@ carries the version it was answered against (for two-device races).
 | `decision.hold` | 先等等 | Hold |
 | `decision.reply` | 回复… | Reply… |
 | `decision.default_line` | 不回的话 {time} {action} · 可撤销 | If I don't hear back, I'll {action} at {time} · undoable |
-| `decision.no_default_line` | 这件不会自己动，等你定 | I won't go ahead on this without you |
+| `decision.no_default_line` | 你说好，我再做。 | I'll do it once you say so. |
 | `decision.first_time_hint` | 不回也没关系，到点我按这个来，还能撤销。 | No need to answer. At that time I'll go with this, and you can undo it. |
 | `decision.minutes_left` | 还有 {n} 分钟 | {n} min left |
 | `decision.waiting_for_typing` | 你在打字，我先等你说完 | You're typing, so I'll wait for you |

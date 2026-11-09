@@ -28,6 +28,28 @@ details live:** the message text never changes once sent; what Details shows is 
 typed state (checking → done, a PR merged); a change of *meaning* is a new message. Full
 anatomy: `flows/I-results.md` §0; the conversation's look: `quiet-conversation.md`.
 
+**The partner's voice (D129).** Everyone reads the conversation as messaging a partner, including
+people who never wrote code: short, plain, warm, one idea per message. No file or repo paths,
+bundle or app ids, branch or commit ids, tool or agent names in what the user sees, unless the
+user used them first or asked; a number or a name only when it helps them decide or act. An
+ask's question is the choice in one everyday sentence, plus one only to say what can't be
+undone; its Go button is the action ("好，创建"). A result leads with the outcome, then at most
+one line of what's next; what is left for the user is a count and a place, never a list of terms.
+A task's question reaches the user only through the partner, in its own words (`ai_msg` with
+`decisionId`); the task's wording is in Details. The brief to a task keeps every detail. Look:
+`quiet-conversation.md`.
+
+**The zh copy, read against the humanizer standard (D129)** (old → new):
+这件不会自己动，等你定 → 你说好，我再做。 · 你不回的话，{t}后我会{action}，之后也能撤销。 →
+{t}后你没回，我就{action}，之后还能改回来。 · 你不回的话，我会先停着等你。 → 你没回之前，我先放着。 ·
+马上按默认做 → 这就照原计划做 · 已经说好 → 你说：{Go 的字} · 先等等了 → 你说：先等等 · 已回复：{x} →
+你说：{x} · 按默认做了 → 你没回，我照原计划做了 · 回复这件事… → 说说你的想法… · 在看那件事做到哪了… →
+在看做到哪了… · 在跟那件事说… → 在把你的话带过去… · 不确定做成没有，看一下 → 不确定成没成，你看一眼 ·
+说一句话就能开始。要做的事交给我，需要你的时候我会来问。 → 想做什么，跟我说一句就行。需要你的时候，我会来问你。 ·
+手头没事。在对话里说一句，{name} 就会接着做。 → …{name} 就去做。 · 算到了：{x} → 等到这个就算：{x} ·
+the Details setting's note and the first-result line, reworded. New: …我就接着做… (an ask with no
+named action), 在看它想问你什么…, 它的原话：{x}.
+
 **Asks (D67).** An ask about how to do the work (reversible) always carries a default and a
 time, 10 min unless the work suggests otherwise; only effect-ladder asks (`flows/G-safety.md`
 §0) may wait without one.

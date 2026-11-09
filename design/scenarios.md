@@ -60,7 +60,7 @@ partner eval (real model, fake tasks and Mem; `research/30`) · **unit** = unit 
 | H1 | Phone → desktop continuity | — | — | — | — | — | headless: phone and desktop read the same Log | |
 | H2 | Voice | — | — | — | — | — | — | |
 | H3 | Act on lock-screen notification | — | — | — | — | — | unit: Android Go / Hold push actions; no real device | |
-| I1 | Finished work comes back (the result message) | draft | draft | draft | draft | — | live: desktop result (How I know, Sent out, Merge / Draft PR / See changes); headless: phone, from a real sonnet run; D104 quiet row (Merge into main, Details opening proof / Noted in place) native + 390 px zh/en, demo seed | `flows/I-results.md`; result anatomy in §0; `quiet-conversation.md` |
+| I1 | Finished work comes back (the result message) | draft | draft | draft | draft | — | live: desktop result (How I know, Sent out, Merge / Draft PR / See changes); headless: phone, from a real sonnet run; D104 quiet row (Merge into main, Details opening proof / Noted in place) native + 390 px zh/en, demo seed; D129 bubbles, ask tray, relayed task question, native + 390 px zh/en light/dark (`.shots/conv-bubbles`, `apps/web/demo-conv.ts`) | `flows/I-results.md`; result anatomy in §0; `quiet-conversation.md` |
 | I2 | Evidence: what each chip opens | draft | draft | draft | draft | — | live: commit and test chips; typed kinds (IQ11) — | |
 | I3 | Documents live in 做好的 (Save to…) | draft | draft | draft | draft | — | — | D52 Q7 |
 | I4 | Finding a result weeks later | draft | draft | draft | draft | — | — | ask first; list inside On hand |

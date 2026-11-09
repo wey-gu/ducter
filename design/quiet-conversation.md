@@ -1,8 +1,8 @@
 # The Quiet Conversation
 
-> Design note for D104 · Principles 6, 7 · Evidence: `research/36` · Prototype:
+> Design note for D104, D129 · Principles 6, 7 · Evidence: `research/36` · Prototype:
 > https://claude.ai/artifact/8ZaW9XS7a7NEBX1ATD4Khr · Screens:
-> `~/dev/ducter-evidence/quiet-conversation/` (D75)
+> `~/dev/ducter-evidence/quiet-conversation/`, `.shots/conv-bubbles/` (D75)
 
 The author: "我希望默认用户能看到总 main ai 简洁的文字，减少各种其他的信息干扰……让人感觉你就是一个
 partner，在一个沟通工具里说话，当然中间的各种加载反馈体验要做足". The conversation is a messaging
@@ -24,9 +24,12 @@ one tap away · 惊喜 the partner visibly working the moment you send.
 
 ## What the conversation shows
 
-1. **Words.** The user's bubbles and the partner's messages (ack, result, sentences from the
-   living message). Partner text keeps a reading measure (36em: about 36 CJK characters or 68
-   Latin), 18 at 1.65 (zh 1.75, D78).
+1. **Words, in bubbles (D129).** Two voices as a messaging app: the partner's in soft bubbles
+   (`partner-bubble`, white on the paper; tail bottom-left), the user's in the accent
+   (`user-bubble` `#FF8A3D` with ink; tail bottom-right). One body size for both, 16, Latin 1.5,
+   zh 1.7–1.75 (D78); a bubble is at most ~38em wide. A run from one voice stacks 4 apart, the
+   tail side's top corner tucked in (`bubble-join`); other things one voice says sit 12 apart;
+   16 where the turn passes. What sits under a bubble is set in to its text.
 2. **One quiet row under a message** that has something behind it, 13pt text buttons on the
    paper: **合进 main / Merge into main** (ink, 700) when it is the task's next step, then
    **看细节 / Details ›**. Details opens in place, set in from a hairline: the line of proof (✓
@@ -43,12 +46,21 @@ one tap away · 惊喜 the partner visibly working the moment you send.
      (**在看它做完的结果… / Looking over what it came back with…**) until the partner's own
      message replaces it; the sentence is the fallback when the partner is late (D124). The
      action row shows once per task, under the newest message about it;
-   - the asks, in the partner's words (18, regular, not a 20/800 heading on a tinted card): the
-     question, then its default in one muted line in the needs-you ink with Details, then one
-     small row **回复… · 先等等 · 好，rebase** (36pt, primary last, D76). Only the ask whose
-     default comes soonest carries the row; the others gather in one line, **还有 1 件等你定 ›
-     / 1 more waiting on you ›** and **都按默认 · 2 / Go on all defaults · 2**. Opening the line
-     shows them all. An answered ask keeps its question and the outcome once ("按默认做了").
+   - the asks (D129): the question in the partner's bubble, then **one compact tray** under it,
+     a white card on a 3pt clay base: **回复… · 先等等** as quiet text, then Go last and named
+     by the action (**好，rebase**, 36pt, D76); under the tray the default as one small grey
+     line (**10 分钟后你没回，我就 rebase，之后还能改回来。** · can't be undone: **你说好，我再做。
+     / I'll do it once you say so.**) with Details. Only the ask whose default comes soonest
+     carries the tray; the others gather in one line, **还有 1 件等你定 › / 1 more waiting on
+     you ›** and **都按默认 · 2 / Go on all defaults · 2**. Opening the line shows them all. An
+     answered ask keeps its question and the tray becomes one tiny line on the user's side in
+     their own words: **你说：好，rebase / You said: Rebase** (by default: **你没回，我照原计划做了
+     / No answer, so I went ahead**).
+   - **a task's question, in the partner's words (D129).** The partner says it in one short
+     message (`ai_msg` with `decisionId`); it shows as that ask's question and the task's own
+     wording moves to Details (**它的原话：… / In its words: …**). Until the words come (up to
+     60 s, while connected) the place shows the waiting presence, **在看它想问你什么… / Reading
+     what it's asking…**; past that, or offline, the task's wording stands in.
    - Work under way and waits are not said: the header line ("2 件等你 · 在做 1 件") and On hand
      carry them. The count of asks shows only in the header.
 5. **Time lines** like a messaging app: before the first message and wherever 15 minutes passed.
@@ -68,9 +80,9 @@ measured 2–4 ms), so the first feedback never waits on the server.
 |---|---|---|---|
 | thinking | 在想… | Thinking… | turn start, before any tool |
 | recalling | 在翻之前聊过的… | Looking back at what we said… | log_search, log_read, memory_search |
-| checking_task | 在看那件事做到哪了… | Checking on that task… | task_read |
+| checking_task | 在看做到哪了… | Checking on that task… | task_read |
 | opening_task | 在安排一件事去做… | Setting up a task… | task_open |
-| messaging_task | 在跟那件事说… | Passing it on to the task… | task_send |
+| messaging_task | 在把你的话带过去… | Passing it on… | task_send |
 | planning | 在想怎么安排… | Working out the timing… | wait_until, ask |
 | looking | 在查… | Looking into it… | any other tool |
 

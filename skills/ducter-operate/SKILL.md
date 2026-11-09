@@ -45,7 +45,9 @@ ducter undo <part of a task's title>                      # a folder task: put t
 
 ## Connect a device
 
-`ducter pair --json` → `{code, address, link, command}`: a one-time code (10 minutes). The user
+`ducter pair --json` → `{code, address, link, command}`: a code for one device, once, for 10
+minutes; run it again for each next device (in the Mac app: Devices › Connect a phone or computer
+/ 设备 › 连上手机或另一台电脑). The user
 opens `link` on a phone or pastes it into the Mac app; another computer runs `command` to do
 tasks for this Ducter. `reachable: false` means there's no public address yet: see the
 ducter-deploy skill (`ducter domain`).

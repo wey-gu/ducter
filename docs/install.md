@@ -104,7 +104,7 @@ run the one command it prints.
 | `ducter answer <part of the question> go` | Answer something waiting for you: `go`, `hold`, or your reply in quotes |
 | `ducter open <part of a task's title>` | Show that task in the app (or, if the app isn't open, where it is) |
 | `ducter doctor` | The check-up (see [Troubleshooting](troubleshooting.md)) |
-| `ducter pair` | A one-time code to connect your phone or another computer |
+| `ducter pair` | A code to connect your phone or another computer: one device, once, for 10 minutes. Run it again for the next device |
 | `ducter domain <your domain>` | On a server: HTTPS at your domain, then a code to connect your devices from anywhere. `--remove` undoes it |
 | `ducter devices` | The devices connected to your Ducter; `ducter devices disconnect <name>` removes one |
 | `ducter devices rename <name> <new name>` | Give a device a name you'll recognize |
@@ -130,7 +130,8 @@ In short, in this order:
    Ducter answers on the server before it says what's next.
 4. **Domain:** `ducter domain ducter.example.com`: HTTPS, then a code.
 5. **Sign in an AI agent** on the server: `codex login --device-auth` or `claude auth login`.
-6. **Connect** your Mac and phone with the code (`ducter pair` gives a new one any time).
+6. **Connect** your Mac with the code, then your phone with a new one: each code works once, for
+   10 minutes (`ducter pair` gives the next).
 
 **1. On the server, install it as a service** (x64 or arm64 Linux):
 
@@ -209,8 +210,8 @@ The address is then `http://127.0.0.1:7777`. This works for your Mac, not your p
 
 **3. Connect your Mac.** Open the Mac app and choose **My Ducter is on another computer**, then
 **Connect to your Ducter**. Type the **Address** and **Code** that `ducter domain` (or
-`ducter pair`) showed, or paste the whole link. A code works once, for 10 minutes; `ducter pair`
-gives you a new one any time.
+`ducter pair`) showed, or paste the whole link. Each code works once, for one device, for 10 minutes.
+For your phone or another computer, get a new one: `ducter pair` on the computer Ducter lives on, or **Devices › Connect a phone or computer** in the Mac app (it works when the app is connected to a Ducter on a server, too).
 
 Ducter's own messages on the server go to the system journal:
 `journalctl --user -u ducter`.

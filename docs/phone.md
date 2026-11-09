@@ -23,14 +23,16 @@ Your phone needs an address it can reach from anywhere: Ducter on a server with 
 (see [Install](install.md#a-linux-server-that-stays-on)). A zero-setup address with no domain
 of your own is coming soon.
 
-1. On the computer Ducter lives on, run `ducter pair`, or choose **Connect a phone or computer**
-   in the Mac app.
+1. On the computer Ducter lives on, run `ducter pair`, or choose **Devices › Connect a phone or
+   computer** in the Mac app.
 2. Scan the QR code with your phone's camera, or open the link it shows. You can also go to the
    address and type the **Code**.
 3. The phone says **Connected**.
 
-The code works once and expires after 10 minutes. After that your phone remembers the
-connection. To disconnect it, run `ducter devices disconnect <name>` on the computer Ducter
+Each code works once, for one device, and expires after 10 minutes. After that your phone
+remembers the connection. For a second phone or another computer, get a new code the same way:
+`ducter pair` on the computer Ducter lives on, or **Devices › Connect a phone or computer** in the Mac app (it works when the app is connected to a Ducter on a server, too). A code that was already used or ran out says so; just get a
+new one. To disconnect it, run `ducter devices disconnect <name>` on the computer Ducter
 lives on.
 
 ## Notifications

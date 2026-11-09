@@ -36,6 +36,13 @@ import artDone from "../../../apps/web/static/art/done.webp" with { type: "file"
 import artNapping from "../../../apps/web/static/art/napping.webp" with { type: "file" };
 import tokenOrange from "../../../apps/web/static/art/token_orange.webp" with { type: "file" };
 import tokenInk from "../../../apps/web/static/art/token_ink.webp" with { type: "file" };
+// Work over time (D112): Ducter waiting, and the clay things it waits for.
+import artWaiting from "../../../apps/web/static/art/waiting.webp" with { type: "file" };
+import waitPr from "../../../apps/web/static/art/wait_pr.webp" with { type: "file" };
+import waitCi from "../../../apps/web/static/art/wait_ci.webp" with { type: "file" };
+import waitMail from "../../../apps/web/static/art/wait_mail.webp" with { type: "file" };
+import waitClock from "../../../apps/web/static/art/wait_clock.webp" with { type: "file" };
+import waitFile from "../../../apps/web/static/art/wait_file.webp" with { type: "file" };
 
 const INDEX = indexHtml as unknown as string; // Bun types an .html import as an HTMLBundle; with type "file" it is a path
 
@@ -56,6 +63,12 @@ const ASSETS: Record<string, [string, string]> = {
   "art/token_orange.webp": [tokenOrange, "image/webp"],
   "art/token_ink.webp": [tokenInk, "image/webp"],
   "art/napping.webp": [artNapping, "image/webp"],
+  "art/waiting.webp": [artWaiting, "image/webp"],
+  "art/wait_pr.webp": [waitPr, "image/webp"],
+  "art/wait_ci.webp": [waitCi, "image/webp"],
+  "art/wait_mail.webp": [waitMail, "image/webp"],
+  "art/wait_clock.webp": [waitClock, "image/webp"],
+  "art/wait_file.webp": [waitFile, "image/webp"],
 };
 
 // The page loads only its own scripts and styles; it talks only to this origin.

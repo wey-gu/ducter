@@ -11,6 +11,7 @@ import { ago, cjkPad, deviceLabel, duration, firstClause, harnessName, modelName
 import { markdown } from "./markdown.ts";
 import { disablePush, enablePush } from "./push-client.ts";
 import { inApp } from "./native.ts";
+import { Beads, RoutineFacts, RoutineShelf, TryStrip, untilLine, WaitBubble, waitCadence, WaitDetails } from "./work.tsx";
 import {
   attention,
   bodyReasonOf,
@@ -39,9 +40,9 @@ const coarse = () => matchMedia("(pointer: coarse)").matches;
 
 // ---------- small pieces ----------
 
-const ART = ["idle", "working", "needsyou", "done", "napping"] as const;
+const ART = ["idle", "working", "needsyou", "done", "napping", "waiting"] as const;
 type Face = (typeof ART)[number];
-const FACE_KEY = { idle: "face.idle", working: "face.working", needsyou: "face.needs_you", done: "face.done", napping: "face.napping" };
+const FACE_KEY = { idle: "face.idle", working: "face.working", needsyou: "face.needs_you", done: "face.done", napping: "face.napping", waiting: "face.waiting" };
 const stillMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /** Blinks the idle face's eyelids every 3-6 s, sometimes twice (D77). Character only. */
@@ -93,6 +94,7 @@ function faceOf(a: Attention): Face {
   if (a === "done" || a === "done_claimed") return "done";
   if (a === "working") return "working";
   if (a === "dropped" || a === "superseded") return "napping";
+  if (a === "blocked") return "waiting"; // D112: on its bench, looking out
   return "idle";
 }
 
@@ -263,6 +265,7 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
   return (
     <>
       <div class="q">{d.question}</div>
+      {d.routineId && <RoutineFacts routineId={d.routineId} />}
       {open && <div class="dl">{info.line}</div>}
       {open && info.frac !== undefined && (
         <div class="countdown" aria-hidden="true">
@@ -632,6 +635,8 @@ function Ask({ d, taskId, buttons = true }: { d: DecisionState; taskId?: string;
   return (
     <div ref={ref} class={`partner askq${flash ? " flash" : ""}`} id={`d-${d.decisionId}`}>
       <div>{d.question}</div>
+      {/* A routine's proposal card (D29, D114): what it would do, before one Go. */}
+      {d.routineId && open && <RoutineFacts routineId={d.routineId} />}
       {open ? (
         <>
           <div class="dflt">
@@ -1021,15 +1026,27 @@ function metaLine(task: Task): string {
 /** What a waiting task waits for, said once: the lane already says it is waiting. */
 function waitReason(task: Task): string {
   const w = A.S.waiterFor(task.id);
-  if (w) return w.at ? `${w.reason} · ${t("waiter.at", when(A.L, w.at))}` : w.reason;
+  if (w) return [w.reason, waitCadence(w)].filter(Boolean).join(" · ");
   return reasonOf(task) || metaLine(task);
 }
 
+/** A working row's line: a keep-going loop's try, or a routine's run, else where and who. */
+function workLine(task: Task): string {
+  const u = A.S.untilOf(task);
+  if (u) return untilLine(u);
+  const from = task.card?.fromRoutine;
+  return [from ? t("routine.from", from.name) : "", metaLine(task)].filter(Boolean).join(" · ");
+}
+
 function Row({ task, meta }: { task: Task; meta: string }) {
+  const w = attention(task) === "blocked" ? A.S.waiterFor(task.id) : undefined;
+  const u = A.S.untilOf(task);
   return (
     <button class="row" onClick={() => A.go({ name: "task", id: task.id })}>
+      {w && <WaitBubble w={w} />}
       <span class="main">
         <span class="t">{title(task) || t("task.unknown")}</span>
+        {u && !finished(task) && <Beads u={u} />}
         <span class="m">{meta}</span>
       </span>
       <span class="chev" aria-hidden="true">
@@ -1047,7 +1064,8 @@ export function OnHand() {
   const waiting = b.lanes[LANE.waiting]!;
   const done = b.lanes[LANE.done]!;
   const loose = A.S.armedWaiters().filter((w) => !w.taskId);
-  const nothing = !needs.length && !partnerDs.length && !working.length && !waiting.length && !done.length && !loose.length;
+  const routines = A.S.routines().filter((r) => r.state === "active" || r.state === "paused");
+  const nothing = !needs.length && !partnerDs.length && !working.length && !waiting.length && !done.length && !loose.length && !routines.length;
   const openCount = A.defaultable().length;
   return (
     <>
@@ -1084,7 +1102,7 @@ export function OnHand() {
                   {t("lane.working")} <span class="n">{working.length}</span>
                 </h3>
                 {working.map((task) => (
-                  <Row key={task.id} task={task} meta={metaLine(task)} />
+                  <Row key={task.id} task={task} meta={workLine(task)} />
                 ))}
               </section>
             )}
@@ -1098,11 +1116,12 @@ export function OnHand() {
                 ))}
                 {loose.map((w) => (
                   <div class="row" key={w.waiterId}>
-                    <Clock />
+                    {w.check || w.event ? <WaitBubble w={w} /> : <Clock />}
                     <span class="main">
                       <span class="t">{w.reason}</span>
-                      {w.at && <span class="m">{t("waiter.at", when(A.L, w.at))}</span>}
+                      <span class="m">{waitCadence(w)}</span>
                     </span>
+                    {(w.check || w.event) && <Btn kind="text" size="sm" label={t("wait.cancel")} about={w.reason} onClick={() => A.waiterAction(w.waiterId, "cancel")} />}
                   </div>
                 ))}
               </section>
@@ -1121,6 +1140,7 @@ export function OnHand() {
                 })}
               </section>
             )}
+            <RoutineShelf />
           </>
         )}
       </main>
@@ -1403,6 +1423,7 @@ export function TaskView({ id }: { id: string }) {
         <div class="task-head">
           <span class="face">
             <Avatar size={96} state={faceOf(a)} still={stillFace(a)} />
+            {a === "blocked" && A.S.waiterFor(id) && <WaitBubble w={A.S.waiterFor(id)} size="lg" />}
           </span>
           <div class="head-words">
             <div class={`standing st-${a}`}>
@@ -1412,6 +1433,12 @@ export function TaskView({ id }: { id: string }) {
               {!finished(task) && whoLine(task)[0] && <span class="when">· {whoLine(task)[0]}</span>}
             </div>
             <h1>{title(task) || t("task.unknown")}</h1>
+            {a === "blocked" && A.S.waiterFor(id) && (
+              <p class="waitline">
+                {A.S.waiterFor(id)!.reason}
+                <span>{waitCadence(A.S.waiterFor(id)!)}</span>
+              </p>
+            )}
           </div>
           {headline && <p class="headline">{headline}</p>}
         </div>
@@ -1439,10 +1466,12 @@ export function TaskView({ id }: { id: string }) {
             {!["dropped", "superseded", "done"].includes(a) && <Btn kind="text" label={t("task.action.drop")} onClick={() => A.drop(id)} />}
           </div>
         )}
+        <TryStrip task={task} />
         <section class="section">
           <h2 class="sec-title">{t("task.transcript")}</h2>
           <WhatItDid task={task} />
         </section>
+        <WaitDetails task={task} />
         <TaskDetails task={task} />
       </main>
       <Composer taskId={id} />

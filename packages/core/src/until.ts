@@ -64,7 +64,11 @@ export function createUntils(opts: {
     l.u.stop = stop;
     loops.delete(l.u.taskId);
     snapshot(l);
-    if (stop !== "met" && stop !== "task_finished" && stop !== "user") {
+    if (stop === "met") {
+      // Its tries' done reports were held (decisions.ts holds); the loop's end is the result.
+      const card = tasks.get(l.u.taskId);
+      if (card && !ENDED.includes(card.attention) && card.attention !== "done") tasks.setState(l.u.taskId, "done", card.residency);
+    } else if (stop !== "task_finished" && stop !== "user") {
       const card = tasks.get(l.u.taskId);
       if (card && !ENDED.includes(card.attention)) tasks.setState(l.u.taskId, "needs_you", card.residency, clip(why, 160));
     }

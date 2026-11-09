@@ -116,7 +116,7 @@ class AppState {
     this.conn = new Connection(
       wsUrl(base),
       token,
-      () => ({ t: "hello", ...(this.S.cursor > 0 ? { cursor: this.S.cursor } : {}), locale: this.L.lang }),
+      () => ({ t: "hello", ...(this.S.cursor > 0 ? { cursor: this.S.cursor } : {}), locale: this.L.lang, ...(zone() ? { tz: zone() } : {}) }),
       (f) => this.receive(f),
       (s) => ((this.status = s), this.changed()),
     );
@@ -130,6 +130,17 @@ class AppState {
   async refreshPush() {
     this.push = await pushState().catch(() => "unsupported" as PushState);
     this.changed();
+  }
+
+  /** Work over time (D112-D114): Look now / Stop waiting, Pause / Resume / End, Stop the loop. */
+  waiterAction(waiterId: string, action: "look" | "cancel") {
+    this.send({ t: "waiter_action", waiterId, action });
+  }
+  routineAction(routineId: string, action: "pause" | "resume" | "end") {
+    this.send({ t: "routine_action", routineId, action });
+  }
+  untilAction(taskId: string) {
+    this.send({ t: "until_action", taskId, action: "stop" });
   }
 
   send(f: ClientFrame) {
@@ -523,11 +534,13 @@ class AppState {
     return false;
   }
 
-  presence(): "idle" | "working" | "needsyou" | "done" | "napping" {
+  presence(): "idle" | "working" | "needsyou" | "done" | "napping" | "waiting" {
     if (this.status === "offline") return "napping";
     if (this.S.openDecisions().length) return "needsyou";
     const b = this.S.board();
     if (b.lanes[LANE.working]!.length || this.thinking()) return "working";
+    // Nothing moving, something it waits for (D112): it sits and looks out.
+    if (b.lanes[LANE.waiting]!.length || this.S.armedWaiters().some((w) => w.check || w.event)) return "waiting";
     if (this.doneAt && Date.now() - this.doneAt < DONE_GLOW_MS) {
       setTimeout(() => this.changed(), DONE_GLOW_MS);
       return "done";
@@ -553,13 +566,13 @@ class AppState {
     if (needs) parts.push(L.t("header.needs", needs));
     // Thinking is said where the reply will appear (Presence, D104), not here.
     if (b.lanes[LANE.working]!.length) parts.push(L.t("header.working", b.lanes[LANE.working]!.length));
+    // What it waits for is felt here, not in the conversation (D104, D115).
+    const waiting = b.lanes[LANE.waiting]!.length + this.S.armedWaiters().filter((w) => !w.taskId).length;
+    if (waiting && parts.length < 2) parts.push(L.t("header.waiting", waiting));
     const done = this.doneToday();
     // A phone header has room for two things: what needs you and what's moving come first.
     if (done && parts.length < 2) parts.push(L.t("header.done", done));
-    if (parts.length) return parts.join(" · ");
-    // A reminder or a waiting task is still something on hand.
-    const waiting = b.lanes[LANE.waiting]!.length + this.S.armedWaiters().filter((w) => !w.taskId).length;
-    return waiting ? L.t("header.waiting", waiting) : L.t("header.summary.none");
+    return parts.length ? parts.join(" · ") : L.t("header.summary.none");
   }
 
   /** The conversation's rows (desktop rows()): decisions inside a living message show once,
@@ -598,3 +611,12 @@ function short(ref: string) {
 
 export const A = new AppState();
 export { laneOf };
+
+/** This device's time zone: personal-time routines follow it (D114). */
+function zone(): string | undefined {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined;
+  } catch {
+    return undefined;
+  }
+}

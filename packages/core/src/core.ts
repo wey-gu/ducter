@@ -166,6 +166,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   let partner: Partner | undefined;
   const push = openPushStore(dataDir);
   const settings = openSettings({ dataDir, log, push, persona, memoryPinnedOff: process.env.DUCTER_MEMORY === "off" });
+  let workRef: Work | undefined; // set below: until loops hold their tries' done reports (D113)
   const decisions = createDecisions({
     log,
     tasks,
@@ -173,6 +174,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     // DUCTER_DECISION_DEFAULT_MS: how long a reversible default waits (soak runs and demos use seconds).
     defaultDelayMs: opts.defaultDelayMs ?? (Number(process.env.DUCTER_DECISION_DEFAULT_MS) || undefined),
     delayMs: () => settings.defaultAfterMs(),
+    holds: (taskId) => Boolean(workRef?.untils.active(taskId)),
     onDecision: async (taskId, text) => {
       if (!runner) return console.warn(`[core] no runner: decision for ${taskId} not forwarded`);
       await runner.send(taskId, text, undefined, "user");
@@ -201,6 +203,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     restartLookMs: opts.work?.restartLookMs,
     defaultZone: opts.work?.defaultZone,
   });
+  workRef = work;
   const waiters = work.waiters;
   tasks.setDecorator((o) => work.decorate(o));
   if (opts.work?.judge) work.setJudge(opts.work.judge);

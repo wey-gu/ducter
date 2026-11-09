@@ -7,7 +7,7 @@
 //
 // Nothing outside that list is ever touched: repos and their ducter/* branches, harness logins,
 // Nowledge Mem and cua-driver stay. Ducter.app itself is moved to the Trash by the app, last.
-import { existsSync, lstatSync, readdirSync, readFileSync, readlinkSync, rmSync, statSync } from "node:fs";
+import { existsSync, lstatSync, readdirSync, readFileSync, readlinkSync, realpathSync, rmSync, statSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import type { T } from "./i18n.ts";
 import { UNIT_NAME, unitPath } from "./remote.ts";
@@ -123,11 +123,18 @@ export function worktreeRepo(wt: string): string | null {
   }
 }
 
-/** Ducter.app's link: a symlink to <X.app>/Contents/Helpers/ducter. */
-export function isAppLink(p: string): boolean {
+/**
+ * This app's link: a symlink to <X.app>/Contents/Helpers/ducter that is this very helper
+ * (execPath), or one whose app is gone. A link to another copy of Ducter.app that still
+ * exists is that copy's, and stays.
+ */
+export function isAppLink(p: string, execPath: string): boolean {
   try {
     if (!lstatSync(p).isSymbolicLink()) return false;
-    return readlinkSync(p).endsWith("/Contents/Helpers/ducter");
+    const to = readlinkSync(p);
+    if (!to.endsWith("/Contents/Helpers/ducter")) return false;
+    if (!existsSync(to)) return true;
+    return realpathSync(to) === realpathSync(execPath);
   } catch {
     return false;
   }
@@ -179,14 +186,14 @@ export function planUninstall(i: PlanInput): Plan {
       }
     }
     const link = join(home, ".local", "bin", "ducter");
-    if (isAppLink(link)) remove.push({ path: link, what: t("uninstall.item.link"), kind: "link" });
+    if (isAppLink(link, i.execPath)) remove.push({ path: link, what: t("uninstall.item.link"), kind: "link" });
     else if (exists(link)) keep.push({ what: link, detail: t("uninstall.keep.copied", { path: link }) });
 
     if (i.platform === "darwin") {
       const lib = join(home, "Library");
       const id = i.agentLabel.replace(/\.agent$/, "");
-      const app: string[] = [join(lib, "Application Support", "Ducter")];
-      if (id !== DEFAULT_BUNDLE_ID) app.push(join(lib, "Application Support", id));
+      // Ducter.app's folder is "Ducter"; another build's (a scratch copy) is its bundle id.
+      const app: string[] = [join(lib, "Application Support", id === DEFAULT_BUNDLE_ID ? "Ducter" : id)];
       app.push(join(lib, "Caches", id), join(lib, "Preferences", `${id}.plist`), join(lib, "Saved Application State", `${id}.savedState`), join(lib, "HTTPStorages", id));
       for (const p of app) if (exists(p)) remove.push({ path: p, what: t("uninstall.item.appdata"), kind: "appdata", bytes: sizeOf(p) });
     }

@@ -26,7 +26,8 @@ beforeEach(() => {
   mkdirSync(join(home, "Library", "LaunchAgents"), { recursive: true });
   writeFileSync(join(home, "Library", "LaunchAgents", `${label}.plist`), "<plist/>");
   writeFileSync(join(home, "Library", "LaunchAgents", "com.other.agent.plist"), "<plist/>");
-  mkdirSync(join(home, "Library", "Application Support", "Ducter", "updates"), { recursive: true });
+  mkdirSync(join(home, "Library", "Application Support", "Ducter", "updates"), { recursive: true }); // the real app's
+  mkdirSync(join(home, "Library", "Application Support", "co.nowledge.ducter.test", "updates"), { recursive: true });
   mkdirSync(join(home, "Library", "Caches", "co.nowledge.ducter.test"), { recursive: true });
   mkdirSync(join(home, "Library", "Caches", "com.other"), { recursive: true });
   // A real repo with a task worktree on a ducter/* branch and an uncommitted change in it.
@@ -60,12 +61,13 @@ describe("planUninstall", () => {
 
   test("--all: data, worktree warning, app link, Library folders of this bundle only", () => {
     mkdirSync(join(home, ".local", "bin"), { recursive: true });
-    symlinkSync("/Applications/Ducter.app/Contents/Helpers/ducter", join(home, ".local", "bin", "ducter"));
+    symlinkSync(join(home, "Gone", "Ducter.app", "Contents", "Helpers", "ducter"), join(home, ".local", "bin", "ducter")); // an app since deleted
     const p = plan(true);
     const paths = p.remove.map((x) => x.path);
     expect(paths).toContain(dataDir);
     expect(paths).toContain(join(home, ".local", "bin", "ducter"));
-    expect(paths).toContain(join(home, "Library", "Application Support", "Ducter"));
+    expect(paths).toContain(join(home, "Library", "Application Support", "co.nowledge.ducter.test"));
+    expect(paths).not.toContain(join(home, "Library", "Application Support", "Ducter"));
     expect(paths).toContain(join(home, "Library", "Caches", "co.nowledge.ducter.test"));
     expect(paths.some((x) => x.includes("com.other"))).toBe(false);
     expect(p.remove.find((x) => x.kind === "data")!.bytes).toBeGreaterThan(0);
@@ -73,6 +75,16 @@ describe("planUninstall", () => {
     expect(p.repos!.map((r) => r.replace("/private", ""))).toEqual([repo.replace("/private", "")]);
     expect(p.keep.map((k) => k.what)).toEqual(expect.arrayContaining(["Your repos", "Claude Code and Codex", "Nowledge Mem", "cua-driver", "Ducter.app"]));
     expect(formatPlan(p, t, home)).toContain("~/.ducter");
+  });
+
+  test("a link to another copy of Ducter.app that still exists is that copy's, and stays", () => {
+    const other = join(home, "Other", "Ducter.app", "Contents", "Helpers");
+    mkdirSync(other, { recursive: true });
+    writeFileSync(join(other, "ducter"), "binary");
+    mkdirSync(join(home, ".local", "bin"), { recursive: true });
+    symlinkSync(join(other, "ducter"), join(home, ".local", "bin", "ducter"));
+    expect(plan(true).remove.some((x) => x.kind === "link")).toBe(false);
+    expect(plan(true, { execPath: join(other, "ducter") }).remove.some((x) => x.kind === "link")).toBe(true);
   });
 
   test("a copied ducter in ~/.local/bin is kept, with how to remove it", () => {

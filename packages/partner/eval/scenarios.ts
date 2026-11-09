@@ -53,6 +53,8 @@ export interface Expect {
   ackFirst?: boolean;
   /** Partner messages (ai_msg) after the last step: count range. Acks are not counted. */
   msgs?: [number, number];
+  /** The ask is reversible, defaults to Go and carries a time (D67 (2)). */
+  askReversible?: boolean;
   /** A partner-level decision (ask) was made. */
   ask?: boolean;
   /** Max visible characters per partner message. */
@@ -417,7 +419,7 @@ export const scenarios: Scenario[] = [
     lang: "zh",
     floor: true,
     steps: [{ user: "把 ~/dev/foo 里 Cache 的 get() 改成 async。这会动公开 API，动手前先问我一句，给个默认。" }],
-    expect: { opens: 0, ask: true, msgs: [0, 1], maxChars: 120, forbid: [/等你选|Hold|Go\b|分钟/], noWaiter: true },
+    expect: { opens: 0, ask: true, askReversible: true, msgs: [0, 1], maxChars: 120, forbid: [/等你选|Hold|Go\b|分钟/], noWaiter: true },
     rubric: "The partner creates a decision (ask) about changing the public API, with a sensible default; it does not open the task yet. The card speaks for itself: any text besides it is at most one short Chinese line that neither repeats the question nor describes the choice, its buttons or its default (and never invents a timeout).",
   },
   {
@@ -438,6 +440,16 @@ export const scenarios: Scenario[] = [
     steps: [{ user: "Draft the HawDB 0.9 release notes as a doc. Before you start, ask me whether to call the 30s checkpoint default a breaking change, and give me a default." }],
     expect: { opens: 0, ask: true, msgs: [0, 1], maxChars: 200 },
     rubric: "The partner makes a decision card (ask) about calling the 30s checkpoint change breaking, with a default, and opens no task yet. The card's question states the choice only. Any text is at most one short English line that does not describe the buttons or the default, and never says 'reply Go'.",
+  },
+  {
+    // Fresh-user QA: this came as an irreversible card on Hold ("I won't go ahead on this
+    // without you"). A design choice on an unmerged branch can be undone: reversible, Go, a time.
+    id: "ask-design-en",
+    category: "ask",
+    lang: "en",
+    steps: [{ user: "In tinycart, add a subtotal-per-item helper. There are two reasonable designs (return cents, or return formatted strings); ask me which one before you write it." }],
+    expect: { opens: 0, ask: true, askReversible: true, msgs: [0, 1], maxChars: 200 },
+    rubric: "The partner makes a decision card asking cents vs formatted strings, with Go on the option it would pick, and opens no task yet. The card's question states the choice only; any text is at most one short English line that does not describe the buttons or the default.",
   },
 
   // ---------- E. results ----------

@@ -125,6 +125,29 @@ describe("live-run regressions", () => {
     expect(fr.sessions[0]!.inputs.join("\n")).not.toContain("no such choice exists");
   });
 
+  // Fresh-user QA: "return cents or formatted strings? ask me first" came as an irreversible
+  // card on Hold. A choice about how to do the work is reversible and carries a time (D67 (2)).
+  test("a reversible ask always carries a default time; an irreversible one waits", async () => {
+    const r = setup(async (_i, s, n) => {
+      if (n === 0) await r.fc.callTool("ask", { question: "Should the subtotal helper return cents or formatted strings?", goLabel: "Return cents", default: "go", reversible: true });
+      if (n === 1) await r.fc.callTool("ask", { question: "Open a draft PR to origin/main?", goLabel: "Open it", default: "go", reversible: false });
+      s.end();
+    });
+    const { fc, partner, user } = r;
+    user("In ~/dev/tinycart, add a subtotal-per-item helper. Ask me cents or strings before you write it.");
+    await partner.idle();
+    user("And then open a PR.");
+    await partner.idle();
+    const [a, b] = fc.events.filter((e) => e.kind === "decision").map((e) => e.body as import("@ducter/protocol").Bodies["decision"]);
+    expect(a).toMatchObject({ defaultOption: "go", reversible: true });
+    expect(Date.parse(a!.defaultAt!) - Date.parse("2026-11-08T14:00:00Z")).toBe(10 * 60_000); // the FakeClock's start
+    expect(b).toMatchObject({ defaultOption: "hold", reversible: false });
+    expect(b!.defaultAt).toBeUndefined();
+    const p = buildSystemPrompt({ id: "p", name: "Ducter", identity: "ID" });
+    expect(p).toContain("A choice about how\n   to do the work");
+    expect(p).toContain("even when the user said to ask\n   first");
+  });
+
   test("persona: result anatomy, no internals, ask for choices, silence after the ack", () => {
     const p = buildSystemPrompt({ id: "p", name: "Ducter", identity: "ID" });
     expect(p).toMatchSnapshot();

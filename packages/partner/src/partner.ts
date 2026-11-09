@@ -322,6 +322,8 @@ function carriedTask(c: Carried, title: unknown, take: boolean): Carried["tasks"
 }
 
 const OPENED_NOTE = "Task opened. It reports back on its own. Your turn is done: write nothing more and call nothing else (no wait_until for it, no checking on it), except keep_going on it when the user asked to keep at it until something holds (\"一直修到 CI 绿\").";
+/** D67 (2): when a reversible ask's default applies if the model names no time. */
+const ASK_DEFAULT_MINUTES = 10;
 const generatedAck = (zh: boolean, title: string) => (zh ? `好，我去做：${title}` : `On it: ${title}`);
 
 let idCounter = 0;
@@ -1264,9 +1266,12 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       properties: {
         question: { type: "string", description: "One question in the user's language" },
         goLabel: { type: "string", description: "What Go does, short, in the user's language (e.g. 改签名 / Change the signature)" },
-        default: { type: "string", enum: ["go", "hold"], description: "What happens if the user doesn't answer (go only if reversible)" },
-        reversible: { type: "boolean", description: "Whether the default can be undone" },
-        defaultInMinutes: { type: "number", description: "When the default applies (reversible only); omit to wait for the user" },
+        default: { type: "string", enum: ["go", "hold"], description: "What happens if the user doesn't answer: go (the option you'd pick) for a reversible choice; hold only when it isn't reversible" },
+        reversible: {
+          type: "boolean",
+          description: "true for a choice about how to do the work (design, name, format, approach): it lands on a task's own branch and nothing is merged without the user. false only for what reaches other people or can't be taken back (push, PR, post, send, delete, pay)",
+        },
+        defaultInMinutes: { type: "number", description: "When a reversible go default applies; 10 unless the work suggests otherwise" },
       },
       required: ["question", "goLabel"],
     },
@@ -1299,8 +1304,11 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         defaultOption: args.default === "go" && reversible ? "go" : "hold",
         reversible,
       };
-      if (reversible && body.defaultOption === "go" && args.defaultInMinutes && args.defaultInMinutes > 0) {
-        body.defaultAt = new Date(now() + args.defaultInMinutes * 60_000).toISOString();
+      // D67 (2): a reversible ask about how to do the work always carries a time, 10 min unless
+      // the model gave one (fresh-user QA: a cents-or-strings choice waited forever on Hold).
+      if (reversible && body.defaultOption === "go") {
+        const mins = typeof args.defaultInMinutes === "number" && args.defaultInMinutes > 0 ? args.defaultInMinutes : ASK_DEFAULT_MINUTES;
+        body.defaultAt = new Date(now() + mins * 60_000).toISOString();
       }
       // Asked already by the cut-off turn this one redoes (restart): it is in front of the user.
       const askedBefore = turn?.carried?.asks.get(body.question);

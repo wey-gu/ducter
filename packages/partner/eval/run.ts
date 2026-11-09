@@ -180,7 +180,7 @@ interface RunResult {
   remembered: MemoryAdd[]; // saved (accepted by the fake Mem)
   memAttempts: { input: unknown; step: number }[]; // every memory_add call, refused ones too
   /** Work over time (D112-D114): a keep-going loop started, a routine proposed. */
-  work?: { until: boolean; routine: boolean };
+  work?: { until: boolean; routine: boolean; asks?: { reversible: boolean; go: boolean; timed: boolean }[] };
   retitles: { key: string; title: string; step: number }[]; // task_retitle, as new task_open events
   bridgeSent: FakeMsg[]; // what Ducter sent through the fake Bridge
 }
@@ -348,6 +348,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   };
   // Decisions made by the partner keep their full shape for the judge.
   const decisions = core.log.read({ stream: "channel", fromSeq: startSeq + 1, kinds: ["decision"], limit: 100 }).filter((e) => e.origin === "partner");
+  const asks = decisions.map((e) => e.body as Bodies["decision"]).map((d) => ({ reversible: d.reversible, go: d.defaultOption === "go", timed: Boolean(d.defaultAt) }));
   const retitles = core.log
     .read({ fromSeq: startSeq + 1, kinds: ["task_open"], limit: 1000 })
     .filter((e) => e.origin === "partner")
@@ -403,7 +404,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
 
   await partner.close().catch(() => {});
   await core.stop().catch(() => {});
-  return { sc, visible, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n"), recalls, remembered: mem.added, memAttempts, retitles, bridgeSent, work };
+  return { sc, visible, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n"), recalls, remembered: mem.added, memAttempts, retitles, bridgeSent, work: { ...work, asks } };
 }
 
 const r_opened = (o: Opened[], step: number) => o.filter((x) => x.step === step);
@@ -505,6 +506,8 @@ function check(r: RunResult): string[] {
     if (n < e.msgs[0] || n > e.msgs[1]) fails.push(`messages ×${n} (want ${e.msgs[0] === e.msgs[1] ? e.msgs[0] : `${e.msgs[0]}-${e.msgs[1]}`})`);
   }
   if (e.ask && !r.visible.some((v) => v.kind === "decision")) fails.push("no ask (decision)");
+  // D67 (2): a choice about how to do the work is reversible, defaults to Go and carries a time.
+  if (e.askReversible && !r.work?.asks?.some((a) => a.reversible && a.go && a.timed)) fails.push("ask not reversible with a timed Go default");
   if (e.waiter && !r.visible.some((v) => v.kind === "waiter")) fails.push("no reminder set");
   if (e.noWaiter && r.visible.some((v) => v.kind === "waiter")) fails.push("set a reminder nobody asked for");
   if (e.until && !r.work?.until) fails.push("no keep-going loop on the task");

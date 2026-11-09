@@ -149,6 +149,8 @@ export async function cmdPair(o: {
     const computer = () => {
       const out = [`  ${t("pair.worker.how")}`, `    ${style.bold(command)}`, ""];
       if (!base) out.push(`  ${style.dim(t("pair.worker.noAddress"))}`, "");
+      // D147: another computer's command line can follow this Ducter with the same code.
+      else if (!o.worker) out.push(`  ${t("pair.cli.how")}`, `    ${style.bold(`ducter connect ${base} --code ${code}`)}`, "");
       return out;
     };
     if (o.worker) {

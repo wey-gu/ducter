@@ -11,11 +11,15 @@ import { connect, type Conn } from "./client.ts";
 import { plainStyle, type Style } from "./doctor.ts";
 import type { T } from "./i18n.ts";
 import { openDecisions, pickTask } from "./status.ts";
+import { homeJson, whyUnreached, type Target } from "./home.ts";
+import { hostname } from "node:os";
 
 export interface TalkCtx {
   t: T;
   style?: Style;
   port: number;
+  /** Where these commands go (D147); absent: this machine on `port`. */
+  target?: Target;
   json: boolean;
   rest: string[];
   repo?: string;
@@ -39,9 +43,22 @@ const one = (s: string, n = 160) => {
   return l.length > n ? l.slice(0, n - 1) + "…" : l;
 };
 
+const targetOf = (c: TalkCtx): Target => c.target ?? { kind: "local", port: c.port };
+/** `home` in --json output (D147). */
+const withHome = (c: TalkCtx, o: object) => ({ ...o, home: homeJson(targetOf(c)) });
+
+/** Why nothing answered, in words that say what to do: this machine's Ducter isn't running, or
+ *  the home is unreachable / no longer takes this command line's token (D147). */
+export async function notReached(t: T, target: Target): Promise<string> {
+  if (target.kind === "local") return t("status.notRunning", { port: target.port });
+  const why = await whyUnreached(target);
+  const vars = { name: target.name, address: target.address };
+  return t(why === "revoked" ? "home.revoked" : why === "unreachable" ? "home.unreachable" : "home.noGreeting", vars);
+}
+
 async function conn(c: TalkCtx, cursor?: number): Promise<Conn | undefined> {
-  const k = await connect(c.port, { ...(cursor != null ? { cursor } : {}) });
-  if (!k) out(c)(c.t("status.notRunning", { port: c.port }));
+  const k = await connect(targetOf(c), { ...(cursor != null ? { cursor } : {}) });
+  if (!k) out(c)(await notReached(c.t, targetOf(c)));
   return k;
 }
 
@@ -78,11 +95,14 @@ export async function cmdTask(c: TalkCtx): Promise<number> {
   if (!words) return p(t("task.usage")), 2;
   const git = c.git ?? realGit;
   let place: Place = { kind: "none" };
-  if (c.repo !== "none") {
+  // A Ducter on a server can't see this Mac's folders: with no --repo the task has no folder; a
+  // --repo here names this Mac as the device (it works when this Mac does tasks for it).
+  const remote = targetOf(c).kind === "remote";
+  if (c.repo !== "none" && !(remote && !c.repo)) {
     const dir = resolve(c.cwd ?? process.cwd(), c.repo ?? ".");
     const top = await repoTop(dir, git);
     if (!top) return p(t(c.repo ? "task.notRepo" : "task.notRepoHere", { dir })), 2;
-    place = { kind: "repo", device: "local", repoPath: top, ...(c.base ? { baseBranch: c.base } : {}) };
+    place = { kind: "repo", device: remote ? hostname().replace(/\.local$/, "") : "local", repoPath: top, ...(c.base ? { baseBranch: c.base } : {}) };
   } else if (c.base) return p(t("task.baseNoRepo")), 2;
   const k = await conn(c);
   if (!k) return 1;
@@ -102,7 +122,7 @@ export async function cmdTask(c: TalkCtx): Promise<number> {
     k.send({ t: "task_new", words, place, clientId, ...(pick ? { harness: pick.harness, ...(pick.model ? { model: pick.model } : {}) } : {}) });
     const r = await k.next((f): f is Extract<ServerFrame, { t: "task_new_result" }> => f.t === "task_new_result" && f.clientId === clientId, 60_000);
     if (!r) return p(t("task.noAnswer")), 1;
-    if (c.json) return p(JSON.stringify(r, null, 2)), r.ok ? 0 : 1;
+    if (c.json) return p(JSON.stringify(withHome(c, r), null, 2)), r.ok ? 0 : 1;
     if (!r.ok || !r.card) return p(t("task.failed", { reason: r.message ?? r.reason ?? "?" })), 1;
     const card = r.card;
     const where = card.place.kind === "repo" ? `${basename(card.place.repoPath)}${card.place.baseBranch ? ` (${card.place.baseBranch})` : ""}` : t("task.noPlace");
@@ -172,7 +192,7 @@ export async function cmdSay(c: TalkCtx): Promise<number> {
   off();
   k.close();
   if (c.json) {
-    p(JSON.stringify({ seq: mine, settled: why === "settled", replies: said, decisions: asked }, null, 2));
+    p(JSON.stringify(withHome(c, { seq: mine, settled: why === "settled", replies: said, decisions: asked }), null, 2));
   } else if (why === "timeout") p(st(c).dim(t("say.timeout", { s: Math.round(timeoutMs / 1000), tail: c.cmd("tail") })));
   else if (why === "closed") p(t("say.closed"));
   else if (asked.length) p(st(c).dim(t("say.answerHint", { answer: c.cmd("answer") })));
@@ -330,7 +350,7 @@ export async function cmdAnswer(c: TalkCtx): Promise<number> {
       10_000,
     );
     if (!r || r.t === "error") return p(t("answer.failed", { reason: r && r.t === "error" ? r.message : "no answer" })), 1;
-    if (c.json) p(JSON.stringify({ decisionId: d.decisionId, option, ...(option === "reply" ? { text: reply } : {}) }));
+    if (c.json) p(JSON.stringify(withHome(c, { decisionId: d.decisionId, option, ...(option === "reply" ? { text: reply } : {}) })));
     else p(t(option === "go" ? "answer.go" : option === "hold" ? "answer.hold" : "answer.reply", { label: d.goLabel, question: d.question }));
     return 0;
   } finally {
@@ -361,7 +381,7 @@ export async function cmdOpenTask(c: TalkCtx): Promise<number> {
     const card = found[0]!;
     k.send({ t: "open_task", taskId: card.taskId });
     const r = await k.next((f): f is Extract<ServerFrame, { t: "open_result" }> => f.t === "open_result" && f.taskId === card.taskId, 5000);
-    if (c.json) return p(JSON.stringify({ taskId: card.taskId, title: card.title, apps: r?.apps ?? 0, place: card.place })), 0;
+    if (c.json) return p(JSON.stringify(withHome(c, { taskId: card.taskId, title: card.title, apps: r?.apps ?? 0, place: card.place }))), 0;
     if (r?.ok && r.apps > 0) p(t("open.shown", { title: card.title }));
     else {
       p(st(c).bold(card.title) + st(c).dim(`  ${card.taskId}`));

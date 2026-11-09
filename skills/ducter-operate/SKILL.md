@@ -7,9 +7,17 @@ description: Work with a running Ducter (the user's self-hosted personal AI) fro
 
 Ducter has one **partner** the user talks to; its work runs as **tasks** on AI agents (Claude
 Code, Codex…). **On hand** is every task at a glance; **Needs you** are decisions waiting for the
-user. The `ducter` CLI talks to the Ducter running on THIS machine (`127.0.0.1:7777`; add
-`--port <n>` if it was started on another port). For a Ducter on a server, run these over SSH on
-that server. Prefer `--json`; exit code 0 means it worked.
+user. The `ducter` CLI talks to the Ducter the user uses: the one on this machine
+(`127.0.0.1:7777`), or a Ducter on a server when the Mac app (or `ducter connect`) connected the
+command line to it. Check first: `ducter status --json` → `home` (`{kind: "local"}` or
+`{kind: "remote", address, name}`); in human mode the first line says `→ <where>`. `--local`
+forces this machine, `--home <address>` another Ducter once; `--port <n>` means a Ducter on this
+machine on that port. `up`, `doctor`, `domain`, `service`, `worker` always act on this machine.
+Prefer `--json`; exit code 0 means it worked.
+
+If it says the command line isn't connected to the server yet, or the server no longer accepts
+it, the fix is one line it prints: `ducter connect <address> --code <code>` with a code from
+`ducter pair` on that server (ask the user for the code; never guess one).
 
 ## Look
 
@@ -50,7 +58,12 @@ minutes; run it again for each next device (in the Mac app: Devices › Connect 
 / 设备 › 连上手机或另一台电脑). The user
 opens `link` on a phone or pastes it into the Mac app; another computer runs `command` to do
 tasks for this Ducter. `reachable: false` means there's no public address yet: see the
-ducter-deploy skill (`ducter domain`).
+ducter-deploy skill (`ducter domain`). Following a server, `pair --json` also carries `connect`:
+the line another computer's command line runs. `ducter devices disconnect` works only on the
+machine Ducter lives on.
+
+A task started with `ducter task` while following a server has no folder unless `--repo` names
+one, and that folder must be on a computer that does tasks for it.
 
 ## Safe defaults
 

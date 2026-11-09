@@ -43,7 +43,7 @@ export interface Host {
 const CUA_APP_BIN = "/Applications/CuaDriver.app/Contents/MacOS/cua-driver";
 const CUA_TOOLS = ["browser_prepare", "get_browser_state", "browser_navigate"];
 
-export type CheckId = "bun" | "git" | "claude" | "codex" | "pi" | "dsh" | "nmem" | "cua" | "port" | "data" | "service" | "devices" | "facts";
+export type CheckId = "bun" | "git" | "claude" | "codex" | "pi" | "dsh" | "nmem" | "cua" | "port" | "data" | "service" | "devices" | "facts" | "home" | "cli";
 export type CheckStatus = "ok" | "missing" | "warn";
 
 export interface Check {

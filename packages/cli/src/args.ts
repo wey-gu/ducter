@@ -1,6 +1,6 @@
 // Argument parsing for `ducter`. Pure: no env, no I/O, so it is easy to test.
 
-export type Command = "up" | "open" | "doctor" | "status" | "version" | "help" | "pair" | "devices" | "service" | "domain" | "worker" | "uninstall" | "report" | "merge" | "undo" | "task" | "say" | "tail" | "answer";
+export type Command = "up" | "open" | "doctor" | "status" | "version" | "help" | "pair" | "devices" | "service" | "domain" | "worker" | "uninstall" | "report" | "merge" | "undo" | "task" | "say" | "tail" | "answer" | "connect" | "disconnect";
 
 export interface Args {
   command: Command;
@@ -27,13 +27,15 @@ export interface Args {
   remove?: boolean; // domain --remove: take Ducter's site out of Caddy
   print?: boolean; // domain <name> --print: only print the Caddy block
   dnsCheck?: boolean; // false with domain --no-dns-check
+  local?: boolean; // --local: a home command acts on this machine's Ducter (D147)
+  home?: string; // --home <address>: a home command goes there, this once (D147)
 }
 
 export type ParseResult = { ok: true; args: Args } | { ok: false; error: { key: "err.unknownCommand" | "err.unknownFlag" | "err.missingValue" | "err.badPort" | "err.badTimeout"; vars: Record<string, string> } };
 
-const COMMANDS = new Set<Command>(["up", "open", "doctor", "status", "version", "help", "pair", "devices", "service", "domain", "worker", "uninstall", "report", "merge", "undo", "task", "say", "tail", "answer"]);
+const COMMANDS = new Set<Command>(["up", "open", "doctor", "status", "version", "help", "pair", "devices", "service", "domain", "worker", "uninstall", "report", "merge", "undo", "task", "say", "tail", "answer", "connect", "disconnect"]);
 /** Commands that take words after them (`ducter devices revoke a1b2`, `ducter service install`). */
-const WITH_REST = new Set<Command>(["devices", "service", "domain", "merge", "undo", "open", "task", "say", "tail", "answer"]);
+const WITH_REST = new Set<Command>(["devices", "service", "domain", "merge", "undo", "open", "task", "say", "tail", "answer", "connect"]);
 const ALIASES: Record<string, Command> = {
   "-v": "version",
   "--version": "version",
@@ -100,6 +102,15 @@ export function parseArgs(argv: string[]): ParseResult {
       case "--json":
         args.json = true;
         continue;
+      case "--local":
+        args.local = true;
+        continue;
+      case "--home": {
+        const v = value();
+        if (v === undefined || !v.trim()) return { ok: false, error: { key: "err.missingValue", vars: { flag: a } } };
+        args.home = v.trim();
+        continue;
+      }
       case "--all":
         args.all = true;
         continue;

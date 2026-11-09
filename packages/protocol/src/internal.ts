@@ -250,7 +250,7 @@ export interface SessionSpec {
   // native tool that writes or runs anything; Ducter's MCP tools stay. Each harness maps it in
   // runner/oar.ts (Claude Code and pi deny the tools, Codex runs its read-only sandbox).
   readOnly?: boolean;
-  // D130, a folder place: writes stay inside cwd where the harness can enforce it (Codex: its
+  // D142, a folder place: writes stay inside cwd where the harness can enforce it (Codex: its
   // workspace-write sandbox, network on). Claude Code has no such switch under bypass; its brief
   // asks it, and the folder's copy makes what it changed there undoable.
   confineWrites?: boolean;
@@ -310,7 +310,7 @@ export interface Runner {
   // Optional: what a repo task's branch holds that its base doesn't, with its diff stat (D128:
   // On hand by project). Undefined when not a repo task or it can't tell.
   branchChanges?(taskId: string): Promise<BranchChanges | undefined>;
-  // Optional (D130): a non-git folder task's changes against the copy Ducter kept (files: with
+  // Optional (D142): a non-git folder task's changes against the copy Ducter kept (files: with
   // the list); undefined when not a folder task or nothing was ever kept. undoFolder puts the
   // folder back (path: one entry only; force: even though it changed after the task finished);
   // keepFolder frees the copy. Each resolves with a user-facing message.

@@ -1,4 +1,4 @@
-// D130: a task in a folder that isn't a git repo, end to end through the runner: the copy is
+// D142: a task in a folder that isn't a git repo, end to end through the runner: the copy is
 // kept before its first turn, the report says what changed and until when, undo puts it back;
 // a folder that can't be copied asks first and holds the turn until the answer.
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";

@@ -90,7 +90,7 @@ export interface TaskToolOptions {
   /** A done report's evidence with `check` set where Ducter can check it (the runner's
    *  checkEvidence): a commit on the task branch, a file in its place. */
   checkEvidence?(taskId: string, evidence: EvidenceRef[]): Promise<EvidenceRef[] | undefined>;
-  /** D130: a non-git folder task's changes and until when they can be undone (the runner's
+  /** D142: a non-git folder task's changes and until when they can be undone (the runner's
    *  folderReport, which also starts the copy's 7 days). The partner's result says it. */
   folderChanges?(taskId: string): Promise<FolderSummary | undefined>;
 }

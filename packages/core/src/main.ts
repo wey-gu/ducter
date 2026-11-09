@@ -112,7 +112,7 @@ export async function main(mods: BootModules = {}) {
         runnerMod.registerTaskTools(core, {
           branchChanges: (id: string) => (runner as Late)?.branchChanges?.(id),
           checkEvidence: (id: string, ev: unknown[]) => (runner as Late)?.checkEvidence?.(id, ev),
-          // D130: a folder task's report says what it changed and until when it can be undone.
+          // D142: a folder task's report says what it changed and until when it can be undone.
           folderChanges: (id: string) => (runner as { folderReport?(id: string): Promise<unknown> } | undefined)?.folderReport?.(id),
         });
       else console.warn("[ducter] runner has no registerTaskTools: tasks cannot report_to_main");

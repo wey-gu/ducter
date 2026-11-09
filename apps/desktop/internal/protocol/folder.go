@@ -1,6 +1,6 @@
 package protocol
 
-// ---------- Folders that aren't repos (D130) ----------
+// ---------- Folders that aren't repos (D142) ----------
 
 // FolderChange is one thing a task did to a non-git folder, against the
 // copy Ducter kept. Moved: From is where it was (same folder = renamed).

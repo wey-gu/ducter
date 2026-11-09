@@ -594,7 +594,7 @@ func (a *App) changes(c *ui.Context, task *store.Task) {
 	t := a.T
 	p := task.Place()
 	if p.Kind == "folder" {
-		a.folderChanges(c, task) // D130: a folder that isn't a repo
+		a.folderChanges(c, task) // D142: a folder that isn't a repo
 		return
 	}
 	if p.Kind != "repo" || p.Worktree == "" {

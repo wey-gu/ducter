@@ -15,7 +15,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 )
 
-// D130: a task sorted a folder of invoices (not a repo) into month folders.
+// D142: a task sorted a folder of invoices (not a repo) into month folders.
 // Its Changes say so in one sentence, until when it can be undone, and offer
 // 改回去 / Undo all changes and 就这样 / Keep the changes; the list opens on
 // request; an undo of a folder changed since asks in place.

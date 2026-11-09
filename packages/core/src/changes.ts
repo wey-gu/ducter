@@ -1,6 +1,6 @@
 // What each task changed so far, for On hand and the opened task's Changes header.
 // Repo tasks (D128): files, lines added and removed, for On hand by project ("title · branch ·
-// +42 −7 · state") and "改动 · 3 个文件 +42 −7". Folder tasks that aren't a repo (D130): what
+// +42 −7 · state") and "改动 · 3 个文件 +42 −7". Folder tasks that aren't a repo (D142): what
 // was added, changed, removed, moved or renamed against the copy Ducter kept, and until when it
 // can be undone. Counting is a few git calls in the task's worktree (the runner's
 // branchChanges) or a walk of the folder (folderChanges), on a worker too, so it is cached here
@@ -123,7 +123,7 @@ export function createChanges(o: {
       return soon(taskId);
     }
     // The end of a turn (it carries usage), a state change (a merge, an archive), or an undo
-    // or keep of a folder (D130).
+    // or keep of a folder (D142).
     const folderEffect = e.kind === "task_event" && /^folder_/.test(body.raw?.effect ?? "");
     if ((e.kind === "task_event" && body.usage) || e.kind === "task_state" || folderEffect) {
       if (counted(taskId)) soon(taskId);

@@ -1480,7 +1480,7 @@ function TaskDetails({ task }: { task: Task }) {
 /** An opened task: one column, read top to bottom (D74). Where it stands in words; a pending
  *  ask; the outcome said once with how it knows and what to do next; what it did; Details.
  *  The phone shows no diffs: the changes are named in the proof line. */
-// ---------- D130: a folder that isn't a git repo ----------
+// ---------- D142: a folder that isn't a git repo ----------
 
 /** What a task did to the folder in one line: "整理了 42 个文件，新建了 6 个文件夹". */
 function folderSentence(f: FolderSummary): string {
@@ -1585,7 +1585,7 @@ export function TaskView({ id }: { id: string }) {
   const task = A.S.tasks.get(id);
   const scroller = useRef<HTMLDivElement>(null);
   useEffect(() => A.history(id), [id, A.S.welcomed]);
-  // D130: a folder task's list, again whenever its count or an undo / keep moved on.
+  // D142: a folder task's list, again whenever its count or an undo / keep moved on.
   const isFolder = !!task && placeOf(task).kind === "folder";
   useEffect(() => void (isFolder && A.folderChanges(id)), [id, A.S.welcomed, isFolder, task?.card?.folder?.at, task?.acted]);
   if (!task)

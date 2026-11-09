@@ -1029,7 +1029,7 @@ const en: Record<string, string> = {
   "cand.none": "No other AI agent can take this task right now.",
 };
 
-// D130: a folder that isn't a git repo (same keys as the desktop's i18n/folder.go).
+// D142: a folder that isn't a git repo (same keys as the desktop's i18n/folder.go).
 const folder: Record<Lang, Record<string, string>> = {
   zh: {
     "folder.moved": "整理了 %d 个文件",

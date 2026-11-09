@@ -39,7 +39,7 @@ function renderReport(r: Bodies["report"], title?: string): string {
     );
   }
   if (r.state === "done" && (r.evidence ?? []).length === 0) lines.push("  (no evidence attached)");
-  // D130: a folder that isn't a repo. Ducter kept a copy from before; the user can undo it all.
+  // D142: a folder that isn't a repo. Ducter kept a copy from before; the user can undo it all.
   const f = r.folder;
   if (f && f.undo === "open" && f.added + f.changed + f.removed + f.moved + f.renamed + f.folders > 0) {
     const n = (k: number, what: string) => (k ? [`${k} ${what}`] : []);

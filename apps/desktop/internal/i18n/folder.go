@@ -1,6 +1,6 @@
 package i18n
 
-// D130: a folder that isn't a git repo. Its Changes say what the task did
+// D142: a folder that isn't a git repo. Its Changes say what the task did
 // in plain words, and 改回去 / Undo all changes puts the folder back.
 // ".one" is the singular (English only reads differently).
 var folderZH = Table{

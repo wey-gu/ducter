@@ -22,7 +22,7 @@ export interface PlaceOps {
   changes(place: Place): Promise<BranchChanges | undefined>;
   /** After a merge: remove the clean worktree Ducter made, keep the branch (integrate.ts). */
   archive(place: Place): Promise<ActionResult & { removed: boolean }>;
-  /** D130: the copy of a non-git folder, kept on the machine that holds it (folder.ts). */
+  /** D142: the copy of a non-git folder, kept on the machine that holds it (folder.ts). */
   folder: FolderOps;
 }
 
@@ -136,7 +136,7 @@ export function remoteOps(link: WorkerLink): PlaceOps {
     changes: (place) => link.call<BranchChanges | undefined>("changes", { place }, 10_000).catch(() => undefined),
     // An older worker doesn't know "archive": its worktree stays, as before.
     archive: (place) => link.call<ActionResult & { removed: boolean }>("archive", { place }, 60_000).catch((err) => ({ ok: false, removed: false, message: `Kept the worktree on ${link.name}: ${err instanceof Error ? err.message : String(err)}` })),
-    // D130: an older worker doesn't know these: it can't keep a copy, so the task asks first.
+    // D142: an older worker doesn't know these: it can't keep a copy, so the task asks first.
     folder: {
       prepare: (taskId, folder) => guard(link.call<Awaited<ReturnType<FolderStore["prepare"]>>>("folderPrepare", { taskId, folder }, 10 * 60_000)).catch((err) => (isOffline(err) ? Promise.reject(err) : { ok: false as const, why: "copy_failed" as const, detail: String(err) })),
       finish: (taskId) => link.call<void>("folderFinish", { taskId }, 60_000).catch(() => undefined),

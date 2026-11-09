@@ -64,7 +64,7 @@ export interface Task {
   acted?: { action: string; ok: boolean; message?: string; ref?: string };
   /** The seq the action was logged at: a done report after it is new, unmerged work. */
   actedSeq?: number;
-  /** D130: the list behind a folder task's Changes (folder_changes), and an undo that asked to confirm. */
+  /** D142: the list behind a folder task's Changes (folder_changes), and an undo that asked to confirm. */
   folder?: FolderChanges;
   confirm?: UndoConfirm;
   /** Who does it now and why: the latest body_selected (D89). */
@@ -183,7 +183,7 @@ export class Store {
       case "action_result": {
         // A switch (D89) is not a result action: Merge and the rest stay as they were.
         if (f.action === "switch") return void this.actionResults.push(f);
-        // D130: an undo of a folder changed since the task finished asks in place, not in a toast.
+        // D142: an undo of a folder changed since the task finished asks in place, not in a toast.
         if (f.action === "undo" && f.confirm) {
           const ct = this.tasks.get(f.taskId);
           if (ct) (ct.confirm = f.confirm), (ct.acting = undefined);

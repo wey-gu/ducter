@@ -141,7 +141,7 @@ async function cmdMerge(ctx: Ctx): Promise<number> {
   return r.ok ? 0 : 1;
 }
 
-/** `ducter undo <part of a title>` (D130): the app's 改回去 / Undo all changes for a folder task.
+/** `ducter undo <part of a title>` (D142): the app's 改回去 / Undo all changes for a folder task.
  *  A folder changed since the task finished says what would be lost; --yes goes ahead. */
 async function cmdUndo(ctx: Ctx): Promise<number> {
   const { t } = ctx;

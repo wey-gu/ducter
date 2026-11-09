@@ -1,4 +1,4 @@
-// D130: a folder place that isn't a git repo (Documents, Downloads, a folder of invoices).
+// D142: a folder place that isn't a git repo (Documents, Downloads, a folder of invoices).
 // Before a task first writes there, Ducter keeps a copy of the folder: an APFS clone on macOS or
 // a reflink on Linux (near-zero space and time), a plain copy only when the folder is small. The
 // task works in the folder itself, so results show at once; what it changed is counted against

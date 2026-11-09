@@ -61,7 +61,7 @@ function wireEvent(ev: HarnessEvent): HarnessEvent {
 
 export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
   const sessions = new Map<string, HarnessSession>();
-  // D130: the copy of a non-git folder lives here, beside the folder (folder.ts).
+  // D142: the copy of a non-git folder lives here, beside the folder (folder.ts).
   const folders = createFolderStore({ root: join(o.dataDir, "snapshots") });
   folders.sweep();
   const busyOf = (s: HarnessSession) => {

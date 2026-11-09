@@ -2898,7 +2898,7 @@ ol.tries b {
   flex-wrap: nowrap;
 }
 
-/* D130: a folder task's Changes (a folder that isn't a git repo). */
+/* D142: a folder task's Changes (a folder that isn't a git repo). */
 .folder-changes .said { margin: 0 0 4px; }
 .folder-changes .btns { margin-top: 10px; }
 .folder-changes .confirm { margin-top: 10px; padding: 12px 14px; background: var(--surface); border-radius: 14px; box-shadow: 0 3px 0 var(--line-soft); }

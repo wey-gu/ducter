@@ -122,7 +122,7 @@ type Task struct {
 	// merged.
 	Acted    *protocol.ServerFrame
 	ActedSeq int64
-	// Folder is the list behind a non-git folder task's Changes (D130),
+	// Folder is the list behind a non-git folder task's Changes (D142),
 	// from the last folder_changes frame; nil until asked.
 	Folder *protocol.FolderChanges
 }

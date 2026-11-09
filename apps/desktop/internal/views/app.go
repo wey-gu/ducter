@@ -96,7 +96,7 @@ type App struct {
 	replyOpen  map[string]bool
 	replyDraft map[string]string
 	diffs      map[string]*diffPane
-	// D130: a folder task's list was asked for (throttle), and an undo
+	// D142: a folder task's list was asked for (throttle), and an undo
 	// that came back asking to confirm (what would be lost).
 	folderAsked   map[string]int // 1: asked; 2: asked, and ask again on the answer
 	folderConfirm map[string]*protocol.UndoConfirm
@@ -713,7 +713,7 @@ func (a *App) followUserLanguage() {
 // Applied is called after the store applied a frame: it refreshes what
 // follows the stream, as the open task's diff.
 func (a *App) Applied(f protocol.ServerFrame) {
-	// D130: a folder's list came back; ask once more if something changed meanwhile.
+	// D142: a folder's list came back; ask once more if something changed meanwhile.
 	if f.T == "folder_changes" {
 		again := a.folderAsked[f.TaskID] == 2
 		delete(a.folderAsked, f.TaskID)

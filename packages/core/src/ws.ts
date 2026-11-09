@@ -314,7 +314,7 @@ export function createWsHandler(deps: WsDeps) {
               if (o.ok) noteUserAction(f.taskId, `the user opened a draft PR for this task${o.ref ? `: ${o.ref}` : ""}`);
               return result(o.ok, o.message, o.ref);
             }
-            // D130: a folder that isn't a repo. 改回去 / Undo all changes (or one entry, path), and
+            // D142: a folder that isn't a repo. 改回去 / Undo all changes (or one entry, path), and
             // 就这样 / Keep the changes. An undo of a folder changed since the task finished
             // comes back with confirm; the client asks, then sends force.
             case "undo": {
@@ -514,7 +514,7 @@ export function createWsHandler(deps: WsDeps) {
         return;
       }
       case "folder_changes": {
-        // D130: the list behind a folder task's Changes (a walk of the folder, so on request).
+        // D142: the list behind a folder task's Changes (a walk of the folder, so on request).
         const r = deps.runner();
         const changes = (await r?.folderChanges?.(f.taskId, { files: true }).catch(() => undefined)) ?? null;
         send(ws, { t: "folder_changes", taskId: f.taskId, changes });

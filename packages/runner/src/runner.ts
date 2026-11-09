@@ -66,9 +66,9 @@ export interface RunnerExt extends Runner {
   checkEvidence(taskId: string, evidence: EvidenceRef[]): Promise<EvidenceRef[]>;
   /** Archives finished tasks idle past the archive horizon now; returns their ids (the timer runs it too). */
   sweepArchive(): Promise<string[]>;
-  /** D130: a non-git folder task's changes against the copy kept before it wrote. */
+  /** D142: a non-git folder task's changes against the copy kept before it wrote. */
   folderChanges(taskId: string, opts?: { files?: boolean }): Promise<FolderChanges | undefined>;
-  /** D130: the task reported done or failed: its 7 days start, and what it changed (for the report). */
+  /** D142: the task reported done or failed: its 7 days start, and what it changed (for the report). */
   folderReport(taskId: string): Promise<FolderSummary | undefined>;
   undoFolder(taskId: string, opts?: { path?: string; force?: boolean }): Promise<{ ok: boolean; message: string; confirm?: UndoConfirm }>;
   keepFolder(taskId: string): Promise<{ ok: boolean; message: string }>;
@@ -117,9 +117,9 @@ interface TaskRt {
   saveAsked: boolean;
   prefix: string[];
   context?: number; // the harness's last context reading
-  /** D130: the folder couldn't be copied; the task asked first. text: the turn held until the answer. */
+  /** D142: the folder couldn't be copied; the task asked first. text: the turn held until the answer. */
   gated?: { text: string };
-  /** D130: the user let it change the folder without a copy. */
+  /** D142: the user let it change the folder without a copy. */
   direct?: boolean;
   lang?: "zh" | "en"; // the language the user reads its reports in
 }
@@ -150,7 +150,7 @@ export function withBrowser(base: SessionSpec, sc: BrowserSidecar | undefined, p
   return spec;
 }
 
-/** D130: the ask before a task changes a folder Ducter couldn't copy (a report from the runner). */
+/** D142: the ask before a task changes a folder Ducter couldn't copy (a report from the runner). */
 export function askBeforeWriting(why: CantKeep, detail: string | undefined, lang: "zh" | "en" | undefined): { summary: string; question: string } {
   if (lang === "zh") {
     const where = {
@@ -200,7 +200,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
   const graceMs = opts.offlineGraceMs ?? Number(process.env.DUCTER_OFFLINE_GRACE_MS || 120_000);
   const parkMs = opts.parkIdleMs ?? Number(process.env.DUCTER_PARK_IDLE_MS || 15 * 60_000);
   const archiveIdleMs = opts.archiveIdleMs ?? Number(process.env.DUCTER_ARCHIVE_IDLE_MS ?? 14 * 24 * 3600_000);
-  // D130: copies of non-git folders, kept 7 days after their task finished. Swept hourly.
+  // D142: copies of non-git folders, kept 7 days after their task finished. Swept hourly.
   const folders = createFolderStore({ root: join(core.dataDir, "snapshots"), now: () => now().getTime() });
   const sweepFolders = () => {
     try {
@@ -287,7 +287,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     await s.close().catch(() => {});
   }
 
-  // ---------- D130: a folder that isn't a git repo ----------
+  // ---------- D142: a folder that isn't a git repo ----------
   const folderOf = (t: TaskRt): string | undefined => {
     const p = core.tasks.get(t.id)?.place ?? t.card.place;
     return p.kind === "folder" ? p.path : undefined;
@@ -661,7 +661,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     else clearTimeout(t.parkTimer);
     // A finished browser task quits its browser cleanly so sign-ins are saved (browser.ts).
     if (!busy && t.sidecar && ["done_claimed", "done", "failed"].includes(currentAttention(t))) void t.sidecar.close().catch(() => false);
-    // D130: a finished folder task: what the folder looks like now, and its 7 days start.
+    // D142: a finished folder task: what the folder looks like now, and its 7 days start.
     if (!busy && folderOf(t) && FINISHED.includes(currentAttention(t))) await t.ops.folder.finish(t.id).catch(() => {});
     if (t.dropped || busy) return;
     if (reported) {
@@ -789,7 +789,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     // Only these two, set explicitly; every other NMEM_* the host has stays out (child-env.ts).
     const mem = core.persona.mem;
     if (mem) spec.env = { NMEM_AGENT_ID: mem.agentId, ...(mem.space ? { NMEM_SPACE: mem.space } : {}) };
-    // D130: a folder task writes only inside its folder where the harness can hold it there (Codex's sandbox).
+    // D142: a folder task writes only inside its folder where the harness can hold it there (Codex's sandbox).
     if (open.place.kind === "folder") spec.confineWrites = true;
     return spec;
   }
@@ -837,7 +837,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const now = card.body ? { ...open, harness: card.body.harness, model: card.body.model } : open;
     const t = newRt(open.taskId, e.persona, card, specFor(open.taskId, now, cwd), ops);
     if (open.language) t.lang = open.language;
-    let asked = false; // D130: it asked before changing a folder it couldn't copy
+    let asked = false; // D142: it asked before changing a folder it couldn't copy
     for (const ev of core.log.read({ stream: stream(open.taskId), kinds: ["task_event"], limit: 50_000 })) {
       const raw = (ev.body as Bodies["task_event"]).raw as { sessionId?: string; cwd?: string; kind?: string; compactions?: number; switched?: { from: string }; folder?: { ask?: string; direct?: boolean } } | undefined;
       if (raw?.sessionId) {
@@ -1043,7 +1043,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       t.nudged = false;
       t.stallNoted = false;
       if (t.gated) {
-        // D130: the answer to "change this folder without a copy?". Go, or a reply the task
+        // D142: the answer to "change this folder without a copy?". Go, or a reply the task
         // reads, sends the turn held for it; from here on it doesn't ask again.
         const held = t.gated.text;
         t.gated = undefined;
@@ -1182,7 +1182,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       t.running = false;
       await s?.close().catch(() => {});
       await t.sidecar?.close().catch(() => false);
-      // The worktree and branch are kept on purpose; a folder's copy for 7 days (D130).
+      // The worktree and branch are kept on purpose; a folder's copy for 7 days (D142).
       if (folderOf(t)) await t.ops.folder.finish(taskId).catch(() => {});
     },
 
@@ -1237,7 +1237,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       return t.ops.changes(place).catch(() => undefined);
     },
 
-    // ---------- D130: a folder that isn't a git repo ----------
+    // ---------- D142: a folder that isn't a git repo ----------
     async folderChanges(taskId, o) {
       const t = tasks.get(taskId);
       if (!t || !folderOf(t)) return undefined;

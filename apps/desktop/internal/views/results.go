@@ -271,7 +271,7 @@ func (a *App) drainActionResults(c *ui.Context) {
 		}
 		switch {
 		case !f.OK && f.Action == "undo" && f.Confirm != nil:
-			// D130: the folder changed after the task finished: ask in place.
+			// D142: the folder changed after the task finished: ask in place.
 			a.folderConfirm[f.TaskID] = f.Confirm
 		case f.OK && (f.Action == "undo" || f.Action == "keep"):
 			a.askFolder(f.TaskID) // the section says what became of it

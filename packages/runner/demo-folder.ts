@@ -1,4 +1,4 @@
-// A demo core for D130 (a folder that isn't a git repo), with the real runner and a scripted
+// A demo core for D142 (a folder that isn't a git repo), with the real runner and a scripted
 // harness in place of a model: it sorts a scratch folder of fake invoices into month folders
 // and reports done, so the opened task's Changes, Undo all changes and Keep the changes run
 // for real against the files. Never point it at a real folder.

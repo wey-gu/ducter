@@ -25,6 +25,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/local"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/remote"
+	"github.com/wey-gu/ducter/apps/desktop/internal/sound"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 	"github.com/wey-gu/ducter/apps/desktop/internal/update"
@@ -65,6 +66,18 @@ func main() {
 	app.SystemLang = system
 	app.Version, app.Commit = buildVersion()
 	app.OpenExternal = local.OpenURL
+	// The title moment (D87): the first launch only, and never when macOS
+	// opened the app at login (in the background, with nobody looking).
+	app.PlayTitle = func() views.TitleSound {
+		if p := sound.Title(); p != nil {
+			return p
+		}
+		return nil
+	}
+	if !local0.TitleSeen() && !mygo.App.WasOpenedAtLogin() && os.Getenv("DUCTER_NO_TITLE") == "" {
+		app.ShowTitle()
+		go sound.Preload() // decode it now, off the main thread
+	}
 
 	// The app runs the Ducter of this Mac itself, unless the window is
 	// pointed somewhere else (DUCTER_URL, or a saved remote connection).

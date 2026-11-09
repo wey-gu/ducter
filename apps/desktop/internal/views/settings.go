@@ -363,7 +363,13 @@ func (a *App) aboutCard(c *ui.Context) {
 					a.openLink(ReportURL)
 				}
 			}
+			if a.button(c, a.L.T("settings.about.title_replay"), btnText, t.ControlSM, t.Surface) {
+				a.ShowTitle()
+			}
 		})
+		if on, changed := a.switchRow(c, "sound", a.L.T("settings.sound"), a.L.T("settings.sound.note"), a.Local.Sound()); changed {
+			a.Local.SetSound(on)
+		}
 	})
 }
 

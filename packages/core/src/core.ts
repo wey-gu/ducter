@@ -21,6 +21,7 @@ import { createPusher, openPushStore, type Pusher, type PushStore } from "./push
 import { createApnsSender, loadApnsConfig, type ApnsSender } from "./apns.ts";
 import { webApi, webStatic } from "./web.ts";
 import { createDevicesView, type DeviceProbes, type DevicesView } from "./devices.ts";
+import { openSettings, type SettingsStore } from "./settings.ts";
 
 export interface CoreOptions {
   dataDir?: string;
@@ -53,6 +54,8 @@ export interface Core extends CoreApi {
   waiters: Waiters;
   push: PushStore;
   pusher: Pusher;
+  /** The partner's settings (D71). */
+  settings: SettingsStore;
   port: number;
   url: string; // ws URL for clients
   setRunner(r: Runner): void;
@@ -117,12 +120,15 @@ export function startCore(opts: CoreOptions = {}): Core {
   const tasks = createRegistry(log, clock);
   let runner: Runner | undefined;
   let partner: Partner | undefined;
+  const push = openPushStore(dataDir);
+  const settings = openSettings({ dataDir, log, push, persona, memoryPinnedOff: process.env.DUCTER_MEMORY === "off" });
   const decisions = createDecisions({
     log,
     tasks,
     clock,
     // DUCTER_DECISION_DEFAULT_MS: how long a reversible default waits (soak runs and demos use seconds).
     defaultDelayMs: opts.defaultDelayMs ?? (Number(process.env.DUCTER_DECISION_DEFAULT_MS) || undefined),
+    delayMs: () => settings.defaultAfterMs(),
     onDecision: async (taskId, text) => {
       if (!runner) return console.warn(`[core] no runner: decision for ${taskId} not forwarded`);
       await runner.send(taskId, text, undefined, "user");
@@ -147,9 +153,9 @@ export function startCore(opts: CoreOptions = {}): Core {
     else if (early.length < 100) early.push(e);
   });
 
-  const api = { log, tasks, mcp, persona, dataDir } as CoreApi;
+  const api = { log, tasks, mcp, persona, dataDir, settings } as CoreApi;
   let devicesView: DevicesView | undefined;
-  const ws = createWsHandler({ core: api, decisions, runner: () => runner, devices: () => devicesView, batchMs: opts.batchMs });
+  const ws = createWsHandler({ core: api, decisions, runner: () => runner, devices: () => devicesView, settings, batchMs: opts.batchMs });
   const devices = openDeviceAuth(dataDir);
   // A device that pairs changes Your devices and abilities (远程打开 / Reach from anywhere).
   const gateAuth = {
@@ -173,7 +179,6 @@ export function startCore(opts: CoreOptions = {}): Core {
   api.workers = workers; // the runner places tasks on workers through this (runner/src/remote.ts)
   devicesView = createDevicesView({ dataDir, auth: devices, workers, connected: () => ws.connected(), probes: opts.deviceProbes });
   const sockets = splitSockets(ws.websocket, workers, { isLive: (id) => devices.isLive(id), sweepMs: opts.sweepMs });
-  const push = openPushStore(dataDir);
   const apns = opts.apns ?? createApnsSender(loadApnsConfig(dataDir));
   const pusher = createPusher({
     log,
@@ -240,6 +245,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     waiters,
     push,
     pusher,
+    settings,
     port,
     url: `ws://127.0.0.1:${port}/ws`,
     setRunner(r) {

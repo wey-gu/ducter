@@ -93,6 +93,20 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [ ] Automatic pre-turn recall behind a precision gate, and logging recalls in the Log.
 - [ ] Tasks (windows) as the same identity: set `NMEM_AGENT_ID` in task environments.
 
+## Your accounts and your other AI agents (promised as "coming soon" on the site)
+
+The site, README and `docs/faq.md` say these are coming. Each needs the change loop (a design
+note and a `Dn`) before it is built.
+- [ ] **Accounts through OpenConnector** (https://github.com/oomol-lab/open-connector): Gmail,
+      Google Calendar and others, with the runtime self-hosted where Ducter runs so provider
+      credentials never reach a harness. Reads pass; any write that sends goes through the
+      partner's Go like every other outbound. Needs a research report first (its credential
+      boundary, action allow/block policy, MCP surface, license: modified Apache 2.0 that
+      bars offering it as a hosted service, which embedding in Ducter is not). Trigger: the
+      first user scenario that needs mail or calendar.
+- [ ] **Nowledge Bridge live** (`design/bridge.md`): the live J1 round trip, then outbound
+      (J4). Trigger: the account is enabled for Bridge.
+
 ## Browser places (W5)
 
 `packages/runner/src/browser.ts` attaches cua-driver directly (D47). Verified live on 0.44.0

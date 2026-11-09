@@ -35,9 +35,10 @@ the phone version opens in your phone's browser.
 
 ### Where do I download it?
 
-From the [latest release on GitHub](https://github.com/wey-gu/ducter/releases/latest): download
-the `.dmg`, drag **Ducter** to **Applications**, and open it. You can also build it from the
-source. See [Install](install.md).
+Paste `curl -fsSL https://ducter.ai/install.sh | sh` into Terminal: it installs the app and opens
+it. Or download the `.dmg` from the
+[latest release on GitHub](https://github.com/wey-gu/ducter/releases/latest), drag **Ducter** to
+**Applications**, and open it. You can also build it from the source. See [Install](install.md).
 
 ### Do I need to know about git or "agents"?
 

@@ -108,11 +108,18 @@ You need [Claude Code](https://docs.anthropic.com/en/docs/claude-code) or
 ([which AI agents](docs/faq.md#which-ai-agents-does-it-work-with)). If neither is on your Mac
 yet, the app installs one and walks you through signing in.
 
-### Download the Mac app
+### Install the Mac app
 
-Download `Ducter-<version>-arm64.dmg` from the
-[latest release on GitHub](https://github.com/wey-gu/ducter/releases/latest). It's signed and
-notarized for Macs with Apple silicon. Open the `.dmg`, drag **Ducter** to **Applications**, and open it. It checks your Mac, sets up
+On a Mac with Apple silicon, paste this into Terminal:
+
+```sh
+curl -fsSL https://ducter.ai/install.sh | sh
+```
+
+It downloads the latest release, checks its checksum and notarization, puts **Ducter** in
+**Applications**, and opens it. Or download `Ducter-<version>-arm64.dmg` from the
+[latest release on GitHub](https://github.com/wey-gu/ducter/releases/latest) (signed and
+notarized), open it, and drag **Ducter** to **Applications**. Ducter checks your Mac, sets up
 what's missing without a Terminal, and opens the conversation. Closing the window doesn't stop
 it; **Stop Ducter** in the menu does. [Getting started](docs/getting-started.md) walks you
 through the first five minutes.
@@ -138,9 +145,11 @@ on `127.0.0.1` only; you reach it through your own domain or an SSH tunnel, and 
 Mac connect with a one-time code.
 
 ```sh
-scripts/install.sh --linux ducter-linux    # on your Mac; copy the folder for your server's CPU
-sh ducter/install.sh --service             # on the server
+curl -fsSL https://ducter.ai/install.sh | sh -s -- --service    # on the server (x64 or arm64)
 ```
+
+From the source instead: `scripts/install.sh --linux ducter-linux` on your Mac, copy the folder
+for your server's CPU, and run `sh ducter/install.sh --service` there.
 
 The walkthrough is in [Install](docs/install.md#a-linux-server-that-stays-on).
 

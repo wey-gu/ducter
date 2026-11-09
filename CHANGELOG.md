@@ -1,5 +1,53 @@
 # Changelog
 
+## 0.0.4
+
+**Update in place, from the app**
+- Each computer's card in Devices shows its Ducter version and, when a newer one is out, an
+  Update button. The update downloads from GitHub, checks its checksum, waits for running work to
+  reach a safe point, restarts, and puts the old version back on its own if the new one isn't
+  healthy. `ducter update [--all] [--check]` does the same from the terminal; an optional night
+  update runs in quiet hours.
+- Device cards are redone: rename a computer by clicking its name, disconnect with a confirm.
+
+**A Ducter on a server can browse**
+- Add 上网 / Browse the web on a Linux server with one tap (or `ducter ability add browser`):
+  tasks browse in Ducter's own headless Chrome.
+- When a site needs you to sign in, a card opens a live view on your Mac or phone and you sign in
+  yourself; the AI agent sees nothing meanwhile and never reads password or code fields. Signed-in
+  sites are listed per computer, with Sign out.
+
+**Settings, in one place**
+- The Mac app's Settings is one window with tabs: Partner, Notifications, Accounts, Look and
+  sound, Where it runs, Updates and about. The phone has the same sections.
+- The Partner tab shows what your partner actually thinks with, on the computer it lives on: a
+  Codex-only server says Codex, and only signed-in AI agents can be picked.
+- What your partner does by itself and what it asks you first is written in everyday words.
+
+**An opened task reads like the agent tells it**
+- The agent's own words come first; the steps between them fold into one line you can open.
+  Steps say what was done, and a "not found" while looking around is no longer shown as an error.
+- What you asked sits in a small card. Keys and tokens you paste are hidden everywhere Ducter
+  shows a task (the home hides them before anything leaves it).
+- When the agent is waiting for you, its question sits right above the box you answer in.
+
+**First look**
+- Your partner greets you by name and time of day, with everyday things to start with, taken
+  from what your Ducter knows (your accounts, recent tasks, folders), not developer examples.
+- Each AI agent has its own clay coin (pi's carries its logo; the others their names, as their
+  makers' terms ask), and it moves while its task works.
+
+**Command line**
+- When the Mac app is connected to a Ducter on a server, `ducter status`, `say`, `task` and the
+  other home commands go there and say so (`→ your.server`); machine commands stay on this
+  computer, and `--local` forces it. `ducter connect` / `disconnect` for any computer.
+
+**Known limits**
+- Coming from 0.0.3, update once with the installer (`curl -fsSL https://ducter.ai/install.sh | sh`);
+  from 0.0.4 on, the Update button and `ducter update` do it.
+- In-place updates and server browsing were tested with fakes and a local Chrome, not yet on a
+  real server: please report anything odd.
+
 ## 0.0.3
 
 **Servers that just work**

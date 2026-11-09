@@ -500,7 +500,7 @@ func (a *App) removeEntry(c *ui.Context) {
 			if len(p.Keep) > 0 {
 				ui.Text(c, a.L.T("remove.keeps")).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted)
 				for _, k := range p.Keep {
-					ui.Text(c.Key("rmk:"+k.What), k.What+" · "+k.Detail).FontSize(t.SM).TextColor(t.InkSoft).MaxLines(2)
+					ui.Text(c.Key("rmk:"+k.What), k.What+" · "+tildeHome(k.Detail)).FontSize(t.SM).TextColor(t.InkSoft).MaxLines(2)
 				}
 			}
 		}

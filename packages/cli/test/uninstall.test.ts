@@ -57,6 +57,10 @@ describe("planUninstall", () => {
     expect(p.remove[0]!.path).toBe(join(home, "Library", "LaunchAgents", `${label}.plist`));
     expect(p.keep.map((k) => k.what)).toContain(t("uninstall.keep.data"));
     expect(p.warnings).toEqual([]);
+    // The app's Remove page names its own choice, not a terminal flag.
+    const app = plan(false, { fromApp: true }).keep.map((k) => k.what).join(" ");
+    expect(app).toContain(t("uninstall.keep.data.fromApp"));
+    expect(app).not.toContain("--all");
   });
 
   test("--all: data, worktree warning, app link, Library folders of this bundle only", () => {

@@ -204,7 +204,7 @@ export function planUninstall(i: PlanInput): Plan {
       for (const p of app) if (exists(p)) remove.push({ path: p, what: t("uninstall.item.appdata"), kind: "appdata", bytes: sizeOf(p) });
     }
   } else if (exists(i.dataDir)) {
-    keep.push({ what: t("uninstall.keep.data"), detail: i.dataDir });
+    keep.push({ what: t(i.fromApp ? "uninstall.keep.data.fromApp" : "uninstall.keep.data"), detail: i.dataDir });
   }
 
   keep.push(

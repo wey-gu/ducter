@@ -34,7 +34,11 @@ func Title() Playing {
 	if title == nil {
 		return nil
 	}
-	return player{title.Play()}
+	p := title.Play()
+	if err := audio.Err(); err != nil {
+		log.Printf("ducter: no audio output, the title plays silent: %v", err)
+	}
+	return player{p}
 }
 
 func decode() {

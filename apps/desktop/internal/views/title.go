@@ -365,8 +365,10 @@ func (a *App) drawTitle(p *ui.Painter, r ui.Rect) {
 		// Waiting for the window to be active (titleTick).
 	case t >= titleEyes-0.1 && t < titleEyes+1 || t < titleLightFrom:
 		p.AnimationFrame() // the eyes open: the display's rate
-	default:
+	case t < titlePrompt+titlePromptIn:
 		p.AnimationFrameRate(idleFPS * 2)
+	default:
+		p.AnimationFrameRate(idleFPS) // it only breathes and blinks now
 	}
 }
 

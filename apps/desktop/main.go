@@ -74,8 +74,7 @@ func main() {
 		}
 		return nil
 	}
-	if !local0.TitleSeen() && !mygo.App.WasOpenedAtLogin() && os.Getenv("DUCTER_NO_TITLE") == "" {
-		app.ShowTitle()
+	if !local0.TitleSeen() && os.Getenv("DUCTER_NO_TITLE") == "" {
 		go sound.Preload() // decode it now, off the main thread
 	}
 
@@ -136,6 +135,10 @@ func main() {
 	}
 
 	mygo.App.WhenReady(func() {
+		// Asked once the app has launched, when macOS knows how it was.
+		if !local0.TitleSeen() && !mygo.App.WasOpenedAtLogin() && os.Getenv("DUCTER_NO_TITLE") == "" {
+			app.ShowTitle()
+		}
 		win := mygo.NewWindow(mygo.WindowOptions{
 			Title:     "Ducter",
 			Width:     1280,

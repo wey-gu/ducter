@@ -14,7 +14,7 @@ enum Pebble {
     static let onAccent = dynamic(0x2B2118, 0x2B2118)
     static let line = dynamic(0xE8D9C4, 0x3A3027)
     static let failedInk = dynamic(0x8A1F3B, 0xF8A9BC)
-    /// The UI is flat; the clay art carries the depth (ui.md, D71). A press darkens a
+    /// The UI is flat; the clay art carries the depth (ui.md, D73). A press darkens a
     /// button's fill this much and scales it to `pressScale`; nothing moves down.
     static let pressDarken: Double = 0.06
     static let pressScale: CGFloat = 0.98
@@ -42,7 +42,7 @@ extension UIColor {
     }
 }
 
-/// A flat button (D71): a solid fill, or the surface with a hairline. Pressing darkens
+/// A flat button (D73): a solid fill, or the surface with a hairline. Pressing darkens
 /// the fill a little and scales it to 0.98; no ledge, no shadow.
 private struct FlatButton: View {
     let configuration: ButtonStyle.Configuration

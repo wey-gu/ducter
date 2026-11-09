@@ -24,7 +24,7 @@ type StateColors struct {
 
 // Press is how a button answers a press: its fill darkens by Darken (a
 // share of ink mixed in) and it shrinks to Scale. Nothing moves down:
-// the UI is flat, and the clay art carries the depth (D71).
+// the UI is flat, and the clay art carries the depth (D73).
 type Press struct {
 	Darken, Scale float32
 }
@@ -93,7 +93,7 @@ type Tokens struct {
 	// PebbleRadius is a task pebble's slightly irregular corners.
 	PebbleRadius [4]float32
 
-	// depth. The UI is flat; the clay art carries the depth (D71). No
+	// depth. The UI is flat; the clay art carries the depth (D73). No
 	// button has a ledge or a shadow: a button is a solid fill (primary,
 	// accent), a surface with a hairline (secondary) or words (text), and
 	// a press darkens it and scales it to Press.Scale. Containers (cards,

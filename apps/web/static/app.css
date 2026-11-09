@@ -40,7 +40,7 @@
   --failed-surface: #fbdde4;
   --failed-ink: #8a1f3b;
 
-  /* Depth (design/ui.md, Components; D71): the clay art carries the depth, the UI is flat.
+  /* Depth (design/ui.md, Components; D73): the clay art carries the depth, the UI is flat.
      No button has a ledge or a shadow; a press darkens its fill (--press-mix) and scales it
      to --press-scale. Containers rest on --raised or float on --floating. */
   --press-mix: #000000;
@@ -367,7 +367,7 @@ a {
   margin-top: 10px;
 }
 /* A task in the partner's words, and a line of proof: drawn marks and plain words, no
-   capsules (D71). */
+   capsules (D73). */
 .taskline {
   display: inline-flex;
   flex-wrap: wrap;
@@ -455,7 +455,7 @@ a {
   transition: background-color var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
   white-space: nowrap;
 }
-/* Flat (D71): primary is a solid ink fill, secondary the surface with a hairline, text is
+/* Flat (D73): primary is a solid ink fill, secondary the surface with a hairline, text is
    accent-ink words; a press darkens the fill and scales to 0.98, nothing moves down. */
 .btn.primary {
   background: var(--ink);
@@ -507,7 +507,7 @@ a {
 }
 
 /* ---------- living message and decisions ---------- */
-/* A light container on the paper: a hairline, no slab, no shadow (D71). */
+/* A light container on the paper: a hairline, no slab, no shadow (D73). */
 .living {
   border: 1px solid var(--line);
   border-radius: var(--r-xl);
@@ -634,7 +634,7 @@ a {
   text-align: left;
   width: 100%;
 }
-/* A plain mark in muted ink: no tile, no state color (D71). */
+/* A plain mark in muted ink: no tile, no state color (D73). */
 .line .ic {
   width: 18px;
   height: 18px;
@@ -869,7 +869,7 @@ a {
   color: var(--ink-muted);
 }
 
-/* ---------- opened task: one column (D72) ---------- */
+/* ---------- opened task: one column (D74) ---------- */
 .task-page {
   gap: 20px;
 }

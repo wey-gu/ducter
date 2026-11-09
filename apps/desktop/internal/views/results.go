@@ -40,7 +40,7 @@ func finished(t *store.Task) bool {
 // result message already says the outcome in words, so the footer never
 // restates the state: one quiet line of proof (drawn marks and plain
 // words, "2 files changed ›", the task's title as a link), a line of what
-// went out when something did, then Merge / Open draft PR (D71).
+// went out when something did, then Merge / Open draft PR (D73).
 func (a *App) taskFooter(c *ui.Context, task *store.Task, detail string) {
 	t := a.T
 	if !finished(task) {

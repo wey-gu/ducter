@@ -116,7 +116,7 @@ func (a *App) face(c *ui.Context, state FaceState, size float32, label string) u
 
 // taskLine is a task inside the partner's words: a drawn mark of where it
 // stands, its title as a link, and its status line in muted words. No
-// fill, no capsule (D71): the words say the state.
+// fill, no capsule (D73): the words say the state.
 func (a *App) taskLine(c *ui.Context, t *store.Task, detail string) {
 	th := a.T
 	att := t.Attention()
@@ -230,7 +230,7 @@ func (a *App) lift(c *ui.Context, e ui.Element, by float32) {
 //     and press.
 //   - icon: a square of any of these (iconButton).
 //
-// Flat (D71): no ledge, no shadow. A press darkens the fill a little and
+// Flat (D73): no ledge, no shadow. A press darkens the fill a little and
 // scales the button to 0.98; nothing moves down. The clay art carries the
 // depth. Three heights (ControlSM/MD/LG); one radius; hover, press and
 // keyboard focus look the same on all of them.
@@ -446,7 +446,7 @@ func (a *App) aboveComposer(c *ui.Context, body func()) {
 }
 
 // glyph is a drawn mark at the start of a notice or a row: the glyph
-// alone, in its ink, never on a tile (D71).
+// alone, in its ink, never on a tile (D73).
 func (a *App) glyph(c *ui.Context, size float32, draw func(p *ui.Painter, r ui.Rect)) {
 	ui.Box(c).Size(size, size).Draw(draw).Shrink(0)
 }

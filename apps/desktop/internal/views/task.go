@@ -16,7 +16,7 @@ import (
 )
 
 // task is an opened task, at conductor depth: one centered column on
-// the conversation's measure, read top to bottom (D72). Where it stands in
+// the conversation's measure, read top to bottom (D74). Where it stands in
 // words; a pending ask; the outcome, said once, with how it knows and what
 // to do next; what it did, its tool calls folded into one line per
 // stretch; its changes as a list of files (a file's diff opens in place,
@@ -662,7 +662,7 @@ func parseFiles(patch string) []diffFile {
 
 // changes is the task's changes as a list of files, each with what it
 // added and removed; a file opens its diff in place, full width. No diff
-// shows by default (D72), and a task that works in no repo has no section.
+// shows by default (D74), and a task that works in no repo has no section.
 func (a *App) changes(c *ui.Context, task *store.Task) {
 	t := a.T
 	p := task.Place()

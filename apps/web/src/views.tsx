@@ -284,7 +284,7 @@ function DecisionCard({ d, taskId, inTask }: { d: DecisionState; taskId?: string
 // ---------- tasks in the conversation ----------
 
 /** A task in the partner's words: its drawn mark, its title as a link, its status in muted
- *  words. No fill, no capsule (D71). */
+ *  words. No fill, no capsule (D73). */
 function TaskLine({ task, detail }: { task: Task; detail?: string }) {
   const a = attention(task);
   const d = (!sameWords(detail, title(task)) && detail) || stateLabel(a);
@@ -406,7 +406,7 @@ function SentLine({ task }: { task: Task }) {
 
 /** Under a message about a task. Under way: one quiet line. Finished: the result message
  *  already says the outcome, so no state is restated: one line of proof, what went out, then
- *  Merge / Open draft PR (D71). */
+ *  Merge / Open draft PR (D73). */
 function TaskFooter({ task, detail }: { task: Task; detail?: string }) {
   if (!finished(task)) return <TaskLine task={task} detail={detail} />;
   A.history(task.id);
@@ -1015,7 +1015,7 @@ function TaskDetails({ task }: { task: Task }) {
   );
 }
 
-/** An opened task: one column, read top to bottom (D72). Where it stands in words; a pending
+/** An opened task: one column, read top to bottom (D74). Where it stands in words; a pending
  *  ask; the outcome said once with how it knows and what to do next; what it did; Details.
  *  The phone shows no diffs: the changes are named in the proof line. */
 export function TaskView({ id }: { id: string }) {

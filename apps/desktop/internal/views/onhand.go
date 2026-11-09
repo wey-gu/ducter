@@ -267,7 +267,7 @@ func (a *App) metaLine(task *store.Task) string {
 // needsCard is a task's ask on On hand: the same tinted card as in the
 // conversation (the task's title as plain small words, the question, its
 // default and its countdown, Go / Hold / Reply… / Details), then where it
-// runs in muted words. No colored band, no capsules (D71).
+// runs in muted words. No colored band, no capsules (D73).
 func (a *App) needsCard(c *ui.Context, task *store.Task) {
 	t := a.T
 	d := a.S.PendingDecision(task.ID)

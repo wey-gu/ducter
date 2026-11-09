@@ -13,6 +13,7 @@ import { join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { Bodies, ConnectionReason, ConnectionSource, ConnectionView, OoDetect } from "@ducter/protocol";
+import { appsOf, findOo, ooCli, ooEnv, ooExec, ooLinker, ooOp, type OoCli, type OoService } from "./oo-link.ts";
 import type { ConnectionCaller, ConnectionInfo, ConnectionOutcome, ConnectionsApi, LogStore } from "@ducter/protocol/src/internal.ts";
 
 export const CONNECTIONS_FILE = "connections.json";
@@ -38,6 +39,10 @@ export interface Link {
   tools(): Promise<LinkTool[]>;
   call(name: string, args: Record<string, unknown>): Promise<LinkResult>;
   close(): Promise<void>;
+  /** A link that can search its own catalog (the oo CLI) answers connection_search with it. */
+  search?(query: string, service?: string): Promise<LinkTool[]>;
+  /** One tool by name, for a link whose tools() is not the whole catalog (the oo CLI). */
+  describe?(name: string): Promise<LinkTool | undefined>;
 }
 export type Linker = (url: string, token?: string) => Promise<Link>;
 
@@ -170,12 +175,21 @@ export interface OoSource {
   detect(): OoDetect;
   /** Reads the self-hosted address and token: only when the user tapped to use them. */
   read(): { url: string; token?: string } | undefined;
+  /** The oo CLI itself (D122), when oo is installed: Ducter runs it and reads none of its files. */
+  cli?: OoCli;
+  /** Asks oo whether it is signed in, and which accounts it has. */
+  probe?(): Promise<void>;
 }
 
-export function ooSource(opts: { env?: Record<string, string | undefined>; dir?: string; which?: (bin: string) => string | null } = {}): OoSource {
+export function ooSource(opts: { env?: Record<string, string | undefined>; dir?: string; which?: (bin: string) => string | null; cli?: OoCli } = {}): OoSource {
   const env = opts.env ?? process.env;
   const dir = opts.dir ?? ooConfigDir(env);
-  const which = opts.which ?? ((b: string) => Bun.which(b) ?? (existsSync(join(homedir(), ".local", "bin", b)) ? join(homedir(), ".local", "bin", b) : null));
+  const which = opts.which ?? ((b: string) => (b === "oo" ? findOo() : Bun.which(b)));
+  const bin = which("oo");
+  const cli = opts.cli ?? (bin ? ooCli({ exec: ooExec(bin, ooEnv(env, bin)) }) : undefined);
+  // What oo said last (oo auth status, oo connector apps); undefined until the first probe.
+  let probed: { signedIn: boolean; services?: OoService[] } | undefined;
+  let probedAt = 0;
   const fromFile = () => {
     const p = join(dir, "connector.toml");
     if (!existsSync(p)) return;
@@ -188,20 +202,36 @@ export function ooSource(opts: { env?: Record<string, string | undefined>; dir?:
   // oo's own precedence (docs/self-hosted-connector.md): OO_CONNECTOR_URL, then connector.toml.
   const resolve = () => (env.OO_CONNECTOR_URL ? { url: env.OO_CONNECTOR_URL, token: env.OO_CONNECTOR_TOKEN } : fromFile());
   return {
+    cli,
     detect() {
+      // Until oo has answered, a guess from the file's size alone (it is never read): a
+      // signed-out oo leaves a stub of a few bytes.
       const auth = join(dir, "auth.toml");
       let account = false;
       try {
-        account = existsSync(auth) && statSync(auth).size > 0;
+        account = existsSync(auth) && statSync(auth).size > 32;
       } catch {
         /* no account */
       }
+      if (probed) account = probed.signedIn;
       const r = resolve();
       return {
-        installed: Boolean(which("oo")) || existsSync(dir),
+        installed: Boolean(bin) || existsSync(dir),
         ...(r?.url ? { selfHosted: { url: r.url, hasToken: Boolean(r.token) } } : {}),
         account,
+        ...(account && probed?.services ? { apps: appsOf(probed.services) } : {}),
       };
+    },
+    async probe() {
+      if (!cli || (probed && Date.now() - probedAt < RECHECK_MS)) return;
+      probedAt = Date.now();
+      try {
+        const signedIn = await cli.signedIn();
+        probed = { signedIn, ...(signedIn ? { services: await cli.services().catch(() => probed?.services) } : {}) };
+      } catch (e) {
+        // Signed out or missing says so; a slow answer keeps what oo said before.
+        if (!(e instanceof LinkError) || e.reason === "unauthorized" || /not installed/.test(e.message) || !probed) probed = { signedIn: false };
+      }
     },
     read() {
       const r = resolve();
@@ -314,6 +344,8 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
   const fetcher = opts.fetcher ?? ((u: string, i: RequestInit) => fetch(u, i));
   const oo = opts.oo ?? ooSource();
   const now = opts.now ?? Date.now;
+  // D122: the oo CLI kind. One linker (and its catalog cache) for the store's life.
+  const ooLink = oo.cli ? ooLinker(oo.cli, now) : undefined;
   const listPath = join(opts.dataDir, CONNECTIONS_FILE);
   const tokPath = join(opts.dataDir, CONNECTION_TOKENS_FILE);
   let records: Record_[] = readJson<{ connections?: Record_[] }>(listPath, {}).connections ?? [];
@@ -335,7 +367,10 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
   async function withLink<T>(r: Record_, fn: (l: Link) => Promise<T>): Promise<T> {
     let link: Link | undefined;
     try {
-      link = await linker(r.url, tokens[r.id]);
+      if (r.source === "oo") {
+        if (!ooLink) throw new LinkError("unreachable", "oo is not installed on this computer");
+        link = await ooLink(r.url);
+      } else link = await linker(r.url, tokens[r.id]);
       const out = await fn(link);
       health.set(r.id, { state: "ok", at: now() });
       return out;
@@ -356,11 +391,14 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
     return t;
   }
 
-  const isOC = (r: Record_) => r.source !== "mcp";
+  const isOC = (r: Record_) => r.source === "oomol" || r.source === "self";
+  const opOf = (t?: LinkTool) => (t?.annotations?.readOnlyHint === true ? "read" : "write");
 
   async function classify(key: string, action: string): Promise<"read" | "write"> {
     const r = find(key);
     if (!r) return "write";
+    // oo says nothing about read or write: the action's name decides, conservatively (D122).
+    if (r.source === "oo") return ooOp(action);
     const ck = `${r.id} ${action}`;
     const hit = opCache.get(ck);
     if (hit) return hit;
@@ -390,6 +428,8 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
   async function execute(r: Record_, action: string, input: unknown, account?: string): Promise<LinkResult> {
     const args = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
     if (isOC(r)) return withLink(r, (l) => l.call("execute_action", { actionId: action, input: args, ...(account ? { connectionName: account } : {}) }));
+    // oo: the account (one of the service's connection names) rides as `connection`.
+    if (r.source === "oo") return withLink(r, (l) => l.call(action, account ? { ...args, connection: account } : args));
     return withLink(r, (l) => l.call(action, args));
   }
 
@@ -400,13 +440,22 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
     list(who) {
       return records
         .filter((r) => who.role === "partner" || allowedFor(who, r))
-        .map((r): ConnectionInfo => ({ id: r.id, name: r.name, source: r.source, ...(who.role === "task" ? { granted: true } : {}) }));
+        .map((r): ConnectionInfo => {
+          const svcs = r.source === "oo" ? ooLink?.cached() : undefined;
+          return {
+            id: r.id,
+            name: r.name,
+            source: r.source,
+            ...(svcs ? { services: svcs.map((s) => ({ service: s.service, accounts: s.connections.map((c) => ({ name: c.name, label: c.label, default: c.default })) })) } : {}),
+            ...(who.role === "task" ? { granted: true } : {}),
+          };
+        });
     },
 
     async search(who, query, o = {}) {
       const pool = o.connection ? [find(o.connection)].filter(Boolean) as Record_[] : records;
       const usable = pool.filter((r) => allowedFor(who, r));
-      if (!usable.length) return err(o.connection ? NOT_FOUND : "No connections yet. The user can add their OpenConnector on the Partner page.");
+      if (!usable.length) return err(o.connection ? NOT_FOUND : "No connections yet. The user can add their accounts on the Partner page (Accounts it can read; one tap with oo).");
       const out: unknown[] = [];
       for (const r of usable) {
         try {
@@ -414,6 +463,18 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
             const res = await withLink(r, (l) => l.call("search_actions", { query, ...(o.service ? { service: o.service } : {}), limit: 8 }));
             const items = (res.data as { data?: unknown })?.data ?? res.data;
             out.push({ connection: r.name, kind: "openconnector", actions: failed(res) ? [] : items, ...(failed(res) ? { error: errorText(res) } : {}) });
+          } else if (r.source === "oo") {
+            // oo's own search (it understands "unread mail from this week"), only the services
+            // with an account in oo; then the known catalog by name, so it never comes back empty.
+            const hits = await withLink(r, async (l) => {
+              const found = l.search ? await l.search(query, o.service) : [];
+              if (found.length) return found;
+              const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+              const all = (await l.tools()).filter((t) => !o.service || t.name.startsWith(`${o.service}.`));
+              const named = all.filter((t) => words.some((w) => `${t.name} ${t.description ?? ""}`.toLowerCase().includes(w)));
+              return named.length ? named : all;
+            });
+            out.push({ connection: r.name, kind: "oo", actions: hits.slice(0, 12).map((t) => ({ id: t.name, description: clip(t.description ?? "", 300), op: opOf(t) })) });
           } else {
             const words = query.toLowerCase().split(/\s+/).filter(Boolean);
             const ts = (await tools(r)).filter((t) => !words.length || words.some((w) => `${t.name} ${t.description ?? ""}`.toLowerCase().includes(w)));
@@ -438,9 +499,15 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
           const md = (g.data as { data?: { markdown?: string } })?.data?.markdown;
           return { ok: true, op, result: { op, guide: md ? clip(md, RESULT_MAX) : forModel(g.data) } };
         }
+        if (r.source === "oo") {
+          const t = await withLink(r, async (l) => (await l.describe?.(action)) ?? (await l.tools()).find((x) => x.name === action));
+          if (!t) return err(`No action ${action} in the accounts oo has. connection_search finds them.`);
+          const op = ooOp(action);
+          return { ok: true, op, result: { op, description: t.description, inputSchema: t.inputSchema } };
+        }
         const t = (await tools(r)).find((x) => x.name === action);
         if (!t) return err(`No tool ${action} on ${r.name}.`);
-        const op = t.annotations?.readOnlyHint === true ? "read" : "write";
+        const op = opOf(t);
         return { ok: true, op, result: { op, description: t.description, inputSchema: t.inputSchema } };
       } catch (e) {
         return err(`${r.name} can't be reached right now (${(e as LinkError).reason}).`);
@@ -531,7 +598,18 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
     view() {
       return records.map((r) => {
         const h = health.get(r.id);
-        return { id: r.id, name: r.name, url: r.url, source: r.source, addedAt: r.addedAt, via: r.via, state: h?.state ?? "unknown", ...(h ? { checkedAt: new Date(h.at).toISOString() } : {}) };
+        const svcs = r.source === "oo" ? ooLink?.cached() : undefined;
+        return {
+          id: r.id,
+          name: r.name,
+          url: r.url,
+          source: r.source,
+          addedAt: r.addedAt,
+          via: r.via,
+          state: h?.state ?? "unknown",
+          ...(h ? { checkedAt: new Date(h.at).toISOString() } : {}),
+          ...(svcs ? { apps: appsOf(svcs) } : {}),
+        };
       });
     },
 
@@ -583,15 +661,43 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
     oo: () => oo.detect(),
 
     async addFromOo() {
+      // D122: oo signed in is the default, through oo itself: Ducter reads no oo file and holds no
+      // key. Only an oo without a sign-in falls back to the self-hosted address and token in its setup.
+      if (ooLink) {
+        let signedIn = false;
+        try {
+          signedIn = await oo.cli!.signedIn();
+        } catch (e) {
+          if (!oo.read()) return { ok: false, reason: linkErrorOf(e).reason === "unauthorized" ? "unauthorized" : "no_oo" };
+        }
+        if (signedIn) {
+          if (records.some((r) => r.source === "oo")) return { ok: false, reason: "duplicate" };
+          try {
+            await ooLink.services();
+          } catch (e) {
+            return { ok: false, reason: linkErrorOf(e).reason };
+          }
+          const id = `conn_${crypto.randomUUID().replaceAll("-", "").slice(0, 8)}`;
+          records = [...records, { id, name: records.some((r) => r.name === "oo") ? `oo ${records.length + 1}` : "oo", url: "oo:", source: "oo", addedAt: new Date(now()).toISOString(), via: "oo" }];
+          save();
+          health.set(id, { state: "ok", at: now() });
+          changed();
+          // The catalog (a few searches and one schema call) warms in the background.
+          void ooLink("oo:").then((l) => l.tools()).catch(() => {});
+          return { ok: true, id };
+        }
+      }
       const r = oo.read();
-      if (!r) return { ok: false, reason: "no_oo" };
+      if (!r) return { ok: false, reason: ooLink ? "oo_signed_out" : "no_oo" };
       return api.add({ url: r.url, token: r.token, via: "oo" });
     },
 
     async recheck() {
+      const probe = oo.probe?.().then(() => changed()).catch(() => {});
       const stale = records.filter((r) => now() - (health.get(r.id)?.at ?? 0) > RECHECK_MS);
-      if (!stale.length) return;
-      await Promise.all(stale.map((r) => tools(r).catch(() => undefined)));
+      if (!stale.length) return void (await probe);
+      await Promise.all(stale.map((r) => (r.source === "oo" && ooLink ? withLink(r, () => ooLink.services()) : tools(r)).catch(() => undefined)));
+      await probe;
       changed();
     },
 

@@ -1333,7 +1333,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     core.mcp.register(
       "partner",
       "connections_list",
-      "The user's connections: their OpenConnector (Gmail, Google Calendar, Drive, GitHub, Slack, Notion and more, whatever they connected there) or other MCP servers. Use them when the user asks about their mail, calendar, files or accounts. Empty: they can add one on the Partner page (Accounts it can read); say so in one line, don't explain OAuth.",
+      "The user's connections: the accounts in their oo (OOMOL's CLI; `services` lists each service and its accounts), their OpenConnector (Gmail, Google Calendar, Drive, GitHub, Slack, Notion and more, whatever they connected there) or other MCP servers. Use them when the user asks about their mail, calendar, files or accounts. Empty: they can add one on the Partner page (Accounts it can read); say so in one line, don't explain OAuth.",
       { type: "object", properties: {} },
       async () => ({ connections: conns.list(P) }),
     );
@@ -1369,7 +1369,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           connection: { type: "string" },
           action: { type: "string", description: "Action id from connection_search (or the MCP tool name)" },
           input: { type: "object", description: "The action's input, as its guide says" },
-          account: { type: "string", description: "Optional named account inside the connection" },
+          account: { type: "string", description: "Optional named account inside the connection (for oo: one of the service's account names from connections_list; omit for the default)" },
           question: { type: "string", description: "Writes only: the one question on the card, in the user's language (what will go out, to whom)" },
           goLabel: { type: "string", description: "Writes only: what Go does, short (e.g. 发给 Lina / Send to Lina)" },
           decisionId: { type: "string", description: "After the user's Go: the decision to run. Nothing else needed" },

@@ -435,7 +435,9 @@ export type ClientFrame =
   // Connections (D96): the user's OpenConnector or another MCP server. "connections" answers with
   // a connections frame and keeps the socket subscribed. "connection_add" checks the address and
   // token before saving (answered with connection_result, then a fresh frame). "connection_oo"
-  // uses the self-hosted OpenConnector that the user's oo CLI is set up with, only on this tap.
+  // is the one tap (D122): with oo signed in, Ducter reads the accounts through the oo CLI itself
+  // (oo's own sign-in, which never leaves oo); otherwise the self-hosted OpenConnector oo is set
+  // up with, read only on this tap.
   | { t: "connections" }
   | { t: "connection_add"; url: string; token?: string; name?: string }
   | { t: "connection_remove"; id: string }
@@ -553,8 +555,19 @@ export interface Reach {
 // Where the user's accounts are reached: their own OpenConnector (OOMOL Hosted or self-hosted) or
 // another MCP server. The token stays in Ducter's data folder (0600), never in a frame.
 
-/** oomol: OOMOL Hosted (mail and sign-ins pass through OOMOL); self: the user's own OpenConnector; mcp: any other MCP server. */
-export type ConnectionSource = "oomol" | "self" | "mcp";
+/**
+ * oomol: OOMOL Hosted (mail and sign-ins pass through OOMOL); self: the user's own OpenConnector;
+ * mcp: any other MCP server; oo: the accounts the user's oo CLI is signed in to, read through oo
+ * itself (D122; mail and sign-ins pass through OOMOL).
+ */
+export type ConnectionSource = "oomol" | "self" | "mcp" | "oo";
+
+/** One service the user connected in oo, and the accounts in it (each account's own label, e.g. its address). */
+export interface OoApp {
+  service: string; // "gmail"
+  title: string; // "Gmail"
+  accounts: string[];
+}
 
 export interface ConnectionView {
   id: string;
@@ -565,6 +578,8 @@ export interface ConnectionView {
   via: "manual" | "oo";
   state: "ok" | "unreachable" | "unauthorized" | "unknown";
   checkedAt?: string;
+  /** Source oo: what it can read, as oo last listed it. */
+  apps?: OoApp[];
 }
 
 /** What the user's oo CLI is set up with, as far as Ducter can tell without reading a secret. */
@@ -572,11 +587,13 @@ export interface OoDetect {
   installed: boolean;
   /** A self-hosted OpenConnector in oo's connector.toml or OO_CONNECTOR_URL: its address only. */
   selfHosted?: { url: string; hasToken: boolean };
-  /** Signed in to an OOMOL account (auth.toml). Not offered for one tap: that key can do more than connections. */
+  /** Signed in to an OOMOL account (oo auth status). The one tap then reads through oo itself (D122). */
   account: boolean;
+  /** When signed in: the accounts connected in oo, once oo has listed them. */
+  apps?: OoApp[];
 }
 
-export type ConnectionReason = "bad_url" | "unreachable" | "unauthorized" | "not_mcp" | "duplicate" | "unknown_connection" | "no_oo";
+export type ConnectionReason = "bad_url" | "unreachable" | "unauthorized" | "not_mcp" | "duplicate" | "unknown_connection" | "no_oo" | "oo_signed_out";
 
 // ---------- Settings (D71: the Partner page and Settings) ----------
 // Persisted in the data folder: the name in persona.json (shared with the CLI), notifications

@@ -27,12 +27,13 @@ import font from "../../../apps/web/static/bricolage.woff" with { type: "file" }
 import icon192 from "../../../apps/web/static/icon-192.png" with { type: "file" };
 import icon512 from "../../../apps/web/static/icon-512.png" with { type: "file" };
 import touchIcon from "../../../apps/web/static/apple-touch-icon.png" with { type: "file" };
-import artIdle from "../../../apps/web/static/art/idle.png" with { type: "file" };
-import artIdleLg from "../../../apps/web/static/art/idle-lg.png" with { type: "file" };
-import artWorking from "../../../apps/web/static/art/working.png" with { type: "file" };
-import artNeeds from "../../../apps/web/static/art/needsyou.png" with { type: "file" };
-import artDone from "../../../apps/web/static/art/done.png" with { type: "file" };
-import artNapping from "../../../apps/web/static/art/napping.png" with { type: "file" };
+import monoFont from "../../../apps/web/static/fonts/jetbrains-mono.woff2" with { type: "file" };
+import roundedFont from "../../../apps/web/static/fonts/rounded-sc-bold.woff2" with { type: "file" };
+import artIdle from "../../../apps/web/static/art/idle.webp" with { type: "file" };
+import artWorking from "../../../apps/web/static/art/working.webp" with { type: "file" };
+import artNeeds from "../../../apps/web/static/art/needsyou.webp" with { type: "file" };
+import artDone from "../../../apps/web/static/art/done.webp" with { type: "file" };
+import artNapping from "../../../apps/web/static/art/napping.webp" with { type: "file" };
 
 const INDEX = indexHtml as unknown as string; // Bun types an .html import as an HTMLBundle; with type "file" it is a path
 
@@ -44,12 +45,13 @@ const ASSETS: Record<string, [string, string]> = {
   "icon-192.png": [icon192, "image/png"],
   "icon-512.png": [icon512, "image/png"],
   "apple-touch-icon.png": [touchIcon, "image/png"],
-  "art/idle.png": [artIdle, "image/png"],
-  "art/idle-lg.png": [artIdleLg, "image/png"],
-  "art/working.png": [artWorking, "image/png"],
-  "art/needsyou.png": [artNeeds, "image/png"],
-  "art/done.png": [artDone, "image/png"],
-  "art/napping.png": [artNapping, "image/png"],
+  "fonts/jetbrains-mono.woff2": [monoFont, "font/woff2"],
+  "fonts/rounded-sc-bold.woff2": [roundedFont, "font/woff2"],
+  "art/idle.webp": [artIdle, "image/webp"],
+  "art/working.webp": [artWorking, "image/webp"],
+  "art/needsyou.webp": [artNeeds, "image/webp"],
+  "art/done.webp": [artDone, "image/webp"],
+  "art/napping.webp": [artNapping, "image/webp"],
 };
 
 // The page loads only its own scripts and styles; it talks only to this origin.

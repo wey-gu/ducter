@@ -45,7 +45,8 @@ describe("the phone/web client", () => {
       ["/app/app.js", "javascript"],
       ["/app/app.css", "css"],
       ["/sw.js", "javascript"],
-      ["/app/art/needsyou.png", "image/png"],
+      ["/app/art/needsyou.webp", "image/webp"],
+      ["/app/fonts/rounded-sc-bold.woff2", "font/woff2"],
       ["/app/manifest.webmanifest", "manifest"],
     ]) {
       const r = await fetch(base + path!, { headers: REMOTE });

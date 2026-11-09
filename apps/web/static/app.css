@@ -1,25 +1,44 @@
-/* Ducter phone client. Pebble tokens (design/ui.md); components read only these vars. */
+/* Ducter phone client. Pebble tokens (design/ui.md, D76-D78); components read only these vars. */
 @font-face {
   font-family: "Bricolage Grotesque";
   src: url("bricolage.woff") format("woff");
   font-weight: 200 800;
   font-display: swap;
 }
+/* zh headings (>= 20, where Latin is 800): Resource Han Rounded CN Bold at 94%, CJK only (D78). */
+@font-face {
+  font-family: "Ducter Rounded SC";
+  src: url("fonts/rounded-sc-bold.woff2") format("woff2");
+  font-weight: 700 900;
+  font-display: swap;
+  size-adjust: 94%;
+  unicode-range: U+2E80-9FFF, U+3000-303F, U+F900-FAFF, U+FF00-FFEF;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("fonts/jetbrains-mono.woff2") format("woff2");
+  font-weight: 100 800;
+  font-display: swap;
+}
 
 :root {
   color-scheme: light dark;
   --bg: #fff6ea;
+  --bg-deep: #fcecd7;
   --surface: #ffffff;
+  --sunken: #f7ebda;
+  --surface-sunken: #f3e6d3; /* sunken-2 */
   --surface-raised: #fffbf0;
-  --surface-sunken: #f3e6d3;
   --ink: #2b2118;
   --ink-soft: #4a3d30;
   --ink-muted: #75654f;
+  --faint: #c7b49a;
   --accent: #ff8a3d;
   --on-accent: #2b2118;
   --user-bubble: #2b2118;
   --on-user-bubble: #fff6ea;
   --line: #e8d9c4;
+  --line-2: #e0c9b0;
   --line-soft: #f3e6d3;
   --highlight: #ffe9a8;
   --highlight-ink: #6b5000;
@@ -27,6 +46,7 @@
   --needs-dot: #ff8a3d;
   --needs-surface: #ffe3cf;
   --needs-ink: #8a3a0c;
+  --needs-ledge: #f0c29e;
   --working-dot: #4ba8f0;
   --working-surface: #dcefff;
   --working-ink: #174a75;
@@ -40,24 +60,37 @@
   --failed-surface: #fbdde4;
   --failed-ink: #8a1f3b;
 
-  /* Depth (design/ui.md, Components): a ledge means "this can be pressed"; every
-     filled button has the same one (--ledge, in a darker shade of its fill) and sinks into
-     it. Containers never have a ledge: they rest on --raised or float on --floating. */
+  /* Depth: one clay (D76). A card rests on a solid 4px base and never moves; a button stands
+     on a 3px ledge in a darker shade of its fill, with a drop and a top highlight, and sinks
+     into the ledge when pressed. */
+  --base: 0 4px 0 var(--line);
   --ledge: 3px;
   --press-primary: #000000;
   --press-quiet: #e0c9b0; /* secondary */
   --press-accent: #c9642a;
-  --raised: 0 2px 10px rgba(43, 33, 24, 0.07);
-  --elev: var(--raised); /* the name some rules use */
+  --hi-primary: rgba(255, 246, 234, 0.22);
+  --hi-secondary: rgba(255, 255, 255, 0.95);
+  --hi-accent: rgba(255, 255, 255, 0.38);
+  --rim: rgba(43, 33, 24, 0.09);
+  --drop: 0 7px 12px -4px rgba(43, 33, 24, 0.28);
+  --drop-pressed: 0 1px 3px rgba(43, 33, 24, 0.22);
   --floating: 0 10px 32px rgba(43, 33, 24, 0.14);
 
   --font: "Bricolage Grotesque", "PingFang SC", "Noto Sans SC", "Hiragino Sans GB", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --mono: ui-monospace, "SF Mono", Menlo, "JetBrains Mono", monospace;
+  --head: "Bricolage Grotesque", "Ducter Rounded SC", "PingFang SC", "Noto Sans SC", "Hiragino Sans GB", system-ui, -apple-system, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  /* Type scale: 12 13 15 16 18 20 28 34 56 (D76). */
   --xs: 12px;
   --sm: 13px;
   --md: 15px;
-  --lg: 17px;
-  --partner: 17px;
+  --body: 16px; /* the user's bubble, the composer */
+  --lg: 18px;
+  --partner: 18px;
+  --t20: 20px;
+  --t28: 28px;
+  --t34: 34px;
+  --lh-read: 1.55;
+  --lh-voice: 1.65;
 
   /* One 4-pt spacing scale and one radius scale (same as the desktop's tokens). */
   --s1: 4px;
@@ -67,42 +100,54 @@
   --s5: 24px;
   --s6: 32px;
   --s7: 48px;
-  --r-xs: 8px; /* chips, glyph tiles */
-  --r-sm: 12px; /* buttons, fields */
-  --r-md: 16px; /* sheets, inset cards */
-  --r-lg: 22px; /* cards */
+  --r-xs: 8px; /* inline code */
+  --r-sm: 12px; /* small buttons, fields */
+  --r-btn: 14px; /* buttons */
+  --r-md: 16px; /* sheets, notices, the segmented track */
+  --r-btn-lg: 18px;
+  --r-lg: 24px; /* cards */
   --r-xl: 28px; /* hero cards, the composer */
   --pill: 999px;
   --bubble: 22px 22px 8px 22px;
-  --pebble: 6px 7px 5px 6px;
 
   --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --t-press: 70ms;
   --t-fast: 120ms;
   --t-med: 320ms;
 
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
+/* Chinese reads looser and keeps its own rules (D78). */
+:root:lang(zh) {
+  --lh-read: 1.75;
+  --lh-voice: 1.75;
+}
 
 /* Pebble dark: Pebble shapes and motion on Midnight-like surfaces (ui.md token schema, mode). */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #17120e;
+    --bg-deep: #120e0b;
     --surface: #231c16;
+    --sunken: #1d1712;
     --surface-raised: #2a221b;
     --surface-sunken: #1d1712;
     --ink: #f6ebdd;
     --ink-soft: #dccbb6;
     --ink-muted: #a8957e;
+    --faint: #5a4c3e;
     --user-bubble: #f6ebdd;
     --on-user-bubble: #2b2118;
     --line: #3a3027;
+    --line-2: #0d0a07;
     --line-soft: #2c241d;
     --highlight: #5a4512;
     --highlight-ink: #ffe9a8;
     --needs-surface: #3d2414;
     --needs-ink: #ffc39b;
+    --needs-ledge: #24150b;
     --working-surface: #15283a;
     --working-ink: #a9d6fb;
     --waiting-surface: #362b0e;
@@ -111,28 +156,38 @@
     --done-ink: #a6ecbb;
     --failed-surface: #3a1621;
     --failed-ink: #f8a9bc;
-    --raised: 0 2px 10px rgba(0, 0, 0, 0.35);
+    --base: 0 4px 0 #0d0a07;
     --floating: 0 10px 32px rgba(0, 0, 0, 0.5);
     --press-primary: #8a7a66;
     --press-quiet: #0d0a07;
+    --hi-primary: rgba(255, 255, 255, 0.35);
+    --hi-secondary: rgba(255, 255, 255, 0.06);
+    --rim: rgba(255, 255, 255, 0.06);
+    --drop: 0 7px 12px -4px rgba(0, 0, 0, 0.5);
+    --drop-pressed: 0 1px 3px rgba(0, 0, 0, 0.4);
   }
 }
 :root[data-theme="dark"] {
   --bg: #17120e;
+  --bg-deep: #120e0b;
   --surface: #231c16;
+  --sunken: #1d1712;
   --surface-raised: #2a221b;
   --surface-sunken: #1d1712;
   --ink: #f6ebdd;
   --ink-soft: #dccbb6;
   --ink-muted: #a8957e;
+  --faint: #5a4c3e;
   --user-bubble: #f6ebdd;
   --on-user-bubble: #2b2118;
   --line: #3a3027;
+  --line-2: #0d0a07;
   --line-soft: #2c241d;
   --highlight: #5a4512;
   --highlight-ink: #ffe9a8;
   --needs-surface: #3d2414;
   --needs-ink: #ffc39b;
+  --needs-ledge: #24150b;
   --working-surface: #15283a;
   --working-ink: #a9d6fb;
   --waiting-surface: #362b0e;
@@ -141,10 +196,15 @@
   --done-ink: #a6ecbb;
   --failed-surface: #3a1621;
   --failed-ink: #f8a9bc;
-  --raised: 0 2px 10px rgba(0, 0, 0, 0.35);
+  --base: 0 4px 0 #0d0a07;
   --floating: 0 10px 32px rgba(0, 0, 0, 0.5);
   --press-primary: #8a7a66;
   --press-quiet: #0d0a07;
+  --hi-primary: rgba(255, 255, 255, 0.35);
+  --hi-secondary: rgba(255, 255, 255, 0.06);
+  --rim: rgba(255, 255, 255, 0.06);
+  --drop: 0 7px 12px -4px rgba(0, 0, 0, 0.5);
+  --drop-pressed: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
 * {
@@ -158,6 +218,8 @@ body {
   color: var(--ink);
   font-family: var(--font);
   font-size: var(--md);
+  line-height: var(--lh-read);
+  -webkit-font-smoothing: antialiased;
   -webkit-text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: none;
@@ -167,6 +229,43 @@ input,
 textarea {
   font: inherit;
   color: inherit;
+}
+/* Chinese typography (D78): kinsoku at line start and end, compressed adjacent punctuation, a
+   1/4-em gap between CJK and Latin or digits (where the browser can't, autospace.ts inserts a
+   U+2005 at display time), and no tracking on CJK. */
+:lang(zh) {
+  line-break: strict;
+  text-spacing-trim: normal;
+  text-autospace: normal;
+}
+/* Titles and asks: 800, rounded CJK (D78), Latin tightened, CJK never. */
+.top .name,
+.living h2,
+.decision .q,
+.ask .q,
+.hello h1,
+.page-title,
+.task-head h1,
+.task-head .headline,
+.sec-title,
+.sheet h2,
+.pairing h1 {
+  font-family: var(--head);
+  font-weight: 800;
+  text-wrap: balance;
+}
+:lang(zh) .top .name,
+:lang(zh) .living h2,
+:lang(zh) .decision .q,
+:lang(zh) .ask .q,
+:lang(zh) .hello h1,
+:lang(zh) .page-title,
+:lang(zh) .task-head h1,
+:lang(zh) .task-head .headline,
+:lang(zh) .sec-title,
+:lang(zh) .sheet h2,
+:lang(zh) .pairing h1 {
+  letter-spacing: 0;
 }
 button {
   cursor: pointer;
@@ -178,8 +277,8 @@ a {
   color: inherit;
 }
 :focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
 }
 .sr {
   position: absolute;
@@ -217,14 +316,14 @@ a {
   text-align: left;
 }
 .top .name {
-  font-size: 19px;
-  font-weight: 800;
+  font-size: var(--t20);
   letter-spacing: -0.3px;
+  line-height: 1.15;
 }
 .top .sum {
   font-size: var(--sm);
   color: var(--ink-muted);
-  line-height: 1.35;
+  line-height: 1.4;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -238,47 +337,78 @@ a {
   min-height: 44px;
   padding-right: 8px;
 }
+ /* The clay partner (D76, D77): it breathes (3.8 s, from its feet) and the idle face blinks
+   (an eyelid over each eye, 150 ms, every 3-6 s). Status never animates; reduced motion stills
+   it all. Faces cross-fade on a change of state, standing on the box's bottom edge. */
 .avatar {
   position: relative;
   display: inline-block;
   flex-shrink: 0;
 }
-.avatar img {
+.avatar > * {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+  left: 0;
+  right: 0;
+  bottom: 0;
   opacity: 0;
   transition: opacity 400ms var(--ease);
 }
-.avatar img.on {
+.avatar > .on {
   opacity: 1;
 }
+.avatar > img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: 50% 100%;
+}
+.avatar .idle {
+  aspect-ratio: 360 / 324;
+}
+.avatar .idle img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.breathe {
+  transform-origin: 50% 100%;
+  animation: breathe 3.8s ease-in-out infinite;
+}
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  50% {
+    transform: scale(1.012, 1.03);
+  }
+}
+/* Positions relative to the bbox-cropped idle art (design/art/assets/alpha/ducter_idle). */
+.lid {
+  position: absolute;
+  border-radius: 50%;
+  transform: scaleY(0);
+  transform-origin: 50% 0;
+}
+.lid.l {
+  left: 34.6%;
+  top: 24.8%;
+  width: 10.8%;
+  height: 26.2%;
+  background: linear-gradient(90deg, #f4a065, #f19562);
+}
+.lid.r {
+  left: 62.1%;
+  top: 24.3%;
+  width: 10.6%;
+  height: 26.4%;
+  background: linear-gradient(90deg, #e17938, #cb6026);
+}
 
-.onhand-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 44px;
-  padding: 0 12px 0 10px;
-  border-radius: 16px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  box-shadow: 0 var(--ledge) 0 var(--press-quiet);
-  font-weight: 700;
-  flex-shrink: 0;
-  transition: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
-}
-.press:active,
-.onhand-btn:active {
-  transform: translateY(var(--ledge));
-  box-shadow: 0 0 0 transparent;
-}
 .conn {
   margin: 0 16px 6px;
   padding: 8px 12px;
-  border-radius: var(--r-sm);
+  border-radius: var(--r-md);
   background: var(--waiting-surface);
   color: var(--waiting-ink);
   font-size: var(--sm);
@@ -303,19 +433,22 @@ a {
   max-width: 82%;
   background: var(--user-bubble);
   color: var(--on-user-bubble);
-  padding: 11px 15px;
+  padding: 12px 16px;
   border-radius: var(--bubble);
-  font-size: 16px;
-  line-height: 1.55;
+  font-size: var(--body);
+  line-height: 1.6;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 .user.pending {
   opacity: 0.65;
 }
+:lang(zh) .user {
+  line-height: 1.75;
+}
 .partner {
   font-size: var(--partner);
-  line-height: 1.6;
+  line-height: var(--lh-voice);
   max-width: 94%;
   overflow-wrap: anywhere;
 }
@@ -333,8 +466,8 @@ a {
 .partner code {
   font-family: var(--mono);
   font-size: 0.86em;
-  background: var(--surface-sunken);
-  padding: 1px 5px;
+  background: var(--sunken);
+  padding: 1px 0.3em;
   border-radius: 6px;
   white-space: nowrap; /* short tokens never break mid-word */
 }
@@ -344,8 +477,9 @@ a {
 }
 .partner pre {
   font-family: var(--mono);
-  font-size: 12.5px;
-  background: var(--surface-sunken);
+  font-size: var(--sm);
+  line-height: 1.6;
+  background: var(--sunken);
   padding: 10px 12px;
   border-radius: 12px;
   overflow-x: auto;
@@ -420,6 +554,11 @@ a {
 .mk svg {
   flex-shrink: 0;
 }
+/* A passed check's mark is a drawn ✓ in the done ink, never on a tile (D76). */
+.mk .ok {
+  display: inline-flex;
+  color: var(--done-ink);
+}
 .qlink {
   font-size: var(--sm);
   font-weight: 700;
@@ -444,44 +583,98 @@ a {
 }
 
 /* ---------- buttons ---------- */
+/* One clay family (D76): primary (ink), secondary (cream on a rim), accent (orange), text
+   (flat), icon (a square of any). Heights 36 / 44 / 52, radius 12 / 14 / 18. */
 .btn {
+  --fill: var(--bg);
+  --on: var(--ink);
+  --ledge-c: var(--press-quiet);
+  --hi: var(--hi-secondary);
+  --rim-c: var(--rim);
+  --lh: var(--ledge);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 44px;
-  padding: 0 18px;
-  border-radius: var(--r-sm);
+  gap: 8px;
+  height: 44px;
+  min-width: 0;
+  padding: 0 20px;
+  border-radius: var(--r-btn);
+  background: var(--fill);
+  color: var(--on);
   font-weight: 700;
   font-size: var(--md);
-  transition: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+  line-height: 1.2;
   white-space: nowrap;
+  box-shadow: inset 0 1.5px 0 var(--hi), inset 0 0 0 1px var(--rim-c), 0 var(--lh) 0 var(--ledge-c), var(--drop);
+  transition: transform var(--t-press) var(--ease), box-shadow var(--t-press) var(--ease), filter var(--t-fast) var(--ease);
+}
+.btn > .lbl {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .btn.primary {
-  background: var(--ink);
-  color: var(--bg);
-  box-shadow: 0 var(--ledge) 0 var(--press-primary);
+  --fill: var(--ink);
+  --on: var(--bg);
+  --ledge-c: var(--press-primary);
+  --hi: var(--hi-primary);
+  --rim-c: transparent;
 }
-.btn.quiet {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  box-shadow: 0 var(--ledge) 0 var(--press-quiet);
+.btn.secondary {
+  --fill: var(--bg);
+  --ledge-c: var(--press-quiet);
 }
 .btn.accent {
-  background: var(--accent);
-  color: var(--on-accent);
-  box-shadow: 0 var(--ledge) 0 var(--press-accent);
+  --fill: var(--accent);
+  --on: var(--on-accent);
+  --ledge-c: var(--press-accent);
+  --hi: var(--hi-accent);
+  --rim-c: transparent;
+}
+.btn.sm {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: var(--r-sm);
+  font-size: var(--sm);
+}
+.btn.lg {
+  height: 52px;
+  padding: 0 24px;
+  border-radius: var(--r-btn-lg);
+  font-size: var(--body);
+  --lh: 4px;
+}
+.btn.icon {
+  width: 44px;
+  padding: 0;
 }
 .btn.text {
-  padding: 0 10px;
+  height: 44px;
+  padding: 0 12px;
+  border-radius: var(--r-sm);
   color: var(--ink-soft);
+  background: transparent;
+  box-shadow: none;
+}
+.btn.text.sm {
+  height: 36px;
+  padding: 0 10px;
 }
 .btn:active:not(:disabled):not(.text) {
-  transform: translateY(var(--ledge));
-  box-shadow: 0 0 0 transparent;
+  transform: translateY(var(--lh));
+  box-shadow: inset 0 1.5px 0 var(--hi), inset 0 0 0 1px var(--rim-c), 0 0 0 var(--ledge-c), var(--drop-pressed);
+}
+@media (hover: hover) {
+  .btn:hover:not(:disabled):not(.text) {
+    filter: brightness(1.04);
+  }
+  .btn.primary:hover:not(:disabled) {
+    filter: brightness(1.25);
+  }
 }
 .btn.text:active:not(:disabled),
 .btn.text:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--ink) 7%, transparent); /* flat: a soft tint only */
+  background: color-mix(in srgb, var(--ink) 6%, transparent); /* flat: a soft tint only */
 }
 .btn:disabled {
   opacity: 0.5;
@@ -489,19 +682,41 @@ a {
 .btns {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
 }
 .btns .grow {
   flex: 1;
+}
+/* A decision's row: Reply… · Hold · Go, primary last. When the Go action is long, Reply… (a
+   flat text button) drops to its own line under the pair instead of splitting it; Go's own
+   words only shorten when even Hold and Go alone can't share a line. */
+.btns.decide {
+  flex-wrap: wrap-reverse;
+  gap: 10px 12px;
+}
+.btns.decide .pair {
+  display: flex;
+  gap: 12px;
+  min-width: 0;
+  max-width: 100%;
+}
+.btns.decide .pair .btn.secondary {
+  flex-shrink: 0;
+}
+.btns.decide .pair .btn.primary {
+  flex: 0 1 auto;
+}
+.btns.decide > .btn.text {
+  margin-left: -12px;
 }
 
 /* ---------- living message and decisions ---------- */
 .living {
   background: var(--surface);
   border-radius: var(--r-xl);
-  box-shadow: var(--raised);
-  padding: 18px 16px;
+  box-shadow: var(--base);
+  padding: 20px 16px;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -509,9 +724,9 @@ a {
 }
 .living h2 {
   margin: 0 2px;
-  font-size: 20px;
-  font-weight: 800;
+  font-size: var(--t20);
   letter-spacing: -0.2px;
+  line-height: 1.3;
 }
 /* The count once, with Go on all defaults at its end. */
 .needs-head {
@@ -521,21 +736,20 @@ a {
   min-height: 36px;
   margin: 0 2px -4px;
   font-size: var(--sm);
-  font-weight: 800;
+  font-weight: 700;
   color: var(--needs-ink);
 }
 .needs-head > span {
   flex: 1;
 }
 .needs-head .btn {
-  min-height: 36px;
-  font-size: var(--sm);
   margin-right: -10px;
 }
 .decision {
   background: var(--needs-surface);
-  border-radius: 22px;
-  padding: 16px;
+  border-radius: var(--r-lg);
+  box-shadow: 0 4px 0 var(--needs-ledge);
+  padding: 18px 18px 20px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -546,7 +760,7 @@ a {
 }
 .decision .asker {
   align-self: flex-start;
-  font-size: var(--xs);
+  font-size: var(--sm);
   font-weight: 700;
   color: var(--needs-ink);
   text-align: left;
@@ -556,17 +770,26 @@ a {
   text-decoration: underline;
 }
 .decision .q {
-  font-size: var(--lg);
-  line-height: 1.5;
-  font-weight: 500;
+  font-size: var(--t20);
+  line-height: 1.35;
+  letter-spacing: -0.2px;
+}
+:lang(zh) .decision .q {
+  line-height: 1.45;
 }
 .decision .dl {
   font-size: var(--sm);
   color: var(--needs-ink);
   line-height: 1.45;
 }
-.decision .btn.quiet {
-  background: var(--surface);
+/* Secondary on a tinted card: white, standing on the card's own ledge color, no rim. */
+.decision .btn.secondary {
+  --fill: var(--surface);
+  --rim-c: transparent;
+  --ledge-c: var(--needs-ledge);
+}
+.decision .btn.text {
+  color: var(--needs-ink);
 }
 .countdown {
   height: 4px;
@@ -603,8 +826,8 @@ a {
   display: flex;
   gap: 8px;
   align-items: flex-end;
-  padding: 4px 4px 4px 14px;
-  border-radius: 16px;
+  padding: 6px 6px 6px 14px;
+  border-radius: var(--r-md);
   background: var(--surface);
 }
 .reply textarea {
@@ -613,7 +836,8 @@ a {
   background: transparent;
   resize: none;
   padding: 10px 0;
-  font-size: 16px;
+  font-size: var(--body);
+  line-height: 1.45;
   outline: none;
   max-height: 120px;
 }
@@ -659,8 +883,8 @@ a {
   gap: 8px;
   align-items: center;
   padding: 10px 12px;
-  margin-bottom: 8px;
-  border-radius: var(--r-sm);
+  margin-bottom: 10px;
+  border-radius: var(--r-md);
   background: var(--failed-surface);
   color: var(--failed-ink);
   font-size: var(--sm);
@@ -671,41 +895,32 @@ a {
 }
 .composer {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   align-items: flex-end;
-  padding: 6px 6px 6px 16px;
-  border-radius: var(--r-lg);
+  padding: 7px 7px 7px 18px;
+  margin-bottom: 4px;
+  border-radius: var(--r-xl);
   background: var(--surface);
-  box-shadow: var(--raised);
+  box-shadow: var(--base);
 }
 .composer textarea {
   flex: 1;
   border: 0;
   background: transparent;
   resize: none;
-  font-size: 16px; /* 16px keeps iOS from zooming on focus */
+  font-size: var(--body); /* 16px keeps iOS from zooming on focus */
   line-height: 1.45;
   padding: 10px 0;
   outline: none;
   max-height: 140px;
   min-width: 0;
 }
-.send {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--r-sm);
-  background: var(--accent);
-  color: var(--on-accent);
-  box-shadow: 0 var(--ledge) 0 var(--press-accent);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+.composer textarea::placeholder,
+.reply textarea::placeholder {
+  color: var(--ink-muted);
 }
-.send:active {
-  transform: translateY(var(--ledge));
-  box-shadow: none;
+.send {
+  flex-shrink: 0;
 }
 .send:disabled {
   opacity: 0.45;
@@ -724,15 +939,15 @@ a {
 }
 .hello h1 {
   margin: 0;
-  font-size: 24px;
-  font-weight: 800;
-  letter-spacing: -0.3px;
+  font-size: var(--t28);
+  letter-spacing: -0.4px;
+  line-height: 1.2;
 }
 .hello p {
   margin: 0;
   color: var(--ink-soft);
   font-size: var(--lg);
-  line-height: 1.55;
+  line-height: var(--lh-voice);
 }
 .hello .try {
   align-self: stretch;
@@ -743,38 +958,36 @@ a {
   text-align: left;
 }
 .hello .try .label {
-  font-size: var(--xs);
-  font-weight: 800;
+  font-size: var(--sm);
+  font-weight: 700;
   color: var(--ink-muted);
 }
-.suggest {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 13px 15px;
-  border-radius: var(--r-sm);
-  background: var(--surface);
-  border: 1px solid var(--line);
-  box-shadow: 0 var(--ledge) 0 var(--press-quiet);
+.suggest.btn {
+  justify-content: flex-start;
+  height: auto;
+  min-height: 52px;
+  padding: 12px 18px;
+  border-radius: var(--r-btn-lg);
   font-size: var(--md);
+  white-space: normal;
   text-align: left;
-  transition: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+  line-height: var(--lh-read);
+  --lh: 4px;
 }
 
 /* ---------- ask cards (notifications) ---------- */
 .ask {
   background: var(--surface);
   border-radius: var(--r-lg);
-  box-shadow: var(--raised);
-  padding: 16px;
+  box-shadow: var(--base);
+  padding: 18px 18px 20px;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 .ask .q {
-  font-size: var(--lg);
-  line-height: 1.45;
-  font-weight: 600;
+  font-size: var(--t20);
+  line-height: 1.35;
 }
 .ask .note {
   font-size: var(--sm);
@@ -786,9 +999,8 @@ a {
   color: var(--ink-muted);
   line-height: 1.5;
   padding: 10px 12px;
-  border-radius: var(--r-sm);
-  background: var(--surface-raised);
-  border: 1px dashed var(--line);
+  border-radius: var(--r-md);
+  background: var(--sunken);
 }
 
 /* ---------- On hand ---------- */
@@ -798,16 +1010,16 @@ a {
   gap: 10px;
 }
 .page-title {
-  margin: 0 2px;
-  font-size: 26px;
-  font-weight: 800;
-  letter-spacing: -0.3px;
+  margin: 4px 2px 0;
+  font-size: var(--t34);
+  letter-spacing: -0.5px;
+  line-height: 1.15;
 }
 .section h3 {
-  margin: 4px 2px 0;
-  font-size: var(--xs);
-  font-weight: 800;
-  letter-spacing: 0.5px;
+  margin: 8px 2px 0;
+  min-height: 36px;
+  font-size: var(--sm);
+  font-weight: 700;
   color: var(--ink-muted);
   display: flex;
   gap: 8px;
@@ -818,7 +1030,7 @@ a {
 }
 .calm {
   font-size: var(--lg);
-  line-height: 1.55;
+  line-height: var(--lh-voice);
   color: var(--ink-soft);
   padding: 4px 2px;
 }
@@ -826,16 +1038,19 @@ a {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 14px;
-  border-radius: var(--r-sm);
+  padding: 14px 16px 14px 18px;
+  border-radius: var(--r-lg);
   background: var(--surface);
+  box-shadow: var(--base);
   text-align: left;
   width: 100%;
-  min-height: 56px;
+  min-height: 64px;
 }
+/* Waiting is the one lane drawn as an outline (shape, not only hue): no base under it. */
 .row.waiting {
   background: transparent;
-  border: 2px dashed var(--line);
+  box-shadow: none;
+  border: 2px dashed var(--line-2);
 }
 .row .main {
   flex: 1;
@@ -845,6 +1060,7 @@ a {
   gap: 2px;
 }
 .row .t {
+  font-size: var(--body);
   font-weight: 700;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -866,25 +1082,49 @@ a {
   gap: 20px;
 }
 .task-head {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 6px 16px;
+  align-items: center;
+}
+.task-head .face {
+  grid-row: span 2;
+  align-self: end;
+}
+.task-head .head-words {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
+  min-width: 0;
 }
 .task-head h1 {
   margin: 0;
-  font-size: 24px;
-  font-weight: 800;
-  letter-spacing: -0.3px;
-  line-height: 1.25;
+  font-size: var(--t20);
+  letter-spacing: -0.2px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+/* The outcome, said once (D74): its first sentence big, the rest in the partner's voice. */
+.task-head .headline {
+  grid-column: 1 / -1;
+  margin: 8px 0 0;
+  font-size: var(--t28);
+  letter-spacing: -0.4px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+:lang(zh) .task-head .headline {
+  line-height: 1.3;
 }
 /* Where it stands, in words in the state's ink: no capsule. */
 .standing {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px 6px;
-  font-size: var(--md);
-  color: var(--ink-soft);
+  gap: 2px 6px;
+  font-size: var(--sm);
+  line-height: 1.45;
+  color: var(--ink-muted);
 }
 .standing b {
   font-weight: 800;
@@ -922,15 +1162,16 @@ a {
 }
 .outcome .said {
   font-size: var(--partner);
-  line-height: 1.6;
+  line-height: var(--lh-voice);
+  color: var(--ink-soft);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 .sec-title {
   margin: 0 2px;
-  font-size: 20px;
-  font-weight: 800;
+  font-size: var(--t20);
   letter-spacing: -0.2px;
+  line-height: 1.3;
 }
 .meta {
   font-size: var(--sm);
@@ -944,7 +1185,7 @@ a {
 }
 .tx {
   font-size: var(--md);
-  line-height: 1.55;
+  line-height: var(--lh-read);
   overflow-wrap: anywhere;
 }
 .tx.assistant {
@@ -970,7 +1211,7 @@ a {
 }
 .tx.failed code {
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: var(--xs);
   color: var(--ink-soft);
   padding-left: 19px;
 }
@@ -979,8 +1220,8 @@ a {
   max-width: 85%;
   background: var(--user-bubble);
   color: var(--on-user-bubble);
-  padding: 8px 12px;
-  border-radius: 16px 16px 6px 16px;
+  padding: 10px 14px;
+  border-radius: 18px 18px 6px 18px;
   white-space: pre-wrap;
 }
 .tx.you small {
@@ -1014,7 +1255,7 @@ a {
 }
 .fold .tool {
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: var(--xs);
   color: var(--ink-soft);
   padding-left: 16px;
   overflow-wrap: anywhere;
@@ -1041,7 +1282,7 @@ a {
 .kv code {
   display: block;
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: var(--xs);
 }
 
 /* ---------- sheets, toasts, pairing ---------- */
@@ -1063,7 +1304,7 @@ a {
   background: var(--bg);
   border-radius: var(--r-xl) var(--r-xl) 0 0;
   box-shadow: var(--floating);
-  padding: 10px 16px calc(var(--safe-bottom) + 16px);
+  padding: 10px 16px calc(var(--safe-bottom) + 20px);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -1085,17 +1326,19 @@ a {
 }
 .sheet h2 {
   margin: 0;
-  font-size: 19px;
-  font-weight: 800;
+  font-size: var(--t20);
+  line-height: 1.3;
 }
 .switch {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 14px;
-  border-radius: var(--r-sm);
+  padding: 12px 16px;
+  border-radius: var(--r-md);
   background: var(--surface);
+  box-shadow: var(--base);
   min-height: 52px;
+  margin-bottom: 4px;
 }
 .switch span {
   flex: 1;
@@ -1124,11 +1367,12 @@ a {
   min-width: 0;
   height: 44px;
   padding: 0 var(--s3);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-2);
   border-radius: var(--r-sm);
   background: var(--surface);
   color: var(--ink);
   font: inherit;
+  font-family: var(--head);
   font-size: var(--lg);
   font-weight: 800;
 }
@@ -1138,37 +1382,41 @@ a {
   gap: var(--s2);
 }
 .set h3 {
-  margin: var(--s2) 2px 0;
-  font-size: var(--xs);
-  font-weight: 800;
+  margin: var(--s3) 2px 0;
+  font-size: var(--sm);
+  font-weight: 700;
   color: var(--ink-muted);
 }
 .set .sub,
 .set .more {
   margin: var(--s1) 2px 0;
 }
+/* Choices: a segmented clay control (D76). A sunken track; the chosen one a white surface on a
+   2px base, the others muted. */
 .seg {
   display: flex;
-  gap: 2px;
-  padding: 3px;
-  border-radius: var(--r-sm);
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--r-md);
   background: var(--surface-sunken);
 }
 .seg button {
   flex: 1;
-  min-height: 38px;
+  min-width: 0;
+  height: 40px;
   padding: 0 var(--s2);
-  border-radius: 9px;
+  border-radius: var(--r-sm);
   font-size: var(--sm);
-  font-weight: 700;
-  color: var(--ink-soft);
+  font-weight: 500;
+  color: var(--ink-muted);
   white-space: nowrap;
+  transition: background var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
 }
 .seg button.on {
   background: var(--surface);
   color: var(--ink);
-  font-weight: 800;
-  box-shadow: inset 0 0 0 1.5px var(--ink);
+  font-weight: 700;
+  box-shadow: 0 2px 0 var(--line-2);
 }
 .quiet-range {
   display: flex;
@@ -1183,7 +1431,7 @@ a {
   min-width: 0;
   height: 44px;
   padding: 0 var(--s3);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-2);
   border-radius: var(--r-sm);
   background: var(--surface);
   color: var(--ink);
@@ -1193,8 +1441,10 @@ a {
 .noted {
   display: flex;
   flex-direction: column;
-  border-radius: var(--r-sm);
+  border-radius: var(--r-md);
   background: var(--surface);
+  box-shadow: var(--base);
+  margin-bottom: 4px;
 }
 .noted-row {
   display: flex;
@@ -1230,8 +1480,9 @@ a {
   max-width: 100%;
   background: var(--ink);
   color: var(--bg);
-  padding: 10px 14px;
-  border-radius: 14px;
+  padding: 10px 16px;
+  border-radius: var(--r-md);
+  box-shadow: 0 4px 0 #000;
   font-size: var(--sm);
   font-weight: 700;
   display: flex;
@@ -1256,18 +1507,19 @@ a {
 }
 .pairing h1 {
   margin: 0;
-  font-size: 24px;
-  font-weight: 800;
+  font-size: var(--t28);
+  line-height: 1.2;
   text-align: center;
 }
 .pairing p {
   margin: 0;
   color: var(--ink-soft);
-  line-height: 1.55;
+  line-height: var(--lh-read);
 }
 .pairing code {
   font-family: var(--mono);
-  background: var(--surface-sunken);
+  font-size: 0.86em;
+  background: var(--sunken);
   padding: 1px 6px;
   border-radius: 6px;
 }
@@ -1277,14 +1529,14 @@ a {
   gap: 6px;
 }
 .field label {
-  font-size: var(--xs);
-  font-weight: 800;
+  font-size: var(--sm);
+  font-weight: 700;
   color: var(--ink-muted);
 }
 .field input {
   height: 52px;
   border-radius: var(--r-sm);
-  border: 2px solid var(--line);
+  border: 2px solid var(--line-2);
   background: var(--surface);
   padding: 0 14px;
   font-size: 20px;
@@ -1296,7 +1548,7 @@ a {
   color: var(--failed-ink);
   background: var(--failed-surface);
   padding: 10px 12px;
-  border-radius: var(--r-sm);
+  border-radius: var(--r-md);
   font-size: var(--sm);
   font-weight: 700;
   line-height: 1.5;

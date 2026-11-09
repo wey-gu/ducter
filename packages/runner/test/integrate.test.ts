@@ -25,6 +25,10 @@ const sh = (cwd: string, ...args: string[]) => Bun.spawnSync(["git", "-C", cwd, 
 function repoWithTaskBranch(): Extract<Place, { kind: "repo" }> {
   const repo = join(dir, "repo");
   Bun.spawnSync(["git", "init", "-q", "-b", "main", repo]);
+  // The merge runs through the product's own git, which reads the repo's identity: a CI machine
+  // has no global user.name and no account name to guess one from ("empty ident name").
+  sh(repo, "config", "user.name", "t");
+  sh(repo, "config", "user.email", "t@t");
   writeFileSync(join(repo, "a.txt"), "a\n");
   sh(repo, "add", ".");
   sh(repo, "commit", "-qm", "init");
@@ -183,7 +187,13 @@ test("a task with an open question cannot report done; undrop restores the card"
 });
 
 async function bootWithTask(place: Place, opts: { gh?: string; branchChecks?: boolean } = {}) {
-  const core: Core = startCore({ dataDir: join(dir, "data"), port: 0 });
+  // A fake device with Claude Code signed in: who does the task never depends on which agents
+  // are installed on the machine running the tests (a CI runner has none).
+  const core: Core = startCore({
+    dataDir: join(dir, "data"),
+    port: 0,
+    deviceProbes: { cua: async () => ({ missing: "test" }), harnesses: async () => [{ harness: "claude-code", installed: true, loggedIn: true, canBePartner: true }], kind: async () => "laptop" },
+  });
   core.setPartner({ onTrigger: () => {} });
   let late: ReturnType<typeof createRunner> | undefined;
   registerTaskTools(core, opts.branchChecks ? { branchChanges: (id) => late!.branchChanges(id) } : {});

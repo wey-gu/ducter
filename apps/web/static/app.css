@@ -1710,3 +1710,17 @@ a {
   height: 22px;
   accent-color: var(--accent);
 }
+/* A quiet link inside a line of Details (Switch who does it): words, no button shape. */
+.inline-link {
+  display: block;
+  margin-top: var(--s1);
+  padding: 0;
+  font-size: var(--sm);
+  font-weight: 700;
+  color: var(--ink-soft);
+  text-align: left;
+}
+.inline-link:hover {
+  color: var(--ink);
+  text-decoration: underline;
+}

@@ -916,3 +916,34 @@ func (a *App) switchSheet(c *ui.Context, task *store.Task) {
 		})
 	})
 }
+
+// whoSentence is who does a task and why, as one sentence for Details:
+// "Codex is doing it, because Claude Code's limit is low."
+func (a *App) whoSentence(task *store.Task) string {
+	who := a.bodyLine(task)
+	if who == "" {
+		return ""
+	}
+	w := task.Who()
+	if w == nil {
+		return a.L.T("who.sentence", who)
+	}
+	switch w.Why.Kind {
+	case "rule":
+		if w.Why.Text != "" {
+			return a.L.T("who.sentence.rule", who, w.Why.Text)
+		}
+	case "limit":
+		if w.Why.RuleID != "" {
+			return a.L.T("who.sentence.limit.rule", who, harnessName(w.Why.From))
+		}
+		if w.Why.From != "" {
+			return a.L.T("who.sentence.limit", who, harnessName(w.Why.From))
+		}
+	case "you":
+		return a.L.T("who.sentence.you", who)
+	case "default":
+		return a.L.T("who.sentence.default", who, a.S.PersonaName)
+	}
+	return a.L.T("who.sentence", who)
+}

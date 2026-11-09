@@ -1023,6 +1023,19 @@ function WhatItDid({ task }: { task: Task }) {
 
 /** A quiet disclosure at the bottom: who is doing it, where (repo and branch), saved progress,
  *  what went out. A row with nothing to say is left out. */
+/** Who does a task and why, as one sentence for Details (D89). */
+function whoSentence(task: Task): string {
+  const who = whoLine(task)[0];
+  if (!who) return "";
+  const w = whoOf(task)?.why;
+  if (w?.kind === "rule" && w.text) return t("who.sentence.rule", who, w.text);
+  if (w?.kind === "limit" && w.ruleId) return t("who.sentence.limit.rule", who, harnessName(w.from ?? ""));
+  if (w?.kind === "limit" && w.from) return t("who.sentence.limit", who, harnessName(w.from));
+  if (w?.kind === "you") return t("who.sentence.you", who);
+  if (w?.kind === "default") return t("who.sentence.default", who, A.S.personaName);
+  return t("who.sentence", who);
+}
+
 /** Who does a task, in words ("Codex · gpt-5"), and why when it isn't Ducter's plain pick (D89). */
 function whoLine(task: Task): [string, string] {
   const m = modelOf(task);
@@ -1084,8 +1097,7 @@ function SwitchList({ task }: { task: Task }) {
 
 function TaskDetails({ task }: { task: Task }) {
   const [open, setOpen] = useState(false);
-  const [whoName, whyLine] = whoLine(task);
-  const who = [whoName, whyLine].filter(Boolean).join(" · ");
+  const who = whoSentence(task);
   const why = bodyReasonOf(task);
   const canSwitch = !!harnessOf(task) && !["dropped", "superseded"].includes(attention(task));
   const where = placeLine(A.L, placeOf(task));
@@ -1104,7 +1116,11 @@ function TaskDetails({ task }: { task: Task }) {
               <dd>
                 {who}
                 {why && <div>{why}</div>}
-                {canSwitch && <Btn kind="text" size="sm" label={t("who.switch")} about={title(task)} onClick={() => A.openSwitch(task.id)} />}
+                {canSwitch && (
+                  <button class="inline-link" aria-expanded={A.switchFor === task.id} onClick={() => A.openSwitch(task.id)}>
+                    {t("who.switch")} ›
+                  </button>
+                )}
               </dd>
             </>
           )}
@@ -1175,6 +1191,7 @@ export function TaskView({ id }: { id: string }) {
               <StateMark a={a} />
               <b>{stateLabel(a)}</b>
               {task.openedAt && <span class="when">· {t("task.opened", ago(A.L, task.openedAt))}</span>}
+              {!finished(task) && whoLine(task)[0] && <span class="when">· {whoLine(task)[0]}</span>}
             </div>
             <h1>{title(task) || t("task.unknown")}</h1>
           </div>

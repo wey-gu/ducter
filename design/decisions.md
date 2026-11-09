@@ -125,6 +125,12 @@ approved all five proposals ("按照建议来吧").
 | D78 | **Chinese has its own typography.** zh headings (≥ 20, where Latin is 800) use **Resource Han Rounded CN Bold** (源樣圓體, OFL 1.1; rounded terminals match the clay, Bold matches Bricolage 800's color), at 94% (`size-adjust`; native clients set zh heading sizes one step down: 34→32, 28→26, 20→19); fallback Noto Sans SC 800. Shipped as a subset (GB2312 level 1 plus every Chinese character in the apps’ strings: a 1.8 MB TTF for the desktop, a 0.7 MB woff2 for the web and site, within D75’s 2 MB); a glyph outside it falls back to Noto Sans SC 800. zh body is Noto Sans SC (PingFang SC on Apple), controls 700. Rules: CJK letter-spacing is always 0 (Latin tightening applies to Latin only); zh reading line-height 1.75 (Latin 1.55–1.65); a 1/4-em gap between CJK and Latin or digits (written into copy; `text-autospace` or an inserted U+2005 for dynamic text at display time, never in copied text); line-start kinsoku for 。，、？！）」 and line-end for （「 (`line-break: strict`); adjacent punctuation compressed (`text-spacing-trim`); inline code at 0.86em on the same baseline, short tokens never broken. Compared against Smiley Sans (one oblique weight, too light) and plain Noto Sans SC 800 (no character) | U ("cjk 可能要分别有独特的样式"), L | `design/ui.md` (Chinese typography) |
 | D79 | **The site's type.** Long-form body in Instrument Sans; headings in Bricolage Grotesque (zh headings per D78); the apps stay Bricolage everywhere | U | `apps/site` |
 
+## 2026-11-09: The overview's zh name (the author's "要不就叫手头的事吧")
+
+| # | Decision | Source | Reflected in |
+|---|---|---|---|
+| D80 | **The overview is 「手头的事」 in zh** (en stays On hand). 「手头」 alone reads as money at hand (手头紧) and as a fragment, not a place; 「当下」 was considered and rejected because it implies only what is happening now (done tasks, waiting decisions and next runs live here too) and reads as literary. Sentences that already say 手头没事 / 手头 n 件事 stay: they are speech, not the label. D76–D79 are taken by the brand rollout | U | `design/product-model.md`, `design/ui.md`, the desktop, phone web and CLI i18n |
+
 ## Superseded
 
 - **"Main AI asks windows instead of unfolding"** (first principle-3 draft). Superseded by D3:
@@ -164,3 +170,4 @@ approved all five proposals ("按照建议来吧").
   drop and a highlight.
 - **D69's "no perpetual alive animation"** as a rule for art. Narrowed by D77: the clay
   partner and scene may breathe; status never animates.
+- **D23's 手头 as the overview's zh label.** Superseded by D80: 手头的事.

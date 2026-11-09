@@ -145,7 +145,7 @@ func TestScenarioEndToEnd(t *testing.T) {
 	}
 	h.shot("conversation")
 
-	h.click("手头")
+	h.click("手头的事")
 	if h.app.Route != RouteOnHand {
 		t.Fatal("On hand did not open")
 	}

@@ -555,7 +555,7 @@ func (a *App) accountsCard(c *ui.Context) {
 				ps.acctToken = "" // sent once; never kept in the app
 			}
 			a.acctField(c, "acct-url", a.L.T("acct.address"), &ps.acctURL, false, submit)
-			a.acctField(c, "acct-token", a.L.T("acct.token"), &ps.acctToken, true, submit)
+			a.acctField(c, "acct-token", a.L.T("acct.key"), &ps.acctToken, true, submit)
 			ui.Row(c).Gap(t.S2).Justify(ui.End).Children(func() {
 				if a.button(c, a.L.T("acct.cancel"), btnText, t.ControlMD, t.Surface) {
 					ps.acctAdding, ps.acctToken = false, ""

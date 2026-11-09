@@ -450,6 +450,24 @@ Alternatives considered: minimise the window (hides the agent, and screenshots o
 minimised window may fail), or a Chrome theme colour (needs edits to the profile's
 Preferences).
 
+## Connections: the user's OpenConnector or other MCP servers (D96, `connectors.md`)
+
+- **Where they live.** In the control plane on the main (`packages/core/src/connections.ts`).
+  - Ducter is an MCP client to the user's OpenConnector (OOMOL Hosted or self-hosted) or to
+    any other MCP server.
+  - Provider OAuth is OpenConnector's job.
+- **The token.** It lives in `<dataDir>/connection-tokens.json` (0600). It never appears in
+  harness config, env or args, the Log, or a client frame.
+  - It is not in `<dataDir>/env`: on a server that file is the systemd `EnvironmentFile`, so its
+    keys reach every harness child.
+  - The rule for every secret: a 0600 file in the data folder, read by the code that uses it.
+- **The gate.** Read vs write comes from the server's own metadata, and unknown counts as a
+  write.
+  - Reads run and are logged as `connection_call`.
+  - A write is a partner-made Go card and runs once after Go.
+  - Tasks read only what the partner shared (`connection_share`), never write, and see the
+    tools only while a connection exists.
+
 ## Credentials and logged-in profiles (D48, research/25)
 
 The model follows the Muse pattern: the *session* (a persistent profile) is kept separate from

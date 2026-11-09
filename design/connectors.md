@@ -1,11 +1,13 @@
 # Connectors and Restrained Proactive Help (DRAFT)
 
-> Draft 1 · 2026-11-09 · Branch `connectors` · Status: **drafted, nothing decided**. Proposals
-> D96–D103 at the end wait for the author. Evidence: `research/35` (prior art, Google access,
+> Draft 2 · 2026-11-09 · Branch `connectors` · Status: **D96 decided** (connections come from
+> the user's OpenConnector through Ducter's broker); **the broker is built** (§4, as built);
+> everything about proactive work (cadence, cap, look-back, watching) is still a proposal,
+> D97–D101 at the end. Evidence: `research/35` (prior art, Google access,
 > open-connector, metaphor test). Builds on principles 7, 15, 16, 17 and 18, D43, D61 (the
 > effect ladder), D65/D81 (the devices world), routines (`product-model.md` §4) and
 > `flows/D-decisions-attention.md` D3 (quiet hours).
-> Prototype: https://claude.ai/artifact/BC1i6YEt8EKQ5VtMeCjEw8
+> Prototype: https://claude.ai/artifact/CB1xnATLKnQra2DLKeh7Rq
 > Tags: **[doc]** already decided elsewhere; **[I]** this draft's proposal.
 
 ## 1. User first
@@ -45,131 +47,136 @@ sign-in and the same first find (§6).
 | 放心 | Reads and drafts only; everything else waits for Go; the honest line about the AI account; "Left out" makes silence trustworthy |
 | 惊喜 | The first find within a minute, and joins across sources |
 
-## 2. Where connectors live
+## 2. Where connections live
 
-- **On the computer Ducter lives on (the main), inside the control plane** [I]. Not on each
-  device, and never inside a harness. Reasons:
-  - The watchers must run while every worker sleeps (principle 19: compute sleeps, state
-    doesn't).
-  - The main is where the Log, the waiters and the intents already are.
-  - A token has one home, so signing out has one meaning.
-- **Shown that way on Devices.** The mailbox stands on the main's island (D81 devices world;
-  the prototype). If Ducter lives on a VPS, the mailboxes stand on the VPS's island, and the
-  sign-in is done from the person's laptop browser through the same loopback dance over the
-  pairing connection (§7.3).
-- **Workers never hold provider tokens.** A task running on a worker reaches a connector
-  through the main's tool server, over the runner's existing outbound socket [I].
+- **Ducter doesn't hold provider accounts. The user's OpenConnector does** (D96). It is either
+  OOMOL Hosted or their own self-hosted OpenConnector. Ducter attaches to its MCP endpoint
+  (`<base>/mcp`) with a Bearer runtime token, through Ducter's own broker in the control plane
+  on the computer Ducter lives on. Any other MCP server attaches the same way.
+- **The token lives only in Ducter.** It is kept in `<dataDir>/connection-tokens.json` (0600).
+  It never appears in a harness's config, env, args or files, never in the Log, and never in
+  a client frame.
+  - Why not D85's `<dataDir>/env`: on a server, that file is the systemd unit's
+    `EnvironmentFile`. It lands in the core's environment, and from there in every harness
+    child.
+  - The one rule for every secret: a 0600 file in the data folder, read only by the code that
+    uses it. `env` holds the keys a harness itself needs, and the token file holds what only
+    the broker needs.
+  - macOS Keychain is a later option for both.
+- **Shown on Devices as mailboxes on the main's island** (the prototype; the Isles stage is
+  being rebuilt on `isles`). For now the list lives on Partner → 它能看的账号 / Accounts it can
+  read. The stage calls `homeMailboxes()` (web) or `HomeMailboxes()` (desktop) later.
+- **Workers never hold a token.** A task on a worker reaches a connection through the main's
+  tool server.
 
 ## 3. Architectures compared
 
-| | A. Harness-native MCP | B. Ducter broker (recommended) | C. Hosted connector gateway |
+| | A. Harness-native MCP | B. Ducter embeds a connector engine | C. **The user's OpenConnector behind Ducter's broker (D96)** |
 |---|---|---|---|
-| Shape | Put vendor or community MCP servers, with their tokens, into each session's OAR `mcpServers` | Connectors live in the main's control plane behind a `ConnectorPort`; harnesses see only Ducter's tool server, which proxies scoped calls | Composio, Pipedream or OOMOL Hosted hold the OAuth apps and tokens; Ducter calls their API |
-| Credentials | In harness config or env, readable by the model's tools | Keychain/libsecret on the main; never in a harness, its env, args or files (principle 18) | On the vendor's servers |
-| Google verification | Each user still brings a client | Each user brings a client, guided | Solved by the vendor's verified app |
-| Mail leaves the machine | Only to the model provider | Only to the model provider | To the vendor, and to the model provider |
-| Gating "send" | None; the harness calls `send_email` | Intent through the effect ladder (D61) | Vendor permissions only |
-| Audit | Whatever the harness logs | Every call is a Log event; reads are summarized, writes appear in Sent out | Vendor logs |
-| Proactive watchers | Need a running harness session, so tokens burn while idle | Waiters in code (principle 16); a model only when input changes | Vendor triggers (webhooks to a public URL) |
-| Partner isolation | Conflicts with the isolated partner config | Fits: the fixed Ducter tool server is already in every harness | Fits |
-| Vendor-neutral | Yes | Yes | No |
-| Cost to build | Lowest | Medium (port, gate, triage) | Low, plus a monthly bill |
+| Shape | Vendor or community MCP servers, with their tokens, in each session's `mcpServers` | open-connector's headless runtime inside the control plane; Ducter runs the OAuth flows | The user runs (or rents) OpenConnector; Ducter is an MCP client to it, behind its own broker |
+| Provider OAuth | Each server's own | Ducter's problem: every self-hosting user brings a Google client | OpenConnector's problem: OOMOL Hosted has verified apps; self-hosted users bring their own, in OpenConnector's console |
+| Credentials in Ducter | Inside harness config | All provider tokens | One runtime token (scoped on OpenConnector's side) |
+| Mail leaves the machine | To the model provider | To the model provider | Hosted: to OOMOL and the model provider. Self-hosted: to the model provider only |
+| Gating "send" | None | Ducter's gate | Ducter's gate, plus OpenConnector's own action policy |
+| Cost to build and keep | Lowest | High (the engine churns several times a day; a re-license risk) | Low: one MCP client and a gate |
+| The author's daily tool | No | No | Yes: the author already uses OpenConnector through `oo` |
 
-**Recommendation: B, with C as an opt-in per account later.** B is the only option that keeps
-principle 18 (scope the credentials, gate the effects) and principle 16 (waits are code), keeps
-Ducter vendor-neutral, and lets proactive work cost almost nothing while idle.
+**Decided: C** (D96, "同意，我们这里内聚一点"). Ducter stays cohesive: a partner and a gate,
+not a connector platform. B remains possible if OpenConnector ever goes away, because the
+broker speaks only MCP.
 
-**The alternative worth keeping: A, as "use my own MCP servers"** for power users. Ducter
-attaches a user's existing server to the *broker* rather than to the harness, so the gate and
-the audit still apply (§4.3). Plain A, with the harness holding the token, stays possible only
-for tasks that inherit the user's own config (`system.md`), and it is labeled as the user's own
-setup.
+## 4. The broker (as built, 2026-11-09)
 
-## 4. The broker
+`packages/core/src/connections.ts`, `connection-tools.ts`; partner tools in
+`packages/partner/src/partner.ts`.
 
 ### 4.1 Pieces
 
-```
-            the main (Ducter lives here)
- ┌───────────────────────────────────────────────────────────┐
- │ ConnectorPort ── adapters: open-connector (embedded)       │
- │      │                     user MCP servers (proxied)      │
- │      │                     IMAP / JMAP / Mail.app (later)  │
- │      ├── token store (Keychain / libsecret; key for OC)    │
- │      ├── watchers = waiters (poll + checkpoint)            │
- │      ├── triage (rules → cheap model → partner)            │
- │      └── gate (reads recorded; writes → intents)           │
- │ Ducter tool server (/mcp, HMAC role token per session)     │
- └────────────┬───────────────────────────────┬──────────────┘
-        partner session                 task sessions (main or worker)
-```
+- **Store.**
+  - `<dataDir>/connections.json` (0600) holds the address, name, source and how it was added.
+    The source is `oomol` (the host is under oomol.com), `self` (an OpenConnector anywhere else)
+    or `mcp` (any other MCP server).
+  - Tokens are kept apart in `connection-tokens.json` (0600).
+  - Removing a connection drops its token.
+- **Adding one.**
+  - The address is normalized: `/mcp` is appended to an OpenConnector base. Plain http is
+    allowed only for this machine or the local network, and an address with credentials, a
+    query or a fragment is refused.
+  - Then the broker checks it. It connects, lists the tools, and recognises OpenConnector by
+    `search_actions`, `get_action_guide` and `execute_action`.
+  - Answers: `bad_url`, `unreachable`, `unauthorized`, `not_mcp`, `duplicate`.
+- **Read or write, from the server's own metadata, and conservative.**
+  - For OpenConnector: `get_action_guide` → `capability.operationType`. Only `read` is a read;
+    `write`, `destructive` and unknown are writes.
+  - For any other MCP server: `annotations.readOnlyHint === true` is a read, and anything else
+    is a write.
+  - A failed lookup is a write and isn't cached.
+- **The user's rules.** Optional per-connection `policy.allow` / `policy.deny` patterns in
+  `connections.json` (`gmail.*`, `*.send_*`). Deny wins. There is no UI yet.
+- **Audit.** Every call is a `connection_call` Log event, on the channel for the partner or on
+  the task's stream for a task. It records the action, read/write, state and a ≤ 200-character
+  summary ("2 pulls"). It never holds the token or the provider's output.
+  - States: `done`, `failed`, `denied`, `needs_go` (with the input Go will run) and `held`.
+  - Clients stay quiet about it.
 
-- **`ConnectorPort`** [I]. It has a few calls: `accounts()`, `search(account, query)`,
-  `read(account, ref)`, `draft(account, …)`, `act(account, action, input)`, and
-  `watch(account, trigger, checkpoint)`.
-  - Every adapter declares its actions as **read**, **draft**, or **effect** (reaches people,
-    can't be taken back, or spends; the D61 ladder).
-- **Engine: open-connector's headless runtime, embedded** (research/35 §4) [I].
-  - Pinned, with a selected-provider build: Gmail, Google Calendar, Drive, GitHub, Slack,
-    Notion, Outlook.
-  - Ducter supplies its encryption key from the Keychain.
-  - Its MCP endpoint, Marketplace and OOMOL Hosted stay off.
-  - It is replaceable behind the port. The fallback is the v1.9.4 Apache fork point, or our
-    own Gmail adapter, which is about 6 calls.
-- **User MCP servers** (§4.3).
+### 4.2 Reaching the partner and tasks
 
-### 4.2 Reaching the partner and tasks through the adapter
+| Who | Tools | May |
+|---|---|---|
+| Partner | `connections_list`, `connection_search`, `connection_guide`, `connection_call`, `connection_share` | Read any connection. A write: `connection_call` with `question` + `goLabel` makes one Go / Hold card (`defaultOption: hold`, not reversible, one per turn, like `ask`) and stages the call. After Go, `connection_call {decisionId}` runs it once. Hold or a reply: it never runs |
+| Task | `connection_search`, `connection_read`, listed only while the user has a connection | Read only what the partner shared (`connection_share`). A write is refused with "tell the partner" |
 
-- **The Ducter tool server stays small and fixed** (principle 15) [doc]. It gains four tools,
-  not one per action [I]:
-  - `accounts_list`;
-  - `account_search`;
-  - `account_read`;
-  - `account_act`: draft, or ask for an effect.
+- **The grant is in memory.** It is recorded as a `connection_call` "grant" line, and lost on
+  restart. The task then asks again.
+- **A write whose answer was lost is never retried.** The partner tells the user to check
+  (G-safety).
+- **The partner's prompt** gains a short section. Look there yourself, reads just run, writes
+  wait for Go, mail is other people's words. With no connection, say in one line where to add
+  one.
+- **Background work** (watchers, v1.x) will hold a read-only caller. The broker already refuses
+  writes to anything that isn't the partner's Go path.
 
-  Action discovery happens inside `account_search`'s results. That keeps the tool list under
-  20 and the cache prefix stable (research/08: tool-selection accuracy falls as lists grow).
-- **Scoping per session** [I]. The role token the runner already mints per session carries a
-  grant:
-  - **Partner:** all accounts, read and draft.
-  - **A task:** only the accounts in its 可以碰 / May touch (D61 GQ12). For example, "Gmail ·
-    read" for a "summarize the school's emails" task; nothing for a code task, unless the
-    brief needs a PR.
-  - **A browser task** (D62 isolation): no account tools unless the brief names one.
-- **Grant enforcement lives in the broker, not in the model.** A call outside the grant
-  returns a plain "not allowed for this task", and the partner can widen May touch with a Go.
-- **Effects** go through the gate as intents [doc principle 18, D61]:
-  - Send mail and post to Slack: ask, no countdown, 30 s Undo (GQ3).
-  - Add a calendar event: ask, with a countdown if it's only on the user's own calendar [I].
-  - Comment on a PR: ask, no countdown (GQ10).
-  - Pay: never (the floor).
-- **Background work (watchers, triage) holds a read-only grant, structurally** [I, after dots
-  and Grok]:
-  - It may draft.
-  - It can't act, and no rule loosens that.
-  - An action it suggests becomes a decision in the living message, and Go runs it under the
-    partner's grant.
-- **Audit in the Log** [I]:
-  - Each read is a Log event (account, query or ref, result count; the bodies are blobs,
-    principle 1), folded out of the partner's tail like any bulky read (principle 5).
-  - Writes appear in 发出去的 / Sent out and 今天发出去的 / Sent out today (D61).
-- **Untrusted data** [doc, routines safety]. Mail bodies are wrapped as untrusted data before
-  any model sees them, and a request found inside a mail can never become an effect without a
-  person (the GQ5 floor: "untrusted-requested effects").
-
-### 4.3 The user's own MCP servers and connectors
+### 4.3 Other MCP servers and the user's own connectors
 
 - **A power user's existing servers** (GitHub remote MCP, Linear, Notion) can be attached as
-  accounts. The broker connects as the MCP client (OAuth 2.1 per the MCP authorization spec,
-  with a Client ID Metadata Document for Ducter), stores the token, and re-exposes the tools
-  through the same four tools and the same gate [I].
+  connections with an address and a token (built). The broker connects as the MCP client,
+  stores the token, and re-exposes the tools through the same tools and the same gate. Servers
+  that only do MCP OAuth 2.1 sign-in (no static token) need a sign-in flow in Ducter: later [I].
 - **Read-only server variants** (GitHub `/readonly`, Linear `/readonly`) back the watchers.
 - **The user's Claude.ai or ChatGPT connectors can't be borrowed.** They live inside those
   vendors' sessions, and principle 17 rules out proxying a subscription. A *task* that
   inherits the user's Claude config may still use them, as the user's own setup, unmediated
   and labeled [doc system.md].
 
-### 4.4 The browser as a connector (上网)
+### 4.4 The oo CLI: the one tap (built)
+
+The author uses OOMOL's `oo` CLI daily (research/35 §4b). Ducter reads oo's setup only when the
+user taps **用 oo 里的 OpenConnector / Use the OpenConnector from oo**:
+- **Where oo keeps it.** `OO_CONNECTOR_URL` (+ `OO_CONNECTOR_TOKEN`) wins, as in oo itself.
+  Otherwise `[self_hosted] url / token` in oo's `connector.toml`, under `OO_CONFIG_DIR`,
+  `$XDG_CONFIG_HOME/oo`, `~/Library/Application Support/oo` or `~/.config/oo`.
+- **Detection reads no secret.** It reports the address and *whether* a token exists.
+- **The OOMOL account key** in `auth.toml` is never used. It can do more than read accounts
+  (LLM, files, billing). The page says to make a token for Ducter in the OOMOL console instead.
+- **The narrow token is better, and the page says so.** Rather than reusing oo's, make a token
+  just for Ducter on OpenConnector's Access page, with `allowedActions` / `allowedConnections`.
+
+### 4.5 Watching (v1.x, designed, not built)
+
+OpenConnector's Provider Triggers HTTP API carries the watchers (research/35 §4):
+- `POST <base>/v1/providers/<service>/triggers/<triggerId>/execute` with
+  `{operation: "read", config, checkpoint}`.
+  - The first read takes `checkpoint: null`. Later reads pass back the returned checkpoint, and
+    `hasMore` drains the next page.
+  - The checkpoint lives in Ducter's waiter table (principle 16), never in a model.
+- A **trigger-scoped runtime token** (`allowedTriggers: ["gmail.on_message_received"]`,
+  `blockedActions: ["*"]`) is the watcher's own credential: it can read new-mail events and run
+  nothing. The user makes it on the Access page; Ducter stores it like the MCP token.
+- Webhook triggers (`reconcile`) need a public URL. They are for later.
+- What a watcher finds goes through the cascade in §5. The watcher's caller is read-only by
+  construction.
+
+### 4.6 The browser as a connector (上网)
 
 - **Zero-setup fallback** [I]. For services with no API, or for a person who won't make a
   Google client, a task can sign in by takeover in the Ducter browser (D48) and read there.
@@ -262,12 +269,14 @@ with Go, never a background action [I].
 
 ## 6. The first time
 
-1. The person says "帮我盯着邮箱，有要紧的告诉我" or taps Gmail → **登录 / Sign in** on Devices.
-2. Ducter: "要看你的 Gmail，需要你在 Google 那边点一次同意。我先带你建一个只给你自己用的 Google
-   钥匙，大概 3 分钟。/ To read your Gmail, Google needs you to agree once. I'll walk you through
-   making a Google key that only you use. About 3 minutes."
-3. The guided client setup (§7.2) runs, then Google's consent page opens in the person's
-   browser. Ducter never sees the password.
+1. The person says "帮我盯着邮箱，有要紧的告诉我", or opens Partner → 它能看的账号 / Accounts it
+   can read.
+2. With no connection, Ducter says one line: "先在你的 OpenConnector 里连上 Gmail，再把它加到伙伴页的
+   “它能看的账号”里。/ Connect Gmail in your OpenConnector first, then add it under Accounts it
+   can read on the Partner page." If oo is set up with a self-hosted OpenConnector, the page
+   offers the one tap.
+3. In OpenConnector the person connects Gmail: Google's consent page, Allow. Then they make a
+   token for Ducter, and Ducter checks and saves it. Ducter never sees the Google password.
 4. A Gmail mailbox drops onto the island (the equip snap, D65). Ducter backfills **the last 14
    days** (60 for bookings and renewals) through the cascade and speaks within a minute: "看了 386 封。有一件你可能想知道：…
    / I read 386 emails. One thing you may want to know: …". If nothing clears the bar: "看了
@@ -276,48 +285,19 @@ with Go, never a background action [I].
 
 ## 7. What the person must set up
 
-### 7.1 Per account type
-
-| Account | What the person does | Time (INFERRED) |
+| Path | What they do | Where their mail passes |
 |---|---|---|
-| Gmail, Google Calendar, Drive | Make their own Google Cloud OAuth client once (§7.2); then sign in | 3–8 min the first time; 20 s for each later Google account |
-| GitHub | Sign in through GitHub (a Ducter GitHub OAuth app, or the user's own; GitHub has no restricted-scope audit) or paste a token | 30 s |
-| Slack | Sign in; a workspace admin may need to approve | 30 s to days |
-| Notion, Linear | Sign in through their remote MCP OAuth | 30 s |
-| Outlook | Sign in (a Ducter publisher-verified Microsoft app is feasible: free, no audit, research/35) | 30 s |
-| Fastmail | Paste an API token | 30 s |
+| **OOMOL Hosted** (default in the form) | Sign in at OOMOL, connect Gmail and Calendar in the OOMOL console (OOMOL's verified Google apps), make a token for Ducter, paste it with `https://connector.oomol.com` | OOMOL's servers, and the AI account |
+| **Self-hosted OpenConnector** | Run OpenConnector (Docker or its single binary), register their own Google OAuth client in its console (research/35 §2: publish it *In production, unverified*, never Testing, which drops grants every 7 days), connect, make a token for Ducter on `/access`, paste address and token. Or tap the oo one-tap | Their own machine, and the AI account |
+| **Another MCP server** | Paste its address (and token) | Whatever that server does |
 
-### 7.2 The guided Google client
+The honest line on the form says this, per choice: "OOMOL 托管：…你的邮件和登录凭据会经过 OOMOL
+的服务器 / Hosted by OOMOL: … your mail and sign-ins pass through OOMOL's servers" ·
+"自己部署的：邮件和登录凭据留在你自己的机器上。代价：Gmail 这类账号要你自己在 Google 那边建一个应用 /
+Self-hosted: … stays on your own machine. The cost: … your own app with Google."
 
-Ducter can't ship one shared Google client: Gmail read and draft are restricted scopes, which
-need verification and a yearly CASA assessment, and a shared unverified client is capped at
-100 users for life. Each person therefore brings their own client, guided step by step [I]:
-
-1. Open console.cloud.google.com and create a project ("Ducter for Wei"). If `gcloud` is
-   present, Ducter does steps 1–3 itself.
-2. Enable the Gmail, Calendar and Drive APIs.
-3. Set up the OAuth consent screen: External, app name, the person's own email.
-4. **Publish the app** (In production). Never leave it in Testing: Google drops the grant every
-   7 days.
-5. Create credentials: OAuth client ID, type **Desktop app**. Paste the client ID and secret
-   into Ducter. The secret isn't secret for desktop clients.
-6. Sign in. Google shows "Google hasn't verified this app". Ducter shows a picture of that
-   screen beforehand, with the line "这是你自己建的钥匙，所以 Google 没审过它 / This is the key you
-   just made, so Google hasn't reviewed it". The person clicks Advanced → Go to….
-
-Scopes: `gmail.readonly` and `gmail.compose` (drafts, and sending a draft after Go),
-`calendar.events`, `drive.readonly` [I]. Requested incrementally: Drive only when first needed.
-
-### 7.3 For the maintainer (the author), before any of this ships
-
-- A Google Cloud project to test the guided flow against, with the author's own client. Not a
-  shared one.
-- A decision on whether Ducter ever runs a verified shared Google client. That needs a legal
-  entity, a domain, a privacy policy, verification and yearly CASA. This draft defers it.
-- A GitHub OAuth app for Ducter, and later a Microsoft publisher-verified app (free).
-- The loopback redirect when Ducter lives on a VPS: the consent runs in the laptop's browser
-  and the code is relayed over the paired connection. Still to verify, like research/29's
-  headless logins.
+**For the maintainer:** nothing Google-side for Ducter itself (D96 removes the shared-client
+question). A live test against a self-hosted OpenConnector is still owed (§12).
 
 ## 8. Scenarios
 
@@ -426,31 +406,36 @@ examples.
   - Tray slots equal the cap.
   - Quiet hours shows as a small moon sign by the tray.
   - Still mode stops all of it, and every state still reads.
-- **Equip.** "Sign in" is the equip; a mailbox drops onto the island with the D65 snap.
-  - The result line is "Ducter 现在能看你的 Gmail 了 / Ducter can now read your Gmail".
+- **Equip, as built.** On Partner, **加一个 / Add one** → where (OOMOL 托管 / Hosted by
+  OOMOL · 自己部署的 / Self-hosted · 其他 MCP / Other MCP) → 地址 / Address, 钥匙 / Key →
+  **检查并加上 / Check and add**.
+  - The result line is "Ducter 现在能看 {name} 里的账号了 / Ducter can now read the accounts in
+    {name}".
+  - 钥匙 / Key is OpenConnector's own word on its Access page. It is proposed for the
+    glossary, as the one place a person handles one.
   - Never 授权 / authorize, 接入, or "connector" in UI.
   - 连上 / Connect stays reserved for devices (D54).
 - **Owed:** the human comprehension test (with the D65 test), and art for the mailboxes (the
   prototype draws them in SVG).
 
-## 10. Proposals for the author (D96–D103)
+## 10. Decided, and proposals for the author
 
-Each carries a default; "按建议" takes them all.
+**Decided: D96.** Connections come from the user's OpenConnector (OOMOL Hosted or
+self-hosted) or another MCP server, through Ducter's broker. Ducter holds only the runtime
+token, in a 0600 file. Reads are allowed and logged; anything that sends or changes becomes a
+Go card and runs once after Go; background work is read-only or draft-only. Ducter doesn't
+embed OpenConnector or run provider OAuth. This replaces the earlier proposals for where
+connectors live, how they reach sessions, the engine, and Google access.
+
+**Still proposals** (each with a default; "按建议" takes them all):
 
 | # | Proposal | Default | Main alternative |
 |---|---|---|---|
-| D96 | **Where connectors live.** On the computer Ducter lives on, in the control plane, behind a `ConnectorPort`; harnesses never hold provider credentials (B over A and C) | Yes | C (hosted gateway) as a per-account opt-in later |
-| D97 | **How they reach sessions.** Four fixed tools on the Ducter tool server; a per-session grant from 可以碰 / May touch; reads logged; writes are intents on the D61 ladder; background work is structurally read-only and may only draft | Yes | One tool per action (simpler, but grows the tool list and breaks the cache prefix) |
-| D98 | **Engine.** Embed open-connector's headless runtime, pinned, selected providers, Hosted/Marketplace/its MCP off, behind the port; user MCP servers attach to the broker as accounts | Adopt partially | Our own Gmail/Calendar/GitHub adapters only (smaller and slower to grow, no license risk) |
-| D99 | **Google access.** A guided bring-your-own Desktop client, published unverified-in-production, PKCE + loopback; scopes `gmail.readonly` + `gmail.compose` + `calendar.events` + `drive.readonly` (incremental); polling, no Pub/Sub; tokens in Keychain/libsecret | Yes | A Ducter-verified shared client (needs an entity, CASA, yearly cost); revisit at a hosted offering |
-| D100 | **The proactive policy.** Cascade (watch → rules → cheap triage → partner); the three-part attention bar; at most **3 a day**, batched into the morning message; held in quiet hours; 有用 / 这类别再说 under each item; a "没说的 / Left out" line; auto-pause after 3 unread mornings | Yes, cap 3 | Cap 5, or no cap with a confidence bar only (dots' approach; noisier in reviews) |
-| D101 | **Watching is asked for once at sign-in**, Go by default, and becomes a Rule; connecting alone never watches silently | Yes | Watch by default with no question (one less step, less 放心) |
-| D102 | **The honest line** on every account: "为了看懂一封信，它会把这封信给你的 AI 账号（{account}）看。别人拿不到。/ To understand a message, it shows it to your AI account ({account}). No one else gets it." | Yes | Put it only in docs (higher felt safety, less true) |
-| D103 | **Settings look.** Mailboxes on the main's island + the 3-slot tray; words 还能让它看的 / It can also read, 登录 / Sign in, 今天带给你的 / What it brings you today, the Partner group 它自己发现的事 / Things it notices with four options; pending a human test | Yes | Literal cards (A) if the human test finds "the mailbox means Ducter receives my mail" |
-
-Also for the author, without a number yet: the top-5 scenario set (§8), led by the domain
-renewal and the flight vs hotel; the backfill on first sign-in (§6: 14 days, 60 for bookings
-and renewals); the trip-and-renewal ledger (§8); whether a Slack watch defaults to mentions and DMs only (§5.1).
+| D97 | **The proactive policy.** Cascade (watch → rules → cheap triage → partner); the three-part attention bar; at most **3 a day**, batched into the morning message; held in quiet hours; 有用 / 这类别再说 under each item; a "没说的 / Left out" line; auto-pause after 3 unread mornings | Yes, cap 3 | Cap 5, or no cap with a confidence bar only (dots' approach; noisier in reviews) |
+| D98 | **Watching through OpenConnector's Provider Triggers** (§4.5): poll `read` with a checkpoint in Ducter's waiter table, with a trigger-scoped token; asked once at sign-up, Go by default, as a Rule; never watching silently | Yes | Ducter polls through MCP reads (no extra token; costs model-free calls but no checkpoint semantics) |
+| D99 | **The honest lines**: where mail passes (hosted vs self-hosted) on every connection, plus "它读到的内容会给你的 AI 账号看，别人拿不到 / What it reads is shown to your AI account. No one else gets it." | Yes | Only in docs |
+| D100 | **The look and words**: mailboxes on the main's island + the 3-slot tray (stage on `isles`); 它能看的账号 / Accounts it can read on Partner for now; 钥匙 / Key; the Partner group 它自己发现的事 / Things it notices; pending a human test | Yes | Literal cards (A) if the human test finds "the mailbox means Ducter receives my mail" |
+| D101 | **The look-back on first connection**: 14 days, 60 for bookings and renewals; the trip-and-renewal ledger (§8) | Yes | 14 days for everything |
 
 ## 11. Open
 
@@ -462,3 +447,23 @@ and renewals); the trip-and-renewal ledger (§8); whether a Slack watch defaults
 - Personas: accounts belong to the user, and each persona needs a link to read them
   (product-model §5). Default: the first persona only.
 - A watcher over a browser profile (§4.4).
+
+## 12. Verified so far (2026-11-09)
+
+- **Unit and integration tests against a fake OpenConnector and a plain MCP server**, over real
+  Streamable HTTP (`packages/core/test/fake-mcp.ts`, `connections.test.ts`, the
+  `server.test.ts` end-to-end case, `packages/partner/test/connections.test.ts`):
+  - add and remove;
+  - a wrong token is refused;
+  - the 0600 files;
+  - the token is in no frame and no Log event;
+  - a read runs and is logged with a summary only;
+  - a write is refused outside Go, runs once after Go, and never after Hold;
+  - task grants, with writes refused;
+  - the user's rules;
+  - oo's `connector.toml` and env precedence.
+- **Not yet live against a real OpenConnector.** Docker isn't running on this Mac. Running
+  OpenConnector's release binary is the next step, with the author's OK (third-party code),
+  using a GitHub token from `gh auth token` with read-only scope.
+- OOMOL Hosted's `/mcp` answers 401 without a token (checked unauthenticated). Whether it
+  accepts a console-made token as Bearer is unverified.

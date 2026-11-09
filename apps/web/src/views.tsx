@@ -1387,7 +1387,7 @@ function Accounts() {
             <input id="acct-url" type="url" inputMode="url" autoComplete="off" spellcheck={false} value={url} onInput={(e) => setUrl((e.target as HTMLInputElement).value)} />
           </label>
           <label class="acct-field">
-            <span class="small">{t("acct.token")}</span>
+            <span class="small">{t("acct.key")}</span>
             <input id="acct-token" type="password" autoComplete="off" spellcheck={false} value={token} onInput={(e) => setToken((e.target as HTMLInputElement).value)} />
           </label>
           <div class="row">

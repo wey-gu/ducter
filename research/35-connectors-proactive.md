@@ -365,13 +365,56 @@ code.
   - a young Gmail executor that we must test ourselves;
   - its five generic MCP tools are the wrong shape for a gated personal AI, so we don't use
     them.
-- **Verdict: adopt partially.**
-  - Use the headless runtime as the default engine for API connectors: the action catalog,
-    OAuth flow, refresh, encrypted storage and poll triggers.
-  - Keep Ducter's broker, gate, Log audit, attention bar and copy as ours.
-  - Off by default: OOMOL Hosted, the Marketplace, and the runtime's own MCP server.
-  - Don't let it be the only path: the user's own MCP servers and the 上网 ability stay
-    first-class sources.
+- **First verdict (superseded the same day): adopt partially**, embedded behind a port.
+- **Decided instead (D96, the author: "同意，我们这里内聚一点，oo 做的非常好，我日常也在用"):**
+  Ducter doesn't embed it at all.
+  - The user brings their own OpenConnector, OOMOL Hosted or self-hosted. Ducter attaches to
+    its MCP endpoint with a runtime token, through Ducter's broker.
+  - This makes most of the risks above someone else's to carry: license, churn, dependency
+    weight, Google verification. The Gmail executor still needs our own tests.
+  - VERIFIED, and it makes the decision cheap: OpenConnector's MCP `get_action_guide` returns
+    `capability.operationType` (`read` / `write` / `destructive`, `src/core/types.ts`,
+    `src/mcp.ts`). The broker can tell reads from writes without a catalog of its own.
+  - Its runtime tokens can be narrowed: `allowedActions`, `blockedActions`,
+    `allowedConnections`, `allowedTriggers`.
+
+## 4b. OOMOL's `oo` CLI (read at `14fb289`, 2026-11-06; local install 1.9.1)
+
+Cloned with `git clone --depth 1` and read only. VERIFIED from `docs/self-hosted-connector.md`,
+`src/application/commands/connector/target.ts`, `src/adapters/store/store-path.ts` and
+`src/application/schemas/{auth,connector}.ts`:
+
+- **What it is.** The CLI that lets AI agents on a machine call the OOMOL-hosted connector or a
+  self-hosted OpenConnector (`oo connector search | schema | run`).
+- **Where its config lives.** It is a directory:
+  - `OO_CONFIG_DIR` if set;
+  - else `$XDG_CONFIG_HOME/oo`;
+  - else `~/Library/Application Support/oo` on macOS, `~/.config/oo` on Linux.
+
+  The author's machine has `auth.toml`, mode 0644. I did not read its contents.
+- **Which connector oo talks to.** First match wins:
+  1. `OO_CONNECTOR_URL` (+ optional `OO_CONNECTOR_TOKEN`);
+  2. `OO_API_KEY`;
+  3. `connector.toml` `[self_hosted] url / token`, written by
+     `oo connector login <url> --token <runtime-token>`;
+  4. the signed-in OOMOL account.
+- **Auth.**
+  - Self-hosted: oo sends `Authorization: Bearer <runtime-token>`.
+  - Hosted: oo sends the account's raw `api_key` to `https://connector.<endpoint>`.
+  - That account key also serves LLM, files and billing, so it is not a connections-only
+    credential.
+- **What this means for Ducter** (INFERRED, the one tap as built):
+  - With the user's tap, read only the *self-hosted* address and token from env or
+    `connector.toml`.
+  - Never take the OOMOL account key. The page asks for a Ducter-only token from the OOMOL
+    console instead.
+  - Suggest a narrow token made for Ducter on OpenConnector's `/access` page over reusing oo's.
+- **OOMOL Hosted's MCP endpoint exists.** `POST https://connector.oomol.com/mcp` answers 401
+  unauthenticated, and `/v1/health` answers 401 too (checked 2026-11-09, no credentials sent).
+  - Not verified: which credential it accepts as Bearer (a console runtime token, or OAuth
+    2.1 only). The Cloudflare deployment docs describe OAuth with dynamic client registration
+    for ChatGPT.
+  - If it is OAuth-only, Ducter needs an MCP OAuth sign-in for hosted (not built).
 
 ## 5. Metaphor process (AGENTS.md rules), short form
 
@@ -433,7 +476,7 @@ out (`--setting-sources project,local --strict-mcp-config`).
 - Literal A is the fallback, if human testing finds the mailbox reads as "Ducter receives my
   mail".
 
-Prototype: https://claude.ai/artifact/BC1i6YEt8EKQ5VtMeCjEw8
+Prototype: https://claude.ai/artifact/CB1xnATLKnQra2DLKeh7Rq
 
 ## Implications for Ducter
 
@@ -452,11 +495,14 @@ Prototype: https://claude.ai/artifact/BC1i6YEt8EKQ5VtMeCjEw8
      held during quiet hours.
 4. **Background reads are structurally read-only.** Drafts are fine; sending, spending and
    calendar writes wait for Go, and no rule can loosen that for background work.
-5. **Gmail for a self-hosted user means a guided BYO Google client**, published as
-   unverified-in-production. That is the main onboarding cost. Offer Fastmail, IMAP and Mail.app
-   as lighter paths, and the browser (上网) as the zero-setup fallback.
-6. **Adopt open-connector partially**, as the embedded engine behind a port, pinned, and with
-   its hosted parts off.
+5. **Google's verification is OpenConnector's problem, not Ducter's** (D96).
+   - OOMOL Hosted has its own Google apps. The cost: mail and sign-ins pass through OOMOL's
+     servers.
+   - Self-hosted OpenConnector users bring their own client, published unverified-in-production,
+     in OpenConnector's console.
+   - The UI says which is which.
+6. **Bring your own OpenConnector** (decided, D96): Ducter is an MCP client behind its own
+   broker, not an embedder.
 7. **Say plainly that the AI account sees the text.** It costs some felt safety in the proxy
    test, and it is true.
 
@@ -466,6 +512,8 @@ join across sources the person can't see, where missing it is costly, as in the 
 two dots moments (an unpaid domain renewal; a flight that didn't match the hotel). For self-hosted Ducter the hard part is Google's
 restricted scopes: each user brings an unverified, published OAuth client. Polling beats
 Pub/Sub. open-connector is a strong embeddable engine (Gmail poll trigger, per-action scopes,
-encrypted tokens, Bun-compatible headless library). It doesn't solve verification, and its
-license may tighten, so it goes behind Ducter's own broker, pinned. The proxy test favours
+encrypted tokens, Bun-compatible headless library). It doesn't solve verification for self-hosted users, and its
+license may tighten. So, decided (D96), Ducter doesn't embed it: the user brings their own
+OpenConnector (OOMOL Hosted or self-hosted), and Ducter's broker gates it. A runtime token is
+the only thing Ducter holds. The proxy test favours
 mailboxes on the Mac's island with a 3-slot tray, and leaves a human test still owed.

@@ -92,6 +92,7 @@ interface Entry {
   judgedReason?: string;
   lastJudgeAt?: number;
   checkpoint?: unknown;
+  armedAt?: string; // when it was armed: the start of its deadline groove
 }
 
 export function kindOf(w: Pick<Bodies["waiter"], "kind" | "check" | "event" | "judge">): NonNullable<Bodies["waiter"]["kind"]> {
@@ -260,7 +261,7 @@ export function createWaiters(opts: WaiterDeps): Waiters {
       if (w.state === "armed") {
         // Its first look is one period out: whoever armed it has just looked (wait_for's first
         // look, a routine's dry run or the run that just fired).
-        if (!armed.has(w.waiterId)) schedule(w, every(w));
+        if (!armed.has(w.waiterId)) schedule(w, every(w), { armedAt: e.ts });
       } else {
         const a = armed.get(w.waiterId);
         if (a) clear(a);
@@ -279,6 +280,7 @@ export function createWaiters(opts: WaiterDeps): Waiters {
 
   // Rebuild from the Log, then re-arm (side effects only for what is still armed).
   const open = new Map<string, Bodies["waiter"]>();
+  const armedTs = new Map<string, string>();
   const lastLook = new Map<string, { at: number; summary: string; checkpoint?: unknown; key: string; changes: number }>();
   const finished = new Map<string, Attention>();
   const answered = new Set<string>();
@@ -286,7 +288,7 @@ export function createWaiters(opts: WaiterDeps): Waiters {
     if (e.kind === "decision_resolved") answered.add((e.body as Bodies["decision_resolved"]).decisionId);
     else if (e.kind === "waiter") {
       const w = e.body as Bodies["waiter"];
-      if (w.state === "armed") open.set(w.waiterId, w);
+      if (w.state === "armed") open.set(w.waiterId, w), armedTs.set(w.waiterId, e.ts);
       else open.delete(w.waiterId), lastLook.delete(w.waiterId);
     } else if (e.kind === "waiter_look") {
       const l = e.body as Bodies["waiter_look"];
@@ -309,7 +311,7 @@ export function createWaiters(opts: WaiterDeps): Waiters {
     const a = w.taskId ? finished.get(w.taskId) : undefined;
     const l = lastLook.get(w.waiterId);
     const seen: Partial<Entry> = l ? { lastLookAt: l.at, lastSummary: l.summary, checkpoint: l.checkpoint, lastKey: l.key, changes: l.changes } : {};
-    schedule(w, (opts.restartLookMs ?? 2000) * ++stagger, seen);
+    schedule(w, (opts.restartLookMs ?? 2000) * ++stagger, { ...seen, armedAt: armedTs.get(w.waiterId) });
     if ((a && FINISHED.includes(a)) || (w.decisionId && answered.has(w.decisionId))) close(w.waiterId, "cancelled");
   }
 
@@ -375,6 +377,7 @@ export function createWaiters(opts: WaiterDeps): Waiters {
     views() {
       return [...armed.values()].map((a) => {
         const v: WaiterView = { ...a.w };
+        if (a.armedAt) v.armedAt = a.armedAt;
         if (a.lastLookAt !== undefined) v.lastLookAt = new Date(a.lastLookAt).toISOString();
         if (a.lastSummary) v.lastSummary = a.lastSummary;
         if (a.looks) v.looks = a.looks;

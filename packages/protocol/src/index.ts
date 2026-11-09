@@ -231,7 +231,7 @@ export interface OnHand {
 }
 
 /** An armed waiter plus what it has seen so far (kept by core, not logged per look). */
-export type WaiterView = Bodies["waiter"] & { lastLookAt?: string; lastSummary?: string; looks?: number; nextLookAt?: string; changes?: number };
+export type WaiterView = Bodies["waiter"] & { armedAt?: string; lastLookAt?: string; lastSummary?: string; looks?: number; nextLookAt?: string; changes?: number };
 
 // ---------- Work over time (D112-D115, design/product-model.md section 4) ----------
 

@@ -1,6 +1,8 @@
 // Work over time on the phone (D112–D115): what a wait waits for (a small clay thing in a
-// bubble), the try strip of a keep-going loop, the routine shelf and a routine's proposal card,
-// and the waiting part of an opened task. Copy comes only from i18n.ts.
+// bubble) and its deadline groove with Ducter sitting at now; the try pebbles of a keep-going
+// loop; the routine shelf and a routine's proposal card, each with one strip of beads for its
+// next runs. Time is drawn; words are its quiet caption. How a wait checks (the command, how
+// often, who judges) is only in the opened task, folded under How it checks. Copy: i18n.ts.
 import type { Bodies, CheckSpec, RoutineView, UntilView, WaiterView } from "@ducter/protocol";
 import { describeCheck, describePredicate } from "@ducter/protocol/src/checks.ts";
 import { A } from "./app.ts";
@@ -10,7 +12,7 @@ import type { Task } from "./store.ts";
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
 /** Which clay thing a wait shows: a PR, a cloud (CI, anything online), an envelope, a clock, a file. */
-export function glyphOf(w: Pick<WaiterView, "check" | "event" | "at" | "kind"> | undefined): "wait_pr" | "wait_ci" | "wait_mail" | "wait_clock" | "wait_file" {
+export function glyphOf(w: Pick<WaiterView, "check" | "event"> | undefined): "wait_pr" | "wait_ci" | "wait_mail" | "wait_clock" | "wait_file" {
   if (!w) return "wait_ci";
   if (w.event) return w.event.service === "gmail" || /mail|message/.test(w.event.trigger) ? "wait_mail" : "wait_ci";
   const argv = w.check?.argv ?? [];
@@ -22,7 +24,7 @@ export function glyphOf(w: Pick<WaiterView, "check" | "event" | "at" | "kind"> |
 }
 
 /** The bubble with what it waits for. Still: it never moves on its own (D77). */
-export function WaitBubble({ w, size = "sm" }: { w?: Pick<WaiterView, "check" | "event" | "at" | "kind">; size?: "sm" | "lg" }) {
+export function WaitBubble({ w, size = "sm" }: { w?: Pick<WaiterView, "check" | "event">; size?: "sm" | "lg" }) {
   return (
     <span class={`wait-bub ${size}`} aria-hidden="true">
       <img src={`app/art/${glyphOf(w)}.webp`} alt="" draggable={false} />
@@ -30,31 +32,62 @@ export function WaitBubble({ w, size = "sm" }: { w?: Pick<WaiterView, "check" | 
   );
 }
 
+/** What it waits for, named as awaited: "等 PR #1592 通过" / "Waiting until PR #1592 passes". */
+export function waitLine(reason: string): string {
+  const r = reason.trim();
+  return t("wait.line", A.L.lang === "zh" && /^[A-Za-z0-9#]/.test(r) ? ` ${r}` : r);
+}
+
+/** What a wait's card says under it, in words: its deadline, or when a timer is due. */
+export function waitCaption(w: WaiterView): string {
+  if (w.until) return t("wait.until.cap", when(A.L, w.until));
+  if (w.at && !w.check && !w.event) return t("waiter.at", when(A.L, w.at));
+  return "";
+}
+
+const frac = (from: string | undefined, to: string | undefined) => {
+  const a = Date.parse(from ?? ""), b = Date.parse(to ?? "");
+  if (Number.isNaN(a) || Number.isNaN(b) || b <= a) return undefined;
+  return Math.min(1, Math.max(0, (Date.now() - a) / (b - a)));
+};
+
+/** The deadline groove: a sunken clay groove from when it started to its deadline, the little
+ *  Ducter on its bench sitting at now. Only for a wait with a deadline. */
+export function Groove({ w, big }: { w: WaiterView; big?: boolean }) {
+  const f = frac(w.armedAt, w.until);
+  if (f === undefined) return null;
+  const pct = `${Math.round(f * 1000) / 10}%`;
+  return (
+    <>
+      <span class={`groove-track${big ? " big" : ""}`} role="img" aria-label={waitCaption(w)}>
+        <span class="groove" />
+        <span class="gone" style={{ width: pct }} />
+        <span class="who" style={{ left: pct }}>
+          <img src="app/art/waiting.webp" alt="" draggable={false} />
+        </span>
+        <span class="end" />
+      </span>
+      {big && (
+        <span class="tcap">
+          <span>{t("wait.started", when(A.L, w.armedAt))}</span>
+          <span>{t("wait.now", when(A.L, new Date().toISOString()))}</span>
+          <span>{t("wait.until.ask", when(A.L, w.until))}</span>
+        </span>
+      )}
+    </>
+  );
+}
+
 /** A try's mark: ✓ it holds, → better, × not yet (in the failed ink only when worse). */
 export const beadMark = (v: Bodies["until_try"]["verdict"]) => (v === "met" ? "✓" : v === "better" ? "→" : "×");
 
-const minutes = (ms?: number) => Math.max(1, Math.round((ms ?? 0) / 60_000));
-
-/** "每 5 分钟看一次 · 上次 11:40 · 最多等到今天 18:00" / "Looks every 5 min · last 11:40 · until today 18:00". */
-export function waitCadence(w: WaiterView): string {
-  const parts: string[] = [];
-  if (w.event) parts.push(t("wait.each_new"));
-  else if (w.check) parts.push(t("wait.every", minutes(w.everyMs)));
-  else if (w.at) parts.push(t("waiter.at", when(A.L, w.at)));
-  if (w.lastLookAt) parts.push(t("wait.last", when(A.L, w.lastLookAt)));
-  if (w.until) parts.push(t("wait.until", when(A.L, w.until)));
-  return parts.join(" · ");
-}
-
-/** The try strip: one small pebble per try (✓ met, × worse or no way forward, → better), the
- *  current try hollow, then "第 n 次 · 最多 20". */
-export function Beads({ u, big }: { u: UntilView; big?: boolean }) {
+/** The try pebbles: one per try, the current one hollow. */
+export function Beads({ u }: { u: UntilView }) {
   const running = u.state === "on";
-  const mark = beadMark;
   return (
-    <span class={`beads${big ? " big" : ""}`} role="img" aria-label={t("until.tries", u.tries.length + (running ? 1 : 0), u.maxTries)}>
+    <span class="beads" role="img" aria-label={t("until.tries", u.tries.length + (running ? 1 : 0), u.maxTries)}>
       {u.tries.map((x) => (
-        <i key={x.n} class={`bd v-${x.verdict}`}>{mark(x.verdict)}</i>
+        <i key={x.n} class={`bd v-${x.verdict}`}>{beadMark(x.verdict)}</i>
       ))}
       {running && <i class="bd cur" />}
     </span>
@@ -69,7 +102,7 @@ export function untilLine(u: UntilView): string {
   return [t("until.try", n, u.maxTries), last ? t("until.last", last.summary) : ""].filter(Boolean).join(" · ");
 }
 
-/** The try strip in an opened task, each try with its own words under it. */
+/** The keep-going loop in an opened task: each try with its own words; how it judges, folded. */
 export function TryStrip({ task }: { task: Task }) {
   const u = A.S.untilOf(task);
   if (!u) return null;
@@ -92,14 +125,16 @@ export function TryStrip({ task }: { task: Task }) {
           </div>
         )}
       </div>
-      <div class="kv">
-        <span class="k">{t("until.used")}</span>
-        <span class="v">{t("until.used.v", u.tries.length, u.maxTries)}</span>
-        <span class="k">{t("until.judge")}</span>
-        <span class="v">{u.check ? t("until.judge.check") : t("until.judge.model")}</span>
-        <span class="k">{t("until.stops")}</span>
-        <span class="v">{t("until.stops.v", u.maxTries)}</span>
-      </div>
+      <div class="small">{t("until.rule", u.maxTries)}</div>
+      <details class="how">
+        <summary>{t("wait.how.title")}</summary>
+        <div class="kv">
+          <span class="k">{t("wait.looks.at")}</span>
+          <span class="v">{u.check ? <CheckLine spec={u.check} /> : t("until.judge.report")}</span>
+          <span class="k">{t("until.stops")}</span>
+          <span class="v">{t("until.stops.v", u.maxTries)}</span>
+        </div>
+      </details>
       {u.state === "on" && (
         <div class="btns">
           <button class="btn text" onClick={() => A.untilAction(task.id)}>{t("until.stop")}</button>
@@ -118,38 +153,40 @@ function CheckLine({ spec }: { spec: CheckSpec }) {
   );
 }
 
-/** An opened task that waits: what it waits for in words, and in Details the check itself and
- *  what it saw. */
+const minutes = (ms?: number) => Math.max(1, Math.round((ms ?? 0) / 60_000));
+
+/** An opened task that waits: the groove, then How it checks folded (the check itself, how
+ *  often, what it saw, who does it), then Stop waiting and Look now. */
 export function WaitDetails({ task }: { task: Task }) {
   const w = A.S.waiterFor(task.id);
   if (!w || (!w.check && !w.event)) return null;
   const looks = A.S.looksOf(task);
   return (
     <section class="section">
-      <h2 class="sec-title">{t("wait.details")}</h2>
-      <div class="kv">
-        <span class="k">{t("wait.for")}</span>
-        <span class="v">{w.reason}</span>
-        <span class="k">{t("wait.how")}</span>
-        <span class="v">{w.check ? <CheckLine spec={w.check} /> : t("wait.event", w.event!.connection, w.event!.trigger)}{w.judge && <span class="sub">{t("wait.judge", w.judge)}</span>}</span>
-        <span class="k">{t("wait.often")}</span>
-        <span class="v">{waitCadence(w)}</span>
-        {looks.length > 0 && (
-          <>
-            <span class="k">{t("wait.looks")}</span>
-            <span class="v">
-              <details>
-                <summary>{t("wait.looks.v", w.looks ?? looks.length, looks.length)}</summary>
-                <ol>
-                  {looks.slice(-8).map((l, i) => (
-                    <li key={i}>{l.summary}</li>
-                  ))}
-                </ol>
-              </details>
-            </span>
-          </>
-        )}
-      </div>
+      <Groove w={w} big />
+      <details class="how">
+        <summary>{t("wait.how.title")}</summary>
+        <div class="kv">
+          <span class="k">{t("wait.looks.at")}</span>
+          <span class="v">
+            {w.check ? <CheckLine spec={w.check} /> : t("wait.event", w.event!.connection, w.event!.trigger)}
+            {w.judge && <span class="sub">{t("wait.judge", w.judge)}</span>}
+          </span>
+          <span class="k">{t("wait.often")}</span>
+          <span class="v">{w.event ? t("wait.each_new") : t("wait.every", minutes(w.everyMs))}{w.lastLookAt ? ` · ${t("wait.last", when(A.L, w.lastLookAt))}` : ""}</span>
+          {looks.length > 0 && (
+            <>
+              <span class="k">{t("wait.looks")}</span>
+              <span class="v">
+                <span>{t("wait.looks.v", w.looks ?? looks.length, looks.length)}</span>
+                {looks.slice(-6).map((l, i) => (
+                  <span class="sub" key={i}>{l.summary}</span>
+                ))}
+              </span>
+            </>
+          )}
+        </div>
+      </details>
       <div class="btns">
         <button class="btn text" onClick={() => A.waiterAction(w.waiterId, "cancel")}>{t("wait.cancel")}</button>
         <button class="btn secondary" onClick={() => A.waiterAction(w.waiterId, "look")}>{t("wait.look")}</button>
@@ -158,30 +195,59 @@ export function WaitDetails({ task }: { task: Task }) {
   );
 }
 
-/** One routine on the shelf: its trigger in words, the next firing, the latest run. */
+const md = (iso: string) => {
+  const d = new Date(iso);
+  return `${d.getMonth() + 1}/${d.getDate()}`;
+};
+
+/** One strip for every routine: a line, today an ink mark at its left, a clay bead per run with
+ *  its date under it, spaced by time. */
+export function RunStrip({ r, n = 5 }: { r: RoutineView; n?: number }) {
+  const runs = (r.upcoming ?? (r.nextAt ? [r.nextAt] : [])).slice(0, n);
+  if (!runs.length) return null;
+  const now = Date.now();
+  const last = Date.parse(runs.at(-1)!);
+  const span = Math.max(1, last - now);
+  return (
+    <span class="runstrip" role="img" aria-label={runs.map((x) => when(A.L, x)).join(", ")}>
+      <span class="line" />
+      <span class="nowmark" />
+      {runs.map((x) => {
+        const left = 8 + ((Date.parse(x) - now) / span) * 88;
+        return (
+          <span class="rb" key={x} style={{ left: `${Math.min(96, Math.max(8, left))}%` }}>
+            <i />
+            <em>{md(x)}</em>
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
+/** One routine on the shelf: its name and when in words, its next runs as beads, then where it
+ *  stands, with Pause / Resume. */
 export function RoutineRow({ r }: { r: RoutineView }) {
-  const time = r.trigger.kind === "time";
   const paused = r.state === "paused";
-  const lines = [r.triggerWords];
+  const lines: string[] = [];
   if (paused) lines.push(t(`routine.paused.${r.pauseReason ?? "asked"}`));
   else if (r.running) lines.push(t("routine.running"));
   else if (r.nextAt) lines.push(t("routine.next", when(A.L, r.nextAt)));
   if (r.lastRun) lines.push(t(`routine.last.${r.lastRun.state}`, when(A.L, r.lastRun.at)));
   return (
     <div class={`row routine${paused ? " paused" : ""}`}>
-      {time ? (
-        <span class="clockface" aria-hidden="true">
+      {r.trigger.kind === "time" ? (
+        <span class="clk" aria-hidden="true">
           <img src="app/art/wait_clock.webp" alt="" draggable={false} />
-          <b>{(r.trigger as { time: string }).time.replace(/^0/, "")}</b>
         </span>
       ) : (
-        <WaitBubble w={r.trigger.kind === "condition" ? { check: r.trigger.check, event: r.trigger.event } : undefined} />
+        <WaitBubble w={{ check: r.trigger.check, event: r.trigger.event }} />
       )}
       <span class="main">
         <span class="t">{r.name}</span>
-        {lines.map((l, i) => (
-          <span class="m" key={i}>{l}</span>
-        ))}
+        <span class="m">{r.triggerWords}</span>
+        {!paused && r.trigger.kind === "time" && <RunStrip r={r} n={3} />}
+        {lines.length > 0 && <span class="m cap">{lines.join(" · ")}</span>}
       </span>
       {paused ? (
         <button class="btn secondary sm" onClick={() => A.routineAction(r.routineId, "resume")}>{t("routine.resume")}</button>
@@ -208,8 +274,8 @@ export function RoutineShelf() {
   );
 }
 
-/** A routine's proposal card body: the trigger in words with its next firings or what the
- *  condition sees now, what it does, how it reports, what it may touch, budget, review date. */
+/** A routine's proposal card body (D29): when (words and its next runs as beads), what it
+ *  does, how it reports, what it may touch, what it costs in plain words, its review date. */
 export function RoutineFacts({ routineId }: { routineId: string }) {
   const r = A.S.routine(routineId);
   if (!r) return null;
@@ -218,8 +284,7 @@ export function RoutineFacts({ routineId }: { routineId: string }) {
       <span class="k">{t("routine.when")}</span>
       <span class="v">
         {r.triggerWords}
-        {r.upcoming && <span class="sub">{r.upcoming.map((x) => when(A.L, x)).join(" · ")}</span>}
-        {r.dryRun && <span class="sub">{t("routine.now", r.dryRun.summary)}</span>}
+        {r.trigger.kind === "time" && <RunStrip r={r} />}
       </span>
       <span class="k">{t("routine.does")}</span>
       <span class="v">{r.brief.split("\n")[0]}</span>
@@ -228,7 +293,7 @@ export function RoutineFacts({ routineId }: { routineId: string }) {
       <span class="k">{t("routine.touch")}</span>
       <span class="v">{t(`routine.effect.${r.effect}`)}</span>
       <span class="k">{t("routine.budget")}</span>
-      <span class="v">{t("routine.budget.run")} · {t("routine.budget.month")}</span>
+      <span class="v">{t("routine.cost")}</span>
       <span class="k">{t("routine.review")}</span>
       <span class="v">{t("routine.review.v", when(A.L, r.reviewAt))}</span>
     </div>

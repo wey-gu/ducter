@@ -357,8 +357,9 @@ export function createRoutines(opts: {
     if (s.r.trigger.kind === "time" && (s.r.state === "active" || s.r.state === "proposed")) {
       const from = s.r.state === "active" ? Math.max(clock.now(), s.lastScheduled ?? 0) : clock.now();
       const next = nextFirings(s.r.trigger, from, 5, zoneOf(s.r)).map((t) => new Date(t).toISOString());
+      // The next five, for the strip of beads every routine shows (D115); the first is "next".
+      v.upcoming = next;
       if (s.r.state === "active") v.nextAt = next[0];
-      else v.upcoming = next;
     }
     return v;
   };

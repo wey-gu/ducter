@@ -11,7 +11,7 @@ import { ago, cjkPad, deviceLabel, duration, firstClause, harnessName, modelName
 import { markdown } from "./markdown.ts";
 import { disablePush, enablePush } from "./push-client.ts";
 import { inApp } from "./native.ts";
-import { Beads, RoutineFacts, RoutineShelf, TryStrip, untilLine, WaitBubble, waitCadence, WaitDetails } from "./work.tsx";
+import { Beads, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, WaitBubble, waitCaption, WaitDetails, waitLine } from "./work.tsx";
 import {
   attention,
   bodyReasonOf,
@@ -1026,7 +1026,7 @@ function metaLine(task: Task): string {
 /** What a waiting task waits for, said once: the lane already says it is waiting. */
 function waitReason(task: Task): string {
   const w = A.S.waiterFor(task.id);
-  if (w) return [w.reason, waitCadence(w)].filter(Boolean).join(" · ");
+  if (w) return [waitLine(w.reason), waitCaption(w)].filter(Boolean).join(" · ");
   return reasonOf(task) || metaLine(task);
 }
 
@@ -1047,6 +1047,7 @@ function Row({ task, meta }: { task: Task; meta: string }) {
       <span class="main">
         <span class="t">{title(task) || t("task.unknown")}</span>
         {u && !finished(task) && <Beads u={u} />}
+        {w && <Groove w={w} />}
         <span class="m">{meta}</span>
       </span>
       <span class="chev" aria-hidden="true">
@@ -1118,8 +1119,9 @@ export function OnHand() {
                   <div class="row" key={w.waiterId}>
                     {w.check || w.event ? <WaitBubble w={w} /> : <Clock />}
                     <span class="main">
-                      <span class="t">{w.reason}</span>
-                      <span class="m">{waitCadence(w)}</span>
+                      <span class="t">{w.check || w.event ? waitLine(w.reason) : w.reason}</span>
+                      {(w.check || w.event) && <Groove w={w} />}
+                      {waitCaption(w) && <span class="m">{waitCaption(w)}</span>}
                     </span>
                     {(w.check || w.event) && <Btn kind="text" size="sm" label={t("wait.cancel")} about={w.reason} onClick={() => A.waiterAction(w.waiterId, "cancel")} />}
                   </div>
@@ -1434,10 +1436,7 @@ export function TaskView({ id }: { id: string }) {
             </div>
             <h1>{title(task) || t("task.unknown")}</h1>
             {a === "blocked" && A.S.waiterFor(id) && (
-              <p class="waitline">
-                {A.S.waiterFor(id)!.reason}
-                <span>{waitCadence(A.S.waiterFor(id)!)}</span>
-              </p>
+              <p class="waitline">{waitLine(A.S.waiterFor(id)!.reason)}</p>
             )}
           </div>
           {headline && <p class="headline">{headline}</p>}
@@ -1466,12 +1465,12 @@ export function TaskView({ id }: { id: string }) {
             {!["dropped", "superseded", "done"].includes(a) && <Btn kind="text" label={t("task.action.drop")} onClick={() => A.drop(id)} />}
           </div>
         )}
+        <WaitDetails task={task} />
         <TryStrip task={task} />
         <section class="section">
           <h2 class="sec-title">{t("task.transcript")}</h2>
           <WhatItDid task={task} />
         </section>
-        <WaitDetails task={task} />
         <TaskDetails task={task} />
       </main>
       <Composer taskId={id} />

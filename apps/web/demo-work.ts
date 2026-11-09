@@ -42,7 +42,7 @@ const user = (text: string) => log.append({ stream: "channel", origin: "user", k
 const u1 = user(zh ? "#1592 的 CI 过了告诉我，过了就合" : "Tell me when #1592's CI passes, then merge it");
 await task("t_pr", zh ? "HawDB PR #1592：修 compaction 测试" : "HawDB PR #1592: fix the compaction test", repo("~/dev/hawdb", "ducter/compaction-fix"), "Merge #1592 once CI is green.");
 const prCheck = { argv: ["gh", "pr", "checks", "1592", "--repo", "nowledge-co/hawdb", "--json", "state"], succeedWhen: { path: "[].state", equals: "SUCCESS" } };
-core.work.waiters.arm({ reason: zh ? "在等 PR #1592 通过" : "Waiting for PR #1592 to pass", taskId: "t_pr", check: prCheck, everyMs: 5 * 60_000, until: new Date(Date.now() + 6 * 3600_000).toISOString() });
+core.work.waiters.arm({ reason: zh ? "PR #1592 通过" : "PR #1592 passes", taskId: "t_pr", check: prCheck, everyMs: 5 * 60_000, until: new Date(Date.now() + 6 * 3600_000).toISOString() });
 say(zh ? "好，现在 6 项里还有 2 项在跑，全绿了我就合，再告诉你。" : "Will do. Two of the six checks are still running; I'll merge when it's all green and tell you.", u1.seq);
 void core.work.waiters.look(core.work.waiters.views()[0]!.waiterId);
 await tick();
@@ -65,7 +65,7 @@ log.append({
   kind: "waiter",
   body: {
     waiterId: "w_mail",
-    reason: zh ? "域名续费的邮件到了告诉你" : "Tell you when the domain renewal email arrives",
+    reason: zh ? "域名续费的邮件到了" : "The domain renewal email arrives",
     state: "armed",
     kind: "judge",
     event: { connection: "OOMOL", service: "gmail", trigger: "gmail.on_message_received", contains: "namecheap" },

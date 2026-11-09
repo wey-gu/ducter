@@ -137,7 +137,7 @@ export const homeJson = (t: Target) => (t.kind === "local" ? { kind: "local" as 
 export type CommandClass = "machine" | "home" | "self";
 
 const MACHINE = new Set(["up", "service", "uninstall", "worker", "doctor", "domain", "report"]);
-const HOME = new Set(["status", "say", "task", "tail", "answer", "merge", "undo", "open", "pair", "devices"]);
+const HOME = new Set(["status", "say", "task", "tail", "answer", "merge", "undo", "open", "pair", "devices", "ability", "browser"]);
 
 /**
  * machine: acts on this computer, whatever the CLI follows. home: goes to the Ducter the CLI

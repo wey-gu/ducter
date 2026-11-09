@@ -14,6 +14,7 @@ import { commandClass, homeJson, resolveTarget, type Target } from "./home.ts";
 import { cliChecks, cmdConnect, cmdDevicesAt, cmdDisconnect, cmdPairAt, targetLine } from "./homecmds.ts";
 import { realpathSync } from "node:fs";
 import { fetchSnapshot, formatSnapshot, pickTask, taskAction, toMerge } from "./status.ts";
+import { cmdAbility, cmdBrowser } from "./browser-cmd.ts";
 import { cmdDevices, cmdPair, cmdService, ducterCommand, fetchPublicIp, isLoopback, publicUrl } from "./remote.ts";
 import { caddyfileFor, cmdDomain, realDomainSys, removeDucterSite } from "./domain.ts";
 import { cmdWorker } from "./worker.ts";
@@ -59,6 +60,8 @@ export function helpText(t: T): string {
     cmd("devices", t("help.devices")),
     cmd("connect", t("help.connect")),
     cmd("disconnect", t("help.disconnect")),
+    cmd("ability", t("help.ability")),
+    cmd("browser", t("help.browser")),
     cmd("service", t("help.service")),
     cmd("domain", t("help.domain")),
     cmd("worker", t("help.worker")),
@@ -616,6 +619,10 @@ export async function run(argv: string[]): Promise<number | "running"> {
     case "devices":
       if (ctx.target.kind === "remote") return cmdDevicesAt({ t, style, target: ctx.target, json: args.json, rest: args.rest ?? [] });
       return cmdDevices({ t, style, dataDir, json: args.json, rest: args.rest ?? [], port });
+    case "ability":
+      return cmdAbility({ t, target: ctx.target, json: args.json, rest: args.rest ?? [] });
+    case "browser":
+      return cmdBrowser({ t, target: ctx.target, json: args.json, rest: args.rest ?? [] });
     case "service":
       return cmdService({
         t,

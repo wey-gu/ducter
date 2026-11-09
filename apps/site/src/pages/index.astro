@@ -6,6 +6,7 @@ import Face from "../components/Face.astro";
 import Head from "../components/Head.astro";
 import Nav from "../components/Nav.astro";
 import Footer from "../components/Footer.astro";
+import Isles from "../components/Isles.astro";
 import { siteLinks } from "../lib/links";
 import { agentsLine, agentsToday, agentsTodayAnd } from "../lib/agents";
 
@@ -133,10 +134,10 @@ const ld = {
             </div>
           </div>
         </div>
-        <div class="row" data-state="working" data-row="oar"><span class="glyph"><Art name="server_awake" alt="" sizes="38px" /></span><span class="t"><b>Port the runner to OAR 0.96</b><span id="oar-st">Reading the changelog · cloud-1</span></span></div>
-        <div class="row" data-state="working" data-row="prs"><span class="glyph"><Art name="laptop_awake" alt="" sizes="38px" /></span><span class="t"><b>Review this week's 3 open PRs</b><span>Read 2; the third is waiting on CI · MacBook</span></span></div>
-        <div class="row" data-state="waiting" data-row="notes"><span class="glyph"><Art name="server_awake" alt="" sizes="38px" /></span><span class="t"><b>Write the v0.4 release notes</b><span>Waiting for the v0.4 CI run · cloud-1</span></span></div>
-        <div class="row" data-state="done" data-row="mem"><span class="glyph"><Art name="laptop_awake" alt="" sizes="38px" /></span><span class="t"><b>Mem #8762 health check</b><span>Passed 3 times in a row; the issue can close · MacBook</span></span></div>
+        <div class="row" data-state="working" data-row="oar"><span class="glyph token"><Art name="token_orange" alt="" sizes="36px" /></span><span class="t"><b>Port the runner to OAR 0.96</b><span id="oar-st">Reading the changelog · Claude Code · cloud-1</span></span></div>
+        <div class="row" data-state="working" data-row="prs"><span class="glyph token"><Art name="token_ink" alt="" sizes="36px" /></span><span class="t"><b>Review this week's 3 open PRs</b><span>Read 2; the third is waiting on CI · Codex · MacBook</span></span></div>
+        <div class="row" data-state="waiting" data-row="notes"><span class="glyph bubble"><Art name="wait_ci" alt="" sizes="30px" /></span><span class="t"><b>Write the v0.4 release notes</b><span>Waiting for the v0.4 CI run · cloud-1</span></span></div>
+        <div class="row" data-state="done" data-row="mem"><span class="glyph check"><Fragment set:html={check} /></span><span class="t"><b>Mem #8762 health check</b><span>Passed 3 times in a row; the issue can close · MacBook</span></span></div>
       </div>
     </div>
   </div>
@@ -151,42 +152,15 @@ const ld = {
     </div>
 
     <div class="stage-wrap reveal">
-      <div class="stage" id="stage" aria-label="Your devices and what they can do">
-        <div class="toast" id="toast" role="status" aria-live="polite"><span class="ok"><Fragment set:html={check} /></span><span id="toast-text">This Mac can browse the web now</span></div>
-        <svg class="cords" id="cords" aria-hidden="true"></svg>
-        <div class="floor"></div>
-        <div class="it mini" id="mini"><Art name="mini_asleep" alt="A Mac mini asleep under a knitted blanket" sizes="(min-width: 1040px) 180px, 28vw" /><span class="lbl">Mac mini</span></div>
-        <div class="it server" id="server"><Art name="server_awake" alt="A server sitting on a cloud, awake" sizes="(min-width: 1040px) 190px, 30vw" /><span class="lbl">cloud-1</span></div>
-        <div class="rig">
-          <div class="pedestal"><Art name="pedestal" alt="" sizes="(min-width: 1040px) 460px, 76vw" /></div>
-          <div class="laptop" id="laptop"><Art name="laptop_awake" alt="This Mac, awake" sizes="(min-width: 1040px) 320px, 52vw" /></div>
-          <div class="sitter"><Face id="stage-face" faces={["idle", "done"]} start="idle" sizes="(min-width: 1040px) 110px, 18vw" /></div>
-          <div class="slot" id="slot">
-            <div class="well">
-              <Art class="empty" name="slot_empty" alt="" sizes="(min-width: 1040px) 110px, 18vw" />
-              <Art class="placed" name="ab_web" alt="Browse the web, added" sizes="(min-width: 1040px) 110px, 18vw" />
-              <span class="ring"></span>
-            </div>
-            <span class="lbl" id="slot-lbl">Browse the web<small id="slot-sub">fits here</small></span>
-          </div>
-          <div class="slot equipped-r">
-            <div class="well"><Art name="ab_remote" alt="Reach from anywhere, added" sizes="(min-width: 1040px) 110px, 18vw" /></div>
-            <span class="lbl">Reach from anywhere</span>
-          </div>
-        </div>
-        <div class="tokens" aria-label="AI accounts signed in on your devices">
-          <div class="tok" id="tok-cx"><Art name="token_ink" alt="" sizes="42px" /><span><b>Codex</b><small>Signed in · 1 device</small></span></div>
-          <div class="tok" id="tok-cc"><Art name="token_orange" alt="" sizes="42px" /><span><b>Claude Code</b><small>Signed in · 2 devices</small></span></div>
-        </div>
-      </div>
+      <Isles />
 
       <div class="tray">
         <h3>You can also add</h3>
         <div class="stickers">
-          <button class="sticker live" id="sticker-web" type="button" aria-describedby="web-detail"><Art name="ab_web" alt="" sizes="84px" />Browse the web<small id="web-small">Drag it onto your Mac</small></button>
-          <div class="sticker lock"><Art name="ab_computer" alt="" sizes="84px" />Use this computer<small>Coming later</small></div>
-          <div class="sticker lock"><Art name="ab_phone_locked" alt="" sizes="84px" />Use a phone<small>Coming later</small></div>
-          <div class="sticker lock"><Art name="ab_call_locked" alt="" sizes="84px" />Make calls<small>Coming later</small></div>
+          <button class="sticker live" id="sticker-web" type="button" aria-describedby="web-detail"><Art name="ab_web" alt="" sizes="(min-width: 1040px) 96px, (min-width: 560px) 15vw, 19vw" /><b>Browse the web</b><small id="web-small">Drag onto this Mac, or tap</small></button>
+          <div class="sticker lock"><Art name="ab_computer_later" alt="" sizes="(min-width: 1040px) 96px, (min-width: 560px) 15vw, 19vw" /><b>Use this computer</b><small>Coming later</small></div>
+          <div class="sticker lock"><Art name="ab_phone_later" alt="" sizes="(min-width: 1040px) 96px, (min-width: 560px) 15vw, 19vw" /><b>Use a phone</b><small>Coming later</small></div>
+          <div class="sticker lock"><Art name="ab_call_later" alt="" sizes="(min-width: 1040px) 96px, (min-width: 560px) 15vw, 19vw" /><b>Make calls</b><small>Coming later</small></div>
         </div>
         <div class="detail" id="web-detail">
           <h3>Browse the web</h3>

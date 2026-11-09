@@ -1,0 +1,204 @@
+---
+// The Devices stage as the Isles (D81), drawn the way the desktop app draws it (isles.go): a sky
+// over a hazy horizon, a clay sea that deepens toward you, every device on its own island, plank
+// and rope bridges from home only, parcels crossing the bridge of the device a task runs on, the
+// AI accounts standing on the islands they're signed in on, and the abilities as big clay objects
+// on the water in front of home. Laid out at build time (src/lib/isles.ts) in a wide and a narrow
+// design space; the drawn parts are one SVG per layout, the clay is <picture>s placed in the same
+// units, and the words sit on small clay tags at their own sizes.
+import Art from "./Art.astro";
+import Face from "./Face.astro";
+import manifest from "../art.json";
+import { layout, accounts, dock, type Layout, type Box } from "../lib/isles";
+
+const wide = layout("wide");
+const narrow = layout("narrow");
+const L = { wide, narrow };
+const n = (v: number) => +v.toFixed(2);
+const pos = (w: Box, nb: Box) =>
+  `--x:${n(w.x)};--y:${n(w.y)};--w:${n(w.w)};--h:${n(w.h)};--nx:${n(nb.x)};--ny:${n(nb.y)};--nw:${n(nb.w)};--nh:${n(nb.h)}`;
+const at = (w: { x: number; y: number }, nb: { x: number; y: number }) => `--x:${n(w.x)};--y:${n(w.y)};--nx:${n(nb.x)};--ny:${n(nb.y)}`;
+
+// The theme's Isles tokens (apps/desktop/internal/theme/theme.go).
+const C = {
+  skyTop: "#E9EEEA", sky: "#FCEBD6", haze: "#FFF6EA", seaFar: "#C4E6DF", sea: "#A6D8D0", seaNear: "#86C4BC",
+  cloud: "#FFFDF8", glint: "#FFFFFA", plank: "#D9A76A", plankDark: "#A8743E", rope: "#8A6236",
+  parcel: "#FFF3E0", parcelEdge: "#C98F4E",
+};
+const reflection = (name: "island_big" | "island_small") => `/art/${name}-${manifest[name].widths[0]}.webp`;
+
+function sea(l: Layout, id: string) {
+  const { W, H } = l.spec;
+  const hz = l.horizon;
+  const clouds = [[0.12, 0.45, 1.0, 0.1], [0.42, 0.25, 0.75, 0.6], [0.74, 0.5, 1.15, 0.35], [0.93, 0.2, 0.7, 0.8]].map((cl, i) => {
+    const cw = W * 0.2 * cl[2];
+    const cx = W * cl[0], cy = hz * cl[1] + 6;
+    const blobs = [[-0.32, 0.1, 0.45], [-0.05, -0.12, 0.6], [0.25, 0.02, 0.5], [0, 0.18, 0.9]].map((b, j) => {
+      const bw = cw * b[2];
+      return { cx: n(cx + cw * b[0]), cy: n(cy + cw * b[1] * 0.4), rx: n(bw / 2), ry: n(bw * 0.22), o: n(0.85 - 0.08 * ((i + j) % 3)) };
+    });
+    return { blobs, delay: n(-cl[3] * 70) };
+  });
+  const glints = Array.from({ length: 14 }, (_, i) => {
+    const gx = (i * 0.381 + 0.07) % 1, gy = (i * 0.617 + 0.13) % 1;
+    const y = hz + 18 + gy * (H - hz - 30);
+    const depth = (y - hz) / (H - hz);
+    const w = 26 + 46 * depth;
+    return { cx: n(gx * W), cy: n(y), rx: n(w / 2), ry: n(w * 0.07), delay: n(-i * 0.13 * 19), tw: n(-i * 0.29 * 11), amp: n(10 * (0.4 + depth)) };
+  });
+  return { W, H, hz, clouds, glints, id };
+}
+const seas = { wide: sea(wide, "w"), narrow: sea(narrow, "n") };
+---
+<div class="isles-wrap">
+  <div class="isles" id="stage" role="group" aria-label="Your devices and what they can do: This Mac, where Ducter lives, with cloud-1, a Mac mini and an iPhone round it">
+    {(["wide", "narrow"] as const).map((which) => {
+      const l = L[which];
+      const s = seas[which];
+      const { W, H } = l.spec;
+      const g = (k: string) => `${s.id}-${k}`;
+      return (
+        <svg class={`sea ${which}`} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true">
+          <defs>
+            <linearGradient id={g("water")} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color={C.skyTop} />
+              <stop offset={n((s.hz * 0.7) / H)} stop-color={C.sky} />
+              <stop offset={n((s.hz - 2) / H)} stop-color={C.haze} />
+              <stop offset={n((s.hz + 6) / H)} stop-color={C.seaFar} />
+              <stop offset={n((s.hz + (H - s.hz) * 0.45) / H)} stop-color={C.sea} />
+              <stop offset="1" stop-color={C.seaNear} />
+            </linearGradient>
+            {[["white", "#FFFFFF"], ["cloud", C.cloud], ["glint", C.glint], ["haze", C.haze], ["teal", "rgb(30 80 86)"]].map(([k, c]) => (
+              <radialGradient id={g(k)}>
+                <stop offset="0" stop-color={c} />
+                <stop offset="0.55" stop-color={c} stop-opacity="0.6" />
+                <stop offset="1" stop-color={c} stop-opacity="0" />
+              </radialGradient>
+            ))}
+            <radialGradient id={g("dark")} cx="0.22" cy="0.18" r="1">
+              <stop offset="0.55" stop-color="rgb(30 90 96)" stop-opacity="0" />
+              <stop offset="1" stop-color="rgb(30 90 96)" stop-opacity="0.16" />
+            </radialGradient>
+          </defs>
+          <rect width={W} height={H} fill={`url(#${g("water")})`} />
+          {s.clouds.map((c) => (
+            <g class="cloud" style={`animation-delay:${c.delay}s`}>
+              {c.blobs.map((b) => <ellipse cx={b.cx} cy={b.cy} rx={b.rx} ry={b.ry} fill={`url(#${g("cloud")})`} opacity={b.o} />)}
+            </g>
+          ))}
+          <ellipse cx={W / 2} cy={s.hz + 1} rx={W * 0.6} ry="15" fill={`url(#${g("haze")})`} opacity="0.9" />
+          <ellipse cx={n(W * 0.31)} cy={n(s.hz + H * 0.25)} rx={n(W * 0.31)} ry={n(H * 0.25)} fill={`url(#${g("glint")})`} opacity="0.36" />
+          {s.glints.map((q) => (
+            <g class="glint" style={`--amp:${q.amp}px;animation-delay:${q.delay}s`}>
+              <ellipse cx={q.cx} cy={q.cy} rx={q.rx} ry={q.ry} fill={`url(#${g("glint")})`} style={`animation-delay:${q.tw}s`} />
+            </g>
+          ))}
+          <rect width={W} height={H} fill={`url(#${g("dark")})`} />
+          {l.isles.map((p) => {
+            const b = p.is;
+            const home = !!p.d.home;
+            const foam = home ? 0.85 : 0.5;
+            const cy = b.y + b.h * 0.87;
+            const ry = b.h * 0.42;
+            const ty = b.y + b.h * 0.78 + ry;
+            return (
+              <g class="isle-water" data-isle={p.d.key}>
+                <ellipse cx={n(b.x + b.w * 0.57)} cy={n(b.y + b.h * 0.91)} rx={n(b.w * 0.53)} ry={n(b.h * 0.31)} fill={`url(#${g("teal")})`} opacity="0.16" />
+                <image href={reflection(p.island)} x={n(b.x)} y={n(-ty)} width={n(b.w)} height={n(ry)} preserveAspectRatio="none" transform="scale(1,-1)" opacity="0.14" />
+                <ellipse cx={n(b.x + b.w / 2)} cy={n(cy)} rx={n(b.w * 0.6)} ry={n(b.h * 0.3)} fill={`url(#${g("white")})`} opacity={n(0.35 * foam)} />
+                <ellipse cx={n(b.x + b.w / 2)} cy={n(cy)} rx={n(b.w * 0.39)} ry={n(b.h * 0.075)} fill="none" stroke="#fff" stroke-width="5" opacity={n(0.3 * foam)} />
+                <ellipse cx={n(b.x + b.w / 2)} cy={n(cy)} rx={n(b.w * 0.39)} ry={n(b.h * 0.075)} fill="none" stroke="#fff" stroke-width="1.6" opacity={n(0.75 * foam)} />
+              </g>
+            );
+          })}
+          {l.bridges.map((b) => (
+            <g class="bridge" data-isle={b.key}>
+              <path d={b.shadow} fill="none" stroke="rgb(30 80 86)" stroke-opacity="0.16" stroke-width={b.width + 4} stroke-linecap="round" />
+              {b.edges.map((q) => <polygon points={q} fill={C.plankDark} fill-opacity="0.8" />)}
+              {b.planks.map((q) => <polygon points={q} fill={C.plank} />)}
+              {b.ropes.map((d) => <path d={d} fill="none" stroke={C.rope} stroke-opacity="0.85" stroke-width="2.2" stroke-linecap="round" />)}
+              {b.working && (
+                <g class="parcels">
+                  <path class="ride" d={b.d} fill="none" stroke="none" />
+                  {b.parcels.map((q) => {
+                    const pw = b.width * 0.95, ph = b.width * 0.78;
+                    return (
+                      <g class="parcel" transform={`translate(${q.x} ${q.y})`}>
+                        <rect x={n(-pw / 2 + 1.5)} y={n(-ph - 1 + 2.5)} width={n(pw)} height={n(ph)} rx="3" fill="rgb(120 72 30)" fill-opacity="0.22" />
+                        <rect x={n(-pw / 2)} y={n(-ph - 1)} width={n(pw)} height={n(ph)} rx="3" fill={C.parcelEdge} />
+                        <rect x={n(-pw / 2 + 1.2)} y={n(-ph - 1 + 1.2)} width={n(pw - 2.4)} height={n(ph - 2.4)} rx="2.4" fill={C.parcel} />
+                        <rect x="-1" y={n(-ph - 1 + 1.2)} width="2" height={n(ph - 2.4)} fill={C.parcelEdge} fill-opacity="0.55" />
+                      </g>
+                    );
+                  })}
+                </g>
+              )}
+            </g>
+          ))}
+        </svg>
+      );
+    })}
+
+    {wide.isles.map((p, i) => {
+      const q = narrow.isles[i];
+      const k = p.d.key;
+      return (
+        <Fragment>
+          <div class="p island" data-isle={k} style={pos(p.is, q.is)}>
+            <Art name={p.island} alt="" sizes={p.d.home ? "(min-width: 1040px) 400px, (min-width: 560px) 45vw, 84vw" : "(min-width: 1040px) 200px, (min-width: 560px) 23vw, 40vw"} />
+          </div>
+          {p.ducter && q.ducter && (
+            <div class="p ducter" data-isle={k} style={pos(p.ducter, q.ducter)}>
+              <Face id="stage-face" faces={["working", "done", "idle"]} start="working" sizes="(min-width: 1040px) 150px, (min-width: 560px) 17vw, 32vw" />
+            </div>
+          )}
+          <div class={`p dev ${p.d.idle}`} data-isle={k} id={p.d.home ? "laptop" : undefined} style={pos(p.dev, q.dev)}>
+            <Art name={p.d.art} alt="" sizes={p.d.home ? "(min-width: 1040px) 212px, (min-width: 560px) 24vw, 46vw" : p.d.phone ? "52px" : "(min-width: 1040px) 140px, (min-width: 560px) 16vw, 28vw"} />
+          </div>
+          {p.tokens.map((t, j) => {
+            const nt = q.tokens[j];
+            const a = accounts[t.id];
+            return (
+              <button class="p tok" type="button" data-isle={k} data-acc={t.id} aria-pressed="false"
+                aria-label={`${a.name} on ${p.d.name}`}
+                style={`${at({ x: t.x + t.w / 2, y: t.y }, { x: nt.x + nt.w / 2, y: nt.y })};--a:${t.art};--na:${nt.art}`}>
+                <span class="tok-art"><Art name={a.art} alt="" sizes="40px" /></span>
+                <span class="mini-tag">{a.name}</span>
+              </button>
+            );
+          })}
+          <div class={`p name${p.d.home ? " chosen" : ""}`} data-isle={k} style={`${at(p.tag, q.tag)};--tm:${wide.spec.tagMax};--ntm:${narrow.spec.tagMax}`}>
+            <span class="tag"><b>{p.d.name}</b>{p.d.line && <small class={p.d.asleep ? "asleep" : undefined}>{p.d.line}</small>}</span>
+          </div>
+        </Fragment>
+      );
+    })}
+
+    {wide.dock.map((d, i) => {
+      const q = narrow.dock[i];
+      const a = dock[i];
+      const box = { x: d.x, y: d.y, w: d.size, h: d.size };
+      const nbox = { x: q.x, y: q.y, w: q.size, h: q.size };
+      return (
+        <div class={`p dock${a.on ? " on" : ""}`} id={a.on ? undefined : "slot"} data-isle="home" style={pos(box, nbox)}
+          role={a.on ? undefined : "button"} tabindex={a.on ? undefined : 0} aria-label={a.on ? undefined : `${a.name} · can add`}>
+          <div class="well">
+            {a.on ? (
+              <Art class="obj" name="ab_remote" alt="Reach from anywhere, added to this Mac" sizes="(min-width: 560px) 150px, 32vw" />
+            ) : (
+              <Fragment>
+                <Art class="socket" name="slot_empty" alt="" sizes="(min-width: 560px) 150px, 32vw" />
+                <Art class="ghost" name="ab_web_later" alt="" sizes="(min-width: 560px) 80px, 18vw" />
+                <Art class="obj placed" name="ab_web" alt="Browse the web, added to this Mac" sizes="(min-width: 560px) 150px, 32vw" />
+                <span class="ring" aria-hidden="true"></span>
+              </Fragment>
+            )}
+          </div>
+          <span class="tag dock-tag" id={a.on ? undefined : "slot-lbl"}><b>{a.name}</b></span>
+        </div>
+      );
+    })}
+
+    <div class="toast" id="toast" role="status" aria-live="polite"><span class="ok"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"/></svg></span><span id="toast-text">This Mac can browse the web now</span></div>
+  </div>
+</div>

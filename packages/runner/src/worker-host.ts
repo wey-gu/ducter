@@ -8,6 +8,8 @@ import type { HarnessEvent, HarnessPort, HarnessSession, SessionSpec } from "@du
 import { runCheck } from "@ducter/protocol/src/checks-run.ts";
 import { archiveWorktree, branchChanges, mergeTaskBranch, openDraftPr } from "./integrate.ts";
 import { planPlace, provisionPlace } from "./places.ts";
+import { createFolderStore } from "./folder.ts";
+import { join } from "node:path";
 
 export interface WorkerHostOptions {
   dataDir: string; // the worker's own ~/.ducter (worktrees, scratch)
@@ -59,6 +61,9 @@ function wireEvent(ev: HarnessEvent): HarnessEvent {
 
 export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
   const sessions = new Map<string, HarnessSession>();
+  // D142: the copy of a non-git folder lives here, beside the folder (folder.ts).
+  const folders = createFolderStore({ root: join(o.dataDir, "snapshots") });
+  folders.sweep();
   const busyOf = (s: HarnessSession) => {
     try {
       return Boolean(s.busy());
@@ -120,6 +125,14 @@ export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
     openPr: (a) => openDraftPr(a.place, { gh: o.gh }),
     changes: (a) => branchChanges(a.place),
     archive: (a) => archiveWorktree(a.place, o.dataDir),
+    folderPrepare: (a) => folders.prepare(String(a.taskId), String(a.folder)),
+    folderFinish: async (a) => {
+      folders.finish(String(a.taskId));
+      folders.sweep();
+    },
+    folderChanges: (a) => folders.changes(String(a.taskId), a.opts),
+    folderUndo: (a) => folders.undo(String(a.taskId), a.opts),
+    folderKeep: async (a) => folders.keep(String(a.taskId)),
     // D112: a waiter's check runs here when the task works on this device (read-only, validated
     // again here: the worker never trusts the main to have checked).
     check: (a) => runCheck(a.spec),

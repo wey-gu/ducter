@@ -69,6 +69,44 @@ export interface DiffStat {
   at: string;
 }
 
+/** D142: one thing a task did to a folder that isn't a git repo, against the copy Ducter kept
+ *  from before it wrote. moved: `from` is where it was (same parent folder = renamed). */
+export interface FolderChange {
+  kind: "added" | "changed" | "removed" | "moved";
+  path: string; // relative to the folder, "/"-separated
+  from?: string;
+  dir?: boolean; // a folder (added or removed), not a file
+}
+
+/** D142: what a task changed in a non-git folder, counted against the copy Ducter kept.
+ *  undo: open = 改回去 / Undo all changes is offered (until undoUntil, once the task is done);
+ *  kept = the user said 就这样 / Keep the changes (the copy is freed); undone = put back;
+ *  expired = the copy was freed after 7 days; none = no copy (the user let it change the folder
+ *  directly). */
+export interface FolderSummary {
+  added: number; // new files
+  changed: number; // same path, new content
+  removed: number; // files gone
+  moved: number; // files moved to another folder
+  renamed: number; // files renamed in place
+  folders: number; // new folders
+  undo: "open" | "kept" | "undone" | "expired" | "none";
+  undoUntil?: string; // ISO: when the copy goes (7 days after the task finished)
+  at: string; // when it was counted
+}
+
+/** The summary with the list (at most 500 entries; `more` = how many were left out). */
+export interface FolderChanges extends FolderSummary {
+  files: FolderChange[];
+  more: number;
+}
+
+/** D142: what an undo would lose: changes made after the task finished. */
+export interface UndoConfirm {
+  count: number;
+  files: string[]; // at most 5
+}
+
 /** False only when Ducter checked and the branch holds nothing its base doesn't: nothing to merge
  *  or open a PR for. Unknown counts as changes (the actions themselves refuse if there are none). */
 export const hasBranchChanges = (r: { branch?: BranchChanges } | undefined): boolean =>
@@ -141,6 +179,9 @@ export interface Bodies {
     /** Set by Ducter when the report is logged (never by the task): what the task's branch holds
      *  that its base branch doesn't. Absent when unknown (no repo, no base, an older worker). */
     branch?: BranchChanges;
+    /** D142: set by Ducter on a done or failed report of a non-git folder task: what it changed
+     *  there and until when it can be undone. */
+    folder?: FolderSummary;
   };
   checkpoint: { taskId: string; text: string; gitRef?: string };
   // A waiter is a cheap wait that wakes the partner (wait_until). Shown on On hand as a compact row.
@@ -308,6 +349,7 @@ export interface TaskCard {
   fromRoutine?: { routineId: string; name: string }; // a routine's run (D114)
   openedBy?: "you"; // D128: the user opened it themselves; absent = the partner did
   changes?: DiffStat; // D128: repo tasks, once counted (cached; refreshed after each turn)
+  folder?: FolderSummary; // D142: non-git folder tasks, once counted (cached like changes)
 }
 
 export interface OnHand {
@@ -444,7 +486,13 @@ export type ClientFrame =
   // merge: integrate the task branch into its base branch (local, reversible by revert);
   // open_pr: push the branch and open a draft PR (an intent: external effect, see G-safety).
   // The server acks every task_action with {t:"action_result"}.
-  | { t: "task_action"; taskId: string; action: "interrupt" | "drop" | "undrop" | "reopen" | "merge" | "open_pr" }
+  // D142, a non-git folder task: undo puts the folder back exactly as it was before the task
+  // (path: only that one entry of folder_changes); keep frees the copy (就这样 / Keep the
+  // changes). An undo of a folder someone changed after the task finished is answered ok:false
+  // with `confirm` (what would be lost); the same undo with force: true goes ahead.
+  | { t: "task_action"; taskId: string; action: "interrupt" | "drop" | "undrop" | "reopen" | "merge" | "open_pr" | "undo" | "keep"; path?: string; force?: boolean }
+  // D142: the list behind a folder task's Changes; answered with a folder_changes frame.
+  | { t: "folder_changes"; taskId: string }
   | { t: "read"; upToSeq: number }
   | { t: "task_history"; taskId: string; beforeSeq?: number; limit?: number }
   // Devices and abilities (D43, D51): "devices" answers with a devices frame and keeps the
@@ -530,7 +578,10 @@ export type ServerFrame =
   | { t: "on_hand"; onHand: OnHand }
   | { t: "task_history"; taskId: string; events: LogEvent[] }
   | { t: "sent"; taskId: string; delivered: Delivery } // ack for task_send
-  | { t: "action_result"; taskId: string; action: string; ok: boolean; message?: string; ref?: string } // ref: merge commit or PR URL
+  // ref: merge commit or PR URL. confirm (D142 undo): the folder changed after the task finished;
+  // these would be lost (count, the first few paths).
+  | { t: "action_result"; taskId: string; action: string; ok: boolean; message?: string; ref?: string; confirm?: UndoConfirm }
+  | { t: "folder_changes"; taskId: string; changes: FolderChanges | null }
   | { t: "devices"; devices: DeviceView[]; reach: Reach }
   | { t: "ability_result"; device: string; ability: AbilityId; on: boolean; ok: boolean; reason?: AbilityReason; detail?: string }
   | { t: "pair_code"; code: string; expiresAt: string; address?: string; link?: string; qr?: string[] }

@@ -315,6 +315,10 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
         launchArgs = codexCleanArgs(readCodexConfig(ctx.env ?? {}), mcpServers.map((m) => m.name), { nativeTools });
       }
       if (knobs) launchArgs = [...(launchArgs ?? []), ...knobs.args];
+      // D142: a folder task writes only inside its folder (and the temp folders). OAR passes
+      // its own sandbox_mode first; a later -c wins (checked with codex 0.167 config/read, and
+      // `codex sandbox` refused a write in the home folder). Network stays on.
+      if (spec.confineWrites) launchArgs = [...(launchArgs ?? []), "-c", `sandbox_mode="workspace-write"`, "-c", "sandbox_workspace_write.network_access=true"];
       break;
     case "pi":
       break; // the clean setup is the runtime variant's flags (defaultLoader)

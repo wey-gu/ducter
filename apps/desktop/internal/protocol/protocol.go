@@ -418,6 +418,9 @@ type Report struct {
 	// Branch is set by Ducter when the report is logged: what the task's
 	// branch holds that its base doesn't. Nil when unknown.
 	Branch *BranchChanges `json:"branch,omitempty"`
+	// Folder is set by Ducter on a done or failed report of a non-git
+	// folder task (D142).
+	Folder *FolderSummary `json:"folder,omitempty"`
 }
 
 // BranchChanges is a task branch against its base: commits only it has,
@@ -564,6 +567,7 @@ type TaskCard struct {
 	FromRoutine     *FromRoutine     `json:"fromRoutine,omitempty"` // D114
 	OpenedBy        string           `json:"openedBy,omitempty"`    // D128: "you" = the user opened it
 	Changes         *DiffStat        `json:"changes,omitempty"`     // D128: repo tasks, once counted
+	Folder          *FolderSummary   `json:"folder,omitempty"`      // D142: non-git folder tasks
 }
 
 // PendingDecision is Bodies["decision"] & { askedAt }.
@@ -639,7 +643,11 @@ type TaskSend struct {
 type TaskAction struct {
 	T      string `json:"t"` // "task_action"
 	TaskID string `json:"taskId"`
-	Action string `json:"action"` // interrupt | drop | undrop | reopen | merge | open_pr
+	Action string `json:"action"` // interrupt | drop | undrop | reopen | merge | open_pr | undo | keep
+	// undo (D142): Path puts back only that entry; Force undoes even though
+	// the folder changed after the task finished.
+	Path  string `json:"path,omitempty"`
+	Force bool   `json:"force,omitempty"`
 }
 
 type Read struct {
@@ -1002,6 +1010,11 @@ type ServerFrame struct {
 	Action string `json:"action,omitempty"`
 	OK     bool   `json:"ok,omitempty"`
 	Ref    string `json:"ref,omitempty"` // merge commit or PR URL
+	// action_result of an undo (D142): the folder changed after the task
+	// finished; these would be lost.
+	Confirm *UndoConfirm `json:"confirm,omitempty"`
+	// folder_changes (D142): the list behind a folder task's Changes.
+	FolderChanges *FolderChanges `json:"changes,omitempty"`
 	// devices: Your devices and abilities.
 	Devices []DeviceView `json:"devices,omitempty"`
 	Reach   *Reach       `json:"reach,omitempty"`

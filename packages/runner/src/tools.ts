@@ -1,6 +1,6 @@
 // Task-role Ducter MCP tools: report_to_main and checkpoint. Core serves them at /mcp; this
 // registers the handlers. Call once at wiring time (main.ts) unless core registers its own.
-import type { Attention, Bodies, BranchChanges, EvidenceRef, Question } from "@ducter/protocol";
+import type { Attention, Bodies, BranchChanges, EvidenceRef, FolderSummary, Question } from "@ducter/protocol";
 import type { CoreApi } from "@ducter/protocol/src/internal.ts";
 
 const SUMMARY_MAX = 600;
@@ -90,6 +90,9 @@ export interface TaskToolOptions {
   /** A done report's evidence with `check` set where Ducter can check it (the runner's
    *  checkEvidence): a commit on the task branch, a file in its place. */
   checkEvidence?(taskId: string, evidence: EvidenceRef[]): Promise<EvidenceRef[] | undefined>;
+  /** D142: a non-git folder task's changes and until when they can be undone (the runner's
+   *  folderReport, which also starts the copy's 7 days). The partner's result says it. */
+  folderChanges?(taskId: string): Promise<FolderSummary | undefined>;
 }
 
 /** The branch check must never hold a report up: past this it is left unknown. */
@@ -130,6 +133,8 @@ export function registerTaskTools(core: CoreApi, opts: TaskToolOptions = {}): vo
       if (body.state === "done" || body.state === "failed") {
         const branch = await branchOf(opts, ctx.taskId);
         if (branch) body.branch = branch;
+        const folder = opts.folderChanges ? await inTime(opts.folderChanges(ctx.taskId)) : undefined;
+        if (folder) body.folder = folder;
       }
       // The mechanical check of done? -> done; a check that can't finish in time leaves refs unchecked.
       if (body.state === "done" && body.evidence.length && opts.checkEvidence) {

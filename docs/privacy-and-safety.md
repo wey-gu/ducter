@@ -17,6 +17,21 @@ exactly what it will and won't do. This page lists it.
   says so under **Sent out**.
 - **It never works in your own checkout.** Each coding task works in its own copy of the project,
   on its own branch (`ducter/…`). Your checkout changes only when you choose **Merge into main**.
+- **A folder it changes can be put back.** A task in an ordinary folder (Documents, Downloads,
+  a folder of invoices) changes the files right there, so you see the result at once. Before
+  it changes anything, Ducter quietly keeps a copy of the folder (on a Mac this takes almost no
+  space). The task's **Changes** say what it did, and **Undo all changes** puts the folder back
+  exactly as it was, deletions included, until 7 days after the task finished. **Keep the
+  changes** lets the copy go sooner. If you changed the folder yourself after the task finished,
+  Undo tells you what would be lost before it does anything. If a folder can't be copied cheaply
+  (it syncs with iCloud Drive, Dropbox, Google Drive or OneDrive, it's on a network or external
+  drive, or it's very large), the task asks you before it changes anything there, because those
+  changes couldn't be undone.
+
+  What this covers, honestly: everything inside that folder. A task is told to stay inside it
+  and to ask before deleting more than 10 files at once. With Codex, it can't write anywhere
+  else. With Claude Code that's asked of it, not enforced, and a change outside the folder isn't
+  covered by the copy.
 - **It never types your passwords.** When a website needs a login, you type it yourself, in
   your Chrome or in Ducter's browser window; the AI never sees it. Submitting forms, posting and
   paying are always left to you.

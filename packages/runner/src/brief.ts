@@ -28,7 +28,9 @@ function placeLine(p: Place, cwd: string): string {
     case "repo":
       return `a git worktree of ${p.repoPath} at ${cwd}, on branch ${p.branch ?? "(current)"}${p.baseBranch ? ` (based on ${p.baseBranch})` : ""}. Commit your work on this branch.`;
     case "folder":
-      return `the folder ${cwd}.`;
+      // D142: the user's own folder, not a repo. Ducter copies it before the first change, so
+      // the user can undo everything with one tap; what can't be undone is asked first.
+      return `the folder ${cwd}. It is the user's own folder, not a git repo: your changes land in it directly and they see them at once. Ducter keeps a copy of the folder from before your first change, so the user can undo everything you change with one tap; you don't make backups or commits. Write only inside this folder. Ask first (report_to_main, state "needs_input", with no default) before deleting more than 10 files at once, and before writing anything outside this folder.`;
     case "none":
       return `a scratch directory ${cwd} (no project attached).`;
     case "browser":
@@ -116,6 +118,14 @@ export function afterCompaction(brief: string | null, progress: string | undefin
     ? `Latest saved progress (your last checkpoint):\n${progress.trim()}`
     : "No progress was saved before it: check git status, git log and the files to see where the work stands.";
   return `Your context was just compacted: what came before is now a summary. Here again are the task and where it stood, so nothing is lost.\n\n${b}\n\n${p}\n\nCarry on with the brief from there; don't start over. Keep calling checkpoint after each meaningful step.`;
+}
+
+/** D142: appended to the held first turn once the user answered whether the task may change a
+ *  folder Ducter couldn't copy (Go, or their own words). */
+export function noCopyAnswer(answer: string): string {
+  if (/^User says Go\b/.test(answer.trim()))
+    return "Ducter couldn't keep a copy of this folder, so nothing you change here can be undone. The user said you may change it anyway. Change only what the brief asks.";
+  return `Ducter couldn't keep a copy of this folder, so nothing you change here can be undone. Asked whether you may change it anyway, the user said: "${answer.trim()}". Change nothing in the folder unless that clearly means yes; otherwise only read, and report.`;
 }
 
 /** The one nudge after a turn ends with no report (stall rule). */

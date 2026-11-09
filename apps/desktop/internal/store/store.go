@@ -122,6 +122,9 @@ type Task struct {
 	// merged.
 	Acted    *protocol.ServerFrame
 	ActedSeq int64
+	// Folder is the list behind a non-git folder task's Changes (D142),
+	// from the last folder_changes frame; nil until asked.
+	Folder *protocol.FolderChanges
 }
 
 // BrowserStatus is where a browser task's browser is.
@@ -452,6 +455,10 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 					break
 				}
 			}
+		}
+	case "folder_changes":
+		if t := s.Tasks[f.TaskID]; t != nil {
+			t.Folder = f.FolderChanges
 		}
 	case "rules":
 		s.Rules, s.RulesAt = f.Rules, time.Now()

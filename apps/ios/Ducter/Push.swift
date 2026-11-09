@@ -123,7 +123,9 @@ enum API {
 
     @MainActor
     static func subscribe(token: String) async {
-        _ = await post("api/push/subscribe", ["apns": ["token": token, "env": Native.apnsEnv, "topic": Native.bundleId], "locale": AppState.shared.locale])
+        // D59: the default quiet hours in this phone's zone; the main keeps any the user set or turned off.
+        let quiet: [String: Any] = ["start": "23:00", "end": "08:00", "tz": TimeZone.current.identifier]
+        _ = await post("api/push/subscribe", ["apns": ["token": token, "env": Native.apnsEnv, "topic": Native.bundleId], "locale": AppState.shared.locale, "quiet": quiet])
     }
 
     @MainActor

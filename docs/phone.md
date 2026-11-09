@@ -64,5 +64,7 @@ Your tasks keep working through the night; only the notifications wait. A decisi
 undone still goes ahead with its default if you don't answer in time, and you'll see **No answer, so I
 went ahead** on it. Anything that can't be undone waits for you.
 
+If you turn quiet hours off, they stay off, even when you connect another phone.
+
 To change the hours or turn them off, open **Partner** and use **Quiet hours** (see
 [Your partner and settings](settings.md#partner)).

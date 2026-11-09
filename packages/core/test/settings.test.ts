@@ -6,6 +6,7 @@ import { join } from "node:path";
 import type { ServerFrame } from "@ducter/protocol";
 import { WINDOW_DEFAULTS } from "@ducter/protocol/src/harness-facts.ts";
 import { startCore, type Core } from "../src/core.ts";
+import { openPushStore } from "../src/push.ts";
 import { tempDir } from "./helpers.ts";
 
 let stops: (() => Promise<void> | void)[] = [];
@@ -44,12 +45,14 @@ async function client(url: string) {
 
 type SettingsFrame = Extract<ServerFrame, { t: "settings" }>;
 
-test("defaults: follow the user, remember, notifications on, no quiet hours, 30 minutes, Claude Code", async () => {
+const zone = () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+
+test("defaults: follow the user, remember, notifications on, quiet 23:00–08:00 (D59), 30 minutes, Claude Code", async () => {
   const { core } = boot();
   const c = await client(core.url);
   c.send({ t: "settings" });
   const f = await c.until<SettingsFrame>((x) => x.t === "settings");
-  expect(f.settings).toEqual({ name: "Ducter", language: "auto", memory: true, notify: true, quiet: null, defaultAfterMin: 30, brain: { harness: "claude-code", model: "opus" }, windows: WINDOW_DEFAULTS });
+  expect(f.settings).toEqual({ name: "Ducter", language: "auto", memory: true, notify: true, quiet: { start: "23:00", end: "08:00", tz: zone() }, defaultAfterMin: 30, brain: { harness: "claude-code", model: "opus" }, windows: WINDOW_DEFAULTS });
   expect(f.mem.state).toBe("missing"); // nothing has answered from Mem yet
   expect(f.mem.noted).toEqual([]);
 });
@@ -77,7 +80,26 @@ test("a change goes to every subscriber and persists where each setting lives", 
 test("invalid values are ignored", async () => {
   const { core } = boot();
   expect(core.settings.set({ defaultAfterMin: 7, language: "fr" as any, quiet: { start: "25:00", end: "08:00", tz: "UTC" }, name: "   " })).toEqual([]);
-  expect(core.settings.get()).toMatchObject({ name: "Ducter", language: "auto", defaultAfterMin: 30, quiet: null });
+  expect(core.settings.get()).toMatchObject({ name: "Ducter", language: "auto", defaultAfterMin: 30, quiet: { start: "23:00", end: "08:00" } });
+});
+
+test("D59: quiet hours default on; the user's off is kept, through a restart and a later phone's subscribe", async () => {
+  const { core, dir } = boot();
+  expect(core.push.settings()).toMatchObject({ quiet: { start: "23:00", end: "08:00", tz: zone() }, quietDefault: true });
+  // The first phone's zone replaces the default.
+  const phone = { start: "23:00", end: "08:00", tz: "Asia/Shanghai" };
+  expect(core.push.settings().quietDefault).toBe(true);
+  core.push.setSettings({ quiet: phone });
+  expect(core.push.settings()).toEqual({ quiet: phone, done: false });
+  // Off, then a phone subscribes with its quiet hours: still off, and still off after a restart.
+  expect(core.settings.set({ quiet: null })).toEqual(["quiet"]);
+  expect(core.settings.get().quiet).toBeNull();
+  expect(core.push.settings()).toMatchObject({ quiet: null, quietOff: true });
+  expect(core.push.settings().quietDefault).toBeUndefined();
+  expect(openPushStore(dir).settings()).toMatchObject({ quiet: null, quietOff: true });
+  // Turning them on again clears the off.
+  core.settings.set({ quiet: { start: "22:00", end: "07:00", tz: "UTC" } });
+  expect(core.push.settings().quietOff).toBeUndefined();
 });
 
 test("forget: Mem forgets it when it has the id, otherwise it is only hidden here", async () => {

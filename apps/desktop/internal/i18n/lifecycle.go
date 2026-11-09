@@ -81,7 +81,7 @@ var enLifecycle = Table{
 	"update.download":          "Download",
 	"update.ok":                "OK",
 	"update.oninquit":          "Update automatically when quitting",
-	"update.checknow":          "Check Now",
+	"update.checknow":          "Check now",
 	"update.checked":           "Checked %s",
 	"update.reason.network":    "Couldn't reach GitHub; it tries again tomorrow.",
 	"update.reason.checksum":   "The download didn't match its checksum, so it wasn't installed.",

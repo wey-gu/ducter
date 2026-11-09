@@ -606,7 +606,7 @@ func (a *App) tasksCard(c *ui.Context) {
 				})
 			}
 		})
-		ui.Row(c).Children(func() {
+		a.textRow(c, t.ControlSM).Children(func() {
 			if a.button(c, a.L.T("loadout.rule.add", name), btnText, t.ControlSM, t.Surface) {
 				a.Route = RouteConversation
 				a.draft = a.L.T("loadout.rule.prefill")
@@ -685,7 +685,7 @@ func (a *App) acctLine(c *ui.Context) {
 				a.SetSettings(protocol.SettingsPatch{TaskAccounts: map[string]protocol.TaskAccount{h.Harness: {Enabled: v}}})
 			}
 		}
-		ui.Row(c).Children(func() {
+		a.textRow(c, t.ControlSM).Children(func() {
 			if a.button(c, a.L.T("loadout.acct.devices"), btnText, t.ControlSM, t.SurfaceSunken) {
 				a.OpenDevices()
 				if accountCheck(h.Harness) != "" {

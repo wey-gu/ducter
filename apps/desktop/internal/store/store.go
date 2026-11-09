@@ -290,6 +290,15 @@ type Store struct {
 	Settings *protocol.Settings
 	Mem      *protocol.MemView
 	Forgot   *protocol.Forgot
+
+	// Activity is what the partner is doing while the user waits on its
+	// reply (D104), nil between turns; ActivityAt is when this app first
+	// saw that step (its own clock, so a skewed server can't make it look
+	// slow); ActivityEndedAt is the channel seq at which a turn last ended:
+	// a user message at or before it has had its turn.
+	Activity        *protocol.PartnerActivity
+	ActivityAt      time.Time
+	ActivityEndedAt int64
 }
 
 // Device returns a device of Your devices and abilities by id, or nil.
@@ -388,6 +397,14 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 			s.ApplyEvent(ev)
 		}
 		t.HistoryLoaded = true
+	case "activity":
+		switch {
+		case f.Activity == nil:
+			s.Activity = nil
+			s.ActivityEndedAt = s.ChannelSeq
+		case s.Activity == nil || s.Activity.Step != f.Activity.Step:
+			s.Activity, s.ActivityAt = f.Activity, time.Now()
+		}
 	case "error":
 		s.Errors = append(s.Errors, f.Message)
 		// A refused task_send fails the oldest unacked send.

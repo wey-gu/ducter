@@ -93,6 +93,7 @@ func (a *App) settingsView(c *ui.Context) {
 			ui.Column(c).Grow(1).MaxWidth(680).Gap(t.S5).Children(func() {
 				a.lookCard(c)
 				a.langCard(c)
+				a.detailsCard(c)
 				a.runCard(c)
 				a.updateCard(c)
 				a.dataCard(c)
@@ -143,6 +144,28 @@ func (a *App) langCard(c *ui.Context) {
 		if i := a.choices(c, "lang", a.L.T("settings.lang.title"), labels, sel); i >= 0 {
 			a.SetInterfaceLanguage(opts[i])
 		}
+	})
+}
+
+// detailsCard: 对话里的详情 / Details in the conversation (D104), this
+// window's own: folded (the default) or shown under every message.
+func (a *App) detailsCard(c *ui.Context) {
+	a.sheetCard(c, "details", a.L.T("settings.details.title"), func() {
+		sel := 0
+		if a.Local.DetailsShown() {
+			sel = 1
+		}
+		labels := []string{a.L.T("settings.details.folded"), a.L.T("settings.details.shown")}
+		if i := a.choices(c, "details", a.L.T("settings.details.title"), labels, sel); i >= 0 {
+			a.Local.SetDetailsShown(i == 1)
+			// The preference applies anew: no message keeps a flip.
+			for k := range a.open {
+				if strings.HasPrefix(k, "det:") {
+					delete(a.open, k)
+				}
+			}
+		}
+		a.note(c, a.L.T("settings.details.note"))
 	})
 }
 

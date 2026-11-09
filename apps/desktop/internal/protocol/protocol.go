@@ -719,6 +719,18 @@ type ServerFrame struct {
 	Settings *Settings `json:"settings,omitempty"`
 	Mem      *MemView  `json:"mem,omitempty"`
 	Forgot   *Forgot   `json:"forgot,omitempty"`
+	// activity: what the partner is doing while the user waits (D104); nil
+	// when its turn ended. Never logged.
+	Activity *PartnerActivity `json:"activity,omitempty"`
+}
+
+// PartnerActivity is the step of a partner turn the user waits on (D104):
+// thinking | recalling | checking_task | opening_task | messaging_task |
+// planning | looking. Clients word it; tool names never reach them.
+type PartnerActivity struct {
+	Step      string `json:"step"`
+	Since     string `json:"since"`
+	StepSince string `json:"stepSince"`
 }
 
 // Delivery is how a task_send reached its task: steered in mid-turn, as
@@ -739,7 +751,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	}
 	switch f.T {
 	case "welcome", "events", "on_hand", "task_history", "sent", "action_result", "error",
-		"devices", "ability_result", "pair_code", "rename_result", "settings":
+		"devices", "ability_result", "pair_code", "rename_result", "settings", "activity":
 	default:
 		return f, fmt.Errorf("unknown server frame %q", f.T)
 	}

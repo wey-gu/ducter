@@ -119,6 +119,11 @@ type App struct {
 	// livingAway remembers, per living message, whether it came while
 	// the user was away.
 	livingAway map[int64]bool
+	// forgotten are the Noted lines forgotten from a message's Details.
+	forgotten map[int64]bool
+	// thinkingSince is when this app sent the message it waits on (the
+	// presence row's clock before the partner names a step, D104).
+	thinkingSince time.Time
 	// LocaleFixed keeps the language as given (DUCTER_LOCALE); otherwise
 	// it follows the user's first message (localeSet once it did).
 	LocaleFixed bool
@@ -427,6 +432,7 @@ func (a *App) sendMessage(text string) {
 	a.nextClient++
 	id := fmt.Sprintf("c%d-%d", a.Now().UnixMilli(), a.nextClient)
 	a.pending = append(a.pending, pendingMsg{clientID: id, text: text})
+	a.thinkingSince = a.Now()
 	a.markRead()
 	a.send(protocol.Send{T: "send", Text: text, ClientID: id})
 	a.list.ScrollToEnd()

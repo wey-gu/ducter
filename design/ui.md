@@ -364,7 +364,8 @@ relative paths as before), and each review is shown as a published gallery.
 | Set | Files | How it was made | Shows |
 |---|---|---|---|
 | Desktop, mock | `.shots/desktop/{conversation,conversation-done,onhand,task,task-sent,task-done}.png` | headless renderer, mock server | the three zoom levels; README images |
-| Desktop, first run | `.shots/desktop/firstrun*.png` (`firstrun-empty-{zh,en,fresh}`, `firstrun-first-result`) | headless renderer | empty conversation with repo starters, the first-result line |
+| Desktop, first run | `.shots/desktop/firstrun-first-result.png` | headless renderer | the first-result line |
+| First screen (D149) | `.shots/first-screen/{desktop,phone}-{new,developer,returning-news,typing}-*.png` | desktop: headless renderer 1280 (`welcome_test.go` FirstScreenShots); phone: headless Chrome 390@2x against scratch homes, zh/en, light/dark | the greeting by time of day, life-first starters, the news line, the partner leaning in |
 | Desktop, first run live | `.shots/desktop/firstrun-live-{empty,ack,first-result,result-message}.png` | live: real `ducter up` + sonnet (`onboarding.md`) | the first five minutes, timed |
 | Desktop, live | `.shots/desktop/live-*.png` | live backend, real harness | ack, early send, task sent/done/result, On hand, reconnecting |
 | Desktop, remote | `.shots/desktop/remote-{conversation,onhand,device-unreachable}.png`, `connect{,-badcode,-revoked}.png` | VM over an SSH tunnel (`research/29`); connect cards headless | Connect to your Ducter, a worker that can't be reached |

@@ -11,6 +11,8 @@ import type { SettingsStore } from "./settings.ts";
 import type { RulesStore } from "./rules.ts";
 import type { Loadout } from "./loadout.ts";
 import type { ConnectionsStore } from "./connections.ts";
+import { firstScreen, type FirstScreenInput } from "./first-screen.ts";
+import type { FirstScreen } from "@ducter/protocol";
 
 export interface WsData {
   live: boolean;
@@ -194,6 +196,34 @@ export function createWsHandler(deps: WsDeps) {
     }
   };
 
+  // D149: what the empty conversation says, from names and metadata the home already has.
+  const firstScreenFor = async (tz?: string): Promise<FirstScreen> => {
+    const noted = deps.settings ? (await deps.settings.view()).mem.noted : [];
+    const apps: FirstScreenInput["apps"] = [];
+    for (const c of deps.connections?.view() ?? []) {
+      if (c.state === "unauthorized" || c.state === "unreachable") continue;
+      if (c.apps?.length) apps.push(...c.apps);
+      else if (c.source !== "oo") apps.push({ service: c.name, title: c.name });
+    }
+    // Devices probe harnesses (cached); never let a slow probe hold the first screen up.
+    const v = devicesView();
+    const devs = v ? await Promise.race([v.frame().then((x) => x.devices), new Promise<[]>((r) => setTimeout(() => r([]), 1500))]).catch(() => []) : [];
+    const computers = devs
+      .filter((d) => (d.kind === "laptop" || d.kind === "mini") && d.state !== "unreachable")
+      .sort((a, b) => Number(b.home) - Number(a.home))
+      .map((d) => ({ name: d.name, home: d.home }));
+    return firstScreen({
+      tasks: tasks.list(),
+      onHand: tasks.onHand(),
+      noted,
+      apps,
+      computers,
+      talked: log.read({ stream: "channel", kinds: ["user_msg"], limit: 1 }).length > 0,
+      now: new Date(),
+      ...(tz ? { tz } : {}),
+    });
+  };
+
   // Computed once, now: on macOS it shells out (ioreg) with Bun.spawnSync, which runs the event
   // loop, so doing it inside the first hello let the next frame in before hello had finished.
   machineId();
@@ -215,6 +245,11 @@ export function createWsHandler(deps: WsDeps) {
         ws.data.live = true; // synchronous since the read: no event can be missed in between
         if (f.client === "desktop" || f.client === "web" || f.client === "cli") ws.data.client = f.client;
         if (typeof f.tz === "string" && f.tz) deps.work?.zone(f.tz);
+        // The empty conversation's words (D149), for the apps only; a failure leaves the client's own.
+        if (f.client !== "cli")
+          void firstScreenFor(f.tz)
+            .then((first) => sockets.has(ws) && send(ws, { t: "first_screen", first }))
+            .catch((err) => console.warn("[ws] first screen:", (err as Error).message));
         return;
       }
       case "send": {

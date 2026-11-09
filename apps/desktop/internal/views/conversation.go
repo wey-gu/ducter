@@ -184,40 +184,70 @@ func (a *App) conversation(c *ui.Context) {
 	a.readWhenSeen(c)
 }
 
-// emptyConversation greets a fresh user: who Ducter is, and three real
-// first things to say. A suggestion fills the composer; it never sends.
+// emptyConversation is the first screen (D149): the partner says hello in
+// its own name by the time of day, says what it can do for this person (or
+// the one timely thing, for someone returning), and offers 3–4 things to
+// say. A starter fills the composer; it never sends. Where Ducter lives is
+// the header's 设备 / Devices: not repeated here.
 func (a *App) emptyConversation(c *ui.Context) {
 	t := a.T
-	col := ui.Column(c.Key("empty")).Margin(ui.Auto).MaxWidth(520).AlignItems(ui.Center).Gap(t.S4)
+	col := ui.Column(c.Key("empty")).Margin(ui.Auto).MaxWidth(640).Width(640).MaxWidthPercent(100).AlignItems(ui.Center)
 	a.enter(c, col)
 	col.Children(func() {
-		a.avatar(c, theme.Idle, 180)
-		a.heading(c, a.L.T("empty.conversation.title", a.S.PersonaName), t.XXL)
-		ui.Text(c, a.L.T("empty.conversation")).FontSize(t.LG).TextAlign(ui.Center).TextColor(t.InkSoft).LineHeight(1.6)
-		ui.Column(c).Gap(t.S2).Margin(t.S3, 0, 0, 0).AlignItems(ui.Stretch).Width(460).MaxWidthPercent(100).Children(func() {
-			ui.Text(c, a.L.T("empty.try")).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted).LetterSpacing(0.5)
-			for n, text := range a.suggestions() {
-				i := n + 1
-				// A starter is a secondary button holding a sentence.
-				chip := ui.Row(c.Key(i)).Gap(t.S3).MinHeight(t.ControlLG).Padding(t.S3, t.S4).Radius(t.RadiusSM).AlignItems(ui.Center).
-					Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(text).Focusable()
-				a.buttonLook(c, chip, btnSecondary, t.ControlLG, t.Surface)
-				chip.Children(func() {
-					ui.Text(c, text).FontSize(t.MD).Grow(1).MinWidth(0)
-				})
-				if chip.Clicked() {
-					a.draft = text
-					a.focusComposer = true
+		a.helloAvatar(c, 168)
+		ui.Column(c).Gap(t.S2).Margin(t.S3, 0, 0, 0).AlignItems(ui.Center).MaxWidth(520).Children(func() {
+			hi := autospace(a.greeting())
+			a.heading(c, hi, t.XXL).TextAlign(ui.Center).Label(hi)
+			if f := a.S.First; f != nil && f.News != nil {
+				a.helloNews(c, f.News)
+				return
+			}
+			// What it can do, then its promise: a line each, never broken mid-thought.
+			ui.Column(c).AlignItems(ui.Center).Children(func() {
+				for _, s := range sentences(autospace(a.canLine())) {
+					ui.Text(c, s).FontSize(t.LG).TextAlign(ui.Center).TextColor(t.InkSoft).LineHeight(leadingFor(s, 1.55)).Balance()
 				}
-			}
-			if n := a.Local.RepoCount(); n > 0 {
-				ui.Text(c, a.L.T("empty.repos.note", n)).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.5).Margin(t.S1, 2, 0, 2)
-			}
+			})
 		})
-		a.memLine(c)
-		// The end of the first run: where Ducter lives and what it can do.
-		if a.button(c, a.L.T("firstrun.devices"), btnText, t.ControlMD, t.Bg) {
-			a.OpenDevices()
+		ui.Column(c).Gap(t.S3).Margin(t.S6, 0, 0, 0).AlignItems(ui.Stretch).Width(640).MaxWidthPercent(100).Children(func() {
+			ui.Text(c, a.L.T("empty.try")).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted).LetterSpacing(0.5).Margin(0, 0, 0, 2)
+			ui.Row(c).Wrap().Gap(t.S3).AlignItems(ui.Stretch).Children(func() {
+				for n, text := range a.suggestions() {
+					text := autospace(text)
+					// A starter is a secondary button holding a sentence, two to a row.
+					chip := ui.Row(c.Key(n+1)).Basis(260).Grow(1).MinHeight(64).Padding(t.S3, t.S4).Radius(t.RadiusMD).AlignItems(ui.Center).
+						Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(text).Focusable()
+					a.buttonLook(c, chip, btnSecondary, t.ControlLG, t.Surface)
+					chip.Children(func() {
+						ui.Text(c, text).FontSize(t.MD).LineHeight(leadingFor(text, 1.45)).Grow(1).MinWidth(0)
+					})
+					if chip.Clicked() {
+						a.draft = unautospace(text)
+						a.focusComposer = true
+					}
+				}
+			})
+		})
+		ui.Column(c).Margin(t.S3, 0, 0, 0).AlignItems(ui.Center).Children(func() { a.memLine(c) })
+	})
+}
+
+// helloNews is the one timely thing for someone returning, in the
+// partner's own bubble under its greeting, and the way to it.
+func (a *App) helloNews(c *ui.Context, n *protocol.FirstNews) {
+	t := a.T
+	text := autospace(a.words(n.Words))
+	r := t.BubbleRadius
+	ui.Column(c).AlignItems(ui.Center).Gap(t.S2).Margin(t.S2, 0, 0, 0).Children(func() {
+		ui.Column(c).Background(t.PartnerBubble).Padding(t.S2+2, t.S4).Radius(r[1], r[0], r[3], r[2]).MaxWidth(t.BubbleMeasure).Children(func() {
+			ui.Text(c, text).FontSize(t.PartnerSize).LineHeight(leadingFor(text, 1.5)).TextColor(t.OnPartnerBubble)
+		})
+		if a.button(c, a.L.T("hello.news.open"), btnText, t.ControlSM, t.Bg) {
+			if n.TaskID != "" {
+				a.OpenTask(n.TaskID)
+			} else {
+				a.Route = RouteOnHand
+			}
 		}
 	})
 }

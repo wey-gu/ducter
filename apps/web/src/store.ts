@@ -3,7 +3,7 @@
 // their acks, decisions with their resolutions, tasks with their streams, the On hand snapshot.
 // Pure data; tested without a DOM.
 import { endedUnmet } from "@ducter/protocol";
-import type { ActivityStep, Attention, Bodies, ClientFrame, Delivery, EvidenceRef, FolderChanges, LogEvent, OnHand, Place, RoutineView, ServerFrame, TaskBody, TaskCard, UndoConfirm, UntilView, WaiterView } from "@ducter/protocol";
+import type { ActivityStep, Attention, Bodies, ClientFrame, Delivery, EvidenceRef, FirstScreen, FolderChanges, LogEvent, OnHand, Place, RoutineView, ServerFrame, TaskBody, TaskCard, UndoConfirm, UntilView, WaiterView } from "@ducter/protocol";
 import { hasBranchChanges } from "@ducter/protocol";
 
 export type Ev<K extends keyof Bodies = keyof Bodies> = LogEvent<K>;
@@ -133,6 +133,8 @@ function taskOf(ev: LogEvent): string {
 export class Store {
   persona = "";
   personaName = "Ducter";
+  /** The empty conversation's words from the home (D149); undefined from an older Ducter. */
+  first?: FirstScreen;
   headSeq = 0;
   cursor = 0;
   readUpTo = 0;
@@ -180,6 +182,9 @@ export class Store {
         this.headSeq = f.headSeq;
         this.welcomed = true;
         if (f.personaName) this.personaName = f.personaName;
+        return;
+      case "first_screen":
+        this.first = f.first;
         return;
       case "sent": {
         const sd = this.tasks.get(f.taskId)?.sends.find((s) => !s.delivered && !s.failed);

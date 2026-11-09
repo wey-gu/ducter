@@ -61,15 +61,23 @@ a fresh data folder, and port 7795.
    Pairing connects another Mac's desktop app or a phone: the `ducter pair` link opens the
    phone web client (`apps/web`) and pairs it (A2-P; headless browser only so far, not a real
    phone).
-5. The desktop's empty conversation: "Hi, I'm {name}." and three starters. `ducter up` writes
-   `<dataDir>/firstrun.json` before the client starts: git checkouts (a `.git` folder) up to
-   depth 2 under `~/dev`, `~/code`, `~/src`, `~/Projects`, `~/work`, `~/repos`, `~/git`,
-   ranked by the newest mtime of `.git/HEAD`, `.git/index`, `.git/logs/HEAD`. Names and
-   `~` paths only; no file is opened, git isn't run, nothing leaves the Mac. The starters:
-   failing tests in repo 1, what changed this week in repo 2, unfinished branches in repo 3;
-   a one-line note under them says they came from names only. No repos → everyday starters.
-   A starter fills the composer; it never sends. *Verified* (headless renderer:
-   `.shots/desktop/firstrun-empty-{zh,en,fresh}.png`, live: `firstrun-live-empty.png`).
+5. The empty conversation, on the Mac and the phone (D149): the partner says hello in its own
+   name by the time of day ("早上好呀，我是小鸭。", returning: "早上好呀，小鸭在呢。"), one
+   line of what it can do for this person, and 3–4 starters. The line and the starters are
+   worked out on the home (`packages/core/src/first-screen.ts`) from names and metadata it
+   already has: the connected accounts (mail, calendar, other apps), a 记下了 / Noted line
+   from the last three weeks, a task still going, a folder used before, the computers it can
+   use, and, only after two tasks in repos, one code starter by project name (never a path,
+   always last). A brand-new person gets everyday examples: an email, a trip, a folder, a
+   reminder. They rotate by the person's day. Nothing says how they were made. Someone
+   returning to an empty conversation sees one timely line instead of the "can do" line,
+   when there is one (something waits for them, a wait didn't come true, a result from the
+   last day), with 去看看 / Take a look. The partner waves once when the screen appears and
+   leans toward the composer while there are words in it (still under reduced motion). A
+   starter fills the composer; it never sends. Where Ducter lives is the header's 设备 /
+   Devices, not a second link here. *Verified* (unit tests; headless renderer and headless
+   Chrome at 390 pt: `.shots/first-screen/`). The repo scan in `firstrun.json` no longer
+   feeds the starters (a home on a server would name the wrong machine's repos).
    The scan of the author's ~90 repos took under 0.2 s.
 6. The first result: the first task ever to come back done (live, not a replay, and no other
    finished task in the Log) shows one line with the clay *done* character above the
@@ -160,8 +168,8 @@ Ducter is the one doing the work, so neither closing the window nor ⌘Q stops i
    - **All set / 好了** (the done character, ~1.6 s) when the person fixed something, then on.
 3. The name, once, skippable, written to `persona.json` as the CLI does; skipped when Nowledge
    Mem is healthy or `DUCTER_PERSONA_NAME` is set.
-4. Waking {name} up… then the conversation. Starters come from `firstrun.json`, which the app
-   rereads on the first welcome (it opens before `up` writes the file).
+4. Waking {name} up… then the conversation. Its first screen comes from the home (D149); the app
+   shows everyday starters until those words arrive.
 5. Failed / stopped: the last lines of `app.log`, its path, Try again.
 6. After the partner's first reply, once: "Use ducter in Terminal too?" → symlink
    `~/.local/bin/ducter` → the app's CLI. Never replaces a real file; not offered from a disk

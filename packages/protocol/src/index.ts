@@ -623,7 +623,34 @@ export type ServerFrame =
   // Show this task (the app opens it, Esc returns). open_result answers the sender: apps = how many apps were told.
   | { t: "open_task"; taskId: string }
   | { t: "open_result"; taskId: string; ok: boolean; apps: number; message?: string }
+  // D149: the empty conversation's words, after each app's hello (never to a CLI).
+  | { t: "first_screen"; first: FirstScreen }
   | { t: "error"; message: string };
+
+/** The same words in both languages: the client shows its own. */
+export interface Words {
+  zh: string;
+  en: string;
+}
+
+/** What a starter is about. everyday: an example for anyone; the rest come from what the home knows. */
+export type StarterKind = "mail" | "calendar" | "app" | "memory" | "task" | "folder" | "code" | "everyday";
+
+/**
+ * The empty conversation (D149), worked out on the home from names and metadata it already
+ * holds (core/src/first-screen.ts): no contents read, no model run. The client greets by its own
+ * clock (time of day, visit) in the partner's name and shows these words as they are.
+ */
+export interface FirstScreen {
+  /** first: the person never used Ducter; returning: they have (tasks, notes, messages). */
+  visit: "first" | "returning";
+  /** What the partner can do for this person, one line. */
+  line: Words;
+  /** Returning only: one timely line when something real happened; opens the task, else On hand. */
+  news?: { kind: "needs_you" | "missed" | "done"; words: Words; taskId?: string };
+  /** 3–4 things to say, life first, rotated by day. A tap fills the composer; it never sends. */
+  starters: { id: string; kind: StarterKind; words: Words }[];
+}
 
 /**
  * The step of a partner turn the user is waiting on, as a plain verb the client words (D104).

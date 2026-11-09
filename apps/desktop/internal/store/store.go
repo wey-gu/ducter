@@ -293,8 +293,11 @@ func (t *Task) BodyReason() string {
 type Store struct {
 	// ActionResults are action_result frames not yet shown to the user.
 	ActionResults []protocol.ServerFrame
-	Persona       string
-	PersonaName   string
+	// First is the empty conversation's words from the home (D149); nil
+	// from an older Ducter, which gets the client's own everyday ones.
+	First       *protocol.FirstScreen
+	Persona     string
+	PersonaName string
 	// Machine is the welcome's hash of the machine the main runs on ("" from
 	// an older Ducter): it says whether place paths are on this computer.
 	Machine string
@@ -422,6 +425,8 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		if f.PersonaName != "" {
 			s.PersonaName = f.PersonaName
 		}
+	case "first_screen":
+		s.First = f.First
 	case "devices":
 		s.Devices, s.Reach, s.DevicesAt = f.Devices, f.Reach, time.Now()
 	case "ability_result":

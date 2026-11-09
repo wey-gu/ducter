@@ -1144,27 +1144,74 @@ export function Conversation() {
   );
 }
 
+/** The part of the day an hour falls in, for the greeting. */
+export function dayPart(h: number): "morning" | "noon" | "afternoon" | "evening" | "late" {
+  if (h >= 5 && h < 11) return "morning";
+  if (h >= 11 && h < 13) return "noon";
+  if (h >= 13 && h < 18) return "afternoon";
+  if (h >= 18 && h < 23) return "evening";
+  return "late";
+}
+
+/** A short paragraph split after its first sentence, so each shows on its own line. */
+export function sentences(s: string): string[] {
+  for (const end of ["。", ". "]) {
+    const i = s.indexOf(end);
+    if (i > 0 && i + end.length < s.trim().length) return [s.slice(0, i + end.length).trim(), s.slice(i + end.length).trim()];
+  }
+  return [s];
+}
+
+/** The first screen (D149): the partner says hello in its own name by the time of day, says what
+ *  it can do for this person (or the one timely thing, for someone returning), and offers 3–4
+ *  things to say, worded on the home. A starter fills the composer; it never sends. The partner
+ *  waves once when it appears and leans toward the composer while there are words in it. */
 function Hello() {
+  const f = A.S.first;
+  const words = (w: { zh: string; en: string }) => (A.L.lang === "zh" ? w.zh : w.en);
+  const visit = f?.visit === "returning" ? "back" : "first";
+  const hi = t(`hello.${visit}.${dayPart(new Date().getHours())}`, A.S.personaName);
+  const starters = f?.starters.map((s) => words(s.words)).filter(Boolean) ?? [];
+  for (let i = 1; starters.length < 3; i++) starters.push(t(`suggest.${i}`));
+  const news = f?.news;
+  const typing = A.draft.trim() !== "";
   return (
     <div class="hello">
-      <Avatar size={150} state="idle" />
-      <h1>{t("empty.conversation.title", A.S.personaName)}</h1>
-      <p>{t("empty.conversation")}</p>
+      <span class={`hello-face${typing ? " leaning" : ""}`}>
+        <Avatar size={136} state="idle" />
+      </span>
+      <h1>{hi}</h1>
+      {news ? (
+        <div class="hello-news">
+          <div class="bubble">{words(news.words)}</div>
+          <button class="btn text" onClick={() => (news.taskId ? A.go({ name: "task", id: news.taskId }) : A.go({ name: "onhand" }))}>
+            {t("hello.news.open")}
+          </button>
+        </div>
+      ) : (
+        <p>
+          {sentences(f ? words(f.line) : t("empty.conversation")).map((s, i) => (
+            <span key={i}>{s}</span>
+          ))}
+        </p>
+      )}
       <div class="try">
         <div class="label">{t("empty.try")}</div>
-        {[1, 2, 3].map((i) => (
-          <button
-            key={i}
-            class="btn secondary suggest"
-            onClick={() => {
-              A.draft = t(`suggest.${i}`); // fills the composer; never sends
-              A.changed();
-              document.getElementById("composer")?.focus();
-            }}
-          >
-            {t(`suggest.${i}`)}
-          </button>
-        ))}
+        <div class="grid">
+          {starters.map((s) => (
+            <button
+              key={s}
+              class="btn secondary suggest"
+              onClick={() => {
+                A.draft = s; // fills the composer; never sends
+                A.changed();
+                document.getElementById("composer")?.focus();
+              }}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );

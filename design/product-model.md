@@ -120,6 +120,7 @@
 | the menu bar extra | the clay partner in the macOS menu bar; its menu: **等你 · {n} / Needs you · {n}** or **没有要你定的事 / Nothing needs you**, each question with **好：{action} / Go: {action}** · **先等等 / Hold** · **回复… / Reply…**, then **打开 Ducter / Open Ducter** | |
 | a sandboxed place | **no noun**: the property, **碰不到你的文件 / Can't touch your files** | 沙盒 retired (D66, GQ8) |
 | Artifact | **做好的 / Finished**; the list **做好的东西 / Everything finished** | 成果 retired (report-speak) |
+| the first screen (empty conversation) | the partner's greeting in its own name: **早上好呀，我是{name}。 / Good morning, I'm {name}.** (returning: **{name} 在呢 / {name} is here**); starters under **可以这样开头 / You could start with**, each in the person's own voice; one timely line with **去看看 / Take a look** | D149. Starters are worked out on the home from names it already has; never a path, never how they were made |
 
 ## 2. Objects and ownership
 

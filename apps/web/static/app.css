@@ -1069,18 +1069,81 @@ a {
   line-height: 1.2;
 }
 .hello p {
-  margin: 0;
+  margin: -4px 0 0;
   color: var(--ink-soft);
   font-size: var(--lg);
   line-height: var(--lh-voice);
+  text-wrap: pretty;
+}
+/* What it can do, then its promise: a line each (D149). */
+.hello p > span {
+  display: block;
+}
+/* The partner waves once when it appears (two rocks from its feet that settle, and a small hop),
+   then leans toward the composer while there are words in it. Reduced motion: still. */
+.hello-face {
+  display: inline-block;
+  transform-origin: 50% 100%;
+  animation: hello-wave 1.6s var(--ease) 0.2s backwards;
+  transition: transform 480ms var(--spring);
+}
+.hello-face.leaning {
+  transform: rotate(-5deg) translate(4px, 2px);
+}
+@keyframes hello-wave {
+  0% { transform: none; }
+  9% { transform: translateY(-8px) rotate(5deg); }
+  18% { transform: translateY(-3px) rotate(-6deg); }
+  30% { transform: rotate(5deg); }
+  45% { transform: rotate(-4deg); }
+  62% { transform: rotate(2deg); }
+  80% { transform: rotate(-1deg); }
+  100% { transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hello-face.leaning { transform: none; }
+}
+.hello-news {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+}
+.hello-news .bubble {
+  background: var(--partner-bubble);
+  color: var(--on-partner-bubble);
+  padding: 10px 16px;
+  border-radius: var(--bubble-partner);
+  font-size: var(--partner);
+  line-height: 1.5;
+  max-width: min(100%, var(--bubble-measure));
+  text-align: left;
+}
+:lang(zh) .hello-news .bubble {
+  line-height: 1.7;
 }
 .hello .try {
   align-self: stretch;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-top: 10px;
+  margin-top: 20px;
   text-align: left;
+}
+.hello .try .grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+@media (max-width: 600px) {
+  .hello .try .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* A phone: each sentence of the line on one line. */
+  .hello p {
+    font-size: var(--md);
+  }
 }
 .hello .try .label {
   font-size: var(--sm);
@@ -1094,6 +1157,7 @@ a {
   padding: 12px 18px;
   border-radius: var(--r-btn-lg);
   font-size: var(--md);
+  font-weight: 500; /* a sentence to say, not a command */
   white-space: normal;
   text-align: left;
   line-height: var(--lh-read);

@@ -51,46 +51,155 @@ func hintsDir(t *testing.T, body string) string {
 	return dir
 }
 
-func TestWelcomeStartersAreAboutThisMac(t *testing.T) {
+// The first screens the home sends (D149), as core/src/first-screen.ts
+// words them for a brand-new person, a developer, and someone returning
+// to a result.
+func w(zh, en string) protocol.Words { return protocol.Words{ZH: zh, EN: en} }
+
+var (
+	firstNew = &protocol.FirstScreen{Visit: "first",
+		Line: w("查点东西、记件事、到点提醒你，说一句就行。需要你的时候，我再来问你。", "Ask me to look something up, keep track of things or remind you on time. I'll come to you only when it needs you."),
+		Starters: []protocol.Starter{
+			{ID: "everyday:reminder", Kind: "everyday", Words: w("周五下午提醒我交水电费", "Remind me on Friday afternoon to pay the utility bill")},
+			{ID: "everyday:mail", Kind: "everyday", Words: w("帮我回封邮件，把周五的会推到下周", "Reply to an email and move Friday's meeting to next week")},
+			{ID: "everyday:trip", Kind: "everyday", Words: w("周末带家人去近郊，哪儿好玩？", "Somewhere nearby for the family this weekend?")},
+			{ID: "everyday:folder", Kind: "everyday", Words: w("把下载文件夹里的旧文件理一理", "Tidy up the old files in my Downloads folder")},
+		}}
+	firstDev = &protocol.FirstScreen{Visit: "returning",
+		Line: w("邮件、电脑上的文件、代码，都可以交给我。需要你的时候，我再来问你。", "Email, files on your computer and code: hand them to me. I'll come to you only when it needs you."),
+		Starters: []protocol.Starter{
+			{ID: "mail", Kind: "mail", Words: w("这周没回的邮件，挑要紧的说说", "Which unanswered emails this week matter?")},
+			{ID: "everyday:reminder", Kind: "everyday", Words: w("周五下午提醒我交水电费", "Remind me on Friday afternoon to pay the utility bill")},
+			{ID: "everyday:trip", Kind: "everyday", Words: w("周末带家人去近郊，哪儿好玩？", "Somewhere nearby for the family this weekend?")},
+			{ID: "code:ducter", Kind: "code", Words: w("说说 ducter 这周都改了些什么", "What changed in ducter this week?")},
+		}}
+	firstNews = &protocol.FirstScreen{Visit: "returning",
+		Line: w("邮件、日程、电脑上的文件，都可以交给我。需要你的时候，我再来问你。", "Email, your calendar and files on your computer: hand them to me. I'll come to you only when it needs you."),
+		News: &protocol.FirstNews{Kind: "done", TaskID: "t-invoices", Words: w("「整理十月的发票」做好了，结果在这儿。", `“Sort October's invoices” is done. The result's here.`)},
+		Starters: []protocol.Starter{
+			{ID: "calendar", Kind: "calendar", Words: w("明天我都有什么安排？", "What's on my calendar tomorrow?")},
+			{ID: "mem:杭州", Kind: "memory", Words: w("接着弄上次的「下周三去杭州出差」", `Pick up “Hangzhou trip next Wednesday” from last time`)},
+			{ID: "mail", Kind: "mail", Words: w("这周没回的邮件，挑要紧的说说", "Which unanswered emails this week matter?")},
+			{ID: "everyday:reminder", Kind: "everyday", Words: w("周五下午提醒我交水电费", "Remind me on Friday afternoon to pay the utility bill")},
+		}}
+)
+
+// morning is 9:30 on this Mac's clock, for a stable greeting.
+func morning() time.Time { return time.Date(2026, 11, 10, 9, 30, 0, 0, time.Local) }
+
+func firstScreen(t *testing.T, lang i18n.Lang, name string, f *protocol.FirstScreen, reduce bool) *harness {
+	t.Helper()
+	h := newWelcome(t, lang, hintsDir(t, ""), reduce)
+	h.app.Now = morning
+	h.app.Receive(protocol.ServerFrame{T: "welcome", Persona: "default", PersonaName: name, HeadSeq: 0})
+	if f != nil {
+		h.app.Receive(protocol.ServerFrame{T: "first_screen", First: f})
+	}
+	h.tt.Frame()
+	return h
+}
+
+func TestFirstScreenGreetsInThePartnersName(t *testing.T) {
 	for _, c := range []struct {
-		lang i18n.Lang
-		want []string
-		shot string
+		lang       i18n.Lang
+		f          *protocol.FirstScreen
+		hi, line   string
+		composer   string
+		noDevLinks bool
 	}{
-		{i18n.ZH, []string{"你好，我是 Ducter。", "看看 ~/dev/ducter 最近有哪些测试没过，修好了告诉我", "说说 ~/dev/website 这周都改了些什么", "~/dev/notes 里有哪些没收尾的分支？帮我理一理", "91 个代码库"}, "firstrun-empty-zh"},
-		{i18n.EN, []string{"Hi, I'm Ducter.", "Find the failing tests in ~/dev/ducter, fix them, and tell me", "What changed in ~/dev/website this week?", "91 repos"}, "firstrun-empty-en"},
+		{i18n.ZH, firstNew, "早上好呀，我是小鸭。", "查点东西、记件事、到点提醒你，说一句就行。需要你的时候，我再来问你。", "跟小鸭说", true},
+		{i18n.ZH, firstDev, "早上好呀，小鸭在呢。", "邮件、电脑上的文件、代码，都可以交给我。需要你的时候，我再来问你。", "跟小鸭说", true},
+		{i18n.EN, firstNew, "Good morning, I'm 小鸭.", "Ask me to look something up, keep track of things or remind you on time. I'll come to you only when it needs you.", "Talk to 小鸭", true},
 	} {
-		h := newWelcome(t, c.lang, hintsDir(t, hintsJSON), true)
-		for _, w := range c.want {
-			if !h.tt.HasText(w) && !strings.Contains(strings.Join(h.tt.Texts(), "\n"), w) {
-				t.Errorf("%s: lacks %q in %q", c.lang, w, h.tt.Texts())
+		h := firstScreen(t, c.lang, "小鸭", c.f, true)
+		h.has(append(sentences(autospace(c.line)), c.hi, c.composer)...)
+		for _, s := range c.f.Starters {
+			h.has(autospace(h.app.words(s.Words)))
+		}
+		texts := strings.Join(h.tt.Texts(), "\n")
+		// No paths, no word on how the starters were made, no second way to Devices.
+		for _, bad := range []string{"~/", "代码库", "repos on this Mac", "看看你的设备", "See your devices"} {
+			if strings.Contains(texts, bad) {
+				t.Errorf("%s: shows %q", c.lang, bad)
 			}
 		}
-		h.shot(c.shot)
-		// A starter fills the composer; it never sends by itself.
-		h.click(h.app.suggestions()[0])
-		if h.app.draft != h.app.suggestions()[0] || len(h.app.pending) != 0 {
-			t.Errorf("%s: draft %q, pending %d", c.lang, h.app.draft, len(h.app.pending))
+	}
+	// Before the home's words arrive (or from an older Ducter): everyday ones.
+	h := firstScreen(t, i18n.ZH, "Ducter", nil, true)
+	h.has("早上好呀，我是 Ducter。", "你能帮我做些什么？举三个例子", "明早 9 点提醒我回邮件")
+}
+
+func TestFirstScreenGreetingFollowsTheClock(t *testing.T) {
+	h := firstScreen(t, i18n.ZH, "小鸭", firstNew, true)
+	for hour, want := range map[int]string{7: "早上好呀，我是小鸭。", 12: "中午好呀，我是小鸭。", 15: "下午好呀，我是小鸭。", 20: "晚上好呀，我是小鸭。", 1: "这么晚还没睡呀？我是小鸭。"} {
+		h.app.Now = func() time.Time { return time.Date(2026, 11, 10, hour, 0, 0, 0, time.Local) }
+		if got := h.app.greeting(); got != want {
+			t.Errorf("%d h: %q, want %q", hour, got, want)
 		}
 	}
 }
 
-func TestWelcomeWithoutReposIsEveryday(t *testing.T) {
-	h := newWelcome(t, i18n.ZH, hintsDir(t, `{"version":1,"repoCount":0,"repos":[]}`), true)
-	for _, w := range []string{"你能帮我做些什么？举三个例子", "帮我把这周要做的事理一理", "明早 9 点提醒我回邮件"} {
-		if !h.tt.HasText(w) {
-			t.Errorf("lacks %q in %q", w, h.tt.Texts())
+func TestFirstScreenStarterFillsTheComposer(t *testing.T) {
+	h := firstScreen(t, i18n.ZH, "小鸭", firstDev, true)
+	want := "说说 ducter 这周都改了些什么"
+	h.click(autospace(want))
+	if h.app.draft != want || len(h.app.pending) != 0 {
+		t.Errorf("draft %q, pending %d", h.app.draft, len(h.app.pending))
+	}
+}
+
+func TestFirstScreenNewsOpensTheResult(t *testing.T) {
+	h := firstScreen(t, i18n.ZH, "小鸭", firstNews, true)
+	h.has("早上好呀，小鸭在呢。", autospace("「整理十月的发票」做好了，结果在这儿。"))
+	if h.tt.HasText(autospace(h.app.words(firstNews.Line))) {
+		t.Error("the news replaces the line, not both")
+	}
+	h.click("去看看")
+	if h.app.Route != RouteTask || h.app.TaskID != "t-invoices" {
+		t.Errorf("route %v task %q", h.app.Route, h.app.TaskID)
+	}
+	// News without a task (a wait that didn't come true) opens On hand.
+	n := *firstNews
+	n.News = &protocol.FirstNews{Kind: "missed", Words: w("「PR #9950 的检查都过」没等到。要接着等吗？", `“PR #9950's checks pass” didn't happen. Keep waiting?`)}
+	h = firstScreen(t, i18n.ZH, "小鸭", &n, true)
+	h.click("去看看")
+	if h.app.Route != RouteOnHand {
+		t.Errorf("route %v", h.app.Route)
+	}
+}
+
+func TestFirstScreenPartnerLeansTowardTheComposer(t *testing.T) {
+	if tr := helloPose(helloFor, 0); tr != (ui.Rotation(0).Then(ui.Translation(0, 0))) {
+		t.Errorf("at rest after the wave: %+v", tr)
+	}
+	if helloPose(400*time.Millisecond, 0) == helloPose(helloFor, 0) {
+		t.Error("no wave on first appearance")
+	}
+	if helloPose(helloFor, 1) == helloPose(helloFor, 0) {
+		t.Error("no lean while typing")
+	}
+}
+
+// The first screen at full size, zh and en: a brand-new person, a
+// developer, someone returning to a result, and the partner leaning in
+// while they type.
+//
+//	DUCTER_SHOTS=1 DUCTER_SHOTS_DIR=$PWD/../../.shots/first-screen go test ./internal/views -run FirstScreenShots
+func TestFirstScreenShots(t *testing.T) {
+	if os.Getenv("DUCTER_SHOTS") == "" {
+		t.Skip("DUCTER_SHOTS not set")
+	}
+	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
+		for name, f := range map[string]*protocol.FirstScreen{"new": firstNew, "developer": firstDev, "returning-news": firstNews} {
+			h := firstScreen(t, lang, "小鸭", f, true)
+			h.shot(fmt.Sprintf("desktop-%s-%s", name, lang))
 		}
-	}
-	if strings.Contains(strings.Join(h.tt.Texts(), "\n"), "代码库") {
-		t.Errorf("talks about repos with none found: %q", h.tt.Texts())
-	}
-	h.shot("firstrun-empty-fresh")
-	// One repo: one starter about it, two everyday ones.
-	one := newWelcome(t, i18n.EN, hintsDir(t, `{"version":1,"repoCount":1,"repos":[{"name":"blog","path":"~/code/blog"}]}`), true)
-	got := one.app.suggestions()
-	if len(got) != 3 || got[0] != "Find the failing tests in ~/code/blog, fix them, and tell me" || got[1] != "What can you do for me? Give me three examples" {
-		t.Errorf("suggestions %q", got)
+		h := firstScreen(t, lang, "小鸭", firstNew, false)
+		h.tt.Advance(3 * time.Second)
+		h.app.draft = h.app.words(firstNew.Starters[1].Words)
+		h.tt.Frame()
+		h.tt.Advance(time.Second)
+		h.shot(fmt.Sprintf("desktop-typing-%s", lang))
 	}
 }
 

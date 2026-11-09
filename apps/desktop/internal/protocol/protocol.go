@@ -1125,6 +1125,39 @@ type ServerFrame struct {
 	// update_result (D148): Device, OK, Reason, Detail, and with a check the
 	// device's Update. disconnect_result: Device, OK, Reason.
 	Update *DeviceUpdate `json:"update,omitempty"`
+	// first_screen (D149): the empty conversation's words from the home.
+	First *FirstScreen `json:"first,omitempty"`
+}
+
+// Words are the same words in both languages: the client shows its own.
+type Words struct {
+	ZH string `json:"zh"`
+	EN string `json:"en"`
+}
+
+// FirstScreen is the empty conversation (D149), worked out on the home
+// from names and metadata it already has (core/src/first-screen.ts). The
+// client greets by its own clock in the partner's name and shows these.
+type FirstScreen struct {
+	Visit    string     `json:"visit"` // first | returning
+	Line     Words      `json:"line"`
+	News     *FirstNews `json:"news,omitempty"`
+	Starters []Starter  `json:"starters"`
+}
+
+// FirstNews is one timely line for a returning person: needs_you | missed
+// | done. It opens TaskID, else On hand.
+type FirstNews struct {
+	Kind   string `json:"kind"`
+	Words  Words  `json:"words"`
+	TaskID string `json:"taskId,omitempty"`
+}
+
+// Starter is one thing to say; a tap fills the composer, never sends.
+type Starter struct {
+	ID    string `json:"id"`
+	Kind  string `json:"kind"`
+	Words Words  `json:"words"`
 }
 
 // PartnerActivity is the step of a partner turn the user waits on (D104):

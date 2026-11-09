@@ -2,32 +2,149 @@ package views
 
 import (
 	"fmt"
+	"math"
+	"strings"
 	"time"
 
 	"github.com/egoist/mygo/ui"
 
+	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
-// The first five minutes, in the client: starters about this Mac in the
-// empty conversation, and one small celebration of the first result.
+// The first five minutes, in the client: the empty conversation (D149),
+// and one small celebration of the first result.
 
-// suggestions are the three starters of the empty conversation: about the
-// repos this Mac touched most recently (names from `ducter up`, never
-// contents), topped up with everyday ones.
+// words are the home's words in this window's language.
+func (a *App) words(w protocol.Words) string {
+	if a.L.Lang == i18n.ZH {
+		return w.ZH
+	}
+	return w.EN
+}
+
+// dayPart names the part of the day an hour falls in, for the greeting.
+func dayPart(h int) string {
+	switch {
+	case h >= 5 && h < 11:
+		return "morning"
+	case h >= 11 && h < 13:
+		return "noon"
+	case h >= 13 && h < 18:
+		return "afternoon"
+	case h >= 18 && h < 23:
+		return "evening"
+	}
+	return "late"
+}
+
+// greeting is the partner saying hello in its own name, by this Mac's
+// clock: "早上好呀，我是小鸭。" the first time, "早上好呀，小鸭在呢。" after.
+func (a *App) greeting() string {
+	visit := "first"
+	if f := a.S.First; f != nil && f.Visit == "returning" {
+		visit = "back"
+	}
+	return a.L.T("hello."+visit+"."+dayPart(a.Now().Hour()), a.S.PersonaName)
+}
+
+// canLine is what the partner can do for this person, one line (the home
+// words it from what is connected); an older Ducter gets the plain one.
+func (a *App) canLine() string {
+	if f := a.S.First; f != nil && f.Line.ZH != "" {
+		return a.words(f.Line)
+	}
+	return a.L.T("empty.conversation")
+}
+
+// sentences splits a short paragraph after its first sentence ("。" or
+// ". "), so each shows on its own line; one sentence stays whole.
+func sentences(s string) []string {
+	for _, end := range []string{"。", ". "} {
+		if i := strings.Index(s, end); i > 0 && i+len(end) < len(strings.TrimSpace(s)) {
+			return []string{strings.TrimSpace(s[:i+len(end)]), strings.TrimSpace(s[i+len(end):])}
+		}
+	}
+	return []string{s}
+}
+
+// suggestions are the starters of the empty conversation: 3–4, life
+// first, from what the home knows (D149), else everyday ones.
 func (a *App) suggestions() []string {
 	var out []string
-	for i, r := range a.Local.Repos() {
-		if i >= 3 {
-			break
+	if f := a.S.First; f != nil {
+		for _, s := range f.Starters {
+			if w := strings.TrimSpace(a.words(s.Words)); w != "" {
+				out = append(out, w)
+			}
 		}
-		out = append(out, a.L.T(fmt.Sprintf("suggest.repo.%d", i+1), r.Path))
 	}
 	for i := 1; len(out) < 3; i++ {
 		out = append(out, a.L.T(fmt.Sprintf("suggest.%d", i)))
 	}
 	return out
+}
+
+// helloFor is how long the partner's wave lasts when the empty
+// conversation first appears.
+const helloFor = 1600 * time.Millisecond
+
+// helloPose is the partner's wave at d after it appeared (two rocks from
+// its feet that settle, and a small hop), then its lean toward the
+// composer while the person types (lean 0 … 1).
+func helloPose(d time.Duration, lean float32) ui.Transform {
+	tr := ui.Rotation(-5 * lean).Then(ui.Translation(4*lean, 2*lean))
+	if d <= 0 || d >= helloFor {
+		return tr
+	}
+	x := float64(d) / float64(helloFor)
+	rock := float32(8 * math.Sin(2*math.Pi*2*x) * (1 - x))
+	hop := float32(0)
+	if x < 0.3 {
+		hop = float32(-8 * math.Sin(math.Pi*x/0.3))
+	}
+	return ui.Rotation(rock).Then(ui.Translation(0, hop)).Then(tr)
+}
+
+// helloAvatar is the partner on the empty conversation: it breathes and
+// blinks (D77), waves once when it first appears, and leans toward the
+// composer while there are words in it. Under reduced motion it is still.
+func (a *App) helloAvatar(c *ui.Context, size float32) {
+	bmp := theme.Art(theme.Idle, size*2)
+	if bmp == nil {
+		a.avatar(c, theme.Idle, size)
+		return
+	}
+	still := c.Preferences().ReduceMotion
+	box := ui.Box(c.Key("hello-avatar")).Size(size, size).Role(ui.RoleImage).Label(a.L.T(presenceLabel[theme.Idle], a.S.PersonaName)).Shrink(0)
+	born := ui.Local(box, "born", func() time.Time { return time.Time{} })
+	lean := float32(0)
+	if !still {
+		target := float32(0)
+		if strings.TrimSpace(a.draft) != "" {
+			target = 1
+		}
+		lean = box.AnimateTo("lean", target, ui.Animation{Duration: 480 * time.Millisecond})
+	}
+	lids := squareBlink(size * 2)
+	phase := phaseOf("hello-avatar")
+	box.Draw(func(p *ui.Painter, r ui.Rect) {
+		if still {
+			clayArt(p, r, bmp, idleStill, phase, nil)
+			return
+		}
+		if born.IsZero() {
+			*born = p.Now()
+		}
+		d := p.Now().Sub(*born)
+		p.Transform(helloPose(d, lean), r.X+r.W/2, r.Y+r.H, func() {
+			clayArt(p, r, bmp, idleBreathe, phase, lids)
+		})
+		if d < helloFor {
+			p.AnimationFrame()
+		}
+	})
 }
 
 // FirstResultFor is how long the first-result line stays.

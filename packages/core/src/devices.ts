@@ -14,6 +14,7 @@ import type { Workers } from "./workers.ts";
 export type DevicesFrame = Extract<ServerFrame, { t: "devices" }>;
 export type AbilityResult = Extract<ServerFrame, { t: "ability_result" }>;
 export type PairCodeFrame = Extract<ServerFrame, { t: "pair_code" }>;
+export type RenameResult = Extract<ServerFrame, { t: "rename_result" }>;
 
 export type Exec = (argv: string[], timeoutMs?: number) => Promise<{ code: number; out: string }>;
 
@@ -48,6 +49,8 @@ export interface DevicesView {
   frame(): Promise<DevicesFrame>;
   setAbility(device: string, ability: AbilityId, on: boolean): Promise<AbilityResult>;
   pairCode(): Promise<PairCodeFrame>;
+  /** 改名字 / Rename a paired device (D84). The machine Ducter lives on keeps its host name. */
+  rename(device: string, name: string): RenameResult;
   onChange(fn: () => void): () => void;
   /** Something changed (a device paired, a socket came or went): tell the subscribers. */
   changed(): void;
@@ -238,9 +241,11 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
         const state = on?.hello ? "awake" : gone?.asleep ? "asleep" : "unreachable";
         const lastSeen = state === "awake" ? undefined : (gone?.lastSeen ?? d.lastSeenAt);
         const kind = hello?.kind === "laptop" || hello?.kind === "mini" || hello?.kind === "server" ? hello.kind : kindFromPlatform(hello?.os ?? d.platform);
+        // The paired name, which the person can change (D84); a hello never renames a device.
+        if (on && on.name !== d.name) o.workers.renamed(d.id, d.name);
         return {
           id: d.id,
-          name: hello?.name || d.name,
+          name: d.name,
           kind,
           home: false,
           state,
@@ -305,7 +310,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
   }
 
   async function pairCode(): Promise<PairCodeFrame> {
-    const { code, expiresAt } = o.auth.createCode({ kind: "client" });
+    const { code, expiresAt } = o.auth.createCode(); // one code for a phone, an app window or a computer (D83)
     const address = publicAddress(o.dataDir, env);
     const link = address ? `${address}/pair#c=${code}` : undefined;
     return {
@@ -316,10 +321,20 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
     };
   }
 
+  function rename(device: string, name: string): RenameResult {
+    if (device === "local") return { t: "rename_result", device, ok: false, reason: "home" };
+    const r = o.auth.rename(device, name);
+    if ("error" in r) return { t: "rename_result", device, ok: false, reason: r.error };
+    o.workers.renamed(r.device.id, r.device.name);
+    changed();
+    return { t: "rename_result", device: r.device.id, ok: true, name: r.device.name };
+  }
+
   return {
     frame,
     setAbility,
     pairCode,
+    rename,
     onChange(fn) {
       fns.add(fn);
       return () => fns.delete(fn);

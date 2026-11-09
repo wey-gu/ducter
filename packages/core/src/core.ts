@@ -173,12 +173,14 @@ export function startCore(opts: CoreOptions = {}): Core {
     // show 连不上 / Can't reach and new ones are refused, instead of silently running here.
     find: (d) => {
       const hit = (x: { id: string; name: string; kind: string }) => x.kind === "worker" && (x.id === d || x.name === d);
-      return devices.list().find(hit) ?? devices.list({ all: true }).reverse().find(hit);
+      // A renamed worker still answers to its old name (tasks placed before the rename, D84).
+      const was = devices.formerly(d);
+      return devices.list().find(hit) ?? (was?.kind === "worker" ? was : undefined) ?? devices.list({ all: true }).reverse().find(hit);
     },
   });
   api.workers = workers; // the runner places tasks on workers through this (runner/src/remote.ts)
   devicesView = createDevicesView({ dataDir, auth: devices, workers, connected: () => ws.connected(), probes: opts.deviceProbes });
-  const sockets = splitSockets(ws.websocket, workers, { isLive: (id) => devices.isLive(id), sweepMs: opts.sweepMs });
+  const sockets = splitSockets(ws.websocket, workers, { isLive: (id) => devices.isLive(id), nameOf: (id) => devices.list().find((d) => d.id === id)?.name, sweepMs: opts.sweepMs });
   const apns = opts.apns ?? createApnsSender(loadApnsConfig(dataDir));
   const pusher = createPusher({
     log,

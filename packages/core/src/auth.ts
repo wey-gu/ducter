@@ -1,5 +1,8 @@
 // Device auth for remote clients and workers (D54, design/system.md "Remote access").
 //
+// - One code for every kind of device (D83): a code carries no kind; whoever redeems it says
+//   which role it joins as (`role: "worker"` from `ducter worker`, else an app). A worker gets
+//   strictly less than an app (/worker and /mcp only), so choosing it grants nothing new.
 // - Clients on this machine (loopback peer, loopback Host, no proxy headers) stay token-free.
 // - Everyone else pairs once: `ducter pair` mints a one-time code (10 min); the client trades it
 //   at POST /pair for a long-lived device token. Only a SHA-256 of each code and token is kept,
@@ -23,6 +26,8 @@ const FAIL_WINDOW_MS = 10 * 60_000;
 const SEEN_EVERY_MS = 60_000;
 
 export type DeviceKind = "client" | "worker";
+/** A code's kind: "any" (the default, D83) lets the device choose; a fixed kind is kept for `ducter pair --worker`. */
+export type CodeKind = DeviceKind | "any";
 
 export interface Device {
   id: string;
@@ -35,17 +40,28 @@ export interface Device {
 }
 
 export type RedeemError = "invalid" | "expired" | "locked";
+export type RenameError = "unknown_device" | "empty" | "name_taken";
 
 export interface DeviceAuth {
   /** A fresh one-time code, shown to the user once. Older pending codes stay valid until they expire. */
-  createCode(opts?: { ttlMs?: number; kind?: DeviceKind }): { code: string; expiresAt: number };
-  /** Trades a code for a device token. `key` identifies the caller for rate limiting. */
-  redeem(code: string, info: { name: string; platform?: string }, key?: string): { token: string; device: Device } | { error: RedeemError };
+  createCode(opts?: { ttlMs?: number; kind?: CodeKind }): { code: string; expiresAt: number };
+  /**
+   * Trades a code for a device token. `key` identifies the caller for rate limiting. `role` is
+   * what the device joins as when the code leaves it open (no role = an app, "client").
+   */
+  redeem(code: string, info: { name: string; platform?: string; role?: DeviceKind }, key?: string): { token: string; device: Device } | { error: RedeemError };
   /** The live (not revoked) device a token belongs to. */
   verify(token: string): Device | undefined;
   list(opts?: { all?: boolean }): Device[];
   /** Revokes by id, or by name when the name is unique among live devices. Returns what it revoked. */
   revoke(idOrName: string): Device[];
+  /**
+   * Renames a live device (by id, or by a unique name). Its former names keep resolving through
+   * `formerly`, so tasks placed by the old name still find it (D84).
+   */
+  rename(idOrName: string, name: string): { device: Device } | { error: RenameError };
+  /** The device (live or revoked) that was once called `name`, newest rename first. */
+  formerly(name: string): Device | undefined;
   pendingCodes(): number;
   /** The device exists and isn't revoked (cheap; used to close live sockets after a revoke). */
   isLive(id: string): boolean;
@@ -87,6 +103,8 @@ export function openDeviceAuth(dataDir: string, opts: { now?: () => number } = {
       token_hash TEXT NOT NULL, created_at INTEGER NOT NULL, last_seen_at INTEGER, revoked_at INTEGER);
     CREATE TABLE IF NOT EXISTS pair_codes (
       code_hash TEXT PRIMARY KEY, kind TEXT NOT NULL, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL);
+    CREATE TABLE IF NOT EXISTS former_names (
+      name TEXT NOT NULL, device_id TEXT NOT NULL, renamed_at INTEGER NOT NULL);
   `);
 
   const fails = new Map<string, number[]>();
@@ -120,15 +138,17 @@ export function openDeviceAuth(dataDir: string, opts: { now?: () => number } = {
     }
   };
 
-  const insertDevice = db.transaction((codeHash: string, d: { id: string; name: string; platform: string; tokenHash: string }) => {
+  const insertDevice = db.transaction((codeHash: string, d: { id: string; name: string; platform: string; tokenHash: string; role?: DeviceKind }) => {
     const c = db.query("SELECT kind, expires_at FROM pair_codes WHERE code_hash = ?").get(codeHash) as any;
     if (!c) return { error: "invalid" as const };
     db.run("DELETE FROM pair_codes WHERE code_hash = ?", [codeHash]);
     if (c.expires_at <= now()) return { error: "expired" as const };
+    // An open code takes the role the device asked for; a fixed one (pair --worker) keeps its own.
+    const kind: DeviceKind = c.kind === "any" ? (d.role === "worker" ? "worker" : "client") : c.kind;
     db.run("INSERT INTO devices (id, name, kind, platform, token_hash, created_at) VALUES (?, ?, ?, ?, ?, ?)", [
-      d.id, d.name, c.kind, d.platform, d.tokenHash, now(),
+      d.id, d.name, kind, d.platform, d.tokenHash, now(),
     ]);
-    return { kind: c.kind as DeviceKind };
+    return { kind };
   });
 
   return {
@@ -136,7 +156,7 @@ export function openDeviceAuth(dataDir: string, opts: { now?: () => number } = {
       db.run("DELETE FROM pair_codes WHERE expires_at <= ?", [now()]);
       const raw = newCode();
       const expiresAt = now() + (o.ttlMs ?? CODE_TTL_MS);
-      db.run("INSERT INTO pair_codes (code_hash, kind, created_at, expires_at) VALUES (?, ?, ?, ?)", [sha(raw), o.kind ?? "client", now(), expiresAt]);
+      db.run("INSERT INTO pair_codes (code_hash, kind, created_at, expires_at) VALUES (?, ?, ?, ?)", [sha(raw), o.kind ?? "any", now(), expiresAt]);
       return { code: formatCode(raw), expiresAt };
     },
     redeem(code, info, key = "?") {
@@ -151,7 +171,7 @@ export function openDeviceAuth(dataDir: string, opts: { now?: () => number } = {
       // Names are printed in terminals (`ducter devices`) and shown to the partner.
       const name = cleanName(info.name || "device").slice(0, 64) || "device";
       const platform = cleanName(info.platform ?? "").slice(0, 32);
-      const r = insertDevice(sha(raw), { id, name, platform, tokenHash: sha(secret) }) as { error: RedeemError } | { kind: DeviceKind };
+      const r = insertDevice(sha(raw), { id, name, platform, tokenHash: sha(secret), role: info.role }) as { error: RedeemError } | { kind: DeviceKind };
       if ("error" in r) {
         fail(key);
         return { error: r.error };
@@ -191,6 +211,33 @@ export function openDeviceAuth(dataDir: string, opts: { now?: () => number } = {
         db.run("UPDATE devices SET revoked_at = ? WHERE id = ?", [r.revoked_at, r.id]);
       }
       return hit.map(row);
+    },
+    rename(idOrName, newName) {
+      const name = cleanName(newName).slice(0, 64);
+      if (!name) return { error: "empty" };
+      const live = db.query("SELECT * FROM devices WHERE revoked_at IS NULL").all() as any[];
+      let hit = live.find((r) => r.id === idOrName);
+      if (!hit) {
+        const byName = live.filter((r) => r.name === idOrName);
+        if (byName.length === 1) hit = byName[0];
+      }
+      if (!hit) return { error: "unknown_device" };
+      if (hit.name === name) return { device: row(hit) };
+      // Names are how the partner places tasks: two live devices never share one.
+      if (live.some((r) => r.id !== hit.id && r.name === name)) return { error: "name_taken" };
+      db.transaction(() => {
+        db.run("INSERT INTO former_names (name, device_id, renamed_at) VALUES (?, ?, ?)", [hit.name, hit.id, now()]);
+        db.run("DELETE FROM former_names WHERE device_id = ? AND name = ?", [hit.id, name]);
+        db.run("UPDATE devices SET name = ? WHERE id = ?", [name, hit.id]);
+      })();
+      hit.name = name;
+      return { device: row(hit) };
+    },
+    formerly(name) {
+      const r = db
+        .query("SELECT d.* FROM former_names f JOIN devices d ON d.id = f.device_id WHERE f.name = ? ORDER BY d.revoked_at IS NOT NULL, f.renamed_at DESC LIMIT 1")
+        .get(name);
+      return r ? row(r) : undefined;
     },
     isLive: (id) => db.query("SELECT 1 FROM devices WHERE id = ? AND revoked_at IS NULL").get(id) != null,
     pendingCodes() {
@@ -270,7 +317,9 @@ export function createGate(opts: { auth: DeviceAuth; trustLoopback?: boolean; pe
           return { pass: false, response: json(400, { error: "invalid" }) };
         }
         const key = rateKey(req, peerIp);
-        const r = opts.auth.redeem(String(body?.code ?? ""), { name: String(body?.name ?? ""), platform: String(body?.platform ?? "") }, key);
+        // role: "worker" from `ducter worker`; anything else (or nothing: web, iOS, desktop) is an app.
+        const role = body?.role === "worker" ? "worker" : "client";
+        const r = opts.auth.redeem(String(body?.code ?? ""), { name: String(body?.name ?? ""), platform: String(body?.platform ?? ""), role }, key);
         if ("error" in r) return { pass: false, response: json(r.error === "locked" ? 429 : 401, { error: r.error }) };
         return { pass: false, response: json(200, { token: r.token, deviceId: r.device.id, name: r.device.name, personaName: opts.personaName?.() ?? "Ducter" }) };
       }

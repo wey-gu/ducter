@@ -128,6 +128,7 @@ func (a *App) settingsView(c *ui.Context) {
 				if a.settings.first != "update" {
 					a.updateCard(c)
 				}
+				a.updateSection(c) // D146: every computer's Ducter version (devupdate.go)
 				a.dataCard(c)
 				if a.settings.first != "about" {
 					a.aboutCard(c)

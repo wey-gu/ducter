@@ -9,28 +9,26 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
-// deviceDetail is the chosen island's card beside the stage (D81): what
-// the device is, what it can do now, and the AI accounts on it, each with
-// a literal line when its limit is shared with other devices. Tapping an
-// account lifts every island it's signed in on, as on the stage; on the
-// Mac this app runs Ducter on, an account opens its sheet (sign in,
-// install, sign out; D71).
+// deviceDetail is the chosen island's card beside the stage (D81, D146):
+// one header (its name, renamed in place; what it is, in plain words), a
+// short state line, what it can do, its AI accounts (the signed-in ones;
+// the rest folded behind + 再登录一个 AI unless none is signed in), its
+// Ducter version with the update, and the actions at the bottom. Tapping
+// an account lifts every island it's signed in on; on the Mac this app
+// runs Ducter on, an account opens its sheet (sign in, install, sign out).
 func (a *App) deviceDetail(c *ui.Context, dv *protocol.DeviceView) {
 	t := a.T
 	d := a.devState()
+	a.drainDeviceResults()
 	card := ui.Column(c.Key("device-card")).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).
-		Padding(t.S4).Gap(t.S2)
+		Padding(t.S5).Gap(t.S2)
 	if d.selClient != "" && a.S.Reach != nil {
 		for i := range a.S.Reach.Clients {
 			cl := &a.S.Reach.Clients[i]
 			if cl.ID != d.selClient {
 				continue
 			}
-			card.Role(ui.RoleGroup).Label(cl.Name).Children(func() {
-				a.heading(c, cl.Name, t.XL)
-				ui.Text(c, a.clientLine(cl)).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).LineHeight(1.5)
-				ui.Text(c, a.L.T("ability.remote.how")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.5)
-			})
+			card.Role(ui.RoleGroup).Label(cl.Name).Children(func() { a.clientCard(c, cl) })
 			return
 		}
 		d.selClient = ""
@@ -40,9 +38,14 @@ func (a *App) deviceDetail(c *ui.Context, dv *protocol.DeviceView) {
 	}
 	name := a.deviceName(dv)
 	card.Role(ui.RoleGroup).Label(name).Children(func() {
-		a.heading(c, name, t.XL)
+		ui.Column(c).Gap(t.S1).Children(func() {
+			ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+				ui.Column(c).Grow(1).MinWidth(0).Children(func() { a.cardName(c, dv.ID, name, !dv.Home) })
+			})
+			ui.Text(c, a.kindLine(dv)).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).LineHeight(1.5)
+		})
 		var line string
-		var ink ui.Color
+		ink := t.Awake.Ink
 		switch dv.State {
 		case protocol.DeviceAsleep:
 			line, ink = a.L.T("device.asleep.line", name), t.Asleep.Ink
@@ -54,11 +57,16 @@ func (a *App) deviceDetail(c *ui.Context, dv *protocol.DeviceView) {
 			}
 			ink = t.Away.Ink
 		default:
-			line, ink = a.deviceLine(dv, t.Awake)
+			switch n := a.runningOn(dv); {
+			case n == 1:
+				line = a.L.T("device.state.awake") + " · " + a.L.T("device.other.working.one")
+			case n > 1:
+				line = a.L.T("device.state.awake") + " · " + a.L.T("device.other.working", n)
+			default:
+				line = a.L.T("device.state.awake")
+			}
 		}
-		if line != "" {
-			ui.Text(c, line).FontSize(t.SM).FontWeight(700).TextColor(ink).LineHeight(1.5)
-		}
+		ui.Text(c, line).FontSize(t.SM).TextColor(ink).LineHeight(1.5)
 		var on []string
 		for _, ab := range dv.Abilities {
 			if a.abilityOn(dv, ab.ID) {
@@ -68,12 +76,41 @@ func (a *App) deviceDetail(c *ui.Context, dv *protocol.DeviceView) {
 		if len(on) > 0 {
 			ui.Text(c, a.L.T("devices.can", name, strings.Join(on, " · "))).FontSize(t.SM).TextColor(t.Ink).LineHeight(1.5)
 		}
-		ui.Text(c, a.L.T("devices.accounts", a.deviceNameIn(dv))).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted).Margin(t.S2, 0, 0, 0)
+
+		// AI accounts: the signed-in ones; the rest only on a tap, unless none is.
+		ui.Text(c, a.L.T("devices.accounts", a.deviceNameIn(dv))).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted).Margin(t.S3, 0, 0, 0)
+		var in, rest []protocol.DeviceHarness
+		for _, h := range dv.Harnesses {
+			if h.Installed && h.LoggedIn {
+				in = append(in, h)
+			} else {
+				rest = append(rest, h)
+			}
+		}
 		if len(dv.Harnesses) == 0 {
 			ui.Text(c, a.L.T("devices.accounts.none", a.deviceNameIn(dv))).FontSize(t.SM).TextColor(t.InkSoft)
 		}
-		for _, h := range dv.Harnesses {
+		for _, h := range in {
 			a.accountRow(c, dv, h)
+		}
+		if d.card.more == nil {
+			d.card.more = map[string]bool{}
+		}
+		if len(in) == 0 || d.card.more[dv.ID] {
+			for _, h := range rest {
+				a.accountRow(c, dv, h)
+			}
+		} else if len(rest) > 0 {
+			a.textRow(c, t.ControlSM).Children(func() {
+				if a.button(c, a.L.T("devices.accounts.more"), btnText, t.ControlSM, t.Surface) {
+					d.card.more[dv.ID] = true
+				}
+			})
+		}
+
+		a.versionBlock(c, dv)
+		if !dv.Home {
+			a.disconnectRow(c, dv.ID, name, false)
 		}
 	})
 }

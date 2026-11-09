@@ -336,6 +336,9 @@ type Store struct {
 	PairCode *protocol.ServerFrame
 	// Renamed is the server's answer to the last 改名字 / Rename.
 	Renamed *protocol.ServerFrame
+	// DeviceResult is the server's answer to the last 断开 / Disconnect or
+	// 更新 / Update on a device's card (D146).
+	DeviceResult *protocol.ServerFrame
 	// Settings and Mem are the partner's settings and memory, as last sent
 	// (nil until the first settings frame); Forgot the last forget's
 	// outcome, until the view shows it.
@@ -429,6 +432,9 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 	case "rename_result":
 		fc := f
 		s.Renamed = &fc
+	case "disconnect_result", "update_result":
+		fc := f
+		s.DeviceResult = &fc
 	case "settings":
 		if f.Settings != nil {
 			s.Settings = f.Settings

@@ -161,6 +161,46 @@ func (h *hub) handleDevices(c *conn, f protocol.ClientFrame) bool {
 		d.codeN++
 		d.mu.Unlock()
 		c.send(map[string]any{"t": "pair_code", "code": "K7QM-4XPA", "expiresAt": time.Now().Add(10 * time.Minute).UTC().Format(time.RFC3339)})
+	case "disconnect_device":
+		d.mu.Lock()
+		ok := false
+		for i := range d.list {
+			if d.list[i].ID == f.Device && !d.list[i].Home {
+				d.list = append(d.list[:i], d.list[i+1:]...)
+				ok = true
+				break
+			}
+		}
+		for i := range d.reach.Clients {
+			if !ok && d.reach.Clients[i].ID == f.Device {
+				d.reach.Clients = append(d.reach.Clients[:i], d.reach.Clients[i+1:]...)
+				ok = true
+				break
+			}
+		}
+		d.mu.Unlock()
+		if !ok {
+			reason := "unknown_device"
+			if f.Device == "local" {
+				reason = "home"
+			}
+			c.send(map[string]any{"t": "disconnect_result", "device": f.Device, "ok": false, "reason": reason})
+			return true
+		}
+		c.send(map[string]any{"t": "disconnect_result", "device": f.Device, "ok": true})
+		go func() {
+			time.Sleep(50 * time.Millisecond)
+			h.pushDevices()
+		}()
+	case "device_update":
+		// D146: the steps, a beat each (UpdateStep sets one directly for pictures).
+		c.send(map[string]any{"t": "update_result", "device": f.Device, "ok": true})
+		go func() {
+			for _, p := range []string{"downloading", "verifying", "waiting", "restarting", "done"} {
+				h.UpdateStep(f.Device, p, 0.4)
+				time.Sleep(80 * time.Millisecond)
+			}
+		}()
 	case "rename_device":
 		name := strings.TrimSpace(f.Name)
 		d.mu.Lock()
@@ -173,16 +213,24 @@ func (h *hub) handleDevices(c *conn, f protocol.ClientFrame) bool {
 				reason = "name_taken"
 			}
 		}
+		client := -1
+		for i := range d.reach.Clients {
+			if d.reach.Clients[i].ID == f.Device {
+				client = i
+			}
+		}
 		switch {
 		case f.Device == "local":
 			reason = "home"
-		case hit < 0:
+		case hit < 0 && client < 0:
 			reason = "unknown_device"
 		case name == "":
 			reason = "empty"
 		}
-		if reason == "" {
+		if reason == "" && hit >= 0 {
 			d.list[hit].Name = name
+		} else if reason == "" {
+			d.reach.Clients[client].Name = name
 		}
 		d.mu.Unlock()
 		if reason != "" {
@@ -198,4 +246,34 @@ func (h *hub) handleDevices(c *conn, f protocol.ClientFrame) bool {
 		return false
 	}
 	return true
+}
+
+// UpdateStep puts a device's update at a step (D146), as the real main
+// reports it: done moves its version to the latest; failed is a rollback.
+func (h *hub) UpdateStep(device, phase string, progress float64) {
+	h.SetDevices(func(list []protocol.DeviceView, _ *protocol.Reach) []protocol.DeviceView {
+		for i := range list {
+			u := list[i].Update
+			if list[i].ID != device || u == nil {
+				continue
+			}
+			to := u.Latest
+			if u.To != "" {
+				to = u.To
+			}
+			nu := *u
+			nu.Phase, nu.Progress, nu.From, nu.To, nu.Reason, nu.RolledBack = phase, 0, u.Current, to, "", false
+			switch phase {
+			case "downloading":
+				nu.Progress = progress
+			case "done":
+				nu.Current, nu.Available = to, false
+				list[i].Version = to
+			case "failed":
+				nu.Reason, nu.RolledBack = "health", true
+			}
+			list[i].Update = &nu
+		}
+		return list
+	})
 }

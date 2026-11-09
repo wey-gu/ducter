@@ -710,6 +710,23 @@ type RenameDeviceReq struct {
 	Name   string `json:"name"`
 }
 
+// DisconnectDeviceReq is 断开 / Disconnect on a device's card (D146): the
+// same revoke as `ducter devices disconnect`. Answered with
+// disconnect_result, then a fresh devices frame.
+type DisconnectDeviceReq struct {
+	T      string `json:"t"` // "disconnect_device"
+	Device string `json:"device"`
+}
+
+// DeviceUpdateReq is 更新 / Update on a device's card (D146). Check only
+// reads the latest release again. Answered with update_result; progress
+// comes as fresh devices frames.
+type DeviceUpdateReq struct {
+	T      string `json:"t"` // "device_update"
+	Device string `json:"device"`
+	Check  bool   `json:"check,omitempty"`
+}
+
 // ---------- Connections (D96: the user's OpenConnector or other MCP servers) ----------
 
 // ConnectionsReq asks for the user's connections and keeps this socket told
@@ -817,6 +834,8 @@ type Settings struct {
 	// Use it for tasks switches (a missing entry is on).
 	Brain        *Brain                 `json:"brain,omitempty"`
 	TaskAccounts map[string]TaskAccount `json:"taskAccounts,omitempty"`
+	// AutoUpdate: update at night, in quiet hours, when nothing is working (D146).
+	AutoUpdate bool `json:"autoUpdate,omitempty"`
 }
 
 // SettingsPatch is a change to some settings. Quiet is sent as given, so
@@ -831,6 +850,7 @@ type SettingsPatch struct {
 	DefaultAfterMin int                    `json:"defaultAfterMin,omitempty"`
 	Brain           *Brain                 `json:"brain,omitempty"`
 	TaskAccounts    map[string]TaskAccount `json:"taskAccounts,omitempty"`
+	AutoUpdate      *bool                  `json:"autoUpdate,omitempty"`
 }
 
 // MarshalJSON writes Quiet only when it is set or cleared.
@@ -954,6 +974,37 @@ type DeviceView struct {
 	Version   string          `json:"version,omitempty"`
 	Harnesses []DeviceHarness `json:"harnesses"`
 	Abilities []DeviceAbility `json:"abilities"`
+	// Update is where its Ducter stands against the latest release (D146).
+	Update   *DeviceUpdate `json:"update,omitempty"`
+	Platform string        `json:"platform,omitempty"` // linux-x64, darwin-arm64…
+}
+
+// DeviceUpdate is a device's version against the latest release, and an
+// update under way (D146). How: self (it updates itself, a Linux server) |
+// app (through Ducter.app on that Mac) | source (run from source) | manual
+// (too old to update from here). Phase: downloading | verifying | waiting |
+// restarting | done | failed; empty when idle.
+type DeviceUpdate struct {
+	Current    string   `json:"current"`
+	Latest     string   `json:"latest,omitempty"`
+	Available  bool     `json:"available"`
+	Notes      []string `json:"notes,omitempty"`
+	Security   bool     `json:"security,omitempty"`
+	How        string   `json:"how"`
+	Phase      string   `json:"phase,omitempty"`
+	Progress   float64  `json:"progress,omitempty"`
+	From       string   `json:"from,omitempty"`
+	To         string   `json:"to,omitempty"`
+	Reason     string   `json:"reason,omitempty"`
+	Detail     string   `json:"detail,omitempty"`
+	RolledBack bool     `json:"rolledBack,omitempty"`
+	At         string   `json:"at,omitempty"`
+	CheckedAt  string   `json:"checkedAt,omitempty"`
+}
+
+// Running reports an update under way (not yet done or failed).
+func (u *DeviceUpdate) Running() bool {
+	return u != nil && (u.Phase == "downloading" || u.Phase == "verifying" || u.Phase == "waiting" || u.Phase == "restarting")
 }
 
 // Ability returns the device's ability by id, or nil.
@@ -1071,6 +1122,9 @@ type ServerFrame struct {
 	ClientID string        `json:"clientId,omitempty"`
 	Card     *TaskCard     `json:"card,omitempty"`
 	Apps     int           `json:"apps,omitempty"`
+	// update_result (D146): Device, OK, Reason, Detail, and with a check the
+	// device's Update. disconnect_result: Device, OK, Reason.
+	Update *DeviceUpdate `json:"update,omitempty"`
 }
 
 // PartnerActivity is the step of a partner turn the user waits on (D104):
@@ -1100,7 +1154,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	}
 	switch f.T {
 	case "welcome", "events", "on_hand", "task_history", "sent", "action_result", "error",
-		"devices", "ability_result", "pair_code", "rename_result", "settings", "connections", "connection_result", "rules", "candidates", "activity",
+		"devices", "ability_result", "pair_code", "rename_result", "disconnect_result", "update_result", "settings", "connections", "connection_result", "rules", "candidates", "activity",
 		"task_new_options", "task_new_result", "open_task", "open_result":
 	default:
 		return f, fmt.Errorf("unknown server frame %q", f.T)

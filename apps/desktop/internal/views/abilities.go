@@ -47,6 +47,7 @@ type devicesState struct {
 	sparkAt0 ui.Rect
 	pair     pairState
 	rename   renameState
+	card     cardState          // D146: the device card's disconnect confirm, folded accounts, update answer
 	tiles    map[string]ui.Rect // the ability art in the grid, last frame
 	slots    map[string]ui.Rect // the slots' wells, last frame
 	hover    string             // the tile under the pointer
@@ -307,12 +308,21 @@ func (a *App) deviceCards(c *ui.Context, width float32) {
 				a.deviceClay(c, "card:"+dv.ID, dv).Grow(1)
 			})
 			ui.Column(c).Gap(t.S1).Grow(1).MinWidth(0).Children(func() {
-				ui.Text(c, name).FontSize(t.Bubble).FontWeight(800).SingleLine()
+				ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+					ui.Text(c, name).FontSize(t.Bubble).FontWeight(800).SingleLine().Shrink(1)
+					if behind(dv) {
+						a.updateDot(c)
+					}
+				})
 				// Shown, not explained (D43): the clay says awake or asleep,
 				// Ducter on the stage says where it lives. Words only for
 				// what is unusual, plainly, in the state's ink; no pill.
 				// Another computer always says what it is (D84).
-				if !dv.Home {
+				if dv.Update.Running() {
+					// D146: while it updates, the step is its line.
+					ui.Text(c, a.phaseLine(dv.Update)).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).LineHeight(1.4).MaxLines(2)
+					c.After(500e6)
+				} else if !dv.Home {
 					a.otherComputerLine(c, dv, sc)
 				} else if line, ink := a.deviceLine(dv, sc); line != "" {
 					ui.Text(c, line).FontSize(t.XS).FontWeight(700).TextColor(ink).LineHeight(1.4).MaxLines(2)
@@ -322,9 +332,6 @@ func (a *App) deviceCards(c *ui.Context, width float32) {
 		if card.Clicked() {
 			d.sel, d.selClient = dv.ID, ""
 			d.removing = ""
-		}
-		if sel && !dv.Home {
-			a.renameRow(c, dv, width)
 		}
 	}
 	if a.S.Reach == nil {
@@ -828,7 +835,7 @@ func (a *App) reachList(c *ui.Context) {
 			// The words say it (online / seen 2 h ago); no status dot.
 			ui.Text(c.Key("cl:"+cl.ID), line).FontSize(t.SM).FontWeight(700).SingleLine()
 		}
-		ui.Text(c, a.L.T("ability.remote.how")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.5)
+		ui.Text(c, a.L.T("ability.remote.cut")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.5)
 	})
 }
 

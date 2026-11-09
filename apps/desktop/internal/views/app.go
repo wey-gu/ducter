@@ -401,7 +401,9 @@ func (a *App) shortcuts(c *ui.Context) {
 		}
 		a.focusComposer = true
 	case c.Shortcut(0, ui.KeyEscape):
-		a.Up()
+		if !a.escDevice() {
+			a.Up()
+		}
 	}
 }
 

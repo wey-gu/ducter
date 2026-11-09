@@ -359,6 +359,12 @@ session MCP [V].
 - Skills sit in the message layer.
 - [V OAR `docs/runtimes/claude.md:930`]: since 2.1.304 a custom `ANTHROPIC_BASE_URL` also enables tool search by
   default.
+- [V Claude Code 2.1.319 binary strings, 2026-11-09]: a server opts out of deferral per server (`alwaysLoad: true`
+  in its MCP config entry) or per tool (`_meta: {"anthropic/alwaysLoad": true}` in `tools/list`). Unless the server's
+  entry says `alwaysLoad: false`, a tool loads up front when its server says `alwaysLoad: true` or its own `_meta` does.
+  OAR 0.95.1's `--mcp-config` writer passes only `type/url/headers` (http) or `type/command/args/env` (stdio), so
+  the per-server key can't be set through OAR; the per-tool `_meta` can, from Ducter's own server. Ducter sets it on
+  every tool (fresh-user QA: a haiku task called a deferred `checkpoint` with `{}`).
 
 ---
 

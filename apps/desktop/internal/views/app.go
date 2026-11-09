@@ -96,9 +96,13 @@ type App struct {
 	replyOpen  map[string]bool
 	replyDraft map[string]string
 	diffs      map[string]*diffPane
-	taskLists  map[string]*ui.ListState
-	md, mdTask markdown.Options
-	mdLang     i18n.Lang // the language md's themes were made for
+	// D130: a folder task's list was asked for (throttle), and an undo
+	// that came back asking to confirm (what would be lost).
+	folderAsked   map[string]int // 1: asked; 2: asked, and ask again on the answer
+	folderConfirm map[string]*protocol.UndoConfirm
+	taskLists     map[string]*ui.ListState
+	md, mdTask    markdown.Options
+	mdLang        i18n.Lang // the language md's themes were made for
 	// pressAll draws every button as pressed: the button specimen's
 	// pressed row (tests only).
 	pressAll bool
@@ -206,17 +210,19 @@ const ReadAfter = 1200 * time.Millisecond
 func New(s *store.Store, t *theme.Tokens, l *i18n.Strings) *App {
 	return &App{
 		S: s, T: t, L: l,
-		Now:          time.Now,
-		Local:        hints.Open(""),
-		Status:       client.Connecting,
-		taskDrafts:   map[string]string{},
-		replyOpen:    map[string]bool{},
-		replyDraft:   map[string]string{},
-		diffs:        map[string]*diffPane{},
-		taskLists:    map[string]*ui.ListState{},
-		open:         map[string]bool{},
-		historyAsked: map[string]bool{},
-		livingAway:   map[int64]bool{},
+		Now:           time.Now,
+		Local:         hints.Open(""),
+		Status:        client.Connecting,
+		taskDrafts:    map[string]string{},
+		replyOpen:     map[string]bool{},
+		replyDraft:    map[string]string{},
+		diffs:         map[string]*diffPane{},
+		folderAsked:   map[string]int{},
+		folderConfirm: map[string]*protocol.UndoConfirm{},
+		taskLists:     map[string]*ui.ListState{},
+		open:          map[string]bool{},
+		historyAsked:  map[string]bool{},
+		livingAway:    map[int64]bool{},
 	}
 }
 
@@ -707,6 +713,15 @@ func (a *App) followUserLanguage() {
 // Applied is called after the store applied a frame: it refreshes what
 // follows the stream, as the open task's diff.
 func (a *App) Applied(f protocol.ServerFrame) {
+	// D130: a folder's list came back; ask once more if something changed meanwhile.
+	if f.T == "folder_changes" {
+		again := a.folderAsked[f.TaskID] == 2
+		delete(a.folderAsked, f.TaskID)
+		if again {
+			a.askFolder(f.TaskID)
+		}
+		return
+	}
 	if a.Route != RouteTask || a.TaskID == "" {
 		return
 	}

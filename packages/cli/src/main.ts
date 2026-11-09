@@ -44,6 +44,7 @@ export function helpText(t: T): string {
     cmd("doctor", t("help.doctor")),
     cmd("status", t("help.status")),
     cmd("merge", t("help.merge")),
+    cmd("undo", t("help.undo")),
     cmd("task", t("help.task")),
     cmd("say", t("help.say")),
     cmd("tail", t("help.tail")),
@@ -137,6 +138,24 @@ async function cmdMerge(ctx: Ctx): Promise<number> {
   if (!r) return console.log(t("merge.failed", { port: ctx.port })), 1;
   if (ctx.args.json) console.log(JSON.stringify(r, null, 2));
   else console.log(r.message ?? "");
+  return r.ok ? 0 : 1;
+}
+
+/** `ducter undo <part of a title>` (D130): the app's 改回去 / Undo all changes for a folder task.
+ *  A folder changed since the task finished says what would be lost; --yes goes ahead. */
+async function cmdUndo(ctx: Ctx): Promise<number> {
+  const { t } = ctx;
+  const name = (ctx.args.rest ?? []).join(" ").trim();
+  if (!name) return console.log(t("undo.usage")), 2;
+  const snap = await fetchSnapshot(ctx.port);
+  if (!snap) return console.log(t("status.notRunning", { port: ctx.port })), 1;
+  const found = pickTask(snap.onHand.tasks.filter((c) => c.place.kind === "folder" && c.folder?.undo === "open"), name);
+  if (!found.length) return console.log(t("undo.none", { name })), 1;
+  if (found.length > 1) return console.log(t("merge.many", { name, titles: found.map((c) => c.title).join(" · ") })), 1;
+  const r = await taskAction(ctx.port, found[0]!.taskId, "undo", 5 * 60_000, ctx.args.yes ? { force: true } : {});
+  if (!r) return console.log(t("undo.failed", { port: ctx.port })), 1;
+  if (ctx.args.json) console.log(JSON.stringify(r, null, 2));
+  else console.log(r.message ?? "", r.confirm ? `\n${t("undo.confirm")}` : "");
   return r.ok ? 0 : 1;
 }
 
@@ -507,6 +526,8 @@ export async function run(argv: string[]): Promise<number | "running"> {
   switch (args.command) {
     case "doctor":
       return cmdDoctor(ctx);
+    case "undo":
+      return cmdUndo(ctx);
     case "merge":
       return cmdMerge(ctx);
     case "status":

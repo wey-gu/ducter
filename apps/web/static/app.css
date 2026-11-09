@@ -2897,3 +2897,13 @@ ol.tries b {
 .sheet.newtask .btns {
   flex-wrap: nowrap;
 }
+
+/* D130: a folder task's Changes (a folder that isn't a git repo). */
+.folder-changes .said { margin: 0 0 4px; }
+.folder-changes .btns { margin-top: 10px; }
+.folder-changes .confirm { margin-top: 10px; padding: 12px 14px; background: var(--surface); border-radius: 14px; box-shadow: 0 3px 0 var(--line-soft); }
+.folder-list { list-style: none; margin: 10px 0 0; padding: 0; background: var(--surface); border-radius: 14px; box-shadow: 0 3px 0 var(--line-soft); overflow: hidden; }
+.folder-list li { display: flex; align-items: center; gap: 10px; padding: 9px 14px; font-size: 14px; border-top: 1px solid var(--line-soft); }
+.folder-list li:first-child { border-top: 0; }
+.folder-list .mono-ish { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.folder-list li .qlink { flex: none; }

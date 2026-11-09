@@ -79,10 +79,10 @@ export function pickTask(cards: TaskCard[], name: string): TaskCard[] {
   return byId.length ? byId : cards.filter((c) => c.title.toLowerCase().includes(n));
 }
 
-type ActionResult = { ok: boolean; message?: string; ref?: string };
+type ActionResult = { ok: boolean; message?: string; ref?: string; confirm?: { count: number; files: string[] } };
 
 /** Sends one task_action over the client socket and waits for its action_result. */
-export async function taskAction(port: number, taskId: string, action: "merge", timeoutMs = 5 * 60_000): Promise<ActionResult | undefined> {
+export async function taskAction(port: number, taskId: string, action: "merge" | "undo", timeoutMs = 5 * 60_000, extra: { force?: boolean } = {}): Promise<ActionResult | undefined> {
   return new Promise((resolve) => {
     let ws: WebSocket;
     try {
@@ -103,7 +103,7 @@ export async function taskAction(port: number, taskId: string, action: "merge", 
     const timer = setTimeout(() => done(undefined), timeoutMs);
     ws.onopen = () => {
       ws.send(JSON.stringify({ t: "hello" }));
-      ws.send(JSON.stringify({ t: "task_action", taskId, action }));
+      ws.send(JSON.stringify({ t: "task_action", taskId, action, ...extra }));
     };
     ws.onerror = () => done(undefined);
     ws.onclose = () => done(undefined);
@@ -114,7 +114,7 @@ export async function taskAction(port: number, taskId: string, action: "merge", 
       } catch {
         return;
       }
-      if (f.t === "action_result" && f.taskId === taskId && f.action === action) done({ ok: f.ok, ...(f.message ? { message: f.message } : {}), ...(f.ref ? { ref: f.ref } : {}) });
+      if (f.t === "action_result" && f.taskId === taskId && f.action === action) done({ ok: f.ok, ...(f.message ? { message: f.message } : {}), ...(f.ref ? { ref: f.ref } : {}), ...(f.confirm ? { confirm: f.confirm } : {}) });
     };
   });
 }

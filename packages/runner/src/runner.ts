@@ -1260,7 +1260,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       // While it works there, putting the folder back would race it.
       if (isBusy(t)) return { ok: false, message: "It's still working in this folder. Stop it first, then undo." };
       const r = await t.ops.folder.undo(taskId, o);
-      if (r.ok) logEvent(t, { role: "system", from: "runner", text: r.message, raw: { effect: o.path ? "folder_restore" : "folder_undo", ...(o.path ? { path: o.path } : {}) } });
+      if (r.ok) logEvent(t, { role: "system", from: "runner", raw: { message: r.message, effect: o.path ? "folder_restore" : "folder_undo", ...(o.path ? { path: o.path } : {}) } });
       return r;
     },
 
@@ -1268,7 +1268,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       const t = get(taskId);
       if (!folderOf(t)) return { ok: false, message: "This task doesn't work in a folder." };
       const r = await t.ops.folder.keep(taskId);
-      if (r.ok) logEvent(t, { role: "system", from: "runner", text: r.message, raw: { effect: "folder_keep" } });
+      if (r.ok) logEvent(t, { role: "system", from: "runner", raw: { message: r.message, effect: "folder_keep" } });
       return r;
     },
 

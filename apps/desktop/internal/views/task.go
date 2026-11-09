@@ -508,6 +508,10 @@ func (a *App) refreshDiff(id string) {
 		return
 	}
 	p := task.Place()
+	if p.Kind == "folder" {
+		a.askFolder(id)
+		return
+	}
 	// A remote Ducter's worktree path is on the server: never run git on that
 	// path here (it may name some other repo on this Mac, chosen by a model).
 	if p.Kind != "repo" || p.Worktree == "" || !a.onThisMachine() {
@@ -589,6 +593,10 @@ func parseFiles(patch string) []diffFile {
 func (a *App) changes(c *ui.Context, task *store.Task) {
 	t := a.T
 	p := task.Place()
+	if p.Kind == "folder" {
+		a.folderChanges(c, task) // D130: a folder that isn't a repo
+		return
+	}
 	if p.Kind != "repo" || p.Worktree == "" {
 		return
 	}

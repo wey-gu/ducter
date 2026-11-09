@@ -270,6 +270,11 @@ func (a *App) drainActionResults(c *ui.Context) {
 			title = t.Title()
 		}
 		switch {
+		case !f.OK && f.Action == "undo" && f.Confirm != nil:
+			// D130: the folder changed after the task finished: ask in place.
+			a.folderConfirm[f.TaskID] = f.Confirm
+		case f.OK && (f.Action == "undo" || f.Action == "keep"):
+			a.askFolder(f.TaskID) // the section says what became of it
 		case f.OK && f.Action == "merge":
 			c.Toast(a.L.T("result.merged.toast", title, short(f.Ref)))
 		case f.OK && f.Action == "open_pr":

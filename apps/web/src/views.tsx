@@ -1,7 +1,7 @@
 // The phone's screens: the conversation (default), 手头的事 / On hand, an opened task, and the
 // sheets (a decision opened from a notification; this phone's settings). Behavior follows the
 // desktop client (apps/desktop/internal/views); copy comes only from i18n.ts.
-import type { Attention, Bodies, Candidate, DeviceHarness, EvidenceRef, LivingItem, OoDetect } from "@ducter/protocol";
+import type { Attention, Bodies, Candidate, DeviceHarness, EvidenceRef, FolderChange, FolderSummary, LivingItem, OoDetect } from "@ducter/protocol";
 import { Fragment } from "preact";
 import { PARTNER_RESERVE } from "@ducter/protocol/src/loadout.ts";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
@@ -1480,10 +1480,114 @@ function TaskDetails({ task }: { task: Task }) {
 /** An opened task: one column, read top to bottom (D74). Where it stands in words; a pending
  *  ask; the outcome said once with how it knows and what to do next; what it did; Details.
  *  The phone shows no diffs: the changes are named in the proof line. */
+// ---------- D130: a folder that isn't a git repo ----------
+
+/** What a task did to the folder in one line: "整理了 42 个文件，新建了 6 个文件夹". */
+function folderSentence(f: FolderSummary): string {
+  const n = (key: string, k: number) => (k === 1 ? t(`${key}.one`) : t(key, k));
+  const parts: string[] = [];
+  if (f.moved && f.folders) parts.push(t("folder.movedInto", f.moved, f.folders));
+  else {
+    if (f.moved) parts.push(n("folder.moved", f.moved));
+    if (f.folders) parts.push(n("folder.folders", f.folders));
+  }
+  for (const [key, k] of [["folder.renamed", f.renamed], ["folder.added", f.added], ["folder.changed", f.changed], ["folder.removed", f.removed]] as const) if (k) parts.push(n(key, k));
+  const s = parts.join(t("folder.sep"));
+  return /^[a-z]/.test(s) ? s[0]!.toUpperCase() + s.slice(1) : s;
+}
+
+function folderUntil(task: Task, f: FolderSummary): string {
+  if (f.undo === "undone") return t("folder.undone");
+  if (f.undo === "kept") return t("folder.kept");
+  if (f.undo === "expired") return t("folder.expired");
+  if (f.undo === "none") return "";
+  if (!finished(task)) return t("folder.working");
+  const d = f.undoUntil ? new Date(f.undoUntil) : undefined;
+  if (!d || isNaN(+d)) return t("folder.anytime");
+  return t("folder.until", t("folder.date", d.getMonth() + 1, d.getDate(), d.toLocaleString("en", { month: "short" })));
+}
+
+const lastPart = (p: string) => p.slice(p.lastIndexOf("/") + 1);
+
+/** The Changes of a folder task: the sentence, until when it can be undone, Undo all changes /
+ *  Keep the changes, an in-place confirm when the folder changed since, and the list on request. */
+function FolderChangesView({ task }: { task: Task }) {
+  const [listOpen, setListOpen] = useState(false);
+  const f: FolderSummary | undefined = task.folder ?? task.card?.folder;
+  if (!f) return null;
+  const any = f.added + f.changed + f.removed + f.moved + f.renamed + f.folders > 0;
+  if (!any && f.undo !== "undone") return null;
+  const open = f.undo === "open";
+  const c = task.confirm;
+  const until = folderUntil(task, f);
+  const row = (x: FolderChange) =>
+    x.kind === "moved"
+      ? `${x.from} → ${x.path}`
+      : t(x.kind === "added" ? (x.dir ? "folder.row.dir" : "folder.row.added") : x.kind === "removed" ? (x.dir ? "folder.row.removedDir" : "folder.row.removed") : "folder.row.changed", x.path);
+  return (
+    <section class="section folder-changes">
+      <h2 class="sec-title">{t("folder.title")}</h2>
+      {f.undo !== "undone" && <div class="said">{folderSentence(f)}</div>}
+      {until && <div class="small">{until}</div>}
+      {open && c && (
+        <div class="card confirm" role="alert">
+          <div class="said">
+            {t(c.count === 1 ? "folder.confirm.one" : "folder.confirm", c.count, [...c.files.map(lastPart), ...(c.count > c.files.length ? ["…"] : [])].join(t("folder.sep")))}
+          </div>
+          <div class="btns">
+            <Btn kind="text" label={t("folder.confirm.no")} onClick={() => ((task.confirm = undefined), A.changed())} />
+            <Btn kind="primary" label={t("folder.confirm.go")} onClick={() => A.folderAction(task.id, "undo", { force: true })} />
+          </div>
+        </div>
+      )}
+      {open && !c && finished(task) && (
+        <div class="btns">
+          {task.acting === "undo" || task.acting === "keep" ? (
+            <span class="small">…</span>
+          ) : (
+            <>
+              <Btn kind="text" label={t("folder.keep")} about={title(task)} onClick={() => A.folderAction(task.id, "keep")} />
+              <Btn kind="secondary" label={t("folder.undo")} about={title(task)} onClick={() => A.folderAction(task.id, "undo")} />
+            </>
+          )}
+        </div>
+      )}
+      {any && f.undo !== "undone" && (
+        listOpen ? (
+          task.folder ? (
+            <ul class="folder-list">
+              {task.folder.files.map((x) => (
+                <li key={x.kind + x.path} class={x.kind === "removed" ? "fail-line" : ""}>
+                  <span class="mono-ish">{row(x)}</span>
+                  {open && finished(task) && !x.dir && (
+                    <button class="qlink" aria-label={`${t("folder.row.restore")} · ${lastPart(x.path)}`} onClick={() => A.folderAction(task.id, "undo", { path: x.path })}>
+                      {t("folder.row.restore")}
+                    </button>
+                  )}
+                </li>
+              ))}
+              {task.folder.more > 0 && <li class="small">{t("folder.more", task.folder.more)}</li>}
+            </ul>
+          ) : (
+            <div class="small">{t("task.loading")}</div>
+          )
+        ) : (
+          <button class="qlink" onClick={() => (setListOpen(true), A.folderChanges(task.id))}>
+            {t("folder.list")} ›
+          </button>
+        )
+      )}
+    </section>
+  );
+}
+
 export function TaskView({ id }: { id: string }) {
   const task = A.S.tasks.get(id);
   const scroller = useRef<HTMLDivElement>(null);
   useEffect(() => A.history(id), [id, A.S.welcomed]);
+  // D130: a folder task's list, again whenever its count or an undo / keep moved on.
+  const isFolder = !!task && placeOf(task).kind === "folder";
+  useEffect(() => void (isFolder && A.folderChanges(id)), [id, A.S.welcomed, isFolder, task?.card?.folder?.at, task?.acted]);
   if (!task)
     return (
       <>
@@ -1548,6 +1652,7 @@ export function TaskView({ id }: { id: string }) {
         )}
         <WaitDetails task={task} />
         <TryStrip task={task} />
+        <FolderChangesView task={task} />
         <section class="section">
           <h2 class="sec-title">{t("task.transcript")}</h2>
           <WhatItDid task={task} />

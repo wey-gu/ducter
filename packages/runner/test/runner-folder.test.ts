@@ -53,7 +53,6 @@ describe("a folder Ducter can copy", () => {
       for (const m of ["01", "02", "03"]) mkdirSync(join(folder, `2026-${m}`));
       for (const f of readdirSync(folder).filter((f) => f.endsWith(".pdf"))) renameSync(join(folder, f), join(folder, `2026-${f.slice(13, 15)}`, f));
       await t.tool("mcp__ducter__report_to_main", "{}", () => core.call("report_to_main", { state: "done", summary: "Sorted into month folders", evidence: [{ kind: "file", label: "folders", ref: "2026-01" }] }, "tsk00001"));
-      t.text("done");
     });
     const card = await r.openTask({ persona: "p1", title: "Sort my invoices", brief: "by month", place: { kind: "folder", device: "mac", path: folder } });
     await r.whenStarted(card.taskId);

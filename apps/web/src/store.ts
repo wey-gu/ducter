@@ -2,7 +2,7 @@
 // clients fold the same events the same way: living messages revised in place, jobs folded into
 // their acks, decisions with their resolutions, tasks with their streams, the On hand snapshot.
 // Pure data; tested without a DOM.
-import type { ActivityStep, Attention, Bodies, ClientFrame, Delivery, EvidenceRef, LogEvent, OnHand, Place, RoutineView, ServerFrame, TaskBody, TaskCard, UntilView, WaiterView } from "@ducter/protocol";
+import type { ActivityStep, Attention, Bodies, ClientFrame, Delivery, EvidenceRef, FolderChanges, LogEvent, OnHand, Place, RoutineView, ServerFrame, TaskBody, TaskCard, UndoConfirm, UntilView, WaiterView } from "@ducter/protocol";
 import { hasBranchChanges } from "@ducter/protocol";
 
 export type Ev<K extends keyof Bodies = keyof Bodies> = LogEvent<K>;
@@ -64,6 +64,9 @@ export interface Task {
   acted?: { action: string; ok: boolean; message?: string; ref?: string };
   /** The seq the action was logged at: a done report after it is new, unmerged work. */
   actedSeq?: number;
+  /** D130: the list behind a folder task's Changes (folder_changes), and an undo that asked to confirm. */
+  folder?: FolderChanges;
+  confirm?: UndoConfirm;
   /** Who does it now and why: the latest body_selected (D89). */
   body?: TaskBody;
   bodySeq?: number;
@@ -180,6 +183,12 @@ export class Store {
       case "action_result": {
         // A switch (D89) is not a result action: Merge and the rest stay as they were.
         if (f.action === "switch") return void this.actionResults.push(f);
+        // D130: an undo of a folder changed since the task finished asks in place, not in a toast.
+        if (f.action === "undo" && f.confirm) {
+          const ct = this.tasks.get(f.taskId);
+          if (ct) (ct.confirm = f.confirm), (ct.acting = undefined);
+          return;
+        }
         const t = this.tasks.get(f.taskId);
         if (t) (t.acting = undefined), (t.unsure = undefined), (t.acted = { action: f.action, ok: f.ok, message: f.message, ref: f.ref }), (t.actedSeq = this.cursor);
         this.actionResults.push(f);
@@ -194,6 +203,11 @@ export class Store {
       case "on_hand":
         this.applyOnHand(f.onHand);
         return;
+      case "folder_changes": {
+        const ft = this.tasks.get(f.taskId);
+        if (ft) ft.folder = f.changes ?? undefined;
+        return;
+      }
       case "task_history": {
         const t = this.task(f.taskId);
         for (const ev of f.events) this.applyEvent(ev);

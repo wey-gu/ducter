@@ -616,6 +616,20 @@ class AppState {
     this.changed();
   }
 
+  /** D130, a folder task: 改回去 / Undo all changes (path: one entry; force: after confirming),
+   *  or 就这样 / Keep the changes. The list comes back fresh after either. */
+  folderAction(id: string, action: "undo" | "keep", o: { path?: string; force?: boolean } = {}) {
+    const t = this.S.tasks.get(id);
+    if (t) (t.confirm = undefined), (t.acting = o.path ? undefined : action);
+    this.send({ t: "task_action", taskId: id, action, ...o });
+    this.changed();
+  }
+
+  /** D130: ask for a folder task's list (a walk of the folder on the machine that holds it). */
+  folderChanges(id: string) {
+    if (this.S.welcomed) this.send({ t: "folder_changes", taskId: id });
+  }
+
   /** Sends an action again after its result was lost (unsure). */
   retryAction(id: string) {
     const t = this.S.tasks.get(id);

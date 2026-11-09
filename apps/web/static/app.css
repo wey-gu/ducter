@@ -849,7 +849,7 @@ a {
   text-align: left;
   min-height: 24px;
 }
-.decision .asker img {
+.decision .asker .coin-art {
   flex: none;
   border-radius: 50%;
 }
@@ -1483,7 +1483,7 @@ a {
   font-size: var(--xs);
   color: var(--ink-muted);
 }
-.task-bar img {
+.task-bar .coin-art {
   flex: none;
   border-radius: 50%;
 }
@@ -2151,7 +2151,7 @@ a {
 .agent + .agent {
   border-top: 1px solid var(--line-soft);
 }
-.agent img.dim {
+.agent .coin-art.generic.off img {
   opacity: 0.45;
   filter: grayscale(1);
 }
@@ -2201,7 +2201,7 @@ a {
 .cand.off {
   opacity: 0.55;
 }
-.cand.off img {
+.cand.off .coin-art.generic img {
   filter: grayscale(1);
 }
 .cand .now {
@@ -2822,7 +2822,7 @@ ol.tries b {
 .nt-row .chip.off {
   opacity: 0.55;
 }
-.nt-row .chip.off img {
+.nt-row .chip.off .coin-art.generic img {
   filter: grayscale(1);
 }
 .nt-row .why {
@@ -2907,3 +2907,25 @@ ol.tries b {
 .folder-list li:first-child { border-top: 0; }
 .folder-list .mono-ish { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .folder-list li .qlink { flex: none; }
+
+/* An AI agent's clay coin (coin.tsx). While that agent works a soft light turns a quarter of
+   the way round its rim (the sheen layer never covers the print); while it waits on you the coin
+   bobs. Clay may move, status never (D77); reduced motion stops both. */
+.coin-art { position: relative; display: inline-block; flex: none; line-height: 0; }
+.coin-art img { display: block; width: 100%; height: 100%; }
+.coin-art .sheen { position: absolute; inset: 0; opacity: 0; pointer-events: none; animation: coin-sweep 4.2s ease-in-out infinite; }
+.coin-art.m-needs_you { animation: coin-bob 2.6s ease-in-out infinite; }
+@keyframes coin-sweep {
+  0% { transform: rotate(-30deg); opacity: 0; }
+  30% { opacity: 1; }
+  65% { transform: rotate(60deg); opacity: 0; }
+  100% { transform: rotate(60deg); opacity: 0; }
+}
+@keyframes coin-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .coin-art .sheen,
+  .coin-art.m-needs_you { animation: none; }
+}

@@ -371,7 +371,7 @@ func (a *App) askerRow(c *ui.Context, task *store.Task) {
 	t := a.T
 	ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
 		if h := task.Harness(); h != "" {
-			ui.Box(c.Key("coin")).Shrink(0).Tooltip(a.whereWhy(task)).Children(func() { a.coin(c, h, 22) })
+			ui.Box(c.Key("coin")).Shrink(0).Tooltip(a.whereWhy(task)).Children(func() { a.coin(c, h, 22, coinWaiting) })
 		}
 		title := shortTitle(task.Title())
 		l := ui.Text(c, title+" ›").FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).Grow(1).MinWidth(0).SingleLine().

@@ -36,8 +36,8 @@ export const devices: Device[] = [
 ];
 
 export const accounts: Record<string, { name: string; art: Art }> = {
-  "claude-code": { name: "Claude Code", art: "token_orange" },
-  codex: { name: "Codex", art: "token_ink" },
+  "claude-code": { name: "Claude Code", art: "coin_claude_code" },
+  codex: { name: "Codex", art: "coin_codex" },
 };
 
 /** The abilities in front of home: an empty well to fill, and one that is on. */

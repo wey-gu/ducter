@@ -171,17 +171,17 @@
    320
   ]
  },
- "token_orange": {
-  "w": 1336,
-  "h": 1340,
+ "coin_claude_code": {
+  "w": 256,
+  "h": 256,
   "widths": [
    96,
    192
   ]
  },
- "token_ink": {
-  "w": 1504,
-  "h": 1568,
+ "coin_codex": {
+  "w": 256,
+  "h": 256,
   "widths": [
    96,
    192

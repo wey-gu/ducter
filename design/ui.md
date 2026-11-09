@@ -190,6 +190,7 @@ the clay thing awaited (PR, cloud, envelope, clock, file; `design/art/assets/alp
 | an ability that is on (Devices stage) | floats 5pt like an awake device (5.6 s), its own phase |
 | the sea and sky (Devices stage) | clouds drift ±16pt (70 s); slow light on the water drifts and fades (11–19 s); repainted at 12 fps |
 | parcels on a bridge | cross at a steady 40 scene-points a second, only while a task runs on that device (a state that is true, not decoration); still mode freezes them in place so "working" still reads |
+| an AI agent's coin (D144) | only while a task of that agent shows (task footer, On hand's asker row): working, a soft light sweeps a quarter turn round the rim and fades (4.2 s; the sheen never crosses the printed dome); waiting on you, bobs 2pt (2.6 s); still otherwise, and everywhere else |
 | a device that joins | its island rises out of the water (0.55 s), then the device drops on with the equip's squash and sparkles |
 | the equip | peel (14%) → arc (50%) → snap (62–69%), 0.82 s, a tock and a 10 ms haptic |
 | the title moment (D87) | once per Mac: dawn rises, a 3% push-in with parallax, the eyes open on the tone, the logotype lit by a passing light; see `onboarding.md` |

@@ -1457,7 +1457,7 @@ func (a *App) isleTokens(c *ui.Context, v view, s *isle, ir ui.Rect, minX, maxX 
 		name := harnessName(h.Harness)
 		tok := ui.Column(c.Key("tok:" + s.key + ":" + h.Harness)).Absolute().Left(x).Top(y).Width(w).AlignItems(ui.Center).
 			Role(ui.RoleButton).Label(name).Cursor(ui.CursorPointer).AccessSelected(lit)
-		bmp := theme.Clay(accountArt(h.Harness))
+		bmp := theme.Clay(coinArt(h.Harness, art, !h.Installed || !h.LoggedIn))
 		tok.Children(func() {
 			ui.Box(c.Key("art")).Size(art, art).Draw(func(p *ui.Painter, r ui.Rect) {
 				softEllipse(p, ui.Rect{X: r.X + r.W*0.12, Y: r.Y + r.H*0.72, W: r.W * 0.92, H: r.H * 0.36}, ui.RGBA(110, 66, 28, 0.3))
@@ -1492,11 +1492,9 @@ func (a *App) isleTokens(c *ui.Context, v view, s *isle, ir ui.Rect, minX, maxX 
 	return bottom
 }
 
-// accountArt is an AI account's clay token. The accounts come from the
-// server (data, not a fixed list): Claude Code is orange, the others ink.
+// accountArt is an AI account's clay coin on a Devices card. The accounts
+// come from the server (data, not a fixed list): a known agent has its own
+// coin, any other the generic token.
 func accountArt(h string) string {
-	if h == "claude-code" {
-		return "token_orange"
-	}
-	return "token_ink"
+	return coinArt(h, coinPrintMin, false)
 }

@@ -1,0 +1,1 @@
+Same orange pebble character sitting down on its little bottom, both tiny hands under its chin, patiently waiting: eyes open, looking up toward the upper right (at something just out of frame), a small calm content smile, relaxed and unhurried. Nothing above it or beside it: no bubble, no props.

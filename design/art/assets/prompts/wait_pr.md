@@ -1,0 +1,1 @@
+A small chunky clay pull-request mark as a 3D object: two round cream clay nodes on the left joined by a thick orange clay line that forks to a third node on the right, like a branch icon, standing upright.

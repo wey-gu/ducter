@@ -8,17 +8,18 @@ order: 7
 
 ### What is Ducter, in one sentence?
 
-A personal AI you run yourself: you talk to one partner, it hands the work to Claude Code or
-Codex on your own computers, and it comes back when the work is done, with how it checked.
+A personal AI on your own computers: you talk to one partner, it hands the work to a coding agent
+you already use, and it comes back when the work is done, with how it checked.
 
 ### Does it cost anything?
 
-Ducter itself is free and open source (Apache 2.0). The AI work runs on the Claude Code or Codex
-plan you already have, so it counts against that plan's limits, like any other session.
+Ducter itself is free and open source (Apache 2.0). The AI work runs on your coding agent's plan,
+so it counts against that plan's limits like any other session.
 
-### Which AIs does it work with?
+### Which coding agents does it work with?
 
-Claude Code and Codex, signed in with your own account. You need at least one.
+Today, Claude Code and Codex, signed in with your own account. You need at least one. pi and
+DeepSeek Harness are coming soon, and more agents after that.
 
 ### What does it run on?
 
@@ -33,8 +34,8 @@ can be shared with anyone. See [Install](install.md).
 
 ### Do I need to know about git or "agents"?
 
-No. You just write what you want. Coding tasks use git behind the scenes, so each one works on
-its own branch and nothing reaches your main branch unless you choose **Merge**.
+No. Write what you want, the way you'd ask a colleague. Coding tasks use git behind the scenes, so each one works on its
+own branch, and nothing reaches your main branch until you choose **Merge into main**.
 
 ### What happens when I close the window?
 
@@ -48,8 +49,9 @@ night, put Ducter on [a server that stays on](install.md#a-linux-server-that-sta
 
 ### Will it bother me all the time?
 
-No. Silence means things are going fine. Ducter comes to you when a decision is truly yours,
-always with a suggested default, and your phone stays quiet from 23:00 to 08:00.
+No. Silence means things are going fine. Ducter comes to you when a decision is yours to make,
+always with a suggested default, and your phone stays quiet during quiet hours (23:00 to 08:00
+until you change them).
 
 ### Can I see what a task is doing?
 
@@ -65,7 +67,7 @@ See [Privacy and safety](privacy-and-safety.md#memory-with-nowledge-mem).
 ### Can it use the web?
 
 Yes, on a Mac: it uses its own Chrome window to look things up and read pages. Signing in,
-submitting and paying are left to you. See [Browsing the web](devices.md#browsing-the-web).
+submitting forms and paying are left to you. See [Browsing the web](devices.md#browsing-the-web).
 
 ### Can it use my other apps, my phone, or make calls?
 
@@ -73,12 +75,13 @@ Not yet. Those are coming later.
 
 ### Can I rename my partner?
 
-You choose a name the first time you open Ducter. Renaming it later in the app is coming soon.
+Yes. You choose a name the first time you open Ducter, and you can change it any time under
+**Partner** with **Rename**. See [Your partner and settings](settings.md#partner).
 
-### Does it speak Chinese?
+### Which languages does it speak?
 
-Yes. Ducter is in English and 中文 throughout and follows your system language. Set
-`DUCTER_LOCALE=zh` or `DUCTER_LOCALE=en` to choose.
+English and Chinese. The app follows your system language, and your partner answers in the
+language you write in, unless you pick one under **Partner › How it talks**.
 
 ### Can my family or team share one Ducter?
 

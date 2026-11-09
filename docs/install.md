@@ -15,9 +15,9 @@ There are four ways to have Ducter, and you can mix them:
 | [A Linux server](#a-linux-server-that-stays-on) | Keeping your partner working while your Mac sleeps | Ready |
 | [Your phone](#your-phone) | Answering decisions and checking results on the go | Ready in the phone's browser; an iPhone app is coming soon |
 
-Whichever you choose, you need **Claude Code or Codex** installed and signed in on the computer
-that does the work. Ducter uses your own plan through them; it never asks for an API key to get
-started.
+Whichever you choose, you need a coding agent, **Claude Code or Codex** today, installed and
+signed in on the computer that does the work ([which agents](faq.md#which-coding-agents-does-it-work-with)).
+Ducter uses your own plan through it; it never asks for an API key to get started.
 
 ## The Mac app
 
@@ -74,7 +74,7 @@ Messages follow your system language. Set `DUCTER_LOCALE=zh` or `DUCTER_LOCALE=e
 ## A Linux server that stays on
 
 A Mac sleeps; a small server doesn't. Put Ducter on a Linux server you own and your partner
-keeps working through the night, while your Mac and phone simply connect to it.
+keeps working through the night, while your Mac and phone connect to it.
 
 **1. On your Mac, make the Linux files** (from the source):
 

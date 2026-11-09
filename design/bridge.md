@@ -1,12 +1,14 @@
 # Bridge: Ducter and the Agents It Didn't Start
 
-> Design note · DRAFT 2026-11-09, for review, nothing here is decided · Principles 1, 7, 12, 17, 18 ·
+> Design note · 2026-11-09 · Principles 1, 7, 12, 17, 18 · Decided: D91–D97 (outbound, the outgoing ledger,
+> the result reply, names, copy, follow-through, the Mem asks); still open: J-Q1–3, J-Q5, J-Q8, J-Q14 ·
 > Evidence: `research/31` (public), `research/33` (dogfood), private `31` and `10`.
 >
 > Nowledge Bridge is Mem's agent mailbox. This note describes how Ducter uses it. The first slice (receive,
-> ask, reply) is on `main` behind `DUCTER_BRIDGE=1`. The spike on branch `bridge-spike` adds the linked result
-> reply (J2) and outbound messages through a card (J4); it is proven with real models over a fake Bridge
-> (research/33 §3), and not yet against Mem.
+> ask, reply) is on `main` behind `DUCTER_BRIDGE=1`. Branch `bridge-spike` adds the linked result reply (J2,
+> D93), outbound messages through a card (J4, D91), the outgoing ledger and recovery (D92) and follow-through
+> (S3, D96). It is proven with real models over a fake Bridge (research/33 §3, §3.2), not yet against Mem, and
+> stays behind `DUCTER_BRIDGE=1` until `bun run bridge:live -- --real` passes.
 
 ## Chosen scenarios (dogfood, 2026-11-09)
 
@@ -14,7 +16,7 @@ From 14 scored candidates (research/33 §2), four are chosen. The J-numbered det
 - **S1 = J1 + J2, "Ducter, take this one".** The result goes back by code. Proven live on Ducter's side.
 - **S2 = J4, "ask the one who knows".** The user names an agent, the partner shows a card, Ducter sends on Go and
   reports the answer. Proven live on Ducter's side.
-- **S3 · Follow-through on silence** (new, below). Not built.
+- **S3 · Follow-through on silence** (below, D96). Built; proven over the fake Bridge.
 - **S7 · Across machines.** This is S1 from a laptop session to the persona's always-on home. Nothing new to
   build; it needs one live check.
 
@@ -32,8 +34,8 @@ Parked: J3 (teammates) until Team Bridge opens, J5 (consumer AIs) until remote-M
     who gets what before anything leaves.
 - **How it starts.**
   - The user just asks, naming the agent in plain words.
-  - The partner finds it and shows one card: "发给 terminal-claude (Weyl)？「…」" with the button 发送. The
-    default is to wait, and the card can't be undone.
+  - The partner finds it and shows one card: "发给你的 terminal-claude？「…」" with the button 发送 (a teammate's
+    agent: "发给 reviewer (Alex)？"). The default is to wait, and the card can't be undone.
   - On 发送, the quiet line "已发给 terminal-claude" appears.
   - The answer comes back at the other session's next turn boundary. Ducter picks it up at its next check, and
     the partner tells the user in one or two lines.
@@ -41,27 +43,31 @@ Parked: J3 (teammates) until Team Bridge opens, J5 (consumer AIs) until remote-M
 - **Rules.**
   - Only the user starts a new conversation: `bridge_send` is refused in a turn woken by a peer.
   - Only a recipient that discovery returned can be chosen, never a typed or guessed one.
-  - Ducter, not the model, sends after the Go, exactly once.
-  - The message is one question plus the background the recipient needs; never paths or private details the user
-    didn't ask to share.
+  - Ducter, not the model, sends after the Go, exactly once, even across a restart or a lost answer (D92).
+  - The message carries what the user asked plus the background the recipient needs, in plain sentences:
+    numbered or bulleted sub-questions are refused in code (D95). Never paths or private details the user didn't
+    ask to share.
 
-### S3 · Follow-through on silence (new, not built)
+### S3 · Follow-through on silence (D96)
 
 - **Who.** The same developer, two hours after S2's message, still unanswered, because the terminal session
   stopped.
 - **Feel.**
   - *Before:* they'd have to remember they asked.
-  - *After:* the partner says one line, once, when it matters: "terminal-claude 还没回你下午问的 PR 的事。它可能停了，
-    要我晚点再看吗？".
-  - *Value:* 放心: someone holds the thread.
-- **How it starts.**
-  - A send arms a waiter. It is quiet by default and fires only if no answer has come by the user's next active
-    moment, or by a time they named ("今晚前告诉我").
-  - Bridge never wakes the other side, so the partner never claims it "reminded" the session. It only reports
-    the silence, and offers to wait or to drop the question.
-- **Evidence.** Inferred. The waiter exists (D-waiters), sends are logged with ids, and `inbox` refreshes outgoing
-  read status (DOCUMENTED, help). "Read but unanswered" versus "unread" can be told apart once the read status is
-  pinned (research/33 B8).
+  - *After:* one line, once, when they're back: "你的 terminal-claude 还没回你 2 小时前问的「昨晚 CI 那个红是不是
+    flaky？」，它可能停了。回了我马上告诉你。".
+  - *Value:* 放心: someone holds the thread, and it doesn't nag.
+- **Rules (built).**
+  - Only messages the user confirmed on a card; at most one line each, never earlier than 2 h after it went out,
+    nothing after 7 days.
+  - Only while the user is around (they did something in the last 15 minutes), never in quiet hours, one line
+    per moment.
+  - Said by code before the partner answers the user's message; the partner's input carries it, so it isn't
+    said twice.
+  - Read and unread are separate facts: when the inbox reports ours as read, the line says "看过你…，还没回".
+  - Bridge never wakes the other side, so the line never says it "reminded" anyone; it reports the silence, and
+    the answer is reported when it comes (S2's path). No question: nothing for the user to decide.
+- **Not built:** a time the user named ("今晚前告诉我"); `wait_until` already covers that.
 
 ## The one idea
 
@@ -120,7 +126,8 @@ This is J1's second half, but it is worth naming because it closes the loop the 
   request. The CLI's `reply` targets the original sender only.
 - **Evidence.**
   - Built: `bridge_reply` exists, and the partner can use it.
-  - Not built: the task ↔ message link that makes the reply guaranteed rather than prompted.
+  - Built on `bridge-spike` (D93): the task ↔ message link and a code fallback, so the reply is guaranteed
+    rather than prompted.
   - The timing is honest only if copy never promises "they've seen it".
 
 ### J3 · A teammate's agent asks your partner (Mem Team)
@@ -149,8 +156,9 @@ This is J1's second half, but it is worth naming because it closes the loop the 
   - The task asks the partner through its report.
   - The partner asks the user: "问一下终端里的 Codex？" (Go/Hold).
   - On Go, Ducter sends the question. That requires `bridge send`, plus the recipient chosen by the user.
-- **Evidence.** Thin. A stopped session never wakes on send. Outbound send isn't built, and needs a
-  recipient-choice card (open question J-Q4).
+- **Evidence.** Thin for this task-initiated case: a stopped session never wakes on send. The user-initiated
+  case is built as S2 (D91); a task's question would reach the user first as its own card, then go out the same
+  way.
 
 ### J5 · The persona reached from a consumer AI on the phone (Grok Bot, Muse)
 
@@ -189,9 +197,10 @@ and a gated dependency.
 | Origin `peer` | protocol | Another agent through Bridge. Never `user` |
 | `bridge_reply` tool | partner MCP | Registered only when Bridge is on |
 
-User-facing copy, proposed and not yet in the glossary:
+User-facing copy: the decided lines (the send card, 你的 <agent>, the claim, the teammate's fixed outcome,
+follow-through, a lost or refused send) are in the glossary (D91–D96). Still pending the user's OK (J-Q5):
 - incoming: **"<X> 发来请求 · <gist>" / "Request from <X> · <gist>"**, one quiet line;
-- outgoing: **"已回复 <X>" / "Replied to <X>"**.
+- outgoing: **"已回复 <X>" / "Replied to <X>"**, **"已发给 <X>" / "Sent to <X>"**.
 
 Never use **交接 / hand-off**: the glossary reserves "handoff" for a task changing body ("换到 X 接着做"). The
 words Bridge, mailbox, contact, Space, Identity and Agent Context never appear in the conversation.
@@ -216,19 +225,29 @@ other agent ──bridge send──▶ Mem (persona's Agent mailbox)
    Log: bridge_msg{out} origin partner
 ```
 
-Spike additions (`bridge-spike`):
+Additions on `bridge-spike` (D91–D96):
 
 ```
 J2  card asked in a request-only turn ── remembers the request
-    Go → task_open (forMessage, or inferred from that Go) → Ducter replies "接了：<title>。做完把结果回你。"
-         Log: bridge_msg{out, inReplyTo, taskId}
-    task report done/failed/blocked → input gets "[reply owed] … bridge_reply (messageId …)"
-         turn ends with no reply → Ducter sends what the partner just told the user (stats.bridgeOwedByCode)
+    Go → task_open (forMessage, or inferred from that Go) → Ducter replies "接了：「<title>」。做完把结果回你。"
+         (requester's language, title quoted)                 Log: bridge_msg{out, inReplyTo, taskId}
+    task report done/failed/blocked → input gets "[reply owed] … bridge_reply first, then tell the user once"
+         turn ends with no reply → Ducter sends: your own agent ← the partner's message to the user;
+                                                 a teammate's  ← "「<title>」：做完了 / 没做成"
 J4  [user] "问问我终端里那个 Claude …"
     partner: bridge_contacts(query)  (read-only, one page) → bridge_send(contact, text)
-         → card "发给 <agent (member)>？「gist」" · 发送 · default hold · not reversible   (nothing sent yet)
-    user taps 发送 → Ducter runs `bridge send` itself (no partner turn) → Log: bridge_msg{out, decisionId}
-    reply arrives with in_reply_to = ours → rendered as "the answer to what the user asked" → partner tells the user
+         → Log: bridge_msg{out, state pending, contact, decisionId}
+         → card "发给你的 <agent>？「gist」" · 发送 · default hold · not reversible   (nothing sent yet)
+    user taps 发送 → Ducter sends it itself (no partner turn) → reply with in_reply_to = ours
+         → rendered as "the answer to what the user asked" → partner tells the user
+S3  confirmed, sent, no answer, ≥ 2 h, user active in the last 15 min, not quiet hours
+         → one line before the partner's reply · Log: bridge_msg{out, state followed}
+
+Every outgoing op (D92), logged before the CLI call:
+    pending ─tap hold→ held
+    pending ─tap go→ sending ─→ sent | failed (refused: say once) | unknown
+    unknown / sending left by a crash ─next check (and 30 s after)→ bridge outbox → inspect → resume (same op)
+         → sent | failed | still unknown ×3 → unconfirmed (say once; never resent)
 ```
 
 Plug points:
@@ -246,8 +265,10 @@ Clients don't render the quiet lines yet. Unknown kinds are skipped.
 
 - **Ducter never sets anything up.**
   - It never calls `bridge setup --enable`, `bridge session prepare`, `agents enroll` or `keys create`.
-  - Spike: `contacts` (read-only) is called only when the user names an agent. `send` is called only by Ducter's
-    code, after the user tapped 发送 on a card that names the recipient.
+  - `contacts` (read-only) is called only when the user names an agent. `send` is called only by Ducter's
+    code, after the user tapped 发送 on a card that names the recipient (D91).
+  - Passive `bridge setup` (never `--enable`) is called once, to learn the user's own member (D94), unless
+    `DUCTER_BRIDGE_MEMBER` names it.
   - It never passes `--space` or an agent id. Off unless both `DUCTER_BRIDGE=1` and `DUCTER_BRIDGE_CONTEXT` are
     set.
   - Refusals and missing setup are typed results; Ducter never falls back to another identity or Space.
@@ -263,8 +284,9 @@ Clients don't render the quiet lines yet. Unknown kinds are skipped.
   - Ducter's replies carry the persona's identity, because the Agent Context is the persona's.
 - **Idempotency.**
   - *Incoming:* the Log is the ledger. Ids already logged are never opened again, across restarts.
-  - *Outgoing:* a lost `reply` response is the open gap. Recovery should be `bridge outbox` then `inspect`,
-    never a second reply (open question J-Q6).
+  - *Outgoing (D92):* every op is in the Log before its CLI call, once per state. An unknown outcome is recovered
+    with `bridge outbox` → `inspect` → `resume` on the same operation, never a second send or reply. The same
+    reply text to the same message goes once.
 - **What never crosses:**
   - the Log wholesale, transcripts, diffs, Working Memory, other tasks' content;
   - credentials (redacted);
@@ -288,8 +310,18 @@ So step 0 is Mem-side: admit the account to the Bridge cohort, or bring up the b
 - choose two existing identities, one for the persona and one for the terminal session. Each needs its own
   standard Agent key, which may mean a second nmem config for the terminal side (INFERRED).
 
-After that, the commands below. The spike's driver (`bun packages/partner/eval/bridge-live.ts`) can then point at
-the real `nmem` instead of the fake, by swapping `bin` and the two context names.
+After that, one command runs the whole trial (S1, S2, S3) against the real `nmem`, with real models on both sides:
+
+```sh
+bun run bridge:live -- --real            # contexts ducter-test and terminal-test
+#   --peer-config-dir DIR    the terminal side's own NMEM_CLI_CONFIG_DIR, if it needs one
+#   DUCTER_BRIDGE_MEMBER=…   your member id, if passive setup doesn't report it
+```
+
+It first runs a passive `bridge setup` for both contexts and stops unless both are ready; it never enables
+anything. Every real `nmem` call's output is kept under `~/dev/ducter-evidence/bridge/raw-<time>/` (outside git).
+It exits 0 only when every check passes: that is the gate for `DUCTER_BRIDGE`. Without `--real` it runs the same
+scenarios plus a lost-send recovery (j6) over the fake Bridge. The manual commands, for reference:
 
 Prerequisites (Mem side):
 - Bridge must be enabled for the account.

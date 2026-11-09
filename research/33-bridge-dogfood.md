@@ -150,7 +150,39 @@ Three back-to-back runs of both scenarios with the final code (haiku partner, ha
   - *Over-asking* (3 of 3): S2 messages carry numbered sub-questions ("1) … 2) …"). The answers were still short
     and right.
 
-## 4. Dogfood findings for the Nowledge team (drafts, not filed)
+### 3.2 After the decisions (D91–D97), same day
+
+The author approved the §J defaults. Built on `bridge-spike`, all over the fake Bridge CLI; nothing reached Mem.
+[VERIFIED; unit tests in `packages/partner/test/bridge-out.test.ts`, eval results in
+`packages/partner/eval/results/2026-11-09-*-bridge-*.md`, live transcripts in the evidence folder]
+
+- **Partner eval, three new scenarios** (`bridge-take-zh`, `bridge-ask-zh`, `bridge-ask-en`), written to fail on
+  the §3.1 defects: the card in the peer's language, the user named in the third person, the label without
+  你的, the mixed-language claim, numbered sub-questions.
+
+  | Run | take-zh | ask-zh | ask-en |
+  |---|---|---|---|
+  | before the fixes, haiku ×2 | 0/2 | 0/2 | 0/2 |
+  | after, haiku ×3 | 1/3 (deterministic checks 3/3; two judge fails on general result shape: branch and merge talk) | 3/3 | 3/3 |
+  | after, sonnet ×3 | 3/3 | 3/3 | 3/3 |
+
+- **What prompting alone didn't hold, now code** (research/30's lesson again):
+  - an `ask` in the wrong language, or naming the user, in a turn woken by a peer is refused;
+  - a `bridge_send` with numbered sub-questions is refused (haiku also wrote "1）2）3）" with full-width parens);
+  - the same reply twice goes once (sonnet sent its outcome twice);
+  - a reply while the task runs (haiku sent a second "Claimed") no longer counts as the outcome, which had
+    silently cancelled the owed result;
+  - "[reply owed]" now says reply first, then tell the user once: telling first made haiku say the result twice.
+- **Live driver over the fake Bridge** (`bun run bridge:live`, haiku both sides): S1 6/6, S2 4/4, S3 3/3 (clock
+  moved 2 h), J-Q6 2/2 (a lost send resumed, one message in the mailbox). The first S3 run failed: the partner and
+  the code both said the follow-through, so it is now said before the partner's turn and carried into its input.
+- **Recovery semantics are INFERRED from help** (`outbox`, `inspect`, `resume`; private/31 §3). The fake mirrors
+  them; the real JSON fields are guesses until the live run (B8).
+
+## 4. Dogfood findings for the Nowledge team (filed 2026-11-09)
+
+B1–B5 were filed through Nowledge Mem's `report_mem_issue` (concepts and repro only). B6–B10 hit the tool's rate
+limit and wait, ready to file, in `research/private/bridge-issues.md` (D97).
 
 Each one has a repro, what was expected, and what happened. Already-known items from #9445 (cold-prompt CLI
 discovery, address-file exchange) are not repeated.
@@ -228,10 +260,8 @@ Ducter decides what to run.
   - The partner must name the agent it replied to, not the user ("已把结果回给 Weyl" was wrong).
   - A claim in the requester's language must not mix in a title in the user's language
     ("Taken: 修 live.test.ts…").
-- **Restart gap.** Pending sends live in memory. After a restart, a Go on an old send card wakes the partner as a
-  plain answered question. The next slice should log the pending send in the Log.
-- **Unknown outcome is still open (J-Q6).** The spike's send failure path says "couldn't confirm; won't resend".
-  The `outbox → inspect → resume` recovery is not built.
+- **Restart gap and unknown outcome: closed (D92).** Every outgoing op is in the Log before its CLI call; a card
+  survives a restart; an unknown outcome is recovered with `outbox → inspect → resume`, never resent.
 
 ## Summary
 
@@ -246,6 +276,9 @@ Ducter decides what to run.
 - The spike proves S1 and S2 end to end with two real models (haiku) over a fake Bridge. The fixes that made them
   pass: code links the task to the request; the code, not the model, sends the outcome when the model forgets;
   and the code sends only after the user taps a card that names the recipient.
-- Ten dogfood findings are drafted for the Nowledge team. The most important: an unavailable backend exits 0
+- After D91–D97 (§3.2): the copy defects are fixed in code and tested (eval 0/6 before; after, sonnet 9/9 and
+  haiku 7/9 with every deterministic check passing); lost sends are recovered; follow-through is built; the live
+  trial is one command, waiting on the account.
+- Ten dogfood findings for the Nowledge team: five filed, five rate-limited and ready. The most important: an unavailable backend exits 0
   (B1), there is no context list (B2), there is no account-level readiness (B3), and there are two send contracts
   and three overlapping surfaces (B4, B5).

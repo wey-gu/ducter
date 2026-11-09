@@ -21,7 +21,7 @@ partner eval (real model, fake tasks and Mem; `research/30`) · **unit** = unit 
 | A5 | Second persona | draft | draft | draft | draft | — | — | |
 | B1 | Quick answer in turn | draft | draft | draft | draft | draft | live + eval | Core UI · Talk |
 | B2 | Research, no place | draft | draft | draft | draft | — | — | |
-| B3 | Code change in a repo | draft | draft | draft | draft | draft | live: Claude Code and Codex tasks in a worktree, result with evidence | Core UI · Workspace |
+| B3 | Code change in a repo | draft | draft | draft | draft | draft | live: Claude Code and Codex tasks in a worktree, result with evidence; native (demo seed): the one-column task, done / working / didn't work (`design/screens/qa-2026-11-09`) | Core UI · Workspace. Opened task is one column, diff on demand (D74); the result is one line of proof (D73) |
 | B4 | Multi-repo change | draft | draft | draft | draft | — | — | |
 | B5 | Browser work needing login | draft | draft | draft | draft | — | live: host-Mac browser via cua-driver 0.44, sign-in by the user in Ducter's browser | |
 | B6 | Phone / call task | — | — | — | — | — | — | |
@@ -35,7 +35,7 @@ partner eval (real model, fake tasks and Mem; `research/30`) · **unit** = unit 
 | C5 | PR, rebase, merge, archive | draft | draft | draft | draft | draft | live: merge by button; draft PR: unit (fake `gh`), refused live with no `origin` | Core UI (rebase decision) |
 | C6 | Low disk | draft | draft | draft | draft | — | — | |
 | D1 | Decision with default + countdown | draft | draft | draft | draft | draft | live: Go / Hold / Reply; countdown firing not walked live | Core UI · all levels |
-| D2 | Batch harvest after being away | draft | draft | draft | draft | draft | live: living message, freeze on read | Core UI · living message |
+| D2 | Batch harvest after being away | draft | draft | draft | draft | draft | live: living message, freeze on read; native + 390 px (demo seed): count once, asks named by their task, Go names the action (`design/screens/qa-2026-11-09`) | Core UI · living message. Title only when the user was away (D73) |
 | D3 | Quiet hours / escalation | draft | draft | draft | draft | draft | unit: push hold, coalescing, quiet hours; no real phone push yet | Core UI · attention forecast |
 | D4 | Done with evidence / failed check | draft | draft | draft | draft | — | live: done with evidence; Done · checking and 检查没过 — | |
 | D5 | Failure / stall | draft | draft | draft | draft | — | live: interrupt; eval: failure wording; stall/breaker — | |

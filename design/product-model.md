@@ -24,7 +24,7 @@
 | workspace view | "展开 / Open" (no name of its own) | A task opened to full depth |
 | overview board | **手头 / On hand** | Every task across all personas |
 | attention states | 等你 / Needs you · 在做 / Working · 在等 / Waiting · 做完了 / Done · 没成 / Didn't work · 放下了 / Dropped | `done?` shows as "做完了 · 在检查 / Done · checking" only while a check runs, else as Done (D68); `queued` shows as "还没开始 / Not started yet" |
-| decision actions | **好 / Go** · **先等等 / Hold** · **回复… / Reply…** | The Go button may name the action ("Rebase") |
+| decision actions | **好 / Go** · **先等等 / Hold** · **回复… / Reply…** · **看细节 / Details** | The Go button may name the action: en says the action alone in sentence case ("Rebase"), zh keeps 好 in front ("好，rebase") (D73). An ask's small heading is the asking task's title; the count is said once, "2 件等你 / 2 need you" |
 | Project | **项目 / Project**; no project = **其他 / Other** | An editable grouping label |
 | Place | **在哪儿做 / Where** | Where a task works |
 | Device (machine, runner) | **设备 / Devices** | |
@@ -56,10 +56,11 @@
 | the partner answered that agent | **已回复 <X> / Replied to <X>** (pending user OK) | "Replied" is not "done"; nothing promises the other side has seen it |
 | Intent | (shown as a decision or a policy line: "要推送到 ducter/fix-ci / Will push to …") | |
 | a task message to the partner (report) | **告诉 {name} / Told {name}** (· 要你定 · 做完了 · 在等 · 没成); freshness "{time}更新 / updated {time}" | Never 汇报 or 交回给 (reporting up) |
-| task brief · transcript | **{name} 交代的 / What {name} asked for** · **过程 / What it did** | |
+| task brief · transcript | **{name} 交代的 / What {name} asked for** · **过程 / What it did** | Tool calls fold into one line per stretch: **跑了 n 条命令 / Ran n commands**, **改了 n 个文件 / edited n files**, **看了 n 个文件 / read n files**, **用了 n 次工具 / used n tools**; a step that didn't work: **{command} 没成 / {command} didn't work** (D74) |
+| an opened task's sections | **改动 / Changes** (**n 个文件 / n files**) · **细节 / Details** (谁在做 / Who's doing it · 在哪儿做 / Where · 保存的进度 / Saved progress · 发出去的 / Sent out · 用量 / Usage) · **{time}开始的 / started {time}** | D74 |
 | harness turn ended | **先做到这儿 / Stopped here for now** | Never "turn", "step", 这一轮, 这一步 |
 | a message to a task | **它正在做，已经告诉它了 / Told it while it works** · **它收到了，接着做 / Got it; it's on it** · **等它忙完手上的就告诉它 / It'll get this once it finishes what it's doing** · **没送到 / Didn't get through** | |
-| the result anatomy (D60) | **怎么知道的 / How I know** (also the evidence heading everywhere; no 证据) · **发出去的 / Sent out** (empty: 没有 / Nothing) · **这次没包括 / Left out** · **合进 {branch} / Merge into {branch}** · **开草稿 PR / Open draft PR** · **看改动 / See changes** | |
+| the result anatomy (D60) | **怎么知道的 / How I know** (also the evidence heading everywhere; no 证据) · **发出去的 / Sent out** (empty: 没有 / Nothing) · **这次没包括 / Left out** · **合进 {branch} / Merge into {branch}** · **开草稿 PR / Open draft PR** · **改了 n 个文件 / n files changed ›** (the changes link; the task's own diff evidence) | Under a result: one quiet line of proof, a ↗ line only when something went out, then the actions; See changes is not repeated (D73) |
 | effects seen but not gated | **它的记录里看到的 / Seen in its log** | |
 | the day's record | **今天发出去的 / Sent out today** | |
 | place `none` | **不用特定的地方 / Nowhere in particular** | |

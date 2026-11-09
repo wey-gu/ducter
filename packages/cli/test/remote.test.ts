@@ -17,7 +17,10 @@ describe("systemd unit", () => {
     expect(u).toContain("ExecStart=/home/me/.local/bin/ducter up --headless --port 7777\n");
     expect(u).toContain("Restart=on-failure");
     expect(u).toContain("Environment=DUCTER_DATA_DIR=/home/me/.ducter");
-    expect(u).toContain("EnvironmentFile=-/home/me/.ducter/env");
+    expect(u).toContain("EnvironmentFile=-/home/me/.ducter/env\n");
+    // D102: the key file is never loaded into the process environment.
+    expect(u.split("\n").filter((l) => l.startsWith("EnvironmentFile="))).toEqual(["EnvironmentFile=-/home/me/.ducter/env"]);
+    expect(u).not.toMatch(/^EnvironmentFile=.*keys/m);
     expect(u).toContain("WantedBy=default.target");
     expect(u).not.toContain("--host");
   });

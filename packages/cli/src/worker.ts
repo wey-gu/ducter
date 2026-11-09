@@ -14,6 +14,7 @@ import * as runnerMod from "@ducter/runner";
 import { scriptedHarness } from "./scripted.ts";
 import { localDeviceKind } from "@ducter/core/src/devices.ts";
 import { probeHarnesses as probeLocalHarnesses } from "@ducter/core/src/harness-probe.ts";
+import { migrateKeys, readKeys, scrubKeysFromEnv } from "@ducter/protocol/src/keys.ts";
 
 /** Exit status when the main refuses this worker; the unit sets RestartPreventExitStatus to it. */
 export const EXIT_REFUSED = 3;
@@ -101,6 +102,13 @@ export async function cmdWorker(o: { t: T; style: Style; args: Args; dataDir: st
     console.log(`  ${style.ok("✓")} ${t("worker.joined", { name, persona: saved.persona, url: base })}`);
   }
   if (!saved) return console.log(t("worker.usage")), 2;
+  // D102: a worker's keys live in its own <dataDir>/keys.env, as on the main.
+  try {
+    migrateKeys(o.dataDir);
+    scrubKeysFromEnv(readKeys(o.dataDir));
+  } catch {
+    /* an unreadable data folder fails louder below */
+  }
 
   const hello = {
     t: "hello",

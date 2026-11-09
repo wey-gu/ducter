@@ -264,11 +264,18 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] Verify Codex leaves out a non-empty global `~/.codex/AGENTS.md` and the user's
       `personality` (this Mac's AGENTS.md is empty). Trigger: a scratch `CODEX_HOME` copy with
       a test AGENTS.md, or a user with one.
-- [ ] The Devices key field for API-key accounts: masked input, writes `<dataDir>/env` (0600),
-      never echoed or logged; "需要一个 DeepSeek 密钥 / Needs a DeepSeek key". Trigger: the
-      ai-loadout Devices work.
-- [ ] Pass pi's provider keys from `<dataDir>/env` too (today only DeepSeek Harness's key is
-      read from there). Trigger: a pi user without the key in their login env.
+- [ ] The Devices key field for API-key accounts: masked input, writes `<dataDir>/keys.env`
+      (0600, D102), never echoed or logged; "需要一个 DeepSeek 密钥 / Needs a DeepSeek key".
+      Trigger: the ai-loadout Devices work.
+- [x] Pass pi's provider keys from Ducter's key file too (D102: `HARNESS_KEYS.pi`, from the
+      env or `keys.env`, never the DeepSeek key).
+- [ ] A way for the user to give tasks a named env token on purpose (e.g. `GITHUB_TOKEN` for
+      `gh`), now that a harness child's environment is an allowlist (D102). Trigger: a task
+      fails because a tool it runs relied on a token from Ducter's shell.
+- [ ] pi's in-process fallback (no `node` and no `pi` on PATH) runs inside Ducter's process and
+      reads its environment directly; the allowlist covers only pi's bash tool there. Ducter's
+      own keys are scrubbed from that environment, a shell key is not. Trigger: a machine
+      without node that runs pi tasks.
 - [ ] Label the partner's Codex sessions (`SessionOptions.name`) so they read as Ducter's in the
       user's Codex history. Trigger: a user asks what they are.
 - [ ] Qwen Code, Qoder, Grok as the next harnesses (cheapest per research/34). Trigger: a user

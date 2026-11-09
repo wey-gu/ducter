@@ -245,6 +245,7 @@ test("D84: 改名字 renames another computer; tasks placed by its old name stil
   for (const [frame, reason] of [
     [{ device: "local", name: "x" }, "home"],
     [{ device: w.device.id, name: "iPhone" }, "name_taken"],
+    [{ device: w.device.id, name: "Local" }, "name_taken"], // what the partner calls the machine Ducter lives on
     [{ device: "nobody", name: "x" }, "unknown_device"],
     [{ device: w.device.id, name: " " }, "empty"],
   ] as const) {

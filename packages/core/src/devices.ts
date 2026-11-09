@@ -323,6 +323,10 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
 
   function rename(device: string, name: string): RenameResult {
     if (device === "local") return { t: "rename_result", device, ok: false, reason: "home" };
+    // The machine Ducter lives on answers to its own name and to "local": a task placed there
+    // must never land on another computer by a rename.
+    const want = name.trim().toLowerCase();
+    if (want === "local" || want === host.toLowerCase()) return { t: "rename_result", device, ok: false, reason: "name_taken" };
     const r = o.auth.rename(device, name);
     if ("error" in r) return { t: "rename_result", device, ok: false, reason: r.error };
     o.workers.renamed(r.device.id, r.device.name);

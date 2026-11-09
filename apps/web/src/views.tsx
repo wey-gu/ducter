@@ -13,7 +13,7 @@ import { Coin } from "./coin.tsx";
 import { disablePush, enablePush } from "./push-client.ts";
 import { inApp } from "./native.ts";
 import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, WaitBubble, waitCaption, WaitDetails, waitLine } from "./work.tsx";
-import { saidSince, shortGo, shortTitle, TaskBar, TimerPie, WhatItDid } from "./transcript.tsx";
+import { BriefCard, safe, saidSince, shortGo, shortTitle, taskBlocks, TaskMeta, TimerPie, WhatItDid } from "./transcript.tsx";
 import {
   attention,
   bodyReasonOf,
@@ -1666,66 +1666,17 @@ export function compactions(task: Task): number {
   return n;
 }
 
-function TaskDetails({ task }: { task: Task }) {
-  const [open, setOpen] = useState(false);
-  const who = whoSentence(task);
-  const why = bodyReasonOf(task);
-  const canSwitch = !!harnessOf(task) && !["dropped", "superseded"].includes(attention(task));
-  const where = placeLine(A.L, placeOf(task));
+/** What went out of the machine: its commands, quiet (the one row left of the old Details, D148;
+ *  who, where and the clock are the meta line, saved progress is in the transcript once). */
+function OutsideActs({ task }: { task: Task }) {
   const acts = task.historyLoaded ? outsideActs(task) : [];
-  const cps = task.events.filter((ev) => ev.kind === "checkpoint");
-  const compacted = compactions(task);
+  if (!acts.length) return null;
   return (
-    <section class="details-box">
-      <button class={`fold-line${open ? " open" : ""}`} aria-expanded={open} onClick={() => setOpen(!open)}>
-        {t("task.details")} <span class="chev">›</span>
-      </button>
-      {open && (
-        <dl class="kv">
-          {who && (
-            <>
-              <dt>{t("task.dossier.body")}</dt>
-              <dd>
-                {who}
-                {why && <div>{why}</div>}
-                {canSwitch && (
-                  <button class="inline-link" aria-expanded={A.switchFor === task.id} onClick={() => A.openSwitch(task.id)}>
-                    {t("who.switch")} ›
-                  </button>
-                )}
-              </dd>
-            </>
-          )}
-          {where && (
-            <>
-              <dt>{t("task.dossier.where")}</dt>
-              <dd title={placePath(task) || undefined}>{where}</dd>
-            </>
-          )}
-          {(cps.length > 0 || compacted > 0) && (
-            <>
-              <dt>{t("task.dossier.checkpoints")}</dt>
-              <dd>
-                {cps.map((ev) => (
-                  <div key={ev.seq}>{(ev.body as Bodies["checkpoint"]).text}</div>
-                ))}
-                {compacted > 0 && <div class="small">{compacted === 1 ? t("task.dossier.compacted.one") : t("task.dossier.compacted", compacted)}</div>}
-              </dd>
-            </>
-          )}
-          {acts.length > 0 && (
-            <>
-              <dt>{t("outside.title")}</dt>
-              <dd>
-                {acts.map((x) => (
-                  <code key={x.seq}>{x.command}</code>
-                ))}
-              </dd>
-            </>
-          )}
-        </dl>
-      )}
-      {open && A.switchFor === task.id && <SwitchList task={task} />}
+    <section class="outside">
+      <small>{t("outside.title")}</small>
+      {acts.map((x) => (
+        <code key={x.seq}>{safe(x.command)}</code>
+      ))}
     </section>
   );
 }
@@ -1856,7 +1807,12 @@ export function TaskView({ id }: { id: string }) {
   // Where it stands: what it said or saved since its latest report when it has moved on (D127).
   const br = browsing(task);
   const detail = !finished(task) ? (br && browsingLine(br)) || (a === "working" && saidSince(task)) || (r ? r.summary.split("\n")[0]! : "") : "";
-  const [headline, lede] = finished(task) && r ? splitOutcome(r.summary) : ["", ""];
+  const [headline, lede] = finished(task) && r ? splitOutcome(safe(r.summary)) : ["", ""];
+  const blocks = taskBlocks(task);
+  // Waiting on you with nothing to answer (its turn ended on a question in its own words, or a
+  // wait ran out): say so, never a mystery (D148).
+  const yourTurn = a === "needs_you" && !d;
+  const canSwitch = !!harnessOf(task) && !["dropped", "superseded"].includes(a);
   return (
     <>
       <Top back={t("nav.back")} face={false} />
@@ -1867,19 +1823,17 @@ export function TaskView({ id }: { id: string }) {
             {a === "blocked" && A.S.waiterFor(id) && <WaitBubble w={A.S.waiterFor(id)} size="lg" />}
           </span>
           <div class="head-words">
-            <div class={`standing st-${a}`}>
-              <StateMark a={a} />
-              <b>{stateLabel(a)}</b>
-              {task.openedAt && <span class="when">· {t("task.opened", ago(A.L, task.openedAt))}</span>}
-            </div>
-            <h1 title={title(task)}>{shortTitle(title(task)) || t("task.unknown")}</h1>
+            <TaskMeta task={task} stateLabel={yourTurn ? t("task.your.turn") : stateLabel(a)} mark={<StateMark a={a} />} onSwitch={canSwitch ? () => A.openSwitch(task.id) : undefined} />
+            <h1 title={safe(title(task))}>{safe(shortTitle(title(task))) || t("task.unknown")}</h1>
             {a === "blocked" && A.S.waiterFor(id) && (
               <p class="waitline">{waitLine(A.S.waiterFor(id)!.reason)}</p>
             )}
           </div>
           {headline && <p class="headline">{headline}</p>}
         </div>
-        {detail && <div class="outcome"><div class="said">{detail}</div></div>}
+        {detail && <div class="outcome"><div class="said">{safe(detail)}</div></div>}
+        {yourTurn && <div class="small sub">{t("task.your.turn.hint")}</div>}
+        {A.switchFor === id && <SwitchList task={task} />}
         {d && !d.resolved && <DecisionCard d={d} taskId={id} inTask />}
         {finished(task) && (
           <div class="outcome">
@@ -1906,13 +1860,10 @@ export function TaskView({ id }: { id: string }) {
         <WaitDetails task={task} />
         <TryStrip task={task} />
         <FolderChangesView task={task} />
-        <section class="section">
-          <h2 class="sec-title">{t("task.transcript")}</h2>
-          <WhatItDid task={task} />
-        </section>
-        <TaskDetails task={task} />
+        <BriefCard task={task} blocks={blocks} />
+        <WhatItDid task={task} blocks={blocks} />
+        <OutsideActs task={task} />
       </main>
-      <TaskBar task={task} stateLabel={stateLabel(a)} opened={task.openedAt ? t("task.opened", ago(A.L, task.openedAt)) : ""} />
       <Composer taskId={id} />
     </>
   );

@@ -1,19 +1,26 @@
-// What a task did, as a compact transcript (D127), and the pieces the On hand card and the opened
-// task share with it: the agent's own sentences as normal text; between them each step one quiet
-// line (a small drawn mark, a verb, a one-line summary, truncated); thinking as its headings; an
-// error as one red-tinted line whose raw text opens on a tap; saved progress as a tiny mark. The
-// steps are named by @ducter/protocol's steps.ts, the same on every harness and on the desktop.
-import type { Bodies, LogEvent } from "@ducter/protocol";
-import { stepOf, type Step } from "@ducter/protocol/src/steps.ts";
+// An opened task, as the agent tells it (D148, after D127): what you asked as a quiet folded card
+// (a key in it hidden, and said so); the agent's own words as the readable layer, saved progress
+// marked once; each stretch of steps between two things it said folded under one gist line, the
+// stretch under way open and live; a step in one sentence (the agent's own words for it when its
+// harness gives them), a probe that found nothing in neutral words, a real failure red and shown
+// even folded. @ducter/protocol's transcript.ts builds the blocks (keys hidden there too) and
+// steps.ts names the steps, the same on every harness and on the desktop.
+import type { Place } from "@ducter/protocol";
+import { HIDDEN, redact } from "@ducter/protocol/src/redact.ts";
+import type { Step } from "@ducter/protocol/src/steps.ts";
+import { blocksOf, latestVoice, type Block, type StepRow } from "@ducter/protocol/src/transcript.ts";
 import { useEffect, useState } from "preact/hooks";
 import type { JSX } from "preact";
 import { A } from "./app.ts";
 import { Coin } from "./coin.tsx";
-import { clock, duration, harnessName, modelName } from "./format.ts";
+import { duration, harnessName, modelName } from "./format.ts";
 import { markdown } from "./markdown.ts";
-import { attention, finished, harnessOf, modelOf, type Task } from "./store.ts";
+import { attention, finished, harnessOf, modelOf, placeOf, type Task } from "./store.ts";
+
+export { goRelay } from "@ducter/protocol/src/transcript.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
+const has = (key: string) => A.L.t(key) !== key;
 
 // ---------- words ----------
 
@@ -51,11 +58,6 @@ export function shortTitle(title: string): string {
   return s || title.trim();
 }
 
-/** The user's Go as Ducter relays it to the task ("User says Go: …."), or undefined. */
-export function goRelay(text: string): string | undefined {
-  return text.startsWith("User says Go: ") ? text.slice("User says Go: ".length).trim().replace(/[.。]+$/, "") : undefined;
-}
-
 /** A step's summary in words: "在 Chrome 里打开 appstoreconnect.apple.com". */
 export function stepWords(st: Step): string {
   if (st.kind === "edited" && st.more) return t("step.edited.more", st.target ?? "", st.more);
@@ -69,16 +71,48 @@ export function stepWords(st: Step): string {
     const v = tr(`${key}.app`);
     if (v !== undefined) return v;
   }
+  if (!st.target) {
+    const v = tr(`${key}.bare`);
+    if (v !== undefined) return v;
+  }
   const v = tr(key);
   if (v !== undefined && (st.target || !A.L.t(key).includes("%[1]"))) return v;
-  return st.target ?? "";
+  return st.target || t(`step.label.${st.kind}`);
 }
 
 /** A command, a path, a pattern: it reads in mono on the inline code tint. */
 const codeLike = (st: Step) => !!st.target && !st.act && ["ran", "read", "edited", "searched"].includes(st.kind);
 
-const QUIET_SYSTEM = /^(session started|turn completed|turn complete|turn ended|turn aborted|looking at |compaction )/i;
-const FAILED_SYSTEM = /^(turn failed|delivery failed|failed to|event stream error)/;
+/** A step's sentence and, apart, the code it names (in mono): the agent's own words when its
+ *  harness gave them; "没找到 nmem" for a probe that found nothing; "运行 nmem doctor". */
+export function rowWords(r: StepRow): [string, string] {
+  if (!r.step) return [`${t("step.label.thought")} · ${r.thought ?? ""}`, ""];
+  const st = r.step;
+  if (r.outcome === "missing") {
+    const base = `step.${st.kind}${st.act ? `.${st.act}` : ""}.missing`;
+    const k = st.act === "cmd" && (st.target ?? "").includes(" ") ? `${base}.some` : base;
+    return has(k) ? [t(k, st.target ?? ""), ""] : [t("step.missing"), st.target ?? ""];
+  }
+  if (st.says) return [st.says, ""];
+  if (codeLike(st)) return [t(`step.label.${st.kind}`), st.target!];
+  return [stepWords(st), ""];
+}
+
+function gistWords(b: Extract<Block, { k: "steps" }>): string {
+  const g = b.gist;
+  switch (g.kind) {
+    case "look":
+      return t("gist.look");
+    case "edit":
+      return g.files === 1 ? t("gist.edit.one") : t("gist.edit", g.files);
+    case "browse":
+      return g.app ? t("gist.browse", g.app) : t("gist.browse.any");
+    case "think":
+      return t("gist.think");
+  }
+  return t("gist.run");
+}
+const stepsCount = (n: number) => (n === 1 ? t("gist.steps.one") : t("gist.steps", n));
 
 // ---------- marks ----------
 
@@ -100,7 +134,10 @@ const GLYPHS: Record<string, () => JSX.Element> = {
   thought: () => <G><circle cx="3.5" cy="8" r="1.3" fill="currentColor" stroke="none" /><circle cx="8" cy="8" r="1.3" fill="currentColor" stroke="none" /><circle cx="12.5" cy="8" r="1.3" fill="currentColor" stroke="none" /></G>,
   error: () => <G><path d="M4 4l8 8M12 4l-8 8" /></G>,
   flag: () => <G><path d="M4.5 14V2.5l8 2.5-8 2.5" /></G>,
+  key: () => <G><circle cx="5" cy="8" r="2.8" /><path d="M7.8 8H14M12 8v2.6M14 8v2" /></G>,
+  chev: () => <G><path d="M6 3.5 10.5 8 6 12.5" /></G>,
 };
+const GIST_GLYPH: Record<string, string> = { look: "searched", edit: "edited", browse: "browsed", think: "thought", run: "ran" };
 
 /** An ask's default as a small kitchen timer: a rim, and the time still left as a wedge. */
 export function TimerPie({ frac }: { frac: number }) {
@@ -116,207 +153,163 @@ export function TimerPie({ frac }: { frac: number }) {
   );
 }
 
-// ---------- the transcript ----------
+// ---------- the blocks ----------
 
-type Line = { ev: LogEvent; step?: Step; tool?: NonNullable<Bodies["task_event"]["tool"]>; failed?: boolean; n: number; thought?: string };
+const working = (task: Task) => ["working", "queued"].includes(attention(task));
+export const taskBlocks = (task: Task): Block[] => blocksOf(harnessOf(task), task.events, working(task));
 
-function lines(task: Task): Line[] {
-  const out: Line[] = [];
-  const lastReport = task.events.filter((ev) => ev.kind === "report").at(-1)?.seq;
-  const harness = harnessOf(task);
-  let app = "";
-  for (const ev of task.events) {
-    if (ev.kind === "task_event") {
-      const b = ev.body as Bodies["task_event"];
-      if (b.thinking?.length) {
-        out.push({ ev, n: 1, thought: b.thinking.join(" · ") });
-        continue;
-      }
-      if (b.tool) {
-        const st = stepOf(harness, b.tool);
-        if (st.hidden) continue;
-        // The app a run of browser and computer steps works in carries over to the steps that don't name it.
-        if (st.kind === "browsed" || st.kind === "computer") {
-          if (!st.app && app) st.app = app;
-          else if (st.app) app = st.app;
-        }
-        const failed = b.tool.ok === false;
-        const prev = out.at(-1);
-        if (prev?.step && !failed && !prev.failed && JSON.stringify(prev.step) === JSON.stringify(st)) {
-          prev.n++;
-          continue;
-        }
-        out.push({ ev, step: st, tool: b.tool, failed, n: 1 });
-        continue;
-      }
-      if (b.role === "system" && (!b.text || QUIET_SYSTEM.test(b.text.trim()))) continue;
-      // The runner's kickoff (the brief again in tags) is not what anyone said.
-      if (b.role === "user" && (b.from === "runner" || (!b.from && /^(<brief>|Start the task ")/.test(b.text ?? "")))) continue;
-    } else if (ev.kind === "report") {
-      if (ev.seq === lastReport) continue; // said above: the outcome, or where it stands
-    } else if (ev.kind !== "task_open" && ev.kind !== "checkpoint") continue;
-    out.push({ ev, n: 1 });
-  }
-  return out;
+/** What you (or the partner) asked: quiet, three lines until opened; a hidden key said so. */
+export function BriefCard({ task, blocks }: { task: Task; blocks: Block[] }) {
+  const [open, setOpen] = useState(false);
+  const b = blocks.find((x) => x.k === "brief") as Extract<Block, { k: "brief" }> | undefined;
+  if (!b) return null;
+  const long = b.text.split("\n").length > 3 || [...b.text].length > 180;
+  const hidden = b.text.includes(HIDDEN);
+  return (
+    <section class={`brief${open ? " open" : ""}`} aria-label={b.by === "you" ? t("task.asked.you") : t("task.asked", A.S.personaName)}>
+      <small>{b.by === "you" ? t("task.asked.you") : t("task.asked", A.S.personaName)}</small>
+      <div class="brief-text">{b.text}</div>
+      {(hidden || long) && (
+        <div class="brief-foot">
+          {hidden && (
+            <span class="hidden-key">
+              {GLYPHS.key!()}
+              {t("secret.hidden")}
+            </span>
+          )}
+          <span class="grow" />
+          {long && (
+            <button class="qlink" aria-expanded={open} onClick={() => setOpen(!open)}>
+              {open ? t("task.asked.less") : t("task.asked.more")}
+            </button>
+          )}
+        </div>
+      )}
+    </section>
+  );
 }
 
-const isStep = (l: Line) => !!l.step || !!l.thought;
-
-function StepLine({ l }: { l: Line }) {
+function Row({ r }: { r: StepRow }) {
   const [open, setOpen] = useState(false);
-  if (l.thought)
-    return (
-      <div class="step">
-        {GLYPHS.thought!()}
-        <b>{t("step.label.thought")}</b>
-        <span class="sum" title={l.thought}>
-          {l.thought}
-        </span>
-      </div>
-    );
-  const st = l.step!;
-  const words = stepWords(st);
-  const tool = l.tool!;
-  let raw = (tool.output ?? "").trimEnd();
-  if (st.kind === "ran" || l.failed) {
-    const input = tool.input as Record<string, unknown> | string | undefined;
-    const full = typeof input === "string" ? input : String(input?.command ?? input?.cmd ?? input?.code ?? "");
-    if (full && !raw.startsWith(full)) raw = `${full}\n\n${raw}`.trim();
-  }
-  const label = l.failed ? t("step.label.error") : t(`step.label.${st.kind}`);
+  const [words, code] = rowWords(r);
+  const detail = r.step ? [r.command && `$ ${r.command}`, r.output].filter(Boolean).join("\n") : "";
+  const bad = r.outcome === "error";
+  const cls = `step${bad ? " bad" : ""}${r.outcome === "missing" || !r.step ? " quiet" : ""}${open ? " open" : ""}`;
   const inner = (
     <>
-      {(l.failed ? GLYPHS.error : (GLYPHS[st.kind] ?? GLYPHS.other))!()}
-      <b>{label}</b>
-      {words && (
-        <span class={`sum${codeLike(st) ? " code" : ""}`} title={words}>
-          {words}
+      {(bad ? GLYPHS.error : GLYPHS[r.step?.kind ?? "thought"] ?? GLYPHS.other)!()}
+      <span class="sum" title={words}>
+        {words}
+      </span>
+      {code && (
+        <span class="sum code" title={code}>
+          {code}
         </span>
       )}
-      {l.n > 1 && <span class="times">×{l.n}</span>}
-      {raw && (
-        <span class="chev" aria-hidden="true">
-          ›
-        </span>
-      )}
+      {r.n > 1 && <span class="times">×{r.n}</span>}
+      {bad && <b class="bad-tag">{t("step.label.error")}</b>}
+      {detail && <span class="chev">{GLYPHS.chev!()}</span>}
     </>
   );
   return (
     <>
-      {raw ? (
-        <button class={`step${l.failed ? " bad" : ""}${open ? " open" : ""}`} aria-expanded={open} onClick={() => setOpen(!open)}>
+      {detail ? (
+        <button class={cls} aria-expanded={open} onClick={() => setOpen(!open)}>
           {inner}
         </button>
       ) : (
-        <div class={`step${l.failed ? " bad" : ""}`}>{inner}</div>
+        <div class={cls}>{inner}</div>
       )}
-      {open && raw && <pre class="raw">{raw.split("\n").slice(0, 24).join("\n")}</pre>}
+      {open && detail && <pre class="raw">{detail.split("\n").slice(0, 24).join("\n")}</pre>}
     </>
   );
 }
 
-function Run({ run }: { run: Line[] }) {
-  const [all, setAll] = useState(false);
-  const hidden = run.length > 6 && !all ? run.length - 4 : 0;
+/** A stretch of steps between two things the agent said: one step is its own line; more fold
+ *  under the gist, open while live. */
+function Stretch({ b }: { b: Extract<Block, { k: "steps" }> }) {
+  const [picked, setPicked] = useState<boolean | undefined>(undefined);
+  const open = picked ?? !!b.live;
+  if (b.rows.length === 1 && !b.live) return <Row r={b.rows[0]!} />;
+  const last = b.rows.at(-1)!;
+  const label = b.live ? rowWords(last).filter(Boolean).join(" ") : gistWords(b);
   return (
-    <div class="steps">
-      {hidden > 0 && (
-        <button class="step more" onClick={() => setAll(true)}>
-          <span class="g" />
-          {t("step.more", hidden)}
-          <span class="chev" aria-hidden="true">
-            ›
-          </span>
-        </button>
-      )}
-      {run.slice(hidden).map((l) => (
-        <StepLine key={l.ev.seq} l={l} />
-      ))}
+    <div class={`stretch${b.live ? " live" : ""}`}>
+      <button class={`gist${open ? " open" : ""}`} aria-expanded={open} onClick={() => setPicked(!open)}>
+        {b.live ? <span class="spin" aria-hidden="true" /> : GLYPHS[GIST_GLYPH[b.gist.kind]!]!()}
+        <span class="sum">{label}</span>
+        <span class="n">· {stepsCount(b.gist.steps)}</span>
+        {b.gist.errors > 0 && <span class="errs">· {t("gist.errors", b.gist.errors)}</span>}
+        <span class="chev">{GLYPHS.chev!()}</span>
+      </button>
+      <div class="rows">
+        {b.rows.filter((r) => open || r.outcome === "error").map((r) => (
+          <Row key={r.seq} r={r} />
+        ))}
+      </div>
     </div>
   );
 }
 
-function Event({ task, ev }: { task: Task; ev: LogEvent }) {
-  if (ev.kind === "task_open") {
-    const brief = (ev.body as Bodies["task_open"]).brief;
-    // A task opened before its brief was written (D120) logs an empty one first: the briefed one follows.
-    return brief.trim() ? (
-      <div class="tx said">
-        <small>{(ev.body as Bodies["task_open"]).origin === "you" ? t("task.brief.you") : t("task.brief", A.S.personaName)}</small>
-        {brief}
-      </div>
-    ) : null;
-  }
-  if (ev.kind === "checkpoint")
-    return (
-      <div class="step saved">
-        {GLYPHS.flag!()}
-        <span class="sum">{t("task.checkpoint", (ev.body as Bodies["checkpoint"]).text)}</span>
-        <span class="times">{clock(ev.ts)}</span>
-      </div>
-    );
-  if (ev.kind === "report") {
-    const r = ev.body as Bodies["report"];
-    const k = { needs_input: "task.report.needs_input", done: "task.report.done", blocked: "task.report.blocked", failed: "task.report.failed" }[r.state as string] ?? "task.report";
-    return (
-      <div class="tx said">
-        <small>{t(k, A.S.personaName)}</small>
-        {r.summary}
-      </div>
-    );
-  }
-  const b = ev.body as Bodies["task_event"];
-  if (b.role === "system") {
-    const text = (b.text ?? "").trim();
-    const failed = FAILED_SYSTEM.test(text);
-    return (
-      <div class={`step note${failed ? " bad" : ""}`}>
-        {failed ? GLYPHS.error!() : GLYPHS.other!()}
-        {failed && <b>{t("step.label.error")}</b>}
-        <span class="sum" title={text}>
-          {text}
-        </span>
-      </div>
-    );
-  }
-  if (b.role === "user" && b.text) {
-    if (b.from === "partner")
+function BlockView({ task, b }: { task: Task; b: Block }) {
+  switch (b.k) {
+    case "voice":
+      return (
+        <div class="voice">
+          <div class="tx assistant md" dangerouslySetInnerHTML={{ __html: markdown(b.text) }} />
+          {b.saved && (
+            <small class="saved">
+              {GLYPHS.flag!()}
+              {t("task.saved")}
+            </small>
+          )}
+        </div>
+      );
+    case "steps":
+      return <Stretch b={b} />;
+    case "you": {
+      const sd = task.sends.find((s) => s.seq === b.seq);
+      return (
+        <div class="tx you">
+          {b.go !== undefined ? shortGo(b.go) : b.text}
+          {sd?.delivered && <small>{t(`delivery.${sd.delivered}`)}</small>}
+        </div>
+      );
+    }
+    case "partner":
       return (
         <div class="tx said">
           <small>{t("task.from.partner", A.S.personaName)}</small>
           {b.text}
         </div>
       );
-    const go = goRelay(b.text);
-    const sd = task.sends.find((s) => s.seq === ev.seq);
-    return (
-      <div class="tx you">
-        {go !== undefined ? shortGo(go) : b.text}
-        {sd?.delivered && <small>{t(`delivery.${sd.delivered}`)}</small>}
-      </div>
-    );
+    case "report": {
+      const k = { needs_input: "task.report.needs_input", done: "task.report.done", blocked: "task.report.blocked", failed: "task.report.failed" }[b.state as string] ?? "task.report";
+      return (
+        <div class="tx said">
+          <small>{t(k, A.S.personaName)}</small>
+          {b.text}
+        </div>
+      );
+    }
+    case "note":
+      return (
+        <div class={`step note${b.bad ? " bad" : ""}`}>
+          {b.bad ? GLYPHS.error!() : GLYPHS.other!()}
+          {b.bad && <b>{t("step.label.error")}</b>}
+          <span class="sum" title={b.text}>
+            {b.text}
+          </span>
+        </div>
+      );
   }
-  if (b.role === "assistant" && b.text) return <div class="tx assistant md" dangerouslySetInnerHTML={{ __html: markdown(b.text) }} />;
   return null;
 }
 
-/** What the task did (D127): its words, its steps one quiet line each, a long run of steps
- *  showing its latest four behind "n earlier steps ›". */
-export function WhatItDid({ task }: { task: Task }) {
+/** What the task did (D148): the agent's voice, its steps folded per stretch, your words. */
+export function WhatItDid({ task, blocks }: { task: Task; blocks: Block[] }) {
   if (!task.historyLoaded && !task.events.length) return <div class="small">{t("task.loading")}</div>;
-  const ls = lines(task);
-  const items: JSX.Element[] = [];
-  for (let i = 0; i < ls.length; ) {
-    if (!isStep(ls[i]!)) {
-      items.push(<Event key={ls[i]!.ev.seq} task={task} ev={ls[i]!.ev} />);
-      i++;
-      continue;
-    }
-    let j = i;
-    while (j < ls.length && isStep(ls[j]!)) j++;
-    items.push(<Run key={`r${ls[i]!.ev.seq}`} run={ls.slice(i, j)} />);
-    i = j;
-  }
+  const items = blocks.filter((b) => b.k !== "brief").slice(-80).map((b) => <BlockView key={`${b.k}${b.seq}`} task={task} b={b} />);
   for (const sd of task.sends.filter((s) => !s.seq))
     items.push(
       <div key={`s${sd.at}`} class="tx you">
@@ -324,24 +317,15 @@ export function WhatItDid({ task }: { task: Task }) {
         <small>{sd.failed ? t("delivery.failed", sd.failed) : sd.delivered ? t(`delivery.${sd.delivered}`) : t("delivery.sending")}</small>
       </div>,
     );
-  return <div class="tx-list">{items.slice(-80)}</div>;
+  return <div class="tx-list">{items}</div>;
 }
 
-/** What the task said or saved after its latest report, newest first, or "". */
+/** What the task said or saved after its latest report, its first line, or "" (keys hidden). */
 export function saidSince(task: Task): string {
-  for (let i = task.events.length - 1; i >= 0; i--) {
-    const ev = task.events[i]!;
-    if (ev.kind === "report") return "";
-    if (ev.kind === "checkpoint") return (ev.body as Bodies["checkpoint"]).text;
-    if (ev.kind === "task_event") {
-      const b = ev.body as Bodies["task_event"];
-      if (b.role === "assistant" && b.text?.trim() && !b.tool) return b.text.trim().split("\n")[0]!;
-    }
-  }
-  return "";
+  return latestVoice(taskBlocks(task));
 }
 
-// ---------- the bar over the composer ----------
+// ---------- the meta line ----------
 
 function elapsed(ms: number): string {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -349,35 +333,63 @@ function elapsed(ms: number): string {
   return s >= 3600 ? `${Math.floor(s / 3600)}:${p(Math.floor(s / 60) % 60)}:${p(s % 60)}` : `${Math.floor(s / 60)}:${p(s % 60)}`;
 }
 
-/** Who is doing it (its coin, the agent and the model), then where it stands and for how long. */
-export function TaskBar({ task, stateLabel, opened }: { task: Task; stateLabel: string; opened: string }) {
+/** Where it runs, in a few words: the repo and branch, the folder, the machine when it isn't this one. */
+export function whereLine(p: Place): string {
+  const last = (s?: string) => (s ?? "").replace(/\/+$/, "").split("/").at(-1) ?? "";
+  const parts: string[] = [];
+  if (p.kind === "repo") parts.push(last(p.repoPath), p.branch ?? "");
+  else if (p.kind === "folder") parts.push(last(p.path));
+  else if (p.kind === "browser") parts.push((p as { profile?: string }).profile ?? "");
+  const d = (p as { device?: string }).device;
+  if (d && d !== "local" && d !== "this") parts.push(t("task.where.on", d));
+  return parts.filter(Boolean).join(" · ");
+}
+
+/** One quiet line (D148): where it stands and its one clock (since it started, ticking until it
+ *  finishes; then how long it took), who does it, where, and Switch who does it. */
+export function TaskMeta({ task, stateLabel, mark, onSwitch }: { task: Task; stateLabel: string; mark?: JSX.Element; onSwitch?: () => void }) {
   const a = attention(task);
-  const working = a === "working";
+  const done = finished(task);
   const [, tick] = useState(0);
   useEffect(() => {
-    if (!working) return;
+    if (done) return;
     const h = setInterval(() => tick((n) => n + 1), 1000);
     return () => clearInterval(h);
-  }, [working]);
+  }, [done]);
   const h = harnessOf(task);
   const m = modelOf(task);
   const who = [harnessName(h), m && modelName(m)].filter(Boolean).join(" · ");
+  const where = whereLine(placeOf(task));
   const start = task.openedAt ? Date.parse(task.openedAt) : NaN;
   let when = "";
   if (!Number.isNaN(start)) {
-    if (working) when = elapsed(Date.now() - start);
-    else if (finished(task)) {
+    if (!done) when = elapsed(Date.now() - start);
+    else {
       const end = Date.parse(task.events.at(-1)?.ts ?? "");
       if (!Number.isNaN(end) && end > start) when = t("task.footer.took", duration(A.L, end - start));
-    } else when = opened;
+    }
   }
+  const p = placeOf(task) as { repoPath?: string; path?: string };
   return (
-    <div class={`task-bar st-${a}`}>
-      {h && <Coin harness={h} size={20} motion={working ? "working" : a === "needs_you" ? "needs_you" : "still"} />}
-      <span class="who">{who}</span>
-      <span class="grow" />
+    <div class={`standing st-${a}`}>
+      {mark}
       <b>{stateLabel}</b>
       {when && <span class="when">· {when}</span>}
+      {(who || where) && (
+        <span class="who">
+          <span class="sep">·</span>
+          {h && <Coin harness={h} size={16} motion={done ? "still" : a === "needs_you" ? "needs_you" : a === "working" ? "working" : "still"} />}
+          <span title={p.repoPath || p.path || undefined}>{[who, where].filter(Boolean).join(" · ")}</span>
+        </span>
+      )}
+      {onSwitch && (
+        <button class="inline-link" aria-expanded={A.switchFor === task.id} onClick={onSwitch}>
+          {t("who.switch")} ›
+        </button>
+      )}
     </div>
   );
 }
+
+/** A task title or line with any key in it hidden (the home hides them already; this is the second wall). */
+export const safe = (s: string) => redact(s);

@@ -61,13 +61,29 @@ write to it directly while it works.
 ### Does it remember me?
 
 It remembers your conversation. With [Nowledge Mem](https://mem.nowledge.co) it also starts out
-knowing who you are and what you're working on, and you see **Noted** when it saves something.
+knowing who you are and what you're working on, from the same memory your other AI tools use,
+and you see **Noted** when it saves something.
 See [Privacy and safety](privacy-and-safety.md#memory-with-nowledge-mem).
 
 ### Can it use the web?
 
 Yes, on a Mac: it uses its own Chrome window to look things up and read pages. Signing in,
 submitting forms and paying are left to you. See [Browsing the web](devices.md#browsing-the-web).
+
+### Can it read my email or calendar?
+
+Not yet; it's coming soon. Gmail, Google Calendar and other services will connect through
+[OpenConnector](https://github.com/oomol-lab/open-connector), an open-source connector that
+runs on the same computer as Ducter. Your passwords and tokens stay there, and the AI agents
+never see them. Reading is fine, and anything that would send an email or change your calendar
+will wait for your **Go**, the way everything Ducter sends out does today.
+
+### Can it work with the AI agent in my terminal?
+
+Not yet; it's coming soon. With Nowledge Bridge, part of
+[Nowledge Mem](https://mem.nowledge.co), the Claude Code or Codex session you have open in a
+terminal will be able to hand your partner a job, and your partner will be able to ask that
+session what it knows. Either way, your partner checks with you first.
 
 ### Can it use my other apps, my phone, or make calls?
 

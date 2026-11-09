@@ -2159,7 +2159,7 @@ function SettingsSheet() {
 const tokenArt = (h: string) => `app/art/${h === "claude-code" ? "token_orange" : "token_ink"}.webp`;
 
 /** The New task sheet: Where (place chips; the chosen repo's chip names its base branch and
- *  opens the branches), Who does it (the agents' coins, the best fit chosen with its reason),
+ *  opens the branches), Who does it (the agents' coins, the best fit chosen and tagged Suggested),
  *  What (the words, given as they are). Start opens the task; back returns. */
 function NewTaskSheet() {
   const nt = A.nt;
@@ -2238,30 +2238,31 @@ function NewTaskSheet() {
           ) : !who ? (
             <div class="small sub">{t("newtask.nobody")}</div>
           ) : (
-            <>
-              <div class="chips">
-                {opts.candidates.map((c) => {
-                  const off = !!c.blocked;
-                  const on = !off && candKey(c) === candKey(who);
-                  const top = opts.candidates.find((x) => !x.blocked);
-                  return (
-                    <button
-                      key={candKey(c)}
-                      class={`chip coin${on ? " on" : ""}${off ? " off" : ""}`}
-                      role="radio"
-                      aria-checked={on}
-                      disabled={off}
-                      title={off ? candReason(c) : undefined}
-                      onClick={() => ((nt.pick = top && candKey(top) === candKey(c) ? "" : candKey(c)), A.changed())}
-                    >
-                      <img src={tokenArt(c.harness)} alt="" width="26" height="26" />
-                      <b>{candName(c)}</b>
-                    </button>
-                  );
-                })}
-              </div>
-              <div class="small sub why">{picked ? t("newtask.picked", candName(who)) : candReason(who)}</div>
-            </>
+            <div class="chips">
+              {opts.candidates.map((c) => {
+                const off = !!c.blocked;
+                const on = !off && candKey(c) === candKey(who);
+                const top = opts.candidates.find((x) => !x.blocked);
+                const best = !!top && candKey(top) === candKey(c);
+                // The best fit carries 推荐 / Suggested; why is a tooltip, and so is "…，是你选的".
+                const tip = off || best ? candReason(c) : on && picked ? t("newtask.picked", candName(c)) : undefined;
+                return (
+                  <button
+                    key={candKey(c)}
+                    class={`chip coin${on ? " on" : ""}${off ? " off" : ""}`}
+                    role="radio"
+                    aria-checked={on}
+                    disabled={off}
+                    title={tip || undefined}
+                    onClick={() => ((nt.pick = best ? "" : candKey(c)), A.changed())}
+                  >
+                    <img src={tokenArt(c.harness)} alt="" width="26" height="26" />
+                    <b>{candName(c)}</b>
+                    {best && <small class="suggested">{t("newtask.suggested")}</small>}
+                  </button>
+                );
+              })}
+            </div>
           )}
         </section>
         <section class="nt-row">

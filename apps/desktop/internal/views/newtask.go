@@ -327,8 +327,8 @@ func (a *App) chip(c *ui.Context, key, label string, on, off bool) ui.Element {
 	return e
 }
 
-// placeChips is 在哪儿做 / Where: the repos, most recent first, then No
-// particular place; the chosen repo's chip says its base branch, and a
+// placeChips is 在哪儿做 / Where: the repos, most recent first, then 不用
+// 文件夹 / No folder; the chosen repo's chip says its base branch, and a
 // click on it opens the branches.
 func (a *App) placeChips(c *ui.Context, places []protocol.PlaceChoice, chosen protocol.PlaceChoice) {
 	t := a.T
@@ -430,8 +430,9 @@ func (a *App) branchList(c *ui.Context, anchor ui.Element, p protocol.PlaceChoic
 }
 
 // whoChips is 谁来做 / Who does it: the agents' coins, best first; the best
-// fit is chosen, with its reason under the row; one the user picks says
-// so; one that can't take it is greyed with why on hover.
+// fit is chosen and tagged 推荐 / Suggested, with its reason on hover; one
+// the user picks says "…，是你选的" on hover; one that can't take it is
+// greyed with why on hover.
 func (a *App) whoChips(c *ui.Context) {
 	t := a.T
 	nt := &a.nt
@@ -446,16 +447,27 @@ func (a *App) whoChips(c *ui.Context) {
 		ui.Text(c, a.L.T("newtask.nobody")).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft).Padding(t.S2, 0, 0, 0)
 		return
 	}
+	top := topCandidate(cands)
 	ui.Row(c.Key("nt-who")).Gap(t.S2).Wrap().Role(ui.RoleRadioGroup).Label(a.L.T("newtask.who")).Children(func() {
 		for i := range cands {
 			cd := cands[i]
 			k := candKey(cd)
 			off := cd.Blocked != ""
 			on := !off && k == candKey(*chosen)
+			best := top != nil && k == candKey(*top)
 			name := a.candName(cd)
-			e := a.chip(c, "nt-cand:"+k, name, on, off).Padding(0, t.S3+2, 0, t.S1+2)
-			if off {
-				e.Tooltip(a.candReason(cd))
+			label := name
+			if best {
+				label = name + " · " + a.L.T("newtask.suggested")
+			}
+			e := a.chip(c, "nt-cand:"+k, label, on, off).Padding(0, t.S3+2, 0, t.S1+2)
+			switch {
+			case off, best:
+				if why := a.candReason(cd); why != "" {
+					e.Tooltip(why)
+				}
+			case on && picked:
+				e.Tooltip(a.L.T("newtask.picked", name))
 			}
 			e.Children(func() {
 				if bmp := theme.Clay(tokenArt(cd.Harness)); bmp != nil {
@@ -465,22 +477,20 @@ func (a *App) whoChips(c *ui.Context) {
 					}
 				}
 				ui.Text(c, name).FontSize(t.SM).FontWeight(700).TextColor(map[bool]ui.Color{true: t.Ink, false: t.InkSoft}[on]).SingleLine().AccessHidden(true)
+				if best {
+					ui.Row(c.Key("nt-suggested")).Padding(t.S1, t.S1+3).Radius(6).Background(t.Highlight).Shrink(0).AccessHidden(true).Children(func() {
+						ui.Text(c, a.L.T("newtask.suggested")).FontSize(t.XS).FontWeight(700).TextColor(t.HighlightInk).SingleLine()
+					})
+				}
 			})
 			if !off && e.Clicked() {
 				nt.pick = k
-				if top := topCandidate(cands); top != nil && candKey(*top) == k {
+				if best {
 					nt.pick = ""
 				}
 			}
 		}
 	})
-	why := a.candReason(*chosen)
-	if picked {
-		why = a.L.T("newtask.picked", a.candName(*chosen))
-	}
-	if why != "" {
-		ui.Text(c.Key("nt-why"), why).FontSize(t.SM).TextColor(t.InkMuted).SingleLine().Tooltip(why)
-	}
 }
 
 // wordsField is 做什么 / What: the user's words, given to the task as

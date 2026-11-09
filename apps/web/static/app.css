@@ -85,6 +85,8 @@
   --drop: 0 7px 12px -4px rgba(43, 33, 24, 0.28);
   --drop-pressed: 0 1px 3px rgba(43, 33, 24, 0.22);
   --floating: 0 10px 32px rgba(43, 33, 24, 0.14);
+  /* Under a sheet the page only dims a little, in warm brown: grey at this weight reads as dark mode. */
+  --scrim: rgba(60, 40, 20, 0.14);
 
   --font: "Bricolage Grotesque", "PingFang SC", "Noto Sans SC", "Hiragino Sans GB", system-ui, -apple-system, "Segoe UI", sans-serif;
   --head: "Bricolage Grotesque", "Ducter Rounded SC", "PingFang SC", "Noto Sans SC", "Hiragino Sans GB", system-ui, -apple-system, sans-serif;
@@ -173,6 +175,7 @@
     --failed-ink: #f8a9bc;
     --base: 0 4px 0 #0d0a07;
     --floating: 0 10px 32px rgba(0, 0, 0, 0.5);
+    --scrim: rgba(0, 0, 0, 0.42);
     --press-primary: #8a7a66;
   --primary-top: var(--ink);
   --seam-primary: #8a7a66;
@@ -227,6 +230,7 @@
   --failed-ink: #f8a9bc;
   --base: 0 4px 0 #0d0a07;
   --floating: 0 10px 32px rgba(0, 0, 0, 0.5);
+  --scrim: rgba(0, 0, 0, 0.42);
   --press-primary: #8a7a66;
   --primary-top: var(--ink);
   --seam-primary: #8a7a66;
@@ -1533,7 +1537,7 @@ a {
 .scrim {
   position: fixed;
   inset: 0;
-  background: rgba(23, 18, 14, 0.38);
+  background: var(--scrim);
   z-index: 20;
   animation: fade 200ms var(--ease);
 }
@@ -2825,8 +2829,16 @@ ol.tries b {
 .nt-row .chip.off img {
   filter: grayscale(1);
 }
-.nt-row .why {
-  line-height: 1.45;
+/* 推荐 / Suggested: the best fit's small tag, on its coin. */
+.nt-row .chip .suggested {
+  font-size: var(--xs);
+  font-weight: 700;
+  line-height: 1;
+  padding: 4px 7px;
+  border-radius: 6px;
+  background: var(--highlight);
+  color: var(--highlight-ink);
+  white-space: nowrap;
 }
 .nt-row .branches {
   display: flex;

@@ -126,10 +126,14 @@ func TestNewTaskCard(t *testing.T) {
 		tt.Frame()
 		tt.Frame()
 		all := strings.Join(tt.Texts(), " ")
-		for _, want := range []string{app.L.T("newtask.where"), app.L.T("newtask.who"), app.L.T("newtask.what"), "ducter", "main", "hawdb", app.L.T("newtask.nowhere"), "Claude Code · Opus", "Codex", app.L.T("cand.fit"), app.L.T("newtask.verbatim"), app.L.T("newtask.start")} {
+		for _, want := range []string{app.L.T("newtask.where"), app.L.T("newtask.who"), app.L.T("newtask.what"), "ducter", "main", "hawdb", app.L.T("newtask.nowhere"), "Claude Code · Opus", app.L.T("newtask.suggested"), "Codex", app.L.T("newtask.verbatim"), app.L.T("newtask.start")} {
 			if !strings.Contains(all, want) {
 				t.Errorf("%s: no %q on the card: %q", lang, want, all)
 			}
+		}
+		// The best fit is tagged Suggested on its coin; there's no reason line under the row.
+		if strings.Contains(all, app.L.T("cand.fit")) {
+			t.Errorf("%s: a reason line under the coins: %q", lang, all)
 		}
 		newTaskShot(t, tt, "card-empty-"+string(lang))
 
@@ -173,8 +177,12 @@ func TestNewTaskCard(t *testing.T) {
 			t.Fatal(err)
 		}
 		tt.Frame()
-		if !strings.Contains(strings.Join(tt.Texts(), " "), app.L.T("newtask.picked", "Codex")) {
-			t.Errorf("%s: a pick doesn't say so: %q", lang, tt.Texts())
+		// A pick says so only on hover, not as a line on the card.
+		if strings.Contains(strings.Join(tt.Texts(), " "), app.L.T("newtask.picked", "Codex")) {
+			t.Errorf("%s: a pick is a line on the card: %q", lang, tt.Texts())
+		}
+		if app.nt.pick == "" {
+			t.Errorf("%s: clicking Codex picked nothing", lang)
 		}
 		newTaskShot(t, tt, "card-filled-"+string(lang))
 		if err := tt.Click("ducter · main"); err != nil {

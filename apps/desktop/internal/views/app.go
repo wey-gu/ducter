@@ -98,6 +98,7 @@ type App struct {
 	diffs      map[string]*diffPane
 	taskLists  map[string]*ui.ListState
 	md, mdTask markdown.Options
+	mdLang     i18n.Lang // the language md's themes were made for
 	// chipOwner is the entry that shows each task's chip.
 	chipOwner map[string]int64
 	uiTheme   *ui.Theme
@@ -295,10 +296,14 @@ func (a *App) flushOutbox() {
 
 // View is the window's content.
 func (a *App) View(c *ui.Context) {
-	if a.uiTheme == nil {
-		a.uiTheme = a.T.UITheme(c.Theme())
-		a.md.Theme = a.markdownTheme(a.T.PartnerSize, 1.65)
-		a.mdTask.Theme = a.markdownTheme(a.T.MD, 1.55)
+	if a.uiTheme == nil || a.mdLang != a.L.Lang {
+		if a.uiTheme == nil {
+			a.uiTheme = a.T.UITheme(c.Theme())
+		}
+		// Chinese reading text is 1.75 high (D78).
+		a.mdLang = a.L.Lang
+		a.md.Theme = a.markdownTheme(a.T.PartnerSize, a.leading(1.65))
+		a.mdTask.Theme = a.markdownTheme(a.T.MD, a.leading(1.55))
 	}
 	c.SetTheme(a.uiTheme)
 	a.drainActionResults(c)
@@ -374,7 +379,9 @@ func (a *App) markdownTheme(size, leading float32) *markdown.Theme {
 	th.Strong = a.T.Ink
 	th.StrongWeight = 700
 	th.Code = a.T.Ink
-	th.CodeBackground = a.T.SurfaceSunken
+	th.CodeBackground = a.T.Sunken
+	th.CodeFont = a.T.Mono
+	th.CodeSize = 0.86
 	th.CodeBlockBackground = a.T.SurfaceRaised
 	th.CodeBlockBorder = a.T.Line
 	th.QuoteBar = a.T.Line

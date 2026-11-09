@@ -117,7 +117,7 @@ func (a *App) setupResting(c *ui.Context) {
 	t := a.T
 	name := a.personaName()
 	a.avatar(c, theme.Napping, 100)
-	ui.Text(c, a.L.T("rest.title", name)).FontSize(t.XXL).FontWeight(800).LetterSpacing(-0.4)
+	a.heading(c, a.L.T("rest.title", name), t.XXL)
 	ui.Text(c, a.L.T("rest.body")).FontSize(t.LG).LineHeight(1.55).TextColor(t.InkSoft)
 	if a.button(c, a.L.T("rest.wake", name), btnPrimary, t.ControlLG, t.Surface) {
 		a.Wake()
@@ -373,7 +373,7 @@ func (a *App) setupWaiting(c *ui.Context, p theme.Presence, title, body string) 
 	t := a.T
 	a.avatar(c, p, 120)
 	ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-		ui.Text(c, title).FontSize(t.XXL).FontWeight(800).LetterSpacing(-0.4).Grow(1).MinWidth(0)
+		a.heading(c, title, t.XXL).Grow(1).MinWidth(0)
 	})
 	ui.Text(c, body).FontSize(t.LG).LineHeight(1.55).TextColor(t.InkSoft)
 }
@@ -418,7 +418,7 @@ func (a *App) setupBlocked(c *ui.Context) {
 	if len(blocking) > 1 {
 		title = a.L.T("setup.blocked.many", len(blocking))
 	}
-	ui.Text(c, title).FontSize(t.XXL).FontWeight(800).LetterSpacing(-0.4)
+	a.heading(c, title, t.XXL)
 	ui.Text(c, a.L.T("setup.blocked.body")).FontSize(t.LG).LineHeight(1.55).TextColor(t.InkSoft)
 	var fixable []local.Check
 	for _, k := range blocking {
@@ -497,7 +497,7 @@ func (a *App) setupBlocked(c *ui.Context) {
 func (a *App) setupName(c *ui.Context) {
 	t := a.T
 	a.avatar(c, theme.Idle, 120)
-	ui.Text(c, a.L.T("setup.name.title", "Ducter")).FontSize(t.XXL).FontWeight(800).LetterSpacing(-0.4)
+	a.heading(c, a.L.T("setup.name.title", "Ducter"), t.XXL)
 	ui.Text(c, a.L.T("setup.name.body")).FontSize(t.LG).LineHeight(1.55).TextColor(t.InkSoft)
 	submit := func() { a.SaveName(a.setup.name) }
 	in := ui.TextInput(c.Key("input:name"), &a.setup.name).Placeholder("Ducter").Label(a.L.T("setup.name.body")).
@@ -524,7 +524,7 @@ func (a *App) setupFailed(c *ui.Context) {
 	if a.setup.everUp {
 		key = "setup.stopped"
 	}
-	ui.Text(c, a.L.T(key, a.personaName())).FontSize(t.XXL).FontWeight(800).LetterSpacing(-0.4)
+	a.heading(c, a.L.T(key, a.personaName()), t.XXL)
 	if a.setup.err != "" {
 		ui.Text(c, a.L.T("setup.failed.body")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 		ui.Text(c, a.setup.err).Font(t.Mono).FontSize(t.MonoSM).LineHeight(1.5).TextColor(t.InkSoft).

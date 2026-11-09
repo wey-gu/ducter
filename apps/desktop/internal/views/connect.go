@@ -96,7 +96,7 @@ func (a *App) connect(c *ui.Context) {
 		a.enter(c, card)
 		card.Children(func() {
 			a.avatar(c, theme.Idle, 88)
-			ui.Text(c, a.L.T("connect.title")).FontSize(t.XXL).FontWeight(800).LetterSpacing(-0.4)
+			a.heading(c, a.L.T("connect.title"), t.XXL)
 			if a.Unauthorized {
 				ui.Text(c, a.L.T("connect.revoked")).FontSize(t.MD).LineHeight(1.5).TextColor(t.NeedsYou.Ink)
 			}

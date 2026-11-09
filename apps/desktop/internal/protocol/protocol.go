@@ -101,6 +101,7 @@ const (
 	KindReport           = "report"
 	KindCheckpoint       = "checkpoint"
 	KindWaiter           = "waiter"
+	KindWaiterLook       = "waiter_look"
 	KindMemoryNoted      = "memory_noted"
 	KindBridgeMsg        = "bridge_msg"
 )
@@ -149,6 +150,9 @@ type Decision struct {
 	DefaultOption string `json:"defaultOption"` // go | hold
 	DefaultAt     string `json:"defaultAt,omitempty"`
 	Reversible    bool   `json:"reversible"`
+	// RoutineID marks a routine's proposal or review card (D114): Go
+	// activates or keeps it.
+	RoutineID string `json:"routineId,omitempty"`
 }
 
 type DecisionResolved struct {
@@ -210,14 +214,161 @@ type Usage struct {
 	CacheWrite   int64 `json:"cacheWrite,omitempty"`
 }
 
-// Waiter is a cheap wait that wakes the partner (wait_until). A task-less
-// waiter renders as a compact row on On hand.
+// Waiter is a cheap wait (D28, D112): a time (wait_until), or a condition
+// compiled into a read-only check, a connection's event, or either plus a
+// cheap model's judgement. A task-less waiter renders as a compact row on
+// On hand; the On hand snapshot adds what it has seen so far.
 type Waiter struct {
+	WaiterID  string     `json:"waiterId"`
+	TaskID    string     `json:"taskId,omitempty"`
+	RoutineID string     `json:"routineId,omitempty"`
+	At        string     `json:"at,omitempty"`
+	Reason    string     `json:"reason"`
+	State     string     `json:"state"`          // armed | fired | cancelled | expired
+	Kind      string     `json:"kind,omitempty"` // timer | check | event | judge
+	Check     *CheckSpec `json:"check,omitempty"`
+	Event     *EventSpec `json:"event,omitempty"`
+	Judge     string     `json:"judge,omitempty"`
+	EveryMs   int64      `json:"everyMs,omitempty"`
+	Until     string     `json:"until,omitempty"`
+	Observed  string     `json:"observed,omitempty"`
+	// From the On hand snapshot (WaiterView).
+	ArmedAt     string `json:"armedAt,omitempty"`
+	LastLookAt  string `json:"lastLookAt,omitempty"`
+	LastSummary string `json:"lastSummary,omitempty"`
+	Looks       int    `json:"looks,omitempty"`
+	Changes     int    `json:"changes,omitempty"`
+	NextLookAt  string `json:"nextLookAt,omitempty"`
+}
+
+// CheckSpec is a condition compiled into one read-only command and what
+// counts as met (protocol/src/checks.ts).
+type CheckSpec struct {
+	Argv        []string  `json:"argv"`
+	Device      string    `json:"device,omitempty"`
+	Cwd         string    `json:"cwd,omitempty"`
+	SucceedWhen Predicate `json:"succeedWhen"`
+}
+
+type Predicate struct {
+	ExitCode *int   `json:"exitCode,omitempty"`
+	Path     string `json:"path,omitempty"`
+	Equals   any    `json:"equals,omitempty"`
+	OneOf    []any  `json:"oneOf,omitempty"`
+	Contains string `json:"contains,omitempty"`
+	Matches  string `json:"matches,omitempty"`
+	Any      bool   `json:"any,omitempty"`
+}
+
+// EventSpec is new items from a connection's trigger (OpenConnector).
+type EventSpec struct {
+	Connection string `json:"connection"`
+	Service    string `json:"service"`
+	Trigger    string `json:"trigger"`
+	Contains   string `json:"contains,omitempty"`
+}
+
+// WaiterLook is one look of a check or event, logged when what it saw
+// changed (on the task's stream for a task's wait).
+type WaiterLook struct {
 	WaiterID string `json:"waiterId"`
 	TaskID   string `json:"taskId,omitempty"`
-	At       string `json:"at,omitempty"`
-	Reason   string `json:"reason"`
-	State    string `json:"state"` // armed | fired | cancelled
+	OK       bool   `json:"ok"`
+	Met      bool   `json:"met"`
+	Summary  string `json:"summary"`
+	Error    string `json:"error,omitempty"`
+}
+
+// Until is a task's keep-going loop with its tries (D113), for the try strip.
+type Until struct {
+	Condition string     `json:"condition"`
+	MaxTries  int        `json:"maxTries"`
+	State     string     `json:"state"` // on | met | stopped
+	Stop      string     `json:"stop,omitempty"`
+	Check     *CheckSpec `json:"check,omitempty"`
+	Tries     []UntilTry `json:"tries"`
+}
+
+type UntilTry struct {
+	N       int    `json:"n"`
+	Verdict string `json:"verdict"` // met | better | same | worse | unknown
+	Summary string `json:"summary"`
+	By      string `json:"by"`
+	At      string `json:"at,omitempty"`
+}
+
+// Routine is a routine (例行, D114) as On hand shows it (RoutineView).
+type Routine struct {
+	RoutineID    string         `json:"routineId"`
+	Name         string         `json:"name"`
+	Trigger      RoutineTrigger `json:"trigger"`
+	TriggerWords string         `json:"triggerWords"`
+	Brief        string         `json:"brief"`
+	Reports      string         `json:"reports"` // every | on_change | needs_you
+	Effect       string         `json:"effect"`  // read_only | drafts | local_writes
+	State        string         `json:"state"`   // proposed | active | paused | ended | dismissed
+	DecisionID   string         `json:"decisionId,omitempty"`
+	CreatedAt    string         `json:"createdAt"`
+	ReviewAt     string         `json:"reviewAt"`
+	PausedBy     string         `json:"pausedBy,omitempty"`
+	PauseReason  string         `json:"pauseReason,omitempty"`
+	NextAt       string         `json:"nextAt,omitempty"`
+	Upcoming     []string       `json:"upcoming,omitempty"`
+	DryRun       *RoutineDryRun `json:"dryRun,omitempty"`
+	LastRun      *RoutineRun    `json:"lastRun,omitempty"`
+	Running      string         `json:"running,omitempty"`
+}
+
+type RoutineTrigger struct {
+	Kind      string     `json:"kind"` // time | condition
+	Every     string     `json:"every,omitempty"`
+	Time      string     `json:"time,omitempty"`
+	Zone      string     `json:"zone,omitempty"`
+	TZ        string     `json:"tz,omitempty"`
+	Condition string     `json:"condition,omitempty"`
+	Check     *CheckSpec `json:"check,omitempty"`
+	Event     *EventSpec `json:"event,omitempty"`
+}
+
+type RoutineDryRun struct {
+	Met     bool   `json:"met"`
+	Summary string `json:"summary"`
+	At      string `json:"at"`
+}
+
+type RoutineRun struct {
+	RoutineID    string `json:"routineId"`
+	RunID        string `json:"runId"`
+	ScheduledFor string `json:"scheduledFor"`
+	State        string `json:"state"` // started | skipped | done | failed
+	TaskID       string `json:"taskId,omitempty"`
+	At           string `json:"at,omitempty"`
+}
+
+// FromRoutine marks a routine's run task.
+type FromRoutine struct {
+	RoutineID string `json:"routineId"`
+	Name      string `json:"name"`
+}
+
+// WaiterAction, RoutineAction and UntilAction are the work-over-time
+// buttons (D112-D114), each answered with action_result.
+type WaiterAction struct {
+	T        string `json:"t"` // "waiter_action"
+	WaiterID string `json:"waiterId"`
+	Action   string `json:"action"` // look | cancel
+}
+
+type RoutineAction struct {
+	T         string `json:"t"` // "routine_action"
+	RoutineID string `json:"routineId"`
+	Action    string `json:"action"` // pause | resume | end
+}
+
+type UntilAction struct {
+	T      string `json:"t"` // "until_action"
+	TaskID string `json:"taskId"`
+	Action string `json:"action"` // stop
 }
 
 // MemoryNoted is the partner saving something durable to the user's
@@ -358,6 +509,8 @@ type TaskCard struct {
 	PendingDecision *PendingDecision `json:"pendingDecision,omitempty"`
 	OpenedAt        string           `json:"openedAt"`
 	UpdatedAt       string           `json:"updatedAt"`
+	Until           *Until           `json:"until,omitempty"`       // D113
+	FromRoutine     *FromRoutine     `json:"fromRoutine,omitempty"` // D114
 }
 
 // PendingDecision is Bodies["decision"] & { askedAt }.
@@ -379,6 +532,8 @@ type OnHand struct {
 	// Waiters are the armed waiters; task-less ones render as compact
 	// rows.
 	Waiters []Waiter `json:"waiters"`
+	// Routines (D114), proposed ones included (their proposal card).
+	Routines []Routine `json:"routines,omitempty"`
 }
 
 // ---------- Client <-> main process WebSocket ----------
@@ -402,6 +557,7 @@ type Hello struct {
 	Persona string `json:"persona,omitempty"`
 	Cursor  *int64 `json:"cursor,omitempty"`
 	Locale  string `json:"locale,omitempty"` // zh | en
+	TZ      string `json:"tz,omitempty"`     // IANA zone; personal routines follow it (D114)
 }
 
 type Send struct {

@@ -38,7 +38,15 @@ func (a *App) task(c *ui.Context) {
 				// line (state · when · who), the headline (what it is doing
 				// now, or the outcome), then a pending ask and what to do.
 				ui.Row(c.Key("head")).Gap(t.S5).AlignItems(ui.Start).Children(func() {
-					a.partnerFace(c, "task:"+task.ID, taskPresence(task), taskFaceW)
+					ui.Box(c.Key("facebox")).Shrink(0).Children(func() {
+						a.partnerFace(c, "task:"+task.ID, taskPresence(task), taskFaceW)
+						// What it waits for, in a bubble by its head (D112).
+						if w := a.S.WaiterFor(task.ID); w != nil && task.Attention() == protocol.Blocked && (w.Check != nil || w.Event != nil) {
+							ui.Box(c.Key("bubble")).Absolute().Left(taskFaceW - 30).Top(-12).Children(func() {
+								a.waitBubble(c, waitGlyph(w.Check, w.Event), 46)
+							})
+						}
+					})
 					ui.Column(c).Grow(1).MinWidth(0).Gap(t.S4).Children(func() {
 						// The meta line sits 8 above the headline, the outcome's
 						// included: one block whatever the state.
@@ -60,6 +68,8 @@ func (a *App) task(c *ui.Context) {
 						a.switchSheet(c, task) // 换谁来做 / Switch who does it (D89)
 					})
 				})
+				a.waitPanel(c, task)
+				a.tryStrip(c, task)
 				a.whatItDid(c, task)
 				a.changes(c, task)
 				a.taskDetails(c, task)
@@ -120,6 +130,10 @@ func (a *App) taskStanding(c *ui.Context, task *store.Task) {
 	if who, _ := a.whoLine(task); who != "" && !finished(task) {
 		parts = append(parts, who)
 	}
+	// A wait's head stays short (D90): who does it is in Details.
+	if w := a.S.WaiterFor(task.ID); w != nil && att == protocol.Blocked && (w.Check != nil || w.Event != nil) && len(parts) > 1 {
+		parts = parts[:1]
+	}
 	ui.Row(c.Key("meta")).Gap(t.S1).Wrap().AlignItems(ui.Baseline).Children(func() {
 		ui.Text(c, a.stateLabel(att)).FontSize(t.SM).FontWeight(800).TextColor(t.State(string(att)).Ink)
 		if len(parts) > 0 {
@@ -140,6 +154,9 @@ func (a *App) taskHeadline(c *ui.Context, task *store.Task) {
 		line = a.L.T("browser.looking", task.Browsing())
 	case task.Attention() == protocol.Blocked:
 		line = a.waitReason(task)
+		if w := a.S.WaiterFor(task.ID); w != nil && (w.Check != nil || w.Event != nil) {
+			line = a.waitLine(w.Reason)
+		}
 	}
 	if line == "" {
 		if rep := task.Report(); rep != nil && rep.Summary != "" {
@@ -201,7 +218,7 @@ func taskPresence(task *store.Task) theme.Presence {
 	case protocol.Working:
 		return theme.Working
 	case protocol.Blocked:
-		return theme.Napping
+		return theme.Waiting
 	}
 	return theme.Idle
 }
@@ -913,6 +930,7 @@ func (a *App) taskDetails(c *ui.Context, task *store.Task) {
 				}
 			})
 		}
+		a.waitRows(c, task, row, value)
 		p := task.Place()
 		if line := a.placeLine(p); line != "" {
 			row(a.L.T("task.dossier.where"), func() {

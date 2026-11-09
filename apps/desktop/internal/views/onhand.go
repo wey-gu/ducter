@@ -58,6 +58,7 @@ func (a *App) onHand(c *ui.Context) {
 					a.lane(c, store.LaneDone, b.Lanes[store.LaneDone], 1, 260)
 				}
 			})
+			a.routineShelf(c)
 		})
 	})
 }
@@ -100,7 +101,7 @@ func (a *App) looseWaiters() []*protocol.Waiter {
 func (a *App) waitReason(task *store.Task) string {
 	if w := a.S.WaiterFor(task.ID); w != nil {
 		r := w.Reason
-		if at := store.ParseTime(w.At); !at.IsZero() {
+		if at := store.ParseTime(w.At); !at.IsZero() && w.Check == nil && w.Event == nil {
 			r += " · " + a.L.T("waiter.at", a.when(at))
 		}
 		return r
@@ -137,13 +138,24 @@ func (a *App) waiterRow(c *ui.Context, w *protocol.Waiter) {
 	t := a.T
 	ui.Row(c).Gap(t.S3).Padding(t.S4, t.S4).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).AlignItems(ui.Start).
 		Label(w.Reason).Children(func() {
-		a.glyph(c, 18, drawClock(t.InkMuted))
+		if w.Check != nil || w.Event != nil {
+			a.waitBubble(c, waitGlyph(w.Check, w.Event), 40)
+		} else {
+			a.glyph(c, 18, drawClock(t.InkMuted))
+		}
 		// Already under the Waiting lane's header: the reason alone, and
-		// its time under it (a narrow lane has no room for both on a line).
+		// how it looks (or its time) under it.
 		ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
-			ui.Text(c, w.Reason).FontSize(t.MD).FontWeight(800).MaxLines(3)
-			if at := store.ParseTime(w.At); !at.IsZero() {
-				ui.Text(c, a.when(at)).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum")
+			title := w.Reason
+			if w.Check != nil || w.Event != nil {
+				title = a.waitLine(w.Reason)
+			}
+			ui.Text(c, title).FontSize(t.MD).FontWeight(800).MaxLines(3)
+			if w.Check != nil || w.Event != nil {
+				a.groove(c, w, false)
+			}
+			if line := a.waitCaption(w); line != "" {
+				ui.Text(c, line).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").MaxLines(2)
 			}
 		})
 	})
@@ -430,12 +442,19 @@ func (a *App) workingCard(c *ui.Context, task *store.Task) {
 	a.cardLink(c, card, task)
 	card.Children(func() {
 		ui.Text(c, task.Title()).FontSize(t.MD).FontWeight(800)
-		if rep := task.Report(); rep != nil && rep.Summary != "" {
+		if u := task.Card; u != nil && u.Until != nil && u.Until.State == "on" {
+			// A keep-going loop (D113): its tries, then where it stands.
+			a.beads(c, u.Until, 22)
+			ui.Text(c, a.untilLine(u.Until)).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft).MaxLines(3)
+		} else if rep := task.Report(); rep != nil && rep.Summary != "" {
 			ui.Text(c, rep.Summary).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft).MaxLines(3)
 		} else if r := a.waitReason(task); r != "" {
 			ui.Text(c, r).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
 		}
 		meta := []string{a.whereWhy(task)}
+		if task.Card != nil && task.Card.FromRoutine != nil {
+			meta = append([]string{a.L.T("routine.from", task.Card.FromRoutine.Name)}, meta...)
+		}
 		if task.Card != nil && task.Card.UpdatedAt != "" {
 			meta = append(meta, a.L.T("onhand.reported", a.ago(task.Card.UpdatedAt)))
 		}
@@ -457,10 +476,21 @@ func (a *App) waitingCard(c *ui.Context, task *store.Task) {
 		} else {
 			reason = a.L.T("onhand.waiting.for", reason)
 		}
+		w := a.S.WaiterFor(task.ID)
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-			a.glyph(c, 18, drawClock(t.InkMuted))
+			if w != nil && (w.Check != nil || w.Event != nil) {
+				a.waitBubble(c, waitGlyph(w.Check, w.Event), 36)
+			} else {
+				a.glyph(c, 18, drawClock(t.InkMuted))
+			}
 			ui.Text(c, reason).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft).Grow(1).MinWidth(0)
 		})
+		if w != nil && (w.Check != nil || w.Event != nil) {
+			a.groove(c, w, false)
+			if line := a.waitCaption(w); line != "" {
+				ui.Text(c, line).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum").MaxLines(2)
+			}
+		}
 		if rep := task.Report(); rep != nil && rep.Summary != "" {
 			ui.Text(c, rep.Summary).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(2)
 		}
@@ -511,6 +541,9 @@ func (a *App) partnerDecisionCard(c *ui.Context, d *store.DecisionState) {
 			ui.Text(c, a.S.PersonaName).FontSize(t.SM).FontWeight(800).TextColor(t.NeedsYou.Ink)
 		})
 		a.heading(c, autospace(d.Question), t.XL).LineHeight(1.35)
+		if d.RoutineID != "" {
+			a.routineFacts(c, d.RoutineID, t.NeedsYou.Ink)
+		}
 		a.countdown(c, d)
 		a.decisionButtons(c, d, decisionStyle{height: 48, quietBg: t.NeedsYou.Surface})
 	})

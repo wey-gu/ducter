@@ -635,7 +635,7 @@ func (a *App) Receive(f protocol.ServerFrame) {
 		if a.Route == RouteTask {
 			a.Route = RouteConversation
 		}
-		a.send(protocol.Hello{T: "hello", Locale: string(a.L.Lang)})
+		a.send(protocol.Hello{T: "hello", Locale: string(a.L.Lang), TZ: localZone()})
 	}
 	a.noteResults(f)
 	a.S.Apply(f)

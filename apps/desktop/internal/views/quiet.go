@@ -285,6 +285,12 @@ func (a *App) ask(c *ui.Context, d *store.DecisionState, taskID string) {
 	key := "d" + d.DecisionID
 	ui.Column(c.Key("ask:" + d.DecisionID)).MaxWidthPercent(88).MaxWidth(readingMeasure).Gap(t.S1 + 2).Children(func() {
 		ui.Text(c, autospace(d.Question)).Selectable().CopyData(autospaceCopy).FontSize(t.PartnerSize).LineHeight(leadingFor(d.Question, 1.65))
+		// A routine's proposal card (D29, D114): what it would do, before one Go.
+		if d.RoutineID != "" && d.Resolved == nil {
+			ui.Column(c.Key("facts")).Padding(t.S4, t.S4).Radius(t.RadiusLG).Background(t.NeedsYou.Surface).Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge).Children(func() {
+				a.routineFacts(c, d.RoutineID, t.NeedsYou.Ink)
+			})
+		}
 		if !openAsk(d) {
 			a.decisionButtons(c, d, decisionStyle{height: t.ControlSM, quietBg: t.Bg})
 			return

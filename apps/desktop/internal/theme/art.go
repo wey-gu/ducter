@@ -25,10 +25,12 @@ const (
 	NeedsYou Presence = "needsyou"
 	Done     Presence = "done"
 	Napping  Presence = "napping"
+	// Waiting: on its little bench, looking out (D112).
+	Waiting Presence = "waiting"
 )
 
 // Presences are all of them, in a fixed order.
-var Presences = []Presence{Idle, Working, NeedsYou, Done, Napping}
+var Presences = []Presence{Idle, Working, NeedsYou, Done, Napping, Waiting}
 
 var (
 	artMu    sync.Mutex

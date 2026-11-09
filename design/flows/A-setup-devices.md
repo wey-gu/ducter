@@ -546,7 +546,8 @@ with what it can do.**
   breathes very slowly (4 s period), the only motion; never shakes.
 - Wake: blanket slides off, the device blinks twice, task pebbles hop once back to working blue.
 - Move to another device: the pebble **skips** in an arc from the sleeping device to the target
-  (≈ 600 ms), lands with a small bounce; the old card dims to superseded behind it.
+  (≈ 600 ms), lands with a small bounce; the old card dims to superseded behind it. *Draft D157
+  (`design/where.md` §9): the Isles' parcel travels home and out again instead.*
 - Home asleep (A3-b): the header face closes its eyes; no animation loop at all (it's resting).
 - Reduced motion: state changes by color and label only.
 

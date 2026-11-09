@@ -253,7 +253,9 @@ checkpoint.
 - On Go: the chip's harness glyph flips like a card (Codex → Claude), a checkpoint tick
   stamps the transcript, the card keeps its position. No reshuffle on On hand.
 - Device move: the task pebble hops from one device chip to the other along an arc
-  (playset/isles direction pending D43); reduced motion: cross-fade.
+  (playset/isles direction pending D43); reduced motion: cross-fade. *Draft D157
+  (`design/where.md` §9) replaces this with D81's parcel going home and out again, never island
+  to island; targets and the "closing the laptop" decision are in §7 there.*
 
 ### Edge cases
 - Switching while `needs-you`: the pending question carries over unchanged; its countdown

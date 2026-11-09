@@ -41,7 +41,8 @@ partner eval (real model, fake tasks and Mem; `research/30`) · **unit** = unit 
 | D5 | Failure / stall | draft | draft | draft | draft | — | live: interrupt; eval: failure wording; stall/breaker — | |
 | E1 | Follow-up in conversation vs in task | draft | draft | draft | draft | — | live: `task_send` steered / prompted; eval: follow-ups reach the right task | |
 | E2 | Add scope mid-way | draft | draft | draft | draft | — | live: steer into a running turn | |
-| E3 | Switch model / handoff / move device | draft | draft | draft | draft | — | — | |
+| E3 | Switch model / handoff / move device | draft | draft | draft | draft | draft (ai-loadout) | native (cua-driver, demo core `apps/web/demo-loadout.ts`), zh + en: a task's who and why, Switch who does it, Continue on X, the "make it a rule?" ask after two switches, rule saved and removed; 390 px phone: the same in Details; unit: `fw_candidates`, reserve, runner handoff from saved progress. Live handoff on real harnesses — | D89, D90. Evidence `ducter-evidence/ai-loadout-build/` |
+| E6 | What it thinks with, and who does the tasks | draft | draft | draft | draft | draft (ai-loadout) | native, zh + en, one account and several, limit plenty and almost out: the socket, the tray with limit rings, Switch drops a token into the socket, the model choice, an agent's line with Use it for tasks, Your rules with Remove; 390 px phone Settings sheet. The partner restarts on the new pick at the next message: unit + end to end on OAR's scripted runtime; live Codex partner turn — | D89. Human comprehension test still owed (`design/ai-loadout.md` §6) |
 | E4 | Pause / cancel / reopen days later | draft | draft | draft | draft | — | live: stop, drop, reopen, restart mid-task | |
 | E5 | Merge / split tasks | draft | draft | draft | draft | — | — | open question |
 | F1 | Rule created / edited / forgotten | — | — | — | — | — | — | |

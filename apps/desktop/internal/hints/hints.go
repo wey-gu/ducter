@@ -48,6 +48,11 @@ type state struct {
 	// Lang is the window's language from Settings: "zh", "en", or empty
 	// (follow macOS).
 	Lang string `json:"lang,omitempty"`
+	// TitleSeenAt is when the title moment (D87) last played to its end
+	// or was skipped: it plays on the first launch only.
+	TitleSeenAt string `json:"titleSeenAt,omitempty"`
+	// SoundOff turns the app's sounds off (Settings); on by default.
+	SoundOff bool `json:"soundOff,omitempty"`
 }
 
 // Ask is one answer to a gentle offer: "yes", "no", or "later" (asked
@@ -136,6 +141,32 @@ func (l *Local) MarkFirstResultSeen(at time.Time) {
 		return
 	}
 	l.st.FirstResultSeenAt = at.UTC().Format(time.RFC3339)
+	l.save()
+}
+
+// TitleSeen reports whether the title moment already played on this Mac.
+func (l *Local) TitleSeen() bool {
+	return l != nil && l.st.TitleSeenAt != ""
+}
+
+// MarkTitleSeen remembers that the title moment played (or was skipped).
+func (l *Local) MarkTitleSeen(at time.Time) {
+	if l == nil {
+		return
+	}
+	l.st.TitleSeenAt = at.UTC().Format(time.RFC3339)
+	l.save()
+}
+
+// Sound reports whether the app may play its sounds (Settings).
+func (l *Local) Sound() bool { return l == nil || !l.st.SoundOff }
+
+// SetSound turns the app's sounds on or off.
+func (l *Local) SetSound(on bool) {
+	if l == nil {
+		return
+	}
+	l.st.SoundOff = !on
 	l.save()
 }
 

@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
-import type { Attention, Bodies, Delivery, LogEvent, Place, Residency, TaskCard } from "@ducter/protocol";
+import { HARNESS_IDS, harnessName, type Attention, type Bodies, type Delivery, type LogEvent, type Place, type Residency, type TaskCard } from "@ducter/protocol";
 import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, SessionSpec } from "@ducter/protocol/src/internal.ts";
-import { NUDGE, REOPENED, RESUME_AFTER_RESTART, kickoff, taskBrief } from "./brief.ts";
+import { NUDGE, REOPENED, RESUME_AFTER_RESTART, handedOver, kickoff, taskBrief } from "./brief.ts";
 import { createOarHarnessPort } from "./oar.ts";
 import { cwdOf, planPlace, provisionPlace } from "./places.ts";
 import { browserSidecar, type BrowserOptions, type BrowserSidecar } from "./browser.ts";
@@ -14,7 +14,7 @@ export const unreachableReason = (device: string) => `device:unreachable:${devic
 
 type HarnessId = SessionSpec["harness"];
 type From = NonNullable<Bodies["task_event"]["from"]>;
-const HARNESSES: HarnessId[] = ["claude-code", "codex", "pi"];
+const HARNESSES: readonly HarnessId[] = HARNESS_IDS;
 
 export interface RunnerOptions {
   harness?: HarnessPort; // default: OAR
@@ -95,7 +95,7 @@ export function shortId(): string {
 }
 
 export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt {
-  const harness = opts.harness ?? createOarHarnessPort();
+  const harness = opts.harness ?? createOarHarnessPort({ dataDir: core.dataDir });
   const now = opts.now ?? (() => new Date());
   const newId = opts.newId ?? shortId;
   const tasks = new Map<string, TaskRt>();
@@ -399,7 +399,9 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const ops = opsFor(open.place);
     // A worker's cwd is on the worker; it was planned there and recorded in the place.
     const cwd = ops.device ? remoteCwd(open.place) : cwdOf(open.place, open.taskId, core.dataDir);
-    const t = newRt(open.taskId, e.persona, card, specFor(open.taskId, open, cwd), ops);
+    // After a switch (D89) the card holds who does it now, not who it opened with.
+    const now = card.body ? { ...open, harness: card.body.harness, model: card.body.model } : open;
+    const t = newRt(open.taskId, e.persona, card, specFor(open.taskId, now, cwd), ops);
     for (const ev of core.log.read({ stream: stream(open.taskId), kinds: ["task_event"], limit: 50_000 })) {
       const raw = (ev.body as Bodies["task_event"]).raw as { sessionId?: string; cwd?: string } | undefined;
       if (raw?.sessionId) t.sessionId = t.loggedSessionId = raw.sessionId;
@@ -438,8 +440,19 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
 
     async openTask(input) {
       const id = newId();
-      const h = (input.harness ?? opts.defaultHarness ?? "claude-code") as HarnessId;
+      // Who does it (D89): the person's rules, the limits and Use it for tasks, through core's
+      // chooser; a pick this runner can't run (or no device info) keeps the old default.
+      const picked = await core.bodies?.choose({ title: input.title, brief: input.brief, place: input.place, harness: input.harness, model: input.model });
+      if (picked && "none" in picked) throw new Error(picked.none);
+      const pick = picked && HARNESSES.includes(picked.harness as HarnessId) ? picked : undefined;
+      if (pick) input = { ...input, harness: pick.harness, ...(pick.model ? { model: pick.model } : {}) };
+      // D85: the partner's choice; else the first account the user lets tasks use (Settings
+      // taskAccounts; a missing entry is enabled), in first-wave order.
+      const accounts = core.settings?.get().taskAccounts ?? {};
+      const enabled = (x: HarnessId) => accounts[x]?.enabled !== false;
+      const h = (input.harness ?? opts.defaultHarness ?? HARNESSES.find(enabled) ?? "claude-code") as HarnessId;
       if (!HARNESSES.includes(h)) throw new Error(`unknown harness ${input.harness}`);
+      if (input.harness && !enabled(h)) throw new Error(`the user switched ${harnessName(h)} off for tasks; leave harness out or ask them`);
       const title = input.title.trim() || "Untitled task";
       // Where it runs: this machine, or a worker that must be connected right now.
       const ops = opsFor(input.place);
@@ -459,6 +472,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       const model = input.model || (h === "claude-code" ? (opts.defaultModel ?? opts.taskModel ?? process.env.DUCTER_TASK_MODEL) || undefined : undefined);
       const open: Bodies["task_open"] = { taskId: id, title, project, place: resolved.place, harness: h, model, brief: input.brief };
       const opened = core.log.append({ persona, stream: stream(id), origin: "system", kind: "task_open", body: open });
+      core.log.append({ persona, stream: stream(id), origin: "system", kind: "body_selected", body: { taskId: id, harness: h, ...(model ? { model } : {}), why: pick?.why ?? { kind: input.harness ? "partner" : "default" } } });
       const card: TaskCard = {
         taskId: id,
         persona,
@@ -563,6 +577,48 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         throw err;
       }
       return { delivered: "prompted" as const };
+    },
+
+    async switchBody(taskId, harness, model) {
+      const t = get(taskId);
+      if (!HARNESSES.includes(harness as HarnessId)) return { ok: false, message: `${harness} can't do tasks here yet.` };
+      if (t.dropped) return { ok: false, message: "That task was dropped. Undo the drop first." };
+      await t.started.catch(() => {});
+      const from = t.spec.harness;
+      const wasRunning = !!t.session && isBusy(t);
+      const att = currentAttention(t);
+      // The old session closes; its native session can't carry over to another harness.
+      const old = t.session;
+      t.session = undefined;
+      t.running = false;
+      t.sessionId = undefined;
+      await old?.close().catch(() => {});
+      t.spec = { ...t.spec, harness: harness as HarnessId };
+      if (model) t.spec.model = model;
+      else delete t.spec.model;
+      logEvent(t, { role: "system", from: "runner", text: `moved from ${from} to ${harness}${model ? ` (${model})` : ""}` });
+      // Something left to do: carry on there now, from the saved progress. A finished or waiting
+      // task keeps its state; the next message starts the new session.
+      if (!wasRunning && att !== "working" && att !== "queued") {
+        setState(t, att, "parked");
+        return { ok: true };
+      }
+      const progress = core.log
+        .read({ stream: stream(taskId), kinds: ["checkpoint"], limit: 20 })
+        .map((e) => (e.body as Bodies["checkpoint"]).text);
+      t.started = (async () => {
+        await startSession(t, false);
+        setState(t, "working", "hot");
+        await sendTurn(t, handedOver(from, progress), "runner");
+      })();
+      try {
+        await t.started;
+      } catch (err) {
+        const reason = preview(err instanceof Error ? err.message : String(err), 500);
+        setState(t, "failed", "parked", reason);
+        return { ok: false, message: reason };
+      }
+      return { ok: true };
     },
 
     stop() {

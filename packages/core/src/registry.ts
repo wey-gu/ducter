@@ -3,7 +3,7 @@ import type { Attention, Bodies, LogEvent, OnHand, Residency, TaskCard } from "@
 import type { LogStore, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import { realClock, type Clock } from "./clock.ts";
 
-export const PROJECTED_KINDS = ["task_open", "task_state", "report", "decision", "decision_resolved", "waiter"] as const;
+export const PROJECTED_KINDS = ["task_open", "task_state", "body_selected", "report", "decision", "decision_resolved", "waiter"] as const;
 
 const ACTIVE: Attention[] = ["queued", "working", "needs_you", "blocked", "done_claimed"];
 const ORDER: Attention[] = ["needs_you", "blocked", "working", "queued", "done_claimed", "done", "failed", "dropped", "superseded"];
@@ -40,6 +40,7 @@ export function createRegistry(log: LogStore, clock: Clock = realClock): CoreReg
           harness: b.harness,
           model: b.model,
           bodyReason: b.bodyReason,
+          ...(prev?.body ? { body: prev.body, harness: prev.body.harness, model: prev.body.model } : {}),
           attention: prev?.attention ?? "queued",
           residency: prev?.residency ?? "provisioning",
           reason: prev?.reason,
@@ -58,6 +59,18 @@ export function createRegistry(log: LogStore, clock: Clock = realClock): CoreReg
         c.attention = b.attention;
         c.residency = b.residency;
         c.reason = b.reason;
+        c.updatedAt = e.ts;
+        break;
+      }
+      case "body_selected": {
+        // Who does it now and why (D89): the card says the latest one.
+        const b = e.body as Bodies["body_selected"];
+        const c = cards.get(b.taskId);
+        if (!c) return;
+        c.body = { harness: b.harness, ...(b.model ? { model: b.model } : {}), why: b.why };
+        c.harness = b.harness;
+        if (b.model) c.model = b.model;
+        else delete c.model;
         c.updatedAt = e.ts;
         break;
       }

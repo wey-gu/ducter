@@ -29,8 +29,9 @@ These pages are for using Ducter. If you want to build it or change it, start wi
 
 - **[Your devices](devices.md):** which computers Ducter works on, what each one can do, and
   how it keeps working when you close the window.
-- **[Your partner and settings](settings.md):** rename your partner, choose how it talks, when
-  it may come to you and what it remembers, and the app's own settings and menus.
+- **[Your partner and settings](settings.md):** rename your partner, choose what it thinks with
+  and who does the tasks, how it talks, when it may come to you and what it remembers, and the
+  app's own settings and menus.
 - **[Your phone](phone.md):** connect your phone, get a nudge when something needs you, and
   keep your nights quiet.
 - **[Privacy and safety](privacy-and-safety.md):** what Ducter never does by itself, what runs

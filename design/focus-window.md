@@ -93,8 +93,33 @@ overrides a choice, Ducter proposes a rule and the user confirms it.
 - **Card subtitle:** "Codex · gpt-x — your rule: backend refactors", so the reason is always
   visible.
 
-A quota reserve is kept for the main AI. Kimi's host-side token reader stays disabled
-(principle 17).
+A quota reserve is kept for the main AI: **10% of its own account** (D89; fixed in v1). A task
+never draws on it: at the reserve that account is a hard filter for tasks, and a task that
+would have gone there moves with the reason said ("Claude Code's limit is low"). Kimi's
+host-side token reader stays disabled (principle 17).
+
+**v0 as built (D89).** `fw_candidates` in core (`packages/core/src/candidates.ts`): hard
+filters are installed, signed in, **用它做事 / Use it for tasks** (per account, on by
+default), the reserve, and a model picked (pi); then the person's rules (a rule names words
+that mark its kind of work, matched in the title and brief, newest first); then the shipped
+tier table (Claude Code Opus and Codex "smart", Sonnet and the per-use agents "fast"); then
+the most limit left, plan before pay-per-use. The pick is logged as `body_selected {harness,
+model, why}` with `why` one of default · rule · limit · you · partner, and the card, the
+conversation's task line and Details say it. Nobody left: the open fails with one line the
+partner says, never a silent fallback.
+
+**Switching (换谁来做 / Switch who does it).** The list is the one doing it now, the top three
+others with why and the limit each, and the ones that can't, greyed with why. **换到 X 接着做 /
+Continue on X** closes the old session and starts the new agent from the brief and the saved
+progress (a handoff; the native session can't carry across harnesses); a waiting or finished
+task keeps its state and the next message starts it there. Each switch leaves a hidden note
+for the partner; after the second switch the same way (from → to), the partner is woken once
+to offer a rule: it names the kind of work in a few words and asks with Go / Hold, default
+hold, and saves it with `rule_save` on Go.
+
+**Rules as built.** Said in the conversation and saved by the partner (`rule_save`, after it
+restated the rule); kept in `rules.json` in the data folder; listed on Partner as **你的规则 /
+Your rules** with **不要这条 / Remove**. No rule editor.
 
 **When quota runs out mid-task:**
 1. Wait, if the reset is soon.

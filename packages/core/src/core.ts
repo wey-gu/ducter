@@ -22,6 +22,10 @@ import { createApnsSender, loadApnsConfig, type ApnsSender } from "./apns.ts";
 import { webApi, webStatic } from "./web.ts";
 import { createDevicesView, type DeviceProbes, type DevicesView } from "./devices.ts";
 import { openSettings, type SettingsStore } from "./settings.ts";
+import { openRules, type RulesStore } from "./rules.ts";
+import { createLoadout, isRuleHint, registerRuleTools, type Loadout } from "./loadout.ts";
+import { openConnections, type ConnectionsStore, type Linker, type OoSource } from "./connections.ts";
+import { registerConnectionTools } from "./connection-tools.ts";
 
 export interface CoreOptions {
   dataDir?: string;
@@ -39,6 +43,9 @@ export interface CoreOptions {
   apns?: ApnsSender;
   /** Test seams for Your devices and abilities (cua-driver, harness logins, device kind). */
   deviceProbes?: Partial<DeviceProbes>;
+  /** Test seams for connections: the MCP link, and the oo CLI's config. */
+  connectionLinker?: Linker;
+  ooSource?: OoSource;
 }
 
 export interface Core extends CoreApi {
@@ -56,6 +63,11 @@ export interface Core extends CoreApi {
   pusher: Pusher;
   /** The partner's settings (D71). */
   settings: SettingsStore;
+  /** 你的规则 / Your rules and who does the tasks (D89). */
+  rules: RulesStore;
+  loadout: Loadout;
+  /** The user's connections (D96). */
+  connections: ConnectionsStore;
   port: number;
   url: string; // ws URL for clients
   setRunner(r: Runner): void;
@@ -71,6 +83,8 @@ export function triggersPartner(e: LogEvent): boolean {
   if (e.kind === "waiter") return (e.body as Bodies["waiter"]).state === "fired";
   if (e.kind === "report") return (e.body as Bodies["report"]).state !== "progress";
   if (e.kind === "bridge_msg") return (e.body as Bodies["bridge_msg"]).direction === "in";
+  // The second switch the same way: the partner offers a rule once (loadout.ts).
+  if (isRuleHint(e)) return true;
   return false;
 }
 
@@ -138,6 +152,10 @@ export function startCore(opts: CoreOptions = {}): Core {
   const waiters = createWaiters({ log, clock });
   const mcp = createMcpHub({ secret: loadSecret(dataDir) });
   registerCoreTools(mcp, log, tasks);
+  const rules = openRules(dataDir);
+  registerRuleTools(mcp, rules);
+  const connections = openConnections({ dataDir, log, linker: opts.connectionLinker, oo: opts.ooSource });
+  registerConnectionTools(mcp, connections);
 
   const early: LogEvent[] = []; // triggers that arrive before the partner is wired
   const trigger = (e: LogEvent) => {
@@ -153,9 +171,10 @@ export function startCore(opts: CoreOptions = {}): Core {
     else if (early.length < 100) early.push(e);
   });
 
-  const api = { log, tasks, mcp, persona, dataDir, settings } as CoreApi;
   let devicesView: DevicesView | undefined;
-  const ws = createWsHandler({ core: api, decisions, runner: () => runner, devices: () => devicesView, settings, batchMs: opts.batchMs });
+  const loadout = createLoadout({ log, tasks, settings, rules, devices: () => devicesView });
+  const api = { log, tasks, mcp, persona, dataDir, settings, connections, bodies: loadout } as CoreApi;
+  const ws = createWsHandler({ core: api, decisions, runner: () => runner, devices: () => devicesView, settings, connections, rules, loadout, batchMs: opts.batchMs });
   const devices = openDeviceAuth(dataDir);
   // A device that pairs changes Your devices and abilities (远程打开 / Reach from anywhere).
   const gateAuth = {
@@ -248,6 +267,9 @@ export function startCore(opts: CoreOptions = {}): Core {
     push,
     pusher,
     settings,
+    rules,
+    loadout,
+    connections,
     port,
     url: `ws://127.0.0.1:${port}/ws`,
     setRunner(r) {

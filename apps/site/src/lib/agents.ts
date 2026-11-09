@@ -3,8 +3,11 @@
  * move a name from `soon` to `today` when it is verified end to end.
  */
 export const agents = {
+  /** Can be the partner itself, so one of these must be installed and signed in. */
   today: ["Claude Code", "Codex"],
-  soon: ["pi", "DeepSeek Harness"],
+  /** Carry tasks today (verified end to end, D85), not yet the partner. */
+  tasks: ["pi", "DeepSeek Harness"],
+  soon: [] as string[],
 };
 
 const join = (xs: string[], word: "and" | "or") =>
@@ -18,5 +21,4 @@ export const agentsTodayAnd = join(agents.today, "and");
 
 /** One line that says what works now and what comes next. */
 export const agentsLine =
-  `Works with ${agentsTodayAnd} today` +
-  (agents.soon.length ? `; ${join(agents.soon, "and")} are coming soon, and more after that.` : ".");
+  `Works with ${join([...agents.today, ...agents.tasks], "and")} today, and more AI agents after that.`;

@@ -32,7 +32,11 @@
 | Routine | **例行 / Routine** | Recurring or triggered work |
 | Waiter | (shown as the reason for Waiting: "在等 PR 通过 / Waiting for the PR to be approved") | |
 | `until` loop | "一直…直到… / Keep … until …" on the task | |
-| Rule | **规则 / Rule** | A standing preference stated in words |
+| Rule | **规则 / Rule**; the list **你的规则 / Your rules** · **不要这条 / Remove** · **跟 {name} 说一条规则… / Tell {name} a rule…** | A standing preference stated in words. Added only by saying it in the conversation; listed and removed on Partner (D89). After two switches the same way the partner asks once "以后…也用 X？ / Use X for … from now on?" |
+| what the partner itself runs on (brain) | **它用什么想事情 / What it thinks with**; the socket **想事情用 / Thinks with** · **换一个 / Switch** · **挑一个放进去 / Pick one to put in** · "{name} 现在用 {agent} 想事情了 / {name} thinks with {agent} now" · **从你的下一句话开始用 / Takes over from your next message** · **换了以后，名字、记得的事和你们的对话都还在 / Switching keeps its name, what it remembers and your conversation** · models **最聪明 / Smartest** · **回得更快 / Faster replies** | D89. Never "brain", 脑子, "model settings" or "main AI" on screen. Only AI agents signed in on the Mac it lives on: "只能用 {name} 住的这台 Mac 上登录了的 AI agent" |
+| who does the tasks (`fw_candidates`) | **谁来做事 / Who does the tasks** · the tray **这台 Mac 上的 AI agent / AI agents on this Mac** · **用它做事 / Use it for tasks** (per account, on by default) · **按用量付费 / Pay per use** | D89. Default line: "每件事 {name} 挑一个：最合适、额度最够的那个 / For each task {name} picks one: the best fit with the most limit left" |
+| the partner's reserve | **其中 10% 给 {name} 留着 / 10% of it is kept for {name}**; when only it is left, "额度还剩 n% · 都是给 {name} 留着的 / n% left · all kept for {name}" | D89. One sentence says tasks and the partner share one limit: "做事和 {name} 想事情用的是同一份额度…" |
+| `body_selected` (who does a task, and why) | **谁在做 / Who's doing it**: "{agent} 在做，按你的规则「…」/ {agent} is doing it, by your rule "…"" · "…，因为 {agent} 额度不多了 / …, because {agent}'s limit is low" · "…，是你换的 / …; you switched it"; switching **换谁来做 / Switch who does it** · **现在 / Now** · reasons **你的规则 / Your rule** · **最适合这件事 / Best fit for this** · **快，省额度 / Fast, uses less of the limit** · "额度不够了 · 剩下的给 {name} 留着 / Not enough limit · the rest is kept for {name}" · **你关了「用它做事」/ Use it for tasks is off** · the button is the handoff's **换到 X 接着做 / Continue on X** | D89, D90. The conversation's task line ends with who (and why when it isn't the plain pick); the opened task's head says who in its meta line; the reason is a sentence in Details |
 | device states | **醒着 / Awake · 睡着了 / Asleep · 连不上 / Can't reach** · wake = **叫醒 / Wake** | Never "broken" or "offline" wording for sleep |
 | quota | **额度 / limit** ("额度还剩 80% / 80% of the limit left") | One per AI account, shared across its devices |
 | screen place controls | **画面 / Screen** tab · **接手 / Take over** · **还给它 / Give it back** | |
@@ -82,10 +86,13 @@
 | the partner's page (D71) | **伙伴 / Partner** (nav, ⌘4; also the partner's own face and name in the conversation's bar) · **改名字 / Rename** · faces **在呢 / Here · 在做事 / Working · 有事找你 / Needs you · 刚做完 / Just done · 歇着了 / Resting** · **住在{device} 上 / Lives on {device}** | A character sheet, not a form. Never "profile", "persona", "agent settings" |
 | how the partner talks | **怎么说话 / How it talks**: **跟着我 / Follow me** · 中文 · English | Follow me = the language of the user's message |
 | notifications and the default wait | **什么时候找你 / When it comes to you**: **通知 / Notifications** · **免打扰 / Quiet hours** ({start} 到 {end} / to) · **你没回的时候 / If you don't answer** · "等多久再按默认做 / How long before it goes with the default" | Only reversible decisions wait; irreversible ones always wait for the user |
+| a connection (the user's OpenConnector or another MCP server, D96) | **它能看的账号 / Accounts it can read** (Partner, for now) · **加一个 / Add one** · where: **OOMOL 托管 / Hosted by OOMOL** · **自己部署的 / Self-hosted** · **其他 MCP / Other MCP** · **地址 / Address** · **钥匙 / Key** · **检查并加上 / Check and add** · **移除 / Remove** · **用 oo 里的 OpenConnector / Use the OpenConnector from oo** · result "Ducter 现在能看 {name} 里的账号了 / Ducter can now read the accounts in {name}" | 钥匙 / Key: OpenConnector calls it a token (its Access page's Create Token); the UI names that button and otherwise says key, because "token" is retired in UI copy (D66). Proposed, D100. Never "connector", 授权, 接入. 连上 / Connect stays for devices. Each one says where mail passes |
 | memory, as the user controls it | **记得什么 / What it remembers** · **记住事情 / Remember things** (switch) · **最近记下的 / Noted lately** · **忘掉 / Forget** ("忘掉了：{title} / Forgotten: {title}"; when Mem can't: "这里不再显示…；Nowledge Mem 里那条还在 / … is hidden here; it's still in Nowledge Mem") · **装上 Nowledge Mem / Get Nowledge Mem** | Never "delete memory", "knowledge base", "记忆库" |
 | what runs without asking | **自己就做，还是先问你 / On its own, or asks you first** · **自己就做 / On its own** · **先问你 / Asks you first** | Read-only today; the items say the property (发给别人的 / reaches other people, 收不回的 / can't be taken back) |
 | the app's own settings (D71) | **设置 / Settings** (⌘,; Settings… in the menus) · **外观 / Look** · **界面语言 / Language** (**跟着系统 / Follow the system**) · **关窗以后 / When you close the window** · **更新 / Updates** · **数据和记录 / Data and logs** (打开数据文件夹 · 打开记录 · **检查一遍 / Run checks** · 都好 / All good) · **关于 / About** | What the partner is like lives on Partner, not here |
 | AI accounts on Devices | **登录 / Sign in** · **退出登录 / Sign out** · **装上 / Install** (an account card on this Mac) | The tool's own sign-in, in the browser; Ducter never sees the password |
+| the first-wave harnesses (D85) | **Claude Code** · **Codex** · **pi** · **DeepSeek Harness**, each product's own name, the same in zh and en | Never "harness", "runtime" or "adapter" on screen. pi is written lower-case, as its makers write it |
+| an account that runs on an API key (pi, DeepSeek Harness) | **需要一个 DeepSeek 密钥 / Needs a DeepSeek key** · **有 DeepSeek 密钥 / Has a DeepSeek key** · pi: **有能用的模型 / Has a model it can use** | The key is typed into a masked field and kept on this machine only (D85 proposal); never shown again, never in the conversation |
 | adding a device | **连上手机或另一台电脑 / Connect a phone or computer** (opens the one-time code) | Same words as D54's Connect. One code for any device (D83); the card says both ways: **手机或 Ducter 应用 / On a phone or in the Ducter app** (scan, or open the address and type the code) and **另一台电脑 / Another computer** (run one command) |
 | the menu bar extra | the clay partner in the macOS menu bar; its menu: **等你 · {n} / Needs you · {n}** or **没有要你定的事 / Nothing needs you**, each question with **好：{action} / Go: {action}** · **先等等 / Hold** · **回复… / Reply…**, then **打开 Ducter / Open Ducter** | |
 | a sandboxed place | **no noun**: the property, **碰不到你的文件 / Can't touch your files** | 沙盒 retired (D66, GQ8) |
@@ -280,8 +287,9 @@ Each scenario needs a flow, states, copy (zh + en), and motion. Status is tracke
   quiet hours; escalation (badge → message → push → call); done with evidence; failed
   verification; failure; stall.
 - **E. Steering.** A follow-up in the conversation vs. inside the task; adding scope; switching
-  model or harness; handoff; pause or cancel; merging or splitting tasks; reopening days
-  later.
+  model or harness (换谁来做 / Switch who does it, D89); handoff; pause or cancel; merging or
+  splitting tasks; reopening days later; choosing what the partner thinks with and who does the
+  tasks (E6, D89).
 - **F. Memory and identity.** A rule created, edited, or forgotten; recalling something from
   weeks ago; Mem unavailable; switching or linking personas.
 - **G. Safety.** An intent that needs policy (push, send, pay, call); a credential request;

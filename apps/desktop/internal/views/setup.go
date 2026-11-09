@@ -345,7 +345,12 @@ func (a *App) setupView(c *ui.Context) {
 		card.Children(func() {
 			switch a.setup.phase {
 			case setupChecking:
-				a.setupWaiting(c, theme.Napping, a.L.T("setup.checking"), a.L.T("setup.checking.body"))
+				// Ducter just woke up in the title: it's awake now.
+				face := theme.Napping
+				if a.title.played {
+					face = theme.Working
+				}
+				a.setupWaiting(c, face, a.L.T("setup.checking"), a.L.T("setup.checking.body"))
 			case setupStarting:
 				name := a.personaName()
 				body := "setup.starting.body"

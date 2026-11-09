@@ -161,9 +161,11 @@ lives in Details. On hand needs no state chip: the lane is the state.
 | a sleeping device | its blanket rises and falls (scale-y 1.045 from the bottom, 4.8 s) |
 | an AI account's cords | a sheen runs along once every 9 s |
 | the equip | peel (14%) → arc (50%) → snap (62–69%), 0.82 s, a tock and a 10 ms haptic |
+| the title moment (D87) | once per Mac: dawn rises, a 3% push-in with parallax, the eyes open on the tone, the logotype lit by a passing light; see `onboarding.md` |
 
 Delays are staggered so nothing moves in unison. A device that can't be reached is still and a
-little grey. Status, chips, lines and buttons never animate on their own. Reduced motion: all
+little grey. One exception (D87): the title moment's "Press any key" breathes (60–100%, 3.4 s); it
+is an invitation, not a status. Status, chips, lines and buttons never animate on their own. Reduced motion: all
 of it stops; the equip cross-fades; colors and words are unchanged.
 
 **Chinese typography (D78).** Bricolage sets Latin and digits; Chinese has its own faces and rules.
@@ -220,13 +222,19 @@ v1 has five places, and every one is reachable from the menu bar, a shortcut and
 | 对话 / Conversation | ⌘1, Esc from any other place | Home: talk, decide, see results |
 | 手头的事 / On hand | ⌘2, the button in the conversation's bar | Every task and what waits for you |
 | 设备 / Devices | ⌘3, the clay device button | The setup surface: devices, what they can do, AI accounts (sign in, install, sign out on this Mac), Connect a phone or computer |
-| 伙伴 / Partner | ⌘4, the partner's own face and name | A character sheet across the whole hero card: on the left the clay partner large, its name (renamed in place) and where it lives; on the right its five faces as a row filling the card (hover one to see it big); no status line under the name. Then How it talks · When it comes to you · What it remembers · On its own, or asks you first |
+| 伙伴 / Partner | ⌘4, the partner's own face and name | A character sheet across the whole hero card: on the left the clay partner large, its name (renamed in place) and where it lives; on the right its five faces as a row filling the card (hover one to see it big); no status line under the name. Beside the clay partner, a clay socket holds the AI agent it thinks with (D89), labelled 想事情用 / Thinks with, the account and model in words under it. Then the tray of this Mac's AI agents (clay tokens with a limit ring each; on the partner's own account the last 10%, kept for it, is the darker accent; not installed: a dashed ring), then two cards: What it thinks with · Who does the tasks. Then How it talks · When it comes to you · What it remembers · On its own, or asks you first |
 | 设置 / Settings | ⌘, and Settings… in the app menu and the menu bar extra | The app's own, calm: Look, Language, When you close the window, Updates, Data and logs, About, Remove Ducter (last, a quiet text button) |
 
 An opened task is the third zoom level under On hand. The **menu bar extra** (the clay partner
 as a template icon) is the handheld moment: with the window closed, its menu lists what needs
 you, each with Go / Hold / Reply…, then Open Ducter. The phone has one **Settings sheet**
-(tap the partner) with the partner's settings and the phone's own language.
+(tap the partner) with the partner's settings and the phone's own language; What it thinks with and Who does the tasks are lists there (an agent's row: its clay token, name, one line, Use it for tasks), with no stage (D89).
+
+**Switching what it thinks with** (D89) is the one game moment on Partner: Switch lifts the
+tray tokens that can go in (the others step back and say why: Install first, Pick a model
+first, Coming later), a tap flies the token into the socket with the equip's lift → arc →
+tock (`research/26`; reduced motion: a cross-fade), then one line: "{name} thinks with {agent}
+now". Nothing blinks; only the partner breathes.
 
 **Choices** (talk language, interface language, the default wait) are a segmented clay control
 (D76): a sunken track (`#F3E6D3`, radius 16, 4pt inset), the chosen one a white surface on a 2pt
@@ -253,11 +261,16 @@ empty list (no noted lines) is left out with its heading. Screenshots:
    - On mobile, decisions are a swipeable stack: swipe left takes the default, swipe right
      means later.
    - Routines appear as one card each, with the next firing time.
-3. **An opened task** (conductor depth; D74). One centered column on the conversation's
-   measure and rhythm, read top to bottom; the header is the breadcrumb and the title only.
-   1. Where it stands, in words in the state's ink (a drawn mark, "Done · started 14 min
-      ago"; for a task under way, its latest status line).
-   2. A pending ask, as in the conversation.
+3. **An opened task** (conductor depth; D74, D90). One centered column on the conversation's
+   measure and rhythm, read top to bottom; the window's header is the breadcrumb and the title only.
+   1. **The head is one block** (D90): the state face (96 pt) beside one quiet meta line,
+      the state in its ink, then "{time}开始的 / started {time}" and who does it ("· Codex"),
+      and a headline that is always there: while it works, what it is doing now in a
+      sentence (why it waits, its latest report, its latest saved progress, else its title)
+      at 28/800; finished, the outcome at 34/800. No link chain in the head.
+   2. A pending ask, as in the conversation; **换谁来做 / Switch who does it** opens here as
+      a card (D89): who does it now, the top three others with why and the limit each, the
+      ones that can't greyed with why, then Continue on X.
    3. The outcome, said once: the report in the partner's size, the line of proof, what went
       out, then Merge / Open draft PR (Try again for one that didn't work). It replaces the
       result banner and the "Told Ducter · done" card.
@@ -268,10 +281,16 @@ empty list (no noted lines) is left out with its heading. Screenshots:
    5. **改动 / Changes**: the changed files, each with +added −removed; a file opens its diff
       in place, full width, under a quiet header. No diff shows by default; a task in no repo
       has no section. The phone names the changes in the proof line and shows no diff.
-   6. A quiet **细节 / Details ›** disclosure: who is doing it and why, where (repo and
-      branch; the path as the user named it, never a scratch absolute path), saved progress
-      as a plain list, what went out, usage only if there is any. A row with nothing to say
-      is left out.
+   6. A quiet **细节 / Details ›** disclosure: who is doing it and why as one sentence
+      ("Codex is doing it, because Claude Code's limit is low." · Switch who does it), where
+      (repo and branch; the path as the user named it, never a scratch absolute path), saved
+      progress as a plain list with each time beside its item, what went out, usage only if
+      there is any. A row with nothing to say is left out. Labels sit in a fixed column on
+      the value's first baseline; values start on the head's left edge.
+
+   Type and rhythm (D90): section headings 18/800, one step above the 15 body; gaps 8 / 16 /
+   24 / 32; a headline or paragraph at most about 68 Latin or 36 Chinese characters a line
+   (D78 Chinese rules: leading 1.75, no tracking).
    The box to talk to the task stays at the bottom of the window, as the conversation's
    composer does.
 

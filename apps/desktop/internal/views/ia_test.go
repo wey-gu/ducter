@@ -199,3 +199,15 @@ func TestSettingsUpdateReady(t *testing.T) {
 	}
 	_ = restarted
 }
+
+// Every face in the Partner page's strip has a name in both languages (a
+// missing key shows itself: "partner.face.waiting" was on screen).
+func TestPartnerFaceNames(t *testing.T) {
+	for lang, table := range i18n.Tables() {
+		for _, p := range theme.Presences {
+			if _, ok := table["partner.face."+facekey(p)]; !ok {
+				t.Errorf("%s: no name for the %s face", lang, p)
+			}
+		}
+	}
+}

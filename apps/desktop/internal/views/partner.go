@@ -179,7 +179,8 @@ func (a *App) faceThumb(c *ui.Context, p theme.Presence, on bool) {
 		if bmp := theme.Art(p, 144); bmp != nil {
 			ui.Image(c, bmp).Size(72, 72).AccessHidden(true)
 		}
-		ui.Text(c, label).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).SingleLine().AccessHidden(true)
+		// Six faces share the strip: a long label ("Needs you") takes a second line, never "Need…".
+		ui.Text(c, label).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).TextAlign(ui.Center).MaxLines(2).AccessHidden(true)
 	})
 	if b.Hovered() {
 		a.partner.face = p

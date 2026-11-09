@@ -1523,6 +1523,65 @@ a {
   color: var(--failed-ink);
   font-weight: 700;
 }
+.acct-apps {
+  margin: 2px 0 0;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+/* The one tap (D122): oo is signed in. A sunken panel: what it will read, where mail passes, one button. */
+.acct-offer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  padding: var(--s4);
+  border-radius: var(--r-md);
+  background: var(--surface-sunken);
+}
+.acct-offer-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+.acct-offer-head .grow {
+  flex: 1;
+  min-width: 0;
+}
+.acct-offer-head .sub {
+  margin: 2px 0 0;
+}
+.acct-offer > .sub {
+  margin: 0;
+}
+.acct-offer-apps {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--s2) var(--s3);
+  margin: 0;
+  padding: var(--s3) var(--s4);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  list-style: none;
+}
+.acct-offer-apps li {
+  display: contents;
+}
+.acct-offer-apps b {
+  align-self: baseline;
+  font-size: var(--md);
+  font-weight: 700;
+}
+.acct-offer-apps span {
+  align-self: baseline;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink-soft);
+  font-size: var(--sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.accounts > .qlink {
+  align-self: flex-start;
+}
 .acct-oo,
 .acct-form {
   display: flex;

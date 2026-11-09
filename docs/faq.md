@@ -1,7 +1,7 @@
 ---
 title: Questions people ask
 description: Short answers about what Ducter is, what it costs, what it runs on, and what it can do today.
-order: 8
+order: 9
 ---
 
 # Questions people ask

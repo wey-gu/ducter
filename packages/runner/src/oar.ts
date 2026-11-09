@@ -85,7 +85,22 @@ export { readEnvFile };
 /** The env a harness process gets (D102): the allowlist, its own keys, then Ducter's explicit vars. */
 function harnessEnv(h: HarnessId, ctx: { env?: Record<string, string | null>; dataDir: string; inherited?: Record<string, string | undefined> }, explicit?: Record<string, string | null>): Record<string, string | null> {
   const grants = h === "codex" ? codexKeyNames(readCodexConfig(ctx.env ?? {})) : [];
-  return childEnvOverlay(h, { inherited: ctx.inherited ?? process.env, overlay: ctx.env, keys: readKeys(ctx.dataDir), grants, explicit });
+  return childEnvOverlay(h, { inherited: ctx.inherited ?? process.env, overlay: ctx.env, keys: readKeys(ctx.dataDir), grants, explicit: { OO_CONFIG_DIR: ooSignedOut(ctx.dataDir), ...explicit } });
+}
+
+/**
+ * D122: an `oo` a harness runs (a user skill like oo-gmail, or a plain Bash line) finds an empty
+ * config folder and is signed out, so no session reaches the user's accounts around the broker's
+ * Go gate. Ducter's own oo link runs oo with the user's real config.
+ */
+function ooSignedOut(dataDir: string): string {
+  const dir = join(dataDir, "oo-signed-out");
+  try {
+    mkdirSync(dir, { recursive: true, mode: 0o700 });
+  } catch {
+    /* the variable alone still points oo away from the user's sign-in */
+  }
+  return dir;
 }
 
 /** Whether DeepSeek Harness has a DeepSeek key anywhere it reads one (env, Ducter's key file, its own credential file). */

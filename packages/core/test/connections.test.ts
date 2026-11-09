@@ -206,7 +206,7 @@ describe("the oo CLI", () => {
     const dir = join(t.dir, "oo");
     mkdirSync(dir);
     writeFileSync(join(dir, "connector.toml"), `[self_hosted]\nurl = "${oc.url}"\ntoken = "${TOKEN}"\n`);
-    writeFileSync(join(dir, "auth.toml"), "x");
+    writeFileSync(join(dir, "auth.toml"), `id = "acct_placeholder"\n[accounts.acct_placeholder]\nendpoint = "oomol.com"\n`);
     const src = ooSource({ env: {}, dir, which: () => "/usr/local/bin/oo" });
     const d = src.detect();
     expect(d).toEqual({ installed: true, selfHosted: { url: oc.url, hasToken: true }, account: true });

@@ -1,7 +1,8 @@
 # Connectors and Restrained Proactive Help (DRAFT)
 
-> Draft 2 · 2026-11-09 · Branch `connectors` · Status: **D96 decided** (connections come from
-> the user's OpenConnector through Ducter's broker); **the broker is built** (§4, as built);
+> Draft 3 · 2026-11-09 · Branch `oo-connect` · Status: **D96 decided** (connections come from
+> the user's OpenConnector through Ducter's broker); **D122 decided** (with oo signed in, the
+> default way in is oo itself, §4.4); **the broker is built** (§4, as built);
 > everything about proactive work (cadence, cap, look-back, watching) is still a proposal,
 > D97–D101 at the end. Evidence: `research/35` (prior art, Google access,
 > open-connector, metaphor test). Builds on principles 7, 15, 16, 17 and 18, D43, D61 (the
@@ -53,6 +54,9 @@ sign-in and the same first find (§6).
   OOMOL Hosted or their own self-hosted OpenConnector. Ducter attaches to its MCP endpoint
   (`<base>/mcp`) with a Bearer runtime token, through Ducter's own broker in the control plane
   on the computer Ducter lives on. Any other MCP server attaches the same way.
+- **Or the user's oo does** (D122). With OOMOL's `oo` CLI signed in, Ducter reads the accounts
+  connected there by running oo itself (§4.4). There is no token at all on Ducter's side for
+  this kind: oo's sign-in stays in oo.
 - **The token lives only in Ducter.** It is kept in `<dataDir>/connection-tokens.json` (0600).
   It never appears in a harness's config, env, args or files, never in the Log, and never in
   a client frame.
@@ -93,8 +97,9 @@ broker speaks only MCP.
 
 - **Store.**
   - `<dataDir>/connections.json` (0600) holds the address, name, source and how it was added.
-    The source is `oomol` (the host is under oomol.com), `self` (an OpenConnector anywhere else)
-    or `mcp` (any other MCP server).
+    The source is `oomol` (the host is under oomol.com), `self` (an OpenConnector anywhere else),
+    `mcp` (any other MCP server) or `oo` (the user's oo CLI, D122: no address and no token; the
+    record's address is `oo:`).
   - Tokens are kept apart in `connection-tokens.json` (0600).
   - Removing a connection drops its token.
 - **Adding one.**
@@ -147,18 +152,56 @@ broker speaks only MCP.
   inherits the user's Claude config may still use them, as the user's own setup, unmediated
   and labeled [doc system.md].
 
-### 4.4 The oo CLI: the one tap (built)
+### 4.4 The oo CLI: the default way in (D122, built)
 
-The author uses OOMOL's `oo` CLI daily (research/35 §4b). Ducter reads oo's setup only when the
-user taps **用 oo 里的 OpenConnector / Use the OpenConnector from oo**:
-- **Where oo keeps it.** `OO_CONNECTOR_URL` (+ `OO_CONNECTOR_TOKEN`) wins, as in oo itself.
-  Otherwise `[self_hosted] url / token` in oo's `connector.toml`, under `OO_CONFIG_DIR`,
-  `$XDG_CONFIG_HOME/oo`, `~/Library/Application Support/oo` or `~/.config/oo`.
-- **Detection reads no secret.** It reports the address and *whether* a token exists.
-- **The OOMOL account key** in `auth.toml` is never used. It can do more than read accounts
-  (LLM, files, billing). The page says to make a token for Ducter in the OOMOL console instead.
-- **The narrow token is better, and the page says so.** Rather than reusing oo's, make a token
-  just for Ducter on OpenConnector's Access page, with `allowedActions` / `allowedConnections`.
+The author uses OOMOL's `oo` CLI daily (research/35 §4b). With oo signed in, connecting accounts
+is one tap, through oo's own sign-in and its permissions (D122, superseding D96's "never the
+OOMOL account key"). `packages/core/src/oo-link.ts`.
+
+- **Ducter runs oo; it reads none of oo's files and holds no secret for it.** OOMOL Hosted's MCP
+  endpoint does not take oo's account key (404; oo itself talks REST), so the link drives the
+  CLI:
+
+  | Ducter needs | It runs |
+  |---|---|
+  | Signed in? | `oo auth status --json` |
+  | The accounts | `oo connector apps --json`: services whose `authType` is `oauth2`, `custom_credential` or `api_key` and `status` active. oo's no-auth public sources and its billed marketplace services are left out |
+  | The actions | `oo connector search <text> --json` (deduped; oo has no "list actions", so a service's catalog is a few searches, read verbs first) and `oo connector schema <service>.<action>… --json` in one call |
+  | A call | `oo connector run <service> -a <action> -d @<file> --json [--connection-name <name>]` |
+
+- **The input goes through a file, never argv** (argv shows in `ps`): a 0600 file in a fresh
+  0700 temp folder, deleted after the run.
+- **Environment.** oo runs with PATH (plus oo's own folder), HOME, XDG_CONFIG_HOME/APPDATA (where
+  oo keeps its config) and `OO_*` only. No harness key or token.
+- **Tools.** One per action, named `<service>.<action>`. A service with several accounts gets an
+  optional `connection` input listing their names (and labels); without it, oo's default runs.
+  The partner sees each service and its accounts in `connections_list`; it passes an account as
+  `account`. An unknown account is refused before oo runs.
+- **Read or write, from the action's name** (`ooOp`), because oo gives no hint. A read only when
+  the name starts with fetch, list, get, search, read, query, find, lookup, count, describe,
+  retrieve, view or show and no later word changes anything (send, reply, create, add, modify,
+  update, delete, trash, archive, move, mark, batch, download, upload, watch, `and`, `or`, …).
+  Everything else, unknown included, is a write and goes through the Go card (§4.2). Examples:
+  `gmail.fetch_emails`, `gmail.get_draft` read; `gmail.create_email_draft`,
+  `gmail.download_attachment` (it uploads to oo's file transit), `gmail.settings_get_imap`
+  (not a verb first) and `gmail.get_or_create_label` are writes.
+- **Errors.** oo missing or too slow (60 s for a run, 20 s for a listing; the process is killed)
+  → `unreachable`; "You must log in" and the like → `unauthorized`; the action's own error
+  ("input payload is invalid") comes back to the model as an error result so it can fix the input.
+- **Cadence.** The account list is cached for the recheck cadence (5 min); a service's catalog
+  for an hour, warmed in the background right after the tap.
+- **Detection.** The Settings frame says `account` (signed in, from `oo auth status`; before
+  oo answers, a guess from `auth.toml`'s size, never its contents) and `apps` (each service, its
+  accounts' labels) once oo has listed them.
+- **Not signed in.** The tap answers `oo_signed_out` ("run `oo login`"). An oo that isn't signed
+  in but has a self-hosted OpenConnector (`OO_CONNECTOR_URL`, or `[self_hosted]` in its
+  `connector.toml`) still gets the older tap that reads that address and token, only on the tap.
+- **Sessions can't go around the gate.** A harness can run `oo` itself: Claude Code's own skills
+  (the user's `oo-gmail`) or a Bash line. So every harness child gets `OO_CONFIG_DIR` pointing at
+  an empty 0700 folder (`<dataDir>/oo-signed-out`), where oo is signed out; only the broker's
+  link runs oo with the user's sign-in (`packages/runner/src/oar.ts`, D122 (6)).
+- **Narrower access** is now oo's job: OOMOL's own console sets which actions a member may run
+  (permission groups). Ducter's per-connection `policy` rules (§4.1) apply on top.
 
 ### 4.5 Watching (built in core as D112's event waits; not yet run against a live OpenConnector)
 
@@ -272,8 +315,9 @@ with Go, never a background action [I].
    can read.
 2. With no connection, Ducter says one line: "先在你的 OpenConnector 里连上 Gmail，再把它加到伙伴页的
    “它能看的账号”里。/ Connect Gmail in your OpenConnector first, then add it under Accounts it
-   can read on the Partner page." If oo is set up with a self-hosted OpenConnector, the page
-   offers the one tap.
+   can read on the Partner page." **If oo is signed in, the page leads with the oo offer
+   instead** (D122): the services and accounts in oo, where mail passes, and one tap on 用这些账号
+   / Use these accounts. Then step 3 is skipped.
 3. In OpenConnector the person connects Gmail: Google's consent page, Allow. Then they make a
    token for Ducter, and Ducter checks and saves it. Ducter never sees the Google password.
 4. A Gmail mailbox drops onto the island (the equip snap, D65). Ducter backfills **the last 14
@@ -286,6 +330,7 @@ with Go, never a background action [I].
 
 | Path | What they do | Where their mail passes |
 |---|---|---|
+| **The accounts in oo** (D122; the default when oo is signed in) | Nothing: they already connected Gmail and the rest in oo. One tap on **用这些账号 / Use these accounts** | OOMOL's servers, and the AI account |
 | **OOMOL Hosted** (default in the form) | Sign in at OOMOL, connect Gmail and Calendar in the OOMOL console (OOMOL's verified Google apps), make a token for Ducter, paste it with `https://connector.oomol.com` | OOMOL's servers, and the AI account |
 | **Self-hosted OpenConnector** | Run OpenConnector (Docker or its single binary), register their own Google OAuth client in its console (research/35 §2: publish it *In production, unverified*, never Testing, which drops grants every 7 days), connect, make a token for Ducter on `/access`, paste address and token. Or tap the oo one-tap | Their own machine, and the AI account |
 | **Another MCP server** | Paste its address (and token) | Whatever that server does |
@@ -405,6 +450,16 @@ examples.
   - Tray slots equal the cap.
   - Quiet hours shows as a small moon sign by the tray.
   - Still mode stops all of it, and every state still reads.
+- **The oo offer, as built (D122).** With oo signed in, the card leads with a sunken panel: a
+  mailbox, **你在 oo 里的账号 / Your accounts in oo**, "不用配钥匙：Ducter 通过 oo 去看，登录留在 oo
+  里。/ No key to set up: Ducter reads through oo, and oo's sign-in stays in oo.", a white list of
+  each service and its accounts' labels, the honest line "你的邮件和登录凭据会经过 OOMOL 的服务器。/
+  Your mail and sign-ins pass through OOMOL's servers.", and the one primary button **用这些账号 /
+  Use these accounts**. Before oo answers: "正在看 oo 里有哪些账号… / Looking at what's in oo…";
+  with none: "oo 里还没有账号… / No accounts in oo yet…". The form below steps back to a quiet
+  link, **用地址和钥匙加一个 / Add one with an address and key**. Added, the row reads **oo 里的账号
+  / Accounts in oo**, "Gmail (2) · Slack · …", "经过 oo · 邮件和登录经过 OOMOL 的服务器 / Through oo ·
+  your mail and sign-ins pass through OOMOL's servers". Screenshots: `.shots/oo-connect/`.
 - **Equip, as built.** On Partner, **加一个 / Add one** → where (OOMOL 托管 / Hosted by
   OOMOL · 自己部署的 / Self-hosted · 其他服务 / Something else) → 地址 / Address, 钥匙 / Key →
   **检查并加上 / Check and add**. The setup steps (OpenConnector's Access page, Create Token,
@@ -420,6 +475,8 @@ examples.
   prototype draws them in SVG).
 
 ## 10. Decided, and proposals for the author
+
+**Decided: D122** (with oo signed in, the default way in is oo itself, §4.4).
 
 **Decided: D96.** Connections come from the user's OpenConnector (OOMOL Hosted or
 self-hosted) or another MCP server, through Ducter's broker. Ducter holds only the runtime
@@ -501,5 +558,45 @@ connectors live, how they reach sessions, the engine, and Google access.
     404, so it is not MCP OAuth. A static key as Bearer is the likely shape, which is what the
     broker sends.
   - **To confirm:** the author makes a key for Ducter in the OOMOL console and adds it on
-    Partner → Accounts it can read (Hosted by OOMOL). That's one tap and a paste. Ducter
-    doesn't take oo's account key.
+    Partner → Accounts it can read (Hosted by OOMOL). That's one tap and a paste. Since D122
+    the simpler path for an oo user is the oo tap (live-tested below).
+- **The oo link (D122), unit and integration** (`packages/core/test/oo-link.test.ts`, a fake
+  `oo` binary on a temp PATH, `fake-oo.ts`): the tools list only services with an account (no
+  public or billed ones), the `connection` choice when a service has several, the input through a
+  0600 file that is gone after the run and never in argv, no harness key in oo's environment,
+  an unknown account refused before oo runs, signed out → `unauthorized`, oo missing or slow →
+  `unreachable` (the process is killed), the read/write verb table (16 reads, 28 writes), and
+  the tap through the broker: no token stored, reads logged with a summary only, a write staged
+  and run once only after Go, a task reading only when shared. Desktop: `oo_connect_test.go`.
+- **The oo link, live on the author's oo 1.9.1** (OOMOL Hosted, 2026-11-09). A scratch Ducter
+  (own data folder and port, partner on Claude Code haiku, memory off); its PATH left out the
+  folder oo lives in, so no harness child could run oo (Ducter found oo there by itself).
+  - **Detect and tap.** The first frame said signed in from the file guess; oo's answer a
+    moment later listed 5 services with an account (Gmail with 2). The tap (`connection_oo`)
+    added the connection in about 1 s, source `oo`, state ok; no token-shaped string in any
+    frame, and `connection-tokens.json` held nothing for it.
+  - **"最近几天邮件里有没有需要我留意的事？"** The partner searched, then ran
+    `gmail.search_threads` on both Gmail accounts (the second by `--connection-name`), 30
+    threads each, and answered in 23 s with 5 items, each traceable to mail it had read
+    (checked by hand, not recorded here). Logged: 3 `connection_call` reads, summaries only.
+  - **A write.** Asked to reply to one sender, it read the thread, found
+    `gmail.create_email_draft`, which the verb rule classed as a write, and made one Go / Hold
+    card (default Hold, not reversible) with one `needs_go` line. **Go was never pressed;
+    nothing was drafted or sent.**
+  - **A task.** Asked for a table of the week's travel and event mail (haiku, no repo), the
+    partner opened the task but didn't share the accounts. The task got "no connections", then
+    loaded the user's own `oo-gmail` Claude skill and ran `oo` from Bash: "command not found"
+    only because of the trial's PATH. It stopped and reported blocked. This is why D122 (6)
+    now signs oo out for every harness child, why a task with nothing shared is told to ask
+    the partner, and why the prompt shares in the same turn. Once told, the partner shared
+    (one `grant` line) and the task read through the broker: 15 reads (4 thread searches, 7
+    thread fetches, 4 message reads), each a `connection_call` on the task's stream, and
+    reported done. The partner made the other 6.
+  - **What oo itself ran** (its own debug logs, counted by command only): 64 invocations, 21
+    `connector run`, all of them `search_threads`, `fetch_message_by_thread_id` or
+    `get_message`; no other action. The rest: 32 searches (mostly the catalog warming), 7
+    schema calls, 2 app lists, 2 status checks.
+  - **Cleanup.** The scratch data folder and the two `~/.claude/projects` folders the trial
+    created were deleted; no temp input file was left behind.
+  - **Seen, for later:** the card's Go label came out bilingual ("存为草稿 / Save as draft"),
+    against D109's one language; the partner's first answer read only search snippets.

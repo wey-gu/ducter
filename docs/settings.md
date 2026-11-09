@@ -49,24 +49,10 @@ top of the conversation. On a phone, tap your partner at the top of the conversa
   down. **Forget** removes a line: Nowledge Mem forgets it when it can, and otherwise the line
   is only hidden here (the app tells you which). To stop it from recalling or noting anything,
   turn off **Remember things**.
-- **Accounts it can read.** Your partner can read your Gmail, calendar, GitHub and other
-  accounts through [OpenConnector](https://github.com/oomol-lab/open-connector). Connect the
-  accounts there first, make a key for Ducter on OpenConnector's Access page (Create Token), then choose
-  **Add one**, pick where your OpenConnector runs, and paste its address and the key.
-  **How to connect**, under the key, lists these steps for the choice you picked.
-  - **Hosted by OOMOL** needs no setup with Google, but your mail and sign-ins pass through
-    OOMOL's servers.
-  - **Self-hosted** keeps them on your own machine. For Gmail and similar accounts, you then
-    set up your own app with Google in OpenConnector.
-  - If OOMOL's `oo` command line is set up with your own OpenConnector, choose **Use the one
-    you set up in oo** instead.
-  - **Something else** takes any other MCP server.
-  - Your partner reads on its own, and asks you first before anything is sent or changed.
-  - What it reads is shown to your AI account to understand it; no one else gets it.
-  - **Remove** takes an account away, and the key with it. The key is kept only in
-    Ducter's own data folder.
-  - This is new and still being tried out. Your partner doesn't yet watch your accounts on
-    its own; it looks when you ask.
+- **Accounts it can read.** Your partner can read your Gmail, calendar, Slack, GitHub and other
+  accounts when you ask. If you use OOMOL's `oo` and are signed in, it's one tap on **Use these
+  accounts**; otherwise **Add one** takes an address and a key. Reading just happens; sending or
+  changing anything waits for your Go. All of it is in [Accounts your partner can read](accounts.md).
 - **On its own, or asks you first.** This list shows what your partner does without asking
   (changing code in its own copy, reading your projects, browsing in its own browser) and what it
   always asks you about first (anything that reaches other people, anything that can't be taken

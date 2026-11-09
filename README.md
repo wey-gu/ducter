@@ -185,7 +185,8 @@ The details are in [Privacy and safety](docs/privacy-and-safety.md).
 
 - **Using Ducter:** [Getting started](docs/getting-started.md) · [Install](docs/install.md) ·
   [Waiting, keep going, routines](docs/waiting-and-routines.md) ·
-  [Your partner and settings](docs/settings.md) · [Your devices](docs/devices.md) ·
+  [Your partner and settings](docs/settings.md) · [Accounts it can read](docs/accounts.md) ·
+  [Your devices](docs/devices.md) ·
   [Your phone](docs/phone.md) ·
   [Privacy and safety](docs/privacy-and-safety.md) · [FAQ](docs/faq.md) ·
   [Troubleshooting](docs/troubleshooting.md)

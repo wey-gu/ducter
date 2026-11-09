@@ -1,7 +1,7 @@
 ---
 title: When something goes wrong
 description: Run the check-up, find the logs, and fix the problems people usually hit.
-order: 9
+order: 10
 ---
 
 # When something goes wrong

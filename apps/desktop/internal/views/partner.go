@@ -37,7 +37,7 @@ type partnerState struct {
 	// the token being typed (dropped once it is sent).
 	acctAdding  bool
 	acctHow     bool // "How to connect" is open: the setup steps behind the fold
-	acctWhere   int // 0 OOMOL Hosted, 1 self-hosted, 2 other MCP
+	acctWhere   int  // 0 OOMOL Hosted, 1 self-hosted, 2 other MCP
 	acctURL     string
 	acctToken   string
 	acctWaiting bool
@@ -515,7 +515,8 @@ func (a *App) accountsCard(c *ui.Context) {
 	a.sheetCard(c, "accounts", a.L.T("acct.title"), func() {
 		a.note(c, a.L.T("acct.lede"))
 		list := a.S.Connections
-		if a.S.ConnAsked && len(list) == 0 {
+		oo := a.S.Oo
+		if a.S.ConnAsked && len(list) == 0 && (oo == nil || !oo.Account) {
 			ui.Text(c, a.L.T("acct.none")).FontSize(t.MD).LineHeight(1.5).TextColor(t.InkSoft)
 		}
 		for _, cv := range list {
@@ -523,7 +524,14 @@ func (a *App) accountsCard(c *ui.Context) {
 			ui.Row(c.Key("acct:"+cv.ID)).Gap(t.S3).AlignItems(ui.Center).Padding(t.S2, t.S3).Radius(t.RadiusMD).Background(t.SurfaceSunken).Children(func() {
 				ui.Box(c).Size(30, 46).Draw(a.drawMailbox(cv.Source)).Shrink(0).AccessHidden(true)
 				ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
-					ui.Text(c, cv.Name).FontSize(t.MD).FontWeight(700).SingleLine()
+					name := cv.Name
+					if cv.Source == "oo" {
+						name = a.L.T("acct.oo.name")
+					}
+					ui.Text(c, name).FontSize(t.MD).FontWeight(700).SingleLine()
+					if line := ooAppsLine(cv.Apps); line != "" {
+						ui.Text(c, line).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).SingleLine()
+					}
 					a.note(c, a.L.T("acct.src."+cv.Source))
 					if cv.State == "unreachable" || cv.State == "unauthorized" {
 						ui.Text(c, a.L.T("acct.state."+cv.State)).FontSize(t.SM).FontWeight(700).TextColor(t.Failed.Ink)
@@ -534,12 +542,16 @@ func (a *App) accountsCard(c *ui.Context) {
 				}
 			})
 		}
-		oo := a.S.Oo
 		usedOo := false
 		for _, cv := range list {
 			usedOo = usedOo || cv.Via == "oo"
 		}
-		if oo != nil && oo.SelfHosted != nil && !usedOo {
+		// D122: oo signed in makes the one tap the default surface; the
+		// address-and-key form steps back to a quiet link.
+		ooOffer := oo != nil && oo.Account && !usedOo
+		if ooOffer {
+			a.ooOffer(c, oo)
+		} else if oo != nil && oo.SelfHosted != nil && !usedOo {
 			ui.Column(c).Gap(t.S2).Children(func() {
 				ui.Row(c).Children(func() {
 					if a.button(c, a.L.T("acct.oo"), btnSecondary, t.ControlMD, t.Surface) && !ps.acctWaiting {
@@ -549,15 +561,19 @@ func (a *App) accountsCard(c *ui.Context) {
 				})
 				a.note(c, a.L.T("acct.oo.note", oo.SelfHosted.URL))
 			})
-		} else if oo != nil && oo.Account && oo.SelfHosted == nil {
-			a.note(c, a.L.T("acct.oo.account"))
 		}
 		if !ps.acctAdding {
-			ui.Row(c).Children(func() {
-				if a.button(c, a.L.T("acct.add"), btnSecondary, t.ControlMD, t.Surface) {
-					ps.acctAdding, ps.acctWhere, ps.acctURL, ps.acctToken = true, 0, hostedConnector, ""
-				}
-			})
+			open := false
+			if ooOffer {
+				open = a.quietLink(c, "acct-manual", a.L.T("acct.manual"), a.L.T("acct.manual"))
+			} else {
+				ui.Row(c).Children(func() {
+					open = a.button(c, a.L.T("acct.add"), btnSecondary, t.ControlMD, t.Surface)
+				})
+			}
+			if open {
+				ps.acctAdding, ps.acctWhere, ps.acctURL, ps.acctToken = true, 0, hostedConnector, ""
+			}
 		} else {
 			ui.Box(c).Height(1).Background(t.LineSoft)
 			wheres := []string{"oomol", "self", "mcp"}
@@ -613,6 +629,66 @@ func (a *App) accountsCard(c *ui.Context) {
 	})
 }
 
+// ooOffer is the one tap when the user's oo is signed in (D122): what
+// Ducter will be able to read, listed literally (each service and its
+// accounts, as oo knows them), where the mail passes, and one primary
+// button. Nothing to type: oo's own sign-in stays in oo.
+func (a *App) ooOffer(c *ui.Context, oo *protocol.OoDetect) {
+	t := a.T
+	ps := &a.partner
+	ui.Column(c.Key("acct-oo")).Gap(t.S3).Padding(t.S4).Radius(t.RadiusMD).Background(t.SurfaceSunken).Children(func() {
+		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
+			ui.Box(c).Size(36, 58).Draw(a.drawMailbox("oo")).Shrink(0).AccessHidden(true)
+			ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
+				ui.Text(c, a.L.T("acct.oo.title")).FontSize(t.MD).FontWeight(700)
+				a.note(c, a.L.T("acct.oo.lede"))
+			})
+		})
+		switch {
+		case oo.Apps == nil:
+			a.note(c, a.L.T("acct.oo.loading"))
+		case len(oo.Apps) == 0:
+			a.note(c, a.L.T("acct.oo.empty"))
+		default:
+			ui.Column(c).Gap(t.S2).Padding(t.S3, t.S4).Radius(t.RadiusSM).Background(t.Surface).Children(func() {
+				for _, app := range oo.Apps {
+					app := app
+					ui.Row(c.Key("ooapp:" + app.Service)).Gap(t.S3).AlignItems(ui.Baseline).Children(func() {
+						ui.Text(c, app.Title).FontSize(t.MD).FontWeight(700).Width(112).Shrink(0).SingleLine()
+						ui.Text(c, strings.Join(app.Accounts, " · ")).FontSize(t.SM).TextColor(t.InkSoft).Grow(1).MinWidth(0).SingleLine()
+					})
+				}
+			})
+		}
+		a.note(c, a.L.T("acct.oo.where"))
+		if len(oo.Apps) > 0 {
+			ui.Row(c).Children(func() {
+				label := a.L.T("acct.oo.use")
+				if ps.acctWaiting {
+					label = a.L.T("acct.oo.using")
+				}
+				if a.button(c, label, btnPrimary, t.ControlMD, t.SurfaceSunken) && !ps.acctWaiting {
+					ps.acctWaiting = true
+					a.send(protocol.ConnectionOo{T: "connection_oo"})
+				}
+			})
+		}
+	})
+}
+
+// ooAppsLine is a connection's services in one line ("Gmail (2) · Slack").
+func ooAppsLine(apps []protocol.OoApp) string {
+	parts := make([]string, 0, len(apps))
+	for _, ap := range apps {
+		p := ap.Title
+		if len(ap.Accounts) > 1 {
+			p += " (" + itoa(int64(len(ap.Accounts))) + ")"
+		}
+		parts = append(parts, p)
+	}
+	return strings.Join(parts, " · ")
+}
+
 // acctField is one labelled input on the accounts card; the token is masked.
 func (a *App) acctField(c *ui.Context, key, label string, value *string, secret bool, submit func()) {
 	t := a.T
@@ -656,7 +732,7 @@ func (a *App) drawMailbox(source string) func(p *ui.Painter, r ui.Rect) {
 	t := a.T
 	body := t.InkMuted
 	switch source {
-	case "oomol":
+	case "oomol", "oo":
 		body = t.Accent
 	case "self":
 		body = t.Working.Dot

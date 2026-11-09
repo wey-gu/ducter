@@ -688,15 +688,17 @@ type ConnectionRemove struct {
 	ID string `json:"id"`
 }
 
-// ConnectionOo uses the self-hosted OpenConnector the user's oo CLI is set
-// up with; the server reads oo's setup only on this request.
+// ConnectionOo is the one tap: with oo signed in, the server reads the
+// accounts through the oo CLI itself (D122; oo's sign-in never leaves oo);
+// otherwise the self-hosted OpenConnector oo is set up with, read only now.
 type ConnectionOo struct {
 	T string `json:"t"` // "connection_oo"
 }
 
 // ConnectionView is one connection, without any secret. Source: "oomol"
 // (OOMOL Hosted: mail and sign-ins pass through OOMOL), "self" (the user's
-// own OpenConnector), "mcp" (another MCP server).
+// own OpenConnector), "mcp" (another MCP server), "oo" (the accounts in
+// the user's oo, read through oo itself; mail passes through OOMOL).
 type ConnectionView struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
@@ -706,16 +708,28 @@ type ConnectionView struct {
 	Via       string `json:"via"`   // "manual" | "oo"
 	State     string `json:"state"` // "ok" | "unreachable" | "unauthorized" | "unknown"
 	CheckedAt string `json:"checkedAt,omitempty"`
+	// Apps, for source "oo": what it can read, as oo last listed it.
+	Apps []OoApp `json:"apps,omitempty"`
+}
+
+// OoApp is one service connected in oo and its accounts' own labels.
+type OoApp struct {
+	Service  string   `json:"service"`
+	Title    string   `json:"title"`
+	Accounts []string `json:"accounts"`
 }
 
 // OoDetect is what the oo CLI is set up with, without its secrets.
+// Account: signed in to OOMOL in oo; then the one tap reads through oo
+// itself (D122), and Apps lists what it has once oo has answered.
 type OoDetect struct {
 	Installed  bool `json:"installed"`
 	SelfHosted *struct {
 		URL      string `json:"url"`
 		HasToken bool   `json:"hasToken"`
 	} `json:"selfHosted,omitempty"`
-	Account bool `json:"account"`
+	Account bool    `json:"account"`
+	Apps    []OoApp `json:"apps,omitempty"`
 }
 
 // ---------- Settings (D71: the Partner page and Settings) ----------

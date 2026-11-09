@@ -73,7 +73,9 @@ export type ConnectionCaller = { role: "partner" } | { role: "task"; taskId: str
 export interface ConnectionInfo {
   id: string;
   name: string;
-  source: "oomol" | "self" | "mcp";
+  source: "oomol" | "self" | "mcp" | "oo";
+  /** Source oo: the services in it, and each one's accounts (pass a name as `account`; the default is used without one). */
+  services?: { service: string; accounts: { name: string; label: string; default: boolean }[] }[];
   /** For a task: whether it may read this one. */
   granted?: boolean;
 }

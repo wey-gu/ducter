@@ -1,7 +1,7 @@
 // The phone's screens: the conversation (default), 手头的事 / On hand, an opened task, and the
 // sheets (a decision opened from a notification; this phone's settings). Behavior follows the
 // desktop client (apps/desktop/internal/views); copy comes only from i18n.ts.
-import type { Attention, Bodies, Candidate, DeviceHarness, EvidenceRef, LivingItem } from "@ducter/protocol";
+import type { Attention, Bodies, Candidate, DeviceHarness, EvidenceRef, LivingItem, OoDetect } from "@ducter/protocol";
 import { Fragment } from "preact";
 import { PARTNER_RESERVE } from "@ducter/protocol/src/loadout.ts";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
@@ -1753,10 +1753,10 @@ function Loadout() {
 }
 
 /** A small clay mailbox (the prototype's look, design/connectors.md §9): no flag, the lid shows the source. */
-function Mailbox(p: { source: "oomol" | "self" | "mcp" }) {
-  const body = p.source === "oomol" ? "var(--accent)" : p.source === "self" ? "var(--working-dot)" : "var(--ink-muted)";
+function Mailbox(p: { source: "oomol" | "self" | "mcp" | "oo"; big?: boolean }) {
+  const body = p.source === "oomol" || p.source === "oo" ? "var(--accent)" : p.source === "self" ? "var(--working-dot)" : "var(--ink-muted)";
   return (
-    <svg class="mailbox" width="30" height="46" viewBox="0 0 52 84" aria-hidden="true">
+    <svg class="mailbox" width={p.big ? 36 : 30} height={p.big ? 58 : 46} viewBox="0 0 52 84" aria-hidden="true">
       <ellipse cx="26" cy="80" rx="12" ry="3.5" fill="rgba(70,46,20,.25)" />
       <rect x="22" y="44" width="8" height="37" rx="3" fill="var(--line-2)" />
       <path d="M6 46 V26 a20 18 0 0 1 40 0 V46 Z" fill={body} />
@@ -1770,6 +1770,42 @@ function Mailbox(p: { source: "oomol" | "self" | "mcp" }) {
 }
 
 const HOSTED_URL = "https://connector.oomol.com";
+
+/** The one tap (D122): the user's oo is signed in. What Ducter will read, literally; where mail passes; one button. */
+function OoOffer(p: { oo: OoDetect }) {
+  const apps = p.oo.apps;
+  return (
+    <div class="acct-offer">
+      <div class="acct-offer-head">
+        <Mailbox source="oo" big />
+        <div class="grow">
+          <div class="acct-name">{t("acct.oo.title")}</div>
+          <div class="small sub">{t("acct.oo.lede")}</div>
+        </div>
+      </div>
+      {!apps ? (
+        <div class="small sub">{t("acct.oo.loading")}</div>
+      ) : !apps.length ? (
+        <div class="small sub">{t("acct.oo.empty")}</div>
+      ) : (
+        <ul class="acct-offer-apps">
+          {apps.map((a) => (
+            <li key={a.service}>
+              <b>{a.title}</b>
+              <span>{a.accounts.join(" · ")}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div class="small sub">{t("acct.oo.where")}</div>
+      {!!apps?.length && (
+        <div>
+          <Btn kind="primary" label={A.connecting ? t("acct.oo.using") : t("acct.oo.use")} disabled={A.connecting} onClick={() => A.useOoConnection()} />
+        </div>
+      )}
+    </div>
+  );
+}
 
 /** 它能看的账号 / Accounts it can read (D96): the user's OpenConnector, hosted or self-hosted, or another MCP server. */
 function Accounts() {
@@ -1787,6 +1823,9 @@ function Accounts() {
   }, [A.connections?.length]);
   const list = A.connections;
   const oo = A.oo;
+  // D122: oo signed in makes the one tap the default; the address-and-key form steps back.
+  const usedOo = !!list?.some((c) => c.via === "oo");
+  const offer = !!oo?.account && !usedOo;
   const pick = (w: "oomol" | "self" | "mcp") => {
     setWhere(w);
     setUrl(w === "oomol" ? HOSTED_URL : w === "self" ? "http://localhost:3000" : "");
@@ -1795,27 +1834,34 @@ function Accounts() {
     <section class="set accounts">
       <h3>{t("acct.title")}</h3>
       <div class="small sub">{t("acct.lede")}</div>
-      {list && !list.length && <div class="small sub">{t("acct.none")}</div>}
+      {list && !list.length && !offer && <div class="small sub">{t("acct.none")}</div>}
       {list?.map((c) => (
         <div class="acct-row" key={c.id}>
           <Mailbox source={c.source} />
           <div class="grow">
-            <div class="acct-name">{c.name}</div>
+            <div class="acct-name">{c.source === "oo" ? t("acct.oo.name") : c.name}</div>
+            {!!c.apps?.length && <div class="small acct-apps">{c.apps.map((a) => (a.accounts.length > 1 ? `${a.title} (${a.accounts.length})` : a.title)).join(" · ")}</div>}
             <div class="small sub">{t(`acct.src.${c.source}`)}</div>
             {(c.state === "unreachable" || c.state === "unauthorized") && <div class="small warn">{t(`acct.state.${c.state}`)}</div>}
           </div>
           <Btn kind="text" label={t("acct.remove")} about={c.name} onClick={() => A.removeConnection(c.id)} />
         </div>
       ))}
-      {oo?.selfHosted && !list?.some((c) => c.via === "oo") && (
+      {offer && <OoOffer oo={oo!} />}
+      {!offer && oo?.selfHosted && !usedOo && (
         <div class="acct-oo">
           <Btn kind="secondary" label={t("acct.oo")} disabled={A.connecting} onClick={() => A.useOoConnection()} />
           <div class="small sub">{t("acct.oo.note", oo.selfHosted.url)}</div>
         </div>
       )}
-      {oo?.account && !oo.selfHosted && <div class="small sub">{t("acct.oo.account")}</div>}
       {!adding ? (
-        <Btn kind="secondary" label={t("acct.add")} onClick={() => setAdding(true)} />
+        offer ? (
+          <button class="qlink" onClick={() => setAdding(true)}>
+            {t("acct.manual")} ›
+          </button>
+        ) : (
+          <Btn kind="secondary" label={t("acct.add")} onClick={() => setAdding(true)} />
+        )
       ) : (
         <div class="acct-form">
           <Seg label={t("acct.where")} value={where} options={(["oomol", "self", "mcp"] as const).map((v) => ({ v, label: t(`acct.where.${v}`) }))} onPick={pick} />

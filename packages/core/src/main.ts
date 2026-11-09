@@ -78,7 +78,12 @@ export async function main(mods: BootModules = {}) {
     try {
       // Task-role tools (report_to_main, checkpoint) are the runner's; register them once.
       // The branch check reads the runner, created just below; reports only come after it is.
-      if (typeof runnerMod.registerTaskTools === "function") runnerMod.registerTaskTools(core, { branchChanges: (id: string) => (runner as { branchChanges?(id: string): Promise<unknown> } | undefined)?.branchChanges?.(id) });
+      type Late = { branchChanges?(id: string): Promise<unknown>; checkEvidence?(id: string, ev: unknown[]): Promise<unknown[]> } | undefined;
+      if (typeof runnerMod.registerTaskTools === "function")
+        runnerMod.registerTaskTools(core, {
+          branchChanges: (id: string) => (runner as Late)?.branchChanges?.(id),
+          checkEvidence: (id: string, ev: unknown[]) => (runner as Late)?.checkEvidence?.(id, ev),
+        });
       else console.warn("[ducter] runner has no registerTaskTools: tasks cannot report_to_main");
       runner = await runnerMod.createRunner(core);
     } catch (err) {

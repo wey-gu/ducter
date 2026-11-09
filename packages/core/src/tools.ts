@@ -52,18 +52,62 @@ export function registerCoreTools(mcp: CoreMcpHub, log: LogStore, tasks: CoreReg
     },
     required: ["stream"],
   };
-  for (const role of ["partner", "task"] as const) {
-    mcp.register(
-      role,
-      "log_search",
-      "Search the whole Ducter Log (the conversation, from its first day, and every task). Best matches first; each hit has its seq, and log_read from near that seq gives the context.",
-      logSearch,
-      async (a) => log.search(String(a.query ?? ""), { stream: a.stream, limit: clampLimit(a.limit, 12) }).map(hit),
-    );
-    mcp.register(role, "log_read", "Read events from one Log stream in order.", logRead, async (a) =>
-      log.read({ stream: String(a.stream), fromSeq: a.fromSeq, limit: clampLimit(a.limit, 50) }).map(compact),
-    );
-  }
+  mcp.register(
+    "partner",
+    "log_search",
+    "Search the whole Ducter Log (the conversation, from its first day, and every task). Best matches first; each hit has its seq, and log_read from near that seq gives the context.",
+    logSearch,
+    async (a) => log.search(String(a.query ?? ""), { stream: a.stream, limit: clampLimit(a.limit, 12) }).map(hit),
+  );
+  mcp.register("partner", "log_read", "Read events from one Log stream in order.", logRead, async (a) =>
+    log.read({ stream: String(a.stream), fromSeq: a.fromSeq, limit: clampLimit(a.limit, 50) }).map(compact),
+  );
+
+  // A task reads only within its reach (focus-window.md "Pull tools"): its own stream, its
+  // persona's channel, and its persona's other tasks. A browser task reads only its own stream
+  // (D62), so a hostile page can't pull the conversation out through it.
+  const reachOf = (taskId: string | undefined) => {
+    const me = taskId ? tasks.get(taskId) : undefined;
+    if (!me) throw new Error("log tools need a task");
+    const own = taskStream(me.taskId);
+    const onlyOwn = me.place.kind === "browser";
+    const ok = (e: LogEvent) => {
+      if (e.stream === own) return true;
+      if (onlyOwn || e.persona !== me.persona) return false;
+      if (e.stream === "channel") return true;
+      if (!e.stream.startsWith("task:")) return false;
+      return tasks.get(e.stream.slice("task:".length))?.persona === me.persona;
+    };
+    const streamOk = (s: string) => {
+      if (s === own) return true;
+      if (onlyOwn) return false;
+      if (s === "channel") return true;
+      return s.startsWith("task:") && tasks.get(s.slice("task:".length))?.persona === me.persona;
+    };
+    const refuse = (s: string) => new Error(onlyOwn ? `${s} is out of reach: a browser task reads only its own stream (${own}).` : `${s} is out of reach: read ${own}, "channel", or another task of the same person.`);
+    return { own, ok, streamOk, refuse };
+  };
+  mcp.register(
+    "task",
+    "log_search",
+    "Search the Ducter Log within your reach: the conversation, your own task and the other tasks for the same person (a browser task: only its own). Best matches first; each hit has its seq, and log_read from near that seq gives the context.",
+    logSearch,
+    async (a, ctx) => {
+      const r = reachOf(ctx.taskId);
+      const stream = a.stream ? String(a.stream) : undefined;
+      if (stream && !r.streamOk(stream)) throw r.refuse(stream);
+      const limit = clampLimit(a.limit, 12);
+      // Search wide, then keep what is in reach (the store has no multi-stream filter).
+      const found = log.search(String(a.query ?? ""), { stream: stream ?? (r.streamOk("channel") ? undefined : r.own), limit: stream ? limit : MAX_LIMIT });
+      return found.filter(r.ok).slice(0, limit).map(hit);
+    },
+  );
+  mcp.register("task", "log_read", "Read events from one Log stream in order: your own task's, the conversation (\"channel\"), or another task of the same person.", logRead, async (a, ctx) => {
+    const r = reachOf(ctx.taskId);
+    const stream = String(a.stream);
+    if (!r.streamOk(stream)) throw r.refuse(stream);
+    return log.read({ stream, fromSeq: a.fromSeq, limit: clampLimit(a.limit, 50) }).filter(r.ok).map(compact);
+  });
 
   mcp.register(
     "partner",

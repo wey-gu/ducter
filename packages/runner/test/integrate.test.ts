@@ -188,6 +188,46 @@ test("a done report carries the branch check: a task that changed nothing says s
   await runner.dispose();
 });
 
+// focus-window-states done? -> done: C checks the refs mechanically; the task's word alone stays "Done · checking".
+test("a done report's evidence is checked: a commit on the task branch or a file in the place makes it done", async () => {
+  const repo = join(dir, "repo");
+  Bun.spawnSync(["git", "init", "-q", "-b", "main", repo]);
+  writeFileSync(join(repo, "a.txt"), "a\n");
+  sh(repo, "add", ".");
+  sh(repo, "commit", "-qm", "init");
+  const onMain = (await git(repo, ["rev-parse", "HEAD"])).out;
+  sh(repo, "switch", "-q", "-c", "elsewhere");
+  writeFileSync(join(repo, "x.txt"), "x\n");
+  sh(repo, "add", ".");
+  sh(repo, "commit", "-qm", "x");
+  const offBranch = (await git(repo, ["rev-parse", "HEAD"])).out;
+  sh(repo, "switch", "-q", "main");
+  const { core, runner, taskId } = await bootWithTask({ kind: "repo", device: "local", repoPath: repo }, { branchChecks: true });
+  const wt = (core.tasks.get(taskId)!.place as Extract<Place, { kind: "repo" }>).worktree!;
+  writeFileSync(join(wt, "b.txt"), "b\n");
+  sh(wt, "add", ".");
+  sh(wt, "commit", "-qm", "b");
+  const sha = (await git(wt, ["rev-parse", "HEAD"])).out;
+  const done = async (evidence: unknown[]) => {
+    await core.mcp.call({ role: "task", taskId }, "report_to_main", { state: "done", summary: "Added b.", evidence });
+    await Bun.sleep(5);
+    return { attention: core.tasks.get(taskId)!.attention, evidence: core.tasks.get(taskId)!.lastReport!.evidence };
+  };
+  // The task's word only (a test count; a check it set itself is dropped).
+  expect(await done([{ kind: "test", label: "bun test", ref: "12 passed", check: "verified" }])).toEqual({ attention: "done_claimed", evidence: [{ kind: "test", label: "bun test", ref: "12 passed" }] });
+  // A commit that isn't on the task branch, and one that doesn't exist.
+  expect((await done([{ kind: "diff", label: "commit", ref: offBranch.slice(0, 10) }])).evidence[0]!.check).toBe("missing");
+  expect(await done([{ kind: "diff", label: "commit", ref: "deadbeef00" }])).toMatchObject({ attention: "done_claimed", evidence: [{ check: "missing" }] });
+  // The commit on its branch (an ancestor counts too), and a file in its worktree.
+  expect(await done([{ kind: "diff", label: "commit", ref: sha.slice(0, 8) }, { kind: "test", label: "t", ref: "ok" }])).toMatchObject({ attention: "done", evidence: [{ check: "verified" }, {}] });
+  expect((await done([{ kind: "diff", label: "commit", ref: onMain }])).attention).toBe("done");
+  expect(await done([{ kind: "file", label: "b", ref: "b.txt" }])).toMatchObject({ attention: "done", evidence: [{ check: "verified" }] });
+  expect(await done([{ kind: "file", label: "b", ref: join(wt, "nope.txt") }])).toMatchObject({ attention: "done_claimed", evidence: [{ check: "missing" }] });
+  // A path outside its place isn't Ducter's to vouch for.
+  expect((await done([{ kind: "file", label: "a", ref: join(repo, "a.txt") }])).evidence[0]!.check).toBeUndefined();
+  await runner.dispose();
+});
+
 test("archiveWorktree: removes only a clean worktree Ducter made, never forced; the branch stays", async () => {
   const p = repoWithTaskBranch(); // its worktree is outside any data folder
   const data = join(dir, "data");
@@ -257,6 +297,41 @@ test("merge keeps a worktree with leftovers and says so on the task", async () =
   await runner.dispose();
 });
 
+// focus-window-states parked -> archived: the archive horizon (default 14 days).
+test("archive horizon: a finished task idle 14 days is archived (clean worktree removed, branch kept); leftovers keep it parked", async () => {
+  const repo = join(dir, "repo");
+  Bun.spawnSync(["git", "init", "-q", "-b", "main", repo]);
+  sh(repo, "config", "user.name", "t");
+  sh(repo, "config", "user.email", "t@t");
+  writeFileSync(join(repo, "a.txt"), "a\n");
+  sh(repo, "add", ".");
+  sh(repo, "commit", "-qm", "init");
+  let clock = Date.now();
+  const { core, runner, taskId } = await bootWithTask({ kind: "repo", device: "local", repoPath: repo }, { now: () => new Date(clock) });
+  const place = core.tasks.get(taskId)!.place as Extract<Place, { kind: "repo" }>;
+  writeFileSync(join(place.worktree!, "notes.txt"), "scratch\n");
+  await core.mcp.call({ role: "task", taskId }, "report_to_main", { state: "done", summary: "Added b." });
+  await Bun.sleep(5);
+  core.tasks.setState(taskId, core.tasks.get(taskId)!.attention, "warm"); // its turn ended (idlePort emits no turn end)
+  expect(await runner.sweepArchive()).toEqual([]); // not idle long enough
+  clock += 15 * 24 * 3600_000;
+  expect(await runner.sweepArchive()).toEqual([]); // leftovers: kept, stays parked
+  expect(existsSync(join(place.worktree!, "notes.txt"))).toBe(true);
+  expect(core.tasks.get(taskId)!.residency).toBe("parked");
+  rmSync(join(place.worktree!, "notes.txt"));
+  expect(await runner.sweepArchive()).toEqual([]); // untouched since it was kept: not retried
+  core.tasks.setState(taskId, core.tasks.get(taskId)!.attention, "parked", "touched");
+  clock += 15 * 24 * 3600_000;
+  expect(await runner.sweepArchive()).toEqual([taskId]);
+  expect(existsSync(place.worktree!)).toBe(false);
+  expect((await git(repo, ["rev-parse", "--verify", place.branch!])).ok).toBe(true);
+  expect(core.tasks.get(taskId)!.residency).toBe("archived");
+  // A follow-up adds the worktree back from the branch.
+  await runner.send(taskId, "One more thing.");
+  expect(existsSync(place.worktree!)).toBe(true);
+  await runner.dispose();
+});
+
 test("a task with an open question cannot report done; undrop restores the card", async () => {
   const p = repoWithTaskBranch();
   const { core, runner, taskId } = await bootWithTask(p);
@@ -278,7 +353,7 @@ test("a task with an open question cannot report done; undrop restores the card"
   await runner.dispose();
 });
 
-async function bootWithTask(place: Place, opts: { gh?: string; branchChecks?: boolean } = {}) {
+async function bootWithTask(place: Place, opts: { gh?: string; branchChecks?: boolean; now?: () => Date } = {}) {
   // A fake device with Claude Code signed in: who does the task never depends on which agents
   // are installed on the machine running the tests (a CI runner has none).
   const core: Core = startCore({
@@ -288,8 +363,8 @@ async function bootWithTask(place: Place, opts: { gh?: string; branchChecks?: bo
   });
   core.setPartner({ onTrigger: () => {} });
   let late: ReturnType<typeof createRunner> | undefined;
-  registerTaskTools(core, opts.branchChecks ? { branchChanges: (id) => late!.branchChanges(id) } : {});
-  const runner = createRunner(core, { harness: idlePort(), gh: opts.gh, newId: () => "t1" });
+  registerTaskTools(core, opts.branchChecks ? { branchChanges: (id) => late!.branchChanges(id), checkEvidence: (id, ev) => late!.checkEvidence(id, ev) } : {});
+  const runner = createRunner(core, { harness: idlePort(), gh: opts.gh, newId: () => "t1", archiveSweepMs: 0, ...(opts.now ? { now: opts.now } : {}) });
   late = runner;
   core.setRunner(runner);
   const card = await runner.openTask({ persona: "default", title: "fix", brief: "b", place });
@@ -320,3 +395,40 @@ function idlePort(): HarnessPort {
     available: async () => [],
   };
 }
+
+// D89 / focus-window.md "Choosing a body": a pin that can't run says the real reason; the
+// person's own pick never moves silently; the pick's model is what runs.
+test("who does it: a blocked pin moves with the real reason, the person's own pick is refused in one line, the model carries", async () => {
+  const core: Core = startCore({
+    dataDir: join(dir, "data"),
+    port: 0,
+    deviceProbes: {
+      cua: async () => ({ missing: "test" }),
+      harnesses: async () => [
+        { harness: "claude-code", installed: true, loggedIn: true, canBePartner: true },
+        { harness: "codex", installed: true, loggedIn: false, canBePartner: true },
+      ],
+      kind: async () => "laptop",
+    },
+  });
+  stops.push(() => core.stop());
+  core.setPartner({ onTrigger: () => {} });
+  registerTaskTools(core);
+  const ids = ["t1", "t2", "t3"];
+  const runner = createRunner(core, { harness: idlePort(), newId: () => ids.shift()!, taskModel: "", archiveSweepMs: 0 });
+  core.setRunner(runner);
+  await expect(runner.openTask({ persona: "default", title: "x", brief: "b", harness: "codex", origin: "you" })).rejects.toThrow("Codex can't take this task: it isn't signed in.");
+  const moved = await runner.openTask({ persona: "default", title: "x", brief: "b", harness: "codex", model: "gpt-5" });
+  const sel = (id: string) => core.log.read({ stream: `task:${id}`, kinds: ["body_selected"] }).at(-1)!.body as Bodies["body_selected"];
+  expect(sel(moved.taskId)).toEqual({ taskId: moved.taskId, harness: "claude-code", model: "opus", why: { kind: "unavailable", from: "codex", blocked: "signed_out" } });
+  expect(core.tasks.get(moved.taskId)).toMatchObject({ harness: "claude-code", model: "opus" });
+  await runner.drop(moved.taskId); // so the next runner doesn't recover it mid-work
+  await runner.dispose();
+  // DUCTER_TASK_MODEL (a cheap model for runs and evals) still wins over the ranking's model.
+  const cheap = createRunner(core, { harness: idlePort(), newId: () => ids.shift()!, taskModel: "haiku", archiveSweepMs: 0 });
+  const c = await cheap.openTask({ persona: "default", title: "y", brief: "b" });
+  await cheap.whenStarted(c.taskId);
+  expect(sel(c.taskId)).toMatchObject({ harness: "claude-code", model: "haiku", why: { kind: "default" } });
+  await cheap.drop(c.taskId);
+  await cheap.dispose();
+});

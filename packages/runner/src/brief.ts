@@ -129,3 +129,18 @@ export function handedOver(from: string, progress: string[]): string {
   const where = progress.length ? `\n\nWhere it stood (saved progress, oldest first):\n${progress.map((p) => `- ${p}`).join("\n")}` : "";
   return `This task was started by ${from}; the user moved it to you to carry on. The worktree has its changes so far. Check where the work stands (git status, git log, the files), then continue with the brief from there. Don't start over.${where}\n\nReport via report_to_main when done, blocked, or needing a decision.`;
 }
+
+/**
+ * First turn of a new session in the same task when the old one can't be resumed (the harness
+ * rejected the resume, or it was archived and its session is gone): focus-window-states
+ * parked -> hot, "start a new session in the same window from brief + checkpoint".
+ */
+export function startedAfresh(progress: string[]): string {
+  const where = progress.length ? `\n\nWhere it stood (saved progress, oldest first):\n${progress.map((p) => `- ${p}`).join("\n")}` : "";
+  return `Your earlier session on this task couldn't be resumed, so this is a new session on the same task and place. Check where the work stands (git status, git log, the files), then continue with the brief from there. Don't start over.${where}\n\nReport via report_to_main when done, blocked, or needing a decision.`;
+}
+
+/** A new session's seed (handedOver / startedAfresh) followed by the message that woke it. */
+export function seedThen(seed: string, text: string): string {
+  return `${seed}\n\nThe latest message for you:\n${text}`;
+}

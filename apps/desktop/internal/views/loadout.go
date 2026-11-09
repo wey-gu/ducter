@@ -736,11 +736,11 @@ func (a *App) whoLine(task *store.Task) (who, why string) {
 		if w.Why.Text != "" {
 			why = a.L.T("who.why.rule", w.Why.Text)
 		}
-	case "limit":
+	case "limit", "unavailable":
 		if w.Why.RuleID != "" {
 			why = a.L.T("who.why.limit.rule", harnessName(w.Why.From))
 		} else if w.Why.From != "" {
-			why = a.L.T("who.why.limit", harnessName(w.Why.From))
+			why = a.L.T("who.why."+w.Why.Kind, harnessName(w.Why.From))
 		}
 	case "you":
 		why = a.L.T("who.why.you")
@@ -962,12 +962,12 @@ func (a *App) whoSentence(task *store.Task) string {
 		if w.Why.Text != "" {
 			return a.L.T("who.sentence.rule", who, w.Why.Text)
 		}
-	case "limit":
+	case "limit", "unavailable":
 		if w.Why.RuleID != "" {
 			return a.L.T("who.sentence.limit.rule", who, harnessName(w.Why.From))
 		}
 		if w.Why.From != "" {
-			return a.L.T("who.sentence.limit", who, harnessName(w.Why.From))
+			return a.L.T("who.sentence."+w.Why.Kind, who, harnessName(w.Why.From))
 		}
 	case "you":
 		return a.L.T("who.sentence.you", who)

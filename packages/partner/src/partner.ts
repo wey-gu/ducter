@@ -1046,6 +1046,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       flushPending();
       appendNoted(turn);
       await settleOwed(batch, turnFrom);
+      confirmResults(batch);
       handledSeq = Math.max(handledSeq ?? 0, ...batch.map((e) => e.seq));
       if (!batch.some((e) => e.seq < 0)) queueCorrections(); // one correction round, never a loop
       else corrections.length = 0;
@@ -1083,6 +1084,24 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       running = null;
       if (queue.length && !closed) kick();
     });
+  }
+
+  /**
+   * done? -> done, the partner's half (focus-window-states): a done report Ducter's mechanical
+   * check couldn't settle (Done · checking) is confirmed by the partner's result turn: it read the
+   * report and neither sent the task back (that moves it to working) nor asked about it. A ref
+   * Ducter found missing (a commit not on the branch, a file not there) is never confirmed so.
+   */
+  function confirmResults(batch: LogEvent[]) {
+    for (const e of batch) {
+      if (e.kind !== "report") continue;
+      const r = e.body as Bodies["report"];
+      if (r.state !== "done" || r.evidence.some((x) => x.check === "missing")) continue;
+      const card = core.tasks.get(r.taskId);
+      const last = card?.lastReport; // a newer report since: that one decides
+      if (card?.attention !== "done_claimed" || (last && (last.state !== "done" || last.summary !== r.summary))) continue;
+      core.tasks.setState(r.taskId, "done", card.residency);
+    }
   }
 
   // ---------- trigger side effects ----------

@@ -77,6 +77,9 @@ type EvidenceRef struct {
 	Kind  string `json:"kind"` // ci | diff | file | url | log | test
 	Label string `json:"label"`
 	Ref   string `json:"ref"`
+	// Check is set by Ducter when a done report lands: verified | missing;
+	// empty = not checkable, the task's word.
+	Check string `json:"check,omitempty"`
 }
 
 type Question struct {

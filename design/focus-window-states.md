@@ -46,6 +46,15 @@ Terminal states: `failed · dropped · superseded`. `done` is resting, not termi
 waiter, C notifies M. The window's state does not change. M climbs the read ladder (8), then
 steers, waits, or drops it.
 
+**`done?` as built** (`done_claimed`, shown as Done). When a done report lands, the runner
+checks each ref where that is cheap and reliable and sets its `check`: a commit sha (`diff` /
+`log` ref) must exist and be on the task branch; a `file` path inside the place must exist;
+tests, CI lines, URLs and logs are the task's word and stay unchecked (a task can't set `check`
+itself). A ref verified and none missing → `done`. Otherwise the task stays `done?` until the
+partner's result turn confirms it: it read the report and neither sent the task back nor asked
+(no tool call; "M judges" is implicit). A ref Ducter found missing is never confirmed so; the
+partner sees it marked and sends the task back. A worker's refs are not checked yet.
+
 **Missing report:** if a turn ends without `report_to_main`, C sends one cheap nudge ("report
 status"). If there is still no report, the window stays `working` and the stall rule applies.
 C never guesses `done`.
@@ -67,6 +76,14 @@ C never guesses `done`.
 | `offline` | (previous) | C | the machine is back. Reconcile with the harness's own state |
 
 C may wake a sleeping machine when input arrives for a parked window on it.
+
+**As built (runner).** A rejected resume, and a task moved to another agent (D89, no session
+there yet), start a new session in the same task: the brief stays in its system prompt, every
+checkpoint and then the waking message are its first turn, and a system line says so
+(`raw.fresh: "resume_rejected"`). The archive horizon is a sweep at start and hourly: a
+`done`, `done?` or `failed` task idle 14 days (`DUCTER_ARCHIVE_IDLE_MS`) is archived; a
+worktree with leftovers is kept and the task stays parked, never force-removed. Dropped tasks
+keep their worktree for Undo and are not swept yet (`todo.md`).
 
 ## Cross-axis invariants
 

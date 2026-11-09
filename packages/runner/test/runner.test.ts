@@ -330,6 +330,93 @@ describe("send: steer vs queue", () => {
     await runner.dispose();
   });
 
+  test("switching a waiting task: the answer starts a new session on the new agent from the brief and saved progress", async () => {
+    const fake = new FakePort();
+    const runner = createRunner(core, { harness: fake, newId: nextId });
+    const card = await runner.openTask({ persona: "p1", title: "Fix CI", brief: "b", harness: "codex" });
+    await runner.whenStarted(card.taskId);
+    core.log.append({ stream: `task:${card.taskId}`, origin: "task", kind: "checkpoint", body: { taskId: card.taskId, text: "found the failing test" } });
+    await core.call("report_to_main", { state: "needs_input", summary: "which file?", questions: [] }, card.taskId);
+    expect(await runner.switchBody!(card.taskId, "claude-code")).toEqual({ ok: true });
+    expect(fake.sessions).toHaveLength(1); // nothing starts until there is something to say
+    expect(core.tasks.get(card.taskId)).toMatchObject({ attention: "needs_you", residency: "parked" });
+    expect(await runner.send(card.taskId, "src/a.ts", undefined, "user")).toEqual({ delivered: "prompted" });
+    expect(fake.specs[1]).toMatchObject({ harness: "claude-code" });
+    expect(fake.specs[1]!.resumeSessionId).toBeUndefined();
+    const first = fake.sessions[1]!.sent[0]!.text;
+    expect(first).toContain("started by codex");
+    expect(first).toContain("found the failing test");
+    expect(first).toEndWith("src/a.ts");
+    // The transcript shows the user's words, not the seed.
+    expect(taskEvents(card.taskId).filter((e) => e.role === "user").at(-1)!.text).toBe("src/a.ts");
+    expect(runner.sessionId(card.taskId)).toBe("fake-2");
+    await runner.dispose();
+  });
+
+  test("switching a finished task: a follow-up (and reopen) carries on on the new agent", async () => {
+    const fake = new FakePort();
+    const runner = createRunner(core, { harness: fake, newId: nextId });
+    const card = await runner.openTask({ persona: "p1", title: "Fix CI", brief: "b", harness: "codex" });
+    await runner.whenStarted(card.taskId);
+    await core.call("report_to_main", { state: "done", summary: "fixed", evidence: [] }, card.taskId);
+    await runner.switchBody!(card.taskId, "claude-code", "sonnet");
+    expect(await runner.reopen(card.taskId)).toEqual({ delivered: "prompted" });
+    expect(fake.specs[1]).toMatchObject({ harness: "claude-code", model: "sonnet" });
+    expect(fake.sessions[1]!.sent[0]!.text).toContain("started by codex");
+    expect(fake.sessions[1]!.sent[0]!.text).toEndWith(REOPENED);
+    await runner.dispose();
+  });
+
+  test("restart after a switch: the old agent's session id is not resumed on the new one", async () => {
+    const fake1 = new FakePort();
+    const r1 = createRunner(core, { harness: fake1, newId: nextId });
+    const card = await r1.openTask({ persona: "p1", title: "Fix CI", brief: "b", harness: "codex" });
+    await r1.whenStarted(card.taskId);
+    await core.call("report_to_main", { state: "needs_input", summary: "which?", questions: [] }, card.taskId);
+    await r1.switchBody!(card.taskId, "claude-code");
+    // core records who does it now (loadout.switchTask's body_selected)
+    core.tasks.get(card.taskId)!.body = { harness: "claude-code", why: { kind: "you" } };
+    await r1.dispose();
+
+    const fake2 = new FakePort();
+    const r2 = createRunner(core, { harness: fake2, newId: nextId });
+    expect(r2.sessionId(card.taskId)).toBeUndefined();
+    expect(await r2.send(card.taskId, "src/a.ts", undefined, "user")).toEqual({ delivered: "prompted" });
+    expect(fake2.specs[0]).toMatchObject({ harness: "claude-code" });
+    expect(fake2.specs[0]!.resumeSessionId).toBeUndefined();
+    expect(fake2.sessions[0]!.sent[0]!.text).toContain("started by codex");
+    await r2.dispose();
+    // Once the new agent has its own session, a later restart resumes that one.
+    const fake3 = new FakePort();
+    const r3 = createRunner(core, { harness: fake3, newId: nextId });
+    expect(r3.sessionId(card.taskId)).toBe("fake-1");
+    await r3.dispose();
+  });
+
+  test("a rejected resume starts a new session in the same task from the brief and every checkpoint", async () => {
+    const fake = new FakePort();
+    const runner = createRunner(core, { harness: fake, newId: nextId });
+    const card = await runner.openTask({ persona: "p1", title: "t", brief: "b" });
+    await runner.whenStarted(card.taskId);
+    for (const text of ["step one", "step two"]) core.log.append({ stream: `task:${card.taskId}`, origin: "task", kind: "checkpoint", body: { taskId: card.taskId, text } });
+    fake.sessions[0]!.end();
+    await waitFor(() => core.tasks.get(card.taskId)?.residency === "parked", "parked");
+    const start = fake.start.bind(fake);
+    fake.start = async (spec) => {
+      if (spec.resumeSessionId) throw new Error("No conversation found with session ID");
+      return start(spec);
+    };
+    expect(await runner.send(card.taskId, "continue")).toEqual({ delivered: "prompted" });
+    expect(fake.specs.at(-1)!.resumeSessionId).toBeUndefined();
+    const first = fake.sessions.at(-1)!.sent[0]!.text;
+    expect(first).toContain("couldn't be resumed");
+    expect(first).toContain("- step one\n- step two");
+    expect(first).toEndWith("continue");
+    expect(taskEvents(card.taskId).some((e) => e.role === "system" && (e.raw as any)?.fresh === "resume_rejected")).toBe(true);
+    expect(core.tasks.get(card.taskId)).toMatchObject({ attention: "working", residency: "hot" });
+    await runner.dispose();
+  });
+
   test("parked task resumes by session id on send", async () => {
     const fake = new FakePort();
     const runner = createRunner(core, { harness: fake, newId: nextId });

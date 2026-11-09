@@ -155,7 +155,7 @@ export async function openYourTask(d: NewTaskDeps, input: NewTaskInput): Promise
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    const reason: NewTaskReason = /no AI agent can take/i.test(message) ? "no_agent" : /offline|can't reach|not connected/i.test(message) || (err as Error)?.name === "DeviceOfflineError" ? "offline" : "failed";
+    const reason: NewTaskReason = /no AI agent can take|can't take this task/i.test(message) ? "no_agent" : /offline|can't reach|not connected/i.test(message) || (err as Error)?.name === "DeviceOfflineError" ? "offline" : "failed";
     return { ok: false, reason, message: message.replace(/ Tell the user in one line.*$/, "") };
   }
   // For the partner only (clients hide body_ notes, D89): it didn't open this one and must know,

@@ -1,6 +1,6 @@
 // Reports -> attention + decisions (D10). Reversible defaults auto-resolve; resolutions are
 // forwarded to the task through the onDecision hook (main.ts wires it to runner.send).
-import type { Attention, Bodies, LogEvent, Question } from "@ducter/protocol";
+import type { Attention, Bodies, EvidenceRef, LogEvent, Question } from "@ducter/protocol";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
 import { realClock, type Clock } from "./clock.ts";
 import type { CoreRegistry } from "./registry.ts";
@@ -37,6 +37,16 @@ export function forwardText(d: Bodies["decision"], r: Bodies["decision_resolved"
 }
 
 const newId = () => "d_" + crypto.randomUUID().replaceAll("-", "").slice(0, 10);
+
+/** done? -> done by the mechanical check alone: a ref Ducter verified, and none it found missing. */
+export function evidenceHolds(evidence: EvidenceRef[]): boolean {
+  return evidence.some((e) => e.check === "verified") && !evidence.some((e) => e.check === "missing");
+}
+
+/** The partner may confirm a done claim in its result: nothing Ducter checked came back missing. */
+export function evidenceConfirmable(evidence: EvidenceRef[]): boolean {
+  return !evidence.some((e) => e.check === "missing");
+}
 
 export function createDecisions(opts: {
   log: LogStore;
@@ -129,8 +139,10 @@ export function createDecisions(opts: {
         case "done":
           // A try of a keep-going loop (D113): the loop decides when it is done, not the try.
           if (opts.holds?.(r.taskId)) return setAttention(r.taskId, "working");
-          // C checks evidence mechanically: refs present -> done; none -> stays "Done · checking".
-          return setAttention(r.taskId, r.evidence.some((e) => e.ref.trim()) ? "done" : "done_claimed");
+          // C checks evidence mechanically (the runner set each ref's `check` before the report
+          // was logged): a ref verified and none missing -> done. Otherwise it stays "Done ·
+          // checking" until the partner confirms it in its result (evidenceConfirmable).
+          return setAttention(r.taskId, evidenceHolds(r.evidence) ? "done" : "done_claimed");
       }
     });
   };

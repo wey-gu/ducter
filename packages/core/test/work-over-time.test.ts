@@ -12,7 +12,7 @@ import { openLog } from "../src/log.ts";
 import { createMcpHub } from "../src/mcp.ts";
 import { createRegistry } from "../src/registry.ts";
 import { describeTrigger, nextFirings } from "../src/schedule.ts";
-import { createWork } from "../src/work.ts";
+import { createWork, cwdOfCheck } from "../src/work.ts";
 import { parseVerdict } from "../src/judge.ts";
 import type { Judge } from "../src/waiters.ts";
 import { openTask, report, tempDir, tick } from "./helpers.ts";
@@ -85,6 +85,16 @@ test("checks: only reading commands, as argv, never key files", () => {
   expect(validateCheck({ argv: ["test", "-f", "a; rm x"], succeedWhen: {} }).ok).toBe(false);
   expect(validateCheck({ argv: ["nc", "localhost", "5432"], succeedWhen: {} }).ok).toBe(false);
   expect(describeCheck(prCheck)).toBe("gh pr checks 1592 --repo nowledge-co/hawdb --json state");
+});
+
+test("checks: the model's cwd stays inside the task's place", () => {
+  expect(cwdOfCheck("/w/app", undefined)).toEqual({ cwd: "/w/app" });
+  expect(cwdOfCheck("/w/app", "web")).toEqual({ cwd: "/w/app/web" });
+  expect(cwdOfCheck("/w/app", "/w/app/web")).toEqual({ cwd: "/w/app/web" });
+  expect(cwdOfCheck("/w/app", "..")).toHaveProperty("error");
+  expect(cwdOfCheck("/w/app", "/w/app-other")).toHaveProperty("error");
+  expect(cwdOfCheck("/w/app", "~/.ducter")).toHaveProperty("error");
+  expect(cwdOfCheck(undefined, "/w/x")).toEqual({ cwd: "/w/x" });
 });
 
 test("checks: the predicate reads JSON arrays, values, text and exit codes", () => {

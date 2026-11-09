@@ -2,6 +2,7 @@
 // routines, the partner's and tasks' tools for them, the client frames, and On hand's view.
 // See waiters.ts, until.ts, routines.ts for each mechanism.
 import { homedir } from "node:os";
+import { resolve } from "node:path";
 import type { Bodies, CheckSpec, EventSpec, LogEvent, OnHand, Place, RoutineTrigger } from "@ducter/protocol";
 import type { LogStore, Runner, WorkerLinks } from "@ducter/protocol/src/internal.ts";
 import { describeCheck, describePredicate, validateCheck } from "@ducter/protocol/src/checks.ts";
@@ -54,6 +55,20 @@ export function placeOfCheck(place: Place | undefined): { device: string; cwd?: 
   return { device: place.device || "local" };
 }
 
+/**
+ * The folder a check runs in. The model's cwd stays inside the task's place: a folder in it,
+ * never above or beside it. Without a place (the partner's own wait) it is taken as written;
+ * validateCheck still keeps it out of the data folder and key folders.
+ */
+export function cwdOfCheck(placeCwd: string | undefined, specCwd: string | undefined): { cwd?: string } | { error: string } {
+  if (!specCwd) return { cwd: placeCwd };
+  if (!placeCwd) return { cwd: expand(specCwd) };
+  const root = resolve(placeCwd);
+  const cwd = resolve(root, expand(specCwd));
+  if (cwd !== root && !cwd.startsWith(root + "/")) return { error: `a check runs in the task's place (${placeCwd}); ${specCwd} is outside it` };
+  return { cwd };
+}
+
 const zhOf = (s: string) => /[一-鿿]/.test(s);
 
 export function createWork(o: WorkOptions): Work {
@@ -62,7 +77,9 @@ export function createWork(o: WorkOptions): Work {
   const check = async (spec: CheckSpec, w: { taskId?: string }): Promise<CheckResult> => {
     const where = placeOfCheck(w.taskId ? tasks.get(w.taskId)?.place : undefined);
     const device = spec.device ?? where.device;
-    const cwd = spec.cwd ? expand(spec.cwd) : where.cwd;
+    const at = cwdOfCheck(where.cwd, spec.cwd);
+    if ("error" in at) return { ok: false, met: false, summary: at.error, error: at.error };
+    const cwd = at.cwd;
     if (device === "local") return runCheck({ ...spec, ...(cwd ? { cwd } : {}) }, { exec: o.exec });
     const link = o.workers?.()?.link(device);
     if (!link) return { ok: false, met: false, summary: `no device called ${device}`, error: "unknown device" };

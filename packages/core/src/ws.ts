@@ -1,6 +1,6 @@
 // Client WebSocket protocol (ClientFrame / ServerFrame) over Bun's built-in WS.
 import type { ServerWebSocket } from "bun";
-import type { Bodies, ClientFrame, ClientKind, Delivery, LogEvent, PartnerActivity, Place, ServerFrame } from "@ducter/protocol";
+import type { Bodies, ClientFrame, ClientKind, Delivery, LogEvent, PartnerActivity, Place, ServerFrame, UndoConfirm } from "@ducter/protocol";
 import type { NewTaskInput, NewTaskResult } from "./newtask.ts";
 import type { CoreApi, Runner } from "@ducter/protocol/src/internal.ts";
 import type { Decisions } from "./decisions.ts";
@@ -269,8 +269,8 @@ export function createWsHandler(deps: WsDeps) {
         const noteUserAction = (taskId: string, text: string) =>
           log.append({ stream: "channel", origin: "user", kind: "job_status", body: { jobId: `act_${taskId}_${f.action}`, taskId, state: "done", text } });
         // Every task_action is acked with action_result (ok or a user-facing reason).
-        const result = (ok: boolean, message?: string, ref?: string) =>
-          send(ws, { t: "action_result", taskId: f.taskId, action: f.action, ok, ...(message ? { message } : {}), ...(ref ? { ref } : {}) });
+        const result = (ok: boolean, message?: string, ref?: string, confirm?: UndoConfirm) =>
+          send(ws, { t: "action_result", taskId: f.taskId, action: f.action, ok, ...(message ? { message } : {}), ...(ref ? { ref } : {}), ...(confirm ? { confirm } : {}) });
         const card = tasks.get(f.taskId);
         if (!card) return result(false, "I can't find that task.");
         const r = deps.runner();
@@ -313,6 +313,21 @@ export function createWsHandler(deps: WsDeps) {
               const o = await r.openPr(f.taskId);
               if (o.ok) noteUserAction(f.taskId, `the user opened a draft PR for this task${o.ref ? `: ${o.ref}` : ""}`);
               return result(o.ok, o.message, o.ref);
+            }
+            // D130: a folder that isn't a repo. 改回去 / Undo all changes (or one entry, path), and
+            // 就这样 / Keep the changes. An undo of a folder changed since the task finished
+            // comes back with confirm; the client asks, then sends force.
+            case "undo": {
+              if (!r?.undoFolder) return result(false, "Undo isn't available.");
+              const u = await r.undoFolder(f.taskId, { ...(f.path ? { path: f.path } : {}), ...(f.force ? { force: true } : {}) });
+              if (u.ok) noteUserAction(f.taskId, f.path ? `the user put one file back as it was before this task (${f.path})` : "the user undid all of this task's changes to the folder: it is exactly as it was before the task");
+              return result(u.ok, u.message, undefined, u.confirm);
+            }
+            case "keep": {
+              if (!r?.keepFolder) return result(false, "Keeping isn't available.");
+              const k = await r.keepFolder(f.taskId);
+              if (k.ok) noteUserAction(f.taskId, "the user kept this task's changes to the folder (they can't be undone any more)");
+              return result(k.ok, k.message);
             }
             default:
               return result(false, `unknown action ${(f as { action?: string }).action}`);
@@ -496,6 +511,13 @@ export function createWsHandler(deps: WsDeps) {
         const stream = taskStream(f.taskId);
         const events = log.read({ stream, beforeSeq: f.beforeSeq, limit: Math.min(f.limit ?? 200, 2000) });
         send(ws, { t: "task_history", taskId: f.taskId, events });
+        return;
+      }
+      case "folder_changes": {
+        // D130: the list behind a folder task's Changes (a walk of the folder, so on request).
+        const r = deps.runner();
+        const changes = (await r?.folderChanges?.(f.taskId, { files: true }).catch(() => undefined)) ?? null;
+        send(ws, { t: "folder_changes", taskId: f.taskId, changes });
         return;
       }
       default:

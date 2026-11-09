@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
-import { HARNESS_IDS, harnessName, type Attention, type Bodies, type BranchChanges, type Delivery, type EvidenceRef, type LogEvent, type Place, type Residency, type TaskCard } from "@ducter/protocol";
+import { HARNESS_IDS, harnessName, type Attention, type Bodies, type BranchChanges, type Delivery, type EvidenceRef, type FolderChanges, type FolderSummary, type UndoConfirm, type LogEvent, type Place, type Residency, type TaskCard } from "@ducter/protocol";
 import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, SessionSpec } from "@ducter/protocol/src/internal.ts";
-import { NUDGE, PRECOMPACT_NOTE, REOPENED, RESUME_AFTER_RESTART, SAVE_BEFORE_COMPACT, afterCompaction, briefTurn, handedOver, kickoff, seedThen, startedAfresh, taskBrief } from "./brief.ts";
+import { NUDGE, PRECOMPACT_NOTE, REOPENED, RESUME_AFTER_RESTART, SAVE_BEFORE_COMPACT, afterCompaction, briefTurn, handedOver, kickoff, noCopyAnswer, seedThen, startedAfresh, taskBrief } from "./brief.ts";
 import { resolveWindows, saveBeforeAt } from "@ducter/protocol/src/harness-facts.ts";
 import { createOarHarnessPort } from "./oar.ts";
 import { cwdOf, planPlace, provisionPlace } from "./places.ts";
@@ -9,7 +9,9 @@ import { browserSidecar, codexComputerBrief, computerUseGuard, type BrowserGuard
 import { checkEvidence } from "./evidence.ts";
 import { PREVIEW_MAX, preview } from "./normalize.ts";
 import { archiveWorktree, branchChanges, mergeTaskBranch, openDraftPr, type ActionResult } from "./integrate.ts";
-import { DEVICE_BACK, DeviceOfflineError, deviceOf, isOffline, remoteOps, type PlaceOps } from "./remote.ts";
+import { DEVICE_BACK, DeviceOfflineError, deviceOf, isOffline, localFolderOps, remoteOps, type PlaceOps } from "./remote.ts";
+import { createFolderStore, type CantKeep } from "./folder.ts";
+import { join } from "node:path";
 
 /** task_state reason for a task whose worker dropped; clients render it as "<device> 连不上 / Can't reach <device>". */
 export const unreachableReason = (device: string) => `device:unreachable:${device}`;
@@ -64,6 +66,12 @@ export interface RunnerExt extends Runner {
   checkEvidence(taskId: string, evidence: EvidenceRef[]): Promise<EvidenceRef[]>;
   /** Archives finished tasks idle past the archive horizon now; returns their ids (the timer runs it too). */
   sweepArchive(): Promise<string[]>;
+  /** D130: a non-git folder task's changes against the copy kept before it wrote. */
+  folderChanges(taskId: string, opts?: { files?: boolean }): Promise<FolderChanges | undefined>;
+  /** D130: the task reported done or failed: its 7 days start, and what it changed (for the report). */
+  folderReport(taskId: string): Promise<FolderSummary | undefined>;
+  undoFolder(taskId: string, opts?: { path?: string; force?: boolean }): Promise<{ ok: boolean; message: string; confirm?: UndoConfirm }>;
+  keepFolder(taskId: string): Promise<{ ok: boolean; message: string }>;
   /** Alias of dispose, called by main on shutdown. */
   stop(): Promise<void>;
   /** Close all sessions and stop listening. */
@@ -109,6 +117,11 @@ interface TaskRt {
   saveAsked: boolean;
   prefix: string[];
   context?: number; // the harness's last context reading
+  /** D130: the folder couldn't be copied; the task asked first. text: the turn held until the answer. */
+  gated?: { text: string };
+  /** D130: the user let it change the folder without a copy. */
+  direct?: boolean;
+  lang?: "zh" | "en"; // the language the user reads its reports in
 }
 
 /** The turn after a browser driver switch (D130): same task, now on Ducter's own browser. */
@@ -137,6 +150,34 @@ export function withBrowser(base: SessionSpec, sc: BrowserSidecar | undefined, p
   return spec;
 }
 
+/** D130: the ask before a task changes a folder Ducter couldn't copy (a report from the runner). */
+export function askBeforeWriting(why: CantKeep, detail: string | undefined, lang: "zh" | "en" | undefined): { summary: string; question: string } {
+  if (lang === "zh") {
+    const where = {
+      cloud: `这个文件夹在${detail ? ` ${detail} ` : "网盘"}里同步`,
+      network: "这个文件夹在网络盘上",
+      external: "这个文件夹在外接硬盘上",
+      too_big: `这个文件夹太大了${detail ? `（${detail}）` : ""}`,
+      missing: "这个文件夹找不到了",
+      copy_failed: "这个文件夹复制不了",
+      holds_ducter: "这个文件夹里装着 Ducter 自己的数据",
+    }[why];
+    return { summary: `动手之前先问你：${where}，没法先留一份，改了就改不回去。`, question: "直接改这个文件夹里的文件吗？改完没法改回去。" };
+  }
+  const where = {
+    cloud: `this folder syncs with ${detail ?? "a cloud drive"}`,
+    network: "this folder is on a network drive",
+    external: "this folder is on an external drive",
+    too_big: `this folder is too big to copy${detail ? ` (${detail})` : ""}`,
+    missing: "the folder isn't there",
+    copy_failed: "the folder couldn't be copied",
+    holds_ducter: "this folder holds Ducter's own data",
+  }[why];
+  return { summary: `Before changing anything: ${where}, so Ducter can't keep a copy to undo with. Changes made there can't be undone.`, question: "Change the files in this folder directly, with no way to undo?" };
+}
+
+const FINISHED: Attention[] = ["done_claimed", "done", "failed", "dropped"];
+
 const REPORT_ATTENTION: Record<Bodies["report"]["state"], Attention> = {
   progress: "working",
   needs_input: "needs_you",
@@ -159,6 +200,18 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
   const graceMs = opts.offlineGraceMs ?? Number(process.env.DUCTER_OFFLINE_GRACE_MS || 120_000);
   const parkMs = opts.parkIdleMs ?? Number(process.env.DUCTER_PARK_IDLE_MS || 15 * 60_000);
   const archiveIdleMs = opts.archiveIdleMs ?? Number(process.env.DUCTER_ARCHIVE_IDLE_MS ?? 14 * 24 * 3600_000);
+  // D130: copies of non-git folders, kept 7 days after their task finished. Swept hourly.
+  const folders = createFolderStore({ root: join(core.dataDir, "snapshots"), now: () => now().getTime() });
+  const sweepFolders = () => {
+    try {
+      folders.sweep();
+    } catch (err) {
+      console.warn("[runner] folder sweep failed:", (err as Error).message);
+    }
+  };
+  sweepFolders();
+  const folderTimer = setInterval(sweepFolders, 60 * 60_000);
+  (folderTimer as { unref?: () => void }).unref?.();
   const localOps: PlaceOps = {
     plan: (place, id, title) => planPlace(place, id, title, core.dataDir),
     provision: (r) => provisionPlace(r),
@@ -167,6 +220,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     openPr: (place) => openDraftPr(place, { gh: opts.gh }),
     changes: (place) => branchChanges(place),
     archive: (place) => archiveWorktree(place, core.dataDir),
+    folder: localFolderOps(folders),
   };
   /** A paired worker's ops when the place names one; any other name (e.g. "mac") is this machine. */
   function opsFor(place: Place | undefined): PlaceOps {
@@ -233,11 +287,62 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     await s.close().catch(() => {});
   }
 
-  async function sendTurn(t: TaskRt, text: string, from: From, logged = false) {
+  // ---------- D130: a folder that isn't a git repo ----------
+  const folderOf = (t: TaskRt): string | undefined => {
+    const p = core.tasks.get(t.id)?.place ?? t.card.place;
+    return p.kind === "folder" ? p.path : undefined;
+  };
+
+  /** Keep a copy of the folder before the task writes (once; a kept or undone one is taken
+   *  again). Why it couldn't, or undefined when there is one (or the user said go without). */
+  async function keepCopy(t: TaskRt): Promise<{ why: CantKeep; detail?: string } | undefined> {
+    const f = folderOf(t);
+    if (!f || t.direct) return undefined;
+    try {
+      const r = await t.ops.folder.prepare(t.id, f);
+      if (r.ok) {
+        if (r.fresh) logEvent(t, { role: "system", from: "runner", raw: { folder: { copy: r.method } } });
+        return undefined;
+      }
+      return { why: r.why, ...(r.detail ? { detail: r.detail } : {}) };
+    } catch (err) {
+      if (isOffline(err)) throw err;
+      return { why: "copy_failed", detail: preview(err instanceof Error ? err.message : String(err), 200) };
+    }
+  }
+
+  /** The folder can't be copied: hold the turn and ask first, in a plain sentence (the partner
+   *  says it in its own words). Hold is the default; Go or a reply sends the held turn (send). */
+  function askFirst(t: TaskRt, cant: { why: CantKeep; detail?: string }, text: string) {
+    t.gated = { text };
+    t.running = false;
+    const a = askBeforeWriting(cant.why, cant.detail, t.lang);
+    logEvent(t, { role: "system", from: "runner", raw: { folder: { ask: cant.why, ...(cant.detail ? { detail: cant.detail } : {}) } } });
+    core.log.append({
+      persona: t.persona,
+      stream: stream(t.id),
+      origin: "task",
+      kind: "report",
+      body: { taskId: t.id, state: "needs_input", summary: a.summary, questions: [{ id: "folder", text: a.question, blocking: true, reversible: false }], evidence: [] },
+    });
+    setState(t, "needs_you", t.session ? "warm" : "parked");
+  }
+
+  /** Returns false when the turn was held for the folder question (askFirst). */
+  async function sendTurn(t: TaskRt, text: string, from: From, logged = false): Promise<boolean> {
     clearTimeout(t.parkTimer);
+    if (folderOf(t) && !t.gated) {
+      const cant = await keepCopy(t);
+      if (cant) {
+        if (!logged && from !== "runner") logInput(t, text, from, "turn");
+        askFirst(t, cant, text);
+        return false;
+      }
+    }
     t.running = true;
     setState(t, "working", "hot");
     await deliver(t, text, "turn", from, logged);
+    return true;
   }
 
   // clientId: the client's id for a user's task_send, so core can tell a resend from a new message.
@@ -556,6 +661,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     else clearTimeout(t.parkTimer);
     // A finished browser task quits its browser cleanly so sign-ins are saved (browser.ts).
     if (!busy && t.sidecar && ["done_claimed", "done", "failed"].includes(currentAttention(t))) void t.sidecar.close().catch(() => false);
+    // D130: a finished folder task: what the folder looks like now, and its 7 days start.
+    if (!busy && folderOf(t) && FINISHED.includes(currentAttention(t))) await t.ops.folder.finish(t.id).catch(() => {});
     if (t.dropped || busy) return;
     if (reported) {
       t.nudged = false;
@@ -682,6 +789,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     // Only these two, set explicitly; every other NMEM_* the host has stays out (child-env.ts).
     const mem = core.persona.mem;
     if (mem) spec.env = { NMEM_AGENT_ID: mem.agentId, ...(mem.space ? { NMEM_SPACE: mem.space } : {}) };
+    // D130: a folder task writes only inside its folder where the harness can hold it there (Codex's sandbox).
+    if (open.place.kind === "folder") spec.confineWrites = true;
     return spec;
   }
 
@@ -727,8 +836,10 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     // After a switch (D89) the card holds who does it now, not who it opened with.
     const now = card.body ? { ...open, harness: card.body.harness, model: card.body.model } : open;
     const t = newRt(open.taskId, e.persona, card, specFor(open.taskId, now, cwd), ops);
+    if (open.language) t.lang = open.language;
+    let asked = false; // D130: it asked before changing a folder it couldn't copy
     for (const ev of core.log.read({ stream: stream(open.taskId), kinds: ["task_event"], limit: 50_000 })) {
-      const raw = (ev.body as Bodies["task_event"]).raw as { sessionId?: string; cwd?: string; kind?: string; compactions?: number; switched?: { from: string } } | undefined;
+      const raw = (ev.body as Bodies["task_event"]).raw as { sessionId?: string; cwd?: string; kind?: string; compactions?: number; switched?: { from: string }; folder?: { ask?: string; direct?: boolean } } | undefined;
       if (raw?.sessionId) {
         t.sessionId = t.loggedSessionId = raw.sessionId;
         t.handedFrom = undefined;
@@ -740,7 +851,11 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         t.sessionId = t.loggedSessionId = undefined;
         t.handedFrom = raw.switched.from;
       }
+      if (raw?.folder?.ask) asked = true;
+      if (raw?.folder?.direct) (asked = false), (t.direct = true);
     }
+    // Still waiting for that answer: the answer sends the turn it held (from the brief again).
+    if (asked && t.attention === "needs_you") t.gated = { text: kickoff(open.title) };
     tasks.set(open.taskId, t);
     recovered.push(t);
   }
@@ -840,6 +955,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const t = newRt(id, persona, card, specFor(id, body, resolved.cwd, !later), ops);
     if (sidecar) (t.sidecar = sidecar), (t.sidecarInput = sidecarInput);
     t.spec = withBrowser(t.base, sidecar, partnerName);
+    if (input.language) t.lang = input.language;
     tasks.set(id, t);
     core.tasks.setState(id, "queued", "provisioning");
 
@@ -926,6 +1042,18 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       await t.started.catch(() => {});
       t.nudged = false;
       t.stallNoted = false;
+      if (t.gated) {
+        // D130: the answer to "change this folder without a copy?". Go, or a reply the task
+        // reads, sends the turn held for it; from here on it doesn't ask again.
+        const held = t.gated.text;
+        t.gated = undefined;
+        t.direct = true;
+        logInput(t, text, from, "turn", clientId);
+        logEvent(t, { role: "system", from: "runner", raw: { folder: { direct: true } } });
+        if (!t.session) await startSession(t, !!t.sessionId);
+        await sendTurn(t, `${held}\n\n${noCopyAnswer(text)}`, "runner");
+        return { delivered: "prompted" };
+      }
       if (!t.session) {
         // Its worker is away: say so, and deliver nothing (the partner tells the user).
         if (t.ops.device && !t.ops.device.online()) throw new DeviceOfflineError(t.ops.device.name);
@@ -1054,7 +1182,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       t.running = false;
       await s?.close().catch(() => {});
       await t.sidecar?.close().catch(() => false);
-      // The worktree and branch are kept on purpose.
+      // The worktree and branch are kept on purpose; a folder's copy for 7 days (D130).
+      if (folderOf(t)) await t.ops.folder.finish(taskId).catch(() => {});
     },
 
     async undrop(taskId) {
@@ -1108,6 +1237,41 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       return t.ops.changes(place).catch(() => undefined);
     },
 
+    // ---------- D130: a folder that isn't a git repo ----------
+    async folderChanges(taskId, o) {
+      const t = tasks.get(taskId);
+      if (!t || !folderOf(t)) return undefined;
+      return t.ops.folder.changes(taskId, o).catch(() => undefined);
+    },
+
+    async folderReport(taskId) {
+      const t = tasks.get(taskId);
+      if (!t || !folderOf(t)) return undefined;
+      await t.ops.folder.finish(taskId).catch(() => {});
+      const c = await t.ops.folder.changes(taskId).catch(() => undefined);
+      if (!c) return undefined;
+      const { files: _f, more: _m, ...summary } = c;
+      return summary;
+    },
+
+    async undoFolder(taskId, o = {}) {
+      const t = get(taskId);
+      if (!folderOf(t)) return { ok: false, message: "This task doesn't work in a folder." };
+      // While it works there, putting the folder back would race it.
+      if (isBusy(t)) return { ok: false, message: "It's still working in this folder. Stop it first, then undo." };
+      const r = await t.ops.folder.undo(taskId, o);
+      if (r.ok) logEvent(t, { role: "system", from: "runner", text: r.message, raw: { effect: o.path ? "folder_restore" : "folder_undo", ...(o.path ? { path: o.path } : {}) } });
+      return r;
+    },
+
+    async keepFolder(taskId) {
+      const t = get(taskId);
+      if (!folderOf(t)) return { ok: false, message: "This task doesn't work in a folder." };
+      const r = await t.ops.folder.keep(taskId);
+      if (r.ok) logEvent(t, { role: "system", from: "runner", text: r.message, raw: { effect: "folder_keep" } });
+      return r;
+    },
+
     whenStarted(taskId) {
       return get(taskId).started;
     },
@@ -1119,6 +1283,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     async dispose() {
       unsubscribe();
       clearTimeout(sweepFirst);
+      clearInterval(folderTimer);
       clearInterval(sweepTimer);
       for (const t of tasks.values()) {
         clearTimeout(t.offlineTimer);

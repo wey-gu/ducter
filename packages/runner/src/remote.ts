@@ -4,7 +4,8 @@
 // integrate.ts directly; remote ops send the same calls down the worker's outbound socket
 // (WorkerLink), where worker-host.ts runs them. The runner keeps all task state on the main.
 import { randomBytes } from "node:crypto";
-import type { BranchChanges, Place } from "@ducter/protocol";
+import type { BranchChanges, FolderChanges, Place } from "@ducter/protocol";
+import type { FolderStore } from "./folder.ts";
 import type { HarnessEvent, HarnessPort, HarnessSession, SessionSpec, WorkerLink, WorkerSessionFrame } from "@ducter/protocol/src/internal.ts";
 import type { ActionResult } from "./integrate.ts";
 import type { ResolvedPlace } from "./places.ts";
@@ -21,6 +22,27 @@ export interface PlaceOps {
   changes(place: Place): Promise<BranchChanges | undefined>;
   /** After a merge: remove the clean worktree Ducter made, keep the branch (integrate.ts). */
   archive(place: Place): Promise<ActionResult & { removed: boolean }>;
+  /** D130: the copy of a non-git folder, kept on the machine that holds it (folder.ts). */
+  folder: FolderOps;
+}
+
+/** FolderStore over a promise, so it can live on a worker. */
+export interface FolderOps {
+  prepare(taskId: string, folder: string): ReturnType<FolderStore["prepare"]>;
+  finish(taskId: string): Promise<void>;
+  changes(taskId: string, opts?: { files?: boolean }): Promise<FolderChanges | undefined>;
+  undo(taskId: string, opts?: { path?: string; force?: boolean }): ReturnType<FolderStore["undo"]>;
+  keep(taskId: string): Promise<{ ok: boolean; message: string }>;
+}
+
+export function localFolderOps(s: FolderStore): FolderOps {
+  return {
+    prepare: (id, f) => s.prepare(id, f),
+    finish: async (id) => s.finish(id),
+    changes: (id, o) => s.changes(id, o),
+    undo: (id, o) => s.undo(id, o),
+    keep: async (id) => s.keep(id),
+  };
 }
 
 /** The device a place names; "local", empty, or absent mean this machine. */
@@ -114,5 +136,13 @@ export function remoteOps(link: WorkerLink): PlaceOps {
     changes: (place) => link.call<BranchChanges | undefined>("changes", { place }, 10_000).catch(() => undefined),
     // An older worker doesn't know "archive": its worktree stays, as before.
     archive: (place) => link.call<ActionResult & { removed: boolean }>("archive", { place }, 60_000).catch((err) => ({ ok: false, removed: false, message: `Kept the worktree on ${link.name}: ${err instanceof Error ? err.message : String(err)}` })),
+    // D130: an older worker doesn't know these: it can't keep a copy, so the task asks first.
+    folder: {
+      prepare: (taskId, folder) => guard(link.call<Awaited<ReturnType<FolderStore["prepare"]>>>("folderPrepare", { taskId, folder }, 10 * 60_000)).catch((err) => (isOffline(err) ? Promise.reject(err) : { ok: false as const, why: "copy_failed" as const, detail: String(err) })),
+      finish: (taskId) => link.call<void>("folderFinish", { taskId }, 60_000).catch(() => undefined),
+      changes: (taskId, opts) => link.call<FolderChanges | undefined>("folderChanges", { taskId, opts }, 60_000).catch(() => undefined),
+      undo: (taskId, opts) => guard(link.call<Awaited<ReturnType<FolderStore["undo"]>>>("folderUndo", { taskId, opts }, 10 * 60_000)),
+      keep: (taskId) => guard(link.call<{ ok: boolean; message: string }>("folderKeep", { taskId }, 60_000)),
+    },
   };
 }

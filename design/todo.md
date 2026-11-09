@@ -132,8 +132,32 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       down"). Today a save while Mem is down is dropped and nothing is shown.
 - [ ] Search before writing, to supersede instead of duplicating (`nmem m supersede`).
 - [ ] Undo on the Noted line (archive the memory, never delete).
-- [ ] Automatic pre-turn recall behind a precision gate, and logging recalls in the Log.
 - [ ] Tasks (windows) as the same identity: set `NMEM_AGENT_ID` in task environments.
+
+## The conversation's own memory: digest, window, recall (`design/memory.md`, D123)
+
+- [ ] **Turn automatic pre-turn recall on** (built, gated, logged in `spine_recall`; off by
+      default). Trigger: its admitted-hit precision measured on a real channel replay clears
+      0.8 (the eval's corpus gave 5/8, below the bar).
+- [ ] **A real-channel corpus for the eval**: a replay of the author's own channel (zh + en),
+      ~100K tokens or more, at production budgets, so digests compress 20–50× (today's corpus is
+      ~2K tokens at budgets scaled 50× down: it checks what is kept, not compression). Also
+      LongMemEval_S / LoCoMo for an outside calibration. Trigger: before tuning `T_hi`, `T_lo`,
+      the epoch size, or the recall gate.
+- [ ] Vectors next to FTS5 (Qwen3-Embedding-0.6B or bge-m3 in sqlite-vec), fused by rank.
+      Trigger: lexical misses on paraphrased questions in the real-channel eval.
+- [ ] Index digest TOC rows as coarse search nodes (RAPTOR-style), so `log_search` can hit a
+      topic as well as a line.
+- [ ] The main AI marks a topic finished (a tool, or a marker in its reply). Today only a merge
+      or PR by button counts as a finished topic.
+- [ ] Writer: a cache-aligned side call on the warm main session instead of a fresh session
+      (research/14 §6.3), and a self-critique pass before the audit. Trigger: the writer's
+      cost or its rewrite rate in real use.
+- [ ] Roll-up loss over months (level-2 epochs are not built; stop at level 1 until measured).
+- [ ] Re-cut by expected cost with P(warm) (principle 4): today a warm session re-cuts on one
+      threshold (estimated context past 120K, and a digest exists).
+- [ ] Read-fold and late fold (principle 5) are still not built.
+- [ ] Meter the digest writer's cost (the eval records answer cost only).
 
 ## Your accounts and your other AI agents (promised as "coming soon" on the site)
 

@@ -1,13 +1,25 @@
-// The Log: append-only SQLite event store with gapless seq and an FTS5 (trigram) index.
+// The Log: append-only SQLite event store with gapless seq and two FTS5 indexes: trigram (exact
+// substrings, any language) and CJK bigrams (BM25 ranking that works for Chinese; search.ts).
+// The same database holds the spine: the frozen digests of the channel (spine.ts).
+//
+// Migrations run on open, by PRAGMA user_version:
+//   1: the bigram index (back-filled from every indexed event) and the spine tables.
 import { Database } from "bun:sqlite";
 import { chmodSync, existsSync } from "node:fs";
 import type { EventKind, LogEvent } from "@ducter/protocol";
-import type { AppendInput, LogStore } from "@ducter/protocol/src/internal.ts";
+import type { AppendInput, LogStore, SpineStore } from "@ducter/protocol/src/internal.ts";
 import { realClock, type Clock } from "./clock.ts";
+import { bigramQuery, fuseRanks, indexText } from "@ducter/protocol/src/search.ts";
+import { openSpine, SPINE_SCHEMA } from "./spine.ts";
 
 export interface SqliteLog extends LogStore {
+  /** Frozen digests of the channel, in this database. */
+  spine: SpineStore;
   close(): void;
 }
+
+const SCHEMA_VERSION = 1;
+const CANDIDATES = 50; // per ranked list, before fusion
 
 interface Row {
   seq: number;
@@ -68,11 +80,24 @@ export function openLog(opts: { path: string; persona: string; clock?: Clock }):
     CREATE INDEX IF NOT EXISTS events_kind ON events(kind, seq);
     CREATE VIRTUAL TABLE IF NOT EXISTS events_fts USING fts5(text, tokenize = 'trigram');
   `);
+  const version = (db.query("PRAGMA user_version").get() as { user_version: number }).user_version;
+  if (version < 1) {
+    db.transaction(() => {
+      db.exec("CREATE VIRTUAL TABLE IF NOT EXISTS events_bg USING fts5(text, tokenize = 'unicode61 remove_diacritics 2');");
+      db.exec(SPINE_SCHEMA);
+      // Back-fill the bigram index from the text the trigram index already holds.
+      const add = db.prepare("INSERT INTO events_bg (rowid, text) VALUES (?, ?)");
+      for (const r of db.query("SELECT rowid, text FROM events_fts").all() as { rowid: number; text: string }[]) add.run(r.rowid, indexText(r.text));
+      db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
+    })();
+  }
 
   const insert = db.prepare(
     "INSERT INTO events (seq, ts, persona, stream, origin, kind, body, supersedes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
   );
   const insertFts = db.prepare("INSERT INTO events_fts (rowid, text) VALUES (?, ?)");
+  const insertBg = db.prepare("INSERT INTO events_bg (rowid, text) VALUES (?, ?)");
+  const spine = openSpine(db, clock);
   const maxSeq = db.query("SELECT COALESCE(MAX(seq), 0) AS h FROM events");
   let headSeq = (maxSeq.get() as { h: number }).h;
 
@@ -119,7 +144,10 @@ export function openLog(opts: { path: string; persona: string; clock?: Clock }):
     e.seq = (maxSeq.get() as { h: number }).h + 1;
     insert.run(e.seq, e.ts, e.persona, e.stream, e.origin, e.kind, JSON.stringify(e.body), e.supersedes ?? null);
     const text = textOf(e.body);
-    if (text) insertFts.run(e.seq, text);
+    if (text) {
+      insertFts.run(e.seq, text);
+      insertBg.run(e.seq, indexText(text));
+    }
   });
 
   return {
@@ -156,28 +184,62 @@ export function openLog(opts: { path: string; persona: string; clock?: Clock }):
       return (db.query(sql).all(...args, limit) as Row[]).map(toEvent);
     },
 
-    search(query, { stream, limit = 20 } = {}) {
+    search(query, { stream, limit = 20, beforeSeq } = {}) {
       const terms = query.trim().split(/\s+/).filter(Boolean);
       if (!terms.length) return [];
+      const scope: string[] = [];
+      const scopeArgs: (string | number)[] = [];
+      if (stream) (scope.push("AND e.stream = ?"), scopeArgs.push(stream));
+      if (beforeSeq != null) (scope.push("AND e.seq < ?"), scopeArgs.push(beforeSeq));
+      const where = scope.join(" ");
+
+      // 1. Exact: every term as a substring, newest first. Trigram MATCH; terms shorter than 3
+      //    chars (common in Chinese) cannot use it, so those fall back to LIKE.
       const args: (string | number)[] = [];
       let match: string;
       if (terms.every((t) => [...t].length >= 3)) {
-        // Trigram MATCH: each term as a quoted substring phrase, all required.
         match = "events_fts MATCH ?";
         args.push(terms.map((t) => `"${t.replaceAll('"', '""')}"`).join(" AND "));
       } else {
-        // Terms shorter than 3 chars (common in Chinese) cannot use trigram MATCH; fall back to LIKE.
         match = terms.map(() => "events_fts.text LIKE ? ESCAPE '\\'").join(" AND ");
         for (const t of terms) args.push(`%${t.replace(/[\\%_]/g, (c) => "\\" + c)}%`);
       }
-      const streamCond = stream ? "AND e.stream = ?" : "";
-      if (stream) args.push(stream);
-      const sql = `SELECT e.* FROM events_fts JOIN events e ON e.seq = events_fts.rowid
-                   WHERE ${match} ${streamCond} ORDER BY e.seq DESC LIMIT ?`;
-      return (db.query(sql).all(...args, limit) as Row[]).map(toEvent);
+      const exact = db
+        .query(`SELECT e.seq, e.kind FROM events_fts JOIN events e ON e.seq = events_fts.rowid WHERE ${match} ${where} ORDER BY e.seq DESC LIMIT ?`)
+        .all(...args, ...scopeArgs, CANDIDATES) as { seq: number; kind: string }[];
+
+      // 2. Ranked: BM25 over CJK bigrams and words, any term matching.
+      const q = bigramQuery(query);
+      let ranked: { seq: number; kind: string }[] = [];
+      if (q) {
+        try {
+          ranked = db
+            .query(`SELECT e.seq, e.kind FROM events_bg JOIN events e ON e.seq = events_bg.rowid WHERE events_bg MATCH ? ${where} ORDER BY bm25(events_bg) LIMIT ?`)
+            .all(q, ...scopeArgs, CANDIDATES) as { seq: number; kind: string }[];
+        } catch {
+          ranked = []; // a query FTS5 can't parse: the exact list still answers
+        }
+      }
+      if (!exact.length && !ranked.length) return [];
+
+      // 3. Fuse by reciprocal rank, with recency as a light third list; the user's words get a boost.
+      const kinds = new Map<number, string>([...exact, ...ranked].map((r) => [r.seq, r.kind]));
+      const order = fuseRanks(
+        [
+          { seqs: exact.map((r) => r.seq), weight: 1 },
+          { seqs: ranked.map((r) => r.seq), weight: 1 },
+          { seqs: [...kinds.keys()].sort((a, b) => b - a), weight: 0.3 },
+        ],
+        (seq) => (kinds.get(seq) === "user_msg" ? 1.15 : 1),
+      ).slice(0, limit);
+      const rows = db.query(`SELECT * FROM events WHERE seq IN (${order.map(() => "?").join(",")})`).all(...order) as Row[];
+      const bySeq = new Map(rows.map((r) => [r.seq, r]));
+      return order.map((s) => bySeq.get(s)).filter((r): r is Row => !!r).map(toEvent);
     },
 
     head: () => headSeq,
+
+    spine,
 
     subscribe(fn) {
       listeners.add(fn);

@@ -20,9 +20,43 @@ export interface AppendInput<K extends EventKind = EventKind> {
 export interface LogStore {
   append<K extends EventKind>(e: AppendInput<K>): LogEvent<K>;
   read(opts: { stream?: string; fromSeq?: number; beforeSeq?: number; limit?: number; kinds?: EventKind[] }): LogEvent[];
-  search(query: string, opts?: { stream?: string; limit?: number }): LogEvent[]; // FTS5
+  // FTS5 over CJK bigrams + exact substrings, rank-fused (core/src/search.ts); best match first.
+  search(query: string, opts?: { stream?: string; limit?: number; beforeSeq?: number }): LogEvent[];
   head(): number;
   subscribe(fn: (e: LogEvent) => void): () => void;
+}
+
+// ---------- the main AI's spine (design/memory.md) ----------
+
+/** One frozen digest: a closed segment of the channel, or an epoch rolled up from segments. */
+export interface SpineRecord {
+  id: string; // "S0001" / "E0001"
+  kind: "segment" | "epoch";
+  fromSeq: number; // channel seq range it covers, inclusive
+  toSeq: number;
+  createdAt: string;
+  body: unknown; // the digest (partner/src/spine/digest.ts); never changed once stored
+}
+
+/** One try at writing a digest, kept for diagnostics (an audit that failed is never frozen). */
+export interface SpineAttempt {
+  fromSeq: number;
+  toSeq: number;
+  n: number;
+  ok: boolean;
+  writer: string;
+  reasons: string[];
+  at?: string;
+}
+
+/** Append-only: frozen digests are never regenerated, updated or deleted. */
+export interface SpineStore {
+  list(): SpineRecord[]; // by fromSeq, an epoch before the segments it covers
+  freeze(r: Omit<SpineRecord, "createdAt">): SpineRecord; // throws on a duplicate id
+  attempt(a: SpineAttempt): void;
+  attempts(limit?: number): SpineAttempt[];
+  /** Automatic recall offered to the model (model-visible means logged). */
+  recalled(r: { query: string; hits: number[]; admitted: boolean; turnSeq?: number }): void;
 }
 
 export interface TaskRegistry {
@@ -57,6 +91,8 @@ export interface CoreApi {
   connections?: ConnectionsApi;
   /** What the partner is doing while the user waits (D104); absent in tests and stubs. */
   activity?: { set(a: PartnerActivity | null): void };
+  /** Frozen digests of the channel (design/memory.md), in the Log's own database; absent in stubs. */
+  spine?: SpineStore;
 }
 
 /**

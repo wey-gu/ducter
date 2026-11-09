@@ -51,6 +51,70 @@ at cut points, and changes between cuts arrive as L4 deltas.
 - **Quotes**: a search for "what exactly did the user say" runs lexically on distinctive
   terms, not on paraphrase.
 
+## Digest, window and recall: as built (D123)
+
+Code: `packages/partner/src/spine/` (partner side), `packages/core/src/{log,spine}.ts` and
+`packages/protocol/src/search.ts` (store and index). Everything below is derived from the Log
+and the store, so a restart picks up where it was; a digest being written when Ducter stopped
+is written again.
+
+- **Store.** Frozen digests live in the Log's own SQLite file, table `spine`, append-only:
+  triggers refuse `UPDATE` and `DELETE`. They are not channel events, so clients never receive
+  them. Every write attempt (ok or not, with the audit's reasons) goes to `spine_attempts`;
+  automatic recall goes to `spine_recall`. Migration 1 (`PRAGMA user_version`) adds these and
+  back-fills the new search index.
+- **Closing** (`segment.ts`). Over the unsummarized tail: past `T_hi` 24K the cut falls where
+  the segment is 16–24K, at a turn boundary (after a partner-side event, before the user's next
+  message), best first: no unanswered ask straddling it, a 30-minute pause, a task result.
+  Below the budget: a part of at least 4K closes after the user merges a task's work or opens
+  its PR (a finished topic), or once the channel has been quiet for 2 hours. A trailing user
+  message never closes. On first use the spine starts at most 10 segments' worth before the
+  end; older history is reached by search.
+- **Writing** (`writer.ts`). One tool-less session on the partner's harness, mid-tier model
+  (`sonnet` on Claude Code; `DUCTER_DIGEST_MODEL` overrides; `DUCTER_DIGEST=off` turns the spine
+  off), after a turn and on a 15-minute timer, never awaited by a turn. The model writes TOC,
+  decisions (with `supersedes`), Superseded, anchors, soft obligations and the narrative as one
+  JSON object. **Code** writes what it can see: the obligations it tracks by ref (a task still
+  running, a question still open, a timer still armed), opened and closed only by code; the
+  task snapshot; the global ids `D-n` and `O-n`.
+- **Audit** (`audit.ts`), before every freeze: anchors exact substrings of the cited user
+  message (≤ 200 chars, ≤ 6); every pointer a channel seq inside the segment; every `closed` id
+  open; every `supersedes` a decision in force; identifiers in the digest present in the source;
+  the source's salient identifiers (the user's, or repeated; ≤ 12) present in the digest; every
+  unanswered user ask mapped to an obligation; a TOC and a narrative; ≤ 3K tokens. A failure is
+  **rewritten** with the reasons. A second failure is **repaired by removal** (inexact anchors,
+  dangling pointers and bad `supersedes` dropped; the open asks code can see added in the user's
+  words; the dropped items recorded in `repaired`), and frozen only if that passes. Otherwise,
+  or after 4 writer errors on one segment, a **mechanical index** freezes, marked `degraded`.
+  Nothing freezes that failed the audit.
+- **Ledger** (`digest.ts computeLedger`): set arithmetic over the digests in order; the model
+  never touches it. **Epochs**: past 16 standalone segments, the oldest 8 roll up by
+  concatenation: TOC rows one per segment (gists joined, keys unioned, ≤ 24), decisions in force
+  copied, Superseded carried, anchors the newest two per segment, open obligations and every
+  task's last state carried, narratives dropped. Level-2 epochs are not built.
+- **Projection** (`render.ts`), for a fresh session: `<earlier_conversation>` (epochs, then
+  segments) · `<open_items>` (the ledger) · `<conversation_so_far>` (the window, each line with
+  its `#seq`) · `<tasks>`, then the turn's deltas. The window is everything after the newest
+  digest, at least 8K (overlapping the newest digest when the tail is short), at most 24K; when
+  the writer is behind, the lines between are named as not shown, with how to read them. The
+  live session is never edited: a new digest is used from the next cut. A warm session whose
+  estimated context passes 120K re-cuts from the spine (principle 4, between turns).
+- **Search** (`log_search`): a second FTS5 index over CJK bigrams and words (`unicode61` over
+  text tokenized in code: Chinese runs become overlapping bigrams), BM25-ranked, fused by
+  reciprocal rank with the exact-substring list and recency, the user's own words boosted
+  ×1.15. Best match first; each hit capped at 1,200 characters. No vectors yet.
+- **Automatic recall** (`recall.ts`): off by default (`DUCTER_AUTO_RECALL=1`). It fires only on
+  recall intent (上次, 我说过, we decided, remember, …), searches outside the window, and admits a
+  hit only if it shares at least two and half of the message's live terms; at most 3, as an L4
+  delta, logged in `spine_recall`, absent from the next re-cut.
+- **Measured.** `bun test` runs the eval with fakes (`packages/partner/test/memory-eval.test.ts`):
+  an oracle writer over a week-long zh/en corpus, reachability instead of a model. The real
+  run is `bun packages/partner/eval/memory/run.ts` (11 question types, rule-graded, false-memory
+  and stale-assertion rates); results in `packages/partner/eval/results/*-memory-*.md`.
+  Sonnet writer, Haiku answerer, two final runs: full transcript 1.00, the spine 0.97, the
+  verbatim window alone 0.87 / 0.77; 0 false memories, 0 stale assertions; one rewrite per run
+  (a reply that wasn't JSON), no degraded digest.
+
 ## Long-term memory across days (Nowledge Mem): first slice, as built
 
 The Log is this conversation's memory; Mem holds the distilled, durable things across days
@@ -84,5 +148,9 @@ and tools (principle 17). The slice gives the partner two tools, both through th
 - Window size and the auto-recall gate threshold: confidence is medium.
 - Whether the TOC improves search decisions on long channels. [15] was only about 3×
   compression on a single corpus that refers to itself.
-- An eval suite over 11 question types, with false-memory and stale-assertion rates
-  (`research/14`). It runs on every change to the digest prompt.
+- The eval suite over 11 question types, with false-memory and stale-assertion rates, is
+  built (D123) and runs on every change to the digest prompt; its corpus is small (~2K tokens)
+  and self-written, so it checks what is kept, not compression. A real-channel replay is owed
+  (`todo.md`).
+- The auto-recall gate: built and off; on the eval corpus 5 of 8 admitted hits carried the
+  evidence. Turn it on only past 0.8 on a real channel.

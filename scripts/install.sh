@@ -11,9 +11,11 @@
 #                                           #   (copy one to the server, run its install.sh there)
 #   scripts/install.sh --service            # Linux: also run Ducter as a systemd user service
 #
-# What it touches: only $PREFIX/bin/ducter and $PREFIX/bin/ducter-desktop (and, with --service,
-# ~/.config/systemd/user/ducter.service). It never edits your shell profile; if $PREFIX/bin isn't
-# on PATH it prints the line to add. Messages follow your locale (LANG); DUCTER_LOCALE=zh or en chooses.
+# What it touches: $PREFIX/bin/ducter and $PREFIX/bin/ducter-desktop (and, with --service,
+# ~/.config/systemd/user/ducter.service). So `ducter` works right away: as root (or with a
+# writable /usr/local/bin) it links /usr/local/bin/ducter to it; otherwise, if $PREFIX/bin isn't
+# on PATH, it adds one marked block to your shell profile ("# added by Ducter"; added once,
+# and `ducter uninstall --all` takes it out). Messages follow your locale (LANG); DUCTER_LOCALE=zh or en chooses.
 set -eu
 
 PREFIX="${DUCTER_PREFIX:-$HOME/.local}"
@@ -53,6 +55,34 @@ step() { printf '\n'; m "$1" "$2"; }
 ok() { printf '  \033[32m✓\033[0m '; m "$1" "$2"; }
 [ -t 1 ] || ok() { printf '  ✓ '; m "$1" "$2"; }
 tilde() { case "$1" in "$HOME"/*) printf '~%s' "${1#"$HOME"}" ;; *) printf '%s' "$1" ;; esac; }
+
+# add_path_rc DIR: puts DIR on PATH in your shell's profile, once: a marked block that
+# `ducter uninstall --all` removes. Sets RC to the profile. (Same in apps/site/public/install.sh.)
+add_path_rc() {
+  shown="$1"
+  case "$1" in "$HOME"/*) shown="\$HOME${1#"$HOME"}" ;; esac
+  line="export PATH=\"$shown:\$PATH\""
+  case "${SHELL:-}" in
+    */zsh) RC="$HOME/.zshrc" ;;
+    */bash) if [ "$(uname)" = Darwin ]; then RC="$HOME/.bash_profile"; else RC="$HOME/.bashrc"; fi ;;
+    */fish) RC="$HOME/.config/fish/config.fish"; line="set -gx PATH \"$shown\" \$PATH" ;;
+    *) RC="$HOME/.profile" ;;
+  esac
+  if [ -f "$RC" ] && grep -q '^# added by Ducter' "$RC"; then return 0; fi
+  mkdir -p "$(dirname "$RC")" &&
+    printf '\n# added by Ducter (ducter uninstall --all removes these lines)\n%s\n# end of Ducter'\''s lines\n' "$line" >>"$RC"
+}
+
+# link_global BIN: as root, or when /usr/local/bin is writable, link /usr/local/bin/ducter to
+# BIN/ducter: it is on every PATH, so `ducter` works in this same shell. Only where there is no
+# ducter yet or it's already a link (a ducter we put there); any other file stays.
+link_global() {
+  g=/usr/local/bin
+  [ "$1" = "$g" ] && return 0
+  if [ "$(id -u)" != 0 ] && [ ! -w "$g" ]; then return 1; fi
+  [ -e "$g/ducter" ] && [ ! -L "$g/ducter" ] && return 1
+  mkdir -p "$g" 2>/dev/null && ln -sfn "$1/ducter" "$g/ducter" 2>/dev/null
+}
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 # When this script sits inside a bundle (next to the binaries), install from there.
@@ -163,10 +193,28 @@ case ":$PATH:" in
   *":$BIN:"*) ON_PATH=1 ;;
   *) ON_PATH=0 ;;
 esac
+# What to type: `ducter` when it works in this shell, else the full path.
+DUCTER=ducter
+if [ "$ON_PATH" = 0 ]; then
+  if link_global "$BIN"; then
+    ok "ducter → /usr/local/bin/ducter" "ducter → /usr/local/bin/ducter"
+    case ":$PATH:" in *":/usr/local/bin:"*) ON_PATH=1 ;; esac
+  fi
+fi
+if [ "$ON_PATH" = 0 ]; then
+  DUCTER="$(tilde "$BIN")/ducter"
+  if add_path_rc "$BIN"; then
+    ok "$(tilde "$BIN") 已加进 PATH（$(tilde "$RC")），新开的终端里直接打 ducter" \
+      "$(tilde "$BIN") is on PATH in new terminals ($(tilde "$RC"))"
+    m "  在这个终端里马上能用：" "  To use it in this terminal now:"
+    printf '    export PATH="%s:$PATH"\n' "$BIN"
+  fi
+fi
 
 if [ "$SERVICE" = 1 ]; then
   if [ "$(uname)" = "Linux" ]; then
     step "让 Ducter 作为服务一直运行" "Running Ducter as a service"
+    # Its last lines say what's next (a domain, or an SSH tunnel), with `ducter` as this shell types it.
     exec "$BIN/ducter" service install
   fi
   m "--service 是给 Linux 服务器用的；在 Mac 上，ducter up 就会一直运行。" \
@@ -174,13 +222,12 @@ if [ "$SERVICE" = 1 ]; then
 fi
 
 step "下一步：" "Next:"
-if [ "$ON_PATH" = 1 ]; then
-  printf '  ducter up\n'
+if [ "$(uname)" = "Darwin" ]; then
+  printf '  %s up\n' "$DUCTER"
 else
-  printf '  %s/ducter up\n' "$(tilde "$BIN")"
-  printf '\n'
-  m "想以后直接打 ducter（这个脚本不会改你的 shell 配置）：" "To type just ducter from now on (this script doesn't touch your shell profile):"
-  printf '  echo '\''export PATH="%s:$PATH"'\'' >> ~/.zshrc && exec zsh\n' "$BIN"
+  printf '  %s service install\n' "$DUCTER"
+  m "  （让它一直运行，开机自动启动；之后用 ducter domain <你的域名> 从手机和 Mac 连上它）" \
+    "  (keeps it running and starts it at boot; then ducter domain <your domain> to reach it from your phone and Mac)"
 fi
 printf '\n'
 if [ "$(uname)" = "Darwin" ]; then

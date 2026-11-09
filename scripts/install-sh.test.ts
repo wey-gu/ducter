@@ -48,7 +48,7 @@ describe("link_cli", () => {
   const body = installer.replace(/\nmain "\$@"\n?$/, "\n");
   const run = (bin: string, cli: string, path = "/usr/bin:/bin") => {
     const r = spawnSync("sh", ["-c", `${body}\nlink_cli "$1"`, "sh", cli], {
-      env: { HOME: dirname(bin), PATH: path, DUCTER_BIN_DIR: bin },
+      env: { HOME: dirname(bin), PATH: path, DUCTER_BIN_DIR: bin, SHELL: "/bin/zsh" },
       encoding: "utf8",
     });
     expect(r.status).toBe(0);
@@ -71,7 +71,9 @@ describe("link_cli", () => {
     const { d, cli, bin, link } = setup();
     const out = run(bin, cli);
     expect(readlinkSync(link)).toBe(cli);
-    expect(out).toContain(`echo 'export PATH="$HOME/bin:$PATH"' >> ~/.zshrc`);
+    expect(out).toContain("is on PATH in new terminals (~/.zshrc)");
+    expect(out).toContain(`export PATH="${bin}:$PATH"`);
+    expect(readFileSync(join(d, ".zshrc"), "utf8")).toContain('export PATH="$HOME/bin:$PATH"');
     expect(run(bin, cli, `${bin}:/usr/bin:/bin`)).toContain("already linked");
     rmSync(d, { recursive: true });
   });
@@ -96,5 +98,40 @@ describe("link_cli", () => {
     expect(run(bin, cli)).toContain("left alone");
     expect(readFileSync(link, "utf8")).toBe("mine");
     rmSync(d, { recursive: true });
+  });
+});
+
+// Both installers put ~/.local/bin on PATH the same way: one marked block in the shell's profile,
+// added once however often they run, which `ducter uninstall --all` takes out again.
+describe("add_path_rc", () => {
+  const fn = (src: string) => /\nadd_path_rc\(\) \{\n[\s\S]*?\n\}\n/.exec(src)![0];
+  for (const [name, src] of [["install.sh", installer], ["scripts/install.sh", bundler]] as const) {
+    test(`${name}: once per profile, the right profile per shell`, async () => {
+      const { stripRcBlock } = await import("../packages/cli/src/uninstall.ts");
+      const home = mkdtempSync(join(tmpdir(), "ducter-rc-"));
+      try {
+        const add = (shell: string) =>
+          spawnSync("sh", ["-c", `${fn(src)}\nadd_path_rc "$HOME/.local/bin" && echo "$RC"`], { env: { HOME: home, SHELL: shell, PATH: "/usr/bin:/bin" }, encoding: "utf8" });
+        writeFileSync(join(home, ".bashrc"), "alias ll='ls -l'\n");
+        for (let i = 0; i < 3; i++) expect(add("/bin/bash").stdout.trim()).toMatch(/\.bash(rc|_profile)$/);
+        const rc = add("/bin/bash").stdout.trim();
+        const text = readFileSync(rc, "utf8");
+        expect(text.match(/# added by Ducter/g)?.length).toBe(1);
+        expect(text).toContain('export PATH="$HOME/.local/bin:$PATH"');
+        if (rc.endsWith(".bashrc")) expect(stripRcBlock(text)).toBe("alias ll='ls -l'\n");
+        expect(add("/usr/bin/fish").stdout.trim()).toBe(join(home, ".config/fish/config.fish"));
+        expect(readFileSync(join(home, ".config/fish/config.fish"), "utf8")).toContain('set -gx PATH "$HOME/.local/bin" $PATH');
+        expect(add("/bin/zsh").stdout.trim()).toBe(join(home, ".zshrc"));
+      } finally {
+        rmSync(home, { recursive: true, force: true });
+      }
+    });
+  }
+  test("the bundle's install.sh links /usr/local/bin only as root or when writable, and never over another file", () => {
+    expect(bundler).toContain('if [ "$(id -u)" != 0 ] && [ ! -w "$g" ]; then return 1; fi');
+    expect(bundler).toContain('[ -e "$g/ducter" ] && [ ! -L "$g/ducter" ] && return 1');
+    // No user-facing pointer to a script that isn't in the bundle.
+    expect(bundler).not.toContain("caddy-setup");
+    expect(installer).not.toContain("caddy-setup");
   });
 });

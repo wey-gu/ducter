@@ -9,7 +9,8 @@
 # SHA-256 and its notarization, and puts Ducter.app in /Applications. Then it links
 # ~/.local/bin/ducter to the app's own `ducter` command (Contents/Helpers/ducter), as the app's
 # own "Use ducter in Terminal" does: only where there's no `ducter` yet or it's a link into a
-# Ducter.app; any other file or link is left alone.
+# Ducter.app; any other file or link is left alone. If ~/.local/bin isn't on PATH, it adds one
+# marked block to your shell profile ("# added by Ducter", once; `ducter uninstall --all` removes it).
 # Linux (x64, arm64): downloads the `ducter` bundle, checks its SHA-256, and runs the bundle's own
 # install.sh (it puts `ducter` in ~/.local/bin); arguments after `sh -s --` go to that script,
 # except the Mac's --no-cli, which is dropped.
@@ -158,10 +159,29 @@ tilde() { case "$1" in "$HOME"/*) printf '~%s' "${1#"$HOME"}" ;; *) printf '%s' 
 
 on_path() { # dir
   case ":$PATH:" in *":$1:"* | *":$1/:"*) return 0 ;; esac
+  if add_path_rc "$1"; then
+    say "  $(tilde "$1") is on PATH in new terminals ($(tilde "$RC")). To use ducter in this one now:"
+    say "    export PATH=\"$1:\$PATH\""
+  else
+    say "  $(tilde "$1") isn't on your PATH. To use ducter in Terminal: export PATH=\"$1:\$PATH\""
+  fi
+}
+
+# add_path_rc DIR: puts DIR on PATH in your shell's profile, once: a marked block that
+# `ducter uninstall --all` removes. Sets RC to the profile. (Same in scripts/install.sh.)
+add_path_rc() {
   shown="$1"
   case "$1" in "$HOME"/*) shown="\$HOME${1#"$HOME"}" ;; esac
-  say "  $(tilde "$1") isn't on your PATH yet. To use ducter in Terminal, run this once:"
-  say "    echo 'export PATH=\"$shown:\$PATH\"' >> ~/.zshrc && exec zsh"
+  line="export PATH=\"$shown:\$PATH\""
+  case "${SHELL:-}" in
+    */zsh) RC="$HOME/.zshrc" ;;
+    */bash) if [ "$(uname)" = Darwin ]; then RC="$HOME/.bash_profile"; else RC="$HOME/.bashrc"; fi ;;
+    */fish) RC="$HOME/.config/fish/config.fish"; line="set -gx PATH \"$shown\" \$PATH" ;;
+    *) RC="$HOME/.profile" ;;
+  esac
+  if [ -f "$RC" ] && grep -q '^# added by Ducter' "$RC"; then return 0; fi
+  mkdir -p "$(dirname "$RC")" &&
+    printf '\n# added by Ducter (ducter uninstall --all removes these lines)\n%s\n# end of Ducter'\''s lines\n' "$line" >>"$RC"
 }
 
 install_linux() {
@@ -184,10 +204,9 @@ install_linux() {
   # bundle's install.sh refuses flags it doesn't know.
   for a; do shift; [ "$a" = --no-cli ] || set -- "$@" "$a"; done
 
+  # With --service, the bundle's install.sh ends by running the service, whose last lines say
+  # what's next (ducter domain, or an SSH tunnel); without it, it says how to start.
   sh "$TMP/$name/install.sh" "$@" </dev/null
-  say ""
-  say "Ducter listens on http://127.0.0.1:7777 on this machine only. To reach it from your Mac or"
-  say "phone: https://ducter.ai/docs/install#a-linux-server-that-stays-on"
 }
 
 main() {

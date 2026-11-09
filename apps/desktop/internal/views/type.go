@@ -98,23 +98,35 @@ func autospace(s string) string {
 // after a hyphen, and "hawdb-net" must never break (D73).
 const wordJoiner = '\u2060'
 
-// keepTokens joins the hyphens of short Latin tokens ("hawdb-net",
-// "ducter/fix-ci") to their letters, so a line never breaks inside them.
-// Long paths may still wrap.
+// keepTokens joins the hyphens and slashes of short Latin tokens
+// ("hawdb-net", "ducter/fix-ci", "~/dev/ducter") to their letters, so a
+// line never breaks inside them. Long paths may still wrap, at a slash,
+// but never right after the root ("~/", "/"): a line never ends in "~/".
 func keepTokens(s string) string {
-	if !strings.Contains(s, "-") {
+	if !strings.ContainsAny(s, "-/") {
 		return s
 	}
 	rs := []rune(s)
 	var b strings.Builder
+	edge := func(i int) bool { return i < 0 || unicode.IsSpace(rs[i]) || isHan(rs[i]) }
 	for i, r := range rs {
-		if r == '-' && i > 0 && i+1 < len(rs) && isLatinOrDigit(rs[i-1]) && isLatinOrDigit(rs[i+1]) && tokenLen(rs, i) <= 24 {
+		inner := i > 0 && i+1 < len(rs) && !edge(i-1) && !edge(i+1)
+		switch {
+		case r == '-' && inner && isLatinOrDigit(rs[i-1]) && isLatinOrDigit(rs[i+1]) && tokenLen(rs, i) <= 24:
 			b.WriteRune(wordJoiner)
 			b.WriteRune(r)
 			b.WriteRune(wordJoiner)
-			continue
+		case r == '/' && inner && tokenLen(rs, i) <= 24:
+			b.WriteRune(wordJoiner)
+			b.WriteRune(r)
+			b.WriteRune(wordJoiner)
+		case r == '/' && i+1 < len(rs) && !edge(i+1) && (edge(i-1) || (rs[i-1] == '~' && edge(i-2))):
+			// The root of a long path: joined to what follows.
+			b.WriteRune(r)
+			b.WriteRune(wordJoiner)
+		default:
+			b.WriteRune(r)
 		}
-		b.WriteRune(r)
 	}
 	return b.String()
 }

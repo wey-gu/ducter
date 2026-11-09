@@ -198,7 +198,7 @@ app, launched with a scratch `dev.env`, ran doctor and `ducter up` under the har
 and served in ~5 s; quitting stopped the helper. The first-open "downloaded from the Internet"
 dialog itself was not clicked through (it needs a person).
 
-## The title moment (D87, draft, 2026-11-09)
+## The title moment (D87, 2026-11-09)
 
 The macOS app's first launch opens on a few seconds of title before the setup card. Code:
 `apps/desktop/internal/views/title.go`; art `apps/desktop/internal/theme/art/title` (made by
@@ -222,11 +222,12 @@ thing; nothing to learn, any key goes on.
 
 **Sound.** Six candidates (`tools/sound/build.sh`; levels by ffmpeg ebur128, all about −20 LUFS,
 true peak −4.5 to −9.6 dBTP, the tone's onset within 7 ms of 3.55 s): A felt piano + strings
-(IV(add9) → V(sus4) → I, the major third arriving with the eyes; shipped until the author picks),
+(IV(add9) → V(sus4) → I, the major third arriving with the eyes; **the author's pick, shipped**),
 B glass + breath pad, C bowed vibraphone + low organ (a real 4–3 suspension on the beat), and the
 endings of Chopin's Nocturne Op. 27 No. 2, Schubert's Sonata D 664/II and Chopin's Prelude
 Op. 28 No. 13 in Musopen's CC0 / public-domain recordings, cut so the final chord lands on the
-beat. All six are in the prototype's sound picker.
+beat. All six are in the prototype's sound picker; only A is in git, the others stay in the
+evidence folder. The art direction picked is A, dawn on the island.
 
 **Rules.** Once per Mac (`desktop.json` `titleSeenAt`, written when it is left); Settings › About
 has 再看一次开场 / Replay the intro and the Sound switch. Not shown when macOS opened the app at

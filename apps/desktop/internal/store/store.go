@@ -282,12 +282,21 @@ type Store struct {
 	AbilityResults []protocol.ServerFrame
 	// PairCode is the newest pairing code the server minted for this app.
 	PairCode *protocol.ServerFrame
+	// Renamed is the server's answer to the last 改名字 / Rename.
+	Renamed *protocol.ServerFrame
 	// Settings and Mem are the partner's settings and memory, as last sent
 	// (nil until the first settings frame); Forgot the last forget's
 	// outcome, until the view shows it.
 	Settings *protocol.Settings
 	Mem      *protocol.MemView
-	Forgot   *protocol.Forgot
+	// Connections (D96), once asked for; nil means not yet. Oo is what the
+	// oo CLI is set up with. ConnResult is the last add/remove answer, for
+	// the page to turn into one line.
+	Connections []protocol.ConnectionView
+	ConnAsked   bool
+	Oo          *protocol.OoDetect
+	ConnResult  *protocol.ServerFrame
+	Forgot      *protocol.Forgot
 }
 
 // Device returns a device of Your devices and abilities by id, or nil.
@@ -340,6 +349,9 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 	case "pair_code":
 		fc := f
 		s.PairCode = &fc
+	case "rename_result":
+		fc := f
+		s.Renamed = &fc
 	case "settings":
 		if f.Settings != nil {
 			s.Settings = f.Settings
@@ -353,6 +365,14 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		if f.Forgot != nil {
 			s.Forgot = f.Forgot
 		}
+	case "connections":
+		s.Connections, s.Oo, s.ConnAsked = f.Connections, f.Oo, true
+		if s.Connections == nil {
+			s.Connections = []protocol.ConnectionView{}
+		}
+	case "connection_result":
+		fc := f
+		s.ConnResult = &fc
 	case "sent":
 		if t := s.Tasks[f.TaskID]; t != nil {
 			for _, sd := range t.Sends {

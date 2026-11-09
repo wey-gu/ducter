@@ -8,17 +8,24 @@ order: 7
 
 ### What is Ducter, in one sentence?
 
-A personal AI you run yourself: you talk to one partner, it hands the work to Claude Code or
-Codex on your own computers, and it comes back when the work is done, with how it checked.
+A personal AI on your own computers: you talk to one partner, it hands the work to an AI agent
+you already use, and it comes back when the work is done, with how it checked.
 
 ### Does it cost anything?
 
-Ducter itself is free and open source (Apache 2.0). The AI work runs on the Claude Code or Codex
-plan you already have, so it counts against that plan's limits, like any other session.
+Ducter itself is free and open source (Apache 2.0). The AI work runs on your AI agent's plan,
+so it counts against that plan's limits like any other session.
 
-### Which AIs does it work with?
+### Which AI agents does it work with?
 
-Claude Code and Codex, signed in with your own account. You need at least one.
+Claude Code and Codex, signed in with your own account. You need at least one. Your partner
+thinks with Claude Code; choosing Codex for it instead is coming soon.
+
+Ducter can also hand tasks to **pi** and **DeepSeek Harness**, which run on an API key you pay
+for by use rather than a plan. If one of them is installed and has its key, ask your partner to
+use it for a task ("do this with DeepSeek Harness"). Choosing them from the app, and typing a
+DeepSeek key into Devices, are coming soon. Your partner itself running on pi or DeepSeek
+Harness is coming soon too, once each has been checked as carefully as Claude Code and Codex.
 
 ### What does it run on?
 
@@ -33,8 +40,8 @@ can be shared with anyone. See [Install](install.md).
 
 ### Do I need to know about git or "agents"?
 
-No. You just write what you want. Coding tasks use git behind the scenes, so each one works on
-its own branch and nothing reaches your main branch unless you choose **Merge**.
+No. Write what you want, the way you'd ask a colleague. Coding tasks use git behind the scenes, so each one works on its
+own branch, and nothing reaches your main branch until you choose **Merge into main**.
 
 ### What happens when I close the window?
 
@@ -48,8 +55,9 @@ night, put Ducter on [a server that stays on](install.md#a-linux-server-that-sta
 
 ### Will it bother me all the time?
 
-No. Silence means things are going fine. Ducter comes to you when a decision is truly yours,
-always with a suggested default, and your phone stays quiet from 23:00 to 08:00.
+No. Silence means things are going fine. Ducter comes to you when a decision is yours to make,
+always with a suggested default, and your phone stays quiet during quiet hours (23:00 to 08:00
+until you change them).
 
 ### Can I see what a task is doing?
 
@@ -59,13 +67,30 @@ write to it directly while it works.
 ### Does it remember me?
 
 It remembers your conversation. With [Nowledge Mem](https://mem.nowledge.co) it also starts out
-knowing who you are and what you're working on, and you see **Noted** when it saves something.
+knowing who you are and what you're working on, from the same memory your other AI tools use,
+and you see **Noted** when it saves something.
 See [Privacy and safety](privacy-and-safety.md#memory-with-nowledge-mem).
 
 ### Can it use the web?
 
 Yes, on a Mac: it uses its own Chrome window to look things up and read pages. Signing in,
-submitting and paying are left to you. See [Browsing the web](devices.md#browsing-the-web).
+submitting forms and paying are left to you. See [Browsing the web](devices.md#browsing-the-web).
+
+### Can it read my email or calendar?
+
+Not yet; it's coming soon. Gmail, Google Calendar and other services will connect through
+[OpenConnector](https://github.com/oomol-lab/open-connector), an open-source connector gateway.
+Use OOMOL's hosted one (quickest; your mail passes through their servers) or run your own (it
+stays on your machine, and you set up the sign-in apps yourself). Ducter holds the key to it,
+and the AI agents never see your passwords or tokens. Reading is fine, and anything that would send an email or change your calendar
+will wait for your **Go**, the way everything Ducter sends out does today.
+
+### Can it work with the AI agent in my terminal?
+
+Not yet; it's coming soon. With Nowledge Bridge, part of
+[Nowledge Mem](https://mem.nowledge.co), the Claude Code or Codex session you have open in a
+terminal will be able to hand your partner a job, and your partner will be able to ask that
+session what it knows. Either way, your partner checks with you first.
 
 ### Can it use my other apps, my phone, or make calls?
 
@@ -73,12 +98,13 @@ Not yet. Those are coming later.
 
 ### Can I rename my partner?
 
-You choose a name the first time you open Ducter. Renaming it later in the app is coming soon.
+Yes. You choose a name the first time you open Ducter, and you can change it any time under
+**Partner** with **Rename**. See [Your partner and settings](settings.md#partner).
 
-### Does it speak Chinese?
+### Which languages does it speak?
 
-Yes. Ducter is in English and 中文 throughout and follows your system language. Set
-`DUCTER_LOCALE=zh` or `DUCTER_LOCALE=en` to choose.
+English and Chinese. The app follows your system language, and your partner answers in the
+language you write in, unless you pick one under **Partner › How it talks**.
 
 ### Can my family or team share one Ducter?
 

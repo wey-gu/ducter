@@ -130,8 +130,8 @@ lives in Details. On hand needs no state chip: the lane is the state.
 - State is shown by the thing itself (D43): the clay art (an awake laptop, the napping one
   under its blanket, a filled or empty slot), the chip's tint and its own words, the face.
 - Words appear only for exceptions, plainly ("睡着了 · 醒来就接着做", "连不上 · 2 小时前");
-  the normal state says nothing (an awake worker has no status line; Ducter's home says
-  "Ducter 在这儿" quietly).
+  the normal state says nothing more (an awake worker's line only says what it is, "另一台电脑 ·
+  替 Ducter 做事", D84; Ducter's home says "Ducter 在这儿" quietly).
 - A state in text is plain text in the state's ink (a failed status line, "Didn't work" on a
   Done row), never a chip and never with a dot in front. Counts are never colored by state: a
   lane's count is in muted ink, and the lane's name says which lane it is.

@@ -26,7 +26,7 @@ const probes = (over: Partial<DeviceProbes> = {}): Partial<DeviceProbes> => ({
 
 function boot(over: Partial<DeviceProbes> = {}): Core {
   const t = tempDir();
-  const core = startCore({ dataDir: t.dir, port: 0, batchMs: 5, deviceProbes: probes(over) });
+  const core = startCore({ dataDir: t.dir, port: 0, batchMs: 5, sweepMs: 50, deviceProbes: probes(over) });
   stops.push(t.cleanup, () => core.stop());
   core.setPartner({ onTrigger: () => {} });
   return core;
@@ -63,8 +63,8 @@ test("this machine: awake, home, harness logins as probed, no allowance, web on,
   const home = f.devices[0]!;
   expect(home).toMatchObject({ id: "local", home: true, state: "awake", kind: "laptop" });
   expect(home.harnesses).toEqual([
-    { harness: "claude-code", installed: true, loggedIn: true },
-    { harness: "codex", installed: true, loggedIn: false },
+    { harness: "claude-code", installed: true, loggedIn: true, canBePartner: true, billing: "plan" },
+    { harness: "codex", installed: true, loggedIn: false, canBePartner: false },
   ]);
   expect(home.harnesses.some((h) => "allowance" in h)).toBe(false);
   expect(ability(home, "web")).toMatchObject({ state: "on" });
@@ -153,7 +153,7 @@ test("workers: awake with their hello, then can't reach with a last-seen time, o
   let n = c.frames.length;
   const w1 = await join(vps.token, { name: "ducter-vps", kind: "server", harnesses: [{ id: "claude-code", installed: true, loggedIn: true }] });
   const awake = await c.until<Devices>((x) => x.t === "devices" && x.devices.some((d) => d.name === "ducter-vps" && d.state === "awake"), n);
-  expect(awake.devices.find((d) => d.name === "ducter-vps")!.harnesses).toEqual([{ harness: "claude-code", installed: true, loggedIn: true }]);
+  expect(awake.devices.find((d) => d.name === "ducter-vps")!.harnesses).toEqual([{ harness: "claude-code", installed: true, loggedIn: true, canBePartner: true, billing: "plan" }]);
 
   n = c.frames.length;
   w1.close();
@@ -185,6 +185,82 @@ test("远程打开: a pairing code from the app; a device that pairs turns it on
   const f = await c.until<Devices>((x) => x.t === "devices" && x.reach.clients.length === 1, n);
   expect(ability(f.devices[0]!, "remote").state).toBe("on");
   expect(f.reach.clients[0]).toMatchObject({ name: "iPhone", platform: "ios", connected: false });
+});
+
+test("D83: the app's 连上手机或另一台电脑 code connects another computer (it was 403 before)", async () => {
+  const core = boot();
+  const c = await client(core.url);
+  c.send({ t: "devices" });
+  await c.until((x) => x.t === "devices");
+  const REMOTE = { "x-forwarded-for": "203.0.113.9" };
+  const code = async () => {
+    const n = c.frames.length;
+    c.send({ t: "pair_code" });
+    return (await c.until<Extract<ServerFrame, { t: "pair_code" }>>((x) => x.t === "pair_code", n)).code;
+  };
+  // A computer joins with role "worker" (ducter worker): /worker opens, it says hello, it's awake.
+  const res = await fetch(`http://127.0.0.1:${core.port}/pair`, { method: "POST", headers: REMOTE, body: JSON.stringify({ code: await code(), name: "vps-2", platform: "linux-arm64", role: "worker" }) });
+  expect(res.status).toBe(200);
+  const { token } = (await res.json()) as { token: string };
+  const n = c.frames.length;
+  const w = new WebSocket(`ws://127.0.0.1:${core.port}/worker`, { headers: { ...REMOTE, authorization: `Bearer ${token}` } } as any);
+  stops.push(() => w.close());
+  await new Promise<void>((r, j) => ((w.onopen = () => r()), (w.onerror = j)));
+  w.send(JSON.stringify({ t: "hello", name: "vps-2", os: "linux", kind: "server" }));
+  const f = await c.until<Devices>((x) => x.t === "devices" && x.devices.some((d) => d.name === "vps-2" && d.state === "awake"), n);
+  expect(f.devices.find((d) => d.name === "vps-2")).toMatchObject({ home: false, kind: "server" });
+  // Privilege: a computer joined this way gets nothing an app has: no conversation socket.
+  expect((await fetch(`http://127.0.0.1:${core.port}/ws`, { headers: { ...REMOTE, upgrade: "websocket", authorization: `Bearer ${token}` } })).status).toBe(403);
+
+  // The same kind of code with no role is an app (web, iOS, desktop unchanged): it can't open /worker.
+  const app = await fetch(`http://127.0.0.1:${core.port}/pair`, { method: "POST", headers: REMOTE, body: JSON.stringify({ code: await code(), name: "iPhone", platform: "ios" }) });
+  const appToken = ((await app.json()) as { token: string }).token;
+  const refused = await fetch(`http://127.0.0.1:${core.port}/worker`, { headers: { ...REMOTE, upgrade: "websocket", authorization: `Bearer ${appToken}` } });
+  expect(refused.status).toBe(403);
+  expect(await refused.text()).toContain("ducter worker <address> --code <code>");
+});
+
+test("D84: 改名字 renames another computer; tasks placed by its old name still find it", async () => {
+  const core = boot();
+  const REMOTE = { "x-forwarded-for": "203.0.113.9" };
+  const w = core.devices.redeem(core.devices.createCode().code, { name: "ip-172-31-4-9", role: "worker" }) as { token: string; device: { id: string } };
+  core.devices.redeem(core.devices.createCode().code, { name: "iPhone" });
+  const ws = new WebSocket(`ws://127.0.0.1:${core.port}/worker`, { headers: { ...REMOTE, authorization: `Bearer ${w.token}` } } as any);
+  stops.push(() => ws.close());
+  await new Promise<void>((r) => (ws.onopen = () => r()));
+  ws.send(JSON.stringify({ t: "hello", name: "ip-172-31-4-9", os: "linux" }));
+  const c = await client(core.url);
+  c.send({ t: "devices" });
+  await c.until<Devices>((x) => x.t === "devices" && x.devices.some((d) => d.id === w.device.id && d.state === "awake"));
+
+  let n = c.frames.length;
+  c.send({ t: "rename_device", device: w.device.id, name: "Build box" });
+  expect(await c.until((x) => x.t === "rename_result", n)).toEqual({ t: "rename_result", device: w.device.id, ok: true, name: "Build box" });
+  const f = await c.until<Devices>((x) => x.t === "devices" && x.devices.some((d) => d.name === "Build box"), n);
+  expect(f.devices.find((d) => d.id === w.device.id)!.state).toBe("awake");
+  expect(core.workers.list().map((x) => x.name)).toEqual(["Build box"]); // what the partner sees
+  expect(core.workers.link("ip-172-31-4-9")?.id).toBe(w.device.id); // a task placed before the rename
+  expect(core.workers.link("Build box")?.name).toBe("Build box");
+
+  for (const [frame, reason] of [
+    [{ device: "local", name: "x" }, "home"],
+    [{ device: w.device.id, name: "iPhone" }, "name_taken"],
+    [{ device: w.device.id, name: "Local" }, "name_taken"], // what the partner calls the machine Ducter lives on
+    [{ device: "nobody", name: "x" }, "unknown_device"],
+    [{ device: w.device.id, name: " " }, "empty"],
+  ] as const) {
+    n = c.frames.length;
+    c.send({ t: "rename_device", ...frame });
+    expect(await c.until((x) => x.t === "rename_result", n)).toMatchObject({ ok: false, reason });
+  }
+
+  // Renamed from the CLI (another process): the live worker takes the new name on the next sweep.
+  const { openDeviceAuth } = await import("../src/auth.ts");
+  const cli = openDeviceAuth(core.dataDir);
+  cli.rename(w.device.id, "Builder");
+  cli.close();
+  for (let i = 0; i < 300 && core.workers.list()[0]?.name !== "Builder"; i++) await Bun.sleep(10);
+  expect(core.workers.list()[0]?.name).toBe("Builder");
 });
 
 test("a pairing code with a public address carries the link and a QR", async () => {

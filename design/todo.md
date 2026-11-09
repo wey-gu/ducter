@@ -93,6 +93,20 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [ ] Automatic pre-turn recall behind a precision gate, and logging recalls in the Log.
 - [ ] Tasks (windows) as the same identity: set `NMEM_AGENT_ID` in task environments.
 
+## Your accounts and your other AI agents (promised as "coming soon" on the site)
+
+The site, README and `docs/faq.md` say these are coming. Each needs the change loop (a design
+note and a `Dn`) before it is built.
+- [ ] **Accounts through OpenConnector** (https://github.com/oomol-lab/open-connector): Gmail,
+      Google Calendar and others, with the runtime self-hosted where Ducter runs so provider
+      credentials never reach a harness. Reads pass; any write that sends goes through the
+      partner's Go like every other outbound. Needs a research report first (its credential
+      boundary, action allow/block policy, MCP surface, license: modified Apache 2.0 that
+      bars offering it as a hosted service, which embedding in Ducter is not). Trigger: the
+      first user scenario that needs mail or calendar.
+- [ ] **Nowledge Bridge live** (`design/bridge.md`): the live J1 round trip, then outbound
+      (J4). Trigger: the account is enabled for Bridge.
+
 ## Browser places (W5)
 
 `packages/runner/src/browser.ts` attaches cua-driver directly (D47). Verified live on 0.44.0
@@ -216,6 +230,26 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] The partner's name in its live session: a rename reaches new sessions (the identity is
       rewritten); the session already open keeps the old name until it restarts. Trigger: a
       user notices.
+
+## First-wave harnesses (D85, `research/34`)
+
+- [ ] The full partner eval (all scenarios, 2 runs) on pi and on DeepSeek Harness; flip
+      `HARNESSES[id].partner` when one holds the Claude Code floor. Trigger: the author asks for
+      a non-plan brain, or a cheaper partner.
+- [ ] The full partner eval on Codex at its workhorse model (gpt-6.1-sol) before Codex is
+      offered as the brain. Trigger: the ai-loadout UI lands.
+- [ ] Verify Codex leaves out a non-empty global `~/.codex/AGENTS.md` and the user's
+      `personality` (this Mac's AGENTS.md is empty). Trigger: a scratch `CODEX_HOME` copy with
+      a test AGENTS.md, or a user with one.
+- [ ] The Devices key field for API-key accounts: masked input, writes `<dataDir>/env` (0600),
+      never echoed or logged; "需要一个 DeepSeek 密钥 / Needs a DeepSeek key". Trigger: the
+      ai-loadout Devices work.
+- [ ] Pass pi's provider keys from `<dataDir>/env` too (today only DeepSeek Harness's key is
+      read from there). Trigger: a pi user without the key in their login env.
+- [ ] Label the partner's Codex sessions (`SessionOptions.name`) so they read as Ducter's in the
+      user's Codex history. Trigger: a user asks what they are.
+- [ ] Qwen Code, Qoder, Grok as the next harnesses (cheapest per research/34). Trigger: a user
+      asks.
 
 ## Before the repo goes public
 

@@ -47,8 +47,8 @@ are kept). `--bare` is not usable: it drops OAuth / subscription login.
   live: the author's global `~/.claude/CLAUDE.md` ("chat in Chinese") beat "reply in the
   user's language", user plugins' SessionStart hooks injected extra context, and user MCP
   servers pushed Ducter's tools behind ToolSearch, all on the ack's critical path (20 s
-  acks). Isolation cut a trivial turn from 12 s to 5 s (lead's experiment). If Codex is ever
-  the partner, the same needs `-c` overrides and no user `AGENTS.md` (not built).
+  acks). Isolation cut a trivial turn from 12 s to 5 s (lead's experiment). Every harness has
+  its own way to the same clean setup (D85, below).
 - **Tasks: inherit by default** (runner option `isolateUserConfig`, default false). A task
   works in the user's repo the way the user codes there: their skills, hooks, `CLAUDE.md`
   and MCP servers are deliberate choices, and a power user expects a Ducter task to behave
@@ -57,7 +57,36 @@ are kept). `--bare` is not usable: it drops OAuth / subscription login.
   shared-machine setups.
 
 - **Task model:** the partner may pass a model per task. If it passes none, `DUCTER_TASK_MODEL`
-  applies; if that is unset, the harness's own default applies.
+  applies (Claude Code); if that is unset, the harness's own default applies.
+
+### First-wave harnesses (D85, research/34)
+
+One table (`packages/protocol/src/harnesses.ts`), one adapter (`packages/runner/src/oar.ts`
+`adaptSpec`). What differs per harness:
+
+| | Claude Code | Codex | pi | DeepSeek Harness |
+|---|---|---|---|---|
+| Partner (v1) | yes | yes | tasks only until it passes the partner eval | same |
+| Clean setup | OAR `userConfiguration: "exclude"` | `-c` overrides: each user MCP server `enabled=false` by name, `features.{hooks,plugins,apps,memories,…}=false`, `notify=[]`; partner also drops goals, subagents, images, computer use | pi flags `--no-skills --no-context-files --no-prompt-templates --no-extensions --no-themes` on its RPC process | Ducter-owned `DSH_HOME` + `DSH_AGENTS_HOME` under `<dataDir>/harness/deepseek-harness` |
+| Partner prompt | system prompt | `baseInstructions` | system prompt | `$DSH_HOME/AGENTS.md` (OAR refuses its system prompt) |
+| Task brief | append | `developerInstructions` | append | first message, `<instructions>…</instructions>` |
+| Ducter's MCP | HTTP + bearer | HTTP + bearer | HTTP + bearer | stdio bridge (`mcp-bridge.ts`), target in a 0600 file |
+| Tool denial | built-ins | MCP tools only | `--exclude-tools` | none (refused) |
+| Runs as | `claude` | `codex app-server` | `node <OAR's bundled pi rpc-entry>` (Bun cannot host it), else the user's `pi` | `dsh --profile acp` |
+| Signed in | `claude auth status` | `codex login status` | a provider key in `~/.pi/agent` or the env | a DeepSeek key in the env, `<dataDir>/env`, or DSH's credential file |
+
+- **The brain** is `Settings.brain = { harness, model? }` (default Claude Code + opus). The
+  partner reads it at each session start; a session id never crosses harnesses (the prompt
+  hash covers the harness; Claude Code keeps the prompt-only hash so upgrades still resume).
+- **Tasks** take the partner's choice, else the first account `Settings.taskAccounts` leaves on.
+- **One tool-name form:** an MCP tool is `mcp__<server>__<tool>` whatever the harness reports;
+  reasoning a model writes into its reply (`…</think>`) is dropped before the Log.
+- **Keys for API-key harnesses** live in `<dataDir>/env` (0600), never in the Log or a setting,
+  and go only to the session that needs them (D85 proposal; the Devices field is not built).
+- **Known gaps:** Codex's global `AGENTS.md` and `personality` are not left out (unverified);
+  Codex lists the partner's sessions in the user's own history; pi's model list does not test
+  its keys; in its owned home DeepSeek Harness sees only the DeepSeek key, not the user's other
+  provider routes.
 - **Browser tasks: isolated** (W5-2, D62): only the curated cua-driver tools, no user MCP
   servers (which would include a path to the user's real Chrome), measured 332k → 140k input
   tokens on one lookup. Their `log_search` / `log_read` are scoped to their own task (D62; to
@@ -262,12 +291,25 @@ A worker is a machine that runs tasks for a main process elsewhere (a VPS next t
 main, or the reverse). Principle: **it dials out, never in.** All task state stays on the main;
 the worker only holds the place (disk, checkouts, worktrees) and runs the harness.
 
-- **Join.** On the main: `ducter pair --worker` (a code whose device kind is `worker`). On the
-  worker: `ducter worker --join <main address> --code <code> [--name vps-2]`, then
-  `ducter service install --worker` to keep it running (no listening port on the worker). It
-  pairs at `/pair`, keeps the token in `~/.ducter/worker.json` (0600), and holds one outbound
-  WebSocket to `<main>/worker`, reconnecting with backoff. A client token can't open `/worker`,
-  a worker token can't open `/ws`.
+- **Join (D83).** One code for every kind of device: `ducter pair`, or the app's 连上手机或另一台
+  电脑 / Connect a phone or computer, mints a code with no kind (`pair_codes.kind = "any"`). The
+  device says what it joins as when it redeems the code at `/pair`: `role: "worker"` from
+  `ducter worker <main address> --code <code> [--name vps-2]`; no role (the web, iOS and desktop
+  clients) is an app (`client`). Any other role value is an app. One-time use, the 10-minute
+  expiry and the lockouts don't change. A worker gets strictly less than an app (`/worker` and
+  `/mcp` only), so letting the code holder choose grants nothing new. `ducter pair` and the
+  app's code card print both ways to use the code. `ducter pair --worker` (a code fixed to
+  `worker`, for older workers that send no role) and `--join <address>` stay as hidden aliases.
+  Then `ducter service install --worker` keeps it running (no listening port on the worker). It
+  keeps the token in `~/.ducter/worker.json` (0600) and holds one outbound WebSocket to
+  `<main>/worker`, reconnecting with backoff. A client token can't open `/worker` (403, which
+  `ducter worker` reports as "joined as an app" and stops), a worker token can't open `/ws`.
+- **Name (D84).** A worker is known by its paired name (the machine's hostname unless `--name`),
+  never by what its hello says. The person can rename it: `rename_device` from the app (改名字 on
+  its card) or `ducter devices rename <id|name> <new name>`. Names stay unique among live
+  devices and can't be this machine's host name or `local`. Former names are kept
+  (`former_names` in `devices.db`), so a task placed by the old name still finds its worker; a
+  rename from the CLI reaches the running main on its next device sweep (10 s).
 - **Hello.** Hostname, OS/arch, Ducter version, and which harnesses are installed and signed in.
   `ducter devices` shows `awake` while the socket is up.
 - **Placement.** `Place.device` (or `{kind:"none", device}` for a place-less task) names a
@@ -407,6 +449,24 @@ by default in the slice, so it can be reviewed live:
 Alternatives considered: minimise the window (hides the agent, and screenshots of a
 minimised window may fail), or a Chrome theme colour (needs edits to the profile's
 Preferences).
+
+## Connections: the user's OpenConnector or other MCP servers (D96, `connectors.md`)
+
+- **Where they live.** In the control plane on the main (`packages/core/src/connections.ts`).
+  - Ducter is an MCP client to the user's OpenConnector (OOMOL Hosted or self-hosted) or to
+    any other MCP server.
+  - Provider OAuth is OpenConnector's job.
+- **The token.** It lives in `<dataDir>/connection-tokens.json` (0600). It never appears in
+  harness config, env or args, the Log, or a client frame.
+  - It is not in `<dataDir>/env`: on a server that file is the systemd `EnvironmentFile`, so its
+    keys reach every harness child.
+  - The rule for every secret: a 0600 file in the data folder, read by the code that uses it.
+- **The gate.** Read vs write comes from the server's own metadata, and unknown counts as a
+  write.
+  - Reads run and are logged as `connection_call`.
+  - A write is a partner-made Go card and runs once after Go.
+  - Tasks read only what the partner shared (`connection_share`), never write, and see the
+    tools only while a connection exists.
 
 ## Credentials and logged-in profiles (D48, research/25)
 

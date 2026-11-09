@@ -7,20 +7,20 @@ order: 6
 # Privacy and safety
 
 Ducter is meant to be a partner you can leave alone with real work. That only works if you know
-exactly what it will and won't do. Here it is, plainly.
+exactly what it will and won't do. This page lists it.
 
 ## What Ducter never does by itself
 
-- **It never merges your code.** A finished coding task offers **Merge into main**, **Open draft
-  PR**, or **See changes**. Nothing lands until you choose.
+- **It never merges your code.** A finished coding task offers **Merge into main** or **Open
+  draft PR**. Nothing lands until you choose.
 - **It never touches your own checkout.** Each coding task works in its own copy of the project,
   on its own branch (`ducter/…`).
 - **It never types your passwords.** When a website needs a login, you type it yourself in
   Ducter's browser window; the AI never sees it. Submitting forms and paying are always left to
   you.
-- **It never hides what went out.** Every result lists what was **Sent out** (often
-  **Nothing**).
-- **It never decides silently for you.** When something is truly your call, it asks, with a
+- **It never hides what went out.** When a result sent something out, a line marked ↗ says
+  what. An opened task's **Details** always lists **Sent out**, often **Nothing**.
+- **It never decides silently for you.** When something is your call, it asks, with a
   suggested default you can take, hold, or change. If it goes with the default, it says so:
   **Went with the default**.
 - **It doesn't read your projects to greet you.** The first suggestions come from folder
@@ -32,19 +32,20 @@ exactly what it will and won't do. Here it is, plainly.
   service of its own in the cloud, and no account to sign up for.
 - **Your conversation, tasks and settings** stay in `~/.ducter` on the computer Ducter lives on.
   The folder and its files can only be read by your own user account.
-- **What does leave your computer** is what any AI tool sends: your messages and the work
-  in a task go to Anthropic or OpenAI through Claude Code or Codex, under your own account and
-  their terms. If you connect Nowledge Mem, memories go there too (below).
+- **What does leave your computer** is what any AI agent sends: your messages and the work
+  in a task go to the company behind your agent (Anthropic for Claude Code, OpenAI for Codex),
+  under your own account and their terms. If you connect Nowledge Mem, memories go there too
+  (below).
 
 ## Your AI plans stay yours
 
-Ducter works through the official Claude Code and Codex apps, signed in with your own account.
-It doesn't proxy your login, share it, or pretend to be anything else. That's also why Ducter is
+Ducter works through each AI agent's own official app, signed in with your own account. It
+doesn't proxy your login, share it, or pretend to be anything else. That's also why Ducter is
 something you run yourself rather than a hosted service.
 
-Tasks use your plan's limits like any other session would. Your Claude Code or Codex settings,
-skills and tools apply to tasks too, so a Ducter task in your project behaves the way your own
-session there does.
+Tasks use your plan's limits like any other session would. Your agent's own settings, skills and
+tools apply to tasks too, so a Ducter task in your project behaves the way your own session
+there does.
 
 ## Memory, with Nowledge Mem
 
@@ -59,9 +60,9 @@ always trace it back. If you edit a memory in Nowledge Mem, your edit wins.
 ## Tasks run as you
 
 Tasks don't stop to ask before every command; that would make Ducter one more thing to babysit.
-Instead, a task on your Mac runs with the same access your own Claude Code or Codex session
-would have: it can do what you can do there. That is the honest trade, and it's why the important
-moments (merging, sending things out) wait for you.
+Instead, a task on your Mac runs with the same access your own AI agent session would have:
+it can do what you can do there. That's the trade, and it's why merging and sending things out
+wait for you.
 
 Running Ducter's tasks on a separate server keeps them away from your personal files.
 Sandboxed places that can't touch your files at all are coming later.

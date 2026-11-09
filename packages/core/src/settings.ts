@@ -5,7 +5,7 @@
 import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Bodies, MemView, QuietHours, Settings, SettingsPatch, TalkLanguage } from "@ducter/protocol";
-import { DEFAULT_AFTER_CHOICES } from "@ducter/protocol";
+import { DEFAULT_AFTER_CHOICES, HARNESSES, isHarnessId, type Brain, type HarnessId } from "@ducter/protocol";
 import type { LogStore, SettingsApi } from "@ducter/protocol/src/internal.ts";
 import type { PushStore } from "./push.ts";
 
@@ -18,6 +18,9 @@ interface SettingsFile {
   language?: TalkLanguage;
   memory?: boolean;
   defaultAfterMin?: number;
+  /** D85: what the partner thinks with, and which accounts tasks may use. */
+  brain?: Brain;
+  taskAccounts?: Partial<Record<HarnessId, { enabled: boolean }>>;
   /** 记下了 lines forgotten here, by seq (Mem forgot them, or they are only hidden). */
   hidden?: number[];
 }
@@ -48,6 +51,8 @@ export function openSettings(opts: {
   persona: { name: string; identity: string };
   /** DUCTER_MEMORY=off pins memory off for this run. */
   memoryPinnedOff?: boolean;
+  /** DUCTER_PARTNER_HARNESS picks the brain until the user sets one (default process.env). */
+  env?: Record<string, string | undefined>;
 }): SettingsStore {
   const path = join(opts.dataDir, SETTINGS_FILE);
   let data: SettingsFile = {};
@@ -78,6 +83,8 @@ export function openSettings(opts: {
       notify: !p.off,
       quiet: p.quiet,
       defaultAfterMin: data.defaultAfterMin ?? 30,
+      brain: data.brain ?? defaultBrain(opts.env ?? process.env),
+      ...(data.taskAccounts ? { taskAccounts: data.taskAccounts } : {}),
     };
   };
 
@@ -144,6 +151,27 @@ export function openSettings(opts: {
       if (typeof patch.defaultAfterMin === "number" && (DEFAULT_AFTER_CHOICES as readonly number[]).includes(patch.defaultAfterMin)) {
         if ((data.defaultAfterMin ?? 30) !== patch.defaultAfterMin) (data.defaultAfterMin = patch.defaultAfterMin), did.push("defaultAfterMin");
       }
+      // The brain: only a harness that can be the partner (v1: Claude Code, Codex). A model names
+      // one harness's catalog, so a new harness without a model starts on its own default.
+      const b = patch.brain as Partial<Brain> | undefined;
+      if (b && typeof b === "object" && isHarnessId(b.harness) && HARNESSES[b.harness].partner) {
+        const model = typeof b.model === "string" && b.model.trim() ? b.model.trim().slice(0, 120) : undefined;
+        const next: Brain = { harness: b.harness, ...(model ? { model } : {}) };
+        const cur = get().brain;
+        if (cur.harness !== next.harness || cur.model !== next.model) (data.brain = next), did.push("brain");
+      }
+      const ta = patch.taskAccounts;
+      if (ta && typeof ta === "object") {
+        const merged = { ...(data.taskAccounts ?? {}) };
+        let touched = false;
+        for (const [k, v] of Object.entries(ta)) {
+          if (!isHarnessId(k) || !v || typeof v.enabled !== "boolean") continue;
+          if ((merged[k]?.enabled ?? true) === v.enabled) continue;
+          merged[k] = { enabled: v.enabled };
+          touched = true;
+        }
+        if (touched) (data.taskAccounts = merged), did.push("taskAccounts");
+      }
       const push: Parameters<PushStore["setSettings"]>[0] = {};
       if (typeof patch.notify === "boolean" && !opts.push.settings().off !== patch.notify) (push.off = !patch.notify), did.push("notify");
       if (patch.quiet === null || (patch.quiet && typeof patch.quiet === "object")) {
@@ -177,6 +205,14 @@ export function openSettings(opts: {
       return () => listeners.delete(fn);
     },
   };
+}
+
+const envHarness = (v: string | undefined): HarnessId | undefined => (isHarnessId(v) && HARNESSES[v].partner ? v : undefined);
+
+/** Claude Code + opus, unless DUCTER_PARTNER_HARNESS names another partner harness (its own default model). */
+export function defaultBrain(env: Record<string, string | undefined>): Brain {
+  const h = envHarness(env.DUCTER_PARTNER_HARNESS);
+  return h && h !== "claude-code" ? { harness: h } : { harness: "claude-code", model: "opus" };
 }
 
 function parseQuiet(q: unknown): QuietHours | null | undefined {

@@ -10,7 +10,7 @@ interface Props { doc: Doc | null; docs: Doc[] }
 const { doc, docs } = Astro.props;
 const { facts, dl, gh } = await siteLinks();
 const title = doc?.data.title ?? "Ducter docs";
-const description = doc?.data.description ?? "How to install Ducter, talk to your partner, and keep it working for you on your own computers.";
+const description = doc?.data.description ?? "How to install Ducter and work with your partner on your own computers.";
 const path = doc ? docHref(doc) : "/docs";
 const i = doc ? docs.findIndex((d) => d.id === doc.id) : -1;
 const prev = i > 0 ? docs[i - 1] : null;

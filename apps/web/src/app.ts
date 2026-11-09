@@ -1,5 +1,5 @@
 // The phone app's state and actions (the views read it and call these). One store, one socket.
-import type { ClientFrame, MemView, ServerFrame, Settings, SettingsPatch } from "@ducter/protocol";
+import type { ClientFrame, ConnectionView, MemView, OoDetect, ServerFrame, Settings, SettingsPatch } from "@ducter/protocol";
 import { Api, Connection, type ConnStatus, type Me, wsUrl } from "./conn.ts";
 import { detectLang, langOfText, strings, type Lang, type Strings } from "./i18n.ts";
 import { pushState, type PushState } from "./push-client.ts";
@@ -39,6 +39,11 @@ class AppState {
   /** The partner's settings (D71), once the server sent them; mem is what it remembers. */
   settings?: Settings;
   mem?: MemView;
+  /** The user's connections (D96) and what oo is set up with, once asked for. */
+  connections?: ConnectionView[];
+  oo?: OoDetect;
+  /** A connection being checked (the add button waits). */
+  connecting = false;
   route: Route = { name: "conv" };
   sheet: Sheet = null;
   status: ConnStatus = "connecting";
@@ -119,6 +124,14 @@ class AppState {
       this.conn?.rehello();
     }
     if (f.t === "settings") return this.applySettings(f);
+    if (f.t === "connections") return (this.connections = f.connections), (this.oo = f.oo), this.changed();
+    if (f.t === "connection_result") {
+      this.connecting = false;
+      if (!f.ok && f.reason) this.toast(this.L.t(`acct.err.${f.reason}`));
+      const added = f.ok && this.connections?.find((c) => c.id === f.id);
+      if (added) this.toast(this.L.t("acct.added", added.name));
+      return this.changed();
+    }
     const before = new Map([...this.S.tasks].map(([id, t]) => [id, attention(t)]));
     this.S.apply(f);
     for (const [id, t] of this.S.tasks) if (finished(t) && before.has(id) && !["done", "done_claimed", "failed"].includes(before.get(id)!)) this.doneAt = Date.now();
@@ -133,6 +146,7 @@ class AppState {
       if (this.route.name === "task") this.history(this.route.id, true);
       // Settings are pushed only to sockets that asked: ask again on a new one.
       if (this.settings || this.sheet?.kind === "settings") this.send({ t: "settings" });
+      if (this.connections) this.send({ t: "connections" });
     }
     // on_hand closes the replay that follows a welcome.
     if (f.t === "on_hand" && this.inDoubt) this.S.settleInDoubt(this.inDoubt), (this.inDoubt = undefined);
@@ -167,6 +181,33 @@ class AppState {
     if (patch.name) this.S.personaName = patch.name;
     this.send({ t: "settings_set", patch });
     this.changed();
+  }
+
+  /** Connections (D96): ask once; the server keeps this socket up to date. */
+  askConnections() {
+    if (this.S.welcomed) this.send({ t: "connections" });
+  }
+  addConnection(url: string, token: string) {
+    this.connecting = true;
+    this.send({ t: "connection_add", url, ...(token ? { token } : {}) });
+    this.changed();
+  }
+  useOoConnection() {
+    this.connecting = true;
+    this.send({ t: "connection_oo" });
+    this.changed();
+  }
+  removeConnection(id: string) {
+    if (this.connections) this.connections = this.connections.filter((c) => c.id !== id);
+    this.send({ t: "connection_remove", id });
+    this.changed();
+  }
+  /**
+   * For the devices stage (Isles, being rebuilt on the isles branch): the mailboxes that stand on
+   * the island of the computer Ducter lives on. Connections always live there (D96).
+   */
+  homeMailboxes(): { id: string; name: string; source: ConnectionView["source"]; trouble: boolean }[] {
+    return (this.connections ?? []).map((c) => ({ id: c.id, name: c.name, source: c.source, trouble: c.state === "unreachable" || c.state === "unauthorized" }));
   }
 
   /** Titles of the noted lines being forgotten, for the toast that answers. */

@@ -10,7 +10,8 @@ Canvas: https://claude.ai/artifact/LKuVp3knPDJ4EdoyWBGSWN
 
 ### J. Nowledge Bridge (2026-11-09 evening, draft; `../bridge.md`, `research/31`)
 
-Nothing here is decided. The slice is built behind `DUCTER_BRIDGE=1` on branch `bridge-practice`.
+Nothing here is decided. The first slice is on `main` behind `DUCTER_BRIDGE=1`. The dogfood spike (branch
+`bridge-spike`, `research/33`) builds J-Q4 and J-Q7 as proposed below, and adds J-Q10 to J-Q14.
 
 **J-Q1. Adopt Bridge as Ducter's doorway to agents it didn't start, addressed to the persona.**
 - *Recommendation:* yes, through the persona identity's Agent mailbox, never a native session (partner
@@ -33,9 +34,13 @@ Nothing here is decided. The slice is built behind `DUCTER_BRIDGE=1` on branch `
 - *Default:* 5 min (`bridgeIntervalMs`). Ask Mem for a hint/push into an always-on host (private/31 §7).
 
 **J-Q4. Outbound: may Ducter start a conversation with another agent?**
-- *Recommendation:* reply-only in v1. Send to a new recipient only when the user names one; the recipient is
-  then confirmed on a card that shows who and where (J4).
-- *Default:* reply-only.
+- *Recommendation (revised after the spike):* yes, when the user names the agent.
+  - The partner finds it (read-only discovery) and shows one card: "发给 <agent (member)>？「gist」", button 发送,
+    default hold, not reversible.
+  - Ducter's code sends on Go, never the model. The send is refused in a turn the user didn't speak in.
+  - Live with haiku over a fake Bridge (research/33 §3): 4 of 4 after the tool text said "the card is the
+    confirmation", 0 of 2 before (the partner offered in prose instead).
+- *Default:* allow through the card. Keep J-Q6 recovery as the gate before it reaches users.
 
 **J-Q5. Copy.**
 - *Recommendation:*
@@ -51,9 +56,13 @@ Nothing here is decided. The slice is built behind `DUCTER_BRIDGE=1` on branch `
 - *Default:* build this before J-Q4.
 
 **J-Q7. The result goes back automatically.**
-- *Recommendation:* link the task to the request it came from, as a field on `task_open` or a small map in the
-  Log. The partner then replies with the outcome when the task ends, instead of relying on the prompt.
-- *Default:* yes, next slice.
+- *Recommendation (built in the spike):*
+  - The card asked about a request carries it, and the task opened on its Go is linked to it.
+  - Ducter sends the claim ("接了：<title>。做完把结果回你。").
+  - The task's final report puts "[reply owed]" in the partner's input.
+  - If the turn ends without a reply, Ducter sends what the partner just told the user.
+  - Live: 4 of 4 runs after the link. Prompt-only linking failed (run 1).
+- *Default:* adopt.
 
 **J-Q8. Work agreement.**
 - *Background:* Mem's Bridge guidance suggests a Memory that the receiver confirms. Ducter forbids writing task
@@ -67,7 +76,46 @@ Nothing here is decided. The slice is built behind `DUCTER_BRIDGE=1` on branch `
 - a non-consuming probe for the Agent mailbox;
 - push or hint into an always-on host;
 - a stated position on app hosts (Agent mailbox only, or `--host app`).
-- *Default:* file all four.
+- *Default:* file all four, plus the dogfood drafts B1–B7 in research/33 §4. B1 (an unavailable backend exits
+  0) and B2 (no context list) come first.
+
+**J-Q10. Follow-through on silence (S3).**
+- *Recommendation:* each send the user confirmed arms a quiet waiter.
+  - If nothing has come back by the user's next active moment, or by a time they named, the partner says one
+    line, once: "<X> 还没回你下午问的事。它可能停了，要我晚点再看吗？".
+  - It never says it "reminded" the other side, because nothing wakes it.
+- *Default:* build next, with a 2-hour floor and one line at most per message.
+
+**J-Q11. Naming the user's own agents.**
+- *Background:* "terminal-claude (Weyl)" made the partner talk about Weyl in the third person, to Weyl
+  (2 of 3 runs).
+- *Recommendation:* when the member is the user, the label is "你的 <agent>" / "your <agent>"; a teammate's agent
+  keeps "<agent> (<name>)". The persona needs the user's own member id from the approved context.
+- *Default:* adopt; add to the glossary with J-Q5.
+
+**J-Q12. What the code fallback sends (J-Q7).**
+- *Recommendation:* the partner's own message to the user about that result. It is short and outcome-only, it was
+  already shown to the user, and the request was the user's to approve.
+  - For a teammate (J3), send only a fixed line ("<title>：做完了 / 没做成") until a sharing rule exists.
+- *Default:* adopt.
+
+**J-Q13. The language of a card asked about a peer's request.**
+- *Recommendation:* always the user's language (their last message, or the Partner-page setting), never the
+  peer's. The claim to the peer uses the peer's language and puts the title in quotes.
+- *Default:* adopt; fix in code (one run asked a Chinese user in English).
+
+**J-Q14. The live trial (needs you, on Mem's side).**
+- *Status:* the Cloud IM backend reports unavailable in all 8 Spaces, and no Agent Context exists (research/33
+  §1, read-only).
+- *Recommendation:*
+  1. admit the account to the Bridge cohort, or bring the backend up;
+  2. use the personal "Only me" Space;
+  3. use two existing identities, one for the persona and one for the terminal session (the earlier "Bridge
+     pilot" pair would do);
+  4. run `agents context select-cloud` for each (`ducter-test`, `terminal-test`), then
+     `bridge setup --enable` for each;
+  5. run the spike driver against the real `nmem`.
+- *Default:* I run step 5 once you've done steps 1–4.
 
 ## Answered on 2026-11-09 morning
 

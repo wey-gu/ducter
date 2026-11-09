@@ -7,8 +7,9 @@
 //     (`nmem bridge inbox/open/reply`), never a native-session mailbox. Harness sessions are
 //     caches (principle 1); an address bound to one would die at the next re-cut.
 //   - Ducter never sets anything up. It never calls `bridge setup --enable`, `session prepare`,
-//     `agents enroll`, `keys create`, `contacts` or `send`. It only reads the persona's inbox and
-//     replies to a message that is already in the Log. The Agent Context (identity + exact Space)
+//     `agents enroll` or `keys create`. It reads the persona's inbox and replies to a message that
+//     is already in the Log. Spike (bridge-spike): it may also run `contacts` (read-only) and
+//     `send`, but `send` runs only after the user tapped Go on a card naming the recipient. The Agent Context (identity + exact Space)
 //     is the user's; Ducter passes its name and nothing else.
 //   - A message body is untrusted task context from another agent, never the user's permission.
 //     The partner can't open a task from it in a turn the user hasn't spoken in (partner.ts).
@@ -26,6 +27,15 @@ export interface BridgeMessage {
   from: string; // a readable sender: agent and member as the CLI returns them
   text: string; // clipped
   sentAt?: string;
+  inReplyTo?: string; // set when this answers a message we sent (the CLI's in_reply_to)
+}
+
+/** One recipient card from `bridge contacts`: an opaque handle plus who and where, as returned. */
+export interface BridgeContact {
+  contact: string; // the opaque handle `send --to` takes; choosing it grants nothing
+  label: string; // "agent (member)", for the user's confirmation card
+  description?: string;
+  space?: string; // the exact Space the card came from, when the CLI says
 }
 
 export type BridgeResult<T> = ({ ok: true } & T) | { ok: false; reason: "not_configured" | "unavailable" | "refused"; message: string };
@@ -35,6 +45,10 @@ export interface BridgeClient {
   check(known: Set<string>): Promise<BridgeResult<{ messages: BridgeMessage[] }>>;
   /** Reply to a received message; the CLI derives the recipient from that original. */
   reply(messageId: string, text: string): Promise<BridgeResult<{ messageId?: string }>>;
+  /** Spike: read-only recipient discovery in the context's own Space (one bounded page). */
+  contacts?(query: string): Promise<BridgeResult<{ contacts: BridgeContact[]; more: boolean }>>;
+  /** Spike: a new message to a contact handle the user confirmed on a card. */
+  send?(contact: string, text: string): Promise<BridgeResult<{ messageId?: string }>>;
 }
 
 export interface NmemBridgeOptions {
@@ -72,6 +86,20 @@ export function inboxIds(j: any): string[] {
     if (id && !ids.includes(id)) ids.push(id);
   }
   return ids;
+}
+
+/** Recipient cards from `bridge contacts --json`: `contacts[]` (or `cards[]`) with an opaque `contact`. */
+export function contactsOf(j: any): BridgeContact[] {
+  const list = Array.isArray(j?.contacts) ? j.contacts : Array.isArray(j?.cards) ? j.cards : [];
+  const out: BridgeContact[] = [];
+  for (const c of list) {
+    const contact = str(c?.contact) ?? str(c?.handle);
+    if (!contact || out.some((x) => x.contact === contact)) continue;
+    const description = str(c?.agent?.description) ?? str(c?.description);
+    const space = str(c?.space_id) ?? str(c?.resolved_space_id) ?? str(c?.space?.id);
+    out.push({ contact, label: senderOf(c), ...(description ? { description: clip(description, 200) } : {}), ...(space ? { space } : {}) });
+  }
+  return out;
 }
 
 /** BridgeClient over the user's nmem CLI and their approved Agent Context. */
@@ -133,7 +161,8 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
         const body = str(b?.body) ?? str(b?.message?.body) ?? str(b?.text);
         if (!body) continue;
         const sentAt = str(b?.sent_at) ?? str(b?.created_at) ?? str(b?.message?.created_at);
-        messages.push({ messageId: id, from: senderOf(b?.message && typeof b.message === "object" ? { ...b, ...b.message } : b), text: clip(body, MAX_TEXT), ...(sentAt ? { sentAt } : {}) });
+        const inReplyTo = str(b?.in_reply_to) ?? str(b?.message?.in_reply_to) ?? str(b?.reply_to);
+        messages.push({ messageId: id, from: senderOf(b?.message && typeof b.message === "object" ? { ...b, ...b.message } : b), text: clip(body, MAX_TEXT), ...(sentAt ? { sentAt } : {}), ...(inReplyTo ? { inReplyTo } : {}) });
       }
       return { ok: true, messages };
     },
@@ -143,6 +172,22 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
       if ("missing" in r || r.code !== 0) return failure(r);
       const j = parse(r.out);
       if (j === undefined) return { ok: false, reason: "unavailable", message: "Bridge gave no answer; the reply may not have gone out." };
+      const id = str(j?.message) ?? str(j?.message_id) ?? str(j?.operation);
+      return { ok: true, ...(id ? { messageId: id } : {}) };
+    },
+    // Spike (design/bridge.md, S2): read-only discovery, then a send the user confirmed.
+    async contacts(query) {
+      const r = await run(["contacts", "--query", query]);
+      if ("missing" in r || r.code !== 0) return failure(r);
+      const j = parse(r.out);
+      if (j === undefined) return { ok: false, reason: "unavailable", message: "Bridge gave no answer (it may be switched off for this account)." };
+      return { ok: true, contacts: contactsOf(j), more: Array.isArray(j?.next_args) && j.next_args.length > 0 };
+    },
+    async send(contact, text) {
+      const r = await run(["send", "--to", contact, "--body-file", "-"], text);
+      if ("missing" in r || r.code !== 0) return failure(r);
+      const j = parse(r.out);
+      if (j === undefined) return { ok: false, reason: "unavailable", message: "Bridge gave no answer; the message may not have gone out." };
       const id = str(j?.message) ?? str(j?.message_id) ?? str(j?.operation);
       return { ok: true, ...(id ? { messageId: id } : {}) };
     },

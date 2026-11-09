@@ -4,5 +4,5 @@ export { buildSystemPrompt } from "./persona.ts";
 export { redactSecrets } from "./partner.ts";
 export { renderProjection, renderTrigger, renderHistoryLine, renderTasks, isChinese } from "./render.ts";
 export { resolvePlace, findPaths, type PlaceFs } from "./place.ts";
-export { createNmemBridge, bridgeFromEnv, inboxIds, senderOf, type BridgeClient, type BridgeMessage } from "./bridge.ts";
+export { createNmemBridge, bridgeFromEnv, inboxIds, senderOf, contactsOf, type BridgeClient, type BridgeMessage, type BridgeContact } from "./bridge.ts";
 export { createNmemClient, noMemory, provenanceRef, compactHit, type MemoryClient, type MemoryHit, type MemoryAdd, type Provenance } from "./memory.ts";

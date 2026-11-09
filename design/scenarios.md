@@ -67,11 +67,12 @@ partner eval (real model, fake tasks and Mem; `research/30`) · **unit** = unit 
 | K2 | Quiet the partner (notifications off, quiet hours, the default wait) | draft | — | draft | — | — | native: quiet hours and the wait persist to push.json / settings.json; unit: the Mac's notice held when off or in quiet hours | D71; D3 for what quiet hours hold |
 | K3 | App settings (Look, Language, when the window closes, updates, data and logs, about, remove) | draft | — | draft | — | — | native (window connected to a core: Look, Language, About); headless with a fake backend (Stop Ducter, Updates, Run checks, Remove plan) | D71, D72. Theme choice hidden until a second theme works |
 | K4 | Answer from the menu bar extra with the window closed | draft | — | draft | — | — | unit: what the menu lists, answering removes it; native: the icon is placed, its menu not screenshotted (the extra sat in the menu bar's overflow on the test Mac) | D71 |
-| J1 | Another agent asks the partner to take work (Nowledge Bridge) | draft | — | draft | — | — | unit (stub nmem): request logged once, framed untrusted, task only after Go, reply to the original; live round trip — | `bridge.md`; behind `DUCTER_BRIDGE=1`, branch `bridge-practice` |
-| J2 | The result goes back to the agent that asked | draft | — | — | — | — | unit: `bridge_reply`; task ↔ request link — | J-Q7 |
+| J1 | Another agent asks the partner to take work (Nowledge Bridge) | draft | — | draft | — | — | unit (stub nmem): request logged once, framed untrusted, task only after Go, reply to the original; live with two real models over a fake Bridge 4/4 (`bridge-spike`, research/33); against Mem — (backend unavailable) | `bridge.md` S1; behind `DUCTER_BRIDGE=1` |
+| J2 | The result goes back to the agent that asked | draft | — | — | — | — | unit: claim by code, `[reply owed]`, code fallback; live 4/4 (fake Bridge) | J-Q7, J-Q12; branch `bridge-spike` |
 | J3 | A teammate's agent asks (Mem Team) | draft | — | — | — | — | — | Team Bridge gated on Mem's side |
-| J4 | A task asks a session that holds the context | draft | — | — | — | — | — | needs outbound send (J-Q4) |
+| J4 | The partner asks an agent the user named, and reports the answer | draft | — | draft | — | — | unit: card before send, Ducter sends on Go, refused in peer-only turns; live 4/4 after tool fix (fake Bridge) | `bridge.md` S2, J-Q4; branch `bridge-spike` |
 | J5 | The persona reached from a consumer AI | — | — | — | — | — | — | waits on Mem remote-MCP delegation |
 | J6 | Fresh user: Bridge invisible until a second agent exists | draft | — | — | — | — | — | |
+| J7 | Follow-through on silence: a confirmed message goes unanswered | draft | — | — | — | — | — | `bridge.md` S3, J-Q10; not built |
 
 Flow docs: `design/flows/*.md`. Open questions: `design/flows/OPEN-QUESTIONS.md` (none waiting after D67). Flows canvas: https://claude.ai/artifact/LKuVp3knPDJ4EdoyWBGSWN

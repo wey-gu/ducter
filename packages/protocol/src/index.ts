@@ -103,7 +103,10 @@ export interface Bodies {
   // permission. "out": the partner's reply to one (origin "partner"). Clients show one quiet
   // line (copy pending the glossary): "<from> 发来请求" / "Request from <from>", and
   // "已回复 <to>" / "Replied to <to>". Not "交接 / hand-off": that word is a task changing body.
-  bridge_msg: { direction: "in" | "out"; messageId: string; from?: string; to?: string; text: string; inReplyTo?: string; sentAt?: string };
+  // Spike (bridge-spike): "out" may also be a NEW message the user confirmed on a card
+  // (decisionId); `taskId` links an exchange to the task opened for it, so the result reply is
+  // owed by code, not by prompt. An "in" with `inReplyTo` answers one of ours.
+  bridge_msg: { direction: "in" | "out"; messageId: string; from?: string; to?: string; text: string; inReplyTo?: string; sentAt?: string; taskId?: string; decisionId?: string };
 }
 
 export interface Usage { inputTokens?: number; outputTokens?: number; cacheRead?: number; cacheWrite?: number }

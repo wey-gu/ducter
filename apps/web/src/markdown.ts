@@ -13,7 +13,11 @@ function inline(s: string): string {
   s = s.replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g, (_m, pre: string, u: string) => `${pre}<a href="${u}" target="_blank" rel="noopener noreferrer">${u}</a>`);
   s = s.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
   s = s.replace(/(^|[^*\w])\*([^*\n]+)\*(?=[^*\w]|$)/g, "$1<em>$2</em>");
-  return s.replace(/\u0000(\d+)\u0000/g, (_m, i: string) => `<code>${esc(codes[Number(i)]!)}</code>`);
+  // A short code token never breaks mid-word ("ducter/fix-ci"); only a long path may wrap.
+  return s.replace(/\u0000(\d+)\u0000/g, (_m, i: string) => {
+    const c = codes[Number(i)]!;
+    return c.length > 28 ? `<code class="long">${esc(c)}</code>` : `<code>${esc(c)}</code>`;
+  });
 }
 
 export function markdown(src: string): string {

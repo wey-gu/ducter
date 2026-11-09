@@ -44,6 +44,6 @@ renders it at `/docs`.
 - [`release/`](release/README.md): how a release is cut (the `v*` tag pipeline, signing,
   notarization, secrets) and the iPhone app's TestFlight setup ([`release/ios.md`](release/ios.md)).
 - [`art/`](art/): the clay character and device art, with the prompts that made them.
-- [`screens/`](screens/): screenshots of the phone client used in reviews.
+- Screenshots and before/after pairs are work evidence, not source: tools write them to `.shots/` (gitignored), and reviews are published as galleries (D75).
 - [`../research/`](../research/README.md): the numbered research reports behind the decisions.
   Every claim is tagged as verified, documented or inferred, with its source.

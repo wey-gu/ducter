@@ -1,0 +1,409 @@
+---
+import "../styles/site.css";
+import Art from "../components/Art.astro";
+import Face from "../components/Face.astro";
+import Head from "../components/Head.astro";
+import Nav from "../components/Nav.astro";
+import Footer from "../components/Footer.astro";
+import { siteLinks } from "../lib/links";
+
+const { facts, dl, gh } = await siteLinks();
+const title = "Ducter: one partner who runs your AI work";
+const description =
+  "Ducter is a personal AI you run yourself. Talk to one partner; it hands the work to Claude Code and Codex on your own computers, on the plans you already pay for, and comes to you only when a decision is yours.";
+const check = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"/></svg>`;
+const arrow = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 8h10M9 4.5L12.5 8 9 11.5"/></svg>`;
+const out = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12l8-8M6 4h6v6"/></svg>`;
+const cross = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg>`;
+const lock = `<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M5 7V5a3 3 0 016 0v2h.5A1.5 1.5 0 0113 8.5v4a1.5 1.5 0 01-1.5 1.5h-7A1.5 1.5 0 013 12.5v-4A1.5 1.5 0 014.5 7H5zm1.6 0h2.8V5a1.4 1.4 0 00-2.8 0v2z"/></svg>`;
+const ld = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "Ducter",
+  applicationCategory: "DeveloperApplication",
+  operatingSystem: "macOS, Linux",
+  description,
+  url: "https://ducter.ai",
+  license: "https://www.apache.org/licenses/LICENSE-2.0",
+  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+};
+---
+<!doctype html>
+<html lang="en">
+<Head title={title} description={description} ld={ld} />
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<Nav dl={dl} gh={gh} />
+
+<main id="main">
+
+<!-- ============ HERO: ack → job → result, playing itself ============ -->
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <h1>Say it once. <span class="soft">Hear back when it's&nbsp;done.</span></h1>
+      <p class="lede">Ducter is a personal AI you run yourself. You talk to <b>one partner</b>. It hands the real work to <b>Claude Code and Codex on your own computers</b>, on the plans you already pay for, and comes to you only when a decision is truly yours.</p>
+      <div class="cta-row">
+        <a class="btn lg" href={dl.href}>{dl.label}</a>
+        <a class="btn secondary lg" href="#how">See how it works</a>
+      </div>
+      <p class="cta-note">{dl.note}</p>
+      <p class="facts">Open source under Apache 2.0. Runs on your Mac or a server you own, with Claude Code or Codex, in English or 中文.</p>
+    </div>
+
+    <div class="demo" id="demo" aria-label="A short example conversation with Ducter">
+      <Face id="hero-face" faces={["idle", "working", "done"]} start="done" sizes="132px" eager />
+      <div class="win">
+        <div class="win-bar">
+          <Art class="avatar" name="ducter_idle" alt="" sizes="34px" eager />
+          <div class="who"><b>Ducter</b><span class="presence" id="presence"><span>just finished something</span></span></div>
+        </div>
+        <div class="convo">
+          <div class="track" id="track">
+            <div class="msg user step" data-step="user">Fix the flaky checkpoint test in <code>~/dev/hawdb</code>, then tell me.</div>
+            <div class="msg ducter step" data-step="ack">I'll find out why <code>checkpoint_recovery</code> flakes, and fix it on its own branch.</div>
+            <div class="step pop" data-step="chip"><span class="taskline" id="hero-chip" data-state="done"><span class="ic"><span class="i-work"><Fragment set:html={arrow} /></span><span class="i-done"><Fragment set:html={check} /></span></span><b>Fix CI</b><span class="st" id="hero-st"><span>· Done</span></span> ›</span></div>
+            <div class="quiet step" data-step="quiet"><span class="clock"></span><span id="quiet-text">14 min later</span></div>
+            <div class="msg ducter step" data-step="result">
+              <p>CI is fixed. <code>checkpoint_recovery</code> slept a fixed 50&nbsp;ms for the flush, too short on a busy machine. It now waits for <code>wal.wait_durable(seq)</code>.</p>
+              <div class="proof">
+                <span class="mk"><Fragment set:html={check} />412 tests pass</span>
+                <span class="mk"><Fragment set:html={check} />CI run #48219 · green</span>
+                <span class="qlink">2 files changed ›</span>
+                <span class="qlink">Fix CI ›</span>
+              </div>
+              <div class="proof"><span class="mk"><Fragment set:html={out} />git push -u origin ducter/fix-ci</span></div>
+              <div class="actions">
+                <button class="btn md" type="button" tabindex="-1">Merge into main</button>
+                <button class="btn secondary md" type="button" tabindex="-1">Open draft PR</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="composer" aria-hidden="true">
+          <span class="typed" id="typed" data-ph="Say something to Ducter…"></span>
+          <span class="btn accent send" id="send"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 16V4M4.5 9.5L10 4l5.5 5.5"/></svg></span>
+        </div>
+      </div>
+      <div class="demo-ctl">
+        <button class="textbtn sm" id="replay" type="button" hidden>
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M2.5 8a5.5 5.5 0 109.6-3.6M12.5 1.8v2.8H9.7"/></svg>
+          Play it again
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ONLY WHEN IT MATTERS ============ -->
+<section class="sec deep" id="how">
+  <div class="wrap split">
+    <div>
+      <div class="sec-head">
+        <span class="tag">Only when it matters</span>
+        <h2>Silence means it's going fine.</h2>
+      </div>
+      <p class="lede">Tasks run in the background. You hear back when one is done, or when a decision is truly yours, and every decision arrives with a default, so not answering is an answer too.</p>
+      <ul class="points">
+        <li><span><b>Go, Hold, or Reply.</b> Press Go, ask it to wait, or answer in your own words.</span></li>
+        <li><span><b>Or let the default happen.</b> It only applies on its own when it can be undone.</span></li>
+        <li><span><b>Done comes with proof:</b> what changed, and how it checked.</span></li>
+      </ul>
+    </div>
+
+    <div class="board-wrap" style="position:relative">
+      <Face id="board-face" faces={["needsyou", "working", "done"]} start="working" sizes="118px" class="peek" />
+      <div class="board" id="board" aria-label="On hand: every task at a glance">
+        <div class="board-head"><b>On hand</b><small id="board-sum">3 working · 1 waiting</small></div>
+        <div class="ask-slot" id="ask-slot">
+          <div>
+            <div class="ask" id="ask" role="group" aria-labelledby="ask-q">
+              <div class="ask-top"><span id="ask-from">Port the runner to OAR 0.96 ›</span><span id="ask-time">30 min</span></div>
+              <p class="q" id="ask-q">OAR 0.96 changed the steer API; 3 calls in the runner need to follow. Change them now?</p>
+              <p class="def" id="ask-def">If you don't answer, I'll change them in 30 min. It can be undone.</p>
+              <div class="bar"><i id="ask-bar"></i></div>
+              <div class="actions">
+                <button class="btn md" type="button" id="ask-go">Change them</button>
+                <button class="btn secondary md" type="button" id="ask-hold">Hold</button>
+                <span class="hint" id="ask-hint">Try it: press Change them</span>
+              </div>
+              <div class="resolved" id="ask-resolved"><Fragment set:html={check} /><span>Changing them now</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="row" data-state="working" data-row="oar"><span class="glyph"><Art name="server_awake" alt="" sizes="38px" /></span><span class="t"><b>Port the runner to OAR 0.96</b><span id="oar-st">Reading the changelog · cloud-1</span></span></div>
+        <div class="row" data-state="working" data-row="prs"><span class="glyph"><Art name="laptop_awake" alt="" sizes="38px" /></span><span class="t"><b>Review this week's 3 open PRs</b><span>Read 2; the third is waiting on CI · MacBook</span></span></div>
+        <div class="row" data-state="waiting" data-row="notes"><span class="glyph"><Art name="server_awake" alt="" sizes="38px" /></span><span class="t"><b>Write the v0.4 release notes</b><span>Waiting for the v0.4 CI run · cloud-1</span></span></div>
+        <div class="row" data-state="done" data-row="mem"><span class="glyph"><Art name="laptop_awake" alt="" sizes="38px" /></span><span class="t"><b>Mem #8762 health check</b><span>Passed 3 times in a row; the issue can close · MacBook</span></span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ YOUR COMPUTERS, YOUR PLANS ============ -->
+<section class="sec" id="devices">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="tag">Where the work happens</span>
+        <h2>Your computers. Your plans.</h2>
+      <p class="lede">Ducter lives on your Mac, or on a server you own. Every task runs there in its own git worktree and branch, on the Claude Code or Codex sign-in you already have. There's no Ducter cloud in the middle.</p>
+    </div>
+
+    <div class="stage-wrap reveal">
+      <div class="stage" id="stage" aria-label="Your devices and what they can do">
+        <div class="toast" id="toast" role="status" aria-live="polite"><span class="ok"><Fragment set:html={check} /></span><span id="toast-text">This Mac can browse the web now</span></div>
+        <svg class="cords" id="cords" aria-hidden="true"></svg>
+        <div class="floor"></div>
+        <div class="it mini" id="mini"><Art name="mini_asleep" alt="A Mac mini asleep under a knitted blanket" sizes="(min-width: 1040px) 180px, 28vw" /><span class="lbl">Mac mini</span></div>
+        <div class="it server" id="server"><Art name="server_awake" alt="A server sitting on a cloud, awake" sizes="(min-width: 1040px) 190px, 30vw" /><span class="lbl">cloud-1</span></div>
+        <div class="rig">
+          <div class="pedestal"><Art name="pedestal" alt="" sizes="(min-width: 1040px) 460px, 76vw" /></div>
+          <div class="laptop" id="laptop"><Art name="laptop_awake" alt="This Mac, awake" sizes="(min-width: 1040px) 320px, 52vw" /></div>
+          <div class="sitter"><Face id="stage-face" faces={["idle", "done"]} start="idle" sizes="(min-width: 1040px) 110px, 18vw" /></div>
+          <div class="slot" id="slot">
+            <div class="well">
+              <Art class="empty" name="slot_empty" alt="" sizes="(min-width: 1040px) 110px, 18vw" />
+              <Art class="placed" name="ab_web" alt="Browse the web, added" sizes="(min-width: 1040px) 110px, 18vw" />
+              <span class="ring"></span>
+            </div>
+            <span class="lbl" id="slot-lbl">Browse the web<small id="slot-sub">fits here</small></span>
+          </div>
+          <div class="slot equipped-r">
+            <div class="well"><Art name="ab_remote" alt="Reach from anywhere, added" sizes="(min-width: 1040px) 110px, 18vw" /></div>
+            <span class="lbl">Reach from anywhere</span>
+          </div>
+        </div>
+        <div class="tokens" aria-label="AI accounts signed in on your devices">
+          <div class="tok" id="tok-cx"><Art name="token_ink" alt="" sizes="42px" /><span><b>Codex</b><small>Signed in · 1 device</small></span></div>
+          <div class="tok" id="tok-cc"><Art name="token_orange" alt="" sizes="42px" /><span><b>Claude Code</b><small>Signed in · 2 devices</small></span></div>
+        </div>
+      </div>
+
+      <div class="tray">
+        <h3>You can also add</h3>
+        <div class="stickers">
+          <button class="sticker live" id="sticker-web" type="button" aria-describedby="web-detail"><Art name="ab_web" alt="" sizes="84px" />Browse the web<small id="web-small">Drag it onto your Mac</small></button>
+          <div class="sticker lock"><Art name="ab_computer" alt="" sizes="84px" />Use this computer<small>Coming later</small></div>
+          <div class="sticker lock"><Art name="ab_phone_locked" alt="" sizes="84px" />Use a phone<small>Coming later</small></div>
+          <div class="sticker lock"><Art name="ab_call_locked" alt="" sizes="84px" />Make calls<small>Coming later</small></div>
+        </div>
+        <div class="detail" id="web-detail">
+          <h3>Browse the web</h3>
+          <p>Lets this Mac get things done on the web in Ducter's own browser: look things up, read pages, gather what it finds. Signing in, submitting and paying are always left to you.</p>
+          <button class="btn md" type="button" id="equip">Add to this Mac</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PHONE ============ -->
+<section class="sec deep" id="phone">
+  <div class="wrap split flip">
+    <div>
+      <div class="sec-head">
+        <span class="tag">On your phone</span>
+        <h2>One thumb is enough.</h2>
+      </div>
+      <p class="lede">Only decisions earn a push, and they wait out your quiet hours. Each one carries a default, so you can answer from the lock screen, or let the default happen and read about it over coffee.</p>
+      <p class="body note">Quiet hours run 23:00 to 08:00 unless you change them. Two decisions waiting? Go on all defaults answers both. A phone connects once, with a one-time code.</p>
+    </div>
+    <div class="phone-scene">
+      <div class="phone" id="phone">
+        <div class="screen">
+          <div class="wall" aria-hidden="true">
+            <i style="width:120%;aspect-ratio:1;left:-55%;top:52%;background:#ffb27a"></i>
+            <i style="width:90%;aspect-ratio:1;right:-40%;top:-10%;background:#ffe9a8"></i>
+            <i style="width:60%;aspect-ratio:1;right:-12%;bottom:-14%;background:#bfe0ff"></i>
+          </div>
+          <span class="island" aria-hidden="true"></span>
+          <div class="clock" aria-hidden="true"><small>Monday, November 9</small><b>7:06</b></div>
+          <div class="notif" id="notif" role="group" aria-label="A notification from Ducter">
+            <div class="nh">
+              <Art class="icon" name="ducter_idle" alt="" sizes="34px" />
+              <div><b>Ducter</b><p id="notif-text">The rerun passes, but the branch is 23 commits behind main. Rebase before merging? Default: rebase, in 30 min.</p></div>
+              <time>now</time>
+            </div>
+            <div class="nacts">
+              <button class="btn md" type="button" id="notif-go">Rebase</button>
+              <button class="btn secondary md" type="button" id="notif-hold">Hold</button>
+            </div>
+            <div class="done"><i><Fragment set:html={check} /></i><span id="notif-done">Rebasing. I'll tell you if CI doesn't pass.</span></div>
+          </div>
+          <span class="thumb" id="thumb" aria-hidden="true"></span>
+          <span class="home" aria-hidden="true"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TRUST ============ -->
+<section class="sec ink-band" id="trust">
+  <div class="wrap split">
+    <div>
+      <div class="sec-head">
+        <span class="tag">Trust</span>
+        <h2>It asks before anything leaves.</h2>
+      </div>
+      <p class="lede">No pop-up for every command. Each task holds only what it needs, everything that goes out is written down in plain words, and a few things are never its call.</p>
+      <ul class="nevers">
+        <li><b>It never signs in as you.</b><span>You sign in on its screen; it picks up from there.</span></li>
+        <li><b>It never pays.</b><span>Not once, and no rule can change that.</span></li>
+        <li><b>It never reaches other people without asking.</b><span>Emails, posts, PR comments and pushes to shared branches wait for your Go.</span></li>
+      </ul>
+    </div>
+    <div class="ledger reveal" id="ledger">
+      <div class="ledger-head"><b>Sent out today</b><small>Monday</small></div>
+      <ol>
+        <li class="step"><code>git push -u origin ducter/fix-ci</code><span class="verdict ran"><Fragment set:html={check} />Ran: its own branch</span></li>
+        <li class="step"><code>gh pr create --draft "Fix flaky checkpoint_recovery"</code><span class="verdict asked"><Fragment set:html={check} />Asked you; you said Go</span></li>
+        <li class="step"><code>git push origin main</code><span class="verdict waits"><Fragment set:html={lock} />Waits for you, always</span></li>
+        <li class="step"><code>email: load-test numbers → a HawDB contributor</code><span class="verdict asked"><Fragment set:html={out} />Asks first, 30 s to undo</span></li>
+        <li class="step"><code>sign in to github.com</code><span class="verdict yours"><Fragment set:html={lock} />Yours to do</span></li>
+        <li class="step"><code>pay: renew a domain</code><span class="verdict yours"><Fragment set:html={lock} />Never Ducter's call</span></li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- ============ DEPTH ============ -->
+<section class="sec" id="depth">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="tag">Full depth, when you want it</span>
+        <h2>Open anything. Any time.</h2>
+      <p class="lede">Most days you never leave the conversation. When you want the wheel, <b>On hand</b> shows every task at a glance, and any task opens into one page: what came of it and how it knows, what it did step by step, the changed files with each diff a tap away, and a box to talk to it directly.</p>
+    </div>
+    <div class="task-win reveal" aria-label="An opened task">
+      <div class="tw-bar">
+        <span class="crumbs"><span>Conversation</span><span aria-hidden="true">/</span><span>On hand</span><span aria-hidden="true">/</span><b>Fix CI · #1592</b></span>
+      </div>
+      <div class="tw-page">
+        <div class="standing"><Fragment set:html={check} /><b>Done</b><span>· started 14 min ago</span></div>
+        <p class="said">Rebased; all 412 tests pass and CI is green. The cause was a fixed sleep in the test, now a wait for durability.</p>
+        <div class="proof">
+          <span class="mk"><Fragment set:html={check} />20 local reruns</span>
+          <span class="mk"><Fragment set:html={check} />CI run #48219 · green</span>
+          <span class="qlink">1 file changed ›</span>
+        </div>
+        <div class="proof"><span class="mk"><Fragment set:html={out} />git push -u origin ducter/fix-ci</span></div>
+        <div class="actions"><button class="btn md" type="button" tabindex="-1">Merge into main</button><button class="btn secondary md" type="button" tabindex="-1">Open draft PR</button></div>
+
+        <h3 class="tw-h">What it did</h3>
+        <ol class="steps">
+          <li class="said-small"><small>What Ducter asked for</small>Find out why HawDB #1592's CI fails, and fix it.</li>
+          <li class="fold">› Ran 3 commands</li>
+          <li>All three failures are in <code>checkpoint_recovery</code>: it sleeps a fixed 50&nbsp;ms for the flush.</li>
+          <li class="fold">› Edited 1 file</li>
+          <li class="note">Progress saved · Confirmed flaky; wait for durability</li>
+          <li class="said-small"><small>Told Ducter · needs you to decide</small>The rerun passes. But the branch is 23 commits behind main: rebase before merging?</li>
+          <li class="fold">› Ran 3 commands</li>
+        </ol>
+
+        <div class="tw-changes">
+          <h3 class="tw-h">Changes <small>1 file <span class="add">+3</span> <span class="del">−3</span></small></h3>
+          <div class="diff" aria-label="Diff of crates/storage/tests/checkpoint_recovery.rs">
+            <div class="file"><span>⌄ crates/storage/tests/checkpoint_recovery.rs</span> <span class="n"><span class="add">+3</span> <span class="del">−3</span></span></div>
+<pre><span>    let wal = Wal::open(&amp;dir, WalOptions::fsync_each())?;</span><span>    let seq = wal.append(b"hello")?;</span><span class="del">-   std::thread::sleep(Duration::from_millis(50));</span><span class="add">+   // wait for the flusher instead of a fixed sleep</span><span class="add">+   wal.wait_durable(seq)?;</span><span>    crash_and_reopen(&amp;dir)?;</span><span>    assert_eq!(recovered.last_seq(), seq);</span></pre>
+          </div>
+        </div>
+        <div class="tw-details">Details ›</div>
+        <div class="talk">Talk to this task</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MEMORY + OPEN ============ -->
+<section class="sec deep" id="open">
+  <div class="wrap">
+    <div class="split" style="margin-bottom: clamp(56px, 8vw, 104px)">
+      <div class="sec-head" style="margin:0">
+        <span class="tag">Memory</span>
+        <h2>It remembers you.</h2>
+        <p class="lede">With <a href="https://mem.nowledge.co" rel="noopener">Nowledge Mem</a>, your partner starts with the identity and context you already keep there, shared with the other AIs you use. Switch models whenever you like; it's still the same partner.</p>
+      </div>
+      <div class="memory-card reveal" aria-label="Example">
+        <div class="msg user" style="align-self:end;justify-self:end">Rebase, never merge commits. Remember that for every repo.</div>
+        <div class="msg ducter" style="margin-top:4px">Will do. From now on I'll rebase before merging, in every repo.
+          <div class="noted"><i><Fragment set:html={check} /></i>Noted · Rebase before merging, every repo</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-head">
+      <span class="tag">Open source</span>
+        <h2>Yours, all the way down.</h2>
+    </div>
+    <div class="cards3">
+      <div class="card reveal"><div class="card-art"><Art name="ducter_working" alt="" sizes="120px" /></div><h3>Open source</h3><p>Apache 2.0. Read every prompt, every adapter, every line that touches your work.</p></div>
+      <div class="card reveal"><div class="card-art"><Art name="server_awake" alt="" sizes="140px" /></div><h3>Self-hosted</h3><p>Your Mac, or a Linux server you own. The record of everything lives in one SQLite file on it.</p></div>
+      <div class="card reveal"><div class="card-art pair"><Art name="token_orange" alt="" sizes="80px" /><Art name="token_ink" alt="" sizes="80px" /></div><h3>No lock-in</h3><p>Your Claude Code and Codex subscriptions, through their own official apps. Bring whichever you have.</p></div>
+    </div>
+
+    <div class="install" id="install">
+      <div>
+        <h3 style="font-size:28px">Get Ducter</h3>
+        <p class="body" style="margin-top:10px">You need Claude Code or Codex installed and signed in. Ducter checks the rest and tells you the one thing to fix, if anything.</p>
+        {!facts.isPublic && <p class="body" style="margin-top:10px">The repository opens to the public soon. Until then, these are the exact steps it will take.</p>}
+      </div>
+      <div class="panel-box">
+        <div class="tabs" role="tablist" aria-label="Ways to install">
+          <button role="tab" id="tab-mac" aria-controls="p-mac" aria-selected="true">Mac app</button>
+          <button role="tab" id="tab-cli" aria-controls="p-cli" aria-selected="false" tabindex="-1">Command line</button>
+          <button role="tab" id="tab-srv" aria-controls="p-srv" aria-selected="false" tabindex="-1">Server</button>
+        </div>
+        <div class="panel" id="p-mac" role="tabpanel" aria-labelledby="tab-mac" style="margin-top:14px">
+          {facts.dmgUrl
+            ? <p><a class="btn" href={facts.dmgUrl}>Download for Mac</a></p>
+            : <p>The signed, notarized download is <b>coming soon</b>. Until then, build it in one step:</p>}
+          <div class="term"><button class="btn sm copy" type="button" data-copy="git clone https://github.com/wey-gu/ducter && cd ducter&#10;scripts/make-app.sh">Copy</button><pre><span class="p">$ </span>git clone https://github.com/wey-gu/ducter && cd ducter
+<span class="c"># builds dist/Ducter.app and a .dmg</span>
+<span class="p">$ </span>scripts/make-app.sh</pre></div>
+          <p>Open Ducter.app. It checks your Mac, then opens the conversation. Closing the window doesn't stop it.</p>
+        </div>
+        <div class="panel" id="p-cli" role="tabpanel" aria-labelledby="tab-cli" style="margin-top:14px" hidden>
+          <div class="term"><button class="btn sm copy" type="button" data-copy="scripts/install.sh&#10;ducter doctor&#10;ducter up">Copy</button><pre><span class="c"># puts `ducter` in ~/.local/bin</span>
+<span class="p">$ </span>scripts/install.sh
+<span class="c"># every missing piece comes with its fix</span>
+<span class="p">$ </span>ducter doctor
+<span class="c"># starts your partner</span>
+<span class="p">$ </span>ducter up</pre></div>
+          <p><code>ducter status</code> shows tasks and open decisions right in your terminal.</p>
+        </div>
+        <div class="panel" id="p-srv" role="tabpanel" aria-labelledby="tab-srv" style="margin-top:14px" hidden>
+          <div class="term"><button class="btn sm copy" type="button" data-copy="scripts/install.sh --linux ducter-linux&#10;sh ducter/install.sh --service&#10;ducter pair">Copy</button><pre><span class="c"># on your Mac</span>
+<span class="p">$ </span>scripts/install.sh --linux ducter-linux
+<span class="c"># on the server</span>
+<span class="p">$ </span>sh ducter/install.sh --service
+<span class="c"># a one-time code for your Mac or phone</span>
+<span class="p">$ </span>ducter pair</pre></div>
+          <p>Keeps your partner awake while your Mac sleeps. It listens on 127.0.0.1 only; reach it through your own domain or an SSH tunnel.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="final" id="final">
+  <div class="wrap">
+    <Face id="final-face" faces={["napping", "idle"]} start="napping" sizes="168px" />
+    <h2>Say it once.</h2>
+    <p class="lede">Then get on with your day. Ducter will be here when it's done.</p>
+    <div class="cta-row">
+      <a class="btn lg" href={dl.href}>{dl.label}</a>
+      <a class="btn secondary lg" href={gh.href}>{facts.isPublic ? "Star on GitHub" : "Read how it works"}</a>
+    </div>
+  </div>
+</section>
+</main>
+
+<Footer gh={gh} isPublic={facts.isPublic} />
+
+<script>
+  import "../scripts/main.ts";
+</script>
+</body>
+</html>

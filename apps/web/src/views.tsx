@@ -79,6 +79,25 @@ const Arrow = () => (
     <path d="M10 15V5M5.5 9.5L10 5l4.5 4.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
   </svg>
 );
+const Out = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+    <path d="M3.5 10.5l7-7M5.5 3.5h5v5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+  </svg>
+);
+const Bang = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+    <path d="M7 2.8v5.4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+    <circle cx="7" cy="11" r="1.3" fill="currentColor" />
+  </svg>
+);
+/** The drawn mark of an attention state: → under way, clock waiting, ! needs you, ✓ done, × didn't work. */
+function StateMark({ a }: { a: Attention }) {
+  if (a === "blocked" || a === "queued") return <Clock />;
+  if (a === "needs_you") return <Bang />;
+  if (a === "done" || a === "done_claimed") return <Check />;
+  if (a === "failed" || a === "dropped" || a === "superseded") return <Cross />;
+  return <Forward />;
+}
 const Back = () => (
   <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
     <path d="M11 4L6 9l5 5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
@@ -144,6 +163,13 @@ function defaultInfo(d: DecisionState, now: number): { line: string; frac?: numb
   return { line: t("decision.default.go", duration(A.L, left), label), frac };
 }
 
+/** The Go button's words: the action itself when the decision names one ("Rebase"; zh "好，rebase"). */
+export function goLabel(d: DecisionState): string {
+  if (!d.goLabel) return t("decision.go");
+  const l = A.L.lang === "zh" ? d.goLabel : d.goLabel.charAt(0).toUpperCase() + d.goLabel.slice(1);
+  return t("decision.go.label", l);
+}
+
 function useTick(ms: number) {
   const [, set] = useState(0);
   useEffect(() => {
@@ -174,7 +200,7 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
     const task = d.taskId ? A.S.tasks.get(d.taskId) : undefined;
     return task && title(task) ? title(task) : d.question.slice(0, 40);
   })();
-  const goText = d.goLabel ? t("decision.go.label", d.goLabel) : t("decision.go");
+  const goText = goLabel(d);
   const draft = A.replyDraft.get(d.decisionId) ?? "";
   return (
     <>
@@ -229,7 +255,9 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
   );
 }
 
-function DecisionCard({ d, eyebrow, taskId }: { d: DecisionState; eyebrow: string; taskId?: string }) {
+/** One ask: the asking task's title as a quiet link (nothing for the partner's own asks, or
+ *  inside its own task), the question, its default, and Go / Hold / Reply…. */
+function DecisionCard({ d, taskId, inTask }: { d: DecisionState; taskId?: string; inTask?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const flash = A.flash === d.decisionId;
   useEffect(() => {
@@ -238,16 +266,16 @@ function DecisionCard({ d, eyebrow, taskId }: { d: DecisionState; eyebrow: strin
       A.flash = undefined;
     }
   }, [flash]);
+  const id = taskId || d.taskId;
+  const task = id ? A.S.tasks.get(id) : undefined;
   return (
     <div ref={ref} class={`decision${flash ? " flash" : ""}`} id={`d-${d.decisionId}`}>
-      <div class="eyebrow-row">
-        <div class="eyebrow">{eyebrow}</div>
-        {(taskId || d.taskId) && (
-          <button class="details" onClick={() => ((A.sheet = null), A.go({ name: "task", id: (taskId || d.taskId)! }))}>
-            {t("living.details")} ›
-          </button>
-        )}
-      </div>
+      {task && title(task) && !inTask && (
+        // On the phone the asking task's title is the way into it (no Details button to wrap).
+        <button class="asker" onClick={() => ((A.sheet = null), A.go({ name: "task", id: task.id }))}>
+          {title(task)} ›
+        </button>
+      )}
       <DecisionBody d={d} taskId={taskId} />
     </div>
   );
@@ -255,12 +283,18 @@ function DecisionCard({ d, eyebrow, taskId }: { d: DecisionState; eyebrow: strin
 
 // ---------- tasks in the conversation ----------
 
-function TaskChip({ task, detail }: { task: Task; detail?: string }) {
+/** A task in the partner's words: its drawn mark, its title as a link, its status in muted
+ *  words. No fill, no capsule (D73). */
+function TaskLine({ task, detail }: { task: Task; detail?: string }) {
   const a = attention(task);
+  const d = (!sameWords(detail, title(task)) && detail) || stateLabel(a);
   return (
-    <button class={`chip st-${a}`} onClick={() => A.go({ name: "task", id: task.id })}>
+    <button class="taskline" onClick={() => A.go({ name: "task", id: task.id })}>
+      <span class="ic">
+        <StateMark a={a} />
+      </span>
       <span class="t">{title(task) || t("task.unknown")}</span>
-      <span class="s">{(!sameWords(detail, title(task)) && detail) || stateLabel(a)}</span>
+      <span class="s">· {d} ›</span>
     </button>
   );
 }
@@ -272,19 +306,45 @@ function openEvidence(ev: EvidenceRef, task?: Task) {
   A.toast(`${ev.label} · ${ev.ref}`);
 }
 
-function EvidenceChips({ task, evs, max = 4 }: { task?: Task; evs: EvidenceRef[]; max?: number }) {
+/** How the task knows, as one quiet line that wraps: a drawn ✓ (× for a task that didn't work)
+ *  and plain words per check, the changes as "2 files changed ›", and, withTitle, the task's
+ *  title as a link at its end. */
+function ProofLine({ task, evs, withTitle, max = 4 }: { task: Task; evs: EvidenceRef[]; withTitle?: boolean; max?: number }) {
   const list = sortEvidence(latestByLabel(evs));
+  const failed = attention(task) === "failed";
+  const changes = list.find((e) => e.kind === "diff");
+  const rest = list.filter((e) => e.kind !== "diff");
+  if (!rest.length && !changes && !withTitle) return null;
   return (
-    <div>
-      {list.slice(0, max).map((ev, i) => (
-        <button key={i} class={`ev${machineChecked(ev.kind) ? " checked" : ""}`} title={ev.ref} onClick={() => openEvidence(ev, task)}>
-          {machineChecked(ev.kind) && <Check />}
-          <span>{ev.label}</span>
+    <div class="proof">
+      {rest.slice(0, max).map((ev, i) =>
+        /^https?:/.test(ev.ref) ? (
+          <button key={i} class="qlink" onClick={() => openEvidence(ev, task)}>
+            {ev.label} ›
+          </button>
+        ) : (
+          <span key={i} class="mk" title={ev.ref}>
+            {failed ? <Cross /> : machineChecked(ev.kind) ? <Check /> : null}
+            {ev.label}
+          </span>
+        ),
+      )}
+      {rest.length > max && (
+        <button class="qlink" onClick={() => A.go({ name: "task", id: task.id })}>
+          {t("result.more", rest.length - max)}
         </button>
-      ))}
-      {list.length > max && task && (
-        <button class="more" onClick={() => A.go({ name: "task", id: task.id })}>
-          {t("result.more", list.length - max)}
+      )}
+      {changes &&
+        (withTitle ? (
+          <button class="qlink" onClick={() => A.go({ name: "task", id: task.id })}>
+            {changes.label} ›
+          </button>
+        ) : (
+          <span class="mk">{changes.label}</span>
+        ))}
+      {withTitle && (
+        <button class="qlink" onClick={() => A.go({ name: "task", id: task.id })}>
+          {title(task) || t("task.unknown")} ›
         </button>
       )}
     </div>
@@ -298,7 +358,7 @@ function outsideLine(task: Task): string {
   if (!task.historyLoaded) return "";
   const acts = outsideActs(task);
   if (!acts.length) return "";
-  return `${acts[0]!.command}${acts.length > 1 ? " · " + t("result.more", acts.length - 1) : ""} · ${t("outside.seen")}`;
+  return `${acts[0]!.command}${acts.length > 1 ? " · " + t("result.more", acts.length - 1) : ""}`;
 }
 
 function ResultActions({ task, inTask }: { task: Task; inTask?: boolean }) {
@@ -326,49 +386,34 @@ function ResultActions({ task, inTask }: { task: Task; inTask?: boolean }) {
           <Btn kind="quiet" label={t("result.pr")} about={title(task)} onClick={() => A.taskAction(task.id, "open_pr")} />
         </>
       )}
-      {!inTask && <Btn kind="text" label={t("result.changes")} onClick={() => A.go({ name: "task", id: task.id })} />}
     </div>
   );
 }
 
-function ResultProof({ task }: { task: Task }) {
+/** What went out, only when something did: a drawn ↗ and the literal action. */
+function SentLine({ task }: { task: Task }) {
   const line = outsideLine(task);
-  const evs = resultEvidence(task);
-  if (!evs.length && !line) return null;
+  if (!line) return null;
   return (
-    <div class="sheet-proof">
-      {evs.length > 0 && (
-        <>
-          <div class="k">{t("result.howknow")}</div>
-          <div class="v">
-            <EvidenceChips task={task} evs={evs} />
-          </div>
-        </>
-      )}
-      {line && (
-        <>
-          <div class="k">{t("outside.title")}</div>
-          <div class="v">{line}</div>
-        </>
-      )}
+    <div class="proof">
+      <span class="mk">
+        <Out />
+        {line}
+      </span>
     </div>
   );
 }
 
+/** Under a message about a task. Under way: one quiet line. Finished: the result message
+ *  already says the outcome, so no state is restated: one line of proof, what went out, then
+ *  Merge / Open draft PR (D73). */
 function TaskFooter({ task, detail }: { task: Task; detail?: string }) {
-  if (!finished(task))
-    return (
-      <div class="chips">
-        <TaskChip task={task} detail={detail} />
-      </div>
-    );
+  if (!finished(task)) return <TaskLine task={task} detail={detail} />;
   A.history(task.id);
   return (
     <div class="footer">
-      <div class="chips">
-        <TaskChip task={task} />
-      </div>
-      <ResultProof task={task} />
+      <ProofLine task={task} evs={resultEvidence(task)} withTitle />
+      <SentLine task={task} />
       <ResultActions task={task} />
     </div>
   );
@@ -400,7 +445,7 @@ function JobRow({ e, chipOwner }: { e: Entry; chipOwner: Map<string, number> }) 
 function LivingLine({ it }: { it: LivingItem }) {
   const text = it.title ? `${it.title} · ${it.text}` : it.text;
   return (
-    <button class={`line k-${it.kind}`} onClick={() => it.taskId && A.go({ name: "task", id: it.taskId })}>
+    <button class="line" onClick={() => it.taskId && A.go({ name: "task", id: it.taskId })}>
       <span class="ic">{it.kind === "done" ? <Check /> : it.kind === "blocked" ? <Clock /> : it.kind === "failed" ? <Cross /> : <Forward />}</span>
       <span class="tx">{text}</span>
     </button>
@@ -408,7 +453,11 @@ function LivingLine({ it }: { it: LivingItem }) {
 }
 
 function Living({ e, items }: { e: Entry; items: LivingItem[] }) {
-  const away = A.livingAway.get(e.firstSeq) ?? e.firstSeq <= A.S.headSeq;
+  // "While you were away" only when the user was: it came before this page loaded and they
+  // hadn't read it, or it came while the page was hidden (app.ts records that as it lands).
+  // Latched the first time it shows: reading it must not take the title away.
+  if (!A.livingAway.has(e.firstSeq)) A.livingAway.set(e.firstSeq, e.firstSeq <= A.S.headSeq && A.S.unread(e));
+  const away = A.livingAway.get(e.firstSeq)!;
   const decisions = items.filter((it) => it.kind === "decision");
   const open = decisions.filter((it) => {
     const d = it.decisionId ? A.S.decisions.get(it.decisionId) : undefined;
@@ -416,28 +465,23 @@ function Living({ e, items }: { e: Entry; items: LivingItem[] }) {
   }).length;
   return (
     <section class="living" key={`${e.firstSeq}:${e.revision}`} aria-label={t("living.title")}>
-      {away && (
-        <div class="head">
-          <h2>{t("living.title")}</h2>
-          {A.S.unread(e) && <span class="badge">{t("living.unread")}</span>}
+      {away && <h2>{t("living.title")}</h2>}
+      {decisions.length > 0 && (
+        <div class="needs-head">
+          <span>{t("header.needs", decisions.length)}</span>
+          {open >= 2 && <Btn kind="text" label={t("decision.goall", A.defaultable().length)} onClick={() => A.goOnAllDefaults()} />}
         </div>
       )}
       {decisions.map((it, i) => {
         const d = it.decisionId ? A.S.decisions.get(it.decisionId) : undefined;
         return d ? (
-          <DecisionCard key={i} d={d} eyebrow={t("living.needsyou", decisions.length)} taskId={it.taskId} />
+          <DecisionCard key={i} d={d} taskId={it.taskId} />
         ) : (
           <div class="decision" key={i}>
-            <div class="eyebrow">{t("living.needsyou", decisions.length)}</div>
             <div class="q">{it.text}</div>
           </div>
         );
       })}
-      {open >= 2 && (
-        <div class="btns" style={{ justifyContent: "flex-end" }}>
-          <Btn kind="quiet" label={t("decision.goall", A.defaultable().length)} onClick={() => A.goOnAllDefaults()} />
-        </div>
-      )}
       {items
         .filter((it) => it.kind !== "decision")
         .map((it, i) => (
@@ -470,8 +514,7 @@ function EntryView({ e, chipOwner, livingItems }: { e: Entry; chipOwner: Map<str
   if (e.decision) {
     const d = A.S.decisions.get(e.decision.decisionId);
     if (!d) return null;
-    const task = d.taskId ? A.S.tasks.get(d.taskId) : undefined;
-    return <DecisionCard d={d} eyebrow={stateLabel("needs_you") + (task && title(task) ? ` · ${title(task)}` : "")} />;
+    return <DecisionCard d={d} />;
   }
   return null;
 }
@@ -501,7 +544,7 @@ function Top({ back }: { back?: string }) {
     );
   return (
     <header class="top">
-      <button class="who" onClick={() => ((A.sheet = { kind: "settings" }), A.changed())} aria-label={t("settings.title")}>
+      <button class="who" onClick={() => A.openSettings()} aria-label={t("settings.title")}>
         <Avatar size={46} />
         <span style={{ minWidth: 0 }}>
           <div class="name">{A.S.personaName}</div>
@@ -734,15 +777,7 @@ export function OnHand() {
     <>
       <Top back={t("nav.back")} />
       <main class="scroll" style={{ gap: 16 }}>
-        <h1 style={{ margin: "0 2px", fontSize: 26, fontWeight: 800 }}>{t("onhand.title")}</h1>
-        <div class="counts">
-          {(["needs_you", "working", "waiting", "done_today"] as const).map((k) => (
-            <div class="count" key={k}>
-              <b>{k === "done_today" ? A.doneToday() : k === "needs_you" ? needs.length + partnerDs.length : k === "waiting" ? waiting.length + loose.length : b.counts[k]}</b>
-              <span>{t(`lane.${k === "done_today" ? "done" : k}`)}</span>
-            </div>
-          ))}
-        </div>
+        <h1 class="page-title">{t("onhand.title")}</h1>
         {nothing ? (
           <div class="calm">{t("onhand.empty", A.S.personaName)}</div>
         ) : (
@@ -752,7 +787,7 @@ export function OnHand() {
                 {t("lane.needs_you")} <span class="n">{needs.length + partnerDs.length || ""}</span>
                 {openCount >= 2 && (
                   <span style={{ marginLeft: "auto" }}>
-                    <Btn kind="quiet" label={t("decision.goall", openCount)} onClick={() => A.goOnAllDefaults()} />
+                    <Btn kind="text" label={t("decision.goall", openCount)} onClick={() => A.goOnAllDefaults()} />
                   </span>
                 )}
               </h3>
@@ -760,11 +795,11 @@ export function OnHand() {
                 <div class="calm">{working.length ? t("onhand.calm.working", A.S.personaName, working.length) : t("onhand.calm")}</div>
               )}
               {partnerDs.map((d) => (
-                <DecisionCard key={d.decisionId} d={d} eyebrow={A.S.personaName} />
+                <DecisionCard key={d.decisionId} d={d} />
               ))}
               {needs.map((task) => {
                 const d = A.S.pendingDecision(task.id);
-                return d ? <DecisionCard key={task.id} d={d} eyebrow={title(task)} taskId={task.id} /> : <Row key={task.id} task={task} meta={metaLine(task)} />;
+                return d ? <DecisionCard key={task.id} d={d} taskId={task.id} /> : <Row key={task.id} task={task} meta={metaLine(task)} />;
               })}
             </section>
             {working.length > 0 && (
@@ -804,7 +839,9 @@ export function OnHand() {
                 {done.map((task) => {
                   const r = reportOf(task);
                   const ev = headlineEvidence(task.evidence.length ? task.evidence : (r?.evidence ?? []));
-                  return <Row key={task.id} task={task} meta={[stateLabel(attention(task)), ev?.label ?? (r?.summary.split("\n")[0] || "")].filter(Boolean).join(" · ")} />;
+                  // The lane says Done; only the exception (Didn't work) is said, in words.
+                  const failed = attention(task) === "failed";
+                  return <Row key={task.id} task={task} meta={[failed ? stateLabel("failed") : "", (!failed && ev?.label) || (r?.summary.split("\n")[0] ?? "")].filter(Boolean).join(" · ")} />;
                 })}
               </section>
             )}
@@ -822,21 +859,85 @@ function reportLabel(r: Bodies["report"]) {
   return t(k, A.S.personaName);
 }
 
-function Transcript({ task }: { task: Task }) {
+type Tool = NonNullable<Bodies["task_event"]["tool"]>;
+
+function toolArg(tool: Tool): string {
+  const input = tool.input as Record<string, unknown> | string | undefined;
+  const arg = typeof input === "string" ? input : input ? String(input.command ?? input.file_path ?? input.path ?? input.url ?? input.pattern ?? "") : "";
+  return arg.split("\n")[0] ?? "";
+}
+
+/** A stretch of tool calls counted in words: "Ran 2 commands, edited 1 file". */
+function foldLine(tools: Tool[]): string {
+  let ran = 0, other = 0;
+  const edited = new Set<string>(), read = new Set<string>();
+  for (const tool of tools) {
+    const name = tool.name.startsWith("mcp__") ? tool.name.slice(tool.name.lastIndexOf("__") + 2) : tool.name;
+    const input = tool.input as Record<string, unknown> | undefined;
+    const path = String((typeof input === "object" && input && (input.file_path ?? input.path)) || "");
+    if (["Bash", "shell", "exec_command"].includes(name)) ran++;
+    else if (["Edit", "Write", "MultiEdit", "apply_patch"].includes(name)) edited.add(path);
+    else if (name === "Read") read.add(path);
+    else other++;
+  }
+  const parts: string[] = [];
+  const count = (key: string, n: number) => n === 1 ? parts.push(t(`${key}.one`)) : n > 1 && parts.push(t(key, n));
+  count("task.fold.ran", ran);
+  count("task.fold.edited", edited.size);
+  count("task.fold.read", read.size);
+  count("task.fold.other", other);
+  const s = parts.join(t("task.fold.and"));
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function Fold({ tools }: { tools: Tool[] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div class="fold">
+      <button class={`fold-line${open ? " open" : ""}`} aria-expanded={open} onClick={() => setOpen(!open)}>
+        <span class="chev">›</span>
+        {foldLine(tools)}
+      </button>
+      {open && tools.map((tool, i) => <div key={i} class="tool">{`${tool.name}${toolArg(tool) ? " · " + toolArg(tool) : ""}`}</div>)}
+    </div>
+  );
+}
+
+/** What the task did, as a short narrative: its own words; tool calls that went fine folded
+ *  into one line per stretch; a step that didn't work in words. The latest report is said
+ *  above (the outcome, or where it stands). */
+function WhatItDid({ task }: { task: Task }) {
   if (!task.historyLoaded && !task.events.length) return <div class="small">{t("task.loading")}</div>;
   const items: JSX.Element[] = [];
+  const lastReport = task.events.filter((ev) => ev.kind === "report").at(-1)?.seq;
+  let fold: Tool[] | undefined;
   for (const ev of task.events) {
-    if (ev.kind === "task_open") items.push(<div key={ev.seq} class="tx report"><b>{t("task.brief", A.S.personaName)}</b>{(ev.body as Bodies["task_open"]).brief}</div>);
-    else if (ev.kind === "checkpoint") items.push(<div key={ev.seq} class="tx divider">{t("task.checkpoint", (ev.body as Bodies["checkpoint"]).text)}</div>);
-    else if (ev.kind === "report") {
+    if (ev.kind === "task_event") {
+      const b = ev.body as Bodies["task_event"];
+      if (b.tool && b.tool.ok !== false) {
+        if (fold) fold.push(b.tool);
+        else items.push(<Fold key={ev.seq} tools={(fold = [b.tool])} />);
+        continue;
+      }
+    }
+    fold = undefined;
+    if (ev.kind === "task_open") items.push(<div key={ev.seq} class="tx said"><small>{t("task.brief", A.S.personaName)}</small>{(ev.body as Bodies["task_open"]).brief}</div>);
+    else if (ev.kind === "checkpoint") items.push(<div key={ev.seq} class="tx note">{t("task.checkpoint", (ev.body as Bodies["checkpoint"]).text)}</div>);
+    else if (ev.kind === "report" && ev.seq !== lastReport) {
       const r = ev.body as Bodies["report"];
-      items.push(<div key={ev.seq} class="tx report"><b>{reportLabel(r)}</b>{r.summary}</div>);
+      items.push(<div key={ev.seq} class="tx said"><small>{reportLabel(r)}</small>{r.summary}</div>);
     } else if (ev.kind === "task_event") {
       const b = ev.body as Bodies["task_event"];
       if (b.tool) {
-        const input = b.tool.input as Record<string, unknown> | string | undefined;
-        const arg = typeof input === "string" ? input : input ? String(input.command ?? input.file_path ?? input.path ?? input.url ?? input.pattern ?? "") : "";
-        items.push(<div key={ev.seq} class={`tx tool${b.tool.ok === false ? " fail" : ""}`}>{`${b.tool.name}${arg ? " · " + arg.split("\n")[0] : ""}`}</div>);
+        items.push(
+          <div key={ev.seq} class="tx failed">
+            <span class="mk">
+              <Cross />
+              {t("task.step.failed", toolArg(b.tool) || b.tool.name)}
+            </span>
+            {b.tool.output && <code>{b.tool.output.split("\n")[0]}</code>}
+          </div>,
+        );
       } else if (b.role === "user" && b.text) {
         const sd = task.sends.find((s) => s.seq === ev.seq);
         items.push(
@@ -846,7 +947,6 @@ function Transcript({ task }: { task: Task }) {
           </div>,
         );
       } else if (b.role === "assistant" && b.text) items.push(<div key={ev.seq} class="tx assistant">{b.text}</div>);
-      else if (b.role === "system" && b.usage) items.push(<div key={ev.seq} class="tx divider">{t("task.turn.done")}</div>);
     }
   }
   const tail = items.slice(-40); // a read-only tail; the full transcript is the desktop's job
@@ -860,6 +960,66 @@ function Transcript({ task }: { task: Task }) {
   return <div class="tx-list">{tail}</div>;
 }
 
+/** A quiet disclosure at the bottom: who is doing it, where (repo and branch), saved progress,
+ *  what went out. A row with nothing to say is left out. */
+function TaskDetails({ task }: { task: Task }) {
+  const [open, setOpen] = useState(false);
+  const who = [harnessName(harnessOf(task)), modelOf(task)].filter(Boolean).join(" · ");
+  const why = bodyReasonOf(task);
+  const where = placeLine(A.L, placeOf(task));
+  const acts = task.historyLoaded ? outsideActs(task) : [];
+  const cps = task.events.filter((ev) => ev.kind === "checkpoint");
+  return (
+    <section class="details-box">
+      <button class={`fold-line${open ? " open" : ""}`} aria-expanded={open} onClick={() => setOpen(!open)}>
+        {t("task.details")} <span class="chev">›</span>
+      </button>
+      {open && (
+        <dl class="kv">
+          {who && (
+            <>
+              <dt>{t("task.dossier.body")}</dt>
+              <dd>
+                {who}
+                {why && <div>{why}</div>}
+              </dd>
+            </>
+          )}
+          {where && (
+            <>
+              <dt>{t("task.dossier.where")}</dt>
+              <dd>{where}</dd>
+            </>
+          )}
+          {cps.length > 0 && (
+            <>
+              <dt>{t("task.dossier.checkpoints")}</dt>
+              <dd>
+                {cps.map((ev) => (
+                  <div key={ev.seq}>{(ev.body as Bodies["checkpoint"]).text}</div>
+                ))}
+              </dd>
+            </>
+          )}
+          {acts.length > 0 && (
+            <>
+              <dt>{t("outside.title")}</dt>
+              <dd>
+                {acts.map((x) => (
+                  <code key={x.seq}>{x.command}</code>
+                ))}
+              </dd>
+            </>
+          )}
+        </dl>
+      )}
+    </section>
+  );
+}
+
+/** An opened task: one column, read top to bottom (D74). Where it stands in words; a pending
+ *  ask; the outcome said once with how it knows and what to do next; what it did; Details.
+ *  The phone shows no diffs: the changes are named in the proof line. */
 export function TaskView({ id }: { id: string }) {
   const task = A.S.tasks.get(id);
   const scroller = useRef<HTMLDivElement>(null);
@@ -876,58 +1036,46 @@ export function TaskView({ id }: { id: string }) {
   const a = attention(task);
   const d = A.S.pendingDecision(id);
   const r = reportOf(task);
-  const why = bodyReasonOf(task);
-  const meta = [placeLine(A.L, placeOf(task)), [harnessName(harnessOf(task)), modelOf(task)].filter(Boolean).join(" · ")].filter(Boolean).join(" · ");
+  const detail = !finished(task) && r ? r.summary.split("\n")[0] : "";
   return (
     <>
       <Top back={t("nav.back")} />
-      <main class="scroll" ref={scroller} style={{ gap: 14 }}>
+      <main class="scroll task-page" ref={scroller}>
         <div class="task-head">
-          <span class={`state st-${a}`}>
-            {stateLabel(a)}
-          </span>
           <h1>{title(task) || t("task.unknown")}</h1>
-          <div class="meta">
-            {meta}
-            {task.openedAt ? ` · ${ago(A.L, task.openedAt)}` : ""}
+          <div class={`standing st-${a}`}>
+            <StateMark a={a} />
+            <b>{stateLabel(a)}</b>
+            {detail && <span>· {detail}</span>}
+            {task.openedAt && <span class="when">· {t("task.opened", ago(A.L, task.openedAt))}</span>}
           </div>
         </div>
-        {d && !d.resolved && <DecisionCard d={d} eyebrow={stateLabel("needs_you")} taskId={id} />}
-        {r && (
-          <div class="card">
-            <h4>{reportLabel(r)}</h4>
-            <div class="body">{r.summary}</div>
-          </div>
-        )}
+        {d && !d.resolved && <DecisionCard d={d} taskId={id} inTask />}
         {finished(task) && (
-          <>
-            <ResultProof task={task} />
-            <ResultActions task={task} inTask />
-          </>
-        )}
-        {!finished(task) && task.evidence.length > 0 && (
-          <div class="card">
-            <h4>{t("task.dossier.evidence")}</h4>
-            <EvidenceChips task={task} evs={task.evidence} max={8} />
+          <div class="outcome">
+            {r && <div class="said">{r.summary}</div>}
+            <ProofLine task={task} evs={resultEvidence(task)} />
+            <SentLine task={task} />
+            {a === "failed" ? (
+              <div class="btns">
+                <Btn kind="quiet" label={t("task.action.retry")} onClick={() => A.taskAction(id, "reopen")} />
+              </div>
+            ) : (
+              <ResultActions task={task} inTask />
+            )}
           </div>
         )}
-        {why && (
-          <div class="card">
-            <h4>{t("task.dossier.why", harnessName(harnessOf(task)))}</h4>
-            <div class="body">{why}</div>
+        {!finished(task) && (
+          <div class="btns">
+            {(a === "working" || a === "queued") && <Btn kind="text" label={t("task.action.pause")} onClick={() => A.taskAction(id, "interrupt")} />}
+            {!["dropped", "superseded", "done"].includes(a) && <Btn kind="text" label={t("task.action.drop")} onClick={() => A.drop(id)} />}
           </div>
         )}
-        <div class="btns">
-          {(a === "working" || a === "queued") && <Btn kind="quiet" label={t("task.action.pause")} onClick={() => A.taskAction(id, "interrupt")} />}
-          {a === "failed" && <Btn kind="quiet" label={t("task.action.retry")} onClick={() => A.taskAction(id, "reopen")} />}
-          {!["dropped", "superseded", "done"].includes(a) && <Btn kind="text" label={t("task.action.drop")} onClick={() => A.drop(id)} />}
-        </div>
         <section class="section">
-          <h3>
-            {t("task.transcript")} · <span style={{ fontWeight: 600 }}>{t("task.transcript.hint")}</span>
-          </h3>
-          <Transcript task={task} />
+          <h2 class="sec-title">{t("task.transcript")}</h2>
+          <WhatItDid task={task} />
         </section>
+        <TaskDetails task={task} />
       </main>
       <Composer taskId={id} />
     </>
@@ -968,71 +1116,213 @@ function DecisionSheet({ id }: { id: string }) {
   const task = d.taskId ? A.S.tasks.get(d.taskId) : undefined;
   return (
     <Sheet label={t("state.needs_you")}>
-      <DecisionCard d={d} eyebrow={task && title(task) ? title(task) : A.S.personaName} taskId={d.taskId} />
+      <DecisionCard d={d} taskId={d.taskId} />
     </Sheet>
   );
 }
 
-function SettingsSheet() {
-  const [settings, setSettings] = useState<{ done: boolean; quiet: { start: string; end: string } | null } | null>(null);
-  useEffect(() => {
-    void A.api.call<{ done: boolean; quiet: { start: string; end: string } | null }>("api/push/settings").then((r) => r.data && setSettings(r.data));
-  }, [A.push]);
-  const quiet = settings?.quiet ?? { start: "23:00", end: "08:00" };
+// A segmented choice: flat, the chosen one on the surface with an ink hairline (no ledge, no pill).
+function Seg<V extends string | number>(p: { label: string; value: V | undefined; options: { v: V; label: string }[]; onPick: (v: V) => void }) {
   return (
-    <Sheet label={t("settings.title")}>
-      <h2>{t("settings.title")}</h2>
-      <div class="small">{A.me?.via === "device" ? `${A.me.deviceName ?? ""}` : deviceLabel(A.L, "local")}</div>
-      <h3 style={{ margin: "6px 2px 0", fontSize: 12, color: "var(--ink-muted)" }}>{t("notify.title")}</h3>
-      {A.push === "ios-install" && <div class="hint">{t("notify.ios")}</div>}
-      {A.push === "unsupported" && <div class="hint">{t(inApp() ? "notify.app.unavailable" : "notify.unsupported")}</div>}
-      {inApp() && A.push === "off" && !A.me?.push.apns && <div class="hint">{t("notify.app.nokey")}</div>}
-      {A.push === "denied" && <div class="hint">{t("notify.denied")}</div>}
-      {A.push === "off" && A.me?.push.publicKey && (!inApp() || A.me.push.apns) && (
-        <Btn
-          kind="primary"
-          label={t("notify.on")}
-          onClick={async () => {
-            A.push = await turnOnPush();
-            A.changed();
-          }}
-        />
-      )}
-      {A.push === "on" && (
+    <div class="seg" role="radiogroup" aria-label={p.label}>
+      {p.options.map((o) => (
+        <button key={String(o.v)} role="radio" aria-checked={o.v === p.value} class={o.v === p.value ? "on" : ""} onClick={() => o.v !== p.value && p.onPick(o.v)}>
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function Toggle(p: { label: string; checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
+  return (
+    <label class="switch">
+      <span>{p.label}</span>
+      <input type="checkbox" role="switch" checked={p.checked} disabled={p.disabled} onChange={(e) => p.onChange((e.target as HTMLInputElement).checked)} />
+    </label>
+  );
+}
+
+const tz = () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+
+function NameRow() {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const save = () => {
+    const n = draft.trim();
+    if (n && n !== A.S.personaName) A.setSettings({ name: n });
+    setEditing(false);
+  };
+  return (
+    <div class="partner-head">
+      <Avatar size={64} />
+      {editing ? (
         <>
-          <div class="small">{t("notify.enabled")}</div>
-          <label class="switch">
-            <span>{t("notify.done")}</span>
-            <input
-              type="checkbox"
-              checked={settings?.done ?? false}
-              onChange={async (e) => {
-                const r = await A.api.call<typeof settings>("api/push/settings", { method: "POST", body: { done: (e.target as HTMLInputElement).checked } });
-                if (r.data) setSettings(r.data);
-              }}
-            />
-          </label>
-          <div class="small">{t("quiet.band_label", quiet.start, quiet.end)}</div>
-          <div class="btns">
+          <input
+            class="name-input"
+            value={draft}
+            maxLength={24}
+            aria-label={t("partner.rename")}
+            autoFocus
+            onInput={(e) => setDraft((e.target as HTMLInputElement).value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.isComposing) save();
+              if (e.key === "Escape") e.stopPropagation(), setEditing(false);
+            }}
+          />
+          <Btn kind="text" label={t("partner.rename.cancel")} onClick={() => setEditing(false)} />
+          <Btn kind="primary" label={t("partner.rename")} onClick={save} />
+        </>
+      ) : (
+        <>
+          <h2 class="grow">{A.S.personaName}</h2>
+          {A.settings && <Btn kind="text" label={t("partner.rename")} onClick={() => (setDraft(A.S.personaName), setEditing(true))} />}
+        </>
+      )}
+    </div>
+  );
+}
+
+function PartnerSettings() {
+  const s = A.settings;
+  const mem = A.mem;
+  if (!s) return <div class="small">{t("conn.connecting")}</div>;
+  const quiet = s.quiet;
+  const setQuiet = (start: string, end: string) => A.setSettings({ quiet: { start, end, tz: quiet?.tz ?? tz() } });
+  return (
+    <>
+      <section class="set">
+        <h3>{t("partner.talk.title")}</h3>
+        <Seg
+          label={t("partner.talk.title")}
+          value={s.language}
+          options={(["auto", "zh", "en"] as const).map((v) => ({ v, label: t(`partner.talk.${v}`) }))}
+          onPick={(language) => A.setSettings({ language })}
+        />
+        <div class="small sub">{s.language === "auto" ? t("partner.talk.auto.note") : t("partner.talk.fixed.note", t(`partner.talk.${s.language}`))}</div>
+      </section>
+      <section class="set">
+        <h3>{t("partner.notify.title")}</h3>
+        <Toggle label={t("partner.notify.on")} checked={s.notify} onChange={(notify) => A.setSettings({ notify })} />
+        <div class="small sub">{t(s.notify ? "partner.notify.on.note" : "partner.notify.off.note")}</div>
+        <Toggle label={t("partner.quiet")} checked={!!quiet} onChange={(on) => A.setSettings({ quiet: on ? { start: "23:00", end: "08:00", tz: tz() } : null })} />
+        {quiet && (
+          <div class="quiet-range">
+            <input type="time" aria-label={t("partner.quiet")} value={quiet.start} onChange={(e) => setQuiet((e.target as HTMLInputElement).value || quiet.start, quiet.end)} />
+            <span>{t("partner.quiet.to")}</span>
+            <input type="time" aria-label={`${t("partner.quiet")} ${t("partner.quiet.to")}`} value={quiet.end} onChange={(e) => setQuiet(quiet.start, (e.target as HTMLInputElement).value || quiet.end)} />
+          </div>
+        )}
+        {quiet && <div class="small sub">{t("partner.quiet.note")}</div>}
+      </section>
+      <section class="set">
+        <h3>{t("partner.default.title")}</h3>
+        <div class="small sub">{t("partner.default.line")}</div>
+        <Seg
+          label={t("partner.default.line")}
+          value={s.defaultAfterMin}
+          options={[10, 30, 60, 120].map((v) => ({ v, label: v < 60 ? t("partner.default.min", v) : t("partner.default.hour", v / 60) }))}
+          onPick={(defaultAfterMin) => A.setSettings({ defaultAfterMin })}
+        />
+        <div class="small sub">{t("partner.default.note")}</div>
+      </section>
+      <section class="set">
+        <h3>{t("partner.memory.title")}</h3>
+        {mem && <div class="small sub">{t(`partner.memory.${mem.state}`)}</div>}
+        {mem?.state === "missing" && (
+          <a class="more" href="https://mem.nowledge.co" target="_blank" rel="noopener">
+            {t("partner.memory.connect")}
+          </a>
+        )}
+        <Toggle label={t("partner.memory.switch")} checked={s.memory} onChange={(memory) => A.setSettings({ memory })} />
+        {s.memory && !!mem?.noted.length && (
+          <div class="noted" aria-label={t("partner.memory.recent")}>
+            {mem.noted.map((n) => (
+              <div class="noted-row" key={n.seq}>
+                <span>{n.title}</span>
+                <Btn kind="text" label={t("partner.memory.forget")} about={n.title} onClick={() => A.forget(n.seq)} />
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    </>
+  );
+}
+
+function PhoneSettings() {
+  const [push, setPush] = useState<{ done: boolean } | null>(null);
+  useEffect(() => {
+    void A.api.call<{ done: boolean }>("api/push/settings").then((r) => r.data && setPush(r.data));
+  }, [A.push]);
+  return (
+    <section class="set">
+      <h3>{t("settings.phone")}</h3>
+      <div class="small">{A.me?.via === "device" ? `${A.me.deviceName ?? ""}` : deviceLabel(A.L, "local")}</div>
+      <div class="small sub">{t("settings.lang.title")}</div>
+      <Seg label={t("settings.lang.title")} value={A.uiLang} options={(["auto", "zh", "en"] as const).map((v) => ({ v, label: t(`settings.lang.${v}`) }))} onPick={(v) => A.setUiLang(v)} />
+      {A.settings?.notify !== false && (
+        <>
+          {A.push === "ios-install" && <div class="hint">{t("notify.ios")}</div>}
+          {A.push === "unsupported" && <div class="hint">{t(inApp() ? "notify.app.unavailable" : "notify.unsupported")}</div>}
+          {inApp() && A.push === "off" && !A.me?.push.apns && <div class="hint">{t("notify.app.nokey")}</div>}
+          {A.push === "denied" && <div class="hint">{t("notify.denied")}</div>}
+          {A.push === "off" && A.me?.push.publicKey && (!inApp() || A.me.push.apns) && (
             <Btn
-              kind="quiet"
-              label={t("notify.test")}
+              kind="primary"
+              label={t("notify.on")}
               onClick={async () => {
-                const r = await A.api.call("api/push/test", { method: "POST" });
-                A.toast(r.status === 200 ? t("notify.test.sent") : t("result.action.failed", String(r.status)));
-              }}
-            />
-            <Btn
-              kind="text"
-              label={t("notify.off")}
-              onClick={async () => {
-                A.push = await disablePush(A.api);
+                A.push = await turnOnPush();
                 A.changed();
               }}
             />
-          </div>
+          )}
+          {A.push === "on" && (
+            <>
+              <div class="small">{t("notify.enabled")}</div>
+              <Toggle
+                label={t("notify.done")}
+                checked={push?.done ?? false}
+                onChange={async (done) => {
+                  const r = await A.api.call<{ done: boolean }>("api/push/settings", { method: "POST", body: { done } });
+                  if (r.data) setPush(r.data);
+                }}
+              />
+              <div class="btns">
+                <Btn
+                  kind="quiet"
+                  label={t("notify.test")}
+                  onClick={async () => {
+                    const r = await A.api.call("api/push/test", { method: "POST" });
+                    A.toast(r.status === 200 ? t("notify.test.sent") : t("result.action.failed", String(r.status)));
+                  }}
+                />
+                <Btn
+                  kind="text"
+                  label={t("notify.off")}
+                  onClick={async () => {
+                    A.push = await disablePush(A.api);
+                    A.changed();
+                  }}
+                />
+              </div>
+            </>
+          )}
         </>
       )}
+    </section>
+  );
+}
+
+function SettingsSheet() {
+  useEffect(() => {
+    if (!A.settings && A.S.welcomed) A.send({ t: "settings" });
+  }, []);
+  return (
+    <Sheet label={t("settings.title")}>
+      <NameRow />
+      <PartnerSettings />
+      <PhoneSettings />
     </Sheet>
   );
 }

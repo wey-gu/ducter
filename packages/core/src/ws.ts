@@ -6,6 +6,7 @@ import type { Decisions } from "./decisions.ts";
 import type { DevicesView } from "./devices.ts";
 import { PROJECTED_KINDS, taskStream } from "./registry.ts";
 import { machineId } from "./machine.ts";
+import type { SettingsStore } from "./settings.ts";
 
 export interface WsData {
   live: boolean;
@@ -13,6 +14,8 @@ export interface WsData {
   onHandDirty: boolean;
   /** Asked for devices: gets a fresh devices frame whenever one changes. */
   devices?: boolean;
+  /** Asked for settings: gets a fresh settings frame whenever they change. */
+  settings?: boolean;
   /** The paired device behind a remote socket (core.ts). */
   device?: { id: string };
 }
@@ -31,6 +34,8 @@ export interface WsDeps {
   runner: () => Runner | undefined;
   /** Your devices and abilities (devices.ts); absent in tests that don't need it. */
   devices?: () => DevicesView | undefined;
+  /** The partner's settings (settings.ts); absent in tests that don't need it. */
+  settings?: SettingsStore;
   batchMs?: number;
 }
 
@@ -78,6 +83,23 @@ export function createWsHandler(deps: WsDeps) {
     const v = devicesView();
     if (v) offDevices = v.onChange(() => void pushDevices().catch((err) => console.warn("[ws] devices:", (err as Error).message)));
   };
+
+  // Settings: every subscriber gets a fresh frame on every change (another window, the phone).
+  const settingsFrame = async (forgot?: { seq: number; how: "mem" | "hidden" }): Promise<ServerFrame> => {
+    const v = await deps.settings!.view();
+    return { t: "settings", ...v, ...(forgot ? { forgot } : {}) };
+  };
+  const offSettings = deps.settings?.onChange(() => {
+    const subs = [...sockets].filter((ws) => ws.data.settings);
+    if (!subs.length) return;
+    void settingsFrame().then((f) => subs.forEach((ws) => sockets.has(ws) && send(ws, f)));
+  });
+  // Memory_noted lines change the noted list: subscribers hear about it too.
+  const offNoted = log.subscribe((e) => {
+    if (e.kind !== "memory_noted" || !deps.settings) return;
+    const subs = [...sockets].filter((ws) => ws.data.settings);
+    if (subs.length) void settingsFrame().then((f) => subs.forEach((ws) => sockets.has(ws) && send(ws, f)));
+  });
 
   // Idempotent send: clientId -> seq of its user_msg. Seeded from the Log's recent window (the
   // kind index), so a resend after a restart is recognised too; bounded to SEEN_WINDOW ids.
@@ -239,6 +261,7 @@ export function createWsHandler(deps: WsDeps) {
         if (!v) throw new Error("devices are not available");
         watchDevices();
         ws.data.devices = true;
+        if (f.refresh) v.refresh();
         send(ws, await v.frame());
         return;
       }
@@ -253,6 +276,26 @@ export function createWsHandler(deps: WsDeps) {
         const v = devicesView();
         if (!v) throw new Error("devices are not available");
         send(ws, await v.pairCode());
+        return;
+      }
+      case "settings": {
+        if (!deps.settings) throw new Error("settings are not available");
+        ws.data.settings = true;
+        send(ws, await settingsFrame());
+        return;
+      }
+      case "settings_set": {
+        if (!deps.settings) throw new Error("settings are not available");
+        ws.data.settings = true;
+        // A change pushes a fresh frame to every subscriber; nothing changed: answer this one.
+        if (!deps.settings.set(f.patch ?? {}).length) send(ws, await settingsFrame());
+        return;
+      }
+      case "memory_forget": {
+        if (!deps.settings) throw new Error("settings are not available");
+        ws.data.settings = true;
+        const how = await deps.settings.forget(f.seq);
+        send(ws, await settingsFrame(how ? { seq: f.seq, how } : undefined));
         return;
       }
       case "task_history": {
@@ -300,6 +343,8 @@ export function createWsHandler(deps: WsDeps) {
     },
     stop() {
       offDevices?.();
+      offSettings?.();
+      offNoted();
       unsubscribe();
       if (flushTimer) clearTimeout(flushTimer);
       for (const ws of sockets) ws.close(1001, "shutting down");

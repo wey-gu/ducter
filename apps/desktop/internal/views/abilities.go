@@ -8,6 +8,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/client"
+	"github.com/wey-gu/ducter/apps/desktop/internal/local"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
@@ -51,6 +52,10 @@ type devicesState struct {
 	tiles    map[string]ui.Rect // the ability art in the grid, last frame
 	slots    map[string]ui.Rect // the slots' wells, last frame
 	hover    string             // the tile under the pointer
+	// account is the AI account whose sheet is open (sign in, sign out).
+	account string
+	// refreshed: the sign-in jobs whose end already asked for fresh devices.
+	refreshed map[*local.Job]bool
 }
 
 type pairState struct {
@@ -186,7 +191,7 @@ func (a *App) devicesView(c *ui.Context) {
 			case len(a.S.Devices) == 0:
 				a.devicesWaiting(c)
 			case narrow:
-				ui.Row(c).Gap(t.S3).Wrap().Children(func() { a.deviceCards(c, 230) })
+				ui.Row(c).Gap(t.S3).Wrap().AlignItems(ui.Center).Children(func() { a.deviceCards(c, 230); a.connectEntry(c) })
 				ui.Column(c).Height(560).Children(func() { a.stage(c, dev) })
 				ui.Row(c).Gap(t.S4).AlignItems(ui.Start).Children(func() {
 					ui.Column(c).Grow(1).Basis(0).Gap(t.S3).Children(func() { a.abilityGrid(c, dev, 3) })
@@ -197,6 +202,7 @@ func (a *App) devicesView(c *ui.Context) {
 					ui.Column(c).Width(260).Shrink(0).Gap(t.S3).Children(func() {
 						ui.Text(c, a.L.T("devices.list")).FontSize(t.XS).FontWeight(800).LetterSpacing(1.2).TextColor(t.InkMuted)
 						a.deviceCards(c, 0)
+						a.connectEntry(c)
 					})
 					ui.Column(c).Grow(1).MinWidth(0).Children(func() { a.stage(c, dev) })
 					ui.Scroll(c.Key("abilities")).Width(300).Shrink(0).Children(func() {
@@ -287,6 +293,16 @@ func (a *App) deviceCards(c *ui.Context, width float32) {
 			a.devState().sel = dv.ID
 			a.devState().removing = ""
 		}
+	}
+}
+
+// connectEntry is the way to add a device: a phone or another computer
+// connects with a one-time code (D54). The code's sheet opens on the stage.
+func (a *App) connectEntry(c *ui.Context) {
+	t := a.T
+	if a.button(c, a.L.T("devices.connect"), btnSecondary, t.ControlSM, t.Bg) {
+		a.devState().account = ""
+		a.openPair()
 	}
 }
 
@@ -536,6 +552,8 @@ func (a *App) stage(c *ui.Context, dv *protocol.DeviceView) {
 		a.stageLine(c, dv, sw)
 		if d.pair.open {
 			a.pairSheet(c, dv, sw, sh)
+		} else if d.account != "" {
+			a.accountSheet(c, dv, sw, sh)
 		} else if a.web.open && a.webSetupOwned(dv) {
 			a.webSheet(c, dv, sw, sh)
 		}
@@ -724,13 +742,30 @@ func (a *App) tokens(c *ui.Context, dv *protocol.DeviceView, r rig) {
 		if !h.LoggedIn || dv.State != protocol.DeviceAwake {
 			tok.Opacity(0.6)
 		}
+		// On the Mac this app runs Ducter on, an account card opens its
+		// sheet: sign in, install, or sign out (D71).
+		manage := a.Backend != nil && dv.Home && dv.State == protocol.DeviceAwake && accountCheck(h.Harness) != ""
+		if manage {
+			tok.Cursor(ui.CursorPointer).Role(ui.RoleButton).Focusable()
+			a.lift(c, tok, 2)
+			if tok.Clicked() {
+				a.devState().account = h.Harness
+			}
+		}
 		tok.Children(func() {
 			if bmp := theme.Clay(art); bmp != nil {
 				ui.Image(c, bmp).Size(52, 52).Shrink(0).AccessHidden(true)
 			}
 			ui.Column(c).Gap(2).MinWidth(0).Shrink(1).Children(func() {
 				ui.Text(c, harnessName(h.Harness)).FontSize(t.SM).FontWeight(800).SingleLine()
-				ui.Text(c, status).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
+				line, ink := status, t.InkMuted
+				if manage && (!h.Installed || !h.LoggedIn) {
+					line, ink = a.L.T("token.signin"), t.NeedsYou.Ink
+					if !h.Installed {
+						line = a.L.T("token.install")
+					}
+				}
+				ui.Text(c, line).FontSize(t.XS).FontWeight(700).TextColor(ink).SingleLine()
 			})
 		})
 	}
@@ -767,7 +802,7 @@ func (a *App) stageLine(c *ui.Context, dv *protocol.DeviceView, sw float32) {
 		a.enter(c, pill)
 		pill.Children(func() {
 			if check {
-				ui.Box(c).Size(26, 26).Radius(t.RadiusXS).Background(sc.Surface).Draw(drawCheck(sc.Dot)).Shrink(0)
+				a.glyph(c, 20, drawCheck(sc.Ink))
 			}
 			ui.Text(c, text).FontSize(t.MD).FontWeight(800).TextColor(t.Ink).MaxLines(2)
 		})
@@ -911,7 +946,7 @@ func (a *App) abilityDetail(c *ui.Context, dv *protocol.DeviceView) {
 			})
 		case on:
 			ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-				ui.Box(c).Size(22, 22).Radius(t.RadiusXS).Background(t.Awake.Surface).Draw(drawCheck(t.Awake.Dot)).Shrink(0)
+				a.glyph(c, 18, drawCheck(t.Awake.Ink))
 				ui.Text(c, a.L.T("ability.on.at", a.deviceNameIn(dv))).FontSize(t.SM).FontWeight(700).Grow(1).MinWidth(0)
 				if dv.State == protocol.DeviceAwake && a.buttonFor(c, a.L.T("ability.remove"), name, btnText, t.ControlSM, t.Surface) {
 					d.removing = id
@@ -967,8 +1002,11 @@ func (a *App) unavailable(c *ui.Context, ab *protocol.DeviceAbility) {
 // openLink opens a URL in the browser (through the Backend when the app
 // runs Ducter, else nothing in tests).
 func (a *App) openLink(u string) {
-	if a.Backend != nil {
+	switch {
+	case a.Backend != nil:
 		_ = a.Backend.OpenURL(u)
+	case a.OpenExternal != nil:
+		_ = a.OpenExternal(u)
 	}
 }
 
@@ -1341,4 +1379,114 @@ func qrBox(c *ui.Context, rows []string, size float32, ink, paper ui.Color) {
 				}
 			}
 		})
+}
+
+// ---------- AI accounts: sign in, install, sign out (D71) ----------
+
+// accountCheck is the doctor's check id of a harness ("" if none).
+func accountCheck(h string) string {
+	switch h {
+	case "claude-code":
+		return "claude"
+	case "codex":
+		return "codex"
+	}
+	return ""
+}
+
+// accountCommands are the official commands: install, sign in, sign out.
+func accountCommands(h string) (install, signin, signout string) {
+	switch h {
+	case "claude-code":
+		return "curl -fsSL https://claude.ai/install.sh | bash", "claude auth login", "claude auth logout"
+	case "codex":
+		return "curl -fsSL https://chatgpt.com/codex/install.sh | sh", "codex login", "codex logout"
+	}
+	return "", "", ""
+}
+
+// accountSheet is one AI account on this Mac: the first run's own row to
+// install or sign in (the same jobs, the same words), or, signed in, the
+// way out. Its end asks for fresh devices, so the card says what is true.
+func (a *App) accountSheet(c *ui.Context, dv *protocol.DeviceView, sw, sh float32) {
+	t := a.T
+	d := a.devState()
+	var h *protocol.DeviceHarness
+	for i := range dv.Harnesses {
+		if dv.Harnesses[i].Harness == d.account {
+			h = &dv.Harnesses[i]
+		}
+	}
+	if h == nil || a.Backend == nil {
+		d.account = ""
+		return
+	}
+	name := harnessName(h.Harness)
+	id := accountCheck(h.Harness)
+	install, signin, signout := accountCommands(h.Harness)
+	k := local.Check{ID: id, Label: name, Status: "missing"}
+	switch {
+	case !h.Installed:
+		k.Action, k.Fix, k.Detail = "install", install, a.L.T("token.missing")
+	case !h.LoggedIn:
+		k.Action, k.Fix, k.Detail = "signin", signin, a.L.T("token.signed_out")
+	}
+	// Any job of this account that just ended: probe the sign-ins again.
+	for _, act := range []string{"install", "signin", "signout"} {
+		if j := a.Backend.Job(id + "." + act); j != nil {
+			if j.Running() {
+				c.After(500e6)
+				continue
+			}
+			if d.refreshed == nil {
+				d.refreshed = map[*local.Job]bool{}
+			}
+			if !d.refreshed[j] {
+				d.refreshed[j] = true
+				a.send(protocol.DevicesReq{T: "devices", Refresh: true})
+			}
+		}
+	}
+	w := min(sw-48, 440)
+	sheet := ui.Column(c.Key("account")).Absolute().Left((sw-w)/2).Top(40).Width(w).MaxHeight(sh-80).
+		Padding(t.S5, t.S5).Gap(t.S3).Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).ZIndex(10).
+		Role(ui.RoleDialog).Label(name)
+	a.enter(c, sheet)
+	sheet.Children(func() {
+		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
+			art := "token_ink"
+			if h.Harness == "claude-code" {
+				art = "token_orange"
+			}
+			if bmp := theme.Clay(art); bmp != nil {
+				ui.Image(c, bmp).Size(44, 44).Shrink(0).AccessHidden(true)
+			}
+			ui.Text(c, name).FontSize(t.LG).FontWeight(800).Grow(1).MinWidth(0)
+			if a.button(c, a.L.T("pair.close"), btnSecondary, t.ControlSM, t.Surface) {
+				d.account = ""
+			}
+		})
+		if k.Action != "" {
+			ui.Column(c).Radius(t.RadiusLG).Background(t.SurfaceSunken).Children(func() { a.optionRow(c, k, true) })
+			return
+		}
+		status := a.L.T("token.signed_in")
+		if h.Allowance != nil {
+			status += " · " + a.L.T("token.allowance", int(h.Allowance.Left*100+0.5))
+		}
+		ui.Text(c, status).FontSize(t.MD).FontWeight(700)
+		j := a.Backend.Job(id + ".signout")
+		switch {
+		case j != nil && j.Running():
+			ui.Text(c, a.L.T("token.signingout")).FontSize(t.SM).TextColor(t.InkMuted)
+		default:
+			if j != nil && !j.OK() && d.refreshed[j] {
+				a.reasonLine(c, a.L.T("token.failed"))
+			}
+			ui.Text(c, a.L.T("token.signout.sure", name)).FontSize(t.SM).TextColor(t.InkSoft)
+			if a.buttonFor(c, a.L.T("token.signout"), name, btnSecondary, t.ControlMD, t.Surface) {
+				_, _ = a.Backend.Run(id+".signout", signout)
+			}
+		}
+	})
 }

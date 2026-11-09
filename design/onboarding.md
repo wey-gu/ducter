@@ -69,7 +69,7 @@ a fresh data folder, and port 7795.
    failing tests in repo 1, what changed this week in repo 2, unfinished branches in repo 3;
    a one-line note under them says they came from names only. No repos → everyday starters.
    A starter fills the composer; it never sends. *Verified* (headless renderer:
-   `apps/desktop/docs/firstrun-empty-{zh,en,fresh}.png`, live: `firstrun-live-empty.png`).
+   `.shots/desktop/firstrun-empty-{zh,en,fresh}.png`, live: `firstrun-live-empty.png`).
    The scan of the author's ~90 repos took under 0.2 s.
 6. The first result: the first task ever to come back done (live, not a replay, and no other
    finished task in the Log) shows one line with the clay *done* character above the
@@ -89,7 +89,7 @@ The real `ducter up` from the bundle, the desktop's headless renderer as the cli
 | 52 s | Task done; the first-result line and the done character |
 | 58 s | The partner's result: which 2 of 3 failed and why (`+ 0.5` on line 9), the fix, `python3 -m unittest` 3/3 after, "not committed, on ducter/calc", with Merge / Draft PR / See changes |
 
-Screenshots: `apps/desktop/docs/firstrun-live-{empty,ack,first-result,result-message}.png`.
+Screenshots: `.shots/desktop/firstrun-live-{empty,ack,first-result,result-message}.png`.
 A second run after merging main (VPS pairing, protocol v2): ack 3 s, done 46 s, result 60 s.
 Ctrl-C exits 0 and quickly, also with a task running and the signal sent to the whole process
 group as a terminal does (partner 0 ms, runner ≤ 1 s, now logged). An earlier "exit 1" came
@@ -145,7 +145,7 @@ Ducter is the one doing the work, so neither closing the window nor ⌘Q stops i
   signature it names the item after the binary. Not seen in our run (not looked for).
 
 **Screens** (copy keys `setup.*`, `cli.*` in `apps/desktop/internal/i18n`; views in
-`apps/desktop/internal/views/setup.go`; headless shots `apps/desktop/docs/app-*.png`)
+`apps/desktop/internal/views/setup.go`; headless shots `.shots/desktop/app-*.png`)
 
 1. Checking this Mac (napping character). The app first fixes its `PATH` (login shell's
    `PATH` + `~/.local/bin`, Homebrew, Bun …), since Finder starts apps with the system folders
@@ -284,7 +284,7 @@ Every System Settings link was opened on macOS 15.7 and landed on the named pane
 Accessibility, Screen & System Audio Recording, Login Items & Extensions, Notifications).
 
 **Screenshots.** Native (a scratch `HOME`, the real app bundle, cua-driver), after the redesign:
-`apps/desktop/docs/onboard-native-{fresh,installing,signin,web-driver,web-accessibility,
+`.shots/desktop/onboard-native-{fresh,installing,signin,web-driver,web-accessibility,
 web-screen,web-ready}-{zh,en}.png` (zh also web-waiting); before it:
 `onboard-native-before-*.png`; other native states from the first pass (canceled, allset,
 name, conversation, devices, signin-ready) are the earlier styling of the same flow. Headless, every state in both languages:

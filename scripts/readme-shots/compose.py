@@ -3,9 +3,13 @@
     python3 scripts/readme-shots/compose.py <raw dir> <out dir>
 
 <raw dir> holds the captures named below (native window captures at 2x, with transparent
-corners, and iOS Simulator screenshots). Writes the hero (desktop + phone on the cream page)
-and one image per view, quantized to 256-color PNGs so the set stays small.
+corners, and iOS Simulator screenshots); keep it outside git (D75), e.g.
+~/dev/ducter-evidence/readme/raw. Writes the hero (desktop + phone on the cream page) and one
+image per view to <out dir> as WebP (cwebp -q 82; README images live in .github/readme, each
+well under 2 MB, target <= 150 KB). Needs cwebp on PATH.
 """
+
+import subprocess
 
 import sys
 from pathlib import Path
@@ -66,13 +70,14 @@ def place(canvas, im, xy, radius, blur=36, alpha=70, dy=18):
 
 
 def save(im, name):
-    """256-color PNG: screenshots of flat UI lose nothing visible and shrink 3-5x."""
+    """WebP at quality 82, through a lossless PNG next to it (kept for review, not committed)."""
     rgb = Image.new("RGB", im.size, PAGE)
     rgb.paste(im, mask=im.split()[-1] if im.mode == "RGBA" else None)
-    q = rgb.quantize(colors=256, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.FLOYDSTEINBERG)
-    path = OUT / name
-    q.save(path, optimize=True)
-    print(f"{path}  {im.width}x{im.height}  {path.stat().st_size // 1024} KB")
+    png = OUT / name
+    rgb.save(png)
+    webp = png.with_suffix(".webp")
+    subprocess.run(["cwebp", "-quiet", "-q", "82", str(png), "-o", str(webp)], check=True)
+    print(f"{webp}  {im.width}x{im.height}  {webp.stat().st_size // 1024} KB")
 
 
 def framed(im, margin):

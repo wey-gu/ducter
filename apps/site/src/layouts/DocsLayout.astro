@@ -1,0 +1,57 @@
+---
+import "../styles/site.css";
+import Head from "../components/Head.astro";
+import Nav from "../components/Nav.astro";
+import Footer from "../components/Footer.astro";
+import { siteLinks } from "../lib/links";
+import { docHref, type Doc } from "../lib/docs";
+
+interface Props { doc: Doc | null; docs: Doc[] }
+const { doc, docs } = Astro.props;
+const { facts, dl, gh } = await siteLinks();
+const title = doc?.data.title ?? "Ducter docs";
+const description = doc?.data.description ?? "How to install Ducter, talk to your partner, and keep it working for you on your own computers.";
+const path = doc ? docHref(doc) : "/docs";
+const i = doc ? docs.findIndex((d) => d.id === doc.id) : -1;
+const prev = i > 0 ? docs[i - 1] : null;
+const next = i >= 0 && i < docs.length - 1 ? docs[i + 1] : null;
+---
+<!doctype html>
+<html lang="en">
+<Head title={doc && doc.id !== "readme" ? `${title} · Ducter docs` : title} description={description} path={path} />
+<body class="docs-page">
+<Nav dl={dl} gh={gh} home={false} />
+<main id="main" class="wrap docs">
+  <aside class="docs-nav">
+    <details class="docs-toc" open>
+      <summary>All docs</summary>
+      <ol>
+        {docs.map((d) => (
+          <li><a href={docHref(d)} aria-current={doc?.id === d.id ? "page" : undefined}>{d.id === "readme" ? "Overview" : d.data.title}</a></li>
+        ))}
+      </ol>
+    </details>
+  </aside>
+  <article class="prose">
+    <h1>{title}</h1>
+    {doc?.data.description && <p class="lede">{doc.data.description}</p>}
+    <slot />
+    {(prev || next) && (
+      <nav class="pager" aria-label="More docs">
+        {prev ? <a href={docHref(prev)}><small>Previous</small>{prev.id === "readme" ? "Overview" : prev.data.title}</a> : <span></span>}
+        {next && <a class="next" href={docHref(next)}><small>Next</small>{next.data.title}</a>}
+      </nav>
+    )}
+  </article>
+</main>
+<Footer gh={gh} isPublic={facts.isPublic} home={false} />
+<script>
+  const nav = document.getElementById("nav")!;
+  const f = () => nav.classList.toggle("scrolled", scrollY > 8);
+  addEventListener("scroll", f, { passive: true });
+  f();
+  // the sidebar starts collapsed on small screens
+  if (matchMedia("(max-width: 899px)").matches) document.querySelector(".docs-toc")?.removeAttribute("open");
+</script>
+</body>
+</html>

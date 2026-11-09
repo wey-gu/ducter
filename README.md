@@ -19,7 +19,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/images/hero.png" width="100%" alt="Ducter on a Mac and a phone. On the Mac, a finished task: the flaky compaction test is fixed, with How I know (50 of 50 runs pass, 412 workspace tests pass, a two-file diff) and Merge into main. Below it, a question with a default: rebase fix-ci, with Go, Hold and Reply. The same question is open on the phone.">
+  <img src=".github/readme/hero.webp" width="100%" alt="Ducter on a Mac and a phone. On the Mac, a finished task: the flaky compaction test is fixed, with How I know (50 of 50 runs pass, 412 workspace tests pass, a two-file diff) and Merge into main. Below it, a question with a default: rebase fix-ci, with Go, Hold and Reply. The same question is open on the phone.">
 </p>
 
 ## What it feels like
@@ -55,8 +55,8 @@ look.
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/images/on-hand.png" alt="On hand: every task in four lanes, Needs you, Working, Waiting and Done today, with the open decision in its card"></td>
-    <td width="50%"><img src="docs/images/task.png" alt="An opened task: what it did step by step, the diff of the two files it changed, and How I know"></td>
+    <td width="50%"><img src=".github/readme/on-hand.webp" alt="On hand: every task in four lanes, Needs you, Working, Waiting and Done today, with the open decision in its card"></td>
+    <td width="50%"><img src=".github/readme/task.webp" alt="An opened task: what it did step by step, the diff of the two files it changed, and How I know"></td>
   </tr>
   <tr>
     <td><b>On hand.</b> Every task at a glance, and what is waiting for you.</td>
@@ -66,8 +66,8 @@ look.
 
 <table>
   <tr>
-    <td width="64%"><img src="docs/images/devices.png" alt="Your devices and what they can do: this Mac on its stage with what it can do around it, and Claude Code and Codex signed in"></td>
-    <td width="36%"><img src="docs/images/phone-decision.png" alt="Ducter on a phone with a decision open: Rebase it? with Go, Hold and Reply"></td>
+    <td width="64%"><img src=".github/readme/devices.webp" alt="Your devices and what they can do: this Mac on its stage with what it can do around it, and Claude Code and Codex signed in"></td>
+    <td width="36%"><img src=".github/readme/phone-decision.webp" alt="Ducter on a phone with a decision open: Rebase it? with Go, Hold and Reply"></td>
   </tr>
   <tr>
     <td><b>Your devices.</b> The computers Ducter works on, and what each one can do.</td>

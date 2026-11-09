@@ -169,6 +169,23 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] Linux CI test runs (`bun test`, `go test` on ubuntu) were only compiled/planned on a Mac;
       if the first runs fail for platform reasons, move that job to `macos-15`.
 
+## App lifecycle (D72)
+
+- [ ] **Settings rows** for updates (the status line, 退出时自动更新, 现在检查) and for 彻底移除
+      Ducter (the page with Removes / Keeps, the two options, the typed confirmation), on the API
+      in `apps/desktop/internal/update` and `internal/local/lifecycle.go`. Trigger: the Settings
+      window lands (branch `ia`).
+- [ ] **Reset partner** (clear the conversation, keep devices and settings). Not built: the Log
+      holds the conversation and every task in one append-only file (principle 1), so it can't
+      be cut out safely. Proposal: a `conversation_reset` event that the projection and memory
+      window start after, so tasks, decisions and resume keep their history. Trigger: the user
+      asks for it; it goes through the change loop (`design/context.md`).
+- [ ] Rollback in the UI (`RollBackOnQuit` exists). Trigger: a bad release reaches someone.
+- [ ] A pre-release channel (the updater only reads `releases/latest`). Trigger: the first beta
+      testers.
+- [ ] First real update from GitHub (both checks against a notarized release, Gatekeeper on).
+      Trigger: the second tagged release after the repo is public.
+
 ## First run without a terminal (D70, `design/onboarding.md` "No terminal, start to finish")
 
 - [ ] A task that needs the web before 上网 is set up: open the three steps from the
@@ -182,3 +199,32 @@ Codex first, once OAR is near 1.0. See `research/17`.
       Trigger: Mem exposes how to start it from outside.
 - [ ] Moving the app out of the disk image (offer "Move to Applications" when run from
       `/Volumes` or a translocated copy). Trigger: the first friend who opens it from the DMG.
+
+## Partner and Settings (D71)
+
+- [ ] A theme choice in Settings › Look. Trigger: a second theme (Pebble dark first) works on
+      the desktop and the phone alike.
+- [ ] Walk Forget against a live Nowledge Mem (`nmem m forget --force` on a line with a memory
+      id) and check recall no longer returns it. Trigger: a scratch Mem space for tests.
+- [ ] Screenshot the menu bar extra's open menu natively. On the test Mac it sat in the menu
+      bar's overflow, so only its contents are covered by unit tests. Trigger: a Mac with room in
+      the menu bar.
+- [ ] Sign in, install and sign out from a Devices account card in the real Ducter.app (the
+      card's sheet reuses the first run's jobs). Trigger: the same throwaway account as above.
+- [ ] Rules (F1) on the Partner page: let "On its own, or asks you first" be changed, not only
+      read. Trigger: F1 has a flow and a decision.
+- [ ] The partner's name in its live session: a rename reaches new sessions (the identity is
+      rewritten); the session already open keeps the old name until it restarts. Trigger: a
+      user notices.
+
+## Before the repo goes public
+
+- **Rewrite history once (D75 and the motivation scrub).** After every branch is merged:
+  `git filter-repo` with the text replacements (motivation wording, personal paths, fake eval
+  keys) and `--invert-paths` for the evidence paths: `apps/desktop/docs/`, `design/screens/`,
+  `docs/design/screens/`, `docs/images/`, `apps/ios/screens/`, `apps/desktop/desktop`, the raw
+  and normalized generations and the concept explorations (keep the two `r2` reference images
+  named in `design/art/assets/batch.json`). Then run `bun scripts/check-binaries.ts` on every
+  remaining commit's tree, force-push, and set the description and topics. Trigger: the last
+  open branch merged.
+

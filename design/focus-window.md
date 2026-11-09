@@ -100,3 +100,15 @@ A quota reserve is kept for the main AI. Kimi's host-side token reader stays dis
 1. Wait, if the reset is soon.
 2. Otherwise switch to another model in the same harness.
 3. Otherwise hand off to another harness (checkpoint above).
+
+## How a task is shown (D74)
+
+What the window writes is what the user reads when they open the task, in one column:
+- the latest **report** is said once, at the top: a finished task's report is its outcome
+  (with its evidence as a line of proof and what went out), an unfinished one's is the line
+  of where it stands. Earlier reports stay in What it did as "Told {name}" lines;
+- the **transcript** becomes What it did: the window's own words, with tool calls folded into
+  one line per stretch and failed calls said in words;
+- **checkpoints** are a quiet "Progress saved" line in What it did and a plain list in
+  Details;
+- the diff of the worktree is a list of files; a diff shows only when the user opens a file.

@@ -241,7 +241,19 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   const ackWaitMs = opts.ackWaitMs ?? 250;
   const settleMs = opts.settleMs ?? 1500;
   const onError = opts.onError ?? ((err) => console.error("[partner]", err));
-  const memory = opts.memory ?? (process.env.DUCTER_MEMORY === "off" ? noMemory : createNmemClient());
+  const memoryOn = opts.memory ?? (process.env.DUCTER_MEMORY === "off" ? noMemory : createNmemClient());
+  // The Partner page can switch memory off (D71): then nothing is recalled or saved.
+  const memory: MemoryClient = {
+    search: (q, n) => (core.settings && !core.settings.get().memory ? noMemory.search(q, n) : memoryOn.search(q, n)),
+    add: (m) => (core.settings && !core.settings.get().memory ? noMemory.add(m) : memoryOn.add(m)),
+  };
+  if (memoryOn.forget) core.settings?.setForgetter((id) => memoryOn.forget!(id));
+  // What the Partner page says about memory follows what Mem actually answered.
+  const noteMemState = (r: { ok: boolean; reason?: string }) => {
+    if (!core.settings || !core.settings.get().memory) return;
+    if (r.ok) core.settings.setMemState("connected");
+    else if (r.reason === "not_configured") core.settings.setMemState("missing");
+  };
   const bridge = opts.bridge === undefined ? bridgeFromEnv() : opts.bridge;
 
   const cwd = join(core.dataDir, "partner");
@@ -519,7 +531,11 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const deltas = [...noted.map((e) => renderTrigger(e, ctx)), ...batch.map((e) => renderTrigger(e, ctx))];
     // The identity may say the user prefers Chinese; the language of this message wins.
     const lastUser = [...batch].reverse().find((e) => e.kind === "user_msg");
-    if (lastUser && !isChinese((lastUser.body as Bodies["user_msg"]).text)) {
+    const talk = core.settings?.get().language ?? "auto";
+    if (talk !== "auto") {
+      // The user chose a language on the Partner page (D71): it wins over the message's.
+      deltas.push(talk === "zh" ? "[language] The user asked you to always reply in Chinese (中文)." : "[language] The user asked you to always reply in English.");
+    } else if (lastUser && !isChinese((lastUser.body as Bodies["user_msg"]).text)) {
       deltas.push("[language] The user wrote this in English (not Chinese): reply in English, including the first line.");
     } else if (!lastUser) {
       // A report or timer has no language of its own (live eval: an English user got a Chinese
@@ -967,6 +983,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       }
       const limit = Math.min(8, Math.max(1, Math.round(Number(args.limit) || 5)));
       const r = await memory.search(query, limit);
+      noteMemState(r);
       if (!r.ok) return { ok: false, available: false, note: UNAVAILABLE };
       if (!r.hits.length) return { ok: true, results: [], note: "Nothing in memory fits. Carry on as someone who just doesn't remember: if you need it, ask the user plainly in one short line; never say you found no record." };
       return {
@@ -1017,6 +1034,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           ...(report ? { taskId: (report.body as Bodies["report"]).taskId } : {}),
         },
       });
+      noteMemState(r);
       if (!r.ok) return { ok: false, saved: false, note: `${UNAVAILABLE} Nothing was saved.` };
       const noted = { title, ...(r.id ? { memoryId: r.id } : {}) };
       if (t) t.noted.push(noted);

@@ -15,13 +15,13 @@ partner eval (real model, fake tasks and Mem; `research/30`) · **unit** = unit 
 | ID | Scenario | Flow | States | Copy | Motion | Proto | Built 2026-11-09 | Notes |
 |---|---|---|---|---|---|---|---|---|
 | A1 | First run | draft | draft | draft | draft | — | live: Mac terminal path and Ducter.app; VM: VPS service + doctor (scripted model) | `onboarding.md` (cartoon + live checklist). VPS path built terminal-first (D54): service install, doctor with headless logins, pairing code. Mac terminal path shipped and walked live 2026-11-09 (onboarding.md "What ships today") |
-| A2 | Pair a device | draft | draft | draft | draft | — | VM: code pairing via Caddy and SSH tunnel, desktop connect, workers (scripted model); headless: phone pairing page | Built (D54): code pairing (CLI + desktop "Connect to your Ducter" card, screenshots `apps/desktop/docs/connect*.png`), revoke, workers (join, presence, task placement). Phone web pairing built (the `ducter pair` link or QR opens `/pair#c=…`; token in the browser). Passkey/device key and the A2-W confirm card pending |
-| A3 | Device sleeps / wakes / offline mid-task | draft | draft | draft | draft | — | VM: worker drops → 在等 · <device> 连不上 → resume (scripted model); Mac sleep — | Built for workers (D54): offline at once, 在等 · <device> 连不上 after 2 min, resume by session id on return (`apps/desktop/docs/remote-device-unreachable.png`) |
+| A2 | Pair a device | draft | draft | draft | draft | — | VM: code pairing via Caddy and SSH tunnel, desktop connect, workers (scripted model); headless: phone pairing page | Built (D54): code pairing (CLI + desktop "Connect to your Ducter" card, screenshots `.shots/desktop/connect*.png`), revoke, workers (join, presence, task placement). Phone web pairing built (the `ducter pair` link or QR opens `/pair#c=…`; token in the browser). Passkey/device key and the A2-W confirm card pending |
+| A3 | Device sleeps / wakes / offline mid-task | draft | draft | draft | draft | — | VM: worker drops → 在等 · <device> 连不上 → resume (scripted model); Mac sleep — | Built for workers (D54): offline at once, 在等 · <device> 连不上 after 2 min, resume by session id on return (`.shots/desktop/remote-device-unreachable.png`) |
 | A4 | Harness not logged in; quota runs out | draft | draft | draft | draft | — | live: doctor's blocked screen (PATH stripped); VM: headless login commands to the human step; quota — | Headless login commands verified to the human step (`research/29`); relay into a client pending |
 | A5 | Second persona | draft | draft | draft | draft | — | — | |
 | B1 | Quick answer in turn | draft | draft | draft | draft | draft | live + eval | Core UI · Talk |
 | B2 | Research, no place | draft | draft | draft | draft | — | — | |
-| B3 | Code change in a repo | draft | draft | draft | draft | draft | live: Claude Code and Codex tasks in a worktree, result with evidence | Core UI · Workspace |
+| B3 | Code change in a repo | draft | draft | draft | draft | draft | live: Claude Code and Codex tasks in a worktree, result with evidence; native (demo seed): the one-column task, done / working / didn't work (`.shots/qa-2026-11-09`) | Core UI · Workspace. Opened task is one column, diff on demand (D74); the result is one line of proof (D73) |
 | B4 | Multi-repo change | draft | draft | draft | draft | — | — | |
 | B5 | Browser work needing login | draft | draft | draft | draft | — | live: host-Mac browser via cua-driver 0.44, sign-in by the user in Ducter's browser | |
 | B6 | Phone / call task | — | — | — | — | — | — | |
@@ -35,7 +35,7 @@ partner eval (real model, fake tasks and Mem; `research/30`) · **unit** = unit 
 | C5 | PR, rebase, merge, archive | draft | draft | draft | draft | draft | live: merge by button; draft PR: unit (fake `gh`), refused live with no `origin` | Core UI (rebase decision) |
 | C6 | Low disk | draft | draft | draft | draft | — | — | |
 | D1 | Decision with default + countdown | draft | draft | draft | draft | draft | live: Go / Hold / Reply; countdown firing not walked live | Core UI · all levels |
-| D2 | Batch harvest after being away | draft | draft | draft | draft | draft | live: living message, freeze on read | Core UI · living message |
+| D2 | Batch harvest after being away | draft | draft | draft | draft | draft | live: living message, freeze on read; native + 390 px (demo seed): count once, asks named by their task, Go names the action (`.shots/qa-2026-11-09`) | Core UI · living message. Title only when the user was away (D73) |
 | D3 | Quiet hours / escalation | draft | draft | draft | draft | draft | unit: push hold, coalescing, quiet hours; no real phone push yet | Core UI · attention forecast |
 | D4 | Done with evidence / failed check | draft | draft | draft | draft | — | live: done with evidence; Done · checking and 检查没过 — | |
 | D5 | Failure / stall | draft | draft | draft | draft | — | live: interrupt; eval: failure wording; stall/breaker — | |
@@ -63,6 +63,10 @@ partner eval (real model, fake tasks and Mem; `research/30`) · **unit** = unit 
 | I3 | Documents live in 做好的 (Save to…) | draft | draft | draft | draft | — | — | D52 Q7 |
 | I4 | Finding a result weeks later | draft | draft | draft | draft | — | — | ask first; list inside On hand |
 | I5 | Sharing a result | draft | draft | draft | draft | — | — | links ship with Ducter Edge |
+| K1 | Get to know the partner (Partner page: name, faces, how it talks, what it remembers, forget) | draft | — | draft | — | — | native (cua-driver, scripted core): rename, forget (hidden: no Mem id), default wait persisted; headless full page zh/en; phone sheet headless | D71. Forget in Mem verified by unit test with a fake forgetter only; a live `nmem m forget` not run |
+| K2 | Quiet the partner (notifications off, quiet hours, the default wait) | draft | — | draft | — | — | native: quiet hours and the wait persist to push.json / settings.json; unit: the Mac's notice held when off or in quiet hours | D71; D3 for what quiet hours hold |
+| K3 | App settings (Look, Language, when the window closes, updates, data and logs, about, remove) | draft | — | draft | — | — | native (window connected to a core: Look, Language, About); headless with a fake backend (Stop Ducter, Updates, Run checks, Remove plan) | D71, D72. Theme choice hidden until a second theme works |
+| K4 | Answer from the menu bar extra with the window closed | draft | — | draft | — | — | unit: what the menu lists, answering removes it; native: the icon is placed, its menu not screenshotted (the extra sat in the menu bar's overflow on the test Mac) | D71 |
 | J1 | Another agent asks the partner to take work (Nowledge Bridge) | draft | — | draft | — | — | unit (stub nmem): request logged once, framed untrusted, task only after Go, reply to the original; live round trip — | `bridge.md`; behind `DUCTER_BRIDGE=1`, branch `bridge-practice` |
 | J2 | The result goes back to the agent that asked | draft | — | — | — | — | unit: `bridge_reply`; task ↔ request link — | J-Q7 |
 | J3 | A teammate's agent asks (Mem Team) | draft | — | — | — | — | — | Team Bridge gated on Mem's side |

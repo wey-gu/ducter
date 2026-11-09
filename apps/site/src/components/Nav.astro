@@ -1,0 +1,23 @@
+---
+import Art from "./Art.astro";
+interface Props { dl: { href: string; label: string }; gh: { href: string; label: string }; home?: boolean }
+const { dl, gh, home = true } = Astro.props;
+const at = (hash: string) => (home ? hash : "/" + hash);
+---
+<a class="skip" href="#main">Skip to content</a>
+<header class="nav" id="nav">
+  <div class="wrap">
+    <a class="brand" href="/" aria-label="Ducter home">
+      <Art name="ducter_idle" alt="" sizes="34px" eager />
+      Ducter
+    </a>
+    <nav class="nav-links" aria-label="Sections">
+      <a href={at("#how")}>How it works</a>
+      <a href={at("#devices")}>Your computers</a>
+      <a href={at("#trust")}>Trust</a>
+      <a href="/docs">Docs</a>
+      <a href={gh.href.startsWith("#") ? at(gh.href) : gh.href}>{gh.label}</a>
+    </nav>
+    <a class="btn md" href={dl.href.startsWith("#") ? at(dl.href) : dl.href}>{dl.label}</a>
+  </div>
+</header>

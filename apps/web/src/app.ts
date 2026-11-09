@@ -1,7 +1,7 @@
 // The phone app's state and actions (the views read it and call these). One store, one socket.
-import type { ClientFrame, ServerFrame } from "@ducter/protocol";
+import type { ClientFrame, MemView, ServerFrame, Settings, SettingsPatch } from "@ducter/protocol";
 import { Api, Connection, type ConnStatus, type Me, wsUrl } from "./conn.ts";
-import { detectLang, langOfText, strings, type Strings } from "./i18n.ts";
+import { detectLang, langOfText, strings, type Lang, type Strings } from "./i18n.ts";
 import { pushState, type PushState } from "./push-client.ts";
 import { haptic } from "./native.ts";
 import { attention, finished, LANE, laneOf, looksSecret, Store, title, type DecisionState, type Entry } from "./store.ts";
@@ -16,13 +16,29 @@ export interface Toast {
 }
 
 export const READ_AFTER_MS = 1200;
+
+/** This phone's own interface language (Settings sheet): "auto" follows the system, then the user's words. */
+export type UiLang = "auto" | Lang;
+const UI_LANG = "ducter.lang";
+export function savedUiLang(): UiLang {
+  try {
+    const v = localStorage.getItem(UI_LANG);
+    return v === "zh" || v === "en" ? v : "auto";
+  } catch {
+    return "auto";
+  }
+}
 export const UNDO_MS = 10_000;
 export const DONE_GLOW_MS = 6_000;
 
 class AppState {
   S = new Store();
-  L: Strings = strings(detectLang());
-  localeSet = false;
+  uiLang: UiLang = savedUiLang();
+  L: Strings = strings(this.uiLang === "auto" ? detectLang() : this.uiLang);
+  localeSet = this.uiLang !== "auto";
+  /** The partner's settings (D71), once the server sent them; mem is what it remembers. */
+  settings?: Settings;
+  mem?: MemView;
   route: Route = { name: "conv" };
   sheet: Sheet = null;
   status: ConnStatus = "connecting";
@@ -102,6 +118,7 @@ class AppState {
       this.route = { name: "conv" };
       this.conn?.rehello();
     }
+    if (f.t === "settings") return this.applySettings(f);
     const before = new Map([...this.S.tasks].map(([id, t]) => [id, attention(t)]));
     this.S.apply(f);
     for (const [id, t] of this.S.tasks) if (finished(t) && before.has(id) && !["done", "done_claimed", "failed"].includes(before.get(id)!)) this.doneAt = Date.now();
@@ -114,12 +131,64 @@ class AppState {
       this.actSent.clear();
       for (const r of this.S.resends(this.pending)) this.send(r);
       if (this.route.name === "task") this.history(this.route.id, true);
+      // Settings are pushed only to sockets that asked: ask again on a new one.
+      if (this.settings || this.sheet?.kind === "settings") this.send({ t: "settings" });
     }
     // on_hand closes the replay that follows a welcome.
     if (f.t === "on_hand" && this.inDoubt) this.S.settleInDoubt(this.inDoubt), (this.inDoubt = undefined);
-    if (f.t === "events") for (const ev of f.events) if (!this.livingAway.has(ev.seq) && ev.kind === "living_msg") this.livingAway.set(ev.seq, ev.seq <= this.S.headSeq || document.hidden);
+    if (f.t === "events") for (const ev of f.events) if (!this.livingAway.has(ev.seq) && ev.kind === "living_msg") this.livingAway.set(ev.seq, (ev.seq <= this.S.headSeq && ev.seq > this.S.readUpTo) || document.hidden);
     this.followUserLanguage();
     this.drainActionResults();
+    this.changed();
+  }
+
+  applySettings(f: Extract<ServerFrame, { t: "settings" }>) {
+    this.settings = f.settings;
+    this.mem = f.mem;
+    if (f.settings.name) this.S.personaName = f.settings.name;
+    if (f.forgot) {
+      const title = this.forgetting.get(f.forgot.seq) ?? "";
+      this.forgetting.delete(f.forgot.seq);
+      this.toast(this.L.t(f.forgot.how === "mem" ? "partner.memory.forgot" : "partner.memory.hidden", title));
+    }
+    this.changed();
+  }
+
+  /** Opens this phone's Settings sheet, asking for the partner's settings. */
+  openSettings() {
+    this.sheet = { kind: "settings" };
+    if (this.S.welcomed) this.send({ t: "settings" });
+    this.changed();
+  }
+
+  /** Changes partner settings: shown at once, then confirmed by the server's frame. */
+  setSettings(patch: SettingsPatch) {
+    if (this.settings) this.settings = { ...this.settings, ...patch };
+    if (patch.name) this.S.personaName = patch.name;
+    this.send({ t: "settings_set", patch });
+    this.changed();
+  }
+
+  /** Titles of the noted lines being forgotten, for the toast that answers. */
+  private forgetting = new Map<number, string>();
+  forget(seq: number) {
+    const n = this.mem?.noted.find((x) => x.seq === seq);
+    if (n) this.forgetting.set(seq, n.title);
+    if (this.mem) this.mem = { ...this.mem, noted: this.mem.noted.filter((n) => n.seq !== seq) };
+    this.send({ t: "memory_forget", seq });
+    this.changed();
+  }
+
+  /** This phone's interface language; "auto" follows the system (then the user's first words). */
+  setUiLang(v: UiLang) {
+    this.uiLang = v;
+    try {
+      if (v === "auto") localStorage.removeItem(UI_LANG);
+      else localStorage.setItem(UI_LANG, v);
+    } catch {}
+    this.localeSet = v !== "auto";
+    this.L = strings(v === "auto" ? detectLang() : v);
+    if (v === "auto") this.followUserLanguage();
     this.changed();
   }
 
@@ -192,13 +261,17 @@ class AppState {
     this.changed();
   }
 
-  /** #onhand, #task=<id>, #d=<id> (a decision, opened from a notification). */
+  /** #onhand, #task=<id>, #d=<id> (a decision, opened from a notification), #settings. */
   fromHash(hash = location.hash) {
     const task = /^#task=(.+)$/.exec(hash);
     const d = /^#d=(.+)$/.exec(hash);
     if (task) return this.applyRoute({ name: "task", id: decodeURIComponent(task[1]!) });
     if (hash === "#onhand") return this.applyRoute({ name: "onhand" });
     this.route = { name: "conv" };
+    if (hash === "#settings") {
+      history.replaceState(null, "", location.pathname);
+      return this.openSettings();
+    }
     if (d) {
       this.sheet = { kind: "decision", id: decodeURIComponent(d[1]!) };
       this.flash = this.sheet.id;

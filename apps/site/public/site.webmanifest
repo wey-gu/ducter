@@ -1,0 +1,1 @@
+{ "name": "Ducter", "short_name": "Ducter", "icons": [{ "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }, { "src": "/icon.png", "sizes": "192x192", "type": "image/png" }], "theme_color": "#FFF6EA", "background_color": "#FFF6EA", "display": "browser" }

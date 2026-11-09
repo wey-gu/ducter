@@ -24,7 +24,7 @@
 | workspace view | "展开 / Open" (no name of its own) | A task opened to full depth |
 | overview board | **手头 / On hand** | Every task across all personas |
 | attention states | 等你 / Needs you · 在做 / Working · 在等 / Waiting · 做完了 / Done · 没成 / Didn't work · 放下了 / Dropped | `done?` shows as "做完了 · 在检查 / Done · checking" only while a check runs, else as Done (D68); `queued` shows as "还没开始 / Not started yet" |
-| decision actions | **好 / Go** · **先等等 / Hold** · **回复… / Reply…** | The Go button may name the action ("Rebase") |
+| decision actions | **好 / Go** · **先等等 / Hold** · **回复… / Reply…** · **看细节 / Details** | The Go button may name the action: en says the action alone in sentence case ("Rebase"), zh keeps 好 in front ("好，rebase") (D73). An ask's small heading is the asking task's title; the count is said once, "2 件等你 / 2 need you" |
 | Project | **项目 / Project**; no project = **其他 / Other** | An editable grouping label |
 | Place | **在哪儿做 / Where** | Where a task works |
 | Device (machine, runner) | **设备 / Devices** | |
@@ -56,16 +56,29 @@
 | the partner answered that agent | **已回复 <X> / Replied to <X>** (pending user OK) | "Replied" is not "done"; nothing promises the other side has seen it |
 | Intent | (shown as a decision or a policy line: "要推送到 ducter/fix-ci / Will push to …") | |
 | a task message to the partner (report) | **告诉 {name} / Told {name}** (· 要你定 · 做完了 · 在等 · 没成); freshness "{time}更新 / updated {time}" | Never 汇报 or 交回给 (reporting up) |
-| task brief · transcript | **{name} 交代的 / What {name} asked for** · **过程 / What it did** | |
+| task brief · transcript | **{name} 交代的 / What {name} asked for** · **过程 / What it did** | Tool calls fold into one line per stretch: **跑了 n 条命令 / Ran n commands**, **改了 n 个文件 / edited n files**, **看了 n 个文件 / read n files**, **用了 n 次工具 / used n tools**; a step that didn't work: **{command} 没成 / {command} didn't work** (D74) |
+| an opened task's sections | **改动 / Changes** (**n 个文件 / n files**) · **细节 / Details** (谁在做 / Who's doing it · 在哪儿做 / Where · 保存的进度 / Saved progress · 发出去的 / Sent out · 用量 / Usage) · **{time}开始的 / started {time}** | D74 |
 | harness turn ended | **先做到这儿 / Stopped here for now** | Never "turn", "step", 这一轮, 这一步 |
 | a message to a task | **它正在做，已经告诉它了 / Told it while it works** · **它收到了，接着做 / Got it; it's on it** · **等它忙完手上的就告诉它 / It'll get this once it finishes what it's doing** · **没送到 / Didn't get through** | |
-| the result anatomy (D60) | **怎么知道的 / How I know** (also the evidence heading everywhere; no 证据) · **发出去的 / Sent out** (empty: 没有 / Nothing) · **这次没包括 / Left out** · **合进 {branch} / Merge into {branch}** · **开草稿 PR / Open draft PR** · **看改动 / See changes** | |
+| the result anatomy (D60) | **怎么知道的 / How I know** (also the evidence heading everywhere; no 证据) · **发出去的 / Sent out** (empty: 没有 / Nothing) · **这次没包括 / Left out** · **合进 {branch} / Merge into {branch}** · **开草稿 PR / Open draft PR** · **改了 n 个文件 / n files changed ›** (the changes link; the task's own diff evidence) | Under a result: one quiet line of proof, a ↗ line only when something went out, then the actions; See changes is not repeated (D73) |
 | effects seen but not gated | **它的记录里看到的 / Seen in its log** | |
 | the day's record | **今天发出去的 / Sent out today** | |
 | place `none` | **不用特定的地方 / Nowhere in particular** | |
 | devices, by the user's own words | **这台 Mac / This Mac** · **这台手机 / This phone** · **另一台电脑 / another computer** | Never 机器 / machine in UI copy |
 | presence | **{name} 在呢 / is here** · **在做事 / is working** · **有事找你 / needs you** · **刚做完一件事 / just finished something** · **还没醒 / isn't up yet** | Never 待命 |
 | stopping Ducter on a Mac (D56) | **让 Ducter 歇着 / Stop Ducter** (menu) · **{name} 歇着了 / {name} is resting** · **叫醒 {name} / Wake {name}** | Closing the window or ⌘Q never stops Ducter; this is the one explicit stop. 叫醒 is the same verb as for a device, on purpose |
+| updating the app (D72) | **检查更新… / Check for Updates…** · **有新版本 {v} · 重启时更新 / Update {v} ready · restart to finish** · **有新版本 {v} · 去下载 / Version {v} is out · Download** · **现在重启 / Restart Now** · **退出时自动更新 / Update automatically when quitting** | One quiet line in the app menu and Settings; never a pop-up the person didn't ask for |
+| removing Ducter (D72) | **彻底移除 Ducter / Remove Ducter** · **会删掉 / Removes** · **会留着 / Keeps** · **只停下并移除后台项 / Only stop and remove the background item** · **全部移除 / Remove everything** · **任务的工作副本 / tasks' working copies** (the worktrees) | The page names each path; never "uninstall" in copy. 后台项 matches macOS's own "后台项目 / background items" |
+| help (D72) | **Ducter 使用指南 / Ducter docs** · **报告问题… / Report a problem…** · **也带上最近的对话 / Include the last conversation** (off by default) | Nothing is uploaded; the person attaches the .zip themselves |
+| the partner's page (D71) | **伙伴 / Partner** (nav, ⌘4; also the partner's own face and name in the conversation's bar) · **改名字 / Rename** · faces **在呢 / Here · 在做事 / Working · 有事找你 / Needs you · 刚做完 / Just done · 歇着了 / Resting** · **住在{device} 上 / Lives on {device}** | A character sheet, not a form. Never "profile", "persona", "agent settings" |
+| how the partner talks | **怎么说话 / How it talks**: **跟着我 / Follow me** · 中文 · English | Follow me = the language of the user's message |
+| notifications and the default wait | **什么时候找你 / When it comes to you**: **通知 / Notifications** · **免打扰 / Quiet hours** ({start} 到 {end} / to) · **你没回的时候 / If you don't answer** · "等多久再按默认做 / How long before it goes with the default" | Only reversible decisions wait; irreversible ones always wait for the user |
+| memory, as the user controls it | **记得什么 / What it remembers** · **记住事情 / Remember things** (switch) · **最近记下的 / Noted lately** · **忘掉 / Forget** ("忘掉了：{title} / Forgotten: {title}"; when Mem can't: "这里不再显示…；Nowledge Mem 里那条还在 / … is hidden here; it's still in Nowledge Mem") · **装上 Nowledge Mem / Get Nowledge Mem** | Never "delete memory", "knowledge base", "记忆库" |
+| what runs without asking | **自己就做，还是先问你 / On its own, or asks you first** · **自己就做 / On its own** · **先问你 / Asks you first** | Read-only today; the items say the property (发给别人的 / reaches other people, 收不回的 / can't be taken back) |
+| the app's own settings (D71) | **设置 / Settings** (⌘,; Settings… in the menus) · **外观 / Look** · **界面语言 / Language** (**跟着系统 / Follow the system**) · **关窗以后 / When you close the window** · **更新 / Updates** · **数据和记录 / Data and logs** (打开数据文件夹 · 打开记录 · **检查一遍 / Run checks** · 都好 / All good) · **关于 / About** | What the partner is like lives on Partner, not here |
+| AI accounts on Devices | **登录 / Sign in** · **退出登录 / Sign out** · **装上 / Install** (an account card on this Mac) | The tool's own sign-in, in the browser; Ducter never sees the password |
+| adding a device | **连上手机或另一台电脑 / Connect a phone or computer** (opens the one-time code) | Same words as D54's Connect |
+| the menu bar extra | the clay partner in the macOS menu bar; its menu: **等你 · {n} / Needs you · {n}** or **没有要你定的事 / Nothing needs you**, each question with **好：{action} / Go: {action}** · **先等等 / Hold** · **回复… / Reply…**, then **打开 Ducter / Open Ducter** | |
 | a sandboxed place | **no noun**: the property, **碰不到你的文件 / Can't touch your files** | 沙盒 retired (D66, GQ8) |
 | Artifact | **做好的 / Finished**; the list **做好的东西 / Everything finished** | 成果 retired (report-speak) |
 
@@ -87,6 +100,8 @@
 | **Rule** | user, persona, or project | A binding preference |
 | **Intent** | task | A pending external effect |
 | **Result** | task | A file, document, diff/PR, report, or app it produced |
+| **Partner settings** | persona | Its name, how it talks, notifications and quiet hours, the default wait, whether it remembers (D71). On the server; the same on every client |
+| **App settings** | each client | Look, the window's language (D71). On that device only |
 
 **Rule precedence**, most specific wins: task pin > project rule > persona rule > user rule >
 Ducter default. A rule that can't be honored is never skipped silently (principle 14).

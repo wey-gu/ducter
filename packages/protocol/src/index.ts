@@ -188,9 +188,17 @@ export type ClientFrame =
   // (on: true, 装上) or removes (on: false, 取下) an ability on a device; it is answered with
   // ability_result, then a fresh devices frame. "pair_code" mints a one-time pairing code for
   // 远程打开 / Reach from anywhere (D54), answered with a pair_code frame.
-  | { t: "devices" }
+  // refresh: probe the harness sign-ins again now (after signing in or out from the app).
+  | { t: "devices"; refresh?: boolean }
   | { t: "ability"; device: string; ability: AbilityId; on: boolean }
-  | { t: "pair_code" };
+  | { t: "pair_code" }
+  // The partner's and the app's settings (D71): "settings" answers with a settings frame and
+  // keeps the socket subscribed (every change goes to every subscriber). "settings_set" changes
+  // some of them. "memory_forget" forgets one 记下了 / Noted line: in Nowledge Mem when it has the
+  // memory's id and Mem forgets it, otherwise only hidden from this list (the frame says which).
+  | { t: "settings" }
+  | { t: "settings_set"; patch: SettingsPatch }
+  | { t: "memory_forget"; seq: number };
 
 export type ServerFrame =
   // machine: a hash of the machine the main runs on (core/src/machine.ts); a client that computes
@@ -204,6 +212,7 @@ export type ServerFrame =
   | { t: "devices"; devices: DeviceView[]; reach: Reach }
   | { t: "ability_result"; device: string; ability: AbilityId; on: boolean; ok: boolean; reason?: AbilityReason; detail?: string }
   | { t: "pair_code"; code: string; expiresAt: string; address?: string; link?: string; qr?: string[] }
+  | { t: "settings"; settings: Settings; mem: MemView; forgot?: { seq: number; how: "mem" | "hidden" } }
   | { t: "error"; message: string };
 
 export type Delivery = "steered" | "prompted" | "queued";
@@ -264,6 +273,42 @@ export interface Reach {
   address?: string; // the public address, when one is set (DUCTER_PUBLIC_URL or <dataDir>/public-url)
   clients: { id: string; name: string; platform: string; connected: boolean; lastSeen?: string }[];
 }
+
+// ---------- Settings (D71: the Partner page and Settings) ----------
+// Persisted in the data folder: the name in persona.json (shared with the CLI), notifications
+// and quiet hours in push.json (shared with the phone's own endpoints), the rest in
+// settings.json. Interface language and theme are each client's own, not here.
+
+/** How the partner talks: "auto" follows the language of the user's message. */
+export type TalkLanguage = "auto" | "zh" | "en";
+
+export interface QuietHours {
+  start: string; // "23:00", local to tz
+  end: string; // "08:00"
+  tz: string; // IANA zone
+}
+
+export interface Settings {
+  name: string; // the partner's name (default "Ducter")
+  language: TalkLanguage;
+  memory: boolean; // remember things in Nowledge Mem (off: no recall, no saving)
+  notify: boolean; // notifications on (phones and the Mac)
+  quiet: QuietHours | null; // 免打扰 / Quiet hours; null = none
+  defaultAfterMin: number; // how long a reversible decision waits before its default goes ahead
+}
+
+export type SettingsPatch = Partial<Settings>;
+
+/** What the partner remembers, as far as this Ducter can tell. */
+export interface MemView {
+  /** connected: Nowledge Mem answers; missing: not installed or not connected; off: switched off. */
+  state: "connected" | "missing" | "off";
+  /** Recent 记下了 / Noted lines from the conversation, newest first, without forgotten ones. */
+  noted: { seq: number; title: string; at: string; memoryId?: string }[];
+}
+
+/** The choices offered for defaultAfterMin, in minutes. */
+export const DEFAULT_AFTER_CHOICES = [10, 30, 60, 120] as const;
 
 // ---------- Ducter MCP tools (HTTP MCP served by core at /mcp, role-scoped by token) ----------
 // role "partner": task_open, task_send, task_read, log_search, log_read, wait_until, ask, memory_search, memory_add,

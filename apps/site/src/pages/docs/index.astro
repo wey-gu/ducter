@@ -1,0 +1,19 @@
+---
+import { render } from "astro:content";
+import DocsLayout from "../../layouts/DocsLayout.astro";
+import { publishedDocs, docHref } from "../../lib/docs";
+
+const docs = await publishedDocs();
+const home = docs.find((d) => d.id === "readme") ?? null;
+const rendered = home ? await render(home) : null;
+const Content = rendered?.Content;
+const rest = docs.filter((d) => d.id !== "readme");
+---
+<DocsLayout doc={home} docs={docs}>
+  {Content ? <Content /> : (
+    <div>
+      <p>The guides are being written. Until they land, the <a href="/#install">install steps</a> are on the home page.</p>
+      {rest.length > 0 && <ul>{rest.map((d) => <li><a href={docHref(d)}>{d.data.title}</a></li>)}</ul>}
+    </div>
+  )}
+</DocsLayout>

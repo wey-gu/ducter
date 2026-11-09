@@ -9,7 +9,8 @@
 //     forward (cua-driver set_window_frame, then get_window_state --screenshot-out-file);
 //   - the phone: the iOS Simulator with the pairing command printed below, then
 //     -open 'app#d=<decision id>' for the decision sheet, captured with xcrun simctl io screenshot;
-//   - python3 scripts/readme-shots/compose.py <captures> docs/images
+//   - python3 scripts/readme-shots/compose.py ~/dev/ducter-evidence/readme/raw ~/dev/ducter-evidence/readme,
+//     then copy the WebPs the README shows into .github/readme (D75: nothing else is committed)
 // Set DEMO_WORKTREE_AS="~/.ducter/worktrees/t_flaky" (with the fixture created at that path under
 // the desktop app's working folder) so the opened task shows a real-looking path.
 import { mkdirSync, writeFileSync } from "node:fs";

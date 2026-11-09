@@ -570,7 +570,7 @@ func (a *App) cliOfferLine(c *ui.Context) {
 		o.shown = true
 	}
 	t := a.T
-	glyph := func() { a.glyphTile(c, 28, t.Surface, drawPrompt(t.InkSoft)) }
+	glyph := func() { a.glyph(c, 24, drawPrompt(t.InkSoft)) }
 	a.aboveComposer(c, func() {
 		switch o.result {
 		case "":

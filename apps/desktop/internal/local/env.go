@@ -44,12 +44,16 @@ func FindBundle(exe string) (Bundle, bool) {
 // DevEnvPath is a developer's override for the app's environment:
 // ~/Library/Application Support/Ducter/dev.env, KEY=VALUE per line. It
 // lets a test run the real app against a scratch data folder and port.
-func DevEnvPath() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
+func DevEnvPath() string { return DevEnvPathFor(DefaultBundleID) }
+
+// DevEnvPathFor is the override of one build: a scratch copy built with its
+// own bundle id reads its own file (SupportDir), never the real app's.
+func DevEnvPathFor(bundleID string) string {
+	d := SupportDir(bundleID)
+	if d == "" {
 		return ""
 	}
-	return filepath.Join(home, "Library", "Application Support", "Ducter", "dev.env")
+	return filepath.Join(d, "dev.env")
 }
 
 // LoadDevEnv sets the DUCTER_* variables the file names (others are

@@ -39,7 +39,7 @@ var (
 // least px pixels (160 or 400), or nil if it is missing.
 func Art(p Presence, px float32) *ui.Bitmap {
 	size := 160
-	if px > 160 && (p == Idle || p == Napping || p == Done) {
+	if px > 160 {
 		size = 400
 	}
 	return load(fmt.Sprintf("art/ducter_%s@%d.png", p, size))

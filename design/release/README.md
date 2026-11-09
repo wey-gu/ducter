@@ -55,6 +55,50 @@ After this, every release is: bump the version, commit, `git tag vX.Y.Z`, push t
 Only Apple silicon gets a DMG for now. An Intel build would add a `macos-15-intel` job running
 the same steps.
 
+## How the app updates itself (D72)
+
+`apps/desktop/internal/update`, a small Go updater (not Sparkle; why in D72). Nothing extra is
+published for it: it reads this repo's newest published release through
+`https://api.github.com/repos/wey-gu/ducter/releases/latest`, unauthenticated, and needs exactly
+two assets, `Ducter-<version>-arm64.dmg` and `SHA256SUMS.txt` listing it. The `release` job checks
+that the sums list the DMG. Drafts and pre-releases are never offered. While the repo is private
+the API answers 404 to an anonymous caller, and the app treats that as "no releases yet": silent.
+
+| Step | What is checked |
+|---|---|
+| Feed | Tag `vX` parses as a version and is newer than the running `CFBundleShortVersionString`; a version once rolled back from is skipped |
+| Download | Into `~/Library/Application Support/Ducter/updates/<v>/`, size as listed, SHA-256 as in `SHA256SUMS.txt`; the DMG is deleted once the app is out |
+| Copy | `hdiutil attach -nobrowse -readonly`, `ditto` to `.Ducter.app.update-<v>` next to the running app (same volume, so the swap is a rename) |
+| The copy | Same bundle id; version equals the tag; `codesign --verify --deep --strict`; the requirement `anchor apple generic` + Developer ID CA + Developer ID Application leaf + `subject.OU` = the running app's own team, on the app and on `Contents/Helpers/ducter`; `spctl --assess --type execute` |
+| Swap | At the next quit (default; off in Settings) or Restart Now: the copy is checked again, then a detached `sh` waits for the app to exit, moves the running app to `updates/previous/`, moves the copy in (or puts the old one back), `launchctl kickstart -k` the background LaunchAgent when it is installed, and reopens the app on Restart Now |
+
+The app is never replaced while it runs (the Dock tile would follow the moved bundle). A copy on
+the disk image, a translocated copy, or an ad-hoc signed build only says "Version X is out ·
+Download" (opens the release page). `RollBackOnQuit` puts `updates/previous/` back; there is no
+UI for it yet.
+
+### Testing an update locally
+
+Two signed builds with a scratch bundle id (its own LaunchAgent label, dev.env and updates folder;
+the real app is never touched) and a feed served from this Mac. Notarization isn't needed:
+
+```sh
+S=$(mktemp -d)
+for v in 0.0.1 0.0.2; do DUCTER_BUNDLE_ID=co.nowledge.ducter.scratch DUCTER_VERSION=$v scripts/make-app.sh $S/$v; done
+# feed: $S/feed/repos/wey-gu/ducter/releases/latest (GitHub's JSON shape) and $S/feed/dl/{dmg,SHA256SUMS.txt}
+python3 -m http.server 8799 --bind 127.0.0.1 --directory $S/feed &
+# ~/Library/Application Support/co.nowledge.ducter.scratch/dev.env:
+#   DUCTER_DATA_DIR=$S/data  DUCTER_PORT=7798
+#   DUCTER_UPDATE_FEED=http://127.0.0.1:8799/repos/wey-gu/ducter/releases/latest
+#   DUCTER_UPDATE_SKIP_GATEKEEPER=1   (signed, not notarized; the team check still runs)
+ditto $S/0.0.1/Ducter.app $S/Apps/Ducter.app && $S/Apps/Ducter.app/Contents/MacOS/Ducter
+```
+
+Afterwards: `DUCTER_AGENT_LABEL=co.nowledge.ducter.scratch.agent <helper> uninstall`, and remove
+the scratch Application Support folder. Done on 2026-11-09: 0.0.1 → 0.0.2 by Restart Now and
+0.0.2 → 0.0.3 by a plain quit; both swapped, kept the previous version, restarted the scratch
+agent on the new helper, and a bad checksum was refused with its message.
+
 ## Secrets
 
 `scripts/ci/setup-github-secrets.sh` sets all of these. The names are con's, so one Apple setup

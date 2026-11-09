@@ -133,10 +133,21 @@ browser, connects, and asks whether to notify you when something needs you.
 Everything about the phone, including notifications and quiet hours, is on
 [Your phone](phone.md). An iPhone app is coming soon.
 
+## Updates
+
+The Mac app looks for a new version when it opens and once a day, and gets it ready in the
+background. When one is ready, the Ducter menu says **Update 0.2.0 ready · restart to finish**.
+It installs the next time you quit Ducter, or right away if you click that line. Your tasks
+carry on.
+
 ## Remove Ducter
 
 - **Mac app:** choose **Stop Ducter** in the menu, then drag Ducter from Applications to the
   Trash.
 - **Server:** `ducter service uninstall`.
-- **Your data** (your conversation, tasks and settings) lives in `~/.ducter`. Delete that folder
-  only if you want to start over completely: it cannot be undone.
+- **Everything, in one go:** `ducter uninstall --all`. It first lists exactly what it removes
+  (Ducter in the background, `~/.ducter` with your conversation and tasks, its browser profiles,
+  the `ducter` command it put in `~/.local/bin`) and what it keeps (your repos and their
+  `ducter/*` branches, your Claude Code and Codex sign-ins, Nowledge Mem, cua-driver), and
+  asks you to type `remove`. A task's changes that were never committed are named before
+  anything goes. It cannot be undone. Without `--all` it only stops Ducter in the background.

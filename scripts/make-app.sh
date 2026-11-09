@@ -27,6 +27,10 @@
 #   Contents/Helpers/ducter        the ducter CLI (packages/cli), which the app runs as
 #                                  `ducter up --no-desktop` (a LaunchAgent; see design/build-and-run.md "The app")
 #   Contents/Resources/AppIcon.icns
+#
+# For a local updater test only (design/release/README.md, "Testing an update"):
+#   DUCTER_BUNDLE_ID   another bundle id (its LaunchAgent, dev.env and updates are its own)
+#   DUCTER_VERSION     the app's version instead of packages/cli/package.json's
 set -eu
 
 [ "$(uname)" = Darwin ] || { echo "make-app.sh builds a macOS app; run it on a Mac." >&2; exit 1; }
@@ -37,8 +41,8 @@ OUT="$(cd "$OUT" && pwd)"
 
 NAME=Ducter
 # Reverse DNS of nowledge.co, like co.nowledge.con and co.nowledge.mem.desktop.
-ID=co.nowledge.ducter
-VERSION="$(sed -n 's/^ *"version": *"\([^"]*\)".*/\1/p' "$ROOT/packages/cli/package.json" | head -1)"
+ID="${DUCTER_BUNDLE_ID:-co.nowledge.ducter}"
+VERSION="${DUCTER_VERSION:-$(sed -n 's/^ *"version": *"\([^"]*\)".*/\1/p' "$ROOT/packages/cli/package.json" | head -1)}"
 COMMIT="$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)"
 ARCH="$(uname -m)"
 MIN_MACOS=12.0
@@ -56,7 +60,7 @@ sh "$ROOT/packages/cli/build.sh" "$WORK/cli/ducter"
 say "2/5 the desktop app"
 command -v go >/dev/null 2>&1 || { echo "Go is needed: brew install go" >&2; exit 1; }
 (cd "$ROOT/apps/desktop" && go build -trimpath \
-  -ldflags "-s -w -X github.com/egoist/mygo.production=1" \
+  -ldflags "-s -w -X github.com/egoist/mygo.production=1 -X main.version=$VERSION -X main.commit=$COMMIT" \
   -o "$WORK/app/$NAME" .)
 
 say "3/5 the icon"

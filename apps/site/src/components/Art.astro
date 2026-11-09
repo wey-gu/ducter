@@ -1,0 +1,34 @@
+---
+// A pre-rendered clay asset (or screenshot) as AVIF/WebP with intrinsic size, so the browser
+// reserves its box before it loads.
+import manifest from "../art.json";
+
+interface Props {
+  name: keyof typeof manifest;
+  alt: string;
+  sizes: string;
+  class?: string;
+  id?: string;
+  eager?: boolean;
+  [key: `data-${string}`]: string | undefined;
+}
+const { name, alt, sizes, class: cls, id, eager = false, ...rest } = Astro.props;
+const a = manifest[name];
+const set = (ext: string) => a.widths.map((w) => `/art/${name}-${w}.${ext} ${w}w`).join(", ");
+const fallback = `/art/${name}-${a.widths[a.widths.length - 1]}.webp`;
+---
+<picture class={cls} id={id} {...rest}>
+  <source type="image/avif" srcset={set("avif")} sizes={sizes} />
+  <img
+    src={fallback}
+    srcset={set("webp")}
+    sizes={sizes}
+    width={a.w}
+    height={a.h}
+    alt={alt}
+    loading={eager ? "eager" : "lazy"}
+    decoding="async"
+    fetchpriority={eager ? "high" : undefined}
+    draggable="false"
+  />
+</picture>

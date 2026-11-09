@@ -19,7 +19,7 @@ import (
 )
 
 // The live test drives the app against a real Ducter main process and
-// takes screenshots of each view into apps/desktop/docs/live-*.png:
+// takes screenshots of each view into .shots/desktop/live-*.png:
 //
 //	DUCTER_LIVE_URL=ws://127.0.0.1:7782/ws \
 //	DUCTER_LIVE_SEND="Fix the failing tests in ~/scratch/demo, ask before committing" \

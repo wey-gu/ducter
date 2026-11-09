@@ -114,6 +114,7 @@ export interface Quiet {
 export interface PushSettings {
   quiet: Quiet | null;
   done: boolean; // also push when a task is done (off by default: done is level 2)
+  off?: boolean; // notifications switched off on the Partner page (D71): nothing is pushed
 }
 
 interface PushFile {
@@ -455,6 +456,7 @@ export function createPusher(opts: {
     });
 
   const deliver = async (list: Item[], morning = false) => {
+    if (opts.store.settings().off) return; // the user switched notifications off (D71)
     const subs = liveSubs();
     if (!subs.length || !list.length) return;
     const v = await opts.store.vapid();

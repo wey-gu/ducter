@@ -161,7 +161,7 @@ function fakeRunner(core: Core, harness: HarnessPort, cur: { step: number }) {
 }
 
 // ---------- one scenario ----------
-interface Visible { seq: number; kind: "ack" | "ai_msg" | "decision" | "waiter" | "living_msg"; text: string; step: number }
+interface Visible { seq: number; kind: "ack" | "ai_msg" | "decision" | "waiter" | "living_msg"; text: string; step: number; relays?: string }
 interface ToolCall { name: string; input: unknown; step: number }
 interface RunResult {
   sc: Scenario;
@@ -339,7 +339,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   };
   const visible: Visible[] = [];
   for (const e of core.log.read({ stream: "channel", fromSeq: startSeq + 1, limit: 10_000 })) {
-    if (e.origin === "partner" && PARTNER_KINDS.has(e.kind)) visible.push({ seq: e.seq, kind: e.kind as Visible["kind"], text: visibleText(e), step: stepOf(e.seq) });
+    if (e.origin === "partner" && PARTNER_KINDS.has(e.kind)) visible.push({ seq: e.seq, kind: e.kind as Visible["kind"], text: visibleText(e), step: stepOf(e.seq), relays: (e.body as { decisionId?: string }).decisionId });
     else if (e.kind === "waiter" && (e.body as Bodies["waiter"]).state === "armed") visible.push({ seq: e.seq, kind: "waiter", text: visibleText(e), step: stepOf(e.seq) });
   }
   const work = {
@@ -505,7 +505,11 @@ function check(r: RunResult): string[] {
     const n = r.visible.filter((v) => v.kind === "ai_msg" && v.step === lastStep).length;
     if (n < e.msgs[0] || n > e.msgs[1]) fails.push(`messages ×${n} (want ${e.msgs[0] === e.msgs[1] ? e.msgs[0] : `${e.msgs[0]}-${e.msgs[1]}`})`);
   }
-  if (e.ask && !r.visible.some((v) => v.kind === "decision")) fails.push("no ask (decision)");
+  for (const v of r.visible.filter((x) => x.kind === "decision"))
+    if (e.questionMax && [...v.text].length > e.questionMax) fails.push(`question too long (${[...v.text].length} > ${e.questionMax} chars)`);
+  // D129: a task's question reaches the user as the partner's words, tied to its decision.
+  if (e.relayed && !r.visible.some((v) => v.kind === "ai_msg" && v.relays)) fails.push("the task's question was not said in the partner's words");
+  if (e.ask &&!r.visible.some((v) => v.kind === "decision")) fails.push("no ask (decision)");
   // D67 (2): a choice about how to do the work is reversible, defaults to Go and carries a time.
   if (e.askReversible && !r.work?.asks?.some((a) => a.reversible && a.go && a.timed)) fails.push("ask not reversible with a timed Go default");
   if (e.waiter && !r.visible.some((v) => v.kind === "waiter")) fails.push("no reminder set");
@@ -681,7 +685,8 @@ async function main() {
   const dir = resolve(import.meta.dir, "results");
   mkdirSync(dir, { recursive: true });
   const file = join(dir, `${date}-${HARNESS === "claude-code" ? "" : `${HARNESS}-`}${MODEL.replace(/[^A-Za-z0-9.-]+/g, "_")}${LABEL ? `-${LABEL}` : ""}.md`);
-  writeFileSync(file, md.join("\n"));
+  // Scrubbed: the home folder and scratch folders never reach a committed results file.
+  writeFileSync(file, md.join("\n").split(HOME).join("~").replace(/\/(private\/)?(var\/folders|tmp)\/[^\s"'`)]+/g, "<scratch>"));
   console.log(`\n${passed}/${rows.length} pass · partner ≈$${partnerCost.toFixed(2)} (in ${tot.inputTokens} / out ${tot.outputTokens} / cache r ${tot.cacheRead} w ${tot.cacheWrite}) · judge $${judgeCost.toFixed(3)}\n→ ${file}`);
   for (const [c, [a, b]] of cats) console.log(`  ${c.padEnd(12)} ${a}/${b}`);
   process.exit(0);

@@ -57,9 +57,12 @@ type Tokens struct {
 	Bg, Surface, SurfaceRaised, SurfaceSunken, Ink, InkMuted, InkSoft ui.Color
 	// BgDeep is the devices stage; Sunken the lighter sunken tint (diff
 	// hunks, inline code); Faint separators in words (a crumb's slash).
-	BgDeep, Sunken, Faint                   ui.Color
-	Accent, OnAccent                        ui.Color
+	BgDeep, Sunken, Faint ui.Color
+	Accent, OnAccent      ui.Color
+	// The two voices of the conversation (D129): the user's bubble in the
+	// accent, the partner's in a soft surface on the paper.
 	UserBubble, OnUserBubble                ui.Color
+	PartnerBubble, OnPartnerBubble          ui.Color
 	Line, LineSoft, Highlight, HighlightInk ui.Color
 	// Line2 is the secondary button's ledge and the chosen choice's base.
 	Line2 ui.Color
@@ -91,8 +94,8 @@ type Tokens struct {
 	// Chinese).
 	Display, Body, Mono     string
 	XS, SM, MD, LG, XL, XXL float32 // 12, 13, 15, 18, 20, 28
-	Bubble                  float32 // the user's bubble and the composer, 16
-	PartnerSize             float32 // bubble-less partner voice, 18
+	Bubble                  float32 // the conversation's one body size, both bubbles and the composer, 16
+	PartnerSize             float32 // the partner's words, the same 16 (D129)
 	Title                   float32 // screen titles and a task's outcome, 34
 	Hero                    float32 // hero numbers, 56
 	MonoSM                  float32 // code in cards and transcripts, 13
@@ -118,8 +121,13 @@ type Tokens struct {
 	// row (a check, a clock).
 	IconSM, IconTile float32
 	// BubbleRadius is the user bubble's corners: top-left, top-right,
-	// bottom-right, bottom-left.
+	// bottom-right, bottom-left. The partner's bubble mirrors it; a bubble
+	// that follows one of the same voice takes BubbleJoin on its tail side's
+	// top corner, so a run of messages stacks (D129).
 	BubbleRadius [4]float32
+	BubbleJoin   float32
+	// BubbleMeasure is a bubble's widest, about 38em of the body size.
+	BubbleMeasure float32
 	// PebbleRadius is a task pebble's slightly irregular corners.
 	PebbleRadius [4]float32
 
@@ -182,18 +190,22 @@ func Pebble() *Tokens {
 		InkSoft:       hex("#4A3D30"),
 		Accent:        hex("#FF8A3D"),
 		OnAccent:      hex("#2B2118"),
-		UserBubble:    hex("#2B2118"), // cocoa (v2 refinement)
-		OnUserBubble:  hex("#FFF6EA"),
-		Line:          hex("#E8D9C4"),
-		LineSoft:      hex("#F3E6D3"),
-		Chrome:        hex("#FFFAF3"),
-		ChromeLine:    hex("#EEDFCA"),
-		Highlight:     hex("#FFE9A8"),
-		HighlightInk:  hex("#6B5000"),
-		Added:         hex("#DDF3E2"),
-		AddedInk:      hex("#1C5530"),
-		Deleted:       hex("#FCE3DF"),
-		DeletedInk:    hex("#7A1E14"),
+		// The user in the accent with ink (6.9:1), the partner in white on the
+		// paper (D129; cocoa before).
+		UserBubble:      hex("#FF8A3D"),
+		OnUserBubble:    hex("#2B2118"),
+		PartnerBubble:   hex("#FFFFFF"),
+		OnPartnerBubble: hex("#2B2118"),
+		Line:            hex("#E8D9C4"),
+		LineSoft:        hex("#F3E6D3"),
+		Chrome:          hex("#FFFAF3"),
+		ChromeLine:      hex("#EEDFCA"),
+		Highlight:       hex("#FFE9A8"),
+		HighlightInk:    hex("#6B5000"),
+		Added:           hex("#DDF3E2"),
+		AddedInk:        hex("#1C5530"),
+		Deleted:         hex("#FCE3DF"),
+		DeletedInk:      hex("#7A1E14"),
 
 		NeedsYou: StateColors{Dot: hex("#FF8A3D"), Surface: hex("#FFE3CF"), Ink: hex("#8A3A0C"), Strong: hex("#E06A1F"), Ledge: hex("#F0C29E")},
 		Working:  StateColors{Dot: hex("#4BA8F0"), Surface: hex("#DCEFFF"), Ink: hex("#174A75"), Strong: hex("#2F86C8"), Ledge: hex("#B9DBF5")},
@@ -218,7 +230,7 @@ func Pebble() *Tokens {
 		Mono:    "JetBrains Mono, SF Mono, Menlo, monospace",
 		XS:      12, SM: 13, MD: 15, LG: 18, XL: 20, XXL: 28,
 		Bubble:      16,
-		PartnerSize: 18,
+		PartnerSize: 16,
 		Title:       34,
 		Hero:        56,
 		MonoSM:      13,
@@ -229,7 +241,8 @@ func Pebble() *Tokens {
 		ControlSM: 36, ControlMD: 44, ControlLG: 52, ChipSM: 24, Chip: 28, ChipLG: 32,
 		ButtonRadius: [3]float32{12, 14, 18},
 		IconSM:       16, IconTile: 28,
-		BubbleRadius: [4]float32{22, 22, 8, 22},
+		BubbleRadius: [4]float32{20, 20, 6, 20},
+		BubbleJoin:   6, BubbleMeasure: 38 * 16,
 		PebbleRadius: [4]float32{6, 7, 5, 6},
 
 		// Ink: "brown seam" (a #000 ledge under #2B2118 disappeared).

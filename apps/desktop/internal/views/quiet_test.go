@@ -64,6 +64,7 @@ func TestPresenceEndsWithSilentTurn(t *testing.T) {
 // carries the buttons, the rest gather in one line; a failure is one
 // sentence; work under way is not listed.
 func TestLivingQuiet(t *testing.T) {
+	noRelayWait(t)
 	app, _ := iaApp(t, i18n.EN)
 	soon := time.Now().Add(10 * time.Minute).UTC().Format(time.RFC3339)
 	later := time.Now().Add(30 * time.Minute).UTC().Format(time.RFC3339)

@@ -52,6 +52,9 @@ type DecisionState struct {
 	// AskedAt is when the decision was asked, when known (the event's
 	// time, or the card's pendingDecision.askedAt).
 	AskedAt string
+	// Said is a task's question in the partner's own words (D129), once
+	// the partner has said it; the task's wording stays in Question.
+	Said string
 }
 
 // Send is text the user sent straight into a task, and how it was
@@ -615,6 +618,18 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 	case *protocol.UserMsg:
 		s.add(&Entry{Event: ev, User: b})
 	case *protocol.AIMsg:
+		// A task's question in the partner's words (D129) is that question's
+		// words, not a message of its own.
+		if b.DecisionID != "" {
+			d := s.Decisions[b.DecisionID]
+			if d == nil {
+				d = &DecisionState{Decision: protocol.Decision{DecisionID: b.DecisionID}}
+				s.Decisions[b.DecisionID] = d
+			}
+			d.Said = b.Text
+			s.bySeq[ev.Seq] = nil
+			return
+		}
 		s.add(&Entry{Event: ev, AI: b})
 	case *protocol.Ack:
 		j := s.job(b.JobID)

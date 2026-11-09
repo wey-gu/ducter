@@ -222,7 +222,8 @@ function defaultInfo(d: DecisionState, now: number): { line: string; frac?: numb
   if (d.defaultOption !== "go" || Number.isNaN(at)) return { line: t("decision.default.hold") };
   const left = at - now;
   if (left <= 0) return { line: t("decision.default.due"), frac: 0 };
-  let label = d.goLabel || t("decision.go");
+  if (!d.goLabel) return { line: t("decision.default.goon", duration(A.L, left)) };
+  let label = d.goLabel;
   if (A.L.lang === "zh" && label.charCodeAt(0) < 0x80) label = " " + label;
   const asked = d.askedAt ? Date.parse(d.askedAt) : NaN;
   const frac = Number.isNaN(asked) || at <= asked ? undefined : Math.max(0, Math.min(1, left / (at - asked)));
@@ -262,10 +263,17 @@ function useTick(ms: number) {
   }, [ms]);
 }
 
+/** How an ask was answered, in the user's own words (D129): "你说：好，rebase" / "You said: Rebase". */
+function answeredWords(d: DecisionState): string {
+  const opt = d.resolved?.option ?? (d.pending || "go");
+  if (d.resolved?.by === "default") return t("decision.resolved.default");
+  if (opt === "reply") return t("decision.resolved.reply", d.resolved?.text ?? "");
+  if (opt === "hold") return t("decision.resolved.hold");
+  return t("decision.resolved.go", goLabel(d));
+}
+
 function Resolved({ d }: { d: DecisionState }) {
-  const opt = d.resolved?.option ?? d.pending ?? "go";
-  let msg = opt === "reply" ? t("decision.resolved.reply", d.resolved?.text ?? "") : t(`decision.resolved.${opt}`);
-  if (d.resolved?.by === "default") msg = t("decision.resolved.default");
+  const msg = answeredWords(d);
   return (
     <div class="resolved" role="status">
       <span class="tick">
@@ -624,14 +632,14 @@ function Quiet({ k, tasks, detail, noted = [] }: { k: string; tasks: Task[]; det
   );
 }
 
-function JobRow({ e, chipOwner, noted }: { e: Entry; chipOwner: Map<string, number>; noted: { seq: number; title: string }[] }) {
+function JobRow({ e, chipOwner, noted, join }: { e: Entry; chipOwner: Map<string, number>; noted: { seq: number; title: string }[]; join?: boolean }) {
   const j = e.job!;
   const st = j.status;
   const task = st?.taskId ? A.S.tasks.get(st.taskId) : undefined;
   const own = task && title(task) && chipOwner.get(task.id) === e.firstSeq;
   return (
-    <div class="partner">
-      {j.ack && <div>{j.ack.text}</div>}
+    <div class={`partner${join ? " join" : ""}`}>
+      {j.ack && <div class="bubble">{j.ack.text}</div>}
       {st && !(task && title(task)) && <div class={`status-line${st.state === "failed" ? " failed" : ""}`}>{st.text}</div>}
       <Quiet k={`m${e.firstSeq}`} tasks={own ? [task!] : []} detail={st?.text} noted={noted} />
     </div>
@@ -667,7 +675,7 @@ function News({ it, k, owns }: { it: LivingItem; k: string; owns: boolean }) {
   const text = it.title ? t(it.kind === "failed" ? "living.failed" : "living.done", it.title, it.text) : it.text;
   return (
     <div class="partner">
-      <div>{text}</div>
+      <div class="bubble">{text}</div>
       {task ? (
         <Quiet k={k} tasks={owns ? [task] : []} />
       ) : (
@@ -710,13 +718,31 @@ function Ask({ d, taskId, buttons = true }: { d: DecisionState; taskId?: string;
   const k = `d${d.decisionId}`;
   const about = task && title(task) ? title(task) : d.question.slice(0, 40);
   const draft = A.replyDraft.get(d.decisionId) ?? "";
+  const wait = open ? relayDueIn(d) : 0;
+  useEffect(() => {
+    if (wait <= 0) return;
+    const h = setTimeout(() => A.changed(), wait + 50);
+    return () => clearTimeout(h);
+  }, [wait > 0]);
+  // The partner is putting a task's question into its own words (D129): its waiting presence
+  // holds the place; the task's own wording never shows in the conversation first.
+  if (wait > 0) return <Presence line={t("activity.relay")} />;
   return (
     <div ref={ref} class={`partner askq${flash ? " flash" : ""}`} id={`d-${d.decisionId}`}>
-      <div>{d.question}</div>
+      <div class="bubble">{d.said || d.question}</div>
       {/* A routine's proposal card (D29, D114): what it would do, before one Go. */}
       {d.routineId && open && <RoutineFacts routineId={d.routineId} />}
       {open ? (
         <>
+          {/* One compact tray (D129): Reply… · Hold as quiet text, Go last, named by the action. */}
+          {buttons && (
+            <div class="tray">
+              <Btn kind="text" size="sm" label={t("decision.reply")} about={about} onClick={() => (A.replyOpen.has(d.decisionId) ? A.replyOpen.delete(d.decisionId) : A.replyOpen.add(d.decisionId), A.changed())} />
+              <Btn kind="text" size="sm" label={t("decision.hold")} about={about} onClick={() => A.decide(d.decisionId, "hold")} />
+              <span class="grow" />
+              <Btn kind="primary" size="sm" label={goLabel(d)} about={about} onClick={() => A.decide(d.decisionId, "go")} />
+            </div>
+          )}
           <div class="dflt">
             <span>{defaultInfo(d, Date.now()).line}</span>
             {task && title(task) && <DetailsToggle k={k} about={about} />}
@@ -724,13 +750,7 @@ function Ask({ d, taskId, buttons = true }: { d: DecisionState; taskId?: string;
           {task && A.detailsOpen(k) && (
             <div class="det">
               <TaskLine task={task} />
-            </div>
-          )}
-          {buttons && (
-            <div class="ans">
-              <Btn kind="text" size="sm" label={t("decision.reply")} about={about} onClick={() => (A.replyOpen.has(d.decisionId) ? A.replyOpen.delete(d.decisionId) : A.replyOpen.add(d.decisionId), A.changed())} />
-              <Btn kind="secondary" size="sm" label={t("decision.hold")} about={about} onClick={() => A.decide(d.decisionId, "hold")} />
-              <Btn kind="primary" size="sm" label={goLabel(d)} about={about} onClick={() => A.decide(d.decisionId, "go")} />
+              {d.said && d.question && <div class="its">{t("decision.its_words", d.question)}</div>}
             </div>
           )}
           {A.replyOpen.has(d.decisionId) && (
@@ -758,10 +778,21 @@ function Ask({ d, taskId, buttons = true }: { d: DecisionState; taskId?: string;
           )}
         </>
       ) : (
-        <Resolved d={d} />
+        // Answered: one tiny line on the user's side, in their own words.
+        <div class="said" role="status">
+          {answeredWords(d)}
+        </div>
       )}
     </div>
   );
+}
+
+/** How long a task's question waits for the partner's own words before its own wording stands in. */
+const RELAY_MS = 60_000;
+function relayDueIn(d: DecisionState): number {
+  if (!d.taskId || d.said || A.status === "offline" || !d.askedAt) return 0;
+  const at = Date.parse(d.askedAt);
+  return Number.isNaN(at) ? 0 : Math.max(0, at + RELAY_MS - Date.now());
 }
 
 /** The living message without its card (D104): a small divider when the person was away, what
@@ -823,19 +854,43 @@ const clockOf = (iso: string) => {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 };
 
-function EntryView({ e, chipOwner, livingItems }: { e: Entry; chipOwner: Map<string, number>; livingItems: (e: Entry) => LivingItem[] }) {
-  if (e.user) return <div class="user">{e.user.text}</div>;
+function replyTasks(e: Entry, chipOwner: Map<string, number>): Task[] {
+  const ids = e.ai?.replyTo ? A.S.tasksOfReply(e.ai.replyTo).filter((id) => chipOwner.get(id) === e.firstSeq) : [];
+  return ids.map((id) => A.S.tasks.get(id)).filter((x): x is Task => !!x);
+}
+
+/** A row ends on a bubble with nothing under it, so the next one of the same voice may stack on
+ *  it (D129). */
+function bare(e: Entry, chipOwner: Map<string, number>): boolean {
+  if (e.user) return true;
+  if (e.ai) return !replyTasks(e, chipOwner).length && !A.notedFor(e).length;
+  if (e.job) {
+    const st = e.job.status;
+    if (!e.job.ack || A.notedFor(e).length) return false;
+    if (!st) return true;
+    const task = st.taskId ? A.S.tasks.get(st.taskId) : undefined;
+    return !!task && !!title(task) && chipOwner.get(task.id) !== e.firstSeq;
+  }
+  return false;
+}
+
+/** Whether e's first bubble stacks on prev's last one: the same voice, prev bare, no time line. */
+function stacks(prev: Entry | undefined, e: Entry, chipOwner: Map<string, number>): boolean {
+  if (!prev || !!prev.user !== !!e.user || !bare(prev, chipOwner)) return false;
+  return !!e.user || !!e.ai || !!e.job?.ack;
+}
+
+function EntryView({ e, chipOwner, livingItems, join }: { e: Entry; chipOwner: Map<string, number>; livingItems: (e: Entry) => LivingItem[]; join?: boolean }) {
+  if (e.user) return <div class={`user${join ? " join" : ""}`}>{e.user.text}</div>;
   if (e.ai) {
-    const ids = e.ai.replyTo ? A.S.tasksOfReply(e.ai.replyTo).filter((id) => chipOwner.get(id) === e.firstSeq) : [];
-    const tasks = ids.map((id) => A.S.tasks.get(id)).filter((x): x is Task => !!x);
     return (
-      <div class="partner">
-        <div dangerouslySetInnerHTML={{ __html: markdown(e.ai.text) }} />
-        <Quiet k={`m${e.firstSeq}`} tasks={tasks} noted={A.notedFor(e)} />
+      <div class={`partner${join ? " join" : ""}`}>
+        <div class="bubble" dangerouslySetInnerHTML={{ __html: markdown(e.ai.text) }} />
+        <Quiet k={`m${e.firstSeq}`} tasks={replyTasks(e, chipOwner)} noted={A.notedFor(e)} />
       </div>
     );
   }
-  if (e.job) return <JobRow e={e} chipOwner={chipOwner} noted={A.notedFor(e)} />;
+  if (e.job) return <JobRow e={e} chipOwner={chipOwner} noted={A.notedFor(e)} join={join} />;
   if (e.living) return <Living e={e} items={livingItems(e)} chipOwner={chipOwner} />;
   if (e.decision) {
     const d = A.S.decisions.get(e.decision.decisionId);
@@ -1047,14 +1102,17 @@ export function Conversation() {
       >
         <div class="spacer" />
         {empty && <Hello />}
-        {rows.map((e, i) => (
-          <Fragment key={e.firstSeq}>
-            {timeGap(rows[i - 1], e) && !(e.living && A.livingAway.get(e.firstSeq)) && <div class="when">{when(A.L, e.ev.ts)}</div>}
-            <EntryView e={e} chipOwner={chipOwner} livingItems={livingItems} />
-          </Fragment>
-        ))}
-        {A.pending.map((p) => (
-          <div key={p.clientId} class="user pending">
+        {rows.map((e, i) => {
+          const gap = timeGap(rows[i - 1], e);
+          return (
+            <Fragment key={e.firstSeq}>
+              {gap && !(e.living && A.livingAway.get(e.firstSeq)) && <div class="when">{when(A.L, e.ev.ts)}</div>}
+              <EntryView e={e} chipOwner={chipOwner} livingItems={livingItems} join={!gap && stacks(rows[i - 1], e, chipOwner)} />
+            </Fragment>
+          );
+        })}
+        {A.pending.map((p, i) => (
+          <div key={p.clientId} class={`user pending${i > 0 || rows.at(-1)?.user ? " join" : ""}`}>
             {p.text}
           </div>
         ))}

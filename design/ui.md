@@ -13,9 +13,9 @@ shadow, so adding or switching a theme is pure data. The same tokens drive MyGo 
 
 | Group | Tokens |
 |---|---|
-| color | `bg`, `surface`, `surface-raised`, `ink`, `ink-muted`, `accent`, `on-accent`, `decide` (needs-you), `decide-surface`, `ok`, `ok-surface`, `progress`, `progress-surface`, `user-bubble`, `on-user-bubble`, `line` |
+| color | `bg`, `surface`, `surface-raised`, `ink`, `ink-muted`, `accent`, `on-accent`, `decide` (needs-you), `decide-surface`, `ok`, `ok-surface`, `progress`, `progress-surface`, `user-bubble`, `on-user-bubble`, `partner-bubble`, `on-partner-bubble`, `line` |
 | type | `display` family + weight, `body` family, `mono` family, CJK fallbacks; scale `xs…xl` |
-| shape | `radius-sm/md/lg/pill`, `bubble-shape` (asymmetric corners), avatar shape |
+| shape | `radius-sm/md/lg/pill`, `bubble-shape` (asymmetric corners), `bubble-join`, `bubble-measure`, avatar shape |
 | depth | `shadow-style`: `press` (Pebble: solid offset under), `offset` (Volt: hard drop), `hairline` (Paper/Signal), `glow` (Midnight); plus values |
 | motion | `personality`: `bouncy` (Pebble), `snappy` (Volt), `calm` (Paper/Midnight), `stepped` (Signal); durations and easing |
 | density | `comfortable` (default) / `compact` |
@@ -29,7 +29,7 @@ shadow, so adding or switching a theme is pure data. The same tokens drive MyGo 
 - color: bg `#FFF6EA`, bg-deep `#FCECD7`, surface `#FFFFFF`, sunken `#F7EBDA`, ink `#2B2118`,
   ink-2 `#4A3D30`, muted `#75654F`, line `#E8D9C4`, line-2 `#E0C9B0`, accent `#FF8A3D` (ledge
   `#C9642A`), decide-surface `#FFE3CF` / ink `#8A3A0C` / ledge `#F0C29E`, ok `#D6F5DC` / `#1F5E2F`,
-  fail `#FBDDE4` / `#8A1F3B`, user-bubble `#2B2118` on cream
+  fail `#FBDDE4` / `#8A1F3B`, user-bubble `#FF8A3D` with ink, partner-bubble `#FFFFFF` (D129)
 - type: Bricolage Grotesque (400/700/800) everywhere in the apps; zh body Noto Sans SC (PingFang
   SC on Apple); zh headings Resource Han Rounded CN Bold (D78); mono JetBrains Mono
 - shape: radius 12/14/18 (buttons) · 16 (sheets) · 24 (cards) · 28 (hero cards, composer)
@@ -49,9 +49,13 @@ brows when something needs you. Other themes render the same states in their own
   working `#4BA8F0 / #DCEFFF / #174A75`, waiting `#FFC94D / #FFF0BF / #6B5000`, done
   `#7FD99A / #D6F5DC / #1F5E2F`, failed `#E5577A / #FBDDE4 / #8A1F3B`. Each state also differs
   in lightness and shape (waiting = dashed outline), not only in hue.
-- **Voices:** the user's messages are cocoa bubbles (`#2B2118` on cream text). Ducter speaks
-  bubble-less in 18px body type on the paper, so it reads like a person talking, not a chat
-  app. Structured things (decisions, files, summaries) are white cards on the clay base (D76).
+- **Voices (D129):** a messaging app with one partner. The user's messages are accent bubbles
+  (`user-bubble` `#FF8A3D` with ink, 6.9:1); the partner's are soft bubbles (`partner-bubble`:
+  white on the paper, `#2A221B` in Pebble dark). Corners `bubble-shape` 20/20/6/20, mirrored
+  for the partner (tail bottom-left); a bubble stacked on one of its voice tucks its tail
+  side's top corner to `bubble-join` 6. One body size for both (16), at most `bubble-measure`
+  ~38em wide. An ask's buttons sit in one compact tray under its bubble, a white card on a 3pt
+  clay base. Other structured things (files, summaries) are white cards on the clay base (D76).
 - **Task line:** a task in the partner's words is one quiet line: a drawn mark of where it
   stands, its title as a link, its status in muted words. No fill, no capsule, no dot (D69,
   D73).
@@ -69,7 +73,7 @@ components and tokens; a value not in the scales below needs a token first.
 
 | Scale | Values | Use |
 |---|---|---|
-| type | 12 · 13 · 15 · 16 · 18 · 20 · 28 · 34 · 56; mono 13 (JetBrains Mono) | captions · labels and small controls · body and controls · the user's bubble and the composer · the partner's voice · card titles and asks · section titles · screen titles and a task's outcome · hero numbers |
+| type | 12 · 13 · 15 · 16 · 18 · 20 · 28 · 34 · 56; mono 13 (JetBrains Mono) | captions · labels and small controls · body and controls · both bubbles and the composer (D129) · a decision on a phone · card titles and asks · section titles · screen titles and a task's outcome · hero numbers |
 | space | 4 · 8 · 12 · 16 · 24 · 32 · 48 (`S1…S7`) | inside a group S2–S3; between groups S4–S5; a screen's sections S6–S7 |
 | radius | 8 · 12 · 14 · 16 · 18 · 24 · 28 | inline code, diff boxes · small buttons, fields · buttons · sheets, notices · large buttons · cards · hero cards, the composer |
 | controls | 36 · 44 · 52 | chrome and inline lines · cards and the conversation · setup screens and the equip |

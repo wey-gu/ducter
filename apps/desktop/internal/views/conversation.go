@@ -130,14 +130,29 @@ func (a *App) conversation(c *ui.Context) {
 	} else {
 		a.list.FollowAnimation = nil
 	}
-	// Rhythm: S3 between two things the same voice says, S5 where the
-	// turn passes from one to the other.
+	// Rhythm (D129): a run of one voice stacks 4 apart, other things the
+	// same voice says sit 12 apart, and 16 where the turn passes.
 	userTurn := func(i int) bool { return rows[i].pending != nil || (rows[i].entry != nil && rows[i].entry.User != nil) }
 	ui.List(c, &a.list, len(rows), func(i int) {
-		top := float32(0)
-		if i > 0 && userTurn(i) != userTurn(i-1) {
-			top = t.S5 - t.S3
+		e := rows[i].entry
+		var prev *store.Entry
+		if i > 0 {
+			prev = rows[i-1].entry
 		}
+		// A time line before the first message and wherever 15 minutes
+		// passed, as a messaging app has (D104); the away divider is one.
+		when := e != nil && a.timeLineBefore(prev, e)
+		top, join := float32(0), false
+		switch {
+		case i == 0:
+		case userTurn(i) != userTurn(i-1):
+			top = t.S4
+		case !when && a.stacks(rows[i-1], rows[i]):
+			top, join = t.S1, true
+		default:
+			top = t.S3
+		}
+		a.join = join
 		ui.Row(c).Justify(ui.Center).Padding(top, 0, 0, 0).Children(func() {
 			ui.Column(c).Grow(1).MaxWidth(convWidth).Children(func() {
 				if p := rows[i].pending; p != nil {
@@ -148,20 +163,13 @@ func (a *App) conversation(c *ui.Context) {
 					a.presenceRow(c)
 					return
 				}
-				e := rows[i].entry
-				// A time line before the first message and wherever 15 minutes
-				// passed, as a messaging app has (D104); the away divider is one.
-				var prev *store.Entry
-				if i > 0 {
-					prev = rows[i-1].entry
-				}
-				if a.timeLineBefore(prev, e) {
+				if when {
 					a.timeLine(c, a.whenOf(e.Event.TS))
 				}
 				a.entry(c, e)
 			})
 		})
-	}).Grow(1).Padding(t.S5, t.S5, t.S4, t.S5).Gap(t.S3).Children(func() {
+	}).Grow(1).Padding(t.S5, t.S5, t.S4, t.S5).Children(func() {
 		if len(rows) == 0 && a.S.Welcomed {
 			a.emptyConversation(c)
 		}
@@ -356,12 +364,17 @@ func (a *App) onHandButton(c *ui.Context, b store.Board) {
 
 func (a *App) userBubble(c *ui.Context, text string, pending bool) {
 	t := a.T
+	join := a.takeJoin()
 	ui.Row(c).Children(func() {
 		ui.Spacer(c)
 		r := t.BubbleRadius
-		b := ui.Text(c, text).Selectable().SelectionColor(t.InkSoft).FontSize(t.Bubble).LineHeight(leadingFor(text, 1.6)).
-			TextColor(t.OnUserBubble).Background(t.UserBubble).Padding(t.S3, t.S4).Radius(r[0], r[1], r[2], r[3]).
-			MaxWidthPercent(72)
+		tr := r[1]
+		if join {
+			tr = t.BubbleJoin
+		}
+		b := ui.Text(c, autospace(text)).Selectable().CopyData(autospaceCopy).SelectionColor(t.Highlight).FontSize(t.Bubble).LineHeight(leadingFor(text, 1.5)).
+			TextColor(t.OnUserBubble).Background(t.UserBubble).Padding(t.S2+2, t.S4-2).Radius(r[0], tr, r[2], r[3]).
+			MaxWidth(t.BubbleMeasure).MaxWidthPercent(76)
 		if pending {
 			b.Opacity(0.7)
 		}
@@ -376,8 +389,10 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 	case e.AI != nil:
 		// The partner's words get the CJK-Latin gap at display time; a
 		// copy leaves it out (D78).
-		ui.Column(c).MaxWidthPercent(88).MaxWidth(readingMeasure).Gap(t.S2).CopyData(autospaceCopy).Children(func() {
-			markdown.View(c, autospace(e.AI.Text), &a.md)
+		ui.Column(c).Gap(t.S1).CopyData(autospaceCopy).Children(func() {
+			a.partnerBubble(c, a.takeJoin(), func() {
+				markdown.View(c, autospace(e.AI.Text), &a.md)
+			})
 			a.quiet(c, "m"+itoa(e.FirstSeq), a.replyTasks(e), "", a.notedFor(e))
 		})
 	case e.Job != nil:
@@ -423,9 +438,9 @@ func (a *App) tasksOfReply(replyTo int64) []string {
 func (a *App) job(c *ui.Context, e *store.Entry) {
 	t := a.T
 	j := e.Job
-	ui.Column(c).MaxWidthPercent(88).MaxWidth(readingMeasure).Gap(t.S2).Children(func() {
+	ui.Column(c).Gap(t.S1).Children(func() {
 		if j.Ack != nil {
-			ui.Text(c, autospace(j.Ack.Text)).Selectable().CopyData(autospaceCopy).FontSize(t.PartnerSize).LineHeight(leadingFor(j.Ack.Text, 1.65))
+			a.partnerWords(c, j.Ack.Text)
 		}
 		st := j.Status
 		var task *store.Task
@@ -439,7 +454,7 @@ func (a *App) job(c *ui.Context, e *store.Entry) {
 			if st.State == "failed" {
 				col = t.Failed.Ink
 			}
-			ui.Text(c, st.Text).FontSize(t.SM).TextColor(col)
+			a.underBubble(c, func() { ui.Text(c, st.Text).FontSize(t.SM).TextColor(col) })
 		}
 		var tasks []*store.Task
 		detail := ""

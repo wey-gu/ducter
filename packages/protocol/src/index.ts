@@ -78,7 +78,9 @@ export interface Question {
 
 export interface Bodies {
   user_msg: { text: string; clientId?: string };
-  ai_msg: { text: string; replyTo?: number };
+  // decisionId: a task's question said in the partner's own words (D129); clients show it as
+  // that decision's question, not as a message of its own.
+  ai_msg: { text: string; replyTo?: number; decisionId?: string };
   ack: { jobId: string; text: string; replyTo: number }; // names the action, never the outcome
   job_status: { jobId: string; text: string; state: "running" | "done" | "failed"; taskId?: string };
   living_msg: { items: LivingItem[] }; // supersedes the previous living_msg while unread

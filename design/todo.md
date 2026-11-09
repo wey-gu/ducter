@@ -127,6 +127,19 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       Simulator. Trigger: the next iOS build.
 - [ ] A ↗ line in the demo seed, to show what went out stays in view (the seed sends nothing
       out). Trigger: the next demo-seed change.
+- [ ] Consumer voice on a cheap model (D129): haiku still names the leftover items ("证书、描述
+      文件…"), writes a third sentence in a relayed question, and sonnet once said "点 Go". Try a
+      code guard (drop a relay clause naming Go / Hold, as D109 refuses wrong-language asks) and
+      more voice scenarios (en result, a relay with a default). Trigger: the next partner eval
+      round, or a dogfood message with jargon.
+- [ ] The partner relays a task's question with its own Go words: today the button says the
+      task's default ("好，Continue" when the task gave none). Let the relay carry a goLabel.
+      Trigger: a relayed question whose button reads wrong in dogfood.
+- [ ] A push for a task's question goes out with the task's wording, before the partner has said
+      it (D129 holds only the conversation). Hold the push for the relay, up to the same 60 s.
+      Trigger: push dogfood.
+- [ ] Desktop Pebble dark: the phone has it, the Mac app has one light token set. Trigger: the
+      author asks for dark on the Mac.
 
 ## Long-term memory (`design/memory.md`)
 

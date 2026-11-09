@@ -23,7 +23,8 @@ exactly what it will and won't do. This page lists it.
   **Sent out**, often **Nothing**.
 - **It never decides silently for you.** When something is your call, it asks, with a
   suggested default you can take, hold, or change. If it goes with the default, it says so:
-  **Went with the default**.
+  **No answer, so I went ahead**. Anything that can't be undone waits: **I'll do it once you
+  say so.**
 - **It doesn't read your projects to greet you.** The first suggestions come from folder
   names only. Nothing inside is opened.
 

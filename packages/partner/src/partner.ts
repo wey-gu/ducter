@@ -132,7 +132,8 @@ interface TurnState {
   acked?: boolean; // an ack went out this turn
   asked?: boolean; // the partner made a decision card (ask) this turn
   askedId?: string; // the last decision it made this turn
-  quiet?: boolean; // woken only by task questions the user already sees as decision cards
+  quiet?: boolean; // woken only by task questions: the partner says each in its own words (D129)
+  relayed?: boolean; // a task question was said this turn
   results?: number; // done reports in this turn (several = one combined message)
   zh: boolean;
   recalls: number; // memory_search calls this turn
@@ -529,22 +530,45 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   (spineTimer as { unref?: () => void } | null)?.unref?.();
 
   // ---------- channel output ----------
-  const appendAiMsg = (text: string) => {
+  const appendAiMsg = (text: string, decisionId?: string) => {
     const t = text.trim();
     if (!t) return;
     // Said already in the cut-off turn this one redoes: once is enough.
     if (turn?.carried && turn.carried.said.delete(t)) return;
-    if (CLAIMS_CHOICE.test(t) && !openDecisionExists()) {
+    if (!decisionId && CLAIMS_CHOICE.test(t) && !openDecisionExists()) {
       // Honesty guard (live: "选 Go 就保留" with no decision anywhere). The words are already
       // the model's; make them true right away or have it take them back, in a follow-up turn.
       corrections.push(t);
     }
-    core.log.append({
-      stream: "channel",
-      origin: "partner",
-      kind: "ai_msg",
-      body: turn?.replyTo !== undefined ? { text: t, replyTo: turn.replyTo } : { text: t },
-    });
+    const body: Bodies["ai_msg"] = turn?.replyTo !== undefined ? { text: t, replyTo: turn.replyTo } : { text: t };
+    if (decisionId) {
+      body.decisionId = decisionId;
+      if (turn) turn.relayed = true;
+    }
+    core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body });
+  };
+  /** The open task question a quiet turn's words say (D129): the oldest one the triggering
+   *  reports opened that no message has said yet. */
+  const relayTarget = (t: TurnState): string | undefined => {
+    const reports = t.triggers.filter((e) => e.kind === "report");
+    if (!reports.length) return undefined;
+    const tasks = new Set(reports.map((e) => (e.body as Bodies["report"]).taskId));
+    const from = Math.min(...reports.map((e) => e.seq).filter((n) => n > 0), core.log.head());
+    const evs = core.log.read({ stream: "channel", fromSeq: from, limit: 500, kinds: ["decision", "decision_resolved", "ai_msg"] });
+    const closed = new Set<string>();
+    for (const e of evs) {
+      if (e.kind === "decision_resolved") closed.add((e.body as Bodies["decision_resolved"]).decisionId);
+      if (e.kind === "ai_msg") {
+        const id = (e.body as Bodies["ai_msg"]).decisionId;
+        if (id) closed.add(id);
+      }
+    }
+    for (const e of evs) {
+      if (e.kind !== "decision") continue;
+      const d = e.body as Bodies["decision"];
+      if (d.taskId && tasks.has(d.taskId) && !closed.has(d.decisionId)) return d.decisionId;
+    }
+    return undefined;
   };
   const corrections: string[] = [];
   const openDecisionExists = () => {
@@ -584,7 +608,14 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     // The card speaks for itself (eval: "Pending your answer.", "上面那张卡片等你点 Go 或 Hold"):
     // a short line after an ask only describes the card, so it is dropped.
     if (turn.asked && p.trim().length < 200) return;
-    if (turn.quiet && p.trim().length < 300) return;
+    // A task's question, said in the partner's own words (D129): the clients show it as that
+    // question's words, with the task's Go / Hold / Reply under it; the task's own wording
+    // moves to Details. One message per question; a second line in the same turn is dropped.
+    if (turn.quiet) {
+      const d = relayTarget(turn);
+      if (d) return appendAiMsg(p, d);
+      if (turn.relayed || p.trim().length < 300) return;
+    }
     // Several results at once: the app renders each one's evidence, Outside and Merge under
     // the message, so clauses about tests, commits, branches or merging only repeat or guess
     // (eval two-done-zh, 0/4 under the prompt alone).
@@ -988,8 +1019,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     if (redo) carried = undefined;
     const input = buildInput(batch, fresh, redo?.note);
     contextTokens += estTokens(input);
-    // A task question is shown with its own Go / Hold / Reply; prose about it only repeats it
-    // (eval: restated in 4 of 4 runs whatever the persona said).
+    // A turn woken only by task questions: its words become each question's words (D129), and
+    // anything more is dropped (eval: a second line restated it in 4 of 4 runs).
     const quiet = batch.length > 0 && batch.every((e) => e.kind === "report" && (e.body as Bodies["report"]).state === "needs_input");
     const results = batch.filter((e) => e.kind === "report" && (e.body as Bodies["report"]).state === "done").length;
     turn = { triggers: batch, userTexts, replyTo, pending: null, unboundAck: null, opensSeen: 0, opensHandled: 0, zh, quiet, results, recalls: 0, noted: [], early: [] };

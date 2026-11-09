@@ -116,6 +116,9 @@ type UserMsg struct {
 type AIMsg struct {
 	Text    string `json:"text"`
 	ReplyTo int64  `json:"replyTo,omitempty"`
+	// DecisionID: a task's question in the partner's own words (D129); it
+	// shows as that decision's question, not as a message of its own.
+	DecisionID string `json:"decisionId,omitempty"`
 }
 
 type Ack struct {

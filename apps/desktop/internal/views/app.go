@@ -158,6 +158,8 @@ type App struct {
 	// partner and settings are the Partner page's and Settings' own state.
 	partner  partnerState
 	settings settingsState
+	// lo is what the partner thinks with and who does the tasks (D89).
+	lo loadoutState
 	// SystemLang is macOS's language, for Settings' "follow the system";
 	// OnLanguage is told when the window's language changes (the menus).
 	SystemLang i18n.Lang
@@ -728,6 +730,8 @@ func harnessName(h string) string {
 		return "Codex"
 	case "pi":
 		return "pi"
+	case "deepseek-harness":
+		return "DeepSeek Harness"
 	}
 	return h
 }
@@ -751,7 +755,7 @@ func (a *App) bodyLine(t *store.Task) string {
 		parts = append(parts, h)
 	}
 	if m := t.Model(); m != "" {
-		parts = append(parts, m)
+		parts = append(parts, modelLabel(a.trayHarness(t.Harness()), m))
 	}
 	return strings.Join(parts, " · ")
 }

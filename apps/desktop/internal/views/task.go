@@ -52,6 +52,7 @@ func (a *App) task(c *ui.Context) {
 						if finished(task) {
 							a.outcome(c, task)
 						}
+						a.switchSheet(c, task) // 换谁来做 / Switch who does it (D89)
 					})
 				})
 				a.whatItDid(c, task)
@@ -125,6 +126,17 @@ func (a *App) taskStanding(c *ui.Context, task *store.Task) {
 		}
 		if task.OpenedAt != "" {
 			ui.Text(c, "· "+a.L.T("task.opened", a.ago(task.OpenedAt))).FontSize(t.SM).TextColor(t.InkMuted)
+		}
+		// Who is doing it, quietly at the end; a tap opens Switch who does it (D89).
+		if who, why := a.whoLine(task); who != "" && canSwitch(task) {
+			ui.Text(c, "·").FontSize(t.SM).TextColor(t.InkMuted)
+			line := who
+			if why != "" {
+				line += " · " + why
+			}
+			if a.quietLink(c, "who:"+task.ID, line, a.L.T("who.switch")+" · "+line) {
+				a.openSwitch(task.ID)
+			}
 		}
 	})
 }
@@ -835,11 +847,17 @@ func (a *App) taskDetails(c *ui.Context, task *store.Task) {
 			})
 		}
 		value := func(s string) { ui.Text(c, s).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft).Selectable() }
-		if b := a.bodyLine(task); b != "" {
+		if b, why := a.whoLine(task); b != "" {
 			row(a.L.T("task.dossier.body"), func() {
+				if why != "" {
+					b += " · " + why
+				}
 				value(b)
 				if r := task.BodyReason(); r != "" {
 					value(r)
+				}
+				if canSwitch(task) && a.quietLink(c, "who-details:"+task.ID, a.L.T("who.switch"), a.L.T("who.switch")) {
+					a.openSwitch(task.ID)
 				}
 			})
 		}

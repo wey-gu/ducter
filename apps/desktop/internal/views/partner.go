@@ -40,6 +40,7 @@ type partnerState struct {
 func (a *App) OpenPartner() {
 	a.Route = RoutePartner
 	a.send(protocol.SettingsReq{T: "settings"})
+	a.send(protocol.RulesReq{T: "rules"}) // Your rules (D89)
 	if a.S.DevicesAt.IsZero() {
 		a.send(protocol.DevicesReq{T: "devices"}) // where it lives
 	}
@@ -75,6 +76,20 @@ func (a *App) partnerView(c *ui.Context) {
 						ui.Text(c, ps.toast).FontSize(t.SM).FontWeight(700).MaxLines(2)
 					}, nil)
 				}
+				// What it thinks with and who does the tasks (D89): the tray
+				// of this Mac's AI agents, then the two cards.
+				a.loadoutToast(c)
+				a.tray(c)
+				loadout := []func(){func() { a.brainCard(c) }, func() { a.tasksCard(c) }}
+				if wide {
+					ui.Row(c).Gap(t.S5).AlignItems(ui.Start).Children(func() {
+						ui.Column(c).Grow(1).Basis(0).MinWidth(0).Children(loadout[0])
+						ui.Column(c).Grow(1).Basis(0).MinWidth(0).Children(loadout[1])
+					})
+				} else {
+					loadout[0]()
+					loadout[1]()
+				}
 				cards := []func(){
 					func() { a.talkCard(c, st) },
 					func() { a.notifyCard(c, st) },
@@ -94,6 +109,7 @@ func (a *App) partnerView(c *ui.Context) {
 			})
 		})
 	})
+	a.brainFlyer(c)
 }
 
 // partnerHero: a character sheet across the whole card. The clay partner
@@ -112,8 +128,18 @@ func (a *App) partnerHero(c *ui.Context, wide bool) {
 	}
 	ui.Row(c.Key("partner-hero")).Gap(t.S6).Wrap().AlignItems(ui.Center).Padding(t.S5, t.S6).Radius(t.RadiusXL).Background(t.Clay).
 		Shadow(0, t.Raised.Y, 0, 0, t.Raised.Color).Children(func() {
-		ui.Row(c).Gap(t.S5).AlignItems(ui.Center).Grow(1).Basis(400).MinWidth(0).Children(func() {
-			a.avatar(c, shown, 200)
+		// With the socket beside it (what it thinks with, D89) the partner's
+		// half is wider and the partner a little smaller.
+		withSocket := a.S.Settings != nil
+		basis, size := float32(400), float32(200)
+		if withSocket {
+			basis, size = 600, 176
+		}
+		ui.Row(c).Gap(t.S5).AlignItems(ui.Center).Grow(1).Basis(basis).MinWidth(0).Children(func() {
+			a.avatar(c, shown, size)
+			if withSocket {
+				a.socket(c)
+			}
 			ui.Column(c).Grow(1).MinWidth(0).Gap(t.S2).Children(func() {
 				a.partnerName(c)
 				if home := a.homeDevice(); home != nil {
@@ -121,7 +147,7 @@ func (a *App) partnerHero(c *ui.Context, wide bool) {
 				}
 			})
 		})
-		ui.Row(c.Key("faces")).Gap(t.S2).Grow(1).Basis(400).MinWidth(0).Justify(ui.SpaceBetween).Role(ui.RoleGroup).Children(func() {
+		ui.Row(c.Key("faces")).Gap(t.S2).Grow(1).Basis(340).MinWidth(0).Justify(ui.SpaceBetween).Role(ui.RoleGroup).Children(func() {
 			for _, p := range theme.Presences {
 				a.faceThumb(c, p, shown == p)
 			}

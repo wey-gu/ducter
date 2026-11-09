@@ -831,6 +831,9 @@ func (a *App) tokens(c *ui.Context, dv *protocol.DeviceView, r rig) {
 		case h.Allowance != nil:
 			status += " · " + a.L.T("token.allowance", int(h.Allowance.Left*100+0.5))
 		}
+		if m := a.BrainMark(dv, h.Harness); m != "" {
+			status = m // D89: the one mark of what Ducter thinks with
+		}
 		art := "token_ink"
 		if h.Harness == "claude-code" {
 			art = "token_orange"

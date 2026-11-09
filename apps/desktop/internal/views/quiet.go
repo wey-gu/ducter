@@ -300,7 +300,7 @@ func (a *App) ask(c *ui.Context, d *store.DecisionState, taskID string) {
 	task := a.S.Task(id)
 	key := "d" + d.DecisionID
 	inTask := a.Route == RouteTask && a.TaskID == id
-	words := d.Question
+	words := a.questionOf(d)
 	if d.Said != "" && !inTask {
 		words = d.Said
 	}
@@ -318,6 +318,11 @@ func (a *App) ask(c *ui.Context, d *store.DecisionState, taskID string) {
 			ui.Column(c.Key("facts")).MaxWidth(t.BubbleMeasure).Padding(t.S4, t.S4).Radius(t.RadiusLG).Background(t.NeedsYou.Surface).Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge).Children(func() {
 				a.routineFacts(c, d.RoutineID, t.NeedsYou.Ink)
 			})
+		}
+		if d.SignIn != nil {
+			// D144: Sign in opens the live view; answered, it says signed in or not now.
+			a.underBubble(c, func() { a.signInButtons(c, d, decisionStyle{height: t.ControlSM, quietBg: t.Bg}) })
+			return
 		}
 		if !openAsk(d) {
 			a.answeredLine(c, d)

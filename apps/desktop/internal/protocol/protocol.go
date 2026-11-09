@@ -161,6 +161,15 @@ type Decision struct {
 	// RoutineID marks a routine's proposal or review card (D114): Go
 	// activates or keeps it.
 	RoutineID string `json:"routineId,omitempty"`
+	// SignIn marks a sign-in card (D144): Go is 好了 / Done in the live view of
+	// Ducter's browser.
+	SignIn *SignInAsk `json:"signIn,omitempty"`
+}
+
+// SignInAsk: 需要你登录一下 {Site} / Sign in to {Site} (D144).
+type SignInAsk struct {
+	Site string `json:"site"`
+	URL  string `json:"url,omitempty"`
 }
 
 type DecisionResolved struct {
@@ -976,6 +985,8 @@ type DeviceAbility struct {
 	// web only (D130): where browser tasks run. WhereChrome = the user's own Chrome through an
 	// AI agent's own browser tools (no cua-driver needed); WhereDucter = Ducter's own browser.
 	Where string `json:"where,omitempty"`
+	// Setup (D144): "installing" while Ducter installs its own browser here.
+	Setup string `json:"setup,omitempty"`
 }
 
 const (
@@ -1149,6 +1160,21 @@ type ServerFrame struct {
 	Update *DeviceUpdate `json:"update,omitempty"`
 	// first_screen (D149): the empty conversation's words from the home.
 	First *FirstScreen `json:"first,omitempty"`
+	// D144 live view: live (ID, DecisionID, State open|closed, Site, URL, Title,
+	// Width, Height, Reason, Message) and live_frame (ID, Seq, Data = a base64
+	// JPEG, Width, Height, URL). browser_sites: Ready, Sites (and OK, Message
+	// after a sign-out).
+	DecisionID string     `json:"decisionId,omitempty"`
+	State      string     `json:"state,omitempty"`
+	Site       string     `json:"site,omitempty"`
+	URL        string     `json:"url,omitempty"`
+	Title      string     `json:"title,omitempty"`
+	Width      int        `json:"width,omitempty"`
+	Height     int        `json:"height,omitempty"`
+	Seq        int64      `json:"seq,omitempty"`
+	Data       string     `json:"data,omitempty"`
+	Ready      bool       `json:"ready,omitempty"`
+	Sites      []SiteView `json:"sites,omitempty"`
 }
 
 // Words are the same words in both languages: the client shows its own.
@@ -1180,6 +1206,66 @@ type Starter struct {
 	ID    string `json:"id"`
 	Kind  string `json:"kind"`
 	Words Words  `json:"words"`
+}
+
+// SiteView is a site signed in to in Ducter's browser (D144); Cookies 0 =
+// the site signed it out.
+type SiteView struct {
+	Site       string `json:"site"`
+	SignedInAt string `json:"signedInAt"`
+	Cookies    int    `json:"cookies"`
+}
+
+// LiveOpenReq opens the live view for a sign-in card (D144).
+type LiveOpenReq struct {
+	T          string  `json:"t"` // "live_open"
+	DecisionID string  `json:"decisionId"`
+	Width      int     `json:"width,omitempty"`
+	Height     int     `json:"height,omitempty"`
+	Scale      float64 `json:"scale,omitempty"`
+}
+
+// LiveInput is one pointer, wheel, text, key or nav input; X, Y are fractions
+// of the frame.
+type LiveInput struct {
+	Kind   string  `json:"kind"`           // mouse | wheel | text | key | nav | resize
+	Type   string  `json:"type,omitempty"` // mouse: down | up | move
+	X      float64 `json:"x"`
+	Y      float64 `json:"y"`
+	Button string  `json:"button,omitempty"`
+	Clicks int     `json:"clicks,omitempty"`
+	DX     float64 `json:"dx,omitempty"`
+	DY     float64 `json:"dy,omitempty"`
+	Text   string  `json:"text,omitempty"`
+	Key    string  `json:"key,omitempty"`
+	Shift  bool    `json:"shift,omitempty"`
+	Action string  `json:"action,omitempty"` // nav: back | forward | reload
+}
+
+// LiveInputReq, LiveAckReq and LiveCloseReq drive a live view (D144).
+type LiveInputReq struct {
+	T     string    `json:"t"` // "live_input"
+	ID    string    `json:"id"`
+	Input LiveInput `json:"input"`
+}
+
+type LiveAckReq struct {
+	T   string `json:"t"` // "live_ack"
+	ID  string `json:"id"`
+	Seq int64  `json:"seq"`
+}
+
+type LiveCloseReq struct {
+	T    string `json:"t"` // "live_close"
+	ID   string `json:"id"`
+	Done bool   `json:"done,omitempty"`
+}
+
+// BrowserSitesReq asks for, signs out of (Site), or clears (T
+// browser_sites_clear) the signed-in sites of Ducter's browser (D144).
+type BrowserSitesReq struct {
+	T    string `json:"t"` // browser_sites | browser_site_signout | browser_sites_clear
+	Site string `json:"site,omitempty"`
 }
 
 // PartnerActivity is the step of a partner turn the user waits on (D104):

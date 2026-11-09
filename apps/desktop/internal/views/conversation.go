@@ -574,11 +574,15 @@ func (a *App) resettle(c *ui.Context, e ui.Element, revision int) {
 
 func (a *App) decisionBody(c *ui.Context, d *store.DecisionState, taskID string) {
 	t := a.T
-	a.heading(c, autospace(d.Question), t.XL).LineHeight(1.35)
+	question := d.Question
+	if d.SignIn != nil {
+		question = a.L.T("signin.title", d.SignIn.Site)
+	}
+	a.heading(c, autospace(question), t.XL).LineHeight(1.35)
 	if d.RoutineID != "" && d.Resolved == nil {
 		a.routineFacts(c, d.RoutineID, t.NeedsYou.Ink)
 	}
-	if d.Resolved == nil {
+	if d.Resolved == nil && d.SignIn == nil {
 		ui.Text(c, a.defaultLine(c, d)).FontSize(t.SM).TextColor(t.NeedsYou.Ink)
 	}
 	st := decisionStyle{height: t.ControlMD, quietBg: t.NeedsYou.Surface}

@@ -177,6 +177,11 @@ type App struct {
 	// setup on this Mac.
 	asks askState
 	web  webSetupState
+	// D144: the live view's bitmap and acks, a line to say once it closed, and the window size it asks for.
+	live       liveState
+	liveNote   string
+	sites      sitesState
+	winW, winH float32
 	// partner and settings are the Partner page's and Settings' own state.
 	partner  partnerState
 	settings settingsState
@@ -343,6 +348,7 @@ func (a *App) View(c *ui.Context) {
 		a.mdTask.Theme = a.markdownTheme(a.T.MD, a.leading(1.55))
 	}
 	c.SetTheme(a.uiTheme)
+	a.winW, a.winH = c.Size()
 	a.drainActionResults(c)
 	a.shortcuts(c)
 	a.titleTick(c)
@@ -371,6 +377,7 @@ func (a *App) View(c *ui.Context) {
 	}))
 	if a.S.Welcomed {
 		a.newTaskCard(c)
+		a.liveView(c)
 	}
 }
 

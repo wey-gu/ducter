@@ -789,7 +789,7 @@ const zh: Record<MsgKey, string> = {
   "help.ability": "ability add browser：让这台电脑替任务上网（Ducter 自己装好浏览器）；ability remove browser 取下",
   "help.browser": "browser sites：在 Ducter 的浏览器里登录过的网站；browser signout <网站> 退出；browser clear 全部清掉",
   "ability.usage": "用法：ducter ability add browser | ducter ability remove browser",
-  "ability.adding": "正在 {device} 上准备 Ducter 的浏览器……（第一次要下载约 170 MB）",
+  "ability.adding": "正在 {device} 上装 Ducter 的浏览器……（第一次要下载约 170 MB）",
   "ability.ready": "{device} 现在会上网了（Chrome {version}）。任务要你登录某个网站时会来问你，你在 Ducter 应用或手机上自己登录。",
   "ability.removed": "{device} 先不上网了。随时可以再装上：ducter ability add browser",
   "ability.deps": "Chrome 还缺几个系统库，这个用户装不了。运行一次下面这行，再运行 ducter ability add browser：",

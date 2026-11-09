@@ -703,6 +703,10 @@ type decisionStyle struct {
 // the decision was resolved.
 func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decisionStyle) {
 	t := a.T
+	if d.SignIn != nil {
+		a.signInButtons(c, d, st) // D144: Sign in opens the live view
+		return
+	}
 	if d.Resolved != nil || d.Pending != "" {
 		msg := a.answeredWords(d)
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {

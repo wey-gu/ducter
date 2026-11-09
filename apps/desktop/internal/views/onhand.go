@@ -383,7 +383,7 @@ func (a *App) needsCard(c *ui.Context, task *store.Task) {
 		rep := task.Report()
 		q := ""
 		if d != nil {
-			q = d.Question
+			q = a.questionOf(d)
 		} else if rep != nil && len(rep.Questions) > 0 {
 			q = rep.Questions[0].Text
 		}
@@ -656,7 +656,7 @@ func (a *App) partnerDecisionCard(c *ui.Context, d *store.DecisionState) {
 			a.avatar(c, theme.NeedsYou, 28)
 			ui.Text(c, a.S.PersonaName).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 		})
-		a.heading(c, autospace(d.Question), t.LG).LineHeight(1.4).MaxLines(4)
+		a.heading(c, autospace(a.questionOf(d)), t.LG).LineHeight(1.4).MaxLines(4)
 		if d.RoutineID != "" {
 			a.routineFacts(c, d.RoutineID, t.NeedsYou.Ink)
 		}

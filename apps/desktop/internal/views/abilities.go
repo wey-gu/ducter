@@ -627,6 +627,11 @@ func (a *App) abilityGrid(c *ui.Context, dv *protocol.DeviceView, cols int) {
 				if id == protocol.AbilityWeb && ab != nil && ab.Where == protocol.WhereChrome {
 					sub += " · " + a.L.T("web.where.chrome")
 				}
+				if id == protocol.AbilityWeb && ab != nil && ab.Setup == "installing" {
+					sub = a.L.T("web.installing.short") // D144: Ducter is installing its browser
+				}
+			case id == protocol.AbilityWeb && ab != nil && ab.Reason == "browser_deps":
+				sub = a.L.T("ability.oneStep")
 			case ab == nil && dv != nil && !dv.Home:
 				sub = a.L.T("ability.unavailable")
 			case ab == nil || ab.State == protocol.AbilityLater:
@@ -722,6 +727,9 @@ func (a *App) abilityDetail(c *ui.Context, dv *protocol.DeviceView) {
 			if id == protocol.AbilityWeb && ab != nil && ab.Where == protocol.WhereChrome {
 				about = "ability.web.about.chrome" // an AI agent's own browser, in the user's Chrome (D130)
 			}
+			if id == protocol.AbilityWeb && ab != nil && ab.Where == protocol.WhereDucter {
+				about = "ability.web.about.ducter" // Ducter's own browser, on a server (D144)
+			}
 			ui.Text(c, a.L.T(about)).FontSize(t.MD).LineHeight(1.6).TextColor(t.InkSoft)
 		}
 		if id == protocol.AbilityWeb && a.webSetupOwned(dv) {
@@ -734,6 +742,8 @@ func (a *App) abilityDetail(c *ui.Context, dv *protocol.DeviceView) {
 			a.reasonLine(c, a.L.T("ability.later"))
 		case id == protocol.AbilityWeb && a.webNeedsSetup(dv) && dv.State == protocol.DeviceAwake:
 			a.webSetupEntry(c, dv)
+		case id == protocol.AbilityWeb && ab.Where == protocol.WhereDucter && ab.State == protocol.AbilityUnavailable && ab.Reason != "env_off":
+			a.ducterBrowserTrouble(c, dv, ab)
 		case ab.State == protocol.AbilityUnavailable:
 			a.unavailable(c, ab)
 		case on && id == protocol.AbilityRemote:
@@ -759,6 +769,14 @@ func (a *App) abilityDetail(c *ui.Context, dv *protocol.DeviceView) {
 					d.removing = id
 				}
 			})
+			// D144: Ducter's own browser: getting ready, then the sites signed in to.
+			if id == protocol.AbilityWeb && ab != nil && ab.Where == protocol.WhereDucter {
+				if ab.Setup == "installing" {
+					a.reasonLine(c, a.L.T("web.installing"))
+				} else {
+					a.sitesList(c)
+				}
+			}
 		case dv.State != protocol.DeviceAwake:
 			a.reasonLine(c, a.L.T("ability.reason.asleep"))
 		case id == protocol.AbilityRemote && d.pair.open:

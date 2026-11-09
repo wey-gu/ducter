@@ -335,6 +335,12 @@ type Store struct {
 	DevicesAt time.Time
 	// AbilityResults are ability_result frames not yet handled by the view.
 	AbilityResults []protocol.ServerFrame
+	// Live is the live view of Ducter's browser while the user signs in
+	// (D144); nil when none is open. LiveClosed is the last close the view
+	// has not said yet. BrowserSites is Devices › 上网's signed-in sites.
+	Live         *LiveView
+	LiveClosed   *protocol.ServerFrame
+	BrowserSites *protocol.ServerFrame
 	// PairCode is the newest pairing code the server minted for this app.
 	PairCode *protocol.ServerFrame
 	// Renamed is the server's answer to the last 改名字 / Rename.
@@ -433,6 +439,11 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		s.Devices, s.Reach, s.DevicesAt = f.Devices, f.Reach, time.Now()
 	case "ability_result":
 		s.AbilityResults = append(s.AbilityResults, f)
+	case "live", "live_frame":
+		s.applyLive(f)
+	case "browser_sites":
+		fc := f
+		s.BrowserSites = &fc
 	case "pair_code":
 		fc := f
 		s.PairCode = &fc

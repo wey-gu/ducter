@@ -9,8 +9,16 @@ struct DucterApp: App {
 
     var body: some Scene {
         WindowGroup {
+            #if DEBUG
+            if UserDefaults.standard.bool(forKey: "buttonSpecimen") {
+                ButtonSpecimen()
+            } else {
+                Root(state: state, shell: shell).tint(Pebble.accent)
+            }
+            #else
             Root(state: state, shell: shell)
                 .tint(Pebble.accent)
+            #endif
         }
     }
 }

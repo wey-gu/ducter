@@ -11,14 +11,14 @@
 // partner sessions create (named after the scratch dir, "ducter-eval-") are deleted at the end.
 // Memory is a FAKE Mem per scenario (scenario.memories, test/fakes.ts fakeMemory): the eval
 // never reads or writes the user's real Nowledge Mem.
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import type { Bodies, LogEvent, Place, TaskCard } from "../../protocol/src/index.ts";
 import type { HarnessEvent, HarnessPort, HarnessSession, Runner } from "../../protocol/src/internal.ts";
 import { startCore, type Core } from "../../core/src/index.ts";
 import { createOarHarnessPort, shortId } from "../../runner/src/index.ts";
-import { buildSystemPrompt, createPartner, isChinese } from "../src/index.ts";
+import { buildSystemPrompt, createNmemBridge, createPartner, isChinese } from "../src/index.ts";
 import { scenarios, type Expect, type Scenario, type Step } from "./scenarios.ts";
 import { fakeMemory } from "../test/fakes.ts";
 import type { MemoryAdd } from "../src/memory.ts";
@@ -154,6 +154,34 @@ interface RunResult {
   remembered: MemoryAdd[]; // saved (accepted by the fake Mem)
   memAttempts: { input: unknown; step: number }[]; // every memory_add call, refused ones too
   retitles: { key: string; title: string; step: number }[]; // task_retitle, as new task_open events
+  bridgeSent: FakeMsg[]; // what Ducter sent through the fake Bridge
+}
+
+// ---------- fake Bridge (scenario.bridge): the fake nmem CLI over one JSON mailbox file ----------
+interface FakeMsg { id: string; from: string; to: string; body: string; in_reply_to?: string; created_at: string; pending?: boolean }
+const BRIDGE_IDENTITIES = {
+  "ducter-main": { agent: "Ducter", member: "Weyl", member_id: "m-weyl", description: "Weyl's personal AI partner (always on)" },
+  "terminal-claude": { agent: "terminal-claude", member: "Weyl", member_id: "m-weyl", description: "Weyl's Claude Code in a terminal, ~/dev/ducter" },
+  "alex-reviewer": { agent: "reviewer", member: "Alex", member_id: "m-alex", description: "Alex's long-running code reviewer" },
+};
+function fakeBridge(dir: string) {
+  const bin = join(dir, "nmem");
+  writeFileSync(bin, `#!/bin/sh\nexec bun ${resolve(import.meta.dir, "fake-bridge-nmem.ts")} "$@"\n`);
+  chmodSync(bin, 0o755);
+  const state = join(dir, "bridge-state.json");
+  writeFileSync(state, JSON.stringify({ seq: 0, messages: [], identities: BRIDGE_IDENTITIES }));
+  const env = { ...process.env, FAKE_BRIDGE_STATE: state, DUCTER_BRIDGE_MEMBER: "m-weyl" } as Record<string, string>;
+  const read = () => JSON.parse(readFileSync(state, "utf8")) as { seq: number; messages: FakeMsg[] };
+  return {
+    client: createNmemBridge({ context: "ducter-main", bin, env }),
+    sent: () => read().messages.filter((m) => m.from === "ducter-main"),
+    deliver(from: string, text: string, answer?: boolean) {
+      const s = read() as any;
+      const last = [...s.messages].reverse().find((m: FakeMsg) => m.from === "ducter-main" && m.to === from);
+      s.messages.push({ id: `msg-${String(++s.seq).padStart(3, "0")}`, op: `op-${s.seq}`, from, to: "ducter-main", body: text, ...(answer && last ? { in_reply_to: last.id } : {}), created_at: new Date().toISOString() });
+      writeFileSync(state, JSON.stringify(s));
+    },
+  };
 }
 
 const PARTNER_KINDS = new Set(["ack", "ai_msg", "decision"]);
@@ -205,6 +233,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   };
   core.setRunner(fr.runner);
   core.setPartner({ onTrigger() {} }); // history is background, not new work
+  const fb = sc.bridge ? fakeBridge(dataDir) : undefined;
 
   const idOf = new Map<string, string>(); // key -> taskId
   const keyOf = new Map<string, string>();
@@ -246,6 +275,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     fs: placeFs,
     turnTimeoutMs: 180_000,
     memory: memWrapped,
+    ...(fb ? { bridge: fb.client, bridgeIntervalMs: 0 } : { bridge: null }),
     onError: (err) => console.error(`[${sc.id}]`, err instanceof Error ? err.message : err),
   });
   core.setPartner(partner);
@@ -257,7 +287,11 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     for (const [i, st] of sc.steps.entries()) {
       cur.step = i;
       stepStarts.push(core.log.head());
-      applyStep(st, core, idOf, waiters, fr.opened);
+      if ("peer" in st) {
+        if (!fb) throw new Error("a peer step needs scenario.bridge");
+        fb.deliver(st.peer.from, st.peer.text, st.peer.answer);
+        await partner.checkBridge();
+      } else applyStep(st, core, idOf, waiters, fr.opened);
       await settle(partner);
     }
   } catch (err) {
@@ -327,11 +361,16 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     const other = [...new Set(tools.filter((x) => x.step === i).map((x) => x.name.replace(/^mcp__ducter__/, "")).filter((n) => !["task_open", "task_send", "task_retitle", "ask", "wait_until", "ToolSearch", "memory_search", "memory_add"].includes(n)))];
     if (other.length) lines.push(`  [also used tools] ${other.join(", ")}`);
   }
+  const bridgeSent = fb?.sent() ?? [];
+  if (fb) {
+    lines.push("--- what Ducter sent through Bridge (other agents see this, the user doesn't):");
+    for (const m of bridgeSent) lines.push(`  [to ${m.to}${m.in_reply_to ? " (a reply)" : ""}] ${m.body.replace(/\n/g, " ⏎ ").slice(0, 600)}`);
+  }
   if (error) lines.push(`ERROR: ${error}`);
 
   await partner.close().catch(() => {});
   await core.stop().catch(() => {});
-  return { sc, visible, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n"), recalls, remembered: mem.added, memAttempts, retitles };
+  return { sc, visible, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n"), recalls, remembered: mem.added, memAttempts, retitles, bridgeSent };
 }
 
 const r_opened = (o: Opened[], step: number) => o.filter((x) => x.step === step);
@@ -340,11 +379,12 @@ function describeStep(st: Step): string {
   if ("user" in st) return `user says: ${st.user}`;
   if ("report" in st) return `task "${st.report.task}" reports ${st.report.body.state}: ${st.report.body.summary}${st.report.body.questions.length ? ` | its question (already shown to the user with Go / Hold / Reply buttons): ${st.report.body.questions.map((q) => q.text).join(" / ")}` : ""}${st.report.body.evidence.length ? "" : " | (no evidence attached)"}`;
   if ("reports" in st) return st.reports.map((r) => `task "${r.task}" reports ${r.body.state}: ${r.body.summary}`).join(" || ") + " (both within the same second)";
+  if ("peer" in st) return `${st.peer.from} (${st.peer.from === "alex-reviewer" ? "a teammate's agent" : "the user's own Claude Code in a terminal"}) sends a Bridge message${st.peer.answer ? " answering the one Ducter sent it" : ""}: ${st.peer.text}`;
   if ("resolve" in st) return `user answers the open decision: ${st.resolve.option}${st.resolve.text ? ` "${st.resolve.text}"` : ""}`;
   return `a reminder the partner set earlier is due: ${st.timerFired.reason}`;
 }
 
-function applyStep(st: Step, core: Core, idOf: Map<string, string>, waiters: Map<string, Bodies["waiter"]>, opened: Opened[]) {
+function applyStep(st: Exclude<Step, { peer: unknown }>, core: Core, idOf: Map<string, string>, waiters: Map<string, Bodies["waiter"]>, opened: Opened[]) {
   const tid = (key: string) => (key.startsWith("$opened") ? opened[Number(key.slice(7))]?.taskId : idOf.get(key)) ?? key;
   const report = (r: { task: string; body: Omit<Bodies["report"], "taskId"> }) => {
     const taskId = tid(r.task);
@@ -450,6 +490,15 @@ function check(r: RunResult): string[] {
   const attempted = r.memAttempts.map((a) => JSON.stringify(a.input)).join("\n");
   for (const re of e.rememberForbid ?? []) if (re.test(attempted)) fails.push(`memory_add carried ${re}`);
   for (const m of r.remembered) if (m.provenance.logSeq === undefined || !m.provenance.persona) fails.push("memory saved without provenance");
+  // Bridge.
+  if (e.bridgeSent) {
+    const b = e.bridgeSent;
+    const msgs = r.bridgeSent.filter((m) => !b.to || m.to === b.to);
+    if (b.count && (msgs.length < b.count[0] || msgs.length > b.count[1])) fails.push(`bridge sends to ${b.to ?? "anyone"} ×${msgs.length} (want ${b.count[0] === b.count[1] ? b.count[0] : `${b.count[0]}-${b.count[1]}`})`);
+    const text = msgs.map((m) => m.body).join("\n\n");
+    for (const re of b.require ?? []) if (!re.test(text)) fails.push(`bridge send lacks ${re}`);
+    for (const m of msgs) for (const re of b.forbid ?? []) if (re.test(m.body)) fails.push(`bridge send contains ${re}: "${clip(m.body)}"`);
+  }
   return [...new Set(fails)];
 }
 const clip = (s: string, n = 60) => (s.length > n ? s.slice(0, n - 1) + "…" : s).replace(/\n/g, " ");

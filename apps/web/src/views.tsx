@@ -5,7 +5,7 @@ import type { Attention, Bodies, EvidenceRef, LivingItem } from "@ducter/protoco
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { JSX } from "preact";
 import { A } from "./app.ts";
-import { ago, cjkPad, deviceLabel, duration, harnessName, placeLine, sameWords, splitOutcome, when } from "./format.ts";
+import { ago, cjkPad, deviceLabel, duration, firstClause, harnessName, placeLine, sameWords, splitOutcome, when } from "./format.ts";
 import { markdown } from "./markdown.ts";
 import { disablePush, enablePush } from "./push-client.ts";
 import { inApp } from "./native.ts";
@@ -787,9 +787,12 @@ function Hello() {
 
 // ---------- On hand ----------
 
+/** Where a task runs and why there, in one short muted line ("Codex · MacBook · Your rule …");
+ *  the model, the repo, the branch and the rest of the reason are in the task's Details. */
 function metaLine(task: Task): string {
-  const project = task.open?.project ?? task.card?.project ?? "";
-  return [project || t("onhand.loose"), placeLine(A.L, placeOf(task))].filter(Boolean).join(" · ");
+  const p = placeOf(task);
+  const where = p.kind === "none" ? "" : deviceLabel(A.L, p.device);
+  return [harnessName(harnessOf(task)), where, firstClause(bodyReasonOf(task))].filter(Boolean).join(" · ");
 }
 
 /** What a waiting task waits for, said once: the lane already says it is waiting. */
@@ -799,9 +802,9 @@ function waitReason(task: Task): string {
   return reasonOf(task) || metaLine(task);
 }
 
-function Row({ task, meta, waiting }: { task: Task; meta: string; waiting?: boolean }) {
+function Row({ task, meta }: { task: Task; meta: string }) {
   return (
-    <button class={`row${waiting ? " waiting" : ""}`} onClick={() => A.go({ name: "task", id: task.id })}>
+    <button class="row" onClick={() => A.go({ name: "task", id: task.id })}>
       <span class="main">
         <span class="t">{title(task) || t("task.unknown")}</span>
         <span class="m">{meta}</span>
@@ -868,10 +871,10 @@ export function OnHand() {
                   {t("lane.waiting")} <span class="n">{waiting.length + loose.length}</span>
                 </h3>
                 {waiting.map((task) => (
-                  <Row key={task.id} task={task} meta={waitReason(task)} waiting />
+                  <Row key={task.id} task={task} meta={waitReason(task)} />
                 ))}
                 {loose.map((w) => (
-                  <div class="row waiting" key={w.waiterId}>
+                  <div class="row" key={w.waiterId}>
                     <Clock />
                     <span class="main">
                       <span class="t">{w.reason}</span>

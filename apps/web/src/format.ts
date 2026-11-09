@@ -52,6 +52,19 @@ export function placeLine(L: Strings, p: Place): string {
   return L.t("place.none");
 }
 
+/** A reason's first clause: up to its first comma or full stop outside quotes. */
+export function firstClause(s: string): string {
+  let depth = 0;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i]!;
+    if ("「“(（".includes(c)) depth++;
+    else if ("」”)）".includes(c)) depth--;
+    else if (c === '"') depth += depth > 0 ? -1 : 1;
+    else if (depth <= 0 && ("，。；".includes(c) || (",;.".includes(c) && (i + 1 === s.length || s[i + 1] === " ")))) return s.slice(0, i).trim();
+  }
+  return s.trim();
+}
+
 export function harnessName(h: string): string {
   return { "claude-code": "Claude Code", codex: "Codex", pi: "pi" }[h] ?? h;
 }

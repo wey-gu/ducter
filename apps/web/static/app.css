@@ -1078,12 +1078,6 @@ a {
   width: 100%;
   min-height: 64px;
 }
-/* Waiting is the one lane drawn as an outline (shape, not only hue): no base under it. */
-.row.waiting {
-  background: transparent;
-  box-shadow: none;
-  border: 2px dashed var(--line-2);
-}
 .row .main {
   flex: 1;
   min-width: 0;

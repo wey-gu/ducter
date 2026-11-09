@@ -132,8 +132,9 @@ lives in Details. On hand needs no state chip: the lane is the state.
 - Words appear only for exceptions, plainly ("睡着了 · 醒来就接着做", "连不上 · 2 小时前");
   the normal state says nothing (an awake worker has no status line; Ducter's home says
   "Ducter 在这儿" quietly).
-- A state in text is plain text in the state's ink (a lane's count, a failed status line,
-  "Didn't work" on a Done row), never a chip and never with a dot in front.
+- A state in text is plain text in the state's ink (a failed status line, "Didn't work" on a
+  Done row), never a chip and never with a dot in front. Counts are never colored by state: a
+  lane's count is in muted ink, and the lane's name says which lane it is.
 - A mark is a drawn glyph that means something (✓ done, clock waiting, → under way, × didn't
   work, ! look at this, ↗ went out), in muted ink (or the state's ink for an exception),
   never on a colored tile, never a colored dot.
@@ -175,6 +176,14 @@ of it stops; the equip cross-fades; colors and words are unchanged.
   adjacent punctuation is compressed (`text-spacing-trim`).
 - Inline code in a zh line: JetBrains Mono at 0.86em on the same baseline, the same 1/4-em gap,
   short tokens never broken (D73).
+
+**On hand cards.** A task's ask is one clay card in the needs-you tint, the same as the ask in
+the conversation: the task's title as a small link in the needs-you ink at its top (no solid
+colored band), the question, the default and its bar, Reply… · Hold · Go. Working, Waiting
+and Done items are the normal card (no dashed outline; a dashed border is not a state). Under
+a card, at most one short muted line of where it runs and why ("Codex · MacBook · 你的规则
+「后端用 Codex」"); the model, the repo, the branch and the full reason are in the opened task's
+Details.
 
 **Conversation rhythm.** Top-aligned (no empty band above a short conversation). 12 between
 two things one voice says, 24 where the turn passes; 12 inside a message (text → chip → sheet

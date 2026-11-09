@@ -135,13 +135,13 @@ func (a *App) when(at time.Time) string {
 // waiterRow is a task-less waiter: one compact line in the Waiting lane.
 func (a *App) waiterRow(c *ui.Context, w *protocol.Waiter) {
 	t := a.T
-	ui.Row(c).Gap(t.S3).Padding(t.S3, t.S4).Radius(t.RadiusMD).Border(1.5, t.Waiting.Dot.Mix(t.Surface, 0.4)).BorderStyle(ui.BorderDashed).AlignItems(ui.Start).
+	ui.Row(c).Gap(t.S3).Padding(t.S4, t.S4).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).AlignItems(ui.Start).
 		Label(w.Reason).Children(func() {
 		a.glyph(c, 18, drawClock(t.InkMuted))
 		// Already under the Waiting lane's header: the reason alone, and
 		// its time under it (a narrow lane has no room for both on a line).
 		ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
-			ui.Text(c, w.Reason).FontSize(t.SM).FontWeight(700).TextColor(t.Waiting.Ink).MaxLines(3)
+			ui.Text(c, w.Reason).FontSize(t.MD).FontWeight(800).MaxLines(3)
 			if at := store.ParseTime(w.At); !at.IsZero() {
 				ui.Text(c, a.when(at)).FontSize(t.XS).TextColor(t.InkMuted).FontFeatures("tnum")
 			}
@@ -199,7 +199,6 @@ func (a *App) forecastBand(c *ui.Context, b store.Board) {
 func (a *App) lane(c *ui.Context, lane store.Lane, tasks []*store.Task, grow, basis float32) {
 	t := a.T
 	names := [...]string{"lane.needs_you", "lane.working", "lane.waiting", "lane.done"}
-	colors := [...]theme.StateColors{t.NeedsYou, t.Working, t.Waiting, t.Done}
 	ui.Column(c.Key(lane)).Grow(grow).Basis(basis).MinWidth(0).MaxWidth(basis * 2.2).Gap(t.S3).Children(func() {
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 			a.heading(c, a.L.T(names[lane]), t.XL)
@@ -210,7 +209,8 @@ func (a *App) lane(c *ui.Context, lane store.Lane, tasks []*store.Task, grow, ba
 			case store.LaneWaiting:
 				n += len(a.looseWaiters())
 			}
-			a.heading(c, fmt.Sprint(n), t.XL).TextColor(colors[lane].Ink).FontFeatures("tnum")
+			// The count in muted ink: the lane's name says which lane it is, not a color.
+			a.heading(c, fmt.Sprint(n), t.XL).TextColor(t.InkMuted).FontFeatures("tnum")
 			if lane == store.LaneNeedsYou {
 				ui.Spacer(c)
 				// 都按默认 / Go on all defaults: only worth it with two or more.
@@ -254,34 +254,63 @@ func (a *App) lane(c *ui.Context, lane store.Lane, tasks []*store.Task, grow, ba
 	})
 }
 
-func (a *App) metaLine(task *store.Task) string {
-	s := a.bodyLine(task)
-	if r := task.BodyReason(); r != "" {
-		if s != "" {
-			s += " · "
-		}
-		s += r
+// whereWhy is where a task runs and why there, in one short muted line
+// ("Codex · MacBook · 你的规则「后端用 Codex」"). The model, the repo, the
+// branch and the rest of the reason are in the opened task's Details.
+func (a *App) whereWhy(task *store.Task) string {
+	where := ""
+	if p := task.Place(); p.Kind != "" {
+		where = a.device(p.Device)
 	}
-	return s
+	return strings.Join(nonEmpty(harnessName(task.Harness()), where, firstClause(task.BodyReason())), " · ")
 }
 
-// needsCard is a task's ask on On hand: its title band (the title is the
-// way into the task), the question, its default and countdown, Go / Hold /
-// Reply…, and where it runs in plain muted words (no capsules).
+// firstClause is a reason's first clause: up to its first comma or full
+// stop outside quotes.
+func firstClause(s string) string {
+	depth := 0
+	for i, r := range s {
+		switch r {
+		case '「', '“', '(', '（':
+			depth++
+		case '」', '”', ')', '）':
+			depth--
+		case '"':
+			if depth > 0 {
+				depth--
+			} else {
+				depth++
+			}
+		case '，', '。', '；':
+			if depth <= 0 {
+				return strings.TrimSpace(s[:i])
+			}
+		case ',', ';', '.':
+			if depth <= 0 && (i+1 == len(s) || s[i+1] == ' ') {
+				return strings.TrimSpace(s[:i])
+			}
+		}
+	}
+	return strings.TrimSpace(s)
+}
+
+// needsCard is a task's ask on On hand, one clay card in the needs-you
+// tint like the ask in the conversation: the task's title as a small link
+// (the way into the task), the question, its default and countdown,
+// Reply… / Hold / Go, and where it runs and why in one muted line.
 func (a *App) needsCard(c *ui.Context, task *store.Task) {
 	t := a.T
 	d := a.S.PendingDecision(task.ID)
-	card := ui.Column(c).Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Clip()
-	a.lift(c, card, 3)
-	card.Children(func() {
-		ui.Row(c).Gap(t.S3).Padding(t.S3, t.S5).Background(t.Accent).AlignItems(ui.Center).Children(func() {
+	ui.Column(c).Padding(t.S5, t.S5).Gap(t.S3).Radius(t.RadiusXL).Background(t.NeedsYou.Surface).
+		Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge).Children(func() {
+		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 			title := task.Title()
 			if p := task.Project(); p != "" {
 				title = p + " · " + title
 			}
-			l := ui.Text(c, title+" ›").FontSize(t.MD).FontWeight(800).TextColor(t.OnAccent).Grow(1).SingleLine().
+			l := ui.Text(c, title+" ›").FontSize(t.SM).FontWeight(800).TextColor(t.NeedsYou.Ink).Grow(1).MinWidth(0).SingleLine().
 				Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(task.Title()).Focusable()
-			if l.Hovered() {
+			if l.Hovered() || l.Pressed() {
 				l.Underline()
 			}
 			if l.Clicked() {
@@ -292,32 +321,29 @@ func (a *App) needsCard(c *ui.Context, task *store.Task) {
 				if d := a.Now().Sub(at); d >= time.Minute {
 					opened = a.L.T("time.opened", a.duration(d))
 				}
-				ui.Text(c, opened).FontSize(t.XS).FontWeight(700).TextColor(t.OnAccent).Shrink(0)
+				ui.Text(c, opened).FontSize(t.XS).TextColor(t.InkMuted).Shrink(0)
 			}
 		})
-		ui.Column(c).Padding(t.S5, t.S5, t.S5, t.S5).Gap(t.S3).Children(func() {
-			rep := task.Report()
-			q := ""
-			if d != nil {
-				q = d.Question
-			} else if rep != nil && len(rep.Questions) > 0 {
-				q = rep.Questions[0].Text
-			}
-			if q != "" {
-				a.heading(c, autospace(q), t.XL).LineHeight(1.35)
-			}
-			if rep != nil && rep.Summary != "" && rep.Summary != q {
-				ui.Text(c, rep.Summary).FontSize(t.SM).LineHeight(1.6).TextColor(t.InkSoft).MaxLines(4).Tooltip(rep.Summary)
-			}
-			if d != nil {
-				a.countdown(c, d)
-				a.decisionButtons(c, d, decisionStyle{height: 52, quietBg: t.Bg})
-			}
-			if meta := strings.Join(nonEmpty(a.metaLine(task), a.placeLine(task.Place())), " · "); meta != "" {
-				ui.Text(c, meta).FontSize(t.XS).LineHeight(1.5).TextColor(t.InkMuted).Padding(t.S3, 0, 0, 0).
-					BorderWidth(1, 0, 0, 0).BorderColor(t.LineSoft).BorderStyle(ui.BorderDashed)
-			}
-		})
+		rep := task.Report()
+		q := ""
+		if d != nil {
+			q = d.Question
+		} else if rep != nil && len(rep.Questions) > 0 {
+			q = rep.Questions[0].Text
+		}
+		if q != "" {
+			a.heading(c, autospace(q), t.XL).LineHeight(1.35)
+		}
+		if rep != nil && rep.Summary != "" && rep.Summary != q {
+			ui.Text(c, rep.Summary).FontSize(t.SM).LineHeight(1.6).TextColor(t.InkSoft).MaxLines(4).Tooltip(rep.Summary)
+		}
+		if d != nil {
+			a.countdown(c, d)
+			a.decisionButtons(c, d, decisionStyle{height: 48, quietBg: t.NeedsYou.Surface})
+		}
+		if line := a.whereWhy(task); line != "" {
+			ui.Text(c, line).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Tooltip(line)
+		}
 	})
 }
 
@@ -363,7 +389,7 @@ func (a *App) countdown(c *ui.Context, d *store.DecisionState) {
 			}
 		})
 		if ok {
-			ui.Box(c).Height(8).Radius(4).Background(t.NeedsYou.Surface).Children(func() {
+			ui.Box(c).Height(8).Radius(4).Background(t.NeedsYou.Dot.Alpha(0.22)).Children(func() {
 				ui.Box(c).Height(8).Radius(4).Background(t.Accent).WidthPercent(min(max(frac, 0.02), 1) * 100)
 			})
 		}
@@ -409,17 +435,19 @@ func (a *App) workingCard(c *ui.Context, task *store.Task) {
 		} else if r := a.waitReason(task); r != "" {
 			ui.Text(c, r).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft)
 		}
-		meta := a.metaLine(task)
+		meta := []string{a.whereWhy(task)}
 		if task.Card != nil && task.Card.UpdatedAt != "" {
-			meta += " · " + a.L.T("onhand.reported", a.ago(task.Card.UpdatedAt))
+			meta = append(meta, a.L.T("onhand.reported", a.ago(task.Card.UpdatedAt)))
 		}
-		ui.Text(c, meta).FontSize(t.XS).TextColor(t.InkMuted)
+		if line := strings.Join(nonEmpty(meta...), " · "); line != "" {
+			ui.Text(c, line).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(2)
+		}
 	})
 }
 
 func (a *App) waitingCard(c *ui.Context, task *store.Task) {
 	t := a.T
-	card := ui.Column(c).Padding(t.S4, t.S4).Gap(t.S2).Radius(t.RadiusLG).Background(t.SurfaceRaised).Border(2, t.Waiting.Dot.Mix(t.Surface, 0.4)).BorderStyle(ui.BorderDashed)
+	card := ui.Column(c).Padding(t.S4, t.S4).Gap(t.S2).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color)
 	a.cardLink(c, card, task)
 	card.Children(func() {
 		ui.Text(c, task.Title()).FontSize(t.MD).FontWeight(800)
@@ -430,8 +458,8 @@ func (a *App) waitingCard(c *ui.Context, task *store.Task) {
 			reason = a.L.T("onhand.waiting.for", reason)
 		}
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-			a.glyph(c, 20, drawClock(t.Waiting.Ink))
-			ui.Text(c, reason).FontSize(t.SM).FontWeight(700).TextColor(t.Waiting.Ink).Grow(1).MinWidth(0)
+			a.glyph(c, 18, drawClock(t.InkMuted))
+			ui.Text(c, reason).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft).Grow(1).MinWidth(0)
 		})
 		if rep := task.Report(); rep != nil && rep.Summary != "" {
 			ui.Text(c, rep.Summary).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(2)

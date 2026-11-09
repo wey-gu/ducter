@@ -218,10 +218,30 @@ export function renderTasks(all: TaskCard[], maxDone = 8, ctx?: Pick<RenderCtx, 
   return out.join("\n");
 }
 
-/** Background for a fresh session: last N channel events + tasks. No reset language. */
-export function renderProjection(history: LogEvent[], cards: TaskCard[], ctx: RenderCtx): string {
-  const lines = history.map((e) => renderHistoryLine(e, ctx)).filter((x): x is string => x !== null);
+/** The spine's part of a projection (spine/spine.ts SpineView), already rendered. */
+export interface SpineBlocks {
+  earlier: string; // epoch and segment digests
+  ledger: string; // open obligations and decisions in force
+  gap?: { from: number; to: number }; // lines not shown between the digests and the window
+}
+
+/**
+ * Background for a fresh session: the spine (digests, then the ledger), the verbatim window, the
+ * tasks. Stable blocks first, so the bytes that change least come first (principle 2). History
+ * lines carry their #seq once a spine exists, so the digests' pointers line up. No reset language.
+ */
+export function renderProjection(history: LogEvent[], cards: TaskCard[], ctx: RenderCtx, spine?: SpineBlocks): string {
+  const lines = history.map((e) => {
+    const l = renderHistoryLine(e, ctx);
+    return l === null ? null : spine ? `#${e.seq} ${l}` : l;
+  }).filter((x): x is string => x !== null);
   const parts: string[] = [];
+  if (spine?.earlier)
+    parts.push(
+      `<earlier_conversation>\nWhat came before the lines below, oldest first. #n points at a line of the conversation: log_read (stream "channel", fromSeq n) shows it, log_search finds anything else.\n\n${spine.earlier}\n</earlier_conversation>`,
+    );
+  if (spine?.ledger) parts.push(`<open_items>\n${spine.ledger}\n</open_items>`);
+  if (spine?.gap) lines.unshift(`(#${spine.gap.from}–#${spine.gap.to} are not shown here; log_read or log_search them when you need them)`);
   if (lines.length) parts.push(`<conversation_so_far>\n${lines.join("\n")}\n</conversation_so_far>`);
   if (cards.length) parts.push(`<tasks>\n${renderTasks(cards, 8, ctx)}\n</tasks>`);
   return parts.join("\n\n");

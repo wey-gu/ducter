@@ -9,7 +9,7 @@ import { chmodSync, existsSync } from "node:fs";
 import type { EventKind, LogEvent } from "@ducter/protocol";
 import type { AppendInput, LogStore, SpineStore } from "@ducter/protocol/src/internal.ts";
 import { realClock, type Clock } from "./clock.ts";
-import { bigramQuery, fuseRanks, indexText } from "./search.ts";
+import { bigramQuery, fuseRanks, indexText } from "@ducter/protocol/src/search.ts";
 import { openSpine, SPINE_SCHEMA } from "./spine.ts";
 
 export interface SqliteLog extends LogStore {

@@ -58,7 +58,13 @@ import { claimText, fixedOutcome, followCandidates, followLine, foldOut, inQuiet
 import { createNmemClient, noMemory, type MemoryClient } from "./memory.ts";
 import { buildSystemPrompt } from "./persona.ts";
 import { realFs, resolvePlace, type PlaceFs } from "./place.ts";
-import { isChinese, renderProjection, renderTime, renderTrigger, type RenderCtx } from "./render.ts";
+import { isChinese, renderHistoryLine, renderProjection, renderTime, renderTrigger, type RenderCtx } from "./render.ts";
+import type { SpineStore } from "../../protocol/src/internal.ts";
+import { autoRecall, renderRecall } from "./spine/recall.ts";
+import type { CutOptions } from "./spine/segment.ts";
+import { estTokens } from "./spine/digest.ts";
+import { createSpine, type Spine } from "./spine/spine.ts";
+import { createHarnessWriter, type DigestWriter } from "./spine/writer.ts";
 
 export interface PartnerOptions {
   now?: () => number;
@@ -81,6 +87,16 @@ export interface PartnerOptions {
   bridge?: BridgeClient | null;
   bridgeIntervalMs?: number; // inbox check period while running, default 5 min; 0 = only at start
   bridgeRecoverMs?: number; // after an unknown send outcome, recover this soon (default 30 s; 0 = at the next check)
+  /**
+   * Long-conversation memory (spine/spine.ts, design/memory.md). Default: on when core has a
+   * spine store (the real Log) and DUCTER_DIGEST is not "off"; digests are written on the
+   * partner's harness with a mid-tier model. false turns it off; tests pass a fake writer/store.
+   */
+  spine?: false | { writer?: DigestWriter; store?: SpineStore; cut?: Partial<CutOptions>; epochAfter?: number; epochSize?: number; pokeMs?: number };
+  /** Pre-turn recall past a precision gate (spine/recall.ts). Default: DUCTER_AUTO_RECALL=1, else off (unmeasured). */
+  autoRecall?: boolean;
+  /** Re-cut a warm session once its context passes this many tokens and a digest exists (default 120K). */
+  recutTokens?: number;
 }
 
 export interface PartnerHandle extends Partner {
@@ -88,7 +104,9 @@ export interface PartnerHandle extends Partner {
   idle(): Promise<void>;
   close(): Promise<void>;
   /** For tests and diagnostics. */
-  readonly stats: { turns: number; freshStarts: number; resumes: number; sessionId?: string; bridgeOwedByCode?: number; bridgeRecovered?: number; bridgeFollowed?: number };
+  readonly stats: { turns: number; freshStarts: number; resumes: number; recuts?: number; sessionId?: string; bridgeOwedByCode?: number; bridgeRecovered?: number; bridgeFollowed?: number };
+  /** The long-conversation memory, when on (tests and diagnostics). */
+  readonly spine: Spine | null;
   /**
    * One bounded Bridge check: recover outgoing operations with an unknown outcome, read the
    * inbox, then say any follow-through that is due. Returns how many messages it logged.
@@ -467,6 +485,34 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     },
   };
 
+  // ---------- long-conversation memory (spine) ----------
+  // Digests are written in the background after turns and on a slow timer (a quiet channel
+  // closes its last part); the projection reads them at the next cut. Nothing here is on the
+  // critical path, and none of it is ever shown to the user.
+  const spineStore = opts.spine === false ? undefined : (opts.spine?.store ?? core.spine);
+  const spine: Spine | null =
+    spineStore && opts.spine !== false && (opts.spine !== undefined || process.env.DUCTER_DIGEST !== "off")
+      ? createSpine({
+          log: core.log,
+          store: spineStore,
+          writer: opts.spine?.writer ?? createHarnessWriter({ harness: () => runner.harness, pick: partnerRun, dataDir: core.dataDir }),
+          line: (e) => renderHistoryLine(e, ctx),
+          now,
+          ...(opts.spine?.cut ? { cut: opts.spine.cut } : {}),
+          ...(opts.spine?.epochAfter ? { epochAfter: opts.spine.epochAfter } : {}),
+          ...(opts.spine?.epochSize ? { epochSize: opts.spine.epochSize } : {}),
+          onError,
+        })
+      : null;
+  const recallOn = opts.autoRecall ?? process.env.DUCTER_AUTO_RECALL === "1";
+  const recutTokens = opts.recutTokens ?? 120_000;
+  // The live session's context, estimated from what went in and came out (harness usage is a
+  // cumulative bill, not a context size). Reset when a session starts.
+  let contextTokens = 0;
+  const spineEvery = opts.spine ? (opts.spine.pokeMs ?? 15 * 60_000) : 15 * 60_000;
+  const spineTimer = spine && spineEvery > 0 ? setInterval(() => void spine.poke(), spineEvery) : null;
+  (spineTimer as { unref?: () => void } | null)?.unref?.();
+
   // ---------- channel output ----------
   const appendAiMsg = (text: string) => {
     const t = text.trim();
@@ -555,6 +601,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
 
   // ---------- harness events ----------
   const onHarnessEvent = (ev: HarnessEvent) => {
+    if (ev.role === "assistant" && ev.text) contextTokens += estTokens(ev.text);
+    if (ev.tool?.output) contextTokens += estTokens(ev.tool.output.slice(0, 40_000));
     if (!turn) return;
     // A task_open after its line: the ack goes out now and ends the waiting line (D120), so no
     // "Setting up a task…" flashes before it.
@@ -666,6 +714,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     });
     session = s;
     iter = null;
+    contextTokens = 0;
     lastPromptHash = promptHash();
     liveModel = run.model;
     lastSessionId = s.id || resumeSessionId;
@@ -697,6 +746,16 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       return true; // pre-started fresh session: this turn carries the projection seed
     }
     const warm = lastActivity > 0 && now() - lastActivity <= idleColdMs;
+    // Principle 4: once the live history dwarfs what a re-cut would rebuild, re-cut even while
+    // warm (between turns only). The new session reads as the same conversation.
+    if (session && warm && spine && contextTokens > recutTokens && spine.digests().length) {
+      await dropSession();
+      lastSessionId = undefined;
+      await startSession();
+      stats.freshStarts++;
+      stats.recuts = (stats.recuts ?? 0) + 1;
+      return true;
+    }
     if (session && warm) return false;
     if (session && !warm) await dropSession();
     if (!session && warm && canResume()) {
@@ -765,10 +824,29 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const done = batch.filter((e) => e.kind === "report" && (e.body as Bodies["report"]).state === "done").length;
     if (done >= 2 && !lastUser)
       deltas.push(`[results] ${done} tasks finished together: one message, one short line per task saying what now works, in the user's terms. The app shows tests, commits, branches and Merge under it.`);
+    // The spine as of this cut (fresh sessions only), and gated recall outside what the model
+    // already has in front of it. Recall is an L4 delta: the next re-cut leaves it out (folded).
+    const view = spine && (fresh || recallOn) ? spine.view() : undefined;
+    if (recallOn && spine && lastUser && view) {
+      const text = (lastUser.body as Bodies["user_msg"]).text;
+      const from = view.window[0]?.seq ?? lastUser.seq;
+      const r = autoRecall(core.log, text, from);
+      if (r) {
+        spineStore?.recalled({ query: r.query, hits: r.admitted.map((h) => h.seq), admitted: r.admitted.length > 0, turnSeq: lastUser.seq });
+        const block = renderRecall(r);
+        if (block) deltas.push(block);
+      }
+    }
     deltas.push(renderTime(new Date(now())));
     const devices = renderDevices(core.workers?.list() ?? []);
     if (devices) deltas.push(devices);
     if (!fresh) return deltas.join("\n");
+    if (view) {
+      const batchSeqs = new Set(batch.map((e) => e.seq));
+      const window = view.window.filter((e) => !batchSeqs.has(e.seq));
+      const background = renderProjection(window, core.tasks.list(), ctx, { earlier: view.earlier, ledger: view.ledger, ...(view.gap ? { gap: view.gap } : {}) });
+      return background ? `${background}\n\n${deltas.join("\n")}` : deltas.join("\n");
+    }
     const batchSeqs = new Set(batch.map((e) => e.seq));
     const history = core.log
       .read({
@@ -852,6 +930,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const redo = carried && batch.some((e) => carried!.seqs.has(e.seq)) ? carried : undefined;
     if (redo) carried = undefined;
     const input = buildInput(batch, fresh, redo?.note);
+    contextTokens += estTokens(input);
     // A task question is shown with its own Go / Hold / Reply; prose about it only repeats it
     // (eval: restated in 4 of 4 runs whatever the persona said).
     const quiet = batch.length > 0 && batch.every((e) => e.kind === "report" && (e.body as Bodies["report"]).state === "needs_input");
@@ -880,6 +959,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       inflight = undefined;
       lastActivity = now();
       saveState();
+      // Close and digest what is due, in the background (never awaited by a turn).
+      void spine?.poke();
     }
   }
 
@@ -1783,6 +1864,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   // ---------- public ----------
   const api: PartnerHandle = {
     stats,
+    spine,
     checkBridge,
     onTrigger(e: LogEvent) {
       if (closed) return;
@@ -1816,6 +1898,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       closed = true;
       if (bridgeTimer) clearInterval(bridgeTimer);
       if (recoverTimer) clearTimeout(recoverTimer);
+      if (spineTimer) clearInterval(spineTimer);
+      spine?.close(); // a digest being written is dropped; it is written again after a restart
       await api.idle().catch(() => {});
       await dropSession();
     },
@@ -1846,6 +1930,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       }
     })();
   }
+
+  // A digest a restart cut off, or a part that closed while Ducter was down, is written now.
+  if (spine) void Promise.resolve(opts.ready).catch(() => {}).then(() => spine.poke());
 
   // Re-queue triggers that no finished turn covered (cut off by a restart, or arrived while down).
   if (persist && handledSeq !== undefined) {

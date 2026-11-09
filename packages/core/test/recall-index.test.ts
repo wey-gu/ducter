@@ -3,7 +3,7 @@ import { Database } from "bun:sqlite";
 import { afterEach, expect, test } from "bun:test";
 import { join } from "node:path";
 import { openLog } from "../src/log.ts";
-import { bigramQuery, bigramTokens, fuseRanks } from "../src/search.ts";
+import { bigramQuery, bigramTokens, fuseRanks } from "@ducter/protocol/src/search.ts";
 import { tempDir } from "./helpers.ts";
 
 let cleanup = () => {};

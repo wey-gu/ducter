@@ -102,8 +102,12 @@ export interface PushSub {
   locale: "zh" | "en";
   platform: string; // ios | android | macos | web
   createdAt: string;
-  /** The iPhone app (apps/ios): endpoint is apns:<device token>, keys are empty. */
-  apns?: { env: "sandbox" | "production"; topic: string };
+  /**
+   * The iPhone app (apps/ios): endpoint is apns:<device token>, keys are empty. Since D159 the
+   * app also sends its relay handle (from the notification relay) and the phone's key, which
+   * seals every notification end to end (push-relay.ts).
+   */
+  apns?: { env: "sandbox" | "production"; topic: string; relay?: string; key?: string };
 }
 
 export interface Quiet {
@@ -153,8 +157,8 @@ export interface PushStore {
   subs(): PushSub[];
   subscribe(s: PushSub): void;
   unsubscribe(endpoint: string): boolean;
-  /** Drops every subscription of a device (it was disconnected). */
-  forget(deviceId: string): void;
+  /** Drops every subscription of a device (it was disconnected); returns what it dropped. */
+  forget(deviceId: string): PushSub[];
   settings(): PushSettings;
   setSettings(p: Partial<PushSettings>): PushSettings;
 }
@@ -213,9 +217,10 @@ export function openPushStore(dataDir: string, opts: { tz?: string } = {}): Push
       return data.subs.length !== n;
     },
     forget(deviceId) {
-      const n = data.subs.length;
+      const gone = data.subs.filter((x) => x.deviceId === deviceId);
       data.subs = data.subs.filter((x) => x.deviceId !== deviceId);
-      if (data.subs.length !== n) save();
+      if (gone.length) save();
+      return gone;
     },
     settings: () => effectiveSettings(data.settings, opts.tz),
     setSettings(p) {
@@ -474,7 +479,7 @@ export function createPusher(opts: {
   const liveSubs = () =>
     opts.store.subs().filter((s) => {
       if (!opts.alive || opts.alive(s)) return true;
-      opts.store.forget(s.deviceId);
+      for (const g of opts.store.forget(s.deviceId)) void opts.apns?.revoke?.(g);
       return false;
     });
 

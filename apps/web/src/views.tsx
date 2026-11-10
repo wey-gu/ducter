@@ -12,7 +12,7 @@ import { TRY_LIVE } from "@ducter/protocol";
 import { ago, behind, cjkPad, deviceLabel, duration, firstClause, harnessName, modelName, phaseLine as phaseWords, placeLine, sameWords, splitOutcome, when } from "./format.ts";
 import { markdown } from "./markdown.ts";
 import { Coin } from "./coin.tsx";
-import { disablePush, enablePush } from "./push-client.ts";
+import { appPush, disablePush, enablePush } from "./push-client.ts";
 import { inApp } from "./native.ts";
 import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, WaitBubble, waitCaption, WaitDetails, waitLine } from "./work.tsx";
 import { BriefCard, safe, saidSince, shortGo, shortTitle, taskBlocks, TaskMeta, TimerPie, WhatItDid } from "./transcript.tsx";
@@ -2934,6 +2934,8 @@ function PhonePush() {
       {A.push === "ios-install" && <div class="hint">{t("notify.ios")}</div>}
       {A.push === "unsupported" && <div class="hint">{t(inApp() ? "notify.app.unavailable" : "notify.unsupported")}</div>}
       {inApp() && A.push === "off" && !A.me?.push.apns && <div class="hint">{t("notify.app.nokey")}</div>}
+      {inApp() && A.push === "on" && appPush.why && <div class="hint">{t(appPush.why === "relay" ? "notify.app.relaydown" : appPush.why === "update" ? "notify.app.update" : "notify.app.nokey")}</div>}
+      {inApp() && A.push === "on" && !appPush.why && A.me?.push.relay === "unreachable" && <div class="hint">{t("notify.app.relaydown")}</div>}
       {A.push === "denied" && <div class="hint">{t("notify.denied")}</div>}
       {A.push === "off" && A.me?.push.publicKey && (!inApp() || A.me.push.apns) && (
         <Btn
@@ -2956,6 +2958,7 @@ function PhonePush() {
               if (r.data) setPush(r.data);
             }}
           />
+          {inApp() && A.me?.push.apnsVia === "relay" && <div class="small sub">{t("notify.app.private")}</div>}
           <div class="btns end">
             <Btn
               kind="text"
@@ -2969,8 +2972,8 @@ function PhonePush() {
               kind="secondary"
               label={t("notify.test")}
               onClick={async () => {
-                const r = await A.api.call("api/push/test", { method: "POST" });
-                A.toast(r.status === 200 ? t("notify.test.sent") : t("result.action.failed", String(r.status)));
+                const r = await A.api.call<{ relay?: string }>("api/push/test", { method: "POST" });
+                A.toast(r.status === 200 ? t("notify.test.sent") : r.data?.relay === "unreachable" ? t("notify.app.relaydown") : t("result.action.failed", String(r.status)));
               }}
             />
           </div>

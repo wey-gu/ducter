@@ -4,4 +4,7 @@
 //   DUCTER_BUNDLE_ID = com.example.ducter
 DUCTER_BUNDLE_ID = co.nowledge.ducter.ios
 DEVELOPMENT_TEAM = JMU55RJW2K
+// The notification relay the app registers with (D159). A self-signed build with its own APNs key
+// on its home can leave it: the home sends straight to Apple. ("/$()/" keeps "//" from being a comment.)
+DUCTER_PUSH_RELAY = https:/$()/ducter.ai/api/push
 #include? "Local.xcconfig"

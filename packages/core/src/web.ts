@@ -6,7 +6,7 @@
 // Behind the gate (local, or a paired device's bearer token):
 //   GET  /api/me                     who this client is, and the push key
 //   POST /api/push/subscribe         {subscription, locale, platform, quiet?}
-//                                    or, from the iPhone app, {apns: {token, env, topic}, …}
+//                                    or, from the iPhone app, {apns: {token, env, topic, relay?, key?}, …}
 //   POST /api/push/unsubscribe       {endpoint}
 //   GET|POST /api/push/settings      {done?, quiet?}
 //   POST /api/push/test              one test push to this device's subscriptions
@@ -17,6 +17,7 @@ import type { Gate, GateResult } from "./auth.ts";
 import type { Pusher, PushStore, PushSub, Quiet } from "./push.ts";
 import { isPushEndpoint, testMessage } from "./push.ts";
 import { APNS_PREFIX, isApnsToken, isTopic, type ApnsSender } from "./apns.ts";
+import { isDeviceKey, isRelayHandle } from "./push-relay.ts";
 
 import indexHtml from "../../../apps/web/static/index.html" with { type: "file" };
 import appJs from "../../../apps/web/static/app.js" with { type: "file" };
@@ -207,20 +208,34 @@ export async function webApi(req: Request, g: Extract<GateResult, { pass: true }
         via: g.via,
         personaName: deps.personaName(),
         ...(g.via === "device" ? { deviceId, deviceName: g.device.name } : {}),
-        // apns: this main can send to the iPhone app (it has an APNs key).
-        push: { supported: true, publicKey: v.publicKey, apns: deps.apns?.configured ?? false },
+        // apns: this home can notify the iPhone app (through the relay, or its own Apple key);
+        // apnsVia says which; relay: "unreachable" when the relay failed the last time (D159).
+        push: {
+          supported: true,
+          publicKey: v.publicKey,
+          apns: deps.apns?.configured ?? false,
+          ...(deps.apns?.via ? { apnsVia: deps.apns.via } : {}),
+          ...(deps.apns?.relayUnreachable?.() ? { relay: "unreachable" } : {}),
+        },
       });
     }
     case "POST /api/push/subscribe": {
       const b = await body();
       const locale = b.locale === "zh" ? "zh" : "en";
       if (b.apns !== undefined) {
-        const a = b.apns as { token?: unknown; env?: unknown; topic?: unknown };
+        const a = b.apns as { token?: unknown; env?: unknown; topic?: unknown; relay?: unknown; key?: unknown };
         if (!isApnsToken(a?.token) || !isTopic(a.topic) || (a.env !== "sandbox" && a.env !== "production")) return json(400, { error: "invalid subscription" });
-        deps.push.subscribe({ endpoint: APNS_PREFIX + a.token.toLowerCase(), keys: { p256dh: "", auth: "" }, deviceId, locale, platform: "ios", createdAt: new Date().toISOString(), apns: { env: a.env, topic: a.topic } });
+        // relay + key (D159): both or neither; a malformed one is refused, not silently dropped.
+        if ((a.relay !== undefined && !isRelayHandle(a.relay)) || (a.key !== undefined && !isDeviceKey(a.key))) return json(400, { error: "invalid subscription" });
+        const apns: NonNullable<PushSub["apns"]> = { env: a.env, topic: a.topic, ...(isRelayHandle(a.relay) ? { relay: a.relay } : {}), ...(isDeviceKey(a.key) ? { key: a.key } : {}) };
+        const sub: PushSub = { endpoint: APNS_PREFIX + a.token.toLowerCase(), keys: { p256dh: "", auth: "" }, deviceId, locale, platform: "ios", createdAt: new Date().toISOString(), apns };
+        deps.push.subscribe(sub);
         const quiet = parseQuiet(b.quiet);
         if (quiet && deps.push.settings().quietDefault) deps.push.setSettings({ quiet });
-        return json(200, { ok: true, settings: deps.push.settings(), apns: deps.apns?.configured ?? false });
+        // apns: this phone will actually get notifications (an app from before the relay, with no
+        // handle, on a home without a key of its own, won't).
+        const deliverable = deps.apns ? (deps.apns.deliverable?.(sub) ?? deps.apns.configured) : false;
+        return json(200, { ok: true, settings: deps.push.settings(), apns: deliverable });
       }
       const s = b.subscription as { endpoint?: unknown; keys?: { p256dh?: unknown; auth?: unknown } } | undefined;
       if (typeof s?.endpoint !== "string" || typeof s.keys?.p256dh !== "string" || typeof s.keys?.auth !== "string")
@@ -244,7 +259,9 @@ export async function webApi(req: Request, g: Extract<GateResult, { pass: true }
     }
     case "POST /api/push/unsubscribe": {
       const b = await body();
+      const gone = deps.push.subs().find((s) => s.endpoint === b.endpoint && s.deviceId === deviceId);
       const ok = typeof b.endpoint === "string" && deps.push.unsubscribe(b.endpoint);
+      if (ok && gone) void deps.apns?.revoke?.(gone);
       return json(200, { ok });
     }
     case "GET /api/push/settings":
@@ -261,7 +278,7 @@ export async function webApi(req: Request, g: Extract<GateResult, { pass: true }
       const results = await deps.pusher.sendNow((s) => testMessage({ persona: deps.personaName(), locale: s.locale }), (s) => s.deviceId === deviceId);
       if (!results.length) return json(404, { error: "no subscription for this device" });
       const ok = results.some((r) => r.status >= 200 && r.status < 300);
-      return json(ok ? 200 : 502, { results: results.map((r) => ({ status: r.status })) });
+      return json(ok ? 200 : 502, { results: results.map((r) => ({ status: r.status })), ...(!ok && deps.apns?.relayUnreachable?.() ? { relay: "unreachable" } : {}) });
     }
     case "POST /api/decide": {
       const b = await body();

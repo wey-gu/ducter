@@ -21,3 +21,6 @@
 "decision.reply.placeholder" = "Reply about this…";
 "composer.send" = "Send";
 "notify.action.failed" = "That didn't go through. Open Ducter and answer it there.";
+/* D159: what Apple and the notification relay carry; the phone opens the real words (DucterNotify). */
+"push.relay.title" = "Ducter";
+"push.relay.body" = "Ducter needs you";

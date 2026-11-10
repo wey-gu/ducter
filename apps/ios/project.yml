@@ -20,6 +20,10 @@ targets:
     platform: iOS
     sources:
       - path: Ducter
+      - path: Shared
+    dependencies:
+      # Opens sealed notifications (D159); embedded in the app's PlugIns.
+      - target: DucterNotify
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(DUCTER_BUNDLE_ID)
@@ -33,6 +37,27 @@ targets:
         Release:
           # App Store / TestFlight builds talk to production APNs (the entitlement is rewritten
           # to "production" by distribution signing; Native.apnsEnv follows the configuration).
+          SWIFT_OPTIMIZATION_LEVEL: -O
+  DucterNotify:
+    # The Notification Service Extension (D159): puts the real words back into a sealed alert.
+    # Its own App ID, <app id>.notify; automatic signing (CI: -allowProvisioningUpdates with the
+    # App Store Connect key) registers it and makes its profile. No capability beyond keychain
+    # sharing, which every profile allows within the team.
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: DucterNotify
+      - path: Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(DUCTER_BUNDLE_ID).notify
+        INFOPLIST_FILE: DucterNotify/Info.plist
+        CODE_SIGN_ENTITLEMENTS: DucterNotify/DucterNotify.entitlements
+        CODE_SIGN_STYLE: Automatic
+        TARGETED_DEVICE_FAMILY: "1"
+        SKIP_INSTALL: YES
+      configs:
+        Release:
           SWIFT_OPTIMIZATION_LEVEL: -O
 schemes:
   Ducter:

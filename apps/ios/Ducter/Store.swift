@@ -50,6 +50,9 @@ final class AppState: ObservableObject {
         defaults.removeObject(forKey: "base")
         defaults.removeObject(forKey: "apnsToken")
         defaults.set(false, forKey: "pushOn")
+        // D159: the Ducter left behind can neither push to this phone nor read what comes next.
+        PushKey.rotate()
+        Task { await Relay.drop() }
     }
 
     var pushOn: Bool {

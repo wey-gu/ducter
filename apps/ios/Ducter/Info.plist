@@ -25,6 +25,10 @@
 		<string>en</string>
 		<string>zh-Hans</string>
 	</array>
+	<key>DucterKeychainGroup</key>
+	<string>$(AppIdentifierPrefix)$(DUCTER_BUNDLE_ID).shared</string>
+	<key>DucterPushRelay</key>
+	<string>$(DUCTER_PUSH_RELAY)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSRequiresIPhoneOS</key>

@@ -1,0 +1,11 @@
+{
+  "about": "D159 push seal vector: AES-256-GCM, AAD ducter-push-v1, sealed = base64url(nonce ‖ ciphertext ‖ tag). Checked by packages/core/test/push-relay.test.ts and apps/ios/scripts/check-push-vector.sh.",
+  "key": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+  "nonce": "oKGio6Slpqeoqaqr",
+  "aad": "ducter-push-v1",
+  "plaintext": "{\"title\":\"Ducter · 修 fix-ci\",\"body\":\"要 rebase 吗？\",\"tag\":\"d:d1\",\"url\":\"app#d=d1\",\"decisionId\":\"d1\"}",
+  "sealed": "oKGio6SlpqeoqaqrnToIRDGnZ51YR8OmZA6lrFBu7jB2COxM-mdeqxzCVy3wFCib1gBpH7c6heh7H-GYNH5mrfJH9cLefCd80BHiko6e4VVUlMbM1peNdK307tu9e4jA-KWoWMJXWv_S8z794OpizyGUrf-v-Xs4E2c1mcT0H3oo0FE4NzVC",
+  "padded": "oKGio6SlpqeoqaqrnToIRDGnZ51YR8OmZA6lrFBu7jB2COxM-mdeqxzCVy3wFCib1gBpH7c6heh7H-GYNH5mrfJH9cLefCd80BHiko6e4VVUlMbM1peNdK307tu9e4jA-KWoWMJXWv_S8z794OpizyGUrf-v-XtwpajNCARwQY7-FbscD-_-hJR10m3lMZBf82KgNxd53qsyarH2qPmNS57w2qzd7Z3Vj-cUC-Y4P5GWSmA2oioLAk_ylsFXBt24IkaOHqKiVhl8oj93FBZs6UDxm83TfWDvaQQSlXLJxMgfQ_iYzeF4xX3m-kdIcRIBmU35H-CcYn9iK2BfK53iH6lyUKdLjY1KRRMIslMldayTuST8aCStorWNJVU",
+  "collapseTag": "d:d1",
+  "collapse": "rIa9z1jFZXL9GtyJXva-dA"
+}

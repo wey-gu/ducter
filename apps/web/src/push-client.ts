@@ -38,15 +38,25 @@ const keyBytes = (b64u: string) => {
   return Uint8Array.from(s, (c) => c.charCodeAt(0));
 };
 
-export const localQuiet = (start = "23:00", end = "08:00") => ({ start, end, tz: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC" });
+/**
+ * In the iPhone app, why the home can't reach this phone even though notifications are on:
+ * "relay" (the phone couldn't reach the notification relay just now), "update" (an app from
+ * before the relay), "nokey" (the home's relay is off and it has no Apple key of its own).
+ */
+export const appPush: { why?: "relay" | "update" | "nokey" } = {};
+
+export const localQuiet =(start = "23:00", end = "08:00") => ({ start, end, tz: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC" });
 
 /** Asks for permission (must run from a tap), subscribes, and registers with core. */
 export async function enablePush(api: Api, base: URL, locale: "zh" | "en", publicKey: string): Promise<PushState> {
   const app = nativeInfo();
   if (app) {
-    const r = await nativeCall<{ state: PushState; token?: string }>({ t: "push.enable" });
+    // D159: the app hands over its relay handle and the phone's key along with the token (an
+    // app from before sends only the token).
+    const r = await nativeCall<{ state: PushState; token?: string; apns?: Record<string, unknown>; relay?: "unreachable" }>({ t: "push.enable" });
     if (r?.state !== "on" || !r.token) return r?.state === "on" ? "unsupported" : (r?.state ?? "unsupported");
-    const s = await api.call("api/push/subscribe", { method: "POST", body: { apns: { token: r.token, env: app.apnsEnv, topic: app.bundleId }, locale, quiet: localQuiet() } });
+    const s = await api.call<{ apns?: boolean }>("api/push/subscribe", { method: "POST", body: { apns: r.apns ?? { token: r.token, env: app.apnsEnv, topic: app.bundleId }, locale, quiet: localQuiet() } });
+    appPush.why = s.status === 200 && s.data?.apns === false ? (r.relay === "unreachable" ? "relay" : r.apns ? "nokey" : "update") : undefined;
     return s.status === 200 ? "on" : "off";
   }
   if (!pushSupported()) return isIOS() && !isStandalone() ? "ios-install" : "unsupported";

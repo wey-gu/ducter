@@ -138,13 +138,19 @@ final class Shell: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegat
             guard let d = AppDelegate.shared else { return (["state": "unsupported"], nil) }
             let r = await d.enable()
             var out: [String: Any] = ["state": r.state]
-            if let tok = r.token { out["token"] = tok }
+            if let tok = r.token {
+                out["token"] = tok
+                // D159: what the page hands its home: token, relay handle, the phone's key.
+                out["apns"] = await API.subscription(token: tok)
+                if Relay.unreachable { out["relay"] = "unreachable" }
+            }
             return (out, nil)
         case "push.disable":
             AppState.shared.pushOn = false
             let tok = AppState.shared.apnsToken
             UIApplication.shared.unregisterForRemoteNotifications()
             AppState.shared.apnsToken = nil
+            await Relay.drop()
             return (tok.map { ["token": $0] } ?? [:], nil)
         default:
             return (nil, "unknown")

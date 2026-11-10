@@ -4,5 +4,10 @@
 <dict>
 	<key>aps-environment</key>
 	<string>development</string>
+	<!-- The phone's notification key, shared with DucterNotify (D159, apps/ios/Shared/PushCrypto.swift). -->
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)$(DUCTER_BUNDLE_ID).shared</string>
+	</array>
 </dict>
 </plist>

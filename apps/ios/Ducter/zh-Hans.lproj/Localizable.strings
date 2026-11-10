@@ -20,3 +20,6 @@
 "decision.reply.placeholder" = "回复这件事…";
 "composer.send" = "发送";
 "notify.action.failed" = "没发出去。打开 Ducter 在那里回一下。";
+/* D159：苹果和通知中转只带这一句；真正的内容由手机自己解开（DucterNotify）。 */
+"push.relay.title" = "Ducter";
+"push.relay.body" = "Ducter 需要你看一下";

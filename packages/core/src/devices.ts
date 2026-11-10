@@ -63,6 +63,8 @@ export interface DevicesOptions {
   agents?: () => import("./agents.ts").AgentUpdates | undefined;
   /** D156: the pi inside this Ducter (harness-probe bundledPiVersion). */
   piBundled?: () => string | undefined;
+  /** D155 + D159: a device was disconnected (its phone's notifications stop at once). */
+  onDisconnect?: (deviceId: string) => void;
 }
 
 export interface DevicesView {
@@ -438,6 +440,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
     const gone = o.auth.revoke(device);
     if (!gone.length) return { t: "disconnect_result", device, ok: false, reason: "unknown_device" };
     // Its live socket is closed by the next sweep (workers.ts splitSockets, ≤ 10 s).
+    for (const d of gone) o.onDisconnect?.(d.id);
     changed();
     return { t: "disconnect_result", device: gone[0]!.id, ok: true };
   }

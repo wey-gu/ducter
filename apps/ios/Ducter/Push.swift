@@ -1,8 +1,9 @@
 import UIKit
 import UserNotifications
 
-/// Notifications: APNs registration, the Go / Hold / Reply buttons on a decision (category
-/// DUCTER_DECISION, sent by packages/core/src/apns.ts), and taps that open the right place.
+/// Notifications: APNs registration, the relay handle and the phone's key (D159), the Go / Hold /
+/// Reply buttons on a decision (category DUCTER_DECISION, sent by packages/core/src/apns.ts and
+/// push-relay.ts), and taps that open the right place. Sealed alerts are opened by DucterNotify.
 final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     static let category = "DUCTER_DECISION"
     private(set) static weak var shared: AppDelegate?
@@ -125,7 +126,18 @@ enum API {
     static func subscribe(token: String) async {
         // D59: the default quiet hours in this phone's zone; the main keeps any the user set or turned off.
         let quiet: [String: Any] = ["start": "23:00", "end": "08:00", "tz": TimeZone.current.identifier]
-        _ = await post("api/push/subscribe", ["apns": ["token": token, "env": Native.apnsEnv, "topic": Native.bundleId], "locale": AppState.shared.locale, "quiet": quiet])
+        _ = await post("api/push/subscribe", ["apns": await subscription(token: token), "locale": AppState.shared.locale, "quiet": quiet])
+    }
+
+    /// What the home gets (D159): the device token, the relay handle (registered here, with the
+    /// relay, never through the home) and this phone's key, which seals every notification.
+    /// Without a handle (the relay unreachable just now) the home can still send with a key of its own.
+    @MainActor
+    static func subscription(token: String) async -> [String: Any] {
+        var a: [String: Any] = ["token": token, "env": Native.apnsEnv, "topic": Native.bundleId]
+        if let key = PushKey.current() { a["key"] = key.base64EncodedString() }
+        if let handle = await Relay.handle(for: token) { a["relay"] = handle }
+        return a
     }
 
     @MainActor
@@ -145,6 +157,61 @@ enum API {
     }
 }
 
+/// The notification relay (D159, apps/site/api/push/[op].ts): Nowledge's small forwarder that holds
+/// the app's Apple key. The app registers its device token there and gets an opaque handle; the
+/// handle is all its home ever learns, and the words travel sealed with the phone's own key.
+enum Relay {
+    /// Last outcome of registering: true when the relay couldn't be reached (the page says so).
+    @MainActor static var unreachable = false
+
+    /// The handle for this token, registering once per token (a new token gets a new handle).
+    @MainActor
+    static func handle(for token: String) async -> String? {
+        let d = UserDefaults.standard
+        if d.string(forKey: "relayToken") == token, let h = d.string(forKey: "relayHandle") { return h }
+        guard let base = Native.relay, let url = URL(string: base + "/register") else { return nil }
+        var r = URLRequest(url: url, timeoutInterval: 15)
+        r.httpMethod = "POST"
+        r.setValue("application/json", forHTTPHeaderField: "content-type")
+        r.httpBody = try? JSONSerialization.data(withJSONObject: ["token": token, "topic": Native.bundleId, "env": Native.apnsEnv])
+        do {
+            let (data, res) = try await URLSession.shared.data(for: r)
+            let status = (res as? HTTPURLResponse)?.statusCode ?? 0
+            unreachable = status >= 500
+            guard status == 200, let j = try? JSONSerialization.jsonObject(with: data) as? [String: Any], let h = j["handle"] as? String else { return nil }
+            if let old = d.string(forKey: "relayHandle") { await revoke(old) }
+            d.set(token, forKey: "relayToken")
+            d.set(h, forKey: "relayHandle")
+            return h
+        } catch {
+            unreachable = true
+            NSLog("[ducter] relay unreachable: %@", error.localizedDescription)
+            return nil
+        }
+    }
+
+    /// Stops a handle (notifications off, or another Ducter): whoever held it can't push any more.
+    @MainActor
+    static func revoke(_ handle: String) async {
+        guard let base = Native.relay, let url = URL(string: base + "/revoke") else { return }
+        var r = URLRequest(url: url, timeoutInterval: 10)
+        r.httpMethod = "POST"
+        r.setValue("application/json", forHTTPHeaderField: "content-type")
+        r.httpBody = try? JSONSerialization.data(withJSONObject: ["handle": handle])
+        _ = try? await URLSession.shared.data(for: r)
+    }
+
+    /// Forgets this phone's handle and revokes it.
+    @MainActor
+    static func drop() async {
+        let d = UserDefaults.standard
+        let h = d.string(forKey: "relayHandle")
+        d.removeObject(forKey: "relayHandle")
+        d.removeObject(forKey: "relayToken")
+        if let h { await revoke(h) }
+    }
+}
+
 enum Haptics {
     @MainActor
     static func play(_ kind: String) {
@@ -160,6 +227,8 @@ enum Haptics {
 enum Native {
     static let bundleId = Bundle.main.bundleIdentifier ?? "co.nowledge.ducter.ios"
     static let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
+    /// The notification relay's base URL (Config.xcconfig DUCTER_PUSH_RELAY); nil when left empty.
+    static let relay: String? = (Bundle.main.object(forInfoDictionaryKey: "DucterPushRelay") as? String).flatMap { $0.hasPrefix("https://") ? $0 : nil }
     #if DEBUG
     static let apnsEnv = "sandbox"
     #else

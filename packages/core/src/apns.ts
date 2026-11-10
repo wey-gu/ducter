@@ -3,15 +3,21 @@
 //
 // - Token auth (an ES256 JWT from a .p8 "Apple Push Notifications service" key), refreshed every
 //   50 minutes (Apple refuses tokens older than an hour and throttles faster refreshes).
-// - Configured by <dataDir>/apns.json {keyId, teamId, keyFile} or DUCTER_APNS_KEY_ID,
-//   DUCTER_APNS_TEAM_ID, DUCTER_APNS_KEY_FILE. Without it the app's subscriptions are kept and
-//   sends report 0 (nothing goes out), and /api/me says `apns: false` so the app can tell the user.
+// - Two ways out (D159). By default the home has no Apple key and sends through the notification
+//   relay (push-relay.ts), which holds the app publisher's key. A home with its own key (a
+//   power user who signs the app under their own team) sends straight to Apple, configured by
+//   <dataDir>/apns.json {keyId, teamId, keyFile} or DUCTER_APNS_KEY_ID, DUCTER_APNS_TEAM_ID,
+//   DUCTER_APNS_KEY_FILE. Neither (relay off, no key): subscriptions are kept, sends report 0,
+//   and /api/me says `apns: false` so the app can tell the user.
+// - A subscription that carries the phone's key (every app since D159) gets a sealed alert
+//   either way: Apple and the relay see a neutral "Ducter needs you", never the words.
 // - HTTP/2 (APNs speaks nothing else) through node:http2; the transport is injectable for tests.
 // - Decisions carry the category DUCTER_DECISION, which the app registers with Go / Hold actions,
 //   answered by the app through POST /api/decide without opening it.
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { PushMessage, PushSub, SendResult } from "./push.ts";
+import { collapseId, isDeviceKey, encryptedApnsPayload, type RelayClient } from "./push-relay.ts";
 
 export interface ApnsConfig {
   keyId: string;
@@ -119,8 +125,17 @@ export function http2Transport(): ApnsTransport {
 }
 
 export interface ApnsSender {
+  /** Something can reach the app: an Apple key on this home, or the relay. */
   configured: boolean;
+  /** How: "key" (this home's own Apple key, the relay as fallback) or "relay". */
+  via?: "key" | "relay";
+  /** The relay couldn't be reached the last time it was tried. */
+  relayUnreachable?: () => boolean;
+  /** This subscription can be delivered to (its app version and this home's setup agree). */
+  deliverable?: (sub: PushSub) => boolean;
   send(sub: PushSub, msg: PushMessage): Promise<SendResult>;
+  /** The phone's device was disconnected: its relay handle stops working (D155, D159). */
+  revoke?(sub: PushSub): Promise<void>;
 }
 
 /** Tokens Apple says are dead: the subscription is dropped. */
@@ -149,10 +164,10 @@ export function createApnsSender(config: ApnsConfig | undefined, transport: Apns
             "apns-push-type": "alert",
             "apns-priority": "10",
             "apns-expiration": String(Math.floor(now() / 1000) + 12 * 3600),
-            "apns-collapse-id": msg.tag.slice(0, 64),
+            "apns-collapse-id": isDeviceKey(sub.apns?.key) ? await collapseId(sub.apns.key, msg.tag) : msg.tag.slice(0, 64),
             "content-type": "application/json",
           },
-          body: JSON.stringify(apnsPayload(msg)),
+          body: JSON.stringify(isDeviceKey(sub.apns?.key) ? await encryptedApnsPayload(msg, sub.apns.key, msg.decisionId ? APNS_CATEGORY : undefined) : apnsPayload(msg)),
         });
         let reason = "";
         try {
@@ -165,6 +180,34 @@ export function createApnsSender(config: ApnsConfig | undefined, transport: Apns
         console.warn(`[push] APNs send failed: ${(err as Error).message}`);
         return { endpoint: sub.endpoint, status: 0, gone: false };
       }
+    },
+  };
+}
+
+/**
+ * The app's sender: this home's own key when it has one (falling back to the relay when Apple
+ * refuses that key for this app, e.g. the public app on a home whose key is another team's),
+ * else the relay. `relay` undefined means DUCTER_PUSH_RELAY=off.
+ */
+export function createAppPushSender(direct: ApnsSender | undefined, relay: RelayClient | undefined): ApnsSender {
+  const hasKey = !!direct?.configured;
+  const viaRelay = (sub: PushSub) => !!relay && !!sub.apns?.relay && isDeviceKey(sub.apns?.key);
+  return {
+    configured: hasKey || !!relay,
+    ...(hasKey ? { via: "key" as const } : relay ? { via: "relay" as const } : {}),
+    relayUnreachable: () => relay?.unreachable() ?? false,
+    deliverable: (sub) => hasKey || viaRelay(sub),
+    async send(sub, msg) {
+      if (!isApnsToken(sub.endpoint.slice(APNS_PREFIX.length)) || !isTopic(sub.apns?.topic)) return { endpoint: sub.endpoint, status: 0, gone: true };
+      if (hasKey) {
+        const r = await direct!.send(sub, msg);
+        if (r.status !== 403 || !viaRelay(sub)) return r;
+      }
+      if (viaRelay(sub)) return relay!.send(sub, msg, msg.decisionId ? APNS_CATEGORY : undefined);
+      return { endpoint: sub.endpoint, status: 0, gone: false };
+    },
+    async revoke(sub) {
+      if (relay && sub.apns?.relay) await relay.revoke(sub.apns.relay);
     },
   };
 }

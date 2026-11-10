@@ -81,7 +81,8 @@ export interface Me {
   personaName: string;
   deviceId?: string;
   deviceName?: string;
-  push: { supported: boolean; publicKey?: string; apns?: boolean };
+  /** apns: this home can notify the iPhone app; apnsVia: its own Apple key or the notification relay (D159). */
+  push: { supported: boolean; publicKey?: string; apns?: boolean; apnsVia?: "key" | "relay"; relay?: "unreachable" };
 }
 
 export class Api {

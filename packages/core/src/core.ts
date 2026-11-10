@@ -22,7 +22,8 @@ import { createWsHandler, type WsData } from "./ws.ts";
 import { createGate, openDeviceAuth, type DeviceAuth } from "./auth.ts";
 import { createWorkers, deviceRoutes, splitSockets, type Workers, type WorkerSocketData } from "./workers.ts";
 import { createPusher, openPushStore, type Pusher, type PushStore } from "./push.ts";
-import { createApnsSender, loadApnsConfig, type ApnsSender } from "./apns.ts";
+import { createApnsSender, createAppPushSender, loadApnsConfig, type ApnsSender } from "./apns.ts";
+import { createRelayClient, relayUrl, type RelayFetch } from "./push-relay.ts";
 import { webApi, webStatic } from "./web.ts";
 import { createDevicesView, type DeviceProbes, type DevicesView } from "./devices.ts";
 import { openSettings, type SettingsStore } from "./settings.ts";
@@ -59,6 +60,8 @@ export interface CoreOptions {
   pushFetch?: (url: string, init: RequestInit) => Promise<Response>; // tests
   /** Sends to the iPhone app (tests pass a fake; default: <dataDir>/apns.json or DUCTER_APNS_*). */
   apns?: ApnsSender;
+  /** Test seam: how the notification relay is called (default fetch to DUCTER_PUSH_RELAY or ducter.ai). */
+  relayFetch?: RelayFetch;
   /** Test seams for Your devices and abilities (cua-driver, harness logins, device kind). */
   deviceProbes?: Partial<DeviceProbes>;
   /** Test seams for connections: the MCP link, and the oo CLI's config. */
@@ -390,12 +393,16 @@ export function startCore(opts: CoreOptions = {}): Core {
     ...(a.exists ? { exists: a.exists } : {}),
   });
   agentsRef = agents;
-  devicesView = createDevicesView({ dataDir, auth: devices, workers, connected: () => ws.connected(), probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, agents: () => agents, ...(agentTesting ? {} : { piBundled: bundledPiVersion }), self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` }, ...(browser ? { browser } : {}), ...(opts.platform ? { platform: opts.platform } : {}) });
+  devicesView = createDevicesView({ dataDir, auth: devices, workers, connected: () => ws.connected(), probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, agents: () => agents, ...(agentTesting ? {} : { piBundled: bundledPiVersion }), self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` }, ...(browser ? { browser } : {}), ...(opts.platform ? { platform: opts.platform } : {}), onDisconnect: (id) => {
+    for (const s of push.forget(id)) void apns.revoke?.(s);
+  } });
   updates.onChange(() => devicesView?.changed());
   agents.onChange(() => devicesView?.changed());
   devicesView.harnessesNow(); // probe once at start, so the partner's first turn knows who is signed in
   const sockets = splitSockets(ws.websocket, workers, { isLive: (id) => devices.isLive(id), nameOf: (id) => devices.list().find((d) => d.id === id)?.name, sweepMs: opts.sweepMs });
-  const apns = opts.apns ?? createApnsSender(loadApnsConfig(dataDir));
+  // The iPhone app: this home's own Apple key if it has one, else the notification relay (D159).
+  const relayAt = relayUrl();
+  const apns = opts.apns ?? createAppPushSender(createApnsSender(loadApnsConfig(dataDir)), relayAt ? createRelayClient(relayAt, opts.relayFetch) : undefined);
   const pusher = createPusher({
     log,
     store: push,

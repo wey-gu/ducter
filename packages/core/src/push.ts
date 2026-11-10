@@ -307,6 +307,8 @@ export interface PushMessage {
   url: string; // relative to the app's base: app#d=<id> or app#task=<id>
   decisionId?: string;
   actions?: { action: "go" | "hold"; title: string }[];
+  /** D165 (Apple's interruption levels, research/46): passive = no sound; time-sensitive may come through. */
+  level?: "passive" | "active" | "time-sensitive";
 }
 
 function inWords(ms: number, c: (typeof COPY)["zh"]) {
@@ -544,6 +546,8 @@ export function createPusher(opts: {
     switch (e.kind) {
       case "decision": {
         const d = e.body as Bodies["decision"];
+        // D165: a find's next step rides in its note, which is the one notification.
+        if (d.findId) return;
         add({ key: `d:${d.decisionId}`, seq: e.seq, kind: "decision", decision: d });
         return;
       }
@@ -579,7 +583,7 @@ export function createPusher(opts: {
     async sendNow(make, only) {
       const v = await opts.store.vapid();
       const subs = liveSubs().filter((s) => !only || only(s));
-      const results = await Promise.all(subs.map((s) => sendPush(s, make(s), v, opts.fetcher, "high", opts.apns)));
+      const results = await Promise.all(subs.map((s) => { const m = make(s); return sendPush(s, m, v, opts.fetcher, m.level === "passive" ? "low" : "high", opts.apns); }));
       for (const r of results) if (r.gone) opts.store.unsubscribe(r.endpoint);
       return results;
     },

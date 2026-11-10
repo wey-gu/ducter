@@ -17,7 +17,11 @@ import { createRegistry, type CoreRegistry } from "./registry.ts";
 import { registerCoreTools } from "./tools.ts";
 import type { Waiters } from "./waiters.ts";
 import { createWork, type Work } from "./work.ts";
-import { createHarnessJudge } from "./judge.ts";
+import { createHarnessAsk, createHarnessJudge } from "./judge.ts";
+import { createProactive, type Proactive } from "./proactive/engine.ts";
+import { modelTriage, type Triage } from "./proactive/triage.ts";
+import { modelJudge, type FindJudge } from "./proactive/judge.ts";
+import { registerProactiveTools } from "./proactive/tools.ts";
 import { createWsHandler, type WsData } from "./ws.ts";
 import { createGate, openDeviceAuth, type DeviceAuth } from "./auth.ts";
 import { createWorkers, deviceRoutes, splitSockets, type Workers, type WorkerSocketData } from "./workers.ts";
@@ -87,6 +91,8 @@ export interface CoreOptions {
   platform?: string;
   /** Work over time test seams (D112-D114): fake commands, a lower look floor, the judge. */
   work?: { exec?: import("@ducter/protocol/src/checks-run.ts").Exec; minEveryMs?: number; judgeMinMs?: number; restartLookMs?: number; defaultZone?: string; judge?: import("./waiters.ts").Judge; connectionFetch?: (url: string, init: RequestInit) => Promise<Response> };
+  /** D165 test seams: the cheap triage and the bar (faked in tests; real ones need the runner's harness), the month's budget. */
+  proactive?: { triage?: Triage; judge?: FindJudge; monthTokens?: number; zone?: string };
 }
 
 export interface Core extends CoreApi {
@@ -111,6 +117,8 @@ export interface Core extends CoreApi {
   loadout: Loadout;
   /** The user's connections (D96). */
   connections: ConnectionsStore;
+  /** D165: what Ducter notices in them, and how it says so. */
+  proactive: Proactive;
   /** What each repo task changed so far (D128). */
   changes: Changes;
   /** D148: updating devices in place, and the newest release. */
@@ -260,6 +268,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   tasks.setDecorator((o) => changes.decorate(work.decorate(o)));
   if (opts.work?.judge) work.setJudge(opts.work.judge);
 
+  let proactiveRef: Proactive | undefined;
   const early: LogEvent[] = []; // triggers that arrive before the partner is wired
   const trigger = (e: LogEvent) => {
     try {
@@ -269,7 +278,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     }
   };
   const unsubscribePartner = log.subscribe((e) => {
-    if (!triggersPartner(e) || !work.wakes(e)) return;
+    if (!triggersPartner(e) || !work.wakes(e) || (proactiveRef && !proactiveRef.wakes(e))) return;
     if (partner) trigger(e);
     else if (early.length < 100) early.push(e);
   });
@@ -303,7 +312,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   // 开一件事 / New task (D128): the one opening path the card and `ducter task` share.
   const newTaskDeps = { log, tasks, runner: () => runner, persona, dataDir, loadout, settings, ...(opts.git ? { git: opts.git } : {}) };
   const newTask = { open: (i: NewTaskInput) => openYourTask(newTaskDeps, i), options: (p?: Place) => newTaskOptions(newTaskDeps, p) };
-  const ws = createWsHandler({ core: api, decisions, runner: () => runner, devices: () => devicesView, settings, connections, rules, loadout, closing, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, memPlugins: () => memPluginsRef, batchMs: opts.batchMs, ...(browser ? { browser } : {}) });
+  const ws = createWsHandler({ core: api, decisions, runner: () => runner, devices: () => devicesView, settings, connections, rules, loadout, closing, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, memPlugins: () => memPluginsRef, proactive: () => proactiveRef, batchMs: opts.batchMs, ...(browser ? { browser } : {}) });
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.
   let partnerTurn = false;
@@ -496,6 +505,28 @@ export function startCore(opts: CoreOptions = {}): Core {
     apns,
     alive: (s) => s.deviceId === "local" || devices.isLive(s.deviceId),
   });
+  // D165: the person's zone: their quiet hours', else the server's (a client's hello sets routines').
+  const zone = () => opts.proactive?.zone ?? settings.get().quiet?.tz ?? opts.work?.defaultZone ?? (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC");
+  const proactive = createProactive({
+    dataDir,
+    log,
+    clock,
+    persona,
+    connections,
+    settings,
+    push,
+    pusher,
+    rules,
+    decisions,
+    runner: () => runner,
+    ...(opts.proactive?.triage ? { triage: opts.proactive.triage } : {}),
+    ...(opts.proactive?.judge ? { judge: opts.proactive.judge } : {}),
+    ...(opts.proactive?.monthTokens ? { monthTokens: opts.proactive.monthTokens } : {}),
+    present: () => ws.present(),
+    zone,
+  });
+  proactiveRef = proactive;
+  registerProactiveTools(mcp, rules);
 
   const server = Bun.serve<WsData | WorkerSocketData>({
     hostname: opts.hostname ?? (process.env.DUCTER_HOST || "127.0.0.1"),
@@ -558,6 +589,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     rules,
     loadout,
     connections,
+    proactive,
     changes,
     updates,
     release,
@@ -571,6 +603,13 @@ export function startCore(opts: CoreOptions = {}): Core {
       // The cheap judge (D112, D113) runs on the harness the partner thinks with, on its small model.
       if (!opts.work?.judge)
         work.setJudge(createHarnessJudge({ harness: () => runner?.harness, pick: () => settings.get().brain, dataDir }));
+      // D165: triage on the cheapest model of the harness the partner thinks with; the bar on its own model.
+      const port = () => runner?.harness;
+      const pick = () => settings.get().brain;
+      proactive.setModels({
+        ...(opts.proactive?.triage ? {} : { triage: modelTriage(createHarnessAsk({ harness: port, pick, dataDir, cheap: true, dir: "triage" })) }),
+        ...(opts.proactive?.judge ? {} : { judge: modelJudge(createHarnessAsk({ harness: port, pick, dataDir, cheap: false, dir: "judge" })) }),
+      });
       // Answers that were resolved but never handed to their task before a restart (decisions.ts).
       for (const u of decisions.takeUnforwarded()) {
         console.warn(`[core] re-sending the answer to ${u.decisionId} that ${u.taskId} never got (restart)`);
@@ -593,6 +632,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       decisions.stop();
       living.stop();
       work.stop();
+      proactive.stop();
       changes.stop();
       pusher.stop();
       updates.stop();

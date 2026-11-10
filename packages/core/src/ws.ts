@@ -78,6 +78,8 @@ export interface WsDeps {
   memPlugins?: () => import("./mem-plugins.ts").MemPlugins | undefined;
   /** D151: Ducter's own browser (live view, Sites); absent in tests that don't need it. */
   browser?: DucterBrowser;
+  /** D165/D166: what Ducter notices in the accounts; absent in tests that don't need it. */
+  proactive?: () => import("./proactive/engine.ts").Proactive | undefined;
   batchMs?: number;
 }
 
@@ -169,10 +171,32 @@ export function createWsHandler(deps: WsDeps) {
     for (const ws of sockets) if (ws.data.rules) send(ws, f);
   });
   // Connections: same pattern. The frame never carries a token.
-  const connectionsFrame = (): ServerFrame => ({ t: "connections", connections: deps.connections!.view(), oo: deps.connections!.oo() });
+  const connectionsFrame = (): ServerFrame => {
+    const p = deps.proactive?.();
+    const list = deps.connections!.view().map((c) => {
+      const look = p?.look(c.id);
+      return look ? { ...c, look } : c;
+    });
+    return { t: "connections", connections: list, oo: deps.connections!.oo() };
+  };
   const offConnections = deps.connections?.onChange(() => {
     for (const ws of sockets) if (ws.data.connections) send(ws, connectionsFrame());
   });
+  // D166: a look, a find or a tile changes the card's status line: coalesced to one frame.
+  let lookTimer: ReturnType<typeof setTimeout> | undefined;
+  let offLook: (() => void) | undefined;
+  const watchLook = () => {
+    if (offLook) return;
+    const p = deps.proactive?.();
+    if (p)
+      offLook = p.onChange(() => {
+        if (lookTimer) return;
+        lookTimer = setTimeout(() => {
+          lookTimer = undefined;
+          for (const ws of sockets) if (ws.data.connections) send(ws, connectionsFrame());
+        }, 250);
+      });
+  };
   // Memory_noted lines change the noted list: subscribers hear about it too.
   const offNoted = log.subscribe((e) => {
     if (e.kind !== "memory_noted" || !deps.settings) return;
@@ -278,6 +302,7 @@ export function createWsHandler(deps: WsDeps) {
         // An app newer than the latest release the home knows: that answer is stale.
         if (typeof f.version === "string") deps.updates?.()?.sawVersion(f.version);
         // The empty conversation's words (D149), for the apps only; a failure leaves the client's own.
+        if (f.client !== "cli") deps.proactive?.()?.hello();
         if (f.client !== "cli")
           void firstScreenFor(f.tz)
             .then((first) => sockets.has(ws) && send(ws, { t: "first_screen", first }))
@@ -558,6 +583,7 @@ export function createWsHandler(deps: WsDeps) {
       case "connections": {
         if (!deps.connections) throw new Error("connections are not available");
         ws.data.connections = true;
+        watchLook();
         send(ws, connectionsFrame());
         void deps.connections.recheck().catch(() => {});
         return;
@@ -571,6 +597,35 @@ export function createWsHandler(deps: WsDeps) {
         const apps: OoApp[] | undefined = r.ok ? (("apps" in r ? (r.apps as OoApp[] | undefined) : undefined) ?? deps.connections.view().find((c) => c.id === r.id)?.apps) : undefined;
         send(ws, r.ok ? { t: "connection_result", ok: true, id: r.id, ...(apps ? { readable: apps } : {}) } : { t: "connection_result", ok: false, reason: r.reason });
         if (!r.ok) send(ws, connectionsFrame());
+        // D165 §11: the partner speaks in the conversation, once, at the first add.
+        else deps.proactive?.()?.added(r.id);
+        return;
+      }
+      case "app_watch": {
+        if (!deps.connections) throw new Error("connections are not available");
+        ws.data.connections = true;
+        const p = deps.proactive?.();
+        const patch = { ...(typeof f.watch === "boolean" ? { watch: f.watch } : {}), ...(typeof f.excluded === "boolean" ? { excluded: f.excluded } : {}) };
+        const ok = p ? p.setApp(String(f.id ?? ""), String(f.service ?? ""), f.account, patch) : deps.connections.setApp(String(f.id ?? ""), String(f.service ?? ""), f.account, patch);
+        if (!ok) send(ws, connectionsFrame());
+        return;
+      }
+      case "connection_reads": {
+        const p = deps.proactive?.();
+        send(ws, { t: "connection_reads", id: String(f.id ?? ""), reads: p ? p.reads(String(f.id ?? "")) : [] });
+        return;
+      }
+      case "find_react": {
+        const p = deps.proactive?.();
+        if (!p) throw new Error("not available");
+        p.react(String(f.findId ?? ""), f.reaction === "mute" ? "mute" : "useful");
+        return;
+      }
+      case "proactive_answer": {
+        const p = deps.proactive?.();
+        if (!p) throw new Error("not available");
+        if (f.ask !== "first_look" && f.ask !== "keep_note") throw new Error("unknown ask");
+        void p.answer(String(f.noteId ?? ""), f.ask, f.yes === true).catch((err) => console.warn("[ws] proactive:", (err as Error).message));
         return;
       }
       case "connection_remove": {
@@ -738,6 +793,11 @@ export function createWsHandler(deps: WsDeps) {
         }
       },
     },
+    /** D165: an app (not a CLI) is open on some socket now: the person is in Ducter. */
+    present(): boolean {
+      for (const ws of sockets) if (ws.data.live && ws.data.client !== "cli") return true;
+      return false;
+    },
     /** Paired client devices with a live socket now. */
     connected(): Set<string> {
       const out = new Set<string>();
@@ -749,6 +809,8 @@ export function createWsHandler(deps: WsDeps) {
       offSettings?.();
       offRules?.();
       offConnections?.();
+      offLook?.();
+      if (lookTimer) clearTimeout(lookTimer);
       offNoted();
       unsubscribe();
       if (flushTimer) clearTimeout(flushTimer);

@@ -5,7 +5,7 @@
 import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Bodies, MemView, QuietHours, Settings, SettingsPatch, TalkLanguage } from "@ducter/protocol";
-import { DEFAULT_AFTER_CHOICES, HARNESSES, isHarnessId, type Brain, type HarnessId } from "@ducter/protocol";
+import { DEFAULT_AFTER_CHOICES, HARNESSES, PROACTIVE_MODES, isHarnessId, type Brain, type HarnessId, type ProactiveMode } from "@ducter/protocol";
 import type { LogStore, MemIdentity, SettingsApi } from "@ducter/protocol/src/internal.ts";
 import { resolveWindows, type WindowsInput } from "@ducter/protocol/src/harness-facts.ts";
 import type { PushStore } from "./push.ts";
@@ -28,6 +28,8 @@ interface SettingsFile {
   hidden?: number[];
   /** D148: update at night (off by default). */
   autoUpdate?: boolean;
+  /** D165: when it notices something (absent: never answered, nothing watches). */
+  proactive?: ProactiveMode;
 }
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -101,6 +103,7 @@ export function openSettings(opts: {
       ...(data.taskAccounts ? { taskAccounts: data.taskAccounts } : {}),
       windows: windowsNow().windows,
       autoUpdate: data.autoUpdate === true,
+      ...(data.proactive ? { proactive: data.proactive } : {}),
     };
   };
 
@@ -169,6 +172,7 @@ export function openSettings(opts: {
       if (typeof patch.memory === "boolean" && !opts.memoryPinnedOff) {
         if ((data.memory !== false) !== patch.memory) (data.memory = patch.memory), did.push("memory");
       }
+      if (typeof patch.proactive === "string" && (PROACTIVE_MODES as readonly string[]).includes(patch.proactive) && data.proactive !== patch.proactive) (data.proactive = patch.proactive), did.push("proactive");
       if (typeof patch.autoUpdate === "boolean" && (data.autoUpdate === true) !== patch.autoUpdate) (data.autoUpdate = patch.autoUpdate), did.push("autoUpdate");
       if (typeof patch.defaultAfterMin === "number" && (DEFAULT_AFTER_CHOICES as readonly number[]).includes(patch.defaultAfterMin)) {
         if ((data.defaultAfterMin ?? 30) !== patch.defaultAfterMin) (data.defaultAfterMin = patch.defaultAfterMin), did.push("defaultAfterMin");

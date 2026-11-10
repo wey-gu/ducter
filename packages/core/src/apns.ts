@@ -78,9 +78,10 @@ export function apnsPayload(msg: PushMessage): Record<string, unknown> {
   return {
     aps: {
       alert: { title: cut(msg.title, 120), body: cut(msg.body, 600) },
-      sound: "default",
+      // D165: the morning note is passive (no sound, research/46); "now" is time-sensitive.
+      ...(msg.level === "passive" ? {} : { sound: "default" }),
       "thread-id": msg.decisionId ? "decisions" : msg.tag.slice(0, 64),
-      ...(msg.decisionId ? { category: APNS_CATEGORY, "interruption-level": "active" } : {}),
+      ...(msg.decisionId ? { category: APNS_CATEGORY, "interruption-level": "active" } : msg.level ? { "interruption-level": msg.level } : {}),
     },
     url: msg.url,
     ...(msg.decisionId ? { decisionId: msg.decisionId } : {}),

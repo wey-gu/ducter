@@ -13,6 +13,8 @@ const MAX_RULES = 50;
 export interface RulesStore {
   list(): RuleView[];
   add(r: { text: string; harness: string; model?: string; match: string[]; device?: string }): RuleView;
+  /** D165: a rule about what it tells the person (这类不用告诉我, or a kind that may wake them). */
+  addNotice(r: { text: string; kind: string; sender?: string; wake?: boolean }): RuleView;
   remove(id: string): boolean;
   onChange(fn: () => void): () => void;
 }
@@ -23,7 +25,7 @@ export function openRules(dataDir: string, now: () => Date = () => new Date()): 
   if (existsSync(path)) {
     try {
       const raw = JSON.parse(readFileSync(path, "utf8"));
-      if (Array.isArray(raw?.rules)) rules = raw.rules.filter((r: RuleView) => r && typeof r.id === "string" && typeof r.text === "string" && isHarnessId(r.harness));
+      if (Array.isArray(raw?.rules)) rules = raw.rules.filter((r: RuleView) => r && typeof r.id === "string" && typeof r.text === "string" && (isHarnessId(r.harness) || (r.notice && typeof r.notice.kind === "string")));
     } catch (err) {
       console.warn(`[rules] ${path} is unreadable; starting with none:`, (err as Error).message);
     }
@@ -51,6 +53,18 @@ export function openRules(dataDir: string, now: () => Date = () => new Date()): 
       rules = [...rules, rule].slice(-MAX_RULES);
       save();
       return { ...rule };
+    },
+    addNotice(r) {
+      const text = r.text.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 140);
+      if (!text) throw new Error("a rule needs its words");
+      const sender = r.sender?.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 80) || undefined;
+      const notice = { kind: r.kind, ...(sender ? { sender } : {}), ...(r.wake ? { wake: true } : {}) };
+      // The same kind (and sender) said again replaces the older rule.
+      rules = rules.filter((x) => !(x.notice && x.notice.kind === notice.kind && (x.notice.sender ?? "") === (notice.sender ?? "") && Boolean(x.notice.wake) === Boolean(notice.wake)));
+      const rule: RuleView = { id: `rule_${randomBytes(5).toString("hex")}`, text, harness: "", match: [], createdAt: now().toISOString(), notice };
+      rules = [...rules, rule].slice(-MAX_RULES);
+      save();
+      return { ...rule, notice: { ...notice } };
     },
     remove(id) {
       const before = rules.length;

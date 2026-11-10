@@ -1,5 +1,6 @@
 // Time and place wording, the same rules as the desktop (views/app.go formatting).
 import type { DeviceUpdate, Place } from "@ducter/protocol";
+import { compareVersions, isVersion } from "@ducter/protocol/src/version.ts";
 import type { Strings } from "./i18n.ts";
 
 export function duration(L: Strings, ms: number): string {
@@ -130,6 +131,21 @@ export function splitOutcome(summary: string): [string, string] {
 // D148: an update under way; a device that is behind (one quiet dot); the step in words.
 export const updating = (u?: DeviceUpdate) => !!u && ["downloading", "verifying", "waiting", "restarting"].includes(u.phase ?? "");
 export const behind = (u?: DeviceUpdate) => !!u && u.available && !updating(u) && u.phase !== "failed";
+/**
+ * D167: "didn't update" stands only while the device still runs what it started from (its start
+ * unknown: while it is below the target). A home older than the rule can still send one.
+ */
+export function failureStands(u: DeviceUpdate): boolean {
+  if (u.phase !== "failed" || !u.to) return true;
+  if (compareVersions(u.current, u.to) === 0) return false;
+  return isVersion(u.from) ? compareVersions(u.current, u.from) === 0 : compareVersions(u.current, u.to) < 0;
+}
+/** A device's update as shown: a failure it has moved past is dropped. */
+export function withoutStaleFailure(u: DeviceUpdate | undefined): DeviceUpdate | undefined {
+  if (!u || failureStands(u)) return u;
+  const { phase: _p, from: _f, to: _t, reason: _r, detail: _d, rolledBack: _b, at: _a, ...rest } = u;
+  return rest;
+}
 export function phaseLine(L: Strings, u: DeviceUpdate): string {
   switch (u.phase) {
     case "downloading":

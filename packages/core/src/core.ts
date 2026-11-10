@@ -37,7 +37,7 @@ import { createReleaseWatch, type Fetch as ReleaseFetch, type ReleaseWatch } fro
 import { createUpdates, type Updates, type UpdatesDeps } from "./updates.ts";
 import { createAgentLatest, createAgentUpdates, type AgentUpdates, type AgentUpdatesDeps } from "./agents.ts";
 import { bundledPiVersion, detectAgent, probeHarnesses } from "./harness-probe.ts";
-import { realSys, updateHow, type UpdateSys } from "./update.ts";
+import { realSys, updateHow, writeAlive, type UpdateSys } from "./update.ts";
 import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 import { createDucterBrowser, type DucterBrowser, type DucterBrowserOptions } from "./browser/index.ts";
 import { readSites } from "./browser/sites.ts";
@@ -470,6 +470,11 @@ export function startCore(opts: CoreOptions = {}): Core {
     websocket: sockets,
   });
   const port = server.port!;
+  // Up and listening: an update's helper waiting on this restart knows it's this version (update.ts
+  // waitHealthy), also when /health doesn't name the version to it.
+  try {
+    writeAlive(dataDir, version);
+  } catch {}
   mcp.setPort(port);
 
   return {

@@ -474,9 +474,11 @@ func (a *App) clientCard(c *ui.Context, cl *protocol.ReachClient) {
 
 // updateSection is Settings' list of every computer's Ducter version
 // (D148 (9)): a self-contained card, so the Settings page can place it.
-// It shows only when the server says versions.
+// It shows only when the server says versions. Built from shared pieces
+// only (sheetCard, note, valueRow, switchRow; the guard in
+// update_guard_test.go): every state of a computer, Check now and its
+// 在查… included, lives in that computer's row (D167).
 func (a *App) updateSection(c *ui.Context) {
-	t := a.T
 	var shown []*protocol.DeviceView
 	for i := range a.S.Devices {
 		if a.S.Devices[i].Update != nil || a.S.Devices[i].Version != "" {
@@ -488,41 +490,9 @@ func (a *App) updateSection(c *ui.Context) {
 	}
 	a.sheetCard(c, "versions", a.L.T("settings.versions.title"), func() {
 		a.note(c, a.L.T("settings.versions.note", a.S.PersonaName))
+		home := homeDevice(shown)
 		for _, dv := range shown {
-			ui.Row(c.Key("ver:" + dv.ID)).Gap(t.S3).AlignItems(ui.Start).Children(func() {
-				ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
-					ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-						ui.Text(c, a.deviceName(dv)).FontSize(t.MD).FontWeight(800).SingleLine()
-						if behind(dv) {
-							a.updateDot(c)
-						}
-					})
-					ui.Text(c, a.kindLine(dv)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
-				})
-				ui.Column(c).Gap(2).AlignItems(ui.End).Children(func() {
-					v := dv.Version
-					if dv.Update != nil {
-						v = firstNonEmpty(dv.Update.Current, v)
-					}
-					ui.Text(c, v).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkSoft).Selectable()
-					if u := dv.Update; u != nil {
-						switch {
-						case u.Phase != "" && (u.Running() || u.Phase == "done" || u.Phase == "failed"):
-							ui.Text(c, a.phaseLine(u)).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).SingleLine()
-						case behind(dv):
-							ui.Text(c, a.L.T("devup.available", u.Latest)).FontSize(t.XS).FontWeight(700).TextColor(t.Ink).SingleLine()
-						case u.Latest != "" && u.Phase == "":
-							ui.Text(c, a.upToDate(u)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
-						}
-					}
-				})
-			})
-			if behind(dv) && dv.Update.How == "self" && dv.State == protocol.DeviceAwake || behind(dv) && dv.Home && dv.Update.How == "app" && a.onThisMac() {
-				a.updateAction(c, dv)
-			}
-		}
-		if home := homeDevice(shown); home != nil && home.Update != nil && home.Update.Latest != "" {
-			a.textRow(c, t.ControlSM).Children(func() { a.checkNow(c, home.ID) })
+			a.versionRow(c, dv, dv == home)
 		}
 		if auto := a.S.Settings; auto != nil {
 			if v, ch := a.switchRow(c, "autoupdate", a.L.T("settings.versions.night"), a.L.T("settings.versions.night.note"), auto.AutoUpdate); ch {
@@ -530,6 +500,76 @@ func (a *App) updateSection(c *ui.Context) {
 			}
 		}
 	})
+}
+
+// versionRow is one computer in Settings' versions card: its name (the
+// quiet dot when it's behind) and what it is; its version and one status at
+// the right: the update's step, 有新版本 x, or 已经是最新的 with 现在检查
+// (the home's), which reads 在查… in the same place while it asks. 没更新成
+// opens its why and the one next step under the row on a tap (D167).
+func (a *App) versionRow(c *ui.Context, dv *protocol.DeviceView, home bool) {
+	u := dv.Update
+	v := dv.Version
+	if u != nil {
+		v = firstNonEmpty(u.Current, v)
+	}
+	key := "ver:" + dv.ID
+	open := a.open[key]
+	failed := u != nil && u.Phase == "failed"
+	var mark func()
+	if behind(dv) {
+		mark = func() { a.updateDot(c) }
+	}
+	status := func() {
+		if u == nil {
+			return
+		}
+		switch {
+		case u.Running():
+			c.After(500e6)
+			a.sideStatus(c, a.phaseLine(u), sideInk)
+		case u.Phase == "done":
+			a.sideStatus(c, a.phaseLine(u), sideDone)
+		case failed:
+			chev := 1
+			if open {
+				chev = 2
+			}
+			if a.sideLink(c, key, a.phaseLine(u), a.deviceName(dv), sideFailed, chev) {
+				a.open[key] = !open
+			}
+		case behind(dv):
+			a.sideStatus(c, a.L.T("devup.available", u.Latest), sideInk)
+		case u.Latest != "" && u.Phase == "":
+			d := a.devState()
+			if home && d.card.checking {
+				a.sideStatus(c, a.L.T("devup.checking"), sideMuted)
+				return
+			}
+			a.sideStatus(c, a.upToDate(u), sideMuted)
+			if home && a.sideLink(c, "check:"+dv.ID, a.L.T("devup.checknow"), "", sideMuted, 0) {
+				d.card.checking = true
+				a.send(protocol.DeviceUpdateReq{T: "device_update", Device: dv.ID, Check: true})
+			}
+		}
+	}
+	act := behind(dv) && (u.How == "self" && dv.State == protocol.DeviceAwake || dv.Home && u.How == "app" && a.onThisMac())
+	retry := failed && open && u.Available && u.How == "self" && dv.State == protocol.DeviceAwake
+	var below func()
+	if act || failed && open {
+		below = func() {
+			if failed && open {
+				a.reasonLine(c, a.updateReason(u.Reason))
+				if u.Detail != "" {
+					a.note(c, u.Detail)
+				}
+			}
+			if act || retry {
+				a.updateAction(c, dv)
+			}
+		}
+	}
+	a.valueRow(c, key, a.deviceName(dv), a.kindLine(dv), mark, v, status, below)
 }
 
 // homeDevice is the home among the devices shown, or nil.

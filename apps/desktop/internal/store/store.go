@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
+	"github.com/wey-gu/ducter/apps/desktop/internal/update"
 )
 
 // Entry is one item of the conversation.
@@ -448,6 +449,9 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 	case "first_screen":
 		s.First = f.First
 	case "devices":
+		for i := range f.Devices {
+			dropStaleFailure(f.Devices[i].Update)
+		}
 		s.Devices, s.Reach, s.DevicesAt = f.Devices, f.Reach, time.Now()
 	case "ability_result":
 		s.AbilityResults = append(s.AbilityResults, f)
@@ -1147,4 +1151,23 @@ func ParseTime(s string) time.Time {
 		return time.Time{}
 	}
 	return t
+}
+
+// dropStaleFailure clears a "didn't update" the device has moved past (D167):
+// a failure stands only while the device still runs what it started from
+// (or, its start unknown, is still below the target). A home that predates
+// this rule can send one; the card never says "didn't update" on the target.
+func dropStaleFailure(u *protocol.DeviceUpdate) {
+	if u == nil || u.Phase != "failed" || u.To == "" {
+		return
+	}
+	stands := update.Compare(u.Current, u.To) != 0
+	if stands && update.Compare(u.From, "0.0.0") >= 0 {
+		stands = update.Compare(u.Current, u.From) == 0
+	} else if stands {
+		stands = update.Compare(u.Current, u.To) < 0
+	}
+	if !stands {
+		u.Phase, u.From, u.To, u.Reason, u.Detail, u.RolledBack, u.At = "", "", "", "", "", false, ""
+	}
 }

@@ -6,8 +6,10 @@
 //            binary (--version names <v>; doctor --json prints its checks)
 //   swap:    keep the running binary as ducter.prev beside it, move the new one in by rename
 //   finish:  (a helper outside the service, so a restart doesn't kill it) restart the service,
-//            wait ≤ 60 s for the new one to be healthy, else put ducter.prev back and restart
-//            again; write updates/result.json, which the restarted Ducter logs and shows.
+//            wait ≤ 3 min for the new one to be healthy, else put ducter.prev back and restart
+//            again; write updates/result.json. The restarted Ducter is already up by then, so
+//            it reads the file again when it changes (updates.ts) and judges it against the
+//            version it runs (judgeResult): never "didn't update" while it runs the target.
 //
 // Every side effect goes through UpdateSys, so tests drive it with fakes (no network, no
 // systemctl). A Linux end-to-end needs a real systemd box.
@@ -19,7 +21,8 @@ import { compareVersions, isVersion } from "@ducter/protocol/src/version.ts";
 import { REPO, type Fetch } from "./release.ts";
 
 export const UNIT = "ducter.service";
-export const HEALTH_WAIT_MS = 60_000;
+/** How long the helper waits for the restarted Ducter: a first start on a big Log or a cold disk can take a minute. */
+export const HEALTH_WAIT_MS = 180_000;
 /** Free space wanted in the staging folder: three times the download, and never under 300 MB. */
 export const MIN_FREE_BYTES = 300 * 1024 * 1024;
 
@@ -260,17 +263,22 @@ export function swapIn(staged: string, execPath: string): { ok: true; target: st
 
 /** Puts ducter.prev back as ducter; the one that failed is kept as ducter.failed for a report. */
 export function rollBack(target: string): boolean {
+  return rollBackWhy(target) === undefined;
+}
+
+/** rollBack, saying why it couldn't (undefined: the previous binary is back). */
+export function rollBackWhy(target: string): string | undefined {
   const prev = join(dirname(target), "ducter.prev");
-  if (!existsSync(prev)) return false;
+  if (!existsSync(prev)) return `no ${prev} to go back to`;
   try {
     rmSync(join(dirname(target), "ducter.failed"), { force: true });
     try {
       linkSync(target, join(dirname(target), "ducter.failed"));
     } catch {}
     renameSync(prev, target);
-    return true;
-  } catch {
-    return false;
+    return undefined;
+  } catch (err) {
+    return `couldn't put ${prev} back: ${(err as Error).message}`;
   }
 }
 
@@ -325,36 +333,67 @@ export const writeResult = (dataDir: string, r: UpdateResult) => writeJson(resul
 export const readResult = (dataDir: string) => readJson<UpdateResult>(resultFile(dataDir));
 export const writePlan = (p: FinishPlan) => writeJson(planFile(p.dataDir), p);
 export const readPlan = (path: string) => readJson<FinishPlan>(path);
-/** A worker that reached its main after a start writes this (worker.ts); the helper waits on it. */
+/** A worker that reached its main (worker.ts), or a home once it listens (core.ts), writes this; the helper waits on it. */
 export const writeAlive = (dataDir: string, version: string, at = new Date().toISOString()) => writeJson(aliveFile(dataDir), { version, at, pid: process.pid });
 export const readAlive = (dataDir: string) => readJson<{ version: string; at: string }>(aliveFile(dataDir));
 
-/** Healthy = the new Ducter answers: the home's /health names the version; a worker wrote alive.json after reaching its main. */
-export async function waitHealthy(sys: UpdateSys, p: FinishPlan, version: string, since: number, ms = HEALTH_WAIT_MS): Promise<boolean> {
+/**
+ * What a recorded outcome means for a Ducter that runs `version` now (D167):
+ * - done: it runs the version the update went to, whatever the helper wrote (a slow start the
+ *   helper gave up on still ended on the target once it came up);
+ * - failed: the update didn't take and it still runs the version it started from;
+ * - superseded: it has moved on since (a later update, the installer run again): say nothing;
+ * - pending: "swapped, restart to run it", and this is still the old one.
+ */
+export type Judged = "done" | "failed" | "superseded" | "pending";
+export function judgeResult(r: Pick<UpdateResult, "ok" | "from" | "to">, version: string): Judged {
+  if (isVersion(r.to) && isVersion(version) && compareVersions(version, r.to) === 0) return "done";
+  const onFrom = !isVersion(r.from) ? isVersion(r.to) && compareVersions(version, r.to) < 0 : compareVersions(version, r.from) === 0;
+  if (!onFrom) return "superseded";
+  return r.ok ? "pending" : "failed";
+}
+
+/** Why waitHealthy gave up: nothing answered as `version`; `answered` is another version that did. */
+export type HealthWait = { ok: true } | { ok: false; answered?: string };
+
+/**
+ * Healthy = the restarted Ducter runs `version` (since `since`): the home's /health names it, or
+ * it wrote alive.json once it was up (a worker, which has no port; a home whose /health doesn't
+ * tell this caller its version, DUCTER_LOCAL_TRUST=off). Being up and being the new version are
+ * told apart: an answer from another version is kept for the reason. onWait hears every 15 s.
+ */
+export async function waitHealthy(sys: UpdateSys, p: FinishPlan, version: string, since: number, ms = HEALTH_WAIT_MS, onWait?: (seconds: number) => void): Promise<HealthWait> {
   const end = sys.now() + ms;
+  let answered: string | undefined;
+  let said = sys.now();
   while (sys.now() < end) {
+    const a = readAlive(p.dataDir);
+    if (a?.version === version && Date.parse(a.at) >= since - 1000) return { ok: true };
     if (p.role === "home") {
       try {
         const r = await sys.fetch(`http://127.0.0.1:${p.port}/health`, { signal: AbortSignal.timeout(2000) });
         if (r.ok) {
-          const j: any = await r.json();
-          if (j?.version === version) return true;
+          const j: any = await r.json().catch(() => ({}));
+          if (j?.version === version) return { ok: true };
+          if (typeof j?.version === "string") answered = j.version;
         }
       } catch {}
-    } else {
-      const a = readAlive(p.dataDir);
-      if (a?.version === version && Date.parse(a.at) >= since) return true;
+    }
+    if (onWait && sys.now() - said >= 15_000) {
+      said = sys.now();
+      onWait(Math.round((said - since) / 1000));
     }
     await sys.sleep(1000);
   }
-  return false;
+  return answered ? { ok: false, answered } : { ok: false };
 }
 
 /**
  * The helper's whole job (`ducter update --finish <plan>`): restart, wait for health, roll back
- * if it never comes, and leave the outcome for the restarted Ducter to log.
+ * if it never comes, and leave the outcome for the restarted Ducter to log. say: its progress
+ * (the helper's journal).
  */
-export async function finish(sys: UpdateSys, p: FinishPlan, healthMs = HEALTH_WAIT_MS): Promise<UpdateResult> {
+export async function finish(sys: UpdateSys, p: FinishPlan, healthMs = HEALTH_WAIT_MS, say: (line: string) => void = () => {}): Promise<UpdateResult> {
   const restart = async () => {
     const r = await sys.run(["systemctl", "--user", "restart", p.unit], { timeoutMs: 60_000 });
     return r.code === 0 ? undefined : r.out.split("\n")[0] || `exit ${r.code}`;
@@ -362,22 +401,26 @@ export async function finish(sys: UpdateSys, p: FinishPlan, healthMs = HEALTH_WA
   const at = () => new Date(sys.now()).toISOString();
   const t0 = sys.now();
   const err = await restart();
-  if (!err && (await waitHealthy(sys, p, p.to, t0, healthMs))) {
+  const first: HealthWait = err ? { ok: false } : await waitHealthy(sys, p, p.to, t0, healthMs, (s) => say(`waiting for ${p.to} to answer (${s} s)`));
+  if (first.ok) {
     const r: UpdateResult = { from: p.from, to: p.to, ok: true, at: at() };
     writeResult(p.dataDir, r);
     return r;
   }
-  const back = rollBack(p.target);
+  const notBack = rollBackWhy(p.target);
+  const back = notBack === undefined;
   const t1 = sys.now();
   if (back) await restart();
-  const up = back && (await waitHealthy(sys, p, p.from, t1, healthMs));
+  const up = back && (await waitHealthy(sys, p, p.from, t1, healthMs)).ok;
+  const secs = Math.round(healthMs / 1000);
+  const why = err ? `restart failed: ${err}` : first.answered ? `${first.answered} answered instead of ${p.to} for ${secs} s` : `${p.to} didn't answer within ${secs} s`;
   const r: UpdateResult = {
     from: p.from,
     to: p.to,
     ok: false,
     rolledBack: back,
     reason: "health",
-    detail: err ? `restart failed: ${err}` : `${p.to} didn't answer within ${Math.round(healthMs / 1000)} s${up ? "" : `; ${p.from} didn't answer either`}`,
+    detail: why + (back ? (up ? "" : `; ${p.from} didn't answer either`) : `; ${notBack}`),
     at: at(),
   };
   writeResult(p.dataDir, r);

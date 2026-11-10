@@ -8,7 +8,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { compareVersions } from "@ducter/protocol/src/version.ts";
 import { createReleaseWatch, fetchLatest, isSecurity, whatsNew } from "../src/release.ts";
-import { assetName, finish, officialUrl, readResult, realSys, rollBack, stage, sumFor, swapIn, updateHow, type FinishPlan, type UpdateSys } from "../src/update.ts";
+import { assetName, finish, judgeResult, officialUrl, readResult, realSys, rollBack, stage, sumFor, swapIn, updateHow, writeAlive, type FinishPlan, type UpdateSys } from "../src/update.ts";
 
 const dirs: string[] = [];
 const tmp = () => {
@@ -196,13 +196,18 @@ describe("swap, restart, rollback", () => {
     expect(readFileSync(join(d, "ducter.failed"), "utf8")).toBe("new");
   });
 
-  /** A fake systemd box: systemctl restarts "the service", which then answers /health with what's on disk. */
-  function box(o: { newComesUp: boolean }) {
+  /**
+   * A fake systemd box: systemctl restarts "the service", which then answers /health with what's
+   * on disk. upAfterMs: the new one takes that long to answer; bare: /health doesn't tell the
+   * helper its version (DUCTER_LOCAL_TRUST=off), the Ducter writes alive.json instead.
+   */
+  function box(o: { newComesUp: boolean; upAfterMs?: number; bare?: boolean }) {
     const d = binDir();
     const dataDir = tmp();
     swapIn(join(d, "new"), join(d, "ducter"));
     let running = "0.0.3";
-    let clock = 0;
+    let clock = Date.parse("2026-11-10T00:00:00Z");
+    let upAt = 0;
     const calls: string[][] = [];
     const sys: UpdateSys = {
       ...realSys,
@@ -213,10 +218,18 @@ describe("swap, restart, rollback", () => {
         if (argv[0] === "systemctl") {
           const onDisk = readFileSync(join(d, "ducter"), "utf8");
           running = onDisk === "new" ? (o.newComesUp ? "0.0.4" : "down") : "0.0.3";
+          upAt = onDisk === "new" ? clock + (o.upAfterMs ?? 0) : clock;
         }
         return { code: 0, out: "" };
       },
-      fetch: async () => (running === "down" ? Promise.reject(new Error("ECONNREFUSED")) : json({ ok: true, version: running })),
+      fetch: async () => {
+        if (running === "down" || clock < upAt) throw new Error("ECONNREFUSED");
+        if (o.bare) {
+          writeAlive(dataDir, running, new Date(clock).toISOString());
+          return json({ ok: true });
+        }
+        return json({ ok: true, version: running });
+      },
     };
     const plan: FinishPlan = { dataDir, target: join(d, "ducter"), from: "0.0.3", to: "0.0.4", role: "home", port: 7777, unit: "ducter.service", restart: "systemd", startedAt: "" };
     return { d, dataDir, sys, plan, calls };
@@ -238,4 +251,45 @@ describe("swap, restart, rollback", () => {
     expect(b.calls.filter((c) => c[0] === "systemctl").length).toBe(2);
     expect(readResult(b.dataDir)).toMatchObject({ ok: false, rolledBack: true });
   });
+
+  test("a slow first start (90 s) is waited for: done, nothing rolled back (D167)", async () => {
+    const b = box({ newComesUp: true, upAfterMs: 90_000 });
+    const said: string[] = [];
+    const r = await finish(b.sys, b.plan, undefined, (s) => said.push(s));
+    expect(r).toMatchObject({ ok: true, to: "0.0.4" });
+    expect(readFileSync(join(b.d, "ducter"), "utf8")).toBe("new");
+    expect(said.length).toBeGreaterThanOrEqual(5); // it says it's still waiting, every 15 s
+  });
+
+  test("a /health that doesn't say the version: alive.json says it instead (D167)", async () => {
+    const b = box({ newComesUp: true, bare: true });
+    expect(await finish(b.sys, b.plan, 5000)).toMatchObject({ ok: true });
+  });
+
+  test("the old one still answering is said as such; a missing ducter.prev is said, not hidden", async () => {
+    const b = box({ newComesUp: true });
+    b.sys.fetch = async () => json({ ok: true, version: "0.0.3" });
+    expect((await finish(b.sys, b.plan, 5000)).detail).toContain("0.0.3 answered instead of 0.0.4");
+    const c = box({ newComesUp: false });
+    rmSync(join(c.d, "ducter.prev"));
+    const r = await finish(c.sys, c.plan, 5000);
+    expect(r).toMatchObject({ ok: false, rolledBack: false });
+    expect(r.detail).toContain("ducter.prev to go back to");
+  });
+});
+
+test("an outcome is judged against the version running now (D167)", () => {
+  // The author's hel: it runs 0.0.7; the file is from an attempt at 0.0.7 the helper gave up on.
+  expect(judgeResult({ ok: false, from: "0.0.6", to: "0.0.7" }, "0.0.7")).toBe("done");
+  // The update before this one, which the Ducter it restarted never read (written after its start).
+  expect(judgeResult({ ok: true, from: "0.0.5", to: "0.0.6" }, "0.0.7")).toBe("superseded");
+  expect(judgeResult({ ok: false, from: "0.0.5", to: "0.0.6" }, "0.0.7")).toBe("superseded");
+  // Rolled back: still on what it started from.
+  expect(judgeResult({ ok: false, from: "0.0.6", to: "0.0.7" }, "0.0.6")).toBe("failed");
+  // Swapped with no service to restart it: neither failed nor done yet.
+  expect(judgeResult({ ok: true, from: "0.0.6", to: "0.0.7" }, "0.0.6")).toBe("pending");
+  // Going back (--to) that didn't take is a failure too.
+  expect(judgeResult({ ok: false, from: "0.0.7", to: "0.0.5" }, "0.0.7")).toBe("failed");
+  // A worker whose start version isn't known: below the target still failed.
+  expect(judgeResult({ ok: false, from: "?", to: "0.0.7" }, "0.0.6")).toBe("failed");
 });

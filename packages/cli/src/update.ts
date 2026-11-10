@@ -16,7 +16,7 @@ import { join } from "node:path";
 import type { DeviceUpdate, DeviceView, ServerFrame, UpdateReason } from "@ducter/protocol";
 import { compareVersions } from "@ducter/protocol/src/version.ts";
 import { fetchLatest, type Release } from "@ducter/core/src/release.ts";
-import { finish, readPlan, readResult, realSys, runUpdate, updateHow, writeResult, type Fail, type UpdateSys } from "@ducter/core/src/update.ts";
+import { finish, judgeResult, readPlan, readResult, realSys, runUpdate, updateHow, writeResult, type Fail, type UpdateSys } from "@ducter/core/src/update.ts";
 import type { WorkerUpdateFrame } from "@ducter/core/src/updates.ts";
 import { CRITICAL_WAIT_MS, TURN_GRACE_MS } from "@ducter/core/src/updates.ts";
 import type { Args } from "./args.ts";
@@ -27,12 +27,19 @@ import { cmdUpdateAgents } from "./update-agents.ts";
 
 // ---------- the worker's side ----------
 
-/** The outcome of this computer's last update, once (for its hello); markReported: said now. */
-export function lastOutcome(dataDir: string, o: { markReported?: boolean } = {}): WorkerUpdateFrame | undefined {
+/**
+ * The outcome of this computer's last update, once (for its hello, and again while the helper
+ * may still write it after this worker is up); markReported: said now. Judged against the
+ * version this worker runs (D167): an outcome it has moved past is dropped, never sent.
+ */
+export function lastOutcome(dataDir: string, o: { markReported?: boolean; version?: string } = {}): WorkerUpdateFrame | undefined {
   const r = readResult(dataDir);
   if (!r || r.reported) return undefined;
-  if (o.markReported) writeResult(dataDir, { ...r, reported: true });
-  return { t: "update", phase: r.ok ? "done" : "failed", from: r.from, to: r.to, ...(r.reason ? { reason: r.reason } : {}), ...(r.detail ? { detail: r.detail } : {}), ...(r.rolledBack !== undefined ? { rolledBack: r.rolledBack } : {}) };
+  const judged = o.version ? judgeResult(r, o.version) : r.ok ? "done" : "failed";
+  if (judged === "pending") return undefined;
+  if (o.markReported || judged === "superseded") writeResult(dataDir, { ...r, reported: true });
+  if (judged === "superseded") return undefined;
+  return { t: "update", phase: judged, from: r.from, to: r.to, ...(judged === "failed" && r.reason ? { reason: r.reason } : {}), ...(judged === "failed" && r.detail ? { detail: r.detail } : {}), ...(judged === "failed" && r.rolledBack !== undefined ? { rolledBack: r.rolledBack } : {}) };
 }
 
 export interface WorkerUpdater {
@@ -160,7 +167,7 @@ export async function cmdUpdate(c: UpdateCtx): Promise<number> {
   if (args.finish) {
     const plan = readPlan(args.finish);
     if (!plan) return say(t("update.finish.noPlan", { path: args.finish })), 2;
-    const r = await finish(sys, plan);
+    const r = await finish(sys, plan, undefined, say);
     say(r.ok ? t("update.done", { v: r.to }) : t("update.rolledBack", { v: r.from, why: reasonText(t, r.reason, r.detail) }));
     return r.ok ? 0 : 1;
   }

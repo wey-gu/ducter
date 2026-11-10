@@ -2,11 +2,12 @@
 // release, the update of the home itself (staged, at a safe point, restarted from a helper), the
 // update op sent down a worker's socket, every step in the Log, and the night-time auto-update.
 // The mechanics are in update.ts; the release check in release.ts.
+import { statSync } from "node:fs";
 import type { Bodies, DeviceUpdate, Settings, UpdateHow, UpdatePhase, UpdateReason } from "@ducter/protocol";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
 import { compareVersions, DUCTER_VERSION, isVersion } from "@ducter/protocol/src/version.ts";
 import { FRESH_MS, type Release, type ReleaseWatch } from "./release.ts";
-import { readResult, runUpdate, writeResult, type Fail, type RunInput, type UpdateResult, type UpdateSys } from "./update.ts";
+import { judgeResult, readResult, resultFile, runUpdate, writeResult, type Fail, type RunInput, type UpdateResult, type UpdateSys } from "./update.ts";
 import { inQuiet } from "./push.ts";
 
 /** How long 回来了 / Back stays on a card, and how long a failure does. */
@@ -69,6 +70,8 @@ export interface UpdatesDeps {
   criticalWaitMs?: number;
   /** How often the night-time auto-update looks (0: never). */
   autoEveryMs?: number;
+  /** How long after the start the helper's outcome is looked for (0: only on a card's view). */
+  resultWatchMs?: number;
 }
 
 export interface Updates {
@@ -130,24 +133,54 @@ export function createUpdates(d: UpdatesDeps): Updates {
   };
 
   // The restart's outcome, left by the helper (update.ts finish): logged once, shown a while.
-  const r = readResult(d.dataDir);
-  if (r && !r.reported) {
-    const ok = r.ok && compareVersions(version, r.to) === 0;
-    set("local", d.name(), {
-      phase: ok ? "done" : "failed",
-      from: r.from,
-      to: r.to,
-      ...(ok ? {} : { reason: r.reason ?? "health", detail: r.detail ?? `still on ${version}`, rolledBack: r.rolledBack ?? false }),
-    });
-    const at = Date.parse(r.at);
-    if (Number.isFinite(at)) states.get("local")!.at = at;
+  // The helper writes it only once this Ducter answers, so it is read again whenever the file
+  // changes (on a card's view, and every few seconds for a while after the start), and judged
+  // against the version this runs (D167): an old file left by an earlier attempt, or by the
+  // update before this one, never makes a Ducter on the target say it didn't update.
+  let seen = "";
+  function absorb() {
+    let stamp = "";
+    try {
+      const st = statSync(resultFile(d.dataDir));
+      stamp = `${st.mtimeMs}:${st.size}`;
+    } catch {
+      return;
+    }
+    if (stamp === seen) return;
+    seen = stamp;
+    const r = readResult(d.dataDir);
+    if (!r || r.reported) return;
+    const judged = judgeResult(r, version);
+    if (judged === "pending") return; // swapped, not restarted yet: this process already says so
+    if (running("local")) return; // an update of its own is under way; its own outcome follows
+    if (judged !== "superseded") {
+      set("local", d.name(), {
+        phase: judged,
+        from: r.from,
+        to: r.to,
+        ...(judged === "failed" ? { reason: r.reason ?? "health", detail: r.detail ?? `still on ${version}`, rolledBack: r.rolledBack ?? false } : {}),
+      });
+      const at = Date.parse(r.at);
+      if (Number.isFinite(at)) states.get("local")!.at = at;
+    }
     writeResult(d.dataDir, { ...r, reported: true } satisfies UpdateResult);
+    try {
+      const st = statSync(resultFile(d.dataDir));
+      seen = `${st.mtimeMs}:${st.size}`;
+    } catch {}
   }
 
   const running = (id: string) => {
     const p = states.get(id)?.phase;
     return p === "downloading" || p === "verifying" || p === "waiting" || p === "restarting";
   };
+
+  absorb();
+  const watchMs = d.resultWatchMs ?? 15 * 60_000;
+  const watch = watchMs > 0 ? setInterval(absorb, 3000) : undefined;
+  const watchEnd = watch ? setTimeout(() => clearInterval(watch), watchMs) : undefined;
+  (watch as any)?.unref?.();
+  (watchEnd as any)?.unref?.();
 
   const asked = new Map<string, number>();
   function sawVersion(v: string | undefined) {
@@ -171,6 +204,7 @@ export function createUpdates(d: UpdatesDeps): Updates {
 
   function view(id: string, current: string | undefined, how: UpdateHow | undefined): DeviceUpdate | undefined {
     if (!current) return undefined;
+    if (id === "local") absorb();
     sawVersion(current);
     const rel = d.release.latest();
     const latest = rel?.version;
@@ -187,7 +221,10 @@ export function createUpdates(d: UpdatesDeps): Updates {
     const p = states.get(id);
     if (p) {
       const age = now() - p.at;
-      const shown = p.phase === "done" ? age < DONE_SHOWN_MS : p.phase === "failed" ? age < FAILED_SHOWN_MS : true;
+      // A failure stands only while the device still runs what it started from (D167): one
+      // that has since reached the target, or moved on, didn't fail as far as anyone can see.
+      const stands = p.phase !== "failed" || judgeResult({ ok: false, from: p.from, to: p.to }, current) === "failed";
+      const shown = stands && (p.phase === "done" ? age < DONE_SHOWN_MS : p.phase === "failed" ? age < FAILED_SHOWN_MS : true);
       if (shown) {
         Object.assign(out, {
           phase: p.phase,
@@ -310,6 +347,8 @@ export function createUpdates(d: UpdatesDeps): Updates {
     nightly,
     stop() {
       clearInterval(timer);
+      clearInterval(watch);
+      clearTimeout(watchEnd);
       offRelease();
     },
   };

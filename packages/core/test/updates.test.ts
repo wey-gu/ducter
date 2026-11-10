@@ -8,7 +8,7 @@ import { startCore, type Core } from "../src/core.ts";
 import type { DeviceProbes } from "../src/devices.ts";
 import { createReleaseWatch } from "../src/release.ts";
 import { createUpdates } from "../src/updates.ts";
-import { realSys, writeResult, type RunInput, type RunOutcome } from "../src/update.ts";
+import { readResult, realSys, writeResult, type RunInput, type RunOutcome } from "../src/update.ts";
 import { createWorkerUpdater } from "../../cli/src/update.ts";
 import { tempDir } from "./helpers.ts";
 
@@ -103,6 +103,48 @@ test("after the restart, the new Ducter logs the helper's outcome once: 回来�
   c.send({ t: "devices" });
   const f = await c.until<Devices>((x) => x.t === "devices");
   expect(homeOf(f).update).toMatchObject({ current: "0.0.4", available: false, phase: "done", to: "0.0.4" });
+});
+
+test("the author's hel (D167): on 0.0.7 with the update before's file unread, then the helper's outcome after the start: 回来了, never 没更新成", async () => {
+  const t = tempDir();
+  stops.push(t.cleanup);
+  // 0.0.5 → 0.0.6 went fine, but the helper wrote it after 0.0.6 had started: nobody read it.
+  writeResult(t.dir, { from: "0.0.5", to: "0.0.6", ok: true, at: new Date(Date.now() - 86_400_000).toISOString() });
+  const core = boot({ version: "0.0.7", dir: t.dir });
+  expect(steps(core)).toEqual([]); // superseded: nothing said
+  expect(readResult(t.dir)?.reported).toBe(true);
+  const c = await client(core.url);
+  c.send({ t: "devices" });
+  const f = await c.until<Devices>((x) => x.t === "devices");
+  expect(homeOf(f).update?.phase).toBeUndefined();
+  // Now the helper for 0.0.6 → 0.0.7 writes its outcome, after this Ducter answered: even one
+  // that says it gave up (a slow start), this Ducter runs 0.0.7, so it's done.
+  writeResult(t.dir, { from: "0.0.6", to: "0.0.7", ok: false, rolledBack: true, reason: "health", detail: "0.0.7 didn't answer within 60 s", at: new Date().toISOString() });
+  const n = c.frames.length;
+  c.send({ t: "devices" });
+  const g = await c.until<Devices>((x) => x.t === "devices" && Boolean(homeOf(x as Devices).update?.phase), n);
+  expect(homeOf(g).update).toMatchObject({ current: "0.0.7", phase: "done", to: "0.0.7" });
+  expect(steps(core)).toEqual(["done"]);
+});
+
+test("rolled back (D167): the Ducter that came back on 0.0.6 says 没更新成 once the helper writes it, with its reason", async () => {
+  const t = tempDir();
+  stops.push(t.cleanup);
+  const core = boot({ version: "0.0.6", dir: t.dir });
+  writeResult(t.dir, { from: "0.0.6", to: "0.0.7", ok: false, rolledBack: true, reason: "health", detail: "0.0.7 didn't answer within 180 s", at: new Date().toISOString() });
+  const c = await client(core.url);
+  c.send({ t: "devices" });
+  const f = await c.until<Devices>((x) => x.t === "devices" && homeOf(x as Devices).update?.phase === "failed");
+  expect(homeOf(f).update).toMatchObject({ current: "0.0.6", phase: "failed", reason: "health", rolledBack: true, detail: "0.0.7 didn't answer within 180 s" });
+});
+
+test("a failure a device has moved past is never shown (D167): a worker's stale outcome, then its new version", () => {
+  const release = createReleaseWatch({ dataDir: tempDir().dir, fetch: feed("0.0.7"), timer: false });
+  const u = createUpdates({ dataDir: tempDir().dir, log: { append: () => ({}) } as any, release, sys: realSys, self: { execPath: "/x", how: "self", arch: "x64", port: 0 }, name: () => "hel", autoEveryMs: 0, resultWatchMs: 0 });
+  stops.push(() => u.stop());
+  u.fromWorker("w1", "mac", { t: "update", phase: "failed", from: "0.0.6", to: "0.0.7", reason: "health", rolledBack: true });
+  expect(u.view("w1", "0.0.6", "self")?.phase).toBe("failed");
+  expect(u.view("w1", "0.0.7", "self")?.phase).toBeUndefined();
 });
 
 test("the safe point waits for a merge to finish and holds new ones meanwhile; a turn gets a short grace", async () => {

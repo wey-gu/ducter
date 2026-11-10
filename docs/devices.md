@@ -8,7 +8,8 @@ order: 3
 
 Ducter works on computers you own. The one it **lives on** (your Mac, or a server) holds your
 conversation and your partner. Tasks run there, or on another computer you lend it. Your phone
-and other Macs can connect to it to talk and decide.
+(iPhone, iPad or Android), and other Macs, can connect to it to talk and decide (see
+[Your phone](phone.md)).
 
 ## Your devices and what they can do
 

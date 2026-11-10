@@ -1,6 +1,6 @@
 ---
 title: Your phone
-description: Connect your phone or iPad to Ducter, get notified only when something needs you, and keep your nights quiet.
+description: Connect your iPhone, iPad or Android phone to Ducter, get notified only when something needs you, and keep your nights quiet.
 order: 7
 ---
 
@@ -13,9 +13,13 @@ you when something needs you and lets you answer in one tap.
 One thing stays on the Mac: the changes themselves. On the phone, a finished task names them
 in its line of proof ("2 files changed"); to read them line by line, open the task on your Mac.
 
-The phone version opens in your phone's browser. The iPhone app is in public beta through
-TestFlight: [join the beta](https://testflight.apple.com/join/Z4GvWt7t), then connect it with
-the same address and code.
+Where you can use it:
+
+| | How | Status |
+|---|---|---|
+| **iPhone and iPad** | The Ducter app, one app for both ([join the beta](https://testflight.apple.com/join/Z4GvWt7t)), or Safari | Public beta on TestFlight |
+| **Android** | Your phone's browser | Ready; the Android app is coming soon |
+| **Any other phone** | Its browser | Ready |
 
 ## Connect your phone
 

@@ -36,6 +36,18 @@ type lifecycle struct {
 	restarting atomic.Bool
 	// openUpdate shows Settings' update card (views.App.OpenUpdate).
 	openUpdate func()
+	// asks answers an update asked from elsewhere (D187: the phone's 更新
+	// on this Mac's card), through the data folder this app's Ducter shares.
+	asks *update.Asks
+}
+
+// changed is the updater's OnChange: the menu line, and app.json for the
+// Ducter on this Mac (D187).
+func (lc *lifecycle) changed(st update.Status) {
+	lc.showStatus(st)
+	if a := lc.asks; a != nil {
+		a.Beat()
+	}
 }
 
 // newUpdater sets up updates for the bundle. Not from a disk image or a
@@ -226,6 +238,9 @@ func (lc *lifecycle) quit() {
 	if lc.upd == nil {
 		return
 	}
+	if lc.asks != nil {
+		lc.asks.Gone() // closed reads as closed at once, not 45 s later (D187)
+	}
 	if started, err := lc.upd.Quit(false); err != nil {
 		log.Printf("ducter: update not installed: %v", err)
 	} else if started {
@@ -309,4 +324,7 @@ func (lc *lifecycle) start() {
 	}
 	lc.showStatus(lc.upd.Status())
 	lc.upd.Start(context.Background(), 30*time.Second)
+	if lc.asks != nil {
+		go lc.asks.Run(context.Background())
+	}
 }

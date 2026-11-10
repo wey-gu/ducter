@@ -149,7 +149,7 @@ func main() {
 		if in, err := update.ReadInfo(bundle.App); err == nil {
 			lc.version = in.Version
 		}
-		lc.upd = newUpdater(bundle, bid, host, i18n.New(lang).T("update.owner.prompt"), lc.showStatus)
+		lc.upd = newUpdater(bundle, bid, host, i18n.New(lang).T("update.owner.prompt"), lc.changed)
 	}
 	mygo.App.OnQuit(lc.quit) // after the handlers above: Ducter's child has stopped
 	// Settings shows the same updates, and Remove Ducter quits after (D71, D72).
@@ -179,6 +179,27 @@ func main() {
 			}
 		}(lc.version)
 	}
+	// D187: an update asked from the phone (or another Mac) reaches the
+	// Ducter on this Mac, which asks this app through the data folder.
+	if lc.upd != nil {
+		var worker *local.Agent
+		if mw, ok := app.MacWorker.(appWorker); ok {
+			worker = mw.w.Agent
+		}
+		lc.asks = &update.Asks{
+			Dir: filepath.Join(hints.DataDir(), "updates"), U: lc.upd, Logf: log.Printf,
+			Restart: lc.restartToUpdate,
+			RestartHelper: func() error {
+				if worker != nil && worker.Installed() {
+					return worker.Restart()
+				}
+				if host != nil && host.Agent != nil && host.Agent.Installed() {
+					return host.Agent.Restart()
+				}
+				return errors.New("no Ducter of this app's runs on this Mac")
+			},
+		}
+	}
 	if host != nil {
 		app.ReportProblem = func() { go lc.reportProblem() }
 	}
@@ -205,6 +226,14 @@ func main() {
 		})
 		app.Win = win
 		app.Desktop = desktop{win}
+		// D186: 加一个文件夹 asks macOS for a folder (a sheet on the window).
+		app.PickFolder = func(title, button string) (string, error) {
+			paths, err := mygo.Dialog.Open(mygo.OpenDialogOptions{Parent: win, Title: title, Message: title, ButtonLabel: button, Directory: true, CreateDirectories: true})
+			if err != nil || len(paths) == 0 {
+				return "", err
+			}
+			return paths[0], nil
+		}
 
 		// The keep-running decision: closing the window hides it (Ducter keeps working); the Dock
 		// icon, or opening the app again, brings it back as it was. Only a

@@ -87,57 +87,33 @@ func (a *App) computerList(c *ui.Context, anchor ui.Element, cands []protocol.Ca
 	nt := &a.nt
 	cur := a.ntComputer(cands)
 	sug := a.ntSuggested(cands)
-	ui.PopoverBase(c, anchor, &nt.computerOpen, func(panel ui.Element) {
-		panel.Margin(t.S2, 0, 0, 0).Width(330).Padding(t.S2).Radius(t.RadiusMD).Background(t.Surface).
-			Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).Border(1, t.LineSoft).Label(a.L.T("newtask.computer"))
-		ui.Text(c, a.L.T("newtask.computer")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Padding(t.S2, t.S3, t.S1, t.S3)
-		ui.Column(c).Gap(2).Role(ui.RoleRadioGroup).Children(func() {
-			for _, d := range a.computers() {
-				d := d
-				if only != nil && !only[d.ID] {
-					continue
+	a.listPanel(c, anchor, &nt.computerOpen, a.L.T("newtask.computer"), 340, func() {
+		for _, d := range a.computers() {
+			d := d
+			if only != nil && !only[d.ID] {
+				continue
+			}
+			away := d.State == protocol.DeviceUnreachable
+			if a.menuRow(c, "nt-comp:"+d.ID, d.Name, d.ID == cur, away, func() {
+				if bmp := theme.Clay(deviceArt(&d)); bmp != nil {
+					ui.Image(c, bmp).Size(40, 32).Shrink(0)
 				}
-				on := d.ID == cur
-				away := d.State == protocol.DeviceUnreachable
-				row := ui.Row(c.Key("nt-comp:"+d.ID)).Padding(t.S2, t.S3).Gap(t.S3).Radius(t.RadiusSM).AlignItems(ui.Center).
-					Role(ui.RoleRadio).Label(d.Name).AccessSelected(on)
-				switch {
-				case away:
-					row.Opacity(0.5)
-				case on:
-					row.Background(t.SurfaceSunken).Cursor(ui.CursorPointer).Focusable()
-				case row.Hovered():
-					row.Background(t.SurfaceSunken.Mix(t.Surface, 0.5)).Cursor(ui.CursorPointer).Focusable()
-				default:
-					row.Cursor(ui.CursorPointer).Focusable()
-				}
-				row.Children(func() {
-					if bmp := theme.Clay(deviceArt(&d)); bmp != nil {
-						ui.Image(c, bmp).Size(40, 32).Shrink(0).AccessHidden(true)
-					}
-					ui.Column(c).Grow(1).MinWidth(0).Gap(1).AccessHidden(true).Children(func() {
-						ui.Text(c, d.Name).FontSize(t.SM).FontWeight(800).TextColor(t.Ink).SingleLine()
-						if s := a.computerSetsApart(&d); s != "" {
-							ui.Text(c, s).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
-						}
-					})
-					if d.ID == sug {
-						ui.Row(c).Padding(t.S1, t.S1+3).Radius(6).Background(t.Highlight).Shrink(0).AccessHidden(true).Children(func() {
-							ui.Text(c, a.L.T("newtask.suggested")).FontSize(t.XS).FontWeight(700).TextColor(t.HighlightInk).SingleLine()
-						})
-					}
-					if on {
-						a.glyph(c, 14, drawCheck(t.Ink))
+				ui.Column(c).Grow(1).MinWidth(0).Gap(1).Children(func() {
+					ui.Text(c, d.Name).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine()
+					if s := a.computerSetsApart(&d); s != "" {
+						ui.Text(c, s).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
 					}
 				})
-				if !away && row.Clicked() {
-					nt.computer, nt.computerOpen, nt.pick = d.ID, false, ""
-					if d.ID == sug {
-						nt.computer = ""
-					}
+				if d.ID == sug {
+					a.suggestedTag(c)
+				}
+			}) {
+				nt.computer, nt.computerOpen, nt.pick = d.ID, false, ""
+				if d.ID == sug {
+					nt.computer = ""
 				}
 			}
-		})
+		}
 	})
 }
 

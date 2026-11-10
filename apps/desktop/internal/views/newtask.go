@@ -2,6 +2,9 @@ package views
 
 import (
 	"fmt"
+	"os"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
@@ -11,13 +14,13 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
-// 开一件事 / New task (D128, design/new-task.md): the user opens a task with
-// their own words. A card over the page with three rows: 在哪儿做 / Where
-// (place chips, recent first; the chosen repo's chip names its base branch,
-// pickable), 谁来做 / Who does it (the agents' coins, the best fit chosen
-// with its reason), 做什么 / What (their words, given as they are). Start
-// sends task_new and opens the new task; Esc there returns to where the
-// user was.
+// 开一件事 / New task (D128, redone by D185, design/new-task.md): the user
+// starts a task with their own words. The words come first (focused), then
+// one row of pills: where (a folder, recent first; 加一个文件夹… makes a
+// project, D186), its branch, the computer when the choice is real (D157),
+// who does it, and when it starts (现在 / Now by default; a time, a
+// schedule, when something happens, or keep going until). ⌘↩ starts and
+// opens it; ⇧⌘↩ starts it and keeps the card for the next one.
 
 // newTaskState is the card's own state.
 type newTaskState struct {
@@ -28,18 +31,42 @@ type newTaskState struct {
 	// placeKey is the chosen place ("" = the first offered, noneKey = no
 	// particular place); prefill is a place to offer even when the server
 	// doesn't list it (a task's own, ⌘N inside it).
-	placeKey string
-	prefill  *protocol.Place
+	placeKey  string
+	prefill   *protocol.Place
+	placeOpen bool
 	// branch is the picked base branch ("" = the repo's default);
 	// branchOpen shows the branch list.
 	branch     string
 	branchOpen bool
 	// pick is the agent the user chose (ntKey); "" = the top candidate.
-	pick string
+	// It is remembered for the next card (D185).
+	pick    string
+	whoOpen bool
 	// computer is the computer the user chose (a device id; "" = the
 	// suggested one), and computerOpen shows the list (D157).
 	computer     string
 	computerOpen bool
+	// D185: when it starts. when is "" (now), "at", "every", "when" or
+	// "until"; atDay 0 today, 1 tomorrow, 2 the day after; every 0 every
+	// day, 1 weekdays, 2 weekly (on weekday), 3 every few hours (hours,
+	// an index of everyHours); condition is what it waits for or keeps
+	// going until.
+	when      string
+	whenOpen  bool
+	atDay     int
+	atTime    string
+	every     int
+	weekday   int
+	hours     int
+	condition string
+	focusCond bool
+	// again: the start in flight keeps the card (⇧⌘↩); started is the line
+	// that says what just started, startedTask the task to open from it.
+	again       bool
+	started     string
+	startedTask string
+	// adding is the clientId of a project_add in flight (D186).
+	adding string
 	// sending is the clientId of the task_new in flight; err the line under
 	// Start when it didn't open.
 	sending string
@@ -49,6 +76,9 @@ type newTaskState struct {
 	focus    bool
 	seq      int
 }
+
+// everyHours are the "every few hours" a card offers.
+var everyHours = []int{1, 2, 4, 8}
 
 // returnTo is where Esc goes from a task the user just opened (New task,
 // or `ducter open`): where they were.
@@ -61,14 +91,28 @@ type returnTo struct {
 const noneKey = "none"
 
 func placeKey(p protocol.Place) string {
-	if p.Kind != "repo" {
-		return noneKey
-	}
 	d := p.Device
 	if d == "" {
 		d = "local"
 	}
-	return d + " " + strings.TrimRight(p.RepoPath, "/")
+	switch p.Kind {
+	case "repo":
+		return d + " " + strings.TrimRight(p.RepoPath, "/")
+	case "folder":
+		return d + " " + strings.TrimRight(p.Path, "/")
+	}
+	return noneKey
+}
+
+// placePath is a folder place's path, "" for no folder.
+func placePath(p protocol.Place) string {
+	switch p.Kind {
+	case "repo":
+		return p.RepoPath
+	case "folder":
+		return p.Path
+	}
+	return ""
 }
 
 // OpenNewTask opens the New task card; at, when set, is the place it
@@ -80,13 +124,14 @@ func (a *App) OpenNewTask(at *protocol.Place) {
 		return
 	}
 	words := nt.words
-	*nt = newTaskState{open: true, words: words, focus: true, seq: nt.seq}
+	*nt = newTaskState{open: true, words: words, focus: true, seq: nt.seq, atDay: 1, atTime: "9:00", weekday: 1, hours: 1}
+	nt.pick = a.Local.NewTaskWho()
 	var ask *protocol.Place
 	if at != nil && at.Kind == "none" {
 		nt.placeKey = noneKey
 	}
-	if at != nil && at.Kind == "repo" {
-		p := protocol.Place{Kind: "repo", Device: at.Device, RepoPath: at.RepoPath}
+	if at != nil && (at.Kind == "repo" || at.Kind == "folder") {
+		p := protocol.Place{Kind: at.Kind, Device: at.Device, RepoPath: at.RepoPath, Path: at.Path}
 		nt.prefill, nt.placeKey, ask = &p, placeKey(p), &p
 		if at.BaseBranch != "" {
 			nt.branch = at.BaseBranch
@@ -128,7 +173,7 @@ func (a *App) newTaskPlaces() []protocol.PlaceChoice {
 			}
 		}
 		if !found {
-			places = append([]protocol.PlaceChoice{{Place: *nt.prefill, Name: lastPath(nt.prefill.RepoPath)}}, places...)
+			places = append([]protocol.PlaceChoice{{Place: *nt.prefill, Name: lastPath(placePath(*nt.prefill))}}, places...)
 		}
 	}
 	if len(places) == 0 || places[len(places)-1].Place.Kind != "none" {
@@ -147,6 +192,14 @@ func (a *App) chosenPlace(places []protocol.PlaceChoice) protocol.PlaceChoice {
 		}
 	}
 	return places[0]
+}
+
+// placeName is a place as the card says it: the folder's name, or 不用文件夹.
+func (a *App) placeName(p protocol.PlaceChoice) string {
+	if p.Place.Kind != "repo" && p.Place.Kind != "folder" {
+		return a.L.T("newtask.nowhere")
+	}
+	return firstNonEmpty(p.Name, lastPath(placePath(p.Place)))
 }
 
 // topCandidate is the best fit that can take it, or nil.
@@ -190,8 +243,62 @@ func (a *App) chosenCandidate(cands []protocol.Candidate) (cd *protocol.Candidat
 	return top, false
 }
 
-// StartNewTask sends what the card holds. It reports whether it went.
-func (a *App) StartNewTask() bool {
+// clockRe is a time as people type it: 9, 9:00, 21:30, 9.30, 9：30.
+var clockRe = regexp.MustCompile(`^\s*(\d{1,2})(?:\s*[:.：]\s*(\d{2}))?\s*$`)
+
+// parseClock is a typed time as "HH:MM", or "" when it isn't one.
+func parseClock(s string) string {
+	m := clockRe.FindStringSubmatch(s)
+	if m == nil {
+		return ""
+	}
+	h, _ := strconv.Atoi(m[1])
+	mm := 0
+	if m[2] != "" {
+		mm, _ = strconv.Atoi(m[2])
+	}
+	if h > 23 || mm > 59 {
+		return ""
+	}
+	return fmt.Sprintf("%02d:%02d", h, mm)
+}
+
+// ntWhen is the card's when as the frame says it (nil: now), or a line
+// saying what is missing.
+func (a *App) ntWhen() (*protocol.NewTaskWhen, string) {
+	nt := &a.nt
+	switch nt.when {
+	case "at", "every":
+		at := parseClock(nt.atTime)
+		if at == "" {
+			return nil, a.L.T("newtask.err.time")
+		}
+		if nt.when == "at" {
+			day := a.Now().AddDate(0, 0, nt.atDay)
+			return &protocol.NewTaskWhen{Kind: "at", Date: day.Format("2006-01-02"), Time: at, TZ: localZone()}, ""
+		}
+		w := &protocol.NewTaskWhen{Kind: "every", Every: [...]string{"day", "weekday", "week", "hours"}[nt.every], Time: at, TZ: localZone()}
+		if nt.every == 2 {
+			w.Days = []int{nt.weekday}
+		}
+		if nt.every == 3 {
+			// Every few hours, round the clock: counted from midnight.
+			w.Hours, w.Time = everyHours[nt.hours], "00:00"
+		}
+		return w, ""
+	case "when", "until":
+		cond := strings.TrimSpace(nt.condition)
+		if cond == "" {
+			return nil, a.L.T("newtask.err.no_condition")
+		}
+		return &protocol.NewTaskWhen{Kind: nt.when, Condition: cond}, ""
+	}
+	return nil, ""
+}
+
+// StartNewTask sends what the card holds; again keeps the card open for
+// the next one (⇧⌘↩). It reports whether it went.
+func (a *App) StartNewTask(again ...bool) bool {
 	nt := &a.nt
 	if nt.sending != "" {
 		return false
@@ -206,13 +313,22 @@ func (a *App) StartNewTask() bool {
 		nt.err = a.L.T("newtask.err.conn")
 		return false
 	}
-	f := protocol.TaskNew{T: "task_new", Words: words}
+	when, bad := a.ntWhen()
+	if bad != "" {
+		nt.err, nt.errEmpty = bad, false
+		return false
+	}
+	f := protocol.TaskNew{T: "task_new", Words: words, When: when}
 	place := a.chosenPlace(a.newTaskPlaces())
-	if place.Place.Kind == "repo" {
+	switch place.Place.Kind {
+	case "repo":
 		p := protocol.Place{Kind: "repo", Device: place.Place.Device, RepoPath: place.Place.RepoPath}
 		if nt.branch != "" && nt.branch != place.DefaultBranch {
 			p.BaseBranch = nt.branch
 		}
+		f.Place = &p
+	case "folder":
+		p := protocol.Place{Kind: "folder", Device: firstNonEmpty(place.Place.Device, "local"), Path: place.Place.Path}
 		f.Place = &p
 	}
 	var cands []protocol.Candidate
@@ -224,32 +340,73 @@ func (a *App) StartNewTask() bool {
 		f.Harness, f.Model = cd.Harness, cd.Model
 	}
 	// D157: No folder with two or more computers: the computer chosen (or suggested) goes with it.
-	if place.Place.Kind != "repo" && whereRows(cands) {
+	if place.Place.Kind == "none" && whereRows(cands) {
 		f.Place = &protocol.Place{Kind: "none", Device: a.ntDevice(a.ntComputer(cands))}
 	}
 	a.nextClient++
 	nt.sending = fmt.Sprintf("n%d-%d", a.Now().UnixMilli(), a.nextClient)
 	f.ClientID = nt.sending
-	nt.err, nt.errEmpty = "", false
+	nt.again = len(again) > 0 && again[0]
+	nt.err, nt.errEmpty, nt.started, nt.startedTask = "", false, "", ""
+	nt.placeOpen, nt.branchOpen, nt.whoOpen, nt.whenOpen, nt.computerOpen = false, false, false, false, false
 	a.send(f)
 	return true
 }
 
 // drainNewTask takes the server's answers: an opened task closes the card
-// and shows that task; a refusal stays on the card, in one line.
+// and shows that task (or, started with ⇧⌘↩, stays for the next one); a
+// schedule closes it on On hand; a refusal stays on the card, in one line.
+// A folder added as a project (D186) becomes the chosen place.
 func (a *App) drainNewTask() {
 	nt := &a.nt
 	res := a.S.NewTaskResults
 	a.S.NewTaskResults = nil
 	for _, r := range res {
+		if r.T == "project_add_result" {
+			if r.ClientID == "" || r.ClientID != nt.adding {
+				continue
+			}
+			nt.adding = ""
+			if r.OK && r.Place != nil {
+				nt.placeKey, nt.branch, nt.prefill = placeKey(r.Place.Place), "", nil
+				pl := r.Place.Place
+				a.send(protocol.TaskNewOptions{T: "task_new_options", Place: &pl})
+				continue
+			}
+			nt.err, nt.errEmpty = a.newTaskError(r.Reason, r.Message), false
+			continue
+		}
 		if r.ClientID != nt.sending || nt.sending == "" {
 			continue
 		}
 		nt.sending = ""
-		if r.OK && r.TaskID != "" {
+		if r.OK && (r.TaskID != "" || r.RoutineID != "") {
+			title := ""
+			if r.Card != nil {
+				title = r.Card.Title
+			}
+			if r.Routine != nil {
+				title = r.Routine.Name
+			}
+			if nt.again {
+				nt.words, nt.condition, nt.err = "", "", ""
+				nt.seq++
+				nt.focus = true
+				if r.Routine != nil {
+					nt.started = a.L.T("newtask.scheduled", r.Routine.TriggerWords, title)
+				} else {
+					nt.started, nt.startedTask = a.L.T("newtask.opened", title), r.TaskID
+				}
+				continue
+			}
 			nt.open, nt.words, nt.err = false, "", ""
 			nt.seq++
-			a.openFromElsewhere(r.TaskID)
+			if r.TaskID != "" {
+				a.openFromElsewhere(r.TaskID)
+			} else {
+				// A start later or on a schedule lives on On hand (its routine card).
+				a.Route = RouteOnHand
+			}
 			continue
 		}
 		nt.err, nt.errEmpty = a.newTaskError(r.Reason, r.Message), false
@@ -279,13 +436,46 @@ func (a *App) openFromElsewhere(id string) {
 
 func (a *App) newTaskError(reason, message string) string {
 	switch reason {
-	case "empty", "no_agent", "not_repo", "offline":
+	case "empty", "no_agent", "not_repo", "offline", "past", "no_condition", "not_found":
 		return a.L.T("newtask.err." + reason)
 	}
 	if message == "" {
 		return a.L.T("newtask.err.unknown")
 	}
 	return a.L.T("newtask.err.failed", strings.TrimRight(message, ". "))
+}
+
+// canAddFolder: a folder can be picked here and made a project (D186):
+// the Ducter this window talks to runs on this Mac, so its paths are ours.
+func (a *App) canAddFolder() bool {
+	return a.PickFolder != nil && a.onThisMachine()
+}
+
+// addFolder asks macOS for a folder and adds it as a project; the card
+// then starts there.
+func (a *App) addFolder() {
+	nt := &a.nt
+	nt.placeOpen = false
+	if a.PickFolder == nil {
+		return
+	}
+	done := func(path string, err error) {
+		if err != nil || strings.TrimSpace(path) == "" {
+			return
+		}
+		a.nextClient++
+		nt.adding = fmt.Sprintf("p%d-%d", a.Now().UnixMilli(), a.nextClient)
+		nt.err, nt.errEmpty = "", false
+		a.send(protocol.ProjectAdd{T: "project_add", Path: path, ClientID: nt.adding})
+	}
+	if a.Win == nil { // tests: inline
+		done(a.PickFolder(a.L.T("newtask.addfolder.title"), a.L.T("newtask.addfolder.button")))
+		return
+	}
+	go func() {
+		path, err := a.PickFolder(a.L.T("newtask.addfolder.title"), a.L.T("newtask.addfolder.button"))
+		a.Win.Update(func() { done(path, err) })
+	}()
 }
 
 // newTaskCard is the card over the page, while open.
@@ -299,248 +489,277 @@ func (a *App) newTaskCard(c *ui.Context) {
 	if nt.errEmpty && strings.TrimSpace(nt.words) != "" {
 		nt.err, nt.errEmpty = "", false
 	}
+	switch {
+	case c.Shortcut(ui.Cmd|ui.Shift, ui.KeyEnter):
+		a.StartNewTask(true)
+	case c.Shortcut(ui.Cmd, ui.KeyEnter):
+		a.StartNewTask()
+	}
 	t := a.T
 	w, h := c.Size()
 	if w <= 0 {
 		w, h = 1040, 760
 	}
-	width := min(w-2*t.S6, 660)
+	width := min(w-2*t.S6, 680)
 	ui.DialogBase(c, &nt.open, func(back, panel ui.Element) {
 		back.Background(t.Scrim)
-		panel.Width(width).MaxHeight(h-2*t.S6).Padding(t.S5+4, t.S6, t.S5, t.S6).Gap(t.S5).Radius(t.RadiusXL).
+		panel.Width(width).MaxHeight(h-2*t.S6).Padding(t.S5+4, t.S6, t.S5, t.S6).Gap(t.S4).Radius(t.RadiusXL).
 			Background(t.Surface).Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).Label(a.L.T("newtask.title"))
 		a.enter(c, panel)
 		a.heading(c, a.L.T("newtask.title"), t.XL)
-		places := a.newTaskPlaces()
-		place := a.chosenPlace(places)
-		a.newTaskRow(c, "where", a.L.T("newtask.where"), func() { a.placeChips(c, places, place) })
-		a.newTaskRow(c, "who", a.L.T("newtask.who"), func() { a.whoChips(c) })
-		a.newTaskRow(c, "what", a.L.T("newtask.what"), func() { a.wordsField(c) })
+		a.wordsField(c)
+		a.newTaskPills(c)
+		if nt.when != "" {
+			a.whenDetail(c)
+		}
 		a.newTaskFoot(c)
 	})
 	if !nt.open {
-		nt.branchOpen = false
+		nt.placeOpen, nt.branchOpen, nt.whoOpen, nt.whenOpen, nt.computerOpen = false, false, false, false, false
 	}
 }
 
-// newTaskRow is one row of the card: its name in a quiet column, then
-// what it holds.
-func (a *App) newTaskRow(c *ui.Context, key, label string, body func()) {
+// shut closes every list but the one named (one list open at a time).
+func (nt *newTaskState) shut(keep string) {
+	nt.placeOpen = keep == "place" && !nt.placeOpen
+	nt.branchOpen = keep == "branch" && !nt.branchOpen
+	nt.whoOpen = keep == "who" && !nt.whoOpen
+	nt.whenOpen = keep == "when" && !nt.whenOpen
+	nt.computerOpen = keep == "computer" && !nt.computerOpen
+}
+
+// newTaskPills is the one row under the words: where, its branch, the
+// computer (only when the choice is real), who, and when.
+func (a *App) newTaskPills(c *ui.Context) {
 	t := a.T
-	ui.Row(c.Key("nt-row:" + key)).Gap(t.S4).AlignItems(ui.Start).Children(func() {
-		ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).Width(88).Shrink(0).Padding(t.S2, 0, 0, 0).SingleLine()
-		ui.Column(c).Grow(1).MinWidth(0).Gap(t.S2).Children(body)
+	places := a.newTaskPlaces()
+	place := a.chosenPlace(places)
+	ui.Row(c.Key("nt-pills")).Gap(t.S2).Wrap().AlignItems(ui.Center).Children(func() {
+		a.placePill(c, places, place)
+		if place.Place.Kind == "repo" {
+			a.branchPill(c, place)
+		}
+		a.computerPill(c, place)
+		a.whoPill(c)
+		a.whenPill(c)
 	})
 }
 
-// chip is one choice of the card: flat, the chosen one white with an ink
-// hairline, the rest on the sunken tint.
-func (a *App) chip(c *ui.Context, key, label string, on, off bool) ui.Element {
-	t := a.T
-	e := ui.Row(c.Key(key)).Height(t.ControlSM).Padding(0, t.S3+2).Gap(t.S2).Radius(t.RadiusSM).AlignItems(ui.Center).Shrink(0).
-		Role(ui.RoleRadio).Label(label).AccessSelected(on)
-	switch {
-	case off:
-		e.Background(t.SurfaceSunken).Opacity(0.55)
-	case on:
-		e.Background(t.Surface).InsetShadow(0, 0, 0, 1.5, t.Ink).Cursor(ui.CursorPointer).Focusable()
-	case e.Pressed():
-		e.Background(t.Line).Cursor(ui.CursorPointer).Focusable()
-	case e.Hovered():
-		e.Background(t.SurfaceSunken.Mix(t.Line, 0.5)).Cursor(ui.CursorPointer).Focusable()
-	default:
-		e.Background(t.SurfaceSunken).Cursor(ui.CursorPointer).Focusable()
-	}
-	return e
-}
-
-// placeChips is 在哪儿做 / Where: the repos, most recent first, then 不用
-// 文件夹 / No folder; the chosen repo's chip says its base branch, and a
-// click on it opens the branches.
-func (a *App) placeChips(c *ui.Context, places []protocol.PlaceChoice, chosen protocol.PlaceChoice) {
+// placePill is 在哪儿做 / Where: the chosen folder; its list is the
+// folders tasks used and the projects added, most recent first, then 不用
+// 文件夹 / No folder, then 加一个文件夹… / Add a folder… (D186).
+func (a *App) placePill(c *ui.Context, places []protocol.PlaceChoice, chosen protocol.PlaceChoice) {
 	t := a.T
 	nt := &a.nt
+	name := a.placeName(chosen)
+	e, click := a.pill(c, "nt-place", a.L.T("newtask.where")+" · "+name, nt.placeOpen, func() {
+		a.glyph(c, 16, drawFolder(t.InkMuted))
+		ui.Text(c, name).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().MaxWidth(200).AccessHidden(true)
+		if nt.adding != "" {
+			ui.Spinner(c).Size(12, 12)
+		}
+	})
+	if p := placePath(chosen.Place); p != "" {
+		e.Tooltip(tildePath(p))
+	}
+	if click {
+		nt.shut("place")
+	}
+	if !nt.placeOpen {
+		return
+	}
 	ck := placeKey(chosen.Place)
-	ui.Row(c.Key("nt-places")).Gap(t.S2).Wrap().Role(ui.RoleRadioGroup).Label(a.L.T("newtask.where")).Children(func() {
+	a.listPanel(c, e, &nt.placeOpen, a.L.T("newtask.where"), 360, func() {
 		for _, p := range places {
+			p := p
 			k := placeKey(p.Place)
-			on := k == ck
-			name := p.Name
-			if p.Place.Kind != "repo" {
-				name = a.L.T("newtask.nowhere")
-			} else if name == "" {
-				name = lastPath(p.Place.RepoPath)
-			}
-			branch := ""
-			if on && p.Place.Kind == "repo" {
-				branch = firstNonEmpty(nt.branch, p.DefaultBranch)
-			}
-			label := name
-			if branch != "" {
-				label += " · " + branch
-			}
-			// D157: the computer part, only when the choice is real (No folder, two or more computers).
-			comp := ""
-			var cands []protocol.Candidate
-			if o := a.S.NewTaskOptions; o != nil {
-				cands = o.Candidates
-			}
-			if on && p.Place.Kind != "repo" && a.manyComputers() && whereRows(cands) {
-				if d := a.computerOf(a.ntComputer(cands)); d != nil {
-					comp = d.Name
-					label += " · " + comp
+			name := a.placeName(p)
+			if a.menuRow(c, "nt-place:"+k, name, k == ck, false, func() {
+				if p.Place.Kind == "none" {
+					a.glyph(c, 16, drawFolder(t.Faint))
+				} else {
+					a.glyph(c, 16, drawFolder(t.InkMuted))
 				}
-			}
-			e := a.chip(c, "nt-place:"+k, label, on, false)
-			if p.Place.Kind == "repo" {
-				e.Tooltip(p.Place.RepoPath)
-			}
-			e.Children(func() {
-				ui.Text(c, name).FontSize(t.SM).FontWeight(700).TextColor(map[bool]ui.Color{true: t.Ink, false: t.InkSoft}[on]).SingleLine().AccessHidden(true)
-				if branch != "" {
-					ui.Text(c, "·").FontSize(t.SM).TextColor(t.Faint).AccessHidden(true)
-					ui.Text(c, branch).Font(t.Mono).FontSize(t.XS).TextColor(t.InkSoft).SingleLine().MaxWidth(180).AccessHidden(true)
-					if len(p.Branches) > 1 {
-						ui.Box(c).Size(10, 10).Shrink(0).Draw(drawCaret(t.InkMuted)).AccessHidden(true)
+				ui.Column(c).Grow(1).MinWidth(0).Gap(1).Children(func() {
+					ui.Text(c, name).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine()
+					if path := placePath(p.Place); path != "" {
+						ui.Text(c, tildePath(path)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkMuted).SingleLine()
 					}
-				}
-				if comp != "" {
-					ui.Text(c, "·").FontSize(t.SM).TextColor(t.Faint).AccessHidden(true)
-					ui.Text(c.Key("nt-comp-part"), comp).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).SingleLine().AccessHidden(true)
-					ui.Box(c).Size(10, 10).Shrink(0).Draw(drawCaret(t.InkMuted)).AccessHidden(true)
-				}
-			})
-			if e.Clicked() {
-				switch {
-				case !on:
-					nt.placeKey, nt.branch, nt.branchOpen = k, "", false
-					pl := p.Place
-					var ask *protocol.Place
-					if pl.Kind == "repo" {
-						ask = &pl
-					}
-					a.send(protocol.TaskNewOptions{T: "task_new_options", Place: ask})
-				case branch != "" && len(p.Branches) > 1:
-					nt.branchOpen = !nt.branchOpen
-				case comp != "":
-					nt.computerOpen = !nt.computerOpen
-				}
+				})
+			}) {
+				a.pickPlace(p) // the chosen one again just closes the list
 			}
-			if on && branch != "" && len(p.Branches) > 1 {
-				a.branchList(c, e, p, branch)
-			}
-			if on && comp != "" {
-				a.computerList(c, e, cands, nil)
+		}
+		if a.canAddFolder() {
+			ui.Box(c.Key("nt-add-rule")).Height(1).Background(t.LineSoft).Margin(t.S1, t.S2)
+			if a.menuRow(c, "nt-add-folder", a.L.T("newtask.addfolder"), false, false, func() {
+				a.glyph(c, 16, drawPlus(t.InkSoft))
+				ui.Text(c, a.L.T("newtask.addfolder")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).SingleLine()
+			}) {
+				a.addFolder()
 			}
 		}
 	})
 }
 
-// branchList is the chosen repo's branches, most recently committed first,
-// its default one marked: what the task starts from.
-func (a *App) branchList(c *ui.Context, anchor ui.Element, p protocol.PlaceChoice, current string) {
+// pickPlace makes p the card's place and asks who could do it there.
+func (a *App) pickPlace(p protocol.PlaceChoice) {
+	nt := &a.nt
+	nt.placeOpen = false
+	if placeKey(p.Place) == placeKey(a.chosenPlace(a.newTaskPlaces()).Place) {
+		return
+	}
+	nt.placeKey, nt.branch, nt.branchOpen = placeKey(p.Place), "", false
+	pl := p.Place
+	var ask *protocol.Place
+	if pl.Kind == "repo" || pl.Kind == "folder" {
+		ask = &pl
+	}
+	a.send(protocol.TaskNewOptions{T: "task_new_options", Place: ask})
+}
+
+// branchPill is what a repo task starts from: the repo's default branch
+// unless picked; its list is the 30 most recently committed.
+func (a *App) branchPill(c *ui.Context, p protocol.PlaceChoice) {
 	t := a.T
 	nt := &a.nt
-	ui.PopoverBase(c, anchor, &nt.branchOpen, func(panel ui.Element) {
-		panel.Margin(t.S2, 0, 0, 0).Width(300).Padding(t.S2).Radius(t.RadiusMD).Background(t.Surface).
-			Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).Border(1, t.LineSoft).Label(a.L.T("newtask.branch.title"))
-		ui.Text(c, a.L.T("newtask.branch.title")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Padding(t.S2, t.S3, t.S1, t.S3)
-		ui.Scroll(c.Key("nt-branches")).MaxHeight(300).Children(func() {
-			ui.Column(c).Gap(2).Role(ui.RoleRadioGroup).Children(func() {
-				for _, b := range p.Branches {
-					on := b == current
-					row := ui.Row(c.Key("nt-branch:"+b)).Height(t.ControlSM-4).Padding(0, t.S3).Gap(t.S2).Radius(t.RadiusSM).AlignItems(ui.Center).
-						Cursor(ui.CursorPointer).Role(ui.RoleRadio).Label(b).AccessSelected(on).Focusable()
-					switch {
-					case on:
-						row.Background(t.SurfaceSunken)
-					case row.Hovered():
-						row.Background(t.SurfaceSunken.Mix(t.Surface, 0.5))
-					}
-					row.Children(func() {
-						ui.Text(c, b).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Ink).SingleLine().Grow(1).MinWidth(0).AccessHidden(true)
-						if b == p.DefaultBranch {
-							ui.Text(c, a.L.T("newtask.branch.default")).FontSize(t.XS).TextColor(t.InkMuted).Shrink(0).AccessHidden(true)
-						}
-						if on {
-							a.glyph(c, 14, drawCheck(t.Ink))
-						}
-					})
-					if row.Clicked() {
-						nt.branch, nt.branchOpen = b, false
-						if b == p.DefaultBranch {
-							nt.branch = ""
-						}
-					}
+	branch := firstNonEmpty(nt.branch, p.DefaultBranch)
+	if branch == "" {
+		return
+	}
+	e, click := a.pill(c, "nt-branch", a.L.T("newtask.branch.title")+" · "+branch, nt.branchOpen, func() {
+		a.glyph(c, 14, drawBranch(t.InkMuted))
+		ui.Text(c, branch).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkSoft).SingleLine().MaxWidth(180).AccessHidden(true)
+	})
+	if click && len(p.Branches) > 0 {
+		nt.shut("branch")
+	}
+	if !nt.branchOpen {
+		return
+	}
+	a.listPanel(c, e, &nt.branchOpen, a.L.T("newtask.branch.title"), 320, func() {
+		for _, b := range p.Branches {
+			b := b
+			if a.menuRow(c, "nt-branch:"+b, b, b == branch, false, func() {
+				ui.Text(c, b).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Ink).SingleLine().Grow(1).MinWidth(0)
+				if b == p.DefaultBranch {
+					ui.Text(c, a.L.T("newtask.branch.default")).FontSize(t.XS).TextColor(t.InkMuted).Shrink(0)
 				}
-			})
-		})
+			}) {
+				nt.branch, nt.branchOpen = b, false
+				if b == p.DefaultBranch {
+					nt.branch = ""
+				}
+			}
+		}
 	})
 }
 
-// whoChips is 谁来做 / Who does it: the agents' coins, best first; the best
-// fit is chosen and tagged 推荐 / Suggested, with its reason on hover; one
-// the user picks says "…，是你选的" on hover; one that can't take it is
-// greyed with why on hover.
-func (a *App) whoChips(c *ui.Context) {
+// computerPill is the computer, only when the choice is real (D157): No
+// folder with two or more computers that run tasks.
+func (a *App) computerPill(c *ui.Context, place protocol.PlaceChoice) {
+	t := a.T
+	nt := &a.nt
+	var cands []protocol.Candidate
+	if o := a.S.NewTaskOptions; o != nil {
+		cands = o.Candidates
+	}
+	if place.Place.Kind != "none" || !a.manyComputers() || !whereRows(cands) {
+		return
+	}
+	d := a.computerOf(a.ntComputer(cands))
+	if d == nil {
+		return
+	}
+	e, click := a.pill(c, "nt-comp", a.L.T("newtask.computer")+" · "+d.Name, nt.computerOpen, func() {
+		a.glyph(c, 14, drawScreen(t.InkMuted))
+		ui.Text(c.Key("nt-comp-part"), d.Name).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().AccessHidden(true)
+	})
+	if click {
+		nt.shut("computer")
+	}
+	if nt.computerOpen {
+		a.computerList(c, e, cands, nil)
+	}
+}
+
+// whoPill is 谁来做 / Who does it: the chosen agent's coin and name, the
+// best fit tagged 推荐 / Suggested (why on hover); its list has every agent
+// at that place, best first, one that can't greyed with why.
+func (a *App) whoPill(c *ui.Context) {
 	t := a.T
 	nt := &a.nt
 	o := a.S.NewTaskOptions
 	if o == nil {
-		ui.Text(c, a.L.T("newtask.loading")).FontSize(t.SM).TextColor(t.InkMuted).Padding(t.S2, 0, 0, 0)
+		ui.Row(c.Key("nt-who-wait")).Height(t.ControlSM).Padding(0, t.S3).AlignItems(ui.Center).Children(func() {
+			ui.Text(c, a.L.T("newtask.loading")).FontSize(t.SM).TextColor(t.InkMuted)
+		})
 		return
 	}
 	chosen, picked := a.chosenCandidate(o.Candidates)
 	if chosen == nil {
-		ui.Text(c, a.L.T("newtask.nobody")).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft).Padding(t.S2, 0, 0, 0)
+		ui.Row(c.Key("nt-who-none")).Height(t.ControlSM).Padding(0, t.S3).AlignItems(ui.Center).Children(func() {
+			ui.Text(c, a.L.T("newtask.nobody")).FontSize(t.SM).TextColor(t.InkSoft)
+		})
 		return
 	}
 	cands, elsewhere := a.ntCands(o.Candidates)
 	top := topCandidate(cands)
-	ui.Row(c.Key("nt-who")).Gap(t.S2).Wrap().Role(ui.RoleRadioGroup).Label(a.L.T("newtask.who")).Children(func() {
+	name := a.candName(*chosen)
+	e, click := a.pill(c, "nt-who", a.L.T("newtask.who")+" · "+name, nt.whoOpen, func() {
+		if bmp := theme.Clay(coinArt(chosen.Harness, false)); bmp != nil {
+			ui.Image(c, bmp).Size(22, 22).Shrink(0).AccessHidden(true)
+		}
+		ui.Text(c, name).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().AccessHidden(true)
+		if elsewhere[ntKey(*chosen)] {
+			ui.Text(c, a.L.T("newtask.agent.elsewhere", chosen.DeviceName)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().AccessHidden(true)
+		}
+		if !picked {
+			a.suggestedTag(c)
+		}
+	})
+	if picked {
+		e.Tooltip(a.L.T("newtask.picked", name))
+	} else if why := a.candReason(*chosen); why != "" {
+		e.Tooltip(why)
+	}
+	if click {
+		nt.shut("who")
+	}
+	if !nt.whoOpen {
+		return
+	}
+	a.listPanel(c, e, &nt.whoOpen, a.L.T("newtask.who"), 360, func() {
 		for i := range cands {
 			cd := cands[i]
 			k := ntKey(cd)
 			off := cd.Blocked != ""
-			on := !off && k == ntKey(*chosen)
 			best := top != nil && k == ntKey(*top)
 			away := elsewhere[k] // D157: lives only on another computer
-			name := a.candName(cd)
-			label := name
-			if best {
-				label = name + " · " + a.L.T("newtask.suggested")
-			}
-			if away {
-				label = name + " · " + a.L.T("newtask.agent.elsewhere", cd.DeviceName)
-			}
-			e := a.chip(c, "nt-cand:"+k, label, on, off).Padding(0, t.S3+2, 0, t.S1+2)
-			switch {
-			case off, best:
-				if why := a.candReason(cd); why != "" {
-					e.Tooltip(why)
-				}
-			case on && picked:
-				e.Tooltip(a.L.T("newtask.picked", name))
-			}
-			e.Children(func() {
+			cname := a.candName(cd)
+			if a.menuRow(c, "nt-cand:"+k, cname, !off && k == ntKey(*chosen), off, func() {
 				if bmp := theme.Clay(coinArt(cd.Harness, off)); bmp != nil {
-					img := ui.Image(c, bmp).Size(26, 26).Shrink(0).AccessHidden(true)
+					img := ui.Image(c, bmp).Size(28, 28).Shrink(0)
 					if off && !coinKnown(cd.Harness) {
 						img.Grayscale()
 					}
 				}
-				ui.Text(c, name).FontSize(t.SM).FontWeight(700).TextColor(map[bool]ui.Color{true: t.Ink, false: t.InkSoft}[on]).SingleLine().AccessHidden(true)
-				if away {
-					ui.Text(c, a.L.T("newtask.agent.elsewhere", cd.DeviceName)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().AccessHidden(true)
-				}
-				if best {
-					ui.Row(c.Key("nt-suggested")).Padding(t.S1, t.S1+3).Radius(6).Background(t.Highlight).Shrink(0).AccessHidden(true).Children(func() {
-						ui.Text(c, a.L.T("newtask.suggested")).FontSize(t.XS).FontWeight(700).TextColor(t.HighlightInk).SingleLine()
+				ui.Column(c).Grow(1).MinWidth(0).Gap(1).Children(func() {
+					ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+						ui.Text(c, cname).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().Shrink(1).MinWidth(0)
+						if away {
+							ui.Text(c, a.L.T("newtask.agent.elsewhere", cd.DeviceName)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
+						}
+						if best {
+							a.suggestedTag(c)
+						}
 					})
-				}
-			})
-			if !off && e.Clicked() {
-				nt.pick = k
+					if why := a.candReason(cd); why != "" {
+						ui.Text(c, why).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(2)
+					}
+				})
+			}) {
+				nt.pick, nt.whoOpen = k, false
 				if best {
 					nt.pick = ""
 				}
@@ -549,60 +768,228 @@ func (a *App) whoChips(c *ui.Context) {
 					nt.computer = cd.Device
 					nt.pick = ntKey(cd)
 				}
+				a.Local.SetNewTaskWho(nt.pick)
+			}
+		}
+	})
+}
+
+// suggestedTag is 推荐 / Suggested on the best fit.
+func (a *App) suggestedTag(c *ui.Context) {
+	t := a.T
+	ui.Row(c.Key("nt-suggested")).Padding(2, t.S1+3).Radius(6).Background(t.Highlight).Shrink(0).AccessHidden(true).Children(func() {
+		ui.Text(c, a.L.T("newtask.suggested")).FontSize(t.XS).FontWeight(700).TextColor(t.HighlightInk).SingleLine()
+	})
+}
+
+// whenKinds are the ways it can start, in the list's order.
+var whenKinds = []string{"", "at", "every", "when", "until"}
+
+// whenLabel is the when pill's words: 现在 / Now, 明天 9:00, 工作日 9:00,
+// 等：PR #1592 的 CI 通过, 直到：测试都过.
+func (a *App) whenLabel() string {
+	nt := &a.nt
+	clock := parseClock(nt.atTime)
+	if clock == "" {
+		clock = strings.TrimSpace(nt.atTime)
+	}
+	clock = strings.TrimPrefix(clock, "0")
+	switch nt.when {
+	case "at":
+		return a.L.T("newtask.day."+strconv.Itoa(nt.atDay)) + " " + clock
+	case "every":
+		switch nt.every {
+		case 1:
+			return a.L.T("newtask.pill.weekdays", clock)
+		case 2:
+			return a.L.T("newtask.pill.weekly", a.L.T("newtask.weekday."+strconv.Itoa(nt.weekday)), clock)
+		case 3:
+			return a.L.T("newtask.pill.hours", everyHours[nt.hours])
+		}
+		return a.L.T("newtask.pill.daily", clock)
+	case "when", "until":
+		// The condition is in its own field right under the pills.
+		return a.L.T("newtask.when." + nt.when)
+	}
+	return a.L.T("newtask.when.now")
+}
+
+// whenPill is 什么时候开始 / When it starts (D185): 现在 / Now unless set.
+func (a *App) whenPill(c *ui.Context) {
+	t := a.T
+	nt := &a.nt
+	label := a.whenLabel()
+	e, click := a.pill(c, "nt-when", a.L.T("newtask.when")+" · "+label, nt.whenOpen, func() {
+		a.glyph(c, 14, drawClock(t.InkMuted))
+		ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().MaxWidth(220).AccessHidden(true)
+	})
+	if click {
+		nt.shut("when")
+	}
+	if !nt.whenOpen {
+		return
+	}
+	a.listPanel(c, e, &nt.whenOpen, a.L.T("newtask.when"), 340, func() {
+		for _, k := range whenKinds {
+			k := k
+			key := firstNonEmpty(k, "now")
+			if a.menuRow(c, "nt-when:"+key, a.L.T("newtask.when."+key), nt.when == k, false, func() {
+				ui.Column(c).Grow(1).MinWidth(0).Gap(1).Children(func() {
+					ui.Text(c, a.L.T("newtask.when."+key)).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine()
+					ui.Text(c, a.L.T("newtask.when."+key+".help")).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
+				})
+			}) {
+				nt.when, nt.whenOpen = k, false
+				nt.err, nt.errEmpty = "", false
+				nt.focusCond = k == "when" || k == "until"
+			}
+		}
+	})
+}
+
+// whenDetail is the one line under the pills that says the time or the
+// condition, only when it doesn't start now.
+func (a *App) whenDetail(c *ui.Context) {
+	t := a.T
+	nt := &a.nt
+	timeField := func() {
+		in := ui.TextInput(c.Key(fmt.Sprintf("nt-time:%d", nt.seq)), &nt.atTime).Placeholder("9:00").Label(a.L.T("newtask.at")).
+			Height(t.ControlMD).Width(96).Padding(0, t.S3).Radius(t.RadiusMD).Background(t.Bg).Border(1, t.LineSoft).
+			FontSize(t.MD).FontFeatures("tnum").TextAlign(ui.Center)
+		if in.Changed() {
+			nt.err = ""
+		}
+	}
+	ui.Row(c.Key("nt-when-detail")).Gap(t.S3).Wrap().AlignItems(ui.Center).Children(func() {
+		switch nt.when {
+		case "at":
+			if i := a.choices(c, "nt-day", a.L.T("newtask.when.at"), []string{a.L.T("newtask.day.0"), a.L.T("newtask.day.1"), a.L.T("newtask.day.2")}, nt.atDay); i >= 0 {
+				nt.atDay = i
+			}
+			timeField()
+		case "every":
+			if i := a.choices(c, "nt-every", a.L.T("newtask.when.every"), []string{a.L.T("newtask.every.day"), a.L.T("newtask.every.weekday"), a.L.T("newtask.every.week"), a.L.T("newtask.every.hours")}, nt.every); i >= 0 {
+				nt.every = i
+			}
+			switch nt.every {
+			case 2:
+				var days []string
+				for _, d := range []int{1, 2, 3, 4, 5, 6, 0} {
+					days = append(days, a.L.T("newtask.weekday.short."+strconv.Itoa(d)))
+				}
+				sel := (nt.weekday + 6) % 7
+				if i := a.choices(c, "nt-weekday", a.L.T("newtask.every.week"), days, sel); i >= 0 {
+					nt.weekday = (i + 1) % 7
+				}
+			case 3:
+				var hs []string
+				for _, h := range everyHours {
+					hs = append(hs, a.L.T("newtask.hours", h))
+				}
+				if i := a.choices(c, "nt-hours", a.L.T("newtask.every.hours"), hs, nt.hours); i >= 0 {
+					nt.hours = i
+				}
+			}
+			if nt.every != 3 {
+				timeField()
+			}
+		case "when", "until":
+			ui.Text(c, a.L.T("newtask.cond.label."+nt.when)).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).Shrink(0)
+			in := ui.TextInput(c.Key(fmt.Sprintf("nt-cond:%s:%d", nt.when, nt.seq)), &nt.condition).Placeholder(a.L.T("newtask.cond."+nt.when)).
+				Label(a.L.T("newtask.cond.label."+nt.when)).Height(t.ControlMD).Grow(1).Basis(0).MinWidth(220).Padding(0, t.S4).Radius(t.RadiusMD).
+				Background(t.Bg).Border(1, t.LineSoft).FontSize(t.MD).OnSubmit(func() { a.StartNewTask() })
+			if in.Changed() {
+				nt.err = ""
+			}
+			if nt.focusCond {
+				in.Focus()
+				nt.focusCond = false
 			}
 		}
 	})
 }
 
 // wordsField is 做什么 / What: the user's words, given to the task as
-// they are. Return breaks the line; ⌘Return starts.
+// they are. Return breaks the line; ⌘Return starts; ⇧⌘Return starts and
+// keeps the card for the next one.
 func (a *App) wordsField(c *ui.Context) {
 	t := a.T
 	nt := &a.nt
-	ta := ui.TextArea(c.Key(fmt.Sprintf("nt-words:%d", nt.seq)), &nt.words).Lines(4, 10).MinHeight(0).
-		Placeholder(a.L.T("newtask.placeholder")).Label(a.L.T("newtask.what")).
-		Background(t.Bg).Border(1, t.LineSoft).Radius(t.RadiusMD).Padding(t.S3, t.S4).FontSize(t.Bubble).LineHeight(a.leading(1.5)).
-		OnTextKey(func(k ui.TextKey) bool {
-			if k.Key == ui.KeyEnter && k.Mods&ui.Cmd != 0 {
-				nt.words = k.Text()
-				a.StartNewTask()
-				return true
-			}
-			return false
-		})
-	if ta.Changed() {
-		nt.err, nt.errEmpty = "", false
-	}
-	if nt.focus {
-		ta.Focus()
-		nt.focus = false
-	}
-	ui.Text(c, a.L.T("newtask.verbatim")).FontSize(t.XS).TextColor(t.InkMuted)
+	ui.Column(c.Key("nt-what")).Gap(t.S2).Children(func() {
+		ta := ui.TextArea(c.Key(fmt.Sprintf("nt-words:%d", nt.seq)), &nt.words).Lines(4, 10).MinHeight(0).
+			Placeholder(a.L.T("newtask.placeholder")).Label(a.L.T("newtask.what")).
+			Background(t.Bg).Border(1, t.LineSoft).Radius(t.RadiusMD).Padding(t.S3, t.S4).FontSize(t.Bubble).LineHeight(a.leading(1.5)).
+			OnTextKey(func(k ui.TextKey) bool {
+				if k.Key == ui.KeyEnter && k.Mods&ui.Cmd != 0 {
+					nt.words = k.Text()
+					a.StartNewTask(k.Mods&ui.Shift != 0)
+					return true
+				}
+				return false
+			})
+		if ta.Changed() {
+			nt.err, nt.errEmpty = "", false
+			nt.started, nt.startedTask = "", ""
+		}
+		if nt.focus {
+			ta.Focus()
+			nt.focus = false
+		}
+		ui.Text(c, a.L.T("newtask.verbatim")).FontSize(t.XS).TextColor(t.InkMuted)
+	})
 }
 
-// newTaskFoot is what didn't work, in one line, then Cancel and Start.
+// newTaskFoot is one line on the left (what didn't work, what just
+// started, or the keys), then Cancel and Start.
 func (a *App) newTaskFoot(c *ui.Context) {
 	t := a.T
 	nt := &a.nt
-	ui.Row(c.Key("nt-foot")).Gap(t.S3).AlignItems(ui.Center).Padding(t.S1, 0, 0, 0).Children(func() {
-		if nt.err != "" {
-			ui.Text(c.Key("nt-err"), nt.err).FontSize(t.SM).LineHeight(1.45).TextColor(t.Failed.Ink).Grow(1).MinWidth(0).MaxLines(2).Role(ui.RoleStatus)
-		} else {
-			ui.Spacer(c)
-		}
+	start := a.L.T("newtask.start")
+	if nt.when == "at" || nt.when == "every" {
+		start = a.L.T("newtask.schedule")
+	}
+	ui.Row(c.Key("nt-foot")).Gap(t.S3).AlignItems(ui.Center).Padding(t.S2, 0, 0, 0).Children(func() {
+		ui.Row(c.Key("nt-foot-line")).Grow(1).MinWidth(0).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+			switch {
+			case nt.err != "":
+				ui.Text(c.Key("nt-err"), nt.err).FontSize(t.SM).LineHeight(1.45).TextColor(t.Failed.Ink).Shrink(1).MinWidth(0).MaxLines(2).Role(ui.RoleStatus)
+			case nt.started != "":
+				a.glyph(c, 14, drawCheck(t.Done.Ink))
+				ui.Text(c.Key("nt-started"), nt.started).FontSize(t.SM).FontWeight(600).TextColor(t.Done.Ink).Shrink(1).MinWidth(0).SingleLine().Role(ui.RoleStatus)
+				if nt.startedTask != "" && a.quietLink(c, "nt-open-started", a.L.T("newtask.open"), a.L.T("newtask.open")+" · "+nt.started) {
+					id := nt.startedTask
+					nt.open, nt.started, nt.startedTask = false, "", ""
+					a.openFromElsewhere(id)
+				}
+			default:
+				ui.Text(c, a.L.T("newtask.keys", start)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0).AccessHidden(true)
+			}
+		})
 		if nt.sending != "" {
 			ui.Spinner(c).Size(16, 16)
 			ui.Text(c, a.L.T("newtask.starting")).FontSize(t.MD).FontWeight(700).TextColor(t.InkMuted).Shrink(0)
 			return
 		}
 		if a.button(c, a.L.T("newtask.cancel"), btnText, t.ControlMD, t.Surface) {
-			nt.open, nt.err, nt.errEmpty = false, "", false
+			nt.open, nt.err, nt.errEmpty, nt.started, nt.startedTask = false, "", false, "", ""
 		}
-		ui.Text(c, "⌘↩").FontSize(t.XS).TextColor(t.Faint).Shrink(0).AccessHidden(true)
-		if a.buttonFor(c, a.L.T("newtask.start"), a.L.T("newtask.title"), btnPrimary, t.ControlMD, t.Surface) {
+		if a.buttonFor(c, start, a.L.T("newtask.title"), btnPrimary, t.ControlMD, t.Surface) {
 			a.StartNewTask()
 		}
 	})
+}
+
+// tildePath shows a home path as ~/…: shorter, and no user name on screen.
+func tildePath(p string) string {
+	if home := homeDir(); home != "" && (p == home || strings.HasPrefix(p, home+"/")) {
+		return "~" + strings.TrimPrefix(p, home)
+	}
+	if i := strings.Index(p, "/Users/"); i == 0 {
+		if j := strings.Index(p[len("/Users/"):], "/"); j > 0 {
+			return "~" + p[len("/Users/")+j:]
+		}
+	}
+	return p
 }
 
 // drawCaret is a small down caret: the chip opens a list.
@@ -616,4 +1003,46 @@ func drawCaret(col ui.Color) func(p *ui.Painter, r ui.Rect) {
 		m.LineTo(cx+w*0.38, cy-w*0.16)
 		p.StrokePath(&m, 1.6, col)
 	}
+}
+
+// drawFolder is a folder: where a task works.
+func drawFolder(col ui.Color) func(p *ui.Painter, r ui.Rect) {
+	return func(p *ui.Painter, r ui.Rect) {
+		s := r.W / 16
+		x, y := r.X, r.Y
+		var m ui.Path
+		m.MoveTo(x+2*s, y+4*s)
+		m.LineTo(x+6*s, y+4*s)
+		m.LineTo(x+7.5*s, y+5.5*s)
+		m.LineTo(x+14*s, y+5.5*s)
+		m.LineTo(x+14*s, y+12.5*s)
+		m.LineTo(x+2*s, y+12.5*s)
+		m.Close()
+		p.StrokePath(&m, 1.5, col)
+	}
+}
+
+// drawBranch is a branch: two commits, one forking off.
+func drawBranch(col ui.Color) func(p *ui.Painter, r ui.Rect) {
+	return func(p *ui.Painter, r ui.Rect) {
+		s := r.W / 14
+		x, y := r.X, r.Y
+		var m ui.Path
+		m.MoveTo(x+4*s, y+2*s)
+		m.LineTo(x+4*s, y+12*s)
+		m.MoveTo(x+10*s, y+4.5*s)
+		m.LineTo(x+10*s, y+6*s)
+		m.LineTo(x+4*s, y+9.5*s)
+		p.StrokePath(&m, 1.5, col)
+		var dots ui.Path
+		dots.Circle(x+10*s, y+3.2*s, 1.8*s)
+		dots.Circle(x+4*s, y+12*s, 1.8*s)
+		p.FillPath(&dots, col)
+	}
+}
+
+// homeDir is this user's home folder, "" when unknown.
+func homeDir() string {
+	h, _ := os.UserHomeDir()
+	return strings.TrimRight(h, "/")
 }

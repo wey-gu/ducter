@@ -26,6 +26,8 @@ export interface WorkerHello {
   harnesses?: { id: string; installed: boolean; loggedIn: boolean; version?: string; how?: string }[];
   /** D148: how it updates (self · app · source), and the outcome of its last update when it restarted for one. */
   how?: string;
+  /** D187: how "app", and it can ask the app on its Mac to update (app-update.ts). */
+  asksApp?: boolean;
   update?: import("./updates.ts").WorkerUpdateFrame;
   /** D157: what it can do for tasks, as its own probes say (上网 with where: chrome | ducter). */
   abilities?: import("@ducter/protocol").DeviceAbility[];

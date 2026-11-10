@@ -89,6 +89,8 @@ export interface WsDeps {
 export interface NewTaskFrames {
   open(input: NewTaskInput): Promise<NewTaskResult>;
   options(place?: Place): Promise<Omit<Extract<ServerFrame, { t: "task_new_options" }>, "t">>;
+  /** D186: add a folder as a project; absent where projects aren't kept. */
+  addProject?(path: string): Promise<Omit<Extract<ServerFrame, { t: "project_add_result" }>, "t" | "clientId">>;
 }
 
 /** What the client frames for work over time do (core.ts wires them to waiters, untils, routines). */
@@ -696,13 +698,26 @@ export function createWsHandler(deps: WsDeps) {
             ...(f.place ? { place: f.place } : {}),
             ...(typeof f.harness === "string" && f.harness ? { harness: f.harness } : {}),
             ...(typeof f.model === "string" && f.model ? { model: f.model } : {}),
+            ...(f.when && typeof f.when === "object" && typeof f.when.kind === "string" ? { when: f.when } : {}),
           });
         if (id && !prior) {
           newTaskSeen.set(id, pending);
           if (newTaskSeen.size > 200) newTaskSeen.delete(newTaskSeen.keys().next().value!);
         }
         const r = await pending;
-        send(ws, r.ok ? { t: "task_new_result", ok: true, ...(id ? { clientId: id } : {}), taskId: r.card.taskId, card: r.card } : { t: "task_new_result", ok: false, ...(id ? { clientId: id } : {}), reason: r.reason, message: r.message });
+        const cid = id ? { clientId: id } : {};
+        if (!r.ok) send(ws, { t: "task_new_result", ok: false, ...cid, reason: r.reason, message: r.message });
+        else if ("routine" in r) {
+          send(ws, { t: "task_new_result", ok: true, ...cid, routineId: r.routine.routineId, routine: r.routine });
+          // A routine lives outside the channel: push On hand so its shelf shows it now.
+          send(ws, { t: "on_hand", onHand: tasks.onHand() });
+        } else send(ws, { t: "task_new_result", ok: true, ...cid, taskId: r.card.taskId, card: r.card });
+        return;
+      }
+      case "project_add": {
+        const cid = typeof f.clientId === "string" && f.clientId ? { clientId: f.clientId } : {};
+        if (!deps.newTask?.addProject) return send(ws, { t: "project_add_result", ok: false, ...cid, reason: "failed", message: "Projects can't be added here." });
+        send(ws, { t: "project_add_result", ...cid, ...(await deps.newTask.addProject(String(f.path ?? ""))) });
         return;
       }
       case "open_task": {

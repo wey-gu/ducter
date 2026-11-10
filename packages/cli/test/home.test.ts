@@ -26,6 +26,7 @@ describe("command classes", () => {
     for (const c of ["help", "version", "connect", "disconnect"]) expect(commandClass(c)).toBe("self");
     expect(commandClass("update")).toBe("machine");
     expect(commandClass("update", { all: true })).toBe("home");
+    expect(commandClass("update", { check: true })).toBe("home"); // D187: every computer of the home, not only this one
   });
 
   test("args: connect takes the address; --local and --home", () => {

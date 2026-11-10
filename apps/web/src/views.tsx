@@ -13,8 +13,10 @@ import { closingWords, computerApart, computerName, computerOf, computers, compu
 import { ago, behind, cjkPad, deviceLabel, duration, firstClause, harnessName, modelName, phaseLine as phaseWords, placeLine, sameWords, splitOutcome, when } from "./format.ts";
 import { markdown } from "./markdown.ts";
 import { Coin } from "./coin.tsx";
-import { Btn, Toggle } from "./controls.tsx";
+import { Btn, Seg, Toggle } from "./controls.tsx";
 import { deviceArt, DevicesSection } from "./devcard.tsx";
+import { SourceCards } from "./accounts.tsx";
+import { FindsNote } from "./finds.tsx";
 import { appPush, disablePush, enablePush } from "./push-client.ts";
 import { inApp } from "./native.ts";
 import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, WaitBubble, waitCaption, WaitDetails, waitLine } from "./work.tsx";
@@ -1106,6 +1108,7 @@ function EntryView({ e, chipOwner, livingItems, join }: { e: Entry; chipOwner: M
   }
   if (e.job) return <JobRow e={e} chipOwner={chipOwner} noted={A.notedFor(e)} join={join} />;
   if (e.living) return <Living e={e} items={livingItems(e)} chipOwner={chipOwner} />;
+  if (e.finds) return <FindsNote n={e.finds} join={join} />;
   if (e.decision) {
     const d = A.S.decisions.get(e.decision.decisionId);
     if (!d) return null;
@@ -1974,37 +1977,6 @@ function DecisionSheet({ id }: { id: string }) {
 // A segmented choice: flat, the chosen one on the surface with an ink hairline (no ledge, no pill).
 // Options sit side by side while every label fits on one line; when they don't (a narrow phone,
 // longer words in the other language), the options stack, one per row, and never spill.
-function Seg<V extends string | number>(p: { label: string; value: V | undefined; options: { v: V; label: string }[]; onPick: (v: V) => void }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const words = p.options.map((o) => o.label).join("\n");
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const fit = () => {
-      el.classList.remove("stack");
-      el.classList.toggle("stack", el.scrollWidth > el.clientWidth + 1);
-    };
-    fit();
-    if (typeof ResizeObserver === "undefined") return;
-    let w = el.clientWidth;
-    const ro = new ResizeObserver(() => {
-      if (el.clientWidth !== w) (w = el.clientWidth), fit();
-    });
-    ro.observe(el);
-    // Fonts arriving late change the words' widths.
-    document.fonts?.ready.then(fit).catch(() => {});
-    return () => ro.disconnect();
-  }, [words]);
-  return (
-    <div class="seg" role="radiogroup" aria-label={p.label} ref={ref}>
-      {p.options.map((o) => (
-        <button key={String(o.v)} role="radio" aria-checked={o.v === p.value} class={o.v === p.value ? "on" : ""} onClick={() => o.v !== p.value && p.onPick(o.v)}>
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 
 const tz = () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -2364,7 +2336,6 @@ function Accounts() {
   const [show, setShow] = useState(false); // the key shows as typed
   const [noKey, setNoKey] = useState(false); // OOMOL Hosted checked with no key: said on the field, nothing sent
   const [how, setHow] = useState(false); // How to connect: the setup steps behind a fold
-  const [removing, setRemoving] = useState(""); // a Remove asks in its row first: never one tap
   useEffect(() => {
     if (!A.connections) A.askConnections();
   }, []);
@@ -2396,51 +2367,23 @@ function Accounts() {
   };
   const refusal = A.connRefusal && A.connRefusal !== "no_key" ? A.connRefusal : undefined;
   const showNoKey = noKey || (adding && A.connRefusal === "no_key");
+  // D166: with a source, a character sheet per source and the chips above them; adding another
+  // steps back to a quiet text button.
+  if (list?.length && !adding && !offer)
+    return (
+      <>
+        <SourceCards list={list} />
+        <section class="set accounts quiet-add">
+          <Btn kind="text" label={`${t("acct.add")} ›`} onClick={() => setAdding(true)} />
+          {refusal && <AcctRefusal reason={refusal} hosted={false} />}
+        </section>
+      </>
+    );
   return (
     <section class="set accounts">
       <h3>{t("acct.title")}</h3>
       <div class="small sub">{t("acct.lede")}</div>
       {list && !list.length && !offer && <div class="small sub">{t("acct.none")}</div>}
-      {list?.map((c) => (
-        <div class="acct-row" key={c.id}>
-          <Mailbox source={c.source} />
-          <div class="grow">
-            <div class="acct-name">{c.source === "oo" ? t("acct.oo.name") : c.name}</div>
-            {!!c.apps?.length && <div class="small acct-apps">{c.apps.map((a) => (a.accounts.length > 1 ? `${a.title} (${a.accounts.length})` : a.title)).join(" · ")}</div>}
-            <div class="small sub">{t(`acct.src.${c.source}`)}</div>
-            {c.state === "unreachable" || c.state === "unauthorized" ? (
-              <div class="small warn">{t(`acct.state.${c.state}`)}</div>
-            ) : (
-              (c.source === "oomol" || c.source === "self") &&
-              c.apps &&
-              !c.apps.length && (
-                // D158: connected, but nothing to read there yet; say where to fix it.
-                <div class="small acct-empty">
-                  {t(`acct.empty.${c.source}`)}
-                  {c.source === "oomol" && (
-                    <>
-                      {" "}
-                      <a class="qlink" href={OOMOL_ACCOUNTS} target="_blank" rel="noopener noreferrer">
-                        {t("acct.connect.oomol")} ›
-                      </a>
-                    </>
-                  )}
-                </div>
-              )
-            )}
-          </div>
-          {removing !== c.id && <Btn kind="text" label={t("acct.remove")} about={c.name} onClick={() => setRemoving(c.id)} />}
-          {removing === c.id && (
-            <div class="acct-remove-ask" role="group">
-              <span class="small">{t("acct.remove.ask", c.source === "oo" ? t("acct.oo.name") : c.name)}</span>
-              <span class="acts">
-                <Btn kind="text" label={t("acct.remove.keep")} about={c.name} onClick={() => setRemoving("")} />
-                <Btn kind="secondary" label={t("acct.remove")} about={c.name} onClick={() => (setRemoving(""), A.removeConnection(c.id))} />
-              </span>
-            </div>
-          )}
-        </div>
-      ))}
       {offer && <OoOffer oo={oo!} />}
       {!offer && oo?.selfHosted && !usedOo && (
         <div class="acct-oo">

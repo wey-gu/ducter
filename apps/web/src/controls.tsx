@@ -2,7 +2,7 @@
 // row a card or a settings page shows is one of these. test/controls.test.ts fails when the
 // device card draws a control any other way. A new control is added here, never inline.
 import type { ComponentChildren } from "preact";
-import { useState } from "preact/hooks";
+import { useLayoutEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { Coin } from "./coin.tsx";
 
@@ -165,6 +165,63 @@ export function BackRow(p: { label: string; onClick: () => void }) {
         ‹
       </span>
       {p.label}
+    </button>
+  );
+}
+
+/** A segmented single choice (D76): the chosen one a white surface on its base; stacks when the words don't fit. */
+export function Seg<V extends string | number>(p: { label: string; value: V | undefined; options: { v: V; label: string }[]; onPick: (v: V) => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const words = p.options.map((o) => o.label).join("\n");
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const fit = () => {
+      el.classList.remove("stack");
+      el.classList.toggle("stack", el.scrollWidth > el.clientWidth + 1);
+    };
+    fit();
+    if (typeof ResizeObserver === "undefined") return;
+    let w = el.clientWidth;
+    const ro = new ResizeObserver(() => {
+      if (el.clientWidth !== w) (w = el.clientWidth), fit();
+    });
+    ro.observe(el);
+    // Fonts arriving late change the words' widths.
+    document.fonts?.ready.then(fit).catch(() => {});
+    return () => ro.disconnect();
+  }, [words]);
+  return (
+    <div class="seg" role="radiogroup" aria-label={p.label} ref={ref}>
+      {p.options.map((o) => (
+        <button key={String(o.v)} role="radio" aria-checked={o.v === p.value} class={o.v === p.value ? "on" : ""} onClick={() => o.v !== p.value && p.onPick(o.v)}>
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * D166: one app a source can read, on the accounts card: a literal rounded square with the app's
+ * mark, its label under it (the app, then the account). sel: its detail is open; off: not watched
+ * (faded); grey: excluded or unreachable; add: the dashed tile at the tray's end (再连一个).
+ */
+export function AppTile(p: { label: string; sub?: string; about?: string; sel?: boolean; off?: boolean; grey?: boolean; add?: boolean; onClick: () => void; children?: ComponentChildren }) {
+  const acc = [p.label, p.sub, p.about].filter(Boolean).join(" · ");
+  return (
+    <button class={`app-tile${p.sel ? " sel" : ""}${p.off ? " off" : ""}${p.grey ? " grey" : ""}${p.add ? " add" : ""}`} aria-label={acc} aria-pressed={p.add ? undefined : !!p.sel} onClick={p.onClick}>
+      <span class="sq" aria-hidden="true">
+        {p.add ? "+" : p.children}
+      </span>
+      <span class="an" aria-hidden="true">
+        {p.label}
+      </span>
+      {p.sub && (
+        <span class="as" aria-hidden="true">
+          {p.sub}
+        </span>
+      )}
     </button>
   );
 }

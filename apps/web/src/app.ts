@@ -109,6 +109,8 @@ class AppState {
   connecting = false;
   /** D158: the last check's refusal, shown on the Accounts card in the failed look (never a toast). */
   connRefusal?: ConnectionReason;
+  /** D166: 看了哪些 / What it read today, by connection, once asked for. */
+  connReads = new Map<string, import("@ducter/protocol").ReadLine[]>();
   route: Route = { name: "conv" };
   sheet: Sheet = null;
   /** D151: the live view of Ducter's browser, while the user signs in (never stored). */
@@ -223,6 +225,7 @@ class AppState {
     if (f.t === "open_task") return void ((this.sheet = null), this.go({ name: "task", id: f.taskId }));
     if (f.t === "open_result") return;
     if (f.t === "connections") return (this.connections = f.connections), (this.oo = f.oo), this.changed();
+    if (f.t === "connection_reads") return void (this.connReads.set(f.id, f.reads), this.changed());
     if (f.t === "connection_result") {
       this.connecting = false;
       // D158: a refusal stays on the Accounts card in the failed look; an add says what it reads now.
@@ -496,6 +499,26 @@ class AppState {
     this.changed();
   }
 
+  /** D166: a tile's 自己留意 / 不让 Ducter 看这个. */
+  setApp(id: string, service: string, account: string | undefined, patch: { watch?: boolean; excluded?: boolean }) {
+    const c = this.connections?.find((x) => x.id === id);
+    const a = c?.look?.apps.find((x) => x.service === service && (x.account ?? "") === (account ?? ""));
+    if (a) Object.assign(a, patch);
+    this.send({ t: "app_watch", id, service, ...(account ? { account } : {}), ...patch });
+    this.changed();
+  }
+  askReads(id: string) {
+    this.send({ t: "connection_reads", id });
+  }
+  /** D165: 有用 / 这类不用告诉我 under a find, and a note's ask. */
+  reactFind(findId: string, reaction: "useful" | "mute") {
+    this.S.findStates.set(findId, { findId, kind: this.S.findStates.get(findId)?.kind ?? "deadline", state: reaction === "mute" ? "muted" : "useful" });
+    this.send({ t: "find_react", findId, reaction });
+    this.changed();
+  }
+  answerNote(noteId: string, ask: "first_look" | "keep_note", yes: boolean) {
+    this.send({ t: "proactive_answer", noteId, ask, yes });
+  }
   removeConnection(id: string) {
     if (this.connections) this.connections = this.connections.filter((c) => c.id !== id);
     this.send({ t: "connection_remove", id });
@@ -869,6 +892,8 @@ class AppState {
     const done = this.doneToday();
     // A phone header has room for two things: what needs you and what's moving come first.
     if (done && parts.length < 2) parts.push(L.t("header.done", done));
+    // D165: a quiet morning sends nothing; only this line says it looked.
+    if (!parts.length && this.S.quietMorning()) return L.t("header.quiet_day");
     return parts.length ? parts.join(" · ") : L.t("header.summary.none");
   }
 

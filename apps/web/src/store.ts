@@ -23,6 +23,8 @@ export interface Entry {
   job?: Job;
   living?: Bodies["living_msg"];
   decision?: Bodies["decision"];
+  /** D165: a note the partner said by itself; a fold-in or an answer revises it in place. */
+  finds?: Bodies["finds"];
 }
 
 export type DecisionState = Bodies["decision"] & {
@@ -154,6 +156,15 @@ export class Store {
   errors: string[] = [];
   /** 记下了 / Noted lines in the channel, shown inside the Details of the reply they belong to (D104). */
   noted: { seq: number; title: string; memoryId?: string; replyTo?: number }[] = [];
+  /** D165: each find's latest change, and the latest quiet morning / the user's latest message. */
+  findStates = new Map<string, Bodies["find_state"]>();
+  quietSeq = 0;
+  lastUserSeq = 0;
+  private notes = new Map<string, Entry>();
+  /** The header says 早上看过了，没有要你操心的 until the user next writes. */
+  quietMorning(): boolean {
+    return this.quietSeq > 0 && this.quietSeq > this.lastUserSeq;
+  }
   /** What the partner is doing while the user waits (D104): its step, when this client first saw
    *  that step (local clock, so a skewed server clock can't make it look slow), and the channel
    *  seq at which a turn last ended (a user message at or before it has had its turn). */
@@ -303,7 +314,30 @@ export class Store {
     const entry = (e: Partial<Entry>) => this.add({ ev, firstSeq: ev.seq, revision: 0, ...e });
     switch (ev.kind) {
       case "user_msg":
+        this.lastUserSeq = Math.max(this.lastUserSeq, ev.seq);
         return entry({ user: ev.body as Bodies["user_msg"] });
+      case "finds": {
+        const b = ev.body as Bodies["finds"];
+        if (b.quiet) {
+          this.quietSeq = Math.max(this.quietSeq, ev.seq);
+          return void this.bySeq.set(ev.seq, null);
+        }
+        const old = b.revises ? this.notes.get(b.revises) : undefined;
+        if (old) {
+          old.finds = b;
+          old.revision++;
+          this.notes.set(b.noteId, old);
+          return void this.bySeq.set(ev.seq, old);
+        }
+        const e: Entry = { ev, firstSeq: ev.seq, revision: 0, finds: b };
+        this.notes.set(b.noteId, e);
+        return this.add(e);
+      }
+      case "find_state": {
+        const b = ev.body as Bodies["find_state"];
+        this.findStates.set(b.findId, b);
+        return void this.bySeq.set(ev.seq, null);
+      }
       case "ai_msg": {
         const b = ev.body as Bodies["ai_msg"];
         // A task's question in the partner's words (D129) is that question's words, not a
@@ -366,6 +400,8 @@ export class Store {
       }
       case "decision":
         this.addDecision(ev as Ev<"decision">);
+        // A find's next step lives inside its note (D165).
+        if ((ev.body as Bodies["decision"]).findId) return void this.bySeq.set(ev.seq, null);
         return entry({ decision: ev.body as Bodies["decision"] });
       case "decision_resolved":
         this.resolve(ev.body as Bodies["decision_resolved"]);

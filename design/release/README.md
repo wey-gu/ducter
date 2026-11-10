@@ -35,7 +35,11 @@ app to TestFlight. Pull requests and `main` run `.github/workflows/ci.yml`.
    gh run watch
    ```
    The GitHub Release comes out marked pre-release. TestFlight gets build `0.1.0 (<run>.1)`.
-6. **Install from TestFlight** on your iPhone and confirm that pushes arrive. A TestFlight build
+6. **The Android release key (D181), once:** create it, store it, upload four secrets and one
+   variable, register the package for Android developer verification: the exact steps are in
+   [android.md](android.md#the-release-key-once). Until then a release ships without the APK and
+   the `android` job says so.
+7. **Install from TestFlight** on your iPhone and confirm that pushes arrive. A TestFlight build
    is a Release build, so it subscribes with `env: production`, and the core then sends through
    the notification relay to `api.push.apple.com`. The relay needs its APNs key and settings
    first: `design/release/push-relay.md` (D159). No home needs a key of its own.
@@ -103,6 +107,7 @@ update; those still need hel and a real Mac before a release.
 | `meta` | ubuntu | Fails unless tag `vX` equals `packages/cli/package.json` `version` (the app and DMG name read it there). Tags with a `-` are pre-releases. |
 | `macos` | macos-15 (arm64) | Imports the Developer ID `.p12` into a throwaway keychain (`scripts/ci/import-certificate.sh`), writes the API key `.p8`, runs `scripts/make-app.sh` with `DUCTER_REQUIRE_NOTARIZATION=1`. That script signs inside out with the hardened runtime, notarizes the app and the DMG with the API key, staples both, and checks them with `spctl`. The job checks the DMG again and uploads `Ducter-X-arm64.dmg`. |
 | `linux` | ubuntu | `scripts/install.sh --linux` builds `bun-linux-arm64` and `bun-linux-x64` with build.sh's pinned Bun 1.4.4. It smoke-runs the x64 binary, then packs `ducter-X-linux-{arm64,x64}.tar.gz`. Each tarball unpacks to one folder holding `ducter` and `install.sh`. |
+| `android` | ubuntu | `apps/android`: unit tests, then `./gradlew assembleRelease` signed with the release key from secrets (D181); `aapt2` checks package and versionName, `apksigner` that the certificate is not a debug key and equals the `ANDROID_CERT_SHA256` variable. Uploads `Ducter-X-android.apk`, which the app's updater looks for by that name. Skips with a warning while `ANDROID_KEYSTORE_BASE64` isn't set. [android.md](android.md) |
 | `ios` | macos-26 (Xcode 26) | `scripts/ci/testflight.sh`: xcodegen (unless the project is committed), `xcodebuild archive`, then `-exportArchive` with `destination=upload`. Marketing version is the tag without its suffix; the build number is `run_number.run_attempt`. It skips with a notice when `apps/ios` isn't on the tagged commit or no key is set, and it never blocks the GitHub Release. |
 | `release` | ubuntu | Writes `SHA256SUMS.txt`. Notes come from the `## X` section of `CHANGELOG.md` if there is one (its whats-new block is what the cards show; a section without one gets a warning), otherwise from the commit subjects since the previous `v*` tag (`scripts/ci/release-notes.sh`). The release is created as a draft, the files are uploaded, then it is published. |
 
@@ -199,6 +204,13 @@ serves both repos. Values never appear in logs.
 | `APPLE_NOTARY_ISSUER_ID` | macos, ios | The issuer UUID shown above the key list. |
 | `APPLE_NOTARY_API_KEY_BASE64` | macos, ios | Base64 of `AuthKey_<id>.p8`. |
 | `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_API_KEY_BASE64` | ios | Optional: a separate **Admin** key for TestFlight. When unset, the `APPLE_NOTARY_*` key is used. |
+| `ANDROID_KEYSTORE_BASE64` | android | Base64 of the Android release keystore (PKCS12), set by hand ([android.md](android.md#the-release-key-once)); not in `setup-github-secrets.sh`. |
+| `ANDROID_KEYSTORE_PASSWORD` | android | The keystore's password. |
+| `ANDROID_KEY_ALIAS` | android | The key's alias in it (`ducter`). |
+| `ANDROID_KEY_PASSWORD` | android | The key's password; optional when it equals the keystore's (PKCS12 keys usually do). |
+
+One **repository variable** (not a secret): `ANDROID_CERT_SHA256`, the release certificate's
+SHA-256. The `android` job fails an APK signed by anything else.
 
 The team id `JMU55RJW2K` is not secret. It is set in the workflow and in `apps/ios/Config.xcconfig`.
 
@@ -228,7 +240,7 @@ Xcode, Transporter, or the App Store Connect API (altool's notarization was reti
 
 ## Ducter CI (`ci.yml`)
 
-These jobs run on Linux only, in parallel, and take a few minutes. macOS minutes cost 10x on a
+These jobs run in parallel (ts and android on Linux, go on macOS), and take a few minutes. macOS minutes cost 10x on a
 private repo.
 
 - **ts:** `bun install --frozen-lockfile`, `bun run typecheck` (both tsconfigs), rebuilds
@@ -240,6 +252,8 @@ private repo.
   (about $1) and commits the results with the change.
 - **go** (`apps/desktop`): `gofmt -l`, `go vet` for darwin and linux, a darwin/arm64 build, and
   `go test`. MyGo calls AppKit through purego, not cgo, so all of it runs on Linux.
+- **android** (`apps/android`): its JVM unit tests and a debug APK, signed with Gradle's debug
+  key (D178).
 - **`ios.yml`:** an unsigned Release archive on macos-26, only when `apps/ios/**` changes.
 
 **One Bun.** CI, the web bundle and the compiled CLI all use Bun **1.4.4**. `bun run build:web`

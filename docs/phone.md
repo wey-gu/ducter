@@ -1,6 +1,6 @@
 ---
 title: Your phone
-description: Connect your iPhone, iPad or Android phone to Ducter, get notified only when something needs you, and keep your nights quiet.
+description: Connect your iPhone, iPad or Android phone (foldables too) to Ducter, get notified only when something needs you, and keep your nights quiet.
 order: 7
 ---
 
@@ -18,7 +18,7 @@ Where you can use it:
 | | How | Status |
 |---|---|---|
 | **iPhone and iPad** | The Ducter app, one app for both ([join the beta](https://testflight.apple.com/join/Z4GvWt7t)), or Safari | Public beta on TestFlight |
-| **Android** | Your phone's browser | Ready; the Android app is coming soon |
+| **Android** | The Ducter app, with each release on GitHub ([below](#the-android-app)), or Chrome | Ready; the app updates itself |
 | **Any other phone** | Its browser | Ready |
 
 ## Connect your phone
@@ -52,8 +52,10 @@ doesn't buzz over and over.
   you want them.
 - **Send a test** checks that notifications reach this phone.
 - **Stop notifications** turns them off for this phone.
-- On **Android**, you can answer with **Go** or **Hold** straight from the notification. In
-  the iPhone's browser, tapping it opens the decision. The iPhone app (public beta on TestFlight)
+- On **Android**, in Chrome, you can answer with **Go** or **Hold** straight from the
+  notification. The Android app can't notify you yet: open it to see what needs you, or keep
+  Ducter in Chrome as well for its notifications. In the iPhone's browser, tapping it opens the
+  decision. The iPhone app (public beta on TestFlight)
   lets you answer **Go**, **Hold** or **Reply** right from the notification.
 
 ### In the iPhone app
@@ -118,3 +120,26 @@ Connect it the same way, with its own code.
 
 On iPhone Duo the app runs open or closed, laid out for the display it is on. Filling the whole
 open display, edge to edge, is coming soon.
+
+## The Android app
+
+**Install it.** On your Android phone, open
+[Ducter's latest release](https://github.com/wey-gu/ducter/releases/latest) and tap the file that
+ends in `-android.apk`. Android asks once whether your browser may install apps; allow it, then
+open Ducter. Connect it the same way: scan the QR code from `ducter pair`, paste the link, or type
+the address and code.
+
+**It updates itself.** When a new version is out, a card says what's new; tap **Update**. The first
+time, Android asks once whether Ducter may install its own updates: turn on **Allow from this
+source** and come back. Ducter checks the download against the release before anything changes,
+and only installs a copy signed the same way as the one you have. Android closes the app to put
+the new one in; open it again and it says **Back, now on** the new version. To check yourself,
+touch and hold the Ducter icon and choose **Check for updates**.
+
+**On a foldable.** Open it like a book and the conversation sits on one side of the fold and
+**On hand**, or the task you open, on the other. Stand it half-open on a table and the
+conversation is above the fold, On hand below. Folded, it is one column as on any phone. Folding,
+unfolding and turning keep what you were reading and typing.
+
+Notifications in the Android app are coming soon; until then, Ducter in Chrome notifies you as
+above.

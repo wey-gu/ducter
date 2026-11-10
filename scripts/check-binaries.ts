@@ -11,6 +11,8 @@ const MAX = 2 * 1024 * 1024; // per file
 const ALLOW = [
   /^apps\/desktop\/internal\/theme\//,
   /^apps\/ios\/Ducter\//,
+  /^apps\/android\/app\/src\/main\/res\//, // the Android app's icon, art and font (D178)
+  /^apps\/android\/gradle\/wrapper\/gradle-wrapper\.jar$/, // the build's own bootstrap
   /^apps\/web\/static\//,
   /^apps\/site\/(public|src)\//,
   /^design\/art\/assets\/alpha\//,

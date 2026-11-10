@@ -516,8 +516,23 @@ Codex first, once OAR is near 1.0. See `research/17`.
       a handle; rotating the handle encryption key with a key id; a per-home budget once homes
       identify themselves to the relay. Trigger: abuse seen in the relay's 429s, or the App Store
       release.
-- [ ] **Notification relay for Android** (an FCM relay in the same function) if a native Android
-      app ships; until then Android uses Web Push. Trigger: an Android app.
+- [ ] **Notifications in the Android app (D181 (4)), without Google as a requirement:**
+      UnifiedPush. The app registers with a distributor (ntfy, or an embedded FCM distributor
+      only where Play services exist), gets an endpoint, makes the p256dh/auth keys, and hands the
+      page a standard Web Push subscription; the home's existing Web Push sender serves it once
+      `isPushEndpoint` accepts endpoints the paired app vouches for (keep the SSRF guard: https,
+      no private addresses, per-device). The app shows the notification with Go / Hold from the
+      decrypted payload (the shape `sw.ts` uses). Was: an FCM relay in the push function (D159's
+      shape), which would make Play services and a Firebase project a requirement. Trigger: the
+      Android app in users' hands (0.0.10) and the first ask for notifications.
+- [ ] **Android app, before it ships (D181):** the release keystore, its four secrets and the
+      `ANDROID_CERT_SHA256` variable (`design/release/android.md`); Android developer verification
+      of `co.nowledge.ducter.android`; install and update on a real phone and on a Chinese ROM
+      (Xiaomi asks on every update); one update between two release-key builds; the QR scanner
+      with a real camera. Trigger: tagging 0.0.10.
+- [ ] **Android app, later:** a share target (send a link or text to the partner); the page's
+      Settings showing this app's version with Check now (the bridge has `update.check`); a
+      download link on the website once the first APK is out. Trigger: the author's ask.
 
 - [ ] First tagged release end to end (notarized DMG, Linux tarballs, TestFlight). Trigger: the
       author's checklist at the top of `design/release/README.md` is done.

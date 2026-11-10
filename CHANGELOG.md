@@ -1,5 +1,26 @@
 # Changelog
 
+## Unreleased
+
+<!-- whats-new
+zh: 安卓 App 来了：从 GitHub 发布页下载，之后自己更新
+en: Ducter for Android: get it from the GitHub release; it updates itself
+zh: 折叠屏打开时，对话和手头的事分在折痕两边
+en: On a foldable, the conversation and On hand meet at the fold
+-->
+
+**Android**
+- A Ducter app for Android, with each release on GitHub (`Ducter-<version>-android.apk`): scan
+  the QR code from `ducter pair`, paste the link, or type the address and code, and it opens
+  straight into the conversation, edge to edge, in light or dark.
+- It updates itself: when a version is out, one card says what's new in your language; **Update**
+  downloads it from GitHub, checks it against the release and that it's signed the same way, and
+  hands it to Android. Touch and hold the icon › **Check for updates** to ask now.
+- On a foldable, open like a book: the conversation on one side of the fold, On hand or the task
+  on the other. Half-open on a table: the conversation above, On hand below. Folded: one column.
+  Folding and turning never reload the page. Chrome on a foldable gets the same split.
+- Notifications in the Android app are not in this version; Ducter in Chrome still notifies you.
+
 ## 0.0.10
 
 <!-- whats-new

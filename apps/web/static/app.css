@@ -381,6 +381,51 @@ a {
   flex: 0 0 clamp(400px, 40%, 560px);
   border-left: 1px solid var(--line);
 }
+/* At a foldable's fold (D182; fold.ts): the page spans the screen and the panes meet at the fold,
+   never across it. --fold-a is where the fold starts, --fold-gap a hinge's width (0 on a seamless
+   fold). Each pane keeps only the insets on its own outer edges. */
+:root[data-split] #app {
+  width: auto;
+  margin: 0;
+  padding: 0;
+}
+.panes.book .pane.conv {
+  flex: 0 0 var(--fold-a);
+  padding-left: var(--safe-left);
+  --safe-right: 0px;
+}
+.panes.book .pane.side {
+  flex: 1 1 0;
+  margin-left: var(--fold-gap);
+  padding-right: var(--safe-right);
+  --safe-left: 0px;
+}
+.panes.table {
+  flex-direction: column;
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+}
+.panes.table .pane {
+  height: auto;
+  min-height: 0;
+}
+.panes.table .pane.conv {
+  flex: 0 0 var(--fold-a);
+  --safe-bottom: 0px;
+}
+.panes.table .pane.side {
+  flex: 1 1 0;
+  margin-top: var(--fold-gap);
+  border-left: 0;
+  border-top: 1px solid var(--line);
+  --safe-top: 0px;
+}
+/* Below a tabletop's fold, On hand keeps the conversation's measure rather than the whole width. */
+.panes.table .pane.side > .top,
+.panes.table .pane.side > .scroll {
+  padding-left: max(16px, calc((100% - 720px) / 2));
+  padding-right: max(16px, calc((100% - 720px) / 2));
+}
 .pane.conv > .top,
 .pane.conv > .conn,
 .pane.conv > .scroll,

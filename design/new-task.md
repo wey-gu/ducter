@@ -1,9 +1,10 @@
-# New task: opening a task yourself (D128, D185, D186)
+# New task: opening a task yourself (D128, D185, D186, D197)
 
 The power path: the user opens a task with their own words, picks where and (optionally) who,
 and the task starts at once. Never required: saying it to the partner still works and stays
 the default. Decisions: D128, D185 (the card redone; starting later, on a schedule, on an event,
-or until), D186 (projects by hand) in `decisions.md`. Glossary rows: `product-model.md` §1 ("a
+or until), D186 (projects by hand), D197 (a folder on your Mac for a home on a server) in
+`decisions.md`. Glossary rows: `product-model.md` §1 ("a
 task the user opens themselves").
 
 **Status.** Built end to end. Core, protocol, runner, the Go protocol mirror and the CLI are
@@ -14,7 +15,10 @@ in `.shots/newtask-ui/`); the phone's sheet and `open_task` in `apps/web/src` (`
 shot against `apps/web/demo-newtask.ts`). D185/D186 built 2026-11-11: core
 (`packages/core/test/{new-task,work-over-time}.test.ts`), desktop (`newtask_test.go`, shots in
 `.shots/newtask/` before/after, zh/en), web (`apps/web/test/newtask.test.ts`, shots in
-`.shots/newtask/web/`, phone and wide, light and dark, zh/en). Not yet reviewed by the user.
+`.shots/newtask/web/`, phone and wide, light and dark, zh/en). D197 built 2026-11-11: core
+(`new-task.test.ts`, a fake worker), runner (`worker.test.ts`, `folderInfo`), desktop
+(`newtask_test.go`, a home elsewhere with and without this Mac's worker), web (`newtask.test.ts`).
+Not yet reviewed by the user.
 
 ## Who and how it starts
 
@@ -39,8 +43,8 @@ bottom:
 
 | Pill | Default | Its list |
 |---|---|---|
-| folder (在哪儿做 / Where) | the most recently used | the folders tasks used and the projects added (D186), most recent first, each with its path as ~/…; then the repos `ducter up` noticed; 不用文件夹 / No folder; on the Mac, 加一个文件夹… / Add a folder… |
-| branch (repos only) | the repo's default branch | 从哪个分支开始 / Start from which branch: its 30 most recently committed, the default marked 默认 / default |
+| folder (在哪儿做 / Where) | the most recently used | the folders tasks used and the projects added (D186), most recent first, each with its path as ~/… (and **· {computer}** when the places span two computers, D197); then the repos `ducter up` noticed; 不用文件夹 / No folder; on the Mac, 加一个文件夹… / Add a folder… (see below) |
+| branch (repos only; a worker's repo too, D197) | the repo's default branch | 从哪个分支开始 / Start from which branch: its 30 most recently committed, the default marked 默认 / default |
 | computer (only when real, D157) | the suggested one | 在哪台电脑上做 / On which computer |
 | 谁来做 / Who does it | the top candidate, tagged 推荐 / Suggested (why on hover); else the one the user last picked on this client | every agent at that place, best first, its one reason under it; a blocked one greyed with why |
 | 什么时候开始 / When it starts | 现在 / Now | 现在 · 定个时间 · 定期做 · 等某件事发生 · 一直做到…, each with one line of what it means |
@@ -69,6 +73,20 @@ What each when does underneath (no new scheduler):
 | When something happens | the task opens now with **先等到：{X}\n然后：{words}** and a line asking it to wait with `wait_for` and a check; it rests on Waiting (D112 (4)) |
 | Keep going until | the task opens with the words verbatim, then `until` with the condition (D113) |
 
+**Adding a folder (D186, D197).** 加一个文件夹… opens macOS's folder picker. Where the window's
+Ducter runs on this Mac, the folder is the home's own. Where it runs elsewhere (a server) and this
+Mac does tasks for it (Settings › 住在哪儿 › 让这台 Mac 也替 {home} 做事), the folder is this Mac's:
+`project_add` carries this Mac's worker id and the home reads the folder through the worker
+(`folderInfo`). Where it runs elsewhere and this Mac doesn't, the row is greyed with one line:
+**在设置 › 住在哪儿打开「让这台 Mac 也替 {home} 做事」，就能加这台 Mac 上的文件夹。/ To add a folder on
+this Mac, turn on "Let this Mac do tasks for {home}" in Settings › Where it lives.** The phone and
+the browser list these places but don't add one (no picker).
+
+**Which computer (D197).** Only when the listed places span more than one computer does each row's
+second line end in **· {computer}**; the list keeps one order, most recent first. **~** is the home
+folder of the computer the path is on, read from the path (`/Users/<name>`, `/home/<name>`), never
+from this Mac's own home.
+
 Inside an opened task, ⌘N opens the card with that task's place prefilled. On hand's group
 header "+" (By project) is 在这儿开一件 / New task here, prefilling that place.
 
@@ -84,7 +102,7 @@ only; remembered per client (local storage), not a setting. By project:
 - Groups by the card's `project` (an added project's name, D186, else a folder's name), else
   the folder's name, else 其他 / Other; then the projects added by hand with nothing yet
   (**还没有事。/ Nothing here yet.**). The header has the group's path as ~/… and "+"
-  (在这儿开一件 / New task here). At the foot, on the Mac whose Ducter runs here, **＋ 加一个文件夹 /
+  (在这儿开一件 / New task here). At the foot, on the Mac whose Ducter runs here or that does tasks for it (D197), **＋ 加一个文件夹 /
   Add a folder** (D186).
 - A row is `title · kind · branch · +adds −dels · state`: kind is what it waits for (**等 …**) or
   which try of a loop it is (**第 n 次**), else nothing; `place.branch`, `changes.adds` /
@@ -100,9 +118,9 @@ from the same `changes`.
 
 | Frame | Answer | Notes |
 |---|---|---|
-| `{t:"task_new_options", place?}` | `{t:"task_new_options", places: PlaceChoice[], candidates: Candidate[]}` | Candidates at `place` (default this machine). `PlaceChoice` = place (repo, folder or none), name, usedAt, defaultBranch, branches, added (D186) |
+| `{t:"task_new_options", place?}` | `{t:"task_new_options", places: PlaceChoice[], candidates: Candidate[]}` | Candidates at `place` (default this machine). `PlaceChoice` = place (repo, folder or none), name, usedAt, defaultBranch, branches (a worker's repo: asked of it, at most 3 s, D197), added (D186), computer (D197: only when the places span two computers) |
 | `{t:"task_new", words, place?, harness?, model?, clientId?, when?}` | `{t:"task_new_result", ok, clientId, taskId, card}`; for a time or a schedule `{ok, clientId, routineId, routine}`; or `{ok:false, reason, message}` | `reason`: empty, no_agent, not_repo, offline, past, no_condition, failed. `when` (D185): `{kind:"now"}`, `{kind:"at", date, time, tz}`, `{kind:"every", every: day\|weekday\|week\|hours, days?, hours?, time, tz}`, `{kind:"when"\|"until", condition}`. A resend with the same clientId opens nothing twice. Send `harness` only when the user picked someone other than the top candidate |
-| `{t:"project_add", path, clientId?}` (D186) | `{t:"project_add_result", ok, clientId, place: PlaceChoice}` or `{ok:false, reason: not_found\|failed, message}` | A folder on the home's computer (a folder inside a repo adds the repo). `OnHand.projects` lists the added ones |
+| `{t:"project_add", path, device?, clientId?}` (D186, D197) | `{t:"project_add_result", ok, clientId, place: PlaceChoice}` or `{ok:false, reason: not_found\|offline\|failed, message}` | A folder on the home's computer, or with `device` on that worker, read there by its `folderInfo` op (`{exists, kind, root, name, defaultBranch?, branches?}`); a folder inside a repo adds the repo. `OnHand.projects` lists the added ones |
 | `{t:"open_task", taskId}` | the sender: `{t:"open_result", taskId, ok, apps}`; every other live app socket: `{t:"open_task", taskId}` | Apps should say `hello.client` ("desktop", "web"); a `cli` socket is never told. An app that gets `open_task` opens that task as if tapped, and focuses its window |
 
 `TaskCard.openedBy: "you"` marks a task the user opened; `TaskCard.changes` is the cached diff
@@ -132,7 +150,7 @@ stat `{files, adds, dels, at}`.
 - Attachments on the card (todo, trigger: the first brief that needs a screenshot).
 - By project on the phone (todo).
 - Enforcing "retitle once" in code (today the note asks for it).
-- D186's rename and remove of a project, and adding a folder from a server home or the phone
-  (todo).
+- D186's rename and remove of a project, and adding a folder on the server itself from a
+  server home, or from the phone (todo; a folder on this Mac is D197).
 - Recurring on a condition ("every time X happens") from the card: still said to the partner
   (a condition routine needs its check compiled by a model); the card's 等某件事发生 is one-shot.

@@ -131,6 +131,24 @@ describe("New task: when it starts (D185)", () => {
     A.pickWho("");
     A.sheet = null;
   });
+
+  test("D197: a place on the user's Mac, for a home on a server: listed with its computer, its branch, and started there", async () => {
+    const { A, sent } = await sheet();
+    const { placeLine } = await import("../src/app.ts");
+    const mac = { place: { kind: "repo", device: "dev_mac", repoPath: "/Users/weyl/dev/ducter" }, name: "ducter", defaultBranch: "main", branches: ["main", "worktree-x"], added: true, computer: "Macbook Pro M3" } as any;
+    const hel = { place: { kind: "repo", device: "local", repoPath: "/root/ducter-server" }, name: "ducter-server", computer: "Hetzner Server" } as any;
+    expect(placeLine(mac)).toBe("~/dev/ducter · Macbook Pro M3");
+    expect(placeLine(hel)).toBe("/root/ducter-server · Hetzner Server");
+    expect(placeLine({ place: { kind: "folder", device: "local", path: "/home/wey/notes" }, name: "notes" } as any)).toBe("~/notes");
+    A.receive({ ...options, places: [mac, hel, { place: { kind: "none" }, name: "" }] });
+    A.nt.words = "Fix the card.";
+    A.nt.branch = "worktree-x";
+    A.startNewTask();
+    expect(sent.at(-1)).toMatchObject({ t: "task_new", place: { kind: "repo", device: "dev_mac", repoPath: "/Users/weyl/dev/ducter", baseBranch: "worktree-x" } });
+    A.receive({ t: "task_new_result", ok: false, clientId: sent.at(-1).clientId, reason: "offline" } as any);
+    A.nt.words = "";
+    A.sheet = null;
+  });
 });
 
 describe("New task copy (D185, D186)", () => {

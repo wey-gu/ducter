@@ -29,7 +29,7 @@ import { createPusher, openPushStore, type Pusher, type PushStore } from "./push
 import { createApnsSender, createAppPushSender, loadApnsConfig, type ApnsSender } from "./apns.ts";
 import { createRelayClient, relayUrl, type RelayFetch } from "./push-relay.ts";
 import { webApi, webStatic } from "./web.ts";
-import { createDevicesView, type DeviceProbes, type DevicesView } from "./devices.ts";
+import { createDevicesView, homeName as savedHomeName, type DeviceProbes, type DevicesView } from "./devices.ts";
 import { openSettings, type SettingsStore } from "./settings.ts";
 import { openRules, type RulesStore } from "./rules.ts";
 import { createLoadout, isRuleHint, registerRuleTools, type Loadout } from "./loadout.ts";
@@ -38,7 +38,7 @@ import { callWakes, openPhone, type Phone } from "./phone.ts";
 import { providerOf } from "./phone-provider.ts";
 import { registerConnectionTools } from "./connection-tools.ts";
 import { createChanges, type Changes } from "./changes.ts";
-import { newTaskOptions, openYourTask, type GitRun, type NewTaskInput } from "./newtask.ts";
+import { newTaskOptions, openYourTask, type GitRun, type NewTaskComputers, type NewTaskInput } from "./newtask.ts";
 import { createProjects } from "./projects.ts";
 import { createReleaseWatch, type Fetch as ReleaseFetch, type ReleaseWatch } from "./release.ts";
 import { createUpdates, type Updates, type UpdatesDeps } from "./updates.ts";
@@ -86,6 +86,8 @@ export interface CoreOptions {
   signInMsPerSec?: number;
   /** Test seam for New task (D128): how newtask.ts runs its repo commands. */
   git?: GitRun;
+  /** D197 test seam: the workers as New task and projects see them (names, a folder read there). */
+  newTaskComputers?: NewTaskComputers;
   /** D148 test seams: the release feed, the update side effects, how this process updates. */
   update?: { fetch?: ReleaseFetch; sys?: UpdateSys; run?: UpdatesDeps["run"]; how?: import("@ducter/protocol").UpdateHow; version?: string; homeName?: string; execPath?: string; autoEveryMs?: number; graceMs?: number; criticalWaitMs?: number };
   /** D156 test seams: the channels' feed, the agents' updaters, this machine's copies. */
@@ -281,7 +283,23 @@ export function startCore(opts: CoreOptions = {}): Core {
   const changes = createChanges({ log, tasks, runner: () => runner, onChange: () => onHandChanged() });
   let decorateBrowsing = (o: OnHand) => o; // D190: set once Ducter's browser is made (below)
   // D186: the projects the user added by hand; On hand shows them before their first task.
-  const projects = createProjects({ dataDir, ...(opts.git ? { git: opts.git } : {}), onChange: () => onHandChanged() });
+  // D197: a folder on a worker (the user's Mac, for a home on a server) is read there.
+  const computers: NewTaskComputers = opts.newTaskComputers ?? {
+    nameOf: (dev) => workersRef?.link(dev)?.name,
+    homeName: () => savedHomeName(dataDir) ?? (opts.update?.homeName ?? osHostname()).replace(/\.local$/, ""),
+    async folderInfo(dev, path, ms) {
+      const link = workersRef?.link(dev);
+      if (!link?.online()) return "offline";
+      try {
+        return await link.call<import("@ducter/protocol/src/folder-info.ts").FolderInfo>("folderInfo", { path }, ms);
+      } catch (err) {
+        if ((err as { offline?: boolean }).offline) return "offline";
+        if (/unknown op/.test((err as Error).message)) throw new Error(`${link.name} runs an older Ducter that can't read its folders for this home yet; update it first.`);
+        throw err;
+      }
+    },
+  };
+  const projects = createProjects({ dataDir, ...(opts.git ? { git: opts.git } : {}), onChange: () => onHandChanged(), remote: (dev, path) => computers.folderInfo(dev, path, 15_000) });
   // D193: phone calls (the partner drafts; the owner's Go places; Ducter polls and keeps the rails).
   const phone = openPhone({
     dataDir,
@@ -347,15 +365,17 @@ export function startCore(opts: CoreOptions = {}): Core {
     return e.why ? { harness: e.harness } : undefined;
   };
   // 开一件事 / New task (D128): the one opening path the card and `ducter task` share.
-  const newTaskDeps = { log, tasks, runner: () => runner, persona, dataDir, loadout, settings, routines: work.routines, untils: work.untils, projects, ...(opts.git ? { git: opts.git } : {}) };
+  const newTaskDeps = { log, tasks, runner: () => runner, persona, dataDir, loadout, settings, routines: work.routines, untils: work.untils, projects, computers, ...(opts.git ? { git: opts.git } : {}) };
   const newTask = {
     open: (i: NewTaskInput) => openYourTask(newTaskDeps, i),
     options: (p?: Place) => newTaskOptions(newTaskDeps, p),
     // D186: a folder becomes a project; answered as the place the card then offers.
-    async addProject(path: string) {
-      const r = await projects.add(path);
-      if (!r.ok) return r;
-      const place = (await newTaskOptions(newTaskDeps)).places.find((p) => p.added && p.name === r.project.name) ?? { place: r.project.place, name: r.project.name, added: true };
+    async addProject(path: string, device?: string) {
+      const r = await projects.add(path, device);
+      if (!r.ok) return { ok: false as const, reason: r.reason, message: r.message };
+      const same = (p: Place) => JSON.stringify(p) === JSON.stringify(r.project.place);
+      const fallback = { place: r.project.place, name: r.project.name, added: true, ...(r.info.defaultBranch ? { defaultBranch: r.info.defaultBranch } : {}), ...(r.info.branches?.length ? { branches: r.info.branches } : {}) };
+      const place = (await newTaskOptions(newTaskDeps)).places.find((p) => p.added && same(p.place)) ?? fallback;
       return { ok: true as const, place };
     },
   };

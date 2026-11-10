@@ -91,8 +91,8 @@ export interface WsDeps {
 export interface NewTaskFrames {
   open(input: NewTaskInput): Promise<NewTaskResult>;
   options(place?: Place): Promise<Omit<Extract<ServerFrame, { t: "task_new_options" }>, "t">>;
-  /** D186: add a folder as a project; absent where projects aren't kept. */
-  addProject?(path: string): Promise<Omit<Extract<ServerFrame, { t: "project_add_result" }>, "t" | "clientId">>;
+  /** D186: add a folder as a project; absent where projects aren't kept. device (D197): a worker it is on. */
+  addProject?(path: string, device?: string): Promise<Omit<Extract<ServerFrame, { t: "project_add_result" }>, "t" | "clientId">>;
 }
 
 /** What the client frames for work over time do (core.ts wires them to waiters, untils, routines). */
@@ -765,7 +765,8 @@ export function createWsHandler(deps: WsDeps) {
       case "project_add": {
         const cid = typeof f.clientId === "string" && f.clientId ? { clientId: f.clientId } : {};
         if (!deps.newTask?.addProject) return send(ws, { t: "project_add_result", ok: false, ...cid, reason: "failed", message: "Projects can't be added here." });
-        send(ws, { t: "project_add_result", ...cid, ...(await deps.newTask.addProject(String(f.path ?? ""))) });
+        const device = typeof f.device === "string" && f.device && f.device !== "local" ? f.device : undefined;
+        send(ws, { t: "project_add_result", ...cid, ...(await deps.newTask.addProject(String(f.path ?? ""), device)) });
         return;
       }
       case "open_task": {

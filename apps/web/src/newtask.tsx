@@ -6,7 +6,7 @@
 // ⇧⌘↩ starts and keeps the sheet for the next one.
 import type { Candidate } from "@ducter/protocol";
 import { useEffect, useRef } from "preact/hooks";
-import { A, candKey, EVERY_HOURS, parseClock, placeKey } from "./app.ts";
+import { A, candKey, EVERY_HOURS, parseClock, placeKey, placeLine } from "./app.ts";
 import { Coin } from "./coin.tsx";
 import { Btn, MenuRow, Pill, Seg } from "./controls.tsx";
 import { candName, candReason, coarse } from "./views.tsx";
@@ -14,8 +14,6 @@ import { computerApart, computerOf, computers, manyComputers } from "./where.ts"
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 
-/** A home path as ~/…: shorter, and no user name on screen. */
-const tilde = (p: string) => p.replace(/^\/(Users|home)\/[^/]+(?=\/|$)/, "~");
 
 const WHEN_KINDS = ["", "at", "every", "when", "until"] as const;
 
@@ -87,7 +85,6 @@ export function NewTaskSheet() {
   const places = A.newTaskPlaces();
   const chosen = A.chosenPlace(places);
   const placeName = (p = chosen) => (p.place.kind === "repo" || p.place.kind === "folder" ? p.name || (p.place.kind === "repo" ? p.place.repoPath : p.place.path).split("/").pop() : t("newtask.nowhere"));
-  const pathOf = (p = chosen) => (p.place.kind === "repo" ? p.place.repoPath : p.place.kind === "folder" ? p.place.path : "");
   const branch = chosen.place.kind === "repo" ? nt.branch || chosen.defaultBranch || "" : "";
   const { c: who, picked } = A.chosenCandidate();
   // D157: the computer of No folder, only when the choice is real.
@@ -169,7 +166,7 @@ export function NewTaskSheet() {
                 <Folder faint={p.place.kind === "none"} />
                 <span class="mr-t">
                   <b>{placeName(p)}</b>
-                  {pathOf(p) && <code>{tilde(pathOf(p))}</code>}
+                  {placeLine(p) && <code>{placeLine(p)}</code>}
                 </span>
               </MenuRow>
             ))}

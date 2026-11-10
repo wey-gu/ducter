@@ -355,3 +355,27 @@ test("rewriteMcp only touches the main's loopback MCP", () => {
   expect(out.mcp[1]).toEqual(spec.mcp[1]);
   expect(out.mcp[2]).toEqual(spec.mcp[2]);
 });
+
+test("D197: folderInfo reads a folder here for a home elsewhere: a folder inside a repo is the repo, with its branches", async () => {
+  const repo = join(dir, "tinycart");
+  mkdirSync(join(repo, "src"), { recursive: true });
+  const plain = join(dir, "notes");
+  mkdirSync(plain);
+  // git as this computer would answer: the repo's top for anything under it, its branches.
+  const git = async (cwd: string, args: string[]) => {
+    const inRepo = cwd === repo || cwd.startsWith(repo + "/");
+    if (args[0] === "rev-parse" && args[1] === "--show-toplevel") return inRepo ? { ok: true, out: repo } : { ok: false, out: "" };
+    if (args[0] === "for-each-ref") return { ok: true, out: "feature/x\nmain" };
+    if (args[0] === "symbolic-ref") return { ok: true, out: "origin/main" };
+    return { ok: true, out: "feature/x" };
+  };
+  const sent: any[] = [];
+  const host = createWorkerHost({ dataDir: join(dir, "w"), harness: {} as never, mainBase: "http://main", deviceToken: "dvc", send: (f) => sent.push(f), git });
+  const ask = async (id: number, path: string) => {
+    await host.handle({ t: "req", id, op: "folderInfo", args: { path } });
+    return sent.find((f) => f.id === id);
+  };
+  expect(await ask(1, join(repo, "src"))).toEqual({ t: "res", id: 1, ok: true, result: { exists: true, kind: "repo", root: repo, name: "tinycart", defaultBranch: "main", branches: ["feature/x", "main"] } });
+  expect((await ask(2, plain)).result).toEqual({ exists: true, kind: "folder", root: plain, name: "notes" });
+  expect((await ask(3, join(dir, "nope"))).result).toEqual({ exists: false });
+});

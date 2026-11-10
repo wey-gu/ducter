@@ -2,7 +2,7 @@
 
 > Design note · 2026-11-09, updated 2026-11-10 · Principles 1, 7, 12, 14, 17, 18 · Decided: D105–D111 (outbound,
 > the outgoing ledger, the result reply, names, copy, follow-through, the Mem asks), D162 (the live check and the
-> real shapes); draft: D163–D164 (beyond itself: X1–X3); still open: J-Q1–3, J-Q5, J-Q8, J-Q14 ·
+> real shapes), D163–D164 (beyond itself: X1–X3), D170 (X1, X2 and the Settings switch, built), D171 (the persona's Space; binding waits on Mem); still open: J-Q1–3, J-Q8, J-Q14 ·
 > Evidence: `research/31` (public), `research/37` (dogfood, §6 the live check), private `31` and `10`.
 >
 > Nowledge Bridge is Mem's agent mailbox. This note describes how Ducter uses it. All of it is in `main`
@@ -74,10 +74,11 @@ stays parked as X5.
     the answer is reported when it comes (S2's path). No question: nothing for the user to decide.
 - **Not built:** a time the user named ("今晚前告诉我"); `wait_until` already covers that.
 
-## Beyond itself: what Bridge makes possible (DRAFT, D163–D164, 2026-11-10)
+## Beyond itself: what Bridge makes possible (D163–D164 decided 2026-11-10; built as D170)
 
-> Draft for the author's review; nothing in this section is built. It re-scores the parked scenarios now that
-> the backend answers (research/37 §6) and adds new ones. The chosen S1–S3 and S7 above are unchanged.
+> The author approved every proposed default ("go go go"). X1 and X2 are built on the partner, core, the Mac and
+> the phone, and X3's Settings switch is built (D170); all of it sits behind `DUCTER_BRIDGE=1` until the live
+> trial passes. "As built" and "The author's day" below say what the user sees and why X1 comes first.
 
 **The idea in one line.** Ducter stops being only the place where the user talks to *its* agents. It becomes the
 one place where **all** of the user's AI tools reach the user: they hand it work, they ask it for the user's call,
@@ -207,11 +208,11 @@ Why the others wait:
 
 - **Who / feel.** A teammate's reviewer agent needs "Weyl's call on the API rename". *Before:* a Slack ping that
   breaks focus. *After:* the partner answers what is already shared, and brings the user only the decision.
-- **How it starts.** Off until the user opts in, per team. The persona has no mailbox in a team Space, so nothing
-  arrives. The user turns it on where the partner's settings live, in Settings › 伙伴:
-  **让 <team> 里的 agent 也能找到 {name} / Let agents in <team> reach {name}**. That is one more context for the same
-  identity in that Space, approved by the user in Mem; Ducter shows the one command and never runs it (Ducter
-  never sets anything up).
+- **How it starts.** Off until the user opts in. Two steps, both the user's: in Settings › 伙伴, **谁能找到 {name} /
+  Who can reach {name}** → **也包括同事的 / Teammates' too** (built, D170); and, for a team Space, one more context
+  for the same identity there, approved by the user in Mem (Ducter never sets anything up). The per-team switch
+  drafted as **让 <team> 里的 agent 也能找到 {name}** waits until a team context exists to switch; until then the
+  one switch covers every Space the persona has a mailbox in, which today is only Only me (D171).
 - **Trust, per sender, in code:**
   - a teammate's agent may ask questions. It can't open a task (a work request becomes a question to the user with
     the default **先不接 / Not now**), can't make the partner contact anyone (S2's rule), and gets D107's fixed
@@ -220,8 +221,9 @@ Why the others wait:
     approved words; anything else is a decision card first (J3's v1 rule);
   - the daily quota below, then messages are held without waking the partner, with one line
     **<agent> 今天又发来 <n> 条，我先放着了 / <agent> sent <n> more today; I've set them aside**;
-  - **不再听 <agent> 的 / Stop listening to <agent>** on any of its cards: that sender's messages are dropped
-    unopened from then on (listed, with undo, in Settings › 伙伴).
+  - **不再听 <agent> 的 / Stop listening to <agent>**, said to the partner: that sender's messages are logged and
+    never wake the partner from then on (listed, with **恢复 / Undo**, in Settings › 伙伴). A button on its
+    cards is in `todo.md`.
 - **Names.** Cards carry no member name (B11): a teammate's agent shows as **<agent> · <team>**
   (**reviewer · dev team**) until Mem returns names, never as an id (D162).
 
@@ -230,11 +232,46 @@ Why the others wait:
 | Sender | Wakes a turn | May open work | When the user is silent | Quota |
 |---|---|---|---|---|
 | The user's own agent | yes | after Go, or by X2's rule | it waits; a question gets "don't act yet" | 20 messages a day, 3 open asks |
-| A teammate's agent (opted-in team) | yes, within quota | never | not now | 20 messages a day, 3 open asks |
+| A teammate's agent (Settings: 也包括同事的) | yes, within quota | never | not now | 20 messages a day, 3 open asks |
+| A teammate's agent (Settings: 只有你自己的, the default) | no; logged, never read again | never | | |
 | Anyone else | can't: the persona has no mailbox outside the Spaces the user approved | | | |
-| A sender the user stopped listening to | no; dropped unopened | | | |
+| A sender the user stopped listening to | no; logged, never read again (the body is opened once by the check; a sender-only probe is B6) | | | |
+| Settings: 谁都不行 | no check at all | | | |
 
-Quota overflow never wakes the partner and never notifies: one quiet line a day per sender.
+Quota overflow never wakes the partner and never notifies: one quiet line a day per sender. An answer to a
+message the user sent (S2) always comes through, whoever it is from.
+
+### As built (D170): how it looks in Ducter
+
+No new object, state or metaphor: the other agents appear as their AI coins (D146), as quiet lines, and as
+decision cards; their rules live with the learned rules.
+
+| Where | What the user sees |
+|---|---|
+| The conversation | a quiet line **你的 terminal-claude 发来请求 · <gist>** for work; for a question, the card itself: the coin and **你的 terminal-claude 问你 · ~/dev/ducter** above the partner's bubble, then **回复…** · its second option · its first (or suggested) option, **它建议「…」** and **没回就让它先等着。**; after the tap, **已回复 你的 terminal-claude** |
+| On hand · 等你 | the same card beside Ducter's own tasks' asks, the coin and who where a task's title would be |
+| Phone and lock screen | the same card; the notification is **小鸭 · 你的 terminal-claude 问你**, the question and the waiting line, no Go/Hold actions (its options are its own) |
+| X2's offer | after two Go's: **以后你的 terminal-claude 发来的活，直接接？** · **直接接** · **还是先问我**; then its work shows up in 在做 / Working with no card, the brief starting **你的 terminal-claude 让我做的** |
+| Settings › 伙伴 | **你的其他 AI**: **谁能找到小鸭** (只有你自己的 · 也包括同事的 · 谁都不行), the learned rules (**不再直接接**), the muted (**恢复**). Shown once another agent has written (J6) |
+| Saying it | "不再听 X 的", "X 的活还是先问我" to the partner does the same (`peer_rule`) |
+| Device islands | nothing: other agents aren't places, and a visitor on an island would be a new metaphor that tells nothing a coin doesn't |
+
+**The first time, with zero setup in Ducter.** Once the persona's context exists (D171), the user tells any
+terminal session "要我定的事发给 Ducter". The first question arrives as the card above; the Settings group appears
+only then. Before that, nothing about other agents shows anywhere.
+
+**Safety, in code** (tests in `packages/partner/test/bridge-out.test.ts`): nothing leaves without the user's tap
+or a reply to a message already in the Log; a peer's turn can't send, ask a teammate's question as the user's, or
+open a task unless X2's rule covers its sender; an outside question has no default and is answered "not yet" on
+silence; 3 open asks and 20 messages a day per sender; what predates Bridge is never a request (B14).
+
+### The author's day (research/37 §8)
+
+Many long coding sessions run in parallel (Codex most of all), several are named coordinators, and the team talks
+in Slack. The moments that need the author are the calls those sessions can't make alone, and they come daily.
+That is X1, so X1 is the first live proof. Re-scored with this: **X6** (Mem's Slack adapter as a sender) rises to
+B 3 (the adapter holds agent keys in seven Spaces; whether it can write to a persona is unknown), Σ 17: a probe
+once the persona has a mailbox.
 
 ## The one idea
 
@@ -475,13 +512,24 @@ Clients don't render the quiet lines yet. Unknown kinds are skipped.
 
 ## Try it live (the author runs this)
 
+**Status 2026-11-10, later (research/37 §8, D171).** The persona's mailbox belongs in **Only me** (the largest
+and most-used Space, Mem's write default, one reader). Binding it was tried once, at the author's request:
+`nmem agents context select-cloud --name ducter --agent-id ducter --space-id <Only me>` answered
+`cloud_session_authority_unavailable` (403, not retryable, outcome unknown), and nothing was kept locally. Per
+the Bridge skill nothing else was tried: no other identity or key, no test identity, no `--enable`, no message.
+**What was set up: nothing, so nothing to undo.** Next, on Mem's side: authority for this connection to act as
+`ducter` (B15). Then the same command, `nmem --agent-context ducter bridge setup` and `--enable`, and
+`bun run bridge:live -- --real --context ducter --peer-context <the other side>`. Undo, once made:
+`nmem agents context clear --name ducter` (the mailbox itself is Mem's to retire). The trial may use the real
+persona's mailbox: Ducter's start mark (B14) keeps a later real Ducter from taking its messages as requests.
+
 **Status 2026-11-10 (research/37 §6, VERIFIED, read-only).**
 - The backend answers: discovery searches all 8 Spaces and returns real cards.
 - The persona's identity `ducter` exists (D141) but has no mailbox, and no Agent Context exists.
 - `bun run bridge:live -- --real` stops at its preflight and prints the steps below.
 
 The Mem side is ready; what is left is the author's:
-- the persona's context: `nmem agents context select-cloud --name ducter-test --agent-id ducter --space-id <the
+- the persona's context: `nmem agents context select-cloud --name ducter --agent-id ducter --space-id <the
   "Only me" Space>` (the personal Space, so nothing reaches a teammate), then `bridge setup` and `--enable` for it.
   The persona's own identity, never a new one and never the retained pilot identity that passive setup without a
   context reports (B12);
@@ -491,7 +539,7 @@ The Mem side is ready; what is left is the author's:
 After that, one command runs the whole trial (S1, S2, S3) against the real `nmem`, with real models on both sides:
 
 ```sh
-bun run bridge:live -- --real            # contexts ducter-test and terminal-test
+bun run bridge:live -- --real            # contexts ducter and terminal-test
 #   --peer-config-dir DIR    the terminal side's own NMEM_CLI_CONFIG_DIR, if it needs one
 #   DUCTER_BRIDGE_MEMBER=…   your member id, if passive setup doesn't report it
 ```

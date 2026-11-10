@@ -95,7 +95,9 @@ that is the Mac app's own client and frame decoder (`apps/desktop/cmd/e2eclient`
    again: "nothing newer" must not show as a failure.
 
 It deletes the VM and the builds at the end (`--keep` leaves them; the log stays in the scratch
-folder). The home in the VM listens on 47777, never 7777 (lima forwards the VM's ports to this
+folder). On an IPv6-only network with 464XLAT (macOS shows CLAT46) the VM's own IPv4 is dead and
+apt fails at the first fetch: run it as `DUCTER_E2E_PROXY=1 bun run e2e:linux`, which sends the
+VM out through a proxy on this Mac's loopback for that run (`scripts/e2e/proxy.ts`). The home in the VM listens on 47777, never 7777 (lima forwards the VM's ports to this
 Mac's loopback). What it can't stand in for: a real network hop and TLS between the Mac and the
 server, the auth gate seen from a non-loopback peer, an x64 server, and the signed Mac app's own
 update; those still need hel and a real Mac before a release.

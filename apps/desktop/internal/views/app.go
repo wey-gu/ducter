@@ -723,6 +723,8 @@ func (a *App) Receive(f protocol.ServerFrame) {
 		a.Welcomed()
 	case "action_result":
 		delete(a.actSent, f.TaskID)
+	case "devices":
+		a.hintThisMac()
 	case "on_hand":
 		// on_hand closes the replay that follows a welcome.
 		if a.inDoubt != nil {

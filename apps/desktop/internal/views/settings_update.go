@@ -41,6 +41,9 @@ func (a *App) appUpdateSection(c *ui.Context) {
 		line, why = a.L.T("update.line.available", st.Version), a.L.T("update.reason."+string(st.Reason))
 	case update.Failed:
 		line, why = a.L.T("update.failed"), a.L.T("update.reason."+string(st.Reason))
+		if st.Reason == update.ReasonFeed {
+			line = a.L.T("update.unread") // nothing was tried, so nothing "didn't update" (D187)
+		}
 	case update.NoFeed:
 		line, why = a.L.T("update.nofeed"), a.L.T("update.nofeed.body")
 	}

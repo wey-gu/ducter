@@ -18,6 +18,8 @@ type Updates interface {
 	Status() update.Status
 	CheckNow(ctx context.Context) update.Status
 	SetInstallOnQuit(on bool)
+	// Hint: the home says version v is out (D187).
+	Hint(ctx context.Context, v string) bool
 }
 
 // Remover removes Ducter from this Mac (local.Host, D72).

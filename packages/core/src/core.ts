@@ -369,7 +369,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     version,
     workers: () => ({
       online: () =>
-        workers.online().map((w) => ({ id: w.deviceId, name: w.name, ...(w.hello?.version ? { version: w.hello.version } : {}), how: (w.hello?.how === "self" || w.hello?.how === "app" || w.hello?.how === "source" ? w.hello.how : "manual") as import("@ducter/protocol").UpdateHow })),
+        workers.online().map((w) => ({ id: w.deviceId, name: w.name, ...(w.hello?.version ? { version: w.hello.version } : {}), how: (w.hello?.how === "self" || w.hello?.how === "app" || w.hello?.how === "source" ? w.hello.how : "manual") as import("@ducter/protocol").UpdateHow, ...(w.hello?.asksApp ? { asksApp: true } : {}) })),
       update: async (id, args) => {
         const link = workers.link(id);
         if (!link) return { ok: false, reason: "offline" };

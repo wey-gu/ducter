@@ -1,9 +1,9 @@
-# Connectors and Restrained Proactive Help (DRAFT)
+# Connectors and Restrained Proactive Help
 
 > Draft 4 · 2026-11-10 · Status: **D96, D122, D158 decided and built** (the broker, the oo one
 > tap, OOMOL Hosted with a key; Part B). **Proactive work is redone from first principles as
-> draft D165**, and the accounts card as **draft D166**: designed and prototyped, **not decided,
-> not built**. D165 supersedes the proposals D97–D101 that Draft 3 carried (moved to the
+> D165**, and the accounts card as **D166**: designed, prototyped, and **decided 2026-11-10**
+> (the author: "按建议", all eight defaults of §15); being built in §14's order. D165 supersedes the proposals D97–D101 that Draft 3 carried (moved to the
 > decisions log's Superseded section). Evidence: `research/35` (dots, Muse, the Grok bot,
 > Google access, open-connector, the mailbox metaphor test), `research/46` (Gmail's nudges,
 > Microsoft's Briefing email, Apple's interruption levels). Builds on principles 6, 7, 15–18,
@@ -281,7 +281,7 @@ cheap-model tokens), shown in the card's detail as **这个月用了 3%**. At th
 Saying it works too: "帮我盯着邮箱，有要紧的告诉我" with no account leads to the one tap (oo
 signed in) or the add form, then the same three steps.
 
-## 12. The accounts card (draft D166): a character sheet for a source
+## 12. The accounts card (D166): a character sheet for a source
 
 D161's language, for where accounts come from. One card per source: **oo**, **OOMOL** (Hosted),
 an **OpenConnector** of your own, or **another MCP server**. Nothing new to learn: the
@@ -407,7 +407,7 @@ line (the tray and the connection line say them), **加一个** as the page's pr
 9. **Meeting prep** and **Now** (time-sensitive) last, after the eval shows the bar holds.
 10. Live trial on the author's oo with a scratch home, like the 2026-11-09 one.
 
-## 15. The author's calls (each with a proposed default; "按建议" takes them all)
+## 15. The author's calls (decided 2026-11-10: "按建议", every default below)
 
 1. **Seven kinds**, all on by default except as noted (Discord/Slack: mentions and DMs only).
    **Default: yes.** Alternative: start with three (two things don't match, deadlines and

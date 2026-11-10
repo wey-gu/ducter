@@ -73,6 +73,13 @@ async function main(): Promise<void> {
   }
   say(`build ${buildId} is VALID`);
 
+  // Internal testers (App Store Connect users) get every build at once, without Beta App Review.
+  const all = await asc(`/apps/${appId}/betaGroups?limit=20`);
+  for (const ig of (all.json?.data ?? []).filter((x: any) => x.attributes?.isInternalGroup)) {
+    const r = await asc(`/betaGroups/${ig.id}/relationships/builds`, { method: "POST", body: JSON.stringify({ data: [{ type: "builds", id: buildId }] }) });
+    say(r.status < 300 ? `added to internal group "${ig.attributes?.name}"` : `internal group "${ig.attributes?.name}": ${r.status} ${why(r.json)}`);
+  }
+
   const groups = await asc(`/betaGroups?filter[app]=${appId}&filter[name]=${encodeURIComponent(group)}&limit=5`);
   const g = (groups.json?.data ?? []).find((x: any) => x.attributes?.name === group && !x.attributes?.isInternalGroup);
   if (!g) return warn(`no external group named "${group}" (${groups.status}: ${why(groups.json)})`);

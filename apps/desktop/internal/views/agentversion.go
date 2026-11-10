@@ -1,12 +1,8 @@
 package views
 
-import (
-	"github.com/egoist/mygo/ui"
+import "github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 
-	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
-)
-
-// D156: an AI agent's own version under its row in a device card. Quiet
+// D156: an AI agent's own version, shown in its coin's detail (D161). Quiet
 // by default (版本 0.167.0); one clay dot and 有新版本 x with 更新 when it's
 // behind; an honest line when Ducter hasn't checked that version; a copy
 // inside an app or inside Ducter says where its update comes from instead
@@ -55,69 +51,4 @@ func agentAppName(harness string) string {
 		return "Claude"
 	}
 	return "Codex"
-}
-
-// agentVersion is the version block inside an AI agent's row.
-func (a *App) agentVersion(c *ui.Context, dv *protocol.DeviceView, h protocol.DeviceHarness) {
-	if !h.Installed || h.Version == "" {
-		return
-	}
-	t := a.T
-	d := a.devState()
-	u := h.Update
-	ui.Column(c.Key("agentv:"+dv.ID+":"+h.Harness)).Gap(t.S1).Margin(t.S1, 0, 0, 0).Children(func() {
-		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Wrap().Children(func() {
-			ui.Text(c, a.L.T("agentv.version", h.Version)).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).Selectable()
-			switch {
-			case u.Running():
-				c.After(500e6)
-			case h.How == "app":
-				ui.Text(c, a.L.T("agentv.how.app", agentAppName(h.Harness))).FontSize(t.XS).TextColor(t.InkMuted)
-			case h.How == "ducter":
-				ui.Text(c, a.L.T("agentv.how.ducter")).FontSize(t.XS).TextColor(t.InkMuted)
-			case agentBehind(&h):
-				a.updateDot(c)
-				ui.Text(c, a.L.T("agentv.available", h.Latest)).FontSize(t.XS).FontWeight(800).TextColor(t.Ink)
-			}
-		})
-		if h.Standing == "newer" || h.Standing == "older" {
-			ui.Text(c, a.L.T("agentv.unverified")).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.4)
-		}
-		if line := a.agentPhase(u); line != "" {
-			ink := t.InkSoft
-			switch u.Phase {
-			case "done":
-				ink = t.Done.Ink
-			case "failed":
-				ink = t.Failed.Ink
-			}
-			ui.Text(c, line).FontSize(t.XS).FontWeight(700).TextColor(ink).LineHeight(1.4)
-			if u.Phase == "failed" && u.Reason != "" {
-				ui.Text(c, a.agentWhy(u.Reason)).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.4)
-			}
-		}
-		failedButBehind := u != nil && u.Phase == "failed" && h.Available
-		if agentBehind(&h) || failedButBehind {
-			if h.LatestVerified != nil && !*h.LatestVerified {
-				ui.Text(c, a.L.T("agentv.latest.unverified", h.Latest)).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.4)
-			}
-			if dv.State != protocol.DeviceAwake {
-				ui.Text(c, a.L.T("agentv.away", a.deviceNameIn(dv))).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.4)
-			} else {
-				label := a.L.T("agentv.button")
-				if failedButBehind {
-					label = a.L.T("agentv.retry")
-				}
-				a.textRow(c, t.ControlSM).Children(func() {
-					if a.buttonFor(c, label, harnessName(h.Harness), btnSecondary, t.ControlSM, t.Surface) {
-						d.card.agent = nil
-						a.send(protocol.AgentUpdateReq{T: "agent_update", Device: dv.ID, Harness: h.Harness})
-					}
-				})
-			}
-		}
-		if ans := d.card.agent; ans != nil && ans.Device == dv.ID && ans.Harness == h.Harness {
-			ui.Text(c, a.agentWhy(ans.Reason)).FontSize(t.XS).FontWeight(600).TextColor(t.InkSoft).LineHeight(1.4)
-		}
-	})
 }

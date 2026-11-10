@@ -41,7 +41,7 @@ func TestServerBrowseTheWeb(t *testing.T) {
 
 	// Missing libraries (not root): the command and Try again, which adds it again.
 	_, sent, tt := devicesApp(t, i18n.EN, protocol.DeviceAbility{ID: "web", State: "unavailable", Reason: "browser_deps", Where: "ducter", Detail: "sudo apt-get install -y --no-install-recommends libnss3"})
-	if !tt.HasText("sudo apt-get install -y --no-install-recommends libnss3") || !tt.HasText("One step left") {
+	if !tt.HasText("sudo apt-get install -y --no-install-recommends libnss3") || !tt.HasText("Chrome needs a few system libraries this device doesn't have yet. Run this line on it once, then try again.") {
 		t.Errorf("deps: %q", tt.Texts())
 	}
 	if err := tt.Click("Try again"); err != nil {
@@ -53,6 +53,12 @@ func TestServerBrowseTheWeb(t *testing.T) {
 
 	// Ready: the sites signed in to, each with Sign out; Clear all asks first.
 	app, sent, tt := devicesApp(t, i18n.ZH, protocol.DeviceAbility{ID: "web", State: "on", Where: "ducter", Detail: "157.0.8103.38"})
+	// D161: Try it and the sites are in 上网's ⓘ, one tap away.
+	if err := tt.Click("这是做什么的 · 上网"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	tt.Frame()
 	if req, ok := lastSent[protocol.BrowserSitesReq](*sent); !ok || req.T != "browser_sites" {
 		t.Fatalf("the sites weren't asked for: %#v", *sent)
 	}

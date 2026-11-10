@@ -102,11 +102,11 @@ func TestOtherComputerCard(t *testing.T) {
 		t.Run(string(lang), func(t *testing.T) {
 			h := openDevices(t, lang, false)
 			L := h.app.L
-			does := L.T("device.other.does", h.app.S.PersonaName)
-			if !h.tt.HasText(L.T("device.other") + " · " + does) {
+			does := L.T("list.state.does", h.app.workHome())
+			if !h.tt.HasText("· " + does) {
 				t.Fatalf("subtitle: %q", h.tt.Texts())
 			}
-			h.click("ducter-worker · " + L.T("device.state.awake"))
+			h.click("ducter-worker · " + does)
 			h.settle(200 * time.Millisecond)
 			h.click(L.T("device.rename") + " · ducter-worker")
 			h.settle(100 * time.Millisecond)

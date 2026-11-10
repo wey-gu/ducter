@@ -537,7 +537,7 @@ func (a *App) rowBlock(c *ui.Context, key string, body func()) {
 func (a *App) toggleRow(c *ui.Context, key, label, help string, on bool) (bool, bool) {
 	v, changed := on, false
 	a.row(c, key, label, help, func() {
-		changed = ui.Switch(c.Key("sw:"+key), &v).Label(label).Changed()
+		changed = a.switchControl(c, key, label, &v)
 	})
 	return v, changed
 }

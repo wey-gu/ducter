@@ -195,7 +195,7 @@ func TestOnboardWebSetup(t *testing.T) {
 			h.click(T("nav.devices.label"))
 			h.until("devices", func() bool { return len(h.app.S.Devices) > 0 })
 			h.settle(300 * time.Millisecond)
-			h.click(T("ability.web") + " · " + T("web.tile"))
+			h.click("+ " + T("chip.web"))
 			h.settle(2 * time.Second)
 			h.has(T("web.driver"), T("web.driver.body"), T("web.ax"), T("web.screen"))
 			h.shotAs("onboard-web-driver-" + string(lang))

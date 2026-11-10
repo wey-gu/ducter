@@ -25,6 +25,7 @@ type cardState struct {
 	asked     string                // the device an update was asked for
 	agent     *protocol.ServerFrame // the last agent_update_result that said no (D156)
 	checking  bool                  // 现在检查 / Check now asked, no answer yet
+	sheet     sheetState            // D161: the character sheet's coins, chips and connections
 }
 
 // drainDeviceResults reads the server's answer to the last disconnect or
@@ -96,25 +97,50 @@ func (a *App) cardName(c *ui.Context, id, name string, renamable bool) {
 	if res := a.S.Renamed; res != nil {
 		a.S.Renamed = nil
 		if res.OK {
+			r.saved, r.savedAt = r.device, a.Now()
 			r.device, r.failed = "", ""
 		} else if res.Device == r.device {
 			r.failed = res.Reason
 		}
 	}
+	size := t.XXL
+	if a.L.Lang == "zh" {
+		size = 26 // the zh heading face reads larger (D78)
+	}
 	if r.device != id {
 		if !renamable {
-			a.heading(c, name, t.XL).SingleLine()
+			a.heading(c, name, size).SingleLine().TextAlign(ui.Center)
 			return
 		}
-		b := ui.Row(c.Key("name:" + id)).Gap(t.S2).AlignItems(ui.Center).Cursor(ui.CursorText).Role(ui.RoleButton).
-			Label(a.L.T("device.rename") + " · " + name).Focusable()
+		b := ui.Row(c.Key("name:"+id)).Gap(t.S1).AlignItems(ui.Center).Padding(2, t.S2).Radius(10).Cursor(ui.CursorText).Role(ui.RoleButton).
+			Label(a.L.T("device.rename") + " · " + name).Tooltip(a.L.T("card.rename.hint")).Focusable()
 		hover := b.Hovered()
+		if hover {
+			b.Background(t.Sunken)
+		}
+		// The name settles from 0.98 once it is saved (140 ms).
+		if el := a.Now().Sub(r.savedAt); el < 140*time.Millisecond && r.saved == id && !c.Preferences().ReduceMotion {
+			k := 0.98 + 0.02*float32(el)/float32(140*time.Millisecond)
+			b.Scale(k, k)
+			c.After(16 * time.Millisecond)
+		}
 		b.Children(func() {
-			a.heading(c, name, t.XL).SingleLine().Shrink(1)
-			// A quiet pencil-free hint: the words "改名字" appear on hover only.
-			if hover {
-				ui.Text(c, a.L.T("device.rename")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).SingleLine()
+			ui.Box(c).Size(14, 14) // the pencil's twin, so the name stays centered
+			a.heading(c, name, size).SingleLine().Shrink(1)
+			// A quiet pencil, on hover only.
+			pen := ui.Box(c.Key("pencil")).Size(14, 14).AccessHidden(true)
+			if !hover {
+				pen.Opacity(0)
 			}
+			pen.Draw(func(p *ui.Painter, rr ui.Rect) {
+				var m ui.Path
+				m.MoveTo(rr.X+3, rr.Y+rr.H-3).LineTo(rr.X+rr.W-3.5, rr.Y+3.5)
+				m.Cap(ui.RoundCap)
+				p.StrokePath(&m, 2.2, t.InkMuted)
+				var tip ui.Path
+				tip.MoveTo(rr.X+1.5, rr.Y+rr.H-1.5).LineTo(rr.X+2.4, rr.Y+rr.H-4.6).LineTo(rr.X+4.6, rr.Y+rr.H-2.4).Close()
+				p.FillPath(&tip, t.InkMuted)
+			})
 		})
 		if b.Clicked() {
 			*r = renameState{device: id, draft: name}
@@ -228,67 +254,6 @@ func (a *App) updateReason(reason string) string {
 	return a.L.T("devup.why.failed")
 }
 
-// versionBlock is the card's Ducter line: its version; when it's behind,
-// the dot, 有新版本 x, what's new and one 更新 / Update; while it updates,
-// the step in words; after, 回来了 or why not.
-func (a *App) versionBlock(c *ui.Context, dv *protocol.DeviceView) {
-	t := a.T
-	u := dv.Update
-	if u == nil && dv.Version == "" {
-		return
-	}
-	d := a.devState()
-	current := dv.Version
-	if u != nil {
-		current = firstNonEmpty(u.Current, current)
-	}
-	ui.Column(c.Key("version:"+dv.ID)).Gap(t.S1).Margin(t.S2, 0, 0, 0).Children(func() {
-		ui.Text(c, a.L.T("devices.ducter")).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted)
-		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Wrap().Children(func() {
-			ui.Text(c, a.L.T("devup.version", current)).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).Selectable()
-			switch {
-			case u == nil:
-			case u.Running():
-				c.After(500e6)
-			case behind(dv):
-				a.updateDot(c)
-				ui.Text(c, a.L.T("devup.available", u.Latest)).FontSize(t.SM).FontWeight(800).TextColor(t.Ink)
-			case u.Latest != "" && u.Phase == "":
-				ui.Text(c, a.upToDate(u)).FontSize(t.SM).TextColor(t.InkMuted)
-				a.checkNow(c, dv.ID)
-			}
-		})
-		if u == nil {
-			return
-		}
-		if line := a.phaseLine(u); line != "" {
-			ink := t.InkSoft
-			switch u.Phase {
-			case "done":
-				ink = t.Done.Ink
-			case "failed":
-				ink = t.Failed.Ink
-			}
-			ui.Text(c, line).FontSize(t.SM).FontWeight(700).TextColor(ink).LineHeight(1.5)
-			if u.Phase == "failed" && u.Reason != "" {
-				a.note(c, a.updateReason(u.Reason))
-			}
-			if u.Phase == "downloading" && u.Progress > 0 {
-				a.progressBar(c, u.Progress)
-			}
-		}
-		if behind(dv) || (u.Phase == "failed" && u.Available) {
-			for _, n := range notesIf(u.Phase != "failed", u.Notes) {
-				ui.Text(c, n).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkMuted).MaxLines(2)
-			}
-			a.updateAction(c, dv)
-		}
-		if ans := d.card.answer; ans != nil && ans.Device == dv.ID {
-			a.reasonLine(c, a.updateReason(ans.Reason))
-		}
-	})
-}
-
 // upToDate never says "latest" without when it was read: 已经是最新的 ·
 // 3 小时前查过 / Up to date · checked 3 h ago.
 func (a *App) upToDate(u *protocol.DeviceUpdate) string {
@@ -378,24 +343,6 @@ func (a *App) updateThisMac() {
 	a.OpenUpdate()
 }
 
-// disconnectRow is the card's last row: 断开 / Disconnect, then a confirm
-// in place that says what it means (means is its i18n key).
-func (a *App) disconnectRow(c *ui.Context, id, name, means string) {
-	t := a.T
-	d := a.devState()
-	if d.card.cutting != id {
-		// The quiet end of the card: a hairline, then 断开 as a text button.
-		ui.Box(c.Key("cutline:"+id)).Height(1).Background(t.Line).Margin(t.S3, 0, t.S1, 0)
-		a.textRow(c, t.ControlSM).Children(func() {
-			if a.buttonFor(c, a.L.T("device.disconnect"), name, btnText, t.ControlSM, t.Surface) {
-				d.card.cutting, d.card.cutFailed = id, ""
-			}
-		})
-		return
-	}
-	a.disconnectConfirm(c, id, name, means)
-}
-
 // disconnectConfirm asks in place: what disconnecting means, 断开 or 算了.
 func (a *App) disconnectConfirm(c *ui.Context, id, name, means string) {
 	t := a.T
@@ -435,41 +382,6 @@ func (a *App) clientWhat(cl *protocol.ReachClient) string {
 		return a.L.T("device.client.browser")
 	}
 	return a.L.T("device.client.other")
-}
-
-// clientCard is a phone's (or a window's, or a lone command line's) card in
-// the D148 language (D155): its name, renamed in place; what it is in plain
-// words; now or when it was last here; what it does for you; on a Mac, the
-// quiet lines of what else is connected from it, and on this Mac, Let this
-// Mac do tasks; 断开 at the bottom.
-func (a *App) clientCard(c *ui.Context, cl *protocol.ReachClient) {
-	t := a.T
-	name := a.clientName(cl)
-	computer := clientComputer(cl)
-	ui.Column(c).Gap(t.S1).Children(func() {
-		a.cardName(c, cl.ID, name, true)
-		ui.Text(c, a.clientKind(cl)).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).LineHeight(1.5)
-	})
-	state, ink := a.clientState(cl)
-	if isCLI(cl) {
-		// A command line alone stands for its computer: its line says so, with its own menu.
-		a.foldedLines(c, "cl:"+cl.ID, computer, cl)
-	} else {
-		ui.Text(c, state).FontSize(t.SM).TextColor(ink).LineHeight(1.5)
-		a.foldedLines(c, "cl:"+cl.ID, computer, nil)
-	}
-	ui.Column(c).Gap(t.S1).Margin(t.S2, 0, 0, 0).Children(func() {
-		ui.Text(c, a.L.T("device.does")).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted)
-		ui.Text(c, a.clientDoes(cl)).FontSize(t.SM).TextColor(t.Ink).LineHeight(1.5)
-	})
-	if computer != "" && a.isThisMac(computer) && a.canWork() {
-		a.workBlock(c, "card")
-	}
-	if isCLI(cl) {
-		a.disconnectRow(c, cl.ID, a.L.T("device.cli.name", computer), "device.disconnect.means.cli")
-		return
-	}
-	a.disconnectRow(c, cl.ID, name, "device.disconnect.means.client")
 }
 
 // updateSection is Settings' list of every computer's Ducter version

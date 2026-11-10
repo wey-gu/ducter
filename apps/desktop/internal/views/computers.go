@@ -195,59 +195,6 @@ func (a *App) clientState(cl *protocol.ReachClient) (string, ui.Color) {
 	return a.L.T("device.client.never"), t.InkMuted
 }
 
-// foldedLines are a computer card's quiet lines: the command line (and the
-// app window) on it, each with 断开 in its menu, confirmed in place.
-func (a *App) foldedLines(c *ui.Context, owner string, computer string, alone *protocol.ReachClient) {
-	t := a.T
-	d := a.devState()
-	var list []*protocol.ReachClient
-	if alone != nil {
-		list = append(list, alone)
-	}
-	list = append(list, a.fold().members[owner]...)
-	if len(list) == 0 {
-		return
-	}
-	ui.Column(c.Key("folded:"+owner)).Gap(t.S1).Margin(t.S2, 0, 0, 0).Children(func() {
-		for _, cl := range list {
-			line, name, means := a.L.T("device.app.too"), a.L.T("device.app.name", computer), "device.disconnect.means.client"
-			if isCLI(cl) {
-				line, name, means = a.L.T("device.cli.too"), a.L.T("device.cli.name", computer), "device.disconnect.means.cli"
-				if cl == alone {
-					line = a.L.T("device.cli.only")
-				}
-			}
-			state, _ := a.clientState(cl)
-			id := cl.ID
-			ui.Row(c.Key("fold:" + id)).Gap(t.S2).AlignItems(ui.Center).MinHeight(t.ControlSM).Children(func() {
-				dot := t.Line
-				if cl.Connected {
-					dot = t.Awake.Ink
-				}
-				ui.Box(c).Size(6, 6).Radius(3).Background(dot).Shrink(0).AccessHidden(true)
-				ui.Column(c).Gap(0).Grow(1).MinWidth(0).Children(func() {
-					ui.Text(c, line).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).LineHeight(1.4)
-					if !cl.Connected {
-						ui.Text(c, state).FontSize(t.XS).TextColor(t.InkMuted).LineHeight(1.4)
-					}
-				})
-				more := ui.ButtonBase(c.Key("more:"+id)).Label(a.L.T("device.fold.more")+" · "+line).Padding(2, t.S2).Radius(t.RadiusSM).Cursor(ui.CursorPointer)
-				more.Children(func() {
-					ui.Text(c, "⋯").FontSize(t.MD).FontWeight(800).TextColor(t.InkMuted)
-				})
-				more.PopoverMenuButton(func(m *ui.Menu) {
-					if m.Item(a.L.T("device.disconnect")).Chosen() {
-						d.card.cutting, d.card.cutFailed = id, ""
-					}
-				})
-			})
-			if d.card.cutting == id {
-				a.disconnectConfirm(c, id, name, means)
-			}
-		}
-	})
-}
-
 // ---------- Let this Mac do tasks (D155) ----------
 
 // workHome is the home's name for the words ("hel").

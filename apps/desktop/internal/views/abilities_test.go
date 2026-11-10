@@ -70,7 +70,7 @@ func TestAbilitiesScreen(t *testing.T) {
 		t.Run(string(lang), func(t *testing.T) {
 			h := openDevices(t, lang, false)
 			L := h.app.L
-			for _, want := range []string{L.T("devices.title"), L.T("device.local"), "ducter-worker", L.T("ability.web"), L.T("ability.remote"), "Claude Code", "Codex", L.T("token.signed_in")} {
+			for _, want := range []string{L.T("devices.title"), L.T("device.local"), "ducter-worker", "+ " + L.T("chip.web"), "+ " + L.T("chip.remote"), "Claude Code", "Codex", L.T("card.status.home", h.app.S.PersonaName)} {
 				if !h.tt.HasText(want) {
 					t.Fatalf("missing %q in %q", want, h.tt.Texts())
 				}
@@ -84,7 +84,7 @@ func TestAbilitiesScreen(t *testing.T) {
 			h.shotAs(fmt.Sprintf("abilities-%s-home", lang))
 
 			// Tap 上网: it flies into its slot and the line says what the Mac can do now.
-			h.click(L.T("ability.web") + " · " + L.T("ability.add", L.T("device.local.inline")))
+			h.click("+ " + L.T("chip.web"))
 			h.until("web on", func() bool {
 				d := h.app.S.Device("local")
 				return d != nil && d.Ability(protocol.AbilityWeb).State == protocol.AbilityOn && h.app.dev.fx == nil
@@ -96,17 +96,8 @@ func TestAbilitiesScreen(t *testing.T) {
 			}
 			h.shotAs(fmt.Sprintf("abilities-%s-added", lang))
 
-			// 取下 is quiet and says what it means. (The right column scrolls:
-			// the device's card, then the grid, then this; a tall window
-			// keeps it in view.)
-			h.tt.SetSize(1280, 1200)
-			h.settle(100 * time.Millisecond)
-			h.clickFound(L.T("ability.remove") + " · " + L.T("ability.web"))
-			if !h.tt.HasText(L.T("ability.remove.web", L.T("device.local.inline"))) {
-				t.Fatalf("no consequence text: %q", h.tt.Texts())
-			}
-			h.shotAs(fmt.Sprintf("abilities-%s-remove", lang))
-			h.clickFound(L.T("ability.remove") + " · " + L.T("ability.web"))
+			// D161: the chip turns it off in one tap (nothing at stake).
+			h.click(L.T("chip.web") + " · " + L.T("chip.state.on"))
 			h.until("web off", func() bool {
 				return h.app.S.Device("local").Ability(protocol.AbilityWeb).State == protocol.AbilityOff
 			})
@@ -117,7 +108,7 @@ func TestAbilitiesScreen(t *testing.T) {
 func TestAbilitiesEquipMotion(t *testing.T) {
 	h := openDevices(t, i18n.ZH, true)
 	L := h.app.L
-	h.click(L.T("ability.web") + " · " + L.T("ability.add", L.T("device.local.inline")))
+	h.click("+ " + L.T("chip.web"))
 	// Mid-flight: peeled and arcing over.
 	h.settle(300 * time.Millisecond)
 	if h.app.dev.fx == nil {
@@ -136,7 +127,7 @@ func TestAbilitiesRefusedGoesBack(t *testing.T) {
 	h := openDevices(t, i18n.ZH, false)
 	L := h.app.L
 	h.hub.RefuseNext(protocol.AbilityWeb, "cua_old")
-	h.click(L.T("ability.web") + " · " + L.T("ability.add", L.T("device.local.inline")))
+	h.click("+ " + L.T("chip.web"))
 	h.until("back", func() bool { return h.app.dev.fx == nil && len(h.app.dev.refused) > 0 })
 	h.settle(300 * time.Millisecond)
 	if h.tt.HasText(L.T("ability.web.done", L.T("device.local"))) {
@@ -165,15 +156,15 @@ func TestAbilitiesStates(t *testing.T) {
 			})
 			h.until("four devices", func() bool { return len(h.app.S.Devices) == 4 })
 			h.settle(100 * time.Millisecond)
-			h.click("Mac mini · " + L.T("device.state.asleep"))
+			h.click("Mac mini · " + L.T("list.state.asleep"))
 			h.settle(300 * time.Millisecond)
-			if !h.tt.HasText(L.T("device.asleep.line", "Mac mini")) {
+			if !h.tt.HasText(L.T("device.state.asleep")) {
 				t.Fatalf("asleep line: %q", h.tt.Texts())
 			}
 			h.shotAs(fmt.Sprintf("abilities-%s-asleep", lang))
-			h.click("ducter-vps · " + L.T("device.state.unreachable", L.T("time.ago.hour", 2)))
+			h.click("ducter-vps · " + L.T("list.state.away"))
 			h.settle(300 * time.Millisecond)
-			if !h.tt.HasText(L.T("device.unreachable.line", "ducter-vps", L.T("time.ago.hour", 2))) {
+			if !h.tt.HasText(L.T("card.status.unreachable", L.T("time.ago.hour", 2))) {
 				t.Fatalf("unreachable line: %q", h.tt.Texts())
 			}
 			h.shotAs(fmt.Sprintf("abilities-%s-unreachable", lang))
@@ -184,7 +175,7 @@ func TestAbilitiesStates(t *testing.T) {
 func TestAbilitiesReachFromAnywhere(t *testing.T) {
 	h := openDevices(t, i18n.ZH, false)
 	L := h.app.L
-	h.click(L.T("ability.remote") + " · " + L.T("ability.add", L.T("device.local.inline")))
+	h.click("+ " + L.T("chip.remote"))
 	h.until("code", func() bool { return h.app.S.PairCode != nil })
 	h.settle(200 * time.Millisecond)
 	if !h.tt.HasText("K7QM-4XPA") || !h.tt.HasText(L.T("pair.noaddress")) {
@@ -243,7 +234,7 @@ func TestAbilitiesLive(t *testing.T) {
 	}
 	h.settle(9 * time.Second) // the removed line fades
 	h.shotAs(fmt.Sprintf("abilities-live-%s-home", lang))
-	h.click(L.T("ability.web") + " · " + L.T("ability.add", L.T("device.local.inline")))
+	h.click("+ " + L.T("chip.web"))
 	h.until("web on", func() bool {
 		d := h.app.S.Device("local")
 		return d.Ability(protocol.AbilityWeb).State == protocol.AbilityOn && h.app.dev.fx == nil
@@ -253,7 +244,7 @@ func TestAbilitiesLive(t *testing.T) {
 		t.Fatalf("no line: %q", h.tt.Texts())
 	}
 	h.shotAs(fmt.Sprintf("abilities-live-%s-added", lang))
-	h.click(L.T("ability.remote") + " · " + L.T("ability.add", L.T("device.local.inline")))
+	h.click("+ " + L.T("chip.remote"))
 	h.until("code", func() bool { return h.app.S.PairCode != nil })
 	h.settle(300 * time.Millisecond)
 	h.shotAs(fmt.Sprintf("abilities-live-%s-pair", lang))
@@ -284,7 +275,7 @@ func TestAbilitiesLiveDevice(t *testing.T) {
 		}
 		return dv != nil
 	})
-	chip, _ := h.app.deviceChip(dv)
+	chip, _ := h.app.listWord(dv)
 	h.click(name + " · " + chip)
 	h.until("shown", func() bool { return h.app.shownDevice().Name == name })
 	h.tt.Advance(time.Second)

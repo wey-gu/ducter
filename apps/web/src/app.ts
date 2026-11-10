@@ -1,5 +1,5 @@
 // The phone app's state and actions (the views read it and call these). One store, one socket.
-import type { AgentReason, BrainNow, Candidate, ClientFrame, Place, PlaceChoice, ConnectionView, DeviceHarness, DeviceView, MemView, OoDetect, Reach, RuleView, ServerFrame, Settings, SettingsPatch, UpdateReason } from "@ducter/protocol";
+import type { AgentReason, BrainNow, Candidate, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, MemView, OoDetect, Reach, RuleView, ServerFrame, Settings, SettingsPatch, UpdateReason } from "@ducter/protocol";
 import { Api, Connection, type ConnStatus, type Me, wsUrl } from "./conn.ts";
 import { detectLang, langOfText, strings, type Lang, type Strings } from "./i18n.ts";
 import { pushState, type PushState } from "./push-client.ts";
@@ -102,6 +102,8 @@ class AppState {
   oo?: OoDetect;
   /** A connection being checked (the add button waits). */
   connecting = false;
+  /** D158: the last check's refusal, shown on the Accounts card in the failed look (never a toast). */
+  connRefusal?: ConnectionReason;
   route: Route = { name: "conv" };
   sheet: Sheet = null;
   /** D151: the live view of Ducter's browser, while the user signs in (never stored). */
@@ -217,9 +219,19 @@ class AppState {
     if (f.t === "connections") return (this.connections = f.connections), (this.oo = f.oo), this.changed();
     if (f.t === "connection_result") {
       this.connecting = false;
-      if (!f.ok && f.reason) this.toast(this.L.t(`acct.err.${f.reason}`));
+      // D158: a refusal stays on the Accounts card in the failed look; an add says what it reads now.
+      this.connRefusal = !f.ok ? f.reason : undefined;
       const added = f.ok && this.connections?.find((c) => c.id === f.id);
-      if (added) this.toast(this.L.t("acct.added", added.name));
+      if (added) {
+        const r = f.readable;
+        this.toast(
+          r && !r.length
+            ? this.L.t("acct.added.empty", added.name)
+            : r?.length
+              ? this.L.t("acct.added.apps", added.name, r.map((a) => a.title).join(this.L.t("acct.sep")))
+              : this.L.t("acct.added", added.name),
+        );
+      }
       return this.changed();
     }
     const before = new Map([...this.S.tasks].map(([id, t]) => [id, attention(t)]));
@@ -402,11 +414,13 @@ class AppState {
   }
   addConnection(url: string, token: string) {
     this.connecting = true;
+    this.connRefusal = undefined;
     this.send({ t: "connection_add", url, ...(token ? { token } : {}) });
     this.changed();
   }
   useOoConnection() {
     this.connecting = true;
+    this.connRefusal = undefined;
     this.send({ t: "connection_oo" });
     this.changed();
   }

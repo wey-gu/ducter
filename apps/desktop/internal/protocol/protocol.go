@@ -788,7 +788,8 @@ type ConnectionView struct {
 	Via       string `json:"via"`   // "manual" | "oo"
 	State     string `json:"state"` // "ok" | "unreachable" | "unauthorized" | "unknown"
 	CheckedAt string `json:"checkedAt,omitempty"`
-	// Apps, for source "oo": what it can read, as oo last listed it.
+	// Apps: what it can read, as oo last listed it (source "oo"), or the
+	// accounts connected in an OpenConnector (D158).
 	Apps []OoApp `json:"apps,omitempty"`
 }
 
@@ -1187,10 +1188,13 @@ type ServerFrame struct {
 	Rules      []RuleView  `json:"rules,omitempty"`
 	Candidates []Candidate `json:"candidates,omitempty"`
 	// connections: the user's connections and what oo is set up with;
-	// connection_result: OK, ID, Reason.
+	// connection_result: OK, ID, Reason, and Readable (D158): what the
+	// added connection can read now; non-nil and empty means connected, but
+	// no account there yet; nil means not known.
 	Connections []ConnectionView `json:"connections,omitempty"`
 	Oo          *OoDetect        `json:"oo,omitempty"`
 	ID          string           `json:"id,omitempty"`
+	Readable    []OoApp          `json:"readable,omitempty"`
 	// activity: what the partner is doing while the user waits (D104); nil
 	// when its turn ended. Never logged.
 	Activity *PartnerActivity `json:"activity,omitempty"`

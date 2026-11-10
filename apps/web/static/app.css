@@ -2257,6 +2257,79 @@ a {
   font: inherit;
   font-size: var(--md);
 }
+/* D158: the key field, Show beside it; a missing key marks the field in the failed ink. */
+.acct-key {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+.acct-key input {
+  flex: 1;
+}
+.acct-field input.wrong {
+  border-color: var(--failed-ink);
+}
+.acct-key .qlink {
+  flex: none;
+  min-height: 44px;
+  padding: 0 var(--s1);
+}
+/* OOMOL Hosted's three steps, each with the page it needs. */
+.acct-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  margin: 0;
+  padding: var(--s3) var(--s3) var(--s3) calc(var(--s3) + 1.4em);
+  border-radius: var(--r-sm);
+  background: var(--surface-sunken);
+  font-size: var(--md);
+  line-height: 1.45;
+}
+.acct-steps li > span {
+  display: block;
+}
+.acct-steps li > a {
+  display: inline-flex;
+  margin-top: 6px;
+}
+.acct-steps li::marker {
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+.acct-steps a.btn,
+.acct-refusal a.btn {
+  text-decoration: none;
+}
+/* A refusal: the failed look, never the done look. */
+.acct-refusal {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+  padding: 8px 8px 8px 12px;
+  border-radius: var(--r-md);
+  background: var(--failed-surface);
+  color: var(--failed-ink);
+  font-size: var(--sm);
+  font-weight: 700;
+  line-height: 1.4;
+}
+.acct-refusal .grow {
+  flex: 1 1 12em;
+  min-width: 0;
+}
+.acct-refusal-mark {
+  flex: none;
+  width: 1em;
+  text-align: center;
+  font-size: var(--md);
+}
+.acct-empty {
+  margin: 2px 0 0;
+  color: var(--ink-soft);
+  font-weight: 700;
+}
 .toasts {
   position: fixed;
   left: 0;

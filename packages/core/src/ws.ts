@@ -2,7 +2,7 @@
 import { brainNow } from "./brain.ts";
 import { harnessName, isHarnessId } from "@ducter/protocol";
 import type { ServerWebSocket } from "bun";
-import type { Bodies, ClientFrame, ClientKind, Delivery, LogEvent, PartnerActivity, Place, ServerFrame, UndoConfirm } from "@ducter/protocol";
+import type { Bodies, ClientFrame, ClientKind, Delivery, LogEvent, OoApp, PartnerActivity, Place, ServerFrame, UndoConfirm } from "@ducter/protocol";
 import type { NewTaskInput, NewTaskResult } from "./newtask.ts";
 import type { CoreApi, Runner } from "@ducter/protocol/src/internal.ts";
 import type { Decisions } from "./decisions.ts";
@@ -543,7 +543,9 @@ export function createWsHandler(deps: WsDeps) {
         if (!deps.connections) throw new Error("connections are not available");
         ws.data.connections = true;
         const r = f.t === "connection_add" ? await deps.connections.add({ url: String(f.url ?? ""), token: f.token, name: f.name }) : await deps.connections.addFromOo();
-        send(ws, r.ok ? { t: "connection_result", ok: true, id: r.id } : { t: "connection_result", ok: false, reason: r.reason });
+        // D158: what it can read now goes with the answer (the oo kind's from the connections view).
+        const apps: OoApp[] | undefined = r.ok ? (("apps" in r ? (r.apps as OoApp[] | undefined) : undefined) ?? deps.connections.view().find((c) => c.id === r.id)?.apps) : undefined;
+        send(ws, r.ok ? { t: "connection_result", ok: true, id: r.id, ...(apps ? { readable: apps } : {}) } : { t: "connection_result", ok: false, reason: r.reason });
         if (!r.ok) send(ws, connectionsFrame());
         return;
       }

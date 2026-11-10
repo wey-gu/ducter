@@ -29,6 +29,7 @@ type partnerState struct {
 	qFrom        string
 	toast        string
 	toastAt      time.Time
+	toastTone    noticeTone // set with every toast: an error never wears the done look (D158)
 	// forgetting: the noted lines asked to be forgotten, seq -> title.
 	forgetting map[int64]string
 	// Adding a connection (D96): the form, where it runs, the address and
@@ -39,6 +40,14 @@ type partnerState struct {
 	acctURL     string
 	acctToken   string
 	acctWaiting bool
+	acctShow    bool   // the key shows as typed, not masked
+	acctNoKey   bool   // OOMOL Hosted was checked with no key: said on the field, nothing sent
+	acctErr     string // the last check's refusal (a ConnectionReason), shown in the form
+}
+
+// say sets the tab's one line and how it looks.
+func (ps *partnerState) say(text string, tone noticeTone, at time.Time) {
+	ps.toast, ps.toastAt, ps.toastTone = text, at, tone
 }
 
 // SetSettings sends a change to the partner's settings.
@@ -63,7 +72,14 @@ func (a *App) partnerToast(c *ui.Context) {
 		return
 	}
 	c.After(6*time.Second - a.Now().Sub(ps.toastAt))
-	a.notice(c, "partner-toast", noticeDone, func() { a.glyph(c, 22, drawCheck(t.Done.Ink)) }, func() {
+	glyph := drawCheck(t.Done.Ink)
+	switch ps.toastTone {
+	case noticeAlert:
+		glyph = drawBang(t.Failed.Ink)
+	case noticeInfo:
+		glyph = drawAsk(t.InkSoft)
+	}
+	a.notice(c, "partner-toast", ps.toastTone, func() { a.glyph(c, 22, glyph) }, func() {
 		ui.Text(c, ps.toast).FontSize(t.SM).FontWeight(700).MaxLines(2)
 	}, nil)
 }
@@ -402,7 +418,7 @@ func (a *App) drainForgot() {
 	if f.How == "mem" {
 		key = "partner.memory.forgot"
 	}
-	a.partner.toast, a.partner.toastAt = a.L.T(key, title), a.Now()
+	a.partner.say(a.L.T(key, title), noticeDone, a.Now())
 }
 
 // trustCard is 自己就做，还是先问你: the two lists side by side in one
@@ -431,7 +447,14 @@ func (a *App) trustCard(c *ui.Context) {
 
 // ---------- 账号 / Accounts: it can read (D96) ----------
 
-const hostedConnector = "https://connector.oomol.com"
+// OOMOL Hosted (research/44): the address the user meets (the server turns
+// it into its MCP endpoint, /v1/mcp), where a key is made, and where
+// accounts are connected to OOMOL.
+const (
+	hostedConnector = "https://connector.oomol.com"
+	oomolKeyPage    = "https://console.oomol.com/api-key"
+	oomolAccounts   = "https://console.oomol.com/app-connections"
+)
 
 // accountsPanel is Settings › Accounts: the user's OpenConnector (OOMOL
 // Hosted or self-hosted) or another MCP server, each a small clay mailbox
@@ -469,6 +492,12 @@ func (a *App) accountsPanel(c *ui.Context) {
 					a.note(c, a.L.T("acct.src."+cv.Source))
 					if cv.State == "unreachable" || cv.State == "unauthorized" {
 						ui.Text(c, a.L.T("acct.state."+cv.State)).FontSize(t.SM).FontWeight(700).TextColor(t.Failed.Ink)
+					} else if (cv.Source == "oomol" || cv.Source == "self") && cv.Apps != nil && len(cv.Apps) == 0 {
+						// D158: connected, but nothing to read there yet; say where to fix it.
+						ui.Text(c, a.L.T("acct.empty."+cv.Source)).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
+						if cv.Source == "oomol" && a.quietLink(c, "acct-connect:"+cv.ID, a.L.T("acct.connect.oomol"), a.L.T("acct.connect.oomol")) {
+							a.openLink(oomolAccounts)
+						}
 					}
 				})
 				if a.buttonFor(c, a.L.T("acct.remove"), cv.Name, btnText, t.ControlSM, t.Surface) {
@@ -506,22 +535,37 @@ func (a *App) accountsPanel(c *ui.Context) {
 			}
 			if open {
 				ps.acctAdding, ps.acctWhere, ps.acctURL, ps.acctToken = true, 0, hostedConnector, ""
+				ps.acctErr, ps.acctNoKey, ps.acctShow = "", false, false
 			}
 			return
 		}
 		wheres := []string{"oomol", "self", "mcp"}
+		hosted := ps.acctWhere == 0
+		if ps.acctNoKey && strings.TrimSpace(ps.acctToken) != "" {
+			ps.acctNoKey = false
+		}
 		submit := func() {
-			if ps.acctWaiting || strings.TrimSpace(ps.acctURL) == "" {
+			url := strings.TrimSpace(ps.acctURL)
+			if hosted {
+				url = hostedConnector
+			}
+			if ps.acctWaiting || url == "" {
 				return
 			}
-			ps.acctWaiting = true
-			a.send(protocol.ConnectionAdd{T: "connection_add", URL: strings.TrimSpace(ps.acctURL), Token: strings.TrimSpace(ps.acctToken)})
+			// A pasted key often brings a space or a line break along.
+			key := strings.Join(strings.Fields(ps.acctToken), "")
+			if hosted && key == "" {
+				ps.acctNoKey, ps.acctErr = true, ""
+				return
+			}
+			ps.acctWaiting, ps.acctNoKey, ps.acctErr = true, false, ""
+			a.send(protocol.ConnectionAdd{T: "connection_add", URL: url, Token: key})
 			ps.acctToken = "" // sent once; never kept in the app
 		}
 		a.rowBlock(c, "acct-form", func() {
 			labels := []string{a.L.T("acct.where.oomol"), a.L.T("acct.where.self"), a.L.T("acct.where.mcp")}
 			if i := a.choices(c, "acct-where", a.L.T("acct.where"), labels, ps.acctWhere); i >= 0 {
-				ps.acctWhere = i
+				ps.acctWhere, ps.acctErr, ps.acctNoKey = i, "", false
 				switch i {
 				case 0:
 					ps.acctURL = hostedConnector
@@ -532,24 +576,35 @@ func (a *App) accountsPanel(c *ui.Context) {
 				}
 			}
 			a.note(c, a.L.T("acct.where."+wheres[ps.acctWhere]+".note"))
-			a.acctField(c, "acct-url", a.L.T("acct.address"), &ps.acctURL, false, submit)
-			a.acctField(c, "acct-token", a.L.T("acct.key"), &ps.acctToken, true, submit)
-			// The technical steps (where the key is made) stay behind a fold:
-			// the card says what it does for the person, not how it's wired.
-			how := a.L.T("acct.how")
-			if ps.acctHow {
-				how = a.L.T("acct.how.hide")
+			if hosted {
+				// D158: OOMOL Hosted has one address, so no address field;
+				// the three steps are the way in, each with its own door.
+				a.oomolSteps(c)
+			} else {
+				a.acctField(c, "acct-url", a.L.T("acct.address"), &ps.acctURL, false, false, submit)
 			}
-			if a.quietLink(c, "acct-how", how, a.L.T("acct.how")) {
-				ps.acctHow = !ps.acctHow
+			a.acctKey(c, submit)
+			if ps.acctErr != "" {
+				a.acctRefusal(c, hosted)
 			}
-			if ps.acctHow {
-				a.note(c, a.L.T("acct.how."+wheres[ps.acctWhere]))
+			if !hosted {
+				// The technical steps (where the key is made) stay behind a fold:
+				// the card says what it does for the person, not how it's wired.
+				how := a.L.T("acct.how")
+				if ps.acctHow {
+					how = a.L.T("acct.how.hide")
+				}
+				if a.quietLink(c, "acct-how", how, a.L.T("acct.how")) {
+					ps.acctHow = !ps.acctHow
+				}
+				if ps.acctHow {
+					a.note(c, a.L.T("acct.how."+wheres[ps.acctWhere]))
+				}
 			}
 		})
 		a.actions(c, "acct-form", func() {
 			if a.button(c, a.L.T("acct.cancel"), btnText, t.ControlMD, t.Surface) {
-				ps.acctAdding, ps.acctToken = false, ""
+				ps.acctAdding, ps.acctToken, ps.acctErr, ps.acctNoKey = false, "", "", false
 			}
 		}, func() {
 			label := a.L.T("acct.check")
@@ -629,21 +684,115 @@ func ooAppsLine(apps []protocol.OoApp) string {
 	return strings.Join(parts, " · ")
 }
 
-// acctField is one labelled input on the accounts card; the token is masked.
-func (a *App) acctField(c *ui.Context, key, label string, value *string, secret bool, submit func()) {
+// acctField is one labelled input on the accounts card; a secret is masked,
+// and a wrong one has its border in the failed ink.
+func (a *App) acctField(c *ui.Context, key, label string, value *string, secret, wrong bool, submit func()) {
 	t := a.T
 	ui.Column(c.Key("field:" + key)).Gap(t.S2).Children(func() {
 		ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
+		border := t.LineSoft
+		if wrong {
+			border = t.Failed.Strong
+		}
 		in := ui.TextInput(c.Key("input:"+key), value).Label(label).FontSize(t.MD).Padding(t.S3, t.S4).Radius(t.RadiusSM).
-			Background(t.SurfaceSunken).Border(1, t.LineSoft).OnSubmit(submit)
+			Background(t.SurfaceSunken).Border(1, border).OnSubmit(submit)
 		if secret {
 			in.Password()
 		}
 	})
 }
 
+// acctKey is the key field (D158): masked, with Show beside it; Return
+// checks; checked empty for OOMOL Hosted, it says so right under it.
+func (a *App) acctKey(c *ui.Context, submit func()) {
+	t := a.T
+	ps := &a.partner
+	ui.Column(c.Key("acct-key")).Gap(t.S2).Children(func() {
+		ui.Row(c).AlignItems(ui.End).Gap(t.S2).Children(func() {
+			ui.Column(c).Grow(1).MinWidth(0).Children(func() {
+				a.acctField(c, "acct-token", a.L.T("acct.key"), &ps.acctToken, !ps.acctShow, ps.acctNoKey, submit)
+			})
+			show := a.L.T("acct.key.show")
+			if ps.acctShow {
+				show = a.L.T("acct.key.hide")
+			}
+			if a.buttonFor(c, show, a.L.T("acct.key"), btnText, t.ControlMD, t.Surface) {
+				ps.acctShow = !ps.acctShow
+			}
+		})
+		if ps.acctNoKey {
+			ui.Row(c.Key("acct-nokey")).Gap(t.S1).AlignItems(ui.Center).Role(ui.RoleAlert).Children(func() {
+				a.glyph(c, 18, drawBang(t.Failed.Ink))
+				ui.Text(c, a.L.T("acct.err.no_key")).FontSize(t.SM).FontWeight(700).TextColor(t.Failed.Ink)
+			})
+		}
+	})
+}
+
+// oomolSteps is OOMOL Hosted's way in, in three plain steps, each with
+// the page it needs one click away (D158).
+func (a *App) oomolSteps(c *ui.Context) {
+	t := a.T
+	step := func(n int, text string, link func()) {
+		ui.Row(c.Key("oomol-step:" + itoa(int64(n)))).Gap(t.S3).AlignItems(ui.Baseline).Children(func() {
+			ui.Text(c, itoa(int64(n))+".").FontSize(t.MD).FontWeight(700).TextColor(t.InkSoft).Width(18).Shrink(0)
+			ui.Column(c).Grow(1).MinWidth(0).Gap(t.S1).Children(func() {
+				ui.Text(c, text).FontSize(t.MD).LineHeight(a.leading(1.45))
+				if link != nil {
+					link()
+				}
+			})
+		})
+	}
+	ui.Column(c.Key("oomol-steps")).Gap(t.S3).Padding(t.S3, t.S4).Radius(t.RadiusSM).Background(t.SurfaceSunken.Mix(t.Bg, 0.45)).Children(func() {
+		step(1, a.L.T("acct.step.oomol.1"), func() {
+			if a.quietLink(c, "oomol-accounts", a.L.T("acct.connect.oomol"), a.L.T("acct.connect.oomol")) {
+				a.openLink(oomolAccounts)
+			}
+		})
+		step(2, a.L.T("acct.step.oomol.2"), func() {
+			// The one page everyone needs: a button, not a quiet link.
+			ui.Row(c).Children(func() {
+				if a.button(c, a.L.T("acct.key.get"), btnSecondary, t.ControlSM, t.SurfaceSunken.Mix(t.Bg, 0.45)) {
+					a.openLink(oomolKeyPage)
+				}
+			})
+		})
+		step(3, a.L.T("acct.step.oomol.3"), nil)
+	})
+}
+
+// acctRefusal is the last check's refusal, in the form, in the failed
+// look: never the done look (D158). A refused OOMOL key offers a new one.
+func (a *App) acctRefusal(c *ui.Context, hosted bool) {
+	t := a.T
+	ps := &a.partner
+	reason := ps.acctErr
+	var actions func()
+	if hosted && reason == "unauthorized" {
+		actions = func() {
+			if a.button(c, a.L.T("acct.key.get"), btnSecondary, t.ControlSM, t.Failed.Surface) {
+				a.openLink(oomolKeyPage)
+			}
+		}
+	}
+	a.notice(c, "acct-refusal", noticeAlert, func() { a.glyph(c, 22, drawBang(t.Failed.Ink)) }, func() {
+		ui.Text(c, a.L.T("acct.err."+reason)).FontSize(t.SM).FontWeight(700).TextColor(t.Failed.Ink).MaxLines(3)
+	}, actions)
+}
+
+// appsList is "Gmail、Discord" / "Gmail, Discord".
+func (a *App) appsList(apps []protocol.OoApp) string {
+	names := make([]string, 0, len(apps))
+	for _, ap := range apps {
+		names = append(names, ap.Title)
+	}
+	return strings.Join(names, a.L.T("acct.sep"))
+}
+
 // drainConnResult turns the server's answer to an add or a remove into one
-// line on the page.
+// line on the page: a refusal in the open form (or, with no form, a
+// failed-look line), an add in the done look with what it can now read.
 func (a *App) drainConnResult() {
 	r := a.S.ConnResult
 	if r == nil {
@@ -653,15 +802,28 @@ func (a *App) drainConnResult() {
 	ps := &a.partner
 	ps.acctWaiting = false
 	if !r.OK {
-		if r.Reason != "" {
-			ps.toast, ps.toastAt = a.L.T("acct.err."+r.Reason), a.Now()
+		switch {
+		case r.Reason == "":
+		case ps.acctAdding && r.Reason == "no_key":
+			ps.acctNoKey = true
+		case ps.acctAdding:
+			ps.acctErr = r.Reason
+		default:
+			ps.say(a.L.T("acct.err."+r.Reason), noticeAlert, a.Now())
 		}
 		return
 	}
 	for _, cv := range a.S.Connections {
 		if cv.ID == r.ID {
-			ps.acctAdding = false
-			ps.toast, ps.toastAt = a.L.T("acct.added", cv.Name), a.Now()
+			ps.acctAdding, ps.acctErr, ps.acctNoKey = false, "", false
+			switch {
+			case r.Readable != nil && len(r.Readable) == 0:
+				ps.say(a.L.T("acct.added.empty", cv.Name), noticeInfo, a.Now())
+			case len(r.Readable) > 0:
+				ps.say(a.L.T("acct.added.apps", cv.Name, a.appsList(r.Readable)), noticeDone, a.Now())
+			default:
+				ps.say(a.L.T("acct.added", cv.Name), noticeDone, a.Now())
+			}
 		}
 	}
 }

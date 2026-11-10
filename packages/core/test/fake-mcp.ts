@@ -19,18 +19,39 @@ export interface FakeServer {
 
 type ToolDef = { name: string; description: string; inputSchema: object; annotations?: object; run: (args: Record<string, unknown>) => unknown };
 
-function serve(tools: ToolDef[], token?: string): FakeServer {
+/**
+ * Options that make it look like OOMOL Hosted (research/44): its MCP endpoint at /v1/mcp, a gateway
+ * in front of every path that answers 401 in plain text ("token not found" / "invalid token"),
+ * and GET /v1/apps with the accounts connected there.
+ */
+export interface ServeOpts {
+  path?: string;
+  plain401?: boolean;
+  apps?: unknown[];
+}
+
+function serve(tools: ToolDef[], token?: string, opts: ServeOpts = {}): FakeServer {
   const executed: FakeServer["executed"] = [];
   const authSeen: string[] = [];
+  const mcpPath = opts.path ?? "/mcp";
   const server = Bun.serve({
     port: 0,
     hostname: "127.0.0.1",
     async fetch(req) {
       const url = new URL(req.url);
-      if (url.pathname !== "/mcp") return new Response("not found", { status: 404 });
       const auth = req.headers.get("authorization") ?? "";
+      const refuse = () =>
+        opts.plain401
+          ? new Response(auth ? "invalid token" : "token not found", { status: 401, headers: { "content-type": "text/plain; charset=utf-8" } })
+          : new Response(JSON.stringify({ error: "unauthorized" }), { status: 401 });
+      if (opts.plain401 && token && auth !== `Bearer ${token}`) return refuse();
+      if (url.pathname === "/v1/apps" && opts.apps && req.method === "GET") {
+        if (token && auth !== `Bearer ${token}`) return refuse();
+        return Response.json({ success: true, data: opts.apps });
+      }
+      if (url.pathname !== mcpPath) return new Response("404 Not Found", { status: 404, headers: { "content-type": "text/plain" } });
       authSeen.push(auth);
-      if (token && auth !== `Bearer ${token}`) return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401 });
+      if (token && auth !== `Bearer ${token}`) return refuse();
       if (req.method !== "POST") return new Response(null, { status: 405 });
       const s = new Server({ name: "fake", version: "1" }, { capabilities: { tools: {} } });
       s.setRequestHandler(ListToolsRequestSchema, async () => ({
@@ -62,7 +83,7 @@ function serve(tools: ToolDef[], token?: string): FakeServer {
 const obj = { type: "object", properties: {} };
 
 /** An OpenConnector look-alike: search_actions, get_action_guide (with operationType), execute_action. */
-export function fakeOpenConnector(actions: FakeAction[], token?: string): FakeServer {
+export function fakeOpenConnector(actions: FakeAction[], token?: string, opts: ServeOpts = {}): FakeServer {
   const by = new Map(actions.map((a) => [a.id, a]));
   return serve(
     [
@@ -99,6 +120,7 @@ export function fakeOpenConnector(actions: FakeAction[], token?: string): FakeSe
       },
     ],
     token,
+    opts,
   );
 }
 

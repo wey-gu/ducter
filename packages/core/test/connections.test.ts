@@ -3,7 +3,7 @@ import { mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Bodies } from "@ducter/protocol";
 import { openLog } from "../src/log.ts";
-import { normalizeUrl, ooSource, openConnections, parseOoConnectorToml, policyAllows, summarize } from "../src/connections.ts";
+import { appsFromV1, httpLinker, normalizeUrl, OOMOL_HOSTED_MCP, ooSource, openConnections, parseOoConnectorToml, policyAllows, summarize } from "../src/connections.ts";
 import { fakeOpenConnector, fakePlainMcp, type FakeServer } from "./fake-mcp.ts";
 import { tempDir } from "./helpers.ts";
 
@@ -37,7 +37,9 @@ const P = { role: "partner" } as const;
 
 describe("addresses and policy", () => {
   test("normalizeUrl adds /mcp, keeps https, refuses http off the local network and embedded secrets", () => {
-    expect(normalizeUrl("https://connector.oomol.com")).toBe("https://connector.oomol.com/mcp");
+    // OOMOL Hosted serves MCP at /v1/mcp only (research/44); /mcp there is its gateway's 401 for every path.
+    for (const u of ["https://connector.oomol.com", "https://connector.oomol.com/", "https://connector.oomol.com/mcp", "https://connector.oomol.com/v1", " https://connector.oomol.com/v1/mcp "])
+      expect(normalizeUrl(u)).toBe("https://connector.oomol.com/v1/mcp");
     expect(normalizeUrl("https://x.example/oc/")).toBe("https://x.example/oc/mcp");
     expect(normalizeUrl("http://127.0.0.1:3000/mcp")).toBe("http://127.0.0.1:3000/mcp");
     expect(normalizeUrl("http://192.168.1.4:3000")).toBe("http://192.168.1.4:3000/mcp");
@@ -98,6 +100,87 @@ describe("adding a connection", () => {
     expect(again.c.remove((r as { id: string }).id)).toBe(true);
     expect(readFileSync(join(t.dir, "connection-tokens.json"), "utf8")).not.toContain(TOKEN);
     expect(again.c.list(P)).toEqual([]);
+  });
+});
+
+describe("OOMOL Hosted (D158)", () => {
+  const KEY = "api_hosted_key_456";
+  const gmail = { id: "a1", service: "gmail", displayName: "Gmail", accountLabel: "wei@work.example", alias: "work", authType: "oauth2", status: "active" };
+  const discord = { id: "a2", service: "discord", displayName: "Discord", accountLabel: "wey", alias: null, authType: "oauth2", status: "active" };
+  const virtual = [
+    { id: "no_auth:hackernews", service: "hackernews", displayName: "Hacker News", accountLabel: "", authType: "no_auth", status: "active" },
+    { id: "marketplace:m:x", service: "x", displayName: "X", accountLabel: "", authType: null, status: "active" },
+  ];
+  // A look-alike of connector.oomol.com: MCP at /v1/mcp, a plain-text 401 gateway, GET /v1/apps.
+  const hosted = (apps: unknown[]) => fakeOpenConnector(actions, KEY, { path: "/v1/mcp", plain401: true, apps });
+  // The real HTTP linker and fetcher, with OOMOL's origin pointed at the fake: no network in tests.
+  const open = (fake: FakeServer) => {
+    const to = (u: string) => u.replace("https://connector.oomol.com", fake.url);
+    const log = openLog({ path: join(t.dir, "ducter.db"), persona: "default" });
+    return openConnections({ dataDir: t.dir, log, oo: noOo, linker: (u, k) => httpLinker(to(u), k), fetcher: (u, i) => fetch(to(u), i) });
+  };
+
+  test("no key: nothing is sent, and it says a key is needed", async () => {
+    const fake = hosted([gmail]);
+    try {
+      const c = open(fake);
+      expect(await c.add({ url: "https://connector.oomol.com", token: "  " })).toEqual({ ok: false, reason: "no_key" });
+      expect(fake.authSeen).toEqual([]);
+    } finally {
+      fake.stop();
+    }
+  });
+  test("a wrong key is unauthorized, though the gateway's 401 says only 'invalid token'", async () => {
+    const fake = hosted([gmail]);
+    try {
+      expect(await open(fake).add({ url: "https://connector.oomol.com", token: "api_wrong" })).toEqual({ ok: false, reason: "unauthorized" });
+    } finally {
+      fake.stop();
+    }
+  });
+  test("the right key, pasted with spaces and a line break: added, sent as Bearer, and it lists what it can read", async () => {
+    const fake = hosted([gmail, discord, ...virtual]);
+    try {
+      const c = open(fake);
+      const r = await c.add({ url: "https://connector.oomol.com", token: `  ${KEY}\n` });
+      expect(r).toMatchObject({ ok: true, apps: [{ service: "gmail", title: "Gmail", accounts: ["wei@work.example"] }, { service: "discord", title: "Discord", accounts: ["wey"] }] });
+      expect(fake.authSeen.every((a) => a === `Bearer ${KEY}`)).toBe(true);
+      const v = c.view()[0];
+      expect(v).toMatchObject({ name: "OOMOL", source: "oomol", url: OOMOL_HOSTED_MCP, state: "ok" });
+      expect(v.apps?.map((a) => a.title)).toEqual(["Gmail", "Discord"]);
+      expect(JSON.stringify(c.view())).not.toContain(KEY);
+    } finally {
+      fake.stop();
+    }
+  });
+  test("connected, but no account there yet: added, with an empty list", async () => {
+    const fake = hosted(virtual);
+    try {
+      const r = await open(fake).add({ url: "https://connector.oomol.com", token: KEY });
+      expect(r).toMatchObject({ ok: true, apps: [] });
+    } finally {
+      fake.stop();
+    }
+  });
+  test("an MCP path that isn't there is not_mcp, not a refused key", async () => {
+    const fake = fakeOpenConnector(actions, undefined, { path: "/v1/mcp" });
+    try {
+      const { c } = setup();
+      expect(await c.add({ url: `${fake.url}/mcp` })).toEqual({ ok: false, reason: "not_mcp" });
+    } finally {
+      fake.stop();
+    }
+  });
+  test("a hosted connection saved at the old /mcp address is moved to /v1/mcp", () => {
+    writeFileSync(join(t.dir, "connections.json"), JSON.stringify({ connections: [{ id: "conn_old", name: "OOMOL", url: "https://connector.oomol.com/mcp", source: "oomol", addedAt: "2026-11-09T00:00:00Z", via: "manual" }] }));
+    const { c } = setup();
+    expect(c.view()[0].url).toBe(OOMOL_HOSTED_MCP);
+  });
+  test("appsFromV1 groups accounts by service and leaves out what isn't an account", () => {
+    expect(appsFromV1({ data: [gmail, { ...gmail, id: "a3", accountLabel: "wei@home.example" }, { ...discord, status: "reauth_required" }, ...virtual] })).toEqual([
+      { service: "gmail", title: "Gmail", accounts: ["wei@work.example", "wei@home.example"] },
+    ]);
+    expect(appsFromV1({ nope: 1 })).toBeUndefined();
   });
 });
 

@@ -12,8 +12,8 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import type { Bodies, ConnectionReason, ConnectionSource, ConnectionView, OoDetect } from "@ducter/protocol";
-import { appsOf, findOo, ooCli, ooEnv, ooExec, ooLinker, ooOp, type OoCli, type OoService } from "./oo-link.ts";
+import type { Bodies, ConnectionReason, ConnectionSource, ConnectionView, OoApp, OoDetect } from "@ducter/protocol";
+import { appsOf, findOo, ooCli, ooEnv, ooExec, ooLinker, ooOp, serviceTitle, type OoCli, type OoService } from "./oo-link.ts";
 import type { ConnectionCaller, ConnectionInfo, ConnectionOutcome, ConnectionsApi, LogStore } from "@ducter/protocol/src/internal.ts";
 
 export const CONNECTIONS_FILE = "connections.json";
@@ -58,7 +58,16 @@ export class LinkError extends Error {
 function linkErrorOf(err: unknown): LinkError {
   if (err instanceof LinkError) return err;
   const m = String((err as Error)?.message ?? err);
-  if (/\b401\b|\b403\b|unauthori[sz]ed|forbidden/i.test(m)) return new LinkError("unauthorized", m);
+  // The SDK's HTTP error carries the status in `code`, not in its message: OOMOL's gateway answers
+  // 401 with the bare text "token not found" (research/44), which once read as not_mcp.
+  const code = (err as { code?: unknown })?.code;
+  if (typeof code === "number" && code > 0) {
+    if (code === 401 || code === 403) return new LinkError("unauthorized", m);
+    if (code >= 500 || code === 408 || code === 429) return new LinkError("unreachable", m);
+    return new LinkError("not_mcp", m);
+  }
+  if ((err as Error)?.name === "UnauthorizedError") return new LinkError("unauthorized", m);
+  if (/\b401\b|\b403\b|unauthori[sz]ed|forbidden|token not found|invalid token/i.test(m)) return new LinkError("unauthorized", m);
   if (/fetch failed|ECONNREFUSED|ENOTFOUND|EHOSTUNREACH|ETIMEDOUT|timed? ?out|Unable to connect|abort/i.test(m)) return new LinkError("unreachable", m);
   return new LinkError("not_mcp", m);
 }
@@ -111,8 +120,12 @@ export const httpLinker: Linker = async (url, token) => {
 
 const PRIVATE_HOST = /^(localhost|127(\.\d{1,3}){3}|\[::1\]|10(\.\d{1,3}){3}|192\.168(\.\d{1,3}){2}|172\.(1[6-9]|2\d|3[01])(\.\d{1,3}){2}|[a-z0-9-]+\.local|host\.docker\.internal)$/i;
 
+/** OOMOL Hosted's MCP endpoint (research/44): Streamable HTTP, `Authorization: Bearer <API key>`. */
+export const OOMOL_HOSTED_MCP = "https://connector.oomol.com/v1/mcp";
+
 /**
- * The MCP endpoint for an address the user typed: an OpenConnector base URL gets "/mcp".
+ * The MCP endpoint for an address the user typed: OOMOL Hosted (connector.oomol.com, bare or
+ * with /mcp, /v1 or /v1/mcp) is its /v1/mcp; any other OpenConnector base URL gets "/mcp".
  * Plain http only for this machine and the local network (a token must not cross the internet
  * in the clear). No credentials, query or fragment in the address.
  */
@@ -127,8 +140,39 @@ export function normalizeUrl(raw: string): string | undefined {
   if (u.username || u.password || u.search || u.hash) return;
   if (u.protocol === "http:" && !PRIVATE_HOST.test(u.hostname)) return;
   const path = u.pathname.replace(/\/+$/, "");
+  if (u.protocol === "https:" && u.hostname === "connector.oomol.com" && !u.port && ["", "/mcp", "/v1", "/v1/mcp"].includes(path)) return OOMOL_HOSTED_MCP;
   u.pathname = /\/mcp$/.test(path) ? path : `${path}/mcp`;
   return u.toString();
+}
+
+/** Whether an endpoint is OOMOL Hosted, which never answers without a key. */
+export const isOomolHosted = (url: string) => normalizeUrl(url) === OOMOL_HOSTED_MCP;
+
+/** The base an OpenConnector serves its HTTP API from (/v1/apps, /v1/providers): the endpoint without /mcp or /v1/mcp. */
+export const apiBase = (mcpUrl: string) => mcpUrl.replace(/\/(v1\/)?mcp\/?$/, "").replace(/\/+$/, "");
+
+/**
+ * The accounts connected in an OpenConnector, from `GET /v1/apps?status=active` (one envelope on
+ * OOMOL Hosted and self-hosted, research/44), grouped by service. The virtual no-auth and
+ * Marketplace entries are not accounts and are left out. undefined: not that shape.
+ */
+export function appsFromV1(body: unknown): OoApp[] | undefined {
+  const data = (body as { data?: unknown })?.data;
+  if (!Array.isArray(data)) return;
+  const by = new Map<string, OoApp>();
+  for (const x of data) {
+    const o = (x ?? {}) as Record<string, unknown>;
+    const service = typeof o.service === "string" ? o.service : "";
+    const id = typeof o.id === "string" ? o.id : "";
+    if (!service || /^(no_auth|marketplace):/.test(id) || o.authType === "no_auth") continue;
+    if (typeof o.status === "string" && o.status !== "active") continue;
+    const title = typeof o.displayName === "string" && o.displayName.trim() ? o.displayName.trim() : serviceTitle(service);
+    const label = [o.accountLabel, o.alias, o.connectionName].find((v): v is string => typeof v === "string" && v.trim() !== "")?.trim() ?? "";
+    const app = by.get(service) ?? { service, title, accounts: [] };
+    if (label && !app.accounts.includes(label)) app.accounts.push(label);
+    by.set(service, app);
+  }
+  return [...by.values()];
 }
 
 const isOomol = (url: string) => {
@@ -314,7 +358,8 @@ export interface ConnectionsStore extends ConnectionsApi {
   /** Settings: the user's connections, without secrets. */
   view(): ConnectionView[];
   /** Settings: checks the address and token, then saves. */
-  add(input: { url: string; token?: string; name?: string; via?: "manual" | "oo" }): Promise<{ ok: true; id: string } | { ok: false; reason: ConnectionReason }>;
+  /** apps: the accounts connected there, when it is an OpenConnector that said ([] = none yet). */
+  add(input: { url: string; token?: string; name?: string; via?: "manual" | "oo" }): Promise<{ ok: true; id: string; apps?: OoApp[] } | { ok: false; reason: ConnectionReason }>;
   remove(id: string): boolean;
   oo(): OoDetect;
   /** The one tap: the self-hosted OpenConnector oo is set up with (read only now). */
@@ -357,7 +402,24 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
   const ooLink = oo.cli ? ooLinker(oo.cli, now) : undefined;
   const listPath = join(opts.dataDir, CONNECTIONS_FILE);
   const tokPath = join(opts.dataDir, CONNECTION_TOKENS_FILE);
-  let records: Record_[] = readJson<{ connections?: Record_[] }>(listPath, {}).connections ?? [];
+  // A hosted connection saved before D158 points at connector.oomol.com/mcp, which OOMOL doesn't serve.
+  let records: Record_[] = (readJson<{ connections?: Record_[] }>(listPath, {}).connections ?? []).map((r) =>
+    r.source !== "oo" && r.url !== OOMOL_HOSTED_MCP && isOomolHosted(r.url) ? { ...r, url: OOMOL_HOSTED_MCP } : r,
+  );
+  // What each OpenConnector has connected (GET /v1/apps), as it last answered; absent: not known.
+  const appsCache = new Map<string, OoApp[]>();
+  async function appsAt(url: string, token: string | undefined): Promise<OoApp[] | undefined> {
+    try {
+      const res = await fetcher(`${apiBase(url)}/v1/apps?status=active`, {
+        headers: { accept: "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) },
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (!res.ok || !(res.headers.get("content-type") ?? "").includes("json")) return;
+      return appsFromV1(await res.json());
+    } catch {
+      return;
+    }
+  }
   let tokens: Record<string, string> = readJson<Record<string, string>>(tokPath, {});
   const health = new Map<string, { state: ConnectionView["state"]; at: number }>();
   const toolCache = new Map<string, { tools: LinkTool[]; at: number }>();
@@ -613,6 +675,7 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
       return records.map((r) => {
         const h = health.get(r.id);
         const svcs = r.source === "oo" ? ooLink?.cached() : undefined;
+        const apps = svcs ? appsOf(svcs) : appsCache.get(r.id);
         return {
           id: r.id,
           name: r.name,
@@ -622,7 +685,7 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
           via: r.via,
           state: h?.state ?? "unknown",
           ...(h ? { checkedAt: new Date(h.at).toISOString() } : {}),
-          ...(svcs ? { apps: appsOf(svcs) } : {}),
+          ...(apps ? { apps } : {}),
         };
       });
     },
@@ -631,8 +694,11 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
       const url = normalizeUrl(input.url);
       if (!url) return { ok: false, reason: "bad_url" };
       if (records.some((r) => r.url === url)) return { ok: false, reason: "duplicate" };
-      const token = input.token?.trim() || undefined;
-      if (token && /[\s\u0000-\u001f]/.test(token)) return { ok: false, reason: "unauthorized" };
+      // A pasted key often brings a space or a line break along; a key never holds one.
+      const token = input.token?.replace(/\s+/g, "") || undefined;
+      if (token && /[\u0000-\u001f\u007f]/.test(token)) return { ok: false, reason: "unauthorized" };
+      // OOMOL Hosted never answers without a key: say so before sending anything.
+      if (!token && url === OOMOL_HOSTED_MCP) return { ok: false, reason: "no_key" };
       let ts: LinkTool[];
       let link: Link | undefined;
       try {
@@ -645,16 +711,20 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
         await link?.close();
       }
       const oc = isOpenConnector(ts);
-      const source: ConnectionSource = oc ? (isOomol(url) ? "oomol" : "self") : "mcp";
+      // OOMOL Hosted is OOMOL's by its address, whatever its tool list looks like (research/44).
+      const source: ConnectionSource = url === OOMOL_HOSTED_MCP || (oc && isOomol(url)) ? "oomol" : oc ? "self" : "mcp";
       const name = (input.name?.trim() || (source === "oomol" ? "OOMOL" : oc ? "OpenConnector" : new URL(url).hostname)).slice(0, 40);
+      // What it can read now: the accounts connected there (OpenConnector's /v1/apps).
+      const apps = source === "mcp" ? undefined : await appsAt(url, token);
       const id = `conn_${crypto.randomUUID().replaceAll("-", "").slice(0, 8)}`;
       records = [...records, { id, name: records.some((r) => r.name === name) ? `${name} ${records.length + 1}` : name, url, source, addedAt: new Date(now()).toISOString(), via: input.via ?? "manual" }];
       if (token) tokens = { ...tokens, [id]: token };
       save();
       health.set(id, { state: "ok", at: now() });
       toolCache.set(id, { tools: ts, at: now() });
+      if (apps) appsCache.set(id, apps);
       changed();
-      return { ok: true, id };
+      return { ok: true, id, ...(apps ? { apps } : {}) };
     },
 
     remove(id) {
@@ -666,6 +736,7 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
       save();
       health.delete(id);
       toolCache.delete(id);
+      appsCache.delete(id);
       for (const k of [...opCache.keys()]) if (k.startsWith(`${id} `)) opCache.delete(k);
       for (const g of grants.values()) g.delete(id);
       changed();
@@ -710,7 +781,16 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
       const probe = oo.probe?.().then(() => changed()).catch(() => {});
       const stale = records.filter((r) => now() - (health.get(r.id)?.at ?? 0) > RECHECK_MS);
       if (!stale.length) return void (await probe);
-      await Promise.all(stale.map((r) => (r.source === "oo" && ooLink ? withLink(r, () => ooLink.services()) : tools(r)).catch(() => undefined)));
+      await Promise.all(
+        stale.map(async (r) => {
+          if (r.source === "oo" && ooLink) return withLink(r, () => ooLink.services()).catch(() => undefined);
+          await tools(r).catch(() => undefined);
+          if (isOC(r) && health.get(r.id)?.state === "ok") {
+            const apps = await appsAt(r.url, tokens[r.id]);
+            if (apps) appsCache.set(r.id, apps);
+          }
+        }),
+      );
       await probe;
       changed();
     },
@@ -733,8 +813,7 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
       if (!r) return { ok: false, error: NOT_FOUND };
       const w = api.watchable(key);
       if (!w.ok) return w;
-      const base = r.url.replace(/\/mcp\/?$/, "").replace(/\/+$/, "");
-      const url = `${base}/v1/providers/${encodeURIComponent(service)}/triggers/${encodeURIComponent(trigger)}/execute`;
+      const url = `${apiBase(r.url)}/v1/providers/${encodeURIComponent(service)}/triggers/${encodeURIComponent(trigger)}/execute`;
       try {
         const res = await fetcher(url, {
           method: "POST",

@@ -669,7 +669,8 @@ export type ServerFrame =
   | { t: "rules"; rules: RuleView[] }
   | { t: "candidates"; taskId: string; candidates: Candidate[] }
   | { t: "connections"; connections: ConnectionView[]; oo: OoDetect }
-  | { t: "connection_result"; ok: boolean; id?: string; reason?: ConnectionReason }
+  // readable (D158): what the added connection can read now; [] = connected, but no account there yet.
+  | { t: "connection_result"; ok: boolean; id?: string; reason?: ConnectionReason; readable?: OoApp[] }
   // What the partner is doing while the user waits for its reply (D104): sent on every change and
   // after each welcome, null when the turn ends. Never logged: it is presence, not history.
   | { t: "activity"; activity: PartnerActivity | null }
@@ -955,7 +956,7 @@ export interface ConnectionView {
   via: "manual" | "oo";
   state: "ok" | "unreachable" | "unauthorized" | "unknown";
   checkedAt?: string;
-  /** Source oo: what it can read, as oo last listed it. */
+  /** What it can read: as oo last listed it (source oo), or the accounts connected in an OpenConnector (D158). */
   apps?: OoApp[];
 }
 
@@ -970,7 +971,8 @@ export interface OoDetect {
   apps?: OoApp[];
 }
 
-export type ConnectionReason = "bad_url" | "unreachable" | "unauthorized" | "not_mcp" | "duplicate" | "unknown_connection" | "no_oo" | "oo_signed_out";
+/** no_key (D158): OOMOL Hosted needs a key, and none was given (nothing was sent). */
+export type ConnectionReason = "bad_url" | "unreachable" | "unauthorized" | "not_mcp" | "duplicate" | "unknown_connection" | "no_oo" | "oo_signed_out" | "no_key";
 
 // ---------- Settings (D71: the Partner page and Settings) ----------
 // Persisted in the data folder: the name in persona.json (shared with the CLI), notifications

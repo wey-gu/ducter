@@ -2277,7 +2277,28 @@ function Mailbox(p: { source: "oomol" | "self" | "mcp" | "oo"; big?: boolean }) 
   );
 }
 
+// OOMOL Hosted (research/44): the address the user meets (the server turns it into its MCP
+// endpoint, /v1/mcp), where a key is made, and where accounts are connected to OOMOL.
 const HOSTED_URL = "https://connector.oomol.com";
+const OOMOL_KEY_PAGE = "https://console.oomol.com/api-key";
+const OOMOL_ACCOUNTS = "https://console.oomol.com/app-connections";
+
+/** A refusal, in the failed look (D158): never the done look. A refused OOMOL key offers a new one. */
+function AcctRefusal(p: { reason: string; hosted: boolean }) {
+  return (
+    <div class="acct-refusal" role="alert">
+      <span class="acct-refusal-mark" aria-hidden="true">
+        !
+      </span>
+      <span class="grow">{t(`acct.err.${p.reason}`)}</span>
+      {p.hosted && p.reason === "unauthorized" && (
+        <a class="btn secondary sm" href={OOMOL_KEY_PAGE} target="_blank" rel="noopener noreferrer">
+          <span class="lbl">{t("acct.key.get")}</span>
+        </a>
+      )}
+    </div>
+  );
+}
 
 /** The one tap (D122): the user's oo is signed in. What Ducter will read, literally; where mail passes; one button. */
 function OoOffer(p: { oo: OoDetect }) {
@@ -2321,14 +2342,16 @@ function Accounts() {
   const [where, setWhere] = useState<"oomol" | "self" | "mcp">("oomol");
   const [url, setUrl] = useState(HOSTED_URL);
   const [token, setToken] = useState("");
+  const [show, setShow] = useState(false); // the key shows as typed
+  const [noKey, setNoKey] = useState(false); // OOMOL Hosted checked with no key: said on the field, nothing sent
   const [how, setHow] = useState(false); // How to connect: the setup steps behind a fold
   useEffect(() => {
     if (!A.connections) A.askConnections();
   }, []);
   useEffect(() => {
     // A connection arrived: close the form and drop the typed token.
-    if (adding && !A.connecting && A.connections?.some((c) => c.url.startsWith(url.replace(/\/+$/, "")))) setAdding(false), setToken("");
-  }, [A.connections?.length]);
+    if (adding && !A.connecting && !A.connRefusal && A.connections?.some((c) => c.url.startsWith(url.replace(/\/+$/, "")))) setAdding(false), setToken(""), setShow(false);
+  }, [A.connections?.length, A.connecting]); // the answer comes after the new list: close then
   const list = A.connections;
   const oo = A.oo;
   // D122: oo signed in makes the one tap the default; the address-and-key form steps back.
@@ -2336,8 +2359,23 @@ function Accounts() {
   const offer = !!oo?.account && !usedOo;
   const pick = (w: "oomol" | "self" | "mcp") => {
     setWhere(w);
+    setNoKey(false);
+    A.connRefusal = undefined;
     setUrl(w === "oomol" ? HOSTED_URL : w === "self" ? "http://localhost:3000" : "");
   };
+  const hosted = where === "oomol";
+  const check = (e?: Event) => {
+    e?.preventDefault();
+    const address = hosted ? HOSTED_URL : url.trim();
+    // A pasted key often brings a space or a line break along.
+    const key = token.replace(/\s+/g, "");
+    if (A.connecting || !address) return;
+    if (hosted && !key) return void (setNoKey(true), (A.connRefusal = undefined), A.changed());
+    setNoKey(false);
+    A.addConnection(address, key);
+  };
+  const refusal = A.connRefusal && A.connRefusal !== "no_key" ? A.connRefusal : undefined;
+  const showNoKey = noKey || (adding && A.connRefusal === "no_key");
   return (
     <section class="set accounts">
       <h3>{t("acct.title")}</h3>
@@ -2350,7 +2388,26 @@ function Accounts() {
             <div class="acct-name">{c.source === "oo" ? t("acct.oo.name") : c.name}</div>
             {!!c.apps?.length && <div class="small acct-apps">{c.apps.map((a) => (a.accounts.length > 1 ? `${a.title} (${a.accounts.length})` : a.title)).join(" · ")}</div>}
             <div class="small sub">{t(`acct.src.${c.source}`)}</div>
-            {(c.state === "unreachable" || c.state === "unauthorized") && <div class="small warn">{t(`acct.state.${c.state}`)}</div>}
+            {c.state === "unreachable" || c.state === "unauthorized" ? (
+              <div class="small warn">{t(`acct.state.${c.state}`)}</div>
+            ) : (
+              (c.source === "oomol" || c.source === "self") &&
+              c.apps &&
+              !c.apps.length && (
+                // D158: connected, but nothing to read there yet; say where to fix it.
+                <div class="small acct-empty">
+                  {t(`acct.empty.${c.source}`)}
+                  {c.source === "oomol" && (
+                    <>
+                      {" "}
+                      <a class="qlink" href={OOMOL_ACCOUNTS} target="_blank" rel="noopener noreferrer">
+                        {t("acct.connect.oomol")} ›
+                      </a>
+                    </>
+                  )}
+                </div>
+              )
+            )}
           </div>
           <Btn kind="text" label={t("acct.remove")} about={c.name} onClick={() => A.removeConnection(c.id)} />
         </div>
@@ -2371,27 +2428,84 @@ function Accounts() {
           <Btn kind="secondary" label={t("acct.add")} onClick={() => setAdding(true)} />
         )
       ) : (
-        <div class="acct-form">
+        <form class="acct-form" onSubmit={check} noValidate>
           <Seg label={t("acct.where")} value={where} options={(["oomol", "self", "mcp"] as const).map((v) => ({ v, label: t(`acct.where.${v}`) }))} onPick={pick} />
           <div class="small sub">{t(`acct.where.${where}.note`)}</div>
-          <label class="acct-field">
-            <span class="small">{t("acct.address")}</span>
-            <input id="acct-url" type="url" inputMode="url" autoComplete="off" spellcheck={false} value={url} onInput={(e) => setUrl((e.target as HTMLInputElement).value)} />
-          </label>
-          <label class="acct-field">
-            <span class="small">{t("acct.key")}</span>
-            <input id="acct-token" type="password" autoComplete="off" spellcheck={false} value={token} onInput={(e) => setToken((e.target as HTMLInputElement).value)} />
-          </label>
-          <button class="qlink" aria-expanded={how} onClick={() => setHow(!how)}>
-            {t(how ? "acct.how.hide" : "acct.how")} ›
-          </button>
-          {how && <div class="small sub steps">{t(`acct.how.${where}`)}</div>}
-          <div class="row">
-            <Btn kind="text" label={t("acct.cancel")} onClick={() => (setAdding(false), setToken(""))} />
-            <Btn kind="primary" label={A.connecting ? t("acct.checking") : t("acct.check")} disabled={A.connecting || !url.trim()} onClick={() => A.addConnection(url.trim(), token.trim())} />
+          {hosted ? (
+            // D158: OOMOL Hosted has one address, so no address field; three steps, each with its page.
+            <ol class="acct-steps">
+              <li>
+                <span>{t("acct.step.oomol.1")}</span>
+                <a class="qlink" href={OOMOL_ACCOUNTS} target="_blank" rel="noopener noreferrer">
+                  {t("acct.connect.oomol")} ›
+                </a>
+              </li>
+              <li>
+                <span>{t("acct.step.oomol.2")}</span>
+                <a class="btn secondary sm" href={OOMOL_KEY_PAGE} target="_blank" rel="noopener noreferrer">
+                  <span class="lbl">{t("acct.key.get")}</span>
+                </a>
+              </li>
+              <li>
+                <span>{t("acct.step.oomol.3")}</span>
+              </li>
+            </ol>
+          ) : (
+            <label class="acct-field">
+              <span class="small">{t("acct.address")}</span>
+              <input id="acct-url" type="url" inputMode="url" autoComplete="off" spellcheck={false} value={url} onInput={(e) => setUrl((e.target as HTMLInputElement).value)} />
+            </label>
+          )}
+          <div class="acct-field">
+            <label class="small" for="acct-token">
+              {t("acct.key")}
+            </label>
+            <div class="acct-key">
+              <input
+                id="acct-token"
+                class={showNoKey ? "wrong" : undefined}
+                type={show ? "text" : "password"}
+                autoComplete="off"
+                autoCapitalize="off"
+                autoCorrect="off"
+                spellcheck={false}
+                enterKeyHint="go"
+                aria-invalid={showNoKey}
+                aria-describedby={showNoKey ? "acct-nokey" : undefined}
+                value={token}
+                onInput={(e) => {
+                  setToken((e.target as HTMLInputElement).value);
+                  if (noKey) setNoKey(false);
+                }}
+              />
+              <button type="button" class="qlink" aria-pressed={show} onClick={() => setShow(!show)}>
+                {t(show ? "acct.key.hide" : "acct.key.show")}
+              </button>
+            </div>
+            {showNoKey && (
+              <div id="acct-nokey" class="small warn" role="alert">
+                {t("acct.err.no_key")}
+              </div>
+            )}
           </div>
-        </div>
+          {refusal && <AcctRefusal reason={refusal} hosted={hosted} />}
+          {!hosted && (
+            <>
+              <button type="button" class="qlink" aria-expanded={how} onClick={() => setHow(!how)}>
+                {t(how ? "acct.how.hide" : "acct.how")} ›
+              </button>
+              {how && <div class="small sub steps">{t(`acct.how.${where}`)}</div>}
+            </>
+          )}
+          <div class="row">
+            <Btn kind="text" label={t("acct.cancel")} onClick={() => (setAdding(false), setToken(""), setNoKey(false), (A.connRefusal = undefined))} />
+            <button type="submit" class="btn primary" disabled={A.connecting || (!hosted && !url.trim())}>
+              <span class="lbl">{A.connecting ? t("acct.checking") : t("acct.check")}</span>
+            </button>
+          </div>
+        </form>
       )}
+      {!adding && refusal && <AcctRefusal reason={refusal} hosted={false} />}
       <div class="small sub">{t("acct.honest")}</div>
     </section>
   );

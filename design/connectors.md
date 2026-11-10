@@ -2,7 +2,8 @@
 
 > Draft 3 · 2026-11-09 · Branch `oo-connect` · Status: **D96 decided** (connections come from
 > the user's OpenConnector through Ducter's broker); **D122 decided** (with oo signed in, the
-> default way in is oo itself, §4.4); **the broker is built** (§4, as built);
+> default way in is oo itself, §4.4); **D158 decided** (OOMOL Hosted at its real `/v1/mcp` with a
+> console key, honest answers, research/44); **the broker is built** (§4, as built);
 > everything about proactive work (cadence, cap, look-back, watching) is still a proposal,
 > D97–D101 at the end. Evidence: `research/35` (prior art, Google access,
 > open-connector, metaphor test). Builds on principles 7, 15, 16, 17 and 18, D43, D61 (the
@@ -52,8 +53,12 @@ sign-in and the same first find (§6).
 
 - **Ducter doesn't hold provider accounts. The user's OpenConnector does** (D96). It is either
   OOMOL Hosted or their own self-hosted OpenConnector. Ducter attaches to its MCP endpoint
-  (`<base>/mcp`) with a Bearer runtime token, through Ducter's own broker in the control plane
-  on the computer Ducter lives on. Any other MCP server attaches the same way.
+  through Ducter's own broker in the control plane on the computer Ducter lives on:
+  - OOMOL Hosted: `https://connector.oomol.com/v1/mcp` with `Authorization: Bearer <API key>`,
+    the key made at `console.oomol.com/api-key` (D158, research/44);
+  - self-hosted: `<base>/mcp` with a Bearer runtime token from its Access page.
+
+  Any other MCP server attaches the same way.
 - **Or the user's oo does** (D122). With OOMOL's `oo` CLI signed in, Ducter reads the accounts
   connected there by running oo itself (§4.4). There is no token at all on Ducter's side for
   this kind: oo's sign-in stays in oo.
@@ -103,12 +108,24 @@ broker speaks only MCP.
   - Tokens are kept apart in `connection-tokens.json` (0600).
   - Removing a connection drops its token.
 - **Adding one.**
-  - The address is normalized: `/mcp` is appended to an OpenConnector base. Plain http is
-    allowed only for this machine or the local network, and an address with credentials, a
-    query or a fragment is refused.
+  - The address is normalized. Any form of `connector.oomol.com` (bare, `/mcp`, `/v1`,
+    `/v1/mcp`) is `https://connector.oomol.com/v1/mcp` (D158; a record saved at `/mcp` moves on
+    load); `/mcp` is appended to any other OpenConnector base. Plain http is allowed only for
+    this machine or the local network, and an address with credentials, a query or a fragment
+    is refused. A pasted key loses its spaces and line breaks.
+  - OOMOL Hosted with no key is refused before anything is sent (`no_key`).
   - Then the broker checks it. It connects, lists the tools, and recognises OpenConnector by
-    `search_actions`, `get_action_guide` and `execute_action`.
-  - Answers: `bad_url`, `unreachable`, `unauthorized`, `not_mcp`, `duplicate`.
+    `search_actions`, `get_action_guide` and `execute_action`; anything at OOMOL Hosted's
+    address is `oomol` whatever its list.
+  - The answer comes from the HTTP status the MCP SDK keeps in its error's `code` (its message
+    may hold only the server's text, like OOMOL's `token not found`): 401/403 `unauthorized`,
+    5xx `unreachable` (as are network failures), any other 4xx or a non-MCP answer `not_mcp`.
+    Also `bad_url`, `duplicate`, `no_key`.
+  - **What it can read** (D158): for an OpenConnector, `GET <base>/v1/apps?status=active` with
+    the same key lists the connected accounts; the virtual `no_auth:` and `marketplace:` entries
+    are left out. The add answer (`connection_result.readable`) and the row
+    (`ConnectionView.apps`) carry it; `[]` means connected, but no account there yet. It is
+    refreshed with the five-minute recheck.
 - **Read or write, from the server's own metadata, and conservative.**
   - For OpenConnector: `get_action_guide` → `capability.operationType`. Only `read` is a read;
     `write`, `destructive` and unknown are writes.
@@ -339,7 +356,7 @@ with Go, never a background action [I].
 | Path | What they do | Where their mail passes |
 |---|---|---|
 | **The accounts in oo** (D122; the default when oo is signed in) | Nothing: they already connected Gmail and the rest in oo. One tap on **用这些账号 / Use these accounts** | OOMOL's servers, and the AI account |
-| **OOMOL Hosted** (default in the form) | Sign in at OOMOL, connect Gmail and Calendar in the OOMOL console (OOMOL's verified Google apps), make a token for Ducter, paste it with `https://connector.oomol.com` | OOMOL's servers, and the AI account |
+| **OOMOL Hosted** (default in the form) | Sign in at OOMOL, connect Gmail, Discord and the rest at `console.oomol.com/app-connections` (OOMOL's verified Google apps), make a key at `console.oomol.com/api-key`, paste it (no address to type; D158) | OOMOL's servers, and the AI account |
 | **Self-hosted OpenConnector** | Run OpenConnector (Docker or its single binary), register their own Google OAuth client in its console (research/35 §2: publish it *In production, unverified*, never Testing, which drops grants every 7 days), connect, make a token for Ducter on `/access`, paste address and token. Or tap the oo one-tap | Their own machine, and the AI account |
 | **Another MCP server** | Paste its address (and token) | Whatever that server does |
 
@@ -468,13 +485,30 @@ examples.
   link, **用地址和钥匙加一个 / Add one with an address and key**. Added, the row reads **oo 里的账号
   / Accounts in oo**, "Gmail (2) · Slack · …", "经过 oo · 邮件和登录经过 OOMOL 的服务器 / Through oo ·
   your mail and sign-ins pass through OOMOL's servers". Screenshots: `.shots/oo-connect/`.
-- **Equip, as built.** On Partner, **加一个 / Add one** → where (OOMOL 托管 / Hosted by
-  OOMOL · 自己部署的 / Self-hosted · 其他服务 / Something else) → 地址 / Address, 钥匙 / Key →
-  **检查并加上 / Check and add**. The setup steps (OpenConnector's Access page, Create Token,
-  an MCP server's token) sit behind a quiet **怎么连 / How to connect** fold; the default
-  surface says only what it does for the person.
-  - The result line is "Ducter 现在能看 {name} 里的账号了 / Ducter can now read the accounts in
-    {name}".
+- **Equip, as built.** In Settings › 账号 / Accounts, **加一个 / Add one** → where (OOMOL 托管 /
+  Hosted by OOMOL · 自己部署的 / Self-hosted · 其他服务 / Something else) → **检查并加上 / Check
+  and add** (Return checks too).
+  - **Hosted by OOMOL (D158)** has no address field. Three plain steps, each with its page:
+    1. **在 OOMOL 登录，把 Gmail、Discord 这些账号连上。** · **去 OOMOL 连账号 / Connect
+       accounts in OOMOL** (`console.oomol.com/app-connections`);
+    2. **在 OOMOL 控制台新建一把钥匙。** · **去拿钥匙 / Get a key** (a button,
+       `console.oomol.com/api-key`);
+    3. **把钥匙粘贴到下面，再点“检查并加上”。**
+
+    Then 钥匙 / Key, masked, with **显示 / Show**. Checked empty, the field says **先把钥匙填上。**
+    in the failed ink and nothing is sent.
+  - Self-hosted and Something else: 地址 / Address, 钥匙 / Key; their setup steps
+    (OpenConnector's Access page, Create Token, an MCP server's token) sit behind a quiet **怎么连
+    / How to connect** fold.
+  - **The answer, in its own look (D158).** Added: **加上了 OOMOL，现在能看：Gmail、Discord** (done
+    look); added with nothing connected there: **加上了 OOMOL，不过那里还没有能看的账号。** (info
+    look) and on the row **连上了，但 OOMOL 里还没连任何账号。** · **去 OOMOL 连账号**; when it
+    didn't say: "Ducter 现在能看 {name} 里的账号了". A refusal shows in the open form as an alert
+    (failed tokens, **!**): **钥匙不对或已失效，换一把新的。** (with **去拿钥匙** for OOMOL) ·
+    **连不上这个地址。看看网络，过一会儿再试。** · **这个地址上没有 Ducter 能用的账号服务，看看地址对不对。**
+    Never in the done look. On the phone the same, in the card; the toast carries only an add.
+  - 连上 / connect for an account here is OOMOL's own word for what the person does in OOMOL's
+    console (D158); Ducter's own action stays 加上 / add.
   - 钥匙 / Key is OpenConnector's own word on its Access page. It is proposed for the
     glossary, as the one place a person handles one.
   - Never 授权 / authorize, 接入, or "connector" in UI.
@@ -558,16 +592,26 @@ connectors live, how they reach sessions, the engine, and Google access.
 - **Not done live:** the desktop app's form, and pressing Go on a real write (by design). The
   partner's Q1 answer said it "only fetched details for a few"; tightening that prompt is a
   later polish.
-- **OOMOL Hosted** (`https://connector.oomol.com/mcp`, probed without the author's
-  credentials):
-  - With no Authorization it answers `401 token not found`.
-  - With a made-up Bearer it answers `401 invalid token`, so it reads a Bearer token.
-  - `/.well-known/oauth-protected-resource` and `/.well-known/oauth-authorization-server` are
-    404, so it is not MCP OAuth. A static key as Bearer is the likely shape, which is what the
-    broker sends.
-  - **To confirm:** the author makes a key for Ducter in the OOMOL console and adds it on
-    Partner → Accounts it can read (Hosted by OOMOL). That's one tap and a paste. Since D122
-    the simpler path for an oo user is the oo tap (live-tested below).
+- **OOMOL Hosted** (D158, research/44; probed without the author's credentials):
+  - The MCP endpoint is `https://connector.oomol.com/v1/mcp` (OOMOL's own dsh-oomol and
+    connector-sdk). Without a key it answers `401` with
+    `WWW-Authenticate: Bearer resource_metadata=…/.well-known/oauth-protected-resource/v1/mcp`.
+  - `/mcp`, which Ducter first used, is not an endpoint: OOMOL's gateway answers every path with
+    `401 token not found` (a made-up Bearer: `invalid token`), so without a key it looked alive.
+    The MCP SDK keeps that 401 in its error's `code`, not its message, so the broker read it as
+    `not_mcp`. Both are fixed (§4.1).
+  - The key is an API key from `console.oomol.com/api-key`, sent as Bearer. Connected accounts
+    come from `GET /v1/apps?status=active`.
+  - Tests: `packages/core/test/connections.test.ts` "OOMOL Hosted (D158)" runs the real HTTP
+    linker against a look-alike (`fake-mcp.ts` with `path: "/v1/mcp"`, `plain401`, `apps`) for
+    no key, a wrong key, the right key pasted with spaces, connected-but-empty, a missing path,
+    and the `/mcp` record moving; `apps/desktop/internal/views/oomol_hosted_test.go` for the form
+    and every answer's look. `apps/web/demo-oomol.ts` serves the same look-alike for the phone.
+    Screenshots: `.shots/oomol/` (Mac and phone, zh and en, each outcome).
+  - **To confirm with a real key:** the author makes a key at `console.oomol.com/api-key` and
+    adds Hosted by OOMOL; the toast should list what is connected there. Not verified without a
+    key: the hosted tool list and the key's acceptance as Bearer (DOCUMENTED by OOMOL). Since
+    D122 the simpler path for an oo user is still the oo tap (live-tested below).
 - **The oo link (D122), unit and integration** (`packages/core/test/oo-link.test.ts`, a fake
   `oo` binary on a temp PATH, `fake-oo.ts`): the tools list only services with an account (no
   public or billed ones), the `connection` choice when a service has several, the input through a

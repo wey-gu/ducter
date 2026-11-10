@@ -240,6 +240,11 @@ note and a `Dn`) before it is built.
       `oo-gmail` skill tags `[write]` / `[destructive]`). Ask OOMOL to expose them, then use
       them over the verb rule (keep the rule as the fallback). Trigger: the next oo release, or
       a conversation with OOMOL.
+- [ ] **OOMOL Hosted with a real key** (D158, research/44 §6). The endpoint, header and accounts
+      list are from OOMOL's own code and docs and a keyless probe; not yet run with a key: that the
+      console key works as Bearer at `/v1/mcp`, the hosted tool list (`get_action_guide`'s
+      `operationType` there), and `/v1/apps` field values. Trigger: the author adds Hosted by OOMOL
+      with a key from `console.oomol.com/api-key`.
 - [ ] **A task loaded the user's own Claude skills** (`oo-gmail`) although the clean setup sets
       `userConfiguration: "exclude"`. oo is now signed out for every session (D122 (6)), but
       other user skills that act on accounts are still reachable. Check what OAR's exclude

@@ -10,7 +10,8 @@ Your partner can look in your mail, calendar, Slack, GitHub and other accounts w
 ("最近几天邮件里有没有需要我留意的事？" / "anything in my mail I should know about?"). It reads on
 its own. Anything that would send, change or delete something waits for you to say **Go**.
 
-You add accounts on the **Partner** page, under **Accounts it can read**.
+You add accounts in **Settings**, under **Accounts** (**Accounts it can read**), on the Mac or the
+phone.
 
 ## If you use oo: one tap
 
@@ -27,7 +28,7 @@ two accounts for one service (a work and a personal Gmail), your partner can rea
 
 If the card says oo isn't signed in, run `oo login` in a terminal, then tap again.
 
-## Without oo: an address and a key
+## Without oo: a key
 
 Choose **Add one** (or **Add one with an address and key** under the oo card), then pick where
 your accounts are connected:
@@ -39,8 +40,34 @@ your accounts are connected:
   app with Google in OpenConnector.
 - **Something else**: any other MCP server.
 
+### Hosted by OOMOL
+
+There is no address to type. The card shows three steps:
+
+1. Sign in to OOMOL and connect Gmail, Discord and the rest. **Connect accounts in OOMOL** opens
+   [the page for that](https://console.oomol.com/app-connections).
+2. Make a new key in the OOMOL console. **Get a key** opens
+   [console.oomol.com/api-key](https://console.oomol.com/api-key).
+3. Paste the key under **Key**, then **Check and add** (or press Return). **Show** lets you check
+   what you pasted; spaces and line breaks that come along with a paste are dropped.
+
+What you might see:
+
+- **Added OOMOL. It can now read Gmail, Discord.** It worked, and that's what your partner can
+  read.
+- **Connected, but no accounts are connected in OOMOL yet.** The key works, but there's nothing
+  in OOMOL to read. Connect your accounts there (the link is right under it); they show up here
+  within a few minutes.
+- **Paste a key first.** The key field was empty; nothing was sent.
+- **That key was refused or has expired.** Make a new one with **Get a key** and paste it again.
+- **Can't reach that address.** Check your internet connection and try again in a moment.
+
+### Self-hosted or something else
+
 Paste the address and the key, then **Check and add**. **How to connect**, under the key, lists
-the steps for the choice you picked. The key is kept only in Ducter's own data folder.
+the steps for the choice you picked.
+
+The key is kept only in Ducter's own data folder, and is never shown again.
 
 ## What it does with them
 

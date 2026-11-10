@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+<!-- whats-new
+zh: App 支持 iPad 和 iPhone Duo；宽屏时对话和手头的事并排
+en: The app runs on iPad and iPhone Duo; wide screens show On hand beside the chat
+-->
+
+**iPad and iPhone Duo**
+- The iPhone app is now one app for iPhone and iPad (same TestFlight link): every orientation,
+  Split View, Slide Over and Stage Manager; turning or resizing keeps what you were reading and
+  typing.
+- On a wide screen the conversation stays on the left and On hand, or the task you opened, stands
+  beside it. Narrower, it is one column as on a phone.
+- With a keyboard: ⌘N new task, ⌘1 conversation, ⌘2 On hand, ⌘3 your devices, ⌘4 partner, ⌘,
+  Settings, ⌘K the box to write in, Esc back one level. Sheets open in the middle on an iPad.
+- An iPad calls itself an iPad: "this iPad" in the copy, "iPad · Ducter" in your devices.
+
 ## 0.0.8
 
 <!-- whats-new

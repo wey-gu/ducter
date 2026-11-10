@@ -18,7 +18,9 @@ that the main serves at `/app`, plus APNs notifications through the notification
 | Entitlements | `apps/ios/Ducter/Ducter.entitlements`: `aps-environment = development` (distribution signing rewrites it to `production`) and `keychain-access-groups` `$(AppIdentifierPrefix)$(DUCTER_BUNDLE_ID).shared`; `DucterNotify/DucterNotify.entitlements`: the same keychain group |
 | Capabilities the App IDs need | The app: Push Notifications. The extension: none. Keychain sharing within the team needs no capability; no app groups, no iCloud, no associated domains |
 | Version | `MARKETING_VERSION` (default `0.1.0`), build `CURRENT_PROJECT_VERSION` (default `1`); override both on the command line |
-| Deployment target | iOS 17.0, iPhone only, portrait |
+| Deployment target | iOS 17.0, universal (D176): iPhone in portrait and landscape, iPad in all four orientations with Split View, Slide Over and Stage Manager (`UIRequiresFullScreen` false, one scene); the extension too |
+| Icons | The one `AppIcon` 1024 source; Xcode makes every iPhone and iPad size (`AppIcon76x76` for iPad) |
+| SDK | Xcode 26 builds and uploads. iPhone Duo shows the app full-screen only from the iOS 27.1 SDK (research/49): CI sets `DUCTER_XCODE=27.1` and `testflight.sh` uses `/Applications/Xcode_27.1.app` when the runner has it, else the default Xcode with a warning |
 | Export options | `apps/ios/ExportOptions.plist` (`app-store-connect`, automatic signing, `destination = export`) |
 | Encryption | `ITSAppUsesNonExemptEncryption = NO` in Info.plist (no export-compliance question per build). D159's notification encryption uses only CryptoKit, encryption within the Apple OS, which Apple lists as exempt (INFERRED from Apple's export-compliance guidance; confirm if App Store review asks) |
 | Local overrides | `apps/ios/Local.xcconfig` (gitignored) for another team or bundle id |
@@ -27,6 +29,21 @@ Verified on this Mac (Xcode 26.3): `Debug` builds and runs in the iOS 26.3 simul
 `Release` archive works from the command line, with `MARKETING_VERSION` and
 `CURRENT_PROJECT_VERSION` set by command-line overrides. A signed archive was **not** run:
 the App ID doesn't exist yet (see below).
+
+Universal (D176), verified on this Mac (2026-11-10): Debug builds for iPad Pro 13-inch (M5) and
+iPhone 17 Pro Max simulators; the built app and its extension list `UIDeviceFamily` 1 and 2, and
+the asset catalog has the iPad icon; the unsigned Release archive (`DUCTER_TESTFLIGHT_DRY_RUN=1
+scripts/ci/testflight.sh`) succeeds. Screens in `.shots/ipad/` (the app in iPad Pro 13", iPad mini
+and iPhone 17 Pro Max simulators; the page at 18 widths from 320 to 1366 in headless Chromium).
+Not verified here: an iPhone Duo simulator and a 27.1 SDK build (Xcode 27.1), the native window in
+Split View or Stage Manager (simctl can't size it), and a signed universal upload.
+
+**App Store Connect and iPad.** TestFlight needs nothing new: a universal build installs on iPads
+for every tester, internal or public. Only **App Store review** (a public release) needs iPad
+screenshots: 13-inch iPad, 2064 × 2752 or 2048 × 2732, in App Store Connect › the app ›
+the version › iPad (`.shots/ipad/sim/ipadpro13-*` are the right size). iPhone Duo screenshots are
+optional; they add a "Made for iPhone Duo" badge. Once a version with iPad support is on the
+App Store, the app can't drop iPad again.
 
 ## CI commands
 
@@ -115,4 +132,9 @@ xcrun simctl launch booted co.nowledge.ducter.ios -pairLink 'http://<lan-ip>:777
 xcrun simctl push booted co.nowledge.ducter.ios payload.apns   # category DUCTER_DECISION shows Go/Hold/Reply
 ```
 
-`-pairLink` and `-open 'app#onhand'` are Debug-only launch arguments.
+`-pairLink`, `-open 'app#onhand'` and `-orientation landscape` are Debug-only launch arguments.
+`-orientation` turns an iPhone; an iPad, which supports multitasking, refuses to be turned by the
+app, so iPad landscape is checked at its widths in a browser. For an iPad, use
+`-destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M5)'`; with a hardware keyboard the
+iPad's menu bar and ⌘-hold list show New task (⌘N), the places (⌘1–⌘4), Settings (⌘,) and
+Talk to {name} (⌘K).

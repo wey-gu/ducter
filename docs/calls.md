@@ -15,7 +15,9 @@ to Tuwa once, and you pay Tuwa for the minutes, on Tuwa's own pages. Ducter neve
 
 ## Connect calling
 
-1. Open **Settings › Accounts** and tap **Connect Tuwa** on the **Make calls** card.
+1. Open **Settings › Accounts** and tap **Connect Tuwa** on the **Make calls** card. (Or tap
+   **+ Calls** on the card of the computer Ducter lives on, under
+   [Your devices](devices.md): it takes you to the same place and starts the same sign-in.)
 2. A short code and a link appear (on a Mac, a QR code too). On your phone, open the link or scan the
    code, check that the code matches, and sign in with your Chekusu account (Tuwa's sign-in).
 3. The card turns into **Calls · Tuwa: Ready to call**.

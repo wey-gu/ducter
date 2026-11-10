@@ -19,7 +19,7 @@ same card later.
 | **Before** | Annoyed: a call is a context switch and 10 minutes of hold music | Anxious: a foreign language, a stranger, a booking that might go wrong | Doubtful it can, a little uneasy about a robot speaking for them |
 | **After** | The task never stopped; one card, one tap, an outcome line | Relief and a small delight: "two counter seats tomorrow at 7:30", in their own language | Trust: they saw exactly what would be said before it was said, and heard how it went |
 | **Emotional value** | Attention saved (principle 7) | 惊喜 + 放心 | 放心: nothing happens in their name without their yes |
-| **How it starts, zero setup** | Settings › Accounts › **打电话 / Make calls** › **连上 Tuwa / Connect Tuwa**: a code and a QR, approved on the phone | The same, from the phone: the sign-in page opens on the same phone | Asking for a call before connecting: the partner says in one line where to connect |
+| **How it starts, zero setup** | Settings › Accounts › **打电话 / Make calls** › **连上 Tuwa / Connect Tuwa**: a code and a QR, approved on the phone; or **+ 打电话** on the home's card in 你的设备 (D199), which opens the same place and starts the same sign-in | The same, from the phone: the sign-in page opens on the same phone | Asking for a call before connecting: the partner says in one line where to connect; browsing the home's card, the 打电话 chip shows the ability exists |
 
 North star (D36): 好用, one card per call; 顺滑, the call lives in On hand like a task; 赏心悦目, the
 clay phone (`ab_call`, grey `ab_call_locked` until connected); 放心, the card shows who, what will

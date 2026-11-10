@@ -78,21 +78,36 @@ export function versionLine(L: Words, h: DeviceHarness): string {
   return how ? L.t("coin.version", h.version, how) : L.t("agentv.version", h.version);
 }
 
-export type ChipLook = "on" | "off" | "add" | "fail";
+export type ChipLook = "on" | "off" | "add" | "fail" | "later";
 
-/** The ability chips a device gets, in order (web, computer, remote; later ones aren't shown). */
+/**
+ * The ability chips a device gets, in order: 上网 · 用电脑 · 在哪儿都能用 as it has them, then on the
+ * home 打电话 (D199: on with a calling connection, + to add one, failed when its sign-in is gone),
+ * then the home's abilities still to come as ghosts (用电脑 · 用手机, 以后会有), which only explain.
+ * Another computer shows none of the later ones. The same rules as the desktop's chipSpecs.
+ */
 export function chipsFor(dv: DeviceView): { id: string; look: ChipLook }[] {
   const out: { id: string; look: ChipLook }[] = [];
-  for (const id of ["web", "computer", "remote"]) {
+  const ghosts: { id: string; look: ChipLook }[] = [];
+  for (const id of ["web", "computer", "remote", "call", "phone"]) {
     const ab = dv.abilities.find((a) => a.id === id);
-    if (!ab || ab.state === "later") continue;
+    if (!ab) continue;
+    if (ab.state === "later") {
+      if (dv.home) ghosts.push({ id, look: "later" });
+      continue;
+    }
+    if (id === "call") {
+      if (dv.home) out.push({ id, look: ab.state !== "on" ? "add" : ab.reason === "signed_out" ? "fail" : "on" });
+      continue;
+    }
+    if (id === "phone") continue;
     let look: ChipLook = "off";
     if (id === "web" && ab.where === "ducter" && ab.state === "unavailable" && ab.reason !== "env_off") look = "fail";
     else if (ab.state === "on") look = "on";
     else if (ab.state === "off" && dv.state === "awake") look = "add";
     out.push({ id, look });
   }
-  return out;
+  return [...out, ...ghosts];
 }
 
 /** An agent update under way. */

@@ -189,6 +189,8 @@ export interface PhoneDeps {
   partnerName: () => string;
   /** The words the Go button carries ("打过去" / "Call"), for the provider's personReply. */
   onChange?: () => void;
+  /** D199: the calling connection came or went (the home's 打电话 follows it). */
+  onCalling?: () => void;
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -245,7 +247,16 @@ export function openPhone(deps: PhoneDeps): Phone {
   let foundAt = 0;
   async function resolve(): Promise<typeof found> {
     if (found && clock.now() - foundAt < 5 * 60_000 && deps.connections.view().some((c) => c.id === found!.connectionId)) return found;
+    const was = found?.connectionId;
     found = undefined;
+    const now = await find().catch((e) => {
+      if (was) deps.onCalling?.();
+      throw e;
+    });
+    if (now?.connectionId !== was) deps.onCalling?.();
+    return now;
+  }
+  async function find(): Promise<typeof found> {
     for (const c of deps.connections.view()) {
       if (c.source !== "mcp") continue;
       const tools = await deps.connections.toolsOf(c.id).catch(() => undefined);

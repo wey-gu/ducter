@@ -29,7 +29,7 @@ import { createPusher, openPushStore, type Pusher, type PushStore } from "./push
 import { createApnsSender, createAppPushSender, loadApnsConfig, type ApnsSender } from "./apns.ts";
 import { createRelayClient, relayUrl, type RelayFetch } from "./push-relay.ts";
 import { webApi, webStatic } from "./web.ts";
-import { createDevicesView, type DeviceProbes, type DevicesView } from "./devices.ts";
+import { callAbility, createDevicesView, type DeviceProbes, type DevicesView } from "./devices.ts";
 import { openSettings, type SettingsStore } from "./settings.ts";
 import { openRules, type RulesStore } from "./rules.ts";
 import { createLoadout, isRuleHint, registerRuleTools, type Loadout } from "./loadout.ts";
@@ -292,6 +292,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     zone: () => settings.get().quiet?.tz ?? opts.work?.defaultZone ?? (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"),
     partnerName: () => persona.name,
     onChange: () => onHandChanged(),
+    onCalling: () => devicesView?.changed(), // D199: the home's 打电话
   });
   tasks.setDecorator((o) => {
     const on = decorateBrowsing(changes.decorate(work.decorate(o)));
@@ -473,10 +474,11 @@ export function startCore(opts: CoreOptions = {}): Core {
     ...(a.exists ? { exists: a.exists } : {}),
   });
   agentsRef = agents;
-  devicesView = createDevicesView({ dataDir, auth: devices, workers, connected: () => ws.connected(), probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, agents: () => agents, mem: () => memPluginsRef, ...(agentTesting ? {} : { piBundled: bundledPiVersion }), self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` }, ...(browser ? { browser } : {}), ...(opts.platform ? { platform: opts.platform } : {}), onDisconnect: (id) => {
+  devicesView = createDevicesView({ dataDir, auth: devices, workers, connected: () => ws.connected(), probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, agents: () => agents, mem: () => memPluginsRef, ...(agentTesting ? {} : { piBundled: bundledPiVersion }), self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` }, ...(browser ? { browser } : {}), ...(opts.platform ? { platform: opts.platform } : {}), call: () => callAbility(phone.available(), connections.view()), onDisconnect: (id) => {
     for (const s of push.forget(id)) void apns.revoke?.(s);
   } });
   updates.onChange(() => devicesView?.changed());
+  connections.onChange(() => devicesView?.changed()); // D199: 打电话 signed in, signed out, removed
   agents.onChange(() => devicesView?.changed());
   // D169: Nowledge Mem in the user's own agents, per device. Checked at start, each day, when a
   // computer comes online, and after a sign-in or an agent update (both refresh the devices).

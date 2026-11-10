@@ -40,6 +40,13 @@ top to bottom like a character in a game:
   of the row lists the agents not on that device yet.
 - **What it can do:** a few chips, such as **Browse**, **Use apps** and **From anywhere**. One tap
   turns one on or off. The small **i** on a chip says what it does.
+  - **Calls** is on the card of the computer Ducter lives on, because a call doesn't run on any
+    one computer. **+ Calls** takes you to **Settings › Accounts** and starts connecting Tuwa,
+    the phone line Ducter calls through; once it's connected, tapping **Calls** opens its card
+    there. If your Tuwa sign-in runs out, the chip says **Sign in again**. See
+    [Phone calls](calls.md).
+  - Faded chips marked **coming later**, such as **Use a phone**, show what Ducter will be able to
+    do in a later version. Tap one to read what it will do; there is nothing to turn on yet.
 - **How it's connected:** one quiet line, such as *Connected via the app and command line*. The
   **⋯** beside it shows each connection with its own **Disconnect**.
 - **Disconnect this MacBook** is at the very bottom. Ducter asks once and says what it means; to

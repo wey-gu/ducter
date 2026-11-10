@@ -67,6 +67,19 @@ export interface DevicesOptions {
   piBundled?: () => string | undefined;
   /** D155 + D159: a device was disconnected (its phone's notifications stop at once). */
   onDisconnect?: (deviceId: string) => void;
+  /** D199: 打电话 on the home, from the calling connection (`callAbility`); off when absent. */
+  call?: () => DeviceAbility;
+}
+
+/**
+ * D199: 打电话 / Make calls, as the home's ability: on while a calling connection is there (signed
+ * out when its sign-in is gone, D193's 需要重新登录), off before one. Calls don't run on a computer,
+ * so only the home has it.
+ */
+export function callAbility(calling: { connectionId: string } | undefined, connections: { id: string; state: string }[]): DeviceAbility {
+  const c = calling && connections.find((x) => x.id === calling.connectionId);
+  if (!c) return { id: "call", state: "off" };
+  return c.state === "unauthorized" ? { id: "call", state: "on", reason: "signed_out" } : { id: "call", state: "on" };
 }
 
 export interface DevicesView {
@@ -323,7 +336,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
       state: "awake", // this answer comes from it
       alwaysOn: alwaysOnKind(me.kind),
       harnesses: agentsView("local", me.harnesses.map((h) => deviceHarness(h))),
-      abilities: [webAbility(me.cua, me.native), later("computer"), { id: "remote", state: remoteOn ? "on" : "off" }, later("phone"), later("call")],
+      abilities: [webAbility(me.cua, me.native), later("computer"), { id: "remote", state: remoteOn ? "on" : "off" }, later("phone"), o.call?.() ?? { id: "call", state: "off" }],
       ...(o.self ? { version: o.self.version, platform: o.self.platform } : {}),
     };
     const up = o.updates?.();
@@ -363,7 +376,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
           ),
           // D157: a worker browses with its own browsers and says how in its hello; a Ducter
           // there from before that says nothing, so its card asks for an update.
-          abilities: [hello?.abilities?.find((a) => a.id === "web") ?? { id: "web", state: "unavailable", reason: "worker_old" }, later("computer"), later("phone"), later("call")],
+          abilities: [hello?.abilities?.find((a) => a.id === "web") ?? { id: "web", state: "unavailable", reason: "worker_old" }, later("computer"), later("phone")], // D199: no 打电话 here (the home's)
           alwaysOn: hello?.alwaysOn ?? alwaysOnKind(kind),
         } satisfies DeviceView;
       });
@@ -437,6 +450,10 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
         writeAbilitySettings(o.dataDir, { web: on });
         changed();
         return res(true);
+      case "call":
+        // D199: a calling connection is added (and removed) in Settings › Accounts, where its
+        // sign-in runs; the clients route there, never here.
+        return res(false, "failed");
       case "remote":
         // On = a device pairs with a code (pair_code); off would disconnect every paired client,
         // which is `ducter devices disconnect` per device, not a switch here.

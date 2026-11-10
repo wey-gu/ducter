@@ -109,6 +109,9 @@ export interface SignInView {
   qr?: string[]; // the link with the code, as QR rows ("1" dark), for a phone to scan from a Mac
 }
 
+/** Tuwa's MCP address: the calling connection Accounts' offer and the home's 打电话 add (D193, D199). */
+export const TUWA_MCP = "https://api.tuwa.ai/mcp";
+
 /** The E.164 form of a number the partner or owner wrote, or undefined (no letters, 8–15 digits). */
 export function e164(raw: string): string | undefined {
   const s = raw.trim().replace(/[\s().\- ]/g, "");

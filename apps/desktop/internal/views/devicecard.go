@@ -654,13 +654,16 @@ const (
 	chipOff
 	chipAdd
 	chipFail
+	chipLater // D199: still to come: a ghost that only explains itself
 )
 
 // chipSpec is one ability chip: its words and clay, how it looks, what a
-// tap does, and its ⓘ note.
+// tap does, and its ⓘ note. state words a failed chip's trouble when it
+// isn't "didn't start" (打电话: 需要重新登录).
 type chipSpec struct {
 	id, label, art string
 	look           chipLook
+	state          string
 	busy           bool
 	tap            func(art ui.Rect)
 	info           func() // the ⓘ note's body; nil: none
@@ -700,7 +703,9 @@ func (a *App) infoText(c *ui.Context, s string) {
 
 // chipSpecs are the chips a device gets, in order: 替 {home} 做事 first on
 // this Mac when it can do tasks for a home elsewhere, then 上网 · 用电脑 ·
-// 在哪儿都能用 as that device has them.
+// 在哪儿都能用 as that device has them; on the home 打电话 (D199), then the
+// abilities still to come as ghosts (用电脑 · 用手机, 以后会有). The same
+// rules as the web's chipsFor (apps/web/src/sheet.ts).
 func (a *App) chipSpecs(c *ui.Context, card string, dv *protocol.DeviceView, cl *protocol.ReachClient) []chipSpec {
 	var out []chipSpec
 	computer := ""
@@ -716,14 +721,80 @@ func (a *App) chipSpecs(c *ui.Context, card string, dv *protocol.DeviceView, cl 
 	if dv == nil {
 		return out
 	}
-	for _, id := range []string{protocol.AbilityWeb, protocol.AbilityComputer, protocol.AbilityRemote} {
+	var ghosts []chipSpec
+	for _, id := range []string{protocol.AbilityWeb, protocol.AbilityComputer, protocol.AbilityRemote, protocol.AbilityCall, protocol.AbilityPhone} {
 		ab := dv.Ability(id)
-		if ab == nil || ab.State == protocol.AbilityLater {
-			continue
+		switch {
+		case ab == nil:
+		case ab.State == protocol.AbilityLater:
+			if dv.Home {
+				ghosts = append(ghosts, a.laterSpec(c, card, id))
+			}
+		case id == protocol.AbilityCall:
+			if dv.Home {
+				out = append(out, a.callSpec(c, card, ab))
+			}
+		case id == protocol.AbilityPhone:
+		default:
+			out = append(out, a.abilitySpec(c, card, dv, ab))
 		}
-		out = append(out, a.abilitySpec(c, card, dv, ab))
 	}
-	return out
+	return append(out, ghosts...)
+}
+
+// toggleChipInfo opens or closes a chip's ⓘ note.
+func (a *App) toggleChipInfo(card, id string) {
+	s := &a.devState().card.sheet
+	if s.info == card+"|"+id {
+		s.info = ""
+	} else {
+		s.info = card + "|" + id
+	}
+}
+
+// laterSpec is an ability still to come (D199): its desaturated clay and
+// 以后会有, so the home shows what is coming; a tap only explains it.
+func (a *App) laterSpec(c *ui.Context, card, id string) chipSpec {
+	return chipSpec{id: id, label: a.L.T("chip." + id), art: abilityLaterArt(id), look: chipLater,
+		tap:  func(ui.Rect) { a.toggleChipInfo(card, id) },
+		info: func() { a.infoText(c, a.L.T("ability."+id+".about")) }}
+}
+
+// callSpec is 打电话 on the home (D199): on while a calling connection is
+// there, and a tap opens its phone card in Accounts; + starts the same
+// Tuwa sign-in as the offer there; its sign-in gone, it says so and the
+// card signs in again.
+func (a *App) callSpec(c *ui.Context, card string, ab *protocol.DeviceAbility) chipSpec {
+	sp := chipSpec{id: protocol.AbilityCall, label: a.L.T("chip.call"), art: abilityArt(protocol.AbilityCall)}
+	where := "ability.call.where"
+	switch {
+	case ab.State == protocol.AbilityOn && ab.Reason == "signed_out":
+		sp.look, sp.state, where = chipFail, a.L.T("chip.call.signed_out"), "ability.call.signed_out"
+		sp.tap = func(ui.Rect) { a.openCalls(false) }
+	case ab.State == protocol.AbilityOn:
+		sp.look = chipOn
+		sp.tap = func(ui.Rect) { a.openCalls(false) }
+	default:
+		sp.look = chipAdd
+		sp.tap = func(ui.Rect) { a.openCalls(true) }
+	}
+	sp.info = func() {
+		a.infoText(c, a.L.T("ability.call.about"))
+		a.reasonLine(c, a.L.T(where))
+	}
+	return sp
+}
+
+// openCalls goes where calls are kept (D199): Settings › Accounts, with
+// the phone card or the offer; add starts the offer's own Tuwa sign-in
+// there (never a second flow).
+func (a *App) openCalls(add bool) {
+	p := a.ph()
+	a.openTab(TabAccounts)
+	if add && !p.connecting && a.phoneConn() == nil && !(a.S.SignIn != nil && a.S.SignIn.State == "waiting") {
+		p.connecting = true
+		a.send(protocol.ConnectionAdd{T: "connection_add", URL: protocol.TuwaMCP})
+	}
 }
 
 // workerChip is D155's switch as the first chip: 替 {home} 做事.
@@ -888,7 +959,9 @@ func (a *App) abilityChip(c *ui.Context, card string, sp chipSpec) {
 	case chipOff:
 		acc += " · " + a.L.T("chip.state.off")
 	case chipFail:
-		acc += " · " + a.L.T("chip.failed")
+		acc += " · " + firstNonEmpty(sp.state, a.L.T("chip.failed"))
+	case chipLater:
+		acc += " · " + a.L.T("chip.state.later")
 	}
 	chip := ui.Row(c.Key("chip:" + key)).Height(chipH).Gap(6).Radius(t.ButtonRadius[1]).AlignItems(ui.Center).
 		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(acc).Focusable().AccessSelected(sp.look == chipOn).Shrink(0)
@@ -915,6 +988,10 @@ func (a *App) abilityChip(c *ui.Context, card string, sp chipSpec) {
 	case chipFail:
 		chip.Background(t.Failed.Surface)
 		fg = t.Failed.Ink
+	case chipLater:
+		// No base to sink into: it isn't a switch yet.
+		chip.Background(t.Sunken).Opacity(0.8)
+		fg = t.InkMuted
 	}
 	if sp.busy {
 		chip.Opacity(0.7)
@@ -922,7 +999,7 @@ func (a *App) abilityChip(c *ui.Context, card string, sp chipSpec) {
 	still := c.Preferences().ReduceMotion
 	// The press: it sinks into its base (70 ms).
 	sink := float32(0)
-	if chip.Pressed() {
+	if chip.Pressed() && sp.look != chipLater {
 		sink = 2
 	}
 	if !still {
@@ -986,6 +1063,9 @@ func (a *App) abilityChip(c *ui.Context, card string, sp chipSpec) {
 			artR = box.Bounds()
 		}
 		ui.Text(c, label).FontSize(14).FontWeight(700).TextColor(fg).SingleLine().AccessHidden(true)
+		if sp.look == chipLater {
+			ui.Text(c, a.L.T("chip.state.later")).FontSize(t.XS).FontWeight(600).TextColor(t.InkMuted).SingleLine().AccessHidden(true)
+		}
 		if sp.info != nil {
 			// ⓘ sits on the chip's corner, shown on hover, so nothing moves.
 			i := ui.Box(c.Key("chip-i:"+key)).Absolute().Right(-6).Top(-7).Size(18, 18).Radius(9).Background(t.Surface).
@@ -1007,7 +1087,9 @@ func (a *App) abilityChip(c *ui.Context, card string, sp chipSpec) {
 		}
 	})
 	if chip.Clicked() && !infoHit && sp.tap != nil {
-		s.squish[key] = a.Now()
+		if sp.look != chipLater {
+			s.squish[key] = a.Now()
+		}
 		sp.tap(artR)
 		c.Invalidate()
 	}

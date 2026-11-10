@@ -14,6 +14,15 @@ function readPage(maxLines: number) {
     const ac = (el.autocomplete || "").toLowerCase();
     return el.type === "password" || ac.includes("one-time-code") || ac.includes("current-password") || ac.includes("new-password") || /otp|2fa|totp|passcode/i.test(el.name + " " + el.id);
   };
+  // D191: a card's number or code: filled only from a saved card, after the user's Go.
+  const CARD = (el: any): "number" | "code" | "" => {
+    if (!(el instanceof HTMLInputElement)) return "";
+    const ac = (el.autocomplete || "").toLowerCase();
+    const n = `${el.name} ${el.id}`;
+    if (ac.includes("cc-number") || /card.?num|cc.?num|cardnumber|pan\b/i.test(n)) return "number";
+    if (ac.includes("cc-csc") || /cvc|cvv|csc|security.?code/i.test(n)) return "code";
+    return "";
+  };
   const visible = (el: any): boolean => {
     const r = (el as any).getBoundingClientRect?.();
     if (!r || (r.width === 0 && r.height === 0)) return false;
@@ -59,9 +68,18 @@ function readPage(maxLines: number) {
       let extra = "";
       if (el instanceof HTMLInputElement) {
         kind = el.type === "submit" || el.type === "button" ? "button" : `${el.type || "text"} field`;
-        if (SECRET(el)) {
+        const card = CARD(el);
+        if (el.getAttribute("data-ducter-filled")) {
+          // D191: filled from saved: the value never comes back.
+          if (SECRET(el)) kind = el.type === "password" ? "password field" : "one-time-code field";
+          else if (card) kind = card === "number" ? "card number field" : "card code field";
+          extra = " (filled from saved; hidden)";
+        } else if (SECRET(el)) {
           kind = el.type === "password" ? "password field" : "one-time-code field";
-          extra = " (the user's to fill: ask them to sign in)";
+          extra = " (the user's to fill: ask them to sign in, or browser_fill from a saved sign-in)";
+        } else if (card) {
+          kind = card === "number" ? "card number field" : "card code field";
+          extra = " (only from a saved card: browser_ask_to_pay, then browser_fill)";
         } else if (el.type === "checkbox" || el.type === "radio") extra = el.checked ? " (checked)" : " (not checked)";
         else if (el.value) extra = ` = "${clean(el.value).slice(0, 80)}"`;
       } else if (el instanceof HTMLTextAreaElement) {
@@ -112,7 +130,8 @@ export function locateExpression(ref: number): string {
     const ac = ((el.autocomplete || "") + "").toLowerCase();
     const secret = el instanceof HTMLInputElement && (el.type === "password" || ac.includes("one-time-code") || ac.includes("current-password") || ac.includes("new-password") || /otp|2fa|totp|passcode/i.test(el.name + " " + el.id));
     const field = el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el.isContentEditable;
-    return { x: r.left + r.width / 2, y: r.top + r.height / 2, secret, field, tag: el.tagName.toLowerCase(), type: el.type || "" };
+    const card = el instanceof HTMLInputElement && (ac.includes("cc-number") || ac.includes("cc-csc") || /card.?num|cc.?num|cardnumber|pan\\b|cvc|cvv|csc|security.?code/i.test(el.name + " " + el.id));
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2, secret, field, card, filled: !!el.getAttribute("data-ducter-filled"), tag: el.tagName.toLowerCase(), type: el.type || "" };
   })()`;
 }
 

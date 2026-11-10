@@ -17,9 +17,9 @@ const PARTNER_TOOLS = [
   "ask", "connection_call", "connection_guide", "connection_search", "connection_share", "connections_list",
   "keep_going", "log_read", "log_search", "memory_add", "memory_search", "move_before_closing",
   "notice_rule",
-  "routine_list", "routine_pause", "routine_propose", "rule_list", "rule_save", "task_open",
+  "routine_list", "routine_pause", "routine_propose", "rule_list", "rule_save", "saved_list", "task_open",
   "task_read", "task_retitle", "task_send", "wait_cancel", "wait_for", "wait_until",
-];
+]; // saved_list (D191, 0.4K): listed only once something is saved in Autofill (seeded below)
 const TASK_TOOLS = ["checkpoint", "log_read", "log_search", "memory_search", "report_to_main", "wait_for"]; // memory_search: only where Mem is connected and the plugin is absent (D168)
 /** JSON characters of the whole tools/list result (≈ chars / 3.6 tokens). */
 const CEILING = {
@@ -33,6 +33,7 @@ let partner: PartnerHandle;
 beforeAll(() => {
   dir = mkdtempSync(join(tmpdir(), "ducter-tools-"));
   core = startCore({ dataDir: dir, port: 0, push: false, platform: "darwin" });
+  core.autofill.store.put({ kind: "card", name: "Budget", number: "4242424242424242", expMonth: 12, expYear: 2099 });
   registerTaskTools(core as never, {});
   partner = createPartner(core as never, fakeRunner(() => {}).runner, { prewarm: false, spine: false, persistState: false, onError: () => {} });
 });

@@ -38,7 +38,7 @@ function morph(apply: () => void) {
   });
 }
 /** Settings (D150) is a list of sections; page is the one pushed ("" is the list). */
-export type SettingsPage = "" | "partner" | "notify" | "accounts" | "devices" | "phone";
+export type SettingsPage = "" | "partner" | "notify" | "accounts" | "autofill" | "devices" | "phone";
 export type Sheet = { kind: "decision"; id: string } | { kind: "settings"; page?: SettingsPage } | { kind: "newtask" } | null;
 
 /** 开一件事 / New task's sheet (D128): what the user chose and typed, and how starting went. */
@@ -122,6 +122,11 @@ class AppState {
   devices?: DeviceView[];
   /** D151: the signed-in sites of Ducter's browser on the home, once asked for. */
   sites?: Extract<ServerFrame, { t: "browser_sites" }>;
+  /** D191: 自动填充 / Autofill (names, last four, where used; never a secret). */
+  saved?: Extract<ServerFrame, { t: "saved" }>;
+  /** The last save or remove from this window failed (its form shows why). */
+  savedFailed = false;
+  private savedDone?: () => void;
   reach?: Reach;
   deviceAnswer?: { device: string; reason: UpdateReason | "name_taken" | "failed" };
   /** D156: the last agent update that was refused, on its row. */
@@ -255,6 +260,12 @@ class AppState {
     if (f.t === "browser_sites") {
       if (f.ok === false && f.message) this.toast(f.message);
       return void ((this.sites = f), this.changed());
+    }
+    if (f.t === "saved") {
+      this.saved = f;
+      if (f.ok === true) (this.savedFailed = false), this.savedDone?.(), (this.savedDone = undefined);
+      else if (f.ok === false) this.savedFailed = true;
+      return void this.changed();
     }
     if (f.t === "settings") return this.applySettings(f);
     if (f.t === "rules") return void ((this.rules = f.rules), this.changed());
@@ -887,6 +898,28 @@ class AppState {
     this.changed();
   }
 
+  /** D191: save one sign-in, card or the details; `done` runs when the home says it is saved. */
+  savedPut(item: import("@ducter/protocol").SavedInput, done?: () => void) {
+    this.savedFailed = false;
+    this.savedDone = done;
+    this.send({ t: "saved_put", item });
+  }
+  savedRemove(id: string, done?: () => void) {
+    this.savedFailed = false;
+    this.savedDone = done;
+    haptic("warning");
+    this.send({ t: "saved_remove", id });
+  }
+  /** D191: Go on a 付款 / Pay card, with the card's security code (it goes with this Go only). */
+  pay(id: string, cvc: string) {
+    const d = this.S.decisions.get(id);
+    if (d) d.pending = "go";
+    if (navigator.vibrate) navigator.vibrate(8);
+    haptic("success");
+    this.markRead();
+    this.send({ t: "decide", decisionId: id, option: "go", ...(cvc ? { cvc } : {}) });
+    this.changed();
+  }
   decide(id: string, option: "go" | "hold" | "reply", text?: string) {
     const d = this.S.decisions.get(id);
     if (d) d.pending = option;

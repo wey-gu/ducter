@@ -34,6 +34,10 @@ export function forwardText(d: Bodies["decision"], r: Bodies["decision_resolved"
   if (d.where) return "";
   if (r.option === "go" && d.signIn)
     return `The user says they're signed in to ${d.signIn.site} in Ducter's browser (they did it themselves; you saw nothing of it). browser_read the page to check, then carry on.`;
+  // D191: a payment Go, or the OK for a saved thing's first use on a site.
+  if (r.option === "go" && d.pay)
+    return `The user said Go: pay ${d.pay.currency} ${d.pay.amount} at ${d.pay.site} with ${d.pay.card}. Within 15 minutes, fill the card with browser_fill (use "${d.pay.handle}": number, exp, cvc, name as the form asks), place the order once, then report what the site confirmed (its order number).`;
+  if (r.option === "go" && d.fill) return `The user said OK to use ${d.fill.label} on ${d.fill.site}. Call browser_fill again now.`;
   if (r.option === "go") return `User says Go: ${d.goLabel}.`;
   // Hold is not forwarded: the task already ended its turn waiting, and a "pause" turn would
   // only flip it back to working and earn a nudge. The card shows Waiting (Hold).
@@ -127,6 +131,8 @@ export function createDecisions(opts: {
           defaultOption: hasDefault ? "go" : "hold",
           reversible: q.reversible,
           ...(q.signIn ? { signIn: q.signIn } : {}),
+          ...(q.pay ? { pay: q.pay, goLabel: "Pay", defaultOption: "hold" as const } : {}),
+          ...(q.fill ? { fill: q.fill } : {}),
           ...(q.where ? { where: q.where } : {}),
         };
         if (q.reversible && hasDefault) body.defaultAt = new Date(clock.now() + delay()).toISOString();

@@ -268,6 +268,9 @@ export interface DucterBrowserPort {
   attach(taskId: string, a: { profile: string; evidenceDir: string; downloads: string }): void;
   /** The task is done with the browser: quits it cleanly (sign-ins saved) when nobody else uses it. */
   release(taskId: string): Promise<boolean>;
+  /** D191: this task fills from Autofill (its brief names a saved handle): Ducter's own browser
+   *  first, wherever it runs, since only there is a fill by reference possible. */
+  wants?(taskId: string): boolean;
 }
 
 export interface WorkerLinks {

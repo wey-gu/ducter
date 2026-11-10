@@ -48,6 +48,10 @@ export interface DucterBrowserOptions extends HostOptions {
   workers?: () => WorkerLinks | undefined;
   /** D157: the version of Ducter's browser a worker reported (its 上网 detail). */
   workerBrowserVersion?: (deviceId: string) => string | undefined;
+  /** D191: hides saved values (Autofill) from what the browser tools answer. */
+  scrub?: (text: string) => string;
+  /** D191: a task that fills from Autofill (runs on this browser wherever it can start). */
+  wants?: (taskId: string) => boolean;
 }
 
 export function createDucterBrowser(o: DucterBrowserOptions): DucterBrowser {
@@ -65,7 +69,7 @@ export function createDucterBrowser(o: DucterBrowserOptions): DucterBrowser {
   });
   const live = createLive({ host, decisions: o.decisions, tasks: o.tasks as LiveDeps["tasks"], persona: o.persona });
   const sites = createSites(host);
-  registerBrowserTools({ mcp: o.mcp, host, log: o.log, tasks: o.tasks as any });
+  registerBrowserTools({ mcp: o.mcp, host, log: o.log, tasks: o.tasks as any, ...(o.scrub ? { scrub: o.scrub } : {}) });
   const fns = new Set<() => void>();
   const changed = () => fns.forEach((f) => f());
   let installing: Promise<InstallResult> | undefined;
@@ -119,6 +123,7 @@ export function createDucterBrowser(o: DucterBrowserOptions): DucterBrowser {
     },
     attach: (taskId, a) => host.attach(taskId, a),
     release: (taskId) => host.release(taskId),
+    wants: (taskId) => o.wants?.(taskId) ?? false,
   };
 
   const profile = () => profileName(o.persona);

@@ -4469,3 +4469,159 @@ button.bcard:active {
   row-gap: 32px;
   align-items: start;
 }
+
+/* D191: 自动填充 / Autofill. A sign-in is its site's letter on a clay pebble, a card a small
+   clay card with its last four; secrets only ever as a dot row. */
+.af-lede {
+  margin: 0 0 var(--s3);
+  color: var(--ink-soft);
+  font-size: var(--md);
+  line-height: 1.5;
+}
+.af-mark,
+.af-plus {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--surface-sunken);
+  box-shadow: 0 var(--ledge) 0 var(--line-2);
+  font-family: var(--head);
+  font-size: var(--lg);
+  font-weight: 800;
+  color: var(--ink-soft);
+}
+.af-plus {
+  background: var(--needs-surface);
+  box-shadow: 0 var(--ledge) 0 var(--needs-ledge);
+  color: var(--needs-ink);
+}
+.af-dots {
+  flex: none;
+  color: var(--faint);
+  letter-spacing: 2px;
+}
+.af-card {
+  flex: none;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  width: 52px;
+  height: 36px;
+  padding: 3px 6px;
+  border-radius: 8px;
+  background: var(--working-surface);
+  box-shadow: 0 var(--ledge) 0 var(--line-2);
+  font-family: var(--mono);
+  font-size: var(--xs);
+  font-weight: 700;
+  color: var(--working-ink);
+}
+.af-card.mastercard,
+.af-card.jcb {
+  background: var(--needs-surface);
+  color: var(--needs-ink);
+}
+.af-card.amex,
+.af-card.discover {
+  background: var(--done-surface);
+  color: var(--done-ink);
+}
+.af-card.unionpay {
+  background: var(--failed-surface);
+  color: var(--failed-ink);
+}
+.af-form .grow {
+  flex: 1;
+}
+.af-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: var(--s2);
+}
+.af-clear {
+  align-self: flex-start;
+  min-height: 32px;
+}
+.af-uses {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--base);
+  overflow: hidden;
+}
+.af-uses li {
+  display: flex;
+  gap: var(--s3);
+  align-items: baseline;
+  padding: var(--s3) var(--s4);
+  font-size: var(--sm);
+  line-height: 1.45;
+}
+.af-uses li + li {
+  border-top: 1px solid var(--line-soft);
+}
+.af-uses li.no {
+  color: var(--ink-muted);
+}
+.af-uses .grow {
+  flex: 1;
+  min-width: 0;
+}
+.af-uses small {
+  display: block;
+  color: var(--ink-muted);
+}
+.af-uses time {
+  flex: none;
+  color: var(--ink-muted);
+  font-size: var(--xs);
+}
+.af-kept {
+  margin-top: var(--s2);
+}
+/* 付款 / Pay: the facts as a small receipt, the amount biggest. */
+.pay-facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--s1) var(--s3);
+  margin: var(--s2) 0;
+  padding: var(--s3);
+  border-radius: var(--r-sm);
+  background: var(--surface-sunken);
+  font-size: var(--sm);
+}
+.pay-facts dt {
+  color: var(--ink-muted);
+}
+.pay-facts dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-weight: 600;
+}
+.pay-facts .pay-amount {
+  font-family: var(--head);
+  font-size: var(--t20);
+  font-weight: 800;
+}
+.pay-first {
+  margin-inline-start: var(--s2);
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--waiting-surface);
+  color: var(--waiting-ink);
+  font-size: var(--xs);
+  font-weight: 700;
+}
+.pay-cvc input {
+  max-width: 9em;
+  letter-spacing: 4px;
+}

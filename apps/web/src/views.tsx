@@ -20,6 +20,7 @@ import { FindsNote } from "./finds.tsx";
 import { appPush, disablePush, enablePush } from "./push-client.ts";
 import { inApp, unsupportedKey } from "./native.ts";
 import { useWide } from "./wide.ts";
+import { AutofillSettings, FillBody, fillTitle, PayBody } from "./autofill.tsx";
 import { FillButton, FullTop } from "./board.tsx";
 import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, WaitBubble, waitCaption, WaitDetails, waitLine } from "./work.tsx";
 import { BriefCard, safe, saidSince, shortGo, shortTitle, taskBlocks, TaskMeta, TimerPie, WhatItDid } from "./transcript.tsx";
@@ -298,6 +299,9 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
   const goText = goLabel(d);
   const draft = A.replyDraft.get(d.decisionId) ?? "";
   if (d.signIn) return <SignInBody d={d} />;
+  // D191: a payment names merchant, amount and card and asks for the security code; a first use asks OK.
+  if (d.pay) return <PayBody d={d} />;
+  if (d.fill) return <FillBody d={d} />;
   // D157: wait for a computer (the default) or do it now on another; built in the user's words.
   const wa = d.where ? whereAsk(d.where) : undefined;
   return (
@@ -986,6 +990,14 @@ function Ask({ d, taskId, buttons = true }: { d: DecisionState; taskId?: string;
       <div ref={ref} class={`partner askq signin${flash ? " flash" : ""}`} id={`d-${d.decisionId}`}>
         <div class="bubble">{d.said || t("signin.title", d.signIn.site)}</div>
         {(buttons || !open) && <SignInBody d={d} compact />}
+      </div>
+    );
+  // D191: 付款 / Pay and a first use: the facts and the code on the card itself, never in prose.
+  if (d.pay || d.fill)
+    return (
+      <div ref={ref} class={`partner askq pay${flash ? " flash" : ""}`} id={`d-${d.decisionId}`}>
+        <div class="bubble">{d.said || (d.pay ? t("pay.title", d.pay.site) : fillTitle(d.fill!))}</div>
+        {(buttons || !open) && (d.pay ? <PayBody d={d} compact /> : <FillBody d={d} compact />)}
       </div>
     );
   return (
@@ -2717,6 +2729,7 @@ const SECTIONS: { page: Exclude<SettingsPage, "">; art: string; title: string }[
   { page: "partner", art: "idle", title: "settings.tab.partner" },
   { page: "notify", art: "wait_clock", title: "settings.tab.notify" },
   { page: "accounts", art: "wait_mail", title: "settings.tab.accounts" },
+  { page: "autofill", art: "ab_web", title: "settings.tab.autofill" },
   { page: "devices", art: "mini_awake", title: "settings.tab.devices" },
   { page: "phone", art: "phone", title: "settings.phone" },
 ];
@@ -2780,6 +2793,7 @@ function SettingsSheet() {
           )}
           {page === "notify" && <NotifySettings />}
           {page === "accounts" && <Accounts />}
+          {page === "autofill" && <AutofillSettings />}
           {page === "devices" && <DevicesSection />}
           {page === "phone" && <PhoneSettings />}
         </div>

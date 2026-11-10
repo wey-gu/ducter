@@ -2206,7 +2206,8 @@ const accounts: Record<Lang, Record<string, string>> = {
   },
 };
 
-export const TABLES: Record<Lang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh, ...where.zh, ...devcard.zh, ...accounts.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en, ...where.en, ...devcard.en, ...accounts.en } };
+import { autofill } from "./i18n-autofill.ts";
+export const TABLES: Record<Lang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh, ...where.zh, ...devcard.zh, ...accounts.zh, ...autofill.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en, ...where.en, ...devcard.en, ...accounts.en, ...autofill.en } };
 
 /** Drops a space between two Chinese characters (zh copy spaces around a name for Latin names). */
 /** D78: a space where a Chinese character touches a Latin letter or a digit ("住在%s 上" with "hel"). */

@@ -363,8 +363,9 @@ D75): Mac `mac-*-{zh,en}.png` at 1100×720 and 1280×860, phone `phone-*-{zh,en}
 
 **The shared-controls rule** came with the approval (the author: "这种事情要杜绝"): every control on
 a card or a settings page is one of the set in `design/ui.md` "Shared controls"; a test on each
-client fails otherwise. Settings › About's version rows were redrawn to it (one action at each
-row's end, 现在检查 once beside the note).
+client fails otherwise. Settings › About's version rows (D167, built on main the same day) are
+shared pieces too: 现在检查 sits in the home's row there. On the phone, with the card's version
+line gone when current, **已经是最新的 · {t}查过 · 现在检查** stands once under the device list.
 
 What differs from the prototype, and why:
 
@@ -377,4 +378,8 @@ What differs from the prototype, and why:
 | The socket **再登录一个** opens a sign-in | its detail lists the agents not on that device; on the Mac Ducter runs on each installs from there (the existing account sheet), elsewhere it says to do it on that device | sign-ins never copy between computers (D157 (7)) |
 | The phone's iPhone card with a 通知 chip | only on the phone's own card (the web client knows its own notifications, not another phone's); the Mac's card for a phone has no chips | the Mac can't see a phone's notification state |
 | Learned rules on Settings › 伙伴 with **你换过两次以后定的** | not built in this step | todo |
+| Coins at 52 printed with their names | the plain coin body at 52 (the printed coin from 72) | D146: below 72 a printed name is a smudge; the name is under the coin anyway |
+| The socket **再登录一个** on every tray | only when an agent isn't on that device yet | an always-there socket that opens nothing new is noise |
+| MacBook's 上网 off as a flat chip | off and can be added is the dashed **+ 上网**; flat grey is "can't now" (asleep, unavailable), a tap says why | one look per meaning: dashed = one tap adds it, flat = it can't be added right now |
+| (not in the prototype) | **合上之前搬走** under a working laptop's status line | D157 (6), kept |
 | The coin detail | also keeps a slot for more per-agent lines (the next is the memory line, from another branch) | — |

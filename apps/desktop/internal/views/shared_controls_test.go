@@ -19,7 +19,7 @@ var sharedControls = map[string]bool{
 	"buttonFor": true, "iconButton": true, "navButton": true, "quietButton": true, "quietLink": true,
 	// switches, choices and rows (shared.go, partner.go, settings.go)
 	"switchControl": true, "choices": true, "selectRow": true, "disclosureRow": true, "linkRow": true,
-	"dangerText": true, "moreButton": true, "candRow": true, "railTab": true,
+	"dangerText": true, "moreButton": true, "candRow": true, "railTab": true, "sideLink": true,
 	// the D161 pieces: the renamable name, coins, chips, the list's rows
 	"cardName": true, "coinTile": true, "socketTile": true, "abilityChip": true, "listRow": true, "trayToken": true,
 }

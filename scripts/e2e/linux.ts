@@ -36,6 +36,22 @@ const PROFILE = process.env.DUCTER_E2E_PROFILE ?? "ducter-e2e";
 const DIR = resolve(process.env.DUCTER_E2E_DIR ?? mkdtempSync(join(tmpdir(), "ducter-e2e-")));
 const PORT = 47777; // never 7777: lima forwards the VM's ports to this Mac's loopback
 const SRV = 47800;
+// DUCTER_E2E_PROXY=1: the VM reaches the internet through a proxy on this Mac (scripts/e2e/proxy.ts),
+// for networks where the VM's own IPv4 NAT is dead (IPv6-only + 464XLAT, macOS "CLAT46").
+const PROXY_PORT = 47999;
+const PROXY = process.env.DUCTER_E2E_PROXY === "1" ? `http://host.lima.internal:${PROXY_PORT}` : "";
+const proxyEnv = PROXY
+  ? `export http_proxy=${PROXY} https_proxy=${PROXY} HTTP_PROXY=${PROXY} HTTPS_PROXY=${PROXY} no_proxy=127.0.0.1,localhost NO_PROXY=127.0.0.1,localhost\n`
+  : "";
+// apt under sudo and the systemd user services (Ducter itself, its browser and agent downloads) get it too.
+// apt's mirrors switch to https: each download then rides a long-lived CONNECT tunnel, where plain
+// http through the proxy opened one connection per file and lima's host forward refused many of them.
+const proxySetup = PROXY
+  ? `sudo sed -i 's|http://ports.ubuntu.com|https://ports.ubuntu.com|g; s|http://archive.ubuntu.com|https://archive.ubuntu.com|g; s|http://security.ubuntu.com|https://security.ubuntu.com|g' /etc/apt/sources.list.d/*.sources /etc/apt/sources.list 2>/dev/null || true
+echo 'Acquire::http::Proxy "${PROXY}"; Acquire::https::Proxy "${PROXY}"; Acquire::Retries "3";' | sudo tee /etc/apt/apt.conf.d/99ducter-e2e-proxy >/dev/null
+systemctl --user set-environment http_proxy=${PROXY} https_proxy=${PROXY} HTTP_PROXY=${PROXY} HTTPS_PROXY=${PROXY} no_proxy=127.0.0.1,localhost NO_PROXY=127.0.0.1,localhost
+`
+  : "";
 const VERSIONS = ["9.0.1", "9.0.2", "9.0.3"] as const;
 const ARCH = process.arch === "arm64" ? "arm64" : "x64";
 const WS = `ws://127.0.0.1:${PORT}/ws`;
@@ -65,7 +81,7 @@ let nScript = 0;
 async function vm(script: string, o: { ok?: boolean; timeoutMs?: number } = {}) {
   const f = join(DIR, "vm", `step-${++nScript}.sh`);
   mkdirSync(join(DIR, "vm"), { recursive: true });
-  writeFileSync(f, `set -eu\nexport DUCTER_PORT=${PORT}\nexport PATH="$HOME/.npm-global/bin:$HOME/.local/bin:$PATH"\nexport XDG_RUNTIME_DIR="/run/user/$(id -u)"\n${script}\n`);
+  writeFileSync(f, `set -eu\n${proxyEnv}export DUCTER_PORT=${PORT}\nexport PATH="$HOME/.npm-global/bin:$HOME/.local/bin:$PATH"\nexport XDG_RUNTIME_DIR="/run/user/$(id -u)"\n${script}\n`);
   return run(["colima", "ssh", "-p", PROFILE, "--", "bash", f], { ...o });
 }
 
@@ -179,7 +195,7 @@ for i in $(seq 1 50); do curl -fsS http://127.0.0.1:${SRV}/feed >/dev/null 2>&1 
     `sudo mkdir -p /var/lib/systemd/linger && sudo touch "/var/lib/systemd/linger/$USER"
 sudo systemctl start "user@$(id -u).service"
 systemctl --user is-system-running || true
-sudo DEBIAN_FRONTEND=noninteractive apt-get update -qq
+${proxySetup}sudo DEBIAN_FRONTEND=noninteractive apt-get update -qq
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends nodejs npm >/dev/null
 node --version
 systemd-run --user --unit=ducter-e2e-servers --collect node ${DIR}/srv.mjs ${DIR}/srv ${SRV}
@@ -352,6 +368,8 @@ async function cleanup() {
 }
 
 let code = 0;
+const proxy = PROXY ? (await import("./proxy.ts")).startProxy(PROXY_PORT) : undefined;
+if (proxy) say(`proxy: the VM goes out through this Mac (:${PROXY_PORT})`);
 try {
   if (!SKIP_BUILD || !existsSync(join(DIR, "bin", "e2eclient"))) await build();
   await startVm();
@@ -369,5 +387,6 @@ try {
 } finally {
   say(`\n${results.filter((r) => r.ok).length}/${results.length} checks passed`);
   await cleanup();
+  proxy?.stop();
 }
 process.exit(code);

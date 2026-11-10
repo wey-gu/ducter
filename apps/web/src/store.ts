@@ -25,6 +25,7 @@ export interface Entry {
   decision?: Bodies["decision"];
   /** D165: a note the partner said by itself; a fold-in or an answer revises it in place. */
   finds?: Bodies["finds"];
+  peer?: Bodies["bridge_msg"]; // D170: one quiet line about the user's other agents
 }
 
 export type DecisionState = Bodies["decision"] & {
@@ -165,6 +166,8 @@ export class Store {
   quietMorning(): boolean {
     return this.quietSeq > 0 && this.quietSeq > this.lastUserSeq;
   }
+  /** Senders set aside per day (D163): how many, and the seq of the one line that says so. */
+  setAside = new Map<string, { n: number; seq: number }>();
   /** What the partner is doing while the user waits (D104): its step, when this client first saw
    *  that step (local clock, so a skewed server clock can't make it look slow), and the channel
    *  seq at which a turn last ended (a user message at or before it has had its turn). */
@@ -410,6 +413,26 @@ export class Store {
         const b = ev.body as Bodies["memory_noted"];
         this.noted.push({ seq: ev.seq, title: b.title, ...(b.memoryId ? { memoryId: b.memoryId } : {}), ...(b.replyTo != null ? { replyTo: b.replyTo } : {}) });
         return void this.bySeq.set(ev.seq, null);
+      }
+      case "bridge_msg": {
+        // D170: the quiet lines of the user's other agents (J-Q5's strings): a request, a reply
+        // or a message that went out, and once a day a sender set aside. Steps (pending,
+        // sending…), answers to ours and messages from before Bridge was on show nothing.
+        const b = ev.body as Bodies["bridge_msg"];
+        if (b.direction === "in" && b.state === "set_aside") {
+          const key = `${b.from}|${ev.ts.slice(0, 10)}`;
+          const n = (this.setAside.get(key)?.n ?? 0) + 1;
+          const first = this.setAside.get(key)?.seq;
+          this.setAside.set(key, { n, seq: first ?? ev.seq });
+          if (first !== undefined) {
+            const old = this.bySeq.get(first);
+            if (old) old.revision++;
+            return void this.bySeq.set(ev.seq, null);
+          }
+          return entry({ peer: b });
+        }
+        const show = b.direction === "in" ? !b.state && !b.inReplyTo : b.state === "sent" && !!b.text;
+        return show ? entry({ peer: b }) : void this.bySeq.set(ev.seq, null);
       }
       case "read_receipt":
         this.readUpTo = Math.max(this.readUpTo, (ev.body as Bodies["read_receipt"]).upToSeq);

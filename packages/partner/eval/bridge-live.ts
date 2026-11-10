@@ -1,9 +1,9 @@
 // The Bridge live trial, end to end with real models on both sides (design/bridge.md "Try it live"):
 //
 //   bun run bridge:live                 # over the FAKE Bridge CLI (fake-bridge-nmem.ts): s1 s2 s3 j6
-//   bun run bridge:live -- --real       # over the REAL nmem: contexts ducter-test and terminal-test
+//   bun run bridge:live -- --real       # over the REAL nmem: contexts ducter and terminal-test
 //
-//   options: --context NAME (persona, default ducter-test) · --peer-context NAME (default terminal-test)
+//   options: --context NAME (persona, default ducter: the persona's own context, D171) · --peer-context NAME (default terminal-test)
 //            --peer-config-dir DIR (NMEM_CLI_CONFIG_DIR for the terminal side, if it needs its own)
 //            --model haiku · --peer-model haiku · --only s1,s2,s3,j6 · --out DIR
 //
@@ -33,7 +33,7 @@ const arg = (n: string, d?: string) => (argv.indexOf(`--${n}`) >= 0 ? argv[argv.
 const REAL = argv.includes("--real");
 const MODEL = arg("model", "haiku")!;
 const PEER_MODEL = arg("peer-model", "haiku")!;
-const CTX = arg("context", REAL ? "ducter-test" : "ducter-main")!;
+const CTX = arg("context", REAL ? "ducter" : "ducter-main")!;
 const PEER_CTX = arg("peer-context", REAL ? "terminal-test" : "terminal-claude")!;
 const PEER_CONFIG = arg("peer-config-dir");
 // The persona's Mem identity (D141: `ducter` for the default persona); the trial's context must select it.

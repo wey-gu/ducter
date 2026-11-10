@@ -327,15 +327,19 @@ export function defaultLine(d: Bodies["decision"], locale: "zh" | "en", now: num
 
 export function decisionMessage(d: Bodies["decision"], o: { persona: string; task?: string; locale: "zh" | "en"; platform: string; now: number }): PushMessage {
   const c = COPY[o.locale];
+  // X1 (D170): a question one of the user's own agents asked: who asks is the title, and silence
+  // never answers for the user (the card's own default line).
+  const peer = d.asker ? (o.locale === "zh" ? `你的 ${d.asker.agent} 问你` : `Your ${d.asker.agent} asks`) : undefined;
   const msg: PushMessage = {
-    title: o.task ? `${o.persona} · ${o.task}` : o.persona,
-    body: `${d.question} ${defaultLine(d, o.locale, o.now)}`,
+    title: peer ? `${o.persona} · ${peer}` : o.task ? `${o.persona} · ${o.task}` : o.persona,
+    body: `${d.question} ${d.asker ? (o.locale === "zh" ? "没回就让它先等着。" : "If you don't answer, it keeps waiting.") : defaultLine(d, o.locale, o.now)}`,
     tag: `d:${d.decisionId}`,
     url: `app#d=${encodeURIComponent(d.decisionId)}`,
     decisionId: d.decisionId,
   };
   // iOS shows no action buttons on web push (D52 Q11): tap opens the decision.
-  if (o.platform !== "ios") msg.actions = [{ action: "go", title: d.goLabel && o.locale === "zh" ? `好，${d.goLabel}` : d.goLabel ? `Go: ${d.goLabel}` : c.go }, { action: "hold", title: c.hold }];
+  // An outside agent's question is answered on its card (its options are its own), never "Hold".
+  if (o.platform !== "ios" && !d.asker) msg.actions = [{ action: "go", title: d.goLabel && o.locale === "zh" ? `好，${d.goLabel}` : d.goLabel ? `Go: ${d.goLabel}` : c.go }, { action: "hold", title: c.hold }];
   return msg;
 }
 

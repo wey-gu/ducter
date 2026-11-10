@@ -4,7 +4,7 @@
 // and quiet hours in push.json (push.ts), the rest in settings.json.
 import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Bodies, MemView, QuietHours, Settings, SettingsPatch, TalkLanguage } from "@ducter/protocol";
+import type { Bodies, MemView, PeersSettings, QuietHours, Settings, SettingsPatch, TalkLanguage } from "@ducter/protocol";
 import { DEFAULT_AFTER_CHOICES, HARNESSES, PROACTIVE_MODES, isHarnessId, type Brain, type HarnessId, type ProactiveMode } from "@ducter/protocol";
 import type { LogStore, MemIdentity, SettingsApi } from "@ducter/protocol/src/internal.ts";
 import { resolveWindows, type WindowsInput } from "@ducter/protocol/src/harness-facts.ts";
@@ -30,7 +30,13 @@ interface SettingsFile {
   autoUpdate?: boolean;
   /** D165: when it notices something (absent: never answered, nothing watches). */
   proactive?: ProactiveMode;
+  /** D170: who of the user's other agents may reach the partner; learned rules; muted senders. */
+  peers?: PeersSettings;
 }
+
+/** A list of agent names as kept: trimmed, one line, at most 80 characters, 50 names, no repeats. */
+const agentList = (v: unknown): string[] | undefined =>
+  Array.isArray(v) ? [...new Set(v.filter((x): x is string => typeof x === "string").map((x) => x.trim().replace(/\s+/g, " ").slice(0, 80)).filter(Boolean))].slice(0, 50) : undefined;
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -104,7 +110,21 @@ export function openSettings(opts: {
       windows: windowsNow().windows,
       autoUpdate: data.autoUpdate === true,
       ...(data.proactive ? { proactive: data.proactive } : {}),
+      peers: { reach: data.peers?.reach ?? "own", trusted: data.peers?.trusted ?? [], muted: data.peers?.muted ?? [] },
     };
+  };
+  /** D170: a change to who may reach the partner, from a client or from the partner itself. */
+  const setPeers = (p: Partial<PeersSettings> | undefined): boolean => {
+    if (!p || typeof p !== "object") return false;
+    const cur = get().peers!;
+    const next: PeersSettings = {
+      reach: p.reach === "own" || p.reach === "team" || p.reach === "off" ? p.reach : cur.reach,
+      trusted: agentList(p.trusted) ?? cur.trusted,
+      muted: agentList(p.muted) ?? cur.muted,
+    };
+    if (JSON.stringify(next) === JSON.stringify(cur)) return false;
+    data.peers = next;
+    return true;
   };
 
   const rename = (name: string) => {
@@ -150,6 +170,11 @@ export function openSettings(opts: {
       memSeen = s;
       changed();
     },
+    setPeers(p) {
+      if (!setPeers(p)) return;
+      save();
+      changed();
+    },
     defaultAfterMs: () => get().defaultAfterMin * 60_000,
     memMissing: () => memSeen === "missing",
     async view() {
@@ -174,6 +199,7 @@ export function openSettings(opts: {
       }
       if (typeof patch.proactive === "string" && (PROACTIVE_MODES as readonly string[]).includes(patch.proactive) && data.proactive !== patch.proactive) (data.proactive = patch.proactive), did.push("proactive");
       if (typeof patch.autoUpdate === "boolean" && (data.autoUpdate === true) !== patch.autoUpdate) (data.autoUpdate = patch.autoUpdate), did.push("autoUpdate");
+      if (setPeers(patch.peers as Partial<PeersSettings> | undefined)) did.push("peers");
       if (typeof patch.defaultAfterMin === "number" && (DEFAULT_AFTER_CHOICES as readonly number[]).includes(patch.defaultAfterMin)) {
         if ((data.defaultAfterMin ?? 30) !== patch.defaultAfterMin) (data.defaultAfterMin = patch.defaultAfterMin), did.push("defaultAfterMin");
       }

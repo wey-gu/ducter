@@ -652,3 +652,165 @@ describe("nmem client: contacts, send, recovery (stub binary)", () => {
     expect(opOf({ operation: "y", state: "Refused" })!.state).toBe("failed");
   });
 });
+
+describe("X1 / D164, D170: the user's own agents ask the user through the partner", () => {
+  const QUESTION: BridgeMessage = {
+    messageId: "bm-q",
+    from: "terminal-claude",
+    agent: "terminal-claude",
+    mine: true,
+    text: "Linux 的 CI 已经绿了，就差 macOS。现在推 fix-linux-ci，还是等 macOS 跑完？我建议等。",
+  };
+
+  test("one card naming who asks; the answer goes back by code, once, without a partner turn", async () => {
+    const t = setup(async (_i, s) => {
+      await t.fc.callTool("ask", { question: "现在推 fix-linux-ci，还是等 macOS 跑完？", goLabel: "等 macOS 跑完再推", forMessage: "bm-q", suggests: true, other: "现在推", where: "~/dev/ducter" });
+      s.end();
+    }, world([QUESTION]));
+    await t.partner.checkBridge();
+    await t.partner.idle();
+    const d = t.card();
+    expect(d.asker).toEqual({ messageId: "bm-q", agent: "terminal-claude", mine: true, where: "~/dev/ducter", suggests: true, other: "现在推" });
+    expect(d.defaultOption).toBe("hold");
+    expect(d.reversible).toBe(false);
+    expect(d.defaultAt).toBeUndefined();
+    const turns = t.fr.sessions.reduce((n, s) => n + s.inputs.length, 0);
+    // The user picks the second option: a reply with its words.
+    t.partner.onTrigger(t.fc.core.log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body: { decisionId: d.decisionId, option: "reply", text: "现在推", by: "user" } }));
+    for (let i = 0; i < 50 && !t.w.replies.length; i++) await Bun.sleep(10);
+    await t.partner.idle();
+    expect(t.w.replies).toEqual([{ messageId: "bm-q", text: "用户选了：「现在推」" }]);
+    expect(t.fr.sessions.reduce((n, s) => n + s.inputs.length, 0)).toBe(turns); // no partner turn
+    expect(t.sent().at(-1)).toMatchObject({ inReplyTo: "bm-q", to: "terminal-claude", mine: true });
+  });
+
+  test("Go sends the option's words in the asker's language; a teammate can't ask this way", async () => {
+    const en: BridgeMessage = { ...QUESTION, messageId: "bm-e", text: "CI is green on Linux; only macOS is left. Push fix-linux-ci now or wait? I'd wait." };
+    const refusals: string[] = [];
+    const t = setup(async (_i, s, n) => {
+      const r = await t.fc.callTool("ask", n === 0 ? { question: "现在推，还是等 macOS？", goLabel: "等 macOS 跑完", forMessage: "bm-e", suggests: true } : { question: "要回答 reviewer 吗？", goLabel: "回答", forMessage: "bm-t" });
+      if (n === 1) refusals.push(JSON.stringify(r));
+      s.end();
+    }, world([en]));
+    await t.partner.checkBridge();
+    await t.partner.idle();
+    t.tap(t.card().decisionId, "go");
+    for (let i = 0; i < 50 && !t.w.replies.length; i++) await Bun.sleep(10);
+    expect(t.w.replies).toEqual([{ messageId: "bm-e", text: "The user chose: «等 macOS 跑完»" }]);
+    t.w.deliver(TEAMMATE);
+    await t.partner.checkBridge();
+    await t.partner.idle();
+    expect(refusals[0]).toContain("Only the user's own agents");
+  });
+
+  test("silence never answers: after 30 min the asker hears 'not yet', once; a later answer still goes", async () => {
+    const t = setup(async (_i, s) => {
+      await t.fc.callTool("ask", { question: "现在推，还是等？", goLabel: "等", forMessage: "bm-q", suggests: true });
+      s.end();
+    }, world([QUESTION]));
+    await t.partner.checkBridge();
+    await t.partner.idle();
+    t.clock.advance(20 * 60_000);
+    await t.partner.checkBridge();
+    expect(t.w.replies).toEqual([]);
+    t.clock.advance(15 * 60_000);
+    await t.partner.checkBridge();
+    await t.partner.checkBridge();
+    expect(t.w.replies).toEqual([{ messageId: "bm-q", text: "用户还没回，先别按这个动，晚点再问。" }]);
+    t.tap(t.card().decisionId, "go");
+    for (let i = 0; i < 50 && t.w.replies.length < 2; i++) await Bun.sleep(10);
+    expect(t.w.replies.at(-1)).toEqual({ messageId: "bm-q", text: "用户选了：「等」" });
+  });
+
+  test("at most three open questions per agent; a sender over 20 a day is set aside without a turn", async () => {
+    const notes: string[] = [];
+    const t = setup(async (i, s) => {
+      const id = /message (bm-q\d)/.exec(i)?.[1] ?? "bm-q1";
+      const r = (await t.fc.callTool("ask", { question: `第 ${id} 个问题？`, goLabel: "好", forMessage: id })) as { note?: string };
+      if (r.note) notes.push(r.note);
+      s.end();
+    }, world([]));
+    for (const i of [1, 2, 3, 4]) {
+      t.w.deliver({ ...QUESTION, messageId: `bm-q${i}` });
+      await t.partner.checkBridge();
+      await t.partner.idle();
+    }
+    expect(t.fc.events.filter((e) => e.kind === "decision" && (e.body as Bodies["decision"]).asker).length).toBe(3);
+    expect(notes.at(-1)).toContain("already has 3 open questions");
+
+    const many = Array.from({ length: 22 }, (_, i) => ({ ...TEAMMATE, messageId: `bm-s${i}` }));
+    const u = setup(async (_i, s) => s.end(), world(many));
+    await u.partner.checkBridge();
+    await u.partner.idle();
+    const ins = u.fc.events.filter((e) => e.kind === "bridge_msg" && (e.body as Bodies["bridge_msg"]).direction === "in").map((e) => e.body as Bodies["bridge_msg"]);
+    expect(ins.length).toBe(22);
+    expect(ins.filter((b) => b.state === "set_aside").length).toBe(2);
+  });
+
+  test("X2: after two Go's the rule is offered once; then work starts without a card, five a day", async () => {
+    const peers = { reach: "own" as const, trusted: [] as string[], muted: [] as string[] };
+    const reqs = [1, 2, 3, 4, 5, 6, 7, 8].map((i) => ({ ...REQUEST, messageId: `bm-r${i}`, text: `修第 ${i} 个测试，只动 runner 测试。` }));
+    const opened: boolean[] = [];
+    const t = setup(async (i, s) => {
+      const id = /message (bm-r\d)/.exec(i)?.[1];
+      if (id && /without asking/.test(i)) opened.push(((await t.fc.callTool("task_open", { title: `修测试 ${id}`, brief: "只动 runner 测试", forMessage: id })) as { ok: boolean }).ok);
+      else if (id) await t.fc.callTool("ask", { question: "开个任务修这个测试？", goLabel: "开任务" });
+      else if (/your question answered/.test(i)) await t.fc.callTool("task_open", { title: "修测试", brief: "只动 runner 测试" });
+      s.end();
+    }, world([]));
+    (t.fc.core as { settings?: unknown }).settings = { get: () => ({ peers }), setPeers: (p: Partial<typeof peers>) => Object.assign(peers, p), setForgetter() {}, setMemState() {} };
+    const offers = () => t.fc.events.filter((e) => e.kind === "decision" && (e.body as Bodies["decision"]).trust);
+    for (const i of [1, 2]) {
+      t.w.deliver(reqs[i - 1]!);
+      await t.partner.checkBridge();
+      await t.partner.idle();
+      t.tap(t.card().decisionId, "go");
+      await t.partner.idle();
+    }
+    expect(offers().length).toBe(1);
+    expect((offers()[0]!.body as Bodies["decision"]).question).toBe("以后你的 terminal-claude 发来的活，直接接？");
+    t.tap((offers()[0]!.body as Bodies["decision"]).decisionId, "go");
+    await t.partner.idle();
+    expect(peers.trusted).toEqual(["terminal-claude"]);
+    const cards = () => t.fc.events.filter((e) => e.kind === "decision").length;
+    const before = cards();
+    for (const i of [3, 4, 5, 6, 7, 8]) {
+      t.w.deliver(reqs[i - 1]!);
+      await t.partner.checkBridge();
+      await t.partner.idle();
+    }
+    // Tasks 3–5 (five today with 1–2) start with no card; from the sixth today the user is asked again.
+    expect(opened).toEqual([true, true, true, false, false, false]);
+    expect(t.fc.events.filter((e) => e.kind === "decision").length).toBe(before);
+    expect(t.fc.events.filter((e) => e.kind === "task_open" || (e.kind === "job_status" && (e.body as Bodies["job_status"]).taskId)).length).toBeGreaterThan(0);
+    expect(offers().length).toBe(1); // never offered twice
+  });
+
+  test("Settings: a muted sender and, by default, a teammate's agent never wake the partner", async () => {
+    const peers = { reach: "own" as const, trusted: [] as string[], muted: ["noisy-claude"] };
+    const t = setup(async (_i, s) => s.end(), world([TEAMMATE, { ...REQUEST, messageId: "bm-n", agent: "noisy-claude", from: "noisy-claude" }, REQUEST]));
+    (t.fc.core as { settings?: unknown }).settings = { get: () => ({ peers }), setForgetter() {}, setMemState() {} };
+    await t.partner.checkBridge();
+    await t.partner.idle();
+    const ins = t.fc.events.filter((e) => e.kind === "bridge_msg").map((e) => e.body as Bodies["bridge_msg"]);
+    expect(ins.map((b) => [b.messageId, b.state ?? "read"])).toEqual([["bm-t", "muted"], ["bm-n", "muted"], ["bm-1", "read"]]);
+    expect(t.fr.sessions.reduce((n, s) => n + s.inputs.length, 0)).toBe(1); // one turn, for bm-1 only
+  });
+
+  test("B14: what was in the mailbox before Bridge was on is never opened as a request", async () => {
+    const w = world([REQUEST]);
+    let ids = 0;
+    w.bridge.inboxIds = async () => (ids++, { ok: true, ids: ["bm-1"] });
+    const clock = new FakeClock();
+    const fc = fakeCore(clock, tmp());
+    const fr = fakeRunner(async (_i, s) => s.end());
+    const partner = createPartner(fc.core, fr.runner, partnerOpts(clock, w.bridge));
+    await partner.checkBridge();
+    w.deliver({ ...REQUEST, messageId: "bm-2" });
+    await partner.checkBridge();
+    await partner.idle();
+    const ins = fc.events.filter((e) => e.kind === "bridge_msg").map((e) => (e.body as Bodies["bridge_msg"]).messageId);
+    expect(ins).toEqual(["bm-2"]);
+    expect(ids).toBe(1);
+  });
+});

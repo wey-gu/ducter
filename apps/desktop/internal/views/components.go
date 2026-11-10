@@ -726,13 +726,22 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 		if st.after != nil {
 			st.after()
 		}
-		if a.buttonFor(c, a.holdLabel(d), about, btnSecondary, st.height, st.quietBg) {
+		if d.Asker != nil && d.Asker.Other != "" {
+			// X1 (D170): the asking agent's second option, answered in its own
+			// words (a reply), never Hold.
+			if a.buttonFor(c, d.Asker.Other, about, btnSecondary, st.height, st.quietBg) {
+				a.Decide(d.DecisionID, "reply", d.Asker.Other)
+			}
+		} else if a.buttonFor(c, a.holdLabel(d), about, btnSecondary, st.height, st.quietBg) {
 			a.Decide(d.DecisionID, "hold", "")
 		}
 		if a.buttonFor(c, goText, about, btnPrimary, st.height, st.quietBg) {
 			a.Decide(d.DecisionID, "go", "")
 		}
 	})
+	if d.Asker != nil && d.Asker.Suggests {
+		ui.Text(c, a.L.T("peer.suggests", d.GoLabel)).FontSize(t.XS).FontWeight(700).TextColor(t.NeedsYou.Ink)
+	}
 	if a.replyOpen[d.DecisionID] {
 		draft := a.replyDraft[d.DecisionID]
 		ui.Row(c.Key("reply:"+d.DecisionID)).Gap(t.S2).Padding(t.S1, t.S1, t.S1, t.S3).Radius(t.RadiusMD).Background(t.Surface).Children(func() {
@@ -768,6 +777,8 @@ func (a *App) holdLabel(d *store.DecisionState) string {
 		return a.L.T("move.closing.hold")
 	case d.MemPlugin != nil:
 		return a.L.T("memp.card.hold") // D169: 先不装 / Not now
+	case d.Trust != nil:
+		return a.L.T("peers.trust.hold") // X2: 还是先问我
 	}
 	return a.L.T("decision.hold")
 }
@@ -784,11 +795,17 @@ func (a *App) goLabel(d *store.DecisionState) string {
 	if d.MemPlugin != nil {
 		return a.L.T("memp.card.go")
 	}
+	if d.Asker != nil {
+		return d.GoLabel // X1: the asking agent's own option, as it named it
+	}
 	return a.shortGo(d.GoLabel)
 }
 
 // defaultLine says what happens if the user doesn't answer.
 func (a *App) defaultLine(c *ui.Context, d *store.DecisionState) string {
+	if d.Asker != nil {
+		return a.L.T("peer.default") // silence never answers for the user (D164)
+	}
 	if !d.Reversible {
 		return a.L.T("decision.no_default") // never claim it can be undone
 	}

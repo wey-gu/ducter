@@ -10,7 +10,7 @@ Canvas: https://claude.ai/artifact/LKuVp3knPDJ4EdoyWBGSWN
 
 ### J. Nowledge Bridge (2026-11-09 evening, draft; `../bridge.md`, `research/31`, `research/37`)
 
-J-Q4, J-Q6, J-Q7 and J-Q9 to J-Q13 are answered (D105–D111, below). What is still open:
+J-Q2 to J-Q7, J-Q9 to J-Q13 and J-Q15 are answered (D105–D111, D163, D164, D170, below). What is still open:
 
 **J-Q1. Adopt Bridge as Ducter's doorway to agents it didn't start, addressed to the persona.**
 - *Recommendation:* yes, through the persona identity's Agent mailbox, never a native session (partner
@@ -20,26 +20,6 @@ J-Q4, J-Q6, J-Q7 and J-Q9 to J-Q13 are answered (D105–D111, below). What is st
 - *Default:* accept. Bridge stays off unless `DUCTER_BRIDGE=1` and `DUCTER_BRIDGE_CONTEXT` are set; a settings
   toggle comes later.
 
-**J-Q2. Who may make Ducter act.**
-- *Recommendation:* v1 asks the user before any task that comes from another agent (Go/Hold, default hold,
-  enforced in code).
-  - Later, the user may state a rule in plain words, e.g. "我自己终端里的请求直接接". Ducter confirms it (D-style
-    rule, principle 14).
-- *Default:* always ask in v1. The partner may still answer questions with `bridge_reply` without asking.
-
-**J-Q3. When Ducter checks for requests.**
-- *Recommendation:* at start, then every 5 minutes while running; no push until Mem offers one.
-  - Ducter's always-on control plane is the host here, so this is not a session kept alive by polling.
-- *Default:* 5 min (`bridgeIntervalMs`). Ask Mem for a hint/push into an always-on host (private/31 §7).
-
-**J-Q5. Copy.**
-- *Recommendation:*
-  - incoming: "<X> 发来请求 · <gist>" / "Request from <X> · <gist>", one quiet line;
-  - outgoing: "已回复 <X>" / "Replied to <X>".
-  - Never 交接 / hand-off, which the glossary reserves for a task changing body. Bridge words never appear in
-    the conversation.
-- *Default:* these strings, added to the glossary as "pending user OK".
-
 **J-Q8. Work agreement.**
 - *Background:* Mem's Bridge guidance suggests a Memory that the receiver confirms. Ducter forbids writing task
   plumbing to Mem.
@@ -47,26 +27,20 @@ J-Q4, J-Q6, J-Q7 and J-Q9 to J-Q13 are answered (D105–D111, below). What is st
   recorded in Ducter's Log, and no Memory is written.
 - *Default:* accept; revisit for Team (J3).
 
-**J-Q14. The live trial (needs you, on Mem's side).**
-- *Status (2026-11-10, research/37 §6):* the backend answers in all 8 Spaces. The persona's identity `ducter`
-  exists with no mailbox, and no Agent Context exists, so the trial stops at its preflight.
-- *Steps:*
-  1. done: the backend answers;
-  2. use the personal "Only me" Space;
-  3. the persona's own identity `ducter` (D141), never a new one and never the retained pilot identity passive
-     setup offers without a context; for the terminal side an existing identity with its own Agent key;
-  4. run `agents context select-cloud` for each (`ducter-test --agent-id ducter`, `terminal-test`), then
-     `bridge setup --enable` for each;
-  5. `bun run bridge:live -- --real` (add `--peer-config-dir DIR` if the terminal side needs its own nmem config,
-     and `DUCTER_BRIDGE_MEMBER=<your member id>` if passive setup doesn't report your member).
-- *Default:* I run step 5 when you say it's ready. `DUCTER_BRIDGE` stays off by default until it passes.
+**J-Q14. The live trial (needs Mem, then you).**
+- *Status (2026-11-10, research/37 §8, D171):* the persona's mailbox goes in Only me. Binding it was refused by Mem
+  (`cloud_session_authority_unavailable`, B15); nothing was kept, enabled or sent.
+- *Steps:* Mem grants this connection authority to act as `ducter`; `nmem agents context select-cloud --name ducter
+  --agent-id ducter --space-id <Only me>`; `nmem --agent-context ducter bridge setup`, then `--enable`; an identity
+  with its own key for the other side (a dedicated test identity); `bun run bridge:live -- --real --context ducter
+  --peer-context <it>`.
+- *Default:* I run the trial when the binding exists. `DUCTER_BRIDGE` stays off by default until it passes
+  (D170 (9) has the criteria).
 
-**J-Q15. Beyond itself (draft D163–D164, `../bridge.md` "Beyond itself").**
-- *Recommendation:* build X1 "有事问 Ducter" first (your own agents' questions come to you as one card, the answer
-  goes back by code, silence never answers), then X2 "直接接" (a standing go learned after two Go's), then X3
-  (teammates, opt in per team, trust and quota per sender). J5 waits on #8956.
-- *Defaults:* the three as drafted; quota 20 messages a day and 3 open asks per sender; X2 offered after 2 Go's in
-  14 days, at most 5 a day; 60 s checks for 30 minutes while an own agent's conversation is live.
+## Answered on 2026-11-10 (Bridge, the author's "go go go")
+
+J-Q2 → D163 X2 (a learned rule, offered after two Go's) · J-Q3 → D164 (6) · J-Q5 → D170 (4) · J-Q15 → D163, D164,
+built as D170.
 
 ## Answered on 2026-11-09 (Bridge, the author's "按建议 go")
 

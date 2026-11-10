@@ -128,6 +128,21 @@ export interface Question {
 }
 
 /**
+ * D170 (X1, design/bridge.md): a decision asked for one of the user's own agents that Ducter
+ * didn't start (through Nowledge Bridge). Go is the option it named first (or suggested); `other`,
+ * when present, is its second option, answered as a reply with that text. The user's answer goes
+ * back to that agent by Ducter's code; silence never answers for the user.
+ */
+export interface PeerAsk {
+  messageId: string; // the Bridge message it came in
+  agent: string; // the agent's own name ("terminal-claude")
+  mine?: boolean; // the user's own agent (always, in v1)
+  where?: string; // where it works, from its own words ("~/dev/ducter")
+  suggests?: boolean; // Go is the agent's own suggestion ("它建议 / It suggests")
+  other?: string; // a second option, as a button beside Go
+}
+
+/**
  * D157 (design/where.md §7): before a computer closes, what moves to a computer that stays awake
  * (from its saved progress) and what can only run there (a folder; an app or the user's Chrome
  * nothing else has) and continues when it wakes. One decision for the whole computer.
@@ -193,6 +208,8 @@ export interface Bodies {
     // D165: a find's one next step. Clients render it inside its note (not as a card of its own);
     // On hand lists it like any ask. Never pushed on its own: the note is the one notification.
     findId?: string;
+    asker?: PeerAsk; // D170: asked for one of the user's own agents; the answer goes back to it
+    trust?: { agent: string }; // D170 (X2): 以后你的 <agent> 发来的活，直接接？ Go keeps the rule
   };
   decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default" };
   read_receipt: { upToSeq: number };
@@ -334,7 +351,10 @@ export interface Bodies {
     decisionId?: string;
     agent?: string;
     mine?: boolean;
-    state?: "pending" | "held" | "sending" | "sent" | "failed" | "unknown" | "unconfirmed" | "followed";
+    // in: "early" = in the mailbox before Bridge was on for this persona (B14), "set_aside" = over
+    // the sender's daily quota (D170), "muted" = a sender the user stopped listening to, or one
+    // Settings doesn't let reach the partner; none wakes the partner. Absent = a message to read.
+    state?: "pending" | "held" | "sending" | "sent" | "failed" | "unknown" | "unconfirmed" | "followed" | "early" | "set_aside" | "muted";
     opId?: string;
     contact?: string;
     operation?: string;
@@ -1138,6 +1158,19 @@ export interface Settings {
    * watches nothing (connecting is not consent to watch); clients show none chosen yet.
    */
   proactive?: ProactiveMode;
+  /** D170: who of the user's other agents may reach the partner (through Nowledge Bridge). */
+  peers?: PeersSettings;
+}
+
+/**
+ * D170 (design/bridge.md): Settings › 伙伴's "who can reach {name}". reach: the user's own agents
+ * only (the default), teammates' agents too, or nobody. trusted: own agents whose work starts
+ * without asking (X2, a learned rule). muted: agents the user stopped listening to (不再听它的).
+ */
+export interface PeersSettings {
+  reach: "own" | "team" | "off";
+  trusted: string[];
+  muted: string[];
 }
 
 /**

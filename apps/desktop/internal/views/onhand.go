@@ -666,10 +666,15 @@ func (a *App) partnerDecisionCard(c *ui.Context, d *store.DecisionState) {
 	t := a.T
 	ui.Column(c).Padding(t.S5, t.S5).Gap(t.S3).Radius(t.RadiusXL).Background(t.NeedsYou.Surface).
 		Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge).Children(func() {
-		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-			a.avatar(c, theme.NeedsYou, 28)
-			ui.Text(c, a.S.PersonaName).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
-		})
+		if d.Asker != nil {
+			// X1 (D170): the agent's coin and who it is stand where a task's title would.
+			a.peerAskerRow(c, d.Asker, true)
+		} else {
+			ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
+				a.avatar(c, theme.NeedsYou, 28)
+				ui.Text(c, a.S.PersonaName).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
+			})
+		}
 		a.heading(c, autospace(a.questionOf(d)), t.LG).LineHeight(1.4).MaxLines(4)
 		if d.RoutineID != "" {
 			a.routineFacts(c, d.RoutineID, t.NeedsYou.Ink)

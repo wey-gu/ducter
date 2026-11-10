@@ -159,7 +159,8 @@ export function triggersPartner(e: LogEvent): boolean {
     return r.state === "paused" && r.pausedBy === "system" && r.pauseReason !== "review";
   }
   if (e.kind === "report") return (e.body as Bodies["report"]).state !== "progress";
-  if (e.kind === "bridge_msg") return (e.body as Bodies["bridge_msg"]).direction === "in";
+  // An incoming Bridge message wakes the partner, unless it was set aside or predates Bridge (D170).
+  if (e.kind === "bridge_msg") return (e.body as Bodies["bridge_msg"]).direction === "in" && !(e.body as Bodies["bridge_msg"]).state;
   // The second switch the same way: the partner offers a rule once (loadout.ts).
   if (isRuleHint(e)) return true;
   return false;

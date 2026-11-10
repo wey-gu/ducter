@@ -104,6 +104,7 @@ func (a *App) partnerPanel(c *ui.Context, w float32) {
 	a.talkCard(c, st)
 	a.memoryCard(c, st)
 	a.trustCard(c)
+	a.peersCard(c, st)
 }
 
 // partnerHero is the calm header: the clay partner, its name (a click on

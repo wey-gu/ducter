@@ -582,27 +582,40 @@ Codex first, once OAR is near 1.0. See `research/17`.
   open branch merged.
 
 
-## Nowledge Bridge (D105–D111, `design/bridge.md`)
+## Nowledge Bridge (D105–D111, D162–D164, D170–D171, `design/bridge.md`)
 
-- [ ] Run `bun run bridge:live -- --real` and record the result in research/37. Trigger: the author says the
-      persona's context (`ducter-test` selecting `ducter`) and the terminal side's context are ready (research/37
-      §6; Mem's backend answers since 2026-11-10).
-- [ ] A start mark for the persona's mailbox (B14): messages from before Bridge was switched on for this persona
-      are not requests. Trigger: before `DUCTER_BRIDGE` is on by default, or the trial used `ducter`.
-- [ ] X1 · "有事问 Ducter" (draft D164): `ask` for a peer message with the reply by code, the "wait" default's
-      reply, 60 s checks while a conversation with an own agent is live, at most 3 open asks per sender. Trigger:
-      the author approves D164 and the live trial passes.
-- [ ] X2 · "直接接" (draft D163): the offer after two Go's, the learned rule in Settings › 伙伴, the limits.
-      Trigger: D163 approved and X1 built.
-- [ ] X3 · teammates (draft D163): per-team opt-in (the command shown, never run), the per-sender quota and
-      **不再听 <agent> 的**, Space-scoped answers. Trigger: D163 approved and Mem's Team Bridge accepted.
+- [ ] Bind the persona's mailbox in Only me (D171): Mem grants this connection authority to act as `ducter` (B15),
+      then `nmem agents context select-cloud --name ducter --agent-id ducter --space-id <Only me>`,
+      `nmem --agent-context ducter bridge setup` and `--enable`. Trigger: Mem's answer on B15.
+- [ ] Run `bun run bridge:live -- --real --context ducter --peer-context <the other side>` and record it in
+      research/37: S1, S2, S3 and an X1 round trip (a real terminal session that waits on a finite budget for the
+      answer). Trigger: the binding above and an identity with its own key for the other side.
+- [x] A start mark for the persona's mailbox (B14, D170): what was in the inbox at the first check is never a
+      request.
+- [x] X1 · "有事问 Ducter" (D164, D170): the asker card on both clients, the reply by code, "not yet" after 30 min,
+      60 s checks while live, 3 open asks per agent, the lock-screen copy.
+- [x] X2 · "直接接" (D163, D170): the offer after two Go's, the rule in Settings › 伙伴, 5 a day.
+- [x] Settings › 伙伴 › 你的其他 AI (D170): who can reach the partner, the learned rules, the muted.
+- [ ] X3 · a team's agents: a per-team switch once a team context exists, Space-scoped answers (Mem search in that
+      Space only), and the eval scenario for a teammate's question. Trigger: a team context and Mem's Team Bridge
+      accepted.
+- [ ] **不再听 <agent> 的** as a button on its cards and quiet lines (today: said to the partner, undone in
+      Settings). Trigger: the first user who mutes one.
+- [ ] Muted and over-quota senders are logged after `open` reads them; a sender-only probe would leave them unread
+      (B6). Trigger: Mem ships `bridge inbox --peek` or a sender in `inbox`.
+- [ ] The partner eval: `bridge-ask-you-zh/en` (a question from the user's own agent becomes an asker card, no
+      prose, no bridge_reply) and `bridge-trusted-zh` (a trusted agent's work opens with no card). Trigger: before
+      Bridge is on by default.
 - [ ] X5 · consumer AIs (J5): take X1–X3's rules unchanged. Trigger: Mem's remote-MCP delegation (#8956) ships.
-- [ ] Mem asks B11–B13 (research/37 §6): a member name on cards, no retained identity offered without a
-      context, one agent per card across Spaces. Trigger: the author files them (D111's channel).
-- [ ] Replace the tolerant JSON parsing (`inbox`, `open`, `outbox`, `inspect`, send/reply results, the member in
-      passive `setup`) with the real shapes from that run's `raw-<time>/` folder. Trigger: the live run.
-- [ ] Turn `DUCTER_BRIDGE` on by default behind a Partner-page toggle (J-Q1). Trigger: the live run passes.
-- [ ] Clients render the quiet lines (发来请求 / 已发给 / 回复了 / 已回复). Trigger: J-Q5 answered.
+- [ ] X6 · probe Mem's Slack adapter as a sender to the persona (research/37 §8). Trigger: the persona has a
+      mailbox.
+- [ ] File B11–B13 and B15 with the Nowledge team (research/37 §6, §8; the text is ready). Trigger: the author's go
+      (D111's channel was not reachable from the session that found them).
+- [ ] Replace the tolerant JSON parsing (`inbox`, `open`, `outbox`, `inspect`, send/reply results) with the real
+      shapes from the live run's `raw-<time>/` folder. Trigger: the live run.
+- [ ] Turn Bridge on by default by D170 (9)'s criteria: Ducter finds the persona's context itself; Settings ›
+      伙伴's 谁都不行 is the off. Trigger: the live run passes.
+- [x] Clients render the quiet lines (发来请求 / 已发给 / 已回复, and a sender set aside) (D170).
 - [ ] Follow-through by a time the user named ("今晚前告诉我"). Trigger: a user asks for it; `wait_until`
       covers it today.
 

@@ -307,6 +307,32 @@ func TestMemoryNotedIsOneQuietEntry(t *testing.T) {
 	}
 }
 
+// D170: the user's other agents are quiet lines: a request in, a reply out,
+// one line a day for a sender set aside; steps and early messages show nothing.
+func TestBridgeMessagesAreQuietLines(t *testing.T) {
+	s := New()
+	in := protocol.BridgeMsg{Direction: "in", MessageID: "m1", From: "terminal-claude", Agent: "terminal-claude", Mine: true, Text: "push now?"}
+	s.Apply(events(
+		ev(1, "channel", protocol.KindBridgeMsg, in),
+		ev(2, "channel", protocol.KindBridgeMsg, protocol.BridgeMsg{Direction: "in", MessageID: "m0", From: "x", State: "early"}),
+		ev(3, "channel", protocol.KindBridgeMsg, protocol.BridgeMsg{Direction: "out", MessageID: "", To: "terminal-claude", Text: "用户选了：「等」", InReplyTo: "m1", State: "sending"}),
+		ev(4, "channel", protocol.KindBridgeMsg, protocol.BridgeMsg{Direction: "out", MessageID: "m2", To: "terminal-claude", Text: "用户选了：「等」", InReplyTo: "m1", State: "sent"}),
+		ev(5, "channel", protocol.KindBridgeMsg, protocol.BridgeMsg{Direction: "in", MessageID: "s1", From: "reviewer", State: "set_aside"}),
+		ev(6, "channel", protocol.KindBridgeMsg, protocol.BridgeMsg{Direction: "in", MessageID: "s2", From: "reviewer", State: "set_aside"}),
+	))
+	if len(s.Channel) != 3 {
+		t.Fatalf("%d entries, want 3 (request, reply, one set-aside line)", len(s.Channel))
+	}
+	if s.Channel[0].Peer == nil || s.Channel[1].Peer.State != "sent" || s.Channel[2].Peer.State != "set_aside" {
+		t.Errorf("entries %+v", s.Channel)
+	}
+	if n := s.SetAside["reviewer|"+dayOfTS(s.Channel[2].Event.TS)]; n != 2 {
+		t.Errorf("set aside %d, want 2", n)
+	}
+}
+
+func dayOfTS(ts string) string { return firstN(ts, 10) }
+
 // Merge / Open draft PR are offered only when the task's branch holds
 // something its base doesn't (core's check at report time).
 func TestCanIntegrateFollowsTheBranchCheck(t *testing.T) {

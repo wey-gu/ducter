@@ -64,6 +64,11 @@ export interface BridgeClient {
    */
   check(known: Set<string>): Promise<BridgeResult<{ messages: BridgeMessage[]; reads?: Record<string, boolean> }>>;
   /**
+   * The handles in the inbox, without opening any (nothing is marked read). Used once, when Bridge
+   * is first on for a persona: what is already there is not a request to it (B14, D170).
+   */
+  inboxIds?(): Promise<BridgeResult<{ ids: string[] }>>;
+  /**
    * Reply to a received message; the CLI derives the recipient from that original.
    * A failure with reason "unavailable" means the outcome is UNKNOWN (D106): recover it, never resend.
    */
@@ -325,6 +330,13 @@ export function createNmemBridge(opts: NmemBridgeOptions): BridgeClient {
       }
       const reads = outgoingReads(j);
       return { ok: true, messages, ...(reads ? { reads } : {}) };
+    },
+    async inboxIds() {
+      const r = await run(["inbox"]);
+      if ("missing" in r || r.code !== 0) return failure(r);
+      const j = parse(r.out);
+      if (j === undefined) return { ok: false, reason: "unavailable", message: "Bridge gave no answer (it may be switched off for this account)." };
+      return { ok: true, ids: inboxIds(j) };
     },
     async reply(messageId, text) {
       // Body through stdin (--body-file -): text starting with "-" can't parse as a flag.

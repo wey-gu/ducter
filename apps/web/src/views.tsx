@@ -213,6 +213,7 @@ function AutoText(p: { value: string; onInput: (v: string) => void; placeholder:
 // ---------- decisions ----------
 
 function defaultInfo(d: DecisionState, now: number): { line: string; frac?: number } {
+  if (d.asker) return { line: t("peer.default") }; // silence never answers for the user (D164)
   if (!d.reversible) return { line: t("decision.no_default") };
   const at = d.defaultAt ? Date.parse(d.defaultAt) : NaN;
   if (d.defaultOption !== "go" || Number.isNaN(at)) return { line: t("decision.default.hold") };
@@ -230,6 +231,7 @@ function defaultInfo(d: DecisionState, now: number): { line: string; frac?: numb
  *  else Go / 好: never a sentence (D127). */
 export function goLabel(d: DecisionState): string {
   if (d.where) return whereAsk(d.where).go;
+  if (d.asker) return d.goLabel; // X1: the asking agent's own option, as it named it
   if (d.closing) return closingWords(d.closing).go;
   if (d.memPlugin) return t("memp.card.go");
   return shortGo(d.goLabel);
@@ -300,7 +302,7 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
       <div class="q">{wa?.question ?? (d.closing ? closingWords(d.closing).question : d.memPlugin ? t("memp.card.question", harnessName(d.memPlugin.harness), d.memPlugin.deviceName) : d.question)}</div>
       {d.routineId && <RoutineFacts routineId={d.routineId} />}
       {open && wa && wa.lines.map((l, i) => <div key={i} class={`dl${l.widen ? " widen" : ""}`}>{l.text}</div>)}
-      {open && !wa && <DefaultRow d={d} />}
+      {open && !wa && (d.asker ? <div class="dl">{t("peer.default")}</div> : <DefaultRow d={d} />)}
       {open ? (
         // Reply… · Hold · Go, the primary last (D76). Hold and Go stay one pair; a long Go
         // sends Reply… to its own line under them (.btns.decide).
@@ -315,9 +317,15 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
             }}
           />
           <span class="pair">
-            <Btn kind="secondary" label={wa?.hold ?? (d.closing ? closingWords(d.closing).hold : d.memPlugin ? t("memp.card.hold") : t("decision.hold"))} about={about} onClick={() => A.decide(d.decisionId, "hold")} />
-            <Btn kind="primary" label={goText} about={about} onClick={() => A.decide(d.decisionId, "go")} />
+            {d.asker?.other ? (
+              // X1: its second option, answered in its own words (a reply), never Hold.
+              <Btn kind="secondary" label={d.asker.other} about={about} onClick={() => A.decide(d.decisionId, "reply", d.asker!.other)} />
+            ) : (
+              <Btn kind="secondary" label={wa?.hold ?? (d.closing ? closingWords(d.closing).hold : d.memPlugin ? t("memp.card.hold") : d.trust ? t("peers.trust.hold") : t("decision.hold"))} about={about} onClick={() => A.decide(d.decisionId, "hold")} />
+            )}
+            <Btn kind="primary" label={d.asker ? d.goLabel : goText} about={about} onClick={() => A.decide(d.decisionId, "go")} />
           </span>
+          {d.asker?.suggests && <span class="sug">{t("peer.suggests", d.goLabel)}</span>}
         </div>
       ) : (
         <Resolved d={d} />
@@ -349,6 +357,25 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
   );
 }
 
+/** D170 (X1): asked for one of the user's own agents: its coin, who it is and where it works stand
+ *  where a task's title would; the coin bobs while it waits on the user. */
+function PeerAsker({ d }: { d: DecisionState }) {
+  return (
+    <div class="asker peer">
+      <Coin harness={peerHarness(d.asker!.agent)} size={20} motion={d.resolved || d.pending ? "still" : "needs_you"} />
+      <span>
+        {t("peer.asks", d.asker!.agent)}
+        {d.asker!.where && <small> · {d.asker!.where}</small>}
+      </span>
+    </div>
+  );
+}
+
+/** The coin of an agent Ducter didn't start, from its name; a plain coin when the kind is unknown. */
+export function peerHarness(agent: string): string {
+  return /claude/i.test(agent) ? "claude-code" : /codex/i.test(agent) ? "codex" : /\bpi\b/i.test(agent) ? "pi" : "peer";
+}
+
 /** One ask: the asking task's title as a quiet link (nothing for the partner's own asks, or
  *  inside its own task), the question, its default, and Go / Hold / Reply…. */
 function DecisionCard({ d, taskId, inTask }: { d: DecisionState; taskId?: string; inTask?: boolean }) {
@@ -364,6 +391,7 @@ function DecisionCard({ d, taskId, inTask }: { d: DecisionState; taskId?: string
   const task = id ? A.S.tasks.get(id) : undefined;
   return (
     <div ref={ref} class={`decision${flash ? " flash" : ""}`} id={`d-${d.decisionId}`}>
+      {d.asker && <PeerAsker d={d} />}
       {task && title(task) && !inTask && (
         // Who asks and about what (D127): the agent's coin and the task's short title, the way into it.
         <button class="asker" title={title(task)} onClick={() => ((A.sheet = null), A.go({ name: "task", id: task.id }))}>
@@ -945,6 +973,7 @@ function Ask({ d, taskId, buttons = true }: { d: DecisionState; taskId?: string;
     );
   return (
     <div ref={ref} class={`partner askq${flash ? " flash" : ""}`} id={`d-${d.decisionId}`}>
+      {d.asker && <PeerAsker d={d} />}
       <div class="bubble">{d.said || d.question}</div>
       {/* A routine's proposal card (D29, D114): what it would do, before one Go. */}
       {d.routineId && open && <RoutineFacts routineId={d.routineId} />}
@@ -954,13 +983,21 @@ function Ask({ d, taskId, buttons = true }: { d: DecisionState; taskId?: string;
           {buttons && (
             <div class="tray">
               <Btn kind="text" size="sm" label={t("decision.reply")} about={about} onClick={() => (A.replyOpen.has(d.decisionId) ? A.replyOpen.delete(d.decisionId) : A.replyOpen.add(d.decisionId), A.changed())} />
-              <Btn kind="text" size="sm" label={t("decision.hold")} about={about} onClick={() => A.decide(d.decisionId, "hold")} />
+              {d.asker?.other ? (
+                // X1: its second option, answered in its own words (a reply), never Hold.
+                <Btn kind="secondary" size="sm" label={d.asker.other} about={about} onClick={() => A.decide(d.decisionId, "reply", d.asker!.other)} />
+              ) : (
+                <Btn kind="text" size="sm" label={d.trust ? t("peers.trust.hold") : t("decision.hold")} about={about} onClick={() => A.decide(d.decisionId, "hold")} />
+              )}
               <span class="grow" />
               <Btn kind="primary" size="sm" label={goLabel(d)} about={about} onClick={() => A.decide(d.decisionId, "go")} />
             </div>
           )}
           <div class="dflt">
-            <span>{defaultInfo(d, Date.now()).line}</span>
+            <span>
+              {d.asker?.suggests && <b class="sug">{t("peer.suggests", d.goLabel)}</b>}
+              {defaultInfo(d, Date.now()).line}
+            </span>
             {task && title(task) && <DetailsToggle k={k} about={about} />}
           </div>
           {task && A.detailsOpen(k) && (
@@ -1114,7 +1151,35 @@ function EntryView({ e, chipOwner, livingItems, join }: { e: Entry; chipOwner: M
     if (!d) return null;
     return <Ask d={d} />;
   }
+  if (e.peer) {
+    // A question it asked shows once, as its card (which already says who asks).
+    const asked = e.peer.direction === "in" && [...A.S.decisions.values()].some((d) => d.asker?.messageId === e.peer!.messageId);
+    return asked ? null : <PeerLine b={e.peer} ts={e.ev.ts} />;
+  }
   return null;
+}
+
+/** One quiet line about the user's other agents (D170, J-Q5): who, and what, never Bridge words. */
+export function peerLineText(b: Bodies["bridge_msg"], ts: string, setAside?: number): string {
+  const agent = b.agent ?? b.from ?? b.to ?? "";
+  const who = b.mine ? (A.L.lang === "zh" ? `你的 ${agent}` : `your ${agent}`) : agent;
+  if (b.direction === "in" && b.state === "set_aside") return t("peer.set_aside", b.mine ? who : agent, String(setAside ?? 1));
+  if (b.direction === "in") {
+    const gist = b.text.replace(/\s+/g, " ").trim();
+    return t(b.mine ? "peer.in" : "peer.in.other", agent, gist.length > 40 ? gist.slice(0, 39) + "…" : gist);
+  }
+  void ts;
+  return t(b.decisionId ? "peer.sent" : "peer.replied", who);
+}
+
+function PeerLine({ b, ts }: { b: Bodies["bridge_msg"]; ts: string }) {
+  const n = b.state === "set_aside" ? A.S.setAside.get(`${b.from}|${ts.slice(0, 10)}`)?.n : undefined;
+  return (
+    <div class="peerline" role="status">
+      <Coin harness={peerHarness(b.agent ?? b.from ?? b.to ?? "")} size={16} />
+      <span>{peerLineText(b, ts, n)}</span>
+    </div>
+  );
 }
 
 /** While the user waits on a reply (D104): the clay partner where its words will appear, and
@@ -2110,6 +2175,48 @@ function TrustSettings() {
   );
 }
 
+/**
+ * D170: who of the user's other AI agents may reach the partner, what it learned about them, and
+ * whom the user stopped listening to. Shown only once another agent has written (J6: a fresh user
+ * never meets it).
+ */
+function PeerSettings() {
+  const s = A.settings;
+  const p = s?.peers;
+  const seen = A.S.channel.some((e) => e.peer);
+  if (!s || !p || (!seen && !p.trusted.length && !p.muted.length)) return null;
+  const name = s.name;
+  const set = (patch: Partial<typeof p>) => A.setSettings({ peers: { ...p, ...patch } });
+  return (
+    <section class="set">
+      <h3>{t("peers.title", name)}</h3>
+      <div class="set-card">
+        <div class="set-item">
+          <b>{t("peers.reach", name)}</b>
+          <small>{t("peers.reach.note")}</small>
+          <Seg label={t("peers.reach", name)} value={p.reach} options={(["own", "team", "off"] as const).map((v) => ({ v, label: t(`peers.reach.${v}`) }))} onPick={(reach) => set({ reach })} />
+        </div>
+      </div>
+      {p.trusted.map((a) => (
+        <div class="noted-row" key={`t-${a}`}>
+          <Coin harness={peerHarness(a)} size={20} />
+          <span>
+            {t("peers.trusted", a)} · <small>{t("peers.trusted.why")}</small>
+          </span>
+          <Btn kind="text" label={t("peers.trusted.stop")} about={a} onClick={() => set({ trusted: p.trusted.filter((x) => x !== a) })} />
+        </div>
+      ))}
+      {p.muted.map((a) => (
+        <div class="noted-row" key={`m-${a}`}>
+          <Coin harness={peerHarness(a)} size={20} off />
+          <span>{t("peers.muted", a)}</span>
+          <Btn kind="text" label={t("peers.muted.undo")} about={a} onClick={() => set({ muted: p.muted.filter((x) => x !== a) })} />
+        </div>
+      ))}
+    </section>
+  );
+}
+
 function NotifySettings() {
   const s = A.settings;
   if (!s) return <div class="small">{t("conn.connecting")}</div>;
@@ -2631,6 +2738,7 @@ function SettingsSheet() {
               <TalkSettings />
               <MemorySettings />
               <TrustSettings />
+              <PeerSettings />
             </>
           )}
           {page === "notify" && <NotifySettings />}

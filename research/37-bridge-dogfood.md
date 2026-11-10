@@ -328,6 +328,63 @@ author can choose. So no live message has gone through Ducter yet.
 - Because a member has no name on a card, a teammate's agent is shown by the agent's own name only. D108's
   "<agent> (<name>)" becomes "<agent>" until Mem returns names (D162).
 
+## 8. Binding the persona's mailbox, and the author's real day (2026-11-10, later)
+
+The author asked to put Ducter in "the main, largest Space I use every day", register it, and run the trial.
+
+**Which Space (read-only evidence).** [VERIFIED, `nmem spaces list`, `nmem m list --space-id … -n 1000`]
+
+| Space | Kind | Readers | Memories | Written in the last 7 days |
+|---|---|---|---|---|
+| Only me | personal (Mem's write default) | 1 | 9,189 | 128 |
+| Before the team | default | 6 | 1,352 | 1 |
+| Nowledge Co/mem | team | 7 | 124 | 35 |
+| dev team | team | 7 | 73 | 0 |
+| Codex | team | 7 | 43 | 2 |
+| Everyone | commons | 9 | 10 | 1 |
+
+Chosen: **Only me**. It is the largest and the most used by a wide margin, it is where Mem writes by default, and
+with one reader nothing Ducter receives or sends there reaches a teammate.
+
+**The attempt.** `nmem agents context select-cloud --name ducter --agent-id ducter --space-id <Only me>` exited 1
+with `cloud_session_authority_unavailable` (HTTP 403, `retryable: false`, `outcome_unknown: true`) and the CLI's
+warning to stop Bridge attempts and not register other identities. `agents context show --name ducter` afterwards:
+`selection_required` (nothing kept locally). [VERIFIED] Following the Bridge skill, nothing else was tried: no
+other identity, credential, key or registration, no test identity (`agents enroll`), no `--enable`, no send. So
+nothing needs undoing; the live trial did not run.
+
+**Reading** [INFERRED]: this machine's connection has no communication authority for the `ducter` identity (it
+was enrolled by Ducter, D141, and its custodian is not this connection). Mem's admin step or a standard Agent key
+for `ducter` is the fix; it is the author's or Mem's, not Ducter's.
+
+**The author's real day, as patterns (no content copied).** [VERIFIED counts; INFERRED reading]
+- Of the last 1,000 memories in Only me, about 650 are from the last 30 days, written by Codex (≈ 480), the CLI
+  (≈ 85), MCP clients (≈ 50) and Claude Code (≈ 40): many long-running coding sessions, mostly Codex, each
+  journaling its task.
+- The account holds named coordinator agents (a Claude "wrap-up coordinator", a "user feedback coordinator"),
+  Codex maintainer agents, Bridge pilot agents, and Mem's hosted chat adapters; the Slack adapter holds an agent
+  key in seven Spaces and the default Space is connected to about sixteen Slack channels.
+- So the day is many agents working in parallel, several of them coordinators, and a team that talks in Slack.
+  The moments that need the author are decisions those sessions can't make alone (push, scope, naming, "is this
+  done?"). That is X1's moment exactly, and it is daily, not occasional.
+
+**For the Nowledge team** (`report_mem_issue` was not reachable from this session; the text is ready to file):
+- **B11** a contact card carries no member name; **B12** passive setup without a context offers a retained
+  identity whose `next_args` would enable it; **B13** one card per Space for the same agent (§6).
+- **B15 · Selecting an identity Ducter enrolled is refused without a next step.** `select-cloud` for an identity
+  this account owns answers `cloud_session_authority_unavailable`, `outcome_unknown: true`, with no hint of the
+  authority it needs or who grants it. Expected: a typed reason (no standard key for this identity / not
+  admitted) and the admin step.
+
+## 9. Implications (2026-11-10, later)
+
+- Everything Ducter-side for X1, X2 and X3's switch is built and tested over the fake Bridge (D170). The live
+  trial waits on one Mem-side authority (B15), then two commands.
+- The author's day makes X1 the first thing to prove live: many parallel sessions, several coordinators, and the
+  author away from the terminal.
+- Mem's Slack adapter as a Bridge agent (X6) is worth a probe once the persona has a mailbox: it would bring the
+  team's chat to the same single attention point without a new channel in Ducter.
+
 ## Summary
 
 - Bridge is not usable on the author's account today: the IM backend is unavailable in all 8 Spaces, and no
@@ -351,3 +408,6 @@ author can choose. So no live message has gone through Ducter yet.
   `ducter` exists but has no context or mailbox, so the live trial stops at its preflight until the author
   selects the context and a terminal-side identity. Two real-shape parsing bugs (member labels, the user's own
   member) are fixed; four new findings (B11–B14).
+- **2026-11-10, later (§8):** the persona's mailbox belongs in Only me (by size, use and privacy); binding it was
+  refused by Mem (`cloud_session_authority_unavailable`, B15) and nothing else was tried. X1, X2 and X3's switch
+  are built (D170) and wait on that authority for their live run.

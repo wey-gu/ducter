@@ -449,6 +449,7 @@ const ld = {
           <button role="tab" id="tab-cli" aria-controls="p-cli" aria-selected="false" tabindex="-1">Command line</button>
           <button role="tab" id="tab-srv" aria-controls="p-srv" aria-selected="false" tabindex="-1">Server</button>
           <button role="tab" id="tab-ios" aria-controls="p-ios" aria-selected="false" tabindex="-1">iPhone and iPad</button>
+          <button role="tab" id="tab-android" aria-controls="p-android" aria-selected="false" tabindex="-1">Android</button>
           <button role="tab" id="tab-agent" aria-controls="p-agent" aria-selected="false" tabindex="-1">Your AI agent</button>
         </div>
         <div class="panel" id="p-mac" role="tabpanel" aria-labelledby="tab-mac" style="margin-top:14px">
@@ -477,7 +478,17 @@ const ld = {
         <div class="panel" id="p-ios" role="tabpanel" aria-labelledby="tab-ios" style="margin-top:14px" hidden>
           <p>One app for iPhone and iPad, in public beta through Apple's TestFlight. It connects to Ducter on your server with the address and code from <code>ducter pair</code>.</p>
           <p><a class="btn" href="https://testflight.apple.com/join/Z4GvWt7t" rel="noopener">Join the beta</a></p>
-          <p>{facts.apkUrl ? <>On Android, <a href={facts.apkUrl}>the Ducter app</a> connects the same way and updates itself; any other phone opens the same address in its browser.</> : <>On Android, or any phone, open the same address in the browser; the Android app is coming soon.</>} <a href="/docs/phone">Your phone</a> has the details.</p>
+          <p>Any other phone opens the same address in its browser. <a href="/docs/phone">Your phone</a> has the details.</p>
+        </div>
+        <div class="panel" id="p-android" role="tabpanel" aria-labelledby="tab-android" style="margin-top:14px" hidden>
+          {facts.apkUrl ? (
+            <>
+              <p>The Ducter app for Android comes with each release on GitHub and updates itself. Allow your browser to install it when Android asks, then scan the code from <code>ducter pair</code>. On a foldable, open it like a book: the conversation and On hand meet at the fold.</p>
+              <p><a class="btn" href={facts.apkUrl}>Download the app</a></p>
+            </>
+          ) : (
+            <p>Open the address from <code>ducter pair</code> in your phone's browser; the Android app is coming soon.</p>
+          )}
         </div>
         <div class="panel" id="p-agent" role="tabpanel" aria-labelledby="tab-agent" style="margin-top:14px" hidden>
           <p>Let Claude Code, Codex or another agent set Ducter up for you. Ask it:</p>

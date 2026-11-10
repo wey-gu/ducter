@@ -166,7 +166,18 @@ func main() {
 	// disk image's path goes away).
 	app.ThisComputer = remote.DeviceName()
 	if inApp && local.Settled(bundle.CLI) {
-		app.MacWorker = appWorker{local.NewMacWorker(bid, bundle.CLI, hints.DataDir(), string(lang))}
+		mw := local.NewMacWorker(bid, bundle.CLI, hints.DataDir(), string(lang))
+		app.MacWorker = appWorker{mw}
+		// D167: a worker still on an older helper than this app's (it kept the
+		// old one in memory across an update) is restarted once. A minute
+		// in: a worker the update's swap just restarted has said its new
+		// version by then.
+		go func(v string) {
+			time.Sleep(time.Minute)
+			if did, err := mw.Refresh(v); did != "" || err != nil {
+				log.Printf("ducter: this Mac's worker %s %v", did, err)
+			}
+		}(lc.version)
 	}
 	if host != nil {
 		app.ReportProblem = func() { go lc.reportProblem() }

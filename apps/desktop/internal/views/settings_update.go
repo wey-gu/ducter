@@ -66,7 +66,7 @@ func (a *App) appUpdateSection(c *ui.Context) {
 	a.group(c, "update", a.L.T("settings.update.title"), "", func() {
 		a.row(c, "update", line, help, func() {
 			if busy {
-				ui.Text(c, a.L.T("settings.data.checking")).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted)
+				a.sideStatus(c, a.L.T("settings.data.checking"), sideMuted)
 				return
 			}
 			if a.button(c, a.L.T("update.checknow"), btnSecondary, t.ControlMD, t.Surface) {

@@ -335,8 +335,9 @@ When you tap **Update**, the card says what it's doing: **Downloading… · Chec
 work to settle… · Restarting…** and then **Back, now on 0.0.4**. Ducter only takes files from its
 official GitHub release, checks each one against the release's checksums, and tries the new
 version before it switches. It waits until no merge or undo is running; tasks that are working
-pause for the restart and carry on. If the new version doesn't come up within a minute, Ducter
-switches back to the one you had, and the card says **Didn't update; back on 0.0.3** with why.
+pause for the restart and carry on. If the new version doesn't come up within three minutes,
+Ducter switches back to the one you had, and the card says **Didn't update; back on 0.0.3**; tap
+it to see why.
 
 From a terminal, on the computer Ducter lives on:
 

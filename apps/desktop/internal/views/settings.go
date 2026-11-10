@@ -428,6 +428,102 @@ func (a *App) row(c *ui.Context, key, label, help string, control func()) {
 	})
 }
 
+// sideTone is how a valueRow's status reads: quiet, plain ink, done or
+// failed.
+type sideTone int
+
+const (
+	sideMuted sideTone = iota
+	sideInk
+	sideDone
+	sideFailed
+)
+
+func (a *App) sideInk(tone sideTone) ui.Color {
+	t := a.T
+	switch tone {
+	case sideInk:
+		return t.Ink
+	case sideDone:
+		return t.Done.Ink
+	case sideFailed:
+		return t.Failed.Ink
+	}
+	return t.InkMuted
+}
+
+// valueRow is one line of a list inside free content (a sheetCard): a
+// title, with a mark after it (a dot), and a quiet line under it at the
+// left; a value (a version, in mono) and its status at the right end, the
+// status built from sideStatus and sideLink only. below: what shows under
+// the row (an action, a failure's why), or nil. Every state of the row
+// lives in it: nothing about one row stands on its own line in the list.
+func (a *App) valueRow(c *ui.Context, key, title, sub string, mark func(), value string, status func(), below func()) {
+	t := a.T
+	ui.Column(c.Key("vrow:" + key)).Gap(t.S2).Children(func() {
+		ui.Row(c).Gap(t.S3).AlignItems(ui.Start).Children(func() {
+			ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
+				ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+					ui.Text(c, title).FontSize(t.MD).FontWeight(800).SingleLine()
+					if mark != nil {
+						mark()
+					}
+				})
+				if sub != "" {
+					ui.Text(c, sub).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
+				}
+			})
+			ui.Column(c).Gap(2).AlignItems(ui.End).Shrink(0).Children(func() {
+				if value != "" {
+					ui.Text(c, value).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkSoft).Selectable()
+				}
+				if status != nil {
+					status()
+				}
+			})
+		})
+		if below != nil {
+			below()
+		}
+	})
+}
+
+// sideStatus is a valueRow's status words: one short line, XS, in its tone.
+func (a *App) sideStatus(c *ui.Context, text string, tone sideTone) {
+	t := a.T
+	w := 700
+	if tone == sideMuted {
+		w = 500
+	}
+	ui.Text(c, text).FontSize(t.XS).FontWeight(w).TextColor(a.sideInk(tone)).SingleLine()
+}
+
+// sideLink is a valueRow's status that does something: the same words and
+// size as sideStatus, a pointer, ink on hover; chevron 1 (closed) or 2
+// (open) when it opens more under the row. It reports a click.
+func (a *App) sideLink(c *ui.Context, key, text, about string, tone sideTone, chevron int) bool {
+	t := a.T
+	name := text
+	if about != "" {
+		name = text + " · " + about
+	}
+	b := ui.Row(c.Key("side:" + key)).Gap(3).AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(name).Focusable()
+	if chevron != 0 {
+		b.Expanded(chevron > 1)
+	}
+	col := a.sideInk(tone)
+	if b.Hovered() || b.Pressed() {
+		col = t.Ink
+	}
+	b.Children(func() {
+		ui.Text(c, text).FontSize(t.XS).FontWeight(700).TextColor(col).SingleLine().AccessHidden(true)
+		if chevron != 0 {
+			a.glyph(c, 10, drawChevron(col, chevron > 1))
+		}
+	})
+	return b.Clicked()
+}
+
 // rowBlock is a row that holds something else than a label and a control
 // (a list, a form, a hero): the card's padding, the hairline above.
 func (a *App) rowBlock(c *ui.Context, key string, body func()) {

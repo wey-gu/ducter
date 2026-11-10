@@ -50,4 +50,39 @@ describe("your devices (D148)", () => {
     const keys = (l: "zh" | "en") => Object.keys(TABLES[l]).filter((k) => /^(devup|device\.|devices\.title|settings\.versions)/.test(k)).sort();
     expect(keys("zh")).toEqual(keys("en"));
   });
+
+  test("D167: 没更新成 never on the version it went to, nor once the device moved on; a real one stays", async () => {
+    const { A } = await import("../src/app.ts");
+    const failed = (current: string, from = "0.0.6") => ({ current, latest: "0.0.7", available: current !== "0.0.7", how: "self", phase: "failed", from, to: "0.0.7", reason: "health", rolledBack: true });
+    A.receive(home(failed("0.0.7")));
+    expect(A.devices?.[0]?.update?.phase).toBeUndefined();
+    A.receive(home({ ...failed("0.0.7"), from: "0.0.5", to: "0.0.6" }));
+    expect(A.devices?.[0]?.update?.phase).toBeUndefined();
+    A.receive(home(failed("0.0.6")));
+    expect(A.devices?.[0]?.update).toMatchObject({ phase: "failed", reason: "health", rolledBack: true });
+    A.receive(home(failed("0.0.6", "?")));
+    expect(A.devices?.[0]?.update?.phase).toBe("failed");
+  });
+
+  test("D167: the devices section and its version block use shared controls only; 在查… lives in the version row", async () => {
+    const src = await Bun.file(new URL("../src/views.tsx", import.meta.url)).text();
+    const body = (head: string) => {
+      const at = src.indexOf(head);
+      expect(at).toBeGreaterThan(-1);
+      return src.slice(at, src.indexOf("\n}\n", at));
+    };
+    for (const head of ["function VersionBlock(", "export function DevicesSection("]) {
+      const b = body(head);
+      expect(b).not.toMatch(/<(button|input|select|textarea|a)[\s>]/);
+      // Every handler sits on a shared component (Btn, Toggle), never on a bare element.
+      for (const m of b.matchAll(/onClick=|onChange=/g)) {
+        const tag = b.slice(b.lastIndexOf("<", m.index), m.index);
+        expect(tag).toMatch(/^<(Btn|Toggle)\s/);
+      }
+    }
+    const v = body("function VersionBlock(");
+    const row = v.slice(v.indexOf('class="dev-ver-row"'), v.indexOf("\n      </div>", v.indexOf('class="dev-ver-row"')));
+    expect(row).toContain('t("devup.checking")');
+    expect(v.split('t("devup.checking")').length).toBe(2);
+  });
 });

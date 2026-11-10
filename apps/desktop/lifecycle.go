@@ -57,6 +57,12 @@ func newUpdater(bundle local.Bundle, bid string, host *local.Host, prompt string
 	if host != nil && host.Agent != nil {
 		cfg.AgentLabel, cfg.AgentPlist = host.Agent.Label, host.Agent.PlistPath()
 	}
+	// D167: this Mac's worker (D155) runs the bundled helper too, also when
+	// the app talks to a Ducter elsewhere (no host): restart it after a swap.
+	if bid != "" {
+		wl := local.WorkerLabel(bid)
+		cfg.WorkerLabel, cfg.WorkerPlist = wl, filepath.Join(local.LaunchAgentsDir(), wl+".plist")
+	}
 	u, err := update.New(cfg)
 	if err != nil {
 		log.Printf("ducter: no updates: %v", err)

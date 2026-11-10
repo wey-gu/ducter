@@ -97,9 +97,14 @@ type Config struct {
 	Dir        string // ~/Library/Application Support/Ducter/updates
 	AgentLabel string // the background LaunchAgent to restart after a swap ("" none)
 	AgentPlist string // its plist: restarted only when it is there (not resting)
-	HTTP       *http.Client
-	Check      Checker
-	Now        func() time.Time
+	// WorkerLabel/WorkerPlist: this Mac's worker LaunchAgent (D155), restarted
+	// after a swap too, so it runs the new bundled helper instead of the old
+	// one it still has in memory (D167). "" none.
+	WorkerLabel string
+	WorkerPlist string
+	HTTP        *http.Client
+	Check       Checker
+	Now         func() time.Time
 	// OnChange is called after every change of Status, on any goroutine.
 	OnChange func(Status)
 	Logf     func(format string, args ...any)
@@ -613,7 +618,7 @@ func (u *Updater) Begin(relaunch bool) (bool, error) {
 		rl = "1"
 	}
 	cmd := exec.Command("/bin/sh", "-c", swapScript, "ducter-update",
-		fmt.Sprint(u.cfg.Pid), u.cfg.App, p.from, p.prev, u.cfg.AgentLabel, u.cfg.AgentPlist, rl, u.resultPath(), p.note)
+		fmt.Sprint(u.cfg.Pid), u.cfg.App, p.from, p.prev, u.cfg.AgentLabel, u.cfg.AgentPlist, rl, u.resultPath(), p.note, u.cfg.WorkerLabel, u.cfg.WorkerPlist)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	if err := cmd.Start(); err != nil {
 		return false, err
@@ -649,9 +654,11 @@ func (u *Updater) PrepareRestart() error {
 
 // swapScript: $1 pid, $2 the running app, $3 the new bundle, $4 where the
 // running one is kept, $5 the LaunchAgent label, $6 its plist, $7 relaunch,
-// $8 the result file, $9 what this is. The waits are capped: a stuck app
-// leaves everything as it was.
-const swapScript = `pid=$1 target=$2 new=$3 prev=$4 label=$5 plist=$6 relaunch=$7 result=$8 what=$9
+// $8 the result file, $9 what this is, $10 the worker LaunchAgent's label,
+// $11 its plist. The waits are capped: a stuck app leaves everything as it
+// was. DUCTER_LAUNCHCTL stands in for launchctl in tests.
+const swapScript = `pid=$1 target=$2 new=$3 prev=$4 label=$5 plist=$6 relaunch=$7 result=$8 what=$9 wlabel=${10} wplist=${11}
+lc=${DUCTER_LAUNCHCTL:-/bin/launchctl}
 trap '' HUP
 i=0
 while kill -0 "$pid" 2>/dev/null; do
@@ -677,7 +684,12 @@ else
 	echo "$what: couldn't move the running version aside; nothing changed" >"$result"
 fi
 if [ -n "$ok" ] && [ -n "$label" ] && [ -f "$plist" ]; then
-	/bin/launchctl kickstart -k "gui/$(id -u)/$label" >/dev/null 2>&1
+	"$lc" kickstart -k "gui/$(id -u)/$label" >/dev/null 2>&1
+fi
+# This Mac doing tasks for a Ducter elsewhere (D155): its worker runs the bundled helper from
+# memory, the old one, until restarted (D167).
+if [ -n "$ok" ] && [ -n "$wlabel" ] && [ -f "$wplist" ]; then
+	"$lc" kickstart -k "gui/$(id -u)/$wlabel" >/dev/null 2>&1
 fi
 # Launch Services still holds the old bundle's record for this path: refresh it, so the open
 # below starts the new version with its own Info.plist, as a launch from the Dock would.

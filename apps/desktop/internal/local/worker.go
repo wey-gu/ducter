@@ -12,14 +12,17 @@ package local
 // unloaded and removed, worker.json goes, and the view revokes the device.
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"encoding/xml"
 	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/remote"
+	"github.com/wey-gu/ducter/apps/desktop/internal/update"
 )
 
 // WorkerLabel is the worker LaunchAgent's label for an app's bundle id
@@ -163,4 +166,44 @@ func (w *MacWorker) Stop() (string, error) {
 		err = rerr
 	}
 	return id, err
+}
+
+// workerAlive is <dataDir>/updates/alive.json, which `ducter worker` writes
+// each time it reaches its home (packages/core/src/update.ts writeAlive).
+type workerAlive struct {
+	Version string `json:"version"`
+}
+
+// Refresh keeps this Mac's worker on the app's own helper (D167), soon after
+// the app starts: a plist that names another helper (a bundle moved aside
+// by an update) is written again and reloaded; a worker that last said an
+// older version than appVersion (the bundled helper's) still runs an old
+// helper from memory, so it is restarted, once per version (a worker that
+// can't reach its home never says a newer one). It reports what it did:
+// "" nothing, "reloaded" or "restarted".
+func (w *MacWorker) Refresh(appVersion string) (string, error) {
+	if !w.Agent.Installed() || w.Saved() == nil {
+		return "", nil
+	}
+	have, _ := os.ReadFile(w.Agent.PlistPath())
+	var esc bytes.Buffer
+	_ = xml.EscapeText(&esc, []byte(w.Agent.CLI))
+	if !bytes.Contains(have, []byte("<string>"+esc.String()+"</string>")) {
+		return "reloaded", w.Agent.Install(w.Env)
+	}
+	if appVersion == "" {
+		return "", nil
+	}
+	var a workerAlive
+	b, err := os.ReadFile(filepath.Join(w.DataDir, "updates", "alive.json"))
+	if err != nil || json.Unmarshal(b, &a) != nil || update.Compare(a.Version, "0.0.0") < 0 || update.Compare(a.Version, appVersion) >= 0 {
+		return "", nil
+	}
+	mark := filepath.Join(w.DataDir, "updates", "worker-restarted")
+	if last, _ := os.ReadFile(mark); strings.TrimSpace(string(last)) == appVersion {
+		return "", nil
+	}
+	_ = os.MkdirAll(filepath.Dir(mark), 0o700)
+	_ = os.WriteFile(mark, []byte(appVersion+"\n"), 0o600)
+	return "restarted", w.Agent.Restart()
 }

@@ -132,11 +132,11 @@ The device's card says **Didn't update** and why. Nothing is lost:
 
 - **"The download didn't match its checksum"** or **"didn't pass its check":** nothing was
   changed; try again later.
-- **"Back on 0.0.3":** the new version was installed but didn't come up within a minute, so
-  Ducter put the previous one back and restarted it. The one that didn't start is kept next to
-  `ducter` as `ducter.failed`, and the version before the update as `ducter.prev` (on a server,
-  usually in `~/.local/bin`). `ducter report` includes the log lines; please attach them to an
-  issue.
+- **"Back on 0.0.3":** the new version was installed but didn't come up within three minutes,
+  so Ducter put the previous one back and restarted it. The one that didn't start is kept next
+  to `ducter` as `ducter.failed`, and the version before the update as `ducter.prev` (on a
+  server, usually in `~/.local/bin`). What happened is in `~/.ducter/updates/result.json` (in
+  the data folder). `ducter report` includes the log lines; please attach them to an issue.
 - **"A merge or an undo is still running":** try again once it's done.
 
 To go back to a version by hand on a server: `ducter update --to 0.0.3 --yes`, or move

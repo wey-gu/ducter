@@ -5,6 +5,7 @@ import { detectLang, langOfText, strings, type Lang, type Strings } from "./i18n
 import { pushState, type PushState } from "./push-client.ts";
 import { haptic } from "./native.ts";
 import { attention, finished, LANE, laneOf, looksSecret, Store, title, type DecisionState, type Entry } from "./store.ts";
+import { withoutStaleFailure } from "./format.ts";
 
 export type Route = { name: "conv" } | { name: "onhand" } | { name: "task"; id: string };
 /** Settings (D150) is a list of sections; page is the one pushed ("" is the list). */
@@ -207,7 +208,7 @@ class AppState {
     if (f.t === "rules") return void ((this.rules = f.rules), this.changed());
     if (f.t === "devices") {
       const home = f.devices.find((d) => d.home);
-      return void ((this.agents = home?.harnesses ?? []), (this.homeName = home?.name), (this.devices = f.devices), (this.reach = f.reach), this.changed());
+      return void ((this.agents = home?.harnesses ?? []), (this.homeName = home?.name), (this.devices = f.devices.map((d) => (d.update ? { ...d, update: withoutStaleFailure(d.update) } : d))), (this.reach = f.reach), this.changed());
     }
     if (f.t === "agent_update_result") return void ((this.agentAnswer = f.ok ? undefined : { device: f.device, harness: f.harness, reason: f.reason ?? "failed" }), this.changed());
     if (f.t === "update_result") return void ((this.checkingUpdates = false), (this.deviceAnswer = f.ok || f.update ? undefined : { device: f.device, reason: f.reason ?? "failed" }), this.changed());

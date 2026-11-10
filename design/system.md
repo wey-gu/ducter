@@ -391,7 +391,12 @@ the worker only holds the place (disk, checkouts, worktrees) and runs the harnes
   the file `ducter worker` reads) and loads the LaunchAgent above with the bundled helper
   (`apps/desktop/internal/local/worker.go`). Off: the LaunchAgent is booted out and removed,
   `worker.json` goes, and the app sends `disconnect_device` for the worker. The token never
-  enters the plist. Only from a settled Ducter.app (not the disk image).
+  enters the plist. Only from a settled Ducter.app (not the disk image). **The worker follows
+  the app's updates (D167):** the swap after an app update kickstarts `<bundle>.worker` too
+  (also when the app talks to a home elsewhere, where there is no background home agent), and a
+  minute after the app starts, a worker whose `updates/alive.json` names an older version than
+  the bundled helper is restarted once per version, and a plist naming another helper path is
+  written again.
 - **One computer, one card (D155).** `/pair` takes `form` (`"cli"` for the command line,
   `"app"`) and `computer` (the host it runs on), kept in `devices.db` (`form`, `computer`
   columns) and sent as `reach.clients[].form/computer` and `devices[].computer`. A CLI paired
@@ -505,12 +510,21 @@ checkout. `manual`: a worker that sent no `how` (before 0.0.4).
 | safe point | no merge, undo or keep running (the runner's critical section; new ones are held with a plain line), ≤ 15 min (`busy`); turns in flight get ≤ 2 min, then the restart's recovery resumes them |
 | swap | the running binary hard-linked to `ducter.prev`, the new one renamed over `ducter` (same folder, atomic) |
 | restart | `systemd-run --user --collect` runs `ducter.prev update --finish <dataDir>/updates/plan.json` in its own unit (so `systemctl --user restart ducter`, which kills the service's cgroup, can't kill it) |
-| health | the home: `/health` names `<v>` within 60 s; a worker: it reached its main and wrote `updates/alive.json` with `<v>` |
-| rollback | not healthy: `ducter` → `ducter.failed`, `ducter.prev` → `ducter`, restart again; `result.json` says `health` and `rolledBack` |
+| health | within 180 s (D167; the helper's journal says it is still waiting every 15 s): `updates/alive.json` names `<v>` since the restart (a home writes it once it listens, a worker once it reached its main), or the home's `/health` names `<v>`; an answer from another version is kept for the reason |
+| rollback | not healthy: `ducter` → `ducter.failed`, `ducter.prev` → `ducter`, restart again; `result.json` says `health`, `rolledBack`, and in `detail` what was seen (no answer, another version answered, the restart failed, no `ducter.prev`) |
 
 Without systemd it swaps and says to restart. Each step is a `device_update` event on the
-`devices` stream; the restarted home logs the helper's `result.json` once (`reported`), and a
-restarted worker says it in its hello. The card shows 回来了 30 min, a failure 24 h.
+`devices` stream. **The outcome is judged by what runs (D167).** The helper writes
+`result.json` only after the restarted Ducter answered, so the home reads it again whenever the
+file changes (every 3 s for 15 min after its start, and on each card's view), and a worker looks
+for it for 10 min after it reached its main and sends it up. Against the version it runs
+(`judgeResult`): on the target → 回来了; still on the version it started from and not ok →
+没更新成; moved on since (an older attempt's file, the update before this one, the installer run
+again) → nothing, marked `reported`. The home's card also drops a failure whose device no
+longer runs its `from`, and so do both clients (a home older than this rule). The card shows
+回来了 30 min, a failure 24 h; 没更新成 opens its why, what was seen, and 再试一次 on a tap.
+On a server the file is `<dataDir>/updates/result.json` (`~/.ducter` unless the unit sets
+`DUCTER_DATA_DIR`).
 
 **Workers.** The home sends `update {to, explicit}` down the worker's socket; the worker answers
 at once and reports `{t:"update", phase…}` frames up whichever socket is current

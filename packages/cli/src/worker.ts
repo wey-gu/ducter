@@ -149,7 +149,7 @@ export async function cmdWorker(o: { t: T; style: Style; args: Args; dataDir: st
     harnesses: await probeHarnesses(t, o.dataDir),
     // D148: how this computer updates, and how its last update went (once, after its restart).
     how: updateHow({ compiled: isCompiled(), platform: platform(), execPath: process.execPath }),
-    ...((u) => (u ? { update: u } : {}))(lastOutcome(o.dataDir)),
+    ...((u) => (u ? { update: u } : {}))(lastOutcome(o.dataDir, { version: pkg.version })),
   };
   // DUCTER_SCRIPTED_MODEL=1: canned model words, real tools (scripted.ts), for demos and e2e.
   const harness = process.env.DUCTER_SCRIPTED_MODEL === "1" ? scriptedHarness(runnerMod) : runnerMod.createOarHarnessPort({ dataDir: o.dataDir });
@@ -167,10 +167,22 @@ export async function cmdWorker(o: { t: T; style: Style; args: Args; dataDir: st
     };
     return host;
   };
+  let outcomeWatch: ReturnType<typeof setInterval> | undefined;
   const code = await stayConnected(s, hello, t, style, makeHost, updater, agentUpdater, () => {
     // Reached the main: a restart after an update is healthy now (update.ts waitHealthy).
     writeAlive(dataDir, pkg.version);
-    lastOutcome(dataDir, { markReported: true });
+    lastOutcome(dataDir, { markReported: true, version: pkg.version });
+    // The helper writes the outcome only after it saw alive.json, so after this hello: look for
+    // it a while longer and send it up when it comes (D167).
+    if (!outcomeWatch) {
+      const end = Date.now() + 10 * 60_000;
+      outcomeWatch = setInterval(() => {
+        const f = lastOutcome(dataDir, { markReported: true, version: pkg.version });
+        if (f) sendUp(f);
+        if (f || Date.now() > end) clearInterval(outcomeWatch);
+      }, 3000);
+      (outcomeWatch as any).unref?.();
+    }
     // 上网 may have changed while it was away (Claude in Chrome connected, Chrome installed).
     void browse.abilities().then((abilities) => sendUp({ t: "abilities", abilities }));
   });

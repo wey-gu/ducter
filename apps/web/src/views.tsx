@@ -174,7 +174,7 @@ const Back = () => (
 const stateLabel = (a: Attention) => t(`state.${a === "done_claimed" ? "done" : a}`);
 
 /** One clay button family (D76): primary last in a row, at most one per group. */
-function Btn(p: { kind: "primary" | "secondary" | "text" | "accent"; size?: "sm" | "lg"; onClick: () => void; label: string; about?: string; disabled?: boolean; grow?: boolean; class?: string }) {
+function Btn(p: { kind: "primary" | "secondary" | "text" | "accent"; size?: "sm" | "lg"; onClick: () => void; label: string; about?: string; disabled?: boolean; grow?: boolean; class?: string; expanded?: boolean }) {
   return (
     <button
       class={`btn ${p.kind}${p.size ? ` ${p.size}` : ""}${p.grow ? " grow" : ""}${p.class ? ` ${p.class}` : ""}`}
@@ -182,6 +182,7 @@ function Btn(p: { kind: "primary" | "secondary" | "text" | "accent"; size?: "sm"
       title={p.kind === "primary" ? p.label : undefined}
       aria-label={p.about ? `${p.label} · ${p.about}` : undefined}
       disabled={p.disabled}
+      aria-expanded={p.expanded}
     >
       <span class="lbl">{p.label}</span>
     </button>
@@ -2708,11 +2709,14 @@ function upToDate(u: NonNullable<DeviceView["update"]>): string {
 
 function VersionBlock({ dv }: { dv: DeviceView }) {
   const u = dv.update;
+  // D167: 没更新成 opens its why (and what was seen) on a tap.
+  const [why, setWhy] = useState(false);
   if (!u && !dv.version) return null;
   const current = u?.current ?? dv.version ?? "";
   const line = u ? phaseLine(u) : "";
   const offer = !!u && (behind(u) || (u.phase === "failed" && u.available));
   const answer = A.deviceAnswer?.device === dv.id ? A.deviceAnswer.reason : undefined;
+  const failed = u?.phase === "failed";
   return (
     <div class="dev-ver">
       {/* D156: the agents above carry versions too; this one is Ducter's own. */}
@@ -2732,8 +2736,10 @@ function VersionBlock({ dv }: { dv: DeviceView }) {
           </>
         )}
       </div>
-      {line && <div class={`dev-phase ${u!.phase}`}>{line}</div>}
-      {u?.phase === "failed" && u.reason && <div class="small sub">{t(`devup.why.${u.reason}`)}</div>}
+      {line && !failed && <div class={`dev-phase ${u!.phase}`}>{line}</div>}
+      {failed && <Btn kind="text" size="sm" class="dev-phase failed" label={line} about={dv.name} expanded={why} onClick={() => setWhy(!why)} />}
+      {failed && why && <div class="small sub">{t(`devup.why.${u!.reason ?? "failed"}`)}</div>}
+      {failed && why && u!.detail && <div class="small sub">{u!.detail}</div>}
       {u?.phase === "downloading" && !!u.progress && (
         <div class="dev-bar">
           <i style={{ width: `${Math.round(u.progress * 100)}%` }} />

@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.0.10
+
+<!-- whats-new
+zh: 又能读 OOMOL 里的邮件和账号了
+en: Mail and accounts through OOMOL work again
+zh: 设备名字旁有支小铅笔，点一下就能改
+en: A small pencil by each device's name: click to rename it
+-->
+
+**Accounts through OOMOL**
+- OOMOL renamed the tools its hosted service offers, and every read of your mail failed. Ducter
+  now works out what each of a connection's tools does from what it takes, so a rename on their
+  side keeps working; one it can't make sense of any more still works as a plain connection,
+  asking before anything that isn't marked read-only.
+
+**Renaming a device**
+- A quiet pencil sits by every name you can change, on the Mac and on the phone; this Mac can be
+  renamed too (it changes the name your other devices see). Long names wrap on the phone's card.
+
 ## 0.0.9
 
 <!-- whats-new

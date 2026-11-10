@@ -69,6 +69,15 @@ until you change them).
 Any time. **On hand** shows every task; open one to read *What it did*, see its changes, and
 write to it directly while it works.
 
+### Can I edit a task's code myself?
+
+Yes. Each coding task works in its own copy of your project, a folder named after the project and
+its branch (such as `~/.ducter/worktrees/hawdb/fix-flaky-test`); the opened task on the Mac
+shows the path.
+On the Mac, **Open** at the task's top right shows it in Finder, opens it in Terminal, or opens
+it in Cursor, Visual Studio Code or Zed, whichever you have. It shows when that copy is on the
+Mac you're using.
+
 ### Can I start a task myself, without asking Ducter?
 
 Yes. Press **⌘N** in the Mac app, or **New task** at the top of **On hand** (on the phone, the

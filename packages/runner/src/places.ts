@@ -1,11 +1,12 @@
 // Environment port (system.md): resolve a task's Place into a working directory.
-//   repo   -> git worktree at <dataDir>/worktrees/<taskId> on branch ducter/<slug>
+//   repo   -> git worktree at <dataDir>/worktrees/<repo>/<slug> on branch ducter/<slug> (D198;
+//             tasks from before it keep <dataDir>/worktrees/<taskId>, their stored path)
 //   folder -> the folder as given
 //   none   -> scratch dir <dataDir>/scratch/<taskId>
 //   browser-> scratch dir too; the browser is a cua-driver MCP sidecar (browser.ts)
 import { mkdirSync, existsSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import type { Place } from "@ducter/protocol";
 import { gitEnv } from "@ducter/protocol/src/tool-env.ts";
 
@@ -58,12 +59,12 @@ export async function planPlace(place: Place | undefined, taskId: string, title:
         const wt = resolve(expandHome(p.worktree));
         return { place: { ...p, repoPath, worktree: wt, ...hasRemote }, cwd: wt };
       }
-      const worktree = join(dataDir, "worktrees", taskId);
       let branch = p.branch ?? `ducter/${slugify(title)}`;
       if (!p.branch && existsSync(repoPath)) {
         const taken = await git(repoPath, ["rev-parse", "--verify", "--quiet", `refs/heads/${branch}`]);
         if (taken.ok) branch = `${branch}-${taskId}`;
       }
+      const worktree = worktreeFor(dataDir, repoPath, branch);
       let baseBranch = p.baseBranch;
       if (!baseBranch && existsSync(repoPath)) {
         const head = await git(repoPath, ["rev-parse", "--abbrev-ref", "HEAD"]);
@@ -75,6 +76,31 @@ export async function planPlace(place: Place | undefined, taskId: string, title:
       // The browser itself is a sidecar (browser.ts); the task also gets a scratch dir.
       return { place: { ...p, device: p.device || "local", profile: p.profile || "default" }, cwd: join(dataDir, "scratch", taskId) };
   }
+}
+
+/** Paths planned in this process and not yet on disk: two tasks planned at once never share one. */
+const planned = new Set<string>();
+
+/** One path segment a person can read: letters, digits, `.`, `_`, `-`; never empty, `.` or `..`. */
+function segment(s: string): string {
+  const out = s.replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^[-.]+|-+$/g, "");
+  return out || "task";
+}
+
+/**
+ * D198: a new task's worktree is <dataDir>/worktrees/<repo name>/<branch slug>, so an editor's
+ * recent list or Finder says which task it is. The slug is the branch's part after `ducter/`;
+ * a path already there (on disk or planned) gets `-2`, `-3`. Still under <dataDir>/worktrees,
+ * where archiveWorktree removes only what Ducter made.
+ */
+export function worktreeFor(dataDir: string, repoPath: string, branch: string): string {
+  const dir = join(dataDir, "worktrees", segment(basename(repoPath)));
+  const base = segment(branch.replace(/^ducter\//, ""));
+  let path = join(dir, base);
+  for (let n = 2; existsSync(path) || planned.has(path); n++) path = join(dir, `${base}-${n}`);
+  planned.add(path);
+  if (planned.size > 256) planned.delete(planned.values().next().value!);
+  return path;
 }
 
 /** Working directory of an already-planned place (task recovery after a restart). */

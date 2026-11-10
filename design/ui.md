@@ -465,8 +465,11 @@ half, an update card stands in the half past the fold. Screens: `.shots/android/
    (D78 Chinese rules: leading 1.75, no tracking).
    The box to talk to the task stays at the bottom of the window, as the conversation's
    composer does; a pending ask sits over it (D152), and while the task works a reader at the
-   page's end follows the newest step. Header actions: **先停 / Pause** while it works,
-   **放下 / Drop** until it finishes.
+   page's end follows the newest step. Header actions: **打开 / Open** (D198: a menu, Show in
+   Finder, Open in Terminal, Open in each of Cursor / Visual Studio Code / Zed installed, the
+   one used last first) in every state while its working copy is on this Mac, **先停 / Pause**
+   while it works, **放下 / Drop** until it finishes. Over its changes, the working copy's path,
+   `~/…`, mono, small and selectable (D198).
 
 ## Prototype canvases
 

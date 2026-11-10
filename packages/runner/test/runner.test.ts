@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { scriptedRuntime, type ScriptedTurn } from "@botiverse/oar/testing";
@@ -7,7 +7,7 @@ import type { Runtime } from "@botiverse/oar/browser";
 import type { Bodies } from "@ducter/protocol";
 import type { HarnessEvent, HarnessPort, HarnessSession, SessionSpec } from "@ducter/protocol/src/internal.ts";
 import { afterCompaction, createOarHarnessPort, createRunner, NUDGE, PRECOMPACT_NOTE, REOPENED, RESUME_AFTER_RESTART, registerTaskTools, SAVE_BEFORE_COMPACT, taskBrief } from "../src/index.ts";
-import { git } from "../src/places.ts";
+import { git, worktreeFor } from "../src/places.ts";
 import { createFakeCore, waitFor, type FakeCore } from "./fake-core.ts";
 
 // ---------- helpers ----------
@@ -72,7 +72,8 @@ describe("places", () => {
     const runner = createRunner(core, { harness: port, newId: nextId });
     const card = await runner.openTask({ persona: "p1", title: "Fix the flaky test!", brief: "b", place: { kind: "repo", device: "mac", repoPath: repo } });
     await runner.whenStarted(card.taskId);
-    const wt = join(core.dataDir, "worktrees", "tsk00001");
+    // D198: <worktrees>/<repo name>/<branch slug>, readable in Finder and an editor's recent list.
+    const wt = join(core.dataDir, "worktrees", "repo", "fix-the-flaky-test");
     expect(existsSync(join(wt, "README.md"))).toBe(true);
     expect((await git(wt, ["rev-parse", "--abbrev-ref", "HEAD"])).out).toBe("ducter/fix-the-flaky-test");
     expect(card.place).toMatchObject({ kind: "repo", worktree: wt, branch: "ducter/fix-the-flaky-test", baseBranch: "main" });
@@ -82,7 +83,23 @@ describe("places", () => {
     const card2 = await runner.openTask({ persona: "p1", title: "Fix the flaky test!", brief: "b", place: { kind: "repo", device: "mac", repoPath: repo } });
     await runner.whenStarted(card2.taskId);
     expect((card2.place as any).branch).toBe("ducter/fix-the-flaky-test-tsk00002");
+    expect((card2.place as any).worktree).toBe(join(core.dataDir, "worktrees", "repo", "fix-the-flaky-test-tsk00002"));
     await runner.dispose();
+  });
+
+  test("D198: a worktree's folder is the repo and the branch's slug; a taken one gets -2, -3", () => {
+    const data = join(dir, "d198");
+    const repo = "/Users/me/code/My Repo";
+    expect(worktreeFor(data, repo, "ducter/fix-login")).toBe(join(data, "worktrees", "My-Repo", "fix-login"));
+    // Planned in this process but not on disk yet: never handed out twice.
+    expect(worktreeFor(data, repo, "ducter/fix-login")).toBe(join(data, "worktrees", "My-Repo", "fix-login-2"));
+    // Already on disk (a task of a branch of the same name before): the next free number.
+    mkdirSync(join(data, "worktrees", "My-Repo", "wal-bench"), { recursive: true });
+    mkdirSync(join(data, "worktrees", "My-Repo", "wal-bench-2"), { recursive: true });
+    expect(worktreeFor(data, repo, "ducter/wal-bench")).toBe(join(data, "worktrees", "My-Repo", "wal-bench-3"));
+    // A branch not under ducter/ keeps its words; a slash or dots never climb out of the folder.
+    expect(worktreeFor(data, repo, "feature/a b")).toBe(join(data, "worktrees", "My-Repo", "feature-a-b"));
+    expect(worktreeFor(data, "/r/..", "ducter/../..")).toBe(join(data, "worktrees", "task", "task"));
   });
 
   test("none place gets a scratch dir; folder uses the path; bad repo fails the task", async () => {

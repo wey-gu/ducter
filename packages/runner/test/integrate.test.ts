@@ -245,6 +245,27 @@ test("archiveWorktree: removes only a clean worktree Ducter made, never forced; 
   expect(await archiveWorktree(ours, data)).toMatchObject({ ok: true, removed: false });
 });
 
+test("D198: archiveWorktree removes a nested <repo>/<slug> worktree, its empty repo folder, and refuses look-alikes", async () => {
+  const p = repoWithTaskBranch();
+  const data = join(dir, "data");
+  const wt = join(data, "worktrees", "repo", "other");
+  sh(p.repoPath, "worktree", "add", "-q", wt, "-b", "ducter/other", "main");
+  const keep = join(data, "worktrees", "repo", "still-here");
+  sh(p.repoPath, "worktree", "add", "-q", keep, "-b", "ducter/still", "main");
+  expect(await archiveWorktree({ ...p, worktree: wt, branch: "ducter/other" }, data)).toMatchObject({ ok: true, removed: true });
+  expect(existsSync(wt)).toBe(false);
+  expect(existsSync(join(data, "worktrees", "repo"))).toBe(true); // another task's is still in it
+  expect(await archiveWorktree({ ...p, worktree: keep, branch: "ducter/still" }, data)).toMatchObject({ ok: true, removed: true });
+  expect(existsSync(join(data, "worktrees", "repo"))).toBe(false);
+  expect(existsSync(join(data, "worktrees"))).toBe(true);
+  // A folder that only starts with the same letters, or climbs out with .., isn't Ducter's.
+  const twin = join(dir, "data", "worktrees-x", "repo", "z");
+  sh(p.repoPath, "worktree", "add", "-q", twin, "-b", "ducter/z", "main");
+  expect(await archiveWorktree({ ...p, worktree: twin, branch: "ducter/z" }, data)).toMatchObject({ removed: false, message: expect.stringContaining("didn't make") });
+  expect(await archiveWorktree({ ...p, worktree: join(data, "worktrees", "repo", "..", "..", "..", "wt"), branch: "ducter/fix" }, data)).toMatchObject({ removed: false, message: expect.stringContaining("didn't make") });
+  expect(existsSync(twin) && existsSync(p.worktree!)).toBe(true);
+});
+
 // Fresh-user QA: worktrees were never removed after a merge (product-model "Archive and disk").
 test("merge archives a done task: session closed, worktree removed, branch kept; a follow-up adds it back", async () => {
   const repo = join(dir, "repo");
@@ -256,7 +277,7 @@ test("merge archives a done task: session closed, worktree removed, branch kept;
   sh(repo, "commit", "-qm", "init");
   const { core, runner, taskId } = await bootWithTask({ kind: "repo", device: "local", repoPath: repo });
   const place = core.tasks.get(taskId)!.place as Extract<Place, { kind: "repo" }>;
-  expect(place.worktree).toBe(join(dir, "data", "worktrees", "t1"));
+  expect(place.worktree).toBe(join(dir, "data", "worktrees", "repo", place.branch!.replace("ducter/", "")));
   writeFileSync(join(place.worktree!, "b.txt"), "b\n");
   sh(place.worktree!, "add", ".");
   sh(place.worktree!, "commit", "-qm", "b");

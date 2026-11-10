@@ -91,7 +91,14 @@ func (a *App) task(c *ui.Context) {
 				blocks := a.blocks(task)
 				a.briefCard(c, task, blocks)
 				a.whatItDid(c, task, blocks)
-				a.changes(c, task)
+				if workFolder(task.Place()) != "" {
+					ui.Column(c.Key("work")).Gap(t.S2).Children(func() {
+						a.workFolderLine(c, task) // D198: where its files are, over its changes
+						a.changes(c, task)
+					})
+				} else {
+					a.changes(c, task)
+				}
 				a.outsideActs(c, task)
 				a.waitFacts(c, task)
 			})
@@ -118,10 +125,13 @@ func (a *App) taskHeader(c *ui.Context, task *store.Task) {
 }
 
 // taskActions are what the user can do to the task itself while it is
-// open: pause it while it works, drop it (undoable for UndoWindow). Try
-// again for a task that ended sits with its outcome.
+// open: open its working copy (D198, any state), pause it while it works,
+// drop it (undoable for UndoWindow). Try again for a task that ended sits
+// with its outcome.
 func (a *App) taskActions(c *ui.Context, task *store.Task) {
 	t := a.T
+	// D198: its working copy in Finder, a Terminal or an editor, whatever its state.
+	a.openIn(c, task)
 	att := task.Attention()
 	switch att {
 	case protocol.Failed, protocol.Dropped, protocol.Done, protocol.DoneClaimed, protocol.Superseded:

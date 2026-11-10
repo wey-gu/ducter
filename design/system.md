@@ -366,7 +366,9 @@ with one line ("这台 Mac 已经和你的 Ducter 断开了"). `DUCTER_URL` + `D
   IOPlatformUUID, Linux `/etc/machine-id`), 32 hex, never the raw id (`core/src/machine.ts`).
   The desktop computes the same hash; only when they match does it run `git diff` on a place's
   worktree or open `file://` evidence. Otherwise those paths are the server's, so it copies them
-  instead of opening them. An SSH tunnel looks like loopback but names another machine. A main
+  instead of opening them. **打开 / Open** on an opened task (D198) follows the same rule, plus
+  one more case: a place on this Mac's own worker (its device id in `worker.json`, D187) is
+  this Mac's too. An SSH tunnel looks like loopback but names another machine. A main
   that sends no `machine` (older) falls back to "loopback address = this machine".
 
 **Harness logins on the server (research/29).** Doctor offers `claude auth login` (prints a URL,
@@ -681,7 +683,10 @@ Phone and call tasks are on the roadmap, not in v1. These seams keep them from f
 redesign later:
 
 - **Environment port** in the runner, beside `HarnessPort`: worktree, folder, and browser
-  now; phone (ADB / WebDriverAgent MCP) and call later.
+  now; phone (ADB / WebDriverAgent MCP) and call later. A new task's worktree is
+  `<dataDir>/worktrees/<repo name>/<branch slug>`, `-2`, `-3` when taken (D198); a task from
+  before keeps its stored `<dataDir>/worktrees/<taskId>`. Archive removes only worktrees under
+  `<dataDir>/worktrees`, and a repo's folder there once it is empty.
 - **Place** as a typed union carrying an `isolation` field (for honest isolation claims,
   principle 18).
 - **Per-task MCP sidecars:** each environment can attach its own MCP server to the task's

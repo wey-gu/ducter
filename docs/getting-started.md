@@ -60,7 +60,13 @@ press Return. Or write anything of your own:
   its own while you do something else.
 
 Coding tasks work in their own copy of your project, on their own branch (named
-`ducter/…`), so your own checkout is left alone.
+`ducter/…`), so your own checkout is left alone. The copy is a folder named after the project
+and the branch, such as `~/.ducter/worktrees/hawdb/fix-flaky-test`; on the Mac, an opened task
+shows its path over its changes.
+
+To work on it by hand, open the task on the Mac and choose **Open** at its top right: **Show in
+Finder**, **Open in Terminal**, or **Open in** Cursor, Visual Studio Code or Zed, whichever you
+have. **Open** shows when the copy is on this Mac.
 
 ## 3. Get your first result
 

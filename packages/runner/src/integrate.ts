@@ -1,8 +1,8 @@
 // Integrating a task's branch outside its worktree: merge into the base branch in the user's
 // checkout (local, reversible with git) and open a draft PR (push + gh: an outside effect).
 // Never forces anything; every refusal says what to do in plain words.
-import { existsSync } from "node:fs";
-import { resolve, sep } from "node:path";
+import { existsSync, readdirSync, rmdirSync } from "node:fs";
+import { dirname, resolve, sep } from "node:path";
 import type { BranchChanges, Place } from "@ducter/protocol";
 import { ghEnv } from "@ducter/protocol/src/tool-env.ts";
 import { git } from "./places.ts";
@@ -165,7 +165,7 @@ export async function openDraftPr(place: Place, opts: { gh?: string } = {}): Pro
 /**
  * After a merge the task is archived (product-model "Archive and disk"): its worktree is removed
  * and its branch kept, so a follow-up adds the worktree back from the branch. Only a worktree
- * Ducter made (under <dataDir>/worktrees) is removed, never with --force: uncommitted or
+ * Ducter made (under <dataDir>/worktrees, at any depth: D198's <repo>/<slug> too) is removed, never with --force: uncommitted or
  * untracked files keep it, and the message says so. ok with removed false: nothing to remove.
  */
 export async function archiveWorktree(place: Place, dataDir: string): Promise<ActionResult & { removed: boolean }> {
@@ -182,5 +182,12 @@ export async function archiveWorktree(place: Place, dataDir: string): Promise<Ac
   }
   const removed = await git(p.repoPath, ["worktree", "remove", wt]);
   if (!removed.ok) return { ok: false, removed: false, message: `Kept the worktree ${wt}: ${removed.err.split("\n")[0]}` };
+  // D198: <worktrees>/<repo>/<slug>: the repo's folder goes once it holds nothing.
+  const parent = dirname(wt);
+  if (parent !== resolve(dataDir, "worktrees")) {
+    try {
+      if (readdirSync(parent).length === 0) rmdirSync(parent);
+    } catch {}
+  }
   return { ok: true, removed: true, message: `Removed the worktree; ${p.branch} stays.` };
 }

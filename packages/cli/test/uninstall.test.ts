@@ -82,6 +82,15 @@ describe("planUninstall", () => {
     expect(formatPlan(p, t, home)).toContain("~/.ducter");
   });
 
+  test("D198: a worktree at <repo>/<slug> counts and warns like one at <taskId>", () => {
+    const nested = join(dataDir, "worktrees", "app", "fix-login");
+    git(repo, "worktree", "add", "-q", "-b", "ducter/fix-login", nested);
+    writeFileSync(join(nested, "wip.txt"), "unsaved");
+    const p = plan(true);
+    expect(p.warnings.filter((w) => w.id === "unsaved-worktree").map((w) => w.path).sort()).toEqual([join(dataDir, "worktrees", "app", "fix-login"), join(dataDir, "worktrees", "t1")].sort());
+    expect(p.remove.find((x) => x.kind === "data")!.what).toContain("2");
+  });
+
   test("the keep lines name only the AI agents found, as they are; none found, none named", () => {
     const keepOf = (agents?: { name: string; signedIn: boolean }[]) => plan(false, { agents }).keep;
     expect(keepOf(undefined).some((k) => /Claude Code|Codex/.test(k.what))).toBe(false);

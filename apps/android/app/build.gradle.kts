@@ -50,7 +50,9 @@ android {
                 storeFile = file(keystorePath)
                 storePassword = System.getenv("DUCTER_ANDROID_KEYSTORE_PASSWORD")
                 keyAlias = System.getenv("DUCTER_ANDROID_KEY_ALIAS")
-                keyPassword = System.getenv("DUCTER_ANDROID_KEY_PASSWORD") ?: System.getenv("DUCTER_ANDROID_KEYSTORE_PASSWORD")
+                // An unset Actions secret arrives as "", not null: empty means "same as the keystore's".
+                keyPassword = System.getenv("DUCTER_ANDROID_KEY_PASSWORD")?.takeUnless { it.isEmpty() }
+                    ?: System.getenv("DUCTER_ANDROID_KEYSTORE_PASSWORD")
                 enableV2Signing = true
                 enableV3Signing = true
             }

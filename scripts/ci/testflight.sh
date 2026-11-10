@@ -82,6 +82,10 @@ fi
 grep -q 'BEGIN PRIVATE KEY' "$KEY" || { echo "the App Store Connect key is not a .p8 private key" >&2; exit 1; }
 AUTH="-allowProvisioningUpdates -authenticationKeyPath $KEY -authenticationKeyID $ASC_KEY_ID -authenticationKeyIssuerID $ASC_ISSUER_ID"
 
+# Each run's automatic signing makes a Development certificate the throwaway runner then loses;
+# clear the ones past runs left before the account fills up (scripts/ci/prune-dev-certs.ts).
+ASC_KEY_PATH="$KEY" bun "$ROOT/scripts/ci/prune-dev-certs.ts" || true
+
 echo "archiving $SCHEME $MARKETING_VERSION ($BUILD_NUMBER)"
 # shellcheck disable=SC2086
 xcodebuild archive "$@" CODE_SIGN_STYLE=Automatic $AUTH -quiet

@@ -229,6 +229,9 @@ type App struct {
 	// OpenExternal opens a link when no Backend does (a window connected
 	// to a Ducter elsewhere); nil in tests.
 	OpenExternal func(url string) error
+	// PickFolder asks macOS for a folder (D186: it becomes a project);
+	// "" when the person cancels. nil hides 加一个文件夹….
+	PickFolder func(title, button string) (string, error)
 }
 
 // UndoWindow is how long a drop can be undone (D52).

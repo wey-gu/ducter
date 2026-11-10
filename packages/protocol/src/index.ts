@@ -464,7 +464,27 @@ export interface OnHand {
   missed?: (Bodies["waiter"] & { endedAt: string })[];
   /** D114: every routine that isn't ended or dismissed, proposed ones included (their card). */
   routines?: RoutineView[];
+  /** D186: the projects the user added by hand (a folder each), shown even before a task. */
+  projects?: ProjectView[];
 }
+
+/** D186: a project the user added: a folder (a repo or not) on the home's computer, and its name. */
+export interface ProjectView {
+  name: string;
+  place: Place; // kind "repo" or "folder"
+  addedAt: string;
+}
+
+/** D185: when a task the user opens by hand starts. Absent = now. at: once, at a time (a routine
+ *  of one firing); every: on a schedule (a routine, active at once); when: the task opens now and
+ *  first waits for what the words say (its own wait_for, D112 (4)); until: it keeps going until
+ *  that holds (D113). Times are wall clock in tz (the client's zone). */
+export type NewTaskWhen =
+  | { kind: "now" }
+  | { kind: "at"; date: string; time: string; tz: string }
+  | { kind: "every"; every: "day" | "weekday" | "week" | "hours"; days?: number[]; hours?: number; time: string; tz: string }
+  | { kind: "when"; condition: string }
+  | { kind: "until"; condition: string };
 
 /** An armed waiter plus what it has seen so far (kept by core, not logged per look). */
 export type WaiterView = Bodies["waiter"] & { armedAt?: string; lastLookAt?: string; lastSummary?: string; looks?: number; nextLookAt?: string; changes?: number };
@@ -515,7 +535,9 @@ export interface EventSpec {
 export type RoutineTrigger =
   | {
       kind: "time";
-      every: "day" | "weekday" | "week" | "month" | "hours";
+      // once (D185): one firing on `date` at `time`; the routine ends after its run.
+      every: "day" | "weekday" | "week" | "month" | "hours" | "once";
+      date?: string; // once: "2026-11-12", a day on the zone's wall clock
       days?: number[]; // week: 0 = Sunday ... 6
       dayOfMonth?: number; // month
       hours?: number; // hours: every n hours, starting at `time`
@@ -541,6 +563,12 @@ export interface RoutineBody {
   reviewAt: string; // 30 days after it starts; then it asks "Keep this?"
   pausedBy?: "user" | "partner" | "system";
   pauseReason?: "asked" | "failures" | "unread" | "review" | "budget";
+  /** D185: made by the user on the New task card (no proposal card; active at once). Its runs
+   *  take the brief as the user's own words, and the agent they picked. */
+  by?: "you";
+  harness?: string;
+  model?: string;
+  project?: string;
 }
 
 export interface RoutineView extends RoutineBody {
@@ -688,7 +716,12 @@ export type ClientFrame =
   // when the user picked someone other than the top candidate: it is pinned for this task.
   // clientId: a resend with the same id opens nothing twice and gets the same result.
   | { t: "task_new_options"; place?: Place }
-  | { t: "task_new"; words: string; place?: Place; harness?: string; model?: string; clientId?: string }
+  // when (D185): absent or now opens it at once; at / every make a routine of the user's own
+  // (task_new_result carries routineId, no taskId); when / until open it now with its wait or loop.
+  | { t: "task_new"; words: string; place?: Place; harness?: string; model?: string; clientId?: string; when?: NewTaskWhen }
+  // D186: add a folder on the home's computer as a project (a repo or not). Answered with
+  // project_add_result; On hand's projects and the card's places then include it.
+  | { t: "project_add"; path: string; clientId?: string }
   // open_task: show this task in the apps (`ducter open <task>`): pushed to every connected app
   // as an open_task frame; the sender gets open_result with how many apps were told.
   | { t: "open_task"; taskId: string }
@@ -740,10 +773,11 @@ export interface PlaceChoice {
   usedAt?: string; // the last task there, or when the repo was last touched
   defaultBranch?: string; // repo places on this machine: what a task starts from unless picked
   branches?: string[]; // local branches, most recently committed first (at most 30)
+  added?: boolean; // D186: a project the user added by hand (listed even with no task yet)
 }
 
-/** Why a New task didn't open: empty words, nothing can do it, not a repo, its device is away, or anything else (message). */
-export type NewTaskReason = "empty" | "no_agent" | "not_repo" | "offline" | "failed";
+/** Why a New task didn't open: empty words, nothing can do it, not a repo, its device is away, a time already past or a wait with nothing to wait for (D185), or anything else (message). */
+export type NewTaskReason = "empty" | "no_agent" | "not_repo" | "offline" | "past" | "no_condition" | "failed";
 
 export type ServerFrame =
   // machine: a hash of the machine the main runs on (core/src/machine.ts); a client that computes
@@ -778,7 +812,8 @@ export type ServerFrame =
   // D128: New task. card: the task as On hand will show it; message: a reason in words (English).
   | { t: "task_new_options"; places: PlaceChoice[]; candidates: Candidate[] }
   | { t: "close_result"; device: string; ok: boolean; none?: boolean; decisionId?: string; message?: string }
-  | { t: "task_new_result"; ok: boolean; clientId?: string; taskId?: string; card?: TaskCard; reason?: NewTaskReason; message?: string }
+  | { t: "task_new_result"; ok: boolean; clientId?: string; taskId?: string; card?: TaskCard; routineId?: string; routine?: RoutineView; reason?: NewTaskReason; message?: string }
+  | { t: "project_add_result"; ok: boolean; clientId?: string; place?: PlaceChoice; reason?: "not_found" | "failed"; message?: string }
   // Show this task (the app opens it, Esc returns). open_result answers the sender: apps = how many apps were told.
   | { t: "open_task"; taskId: string }
   | { t: "open_result"; taskId: string; ok: boolean; apps: number; message?: string }

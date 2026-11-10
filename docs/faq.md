@@ -72,11 +72,25 @@ write to it directly while it works.
 ### Can I start a task myself, without asking Ducter?
 
 Yes. Press **⌘N** in the Mac app, or **New task** at the top of **On hand** (on the phone, the
-**＋**). Pick where it works (a repo and the branch it starts from, or **No folder**), who
-does it (the one marked **Suggested** is already picked), and write what to do. It gets your
-words as you wrote them. Ducter tells you the result when it's done, like any other task. On the Mac, **On
-hand** can also group tasks **By project**, with each task's branch and how many lines it
-changed; the **+** on a project starts a new task there.
+**＋**). Write what to do first; it gets your words as you wrote them. Under the words, one row
+says where it works (a folder, and for a repo the branch it starts from, or **No folder**), who
+does it (the one marked **Suggested** is already picked, and the one you pick is remembered for
+next time) and when it starts. Tap any of them to change it. **⌘↩** starts it; **⇧⌘↩** starts
+it and keeps the card open for the next one, so you can start several in a row. Ducter tells
+you the result when it's done, like any other task.
+
+**When it starts** is **Now** unless you pick **At a time** (today, tomorrow or the day after,
+at the time you type), **On a schedule** (every day, weekdays, one day a week, or every few
+hours), **When something happens** (it opens now and waits for what you write, like "PR #1592's
+CI passes") or **Keep going until…** (it tries again until what you write holds). See
+[Waiting, keep going, routines](waiting-and-routines.md).
+
+On the Mac, **On hand** can also group tasks **By project**: each folder you work in is a
+project, with each task's branch, what it waits for or which try it is on, and how many lines it
+changed; what starts later or repeats there sits in the same group. The **+** on a project
+starts a new task there. To make a project yourself, choose **Add a folder** (at the bottom of
+**By project**, or in the card's folder list) and pick a folder on your Mac; it becomes a
+project with the folder's name, before any task runs there.
 
 ### Does it remember me?
 

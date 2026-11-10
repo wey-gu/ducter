@@ -286,6 +286,7 @@ A new control is added to the set (and to this table) before it is used.
 | One line in a list of devices | `listRow` (`abilities.go`) | `ListRow` |
 | An app a source can read, on the accounts card (D166; the dashed 再连一个 too) | `appTile` (`shared.go`) | `AppTile` |
 | A candidate row in 换谁来做 | `candRow` (`shared.go`) | the `cand` row in `SwitchList` |
+| A property pill that opens a short list, and that list's rows (New task's where, branch, computer, who, when; D185) | `pill`, `menuRow` (`shared.go`; the list is `listPanel`) | `Pill`, `MenuRow` |
 | Back to the list | the chrome's crumb | `BackRow` |
 
 ## Places (D71)

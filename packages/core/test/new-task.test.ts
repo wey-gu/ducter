@@ -1,7 +1,7 @@
 // 开一件事 / New task (D128): the opening path the card and `ducter task` share, its frames,
 // open_task, and the cached diff stat for On hand by project.
 import { afterEach, expect, test } from "bun:test";
-import { realpathSync, writeFileSync } from "node:fs";
+import { mkdirSync, realpathSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Bodies, BranchChanges, LogEvent, ServerFrame, TaskCard } from "@ducter/protocol";
 import type { Runner } from "@ducter/protocol/src/internal.ts";
@@ -244,4 +244,74 @@ test("the running core pushes On hand with the diff stat once counted", async ()
   core.log.append({ stream: "task:r1", origin: "system", kind: "task_open", body: { taskId: "r1", title: "Fix", project: "p", place: { kind: "repo", device: "local", repoPath: "/r", worktree: "/w", branch: "ducter/fix", baseBranch: "main" }, harness: "claude-code", brief: "b" } });
   const oh = await c.until<Extract<ServerFrame, { t: "on_hand" }>>((f) => f.t === "on_hand" && !!f.onHand.tasks[0]?.changes, 5000);
   expect(oh.onHand.tasks[0]!.changes).toMatchObject({ files: 2, adds: 9, dels: 1 });
+});
+
+// ---------- D185: when it starts; D186: projects by hand ----------
+
+test("D185: at a time, or every …: a routine of the user's own, nothing opened now, On hand shows it", async () => {
+  const { core, dir } = boot();
+  const { opened } = fakeRunner(core);
+  const r = repo(dir, "ducter");
+  const c = await client(core);
+  const place = { kind: "repo", device: "local", repoPath: r };
+  c.send({ t: "task_new", words: "跑一遍发布清单。", place, harness: "codex", clientId: "at1", when: { kind: "at", date: "2030-01-02", time: "09:00", tz: "Asia/Shanghai" } });
+  const res = await c.until<Extract<ServerFrame, { t: "task_new_result" }>>((f) => f.t === "task_new_result");
+  expect(res).toMatchObject({ ok: true, clientId: "at1", routine: { by: "you", state: "active", triggerWords: "1月2日 9:00", project: "ducter", harness: "codex", trigger: { every: "once" } } });
+  expect(res.taskId).toBeUndefined();
+  expect(opened).toEqual([]);
+  const oh = await c.until<Extract<ServerFrame, { t: "on_hand" }>>((f) => f.t === "on_hand" && (f.onHand.routines?.length ?? 0) === 1);
+  expect(oh.onHand.routines![0]!.nextAt).toBe("2030-01-02T01:00:00.000Z");
+  // Every weekday at 9.
+  c.send({ t: "task_new", words: "Check the nightly build.", clientId: "ev1", when: { kind: "every", every: "weekday", time: "09:00", tz: "UTC" } });
+  const ev = await c.until<Extract<ServerFrame, { t: "task_new_result" }>>((f) => f.t === "task_new_result" && f.clientId === "ev1");
+  expect(ev.routine).toMatchObject({ triggerWords: "Weekdays 9:00 · follows your time zone", trigger: { every: "weekday", zone: "personal" } });
+  // A time already gone says so.
+  c.send({ t: "task_new", words: "x", clientId: "past", when: { kind: "at", date: "2020-01-01", time: "09:00", tz: "UTC" } });
+  expect(await c.until((f) => f.t === "task_new_result" && f.clientId === "past")).toMatchObject({ ok: false, reason: "past" });
+});
+
+test("D185: when something happens, the task opens now and waits first; until, it keeps going; an empty condition says why", async () => {
+  const { core, dir } = boot();
+  const { opened } = fakeRunner(core);
+  const r = repo(dir, "hawdb");
+  const c = await client(core);
+  c.send({ t: "task_new", words: "合进 main，然后发 0.4.1。", place: { kind: "repo", device: "local", repoPath: r }, clientId: "w1", when: { kind: "when", condition: "PR #1592 的 CI 通过" } });
+  const w = await c.until<Extract<ServerFrame, { t: "task_new_result" }>>((f) => f.t === "task_new_result" && f.clientId === "w1");
+  expect(w).toMatchObject({ ok: true, taskId: "t1" });
+  expect(opened[0]!.title).toBe("合进 main，然后发 0.4.1");
+  expect(opened[0]!.brief).toStartWith("先等到：PR #1592 的 CI 通过\n然后：合进 main，然后发 0.4.1。");
+  expect(opened[0]!.brief).toContain("wait_for");
+  c.send({ t: "task_new", words: "Fix the flaky tests.", place: { kind: "repo", device: "local", repoPath: r }, clientId: "u1", when: { kind: "until", condition: "the test suite passes three times in a row" } });
+  const u = await c.until<Extract<ServerFrame, { t: "task_new_result" }>>((f) => f.t === "task_new_result" && f.clientId === "u1");
+  expect(opened[1]!.brief).toBe("Fix the flaky tests."); // verbatim; the loop is Ducter's, not the words'
+  const until = core.log.read({ stream: `task:${u.taskId}`, kinds: ["until"] })[0]!.body as Bodies["until"];
+  expect(until).toMatchObject({ condition: "the test suite passes three times in a row", state: "on" });
+  c.send({ t: "task_new", words: "x", clientId: "e1", when: { kind: "when", condition: "  " } });
+  expect(await c.until((f) => f.t === "task_new_result" && f.clientId === "e1")).toMatchObject({ ok: false, reason: "no_condition" });
+});
+
+test("D186: a folder the user adds becomes a project: offered first, on On hand before any task, its tasks carry its name", async () => {
+  const { core, dir } = boot();
+  const { opened } = fakeRunner(core);
+  const r = repo(dir, "tinycart");
+  const notes = join(dir, "notes");
+  mkdirSync(notes);
+  const c = await client(core);
+  c.send({ t: "project_add", path: join(r, "a.txt").replace(/a\.txt$/, ""), clientId: "p1" });
+  const a = await c.until<Extract<ServerFrame, { t: "project_add_result" }>>((f) => f.t === "project_add_result" && f.clientId === "p1");
+  expect(a).toMatchObject({ ok: true, place: { name: "tinycart", added: true, place: { kind: "repo", repoPath: r }, defaultBranch: "main" } });
+  c.send({ t: "project_add", path: notes, clientId: "p2" });
+  const b = await c.until<Extract<ServerFrame, { t: "project_add_result" }>>((f) => f.t === "project_add_result" && f.clientId === "p2");
+  expect(b.place).toMatchObject({ name: "notes", place: { kind: "folder", path: notes } });
+  const oh = await c.until<Extract<ServerFrame, { t: "on_hand" }>>((f) => f.t === "on_hand" && (f.onHand.projects?.length ?? 0) === 2);
+  expect(oh.onHand.projects!.map((p) => p.name)).toEqual(["notes", "tinycart"]);
+  c.send({ t: "task_new_options" });
+  const o = await c.until<Extract<ServerFrame, { t: "task_new_options" }>>((f) => f.t === "task_new_options");
+  expect(o.places.map((p) => p.name)).toEqual(["notes", "tinycart", ""]);
+  c.send({ t: "task_new", words: "Tidy the notes folder.", place: { kind: "folder", device: "local", path: notes }, clientId: "n1" });
+  await c.until((f) => f.t === "task_new_result" && f.clientId === "n1");
+  expect(opened[0]).toMatchObject({ project: "notes", place: { kind: "folder", path: notes } });
+  // Not a folder: said plainly.
+  c.send({ t: "project_add", path: join(dir, "nope"), clientId: "p3" });
+  expect(await c.until((f) => f.t === "project_add_result" && f.clientId === "p3")).toMatchObject({ ok: false, reason: "not_found" });
 });

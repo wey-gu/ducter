@@ -205,6 +205,14 @@ func main() {
 		})
 		app.Win = win
 		app.Desktop = desktop{win}
+		// D186: 加一个文件夹 asks macOS for a folder (a sheet on the window).
+		app.PickFolder = func(title, button string) (string, error) {
+			paths, err := mygo.Dialog.Open(mygo.OpenDialogOptions{Parent: win, Title: title, Message: title, ButtonLabel: button, Directory: true, CreateDirectories: true})
+			if err != nil || len(paths) == 0 {
+				return "", err
+			}
+			return paths[0], nil
+		}
 
 		// The keep-running decision: closing the window hides it (Ducter keeps working); the Dock
 		// icon, or opening the app again, brings it back as it was. Only a

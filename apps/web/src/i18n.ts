@@ -4,6 +4,8 @@
 // the glossary (通知 / Notifications, 添加到主屏幕 / Add to Home Screen, 这台手机 / This phone).
 // Strings use printf verbs (%s, %d, %[n]s).
 
+import { starts } from "./i18n-starts.ts";
+
 export type Lang = "zh" | "en";
 
 const zh: Record<string, string> = {
@@ -2189,7 +2191,7 @@ const accounts: Record<Lang, Record<string, string>> = {
   },
 };
 
-export const TABLES: Record<Lang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh, ...where.zh, ...devcard.zh, ...accounts.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en, ...where.en, ...devcard.en, ...accounts.en } };
+export const TABLES: Record<Lang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh, ...where.zh, ...devcard.zh, ...accounts.zh, ...starts.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en, ...where.en, ...devcard.en, ...accounts.en, ...starts.en } };
 
 /** Drops a space between two Chinese characters (zh copy spaces around a name for Latin names). */
 /** D78: a space where a Chinese character touches a Latin letter or a digit ("住在%s 上" with "hel"). */

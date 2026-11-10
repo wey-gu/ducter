@@ -51,7 +51,7 @@ func (a *App) onHand(c *ui.Context) {
 			a.forecastBand(c, b)
 			if a.Local.ByProject() {
 				a.byProject(c, b)
-				a.routineShelf(c)
+				a.routineShelf(c, true)
 				return
 			}
 			needs := len(b.Lanes[store.LaneNeedsYou]) + len(a.partnerDecisions())
@@ -81,7 +81,7 @@ func (a *App) onHand(c *ui.Context) {
 					a.lane(c, store.LaneDone, b.Lanes[store.LaneDone], 1, 260)
 				}
 			})
-			a.routineShelf(c)
+			a.routineShelf(c, false)
 		})
 	})
 }

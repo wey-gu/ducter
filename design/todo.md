@@ -334,6 +334,19 @@ note and a `Dn`) before it is built.
       task there would overwrite it. Give tasks a home of their own per task, then set it in
       runner `withBrowser`. Trigger: the first DeepSeek Harness browser task.
 
+## The device card as a character sheet (draft D160, `design/ui-devices-card.md`)
+
+Trigger for all of it: the author approves D160.
+
+- [ ] **Desktop card** (`apps/desktop/internal/views/devicecard.go`, `abilities.go`): the hero,
+      status line, coin tray with in-place detail, ability chips, the one connection line with
+      its in-place ⋯, one Disconnect; the left list's one-word state. Keys from §8.
+- [ ] **Phone card** (`apps/web/src/views.tsx`): the same, one column.
+- [ ] **Motion:** chip squish and coin pop in both clients, reduced motion off.
+- [ ] **Owed design:** a dedicated small clay object for 替 {home} 做事 (today hel's own clay);
+      Pebble dark on the phone; a device with five or more agents; the comprehension check of
+      the chips with naive raters (LLM proxies first).
+
 ## Where a task runs (draft D157, `design/where.md`)
 
 Trigger for all of it: the author approves D157. Order matters: step 1 unblocks the Mac worker.

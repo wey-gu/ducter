@@ -817,3 +817,8 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **A second calling provider** behind the same card (Twilio + a real-time model) if Tuwa's
   reach or terms stop fitting.
 
+## Watching Ducter's browser and taking turns (D190)
+
+- [ ] **On the author's devices:** watch a task on hel from the iPhone over the internet (`ducter domain`), take a turn, sign in with a real two-step code, hand it back; the same on an iPad, an Android foldable and the Mac app. Trigger: the next release with D190.
+- [ ] **The Mac app reopens a live view after a reconnect** (the web client does), and draws the click ring. Trigger: a reconnect seen on the Mac with a view open.
+- [ ] **The quality steps on a real phone link:** read `live.stats` on a real 4G/5G phone; tune `SLOW_MS`/`FAST_MS` and the tiers. Trigger: the first real-device session.

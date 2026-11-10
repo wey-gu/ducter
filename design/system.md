@@ -886,6 +886,26 @@ so the main process holds one.
   `TestEveryServerFrameDecodes` now reads the core's `ServerFrame` union and fails on any type the
   app would drop; an empty placeholder in drawn copy fails the view tests on both clients
   (`views/main_test.go`, `apps/web/test/guard.ts`).
+- **Watching and turns (D190, `live.ts`, `notes.ts`):** `live_open {decisionId: "watch",
+  taskId}` attaches a view to the task's current tab without blinding anything or resizing the
+  page (`Page.startScreencast` with `maxWidth/Height` from the viewer's page area, so CDP
+  downscales); a view follows the task to a new tab on its next step. The browser tools call
+  `notes.note(taskId, {kind, host?, label?, key?, x?, y?})` on each step (the element's label from
+  `locateExpression`, never a value; keys redacted); watchers get `live_doing`. Whose turn it is is
+  per profile (`turns`): `live_turn {mine: true}` sets it to that view (the profile blind,
+  `Emulation.setDeviceMetricsOverride` at the viewer's size) and every view on the profile gets
+  `live_turn {turn, here}`; input is applied only from the view holding the turn (`go` validated
+  with `pageUrl`). Handing back (`mine: false`, close, socket drop) clears the override, unblinds,
+  remembers sites whose cookie count grew, and `tell`s (the runner's `send`) the task whose tab it
+  was when it tried a tool meanwhile or the URL changed, and any other task that tried ("yours
+  again"); finished tasks are not told. Each ack's round trip feeds an average (½ weight): above
+  0.7 s the view steps down `TIERS` (q70/55/45 at ¾/35 at ½), below 0.22 s for 20 frames it steps
+  up, restarting the screencast. `live_pause` stops the screencast; a still page gets one
+  `Page.captureScreenshot` 0.5 s after a (re)start when no frame came. `live.stats(id)` reports
+  frames, bytes, ack round trip, capture-to-send lag and quality. `TaskCard.browsing` comes from
+  `DucterBrowser.decorate` (the task is attached to a host). The web client measures its page area
+  with a ResizeObserver and sends `resize`; on a new socket it reopens the view on screen.
+  Autofill's `browser_fill` (D191) refuses in the user's turn like every browser tool.
 - **Not built:** Xvfb for sites that refuse headless; session probes, per-site rate limits
   (research/25 §3). Filling saved sign-ins, cards and details is Autofill (D191, `autofill.md`).
 

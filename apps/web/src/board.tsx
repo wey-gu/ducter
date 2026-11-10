@@ -17,6 +17,7 @@ import { shortTitle } from "./transcript.tsx";
 import { deviceWait } from "./where.ts";
 import { Avatar, DecisionCard, faceOf, metaLine, stateLabel } from "./views.tsx";
 import { useCanFill, useFill } from "./wide.ts";
+import { liveSize } from "./live.tsx";
 import { Goal, Groove, RoutineShelf, untilLine, WaitBubble, waitCaption, waitLine } from "./work.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -289,7 +290,7 @@ function WorkCard({ task }: { task: Task }) {
   const said = u ? untilLine(u) : r?.summary ? sayable(r.summary, A.L.lang) : "";
   const from = task.card?.fromRoutine;
   const meta = [from ? t("routine.from", from.name) : "", metaLine(task), task.card?.updatedAt ? t("onhand.reported", ago(A.L, task.card.updatedAt)) : ""].filter(Boolean).join(" · ");
-  return (
+  const card = (
     <button class={`bcard${arrived ? " arrived" : ""}`} onClick={() => open(task)} title={title(task)}>
       {arrived && <span class="pop-bub" aria-hidden="true" />}
       <span class="t">{shortTitle(title(task)) || t("task.unknown")}</span>
@@ -297,6 +298,14 @@ function WorkCard({ task }: { task: Task }) {
       {said && <span class="s">{said}</span>}
       {meta && <span class="m">{meta}</span>}
     </button>
+  );
+  // D190: a task using Ducter's own browser can be watched from its card, as from the opened task.
+  if (!A.S.onHand?.tasks.find((c) => c.taskId === task.id)?.browsing) return card;
+  return (
+    <div class="bwatch">
+      {card}
+      <Btn kind="text" size="sm" label={t("live.watch")} about={title(task)} onClick={() => A.watchLive(task.id, liveSize())} />
+    </div>
   );
 }
 

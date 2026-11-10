@@ -11,7 +11,9 @@ import { checkBrowser, checkLine } from "./check.ts";
 import type { BrowserAbout, BrowserCheck } from "@ducter/protocol";
 import { profileName } from "@ducter/protocol/src/browser-profile.ts";
 import type { WorkerLinks } from "@ducter/protocol/src/internal.ts";
-import { remoteBrowserHost, routedHost } from "./remote.ts";
+import { remoteBrowserHost, routedHost, splitProfile } from "./remote.ts";
+import { createBrowserNotes } from "./notes.ts";
+import type { OnHand } from "@ducter/protocol";
 
 export type BrowserSetup =
   | { state: "ready"; version: string }
@@ -33,6 +35,8 @@ export interface DucterBrowser {
   /** Start installing (once at a time); resolves with the result. */
   install(): Promise<InstallResult>;
   onChange(fn: () => void): () => void;
+  /** D190: marks each task holding Ducter's browser on On hand (browsing), so it can be watched. */
+  decorate(o: OnHand): OnHand;
   stop(): Promise<void>;
 }
 
@@ -48,6 +52,8 @@ export interface DucterBrowserOptions extends HostOptions {
   workers?: () => WorkerLinks | undefined;
   /** D157: the version of Ducter's browser a worker reported (its 上网 detail). */
   workerBrowserVersion?: (deviceId: string) => string | undefined;
+  /** D190: tell a task something (handing the browser back), as a message into it. */
+  tell?: (taskId: string, text: string) => unknown;
   /** D191: hides saved values (Autofill) from what the browser tools answer. */
   scrub?: (text: string) => string;
   /** D191: a task that fills from Autofill (runs on this browser wherever it can start). */
@@ -67,9 +73,10 @@ export function createDucterBrowser(o: DucterBrowserOptions): DucterBrowser {
     remotes.set(deviceId, h);
     return h;
   });
-  const live = createLive({ host, decisions: o.decisions, tasks: o.tasks as LiveDeps["tasks"], persona: o.persona });
+  const notes = createBrowserNotes();
+  const live = createLive({ host, decisions: o.decisions, tasks: o.tasks as LiveDeps["tasks"], persona: o.persona, notes, ...(o.tell ? { tell: o.tell } : {}) });
   const sites = createSites(host);
-  registerBrowserTools({ mcp: o.mcp, host, log: o.log, tasks: o.tasks as any, ...(o.scrub ? { scrub: o.scrub } : {}) });
+  registerBrowserTools({ mcp: o.mcp, host, log: o.log, tasks: o.tasks as any, notes, ...(o.scrub ? { scrub: o.scrub } : {}) });
   const fns = new Set<() => void>();
   const changed = () => fns.forEach((f) => f());
   let installing: Promise<InstallResult> | undefined;
@@ -154,6 +161,13 @@ export function createDucterBrowser(o: DucterBrowserOptions): DucterBrowser {
     onChange(fn) {
       fns.add(fn);
       return () => fns.delete(fn);
+    },
+    decorate(on) {
+      for (const c of on.tasks) {
+        const tb = host.task(c.taskId);
+        if (tb) c.browsing = { device: splitProfile(tb.profile)?.device ?? "local" };
+      }
+      return on;
     },
     stop: async () => {
       await host.stop();

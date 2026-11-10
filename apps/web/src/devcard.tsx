@@ -15,10 +15,10 @@ import { agentBehind, agentRunning, androidApp, chipsFor, type Client, listWord,
 import { attention, placeOf } from "./store.ts";
 import { disablePush } from "./push-client.ts";
 import { turnOnPush } from "./views.tsx";
+import { liveSize } from "./live.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 const art = (n: string) => `app/art/${n}.webp`;
-const liveSize = () => ({ width: Math.min(innerWidth, 1280), height: Math.max(360, Math.min(innerHeight, 1600) - 128), scale: devicePixelRatio || 1 });
 
 // D155: one computer, one card. The command line (and the app window on a computer that does
 // tasks) folds into its computer's card; alone, it stands as its computer, never "CLI on …".
@@ -407,6 +407,7 @@ function Chips({ dv }: { dv: DeviceView }) {
           />
         ))}
       </div>
+      {web?.where === "ducter" && web.state === "on" && <Browsing dv={dv} />}
       {web?.where === "ducter" && web.setup === "installing" && <div class="dc-note">{t("web.installing")}</div>}
       {web?.where === "ducter" && web.state === "unavailable" && web.reason !== "env_off" && (
         <div class="dc-note">
@@ -428,6 +429,25 @@ function Chips({ dv }: { dv: DeviceView }) {
   );
 }
 
+/** D190: the tasks using Ducter's browser on this computer now, each with 看看 / Watch. */
+function Browsing({ dv }: { dv: DeviceView }) {
+  const busy = (A.S.onHand?.tasks ?? []).filter((c) => c.browsing?.device === dv.id && ["working", "queued", "needs_you", "blocked"].includes(c.attention));
+  if (!busy.length) return null;
+  return (
+    <div class="dev-browsing">
+      {busy.map((c) => (
+        <div class="dev-site" key={c.taskId}>
+          <Coin harness={c.harness} size={20} motion={c.attention === "working" ? "working" : "still"} />
+          <div class="dev-site-what">
+            <div class="small">{t("live.using", c.title)}</div>
+          </div>
+          <Btn kind="secondary" size="sm" label={t("live.watch")} about={c.title} onClick={() => A.watchLive(c.taskId, liveSize())} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** D151/D154: Ducter's own browser: Try it, then the sites signed in to (in 上网's ⓘ). */
 function Sites({ dv }: { dv: DeviceView }) {
   const [clearing, setClearing] = useState(false);
@@ -438,7 +458,7 @@ function Sites({ dv }: { dv: DeviceView }) {
       {dv.state === "awake" && (
         <div class="dev-try">
           <div class="small">{t("web.try.about")}</div>
-          <Btn kind="secondary" size="sm" label={t("web.try")} about={t("web.title")} onClick={() => A.openLive(TRY_LIVE, "example.com", liveSize(), true)} />
+          <Btn kind="secondary" size="sm" label={t("web.try")} about={t("web.title")} onClick={() => A.openLive(TRY_LIVE, "example.com", liveSize(), true, dv.id)} />
         </div>
       )}
       <div class="dev-sub">{t("sites.title")}</div>

@@ -471,6 +471,8 @@ export interface TaskCard {
   openedBy?: "you"; // D128: the user opened it themselves; absent = the partner did
   changes?: DiffStat; // D128: repo tasks, once counted (cached; refreshed after each turn)
   folder?: FolderSummary; // D142: non-git folder tasks, once counted (cached like changes)
+  /** D190: the task holds Ducter's own browser on this computer ("local" or a device id), so it can be watched. */
+  browsing?: { device: string };
 }
 
 export interface OnHand {
@@ -767,10 +769,19 @@ export type ClientFrame =
   // try (D154, 试一下 / Try it on the 上网 block): no card behind it; a harmless page
   // (example.com) in its own tab on the persona's profile, closed with the view. decisionId is
   // TRY_LIVE, and the answering live frames carry it.
-  | { t: "live_open"; decisionId: string; width?: number; height?: number; scale?: number; try?: boolean }
+  // D190, 看它上网 / Watch it browse: decisionId WATCH_LIVE with taskId: the tab that task is
+  // working in, live, while it works (its turn: the user's input is not sent in). device (Try it):
+  // the computer whose browser to open ("local" or a paired device id; absent = the home's).
+  | { t: "live_open"; decisionId: string; width?: number; height?: number; scale?: number; try?: boolean; taskId?: string; device?: string }
   | { t: "live_input"; id: string; input: LiveInput }
   | { t: "live_ack"; id: string; seq: number }
   | { t: "live_close"; id: string; done?: boolean }
+  // D190: 换我来 / My turn (mine: true): the user drives this tab and every task on that browser
+  // waits, blind, as during a sign-in; 还给它 / Hand it back (mine: false): the task's turn again,
+  // told what changed. Answered with live_turn to every view on that browser.
+  | { t: "live_turn"; id: string; mine: boolean }
+  // D190: the view is out of sight (the app went to the background): no frames until it's back.
+  | { t: "live_pause"; id: string; paused: boolean }
   // D151, 已登录的网站 / Signed-in sites in Ducter's browser: answered with a browser_sites frame.
   | { t: "browser_sites" }
   | { t: "browser_site_signout"; site: string }
@@ -792,6 +803,8 @@ export type LiveInput =
   | { kind: "text"; text: string }
   | { kind: "key"; key: LiveKey; shift?: boolean }
   | { kind: "nav"; action: "back" | "forward" | "reload" }
+  // D190: open a web address typed in the view's address line (http or https only; the user's turn).
+  | { kind: "go"; url: string }
   | { kind: "resize"; width: number; height: number; scale?: number };
 
 export type LiveKey = "Enter" | "Tab" | "Backspace" | "Delete" | "Escape" | "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight" | "Home" | "End" | "PageUp" | "PageDown" | "Space";
@@ -865,9 +878,15 @@ export type ServerFrame =
   // D151: a live view opened (with the page's size in CSS pixels) or closed (reason: done, closed,
   // replaced = another window opened one, gone = the browser went away, failed with message).
   // browser (D154): which browser it is, for the view's top line.
-  | { t: "live"; id: string; decisionId: string; state: "open" | "closed"; site?: string; url?: string; title?: string; width?: number; height?: number; reason?: "done" | "closed" | "replaced" | "gone" | "failed"; message?: string; browser?: BrowserAbout }
-  // One JPEG frame (base64). The next comes only after live_ack for this seq.
+  // D190: turn: whose turn it is ("agent": the task drives and the user watches; "you": the user
+  // drives); here: this window holds the user's turn; taskId and task: the task whose tab it is.
+  | { t: "live"; id: string; decisionId: string; state: "open" | "closed"; site?: string; url?: string; title?: string; width?: number; height?: number; reason?: "done" | "closed" | "replaced" | "gone" | "failed"; message?: string; browser?: BrowserAbout; turn?: LiveTurn; here?: boolean; taskId?: string; task?: LiveTask }
+  // One JPEG frame (base64). The next comes only after live_ack for this seq. url: keys hidden (D152).
   | { t: "live_frame"; id: string; seq: number; data: string; width: number; height: number; url?: string; title?: string }
+  // D190: whose turn it is now. here: this window holds it (false: the user drives from another of their devices).
+  | { t: "live_turn"; id: string; turn: LiveTurn; here: boolean }
+  // D190: what the task is doing in its tab right now (null: nothing just now). Presence, never logged.
+  | { t: "live_doing"; id: string; doing: LiveDoing | null }
   // ready: Ducter's browser is installed here; sites: the ones signed in through a live view.
   | { t: "browser_sites"; ready: boolean; sites: SiteView[]; ok?: boolean; message?: string }
   | ({ t: "browser_check" } & BrowserCheck)
@@ -876,6 +895,31 @@ export type ServerFrame =
 
 /** D154: the decisionId of a 试一下 / Try it live view (no card behind it). */
 export const TRY_LIVE = "try";
+/** D190: the decisionId of a 看它上网 / Watch it browse view (a task's tab; no card behind it). */
+export const WATCH_LIVE = "watch";
+
+/** D190: whose turn it is in a live view: the task's (it drives, you watch) or yours. */
+export type LiveTurn = "agent" | "you";
+
+/** D190: the task whose tab a live view shows: its title and who does it (the coin). */
+export interface LiveTask {
+  title: string;
+  harness: string;
+}
+
+/**
+ * D190: one thing a task just did in its tab, for the watcher's calm line. x, y: where it
+ * clicked, as fractions of the page (0..1). label: the link or button's own words (short, keys
+ * hidden). waiting: it tried while it was the user's turn, and waits for it back.
+ */
+export interface LiveDoing {
+  kind: "open" | "read" | "click" | "type" | "press" | "scroll" | "back" | "tab" | "shot" | "waiting";
+  host?: string;
+  label?: string;
+  key?: string;
+  x?: number;
+  y?: number;
+}
 
 /**
  * D154: which browser Ducter's own browser tools drive, said the same way everywhere

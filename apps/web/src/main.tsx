@@ -8,7 +8,8 @@ import { kvSet } from "./idb.ts";
 import { registerWorker } from "./push-client.ts";
 import { inApp, tellApp } from "./native.ts";
 import { startAutospace } from "./autospace.ts";
-import { Avatar, Conversation, LiveView, OnHand, Sheets, TaskView, Toasts } from "./views.tsx";
+import { Avatar, Conversation, OnHand, Sheets, TaskView, Toasts } from "./views.tsx";
+import { LiveView } from "./live.tsx";
 import { Board } from "./board.tsx";
 import { escUp, useFill, useSplit, useWide } from "./wide.ts";
 

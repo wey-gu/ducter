@@ -131,7 +131,10 @@ export function locateExpression(ref: number): string {
     const secret = el instanceof HTMLInputElement && (el.type === "password" || ac.includes("one-time-code") || ac.includes("current-password") || ac.includes("new-password") || /otp|2fa|totp|passcode/i.test(el.name + " " + el.id));
     const field = el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el.isContentEditable;
     const card = el instanceof HTMLInputElement && (ac.includes("cc-number") || ac.includes("cc-csc") || /card.?num|cc.?num|cardnumber|pan\\b|cvc|cvv|csc|security.?code/i.test(el.name + " " + el.id));
-    return { x: r.left + r.width / 2, y: r.top + r.height / 2, secret, field, card, filled: !!el.getAttribute("data-ducter-filled"), tag: el.tagName.toLowerCase(), type: el.type || "" };
+    // D190: what the watcher's line names (a field's label or placeholder, never its value), and the page's size for where.
+    const field_ = field ? (el.labels && el.labels[0] ? el.labels[0].innerText : "") || el.getAttribute("aria-label") || el.placeholder || "" : "";
+    const label = ((field ? field_ : el.getAttribute("aria-label") || el.innerText || el.value || el.title || el.alt || "") + "").replace(/\\s+/g, " ").trim().slice(0, 40);
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2, secret, field, card, filled: !!el.getAttribute("data-ducter-filled"), tag: el.tagName.toLowerCase(), type: el.type || "", label, vw: innerWidth, vh: innerHeight };
   })()`;
 }
 

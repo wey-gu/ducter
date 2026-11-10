@@ -271,6 +271,8 @@ export function createWsHandler(deps: WsDeps) {
         ws.data.live = true; // synchronous since the read: no event can be missed in between
         if (f.client === "desktop" || f.client === "web" || f.client === "cli") ws.data.client = f.client;
         if (typeof f.tz === "string" && f.tz) deps.work?.zone(f.tz);
+        // An app newer than the latest release the home knows: that answer is stale.
+        if (typeof f.version === "string") deps.updates?.()?.sawVersion(f.version);
         // The empty conversation's words (D149), for the apps only; a failure leaves the client's own.
         if (f.client !== "cli")
           void firstScreenFor(f.tz)
@@ -408,6 +410,7 @@ export function createWsHandler(deps: WsDeps) {
         watchDevices();
         ws.data.devices = true;
         if (f.refresh) v.refresh();
+        deps.updates?.()?.freshen(); // "up to date" is never older than 15 min when someone looks
         send(ws, await v.frame());
         return;
       }

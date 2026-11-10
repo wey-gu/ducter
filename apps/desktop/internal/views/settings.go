@@ -138,8 +138,10 @@ func (a *App) openTab(tab string) {
 	a.send(protocol.SettingsReq{T: "settings"})
 	a.send(protocol.RulesReq{T: "rules"}) // Your rules (D89)
 	a.send(protocol.ConnectionsReq{T: "connections"})
-	if a.S.DevicesAt.IsZero() {
-		a.send(protocol.DevicesReq{T: "devices"}) // where it lives
+	// Where it lives; on Updates and about also so the home reads the
+	// latest release again when its answer is older than 15 minutes.
+	if a.S.DevicesAt.IsZero() || tab == TabAbout {
+		a.send(protocol.DevicesReq{T: "devices"})
 	}
 }
 

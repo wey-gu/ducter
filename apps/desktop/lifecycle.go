@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/egoist/mygo"
@@ -16,6 +17,7 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/local"
 	"github.com/wey-gu/ducter/apps/desktop/internal/update"
+	"github.com/wey-gu/ducter/apps/desktop/internal/views"
 )
 
 // DocsURL is where Help › Ducter Docs goes.
@@ -23,13 +25,15 @@ const DocsURL = "https://ducter.ai/docs"
 
 // lifecycle is the app's updater and its Help menu (D72).
 type lifecycle struct {
-	l        *i18n.Strings
-	upd      *update.Updater // nil: this copy doesn't update (not a bundle)
-	host     *local.Host     // nil: the window shows a Ducter elsewhere
-	version  string
-	menu     *mygo.Menu
-	relaunch bool
-	win      *mygo.Window
+	l       *i18n.Strings
+	upd     *update.Updater // nil: this copy doesn't update (not a bundle)
+	host    *local.Host     // nil: the window shows a Ducter elsewhere
+	version string
+	menu    *mygo.Menu
+	win     *mygo.Window
+	// screen is the window's side of Restart to update (main.go).
+	screen     restartScreen
+	restarting atomic.Bool
 	// openUpdate shows Settings' update card (views.App.OpenUpdate).
 	openUpdate func()
 }
@@ -111,28 +115,112 @@ func (lc *lifecycle) showStatus(st update.Status) {
 	it.SetEnabled(enabled)
 }
 
-// restartToUpdate quits; the swap runs once the app is gone and opens the
-// new version (not mygo's Relaunch, which would open the old bundle before
-// the swap).
+// restartToUpdate quits into the ready update (Settings' Restart Now, a
+// device card's Update): see runRestart. The swap runs once the app is gone
+// and opens the new version (not mygo's Relaunch, which would open the old
+// bundle before the swap). Main thread (a click).
 func (lc *lifecycle) restartToUpdate() {
+	if lc.restarting.Swap(true) {
+		return // already on its way
+	}
 	go func() {
-		// Installed by an administrator: the password first, while the app
-		// still runs; without it the app stays open and Settings says why.
-		if err := lc.upd.PrepareRestart(); err != nil {
-			log.Printf("ducter: update not installed: %v", err)
-			return
+		if !runRestart(lc.upd, lc.screen, restartCalm) {
+			lc.restarting.Store(false)
 		}
-		lc.relaunch = true
-		mygo.App.Quit()
 	}()
 }
 
-// quit runs as the app quits: a ready update goes in once it has exited.
+// restartCalm is how long the window at least says it is putting the new
+// version in: long enough to read, never a flash.
+const restartCalm = 700 * time.Millisecond
+
+// restarter is the updater as Restart to update uses it.
+type restarter interface {
+	PrepareRestart() error
+	Begin(relaunch bool) (bool, error)
+}
+
+// restartScreen is the window's side of Restart to update. Every call
+// returns once the main thread has done it.
+type restartScreen interface {
+	// Putting shows (or takes back) "Putting the new version in, back in
+	// a moment".
+	Putting(on bool)
+	// Failed shows Settings' update card, which says why.
+	Failed()
+	// Leave orders every window out at once and quits: nothing blank or
+	// frozen is left on screen while the app exits.
+	Leave()
+}
+
+// runRestart is Restart to update, off the main thread, in this order:
+// the password when an administrator installed the app (cancelled: the app
+// stays as it was, Settings says why); then the window says it is putting
+// the new version in while the copy is checked again and the swap starts
+// (the slow part, here and not in the quit); then the windows go and the
+// app quits. A copy that fails its check leaves the app open on Settings'
+// update card. It reports whether the app is quitting.
+func runRestart(u restarter, s restartScreen, calm time.Duration) bool {
+	if err := u.PrepareRestart(); err != nil {
+		log.Printf("ducter: update not installed: %v", err)
+		return false
+	}
+	s.Putting(true)
+	shown := time.Now()
+	started, err := u.Begin(true)
+	if err != nil || !started {
+		if err == nil {
+			err = fmt.Errorf("no update is ready")
+		}
+		log.Printf("ducter: update not installed: %v", err)
+		s.Putting(false)
+		s.Failed()
+		return false
+	}
+	if d := calm - time.Since(shown); d > 0 {
+		time.Sleep(d)
+	}
+	s.Leave()
+	return true
+}
+
+// windowScreen is restartScreen on the app's window.
+type windowScreen struct {
+	app *views.App
+	win *mygo.Window
+}
+
+// update runs fn on the main thread with a new frame after, and waits.
+func (s windowScreen) update(fn func()) {
+	done := make(chan struct{})
+	s.win.Update(func() {
+		defer close(done)
+		fn()
+	})
+	<-done
+}
+
+func (s windowScreen) Putting(on bool) { s.update(func() { s.app.PuttingIn = on }) }
+func (s windowScreen) Failed()         { s.update(s.app.UpdateFailed) }
+
+func (s windowScreen) Leave() {
+	mygo.RunOnMain(func() {
+		for _, w := range mygo.Windows() {
+			w.Hide()
+		}
+		flushWindows()
+	})
+	mygo.App.Quit()
+}
+
+// quit runs as the app quits: a ready update goes in once it has exited
+// (after Restart to update, Begin has already started it). The windows are
+// gone by now (flushWindows), so a check it still runs is out of sight.
 func (lc *lifecycle) quit() {
 	if lc.upd == nil {
 		return
 	}
-	if started, err := lc.upd.Quit(lc.relaunch); err != nil {
+	if started, err := lc.upd.Quit(false); err != nil {
 		log.Printf("ducter: update not installed: %v", err)
 	} else if started {
 		log.Printf("ducter: the update installs once the app has quit")

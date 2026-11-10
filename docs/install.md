@@ -318,12 +318,15 @@ Everything about the phone, including notifications and quiet hours, is on
 
 The Mac app looks for a new version when it opens and once a day, and gets it ready in the
 background. When one is ready, the Ducter menu says **Update 0.2.0 ready · restart to finish**.
-It installs the next time you quit Ducter, or right away if you click that line. Your tasks
-carry on.
+It installs the next time you quit Ducter, or right away with **Restart Now**: the window says
+**Putting the new version in, back in a moment**, closes, and Ducter opens again on the new
+version with a quiet **Updated to 0.2.0**. Your tasks carry on.
 
 ### Updating a server, and the computers that do tasks for Ducter
 
-Every device's card under **Your devices** shows its version. When a newer one is out, a small
+Every device's card under **Your devices** shows its version. When it's the newest, the card says
+so with when Ducter last looked (**Up to date · checked 3 h ago**) and a quiet **Check now**; Ducter
+looks every hour, and again whenever you open the page. When a newer one is out, a small
 dot appears by its name and the card says **Update to 0.0.4**, with the first lines of what's
 new and one **Update** button. Nothing pops up and nothing nags. On the phone it's the same,
 under **Settings › Your devices**.

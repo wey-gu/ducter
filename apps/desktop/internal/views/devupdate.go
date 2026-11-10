@@ -2,10 +2,12 @@ package views
 
 import (
 	"strings"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
+	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 	"github.com/wey-gu/ducter/apps/desktop/internal/update"
 )
 
@@ -22,6 +24,7 @@ type cardState struct {
 	answer    *protocol.ServerFrame // the last update_result that said no
 	asked     string                // the device an update was asked for
 	agent     *protocol.ServerFrame // the last agent_update_result that said no (D156)
+	checking  bool                  // 现在检查 / Check now asked, no answer yet
 }
 
 // drainDeviceResults reads the server's answer to the last disconnect or
@@ -54,6 +57,7 @@ func (a *App) drainDeviceResults() {
 			d.card.agent = &fc
 		}
 	case "update_result":
+		d.card.checking = false
 		if res.Update != nil {
 			return // a check's answer: the devices frame says the rest
 		}
@@ -250,7 +254,8 @@ func (a *App) versionBlock(c *ui.Context, dv *protocol.DeviceView) {
 				a.updateDot(c)
 				ui.Text(c, a.L.T("devup.available", u.Latest)).FontSize(t.SM).FontWeight(800).TextColor(t.Ink)
 			case u.Latest != "" && u.Phase == "":
-				ui.Text(c, a.L.T("devup.current")).FontSize(t.SM).TextColor(t.InkMuted)
+				ui.Text(c, a.upToDate(u)).FontSize(t.SM).TextColor(t.InkMuted)
+				a.checkNow(c, dv.ID)
 			}
 		})
 		if u == nil {
@@ -282,6 +287,35 @@ func (a *App) versionBlock(c *ui.Context, dv *protocol.DeviceView) {
 			a.reasonLine(c, a.updateReason(ans.Reason))
 		}
 	})
+}
+
+// upToDate never says "latest" without when it was read: 已经是最新的 ·
+// 3 小时前查过 / Up to date · checked 3 h ago.
+func (a *App) upToDate(u *protocol.DeviceUpdate) string {
+	line := a.L.T("devup.current")
+	if at := store.ParseTime(u.CheckedAt); !at.IsZero() {
+		if a.Now().Sub(at) < 2*time.Minute {
+			return line + " · " + a.L.T("devup.checked.now")
+		}
+		return line + " · " + a.L.T("devup.checked", a.agoLong(u.CheckedAt))
+	}
+	return line
+}
+
+// checkNow is the quiet 现在检查 / Check now after it: the home reads the
+// latest release again (device_update check); the devices frame brings the
+// answer.
+func (a *App) checkNow(c *ui.Context, device string) {
+	t := a.T
+	d := a.devState()
+	if d.card.checking {
+		ui.Text(c, a.L.T("devup.checking")).FontSize(t.SM).TextColor(t.InkMuted)
+		return
+	}
+	if a.quietButton(c, "checknow:"+device, a.L.T("devup.checknow"), "", false, 0) {
+		d.card.checking = true
+		a.send(protocol.DeviceUpdateReq{T: "device_update", Device: device, Check: true})
+	}
 }
 
 // progressBar is a thin clay bar, how much is downloaded.
@@ -477,6 +511,8 @@ func (a *App) updateSection(c *ui.Context) {
 							ui.Text(c, a.phaseLine(u)).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).SingleLine()
 						case behind(dv):
 							ui.Text(c, a.L.T("devup.available", u.Latest)).FontSize(t.XS).FontWeight(700).TextColor(t.Ink).SingleLine()
+						case u.Latest != "" && u.Phase == "":
+							ui.Text(c, a.upToDate(u)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
 						}
 					}
 				})
@@ -485,12 +521,25 @@ func (a *App) updateSection(c *ui.Context) {
 				a.updateAction(c, dv)
 			}
 		}
+		if home := homeDevice(shown); home != nil && home.Update != nil && home.Update.Latest != "" {
+			a.textRow(c, t.ControlSM).Children(func() { a.checkNow(c, home.ID) })
+		}
 		if auto := a.S.Settings; auto != nil {
 			if v, ch := a.switchRow(c, "autoupdate", a.L.T("settings.versions.night"), a.L.T("settings.versions.night.note"), auto.AutoUpdate); ch {
 				a.send(protocol.SettingsSet{T: "settings_set", Patch: protocol.SettingsPatch{AutoUpdate: &v}})
 			}
 		}
 	})
+}
+
+// homeDevice is the home among the devices shown, or nil.
+func homeDevice(ds []*protocol.DeviceView) *protocol.DeviceView {
+	for _, d := range ds {
+		if d.Home {
+			return d
+		}
+	}
+	return nil
 }
 
 // notesIf: what is new, only while it is still news (not again after a failure).

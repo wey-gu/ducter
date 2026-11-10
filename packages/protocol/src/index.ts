@@ -505,7 +505,9 @@ export interface UntilView {
 export type ClientFrame =
   // tz: the client's IANA zone; personal-time routines follow the latest one (D114).
   // client: what is connecting (D128: `open_task` goes to the apps, never to a CLI); absent = an app.
-  | { t: "hello"; persona?: string; cursor?: number; locale?: "zh" | "en"; tz?: string; client?: ClientKind }
+  // version: the Ducter version the client runs (the Mac app's); newer than the home's latest
+  // release makes the home read GitHub again (its answer is stale).
+  | { t: "hello"; persona?: string; cursor?: number; locale?: "zh" | "en"; tz?: string; client?: ClientKind; version?: string }
   | { t: "send"; text: string; clientId: string }
   | { t: "decide"; decisionId: string; option: "go" | "hold" | "reply"; text?: string }
   // clientId (optional): a resend with the same id is not delivered twice; it gets the same "sent".

@@ -445,6 +445,10 @@ Codex first, once OAR is near 1.0. See `research/17`.
       testers.
 - [ ] First real update from GitHub (both checks against a notarized release, Gatekeeper on).
       Trigger: the second tagged release after the repo is public.
+- [ ] D160 on a real Mac: Restart Now from 0.0.6 to the next release shows the putting-in
+      screen, no white window, and opens with Updated to; the relaunch skips the LaunchAgent
+      restart and connects to the new helper. Verified so far on a scratch signed bundle with no
+      LaunchAgent (DUCTER_URL to the mock server). Trigger: the next tagged release.
 
 ## First run without a terminal (D70, `design/onboarding.md` "No terminal, start to finish")
 

@@ -103,7 +103,7 @@ the API answers 404 to an anonymous caller, and the app treats that as "no relea
 | Download | Into `~/Library/Application Support/Ducter/updates/<v>/`, size as listed, SHA-256 as in `SHA256SUMS.txt`; the DMG is deleted once the app is out |
 | Copy | `hdiutil attach -nobrowse -readonly`, `ditto` to `.Ducter.app.update-<v>` next to the running app (same volume, so the swap is a rename) |
 | The copy | Same bundle id; version equals the tag; `codesign --verify --deep --strict`; the requirement `anchor apple generic` + Developer ID CA + Developer ID Application leaf + `subject.OU` = the running app's own team, on the app and on `Contents/Helpers/ducter`; `spctl --assess --type execute` |
-| Swap | At the next quit (default; off in Settings) or Restart Now: the copy is checked again, then a detached `sh` waits for the app to exit, moves the running app to `updates/previous/`, moves the copy in (or puts the old one back), `launchctl kickstart -k` the background LaunchAgent when it is installed, and reopens the app on Restart Now |
+| Swap | At the next quit (default; off in Settings) or Restart Now: the copy is checked again (Restart Now: before the quit, while the window says **Putting the new version in**; D160), then a detached `sh` waits for the app to exit, moves the running app to `updates/previous/`, moves the copy in (or puts the old one back), `launchctl kickstart -k` the background LaunchAgent when it is installed, and reopens the app on Restart Now |
 
 The app is never replaced while it runs (the Dock tile would follow the moved bundle). A copy on
 the disk image, a translocated copy, or an ad-hoc signed build only says "Version X is out ·

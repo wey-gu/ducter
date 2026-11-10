@@ -2652,6 +2652,13 @@ function Disconnect({ id, name, client, means }: { id: string; name: string; cli
   );
 }
 
+/** Never "latest" without when it was read: 已经是最新的 · 3 小时前查过 / Up to date · checked 3 h ago. */
+function upToDate(u: NonNullable<DeviceView["update"]>): string {
+  if (!u.checkedAt) return t("devup.current");
+  const age = Date.now() - Date.parse(u.checkedAt);
+  return `${t("devup.current")} · ${age < 2 * 60_000 ? t("devup.checked.now") : t("devup.checked", ago(A.L, u.checkedAt))}`;
+}
+
 function VersionBlock({ dv }: { dv: DeviceView }) {
   const u = dv.update;
   if (!u && !dv.version) return null;
@@ -2671,7 +2678,12 @@ function VersionBlock({ dv }: { dv: DeviceView }) {
             <b>{t("devup.available", u.latest)}</b>
           </>
         )}
-        {u && !u.available && u.latest && !u.phase && <span class="sub">{t("devup.current")}</span>}
+        {u && !u.available && u.latest && !u.phase && (
+          <>
+            <span class="sub">{upToDate(u)}</span>
+            {A.checkingUpdates ? <span class="sub">{t("devup.checking")}</span> : <Btn kind="text" size="sm" label={t("devup.checknow")} onClick={() => A.checkUpdates(dv.id)} />}
+          </>
+        )}
       </div>
       {line && <div class={`dev-phase ${u!.phase}`}>{line}</div>}
       {u?.phase === "failed" && u.reason && <div class="small sub">{t(`devup.why.${u.reason}`)}</div>}
@@ -2892,8 +2904,10 @@ function ClientCard({ cl, folded }: { cl: Client; folded: Client[] }) {
 
 /** 你的设备 / Your devices: a self-contained section, so the Settings page can place it. */
 export function DevicesSection() {
+  // Every time it opens: the home also reads the latest release again when its answer is older
+  // than 15 minutes, so "up to date" is never stale here.
   useEffect(() => {
-    if (!A.devices && A.S.welcomed) A.send({ t: "devices" });
+    if (A.S.welcomed) A.send({ t: "devices" });
   }, []);
   const list = A.devices;
   if (!list?.length) return null;

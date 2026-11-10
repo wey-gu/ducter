@@ -208,7 +208,7 @@ class AppState {
       return void ((this.agents = home?.harnesses ?? []), (this.homeName = home?.name), (this.devices = f.devices), (this.reach = f.reach), this.changed());
     }
     if (f.t === "agent_update_result") return void ((this.agentAnswer = f.ok ? undefined : { device: f.device, harness: f.harness, reason: f.reason ?? "failed" }), this.changed());
-    if (f.t === "update_result") return void ((this.deviceAnswer = f.ok || f.update ? undefined : { device: f.device, reason: f.reason ?? "failed" }), this.changed());
+    if (f.t === "update_result") return void ((this.checkingUpdates = false), (this.deviceAnswer = f.ok || f.update ? undefined : { device: f.device, reason: f.reason ?? "failed" }), this.changed());
     if (f.t === "disconnect_result" || f.t === "rename_result") return void ((this.deviceAnswer = f.ok ? undefined : { device: f.device, reason: f.reason === "name_taken" ? "name_taken" : "failed" }), this.changed());
     if (f.t === "candidates") return void (this.candidates.set(f.taskId, f.candidates), this.changed());
     if (f.t === "task_new_options") return void ((this.newTaskOptions = { places: f.places, candidates: f.candidates }), this.changed());
@@ -434,6 +434,13 @@ class AppState {
   updateDevice(device: string) {
     this.deviceAnswer = undefined;
     this.send({ t: "device_update", device });
+    this.changed();
+  }
+  /** 现在检查 / Check now: the home reads the latest release again; fresh devices frames follow. */
+  checkingUpdates = false;
+  checkUpdates(device: string) {
+    this.checkingUpdates = true;
+    this.send({ t: "device_update", device, check: true });
     this.changed();
   }
   /** D156: update one AI agent on a device with its own updater. */

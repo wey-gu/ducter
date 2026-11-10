@@ -641,6 +641,9 @@ type Hello struct {
 	TZ      string `json:"tz,omitempty"`     // IANA zone; personal routines follow it (D114)
 	// Client: "desktop" | "web" | "cli" (D128: open_task goes to the apps).
 	Client string `json:"client,omitempty"`
+	// Version is the app's own Ducter version: newer than the home's latest
+	// release, the home reads GitHub again.
+	Version string `json:"version,omitempty"`
 }
 
 type Send struct {

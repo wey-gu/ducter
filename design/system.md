@@ -455,10 +455,20 @@ tap, without SSH. A Mac home keeps the app's own updater (D72); this section is 
 `packages/cli/package.json`'s (the release tag must equal it). `/health` says `version` beside
 `build` (local callers only). A worker's hello says `version` and `how`. The home reads
 `api.github.com/repos/wey-gu/ducter/releases/latest`, else the `github.com/…/releases/latest`
-redirect (version only), at most every 6 h (`<dataDir>/updates/latest.json`); a failure is
-silent and keeps the last answer; `DUCTER_UPDATE_CHECK=off` never asks; drafts and pre-releases
-never count; tests never touch the network (`NODE_ENV=test` without a feed turns it off).
-Every `DeviceView` carries `update {current, latest, available, notes, security, how, phase…}`.
+redirect (version only), at most every hour (`<dataDir>/updates/latest.json`, D160, was 6 h); a
+failure is silent and keeps the last answer; `DUCTER_UPDATE_CHECK=off` never asks; drafts and
+pre-releases never count; tests never touch the network (`NODE_ENV=test` without a feed turns it
+off). Every `DeviceView` carries `update {current, latest, available, notes, security, how,
+phase…, checkedAt}`.
+
+**Never "latest" without when (D160).** The cards say **已经是最新的 · 3 小时前查过 / Up to date ·
+checked 3 h ago** (刚查过 / checked just now under 2 min) with a quiet **现在检查 / Check now**
+(`device_update {check:true}`). The answer is read again: when a `devices` request comes (Devices
+or Updates and about opened) and it is older than 15 min (`Updates.freshen`); and at once when a
+device says it runs a version newer than the latest known (`Updates.sawVersion`: the home itself
+at start, every card's `current`, a worker's hello, and the Mac app's `hello.version`), once per
+version every 15 min. Found on 0.0.6: an app on 0.0.6 showed its server home "hel" as "0.0.4,
+up to date" from a 6 h old answer.
 
 **How a device updates (`how`).** `self`: a compiled Linux `ducter`. `app`: a Mac whose ducter is
 inside Ducter.app (the app's updater does it; on that Mac the card's button calls
@@ -496,6 +506,19 @@ one (a worker machine) it runs the staged update itself, restarting the service 
 
 **At night** (`settings.autoUpdate`, off by default): every 10 min, inside quiet hours, nothing
 working and nothing critical: behind workers first, then the home.
+
+**The Mac app's restart (D72, D160).** Restart Now (Settings, or a Mac card's Update) runs off
+the main thread: the administrator password if the bundle needs it (cancelled: nothing changes);
+then the window shows **正在换上新版本，马上回来 / Putting the new version in, back in a moment**
+(the working partner, at least 0.7 s) while `Updater.Begin` checks the staged copy again and starts
+the detached swap; then every window is ordered out and the quit runs, with nothing slow left in it.
+A copy that fails its check leaves the app open on the update card, which says why. Every quit
+flushes the window server right after the windows close (`flushWindows`, `CATransaction flush`):
+mygo stops the run loop then, so a closed window used to stay on screen, blank and beach-balling,
+through whatever the quit still ran (measured on a scratch bundle: 1.0–1.8 s of the copy's
+`codesign`/`spctl` checks; install-on-quit and a child Ducter's 8 s stop had the same freeze). The
+first launch after a swap says **已更新到 {v} / Updated to {v}** once (a toast, and the update card's
+line until the next check), and skips its stale-LaunchAgent restart (the swap already did it).
 
 **Simulated, not yet run on a real systemd box:** every step above runs in tests with fakes (fake
 fetch, a fixture tarball, fake systemctl and `/health`, a fake worker socket); the end-to-end on

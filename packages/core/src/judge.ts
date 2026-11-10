@@ -39,38 +39,52 @@ export function parseVerdict(text: string): { met: boolean; reason: string; prog
   return { met: j.met, reason: typeof j.reason === "string" ? j.reason.slice(0, 120) : "", ...(progress ? { progress } : {}), ...(left !== undefined ? { left } : {}), ...(left !== undefined && done !== undefined ? { done } : {}) };
 }
 
-export function createHarnessJudge(opts: { harness: () => HarnessPort | undefined; pick: () => { harness: HarnessId; model?: string }; dataDir: string; timeoutMs?: number }): Judge {
-  const cwd = join(opts.dataDir, "judge");
-  return async (q) => {
+/**
+ * One short, tool-less turn on a harness: the prompt in, its text and token count out. cheap: the
+ * harness's smallest capable model (triage, D165 stage 2); else the model the partner thinks with
+ * (the bar, stage 3).
+ */
+export function createHarnessAsk(opts: { harness: () => HarnessPort | undefined; pick: () => { harness: HarnessId; model?: string }; dataDir: string; cheap: boolean; dir?: string; timeoutMs?: number; system?: string }): (prompt: string) => Promise<{ text: string; tokens: number }> {
+  const cwd = join(opts.dataDir, opts.dir ?? "judge");
+  return async (prompt) => {
     const port = opts.harness();
-    if (!port) throw new Error("no AI agent to judge with yet");
+    if (!port) throw new Error("no AI agent to ask yet");
     mkdirSync(cwd, { recursive: true, mode: 0o700 });
     const { harness, model } = opts.pick();
+    const use = opts.cheap ? (CHEAP[harness] ?? model) : model;
     const session = await port.start({
       harness,
-      ...(CHEAP[harness] ?? model ? { model: CHEAP[harness] ?? model } : {}),
+      ...(use ? { model: use } : {}),
       cwd,
-      systemPrompt: "You answer with one line of JSON and nothing else. You never use tools.",
+      systemPrompt: opts.system ?? "You answer with JSON and nothing else. You never use tools.",
       mcp: [],
       permissionMode: "bypass",
       isolateUserConfig: true,
       disallowedTools: TOOLS_OFF,
     });
     let text = "";
-    const timer = setTimeout(() => void session.interrupt().catch(() => {}), opts.timeoutMs ?? 60_000);
+    let tokens = 0;
+    const timer = setTimeout(() => void session.interrupt().catch(() => {}), opts.timeoutMs ?? 90_000);
     try {
       const reading = (async () => {
         for await (const ev of session.events()) {
           if (ev.role === "assistant" && ev.text) text += ev.text;
+          if (ev.usage) tokens = (ev.usage.inputTokens ?? 0) + (ev.usage.outputTokens ?? 0) + (ev.usage.cacheRead ?? 0) + (ev.usage.cacheWrite ?? 0);
           if (ev.turnEnd) break;
         }
       })();
-      await session.send(judgePrompt(q), "turn");
+      await session.send(prompt, "turn");
       await reading;
     } finally {
       clearTimeout(timer);
       await session.close().catch(() => {});
     }
-    return parseVerdict(text);
+    // No count from the harness: a rough one (4 characters a token) so the budget still moves.
+    return { text, tokens: tokens || Math.ceil((prompt.length + text.length) / 4) };
   };
+}
+
+export function createHarnessJudge(opts: { harness: () => HarnessPort | undefined; pick: () => { harness: HarnessId; model?: string }; dataDir: string; timeoutMs?: number }): Judge {
+  const ask = createHarnessAsk({ ...opts, cheap: true, timeoutMs: opts.timeoutMs ?? 60_000, system: "You answer with one line of JSON and nothing else. You never use tools." });
+  return async (q) => parseVerdict((await ask(judgePrompt(q))).text);
 }

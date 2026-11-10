@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.0.11
+## 0.0.12
 
 <!-- whats-new
 zh: 安卓 App 来了：从 GitHub 发布页下载，之后自己更新

@@ -7,6 +7,7 @@
 // design space; the drawn parts are one SVG per layout, the clay is <picture>s placed in the same
 // units, and the words sit on small clay tags at their own sizes.
 import Art from "./Art.astro";
+import { artUrl } from "../lib/artUrl";
 import Face from "./Face.astro";
 import manifest from "../art.json";
 import { layout, accounts, dock, type Layout, type Box } from "../lib/isles";
@@ -25,7 +26,7 @@ const C = {
   cloud: "#FFFDF8", glint: "#FFFFFA", plank: "#D9A76A", plankDark: "#A8743E", rope: "#8A6236",
   parcel: "#FFF3E0", parcelEdge: "#C98F4E",
 };
-const reflection = (name: "island_big" | "island_small") => `/art/${name}-${manifest[name].widths[0]}.webp`;
+const reflection = (name: "island_big" | "island_small") => artUrl(`${name}-${manifest[name].widths[0]}.webp`);
 
 function sea(l: Layout, id: string) {
   const { W, H } = l.spec;

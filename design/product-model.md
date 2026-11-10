@@ -45,7 +45,7 @@
 | checkpoint | **保存了进度 · {time} / Progress saved · {time}**; in the dossier **保存的进度 / Saved progress** | Describes what happened; no noun to learn |
 | handoff | **换到 X 接着做 / Continue on X** | Never "superseded" in UI |
 | pause | **先停 / Pause** | Shown as a waiting reason |
-| opening a task's working copy by hand (D198) | **打开 / Open** · **在 Finder 中显示 / Show in Finder** · **在终端打开 / Open in Terminal** · **用 {editor} 打开 / Open in {editor}** · **没能打开：{why} / Couldn't open it: {why}** | Mac app only, and only while the working copy (a repo task's worktree, a folder task's folder) is on this Mac; the words are macOS's own. The path above the changes is the 工作副本 / working copy, said by its accessible name only |
+| opening a task's working copy by hand (D198, D201) | **打开 / Open** · **在 Finder 中显示 / Show in Finder** · **用 {editor} 打开 / Open in {editor}** · **在 {terminal} 里打开 / Open in {terminal}** (Terminal itself **在终端里打开 / Open in Terminal**) · **没能打开：{why} / Couldn't open it: {why}** | Mac app only, and only while the working copy (a repo task's worktree, a folder task's folder) is on this Mac; the words are macOS's own. Editors, then terminals, each one installed, the one used last first; an app's name is its own (iTerm2, Ghostty, Warp). The path above the changes is the 工作副本 / working copy, said by its accessible name only |
 | Recipe | **准备步骤 / Setup steps** | |
 | a non-git folder's changes | **改回去 / Undo all changes** · **就这样 / Keep the changes** · **改回这个 / Undo this** · **随时能改回去，留到 {date} / You can undo this until {date}** | D142; the copy behind it is never named |
 | routine fields | **{date} 再问你 / Ask you again {date}** (review date) · **可以碰 / May touch** (also on every task, D61) | |
@@ -226,7 +226,8 @@ Every task shows two editable things on its card and header.
 *Worktrees*
 - A task whose brief says it will **write** gets a worktree **at start**, at
   `~/.ducter/worktrees/<repo>/<slug>`, named like its branch `ducter/<slug>` (D198), so Finder
-  and an editor's recent list say which task it is. On the Mac, the opened task shows the path
+  and an editor's recent list say which task it is. The slug is the title's own words in their
+  own script (D201: `修复登录页的闪退`, `fix-the-flaky-test`). On the Mac, the opened task shows the path
   and **打开 / Open** takes the user there by hand.
 - A **read-only** task reads the main checkout, including uncommitted changes, and never
   gets a worktree.

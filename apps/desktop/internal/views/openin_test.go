@@ -32,6 +32,11 @@ func TestOpenInMenu(t *testing.T) {
 		var calls []call
 		app.OpenFolder = func(with, path string) error { calls = append(calls, call{with, path}); return nil }
 		app.Editors = []Editor{{Name: "Zed", App: "/Applications/Zed.app"}, {Name: "Cursor", App: "/Applications/Cursor.app"}}
+		app.Terminals = []Editor{
+			{Name: "Ghostty", App: "/Applications/Ghostty.app", Bundle: "com.mitchellh.ghostty"},
+			{Name: "Terminal", App: "/System/Applications/Utilities/Terminal.app", Bundle: appleTerminal},
+			{Name: "iTerm2", App: "/Applications/iTerm.app", Bundle: "com.googlecode.iterm2"},
+		}
 		now := time.Now().UTC().Format(time.RFC3339)
 		app.Receive(protocol.ServerFrame{T: "on_hand", OnHand: &protocol.OnHand{Tasks: []protocol.TaskCard{
 			{TaskID: "t1", Title: "Fix the flaky compaction test", Project: "HawDB", Place: place, Harness: "claude-code", Attention: protocol.Done, OpenedAt: now, UpdatedAt: now},
@@ -49,7 +54,8 @@ func TestOpenInMenu(t *testing.T) {
 		L := i18n.New(lang)
 		about := L.T("task.open.about")
 
-		// This Mac's own Ducter: the menu, Finder and Terminal, then each editor.
+		// This Mac's own Ducter: the menu, Finder, then each editor, then each
+		// terminal (D201), each group in the order found (the one used last first).
 		_, tt, calls := open(lang, "", repo, nil)
 		if !tt.HasText(tildePath(wt)) {
 			t.Errorf("%s: the path isn't shown: %q", lang, tt.Texts())
@@ -58,7 +64,15 @@ func TestOpenInMenu(t *testing.T) {
 		if err := tt.Click(about); err != nil {
 			t.Fatalf("%s: no %s: %v in %q", lang, about, err, tt.Texts())
 		}
-		want := []string{L.T("task.open.finder"), L.T("task.open.terminal"), "-", L.T("task.open.editor", "Zed"), L.T("task.open.editor", "Cursor")}
+		want := []string{L.T("task.open.finder"), "-", L.T("task.open.editor", "Zed"), L.T("task.open.editor", "Cursor"),
+			"-", L.T("task.open.in", "Ghostty"), L.T("task.open.terminal"), L.T("task.open.in", "iTerm2")}
+		wantWords := map[i18n.Lang][]string{
+			i18n.ZH: {"在 Finder 中显示", "-", "用 Zed 打开", "用 Cursor 打开", "-", "在 Ghostty 里打开", "在终端里打开", "在 iTerm2 里打开"},
+			i18n.EN: {"Show in Finder", "-", "Open in Zed", "Open in Cursor", "-", "Open in Ghostty", "Open in Terminal", "Open in iTerm2"},
+		}[lang]
+		if !reflect.DeepEqual(want, wantWords) {
+			t.Errorf("%s: menu words %q, want %q", lang, want, wantWords)
+		}
 		if got := tt.Menu(); !reflect.DeepEqual(got, want) {
 			t.Fatalf("%s: menu %q, want %q", lang, got, want)
 		}
@@ -72,6 +86,11 @@ func TestOpenInMenu(t *testing.T) {
 		_ = tt.ChooseMenuItem(L.T("task.open.finder"))
 		if len(*calls) != 2 || (*calls)[1] != (call{"finder", wt}) {
 			t.Errorf("%s: Show in Finder opened %+v", lang, *calls)
+		}
+		_ = tt.Click(about)
+		_ = tt.ChooseMenuItem(L.T("task.open.in", "Ghostty"))
+		if len(*calls) != 3 || (*calls)[2] != (call{"/Applications/Ghostty.app", wt}) {
+			t.Errorf("%s: Open in Ghostty opened %+v", lang, *calls)
 		}
 
 		// A Ducter elsewhere, its place on that computer: no menu, the path as text.
@@ -98,14 +117,15 @@ func TestOpenInMenu(t *testing.T) {
 			t.Errorf("%s: %s shows for another Mac's worker", lang, about)
 		}
 
-		// A folder task (D142) opens the folder itself; no editors found: Finder and Terminal only.
+		// A folder task (D142) opens the folder itself; no editors and no
+		// terminals found: Finder, and macOS's own Terminal all the same.
 		app, tt, calls := open(lang, "", protocol.Place{Kind: "folder", Device: "local", Path: wt}, nil)
-		app.Editors = nil
+		app.Editors, app.Terminals = nil, nil
 		tt.Frame()
 		if err := tt.Click(about); err != nil {
 			t.Fatalf("%s: folder: %v", lang, err)
 		}
-		if got := strings.Join(tt.Menu(), "|"); got != L.T("task.open.finder")+"|"+L.T("task.open.terminal") {
+		if got := strings.Join(tt.Menu(), "|"); got != L.T("task.open.finder")+"|-|"+L.T("task.open.terminal") {
 			t.Errorf("%s: folder menu %q", lang, got)
 		}
 		_ = tt.ChooseMenuItem(L.T("task.open.terminal"))

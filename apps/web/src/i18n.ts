@@ -1960,6 +1960,8 @@ const devcard: Record<Lang, Record<string, string>> = {
   },
 };
 
+
+
 // D165, D166: what the partner notices by itself, and the accounts card as a character sheet.
 // Generated from apps/desktop/internal/i18n/accounts.go (the same keys and words on the Mac).
 const accounts: Record<Lang, Record<string, string>> = {
@@ -2102,7 +2104,7 @@ const accounts: Record<Lang, Record<string, string>> = {
     "card.more": "More",
     "tile.more.oo": "Connect another in oo",
     "tile.more.oomol": "Connect another in OOMOL",
-    "tile.more": "Connect another",
+    "tile.more": "Connect",
     "tile.watch": "Watch on its own",
     "tile.mentions": "Only @-mentions and DMs",
     "tile.exclude": "Don't let Ducter read this one",

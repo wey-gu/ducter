@@ -150,7 +150,7 @@ export function createWatchers(opts: {
       // Chat: only @-mentions and DMs (D165 call 1); the rest is never even counted.
       if (spec.kind === "chat") items = items.filter((i) => i.mention || i.dm || i.out);
       trimReads();
-      st.reads.push({ connectionId: a.connectionId, at: new Date(opts.clock.now()).toISOString(), service: a.service, ...(a.label ?? a.account ? { account: a.label ?? a.account } : {}), items: items.length, what: what ?? (spec.kind === "event" ? "events" : spec.kind === "chat" ? "mentions" : "new") });
+      st.reads.push({ connectionId: a.connectionId, at: new Date(opts.clock.now()).toISOString(), service: a.service, ...(a.label ?? a.account ? { account: a.label ?? a.account } : {}), items: items.length, what: what ?? (spec.kind === "event" ? "events" : spec.kind === "chat" || spec.kind === "github" ? "mentions" : "new") });
       save();
       return items;
     }
@@ -225,7 +225,8 @@ export function createWatchers(opts: {
     },
     readToday(connectionId) {
       trimReads();
-      return st.reads.filter((r) => r.connectionId === connectionId && r.what !== "events").reduce((n, r) => n + r.items, 0);
+      // The card says emails: mail looks only (not events, mentions or notifications).
+      return st.reads.filter((r) => r.connectionId === connectionId && (r.what === "new" || r.what === "full")).reduce((n, r) => n + r.items, 0);
     },
     lastReadAt(a) {
       const hit = [...st.reads].reverse().find((r) => r.connectionId === a.connectionId && r.service === a.service && (r.account ?? "") === (a.label ?? a.account ?? ""));

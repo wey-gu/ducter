@@ -36,8 +36,12 @@ func acctFrames(app *App, proactive string) {
 	f := settingsFrame()
 	f.Settings.Proactive = proactive
 	app.Receive(f)
+	look := acctLook()
+	if proactive == "" || proactive == "off" {
+		look.Watching, look.ReadToday, look.WorthToday = false, 0, 0 // nothing watches before the answer
+	}
 	app.Receive(protocol.ServerFrame{T: "connections", Oo: &protocol.OoDetect{Installed: true, Account: true}, Connections: []protocol.ConnectionView{
-		{ID: "c1", Name: "oo", Source: "oo", Via: "oo", State: "ok", Look: acctLook()},
+		{ID: "c1", Name: "oo", Source: "oo", Via: "oo", State: "ok", Look: look},
 		{ID: "c2", Name: "家里的 OpenConnector", Source: "self", Via: "manual", State: "unreachable", Apps: []protocol.OoApp{{Service: "gmail", Title: "Gmail", Accounts: []string{"lab@example.com"}}}},
 	}})
 }

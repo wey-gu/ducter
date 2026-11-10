@@ -156,7 +156,11 @@ function ReadsList({ c }: { c: ConnectionView }) {
       {reads.slice(0, 8).map((r, i) => {
         const w = tiles.find((x) => x.service === r.service);
         let app = w ? tileWords(w)[0] : r.service;
-        if (r.account && kindOf(r.service) === "mail") app += ` · ${r.account.split("@")[0]}`;
+        if (r.account && kindOf(r.service) === "mail") {
+          const sibs = tiles.filter((x) => x.service === r.service).map((x) => x.account ?? "");
+          const sub = tileWords({ service: r.service, title: "", account: r.account, watch: true, excluded: false }, sibs)[1];
+          if (sub) app += ` · ${sub}`;
+        }
         return (
           <div class="read" key={i}>
             <span class="at">{new Date(r.at).toTimeString().slice(0, 5)}</span>

@@ -338,11 +338,15 @@ func (a *App) readsList(c *ui.Context, cv protocol.ConnectionView) {
 				}
 			}
 			if r.Account != "" && kindOf(r.Service) == "mail" {
-				acc := r.Account
-				if j := strings.Index(acc, "@"); j > 0 {
-					acc = acc[:j]
+				var sibs []string
+				for _, w := range tilesOf(cv) {
+					if w.Service == r.Service {
+						sibs = append(sibs, w.Account)
+					}
 				}
-				app += " · " + acc
+				if len(sibs) > 1 {
+					app += " · " + shortAccount(r.Account, sibs)
+				}
 			}
 			ui.Row(c.Key("read:" + itoa(int64(i)))).Gap(t.S3).AlignItems(ui.Baseline).Children(func() {
 				ui.Text(c, clockOf(r.At)).FontSize(t.SM).TextColor(t.InkMuted).Width(44).Shrink(0)

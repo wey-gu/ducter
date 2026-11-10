@@ -155,7 +155,7 @@ var enAccounts = Table{
 
 	"tile.more.oo":        "Connect another in oo",
 	"tile.more.oomol":     "Connect another in OOMOL",
-	"tile.more":           "Connect another",
+	"tile.more":           "Connect",
 	"tile.watch":          "Watch on its own",
 	"tile.mentions":       "Only @-mentions and DMs",
 	"tile.exclude":        "Don't let Ducter read this one",

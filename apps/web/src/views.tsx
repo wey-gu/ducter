@@ -15,7 +15,7 @@ import { markdown } from "./markdown.ts";
 import { Coin } from "./coin.tsx";
 import { Btn, Seg, Toggle } from "./controls.tsx";
 import { deviceArt, DevicesSection } from "./devcard.tsx";
-import { SourceCards } from "./accounts.tsx";
+import { ProactiveChips, SourceCards } from "./accounts.tsx";
 import { FindsNote } from "./finds.tsx";
 import { appPush, disablePush, enablePush } from "./push-client.ts";
 import { inApp } from "./native.ts";
@@ -2129,6 +2129,12 @@ function NotifySettings() {
           </div>
         )}
       </section>
+      {/* D165: the same chips as on Accounts, once there is something to watch. */}
+      {(s.proactive || A.connections?.length) && (
+        <section class="set">
+          <ProactiveChips />
+        </section>
+      )}
       <section class="set">
         <h3>{t("partner.default.title")}</h3>
         <div class="set-card">

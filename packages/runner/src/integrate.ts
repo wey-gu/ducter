@@ -117,6 +117,23 @@ async function run(cmd: string[], cwd: string): Promise<{ ok: boolean; out: stri
 }
 
 /** Push the task branch and open a draft PR with gh. An outside effect: callers log it. */
+/**
+ * D157 (E3): before a repo task moves to another computer, its branch goes to origin. Only
+ * committed work moves; uncommitted changes stop the move (the task commits first).
+ */
+export async function pushForMove(place: Place): Promise<ActionResult> {
+  const p = repoOf(place);
+  if (!p) return { ok: false, message: "This task has no branch to move." };
+  const remote = await git(p.repoPath, ["remote", "get-url", "origin"]);
+  if (!remote.ok) return { ok: false, message: "This repo has no origin remote, so its branch can't move to another computer." };
+  const pending = await git(p.worktree!, ["status", "--porcelain", "--untracked-files=no"]);
+  if (pending.out) return { ok: false, message: `The task has uncommitted changes on ${p.branch}. Ask it to commit first, then move it.` };
+  const pushed = await git(p.worktree!, ["push", "-u", "origin", p.branch!]);
+  if (!pushed.ok) return { ok: false, message: `Pushing ${p.branch} failed: ${pushed.err.split("\n")[0]}` };
+  const host = /github\.com/i.test(remote.out) ? "GitHub" : /gitlab/i.test(remote.out) ? "GitLab" : "origin";
+  return { ok: true, message: `Pushed ${p.branch} to ${host}.`, ref: p.branch };
+}
+
 export async function openDraftPr(place: Place, opts: { gh?: string } = {}): Promise<ActionResult> {
   const p = repoOf(place);
   if (!p) return { ok: false, message: "This task has no branch to open a PR from." };

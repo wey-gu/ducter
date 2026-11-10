@@ -28,7 +28,10 @@ func (a *App) TrayDecisions(max int) []TrayDecision {
 		if len(out) == max {
 			break
 		}
-		td := TrayDecision{ID: d.DecisionID, Question: oneLine(d.Question, 60), GoLabel: oneLine(d.GoLabel, 32), Reversible: d.Reversible}
+		td := TrayDecision{ID: d.DecisionID, Question: oneLine(a.questionOf(d), 60), GoLabel: oneLine(d.GoLabel, 32), Reversible: d.Reversible}
+		if d.Where != nil { // D157: the where ask in the user's words
+			td.GoLabel = a.goLabel(d)
+		}
 		if t := a.S.Task(d.TaskID); t != nil {
 			td.Task = t.Title()
 		}

@@ -70,6 +70,11 @@ func (a *App) deviceDetail(c *ui.Context, dv *protocol.DeviceView) {
 			}
 		}
 		ui.Text(c, line).FontSize(t.SM).TextColor(ink).LineHeight(1.5)
+		// D157: a laptop that is doing tasks, with another computer to carry them: one tap
+		// before closing it.
+		if dv.Kind == "laptop" && dv.State == protocol.DeviceAwake && a.runningOn(dv) > 0 && a.manyComputers() {
+			a.closingRow(c, dv)
+		}
 		if !dv.Home {
 			// D155: the app window and the command line on this computer, one quiet line each.
 			a.foldedLines(c, "dev:"+dv.ID, deviceComputer(dv), nil)

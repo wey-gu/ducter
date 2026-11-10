@@ -164,7 +164,9 @@ test("workers: awake with their hello, then can't reach with a last-seen time, o
   const first = await c.until<Devices>((x) => x.t === "devices");
   const v0 = first.devices.find((d) => d.name === "ducter-vps")!;
   expect(v0).toMatchObject({ home: false, state: "unreachable", kind: "server" });
-  expect(ability(v0, "web")).toMatchObject({ state: "unavailable", reason: "home_only" });
+  // D157: a worker that never said what it can do reads as an older Ducter there.
+  expect(ability(v0, "web")).toMatchObject({ state: "unavailable", reason: "worker_old" });
+  expect(v0.alwaysOn).toBe(true); // a server doesn't sleep
 
   const join = async (token: string, hello: object) => {
     const w = new WebSocket(`${base}/worker`, { headers: { ...REMOTE, authorization: `Bearer ${token}` } } as any);
@@ -190,6 +192,39 @@ test("workers: awake with their hello, then can't reach with a last-seen time, o
   w2.close();
   const asleep = await c.until<Devices>((x) => x.t === "devices" && x.devices.some((d) => d.name === "build-box" && d.state === "asleep"), n);
   expect(asleep.devices.find((d) => d.name === "build-box")!.kind).toBe("mini");
+});
+
+test("D157: a worker Mac browses with its own Chrome; 上网 there is added and removed on that computer", async () => {
+  const core = boot();
+  const base = `ws://127.0.0.1:${core.port}`;
+  const mac = core.devices.redeem(core.devices.createCode({ kind: "worker" }).code, { name: "MacBook", platform: "darwin-arm64" }) as { token: string; device: { id: string } };
+  const c = await client(core.url);
+  const w = new WebSocket(`${base}/worker`, { headers: { "x-forwarded-for": "203.0.113.9", authorization: `Bearer ${mac.token}` } } as any);
+  await new Promise<void>((res) => (w.onopen = () => res()));
+  const asked: any[] = [];
+  w.onmessage = (m) => {
+    const f = JSON.parse(String(m.data));
+    if (f.t !== "req" || f.op !== "ability") return;
+    asked.push(f.args);
+    // The worker writes it there and says what 上网 is now.
+    w.send(JSON.stringify({ t: "abilities", abilities: [{ id: "web", state: f.args.on ? "on" : "off", detail: "claude", where: "chrome" }] }));
+    w.send(JSON.stringify({ t: "res", id: f.id, ok: true, result: { ok: true } }));
+  };
+  w.send(JSON.stringify({ t: "hello", os: "darwin", arch: "arm64", kind: "laptop", abilities: [{ id: "web", state: "on", detail: "claude", where: "chrome" }], alwaysOn: false }));
+  let n = c.frames.length;
+  c.send({ t: "devices" });
+  const f = await c.until<Devices>((x) => x.t === "devices" && x.devices.some((d) => d.name === "MacBook" && d.state === "awake"), n);
+  const d = f.devices.find((x) => x.name === "MacBook")!;
+  expect(ability(d, "web")).toMatchObject({ state: "on", where: "chrome" });
+  expect(d.alwaysOn).toBe(false); // a laptop sleeps when its lid closes
+  n = c.frames.length;
+  c.send({ t: "ability", device: mac.device.id, ability: "web", on: false });
+  expect(await c.until((x) => x.t === "ability_result", n)).toMatchObject({ ok: true, on: false });
+  expect(asked).toEqual([{ id: "web", on: false }]);
+  const off = await c.until<Devices>((x) => x.t === "devices" && ability(x.devices.find((y) => y.name === "MacBook")!, "web").state === "off", n);
+  expect(readAbilitySettings(core.dataDir).web).toBeUndefined(); // the home's own 上网 is untouched
+  expect(off).toBeTruthy();
+  w.close();
 });
 
 test("远程打开: a pairing code from the app; a device that pairs turns it on and shows in reach", async () => {

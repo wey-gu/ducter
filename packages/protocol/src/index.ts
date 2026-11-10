@@ -5,7 +5,7 @@
 export * from "./harnesses.ts";
 import type { HarnessId } from "./harnesses.ts";
 export * from "./loadout.ts";
-import type { BodyWhy, Candidate, RuleView, TaskBody } from "./loadout.ts";
+import type { BodyWhy, Candidate, RuleView, TaskBody, TaskNeeds } from "./loadout.ts";
 
 // ---------- States (design/focus-window-states.md) ----------
 
@@ -121,6 +121,44 @@ export interface Question {
   /** D151: the task needs the user to sign in to a site in Ducter's browser (set by Ducter's
    *  browser_ask_sign_in tool, never by report_to_main). */
   signIn?: SignInAsk;
+  /** D157: wait for a computer, or do it now on another (set by the runner, never by a task). */
+  where?: WhereAsk;
+}
+
+/**
+ * D157 (design/where.md §7): before a computer closes, what moves to a computer that stays awake
+ * (from its saved progress) and what can only run there (a folder; an app or the user's Chrome
+ * nothing else has) and continues when it wakes. One decision for the whole computer.
+ */
+export interface ClosingPlan {
+  device: string; // its id
+  name: string;
+  moves: { taskId: string; title: string; to: string; toName: string; harness: string; model?: string }[];
+  stays: { taskId: string; title: string; why: "folder" | "only_here" }[];
+}
+
+/**
+ * D157 (design/where.md §4.4): the one line asked when the best computer for a task is asleep and
+ * another could start now with a visible difference, or the user's own pick waits on a computer
+ * that can't be reached. Hold = wait for it (the default: not answering waits, nothing is lost);
+ * Go = do it now on `other` (its agent when the pick moves: otherAgent).
+ *  - asleep: device (the one it waits for) is asleep (or can't be reached: state);
+ *  - pin: the user's own pick (agent) lives only on device, which can't be reached.
+ * signIn: the user would sign in to site on `other` first; widens: `other` uses their Chrome.
+ */
+export interface WhereAsk {
+  kind: "asleep" | "pin";
+  device: string;
+  state: "asleep" | "unreachable";
+  other: string;
+  agent?: string;
+  otherAgent?: string;
+  site?: string;
+  /** What the computer it waits for would use (here) and what `other` would (uses). */
+  here?: "chrome" | "ducter";
+  uses?: "chrome" | "ducter";
+  signIn?: boolean;
+  widens?: boolean;
 }
 
 /** D151: 需要你登录一下 {site} / Sign in to {site}: the card opens a live view of Ducter's browser. */
@@ -147,6 +185,8 @@ export interface Bodies {
     reversible: boolean;
     routineId?: string; // a routine's proposal card (D114): Go activates it
     signIn?: SignInAsk; // D151: a sign-in card; Go = 好了 / Done in the live view
+    where?: WhereAsk; // D157: wait for a computer (Hold, the default) or do it now on another (Go)
+    closing?: ClosingPlan; // D157: 合上之前搬走 / Move before closing: Go (the default) moves them
   };
   decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default" };
   read_receipt: { upToSeq: number };
@@ -163,6 +203,8 @@ export interface Bodies {
     // D128: "you" = the user opened it themselves (开一件事 / New task, `ducter task`); the brief
     // is their words as they are. Absent = the partner opened it.
     origin?: "you";
+    // D157: what the task needs of its computer (kept so a move or a switch keeps them).
+    needs?: TaskNeeds;
   };
   task_state: { taskId: string; attention: Attention; residency: Residency; reason?: string };
   // Who does the task and why (D89, focus-window.md "Choosing a body"): appended when it opens
@@ -566,7 +608,10 @@ export type ClientFrame =
   // (action "switch"). After two switches the same way the partner asks once whether to make it
   // a rule (a partner-level decision).
   | { t: "candidates"; taskId: string }
-  | { t: "task_switch"; taskId: string; harness: string; model?: string }
+  | { t: "task_switch"; taskId: string; harness: string; model?: string; device?: string } // device (D157): continue on another computer
+  // D157: 合上之前搬走 / Move before closing, from a computer's card: one decision (close_result answers;
+  // none = nothing runs there, close it whenever).
+  | { t: "close_computer"; device: string }
   // Connections (D96): the user's OpenConnector or another MCP server. "connections" answers with
   // a connections frame and keeps the socket subscribed. "connection_add" checks the address and
   // token before saving (answered with connection_result, then a fresh frame). "connection_oo"
@@ -678,6 +723,7 @@ export type ServerFrame =
   | { t: "activity"; activity: PartnerActivity | null }
   // D128: New task. card: the task as On hand will show it; message: a reason in words (English).
   | { t: "task_new_options"; places: PlaceChoice[]; candidates: Candidate[] }
+  | { t: "close_result"; device: string; ok: boolean; none?: boolean; decisionId?: string; message?: string }
   | { t: "task_new_result"; ok: boolean; clientId?: string; taskId?: string; card?: TaskCard; reason?: NewTaskReason; message?: string }
   // Show this task (the app opens it, Esc returns). open_result answers the sender: apps = how many apps were told.
   | { t: "open_task"; taskId: string }
@@ -781,8 +827,10 @@ export type AbilityState = "on" | "off" | "unavailable" | "later";
  * no_address: nothing outside can reach this Ducter yet (remote). D151, Ducter's own browser on a
  * server: browser_deps = system libraries are missing and Ducter can't install them (not root):
  * detail is the one command to run; browser_failed = the install or the first start failed (detail).
+ * D157: worker_old = the Ducter on that computer is from before workers browsed (update it there);
+ * offline = that computer can't be reached right now to change it.
  */
-export type AbilityReason = "cua_missing" | "cua_old" | "env_off" | "home_only" | "no_address" | "unknown_device" | "failed" | "browser_deps" | "browser_failed";
+export type AbilityReason = "cua_missing" | "cua_old" | "env_off" | "home_only" | "no_address" | "unknown_device" | "failed" | "browser_deps" | "browser_failed" | "worker_old" | "offline";
 
 export interface Allowance {
   left: number; // 0..1, as the harness reports it
@@ -882,6 +930,8 @@ export interface DeviceView {
   platform?: string;
   /** D155: the computer it runs on (its host name), when it said: a CLI on it folds into its card. */
   computer?: string;
+  /** D157: it doesn't sleep (a server, a desktop Mac), so long work keeps going there. */
+  alwaysOn?: boolean;
 }
 
 // ---------- Updating in place (D148, design/system.md "Updating in place") ----------

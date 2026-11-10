@@ -51,7 +51,7 @@
 //   that arrived while down) are queued again; user messages that already got a reply are not.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { HARNESSES, HARNESS_IDS, isHarnessId, type ActivityStep, type Bodies, type Brain, type EventKind, type HarnessId, type LogEvent, type Place, type TaskCard } from "../../protocol/src/index.ts";
+import { HARNESSES, HARNESS_IDS, isHarnessId, type ActivityStep, type Bodies, type Brain, type EventKind, type HarnessId, type LogEvent, type Place, type TaskCard, type TaskNeeds } from "../../protocol/src/index.ts";
 import type { CoreApi, HarnessEvent, HarnessSession, Partner, Runner } from "../../protocol/src/internal.ts";
 import { resolveWindows, WINDOW_MAX, WINDOW_MIN } from "../../protocol/src/harness-facts.ts";
 import { bridgeFromEnv, type BridgeClient, type BridgeContact, type BridgeOp } from "./bridge.ts";
@@ -151,7 +151,7 @@ interface EarlyOpen {
   jobId: string;
   title: string;
   place: Place;
-  who: { project?: string; harness?: string; model?: string };
+  who: { project?: string; harness?: string; model?: string; needs?: TaskNeeds };
   callId?: string; // the streamed call it was opened from
   card: Promise<TaskCard | null>; // null: the early open failed; the call opens it the usual way
   brief: { resolve(text: string): void; reject(err: Error): void };
@@ -747,7 +747,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const title = typeof head.title === "string" ? head.title.trim() : "";
     if (!title) return;
     const s = (k: string) => (typeof head[k] === "string" && (head[k] as string).trim() ? { [k]: (head[k] as string).trim() } : {});
-    const who = { ...s("project"), ...s("harness"), ...s("model") };
+    const needs = parseNeeds(head.needs);
+    const who = { ...s("project"), ...s("harness"), ...s("model"), ...(needs ? { needs } : {}) };
     let place: Place;
     if (at === "title") {
       place = resolvePlace(undefined, [title, ...t.userTexts], core.tasks.list(), fs);
@@ -1181,7 +1182,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   core.mcp.register(
     "partner",
     "task_open",
-    "Open a task: a separate working session in its own place (repo, folder, browser) for anything that needs a place, writes, or takes more than ~10s. A follow-up on recent work (same repo, builds on what a task just did) is NOT a new task: task_send it to that task, even if it is done; it keeps its branch, worktree and session. Open a new task only for separate work; if it must build on an unmerged task branch, set place.baseBranch to that branch. Write the one-sentence ack BEFORE calling this. Fill the fields in this order: title, place ({\"kind\":\"none\"} when it has none), then brief last: the task starts as soon as its title and place are written. The brief must quote the user's words verbatim and list decisions, done-criteria, out of scope, and the place. " +
+    "Open a task: a separate working session in its own place (repo, folder, browser) for anything that needs a place, writes, or takes more than ~10s. A follow-up on recent work (same repo, builds on what a task just did) is NOT a new task: task_send it to that task, even if it is done; it keeps its branch, worktree and session. Open a new task only for separate work; if it must build on an unmerged task branch, set place.baseBranch to that branch. Write the one-sentence ack BEFORE calling this. Fill the fields in this order: title, needs (only when it needs something of a computer), place ({\"kind\":\"none\"} when it has none), then brief last: the task starts as soon as its title and place are written. Ducter picks the computer a task runs on from its needs (and says where on the task); name a computer in place.device only when the user named one. The brief must quote the user's words verbatim and list decisions, done-criteria, out of scope, and the place. " +
       'Choose place {"kind":"browser"} when the work happens on the web: looking something up, checking or reading a page or site, comparing products, filling a form. Codex and Claude Code tasks work in the user\'s own Chrome with their own browser tools (signed in as the user, in a window of their own) and never sign in, submit, post or pay without the user\'s Go; otherwise the task uses Ducter\'s own browser, which keeps its sign-ins between tasks. Any Codex task can also operate apps on this Mac with its Computer Use; say so when a task will. ' +
       "A browser task never signs in, submits, posts, buys, or pays by itself: it stops and asks the user with a question, so put that in the brief's out of scope. " +
       "Returns at once; the task reports back on its own. Never wait on it.",
@@ -1195,13 +1196,25 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
             'Where it works, written before the brief: {"kind":"repo","device":"local","repoPath":"~/dev/foo"}, {"kind":"folder","device":"local","path":"~/Documents/x"}, {"kind":"browser","device":"local","profile":"default"} for web work, or {"kind":"none"}.',
           properties: {
             kind: { type: "string", enum: ["none", "repo", "folder", "browser"] },
-            device: { type: "string", description: '"local" (default). Another device only when the user asks for it or the task needs what only it has; names come from the [devices] line' },
+            device: { type: "string", description: 'Leave it out (or "local") and Ducter picks the computer from needs. A computer\'s name from the [devices] line only when the user named that computer ("在 MacBook 上做"); a repo or folder on another computer: that computer.' },
             repoPath: { type: "string" },
             path: { type: "string" },
             profile: { type: "string" },
             baseBranch: { type: "string", description: "Repo only: branch to start from. For new work that builds on an earlier task's unmerged branch, pass that branch." },
           },
           required: ["kind"],
+        },
+        needs: {
+          type: "object",
+          description:
+            "What the task needs of the computer it runs on, before place. Ducter ranks the computers and agents by it, never widens access by itself, and says where on the task. Leave out what it doesn't need.",
+          properties: {
+            browse: { type: "boolean", description: "It works on web pages (public pages need no sign-in: Ducter's own browser does them)" },
+            signedIn: { type: "boolean", description: "It needs sites the user is signed in to (their orders, their inbox on the web, an account page)" },
+            site: { type: "string", description: 'With signedIn: the site, when known ("taobao.com")' },
+            app: { type: "string", description: 'A Mac app it works in ("Keynote", "Xcode")' },
+            long: { type: "boolean", description: "Long or ongoing work (an hour or more, a loop, a wait): better on a computer that doesn't sleep" },
+          },
         },
         project: { type: "string" },
         ...(bridge ? { forMessage: { type: "string", description: "Only when this task does what another agent asked through Bridge (and the user said go): that message id. Ducter tells the sender it was taken, and reminds you to send the outcome." } } : {}),
@@ -1215,7 +1228,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       },
       required: ["title", "brief"],
     },
-    async (raw: { title?: unknown; brief?: unknown; place?: Place; project?: string; harness?: string; model?: string; forMessage?: unknown }) => {
+    async (raw: { title?: unknown; brief?: unknown; place?: Place; project?: string; harness?: string; model?: string; forMessage?: unknown; needs?: unknown }) => {
       // Validate before any channel side effect (live: a call without `title` crashed after
       // "On it: undefined" and a failed job_status were already on the channel).
       // A Bridge message is another agent's request, not the user's: no task from it until the
@@ -1295,6 +1308,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           ...(args.project !== undefined ? { project: args.project } : {}),
           ...(args.harness ? { harness: args.harness } : {}),
           ...(args.model ? { model: args.model } : {}),
+          ...((n) => (n ? { needs: n } : {}))(parseNeeds(raw.needs)),
           language: taskLanguage(t),
         });
         jobs.set(card.taskId, { jobId, title: card.title || args.title, replyTo: t ? replyToFor(t) : undefined, state: "running" });
@@ -2146,15 +2160,34 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   return api;
 }
 
+/** D157: what a task needs of its computer, from the model's task_open call (anything else dropped). */
+export function parseNeeds(raw: unknown): TaskNeeds | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const r = raw as Record<string, unknown>;
+  const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim().slice(0, 80) : undefined);
+  const n: TaskNeeds = {
+    ...(r.browse === true ? { browse: true } : {}),
+    ...(r.signedIn === true ? { signedIn: true } : {}),
+    ...(str(r.site) ? { site: str(r.site)!.replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./i, "").toLowerCase() } : {}),
+    ...(str(r.app) ? { app: str(r.app) } : {}),
+    ...(r.long === true ? { long: true } : {}),
+  };
+  return Object.keys(n).length ? n : undefined;
+}
+
 /**
- * Other machines that can run tasks, as one context line; empty when there are none (so prompts
- * without workers are unchanged). Device states use the glossary words (醒着 / Awake).
+ * Other computers that can run tasks, as one context line; empty when there are none (so prompts
+ * without workers are unchanged). Device states use the glossary words (醒着 / Awake). D157: what
+ * each can do and whether it sleeps, so the partner passes needs and lets Ducter pick.
  */
-export function renderDevices(workers: { name: string; online: boolean; os?: string; harnesses?: { id: string; loggedIn: boolean }[] }[]): string {
+export function renderDevices(workers: { name: string; online: boolean; asleep?: boolean; os?: string; harnesses?: { id: string; loggedIn: boolean }[]; web?: "chrome" | "ducter"; alwaysOn?: boolean }[]): string {
   if (!workers.length) return "";
   const one = (w: (typeof workers)[number]) => {
     const ai = (w.harnesses ?? []).filter((h) => h.loggedIn).map((h) => h.id);
-    return `${w.name} (${w.online ? "awake" : "can't reach"}${w.os ? `, ${w.os}` : ""}${ai.length ? `, signed in: ${ai.join(", ")}` : ", no AI signed in"})`;
+    const state = w.online ? "awake" : w.asleep ? "asleep" : "can't reach";
+    const sleeps = w.alwaysOn === false ? ", sleeps when its lid closes" : w.alwaysOn ? ", never sleeps" : "";
+    const web = w.web === "chrome" ? ", browses in the user's own Chrome (their sign-ins)" : w.web === "ducter" ? ", browses in Ducter's own browser" : "";
+    return `${w.name} (${state}${w.os ? `, ${w.os}` : ""}${sleeps}${web}${ai.length ? `, signed in: ${ai.join(", ")}` : ", no AI signed in"})`;
   };
-  return `[devices] local (this machine, the default) · ${workers.map(one).join(" · ")}. To run a task on another device, pass place.device = its name.`;
+  return `[devices] local (Ducter's home) · ${workers.map(one).join(" · ")}. Say what a task needs (task_open needs) and Ducter picks the computer and says where; name one in place.device only when the user named it.`;
 }

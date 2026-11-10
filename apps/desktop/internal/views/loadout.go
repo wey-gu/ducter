@@ -938,49 +938,83 @@ func (a *App) switchSheet(c *ui.Context, task *store.Task) {
 		}
 		free := 0
 		var chosen *protocol.Candidate
+		// D157: two or more computers: who and where together (where.md §6.2).
+		multi := whereRows(cands)
+		if multi {
+			a.islandStrip(c, task, cands, &lo.pick)
+		}
 		ui.Column(c).Gap(t.S2).Children(func() {
-			for i := range cands {
-				cd := cands[i]
-				key := candKey(cd)
-				off := cd.Blocked != ""
-				if !off && !cd.Current {
-					free++
+			order, by := groupCands(cands)
+			if !multi {
+				order, by = []string{""}, map[string][]int{"": nil}
+				for i := range cands {
+					by[""] = append(by[""], i)
 				}
-				on := lo.pick == key && !off && !cd.Current
-				if on {
-					chosen = &cands[i]
-				}
-				name := a.candName(cd)
-				row := ui.Row(c.Key("cand:"+key)).Gap(t.S3).Padding(t.S2, t.S3).Radius(t.RadiusMD).Background(t.Bg).
-					Shadow(0, 3, 0, 0, t.Line).AlignItems(ui.Center).Role(ui.RoleRadio).Label(name + " · " + a.candReason(cd)).AccessSelected(on)
-				if off || cd.Current {
-					row.Opacity(map[bool]float32{true: 0.55, false: 1}[off])
-				} else {
-					row.Cursor(ui.CursorPointer).Focusable()
-					a.lift(c, row, 1)
-				}
-				if on {
-					row.InsetShadow(0, 0, 0, 2, t.Ink)
-				}
-				row.Children(func() {
-					if bmp := theme.Clay(coinArt(cd.Harness, 40, off)); bmp != nil {
-						img := ui.Image(c, bmp).Size(40, 40).Shrink(0).AccessHidden(true)
-						if off && !coinKnown(cd.Harness) {
-							img.Grayscale()
-						}
+			}
+			for _, dev := range order {
+				if multi {
+					dv := a.computerOf(dev)
+					name := dev
+					if dv != nil {
+						name = dv.Name
 					}
-					ui.Column(c).Grow(1).MinWidth(0).Gap(2).AccessHidden(true).Children(func() {
-						ui.Text(c, name).FontSize(t.MD).FontWeight(800).SingleLine()
-						if r := a.candReason(cd); r != "" {
-							ui.Text(c, r).FontSize(t.SM).TextColor(t.InkMuted).MaxLines(2)
+					ui.Row(c.Key("grp:"+dev)).Gap(t.S2).Padding(t.S2, 0, 0, 0).AlignItems(ui.Center).Children(func() {
+						ui.Text(c, name).FontSize(t.SM).FontWeight(800).TextColor(t.InkSoft)
+						if s := a.computerState(dv); s != "" {
+							ui.Text(c, "· "+s).FontSize(t.SM).TextColor(t.InkMuted)
 						}
 					})
-					if cd.Current {
-						ui.Text(c, a.L.T("who.now")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Shrink(0).AccessHidden(true)
+				}
+				for _, i := range by[dev] {
+					cd := cands[i]
+					key := candKey(cd)
+					if multi {
+						key = candKeyOn(cd)
 					}
-				})
-				if !off && !cd.Current && row.Clicked() {
-					lo.pick = key
+					off := cd.Blocked != ""
+					if !off && !cd.Current {
+						free++
+					}
+					on := lo.pick == key && !off && !cd.Current
+					if on {
+						chosen = &cands[i]
+					}
+					name := a.candName(cd)
+					reason := a.candReason(cd)
+					if r := a.whereCandReason(cd); r != "" {
+						reason = r
+					}
+					row := ui.Row(c.Key("cand:"+key)).Gap(t.S3).Padding(t.S2, t.S3).Radius(t.RadiusMD).Background(t.Bg).
+						Shadow(0, 3, 0, 0, t.Line).AlignItems(ui.Center).Role(ui.RoleRadio).Label(name + " · " + reason).AccessSelected(on)
+					if off || cd.Current {
+						row.Opacity(map[bool]float32{true: 0.55, false: 1}[off])
+					} else {
+						row.Cursor(ui.CursorPointer).Focusable()
+						a.lift(c, row, 1)
+					}
+					if on {
+						row.InsetShadow(0, 0, 0, 2, t.Ink)
+					}
+					row.Children(func() {
+						if bmp := theme.Clay(coinArt(cd.Harness, 40, off)); bmp != nil {
+							img := ui.Image(c, bmp).Size(40, 40).Shrink(0).AccessHidden(true)
+							if off && !coinKnown(cd.Harness) {
+								img.Grayscale()
+							}
+						}
+						ui.Column(c).Grow(1).MinWidth(0).Gap(2).AccessHidden(true).Children(func() {
+							ui.Text(c, name).FontSize(t.MD).FontWeight(800).SingleLine()
+							if reason != "" {
+								ui.Text(c, reason).FontSize(t.SM).TextColor(t.InkMuted).MaxLines(2)
+							}
+						})
+						if cd.Current {
+							ui.Text(c, a.L.T("who.now")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Shrink(0).AccessHidden(true)
+						}
+					})
+					if !off && !cd.Current && row.Clicked() {
+						lo.pick = key
+					}
 				}
 			}
 		})
@@ -991,15 +1025,33 @@ func (a *App) switchSheet(c *ui.Context, task *store.Task) {
 		if chosen == nil {
 			return
 		}
+		// D157: another computer: what moving does, then 换到 {device} 上接着做.
+		cur := ""
+		for _, cd := range cands {
+			if cd.Current {
+				cur = cd.Device
+			}
+		}
+		moving := multi && chosen.Device != "" && chosen.Device != cur
+		if moving {
+			a.moveLines(c, task, *chosen)
+		}
 		ui.Row(c).Children(func() {
 			label := a.L.T("who.go", a.candName(*chosen))
+			if moving {
+				label = a.L.T("switch.move.go", chosen.DeviceName)
+			}
 			if lo.switching != "" {
 				ui.Text(c, label+"…").FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted)
 				return
 			}
 			if a.buttonFor(c, label, task.Title(), btnPrimary, t.ControlMD, t.Surface) {
 				lo.switching = a.candName(*chosen)
-				a.send(protocol.TaskSwitch{T: "task_switch", TaskID: task.ID, Harness: chosen.Harness, Model: chosen.Model})
+				sw := protocol.TaskSwitch{T: "task_switch", TaskID: task.ID, Harness: chosen.Harness, Model: chosen.Model}
+				if moving {
+					sw.Device = chosen.Device
+				}
+				a.send(sw)
 			}
 		})
 	})

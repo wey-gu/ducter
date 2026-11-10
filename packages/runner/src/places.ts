@@ -36,6 +36,8 @@ export async function git(cwd: string, args: string[]): Promise<{ ok: boolean; o
 export interface ResolvedPlace {
   place: Place; // with resolved fields filled in (worktree, branch, baseBranch, absolute paths)
   cwd: string;
+  /** D157: a task moved here from another computer: its branch comes from origin. */
+  fetch?: boolean;
 }
 
 /** Decide paths and names without touching the disk (used for task_open). */
@@ -103,6 +105,11 @@ export async function provisionPlace(r: ResolvedPlace): Promise<void> {
     const top = await git(p.repoPath, ["rev-parse", "--show-toplevel"]);
     if (!top.ok) throw new Error(`not a git repository: ${p.repoPath}`);
     mkdirSync(join(r.cwd, ".."), { recursive: true });
+    // D157: moved here from another computer: the pushed branch is the work (E3).
+    if (r.fetch && p.branch) {
+      const got = await git(p.repoPath, ["fetch", "origin", `${p.branch}:${p.branch}`]);
+      if (!got.ok && !(await git(p.repoPath, ["rev-parse", "--verify", "--quiet", `refs/heads/${p.branch}`])).ok) throw new Error(`couldn't fetch ${p.branch} from origin: ${got.err.split("\n")[0]}`);
+    }
     const branchExists = p.branch ? (await git(p.repoPath, ["rev-parse", "--verify", "--quiet", `refs/heads/${p.branch}`])).ok : false;
     const args = branchExists
       ? ["worktree", "add", r.cwd, p.branch!]

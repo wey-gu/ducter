@@ -150,6 +150,16 @@ export function startedAfresh(progress: string[]): string {
   return `Your earlier session on this task couldn't be resumed, so this is a new session on the same task and place. Check where the work stands (git status, git log, the files), then continue with the brief from there. Don't start over.${where}\n\nReport via report_to_main when done, blocked, or needing a decision.`;
 }
 
+/**
+ * D157: the first turn on another computer after the user moved the task there (E3): the same
+ * task, from its saved progress; a repo comes as a fresh worktree of the pushed branch.
+ */
+export function movedOver(from: string, to: string, progress: string[], repo: boolean): string {
+  const where = progress.length ? `\n\nWhere it stood (saved progress, oldest first):\n${progress.map((p) => `- ${p}`).join("\n")}` : "";
+  const files = repo ? " The worktree here is a fresh checkout of the task branch as it was pushed: committed work is all here; check git log and git status." : " Files you made there are not here; anything you need again, make again.";
+  return `The user moved this task from ${from} to ${to}, to carry on here.${files} Check where the work stands, then continue with the brief from there. Don't start over.${where}\n\nReport via report_to_main when done, blocked, or needing a decision.`;
+}
+
 /** A new session's seed (handedOver / startedAfresh) followed by the message that woke it. */
 export function seedThen(seed: string, text: string): string {
   return `${seed}\n\nThe latest message for you:\n${text}`;

@@ -134,6 +134,10 @@ func (a *App) waitReason(task *store.Task) string {
 	if d, ok := strings.CutPrefix(r, "device:unreachable:"); ok {
 		return a.L.T("device.unreachable", d)
 	}
+	// D157: waiting for a computer that said it was going to sleep.
+	if d, ok := strings.CutPrefix(r, "device:asleep:"); ok {
+		return a.L.T("where.waiting", d)
+	}
 	if strings.HasPrefix(r, "report:") || strings.HasSuffix(r, "by user") {
 		return ""
 	}
@@ -334,7 +338,10 @@ func (a *App) lane(c *ui.Context, lane store.Lane, tasks []*store.Task, grow, ba
 // branch and the rest of the reason are in the opened task's Details.
 func (a *App) whereWhy(task *store.Task) string {
 	where := ""
-	if p := task.Place(); p.Kind != "" {
+	if p := task.Place(); a.manyComputers() {
+		// D157: with two or more computers every row names its computer.
+		where = a.computerName(p.Device)
+	} else if p.Kind != "" {
 		where = a.device(p.Device)
 	}
 	return strings.Join(nonEmpty(harnessName(task.Harness()), where, firstClause(task.BodyReason())), " · ")
@@ -470,12 +477,19 @@ func nonEmpty(s ...string) []string {
 // caption ("28 分钟后按默认：等你登录后继续"); else the words alone.
 func (a *App) defaultRow(c *ui.Context, d *store.DecisionState) {
 	t := a.T
+	if d.Where != nil {
+		a.whereAskLines(c, d.Where)
+		return
+	}
 	left, ok := a.defaultIn(d)
 	if !ok || d.DefaultOption != "go" {
 		a.mark(c.Key("default"), drawClock, a.defaultLine(c, d), t.NeedsYou.Ink)
 		return
 	}
 	g := strings.TrimRight(strings.TrimSpace(d.GoLabel), ".。")
+	if d.Closing != nil {
+		g = a.L.T("move.closing.go")
+	}
 	if g == "" {
 		g = a.L.T("decision.go")
 	}

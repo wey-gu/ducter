@@ -59,8 +59,10 @@ type App struct {
 	// whether the first result was celebrated); in memory unless set.
 	Local *hints.Local
 
-	Status    client.Status
-	StatusErr string
+	Status client.Status
+	// devicesAsked: the where line (D157) asked for devices once on its own.
+	devicesAsked bool
+	StatusErr    string
 	// Failed is set once a connection attempt failed, and cleared by a
 	// welcome: until the first welcome it shows the first-run screen.
 	Failed bool

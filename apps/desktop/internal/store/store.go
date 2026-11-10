@@ -98,7 +98,11 @@ type Task struct {
 	bodySeq int64
 	// OpenedAt is the time of task_open, when known.
 	OpenedAt string
-	openSeq  int64 // seq of the task_open in Open (a retitle is a later one)
+	// D157: when the task was placed on its computer (its first task_open,
+	// or the one that moved it), and the computer it came from on a move.
+	PlacedAt  string
+	MovedFrom string
+	openSeq   int64 // seq of the task_open in Open (a retitle is a later one)
 	// Version bumps when Events change, for views that recompute (diff).
 	Version int
 	// Sends are the user's direct messages to the task, oldest first.
@@ -287,6 +291,14 @@ func (t *Task) BodyReason() string {
 		return t.Card.BodyReason
 	}
 	return ""
+}
+
+// deviceOfPlace is the computer a place names ("local" for the home).
+func deviceOfPlace(p protocol.Place) string {
+	if p.Device == "" {
+		return "local"
+	}
+	return p.Device
 }
 
 // Store is the client's state.
@@ -929,6 +941,12 @@ func (s *Store) applyTask(t *Task, ev protocol.LogEvent, body any) {
 		// The partner retitles a task by appending another task_open: the latest one names
 		// the task, the first one dates it.
 		if t.Open == nil || ev.Seq >= t.openSeq {
+			// D157: a later task_open on another computer is a move (E3): the parcel goes home and out again.
+			if t.Open == nil {
+				t.PlacedAt = ev.TS
+			} else if from, to := deviceOfPlace(t.Open.Place), deviceOfPlace(b.Place); from != to {
+				t.PlacedAt, t.MovedFrom = ev.TS, from
+			}
 			t.Open, t.openSeq = b, ev.Seq
 		}
 		if t.OpenedAt == "" || ev.TS < t.OpenedAt {

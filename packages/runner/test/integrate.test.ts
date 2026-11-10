@@ -433,3 +433,24 @@ test("who does it: a blocked pin moves with the real reason, the person's own pi
   await cheap.drop(c.taskId);
   await cheap.dispose();
 });
+
+test("D157 (E3): moving a repo task pushes its branch first; uncommitted work stops the move; another clone fetches it", async () => {
+  const p = repoWithTaskBranch();
+  const { pushForMove } = await import("../src/integrate.ts");
+  const { provisionPlace } = await import("../src/places.ts");
+  expect((await pushForMove(p)).message).toMatch(/no origin remote/);
+  const bare = join(dir, "origin.git");
+  Bun.spawnSync(["git", "init", "-q", "--bare", bare]);
+  sh(p.repoPath, "remote", "add", "origin", bare);
+  writeFileSync(join(p.worktree!, "c.txt"), "c\n");
+  sh(p.worktree!, "add", "c.txt");
+  expect((await pushForMove(p)).message).toMatch(/uncommitted changes/);
+  sh(p.worktree!, "commit", "-qm", "more");
+  expect(await pushForMove(p)).toMatchObject({ ok: true, ref: "ducter/fix" });
+  // The other computer: its own clone of the same origin, a worktree of the pushed branch.
+  const other = join(dir, "other");
+  Bun.spawnSync(["git", "clone", "-q", bare, other]);
+  const wt = join(dir, "other-wt");
+  await provisionPlace({ place: { kind: "repo", device: "MacBook", repoPath: other, worktree: wt, branch: "ducter/fix", baseBranch: "main" }, cwd: wt, fetch: true });
+  expect(existsSync(join(wt, "c.txt"))).toBe(true);
+});

@@ -164,6 +164,61 @@ type Decision struct {
 	// SignIn marks a sign-in card (D151): Go is 好了 / Done in the live view of
 	// Ducter's browser.
 	SignIn *SignInAsk `json:"signIn,omitempty"`
+	// Where (D157): wait for a computer (Hold, the default) or do it now on
+	// another (Go).
+	Where *WhereAsk `json:"where,omitempty"`
+	// Closing (D157): 合上之前搬走 / Move before closing: Go (the default)
+	// moves them.
+	Closing *ClosingPlan `json:"closing,omitempty"`
+}
+
+// ClosingPlan is what moves to a computer that stays awake before one
+// closes, and what can only run there (D157).
+type ClosingPlan struct {
+	Device string        `json:"device"`
+	Name   string        `json:"name"`
+	Moves  []ClosingMove `json:"moves"`
+	Stays  []ClosingStay `json:"stays"`
+}
+
+type ClosingMove struct {
+	TaskID  string `json:"taskId"`
+	Title   string `json:"title"`
+	To      string `json:"to"`
+	ToName  string `json:"toName"`
+	Harness string `json:"harness"`
+	Model   string `json:"model,omitempty"`
+}
+
+type ClosingStay struct {
+	TaskID string `json:"taskId"`
+	Title  string `json:"title"`
+	Why    string `json:"why"` // folder | only_here
+}
+
+// CloseComputer is 合上之前搬走 / Move before closing, from a computer's card.
+type CloseComputer struct {
+	T      string `json:"t"` // "close_computer"
+	Device string `json:"device"`
+}
+
+// WhereAsk is the one line asked when the best computer for a task is
+// asleep and another could start now with a visible difference, or the
+// user's own pick waits on a computer that can't be reached (D157). Kind:
+// asleep | pin. State: asleep | unreachable. Here / Uses: what the waiting
+// computer / Other would use (chrome | ducter).
+type WhereAsk struct {
+	Kind       string `json:"kind"`
+	Device     string `json:"device"`
+	State      string `json:"state"`
+	Other      string `json:"other"`
+	Agent      string `json:"agent,omitempty"`
+	OtherAgent string `json:"otherAgent,omitempty"`
+	Site       string `json:"site,omitempty"`
+	Here       string `json:"here,omitempty"`
+	Uses       string `json:"uses,omitempty"`
+	SignIn     bool   `json:"signIn,omitempty"`
+	Widens     bool   `json:"widens,omitempty"`
 }
 
 // SignInAsk: 需要你登录一下 {Site} / Sign in to {Site} (D151).
@@ -1022,7 +1077,7 @@ func (u *AgentUpdate) Running() bool {
 type DeviceAbility struct {
 	ID     string `json:"id"`
 	State  string `json:"state"`
-	Reason string `json:"reason,omitempty"` // cua_missing | cua_old | env_off | home_only | no_address | unknown_device | failed
+	Reason string `json:"reason,omitempty"` // cua_missing | cua_old | env_off | home_only | no_address | unknown_device | failed | worker_old | offline
 	Detail string `json:"detail,omitempty"`
 	// web only (D130): where browser tasks run. WhereChrome = the user's own Chrome through an
 	// AI agent's own browser tools (no cua-driver needed); WhereDucter = Ducter's own browser.
@@ -1052,6 +1107,9 @@ type DeviceView struct {
 	// Computer is the computer it runs on (D155): an app window and the
 	// command line on it fold into its card.
 	Computer string `json:"computer,omitempty"`
+	// AlwaysOn: it doesn't sleep (a server, a desktop Mac), so long work
+	// keeps going there (D157).
+	AlwaysOn bool `json:"alwaysOn,omitempty"`
 }
 
 // DeviceUpdate is a device's version against the latest release, and an

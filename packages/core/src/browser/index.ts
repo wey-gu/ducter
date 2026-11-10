@@ -10,6 +10,8 @@ import { registerBrowserTools } from "./tools.ts";
 import { checkBrowser, checkLine } from "./check.ts";
 import type { BrowserAbout, BrowserCheck } from "@ducter/protocol";
 import { profileName } from "@ducter/protocol/src/browser-profile.ts";
+import type { WorkerLinks } from "@ducter/protocol/src/internal.ts";
+import { remoteBrowserHost, routedHost } from "./remote.ts";
 
 export type BrowserSetup =
   | { state: "ready"; version: string }
@@ -42,10 +44,25 @@ export interface DucterBrowserOptions extends HostOptions {
   persona: string;
   /** Test seam: the installer. */
   installer?: () => Promise<InstallResult>;
+  /** D157: the paired workers, whose own Ducter browser the main drives over their socket. */
+  workers?: () => WorkerLinks | undefined;
+  /** D157: the version of Ducter's browser a worker reported (its 上网 detail). */
+  workerBrowserVersion?: (deviceId: string) => string | undefined;
 }
 
 export function createDucterBrowser(o: DucterBrowserOptions): DucterBrowser {
-  const host = createBrowserHost(o);
+  const home = createBrowserHost(o);
+  // D157: each worker's own browser, driven over its socket; made the first time it's needed.
+  const remotes = new Map<string, BrowserHost>();
+  const host = routedHost(home, (deviceId) => {
+    const have = remotes.get(deviceId);
+    if (have) return have;
+    const link = o.workers?.()?.link(deviceId);
+    if (!link) return undefined;
+    const h = remoteBrowserHost(link, { dataDir: o.dataDir, ...(o.lang ? { lang: o.lang } : {}), ...(o.idleMs ? { idleMs: o.idleMs } : {}), version: () => o.workerBrowserVersion?.(deviceId) });
+    remotes.set(deviceId, h);
+    return h;
+  });
   const live = createLive({ host, decisions: o.decisions, tasks: o.tasks as LiveDeps["tasks"], persona: o.persona });
   const sites = createSites(host);
   registerBrowserTools({ mcp: o.mcp, host, log: o.log, tasks: o.tasks as any });
@@ -131,6 +148,9 @@ export function createDucterBrowser(o: DucterBrowserOptions): DucterBrowser {
       fns.add(fn);
       return () => fns.delete(fn);
     },
-    stop: () => host.stop(),
+    stop: async () => {
+      await host.stop();
+      await Promise.all([...remotes.values()].map((h) => h.stop()));
+    },
   };
 }

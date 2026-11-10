@@ -9,6 +9,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { JSX } from "preact";
 import { A, candKey, placeKey, type SettingsPage } from "./app.ts";
 import { TRY_LIVE } from "@ducter/protocol";
+import { closingWords, computerApart, computerName, computerOf, computers, computerState, deviceWait, manyComputers, whereAsk, whereCandReason } from "./where.ts";
 import { ago, behind, cjkPad, deviceLabel, duration, firstClause, harnessName, modelName, phaseLine as phaseWords, placeLine, sameWords, splitOutcome, when } from "./format.ts";
 import { markdown } from "./markdown.ts";
 import { Coin } from "./coin.tsx";
@@ -238,6 +239,8 @@ function defaultInfo(d: DecisionState, now: number): { line: string; frac?: numb
 /** The Go button's words: the action itself when it is a short verb ("Rebase"; zh "好，rebase"),
  *  else Go / 好: never a sentence (D127). */
 export function goLabel(d: DecisionState): string {
+  if (d.where) return whereAsk(d.where).go;
+  if (d.closing) return closingWords(d.closing).go;
   return shortGo(d.goLabel);
 }
 
@@ -273,7 +276,7 @@ function answeredWords(d: DecisionState): string {
   const opt = d.resolved?.option ?? (d.pending || "go");
   if (d.resolved?.by === "default") return t("decision.resolved.default");
   if (opt === "reply") return t("decision.resolved.reply", d.resolved?.text ?? "");
-  if (opt === "hold") return t("decision.resolved.hold");
+  if (opt === "hold") return d.where ? t("where.ask.waited", d.where.device) : t("decision.resolved.hold");
   return t("decision.resolved.go", goLabel(d));
 }
 
@@ -299,11 +302,14 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
   const goText = goLabel(d);
   const draft = A.replyDraft.get(d.decisionId) ?? "";
   if (d.signIn) return <SignInBody d={d} />;
+  // D157: wait for a computer (the default) or do it now on another; built in the user's words.
+  const wa = d.where ? whereAsk(d.where) : undefined;
   return (
     <>
-      <div class="q">{d.question}</div>
+      <div class="q">{wa?.question ?? (d.closing ? closingWords(d.closing).question : d.question)}</div>
       {d.routineId && <RoutineFacts routineId={d.routineId} />}
-      {open && <DefaultRow d={d} />}
+      {open && wa && wa.lines.map((l, i) => <div key={i} class={`dl${l.widen ? " widen" : ""}`}>{l.text}</div>)}
+      {open && !wa && <DefaultRow d={d} />}
       {open ? (
         // Reply… · Hold · Go, the primary last (D76). Hold and Go stay one pair; a long Go
         // sends Reply… to its own line under them (.btns.decide).
@@ -318,7 +324,7 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
             }}
           />
           <span class="pair">
-            <Btn kind="secondary" label={t("decision.hold")} about={about} onClick={() => A.decide(d.decisionId, "hold")} />
+            <Btn kind="secondary" label={wa?.hold ?? (d.closing ? closingWords(d.closing).hold : t("decision.hold"))} about={about} onClick={() => A.decide(d.decisionId, "hold")} />
             <Btn kind="primary" label={goText} about={about} onClick={() => A.decide(d.decisionId, "go")} />
           </span>
         </div>
@@ -1434,7 +1440,8 @@ function Hello() {
  *  the model, the repo, the branch and the rest of the reason are in the task's Details. */
 function metaLine(task: Task): string {
   const p = placeOf(task);
-  const where = p.kind === "none" ? "" : deviceLabel(A.L, p.device);
+  // D157: with two or more computers every row names its computer.
+  const where = manyComputers() ? computerName(p.device) : p.kind === "none" ? "" : deviceLabel(A.L, p.device);
   return [harnessName(harnessOf(task)), where, firstClause(bodyReasonOf(task))].filter(Boolean).join(" · ");
 }
 
@@ -1442,7 +1449,8 @@ function metaLine(task: Task): string {
 function waitReason(task: Task): string {
   const w = A.S.waiterFor(task.id);
   if (w) return [waitLine(w.reason), waitCaption(w)].filter(Boolean).join(" · ");
-  return reasonOf(task) || metaLine(task);
+  const r = reasonOf(task);
+  return (r && (deviceWait(r) ?? r)) || metaLine(task);
 }
 
 /** A working row's line: a keep-going loop's try, or a routine's run, else where and who. */
@@ -1639,31 +1647,60 @@ function SwitchList({ task }: { task: Task }) {
   const list = A.candidates.get(task.id);
   const running = ["working", "queued"].includes(attention(task));
   if (!list) return <div class="small sub">{t("who.loading")}</div>;
-  const chosen = list.find((c) => !c.blocked && !c.current && `${c.harness}/${c.model ?? ""}` === pick);
+  const keyOf = (c: Candidate) => `${c.device ?? ""}|${c.harness}/${c.model ?? ""}`;
+  const chosen = list.find((c) => !c.blocked && !c.current && keyOf(c) === pick);
   const free = list.filter((c) => !c.blocked && !c.current).length;
+  // D157: two or more computers: the list grouped by computer (the phone has no island strip).
+  const multi = list.some((c) => c.device);
+  const groups: string[] = [];
+  for (const c of list) if (!groups.includes(c.device ?? "")) groups.push(c.device ?? "");
+  const cur = list.find((c) => c.current)?.device;
+  const moving = !!chosen && multi && !!chosen.device && chosen.device !== cur;
+  const row = (c: Candidate) => {
+    const key = keyOf(c);
+    const off = !!c.blocked;
+    return (
+      <button key={key} role="radio" aria-checked={pick === key} disabled={off || c.current} class={`cand${off ? " off" : ""}${pick === key ? " on" : ""}${c.waits ? " waits" : ""}`} onClick={() => setPick(key)}>
+        <Coin harness={c.harness} size={36} off={off} />
+        <span class="grow">
+          <b>{candName(c)}</b>
+          <small>{whereCandReason(c) || candReason(c)}</small>
+        </span>
+        {c.current && <small class="now">{t("who.now")}</small>}
+      </button>
+    );
+  };
+  const go = moving ? t("switch.move.go", chosen!.deviceName ?? "") : chosen ? t("who.go", candName(chosen)) : "";
   return (
     <div class="switch-list" role="radiogroup" aria-label={t("who.switch")}>
       <div class="small sub">{t(running ? "who.switch.note" : "who.switch.note.idle")}</div>
-      {list.map((c) => {
-        const key = `${c.harness}/${c.model ?? ""}`;
-        const off = !!c.blocked;
-        return (
-          <button key={key} role="radio" aria-checked={pick === key} disabled={off || c.current} class={`cand${off ? " off" : ""}${pick === key ? " on" : ""}`} onClick={() => setPick(key)}>
-            <Coin harness={c.harness} size={36} off={off} />
-            <span class="grow">
-              <b>{candName(c)}</b>
-              <small>{candReason(c)}</small>
-            </span>
-            {c.current && <small class="now">{t("who.now")}</small>}
-          </button>
-        );
-      })}
+      {multi
+        ? groups.map((g) => {
+            const dv = computerOf(g);
+            return (
+              <div key={g} class="switch-group">
+                <div class="switch-head">
+                  <b>{dv?.name ?? g}</b>
+                  {dv && <span>· {computerState(dv)}</span>}
+                </div>
+                {list.filter((c) => (c.device ?? "") === g).map(row)}
+              </div>
+            );
+          })
+        : list.map(row)}
       {free === 0 && <div class="small sub">{t("cand.none")}</div>}
+      {moving && (
+        <div class="move-lines">
+          <div class="small">{t(placeOf(task).kind === "repo" ? "switch.move.explain" : "switch.move.plain")}</div>
+          {chosen!.needsSignIn && <div class="small">{t("switch.move.signin")}</div>}
+          {chosen!.widens && <div class="small widen">{t("switch.move.widens")}</div>}
+        </div>
+      )}
       {chosen &&
         (A.switching ? (
-          <div class="small sub">{t("who.go", candName(chosen))}…</div>
+          <div class="small sub">{go}…</div>
         ) : (
-          <Btn kind="primary" label={t("who.go", candName(chosen))} about={title(task)} onClick={() => A.switchTask(task.id, chosen.harness, chosen.model, candName(chosen))} />
+          <Btn kind="primary" label={go} about={title(task)} onClick={() => A.switchTask(task.id, chosen.harness, chosen.model, candName(chosen), moving ? chosen.device : undefined)} />
         ))}
     </div>
   );
@@ -3112,6 +3149,12 @@ function NewTaskSheet() {
   const branch = nt.branch || chosen.defaultBranch || "";
   const { c: who, picked } = A.chosenCandidate();
   const pickable = (chosen.branches?.length ?? 0) > 1;
+  // D157: the computer part of No folder, only when the choice is real.
+  const { list: whoList, elsewhere } = A.ntCands();
+  const multi = (opts?.candidates ?? []).some((c) => c.device) && manyComputers();
+  const compId = multi ? A.ntComputer() : "";
+  const comp = compId ? computerOf(compId) : undefined;
+  const suggested = multi ? (opts?.candidates ?? []).find((c) => !c.blocked && !c.waits && c.device)?.device : undefined;
   return (
     <>
       <div class="scrim" onClick={close} />
@@ -3132,9 +3175,22 @@ function NewTaskSheet() {
                   aria-checked={on}
                   aria-expanded={on && p.place.kind === "repo" && pickable ? nt.branchOpen : undefined}
                   title={p.place.kind === "repo" ? p.place.repoPath : undefined}
-                  onClick={() => (on ? pickable && ((nt.branchOpen = !nt.branchOpen), A.changed()) : A.pickPlace(p))}
+                  onClick={() =>
+                    on
+                      ? p.place.kind !== "repo" && comp
+                        ? ((nt.computerOpen = !nt.computerOpen), A.changed())
+                        : pickable && ((nt.branchOpen = !nt.branchOpen), A.changed())
+                      : A.pickPlace(p)
+                  }
                 >
                   <b>{name}</b>
+                  {on && p.place.kind !== "repo" && comp && (
+                    <>
+                      <span class="dot">·</span>
+                      <span>{comp.name}</span>
+                      <Chev />
+                    </>
+                  )}
                   {on && p.place.kind === "repo" && branch && (
                     <>
                       <span class="dot">·</span>
@@ -3146,6 +3202,26 @@ function NewTaskSheet() {
               );
             })}
           </div>
+          {nt.computerOpen && comp && (
+            <div class="branches computers" role="radiogroup" aria-label={t("newtask.computer")}>
+              <small>{t("newtask.computer")}</small>
+              {computers().map((d) => (
+                <button
+                  key={d.id}
+                  role="radio"
+                  aria-checked={d.id === compId}
+                  disabled={d.state === "unreachable"}
+                  class={d.id === compId ? "on" : ""}
+                  onClick={() => ((nt.computer = d.id === suggested ? "" : d.id), (nt.computerOpen = false), (nt.pick = ""), A.changed())}
+                >
+                  <b>{d.name}</b>
+                  <small>{computerApart(d)}</small>
+                  {d.id === suggested && <small class="suggested">{t("newtask.suggested")}</small>}
+                  {d.id === compId && <Check />}
+                </button>
+              ))}
+            </div>
+          )}
           {nt.branchOpen && pickable && (
             <div class="branches" role="radiogroup" aria-label={t("newtask.branch.title")}>
               <small>{t("newtask.branch.title")}</small>
@@ -3173,11 +3249,12 @@ function NewTaskSheet() {
             <div class="small sub">{t("newtask.nobody")}</div>
           ) : (
             <div class="chips">
-              {opts.candidates.map((c) => {
+              {whoList.map((c) => {
                 const off = !!c.blocked;
                 const on = !off && candKey(c) === candKey(who);
-                const top = opts.candidates.find((x) => !x.blocked);
+                const top = whoList.find((x) => !x.blocked);
                 const best = !!top && candKey(top) === candKey(c);
+                const away = elsewhere.has(candKey(c)); // D157: lives only on another computer
                 // The best fit carries 推荐 / Suggested; why is a tooltip, and so is "…，是你选的".
                 const tip = off || best ? candReason(c) : on && picked ? t("newtask.picked", candName(c)) : undefined;
                 return (
@@ -3188,10 +3265,11 @@ function NewTaskSheet() {
                     aria-checked={on}
                     disabled={off}
                     title={tip || undefined}
-                    onClick={() => ((nt.pick = best ? "" : candKey(c)), A.changed())}
+                    onClick={() => ((nt.pick = best ? "" : candKey(c)), away && c.device && ((nt.computer = c.device), (nt.pick = candKey(c))), A.changed())}
                   >
                     <Coin harness={c.harness} size={26} off={off} />
                     <b>{candName(c)}</b>
+                    {away && <small>{t("newtask.agent.elsewhere", c.deviceName ?? "")}</small>}
                     {best && <small class="suggested">{t("newtask.suggested")}</small>}
                   </button>
                 );

@@ -34,8 +34,12 @@ type newTaskState struct {
 	// branchOpen shows the branch list.
 	branch     string
 	branchOpen bool
-	// pick is the agent the user chose (candKey); "" = the top candidate.
+	// pick is the agent the user chose (ntKey); "" = the top candidate.
 	pick string
+	// computer is the computer the user chose (a device id; "" = the
+	// suggested one), and computerOpen shows the list (D157).
+	computer     string
+	computerOpen bool
 	// sending is the clientId of the task_new in flight; err the line under
 	// Start when it didn't open.
 	sending string
@@ -155,13 +159,31 @@ func topCandidate(cands []protocol.Candidate) *protocol.Candidate {
 	return nil
 }
 
+// ntKey is a candidate's key on the card (with its computer when there are two).
+func ntKey(cd protocol.Candidate) string {
+	if cd.Device != "" {
+		return candKeyOn(cd)
+	}
+	return candKey(cd)
+}
+
+// ntCands is who the card offers: with two or more computers, the agents
+// on the chosen one, then those that live only on another (D157).
+func (a *App) ntCands(cands []protocol.Candidate) (rows []protocol.Candidate, elsewhere map[string]bool) {
+	if !whereRows(cands) {
+		return cands, nil
+	}
+	return ntWho(cands, a.ntComputer(cands))
+}
+
 // chosenCandidate is who does it: the user's pick, else the top one.
 func (a *App) chosenCandidate(cands []protocol.Candidate) (cd *protocol.Candidate, picked bool) {
+	cands, _ = a.ntCands(cands)
 	top := topCandidate(cands)
 	if a.nt.pick != "" {
 		for i := range cands {
-			if candKey(cands[i]) == a.nt.pick && cands[i].Blocked == "" {
-				return &cands[i], top == nil || candKey(*top) != a.nt.pick
+			if ntKey(cands[i]) == a.nt.pick && cands[i].Blocked == "" {
+				return &cands[i], top == nil || ntKey(*top) != a.nt.pick
 			}
 		}
 	}
@@ -197,8 +219,13 @@ func (a *App) StartNewTask() bool {
 	if o := a.S.NewTaskOptions; o != nil {
 		cands = o.Candidates
 	}
-	if cd, picked := a.chosenCandidate(cands); cd != nil && picked {
+	// An agent picked on another computer is the user's pick even when it is that computer's best.
+	if cd, picked := a.chosenCandidate(cands); cd != nil && (picked || (nt.pick != "" && nt.computer != "")) {
 		f.Harness, f.Model = cd.Harness, cd.Model
+	}
+	// D157: No folder with two or more computers: the computer chosen (or suggested) goes with it.
+	if place.Place.Kind != "repo" && whereRows(cands) {
+		f.Place = &protocol.Place{Kind: "none", Device: a.ntDevice(a.ntComputer(cands))}
 	}
 	a.nextClient++
 	nt.sending = fmt.Sprintf("n%d-%d", a.Now().UnixMilli(), a.nextClient)
@@ -352,6 +379,18 @@ func (a *App) placeChips(c *ui.Context, places []protocol.PlaceChoice, chosen pr
 			if branch != "" {
 				label += " · " + branch
 			}
+			// D157: the computer part, only when the choice is real (No folder, two or more computers).
+			comp := ""
+			var cands []protocol.Candidate
+			if o := a.S.NewTaskOptions; o != nil {
+				cands = o.Candidates
+			}
+			if on && p.Place.Kind != "repo" && a.manyComputers() && whereRows(cands) {
+				if d := a.computerOf(a.ntComputer(cands)); d != nil {
+					comp = d.Name
+					label += " · " + comp
+				}
+			}
 			e := a.chip(c, "nt-place:"+k, label, on, false)
 			if p.Place.Kind == "repo" {
 				e.Tooltip(p.Place.RepoPath)
@@ -364,6 +403,11 @@ func (a *App) placeChips(c *ui.Context, places []protocol.PlaceChoice, chosen pr
 					if len(p.Branches) > 1 {
 						ui.Box(c).Size(10, 10).Shrink(0).Draw(drawCaret(t.InkMuted)).AccessHidden(true)
 					}
+				}
+				if comp != "" {
+					ui.Text(c, "·").FontSize(t.SM).TextColor(t.Faint).AccessHidden(true)
+					ui.Text(c.Key("nt-comp-part"), comp).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).SingleLine().AccessHidden(true)
+					ui.Box(c).Size(10, 10).Shrink(0).Draw(drawCaret(t.InkMuted)).AccessHidden(true)
 				}
 			})
 			if e.Clicked() {
@@ -378,10 +422,15 @@ func (a *App) placeChips(c *ui.Context, places []protocol.PlaceChoice, chosen pr
 					a.send(protocol.TaskNewOptions{T: "task_new_options", Place: ask})
 				case branch != "" && len(p.Branches) > 1:
 					nt.branchOpen = !nt.branchOpen
+				case comp != "":
+					nt.computerOpen = !nt.computerOpen
 				}
 			}
 			if on && branch != "" && len(p.Branches) > 1 {
 				a.branchList(c, e, p, branch)
+			}
+			if on && comp != "" {
+				a.computerList(c, e, cands, nil)
 			}
 		}
 	})
@@ -441,24 +490,28 @@ func (a *App) whoChips(c *ui.Context) {
 		ui.Text(c, a.L.T("newtask.loading")).FontSize(t.SM).TextColor(t.InkMuted).Padding(t.S2, 0, 0, 0)
 		return
 	}
-	cands := o.Candidates
-	chosen, picked := a.chosenCandidate(cands)
+	chosen, picked := a.chosenCandidate(o.Candidates)
 	if chosen == nil {
 		ui.Text(c, a.L.T("newtask.nobody")).FontSize(t.SM).LineHeight(1.5).TextColor(t.InkSoft).Padding(t.S2, 0, 0, 0)
 		return
 	}
+	cands, elsewhere := a.ntCands(o.Candidates)
 	top := topCandidate(cands)
 	ui.Row(c.Key("nt-who")).Gap(t.S2).Wrap().Role(ui.RoleRadioGroup).Label(a.L.T("newtask.who")).Children(func() {
 		for i := range cands {
 			cd := cands[i]
-			k := candKey(cd)
+			k := ntKey(cd)
 			off := cd.Blocked != ""
-			on := !off && k == candKey(*chosen)
-			best := top != nil && k == candKey(*top)
+			on := !off && k == ntKey(*chosen)
+			best := top != nil && k == ntKey(*top)
+			away := elsewhere[k] // D157: lives only on another computer
 			name := a.candName(cd)
 			label := name
 			if best {
 				label = name + " · " + a.L.T("newtask.suggested")
+			}
+			if away {
+				label = name + " · " + a.L.T("newtask.agent.elsewhere", cd.DeviceName)
 			}
 			e := a.chip(c, "nt-cand:"+k, label, on, off).Padding(0, t.S3+2, 0, t.S1+2)
 			switch {
@@ -477,6 +530,9 @@ func (a *App) whoChips(c *ui.Context) {
 					}
 				}
 				ui.Text(c, name).FontSize(t.SM).FontWeight(700).TextColor(map[bool]ui.Color{true: t.Ink, false: t.InkSoft}[on]).SingleLine().AccessHidden(true)
+				if away {
+					ui.Text(c, a.L.T("newtask.agent.elsewhere", cd.DeviceName)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().AccessHidden(true)
+				}
 				if best {
 					ui.Row(c.Key("nt-suggested")).Padding(t.S1, t.S1+3).Radius(6).Background(t.Highlight).Shrink(0).AccessHidden(true).Children(func() {
 						ui.Text(c, a.L.T("newtask.suggested")).FontSize(t.XS).FontWeight(700).TextColor(t.HighlightInk).SingleLine()
@@ -487,6 +543,11 @@ func (a *App) whoChips(c *ui.Context) {
 				nt.pick = k
 				if best {
 					nt.pick = ""
+				}
+				// One combined pick: an agent on another computer brings that computer along.
+				if away {
+					nt.computer = cd.Device
+					nt.pick = ntKey(cd)
 				}
 			}
 		}

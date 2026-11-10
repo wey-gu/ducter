@@ -1,16 +1,26 @@
 import { expect, test } from "bun:test";
-import { renderDevices } from "../src/partner.ts";
+import { parseNeeds, renderDevices } from "../src/partner.ts";
 import { resolvePlace } from "../src/place.ts";
 
 test("no workers: no devices line (prompts unchanged)", () => {
   expect(renderDevices([])).toBe("");
 });
 
-test("devices line names each worker, its state and its signed-in AIs; local stays the default", () => {
+test("devices line names each worker, its state, how it browses, whether it sleeps, and its signed-in AIs (D157)", () => {
   const line = renderDevices([
-    { name: "cloud-1", online: true, os: "linux", harnesses: [{ id: "claude-code", loggedIn: true }, { id: "codex", loggedIn: false }] },
+    { name: "cloud-1", online: true, os: "linux", alwaysOn: true, web: "ducter", harnesses: [{ id: "claude-code", loggedIn: true }, { id: "codex", loggedIn: false }] },
+    { name: "MacBook", online: false, asleep: true, os: "darwin", alwaysOn: false, web: "chrome", harnesses: [{ id: "claude-code", loggedIn: true }] },
   ]);
-  expect(line).toBe("[devices] local (this machine, the default) · cloud-1 (awake, linux, signed in: claude-code). To run a task on another device, pass place.device = its name.");
+  expect(line).toBe(
+    "[devices] local (Ducter's home) · cloud-1 (awake, linux, never sleeps, browses in Ducter's own browser, signed in: claude-code) · MacBook (asleep, darwin, sleeps when its lid closes, browses in the user's own Chrome (their sign-ins), signed in: claude-code). Say what a task needs (task_open needs) and Ducter picks the computer and says where; name one in place.device only when the user named it.",
+  );
+});
+
+test("needs from the model: only the known fields, a site as its host", () => {
+  expect(parseNeeds(undefined)).toBeUndefined();
+  expect(parseNeeds({})).toBeUndefined();
+  expect(parseNeeds({ browse: true, signedIn: true, site: "https://www.Taobao.com/orders", long: "yes", extra: 1 })).toEqual({ browse: true, signedIn: true, site: "taobao.com" });
+  expect(parseNeeds({ app: " Keynote ", long: true })).toEqual({ app: "Keynote", long: true });
 });
 
 test("a place on another device is taken as given: its paths live on that disk", () => {

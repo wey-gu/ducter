@@ -36,6 +36,8 @@ type RuleView struct {
 	Model     string   `json:"model,omitempty"`
 	Match     []string `json:"match"`
 	CreatedAt string   `json:"createdAt"`
+	// Device: the computer this kind of work runs on, when the rule names one (D157).
+	Device string `json:"device,omitempty"`
 }
 
 // BodyWhy is why a task is on the AI agent it is on: default | rule | limit
@@ -47,6 +49,26 @@ type BodyWhy struct {
 	Text    string `json:"text,omitempty"`
 	From    string `json:"from,omitempty"`
 	Blocked string `json:"blocked,omitempty"`
+	// Where: the computer it runs on and why, when two or more computers
+	// run tasks (D157).
+	Where *WhereWhy `json:"where,omitempty"`
+}
+
+// WhereWhy is why a task runs on the computer it runs on (D157,
+// design/where.md §8). Kind: always_on | signed_in | only_here | awake |
+// changes_here | agent_here | no_signin | moved | you | home. Thing (for
+// only_here): chrome | browser | app | agent. Uses: chrome | ducter | app.
+type WhereWhy struct {
+	Device string `json:"device"`
+	Kind   string `json:"kind"`
+	Other  string `json:"other,omitempty"`
+	Site   string `json:"site,omitempty"`
+	Thing  string `json:"thing,omitempty"`
+	App    string `json:"app,omitempty"`
+	Agent  string `json:"agent,omitempty"`
+	RuleID string `json:"ruleId,omitempty"`
+	Text   string `json:"text,omitempty"`
+	Uses   string `json:"uses,omitempty"`
 }
 
 // TaskBody is who does a task now, and why.
@@ -82,6 +104,15 @@ type Candidate struct {
 	ResetsAt string          `json:"resetsAt,omitempty"`
 	Billing  string          `json:"billing,omitempty"`
 	Blocked  string          `json:"blocked,omitempty"`
+	// D157, with two or more computers: which one, whether it would wait
+	// (asleep | unreachable), what it would use (chrome | ducter), whether
+	// the user would sign in there first, and whether it widens access.
+	Device      string `json:"device,omitempty"`
+	DeviceName  string `json:"deviceName,omitempty"`
+	Waits       string `json:"waits,omitempty"`
+	Uses        string `json:"uses,omitempty"`
+	NeedsSignIn bool   `json:"needsSignIn,omitempty"`
+	Widens      bool   `json:"widens,omitempty"`
 }
 
 // RulesReq asks for Your rules and keeps this socket told of every change.
@@ -102,10 +133,11 @@ type CandidatesReq struct {
 }
 
 // TaskSwitch is 换到 X 接着做 / Continue on X; answered with action_result
-// (action "switch").
+// (action "switch"). Device (D157): continue on another computer.
 type TaskSwitch struct {
 	T       string `json:"t"` // "task_switch"
 	TaskID  string `json:"taskId"`
 	Harness string `json:"harness"`
 	Model   string `json:"model,omitempty"`
+	Device  string `json:"device,omitempty"`
 }

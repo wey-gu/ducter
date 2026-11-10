@@ -726,7 +726,7 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 		if st.after != nil {
 			st.after()
 		}
-		if a.buttonFor(c, a.L.T("decision.hold"), about, btnSecondary, st.height, st.quietBg) {
+		if a.buttonFor(c, a.holdLabel(d), about, btnSecondary, st.height, st.quietBg) {
 			a.Decide(d.DecisionID, "hold", "")
 		}
 		if a.buttonFor(c, goText, about, btnPrimary, st.height, st.quietBg) {
@@ -758,9 +758,27 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 	}
 }
 
+// holdLabel is Hold's words: 先等等, or what holding means for a where ask
+// (等它醒) or the closing card (先不搬) (D157).
+func (a *App) holdLabel(d *store.DecisionState) string {
+	switch {
+	case d.Where != nil:
+		return a.whereAskHold(d.Where)
+	case d.Closing != nil:
+		return a.L.T("move.closing.hold")
+	}
+	return a.L.T("decision.hold")
+}
+
 // goLabel is the Go button's words: the action itself when it is a short
 // verb ("Rebase"; zh "好，rebase"), else Go / 好: never a sentence (D127).
 func (a *App) goLabel(d *store.DecisionState) string {
+	if d.Where != nil {
+		return a.whereAskGo(d.Where)
+	}
+	if d.Closing != nil {
+		return a.L.T("move.closing.go")
+	}
 	return a.shortGo(d.GoLabel)
 }
 
@@ -786,6 +804,12 @@ func (a *App) defaultLine(c *ui.Context, d *store.DecisionState) string {
 		c.After(left % time.Minute)
 	}
 	label := d.GoLabel
+	if d.Closing != nil { // D157: the closing card's Go, in the reader's words
+		label = a.L.T("move.closing.go")
+		if a.L.Lang != i18n.ZH {
+			label = strings.ToLower(label[:1]) + label[1:]
+		}
+	}
 	if label == "" {
 		return a.L.T("decision.default.goon", a.duration(left+time.Second*59/60))
 	}

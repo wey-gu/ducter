@@ -19,6 +19,7 @@ import { migrateKeys, readKeys, scrubKeysFromEnv } from "@ducter/protocol/src/ke
 import { isCompiled } from "./doctor.ts";
 import { createWorkerUpdater, lastOutcome, type WorkerUpdater } from "./update.ts";
 import { realSys, updateHow, writeAlive } from "@ducter/core/src/update.ts";
+import { createWorkerBrowse } from "@ducter/core/src/worker-browse.ts";
 
 /** Exit status when the main refuses this worker; the unit sets RestartPreventExitStatus to it. */
 export const EXIT_REFUSED = 3;
@@ -132,12 +133,18 @@ export async function cmdWorker(o: { t: T; style: Style; args: Args; dataDir: st
     /* an unreadable data folder fails louder below */
   }
 
+  // D157: this computer browses for tasks with its own browsers; 上网 rides in the hello.
+  let sendUp: (f: object) => void = () => {};
+  const browse = createWorkerBrowse({ dataDir: o.dataDir, send: (f) => sendUp(f) });
+  const kind = await localDeviceKind();
   const hello = {
     t: "hello",
     name: saved.name,
     os: platform(),
     arch: arch(),
-    kind: await localDeviceKind(),
+    kind,
+    abilities: await browse.abilities(),
+    alwaysOn: browse.alwaysOn(kind),
     version: pkg.version,
     harnesses: await probeHarnesses(t, o.dataDir),
     // D148: how this computer updates, and how its last update went (once, after its restart).
@@ -150,10 +157,22 @@ export async function cmdWorker(o: { t: T; style: Style; args: Args; dataDir: st
   const dataDir = o.dataDir;
   const updater = createWorkerUpdater({ dataDir, version: pkg.version, how: hello.how });
   const agentUpdater = workerAgentUpdater(t, dataDir);
-  const code = await stayConnected(s, hello, t, style, (send) => runnerMod.createWorkerHost({ dataDir, harness, mainBase: s.url, deviceToken: s.token, send }), updater, agentUpdater, () => {
+  const makeHost = (send: (f: object) => void) => {
+    sendUp = send;
+    const host = runnerMod.createWorkerHost({ dataDir, harness, mainBase: s.url, deviceToken: s.token, send, browser: { ducter: browse.ducter }, extraOps: browse.ops, abilities: browse });
+    // Nobody to drive Ducter's browser here once the socket is gone: quit it (sign-ins saved).
+    const closeAll = host.closeAll;
+    host.closeAll = async () => {
+      await Promise.all([closeAll(), browse.stopAll().catch(() => {})]);
+    };
+    return host;
+  };
+  const code = await stayConnected(s, hello, t, style, makeHost, updater, agentUpdater, () => {
     // Reached the main: a restart after an update is healthy now (update.ts waitHealthy).
     writeAlive(dataDir, pkg.version);
     lastOutcome(dataDir, { markReported: true });
+    // 上网 may have changed while it was away (Claude in Chrome connected, Chrome installed).
+    void browse.abilities().then((abilities) => sendUp({ t: "abilities", abilities }));
   });
   return refusedExit(code, process.env);
 }

@@ -157,6 +157,89 @@ function parseJson(s: string): any {
   }
 }
 
+/** cua-driver on this machine, with the typed browser tools (the home's probe, and a worker's). */
+export function defaultCuaProbe(env: Record<string, string | undefined>, exec: Exec = defaultExec, which: (c: string) => string | null = (c) => Bun.which(c)): CuaProbe {
+  return async () => {
+    const bin = env.DUCTER_CUA_DRIVER || which("cua-driver") || (existsSync(CUA_APP_BIN) ? CUA_APP_BIN : "");
+    if (!bin) return { missing: "cua-driver is not installed" };
+    const v = await exec([bin, "--version"], 10_000);
+    if (v.code !== 0) return { missing: `cua-driver at ${bin} does not run` };
+    const version = firstVersion(v.out) || "unknown";
+    const tools = await exec([bin, "list-tools"], 15_000);
+    const names = new Set(tools.out.split("\n").map((l) => l.split(":")[0]!.trim()));
+    if (REQUIRED_TOOLS.some((t) => !names.has(t))) return { missing: `cua-driver ${version} has no typed browser tools` };
+    return { version };
+  };
+}
+
+/** An AI agent's own browser tools ready on this machine (D130): Codex's, or Claude in Chrome connected. */
+export function defaultNativeProbe(env: Record<string, string | undefined>, which: (c: string) => string | null = (c) => Bun.which(c)): NativeBrowserProbe {
+  return async () => {
+    if (codexNative(env)) return "codex";
+    return (await claudeInChromeConnected({ env, which })) ? "claude" : undefined;
+  };
+}
+
+/** DUCTER_BROWSER pins 上网 on or off on this machine. */
+export function webPinned(env: Record<string, string | undefined>): "on" | "off" | undefined {
+  const v = (env.DUCTER_BROWSER ?? "").trim().toLowerCase();
+  if (v === "0" || v === "off" || v === "false" || v === "no") return "off";
+  if (v === "1" || v === "on" || v === "true" || v === "yes") return "on";
+}
+
+/**
+ * 上网 / Browse the web on one computer (D130, D151), the same on the home and on a worker (D157):
+ * the user's Chrome through an AI agent's own tools first; Ducter's own browser on a server (or
+ * when asked for); cua-driver's browser on a Mac without native tools.
+ */
+export function webAbilityOf(p: {
+  env: Record<string, string | undefined>;
+  dataDir: string;
+  cua: Awaited<ReturnType<CuaProbe>>;
+  native: Awaited<ReturnType<NativeBrowserProbe>>;
+  platform: string;
+  browser?: { setup(): BrowserSetup };
+}): DeviceAbility {
+  const { env } = p;
+  const pinned = webPinned(env);
+  const savedOff = () => readAbilitySettings(p.dataDir).web === false;
+  // DUCTER_BROWSER_DRIVER=cua: browser tasks use Ducter's own browser only (runner browser.ts).
+  const cuaOnly = /^(cua|cua-driver)$/i.test((env.DUCTER_BROWSER_DRIVER ?? "").trim());
+  // D151: on a server (Linux), or when asked for, Browse the web is Ducter's own browser.
+  const ducterMode = !!p.browser && (p.platform === "linux" || /^ducter$/i.test((env.DUCTER_BROWSER_DRIVER ?? "").trim()));
+  if (pinned === "off") return { id: "web", state: "unavailable", reason: "env_off" };
+  // An AI agent's own browser is ready (D130): Browse the web works in the user's Chrome, no
+  // cua-driver needed. detail names whose tools ("codex" | "claude").
+  if (p.native && !cuaOnly) return { id: "web", state: pinned === "on" ? "on" : savedOff() ? "off" : "on", detail: p.native, where: "chrome" };
+  if (ducterMode && !cuaOnly) {
+    const s = p.browser!.setup();
+    switch (s.state) {
+      case "ready":
+        return { id: "web", state: pinned === "on" || !savedOff() ? "on" : "off", detail: s.version, where: "ducter" };
+      case "installing":
+        return { id: "web", state: "on", where: "ducter", setup: "installing" };
+      case "deps":
+        return { id: "web", state: "unavailable", reason: "browser_deps", detail: s.command, where: "ducter" };
+      case "failed":
+        return { id: "web", state: "unavailable", reason: "browser_failed", detail: s.message, where: "ducter" };
+      case "missing":
+        return { id: "web", state: "off", where: "ducter" };
+    }
+  }
+  if ("missing" in p.cua) {
+    const old = /no typed browser tools|does not run/.test(p.cua.missing);
+    return { id: "web", state: "unavailable", reason: old ? "cua_old" : "cua_missing", detail: p.cua.missing };
+  }
+  if (pinned === "on") return { id: "web", state: "on", detail: p.cua.version, where: "ducter" };
+  return { id: "web", state: savedOff() ? "off" : "on", detail: p.cua.version, where: "ducter" };
+}
+
+/**
+ * D157: a computer that doesn't sleep keeps long work going. A server or a desktop Mac does; a
+ * laptop sleeps when its lid closes on battery (A3), unless it says otherwise.
+ */
+export const alwaysOnKind = (kind: DeviceKind) => kind === "server" || kind === "mini";
+
 export function createDevicesView(o: DevicesOptions): DevicesView {
   const env = o.env ?? process.env;
   const exec = o.exec ?? defaultExec;
@@ -166,25 +249,8 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
   const host = (o.hostname ?? osHostname()).replace(/\.local$/, "");
 
   const probes: DeviceProbes = {
-    cua:
-      o.probes?.cua ??
-      (async () => {
-        const bin = env.DUCTER_CUA_DRIVER || which("cua-driver") || (existsSync(CUA_APP_BIN) ? CUA_APP_BIN : "");
-        if (!bin) return { missing: "cua-driver is not installed" };
-        const v = await exec([bin, "--version"], 10_000);
-        if (v.code !== 0) return { missing: `cua-driver at ${bin} does not run` };
-        const version = firstVersion(v.out) || "unknown";
-        const tools = await exec([bin, "list-tools"], 15_000);
-        const names = new Set(tools.out.split("\n").map((l) => l.split(":")[0]!.trim()));
-        if (REQUIRED_TOOLS.some((t) => !names.has(t))) return { missing: `cua-driver ${version} has no typed browser tools` };
-        return { version };
-      }),
-    native:
-      o.probes?.native ??
-      (async () => {
-        if (codexNative(env)) return "codex";
-        return (await claudeInChromeConnected({ env, which })) ? "claude" : undefined;
-      }),
+    cua: o.probes?.cua ?? defaultCuaProbe(env, exec, which),
+    native: o.probes?.native ?? defaultNativeProbe(env, which),
     // The four first-wave harnesses (D85, harness-probe.ts).
     // Claude Code and Codex always show (one can be installed from here); pi and DeepSeek Harness
     // only once set up, so a Mac without them reads as before.
@@ -214,50 +280,9 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
     return inflight;
   };
 
-  const envPinned = (): "on" | "off" | undefined => {
-    const v = (env.DUCTER_BROWSER ?? "").trim().toLowerCase();
-    if (v === "0" || v === "off" || v === "false" || v === "no") return "off";
-    if (v === "1" || v === "on" || v === "true" || v === "yes") return "on";
-  };
-
-  // DUCTER_BROWSER_DRIVER=cua: browser tasks use Ducter's own browser only (runner browser.ts).
-  const cuaOnly = () => /^(cua|cua-driver)$/i.test((env.DUCTER_BROWSER_DRIVER ?? "").trim());
-  // D151: on a server (Linux), or when asked for, Browse the web is Ducter's own browser.
-  const ducterMode = () => !!o.browser && ((o.platform ?? osPlatform()) === "linux" || /^ducter$/i.test((env.DUCTER_BROWSER_DRIVER ?? "").trim()));
-  const savedOff = () => readAbilitySettings(o.dataDir).web === false;
-
-  const ducterAbility = (s: BrowserSetup): DeviceAbility => {
-    switch (s.state) {
-      case "ready":
-        return { id: "web", state: envPinned() === "on" || !savedOff() ? "on" : "off", detail: s.version, where: "ducter" };
-      case "installing":
-        return { id: "web", state: "on", where: "ducter", setup: "installing" };
-      case "deps":
-        return { id: "web", state: "unavailable", reason: "browser_deps", detail: s.command, where: "ducter" };
-      case "failed":
-        return { id: "web", state: "unavailable", reason: "browser_failed", detail: s.message, where: "ducter" };
-      case "missing":
-        return { id: "web", state: "off", where: "ducter" };
-    }
-  };
-
-  const webAbility = (cua: Cached["cua"], native: Cached["native"]): DeviceAbility => {
-    const pinned = envPinned();
-    if (pinned === "off") return { id: "web", state: "unavailable", reason: "env_off" };
-    // An AI agent's own browser is ready (D130): Browse the web works in the user's Chrome, no
-    // cua-driver needed. detail names whose tools ("codex" | "claude").
-    if (native && !cuaOnly()) {
-      const state = pinned === "on" ? "on" : readAbilitySettings(o.dataDir).web === false ? "off" : "on";
-      return { id: "web", state, detail: native, where: "chrome" };
-    }
-    if (ducterMode() && !cuaOnly()) return ducterAbility(o.browser!.setup());
-    if ("missing" in cua) {
-      const old = /no typed browser tools|does not run/.test(cua.missing);
-      return { id: "web", state: "unavailable", reason: old ? "cua_old" : "cua_missing", detail: cua.missing };
-    }
-    if (pinned === "on") return { id: "web", state: "on", detail: cua.version, where: "ducter" };
-    return { id: "web", state: readAbilitySettings(o.dataDir).web === false ? "off" : "on", detail: cua.version, where: "ducter" };
-  };
+  const envPinned = () => webPinned(env);
+  const webAbility = (cua: Cached["cua"], native: Cached["native"]): DeviceAbility =>
+    webAbilityOf({ env, dataDir: o.dataDir, cua, native, platform: o.platform ?? osPlatform(), ...(o.browser ? { browser: o.browser } : {}) });
 
   const clients = () => o.auth.list().filter((d) => d.kind === "client");
 
@@ -291,6 +316,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
       kind: me.kind,
       home: true,
       state: "awake", // this answer comes from it
+      alwaysOn: alwaysOnKind(me.kind),
       harnesses: agentsView("local", me.harnesses.map((h) => deviceHarness(h))),
       abilities: [webAbility(me.cua, me.native), later("computer"), { id: "remote", state: remoteOn ? "on" : "off" }, later("phone"), later("call")],
       ...(o.self ? { version: o.self.version, platform: o.self.platform } : {}),
@@ -330,8 +356,10 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
             d.id,
             (hello?.harnesses ?? []).map((h) => deviceHarness({ harness: h.id, installed: h.installed, loggedIn: h.loggedIn, ...(h.version ? { version: h.version } : {}), ...(h.how ? { how: h.how as AgentHow } : {}) })),
           ),
-          // Browser places run on the machine Ducter lives on only, for now (runner.ts).
-          abilities: [{ id: "web", state: "unavailable", reason: "home_only" }, later("computer"), later("phone"), later("call")],
+          // D157: a worker browses with its own browsers and says how in its hello; a Ducter
+          // there from before that says nothing, so its card asks for an update.
+          abilities: [hello?.abilities?.find((a) => a.id === "web") ?? { id: "web", state: "unavailable", reason: "worker_old" }, later("computer"), later("phone"), later("call")],
+          alwaysOn: hello?.alwaysOn ?? alwaysOnKind(kind),
         } satisfies DeviceView;
       });
     return { t: "devices", devices: [home, ...workers], reach: reach() };
@@ -373,6 +401,20 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
       if (a?.state !== "unavailable") changed();
     }
     if (!a || a.state === "later") return res(false, "failed");
+    // D157: 上网 on a worker is that computer's: it adds or removes it there (and installs
+    // Ducter's browser there when it is the one), then says what it is now.
+    if (ability === "web" && !d.home) {
+      const link = o.workers.link(d.id);
+      if (!link?.online()) return res(false, "offline");
+      if (a.reason === "worker_old") return res(false, "worker_old");
+      try {
+        const r = await link.call<{ ok: boolean; reason?: AbilityReason; detail?: string }>("ability", { id: "web", on }, 30_000);
+        changed();
+        return res(!!r?.ok, r?.ok ? undefined : (r?.reason ?? "failed"), r?.detail);
+      } catch (e) {
+        return res(false, "failed", (e as Error).message);
+      }
+    }
     // D151: adding Browse the web on a server installs Ducter's browser (again, after a failure or
     // once the missing libraries are there). The choice is saved at once; the frame says
     // 正在准备 / Getting it ready until it is.

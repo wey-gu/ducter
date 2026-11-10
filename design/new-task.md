@@ -93,7 +93,7 @@ stat `{files, adds, dels, at}`.
 
 ## Not yet
 
-- The computer (draft D157, `design/where.md` §6.3): a computer part on a Where chip, shown
+- The computer (D157, `design/where.md` §6.3): a computer part on a Where chip, shown
   only when a repo is on two computers or for No folder with two or more; an agent that lives
   only on another computer in Who, picking it moves the computer part too.
 

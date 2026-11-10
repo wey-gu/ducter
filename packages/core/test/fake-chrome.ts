@@ -10,6 +10,8 @@ export interface FakeChrome {
   launches: number;
   /** What the page says once loaded. */
   page: { title: string; url?: string };
+  /** A CDP event from the browser (a screencast frame, a navigation). */
+  emit(e: CdpEvent): void;
 }
 
 export function fakeChrome(o: { product?: string; title?: string; navError?: string } = {}): FakeChrome {
@@ -25,6 +27,7 @@ export function fakeChrome(o: { product?: string; title?: string; navError?: str
       return { proc: { exited: Promise.resolve(0), kill() {}, exitCode: null } as unknown as Launched["proc"], wsUrl: "ws://127.0.0.1:1/devtools/browser/fake" };
     },
     connect: async () => cdp,
+    emit: (e) => fns.forEach((fn) => fn(e)),
   };
   const cdp: CdpConn = {
     async send(method, params: any = {}, sessionId) {

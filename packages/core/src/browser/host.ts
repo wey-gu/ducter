@@ -49,6 +49,8 @@ export interface HostOptions {
   connect?: (url: string) => Promise<CdpConn | undefined>;
   /** Quit a browser nobody uses after this long (default 5 min). */
   idleMs?: number;
+  /** D157: the Chrome runs on a worker (remote.ts): its downloads folder is the worker's, not made here. */
+  remote?: boolean;
   /** The page language Chrome asks for (zh-CN or en-US). */
   lang?: () => string;
 }
@@ -209,8 +211,8 @@ export function createBrowserHost(o: HostOptions): BrowserHost {
       t.tabs.push(targetId);
       t.current = targetId;
       const sessionId = await api.session(b, targetId);
-      // Downloads land in the task's own folder (D151).
-      mkdirSync(t.downloads, { recursive: true });
+      // Downloads land in the task's own folder (D151), on the computer the browser runs on.
+      if (!o.remote) mkdirSync(t.downloads, { recursive: true });
       await b.cdp.send("Browser.setDownloadBehavior", { behavior: "allow", downloadPath: t.downloads, eventsEnabled: true }).catch(() => {});
       return { b, targetId, sessionId };
     },

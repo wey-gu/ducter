@@ -36,7 +36,7 @@ describe("copy", () => {
   test("zh puts a space between Han and Latin letters or digits (D78)", () => {
     // Printf verbs are left out: what fills them decides. ALLOWED: keys that run them together on purpose.
     const ALLOWED = new Set<string>([]);
-    const verb = /%(\d+\$)?[-+# 0]*\d*(\.\d+)?[sdfv]/g;
+    const verb = /%(\[\d+\]|\d+\$)?[-+# 0]*\d*(\.\d+)?[sdfv]/g;
     const hits = Object.entries(TABLES.zh)
       .filter(([k, v]) => !ALLOWED.has(k) && /\p{Script=Han}[A-Za-z0-9]|[A-Za-z0-9]\p{Script=Han}/u.test(v.replace(verb, "\u0000")))
       .map(([k, v]) => `${k}: ${v}`);

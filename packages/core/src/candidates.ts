@@ -3,7 +3,13 @@
 // for tasks, the partner's reserve, a model picked), then the person's rules, then the shipped
 // tier table, then the limit left. A pin (the partner's or the person's choice) wins over all of
 // it unless a hard filter says no, and then the move is said, never silent.
-import { HARNESSES, harnessName, isHarnessId, PARTNER_RESERVE, type BodyWhy, type Candidate, type CandidateBlock, type DeviceHarness, type RuleView, type Settings } from "@ducter/protocol";
+//
+// D157 (design/where.md §4): where is part of who. With two or more computers the ranking is over
+// (computer × agent × model): hard filters (the task's needs, then the agent's own), then rows
+// that can start now over rows that wait, then the person's word (a computer they named, a rule),
+// then the least access that does the job, then a computer that doesn't sleep for long work, then
+// continuity, then the agent's own rank, then the home. One reason says why that computer.
+import { HARNESSES, harnessName, isHarnessId, PARTNER_RESERVE, type BodyWhy, type Candidate, type CandidateBlock, type DeviceHarness, type DeviceView, type Place, type RuleView, type Settings, type TaskNeeds, type WhereBlock, type WhereWhy } from "@ducter/protocol";
 import { HARNESS_FACTS } from "@ducter/protocol/src/harness-facts.ts";
 import { ruleFor } from "./rules.ts";
 
@@ -26,14 +32,59 @@ const TIERS: Tier[] = [
   { harness: "pi", kind: "fast" },
 ];
 
+/**
+ * D157: one computer that runs tasks, as the ranking sees it (from the devices frame: computersOf).
+ * sites: the sites Ducter's own browser there is signed in to (Signed-in sites, D151).
+ */
+export interface Computer {
+  id: string;
+  name: string;
+  home: boolean;
+  state: "awake" | "asleep" | "unreachable";
+  alwaysOn: boolean;
+  mac: boolean;
+  harnesses: DeviceHarness[];
+  web?: { on: boolean; where?: "chrome" | "ducter" };
+  sites?: string[];
+}
+
+/** The computers that run tasks (the home and its workers), from the devices frame. */
+export function computersOf(devices: DeviceView[], sites?: (deviceId: string) => string[]): Computer[] {
+  return devices
+    .filter((d) => d.kind !== "phone")
+    .map((d) => {
+      const web = d.abilities.find((a) => a.id === "web");
+      const mac = d.platform ? d.platform.startsWith("darwin") : d.kind !== "server";
+      return {
+        id: d.id,
+        name: d.name,
+        home: d.home,
+        state: d.state,
+        alwaysOn: d.alwaysOn ?? (d.kind === "server" || d.kind === "mini"),
+        mac,
+        harnesses: d.harnesses,
+        ...(web ? { web: { on: web.state === "on", ...(web.where ? { where: web.where } : {}) } } : {}),
+        ...(sites ? { sites: sites(d.id) } : {}),
+      };
+    });
+}
+
 export interface CandidateInput {
   work: { title: string; brief?: string };
-  /** The AI agents on the device the task runs on, as the devices frame reports them. */
-  harnesses: DeviceHarness[];
+  /** The AI agents on the device the task runs on (one computer; the old input, kept for callers without computers). */
+  harnesses?: DeviceHarness[];
+  /** D157: every computer that runs tasks; the ranking is over (computer × agent × model). */
+  computers?: Computer[];
+  /** D157: what the task needs of its computer. */
+  needs?: TaskNeeds;
+  /** The task's place: a repo or folder fixes its computer. */
+  place?: Place;
+  /** D157: a computer the user named ("在 MacBook 上做"), by name or id. */
+  pinDevice?: string;
   settings: Pick<Settings, "brain" | "taskAccounts">;
   rules: RuleView[];
-  /** Who does it now (the switch sheet marks it). */
-  current?: { harness: string; model?: string };
+  /** Who does it now (the switch sheet marks it), and on which computer. */
+  current?: { harness: string; model?: string; device?: string; uses?: "chrome" | "ducter" };
 }
 
 /** Why this agent can't take a task now, if it can't. */
@@ -72,43 +123,103 @@ export function brainModelRows(harness: string, h: DeviceHarness | undefined): {
 const same = (a: { harness: string; model?: string }, b?: { harness: string; model?: string }) =>
   !!b && a.harness === b.harness && (a.model ?? "") === (b.model ?? "");
 
-/**
- * Everyone who could do this work, best first: the one doing it now, then up to three others
- * who can take it, then (greyed) those who can't, with why.
- */
-export function fwCandidates(inp: CandidateInput): Candidate[] {
+/** A computer named by name or id ("local" and "" are the home). */
+const isComputer = (c: Computer, name: string | undefined) => {
+  const n = (name ?? "").trim().toLowerCase();
+  if (!n || n === "local") return c.home;
+  return c.id.toLowerCase() === n || c.name.toLowerCase() === n;
+};
+
+/** What a computer can do for these needs: why not, or what it would use. */
+function fit(c: Computer, needs: TaskNeeds | undefined, place: Place | undefined): { block?: WhereBlock; uses?: "chrome" | "ducter"; needsSignIn?: boolean } {
+  // A folder or a repo lives on one computer: the task runs there (a folder never moves, D142).
+  if (place && (place.kind === "repo" || place.kind === "folder") && !isComputer(c, place.device)) return { block: "elsewhere" };
+  if (needs?.app && !c.mac) return { block: "no_app" };
+  const browses = !!(needs?.browse || needs?.signedIn || place?.kind === "browser");
+  if (!browses) return {};
+  if (!c.web?.on) return { block: needs?.signedIn ? "no_chrome" : "no_browser" };
+  if (c.web.where === "chrome") return { uses: "chrome" };
+  // Ducter's own browser: the user's sign-ins only where they signed in there (D151); else they would sign in first.
+  const site = needs?.site?.replace(/^www\./, "").toLowerCase();
+  const signed = !!site && (c.sites ?? []).some((s) => s === site || site.endsWith("." + s));
+  return { uses: "ducter", ...(needs?.signedIn && !signed ? { needsSignIn: true } : {}) };
+}
+
+interface Row extends Candidate {
+  /** Higher is better, compared step by step (design/where.md §4.3). */
+  key: number[];
+  comp: Computer;
+}
+
+/** Steps of the ranking, in order; the index into Row.key. */
+const STEP = { ok: 0, now: 1, word: 2, access: 3, keeps: 4, continuity: 5, agent: 6, home: 7 } as const;
+
+/** Every (computer, agent, model) row, best first. */
+function rank(inp: CandidateInput): { rows: Row[]; multi: boolean } {
+  const comps: Computer[] = inp.computers ?? [{ id: "local", name: "", home: true, state: "awake", alwaysOn: false, mac: true, harnesses: inp.harnesses ?? [] }];
+  const multi = (inp.computers?.length ?? 0) > 1;
   const rule = ruleFor(inp.rules, inp.work);
-  const all: (Candidate & { score: number })[] = [];
-  for (const h of inp.harnesses) {
-    if (!isHarnessId(h.harness) || !HARNESSES[h.harness].task) continue;
-    const blocked = blockOf(h, inp.settings);
-    for (const t of rows(h)) {
-      const ruled = !!rule && rule.harness === t.harness && (!rule.model || rule.model === t.model);
-      const left = h.allowance?.left;
-      // Rules first; then the strongest; plan before pay-per-use; then the most limit left.
-      const score = (ruled ? 1000 : 0) + (t.kind === "smart" ? 100 : 50) + (h.billing === "usage" ? -30 : 0) + (left ?? 0.5) * 20;
-      const reason: Candidate["reason"] = ruled ? { kind: "rule", ruleId: rule!.id, text: rule!.text } : { kind: t.kind === "smart" ? "fit" : "fast" };
-      all.push({
-        harness: t.harness,
-        ...(t.model ? { model: t.model } : {}),
-        reason,
-        ...(left != null ? { left } : {}),
-        ...(h.allowance?.resetsAt ? { resetsAt: h.allowance.resetsAt } : {}),
-        ...(h.billing ? { billing: h.billing } : {}),
-        ...(blocked ? { blocked } : {}),
-        score,
-      });
+  const all: Row[] = [];
+  for (const c of comps) {
+    const f = fit(c, inp.needs, inp.place);
+    for (const h of c.harnesses) {
+      if (!isHarnessId(h.harness) || !HARNESSES[h.harness].task) continue;
+      const blocked = blockOf(h, inp.settings) ?? f.block;
+      for (const t of rows(h)) {
+        const ruled = !!rule && rule.harness === t.harness && (!rule.model || rule.model === t.model);
+        const left = h.allowance?.left;
+        const waits = c.state === "awake" ? undefined : c.state;
+        // The person's word: their pin of a computer, then their rule (its agent, its computer).
+        const word = (inp.pinDevice && isComputer(c, inp.pinDevice) ? 4 : 0) + (ruled ? 2 : 0) + (rule?.device && isComputer(c, rule.device) ? 1 : 0);
+        // Least access that does the job: Ducter's own browser (signed in where needed) over the user's Chrome.
+        const access = f.uses === "ducter" && !f.needsSignIn ? 2 : f.uses === "chrome" ? 1 : 0;
+        // Strongest; plan before pay-per-use; then the most limit left (the agent's own rank, D89).
+        const agent = (t.kind === "smart" ? 100 : 50) + (h.billing === "usage" ? -30 : 0) + (left ?? 0.5) * 20;
+        const key = [blocked ? 0 : 1, waits ? 0 : 1, word, access, inp.needs?.long && c.alwaysOn ? 1 : 0, inp.current?.device && isComputer(c, inp.current.device) ? 1 : 0, agent, c.home ? 1 : 0];
+        const reason: Candidate["reason"] = ruled ? { kind: "rule", ruleId: rule!.id, text: rule!.text } : { kind: t.kind === "smart" ? "fit" : "fast" };
+        all.push({
+          harness: t.harness,
+          ...(t.model ? { model: t.model } : {}),
+          reason,
+          ...(left != null ? { left } : {}),
+          ...(h.allowance?.resetsAt ? { resetsAt: h.allowance.resetsAt } : {}),
+          ...(h.billing ? { billing: h.billing } : {}),
+          ...(blocked ? { blocked } : {}),
+          ...(multi ? { device: c.id, deviceName: c.name } : {}),
+          ...(multi && waits ? { waits } : {}),
+          ...(f.uses ? { uses: f.uses } : {}),
+          ...(f.needsSignIn ? { needsSignIn: true } : {}),
+          ...(f.uses === "chrome" && inp.current && inp.current.uses !== "chrome" && (inp.current.uses || inp.place?.kind === "browser") ? { widens: true } : {}),
+          key,
+          comp: c,
+        });
+      }
     }
   }
-  all.sort((a, b) => b.score - a.score);
-  const strip = ({ score: _s, ...c }: Candidate & { score: number }): Candidate => c;
-  const cur = all.find((c) => same(c, inp.current));
-  const free = all.filter((c) => !c.blocked && c !== cur).slice(0, 3);
+  all.sort((a, b) => {
+    for (let i = 0; i < a.key.length; i++) if (a.key[i] !== b.key[i]) return b.key[i]! - a.key[i]!;
+    return 0;
+  });
+  return { rows: all, multi };
+}
+
+const strip = ({ key: _k, comp: _c, ...c }: Row): Candidate => c;
+
+/**
+ * Everyone who could do this work, best first: the one doing it now, then others who can take it,
+ * then (greyed) those who can't, with why. With two or more computers (D157) the rows say which
+ * computer, and each computer keeps a few of its own so the sheet can group them.
+ */
+export function fwCandidates(inp: CandidateInput): Candidate[] {
+  const { rows: all, multi } = rank(inp);
+  const isCur = (c: Row) => same(c, inp.current) && (!multi || !inp.current?.device || isComputer(c.comp, inp.current.device));
+  const cur = all.find(isCur);
+  const perComp = new Map<string, number>();
+  const free = all.filter((c) => !c.blocked && c !== cur && (perComp.set(c.comp.id, (perComp.get(c.comp.id) ?? 0) + 1).get(c.comp.id)! <= 3)).slice(0, multi ? 9 : 3);
   // A row whose only difference is a model of an agent already listed as blocked says nothing new.
   const seenBlocked = new Set<string>();
-  const blocked = all.filter((c) => c.blocked && c !== cur && !seenBlocked.has(c.harness) && seenBlocked.add(c.harness)).slice(0, 3);
-  const out = [...(cur ? [{ ...strip(cur), current: true, reason: { kind: "current" as const } }] : []), ...free.map(strip), ...blocked.map(strip)];
-  return out;
+  const blocked = all.filter((c) => c.blocked && c !== cur && !seenBlocked.has(c.comp.id + c.harness) && seenBlocked.add(c.comp.id + c.harness)).slice(0, multi ? 6 : 3);
+  return [...(cur ? [{ ...strip(cur), current: true, reason: { kind: "current" as const } }] : []), ...free.map(strip), ...blocked.map(strip)];
 }
 
 /** Why the first choice moved: a short limit, or whatever else stops it (said, never silent). */
@@ -124,6 +235,10 @@ const BLOCK_WORDS: Record<CandidateBlock, string> = {
   reserve: "only the part of its limit kept for the partner is left",
   no_model: "no model is picked for it yet",
   offline: "its device can't be reached",
+  no_browser: "no computer it is on can browse the web",
+  no_chrome: "it needs the user's Chrome, and no computer it is on has it",
+  no_app: "it needs a Mac app, and it isn't on a Mac",
+  elsewhere: "the folder is on another computer",
 };
 
 /** The one line the New task card / `ducter task --agent` shows when the person's own pick can't run. */
@@ -132,43 +247,135 @@ export function pinProblem(harness: string, b: CandidateBlock): string {
 }
 
 /**
- * Who does a new task, and why (the body_selected the card shows). pinned: a choice in the
- * moment, the partner's or the person's own (pinnedBy "you": the New task card, `--agent`).
- * The partner's pin or a rule that can't run moves to the next best, with why. The person's own
- * pick never moves silently: `problem` is the one line to show them. Undefined when no AI agent
- * can take it: the caller says so in one line.
+ * D157: the one reason the top row is on its computer: the first step of the ranking that set it
+ * apart from the best row on another computer (design/where.md §4.3). Undefined with one computer.
  */
-export function chooseBody(
-  inp: Omit<CandidateInput, "current"> & { pinned?: { harness: string; model?: string }; pinnedBy?: "you" },
-): { harness: string; model?: string; why: BodyWhy } | { problem: string } | undefined {
-  const list = fwCandidates(inp);
-  const ok = list.filter((c) => !c.blocked);
+function whereWhy(top: Row, all: Row[], inp: CandidateInput, rule: RuleView | undefined): WhereWhy | undefined {
+  const c = top.comp;
+  const needs = inp.needs;
+  const uses: WhereWhy["uses"] = top.uses ?? (needs?.app ? "app" : undefined);
+  const base = { device: c.name, ...(uses ? { uses } : {}), ...(uses === "app" && needs?.app ? { app: needs.app } : {}) };
+  const other = all.find((r) => !r.blocked && r.comp.id !== c.id);
+  if (!other) {
+    // Nobody else can. Say what only this computer has.
+    if (inp.place && (inp.place.kind === "repo" || inp.place.kind === "folder")) return { ...base, kind: "changes_here" };
+    if (needs?.app) return { ...base, kind: "only_here", thing: "app", app: needs.app };
+    if (needs?.signedIn && top.uses === "chrome") return { ...base, kind: "signed_in", ...(needs.site ? { site: needs.site } : {}) };
+    if (needs?.browse || needs?.signedIn) return { ...base, kind: "only_here", thing: top.uses === "chrome" ? "chrome" : "browser" };
+    const elsewhere = all.some((r) => r.comp.id !== c.id && r.harness === top.harness && !r.blocked);
+    if (!elsewhere && all.some((r) => r.comp.id !== c.id)) return { ...base, kind: "agent_here", agent: top.harness };
+    return { ...base, kind: c.home ? "home" : "only_here", ...(c.home ? {} : { thing: "agent" as const, agent: top.harness }) };
+  }
+  const step = top.key.findIndex((v, i) => v !== other.key[i]);
+  switch (step) {
+    case STEP.now:
+      return { ...base, kind: "awake", other: other.comp.name };
+    case STEP.word: {
+      if (inp.pinDevice && isComputer(c, inp.pinDevice)) return { ...base, kind: "you" };
+      if (rule?.device && isComputer(c, rule.device)) return { ...base, kind: "you", ruleId: rule.id, text: rule.text };
+      return { ...base, kind: "agent_here", agent: top.harness };
+    }
+    case STEP.access:
+      if (top.uses === "chrome") return { ...base, kind: "signed_in", ...(needs?.site ? { site: needs.site } : {}) };
+      if (needs?.signedIn) return { ...base, kind: "signed_in", ...(needs.site ? { site: needs.site } : {}) };
+      return { ...base, kind: "no_signin" };
+    case STEP.keeps:
+      return { ...base, kind: "always_on", other: other.comp.name };
+    case STEP.continuity:
+      return { ...base, kind: "changes_here" };
+  }
+  // An agent's own rank, or nothing at all, set them apart: the home is one hop fewer.
+  const has = all.some((r) => r.comp.id !== c.id && r.harness === top.harness && !r.blocked);
+  if (!has) return { ...base, kind: "agent_here", agent: top.harness };
+  return { ...base, kind: c.home ? "home" : "always_on", ...(c.home ? {} : { other: other.comp.name }) };
+}
+
+/** A pick: who, on which computer, and why. */
+export interface BodyPick {
+  harness: string;
+  model?: string;
+  why: BodyWhy;
+  /** D157: the computer (name; "local" for the home with one computer) and what it uses there. */
+  device?: string;
+  deviceId?: string;
+  home?: boolean;
+  waits?: "asleep" | "unreachable";
+  uses?: "chrome" | "ducter";
+  needsSignIn?: boolean;
+  /** D157: the best row on another computer that can start now, when the pick waits (the ask's other choice). */
+  now?: { device: string; deviceId: string; name: string; harness: string; model?: string; uses?: "chrome" | "ducter"; needsSignIn?: boolean };
+}
+
+/**
+ * Who does a new task, on which computer, and why (the body_selected the card shows). pinned: a
+ * choice in the moment, the partner's or the person's own (pinnedBy "you": the New task card,
+ * `--agent`). The partner's pin or a rule that can't run moves to the next best, with why. The
+ * person's own pick never moves silently: `problem` is the one line to show them. Undefined when
+ * no AI agent can take it: the caller says so in one line.
+ */
+export function chooseBody(inp: Omit<CandidateInput, "current"> & { pinned?: { harness: string; model?: string }; pinnedBy?: "you" }): BodyPick | { problem: string } | undefined {
+  const { rows: all, multi } = rank(inp);
+  // A computer the user named holds, even asleep: the task waits there (never moved silently).
+  const named = inp.pinDevice ? all.filter((c) => !c.blocked && isComputer(c.comp, inp.pinDevice)) : [];
+  const ok = named.length ? named : all.filter((c) => !c.blocked);
   const rule = ruleFor(inp.rules, inp.work);
-  const byHarness = (h: string) => inp.harnesses.find((x) => x.harness === h);
-  const pick = (c: Candidate, why: BodyWhy) => ({ harness: c.harness, ...(c.model ? { model: c.model } : {}), why });
+  const pick = (c: Row, why: BodyWhy): BodyPick => {
+    const where = multi ? whereWhy(c, all, inp, rule) : undefined;
+    // The one that can start now, for the ask (never one that widens access silently: the ask says so).
+    const now = c.waits && !named.length ? all.find((r) => !r.blocked && !r.waits && r.comp.id !== c.comp.id) : undefined;
+    return {
+      harness: c.harness,
+      ...(c.model ? { model: c.model } : {}),
+      why: where ? { ...why, where } : why,
+      ...(multi ? { device: c.comp.home ? "local" : c.comp.name, deviceId: c.comp.id, home: c.comp.home } : {}),
+      ...(c.waits ? { waits: c.waits } : {}),
+      ...(c.uses ? { uses: c.uses } : {}),
+      ...(c.needsSignIn ? { needsSignIn: true } : {}),
+      ...(now ? { now: { device: now.comp.home ? "local" : now.comp.name, deviceId: now.comp.id, name: now.comp.name, harness: now.harness, ...(now.model ? { model: now.model } : {}), ...(now.uses ? { uses: now.uses } : {}), ...(now.needsSignIn ? { needsSignIn: true } : {}) } } : {}),
+    };
+  };
   if (inp.pinned) {
-    const b = blockOf(byHarness(inp.pinned.harness), inp.settings);
-    if (!b) {
+    const mine = all.filter((c) => c.harness === inp.pinned!.harness);
+    const usable = [...mine.filter((c) => !c.blocked && named.includes(c)), ...mine.filter((c) => !c.blocked)];
+    const best = usable.find((c) => !inp.pinned!.model || c.model === inp.pinned!.model) ?? usable[0];
+    if (best) {
       // D128: the user picked it on the New task card (or `ducter task --agent`): "…，是你选的".
       const why: BodyWhy = inp.pinnedBy === "you" ? { kind: "you" } : rule && rule.harness === inp.pinned.harness ? { kind: "rule", ruleId: rule.id, text: rule.text } : { kind: "partner" };
-      return { harness: inp.pinned.harness, ...(inp.pinned.model ? { model: inp.pinned.model } : {}), why };
+      const p = pick(best, why);
+      // The pinned model rides along even when the tier table doesn't list it.
+      return { ...p, ...(inp.pinned.model ? { model: inp.pinned.model } : {}) };
     }
+    const b = mine[0]?.blocked ?? "not_installed";
     if (inp.pinnedBy === "you") return { problem: pinProblem(inp.pinned.harness, b) };
     const next = ok[0];
     if (!next) return undefined;
     return pick(next, movedWhy(inp.pinned.harness, b));
   }
   if (rule) {
-    const b = blockOf(byHarness(rule.harness), inp.settings);
-    if (!b) return { harness: rule.harness, ...(rule.model ? { model: rule.model } : {}), why: { kind: "rule", ruleId: rule.id, text: rule.text } };
+    const theirs = ok.filter((c) => c.harness === rule.harness);
+    const mine = [...theirs.filter((c) => !rule.model || c.model === rule.model), ...theirs];
+    if (mine[0]) return { ...pick(mine[0], { kind: "rule", ruleId: rule.id, text: rule.text }), ...(rule.model ? { model: rule.model } : {}) };
+    const b = all.find((c) => c.harness === rule.harness)?.blocked ?? "not_installed";
     const next = ok[0];
     if (!next) return undefined;
     return pick(next, movedWhy(rule.harness, b, rule));
   }
-  const best = ok[0];
+  let best = ok[0];
   if (!best) return undefined;
+  // D157 (where.md §4.4): the best computer for the task is asleep, and another can start now.
+  // Never ask between equal computers: the awake one just does it. When what the user would see
+  // differs (other sign-ins; they'd sign in there first) or the awake one widens access (their
+  // Chrome instead of Ducter's own browser), the pick waits by default and the ask offers now.
+  const ideal = [...ok].sort((a, b) => {
+    for (let i = 0; i < a.key.length; i++) if (i !== STEP.now && a.key[i] !== b.key[i]) return b.key[i]! - a.key[i]!;
+    return 0;
+  })[0]!;
+  if (multi && ideal.waits && ideal.comp.id !== best.comp.id && !best.waits) {
+    const visible = !!best.needsSignIn || best.uses !== ideal.uses || (best.uses === "chrome" && ideal.uses !== "chrome");
+    if (visible) best = ideal;
+  }
   // The brain's own account was the natural first choice but only its reserve is left: say it.
-  const brain = byHarness(inp.settings.brain.harness);
+  const brain = best.comp.harnesses.find((x) => x.harness === inp.settings.brain.harness);
   if (best.harness !== inp.settings.brain.harness && brain && blockOf(brain, inp.settings) === "reserve") {
     return pick(best, { kind: "limit", from: inp.settings.brain.harness });
   }

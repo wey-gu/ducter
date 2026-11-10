@@ -886,6 +886,11 @@ a {
   color: var(--needs-ink);
   line-height: 1.45;
 }
+/* D157: a choice that would give the task the user's Chrome says so, in the accent's own weight. */
+.decision .dl.widen {
+  font-weight: 700;
+  color: var(--ink);
+}
 /* The default as a small timer and one caption (D127), never a bar and the words twice. */
 .decision .dl.timer {
   display: flex;
@@ -1564,6 +1569,45 @@ a {
 }
 .standing .inline-link {
   font-size: var(--sm);
+}
+/* D157: which computer it runs on; a tap (or a hover) says why there. */
+.standing .where-on {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline dotted color-mix(in srgb, currentColor 45%, transparent);
+  text-underline-offset: 3px;
+}
+.where-why {
+  margin-top: 2px;
+}
+/* D157: who and where together: the list grouped by computer, what a move does above Go. */
+.switch-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.switch-head {
+  display: flex;
+  gap: 6px;
+  padding-top: 6px;
+  font-size: var(--sm);
+  color: var(--ink-muted);
+}
+.switch-head b {
+  color: var(--ink-soft, var(--ink));
+}
+.move-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.move-lines .widen {
+  font-weight: 800;
+  color: var(--ink);
 }
 /* A pending ask over the task's composer (D152). */
 .ask-dock {

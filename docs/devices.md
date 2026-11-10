@@ -52,9 +52,11 @@ line. The same goes for the app on a Mac that also does tasks: *The Ducter app i
 When the Ducter app on your Mac is connected to a Ducter on a server (say, *hel*), your Mac's
 card, and **Settings › Where it runs**, has one switch: **Let this Mac do tasks for hel**. Turn
 it on and your Mac becomes one of hel's computers, with the AI agents signed in on it (Claude
-Code and others) and its repos: *"run it on my Mac"* now works. It keeps running in the
-background, starts when you log in, and starts again if it stops. It only does tasks: it never
-sees your conversation. Turn it off and it stops, and hel forgets it.
+Code and others), its repos and its browsers: *"run it on my Mac"* now works, and so do errands
+that need the sites you're signed in to in your Chrome. It keeps running in the background,
+starts when you log in, and starts again if it stops. It only does tasks: it never sees your
+conversation. Turn it off and it stops, and hel forgets it. From then on, every task says which
+computer it's on (see [Which computer a task runs on](#which-computer-a-task-runs-on)).
 - **Update:** a device that's behind gets one small dot by its name and an **Update** button on its
   card. See [Updates](install.md#updates).
 
@@ -97,7 +99,7 @@ What a device can do:
 
 | | What it means | Status |
 |---|---|---|
-| **Browse the web** | The computer can get things done on the web: look things up, read pages, gather what it finds. In your Chrome when your AI agent has its own browser, otherwise in Ducter's own browser | Ready on the computer Ducter lives on (a Mac, or a server: see below) |
+| **Browse the web** | The computer can get things done on the web: look things up, read pages, gather what it finds. In your Chrome when your AI agent has its own browser, otherwise in Ducter's own browser | Ready on every computer that does tasks (a Mac, or a server: see below) |
 | **Reach from anywhere** | Reach Ducter from your phone or another computer, with a one-time code | Ready (needs an address that works from outside; see [Install](install.md#a-linux-server-that-stays-on)) |
 | **Use this computer** | Ducter uses the other apps on the computer the way you do | Coming later |
 | **Use a phone** | Ducter does things on your phone | Coming later |
@@ -184,6 +186,37 @@ there. **Sign out** forgets one site's sign-in on the server; **Clear all** forg
 
 Good to know: sites see a server's address, which some treat with suspicion; you may get a
 "confirm it's you" check or a puzzle the first time. Solve it in the same live view.
+
+## Which computer a task runs on
+
+With one computer, nothing changes: every task runs there. Once a second computer does tasks
+(your Mac for a server, say), Ducter picks the computer together with who does the task, from
+what the task needs, and every task says where in a few words: **on hel**, **on MacBook · in your
+Chrome**. Hover over it on the Mac, or tap it on your phone, and it says why: *Always awake; keeps
+going when MacBook closes*, *Needs your signed-in taobao.com*, *Only MacBook has Keynote*.
+
+- **Public pages** run in Ducter's own browser on the computer that stays awake. **Your Chrome**,
+  where you're signed in, is used only when a task needs your sign-ins. Ducter never moves a task
+  to more access on its own: when a choice would use your Chrome, the card says so first.
+- **Long work** starts on a computer that doesn't sleep, so closing your laptop doesn't stop it.
+- **Your Mac is asleep** and the task needs it (Keynote, your Chrome): the task waits, *Waiting ·
+  MacBook is asleep*, and starts when the Mac wakes. When another computer could do it with a
+  difference you'd notice (you'd sign in there), one card asks: **Wait for it** (if you don't
+  answer, it waits; nothing is lost) or **Do it on hel now**.
+- **Change it** with **Switch who does it** on the task: on the Mac, a strip of your islands shows
+  each computer with its AI agents, and the list below is grouped by computer, with why a row
+  can't take it. Choosing a row on another computer says what moving does and reads **Continue on
+  MacBook**: the task carries on there from its last saved progress; a repo's branch is pushed
+  first, and changes that aren't committed stay where they are. A folder can't move.
+- **New task**: with two computers, **No folder** names a computer (**No folder · hel**); tap it
+  to choose another. An AI agent that's only on another computer shows *on MacBook*; picking it
+  brings that computer along.
+- **About to close your laptop?** Say *"I'm closing my laptop"*, or choose **Move before closing**
+  on its card in Devices. One card says what moves to a computer that stays awake and what can
+  only run on the laptop; **Move them** is what happens if you don't answer, after a minute.
+
+Sign-ins never copy between computers: a site you're signed in to in your Mac's Chrome isn't
+signed in on the server, and the other way round.
 
 ## It keeps working when you close the window
 

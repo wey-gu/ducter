@@ -571,11 +571,14 @@ func (a *App) whereLine(p protocol.Place) string {
 			parts = append(parts, f)
 		}
 	case "browser":
-		if p.Profile != "" {
+		// The persona's own profile goes unsaid (it isn't a model or a place a person picked).
+		if p.Profile != "" && p.Profile != "default" {
 			parts = append(parts, p.Profile)
 		}
 	}
-	if p.Device != "" && p.Device != "local" {
+	// D157: with two or more computers the computer is said apart (taskWhere),
+	// on every task; with one, only a device that isn't this one.
+	if p.Device != "" && p.Device != "local" && !a.manyComputers() {
 		parts = append(parts, a.L.T("task.where.on", p.Device))
 	}
 	return strings.Join(parts, " · ")
@@ -587,7 +590,7 @@ func (a *App) taskWho(c *ui.Context, task *store.Task) {
 	t := a.T
 	who := a.bodyLine(task)
 	where := a.whereLine(task.Place())
-	if who == "" && where == "" {
+	if on, _ := a.taskWhere(task); who == "" && where == "" && on == "" {
 		return
 	}
 	ui.Row(c.Key("who")).Gap(t.S1).AlignItems(ui.Center).MinWidth(0).Shrink(1).Children(func() {
@@ -600,6 +603,14 @@ func (a *App) taskWho(c *ui.Context, task *store.Task) {
 		p := task.Place()
 		if s := firstNonEmpty(p.RepoPath, p.Path); s != "" {
 			tx.Tooltip(s)
+		}
+		// D157: which computer, and what it uses there; why on hover.
+		if on, why := a.taskWhere(task); on != "" {
+			ui.Text(c, "·").FontSize(t.SM).TextColor(t.InkMuted)
+			wt := ui.Text(c.Key("where"), on).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0).Shrink(1)
+			if why != "" {
+				wt.Tooltip(why)
+			}
 		}
 		if canSwitch(task) && a.quietLink(c.Key("sw"), "who:"+task.ID, a.L.T("who.switch"), a.L.T("who.switch")) {
 			a.openSwitch(task.ID)

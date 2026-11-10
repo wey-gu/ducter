@@ -924,6 +924,17 @@ func (a *App) paintBridge(p *ui.Painter, r ui.Rect, v view, home, s *isle, liftH
 		}
 		p.StrokePath(&m, max(2.2*k, 1.5), rope)
 	}
+	// D157: a task's parcel lands, waits at the home end while its computer sleeps, or moves.
+	if part >= 1 && s.dv != nil {
+		for _, m := range a.parcelMoments(s.dv, now, still) {
+			q, _ := cv.at(min(max(m.at*L, 10*k), L-10*k))
+			pw, ph := bw*0.95*m.sx, bw*0.78*m.sy
+			paintParcel(p, ui.Rect{X: q.X - pw/2, Y: q.Y - ph - 1*k, W: pw, H: ph}, k, is)
+		}
+		if a.momentsLive(now) && !still {
+			p.AnimationFrame()
+		}
+	}
 	if part < 1 || s.dv == nil || pale {
 		return
 	}
@@ -1007,6 +1018,10 @@ func (a *App) island(c *ui.Context, v view, s *isle, shown *protocol.DeviceView,
 			p.ImageRegion(bmp, ui.Rect{}, box, ui.ImageOptions{Tint: ui.RGBA(255, 255, 255, rs.island)})
 		}
 	})
+	// D157: the words riding on this island's parcels (a task landing, waiting, moved here).
+	if s.dv != nil && !s.dv.Home {
+		a.parcelTags(c, s.dv, v.r(s.dev), dy*v.k, now, still)
+	}
 	if isl.Clicked() {
 		a.selectIsle(s)
 	}

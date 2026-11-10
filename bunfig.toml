@@ -1,3 +1,6 @@
 [test]
 # Every test run: a placeholder printed empty fails the test that drew it (apps/web/test/guard.ts).
 preload = ["./apps/web/test/guard.ts"]
+# Many tests spawn real processes (stub binaries, sockets, fake oo); under a loaded
+# machine the 5 s default flakes. 20 s still catches a real hang.
+timeout = 20000

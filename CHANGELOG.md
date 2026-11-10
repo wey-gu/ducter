@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.0.15
+
+<!-- whats-new
+zh: 在 Mac 上加文件夹，家在服务器上也行
+en: Add a folder on your Mac even when Ducter lives on a server
+zh: 一键打开任务的工作副本：Finder、终端或编辑器
+en: Open a task's working copy in Finder, Terminal or your editor
+-->
+
+**Your own development work, beside Ducter's**
+- **Add a folder** works on your Mac when your Ducter lives on a server: pick the folder there,
+  and tasks in it run on that Mac (it needs to be doing tasks for that Ducter). Its branches show
+  in **New task**, and when folders are on more than one computer each says which.
+- A task's working copy now has a name you can tell apart: `~/.ducter/worktrees/<repo>/<branch>`.
+  The opened task shows its path, and **Open** takes you there: **Show in Finder**, **Open in
+  Terminal**, or your editor (Cursor, Visual Studio Code, Zed).
+- **New task** is **新建** in Chinese.
+
+**Calls, and what's coming**
+- **Calls** is on your Ducter's card in Your devices again: tap **+** to connect Tuwa, or open it
+  to set the daily limit. **Use a computer** and **Use a phone** show there as coming later.
+
+**Apps and updates**
+- The iPhone, iPad and Android apps say when the Ducter they talk to is older than the app, with
+  **Update it**.
+- A Mac too old to update from your phone says the one step: update it once on that Mac.
+- The Mac app keeps its own log (`~/Library/Logs/co.nowledge.ducter/app.log`), and **Restart
+  Now** asks again if the app hasn't quit.
+- Autofill has its own clay keyring.
+
 ## 0.0.14
 
 <!-- whats-new

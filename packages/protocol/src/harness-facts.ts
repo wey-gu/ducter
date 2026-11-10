@@ -73,6 +73,12 @@ export interface HarnessFacts {
   channels: Fact<AgentChannels>;
   /** D168/D169: the user's Nowledge Mem plugin for this agent, and how Ducter turns it off in one session (research/48 M3, M4). */
   memPlugin?: Fact<MemPluginFact>;
+  /**
+   * D174 (3), research/48 F8: how a one-shot session (the judge, the digest writer) runs with no
+   * tools at all, built-ins included. Launch args for the agent; empty: none known, so the named
+   * built-ins are denied one by one instead (the old way).
+   */
+  noTools: Fact<{ args: string[] }>;
 }
 
 /**
@@ -199,6 +205,15 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
       value: "Claude in Chrome via --chrome (the user's real Chrome, needs the extension); computer use is not available in -p",
       evidence: { kind: "VERIFIED", how: "research/38 §1", date: D, version: "2.1.319" },
     },
+    noTools: {
+      value: { args: ["--tools", ""] },
+      evidence: {
+        kind: "VERIFIED",
+        how: "one haiku `-p` call each, scratch folder, --no-session-persistence, --strict-mcp-config, the judge's system prompt: denying 12 named built-ins sent 9,679 input tokens ($0.00194); --tools \"\" sent 629 ($0.00013), both answered {\"ok\": true} (research/48 addendum)",
+        date: "2026-11-10",
+        version: "2.1.322",
+      },
+    },
     memPlugin: {
       value: { host: "claude-code", ids: ["nowledge-mem@nowledge-community"], off: "settings", contextCost: "unknown" },
       evidence: { kind: "DOCUMENTED", source: "https://mem.nowledge.co/SKILL.md (read 2026-11-10), research/47 §3; enabledPlugins in the --settings JSON (runner/test/memory.test.ts)" },
@@ -256,6 +271,7 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
       value: "Computer Use (cua_repl) works headless under OAR and reaches the user's real Chrome as an app; the in-app browser and Chrome extension do not; only features.plugins=false removes it",
       evidence: { kind: "VERIFIED", how: "research/38 §1", date: D, version: "0.167.0" },
     },
+    noTools: { value: { args: [] }, evidence: { kind: "INFERRED", why: "no per-session switch for Codex's own shell and patch tools is known; the judge's clean setup turns off plugins, apps and MCP, and named MCP tools are denied" } },
     memPlugin: {
       value: { host: "codex-cli", ids: ["nowledge-mem@nowledge-community"], off: "config", contextCost: "unknown" },
       evidence: {
@@ -300,6 +316,7 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
     toolSearch: { value: "MCP through Ducter's extension; loaded directly", evidence: { kind: "INFERRED", why: "no deferral in pi" } },
     resume: { value: { supported: true, how: "session file path (OAR)" }, evidence: { kind: "INFERRED", why: "OAR pi runtime" } },
     browser: { value: "none (read, bash, edit, write; extensions only)", evidence: pi("`pi --help` (research/38)") },
+    noTools: { value: { args: ["--no-tools"] }, evidence: { kind: "DOCUMENTED", source: "`pi --help` 1.5.1: --no-tools disables all tools by default (built-in and extension)" } },
     memPlugin: {
       value: { host: "pi", ids: ["npm:nowledge-mem-pi"], off: "flag", contextCost: "unknown" },
       evidence: { kind: "DOCUMENTED", source: "https://mem.nowledge.co/SKILL.md (read 2026-11-10), research/47 §3 (`pi install npm:nowledge-mem-pi`); `pi --help`: --no-extensions disables extension discovery, explicit -e paths still load (research/03 §4.1)" },
@@ -326,6 +343,7 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
     toolSearch: { value: "stdio MCP through Ducter's bridge", evidence: { kind: "INFERRED", why: "runner/oar.ts" } },
     resume: { value: { supported: true, how: "OAR SessionOptions.resume" }, evidence: { kind: "INFERRED", why: "OAR dsh runtime" } },
     browser: { value: "none known", evidence: { kind: "INFERRED", why: "research/38" } },
+    noTools: { value: { args: [] }, evidence: { kind: "INFERRED", why: "DSH not installed on the verifying Mac; per-session tool denial is unverified (OAR refuses it)" } },
     memPlugin: {
       value: { host: "deepseek-harness", ids: ["nowledge-mem"], off: "home", contextCost: "unknown" },
       evidence: { kind: "INFERRED", why: "the author's inspect fixture lists a dsh_profile_bundle 0.1.2 for host deepseek-harness (packages/protocol/fixtures/mem-inspect); DSH is not installed on the verifying Mac, so no per-session profile switch is known; a Ducter-owned DSH_HOME (as the partner's clean setup) loads none of the user's profiles" },

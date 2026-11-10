@@ -173,6 +173,24 @@ VERIFIED by tests with no model calls; numbers from `packages/core/test/proactiv
 | M4 | Host, ids, off method, context cost in harness-facts `memPlugin`; `MEM_HOSTS`/`MEM_PLUGIN_IDS` derive from it; the probe checks pi's flag and Mem's host names. Principle 17's wording stays the author's (§4.6). | runner `memory`: the ids come from the registry |
 | F7 | Not changed: unifying the brief's detector is a behaviour choice (§4.1). | — |
 
+## Addendum: the six calls of §4, done (D174, 2026-11-10)
+
+1. **One secret detector** (F7): `redactWith` in `protocol/src/redact.ts` is the one scan; the
+   brief guard is strict and keeps only a connect code the user pasted that turn. VERIFIED by
+   `partner/test/secrets.test.ts` over every `fixtures/redact.json` case.
+3. **Tool-less one-shots** (F8). VERIFIED live, 2026-11-10, Claude Code 2.1.322, haiku, one `-p`
+   call each in a scratch folder with `--no-session-persistence --strict-mcp-config
+   --setting-sources project,local` and the judge's system prompt; both answered `{"ok": true}`:
+
+   | Setup | Input tokens (in + cache write + cache read) | Cost |
+   |---|---|---|
+   | 12 named built-ins denied (before) | 9,679 | $0.00194 |
+   | `--tools ""` (now) | 629 | $0.00013 |
+
+   About 9K tokens (93%) and 93% of the cost saved on every judge and digest call. pi maps to
+   `--no-tools` (DOCUMENTED, `pi --help` 1.5.1); Codex and DeepSeek Harness have no known switch
+   and keep the denial list. No `~/.claude/projects` folder was created (60 before and after).
+
 ## Implications for Ducter
 
 - The small-window strategy holds on main: a busy fresh session starts at about 34K of a 120K

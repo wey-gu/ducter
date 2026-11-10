@@ -18,7 +18,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DSH_KEY_ENV, HARNESS_IDS, type HarnessId } from "@ducter/protocol";
 import { readEnvFile, readKeys } from "@ducter/protocol/src/keys.ts";
-import { CLAUDE_SWITCHES, modelForWindow, windowKnobs } from "@ducter/protocol/src/harness-facts.ts";
+import { CLAUDE_SWITCHES, HARNESS_FACTS, modelForWindow, windowKnobs } from "@ducter/protocol/src/harness-facts.ts";
 import type { HarnessEvent, HarnessPort, HarnessSession, SessionSpec } from "@ducter/protocol/src/internal.ts";
 import type { Runtime, Session, SessionOptions, McpServer } from "@botiverse/oar/browser";
 import { Normalizer } from "./normalize.ts";
@@ -43,9 +43,9 @@ export const PI_CLEAN_FLAGS = ["--no-skills", "--no-context-files", "--no-prompt
 export const PI_MEM_OFF_FLAGS = ["--no-extensions"];
 
 /** Which pi runtime a session needs: Ducter's clean setup, the user's setup without extensions (memory off), or the user's own. */
-export function piVariant(spec: Pick<SessionSpec, "harness" | "isolateUserConfig" | "disablePlugins">): { clean?: boolean; extensionsOff?: boolean } | undefined {
+export function piVariant(spec: Pick<SessionSpec, "harness" | "isolateUserConfig" | "disablePlugins" | "noTools">): { clean?: boolean; extensionsOff?: boolean; noTools?: boolean } | undefined {
   if (spec.harness !== "pi") return undefined;
-  if (spec.isolateUserConfig) return { clean: true };
+  if (spec.isolateUserConfig) return { clean: true, ...(spec.noTools ? { noTools: true } : {}) };
   if (spec.disablePlugins?.length) return { extensionsOff: true };
   return undefined;
 }
@@ -200,11 +200,11 @@ function piCommand(): { command: string; args: string[] } | undefined {
   return pi ? { command: pi, args: [] } : undefined;
 }
 
-export type RuntimeLoader = (harness: HarnessId, variant?: { clean?: boolean; extensionsOff?: boolean }) => Promise<Runtime | undefined>;
+export type RuntimeLoader = (harness: HarnessId, variant?: { clean?: boolean; extensionsOff?: boolean; noTools?: boolean }) => Promise<Runtime | undefined>;
 
 /** Lazy per-runtime import. A failed load is retried next time, never cached. */
 const defaultLoader: RuntimeLoader = async (harness, variant) => {
-  const key = `${harness}${variant?.clean ? ":clean" : variant?.extensionsOff ? ":noext" : ""}`;
+  const key = `${harness}${variant?.clean ? ":clean" : variant?.extensionsOff ? ":noext" : ""}${variant?.noTools ? ":notools" : ""}`;
   const cache = loaded.get(key);
   if (cache) return cache;
   let rt: Runtime | undefined;
@@ -222,7 +222,7 @@ const defaultLoader: RuntimeLoader = async (harness, variant) => {
       // Memory off must hold (D168): without a pi command to pass the flag to, the task doesn't start.
       if (variant?.extensionsOff && !cmd) throw new Error("pi needs node or the pi command on PATH to run with memory off");
       // One native RPC process per session (in-process pi re-enters the host).
-      const flags = variant?.clean ? PI_CLEAN_FLAGS : variant?.extensionsOff ? PI_MEM_OFF_FLAGS : [];
+      const flags = [...(variant?.clean ? PI_CLEAN_FLAGS : variant?.extensionsOff ? PI_MEM_OFF_FLAGS : []), ...(variant?.noTools ? HARNESS_FACTS.pi.noTools.value.args : [])];
       rt = (cmd ? m.createPiRuntime({ execution: "subprocess", command: cmd.command, args: [...cmd.args, ...flags] }) : m.piRuntime) as Runtime;
       break;
     }
@@ -310,6 +310,11 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
   switch (h) {
     case "claude-code":
       if (spec.launchArgs?.length) launchArgs = spec.launchArgs;
+      // D174 (3): a one-shot with no tools at all (harness-facts noTools: ~9K input tokens less a call).
+      if (spec.noTools) {
+        launchArgs = [...(launchArgs ?? []), ...HARNESS_FACTS["claude-code"].noTools.value.args];
+        disallowed = [];
+      }
       // A clean session has only Ducter's servers: load their tools up front. Deferring them
       // behind tool search cost a model round trip (~3 s) before the partner's ack (live, sonnet).
       // A session's own value wins.

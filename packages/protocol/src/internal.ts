@@ -316,6 +316,8 @@ export interface SessionSpec {
   keepNativeTools?: boolean;
   /** D168: the user's plugins to turn off by id in this session only (their Mem plugin, when memory is off in Ducter). */
   disablePlugins?: string[];
+  /** D174 (3): a one-shot that needs no tools at all (the judge, the digest writer); the adapter maps it per harness (harness-facts noTools). */
+  noTools?: boolean;
   // Tasks only (D135): what the harness keeps when it compacts (Claude Code's PreCompact hook
   // prints it as compact instructions). Absent: the partner's setup (no hook).
   preCompactNote?: string;

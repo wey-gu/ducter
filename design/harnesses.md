@@ -73,6 +73,12 @@ channel names where its latest is read and how it updates. Ducter never touches 
 | pi | `@earendil-works/pi-coding-agent` | none | `managed-install.json` · `pi update --self` · none | none (inside Ducter from a checkout) |
 | DeepSeek Harness | `@deepseek-ai/dsh` (npm's `latest` is a pre-release) | none | none | none |
 
+## One-shots with no tools (D174 (3), research/48 F8)
+
+`noTools` in harness-facts: the judge and the digest writer set `SessionSpec.noTools`, and the
+adapter sends Claude Code `--tools ""` (VERIFIED 2.1.322: 9,679 → 629 input tokens a call) and pi
+`--no-tools` (DOCUMENTED); Codex and DeepSeek Harness keep the named denials (no switch known).
+
 ## The Nowledge Mem plugin in tasks (D168, D173, research/48 M3/M4)
 
 `memPlugin` in harness-facts: Mem's host name, the plugin's id, and how one session runs without

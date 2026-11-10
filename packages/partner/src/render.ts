@@ -172,8 +172,25 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
       const ev = (r.evidence ?? []).map((x) => `${x.kind}:${x.label}`).join(", ");
       return `[${t} task ${r.taskId} report: ${r.state}] ${clip(r.summary, 300)}${ev ? ` (evidence: ${ev})` : ""}`;
     }
+    case "finds": {
+      // D165: what Ducter noticed and said by itself, so the partner can answer about it.
+      const b = e.body as Bodies["finds"];
+      if (b.answered) return `[${t} the user answered your ${b.ask === "first_look" ? "first-look offer" : b.ask === "keep_note" ? "keep-the-morning-note question" : "how-to-tell-you question"}: ${b.answered}]`;
+      if (b.quiet) return `[${t} you looked through their accounts this morning; nothing needed them, so you said nothing]`;
+      const finds = b.finds.map((f) => `${f.kind}: ${clip(f.text, 200)}${f.goLabel ? ` (next step offered: ${f.goLabel})` : ""}`).join(" | ");
+      const what = b.rung === "fold" ? "you added to this morning's note" : b.rung === "first" ? "you said when they added accounts" : `you noticed in their accounts (${b.rung})`;
+      return `[${t} ${what}] ${clip(b.opening, 200)}${finds ? ` ${finds}` : ""}`.trim();
+    }
+    case "find_state": {
+      const b = e.body as Bodies["find_state"];
+      if (b.state === "useful") return `[${t} the user found your ${b.kind} find useful]`;
+      if (b.state === "muted") return `[${t} the user said not to tell them about this kind (${b.kind}); it is a rule in Your rules now]`;
+      if (b.state === "go") return `[${t} the user said Go on your ${b.kind} find${b.taskId ? `: task ${b.taskId}` : ""}]`;
+      return null;
+    }
     case "decision": {
       const d = e.body as Bodies["decision"];
+      if (d.findId) return null; // rendered with its note
       return `[${t} ${d.taskId ? `task ${d.taskId} asks` : "you asked (ask)"}] ${clip(d.question, 300)} (Go: ${d.goLabel}, default ${d.defaultOption})`;
     }
     case "decision_resolved": {

@@ -226,12 +226,13 @@ class AppState {
       const added = f.ok && this.connections?.find((c) => c.id === f.id);
       if (added) {
         const r = f.readable;
+        const name = added.source === "oo" ? this.L.t("acct.oo.name") : added.name; // never the record name "oo"
         this.toast(
           r && !r.length
-            ? this.L.t("acct.added.empty", added.name)
+            ? this.L.t("acct.added.empty", name)
             : r?.length
-              ? this.L.t("acct.added.apps", added.name, r.map((a) => a.title).join(this.L.t("acct.sep")))
-              : this.L.t("acct.added", added.name),
+              ? this.L.t("acct.added.apps", name, r.map((a) => a.title).join(this.L.t("acct.sep")))
+              : this.L.t("acct.added", name),
         );
       }
       return this.changed();

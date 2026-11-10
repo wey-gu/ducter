@@ -43,6 +43,9 @@ type partnerState struct {
 	acctShow    bool   // the key shows as typed, not masked
 	acctNoKey   bool   // OOMOL Hosted was checked with no key: said on the field, nothing sent
 	acctErr     string // the last check's refusal (a ConnectionReason), shown in the form
+	// acctRemoving: the connection whose Remove asks in its own row first (a
+	// remove is never one tap: the accounts stop being read at once).
+	acctRemoving string
 }
 
 // say sets the tab's one line and how it looks.
@@ -481,11 +484,7 @@ func (a *App) accountsPanel(c *ui.Context) {
 			ui.Row(c.Key("acct:"+cv.ID)).Gap(t.S4).AlignItems(ui.Center).Padding(t.S4, t.S5).Children(func() {
 				ui.Box(c).Size(30, 46).Draw(a.drawMailbox(cv.Source)).Shrink(0).AccessHidden(true)
 				ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
-					name := cv.Name
-					if cv.Source == "oo" {
-						name = a.L.T("acct.oo.name")
-					}
-					ui.Text(c, name).FontSize(t.MD).FontWeight(700).SingleLine()
+					ui.Text(c, connName(a, cv)).FontSize(t.MD).FontWeight(700).SingleLine()
 					if line := ooAppsLine(cv.Apps); line != "" {
 						ui.Text(c, line).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).SingleLine()
 					}
@@ -500,10 +499,22 @@ func (a *App) accountsPanel(c *ui.Context) {
 						}
 					}
 				})
-				if a.buttonFor(c, a.L.T("acct.remove"), cv.Name, btnText, t.ControlSM, t.Surface) {
-					a.send(protocol.ConnectionRemove{T: "connection_remove", ID: cv.ID})
+				if ps.acctRemoving != cv.ID && a.buttonFor(c, a.L.T("acct.remove"), cv.Name, btnText, t.ControlSM, t.Surface) {
+					ps.acctRemoving = cv.ID
 				}
 			})
+			if ps.acctRemoving == cv.ID {
+				ui.Row(c.Key("acct-rm:"+cv.ID)).Gap(t.S2).AlignItems(ui.Center).Padding(0, t.S5, t.S4, t.S5).Children(func() {
+					ui.Text(c, a.L.T("acct.remove.ask", connName(a, cv))).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkSoft).Grow(1).MinWidth(0)
+					if a.buttonFor(c, a.L.T("acct.remove.keep"), cv.Name, btnText, t.ControlSM, t.Surface) {
+						ps.acctRemoving = ""
+					}
+					if a.buttonFor(c, a.L.T("acct.remove"), cv.Name+" ✓", btnSecondary, t.ControlSM, t.Surface) {
+						ps.acctRemoving = ""
+						a.send(protocol.ConnectionRemove{T: "connection_remove", ID: cv.ID})
+					}
+				})
+			}
 		}
 		usedOo := false
 		for _, cv := range list {
@@ -782,6 +793,15 @@ func (a *App) acctRefusal(c *ui.Context, hosted bool) {
 }
 
 // appsList is "Gmail、Discord" / "Gmail, Discord".
+// connName is what a connection is called on screen: the oo kind is "Accounts
+// in oo", never its internal record name "oo".
+func connName(a *App, cv protocol.ConnectionView) string {
+	if cv.Source == "oo" {
+		return a.L.T("acct.oo.name")
+	}
+	return cv.Name
+}
+
 func (a *App) appsList(apps []protocol.OoApp) string {
 	names := make([]string, 0, len(apps))
 	for _, ap := range apps {
@@ -818,11 +838,11 @@ func (a *App) drainConnResult() {
 			ps.acctAdding, ps.acctErr, ps.acctNoKey = false, "", false
 			switch {
 			case r.Readable != nil && len(r.Readable) == 0:
-				ps.say(a.L.T("acct.added.empty", cv.Name), noticeInfo, a.Now())
+				ps.say(a.L.T("acct.added.empty", connName(a, cv)), noticeInfo, a.Now())
 			case len(r.Readable) > 0:
-				ps.say(a.L.T("acct.added.apps", cv.Name, a.appsList(r.Readable)), noticeDone, a.Now())
+				ps.say(a.L.T("acct.added.apps", connName(a, cv), a.appsList(r.Readable)), noticeDone, a.Now())
 			default:
-				ps.say(a.L.T("acct.added", cv.Name), noticeDone, a.Now())
+				ps.say(a.L.T("acct.added", connName(a, cv)), noticeDone, a.Now())
 			}
 		}
 	}

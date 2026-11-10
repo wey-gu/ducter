@@ -141,3 +141,47 @@ func TestOoConnectShots(t *testing.T) {
 		}
 	}
 }
+
+
+// Removing accounts is never one tap: Remove asks in the row, and only the
+// second Remove sends. The added line names the oo kind as people see it.
+func TestAccountRemoveAsksFirst(t *testing.T) {
+	app, sent := iaApp(t, i18n.ZH)
+	app.Receive(settingsFrame())
+	added := protocol.ConnectionView{ID: "conn_1", Name: "oo", URL: "oo:", Source: "oo", Via: "oo", State: "ok", Apps: ooApps}
+	app.Receive(ooFrame(protocol.OoDetect{Installed: true, Account: true, Apps: ooApps}, added))
+	app.Route, app.settings.tab = RouteSettings, TabAccounts
+	tt := ui.NewTesterWith(app.View, 1280, 2200, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+	tt.Frame()
+	tt.Frame()
+	n := len(*sent)
+	tt.Click("移除")
+	tt.Frame()
+	if len(*sent) != n {
+		t.Fatalf("the first Remove sends nothing, sent %d", len(*sent)-n)
+	}
+	if !tt.HasText("移除 oo 里的账号？Ducter 就看不到这些账号了。") || !tt.HasText("算了") {
+		t.Fatalf("the row asks first; texts: %v", tt.Texts())
+	}
+	tt.Click("算了")
+	tt.Frame()
+	if tt.HasText("算了") || len(*sent) != n {
+		t.Fatalf("Keep it closes the ask and sends nothing")
+	}
+	tt.Click("移除")
+	tt.Frame()
+	tt.Click("移除")
+	tt.Frame()
+	if len(*sent) != n+1 {
+		t.Fatalf("the second Remove sends one frame, got %d", len(*sent)-n)
+	}
+	if f, ok := (*sent)[n].(protocol.ConnectionRemove); !ok || f.ID != "conn_1" {
+		t.Errorf("sends connection_remove for conn_1, got %#v", (*sent)[n])
+	}
+	// The added line says "Accounts in oo", never the record name "oo".
+	app.Receive(protocol.ServerFrame{T: "connection_result", OK: true, ID: "conn_1", Readable: ooApps})
+	tt.Frame()
+	if !tt.HasText("加上了 oo 里的账号，现在能看：Gmail、Slack、Discord bot") {
+		t.Errorf("the added line names oo as people see it; texts: %v", tt.Texts())
+	}
+}

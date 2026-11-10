@@ -1,55 +1,442 @@
 # Connectors and Restrained Proactive Help (DRAFT)
 
-> Draft 3 · 2026-11-09 · Branch `oo-connect` · Status: **D96 decided** (connections come from
-> the user's OpenConnector through Ducter's broker); **D122 decided** (with oo signed in, the
-> default way in is oo itself, §4.4); **D158 decided** (OOMOL Hosted at its real `/v1/mcp` with a
-> console key, honest answers, research/44); **the broker is built** (§4, as built);
-> everything about proactive work (cadence, cap, look-back, watching) is still a proposal,
-> D97–D101 at the end. Evidence: `research/35` (prior art, Google access,
-> open-connector, metaphor test). Builds on principles 7, 15, 16, 17 and 18, D43, D61 (the
-> effect ladder), D65/D81 (the devices world), routines (`product-model.md` §4) and
-> `flows/D-decisions-attention.md` D3 (quiet hours).
-> Prototype: https://claude.ai/artifact/CB1xnATLKnQra2DLKeh7Rq
-> Tags: **[doc]** already decided elsewhere; **[I]** this draft's proposal.
+> Draft 4 · 2026-11-10 · Status: **D96, D122, D158 decided and built** (the broker, the oo one
+> tap, OOMOL Hosted with a key; Part B). **Proactive work is redone from first principles as
+> draft D165**, and the accounts card as **draft D166**: designed and prototyped, **not decided,
+> not built**. D165 supersedes the proposals D97–D101 that Draft 3 carried (moved to the
+> decisions log's Superseded section). Evidence: `research/35` (dots, Muse, the Grok bot,
+> Google access, open-connector, the mailbox metaphor test), `research/46` (Gmail's nudges,
+> Microsoft's Briefing email, Apple's interruption levels). Builds on principles 6, 7, 15–18,
+> D43, D61, D104, D114 (routines), D59 (quiet hours), D159 (push), D161 (the character sheet).
+> Prototype: `design/prototypes/accounts.html` (open from the repo; shots in `.shots/accounts/`,
+> outside git, D75).
+>
+> Labels in Part A: **VERIFIED** read in code this session · **DOCUMENTED** a doc says so ·
+> **INFERRED** judgment.
 
-## 1. User first
+**Part A** is the design: what the author asked ("基于这个的设计我们做到什么程度？精心设计各种
+proactive 机制和第一性原理思考的应该有的东西了么？"), answered honestly, then redone.
+**Part B** is the broker as built (unchanged mechanisms, kept for reference).
 
-**Who, and how they feel.**
+# Part A. Proactive help, from first principles
 
-- **The heavy multi-agent developer (the author).**
-  - Before: twenty open sessions, and an inbox they are scared of. Teammates wait on PRs while
-    the bills arrive unseen.
-  - After: the one partner they already talk to also says, once in the morning, "ducter.dev lapses
-    in a week and the renewal isn't paid; your flight lands a night before the hotel starts". Nothing else.
-  - Emotional value: 放心, the sense of someone minding the edges, and 惊喜, when it joins two
-    things they couldn't have joined themselves.
-- **The consumer personal-AI user** (Grok bot, Muse, dots).
-  - Before: the closed products' magic, locked to one vendor and one model, with notes about
-    them they can't see.
-  - After: the same restrained reminders on their own Mac, with their own models, and every
-    note readable and forgettable in Mem.
-  - Emotional value: 好用 without lock-in, and 放心 because they can see where it lives.
-- **The fresh user** who has never heard of a connector.
-  - Before: nothing. They don't know an AI can watch for a bill.
-  - After: they say "keep an eye on my mail", sign in once, and within a minute hear one
-    useful thing from the last two weeks.
-  - Emotional value: 惊喜 first, then 顺滑: they never meet the word "connector".
+## 1. Where we are, honestly (VERIFIED 2026-11-10, this branch at `5ea4537`)
 
-**How it starts.** Zero concepts. The person either says it ("帮我盯着邮箱 / keep an eye on my
-inbox") or taps Gmail under 还能让它看的 / It can also read on Devices. Both lead to the same
-sign-in and the same first find (§6).
+The broker is real and safe. **Nothing proactive exists.** After the author added oo, Ducter
+reads his accounts only when he asks; it never looks on its own, never says anything first, and
+the card that shows the accounts is a settings row.
 
-**North star check (D36).**
+| Mechanism (Draft 3 name) | Designed | Decided | Built | Tested | Live |
+|---|---|---|---|---|---|
+| Read on request, writes behind Go, every call logged (D96/D122) | yes | yes | yes: `packages/core/src/connections.ts` (`policyAllows` :319, `allowedFor` :436), `oo-link.ts` | yes: `packages/core/test/{connections,oo-link}.test.ts`, `packages/partner/test/connections.test.ts` | yes: live trials 2026-11-09 (Part B §22) |
+| Harness children can't reach oo around the gate (D122 (6)) | yes | yes | yes: `packages/runner/src/oar.ts` (`OO_CONFIG_DIR` to `<dataDir>/oo-signed-out`) | yes | yes (found in the live trial) |
+| **The cascade** watch → rules → cheap triage → partner (D97) | prose (§5.1 of Draft 3) | no | **no**: no triage, no stage-1 rules, no partner judge over finds anywhere in `packages/` (`grep triage` → 0) | no | no |
+| Watching a connection | prose | no | **partly**: an *event wait* or a routine's condition can read OpenConnector Provider Triggers (`connections.ts:811 readTrigger`, `waiters.ts` `event`), only when the user asked for a wait or a routine. **oo can't be watched at all**: `OO_NOT_WATCHABLE` (`connections.ts:383`, refused at :807) | waiters: `waiters.test.ts`, `work-over-time.test.ts` (fake triggers) | never against a live OpenConnector |
+| The attention bar (three tests) | prose | no | no | no | no |
+| At most 3 a day, batched into a morning message | prose | no | **no** for finds. What exists: the push coalescer sends **早上好。{n} 件等你。** for *decisions* left waiting over quiet hours (`push.ts:283`, `deliver` :486) | `push.test.ts` :267 | yes (decisions only) |
+| Quiet hours | yes (D59) | yes | yes: `push.ts:135` (23:00–08:00 default), `inQuiet` :254; hold everything, release one push at the end | yes | yes |
+| Per-kind exception at night ("wake me for flight changes") | prose | no | no | no | no |
+| Opt-in watching at sign-in, one question with a default | prose | no | **no**: adding sends `connection_result` and a toast; the partner says nothing (`ws.ts:544–553`) | — | no |
+| First find within a minute, 14/60-day look-back (D101) | prose | no | no | no | no |
+| 有用 / 这类别再说 under each item; per-kind learning | prose | no | no (the ledger constraint "don't tell me about this kind" is principle-7 prose, not code) | no | no |
+| Pause after 3 unread | prose | for routines (D114) | **for routines only**: `routines.ts:27 UNREAD_TO_PAUSE`, "还要吗？" :240 | `work-over-time.test.ts` | yes (routines) |
+| Per-watcher budget | prose | for routines (D114) | **for routines only**: `routines.ts:28 DEFAULT_MONTH_TOKENS = 2_000_000` | yes | yes (routines) |
+| Finds composed into Go-gated tasks with abilities | prose (§5.4 table) | no | the pieces exist (decisions D61, `task_open`, 上网), nothing proposes them from a find | no | no |
+| Mem "what matters to this person" | prose | no | no recall or write tied to connections | no | no |
+| Trip-and-renewal ledger (typed facts for joins) | prose | no | no | no | no |
+| Watcher text never holds a body | — | — | yes: `connections.ts:388` (subject, sender, snippet) | yes | — |
+| Rules per connection (`policy.allow/deny`) | yes | yes (D96) | yes, **no UI** | yes | — |
+| Mailboxes on the island, a 3-slot tray (D100) | prototype | no | the small mailbox only: `partner.go` `drawMailbox`; `HomeMailboxes()` has no caller | — | — |
 
-| | How this design meets it |
+**What the author sees after adding oo** (`.shots/accounts/current/`, a scratch core with a fake
+`oo`: two Gmail accounts, Discord, Google Calendar, GitHub; no real credentials):
+
+- **Mac, Settings › 账号** (`mac/oo-added-zh.png`): one row, a 30-pt mailbox, **oo 里的账号**,
+  **Gmail (2) · Slack · Discord bot**, **经过 oo · 邮件和登录经过 OOMOL 的服务器**, a text
+  **移除**; under it **加一个** as the page's only primary button, and the honest line.
+- **Phone, the same page** (`phone-3-added-zh.png`): the same row in a sheet; the source line
+  wraps "服务 / 器"; the toast said **加上了 oo，现在能看：Gmail、Discord、Google Calendar、
+  GitHub**: the record name "oo", not what the row calls it.
+- **The conversation after adding** (`phone-4-conversation-after-zh.png`): unchanged. The first
+  screen's starters ("这周没回的邮件，挑要紧的说说") are the only hint that the accounts matter.
+
+Why it reads as "缺乏设计": it is a list row describing a connection, with no hero, nothing
+about what Ducter *will do* with the accounts, no state ("is it looking?"), and a primary
+button that invites adding *another* one. And there is no moment: adding accounts is the most
+trust-heavy thing a person does in Ducter, and the partner stays silent.
+
+**Bugs fixed in this pass** (product code, small): (1) **移除 / Remove** removed a connection on
+one tap with no confirm, on the Mac and the phone; it now asks in its row first (**移除 oo 里的
+账号？Ducter 就看不到这些账号了。** · 算了 · 移除), the shared destructive pattern (D148, D161).
+(2) The added line named the oo kind by its record name ("加上了 oo"); it now says **加上了 oo
+里的账号，…**. Tests: `apps/desktop/internal/views/oo_connect_test.go`
+`TestAccountRemoveAsksFirst`.
+
+## 2. User first
+
+| | Heavy multi-agent developer (the author) | Consumer personal-AI user | Fresh user |
+|---|---|---|---|
+| **Who** | Two Gmail accounts, a work calendar, Discord, GitHub with PRs waiting; twenty sessions open; an inbox he avoids | One Gmail, one calendar; used dots or Muse and liked the "aha" | Has never connected an account to an AI |
+| **Before** | Teammates wait on PRs; a renewal or a flight mismatch slips through because the two halves sit weeks apart | Loved the magic, disliked the lock-in and the opaque notes | Doesn't know an AI can watch for a bill, and is wary of letting it read mail |
+| **After** | One short note in the morning, at most three things, each with a next step he can tap; otherwise silence he can trust | The same, on his own Mac and models, every note readable and forgettable | Within a minute of adding an account, one useful thing (or "nothing needs you") and the feeling that it is careful |
+| **Feels** | 放心: someone minds the edges. 惊喜: it joined two things he couldn't | 好用 without lock-in; 放心: he can see what it read | 惊喜 first, then 放心: it asked before it watched, and said what it won't do |
+| **How it starts** | He adds oo (one tap); the partner offers a first look right there | Same | Same, or he says "帮我盯着邮箱" and is led to the one tap |
+
+## 3. First principles
+
+**The job.** Motivation.md: a partner that *reports to you and needs your attention only when it
+truly matters*. Reading is cheap and private; **saying something costs the person's
+attention**, and every false alarm spends trust that silence depends on. So the design is about
+when to *speak*, not when to *look*. Ducter may look often; it speaks rarely, in one place, with
+evidence and a next step.
+
+**When a find is worth the person's attention** (all four, each judged by the partner; the
+first three are Draft 3's bar, the fourth is new):
+
+1. **They likely don't know it yet.** A receipt whose subject says it all fails. So does a CI
+   failure GitHub already pushed to them.
+2. **Missing it costs something, soon.** A deadline, money, someone waiting on them, a plan
+   that no longer fits.
+3. **There is something to do or decide**, or it **joins two things** they couldn't easily join
+   (the aha class).
+4. **It can show how it knows.** Every find carries 怎么知道的 / How I know: the mails, events or
+   threads, with dates. A find it can't ground is not said (Apple's summary lesson, research/35).
+
+**What it may do on its own:** read; extract typed facts; keep a small ledger of them; prepare
+(a draft kept inside Ducter, a looked-up page, a summary); decide whether to speak.
+
+**What it must never do** (structural, enforced by the broker, not by prompts):
+
+- **Never send, reply, accept, decline, pay, delete, archive, label or move anything** on its
+  own. Background work runs with a read-only caller (built: writes outside the Go path are
+  refused). A draft lives in Ducter until Go; putting it in the mailbox is itself a write.
+- **Never change what the person sees in their own apps.** No "mark as read", no snooze, no
+  label: reading through the API must leave the inbox exactly as it was.
+- **Never act on what mail says.** Mail is other people's words (D96 prompt rule); an
+  instruction inside a mail is data.
+- **Never keep the mail.** Only typed facts with pointers (§9); Mem gets only distilled,
+  durable things, with 记下了.
+- **Never invent urgency or nag.** No counts of unread mail, no streaks, no "you still haven't…"
+  twice. A find said once and ignored is not said again unless something changed.
+- **Never wake the person** except for a kind they asked to be woken for.
+- **Never watch without asking.** Connecting is not consent to watch (dots, research/35); the
+  first add asks once, with a default.
+
+## 4. What it notices: seven kinds
+
+Each find is typed (stage 2 extracts, stage 3 judges). The kind is what the person reacts to
+("这类不用告诉我"), so each kind has a plain name.
+
+| Kind (zh / en) | What it is | Sources | When it is said | Next step it offers | On by default |
+|---|---|---|---|---|---|
+| **两件事对不上 / Two things don't match** (the aha) | Two facts that contradict or leave a gap: a flight lands the night before the hotel starts; a renewal notice with no payment after it and the card expired; an invoice with no matching bank mail; a meeting during a flight | mail + calendar, joined through the ledger (§9) over 60 days | the morning note; **now** only if it costs something today | a 上网 task that looks it up (Go), never the change itself | yes |
+| **在等你回 / Waiting on you** | A real person asked you something (a question, a request, a review) and you haven't answered in 2 working days, or they asked again | mail, GitHub review requests, Discord DMs and @-mentions | the morning note | read it first and write up what matters (a task, Go); a draft reply kept in Ducter (Go to save or send) | yes, people only (no lists, no bulk, no noreply) |
+| **你在等别人回 / You're waiting on someone** | You asked a question or made a request, and nobody answered in 3 working days, and it mattered (a deadline, money, a person who matters, Mem) | your sent mail | the morning note | a short follow-up draft (Go) | yes |
+| **你答应过的 / Something you promised** | A commitment in your own sent mail or messages ("我周五前发给你") with nothing showing it was kept | sent mail (14 days, research/46) | the morning of the due day | find the related draft or files; a draft reply (Go) | yes |
+| **快到期 · 要花钱 / Deadlines and money** | A renewal, a price going up, a trial ending, a bill or a form due | mail (+ Mem: the last price) | the morning note, a few days ahead; **now** the day before if unpaid | open the renewal page in Ducter's browser (Go); paying is the person's | yes |
+| **计划变了 / A plan changed** | A flight changed or was cancelled; a meeting moved into a clash | mail, calendar | **now** if it affects today or tomorrow, else the morning note | look up options (Go) | yes |
+| **开会前 / Before a meeting** | 10 minutes before a meeting with people you have something open with: their last thread, the open item, what you promised them | calendar + the other kinds | in the conversation 10 min before; a silent notification if you aren't in Ducter | — (it is the prep) | yes, only with something open; never for a meeting with nothing open |
+
+Kinds left out on purpose: newsletters, receipts, shipping updates that say it all in the
+subject, "you have N unread", social notifications, anything GitHub or the calendar already
+pushes. They go to the **没说的 / Left out** count.
+
+## 5. When it speaks: one ladder, one switch
+
+The existing escalation (principle 7: badge → message → push → call) with proactive rungs:
+
+| Rung | What reaches the person | Which finds |
+|---|---|---|
+| **Left out** | One line at the end of the morning note: "没说的：12 封通知和收据，看标题就知道；1 封像推销。" | everything below the bar |
+| **The morning note** | One message in the conversation at the end of quiet hours; one **silent** notification (Apple's passive level; research/46) | up to the daily cap |
+| **Fold-in** | While the person is in Ducter, a find that is timely today joins the open living message (principle 7, revised in place, never re-notifies) | today's finds after the morning |
+| **Now** | A notification that may come through (time-sensitive, which the phone lets them turn off per app) | only "costs something today and needs you": a flight changed today, a domain that lapses tomorrow unpaid. Counts within the cap |
+| **Before a meeting** | A line in the conversation; silent notification when away | 开会前 only |
+
+**Quiet hours** (D59, built) hold everything. The only way through at night is a **per-kind
+exception the person said** ("航班改了，夜里也叫我"), kept as a Rule in 你的规则 (D89's list,
+"不要这条" removes it). Ducter never proposes one.
+
+**The proactive switch: one chip row** (single choice), on Settings › 账号 above the cards and
+mirrored in Settings › 通知 (什么时候找你):
+
+| Chip (zh / en) | Means |
 |---|---|
-| 好用 | One sentence starts it |
-| 顺滑 | Google sign-in in the browser, and one "how often" question with a default |
-| 赏心悦目 | A clay mailbox drops onto the Mac's island |
-| 放心 | Reads and drafts only; everything else waits for Go; the honest line about the AI account; "Left out" makes silence trustworthy |
-| 惊喜 | The first find within a minute, and joins across sources |
+| **只说急的 / Only urgent** | Only the "Now" rung; no morning note |
+| **每天最多 3 件 / Up to 3 a day** (default) | Morning note with ≤ 3, plus "Now" within the 3 |
+| **有用就说 / Whenever useful** | No cap; still batched into the note and fold-ins |
+| **不用主动找我 / Only when I ask** | Nothing proactive; it reads only when asked. Watching stops (no cost) |
 
-## 2. Where connections live
+Why a cap of 3 and not a confidence bar alone: the research says false alarms are the main
+failure (ProactiveBench, KnowU-Bench, research/35), and no product publishes a cap; 3 fits one
+phone screen with a next step each. INFERRED, to be tuned by the triage eval (§12).
+
+## 6. The morning note
+
+- **When:** at the end of quiet hours (08:00 by default), in the person's zone. If they open
+  Ducter earlier, it is assembled then. Never at a fixed time that could wake them.
+- **What:** one partner message, the partner's own voice, first person, plain, dates and
+  amounts exact, no exclamation marks:
+  1. one opening line with what it looked at, so silence is trustworthy: **早。昨晚到现在看了 214
+     封信、今天的 5 个会和 GitHub，有 2 件值得你知道。**
+  2. up to 3 finds, each **≤ 2 sentences** (zh ≤ ~60 characters; How I know and the two learning buttons share one row), most costly first, each with
+     its one next step as a Go button (D73 labels), **先等等 / Hold**, and **怎么知道的** folded;
+  3. one **没说的** line (§5).
+- **Length:** the whole note fits one phone screen at 390 × 844 without scrolling.
+- **Silent days:** when nothing clears the bar there is **no message and no notification**. The
+  conversation's header line (where **手头没事，随时说** sits today) says **早上看过了，没有要你操心的
+  / Looked this morning — nothing needs you** until the person next writes. Trust without noise.
+- **On the lock screen:** the notification's title is the partner's name, its body the opening
+  line ("有 2 件值得你知道：ducter.dev 11/16 到期还没续费；11/21 那晚还没订到住处"). It goes
+  through D159's encrypted path; previews follow the phone's own "显示预览" setting (no new
+  Ducter setting). Tapping opens the note.
+- **Held over:** a find not acted on stays as a decision on 手头的事 until its date passes, then
+  quietly becomes **过了 / Passed** (never "done" on its own); it is not said again unless
+  something changed.
+
+## 7. Following through: a find becomes a task only on Go
+
+Every find offers at most one next step, as a decision (D61's effect ladder):
+
+| Step | Effect | Default | After Go |
+|---|---|---|---|
+| Look it up (the hotel's site, the registrar, rebook options) | reads the web | **Go** label names it; default **Hold** (background-raised asks never auto-run) | a task with 上网 on the device that has it (D157), reports back in the conversation |
+| Read it first (a PR, a long thread) | reads | Hold | a task; its report is the write-up |
+| A draft (reply, follow-up, a form) | writes nothing outside Ducter | Hold | the draft is shown whole in the conversation; a second Go **存成草稿 / Save as draft** or **发出去 / Send** writes once (D96) |
+| Pay, accept, change a booking | the person's own | — | Ducter opens the page and stops (takeover, D48) |
+
+Asks raised by background work **expire into Passed** with the find's date (the Grok bot's
+30-minute expiry is too short for a morning note; the find's own deadline is the honest limit).
+
+## 8. Learning from reactions
+
+- Under each find, two quiet text buttons: **有用 / Useful** and **这类不用告诉我 / Don't tell
+  me this kind**. The second becomes a Rule in **你的规则** worded in the kind and the sender
+  ("Cloudflare 的续费提醒不用告诉我"), removable with **不要这条**. One tap, said back once:
+  **好，这类以后不说了。** No settings page for kinds.
+- Implicit signals, per kind and per sender: Go and 有用 raise; Hold, ignored and "这类不用告诉我"
+  lower. Three ignored finds of a kind in 14 days raise that kind's bar (it needs a higher
+  cost-if-missed to be said).
+- **3 unread morning notes in a row** → the notes pause and the next time the person writes,
+  one line asks **早上那条还要吗？/ Keep the morning note?** with **要 / Keep** (default) and
+  **不用了** (= the chip **只说急的**). The routine rule (D114), reused.
+- People: who the person answers fast, who reviews whose PRs, what money they watch, goes to Mem
+  as distilled facts only when the partner is sure (§9).
+
+## 9. Privacy
+
+- **Mail itself is never kept.** The broker logs action, read/write and a ≤ 200-character
+  summary (built). Triage sees headers and a 2 KB snippet in a batch; the full body is read only
+  by the stage-3 judge or a task the person approved, and is never written down.
+- **The findings ledger** (`<dataDir>/findings.json`, 0600, on the home): typed facts only, each
+  with a pointer (message id, event id) and the date it stops mattering: bookings (kind, place,
+  dates), renewals (what, expiry, amount), payments, commitments (to whom, what, by when),
+  waits (thread, since). Facts expire 30 days after their date. Removing an account drops its
+  facts. This is how two mails weeks apart can meet without re-reading the inbox.
+- **Mem** gets only durable gists the partner is confident about ("Lina 在 mem 组，PR 常找你
+  review"), with the usual **记下了 / Noted** line and provenance, under the existing **记住事情**
+  switch. Never a quote from a mail.
+- **Per account:** each app in the card has **自己留意 / Watch on its own** (on by default for
+  mail, calendar, GitHub; Discord and Slack watch only @-mentions and DMs). Off, it is read only
+  when asked. **不让 Ducter 看这个 / Don't let Ducter read this one** excludes an account
+  entirely (the existing `policy.deny`, now with a control).
+- **Reading is logged and visible:** the card's status line says what it read today, and **看了
+  哪些 / What it read** opens today's reads (the `connection_call` summaries) in place.
+- **The honest line** stays on every card: where mail passes (OOMOL's servers, or your own
+  machine) and **它读到的内容会给你的 AI 账号看，别人拿不到。**
+- **Personas:** accounts are the person's; only the first persona watches them by default
+  (product-model §5).
+
+## 10. Cost: the cascade, with oo
+
+| Stage | Runs | Cost |
+|---|---|---|
+| 0. Look | **oo:** a model-free scheduled read through the broker (`gmail.search_threads` newer than the last look, every 10 min; calendar every 15 min; GitHub notifications every 10 min; Discord mentions and DMs every 10 min), because oo has no triggers (`OO_NOT_WATCHABLE`). **OpenConnector:** Provider Triggers with a checkpoint (built for waits). | no model; oo or OpenConnector calls |
+| 1. Rules | code: drop bulk (`List-Unsubscribe`, Promotions/Updates), the person's own sends (kept for the waits/commitments ledger only), already-read-elsewhere, muted senders and kinds | none |
+| 2. Triage | the cheapest capable model over batches (≤ 20 items, headers + snippet), only when stage 1 passed something: kind, typed facts, who's waiting, confidence | ~5–15 small calls a day for a typical inbox (INFERRED) |
+| 3. Judge | the partner in a fork (principle 6) with Mem recall and the ledger, once before the morning note and on a "Now" candidate | a few calls a day |
+| 4. Say | the morning note, fold-ins, "Now", rendered from typed finds | none |
+
+**Budget:** each source has a monthly model budget (the routine mechanism, D114; default 2M
+cheap-model tokens), shown in the card's detail as **这个月用了 3%**. At the budget it drops to
+**只说急的** for the rest of the month and says so once. "Only when I ask" costs nothing.
+
+## 11. The first account: one moment, one question
+
+1. The person taps **用这些账号** (oo) or **检查并加上** (a key). The card lands (§12), and
+   **the partner speaks in the conversation**, not a toast:
+   **已经能看你的 Gmail、日历、Discord 和 GitHub 了。要不要我现在看一眼过去 3 天，有没有在等你回的？**
+   · **好，看一眼 / Take a look** (the default) · **先不用 / Not now**.
+2. Go: a read-only look (stages 1–3 over 3 days), said within about a minute:
+   **看了 3 天的 386 封信。有 1 件：Lina 周一问你 #2141 什么时候能 review，今天又问了一次。**
+   (with its next step), or **看了 3 天的 386 封信，没有在等你回的。** Meanwhile, silently, the
+   60-day backfill fills the ledger with bookings, renewals and commitments (no message).
+3. Right under the answer, the one question, with a default:
+   **以后我自己留意着：每天早上把值得说的放在一条里，最多 3 件；急的随时说。这样行吗？**
+   · **好 / Sounds good** (= 每天最多 3 件) · **只说急的** · **不用主动找我**.
+   The answer is the chip row's value; the partner says nothing more about it.
+4. If the person says nothing, nothing watches: the chip stays **不用主动找我** until they answer
+   (connecting is not consent to watch).
+
+Saying it works too: "帮我盯着邮箱，有要紧的告诉我" with no account leads to the one tap (oo
+signed in) or the add form, then the same three steps.
+
+## 12. The accounts card (draft D166): a character sheet for a source
+
+D161's language, for where accounts come from. One card per source: **oo**, **OOMOL** (Hosted),
+an **OpenConnector** of your own, or **another MCP server**. Nothing new to learn: the
+mailbox (research/35 §5's unlabeled winner, 5/5), app tiles, chips and the in-place detail are
+existing parts; the app tile is literal (an app's rounded square), not a metaphor.
+
+1. **Who:** the source's clay mailbox at 120 (phone 104) on the sunken oval, its colour saying
+   where it runs (OOMOL's accent orange for oo and Hosted, the working blue for your own
+   OpenConnector, muted for another server). The lid lifts a little while it looks; asleep (only
+   when asked) it is still; signed out or refused, grey in mist. Its name under it: **oo 里的账号
+   / Accounts in oo**, **OOMOL**, the name you gave your OpenConnector, the server's name.
+2. **How it is: one status line** (D161 (2), muted ink; exceptions in their ink):
+   - watching: **今天看了 214 封信 · 有 1 件值得说 / Read 214 emails today · 1 worth telling**
+     (nothing worth it: **今天看了 214 封信 · 都不用你操心**);
+   - only when asked: **你问起来才去看 / Reads only when you ask**;
+   - signed out of oo: **oo 退出登录了 · 在终端里运行 oo login** (failed ink);
+   - refused key: **钥匙失效了 · 换一把** with **去拿钥匙** (failed ink, D158);
+   - nothing connected there: **OOMOL 里还没连账号 · 去连一个** (D158).
+3. **What it can read: a tray of app tiles.** Each connected account as a small clay tile
+   (rounded square, 48; phone 52) with the app's printed mark (official marks where their
+   guidelines allow, as D146), the label under it (**Gmail · work**, **日历**, **GitHub**). A
+   tile not watched sits flat and a little faded; a tile oo or OOMOL can't reach is grey. A
+   dashed tile at the end, **在 oo 里再连一个 / Connect another in oo**, opens oo's or OOMOL's
+   page (accounts are connected there, not in Ducter).
+4. **Tap a tile → its detail in place** (never a floating layer): **Gmail · wey@nowledge.co**;
+   **会看：新邮件的发件人、标题和开头几行；要细看才读全文**; **先问你：发信、回复、存草稿、改标签、
+   删除**; **最后看过 2 分钟前**; the **自己留意 / Watch on its own** switch (Discord: **只看 @你
+   和私信**); **这个月用了 3%** when watching; at the foot, quiet: **不让 Ducter 看这个** (and for
+   oo: **要退出登录，去 oo 里**).
+5. **The proactive chips** (§5) sit once above the cards, titled **自己发现了事，怎么告诉你 / When
+   it notices something**; with a single source the page reads as one sheet.
+6. **One connection line:** **经过 oo · 邮件会经过 OOMOL 的服务器 / Through oo · your mail
+   passes through OOMOL's servers** with one ⋯ that opens, in place, **看了哪些 / What it read**
+   (today's reads, one line each) and the honest line about the AI account.
+7. **Foot:** one destructive text button, **不用 oo 里的账号了 / Stop using the accounts in oo**,
+   confirmed inline: **不用了以后它就看不到这些账号；记下的事还在「记得什么」里，可以忘掉。** ·
+   **算了** · **不用了**.
+8. **Default text: five lines** (name, status, tile labels, the connection line, the foot).
+   Everything else is one tap away.
+9. **Phone:** the same sheet in one column; tiles wrap four to a row; the detail opens in place.
+10. **Add one:** **加一个 / Add one** steps back to a quiet text button under the cards (adding
+    a second source is rare; the primary button no longer invites it).
+11. **Motion** (ui.md tokens; reduced motion: none): the card lands with the mailbox's equip
+    snap (D65) on the first add; the lid lifts 3 pt for 600 ms when a look runs (at most once a
+    minute on screen); tiles enter one by one (40 ms stagger, 220 ms enter); chip squish (D161).
+
+### 12.1 Prototype review (2026-11-10, against D36)
+
+Shots in `.shots/accounts/` (headless Chromium, 1340 wide, still, zh and en): `01-before-after`,
+`02`–`04` the first account, `05-morning` (lock screen, the note, a quiet day), `06`–`07` the
+aha find, its task and the new rule, `08-kinds`, `09-mac-page` (four sources, Gmail's detail and
+看了哪些 open), `10-mac-stop`, `11-phone`; today's real views in `current/` (Mac headless from
+the desktop's own renderer, phone from a scratch core with a fake oo).
+
+- **好用:** the one decision a person makes (how it tells them) is one chip row with a default;
+  everything about an app is one tap on its tile. The first add asks two things in a row
+  (look now? then the cadence); each has a default, but it is two taps, not one. Acceptable,
+  because the first answer is the reward that makes the second question make sense.
+- **顺滑:** the first add flows from the tap into the conversation without leaving it; the
+  aha find goes find → Go → task line → result in one column. The morning note with three
+  finds fits one phone screen only after folding How I know and the two learning buttons onto
+  one row and keeping each find to two short sentences (first draft overflowed by a third of a
+  screen); the build must hold that budget (zh ≤ ~60 characters a find).
+- **赏心悦目:** the mailbox hero gives each source a character, and the four colours read as
+  four places at a glance; the app tiles read as apps, unlike research/35's round tokens (read
+  as letters). The drawn mailbox and glyphs are stand-ins; real clay art and marks are owed
+  (`todo.md`). The English connection line wraps on the phone ("…OOMOL's servers"); the build
+  needs a shorter en form.
+- **放心:** the status line says what it read today; 看了哪些 shows each read; every next step
+  waits for Go; "这类不用告诉我" lands in 你的规则 where it can be undone; a quiet day says it
+  looked. Not shown and owed: what a person sees in Mem after a find (记下了).
+- **惊喜:** the first look answers within a minute with a real person waiting; the flight/hotel
+  join and the task that comes back with the price are the moments the author named. Owed: the
+  mailbox lid lifting on a real look, and the equip snap on the first add, at full motion.
+
+## 13. Words (zh / en; D78 spacing; ★ new keys)
+
+| Key | zh | en |
+|---|---|---|
+| ★ `proactive.title` | 自己发现了事，怎么告诉你 | When it notices something |
+| ★ `proactive.urgent` · `.three` · `.useful` · `.off` | 只说急的 · 每天最多 3 件 · 有用就说 · 不用主动找我 | Only urgent · Up to 3 a day · Whenever useful · Only when I ask |
+| ★ `note.open` | 早。昨晚到现在看了 {n} 封信{、extra}，有 {k} 件值得你知道。 | Morning. Since last night I read {n} emails{, extra}; {k} worth knowing. |
+| ★ `note.left_out` | 没说的：{list} | Left out: {list} |
+| ★ `header.quiet_day` | 早上看过了，没有要你操心的 | Looked this morning — nothing needs you |
+| ★ `find.useful` · `find.mute` | 有用 · 这类不用告诉我 | Useful · Don't tell me this kind |
+| ★ `find.muted` | 好，这类以后不说了。 | OK, I won't mention this kind again. |
+| ★ `find.passed` | 过了 | Passed |
+| ★ `kind.*` | 两件事对不上 · 在等你回 · 你在等别人回 · 你答应过的 · 快到期 · 要花钱 · 计划变了 · 开会前 | Two things don't match · Waiting on you · You're waiting on someone · Something you promised · Deadlines and money · A plan changed · Before a meeting |
+| ★ `first.offer` | 已经能看你的 {apps} 了。要不要我现在看一眼过去 3 天，有没有在等你回的？ | I can read your {apps} now. Want me to look through the last 3 days for anything waiting on you? |
+| ★ `first.go` · `first.no` | 好，看一眼 · 先不用 | Take a look · Not now |
+| ★ `first.ask` | 以后我自己留意着：每天早上把值得说的放在一条里，最多 3 件；急的随时说。这样行吗？ | From now on I'll keep an eye out: one note each morning with up to 3 things, and anything urgent right away. OK? |
+| ★ `note.pause` | 早上那条还要吗？ | Keep the morning note? |
+| ★ `card.status.read` | 今天看了 {n} 封信 · 有 {k} 件值得说 | Read {n} emails today · {k} worth telling |
+| ★ `card.status.calm` | 今天看了 {n} 封信 · 都不用你操心 | Read {n} emails today · nothing needs you |
+| ★ `card.status.asked` | 你问起来才去看 | Reads only when you ask |
+| ★ `card.oo_out` | oo 退出登录了 · 在终端里运行 oo login | oo is signed out · run oo login in a terminal |
+| ★ `tile.reads` · `tile.asks` | 会看：{what} · 先问你：{what} | Reads: {what} · Asks you first: {what} |
+| ★ `tile.watch` · `tile.mentions` | 自己留意 · 只看 @你 和私信 | Watch on its own · Only @-mentions and DMs |
+| ★ `tile.exclude` · `tile.signout_oo` | 不让 Ducter 看这个 · 要退出登录，去 oo 里 | Don't let Ducter read this one · Sign out in oo |
+| ★ `tile.more.oo` | 在 oo 里再连一个 | Connect another in oo |
+| ★ `card.read_list` | 看了哪些 | What it read |
+| ★ `card.stop` · `card.stop.ask` | 不用 {name} 了 · 不用了以后它就看不到这些账号；记下的事还在「记得什么」里，可以忘掉。 | Stop using {name} · Once stopped, it can't read these accounts. What it noted stays in What it remembers, where you can forget it. |
+| ★ `card.budget` | 这个月用了 {p}% | {p}% of this month's budget used |
+| `acct.remove.ask` (built) | 移除 {name}？Ducter 就看不到这些账号了。 | Remove {name}? Ducter won't read these accounts anymore. |
+
+Retired by D166 when built: the row's **{apps} (2) · …** line and the source line as a second
+line (the tray and the connection line say them), **加一个** as the page's primary button.
+
+## 14. Build steps (for `todo.md`; each a small PR with tests)
+
+1. **Watch for oo** — a system watcher per source on the routine engine (D114: budget, unread
+   pause, review): model-free scheduled reads, checkpoints by newest id/time in the waiter table.
+2. **Stage 1 rules + the findings ledger** (`findings.ts`, 0600, expiry, drop on remove).
+3. **Stage 2 triage** on the cheap model, typed output per kind; **the triage eval** first: a
+   labeled set from the author's real inbox, private, outside git (like research/15), false
+   alarms and misses per kind.
+4. **Stage 3 judge + the morning note** as a typed `finds` report rendered by the core (like
+   the living message), the silent-day header line, the passive notification (D159 path).
+5. **The first-account moment** (§11) and the chip row (settings: `proactive`).
+6. **Reactions:** 有用 / 这类不用告诉我 → rules; per-kind bars; the 3-unread pause.
+7. **Follow-through:** each find's one next step as a decision; drafts kept in Ducter.
+8. **The card** (D166) on Mac and phone; `policy.deny` control; 看了哪些.
+9. **Meeting prep** and **Now** (time-sensitive) last, after the eval shows the bar holds.
+10. Live trial on the author's oo with a scratch home, like the 2026-11-09 one.
+
+## 15. The author's calls (each with a proposed default; "按建议" takes them all)
+
+1. **Seven kinds**, all on by default except as noted (Discord/Slack: mentions and DMs only).
+   **Default: yes.** Alternative: start with three (two things don't match, deadlines and
+   money, waiting on you) and add the rest after the eval.
+2. **Cap 3, one morning note, silent on nothing days** (the header line instead of a
+   message). **Default: yes.** Alternative: a one-line "nothing today" message every morning.
+3. **"Now" only for "costs something today and needs you"**, time-sensitive, inside the cap;
+   night only by a per-kind rule the person said. **Default: yes.**
+4. **Watching starts only after the one question** (no answer = only when asked). **Default:
+   yes.** Alternative: start watching at the default and say so (faster aha, weaker consent).
+5. **The first look: 3 days for "waiting on you", plus a silent 60-day ledger backfill.**
+   **Default: yes** (replaces D101's 14/60).
+6. **oo is watched by model-free polling** every 10 min (15 for calendars). **Default: yes.**
+   Alternative: wait for oo to grow triggers (then nothing proactive for oo users).
+7. **The card** as §12: mailbox hero, app tiles, chips above the cards, one destructive.
+   **Default: yes**; the human comprehension test of tiles and mailbox still owed.
+8. **Meeting prep 10 min before, only with something open.** **Default: yes.**
+
+**Still open** (carried from Draft 3): the triage eval set (build step 3); a Linux home without
+a desktop for self-hosted Google consent; several personas reading the same accounts (default:
+the first persona only); a watcher over a browser profile (v2); the human comprehension test of
+the mailbox and the app tiles (with D65's).
+
+# Part B. The broker and the setup, as built
+
+Unchanged mechanisms (D96, D122, D158), kept for reference. Proactive words in this part
+(watchers, the cascade) now mean Part A's.
+
+## 16. Where connections live
 
 - **Ducter doesn't hold provider accounts. The user's OpenConnector does** (D96). It is either
   OOMOL Hosted or their own self-hosted OpenConnector. Ducter attaches to its MCP endpoint
@@ -60,7 +447,7 @@ sign-in and the same first find (§6).
 
   Any other MCP server attaches the same way.
 - **Or the user's oo does** (D122). With OOMOL's `oo` CLI signed in, Ducter reads the accounts
-  connected there by running oo itself (§4.4). There is no token at all on Ducter's side for
+  connected there by running oo itself (§18.4). There is no token at all on Ducter's side for
   this kind: oo's sign-in stays in oo.
 - **The token lives only in Ducter.** It is kept in `<dataDir>/connection-tokens.json` (0600).
   It never appears in a harness's config, env, args or files, never in the Log, and never in
@@ -71,13 +458,13 @@ sign-in and the same first find (§6).
     process environment, and every harness child's environment is an allowlist that strips
     any other key or token, so the token can't leak through one either.
   - macOS Keychain is a later option for both.
-- **Shown on Devices as mailboxes on the main's island** (the prototype; the Isles stage is
-  being rebuilt on `isles`). For now the list lives on Partner → 它能看的账号 / Accounts it can
-  read. The stage calls `homeMailboxes()` (web) or `HomeMailboxes()` (desktop) later.
+- **Shown in Settings › 账号 / Accounts** (D150), one card per source (draft D166, §12); the
+  devices stage may later stand the mailboxes on the home's island through `homeMailboxes()`
+  (web) / `HomeMailboxes()` (desktop), not called yet.
 - **Workers never hold a token.** A task on a worker reaches a connection through the main's
   tool server.
 
-## 3. Architectures compared
+## 17. Architectures compared
 
 | | A. Harness-native MCP | B. Ducter embeds a connector engine | C. **The user's OpenConnector behind Ducter's broker (D96)** |
 |---|---|---|---|
@@ -93,12 +480,12 @@ sign-in and the same first find (§6).
 not a connector platform. B remains possible if OpenConnector ever goes away, because the
 broker speaks only MCP.
 
-## 4. The broker (as built, 2026-11-09)
+## 18. The broker (as built, 2026-11-09)
 
 `packages/core/src/connections.ts`, `connection-tools.ts`; partner tools in
 `packages/partner/src/partner.ts`.
 
-### 4.1 Pieces
+### 18.1 Pieces
 
 - **Store.**
   - `<dataDir>/connections.json` (0600) holds the address, name, source and how it was added.
@@ -140,7 +527,7 @@ broker speaks only MCP.
   - States: `done`, `failed`, `denied`, `needs_go` (with the input Go will run) and `held`.
   - Clients stay quiet about it.
 
-### 4.2 Reaching the partner and tasks
+### 18.2 Reaching the partner and tasks
 
 | Who | Tools | May |
 |---|---|---|
@@ -157,7 +544,7 @@ broker speaks only MCP.
 - **Background work** (watchers, v1.x) will hold a read-only caller. The broker already refuses
   writes to anything that isn't the partner's Go path.
 
-### 4.3 Other MCP servers and the user's own connectors
+### 18.3 Other MCP servers and the user's own connectors
 
 - **A power user's existing servers** (GitHub remote MCP, Linear, Notion) can be attached as
   connections with an address and a token (built). The broker connects as the MCP client,
@@ -169,7 +556,7 @@ broker speaks only MCP.
   inherits the user's Claude config may still use them, as the user's own setup, unmediated
   and labeled [doc system.md].
 
-### 4.4 The oo CLI: the default way in (D122, built)
+### 18.4 The oo CLI: the default way in (D122, built)
 
 The author uses OOMOL's `oo` CLI daily (research/35 §4b). With oo signed in, connecting accounts
 is one tap, through oo's own sign-in and its permissions (D122, superseding D96's "never the
@@ -198,7 +585,7 @@ OOMOL account key"). `packages/core/src/oo-link.ts`.
   the name starts with fetch, list, get, search, read, query, find, lookup, count, describe,
   retrieve, view or show and no later word changes anything (send, reply, create, add, modify,
   update, delete, trash, archive, move, mark, batch, download, upload, watch, `and`, `or`, …).
-  Everything else, unknown included, is a write and goes through the Go card (§4.2). Examples:
+  Everything else, unknown included, is a write and goes through the Go card (§18.2). Examples:
   `gmail.fetch_emails`, `gmail.get_draft` read; `gmail.create_email_draft`,
   `gmail.download_attachment` (it uploads to oo's file transit), `gmail.settings_get_imap`
   (not a verb first) and `gmail.get_or_create_label` are writes.
@@ -218,9 +605,9 @@ OOMOL account key"). `packages/core/src/oo-link.ts`.
   an empty 0700 folder (`<dataDir>/oo-signed-out`), where oo is signed out; only the broker's
   link runs oo with the user's sign-in (`packages/runner/src/oar.ts`, D122 (6)).
 - **Narrower access** is now oo's job: OOMOL's own console sets which actions a member may run
-  (permission groups). Ducter's per-connection `policy` rules (§4.1) apply on top.
+  (permission groups). Ducter's per-connection `policy` rules (§18.1) apply on top.
 
-### 4.5 Watching (partly built: event waits on a self-hosted OpenConnector only; never run against a live one)
+### 18.5 Watching (partly built: event waits on a self-hosted OpenConnector only; never run against a live one)
 
 OpenConnector's Provider Triggers HTTP API carries the watchers (research/35 §4):
 - `POST <base>/v1/providers/<service>/triggers/<triggerId>/execute` with
@@ -240,10 +627,10 @@ OpenConnector's Provider Triggers HTTP API carries the watchers (research/35 §4
   of one (an older wait) gets the same answer and never posts to `oo:`. Revisit when oo grows
   triggers.
 - Webhook triggers (`reconcile`) need a public URL. They are for later.
-- What a watcher finds goes through the cascade in §5. The watcher's caller is read-only by
+- What a watcher finds goes through the cascade in §10. The watcher's caller is read-only by
   construction.
 
-### 4.6 The browser as a connector (上网)
+### 18.6 The browser as a connector (上网)
 
 - **Zero-setup fallback** [I]. For services with no API, or for a person who won't make a
   Google client, a task can sign in by takeover in the Ducter browser (D48) and read there.
@@ -251,107 +638,7 @@ OpenConnector's Provider Triggers HTTP API carries the watchers (research/35 §4
   So it is offered per task ("look in my school's parent portal"), not as a watcher.
 - A watcher over a browser profile is a v2 question.
 
-## 5. Proactive work, cheaply
-
-### 5.1 The cascade
-
-| Stage | Runs | Cost | Passes on |
-|---|---|---|---|
-| 0. Watch | A waiter polls `history.list` (Gmail, every 2 min), `syncToken` (Calendar, 5 min), GitHub notifications (5 min) | No model; a few quota units | New items since the checkpoint |
-| 1. Rules | Code: drop `List-Unsubscribe`/bulk, Gmail's Promotions/Updates categories, the user's own sends, items already read on another device, senders the user muted | No model | Maybe 10–25% of mail (INFERRED) |
-| 2. Triage | The cheapest capable model over **batches** (≤ 20 items, headers + 2 KB snippet), run only when stage 1 produced something: "worth telling? kind? deadline? who's waiting?" | ~5–15 small calls a day for a typical inbox (INFERRED) | Candidates with a kind, deadline and confidence |
-| 3. Judge | The partner (a fork, principle 6), with Mem recall of "what matters to this person" and the calendar for joins | A few calls a day | Items that clear the attention bar |
-| 4. Deliver | The living message (principle 7) | No model; rendered from typed reports | |
-
-- **The attention bar** [I]. Tell the person only if all three hold:
-  1. **They likely don't know it yet.** Not "a receipt you can read from the subject"; Zapier's
-     noise class.
-  2. **It is timely.** A deadline, money moving, someone waiting, or a conflict.
-  3. **There is something to do or decide**, or it joins two sources (the aha class).
-
-  Everything else becomes the "没说的 / Left out" line.
-- **Batching** [I, extends principle 7].
-  - Finds go into the one living message.
-  - Proactive items never push on their own, except under the "only urgent" kind (§5.2) or
-    when the item is a decision whose deadline is today.
-  - The default delivery is one morning message at the end of quiet hours, plus fold-ins
-    while the person is already in the app.
-- **The daily cap**, default **3** [I; no product publishes one]. The tray has 3 slots. A
-  fourth find waits for tomorrow if it's still timely, otherwise it goes into Left out.
-- **Quiet hours** [doc D3]. Finds are held. Only a kind the person explicitly allowed ("夜里
-  航班改了也叫我 / wake me for flight changes") may push at night.
-- **Learning** [I].
-  - **有用 / Useful** and **这类别再说 / Don't tell me this kind** sit under each item. The
-    second is the existing "don't tell me about this kind of thing" ledger constraint, now with
-    a button.
-  - Go, Hold and ignored items are logged per kind and per sender.
-  - After 3 ignored items of a kind in 14 days the bar for that kind rises.
-  - After 3 unread morning messages in a row, the watcher pauses and asks "还要吗？ / Keep
-    this?". This is the routine rule, reused.
-- **Budget** [doc routines]. Each watcher is a system routine with a monthly cap shown on its
-  mailbox. Grok's warning ("a Slack trigger on a busy channel can use a week of usage in a
-  day") is why Slack watches only mentions and DMs by default.
-
-### 5.2 How proactive it may be
-
-On Partner → 什么时候找你 / When it comes to you, a new group (D71's page) [I]:
-
-| Option | Means |
-|---|---|
-| **只说急的 / Only urgent things** | Only things that can't wait a day |
-| **每天最多 3 件 / At most 3 a day** (default) | Batched into the morning message |
-| **有用就说 / Whenever it's useful** | No cap, still batched |
-| **不用主动找我 / Don't come to me** | Watchers off; it reads only when asked |
-
-- **Per account, the mailbox's card shows what it watches** ("每 2 分钟看一眼新邮件 · 今天看了
-  214 封，有 1 件值得说"), with **Sign out**.
-- **Watching is opt-in at sign-in, with a default** [I]. dots says connecting alone must not
-  create monitoring. Ducter asks once, at sign-in: "以后每天最多给你 3 件，早上 8 点一起说，可以吗？
-  / At most 3 a day, all at 8 in the morning?" Go is the default, and the answer is a Rule.
-
-### 5.3 Memory: "what matters to this person"
-
-- **Recall.** Stage 3 recalls from Mem (principle 17): people the person answers quickly,
-  projects, money they care about, and past 有用 / Don't-tell signals.
-- **Writes.** The partner writes back only distilled, durable things ("Lina is on the mem
-  team; Wei reviews her PRs"), with the usual 记下了 / Noted line and provenance.
-- **Never the mail itself** [I].
-- **Signing out** stops the reading. What was noted stays in 记得什么 / What it remembers, where
-  it can be forgotten. The card says so (the proxy test's top worry).
-
-### 5.4 Composing with the abilities
-
-A proactive find may propose a task that uses an ability on a device. It is always a decision
-with Go, never a background action [I].
-
-| Find | Proposed task | Ability (device) | Gate |
-|---|---|---|---|
-| Flight lands before the hotel starts | Ask the hotel's site about the missing night | 上网 (the Mac) | Changing the booking or paying: the person |
-| Domain renewal unpaid | Open the registrar's renewal page, confirm the status | 上网 (the Mac) | Paying: the person, by takeover (the floor) |
-| Flight changed | Look up rebook options on the airline's site | 上网 (the Mac) | Choosing a seat or paying: the person, by takeover |
-| School form attached | Fill the PDF from what it knows, leave it as a draft | (none) or 用电脑 | Sending the form: Go |
-| Restaurant clash | Call to move the booking | 打电话 (later) | The call itself: Go; the person can listen in |
-| Insurance claim | Fill the portal's form from the email's PDF | 用电脑 / 上网 | Submit: Go with the filled form shown (D61) |
-| Parcel needs an answer | Reply from the courier's SMS link | 用手机 (later) | Tap-to-send: Go |
-
-## 6. The first time
-
-1. The person says "帮我盯着邮箱，有要紧的告诉我", or opens Partner → 它能看的账号 / Accounts it
-   can read.
-2. With no connection, Ducter says one line: "先在你的 OpenConnector 里连上 Gmail，再把它加到伙伴页的
-   “它能看的账号”里。/ Connect Gmail in your OpenConnector first, then add it under Accounts it
-   can read on the Partner page." **If oo is signed in, the page leads with the oo offer
-   instead** (D122): the services and accounts in oo, where mail passes, and one tap on 用这些账号
-   / Use these accounts. Then step 3 is skipped.
-3. In OpenConnector the person connects Gmail: Google's consent page, Allow. Then they make a
-   token for Ducter, and Ducter checks and saves it. Ducter never sees the Google password.
-4. A Gmail mailbox drops onto the island (the equip snap, D65). Ducter backfills **the last 14
-   days** (60 for bookings and renewals) through the cascade and speaks within a minute: "看了 386 封。有一件你可能想知道：…
-   / I read 386 emails. One thing you may want to know: …". If nothing clears the bar: "看了
-   386 封，没有要你操心的。/ I read 386 emails; nothing needs you."
-5. It asks the "how often" question once (§5.2).
-
-## 7. What the person must set up
+## 19. What the person must set up
 
 | Path | What they do | Where their mail passes |
 |---|---|---|
@@ -366,9 +653,52 @@ The honest line on the form says this, per choice: "OOMOL 托管：…你的邮�
 Self-hosted: … stays on your own machine. The cost: … your own app with Google."
 
 **For the maintainer:** nothing Google-side for Ducter itself (D96 removes the shared-client
-question). A live test against a self-hosted OpenConnector is still owed (§12).
+question). A live test against a self-hosted OpenConnector is still owed (§22).
 
-## 8. Scenarios
+## 20. The Accounts page as built (D122, D158)
+
+- **The oo offer (D122).** With oo signed in, the card leads with a sunken panel: a
+  mailbox, **你在 oo 里的账号 / Your accounts in oo**, "不用配钥匙：Ducter 通过 oo 去看，登录留在 oo
+  里。/ No key to set up: Ducter reads through oo, and oo's sign-in stays in oo.", a white list of
+  each service and its accounts' labels, the honest line "你的邮件和登录凭据会经过 OOMOL 的服务器。/
+  Your mail and sign-ins pass through OOMOL's servers.", and the one primary button **用这些账号 /
+  Use these accounts**. Before oo answers: "正在看 oo 里有哪些账号… / Looking at what's in oo…";
+  with none: "oo 里还没有账号… / No accounts in oo yet…". The form below steps back to a quiet
+  link, **用地址和钥匙加一个 / Add one with an address and key**. Added, the row reads **oo 里的账号
+  / Accounts in oo**, "Gmail (2) · Slack · …", "经过 oo · 邮件和登录经过 OOMOL 的服务器 / Through oo ·
+  your mail and sign-ins pass through OOMOL's servers". Screenshots: `.shots/oo-connect/`.
+- **Equip.** In Settings › 账号 / Accounts, **加一个 / Add one** → where (OOMOL 托管 /
+  Hosted by OOMOL · 自己部署的 / Self-hosted · 其他服务 / Something else) → **检查并加上 / Check
+  and add** (Return checks too).
+  - **Hosted by OOMOL (D158)** has no address field. Three plain steps, each with its page:
+    1. **在 OOMOL 登录，把 Gmail、Discord 这些账号连上。** · **去 OOMOL 连账号 / Connect
+       accounts in OOMOL** (`console.oomol.com/app-connections`);
+    2. **在 OOMOL 控制台新建一把钥匙。** · **去拿钥匙 / Get a key** (a button,
+       `console.oomol.com/api-key`);
+    3. **把钥匙粘贴到下面，再点“检查并加上”。**
+
+    Then 钥匙 / Key, masked, with **显示 / Show**. Checked empty, the field says **先把钥匙填上。**
+    in the failed ink and nothing is sent.
+  - Self-hosted and Something else: 地址 / Address, 钥匙 / Key; their setup steps
+    (OpenConnector's Access page, Create Token, an MCP server's token) sit behind a quiet **怎么连
+    / How to connect** fold.
+  - **The answer, in its own look (D158).** Added: **加上了 OOMOL，现在能看：Gmail、Discord** (done
+    look); added with nothing connected there: **加上了 OOMOL，不过那里还没有能看的账号。** (info
+    look) and on the row **连上了，但 OOMOL 里还没连任何账号。** · **去 OOMOL 连账号**; when it
+    didn't say: "Ducter 现在能看 {name} 里的账号了". A refusal shows in the open form as an alert
+    (failed tokens, **!**): **钥匙不对或已失效，换一把新的。** (with **去拿钥匙** for OOMOL) ·
+    **连不上这个地址。看看网络，过一会儿再试。** · **这个地址上没有 Ducter 能用的账号服务，看看地址对不对。**
+    Never in the done look. On the phone the same, in the card; the toast carries only an add.
+  - 连上 / connect for an account here is OOMOL's own word for what the person does in OOMOL's
+    console (D158); Ducter's own action stays 加上 / add.
+  - 钥匙 / Key is OpenConnector's own word on its Access page. It is proposed for the
+    glossary, as the one place a person handles one.
+  - Never 授权 / authorize, 接入, or "connector" in UI.
+  - 连上 / Connect stays reserved for devices (D54).
+- **Owed:** the human comprehension test (with the D65 test), and art for the mailboxes (the
+  prototype draws them in SVG).
+
+## 21. Scenarios
 
 Scores 1–5: **U** usefulness, **R** restraint (low noise risk), **T** trust (low harm if
 wrong), **F** feasibility in v1.x.
@@ -412,7 +742,7 @@ research/35 §1.1). Both are aha for the same two reasons:
   - **The facts live in a small, structured trip-and-renewal ledger on the main.** Two mails
     weeks apart can then meet without re-reading the inbox. Retention follows the Log. It is
     not Mem: Mem gets only the durable gist, if anything.
-  - **The 14-day backfill on first sign-in (§6) should reach 60 days for bookings and
+  - **The 14-day backfill on first sign-in (§11) should reach 60 days for bookings and
     renewals.** Both of the author's moments came from mail older than two weeks (INFERRED,
     from how bookings work).
 - **Close calls.**
@@ -458,97 +788,7 @@ examples.
   The last line: "没说的：12 封通知和收据你看标题就知道了；1 封像是推销，没理它。"
 - en: "Morning. Since last night I read 214 emails, 3 calendars and GitHub. Two things are worth knowing; the rest can wait." The last line: "Left out: 12 notifications and receipts you can read from the subject line; 1 that looked like a sales pitch."
 
-## 9. Game-like settings (D43)
-
-- **The metaphor: mailboxes on the Mac's island, and a 3-slot tray on its shore** (research/35
-  §5) [I].
-- **Literal labels always state the thing:**
-  - "Gmail · wei@example.com · 登录在这台 Mac 上 / Signed in on This Mac";
-  - the three can-lines;
-  - the honest line;
-  - the watch line;
-  - Sign out.
-- **Rules** (prototype panel):
-  - No flags on the mailboxes.
-  - The lid lifts a little when Ducter looks.
-  - A note drops into the tray only for an item that cleared the bar.
-  - Tray slots equal the cap.
-  - Quiet hours shows as a small moon sign by the tray.
-  - Still mode stops all of it, and every state still reads.
-- **The oo offer, as built (D122).** With oo signed in, the card leads with a sunken panel: a
-  mailbox, **你在 oo 里的账号 / Your accounts in oo**, "不用配钥匙：Ducter 通过 oo 去看，登录留在 oo
-  里。/ No key to set up: Ducter reads through oo, and oo's sign-in stays in oo.", a white list of
-  each service and its accounts' labels, the honest line "你的邮件和登录凭据会经过 OOMOL 的服务器。/
-  Your mail and sign-ins pass through OOMOL's servers.", and the one primary button **用这些账号 /
-  Use these accounts**. Before oo answers: "正在看 oo 里有哪些账号… / Looking at what's in oo…";
-  with none: "oo 里还没有账号… / No accounts in oo yet…". The form below steps back to a quiet
-  link, **用地址和钥匙加一个 / Add one with an address and key**. Added, the row reads **oo 里的账号
-  / Accounts in oo**, "Gmail (2) · Slack · …", "经过 oo · 邮件和登录经过 OOMOL 的服务器 / Through oo ·
-  your mail and sign-ins pass through OOMOL's servers". Screenshots: `.shots/oo-connect/`.
-- **Equip, as built.** In Settings › 账号 / Accounts, **加一个 / Add one** → where (OOMOL 托管 /
-  Hosted by OOMOL · 自己部署的 / Self-hosted · 其他服务 / Something else) → **检查并加上 / Check
-  and add** (Return checks too).
-  - **Hosted by OOMOL (D158)** has no address field. Three plain steps, each with its page:
-    1. **在 OOMOL 登录，把 Gmail、Discord 这些账号连上。** · **去 OOMOL 连账号 / Connect
-       accounts in OOMOL** (`console.oomol.com/app-connections`);
-    2. **在 OOMOL 控制台新建一把钥匙。** · **去拿钥匙 / Get a key** (a button,
-       `console.oomol.com/api-key`);
-    3. **把钥匙粘贴到下面，再点“检查并加上”。**
-
-    Then 钥匙 / Key, masked, with **显示 / Show**. Checked empty, the field says **先把钥匙填上。**
-    in the failed ink and nothing is sent.
-  - Self-hosted and Something else: 地址 / Address, 钥匙 / Key; their setup steps
-    (OpenConnector's Access page, Create Token, an MCP server's token) sit behind a quiet **怎么连
-    / How to connect** fold.
-  - **The answer, in its own look (D158).** Added: **加上了 OOMOL，现在能看：Gmail、Discord** (done
-    look); added with nothing connected there: **加上了 OOMOL，不过那里还没有能看的账号。** (info
-    look) and on the row **连上了，但 OOMOL 里还没连任何账号。** · **去 OOMOL 连账号**; when it
-    didn't say: "Ducter 现在能看 {name} 里的账号了". A refusal shows in the open form as an alert
-    (failed tokens, **!**): **钥匙不对或已失效，换一把新的。** (with **去拿钥匙** for OOMOL) ·
-    **连不上这个地址。看看网络，过一会儿再试。** · **这个地址上没有 Ducter 能用的账号服务，看看地址对不对。**
-    Never in the done look. On the phone the same, in the card; the toast carries only an add.
-  - 连上 / connect for an account here is OOMOL's own word for what the person does in OOMOL's
-    console (D158); Ducter's own action stays 加上 / add.
-  - 钥匙 / Key is OpenConnector's own word on its Access page. It is proposed for the
-    glossary, as the one place a person handles one.
-  - Never 授权 / authorize, 接入, or "connector" in UI.
-  - 连上 / Connect stays reserved for devices (D54).
-- **Owed:** the human comprehension test (with the D65 test), and art for the mailboxes (the
-  prototype draws them in SVG).
-
-## 10. Decided, and proposals for the author
-
-**Decided: D122** (with oo signed in, the default way in is oo itself, §4.4).
-
-**Decided: D96.** Connections come from the user's OpenConnector (OOMOL Hosted or
-self-hosted) or another MCP server, through Ducter's broker. Ducter holds only the runtime
-token, in a 0600 file. Reads are allowed and logged; anything that sends or changes becomes a
-Go card and runs once after Go; background work is read-only or draft-only. Ducter doesn't
-embed OpenConnector or run provider OAuth. This replaces the earlier proposals for where
-connectors live, how they reach sessions, the engine, and Google access.
-
-**Still proposals** (each with a default; "按建议" takes them all):
-
-| # | Proposal | Default | Main alternative |
-|---|---|---|---|
-| D97 | **The proactive policy.** Cascade (watch → rules → cheap triage → partner); the three-part attention bar; at most **3 a day**, batched into the morning message; held in quiet hours; 有用 / 这类别再说 under each item; a "没说的 / Left out" line; auto-pause after 3 unread mornings | Yes, cap 3 | Cap 5, or no cap with a confidence bar only (dots' approach; noisier in reviews) |
-| D98 | **Watching through OpenConnector's Provider Triggers** (§4.5): poll `read` with a checkpoint in Ducter's waiter table, with a trigger-scoped token; asked once at sign-up, Go by default, as a Rule; never watching silently | Yes | Ducter polls through MCP reads (no extra token; costs model-free calls but no checkpoint semantics) |
-| D99 | **The honest lines**: where mail passes (hosted vs self-hosted) on every connection, plus "它读到的内容会给你的 AI 账号看，别人拿不到 / What it reads is shown to your AI account. No one else gets it." | Yes | Only in docs |
-| D100 | **The look and words**: mailboxes on the main's island + the 3-slot tray (stage on `isles`); 它能看的账号 / Accounts it can read on Partner for now; 钥匙 / Key; the Partner group 它自己发现的事 / Things it notices; pending a human test | Yes | Literal cards (A) if the human test finds "the mailbox means Ducter receives my mail" |
-| D101 | **The look-back on first connection**: 14 days, 60 for bookings and renewals; the trip-and-renewal ledger (§8) | Yes | 14 days for everything |
-
-## 11. Open
-
-- The triage eval: a labeled set from the author's real inbox (private, outside git) measuring
-  false alarms and misses per kind, like `research/15` for the digest. It must exist before
-  the cap is tuned.
-- Linux main without a desktop: the consent relay (§7.3).
-- Several Google accounts (personal and work) on one mailbox or two: two mailboxes, probably.
-- Personas: accounts belong to the user, and each persona needs a link to read them
-  (product-model §5). Default: the first persona only.
-- A watcher over a browser profile (§4.4).
-
-## 12. Verified so far (2026-11-09)
+## 22. Verified so far (2026-11-09)
 
 - **Unit and integration tests against a fake OpenConnector and a plain MCP server**, over real
   Streamable HTTP (`packages/core/test/fake-mcp.ts`, `connections.test.ts`, the
@@ -599,7 +839,7 @@ connectors live, how they reach sessions, the engine, and Google access.
   - `/mcp`, which Ducter first used, is not an endpoint: OOMOL's gateway answers every path with
     `401 token not found` (a made-up Bearer: `invalid token`), so without a key it looked alive.
     The MCP SDK keeps that 401 in its error's `code`, not its message, so the broker read it as
-    `not_mcp`. Both are fixed (§4.1).
+    `not_mcp`. Both are fixed (§18.1).
   - The key is an API key from `console.oomol.com/api-key`, sent as Bearer. Connected accounts
     come from `GET /v1/apps?status=active`.
   - Tests: `packages/core/test/connections.test.ts` "OOMOL Hosted (D158)" runs the real HTTP

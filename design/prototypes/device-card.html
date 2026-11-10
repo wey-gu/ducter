@@ -1,0 +1,799 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Device card</title>
+<!--
+  Prototype for design/ui-devices-card.md (draft D161). Decides nothing: it shows the note.
+  Open from the repo (art loads by relative path from apps/desktop and apps/site).
+  Tokens are Pebble's (design/ui.md, apps/web/static/app.css); components read only these vars.
+  URL: ?lang=en · ?still=1 · ?only=<board id without b-> · ?open=<scenario> (see the script's end)
+-->
+<style>
+@font-face { font-family: "Bricolage Grotesque"; src: url("../../apps/web/static/bricolage.woff") format("woff"); font-weight: 200 800; }
+@font-face { font-family: "Ducter Rounded SC"; src: url("../../apps/web/static/fonts/rounded-sc-bold.woff2") format("woff2"); font-weight: 700 900; size-adjust: 94%; unicode-range: U+2E80-9FFF, U+3000-303F, U+F900-FAFF, U+FF00-FFEF; }
+:root {
+  --bg: #fff6ea; --bg-deep: #fcecd7; --surface: #ffffff; --sunken: #f7ebda; --surface-sunken: #f3e6d3;
+  --ink: #2b2118; --ink-soft: #4a3d30; --ink-muted: #75654f; --faint: #c7b49a; --accent: #ff8a3d; --accent-ledge: #c9642a;
+  --line: #e8d9c4; --line-2: #e0c9b0; --line-soft: #f3e6d3;
+  --working-ink: #174a75; --waiting-ink: #6b5000; --needs-surface: #ffe3cf; --needs-ink: #8a3a0c;
+  --done-ink: #1f5e2f; --dusk-ink: #4b4a7a; --fail-surface: #fbdde4; --fail-ink: #8a1f3b;
+  --base: 0 4px 0 var(--line); --press-primary: #140d07; --primary-top: #3b2d22; --press-quiet: #cdae8c;
+  --drop: 0 7px 12px -4px rgba(43,33,24,.28); --floating: 0 10px 32px rgba(43,33,24,.14); --scrim: rgba(60,40,20,.14);
+  --sea-top: #cfe9e3; --sea: #8fcbc4; --sea-deep: #6fb5ae; --sky: #fbefe0;
+  --font: "Bricolage Grotesque", "PingFang SC", "Noto Sans SC", system-ui, sans-serif;
+  --head: "Bricolage Grotesque", "Ducter Rounded SC", "PingFang SC", "Noto Sans SC", system-ui, sans-serif;
+  --r-sm: 12px; --r-btn: 14px; --r-md: 16px; --r-tray: 18px; --r-lg: 24px; --r-xl: 28px;
+  --press: 70ms; --enter: 220ms; --bouncy: cubic-bezier(.34,1.56,.64,1); --snappy: cubic-bezier(.2,.8,.2,1);
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 var(--font); padding: 0 24px 80px; }
+:lang(zh) body { line-height: 1.75; }
+h1, h2, h3 { font-family: var(--head); margin: 0; }
+button { font: inherit; color: inherit; }
+img { max-width: 100%; }
+
+/* Page chrome (prototype only) */
+.top { position: sticky; top: 0; z-index: 50; display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; padding: 16px 0 12px; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(8px); }
+.top h1 { font-size: 20px; font-weight: 800; }
+.top .sub { color: var(--ink-muted); font-size: 13px; }
+.seg { display: inline-flex; background: var(--surface-sunken); border-radius: var(--r-md); padding: 4px; gap: 2px; }
+.seg button { border: 0; background: transparent; padding: 6px 14px; border-radius: 12px; font-weight: 700; font-size: 13px; color: var(--ink-muted); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 2px 0 var(--line); }
+.board { max-width: 1280px; margin: 36px auto 0; }
+.board > header { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.board > header h2 { font-size: 20px; font-weight: 800; }
+.board > header .id { font: 700 12px ui-monospace, Menlo, monospace; color: var(--ink-muted); background: var(--surface-sunken); border-radius: 8px; padding: 2px 8px; }
+.board > header p { margin: 0; color: var(--ink-muted); font-size: 13px; flex: 1 0 100%; }
+.row { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+.cap { font-size: 12px; color: var(--ink-muted); margin: 8px 4px 0; max-width: 380px; }
+.frame { background: var(--bg-deep); border-radius: var(--r-xl); padding: 24px; position: relative; }
+
+/* ===== The device card (character sheet) ===== */
+.dc { width: 380px; max-width: 100%; background: var(--surface); border-radius: var(--r-lg); box-shadow: var(--base); padding: 8px 24px 18px; position: relative; }
+.dc.phone { width: 100%; border-radius: var(--r-lg); padding: 4px 18px 16px; }
+.dc .hero { position: relative; height: 168px; display: flex; justify-content: center; align-items: flex-end; }
+.dc.phone .hero { height: 146px; }
+.dc .hero .ground { position: absolute; bottom: 6px; left: 50%; width: 200px; height: 36px; margin-left: -100px; border-radius: 50%; background: radial-gradient(closest-side, var(--surface-sunken), var(--sunken) 70%, transparent); }
+.dc .hero .art { position: relative; width: 150px; margin-bottom: 14px; filter: drop-shadow(0 6px 5px rgb(60 50 20 / .16)); }
+.dc.phone .hero .art { width: 128px; }
+.dc.phone .hero .art.tall { width: 64px; }
+.dc.phone .coin { width: 70px; }
+.dc .hero .art.tall { width: 92px; }
+.dc .hero .art.grey { filter: grayscale(.7) opacity(.7) drop-shadow(0 6px 5px rgb(60 50 20 / .1)); }
+.dc .hero .mist { position: absolute; inset: 30% 18% 4%; background: radial-gradient(closest-side, rgb(255 255 255 / .75), transparent); border-radius: 50%; }
+.dc .name { display: block; margin: 2px auto 0; text-align: center; font: 800 28px/1.2 var(--head); border: 0; background: none; padding: 2px 10px; border-radius: 10px; cursor: text; position: relative; }
+:lang(zh) .dc .name { font-size: 26px; }
+.dc .name:hover { background: var(--sunken); }
+.dc .name:hover::after { content: "✎"; position: absolute; right: -16px; top: 6px; font-size: 14px; color: var(--ink-muted); }
+.dc .name.editing { outline: 2px solid var(--ink); background: var(--surface); }
+.dc .name.saved { animation: settle 140ms var(--snappy); }
+@keyframes settle { from { transform: scale(.98); } }
+.dc .status { text-align: center; font-size: 15px; color: var(--ink-muted); margin: 0 0 16px; }
+.dc .status.working { color: var(--working-ink); font-weight: 700; }
+.dc .status.asleep { color: var(--dusk-ink); font-weight: 700; }
+.dc .status.unreach { color: var(--fail-ink); font-weight: 700; }
+
+/* The loadout: coins on a sunken tray */
+.tray { background: var(--sunken); border-radius: var(--r-tray); padding: 12px 8px 8px; display: flex; gap: 2px; justify-content: center; flex-wrap: wrap; }
+.coin { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 76px; border: 0; background: none; cursor: pointer; padding: 4px 0 2px; border-radius: 14px; position: relative; }
+.coin:hover { background: rgb(255 255 255 / .55); }
+.coin.sel { background: var(--surface); box-shadow: 0 2px 0 var(--line-2); }
+.coin .c { position: relative; width: 52px; height: 52px; transition: transform var(--press) ease-out; }
+.coin:active .c { transform: translateY(2px); }
+.coin .c img { width: 52px; height: 52px; display: block; filter: drop-shadow(0 3px 2px rgb(60 50 20 / .22)); }
+.coin .c .dot { position: absolute; right: 1px; top: 1px; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2.5px var(--sunken); transition: transform 160ms ease-in; }
+.coin.sel .c .dot { box-shadow: 0 0 0 2.5px var(--surface); }
+.coin .c .dot.gone { transform: scale(0); }
+.coin .c .ring { position: absolute; inset: -3px; border-radius: 50%; border: 2.5px solid transparent; border-top-color: var(--accent); animation: spin 1.1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.coin .c.pop { animation: pop 420ms var(--bouncy); }
+@keyframes pop { 0% { transform: scale(1); } 45% { transform: scale(1.16); } 100% { transform: scale(1); } }
+.coin .c.pop::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: linear-gradient(115deg, transparent 35%, rgb(255 255 255 / .7) 50%, transparent 65%); background-size: 260% 100%; animation: sheen 520ms ease-out forwards; pointer-events: none; mix-blend-mode: soft-light; }
+@keyframes sheen { from { background-position: 100% 0; } to { background-position: -60% 0; } }
+.coin span { font-size: 12px; font-weight: 700; color: var(--ink-soft); white-space: nowrap; }
+.coin.off span { color: var(--ink-muted); font-weight: 600; }
+.coin.socket .c { border: 2px dashed var(--line-2); border-radius: 50%; display: grid; place-items: center; color: var(--ink-muted); font-size: 22px; font-weight: 700; background: rgb(255 255 255 / .35); }
+.coin.socket span { color: var(--ink-muted); font-weight: 600; }
+
+/* The coin's detail opens in place under the tray */
+.detail { position: relative; margin-top: 10px; background: var(--surface); border-radius: var(--r-md); box-shadow: inset 0 0 0 1px var(--line), 0 2px 0 var(--line); padding: 14px 16px; animation: enter var(--enter) var(--snappy); }
+@keyframes enter { from { opacity: 0; transform: translateY(6px); } }
+.detail::before { content: ""; position: absolute; top: -7px; left: var(--notch, 50%); width: 12px; height: 12px; background: var(--surface); transform: translateX(-50%) rotate(45deg); box-shadow: -1px -1px 0 var(--line); }
+.detail .dh { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.detail .dh b { font-size: 15px; }
+.detail .dh small { font-size: 13px; color: var(--ink-muted); }
+.detail .ln { font-size: 13px; color: var(--ink-muted); margin-top: 2px; }
+.detail .ln.soft { color: var(--ink-soft); }
+.detail .upd { display: flex; align-items: center; gap: 12px; margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: var(--bg); }
+.detail .upd .tx { flex: 1; font-size: 13px; }
+.detail .upd .tx b { display: block; font-size: 14px; }
+.detail .upd .tx small { color: var(--ink-muted); font-size: 12px; }
+.detail .upd.done .tx b { color: var(--done-ink); }
+.detail .sw { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; font-size: 14px; font-weight: 700; }
+.detail .foot2 { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+
+/* Switch (Pebble) */
+.switch { width: 44px; height: 26px; border-radius: 13px; background: var(--line-2); position: relative; border: 0; cursor: pointer; transition: background 160ms; flex: none; }
+.switch::after { content: ""; position: absolute; left: 3px; top: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 2px 0 rgb(43 33 24 / .18); transition: transform 240ms var(--bouncy); }
+.switch.on { background: var(--ink); }
+.switch.on::after { transform: translateX(18px); }
+
+/* Abilities: toggle chips */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; justify-content: center; }
+.ach { display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 14px 0 6px; border-radius: var(--r-btn); border: 0; cursor: pointer; font-size: 14px; font-weight: 700; position: relative; transition: transform var(--press) ease-out, box-shadow var(--press) ease-out; white-space: nowrap; }
+.ach img { width: 30px; height: 30px; object-fit: contain; transition: filter 160ms, opacity 160ms; }
+.ach.on { background: var(--surface); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line-2), 0 3px 0 var(--line-2); }
+.ach.off { background: var(--sunken); color: var(--ink-muted); box-shadow: 0 2px 0 var(--line); }
+.ach.off img { filter: grayscale(.85); opacity: .55; }
+.ach.add { background: transparent; color: var(--ink-muted); box-shadow: inset 0 0 0 1.5px var(--line-2); border: 0; outline: 1.5px dashed var(--line-2); outline-offset: -1.5px; box-shadow: none; padding-left: 12px; }
+.ach.fail { background: var(--fail-surface); color: var(--fail-ink); box-shadow: 0 3px 0 #efb7c4; }
+.ach:active { transform: translateY(2px); }
+.ach.on:active { box-shadow: inset 0 0 0 1px var(--line-2), 0 1px 0 var(--line-2); }
+.ach.squish { animation: squish 240ms var(--bouncy); }
+@keyframes squish { 0% { transform: translateY(2px) scale(1.06, .94); } 100% { transform: none; } }
+.ach.squish.on img { animation: hop 300ms var(--bouncy); }
+@keyframes hop { 40% { transform: translateY(-3px); } }
+.ach .i { display: none; width: 18px; height: 18px; border-radius: 50%; font: 700 11px/18px var(--font); text-align: center; color: var(--ink-muted); box-shadow: inset 0 0 0 1.2px var(--faint); margin-left: 2px; }
+.ach:hover .i, .ach .i.show { display: inline-block; }
+.note { font-size: 13px; color: var(--ink-soft); background: var(--bg); border-radius: 12px; padding: 10px 12px; margin-top: 10px; animation: enter var(--enter) var(--snappy); }
+:lang(zh) .note { line-height: 1.75; }
+.note .acts { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+.note.fail { background: var(--fail-surface); color: var(--fail-ink); }
+.note code { font: 12px ui-monospace, Menlo, monospace; color: var(--ink-soft); }
+
+/* How it's connected */
+.via { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 16px; font-size: 13px; color: var(--ink-muted); }
+.more { border: 0; background: none; cursor: pointer; color: var(--ink-muted); font-weight: 800; letter-spacing: 1px; padding: 0 6px; border-radius: 8px; height: 24px; }
+.more:hover, .more[aria-expanded="true"] { background: var(--sunken); color: var(--ink); }
+.conns { margin-top: 8px; border-radius: 12px; background: var(--bg); overflow: hidden; animation: enter 200ms var(--snappy); }
+.conn { display: flex; align-items: center; gap: 8px; padding: 8px 12px; font-size: 13px; }
+.conn + .conn { border-top: 1px solid var(--line-soft); }
+.conn b { font-size: 13px; }
+.conn small { color: var(--ink-muted); flex: 1; }
+.conn .ask { flex: 1; color: var(--ink-soft); }
+
+/* Foot */
+.ver { display: flex; align-items: center; gap: 10px; margin-top: 14px; padding: 10px 12px; border-radius: 12px; background: var(--bg); font-size: 13px; }
+.ver .vd { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; }
+.ver span { flex: 1; }
+.dfoot { margin-top: 16px; padding-top: 10px; border-top: 1px solid var(--line-soft); display: flex; align-items: center; gap: 8px; }
+.dfoot .ask { flex: 1; font-size: 13px; color: var(--ink-soft); }
+
+/* Buttons (one family) */
+.btn { border: 0; cursor: pointer; font-weight: 700; font-size: 15px; border-radius: var(--r-btn); padding: 0 18px; height: 44px; transition: transform var(--press) ease-out, box-shadow var(--press) ease-out; white-space: nowrap; }
+.btn.sm { height: 36px; font-size: 13px; padding: 0 14px; border-radius: var(--r-sm); }
+.btn.primary { color: #fff6ea; background: linear-gradient(var(--primary-top), var(--ink)); box-shadow: inset 0 1.5px 0 rgb(255 246 234 / .26), 0 3px 0 var(--press-primary), var(--drop); }
+.btn.secondary { background: var(--bg); color: var(--ink); box-shadow: inset 0 0 0 1px rgb(43 33 24 / .09), 0 3px 0 var(--press-quiet); }
+.btn.text { background: none; color: var(--ink-soft); padding: 0 8px; }
+.btn.text:hover { background: var(--sunken); }
+.btn.danger { background: none; color: var(--fail-ink); padding: 0 8px; }
+.btn.danger:hover { background: var(--fail-surface); }
+.btn:active { transform: translateY(3px); box-shadow: none; }
+
+/* Devices page frame */
+.page { display: grid; grid-template-columns: 250px minmax(0,1fr) 380px; gap: 20px; align-items: start; background: var(--bg); border-radius: var(--r-xl); padding: 20px; box-shadow: inset 0 0 0 1px var(--line); width: 100%; min-width: 1100px; }
+.pagewrap { overflow-x: auto; }
+.list { display: flex; flex-direction: column; gap: 6px; }
+.list h4 { font: 800 13px var(--head); color: var(--ink-muted); margin: 4px 8px 4px; }
+.li { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 10px; border-radius: 14px; cursor: pointer; border: 0; background: none; text-align: left; width: 100%; }
+.li:hover { background: var(--sunken); }
+.li.sel { background: var(--surface); box-shadow: inset 0 0 0 2px var(--ink); }
+.li img { width: 36px; height: 32px; object-fit: contain; flex: none; }
+.li .t { min-width: 0; display: flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.li .t b { font-size: 15px; overflow: hidden; text-overflow: ellipsis; }
+.li .t small { font-size: 13px; color: var(--ink-muted); }
+.li .t small.asleep { color: var(--dusk-ink); }
+.li .t small.working { color: var(--working-ink); }
+.stage { position: sticky; top: 80px; border-radius: 24px; height: 560px; overflow: hidden; background: radial-gradient(120% 70% at 50% 0%, var(--sky) 0 18%, var(--sea-top) 34%, var(--sea) 70%, var(--sea-deep) 100%); }
+.stage .p { position: absolute; }
+.stage .p > img { display: block; width: 100%; }
+.stage .tag { position: absolute; transform: translateX(-50%); background: #fffbf0; border-radius: 12px; box-shadow: 0 2px 0 var(--line); padding: 2px 12px 3px; white-space: nowrap; font-size: 13px; font-weight: 800; }
+.stage .tag.chosen { box-shadow: inset 0 0 0 1.5px var(--ink), 0 2px 0 var(--line); }
+.stage .tag small { display: block; font-size: 11px; font-weight: 700; color: var(--dusk-ink); text-align: center; }
+.stage .toks { position: absolute; display: flex; gap: 4px; transform: translateX(-50%); }
+.stage .toks img { width: 28px; height: 28px; filter: drop-shadow(0 2px 2px rgb(60 50 20 / .25)); }
+
+/* Before (today's card, reconstructed from devicecard.go + i18n) */
+.old { width: 380px; background: var(--surface); border-radius: var(--r-lg); box-shadow: var(--base); padding: 20px 22px; font-size: 13px; position: relative; }
+.old .n { font-size: 18px; font-weight: 800; }
+.old .k, .old .s { color: var(--ink-muted); }
+.old .lbl { font-size: 12px; font-weight: 800; color: var(--ink-muted); margin-top: 14px; }
+.old .acc { display: grid; grid-template-columns: 28px 1fr; gap: 4px 10px; margin-top: 8px; }
+.old .acc img { width: 28px; }
+.old .acc .m { color: var(--ink-muted); font-size: 12px; line-height: 1.6; }
+.old .fold { display: flex; justify-content: space-between; color: var(--ink-muted); margin-top: 6px; }
+.old .pop { position: absolute; right: 18px; top: 152px; background: var(--surface); box-shadow: var(--floating), inset 0 0 0 1px var(--line); border-radius: 12px; padding: 8px 14px; color: var(--fail-ink); font-weight: 700; }
+.old .sw { display: flex; justify-content: space-between; gap: 10px; margin-top: 6px; }
+.old .p { color: var(--ink-muted); font-size: 12px; line-height: 1.6; }
+.old .bad { position: absolute; width: 22px; height: 22px; border-radius: 50%; background: var(--fail-ink); color: #fff; font: 800 12px/22px var(--font); text-align: center; box-shadow: 0 2px 0 #5e1027; }
+
+/* D157 surfaces */
+.task { width: 620px; max-width: 100%; background: var(--surface); border-radius: var(--r-lg); box-shadow: var(--base); padding: 20px 24px; }
+.task h4 { font: 800 20px var(--head); margin: 0 0 6px; }
+.meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 13px; color: var(--ink-muted); }
+.meta .working { color: var(--working-ink); font-weight: 700; }
+.meta img { width: 20px; height: 20px; vertical-align: -5px; margin-right: 3px; }
+.meta .d { color: var(--faint); }
+.meta .where { color: var(--ink-soft); font-weight: 700; border-bottom: 1px dotted var(--faint); cursor: pointer; }
+.meta .act { margin-left: auto; font-weight: 700; color: var(--ink); cursor: pointer; }
+.why { margin-top: 10px; font-size: 13px; color: var(--ink-soft); background: var(--bg); border-radius: 12px; padding: 8px 12px; animation: enter var(--enter) var(--snappy); }
+.sheet { width: 600px; max-width: 100%; background: var(--surface); border-radius: var(--r-md); box-shadow: var(--floating); padding: 22px 24px; }
+.sheet h3 { font-size: 20px; font-weight: 800; }
+.sheet .sub { font-size: 13px; color: var(--ink-muted); margin: 2px 0 14px; }
+.strip { position: relative; height: 210px; border-radius: 18px; overflow: hidden; background: radial-gradient(120% 80% at 50% 0%, var(--sky) 0 14%, var(--sea-top) 34%, var(--sea) 72%, var(--sea-deep) 100%); }
+.strip .isl { position: absolute; }
+.strip .isl > img.i { width: 100%; display: block; }
+.strip .dev { position: absolute; left: 50%; transform: translateX(-50%); }
+.strip .cs { position: absolute; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; }
+.strip .cs button { border: 0; background: none; padding: 0; cursor: pointer; border-radius: 50%; transition: transform 200ms var(--bouncy); }
+.strip .cs button:hover { transform: translateY(-4px); }
+.strip .cs button.pick { box-shadow: 0 0 0 2.5px var(--ink); }
+.strip .cs img { width: 34px; height: 34px; display: block; filter: drop-shadow(0 3px 2px rgb(60 50 20 / .25)); }
+.strip .tag { position: absolute; left: 50%; transform: translateX(-50%); background: #fffbf0; border-radius: 10px; box-shadow: 0 2px 0 var(--line); padding: 1px 10px; font-size: 12px; font-weight: 800; white-space: nowrap; }
+.strip .tag small { font-weight: 700; color: var(--dusk-ink); }
+.strip svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.parcel { position: absolute; width: 20px; height: 16px; border-radius: 5px; background: linear-gradient(#fff8ec, #f2dfc2); box-shadow: 0 3px 0 #d9bf98, 0 5px 6px rgb(60 50 20 / .25); transition: left 700ms var(--snappy), top 700ms var(--snappy); }
+.parcel::after { content: ""; position: absolute; left: 8px; top: 0; bottom: 0; width: 4px; background: #e9b98c; border-radius: 2px; }
+.grp { margin-top: 12px; }
+.gh { display: flex; align-items: center; gap: 8px; padding: 0 8px 4px; }
+.gh img { width: 36px; height: 28px; object-fit: contain; }
+.gh b { font-size: 14px; }
+.gh small { font-size: 13px; color: var(--ink-muted); }
+.gh small.asleep { color: var(--dusk-ink); font-weight: 700; }
+.cand { display: grid; grid-template-columns: 36px 1fr auto; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 14px; cursor: pointer; border: 0; background: none; width: 100%; text-align: left; }
+.cand:hover { background: var(--sunken); }
+.cand.sel { box-shadow: inset 0 0 0 2px var(--ink); }
+.cand img { width: 36px; height: 36px; }
+.cand b { font-size: 15px; }
+.cand small { display: block; font-size: 12px; color: var(--ink-muted); line-height: 1.45; }
+.cand .now { font-size: 12px; font-weight: 800; color: var(--working-ink); }
+.cand.no { cursor: default; opacity: .55; }
+.cand.no:hover { background: none; }
+.consq { margin-top: 12px; background: var(--bg); border-radius: 12px; padding: 10px 12px; font-size: 13px; color: var(--ink-soft); animation: enter var(--enter) var(--snappy); }
+.consq p { margin: 0; }
+.consq .widen { color: var(--needs-ink); font-weight: 700; margin-top: 4px; }
+.sfoot { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 14px; }
+.seg button { white-space: nowrap; }
+.sfoot .sp { flex: 1; }
+.convo { width: 520px; max-width: 100%; display: flex; flex-direction: column; gap: 10px; }
+.bub { max-width: 90%; padding: 12px 16px; font-size: 16px; line-height: 1.65; }
+.bub.you { align-self: flex-end; background: var(--accent); color: var(--ink); border-radius: 20px 20px 6px 20px; }
+.bub.partner { align-self: flex-start; background: var(--surface); border-radius: 20px 20px 20px 6px; box-shadow: var(--base); }
+.bub .acts { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+.bub .def { font-size: 12px; color: var(--ink-muted); margin-top: 8px; }
+.bub .nt { font-size: 13px; color: var(--ink-muted); margin-top: 4px; }
+.rules { width: 560px; max-width: 100%; }
+.rules h3 { font-size: 20px; font-weight: 800; margin: 0 0 4px 4px; }
+.rules .lede { font-size: 13px; color: var(--ink-muted); margin: 0 0 10px 4px; }
+.rcard { background: var(--surface); border-radius: var(--r-lg); box-shadow: var(--base); }
+.rrow { display: flex; align-items: center; gap: 12px; min-height: 68px; padding: 12px 24px; }
+.rrow + .rrow { border-top: 1px solid var(--line-soft); }
+.rrow .ic { display: flex; align-items: center; flex: none; }
+.rrow .ic img { width: 32px; height: 32px; }
+.rrow .ic img.dv { width: 36px; height: 28px; object-fit: contain; margin-left: -6px; }
+.rrow .tx { flex: 1; }
+.rrow .tx b { display: block; font-size: 15px; }
+.rrow .tx small { font-size: 13px; color: var(--ink-muted); }
+
+/* Phone frame */
+.phonef { width: 390px; height: 820px; background: var(--bg); border-radius: 40px; box-shadow: 0 0 0 10px #2b2118, var(--floating); overflow: hidden; position: relative; }
+.phonef .scroll { position: absolute; inset: 0; overflow-y: auto; padding: 54px 16px 30px; }
+.phonef .nav { display: flex; align-items: center; gap: 4px; font-size: 15px; font-weight: 700; color: var(--ink-soft); margin-bottom: 8px; }
+.phonef .pt { font: 800 28px var(--head); margin: 0 4px 10px; }
+.plist { background: var(--surface); border-radius: var(--r-lg); box-shadow: var(--base); padding: 6px; }
+.plist .li { height: 56px; }
+.plist .li .chev { margin-left: auto; color: var(--faint); font-weight: 800; }
+.phonef .dimp { position: absolute; inset: 0; background: var(--scrim); }
+.phonef .bsheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); border-radius: 24px 24px 0 0; box-shadow: var(--floating); padding: 10px 16px 28px; max-height: 92%; overflow-y: auto; }
+.phonef .grab { width: 40px; height: 5px; border-radius: 3px; background: var(--line-2); margin: 0 auto 10px; }
+
+/* Idle art motion (D77) */
+.float { animation: float 5.6s ease-in-out infinite; }
+@keyframes float { 50% { transform: translateY(-5px); } }
+.blanket { animation: blanket 4.8s ease-in-out infinite; transform-origin: 50% 100%; }
+@keyframes blanket { 50% { transform: scaleY(1.045); } }
+.drift { animation: drift 11s ease-in-out infinite; }
+@keyframes drift { 50% { transform: translateX(4px); } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+body.still *, body.still *::before, body.still *::after { animation: none !important; transition: none !important; }
+</style>
+</head>
+<body>
+<div class="top">
+  <h1 data-t="title"></h1>
+  <span class="sub" data-t="subtitle"></span>
+  <span style="flex:1"></span>
+  <div class="seg" role="group" aria-label="language"><button data-lang="zh" aria-pressed="true">中文</button><button data-lang="en" aria-pressed="false">English</button></div>
+  <div class="seg" role="group" aria-label="motion"><button data-motion="full" aria-pressed="true" data-t="motionFull"></button><button data-motion="still" aria-pressed="false" data-t="motionStill"></button></div>
+</div>
+
+<section class="board" id="b-before">
+  <header><span class="id">before → after</span><h2 data-t="baH"></h2><p data-t="baP"></p></header>
+  <div class="row">
+    <div><div class="frame" id="old"></div><p class="cap" data-t="oldCap"></p></div>
+    <div><div class="frame" id="newA"></div><p class="cap" data-t="newCap"></p></div>
+    <div style="flex:1;min-width:260px"><ol id="fixes" style="margin:0;padding-left:20px;font-size:13px;color:var(--ink-soft)"></ol></div>
+  </div>
+</section>
+
+<section class="board" id="b-page">
+  <header><span class="id">Mac · Devices</span><h2 data-t="pageH"></h2><p data-t="pageP"></p></header>
+  <div class="pagewrap"><div class="page" id="page"></div></div>
+</section>
+
+<section class="board" id="b-states">
+  <header><span class="id">states</span><h2 data-t="stH"></h2><p data-t="stP"></p></header>
+  <div class="row" id="states"></div>
+</section>
+
+<section class="board" id="b-phone">
+  <header><span class="id">phone</span><h2 data-t="phH"></h2><p data-t="phP"></p></header>
+  <div class="row">
+    <div><div class="phonef" id="ph1"></div><p class="cap" data-t="ph1Cap"></p></div>
+    <div><div class="phonef" id="ph2"></div><p class="cap" data-t="ph2Cap"></p></div>
+    <div><div class="phonef" id="ph3"></div><p class="cap" data-t="ph3Cap"></p></div>
+  </div>
+</section>
+
+<section class="board" id="b-where">
+  <header><span class="id">D157 · one language</span><h2 data-t="whH"></h2><p data-t="whP"></p></header>
+  <div class="row">
+    <div><div class="frame"><div class="sheet" id="sheet"></div></div><p class="cap" data-t="sheetCap"></p></div>
+    <div><div class="phonef" id="ph4"></div><p class="cap" data-t="ph4Cap"></p></div>
+  </div>
+  <div class="row" style="margin-top:24px">
+    <div><div class="frame"><div class="task" id="task"></div></div><p class="cap" data-t="taskCap"></p>
+      <div class="frame" style="margin-top:20px"><div class="convo" id="ask"></div></div><p class="cap" data-t="askCap"></p></div>
+    <div><div class="frame"><div class="rules" id="rules"></div></div><p class="cap" data-t="rulesCap"></p></div>
+  </div>
+</section>
+
+<script>
+const C = "../../apps/desktop/internal/theme/art/clay/";
+const ART = {
+  server: C + "server_awake@640.png", serverAsleep: C + "server_asleep@640.png",
+  laptop: C + "laptop_awake@640.png", laptopAsleep: C + "laptop_asleep@640.png",
+  mini: C + "mini_awake@640.png", phone: C + "phone@640.png", unreach: C + "device_unreachable@640.png",
+  islandBig: C + "island_big@1280.png", islandSmall: C + "island_small@1280.png",
+  web: C + "ab_web@640.png", webLater: C + "ab_web_later@640.png", remote: C + "ab_remote@640.png",
+  computer: C + "ab_computer@640.png", phoneAb: C + "ab_phone@640.png", mail: C + "wait_mail@256.png",
+  ducter: "../../apps/site/public/art/ducter_idle-320.webp",
+  coin: { claude: C + "coin_claude_code@256.png", codex: C + "coin_codex@256.png", pi: C + "coin_pi@256.png" },
+  coinOff: { claude: C + "coin_claude_code_off@256.png", codex: C + "coin_codex_off@256.png", pi: C + "coin_pi_off@256.png" },
+};
+let lang = "zh";
+// zh never has a space between two Han characters (D78); a name gets the gap only beside Latin or digits.
+const L = (zh, en) => (lang === "zh" ? zh.replace(/([㐀-鿿])\s+(?=[㐀-鿿])/g, "$1") : en);
+const PARTNER = "小鸭";
+
+const T = {
+  title: ["设备卡片 · 角色卡", "The device card · a character sheet"],
+  subtitle: ["草稿 D161 · design/ui-devices-card.md · hel 是家（服务器），MacBook 替 hel 做事", "Draft D161 · design/ui-devices-card.md · hel is the home (a server), MacBook does tasks for it"],
+  motionFull: ["动起来", "Motion"], motionStill: ["静止", "Still"],
+  baH: ["之前 → 之后：同一台 MacBook", "Before → after: the same MacBook"],
+  baP: ["左边是今天的卡片（照着 devicecard.go 和文案重画，红圈是作者指出的问题）。右边是角色卡：谁 · 怎么样 · 带着什么 · 会做什么。", "Left: today's card, redrawn from devicecard.go and its copy (red marks are the author's points). Right: the character sheet — who, how it is, what it carries, what it can do."],
+  oldCap: ["今天：19 行字，四种几乎一样重的字号，两个「断开」。", "Today: 19 lines of text, four near-equal weights, two Disconnects."],
+  newCap: ["之后：默认只有 5 行字；点币看版本，点 ⓘ 看解释，日志只在出错时出现。", "After: five lines of text by default; tap a coin for versions, ⓘ for explanations; the log only on failure."],
+  pageH: ["Mac 的设备页：左边一行一个，右边是角色卡", "The Mac's Devices page: one line each on the left, the character sheet on the right"],
+  pageP: ["点左边或小岛换设备。点币、点能力、点 ⋯、点名字都能试。pi 有更新：点它，再点「更新」，看币弹一下。", "Click a row or an island to switch. Coins, abilities, ⋯ and the name all work. pi has an update: tap it, then Update, and watch the coin pop."],
+  stH: ["状态：一张卡，五种样子", "States: one card, five looks"],
+  stP: ["家（hel，Codex 没登录）、只是你在用的这台 Mac（新用户）、睡着的 MacBook、连不上的 MacBook、关掉「替 hel 做事」时还有事在做。", "The home (hel, Codex signed out), just the Mac you're using (a fresh user), MacBook asleep, MacBook unreachable, and turning off Do tasks for hel while tasks still run."],
+  phH: ["手机：设置 › 设备", "The phone: Settings › Devices"],
+  phP: ["同一张角色卡，单列。币的详情在原地展开，不用浮层。", "The same sheet in one column. A coin's detail opens in place, no floating layer."],
+  ph1Cap: ["列表一行一个，状态一个词，永不折行。", "One line each, one word of state, never wraps."],
+  ph2Cap: ["MacBook 的卡；点了 pi，原地展开。", "MacBook's card with pi tapped open in place."],
+  ph3Cap: ["这台 iPhone 自己的卡：没有 AI，所以没有币那一排。", "This iPhone's own card: no AI agents, so no coin row."],
+  whH: ["同一套语言：多台电脑 × 多个 AI agent（草稿 D157）", "One language for many computers × many AI agents (draft D157)"],
+  whP: ["币那一排是同一个部件：设备卡、换谁来做的小岛和清单、任务那一行。默认自己选，一句话说在哪儿；点一下看为什么；想改就点、就说、或者让它学。", "The coin row is one component: the device card, the switch sheet's islands and list, the task's line. It picks on its own and says where in one line; tap for why; change it by tapping, saying, or letting it learn."],
+  taskCap: ["只有两台以上电脑才写「在 hel 上」。点它看为什么。", "\"on hel\" appears only with two or more computers. Tap it for why."],
+  askCap: ["只在三种时候问：要你登录、要扩大权限、只有睡着的那台能做；永远带默认。", "It asks only for a sign-in, for wider access, or when only a sleeping computer can; always with a default."],
+  rulesCap: ["学到的规则在设置 › 伙伴里，一条一行，随时不要。", "Learned rules live in Settings › Partner, one per row, removable any time."],
+  sheetCap: ["桌面：上面小岛（每台电脑的币站在岛上），下面清单。选 MacBook 上的一行看代价。", "Desktop: islands on top (each computer's coins stand on it), the list below. Pick a MacBook row to see the cost."],
+  ph4Cap: ["手机：只有清单；组头就是迷你设备卡。", "Phone: the list alone; group heads are mini device cards."],
+};
+function applyT() {
+  document.documentElement.lang = lang === "zh" ? "zh" : "en";
+  document.querySelectorAll("[data-t]").forEach((el) => { const v = T[el.dataset.t]; if (v) el.textContent = lang === "zh" ? v[0] : v[1]; });
+}
+
+/* ---------- Data: the author's real setup ---------- */
+const AG = {
+  claude: { name: "Claude Code", model: "Opus" },
+  codex: { name: "Codex", model: "gpt-6" },
+  pi: { name: "pi", model: "" },
+};
+const how = (k) => ({
+  npm: L("用 npm 装的", "installed with npm"), brew: L("用 Homebrew 装的", "installed with Homebrew"),
+  installer: L("它自己装的", "installed by its own installer"), ducter: L("随 Ducter 更新", "updates with Ducter"),
+})[k];
+function devices() {
+  return {
+    hel: { id: "hel", name: "hel", art: ART.server, kind: L("云上的电脑", "A computer in the cloud"), home: true, working: 3,
+      coins: [
+        { id: "claude", v: "2.1.319", how: "installer", thinks: true },
+        { id: "codex", v: "0.167.0", how: "npm", off: true, shared: "MacBook" },
+        { id: "pi", v: "1.4.0", how: "ducter" },
+      ],
+      chips: [
+        { id: "web", icon: ART.web, label: L("上网", "Browse"), on: true, info: L("用 Ducter 自己的浏览器上网。要登录的网站，你自己在里面登录。", "Browses with Ducter's own browser. Sites that need a sign-in, you sign in to yourself.") },
+        { id: "remote", icon: ART.remote, label: L("在哪儿都能用", "From anywhere"), on: true, info: L("手机在外面也能连上 hel。", "Your phone reaches hel from anywhere.") },
+      ],
+      via: null },
+    mbp: { id: "mbp", name: "MacBook", art: ART.laptop, kind: L("一台 Mac", "A Mac"), worker: true, working: 2,
+      coins: [
+        { id: "claude", v: "2.1.322", how: "installer", unchecked: true },
+        { id: "codex", v: "0.167.0", how: "brew", shared: "hel" },
+        { id: "pi", v: "1.4.0", how: "installer", update: "1.4.2" },
+      ],
+      chips: [
+        { id: "worker", icon: ART.server, label: L("替 hel 做事", "Tasks for hel"), on: true, info: L("hel 能把事派到这台 Mac 上，用这里登录的 AI 和这里的代码仓库。它只做事，看不到你们的对话。", "hel can send tasks to this Mac, with the AI agents signed in here and the repos here. It only does tasks; it never sees your conversation.") },
+        { id: "web", icon: ART.web, label: L("上网", "Browse"), on: false, info: L("用你的 Chrome 上网，你登录着的网站它都能用。打开前会先问你。", "Browses in your Chrome, with every site you're signed in to. It asks before it's turned on.") },
+        { id: "computer", icon: ART.computer, label: L("用电脑", "Use apps"), on: true, info: L("能点这台 Mac 上的应用，比如 Keynote。", "Can use the apps on this Mac, like Keynote.") },
+      ],
+      via: ["app", "cli"] },
+    iph: { id: "iph", name: "iPhone", art: ART.phone, tall: true, kind: L("你的 iPhone", "Your iPhone"), phone: true,
+      coins: [],
+      chips: [{ id: "notify", icon: ART.mail, label: L("通知", "Notifications"), on: true, info: L("有事要你看的时候，这台手机会响一下。", "This phone buzzes when something needs you.") }],
+      via: ["app"] },
+  };
+}
+
+/* ---------- Card state ---------- */
+const S = {};
+const st = (k, init) => (S[k] ??= Object.assign({ pop: null, via: false, stopAsk: false, info: null, chips: {}, upd: {}, popped: null, editing: false, disc: false, connAsk: null }, init || {}));
+
+function statusLine(d, v) {
+  if (v.unreach) return [L("连不上 · 最后在线 2 小时前", "Can't reach · last seen 2 h ago"), "unreach"];
+  if (v.asleep) return [L("睡着了 · 醒来就接着做", "Asleep · carries on when it wakes"), "asleep"];
+  if (d.home) return [L(`${PARTNER} 住这儿`, `${PARTNER} lives here`) + (d.working ? L(` · 在做 ${d.working} 件事`, ` · ${d.working} tasks under way`) : ""), ""];
+  if (d.worker && v.workerOn !== false) return d.working ? [L(`在替 hel 做 ${d.working} 件事`, `Doing ${d.working} tasks for hel`), "working"] : [L("替 hel 做事", "Does tasks for hel"), ""];
+  if (v.self) return [L("你正在用的这台", "The one you're using"), ""];
+  if (d.phone) return [L("现在连着", "Connected now"), ""];
+  return [L("你正在用的这台", "The one you're using"), ""];
+}
+function shortState(d, v) {
+  if (v && v.asleep) return [L("睡着了", "asleep"), "asleep"];
+  if (d.home) return [L("住这儿", "home"), ""];
+  if (d.worker) return [L(`在做 ${d.working} 件`, `${d.working} tasks`), "working"];
+  if (d.phone) return [L("现在连着", "connected"), ""];
+  return ["", ""];
+}
+
+function card(key, d, v = {}) {
+  const s = st(key, v.init);
+  const phone = !!v.phone;
+  const art = v.unreach ? d.art : v.asleep ? (d.art === ART.laptop ? ART.laptopAsleep : ART.serverAsleep) : d.art;
+  const motion = v.unreach ? "" : v.asleep ? "blanket" : (d.home ? "drift" : "float");
+  const [sl, sk] = statusLine(d, { ...v, workerOn: s.chips.worker ?? true });
+  const coins = d.coins.map((c, i) => {
+    const off = c.off || (v.signout && c.id === v.signout);
+    const u = s.upd[c.id];
+    const hasUpd = c.update && !(u && u.done);
+    return `<button class="coin ${off ? "off" : ""} ${s.pop === c.id ? "sel" : ""}" data-k="${key}" data-coin="${c.id}" aria-label="${AG[c.id].name}${off ? L("，没登录", ", not signed in") : ""}${hasUpd ? L("，有新版本", ", update available") : ""}">
+      <div class="c ${s.popped === c.id ? "pop" : ""}"><img src="${off ? ART.coinOff[c.id] : ART.coin[c.id]}" alt="">${hasUpd ? `<i class="dot ${u && u.phase >= 0 && !u.done ? "gone" : ""}"></i>` : ""}${u && u.phase >= 0 && !u.done && s.pop !== c.id ? `<i class="ring"></i>` : ""}</div>
+      <span>${AG[c.id].name}</span></button>`;
+  }).join("");
+  const socket = d.coins.length && !v.noSocket ? `<button class="coin socket"><div class="c">+</div><span>${L("再登录一个", "Add an AI")}</span></button>` : "";
+  const idx = d.coins.findIndex((c) => c.id === s.pop);
+  const detail = idx >= 0 ? coinDetail(key, d, d.coins[idx], idx, v) : "";
+  const chips = d.chips.map((c) => {
+    const on = s.chips[c.id] ?? c.on;
+    const fail = v.fail === c.id;
+    const cls = fail ? "fail" : on ? "on" : "off";
+    return `<button class="ach ${cls} ${s.squish === c.id ? "squish" : ""}" data-k="${key}" data-chip="${c.id}" aria-pressed="${on}"><img src="${c.icon}" alt="">${c.label}<i class="i ${s.info === c.id ? "show" : ""}" data-k="${key}" data-info="${c.id}">i</i></button>`;
+  }).join("") + (v.addChip ? `<button class="ach add">+ ${v.addChip}</button>` : "");
+  const info = s.info ? `<div class="note">${d.chips.find((c) => c.id === s.info).info}</div>` : "";
+  const stop = s.stopAsk ? `<div class="note">${L(`${d.name} 上还有 ${d.working} 件事在做。停下来，还是做完再停？`, `${d.name} still has ${d.working} tasks under way. Stop now, or after they finish?`)}
+      <div class="acts"><button class="btn text sm" data-k="${key}" data-stop="now">${L("现在停", "Stop now")}</button><button class="btn primary sm" data-k="${key}" data-stop="after">${L("做完再停", "After they finish")}</button></div></div>` : "";
+  const fail = v.fail ? `<div class="note fail">${L("没开成：hel 没回应（连接被拒绝）", "Didn't start: hel didn't answer (connection refused)")} · <button class="btn text sm" style="height:24px;color:inherit;padding:0 4px" data-k="${key}" data-log>${L("看日志", "See the log")}</button>${s.log ? `<div style="margin-top:4px"><code>~/.ducter/worker.log</code></div>` : ""}</div>` : "";
+  let via = "";
+  if (d.via) {
+    const ways = d.via.map((w) => ({ app: L("app", "the app"), cli: L("命令行", "command line"), safari: "Safari" })[w]);
+    const txt = L(`通过 ${ways.join(" 和 ")} 连着`, `Connected via ${ways.join(" and ")}`);
+    via = `<div class="via">${txt}<button class="more" data-k="${key}" data-via aria-expanded="${s.via}" aria-label="${L("管理连接", "Manage connections")}">⋯</button></div>`;
+    if (s.via) via += `<div class="conns">${d.via.map((w) => {
+      const nm = { app: "Ducter app", cli: L("命令行", "Command line") }[w];
+      const when = w === "app" ? (v.asleep ? L("40 分钟前", "40 min ago") : L("现在连着", "connected now")) : L("3 分钟前", "3 min ago");
+      if (s.connAsk === w) return `<div class="conn"><span class="ask">${L(`断开 ${d.name} 上的${w === "cli" ? "命令行" : " Ducter app"}？`, `Disconnect ${w === "cli" ? "the command line" : "the Ducter app"} on ${d.name}?`)}</span><button class="btn text sm" data-k="${key}" data-conn-cancel>${L("算了", "Keep it")}</button><button class="btn danger sm" data-k="${key}" data-conn-cancel>${L("断开", "Disconnect")}</button></div>`;
+      return `<div class="conn"><b>${nm}</b><small>${when}</small><button class="btn danger sm" data-k="${key}" data-conn="${w}">${L("断开", "Disconnect")}</button></div>`;
+    }).join("")}</div>`;
+  }
+  const ver = v.ducterUpdate ? `<div class="ver"><i class="vd"></i><span>${L("Ducter 有新版本 0.0.7", "Ducter 0.0.7 is out")}</span><button class="btn secondary sm">${L("更新", "Update")}</button></div>` : "";
+  const foot = d.home ? "" : `<div class="dfoot">${s.disc
+      ? `<span class="ask">${L(`断开 ${d.name}？它就不能再连到 hel 了。`, `Disconnect ${d.name}? It won't reach hel anymore.`)}</span><button class="btn text sm" data-k="${key}" data-disc>${L("算了", "Keep it")}</button><button class="btn danger sm" data-k="${key}" data-disc>${L("断开", "Disconnect")}</button>`
+      : `<button class="btn danger sm" data-k="${key}" data-disc>${L(`断开这台 ${d.name}`, `Disconnect this ${d.name}`)}</button>`}</div>`;
+  const nm = s.name ?? d.name;
+  return `<div class="dc ${phone ? "phone" : ""}" aria-label="${nm}, ${d.kind}">
+    <div class="hero"><div class="ground"></div><img class="art ${d.tall ? "tall" : ""} ${v.unreach ? "grey" : ""} ${motion}" src="${art}" alt="">${v.unreach ? `<div class="mist"></div>` : ""}</div>
+    <button class="name ${s.editing ? "editing" : ""} ${s.saved ? "saved" : ""}" data-k="${key}" data-name ${s.editing ? `contenteditable="true"` : ""}>${nm}</button>
+    <div class="status ${sk}">${sl}</div>
+    ${d.coins.length ? `<div class="tray">${coins}${socket}</div>${detail}` : ""}
+    <div class="chips">${chips}</div>${info}${stop}${fail}
+    ${via}${ver}${foot}</div>`;
+}
+
+function coinDetail(key, d, c, idx, v) {
+  const s = st(key);
+  const a = AG[c.id];
+  const off = c.off || (v.signout && c.id === v.signout);
+  const n = d.coins.length + (v.noSocket ? 0 : 1);
+  const notch = `calc(${((idx + 0.5) / n) * 100}% )`;
+  if (off) return `<div class="detail" style="--notch:${notch}"><div class="dh"><b>${a.name}</b><small>${L("没登录", "Not signed in")}</small></div>
+    <div class="ln">${L(`登录以后，${d.name} 上的事也能交给它。`, `Sign in and ${d.name}'s tasks can go to it too.`)}</div>
+    <div class="foot2"><span></span><button class="btn primary sm">${L("登录", "Sign in")}</button></div></div>`;
+  const u = s.upd[c.id];
+  const steps = [L("等它手上的事停好…", "Waiting for its work to settle…"), L(`在更新到 ${c.update}…`, `Updating to ${c.update}…`), L(`在检查 ${c.update}…`, `Checking ${c.update}…`)];
+  let upd = "";
+  if (c.update) {
+    if (!u) upd = `<div class="upd"><div class="tx"><b>${L(`有新版本 ${c.update}`, `Update to ${c.update}`)}</b><small>${L("修了长任务里偶尔丢上下文的问题", "Fixes context sometimes lost in long tasks")}</small></div><button class="btn primary sm" data-k="${key}" data-upd="${c.id}">${L("更新", "Update")}</button></div>`;
+    else if (!u.done) upd = `<div class="upd"><div class="tx"><b>${steps[u.phase]}</b></div></div>`;
+    else upd = `<div class="upd done"><div class="tx"><b>${L(`好了，现在是 ${c.update}`, `Done, now on ${c.update}`)}</b></div></div>`;
+  }
+  const ver = u && u.done ? c.update : c.v;
+  const useOn = s["use_" + c.id] ?? true;
+  return `<div class="detail" style="--notch:${notch}">
+    <div class="dh"><b>${a.name}${a.model ? " · " + a.model : ""}</b>${c.thinks ? `<small>${L(`${PARTNER}想事情用它`, `${PARTNER} thinks with this`)}</small>` : ""}</div>
+    <div class="ln soft">${L(`版本 ${ver} · ${how(c.how)}`, `Version ${ver} · ${how(c.how)}`)}</div>
+    ${c.unchecked ? `<div class="ln">${L("Ducter 还没验证过这个版本。", "Ducter hasn't checked this version yet.")}</div>` : ""}
+    ${c.shared ? `<div class="ln">${L(`和 ${c.shared} 共用一个账号的额度`, `Shares one account's limit with ${c.shared}`)}</div>` : ""}
+    ${upd}
+    <div class="sw"><span>${L("用它做事", "Use it for tasks")}</span><button class="switch ${useOn ? "on" : ""}" data-k="${key}" data-use="${c.id}" aria-pressed="${useOn}"></button></div>
+    ${d.home ? "" : `<div class="foot2"><span></span><button class="btn text sm">${L("退出登录", "Sign out")}</button></div>`}
+  </div>`;
+}
+
+/* ---------- Boards ---------- */
+let VIEWS = {};
+function mount(id, key, d, v) { VIEWS[key] = { id, d, v }; document.getElementById(id).innerHTML = card(key, d, v); }
+function remount(key) {
+  const m = VIEWS[key]; if (!m) return;
+  const D = devices(); const d = D[m.d.id] ? Object.assign({}, D[m.d.id], m.d.patch || {}) : m.d;
+  if (m.d.patch) d.patch = m.d.patch;
+  if (m.page) { renderPage(); return; }
+  if (m.phone) { m.phone(); return; }
+  document.getElementById(m.id).innerHTML = card(key, d, m.v);
+}
+
+function before() {
+  const D = devices();
+  document.getElementById("old").innerHTML = `<div class="old">
+    <span class="bad" style="left:-10px;top:14px">2</span><span class="bad" style="left:-10px;top:58px">3</span>
+    <div class="n">MacBook</div>
+    <div class="k">${L("一台 Mac · 用 Ducter app 连着", "A Mac · through the Ducter app")}</div>
+    <div class="k">${L("另一台电脑 · 替 Ducter 做事", "Another computer · does tasks for Ducter")}</div>
+    <div class="s">${L("现在连着", "Connected now")}</div>
+    <div class="fold">${L("Ducter app 也连着", "The Ducter app is connected too")}<span>⋯</span></div>
+    <div class="fold">${L("命令行也连着", "The command line is connected too")}<span>⋯</span></div>
+    <div class="pop">${L("断开", "Disconnect")}</div><span class="bad" style="right:-10px;top:150px">4</span>
+    <div class="lbl">${L("让这台 Mac 也替 hel 做事", "Let this Mac do tasks for hel")}</div>
+    <div class="sw"><div class="p">${L("在后台运行：登录时自己开始，停了会自己重启。日志在 /Users/weyl/.ducter/worker.log。", "Runs in the background: starts at login, restarts if it stops. The log is at /Users/weyl/.ducter/worker.log.")}</div><button class="switch on"></button></div>
+    <span class="bad" style="left:-10px;top:236px">1</span>
+    <div class="lbl">${L("MacBook 上的 AI 账号", "AI accounts on MacBook")}</div>
+    <div class="acc"><img src="${ART.coin.claude}" alt=""><div><b>Claude Code</b><div class="m">${L("已登录<br>版本 2.1.322<br>Ducter 还没验证过这个版本。", "Signed in<br>Version 2.1.322<br>Ducter hasn't checked this version yet.")}</div></div>
+    <img src="${ART.coin.codex}" alt=""><div><b>Codex</b><div class="m">${L("已登录 · 2 台设备共用<br>版本 0.167.0", "Signed in · shared by 2 devices<br>Version 0.167.0")}</div></div>
+    <img src="${ART.coin.pi}" alt=""><div><b>pi</b><div class="m">${L("已登录<br>版本 1.4.0 · 有新版本 1.4.2<br>Ducter 还没验证过 1.4.2，要等你点一下才装。", "Signed in<br>Version 1.4.0 · Update to 1.4.2<br>Ducter hasn't checked 1.4.2 yet, so it waits for your tap.")}</div><button class="btn secondary sm" style="margin-top:4px">${L("更新", "Update")}</button></div></div>
+    <span class="bad" style="right:-10px;top:330px">5</span><span class="bad" style="right:-10px;top:398px">6</span>
+    <div class="lbl">${L("它能为你做的", "What it does for you")}</div>
+    <div class="p">${L(`和 ${PARTNER} 说话 · 看手头的事 · 管理设备`, `Talk with ${PARTNER} · See what's on hand · Manage devices`)}</div>
+    <div class="lbl">MacBook ${L("会：用电脑", "can: Use this computer")}</div>
+    <div style="border-top:1px solid var(--line-soft);margin-top:12px;padding-top:8px"><span style="color:var(--fail-ink);font-weight:700">${L("断开", "Disconnect")}</span></div></div>`;
+  VIEWS.ba = { id: "newA", d: { id: "mbp" }, v: {} };
+  document.getElementById("newA").innerHTML = card("ba", D.mbp, {});
+  const fixes = [
+    L("段落 → ⓘ 后面；日志路径只在出错时出现；「还没验证过」只在点开那个币时说一次。", "Paragraphs → behind ⓘ; the log path only on failure; \"not checked yet\" said once, in that coin's detail."),
+    L("层级：大的泥塑设备 → 名字 28 → 一行状态 → 币 → 能力。四层，一眼读完。", "Hierarchy: the big clay device → name 28 → one status line → coins → abilities. Four levels, one glance."),
+    L("身份不再打架：是什么交给泥塑，状态行只说一件事（在替 hel 做 2 件事）。", "No identity clash: the clay says what it is; the status line says one thing (Doing 2 tasks for hel)."),
+    L("一行「通过 app 和命令行连着 ⋯」，⋯ 原地展开，不浮在内容上；底部只有一个「断开这台 MacBook」。", "One line \"Connected through the app and the command line ⋯\"; ⋯ opens in place, never over content; one Disconnect this MacBook at the foot."),
+    L("每个 AI 从 4 行变成一枚币；更新是币上一个小点。", "Each AI goes from 4 lines to one coin; an update is one small dot on it."),
+    L("「2 台设备共用」→ 详情里一句「和 hel 共用一个账号的额度」。", "\"Shared by 2 devices\" → one detail line \"Shares one account's limit with hel\"."),
+    L("左边列表：一行，一个词的状态，永不折行（看「设备页」）。", "The left list: one line, one word of state, never wraps (see the Devices page)."),
+  ];
+  document.getElementById("fixes").innerHTML = fixes.map((f) => `<li style="margin-bottom:8px">${f}</li>`).join("");
+}
+
+let pageSel = "mbp";
+function renderPage() {
+  const D = devices();
+  const order = ["hel", "mbp", "iph"];
+  const list = `<div class="list"><h4>${L("你的设备", "Your devices")}</h4>${order.map((k) => {
+    const d = D[k]; const [w, c] = shortState(d);
+    return `<button class="li ${pageSel === k ? "sel" : ""}" data-sel="${k}"><img src="${d.art}" alt=""><span class="t"><b>${d.name}</b><small class="${c}">· ${w}</small></span></button>`;
+  }).join("")}<button class="li" style="color:var(--ink-muted);font-weight:700;font-size:14px">＋ ${L("连一台手机或电脑", "Connect a phone or computer")}</button></div>`;
+  const tok = (ids) => ids.map((c) => `<img src="${ART.coin[c]}" alt="">`).join("");
+  const stage = `<div class="stage">
+    <div class="p drift" style="left:24%;top:30%;width:52%"><img src="${ART.islandBig}" alt=""></div>
+    <div class="p drift" data-sel="hel" style="left:40%;top:18%;width:20%;cursor:pointer"><img src="${ART.server}" alt=""></div>
+    <div class="tag ${pageSel === "hel" ? "chosen" : ""}" style="left:50%;top:50%">hel</div>
+    <div class="toks" style="left:50%;top:57%">${tok(["claude", "pi"])}<img src="${ART.coinOff.codex}" alt=""></div>
+    <div class="p" style="left:2%;top:58%;width:30%"><img src="${ART.islandSmall}" alt=""></div>
+    <div class="p float" data-sel="mbp" style="left:7%;top:50%;width:20%;cursor:pointer"><img src="${ART.laptop}" alt=""></div>
+    <div class="tag ${pageSel === "mbp" ? "chosen" : ""}" style="left:17%;top:80%">MacBook</div>
+    <div class="toks" style="left:17%;top:87%">${tok(["claude", "codex", "pi"])}</div>
+    <div class="p" style="left:70%;top:60%;width:26%"><img src="${ART.islandSmall}" alt=""></div>
+    <div class="p float" data-sel="iph" style="left:79%;top:52%;width:8%;cursor:pointer;animation-delay:-2s"><img src="${ART.phone}" alt=""></div>
+    <div class="tag ${pageSel === "iph" ? "chosen" : ""}" style="left:83%;top:80%">iPhone</div>
+    <svg style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"><path d="M 230 330 Q 180 380 140 400" stroke="#c9a37a" stroke-width="5" fill="none" stroke-dasharray="3 5"/><path d="M 360 330 Q 420 380 450 400" stroke="#c9a37a" stroke-width="5" fill="none" stroke-dasharray="3 5"/></svg>
+  </div>`;
+  const pk = "page_" + pageSel;
+  VIEWS[pk] = { page: true, d: { id: pageSel } };
+  document.getElementById("page").innerHTML = list + stage + `<div>${card(pk, D[pageSel], {})}</div>`;
+}
+
+function states() {
+  const D = devices();
+  const items = [
+    ["s_hel", D.hel, { init: { pop: "codex" } }, L("家：hel。Codex 没登录（灰的币），点开只有「登录」。", "The home, hel. Codex is signed out (grey coin); its detail is just Sign in.")],
+    ["s_fresh", { id: "fresh", name: "MacBook Air", art: ART.laptop, kind: L("一台 Mac", "A Mac"), home: true, working: 0, coins: [{ id: "claude", v: "2.1.319", how: "installer", thinks: true }],
+      chips: [{ id: "web", icon: ART.web, label: L("上网", "Browse"), on: true, info: L("用你的 Chrome 上网。", "Browses in your Chrome.") }], via: null }, { addChip: L("用电脑", "Use apps"), fresh: true }, L("新用户：Ducter 就住在这台 Mac 上，一枚币，一个能力，一个可以加的。", "A fresh user: Ducter lives on this Mac; one coin, one ability, one to add.")],
+    ["s_sleep", D.mbp, { asleep: true }, L("MacBook 合上了：泥塑盖着毯子，状态行是暮色的字。", "MacBook closed: the clay under its blanket, the status line in dusk ink.")],
+    ["s_unreach", D.mbp, { unreach: true, fail: "worker" }, L("连不上，而且「替 hel 做事」没开成：日志路径点了才出现。", "Can't reach, and Do tasks for hel didn't start: the log path appears only when asked.")],
+    ["s_stop", D.mbp, { init: { stopAsk: true, chips: {} } }, L("关「替 hel 做事」时还有 2 件事在做：一句话问，默认做完再停。", "Turning off Do tasks for hel with 2 tasks running: one line asks, default after they finish.")],
+  ];
+  const el = document.getElementById("states");
+  el.innerHTML = items.map(([k], i) => `<div><div class="frame" id="${k}"></div><p class="cap" id="${k}_cap"></p></div>`).join("");
+  items.forEach(([k, d, v, cap]) => {
+    VIEWS[k] = { id: k, d: d.id === "fresh" ? Object.assign(d, { fresh: true }) : { id: d.id }, v };
+    document.getElementById(k).innerHTML = card(k, d, v);
+    document.getElementById(k + "_cap").textContent = cap;
+  });
+}
+
+function phones() {
+  const D = devices();
+  const p1 = () => {
+    document.getElementById("ph1").innerHTML = `<div class="scroll"><div class="nav">‹ ${L("设置", "Settings")}</div><div class="pt">${L("设备", "Devices")}</div>
+      <div class="plist">${["hel", "mbp", "iph"].map((k) => { const d = D[k]; const [w, c] = shortState(d); return `<button class="li"><img src="${d.art}" alt=""><span class="t"><b>${d.name}</b><small class="${c}">· ${w}</small></span><span class="chev">›</span></button>`; }).join("")}</div>
+      <div style="margin-top:14px"><button class="btn secondary" style="width:100%">＋ ${L("连一台手机或电脑", "Connect a phone or computer")}</button></div></div>`;
+  };
+  p1();
+  const p2 = () => { document.getElementById("ph2").innerHTML = `<div class="scroll"><div class="nav">‹ ${L("设备", "Devices")}</div>${card("ph_mbp", D.mbp, { phone: true })}</div>`; };
+  st("ph_mbp", { pop: "pi" }); VIEWS.ph_mbp = { phone: p2, d: { id: "mbp" } }; p2();
+  const p3 = () => { document.getElementById("ph3").innerHTML = `<div class="scroll"><div class="nav">‹ ${L("设备", "Devices")}</div>${card("ph_iph", D.iph, { phone: true, self: true })}</div>`; };
+  VIEWS.ph_iph = { phone: p3, d: { id: "iph" } }; p3();
+}
+
+/* ---------- D157 ---------- */
+let showWhy = false;
+function task() {
+  document.getElementById("task").innerHTML = `<h4>${L("修一下 ducter 的 CI", "Fix ducter's CI")}</h4>
+    <div class="meta"><span class="working">${L("在做", "Working")}</span><span>${L("14 分钟", "14 min")}</span><span class="d">·</span><span><img src="${ART.coin.codex}" alt="">Codex · gpt-6</span><span class="d">·</span><span>ducter · main</span><span class="d">·</span><span class="where" data-why>${L("在 hel 上", "on hel")}</span><span class="act" data-sheet>${L("换谁来做", "Switch who does it")} ›</span></div>
+    ${showWhy ? `<div class="why">${L("为什么在 hel 上：一直醒着，合上 MacBook 也不停。", "Why hel: always awake; keeps going when MacBook closes.")}</div>` : ""}`;
+}
+let sw = { sel: "hel-codex", scope: "one" };
+function sheet() {
+  const D = devices();
+  const rows = {
+    hel: [["hel-codex", "codex", L("一直醒着，合上 MacBook 也不停", "Always awake; keeps going when MacBook closes"), true], ["hel-claude", "claude", L("最适合这件事", "Best fit for this")]],
+    mbp: [["mbp-claude", "claude", L("能用你的 Chrome 看 CI 的页面", "Can use your Chrome for the CI pages")], ["mbp-codex", "codex", L("和 hel 共用一个账号的额度", "Shares one account's limit with hel")], ["mbp-pi", "pi", L("你关了「用它做事」", "Use it for tasks is off"), false, true]],
+  };
+  const where = sw.sel.startsWith("mbp") ? "mbp" : "hel";
+  const ag = sw.sel.split("-")[1];
+  const coinBtns = (dev, ids) => ids.map((c) => `<button class="${sw.sel === dev + "-" + c ? "pick" : ""}" data-pick="${dev}-${c}"><img src="${ART.coin[c]}" alt="${AG[c].name}"></button>`).join("");
+  const parcel = where === "hel" ? "left:268px;top:150px" : "left:150px;top:176px";
+  const strip = `<div class="strip">
+    <svg><path d="M 250 140 Q 200 150 170 158" stroke="#c9a37a" stroke-width="4" fill="none" stroke-dasharray="3 5"/></svg>
+    <div class="isl" style="left:210px;top:84px;width:260px"><img class="i" src="${ART.islandBig}" alt=""></div>
+    <img class="dev drift" src="${ART.server}" alt="" style="left:340px;top:22px;width:92px">
+    <div class="cs" style="left:340px;top:118px">${coinBtns("hel", ["codex", "claude"])}</div>
+    <div class="tag" style="left:340px;top:160px">hel</div>
+    <div class="isl" style="left:30px;top:122px;width:150px"><img class="i" src="${ART.islandSmall}" alt=""></div>
+    <img class="dev float" src="${ART.laptop}" alt="" style="left:105px;top:44px;width:84px">
+    <div class="cs" style="left:105px;top:126px">${coinBtns("mbp", ["claude", "codex"])}</div>
+    <div class="tag" style="left:105px;top:176px">MacBook</div>
+    <div class="parcel" style="${parcel}"></div>
+  </div>`;
+  const grp = (dev) => {
+    const d = D[dev]; const [sl, sk] = statusLine(d, {});
+    return `<div class="grp"><div class="gh"><img src="${d.art}" alt=""><b>${d.name}</b><small class="${sk}">· ${sl}</small></div>
+      ${rows[dev].map(([id, c, why, now, no]) => `<button class="cand ${sw.sel === id ? "sel" : ""} ${no ? "no" : ""}" ${no ? "" : `data-pick="${id}"`}><img src="${no ? ART.coinOff[c] : ART.coin[c]}" alt=""><span><b>${AG[c].name}${AG[c].model ? " · " + AG[c].model : ""}</b><small>${why}</small></span>${now ? `<span class="now">${L("现在", "Now")}</span>` : "<span></span>"}</button>`).join("")}</div>`;
+  };
+  const moving = where === "mbp";
+  document.getElementById("sheet").innerHTML = `<h3>${L("换谁来做", "Switch who does it")}</h3>
+    <div class="sub">${L("换谁，也可以换一台电脑", "Someone else, or another computer")}</div>
+    ${strip}${grp("hel")}${grp("mbp")}
+    ${moving ? `<div class="consq"><p>${L("从最近保存的进度接着做；分支会先推到 GitHub。", "Continues from its last saved progress; the branch is pushed to GitHub first.")}</p>${ag === "claude" ? `<p class="widen">${L("会用你的 Chrome，你登录着的网站它都能用。", "It will use your Chrome, with every site you're signed in to.")}</p>` : ""}</div>` : ""}
+    <div class="sfoot"><div class="seg"><button aria-pressed="${sw.scope === "one"}" data-scope="one">${L("只这件", "Just this task")}</button><button aria-pressed="${sw.scope === "all"}" data-scope="all">${L("以后这类都用", "For tasks like this")}</button></div></div>
+    <div class="sfoot"><span class="sp"></span><button class="btn text">${L("取消", "Cancel")}</button><button class="btn primary">${moving ? L("换到 MacBook 上接着做", "Continue on MacBook") : sw.sel === "hel-codex" ? L("好", "Go") : L("换过去", "Switch")}</button></div>`;
+}
+function ask() {
+  document.getElementById("ask").innerHTML = `<div class="bub you">${L("看看我淘宝上那单到哪了", "Where's my Taobao order?")}</div>
+    <div class="bub partner">${L("MacBook 睡着了。等它醒了用你的 Chrome 查，还是现在在 hel 上查？", "MacBook is asleep. Wait and use your Chrome there, or look on hel now?")}
+      <div class="nt">${L("hel 那边没登录淘宝，得你登一下。", "hel isn't signed in to Taobao; you'd sign in there.")}</div>
+      <div class="acts"><button class="btn primary sm">${L("等它醒", "Wait for it")}</button><button class="btn secondary sm">${L("现在在 hel 上查", "Look on hel now")}</button></div>
+      <div class="def">${L("不回的话就等它醒，什么都不会丢", "If you don't answer, it waits. Nothing is lost")}</div></div>`;
+}
+function rules() {
+  const row = (icons, t, sub) => `<div class="rrow"><span class="ic">${icons}</span><span class="tx"><b>${t}</b><small>${sub}</small></span><button class="btn text sm">${L("不要这条", "Remove")}</button></div>`;
+  document.getElementById("rules").innerHTML = `<h3>${L("你的规则", "Your rules")}</h3><p class="lede">${L("你说过的，和你换过两次以后定下的。", "What you said, and what you settled after switching twice.")}</p>
+    <div class="rcard">
+      ${row(`<img class="dv" src="${ART.laptop}" alt="">`, L("要登录的网页都在 MacBook 上做", "Sites that need your sign-in run on MacBook"), L("你换过两次以后定的", "Set after you switched twice"))}
+      ${row(`<img src="${ART.coin.codex}" alt="">`, L("后端重构用 Codex", "Backend refactors go to Codex"), L("你说的 · 11 月 3 日", "You said it · Nov 3"))}
+      ${row(`<img src="${ART.coin.claude}" alt="">`, L("界面的活用 Claude Code", "UI work goes to Claude Code"), L("你说的 · 11 月 3 日", "You said it · Nov 3"))}
+      <div class="rrow"><button class="btn text sm">${L(`跟 ${PARTNER} 说一条规则…`, `Tell ${PARTNER} a rule…`)}</button></div>
+    </div>`;
+}
+function phoneSheet() {
+  const D = devices();
+  document.getElementById("ph4").innerHTML = `<div class="scroll"><div class="nav">‹ ${L("手头的事", "On hand")}</div>
+    <div class="task" style="width:100%;padding:16px"><h4 style="font-size:18px">${L("修一下 ducter 的 CI", "Fix ducter's CI")}</h4><div class="meta"><span class="working">${L("在做", "Working")}</span><span>${L("14 分钟", "14 min")}</span><span class="d">·</span><span><img src="${ART.coin.codex}" alt="">Codex</span><span class="d">·</span><span class="where">${L("在 hel 上", "on hel")}</span></div></div></div>
+    <div class="dimp"></div>
+    <div class="bsheet"><div class="grab"></div><div style="font:800 20px var(--head)">${L("换谁来做", "Switch who does it")}</div><div style="font-size:13px;color:var(--ink-muted)">${L("换谁，也可以换一台电脑", "Someone else, or another computer")}</div>
+      <div class="grp"><div class="gh"><img src="${ART.server}" alt=""><b>hel</b><small>· ${L(`${PARTNER} 住这儿`, `${PARTNER} lives here`)}</small></div>
+        <button class="cand sel"><img src="${ART.coin.codex}" alt=""><span><b>Codex · gpt-6</b><small>${L("一直醒着，合上 MacBook 也不停", "Always awake; keeps going when MacBook closes")}</small></span><span class="now">${L("现在", "Now")}</span></button>
+        <button class="cand"><img src="${ART.coin.claude}" alt=""><span><b>Claude Code · Opus</b><small>${L("最适合这件事", "Best fit for this")}</small></span><span></span></button></div>
+      <div class="grp"><div class="gh"><img src="${ART.laptopAsleep}" alt=""><b>MacBook</b><small class="asleep">· ${L("睡着了 · 醒来就接着做", "Asleep · carries on when it wakes")}</small></div>
+        <button class="cand no"><img src="${ART.coin.claude}" alt=""><span><b>Claude Code · Opus</b><small>${L("睡着了 · 醒了再做", "Asleep · starts when it wakes")}</small></span><span></span></button>
+        <button class="cand no"><img src="${ART.coinOff.pi}" alt=""><span><b>pi</b><small>${L("你关了「用它做事」", "Use it for tasks is off")}</small></span><span></span></button></div>
+      <div class="sfoot"><div class="seg"><button aria-pressed="true">${L("只这件", "Just this task")}</button><button aria-pressed="false">${L("以后这类都用", "For tasks like this")}</button></div></div>
+      <div class="sfoot"><button class="btn text" style="flex:1">${L("取消", "Cancel")}</button><button class="btn primary" style="flex:1">${L("好", "Go")}</button></div></div>`;
+}
+
+/* ---------- Interactions ---------- */
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("[data-k],[data-sel],[data-pick],[data-scope],[data-why],[data-lang],[data-motion]");
+  if (!t) return;
+  if (t.dataset.lang) { lang = t.dataset.lang; document.querySelectorAll("[data-lang]").forEach((x) => x.setAttribute("aria-pressed", x === t)); renderAll(); return; }
+  if (t.dataset.motion) { document.body.classList.toggle("still", t.dataset.motion === "still"); document.querySelectorAll("[data-motion]").forEach((x) => x.setAttribute("aria-pressed", x === t)); return; }
+  if (t.dataset.sel) { pageSel = t.dataset.sel; renderPage(); return; }
+  if (t.dataset.pick) { sw.sel = t.dataset.pick; sheet(); return; }
+  if (t.dataset.scope) { sw.scope = t.dataset.scope; sheet(); return; }
+  if (t.hasAttribute("data-why")) { showWhy = !showWhy; task(); return; }
+  const k = t.dataset.k; const s = st(k);
+  if (t.dataset.info) { e.stopPropagation(); s.info = s.info === t.dataset.info ? null : t.dataset.info; s.squish = null; remount(k); return; }
+  if (t.dataset.coin) { s.pop = s.pop === t.dataset.coin ? null : t.dataset.coin; s.popped = null; remount(k); return; }
+  if (t.dataset.chip) {
+    const m = VIEWS[k]; const D = devices(); const d = D[m.d.id] || m.d;
+    const c = d.chips.find((x) => x.id === t.dataset.chip); const on = s.chips[c.id] ?? c.on;
+    if (c.id === "worker" && on && d.working) { s.stopAsk = true; s.squish = null; remount(k); return; }
+    s.chips[c.id] = !on; s.squish = c.id; s.stopAsk = false; remount(k); setTimeout(() => { s.squish = null; }, 300); return;
+  }
+  if (t.dataset.stop) { s.stopAsk = false; s.chips.worker = false; s.squish = "worker"; remount(k); return; }
+  if (t.hasAttribute("data-via")) { s.via = !s.via; s.connAsk = null; remount(k); return; }
+  if (t.dataset.conn) { s.connAsk = t.dataset.conn; remount(k); return; }
+  if (t.hasAttribute("data-conn-cancel")) { s.connAsk = null; remount(k); return; }
+  if (t.hasAttribute("data-disc")) { s.disc = !s.disc; remount(k); return; }
+  if (t.hasAttribute("data-log")) { s.log = true; remount(k); return; }
+  if (t.dataset.use) { s["use_" + t.dataset.use] = !(s["use_" + t.dataset.use] ?? true); remount(k); return; }
+  if (t.dataset.upd) { runUpdate(k, t.dataset.upd); return; }
+  if (t.hasAttribute("data-name") && !s.editing) {
+    s.editing = true; remount(k);
+    const el = document.querySelector(`[data-k="${k}"][data-name]`); if (el) { el.focus(); document.getSelection().selectAllChildren(el); }
+  }
+});
+document.addEventListener("keydown", (e) => {
+  const el = e.target.closest && e.target.closest("[data-name]"); if (!el) return;
+  const k = el.dataset.k; const s = st(k);
+  if (e.key === "Enter") { e.preventDefault(); s.name = el.textContent.trim() || s.name; s.editing = false; s.saved = true; remount(k); setTimeout(() => { s.saved = false; }, 200); }
+  if (e.key === "Escape") { s.editing = false; remount(k); }
+});
+function runUpdate(k, id) {
+  const s = st(k); s.upd[id] = { phase: 0 }; remount(k);
+  const fast = new URLSearchParams(location.search).get("fast");
+  const step = fast ? 30 : 900;
+  setTimeout(() => { s.upd[id].phase = 1; remount(k); }, step);
+  setTimeout(() => { s.upd[id].phase = 2; remount(k); }, step * 2.4);
+  setTimeout(() => { s.upd[id].done = true; s.popped = id; remount(k); setTimeout(() => { s.popped = null; }, 600); }, step * 3.4);
+}
+
+function renderAll() {
+  applyT(); VIEWS = {}; before(); renderPage(); states(); phones(); task(); sheet(); ask(); rules(); phoneSheet();
+}
+const q = new URLSearchParams(location.search);
+if (q.get("lang") === "en") { lang = "en"; document.querySelectorAll("[data-lang]").forEach((x) => x.setAttribute("aria-pressed", x.dataset.lang === "en")); }
+if (q.get("still")) document.body.classList.add("still");
+const open = q.get("open") || "";
+if (open.includes("pi")) st("page_mbp", { pop: "pi" });
+if (open.includes("via")) st("page_mbp").via = true;
+if (open.includes("info")) st("page_mbp").info = "worker";
+if (open.includes("why")) showWhy = true;
+if (open.includes("mac")) sw.sel = "mbp-claude";
+if (q.get("sel")) pageSel = q.get("sel");
+renderAll();
+if (open.includes("updated")) { runUpdate("page_mbp", "pi"); }
+if (q.get("only")) document.querySelectorAll("section.board").forEach((b) => { b.hidden = b.id !== "b-" + q.get("only"); });
+</script>
+</body>
+</html>

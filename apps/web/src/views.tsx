@@ -9,7 +9,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { JSX } from "preact";
 import { A, candKey, placeKey, type SettingsPage } from "./app.ts";
 import { TRY_LIVE } from "@ducter/protocol";
-import { computerApart, computerName, computerOf, computers, computerState, deviceWait, manyComputers, whereAsk, whereCandReason } from "./where.ts";
+import { closingWords, computerApart, computerName, computerOf, computers, computerState, deviceWait, manyComputers, whereAsk, whereCandReason } from "./where.ts";
 import { ago, behind, cjkPad, deviceLabel, duration, firstClause, harnessName, modelName, phaseLine as phaseWords, placeLine, sameWords, splitOutcome, when } from "./format.ts";
 import { markdown } from "./markdown.ts";
 import { Coin } from "./coin.tsx";
@@ -240,6 +240,7 @@ function defaultInfo(d: DecisionState, now: number): { line: string; frac?: numb
  *  else Go / 好: never a sentence (D127). */
 export function goLabel(d: DecisionState): string {
   if (d.where) return whereAsk(d.where).go;
+  if (d.closing) return closingWords(d.closing).go;
   return shortGo(d.goLabel);
 }
 
@@ -305,7 +306,7 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
   const wa = d.where ? whereAsk(d.where) : undefined;
   return (
     <>
-      <div class="q">{wa?.question ?? d.question}</div>
+      <div class="q">{wa?.question ?? (d.closing ? closingWords(d.closing).question : d.question)}</div>
       {d.routineId && <RoutineFacts routineId={d.routineId} />}
       {open && wa && wa.lines.map((l, i) => <div key={i} class={`dl${l.widen ? " widen" : ""}`}>{l.text}</div>)}
       {open && !wa && <DefaultRow d={d} />}
@@ -323,7 +324,7 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
             }}
           />
           <span class="pair">
-            <Btn kind="secondary" label={wa?.hold ?? t("decision.hold")} about={about} onClick={() => A.decide(d.decisionId, "hold")} />
+            <Btn kind="secondary" label={wa?.hold ?? (d.closing ? closingWords(d.closing).hold : t("decision.hold"))} about={about} onClick={() => A.decide(d.decisionId, "hold")} />
             <Btn kind="primary" label={goText} about={about} onClick={() => A.decide(d.decisionId, "go")} />
           </span>
         </div>

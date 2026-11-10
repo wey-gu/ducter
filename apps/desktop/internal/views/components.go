@@ -730,6 +730,9 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 		if d.Where != nil {
 			hold = a.whereAskHold(d.Where)
 		}
+		if d.Closing != nil {
+			hold = a.L.T("move.closing.hold")
+		}
 		if a.buttonFor(c, hold, about, btnSecondary, st.height, st.quietBg) {
 			a.Decide(d.DecisionID, "hold", "")
 		}
@@ -767,6 +770,9 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 func (a *App) goLabel(d *store.DecisionState) string {
 	if d.Where != nil {
 		return a.whereAskGo(d.Where)
+	}
+	if d.Closing != nil {
+		return a.L.T("move.closing.go")
 	}
 	return a.shortGo(d.GoLabel)
 }

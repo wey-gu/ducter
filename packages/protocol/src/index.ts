@@ -126,6 +126,18 @@ export interface Question {
 }
 
 /**
+ * D157 (design/where.md §7): before a computer closes, what moves to a computer that stays awake
+ * (from its saved progress) and what can only run there (a folder; an app or the user's Chrome
+ * nothing else has) and continues when it wakes. One decision for the whole computer.
+ */
+export interface ClosingPlan {
+  device: string; // its id
+  name: string;
+  moves: { taskId: string; title: string; to: string; toName: string; harness: string; model?: string }[];
+  stays: { taskId: string; title: string; why: "folder" | "only_here" }[];
+}
+
+/**
  * D157 (design/where.md §4.4): the one line asked when the best computer for a task is asleep and
  * another could start now with a visible difference, or the user's own pick waits on a computer
  * that can't be reached. Hold = wait for it (the default: not answering waits, nothing is lost);
@@ -174,6 +186,7 @@ export interface Bodies {
     routineId?: string; // a routine's proposal card (D114): Go activates it
     signIn?: SignInAsk; // D151: a sign-in card; Go = 好了 / Done in the live view
     where?: WhereAsk; // D157: wait for a computer (Hold, the default) or do it now on another (Go)
+    closing?: ClosingPlan; // D157: 合上之前搬走 / Move before closing: Go (the default) moves them
   };
   decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default" };
   read_receipt: { upToSeq: number };
@@ -594,6 +607,9 @@ export type ClientFrame =
   // a rule (a partner-level decision).
   | { t: "candidates"; taskId: string }
   | { t: "task_switch"; taskId: string; harness: string; model?: string; device?: string } // device (D157): continue on another computer
+  // D157: 合上之前搬走 / Move before closing, from a computer's card: one decision (close_result answers;
+  // none = nothing runs there, close it whenever).
+  | { t: "close_computer"; device: string }
   // Connections (D96): the user's OpenConnector or another MCP server. "connections" answers with
   // a connections frame and keeps the socket subscribed. "connection_add" checks the address and
   // token before saving (answered with connection_result, then a fresh frame). "connection_oo"
@@ -704,6 +720,7 @@ export type ServerFrame =
   | { t: "activity"; activity: PartnerActivity | null }
   // D128: New task. card: the task as On hand will show it; message: a reason in words (English).
   | { t: "task_new_options"; places: PlaceChoice[]; candidates: Candidate[] }
+  | { t: "close_result"; device: string; ok: boolean; none?: boolean; decisionId?: string; message?: string }
   | { t: "task_new_result"; ok: boolean; clientId?: string; taskId?: string; card?: TaskCard; reason?: NewTaskReason; message?: string }
   // Show this task (the app opens it, Esc returns). open_result answers the sender: apps = how many apps were told.
   | { t: "open_task"; taskId: string }

@@ -64,6 +64,9 @@ func (a *App) questionOf(d *store.DecisionState) string {
 	if d.Where != nil {
 		return a.whereAskQuestion(d.Where)
 	}
+	if d.Closing != nil {
+		return a.closingQuestion(d.Closing)
+	}
 	return d.Question
 }
 

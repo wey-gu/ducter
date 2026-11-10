@@ -167,6 +167,39 @@ type Decision struct {
 	// Where (D157): wait for a computer (Hold, the default) or do it now on
 	// another (Go).
 	Where *WhereAsk `json:"where,omitempty"`
+	// Closing (D157): 合上之前搬走 / Move before closing: Go (the default)
+	// moves them.
+	Closing *ClosingPlan `json:"closing,omitempty"`
+}
+
+// ClosingPlan is what moves to a computer that stays awake before one
+// closes, and what can only run there (D157).
+type ClosingPlan struct {
+	Device string        `json:"device"`
+	Name   string        `json:"name"`
+	Moves  []ClosingMove `json:"moves"`
+	Stays  []ClosingStay `json:"stays"`
+}
+
+type ClosingMove struct {
+	TaskID  string `json:"taskId"`
+	Title   string `json:"title"`
+	To      string `json:"to"`
+	ToName  string `json:"toName"`
+	Harness string `json:"harness"`
+	Model   string `json:"model,omitempty"`
+}
+
+type ClosingStay struct {
+	TaskID string `json:"taskId"`
+	Title  string `json:"title"`
+	Why    string `json:"why"` // folder | only_here
+}
+
+// CloseComputer is 合上之前搬走 / Move before closing, from a computer's card.
+type CloseComputer struct {
+	T      string `json:"t"` // "close_computer"
+	Device string `json:"device"`
 }
 
 // WhereAsk is the one line asked when the best computer for a task is

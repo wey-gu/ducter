@@ -1654,6 +1654,11 @@ const where: Record<Lang, Record<string, string>> = {
     "newtask.computer.away": "连不上",
     "newtask.agent.elsewhere": "在 %s 上",
     "move.closing.button": "合上之前搬走",
+    "move.closing.line": "合上之前：%[1]s搬到 %[2]s 上接着做；%[3]s只能在 %[4]s 上做，醒了接着。",
+    "move.closing.moves": "合上之前：%[1]s搬到 %[2]s 上接着做。",
+    "move.closing.stays": "%[1]s只能在 %[2]s 上做，醒了接着。",
+    "move.closing.go": "搬走",
+    "move.closing.hold": "先不搬",
     "move.closing.none": "%s 上没有在做的事，合上就好。",
   },
   en: {
@@ -1713,6 +1718,11 @@ const where: Record<Lang, Record<string, string>> = {
     "newtask.computer.away": "Can't reach",
     "newtask.agent.elsewhere": "on %s",
     "move.closing.button": "Move before closing",
+    "move.closing.line": "Before you close it: %[1]s move to %[2]s and carry on; %[3]s can only run on %[4]s and continue when it wakes.",
+    "move.closing.moves": "Before you close it: %[1]s move to %[2]s and carry on.",
+    "move.closing.stays": "%[1]s can only run on %[2]s and continue when it wakes.",
+    "move.closing.go": "Move them",
+    "move.closing.hold": "Not now",
     "move.closing.none": "Nothing is running on %s. Close it whenever.",
   },
 };

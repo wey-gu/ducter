@@ -40,6 +40,7 @@ import { realSys, updateHow, type UpdateSys } from "./update.ts";
 import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 import { createDucterBrowser, type DucterBrowser, type DucterBrowserOptions } from "./browser/index.ts";
 import { readSites } from "./browser/sites.ts";
+import { createClosing, registerClosingTool } from "./closing.ts";
 import { workerProfile } from "./browser/remote.ts";
 import { profileName } from "@ducter/protocol/src/browser-profile.ts";
 
@@ -281,6 +282,9 @@ export function startCore(opts: CoreOptions = {}): Core {
     }
   };
   const loadout = createLoadout({ log, tasks, settings, rules, devices: () => devicesView, sites: sitesOn });
+  // D157: 我要合电脑了 / Move before closing: one decision for a computer.
+  const closing = createClosing({ log, tasks, loadout, runner: () => runner });
+  registerClosingTool(mcp, closing, () => settings.get().language === "zh");
   const api = { log, tasks, mcp, persona, dataDir, settings, connections, bodies: loadout, spine: log.spine, ...(browser ? { browser: browser.port } : {}) } as CoreApi;
   // D150: the one helper (brain.ts) the runner and the settings frame share.
   api.partnerFallback = () => {
@@ -290,7 +294,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   // 开一件事 / New task (D128): the one opening path the card and `ducter task` share.
   const newTaskDeps = { log, tasks, runner: () => runner, persona, dataDir, loadout, settings, ...(opts.git ? { git: opts.git } : {}) };
   const newTask = { open: (i: NewTaskInput) => openYourTask(newTaskDeps, i), options: (p?: Place) => newTaskOptions(newTaskDeps, p) };
-  const ws = createWsHandler({ core: api, decisions, runner: () => runner, devices: () => devicesView, settings, connections, rules, loadout, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, batchMs: opts.batchMs, ...(browser ? { browser } : {}) });
+  const ws = createWsHandler({ core: api, decisions, runner: () => runner, devices: () => devicesView, settings, connections, rules, loadout, closing, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, batchMs: opts.batchMs, ...(browser ? { browser } : {}) });
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.
   let partnerTurn = false;

@@ -1,7 +1,7 @@
 // D157 (design/where.md): where a task runs. With one computer nothing is said; with two or more,
 // every task says which one in a few words ("在 hel 上 · 用 Ducter 自己的浏览器") and a tap on it
 // says why. The same words and rules as the desktop's views/where.go.
-import type { Candidate, DeviceView, WhereAsk, WhereWhy } from "@ducter/protocol";
+import type { Candidate, ClosingPlan, DeviceView, WhereAsk, WhereWhy } from "@ducter/protocol";
 import { A } from "./app.ts";
 import { harnessName } from "./format.ts";
 import { placeOf, type Task } from "./store.ts";
@@ -85,6 +85,18 @@ export function computerApart(d: DeviceView): string {
   if (d.alwaysOn) return t("newtask.computer.always_on");
   if (d.abilities.some((a) => a.id === "web" && a.where === "chrome")) return t("newtask.computer.mac");
   return "";
+}
+
+/** D157: the closing card in the reader's words: what moves where, what stays until it wakes. */
+export function closingWords(p: ClosingPlan): { question: string; go: string; hold: string } {
+  const zh = A.L.lang === "zh";
+  const q = (s: string) => (zh ? `「${s}」` : `“${s}”`);
+  const sep = zh ? "" : ", ";
+  const moved = p.moves.map((m) => q(m.title)).join(sep);
+  const stay = p.stays.map((s) => q(s.title)).join(sep);
+  const dst = p.moves[0]?.toName ?? "";
+  const question = moved && stay ? t("move.closing.line", moved, dst, stay, p.name) : moved ? t("move.closing.moves", moved, dst) : t("move.closing.stays", stay, p.name);
+  return { question, go: t("move.closing.go"), hold: t("move.closing.hold") };
 }
 
 /** A computer group's state words: 醒着 · 一直醒着. */

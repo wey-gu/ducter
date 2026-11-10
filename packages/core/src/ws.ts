@@ -62,6 +62,8 @@ export interface WsDeps {
   /** Your rules and who does the tasks (D89); absent in tests that don't need them. */
   rules?: RulesStore;
   loadout?: Loadout;
+  /** D157: Move before closing (closing.ts); absent in tests that don't need it. */
+  closing?: import("./closing.ts").Closing;
   /** The user's connections (connections.ts); absent in tests that don't need it. */
   connections?: ConnectionsStore;
   /** Work over time (D112-D114): waiters, until loops, routines; absent in tests that don't need it. */
@@ -529,6 +531,13 @@ export function createWsHandler(deps: WsDeps) {
           r = { ok: false, message: (err as Error).message };
         }
         send(ws, { t: "action_result", taskId: f.taskId, action: "switch", ok: r.ok, ...(r.message ? { message: r.message } : {}) });
+        return;
+      }
+      case "close_computer": {
+        if (!deps.closing) throw new Error("closing is not available");
+        const lang = deps.settings?.get().language;
+        const r = await deps.closing.ask(String(f.device ?? ""), lang === "zh");
+        send(ws, r.ok ? { t: "close_result", device: String(f.device ?? ""), ok: true, ...(r.none ? { none: true } : {}), ...(r.decisionId ? { decisionId: r.decisionId } : {}) } : { t: "close_result", device: String(f.device ?? ""), ok: false, message: r.message });
         return;
       }
       case "connections": {

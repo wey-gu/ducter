@@ -127,6 +127,25 @@ func TestNewTaskComputerPart(t *testing.T) {
 	}
 }
 
+// 我要合电脑了 (where.md §7): one card for the computer, in the reader's words.
+func TestClosingCardWords(t *testing.T) {
+	app, _ := iaApp(t, i18n.ZH)
+	p := &protocol.ClosingPlan{Device: "w1", Name: "MacBook",
+		Moves: []protocol.ClosingMove{{TaskID: "a", Title: "修 CI", To: "local", ToName: "hel"}, {TaskID: "b", Title: "英译", To: "local", ToName: "hel"}},
+		Stays: []protocol.ClosingStay{{TaskID: "c", Title: "做 Keynote", Why: "only_here"}}}
+	d := &store.DecisionState{Decision: protocol.Decision{Closing: p}}
+	if q := app.questionOf(d); q != "合上之前：「修 CI」「英译」搬到 hel 上接着做；「做 Keynote」只能在 MacBook 上做，醒了接着。" {
+		t.Errorf("zh %q", q)
+	}
+	if g := app.goLabel(d); g != "搬走" {
+		t.Errorf("go %q", g)
+	}
+	en, _ := iaApp(t, i18n.EN)
+	if q := en.questionOf(d); q != "Before you close it: “修 CI”, “英译” move to hel and carry on; “做 Keynote” can only run on MacBook and continue when it wakes." {
+		t.Errorf("en %q", q)
+	}
+}
+
 // The sleeping-Mac ask (where.md W2b): wait by default, now on hel with a
 // sign-in there; the user's own pick that waits; a waiting task's line.
 func TestWhereAskWords(t *testing.T) {

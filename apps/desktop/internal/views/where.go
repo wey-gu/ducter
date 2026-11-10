@@ -6,6 +6,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/client"
+	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 )
@@ -132,6 +133,45 @@ func (a *App) whereReason(w *protocol.WhereWhy) string {
 		return a.L.T("where.reason.home", dev)
 	}
 	return ""
+}
+
+// closingQuestion is the closing card in the user's words (where.md §7):
+// what moves where, and what stays until it wakes.
+func (a *App) closingQuestion(p *protocol.ClosingPlan) string {
+	q := func(s string) string {
+		if a.L.Lang == i18n.ZH {
+			return "「" + s + "」"
+		}
+		return "\u201c" + s + "\u201d"
+	}
+	var moved, stay []string
+	for _, m := range p.Moves {
+		moved = append(moved, q(m.Title))
+	}
+	for _, s := range p.Stays {
+		stay = append(stay, q(s.Title))
+	}
+	sep := ", "
+	if a.L.Lang == i18n.ZH {
+		sep = ""
+	}
+	switch {
+	case len(moved) > 0 && len(stay) > 0:
+		return a.L.T("move.closing.line", strings.Join(moved, sep), p.Moves[0].ToName, strings.Join(stay, sep), p.Name)
+	case len(moved) > 0:
+		return a.L.T("move.closing.moves", strings.Join(moved, sep), p.Moves[0].ToName)
+	}
+	return a.L.T("move.closing.stays", strings.Join(stay, sep), p.Name)
+}
+
+// closingRow is 合上之前搬走 / Move before closing on a laptop's card.
+func (a *App) closingRow(c *ui.Context, dv *protocol.DeviceView) {
+	t := a.T
+	a.textRow(c, t.ControlSM).Children(func() {
+		if a.button(c, a.L.T("move.closing.button"), btnSecondary, t.ControlSM, t.Surface) {
+			a.send(protocol.CloseComputer{T: "close_computer", Device: dv.ID})
+		}
+	})
 }
 
 // whereAskQuestion is a where ask in the user's words (where.md §4.4).

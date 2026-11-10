@@ -1,5 +1,39 @@
 # Changelog
 
+## 0.0.8
+
+<!-- whats-new
+zh: 设备卡片重做；主动提醒只在需要时开口
+en: Redesigned device cards; heads-ups only when something needs you
+-->
+
+**Devices, as character cards**
+- Each device is one card: its clay, its name (rename in place), one line of state, its AI
+  agents as coins (a dot when one has an update; tap for details), a few switches, and one
+  Disconnect. The command line folds into its computer's card.
+- Updates say the truth: no stale "didn't update" once a device runs the new version, a Mac that
+  does tasks for your server restarts its helper after the app updates, and release notes show in
+  your language or not at all.
+- Try it on 上网 now shows the page from your server's browser on the Mac app too.
+
+**Heads-ups from your accounts, with restraint**
+- Once you say yes after adding an account, your partner keeps an eye on mail, calendar, GitHub
+  and chat, and speaks only when something needs you: a morning note of at most 3 things (none on
+  a quiet day), and right away only when it can't wait.
+- It never sends, replies, pays or deletes on its own, never keeps mail itself, and never says
+  how much it read. 有用 / 这类不用告诉我 teach it.
+
+**Nowledge Mem in tasks**
+- Tasks use your own Nowledge Mem plugin under your partner's identity; turning memory off in
+  Ducter turns it off inside tasks too. Ducter offers to install the plugin where it's missing, if
+  you use Mem. Ducter stays complete without Mem.
+
+**Under the hood**
+- Lighter and cheaper background work (batched judging, no-tool one-shots), budgets on every
+  prompt and tool list, Claude Code 2.1.322 and pi 1.5.1 verified.
+- On Ubuntu 24.04 as a normal user, Ducter's browser gives the one line that lets its Chrome keep
+  its sandbox.
+
 ## 0.0.7
 
 **Your tasks know which computer to run on**

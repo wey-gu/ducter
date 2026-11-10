@@ -26,7 +26,7 @@ const ld = {
   "@type": "SoftwareApplication",
   name: "Ducter",
   applicationCategory: "DeveloperApplication",
-  operatingSystem: "macOS, Linux",
+  operatingSystem: "macOS, Linux, iOS, iPadOS",
   description,
   url: "https://ducter.ai",
   license: "https://www.apache.org/licenses/LICENSE-2.0",
@@ -55,6 +55,12 @@ const ld = {
       </div>
       <p class="cta-note">{dl.note}</p>
       <p class="facts">Free and open source under Apache 2.0. {agentsLine}</p>
+      <ul class="platforms" aria-label="Where you use it">
+        <li><Art name="laptop_awake" alt="" sizes="40px" />Mac</li>
+        <li><Art name="server_awake" alt="" sizes="40px" />Linux server</li>
+        <li><Art name="phone" alt="" sizes="24px" />iPhone and iPad</li>
+        <li class="soon"><Art name="slot_empty" alt="" sizes="40px" />Android <small>coming soon</small></li>
+      </ul>
     </div>
 
     <div class="demo" id="demo" aria-label="A short example conversation with Ducter">
@@ -188,7 +194,7 @@ const ld = {
         <h2>One thumb is enough.</h2>
       </div>
       <p class="lede">Your phone buzzes only when a decision is waiting for you, and never during your quiet hours. Answer it in one tap, or let the default happen and read about it in the morning.</p>
-      <p class="body note">Quiet hours are 23:00 to 08:00 until you change them. With two decisions waiting, Go on all defaults answers both. The phone opens Ducter in its browser, or in the iPhone app, in public beta on <a href="https://testflight.apple.com/join/Z4GvWt7t" rel="noopener">TestFlight</a>. For now, your phone needs an address it can reach from anywhere: Ducter on a server with your own domain (<a href="/docs/phone">how</a>).</p>
+      <p class="body note">Quiet hours are 23:00 to 08:00 until you change them. With two decisions waiting, Go on all defaults answers both.</p>
     </div>
     <div class="phone-scene">
       <div class="phone" id="phone">
@@ -220,8 +226,45 @@ const ld = {
   </div>
 </section>
 
+<!-- ============ WHERE YOU USE IT: Mac, server, iPhone and iPad, Android soon ============ -->
+<section class="sec" id="where">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>Wherever you are.</h2>
+      <p class="lede">Ducter lives on one computer, your Mac or a server. Every other screen opens the same conversation: start a task at your desk, answer its question from your phone, read the result on your iPad.</p>
+    </div>
+    <ul class="where">
+      <li class="where-card reveal">
+        <div class="where-art"><Art name="laptop_awake" alt="" sizes="160px" /></div>
+        <h3>Mac</h3>
+        <p>The desktop app, for Apple silicon. Ducter can live here and run tasks here, with its own Chrome window for the web.</p>
+        <p class="where-state"><b>Ready</b><a href={dl.href}>{dl.href.startsWith("#") ? "Get it" : "Download"}</a></p>
+      </li>
+      <li class="where-card reveal">
+        <div class="where-art"><Art name="server_awake" alt="" sizes="150px" /></div>
+        <h3>A Linux server</h3>
+        <p>x64 or arm64, at home or in the cloud. Your partner keeps working while your Mac sleeps, and your Mac can still do tasks for it.</p>
+        <p class="where-state"><b>Ready</b><a href="/docs/install#a-linux-server-that-stays-on">Set one up</a></p>
+      </li>
+      <li class="where-card reveal">
+        <div class="where-art"><Art name="phone" alt="" sizes="80px" /></div>
+        <h3>iPhone and iPad</h3>
+        <p>One app for both. On an iPad held across, On hand stands beside the conversation, and with a keyboard ⌘N starts a task.</p>
+        <p class="where-state"><b>Public beta</b><a href="https://testflight.apple.com/join/Z4GvWt7t" rel="noopener">Join on TestFlight</a></p>
+      </li>
+      <li class="where-card soon reveal">
+        <div class="where-art"><Art name="slot_empty" alt="" sizes="150px" /></div>
+        <h3>Android</h3>
+        <p>Today Ducter opens in your phone's browser, and you answer Go or Hold right from the notification.</p>
+        <p class="where-state"><b>App coming soon</b><a href="/docs/phone">Use the browser</a></p>
+      </li>
+    </ul>
+    <p class="body where-note">A phone or iPad needs an address it can reach from anywhere: Ducter on a server with your own domain. <a href="/docs/phone">Connect your phone</a></p>
+  </div>
+</section>
+
 <!-- ============ CONNECTED: memory, accounts, other AI agents ============ -->
-<section class="sec" id="connected">
+<section class="sec deep" id="connected">
   <div class="wrap split">
     <div>
       <div class="sec-head">
@@ -247,7 +290,7 @@ const ld = {
 </section>
 
 <!-- ============ HEADS-UP: restraint (D165, D173) ============ -->
-<section class="sec deep" id="heads-up">
+<section class="sec" id="heads-up">
   <div class="wrap split flip">
     <div>
       <div class="sec-head">
@@ -394,14 +437,14 @@ const ld = {
           <button role="tab" id="tab-mac" aria-controls="p-mac" aria-selected="true">Mac app</button>
           <button role="tab" id="tab-cli" aria-controls="p-cli" aria-selected="false" tabindex="-1">Command line</button>
           <button role="tab" id="tab-srv" aria-controls="p-srv" aria-selected="false" tabindex="-1">Server</button>
-          <button role="tab" id="tab-ios" aria-controls="p-ios" aria-selected="false" tabindex="-1">iPhone</button>
+          <button role="tab" id="tab-ios" aria-controls="p-ios" aria-selected="false" tabindex="-1">iPhone and iPad</button>
           <button role="tab" id="tab-agent" aria-controls="p-agent" aria-selected="false" tabindex="-1">Your AI agent</button>
         </div>
         <div class="panel" id="p-mac" role="tabpanel" aria-labelledby="tab-mac" style="margin-top:14px">
           <p>Paste this into Terminal. It downloads the signed app, checks it, puts it in Applications and opens it:</p>
           <div class="term"><button class="btn sm copy" type="button" data-copy="curl -fsSL https://ducter.ai/install.sh | sh">Copy</button><pre><span class="p">$ </span>curl -fsSL https://ducter.ai/install.sh | sh</pre></div>
           <p>Ducter checks your Mac, then opens the conversation. Closing the window doesn't stop it. It needs a Mac with Apple silicon.</p>
-          <p>Or <a href={facts.dmgUrl ?? RELEASES_URL}>download the .dmg</a> and drag Ducter to Applications, or <a href="/docs/install#build-it-from-the-source-instead">build it from the source</a>. On your iPhone: <a href="https://testflight.apple.com/join/Z4GvWt7t" rel="noopener">join the iPhone beta</a>.</p>
+          <p>Or <a href={facts.dmgUrl ?? RELEASES_URL}>download the .dmg</a> and drag Ducter to Applications, or <a href="/docs/install#build-it-from-the-source-instead">build it from the source</a>. On iPhone and iPad: <a href="https://testflight.apple.com/join/Z4GvWt7t" rel="noopener">join the beta</a>.</p>
         </div>
         <div class="panel" id="p-cli" role="tabpanel" aria-labelledby="tab-cli" style="margin-top:14px" hidden>
           <p>The same line installs the <code>ducter</code> command in <code>~/.local/bin</code>. On a Mac it comes with the app; on Linux it's the <code>ducter</code> bundle:</p>
@@ -421,9 +464,9 @@ const ld = {
           <p>Your partner keeps working while your Mac sleeps. It only listens on the server itself (127.0.0.1); <code>ducter domain</code> checks your DNS, sets up HTTPS with Caddy and gives you a code. No domain? An SSH tunnel works for your Mac.</p>
         </div>
         <div class="panel" id="p-ios" role="tabpanel" aria-labelledby="tab-ios" style="margin-top:14px" hidden>
-          <p>The iPhone app is in public beta through Apple's TestFlight. It connects to Ducter on your server with the address and code from <code>ducter pair</code>.</p>
-          <p><a class="btn" href="https://testflight.apple.com/join/Z4GvWt7t" rel="noopener">Join the iPhone beta</a></p>
-          <p>Or open the same address in your phone's browser. <a href="/docs/phone">Your phone</a> has the details.</p>
+          <p>One app for iPhone and iPad, in public beta through Apple's TestFlight. It connects to Ducter on your server with the address and code from <code>ducter pair</code>.</p>
+          <p><a class="btn" href="https://testflight.apple.com/join/Z4GvWt7t" rel="noopener">Join the beta</a></p>
+          <p>On Android, or any phone, open the same address in the browser; the Android app is coming soon. <a href="/docs/phone">Your phone</a> has the details.</p>
         </div>
         <div class="panel" id="p-agent" role="tabpanel" aria-labelledby="tab-agent" style="margin-top:14px" hidden>
           <p>Let Claude Code, Codex or another agent set Ducter up for you. Ask it:</p>

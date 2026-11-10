@@ -32,9 +32,9 @@ is coming soon; until then it goes in the key file (see [Install](install.md)).
 ### What does it run on?
 
 The app runs on Macs with Apple silicon. Ducter also runs on a Linux server, which you reach
-from your Mac or your phone. Windows isn't supported. The iPhone app is in public beta through
-[TestFlight](https://testflight.apple.com/join/Z4GvWt7t); the phone version also opens in your
-phone's browser.
+from your Mac or your phone. Windows isn't supported. On iPhone and iPad there's one app, in
+public beta through [TestFlight](https://testflight.apple.com/join/Z4GvWt7t). On Android, Ducter
+opens in your phone's browser; the Android app is coming soon.
 
 ### Where do I download it?
 

@@ -1,6 +1,6 @@
 ---
 title: Install
-description: Install the Mac app or the ducter command, run Ducter on a Linux server that stays on, and connect your phone.
+description: Install the Mac app or the ducter command, run Ducter on a Linux server that stays on, and connect your iPhone, iPad or Android phone.
 order: 2
 ---
 
@@ -13,7 +13,7 @@ There are four ways to have Ducter, and you can mix them:
 | [The Mac app](#the-mac-app) | Most people. One line in Terminal, or a download | Ready |
 | [The `ducter` command](#the-ducter-command) | People who live in Terminal | Ready |
 | [A Linux server](#a-linux-server-that-stays-on) | Keeping your partner working while your Mac sleeps | Ready |
-| [Your phone](#your-phone) | Answering decisions and checking results on the go | Ready in the phone's browser; the iPhone app is in public beta (TestFlight) |
+| [Your phone or iPad](#your-phone-or-ipad) | Answering decisions and checking results on the go | iPhone and iPad: one app, in public beta (TestFlight). Android: ready in the phone's browser; the Android app is coming soon |
 
 Whichever you choose, you need an AI agent, **Claude Code or Codex** today, installed and
 signed in on the computer that does the work ([which agents](faq.md#which-ai-agents-does-it-work-with)).
@@ -300,18 +300,21 @@ The computer shows up under its own name; rename it in the app, or with
 `ducter devices rename vps-2 "Build box"`. If that computer drops off, its task waits and
 carries on when it's back.
 
-## Your phone
+## Your phone or iPad
 
 Your phone connects to the Ducter on your server through your own domain. On the server, run
 `ducter pair` and scan the QR code it shows, or open the link. The phone opens Ducter in its
 browser, connects, and asks whether to notify you when something needs you.
 
-**iPhone app (public beta).** The iPhone app is in public beta through Apple's TestFlight:
-[join the beta](https://testflight.apple.com/join/Z4GvWt7t), install TestFlight if asked, then
-open Ducter and type the address and code from `ducter pair`. Beta builds can change and expire
-after 90 days; TestFlight offers the next one.
+**iPhone and iPad app (public beta).** One app for both, in public beta through Apple's
+TestFlight: [join the beta](https://testflight.apple.com/join/Z4GvWt7t), install TestFlight if
+asked, then open Ducter and type the address and code from `ducter pair`. Beta builds can change
+and expire after 90 days; TestFlight offers the next one.
 
-Everything about the phone, including notifications and quiet hours, is on
+**Android.** Open the address in your phone's browser; you can answer **Go** or **Hold** straight
+from the notification. The Android app is coming soon.
+
+Everything about the phone and the iPad, including notifications and quiet hours, is on
 [Your phone](phone.md).
 
 ## Updates

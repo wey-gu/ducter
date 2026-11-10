@@ -23,7 +23,7 @@ These pages are for using Ducter. If you want to build it or change it, start wi
 - **[Getting started](getting-started.md):** from opening the app to your first finished task,
   in about five minutes.
 - **[Install](install.md):** the Mac app, the `ducter` command, a Linux server that stays on, and
-  your phone.
+  your iPhone, iPad or Android phone.
 
 ## Using Ducter
 
@@ -36,8 +36,8 @@ These pages are for using Ducter. If you want to build it or change it, start wi
   tap if you use oo, how it tells you only what needs you, and what it never does with them.
 - **[Waiting, keep going, routines](waiting-and-routines.md):** "tell me when…", "keep fixing
   until it works", and "every Monday…".
-- **[Your phone](phone.md):** connect your phone, get a nudge when something needs you, and
-  keep your nights quiet.
+- **[Your phone](phone.md):** connect your iPhone, iPad or Android phone, get a nudge when
+  something needs you, and keep your nights quiet.
 - **[Privacy and safety](privacy-and-safety.md):** what Ducter never does by itself, what runs
   where, your AI plans, and memory.
 

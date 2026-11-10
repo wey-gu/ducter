@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.0.9
 
 <!-- whats-new
 zh: App 支持 iPad 和 iPhone Duo；宽屏时对话和手头的事并排

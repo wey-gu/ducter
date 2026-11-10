@@ -229,7 +229,6 @@ func (a *App) emptyConversation(c *ui.Context) {
 				}
 			})
 		})
-		ui.Column(c).Margin(t.S3, 0, 0, 0).AlignItems(ui.Center).Children(func() { a.memLine(c) })
 	})
 }
 

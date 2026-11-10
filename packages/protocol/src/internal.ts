@@ -120,6 +120,8 @@ export interface CoreApi {
   browser?: DucterBrowserPort;
   /** D168: memory for tasks, from the partner's own Mem client; absent in tests, stubs and with no partner. */
   taskMemory?: TaskMemoryPort;
+  /** D168: the user's Nowledge Mem plugin for this agent is installed on that device (by id or name; undefined = the home), as Mem's own check last said. */
+  memPluginIn?(device: string | undefined, harness: string): boolean;
 }
 
 /** One memory as a task sees it: its id (to look closer), title, a clipped content, when. */
@@ -308,7 +310,7 @@ export interface SessionSpec {
   // Tasks (D130): under the clean setup, Codex keeps its own browser and Computer Use plugins.
   // The partner and the judge leave it unset (their clean setup turns them off).
   keepNativeTools?: boolean;
-  /** D168: the user's plugins to turn off by id in this session only (their Mem plugin: memory comes from Ducter). */
+  /** D168: the user's plugins to turn off by id in this session only (their Mem plugin, when memory is off in Ducter). */
   disablePlugins?: string[];
   // Tasks only (D135): what the harness keeps when it compacts (Claude Code's PreCompact hook
   // prints it as compact instructions). Absent: the partner's setup (no hook).

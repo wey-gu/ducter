@@ -1,14 +1,15 @@
-// D169: Nowledge Mem in the user's own AI agents, per computer (design/memory.md "Mem and tasks").
-// Inside Ducter's tasks memory comes from Ducter (D168). Outside, when the user runs Claude Code
-// or Codex themselves, Mem lives in each agent's own plugin on each computer. This keeps one line
-// per agent per device from Mem's own local, read-only check (`nmem --json plugins inspect`):
-// on the home here, on a worker through its `mem_plugins` op. The check runs when a device comes
-// online, once a day, after an agent update or a sign-in, and after a setup task ends.
+// D169: Nowledge Mem in the user's AI agents, per computer (design/memory.md "Mem and tasks").
+// A task runs with the user's own Nowledge Mem plugin for its agent, as the persona's identity
+// (D168), so where the plugin is matters: this keeps one line per agent per device from Mem's own
+// local, read-only check (`nmem --json plugins inspect`): on the home here, on a worker through
+// its `mem_plugins` op. The check runs when a device comes online, once a day, after an agent
+// update or a sign-in, and after a setup task ends; the runner asks `installed` to know whether a
+// task there has the plugin (else Ducter's own read-only memory stands in).
 //
 // Installing is never silent (D17: the agents' setup is the user's): 装上 / Install opens one task
 // on that computer, with that agent, that follows Mem's official setup guide and reads the check
-// again. When a computer joins or an agent there gets signed in and the check says it isn't
-// there, Ducter puts up one card, once per computer and agent, default 先不装 / Not now.
+// again. Where a signed-in agent lacks it, Ducter recommends it once per computer and agent: one
+// card, Go 装上 suggested, nothing happens until the user taps.
 // Memory off (Settings › 记得什么): no checks shown, no cards, no installs.
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -36,13 +37,13 @@ export interface MemPluginsDeps {
   now?: () => number;
   /** How often every awake device is checked again (default a day; 0 = only on events). */
   everyMs?: number;
-  /** A card nobody answers closes as 先不装 / Not now after this (default 4 h). */
-  offerMs?: number;
 }
 
 export interface MemPlugins {
   /** A device's agents with their Mem line (none when memory is off or the check can't tell). */
   view(deviceId: string, list: DeviceHarness[]): DeviceHarness[];
+  /** D168: Mem's check last said this agent's plugin is installed on that device (id or name; undefined = the home). */
+  installed(device: string | undefined, harness: string): boolean;
   /** Runs the check on one device (or every awake one) now. */
   check(deviceId?: string): Promise<void>;
   /** 装上 / Install: opens the setup task on that device with that agent. */
@@ -63,8 +64,6 @@ interface Saved {
 }
 
 const DAY = 24 * 60 * 60 * 1000;
-/** A device seen for the first time this soon after the check first ran was already here. */
-const BASELINE_MS = 10 * 60 * 1000;
 const FINISHED = new Set(["done_claimed", "done", "failed", "dropped", "blocked"]);
 
 /** D169: the brief of the task that puts Nowledge Mem into one of the user's own agents on a computer. */
@@ -104,6 +103,7 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
     }
   };
   const seen = new Map<string, Plugins>(); // device -> its last check
+  const names = new Map<string, string>(); // a device's name -> its id, from the last list
   const running = new Map<string, Promise<void>>();
   const fns = new Set<() => void>();
   const changed = () => {
@@ -122,6 +122,7 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
   async function check(deviceId?: string): Promise<void> {
     if (!d.on()) return;
     const list = await d.devices().catch(() => []);
+    for (const x of list) names.set(x.name, x.id);
     const todo = list.filter((x) => (deviceId ? x.id === deviceId || x.name === deviceId : x.awake));
     await Promise.all(
       todo.map((x) => {
@@ -134,17 +135,14 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
     );
   }
 
-  /** One card per device and agent, ever: a computer that joined, an agent signed in there, and the check says it isn't there. */
+  /** One card per device and agent, ever: a signed-in agent there, and the check says the plugin isn't there. */
   async function offers(id: string, got: Plugins): Promise<void> {
     const dev = (await d.devices().catch(() => [])).find((x) => x.id === id);
     if (!dev) return;
     const signedIn = dev.harnesses.filter((h) => h.installed && h.loggedIn && MEM_HOSTS[h.harness]).map((h) => h.harness);
-    const before = saved.known[id];
     saved.known[id] = signedIn;
-    // A device met for the first time right after the check first ran was already here: nothing new.
-    const fresh = before === undefined ? now() - saved.since > BASELINE_MS : true;
-    const newly = signedIn.filter((h) => fresh && !(before ?? []).includes(h));
-    for (const h of newly) {
+    // Tasks there use it (D168), so every signed-in agent without it gets its one card.
+    for (const h of signedIn) {
       const key = `${id}:${h}`;
       if (got[h]?.state !== "absent" || saved.offered.includes(key) || setupOf(id, h)) continue;
       saved.offered.push(key);
@@ -159,12 +157,12 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
     const body: Bodies["decision"] = {
       decisionId: "d_" + crypto.randomUUID().replaceAll("-", "").slice(0, 10),
       question: zh
-        ? `${deviceName} 上的 ${agent} 还没有 Nowledge Mem。装上以后，你自己用 ${agent} 的时候它也记得你。`
-        : `${agent} on ${deviceName} doesn't have Nowledge Mem yet. With it, ${agent} remembers you when you use it yourself too.`,
+        ? `${deviceName} 上的 ${agent} 还没装 Nowledge Mem。装上以后，我在那儿做事和你自己用 ${agent} 时都记得你；会改 ${agent} 自己的设置。`
+        : `${agent} on ${deviceName} doesn't have Nowledge Mem. With it, my work there and your own ${agent} sessions both remember you; it changes ${agent}'s own settings.`,
       goLabel: zh ? "装上" : "Install",
-      defaultOption: "hold",
+      // Recommended, never applied by itself: Go is the suggestion, and it waits for the tap (no timer).
+      defaultOption: "go",
       reversible: true,
-      defaultAt: new Date(now() + (d.offerMs ?? 4 * 60 * 60 * 1000)).toISOString(),
       memPlugin: { device, deviceName, harness },
     };
     d.log.append({ stream: "channel", origin: "system", kind: "decision", body });
@@ -233,6 +231,11 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
   (timer as { unref?: () => void } | undefined)?.unref?.();
 
   return {
+    installed(device, harness) {
+      if (!d.on()) return false;
+      const id = !device || device === "local" ? "local" : seen.has(device) ? device : (names.get(device) ?? device);
+      return seen.get(id)?.[harness]?.state === "installed";
+    },
     view(deviceId, list) {
       if (!d.on()) return list;
       const got = seen.get(deviceId);

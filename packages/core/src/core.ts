@@ -80,7 +80,7 @@ export interface CoreOptions {
   /** D156 test seams: the channels' feed, the agents' updaters, this machine's copies. */
   agents?: { fetch?: ReleaseFetch; sys?: UpdateSys; which?: (c: string) => string | null; detect?: AgentUpdatesDeps["detect"]; loggedIn?: AgentUpdatesDeps["loggedIn"]; exists?: (p: string) => boolean; settleMs?: number; autoEveryMs?: number };
   /** D169 test seams: the Mem plugin check on the home (default: the real `nmem`, never in tests). */
-  memPlugins?: { inspectLocal?: () => Promise<Record<string, import("@ducter/protocol").MemPluginView> | undefined>; everyMs?: number; now?: () => number };
+  memPlugins?: { inspectLocal?: () => Promise<Record<string, import("@ducter/protocol").MemPluginView> | undefined>; everyMs?: number; now?: () => number; connected?: () => boolean };
   /** D151 test seams for Ducter's own browser (false: none). */
   browser?: false | Partial<Omit<DucterBrowserOptions, "mcp" | "log" | "tasks" | "decisions" | "persona" | "dataDir">>;
   /** The machine's platform as Devices sees it (tests: "linux"). */
@@ -425,7 +425,10 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D169: Nowledge Mem in the user's own agents, per device. Checked at start, each day, when a
   // computer comes online, and after a sign-in or an agent update (both refresh the devices).
   const mp = opts.memPlugins ?? {};
-  const memOn = () => settings.get().memory && process.env.DUCTER_MEMORY !== "off";
+  // D169: only for someone who already has Mem connected (its identity bound, D141, and Mem not
+  // answering "missing"); without Mem, nothing about its plugin shows, anywhere.
+  const memConnected = mp.connected ?? (() => !!persona.mem && !settings.memMissing());
+  const memOn = () => settings.get().memory && process.env.DUCTER_MEMORY !== "off" && memConnected();
   const memPlugins = createMemPlugins({
     dataDir,
     log,
@@ -447,6 +450,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     ...(mp.now ? { now: mp.now } : {}),
   });
   memPluginsRef = memPlugins;
+  api.memPluginIn = (device, harness) => memPlugins.installed(device, harness); // D168: a task there has it
   memPlugins.onChange(() => devicesView?.changed());
   {
     // A sign-in, a sign-out or an agent update refreshes the devices: read the check again.

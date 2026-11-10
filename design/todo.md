@@ -179,14 +179,18 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [ ] Search before writing, to supersede instead of duplicating (`nmem m supersede`).
 - [ ] Undo on the Noted line (archive the memory, never delete).
 - [x] Tasks (windows) as the same identity: `NMEM_AGENT_ID` in the task's session spec (D141).
-- [x] Memory in tasks from Ducter: recall before the first turn, a read-only `memory_search`,
-      `remember` proposals, the user's Mem plugin off in the task (D168, built with fakes).
-- [ ] Live: one Claude Code task and one Codex task with Nowledge Mem installed for the user,
-      checking that `--settings enabledPlugins` / `-c plugins.<id>.enabled=false` really keeps
-      the plugin's hooks and tools out of the session (INFERRED for Claude Code; Codex's
-      per-id switch is VERIFIED for other plugins, research/38) and that the Codex plugin's
-      hooks (installed by its `install_hooks.py`) don't still run. Trigger: before calling D168
-      done.
+- [x] Nowledge Mem in tasks (D168, built with fakes): the plugin stays on as the persona, Ducter
+      fills in where it isn't, `remember` proposals, the plugin off in the task with memory off.
+- [ ] Live: a Claude Code task and a Codex task on a computer with the plugin: its SessionStart
+      Context Bundle loads in the task under the persona's identity (`NMEM_AGENT_ID`), its
+      captured thread lands as the persona with the task's native session id, and no mailbox
+      notice shows. Trigger: before calling D168 done.
+- [ ] Live: memory off really keeps the plugin out (Claude Code `--settings enabledPlugins` is
+      INFERRED; Codex's per-id switch is VERIFIED for other plugins, research/38), and the
+      Codex plugin's hooks from its `install_hooks.py` don't still run. Trigger: same.
+- [ ] Does Mem distill a captured thread into memories by itself? If so, a task's `remember`
+      and the partner's `memory_add` could duplicate it: ask Mem's team, then dedupe or drop
+      `remember` where the plugin captures. Trigger: the first live run above.
 - [ ] A recall relevance floor and a better query than title + brief, measured on a real
       channel replay with tasks. Trigger: the replay in "The conversation's own memory".
 - [ ] Live: 装上 on a real worker with a fresh Claude Code, through Mem's SKILL.md to a passing

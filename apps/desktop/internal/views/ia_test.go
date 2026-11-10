@@ -77,7 +77,7 @@ func TestPartnerTabShowsTheBrainInUse(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 1400, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	for _, want := range []string{"住在 hel 上 · 用 Codex 想事情", "自动选的：只有 Codex 登录了", "hel 上的 AI agent", "装上 Nowledge Mem"} {
+	for _, want := range []string{"住在 hel 上 · 用 Codex 想事情", "自动选的：只有 Codex 登录了", "hel 上的 AI agent", "了解 Nowledge Mem"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
@@ -128,7 +128,7 @@ func TestPartnerPageEmptyMemoryHidesList(t *testing.T) {
 	if tt.HasText("Noted lately") {
 		t.Errorf("an empty noted list still has its heading")
 	}
-	if !tt.HasText("Get Nowledge Mem") {
+	if !tt.HasText("About Nowledge Mem") {
 		t.Errorf("no way to get Mem when it is missing: %q", tt.Texts())
 	}
 }

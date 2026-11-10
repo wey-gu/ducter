@@ -6,7 +6,7 @@ package i18n
 var zhMemPlugin = Table{
 	"memp.installed":       "Nowledge Mem 已装 · %s",
 	"memp.installed.bare":  "Nowledge Mem 已装",
-	"memp.absent":          "没装 Nowledge Mem",
+	"memp.absent":          "Nowledge Mem 没装",
 	"memp.update":          "Nowledge Mem 有新版",
 	"memp.review.multiple": "Nowledge Mem 装了不止一份，要看一下",
 	"memp.review.unclear":  "说不好 Nowledge Mem 装好没有，要看一下",
@@ -24,7 +24,7 @@ var zhMemPlugin = Table{
 	"memp.why.off":         "记性关着：打开「记住事情」再装。",
 	"memp.why.unknown":     "出了点问题，再试一次。",
 	"memp.why.failed":      "出了点问题，再试一次。",
-	"memp.card.question":   "%[2]s 上的 %[1]s 还没有 Nowledge Mem。装上以后，你自己用 %[1]s 的时候它也记得你。",
+	"memp.card.question":   "%[2]s 上的 %[1]s 还没装 Nowledge Mem。装上以后，我在那儿做事和你自己用 %[1]s 时都记得你；会改 %[1]s 自己的设置。",
 	"memp.card.go":         "装上",
 	"memp.card.hold":       "先不装",
 }
@@ -32,7 +32,7 @@ var zhMemPlugin = Table{
 var enMemPlugin = Table{
 	"memp.installed":       "Nowledge Mem %s installed",
 	"memp.installed.bare":  "Nowledge Mem installed",
-	"memp.absent":          "No Nowledge Mem",
+	"memp.absent":          "Nowledge Mem not installed",
 	"memp.update":          "Nowledge Mem has an update",
 	"memp.review.multiple": "Nowledge Mem is installed more than once; worth a look",
 	"memp.review.unclear":  "Can't tell if Nowledge Mem is set up; worth a look",
@@ -50,7 +50,7 @@ var enMemPlugin = Table{
 	"memp.why.off":         "Memory is off: turn on Remember things first.",
 	"memp.why.unknown":     "Something went wrong; try again.",
 	"memp.why.failed":      "Something went wrong; try again.",
-	"memp.card.question":   "%[1]s on %[2]s doesn't have Nowledge Mem yet. With it, %[1]s remembers you when you use it yourself too.",
+	"memp.card.question":   "%[1]s on %[2]s doesn't have Nowledge Mem. With it, my work there and your own %[1]s sessions both remember you; it changes %[1]s's own settings.",
 	"memp.card.go":         "Install",
 	"memp.card.hold":       "Not now",
 }

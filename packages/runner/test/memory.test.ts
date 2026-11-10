@@ -1,6 +1,7 @@
-// D168: memory inside Ducter's tasks comes from Ducter. The first turn carries the few memories
-// that matter (asked once, capped in time, logged by id); the user's own Mem plugin is off in the
-// session; a browser task gets none; a task proposes `remember`, never writes.
+// D168: a task runs with the user's own Nowledge Mem plugin as the persona's identity where it is
+// installed for that agent on that computer; where it isn't, Ducter's recall (the first turn's
+// <what_i_know>, logged by id) and read-only memory_search stand in. Memory off in Ducter: the
+// plugin is turned off in the session. A browser task gets none; a task proposes `remember`.
 import { afterEach, beforeEach, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -48,7 +49,7 @@ const NOTES: TaskMemoryNote[] = [
   { id: "mem_b2", title: "Commit style", content: "Small commits, imperative subject lines." },
 ];
 
-test("the first turn starts with what memory says matters, and the recall is logged by id, not text", async () => {
+test("no plugin on that computer: the first turn starts with what memory says matters, logged by id, not text", async () => {
   const asked: { title: string; brief: string }[] = [];
   core.taskMemory = { on: () => true, recall: async (w) => (asked.push(w), NOTES) };
   const h = recordingPort();
@@ -61,7 +62,7 @@ test("the first turn starts with what memory says matters, and the recall is log
   expect(h.turns[0]).toContain('Start the task "Fix the flaky test" now');
   // The brief says how to use it and how to propose; never to write.
   expect(h.specs[0]!.appendSystemPrompt).toContain("`memory_search`");
-  expect(h.specs[0]!.appendSystemPrompt).toContain("You never write to the user's memory yourself");
+  expect(h.specs[0]!.appendSystemPrompt).toContain("You never save memories yourself");
   const logged = core.events.filter((e) => e.kind === "task_event").map((e) => e.body as Bodies["task_event"]).find((b) => (b.raw as any)?.memory === "recall");
   expect((logged!.raw as any).ids).toEqual(["mem_a1", "mem_b2"]);
   expect(logged!.text).not.toContain("fake clocks");
@@ -82,18 +83,43 @@ test("memory off, Mem slow or nothing found: the first turn is as before and the
   }
 });
 
-test("the brief speaks of memory only when the task gets it (a browser task never does: memoryFor)", () => {
+test("the brief speaks of memory only when the task gets it (a browser task never does: memoryMode)", () => {
   const base = { partnerName: "Ducter", taskId: "t", title: "x", brief: "b", place: { kind: "none" as const }, cwd: "/tmp", mcpServerName: "ducter" };
   expect(taskBrief(base)).not.toContain("memory");
-  expect(taskBrief({ ...base, memory: true })).toContain("## What Ducter remembers about the user");
+  expect(taskBrief({ ...base, memory: "ducter" })).toContain("`memory_search` on the `ducter` server");
+  const plugin = taskBrief({ ...base, memory: "plugin" });
+  expect(plugin).toContain("Nowledge Mem is on in this session as Ducter's own memory");
+  expect(plugin).not.toContain("memory_search` on the");
+  expect(plugin).toContain("You never save memories yourself");
 });
 
-test("the user's own Mem plugin is off in a task that keeps the user's setup, on Claude Code and Codex", async () => {
-  core.taskMemory = { on: () => true, recall: async () => undefined };
+test("plugin installed there: it stays on, as the persona, with no Ducter recall; mailbox notices stay out", async () => {
+  let asked = 0;
+  core.taskMemory = { on: () => true, recall: async () => (asked++, NOTES) };
+  core.persona.mem = { agentId: "ducter", owned: true } as any;
+  const seen: [string | undefined, string][] = [];
+  core.memPluginIn = (device, harness) => (seen.push([device, harness]), harness === "claude-code");
+  const h = recordingPort();
+  const runner = createRunner(core, { harness: h.port, newId: () => "tsk8" });
+  await runner.whenStarted((await runner.openTask({ persona: "p1", title: "x", brief: "b", harness: "claude-code" })).taskId);
+  expect(h.specs[0]!.disablePlugins).toBeUndefined();
+  expect(h.specs[0]!.env).toEqual({ NMEM_AGENT_ID: "ducter", NMEM_NO_MAILBOX_NOTICE: "1" });
+  expect(h.specs[0]!.appendSystemPrompt).toContain("Nowledge Mem is on in this session");
+  expect(h.turns[0]).toStartWith('Start the task "x"');
+  expect(asked).toBe(0);
+  expect(seen[0]).toEqual([undefined, "claude-code"]);
+});
+
+test("memory off in Ducter: the user's Mem plugin is off in the task, on Claude Code and Codex; no identity env", async () => {
+  core.taskMemory = { on: () => false, recall: async () => undefined };
+  core.persona.mem = { agentId: "ducter", owned: true } as any;
+  core.memPluginIn = () => true;
   const h = recordingPort();
   const runner = createRunner(core, { harness: h.port, newId: () => "tsk9" });
   await runner.whenStarted((await runner.openTask({ persona: "p1", title: "x", brief: "b", harness: "claude-code" })).taskId);
   expect(h.specs[0]!.disablePlugins).toEqual(["nowledge-mem@nowledge-community"]);
+  expect(h.specs[0]!.env).toBeUndefined();
+  expect(h.specs[0]!.appendSystemPrompt).not.toContain("memory");
 
   // Claude Code: one --settings, merged with the PreCompact hook, so nothing else of the user's changes.
   const cc = adaptSpec({ ...h.specs[0]!, harness: "claude-code", contextWindow: 200_000, harnessCompactAt: 160_000, preCompactNote: "keep" }, { dataDir: dir, env: {} });

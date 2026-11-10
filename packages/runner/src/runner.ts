@@ -812,8 +812,9 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         project: open.project || undefined,
         mcpServerName: mcp.name,
         ...(open.language ? { language: open.language } : {}),
-        // D168: memory comes from Ducter, read-only; a browser task gets none (as with the Log, D62).
-        memory: memoryFor(open.place),
+        // D168: the user's Nowledge Mem plugin where it is on that computer, else Ducter's own
+        // read-only memory; a browser task gets none (as with the Log, D62).
+        ...((m) => (m === "plugin" || m === "ducter" ? { memory: m } : {}))(memoryMode(open.place, open.harness)),
       }),
       mcp: [mcp],
       permissionMode: "bypass",
@@ -831,18 +832,39 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     // Only these two, set explicitly; every other NMEM_* the host has stays out (child-env.ts).
     const mem = core.persona.mem;
     if (mem) spec.env = { NMEM_AGENT_ID: mem.agentId, ...(mem.space ? { NMEM_SPACE: mem.space } : {}) };
-    // D168: inside Ducter's tasks memory comes from Ducter, so the user's own Mem plugin is off in
-    // this session (their other plugins stay). Also with memory off: then the switch holds here too.
-    const memPlugins = MEM_PLUGIN_IDS[open.harness];
-    if (memPlugins?.length) spec.disablePlugins = [...memPlugins];
+    if (memoryOn()) {
+      // D168: the user's Nowledge Mem plugin stays on in the task, as the persona's identity. Its
+      // Bridge mailbox notices stay out: messages to the persona are the partner's, not a task's.
+      if (spec.env) spec.env = { ...spec.env, NMEM_NO_MAILBOX_NOTICE: "1" };
+    } else {
+      // D168: memory is off in Ducter: the plugin is off in this session too (their other plugins
+      // stay), so the switch holds inside tasks.
+      const memPlugins = MEM_PLUGIN_IDS[open.harness];
+      if (memPlugins?.length) spec.disablePlugins = [...memPlugins];
+      delete spec.env;
+    }
     // D142: a folder task writes only inside its folder where the harness can hold it there (Codex's sandbox).
     if (open.place.kind === "folder") spec.confineWrites = true;
     return spec;
   }
 
-  /** D168: whether a task in this place gets Ducter's memory (on, and not a browser place). */
-  function memoryFor(place: Place): boolean {
-    return place.kind !== "browser" && !!core.taskMemory?.on();
+  /** Memory is on (Settings › 记得什么 and the run); with no partner wired, the setting alone. */
+  function memoryOn(): boolean {
+    if (core.taskMemory) return core.taskMemory.on();
+    return process.env.DUCTER_MEMORY !== "off" && core.settings?.get().memory !== false;
+  }
+
+  /**
+   * D168: what memory a task in this place has. plugin: the user's Nowledge Mem plugin for this
+   * agent is installed on that computer, and does it (Context Bundle at start, its own searches,
+   * its capture); ducter: it isn't, so Ducter's recall and read-only memory_search stand in;
+   * none: a browser place (D62) or memory off.
+   */
+  function memoryMode(place: Place, harness: string): "plugin" | "ducter" | "none" {
+    if (place.kind === "browser" || !memoryOn()) return "none";
+    const device = "device" in place ? place.device : undefined;
+    if (core.memPluginIn?.(device, harness)) return "plugin";
+    return core.taskMemory ? "ducter" : "none";
   }
 
   /**
@@ -852,7 +874,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
    */
   async function withKnown(t: TaskRt, turn: string, brief: string): Promise<string> {
     const port = core.taskMemory;
-    if (!port || !memoryFor(t.card.place) || !brief.trim()) return turn;
+    if (!port || memoryMode(t.card.place, t.card.harness) !== "ducter" || !brief.trim()) return turn;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const late = new Promise<undefined>((r) => (timer = setTimeout(() => r(undefined), RECALL_MS)));
     const notes = await Promise.race([port.recall({ taskId: t.id, persona: t.persona, title: t.card.title, brief }).catch(() => undefined), late]).finally(() => clearTimeout(timer));

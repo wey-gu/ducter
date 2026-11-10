@@ -8,7 +8,7 @@ test("the line per state, in zh and en, never claiming more than the check knows
   let L = strings("zh");
   const memWords = (m: any) => words(L, m);
   expect(memWords({ state: "installed", version: "0.7.34" })).toEqual({ line: "Nowledge Mem 已装 · 0.7.34" });
-  expect(memWords({ state: "absent" })).toEqual({ line: "没装 Nowledge Mem", action: "装上" });
+  expect(memWords({ state: "absent" })).toEqual({ line: "Nowledge Mem 没装", action: "装上" });
   expect(memWords({ state: "review", why: "multiple" })).toEqual({ line: "Nowledge Mem 装了不止一份，要看一下", action: "理一下" });
   expect(memWords({ state: "absent", taskId: "t1" })).toEqual({ line: "正在装 Nowledge Mem…" });
   L = strings("en");
@@ -33,5 +33,5 @@ test("zh and en have the same Nowledge Mem keys, and the same as the Mac", async
   expect(keys("zh")).toEqual(keys("en"));
   const mac = await Bun.file(new URL("../../desktop/internal/i18n/memplugin.go", import.meta.url)).text();
   for (const k of keys("zh")) expect(mac).toContain(`"${k}":`);
-  expect(strings("zh").t("memp.card.question", "Codex", "Mac mini")).toBe("Mac mini 上的 Codex 还没有 Nowledge Mem。装上以后，你自己用 Codex 的时候它也记得你。");
+  expect(strings("zh").t("memp.card.question", "Codex", "Mac mini")).toBe("Mac mini 上的 Codex 还没装 Nowledge Mem。装上以后，我在那儿做事和你自己用 Codex 时都记得你；会改 Codex 自己的设置。");
 });

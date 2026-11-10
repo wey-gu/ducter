@@ -329,15 +329,20 @@ func TestOnboardAsksAfterResults(t *testing.T) {
 	}
 }
 
-func TestOnboardMemLineInTheEmptyConversation(t *testing.T) {
+// D169: Ducter is whole without Nowledge Mem. The conversation never brings it up by itself; the
+// one mention is in Settings › 记得什么.
+func TestOnboardNoMemLineInTheEmptyConversation(t *testing.T) {
 	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
 		dir := hintsDir(t, hintsJSON)
 		h := newWelcome(t, lang, dir, true)
 		h.app.Backend = &fakeBackend{dir: dir}
 		h.app.setup.report = freshReport(func(k string, _ ...any) string { return doctorWords[lang][k] })
 		h.tt.Frame()
-		h.has(h.app.L.T("mem.ask", h.app.S.PersonaName), h.app.L.T("mem.get"))
-		h.shot("onboard-mem-line-" + string(lang))
+		for _, s := range h.tt.Texts() {
+			if strings.Contains(s, "Nowledge Mem") {
+				t.Fatalf("the empty conversation mentions Mem: %q", s)
+			}
+		}
 	}
 }
 

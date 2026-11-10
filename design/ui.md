@@ -330,7 +330,7 @@ One vocabulary on every tab:
 - **Partner:** one calm clay header (the partner at 112, its name 34 with Rename, one line "住在
   hel 上 · 用 Codex 想事情"), then the tray titled **{device} 上的 AI agent**, What it thinks with
   (the clay well holding the token; the token flies into it on Switch), Who does the tasks, How it
-  talks, What it remembers (no Mem: no switch, **装上 Nowledge Mem** instead), On its own or asks
+  talks, What it remembers (no Mem: no switch; one gentle line on what Mem adds and **了解 Nowledge Mem**, D169), On its own or asks
   you first (two lists side by side in one card). Single column; the faces strip is gone.
 - **Look and sound** opens on a preview stage: the partner, one message of yours and its answer
   in this window's language, and Details folded or shown as set. The partner smiles (its done

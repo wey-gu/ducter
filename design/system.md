@@ -52,8 +52,8 @@ are kept). `--bare` is not usable: it drops OAuth / subscription login.
 - **Tasks: inherit by default** (runner option `isolateUserConfig`, default false). A task
   works in the user's repo the way the user codes there: their skills, hooks, `CLAUDE.md`
   and MCP servers are deliberate choices, and a power user expects a Ducter task to behave
-  like their own Claude Code session. Except their Mem plugin, which is off in the task
-  (D168: memory comes from Ducter); a browser place and pi run clean. The cost (slower start, extra context) is off the
+  like their own Claude Code session, their Nowledge Mem plugin included, running as the
+  persona (D168; off in the task only when memory is off in Ducter); a browser place runs clean. The cost (slower start, extra context) is off the
   user's attention path, since the ack comes from the partner. Turn it on for untrusted or
   shared-machine setups.
 
@@ -151,15 +151,16 @@ changes.
   Mem records the id on writes either way. Its windows run as that same identity: the session
   spec sets `NMEM_AGENT_ID` (and `NMEM_SPACE` when bound) explicitly, and no other NMEM_*
   reaches them.
-- **Mem inside tasks comes from Ducter (D168, `memory.md` "Mem and tasks").** A task gets the
-  memories that matter in front of its first turn and a read-only `memory_search` on
-  Ducter's MCP, answered by the home (workers hold no Mem credentials); it proposes
-  `remember` in its report and only the partner writes. The user's own Mem plugin
-  (`nowledge-mem@nowledge-community`) is turned off by id in a task session that keeps the
-  user's setup; nothing else of theirs is. Browser tasks get no memory.
-- **Mem in the user's own agents (D169).** Ducter reads Mem's own local check per computer and
-  shows one line per agent in its card; it installs only through a task the user starts (or
-  Go on its one card), following Mem's official setup guide. Never silently (D17). A rename keeps the id and, for an identity Ducter enrolled, updates its name.
+- **Nowledge Mem inside tasks (D168, `memory.md` "Mem and tasks").** A task keeps the user's
+  Nowledge Mem plugin and runs it as the persona (`NMEM_AGENT_ID`, `NMEM_SPACE`), with
+  `NMEM_NO_MAILBOX_NOTICE=1` so the persona's Bridge mailbox stays the partner's. Where the
+  plugin isn't installed for that agent there, Ducter's recall and a read-only `memory_search`
+  (answered by the home) fill in. A task proposes `remember`; only the partner writes
+  memories. With memory off, the plugin is turned off by id in the session.
+- **Nowledge Mem in the user's agents, per computer (D169).** Ducter reads Mem's own local
+  check per computer, shows one line per agent in its coin detail, and recommends it once
+  where it is missing; it installs only through a task the user starts (Go on the card, or
+  装上), following Mem's official setup guide. Never silently (D17).
 - **L1** is built from the identity's stable sections (read without Working Memory) and
   hashed by Ducter. Changes are adopted only at cut points. Working Memory enters as an L4
   delta.
@@ -192,8 +193,8 @@ changes.
   self-deployed. Example: pi's Anthropic "stealth" login is out.
 - **Skills, plugins, and harness config** are owned and maintained by the user in each
   harness's native place, and windows inherit them by default. Ducter keeps no skill
-  registry. One exception (D168): the user's Mem plugin is off inside a task, because Ducter
-  is that task's memory.
+  registry. One exception (D168): with memory off in Ducter, the user's Nowledge Mem plugin is
+  turned off inside a task, so the switch holds.
 - **Config isolation.** The main AI isolates harness config where the harness allows it.
   OAR's `userConfiguration: "exclude"` works only on Claude and Cursor.
 

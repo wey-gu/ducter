@@ -1,6 +1,6 @@
-// D169: Nowledge Mem in the user's own agents, per computer. The check is Mem's own local one
+// D169: Nowledge Mem in the user's agents, per computer. The check is Mem's own local one
 // (fixtures from a real Mac and a fresh worker); a worker answers through its op. One card per
-// computer and agent, ever, only for something new; 装上 is a task there, never a silent install;
+// computer and agent, ever, Go 装上 recommended but never applied by itself; 装上 is a task there;
 // memory off: nothing shown, nothing offered, nothing installed.
 import { afterEach, beforeEach, expect, test } from "bun:test";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
@@ -90,12 +90,11 @@ test("a worker answers through its op; an older one says nothing, and its card s
   expect(s.mp.view("w1", agents("codex"))[0]!.mem).toBeUndefined();
 });
 
-test("devices already here when the check first ran get no card; a computer that joins later gets one per agent, once ever", async () => {
+test("every signed-in agent without it gets one card, Go 装上 recommended and waiting for the tap; once ever", async () => {
   const devs: Dev[] = [{ id: "local", name: "hel", home: true, awake: true, harnesses: signed("claude-code") }];
   const s = setup({ devs });
-  await s.mp.check(); // the baseline: hel was here
+  await s.mp.check(); // Claude Code has it on hel (the Mac fixture): no card
   expect(s.decisions()).toHaveLength(0);
-  s.later(60 * 60 * 1000);
   devs.push({ id: "w1", name: "mini", home: false, awake: true, harnesses: signed("claude-code", "codex") });
   await s.mp.check("w1");
   const d = s.decisions();
@@ -103,14 +102,30 @@ test("devices already here when the check first ran get no card; a computer that
     { device: "w1", deviceName: "mini", harness: "claude-code" },
     { device: "w1", deviceName: "mini", harness: "codex" },
   ]);
-  expect(d[0]).toMatchObject({ goLabel: "装上", defaultOption: "hold", reversible: true });
-  expect(d[0]!.question).toBe("mini 上的 Claude Code 还没有 Nowledge Mem。装上以后，你自己用 Claude Code 的时候它也记得你。");
+  expect(d[0]).toMatchObject({ goLabel: "装上", defaultOption: "go", reversible: true });
+  expect(d[0]!.defaultAt).toBeUndefined(); // never applied by itself: it changes the agent's own settings
+  expect(d[0]!.question).toBe("mini 上的 Claude Code 还没装 Nowledge Mem。装上以后，我在那儿做事和你自己用 Claude Code 时都记得你；会改 Claude Code 自己的设置。");
   // Checked again (a day later, after a restart): never again.
   await s.mp.check("w1");
   const again = setup({ devs, t0: 1_000_000 + 2 * 60 * 60 * 1000 });
   await again.mp.check();
   expect(s.decisions()).toHaveLength(2);
   expect(again.decisions()).toHaveLength(0);
+});
+
+test("installed(): what a task there has, by id or name; memory off: never", async () => {
+  const devs: Dev[] = [
+    { id: "local", name: "hel", home: true, awake: true, harnesses: signed("claude-code") },
+    { id: "w1", name: "mini", home: false, awake: true, harnesses: signed("claude-code") },
+  ];
+  const s = setup({ devs });
+  await s.mp.check();
+  expect(s.mp.installed(undefined, "claude-code")).toBe(true);
+  expect(s.mp.installed("local", "codex")).toBe(false); // a review is not installed
+  expect(s.mp.installed("mini", "claude-code")).toBe(false); // the fresh worker
+  expect(s.mp.installed("w1", "claude-code")).toBe(false);
+  s.setOn(false);
+  expect(s.mp.installed(undefined, "claude-code")).toBe(false);
 });
 
 test("an agent signed in later on a known computer gets its one card; memory off: none", async () => {
@@ -165,7 +180,7 @@ test("装上 refuses honestly: off, unknown, away, nobody signed in there", asyn
   expect(s.opened).toHaveLength(0);
 });
 
-test("Go on the card opens the same task; Hold (the default) does nothing", async () => {
+test("Go on the card opens the same task; Hold does nothing", async () => {
   const devs: Dev[] = [{ id: "local", name: "hel", home: true, awake: true, harnesses: signed("claude-code") }];
   const s = setup({ devs });
   await s.mp.check();
@@ -190,6 +205,30 @@ test("the setup brief: Mem's guide is the only source of steps, never guess a ke
 
 // ---------- over the real client socket ----------
 
+test("without Mem connected (the default here: no identity bound): no line, no card, 装上 says off", async () => {
+  const { startCore } = await import("../src/core.ts");
+  let checks = 0;
+  const core = startCore({
+    dataDir: dir,
+    port: 0,
+    batchMs: 5,
+    deviceProbes: { cua: async () => ({ missing: "no" }), native: async () => undefined, harnesses: async () => [{ harness: "claude-code", installed: true, loggedIn: true, canBePartner: true }], kind: async () => "server" },
+    update: { autoEveryMs: 0 },
+    agents: { autoEveryMs: 0 },
+    memPlugins: { inspectLocal: async () => (checks++, fx("worker-fresh.json")) },
+  });
+  try {
+    await core.memPlugins.check();
+    expect(checks).toBe(0);
+    const f = await core.devicesView.frame();
+    expect(f.devices[0]!.harnesses[0]!.mem).toBeUndefined();
+    expect(await core.memPlugins.install("local", "claude-code")).toEqual({ ok: false, reason: "off" });
+    expect(core.log.read({ stream: "channel", kinds: ["decision"] })).toHaveLength(0);
+  } finally {
+    await core.stop();
+  }
+});
+
 test("over the socket: the devices frame carries the Mem line; 装上 opens the task; a refresh checks again", async () => {
   const { startCore } = await import("../src/core.ts");
   let checks = 0;
@@ -201,7 +240,7 @@ test("over the socket: the devices frame carries the Mem line; 装上 opens the 
     deviceProbes: { cua: async () => ({ missing: "no" }), native: async () => undefined, harnesses: async () => list, kind: async () => "server" },
     update: { autoEveryMs: 0 },
     agents: { autoEveryMs: 0 },
-    memPlugins: { inspectLocal: async () => (checks++, fx("worker-fresh.json")) },
+    memPlugins: { inspectLocal: async () => (checks++, fx("worker-fresh.json")), connected: () => true },
   });
   const opened: any[] = [];
   core.setRunner({ openTask: async (i: any) => (opened.push(i), { taskId: "tsk_mem" }) } as any);

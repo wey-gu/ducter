@@ -100,9 +100,9 @@ In our own runs, a small "fix the failing tests" task came back done in under a 
 - **Close the window whenever you like.** Ducter keeps working. The Dock icon brings the window
   back, and its badge counts what is waiting for you.
 - **A few small offers come later, one at a time,** each with **Later**: notifications on this
-  Mac when you need to decide something (after your first result), finding Ducter on
-  [your phone](phone.md), and [Nowledge Mem](privacy-and-safety.md#memory-with-nowledge-mem) so
-  your partner remembers for longer.
+  Mac when you need to decide something (after your first result), and finding Ducter on
+  [your phone](phone.md). Nowledge Mem is never offered here; if you'd like it, see
+  [Memory, with Nowledge Mem](privacy-and-safety.md#memory-with-nowledge-mem).
 - **Use it from Terminal too.** The one line in Terminal already put `ducter` there. If you
   installed from the `.dmg`, after your partner's first reply Ducter offers once: *"Use ducter
   in Terminal too?"* Say yes, and `ducter status` works in any new Terminal window.

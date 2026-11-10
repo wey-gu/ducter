@@ -305,7 +305,7 @@ describe("send: steer vs queue", () => {
     core.persona.mem = { agentId: "ducter", space: "ducter-scratch", owned: true };
     const bound = await runner.openTask({ persona: "p1", title: "c", brief: "d" });
     await runner.whenStarted(bound.taskId);
-    expect(fake.specs[1]!.env).toEqual({ NMEM_AGENT_ID: "ducter", NMEM_SPACE: "ducter-scratch" });
+    expect(fake.specs[1]!.env).toEqual({ NMEM_AGENT_ID: "ducter", NMEM_SPACE: "ducter-scratch", NMEM_NO_MAILBOX_NOTICE: "1" }); // D168
     delete core.persona.mem;
     await runner.dispose();
   });

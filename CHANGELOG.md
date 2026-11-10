@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.0.6
+
+**Notifications on the iPhone app, from any Ducter**
+- The iPhone app now gets notifications from your own Ducter on any computer, with no Apple key
+  on that computer: they go through a small notification relay at ducter.ai.
+- What a notification says is encrypted on your Ducter and opened only on your phone; the relay
+  and Apple see a neutral "Ducter needs you", a device token, and the time. Go and Hold still
+  work from the notification.
+- A Ducter with its own Apple key can keep sending directly. Disconnecting a phone stops its
+  notifications at once.
+
 ## 0.0.5
 
 **Accounts through OOMOL's hosted service work**

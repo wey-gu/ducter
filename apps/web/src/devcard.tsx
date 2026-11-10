@@ -11,7 +11,7 @@ import { A } from "./app.ts";
 import { BackRow, Btn, Chip, CoinButton, DangerButton, ListRow, MoreButton, RenameTitle, SocketButton, Toggle } from "./controls.tsx";
 import { Coin } from "./coin.tsx";
 import { ago, behind, harnessName, memWords, phaseLine as phaseWords } from "./format.ts";
-import { agentBehind, agentRunning, chipsFor, type Client, listWord, statusLine, versionLine, viaText } from "./sheet.ts";
+import { agentBehind, agentRunning, androidApp, chipsFor, type Client, listWord, statusLine, versionLine, viaText } from "./sheet.ts";
 import { attention, placeOf } from "./store.ts";
 import { disablePush } from "./push-client.ts";
 import { turnOnPush } from "./views.tsx";
@@ -61,7 +61,7 @@ function clientKind(cl: Client): string {
     const kind = cl.name.startsWith("iPad") ? "ipad" : "iphone"; // "iPad · Ducter" (D176)
     return t(`device.kind.${kind}.${p.includes("safari") || p.includes("web") ? "safari" : "app"}`);
   }
-  if (p.includes("android")) return t(cl.name.endsWith("· Ducter") ? "device.kind.android.app" : "device.kind.android"); // the Android app (D178)
+  if (p.includes("android")) return t(androidApp(cl) ? "device.kind.android.app" : "device.kind.android"); // the Android app (D178)
   if (p.startsWith("darwin") || p.includes("mac")) return t("device.kind.mac.app");
   return p ? t("device.kind.browser") : t("device.kind.other");
 }

@@ -8,6 +8,8 @@ export interface FakeAction {
   id: string;
   operationType: "read" | "write" | "destructive";
   run: (input: Record<string, unknown>) => unknown;
+  /** v2 search: whether the catalog has an account for its service (default true). */
+  authenticated?: boolean;
 }
 
 export interface FakeServer {
@@ -47,7 +49,7 @@ export function fakeOpenConnectorV2(actions: FakeAction[], token?: string, opts:
         description: "Search actions",
         inputSchema: schema(["teamName", "q", "service", "limit"], ["q"]),
         annotations: { readOnlyHint: true },
-        run: (a) => ({ actions: actions.filter((x) => !a.service || x.id.startsWith(`${a.service}.`)).map((x) => ({ actionId: x.id, description: x.id, authenticated: true })) }),
+        run: (a) => ({ actions: actions.filter((x) => !a.service || x.id.startsWith(`${a.service}.`)).map((x) => ({ actionId: x.id, service: x.id.split(".")[0], description: x.id, authenticated: x.authenticated ?? true })) }),
       },
       {
         name: `${px}get_action`,

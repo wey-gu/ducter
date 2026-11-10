@@ -147,6 +147,12 @@ func (a *App) clientName(cl *protocol.ReachClient) string {
 	return cl.Name
 }
 
+// androidApp: the Android app (D178). Its platform says "android-app"; one paired before that is
+// named "… · Ducter" (the page's deviceName for an app web view).
+func androidApp(cl *protocol.ReachClient) bool {
+	return strings.Contains(strings.ToLower(cl.Platform), "app") || strings.HasSuffix(cl.Name, "· Ducter")
+}
+
 // clientKind says what a phone or a window is, in plain words.
 func (a *App) clientKind(cl *protocol.ReachClient) string {
 	p := strings.ToLower(cl.Platform)
@@ -164,6 +170,9 @@ func (a *App) clientKind(cl *protocol.ReachClient) string {
 		}
 		return a.L.T("device.kind." + kind + ".app")
 	case strings.Contains(p, "android"):
+		if androidApp(cl) {
+			return a.L.T("device.kind.android.app")
+		}
 		return a.L.T("device.kind.android")
 	case strings.HasPrefix(p, "darwin") || strings.Contains(p, "mac"):
 		return a.L.T("device.kind.mac.app")

@@ -58,7 +58,9 @@ export function deviceName(ua = navigator.userAgent, touch = navigator.maxTouchP
   if (/Macintosh/.test(ua) && touch > 1) ua = ua.replace("Macintosh", "iPad");
   const platform = /iPhone|iPad|iPod/.test(ua) ? "ios" : /Android/.test(ua) ? "android" : /Macintosh/.test(ua) ? "macos" : "web";
   const model = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) ? "iPad" : /Android/.test(ua) ? "Android phone" : "Browser";
-  if (/DucterApp\//.test(ua)) return { name: `${model} · Ducter`, platform }; // the iPhone app (apps/ios)
+  // The iPhone and Android apps (apps/ios, apps/android) say so in the platform, not only the name
+  // (a name is renamed): "ios-app", "android-app".
+  if (/DucterApp\//.test(ua)) return { name: `${model} · Ducter`, platform: `${platform}-app` };
   const browser = /CriOS|Chrome\//.test(ua) && !/Edg\//.test(ua) ? "Chrome" : /FxiOS|Firefox\//.test(ua) ? "Firefox" : /Edg\//.test(ua) ? "Edge" : /Safari\//.test(ua) ? "Safari" : "";
   return { name: browser ? `${model} · ${browser}` : model, platform };
 }

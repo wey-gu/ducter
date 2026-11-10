@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { deviceName } from "../src/conn.ts";
+import { connWay, type Client } from "../src/sheet.ts";
 import { BOOK_MIN, markSplit, readFold, splitFor, type Fold } from "../src/fold.ts";
 import { strings } from "../src/i18n.ts";
 
@@ -66,7 +67,13 @@ describe("where the fold is", () => {
 describe("the Android app", () => {
   test("pairs as an Android phone through Ducter (apps/android sets DucterApp/ in its user agent)", () => {
     const ua = "Mozilla/5.0 (Linux; Android 16; Pixel Fold Build/BP2A; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/140.0 Mobile Safari/537.36 DucterApp/0.0.10";
-    expect(deviceName(ua, 5)).toEqual({ name: "Android phone · Ducter", platform: "android" });
+    expect(deviceName(ua, 5)).toEqual({ name: "Android phone · Ducter", platform: "android-app" });
+  });
+  test("its card says the app, not the browser, renamed or paired before the platform said so (2026-11-11)", () => {
+    const at = { id: "c1", form: "", lastSeen: "" } as unknown as Client;
+    expect(connWay({ ...at, name: "Pixel Fold", platform: "android-app" } as Client)).toBe("app");
+    expect(connWay({ ...at, name: "Android phone · Ducter", platform: "android" } as Client)).toBe("app");
+    expect(connWay({ ...at, name: "Android phone · Chrome", platform: "android" } as Client)).toBe("browser");
   });
   test("says plainly it can't notify in this version, in both languages", () => {
     expect(strings("zh").t("notify.android.later")).toContain("安卓 App");

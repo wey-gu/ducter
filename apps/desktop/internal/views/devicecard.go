@@ -1135,6 +1135,9 @@ func connWay(cl *protocol.ReachClient) string {
 		}
 		return "app"
 	case strings.Contains(p, "android"):
+		if androidApp(cl) {
+			return "app"
+		}
 		return "browser"
 	case strings.HasPrefix(p, "darwin") || strings.Contains(p, "mac"):
 		return "app"

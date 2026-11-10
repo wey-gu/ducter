@@ -31,6 +31,9 @@ export function listWord(L: Words, dv: DeviceView, o: { home: string; running: n
   return { text: L.t("list.state.does", o.home), tone: "" };
 }
 
+/** The Android app (D178): its platform says "android-app"; one paired before that is named "… · Ducter". */
+export const androidApp = (cl: Client) => cl.platform.toLowerCase().includes("app") || cl.name.endsWith("· Ducter");
+
 const cli = (cl: Client) => cl.form === "cli" || (!cl.form && cl.name.startsWith("CLI on "));
 
 /** How a connection reaches Ducter. */
@@ -38,7 +41,7 @@ export function connWay(cl: Client): "app" | "cli" | "safari" | "browser" {
   const p = cl.platform.toLowerCase();
   if (cli(cl)) return "cli";
   if (p.includes("ios") || p.includes("iphone")) return p.includes("safari") || p.includes("web") ? "safari" : "app";
-  if (p.includes("android")) return "browser";
+  if (p.includes("android")) return androidApp(cl) ? "app" : "browser";
   if (p.startsWith("darwin") || p.includes("mac")) return "app";
   return "browser";
 }

@@ -387,6 +387,25 @@ const forModel = (data: unknown): unknown => {
 };
 
 /** An OpenConnector payload that says ok: false is an error even when the MCP call isn't. */
+/** The action list inside a catalog search answer: v1 `{ data: [...] }`, v2 `{ actions: [...] }`, or a bare list. */
+const listOf = (d: unknown): Record<string, unknown>[] => {
+  const o = d as { data?: unknown; actions?: unknown };
+  const x = Array.isArray(d) ? d : Array.isArray(o?.data) ? o.data : Array.isArray(o?.actions) ? o.actions : [];
+  return x.filter((v): v is Record<string, unknown> => !!v && typeof v === "object");
+};
+/**
+ * The actions that can run here: never one the catalog marks `authenticated: false` (no account
+ * for its service), and, when the connected services are known, one of theirs or one marked
+ * authenticated (no-auth services). An action that runs on nothing only misleads the partner.
+ */
+export const usableActions = (items: Record<string, unknown>[], connected: string[]) =>
+  items.filter((x) => {
+    if (x.authenticated === false || x.available === false) return false;
+    const id = String(x.actionId ?? x.id ?? "");
+    const svc = String(x.service ?? id.split(".")[0]);
+    return !connected.length || connected.includes(svc) || x.authenticated === true;
+  });
+
 /** An action's own result inside either envelope: `{ ok, data }` or `{ executionId, output }`. */
 const payloadOf = (d: unknown) => {
   const o = d as { data?: unknown; output?: unknown } | undefined;
@@ -669,9 +688,35 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
         try {
           if (await speaksCatalog(r)) {
             const d = await dialect(r);
-            const res = await withLink(r, (l) => l.call(d.search, { [d.query]: query, ...(o.service ? { service: o.service } : {}), limit: 8 }));
-            const items = (res.data as { data?: unknown; actions?: unknown })?.data ?? (res.data as { actions?: unknown })?.actions ?? res.data;
-            out.push({ connection: r.name, kind: "openconnector", actions: failed(res) ? [] : items, ...(failed(res) ? { error: errorText(res) } : {}) });
+            // A catalog searches every service it knows; only the ones with an account here can run.
+            // Ask wide (20 is OOMOL's ceiling), keep what can run, and when that leaves nothing, ask each
+            // connected service.
+            const look = (service?: string, limit = 20) => withLink(r, (l) => l.call(d.search, { [d.query]: query, ...(service ? { service } : {}), limit }));
+            const res = await look(o.service);
+            if (failed(res)) {
+              out.push({ connection: r.name, kind: "openconnector", actions: [], error: errorText(res) });
+              continue;
+            }
+            if (!appsCache.has(r.id)) {
+              const apps = await appsAt(r.url, tokens[r.id]);
+              if (apps) appsCache.set(r.id, apps);
+            }
+            const connected = (appsCache.get(r.id) ?? []).map((a) => a.service);
+            let items = usableActions(listOf(res.data), connected);
+            // Nothing from an account the user has (only no-auth services, or nothing): ask each
+            // connected service too, and put its actions first.
+            const svcOf = (x: Record<string, unknown>) => String(x.service ?? String(x.actionId ?? x.id ?? "").split(".")[0]);
+            if (!o.service && connected.length && !items.some((x) => connected.includes(svcOf(x)))) {
+              const per = await Promise.all(connected.map((svc) => look(svc, 6).then((x) => (failed(x) ? [] : usableActions(listOf(x.data), connected))).catch(() => [])));
+              items = [...per.flat(), ...items];
+            }
+            items = items.slice(0, 12);
+            out.push({
+              connection: r.name,
+              kind: "openconnector",
+              actions: items,
+              ...(items.length ? {} : { note: connected.length ? `No action for that in the accounts connected here (${connected.join(", ")}).` : "No account is connected here yet." }),
+            });
           } else if (r.source === "oo") {
             // oo's own search (it understands "unread mail from this week"), only the services
             // with an account in oo; then the known catalog by name, so it never comes back empty.

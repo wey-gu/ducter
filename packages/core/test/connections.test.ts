@@ -3,7 +3,7 @@ import { mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Bodies } from "@ducter/protocol";
 import { openLog } from "../src/log.ts";
-import { appsFromV1, httpLinker, normalizeUrl, OOMOL_HOSTED_MCP, ooSource, openConnections, parseOoConnectorToml, policyAllows, summarize } from "../src/connections.ts";
+import { appsFromV1, httpLinker, usableActions, normalizeUrl, OOMOL_HOSTED_MCP, ooSource, openConnections, parseOoConnectorToml, policyAllows, summarize } from "../src/connections.ts";
 import { fakeOpenConnector, fakeOpenConnectorV2, fakePlainMcp, type FakeServer } from "./fake-mcp.ts";
 import { tempDir } from "./helpers.ts";
 
@@ -223,6 +223,33 @@ describe("reads and writes", () => {
         v2.stop();
       }
     }
+  });
+  test("search keeps only actions that can run: never a service with no account here (hel, 2026-11-11)", async () => {
+    // OOMOL's catalog answered "recent emails" with eight unconnected services first; the partner
+    // picked one (porteden) and got app_not_found, though Gmail was connected.
+    const apps = [{ id: "app_work", service: "gmail", accountLabel: "wei@work.example", alias: "work", authType: "oauth2", status: "active" }];
+    const noise = ["porteden.search_emails", "netease_mail.search_emails", "generic_imap.search_emails"].map((id) => ({ id, operationType: "read" as const, authenticated: false, run: () => ({}) }));
+    const v2 = fakeOpenConnectorV2([...noise, ...actions], TOKEN, { apps });
+    try {
+      const { c } = setup();
+      await c.add({ url: v2.url, token: TOKEN });
+      const s = JSON.stringify(await c.search(P, "search recent emails"));
+      expect(s).toContain("gmail.search_threads");
+      expect(s).not.toContain("porteden");
+      expect(s).not.toContain("netease_mail");
+    } finally {
+      v2.stop();
+    }
+  });
+  test("usableActions drops unauthenticated and unconnected services, keeps no-auth ones", () => {
+    const xs = [
+      { actionId: "gmail.search_threads", service: "gmail", authenticated: true },
+      { actionId: "porteden.search_emails", service: "porteden", authenticated: false },
+      { actionId: "slack.search", service: "slack" },
+      { actionId: "hackernews.top", service: "hackernews", authenticated: true },
+    ];
+    expect(usableActions(xs, ["gmail"]).map((x) => x.actionId)).toEqual(["gmail.search_threads", "hackernews.top"]);
+    expect(usableActions(xs, []).map((x) => x.actionId)).toEqual(["gmail.search_threads", "slack.search", "hackernews.top"]);
   });
   test("a catalog it can't read any more is used as a plain MCP server: its own tools, writes unless marked read-only", async () => {
     const { c } = setup();

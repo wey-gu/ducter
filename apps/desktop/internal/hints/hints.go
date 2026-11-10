@@ -59,6 +59,9 @@ type state struct {
 	// OnHandBy is how On hand groups its tasks (D128): "project", or
 	// empty (by state, the default).
 	OnHandBy string `json:"onHandBy,omitempty"`
+	// NewTaskWho is the agent last picked on the New task card (D185), a
+	// candidate key; empty: the suggested one.
+	NewTaskWho string `json:"newTaskWho,omitempty"`
 }
 
 // Ask is one answer to a gentle offer: "yes", "no", or "later" (asked
@@ -237,6 +240,24 @@ func (l *Local) SetByProject(on bool) {
 	if on {
 		l.st.OnHandBy = "project"
 	}
+	l.save()
+}
+
+// NewTaskWho is the agent the user last picked on the New task card
+// (D185); "" for the suggested one.
+func (l *Local) NewTaskWho() string {
+	if l == nil {
+		return ""
+	}
+	return l.st.NewTaskWho
+}
+
+// SetNewTaskWho remembers who the user picked, for the next card.
+func (l *Local) SetNewTaskWho(key string) {
+	if l == nil || l.st.NewTaskWho == key {
+		return
+	}
+	l.st.NewTaskWho = key
 	l.save()
 }
 

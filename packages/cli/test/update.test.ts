@@ -57,6 +57,47 @@ test("--check --json: where each device stands, for an agent to read", async () 
   expect(j.devices[0]).toMatchObject({ id: "local", home: true, current: "0.0.3", latest: "0.0.4", available: true, how: "self", notesBy: { zh: ["在任何设备上原地更新"], en: ["Update in place, from any device"] } });
 });
 
+// D187: on a Mac that does tasks for a home elsewhere, `ducter update --check` asked nobody and
+// listed only itself. --check goes to the home the CLI follows and lists every computer there.
+test("--check lists every computer of the home it follows, not only this one", async () => {
+  const devices = [
+    { id: "local", name: "Hetzner Server", kind: "server", home: true, state: "awake", harnesses: [], abilities: [], update: { current: "0.0.13", latest: "0.0.13", available: false, how: "self" } },
+    { id: "dev_mac", name: "Macbook Pro M3", kind: "laptop", home: false, state: "awake", harnesses: [], abilities: [], update: { current: "0.0.12", latest: "0.0.13", available: true, how: "app" } },
+  ];
+  const asked: unknown[] = [];
+  const fake = (async (target: unknown) => {
+    asked.push(target);
+    const frames: any[] = [{ t: "update_result", ok: true, update: devices[0]!.update }, { t: "devices", devices }];
+    return {
+      personaName: "Ducter",
+      headSeq: 0,
+      replayed: [],
+      onHand: { tasks: [] } as any,
+      send() {},
+      on: () => () => {},
+      next: async (match: (f: any) => boolean) => frames.find(match),
+      closed: new Promise<void>(() => {}),
+      close() {},
+    };
+  }) as any;
+  const out: string[] = [];
+  const target = { kind: "remote" as const, address: "https://hel.example", name: "hel.example", token: "dvc.x" };
+  expect(await cmdUpdate({ t, style, args: args(["--check"]), port: 7777, dataDir: "/nonexistent", target, connect: fake, log: (s) => out.push(s) })).toBe(0);
+  expect(asked).toEqual([target]);
+  const text = out.join("\n");
+  expect(text).toContain("Hetzner Server");
+  expect(text).toContain("Macbook Pro M3");
+  expect(text).toContain("0.0.13");
+});
+
+test("--check with the home it follows unreachable says so before this computer's own row", async () => {
+  const out: string[] = [];
+  const target = { kind: "remote" as const, address: "https://hel.example", name: "hel.example", token: "dvc.x" };
+  const sys = { fetch: async () => new Response(JSON.stringify({ tag_name: "v0.0.13" })), run: async () => ({ code: 0, out: "" }), freeBytes: () => undefined, sleep: async () => {}, now: () => Date.now() } as any;
+  expect(await cmdUpdate({ t, style, args: args(["--check"]), port: 7777, dataDir: "/nonexistent", target, sys, connect: async () => undefined, log: (s) => out.push(s) })).toBe(0);
+  expect(out[0]).toBe(t("update.unreached", { name: "hel.example" }));
+});
+
 test("without --yes, off a terminal, it changes nothing and asks for --yes", async () => {
   const core = boot();
   const out: string[] = [];

@@ -16,11 +16,13 @@ import { join } from "node:path";
 import type { DeviceUpdate, DeviceView, ServerFrame, UpdateReason } from "@ducter/protocol";
 import { compareVersions } from "@ducter/protocol/src/version.ts";
 import { fetchLatest, hasNotes, type Release } from "@ducter/core/src/release.ts";
+import { askApp } from "@ducter/core/src/app-update.ts";
 import { finish, judgeResult, readPlan, readResult, realSys, runUpdate, updateHow, writeResult, type Fail, type UpdateSys } from "@ducter/core/src/update.ts";
 import type { WorkerUpdateFrame } from "@ducter/core/src/updates.ts";
 import { CRITICAL_WAIT_MS, TURN_GRACE_MS } from "@ducter/core/src/updates.ts";
 import type { Args } from "./args.ts";
 import { connect, type Conn } from "./client.ts";
+import type { Target } from "./home.ts";
 import { isCompiled, type Style } from "./doctor.ts";
 import type { T } from "./i18n.ts";
 import { cmdUpdateAgents } from "./update-agents.ts";
@@ -49,9 +51,10 @@ export interface WorkerUpdater {
   attach(send: (f: object) => void): void;
 }
 
-export function createWorkerUpdater(o: { dataDir: string; version: string; how: string; sys?: UpdateSys; run?: typeof runUpdate; execPath?: string }): WorkerUpdater {
+export function createWorkerUpdater(o: { dataDir: string; version: string; how: string; sys?: UpdateSys; run?: typeof runUpdate; execPath?: string; ask?: typeof askApp }): WorkerUpdater {
   const sys = o.sys ?? realSys;
   const run = o.run ?? runUpdate;
+  const ask = o.ask ?? askApp;
   let out: (f: object) => void = () => {};
   let busy = false;
   return {
@@ -62,10 +65,8 @@ export function createWorkerUpdater(o: { dataDir: string; version: string; how: 
       out = send;
       const to = String(req.args?.to ?? "");
       const answer = (ok: boolean, reason?: UpdateReason, detail?: string) => send({ t: "res", id: req.id, ok: true, result: { ok, ...(reason ? { reason } : {}), ...(detail ? { detail } : {}) } });
-      if (o.how !== "self") return answer(false, (o.how === "app" || o.how === "source" ? o.how : "manual") as UpdateReason);
+      if (o.how !== "self" && o.how !== "app") return answer(false, (o.how === "source" ? o.how : "manual") as UpdateReason);
       if (busy) return answer(false, "running");
-      busy = true;
-      answer(true);
       const frame = (f: Omit<WorkerUpdateFrame, "t" | "from" | "to">) => out({ t: "update", from: o.version, to, ...f });
       const settle = async (): Promise<Fail | undefined> => {
         const end = sys.now() + CRITICAL_WAIT_MS;
@@ -76,6 +77,31 @@ export function createWorkerUpdater(o: { dataDir: string; version: string; how: 
         const grace = sys.now() + TURN_GRACE_MS;
         while (host.turning() > 0 && sys.now() < grace) await sys.sleep(1000);
       };
+      if (o.how === "app") {
+        // D187: this Mac's app does the update; this worker asks it, relays its steps, and holds
+        // the restart for the safe point. Refused at once when the app isn't open.
+        busy = true;
+        let answered = false;
+        const r = await ask({
+          dataDir: o.dataDir,
+          current: o.version,
+          to,
+          sys,
+          settle,
+          onPhase: (phase, progress) => {
+            if (!answered) (answered = true), answer(true);
+            frame({ phase, ...(progress !== undefined ? { progress } : {}) });
+          },
+          onAfter: (f) => frame({ phase: "failed", reason: f.reason, ...(f.detail ? { detail: f.detail } : {}), rolledBack: false }),
+        }).catch((err): Fail => ({ ok: false, reason: "failed", detail: (err as Error).message }));
+        busy = false;
+        if (r.ok) return;
+        if (!answered) return answer(false, r.reason, r.detail);
+        frame({ phase: "failed", reason: r.reason, ...(r.detail ? { detail: r.detail } : {}), rolledBack: false });
+        return;
+      }
+      busy = true;
+      answer(true);
       const r = await run(sys, {
         dataDir: o.dataDir,
         current: o.version,
@@ -105,9 +131,11 @@ export interface UpdateCtx {
   args: Args;
   port: number;
   dataDir: string;
+  /** The Ducter the CLI follows (D147); default this machine's port. */
+  target?: Target;
   sys?: UpdateSys;
   /** Tests: connect to a Ducter (default: client.ts). */
-  connect?: (port: number) => Promise<Conn | undefined>;
+  connect?: (target: Target | number) => Promise<Conn | undefined>;
   /** Tests: a yes/no question in a terminal. */
   ask?: (q: string) => Promise<boolean>;
   log?: (s: string) => void;
@@ -172,7 +200,9 @@ export async function cmdUpdate(c: UpdateCtx): Promise<number> {
     return r.ok ? 0 : 1;
   }
 
-  const conn = await (c.connect ?? ((p) => connect(p, { timeoutMs: 2000 })))(c.port);
+  const target: Target = c.target ?? { kind: "local", port: c.port };
+  const remote = target.kind === "remote";
+  const conn = await (c.connect ?? ((p) => connect(p, { timeoutMs: remote ? 10_000 : 2000 })))(target);
   if (args.agents) {
     // D156: the AI agents' own versions, not Ducter's.
     try {
@@ -181,16 +211,20 @@ export async function cmdUpdate(c: UpdateCtx): Promise<number> {
       conn?.close();
     }
   }
-  if (!conn) return direct(c, sys, say);
+  if (!conn) {
+    // D187: a home elsewhere that doesn't answer is said, not passed off as "only this computer".
+    if (target.kind === "remote" && !args.json) say(t("update.unreached", { name: target.name }));
+    return direct(c, sys, say);
+  }
   try {
-    return await viaHome(c, conn, say);
+    return await viaHome(c, conn, say, target);
   } finally {
     conn.close();
   }
 }
 
 /** A Ducter runs here: it does the work (safe point, Log), this only asks and follows. */
-async function viaHome(c: UpdateCtx, conn: Conn, say: (s: string) => void): Promise<number> {
+async function viaHome(c: UpdateCtx, conn: Conn, say: (s: string) => void, target: Target): Promise<number> {
   const { t, style, args } = c;
   conn.send({ t: "device_update", device: "local", check: true });
   await conn.next((f) => f.t === "update_result", 20_000);
@@ -198,7 +232,8 @@ async function viaHome(c: UpdateCtx, conn: Conn, say: (s: string) => void): Prom
   const first = (await conn.next((f): f is Extract<ServerFrame, { t: "devices" }> => f.t === "devices", 20_000)) as Extract<ServerFrame, { t: "devices" }> | undefined;
   if (!first) return say(t("update.noAnswer")), 1;
   const all = rows(first.devices);
-  const shown = args.all ? all : all.filter((r) => r.home);
+  // --check is where every computer stands (D187); updating without --all is only the home.
+  const shown = args.all || args.check ? all : all.filter((r) => r.home);
   const home = all.find((r) => r.home)!;
   if (args.check) {
     if (args.json) say(JSON.stringify({ latest: home.update?.latest ?? null, checkedAt: home.update?.checkedAt ?? null, devices: shown.map((r) => ({ id: r.id, name: r.name, home: r.home, online: r.online, ...(r.update ?? {}) })) }, null, 2));
@@ -241,7 +276,7 @@ async function viaHome(c: UpdateCtx, conn: Conn, say: (s: string) => void): Prom
     if (r.home) {
       // The home restarts: its socket goes; it's back when /health names the new version.
       const v = to ?? r.update?.latest ?? "";
-      const back = await homeBack(c.port, v, 15 * 60_000, (p) => !args.json && say(`  ${r.name}: ${t(`update.phase.${p}` as any, { v })}`), conn);
+      const back = await homeBack(target, v, 15 * 60_000, (p) => !args.json && say(`  ${r.name}: ${t(`update.phase.${p}` as any, { v })}`), conn);
       outcome.push(back.ok ? { name: r.name, ok: true, version: v } : { name: r.name, ok: false, reason: back.reason, ...(back.detail ? { detail: back.detail } : {}) });
       continue;
     }
@@ -260,8 +295,12 @@ async function viaHome(c: UpdateCtx, conn: Conn, say: (s: string) => void): Prom
   return outcome.every((o) => o.ok) ? 0 : 1;
 }
 
-/** Follows the home through its restart: phases while the socket lasts, then /health. */
-async function homeBack(port: number, v: string, ms: number, phase: (p: string) => void, conn: Conn): Promise<{ ok: true } | Fail> {
+/**
+ * Follows the home through its restart: phases while the socket lasts, then /health here, or for
+ * a home elsewhere (whose /health tells only local callers its version) its devices frame once
+ * a new socket greets.
+ */
+async function homeBack(target: Target, v: string, ms: number, phase: (p: string) => void, conn: Conn): Promise<{ ok: true } | Fail> {
   let last = "";
   const off = conn.on((f) => {
     if (f.t !== "devices") return;
@@ -278,11 +317,21 @@ async function homeBack(port: number, v: string, ms: number, phase: (p: string) 
   try {
     while (Date.now() < end) {
       if (failed) return failed;
-      try {
-        const r = await fetch(`http://127.0.0.1:${port}/health`, { signal: AbortSignal.timeout(1500) });
-        const j: any = await r.json();
-        if (j?.version === v) return { ok: true };
-      } catch {}
+      if (target.kind === "local") {
+        try {
+          const r = await fetch(`http://127.0.0.1:${target.port}/health`, { signal: AbortSignal.timeout(1500) });
+          const j: any = await r.json();
+          if (j?.version === v) return { ok: true };
+        } catch {}
+      } else {
+        const again = await connect(target, { timeoutMs: 5000 }).catch(() => undefined);
+        if (again) {
+          again.send({ t: "devices" });
+          const f = (await again.next((x): x is Extract<ServerFrame, { t: "devices" }> => x.t === "devices", 5000)) as Extract<ServerFrame, { t: "devices" }> | undefined;
+          again.close();
+          if (f?.devices.find((d) => d.home)?.update?.current === v) return { ok: true };
+        }
+      }
       await Bun.sleep(1000);
     }
     return { ok: false, reason: "health" };

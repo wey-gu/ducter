@@ -608,8 +608,8 @@ export function createLive(d: LiveDeps): Live {
       const rtt = Date.now() - v.inflightAt;
       if (v.inflightAt >= v.resumedAt) v.rtt = v.rtt == null ? rtt : v.rtt * 0.5 + rtt * 0.5;
       v.sinceTier += 1;
-      const down = v.rtt > SLOW_MS && v.tier < TIERS.length - 1 && v.sinceTier >= 3;
-      const up = v.rtt < FAST_MS && v.tier > 0 && v.sinceTier >= 20;
+      const down = (v.rtt ?? 0) > SLOW_MS && v.tier < TIERS.length - 1 && v.sinceTier >= 3;
+      const up = v.rtt != null && v.rtt < FAST_MS && v.tier > 0 && v.sinceTier >= 20;
       if (down || up) {
         v.tier += down ? 1 : -1;
         v.sinceTier = 0;

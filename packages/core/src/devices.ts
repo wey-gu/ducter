@@ -354,7 +354,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
           ...(d.platform ? { platform: d.platform } : {}),
           ...(d.computer ? { computer: d.computer } : {}),
           ...((): { update?: DeviceView["update"] } => {
-            const u = up?.view(d.id, hello?.version, hello?.how === "self" || hello?.how === "app" || hello?.how === "source" ? hello.how : "manual");
+            const u = up?.view(d.id, hello?.version, hello?.how === "self" || hello?.how === "app" || hello?.how === "source" ? hello.how : "manual", { asksApp: Boolean(hello?.asksApp) });
             return u ? { update: u } : {};
           })(),
           harnesses: agentsView(

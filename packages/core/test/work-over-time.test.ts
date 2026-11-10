@@ -496,3 +496,35 @@ test("the judge's verdict: counts only when given as whole numbers", () => {
   expect(parseVerdict('{"met": false, "reason": "4 left", "done": 12, "left": 4}')).toEqual({ met: false, reason: "4 left", left: 4, done: 12 });
   expect(parseVerdict('{"met": false, "reason": "hm", "left": "some"}')).toEqual({ met: false, reason: "hm" });
 });
+
+// ---------- D185: started by hand, later or on a schedule ----------
+
+test("D185: a one-time start the user set is active at once (no card), opens their words at its time, then it's over", async () => {
+  const s = setup({ start: Date.parse("2026-11-09T02:00:00Z") }); // Mon 10:00 in Shanghai
+  const once: RoutineTrigger = { kind: "time", every: "once", date: "2026-11-10", time: "09:00", zone: "world", tz: "Asia/Shanghai" };
+  expect(describeTrigger(once, true)).toBe("11月10日 9:00");
+  expect(describeTrigger(once, false)).toBe("Nov 10, 9:00");
+  const words = "跑一遍发布清单，把没勾的列出来。";
+  const v = s.work.routines.yours({ name: "跑一遍发布清单", trigger: once, brief: words, project: "ducter", harness: "codex" });
+  expect(v).toMatchObject({ state: "active", by: "you", triggerWords: "11月10日 9:00", nextAt: "2026-11-10T01:00:00.000Z", effect: "local_writes", harness: "codex" });
+  expect(s.log.read({ kinds: ["decision"] })).toEqual([]); // the user's own tap is the Go
+  s.clock.advance(86_400_000);
+  await flush();
+  expect(s.opened).toEqual([words]); // their words, as they wrote them
+  expect(s.tasks.onHand().routines ?? []).toEqual([]); // ran once: it's over
+  const note = s.log.read({ stream: "channel", kinds: ["job_status"] }).at(-1)!.body as Bodies["job_status"];
+  expect(note.jobId).toBe("body_run1_opened");
+  // A time already behind it is refused, plainly.
+  expect(() => s.work.routines.yours({ name: "x", trigger: { ...once, date: "2026-11-01" }, brief: "x" })).toThrow("already passed");
+});
+
+test("D185: every weekday, set by the user: each run carries their words and one line on when", async () => {
+  const s = setup({ start: Date.parse("2026-11-09T02:00:00Z") });
+  const v = s.work.routines.yours({ name: "看一眼 nightly", trigger: { kind: "time", every: "weekday", time: "09:00", zone: "personal", tz: "Asia/Shanghai" }, brief: "看一眼 hawdb 的 nightly，挂了就修。" });
+  expect(v.triggerWords).toBe("工作日 9:00 · 跟着你的时区");
+  s.clock.advance(86_400_000);
+  await flush();
+  expect(s.opened[0]!.startsWith("看一眼 hawdb 的 nightly，挂了就修。\n")).toBe(true);
+  expect(s.opened[0]).toContain("set to repeat");
+  expect(s.tasks.onHand().routines![0]).toMatchObject({ state: "active", nextAt: "2026-11-11T01:00:00.000Z" });
+});

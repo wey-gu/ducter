@@ -1,6 +1,7 @@
 package views
 
 import (
+	"context"
 	"strings"
 	"time"
 
@@ -217,7 +218,7 @@ func (a *App) kindLine(dv *protocol.DeviceView) string {
 	}
 	if !dv.Home && dv.Kind != "server" {
 		what = a.L.T("device.other")
-		if a.isThisMac(deviceComputer(dv)) && !a.onThisMac() {
+		if a.isThisMacDevice(dv) && !a.onThisMac() {
 			what = a.L.T("device.local") // D155: this Mac, doing tasks for a Ducter elsewhere
 		}
 	}
@@ -332,6 +333,17 @@ func (a *App) updateAction(c *ui.Context, dv *protocol.DeviceView) {
 		})
 	case "app":
 		if !a.appOnThisMac(dv) {
+			if u.FromHere && dv.State == protocol.DeviceAwake {
+				// D187: that Mac's app updates when asked from here.
+				a.note(c, a.L.T("devup.how.app.here", a.deviceNameIn(dv)))
+				a.textRow(c, t.ControlSM).Children(func() {
+					if a.buttonFor(c, a.L.T("devup.button"), dv.Name, btnSecondary, t.ControlSM, t.Surface) {
+						d.card.answer, d.card.asked = nil, dv.ID
+						a.send(protocol.DeviceUpdateReq{T: "device_update", Device: dv.ID})
+					}
+				})
+				return
+			}
 			a.note(c, a.L.T("devup.how.app", a.deviceNameIn(dv))) // another Mac: its own app does it
 			return
 		}
@@ -373,7 +385,35 @@ func (a *App) appOnThisMac(dv *protocol.DeviceView) bool {
 	if dv.Home {
 		return a.onThisMac()
 	}
+	return a.isThisMacDevice(dv)
+}
+
+// isThisMacDevice: a device on a home elsewhere is this Mac: its worker's
+// own device id (worker.json), which no rename of the device or of the Mac
+// changes, else the computer it said it runs on (D187).
+func (a *App) isThisMacDevice(dv *protocol.DeviceView) bool {
+	if a.MacWorker != nil {
+		if on, id := a.workOn(); on && id != "" && id == dv.ID {
+			return true
+		}
+	}
 	return a.isThisMac(deviceComputer(dv))
+}
+
+// hintThisMac hands what the home knows to this app's own updater (D187):
+// when the home says a newer version is out for this Mac, the updater
+// checks for it now, and fetches that version even while GitHub's API
+// won't say. One answer to "is there a newer version" on every page.
+func (a *App) hintThisMac() {
+	if a.Updates == nil {
+		return
+	}
+	for i := range a.S.Devices {
+		dv := &a.S.Devices[i]
+		if u := dv.Update; u != nil && u.Latest != "" && u.How == "app" && a.appOnThisMac(dv) {
+			a.Updates.Hint(context.Background(), u.Latest)
+		}
+	}
 }
 
 // helperBehind is this app's version when the app is current but this
@@ -537,7 +577,8 @@ func (a *App) versionRow(c *ui.Context, dv *protocol.DeviceView, home bool) {
 			}
 		}
 	}
-	act := behind(dv) && (u.How == "self" && dv.State == protocol.DeviceAwake || dv.Home && u.How == "app" && a.onThisMac())
+	// This Mac's row, home or worker, is itself the way to update it (D187).
+	act := behind(dv) && (u.How == "self" && dv.State == protocol.DeviceAwake || u.How == "app" && a.appOnThisMac(dv))
 	retry := failed && open && u.Available && u.How == "self" && dv.State == protocol.DeviceAwake
 	var below func()
 	if act || failed && open {

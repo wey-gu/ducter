@@ -585,6 +585,8 @@ function DucterLine({ dv }: { dv: DeviceView }) {
   const line = phaseWords(A.L, u as DeviceUpdate);
   const offer = behind(u) || (u.phase === "failed" && u.available);
   const failed = u.phase === "failed";
+  // D187: a Mac that updates with its app updates from here too, when its Ducter can ask the app.
+  const here = u.how === "self" || (u.how === "app" && Boolean(u.fromHere));
   return (
     <div class="dc-ver">
       <div class="row1">
@@ -595,7 +597,7 @@ function DucterLine({ dv }: { dv: DeviceView }) {
         ) : (
           <span class={`tx ${u.phase ?? ""}`}>{line || t("card.ducter.update", u.latest)}</span>
         )}
-        {offer && u.how === "self" && dv.state === "awake" && <Btn kind="secondary" size="sm" label={t(u.phase === "failed" ? "devup.retry" : "devup.button")} about={dv.name} onClick={() => A.updateDevice(dv.id)} />}
+        {offer && here && dv.state === "awake" && <Btn kind="secondary" size="sm" label={t(u.phase === "failed" ? "devup.retry" : "devup.button")} about={dv.name} onClick={() => A.updateDevice(dv.id)} />}
       </div>
       {failed && why && <div class="small sub">{t(`devup.why.${u.reason ?? "failed"}`)}</div>}
       {failed && why && u.detail && <div class="small sub">{u.detail}</div>}
@@ -605,8 +607,9 @@ function DucterLine({ dv }: { dv: DeviceView }) {
         </div>
       )}
       {behind(u) && u.how === "self" && u.notesBy?.[A.L.lang]?.map((n) => <div class="small sub">{n}</div>)}
-      {offer && u.how !== "self" && <div class="small sub">{u.how === "app" ? t("devup.how.app", dv.name) : u.how === "manual" ? t("devup.how.manual", dv.name) : t("devup.how.source")}</div>}
-      {offer && u.how === "self" && dv.state !== "awake" && <div class="small sub">{t("devup.how.away", dv.name)}</div>}
+      {offer && !failed && here && u.how === "app" && dv.state === "awake" && <div class="small sub">{t("devup.how.app.here", dv.name)}</div>}
+      {offer && !here && <div class="small sub">{u.how === "app" ? t("devup.how.app", dv.name) : u.how === "manual" ? t("devup.how.manual", dv.name) : t("devup.how.source")}</div>}
+      {offer && here && dv.state !== "awake" && <div class="small sub">{t("devup.how.away", dv.name)}</div>}
       {answer && <div class="small warn">{t(answer === "name_taken" ? "device.rename.name_taken" : `devup.why.${answer}`)}</div>}
     </div>
   );

@@ -59,3 +59,22 @@ it and asks you.
 
 Some of this is still coming: a routine that runs on another of your computers, and editing a
 routine by just saying the change.
+
+## Without saying it: from New task
+
+You can set up all of this yourself, without the conversation. Open **New task** (**⌘N**),
+write what to do, and tap **When it starts** under your words:
+
+- **At a time**: today, tomorrow or the day after, at the time you type. It starts by itself
+  then, with your words as you wrote them. On **On hand** it waits with its date on the little
+  calendar; **Don't do it** calls it off.
+- **On a schedule**: every day, weekdays, one day a week, or every few hours. Each time it starts
+  a fresh task with your words. It sits with your routines (or, **By project**, in its folder's
+  group) and pauses and asks like any routine.
+- **When something happens**: write what to wait for ("PR #1592's CI passes"). The task opens
+  now, waits under **Waiting**, and does the rest when it holds.
+- **Keep going until…**: write what should hold ("every test passes"). It tries again until it
+  does, and stops to ask you if it isn't getting there.
+
+Because you set these up yourself, there's no card to approve: the button says **Schedule**
+(or **Start**) and that's it.

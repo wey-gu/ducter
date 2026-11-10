@@ -59,6 +59,7 @@ const (
 	ReasonNone      Reason = ""
 	ReasonLocation  Reason = "location"   // not in a folder it can write (a disk image, a read-only copy)
 	ReasonUnsigned  Reason = "unsigned"   // this build isn't signed with a Developer ID: nothing to match
+	ReasonFeed      Reason = "feed"       // couldn't read which version is newest (offline, rate limited): tried again within the hour (D187)
 	ReasonNetwork   Reason = "network"    // couldn't reach GitHub
 	ReasonChecksum  Reason = "checksum"   // the download doesn't match SHA256SUMS.txt
 	ReasonSignature Reason = "signature"  // not signed by the same team, or the signature is broken
@@ -91,8 +92,13 @@ type Status struct {
 
 // Config is where the app is and what to check with.
 type Config struct {
-	App        string // the running .app
-	Feed       string // DefaultFeed unless a test serves its own
+	App  string // the running .app
+	Feed string // DefaultFeed unless a test serves its own
+	// Page and Download: the fallback when the API refuses (D187).
+	// DefaultPage and DefaultDownload with the default feed; a test feed
+	// has none unless it sets them.
+	Page       string
+	Download   string
 	Arch       string // "arm64" or "x86_64"; default from runtime.GOARCH
 	Dir        string // ~/Library/Application Support/Ducter/updates
 	AgentLabel string // the background LaunchAgent to restart after a swap ("" none)
@@ -129,6 +135,10 @@ type Updater struct {
 	saved   saved
 	pending *pending // what the next quit swaps in
 	begun   bool     // the swap is started: it runs once the app has exited
+	// hint is the newest version the home said there is (D187), used when
+	// GitHub's API can't say; hinted is when each one last started a check.
+	hint   string
+	hinted map[string]time.Time
 }
 
 type saved struct {
@@ -159,6 +169,12 @@ func New(cfg Config) (*Updater, error) {
 	}
 	if cfg.Feed == "" {
 		cfg.Feed = DefaultFeed
+		if cfg.Page == "" {
+			cfg.Page = DefaultPage
+		}
+		if cfg.Download == "" {
+			cfg.Download = DefaultDownload
+		}
 	}
 	if cfg.Arch == "" {
 		cfg.Arch = runtime.GOARCH
@@ -233,7 +249,9 @@ func (u *Updater) set(f func(*Status)) {
 }
 
 // Start checks shortly after launch, then once a day (checked every hour,
-// so a Mac that slept through the day still asks when it wakes).
+// so a Mac that slept through the day still asks when it wakes). A check
+// that couldn't read anything (offline, rate limited) is tried again the
+// next hour: only an answer counts as the day's check (D187).
 func (u *Updater) Start(ctx context.Context, firstDelay time.Duration) {
 	go func() {
 		select {
@@ -249,7 +267,7 @@ func (u *Updater) Start(ctx context.Context, firstDelay time.Duration) {
 			case <-ctx.Done():
 				return
 			case <-t.C:
-				if u.cfg.Now().Sub(u.Status().CheckedAt) >= 24*time.Hour {
+				if st := u.Status(); st.State == Failed && (st.Reason == ReasonFeed || st.Reason == ReasonNetwork) || u.cfg.Now().Sub(st.CheckedAt) >= 24*time.Hour {
 					u.CheckNow(ctx)
 				}
 			}
@@ -260,7 +278,65 @@ func (u *Updater) Start(ctx context.Context, firstDelay time.Duration) {
 // CheckNow reads the feed and, when there is a newer version, downloads and
 // checks it. It returns the resulting status; a check already running is not
 // started twice (the current status comes back).
-func (u *Updater) CheckNow(ctx context.Context) Status {
+func (u *Updater) CheckNow(ctx context.Context) Status { return u.check(ctx) }
+
+// Hint is told the newest version the home knows of, from its devices
+// frame (D187): the devices view and this updater answer "is there a newer
+// version for this Mac" alike. A hint newer than this app and than what
+// the updater has found starts a check now (once per version every 15
+// minutes), and stays as the version to fetch while GitHub's API can't
+// say. It reports whether it started one.
+func (u *Updater) Hint(ctx context.Context, v string) bool {
+	v = strings.TrimPrefix(strings.TrimSpace(v), "v")
+	if _, ok := parse(v); !ok || Compare(v, u.info.Version) <= 0 || v == u.Skip() {
+		return false
+	}
+	now := u.cfg.Now()
+	u.mu.Lock()
+	if Compare(v, u.hint) > 0 {
+		u.hint = v
+	}
+	st := u.st
+	last, seen := u.hinted[v]
+	if u.busy || (st.State == Ready || st.State == Available) && Compare(st.Version, v) >= 0 || seen && now.Sub(last) < hintEvery {
+		u.mu.Unlock()
+		return false
+	}
+	if u.hinted == nil {
+		u.hinted = map[string]time.Time{}
+	}
+	u.hinted[v] = now
+	u.mu.Unlock()
+	go u.check(ctx)
+	return true
+}
+
+// Get is asked from elsewhere (D187: the phone's 更新 on this Mac's card):
+// fetch and check version v now, whatever was checked when. It returns once
+// v is ready or the check has ended.
+func (u *Updater) Get(ctx context.Context, v string) Status {
+	v = strings.TrimPrefix(strings.TrimSpace(v), "v")
+	u.mu.Lock()
+	if _, ok := parse(v); ok && Compare(v, u.hint) > 0 {
+		u.hint = v
+	}
+	st := u.st
+	u.mu.Unlock()
+	if st.State == Ready && Compare(st.Version, v) >= 0 {
+		return st
+	}
+	return u.check(ctx)
+}
+
+// Unattended reports whether a ready update can go in with nobody at the
+// Mac: Ducter.app is the person's own, so no administrator's password is
+// asked (D187).
+func (u *Updater) Unattended() bool { return writable(u.cfg.App) }
+
+// hintEvery: a hint starts a check at most this often per version.
+const hintEvery = 15 * time.Minute
+
+func (u *Updater) check(ctx context.Context) Status {
 	u.mu.Lock()
 	if u.busy {
 		st := u.st
@@ -277,18 +353,27 @@ func (u *Updater) CheckNow(ctx context.Context) Status {
 
 	prevState := u.Status()
 	u.set(func(s *Status) { s.State, s.Reason, s.Detail = Checking, ReasonNone, "" })
-	rel, err := FetchRelease(ctx, u.cfg.HTTP, u.cfg.Feed, u.cfg.Arch)
-	now := u.cfg.Now()
 	u.mu.Lock()
-	u.saved.CheckedAt = now
+	hint := u.hint
 	u.mu.Unlock()
-	u.save()
+	rel, err := Latest(ctx, u.cfg.HTTP, Source{Feed: u.cfg.Feed, Page: u.cfg.Page, Download: u.cfg.Download}, u.cfg.Arch, hint)
+	now := u.cfg.Now()
+	// Only an answer is a check (D187): a refused or failed read leaves
+	// "checked" where the last answer was, and is tried again within the
+	// hour instead of a day later.
+	if err == nil || errors.Is(err, ErrNoFeed) {
+		u.mu.Lock()
+		u.saved.CheckedAt = now
+		u.mu.Unlock()
+		u.save()
+	}
 	if err != nil {
 		if errors.Is(err, ErrNoFeed) {
 			u.cfg.Logf("ducter: update check: %v", err)
 			u.set(func(s *Status) { s.State, s.CheckedAt = NoFeed, now })
 		} else {
-			u.fail(ReasonNetwork, err, now)
+			u.cfg.Logf("ducter: update: %s: %v", ReasonFeed, err)
+			u.set(func(s *Status) { s.State, s.Reason, s.Detail = Failed, ReasonFeed, err.Error() })
 		}
 		if prevState.State == Ready { // a staged version stays ready
 			u.set(func(s *Status) { s.State, s.Reason, s.Detail = Ready, ReasonNone, "" })

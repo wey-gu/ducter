@@ -1,16 +1,20 @@
-# New task: opening a task yourself (D128)
+# New task: opening a task yourself (D128, D185, D186)
 
 The power path: the user opens a task with their own words, picks where and (optionally) who,
 and the task starts at once. Never required: saying it to the partner still works and stays
-the default. Decision: D128 in `decisions.md`. Glossary rows: `product-model.md` §1 ("a task the
-user opens themselves").
+the default. Decisions: D128, D185 (the card redone; starting later, on a schedule, on an event,
+or until), D186 (projects by hand) in `decisions.md`. Glossary rows: `product-model.md` §1 ("a
+task the user opens themselves").
 
 **Status.** Built end to end. Core, protocol, runner, the Go protocol mirror and the CLI are
 tested (`packages/core/test/new-task.test.ts`, `packages/cli/test/talk.test.ts`) and checked
 live on a scratch Ducter. The desktop card, ⌘N, By project, the Changes header and `open_task`
 are in `apps/desktop/internal/views/{newtask,byproject}.go` (`newtask_test.go`, screenshots
 in `.shots/newtask-ui/`); the phone's sheet and `open_task` in `apps/web/src` (`web.test.ts`,
-shot against `apps/web/demo-newtask.ts`). Not yet reviewed by the user.
+shot against `apps/web/demo-newtask.ts`). D185/D186 built 2026-11-11: core
+(`packages/core/test/{new-task,work-over-time}.test.ts`), desktop (`newtask_test.go`, shots in
+`.shots/newtask/` before/after, zh/en), web (`apps/web/test/newtask.test.ts`, shots in
+`.shots/newtask/web/`, phone and wide, light and dark, zh/en). Not yet reviewed by the user.
 
 ## Who and how it starts
 
@@ -22,28 +26,48 @@ shot against `apps/web/demo-newtask.ts`). Not yet reviewed by the user.
   or press ⌘N. The card's defaults are already right (last repo, its default branch, the best
   fit); typing and pressing Start is all it takes.
 
-## The card
+## The card (D185)
 
 On the Mac it is a card over the page (a soft scrim, Esc or a click outside closes it and keeps
 the words); on the phone, a bottom sheet opened by a **＋** at the top right of On hand, in the
-system's light or dark, over a page that only dims slightly (the `--scrim` token: a light warm
-brown in light, a deeper dim in dark, D144). Three
-rows, top to bottom, each a row of flat chips (the chosen one white with an ink hairline):
+system's light or dark, over a page that only dims slightly (the `--scrim` token, D144). Top to
+bottom:
 
-| Row | Default | List |
+1. **做什么 / What**, focused, then quiet: 你写的话会原样交给它 / It gets your words as you wrote them.
+2. **One row of pills**, all one height (the shared `pill` / `Pill`), each opening a short list
+   in place (`menuRow` / `MenuRow`; one list open at a time; Esc closes the list first):
+
+| Pill | Default | Its list |
 |---|---|---|
-| 在哪儿做 / Where | the most recently used repo | repos tasks used, most recent first, then the ones `ducter up` noticed (`firstrun.json`), then 不用文件夹 / No folder. The repo chip has a branch part: the repo's default branch (origin's, else main or master, else the checkout's), pickable from its 30 most recently committed branches |
-| 谁来做 / Who does it | the top candidate, its coin tagged 推荐 / Suggested; its one-line reason on hover (the same reasons as 换谁来做 / Switch who does it). No line under the row (D144) | the agent coins from fw_candidates at that place, best first; a blocked one greyed with why on hover. Picking another pins it for this task; its coin says "…，是你选的 / …; you picked it" on hover |
-| 做什么 / What | empty, focused | a text field; under it, quiet: 你写的话会原样交给它 / It gets your words as you wrote them |
+| folder (在哪儿做 / Where) | the most recently used | the folders tasks used and the projects added (D186), most recent first, each with its path as ~/…; then the repos `ducter up` noticed; 不用文件夹 / No folder; on the Mac, 加一个文件夹… / Add a folder… |
+| branch (repos only) | the repo's default branch | 从哪个分支开始 / Start from which branch: its 30 most recently committed, the default marked 默认 / default |
+| computer (only when real, D157) | the suggested one | 在哪台电脑上做 / On which computer |
+| 谁来做 / Who does it | the top candidate, tagged 推荐 / Suggested (why on hover); else the one the user last picked on this client | every agent at that place, best first, its one reason under it; a blocked one greyed with why |
+| 什么时候开始 / When it starts | 现在 / Now | 现在 · 定个时间 · 定期做 · 等某件事发生 · 一直做到…, each with one line of what it means |
 
-**开始 / Start** (Return; ⌘Return in a multi-line field) sends `task_new` and, on
-`task_new_result` ok, opens that task (Esc returns to where the user was). A failed open keeps
-the card and its words, with the reason in one line under Start (offline, not a repo, no agent,
-else `message`). The device is inferred as today; there is no device row, no model or effort
-picker, no tabs, no pin or search. The chosen repo's chip reads `ducter · main ▾`; a click on it
-opens 从哪个分支开始 / Start from which branch (the default marked 默认 / default), a popover on
-the Mac and an inline list on the phone. In the opened task, the words stand under 你交代的 /
-What you asked for (the partner's brief stays {name} 交代的).
+3. **When it doesn't start now**, one line under the pills: At a time: 今天 / 明天 / 后天 and a
+   typed time (9, 9:00, 21:30, 9.30); On a schedule: 每天 / 工作日 / 每周 (and a day) / 每隔几小时
+   (1, 2, 4 or 8, round the clock) and the time; When something happens: **等到** and what it
+   waits for; Keep going until: **做到** and what must hold (Return starts).
+4. **The foot:** one line on the left (what didn't work, in the failed ink; or **开了：「X」** with
+   **打开 / Open** after ⇧⌘↩; or the keys **⌘↩ 开始 · ⇧⌘↩ 开完接着开下一件**), then **取消 /
+   Cancel** and **开始 / Start** (**定好 / Schedule** for a time or a schedule) at one height.
+
+**⌘↩** (anywhere in the card) starts: `task_new`, then on `task_new_result` ok it opens that task
+(Esc returns to where the user was); a time or a schedule instead closes the card on On hand.
+**⇧⌘↩** starts and keeps the card, empty, with the same folder, branch, agent and when. A failed
+open keeps the card and its words, with the reason in the foot (offline, not a repo, no agent, a
+time already past, nothing to wait for, else `message`).
+
+What each when does underneath (no new scheduler):
+
+| When | Underneath |
+|---|---|
+| Now | the task opens (D128) |
+| At a time | a routine of the user's own with one firing (`every: "once"`, `date`, `time`, in the client's zone); it opens the task with the words verbatim at that time, then ends. On hand: its calendar with the date, **到时候开始 / Starts then**, **不做了 / Don't do it** |
+| On a schedule | a routine of the user's own (`by: "you"`), active at once, no proposal card; each run gets the words and one line on which run it is, the agent picked, effect `local_writes`, reports every run; D114's pauses and review hold |
+| When something happens | the task opens now with **先等到：{X}\n然后：{words}** and a line asking it to wait with `wait_for` and a check; it rests on Waiting (D112 (4)) |
+| Keep going until | the task opens with the words verbatim, then `until` with the condition (D113) |
 
 Inside an opened task, ⌘N opens the card with that task's place prefilled. On hand's group
 header "+" (By project) is 在这儿开一件 / New task here, prefilling that place.
@@ -57,10 +81,17 @@ forward; the phone shows it. Esc (or back) returns to where the user was. Both s
 A toggle at On hand's head: 按状态 / By state (today's lanes) · 按项目 / By project. Desktop
 only; remembered per client (local storage), not a setting. By project:
 
-- Groups by the card's `project` (a repo's folder name for tasks opened with New task), else
-  the repo's folder name, else 其他 / Other. The header carries "+" (在这儿开一件 / New task here).
-- A row is `title · branch · +adds −dels · state`: `place.branch`, `changes.adds` /
+- Groups by the card's `project` (an added project's name, D186, else a folder's name), else
+  the folder's name, else 其他 / Other; then the projects added by hand with nothing yet
+  (**还没有事。/ Nothing here yet.**). The header has the group's path as ~/… and "+"
+  (在这儿开一件 / New task here). At the foot, on the Mac whose Ducter runs here, **＋ 加一个文件夹 /
+  Add a folder** (D186).
+- A row is `title · kind · branch · +adds −dels · state`: kind is what it waits for (**等 …**) or
+  which try of a loop it is (**第 n 次**), else nothing; `place.branch`, `changes.adds` /
   `changes.dels` (absent until counted: show nothing, never 0), the state word.
+- What starts later or repeats in that folder (a routine with a place, D185) is a row of its
+  group: its calendar page, its name, when in words, and **下次…** (or paused / running). The
+  shelf under By project keeps only routines of no folder.
 
 The opened task's Changes header says **改动 · 3 个文件 +42 −7 / Changes · 3 files +42 −7**
 from the same `changes`.
@@ -69,8 +100,9 @@ from the same `changes`.
 
 | Frame | Answer | Notes |
 |---|---|---|
-| `{t:"task_new_options", place?}` | `{t:"task_new_options", places: PlaceChoice[], candidates: Candidate[]}` | Candidates at `place` (default this machine). `PlaceChoice` = place, name, usedAt, defaultBranch, branches |
-| `{t:"task_new", words, place?, harness?, model?, clientId?}` | `{t:"task_new_result", ok, clientId, taskId, card}` or `{ok:false, reason, message}` | `reason`: empty, no_agent, not_repo, offline, failed. A resend with the same clientId opens nothing twice. Send `harness` only when the user picked someone other than the top candidate |
+| `{t:"task_new_options", place?}` | `{t:"task_new_options", places: PlaceChoice[], candidates: Candidate[]}` | Candidates at `place` (default this machine). `PlaceChoice` = place (repo, folder or none), name, usedAt, defaultBranch, branches, added (D186) |
+| `{t:"task_new", words, place?, harness?, model?, clientId?, when?}` | `{t:"task_new_result", ok, clientId, taskId, card}`; for a time or a schedule `{ok, clientId, routineId, routine}`; or `{ok:false, reason, message}` | `reason`: empty, no_agent, not_repo, offline, past, no_condition, failed. `when` (D185): `{kind:"now"}`, `{kind:"at", date, time, tz}`, `{kind:"every", every: day\|weekday\|week\|hours, days?, hours?, time, tz}`, `{kind:"when"\|"until", condition}`. A resend with the same clientId opens nothing twice. Send `harness` only when the user picked someone other than the top candidate |
+| `{t:"project_add", path, clientId?}` (D186) | `{t:"project_add_result", ok, clientId, place: PlaceChoice}` or `{ok:false, reason: not_found\|failed, message}` | A folder on the home's computer (a folder inside a repo adds the repo). `OnHand.projects` lists the added ones |
 | `{t:"open_task", taskId}` | the sender: `{t:"open_result", taskId, ok, apps}`; every other live app socket: `{t:"open_task", taskId}` | Apps should say `hello.client` ("desktop", "web"); a `cli` socket is never told. An app that gets `open_task` opens that task as if tapped, and focuses its window |
 
 `TaskCard.openedBy: "you"` marks a task the user opened; `TaskCard.changes` is the cached diff
@@ -100,3 +132,7 @@ stat `{files, adds, dels, at}`.
 - Attachments on the card (todo, trigger: the first brief that needs a screenshot).
 - By project on the phone (todo).
 - Enforcing "retitle once" in code (today the note asks for it).
+- D186's rename and remove of a project, and adding a folder from a server home or the phone
+  (todo).
+- Recurring on a condition ("every time X happens") from the card: still said to the partner
+  (a condition routine needs its check compiled by a model); the card's 等某件事发生 is one-shot.

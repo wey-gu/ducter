@@ -296,7 +296,7 @@ func (a *App) tabIcon(c *ui.Context, tab string, size float32) {
 	case TabAccounts:
 		bmp = theme.Clay("wait_mail")
 	case TabAutofill:
-		bmp = theme.Clay("ab_web")
+		bmp = theme.Clay("set_autofill")
 	case TabRun:
 		bmp = theme.Clay("mini_awake")
 	case TabLook:

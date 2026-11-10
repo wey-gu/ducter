@@ -2599,7 +2599,7 @@ const SECTIONS: { page: Exclude<SettingsPage, "">; art: string; title: string }[
   { page: "partner", art: "idle", title: "settings.tab.partner" },
   { page: "notify", art: "wait_clock", title: "settings.tab.notify" },
   { page: "accounts", art: "wait_mail", title: "settings.tab.accounts" },
-  { page: "autofill", art: "ab_web", title: "settings.tab.autofill" },
+  { page: "autofill", art: "set_autofill", title: "settings.tab.autofill" },
   { page: "devices", art: "mini_awake", title: "settings.tab.devices" },
   { page: "phone", art: "phone", title: "settings.phone" },
 ];

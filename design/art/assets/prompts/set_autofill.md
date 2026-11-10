@@ -1,0 +1,1 @@
+A small chunky clay keyring: one soft orange clay key with a rounded bow and simple chunky teeth, and beside it on the same cream clay ring a small rounded cream clay card tag with a butter-yellow stripe, the pair hanging together and leaning slightly, as if just picked up to hand over.

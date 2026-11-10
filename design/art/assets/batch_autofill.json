@@ -1,0 +1,1 @@
+{"jobs": 1, "tasks": [{"id": "set_autofill", "promptFiles": ["prompts/_style_abilities.md", "prompts/set_autofill.md"], "image": "raw/set_autofill.png", "ar": "1:1", "quality": "2k", "ref": ["alpha/wait_mail.png", "alpha/wait_clock.png", "alpha/ab_web.png"]}]}

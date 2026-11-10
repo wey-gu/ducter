@@ -476,12 +476,14 @@ func (a *App) accountsPanel(c *ui.Context) {
 	a.drainConnResult()
 	a.panelHead(c, TabAccounts, a.L.T("settings.lede.accounts"))
 	a.partnerToast(c)
+	a.phoneSignInRow(c) // D193: the device sign-in, on top while it waits
 	list := a.S.Connections
 	if len(list) > 0 {
 		// D166: the chips once above the cards, then a character sheet per source.
 		a.proactiveChips(c, "acct")
 		a.sourceCards(c, list)
 	}
+	a.phoneOfferRow(c) // D193: calls, before a calling connection (then its card is among the cards)
 	title, lede := a.L.T("acct.title"), a.L.T("acct.lede")
 	if len(list) > 0 {
 		title, lede = "", ""
@@ -819,7 +821,7 @@ func (a *App) drainConnResult() {
 	ps.acctWaiting = false
 	if !r.OK {
 		switch {
-		case r.Reason == "":
+		case r.Reason == "", r.Reason == "signing_in": // D193: the sign-in panel says it
 		case ps.acctAdding && r.Reason == "no_key":
 			ps.acctNoKey = true
 		case ps.acctAdding:

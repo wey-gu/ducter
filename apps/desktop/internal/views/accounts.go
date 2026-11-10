@@ -71,6 +71,10 @@ func (a *App) sourceCards(c *ui.Context, list []protocol.ConnectionView) {
 	t := a.T
 	ui.Row(c.Key("acct-cards")).Wrap().Gap(t.S4).AlignItems(ui.Start).Children(func() {
 		for _, cv := range list {
+			if cv.Phone != nil {
+				a.phoneCard(c, cv) // D193: a calling connection has its own card
+				continue
+			}
 			a.sourceCard(c, cv)
 		}
 	})

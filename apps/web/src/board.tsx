@@ -5,6 +5,8 @@
 // line, the same four lanes side by side with the same cards, the same grouping by project, in the
 // same order and words. Only touch, sizes and a foldable's fold adapt it.
 import type { ComponentChildren } from "preact";
+import { callEnded } from "@ducter/protocol";
+import { CallRow } from "./phone.tsx";
 import { useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { Btn, Seg } from "./controls.tsx";
@@ -137,7 +139,12 @@ export function Board() {
   const loose = A.S.armedWaiters().filter((w) => !w.taskId);
   const missed = A.S.missedToday();
   const routines = A.S.routines().filter((r) => r.state === "active" || r.state === "paused");
-  const nothing = !needs.length && !partnerDs.length && !working.length && !waiting.length && !done.length && !loose.length && !missed.length && !routines.length;
+  // D193: calls. A Go card or a question is a decision (the needs lane); a call on the line or
+  // waiting for its hour is working; an ended one is done today.
+  const calls = A.S.onHand?.calls ?? [];
+  const liveCalls = calls.filter((c) => ["waiting", "calling", "talking", "question"].includes(c.state));
+  const endedCalls = calls.filter((c) => callEnded(c.state) && c.state !== "held");
+  const nothing = !needs.length && !partnerDs.length && !working.length && !waiting.length && !done.length && !loose.length && !missed.length && !routines.length && !liveCalls.length && !endedCalls.length;
   const pick = (v: "state" | "project") => {
     setBy(v);
     try {
@@ -194,8 +201,11 @@ export function Board() {
                     )}
                   </div>
                   <div class="col">
-                    {working.length > 0 && (
-                      <Lane kind="working" n={working.length}>
+                    {working.length + liveCalls.length > 0 && (
+                      <Lane kind="working" n={working.length + liveCalls.length}>
+                        {liveCalls.map((c) => (
+                          <CallRow key={c.callId} c={c} />
+                        ))}
                         {working.map((task) => (
                           <WorkCard key={task.id} task={task} />
                         ))}
@@ -219,8 +229,11 @@ export function Board() {
                         ))}
                       </Lane>
                     )}
-                    {(done.length > 0 || missed.length > 0) && (
-                      <Lane kind="done" n={done.length + missed.length}>
+                    {(done.length > 0 || missed.length > 0 || endedCalls.length > 0) && (
+                      <Lane kind="done" n={done.length + missed.length + endedCalls.length}>
+                        {endedCalls.map((c) => (
+                          <CallRow key={c.callId} c={c} />
+                        ))}
                         {missed.map((w) => (
                           <div class="bcard wait" key={w.waiterId}>
                             <span class="wrow">

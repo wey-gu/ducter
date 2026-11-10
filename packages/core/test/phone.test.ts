@@ -245,7 +245,8 @@ describe("a calling connection, through a fake Tuwa", () => {
 
   test("refusals: emergency, do-not-call, the daily cap, a payment gate", async () => {
     await connect();
-    expect(await core.phone.draft({ to: "+1 911", name: "x", goal: "help" }, { lang: "en" })).toMatchObject({ ok: false, reason: "number" });
+    expect(await core.phone.draft({ to: "+1 911", name: "x", goal: "help" }, { lang: "en" })).toMatchObject({ ok: false, reason: "emergency" });
+    expect(await core.phone.draft({ to: "+86 138 0013 8000", name: "x", goal: "ask" }, { lang: "en" })).toMatchObject({ ok: false, reason: "region" });
     core.phone.block("+81312345678", "asked not to be called");
     expect(await core.phone.draft({ to: "+81312345678", name: "Saito", goal: "book" }, { lang: "en" })).toMatchObject({ ok: false, reason: "dnc" });
     expect(await core.phone.draft({ to: "+819012345678", name: "Ken", goal: "ask", minutes: 15 }, { lang: "en" })).toMatchObject({ ok: true });

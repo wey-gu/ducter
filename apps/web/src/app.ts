@@ -188,6 +188,9 @@ class AppState {
   connecting = false;
   /** D158: the last check's refusal, shown on the Accounts card in the failed look (never a toast). */
   connRefusal?: ConnectionReason;
+  /** D193: the device sign-in in progress (or how it just ended), and the phone card's last refusal. */
+  signIn?: import("@ducter/protocol").SignInView;
+  voiceAnswer?: string;
   /** D166: 看了哪些 / What it read today, by connection, once asked for. */
   connReads = new Map<string, import("@ducter/protocol").ReadLine[]>();
   route: Route = { name: "conv" };
@@ -324,10 +327,24 @@ class AppState {
     if (f.t === "open_result") return;
     if (f.t === "connections") return (this.connections = f.connections), (this.oo = f.oo), this.changed();
     if (f.t === "connection_reads") return void (this.connReads.set(f.id, f.reads), this.changed());
+    // D193: the device sign-in: the code and link, then done (a toast) or why not.
+    if (f.t === "connection_signin") {
+      this.signIn = f.signIn;
+      if (f.signIn.state !== "waiting") this.connecting = false;
+      if (f.signIn.state === "done") (this.signIn = undefined), this.toast(this.L.t("call.signin.done", f.signIn.name));
+      return this.changed();
+    }
+    if (f.t === "phone_voice_result") {
+      this.voiceAnswer = f.ok ? undefined : this.L.t(`call.voice.err.${f.reason ?? "provider"}`);
+      // The recording page is the provider's own: the owner agrees and records there (D189 (6)).
+      if (f.ok && f.url) window.open(f.url, "_blank", "noopener");
+      return this.changed();
+    }
     if (f.t === "connection_result") {
       this.connecting = false;
       // D158: a refusal stays on the Accounts card in the failed look; an add says what it reads now.
-      this.connRefusal = !f.ok ? f.reason : undefined;
+      // D193: signing_in is no refusal: the sign-in panel takes over.
+      this.connRefusal = !f.ok && f.reason !== "signing_in" ? f.reason : undefined;
       const added = f.ok && this.connections?.find((c) => c.id === f.id);
       if (added) {
         const r = f.readable;
@@ -644,6 +661,27 @@ class AppState {
     this.connRefusal = undefined;
     this.send({ t: "connection_add", url, ...(token ? { token } : {}) });
     this.changed();
+  }
+  /** D193: the device sign-in and the phone card. */
+  cancelSignIn() {
+    this.signIn = undefined;
+    this.connecting = false;
+    this.send({ t: "connection_signin_cancel" });
+    this.changed();
+  }
+  reauth(id: string) {
+    this.send({ t: "connection_reauth", id });
+  }
+  phoneVoice(action: "record" | "on" | "off" | "delete" | "refresh") {
+    this.voiceAnswer = undefined;
+    this.send({ t: "phone_voice", action });
+    this.changed();
+  }
+  phoneCap(usd: number) {
+    this.send({ t: "phone_cap", usd });
+  }
+  callCancel(callId: string) {
+    this.send({ t: "call_cancel", callId });
   }
   useOoConnection() {
     this.connecting = true;

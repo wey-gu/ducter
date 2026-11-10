@@ -389,7 +389,12 @@ type Store struct {
 	ConnReads  map[string][]protocol.ReadLine
 	Oo         *protocol.OoDetect
 	ConnResult *protocol.ServerFrame
-	Forgot     *protocol.Forgot
+	// SignIn is the device sign-in in progress or just ended (D193); nil
+	// when none. VoiceResult is the last phone_voice answer, until the
+	// phone card takes it.
+	SignIn      *protocol.SignInView
+	VoiceResult *protocol.ServerFrame
+	Forgot      *protocol.Forgot
 	// Rules are 你的规则 / Your rules, as last sent (nil until a rules
 	// frame; RulesAt says one came). Candidates are who could do a task,
 	// by task id, as last asked; SwitchResults the switch answers not yet
@@ -515,6 +520,11 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 	case "connection_result":
 		fc := f
 		s.ConnResult = &fc
+	case "connection_signin":
+		s.SignIn = f.SignIn
+	case "phone_voice_result":
+		fc := f
+		s.VoiceResult = &fc
 	case "sent":
 		if t := s.Tasks[f.TaskID]; t != nil {
 			for _, sd := range t.Sends {
@@ -1281,4 +1291,23 @@ func dropStaleAgentUpdate(h *protocol.DeviceHarness) {
 	default:
 		h.Update = nil
 	}
+}
+
+// Calls are the phone calls On hand lists (D193): live, waiting for Go,
+// or ended today, newest first, as the last snapshot said.
+func (s *Store) Calls() []protocol.CallBody {
+	if s.OnHand == nil {
+		return nil
+	}
+	return s.OnHand.Calls
+}
+
+// Call returns one call of the last On hand, or nil.
+func (s *Store) Call(id string) *protocol.CallBody {
+	for i, c := range s.Calls() {
+		if c.CallID == id {
+			return &s.OnHand.Calls[i]
+		}
+	}
+	return nil
 }

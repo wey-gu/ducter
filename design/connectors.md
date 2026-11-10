@@ -579,8 +579,19 @@ broker speaks only MCP.
 
 - **A power user's existing servers** (GitHub remote MCP, Linear, Notion) can be attached as
   connections with an address and a token (built). The broker connects as the MCP client,
-  stores the token, and re-exposes the tools through the same tools and the same gate. Servers
-  that only do MCP OAuth 2.1 sign-in (no static token) need a sign-in flow in Ducter: later [I].
+  stores the token, and re-exposes the tools through the same tools and the same gate.
+- **MCP OAuth 2.1 by device code (D193, built):** a server added with no key that answers 401 and
+  publishes protected-resource metadata (RFC 9728) whose authorization server has a
+  `device_authorization_endpoint` is signed in by device code (RFC 8628): a registered public
+  client (RFC 7591, with a loopback redirect URI, which Tuwa's registration requires), else the
+  client-name form; `resource` (RFC 8707) is sent. The code, the link and a QR show in Settings ›
+  Accounts (`connection_signin` frames); the owner approves on their phone. Tokens live in
+  `connection-tokens.json` (0600) as `{kind: "oauth", access, refresh, expiresAt, clientId, …}`,
+  refreshed a minute before expiry and once more on a 401, revoked on remove; a refresh refused as
+  gone leaves the card on **需要重新登录 / Sign in again** (`connection_reauth`). A token the owner
+  already holds can be pasted as the key, as JSON (the import path). The broker's requests carry
+  `User-Agent: Ducter/<version>` (Cloudflare refuses some default agents: `blocked`, error 1010).
+  Code: `packages/core/src/mcp-oauth.ts`; first user: the calling connection (`phone.md`).
 - **Read-only server variants** (GitHub `/readonly`, Linear `/readonly`) back the watchers.
 - **The user's Claude.ai or ChatGPT connectors can't be borrowed.** They live inside those
   vendors' sessions, and principle 17 rules out proxying a subscription. A *task* that

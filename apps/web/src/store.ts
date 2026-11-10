@@ -548,7 +548,11 @@ export class Store {
 
   /** The partner's own asks (no task), which On hand shows on their own. */
   partnerDecisions() {
-    return this.openDecisions().filter((d) => !d.taskId);
+    // D193: a question from a live call goes first: someone is waiting on the line.
+    const q = (d: DecisionState) => (d.call?.kind === "question" ? 0 : 1);
+    return this.openDecisions()
+      .filter((d) => !d.taskId)
+      .sort((a, b) => q(a) - q(b));
   }
 
   pendingDecision(taskId: string): DecisionState | undefined {

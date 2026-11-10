@@ -779,6 +779,8 @@ func (a *App) holdLabel(d *store.DecisionState) string {
 		return a.L.T("memp.card.hold") // D169: 先不装 / Not now
 	case d.Trust != nil:
 		return a.L.T("peers.trust.hold") // X2: 还是先问我
+	case d.Call != nil:
+		return a.L.T("call.hold") // D189: 先不打 / Not now
 	}
 	return a.L.T("decision.hold")
 }
@@ -795,6 +797,9 @@ func (a *App) goLabel(d *store.DecisionState) string {
 	if d.MemPlugin != nil {
 		return a.L.T("memp.card.go")
 	}
+	if d.Call != nil {
+		return a.L.T("call.go") // D189: 打过去 / Call
+	}
 	if d.Asker != nil {
 		return d.GoLabel // X1: the asking agent's own option, as it named it
 	}
@@ -803,6 +808,9 @@ func (a *App) goLabel(d *store.DecisionState) string {
 
 // defaultLine says what happens if the user doesn't answer.
 func (a *App) defaultLine(c *ui.Context, d *store.DecisionState) string {
+	if d.Call != nil {
+		return "" // D189 (4): a call waits for the owner; no default, no countdown
+	}
 	if d.Asker != nil {
 		return a.L.T("peer.default") // silence never answers for the user (D164)
 	}

@@ -17,6 +17,7 @@ import { appsOf, findOo, ooCli, ooEnv, ooExec, ooLinker, ooOp, serviceTitle, typ
 import type { ConnectionCaller, ConnectionInfo, ConnectionOutcome, ConnectionsApi, LogStore } from "@ducter/protocol/src/internal.ts";
 import type { SignInView } from "@ducter/protocol";
 import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
+import { qrRows } from "./devices.ts";
 import { discover, importedToken, pollDevice, refresh as refreshToken, revoke as revokeToken, stale, startDevice, type DeviceStart, type OAuthServer, type OAuthToken } from "./mcp-oauth.ts";
 
 export const CONNECTIONS_FILE = "connections.json";
@@ -784,6 +785,7 @@ export function openConnections(opts: {
       ...(start.verifyUrlComplete ? { verifyUrlComplete: start.verifyUrlComplete } : {}),
       expiresAt: new Date(start.expiresAt).toISOString(),
       ...(input.reconnect ? { reconnect: true, id: input.reconnect } : {}),
+      qr: qrRows(start.verifyUrlComplete ?? start.verifyUrl),
     };
     signIn = { view, server, start, input };
     emitSignIn(view);

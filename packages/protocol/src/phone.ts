@@ -106,6 +106,7 @@ export interface SignInView {
   expiresAt?: string;
   id?: string; // done: the connection id
   reconnect?: boolean; // signing in again to a connection that was signed out
+  qr?: string[]; // the link with the code, as QR rows ("1" dark), for a phone to scan from a Mac
 }
 
 /** The E.164 form of a number the partner or owner wrote, or undefined (no letters, 8–15 digits). */

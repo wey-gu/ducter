@@ -21,6 +21,7 @@ import { createOarHarnessPort, shortId } from "../../runner/src/index.ts";
 import { buildSystemPrompt, createNmemBridge, createPartner, isChinese } from "../src/index.ts";
 import { scenarios, type Expect, type Scenario, type Step } from "./scenarios.ts";
 import { fakeMemory } from "../test/fakes.ts";
+import { fakeTuwa } from "../../core/test/fake-tuwa.ts";
 import { partnerFingerprint } from "../test/fingerprint.ts";
 import type { MemoryAdd } from "../src/memory.ts";
 
@@ -245,7 +246,19 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   const t0 = Date.now();
   const dataDir = mkdtempSync(join(root, `ducter-eval-${sc.id}-`));
   const persona = { id: "default", name: sc.persona?.name ?? "Ducter", identity: sc.persona?.identity ?? "You are Ducter, Weyl's personal AI partner. Weyl builds Ducter (a self-deployed personal AI) and HawDB (an embedded database), and dogfoods them on his Mac. He prefers short answers." };
-  const core = startCore({ dataDir, port: 0, persona });
+  // D193: a calling connection is the fake Tuwa (never the real one), imported with its token.
+  const tuwa = sc.phone ? fakeTuwa() : undefined;
+  if (sc.quietNow) {
+    // Quiet hours around now in this machine's zone: a call waits for the morning.
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    const hm = (ms: number) => new Date(Date.now() + ms).toLocaleTimeString("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+    writeFileSync(join(dataDir, "push.json"), JSON.stringify({ subs: [], settings: { quiet: { start: hm(-3600_000), end: hm(4 * 3600_000), tz }, done: false } }));
+  }
+  const core = startCore({ dataDir, port: 0, persona, ...(sc.phone ? { ooSource: { detect: () => ({ installed: false, account: false }), read: () => undefined } } : {}) });
+  if (tuwa) {
+    const added = await core.connections.add({ url: tuwa.url, token: JSON.stringify({ accessToken: tuwa.access(), refreshToken: tuwa.refresh(), expires_in: 3600 }) });
+    if (!added.ok) throw new Error(`fake Tuwa: ${JSON.stringify(added)}`);
+  }
   const usage: Usage = { inputTokens: 0, outputTokens: 0, cacheRead: 0, cacheWrite: 0 };
   const perSession = new Map<number, Usage>();
   const tools: ToolCall[] = [];
@@ -286,6 +299,13 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     else if ("userAction" in s) {
       const taskId = idOf.get(s.userAction.task)!;
       core.log.append({ stream: "channel", origin: "user", kind: "job_status", body: { jobId: `act_${taskId}_merge`, taskId, state: "done", text: s.userAction.text } });
+    } else if ("callQuestion" in s) {
+      const q = s.callQuestion;
+      const conn = core.connections.view()[0]?.id ?? "conn";
+      const decisionId = "d_callq";
+      const plan = { to: q.to, name: q.name, goal: "", say: [], mustNot: [], voice: "ducter" as const, from: "provider" as const, provider: "Tuwa", minutes: 4, costUsd: 1.6, perMinUsd: 0.4, calleeZone: "Asia/Tokyo" };
+      core.log.append({ stream: "channel", origin: "system", kind: "phone_call", body: { callId: "call_q", connectionId: conn, state: "question", plan, placedAt: new Date(Date.now() - 90_000).toISOString(), talkingSince: new Date(Date.now() - 60_000).toISOString(), question: { text: q.question, choices: [], yesNo: true, askedAt: new Date().toISOString(), decisionId } } });
+      core.log.append({ stream: "channel", origin: "system", kind: "decision", body: { decisionId, question: q.question, goLabel: "yes", defaultOption: "hold", reversible: false, call: { callId: "call_q", kind: "question", choices: [], yesNo: true } } });
     } else if ("waiterArmed" in s) {
       const w: Bodies["waiter"] = { waiterId: "w_" + crypto.randomUUID().slice(0, 10), at: new Date(Date.now() + 3600_000).toISOString(), reason: s.waiterArmed.reason, state: "armed" };
       waiters.set(w.reason, w);
@@ -382,6 +402,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     else if ("ai" in s) lines.push(`(earlier) partner: ${s.ai}`);
     else if ("task" in s) lines.push(`(earlier) partner ack: ${s.task.ack}  → task "${s.task.title}" ${s.task.state}${s.task.report ? `; its report: ${s.task.report.summary}` : ""}`);
     else if ("userAction" in s) lines.push(`(earlier) the user, by button, on task "${s.userAction.task}": ${s.userAction.text}`);
+    else if ("callQuestion" in s) lines.push(`(earlier) a call to ${s.callQuestion.name} is live; the other side asked "${s.callQuestion.question}" and that question's card (Yes / No / reply) is on screen`);
     else lines.push(`(earlier) reminder set: ${s.waiterArmed.reason}`);
   }
   for (const [i, st] of sc.steps.entries()) {
@@ -391,6 +412,8 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
         const d = decisions.find((e) => e.seq === v.seq)!.body as Bodies["decision"];
         // Structured fields of the card (the app renders the buttons and the default line from them).
         lines.push(`  [partner made a decision card] question text: ${d.question} | (field goLabel: ${d.goLabel}; field defaultOption: ${d.defaultOption}${d.reversible ? ", reversible" : ""})`);
+        // D193: a call's Go card shows its whole plan (the app renders it under the question).
+        if (d.call?.plan) lines.push(`    [the call card shows] number ${d.call.plan.to} · what for: ${d.call.plan.goal} · may say: ${d.call.plan.say.join(", ") || "-"} · won't say: ${d.call.plan.keep ?? "-"} · voice: ${d.call.plan.voice} · about ${d.call.plan.minutes} min, $${d.call.plan.costUsd} · when: ${d.call.plan.at ? `not now; it dials at ${d.call.plan.at} (an allowed hour)` : "right after Go"} · nothing is dialed before Go`);
       } else if (v.kind === "waiter") lines.push(`  [reminder set] ${v.text}`);
       else lines.push(`  [partner ${v.kind === "ack" ? "ack line" : "message"}] ${v.text}`);
     }
@@ -417,6 +440,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
 
   await partner.close().catch(() => {});
   await core.stop().catch(() => {});
+  tuwa?.stop();
   return { sc, visible, tools, opened: fr.opened, sent, keyOf, idOf, dataDir, usage, error, ms: Date.now() - t0, transcript: lines.join("\n"), recalls, remembered: mem.added, memAttempts, retitles, bridgeSent, work: { ...work, asks } };
 }
 

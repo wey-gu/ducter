@@ -37,7 +37,13 @@ export const CALLBACK_REPLY =
 
 /** Tuwa's per-minute price (research/53 §4): $0.30 + the zone surcharge from a Tuwa number. */
 export const BASE_PER_MIN = 0.3;
-const CC = ["1", "7", "20", "27", "30", "31", "32", "33", "34", "36", "39", "40", "41", "43", "44", "45", "46", "47", "48", "49", "51", "52", "53", "54", "55", "56", "57", "58", "60", "61", "62", "63", "64", "65", "66", "81", "82", "84", "86", "90", "91", "92", "93", "94", "95", "98", "852", "853", "855", "856", "880", "886", "971", "972", "966"];
+const CC = ["1", "7", "20", "27", "30", "31", "32", "33", "34", "36", "39", "40", "41", "43", "44", "45", "46", "47", "48", "49", "51", "52", "53", "54", "55", "56", "57", "58", "60", "61", "62", "63", "64", "65", "66", "81", "82", "84", "86", "90", "91", "92", "93", "94", "95", "98", "852", "853", "855", "856", "880", "886", "971", "972", "966", "977"];
+
+/**
+ * Where Tuwa's own numbers call (its tuwa_call_draft schema, read 2026-11-11, research/53 §8):
+ * nowhere else is drafted. Mainland China (+86) is not among them.
+ */
+export const TUWA_REACHES = ["1", "81", "82", "44", "49", "33", "91", "55", "61", "64", "66", "63", "65", "60", "971", "977", "852", "853", "886"];
 export function countryCode(n: string): string | undefined {
   const d = n.replace(/^\+/, "");
   for (const len of [3, 2, 1]) if (CC.includes(d.slice(0, len))) return d.slice(0, len);
@@ -102,6 +108,10 @@ const ZONES: Record<string, string[]> = {
   "852": ["Asia/Hong_Kong"],
   "853": ["Asia/Macau"],
   "886": ["Asia/Taipei"],
+  "60": ["Asia/Kuala_Lumpur"],
+  "64": ["Pacific/Auckland"],
+  "971": ["Asia/Dubai"],
+  "977": ["Asia/Kathmandu"],
 };
 const validZone = (z: string) => {
   try {
@@ -455,6 +465,8 @@ export function openPhone(deps: PhoneDeps): Phone {
   }
 
   const off = deps.log.subscribe((e: LogEvent) => {
+    // A snapshot this module didn't write (a seed, a test, another process): take it in once.
+    if (e.kind === "phone_call" && !calls.has((e.body as CallBody).callId)) calls.set((e.body as CallBody).callId, { ...(e.body as Call), updatedAt: e.ts });
     if (e.kind === "decision") {
       const d = e.body as Bodies["decision"];
       if (d.call) byDecision.set(d.decisionId, { callId: d.call.callId, kind: d.call.kind });
@@ -464,7 +476,8 @@ export function openPhone(deps: PhoneDeps): Phone {
   // After a restart: live calls are polled again; a call waiting for its hour waits on; an open
   // question gets its 90 s again (the line may well be gone; the poll will say).
   for (const c of calls.values()) {
-    if (c.state === "waiting") later(c.callId, 1000, () => dial(c.callId));
+    if (c.state === "waiting" && c.ref?.scheduled) later(c.callId, 1000, () => poll(c.callId));
+    else if (c.state === "waiting") later(c.callId, 1000, () => dial(c.callId));
     else if (["calling", "talking", "question"].includes(c.state)) later(c.callId, 1000, () => poll(c.callId));
     if (c.state === "question" && c.question && !answered.has(c.question.decisionId)) {
       const q = c.question;
@@ -517,9 +530,14 @@ export function openPhone(deps: PhoneDeps): Phone {
         return after(out, pend.req, pend.plan);
       }
 
+      // An emergency number is refused as one, before it is read as a number at all.
+      const digits = (req.to ?? "").replace(/\D/g, "");
+      if (digits.length <= 4 && ["911", "112", "999", "000", "110", "119", "120", "122", "100", "101", "102", "108", "15", "17", "18", "113", "118"].includes(digits.replace(/^1(?=911$)/, ""))) return { ok: false, reason: "emergency", error: "Ducter never calls emergency or short service numbers. Tell the user, in their language, to call it themselves right now." };
       const to = e164(req.to ?? "");
       if (!to) return { ok: false, reason: "number", error: "That is not a full phone number. Ask the user for it with the country code (+81…, +1…); never guess one." };
       if (neverCall(to)) return { ok: false, reason: "emergency", error: "Ducter never calls emergency or short service numbers. Tell the user to call it themselves, now if it is urgent." };
+      if (f.provider.name === "Tuwa" && !TUWA_REACHES.includes(countryCode(to) ?? ""))
+        return { ok: false, reason: "region", error: `Tuwa's numbers don't call ${to.startsWith("+86") ? "mainland China" : "that country"} (it calls the US, Canada, Japan, Korea, the UK, Germany, France, India, Brazil, Australia, New Zealand, Thailand, the Philippines, Singapore, Malaysia, the UAE, Nepal, Hong Kong, Macau and Taiwan). Tell the user in one line, in their language.` };
       if ((file.doNotCall ?? []).some((x) => x.number === to)) return { ok: false, reason: "dnc", error: "That number is on the user's do-not-call list. Say so in one line; don't call it." };
       const name = (req.name ?? "").trim();
       const goal = (req.goal ?? "").trim();
@@ -527,7 +545,7 @@ export function openPhone(deps: PhoneDeps): Phone {
       const zones = calleeZones(to, req.calleeZone);
       if (!zones) return { ok: false, reason: "zone", error: "Ducter can't tell the callee's local time for that country. Pass calleeZone (an IANA zone such as Europe/Paris) if you know where they are." };
       const voice = req.voice === "owner" ? "owner" : "ducter";
-      if (voice === "owner" && !file.voice?.on) return { ok: false, reason: "voice", error: "The user's own voice isn't set up and on (Settings › Accounts › the phone card). Use Ducter's voice, or tell them where to set theirs up." };
+      if (voice === "owner" && !file.voice?.on) return { ok: false, reason: "voice", error: "The user's own voice isn't set up and on (Settings › Accounts › the phone card). Draft it in Ducter's voice, and tell the user in one line, in their language, where to set theirs up." };
       const minutes = Math.min(TALK_LIMIT_MIN, Math.max(1, Math.round(Number(req.minutes) || 4)));
       const sur = surcharge(to);
       const perMinUsd = round2(BASE_PER_MIN + (sur ?? 0.3));

@@ -122,6 +122,9 @@ func (a *App) relayDueIn(d *store.DecisionState) time.Duration {
 // answeredWords says how an ask was answered, in the user's own words:
 // "你说：好，rebase" / "You said: Rebase"; a default that applied says so.
 func (a *App) answeredWords(d *store.DecisionState) string {
+	if d.Call != nil && d.Call.Kind == "question" {
+		return a.callAnswered(d) // D189: a question from the line, answered
+	}
 	opt, text, by := d.Pending, "", ""
 	if d.Resolved != nil {
 		opt, text, by = d.Resolved.Option, d.Resolved.Text, d.Resolved.By
@@ -177,7 +180,9 @@ func (a *App) decisionTray(c *ui.Context, d *store.DecisionState, task *store.Ta
 		})
 		a.underBubble(c, func() {
 			ui.Row(c).Gap(t.S3).Wrap().AlignItems(ui.Center).Children(func() {
-				ui.Text(c, a.defaultLine(c, d)).FontSize(t.XS + 1).TextColor(t.InkMuted).LineHeight(1.45)
+				if line := a.defaultLine(c, d); line != "" {
+					ui.Text(c, line).FontSize(t.XS + 1).TextColor(t.InkMuted).LineHeight(1.45)
+				}
 				if details {
 					a.detailsToggle(c, key, task.Title())
 				}

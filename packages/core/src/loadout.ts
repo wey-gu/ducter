@@ -25,8 +25,8 @@ export interface Loadout {
   candidatesFor(work: { title: string; brief?: string; place?: Place; needs?: TaskNeeds }): Promise<Candidate[]>;
   /** D157: the computers that run tasks, as the ranking sees them (undefined without device info). */
   computers(): Promise<Computer[] | undefined>;
-  /** 换到 X 接着做 / Continue on X. */
-  switchTask(taskId: string, harness: string, model: string | undefined, runner: Runner | undefined): Promise<{ ok: boolean; message?: string }>;
+  /** 换到 X 接着做 / Continue on X; D157: on another computer (device: its id or name), the task moves there. */
+  switchTask(taskId: string, harness: string, model: string | undefined, runner: Runner | undefined, device?: string): Promise<{ ok: boolean; message?: string }>;
 }
 
 export function createLoadout(o: {
@@ -136,10 +136,34 @@ export function createLoadout(o: {
       });
     },
 
-    async switchTask(taskId, harness, model, runner) {
+    async switchTask(taskId, harness, model, runner, device) {
       const card = o.tasks.get(taskId);
       if (!card) return { ok: false, message: "I can't find that task." };
       if (card.attention === "dropped") return { ok: false, message: "That task was dropped. Undo the drop first." };
+      // D157: another computer: the task moves there (E3), with who does it there.
+      if (device) {
+        const comps = (await computers()) ?? [];
+        const to = comps.find((x) => x.id === device || x.name === device);
+        const here = comps.find((x) => (card.place.device && card.place.device !== "local" ? x.id === card.place.device || x.name === card.place.device : x.home));
+        if (to && here && to.id !== here.id) {
+          const list = await api.candidates(taskId);
+          const c = list.find((x) => x.device === to.id && x.harness === harness && (x.model ?? "") === (model ?? "")) ?? list.find((x) => x.device === to.id && x.harness === harness);
+          if (!c) return { ok: false, message: `${harnessName(harness)} can't take this task on ${to.name}.` };
+          if (c.blocked) return { ok: false, message: `${harnessName(harness)} can't take it on ${to.name} right now (${c.blocked}).` };
+          if (c.waits) return { ok: false, message: `${to.name} is ${c.waits === "asleep" ? "asleep" : "out of reach"}; move it once it's back.` };
+          if (!runner?.moveTask) return { ok: false, message: "Moving a task to another computer isn't available here." };
+          const home = comps.find((x) => x.home)?.name;
+          const r = await runner.moveTask(taskId, { device: to.home ? "local" : to.name, name: to.name, ...(home ? { homeName: home } : {}) }, harness, model);
+          if (!r.ok) return r;
+          o.log.append({
+            stream: "channel",
+            origin: "user",
+            kind: "job_status",
+            body: { jobId: `${BODY_NOTE_PREFIX}${taskId}_${Date.now().toString(36)}`, taskId, state: "done", text: `the user moved this task from ${here.name} to ${to.name} (${harnessName(harness)}); it continues there from its saved progress.` } as Bodies["job_status"],
+          });
+          return { ok: true };
+        }
+      }
       if (card.harness === harness && (card.model ?? "") === (model ?? "")) return { ok: true };
       const list = await api.candidates(taskId);
       const c = list.find((x) => x.harness === harness && (x.model ?? "") === (model ?? "")) ?? list.find((x) => x.harness === harness);

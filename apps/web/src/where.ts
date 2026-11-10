@@ -1,7 +1,7 @@
 // D157 (design/where.md): where a task runs. With one computer nothing is said; with two or more,
 // every task says which one in a few words ("在 hel 上 · 用 Ducter 自己的浏览器") and a tap on it
 // says why. The same words and rules as the desktop's views/where.go.
-import type { DeviceView, WhereAsk, WhereWhy } from "@ducter/protocol";
+import type { Candidate, DeviceView, WhereAsk, WhereWhy } from "@ducter/protocol";
 import { A } from "./app.ts";
 import { harnessName } from "./format.ts";
 import { placeOf, type Task } from "./store.ts";
@@ -65,6 +65,23 @@ export function whereReason(w: WhereWhy | undefined): string {
       return t("where.reason.home", dev);
   }
   return "";
+}
+
+/** A switch row's reason when what stops it is the computer (or it would wait there). */
+export function whereCandReason(c: Candidate): string {
+  const name = c.deviceName ?? "";
+  if (c.blocked === "no_chrome") return t("switch.cant.chrome", name);
+  if (c.blocked === "no_browser") return t("switch.cant.web", name);
+  if (c.blocked === "no_app") return t("switch.cant.app");
+  if (c.blocked === "elsewhere") return t("switch.cant.folder");
+  if (!c.blocked && c.waits) return t(c.waits === "asleep" ? "switch.waits" : "switch.waits.away");
+  return "";
+}
+
+/** A computer group's state words: 醒着 · 一直醒着. */
+export function computerState(d: DeviceView): string {
+  const s = d.state === "asleep" ? t("switch.computer.asleep") : d.state === "unreachable" ? t("switch.computer.away") : t("switch.computer.awake");
+  return [s, d.alwaysOn ? t("switch.computer.on") : ""].filter(Boolean).join(" · ");
 }
 
 /** A task waiting on its computer, in words (the runner's device:asleep / device:unreachable reasons). */

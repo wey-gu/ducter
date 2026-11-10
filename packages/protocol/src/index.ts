@@ -593,7 +593,7 @@ export type ClientFrame =
   // (action "switch"). After two switches the same way the partner asks once whether to make it
   // a rule (a partner-level decision).
   | { t: "candidates"; taskId: string }
-  | { t: "task_switch"; taskId: string; harness: string; model?: string }
+  | { t: "task_switch"; taskId: string; harness: string; model?: string; device?: string } // device (D157): continue on another computer
   // Connections (D96): the user's OpenConnector or another MCP server. "connections" answers with
   // a connections frame and keeps the socket subscribed. "connection_add" checks the address and
   // token before saving (answered with connection_result, then a fresh frame). "connection_oo"

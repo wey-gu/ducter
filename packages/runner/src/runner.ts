@@ -1,14 +1,14 @@
 import { randomBytes } from "node:crypto";
 import { HARNESS_IDS, harnessName, type Attention, type Bodies, type BranchChanges, type Delivery, type EvidenceRef, type FolderChanges, type FolderSummary, type UndoConfirm, type LogEvent, type Place, type Question, type Residency, type TaskCard, type TaskNeeds, type WhereAsk } from "@ducter/protocol";
 import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, SessionSpec } from "@ducter/protocol/src/internal.ts";
-import { NUDGE, PRECOMPACT_NOTE, REOPENED, RESUME_AFTER_RESTART, SAVE_BEFORE_COMPACT, afterCompaction, briefTurn, handedOver, kickoff, noCopyAnswer, seedThen, startedAfresh, taskBrief } from "./brief.ts";
+import { NUDGE, PRECOMPACT_NOTE, REOPENED, RESUME_AFTER_RESTART, SAVE_BEFORE_COMPACT, afterCompaction, briefTurn, handedOver, kickoff, movedOver, noCopyAnswer, seedThen, startedAfresh, taskBrief } from "./brief.ts";
 import { resolveWindows, saveBeforeAt } from "@ducter/protocol/src/harness-facts.ts";
 import { createOarHarnessPort } from "./oar.ts";
 import { cwdOf, planPlace, provisionPlace, type ResolvedPlace } from "./places.ts";
 import { browserSidecar, codexComputerBrief, computerUseGuard, type BrowserGuardHit, type BrowserOptions, type BrowserSidecar, type BrowserTool, type SidecarInput } from "./browser.ts";
 import { checkEvidence } from "./evidence.ts";
 import { PREVIEW_MAX, preview } from "./normalize.ts";
-import { archiveWorktree, branchChanges, mergeTaskBranch, openDraftPr, type ActionResult } from "./integrate.ts";
+import { archiveWorktree, branchChanges, mergeTaskBranch, openDraftPr, pushForMove, type ActionResult } from "./integrate.ts";
 import { DEVICE_BACK, DeviceOfflineError, deviceOf, isOffline, localFolderOps, remoteOps, type PlaceOps } from "./remote.ts";
 import { createFolderStore, type CantKeep } from "./folder.ts";
 import { join } from "node:path";
@@ -136,6 +136,8 @@ interface TaskRt {
   lang?: "zh" | "en"; // the language the user reads its reports in
   /** D157: waiting for its computer (asleep or can't be reached) before it ever started. */
   waiting?: StartCtx;
+  /** D157: the user moved it to another computer; its next session starts with movedOver. */
+  movedFrom?: { from: string; to: string; repo: boolean };
 }
 
 /** The turn after a browser driver switch (D130): same task, now on Ducter's own browser. */
@@ -243,6 +245,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     provision: (r) => provisionPlace(r),
     harness,
     merge: (place) => mergeTaskBranch(place),
+    push: (place) => pushForMove(place),
     openPr: (place) => openDraftPr(place, { gh: opts.gh }),
     changes: (place) => branchChanges(place),
     archive: (place) => archiveWorktree(place, core.dataDir),
@@ -479,7 +482,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       }
     }
     const progress = progressOf(t);
-    const seed = t.handedFrom ? handedOver(t.handedFrom, progress) : startedAfresh(progress);
+    const seed = t.movedFrom ? movedOver(t.movedFrom.from, t.movedFrom.to, progress, t.movedFrom.repo) : t.handedFrom ? handedOver(t.handedFrom, progress) : startedAfresh(progress);
+    t.movedFrom = undefined;
     await startSession(t, false);
     return seed;
   }
@@ -1352,6 +1356,83 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         throw err;
       }
       return { delivered: "prompted" as const };
+    },
+
+    async moveTask(taskId, to, harness, model) {
+      const t = get(taskId);
+      if (t.dropped) return { ok: false, message: "That task was dropped. Undo the drop first." };
+      await t.started.catch(() => {});
+      const place = core.tasks.get(taskId)?.place ?? t.card.place;
+      const here = t.ops.device?.name ?? "local";
+      if (place.kind === "folder") return { ok: false, message: `The folder is on ${here === "local" ? "this computer" : here}; it can't move.` };
+      // Where it goes, as a place there: a repo by the same path from home (~), its pushed branch.
+      const portable = (p: string) => p.replace(/^\/(Users|home)\/[^/]+(?=\/|$)/, "~");
+      const next: Place =
+        place.kind === "repo"
+          ? { kind: "repo", device: to.device, repoPath: portable(place.repoPath), ...(place.branch ? { branch: place.branch } : {}), ...(place.baseBranch ? { baseBranch: place.baseBranch } : {}) }
+          : place.kind === "browser"
+            ? { kind: "browser", device: to.device, profile: place.profile }
+            : { kind: "none", device: to.device };
+      const ops = opsFor(next);
+      if (ops.device && !ops.device.online()) return { ok: false, message: `${ops.device.name} can't be reached right now; move it once it's back.` };
+      // E3: only committed work moves, through the pushed branch.
+      if (place.kind === "repo") {
+        const pushed = await t.ops.push(place).catch((err) => ({ ok: false, message: (err as Error).message }) as ActionResult);
+        if (!pushed.ok) return { ok: false, message: pushed.message };
+      }
+      const wasRunning = !!t.session && isBusy(t);
+      const att = currentAttention(t);
+      const old = t.session;
+      t.session = undefined;
+      t.running = false;
+      t.sessionId = t.loggedSessionId = undefined;
+      await old?.close().catch(() => {});
+      await t.sidecar?.close().catch(() => false);
+      t.sidecar = undefined;
+      t.sidecarInput = undefined;
+      const fromHarness = t.base.harness;
+      const h = (harness ?? fromHarness) as HarnessId;
+      let resolved: ResolvedPlace;
+      try {
+        resolved = { ...(await ops.plan(next, taskId, t.card.title)), ...(place.kind === "repo" ? { fetch: true } : {}) };
+      } catch (err) {
+        return { ok: false, message: `${to.name} couldn't take it: ${(err as Error).message}` };
+      }
+      t.ops = ops;
+      const open = core.log.read({ stream: stream(taskId), kinds: ["task_open"], limit: 1000 }).at(-1)?.body as Bodies["task_open"] | undefined;
+      const body: Bodies["task_open"] = { ...(open ?? { taskId, title: t.card.title, project: t.card.project, brief: "" }), place: resolved.place, harness: h, ...(model ? { model } : {}) } as Bodies["task_open"];
+      if (!model) delete body.model;
+      core.log.append({ persona: t.persona, stream: stream(taskId), origin: "user", kind: "task_open", body });
+      core.log.append({ persona: t.persona, stream: stream(taskId), origin: "user", kind: "body_selected", body: { taskId, harness: h, ...(model ? { model } : {}), why: { kind: "you", where: { device: to.name, kind: "you" } } } });
+      t.card = { ...t.card, place: resolved.place, harness: h, ...(model ? { model } : {}) };
+      t.base = { ...specFor(taskId, body, resolved.cwd, true), harness: h };
+      t.movedFrom = { from: here === "local" ? (to.homeName ?? "the home") : here, to: to.name, repo: place.kind === "repo" };
+      if (fromHarness !== h) t.handedFrom = fromHarness;
+      logEvent(t, { role: "system", from: "runner", text: `moved from ${t.movedFrom.from} to ${to.name}`, raw: { switched: { from: fromHarness, to: h }, moved: { from: t.movedFrom.from, to: to.name } } });
+      t.started = (async () => {
+        await ops.provision(resolved);
+        if (resolved.place.kind === "browser") {
+          const input: SidecarInput = { place: resolved.place, persona: t.persona, taskId, dataDir: core.dataDir, partnerName: partnerNameOf(), harness: h };
+          const sc = await sidecarFor(ops, input);
+          if (sc) (t.sidecar = sc), (t.sidecarInput = input), await sc.ready();
+        }
+        t.spec = withBrowser(t.base, t.sidecar, partnerNameOf());
+        // Something left to do: carry on there now. A finished or waiting task keeps its state;
+        // its next message starts it there from the brief and saved progress.
+        if (!wasRunning && att !== "working" && att !== "queued") return setState(t, att, "parked");
+        const seed = await resumeOrSeed(t);
+        setState(t, "working", "hot");
+        await sendTurn(t, seed, "runner");
+      })();
+      try {
+        await t.started;
+      } catch (err) {
+        if (isOffline(err)) return deviceLost(t, true), { ok: true };
+        const reason = preview(err instanceof Error ? err.message : String(err), 500);
+        setState(t, "failed", "parked", reason);
+        return { ok: false, message: reason };
+      }
+      return { ok: true };
     },
 
     async switchBody(taskId, harness, model) {

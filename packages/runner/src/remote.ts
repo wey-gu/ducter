@@ -26,6 +26,8 @@ export interface PlaceOps {
   archive(place: Place): Promise<ActionResult & { removed: boolean }>;
   /** D142: the copy of a non-git folder, kept on the machine that holds it (folder.ts). */
   folder: FolderOps;
+  /** D157: push the task branch before the task moves to another computer (E3). */
+  push(place: Place): Promise<ActionResult>;
   /** D157: a browser place on a worker, built there with its browsers; absent for this machine. */
   browser?(input: SidecarInput): Promise<BrowserSidecar>;
 }
@@ -177,6 +179,8 @@ export function remoteOps(link: WorkerLink, o: { ducter?: DucterBrowserPort } = 
       available: async () => [],
     },
     merge: (place) => guard(link.call<ActionResult>("merge", { place }, 5 * 60_000)),
+    // An older worker doesn't know "push": the move says so instead of moving half.
+    push: (place) => guard(link.call<ActionResult>("push", { place }, 5 * 60_000)).catch((err) => (isOffline(err) ? Promise.reject(err) : { ok: false, message: `${link.name} couldn't push the branch: ${(err as Error).message}` })),
     openPr: (place) => guard(link.call<ActionResult>("openPr", { place }, 5 * 60_000)),
     // An older worker doesn't know "changes": unknown, never an error in a report.
     changes: (place) => link.call<BranchChanges | undefined>("changes", { place }, 10_000).catch(() => undefined),

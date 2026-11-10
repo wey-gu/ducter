@@ -351,6 +351,9 @@ export interface Runner {
   // closes and the new one starts from the brief and the saved progress. ok:false with a
   // user-facing message when it can't.
   switchBody?(taskId: string, harness: string, model?: string): Promise<{ ok: boolean; message?: string }>;
+  // Optional (D157, E3): move a task to another computer (to.device: its name, "local" for the
+  // home), with who does it there. A repo task's branch is pushed first; a folder never moves.
+  moveTask?(taskId: string, to: { device: string; name: string; homeName?: string }, harness?: string, model?: string): Promise<{ ok: boolean; message?: string }>;
   drop(taskId: string): Promise<void>;
   // Optional: what a repo task's branch holds that its base doesn't, with its diff stat (D128:
   // On hand by project). Undefined when not a repo task or it can't tell.

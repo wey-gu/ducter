@@ -6,7 +6,7 @@
 // token beside the task's role token on /mcp, nowhere else).
 import type { HarnessEvent, HarnessPort, HarnessSession, SessionSpec } from "@ducter/protocol/src/internal.ts";
 import { runCheck } from "@ducter/protocol/src/checks-run.ts";
-import { archiveWorktree, branchChanges, mergeTaskBranch, openDraftPr } from "./integrate.ts";
+import { archiveWorktree, branchChanges, mergeTaskBranch, openDraftPr, pushForMove } from "./integrate.ts";
 import { planPlace, provisionPlace } from "./places.ts";
 import { createFolderStore } from "./folder.ts";
 import { browserSidecar, sidecarWire, type BrowserOptions, type BrowserSidecar, type SidecarInput } from "./browser.ts";
@@ -143,6 +143,8 @@ export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
       return {};
     },
     merge: (a) => mergeTaskBranch(a.place),
+    // D157: a repo task leaving this computer pushes its branch first (E3).
+    push: (a) => pushForMove(a.place),
     openPr: (a) => openDraftPr(a.place, { gh: o.gh }),
     changes: (a) => branchChanges(a.place),
     archive: (a) => archiveWorktree(a.place, o.dataDir),

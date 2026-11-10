@@ -376,9 +376,9 @@ class AppState {
   }
 
   /** 换到 X 接着做 / Continue on X. */
-  switchTask(taskId: string, harness: string, model: string | undefined, name: string) {
+  switchTask(taskId: string, harness: string, model: string | undefined, name: string, device?: string) {
     this.switching = name;
-    this.send({ t: "task_switch", taskId, harness, ...(model ? { model } : {}) });
+    this.send({ t: "task_switch", taskId, harness, ...(model ? { model } : {}), ...(device ? { device } : {}) });
     this.changed();
   }
 

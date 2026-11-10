@@ -9,7 +9,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { JSX } from "preact";
 import { A, candKey, placeKey, type SettingsPage } from "./app.ts";
 import { TRY_LIVE } from "@ducter/protocol";
-import { computerName, deviceWait, manyComputers, whereAsk } from "./where.ts";
+import { computerName, computerOf, computerState, deviceWait, manyComputers, whereAsk, whereCandReason } from "./where.ts";
 import { ago, behind, cjkPad, deviceLabel, duration, firstClause, harnessName, modelName, phaseLine as phaseWords, placeLine, sameWords, splitOutcome, when } from "./format.ts";
 import { markdown } from "./markdown.ts";
 import { Coin } from "./coin.tsx";
@@ -1646,31 +1646,60 @@ function SwitchList({ task }: { task: Task }) {
   const list = A.candidates.get(task.id);
   const running = ["working", "queued"].includes(attention(task));
   if (!list) return <div class="small sub">{t("who.loading")}</div>;
-  const chosen = list.find((c) => !c.blocked && !c.current && `${c.harness}/${c.model ?? ""}` === pick);
+  const keyOf = (c: Candidate) => `${c.device ?? ""}|${c.harness}/${c.model ?? ""}`;
+  const chosen = list.find((c) => !c.blocked && !c.current && keyOf(c) === pick);
   const free = list.filter((c) => !c.blocked && !c.current).length;
+  // D157: two or more computers: the list grouped by computer (the phone has no island strip).
+  const multi = list.some((c) => c.device);
+  const groups: string[] = [];
+  for (const c of list) if (!groups.includes(c.device ?? "")) groups.push(c.device ?? "");
+  const cur = list.find((c) => c.current)?.device;
+  const moving = !!chosen && multi && !!chosen.device && chosen.device !== cur;
+  const row = (c: Candidate) => {
+    const key = keyOf(c);
+    const off = !!c.blocked;
+    return (
+      <button key={key} role="radio" aria-checked={pick === key} disabled={off || c.current} class={`cand${off ? " off" : ""}${pick === key ? " on" : ""}${c.waits ? " waits" : ""}`} onClick={() => setPick(key)}>
+        <Coin harness={c.harness} size={36} off={off} />
+        <span class="grow">
+          <b>{candName(c)}</b>
+          <small>{whereCandReason(c) || candReason(c)}</small>
+        </span>
+        {c.current && <small class="now">{t("who.now")}</small>}
+      </button>
+    );
+  };
+  const go = moving ? t("switch.move.go", chosen!.deviceName ?? "") : chosen ? t("who.go", candName(chosen)) : "";
   return (
     <div class="switch-list" role="radiogroup" aria-label={t("who.switch")}>
       <div class="small sub">{t(running ? "who.switch.note" : "who.switch.note.idle")}</div>
-      {list.map((c) => {
-        const key = `${c.harness}/${c.model ?? ""}`;
-        const off = !!c.blocked;
-        return (
-          <button key={key} role="radio" aria-checked={pick === key} disabled={off || c.current} class={`cand${off ? " off" : ""}${pick === key ? " on" : ""}`} onClick={() => setPick(key)}>
-            <Coin harness={c.harness} size={36} off={off} />
-            <span class="grow">
-              <b>{candName(c)}</b>
-              <small>{candReason(c)}</small>
-            </span>
-            {c.current && <small class="now">{t("who.now")}</small>}
-          </button>
-        );
-      })}
+      {multi
+        ? groups.map((g) => {
+            const dv = computerOf(g);
+            return (
+              <div key={g} class="switch-group">
+                <div class="switch-head">
+                  <b>{dv?.name ?? g}</b>
+                  {dv && <span>· {computerState(dv)}</span>}
+                </div>
+                {list.filter((c) => (c.device ?? "") === g).map(row)}
+              </div>
+            );
+          })
+        : list.map(row)}
       {free === 0 && <div class="small sub">{t("cand.none")}</div>}
+      {moving && (
+        <div class="move-lines">
+          <div class="small">{t(placeOf(task).kind === "repo" ? "switch.move.explain" : "switch.move.plain")}</div>
+          {chosen!.needsSignIn && <div class="small">{t("switch.move.signin")}</div>}
+          {chosen!.widens && <div class="small widen">{t("switch.move.widens")}</div>}
+        </div>
+      )}
       {chosen &&
         (A.switching ? (
-          <div class="small sub">{t("who.go", candName(chosen))}…</div>
+          <div class="small sub">{go}…</div>
         ) : (
-          <Btn kind="primary" label={t("who.go", candName(chosen))} about={title(task)} onClick={() => A.switchTask(task.id, chosen.harness, chosen.model, candName(chosen))} />
+          <Btn kind="primary" label={go} about={title(task)} onClick={() => A.switchTask(task.id, chosen.harness, chosen.model, candName(chosen), moving ? chosen.device : undefined)} />
         ))}
     </div>
   );

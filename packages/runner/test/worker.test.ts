@@ -2,7 +2,7 @@
 // fake WorkerLink (the socket in production is core/src/workers.ts ↔ cli/src/worker.ts).
 // OAR's scripted runtime stands in for the model. No network, no real harness.
 import { afterEach, beforeEach, expect, test } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { scriptedRuntime, type ScriptedTurn } from "@botiverse/oar/testing";
@@ -269,6 +269,55 @@ test("D157: wait for it (the default): the task keeps waiting and starts there w
   expect(core.events.some((e) => e.kind === "report")).toBe(false); // nobody else could: no question, it just waits
   w.back();
   await waitFor(() => core.tasks.get(card.taskId)?.attention === "done_claimed", "started when the MacBook woke");
+  await runner.dispose();
+});
+
+test("D157 (E3): the user moves a running task to another computer: it carries on there from its saved progress", async () => {
+  const inputs: string[] = [];
+  const w = fakeWorker(async (t) => {
+    inputs.push(t.input);
+    await t.tool("mcp__ducter__report_to_main", "{}", () => core.call("report_to_main", { state: "done", summary: "finished on vps-2" }, "tskmove01"));
+  }, { options: [] });
+  core.workers = { link: (d) => (d === "vps-2" || d === "w1" ? w.link : undefined), list: () => [] };
+  let release!: () => void;
+  const hold = new Promise<void>((r) => (release = r));
+  const port = createOarHarnessPort({
+    loadRuntime: async () =>
+      scriptedRuntime({
+        id: "claude",
+        turn: async (t) => {
+          await t.tool("mcp__ducter__checkpoint", "{}", () => core.call("checkpoint", { text: "outlined the translation" }, "tskmove01"));
+          await Promise.race([hold, new Promise((r) => t.signal.addEventListener("abort", r))]);
+        },
+      }),
+  });
+  const runner = createRunner(core, { harness: port, newId: () => "tskmove01" });
+  const card = await runner.openTask({ persona: "p1", title: "英译", brief: "translate the doc" });
+  await runner.whenStarted(card.taskId);
+  await waitFor(() => core.tasks.get(card.taskId)?.attention === "working", "working here");
+  const r = await runner.moveTask!(card.taskId, { device: "vps-2", name: "vps-2", homeName: "hel" });
+  expect(r).toEqual({ ok: true });
+  await waitFor(() => core.tasks.get(card.taskId)?.attention === "done_claimed", "done on vps-2");
+  expect(inputs[0]).toContain("The user moved this task from hel to vps-2");
+  const open = core.events.filter((e) => e.kind === "task_open").at(-1)!.body as Bodies["task_open"];
+  expect(open.place).toMatchObject({ kind: "none", device: "vps-2" });
+  const sel = core.events.filter((e) => e.kind === "body_selected").at(-1)!.body as Bodies["body_selected"];
+  expect(sel.why).toMatchObject({ kind: "you", where: { device: "vps-2", kind: "you" } });
+  release();
+  await runner.dispose();
+});
+
+test("D157: a folder never moves; a computer that can't be reached isn't a target", async () => {
+  const w = fakeWorker(() => {}, { options: [] });
+  await w.drop();
+  core.workers = { link: (d) => (d === "vps-2" ? w.link : undefined), list: () => [] };
+  const port = createOarHarnessPort({ loadRuntime: async () => scriptedRuntime({ id: "claude", turn: async (t) => t.say("ok") }) });
+  const runner = createRunner(core, { harness: port, newId: () => "tskmove02" });
+  const folder = join(dir, "notes");
+  mkdirSync(folder, { recursive: true });
+  const card = await runner.openTask({ persona: "p1", title: "整理笔记", brief: "tidy", place: { kind: "folder", device: "local", path: folder } });
+  await runner.whenStarted(card.taskId);
+  expect((await runner.moveTask!(card.taskId, { device: "vps-2", name: "vps-2" })).message).toMatch(/can't move/);
   await runner.dispose();
 });
 

@@ -1584,6 +1584,31 @@ a {
 .where-why {
   margin-top: 2px;
 }
+/* D157: who and where together: the list grouped by computer, what a move does above Go. */
+.switch-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.switch-head {
+  display: flex;
+  gap: 6px;
+  padding-top: 6px;
+  font-size: var(--sm);
+  color: var(--ink-muted);
+}
+.switch-head b {
+  color: var(--ink-soft, var(--ink));
+}
+.move-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.move-lines .widen {
+  font-weight: 800;
+  color: var(--ink);
+}
 /* A pending ask over the task's composer (D152). */
 .ask-dock {
   padding: 8px 16px 0;

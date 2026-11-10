@@ -648,3 +648,17 @@ Codex first, once OAR is near 1.0. See `research/17`.
   signed Ducter.app against a real server: the LaunchAgent loads, survives logout/login and a
   crash, the Mac appears on hel with its agents and repos, a task runs there, and off revokes it.
   Trigger: the next release candidate.
+
+## Harness engineering (research/48, 2026-11-10)
+
+- [ ] **Live re-verify Claude Code 2.1.322 and pi 1.5.1** (D135 checks: compaction point with
+      `--debug-file`, window knob, 1M switch) on a scratch login with haiku; widen `verified` only
+      if they pass. The 2.1.322 binary's compaction code changed shape (INFERRED). Trigger: now.
+- [ ] **The partner eval after D157**: add W1–W6 (needs / where), `rule_save`, connections and
+      browser-place scenarios; run haiku and sonnet once. Trigger: before the next persona change.
+- [ ] **One secret detector for the brief** (research/48 F7, decision §4.1). Trigger: the author's call.
+- [ ] **Tool-less one-shot sessions** (`--tools ""` for the judge and the digest writer), after one
+      measured call shows the saving (F8). Trigger: the next change to judge.ts or writer.ts.
+- [ ] **Prompt-cache hit rate**: read `cache_read` vs `cache_creation` from a day of the partner's
+      sessions (OAR usage) to replace principle 4's heuristic. Trigger: the cost-model work.
+- [ ] **Before merging D165/D166 and D168/D169**: their highs in research/48 §2 (P1, P2, M1, M2).

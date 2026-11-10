@@ -154,10 +154,15 @@ func (a *App) clientKind(cl *protocol.ReachClient) string {
 	case isCLI(cl):
 		return a.L.T("device.kind.cli")
 	case strings.Contains(p, "ios") || strings.Contains(p, "iphone"):
-		if strings.Contains(p, "safari") || strings.Contains(p, "web") {
-			return a.L.T("device.kind.iphone.safari")
+		// An iPad pairs as "iPad · Ducter" or "iPad · Safari" (the phone client's deviceName).
+		kind := "iphone"
+		if strings.HasPrefix(cl.Name, "iPad") {
+			kind = "ipad"
 		}
-		return a.L.T("device.kind.iphone.app")
+		if strings.Contains(p, "safari") || strings.Contains(p, "web") {
+			return a.L.T("device.kind." + kind + ".safari")
+		}
+		return a.L.T("device.kind." + kind + ".app")
 	case strings.Contains(p, "android"):
 		return a.L.T("device.kind.android")
 	case strings.HasPrefix(p, "darwin") || strings.Contains(p, "mac"):

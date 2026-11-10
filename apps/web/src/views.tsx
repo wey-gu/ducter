@@ -19,6 +19,7 @@ import { ProactiveChips, SourceCards } from "./accounts.tsx";
 import { FindsNote } from "./finds.tsx";
 import { appPush, disablePush, enablePush } from "./push-client.ts";
 import { inApp } from "./native.ts";
+import { useWide } from "./wide.ts";
 import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, WaitBubble, waitCaption, WaitDetails, waitLine } from "./work.tsx";
 import { BriefCard, safe, saidSince, shortGo, shortTitle, taskBlocks, TaskMeta, TimerPie, WhatItDid } from "./transcript.tsx";
 import {
@@ -52,7 +53,8 @@ import {
 } from "./store.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
-const coarse = () => matchMedia("(pointer: coarse)").matches;
+// A touch screen with no pointer beside it: an iPad with a trackpad and keyboard is not coarse.
+const coarse = () => matchMedia("(pointer: coarse)").matches && !matchMedia("(any-pointer: fine)").matches;
 
 // ---------- small pieces ----------
 
@@ -1233,22 +1235,30 @@ const Plus = () => (
   </svg>
 );
 
-function Top({ back, face = true, plus }: { back?: string; face?: boolean; plus?: boolean }) {
-  if (back)
+function Top({ back, face = true, plus, level }: { back?: string; face?: boolean; plus?: boolean; level?: string }) {
+  // D176: side by side, the conversation's own header carries the face, and On hand is already
+  // in view: its pane's header names it instead of going back to a conversation that is there.
+  const wide = useWide();
+  if (back || level)
     return (
       <header class="top">
-        <button class="back" onClick={() => (history.length > 1 && location.hash ? history.back() : A.go({ name: "conv" }))}>
-          <Back />
-          {back}
-        </button>
+        {wide && level ? (
+          <h1 class="level">{level}</h1>
+        ) : (
+          // Side by side, an opened task goes back to On hand: the conversation never left.
+          <button class="back" onClick={() => (wide ? A.go({ name: "onhand" }) : history.length > 1 && location.hash ? history.back() : A.go({ name: "conv" }))}>
+            <Back />
+            {wide ? t("nav.onhand") : back}
+          </button>
+        )}
         <span style={{ flex: 1 }} />
         {plus && (
           // 开一件事 / New task (D128): a quiet ＋, never a floating button.
-          <button class="plus" aria-label={t("newtask.button")} title={t("newtask.button")} onClick={() => A.openNewTask()}>
+          <button class="plus" aria-label={t("newtask.button")} title={`${t("newtask.button")} (⌘N)`} onClick={() => A.openNewTask()}>
             <Plus />
           </button>
         )}
-        {face && <Avatar size={40} />}
+        {face && !wide && <Avatar size={40} />}
       </header>
     );
   return (
@@ -1262,7 +1272,7 @@ function Top({ back, face = true, plus }: { back?: string; face?: boolean; plus?
           </div>
         </span>
       </button>
-      <OnHandButton />
+      {!wide && <OnHandButton />}
     </header>
   );
 }
@@ -1294,7 +1304,7 @@ function Composer({ taskId }: { taskId?: string }) {
     <div class="composer-wrap">
       {(A.held?.taskId ?? "") === (taskId ?? "") && <Held />}
       <div class="composer">
-        <AutoText id="composer" value={value} onInput={set} onEnter={submit} label={label} placeholder={taskId ? t("composer.task") : t("composer.placeholder", A.S.personaName)} />
+        <AutoText id={taskId ? "composer-task" : "composer"} value={value} onInput={set} onEnter={submit} label={label} placeholder={taskId ? t("composer.task") : t("composer.placeholder", A.S.personaName)} />
         <button class="btn accent icon send" aria-label={t("composer.send")} disabled={!value.trim()} onClick={submit}>
           <Arrow />
         </button>
@@ -1566,11 +1576,12 @@ export function OnHand() {
   const routines = A.S.routines().filter((r) => r.state === "active" || r.state === "paused");
   const nothing = !needs.length && !partnerDs.length && !working.length && !waiting.length && !done.length && !loose.length && !missed.length && !routines.length;
   const openCount = A.defaultable().length;
+  const wide = useWide();
   return (
     <>
-      <Top back={t("nav.back")} plus />
+      <Top back={t("nav.back")} plus level={t("onhand.title")} />
       <main class="scroll" style={{ gap: 16 }}>
-        <h1 class="page-title">{t("onhand.title")}</h1>
+        {!wide && <h1 class="page-title">{t("onhand.title")}</h1>}
         {nothing ? (
           <div class="calm">{t("onhand.empty", A.S.personaName)}</div>
         ) : (
@@ -1983,7 +1994,7 @@ export function TaskView({ id }: { id: string }) {
               // Didn't work (D76): try the same again, or tell it how; that opens its composer.
               <div class="btns">
                 <Btn kind="secondary" label={t("task.action.retry")} onClick={() => A.taskAction(id, "reopen")} />
-                <Btn kind="primary" label={t("task.action.tell")} onClick={() => document.getElementById("composer")?.focus()} />
+                <Btn kind="primary" label={t("task.action.tell")} onClick={() => document.getElementById("composer-task")?.focus()} />
               </div>
             ) : (
               <ResultActions task={task} inTask />

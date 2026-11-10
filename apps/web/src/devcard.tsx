@@ -57,7 +57,10 @@ export function foldClients(devices: DeviceView[], clients: Client[]): { hidden:
 function clientKind(cl: Client): string {
   const p = cl.platform.toLowerCase();
   if (isCli(cl)) return t("device.kind.cli");
-  if (p.includes("ios") || p.includes("iphone")) return t(p.includes("safari") || p.includes("web") ? "device.kind.iphone.safari" : "device.kind.iphone.app");
+  if (p.includes("ios") || p.includes("iphone")) {
+    const kind = cl.name.startsWith("iPad") ? "ipad" : "iphone"; // "iPad · Ducter" (D176)
+    return t(`device.kind.${kind}.${p.includes("safari") || p.includes("web") ? "safari" : "app"}`);
+  }
   if (p.includes("android")) return t("device.kind.android");
   if (p.startsWith("darwin") || p.includes("mac")) return t("device.kind.mac.app");
   return p ? t("device.kind.browser") : t("device.kind.other");

@@ -53,7 +53,9 @@ export function codeFromHash(hash: string): string {
 }
 
 /** A name for this phone in `ducter devices`, from what the browser says it is. */
-export function deviceName(ua = navigator.userAgent): { name: string; platform: string } {
+export function deviceName(ua = navigator.userAgent, touch = navigator.maxTouchPoints ?? 0): { name: string; platform: string } {
+  // Safari on an iPad asks for desktop pages as a Mac; no Mac has a touch screen (D176).
+  if (/Macintosh/.test(ua) && touch > 1) ua = ua.replace("Macintosh", "iPad");
   const platform = /iPhone|iPad|iPod/.test(ua) ? "ios" : /Android/.test(ua) ? "android" : /Macintosh/.test(ua) ? "macos" : "web";
   const model = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) ? "iPad" : /Android/.test(ua) ? "Android phone" : "Browser";
   if (/DucterApp\//.test(ua)) return { name: `${model} · Ducter`, platform }; // the iPhone app (apps/ios)

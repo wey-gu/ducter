@@ -40,7 +40,22 @@ if [ ! -d "$IOS/$SCHEME.xcodeproj" ]; then
   (cd "$IOS" && xcodegen generate --quiet)
 fi
 PROJECT="$IOS/$SCHEME.xcodeproj"
+
+# D176: iPhone Duo shows an app full-screen only when it is built with the iOS 27.1 SDK or later
+# (older SDKs run letterboxed there). DUCTER_XCODE=27.1 picks /Applications/Xcode_27.1.app when
+# the runner has it; a DEVELOPER_DIR set by the caller wins; otherwise the runner's default.
+if [ -z "${DEVELOPER_DIR:-}" ] && [ -n "${DUCTER_XCODE:-}" ]; then
+  if [ -d "/Applications/Xcode_$DUCTER_XCODE.app" ]; then
+    export DEVELOPER_DIR="/Applications/Xcode_$DUCTER_XCODE.app/Contents/Developer"
+  else
+    echo "::warning::Xcode $DUCTER_XCODE isn't on this runner; building with the default Xcode."
+  fi
+fi
 xcodebuild -version
+SDK="$(xcrun --sdk iphoneos --show-sdk-version 2>/dev/null || echo 0)"
+case "$SDK" in
+  2[0-6].*|27.0*) echo "::warning::iOS SDK $SDK: iPhone Duo will show the app letterboxed until it is built with the iOS 27.1 SDK or later (design/release/ios.md)." ;;
+esac
 
 set -- -project "$PROJECT" -scheme "$SCHEME" -configuration Release \
   -destination 'generic/platform=iOS' -archivePath "$WORK/$SCHEME.xcarchive" \

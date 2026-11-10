@@ -23,7 +23,7 @@ const BEARER = /\b((?:[Bb]earer|[Bb]asic|[Tt]oken)\s+)[A-Za-z0-9._~+/\-]{12,}=*/
 const URL_CRED = /(\b[a-z][a-z0-9+.\-]*:\/\/[^\s:/@]+:)[^\s@/]{3,}@/gi;
 /** A value after a field that names a secret: token=…, "api_key": "…", password: …, --token … */
 const FIELD =
-  /((?:[A-Za-z0-9]+[_\-])*(?:api[_\-]?key|apikey|access[_\-]?key|secret|token|password|passwd|pwd|credential|auth[_\-]?key|private[_\-]?key|connect[_\-]?code)(?:[_\-][A-Za-z0-9]+)*\\?["']?\s*(?:[:=]|\s)\s*\\?["']?)([^\s"'`,;<>()\[\]{}\\•]{12,})/gi;
+  /((?:[A-Za-z0-9]+[_\-])*(?:api[_\-]?key|apikey|access[_\-]?key|secret|token|password|passwd|pwd|credential|auth[_\-]?key|private[_\-]?key|connect[_\-]?code)(?:[_\-][A-Za-z0-9]+)*\\?["']?\s*(?:[:=]|\s)\s*\\?["']?)([^\s"'`,;<>()\[\]{}\\•\uE000\uE001]{12,})/gi;
 /** A PEM private key block. */
 const PEM = /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g;
 
@@ -36,18 +36,52 @@ function keyLike(v: string): boolean {
   return true;
 }
 
+/** One key found in a text: its format, its head (a prefixed key's "nmem_ct_", kept on screen; else the label before it, "Bearer ", "token="), and the key (a prefixed one with its head). */
+export interface FoundKey {
+  kind: "pem" | "prefixed" | "jwt" | "bearer" | "url" | "field";
+  head: string;
+  key: string;
+}
+
+// Each key found is first swapped for a marker (private-use characters, never in real text), so
+// a later pattern can't match inside a key already found; then each marker becomes what the
+// caller says. One scan, two callers: what renders (redact) and what reaches a task (the brief).
+const MARK = /\uE000(\d+)\uE001/g;
+
+/**
+ * Finds every key in the text and lets `hide` say what stands in its place (undefined keeps it).
+ * The one detector: `redact` (what renders, D152) and the partner's brief guard (what reaches a
+ * task, G-safety G3; research/48 F7, D174) both use it.
+ */
+export function redactWith(s: string, hide: (k: FoundKey) => string | undefined, o: { strict?: boolean } = {}): string {
+  if (!s || s.length < 8) return s;
+  const found: FoundKey[] = [];
+  const mark = (k: FoundKey) => `\uE000${found.push(k) - 1}\uE001`;
+  let out = s.replace(PEM, (m) => mark({ kind: "pem", head: "", key: m }));
+  // A known head with a digit after it is a key. strict (what reaches a task): a long tail is one
+  // too, digits or not (a screen keeps "sk-learn-preprocessing" readable; a task loses nothing by it).
+  out = out.replace(PREFIXED, (m, head: string) => (/[0-9]/.test(m.slice(head.length)) || (o.strict && m.length - head.length >= 16) ? mark({ kind: "prefixed", head, key: m }) : m));
+  out = out.replace(JWT, (m) => mark({ kind: "jwt", head: "", key: m }));
+  out = out.replace(BEARER, (m, head: string) => head + mark({ kind: "bearer", head, key: m.slice(head.length) }));
+  out = out.replace(URL_CRED, (m, head: string) => `${head}${mark({ kind: "url", head, key: m.slice(head.length, -1) })}@`);
+  // A value already found by a pattern above ("sk-ant-api03-" + its marker) keeps its head.
+  out = out.replace(FIELD, (m, head: string, v: string, at: number, all: string) => (keyLike(v) && !all.startsWith("\uE000", at + m.length) ? head + mark({ kind: "field", head, key: v }) : m));
+  if (!found.length) return s;
+  return out.replace(MARK, (_m, i: string) => {
+    const k = found[Number(i)]!;
+    const r = hide(k);
+    // Kept: the key as it was (a head outside the key, "Bearer " or "token=", is still in the text).
+    return r ?? k.key;
+  });
+}
+
 /** The text with every key in it hidden. */
 export function redact(s: string): string {
-  if (!s || s.length < 8) return s;
-  let out = s.replace(PEM, `-----BEGIN PRIVATE KEY-----${HIDDEN}-----END PRIVATE KEY-----`);
-  out = out.replace(PREFIXED, (m, head: string) => (/[0-9]/.test(m.slice(head.length)) ? head + HIDDEN : m));
-  out = out.replace(JWT, HIDDEN);
-  out = out.replace(BEARER, (_m, head: string) => head + HIDDEN);
-  out = out.replace(URL_CRED, (_m, head: string) => `${head}${HIDDEN}@`);
-  // A value already hidden by a pattern above ("sk-ant-api03-" + HIDDEN) keeps its head.
-  out = out.replace(FIELD, (m, head: string, v: string, at: number, all: string) => (keyLike(v) && !all.startsWith(HIDDEN, at + m.length) ? head + HIDDEN : m));
-  return out;
+  return redactWith(s, (k) => (k.kind === "pem" ? `-----BEGIN PRIVATE KEY-----${HIDDEN}-----END PRIVATE KEY-----` : k.kind === "prefixed" ? k.head + HIDDEN : HIDDEN));
 }
+
+/** A Nowledge Mem connect code ("nmem_ct_…"): the one key a user may hand a task on purpose (D152's scenario, D174). */
+export const isConnectCode = (k: FoundKey) => k.kind === "prefixed" && /^nmem_[a-z]{2,4}_$/.test(k.head);
 
 /** Whether the text had a key hidden in it (a client says so under it). */
 export const hasHidden = (s: string | undefined): boolean => !!s && s.includes(HIDDEN);

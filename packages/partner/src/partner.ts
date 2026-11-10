@@ -61,6 +61,7 @@ import { buildSystemPrompt } from "./persona.ts";
 import { realFs, resolvePlace, type PlaceFs } from "./place.ts";
 import { isChinese, renderHistoryLine, renderProjection, renderTime, renderTrigger, type RenderCtx } from "./render.ts";
 import { inTongue } from "../../protocol/src/say.ts";
+import { isConnectCode, redactWith } from "../../protocol/src/redact.ts";
 import type { SpineStore } from "../../protocol/src/internal.ts";
 import { autoRecall, renderRecall } from "./spine/recall.ts";
 import type { CutOptions } from "./spine/segment.ts";
@@ -250,12 +251,15 @@ const CLAIMS_CHOICE = /(选|点|按|回复?|回)\s*[「“"]?\s*(Go|Hold|好|先
 
 /**
  * Secret-shaped strings never reach a task (G-safety G3): the user's words are copied into the
- * brief verbatim, so a pasted key would land in the task's prompt, transcript and Log.
+ * brief verbatim, so a pasted key would land in the task's prompt, transcript and Log. One
+ * detector with what renders (protocol/redact.ts, D152; research/48 F7, D174), so a format the
+ * screens hide (a JWT, a bearer token, `glpat-`, `hf_`, a password in a URL, token=…) never
+ * reaches a task either. The one exception is D152's scenario: a Nowledge Mem connect code
+ * (`nmem_ct_…`) the user pasted in their own words this turn, which the task needs to connect.
  */
-const SECRET_RE =
-  /\b(sk-(?:proj-|ant-[a-z0-9]+-)?[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{40,}|xox[abprs]-[A-Za-z0-9-]{10,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35})\b|-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g;
-export function redactSecrets(text: string): string {
-  return text.replace(SECRET_RE, "[secret removed: the user pasted it in the conversation; use a placeholder and let the user fill it in]");
+const SECRET_REMOVED = "[secret removed: the user pasted it in the conversation; use a placeholder and let the user fill it in]";
+export function redactSecrets(text: string, userTexts: readonly string[] = []): string {
+  return redactWith(text, (k) => (isConnectCode(k) && userTexts.some((u) => u.includes(k.key)) ? undefined : SECRET_REMOVED), { strict: true });
 }
 
 const RESULT_PLUMBING = /分支|branch|合并|合回|合进|merge|冲突|conflict|提交|commit|\b[0-9a-f]{7,}\b|\d+\s*\/\s*\d+|\d+\s*个测试|测试(都|全)?(通过|过了)|^\s*(全部|都)(通过|过了)\s*$|\b\d+\s+tests?\b|tests? pass|\ball pass|\bpassing\b|src\/|\.ts\b|对外|outside|推送|push/i;
@@ -1265,7 +1269,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       let jobId: string;
       const userTexts = t?.userTexts ?? [];
       const place = resolvePlace(args.place, [args.brief, args.title, ...userTexts], core.tasks.list(), fs);
-      const brief = redactSecrets(withVerbatim(args.brief, userTexts));
+      const brief = redactSecrets(withVerbatim(args.brief, userTexts), userTexts);
       const note = forOriginal
         ? `Task opened. Ducter already told ${forOriginal.agent ?? forOriginal.from ?? "the agent that asked"} it is taken; don't reply to it now. When the task reports, you'll be told to send the outcome.`
         : OPENED_NOTE;
@@ -1355,7 +1359,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       // partner sent "Go：…" to the task on the user's behalf).
       if (turn?.quiet) return { ok: false, error: "The user answers this question on its card; send the task nothing and end your turn." };
       try {
-        const r = await runner.send(args.taskId, redactSecrets(args.text), args.mode);
+        const r = await runner.send(args.taskId, redactSecrets(args.text, turn?.userTexts ?? []), args.mode);
         return { ok: true, ...r };
       } catch (err) {
         return { ok: false, error: err instanceof Error ? err.message : String(err) };

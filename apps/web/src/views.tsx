@@ -13,6 +13,7 @@ import { closingWords, computerApart, computerName, computerOf, computers, compu
 import { ago, behind, cjkPad, deviceLabel, duration, firstClause, harnessName, modelName, phaseLine as phaseWords, placeLine, sameWords, splitOutcome, when } from "./format.ts";
 import { markdown } from "./markdown.ts";
 import { Coin } from "./coin.tsx";
+import { EyeShut, liveSize } from "./live.tsx";
 import { Btn, Seg, Toggle } from "./controls.tsx";
 import { deviceArt, DevicesSection } from "./devcard.tsx";
 import { ProactiveChips, SourceCards } from "./accounts.tsx";
@@ -409,16 +410,6 @@ export function DecisionCard({ d, taskId, inTask }: { d: DecisionState; taskId?:
 
 // ---------- signing in (D151) ----------
 
-/** A closed eye: what it can't see while you sign in. */
-const EyeShut = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-    <path d="M2 6.5c1.6 2 3.6 3 6 3s4.4-1 6-3M4.2 8.9 3 10.6M8 9.6v2M11.8 8.9l1.2 1.7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
-  </svg>
-);
-
-/** The size the page is shown at in the live view (CSS pixels): this screen, less the two bars. */
-const liveSize = () => ({ width: Math.min(innerWidth, 1280), height: Math.max(360, Math.min(innerHeight, 1600) - 128), scale: devicePixelRatio || 1 });
-
 /** 需要你登录一下 {site} / Sign in to {site}: what it is, who does it, and the way in. */
 export function SignInBody({ d, compact }: { d: DecisionState; compact?: boolean }) {
   const site = d.signIn!.site;
@@ -450,168 +441,6 @@ export function SignInBody({ d, compact }: { d: DecisionState; compact?: boolean
   );
 }
 
-/**
- * The live view of Ducter's browser (D151): the page as the server's browser paints it, your
- * taps and keys going straight into it. Over everything, until 好了 / Done or 先不登了 / Not now.
- * Nothing here is kept: frames are shown and dropped.
- */
-/** Whose browser it is: what the server said when it opened, else (still opening) the home's. */
-export function liveDevice(lv: NonNullable<typeof A.live>): string {
-  return lv.browser?.device || A.homeName || t("live.where");
-}
-
-export function LiveView() {
-  const lv = A.live;
-  const img = useRef<HTMLImageElement>(null);
-  const keys = useRef<HTMLInputElement>(null);
-  const touch = useRef<{ x: number; y: number; lastY: number; moved: boolean } | undefined>(undefined);
-  const composing = useRef(false);
-  useEffect(() => {
-    if (!lv) return;
-    const onResize = () => A.liveInput({ kind: "resize", ...liveSize() });
-    addEventListener("resize", onResize);
-    return () => removeEventListener("resize", onResize);
-  }, [!!lv]);
-  if (!lv) return null;
-  const at = (e: { clientX: number; clientY: number }) => {
-    const r = img.current!.getBoundingClientRect();
-    return { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height };
-  };
-  const focusKeys = () => keys.current?.focus({ preventScroll: true });
-  const SPECIAL: Record<string, import("@ducter/protocol").LiveKey> = {
-    Enter: "Enter", Tab: "Tab", Backspace: "Backspace", Delete: "Delete", Escape: "Escape", ArrowUp: "ArrowUp", ArrowDown: "ArrowDown", ArrowLeft: "ArrowLeft", ArrowRight: "ArrowRight", Home: "Home", End: "End", PageUp: "PageUp", PageDown: "PageDown",
-  };
-  const host = (() => {
-    try {
-      return new URL(lv.url ?? "").hostname.replace(/^www\./, "") || lv.site;
-    } catch {
-      return lv.site;
-    }
-  })();
-  return (
-    <div class="live" role="dialog" aria-modal="true" aria-label={lv.try ? t("web.try") : t("signin.title", lv.site)}>
-      <div class="live-top">
-        <button class="btn text sm" aria-label={t("live.back")} onClick={() => A.liveInput({ kind: "nav", action: "back" })}>
-          <Back />
-        </button>
-        <div class="live-where">
-          <div class="live-host">{host}</div>
-          {/* Whose browser this is, and that the partner is blind while you're in it; for Try it,
-              which browser on which machine (D154). */}
-          <div class="live-sub">
-            {lv.try && lv.browser ? (
-              <span>{t("live.try.where", liveDevice(lv), `${lv.browser.name}${lv.browser.version ? ` ${lv.browser.version.split(".")[0]}` : ""}`)}</span>
-            ) : (
-              <>
-                <EyeShut />
-                <span>
-                  {t("live.where")} · {t("live.blind")}
-                </span>
-              </>
-            )}
-          </div>
-        </div>
-        <button class="btn text sm" onClick={() => A.liveInput({ kind: "nav", action: "reload" })}>
-          <span class="lbl">{t("live.reload")}</span>
-        </button>
-      </div>
-      <div class="live-page" onClick={focusKeys}>
-        {lv.src ? (
-          <img
-            ref={img}
-            src={lv.src}
-            alt={lv.title ?? host}
-            draggable={false}
-            onLoad={() => lv.seq != null && A.liveShown(lv.seq)}
-            onContextMenu={(e) => e.preventDefault()}
-            onPointerDown={(e) => {
-              e.preventDefault();
-              if (e.pointerType === "touch") return void (touch.current = { x: e.clientX, y: e.clientY, lastY: e.clientY, moved: false });
-              A.liveInput({ kind: "mouse", type: "down", ...at(e), button: e.button === 2 ? "right" : "left" });
-              focusKeys();
-            }}
-            onPointerMove={(e) => {
-              const tc = touch.current;
-              if (tc) {
-                if (Math.abs(e.clientY - tc.y) > 8 || Math.abs(e.clientX - tc.x) > 8) tc.moved = true;
-                if (tc.moved) {
-                  const r = img.current!.getBoundingClientRect();
-                  const scale = (lv.h ?? r.height) / r.height;
-                  A.liveInput({ kind: "wheel", ...at(e), dx: 0, dy: (tc.lastY - e.clientY) * scale });
-                  tc.lastY = e.clientY;
-                }
-                return;
-              }
-              if (e.buttons) A.liveInput({ kind: "mouse", type: "move", ...at(e) });
-            }}
-            onPointerUp={(e) => {
-              const tc = touch.current;
-              touch.current = undefined;
-              if (tc) {
-                if (!tc.moved) {
-                  A.liveInput({ kind: "mouse", type: "down", ...at(e) });
-                  A.liveInput({ kind: "mouse", type: "up", ...at(e) });
-                  focusKeys();
-                }
-                return;
-              }
-              A.liveInput({ kind: "mouse", type: "up", ...at(e), button: e.button === 2 ? "right" : "left" });
-            }}
-            onWheel={(e) => (e.preventDefault(), A.liveInput({ kind: "wheel", ...at(e), dx: e.deltaX, dy: e.deltaY }))}
-          />
-        ) : (
-          <div class="live-wait">
-            {lv.stuck ? (
-              <>
-                <div>{t("live.stuck", liveDevice(lv))}</div>
-                <Btn kind="secondary" size="sm" label={t("live.retry")} about={lv.site} onClick={() => A.retryLive()} />
-              </>
-            ) : (
-              t("live.opening", lv.site)
-            )}
-          </div>
-        )}
-        {/* What you type goes straight to the page, a key or a word at a time; nothing is kept here. */}
-        <input
-          ref={keys}
-          class="live-keys"
-          aria-label={t("live.keyboard")}
-          autoComplete="off"
-          autoCapitalize="off"
-          spellcheck={false}
-          onCompositionStart={() => (composing.current = true)}
-          onCompositionEnd={(e) => {
-            composing.current = false;
-            const v = (e.currentTarget as HTMLInputElement).value;
-            if (v) A.liveInput({ kind: "text", text: v });
-            (e.currentTarget as HTMLInputElement).value = "";
-          }}
-          onInput={(e) => {
-            if (composing.current) return;
-            const el = e.currentTarget as HTMLInputElement;
-            if (el.value) A.liveInput({ kind: "text", text: el.value });
-            el.value = "";
-          }}
-          onKeyDown={(e) => {
-            if (composing.current) return;
-            const k = SPECIAL[e.key];
-            if (k) {
-              e.preventDefault();
-              A.liveInput({ kind: "key", key: k, ...(e.shiftKey ? { shift: true } : {}) });
-            }
-          }}
-        />
-      </div>
-      <div class="live-bottom">
-        {lv.try && <div class="live-note">{t("live.try.note", liveDevice(lv))}</div>}
-        <div class="btns">
-          {!lv.try && <Btn kind="secondary" label={t("live.notnow")} onClick={() => A.closeLive(false)} />}
-          <Btn kind="primary" label={t("live.done")} onClick={() => A.closeLive(true)} />
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ---------- tasks in the conversation ----------
 
@@ -1961,6 +1790,8 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
   const br = browsing(task);
   // Only a browser's place or a wait is said here: the agent's words are the transcript's, said once (D152).
   const detail = !finished(task) ? (br && browsingLine(br)) || "" : "";
+  // D190: it holds Ducter's own browser (not the user's Chrome): its tab can be watched.
+  const watchable = !finished(task) && !!A.S.onHand?.tasks.find((c) => c.taskId === id)?.browsing;
   const [headline, lede] = finished(task) && r ? splitOutcome(safe(r.summary)) : ["", ""];
   const blocks = taskBlocks(task);
   // Waiting on you with nothing to answer (its turn ended on a question in its own words, or a
@@ -1994,7 +1825,13 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
           </div>
           {headline && <p class="headline">{headline}</p>}
         </div>
-        {detail && <div class="outcome"><div class="said">{safe(detail)}</div></div>}
+        {(detail || watchable) && (
+          <div class={`outcome${watchable ? " watch-row" : ""}`}>
+            {detail && <div class="said">{safe(detail)}</div>}
+            {/* D190: the page it is working on, live, from here. */}
+            {watchable && <Btn kind="secondary" size="sm" label={t("live.watch.title")} about={safe(title(task))} onClick={() => A.watchLive(id, liveSize())} />}
+          </div>
+        )}
         {yourTurn && <div class="small sub">{t("task.your.turn.hint")}</div>}
         {A.switchFor === id && <SwitchList task={task} />}
         {finished(task) && (

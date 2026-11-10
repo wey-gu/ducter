@@ -1,5 +1,6 @@
 // The phone app's state and actions (the views read it and call these). One store, one socket.
 import type { AgentReason, MemPluginReason, BrainNow, Candidate, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, MemView, OoDetect, Reach, RuleView, ServerFrame, Settings, SettingsPatch, UpdateReason } from "@ducter/protocol";
+import { WATCH_LIVE } from "@ducter/protocol";
 import { Api, Connection, deviceName, type ConnStatus, type Me, wsUrl } from "./conn.ts";
 import { detectLang, langOfText, strings, type Handheld, type Lang, type Strings } from "./i18n.ts";
 import { pushState, type PushState } from "./push-client.ts";
@@ -162,6 +163,18 @@ class AppState {
     /** No page LIVE_STUCK_MS after it was asked for: the view says so, with 再试一次. */
     stuck?: boolean;
     size: { width: number; height: number; scale?: number };
+    /** D190: 看它上网 / Watch it browse: the task whose tab this is. */
+    watch?: boolean;
+    taskId?: string;
+    task?: import("@ducter/protocol").LiveTask;
+    /** Try it on this computer (a device id); absent = the home's. */
+    device?: string;
+    /** Whose turn it is, and whether this window holds the user's. */
+    turn?: import("@ducter/protocol").LiveTurn;
+    here?: boolean;
+    /** What the task just did (the watcher's line), and when it came. */
+    doing?: import("@ducter/protocol").LiveDoing;
+    doingAt?: number;
   };
   status: ConnStatus = "connecting";
   me?: Me;
@@ -251,7 +264,7 @@ class AppState {
       this.route = { name: "conv" };
       this.conn?.rehello();
     }
-    if (f.t === "live" || f.t === "live_frame") return this.liveFrame(f);
+    if (f.t === "live" || f.t === "live_frame" || f.t === "live_turn" || f.t === "live_doing") return this.liveFrame(f);
     if (f.t === "browser_sites") {
       if (f.ok === false && f.message) this.toast(f.message);
       return void ((this.sites = f), this.changed());
@@ -827,30 +840,69 @@ class AppState {
   }
 
   /** D151: open the live view of Ducter's browser for a sign-in card, sized to this screen. */
-  openLive(decisionId: string, site: string, size: { width: number; height: number; scale?: number }, tryIt = false) {
+  openLive(decisionId: string, site: string, size: { width: number; height: number; scale?: number }, tryIt = false, device?: string) {
     // D154: Try it is the same view on a harmless page, with no card behind it.
-    const lv: NonNullable<AppState["live"]> = { decisionId, site, state: "opening", size, ...(tryIt ? { try: true } : {}) };
+    const lv: NonNullable<AppState["live"]> = { decisionId, site, state: "opening", size, ...(tryIt ? { try: true } : {}), ...(device ? { device } : {}) };
     this.live = lv;
     // The server gives up on its own steps well before (a launch 20 s, each step 15 s).
     setTimeout(() => {
       if (this.live === lv && !lv.src) (lv.stuck = true), this.changed();
     }, LIVE_STUCK_MS);
-    this.send({ t: "live_open", decisionId, width: Math.round(size.width), height: Math.round(size.height), ...(size.scale ? { scale: size.scale } : {}), ...(tryIt ? { try: true } : {}) });
+    this.send({ t: "live_open", decisionId, width: Math.round(size.width), height: Math.round(size.height), ...(size.scale ? { scale: size.scale } : {}), ...(tryIt ? { try: true } : {}), ...(device ? { device } : {}) });
     haptic("light");
     this.changed();
+  }
+
+  /** D190, 看它上网 / Watch it browse: the tab this task is working in, live, in its turn. */
+  watchLive(taskId: string, size: { width: number; height: number; scale?: number }) {
+    const card = this.S.onHand?.tasks.find((c) => c.taskId === taskId);
+    const lv: NonNullable<AppState["live"]> = { decisionId: WATCH_LIVE, site: "", state: "opening", size, watch: true, taskId, turn: "agent", ...(card ? { task: { title: card.title, harness: card.harness } } : {}) };
+    this.live = lv;
+    setTimeout(() => {
+      if (this.live === lv && lv.state === "opening") (lv.stuck = true), this.changed();
+    }, LIVE_STUCK_MS);
+    this.send({ t: "live_open", decisionId: WATCH_LIVE, taskId, width: Math.round(size.width), height: Math.round(size.height), ...(size.scale ? { scale: size.scale } : {}) });
+    haptic("light");
+    this.changed();
+  }
+
+  /** D190: 换我来 / My turn, or 还给它 / Hand it back. */
+  liveTurn(mine: boolean) {
+    if (!this.live?.id) return;
+    this.send({ t: "live_turn", id: this.live.id, mine });
+    haptic(mine ? "light" : "success");
+  }
+
+  /** D190: out of sight (the app in the background), no frames; back, they come again. */
+  livePause(paused: boolean) {
+    if (this.live?.id) this.send({ t: "live_pause", id: this.live.id, paused });
   }
 
   /** 再试一次 after the view got stuck: the same open again. */
   retryLive() {
     const lv = this.live;
-    if (lv) this.openLive(lv.decisionId, lv.site, lv.size, !!lv.try);
+    if (lv?.watch && lv.taskId) this.watchLive(lv.taskId, lv.size);
+    else if (lv) this.openLive(lv.decisionId, lv.site, lv.size, !!lv.try, lv.device);
   }
 
-  liveFrame(f: Extract<ServerFrame, { t: "live" | "live_frame" }>) {
+  liveFrame(f: Extract<ServerFrame, { t: "live" | "live_frame" | "live_turn" | "live_doing" }>) {
     const lv = this.live;
+    if (f.t === "live_turn") {
+      if (!lv || lv.id !== f.id) return;
+      lv.turn = f.turn;
+      lv.here = f.here;
+      if (f.turn === "you") lv.doing = undefined;
+      return this.changed();
+    }
+    if (f.t === "live_doing") {
+      if (!lv || lv.id !== f.id) return;
+      lv.doing = f.doing ?? undefined;
+      lv.doingAt = Date.now();
+      return this.changed();
+    }
     if (f.t === "live") {
       if (!lv || lv.decisionId !== f.decisionId) return;
-      if (f.state === "open") Object.assign(lv, { id: f.id, state: "open", url: f.url, title: f.title, w: f.width, h: f.height, ...(f.browser ? { browser: f.browser } : {}) });
+      if (f.state === "open") Object.assign(lv, { id: f.id, state: "open", url: f.url, title: f.title, w: f.width, h: f.height, ...(f.browser ? { browser: f.browser } : {}), ...(f.turn ? { turn: f.turn, here: !!f.here } : {}), ...(f.task ? { task: f.task } : {}) });
       else {
         // Done answers the card; anything else just closes the view (the card stays).
         if (f.reason === "failed" && f.message) this.toast(this.L.t("live.failed", f.message));

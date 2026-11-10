@@ -16,12 +16,14 @@ import type { CoreMcpHub } from "../mcp.ts";
 import type { BrowserHost } from "./host.ts";
 import { isKey, pressKey } from "./keys.ts";
 import { focusExpression, locateExpression, narrow, readExpression } from "./reader.ts";
+import type { BrowserNotes } from "./notes.ts";
 
 const READ_CHARS = 16_000;
 const OPEN_LINES = 120;
 
+// D190: one rule for both of the user's turns (signing in, and 换我来 / My turn).
 export const BLIND =
-  "The user is in Ducter's browser right now, signing in. You can't see or use the browser until they're done. End your turn now; a message arrives when they finish.";
+  "It's the user's turn in Ducter's browser: they're using it themselves right now (signing in, or they took it over). You can't see or use the browser until they're done. End your turn now; a message arrives when they hand it back.";
 
 export const BROWSER_TOOL_NAMES = [
   "browser_open",
@@ -111,17 +113,23 @@ export interface BrowserToolsDeps {
   host: BrowserHost;
   log: LogStore;
   tasks: TaskRegistry & { get(id: string): { persona?: string; residency?: string } | undefined };
+  /** D190: each step, for whoever watches the task's tab. */
+  notes?: BrowserNotes;
 }
 
 export function registerBrowserTools(d: BrowserToolsDeps): void {
   const { mcp, host } = d;
+  const note = (taskId: string, doing: Parameters<BrowserNotes["note"]>[1]) => d.notes?.note(taskId, doing);
   const visible = (ctx: { taskId?: string }) => !!ctx.taskId && !!host.task(ctx.taskId);
 
   /** The task's browser, refusing while the user is in it. */
   const mine = (ctx: { taskId?: string }) => {
     const t = ctx.taskId ? host.task(ctx.taskId) : undefined;
     if (!t) throw new Error("this task has no browser of Ducter's");
-    if (host.blind(t.profile)) throw new Error(BLIND);
+    if (host.blind(t.profile)) {
+      note(t.taskId, { kind: "waiting" }); // D190: it is told on hand-back what changed
+      throw new Error(BLIND);
+    }
     host.touch(t.profile);
     return t;
   };
@@ -147,6 +155,7 @@ export function registerBrowserTools(d: BrowserToolsDeps): void {
     { type: "object", properties: { url: { type: "string" }, new_tab: { type: "boolean", description: "Open it in a new tab of yours instead of the current one." } }, required: ["url"] },
     async (args, taskId) => {
       const url = pageUrl(args.url);
+      note(taskId, { kind: "open", host: hostOf(url) ?? "" });
       const send = args.new_tab ? await (async () => {
         const { b, sessionId } = await host.newTab(taskId);
         return ((m: string, p: object = {}) => b.cdp.send(m, p, sessionId)) as Send;
@@ -163,7 +172,11 @@ export function registerBrowserTools(d: BrowserToolsDeps): void {
     "browser_read",
     "Read the current page as text. Pass `query` (a few words) to get only the parts about it. Numbers in [brackets] are what you can click or type into.",
     { type: "object", properties: { query: { type: "string" } } },
-    async (args, taskId) => formatRead(await readPage(await page(taskId)), typeof args.query === "string" ? args.query : undefined),
+    async (args, taskId) => {
+      const send = await page(taskId);
+      note(taskId, { kind: "read" });
+      return formatRead(await readPage(send), typeof args.query === "string" ? args.query : undefined);
+    },
   );
 
   const locate = async (send: Send, ref: unknown) => {
@@ -171,8 +184,14 @@ export function registerBrowserTools(d: BrowserToolsDeps): void {
     if (!Number.isInteger(n) || n < 1) throw new Error("ref must be a number from the last browser_read");
     const at = await evaluate(send, locateExpression(n));
     if (!at) throw new Error(`there is no [${n}] on the page now: browser_read again (numbers change when the page does)`);
-    return { n, ...(at as { x: number; y: number; secret: boolean; field: boolean }) };
+    return { n, ...(at as { x: number; y: number; secret: boolean; field: boolean; label?: string; vw?: number; vh?: number }) };
   };
+
+  /** D190: where on the page a step lands (fractions of the viewport) and the element's own words. */
+  const where = (at: { x: number; y: number; label?: string; vw?: number; vh?: number; secret?: boolean }) => ({
+    ...(at.vw && at.vh ? { x: Math.min(1, Math.max(0, at.x / at.vw)), y: Math.min(1, Math.max(0, at.y / at.vh)) } : {}),
+    ...(at.label && !at.secret ? { label: at.label } : {}),
+  });
 
   reg(
     "browser_click",
@@ -181,6 +200,7 @@ export function registerBrowserTools(d: BrowserToolsDeps): void {
     async (args, taskId) => {
       const send = await page(taskId);
       const at = await locate(send, args.ref);
+      note(taskId, { kind: "click", ...where(at) });
       for (const type of ["mouseMoved", "mousePressed", "mouseReleased"])
         await send("Input.dispatchMouseEvent", { type, x: at.x, y: at.y, button: type === "mouseMoved" ? "none" : "left", clickCount: 1 });
       await Bun.sleep(300);
@@ -201,6 +221,7 @@ export function registerBrowserTools(d: BrowserToolsDeps): void {
         throw new Error(
           `[${at.n}] is a password or one-time-code field. Signing in is the user's: call browser_ask_sign_in with the site, and end your turn.`,
         );
+      note(taskId, { kind: "type", ...where(at) });
       await evaluate(send, focusExpression(at.n, !args.append));
       await send("Input.insertText", { text: String(args.text ?? "") });
       if (args.submit) {
@@ -218,6 +239,7 @@ export function registerBrowserTools(d: BrowserToolsDeps): void {
     async (args, taskId) => {
       if (!isKey(args.key)) throw new Error(`unknown key ${args.key}`);
       const send = await page(taskId);
+      note(taskId, { kind: "press", key: args.key });
       await pressKey(send, args.key);
       await Bun.sleep(200);
       return `Pressed ${args.key}.`;
@@ -232,6 +254,7 @@ export function registerBrowserTools(d: BrowserToolsDeps): void {
       const send = await page(taskId);
       const vp = (await evaluate(send, "({ w: innerWidth, h: innerHeight })")) ?? { w: 1280, h: 800 };
       const screens = Math.max(0.25, Math.min(10, Number(args.screens) || 1));
+      note(taskId, { kind: "scroll" });
       const dy = (args.direction === "up" ? -1 : 1) * vp.h * 0.85 * screens;
       await send("Input.dispatchMouseEvent", { type: "mouseWheel", x: vp.w / 2, y: vp.h / 2, deltaX: 0, deltaY: dy });
       await Bun.sleep(300);
@@ -244,6 +267,7 @@ export function registerBrowserTools(d: BrowserToolsDeps): void {
     const h = await send("Page.getNavigationHistory");
     const prev = h?.entries?.[h.currentIndex - 1];
     if (!prev) return "There is no page to go back to.";
+    note(taskId, { kind: "back", host: hostOf(prev.url) ?? "" });
     await send("Page.navigateToHistoryEntry", { entryId: prev.id });
     await settle(send, 8_000);
     return `Back on ${prev.title || prev.url}.`;
@@ -265,6 +289,7 @@ export function registerBrowserTools(d: BrowserToolsDeps): void {
         const id = t.tabs[Number(args.switch_to) - 1];
         if (!id) throw new Error(`no tab ${args.switch_to}`);
         t.current = id;
+        note(taskId, { kind: "tab" });
         return `Now in tab ${args.switch_to}.\n${rows.join("\n")}`;
       }
       return rows.length ? rows.join("\n") : "No tabs yet: browser_open a page.";
@@ -278,6 +303,7 @@ export function registerBrowserTools(d: BrowserToolsDeps): void {
     async (args, taskId) => {
       const t = host.task(taskId)!;
       const send = await page(taskId);
+      note(taskId, { kind: "shot" });
       const shot = await send("Page.captureScreenshot", { format: "png" });
       const name = String(args.name ?? "page").replace(/[^A-Za-z0-9_-]+/g, "-").slice(0, 40) || "page";
       mkdirSync(t.evidenceDir, { recursive: true });

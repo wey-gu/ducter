@@ -1,6 +1,6 @@
 // Client WebSocket protocol (ClientFrame / ServerFrame) over Bun's built-in WS.
 import { brainNow } from "./brain.ts";
-import { harnessName, isHarnessId, TRY_LIVE } from "@ducter/protocol";
+import { harnessName, isHarnessId, TRY_LIVE, WATCH_LIVE } from "@ducter/protocol";
 import type { ServerWebSocket } from "bun";
 import type { Bodies, ClientFrame, ClientKind, Delivery, LogEvent, OoApp, PartnerActivity, Place, ServerFrame, UndoConfirm } from "@ducter/protocol";
 import type { NewTaskInput, NewTaskResult } from "./newtask.ts";
@@ -707,11 +707,15 @@ export function createWsHandler(deps: WsDeps) {
       case "live_open":
       case "live_input":
       case "live_ack":
-      case "live_close": {
+      case "live_close":
+      case "live_turn":
+      case "live_pause": {
         const b = deps.browser;
         // A view that can't open says so in its own frame (the client closes it with the
         // reason), never only as a generic error that leaves it at "Opening…".
-        const refuse = (message: string) => f.t === "live_open" && send(ws, { t: "live", id: "", decisionId: f.try ? TRY_LIVE : String(f.decisionId ?? ""), state: "closed", reason: "failed", message });
+        const refuse = (message: string) => f.t === "live_open" && send(ws, { t: "live", id: "", decisionId: f.try ? TRY_LIVE : f.taskId ? WATCH_LIVE : String(f.decisionId ?? ""), state: "closed", reason: "failed", message });
+        // D190: frames of a page are for the user's own apps, never a CLI.
+        if (f.t === "live_open" && ws.data.client === "cli") return void refuse("the browser shows in the Mac app or the phone");
         if (!b) {
           if (f.t === "live_open") return void refuse("Ducter's browser isn't available here");
           throw new Error("Ducter's browser isn't available here");
@@ -721,13 +725,16 @@ export function createWsHandler(deps: WsDeps) {
         const size = f.t === "live_open" ? { ...(f.width ? { width: f.width } : {}), ...(f.height ? { height: f.height } : {}), ...(f.scale ? { scale: f.scale } : {}) } : undefined;
         if (f.t === "live_open") {
           try {
-            if (f.try) await b.live.tryIt(sink, size);
+            if (f.try) await b.live.tryIt(sink, size, typeof f.device === "string" ? f.device : undefined);
+            else if (typeof f.taskId === "string" && f.taskId) await b.live.watch(sink, f.taskId, size);
             else await b.live.open(sink, String(f.decisionId ?? ""), size);
           } catch (e) {
             refuse((e as Error).message);
           }
         } else if (f.t === "live_input") await b.live.input(sink, String(f.id ?? ""), f.input);
         else if (f.t === "live_ack") b.live.ack(sink, String(f.id ?? ""), Number(f.seq));
+        else if (f.t === "live_turn") await b.live.turn(sink, String(f.id ?? ""), !!f.mine);
+        else if (f.t === "live_pause") await b.live.pause(sink, String(f.id ?? ""), !!f.paused);
         else await b.live.close(sink, String(f.id ?? ""), !!f.done);
         return;
       }

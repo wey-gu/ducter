@@ -4,7 +4,7 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync
 import { homedir, hostname as osHostname } from "node:os";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
-import type { Bodies, LogEvent, Place } from "@ducter/protocol";
+import type { Bodies, LogEvent, OnHand, Place } from "@ducter/protocol";
 import type { CoreApi, Partner, Runner } from "@ducter/protocol/src/internal.ts";
 import { migrateKeys, readKeys, scrubKeysFromEnv } from "@ducter/protocol/src/keys.ts";
 import { realClock, type Clock } from "./clock.ts";
@@ -266,7 +266,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D128: what each repo task changed (cached counts), for On hand by project.
   let onHandChanged = () => {};
   const changes = createChanges({ log, tasks, runner: () => runner, onChange: () => onHandChanged() });
-  tasks.setDecorator((o) => changes.decorate(work.decorate(o)));
+  let decorateBrowsing = (o: OnHand) => o; // D190: set once Ducter's browser is made (below)
+  tasks.setDecorator((o) => decorateBrowsing(changes.decorate(work.decorate(o))));
   if (opts.work?.judge) work.setJudge(opts.work.judge);
 
   let proactiveRef: Proactive | undefined;
@@ -288,7 +289,8 @@ export function startCore(opts: CoreOptions = {}): Core {
   const browser =
     opts.browser === false
       ? undefined
-      : createDucterBrowser({ dataDir, mcp, log, tasks, decisions, persona: persona.id, device: () => opts.update?.homeName ?? osHostname().replace(/\.local$/, ""), ...(opts.platform ? { platform: opts.platform } : {}), lang: () => (settings.get().language === "zh" ? "zh-CN" : "en-US"), workers: () => workersRef, workerBrowserVersion: (id) => workersRef?.online().find((w) => w.deviceId === id)?.hello?.abilities?.find((a) => a.id === "web")?.detail, ...(opts.browser ?? {}) });
+      : createDucterBrowser({ dataDir, mcp, log, tasks, decisions, persona: persona.id, device: () => opts.update?.homeName ?? osHostname().replace(/\.local$/, ""), ...(opts.platform ? { platform: opts.platform } : {}), lang: () => (settings.get().language === "zh" ? "zh-CN" : "en-US"), workers: () => workersRef, workerBrowserVersion: (id) => workersRef?.online().find((w) => w.deviceId === id)?.hello?.abilities?.find((a) => a.id === "web")?.detail, tell: (taskId, text) => runner?.send(taskId, text, undefined, "user").catch((e) => console.warn(`[core] couldn't tell ${taskId} the browser is back:`, (e as Error).message)), ...(opts.browser ?? {}) });
+  if (browser) decorateBrowsing = (o) => browser.decorate(o);
   let devicesView: DevicesView | undefined;
   // D157: the sites Ducter's own browser on each computer is signed in to (the ranking prefers the
   // computer where the user already signed in, over their Chrome: least access that does the job).

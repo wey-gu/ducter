@@ -230,6 +230,15 @@ func main() {
 		})
 		app.Win = win
 		app.Desktop = desktop{win}
+		// D198: 打开 / Open on an opened task: Finder, Terminal, and the editors found here.
+		app.OpenFolder = local.OpenFolder
+		go func() {
+			var eds []views.Editor
+			for _, e := range local.InstalledEditors() {
+				eds = append(eds, views.Editor{Name: e.Name, App: e.App})
+			}
+			win.Update(func() { app.Editors = eds })
+		}()
 		// D186: 加一个文件夹 asks macOS for a folder (a sheet on the window).
 		app.PickFolder = func(title, button string) (string, error) {
 			paths, err := mygo.Dialog.Open(mygo.OpenDialogOptions{Parent: win, Title: title, Message: title, ButtonLabel: button, Directory: true, CreateDirectories: true})

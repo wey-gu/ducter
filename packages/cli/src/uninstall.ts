@@ -149,6 +149,20 @@ export function dataDirIsOurs(dataDir: string, home: string): boolean {
   return basename(d) === ".ducter" || existsSync(join(d, "ducter.db")) || existsSync(join(d, "persona.json"));
 }
 
+/**
+ * The worktrees in <dataDir>/worktrees: <taskId> before D198, <repo>/<branch slug> since. A
+ * folder with a `.git` is one; any other folder is a repo's, and its folders are looked at.
+ */
+export function ducterWorktrees(root: string): string[] {
+  const dirs = (d: string) => readdirSync(d).map((n) => join(d, n)).filter((p) => statSync(p).isDirectory());
+  const out: string[] = [];
+  for (const d of dirs(root)) {
+    if (existsSync(join(d, ".git"))) out.push(d);
+    else for (const w of dirs(d)) if (existsSync(join(w, ".git"))) out.push(w);
+  }
+  return out;
+}
+
 /** The repo a worktree belongs to, from its `.git` file (`gitdir: <repo>/.git/worktrees/<name>`). */
 export function worktreeRepo(wt: string): string | null {
   try {
@@ -267,7 +281,7 @@ export function planUninstall(i: PlanInput): Plan {
         const wtRoot = join(i.dataDir, "worktrees");
         let wts: string[] = [];
         try {
-          wts = readdirSync(wtRoot).map((n) => join(wtRoot, n)).filter((p) => statSync(p).isDirectory());
+          wts = ducterWorktrees(wtRoot);
         } catch {}
         for (const wt of wts) {
           const repo = worktreeRepo(wt);

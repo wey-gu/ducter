@@ -45,6 +45,7 @@
 | checkpoint | **保存了进度 · {time} / Progress saved · {time}**; in the dossier **保存的进度 / Saved progress** | Describes what happened; no noun to learn |
 | handoff | **换到 X 接着做 / Continue on X** | Never "superseded" in UI |
 | pause | **先停 / Pause** | Shown as a waiting reason |
+| opening a task's working copy by hand (D198) | **打开 / Open** · **在 Finder 中显示 / Show in Finder** · **在终端打开 / Open in Terminal** · **用 {editor} 打开 / Open in {editor}** · **没能打开：{why} / Couldn't open it: {why}** | Mac app only, and only while the working copy (a repo task's worktree, a folder task's folder) is on this Mac; the words are macOS's own. The path above the changes is the 工作副本 / working copy, said by its accessible name only |
 | Recipe | **准备步骤 / Setup steps** | |
 | a non-git folder's changes | **改回去 / Undo all changes** · **就这样 / Keep the changes** · **改回这个 / Undo this** · **随时能改回去，留到 {date} / You can undo this until {date}** | D142; the copy behind it is never named |
 | routine fields | **{date} 再问你 / Ask you again {date}** (review date) · **可以碰 / May touch** (also on every task, D61) | |
@@ -221,8 +222,10 @@ Every task shows two editable things on its card and header.
   once per repo.
 
 *Worktrees*
-- A task whose brief says it will **write** gets a worktree **at start**, in
-  `~/.ducter/worktrees`. The agent names the branch `ducter/<slug>` on its first turn.
+- A task whose brief says it will **write** gets a worktree **at start**, at
+  `~/.ducter/worktrees/<repo>/<slug>`, named like its branch `ducter/<slug>` (D198), so Finder
+  and an editor's recent list say which task it is. On the Mac, the opened task shows the path
+  and **打开 / Open** takes the user there by hand.
 - A **read-only** task reads the main checkout, including uncommitted changes, and never
   gets a worktree.
 - In a **multi-repo** task, the repos marked writable get worktrees at start; the others are

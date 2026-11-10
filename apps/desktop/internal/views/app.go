@@ -234,6 +234,13 @@ type App struct {
 	// PickFolder asks macOS for a folder (D186: it becomes a project);
 	// "" when the person cancels. nil hides 加一个文件夹….
 	PickFolder func(title, button string) (string, error)
+	// Editors are the code editors on this Mac, the one used last first;
+	// OpenFolder opens a task's working copy here: "finder" shows it in
+	// Finder, "terminal" opens Terminal there, else an Editor's App opens
+	// it (D198). nil hides 打开 / Open.
+	Editors    []Editor
+	OpenFolder func(with, path string) error
+	openFailed string
 }
 
 // UndoWindow is how long a drop can be undone (D52).

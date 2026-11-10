@@ -7,7 +7,7 @@
 //
 // Writes <root>/metrics.csv, <root>/findings.json, <root>/summary.json, <root>/main.log.
 import { Database } from "bun:sqlite";
-import { appendFileSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { LogEvent, OnHand, ServerFrame, TaskCard } from "@ducter/protocol";
 import { checkAll, type DriverRecord, type Finding } from "./invariants.ts";
@@ -644,11 +644,13 @@ for (const r of REPOS) {
   if (prunable) find("worktree.prunable", `${r}: ${prunable} worktrees git calls prunable`);
 }
 // Worktrees are kept by design (no archiving yet): every repo task that started has one.
-const wtDir = join(DATA, "worktrees");
-const wts = new Set(existsSync(wtDir) ? readdirSync(wtDir) : []);
+// D198: a task's worktree is its stored path (<repo>/<slug>, or <taskId> before it).
 const repoTasks = [...rebuilt.list()].filter((c) => c.place.kind === "repo");
 const startedRepo = repoTasks.filter((c) => c.residency !== "archived");
-const missingWt = startedRepo.filter((c) => !wts.has(c.taskId));
+const missingWt = startedRepo.filter((c) => {
+  const wt = c.place.kind === "repo" ? c.place.worktree : undefined;
+  return !wt || !existsSync(wt);
+});
 if (missingWt.length) find("worktree.missing", `${missingWt.length} repo tasks without a worktree: ${missingWt.slice(0, 5).map((c) => c.taskId).join(", ")}`);
 
 // A clean restart at rest changes nothing that matters (no resend, no re-run, no new question).

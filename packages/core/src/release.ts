@@ -1,6 +1,7 @@
 // What the newest Ducter release is (D148). The home reads GitHub's releases/latest for
 // wey-gu/ducter (else the releases/latest redirect, which names the version but carries no
-// notes), at most every 6 h, and keeps the answer in <dataDir>/updates/latest.json. Offline,
+// notes), at most every hour, and keeps the answer and when it was read in
+// <dataDir>/updates/latest.json; the cards say "up to date" only with that time beside it. Offline,
 // rate-limited or refused: silent, the last answer stays. DUCTER_UPDATE_CHECK=off never asks.
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -9,7 +10,9 @@ import { bareVersion, compareVersions, isVersion } from "@ducter/protocol/src/ve
 export const REPO = "wey-gu/ducter";
 export const API_LATEST = `https://api.github.com/repos/${REPO}/releases/latest`;
 export const PAGE_LATEST = `https://github.com/${REPO}/releases/latest`;
-export const CHECK_EVERY_MS = 6 * 60 * 60_000;
+export const CHECK_EVERY_MS = 60 * 60_000;
+/** Opening Devices or Updates and about reads it again when the last answer is older than this. */
+export const FRESH_MS = 15 * 60_000;
 
 export type Fetch = (url: string, init?: RequestInit) => Promise<Response>;
 
@@ -93,10 +96,11 @@ export interface ReleaseWatch {
   /** The newest release as last read (undefined: none, or never read). */
   latest(): Release | undefined;
   checkedAt(): string | undefined;
-  /** Reads GitHub again when the last answer is older than 6 h (force: now). Never throws. */
+  /** Reads GitHub again when the last answer is older than an hour (force: now). Never throws. */
   check(force?: boolean): Promise<Release | undefined>;
   /** latest is newer than v. */
   newer(v: string): boolean;
+  /** Told after every answer (the version, or only when it was read, changed). */
   onChange(fn: () => void): () => void;
   stop(): void;
 }
@@ -136,11 +140,11 @@ export function createReleaseWatch(o: { dataDir: string; fetch?: Fetch; now?: ()
     if (!force && age < every) return saved?.release;
     inflight ??= (async () => {
       try {
-        const before = saved?.release?.version;
         const release = await fetchLatest(fetchFn, feed ? { api: feed, page: feed } : {});
         saved = { ...(release ? { release } : {}), checkedAt: new Date(now()).toISOString() };
         persist();
-        if (release?.version !== before) for (const fn of fns) queueMicrotask(fn);
+        // Every answer: the cards say when it was read ("checked just now").
+        for (const fn of fns) queueMicrotask(fn);
       } catch {
         // Offline or refused: keep what we knew; try again at the next tick.
       } finally {

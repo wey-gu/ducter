@@ -84,6 +84,9 @@ type Status struct {
 	InstallOnQuit bool
 	// CanRollBack: the version before this one is kept.
 	CanRollBack bool
+	// Installed is the version the last swap put in, when this launch is
+	// its first (Settings says "Updated to" it once).
+	Installed string
 }
 
 // Config is where the app is and what to check with.
@@ -120,6 +123,7 @@ type Updater struct {
 	busy    bool
 	saved   saved
 	pending *pending // what the next quit swaps in
+	begun   bool     // the swap is started: it runs once the app has exited
 }
 
 type saved struct {
@@ -189,6 +193,8 @@ func New(cfg Config) (*Updater, error) {
 		// never open the old app again as if it had updated.
 		if !strings.HasSuffix(res, ": installed") {
 			u.st.State, u.st.Reason, u.st.Detail = Failed, ReasonInstall, res
+		} else if strings.HasPrefix(res, "update:") {
+			u.st.Installed = info.Version
 		}
 	}
 	// A version staged by an earlier run: ready again if it is still newer
@@ -555,9 +561,29 @@ func (u *Updater) RollBackOnQuit() error {
 // the moved bundle and the new app get a second one (as mygo found).
 func (u *Updater) Quit(relaunch bool) (bool, error) {
 	u.mu.Lock()
+	begun := u.begun
+	u.mu.Unlock()
+	if begun {
+		return true, nil // Begin started it before the quit
+	}
+	return u.Begin(relaunch)
+}
+
+// Begin does Quit's work ahead of the quit, off the main thread: it checks
+// the copy again and starts the swap, which waits for this process to exit.
+// Restart to update calls it while the window says so, and quits only once
+// it has started (a copy that fails its check leaves the app open, with the
+// reason in Settings); the quit after it then has nothing left to do, so
+// nothing slow runs while the app's windows go away.
+func (u *Updater) Begin(relaunch bool) (bool, error) {
+	u.mu.Lock()
 	p := u.pending
 	st := u.st
+	begun := u.begun
 	u.mu.Unlock()
+	if begun {
+		return true, nil
+	}
 	if p == nil || st.State != Ready || !(relaunch || st.InstallOnQuit || strings.HasPrefix(p.note, "rollback")) {
 		return false, nil
 	}
@@ -594,6 +620,7 @@ func (u *Updater) Quit(relaunch bool) (bool, error) {
 	}
 	_ = cmd.Process.Release()
 	u.mu.Lock()
+	u.begun = true
 	u.saved.Staged = nil // done or not, the next launch starts clean
 	u.mu.Unlock()
 	u.save()
@@ -710,7 +737,16 @@ func sameVolume(a, b string) bool {
 }
 
 func (u *Updater) resultPath() string { return filepath.Join(u.cfg.Dir, "last-result.txt") }
-func (u *Updater) statePath() string  { return filepath.Join(u.cfg.Dir, "state.json") }
+
+func (u *Updater) statePath() string { return filepath.Join(u.cfg.Dir, "state.json") }
+
+// JustInstalled reports, before New reads it, whether the last swap in dir
+// (Config.Dir) put a version in: the swap has already restarted the
+// background LaunchAgent on the new helper, so the app need not again.
+func JustInstalled(dir string) bool {
+	b, err := os.ReadFile(filepath.Join(dir, "last-result.txt"))
+	return err == nil && strings.HasSuffix(strings.TrimSpace(string(b)), ": installed")
+}
 
 func (u *Updater) load() {
 	b, err := os.ReadFile(u.statePath())

@@ -53,7 +53,7 @@ describe("the release feed", () => {
     expect(rel).toMatchObject({ version: "0.0.4", notes: [] });
   });
 
-  test("offline: silent, the last answer stays; read again only after 6 h", async () => {
+  test("offline: silent, the last answer stays; read again only after an hour", async () => {
     const dataDir = tmp();
     let now = Date.parse("2026-11-10T10:00:00Z");
     let calls = 0;
@@ -72,7 +72,10 @@ describe("the release feed", () => {
     expect((await watch.check())?.version).toBe("0.0.4");
     expect(await watch.check()).toMatchObject({ version: "0.0.4" });
     expect(calls).toBe(1); // cached
-    now += 7 * 3600_000;
+    now += 30 * 60_000;
+    await watch.check();
+    expect(calls).toBe(1); // within the hour
+    now += 31 * 60_000;
     offline = true;
     expect((await watch.check())?.version).toBe("0.0.4");
     expect(calls).toBe(3); // the API, then the redirect

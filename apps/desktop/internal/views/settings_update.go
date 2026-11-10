@@ -6,6 +6,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 	"github.com/wey-gu/ducter/apps/desktop/internal/update"
 )
 
@@ -24,6 +25,10 @@ func (a *App) appUpdateSection(c *ui.Context) {
 	st := u.Status()
 	line, why := a.L.T("settings.update.version", firstNonEmpty(st.Current, a.versionText())), ""
 	switch st.State {
+	case update.Idle:
+		if st.Installed != "" {
+			line = a.L.T("update.installed", st.Installed)
+		}
 	case update.UpToDate:
 		line = a.L.T("update.uptodate", st.Current)
 	case update.Checking:
@@ -87,4 +92,43 @@ func (a *App) appUpdateSection(c *ui.Context) {
 			})
 		}
 	})
+}
+
+// puttingInView is the window between Restart to update and the relaunch:
+// the clay partner at work and one calm line, while the copy is checked
+// again; then the window goes away at once (lifecycle.go, runRestart).
+// Nothing in it can be clicked: there is nothing to decide.
+func (a *App) puttingInView(c *ui.Context) {
+	t := a.T
+	v := ""
+	if a.Updates != nil {
+		v = a.Updates.Status().Version
+	}
+	a.bareChrome(c)
+	ui.Column(c).Grow(1).MinHeight(0).Justify(ui.Center).AlignItems(ui.Center).Padding(8, 32, 8+ChromeH, 32).Children(func() {
+		card := ui.Column(c.Key("putting")).Width(600).MaxWidthPercent(100).Padding(t.S6, t.S7, t.S6, t.S7).Gap(t.S4).
+			Radius(t.RadiusXL).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color)
+		a.enter(c, card)
+		card.Children(func() {
+			a.setupWaiting(c, theme.Working, a.L.T("update.putting"), a.L.T("update.putting.body", v))
+		})
+	})
+}
+
+// UpdateFailed is Restart to update when the copy failed its check: back
+// from the putting-in screen to Settings' update card, which says why.
+func (a *App) UpdateFailed() {
+	a.PuttingIn = false
+	a.openTab(TabAbout)
+}
+
+// sayInstalled says once, quietly, which version the last swap put in.
+func (a *App) sayInstalled(c *ui.Context) {
+	if a.installedSaid || a.Updates == nil {
+		return
+	}
+	a.installedSaid = true
+	if v := a.Updates.Status().Installed; v != "" {
+		c.Toast(a.L.T("update.installed", v))
+	}
 }

@@ -51,6 +51,8 @@ type Options struct {
 	Token   string
 	Persona string
 	Locale  string // zh | en
+	// Version is this app's version, said in the hello ("" a dev build).
+	Version string
 	// Cursor returns the seq of the last event the app holds, sent with
 	// each hello so a reconnect resumes there; 0 asks for the start.
 	Cursor func() int64
@@ -194,7 +196,7 @@ func (c *Client) session(ctx context.Context) error {
 	stop := context.AfterFunc(ctx, func() { conn.Close() })
 	defer stop()
 
-	hello := protocol.Hello{T: "hello", Persona: c.opt.Persona, Locale: c.opt.Locale, Client: "desktop"}
+	hello := protocol.Hello{T: "hello", Persona: c.opt.Persona, Locale: c.opt.Locale, Client: "desktop", Version: c.opt.Version}
 	if c.opt.Cursor != nil {
 		if cur := c.opt.Cursor(); cur > 0 {
 			hello.Cursor = &cur

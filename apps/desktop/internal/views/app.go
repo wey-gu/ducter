@@ -216,7 +216,11 @@ type App struct {
 	// goes in; Quit quits the app (after Remove Ducter).
 	Updates         Updates
 	RestartToUpdate func()
-	Quit            func()
+	// PuttingIn: Restart to update is under way; the window says so
+	// until it goes away.
+	PuttingIn     bool
+	installedSaid bool
+	Quit          func()
 	// ReportProblem collects diagnostics to attach (Help › Report a
 	// problem…); nil opens a new issue instead.
 	ReportProblem func()
@@ -362,8 +366,11 @@ func (a *App) View(c *ui.Context) {
 	a.drainActionResults(c)
 	a.shortcuts(c)
 	a.titleTick(c)
+	a.sayInstalled(c)
 	ui.Column(c).Fill().Background(a.T.Bg).TextColor(a.T.Ink).Font(a.T.Body).Children(a.page(c, func() {
 		switch {
+		case a.PuttingIn:
+			a.puttingInView(c)
 		case a.title.on:
 			a.setupActive() // the first check runs under the title
 			a.titleView(c)

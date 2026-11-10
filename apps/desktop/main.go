@@ -85,6 +85,12 @@ func main() {
 		go sound.Preload() // decode it now, off the main thread
 	}
 
+	// A quit stops the run loop right after closing the windows; whatever
+	// runs after that (stopping a child Ducter, a ready update's check)
+	// would keep them on screen, blank and beach-balling. Gone at once
+	// instead: registered first, so it runs before every other handler.
+	mygo.App.OnWillQuit(func(*mygo.QuitEvent) { flushWindows() })
+
 	// The app runs the Ducter of this Mac itself, unless the window is
 	// pointed somewhere else (DUCTER_URL, or a saved remote connection).
 	var host *local.Host
@@ -100,7 +106,9 @@ func main() {
 			sup.Agent = &local.Agent{Label: local.AgentLabel(bid), BundleID: bid, CLI: bundle.CLI, DataDir: sup.DataDir, Dir: local.LaunchAgentsDir()}
 			// Dragged in over an older Ducter.app: launchd still runs the old helper.
 			// Restart it on this one before the window connects (it resumes from the Log).
-			if _, c := buildVersion(); sup.Agent.Stale(sup.Port, c) {
+			// Not right after an update: its swap already restarted it on this helper.
+			justUpdated := update.JustInstalled(filepath.Join(local.SupportDir(bid), "updates"))
+			if _, c := buildVersion(); !justUpdated && sup.Agent.Stale(sup.Port, c) {
 				log.Printf("ducter: the background Ducter runs another build; restarting it on %s", c)
 				if err := sup.Agent.Restart(); err != nil {
 					log.Printf("ducter: %v", err)
@@ -224,6 +232,7 @@ func main() {
 		}
 		// The menu bar, in the window's language; rebuilt when it changes.
 		lc.win = win
+		lc.screen = windowScreen{app, win}
 		lc.openUpdate = func() {
 			win.Update(func() {
 				app.OpenUpdate()
@@ -259,10 +268,11 @@ func main() {
 		url, token := target()
 		var c *client.Client
 		c = client.New(client.Options{
-			URL:    url,
-			Token:  token,
-			Locale: string(lang),
-			Cursor: cursor,
+			URL:     url,
+			Token:   token,
+			Locale:  string(lang),
+			Version: app.Version,
+			Cursor:  cursor,
 			OnFrame: func(f protocol.ServerFrame) {
 				win.Update(func() {
 					app.Receive(f)

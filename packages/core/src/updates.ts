@@ -4,8 +4,8 @@
 // The mechanics are in update.ts; the release check in release.ts.
 import type { Bodies, DeviceUpdate, Settings, UpdateHow, UpdatePhase, UpdateReason } from "@ducter/protocol";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
-import { compareVersions, DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
-import type { Release, ReleaseWatch } from "./release.ts";
+import { compareVersions, DUCTER_VERSION, isVersion } from "@ducter/protocol/src/version.ts";
+import { FRESH_MS, type Release, type ReleaseWatch } from "./release.ts";
 import { readResult, runUpdate, writeResult, type Fail, type RunInput, type UpdateResult, type UpdateSys } from "./update.ts";
 import { inQuiet } from "./push.ts";
 
@@ -80,6 +80,14 @@ export interface Updates {
   fromWorker(id: string, name: string, f: WorkerUpdateFrame): void;
   /** Reads the latest release again now. */
   check(): Promise<Release | undefined>;
+  /** Devices or Updates and about opened: read it again when the last answer is older than 15 min. */
+  freshen(): void;
+  /**
+   * A device, a worker or an app says it runs v. Newer than the latest release known: that answer
+   * is stale (a 0.0.6 app can't talk to a home that thinks 0.0.4 is the latest), so read it again
+   * now (once per version every 15 min).
+   */
+  sawVersion(v: string | undefined): void;
   onChange(fn: () => void): () => void;
   /** The night-time look, once (the timer runs it too). */
   nightly(): Promise<void>;
@@ -141,8 +149,29 @@ export function createUpdates(d: UpdatesDeps): Updates {
     return p === "downloading" || p === "verifying" || p === "waiting" || p === "restarting";
   };
 
+  const asked = new Map<string, number>();
+  function sawVersion(v: string | undefined) {
+    if (!v || !isVersion(v)) return;
+    const latest = d.release.latest()?.version;
+    if (latest && compareVersions(v, latest) <= 0) return;
+    if (!latest && !d.release.checkedAt()) return; // never read yet: the first check is on its way
+    const last = asked.get(v);
+    if (last !== undefined && now() - last < FRESH_MS) return;
+    asked.set(v, now());
+    void d.release.check(true);
+  }
+
+  function freshen() {
+    const at = Date.parse(d.release.checkedAt() ?? "");
+    if (!Number.isFinite(at) || now() - at >= FRESH_MS) void d.release.check(true);
+  }
+
+  // This Ducter itself, newer than the last answer (a home updated by hand).
+  queueMicrotask(() => sawVersion(version));
+
   function view(id: string, current: string | undefined, how: UpdateHow | undefined): DeviceUpdate | undefined {
     if (!current) return undefined;
+    sawVersion(current);
     const rel = d.release.latest();
     const latest = rel?.version;
     const available = Boolean(latest && compareVersions(latest, current) > 0);
@@ -272,6 +301,8 @@ export function createUpdates(d: UpdatesDeps): Updates {
     start,
     fromWorker,
     check: () => d.release.check(true),
+    freshen,
+    sawVersion,
     onChange(fn) {
       fns.add(fn);
       return () => fns.delete(fn);

@@ -5,6 +5,8 @@
 export * from "./harnesses.ts";
 import type { HarnessId } from "./harnesses.ts";
 export * from "./loadout.ts";
+export * from "./proactive.ts";
+import type { FindKind, FindRung, FindState, FindView, ProactiveAsk, ProactiveMode, ReadLine, SourceLook } from "./proactive.ts";
 import type { BodyWhy, Candidate, RuleView, TaskBody, TaskNeeds } from "./loadout.ts";
 
 // ---------- States (design/focus-window-states.md) ----------
@@ -188,6 +190,9 @@ export interface Bodies {
     where?: WhereAsk; // D157: wait for a computer (Hold, the default) or do it now on another (Go)
     closing?: ClosingPlan; // D157: 合上之前搬走 / Move before closing: Go (the default) moves them
     memPlugin?: MemPluginAsk; // D169: put Nowledge Mem into this agent on that computer (Go); 先不装 / Not now (Hold, the default)
+    // D165: a find's one next step. Clients render it inside its note (not as a card of its own);
+    // On hand lists it like any ask. Never pushed on its own: the note is the one notification.
+    findId?: string;
   };
   decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default" };
   read_receipt: { upToSeq: number };
@@ -353,6 +358,17 @@ export interface Bodies {
   // a write is recorded "needs_go" with its input, waits for the user's Go on a decision card,
   // and runs once after it ("done"/"failed"). Never carries a token. On the channel for the
   // partner, on the task's stream for a task. Clients stay quiet about reads.
+  // D165: what Ducter noticed in the person's accounts, said once (design/connectors.md §5–§6).
+  // One partner message rendered from typed finds. rung "morning": the note at the end of quiet
+  // hours; "fold": a revision of `revises` while the person is in the app (shown in place, never
+  // re-notified); "now": something that costs them today; "meeting": 10 min before a meeting;
+  // "first": the first-account moment (§11). quiet: a silent day: no message, no notification;
+  // clients change the header line until the person next writes. leftOut: the 没说的 line.
+  // answered: the ask was answered (the clients show the controls settled, not live).
+  finds: { noteId: string; rung: FindRung; opening: string; finds: FindView[]; leftOut?: string; quiet?: boolean; ask?: ProactiveAsk; revises?: string; answered?: string };
+  // A find changed: Go or Hold on its step, passed its date (过了), or the person's reaction
+  // (有用; 这类不用告诉我 adds a Rule, ruleId). taskId: the task Go opened.
+  find_state: { findId: string; kind: FindKind; state: FindState; taskId?: string; ruleId?: string };
   connection_call: {
     callId: string;
     connectionId: string;
@@ -630,6 +646,14 @@ export type ClientFrame =
   | { t: "connection_add"; url: string; token?: string; name?: string }
   | { t: "connection_remove"; id: string }
   | { t: "connection_oo" }
+  // D165/D166: a tile's 自己留意 / Watch on its own and 不让 Ducter 看这个 / Don't let Ducter read
+  // this one; answered with a fresh connections frame. connection_reads: 看了哪些 / What it read
+  // today, answered with a connection_reads frame.
+  | { t: "app_watch"; id: string; service: string; account?: string; watch?: boolean; excluded?: boolean }
+  | { t: "connection_reads"; id: string }
+  // D165: the person's answer in a note: a reaction to a find, or an ask (first_look, keep_note).
+  | { t: "find_react"; findId: string; reaction: "useful" | "mute" }
+  | { t: "proactive_answer"; noteId: string; ask: "first_look" | "keep_note"; yes: boolean }
   // Work over time (D112-D114), each answered with action_result (taskId = the waiter or routine
   // id). waiter_action look: look now; cancel: 不等了 / Stop waiting. routine_action pause, resume
   // (only a person resumes), end. waiter_action rearm: 接着等 / Keep waiting, on a missed wait (D144). until_action stop: stop the loop after this try.
@@ -725,6 +749,7 @@ export type ServerFrame =
   | { t: "rules"; rules: RuleView[] }
   | { t: "candidates"; taskId: string; candidates: Candidate[] }
   | { t: "connections"; connections: ConnectionView[]; oo: OoDetect }
+  | { t: "connection_reads"; id: string; reads: ReadLine[] }
   // readable (D158): what the added connection can read now; [] = connected, but no account there yet.
   | { t: "connection_result"; ok: boolean; id?: string; reason?: ConnectionReason; readable?: OoApp[] }
   // What the partner is doing while the user waits for its reply (D104): sent on every change and
@@ -1058,6 +1083,8 @@ export interface ConnectionView {
   checkedAt?: string;
   /** What it can read: as oo last listed it (source oo), or the accounts connected in an OpenConnector (D158). */
   apps?: OoApp[];
+  /** D166: its watching today (the status line and the tiles). */
+  look?: SourceLook;
 }
 
 /** What the user's oo CLI is set up with, as far as Ducter can tell without reading a secret. */
@@ -1106,6 +1133,11 @@ export interface Settings {
   windows?: ContextWindows;
   /** D148: update Ducter and its computers at night, in quiet hours, when nothing is working. Off by default. */
   autoUpdate?: boolean;
+  /**
+   * D165: 自己发现了事，怎么告诉你 / When it notices something. Absent: never answered, which
+   * watches nothing (connecting is not consent to watch); clients show none chosen yet.
+   */
+  proactive?: ProactiveMode;
 }
 
 /**

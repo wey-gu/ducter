@@ -295,6 +295,13 @@ interface Record_ {
   via: "manual" | "oo";
   /** Optional, hand-edited: action or tool patterns ("gmail.*", "*.send_*"); deny wins. */
   policy?: { allow?: string[]; deny?: string[] };
+  /**
+   * D166: 不让 Ducter 看这个 / Don't let Ducter read this one, from the card: "gmail" (the whole
+   * service) or "gmail:<account>". Nothing reads an excluded account, the partner included.
+   */
+  excluded?: string[];
+  /** D165: 自己留意 / Watch on its own, by "service" or "service:<account>" (absent: the default). */
+  watch?: Record<string, boolean>;
 }
 
 function writePrivate(path: string, data: unknown) {
@@ -374,7 +381,32 @@ export interface ConnectionsStore extends ConnectionsApi {
   readTrigger(key: string, service: string, trigger: string, config: unknown, checkpoint: unknown): Promise<TriggerRead>;
   /** Whether an event wait can watch this connection, and why not (checked before a wait is set). */
   watchable(key: string): { ok: true } | { ok: false; error: string };
+  /**
+   * D165/D166: the apps a source can read, one per account (a tile each), with the person's
+   * 自己留意 and 不让 Ducter 看这个 for it. Empty until the source has listed its accounts.
+   */
+  apps(id: string): AppTarget[];
+  /** Sets 自己留意 (watch) or 不让 Ducter 看这个 (excluded) for one app; false: no such connection. */
+  setApp(id: string, service: string, account: string | undefined, patch: { watch?: boolean; excluded?: boolean }): boolean;
+  /** The connection removed (its facts go with it). */
+  onRemove(fn: (id: string) => void): () => void;
 }
+
+/** One app in a source: a service and one of its accounts (oo's connection name, or a label). */
+export interface AppTarget {
+  connectionId: string;
+  source: ConnectionSource;
+  service: string;
+  title: string;
+  /** The account to pass to a read (absent: the source's default for the service). */
+  account?: string;
+  label?: string;
+  watch: boolean;
+  excluded: boolean;
+}
+
+/** Chat apps watch only @-mentions and DMs; the rest watch everything new (D165 call 1). */
+export const CHAT_SERVICES = new Set(["discord", "discordbot", "slack", "slackbot", "telegram", "feishu", "lark", "dingtalk", "wecom_bot"]);
 
 /**
  * oo (D122) runs actions through its CLI and has no Provider Triggers (oo 1.9: `oo connector`
@@ -426,6 +458,7 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
   const opCache = new Map<string, "read" | "write">(); // `${id} ${action}`
   const grants = new Map<string, Set<string>>(); // taskId -> connection ids
   const listeners = new Set<() => void>();
+  const removed = new Set<(id: string) => void>();
   const changed = () => listeners.forEach((f) => f());
   const save = () => {
     writePrivate(listPath, { connections: records });
@@ -433,7 +466,23 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
   };
 
   const find = (key: string) => records.find((r) => r.id === key) ?? records.find((r) => r.name.toLowerCase() === key.trim().toLowerCase());
-  const allowedFor = (who: ConnectionCaller, r: Record_) => who.role === "partner" || Boolean(grants.get(who.taskId)?.has(r.id));
+  const allowedFor = (who: ConnectionCaller, r: Record_) => who.role === "partner" || who.role === "watch" || Boolean(grants.get(who.taskId)?.has(r.id));
+  // D166: the accounts behind a service, as its source last listed them (oo's connections; an
+  // OpenConnector's /v1/apps labels).
+  const accountsOf = (r: Record_, service: string): { name: string; label: string; default: boolean }[] => {
+    if (r.source === "oo") return ooLink?.cached()?.find((s) => s.service === service)?.connections ?? [];
+    return (appsCache.get(r.id)?.find((a) => a.service === service)?.accounts ?? []).map((l, i) => ({ name: l, label: l, default: i === 0 }));
+  };
+  const isExcluded = (r: Record_, service: string, account?: string): boolean => {
+    const ex = r.excluded ?? [];
+    if (!ex.length) return false;
+    if (ex.includes(service)) return true;
+    const accts = accountsOf(r, service);
+    const want = account?.trim().toLowerCase();
+    const hit = want ? accts.find((c) => c.name.toLowerCase() === want || c.label.toLowerCase() === want) : accts.find((c) => c.default);
+    const keys = hit ? [hit.name, hit.label] : want ? [want] : [];
+    return keys.some((k) => ex.some((e) => e.toLowerCase() === `${service}:${k}`.toLowerCase()));
+  };
 
   async function withLink<T>(r: Record_, fn: (l: Link) => Promise<T>): Promise<T> {
     let link: Link | undefined;
@@ -490,9 +539,10 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
     return op;
   }
 
-  const record = (body: Omit<Bodies["connection_call"], "callId"> & { callId?: string }) => {
+  const record = (body: Omit<Bodies["connection_call"], "callId"> & { callId?: string }, watch = false) => {
     const b: Bodies["connection_call"] = { callId: body.callId ?? `cc_${crypto.randomUUID().replaceAll("-", "").slice(0, 10)}`, ...body };
-    opts.log.append({ stream: b.taskId ? `task:${b.taskId}` : "channel", origin: b.taskId ? "task" : "partner", kind: "connection_call", body: b });
+    // D165: Ducter's own looks go to the "watch" stream: 看了哪些 reads them, nothing else sees them.
+    opts.log.append({ stream: watch ? "watch" : b.taskId ? `task:${b.taskId}` : "channel", origin: watch ? "system" : b.taskId ? "task" : "partner", kind: "connection_call", body: b });
     return b.callId;
   };
 
@@ -596,25 +646,33 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
       const r = find(key);
       if (!r || !allowedFor(who, r)) return err(NOT_FOUND);
       const base = { connectionId: r.id, connection: r.name, action, ...(who.role === "task" ? { taskId: who.taskId } : {}) };
+      const w = who.role === "watch";
       if (!policyAllows(r.policy, action)) {
-        record({ ...base, op: "read", state: "denied" });
+        record({ ...base, op: "read", state: "denied" }, w);
         return err(`The user's rules for ${r.name} don't allow ${action}.`);
+      }
+      const service = /^([a-z0-9_-]+)\./i.exec(action)?.[1];
+      if (service && isExcluded(r, service, account)) {
+        record({ ...base, op: "read", state: "denied", error: "excluded" }, w);
+        return err(`The user asked Ducter not to read this ${service} account (不让 Ducter 看这个). Don't read it another way.`);
       }
       const op = await classify(r.id, action);
       if (op === "write") {
-        record({ ...base, op, state: "denied", error: "a write outside the Go path" });
-        return err(who.role === "task" ? "This changes something outside. Tasks only read connections; tell the partner what you'd do and why." : "This changes something outside: ask the user first (connection_call with question and goLabel).", "write");
+        record({ ...base, op, state: "denied", error: "a write outside the Go path" }, w);
+        return err(who.role !== "partner" ? "This changes something outside. Tasks only read connections; tell the partner what you'd do and why." : "This changes something outside: ask the user first (connection_call with question and goLabel).", "write");
       }
       try {
         const res = await execute(r, action, input, account);
         if (failed(res)) {
-          record({ ...base, op, state: "failed", error: errorText(res) });
+          record({ ...base, op, state: "failed", error: errorText(res) }, w);
           return err(errorText(res), op);
         }
-        record({ ...base, op, state: "done", summary: summarize(res.data) });
-        return { ok: true, op, result: forModel((res.data as { data?: unknown })?.data ?? res.data) };
+        record({ ...base, op, state: "done", summary: summarize(res.data) }, w);
+        // The watchers parse the whole answer themselves (never kept); a model gets it clipped.
+        const data = (res.data as { data?: unknown })?.data ?? res.data;
+        return { ok: true, op, result: w ? data : forModel(data) };
       } catch (e) {
-        record({ ...base, op, state: "failed", error: (e as LinkError).reason });
+        record({ ...base, op, state: "failed", error: (e as LinkError).reason }, w);
         return err(`${r.name} can't be reached right now (${(e as LinkError).reason}).`, op);
       }
     },
@@ -739,8 +797,48 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
       appsCache.delete(id);
       for (const k of [...opCache.keys()]) if (k.startsWith(`${id} `)) opCache.delete(k);
       for (const g of grants.values()) g.delete(id);
+      for (const f of removed) f(id);
       changed();
       return true;
+    },
+
+    apps(id) {
+      const r = find(id);
+      if (!r) return [];
+      const services = r.source === "oo" ? (ooLink?.cached() ?? []).map((s) => ({ service: s.service, title: s.title })) : (appsCache.get(r.id) ?? []).map((a) => ({ service: a.service, title: a.title }));
+      const out: AppTarget[] = [];
+      for (const s of services) {
+        const accts = accountsOf(r, s.service);
+        const one = (name: string | undefined, label: string | undefined, dflt: boolean): AppTarget => {
+          const key = name ? `${s.service}:${name}` : s.service;
+          const watch = r.watch?.[key] ?? r.watch?.[s.service] ?? true;
+          return { connectionId: r.id, source: r.source, service: s.service, title: s.title, ...(name && !(dflt && accts.length === 1) ? { account: name } : {}), ...(label ? { label } : {}), watch, excluded: isExcluded(r, s.service, name) };
+        };
+        if (!accts.length) out.push(one(undefined, undefined, true));
+        else for (const c of accts) out.push(one(c.name, c.label, c.default));
+      }
+      return out;
+    },
+
+    setApp(id, service, account, patch) {
+      const r = find(id);
+      if (!r) return false;
+      const key = account ? `${service}:${account}` : service;
+      if (patch.watch !== undefined) r.watch = { ...(r.watch ?? {}), [key]: patch.watch };
+      if (patch.excluded !== undefined) {
+        const rest = (r.excluded ?? []).filter((e) => e.toLowerCase() !== key.toLowerCase());
+        r.excluded = patch.excluded ? [...rest, key] : rest;
+        if (!r.excluded.length) delete r.excluded;
+      }
+      records = records.map((x) => (x.id === r.id ? r : x));
+      save();
+      changed();
+      return true;
+    },
+
+    onRemove(fn) {
+      removed.add(fn);
+      return () => removed.delete(fn);
     },
 
     oo: () => oo.detect(),

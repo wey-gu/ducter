@@ -170,7 +170,9 @@ export interface BodyChoice {
 }
 
 /** Who is calling into a connection: the partner, or one task (which must have been granted it). */
-export type ConnectionCaller = { role: "partner" } | { role: "task"; taskId: string };
+// "watch" (D165): Ducter's own looks on a schedule, model-free. Reads only (a write is refused
+// like a task's), logged on the "watch" stream so the conversation and the partner never see them.
+export type ConnectionCaller = { role: "partner" } | { role: "task"; taskId: string } | { role: "watch" };
 
 export interface ConnectionInfo {
   id: string;

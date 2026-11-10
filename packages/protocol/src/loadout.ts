@@ -17,6 +17,12 @@ export interface RuleView {
   createdAt: string; // ISO
   /** D157: the computer this kind of work runs on ("要登录的网页都在 MacBook 上做"), by name. */
   device?: string;
+  /**
+   * D165: a rule about what it tells the person, not who does a task (harness "", match []).
+   * mute: 这类不用告诉我 (a kind, from one sender when given). wake: this kind may come through at
+   * night ("航班改了，夜里也叫我"), said by the person, never proposed.
+   */
+  notice?: { kind: string; sender?: string; wake?: boolean };
 }
 
 /**

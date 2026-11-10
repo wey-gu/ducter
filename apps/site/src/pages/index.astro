@@ -441,10 +441,10 @@ const ld = {
     <h2>Say it once.</h2>
     <p class="lede">Then get on with your day. Ducter tells you when it's done.</p>
     {FILM_URL && (
-      <a class="film" href={FILM_URL} rel="noopener">
-        <img src="/film-poster.webp" width="960" height="540" alt="" loading="lazy" decoding="async" />
-        <span class="btn secondary md">Watch the launch film · 1 min</span>
-      </a>
+      <figure class="film">
+        <video src={FILM_URL} poster="/film-poster.webp" width="960" height="540" controls preload="none" playsinline aria-label="The launch film, 42 seconds"></video>
+        <figcaption>The launch film · 42 s · <a href="https://github.com/wey-gu/ducter/releases/tag/v0.0.8" rel="noopener">also in Chinese and square</a></figcaption>
+      </figure>
     )}
     <div class="cta-row">
       <a class="btn secondary lg gh" href={gh.href} rel="noopener"><GitHubMark />Star on GitHub</a>

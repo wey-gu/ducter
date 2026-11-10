@@ -688,8 +688,10 @@ section { position: relative; }
 }
 
 /* the launch film, once hosted (FILM_URL) */
-.film { display: grid; justify-items: center; gap: 14px; max-width: 560px; margin: 0 auto 34px; text-decoration: none; }
-.film img { border-radius: var(--r-xl); box-shadow: var(--base-window); }
+.film { display: grid; justify-items: center; gap: 12px; max-width: 720px; margin: 0 auto 34px; }
+.film video { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; border-radius: var(--r-xl); box-shadow: var(--base-window); background: var(--sunken-2); }
+.film figcaption { font-size: var(--t13); color: var(--muted); }
+.film figcaption a { color: inherit; }
 .card h3 { font-size: var(--t28); letter-spacing: -0.4px; line-height: 1.2; }
 .card p { margin: 0; color: var(--ink-2); font-size: var(--t16); }
 .install { margin-top: 56px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; }

@@ -13,7 +13,7 @@ export async function siteLinks() {
 
 /**
  * The launch film, hosted as a GitHub release asset (D75 keeps the ~11 MB video out of git).
- * null until the author attaches it to a release; the home's last section then shows a poster
+ * Attached to the v0.0.8 release (v4 cut); the home's last section shows a poster
  * (public/film-poster.webp) linking to it. See design/site-audit-2026-11.md.
  */
-export const FILM_URL: string | null = null;
+export const FILM_URL: string | null = "https://github.com/wey-gu/ducter/releases/download/v0.0.8/ducter-launch-16x9.mp4";

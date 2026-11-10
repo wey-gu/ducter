@@ -161,7 +161,7 @@ never said from memory." DSH and pi now open the look-up; haiku does not (its tw
 - **The fallback brain** (D150) widens: with nothing chosen and Claude Code not signed in, the
   first signed-in of Codex, DeepSeek Harness, pi. A home with only a DeepSeek key works as it is.
 - **Keys stay as D102 has them:** pi on DeepSeek signs in with its own `/login`; the DeepSeek key
-  in `keys.env` still reaches DeepSeek Harness only. One key for both is the author's call.
+  in `keys.env` still reaches DeepSeek Harness only. The author kept them separate (D177 (a)).
 - **Watch:** DSH ships as a prerelease (0.2.2-rc.1 is npm's `latest`); its version now keeps the
   tag and orders before 0.2.2. A Bun older than 1.4.4 can't host pi sessions for long.
 

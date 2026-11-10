@@ -9,7 +9,8 @@ import { registerWorker } from "./push-client.ts";
 import { inApp, tellApp } from "./native.ts";
 import { startAutospace } from "./autospace.ts";
 import { Avatar, Conversation, LiveView, OnHand, Sheets, TaskView, Toasts } from "./views.tsx";
-import { escUp, useSplit, useWide } from "./wide.ts";
+import { Board } from "./board.tsx";
+import { escUp, useFill, useSplit, useWide } from "./wide.ts";
 
 const base = baseUrl();
 const token = () => storage.get()?.token;
@@ -41,9 +42,16 @@ function App() {
   // D182: on a foldable the panes split at the fold, left and right (a book) or top and bottom
   // (tabletop); app.css places them from --fold-a and --fold-gap.
   const split = useSplit();
+  // D184: On hand, or an opened task, can take the whole screen as the Mac shows it; the two
+  // panes stay the default and come back in one move (⌘2, the header's button, Esc).
+  const fill = useFill();
   return (
     <>
-      {wide ? (
+      {fill ? (
+        <div class={split ? `full ${split.kind}` : "full"}>
+          {r.name === "task" ? <TaskView key={r.id} id={r.id} full /> : <Board />}
+        </div>
+      ) : wide ? (
         <div class={split ? `panes ${split.kind}` : "panes"}>
           <section class="pane conv" aria-label={t("nav.conversation")}>
             <Conversation />

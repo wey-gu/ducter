@@ -109,6 +109,11 @@ Connect it the same way, with its own code.
 - **Held across** (or a 13-inch iPad held upright), the conversation stays on the left and
   **On hand** stands beside it. Open a task there, and it opens in that place while the
   conversation stays where it was.
+- **The whole screen.** Tap the arrows at the right of On hand's header (or press ⌘2) and On
+  hand fills the screen as it does on a Mac: everything that needs you, what's working, what's
+  waiting and what's done today, side by side, sorted by state or by project. Open a task from
+  there and it fills the screen too. The same arrows, ⌘2 again, or **Conversation** at the top
+  bring you back to the two sides. On a foldable opened like a book, it splits at the fold.
 - **Upright, or side by side with another app** in Split View or Stage Manager, Ducter is one
   column, as on a phone. Turning the iPad or resizing the window keeps what you were reading and
   typing.

@@ -6,11 +6,37 @@ import { pushState, type PushState } from "./push-client.ts";
 import { haptic } from "./native.ts";
 import { attention, finished, LANE, laneOf, looksSecret, placeOf, Store, title, type DecisionState, type Entry } from "./store.ts";
 import { withoutStaleAgentUpdate, withoutStaleFailure } from "./format.ts";
+import { canFillNow, wideNow } from "./fold.ts";
 
 /** An iPad says "this iPad" where a phone says "this phone" (D176). */
 const HANDHELD: Handheld = typeof navigator !== "undefined" && deviceName().name.startsWith("iPad") ? "ipad" : "phone";
 
-export type Route = { name: "conv" } | { name: "onhand" } | { name: "task"; id: string };
+/** full (D184): wide, the level takes the whole screen as the Mac shows it, instead of standing
+ *  beside the conversation. A phone ignores it. */
+export type Route = { name: "conv" } | { name: "onhand"; full?: boolean } | { name: "task"; id: string; full?: boolean };
+
+/** #onhand, #onhand/full, #task=<id>, #task=<id>/full (an id is encoded, so it holds no "/"). */
+export function routeHash(r: Route): string {
+  const full = r.name !== "conv" && r.full ? "/full" : "";
+  return r.name === "onhand" ? `#onhand${full}` : r.name === "task" ? `#task=${encodeURIComponent(r.id)}${full}` : "";
+}
+
+const isFull = (r: Route) => r.name !== "conv" && !!r.full;
+/** A move that changes the layout (beside ↔ whole screen) on a wide screen. */
+export const morphs = (a: Route, b: Route) => isFull(a) !== isFull(b) && wideNow();
+
+/** Runs a layout change inside a view transition where there is one: the panes slide to their new
+ *  places (static/app.css, ::view-transition-*). Without one, or under reduced motion, at once. */
+function morph(apply: () => void) {
+  const d = typeof document === "object" ? (document as Document & { startViewTransition?: (cb: () => Promise<void>) => unknown }) : undefined;
+  const still = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!d?.startViewTransition || still) return apply();
+  d.startViewTransition(() => {
+    apply();
+    // The page renders on the next frame (A.changed → the app's state): wait for it.
+    return new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
+  });
+}
 /** Settings (D150) is a list of sections; page is the one pushed ("" is the list). */
 export type SettingsPage = "" | "partner" | "notify" | "accounts" | "devices" | "phone";
 export type Sheet = { kind: "decision"; id: string } | { kind: "settings"; page?: SettingsPage } | { kind: "newtask" } | null;
@@ -346,7 +372,8 @@ class AppState {
   }
 
   /** The app's menu commands and their keys (D176), the Mac's set (D71): ⌘N New task (inside an
-   *  opened task, at its place), ⌘1 the conversation, ⌘2 On hand, ⌘3 your devices, ⌘4 the
+   *  opened task, at its place), ⌘1 the conversation, ⌘2 On hand (wide: the whole screen, and
+   *  again back to the two panes; D184), ⌘3 your devices, ⌘4 the
    *  partner, ⌘, Settings, ⌘K the composer of the level shown. Unknown names do nothing. */
   command(c: string) {
     const r = this.route;
@@ -355,8 +382,14 @@ class AppState {
       const task = r.name === "task" ? this.S.tasks.get(r.id) : undefined;
       return this.openNewTask(task ? placeOf(task) : undefined);
     }
-    if (c === "conv" || c === "onhand") return (this.sheet = null), this.go({ name: c });
-    if (c === "devices" || c === "partner") return this.openSettings(c);
+    if (c === "conv") return (this.sheet = null), this.go({ name: c });
+    if (c === "onhand") {
+      this.sheet = null;
+      // D184: wide, ⌘2 is the Mac's On hand: the whole screen, and pressed again, back to the two
+      // panes. Where it can't take the whole screen (a phone, a tabletop fold), On hand as there.
+      if (!canFillNow("onhand")) return this.go({ name: "onhand" });
+      return this.go(r.name === "onhand" && r.full ? { name: "conv" } : { name: "onhand", full: true });
+    }    if (c === "devices" || c === "partner") return this.openSettings(c);
     if (c === "settings") return this.openSettings();
     if (c === "composer") {
       this.sheet = null;
@@ -690,9 +723,24 @@ class AppState {
   // ---------- navigation ----------
 
   go(r: Route) {
-    const hash = r.name === "onhand" ? "#onhand" : r.name === "task" ? `#task=${encodeURIComponent(r.id)}` : "";
+    // D184: a task opened from the whole-screen On hand (or from another whole-screen task) opens
+    // at the whole screen too, as on the Mac; one opened from the conversation stands beside it.
+    if (r.name === "task" && r.full === undefined && this.route.name !== "conv" && this.route.full) r = { ...r, full: true };
+    const hash = routeHash(r);
     if (location.hash !== hash) history.pushState(null, "", hash || location.pathname);
+    const was = this.route;
+    // Taking the whole screen, or going back beside the conversation, morphs rather than jumps
+    // (a view transition where the browser has one; none under reduced motion).
+    if (morphs(was, r)) return morph(() => this.applyRoute(r));
     this.applyRoute(r);
+  }
+
+  /** D184: the level shown takes the whole screen (on) or goes back beside the conversation. */
+  fill(on: boolean) {
+    const r = this.route;
+    if (r.name === "conv") return on ? this.go({ name: "onhand", full: true }) : undefined;
+    if (on) return this.go({ ...r, full: true });
+    this.go(r.name === "task" ? { name: "task", id: r.id, full: false } : { name: "onhand" });
   }
 
   applyRoute(r: Route) {
@@ -707,8 +755,12 @@ class AppState {
   fromHash(hash = location.hash) {
     const task = /^#task=(.+)$/.exec(hash);
     const d = /^#d=(.+)$/.exec(hash);
-    if (task) return this.applyRoute({ name: "task", id: decodeURIComponent(task[1]!) });
+    if (task) {
+      const [id, full] = task[1]!.split("/");
+      return this.applyRoute(full === "full" ? { name: "task", id: decodeURIComponent(id!), full: true } : { name: "task", id: decodeURIComponent(id!) });
+    }
     if (hash === "#onhand") return this.applyRoute({ name: "onhand" });
+    if (hash === "#onhand/full") return this.applyRoute({ name: "onhand", full: true });
     this.route = { name: "conv" };
     const set = /^#settings(?:=(partner|notify|accounts|devices|phone))?$/.exec(hash);
     if (set) {

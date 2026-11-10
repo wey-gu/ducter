@@ -78,3 +78,26 @@ export function markSplit(s: Split | undefined, el: HTMLElement | undefined = ty
   el.style.setProperty("--fold-a", `${s.a}px`);
   el.style.setProperty("--fold-gap", `${s.gap}px`);
 }
+
+/** Two panes from this width: an iPad held across (1133–1366), a 13" iPad upright (1024–1032), a
+ *  wide window (D176). wide.ts re-exports it; it lives here so app.ts can read it too. */
+export const WIDE = "(min-width: 1000px)";
+
+/** Wide right now: wide enough for two panes, or a foldable's fold in view. */
+export const wideNow = (): boolean => (typeof matchMedia === "function" && matchMedia(WIDE).matches) || !!currentSplit();
+
+/**
+ * D184: whether a level can take the whole screen instead of standing beside the conversation.
+ * Wide without a fold: On hand and an opened task both. On a book fold, On hand only: its lanes
+ * split at the fold (what needs you on one side, the rest on the other), while an opened task is
+ * one reading column that a fold's half already holds. On a tabletop, neither: each half is a
+ * short screen, and a whole-screen page would lie across the crease.
+ */
+export function canFill(level: "onhand" | "task", wide: boolean, split?: Split): boolean {
+  if (!wide) return false;
+  if (!split) return true;
+  return split.kind === "book" && level === "onhand";
+}
+
+/** The current split, for code outside a component (app.ts's ⌘2). */
+export const canFillNow = (level: "onhand" | "task"): boolean => canFill(level, wideNow(), currentSplit());

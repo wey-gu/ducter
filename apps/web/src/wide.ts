@@ -1,16 +1,20 @@
-// Wide layouts (D176). The client is one page at every size: a phone, an iPad in any multitasking
-// size, a foldable opening and closing, a browser window being dragged. The layout follows the
-// width the page has now (never the device or the orientation), and changes in place: what is
-// typed, the route and the open sheet stay.
+// Wide layouts (D176, D184). The client is one page at every size: a phone, an iPad in any
+// multitasking size, a foldable opening and closing, a browser window being dragged. The layout
+// follows the width the page has now (never the device or the orientation), and changes in
+// place: what is typed, the route and the open sheet stay.
+//
+// Wide, the two panes are the default: the conversation, and On hand (or the task opened from it)
+// beside it. On hand, and an opened task, can each take the whole screen as the Mac app shows
+// them, and come back beside the conversation in one move (D184).
 import { useEffect, useState } from "preact/hooks";
-import { A } from "./app.ts";
-import { currentSplit, markSplit, onFoldChange, type Split } from "./fold.ts";
+import { A, type Route } from "./app.ts";
+import { canFill, currentSplit, markSplit, onFoldChange, WIDE, type Split } from "./fold.ts";
 
-/** Two panes from this width: an iPad held across (1133–1366), a 13" iPad upright (1024–1032), a
- *  wide window. Under it, one column: a phone, Split View's thirds and halves, an 11" iPad
+/** Two panes from WIDE (fold.ts): an iPad held across (1133–1366), a 13" iPad upright (1024–1032),
+ *  a wide window. Under it, one column: a phone, Split View's thirds and halves, an 11" iPad
  *  upright, a foldable's inner display without a fold in view. A fold in view splits the panes at
  *  the fold instead, at any width (D182, fold.ts). Keep in step with `.panes` in static/app.css. */
-export const WIDE = "(min-width: 1000px)";
+export { WIDE };
 
 const query = () => (typeof matchMedia === "function" ? matchMedia(WIDE) : undefined);
 
@@ -44,12 +48,35 @@ export function useSplit(): Split | undefined {
   return split;
 }
 
-/** Esc goes up one level (an opened task → On hand → the conversation), as on the Mac. Sheets and
- *  the live view take their own Esc; a field being typed in keeps it. */
+/** D184: the level shown takes the whole screen (On hand, or an opened task, as the Mac shows
+ *  them) instead of standing beside the conversation. Only wide, and only where canFill allows;
+ *  elsewhere a whole-screen route is drawn as it would be without it. */
+export function useFill(): boolean {
+  const wide = useWide();
+  const split = useSplit();
+  const r = A.route;
+  return r.name !== "conv" && !!r.full && canFill(r.name, wide, split);
+}
+
+/** Whether a level could take the whole screen here (the side pane's expand button). */
+export function useCanFill(level: "onhand" | "task"): boolean {
+  return canFill(level, useWide(), useSplit());
+}
+
+/** Where Esc goes from a route: up one level (an opened task → On hand → the conversation), as on
+ *  the Mac. A whole-screen task goes up to the whole-screen On hand; from there, the two panes. */
+export function upFrom(r: Route): Route | undefined {
+  if (r.name === "task") return r.full ? { name: "onhand", full: true } : { name: "onhand" };
+  if (r.name === "onhand") return { name: "conv" };
+  return;
+}
+
+/** Esc goes up one level. Sheets and the live view take their own Esc; a field being typed in
+ *  keeps it. */
 export function escUp(e: KeyboardEvent) {
   if (e.key !== "Escape" || e.defaultPrevented || A.sheet || A.live) return;
   const el = document.activeElement;
   if (el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement) return;
-  if (A.route.name === "task") A.go({ name: "onhand" });
-  else if (A.route.name === "onhand") A.go({ name: "conv" });
+  const up = upFrom(A.route);
+  if (up) A.go(up);
 }

@@ -375,6 +375,25 @@ only in the conversation's header. Sheets from 700 × 640 stand centered as a ca
 round, no grab). Keys as on the Mac (⌘N, ⌘1–⌘4, ⌘,, ⌘K, Esc), in the iPad app's menu bar.
 Screens: `.shots/ipad/`.
 
+**The whole screen, as the Mac shows it (D184).** The two panes stay the default. At the right
+end of the side pane's header a 44-point button with two arrows out (**铺满 / Full screen**) takes
+the level shown to the whole screen; there the same button with the arrows in (**放回对话旁边 /
+Back beside the conversation**) brings it back, and so do ⌘2 (a toggle for On hand), the crumb
+**对话** and Esc (one level up: a whole-screen task goes to the whole-screen On hand). On hand at
+the whole screen is the Mac's On hand, part for part (`apps/web/src/board.tsx` mirrors
+`onhand.go` and `byproject.go`): a 60-high header on the chrome's hairline with the crumbs (15/600
+muted, `/` faint, the title 18/800, the counts 12 muted), then **按状态 · 按项目** (`Seg`) and
+**开一件事** (`Btn` text); **接下来** in 13 muted; the lanes as flex columns with the Mac's grow and
+basis (Needs you 2/400, Working 1/240, Waiting 1/220, Done today 1/260, each at most 2.2× its basis),
+their names at 20/800 with the count muted; working and waiting cards white on the card's base
+(title 15/800, where it stands 13 soft, the rest 12 muted), Done today one card of rows; by
+project, groups at most 960. An opened task at the whole screen keeps its page on the 720 measure
+under the crumbs **对话 / 手头的事 / {task}**, with **先停 / 放下** in the header. The move between
+the two is one view transition (`level` and `conv`, 320 ms, `--ease`; none under reduced motion).
+On a book fold the whole-screen On hand puts Needs you on the first half and the other lanes on
+the second; a task stays in its half; a tabletop offers neither. Screens:
+`.shots/onhand-wide/` (Mac vs iPad sheets, `sheet-*.png`).
+
 **At a foldable's fold (D182).** A fold in view splits the panes at the fold, at any width: held
 like a book (the fold top to bottom, flat or half-open, each side ≥ 320 CSS px) the conversation
 runs from the left edge to the fold and On hand or the task from the fold to the right; stood up

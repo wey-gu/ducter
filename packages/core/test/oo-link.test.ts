@@ -96,7 +96,7 @@ describe("the oo link", () => {
     expect(run.file).toEqual({ mode: 0o600, input: { query: SECRET_BODY, maxResults: 3 } });
     const file = run.argv[run.argv.indexOf("-d") + 1].slice(1);
     expect(existsSync(file)).toBe(false);
-    expect(readdirSync(tmpdir()).some((d) => d.startsWith("ducter-oo-") && existsSync(join(tmpdir(), d, "input.json")))).toBe(false);
+    // (Only this call's own file is checked: the system temp folder is shared with other test runs.)
     for (const c of fake.calls()) {
       expect(c.env).not.toContain("ANTHROPIC_API_KEY");
       expect(c.env).not.toContain("CLAUDE_CODE_OAUTH_TOKEN");

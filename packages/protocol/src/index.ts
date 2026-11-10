@@ -8,6 +8,8 @@ export * from "./loadout.ts";
 export * from "./proactive.ts";
 export * from "./saved.ts";
 import type { FillAsk, PayAsk, SavedFrame, SavedInput } from "./saved.ts";
+export * from "./phone.ts";
+import type { CallBody, CallPlan, CallView, PhoneView, SignInView } from "./phone.ts";
 import type { FindKind, FindRung, FindState, FindView, ProactiveAsk, ProactiveMode, ReadLine, SourceLook } from "./proactive.ts";
 import type { BodyWhy, Candidate, RuleView, TaskBody, TaskNeeds } from "./loadout.ts";
 
@@ -218,6 +220,10 @@ export interface Bodies {
     findId?: string;
     asker?: PeerAsk; // D170: asked for one of the user's own agents; the answer goes back to it
     trust?: { agent: string }; // D170 (X2): 以后你的 <agent> 发来的活，直接接？ Go keeps the rule
+    // D189/D193: a phone call. kind "go": the call's Go card (打给 X？ / Call X?), never a default,
+    // never "don't ask next time". kind "question": a question from the line, pushed at once even
+    // in quiet hours; its choices are buttons that answer with option "reply" and that text.
+    call?: { callId: string; kind: "go" | "question"; plan?: CallPlan; choices?: string[]; yesNo?: boolean };
   };
   decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default" };
   read_receipt: { upToSeq: number };
@@ -410,6 +416,9 @@ export interface Bodies {
     summary?: string; // ≤ 200 chars, never the provider's full output
     error?: string;
   };
+  // D189/D193: one snapshot of a phone call per change (core/src/phone.ts); the latest per callId
+  // wins. On the channel, origin "system". Ended states wake the partner, which says the outcome once.
+  phone_call: CallBody;
 }
 
 export interface Usage { inputTokens?: number; outputTokens?: number; cacheRead?: number; cacheWrite?: number }
@@ -472,6 +481,8 @@ export interface OnHand {
   missed?: (Bodies["waiter"] & { endedAt: string })[];
   /** D114: every routine that isn't ended or dismissed, proposed ones included (their card). */
   routines?: RoutineView[];
+  /** D193: phone calls that are live, waiting for Go, or ended today (newest first). */
+  calls?: CallView[];
   /** D186: the projects the user added by hand (a folder each), shown even before a task. */
   projects?: ProjectView[];
 }
@@ -709,6 +720,18 @@ export type ClientFrame =
   // today, answered with a connection_reads frame.
   | { t: "app_watch"; id: string; service: string; account?: string; watch?: boolean; excluded?: boolean }
   | { t: "connection_reads"; id: string }
+  // D193: the device sign-in (RFC 8628) a connection_add started: stop waiting for it; or sign in
+  // again to a connection that was signed out (both answered with connection_signin frames).
+  | { t: "connection_signin_cancel" }
+  | { t: "connection_reauth"; id: string }
+  // D193, the phone card: the owner's own voice on the provider. record: the provider's recording
+  // page (answered with phone_voice_result + url; the owner agrees and records there); on / off:
+  // use it on calls or not; delete: ask the provider to delete it; refresh: read whether it exists.
+  | { t: "phone_voice"; action: "record" | "on" | "off" | "delete" | "refresh" }
+  // D193: hang up a live call or withdraw one waiting for its hour (a fresh On hand follows).
+  | { t: "call_cancel"; callId: string }
+  // D193, the phone card: Ducter's daily cap for calls (it sets the provider's own too; raising is the owner's tap).
+  | { t: "phone_cap"; usd: number }
   // D165: the person's answer in a note: a reaction to a find, or an ask (first_look, keep_note).
   | { t: "find_react"; findId: string; reaction: "useful" | "mute" }
   | { t: "proactive_answer"; noteId: string; ask: "first_look" | "keep_note"; yes: boolean }
@@ -823,6 +846,9 @@ export type ServerFrame =
   | { t: "connection_reads"; id: string; reads: ReadLine[] }
   // readable (D158): what the added connection can read now; [] = connected, but no account there yet.
   | { t: "connection_result"; ok: boolean; id?: string; reason?: ConnectionReason; readable?: OoApp[] }
+  // D193: the device sign-in: the code and link to show, then done / denied / expired / failed.
+  | { t: "connection_signin"; signIn: SignInView }
+  | { t: "phone_voice_result"; action: "record" | "on" | "off" | "delete" | "refresh"; ok: boolean; url?: string; reason?: "no_phone" | "no_voice" | "provider" | "unreachable"; message?: string }
   // What the partner is doing while the user waits for its reply (D104): sent on every change and
   // after each welcome, null when the turn ends. Never logged: it is presence, not history.
   | { t: "activity"; activity: PartnerActivity | null }
@@ -1171,6 +1197,10 @@ export interface ConnectionView {
   apps?: OoApp[];
   /** D166: its watching today (the status line and the tiles). */
   look?: SourceLook;
+  /** D193: signed in through the provider's own page (OAuth device sign-in), not a pasted key. */
+  signIn?: boolean;
+  /** D193: a calling connection (Tuwa): the phone card instead of the mailbox card. */
+  phone?: PhoneView;
 }
 
 /** What the user's oo CLI is set up with, as far as Ducter can tell without reading a secret. */
@@ -1185,7 +1215,9 @@ export interface OoDetect {
 }
 
 /** no_key (D158): OOMOL Hosted needs a key, and none was given (nothing was sent). */
-export type ConnectionReason = "bad_url" | "unreachable" | "unauthorized" | "not_mcp" | "duplicate" | "unknown_connection" | "no_oo" | "oo_signed_out" | "no_key";
+/** D193: signing_in = the server signs in on its own page: connection_signin frames follow. */
+/** blocked (D193): the server's firewall refused Ducter itself (Cloudflare 1010), not the key. */
+export type ConnectionReason = "bad_url" | "unreachable" | "unauthorized" | "not_mcp" | "duplicate" | "unknown_connection" | "no_oo" | "oo_signed_out" | "no_key" | "signing_in" | "sign_in_failed" | "blocked";
 
 // ---------- Settings (D71: the Partner page and Settings) ----------
 // Persisted in the data folder: the name in persona.json (shared with the CLI), notifications

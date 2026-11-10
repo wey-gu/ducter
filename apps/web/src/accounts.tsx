@@ -9,6 +9,7 @@ import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { AppTile, Btn, DangerButton, Seg, Toggle } from "./controls.tsx";
 import { ago } from "./format.ts";
+import { PhoneCard, PhoneOffer, SignInPanel } from "./phone.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
 const OOMOL_ACCOUNTS = "https://console.oomol.com/app-connections";
@@ -294,9 +295,8 @@ export function SourceCards({ list }: { list: ConnectionView[] }) {
   return (
     <div class="src-cards">
       <ProactiveChips />
-      {list.map((c) => (
-        <SourceCard key={c.id} c={c} />
-      ))}
+      {list.map((c) => (c.phone ? <PhoneCard key={c.id} c={c} /> : <SourceCard key={c.id} c={c} />))}
+      {!list.some((c) => c.phone) ? <PhoneOffer /> : A.signIn && !A.signIn.reconnect && <SignInPanel s={A.signIn} />}
     </div>
   );
 }

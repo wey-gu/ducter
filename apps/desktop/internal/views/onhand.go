@@ -41,7 +41,7 @@ func (a *App) onHand(c *ui.Context) {
 	})
 	ui.Scroll(c).Grow(1).Children(func() {
 		ui.Column(c).Gap(t.S5).Padding(t.S5, t.S6, t.S6, t.S6).Children(func() {
-			if a.boardEmpty(b) && len(a.partnerDecisions()) == 0 {
+			if a.boardEmpty(b) && len(a.partnerDecisions()) == 0 && len(a.shownCalls()) == 0 {
 				ui.Column(c.Key("empty")).Width(640).MaxWidthPercent(100).AlignSelf(ui.Center).Padding(t.S5, t.S5).Gap(t.S3).Radius(t.RadiusXL).Border(2, t.Line).BorderStyle(ui.BorderDashed).AlignItems(ui.Center).Children(func() {
 					a.avatar(c, theme.Idle, 120)
 					ui.Text(c, a.L.T("onhand.empty", a.S.PersonaName)).FontSize(t.LG).TextColor(t.InkSoft).TextAlign(ui.Center)
@@ -49,6 +49,7 @@ func (a *App) onHand(c *ui.Context) {
 				return
 			}
 			a.forecastBand(c, b)
+			a.callRows(c) // D193: the calls, live and today's
 			if a.Local.ByProject() {
 				a.byProject(c, b)
 				a.routineShelf(c, true)
@@ -664,6 +665,11 @@ func (a *App) doneList(c *ui.Context, tasks []*store.Task) {
 // its default, and Go / Hold / Reply.
 func (a *App) partnerDecisionCard(c *ui.Context, d *store.DecisionState) {
 	t := a.T
+	if d.Call != nil {
+		ui.Column(c).Padding(t.S5, t.S5).Gap(t.S3).Radius(t.RadiusXL).Background(t.NeedsYou.Surface).
+			Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge).Children(func() { a.callBody(c, d) })
+		return
+	}
 	ui.Column(c).Padding(t.S5, t.S5).Gap(t.S3).Radius(t.RadiusXL).Background(t.NeedsYou.Surface).
 		Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge).Children(func() {
 		if d.Asker != nil {

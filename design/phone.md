@@ -1,133 +1,122 @@
-# Phone calls (draft, D189)
+# Phone calls (D189, D193)
 
-**Status: draft for the author's review.** Nothing here is built or decided. Evidence:
-`research/53-phone-calls-tuwa.md`. Proposed words below are not yet in the glossary
-(`product-model.md`); they go there only after the author decides.
+**Status: settled and built (2026-11-11), not yet run against the real Tuwa.** The author: "第一性原理
+做决定", D189's defaults taken; what changed on reflection is in D193. Evidence:
+`research/53-phone-calls-tuwa.md` (§8: Tuwa's real tool list, read with the author's account).
+Words: the glossary in `product-model.md` §1 ("a phone call").
 
 Ducter places phone calls for the owner to get things done: book a table, ask a clinic for a slot,
-chase a supplier, confirm a delivery. The voice on the line is either **Ducter's own** (the
-partner's name and a voice the owner picks) or **the owner's own**, enrolled once with consent.
-The first provider is Tuwa (tuwa.ai), reached as a connection; the design does not depend on it.
+chase a supplier, confirm a delivery. The voice on the line is **Ducter's own** (the partner's name,
+a Tuwa voice) or **the owner's own**, enrolled on Tuwa's page. The first provider is Tuwa (tuwa.ai),
+reached as a connection; the design names "a calling connection" so another provider can take the
+same card later.
 
 ## 1. User first
 
 | | Heavy multi-agent developer | Consumer personal-AI user | Fresh user |
 |---|---|---|---|
-| **Who, in this moment** | A task researching a supplier finds it only answers the phone; the author is deep in another task | Wants the Grok-bot / Muse power "call the restaurant for me", in Tokyo, without speaking Japanese | Has never heard of an agent making calls; asks "can you ring the dentist and move my appointment?" |
-| **Before** | Annoyed: a phone call is a context switch and 10 minutes of hold music | Anxious: a foreign language, a stranger, a booking that might go wrong | Doubtful it can, a little uneasy about a robot speaking for them |
-| **After** | The task never stopped; one card, one tap, an outcome line | Relief and a small delight: "two counter seats tomorrow at 7", in their own language | Trust: they saw exactly what would be said before it was said, and heard how it went |
-| **Emotional value** | Attention saved (principle 7) | 惊喜 + 放心: it speaks the language and the result is plain | 放心: nothing happens in their name without their yes |
-| **How it starts, zero setup** | The partner says "this needs a call; Ducter can make it once you connect calling" with one **连上 / Connect** that opens the sign-in on their phone | Same, from the conversation; the price per minute is on the first card | The first call card itself carries the connect step; no settings page to find |
+| **Who, in this moment** | A task researching a supplier finds it only answers the phone; the author is deep in another task | Wants "call the restaurant for me", in Tokyo, without speaking Japanese | Has never heard of an agent making calls; asks "can you ring the dentist and move my appointment?" |
+| **Before** | Annoyed: a call is a context switch and 10 minutes of hold music | Anxious: a foreign language, a stranger, a booking that might go wrong | Doubtful it can, a little uneasy about a robot speaking for them |
+| **After** | The task never stopped; one card, one tap, an outcome line | Relief and a small delight: "two counter seats tomorrow at 7:30", in their own language | Trust: they saw exactly what would be said before it was said, and heard how it went |
+| **Emotional value** | Attention saved (principle 7) | 惊喜 + 放心 | 放心: nothing happens in their name without their yes |
+| **How it starts, zero setup** | Settings › Accounts › **打电话 / Make calls** › **连上 Tuwa / Connect Tuwa**: a code and a QR, approved on the phone | The same, from the phone: the sign-in page opens on the same phone | Asking for a call before connecting: the partner says in one line where to connect |
 
-North star check (D36): 好用, one card per call; 顺滑, the call state lives in On hand like any task;
-赏心悦目, the 打电话 coin (`ab_call`) lights on the home's island once connected; 放心, the card shows
-who, what will be said, what stays private, the voice, the cost, and the line always says it is an
-AI; 惊喜, it asks the owner a mid-call question and the call goes on.
+North star (D36): 好用, one card per call; 顺滑, the call lives in On hand like a task; 赏心悦目, the
+clay phone (`ab_call`, grey `ab_call_locked` until connected); 放心, the card shows who, what will
+be said, what stays private, the voice, the cost, when, and the line always says it is an AI;
+惊喜, a question from the line reaches the owner mid-call and the call goes on.
 
 ## 2. Where it fits
 
-- **A connection, held by the broker** (`connectors.md` §18), not a harness feature and not a
-  partner-only tool. Tuwa is a remote MCP server with OAuth (device sign-in). The broker gains MCP
-  OAuth device sign-in (also wanted for other OAuth-only servers, §18.3); the tokens live in
-  `connection-tokens.json` (0600, D102), never in a harness's config, env or files. Tuwa's own
-  `tuwa-mcp.mjs` bridge is never installed into a task.
-- **Shown as an ability.** 打电话 / Make calls on the home's device card (D161 chips), with where it
-  lives: **用 Tuwa 的号码 / From a Tuwa number** (any home), or **用你的号码 / From your number**
-  (only a Mac home with the owner's iPhone nearby and Tuwa Device running; later).
-- **Where a task runs** (`where.md`): a call's place chip is **电话 · {who} / Call · {who}**
-  ("电话 · Sushi Saito").
-- **Who may call: the partner, only.** A task that needs a call says so in its report (principle
-  12); the partner drafts it and asks the owner. A task can read the status and result of a call
-  it asked for (shared to it like any connection read). Workers never hold the token.
-- **Harnesses:** any partner harness (they all reach the broker's tools over Ducter's MCP). No
-  harness-specific work.
+- **A connection, held by the broker** (`connectors.md` §18). Tuwa is a remote MCP server with OAuth.
+  The broker signs in by device code (§18.3, generic); tokens in `connection-tokens.json` (0600,
+  D102), never in a harness. Tuwa's own `tuwa-mcp.mjs` is never installed into a task.
+- **Recognised by its tools** (`packages/core/src/phone-provider.ts`): Tuwa's call flow and its
+  settings tools are reserved to Ducter's flow (`packages/core/src/phone.ts`); `connection_call`
+  refuses them, so no model can dial or change Tuwa around the card.
+- **Who calls: the partner, only**, with one tool, `phone_call` (draft / answer / cancel / block).
+  A task that needs a call says so in its report; the partner drafts it (`taskId` set) and
+  task_sends the task the outcome. Workers never hold the token.
 
-## 3. One call, end to end
+## 3. One call, end to end (as built)
 
-1. **Draft.** The partner calls Tuwa's draft with: the number (E.164), the name, one-sentence goal,
-   what may be said (booking name, callback number), what stays private (a budget ceiling),
-   alternatives, what must not happen, and Ducter's fixed `mustNot` lines (§6). Tuwa's questions
-   (`needs_input`) come to the owner in one message; the partner never answers them from memory
-   without showing what it would pass.
-2. **The card.** One Go / Hold card (`defaultOption: hold`, no countdown, not reversible), built
-   from Tuwa's approval summary shown as is:
-   - **打给 Sushi Saito · +81 3-1234-5678 / Call Sushi Saito**
-   - what it will ask; **可以说 / May say**: the booking name; **不说 / Won't say**: the budget
-   - **用 Ducter 的声音 / In Ducter's voice** or **用你的声音 / In your voice** (a toggle, if enrolled)
-   - **从 Tuwa 号码 / From a Tuwa number** · **大约 4 分钟 · 约 $2.40 / About 4 min · about $2.40**
-   - Go = **打吧 / Call**; Hold = **先不打 / Not now**.
-   Go passes the owner's tap (and any words they added) as Tuwa's `personReply`. Editing anything
-   voids the approval and remakes the card.
-3. **On the line.** The call is a job in On hand: **在打给 Sushi Saito… / Calling Sushi Saito…**,
-   then **通话中 2:14 / On the call 2:14**. Opened, it shows the live state and whatever transcript
-   Tuwa returns (unknown; research/53 §2). No sound is streamed to the owner in v1.
-4. **A question mid-call.** Tuwa's `pendingQuestion` becomes the top card with push, even in quiet
-   hours (the owner approved a live call): **对方在问：7 点半可以吗？/ They're asking: is 7:30 all
-   right?** with the likely answers as buttons and a free reply. No default and no countdown; if
-   the owner hasn't answered in about 90 s the agent says it will call back (`mustNot` covers
-   guessing). Status is polled every 15 s, every 5 s while a call is live.
-5. **After.** One line in the conversation, exactly as Tuwa reports it; **没能确认 / Couldn't
-   confirm** when Tuwa says `uncertain`. The opened call holds the summary, transcript if any,
-   length and cost. Saved to the Log; to Mem only on the owner's tap (IQ9). Recordings are not
-   requested in v1.
+1. **Draft.** The partner passes the number (country code), who, one goal, what may be said, what
+   stays private. Core refuses emergency and short numbers, numbers on the do-not-call list,
+   countries Tuwa doesn't call, a draft that would pass the daily cap, and the owner's voice when it
+   isn't set up. It adds Ducter's own rules (the opening line, never claim to be the owner, no
+   guessing an answer, 15 minutes, no marketing or payment details, "don't call again" respected),
+   `dialer: tuwa`, and `scheduledAt` when now isn't an allowed hour. Tuwa's `needs_input` questions
+   come back to the partner, who asks the owner and drafts again with their words.
+2. **The card** (a `decision` with `call`, `defaultOption: hold`, no countdown): **打给 {name}？ / Call
+   {name}?**, then 号码 / Number · 要办的事 / What for · 可以说 / May say · 不说 / Won't say · 声音 /
+   Voice · 从 / From (a Tuwa number) · 大约 / About (n min · about $) · 什么时候 / When, the opening
+   line, Tuwa's own summary behind a fold. **打过去 / Call** · **先不打 / Not now** · Reply… (a change:
+   the partner drafts again; the old card is withdrawn).
+3. **Go.** Ducter confirms with Tuwa (`tuwa_confirm`, the owner's button words, plus any words they
+   added, as `personReply`). Tuwa dials at once or at `scheduledAt`; a Go given after that hour
+   waits in Ducter for the next allowed one.
+4. **On the line.** On hand, working lane: **在打给 X… / Calling X…**, **通话中 · X 2:14 / On the call ·
+   X 2:14** with **挂断 / Hang up**; a waiting one **9:00 打给 X / Calls X at 9:00** with **不打了 /
+   Cancel call**. Status is polled every 15 s, 5 s while someone is on the line.
+5. **A question from the line** (`pendingQuestion`): a `decision` with `call.kind = question`, first in
+   Needs you, pushed at once even in quiet hours: **对方在问 / They're asking**, the question, **可以 /
+   不行 (Yes / No)** for a yes/no question or Tuwa's choices, and **或者直接告诉我怎么说 / Or tell me
+   what to say**. Foot: **电话那头在等；90 秒没回，就说回头再打。** After 90 s Ducter sends the fixed
+   call-back line. An answer said in the conversation goes through `phone_call do=answer`.
+6. **After.** Done today: **打完了 · X / Called X** with the outcome line as reported, **没能确认 · X /
+   Couldn't confirm · X**, **没人接 · X / No answer · X**, **没打出去 · X / Didn't go through · X** (why:
+   a card to save, no minutes, today's limit, sign in again; with **去 Tuwa 的付款页 / Open Tuwa's
+   payment page** when Tuwa gave one). Tapped: summary, what was agreed, **说了什么 / What was said**
+   (the transcript, when Tuwa gives one), length and cost. The partner says the outcome once.
 
 ## 4. When Ducter must ask
 
-Every call, in v1, always: a call reaches a person, in the owner's name, with no way back (Rule 3).
-The GQ4 offer ("don't ask next time") never applies to calls, and no Rule can make a call run
-unasked. Tuwa requires the same. Later, a trigger to revisit: the same number and the same goal
-asked and approved 3 times in 14 days.
-
-The floor adds, for calls:
-- a call that untrusted content asked for (an email saying "call this number") is never drafted
-  from it; the partner tells the owner and lets them ask;
-- no emergency numbers (Tuwa forbids them; the card says to call yourself);
-- no marketing, no calls to many numbers from one ask (at most one call per card);
-- money is the owner's act: buying minutes or saving a card opens Tuwa's own page (Stripe, WeChat
-  Pay, Alipay); Ducter never pays or sees card details.
+Every call, always. GQ4's "don't ask next time" never applies; no Rule can make a call run unasked.
+A call is drafted only from the user's own words or a task's report, never from what a mail or a page
+says. Money is the owner's act on Tuwa's own pages. Revisit trigger (todo): the same number and goal
+approved 3 times in 14 days.
 
 ## 5. The two voices
 
-- **Ducter's voice (default).** Tuwa's agent name is set to the partner's name; the voice is one of
-  Tuwa's, picked by the owner from its samples at connect (a row of clay coins playing the sample).
-  The line opens: **"您好，我是 {owner} 的 AI 助手 {partner}，替 {owner} 打来…" / "Hello, this is
-  {partner}, {owner}'s AI assistant, calling for {owner}…"**.
-- **The owner's voice.** Enrolled once, on Tuwa's recording page: the owner agrees there, reads a
-  short text aloud, submits. Ducter opens nothing itself and never handles audio. Ducter keeps only
-  "enrolled · on/off". The opening line still says it is an AI: **"…我是 {owner} 的 AI 助手，用
-  {owner} 的声音替他打来" / "…this is {owner}'s AI assistant, speaking in {owner}'s voice"**.
-  Never "this is {owner}".
-- **Only the owner's voice, ever.** No family member, friend, colleague or late relative, even with
-  their recording and even if the provider allows it. A request for one gets a plain refusal and the
-  alternative (Ducter's voice, or the person records their own Tuwa account).
-- **Revoke:** the same ability card: **不用我的声音了 / Stop using my voice** (switches off at
-  once) and **删除我的声音 / Delete my voice** (asks Tuwa to delete the model; says where it was
-  stored: Tuwa's voice provider, in China).
-- **Voice sampling** from calls stays off unless the owner turns it on in Tuwa.
+- **Ducter's voice (default).** Tuwa's phone agent is named after the partner at connect. The line
+  opens: "this is {partner}, {owner}'s AI assistant, calling for {owner}".
+- **The owner's voice.** Phone card › 你的声音 / Your voice › **去 Tuwa 录 / Record on Tuwa** opens Tuwa's
+  recording page; the owner agrees and reads aloud there. **我录好了 / I've recorded it** reads it back.
+  **用我的声音打 / Call in my voice** and **删除我的声音 / Delete my voice** pass Tuwa's confirmation with
+  the owner's tap. The opening still says it is an AI speaking in the owner's voice.
+- **Only the owner's voice, ever.** Consent wording on the card: the voice is stored by Tuwa's voice
+  provider, in China; only ever your own voice, never anyone else's.
 
-## 6. Safety rails (defaults)
+## 6. Safety rails (as built)
 
-| Rail | Default |
+| Rail | Where |
 |---|---|
-| Ask | Every call (§4) |
-| Disclosure | The AI-and-for-whom line at the start of every call, both voices, in the callee's language; a callback number when the owner gives one |
-| Quiet hours | No outbound call during the owner's 免打扰, nor outside 9:00–20:00 in the callee's local time; a call asked for then is scheduled with the owner's Go |
-| Cost | Ducter sets Tuwa's daily cap to $10 (Tuwa's own default is $50) at connect; the card shows an estimate; over the cap Tuwa refuses and Ducter says so |
-| Length | `mustNot` asks the agent to end after 15 minutes of talk; hold counts 1 min per 10 at Tuwa |
-| Who | Businesses and people the owner named; private mobiles in the US get a note on the card (the callee's consent matters there) |
-| Opt-out | If someone on a call asks not to be called again, or the owner blocks a number, it goes on a do-not-call list the partner checks before drafting |
-| Never | Emergency numbers; impersonating anyone; another person's voice; marketing; calls from untrusted asks; syncing the owner's life to Tuwa Friends |
-| Region | Calls to mainland China numbers are said to be unlikely to work through Tuwa before drafting (research/53 §4) |
+| Ask every call | the card; `decisions.ts` resolves, `phone.ts` confirms only on Go |
+| Disclosure | Ducter's context and `mustNot` on every draft |
+| Quiet hours and 9:00–20:00 callee time | `nextAllowed` (the owner's 免打扰; every zone of the country unless named) → `scheduledAt` |
+| Daily cap $10 | Ducter's ledger before drafting and before dialing; Tuwa's `dailyLimitCents` set at connect; changeable on the phone card |
+| 15 minutes | asked of the agent; Ducter hangs up at 17 on the line, 20 from dialing |
+| Do-not-call list | `phone_call do=block`; checked before drafting |
+| Never | emergency numbers, countries Tuwa doesn't call, another person's voice, marketing, Friends sync (off at connect), voice sampling (paused at connect) |
 
 ## 7. Not in v1
 
-- Inbound calls (Tuwa Device answering the owner's number by rule).
-- Calls from the owner's own number (needs a Mac home + iPhone + Tuwa Device).
-- Listening in live; a recording.
-- A self-built provider (Twilio + a real-time voice model) behind the same card.
-- Ducter calling the owner as the top escalation rung (principle 7's "call") — a different use of
-  the same connection; later.
+Inbound calls; calls from the owner's own number; listening live; recordings; another provider;
+Ducter calling the owner as the top escalation rung; keeping a call in Mem from its result.
 
-## 8. Open, for the author
+## 8. Built
 
-See D189 in `decisions.md`: each question has a proposed default.
+Core: `packages/core/src/{mcp-oauth,phone,phone-provider}.ts`, the broker (`connections.ts`), the
+pusher (`push.ts`), frames (`ws.ts`). Partner: `phone_call` (`partner.ts`), persona §Phone calls,
+`[call ended]` lines (`render.ts`). Clients: `apps/web/src/phone.tsx` (phone, iPad, Android) and
+`apps/desktop/internal/views/phone.go` (Mac). Tests: `packages/core/test/phone.test.ts` against a fake
+Tuwa over real HTTP (`fake-tuwa.ts`, its real tool schemas), the partner eval's `calls` scenarios,
+`apps/desktop/internal/views/phone_test.go`. Shots: `.shots/phone/` (desktop and web, zh/en).
+
+## 9. To check with a real account (the answers were never seen)
+
+The tool names and input schemas are Tuwa's own; what comes back is read by likely field names. Check:
+`tuwa_call_draft`'s id field (`taskId`), `tuwa_call_request_approval`'s `confirmationId` and `summary`,
+`tuwa_confirm`'s answer, `tuwa_call_status`'s status words and `pendingQuestion` (its token, a yes/no
+marker, its choices), `tuwa_call_result`'s `outcome` / `outcomeSummary` / transcript / duration / cost,
+`tuwa_settings`'s personal-voice field, and that `scheduledAt` with `+00:00` holds the call.

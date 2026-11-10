@@ -39,6 +39,8 @@ These pages are for using Ducter. If you want to build it or change it, start wi
   payment.
 - **[Waiting, keep going, routines](waiting-and-routines.md):** "tell me when…", "keep fixing
   until it works", and "every Monday…".
+- **[Phone calls](calls.md):** let your partner ring a restaurant, a clinic or a shop for you, only
+  after you say Call, in its voice or yours.
 - **[Your phone](phone.md):** connect your iPhone, iPad or Android phone, get a nudge when
   something needs you, and keep your nights quiet.
 - **[Privacy and safety](privacy-and-safety.md):** what Ducter never does by itself, what runs

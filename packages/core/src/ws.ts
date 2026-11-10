@@ -42,7 +42,7 @@ export interface WsData {
   sink?: LiveSink;
 }
 
-const ON_HAND_KINDS = new Set<string>(PROJECTED_KINDS);
+const ON_HAND_KINDS = new Set<string>([...PROJECTED_KINDS, "phone_call"]);
 const REDACTED = new Set<string>(["events", "task_history", "on_hand", "task_new_result", "action_result"]);
 const REPLAY_FRESH = 200; // channel events replayed when hello has no cursor
 const REPLAY_MAX = 5000; // cap for a cursor replay
@@ -66,6 +66,8 @@ export interface WsDeps {
   closing?: import("./closing.ts").Closing;
   /** The user's connections (connections.ts); absent in tests that don't need it. */
   connections?: ConnectionsStore;
+  /** D193: phone calls (phone.ts); absent in tests that don't need it. */
+  phone?: import("./phone.ts").Phone;
   /** Work over time (D112-D114): waiters, until loops, routines; absent in tests that don't need it. */
   work?: WorkFrames;
   /** 开一件事 / New task (D128, newtask.ts); absent in tests that don't need it. */
@@ -179,12 +181,18 @@ export function createWsHandler(deps: WsDeps) {
     const p = deps.proactive?.();
     const list = deps.connections!.view().map((c) => {
       const look = p?.look(c.id);
-      return look ? { ...c, look } : c;
+      const phone = deps.phone?.view(c.id);
+      return { ...c, ...(look ? { look } : {}), ...(phone ? { phone } : {}) };
     });
     return { t: "connections", connections: list, oo: deps.connections!.oo() };
   };
   const offConnections = deps.connections?.onChange(() => {
     for (const ws of sockets) if (ws.data.connections) send(ws, connectionsFrame());
+  });
+  // D193: the device sign-in: every socket that has Settings › Accounts open sees the code and the end.
+  const offSignIn = deps.connections?.onSignIn((signIn) => {
+    for (const ws of sockets) if (ws.data.connections) send(ws, { t: "connection_signin", signIn });
+    if (signIn.state === "done") for (const ws of sockets) if (ws.data.connections) send(ws, connectionsFrame());
   });
   // D166: a look, a find or a tile changes the card's status line: coalesced to one frame.
   let lookTimer: ReturnType<typeof setTimeout> | undefined;
@@ -615,7 +623,47 @@ export function createWsHandler(deps: WsDeps) {
         ws.data.connections = true;
         watchLook();
         send(ws, connectionsFrame());
+        const si = deps.connections.signInView();
+        if (si) send(ws, { t: "connection_signin", signIn: si });
         void deps.connections.recheck().catch(() => {});
+        return;
+      }
+      case "connection_signin_cancel": {
+        deps.connections?.cancelSignIn();
+        return;
+      }
+      case "connection_reauth": {
+        if (!deps.connections) throw new Error("connections are not available");
+        ws.data.connections = true;
+        const r = await deps.connections.reauth(String(f.id ?? ""));
+        if (!r.ok) send(ws, { t: "connection_result", ok: false, reason: r.reason });
+        return;
+      }
+      case "phone_voice": {
+        if (!deps.phone) throw new Error("calls are not available");
+        ws.data.connections = true;
+        const action = f.action;
+        if (!["record", "on", "off", "delete", "refresh"].includes(action)) throw new Error("unknown voice action");
+        // The owner's own tap on the phone card is their yes; these are the words passed with it.
+        const words = `Yes. (The person tapped "${action === "on" ? "use my voice" : action === "off" ? "stop using my voice" : action === "delete" ? "delete my voice" : "record my voice"}" in Ducter's settings.)`;
+        const r = await deps.phone.voice(action, words);
+        send(ws, { t: "phone_voice_result", action, ok: r.ok, ...(r.url ? { url: r.url } : {}), ...(r.reason ? { reason: r.reason } : {}), ...(r.message ? { message: r.message } : {}) });
+        send(ws, connectionsFrame());
+        return;
+      }
+      case "phone_cap": {
+        if (!deps.phone) throw new Error("calls are not available");
+        ws.data.connections = true;
+        const usd = Number(f.usd);
+        if (!Number.isFinite(usd) || usd <= 0) throw new Error("a cap is a positive amount");
+        await deps.phone.setCap(usd, `Yes. (The person set the daily limit to $${usd} in Ducter's settings.)`);
+        send(ws, connectionsFrame());
+        return;
+      }
+      case "call_cancel": {
+        if (!deps.phone) throw new Error("calls are not available");
+        await deps.phone.cancel(String(f.callId ?? ""), "owner");
+        send(ws, { t: "on_hand", onHand: tasks.onHand() });
         return;
       }
       case "connection_add":

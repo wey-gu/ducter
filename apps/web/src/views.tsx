@@ -16,6 +16,8 @@ import { Coin } from "./coin.tsx";
 import { Btn, Seg, Toggle } from "./controls.tsx";
 import { deviceArt, DevicesSection } from "./devcard.tsx";
 import { ProactiveChips, SourceCards } from "./accounts.tsx";
+import { CallDecision, CallRow, PhoneCard, PhoneOffer } from "./phone.tsx";
+import { callEnded } from "@ducter/protocol";
 import { FindsNote } from "./finds.tsx";
 import { NewTaskSheet } from "./newtask.tsx";
 import { appPush, disablePush, enablePush } from "./push-client.ts";
@@ -303,6 +305,7 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
   // D191: a payment names merchant, amount and card and asks for the security code; a first use asks OK.
   if (d.pay) return <PayBody d={d} />;
   if (d.fill) return <FillBody d={d} />;
+  if (d.call) return <CallDecision d={d} />;
   // D157: wait for a computer (the default) or do it now on another; built in the user's words.
   const wa = d.where ? whereAsk(d.where) : undefined;
   return (
@@ -986,6 +989,15 @@ function Ask({ d, taskId, buttons = true }: { d: DecisionState; taskId?: string;
   // holds the place; the task's own wording never shows in the conversation first.
   if (wait > 0) return <Presence line={t("activity.relay")} />;
   // D151: a sign-in ask opens the live view instead of Go.
+  // D193: a call's Go card or a question from the line: the whole card, in the conversation too.
+  if (d.call)
+    return (
+      <div ref={ref} class={`partner askq call${flash ? " flash" : ""}`} id={`d-${d.decisionId}`}>
+        <div class="decision">
+          <CallDecision d={d} />
+        </div>
+      </div>
+    );
   if (d.signIn)
     return (
       <div ref={ref} class={`partner askq signin${flash ? " flash" : ""}`} id={`d-${d.decisionId}`}>
@@ -1590,7 +1602,11 @@ export function OnHand() {
   const loose = A.S.armedWaiters().filter((w) => !w.taskId);
   const missed = A.S.missedToday();
   const routines = A.S.routines().filter((r) => r.state === "active" || r.state === "paused");
-  const nothing = !needs.length && !partnerDs.length && !working.length && !waiting.length && !done.length && !loose.length && !missed.length && !routines.length;
+  // D193: calls on the line (or waiting for their hour) work; ended ones are done today.
+  const calls = A.S.onHand?.calls ?? [];
+  const liveCalls = calls.filter((c) => ["waiting", "calling", "talking", "question"].includes(c.state));
+  const endedCalls = calls.filter((c) => callEnded(c.state) && c.state !== "held");
+  const nothing = !needs.length && !partnerDs.length && !working.length && !waiting.length && !done.length && !loose.length && !missed.length && !routines.length && !liveCalls.length && !endedCalls.length;
   const openCount = A.defaultable().length;
   const wide = useWide();
   // Beside the conversation, 接下来 as the Mac shows it: one quiet grey line, only when more than one thing is coming (D184).
@@ -1630,11 +1646,14 @@ export function OnHand() {
                 return d ? <DecisionCard key={task.id} d={d} taskId={task.id} /> : <Row key={task.id} task={task} meta={metaLine(task)} />;
               })}
             </section>
-            {working.length > 0 && (
+            {working.length + liveCalls.length > 0 && (
               <section class="section">
                 <h3>
-                  {t("lane.working")} <span class="n">{working.length}</span>
+                  {t("lane.working")} <span class="n">{working.length + liveCalls.length}</span>
                 </h3>
+                {liveCalls.map((c) => (
+                  <CallRow key={c.callId} c={c} />
+                ))}
                 {working.map((task) => (
                   <Row key={task.id} task={task} meta={workLine(task)} />
                 ))}
@@ -1661,11 +1680,14 @@ export function OnHand() {
                 ))}
               </section>
             )}
-            {(done.length > 0 || missed.length > 0) && (
+            {(done.length > 0 || missed.length > 0 || endedCalls.length > 0) && (
               <section class="section">
                 <h3>
-                  {t("lane.done")} <span class="n">{done.length + missed.length}</span>
+                  {t("lane.done")} <span class="n">{done.length + missed.length + endedCalls.length}</span>
                 </h3>
+                {endedCalls.map((c) => (
+                  <CallRow key={c.callId} c={c} />
+                ))}
                 {missed.map((w) => (
                   <div class="row" key={w.waiterId}>
                     <WaitBubble w={w} />
@@ -2650,6 +2672,8 @@ function Accounts() {
       )}
       {!adding && refusal && <AcctRefusal reason={refusal} hosted={false} />}
       <div class="small sub">{t("acct.honest")}</div>
+      {/* D193: calls are their own card, offered beside the accounts. */}
+      {list && (list.some((c) => c.phone) ? list.filter((c) => c.phone).map((c) => <PhoneCard key={c.id} c={c} />) : <PhoneOffer />)}
     </section>
   );
 }

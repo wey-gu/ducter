@@ -276,6 +276,40 @@ vendor's page before relying on them.
 9. **Keep it vendor-neutral** (principle 17): the design names "a calling connection" with Tuwa as
    the first one; a self-built Twilio/Realtime path can slot in later behind the same card.
 
+## 8. With an account (added 2026-11-11, for D193)
+
+The author signed up and approved a device login; the coordinator holds the token. Read-only checks
+only: no draft, approval, confirm or settings change was made.
+
+- **OAuth** [VERIFIED]: dynamic registration with only the device grant answers
+  `invalid_redirect_uri` (it wants `redirect_uris`); `device_authorization` accepts an empty
+  `client_id` with `scope=tuwa.calls` and `resource=https://api.tuwa.ai/mcp` and answers
+  `verification_uri` `…/oauth/device`, `verification_uri_complete` `…?user_code=XXXX-XXXX`,
+  `expires_in` 900, `interval` 5. Access tokens last 3600 s, with a refresh token.
+- **Cloudflare** in front refuses some default user agents with a 403, error 1010
+  (`browser_signature_banned`) [VERIFIED]: a client must send its own User-Agent.
+- **The tool list** (28 tools, with input schemas) [VERIFIED]: every call tool takes `taskId`;
+  `tuwa_call_draft` takes `to, goal, successCriteria, shareable[], privateGuidance, alternatives[],
+  mustNot[], talkAbout[], avoid[], voice (built_in | personal), remember[], context[{fact, source}],
+  recipientName, country, scheduledAt (ISO with offset), dialer (tuwa | my_phone | desktop_app),
+  fromNumber, desktop, mode (agent | live_translate)`; `tuwa_call_answer` takes `answers[{question,
+  answer, confirmedByPerson}]`; `tuwa_call_reply` takes `taskId, token (Q + 5), decision (accept |
+  decline | text), text`; `tuwa_call_status` reports `draft, awaiting_confirmation, scheduled,
+  executing, succeeded, partial, failed, canceled, uncertain`; `tuwa_call_result` gives `outcome,
+  outcomeSummary`, duration, open loops, and for calls placed from this agent the voice agent's
+  summary and the transcript when available; `tuwa_spending_limit` takes `dailyLimitCents`
+  (default 5000); `tuwa_settings` takes `agentName, displayName, voiceSampling (paused | on),
+  tuwaInboundRecords, translationVoice…`; `tuwa_settings_request_change` takes `change
+  (use_personal_voice | record_personal_voice | voice_sampling_consent | delete_voice_data |
+  delete_account)`; `tuwa_confirm` takes `confirmationId, decision (approve | decline), personReply`.
+- **Where Tuwa's numbers call** (the `to` description) [VERIFIED]: US, Canada, Japan, South Korea,
+  UK, Germany, France, India, Brazil, Australia, New Zealand, Thailand, Philippines, Singapore,
+  Malaysia, UAE, Nepal, Hong Kong, Macau, Taiwan; never premium-rate numbers. Mainland China is not
+  there: §4's "likely unavailable" is now a fact.
+- **Still unseen** [INFERRED]: the shape of each tool's answer (field names of the draft id, the
+  approval summary, a pending question's yes/no marker and choices, the result's cost and
+  transcript). Ducter reads them by likely names; `design/phone.md` §9 lists what to check.
+
 ## Summary
 
 Tuwa (chekusu Inc.) already offers what the author asked for, as a consumer service with an agent

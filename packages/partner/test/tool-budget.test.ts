@@ -16,14 +16,14 @@ import { partnerFingerprint } from "./fingerprint.ts";
 const PARTNER_TOOLS = [
   "ask", "connection_call", "connection_guide", "connection_search", "connection_share", "connections_list",
   "keep_going", "log_read", "log_search", "memory_add", "memory_search", "move_before_closing",
-  "notice_rule",
+  "notice_rule", "phone_call",
   "routine_list", "routine_pause", "routine_propose", "rule_list", "rule_save", "saved_list", "task_open",
   "task_read", "task_retitle", "task_send", "wait_cancel", "wait_for", "wait_until",
 ]; // saved_list (D191, 0.4K): listed only once something is saved in Autofill (seeded below)
 const TASK_TOOLS = ["checkpoint", "log_read", "log_search", "memory_search", "report_to_main", "wait_for"]; // memory_search: only where Mem is connected and the plugin is absent (D168)
 /** JSON characters of the whole tools/list result (≈ chars / 3.6 tokens). */
 const CEILING = {
-  partner: 28_000, // 25.5K today: 24 tools; wait_for (3.9K) and task_open (4.4K) are the largest
+  partner: 28_000, // 27.7K today: 26 tools (phone_call, D193, 2.2K after trimming); wait_for (3.9K) and task_open (4.4K) are the largest
   task: 8_500, // 7.6K: 6 tools; wait_for alone is 3.6K; memory_search (1.2K) is the D168 fallback where the Mem plugin is absent
 };
 

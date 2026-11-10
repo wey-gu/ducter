@@ -34,7 +34,7 @@ func (a *App) rows() []row {
 		if e.User != nil && e.User.ClientID != "" {
 			echoed[e.User.ClientID] = true
 		}
-		if e.Decision != nil && a.S.DecisionShownInLiving(e.Decision.DecisionID) {
+		if e.Decision != nil && (a.S.DecisionShownInLiving(e.Decision.DecisionID) || a.pinnedCallQuestion(e.Decision.DecisionID)) {
 			continue
 		}
 		// A Noted line lives in the Details of the reply it belongs to (D104).
@@ -181,6 +181,7 @@ func (a *App) conversation(c *ui.Context) {
 	if !a.backgroundLine(c) && !a.askLine(c) {
 		a.cliOfferLine(c)
 	}
+	a.callQuestionsAboveComposer(c) // D189 (5): someone is waiting on the line
 	a.composer(c)
 	a.readWhenSeen(c)
 }
@@ -583,6 +584,10 @@ func (a *App) resettle(c *ui.Context, e ui.Element, revision int) {
 
 func (a *App) decisionBody(c *ui.Context, d *store.DecisionState, taskID string) {
 	t := a.T
+	if d.Call != nil {
+		a.callBody(c, d) // D189: a call's Go card, or a question from the line
+		return
+	}
 	question := a.questionOf(d)
 	a.heading(c, autospace(question), t.XL).LineHeight(1.35)
 	if d.RoutineID != "" && d.Resolved == nil {

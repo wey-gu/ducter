@@ -801,3 +801,19 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **Prompt-cache hit rate**: read `cache_read` vs `cache_creation` from a day of the partner's
       sessions (OAR usage) to replace principle 4's heuristic. Trigger: the cost-model work.
 - [ ] **Before merging D165/D166 and D168/D169**: their highs in research/48 §2 (P1, P2, M1, M2).
+
+## Phone calls (D189, D193; `phone.md`)
+
+- [ ] **The first real call, with the author** (trigger: the token imported on the home): read-only
+  first (`tuwa_balance`, `tuwa_voices`, `tuwa_calls_list`), then one cheap call to a number the
+  author owns; check every answer field `phone.md` §9 lists and fix the readers in
+  `phone-provider.ts`.
+- [ ] **Keep a call in Mem on tap** from its result (IQ9), and the GQ4 revisit trigger (the same
+  number and goal approved 3 times in 14 days).
+- [ ] **The partner's 连上 / Connect from the conversation**: today it says in one line where to
+  connect; a card that opens the sign-in in place.
+- [ ] **Inbound and the owner's own number** (Tuwa Device on a Mac home with the iPhone nearby),
+  live listening, Ducter calling the owner as the top escalation rung.
+- [ ] **A second calling provider** behind the same card (Twilio + a real-time model) if Tuwa's
+  reach or terms stop fitting.
+

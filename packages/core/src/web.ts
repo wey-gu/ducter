@@ -71,6 +71,9 @@ import artDevMiniAsleep from "../../../apps/web/static/art/dev_mini_asleep.webp"
 import artDevDeviceUnreachable from "../../../apps/web/static/art/dev_device_unreachable.webp" with { type: "file" };
 import artDevPhone from "../../../apps/web/static/art/dev_phone.webp" with { type: "file" };
 import artAbWeb from "../../../apps/web/static/art/ab_web.webp" with { type: "file" };
+// D193: the 打电话 / Make calls coin (the clay phone; grey while not connected).
+import artAbCall from "../../../apps/web/static/art/ab_call.webp" with { type: "file" };
+import artAbCallLocked from "../../../apps/web/static/art/ab_call_locked.webp" with { type: "file" };
 import artAbComputer from "../../../apps/web/static/art/ab_computer.webp" with { type: "file" };
 import artAbRemote from "../../../apps/web/static/art/ab_remote.webp" with { type: "file" };
 
@@ -122,6 +125,8 @@ const ASSETS: Record<string, [string, string]> = {
   "art/dev_device_unreachable.webp": [artDevDeviceUnreachable, "image/webp"],
   "art/dev_phone.webp": [artDevPhone, "image/webp"],
   "art/ab_web.webp": [artAbWeb, "image/webp"],
+  "art/ab_call.webp": [artAbCall, "image/webp"],
+  "art/ab_call_locked.webp": [artAbCallLocked, "image/webp"],
   "art/ab_computer.webp": [artAbComputer, "image/webp"],
   "art/ab_remote.webp": [artAbRemote, "image/webp"],
 };

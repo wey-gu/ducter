@@ -186,6 +186,8 @@ type Decision struct {
 	// Trust (D170, X2): the offer to take an own agent's work without
 	// asking; Go keeps the rule.
 	Trust *TrustAsk `json:"trust,omitempty"`
+	// Call (D189/D193): a phone call's Go card, or a question from the line.
+	Call *CallAsk `json:"call,omitempty"`
 }
 
 // TrustAsk names the agent a standing-go offer is about.
@@ -625,6 +627,8 @@ func (e LogEvent) Typed() (any, error) {
 		v = &Finds{}
 	case KindFindState:
 		v = &FindState{}
+	case KindPhoneCall:
+		v = &CallBody{}
 	default:
 		return nil, nil
 	}
@@ -715,6 +719,8 @@ type OnHand struct {
 	Missed []Waiter `json:"missed,omitempty"`
 	// Projects (D186) the user added by hand, shown before any task.
 	Projects []ProjectView `json:"projects,omitempty"`
+	// Calls (D193): live, waiting for Go, or ended today; newest first.
+	Calls []CallBody `json:"calls,omitempty"`
 }
 
 // ---------- Client <-> main process WebSocket ----------
@@ -905,6 +911,10 @@ type ConnectionView struct {
 	Apps []OoApp `json:"apps,omitempty"`
 	// Look (D166): its watching today, the status line and the tiles.
 	Look *SourceLook `json:"look,omitempty"`
+	// SignIn (D193): signed in on the provider's own page, not a pasted key.
+	SignIn bool `json:"signIn,omitempty"`
+	// Phone (D193): a calling connection: the phone card, not the mailbox.
+	Phone *PhoneView `json:"phone,omitempty"`
 }
 
 // OoApp is one service connected in oo and its accounts' own labels.
@@ -1405,6 +1415,9 @@ type ServerFrame struct {
 	SavedDetails []DetailView `json:"details,omitempty"`
 	Uses         []SavedUse   `json:"uses,omitempty"`
 	KeptIn       string       `json:"keptIn,omitempty"`
+	// D193: connection_signin (the device sign-in); phone_voice_result uses
+	// Action, OK, URL, Reason, Message.
+	SignIn *SignInView `json:"signIn,omitempty"`
 }
 
 // Words are the same words in both languages: the client shows its own.
@@ -1545,7 +1558,8 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	case "welcome", "events", "on_hand", "task_history", "sent", "action_result", "error",
 		"devices", "ability_result", "pair_code", "rename_result", "disconnect_result", "update_result", "agent_update_result", "mem_plugin_result", "settings", "connections", "connection_result", "rules", "candidates", "activity",
 		"task_new_options", "task_new_result", "open_task", "open_result", "project_add_result",
-		"first_screen", "folder_changes", "close_result", "live", "live_frame", "browser_sites", "browser_check", "connection_reads", "saved":
+		"first_screen", "folder_changes", "close_result", "live", "live_frame", "browser_sites", "browser_check", "connection_reads", "saved",
+		"connection_signin", "phone_voice_result":
 	default:
 		return f, fmt.Errorf("unknown server frame %q", f.T)
 	}

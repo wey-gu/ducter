@@ -330,6 +330,10 @@ export function decisionMessage(d: Bodies["decision"], o: { persona: string; tas
   // X1 (D170): a question one of the user's own agents asked: who asks is the title, and silence
   // never answers for the user (the card's own default line).
   const peer = d.asker ? (o.locale === "zh" ? `你的 ${d.asker.agent} 问你` : `Your ${d.asker.agent} asks`) : undefined;
+  // D193: a question from a live call: someone is waiting on the line. No buttons (the answer is
+  // the owner's own words or a choice on the card), time-sensitive so it comes through.
+  if (d.call?.kind === "question")
+    return { title: `${o.persona} · ${o.locale === "zh" ? "对方在问" : "They're asking"}`, body: `${d.question} ${o.locale === "zh" ? "电话那头在等。" : "They're waiting on the line."}`, tag: `d:${d.decisionId}`, url: `app#d=${encodeURIComponent(d.decisionId)}`, decisionId: d.decisionId, level: "time-sensitive" };
   const msg: PushMessage = {
     title: peer ? `${o.persona} · ${peer}` : o.task ? `${o.persona} · ${o.task}` : o.persona,
     body: `${d.question} ${d.asker ? (o.locale === "zh" ? "没回就让它先等着。" : "If you don't answer, it keeps waiting.") : defaultLine(d, o.locale, o.now)}`,
@@ -339,7 +343,8 @@ export function decisionMessage(d: Bodies["decision"], o: { persona: string; tas
   };
   // iOS shows no action buttons on web push (D52 Q11): tap opens the decision.
   // An outside agent's question is answered on its card (its options are its own), never "Hold".
-  if (o.platform !== "ios" && !d.asker) msg.actions = [{ action: "go", title: d.goLabel && o.locale === "zh" ? `好，${d.goLabel}` : d.goLabel ? `Go: ${d.goLabel}` : c.go }, { action: "hold", title: c.hold }];
+  // A call's Go card is answered on the card, after seeing who, what and the cost (D189 (4)).
+  if (o.platform !== "ios" && !d.asker && !d.call) msg.actions = [{ action: "go", title: d.goLabel && o.locale === "zh" ? `好，${d.goLabel}` : d.goLabel ? `Go: ${d.goLabel}` : c.go }, { action: "hold", title: c.hold }];
   return msg;
 }
 
@@ -552,6 +557,15 @@ export function createPusher(opts: {
         const d = e.body as Bodies["decision"];
         // D165: a find's next step rides in its note, which is the one notification.
         if (d.findId) return;
+        // D189 (5): a question from a live call goes out at once, also in quiet hours and inside
+        // the coalescing window: the owner approved a live call, and someone is on the line.
+        if (d.call?.kind === "question") {
+          const key = `d:${d.decisionId}`;
+          if (!enabled || pushed.has(key)) return;
+          const it: Item = { key, seq: e.seq, at: clock.now(), kind: "decision", decision: d };
+          running = running.then(() => deliver([it])).catch((err) => console.warn(`[push] call question: ${(err as Error).message}`));
+          return;
+        }
         add({ key: `d:${d.decisionId}`, seq: e.seq, kind: "decision", decision: d });
         return;
       }

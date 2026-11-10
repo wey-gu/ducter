@@ -4,6 +4,7 @@
 //   runner  owns: HarnessPort over OAR, worktrees, task sessions, event normalization.
 //   partner owns: the main AI (persona prompt, projection, turn loop) on any first-wave harness (D85) via runner's HarnessPort.
 import type { HarnessId } from "./harnesses.ts";
+import type { CallBody, DraftRequest, DraftResult } from "./phone.ts";
 import type { Attention, Bodies, BodyWhy, BranchChanges, Delivery, FolderChanges, UndoConfirm, EventKind, LogEvent, OnHand, Origin, PartnerActivity, Place, Residency, PeersSettings, Settings, TaskCard, TaskNeeds } from "./index.ts";
 
 // ---------- core ----------
@@ -121,6 +122,8 @@ export interface CoreApi {
   browser?: DucterBrowserPort;
   /** D168: memory for tasks, from the partner's own Mem client; absent in tests, stubs and with no partner. */
   taskMemory?: TaskMemoryPort;
+  /** D193: phone calls through the calling connection (core/src/phone.ts); absent in tests and stubs. */
+  phone?: PhonePort;
   /** D168: the user's Nowledge Mem plugin for this agent is on that device in any form but absent (by id or name; undefined = the home), as Mem's own check last said (research/48 M1). */
   memPluginIn?(device: string | undefined, harness: string): boolean;
 }
@@ -423,4 +426,15 @@ export interface Partner {
 
 export function createPartnerSignature(_core: CoreApi, _runner: Runner): Partner {
   throw new Error("signature only: partner exports createPartner(core: CoreApi, runner: Runner): Partner");
+}
+
+/** D193: what the partner's phone_call tool reaches (core/src/phone.ts). */
+export interface PhonePort {
+  available(): { connectionId: string; provider: string } | undefined;
+  draft(req: DraftRequest, o: { lang: "zh" | "en"; callId?: string; answers?: string }): Promise<DraftResult>;
+  answer(text: string, callId?: string): { ok: true } | { ok: false; error: string };
+  cancel(callId: string, by: "owner" | "ducter"): Promise<boolean>;
+  block(number: string, why?: string): { ok: true; number: string } | { ok: false; error: string };
+  get(callId: string): CallBody | undefined;
+  calls(): (CallBody & { updatedAt: string })[];
 }

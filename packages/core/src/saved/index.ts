@@ -51,7 +51,7 @@ export function createAutofill(o: AutofillOptions): Autofill & { attachBrowser(h
   o.mcp.registerWhen(
     "partner",
     "saved_list",
-    "What the user saved in Autofill (sign-ins, cards, their details): names and handles, never the values. Use it before a task that books, buys or signs in, and put the handle in the brief (\"pay with card:visa-4242 after the user's Go\").",
+    "Autofill (sign-ins, cards, the user's details): names and handles, never values. Before a task that books, buys or signs in; put the handle in its brief (\"pay with card:visa-4242 after the user's Go\").",
     { type: "object", properties: {} },
     async () => savedListText(store, "partner"),
     any,

@@ -32,7 +32,7 @@ var sharedControls = map[string]bool{
 var controlFiles = []string{
 	"devicecard.go", "devupdate.go", "computers.go", "sites.go", "abilities.go", "agentversion.go",
 	"settings.go", "settings_panels.go", "settings_update.go", "partner.go", "loadout.go", "whereswitch.go", "shared.go", "memplugin.go",
-	"accounts.go", "finds.go", "newtask.go", "newtaskwhere.go", "byproject.go",
+	"accounts.go", "finds.go", "newtask.go", "newtaskwhere.go", "byproject.go", "phone.go",
 }
 
 // adHoc reports a call that makes a control by hand.

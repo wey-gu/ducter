@@ -121,6 +121,32 @@ export interface Question {
   /** D151: the task needs the user to sign in to a site in Ducter's browser (set by Ducter's
    *  browser_ask_sign_in tool, never by report_to_main). */
   signIn?: SignInAsk;
+  /** D157: wait for a computer, or do it now on another (set by the runner, never by a task). */
+  where?: WhereAsk;
+}
+
+/**
+ * D157 (design/where.md §4.4): the one line asked when the best computer for a task is asleep and
+ * another could start now with a visible difference, or the user's own pick waits on a computer
+ * that can't be reached. Hold = wait for it (the default: not answering waits, nothing is lost);
+ * Go = do it now on `other` (its agent when the pick moves: otherAgent).
+ *  - asleep: device (the one it waits for) is asleep (or can't be reached: state);
+ *  - pin: the user's own pick (agent) lives only on device, which can't be reached.
+ * signIn: the user would sign in to site on `other` first; widens: `other` uses their Chrome.
+ */
+export interface WhereAsk {
+  kind: "asleep" | "pin";
+  device: string;
+  state: "asleep" | "unreachable";
+  other: string;
+  agent?: string;
+  otherAgent?: string;
+  site?: string;
+  /** What the computer it waits for would use (here) and what `other` would (uses). */
+  here?: "chrome" | "ducter";
+  uses?: "chrome" | "ducter";
+  signIn?: boolean;
+  widens?: boolean;
 }
 
 /** D151: 需要你登录一下 {site} / Sign in to {site}: the card opens a live view of Ducter's browser. */
@@ -147,6 +173,7 @@ export interface Bodies {
     reversible: boolean;
     routineId?: string; // a routine's proposal card (D114): Go activates it
     signIn?: SignInAsk; // D151: a sign-in card; Go = 好了 / Done in the live view
+    where?: WhereAsk; // D157: wait for a computer (Hold, the default) or do it now on another (Go)
   };
   decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default" };
   read_receipt: { upToSeq: number };

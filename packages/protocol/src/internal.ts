@@ -142,7 +142,7 @@ export interface BodyChoice {
   waits?: "asleep" | "unreachable";
   uses?: "chrome" | "ducter";
   needsSignIn?: boolean;
-  now?: { device: string; deviceId: string; harness: string; model?: string; uses?: "chrome" | "ducter"; needsSignIn?: boolean };
+  now?: { device: string; deviceId: string; name: string; harness: string; model?: string; uses?: "chrome" | "ducter"; needsSignIn?: boolean };
 }
 
 /** Who is calling into a connection: the partner, or one task (which must have been granted it). */

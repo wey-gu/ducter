@@ -726,7 +726,11 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 		if st.after != nil {
 			st.after()
 		}
-		if a.buttonFor(c, a.L.T("decision.hold"), about, btnSecondary, st.height, st.quietBg) {
+		hold := a.L.T("decision.hold")
+		if d.Where != nil {
+			hold = a.whereAskHold(d.Where)
+		}
+		if a.buttonFor(c, hold, about, btnSecondary, st.height, st.quietBg) {
 			a.Decide(d.DecisionID, "hold", "")
 		}
 		if a.buttonFor(c, goText, about, btnPrimary, st.height, st.quietBg) {
@@ -761,6 +765,9 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 // goLabel is the Go button's words: the action itself when it is a short
 // verb ("Rebase"; zh "好，rebase"), else Go / 好: never a sentence (D127).
 func (a *App) goLabel(d *store.DecisionState) string {
+	if d.Where != nil {
+		return a.whereAskGo(d.Where)
+	}
 	return a.shortGo(d.GoLabel)
 }
 

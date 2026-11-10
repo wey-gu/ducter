@@ -6,6 +6,7 @@ import (
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
+	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 )
 
 // D157: the author's setup. hel is the home (a server that never sleeps,
@@ -88,5 +89,23 @@ func TestWhereLineOnEveryTaskWithTwoComputers(t *testing.T) {
 	en.Receive(whereDevices("awake"))
 	if on, why := en.taskWhere(en.S.Tasks["t_order"]); on != "on MacBook · in your Chrome" || why != "Why MacBook: Needs your signed-in taobao.com" {
 		t.Errorf("en: %q / %q", on, why)
+	}
+}
+
+// The sleeping-Mac ask (where.md W2b): wait by default, now on hel with a
+// sign-in there; the user's own pick that waits; a waiting task's line.
+func TestWhereAskWords(t *testing.T) {
+	app, _ := iaApp(t, i18n.ZH)
+	d := &store.DecisionState{Decision: protocol.Decision{DecisionID: "d1", Question: "raw", GoLabel: "x", DefaultOption: "hold",
+		Where: &protocol.WhereAsk{Kind: "asleep", Device: "MacBook", State: "asleep", Other: "hel", Site: "taobao.com", Here: "chrome", Uses: "ducter", SignIn: true}}}
+	if q := app.questionOf(d); q != "MacBook 睡着了。等它醒了用你的 Chrome 做，还是现在在 hel 上做？" {
+		t.Errorf("question %q", q)
+	}
+	if g, h := app.goLabel(d), app.whereAskHold(d.Where); g != "现在在 hel 上做" || h != "等它醒" {
+		t.Errorf("go %q hold %q", g, h)
+	}
+	pin := &store.DecisionState{Decision: protocol.Decision{Where: &protocol.WhereAsk{Kind: "pin", Device: "MacBook", State: "unreachable", Other: "hel", Agent: "claude-code", OtherAgent: "codex"}}}
+	if q, g := app.questionOf(pin), app.goLabel(pin); q != "Claude Code 只在 MacBook 上，它现在连不上。等它，还是换个来做？" || g != "换 Codex 来做" {
+		t.Errorf("pin: %q / %q", q, g)
 	}
 }

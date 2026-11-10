@@ -1,7 +1,7 @@
 // D157 (design/where.md): where a task runs. With one computer nothing is said; with two or more,
 // every task says which one in a few words ("在 hel 上 · 用 Ducter 自己的浏览器") and a tap on it
 // says why. The same words and rules as the desktop's views/where.go.
-import type { DeviceView, WhereWhy } from "@ducter/protocol";
+import type { DeviceView, WhereAsk, WhereWhy } from "@ducter/protocol";
 import { A } from "./app.ts";
 import { harnessName } from "./format.ts";
 import { placeOf, type Task } from "./store.ts";
@@ -65,6 +65,34 @@ export function whereReason(w: WhereWhy | undefined): string {
       return t("where.reason.home", dev);
   }
   return "";
+}
+
+/** A task waiting on its computer, in words (the runner's device:asleep / device:unreachable reasons). */
+export function deviceWait(reason: string): string | undefined {
+  const asleep = /^device:asleep:(.+)$/.exec(reason);
+  if (asleep) return t("where.waiting", asleep[1]);
+  const away = /^device:unreachable:(.+)$/.exec(reason);
+  if (away) return t("device.unreachable", away[1]);
+  return undefined;
+}
+
+/** D157: a where ask's words (where.md §4.4), built here so they read in the user's language. */
+export function whereAsk(w: WhereAsk): { question: string; go: string; hold: string; lines: { text: string; widen?: boolean }[] } {
+  const question =
+    w.kind === "pin"
+      ? t("where.ask.pin", harnessName(w.agent ?? ""), w.device)
+      : w.state === "unreachable"
+        ? t("where.ask.away", w.device, w.other)
+        : t(w.here === "chrome" ? "where.ask.asleep.chrome" : "where.ask.asleep", w.device, w.other);
+  const go = w.kind === "pin" && w.otherAgent ? t("where.ask.now.pin", harnessName(w.otherAgent)) : t("where.ask.now", w.other);
+  const hold = t(w.kind === "pin" ? "where.ask.wait.pin" : "where.ask.wait");
+  const lines = [
+    ...(w.signIn ? [{ text: w.site ? t("where.ask.signin", w.other, w.site) : t("where.ask.signin.0", w.other) }] : []),
+    // Never widen silently: the most important sentence on the card, in the accent ink.
+    ...(w.widens ? [{ text: t("switch.move.widens"), widen: true }] : []),
+    { text: t("where.ask.default") },
+  ];
+  return { question, go, hold, lines };
 }
 
 /** The where part of a task's meta line and its reason; empty with one computer. */

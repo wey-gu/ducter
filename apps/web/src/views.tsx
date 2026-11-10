@@ -9,7 +9,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { JSX } from "preact";
 import { A, candKey, placeKey, type SettingsPage } from "./app.ts";
 import { TRY_LIVE } from "@ducter/protocol";
-import { computerName, manyComputers } from "./where.ts";
+import { computerName, deviceWait, manyComputers, whereAsk } from "./where.ts";
 import { ago, behind, cjkPad, deviceLabel, duration, firstClause, harnessName, modelName, phaseLine as phaseWords, placeLine, sameWords, splitOutcome, when } from "./format.ts";
 import { markdown } from "./markdown.ts";
 import { Coin } from "./coin.tsx";
@@ -239,6 +239,7 @@ function defaultInfo(d: DecisionState, now: number): { line: string; frac?: numb
 /** The Go button's words: the action itself when it is a short verb ("Rebase"; zh "好，rebase"),
  *  else Go / 好: never a sentence (D127). */
 export function goLabel(d: DecisionState): string {
+  if (d.where) return whereAsk(d.where).go;
   return shortGo(d.goLabel);
 }
 
@@ -274,7 +275,7 @@ function answeredWords(d: DecisionState): string {
   const opt = d.resolved?.option ?? (d.pending || "go");
   if (d.resolved?.by === "default") return t("decision.resolved.default");
   if (opt === "reply") return t("decision.resolved.reply", d.resolved?.text ?? "");
-  if (opt === "hold") return t("decision.resolved.hold");
+  if (opt === "hold") return d.where ? t("where.ask.waited", d.where.device) : t("decision.resolved.hold");
   return t("decision.resolved.go", goLabel(d));
 }
 
@@ -300,11 +301,14 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
   const goText = goLabel(d);
   const draft = A.replyDraft.get(d.decisionId) ?? "";
   if (d.signIn) return <SignInBody d={d} />;
+  // D157: wait for a computer (the default) or do it now on another; built in the user's words.
+  const wa = d.where ? whereAsk(d.where) : undefined;
   return (
     <>
-      <div class="q">{d.question}</div>
+      <div class="q">{wa?.question ?? d.question}</div>
       {d.routineId && <RoutineFacts routineId={d.routineId} />}
-      {open && <DefaultRow d={d} />}
+      {open && wa && wa.lines.map((l, i) => <div key={i} class={`dl${l.widen ? " widen" : ""}`}>{l.text}</div>)}
+      {open && !wa && <DefaultRow d={d} />}
       {open ? (
         // Reply… · Hold · Go, the primary last (D76). Hold and Go stay one pair; a long Go
         // sends Reply… to its own line under them (.btns.decide).
@@ -319,7 +323,7 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
             }}
           />
           <span class="pair">
-            <Btn kind="secondary" label={t("decision.hold")} about={about} onClick={() => A.decide(d.decisionId, "hold")} />
+            <Btn kind="secondary" label={wa?.hold ?? t("decision.hold")} about={about} onClick={() => A.decide(d.decisionId, "hold")} />
             <Btn kind="primary" label={goText} about={about} onClick={() => A.decide(d.decisionId, "go")} />
           </span>
         </div>
@@ -1444,7 +1448,8 @@ function metaLine(task: Task): string {
 function waitReason(task: Task): string {
   const w = A.S.waiterFor(task.id);
   if (w) return [waitLine(w.reason), waitCaption(w)].filter(Boolean).join(" · ");
-  return reasonOf(task) || metaLine(task);
+  const r = reasonOf(task);
+  return (r && (deviceWait(r) ?? r)) || metaLine(task);
 }
 
 /** A working row's line: a keep-going loop's try, or a routine's run, else where and who. */

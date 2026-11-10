@@ -134,6 +134,10 @@ func (a *App) waitReason(task *store.Task) string {
 	if d, ok := strings.CutPrefix(r, "device:unreachable:"); ok {
 		return a.L.T("device.unreachable", d)
 	}
+	// D157: waiting for a computer that said it was going to sleep.
+	if d, ok := strings.CutPrefix(r, "device:asleep:"); ok {
+		return a.L.T("where.waiting", d)
+	}
 	if strings.HasPrefix(r, "report:") || strings.HasSuffix(r, "by user") {
 		return ""
 	}
@@ -473,6 +477,10 @@ func nonEmpty(s ...string) []string {
 // caption ("28 分钟后按默认：等你登录后继续"); else the words alone.
 func (a *App) defaultRow(c *ui.Context, d *store.DecisionState) {
 	t := a.T
+	if d.Where != nil {
+		a.whereAskLines(c, d.Where)
+		return
+	}
 	left, ok := a.defaultIn(d)
 	if !ok || d.DefaultOption != "go" {
 		a.mark(c.Key("default"), drawClock, a.defaultLine(c, d), t.NeedsYou.Ink)

@@ -1,10 +1,10 @@
 import { randomBytes } from "node:crypto";
-import { HARNESS_IDS, harnessName, type Attention, type Bodies, type BranchChanges, type Delivery, type EvidenceRef, type FolderChanges, type FolderSummary, type UndoConfirm, type LogEvent, type Place, type Residency, type TaskCard, type TaskNeeds } from "@ducter/protocol";
+import { HARNESS_IDS, harnessName, type Attention, type Bodies, type BranchChanges, type Delivery, type EvidenceRef, type FolderChanges, type FolderSummary, type UndoConfirm, type LogEvent, type Place, type Question, type Residency, type TaskCard, type TaskNeeds, type WhereAsk } from "@ducter/protocol";
 import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, SessionSpec } from "@ducter/protocol/src/internal.ts";
 import { NUDGE, PRECOMPACT_NOTE, REOPENED, RESUME_AFTER_RESTART, SAVE_BEFORE_COMPACT, afterCompaction, briefTurn, handedOver, kickoff, noCopyAnswer, seedThen, startedAfresh, taskBrief } from "./brief.ts";
 import { resolveWindows, saveBeforeAt } from "@ducter/protocol/src/harness-facts.ts";
 import { createOarHarnessPort } from "./oar.ts";
-import { cwdOf, planPlace, provisionPlace } from "./places.ts";
+import { cwdOf, planPlace, provisionPlace, type ResolvedPlace } from "./places.ts";
 import { browserSidecar, codexComputerBrief, computerUseGuard, type BrowserGuardHit, type BrowserOptions, type BrowserSidecar, type BrowserTool, type SidecarInput } from "./browser.ts";
 import { checkEvidence } from "./evidence.ts";
 import { PREVIEW_MAX, preview } from "./normalize.ts";
@@ -15,6 +15,8 @@ import { join } from "node:path";
 
 /** task_state reason for a task whose worker dropped; clients render it as "<device> 连不上 / Can't reach <device>". */
 export const unreachableReason = (device: string) => `device:unreachable:${device}`;
+/** D157: a task waits for a computer that said it was going to sleep: 在等 · MacBook 睡着了. */
+export const asleepReason = (device: string) => `device:asleep:${device}`;
 
 type HarnessId = SessionSpec["harness"];
 type From = NonNullable<Bodies["task_event"]["from"]>;
@@ -78,6 +80,16 @@ export interface RunnerExt extends Runner {
   dispose(): Promise<void>;
 }
 
+/** What starting a task needs once its place is ready (open, or a computer that came back). */
+interface StartCtx {
+  body: Bodies["task_open"];
+  later: boolean;
+  briefIn: string | Promise<string>;
+  title: string;
+  persona: string;
+  partnerName: string;
+}
+
 interface TaskRt {
   id: string;
   persona: string;
@@ -122,6 +134,8 @@ interface TaskRt {
   /** D142: the user let it change the folder without a copy. */
   direct?: boolean;
   lang?: "zh" | "en"; // the language the user reads its reports in
+  /** D157: waiting for its computer (asleep or can't be reached) before it ever started. */
+  waiting?: StartCtx;
 }
 
 /** The turn after a browser driver switch (D130): same task, now on Ducter's own browser. */
@@ -937,19 +951,25 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     if (!HARNESSES.includes(h)) throw new Error(`unknown harness ${input.harness}`);
     if (input.harness && !enabled(h)) throw new Error(`the user switched ${harnessName(h)} off for tasks; leave harness out or ask them`);
     const title = input.title.trim() || "Untitled task";
-    // Where it runs: this machine, or a worker that must be connected right now.
+    // Where it runs: this machine, or a worker. D157: a worker that is asleep or can't be reached
+    // right now doesn't refuse the task: it waits for it there and starts when it's back.
     const ops = opsFor(input.place);
-    if (ops.device && !ops.device.online()) throw new DeviceOfflineError(ops.device.name);
-    const resolved = await ops.plan(input.place, id, title);
-    // A worker plans its own place; it can't turn it into something this machine then runs
-    // (a browser place's browser is the worker's own, D157).
-    if (ops.device && resolved?.place?.kind !== (input.place?.kind ?? "none")) throw new Error(`${ops.device.name} answered with a different kind of place`);
+    const away = ops.device && !ops.device.online() ? ops.device : undefined;
     const project = input.project ?? "";
     const persona = input.persona || core.persona.id;
     const partnerName = opts.partnerName ?? core.persona.name ?? "Ducter";
-    // Throws before the task exists when a browser place is unavailable (the partner says why).
-    const sidecarInput: SidecarInput = { place: resolved.place, persona, taskId: id, dataDir: core.dataDir, partnerName, harness: h };
-    const sidecar = await sidecarFor(ops, sidecarInput);
+    let resolved: ResolvedPlace = { place: input.place ?? { kind: "none" }, cwd: "" };
+    let sidecar: BrowserSidecar | undefined;
+    let sidecarInput: SidecarInput | undefined;
+    if (!away) {
+      resolved = await ops.plan(input.place, id, title);
+      // A worker plans its own place; it can't turn it into something this machine then runs
+      // (a browser place's browser is the worker's own, D157).
+      if (ops.device && resolved?.place?.kind !== (input.place?.kind ?? "none")) throw new Error(`${ops.device.name} answered with a different kind of place`);
+      // Throws before the task exists when a browser place is unavailable (the partner says why).
+      sidecarInput = { place: resolved.place, persona, taskId: id, dataDir: core.dataDir, partnerName, harness: h };
+      sidecar = await sidecarFor(ops, sidecarInput);
+    }
 
     // The partner's, a rule's or the person's choice wins; else DUCTER_TASK_MODEL; else the
     // ranking's model; else the harness default.
@@ -977,49 +997,194 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     t.spec = withBrowser(t.base, sidecar, partnerName);
     if (input.language) t.lang = input.language;
     tasks.set(id, t);
+    const start: StartCtx = { body, later, briefIn, title, persona, partnerName };
+    if (away) {
+      // D157: 在等 · MacBook 睡着了. It starts there when the computer is back (no push, A3).
+      const asleep = pick?.waits === "asleep" || !!core.workers?.list().find((w) => w.id === away.id || w.name === away.name)?.asleep;
+      core.tasks.setState(id, "blocked", "offline", (asleep ? asleepReason : unreachableReason)(away.name));
+      logEvent(t, { role: "system", from: "runner", text: `waiting for ${away.name}: it starts there when it's back`, raw: { device: away.id, waits: asleep ? "asleep" : "unreachable" } });
+      waitThere(t, start);
+      // The best computer sleeps and another could do it now, visibly differently: one line, wait by default.
+      if (pick?.waits && pick.now) askWhere(t, pick, you);
+      return core.tasks.get(id) ?? card;
+    }
     core.tasks.setState(id, "queued", "provisioning");
+    t.started = launch(t, start, resolved);
+    return core.tasks.get(id) ?? card;
+  }
 
-    t.started = (async () => {
-      try {
-        await ops.provision(resolved);
-        await sidecar?.ready();
-        await startSession(t, false);
-        let first = kickoff(title);
-        if (later) {
-          // The session is up (or coming up) while the partner finishes the brief.
-          let text: string;
-          try {
-            text = await briefIn;
-          } catch {
-            // Never briefed (the partner's call changed or failed): gone before it did anything.
-            if (t.dropped) return;
-            t.dropped = true;
-            setState(t, "dropped", "archived", "not started");
-            const s = t.session;
-            t.session = undefined;
-            await s?.close().catch(() => {});
-            await sidecar?.close().catch(() => false);
-            return;
-          }
+
+  /** Provision the place, start the session, and send the first turn (the brief, once written). */
+  async function launch(t: TaskRt, c: StartCtx, resolved: ResolvedPlace): Promise<void> {
+    const id = t.id;
+    try {
+      await t.ops.provision(resolved);
+      await t.sidecar?.ready();
+      await startSession(t, false);
+      let first = kickoff(c.title);
+      if (c.later) {
+        // The session is up (or coming up) while the partner finishes the brief.
+        let text: string;
+        try {
+          text = await c.briefIn;
+        } catch {
+          // Never briefed (the partner's call changed or failed): gone before it did anything.
           if (t.dropped) return;
-          // The briefed task_open is the one the registry, recovery and hand-offs read.
-          const full = { ...body, brief: text };
-          core.log.append({ persona, stream: stream(id), origin: "system", kind: "task_open", body: full });
-          t.base = { ...specFor(id, full, resolved.cwd, true), cwd: t.base.cwd };
-          t.spec = withBrowser(t.base, t.sidecar, partnerName);
-          first = briefTurn(text, title);
+          t.dropped = true;
+          setState(t, "dropped", "archived", "not started");
+          const s = t.session;
+          t.session = undefined;
+          await s?.close().catch(() => {});
+          await t.sidecar?.close().catch(() => false);
+          return;
         }
         if (t.dropped) return;
-        await sendTurn(t, first, "runner");
-      } catch (err) {
-        if (isOffline(err)) return deviceLost(t, true);
-        const reason = preview(err instanceof Error ? err.message : String(err), 500);
-        logEvent(t, { role: "system", from: "runner", text: `failed to start: ${reason}` });
-        setState(t, "failed", "archived", reason);
+        // The briefed task_open is the one the registry, recovery and hand-offs read.
+        const full = { ...c.body, place: resolved.place, brief: text };
+        core.log.append({ persona: c.persona, stream: stream(id), origin: "system", kind: "task_open", body: full });
+        t.base = { ...specFor(id, full, resolved.cwd, true), cwd: t.base.cwd };
+        t.spec = withBrowser(t.base, t.sidecar, c.partnerName);
+        first = briefTurn(text, c.title);
       }
-    })();
+      if (t.dropped) return;
+      await sendTurn(t, first, "runner");
+    } catch (err) {
+      if (isOffline(err)) return deviceLost(t, true);
+      const reason = preview(err instanceof Error ? err.message : String(err), 500);
+      logEvent(t, { role: "system", from: "runner", text: `failed to start: ${reason}` });
+      setState(t, "failed", "archived", reason);
+    }
+  }
 
-    return core.tasks.get(id) ?? card;
+  /** D157: a task waiting for its computer starts there as soon as it is back. */
+  function waitThere(t: TaskRt, c: StartCtx) {
+    const d = t.ops.device;
+    if (!d) return;
+    t.waiting = c;
+    t.offlineOff?.();
+    t.offlineOff = d.onOnline(() => {
+      t.offlineOff?.();
+      t.offlineOff = undefined;
+      void beginThere(t);
+    });
+  }
+
+  /** D157: the computer a waiting task waits for is here (or the user moved it): plan and start. */
+  async function beginThere(t: TaskRt) {
+    const c = t.waiting;
+    if (!c || t.dropped || t.session) return;
+    t.waiting = undefined;
+    setState(t, "queued", "provisioning");
+    let resolved: ResolvedPlace;
+    try {
+      resolved = await t.ops.plan(c.body.place, t.id, c.title);
+      const input: SidecarInput = { place: resolved.place, persona: c.persona, taskId: t.id, dataDir: core.dataDir, partnerName: c.partnerName, harness: t.base.harness };
+      const sc = await sidecarFor(t.ops, input);
+      if (sc) (t.sidecar = sc), (t.sidecarInput = input);
+    } catch (err) {
+      if (isOffline(err)) {
+        // Gone again before it started: keep waiting.
+        setState(t, "blocked", "offline", unreachableReason(t.ops.device?.name ?? ""));
+        return waitThere(t, c);
+      }
+      const reason = preview(err instanceof Error ? err.message : String(err), 500);
+      logEvent(t, { role: "system", from: "runner", text: `failed to start: ${reason}` });
+      return setState(t, "failed", "archived", reason);
+    }
+    // Planned there: the place as that computer resolved it (a worktree, a branch).
+    const body = { ...c.body, place: resolved.place, harness: t.base.harness, ...(t.base.model ? { model: t.base.model } : {}) };
+    if (!c.later) core.log.append({ persona: c.persona, stream: stream(t.id), origin: "system", kind: "task_open", body });
+    t.card = { ...t.card, place: resolved.place };
+    t.base = { ...specFor(t.id, body, resolved.cwd, !c.later), harness: t.base.harness, ...(t.base.model ? { model: t.base.model } : {}) };
+    t.spec = withBrowser(t.base, t.sidecar, c.partnerName);
+    logEvent(t, { role: "system", from: "runner", text: `${t.ops.device?.name ?? "this machine"} is here; starting`, raw: { device: t.ops.device?.id ?? "local", waits: false } });
+    t.started = launch(t, { ...c, body }, resolved);
+  }
+
+  /**
+   * D157 (where.md §4.4): one line with a default. Hold (the default, no countdown: waiting is
+   * free) waits for the computer; Go does it now on the other one. The task hears nothing of it.
+   */
+  function askWhere(t: TaskRt, pick: NonNullable<Awaited<ReturnType<NonNullable<CoreApi["bodies"]>["choose"]>>> & { harness: string }, you: boolean) {
+    if (!("now" in pick) || !pick.now || !pick.waits) return;
+    const now = pick.now;
+    const zh = t.lang === "zh";
+    const dev = pick.why.where?.device ?? pick.device ?? "";
+    const other = now.name;
+    const site = (t.waiting?.body.needs?.site ?? "") || undefined;
+    const pin = you && pick.why.kind === "you";
+    const where: WhereAsk = {
+      kind: pin ? "pin" : "asleep",
+      device: dev,
+      state: pick.waits,
+      other,
+      ...(pin ? { agent: pick.harness } : {}),
+      ...(now.harness !== pick.harness ? { otherAgent: now.harness } : {}),
+      ...(site ? { site } : {}),
+      ...(pick.uses ? { here: pick.uses } : {}),
+      ...(now.uses ? { uses: now.uses } : {}),
+      ...(now.needsSignIn ? { signIn: true } : {}),
+      ...(now.uses === "chrome" && pick.uses !== "chrome" ? { widens: true } : {}),
+    };
+    pendingWhere.set(t.id, { now });
+    const text = pin
+      ? zh
+        ? `${harnessName(pick.harness)} 只在 ${dev} 上，它现在连不上。等它，还是换个来做？`
+        : `${harnessName(pick.harness)} is only on ${dev}, and it can't be reached. Wait, or have someone else do it?`
+      : zh
+        ? `${dev} 睡着了。等它醒了${pick.uses === "chrome" ? "用你的 Chrome " : ""}做，还是现在在 ${other} 上做？`
+        : `${dev} is asleep. Wait${pick.uses === "chrome" ? " and use your Chrome there" : ""}, or do it on ${other} now?`;
+    const q: Question = { id: "where", text, blocking: true, reversible: false, where };
+    core.log.append({ persona: t.persona, stream: stream(t.id), origin: "task", kind: "report", body: { taskId: t.id, state: "needs_input", summary: text, questions: [q], evidence: [] } });
+    // A card that waits on you, not a task that waits on a computer: the decision says both.
+  }
+
+  // D157: Go on a where ask moves a waiting task to the computer that can start now.
+  const pendingWhere = new Map<string, { now: { device: string; deviceId: string; name: string; harness: string; model?: string } }>();
+  const unsubscribeWhere = core.log.subscribe((e: LogEvent) => {
+    if (e.kind === "decision") {
+      const d = e.body as Bodies["decision"];
+      if (d.where && d.taskId && pendingWhere.has(d.taskId)) whereDecisions.set(d.decisionId, d.taskId);
+      return;
+    }
+    if (e.kind !== "decision_resolved") return;
+    const r = e.body as Bodies["decision_resolved"];
+    const taskId = whereDecisions.get(r.decisionId);
+    if (!taskId) return;
+    whereDecisions.delete(r.decisionId);
+    const p = pendingWhere.get(taskId);
+    pendingWhere.delete(taskId);
+    const t = tasks.get(taskId);
+    if (!t || !p || r.option !== "go") {
+      // Wait for it (the default): it still waits, said once.
+      if (t && !t.dropped && t.waiting) setState(t, "blocked", "offline", asleepReason(t.ops.device?.name ?? ""));
+      return;
+    }
+    void moveWaiting(t, p.now);
+  });
+  const whereDecisions = new Map<string, string>(); // decisionId -> taskId
+
+  /** D157: the user chose "do it now on {other}": re-place the waiting task there and start it. */
+  async function moveWaiting(t: TaskRt, now: { device: string; deviceId: string; name: string; harness: string; model?: string }) {
+    const c = t.waiting;
+    if (!c || t.dropped) return;
+    t.offlineOff?.();
+    t.offlineOff = undefined;
+    const from = t.ops.device?.name ?? "";
+    const place = placeOn(c.body.place.kind === "none" || c.body.place.kind === "browser" ? c.body.place : undefined, now.device, c.body.needs) as Place;
+    const kept = c.body.place.kind === "repo" || c.body.place.kind === "folder" ? c.body.place : place;
+    t.ops = opsFor(kept);
+    t.base = { ...t.base, harness: now.harness as HarnessId, ...(now.model ? { model: now.model } : {}) };
+    if (!now.model) delete t.base.model;
+    t.card = { ...t.card, place: kept, harness: now.harness, ...(now.model ? { model: now.model } : {}) };
+    c.body = { ...c.body, place: kept, harness: now.harness, ...(now.model ? { model: now.model } : {}) };
+    core.log.append({ persona: t.persona, stream: stream(t.id), origin: "system", kind: "task_open", body: c.body });
+    const name = now.name;
+    core.log.append({ persona: t.persona, stream: stream(t.id), origin: "user", kind: "body_selected", body: { taskId: t.id, harness: now.harness, ...(now.model ? { model: now.model } : {}), why: { kind: "you", where: { device: name, kind: "you" } } } });
+    logEvent(t, { role: "system", from: "runner", text: `moved from ${from} to ${name} before it started (the user chose now)`, raw: { device: now.deviceId, moved: { from, to: name } } });
+    if (t.ops.device && !t.ops.device.online()) return waitThere(t, c);
+    t.waiting = c;
+    await beginThere(t);
   }
 
   // The archive horizon: once soon after start (tasks recovered from the Log), then periodically.
@@ -1341,6 +1506,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
 
     async dispose() {
       unsubscribe();
+      unsubscribeWhere();
       clearTimeout(sweepFirst);
       clearInterval(folderTimer);
       clearInterval(sweepTimer);

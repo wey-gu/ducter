@@ -9,6 +9,7 @@ import { scriptedRuntime, type ScriptedTurn } from "@botiverse/oar/testing";
 import type { Bodies } from "@ducter/protocol";
 import type { WorkerLink, WorkerSessionFrame } from "@ducter/protocol/src/internal.ts";
 import { DEVICE_BACK, createOarHarnessPort, createRunner, createWorkerHost, registerTaskTools, rewriteMcp, unreachableReason } from "../src/index.ts";
+import { asleepReason } from "../src/runner.ts";
 import { createFakeCore, waitFor, type FakeCore } from "./fake-core.ts";
 
 let dir: string;
@@ -150,11 +151,15 @@ test("the worker drops mid-task: offline at once, waiting with a reason after th
   await waitFor(() => core.tasks.get(card.taskId)?.attention === "blocked", "blocked after grace");
   expect(core.tasks.get(card.taskId)?.reason).toBe(unreachableReason("vps-2"));
   await expect(runner.send(card.taskId, "also check logs")).rejects.toThrow("vps-2 is not connected");
-  await expect(runner.openTask({ persona: "p1", title: "x", brief: "y", place: { kind: "none", device: "vps-2" } })).rejects.toThrow("vps-2 is not connected");
+  // D157: a new task for it isn't refused: it waits there, and starts when it's back.
+  ids.push("tsk00009");
+  const waiting = await runner.openTask({ persona: "p1", title: "x", brief: "y", place: { kind: "none", device: "vps-2" } });
+  expect(core.tasks.get(waiting.taskId)).toMatchObject({ attention: "blocked", residency: "offline", reason: unreachableReason("vps-2") });
 
   w.back();
   await waitFor(() => core.tasks.get(card.taskId)?.attention === "done_claimed", "done after resume");
-  expect(seen.options.at(-1).resume).toBe(sid); // the same native session, resumed on the worker
+  await waitFor(() => core.tasks.get(waiting.taskId)?.attention === "working", "the waiting task started when vps-2 came back");
+  expect(seen.options.some((o) => o.resume === sid)).toBe(true); // the same native session, resumed on the worker
   expect(states(card.taskId)).toContain("blocked/offline");
   release();
   await runner.dispose();
@@ -221,6 +226,49 @@ test("D157: the pick's computer becomes the place's: needs browse on the MacBook
   expect(open.needs).toEqual({ signedIn: true, site: "taobao.com" });
   const sel = core.events.find((e) => e.kind === "body_selected")!.body as Bodies["body_selected"];
   expect(sel.why.where).toMatchObject({ device: "MacBook", kind: "signed_in" });
+  await runner.dispose();
+});
+
+test("D157: the best computer is asleep: the task waits for it, one ask offers now elsewhere; Go moves it there and starts", async () => {
+  const w = fakeWorker(() => {}, { options: [] });
+  await w.drop(); // the MacBook's lid is closed
+  core.workers = { link: (d) => (d === "MacBook" || d === "w1" ? w.link : undefined), list: () => [{ id: "w1", name: "MacBook", online: false, asleep: true }] };
+  const now = { device: "local", deviceId: "local", name: "hel", harness: "claude-code" };
+  core.bodies = {
+    choose: async () => ({ harness: "claude-code", why: { kind: "default", where: { device: "MacBook", kind: "awake" as const } }, device: "MacBook", deviceId: "w1", waits: "asleep" as const, now }),
+  };
+  const port = createOarHarnessPort({
+    loadRuntime: async () => scriptedRuntime({ id: "claude", turn: async (t) => void (await t.tool("mcp__ducter__report_to_main", "{}", () => core.call("report_to_main", { state: "done", summary: "done on hel" }, "tskwait01"))) }),
+  });
+  const runner = createRunner(core, { harness: port, newId: () => "tskwait01" });
+  const card = await runner.openTask({ persona: "p1", title: "英译周报", brief: "translate", language: "zh" });
+  expect(core.tasks.get(card.taskId)).toMatchObject({ attention: "blocked", residency: "offline", reason: asleepReason(w.link.name) });
+  const ask = core.events.find((e) => e.kind === "report")!.body as Bodies["report"];
+  expect(ask.questions[0]).toMatchObject({ id: "where", blocking: true, reversible: false, where: { kind: "asleep", device: "MacBook", other: "hel", state: "asleep" } });
+  expect(ask.questions[0]!.text).toBe("MacBook 睡着了。等它醒了做，还是现在在 hel 上做？");
+  // Core turns the report into a card; the user says Go (现在在 hel 上做).
+  core.log.append({ stream: "channel", origin: "system", kind: "decision", body: { decisionId: "d_where", taskId: card.taskId, question: ask.questions[0]!.text, goLabel: "now", defaultOption: "hold", reversible: false, where: ask.questions[0]!.where } });
+  core.log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body: { decisionId: "d_where", option: "go", by: "user" } });
+  await waitFor(() => core.tasks.get(card.taskId)?.attention === "done_claimed", "done on hel");
+  const sel = core.events.filter((e) => e.kind === "body_selected").at(-1)!.body as Bodies["body_selected"];
+  expect(sel.why).toMatchObject({ kind: "you", where: { device: "hel", kind: "you" } });
+  const opens = core.events.filter((e) => e.kind === "task_open").map((e) => (e.body as Bodies["task_open"]).place);
+  expect(opens.at(-1)).toMatchObject({ kind: "none" });
+  expect((opens.at(-1) as { device?: string }).device).toBe("local");
+  await runner.dispose();
+});
+
+test("D157: wait for it (the default): the task keeps waiting and starts there when the computer wakes", async () => {
+  const w = fakeWorker(async (t) => void (await t.tool("mcp__ducter__report_to_main", "{}", () => core.call("report_to_main", { state: "done", summary: "made the deck" }, "tskwait02"))), { options: [] });
+  await w.drop();
+  core.workers = { link: (d) => (d === "MacBook" ? w.link : undefined), list: () => [] };
+  core.bodies = { choose: async () => ({ harness: "claude-code", why: { kind: "default" }, device: "MacBook", deviceId: "w1", waits: "asleep" as const }) };
+  const runner = createRunner(core, { newId: () => "tskwait02" });
+  const card = await runner.openTask({ persona: "p1", title: "Keynote", brief: "make the deck", needs: { app: "Keynote" } });
+  expect(core.tasks.get(card.taskId)?.reason).toBe(asleepReason(w.link.name));
+  expect(core.events.some((e) => e.kind === "report")).toBe(false); // nobody else could: no question, it just waits
+  w.back();
+  await waitFor(() => core.tasks.get(card.taskId)?.attention === "done_claimed", "started when the MacBook woke");
   await runner.dispose();
 });
 

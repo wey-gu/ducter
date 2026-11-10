@@ -303,7 +303,7 @@ export interface BodyPick {
   uses?: "chrome" | "ducter";
   needsSignIn?: boolean;
   /** D157: the best row on another computer that can start now, when the pick waits (the ask's other choice). */
-  now?: { device: string; deviceId: string; harness: string; model?: string; uses?: "chrome" | "ducter"; needsSignIn?: boolean };
+  now?: { device: string; deviceId: string; name: string; harness: string; model?: string; uses?: "chrome" | "ducter"; needsSignIn?: boolean };
 }
 
 /**
@@ -329,7 +329,7 @@ export function chooseBody(inp: Omit<CandidateInput, "current"> & { pinned?: { h
       ...(c.waits ? { waits: c.waits } : {}),
       ...(c.uses ? { uses: c.uses } : {}),
       ...(c.needsSignIn ? { needsSignIn: true } : {}),
-      ...(now ? { now: { device: now.comp.home ? "local" : now.comp.name, deviceId: now.comp.id, harness: now.harness, ...(now.model ? { model: now.model } : {}), ...(now.uses ? { uses: now.uses } : {}), ...(now.needsSignIn ? { needsSignIn: true } : {}) } } : {}),
+      ...(now ? { now: { device: now.comp.home ? "local" : now.comp.name, deviceId: now.comp.id, name: now.comp.name, harness: now.harness, ...(now.model ? { model: now.model } : {}), ...(now.uses ? { uses: now.uses } : {}), ...(now.needsSignIn ? { needsSignIn: true } : {}) } } : {}),
     };
   };
   if (inp.pinned) {

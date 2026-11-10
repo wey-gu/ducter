@@ -131,6 +131,8 @@ func (a *App) answeredWords(d *store.DecisionState) string {
 		return a.L.T("decision.resolved.default")
 	case opt == "reply":
 		return a.L.T("decision.resolved.reply", text)
+	case opt == "hold" && d.Where != nil:
+		return a.L.T("where.ask.waited", d.Where.Device)
 	case opt == "hold":
 		return a.L.T("decision.resolved.hold")
 	}

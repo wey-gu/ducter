@@ -886,6 +886,11 @@ a {
   color: var(--needs-ink);
   line-height: 1.45;
 }
+/* D157: a choice that would give the task the user's Chrome says so, in the accent's own weight. */
+.decision .dl.widen {
+  font-weight: 700;
+  color: var(--ink);
+}
 /* The default as a small timer and one caption (D127), never a bar and the words twice. */
 .decision .dl.timer {
   display: flex;

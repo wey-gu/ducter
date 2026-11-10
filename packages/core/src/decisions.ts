@@ -30,6 +30,8 @@ export const DEFAULT_DELAY_MS = 30 * 60 * 1000;
 
 export function forwardText(d: Bodies["decision"], r: Bodies["decision_resolved"]): string {
   // D151: the user signed in themselves in the live view; the task checks the page again.
+  // D157: where it runs is the runner's to change (it re-places the task); the task hears nothing.
+  if (d.where) return "";
   if (r.option === "go" && d.signIn)
     return `The user says they're signed in to ${d.signIn.site} in Ducter's browser (they did it themselves; you saw nothing of it). browser_read the page to check, then carry on.`;
   if (r.option === "go") return `User says Go: ${d.goLabel}.`;
@@ -125,6 +127,7 @@ export function createDecisions(opts: {
           defaultOption: hasDefault ? "go" : "hold",
           reversible: q.reversible,
           ...(q.signIn ? { signIn: q.signIn } : {}),
+          ...(q.where ? { where: q.where } : {}),
         };
         if (q.reversible && hasDefault) body.defaultAt = new Date(clock.now() + delay()).toISOString();
         log.append({ stream: "channel", origin: "system", kind: "decision", body });

@@ -164,6 +164,28 @@ type Decision struct {
 	// SignIn marks a sign-in card (D151): Go is 好了 / Done in the live view of
 	// Ducter's browser.
 	SignIn *SignInAsk `json:"signIn,omitempty"`
+	// Where (D157): wait for a computer (Hold, the default) or do it now on
+	// another (Go).
+	Where *WhereAsk `json:"where,omitempty"`
+}
+
+// WhereAsk is the one line asked when the best computer for a task is
+// asleep and another could start now with a visible difference, or the
+// user's own pick waits on a computer that can't be reached (D157). Kind:
+// asleep | pin. State: asleep | unreachable. Here / Uses: what the waiting
+// computer / Other would use (chrome | ducter).
+type WhereAsk struct {
+	Kind       string `json:"kind"`
+	Device     string `json:"device"`
+	State      string `json:"state"`
+	Other      string `json:"other"`
+	Agent      string `json:"agent,omitempty"`
+	OtherAgent string `json:"otherAgent,omitempty"`
+	Site       string `json:"site,omitempty"`
+	Here       string `json:"here,omitempty"`
+	Uses       string `json:"uses,omitempty"`
+	SignIn     bool   `json:"signIn,omitempty"`
+	Widens     bool   `json:"widens,omitempty"`
 }
 
 // SignInAsk: 需要你登录一下 {Site} / Sign in to {Site} (D151).

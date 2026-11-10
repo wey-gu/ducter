@@ -3,6 +3,8 @@ package views
 import (
 	"strings"
 
+	"github.com/egoist/mygo/ui"
+
 	"github.com/wey-gu/ducter/apps/desktop/internal/client"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
@@ -130,6 +132,52 @@ func (a *App) whereReason(w *protocol.WhereWhy) string {
 		return a.L.T("where.reason.home", dev)
 	}
 	return ""
+}
+
+// whereAskQuestion is a where ask in the user's words (where.md §4.4).
+func (a *App) whereAskQuestion(w *protocol.WhereAsk) string {
+	switch {
+	case w.Kind == "pin":
+		return a.L.T("where.ask.pin", harnessName(w.Agent), w.Device)
+	case w.State == "unreachable":
+		return a.L.T("where.ask.away", w.Device, w.Other)
+	case w.Here == "chrome":
+		return a.L.T("where.ask.asleep.chrome", w.Device, w.Other)
+	}
+	return a.L.T("where.ask.asleep", w.Device, w.Other)
+}
+
+// whereAskGo is Go: do it now on the other computer (or with another agent).
+func (a *App) whereAskGo(w *protocol.WhereAsk) string {
+	if w.Kind == "pin" && w.OtherAgent != "" {
+		return a.L.T("where.ask.now.pin", harnessName(w.OtherAgent))
+	}
+	return a.L.T("where.ask.now", w.Other)
+}
+
+// whereAskHold is Hold, the default: wait for it.
+func (a *App) whereAskHold(w *protocol.WhereAsk) string {
+	if w.Kind == "pin" {
+		return a.L.T("where.ask.wait.pin")
+	}
+	return a.L.T("where.ask.wait")
+}
+
+// whereAskLines is what choosing now costs (a sign-in there; the user's
+// Chrome, said plainly: access never widens silently), then the default.
+func (a *App) whereAskLines(c *ui.Context, w *protocol.WhereAsk) {
+	t := a.T
+	if w.SignIn {
+		line := a.L.T("where.ask.signin.0", w.Other)
+		if w.Site != "" {
+			line = a.L.T("where.ask.signin", w.Other, w.Site)
+		}
+		ui.Text(c.Key("w-signin"), line).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.45)
+	}
+	if w.Widens {
+		ui.Text(c.Key("w-widens"), a.L.T("switch.move.widens")).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).LineHeight(1.45)
+	}
+	a.mark(c.Key("default"), drawClock, a.L.T("where.ask.default"), t.NeedsYou.Ink)
 }
 
 // taskWhere is the where part of a task's meta line and its hover: "在 hel

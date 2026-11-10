@@ -179,6 +179,21 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [ ] Search before writing, to supersede instead of duplicating (`nmem m supersede`).
 - [ ] Undo on the Noted line (archive the memory, never delete).
 - [x] Tasks (windows) as the same identity: `NMEM_AGENT_ID` in the task's session spec (D141).
+- [x] Memory in tasks from Ducter: recall before the first turn, a read-only `memory_search`,
+      `remember` proposals, the user's Mem plugin off in the task (D168, built with fakes).
+- [ ] Live: one Claude Code task and one Codex task with Nowledge Mem installed for the user,
+      checking that `--settings enabledPlugins` / `-c plugins.<id>.enabled=false` really keeps
+      the plugin's hooks and tools out of the session (INFERRED for Claude Code; Codex's
+      per-id switch is VERIFIED for other plugins, research/38) and that the Codex plugin's
+      hooks (installed by its `install_hooks.py`) don't still run. Trigger: before calling D168
+      done.
+- [ ] A recall relevance floor and a better query than title + brief, measured on a real
+      channel replay with tasks. Trigger: the replay in "The conversation's own memory".
+- [ ] Live: 装上 on a real worker with a fresh Claude Code, through Mem's SKILL.md to a passing
+      `nmem --json plugins inspect --host claude-code`; and the connect-link ask when Mem isn't
+      connected there (D169). Trigger: before the first tagged release.
+- [ ] 有新版 / update: Mem's check names no newer plugin version today; when it does, the line
+      shows it (built, untested against a real answer). Trigger: nmem adds it.
 
 ## The conversation's own memory: digest, window, recall (`design/memory.md`, D123)
 

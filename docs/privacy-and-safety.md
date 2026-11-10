@@ -86,7 +86,8 @@ doesn't get the keys or tokens from the environment Ducter was started in, eithe
 
 Tasks use your plan's limits like any other session would. Your agent's own settings, skills and
 tools apply to tasks too, so a Ducter task in your project behaves the way your own session
-there does.
+there does. The one exception is your Nowledge Mem plugin: inside a task, memory comes from
+your partner (below).
 
 ## Memory, with Nowledge Mem
 
@@ -96,6 +97,13 @@ If you use [Nowledge Mem](https://mem.nowledge.co), your partner starts out know
 and what you're working on, from the same memory your other AI tools share. When it saves
 something worth keeping, its reply's **Details** shows one quiet line: **Noted · <what it
 saved>**, with **Forget**. **Partner › What it remembers** lists all of them.
+Its tasks know what matters too: a task starts with the few things your partner remembers
+that fit the work, and can look up more, on any of your computers, without Nowledge Mem set up
+there. A task never writes to your memory itself; it can suggest something worth keeping, and
+your partner decides. Tasks in a browser get none of it, so a web page can't ask for it.
+Inside a task, your own Nowledge Mem plugin is switched off for that task only, so turning
+off **Remember things** really turns memory off everywhere.
+
 Every memory records that it came from Ducter, which partner wrote it (its own name in
 Nowledge Mem, the same for its tasks) and which conversation it came from, so you can always
 trace it back. If you already chose an AI identity for Nowledge Mem on this computer, Ducter

@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "local_only": true,
+  "plugins": [
+    {
+      "host": "codex-cli",
+      "installation": "installed",
+      "enabled": null,
+      "installed_version": null,
+      "runtime": "not_checked",
+      "recommended_action": "review",
+      "installations": [
+        {
+          "scope": "user",
+          "source_kind": "marketplace",
+          "package_present": true,
+          "version": "0.1.10",
+          "enabled": true
+        },
+        {
+          "scope": "user",
+          "source_kind": "marketplace",
+          "package_present": true,
+          "version": "0.1.49",
+          "enabled": true
+        }
+      ],
+      "warnings": [
+        "Managed policy, session flags and runtime loading are not verified.",
+        "Multiple registrations or cached versions exist; no effective version or enablement is inferred."
+      ]
+    },
+    {
+      "host": "claude-code",
+      "installation": "installed",
+      "enabled": true,
+      "installed_version": "0.7.34",
+      "runtime": "not_checked",
+      "recommended_action": "none",
+      "installations": [
+        {
+          "scope": "user",
+          "source_kind": "marketplace",
+          "package_present": true,
+          "version": "0.7.34",
+          "enabled": true
+        }
+      ],
+      "warnings": [
+        "Managed policy, invocation-local plugins and runtime loading are not verified."
+      ]
+    },
+    {
+      "host": "pi",
+      "installation": "absent",
+      "enabled": null,
+      "installed_version": null,
+      "runtime": "not_checked",
+      "recommended_action": "install",
+      "installations": [],
+      "warnings": [
+        "Invocation-only extensions and runtime loading are not verified."
+      ]
+    },
+    {
+      "host": "gemini-cli",
+      "installation": "unknown",
+      "enabled": null,
+      "installed_version": null,
+      "runtime": "not_checked",
+      "recommended_action": "review",
+      "installations": [],
+      "warnings": [
+        "Linked Gemini extensions require host source resolution; link targets are not followed.",
+        "Gemini invocation overrides, extension permissions and runtime loading are not checked."
+      ]
+    },
+    {
+      "host": "deepseek-harness",
+      "installation": "unknown",
+      "enabled": null,
+      "installed_version": null,
+      "runtime": "not_checked",
+      "recommended_action": "review",
+      "installations": [
+        {
+          "scope": "user",
+          "source_kind": "dsh_profile_bundle",
+          "package_present": true,
+          "version": "0.1.2",
+          "enabled": true
+        }
+      ],
+      "warnings": [
+        "A DSH profile has no readable package manifest.",
+        "DSH profile selection is declarative; active profile, overlays, host compatibility and runtime loading are not checked."
+      ]
+    }
+  ]
+}

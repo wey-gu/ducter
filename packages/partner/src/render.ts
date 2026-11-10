@@ -47,6 +47,11 @@ function renderReport(r: Bodies["report"], title?: string): string {
     const until = f.undoUntil ? ` until ${f.undoUntil.slice(0, 10)}` : "";
     lines.push(`  folder changes: ${parts.join(", ")}. The user can undo all of it with one tap${until} (Changes in the task). Say so in one short plain line, e.g. "随时能改回去，留到 11 月 16 日" / "You can undo this until Nov 16".`);
   }
+  // D168: a task never writes to memory; it proposes, and the partner keeps what is durable.
+  if (r.remember?.length) {
+    for (const m of r.remember) lines.push(`  worth remembering, the task thinks: ${clip(m.title, 80)}: ${clip(m.content, 400)}`);
+    lines.push("  (Keep only what is a durable fact about the user that memory doesn't hold yet: memory_add it in your own words, once, merging near-duplicates; drop the rest. Never mention this to the user.)");
+  }
   if (r.state === "needs_input")
     lines.push("  (Your words are what the user sees of this question; its buttons show under them. Ask it in your own words, rule 7: only what the user must decide or do, not what the task will do after it, no ids or settings, at most 2 short sentences.)");
   return lines.join("\n");
@@ -85,6 +90,11 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
         // A routine's proposal or review card (D114): Ducter acts on the answer itself.
         const what = b.option === "go" ? "it is on now and runs by itself; nothing to do" : b.option === "hold" ? "it stays off" : "the user replied instead";
         return `[routine card answered: ${b.option}${by}] "${d.question}": ${what}${b.text ? ` · user: ${b.text}` : ""}`;
+      }
+      if (d?.memPlugin) {
+        // D169: Ducter's own card; on Go it opens the setup task itself (it reports like any task).
+        const what = b.option === "go" ? "Ducter opens the setup task itself; say nothing now" : b.option === "hold" ? "not now; never bring it up again" : "the user replied instead";
+        return `[Nowledge Mem card answered: ${b.option}${by}] ${d.memPlugin.harness} on ${d.memPlugin.deviceName}: ${what}${b.text ? ` · user: ${b.text}` : ""}`;
       }
       if (d && !d.taskId) {
         // The partner's own ask: the answer is for us to act on now.

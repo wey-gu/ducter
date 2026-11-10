@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { HARNESS_IDS, harnessName, type Attention, type Bodies, type BranchChanges, type Delivery, type EvidenceRef, type FolderChanges, type FolderSummary, type UndoConfirm, type LogEvent, type Place, type Question, type Residency, type TaskCard, type TaskNeeds, type WhereAsk } from "@ducter/protocol";
 import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, SessionSpec } from "@ducter/protocol/src/internal.ts";
-import { NUDGE, PRECOMPACT_NOTE, REOPENED, RESUME_AFTER_RESTART, SAVE_BEFORE_COMPACT, afterCompaction, briefTurn, handedOver, kickoff, movedOver, noCopyAnswer, seedThen, startedAfresh, taskBrief } from "./brief.ts";
+import { NUDGE, PRECOMPACT_NOTE, REOPENED, RESUME_AFTER_RESTART, SAVE_BEFORE_COMPACT, afterCompaction, briefTurn, knownTurn, handedOver, kickoff, movedOver, noCopyAnswer, seedThen, startedAfresh, taskBrief } from "./brief.ts";
 import { resolveWindows, saveBeforeAt } from "@ducter/protocol/src/harness-facts.ts";
 import { createOarHarnessPort } from "./oar.ts";
 import { cwdOf, planPlace, provisionPlace, type ResolvedPlace } from "./places.ts";
@@ -12,6 +12,7 @@ import { archiveWorktree, branchChanges, mergeTaskBranch, openDraftPr, pushForMo
 import { DEVICE_BACK, DeviceOfflineError, deviceOf, isOffline, localFolderOps, remoteOps, type PlaceOps } from "./remote.ts";
 import { createFolderStore, type CantKeep } from "./folder.ts";
 import { join } from "node:path";
+import { MEM_PLUGIN_IDS } from "@ducter/protocol/src/mem-plugins.ts";
 
 /** task_state reason for a task whose worker dropped; clients render it as "<device> 连不上 / Can't reach <device>". */
 export const unreachableReason = (device: string) => `device:unreachable:${device}`;
@@ -81,6 +82,9 @@ export interface RunnerExt extends Runner {
 }
 
 /** What starting a task needs once its place is ready (open, or a computer that came back). */
+/** D168: how long a task's first turn waits for its memories (a Cloud search takes ~4 s). */
+const RECALL_MS = 6_000;
+
 interface StartCtx {
   body: Bodies["task_open"];
   later: boolean;
@@ -808,6 +812,8 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         project: open.project || undefined,
         mcpServerName: mcp.name,
         ...(open.language ? { language: open.language } : {}),
+        // D168: memory comes from Ducter, read-only; a browser task gets none (as with the Log, D62).
+        memory: memoryFor(open.place),
       }),
       mcp: [mcp],
       permissionMode: "bypass",
@@ -825,9 +831,34 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     // Only these two, set explicitly; every other NMEM_* the host has stays out (child-env.ts).
     const mem = core.persona.mem;
     if (mem) spec.env = { NMEM_AGENT_ID: mem.agentId, ...(mem.space ? { NMEM_SPACE: mem.space } : {}) };
+    // D168: inside Ducter's tasks memory comes from Ducter, so the user's own Mem plugin is off in
+    // this session (their other plugins stay). Also with memory off: then the switch holds here too.
+    const memPlugins = MEM_PLUGIN_IDS[open.harness];
+    if (memPlugins?.length) spec.disablePlugins = [...memPlugins];
     // D142: a folder task writes only inside its folder where the harness can hold it there (Codex's sandbox).
     if (open.place.kind === "folder") spec.confineWrites = true;
     return spec;
+  }
+
+  /** D168: whether a task in this place gets Ducter's memory (on, and not a browser place). */
+  function memoryFor(place: Place): boolean {
+    return place.kind !== "browser" && !!core.taskMemory?.on();
+  }
+
+  /**
+   * D168: the first turn, with the few memories that matter to the brief in front of it. Asked
+   * once, capped in time, logged on the task's stream (what was read, never the text); nothing
+   * found, memory off or Mem down: the turn as it was.
+   */
+  async function withKnown(t: TaskRt, turn: string, brief: string): Promise<string> {
+    const port = core.taskMemory;
+    if (!port || !memoryFor(t.card.place) || !brief.trim()) return turn;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const late = new Promise<undefined>((r) => (timer = setTimeout(() => r(undefined), RECALL_MS)));
+    const notes = await Promise.race([port.recall({ taskId: t.id, persona: t.persona, title: t.card.title, brief }).catch(() => undefined), late]).finally(() => clearTimeout(timer));
+    if (!notes?.length) return turn;
+    logEvent(t, { role: "system", from: "runner", text: `recalled ${notes.length} from memory for the brief`, raw: { memory: "recall", ids: notes.map((n) => n.id ?? null), titles: notes.map((n) => n.title) } });
+    return knownTurn(notes, partnerNameOf()) + turn;
   }
 
   function newRt(id: string, persona: string, card: TaskCard, spec: SessionSpec, ops: PlaceOps = localOps): TaskRt {
@@ -1026,6 +1057,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       await t.sidecar?.ready();
       await startSession(t, false);
       let first = kickoff(c.title);
+      let briefText = c.body.brief;
       if (c.later) {
         // The session is up (or coming up) while the partner finishes the brief.
         let text: string;
@@ -1049,7 +1081,10 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
         t.base = { ...specFor(id, full, resolved.cwd, true), cwd: t.base.cwd };
         t.spec = withBrowser(t.base, t.sidecar, c.partnerName);
         first = briefTurn(text, c.title);
+        briefText = text;
       }
+      if (t.dropped) return;
+      first = await withKnown(t, first, briefText);
       if (t.dropped) return;
       await sendTurn(t, first, "runner");
     } catch (err) {

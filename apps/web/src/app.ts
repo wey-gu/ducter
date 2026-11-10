@@ -1,5 +1,5 @@
 // The phone app's state and actions (the views read it and call these). One store, one socket.
-import type { AgentReason, BrainNow, Candidate, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, MemView, OoDetect, Reach, RuleView, ServerFrame, Settings, SettingsPatch, UpdateReason } from "@ducter/protocol";
+import type { AgentReason, MemPluginReason, BrainNow, Candidate, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, MemView, OoDetect, Reach, RuleView, ServerFrame, Settings, SettingsPatch, UpdateReason } from "@ducter/protocol";
 import { Api, Connection, type ConnStatus, type Me, wsUrl } from "./conn.ts";
 import { detectLang, langOfText, strings, type Lang, type Strings } from "./i18n.ts";
 import { pushState, type PushState } from "./push-client.ts";
@@ -94,6 +94,8 @@ class AppState {
   deviceAnswer?: { device: string; reason: UpdateReason | "name_taken" | "failed" };
   /** D156: the last agent update that was refused, on its row. */
   agentAnswer?: { device: string; harness: string; reason: AgentReason };
+  /** D169: the last 装上 / Install of Nowledge Mem that didn't start, and why. */
+  memAnswer?: { device: string; harness: string; reason: MemPluginReason };
   candidates = new Map<string, Candidate[]>();
   /** New task (D128): what the sheet offers (places, who could), as last sent; the draft. */
   newTaskOptions?: { places: PlaceChoice[]; candidates: Candidate[] };
@@ -210,6 +212,7 @@ class AppState {
       const home = f.devices.find((d) => d.home);
       return void ((this.agents = home?.harnesses ?? []), (this.homeName = home?.name), (this.devices = f.devices.map((d) => (d.update ? { ...d, update: withoutStaleFailure(d.update) } : d))), (this.reach = f.reach), this.changed());
     }
+    if (f.t === "mem_plugin_result") return void ((this.memAnswer = f.ok ? undefined : { device: f.device, harness: f.harness, reason: f.reason ?? "failed" }), this.changed());
     if (f.t === "agent_update_result") return void ((this.agentAnswer = f.ok ? undefined : { device: f.device, harness: f.harness, reason: f.reason ?? "failed" }), this.changed());
     if (f.t === "update_result") return void ((this.checkingUpdates = false), (this.deviceAnswer = f.ok || f.update ? undefined : { device: f.device, reason: f.reason ?? "failed" }), this.changed());
     if (f.t === "disconnect_result" || f.t === "rename_result") return void ((this.deviceAnswer = f.ok ? undefined : { device: f.device, reason: f.reason === "name_taken" ? "name_taken" : "failed" }), this.changed());
@@ -478,6 +481,12 @@ class AppState {
   checkUpdates(device: string) {
     this.checkingUpdates = true;
     this.send({ t: "device_update", device, check: true });
+    this.changed();
+  }
+  /** D169: one task on that device puts Nowledge Mem into that agent, following Mem's own guide. */
+  installMem(device: string, harness: string) {
+    this.memAnswer = undefined;
+    this.send({ t: "mem_plugin_install", device, harness });
     this.changed();
   }
   /** D156: update one AI agent on a device with its own updater. */

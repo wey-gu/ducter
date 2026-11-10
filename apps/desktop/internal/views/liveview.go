@@ -67,6 +67,9 @@ func (a *App) questionOf(d *store.DecisionState) string {
 	if d.Closing != nil {
 		return a.closingQuestion(d.Closing)
 	}
+	if d.MemPlugin != nil {
+		return a.memCardQuestion(d.MemPlugin)
+	}
 	return d.Question
 }
 

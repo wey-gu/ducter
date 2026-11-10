@@ -33,6 +33,7 @@ export function nmemEnv(inherited: Record<string, string | undefined> = process.
 }
 
 export interface MemoryHit {
+  id?: string; // Mem's own id (D168: a task can name what it was told)
   title: string;
   content: string; // clipped
   date?: string; // YYYY-MM-DD the memory was recorded
@@ -77,6 +78,7 @@ const clip = (s: string, n: number) => {
 /** Compacts one search hit from `nmem --json m search`. */
 export function compactHit(m: any, maxChars = 280): MemoryHit {
   const hit: MemoryHit = { title: clip(String(m?.title ?? ""), 80), content: clip(String(m?.content ?? ""), maxChars) };
+  if (typeof m?.id === "string" && /^[A-Za-z0-9_-]{1,80}$/.test(m.id)) hit.id = m.id;
   const d = typeof m?.created_at === "string" ? m.created_at.slice(0, 10) : undefined;
   if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) hit.date = d;
   if (typeof m?.unit_type === "string" && m.unit_type) hit.kind = m.unit_type;

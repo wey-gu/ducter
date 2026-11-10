@@ -118,6 +118,28 @@ export interface CoreApi {
   spine?: SpineStore;
   /** D151: Ducter's own browser (a server's 上网); absent in tests and stubs. */
   browser?: DucterBrowserPort;
+  /** D168: memory for tasks, from the partner's own Mem client; absent in tests, stubs and with no partner. */
+  taskMemory?: TaskMemoryPort;
+}
+
+/** One memory as a task sees it: its id (to look closer), title, a clipped content, when. */
+export interface TaskMemoryNote {
+  id?: string;
+  title: string;
+  content: string;
+  date?: string;
+}
+
+/**
+ * D168 (design/memory.md "Mem and tasks"): memory inside Ducter's tasks comes from Ducter. The
+ * partner owns the Mem client and the switch; the runner asks this for the few memories that
+ * matter to a task's brief, once, before its first turn.
+ */
+export interface TaskMemoryPort {
+  /** Memory is on (Settings › 记得什么 and the run): tasks get it, and the user's own Mem plugin is off inside them. */
+  on(): boolean;
+  /** The few memories that matter here; undefined: off, Mem down or slow, or nothing fits. Never throws. */
+  recall(work: { taskId: string; persona: string; title: string; brief: string }): Promise<TaskMemoryNote[] | undefined>;
 }
 
 /**
@@ -286,6 +308,8 @@ export interface SessionSpec {
   // Tasks (D130): under the clean setup, Codex keeps its own browser and Computer Use plugins.
   // The partner and the judge leave it unset (their clean setup turns them off).
   keepNativeTools?: boolean;
+  /** D168: the user's plugins to turn off by id in this session only (their Mem plugin: memory comes from Ducter). */
+  disablePlugins?: string[];
   // Tasks only (D135): what the harness keeps when it compacts (Claude Code's PreCompact hook
   // prints it as compact instructions). Absent: the partner's setup (no hook).
   preCompactNote?: string;

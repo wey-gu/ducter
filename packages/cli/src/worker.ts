@@ -20,6 +20,7 @@ import { isCompiled } from "./doctor.ts";
 import { createWorkerUpdater, lastOutcome, type WorkerUpdater } from "./update.ts";
 import { realSys, updateHow, writeAlive } from "@ducter/core/src/update.ts";
 import { createWorkerBrowse } from "@ducter/core/src/worker-browse.ts";
+import { inspectMemPlugins, nmemInspectExec } from "@ducter/protocol/src/mem-plugins.ts";
 
 /** Exit status when the main refuses this worker; the unit sets RestartPreventExitStatus to it. */
 export const EXIT_REFUSED = 3;
@@ -159,7 +160,7 @@ export async function cmdWorker(o: { t: T; style: Style; args: Args; dataDir: st
   const agentUpdater = workerAgentUpdater(t, dataDir);
   const makeHost = (send: (f: object) => void) => {
     sendUp = send;
-    const host = runnerMod.createWorkerHost({ dataDir, harness, mainBase: s.url, deviceToken: s.token, send, browser: { ducter: browse.ducter }, extraOps: browse.ops, abilities: browse });
+    const host = runnerMod.createWorkerHost({ dataDir, harness, mainBase: s.url, deviceToken: s.token, send, browser: { ducter: browse.ducter }, extraOps: { ...browse.ops, mem_plugins: async () => (await inspectMemPlugins(nmemInspectExec(process.env))) ?? null }, abilities: browse });
     // Nobody to drive Ducter's browser here once the socket is gone: quit it (sign-ins saved).
     const closeAll = host.closeAll;
     host.closeAll = async () => {

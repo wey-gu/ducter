@@ -25,6 +25,8 @@ const core = startCore({
   },
   update: { fetch: feed, how: "self", version: "0.0.7", homeName: "hel", autoEveryMs: 0, run: () => new Promise(() => {}) },
   agents: { fetch: registry as any, sys: { fetch: registry as any, run: () => new Promise(() => {}), freeBytes: () => undefined, sleep: (ms) => Bun.sleep(ms), now: () => Date.now() }, autoEveryMs: 0 },
+  // D169: Mem's own check, faked: Claude Code doesn't have it yet, Codex does (nothing is installed by the demo).
+  memPlugins: { inspectLocal: async () => ({ "claude-code": { state: "absent" }, codex: { state: "installed", version: "0.7.34" } }), everyMs: 0 },
 });
 core.setRunner(stubRunner(core));
 core.setPartner({ onTrigger() {} });

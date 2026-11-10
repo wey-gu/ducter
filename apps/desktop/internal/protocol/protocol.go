@@ -170,6 +170,9 @@ type Decision struct {
 	// Closing (D157): 合上之前搬走 / Move before closing: Go (the default)
 	// moves them.
 	Closing *ClosingPlan `json:"closing,omitempty"`
+	// MemPlugin (D169): put Nowledge Mem into this agent on that computer
+	// (Go); 先不装 / Not now (Hold) is the default.
+	MemPlugin *MemPluginAsk `json:"memPlugin,omitempty"`
 }
 
 // ClosingPlan is what moves to a computer that stays awake before one
@@ -803,6 +806,15 @@ type AgentUpdateReq struct {
 	Check   bool   `json:"check,omitempty"`
 }
 
+// MemPluginInstall is 装上 / Install on an agent's Nowledge Mem line (D169):
+// one task on that device follows Mem's own setup guide. Answered with
+// mem_plugin_result (OK, TaskID, Reason).
+type MemPluginInstall struct {
+	T       string `json:"t"` // "mem_plugin_install"
+	Device  string `json:"device"`
+	Harness string `json:"harness"`
+}
+
 // ---------- Connections (D96: the user's OpenConnector or other MCP servers) ----------
 
 // ConnectionsReq asks for the user's connections and keeps this socket told
@@ -1054,6 +1066,29 @@ type DeviceHarness struct {
 	Standing       string       `json:"standing,omitempty"`
 	LatestVerified *bool        `json:"latestVerified,omitempty"`
 	Update         *AgentUpdate `json:"update,omitempty"`
+	// D169: Nowledge Mem's plugin for this agent, for the user's own use of
+	// it outside Ducter; nil when memory is off or the check can't tell.
+	Mem *MemPluginView `json:"mem,omitempty"`
+}
+
+// MemPluginView is one agent's Nowledge Mem line (D169), from Mem's own
+// local check: installed (Version; never "working": the check doesn't
+// prove the agent loads it), absent, update, or review (Why: multiple |
+// unclear). TaskID: a setup task for it is open now.
+type MemPluginView struct {
+	State     string `json:"state"`
+	Version   string `json:"version,omitempty"`
+	Why       string `json:"why,omitempty"`
+	TaskID    string `json:"taskId,omitempty"`
+	CheckedAt string `json:"checkedAt,omitempty"`
+}
+
+// MemPluginAsk is Ducter's one card offering Nowledge Mem for an agent on a
+// computer (D169): Go installs it by a task there; Hold (先不装) is the default.
+type MemPluginAsk struct {
+	Device     string `json:"device"`
+	DeviceName string `json:"deviceName"`
+	Harness    string `json:"harness"`
 }
 
 // AgentUpdate is one AI agent's update on a device (D156): waiting,
@@ -1270,6 +1305,7 @@ type ServerFrame struct {
 	// device's Update. disconnect_result: Device, OK, Reason.
 	Update *DeviceUpdate `json:"update,omitempty"`
 	// agent_update_result (D156): Device, Harness, OK, Reason, Detail.
+	// mem_plugin_result (D169): Device, Harness, OK, TaskID, Reason.
 	Harness string `json:"harness,omitempty"`
 	// first_screen (D149): the empty conversation's words from the home.
 	First *FirstScreen `json:"first,omitempty"`
@@ -1424,7 +1460,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	}
 	switch f.T {
 	case "welcome", "events", "on_hand", "task_history", "sent", "action_result", "error",
-		"devices", "ability_result", "pair_code", "rename_result", "disconnect_result", "update_result", "agent_update_result", "settings", "connections", "connection_result", "rules", "candidates", "activity",
+		"devices", "ability_result", "pair_code", "rename_result", "disconnect_result", "update_result", "agent_update_result", "mem_plugin_result", "settings", "connections", "connection_result", "rules", "candidates", "activity",
 		"task_new_options", "task_new_result", "open_task", "open_result":
 	default:
 		return f, fmt.Errorf("unknown server frame %q", f.T)

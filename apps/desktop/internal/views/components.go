@@ -766,6 +766,8 @@ func (a *App) holdLabel(d *store.DecisionState) string {
 		return a.whereAskHold(d.Where)
 	case d.Closing != nil:
 		return a.L.T("move.closing.hold")
+	case d.MemPlugin != nil:
+		return a.L.T("memp.card.hold") // D169: 先不装 / Not now
 	}
 	return a.L.T("decision.hold")
 }
@@ -778,6 +780,9 @@ func (a *App) goLabel(d *store.DecisionState) string {
 	}
 	if d.Closing != nil {
 		return a.L.T("move.closing.go")
+	}
+	if d.MemPlugin != nil {
+		return a.L.T("memp.card.go")
 	}
 	return a.shortGo(d.GoLabel)
 }

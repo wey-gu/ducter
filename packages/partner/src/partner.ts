@@ -1531,7 +1531,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       if (!r.hits.length) return { ok: true, results: [], note: "Nothing in memory fits. Carry on as someone who just doesn't remember: if you need it, ask the user plainly in one short line; never say you found no record." };
       return {
         ok: true,
-        results: r.hits,
+        results: r.hits.map(({ id: _id, ...h }) => h), // the partner never needs Mem's ids
         note: "Background for you, not for the user: use only what clearly fits, in your own words. Never paste or list these, never say you searched or checked memory. If none fits, carry on or ask.",
       };
     },
@@ -1583,6 +1583,73 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       if (t) t.noted.push(noted);
       else core.log.append({ stream: "channel", origin: "partner", kind: "memory_noted", body: noted });
       return { ok: true, note: "Remembered. The user sees a small Noted line; don't mention it in your reply." };
+    },
+  );
+
+  // ---------- Memory inside tasks (D168, design/memory.md "Mem and tasks") ----------
+  // Memory in Ducter's tasks comes from Ducter, through this same client and switch: the few
+  // memories that matter go in front of a task's first turn, and memory_search reads more,
+  // read-only, capped and logged on the task's stream. A task never writes; it proposes
+  // `remember` in its report and the partner keeps what is durable (memory_add, with the task's
+  // provenance). Browser tasks get none (D62's reason: a page could ask for it). The home answers
+  // every call, so a worker needs no Mem of its own.
+  const memOn = () => memoryOn !== noMemory && !(core.settings && !core.settings.get().memory);
+  const TASK_SEARCHES = 6; // per task session start; a search is a pointer, not a dump
+  const taskSearches = new Map<string, number>();
+  const toNote = (h: { id?: string; title: string; content: string; date?: string }, n: number) => ({
+    ...(h.id ? { id: h.id } : {}),
+    title: h.title,
+    content: h.content.length <= n ? h.content : h.content.slice(0, n - 1) + "…",
+    ...(h.date ? { date: h.date } : {}),
+  });
+  core.taskMemory = {
+    on: memOn,
+    async recall(w) {
+      if (!memOn()) return undefined;
+      // The brief's own words, clipped: the title says what, the brief's start says how.
+      const query = `${w.title}\n${w.brief}`.replace(/\s+/g, " ").trim().slice(0, 300);
+      const r = await memory.search(query, 4).catch(() => ({ ok: false as const, reason: "unavailable" as const, message: "" }));
+      noteMemState(r);
+      if (!r.ok || !r.hits.length) return undefined;
+      return r.hits.slice(0, 4).map((h) => toNote(h, 200));
+    },
+  };
+  core.mcp.register(
+    "task",
+    "memory_search",
+    "Read the user's long-term memory (Nowledge Mem): their preferences, conventions, past decisions and people. Read-only: a few short results. Use it when the work turns on something the user decided or prefers that you can't see; not for facts in the repo or on the web. You never write memory: propose `remember` in your final report instead.",
+    {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "A few distinctive words (names, project, topic)" },
+        limit: { type: "number", description: "Max results, default 3 (at most 5)" },
+      },
+      required: ["query"],
+    },
+    async (args: { query?: unknown; limit?: unknown }, ctx: { taskId?: string }) => {
+      const card = ctx.taskId ? core.tasks.get(ctx.taskId) : undefined;
+      if (!card) throw new Error("memory_search needs a task");
+      if (!memOn() || card.place.kind === "browser") return { ok: false, available: false, note: "Memory isn't available to this task. Carry on with the brief; if you need something only the user knows, ask in report_to_main." };
+      const query = typeof args?.query === "string" ? args.query.trim().slice(0, 200) : "";
+      if (!query) return { ok: false, error: "memory_search needs `query`." };
+      const used = taskSearches.get(card.taskId) ?? 0;
+      if (used >= TASK_SEARCHES) return { ok: false, error: "Enough memory reads for this task. Carry on with what you have, or ask in report_to_main." };
+      taskSearches.set(card.taskId, used + 1);
+      const limit = Math.min(5, Math.max(1, Math.round(Number(args.limit) || 3)));
+      const r = await memory.search(query, limit);
+      noteMemState(r);
+      const results = r.ok ? r.hits.map((h) => toNote(h, 280)) : [];
+      // Reads are logged like account reads: what was asked and which ids came back, never the text.
+      core.log.append({
+        persona: card.persona,
+        stream: `task:${card.taskId}`,
+        origin: "task",
+        kind: "task_event",
+        body: { taskId: card.taskId, role: "system", from: "runner", text: r.ok ? `read memory: "${query}" (${results.length})` : `memory didn't answer: "${query}"`, raw: { memory: "search", query, ids: results.map((x) => x.id ?? null) } },
+      });
+      if (!r.ok) return { ok: false, available: false, note: "Memory didn't answer. Carry on with the brief; ask in report_to_main if you must." };
+      if (!results.length) return { ok: true, results: [], note: "Nothing in memory fits." };
+      return { ok: true, results, note: "Background from the user's memory: follow what clearly fits; the brief wins." };
     },
   );
 

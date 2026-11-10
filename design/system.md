@@ -52,7 +52,8 @@ are kept). `--bare` is not usable: it drops OAuth / subscription login.
 - **Tasks: inherit by default** (runner option `isolateUserConfig`, default false). A task
   works in the user's repo the way the user codes there: their skills, hooks, `CLAUDE.md`
   and MCP servers are deliberate choices, and a power user expects a Ducter task to behave
-  like their own Claude Code session. The cost (slower start, extra context) is off the
+  like their own Claude Code session. Except their Mem plugin, which is off in the task
+  (D168: memory comes from Ducter); a browser place and pi run clean. The cost (slower start, extra context) is off the
   user's attention path, since the ack comes from the partner. Turn it on for untrusted or
   shared-machine setups.
 
@@ -149,7 +150,16 @@ changes.
   of its own. A key that may not enroll (a Cloud team member's) binds the id without a profile:
   Mem records the id on writes either way. Its windows run as that same identity: the session
   spec sets `NMEM_AGENT_ID` (and `NMEM_SPACE` when bound) explicitly, and no other NMEM_*
-  reaches them. A rename keeps the id and, for an identity Ducter enrolled, updates its name.
+  reaches them.
+- **Mem inside tasks comes from Ducter (D168, `memory.md` "Mem and tasks").** A task gets the
+  memories that matter in front of its first turn and a read-only `memory_search` on
+  Ducter's MCP, answered by the home (workers hold no Mem credentials); it proposes
+  `remember` in its report and only the partner writes. The user's own Mem plugin
+  (`nowledge-mem@nowledge-community`) is turned off by id in a task session that keeps the
+  user's setup; nothing else of theirs is. Browser tasks get no memory.
+- **Mem in the user's own agents (D169).** Ducter reads Mem's own local check per computer and
+  shows one line per agent in its card; it installs only through a task the user starts (or
+  Go on its one card), following Mem's official setup guide. Never silently (D17). A rename keeps the id and, for an identity Ducter enrolled, updates its name.
 - **L1** is built from the identity's stable sections (read without Working Memory) and
   hashed by Ducter. Changes are adopted only at cut points. Working Memory enters as an L4
   delta.
@@ -182,7 +192,8 @@ changes.
   self-deployed. Example: pi's Anthropic "stealth" login is out.
 - **Skills, plugins, and harness config** are owned and maintained by the user in each
   harness's native place, and windows inherit them by default. Ducter keeps no skill
-  registry.
+  registry. One exception (D168): the user's Mem plugin is off inside a task, because Ducter
+  is that task's memory.
 - **Config isolation.** The main AI isolates harness config where the harness allows it.
   OAR's `userConfiguration: "exclude"` works only on Claude and Cursor.
 

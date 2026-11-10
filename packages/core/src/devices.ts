@@ -61,6 +61,8 @@ export interface DevicesOptions {
   platform?: string;
   /** D156: each device's AI agents: latest per channel, standing, an update under way. */
   agents?: () => import("./agents.ts").AgentUpdates | undefined;
+  /** D169: Nowledge Mem's plugin line on each device's agents. */
+  mem?: () => import("./mem-plugins.ts").MemPlugins | undefined;
   /** D156: the pi inside this Ducter (harness-probe bundledPiVersion). */
   piBundled?: () => string | undefined;
   /** D155 + D159: a device was disconnected (its phone's notifications stop at once). */
@@ -305,7 +307,10 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
   const later = (id: AbilityId): DeviceAbility => ({ id, state: "later" });
 
   // D156: latest per channel, standing and any update under way, on every device's agents.
-  const agentsView = (id: string, list: DeviceHarness[]) => o.agents?.()?.view(id, list) ?? list;
+  const agentsView = (id: string, list: DeviceHarness[]) => {
+    const withVersions = o.agents?.()?.view(id, list) ?? list;
+    return o.mem?.()?.view(id, withVersions) ?? withVersions; // D169
+  };
 
   async function frame(): Promise<DevicesFrame> {
     const me = await local();

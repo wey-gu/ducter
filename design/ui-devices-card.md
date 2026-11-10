@@ -117,6 +117,10 @@ One line, one idea: the role or the state, never the kind and never how it conne
   - with an update: **有新版本 1.4.2** and **更新** (primary, small); an unverified latest keeps
     D156's line **要等你点一下才装** as the button's helper;
   - **用它做事 / Use it for tasks** as a switch (D89's per-agent toggle, now where the agent is);
+  - D169 (built, through the `coinLines` slot for the line and `coinActions` for its action:
+    `views/memplugin.go`, `MemAction` in `apps/web/src/devcard.tsx`): one line for Nowledge Mem
+    in this agent, **Nowledge Mem 已装 · 0.7.34** quietly, or **没装 Nowledge Mem** with **装上**
+    and its in-place ask; none with memory off;
   - when the same account is signed in elsewhere: **和 hel 共用一个账号的额度 / Shares one
     account's limit with hel** (replaces **2 台设备共用**, issue 6);
   - signed out: **登录** (primary) and nothing else.

@@ -94,6 +94,27 @@ updates the ones behind (`--all` for every computer, `--json` for scripts).
 The phone shows the same list and cards under **Settings › Your devices**, without the islands: tap
 a device to open its card.
 
+### Nowledge Mem in your AI agents
+
+If you use [Nowledge Mem](https://mem.nowledge.co), tapping an AI agent's coin on a device's card also
+says whether Nowledge Mem is set up in it there, for when you use that agent yourself: *Nowledge Mem
+0.7.34 installed*, or *No Nowledge Mem* with **Install**. Ducter reads this from Nowledge Mem's
+own check on that computer, which looks at the agent's settings but can't prove the agent
+loads it, so the line says "installed", never more. *Worth a look* means the check couldn't
+settle it, for example two copies; **Sort it out** fixes it the same way.
+
+**Install** first says what it will change, then starts one task on that computer that follows
+Nowledge Mem's own setup guide. It changes only that agent's own settings, nothing of
+Ducter's, and asks you for a connect link if Nowledge Mem isn't connected there yet. Start the
+agent again afterwards to use it. Nothing is ever installed without your tap.
+
+When you connect another computer, or sign in to another AI agent, and Nowledge Mem isn't in
+it, your partner asks once, with **Not now** as the default. It never asks again for that
+computer and agent. With **Remember things** off, none of this shows.
+
+You don't need any of this for Ducter's own tasks: they get what your partner remembers from
+your partner itself (see [Privacy and safety](privacy-and-safety.md#memory-with-nowledge-mem)).
+
 Each device is in one of three states:
 
 - **Awake:** ready to work.

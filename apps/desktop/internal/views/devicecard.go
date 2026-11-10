@@ -446,9 +446,14 @@ func (a *App) detailBox(c *ui.Context, key, label string, idx, n int, body func(
 
 // coinLines are extra quiet lines in a coin's detail, under who shares its
 // account and above the update, each from one fact about that agent on
-// that device; "" says nothing. A feature adds its line here (the
-// per-harness 记忆 / memory line is the next).
+// that device; "" says nothing. A feature adds its line here (D169: its
+// Nowledge Mem line, memplugin.go).
 var coinLines []func(a *App, dv *protocol.DeviceView, h protocol.DeviceHarness) string
+
+// coinActions draw what a coinLines line offers to do, right under the
+// lines, with shared controls only (D169: 装上 Nowledge Mem and its in-place
+// ask). Nothing to do: they draw nothing.
+var coinActions []func(a *App, c *ui.Context, dv *protocol.DeviceView, h protocol.DeviceHarness)
 
 // coinHow is how a copy was installed, in words, for the version line.
 func (a *App) coinHow(h protocol.DeviceHarness) string {
@@ -533,6 +538,9 @@ func (a *App) coinDetail(c *ui.Context, dv *protocol.DeviceView, h protocol.Devi
 			if s := line(a, dv, h); s != "" {
 				ui.Text(c, s).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
 			}
+		}
+		for _, act := range coinActions {
+			act(a, c, dv, h)
 		}
 		a.agentUpdate(c, dv, h)
 		if st := a.S.Settings; st != nil {

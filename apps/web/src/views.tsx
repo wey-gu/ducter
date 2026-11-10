@@ -229,6 +229,7 @@ function defaultInfo(d: DecisionState, now: number): { line: string; frac?: numb
 export function goLabel(d: DecisionState): string {
   if (d.where) return whereAsk(d.where).go;
   if (d.closing) return closingWords(d.closing).go;
+  if (d.memPlugin) return t("memp.card.go");
   return shortGo(d.goLabel);
 }
 
@@ -294,7 +295,7 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
   const wa = d.where ? whereAsk(d.where) : undefined;
   return (
     <>
-      <div class="q">{wa?.question ?? (d.closing ? closingWords(d.closing).question : d.question)}</div>
+      <div class="q">{wa?.question ?? (d.closing ? closingWords(d.closing).question : d.memPlugin ? t("memp.card.question", harnessName(d.memPlugin.harness), d.memPlugin.deviceName) : d.question)}</div>
       {d.routineId && <RoutineFacts routineId={d.routineId} />}
       {open && wa && wa.lines.map((l, i) => <div key={i} class={`dl${l.widen ? " widen" : ""}`}>{l.text}</div>)}
       {open && !wa && <DefaultRow d={d} />}
@@ -312,7 +313,7 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
             }}
           />
           <span class="pair">
-            <Btn kind="secondary" label={wa?.hold ?? (d.closing ? closingWords(d.closing).hold : t("decision.hold"))} about={about} onClick={() => A.decide(d.decisionId, "hold")} />
+            <Btn kind="secondary" label={wa?.hold ?? (d.closing ? closingWords(d.closing).hold : d.memPlugin ? t("memp.card.hold") : t("decision.hold"))} about={about} onClick={() => A.decide(d.decisionId, "hold")} />
             <Btn kind="primary" label={goText} about={about} onClick={() => A.decide(d.decisionId, "go")} />
           </span>
         </div>

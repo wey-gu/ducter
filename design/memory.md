@@ -139,7 +139,8 @@ and tools (principle 17). The slice gives the partner two tools, both through th
   colleague who forgot and never mentions memory. A cold session sees its own saves as
   `[you remembered] <title>` in the projection.
 - **Who writes (D141):** the persona's own Mem AI Identity, bound once and named on every call
-  (`system.md`, "Identity and Mem boundary"); its tasks run as the same identity.
+  (`system.md`, "Identity and Mem boundary"); its tasks run as the same identity, and inside
+  them memory comes from the partner ("Mem and tasks" below, D168).
 - **Live check (D63): done 2026-11-09** (`bun packages/partner/eval/mem-live.ts --real`, Cloud,
   7/7). One `memory_add` through the real partner tool and nmem client, as the scratch identity
   `ducter-scratch`; the stored record read back with `metadata.agent_id = ducter-scratch`,
@@ -152,6 +153,61 @@ and tools (principle 17). The slice gives the partner two tools, both through th
   "像上次那样" (the brief carries the recalled specifics), recall about a person, remembering
   a stated preference (zh and en), no save of a task result or a pasted key, no recall for a
   general question, Mem down.
+
+## Mem and tasks (D168, D169; built 2026-11-10)
+
+Who: the developer whose Claude Code task on the Mac mini should keep their conventions like
+their own sessions do; the consumer whose "book it the way I like" task should know how they
+like it; the fresh user who never installed a plugin and still gets a task that knows them.
+None of them should have to set memory up per computer, or wonder why one task knew them and
+the next didn't.
+
+**Inside Ducter's tasks, memory comes from Ducter (D168).** One client (the partner's, through
+the user's `nmem` on the home), one switch (记得什么), one author (the partner):
+
+- **Before the first turn** the runner asks once, with the task's title and brief (≤ 300
+  chars, 4 hits, 6 s cap), and puts the answer in front of the first turn:
+  `<what_i_know>` … `- [<mem id>] <title>: <≤200 chars> (<date>)` … "the brief wins". In the
+  first turn rather than the system prompt, so it stays in the session's history across
+  resumes and is never asked again after a restart. Logged on the task's stream as
+  `task_event{from:"runner", raw:{memory:"recall", ids, titles}}`, never the text.
+- **`memory_search`** (task role, read-only): ≤ 5 results of ≤ 280 chars with ids, 6 per
+  task, each read logged with its query and ids. The home answers it: a worker needs no Mem,
+  holds no Mem key, and a task on a worker knows the same things as one on the home.
+- **`remember`** on `report_to_main` (≤ 3, 80 / 400 chars): the task proposes; the partner
+  sees "worth remembering, the task thinks: …" and keeps what is durable with `memory_add`
+  (provenance: the task id and the report's seq). Windows are never separate authors.
+- **The user's own Mem plugin is off inside a task** that keeps the user's setup (Claude Code:
+  one `--settings` with `enabledPlugins` false for `nowledge-mem@nowledge-community`; Codex:
+  `-c plugins.<id>.enabled=false` when their `config.toml` has it). Their other plugins,
+  skills and hooks stay. With memory off it stays off too, so the switch is true in tasks.
+- **Browser tasks get none** (D62's reason). **Off:** nothing at all. **Mem down or slow:**
+  the task starts without it; the tool says so and the task carries on.
+- What is not built: a richer recall query than title + brief, and a relevance floor (Mem's
+  search has no score in its compact hits). Both wait for a real-channel replay (`todo.md`).
+
+**Outside Ducter, in the user's own agents (D169).** When the user runs Claude Code or Codex
+themselves, Mem lives in that agent's own plugin on that computer, which Ducter doesn't own
+(D17). Ducter only shows where it is and offers it:
+
+- **The check** is Mem's own `nmem --json plugins inspect` (local, read-only): on the home
+  directly, on a worker through its `mem_plugins` op; at start, daily, when a computer comes
+  online, after a sign-in or an agent update, and when a setup task ends
+  (`packages/core/src/mem-plugins.ts`, parsing in `packages/protocol/src/mem-plugins.ts`).
+- **The line** per installed agent in its device card (copy in the glossary). Installed is
+  only what the check knows: every answer carries "runtime loading is not verified", which
+  alone never makes a review; the check's own `review`, several copies, or an install it
+  can't call enabled does. `update` shows only when the check says so (it names no newer
+  version today).
+- **装上 / Install** asks in place what it changes, then opens one task on that computer with
+  that agent (else any agent signed in there), with the user's own setup, origin "you": it
+  follows https://mem.nowledge.co/SKILL.md for that host only, never guesses a URL or key,
+  asks for a connect link when Mem isn't connected there, verifies with the check, and says
+  the agent must be restarted.
+- **Ducter's one card**, once per computer and agent, ever: a computer joined, or an agent got
+  signed in, and the check says Mem isn't there. Default 先不装 / Not now after 4 h. Computers
+  already there when the check first ran get none.
+- **Memory off:** no line, no card, no install.
 
 ## Open (measure in the prototype)
 

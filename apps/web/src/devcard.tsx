@@ -5,11 +5,12 @@
 // update, one 断开这台 {device}. Every control here is a shared one (controls.tsx).
 import type { DeviceHarness, DeviceUpdate, DeviceView } from "@ducter/protocol";
 import { TRY_LIVE } from "@ducter/protocol";
+import { Fragment, type ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { BackRow, Btn, Chip, CoinButton, DangerButton, ListRow, MoreButton, RenameTitle, SocketButton, Toggle } from "./controls.tsx";
 import { Coin } from "./coin.tsx";
-import { ago, behind, harnessName, phaseLine as phaseWords } from "./format.ts";
+import { ago, behind, harnessName, memWords, phaseLine as phaseWords } from "./format.ts";
 import { agentBehind, agentRunning, chipsFor, type Client, listWord, statusLine, versionLine, viaText } from "./sheet.ts";
 import { attention, placeOf } from "./store.ts";
 import { disablePush } from "./push-client.ts";
@@ -302,8 +303,10 @@ function CoinTray({ dv }: { dv: DeviceView }) {
   );
 }
 
-/** The slot for more per-agent lines in a coin's detail (the next is its 记忆 / memory line). */
+/** The slot for more per-agent lines in a coin's detail (D169: its Nowledge Mem line, below). */
 export const coinLines: ((dv: DeviceView, h: DeviceHarness) => string)[] = [];
+/** What a coinLines line offers to do, right under the lines, with shared controls only (D169: 装上 Nowledge Mem). */
+export const coinActions: ((dv: DeviceView, h: DeviceHarness) => ComponentChildren)[] = [];
 
 function agentPhase(u: NonNullable<DeviceHarness["update"]>): string {
   switch (u.phase) {
@@ -352,6 +355,9 @@ function CoinDetail({ dv, h }: { dv: DeviceView; h: DeviceHarness }) {
       {shared && <div class="ln">{t("coin.shared", others.join(t("card.via.and")))}</div>}
       {coinLines.map((f) => f(dv, h)).filter(Boolean).map((line) => (
         <div class="ln">{line}</div>
+      ))}
+      {coinActions.map((f, i) => (
+        <Fragment key={i}>{f(dv, h)}</Fragment>
       ))}
       {(behindNow || retry || (u && agentPhase(u)) || answer) && (
         <div class="dc-upd">
@@ -458,6 +464,45 @@ function Sites({ dv }: { dv: DeviceView }) {
     </div>
   );
 }
+
+// ---------- Nowledge Mem in this agent (D169) ----------
+
+/**
+ * D169: what 装上 / 更新 / 理一下 on an agent's Nowledge Mem line does: it asks in place first (what
+ * changes and where), then one task on that computer follows Mem's own setup guide. A computer
+ * that is away shows the line alone.
+ */
+function MemAction({ dv, h }: { dv: DeviceView; h: DeviceHarness }) {
+  const [asking, setAsking] = useState(false);
+  if (!h.mem || !h.installed || !h.loggedIn) return null;
+  const w = memWords(A.L, h.mem);
+  if (!w.action || dv.state !== "awake") return null;
+  const agent = harnessName(h.harness);
+  const about = `${agent} · Nowledge Mem`;
+  const answer = A.memAnswer?.device === dv.id && A.memAnswer.harness === h.harness ? A.memAnswer.reason : undefined;
+  return (
+    <>
+      {asking ? (
+        <div class="dev-cut">
+          <div class="dev-cut-q">{t("memp.ask", agent, dv.name)}</div>
+          <div class="small sub">{t("memp.means", agent, dv.name)}</div>
+          <div class="btns">
+            <Btn kind="secondary" size="sm" label={t("memp.ok")} about={about} onClick={() => (A.installMem(dv.id, h.harness), setAsking(false))} />
+            <Btn kind="text" size="sm" label={t("memp.cancel")} about={about} onClick={() => setAsking(false)} />
+          </div>
+        </div>
+      ) : (
+        <div class="btns">
+          <Btn kind="secondary" size="sm" label={w.action} about={about} onClick={() => setAsking(true)} />
+        </div>
+      )}
+      {answer && <div class="ln warn">{t(`memp.why.${answer}`)}</div>}
+    </>
+  );
+}
+
+coinLines.push((_dv, h) => (h.mem && h.installed ? memWords(A.L, h.mem).line : ""));
+coinActions.push((dv, h) => <MemAction dv={dv} h={h} />);
 
 // ---------- how it's connected ----------
 

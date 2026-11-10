@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { startCore, type Core } from "../src/core.ts";
 import { tempDir } from "./helpers.ts";
+import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 
 const stops: (() => void | Promise<void>)[] = [];
 afterEach(async () => {
@@ -103,6 +104,8 @@ describe("the phone/web client", () => {
     expect(me.status).toBe(200);
     const body: any = await me.json();
     expect(body).toMatchObject({ via: "device", deviceName: "iPhone · Safari", personaName: "Ducter" });
+    // D200: the apps compare the home's version with their own.
+    expect(body.version).toBe(DUCTER_VERSION);
     expect(body.push.publicKey).toMatch(/^[A-Za-z0-9_-]{80,}$/);
     expect(await upgrade(paired.token)).toBe(101);
 

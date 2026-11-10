@@ -53,6 +53,8 @@ struct PlaceCommands: Commands {
 struct Root: View {
     @ObservedObject var state: AppState
     @ObservedObject var shell: Shell
+    @ObservedObject private var home = HomeCheck.shared
+    @Environment(\.scenePhase) private var scene
 
     var body: some View {
         ZStack {
@@ -63,6 +65,17 @@ struct Root: View {
                     .onAppear { shell.load(entry) }
                     .onChange(of: entry) { _, u in shell.load(u) }
                     .opacity(shell.phase == .ready ? 1 : 0)
+                if shell.phase == .ready, let line = home.line {
+                    // D200: the home is older than this app; its page can't say so.
+                    VStack {
+                        Spacer()
+                        HomeOlderCard(line: line, go: {
+                            home.hide()
+                            shell.open("app#settings=devices")
+                        }, dismiss: home.dismiss)
+                    }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
                 if shell.phase == .loading {
                     Loading().transition(.opacity)
                 } else if shell.phase == .unreachable, let base = state.base {
@@ -75,6 +88,9 @@ struct Root: View {
             }
         }
         .animation(.easeOut(duration: 0.25), value: state.entry)
+        .onChange(of: state.base) { _, _ in home.clear() }
+        // Back to the app: the home may have updated meanwhile (or fallen behind a new app).
+        .onChange(of: scene) { _, p in if p == .active, shell.phase == .ready { Task { await home.check() } } }
         .onChange(of: state.open) { _, path in
             guard let path else { return }
             shell.open(path)

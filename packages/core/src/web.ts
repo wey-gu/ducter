@@ -180,6 +180,8 @@ export interface WebApiDeps {
   pusher: Pusher;
   apns?: ApnsSender;
   personaName: () => string;
+  /** D200: the Ducter version this home runs, so the apps can tell a home older than themselves. */
+  version?: string;
 }
 
 const json = (status: number, body: unknown) => Response.json(body, { status, headers: { "cache-control": "no-store" } });
@@ -223,6 +225,7 @@ export async function webApi(req: Request, g: Extract<GateResult, { pass: true }
       return json(200, {
         via: g.via,
         personaName: deps.personaName(),
+        ...(deps.version ? { version: deps.version } : {}),
         ...(g.via === "device" ? { deviceId, deviceName: g.device.name } : {}),
         // apns: this home can notify the iPhone app (through the relay, or its own Apple key);
         // apnsVia says which; relay: "unreachable" when the relay failed the last time (D159).

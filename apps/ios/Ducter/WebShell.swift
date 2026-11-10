@@ -135,6 +135,8 @@ final class Shell: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegat
             if let n = m["personaName"] as? String, !n.isEmpty, n != AppState.shared.personaName { AppState.shared.personaName = n }
             // Notifications were on before: make sure the main has this phone's current token.
             if AppState.shared.pushOn, let tok = AppState.shared.apnsToken { await API.subscribe(token: tok) }
+            // D200: the page is up and paired; is its home older than this app?
+            Task { await HomeCheck.shared.check() }
             return (["ok": true], nil)
         case "log":
             NSLog("[ducter page] %@: %@", m["k"] as? String ?? "", m["m"] as? String ?? "")

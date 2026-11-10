@@ -192,3 +192,34 @@ data class Fold(
         }
     }
 }
+
+/**
+ * D200: is the home this app is paired with running an older Ducter than the app? The page is the
+ * home's own, so an older home means an older page, and nothing in it can say so. Same rule and
+ * cases as the iPhone app's HomeVersion (apps/ios/Ducter/HomeVersion.swift).
+ */
+object HomeVersion {
+    private val CORE = Regex("""^v?(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$""")
+
+    /** major.minor.patch only: a pre-release or build part doesn't count (the App Store's builds carry none). */
+    fun core(v: String): List<Long>? = CORE.find(v.trim())?.destructured?.let { (a, b, c) -> listOf(a.toLong(), b.toLong(), c.toLong()) }
+
+    /**
+     * The home is older than the app. home == null: the home answered /api/me without a version,
+     * which every home from before D200 does, so it is older than any app that asks. An app that
+     * isn't a real version (0.0.0) never says it.
+     */
+    fun older(app: String, home: String?): Boolean {
+        val a = core(app)?.takeIf { it != listOf(0L, 0L, 0L) } ?: return false
+        if (home == null) return true
+        val h = core(home) ?: return false
+        for (i in 0..2) if (h[i] != a[i]) return h[i] < a[i]
+        return false
+    }
+
+    /** What "Got it" remembers: this home, at this version, against this app. A new pair shows it once more. */
+    fun key(base: String, home: String?, app: String) = "$base|${home ?: "-"}|$app"
+
+    fun shouldShow(app: String, home: String?, base: String, dismissed: String?) =
+        older(app, home) && dismissed != key(base, home, app)
+}

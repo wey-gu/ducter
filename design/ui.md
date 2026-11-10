@@ -405,6 +405,11 @@ across, and folded, it is one column. The Android app's own screens follow the r
 screen spreads partner | form across the two halves, connecting and can't-reach keep to the first
 half, an update card stands in the half past the fold. Screens: `.shots/android/`.
 
+**The home older than the app (D200).** The iPhone/iPad and Android apps' one native line over
+the page, at the bottom in the Android update card's form (surface, hairline rim, the clay Quiet
+and Primary buttons side by side: **知道了 · 去更新**), one phone-wide column (≤ 520) on an iPad;
+it slides up once and goes with either button. Simulator shot: `.shots/d200/`.
+
 ## Three zoom levels (Core UI canvas: https://claude.ai/artifact/U9r15Tpm8AL7aGQZwrtbDL)
 
 1. **The conversation** (default). One partner, no machinery: its words, and one quiet row

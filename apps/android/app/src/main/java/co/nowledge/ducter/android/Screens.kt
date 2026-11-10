@@ -236,7 +236,16 @@ class UpdateCard(c: Context) : FrameLayout(c) {
         addView(col, LayoutParams(MATCH_PARENT, WRAP_CONTENT, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL))
     }
 
+    /** D200: one quiet line (no title) with its two buttons. */
+    fun line(text: String, goLabel: String, laterLabel: String) {
+        show("", emptyList(), null, goLabel, laterLabel)
+        title.visibility = GONE
+        notes.text = text
+        notes.visibility = VISIBLE
+    }
+
     fun show(t: String, lines: List<String>, st: String?, goLabel: String?, laterLabel: String?) {
+        title.visibility = VISIBLE
         title.text = t
         notes.text = lines.joinToString("\n") { "· $it" }
         notes.visibility = if (lines.isEmpty()) GONE else VISIBLE

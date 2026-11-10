@@ -41,6 +41,12 @@ nothing changed on any failure, said plainly), 惊喜 (the fold becomes the spin
   `env(safe-area-inset-*)`); the keyboard shrinks the web view (`interactive-widget=resizes-content`).
 - The app's own screens (connect, connecting, can't reach, the update card) are native, because a
   home older than the app serves an older page.
+- The home older than the app (D200): after the page's `hello` (and back in the foreground) the app
+  asks `<home>/api/me` with the page's token (held in memory only) and, when the home's
+  major.minor.patch is lower than its own, shows the update card's form as one line: **{home} 上的
+  Ducter 还是 {v}，比这个 App 旧，有些新东西要等它更新。** with **去更新** (the page's
+  `#settings=devices`) and **知道了** (held per home and pair of versions). The app's own update
+  card speaks first. `HomeVersion` in `Core.kt`, tested beside the iPhone app's same cases.
 
 ## Updating itself (D181)
 

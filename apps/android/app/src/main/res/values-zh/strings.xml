@@ -35,4 +35,9 @@
     <string name="update_why_no_asset">这个版本里没有给安卓的文件。</string>
     <string name="update_why_signature">这份 Ducter 是从别处装的，安卓不让用发布版更新它。卸载它，从发布页装一次 APK 就好。</string>
     <string name="update_whats_new">这次新的</string>
+    <!-- D200: the home runs an older Ducter than this app. -->
+    <string name="home_older">%1$s 上的 Ducter 还是 %2$s，比这个 App 旧，有些新东西要等它更新。</string>
+    <string name="home_older_unknown">%1$s 上的 Ducter 比这个 App 旧，有些新东西要等它更新。</string>
+    <string name="home_older_go">去更新</string>
+    <string name="home_older_dismiss">知道了</string>
 </resources>

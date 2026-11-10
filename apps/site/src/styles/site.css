@@ -661,6 +661,35 @@ section { position: relative; }
 .card-art picture { height: 100%; width: auto; }
 .card-art picture img { height: 100%; width: auto; filter: drop-shadow(0 6px 8px rgb(120 72 30 / 0.14)); }
 .card-art.pair picture { height: 84px; }
+.card-art.coins { gap: 6px; flex-wrap: nowrap; }
+.card-art.coins picture { height: min(64px, 15vw); flex: none; }
+
+/* devices: where a task runs, in three short points under the stage */
+.points.three { margin-top: clamp(28px, 4vw, 44px); }
+@media (min-width: 820px) { .points.three { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; } }
+
+/* heads-up: the morning message (D165, D173) */
+.note-card { background: var(--bg); border-radius: var(--r-xl); padding: 22px; box-shadow: var(--base-card); display: grid; gap: 12px; }
+.note-card .msg { justify-self: start; }
+.find { background: var(--surface); border-radius: var(--r-lg); padding: 14px 16px 16px; box-shadow: 0 2px 0 var(--line); }
+.find p { margin: 0; color: var(--ink); font-size: var(--t16); line-height: 1.5; }
+.find .actions { margin-top: 12px; gap: 10px; }
+.find .qlink { margin-left: auto; font-size: var(--t13); color: var(--muted); }
+
+/* open: what Ducter does with the agents you have, for builders */
+.under { margin-top: 56px; display: grid; gap: 8px 48px; padding: clamp(22px, 3vw, 32px); border-radius: var(--r-xl); background: var(--bg); box-shadow: var(--base-card); }
+.under h3 { font-size: var(--t28); letter-spacing: -0.4px; line-height: 1.2; }
+.under .body { margin-top: 10px; }
+.under .points { margin-top: 18px; }
+.under .points code { font-size: 0.88em; background: var(--sunken); padding: 1px 5px; border-radius: 6px; }
+@media (min-width: 980px) {
+  .under { grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); align-items: start; }
+  .under .points { margin-top: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 24px; }
+}
+
+/* the launch film, once hosted (FILM_URL) */
+.film { display: grid; justify-items: center; gap: 14px; max-width: 560px; margin: 0 auto 34px; text-decoration: none; }
+.film img { border-radius: var(--r-xl); box-shadow: var(--base-window); }
 .card h3 { font-size: var(--t28); letter-spacing: -0.4px; line-height: 1.2; }
 .card p { margin: 0; color: var(--ink-2); font-size: var(--t16); }
 .install { margin-top: 56px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; }

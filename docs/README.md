@@ -33,7 +33,7 @@ These pages are for using Ducter. If you want to build it or change it, start wi
   and who does the tasks, how it talks, when it may come to you and what it remembers, and the
   app's own settings and menus.
 - **[Accounts your partner can read](accounts.md):** your mail, calendar, Slack and more, in one
-  tap if you use oo, and what your partner does and never does with them.
+  tap if you use oo, how it tells you only what needs you, and what it never does with them.
 - **[Waiting, keep going, routines](waiting-and-routines.md):** "tell me when…", "keep fixing
   until it works", and "every Monday…".
 - **[Your phone](phone.md):** connect your phone, get a nudge when something needs you, and
@@ -59,7 +59,7 @@ These pages are for using Ducter. If you want to build it or change it, start wi
 | **Needs you** | A task or question that is waiting for your decision. |
 | **Waiting** | A task that is waiting for something to happen, such as "Waiting until PR #1592 passes". It looks by itself and carries on when it does. |
 | **Routine** | Work that comes back on its own: every Monday at 9, or whenever something happens. You say yes to each one once, and can pause it any time. |
-| **Accounts it can read** | Your mail, calendar and other accounts your partner can look in when you ask. Reading just happens; sending or changing anything waits for your Go. |
+| **Accounts it can read** | Your mail, calendar and other accounts your partner can look in when you ask, and, if you say yes, keep an eye on for you. Reading just happens; sending or changing anything waits for your Go. |
 | **Go · Hold · Reply…** | Your answers to a decision. Go takes the suggested default, Hold says "not yet", Reply lets you say it in your own words. |
 | **How I know** | The proof under a finished result: tests that ran, checks, the changes. |
 | **Devices** | The computers (and phone) Ducter can use: **Awake**, **Asleep**, or **Can't reach**. |

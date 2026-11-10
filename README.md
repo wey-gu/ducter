@@ -2,9 +2,10 @@
 
 <p align="center">
   <b>Say it once. Hear back when it's done.</b><br>
-  Ducter is a personal AI that runs on your own Mac or server. You tell one partner what you
-  want; it hands the work to the AI agents you already use, on the plans you already pay for,
-  and comes back when the work is done or a decision is yours to make.
+  Ducter is an open-source personal AI that runs on your own Mac or server. You talk to one
+  partner; it hands the work to the AI agents you already use (Claude Code, Codex, pi, DeepSeek
+  Harness), on the plans you already pay for, and comes back when the work is done or a
+  decision is yours to make.
 </p>
 
 <p align="center">
@@ -37,6 +38,17 @@ you take it, hold it, or reply in your own words, on the Mac or on your phone.
 Silence means it's going fine. Everything it's doing is one click away whenever you want to
 look.
 
+## Why it's different
+
+- **One partner, all your agents.** You don't tend sessions. Your partner starts them, watches
+  them and reports back; you open any of them when you want to.
+- **Your computers, your subscriptions.** It runs on your Mac or a Linux server you own, with
+  your own sign-ins. No Ducter account, no Ducter cloud, no lock-in to one AI company.
+- **It knows when to stay quiet.** Done comes with proof, questions come with a default, and on
+  a quiet day you hear nothing at all.
+- **Ready the first time you open it.** One line installs it, it sets up what's missing, and it
+  greets you with things to start from your own accounts and folders, not a blank box.
+
 ## What you can do today
 
 - **Hand off coding work.** "Fix the failing tests in my-app." "Upgrade OAR to 0.96 and fix
@@ -52,7 +64,12 @@ look.
 - **Answer from your phone.** Decisions arrive with the default already chosen, and your nights
   stay quiet.
 - **Keep it working while your Mac sleeps.** Run Ducter on a Linux server, and lend it other
-  machines to work on.
+  computers to work on; one switch lets your Mac do tasks for the server. Each task says which
+  computer it runs on and why, and asks only when the right one is asleep or a task would get
+  more access. (Moving Ducter itself from your Mac to a server is coming soon.)
+- **Hear about what matters in your mail and calendar.** Say yes once after you add your
+  accounts, and your partner tells you only what needs you: a morning message with at most
+  three things, right away only when it can't wait, nothing on a quiet day.
 - **Use the AI agents you already have.** Ducter works with Claude Code, Codex, pi and DeepSeek
   Harness today, on your own logins, settings and skills. Your partner thinks with Claude Code
   and picks which agent does each task; you can switch it for any task. English and 中文
@@ -88,16 +105,18 @@ Much of what your partner needs to know is somewhere else: in your mail, your ca
 last week's sessions with your other AI tools. Most of that it can use today, and none of it
 needs your passwords.
 
-- **One memory for all your AIs (works today).** [Nowledge Mem](https://mem.nowledge.co) keeps
-  what you've decided and what you're working on, from every AI tool you connect to it. Your
-  partner reads from it and adds to it, and you see *Noted* when it does. Without Mem, it
-  remembers your conversation.
+- **One memory for all your AIs (works today, optional).** [Nowledge Mem](https://mem.nowledge.co)
+  keeps what you've decided and what you're working on, from every AI tool you connect to it.
+  Your partner reads from it and adds to it, and you see *Noted* when it does; its tasks can use
+  it too, under your partner's name. Mem is free to download and never required: without it,
+  your partner remembers your conversation.
 - **Your mail, calendar and other accounts (works today).** Ask, and your partner reads your
   Gmail, calendar, Slack or GitHub. On **Partner › Accounts it can read**, tap **Use these
   accounts** if you use oo, or add an address and key from your
   [OpenConnector](https://github.com/oomol-lab/open-connector). The AI agents never see your
-  passwords. Reading just happens; sending or changing anything waits for your Go.
-  [Accounts your partner can read](docs/accounts.md).
+  passwords. Reading just happens; sending or changing anything waits for your Go. If you say
+  yes, it also keeps an eye on them and speaks only when something needs you, and it never
+  tells you how much it read. [Accounts your partner can read](docs/accounts.md).
 - **Your AI agents, reaching each other (early, coming soon).** With Nowledge Bridge, the
   Claude Code session in your terminal can hand your partner a job, and your partner can ask
   that session what it knows. It checks with you before it takes the job or sends the question.
@@ -199,10 +218,32 @@ flowchart LR
 - **Clients are thin.** The Mac app is native ([MyGo](https://github.com/egoist/mygo), no
   webview); the phone client is a small web app. Both speak the same protocol.
 
+## Under the hood
+
+For people who already run several AI agents at once, this is what makes them hold up as one
+partner:
+
+- **One adapter for four agents.** Claude Code, Codex, pi and DeepSeek Harness, started through
+  OAR in clean sessions that still carry your own skills and settings.
+- **Small windows on purpose.** The partner and its tasks work in about 200K tokens; a long
+  conversation stays coherent through digests and recall
+  ([memory](design/memory.md), [context](design/context.md)).
+- **One registry of facts per agent.** Windows, compaction points and verified versions live in
+  [`harness-facts.ts`](packages/protocol/src/harness-facts.ts)
+  ([readable twin](design/harnesses.md)); `bun scripts/probe-harnesses.ts` re-checks the installed
+  programs and `ducter doctor` warns when yours is outside the verified range.
+- **Each agent's own browser and computer use first**, Ducter's own Chrome as the fallback.
+- **Keys stay out of tasks.** A pasted key or token is removed from what a task is told and
+  hidden everywhere a task is shown, with one detector for both.
+- **Budgets are tests.** Prompt and tool-list sizes fail the build when they grow, a partner
+  change carries a fresh eval result, and `bun run e2e:linux` rehearses installs and in-place
+  updates on a Linux VM before a release.
+
 ## Privacy and safety
 
 - **Nothing lands without you.** Ducter never merges, never works in your own checkout, and never
-  types your passwords. Every result says what was sent out.
+  types your passwords. In a folder that isn't a git repo, every change can be undone with one
+  tap. Every result says what was sent out.
 - **Your machines, your accounts.** There is no Ducter cloud and no Ducter account. Your work
   reaches an AI provider only through your own AI agent's login or key.
 - **Only your devices get in.** A server listens on itself only; a phone or another computer
@@ -229,10 +270,16 @@ Ducter writes its design down before its code. [CONTRIBUTING.md](CONTRIBUTING.md
 change is made and what is wanted now. Report security issues as described in
 [SECURITY.md](SECURITY.md).
 
+A thank-you: Ducter is made by the people behind Nowledge Mem. Once a pull request of yours is
+merged, mention it and we'll send you a free lifetime Nowledge Mem license
+([details](CONTRIBUTING.md)).
+
 ## 中文
 
-Ducter 是跑在你自己 Mac 或服务器上的个人 AI。你只跟一个伙伴说话，它把活儿交给你已经在用的
+Ducter 是跑在你自己 Mac 或服务器上的开源个人 AI。你只跟一个伙伴说话，它把活儿交给你已经在用的
 AI agent（Claude Code、Codex、pi、DeepSeek Harness），用的是你本来就在付的订阅。做完了，它一两句话告诉你结果，证据点开就能看；只有真要你拍板的事才来找你，而且先替你想好默认的做法。等消息、反复试到成功、每周例行的事，都在「手头的事」里一眼看清。
+
+加上邮箱和日历以后，你点一次头，它就替你留意着：早上最多说三件事，没事的日子一句不说，也从不替你发信、付钱。每件事跑在哪台电脑上，它会用一句话说清楚。
 
 现在是早期预览版：Mac（Apple 芯片）和 Linux 服务器都能用，手机上可以看进展、做决定，界面中英双语。上手请看
 [Getting started](docs/getting-started.md)。

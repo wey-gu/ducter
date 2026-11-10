@@ -13,6 +13,7 @@ export const SCENES = [
   ["Decide", 170],
   ["Result", 132],
   ["RealApp", 100],
+  ["HeadsUp", 128],
   ["World", 118],
   ["End", 140],
 ] as const;

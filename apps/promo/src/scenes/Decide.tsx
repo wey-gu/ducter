@@ -54,7 +54,8 @@ export const Decide = () => {
               <div style={{ fontWeight: 500, fontSize: 13 * k, color: C.muted }}>{t(taken ? c.working(3) : c.needsYou)}</div>
             </div>
           </div>
-          <div style={{ position: "absolute", top: 150 * k, left: 22 * k, right: 22 * k, fontSize: 16 * k, lineHeight: 1.5, color: C.ink, opacity: 0.55 }}>
+          {/* the conversation behind the sheet leaves as the camera moves in: no half line at the frame's top */}
+          <div style={{ position: "absolute", top: 150 * k, left: 22 * k, right: 22 * k, fontSize: 16 * k, lineHeight: 1.5, color: C.ink, opacity: 0.55 * (1 - z) }}>
             <div style={{ background: C.accent, borderRadius: 16 * k, padding: `${9 * k}px ${14 * k}px`, marginLeft: 60 * k, marginBottom: 12 * k }}>{t(c.ask)}</div>
             <div>{t(c.ack)}</div>
           </div>

@@ -9,6 +9,8 @@ export interface RepoFacts {
   isPublic: boolean;
   /** Direct link to the latest release's .dmg, if a release with one exists. */
   dmgUrl: string | null;
+  /** Direct link to the latest release's Android app (Ducter-<v>-android.apk, D181), if it has one. */
+  apkUrl: string | null;
   version: string | null;
 }
 
@@ -25,13 +27,14 @@ async function get(url: string): Promise<any | null> {
 let cached: Promise<RepoFacts> | null = null;
 export function repoFacts(): Promise<RepoFacts> {
   cached ??= (async () => {
-    if (process.env.DUCTER_SITE_OFFLINE) return { isPublic: false, dmgUrl: null, version: null };
+    if (process.env.DUCTER_SITE_OFFLINE) return { isPublic: false, dmgUrl: null, apkUrl: null, version: null };
     const repo = await get(`https://api.github.com/repos/${REPO}`);
     const isPublic = !!repo && repo.private === false;
-    if (!isPublic) return { isPublic, dmgUrl: null, version: null };
+    if (!isPublic) return { isPublic, dmgUrl: null, apkUrl: null, version: null };
     const rel = await get(`https://api.github.com/repos/${REPO}/releases/latest`);
     const dmg = rel?.assets?.find((a: any) => typeof a?.name === "string" && a.name.endsWith(".dmg"));
-    return { isPublic, dmgUrl: dmg?.browser_download_url ?? null, version: rel?.tag_name ?? null };
+    const apk = rel?.assets?.find((a: any) => typeof a?.name === "string" && a.name.endsWith("-android.apk"));
+    return { isPublic, dmgUrl: dmg?.browser_download_url ?? null, apkUrl: apk?.browser_download_url ?? null, version: rel?.tag_name ?? null };
   })();
   return cached;
 }

@@ -9,7 +9,7 @@ that the owner endorses or partners with Ducter.
 | Agent | The mark the coin is sculpted from | Reference used (downloaded, never committed) |
 |---|---|---|
 | Claude Code | Anthropic's Claude starburst, terracotta `#D97757` | Wikimedia Commons, `Claude_AI_symbol.svg` |
-| Codex | OpenAI's Codex mark: the scalloped cloud with `>_`, periwinkle to blue | LobeHub icons (`@lobehub/icons-static-svg`, `codex-color.svg`), which redraws the mark OpenAI ships in the Codex app |
+| Codex | OpenAI's mark, the six-band woven knot (Codex is OpenAI's agent; the author chose it over the Codex cloud), in charcoal clay | LobeHub icons (`@lobehub/icons-static-png@1.75.0`, `light/openai.png`) |
 | DeepSeek Harness | DeepSeek's whale, `#4D6BFE` | LobeHub icons, `deepseek-color.svg` (the same whale as `deepseek-ai`'s GitHub avatar) |
 | pi | pi's four-block logo (salmon, teal, butter) | pi's press kit, <https://pi.dev/logo.svg> |
 

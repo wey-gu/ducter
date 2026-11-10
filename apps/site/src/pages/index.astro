@@ -59,7 +59,9 @@ const ld = {
         <li><Art name="laptop_awake" alt="" sizes="40px" />Mac</li>
         <li><Art name="server_awake" alt="" sizes="40px" />Linux server</li>
         <li><Art name="phone" alt="" sizes="24px" />iPhone and iPad</li>
-        <li class="soon"><Art name="android" alt="" sizes="40px" />Android <small>coming soon</small></li>
+        {facts.apkUrl
+          ? <li><Art name="android" alt="" sizes="40px" />Android</li>
+          : <li class="soon"><Art name="android" alt="" sizes="40px" />Android <small>coming soon</small></li>}
       </ul>
     </div>
 
@@ -252,12 +254,21 @@ const ld = {
         <p>One app for both. On an iPad held across, On hand stands beside the conversation, and with a keyboard ⌘N starts a task.</p>
         <p class="where-state"><b>Public beta</b><a href="https://testflight.apple.com/join/Z4GvWt7t" rel="noopener">Join on TestFlight</a></p>
       </li>
-      <li class="where-card soon reveal">
-        <div class="where-art"><Art name="android" alt="" sizes="80px" /></div>
-        <h3>Android</h3>
-        <p>Today Ducter opens in your phone's browser, and you answer Go or Hold right from the notification.</p>
-        <p class="where-state"><b>App coming soon</b><a href="/docs/phone">Use the browser</a></p>
-      </li>
+      {facts.apkUrl ? (
+        <li class="where-card reveal">
+          <div class="where-art"><Art name="android" alt="" sizes="80px" /></div>
+          <h3>Android</h3>
+          <p>The Ducter app, straight from GitHub; it updates itself. Open a foldable like a book and the conversation and On hand meet at the fold.</p>
+          <p class="where-state"><b>Ready</b><a href={facts.apkUrl}>Download the app</a></p>
+        </li>
+      ) : (
+        <li class="where-card soon reveal">
+          <div class="where-art"><Art name="android" alt="" sizes="80px" /></div>
+          <h3>Android</h3>
+          <p>Today Ducter opens in your phone's browser, and you answer Go or Hold right from the notification.</p>
+          <p class="where-state"><b>App coming soon</b><a href="/docs/phone">Use the browser</a></p>
+        </li>
+      )}
     </ul>
     <p class="body where-note">A phone or iPad needs an address it can reach from anywhere: Ducter on a server with your own domain. <a href="/docs/phone">Connect your phone</a></p>
   </div>
@@ -466,7 +477,7 @@ const ld = {
         <div class="panel" id="p-ios" role="tabpanel" aria-labelledby="tab-ios" style="margin-top:14px" hidden>
           <p>One app for iPhone and iPad, in public beta through Apple's TestFlight. It connects to Ducter on your server with the address and code from <code>ducter pair</code>.</p>
           <p><a class="btn" href="https://testflight.apple.com/join/Z4GvWt7t" rel="noopener">Join the beta</a></p>
-          <p>On Android, or any phone, open the same address in the browser; the Android app is coming soon. <a href="/docs/phone">Your phone</a> has the details.</p>
+          <p>{facts.apkUrl ? <>On Android, <a href={facts.apkUrl}>the Ducter app</a> connects the same way and updates itself; any other phone opens the same address in its browser.</> : <>On Android, or any phone, open the same address in the browser; the Android app is coming soon.</>} <a href="/docs/phone">Your phone</a> has the details.</p>
         </div>
         <div class="panel" id="p-agent" role="tabpanel" aria-labelledby="tab-agent" style="margin-top:14px" hidden>
           <p>Let Claude Code, Codex or another agent set Ducter up for you. Ask it:</p>

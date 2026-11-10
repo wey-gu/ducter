@@ -62,7 +62,7 @@ second copy offline).
 ```sh
 keytool -genkeypair -keystore ducter-android-release.p12 -storetype PKCS12 \
   -alias ducter -keyalg RSA -keysize 4096 -validity 36500 \
-  -dname "CN=Nowledge Labs, O=Nowledge Labs LLC"
+  -dname "CN=Ducter, O=Nowledge Labs"
 # keytool asks for the password; PKCS12 uses it for the key too.
 
 # The certificate's SHA-256 (for the variable below and for Android developer verification):

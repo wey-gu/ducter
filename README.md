@@ -47,7 +47,7 @@
 | **Mac** | The desktop app, Apple silicon. Ducter can live here and run tasks here. |
 | **Linux server** | x64 or arm64, at home or in the cloud. Runs as a service and stays on. |
 | **iPhone and iPad** | One app, in public beta on [TestFlight](https://testflight.apple.com/join/Z4GvWt7t). On a wide iPad, On hand stands beside the conversation. |
-| **Android** | In your phone's browser today, answering Go or Hold from the notification. The Android app is coming soon. |
+| **Android** | The Ducter app, from each [GitHub release](https://github.com/wey-gu/ducter/releases/latest); it updates itself, and a foldable opened like a book shows the conversation and On hand on either side of the fold. Or your phone's browser. |
 | **Terminal** | The `ducter` command, on the Mac or the server. |
 
 A phone needs an address it can reach from anywhere, which today means Ducter on a server with

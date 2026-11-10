@@ -13,7 +13,7 @@ There are four ways to have Ducter, and you can mix them:
 | [The Mac app](#the-mac-app) | Most people. One line in Terminal, or a download | Ready |
 | [The `ducter` command](#the-ducter-command) | People who live in Terminal | Ready |
 | [A Linux server](#a-linux-server-that-stays-on) | Keeping your partner working while your Mac sleeps | Ready |
-| [Your phone or iPad](#your-phone-or-ipad) | Answering decisions and checking results on the go | iPhone and iPad: one app, in public beta (TestFlight). Android: ready in the phone's browser; the Android app is coming soon |
+| [Your phone or iPad](#your-phone-or-ipad) | Answering decisions and checking results on the go | iPhone and iPad: one app, in public beta (TestFlight). Android: the Ducter app from each GitHub release, or the phone's browser |
 
 Whichever you choose, you need an AI agent, **Claude Code, Codex, pi or DeepSeek Harness**, installed and
 signed in on the computer that does the work ([which agents](faq.md#which-ai-agents-does-it-work-with)).
@@ -312,8 +312,11 @@ TestFlight: [join the beta](https://testflight.apple.com/join/Z4GvWt7t), install
 asked, then open Ducter and type the address and code from `ducter pair`. Beta builds can change
 and expire after 90 days; TestFlight offers the next one.
 
-**Android.** Open the address in your phone's browser; you can answer **Go** or **Hold** straight
-from the notification. The Android app is coming soon.
+**Android.** Download `Ducter-<version>-android.apk` from the
+[latest release](https://github.com/wey-gu/ducter/releases/latest), allow your browser to install
+apps when Android asks, then scan the code from `ducter pair` or paste its link. The app updates
+itself from then on ([more](phone.md#the-android-app)). Or open the address in your phone's
+browser; you can answer **Go** or **Hold** straight from the notification.
 
 Everything about the phone and the iPad, including notifications and quiet hours, is on
 [Your phone](phone.md).

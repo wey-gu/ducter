@@ -1,6 +1,6 @@
 # The Android app
 
-Draft for review (D178–D182, research/51). Built in `apps/android`; how it is built and released
+Settled (D178, D181, D182; research/51). Built in `apps/android`; how it is built and released
 is in `release/android.md`.
 
 ## Who, what they feel, how it starts

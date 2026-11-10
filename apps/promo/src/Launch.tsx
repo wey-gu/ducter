@@ -1,4 +1,4 @@
-// The launch video: ten scenes, joined by short fades (the title opens into the conversation
+// The launch video: eleven scenes, joined by short fades (the title opens into the conversation
 // out of Ducter itself). The only sound is Ducter's own title
 // sound (D87), under the title and again under the end card; the video reads without it.
 import { linearTiming, type TransitionPresentation, TransitionSeries } from "@remotion/transitions";
@@ -7,6 +7,7 @@ import { Audio, interpolate, Sequence, staticFile, useVideoConfig } from "remoti
 import { type Lang, LangContext } from "./copy";
 import { Decide } from "./scenes/Decide";
 import { End } from "./scenes/End";
+import { HeadsUp } from "./scenes/HeadsUp";
 import { Hook } from "./scenes/Hook";
 import { Quiet } from "./scenes/Quiet";
 import { RealApp } from "./scenes/RealApp";
@@ -27,6 +28,7 @@ const body = {
   Decide: <Decide />,
   Result: <Result />,
   RealApp: <RealApp />,
+  HeadsUp: <HeadsUp />,
   World: <World mode="world" />,
   End: <End />,
 };

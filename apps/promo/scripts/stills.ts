@@ -12,11 +12,11 @@ import { startOf } from "../src/timeline";
 // one frame per scene that shows what the scene is for (RealApp twice: its two shots)
 const STORYBOARD: [string, number][] = [
   ["Hook", 84], ["Title", 76], ["SayIt", 112], ["Handoff", 96], ["Quiet", 74], ["Decide", 96],
-  ["Decide", 140], ["Result", 104], ["RealApp", 34], ["RealApp", 84], ["World", 96], ["End", 120],
+  ["Decide", 140], ["Result", 104], ["RealApp", 34], ["RealApp", 84], ["HeadsUp", 100], ["World", 96], ["End", 120],
 ];
 
 const repo = resolve(import.meta.dir, "../../..");
-const out = resolve(process.env.DUCTER_SHOTS_DIR ?? resolve(repo, ".shots"), "promo/v2/stills");
+const out = resolve(process.env.DUCTER_SHOTS_DIR ?? resolve(repo, ".shots"), "promo/v3/stills");
 mkdirSync(out, { recursive: true });
 
 const args = process.argv.slice(2);

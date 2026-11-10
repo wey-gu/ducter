@@ -187,6 +187,22 @@
    192
   ]
  },
+ "coin_pi": {
+  "w": 256,
+  "h": 256,
+  "widths": [
+   96,
+   192
+  ]
+ },
+ "coin_deepseek_harness": {
+  "w": 256,
+  "h": 256,
+  "widths": [
+   96,
+   192
+  ]
+ },
  "coin_claude_code_plain": {
   "w": 256,
   "h": 256,

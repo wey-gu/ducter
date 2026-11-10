@@ -8,7 +8,7 @@ import Nav from "../components/Nav.astro";
 import Footer from "../components/Footer.astro";
 import Isles from "../components/Isles.astro";
 import GitHubMark from "../components/GitHubMark.astro";
-import { siteLinks } from "../lib/links";
+import { FILM_URL, siteLinks } from "../lib/links";
 import { RELEASES_URL } from "../lib/github";
 import { agentsLine, agentsToday, agentsTodayAnd } from "../lib/agents";
 
@@ -150,7 +150,7 @@ const ld = {
   <div class="wrap">
     <div class="sec-head">
         <h2>Your computers. Your plans.</h2>
-      <p class="lede">Ducter lives on your Mac or on a server you own, and its tasks run there, signed in to your AI agents with your own accounts. A coding task works in its own copy of your project, on its own branch, so your checkout stays as you left it. There's no Ducter account to make and no Ducter server in between.</p>
+      <p class="lede">Ducter lives on your Mac or on a server you own, and its tasks run on your computers, signed in to your AI agents with your own accounts. A coding task works in its own copy of your project, on its own branch, so your checkout stays as you left it. There's no Ducter account to make and no Ducter server in between.</p>
     </div>
 
     <div class="stage-wrap reveal">
@@ -171,6 +171,12 @@ const ld = {
         </div>
       </div>
     </div>
+
+    <ul class="points three">
+      <li><span><b>Each task says where it runs.</b> Your partner picks the computer and the AI agent together, from what the task needs: your repo, a browser, a long run. One quiet line says where, and why if you tap it.</span></li>
+      <li><span><b>Lend it more computers.</b> A server keeps working while your Mac sleeps, and one switch lets your Mac do tasks for it. Closing your laptop? It moves what can move to a computer that stays on.</span></li>
+      <li><span><b>It asks only when it matters:</b> when the right computer is asleep, or when a task would get more access, like your own Chrome. Between equal computers it just picks.</span></li>
+    </ul>
   </div>
 </section>
 
@@ -182,7 +188,7 @@ const ld = {
         <h2>One thumb is enough.</h2>
       </div>
       <p class="lede">Your phone buzzes only when a decision is waiting for you, and never during your quiet hours. Answer it in one tap, or let the default happen and read about it in the morning.</p>
-      <p class="body note">Quiet hours are 23:00 to 08:00 until you change them. With two decisions waiting, Go on all defaults answers both. The phone opens Ducter in its browser, or in the iPhone app, in public beta on <a href="https://testflight.apple.com/join/Z4GvWt7t" rel="noopener">TestFlight</a>. Either way it needs Ducter on a server with your own domain.</p>
+      <p class="body note">Quiet hours are 23:00 to 08:00 until you change them. With two decisions waiting, Go on all defaults answers both. The phone opens Ducter in its browser, or in the iPhone app, in public beta on <a href="https://testflight.apple.com/join/Z4GvWt7t" rel="noopener">TestFlight</a>. For now, your phone needs an address it can reach from anywhere: Ducter on a server with your own domain (<a href="/docs/phone">how</a>).</p>
     </div>
     <div class="phone-scene">
       <div class="phone" id="phone">
@@ -221,10 +227,10 @@ const ld = {
       <div class="sec-head">
         <h2>It doesn't start from zero.</h2>
       </div>
-      <p class="lede">Much of what your partner needs to know is somewhere else: in your mail, your calendar, and last week's sessions with your other AI tools. Some of that it can use today. The rest is on the way, and none of it needs your passwords.</p>
+      <p class="lede">Much of what your partner needs to know is somewhere else: in your mail, your calendar, and last week's sessions with your other AI tools. Your memory and your accounts work today; your other AI agents are next. None of it needs your passwords.</p>
       <ul class="points">
-        <li><span><b>One memory for all your AIs.</b> <a href="https://mem.nowledge.co" rel="noopener">Nowledge Mem</a> keeps what you've decided and what you're working on, from every AI tool you connect to it. Your partner reads from it and adds to it, and you see Noted when it does. <span class="when">Works today. Without Mem, it remembers your conversation.</span></span></li>
-        <li><span><b>Your mail, calendar and other accounts.</b> If you use OOMOL's oo, it's one tap: your partner reads the accounts you already connected there. Otherwise paste an address and a key from <a href="https://github.com/oomol-lab/open-connector" rel="noopener">OpenConnector</a> (OOMOL's hosted one, or your own on your own computer or server). The AI agents never see your passwords. Reading your inbox is fine; anything that would send waits for your Go. <span class="when">Works today.</span></span></li>
+        <li><span><b>One memory for all your AIs.</b> <a href="https://mem.nowledge.co" rel="noopener">Nowledge Mem</a> keeps what you've decided and what you're working on, from every AI tool you connect to it. Your partner reads from it and adds to it, and you see Noted when it does; its tasks can use it too, under your partner's name. <span class="when">Works today, and optional: Mem is free to download, and without it your partner remembers your conversation.</span></span></li>
+        <li><span><b>Your mail, calendar and other accounts.</b> If you use OOMOL's oo, it's one tap: your partner reads the accounts you already connected there. Otherwise paste an address and a key from <a href="https://github.com/oomol-lab/open-connector" rel="noopener">OpenConnector</a> (OOMOL's hosted one, or your own on your own computer or server). The AI agents never see your passwords. Reading is fine; anything that would send waits for your Go. <span class="when">Works today.</span></span></li>
         <li><span><b>Your AI agents, reaching each other.</b> With Nowledge Bridge, the Claude Code session in your terminal can hand your partner a job, and your partner can ask that session what it knows. It checks with you before it takes the job or sends the question. <span class="when">Early, and coming soon.</span></span></li>
       </ul>
     </div>
@@ -240,6 +246,35 @@ const ld = {
   </div>
 </section>
 
+<!-- ============ HEADS-UP: restraint (D165, D173) ============ -->
+<section class="sec deep" id="heads-up">
+  <div class="wrap split flip">
+    <div>
+      <div class="sec-head">
+        <h2>It looks out for you, quietly.</h2>
+      </div>
+      <p class="lede">Say yes once when you add your accounts, and your partner keeps an eye on your mail, calendar, GitHub and chat. It speaks up only when something needs you: one morning message with <b>at most three things</b>, and on a quiet day, nothing at all.</p>
+      <ul class="points">
+        <li><span><b>Each one comes with a next step.</b> Open the renewal page, look for somewhere to stay. Go does it, Hold leaves it, and How I know shows the mails behind it.</span></li>
+        <li><span><b>Right away only when it can't wait</b>, and never in your quiet hours unless you asked for that kind.</span></li>
+        <li><span><b>It never sends, replies, pays or deletes</b> on its own, and it doesn't tell you how much it read. Tap Useful, or Don't tell me this kind, and it learns.</span></li>
+      </ul>
+    </div>
+    <div class="note-card reveal" aria-label="Example: a morning message">
+      <div class="quiet" style="justify-self:center"><span class="clock"></span>08:00</div>
+      <div class="msg ducter">Morning.</div>
+      <div class="find">
+        <p>ducter.dev expires on Nov 16, and it isn't renewed yet.</p>
+        <div class="actions"><button class="btn md" type="button" tabindex="-1">Open the renewal page</button><button class="btn secondary md" type="button" tabindex="-1">Hold</button><span class="qlink">How I know ›</span></div>
+      </div>
+      <div class="find">
+        <p>You land in Tokyo on Nov 21, and nothing is booked for that night.</p>
+        <div class="actions"><button class="btn md" type="button" tabindex="-1">Find a place to stay</button><button class="btn secondary md" type="button" tabindex="-1">Hold</button><span class="qlink">How I know ›</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ============ TRUST ============ -->
 <section class="sec ink-band" id="trust">
   <div class="wrap split">
@@ -247,7 +282,7 @@ const ld = {
       <div class="sec-head">
         <h2>It asks before anything reaches other people.</h2>
       </div>
-      <p class="lede">A task doesn't stop you for every command. Emails, posts, PR comments and pushes to shared branches wait for your Go, and every one is written down. A few things it never does at all.</p>
+      <p class="lede">A task doesn't stop you for every command. Emails, posts, PR comments and pushes to shared branches wait for your Go, and every one is written down. In a folder that isn't a git repo, every change can be undone with one tap. A few things it never does at all.</p>
       <ul class="nevers">
         <li><b>It never merges into main.</b><span>A finished task offers Merge into main or Open draft PR, and waits for you.</span></li>
         <li><b>It never types your passwords.</b><span>You sign in yourself, in its browser window. The AI never sees what you type.</span></li>
@@ -330,7 +365,22 @@ const ld = {
     <div class="cards3">
       <div class="card reveal"><div class="card-art"><Art name="ducter_working" alt="" sizes="120px" /></div><h3>Open source</h3><p>Apache 2.0. Every prompt Ducter writes and every line of code that touches your work is in the source.</p></div>
       <div class="card reveal"><div class="card-art"><Art name="server_awake" alt="" sizes="140px" /></div><h3>Self-hosted</h3><p>Your Mac, or a Linux server you own. Your conversation and tasks stay in one folder there that only your account can read.</p></div>
-      <div class="card reveal"><div class="card-art pair"><Art name="coin_claude_code" alt="" sizes="80px" /><Art name="coin_codex" alt="" sizes="80px" /></div><h3>No lock-in</h3><p>Ducter works through each AI agent's own app, signed in as you, on your existing plan. Use whichever one you have.</p></div>
+      <div class="card reveal"><div class="card-art coins"><Art name="coin_claude_code" alt="" sizes="64px" /><Art name="coin_codex" alt="" sizes="64px" /><Art name="coin_pi" alt="" sizes="64px" /><Art name="coin_deepseek_harness" alt="" sizes="64px" /></div><h3>No lock-in</h3><p>Ducter works through each AI agent's own app, signed in as you, on your existing plan. Use whichever one you have, and switch for any task.</p></div>
+    </div>
+
+    <div class="under reveal" id="under">
+      <div>
+        <h3>Built on the agents you have</h3>
+        <p class="body">For people who already run several AI agents at once: what Ducter does so they hold up as one partner.</p>
+      </div>
+      <ul class="points">
+        <li><span><b>One adapter, four agents.</b> Claude Code, Codex, pi and DeepSeek Harness, started through <a href="https://github.com/botiverse/oar" rel="noopener">OAR</a> in clean sessions that still carry your own skills and settings.</span></li>
+        <li><span><b>Small windows on purpose.</b> Your partner and its tasks work in about 200K tokens. A long conversation stays coherent through short digests and recall, not by replaying everything.</span></li>
+        <li><span><b>The facts about each agent, in one place.</b> Context windows, compaction points and versions are checked against the real programs, and <code>ducter doctor</code> warns when yours is outside what was checked.</span></li>
+        <li><span><b>Each agent's own browser first.</b> Ducter's own Chrome is the fallback, on your Mac or your server.</span></li>
+        <li><span><b>Keys stay out of tasks.</b> A key or token you paste is taken out of what a task is told, and hidden everywhere Ducter shows one.</span></li>
+        <li><span><b>Budgets are tests.</b> Every prompt and tool list has a size limit that fails the build, and updates are rehearsed end to end on a Linux VM before a release.</span></li>
+      </ul>
     </div>
 
     <div class="install" id="install">
@@ -390,6 +440,12 @@ const ld = {
     <Face id="final-face" faces={["napping", "idle"]} start="napping" sizes="168px" />
     <h2>Say it once.</h2>
     <p class="lede">Then get on with your day. Ducter tells you when it's done.</p>
+    {FILM_URL && (
+      <a class="film" href={FILM_URL} rel="noopener">
+        <img src="/film-poster.webp" width="960" height="540" alt="" loading="lazy" decoding="async" />
+        <span class="btn secondary md">Watch the launch film · 1 min</span>
+      </a>
+    )}
     <div class="cta-row">
       <a class="btn secondary lg gh" href={gh.href} rel="noopener"><GitHubMark />Star on GitHub</a>
       <a class="btn lg" href={dl.href}>{dl.label}</a>

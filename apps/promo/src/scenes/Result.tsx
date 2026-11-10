@@ -56,7 +56,7 @@ export const Result = () => {
       </div>
       {!sq && (
         <div style={{ position: "absolute", left: 230, top: 560, width: 330, transformOrigin: "50% 95%", transform: `scale(${0.9 + 0.1 * nod}, ${1.1 - 0.1 * nod})`, opacity: Math.min(1, nod * 2) }}>
-          <Art src="ducter/done.png" style={{ width: "100%" }} />
+          <Art src="ducter/done.png" safe="ducter" style={{ width: "100%" }} />
         </div>
       )}
       {!sq && <Sparkles at={14} x={395} y={600} r={170} n={8} color="#FFD9B8" />}

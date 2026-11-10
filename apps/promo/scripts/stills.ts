@@ -16,7 +16,7 @@ const STORYBOARD: [string, number][] = [
 ];
 
 const repo = resolve(import.meta.dir, "../../..");
-const out = resolve(process.env.DUCTER_SHOTS_DIR ?? resolve(repo, ".shots"), "promo/v3/stills");
+const out = resolve(process.env.DUCTER_SHOTS_DIR ?? resolve(repo, ".shots"), "promo/v4/stills");
 mkdirSync(out, { recursive: true });
 
 const args = process.argv.slice(2);

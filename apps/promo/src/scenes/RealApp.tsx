@@ -1,5 +1,5 @@
 // 8 · The real app, depth on demand. Two real renders (the README's, at 2x), each cropped to one
-// thing you can read, with a slow push in: On hand's lanes, then the opened task's diff.
+// thing you can read, held still (v4: no push-in): On hand's lanes, then the opened task's diff.
 import { interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { useCopy } from "../copy";
 import { C } from "../theme";
@@ -18,10 +18,9 @@ const Shot = ({ crop, box, from, to }: { crop: Crop; box: { x: number; y: number
   const s = Math.min(box.w / cw, box.h / ch);
   const w = cw * s, h = ch * s;
   const appear = interpolate(frame, [from, from + 10, to - 10, to], [0, 1, 1, 0], { ...clamp, easing: easeOut });
-  const push = interpolate(frame, [from, to], [1, 1.07], clamp);
   return (
-    <div style={{ position: "absolute", left: box.x + (box.w - w) / 2, top: box.y + (box.h - h) / 2 + (1 - appear) * 24, width: w, height: h, borderRadius: 24, overflow: "hidden", background: C.bg, opacity: appear, boxShadow: `0 0 0 1px ${C.line}, 0 6px 0 ${C.line2}, 0 40px 70px -30px rgba(74,50,26,0.45)` }}>
-      <Art src={crop.src} style={{ position: "absolute", width: crop.iw * s, height: crop.ih * s, left: -crop.x0 * crop.iw * s, top: -crop.y0 * crop.ih * s, transform: `scale(${push})`, transformOrigin: `${(crop.x0 + crop.x1) / 2 * crop.iw * s}px ${(crop.y0 + crop.y1) / 2 * crop.ih * s}px` }} />
+    <div data-safe="shot" style={{ position: "absolute", left: box.x + (box.w - w) / 2, top: box.y + (box.h - h) / 2 + (1 - appear) * 24, width: w, height: h, borderRadius: 24, overflow: "hidden", background: C.bg, opacity: appear, boxShadow: `0 0 0 1px ${C.line}, 0 6px 0 ${C.line2}, 0 40px 70px -30px rgba(74,50,26,0.45)` }}>
+      <Art src={crop.src} style={{ position: "absolute", width: crop.iw * s, height: crop.ih * s, left: -crop.x0 * crop.iw * s, top: -crop.y0 * crop.ih * s }} />
     </div>
   );
 };

@@ -48,23 +48,21 @@ export const Title = () => {
   const bob = Math.sin(frame / 24) * 5;
   const logo = useSpring(LAND + 10, { damping: 10, stiffness: 150 });
   const lit = k(frame, [LAND + 26, LAND + 40], [0, 1]);
-  // the camera leans in at the end, toward Ducter, where the next scene opens
-  const lean = k(frame, [durationInFrames - 22, durationInFrames], [1, 1.06]);
-  const drift = interpolate(frame, [0, durationInFrames], [1.0, 1.03]);
+  // the camera holds still (v4: no drift or lean-in); the next scene opens out of Ducter
   const isl = L.box(ISLAND);
   const dk = L.box(DUCTER);
   const logoW = sq ? 720 : 800;
   return (
     <Fill>
-      <div style={{ position: "absolute", inset: 0, transform: `scale(${drift * lean})`, transformOrigin: `${L.ducter.x}px ${L.ducter.y}px` }}>
+      <div style={{ position: "absolute", inset: 0 }}>
         <Art src="title/sky.webp" style={{ position: "absolute", left: L.ox, top: L.oy, width: L.fw, height: L.fh }} />
         <div style={{ position: "absolute", ...isl, transform: `translateY(${(1 - rise) * 300 + bob + dip}px)`, opacity: Math.min(1, rise * 1.5) }}>
-          <Art src="title/island.webp" style={{ width: "100%", height: "100%" }} />
+          <Art src="title/island.webp" safe="island" style={{ width: "100%", height: "100%" }} />
         </div>
         {/* where it will land: a soft shadow that darkens as Ducter comes down */}
         <div style={{ position: "absolute", left: L.feet.x - dk.width * 0.36 * shadow, top: L.feet.y - 14 + bob + dip, width: dk.width * 0.72 * shadow, height: 34 * shadow, borderRadius: "50%", background: "radial-gradient(closest-side, rgba(70,35,10,0.45), rgba(70,35,10,0))", opacity: frame > LAND - 14 ? 1 : 0 }} />
         <div style={{ position: "absolute", ...dk, transformOrigin: "50% 93%", transform: `translateY(${fallY + hop + bob + dip}px) scale(${sx * (1 + 0.012 * breathe)}, ${sy * (1 + 0.03 * breathe * 0.4)})`, opacity: frame >= LAND - 14 ? 1 : 0 }}>
-          <Art src={blink ? "title/ducter_closed.webp" : "title/ducter.webp"} style={{ width: "100%", height: "100%" }} />
+          <Art src={blink ? "title/ducter_closed.webp" : "title/ducter.webp"} safe="ducter" style={{ width: "100%", height: "100%" }} />
         </div>
         {/* dust where it lands */}
         {frame >= LAND && frame < LAND + 20 && [-1, 1].map((d) => {
@@ -75,12 +73,12 @@ export const Title = () => {
         })}
         <Sparkles at={LAND + 1} x={L.feet.x} y={L.feet.y - 60} r={dk.width * 0.62} n={8} />
       </div>
-      <div style={{ position: "absolute", left: (width - logoW) / 2, top: sq ? 120 : 54, width: logoW, opacity: Math.min(1, logo * 2), transform: `translateY(${(1 - logo) * -90}px)` }}>
-        <Art src="title/logo.webp" style={{ position: "absolute", width: "100%" }} />
+      <div style={{ position: "absolute", left: (width - logoW) / 2, top: sq ? 120 : 54, width: logoW, opacity: Math.min(1, logo * 2), transform: `translateY(${(1 - logo) * -28}px)` }}>
+        <Art src="title/logo.webp" safe="logo" style={{ position: "absolute", width: "100%" }} />
         <Art src="title/logo_lit.webp" style={{ position: "relative", width: "100%", opacity: lit }} />
       </div>
       <div style={{ position: "absolute", left: 0, right: 0, bottom: sq ? 150 : 140, display: "flex", justifyContent: "center", opacity: k(frame, [LAND + 30, LAND + 38], [0, 1]) }}>
-        <div style={{ background: "rgba(255,246,234,0.94)", borderRadius: 22, padding: "12px 28px", boxShadow: `0 4px 0 ${C.line2}` }}>
+        <div data-safe="subtitle" style={{ background: "rgba(255,246,234,0.94)", borderRadius: 22, padding: "12px 28px", boxShadow: `0 4px 0 ${C.line2}` }}>
           <Sub text={c.titleSub} at={LAND + 30} size={sq ? 30 : 36} style={{ color: C.ink, fontWeight: 650 }} />
         </div>
       </div>

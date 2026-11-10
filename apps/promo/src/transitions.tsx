@@ -1,5 +1,5 @@
-// The cut from the title into the conversation: the camera keeps moving into Ducter and the
-// conversation opens out of it, a circle of paper growing from where Ducter stands.
+// The cut from the title into the conversation: the title holds still and the conversation
+// opens out of Ducter, a circle of paper growing from where it stands (v4: no zoom).
 import type { TransitionPresentation, TransitionPresentationComponentProps } from "@remotion/transitions";
 import { AbsoluteFill, Easing } from "remotion";
 
@@ -10,7 +10,7 @@ const Reveal = ({ children, presentationDirection, presentationProgress, passedP
   const p = Easing.bezier(0.6, 0, 0.3, 1)(presentationProgress);
   if (presentationDirection === "exiting") {
     return (
-      <AbsoluteFill style={{ transform: `scale(${1 + p * 0.5})`, transformOrigin: `${x}px ${y}px` }}>{children}</AbsoluteFill>
+      <AbsoluteFill>{children}</AbsoluteFill>
     );
   }
   const far = Math.hypot(Math.max(x, width - x), Math.max(y, height - y));

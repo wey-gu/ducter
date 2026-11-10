@@ -32,18 +32,18 @@ export const End = () => {
   const cmd = "curl -fsSL https://ducter.ai/install.sh | sh";
   return (
     <Fill>
-      <Art src="title/sky.webp" style={{ position: "absolute", left: (width - fw) / 2, top: (height - fh) / 2, width: fw, height: fh, transform: `scale(${1.04 - frame * 0.0002})` }} />
+      <Art src="title/sky.webp" style={{ position: "absolute", left: (width - fw) / 2, top: (height - fh) / 2, width: fw, height: fh, transform: "scale(1.02)" }} />
       <div style={{ position: "absolute", left: gx + ISLAND.x * g, top: gy + ISLAND.y * gh + bob, width: ISLAND.w * g, opacity: logo }}>
-        <Art src="title/island.webp" style={{ width: "100%" }} />
+        <Art src="title/island.webp" safe="island" style={{ width: "100%" }} />
       </div>
       <div style={{ position: "absolute", left: gx + DUCTER.x * g, top: gy + DUCTER.y * gh + bob, width: DUCTER.w * g, opacity: logo, transformOrigin: "50% 93%", transform: `scale(${1 + 0.012 * breathe}, ${1 + 0.012 * breathe * 1.3})` }}>
-        <Art src={blink ? "title/ducter_closed.webp" : "title/ducter.webp"} style={{ width: "100%" }} />
+        <Art src={blink ? "title/ducter_closed.webp" : "title/ducter.webp"} safe="ducter" style={{ width: "100%" }} />
       </div>
       <div style={{ position: "absolute", left: (width - 640) / 2, top: sq ? 70 : 40, width: 640, opacity: logo, transform: `scale(${0.92 + 0.08 * logo})` }}>
-        <Art src="title/logo_lit.webp" style={{ width: "100%" }} />
+        <Art src="title/logo_lit.webp" safe="logo" style={{ width: "100%" }} />
       </div>
       <div style={{ position: "absolute", left: 0, right: 0, bottom: 140, display: "flex", flexDirection: "column", alignItems: "center", gap: 18 }}>
-        <div style={{ background: C.bg, borderRadius: 26, padding: sq ? "22px 26px" : "22px 30px", boxShadow: `0 5px 0 ${C.line2}, 0 30px 60px -24px rgba(43,33,24,0.45)`, display: "flex", flexDirection: "column", alignItems: "center", gap: 16, opacity: card, transform: `translateY(${(1 - card) * 60}px)` }}>
+        <div data-safe="card" style={{ background: C.bg, borderRadius: 26, padding: sq ? "22px 26px" : "22px 30px", boxShadow: `0 5px 0 ${C.line2}, 0 30px 60px -24px rgba(43,33,24,0.45)`, display: "flex", flexDirection: "column", alignItems: "center", gap: 16, opacity: card, transform: `translateY(${(1 - card) * 60}px)` }}>
           <div style={{ fontFamily: HEAD, fontWeight: 800, fontSize: sq ? 34 : 38, color: C.ink, letterSpacing: c.endLine.includes("。") ? 0 : "-0.01em" }}>{tt(c.endLine)}</div>
           <div style={{ background: C.term, borderRadius: 14, padding: "14px 22px", fontFamily: MONO, fontSize: sq ? 25 : 30, color: C.termText, boxShadow: "0 4px 0 #120D09", whiteSpace: "pre" }}>
             <span style={{ color: C.accent }}>$ </span>{cmd.slice(0, typed)}<span style={{ opacity: typed < 46 || frame % 16 < 8 ? 1 : 0 }}>▌</span>

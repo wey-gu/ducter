@@ -55,7 +55,7 @@ export const HeadsUp = () => {
       </div>
       {!sq && (
         <div style={{ position: "absolute", left: 210, top: 590, width: 330, transformOrigin: "50% 95%", transform: `scale(${0.9 + 0.1 * wake}, ${1.1 - 0.1 * wake})`, opacity: Math.min(1, wake * 2) }}>
-          <Art src="ducter/idle.png" style={{ width: "100%" }} />
+          <Art src="ducter/idle.png" safe="ducter" style={{ width: "100%" }} />
         </div>
       )}
     </Fill>

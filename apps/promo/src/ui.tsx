@@ -28,8 +28,9 @@ export const useT = () => {
   return (s: string) => (lang === "zh" ? zhGap(s) : s);
 };
 
-export const Art = ({ src, style }: { src: string; style?: CSSProperties }) => (
-  <Img src={staticFile(src)} style={{ display: "block", ...style }} />
+/** `safe` names an element the safe-area audit (scripts/audit.ts) checks stays inside the frame. */
+export const Art = ({ src, style, safe }: { src: string; style?: CSSProperties; safe?: string }) => (
+  <Img src={staticFile(src)} data-safe={safe} style={{ display: "block", ...style }} />
 );
 
 export const Fill = ({ children, style }: { children?: ReactNode; style?: CSSProperties }) => (
@@ -91,7 +92,7 @@ export const Headline = ({ h, sub, at = 4, color, subColor }: { h: string; sub?:
   const type = useType();
   const words = h.split(/\s+/).length;
   return (
-    <div style={{ position: "absolute", left: type.x, top: type.y, zIndex: 5 }}>
+    <div data-safe="headline" style={{ position: "absolute", left: type.x, top: type.y, zIndex: 5 }}>
       <Caption text={h} at={at} color={color} />
       {sub && <Sub text={sub} at={at + Math.min(words, 8) * MOTION.wordStagger + 4} style={{ marginTop: 18, color: subColor ?? C.ink2 }} />}
     </div>
@@ -125,6 +126,7 @@ export const Btn = ({ kind = "secondary", children, scale = 1, pressed = 0, onTi
 
 export const Tag = ({ children, sub, style, chosen = false, dot }: { children: ReactNode; sub?: ReactNode; style?: CSSProperties; chosen?: boolean; dot?: string }) => (
   <div
+    data-safe="tag"
     style={{
       fontFamily: FONT, background: C.bg, borderRadius: 14, padding: "8px 16px", textAlign: "center", color: C.ink,
       boxShadow: `0 3px 0 ${C.line2}${chosen ? `, 0 0 0 2.5px ${C.ink}` : ""}`, whiteSpace: "nowrap", ...style,
@@ -166,7 +168,7 @@ export const MacWindow = ({ face, status, children, width = 1180, height = 800, 
   const c = useCopy();
   const t = useT();
   return (
-    <div style={{ width, height, borderRadius: 22, background: C.bg, overflow: "hidden", position: "relative", fontFamily: FONT, boxShadow: `0 0 0 1px ${C.line}, 0 6px 0 ${C.line2}, 0 50px 90px -30px rgba(74,50,26,0.45)`, ...style }}>
+    <div data-safe="window" style={{ width, height, borderRadius: 22, background: C.bg, overflow: "hidden", position: "relative", fontFamily: FONT, boxShadow: `0 0 0 1px ${C.line}, 0 6px 0 ${C.line2}, 0 50px 90px -30px rgba(74,50,26,0.45)`, ...style }}>
       <div style={{ height: 92, display: "flex", alignItems: "center", padding: "0 26px", gap: 18, borderBottom: `1px solid ${C.line}`, background: "#FFFAF3" }}>
         <div style={{ display: "flex", gap: 9 }}>
           {["#FF5F57", "#FEBC2E", "#28C840"].map((col) => <div key={col} style={{ width: 15, height: 15, borderRadius: 8, background: col }} />)}
@@ -189,7 +191,7 @@ export const MacWindow = ({ face, status, children, width = 1180, height = 800, 
 export const Phone = ({ children, width = 430, style }: { children: ReactNode; width?: number; style?: CSSProperties }) => {
   const h = width * 2.06;
   return (
-    <div style={{ width, height: h, borderRadius: width * 0.16, background: "#231A13", padding: width * 0.032, boxShadow: `inset 0 0 0 2px #4A3D30, 0 50px 90px -30px rgba(74,50,26,0.5)`, ...style }}>
+    <div data-safe="phone" style={{ width, height: h, borderRadius: width * 0.16, background: "#231A13", padding: width * 0.032, boxShadow: `inset 0 0 0 2px #4A3D30, 0 50px 90px -30px rgba(74,50,26,0.5)`, ...style }}>
       <div style={{ width: "100%", height: "100%", borderRadius: width * 0.13, background: C.bg, overflow: "hidden", position: "relative", fontFamily: FONT }}>
         <div style={{ position: "absolute", top: width * 0.03, left: "50%", transform: "translateX(-50%)", width: width * 0.3, height: width * 0.085, borderRadius: 40, background: "#140D07" }} />
         <div style={{ position: "absolute", top: width * 0.045, left: width * 0.1, fontWeight: 700, fontSize: width * 0.042, color: C.ink }}>09:41</div>

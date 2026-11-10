@@ -8,6 +8,7 @@
     "studio": "bun run assets && remotion studio",
     "stills": "bun run assets && bun scripts/stills.ts",
     "render": "bun run assets && bun scripts/render.ts",
+    "audit": "bun run assets && node scripts/audit.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

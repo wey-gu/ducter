@@ -71,7 +71,7 @@ test("a busy day: Ducter looks 144 times, the partner's model judges at most a f
   // The judge's spend is in the source's budget (P1, P4): each call's 2,000 tokens.
   expect(r.p.look("conn_oo")!.budgetPct).toBeGreaterThan(0);
   if (process.env.DUCTER_BUDGET_PRINT) console.log({ judgeCalls: j.calls.length, perDay: Object.fromEntries(perDay) });
-});
+}, 20_000); // 144 looks over a simulated day: ~2 s alone, past the 5 s default under a full parallel run
 
 test("the same candidates are never judged twice: repeated looks with nothing new call no model", async () => {
   let r!: Rig;

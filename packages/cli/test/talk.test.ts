@@ -150,10 +150,15 @@ describe("talking to a running Ducter", () => {
     expect(again.lines[0]).toBe("没有对得上「d_hello」的待决定。");
   });
 
+  // The tail is following once it printed so (never a fixed sleep: under a full parallel run the
+  // connection took longer than 60 ms, and the event landed in the replay, before that line).
+  const following = async (c: { lines: string[] }) => {
+    for (let i = 0; i < 500 && !c.lines.includes(zh("tail.following")); i++) await Bun.sleep(10);
+  };
   test("tail: the conversation, then one task's steps, as text", async () => {
-    const c = ctx({ rest: [], followMs: 150 });
+    const c = ctx({ rest: [], followMs: 800 });
     const p = cmdTail(c);
-    await Bun.sleep(60);
+    await following(c);
     core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: "测试都过了。" } });
     expect(await p).toBe(0);
     expect(c.lines).toContain("· 你自己开了「修一下 tinycart 里失败的测试」");
@@ -164,9 +169,9 @@ describe("talking to a running Ducter", () => {
 
     core.log.append({ stream: "task:t1", origin: "task", kind: "task_event", body: { taskId: "t1", role: "tool", tool: { name: "Bash", input: { command: "bun test" }, output: "1 fail", ok: false } } });
     core.log.append({ stream: "task:t1", origin: "task", kind: "task_event", body: { taskId: "t1", role: "tool", tool: { name: "mcp__ducter__checkpoint", input: { text: "x" } } } });
-    const tc = ctx({ rest: ["tinycart"], followMs: 150 });
+    const tc = ctx({ rest: ["tinycart"], followMs: 800 });
     const tp = cmdTail(tc);
-    await Bun.sleep(60);
+    await following(tc);
     core.log.append({ stream: "task:t1", origin: "task", kind: "report", body: { taskId: "t1", state: "done", summary: "Fixed the date test.", questions: [], evidence: [] } });
     expect(await tp).toBe(0);
     expect(tc.lines[0]).toBe("修一下 tinycart 里失败的测试  t1");
@@ -174,7 +179,7 @@ describe("talking to a running Ducter", () => {
     expect(tc.lines).toContain("× Bash  bun test");
     expect(tc.lines.some((l) => l.includes("mcp__ducter__"))).toBe(false);
     expect(tc.lines).toContain("■ 做完了  Fixed the date test.");
-  });
+  }, 15_000);
 
   test("open <task>: shows it in a connected app; with none, says where it is", async () => {
     const c = ctx({ rest: ["Look at"] });

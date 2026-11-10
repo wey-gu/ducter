@@ -193,11 +193,18 @@ export function createProactive(o: ProactiveOptions): Proactive {
     }
   }
   const listeners = new Set<() => void>();
+  // The file is written only when the state changed: the tick (every 5 min) and each look call
+  // save, and rewriting an unchanged 0600 file each time was most of a simulated day's cost.
+  let written = "";
   const save = () => {
-    const tmp = `${path}.tmp`;
-    writeFileSync(tmp, JSON.stringify(st), { mode: 0o600 });
-    chmodSync(tmp, 0o600);
-    renameSync(tmp, path);
+    const json = JSON.stringify(st);
+    if (json !== written) {
+      const tmp = `${path}.tmp`;
+      writeFileSync(tmp, json, { mode: 0o600 });
+      chmodSync(tmp, 0o600);
+      renameSync(tmp, path);
+      written = json;
+    }
     for (const f of listeners) f();
   };
   const ledger = openLedger(o.dataDir);
@@ -547,8 +554,14 @@ export function createProactive(o: ProactiveOptions): Proactive {
     save();
   }
 
-  /** said keys whose find left the record and whose facts expired, and old verdicts, leave too (P5: the state file stays bounded). */
+  /**
+   * said keys whose find left the record and whose facts expired, and old verdicts, leave too (P5:
+   * the state file stays bounded). Once a day: it runs the detectors, and passDue runs every tick.
+   */
+  let prunedDay = "";
   function prune(): void {
+    if (prunedDay === today()) return;
+    prunedDay = today();
     const live = new Set(detect(ledger, { now: now(), zone: zone() }).map((c) => c.key));
     for (const [k, findId] of Object.entries(st.said)) if (!st.finds[findId] && !live.has(k)) delete st.said[k];
     for (const [k, v] of Object.entries(st.verdicts)) if (now() - v.at > VERDICT_DAYS * DAY && !live.has(k)) delete st.verdicts[k];

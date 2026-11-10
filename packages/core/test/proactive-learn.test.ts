@@ -31,10 +31,10 @@ test("这类不用告诉我 becomes a Rule worded in the kind and the sender; th
   expect(r.states().at(-1)).toMatchObject({ findId: money.findId, state: "muted", ruleId: rule.id });
   // A new reminder from Cloudflare next week: not said. Removing the rule (不要这条) lets it through.
   r.p.ledger.add([{ ref: { connectionId: "conn_oo", service: "gmail", id: "m_cf2" }, label: "Cloudflare · Final reminder", at: "2026-11-11T09:00:00+08:00", type: "renewal", name: "ducter.dev", due: "2026-11-16", amount: "$10.44" }]);
-  await r.advance(DAY);
+  await r.advance(DAY, 5 * 60_000);
   expect(r.notes().flatMap((e) => e.body.finds).filter((f) => f.kind === "deadline")).toHaveLength(1);
   r.rules.remove(rule.id);
-  await r.advance(DAY);
+  await r.advance(DAY, 5 * 60_000);
   expect(r.notes().flatMap((e) => e.body.finds).filter((f) => f.kind === "deadline")).toHaveLength(2);
 });
 
@@ -56,7 +56,7 @@ test("有用 lowers that kind's bar; three ignored in 14 days raise it", async (
     const id = `m_more${i}`;
     r.p.ledger.add([{ ref: { connectionId: "conn_oo", service: "gmail", id }, label: `Shop ${i} · renews`, at: "2026-11-10T09:00:00+08:00", type: "renewal", name: `thing ${i}`, due: "2026-11-15", amount: "$5" }]);
   }
-  await r.advance(DAY);
+  await r.advance(DAY, 5 * 60_000);
   expect(r.lastNote()!.finds.filter((f) => f.kind === "deadline")).toHaveLength(2);
   await holdMoney();
   expect(st().bars.deadline).toBe(60);
@@ -69,12 +69,12 @@ test("three unread morning notes pause them; the next time the person writes: �
   for (let d = 0; d < 3; d++) {
     // Something new each day, never read.
     r.p.ledger.add([{ ref: { connectionId: "conn_oo", service: "gmail", id: `r${d}` }, label: `Vendor ${d} · renews`, at: new Date(r.clock.now()).toISOString(), type: "renewal", name: `plan ${d}`, due: new Date(r.clock.now() + 5 * DAY).toISOString().slice(0, 10), amount: "$9" }]);
-    await r.advance(d === 0 ? HOUR + 2 * 60_000 : DAY);
+    await r.advance(d === 0 ? HOUR + 2 * 60_000 : DAY, 5 * 60_000); // 5-minute steps: the tick's own period (minute steps took ~2 s alone, >5 s under a full run)
   }
   const mornings = r.notes().filter((e) => e.body.rung === "morning" && !e.body.quiet);
   expect(mornings).toHaveLength(3);
   r.p.ledger.add([{ ref: { connectionId: "conn_oo", service: "gmail", id: "r9" }, label: "Vendor 9 · renews", at: new Date(r.clock.now()).toISOString(), type: "renewal", name: "plan 9", due: new Date(r.clock.now() + 5 * DAY).toISOString().slice(0, 10), amount: "$9" }]);
-  await r.advance(DAY);
+  await r.advance(DAY, 5 * 60_000);
   expect(r.notes().filter((e) => e.body.rung === "morning" && !e.body.quiet)).toHaveLength(3); // paused
   r.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "帮我看看日程" } });
   await r.settle();
@@ -83,7 +83,9 @@ test("three unread morning notes pause them; the next time the person writes: �
   await r.p.answer(ask.noteId, "keep_note", false);
   expect(r.settings.get().proactive).toBe("urgent");
   expect(r.lastNote()).toMatchObject({ revises: ask.noteId, answered: "no" });
-});
+  // Four simulated days of real looks (every 10 and 15 minutes, each read logged and its
+  // checkpoint written): ~1.5 s alone, past bun's 5 s default under a full parallel run.
+}, 20_000);
 
 test("at the month's budget it drops to 只说急的 and says so once", async () => {
   const r = make({ mode: "three", monthTokens: 3000 });

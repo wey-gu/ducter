@@ -581,6 +581,30 @@ describe("S3 / D110: follow-through on silence", () => {
 });
 
 describe("nmem client: contacts, send, recovery (stub binary)", () => {
+  test("the real shapes (nmem 0.10.116, 2026-11-10): id-only member labels, setup's custodian", async () => {
+    // Redacted copies of what the author's account returned (research/37 §6).
+    const dir = tmp();
+    const bin = join(dir, "nmem");
+    const setupJson = { schema_version: 1, state: "ready", space_id: "personal-x", identity: { custodian_id: "4e74-me", agent_id: "ducter", identity_birth: "b", attachment_id: "a", attachment_generation: 1 }, registration_confirmed: true, messaging_confirmed: false, receiving_confirmed: false };
+    const card = (agent: string, member: string, contact: string) => ({ space: { id: "personal-x", label: "Only me", kind: "personal" }, member: `Member ${member}`, agent, description: "", contact, send_args_prefix: ["nmem", "--api-url=https://example", "bridge", "--resolved-space-id=personal-x", "send", `--to=${contact}`] });
+    const team = { ...card("reviewer", "68c7-other", "bc1:c"), space: { id: "team-x", label: "dev team", kind: "team" } };
+    const contactsJson = { cards: [card("Claude 收尾协调", "4e74-me", "bc1:a"), card("Bridge pilot Claude", "68c7-other", "bc1:b"), team], spaces: [{ space: { id: "personal-x", label: "Only me", kind: "personal" }, status: "searched", next_cursor: null }], coverage_scope: "current_space_batch", next: "…" };
+    writeFileSync(bin, `#!/bin/sh\ncase "$*" in\n  *" bridge setup"*) echo '${JSON.stringify(setupJson)}' ;;\n  *" bridge contacts"*) echo '${JSON.stringify(contactsJson)}' ;;\nesac\n`);
+    chmodSync(bin, 0o755);
+    const c = createNmemBridge({ context: "ducter-test", bin, env: {} });
+    expect(await c.contacts!("claude")).toEqual({
+      ok: true,
+      contacts: [
+        // The member's id never reaches a label; the user's own agent is known by setup's custodian.
+        { contact: "bc1:a", label: "Claude 收尾协调", agent: "Claude 收尾协调", mine: true, space: "personal-x" },
+        { contact: "bc1:b", label: "Bridge pilot Claude", agent: "Bridge pilot Claude", space: "personal-x" },
+        // A teammate's agent in a team Space: told by its team, since no member name comes (D162).
+        { contact: "bc1:c", label: "reviewer · dev team", agent: "reviewer", space: "team-x" },
+      ],
+      more: false,
+    });
+  });
+
   test("contacts is read-only discovery and marks the user's own; send passes the handle and the body on stdin", async () => {
     const dir = tmp();
     const bin = join(dir, "nmem");

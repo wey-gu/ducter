@@ -3,8 +3,10 @@
 // local mailboxes in one JSON file, so a real Ducter partner and a real Claude Code session (an
 // agent Ducter didn't start) can talk without touching the user's Mem. It implements only the
 // Agent-mailbox verbs Ducter uses and mirrors the public help (`bridge setup/contacts/send/inbox/
-// open/reply/outbox/inspect/resume`); the JSON shapes are GUESSES (research/37): replace them with
-// the real ones from the author's live trial.
+// open/reply/outbox/inspect/resume`). `contacts` and passive `setup` copy the REAL shapes seen on
+// 2026-11-10 (research/37 §6: `cards[]` with `space {id,label,kind}`, `member: "Member <id>"`, `agent`,
+// `description`, `contact`, `send_args_prefix`; setup's `identity.custodian_id`). The other verbs'
+// shapes are still GUESSES until the live trial.
 //
 //   NMEM_FAKE_BRIDGE_STATE=/path/state.json nmem [--json] --agent-context NAME bridge <verb> ...
 //
@@ -52,8 +54,10 @@ if (!existsSync(statePath)) fail("not_configured", "no fake Bridge state");
 const s = load();
 if (!ctx || !s.identities[ctx]) fail("agent_context_required", "Use an approved --agent-context.");
 const me = ctx!;
-const memberOf = (name: string) => ({ display_name: s.identities[name]!.member, ...(s.identities[name]!.member_id ? { id: s.identities[name]!.member_id } : {}) });
-const card = (name: string) => ({ agent: { display_name: s.identities[name]!.agent, description: s.identities[name]!.description }, member: memberOf(name) });
+const SPACE = { id: "fake-space", label: "Only me", kind: "personal" };
+const memberId = (name: string) => s.identities[name]!.member_id ?? s.identities[name]!.member;
+// As the real CLI shows a member: an id-only label, never a person's name.
+const card = (name: string) => ({ space: SPACE, member: `Member ${memberId(name)}`, agent: s.identities[name]!.agent, description: s.identities[name]!.description });
 const body = async (): Promise<string> => {
   const inline = take("--body");
   if (inline !== undefined) return inline;
@@ -78,7 +82,7 @@ const opView = (m: Msg) => ({ operation: m.op, state: m.pending ? "pending" : "s
 switch (verb) {
   case "setup": {
     // Passive inspect only; the fake never enables anything.
-    out({ state: "ready", readiness_scope: "registration", agent: { display_name: s.identities[me]!.agent }, member: memberOf(me) });
+    out({ schema_version: 1, state: "ready", space_id: SPACE.id, identity: { custodian_id: memberId(me), agent_id: me }, registration_confirmed: true, messaging_confirmed: false, receiving_confirmed: false });
     break;
   }
   case "contacts": {
@@ -87,8 +91,8 @@ switch (verb) {
     const contacts = Object.keys(s.identities)
       .filter((n) => n !== me)
       .filter((n) => !words.length || words.some((w) => `${n} ${s.identities[n]!.agent} ${s.identities[n]!.member} ${s.identities[n]!.description}`.toLowerCase().includes(w)))
-      .map((n) => ({ contact: `ct-${n}`, ...card(n) }));
-    out({ space_id: "fake-space", contacts, next_args: [] });
+      .map((n) => ({ ...card(n), contact: `ct-${n}`, send_args_prefix: ["nmem", "bridge", `--resolved-space-id=${SPACE.id}`, "send", `--to=ct-${n}`] }));
+    out({ cards: contacts, spaces: [{ space: SPACE, status: "searched", next_cursor: null }], coverage_scope: "current_space_batch" });
     break;
   }
   case "send":

@@ -182,6 +182,23 @@ describe("OOMOL Hosted (D158)", () => {
     ]);
     expect(appsFromV1({ nope: 1 })).toBeUndefined();
   });
+  test("an account's own display name never titles its app (D192)", () => {
+    const slack = (id: string, displayName: string, accountLabel: string) => ({ id, service: "slack", displayName, accountLabel, authType: "oauth2", status: "active" });
+    expect(
+      appsFromV1({
+        data: [
+          { ...gmail, displayName: "w-nowledge-mail", accountLabel: "w@nowledge-labs.ai" },
+          slack("s1", "nowledge-labs-inc", "Nowledge Labs, Inc"),
+          slack("s2", "nowledge-community", ""),
+          { id: "z1", service: "zulip_chat", displayName: "Zulip", accountLabel: "wey", authType: "api_key", status: "active" },
+        ],
+      }),
+    ).toEqual([
+      { service: "gmail", title: "Gmail", accounts: ["w@nowledge-labs.ai"] },
+      { service: "slack", title: "Slack", accounts: ["Nowledge Labs, Inc", "nowledge-community"] },
+      { service: "zulip_chat", title: "Zulip", accounts: ["wey"] },
+    ]);
+  });
 });
 
 describe("reads and writes", () => {

@@ -356,6 +356,27 @@ note and a `Dn`) before it is built.
 - [ ] **Linux check:** reflink on btrfs/xfs and the network/external mount detection were
       written from the mount table, not run on Linux. Trigger: the first Linux server user.
 
+## Autofill (D191, `design/autofill.md`)
+
+- [ ] **The author's review of D191** (draft): the three stores, never storing the security code,
+      no reveal, OK per site, the Pay card. Trigger: the author's next session.
+- [ ] **A real errand, once:** a test-mode checkout on a real site (a Stripe test page) from the
+      phone, end to end; never a real card. Trigger: the review.
+- [ ] **Clay art for Autofill** through the metaphor process (it borrows the 上网 clay today).
+      Trigger: the review of the Settings shots.
+- [ ] **Face ID / Touch ID on the Pay card** (the iPhone shell's existing unlock; LocalAuthentication
+      in the Mac app). Trigger: the first real payment.
+- [ ] **The live view's "fill from saved"** plugs into `FillSeam` (`packages/core/src/saved/fill.ts`)
+      when the takeover work lands; the owner taps a field, then a saved thing.
+- [ ] **1Password / Bitwarden by reference** (research/54 §5: 1Password's agent programme is
+      partner-only; Bitwarden Agent Access SDK is alpha). Trigger: a public path for self-hosted agents.
+- [ ] **Single-use cards** (Stripe Link agent wallet via `link-cli --output-file`, Privacy.com) behind
+      the same Pay card, US/Canada. Trigger: a user outside the owner's-card path asks.
+- [ ] **Codes from a connected mailbox** with per-account consent and a Muse-like filter. Trigger: 3-D
+      Secure by SMS/email shows up as the common blocker.
+- [ ] **Filling on a worker's browser** sends the value over the worker socket (the owner's own
+      computer); say it on the Autofill page, or fill on the home only. Trigger: the review.
+
 ## Browser places (W5)
 
 `packages/runner/src/browser.ts` attaches cua-driver directly (D47). Verified live on 0.44.0
@@ -476,8 +497,6 @@ computer part; 我要合电脑了; the parcel's Lands / Waits / Moves. Still ope
 - [ ] **The opened task's own parts, web vs Mac**: the whole-screen task uses the web's task page
       (D152) under the Mac's crumbs; its head (meta line wrapping, the outcome block) still differs
       from the Mac's in places. Converge part by part. Trigger: the next change to either task page.
-- [ ] **接下来 / Next in the side pane**: the whole-screen On hand shows it (the Mac's); the side
-      pane does not yet. Trigger: the author's call (default: add it, one muted line).
 - [ ] **A tabletop's whole screen**: today neither level takes it on a tabletop. If wanted: Needs
       you above the fold, the other lanes below. Trigger: someone uses a fold that way.
 
@@ -788,4 +807,3 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] **On the author's devices:** watch a task on hel from the iPhone over the internet (`ducter domain`), take a turn, sign in with a real two-step code, hand it back; the same on an iPad, an Android foldable and the Mac app. Trigger: the next release with D190.
 - [ ] **The Mac app reopens a live view after a reconnect** (the web client does), and draws the click ring. Trigger: a reconnect seen on the Mac with a view open.
 - [ ] **The quality steps on a real phone link:** read `live.stats` on a real 4G/5G phone; tune `SLOW_MS`/`FAST_MS` and the tiers. Trigger: the first real-device session.
-- [ ] **A vault tool on the seam** (`fillFromVault`): the credential-vault work names it. Trigger: that work lands.

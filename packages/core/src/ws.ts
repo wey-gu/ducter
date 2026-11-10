@@ -78,6 +78,8 @@ export interface WsDeps {
   memPlugins?: () => import("./mem-plugins.ts").MemPlugins | undefined;
   /** D151: Ducter's own browser (live view, Sites); absent in tests that don't need it. */
   browser?: DucterBrowser;
+  /** D191: 自动填充 / Autofill; absent in tests that don't need it. */
+  autofill?: import("./saved/index.ts").Autofill;
   /** D165/D166: what Ducter notices in the accounts; absent in tests that don't need it. */
   proactive?: () => import("./proactive/engine.ts").Proactive | undefined;
   batchMs?: number;
@@ -322,9 +324,35 @@ export function createWsHandler(deps: WsDeps) {
         log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: f.text, clientId: f.clientId } });
         return; // the partner is triggered by core's user_msg subscription
       }
-      case "decide":
+      case "decide": {
+        // D191: a pay card's Go carries the card's security code (never kept, never logged): it
+        // waits in memory for that one fill. Go without it is refused, so nothing is half-paid.
+        const pay = deps.autofill?.fill;
+        if (f.option === "go" && pay?.needsCvc(f.decisionId)) {
+          if (!f.cvc) throw new Error("this payment needs the card's security code");
+          pay.holdCvc(f.decisionId, f.cvc);
+        }
         decisions.decide(f.decisionId, f.option, f.text);
         return;
+      }
+      case "saved":
+      case "saved_put":
+      case "saved_remove":
+      case "saved_forget_site": {
+        // D191: the Autofill list. A put is the one frame that carries a secret; the answer never does.
+        const af = deps.autofill;
+        if (!af) throw new Error("Autofill isn't available here");
+        try {
+          if (f.t === "saved_put") af.store.put(f.item);
+          else if (f.t === "saved_remove") af.store.remove(String(f.id ?? ""));
+          else if (f.t === "saved_forget_site") af.store.forgetSite(String(f.id ?? ""), String(f.site ?? ""));
+          send(ws, af.frame(f.t === "saved" ? {} : { ok: true }));
+        } catch (err) {
+          const e = err as Error & { reason?: "invalid" | "not_found" | "failed" };
+          send(ws, af.frame({ ok: false, reason: e.reason ?? "failed", message: e.message }));
+        }
+        return;
+      }
       case "task_send": {
         const r = deps.runner();
         if (!r) throw new Error("runner is not available");

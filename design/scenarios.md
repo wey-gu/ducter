@@ -59,6 +59,7 @@ partner eval (real model, fake tasks and Mem; `research/30`) · **unit** = unit 
 | G2 | Undo windows, and what's honest after | draft | draft | draft | draft | — | built: Undo after Drop (`undrop` action); send undo — | |
 | G3 | Credential request (+ secret pasted in chat) | draft | draft | draft | draft | — | eval: key redacted from briefs; headless: the composer holds a pasted key | |
 | G4 | Browser never signs in, pays, or submits on its own | draft | draft | draft | draft | — | live: the user signs in, the task never types it | builds on B5 |
+| G6 | Errands with Autofill: a saved sign-in, a card paid after Go, a passport number filled (D191) | draft (`autofill.md`) | draft | draft (zh/en keys, both clients) | — | — (shots: `.shots/autofill/`) | unit + integration (fake seam, the real core and socket); a fake checkout in Chrome for Testing that echoes keystrokes: the merchant gets the number, no tool answer and no Log line holds number, code or password; eval `saved-pay-en`, `saved-card-pasted-zh`, `saved-ask-password-en`, `saved-unknown-site-en` | not tried on a real site or card; Face ID on Pay and single-use cards later |
 | G5 | What did Ducter do today (the record) | draft | draft | draft | draft | — | — | |
 | G6 | Quiet hours and outside effects | draft | draft | draft | draft | — | — | effects; D3 covers notifications |
 | G7 | Honest about where a task can reach | draft | draft | draft | draft | — | — | 可以碰 / May touch on tasks |

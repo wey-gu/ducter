@@ -115,6 +115,8 @@ export interface BrowserToolsDeps {
   tasks: TaskRegistry & { get(id: string): { persona?: string; residency?: string } | undefined };
   /** D190: each step, for whoever watches the task's tab. */
   notes?: BrowserNotes;
+  /** D191: hides every saved value (Autofill) from what a browser tool answers. */
+  scrub?: (text: string) => string;
 }
 
 export function registerBrowserTools(d: BrowserToolsDeps): void {
@@ -146,7 +148,8 @@ export function registerBrowserTools(d: BrowserToolsDeps): void {
   const reg = (name: string, description: string, schema: object, fn: (args: any, taskId: string) => Promise<string>) =>
     mcp.registerWhen("task", name, description, schema, async (args, ctx) => {
       mine(ctx);
-      return fn(args ?? {}, ctx.taskId!);
+      const out = await fn(args ?? {}, ctx.taskId!);
+      return d.scrub ? d.scrub(out) : out;
     }, visible);
 
   reg(
@@ -184,7 +187,7 @@ export function registerBrowserTools(d: BrowserToolsDeps): void {
     if (!Number.isInteger(n) || n < 1) throw new Error("ref must be a number from the last browser_read");
     const at = await evaluate(send, locateExpression(n));
     if (!at) throw new Error(`there is no [${n}] on the page now: browser_read again (numbers change when the page does)`);
-    return { n, ...(at as { x: number; y: number; secret: boolean; field: boolean; label?: string; vw?: number; vh?: number }) };
+    return { n, ...(at as { x: number; y: number; secret: boolean; field: boolean; card?: boolean; filled?: boolean; label?: string; vw?: number; vh?: number }) };
   };
 
   /** D190: where on the page a step lands (fractions of the viewport) and the element's own words. */
@@ -221,6 +224,9 @@ export function registerBrowserTools(d: BrowserToolsDeps): void {
         throw new Error(
           `[${at.n}] is a password or one-time-code field. Signing in is the user's: call browser_ask_sign_in with the site, and end your turn.`,
         );
+      // D191: a card's number or code comes only from a saved card after the user's Go.
+      if (at.card || at.filled)
+        throw new Error(at.filled ? `[${at.n}] was filled from saved; leave it as it is.` : `[${at.n}] is a card field. Cards are filled only from a saved card after the user's Go (browser_ask_to_pay, then browser_fill), never typed.`);
       note(taskId, { kind: "type", ...where(at) });
       await evaluate(send, focusExpression(at.n, !args.append));
       await send("Input.insertText", { text: String(args.text ?? "") });

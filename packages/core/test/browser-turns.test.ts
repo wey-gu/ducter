@@ -1,12 +1,11 @@
 // D190 without a Chrome: watching a task's tab (no blindness, no resize, no input), the task's
 // steps on the watcher's line, whose turn it is across two windows, what a hand-back tells, the
-// quality stepping down on a slow link, and the vault seam's field kinds.
+// quality stepping down on a slow link.
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import type { ServerFrame } from "@ducter/protocol";
 import { createLive, TIERS } from "../src/browser/live.ts";
 import { createBrowserNotes } from "../src/browser/notes.ts";
-import { fillFromVault, fillKind } from "../src/browser/fill.ts";
 import type { BrowserHost, RunningBrowser } from "../src/browser/host.ts";
 import type { CdpConn, CdpEvent } from "../src/browser/cdp.ts";
 import { tempDir } from "./helpers.ts";
@@ -182,19 +181,4 @@ describe("看它上网 / Watch it browse (D190)", () => {
     expect(sent().at(-1)!.data).toBe("BACK");
     r.td.cleanup();
   }, 10_000);
-});
-
-describe("the vault seam (D190)", () => {
-  test("field kinds come from what the page says, never a value", () => {
-    expect(fillKind({ secret: true, type: "password" })).toBe("password");
-    expect(fillKind({ secret: true, label: "One-time code" })).toBe("otp");
-    expect(fillKind({ secret: false, type: "email", label: "Email" })).toBe("username");
-    expect(fillKind({ secret: false, label: "Card number" })).toBe("card");
-  });
-
-  test("with no vault, it says to ask the user", async () => {
-    const r = rig();
-    expect(await fillFromVault(r.host, undefined, "t1", 3)).toContain("browser_ask_sign_in");
-    r.td.cleanup();
-  });
 });

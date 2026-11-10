@@ -6,6 +6,8 @@ export * from "./harnesses.ts";
 import type { HarnessId } from "./harnesses.ts";
 export * from "./loadout.ts";
 export * from "./proactive.ts";
+export * from "./saved.ts";
+import type { FillAsk, PayAsk, SavedFrame, SavedInput } from "./saved.ts";
 import type { FindKind, FindRung, FindState, FindView, ProactiveAsk, ProactiveMode, ReadLine, SourceLook } from "./proactive.ts";
 import type { BodyWhy, Candidate, RuleView, TaskBody, TaskNeeds } from "./loadout.ts";
 
@@ -125,6 +127,10 @@ export interface Question {
   signIn?: SignInAsk;
   /** D157: wait for a computer, or do it now on another (set by the runner, never by a task). */
   where?: WhereAsk;
+  /** D191: one payment with a saved card (set by Ducter's browser_ask_to_pay, never by report_to_main). */
+  pay?: PayAsk;
+  /** D191: the first use of a saved sign-in or private detail on a site (set by browser_fill). */
+  fill?: FillAsk;
 }
 
 /**
@@ -202,6 +208,8 @@ export interface Bodies {
     reversible: boolean;
     routineId?: string; // a routine's proposal card (D114): Go activates it
     signIn?: SignInAsk; // D151: a sign-in card; Go = 好了 / Done in the live view
+    pay?: PayAsk; // D191: 付款 / Pay: merchant, amount, card; Go pays once, no default
+    fill?: FillAsk; // D191: first use of a saved sign-in or detail on a site
     where?: WhereAsk; // D157: wait for a computer (Hold, the default) or do it now on another (Go)
     closing?: ClosingPlan; // D157: 合上之前搬走 / Move before closing: Go (the default) moves them
     memPlugin?: MemPluginAsk; // D169: put Nowledge Mem into this agent on that computer (Go); 先不装 / Not now (Hold, the default)
@@ -621,7 +629,9 @@ export type ClientFrame =
   // release makes the home read GitHub again (its answer is stale).
   | { t: "hello"; persona?: string; cursor?: number; locale?: "zh" | "en"; tz?: string; client?: ClientKind; version?: string }
   | { t: "send"; text: string; clientId: string }
-  | { t: "decide"; decisionId: string; option: "go" | "hold" | "reply"; text?: string }
+  // cvc (D191): a pay card's security code when none is kept; held in memory for that one
+  // payment's fill, never logged.
+  | { t: "decide"; decisionId: string; option: "go" | "hold" | "reply"; text?: string; cvc?: string }
   // clientId (optional): a resend with the same id is not delivered twice; it gets the same "sent".
   | { t: "task_send"; taskId: string; text: string; clientId?: string }
   // merge: integrate the task branch into its base branch (local, reversible by revert);
@@ -754,7 +764,14 @@ export type ClientFrame =
   | { t: "browser_site_signout"; site: string }
   | { t: "browser_sites_clear" }
   // D154, `ducter browser check`: start Ducter's browser, load a page, quit. Answered with browser_check.
-  | { t: "browser_check"; url?: string };
+  | { t: "browser_check"; url?: string }
+  // D191, 自动填充 / Autofill: "saved" answers with a saved frame (names, last four, where used;
+  // never a secret). saved_put adds or edits one (the one frame that carries a secret, once);
+  // saved_remove deletes one (an id, or a detail key); saved_forget_site takes back a site's OK.
+  | { t: "saved" }
+  | { t: "saved_put"; item: SavedInput }
+  | { t: "saved_remove"; id: string }
+  | { t: "saved_forget_site"; id: string; site: string };
 
 /** D151: input into the live view. x, y: fractions of the frame (0..1). */
 export type LiveInput =
@@ -847,6 +864,7 @@ export type ServerFrame =
   // ready: Ducter's browser is installed here; sites: the ones signed in through a live view.
   | { t: "browser_sites"; ready: boolean; sites: SiteView[]; ok?: boolean; message?: string }
   | ({ t: "browser_check" } & BrowserCheck)
+  | SavedFrame
   | { t: "error"; message: string };
 
 /** D154: the decisionId of a 试一下 / Try it live view (no card behind it). */

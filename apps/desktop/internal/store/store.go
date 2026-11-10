@@ -366,6 +366,8 @@ type Store struct {
 	Live         *LiveView
 	LiveClosed   *protocol.ServerFrame
 	BrowserSites *protocol.ServerFrame
+	// Saved is 设置 › 自动填充 / Autofill (D191): names, last four, where used; never a secret.
+	Saved *protocol.ServerFrame
 	// PairCode is the newest pairing code the server minted for this app.
 	PairCode *protocol.ServerFrame
 	// Renamed is the server's answer to the last 改名字 / Rename.
@@ -476,6 +478,9 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		s.AbilityResults = append(s.AbilityResults, f)
 	case "live", "live_frame", "live_turn", "live_doing":
 		s.applyLive(f)
+	case "saved":
+		fc := f
+		s.Saved = &fc
 	case "browser_sites":
 		fc := f
 		s.BrowserSites = &fc

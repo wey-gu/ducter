@@ -25,7 +25,11 @@ export const personaFingerprint = () => sha(buildSystemPrompt({ id: "p", name: "
 /** The partner's tools as a session lists them, hashed; a scratch core, no network. */
 export async function partnerFingerprint(): Promise<Fingerprint> {
   const dir = mkdtempSync(join(tmpdir(), "ducter-fp-"));
+  // Autofill's key in the scratch folder, never a keychain (this also runs from the eval).
+  process.env.DUCTER_SAVED_KEY = "file";
   const core = startCore({ dataDir: dir, port: 0, push: false, platform: "darwin" });
+  // D191: saved_list is listed once something is saved: a test card, so it is judged too.
+  core.autofill.store.put({ kind: "card", name: "Eval", number: "4242424242424242", expMonth: 12, expYear: 2099 });
   registerTaskTools(core as never, {});
   const partner = createPartner(core as never, fakeRunner(() => {}).runner, { prewarm: false, spine: false, persistState: false, onError: () => {} });
   try {

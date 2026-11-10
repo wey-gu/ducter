@@ -13,7 +13,6 @@ import { profileName } from "@ducter/protocol/src/browser-profile.ts";
 import type { WorkerLinks } from "@ducter/protocol/src/internal.ts";
 import { remoteBrowserHost, routedHost, splitProfile } from "./remote.ts";
 import { createBrowserNotes } from "./notes.ts";
-import { fillFromVault, type VaultFill } from "./fill.ts";
 import type { OnHand } from "@ducter/protocol";
 
 export type BrowserSetup =
@@ -36,9 +35,6 @@ export interface DucterBrowser {
   /** Start installing (once at a time); resolves with the result. */
   install(): Promise<InstallResult>;
   onChange(fn: () => void): () => void;
-  /** D190: the vault plugs in here (built elsewhere); then fillFromVault puts a value into a field of a task's tab. */
-  setVault(fn: VaultFill | undefined): void;
-  fillFromVault(taskId: string, ref: number): Promise<string>;
   /** D190: marks each task holding Ducter's browser on On hand (browsing), so it can be watched. */
   decorate(o: OnHand): OnHand;
   stop(): Promise<void>;
@@ -58,6 +54,10 @@ export interface DucterBrowserOptions extends HostOptions {
   workerBrowserVersion?: (deviceId: string) => string | undefined;
   /** D190: tell a task something (handing the browser back), as a message into it. */
   tell?: (taskId: string, text: string) => unknown;
+  /** D191: hides saved values (Autofill) from what the browser tools answer. */
+  scrub?: (text: string) => string;
+  /** D191: a task that fills from Autofill (runs on this browser wherever it can start). */
+  wants?: (taskId: string) => boolean;
 }
 
 export function createDucterBrowser(o: DucterBrowserOptions): DucterBrowser {
@@ -76,8 +76,7 @@ export function createDucterBrowser(o: DucterBrowserOptions): DucterBrowser {
   const notes = createBrowserNotes();
   const live = createLive({ host, decisions: o.decisions, tasks: o.tasks as LiveDeps["tasks"], persona: o.persona, notes, ...(o.tell ? { tell: o.tell } : {}) });
   const sites = createSites(host);
-  registerBrowserTools({ mcp: o.mcp, host, log: o.log, tasks: o.tasks as any, notes });
-  let vault: VaultFill | undefined;
+  registerBrowserTools({ mcp: o.mcp, host, log: o.log, tasks: o.tasks as any, notes, ...(o.scrub ? { scrub: o.scrub } : {}) });
   const fns = new Set<() => void>();
   const changed = () => fns.forEach((f) => f());
   let installing: Promise<InstallResult> | undefined;
@@ -131,6 +130,7 @@ export function createDucterBrowser(o: DucterBrowserOptions): DucterBrowser {
     },
     attach: (taskId, a) => host.attach(taskId, a),
     release: (taskId) => host.release(taskId),
+    wants: (taskId) => o.wants?.(taskId) ?? false,
   };
 
   const profile = () => profileName(o.persona);
@@ -162,10 +162,6 @@ export function createDucterBrowser(o: DucterBrowserOptions): DucterBrowser {
       fns.add(fn);
       return () => fns.delete(fn);
     },
-    setVault(fn) {
-      vault = fn;
-    },
-    fillFromVault: (taskId, ref) => fillFromVault(host, vault, taskId, ref),
     decorate(on) {
       for (const c of on.tasks) {
         const tb = host.task(c.taskId);

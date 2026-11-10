@@ -46,6 +46,7 @@ import { createMemPlugins, type MemPlugins } from "./mem-plugins.ts";
 import { inspectMemPlugins, nmemInspectExec } from "@ducter/protocol/src/mem-plugins.ts";
 import { realSys, updateHow, writeAlive, type UpdateSys } from "./update.ts";
 import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
+import { createAutofill, type Autofill } from "./saved/index.ts";
 import { createDucterBrowser, type DucterBrowser, type DucterBrowserOptions } from "./browser/index.ts";
 import { readSites } from "./browser/sites.ts";
 import { createClosing, registerClosingTool } from "./closing.ts";
@@ -131,6 +132,8 @@ export interface Core extends CoreApi {
   memPlugins: MemPlugins;
   /** D151: Ducter's own browser. */
   ducterBrowser?: DucterBrowser;
+  /** D191: 自动填充 / Autofill. */
+  autofill: Autofill;
   port: number;
   url: string; // ws URL for clients
   setRunner(r: Runner): void;
@@ -292,11 +295,14 @@ export function startCore(opts: CoreOptions = {}): Core {
     else if (early.length < 100) early.push(e);
   });
 
+  // D191: 自动填充 / Autofill: saved sign-ins, cards and details, filled by reference in Ducter's browser.
+  const autofill = createAutofill({ dataDir, persona: persona.id, mcp, log, tasks: tasks as never, ...(opts.platform ? { platform: opts.platform } : {}) });
   // D151: Ducter's own browser (a server's 上网): its tools are listed only for tasks attached to it.
   const browser =
     opts.browser === false
       ? undefined
-      : createDucterBrowser({ dataDir, mcp, log, tasks, decisions, persona: persona.id, device: () => opts.update?.homeName ?? osHostname().replace(/\.local$/, ""), ...(opts.platform ? { platform: opts.platform } : {}), lang: () => (settings.get().language === "zh" ? "zh-CN" : "en-US"), workers: () => workersRef, workerBrowserVersion: (id) => workersRef?.online().find((w) => w.deviceId === id)?.hello?.abilities?.find((a) => a.id === "web")?.detail, tell: (taskId, text) => runner?.send(taskId, text, undefined, "user").catch((e) => console.warn(`[core] couldn't tell ${taskId} the browser is back:`, (e as Error).message)), ...(opts.browser ?? {}) });
+      : createDucterBrowser({ dataDir, mcp, log, tasks, decisions, persona: persona.id, device: () => opts.update?.homeName ?? osHostname().replace(/\.local$/, ""), ...(opts.platform ? { platform: opts.platform } : {}), lang: () => (settings.get().language === "zh" ? "zh-CN" : "en-US"), workers: () => workersRef, workerBrowserVersion: (id) => workersRef?.online().find((w) => w.deviceId === id)?.hello?.abilities?.find((a) => a.id === "web")?.detail, scrub: (t) => autofill.scrub(t), wants: (taskId) => autofill.wants(log.read({ stream: `task:${taskId}`, fromSeq: 0, limit: 1, kinds: ["task_open"] })[0]?.body as { brief?: string } | undefined), tell: (taskId, text) => runner?.send(taskId, text, undefined, "user").catch((e) => console.warn(`[core] couldn't tell ${taskId} the browser is back:`, (e as Error).message)), ...(opts.browser ?? {}) });
+  if (browser) autofill.attachBrowser(browser.host);
   if (browser) decorateBrowsing = (o) => browser.decorate(o);
   let devicesView: DevicesView | undefined;
   // D157: the sites Ducter's own browser on each computer is signed in to (the ranking prefers the
@@ -332,7 +338,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       return { ok: true as const, place };
     },
   };
-  const ws = createWsHandler({ core: api, decisions, runner: () => runner, devices: () => devicesView, settings, connections, rules, loadout, closing, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, memPlugins: () => memPluginsRef, proactive: () => proactiveRef, batchMs: opts.batchMs, ...(browser ? { browser } : {}) });
+  const ws = createWsHandler({ core: api, decisions, runner: () => runner, devices: () => devicesView, settings, connections, rules, loadout, closing, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, memPlugins: () => memPluginsRef, proactive: () => proactiveRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}) });
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.
   let partnerTurn = false;
@@ -616,6 +622,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     agents,
     memPlugins,
     ...(browser ? { ducterBrowser: browser } : {}),
+    autofill,
     port,
     url: `ws://127.0.0.1:${port}/ws`,
     setRunner(r) {
@@ -645,6 +652,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     async stop() {
       ws.stop();
       await browser?.stop().catch(() => {});
+      autofill.stop();
       devicesView?.stop();
       workers.stop();
       sockets.stop();

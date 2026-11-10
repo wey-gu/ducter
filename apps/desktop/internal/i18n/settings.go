@@ -25,7 +25,7 @@ var zhSettings = Table{
 	"settings.quiet.hours":     "时间段",
 	"partner.memory.on.help":   "记得你说过的事，下次不用再讲一遍。",
 	"partner.trust.note":       "这两张单子就是 Ducter 守的规矩，不能在这里改。",
-	"acct.ai.link":             "AI 账号（Claude Code、Codex）",
+	"acct.ai.link":             "AI 账号（Claude Code、Codex、pi、DeepSeek Harness）",
 	"acct.ai.link.help":        "在「设备」里登录、安装、退出",
 
 	"settings.look.group":    "外观",
@@ -81,7 +81,7 @@ var enSettings = Table{
 	"settings.quiet.hours":     "Hours",
 	"partner.memory.on.help":   "Remembers what you've told it, so you don't have to say it twice.",
 	"partner.trust.note":       "These two lists are the rules Ducter keeps; they can't be changed here.",
-	"acct.ai.link":             "AI accounts (Claude Code, Codex)",
+	"acct.ai.link":             "AI accounts (Claude Code, Codex, pi, DeepSeek Harness)",
 	"acct.ai.link.help":        "Sign in, install and sign out on Devices",
 
 	"settings.look.group":    "Look",

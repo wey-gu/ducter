@@ -658,7 +658,8 @@ func (a *App) tasksCard(c *ui.Context) {
 		if len(a.S.Rules) == 0 {
 			a.note(c, a.L.T("loadout.rules.none"))
 		}
-		ui.Column(c).Gap(t.S1).Children(func() {
+		// An empty list is no box at all: it would add a gap above 跟小鸭说一条规则 (D192).
+		ui.Column(c).Gap(t.S1).Hidden(len(a.S.Rules) == 0).Children(func() {
 			for _, r := range a.S.Rules {
 				ui.Row(c.Key("rule:" + r.ID)).Gap(t.S3).AlignItems(ui.Center).MinHeight(t.ControlSM).Children(func() {
 					ui.Text(c, r.Text).FontSize(t.MD).Grow(1).MinWidth(0).MaxLines(2)

@@ -42,6 +42,8 @@ const CONC = Number(arg("concurrency", "4"));
 const LABEL = arg("label", "");
 const ONLY = arg("only")?.split(",").filter(Boolean);
 const REPEAT = Number(arg("repeat", "1"));
+// D191: Autofill's key goes to a file in each scratch data folder, never the user's keychain.
+process.env.DUCTER_SAVED_KEY = "file";
 const NO_JUDGE = flag("no-judge");
 
 // $/1M tokens (Anthropic first-party list prices; the CLI aliases resolve to the 5.5 models).
@@ -246,6 +248,7 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   const dataDir = mkdtempSync(join(root, `ducter-eval-${sc.id}-`));
   const persona = { id: "default", name: sc.persona?.name ?? "Ducter", identity: sc.persona?.identity ?? "You are Ducter, Weyl's personal AI partner. Weyl builds Ducter (a self-deployed personal AI) and HawDB (an embedded database), and dogfoods them on his Mac. He prefers short answers." };
   const core = startCore({ dataDir, port: 0, persona });
+  for (const item of sc.saved ?? []) core.autofill.store.put(item);
   const usage: Usage = { inputTokens: 0, outputTokens: 0, cacheRead: 0, cacheWrite: 0 };
   const perSession = new Map<number, Usage>();
   const tools: ToolCall[] = [];

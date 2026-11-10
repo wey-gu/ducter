@@ -334,7 +334,10 @@ func (a *App) lane(c *ui.Context, lane store.Lane, tasks []*store.Task, grow, ba
 // branch and the rest of the reason are in the opened task's Details.
 func (a *App) whereWhy(task *store.Task) string {
 	where := ""
-	if p := task.Place(); p.Kind != "" {
+	if p := task.Place(); a.manyComputers() {
+		// D157: with two or more computers every row names its computer.
+		where = a.computerName(p.Device)
+	} else if p.Kind != "" {
 		where = a.device(p.Device)
 	}
 	return strings.Join(nonEmpty(harnessName(task.Harness()), where, firstClause(task.BodyReason())), " · ")

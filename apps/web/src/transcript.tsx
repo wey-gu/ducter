@@ -16,6 +16,7 @@ import { Coin } from "./coin.tsx";
 import { duration, harnessName, modelName } from "./format.ts";
 import { markdown } from "./markdown.ts";
 import { attention, finished, harnessOf, modelOf, placeOf, type Task } from "./store.ts";
+import { manyComputers, taskWhere } from "./where.ts";
 
 export { goRelay } from "@ducter/protocol/src/transcript.ts";
 
@@ -351,7 +352,8 @@ export function whereLine(p: Place): string {
   else if (p.kind === "folder") parts.push(last(p.path));
   else if (p.kind === "browser") parts.push((p as { profile?: string }).profile ?? "");
   const d = (p as { device?: string }).device;
-  if (d && d !== "local" && d !== "this") parts.push(t("task.where.on", d));
+  // D157: with two or more computers the computer is said apart (taskWhere), on every task.
+  if (d && d !== "local" && d !== "this" && !manyComputers()) parts.push(t("task.where.on", d));
   return parts.filter(Boolean).join(" · ");
 }
 
@@ -361,6 +363,7 @@ export function TaskMeta({ task, stateLabel, mark, onSwitch }: { task: Task; sta
   const a = attention(task);
   const done = finished(task);
   const [, tick] = useState(0);
+  const [why, setWhy] = useState(false);
   useEffect(() => {
     if (done) return;
     const h = setInterval(() => tick((n) => n + 1), 1000);
@@ -380,7 +383,10 @@ export function TaskMeta({ task, stateLabel, mark, onSwitch }: { task: Task; sta
     }
   }
   const p = placeOf(task) as { repoPath?: string; path?: string };
+  // D157: which computer, and what it uses there; why on hover (desktop) or a tap (phone).
+  const on = taskWhere(task);
   return (
+    <>
     <div class={`standing st-${a}`}>
       {mark}
       <b>{stateLabel}</b>
@@ -392,12 +398,26 @@ export function TaskMeta({ task, stateLabel, mark, onSwitch }: { task: Task; sta
           <span title={p.repoPath || p.path || undefined}>{[who, where].filter(Boolean).join(" · ")}</span>
         </span>
       )}
+      {on.line && (
+        <span class="who where">
+          <span class="sep">·</span>
+          {on.why ? (
+            <button class="where-on" title={on.why} aria-expanded={why} onClick={() => setWhy(!why)}>
+              {on.line}
+            </button>
+          ) : (
+            <span>{on.line}</span>
+          )}
+        </span>
+      )}
       {onSwitch && (
         <button class="inline-link" aria-expanded={A.switchFor === task.id} onClick={onSwitch}>
           {t("who.switch")} ›
         </button>
       )}
     </div>
+    {why && on.why && <div class="where-why small sub">{on.why}</div>}
+    </>
   );
 }
 

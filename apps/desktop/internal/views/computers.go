@@ -340,7 +340,8 @@ func (a *App) workBlock(c *ui.Context, key string) {
 	home := a.workHome()
 	note := a.L.T("work.mac.note.off", home)
 	if on {
-		note = a.L.T("work.mac.note.on", a.MacWorker.Log())
+		// D157: from now on every task says which computer it runs on.
+		note = a.L.T("work.mac.note.on", a.MacWorker.Log()) + " " + a.L.T("where.first_line")
 	}
 	switch w.busy {
 	case "on":

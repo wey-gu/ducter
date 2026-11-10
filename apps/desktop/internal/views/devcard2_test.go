@@ -191,7 +191,7 @@ func TestDevicesHelFolding(t *testing.T) {
 			}
 			d.selClient, d.sel = "", "w-mac"
 			h.settle(200 * time.Millisecond)
-			for _, want := range []string{L.T("device.app.too"), L.T("work.mac.note.on", w.Log())} {
+			for _, want := range []string{L.T("device.app.too"), L.T("work.mac.note.on", w.Log()) + " " + L.T("where.first_line")} {
 				if !h.tt.HasText(want) {
 					t.Fatalf("worker card: missing %q in %q", want, h.tt.Texts())
 				}

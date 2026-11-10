@@ -9,6 +9,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { JSX } from "preact";
 import { A, candKey, placeKey, type SettingsPage } from "./app.ts";
 import { TRY_LIVE } from "@ducter/protocol";
+import { computerName, manyComputers } from "./where.ts";
 import { ago, behind, cjkPad, deviceLabel, duration, firstClause, harnessName, modelName, phaseLine as phaseWords, placeLine, sameWords, splitOutcome, when } from "./format.ts";
 import { markdown } from "./markdown.ts";
 import { Coin } from "./coin.tsx";
@@ -1434,7 +1435,8 @@ function Hello() {
  *  the model, the repo, the branch and the rest of the reason are in the task's Details. */
 function metaLine(task: Task): string {
   const p = placeOf(task);
-  const where = p.kind === "none" ? "" : deviceLabel(A.L, p.device);
+  // D157: with two or more computers every row names its computer.
+  const where = manyComputers() ? computerName(p.device) : p.kind === "none" ? "" : deviceLabel(A.L, p.device);
   return [harnessName(harnessOf(task)), where, firstClause(bodyReasonOf(task))].filter(Boolean).join(" · ");
 }
 

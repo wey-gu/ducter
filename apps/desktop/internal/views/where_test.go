@@ -1,0 +1,92 @@
+package views
+
+import (
+	"testing"
+	"time"
+
+	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
+	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
+)
+
+// D157: the author's setup. hel is the home (a server that never sleeps,
+// Codex, Ducter's own browser); the MacBook does tasks for it (Claude Code
+// and Codex, the user's Chrome, sleeps when its lid closes).
+func whereDevices(macState string) protocol.ServerFrame {
+	ag := func(ids ...string) []protocol.DeviceHarness {
+		var out []protocol.DeviceHarness
+		for _, id := range ids {
+			out = append(out, protocol.DeviceHarness{Harness: id, Installed: true, LoggedIn: true})
+		}
+		return out
+	}
+	return protocol.ServerFrame{T: "devices", Devices: []protocol.DeviceView{
+		{ID: "local", Name: "hel", Kind: "server", Home: true, State: "awake", AlwaysOn: true, Platform: "linux-x64", Harnesses: ag("codex"),
+			Abilities: []protocol.DeviceAbility{{ID: "web", State: "on", Where: "ducter"}}},
+		{ID: "dev_mac", Name: "MacBook", Kind: "laptop", State: macState, Platform: "darwin-arm64", Harnesses: ag("claude-code", "codex"),
+			Abilities: []protocol.DeviceAbility{{ID: "web", State: "on", Where: "chrome"}}},
+	}, Reach: &protocol.Reach{}}
+}
+
+// whereTasks opens the author's evening: a public look-up on hel, an order
+// in the user's Chrome on the MacBook, Keynote waiting for the MacBook.
+func whereTasks(app *App, zh bool) {
+	w := func(z, e string) string {
+		if zh {
+			return z
+		}
+		return e
+	}
+	now := time.Now()
+	n := int64(100)
+	at := func(ago time.Duration, stream string, origin protocol.Origin, kind string, body any) protocol.LogEvent {
+		n++
+		return protocol.NewEvent(n, now.Add(-ago).UTC().Format(time.RFC3339Nano), "default", stream, origin, kind, body)
+	}
+	open := func(id, title string, place protocol.Place, harness string, why protocol.BodyWhy, state protocol.Attention, ago time.Duration) []protocol.LogEvent {
+		ts := protocol.TaskStream(id)
+		return []protocol.LogEvent{
+			at(ago, ts, protocol.OriginPartner, protocol.KindTaskOpen, protocol.TaskOpen{TaskID: id, Title: title, Harness: harness, Place: place, Brief: title}),
+			at(ago, ts, protocol.OriginSystem, protocol.KindBodySelected, protocol.BodySelected{TaskID: id, Harness: harness, Why: why}),
+			at(ago, ts, protocol.OriginSystem, protocol.KindTaskState, protocol.TaskState{TaskID: id, Attention: state}),
+		}
+	}
+	var evs []protocol.LogEvent
+	evs = append(evs, open("t_hn", w("查一下 HN 今天关于 OAR 的讨论", "What HN says about OAR today"), protocol.Place{Kind: "browser", Device: "local", Profile: "default"}, "codex",
+		protocol.BodyWhy{Kind: "default", Where: &protocol.WhereWhy{Device: "hel", Kind: "no_signin", Uses: "ducter"}}, protocol.Working, 4*time.Minute)...)
+	evs = append(evs, open("t_order", w("看看淘宝那单到哪了", "Where my Taobao order is"), protocol.Place{Kind: "browser", Device: "MacBook", Profile: "default"}, "claude-code",
+		protocol.BodyWhy{Kind: "default", Where: &protocol.WhereWhy{Device: "MacBook", Kind: "signed_in", Site: "taobao.com", Uses: "chrome"}}, protocol.Working, 2*time.Minute)...)
+	evs = append(evs, open("t_keynote", w("把周报做成 Keynote", "Turn the weekly report into Keynote"), protocol.Place{Kind: "none", Device: "MacBook"}, "codex",
+		protocol.BodyWhy{Kind: "default", Where: &protocol.WhereWhy{Device: "MacBook", Kind: "only_here", Thing: "app", App: "Keynote", Uses: "app"}}, protocol.Queued, time.Minute)...)
+	app.Receive(protocol.ServerFrame{T: "events", Events: evs})
+}
+
+func TestWhereLineOnEveryTaskWithTwoComputers(t *testing.T) {
+	app, _ := iaApp(t, i18n.ZH)
+	whereTasks(app, true)
+	// One computer: nothing about where (the home isn't named).
+	if on, _ := app.taskWhere(app.S.Tasks["t_hn"]); on != "" {
+		t.Fatalf("one computer still says where: %q", on)
+	}
+	app.Receive(whereDevices("awake"))
+	cases := map[string][2]string{
+		"t_hn":      {"在 hel 上 · 用 Ducter 自己的浏览器", "为什么在 hel 上：用不着你的登录，hel 自己的浏览器就够了"},
+		"t_order":   {"在 MacBook 上 · 用你的 Chrome", "为什么在 MacBook 上：要用你登录着的 taobao.com"},
+		"t_keynote": {"在 MacBook 上 · 用 Keynote", "为什么在 MacBook 上：只有 MacBook 有 Keynote"},
+	}
+	for id, want := range cases {
+		on, why := app.taskWhere(app.S.Tasks[id])
+		if on != want[0] || why != want[1] {
+			t.Errorf("%s: %q / %q, want %q / %q", id, on, why, want[0], want[1])
+		}
+	}
+	// On hand names the computer on every row, the home by its own name.
+	if got := app.whereWhy(app.S.Tasks["t_hn"]); got != "Codex · hel" {
+		t.Errorf("On hand row: %q", got)
+	}
+	en, _ := iaApp(t, i18n.EN)
+	whereTasks(en, false)
+	en.Receive(whereDevices("awake"))
+	if on, why := en.taskWhere(en.S.Tasks["t_order"]); on != "on MacBook · in your Chrome" || why != "Why MacBook: Needs your signed-in taobao.com" {
+		t.Errorf("en: %q / %q", on, why)
+	}
+}

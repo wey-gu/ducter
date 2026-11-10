@@ -236,6 +236,8 @@ class AppState {
       if (this.route.name === "task") this.history(this.route.id, true);
       // Settings are pushed only to sockets that asked: ask again on a new one.
       if (this.settings || this.sheet?.kind === "settings") this.askLoadout();
+      // D157: every task says which computer it runs on once there are two: know them.
+      else this.send({ t: "devices" });
       if (this.connections || this.sheet?.kind === "settings") this.send({ t: "connections" });
     }
     // on_hand closes the replay that follows a welcome.

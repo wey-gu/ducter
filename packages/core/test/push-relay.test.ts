@@ -88,8 +88,10 @@ describe("the relay client and the way out", () => {
     expect(c.url).toBe("https://relay.test/api/push/send");
     expect(Object.keys(c.body).sort()).toEqual(["category", "collapse", "d", "handle"]);
     expect(c.body.collapse).toBe(await collapseId(KEY, "d:d1"));
-    expect(JSON.stringify(c.body)).not.toContain("rebase");
-    expect(JSON.stringify(c.body)).not.toContain("d1");
+    // The words never travel in the clear; `d` is ciphertext (random base64 may contain any two letters).
+    const clear = JSON.stringify({ ...c.body, d: undefined });
+    expect(clear).not.toContain("rebase");
+    expect(clear).not.toContain("d1");
     const opened = JSON.parse(dec.decode(await decryptForDevice(KEY, c.body.d)));
     expect(opened).toMatchObject({ title: "Ducter · 修 fix-ci", decisionId: "d1", url: "app#d=d1" });
     expect(opened.body).toContain("要 rebase 吗？");

@@ -232,7 +232,11 @@ private repo.
 
 - **ts:** `bun install --frozen-lockfile`, `bun run typecheck` (both tsconfigs), rebuilds
   `apps/web/static` and fails if it differs from what is committed, `bun test`, the Markdown
-  link check, the binaries check (D75), and `bash -n` on scripts.
+  link check, the binaries check (D75), and `bash -n` on scripts. `bun test` includes the eval
+  freshness check (D175): the persona and the partner's tools must hash to what the last full
+  partner eval judged (`packages/partner/eval/results/LATEST.json`). CI never calls a model;
+  whoever changes the persona or a partner tool runs `bun run eval:partner --model haiku`
+  (about $1) and commits the results with the change.
 - **go** (`apps/desktop`): `gofmt -l`, `go vet` for darwin and linux, a darwin/arm64 build, and
   `go test`. MyGo calls AppKit through purego, not cgo, so all of it runs on Linux.
 - **`ios.yml`:** an unsigned Release archive on macos-26, only when `apps/ios/**` changes.

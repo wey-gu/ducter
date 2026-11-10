@@ -150,6 +150,11 @@ Design notes:
   published gallery; Markdown cites them by file name. `bun scripts/check-binaries.ts` runs in CI.
 - Stage explicit paths; never `git add -A`. Check the fail count, not only the totals, before
   committing.
+- **A persona or partner-tool change carries a fresh eval result (D175).** Changing
+  `packages/partner/src/persona.ts` or any partner tool's name or description means running
+  `bun run eval:partner --model haiku` (about $1) and committing its results file and
+  `packages/partner/eval/results/LATEST.json` in the same change. `tool-budget.test.ts` fails
+  until you do. Add a scenario when the change adds behaviour the eval doesn't cover.
 
 ## Prototype rules
 

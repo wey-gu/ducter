@@ -21,6 +21,7 @@ import { createOarHarnessPort, shortId } from "../../runner/src/index.ts";
 import { buildSystemPrompt, createNmemBridge, createPartner, isChinese } from "../src/index.ts";
 import { scenarios, type Expect, type Scenario, type Step } from "./scenarios.ts";
 import { fakeMemory } from "../test/fakes.ts";
+import { partnerFingerprint } from "../test/fingerprint.ts";
 import type { MemoryAdd } from "../src/memory.ts";
 
 // ---------- args ----------
@@ -107,7 +108,7 @@ function teePort(real: HarnessPort, onEvent: (e: HarnessEvent, sessionIdx: numbe
 }
 
 // ---------- fake task runner ----------
-interface Opened { taskId: string; title: string; brief: string; place?: Place; step: number }
+interface Opened { taskId: string; title: string; brief: string; place?: Place; step: number; needs?: Record<string, unknown>; harness?: string }
 function fakeRunner(core: Core, harness: HarnessPort, cur: { step: number }) {
   const opened: Opened[] = [];
   const sent: { taskId: string; text: string; step: number }[] = [];
@@ -125,7 +126,7 @@ function fakeRunner(core: Core, harness: HarnessPort, cur: { step: number }) {
     async openTask(input) {
       const taskId = shortId();
       const place = placeFor(taskId, input.title, input.place);
-      opened.push({ taskId, title: input.title, brief: input.brief, place: input.place, step: cur.step });
+      opened.push({ taskId, title: input.title, brief: input.brief, place: input.place, step: cur.step, ...(input.needs ? { needs: input.needs as Record<string, unknown> } : {}), ...(input.harness ? { harness: input.harness } : {}) });
       openCard(taskId, input.title, place, input.brief);
       return core.tasks.get(taskId) as TaskCard;
     },
@@ -137,7 +138,7 @@ function fakeRunner(core: Core, harness: HarnessPort, cur: { step: number }) {
       openCard(taskId, input.title, place, "");
       brief.then(
         (b) => {
-          opened.push({ taskId, title: input.title, brief: b, place: input.place, step });
+          opened.push({ taskId, title: input.title, brief: b, place: input.place, step, ...(input.needs ? { needs: input.needs as Record<string, unknown> } : {}), ...(input.harness ? { harness: input.harness } : {}) });
           core.log.append({ stream: `task:${taskId}`, origin: "system", kind: "task_open", body: { taskId, title: input.title, project: "", place, harness: "claude-code", brief: b } });
         },
         () => core.tasks.setState(taskId, "dropped", "archived", "not started"),
@@ -536,6 +537,29 @@ function check(r: RunResult): string[] {
   const attempted = r.memAttempts.map((a) => JSON.stringify(a.input)).join("\n");
   for (const re of e.rememberForbid ?? []) if (re.test(attempted)) fails.push(`memory_add carried ${re}`);
   for (const m of r.remembered) if (m.provenance.logSeq === undefined || !m.provenance.persona) fails.push("memory saved without provenance");
+  // D157 / D175 (4): what a new task needs of a computer, a pinned agent, its place.
+  if (e.needs) {
+    for (const [k, want] of Object.entries(e.needs)) {
+      const ok = r.opened.some((o) => {
+        const got = o.needs?.[k];
+        if (want === false) return got === undefined || got === false;
+        if (typeof want === "string") return typeof got === "string" && got.toLowerCase().includes(want.toLowerCase());
+        return got === want;
+      });
+      if (!ok) fails.push(`no task with needs.${k} = ${JSON.stringify(want)} (got ${JSON.stringify(r.opened.map((o) => o.needs ?? {}))})`);
+    }
+  }
+  if (e.harness && !r.opened.some((o) => o.harness === e.harness)) fails.push(`no task pinned to ${e.harness} (got ${r.opened.map((o) => o.harness ?? "default").join(", ") || "none"})`);
+  if (e.placeKind && !r.opened.some((o) => (o.place?.kind ?? "none") === e.placeKind)) fails.push(`no task with place ${e.placeKind}`);
+  // A partner tool that must (or must not) be called, by its MCP name's tail, with these args.
+  for (const c of e.called ?? []) {
+    const hit = r.tools.some((t) => (t.name === c.tool || t.name.endsWith(`__${c.tool}`)) && Object.entries(c.args ?? {}).every(([k, v]) => {
+      const got = (t.input as Record<string, unknown> | undefined)?.[k];
+      return v instanceof RegExp ? typeof got === "string" && v.test(got) : got === v;
+    }));
+    if (!hit) fails.push(`no ${c.tool}${c.args ? ` with ${Object.entries(c.args).map(([k, v]) => `${k}=${v}`).join(", ")}` : ""}`);
+  }
+  for (const n of e.notCalled ?? []) if (r.tools.some((t) => t.name === n || t.name.endsWith(`__${n}`))) fails.push(`called ${n}`);
   // Bridge.
   if (e.bridgeSent) {
     const b = e.bridgeSent;
@@ -688,6 +712,12 @@ async function main() {
   const file = join(dir, `${date}-${HARNESS === "claude-code" ? "" : `${HARNESS}-`}${MODEL.replace(/[^A-Za-z0-9.-]+/g, "_")}${LABEL ? `-${LABEL}` : ""}.md`);
   // Scrubbed: the home folder and scratch folders never reach a committed results file.
   writeFileSync(file, md.join("\n").split(HOME).join("~").replace(/\/(private\/)?(var\/folders|tmp)\/[^\s"'`)]+/g, "<scratch>"));
+  // D175 (4): a full run records what it judged (the persona and the partner's tools, hashed), so
+  // tool-budget.test.ts can tell when either changed after it.
+  if (!ONLY) {
+    const fp = await partnerFingerprint();
+    writeFileSync(join(dir, "LATEST.json"), JSON.stringify({ file: file.slice(dir.length + 1), date, harness: HARNESS, model: MODEL, pass: `${passed}/${rows.length}`, ...fp }, null, 2) + "\n");
+  }
   console.log(`\n${passed}/${rows.length} pass · partner ≈$${partnerCost.toFixed(2)} (in ${tot.inputTokens} / out ${tot.outputTokens} / cache r ${tot.cacheRead} w ${tot.cacheWrite}) · judge $${judgeCost.toFixed(3)}\n→ ${file}`);
   for (const [c, [a, b]] of cats) console.log(`  ${c.padEnd(12)} ${a}/${b}`);
   process.exit(0);

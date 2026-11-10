@@ -87,6 +87,13 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 
 ## Partner and tasks (`design/plan/v1-tonight.md` "Known gaps", `research/30`)
 
+- [ ] **The eval's new gaps on haiku** (research/48 addendum, `eval/results/2026-11-10-haiku-d175.md`):
+      (1) it says a rule is kept without calling `rule_save` / `notice_rule` (an honesty gap: a
+      code check could refuse "已存在「你的规则」" prose with no rule saved this turn); (2) it answers a
+      web look-up (HN today, a latest version) from memory instead of opening a browsing task;
+      (3) `needs.long` and a named agent's `harness` are left out. Persona change, then a fresh
+      eval (D175 (4)); check sonnet too. Trigger: the next persona change.
+
 - [ ] **A two-tier partner tool list** (D175 (5), research/48 §3): the core tools always, routines,
       rules and connections loaded when used. Not now: the 24 tools are ~7K tokens. Trigger: the
       partner's list passes 30 tools or 32K JSON chars (`tool-budget.test.ts` G2 forces it).

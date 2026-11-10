@@ -4,13 +4,14 @@
 // every session. Adding one is fine; doing it without noticing is what this stops: the names are
 // listed here, and the ceiling moves only with a reason written next to it.
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { startCore, type Core } from "../../core/src/core.ts";
 import { registerTaskTools } from "../../runner/src/tools.ts";
 import { createPartner, type PartnerHandle } from "../src/partner.ts";
 import { fakeRunner } from "./fakes.ts";
+import { partnerFingerprint } from "./fingerprint.ts";
 
 const PARTNER_TOOLS = [
   "ask", "connection_call", "connection_guide", "connection_search", "connection_share", "connections_list",
@@ -63,4 +64,18 @@ test("a task's tools: the listed set, under the ceiling (no partner tool leaks i
   const tools = await list({ taskId: "t1" });
   expect(tools.map((t) => t.name).sort()).toEqual(TASK_TOOLS);
   expect(JSON.stringify(tools).length).toBeLessThan(CEILING.task);
+});
+
+// D175 (4), research/48 F6: a persona or partner-tool change ships with a fresh eval result. The
+// last full run (packages/partner/eval/results/LATEST.json) hashed what it judged; when the persona
+// or the tool list differs from that, run `bun run eval:partner --model haiku` (about $1) and commit
+// its results file and LATEST.json with the change.
+test("the persona and the partner's tools are what the last eval judged", async () => {
+  const latest = join(import.meta.dir, "..", "eval", "results", "LATEST.json");
+  expect(existsSync(latest)).toBe(true);
+  const ran = JSON.parse(readFileSync(latest, "utf8")) as { file: string; persona: string; tools: string };
+  const now = await partnerFingerprint();
+  const stale = [now.persona !== ran.persona ? "the persona" : "", now.tools !== ran.tools ? "the partner's tools" : ""].filter(Boolean);
+  expect(stale.length ? `${stale.join(" and ")} changed since the eval in ${ran.file}: run bun run eval:partner --model haiku and commit its results` : "fresh").toBe("fresh");
+  expect(existsSync(join(import.meta.dir, "..", "eval", "results", ran.file))).toBe(true);
 });

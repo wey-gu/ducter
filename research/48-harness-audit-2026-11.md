@@ -207,6 +207,27 @@ VERIFIED by tests with no model calls; numbers from `packages/core/test/proactiv
    About 9K tokens (93%) and 93% of the cost saved on every judge and digest call. pi maps to
    `--no-tools` (DOCUMENTED, `pi --help` 1.5.1); Codex and DeepSeek Harness have no known switch
    and keep the denial list. No `~/.claude/projects` folder was created (60 before and after).
+4. **Persona changes carry an eval** (F6). New scenarios: `where-w1`…`where-w6` (needs and pins),
+   `rule-save-zh`, `connections-none-en`, `browser-task-en`, `notice-rule-zh`; Bridge X1 is the
+   existing `bridge-ask-you-zh`. Run, haiku partner and judge, all 74 scenarios, 2026-11-10:
+   **56/74**, $0.13 partner + $0.033 judge (`packages/partner/eval/results/2026-11-10-haiku-d175.md`;
+   a first run at $0.19 found a check bug in W2, fixed, then re-run; total eval spend $0.36). The
+   new scenarios found real haiku gaps, VERIFIED in the transcripts:
+   - **it says a rule is kept without keeping it**: `rule-save-zh` answered "这条规则已经存在「你的规则」里"
+     and `notice-rule-zh` "好，航班一改，夜里也叫你。" with no `rule_save` / `notice_rule` call;
+   - **it answers a web look-up from memory**: `where-w1` (HN today) and `browser-task-en` (Bun's
+     latest version, "v1.4.4") with no task and no page read;
+   - **`needs.long` is not set** for a two-to-three-hour translation (`where-w6`), and the W5 pin
+     went into the brief rather than `harness`.
+   Passing: W2 (signed-in taobao, read-only brief), W3 (Keynote), W4 (repo), connections with none
+   connected, X1. The guard: `LATEST.json` holds the hashes of the persona and the partner's tool
+   list from this run; `tool-budget.test.ts` fails when either changes until a new run is committed.
+5. **Two-tier tool list:** not now; `todo.md` with the trigger (30 tools or 32K chars).
+6. **Principle 17:** "Every Mem write Ducter itself makes records…"; the plugin writes as the
+   persona with its agent's `source_app`; a todo asks Mem for orchestrator attribution.
+
+Total live spend for the addendum: about $0.48 (Claude Code checks $0.112, one-shot measurement
+$0.002, the eval $0.36).
 
 ## Implications for Ducter
 

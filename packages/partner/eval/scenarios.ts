@@ -91,6 +91,16 @@ export interface Expect {
 
   /** Regexes the partner's own lines (messages and acks, not card text) may not match. */
   proseForbid?: RegExp[];
+  /** D157: some opened task's needs has each of these (a string matches case-insensitively as a part; false = absent or false). */
+  needs?: { browse?: boolean; signedIn?: boolean; site?: string; app?: string; long?: boolean };
+  /** Some opened task names this agent (harness). */
+  harness?: string;
+  /** Some opened task's place has this kind. */
+  placeKind?: "repo" | "folder" | "browser" | "none";
+  /** Partner tools that must be called (by name), each with these args (a RegExp matches a string arg). */
+  called?: { tool: string; args?: Record<string, unknown> }[];
+  /** Partner tools that must not be called. */
+  notCalled?: string[];
   /** Bridge: what Ducter sent through the (fake) Bridge, all messages joined. */
   bridgeSent?: { to?: string; count?: [number, number]; require?: RegExp[]; forbid?: RegExp[] };
 }
@@ -1169,5 +1179,90 @@ export const scenarios: Scenario[] = [
     expect: { opens: 0, msgs: [1, 1], maxChars: 110, forbid: [CONSUMER_PLUMBING, /APNs|provisioning|描述文件|签名证书|上传凭据|SKU|\.p8/i] },
     rubric:
       "A result for someone who isn't a developer: the outcome first in everyday words (the app and the testing group are set up in App Store Connect), then at most one line that a few things still need the user on Apple's side, without listing them as terms of art (certificates, provisioning profiles, API keys, APNs). At most 2 short lines, one message, no ids, no paths.",
+  },
+  // ---------- where a task runs: what it needs (D157, design/where.md W1-W6) ----------
+  // The partner says what a task needs of a computer; core picks the computer. These check the
+  // partner's half: needs filled from the user's words, a pin only when named, nothing invented.
+  {
+    id: "where-w1-public-zh",
+    category: "where",
+    lang: "zh",
+    steps: [{ user: "帮我查一下 Hacker News 今天关于 OAR 的讨论，挑重点说" }],
+    expect: { opens: 1, ackFirst: true, msgs: [0, 0], maxChars: 80, needs: { browse: true, signedIn: false }, forbid: [/Chrome|登录/] },
+    rubric: "W1: public pages. One short Chinese ack naming the look-up; a task that browses (needs.browse) without the user's sign-ins. The ack does not mention Chrome, signing in or which computer (it only says where when it matters). No findings claimed.",
+  },
+  {
+    id: "where-w2-signed-in-zh",
+    category: "where",
+    lang: "zh",
+    steps: [{ user: "看看我淘宝上上周买的那个显示器支架到哪了" }],
+    expect: { opens: 1, ackFirst: true, msgs: [0, 0], maxChars: 80, needs: { browse: true, signedIn: true, site: "taobao" } },
+    rubric: "W2: it needs the user's own sign-in. One short Chinese ack (it may say it will use their Chrome); a browsing task that needs the user's signed-in taobao.com. The brief keeps it read-only: never confirm receipt, pay or ask for a refund.",
+  },
+  {
+    id: "where-w3-app-zh",
+    category: "where",
+    lang: "zh",
+    steps: [{ user: "把这周的周报做成 Keynote，五六页就行，周报在 ~/dev/hawdb/docs/weekly.md" }],
+    expect: { opens: 1, ackFirst: true, msgs: [0, 0], maxChars: 90, needs: { app: "keynote" } },
+    rubric: "W3: a Mac app. One short Chinese ack naming the action (making a Keynote from the weekly report); the task needs the Keynote app. No outcome claimed, no time guessed.",
+  },
+  {
+    id: "where-w4-repo-en",
+    category: "where",
+    lang: "en",
+    steps: [{ user: "Fix the red CI on ~/dev/hawdb main." }],
+    expect: { opens: 1, ackFirst: true, msgs: [0, 0], maxChars: 140, placeKind: "repo", needs: { browse: false }, forbid: [/\b(on|using) (hel|the MacBook|your Mac)\b/i] },
+    rubric: "W4: a repo task. One short English ack naming the action; the task's place is the hawdb repo. It names no computer (Ducter picks where; with one computer nothing is said) and claims no outcome.",
+  },
+  {
+    id: "where-w5-pin-zh",
+    category: "where",
+    lang: "zh",
+    steps: [{ user: "用 Codex 把 ~/dev/foo 的缓存模块重构一下，测试要过" }],
+    expect: { opens: 1, ackFirst: true, msgs: [0, 0], maxChars: 80, harness: "codex", placeKind: "repo" },
+    rubric: "W5: the user named the agent. One short Chinese ack; the task is pinned to Codex in the foo repo. It doesn't argue with the choice or explain agents.",
+  },
+  {
+    id: "where-w6-long-zh",
+    category: "where",
+    lang: "zh",
+    steps: [{ user: "把 ~/dev/hawdb/docs 下面的文档全部翻译成英文，大概要两三个小时，不急" }],
+    expect: { opens: 1, ackFirst: true, msgs: [0, 0], maxChars: 90, needs: { long: true } },
+    rubric: "W6: long work. One short Chinese ack naming the translation; the task is marked long (better on a computer that doesn't sleep). No promise of when it finishes beyond what the user said.",
+  },
+
+  // ---------- rules the user states (rule_save), and the accounts (D158) ----------
+  {
+    id: "rule-save-zh",
+    category: "rules",
+    lang: "zh",
+    steps: [{ user: "以后 hawdb 的活都交给 Codex 做吧" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 80, called: [{ tool: "rule_save" }] },
+    rubric: "A standing preference about who does a kind of work. It keeps it as a rule (rule_save) and says it back in one short Chinese line in the user's terms (e.g. 好，以后 HawDB 的事交给 Codex。). No task opened, no explanation of rules or harnesses.",
+  },
+  {
+    id: "connections-none-en",
+    category: "accounts",
+    lang: "en",
+    steps: [{ user: "Anything in my email this week I still need to reply to?" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 220, require: [/account/i], forbid: [/OAuth|token|API key|scope/i] },
+    rubric: "No account is connected. It says in one short English line that it can't read their mail yet and where they can add their accounts (the Partner page / Accounts it can read; one tap with oo). It opens no task, invents no mail, and never explains OAuth or tokens.",
+  },
+  {
+    id: "browser-task-en",
+    category: "where",
+    lang: "en",
+    steps: [{ user: "Check bun.sh and tell me the latest Bun version." }],
+    expect: { opens: [0, 1], maxChars: 140, forbid: [/\b1\.\d+\.\d+\b(?![\s\S]*\?)/] },
+    rubric: "A look-up on a public page. Either it opens one browsing task with a one-line English ack naming the look-up (needs.browse, Ducter's own browser), or answers that it will check; it must NOT state a version number it hasn't seen (no guessing from training data), and claims no result yet.",
+  },
+  {
+    id: "notice-rule-zh",
+    category: "accounts",
+    lang: "zh",
+    steps: [{ user: "以后航班改了的话，夜里也直接叫醒我" }],
+    expect: { opens: 0, msgs: [1, 1], maxChars: 60, called: [{ tool: "notice_rule", args: { kind: "plan_changed", wake: true } }] },
+    rubric: "The user says one kind of thing they notice may wake them at night. It keeps it (notice_rule, plan_changed, wake) and says it back in one short Chinese line (e.g. 好，航班改了夜里也叫你。). It doesn't suggest other rules or explain quiet hours.",
   },
 ];

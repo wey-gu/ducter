@@ -142,7 +142,6 @@ func TestOoConnectShots(t *testing.T) {
 	}
 }
 
-
 // Removing accounts is never one tap: Remove asks in the row, and only the
 // second Remove sends. The added line names the oo kind as people see it.
 func TestAccountRemoveAsksFirst(t *testing.T) {

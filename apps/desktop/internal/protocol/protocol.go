@@ -176,6 +176,28 @@ type Decision struct {
 	// FindID (D165): a find's one next step; shown inside its note, never
 	// as a card of its own in the conversation.
 	FindID string `json:"findId,omitempty"`
+	// Asker (D170): asked for one of the user's own agents through Bridge;
+	// the answer goes back to it by Ducter's code.
+	Asker *PeerAsk `json:"asker,omitempty"`
+	// Trust (D170, X2): the offer to take an own agent's work without
+	// asking; Go keeps the rule.
+	Trust *TrustAsk `json:"trust,omitempty"`
+}
+
+// TrustAsk names the agent a standing-go offer is about.
+type TrustAsk struct {
+	Agent string `json:"agent"`
+}
+
+// PeerAsk is the agent a decision was asked for (D170): Go is the option it
+// named first, Other its second (answered as a reply with that text).
+type PeerAsk struct {
+	MessageID string `json:"messageId"`
+	Agent     string `json:"agent"`
+	Mine      bool   `json:"mine,omitempty"`
+	Where     string `json:"where,omitempty"`
+	Suggests  bool   `json:"suggests,omitempty"`
+	Other     string `json:"other,omitempty"`
 }
 
 // ClosingPlan is what moves to a computer that stays awake before one
@@ -615,7 +637,7 @@ type BridgeMsg struct {
 	DecisionID string `json:"decisionId,omitempty"`
 	Agent      string `json:"agent,omitempty"`
 	Mine       bool   `json:"mine,omitempty"`
-	State      string `json:"state,omitempty"` // out: pending|held|sending|sent|failed|unknown|unconfirmed|followed; empty = sent
+	State      string `json:"state,omitempty"` // out: pending|held|sending|sent|failed|unknown|unconfirmed|followed; in: early|set_aside|muted; empty = sent / to read
 	OpID       string `json:"opId,omitempty"`
 	Contact    string `json:"contact,omitempty"`
 	Operation  string `json:"operation,omitempty"`
@@ -937,6 +959,8 @@ type Settings struct {
 	// Proactive (D165): when it notices something; "" = never answered
 	// (nothing watches).
 	Proactive string `json:"proactive,omitempty"`
+	// Peers: who of the user's other agents may reach the partner (D170).
+	Peers *Peers `json:"peers,omitempty"`
 }
 
 // SettingsPatch is a change to some settings. Quiet is sent as given, so
@@ -953,6 +977,16 @@ type SettingsPatch struct {
 	TaskAccounts    map[string]TaskAccount `json:"taskAccounts,omitempty"`
 	AutoUpdate      *bool                  `json:"autoUpdate,omitempty"`
 	Proactive       string                 `json:"proactive,omitempty"`
+	Peers           *Peers                 `json:"peers,omitempty"`
+}
+
+// Peers is who of the user's other agents may reach the partner (D170):
+// reach own | team | off; Trusted, own agents whose work starts without
+// asking; Muted, agents the user stopped listening to.
+type Peers struct {
+	Reach   string   `json:"reach"`
+	Trusted []string `json:"trusted"`
+	Muted   []string `json:"muted"`
 }
 
 // MarshalJSON writes Quiet only when it is set or cleared.

@@ -28,6 +28,7 @@ type Entry struct {
 	// Finds is a note the partner said by itself (D165); a fold-in or an
 	// answer revises it in place.
 	Finds *protocol.Finds
+	Peer  *protocol.BridgeMsg // D170: one quiet line about the user's other agents
 	// Revision counts how often a living message was superseded in place,
 	// for the re-settle motion.
 	Revision int
@@ -307,6 +308,9 @@ func deviceOfPlace(p protocol.Place) string {
 
 // Store is the client's state.
 type Store struct {
+	// SetAside counts, per sender and day ("from|2026-11-10"), the messages
+	// over its daily quota (D163); one quiet line says how many.
+	SetAside map[string]int
 	// ActionResults are action_result frames not yet shown to the user.
 	ActionResults []protocol.ServerFrame
 	// First is the empty conversation's words from the home (D149); nil
@@ -810,9 +814,40 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 			return
 		}
 		s.add(&Entry{Event: ev, Noted: b})
+	case *protocol.BridgeMsg:
+		// D170 (J-Q5's lines): a request in, a reply or a message out, and one
+		// line a day for a sender set aside. Steps, answers to ours and what
+		// predates Bridge show nothing.
+		if b.Direction == "in" && b.State == "set_aside" {
+			key := b.From + "|" + firstN(ev.TS, 10)
+			if s.SetAside == nil {
+				s.SetAside = map[string]int{}
+			}
+			s.SetAside[key]++
+			if s.SetAside[key] > 1 {
+				s.bySeq[ev.Seq] = nil
+				return
+			}
+			s.add(&Entry{Event: ev, Peer: b})
+			return
+		}
+		show := (b.Direction == "in" && b.State == "" && b.InReplyTo == "") || (b.Direction == "out" && b.State == "sent" && b.Text != "")
+		if !show {
+			s.bySeq[ev.Seq] = nil
+			return
+		}
+		s.add(&Entry{Event: ev, Peer: b})
 	default:
 		s.bySeq[ev.Seq] = nil
 	}
+}
+
+// firstN is s's first n bytes (a timestamp's date).
+func firstN(s string, n int) string {
+	if len(s) < n {
+		return s
+	}
+	return s[:n]
 }
 
 func (s *Store) add(e *Entry) {

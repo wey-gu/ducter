@@ -304,7 +304,8 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
     fs: placeFs,
     turnTimeoutMs: 180_000,
     memory: memWrapped,
-    ...(fb ? { bridge: fb.client, bridgeIntervalMs: 0 } : { bridge: null }),
+    // The eval's mailbox starts empty by construction: no start mark (B14), so a peer step can't race it.
+    ...(fb ? { bridge: fb.client, bridgeIntervalMs: 0, bridgeStartMark: false } : { bridge: null }),
     onError: (err) => console.error(`[${sc.id}]`, err instanceof Error ? err.message : err),
   });
   core.setPartner(partner);

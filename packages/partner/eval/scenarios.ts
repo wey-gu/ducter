@@ -1038,6 +1038,33 @@ export const scenarios: Scenario[] = [
       "The user's own terminal Claude Code asked (in English) for a side job. The user speaks Chinese, so the card and every line the user sees are in Chinese. Pass if: one Chinese card asks whether to take the job (naming it as the user's own terminal Claude / 你的 terminal-claude, not as Weyl); after Go a task opens; when it reports done the partner tells the user the outcome in at most 2 short lines (saying the tests now pass on Linux / in the ubuntu image IS the outcome, not repeated evidence; that the change isn't pushed yet, so CI itself hasn't run, is a fine left-out line). The partner never names Weyl (it is talking TO Weyl) and never says it sent the result to Weyl: the result went to the terminal session.",
   },
   {
+    // X1 (D164, D170): the user's own session needs the user's call while they're away.
+    id: "bridge-ask-you-zh",
+    category: "bridge",
+    lang: "zh",
+    bridge: true,
+    seed: [{ user: "我出门吃个饭，一小时回来" }, { ai: "好，路上慢点。" }],
+    steps: [
+      {
+        peer: {
+          from: "terminal-claude",
+          text: "Weyl said to send anything he needs to decide to Ducter. On fix-linux-ci in ~/dev/ducter: the Linux jobs are green, only the macOS job is still running. Should I push the branch now, or wait for macOS to finish? I'd wait. Please answer with his choice.",
+        },
+      },
+      { resolve: { option: "go" } },
+    ],
+    expect: {
+      ask: true,
+      opens: 0,
+      maxChars: 160,
+      forbid: [/Weyl/, /msg-\d{3}/],
+      proseForbid: [/Weyl/],
+      bridgeSent: { to: "terminal-claude", count: [1, 1] },
+    },
+    rubric:
+      "The user's own terminal Claude Code asked (in English) for the user's call: push now or wait for macOS (it suggests waiting). The user speaks Chinese. Pass if: one Chinese card asks the user that choice (no task opened, no prose question instead of the card, no reply to the terminal before the user answers); after the user's tap exactly one reply goes back to the terminal with the user's choice; the partner says nothing more to the user, or at most one short line. The partner never names Weyl.",
+  },
+  {
     id: "bridge-ask-zh",
     category: "bridge",
     lang: "zh",

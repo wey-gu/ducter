@@ -35,6 +35,26 @@ export function claimText(requestText: string, title: string): string {
 }
 
 /** The fixed line a teammate gets when the partner didn't reply itself (D107). */
+/**
+ * X1 (D164 (3)–(4)): what the asking agent hears, in its language, and nothing else. "wait" is
+ * Ducter's own line when the user hasn't answered: the agent must not act on silence.
+ */
+export function peerAnswer(zh: boolean, option: "go" | "hold" | "reply" | "wait", words?: string): string {
+  const w = (words ?? "").trim();
+  if (option === "go" || (option === "reply" && w)) return zh ? `用户选了：「${w}」` : `The user chose: «${w}»`;
+  if (option === "hold") return zh ? "用户说先别动，晚点再问。" : "The user says not now. Don't act on this; ask again later.";
+  return zh ? "用户还没回，先别按这个动，晚点再问。" : "No answer from the user yet. Don't act on this; ask again later.";
+}
+export const PEER_ASKS_OPEN = 3; // open questions per agent in Needs you (D163)
+export const SENDER_DAILY = 20; // messages a day per sender before they are set aside (D163)
+export const PEER_NOT_YET_MS = 30 * 60_000; // when an unanswered question gets "not yet" (D164 (4))
+export const LIVE_MS = 30 * 60_000; // a conversation with an own agent is live this long (D164 (6))
+export const LIVE_CHECK_MS = 60_000; // and checked this often meanwhile
+export const DAY_MS = 24 * 60 * 60_000;
+export const TRUST_AFTER = 2; // X2: Go's to the same own agent before the rule is offered (D163)
+export const TRUST_WINDOW_MS = 14 * DAY_MS; // within this long
+export const TRUSTED_DAILY = 5; // tasks a day a trusted agent may start; the sixth asks
+
 export function fixedOutcome(requestText: string, title: string, done: boolean): string {
   return isChinese(requestText) ? `「${title}」：${done ? "做完了" : "没做成"}。` : `"${title}": ${done ? "done" : "not done"}.`;
 }

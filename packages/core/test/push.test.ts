@@ -180,6 +180,14 @@ describe("push copy", () => {
     ]);
     expect(coalescedMessage(3, { persona: "D", locale: "en", morning: true }).body).toBe("Morning. 3 need you.");
   });
+
+  test("D170: another agent's question says who asks, waits on silence, and has no Hold button", () => {
+    const q: Bodies["decision"] = { decisionId: "d2", question: "现在推，还是等 macOS？", goLabel: "等 macOS 跑完", defaultOption: "hold", reversible: false, asker: { messageId: "m", agent: "terminal-claude", mine: true } };
+    const m = decisionMessage(q, { persona: "小鸭", locale: "zh", platform: "android", now });
+    expect(m.title).toBe("小鸭 · 你的 terminal-claude 问你");
+    expect(m.body).toBe("现在推，还是等 macOS？ 没回就让它先等着。");
+    expect(m.actions).toBeUndefined();
+  });
 });
 
 describe("quiet hours", () => {

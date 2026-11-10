@@ -346,6 +346,23 @@ describe("the quiet conversation (D104)", () => {
     expect(S.channel.length).toBe(2);
     expect(S.noted.map((n) => [n.title, n.replyTo])).toEqual([["Tests use a fake clock", u.seq]]);
   });
+  test("D170: the user's other agents are quiet lines; steps and early messages show nothing", () => {
+    const S = new Store();
+    const m = (body: object) => ev("bridge_msg", body);
+    S.apply({
+      t: "events",
+      events: [
+        m({ direction: "in", messageId: "m1", from: "terminal-claude", agent: "terminal-claude", mine: true, text: "push now?" }),
+        m({ direction: "in", messageId: "m0", from: "x", text: "", state: "early" }),
+        m({ direction: "out", messageId: "", to: "terminal-claude", text: "用户选了：「等」", inReplyTo: "m1", state: "sending" }),
+        m({ direction: "out", messageId: "m2", to: "terminal-claude", text: "用户选了：「等」", inReplyTo: "m1", state: "sent" }),
+        m({ direction: "in", messageId: "s1", from: "reviewer", text: "", state: "set_aside" }),
+        m({ direction: "in", messageId: "s2", from: "reviewer", text: "", state: "set_aside" }),
+      ],
+    });
+    expect(S.channel.map((e) => e.peer?.state ?? "in")).toEqual(["in", "sent", "set_aside"]);
+    expect([...S.setAside.values()].map((x) => x.n)).toEqual([2]);
+  });
 });
 
 describe("New task (D128)", () => {

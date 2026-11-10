@@ -869,6 +869,66 @@ a {
 .decision .asker:active {
   text-decoration: underline;
 }
+/* D170 (X1): asked for one of the user's own agents; not a link, so no underline. */
+.decision .asker.peer,
+.askq .asker.peer {
+  color: var(--needs-ink);
+}
+.askq .asker.peer {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--sm);
+  font-weight: 700;
+  margin: 0 0 6px 4px;
+}
+.askq .asker.peer small {
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+.askq .dflt .sug {
+  font-size: var(--xs);
+  font-weight: 800;
+  color: var(--needs-ink);
+  background: var(--needs-surface);
+  border-radius: 6px;
+  padding: 1px 7px;
+  margin-right: 6px;
+}
+.decision .asker.peer:active {
+  text-decoration: none;
+}
+.decision .asker.peer small {
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+.decision .sug {
+  align-self: flex-end;
+  font-size: var(--xs);
+  font-weight: 800;
+  color: var(--needs-ink);
+  background: var(--needs-surface);
+  border-radius: 6px;
+  padding: 1px 7px;
+}
+/* One quiet line about the user's other agents (D170). */
+.peerline {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 92%;
+  font-size: var(--xs);
+  color: var(--ink-muted);
+  background: var(--surface-sunken);
+  border-radius: 999px;
+  padding: 3px 12px;
+}
+.peerline span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .decision .q {
   font-size: var(--t20);
   line-height: 1.35;

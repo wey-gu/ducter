@@ -4,7 +4,7 @@
 //   runner  owns: HarnessPort over OAR, worktrees, task sessions, event normalization.
 //   partner owns: the main AI (persona prompt, projection, turn loop) on any first-wave harness (D85) via runner's HarnessPort.
 import type { HarnessId } from "./harnesses.ts";
-import type { Attention, Bodies, BodyWhy, BranchChanges, Delivery, FolderChanges, UndoConfirm, EventKind, LogEvent, OnHand, Origin, PartnerActivity, Place, Residency, Settings, TaskCard, TaskNeeds } from "./index.ts";
+import type { Attention, Bodies, BodyWhy, BranchChanges, Delivery, FolderChanges, UndoConfirm, EventKind, LogEvent, OnHand, Origin, PartnerActivity, Place, Residency, PeersSettings, Settings, TaskCard, TaskNeeds } from "./index.ts";
 
 // ---------- core ----------
 
@@ -214,6 +214,8 @@ export interface SettingsApi {
   setForgetter(fn: (memoryId: string) => Promise<boolean>): void;
   /** The partner says whether Mem answers (connected) or not (missing), as it finds out. */
   setMemState(state: "connected" | "missing"): void;
+  /** D170: the partner keeps the learned rules (trusted) and the muted senders here. */
+  setPeers?(peers: Partial<PeersSettings>): void;
 }
 
 // ---------- workers (main ↔ worker over the worker's outbound /worker socket) ----------

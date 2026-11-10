@@ -47,6 +47,10 @@ func main() {
 		if bid = local.BundleID(bundle.App); bid == "" {
 			bid = local.DefaultBundleID
 		}
+		openAppLog(bid)
+		if v, c := buildVersion(); v != "" {
+			log.Printf("ducter: app %s (%s) starting", v, c)
+		}
 		// Per bundle id: a scratch build never reads the real app's file.
 		if keys := local.LoadDevEnv(local.DevEnvPathFor(bid)); len(keys) > 0 {
 			log.Printf("ducter: dev.env sets %v", keys)

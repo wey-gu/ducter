@@ -70,7 +70,7 @@ Applications, Ducter stops with the app. If Ducter was already running (from `du
 terminal), the app just connects and leaves it alone. Dragged in by hand over an older Ducter.app, the app restarts
 the background Ducter on its own helper when it opens (`/health` says which build runs), so the
 window never talks to the old one. Data lives in `~/.ducter`, as with the
-CLI; Ducter's output from the app is in `~/.ducter/app.log`.
+CLI; Ducter's output from the app is in `~/.ducter/app.log`; the app's own lines (updates, Restart Now, quitting) are in `~/Library/Logs/co.nowledge.ducter/app.log` (one per bundle id, 1 MB, the previous kept as `app.1.log`).
 
 **Updates.** The app checks GitHub Releases at launch and once a day, downloads and checks a
 newer version in the background, and says so in one line of the app menu (and Settings): "Update

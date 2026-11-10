@@ -139,8 +139,10 @@ func (lc *lifecycle) showStatus(st update.Status) {
 // bundle before the swap). Main thread (a click).
 func (lc *lifecycle) restartToUpdate() {
 	if lc.restarting.Swap(true) {
-		return // already on its way
+		log.Printf("ducter: restart to update: already on its way")
+		return
 	}
+	log.Printf("ducter: restart to update: asked")
 	go func() {
 		if !runRestart(lc.upd, lc.screen, restartCalm) {
 			lc.restarting.Store(false)
@@ -198,6 +200,7 @@ func runRestart(u restarter, s restartScreen, calm time.Duration) bool {
 	if d := calm - time.Since(shown); d > 0 {
 		time.Sleep(d)
 	}
+	log.Printf("ducter: restart to update: the swap waits for this app to quit")
 	s.Leave()
 	return true
 }
@@ -229,6 +232,13 @@ func (s windowScreen) Leave() {
 		flushWindows()
 	})
 	mygo.App.Quit()
+	// Still here 10 s later: the quit was turned down somewhere (2026-11-11, 现在重启 left
+	// 0.0.12 running, and every later click was "already on its way"). Say so in the log
+	// and ask once more; the swap is still waiting for this app to go.
+	time.AfterFunc(10*time.Second, func() {
+		log.Printf("ducter: restart to update: still running 10 s after quitting; asking again")
+		mygo.App.Quit()
+	})
 }
 
 // quit runs as the app quits: a ready update goes in once it has exited

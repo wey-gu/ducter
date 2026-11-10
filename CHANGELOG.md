@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.0.13
+
+<!-- whats-new
+zh: 让伙伴看邮件，它会用你真正连着的账号
+en: Ask about your mail and your partner uses the accounts you connected
+zh: 安卓 App 在设备卡片上显示为 App
+en: The Android app shows as the app on its device card
+-->
+
+**Accounts through OOMOL**
+- Asking your partner about your mail no longer ends in "not connected": OOMOL's search lists
+  every service it knows, and Ducter now offers your partner only the ones you have an account
+  for (Gmail, Slack…), asking each of them when the first answer has none.
+
+**Android**
+- The Android app's device card says it's connected through the Ducter app, not the browser,
+  even after you rename the phone.
+
 ## 0.0.12
 
 <!-- whats-new

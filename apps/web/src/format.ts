@@ -1,5 +1,5 @@
 // Time and place wording, the same rules as the desktop (views/app.go formatting).
-import type { DeviceUpdate, MemPluginView, Place } from "@ducter/protocol";
+import type { DeviceHarness, DeviceUpdate, MemPluginView, Place } from "@ducter/protocol";
 import { compareVersions, isVersion } from "@ducter/protocol/src/version.ts";
 import type { Strings } from "./i18n.ts";
 
@@ -144,6 +144,24 @@ export function failureStands(u: DeviceUpdate): boolean {
 export function withoutStaleFailure(u: DeviceUpdate | undefined): DeviceUpdate | undefined {
   if (!u || failureStands(u)) return u;
   const { phase: _p, from: _f, to: _t, reason: _r, detail: _d, rolledBack: _b, at: _a, ...rest } = u;
+  return rest;
+}
+/**
+ * The same rule for an AI agent's own update (D156), judged against the version installed now: on
+ * the target it is done whatever was said; still where it started, a failure stands; anywhere
+ * else it is gone. "Nothing newer" (no_update) is never a failure. A home older than the rule
+ * can still send one.
+ */
+export function withoutStaleAgentUpdate(h: DeviceHarness): DeviceHarness {
+  const u = h.update;
+  if (!u || (u.phase !== "failed" && u.phase !== "done") || !h.version) return h;
+  if (u.to && compareVersions(h.version, u.to) === 0) {
+    if (u.phase === "done") return h;
+    const { reason: _r, detail: _d, rolledBack: _b, ...rest } = u;
+    return { ...h, update: { ...rest, phase: "done" } };
+  }
+  if (u.phase === "failed" && u.reason !== "no_update" && u.from && compareVersions(h.version, u.from) === 0) return h;
+  const { update: _u, ...rest } = h;
   return rest;
 }
 export function phaseLine(L: Strings, u: DeviceUpdate): string {

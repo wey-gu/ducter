@@ -124,7 +124,32 @@ export type InstallStep = "download" | "unpack" | "libraries" | "check";
 export type InstallResult =
   | { ok: true; version: string; path: string; installedLibs?: string[] }
   | { ok: false; reason: "deps"; command: string; missing: string[]; version: string; path: string }
+  | { ok: false; reason: "sandbox"; command: string; version: string; path: string }
   | { ok: false; reason: "failed"; message: string };
+
+/** Where Ubuntu 23.10+ keeps the switch that stops unprivileged user namespaces (AppArmor). */
+export const USERNS_SWITCH = "/proc/sys/kernel/apparmor_restrict_unprivileged_userns";
+export const APPARMOR_PROFILE = "/etc/apparmor.d/ducter-chrome";
+
+/**
+ * Ubuntu 23.10+ (24.04: hel-like servers) stops unprivileged user namespaces with AppArmor, so a
+ * normal user's Chrome dies at start ("No usable sandbox!"). The fix Chrome documents keeps the
+ * sandbox: an AppArmor profile that allows user namespaces for this one binary, by a glob over the
+ * versions Ducter installs, so the next Chrome needs no second line. Found by the E2E rig (D172).
+ */
+export function sandboxCommand(dataDir: string): string {
+  const glob = join(browserDir(dataDir), "*", "chrome-linux*", "chrome");
+  const profile = `abi <abi/4.0>,\\ninclude <tunables/global>\\nprofile ducter-chrome ${glob} flags=(unconfined) {\\n  userns,\\n}\\n`;
+  return `sudo sh -c 'printf "${profile}" > ${APPARMOR_PROFILE} && apparmor_parser -r ${APPARMOR_PROFILE}'`;
+}
+
+/** Chrome's sandbox can't start here for a normal user, and Ducter's profile isn't in place. */
+export function sandboxBlocked(o: { root?: boolean; read?: (p: string) => string | undefined; exists?: (p: string) => boolean } = {}): boolean {
+  if (o.root) return false; // root runs Chrome with --no-sandbox
+  const read = o.read ?? ((p: string) => (existsSync(p) ? readFileSync(p, "utf8") : undefined));
+  const exists = o.exists ?? existsSync;
+  return (read(USERNS_SWITCH) ?? "").trim() === "1" && !exists(APPARMOR_PROFILE);
+}
 
 export interface InstallOptions {
   dataDir: string;
@@ -134,6 +159,8 @@ export interface InstallOptions {
   exec?: Exec;
   /** Running as root (installs system libraries itself). */
   root?: boolean;
+  /** Tests: whether Chrome's sandbox is blocked here (default: sandboxBlocked()). */
+  sandboxBlocked?: () => boolean;
   /** The start check (default: launch headless once and ask CDP for its version). */
   check?: (chrome: string) => Promise<string | undefined>;
   onStep?: (s: InstallStep) => void;
@@ -220,6 +247,10 @@ export async function installChrome(o: InstallOptions): Promise<InstallResult> {
       const still = await missingLibs(chrome, exec);
       if (still.length) return { ok: false, reason: "failed", message: `Chrome still lacks ${still.join(", ")}` };
     }
+  }
+  // A fake start check (tests) never meets this machine's AppArmor.
+  if (plat.startsWith("linux") && (o.sandboxBlocked ?? (o.check ? () => false : () => sandboxBlocked({ root: o.root })))()) {
+    return { ok: false, reason: "sandbox", command: sandboxCommand(o.dataDir), version, path: chrome };
   }
   o.onStep?.("check");
   const answered = await (o.check ?? ((p: string) => checkChrome(p, o.dataDir)))(chrome);

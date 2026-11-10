@@ -1,0 +1,3 @@
+[test]
+# Every test run: a placeholder printed empty fails the test that drew it (apps/web/test/guard.ts).
+preload = ["./apps/web/test/guard.ts"]

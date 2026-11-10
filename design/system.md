@@ -493,8 +493,15 @@ tap, without SSH. A Mac home keeps the app's own updater (D72); this section is 
 redirect (version only), at most every hour (`<dataDir>/updates/latest.json`, D160, was 6 h); a
 failure is silent and keeps the last answer; `DUCTER_UPDATE_CHECK=off` never asks; drafts and
 pre-releases never count; tests never touch the network (`NODE_ENV=test` without a feed turns it
-off). Every `DeviceView` carries `update {current, latest, available, notes, security, how,
-phase…, checkedAt}`.
+off). Every `DeviceView` carries `update {current, latest, available, notesBy, security, how,
+phase…, checkedAt}`. **What's new (D172)** is `notesBy {zh?, en?}`, read only from the release
+body's `<!-- whats-new … -->` block (the CHANGELOG section's; `release.ts whatsNew`): at most two
+lines per language, each whole and short (≤ 40 zh, ≤ 80 en; longer is dropped, never cut). A card
+shows its own language's lines and none when there are none; the English body is never shown as
+notes (found on 0.0.7: "Your tasks know which computer to run on / With more than one computer
+(say a server and a MacBook that does tasks f…" on a zh card). Tests and the E2E rig only:
+`DUCTER_UPDATE_FEED` and `DUCTER_UPDATE_MIRROR` (`<mirror>/download/v<v>/…`) name a feed and a
+release mirror on loopback; any other address is ignored.
 
 **Never "latest" without when (D160).** The cards say **已经是最新的 · 3 小时前查过 / Up to date ·
 checked 3 h ago** (刚查过 / checked just now under 2 min) with a quiet **现在检查 / Check now**
@@ -507,7 +514,13 @@ up to date" from a 6 h old answer.
 
 **How a device updates (`how`).** `self`: a compiled Linux `ducter`. `app`: a Mac whose ducter is
 inside Ducter.app (the app's updater does it; on that Mac the card's button calls
-`App.updateThisMac`: restart into a ready copy, else Settings' update card). `source`: from a
+`App.updateThisMac`: restart into a ready copy, else Settings' update card). On that Mac means the
+home this window runs, or this Mac's own worker (D155) when the window talks to a home elsewhere
+(D172): the app's update when the app is behind; when the app is current and its worker still
+says an older version, **这台 Mac 上的 Ducter 已经是 {v}，替 {home} 做事的那部分还在用旧的，重启一下就好**
+with **重启它** (the worker's LaunchAgent restarted, D167's fix by hand). Only another Mac says
+**在 {device} 上打开 Ducter，它会自己更新** (found on 0.0.7: this very Mac's card told it to open
+Ducter on itself). `source`: from a
 checkout. `manual`: a worker that sent no `how` (before 0.0.4).
 
 **The staged update** (`core/src/update.ts`, one path for the home, a worker and the CLI):
@@ -601,10 +614,18 @@ turn on it (≤ 30 min, `busy`) → hold new task sessions on it on the home (`r
 back where the channel pins (`version`, `rolledBack`). Unchanged: `unchanged` (or `failed` with
 the updater's last line). Signed in before and not after: back where it pins (`signed_out`).
 Every phase (`waiting`, `updating`, `checking`, `done`, `failed`) is an `agent_update` event on
-the `devices` stream; the card shows done 30 min, a failure 24 h.
+the `devices` stream; the card shows done 30 min, a failure 24 h. **Judged by what is installed
+now (D172, D167's rule for agents, `judgeAgent`):** on the target, done whatever was said; still
+on `from`, a failure stands; anywhere else it is superseded and shown no more. Asked for a version
+it is already on (a stale view), the update is done with nothing run (`already`), and "nothing
+newer" (`no_update`) is never a failure; both clients drop such a failure from an older home too.
+Found on 0.0.7: pi at 1.5.1 on the MacBook said 没更新成 · 没有更新的版本, because the worker's
+hello was probed once at its start and every reconnect said the old version; now a worker probes
+its agents again on every welcome and every 30 min, and answers a request for a version it already
+has with `no_update` plus its fresh list.
 
 **Workers.** `agent_update {harness, to, latest}` down the worker's socket; the worker answers at
-once, runs the same update with its host's `turningOn(harness)` as the safe point, sends
+once (`no_update` with its fresh `agents` list when it is already there), runs the same update with its host's `turningOn(harness)` as the safe point, sends
 `{t:"agent_update", phase…}` frames, then `{t:"agents", harnesses}` so the home sees the new
 version.
 
@@ -770,8 +791,16 @@ so the main process holds one.
 - **Install (`installChrome`):** the CfT JSON index, the zip, `unzip` or `python3 -m zipfile`
   (then chmod), `ldd` for missing libraries, the zip's `deb.deps` mapped to apt names (`t64`
   when apt has it), `fonts-liberation` and `fonts-noto-cjk`; installed with apt-get as root,
-  else returned as the one `sudo apt-get install …` line. Then one headless start that must
-  answer CDP. Devices drives it (`setAbility web on`), and so does `ducter ability add browser`.
+  else returned as the one `sudo apt-get install …` line. **The sandbox (D172):** Ubuntu 23.10+
+  (24.04) stops unprivileged user namespaces with AppArmor
+  (`kernel.apparmor_restrict_unprivileged_userns=1`), so a normal user's Chrome dies at start
+  ("No usable sandbox!"); found by the E2E rig, never seen on a root home (root runs
+  `--no-sandbox`). Then, unless `/etc/apparmor.d/ducter-chrome` is there, the install stops with
+  `browser_sandbox` and the one line that writes that profile (`userns,` for
+  `<dataDir>/browser/*/chrome-linux*/chrome` only, a glob so Chrome's next version needs nothing)
+  and loads it; the card words it as "this system doesn't let Chrome start its security sandbox".
+  The sandbox stays on; Ducter never falls back to `--no-sandbox` for a normal user. Then one
+  headless start that must answer CDP. Devices drives it (`setAbility web on`), and so does `ducter ability add browser`.
 - **Tools (`tools.ts`):** `browser_open, _read, _click, _type, _press, _scroll, _back, _tabs,
   _screenshot, _ask_sign_in` on Ducter's MCP, `registerWhen` only for tasks the runner attached
   (`DucterBrowserPort.attach` in the sidecar's `ready`, `release` on done). Each task works in
@@ -811,6 +840,20 @@ so the main process holds one.
   view on example.com in a tab of its own (decisionId `"try"`, no card), blind while open like
   any view, its tab closed with it, nothing answered or remembered. The open frame carries
   `browser` for the view's top line.
+- **A view that can't open says so (D172).** Any failure on the way (no browser here, Chrome not
+  starting, a tab that can't be attached) answers with `live {state: closed, reason: failed,
+  message}` for that decision, never only a generic `error`, and a tab that can't be attached
+  never leaves the profile blind. The clients name the computer from the moment they open (the
+  home's name until the open frame says which browser), and with no page 40 s after asking say
+  **{device} 上的浏览器 40 秒都没有回应，页面没打开。可以再试一次。** with **再试一次**. The Mac's view
+  is drawn under the window's own bar (`chrome`, the traffic lights' room kept). Found on 0.0.7:
+  the Mac app's frame decoder (`protocol.DecodeServerFrame`) had never listed `live`,
+  `live_frame`, `browser_sites`, `browser_check`, `first_screen`, `folder_changes`, `close_result`
+  (and, from D166, `connection_reads`), so the Mac app dropped every one of them: 试一下 sat at
+  正在打开 example.com…… with "这是  上的浏览器" forever while the phone worked.
+  `TestEveryServerFrameDecodes` now reads the core's `ServerFrame` union and fails on any type the
+  app would drop; an empty placeholder in drawn copy fails the view tests on both clients
+  (`views/main_test.go`, `apps/web/test/guard.ts`).
 - **Not built:** Xvfb for sites that refuse headless; a vault that fills passwords, TOTP,
   session probes, per-site rate limits (research/25 §3).
 

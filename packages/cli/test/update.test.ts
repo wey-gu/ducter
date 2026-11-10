@@ -22,7 +22,7 @@ function boot(): Core {
     batchMs: 5,
     deviceProbes: { cua: async () => ({ missing: "no" }), native: async () => undefined, harnesses: async () => [], kind: async () => "server" },
     update: {
-      fetch: async () => new Response(JSON.stringify({ tag_name: "v0.0.4", body: "- Update in place" })),
+      fetch: async () => new Response(JSON.stringify({ tag_name: "v0.0.4", body: "- Update in place\n<!-- whats-new\nzh: 在任何设备上原地更新\nen: Update in place, from any device\n-->\n" })),
       how: "self",
       version: "0.0.3",
       autoEveryMs: 0,
@@ -54,7 +54,7 @@ test("--check --json: where each device stands, for an agent to read", async () 
   expect(await cmdUpdate({ t, style, args: args(["--check", "--json", "--all"]), port: core.port, dataDir: core.dataDir, log: (s) => out.push(s) })).toBe(0);
   const j = JSON.parse(out.join("\n"));
   expect(j.latest).toBe("0.0.4");
-  expect(j.devices[0]).toMatchObject({ id: "local", home: true, current: "0.0.3", latest: "0.0.4", available: true, how: "self", notes: ["Update in place"] });
+  expect(j.devices[0]).toMatchObject({ id: "local", home: true, current: "0.0.3", latest: "0.0.4", available: true, how: "self", notesBy: { zh: ["在任何设备上原地更新"], en: ["Update in place, from any device"] } });
 });
 
 test("without --yes, off a terminal, it changes nothing and asks for --yes", async () => {

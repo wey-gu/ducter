@@ -48,7 +48,7 @@ export function createWorkerBrowse(o: {
     if (installing) return { state: "installing" };
     const c = find();
     if (c) return { state: "ready", version: c.version ?? "system" };
-    if (last && !last.ok) return last.reason === "deps" ? { state: "deps", command: last.command } : { state: "failed", message: last.message };
+    if (last && !last.ok) return last.reason === "deps" ? { state: "deps", command: last.command } : last.reason === "sandbox" ? { state: "deps", command: last.command, why: "sandbox" } : { state: "failed", message: last.message };
     return { state: "missing" };
   };
   const remote = workerBrowserOps({ dataDir: o.dataDir, send: o.send, env, platform, find });
@@ -74,7 +74,7 @@ export function createWorkerBrowse(o: {
     async set(_id, on) {
       if (webPinned(env)) return { ok: false, reason: "env_off" };
       const now = (await abilities())[0]!;
-      if (now.state === "unavailable" && !(on && now.where === "ducter" && (now.reason === "browser_deps" || now.reason === "browser_failed"))) return { ok: false, reason: now.reason ?? "failed", ...(now.detail ? { detail: now.detail } : {}) };
+      if (now.state === "unavailable" && !(on && now.where === "ducter" && (now.reason === "browser_deps" || now.reason === "browser_sandbox" || now.reason === "browser_failed"))) return { ok: false, reason: now.reason ?? "failed", ...(now.detail ? { detail: now.detail } : {}) };
       writeAbilitySettings(o.dataDir, { web: on });
       // Ducter's own browser isn't here yet: install it (the card says 正在准备 meanwhile).
       if (on && now.where === "ducter" && setup().state !== "ready" && !installing) {

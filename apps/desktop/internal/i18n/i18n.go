@@ -6,6 +6,7 @@ package i18n
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"unicode"
 )
@@ -589,42 +590,45 @@ var zh = Table{
 	"token.missing":                  "没装",
 	"token.allowance":                "额度还剩 %d%%",
 	// D151: 上网 on a server is Ducter's own browser; signing in through the live view.
-	"ability.web.about.ducter":      "让这台电脑用 Ducter 自己的浏览器替你上网：查资料、看网页、整理找到的东西。它和你自己的 Chrome 分开。要登录的网站由你自己登录，提交和付款都留给你。",
-	"web.where.ducter":              "Ducter 自己的浏览器",
-	"web.installing":                "正在装浏览器……第一次要下载一会儿",
-	"web.installing.short":          "正在装……",
-	"ability.oneStep":               "还差一步",
-	"ability.reason.browser_deps":   "这台还缺 Chrome 要用的几个系统库。在这台上运行一次下面这行，再试一次。",
-	"ability.reason.browser_failed": "浏览器没装好：%s",
-	"ability.retry":                 "再试一次",
-	"sites.title":                   "已登录的网站",
-	"sites.none":                    "还没有。任务要用到哪个网站，会先请你自己登录。",
-	"sites.when":                    "%s 登录",
-	"sites.gone":                    "网站那边已经退出了",
-	"sites.signout":                 "退出",
-	"sites.clear":                   "全部清掉",
-	"sites.clear.ask":               "清掉以后，这些网站都要你重新登录。",
-	"sites.clear.go":                "清掉",
-	"sites.keep":                    "先留着",
-	"signin.title":                  "需要你登录一下 %s",
-	"signin.why":                    "你自己登录。登录的时候它看不见这个页面，也碰不到你的密码。",
-	"signin.open":                   "去登录",
-	"signin.later":                  "先不用",
-	"signin.resolved":               "登录好了",
-	"signin.resolved.hold":          "先不登录",
-	"live.done":                     "好了",
-	"live.notnow":                   "先不登了",
-	"live.where":                    "Ducter 的浏览器",
-	"live.blind":                    "它现在看不见",
-	"live.opening":                  "正在打开 %s……",
-	"live.back":                     "后退",
-	"live.reload":                   "刷新",
-	"live.failed":                   "没打开：%s",
-	"live.replaced":                 "已经在另一个窗口里打开了",
-	"web.try":                       "试一下",
-	"web.try.about":                 "打开一个测试网页，亲眼看看它能上网。",
-	"live.try.where":                "Ducter 自己的浏览器 · 在 %s 上 · %s",
-	"live.try.note":                 "这是 %s 上的浏览器看到的网页，不是你的 Chrome。点点看、滚一滚都行。",
+	"ability.web.about.ducter":       "让这台电脑用 Ducter 自己的浏览器替你上网：查资料、看网页、整理找到的东西。它和你自己的 Chrome 分开。要登录的网站由你自己登录，提交和付款都留给你。",
+	"web.where.ducter":               "Ducter 自己的浏览器",
+	"web.installing":                 "正在装浏览器……第一次要下载一会儿",
+	"web.installing.short":           "正在装……",
+	"ability.oneStep":                "还差一步",
+	"ability.reason.browser_deps":    "这台还缺 Chrome 要用的几个系统库。在这台上运行一次下面这行，再试一次。",
+	"ability.reason.browser_sandbox": "这台的系统不让 Chrome 开它的安全沙盒。在这台上运行一次下面这行（只给 Ducter 的 Chrome 放行），再试一次。",
+	"ability.reason.browser_failed":  "浏览器没装好：%s",
+	"ability.retry":                  "再试一次",
+	"sites.title":                    "已登录的网站",
+	"sites.none":                     "还没有。任务要用到哪个网站，会先请你自己登录。",
+	"sites.when":                     "%s 登录",
+	"sites.gone":                     "网站那边已经退出了",
+	"sites.signout":                  "退出",
+	"sites.clear":                    "全部清掉",
+	"sites.clear.ask":                "清掉以后，这些网站都要你重新登录。",
+	"sites.clear.go":                 "清掉",
+	"sites.keep":                     "先留着",
+	"signin.title":                   "需要你登录一下 %s",
+	"signin.why":                     "你自己登录。登录的时候它看不见这个页面，也碰不到你的密码。",
+	"signin.open":                    "去登录",
+	"signin.later":                   "先不用",
+	"signin.resolved":                "登录好了",
+	"signin.resolved.hold":           "先不登录",
+	"live.done":                      "好了",
+	"live.notnow":                    "先不登了",
+	"live.where":                     "Ducter 的浏览器",
+	"live.blind":                     "它现在看不见",
+	"live.opening":                   "正在打开 %s……",
+	"live.back":                      "后退",
+	"live.reload":                    "刷新",
+	"live.failed":                    "没打开：%s",
+	"live.replaced":                  "已经在另一个窗口里打开了",
+	"web.try":                        "试一下",
+	"web.try.about":                  "打开一个测试网页，亲眼看看它能上网。",
+	"live.try.where":                 "Ducter 自己的浏览器 · 在 %s 上 · %s",
+	"live.try.note":                  "这是 %s 上的浏览器看到的网页，不是你的 Chrome。点点看、滚一滚都行。",
+	"live.stuck":                     "%s 上的浏览器 40 秒都没有回应，页面没打开。可以再试一次。",
+	"live.retry":                     "再试一次",
 }
 
 var en = Table{
@@ -1182,6 +1186,7 @@ var en = Table{
 	"web.installing.short":           "Getting ready…",
 	"ability.oneStep":                "One step left",
 	"ability.reason.browser_deps":    "Chrome needs a few system libraries this device doesn't have yet. Run this line on it once, then try again.",
+	"ability.reason.browser_sandbox": "This system doesn't let Chrome start its security sandbox. Run this line on it once (it allows only Ducter's Chrome), then try again.",
 	"ability.reason.browser_failed":  "The browser didn't install: %s",
 	"ability.retry":                  "Try again",
 	"sites.title":                    "Signed-in sites",
@@ -1212,6 +1217,8 @@ var en = Table{
 	"web.try.about":                  "Opens a test page so you can see it browse.",
 	"live.try.where":                 "Ducter's own browser · on %s · %s",
 	"live.try.note":                  "This is the page as the browser on %s sees it, not your Chrome. Click and scroll as you like.",
+	"live.stuck":                     "The browser on %s didn't answer within 40 seconds, so the page didn't open. You can try again.",
+	"live.retry":                     "Try again",
 	"pair.title":                     "Connect a phone or computer",
 	"pair.code":                      "Code",
 	"pair.address":                   "Address",
@@ -1234,6 +1241,40 @@ var en = Table{
 
 // Tables returns the tables by language, for tests.
 func Tables() map[Lang]Table { return map[Lang]Table{ZH: zh, EN: en} }
+
+// OnEmptyArg, when set (tests), hears every placeholder filled with an empty
+// string: "这是  上的浏览器" must fail a test, not reach a person.
+var OnEmptyArg func(key string, arg int)
+
+// usedArgs says which of n arguments a format's verbs print (%s in order,
+// %[2]s by position; %% prints none).
+func usedArgs(format string, n int) []bool {
+	used := make([]bool, n)
+	next := 0
+	for i := 0; i < len(format); i++ {
+		if format[i] != '%' {
+			continue
+		}
+		i++
+		if i < len(format) && format[i] == '%' {
+			continue
+		}
+		if i < len(format) && format[i] == '[' {
+			j := strings.IndexByte(format[i:], ']')
+			if j > 0 {
+				if p, err := strconv.Atoi(format[i+1 : i+j]); err == nil {
+					next = p - 1
+				}
+				i += j
+			}
+		}
+		if next >= 0 && next < n {
+			used[next] = true
+		}
+		next++
+	}
+	return used
+}
 
 // Strings translates keys in one language.
 type Strings struct {
@@ -1260,6 +1301,14 @@ func (s *Strings) T(key string, args ...any) string {
 	}
 	if len(args) == 0 {
 		return v
+	}
+	if OnEmptyArg != nil {
+		used := usedArgs(v, len(args))
+		for i, a := range args {
+			if s, ok := a.(string); ok && used[i] && strings.TrimSpace(s) == "" {
+				OnEmptyArg(key, i)
+			}
+		}
 	}
 	out := fmt.Sprintf(v, args...)
 	if s.Lang == ZH {

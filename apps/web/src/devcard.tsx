@@ -407,8 +407,8 @@ function Chips({ dv }: { dv: DeviceView }) {
       {web?.where === "ducter" && web.setup === "installing" && <div class="dc-note">{t("web.installing")}</div>}
       {web?.where === "ducter" && web.state === "unavailable" && web.reason !== "env_off" && (
         <div class="dc-note">
-          {web.reason === "browser_deps" ? t("web.deps") : t("web.failed", web.detail ?? "")}
-          {web.reason === "browser_deps" && <code class="dev-cmd">{web.detail}</code>}
+          {web.reason === "browser_deps" ? t("web.deps") : web.reason === "browser_sandbox" ? t("web.sandbox") : t("web.failed", web.detail ?? "")}
+          {(web.reason === "browser_deps" || web.reason === "browser_sandbox") && <code class="dev-cmd">{web.detail}</code>}
           <div class="acts">
             <Btn kind="secondary" size="sm" label={t("web.retry")} onClick={() => set("web", true)} />
           </div>
@@ -581,7 +581,7 @@ function DucterLine({ dv }: { dv: DeviceView }) {
           <i style={{ width: `${Math.round(u.progress * 100)}%` }} />
         </div>
       )}
-      {behind(u) && u.how === "self" && u.notes?.map((n) => <div class="small sub">{n}</div>)}
+      {behind(u) && u.how === "self" && u.notesBy?.[A.L.lang]?.map((n) => <div class="small sub">{n}</div>)}
       {offer && u.how !== "self" && <div class="small sub">{u.how === "app" ? t("devup.how.app", dv.name) : u.how === "manual" ? t("devup.how.manual", dv.name) : t("devup.how.source")}</div>}
       {offer && u.how === "self" && dv.state !== "awake" && <div class="small sub">{t("devup.how.away", dv.name)}</div>}
       {answer && <div class="small warn">{t(answer === "name_taken" ? "device.rename.name_taken" : `devup.why.${answer}`)}</div>}

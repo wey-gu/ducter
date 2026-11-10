@@ -28,7 +28,10 @@ func cardWorld(h *harness) {
 			{Harness: "codex", Installed: false},
 		}
 		home.Update = &protocol.DeviceUpdate{Current: "0.0.3", Latest: "0.0.4", Available: true, How: "self",
-			Notes: []string{"Update Ducter and its computers in place, with a rollback", "Device cards you can rename where they are"}}
+			NotesBy: map[string][]string{
+				"zh": {"Ducter 和它的电脑都能原地更新，出错会换回来"},
+				"en": {"Update Ducter and its computers in place, with a rollback", "Device cards you can rename where they are"},
+			}}
 		mini := list[1]
 		mini.Name, mini.Kind, mini.Platform, mini.Version = "Mac mini", "mini", "darwin-arm64", "0.0.3"
 		mini.Update = &protocol.DeviceUpdate{Current: "0.0.3", Latest: "0.0.4", Available: true, How: "app"}
@@ -60,12 +63,16 @@ func TestDeviceCards(t *testing.T) {
 			for _, want := range []string{
 				L.T("card.status.home", h.app.S.PersonaName),
 				L.T("card.ducter.update", "0.0.4"),
-				"Update Ducter and its computers in place, with a rollback",
+				map[i18n.Lang]string{i18n.ZH: "Ducter 和它的电脑都能原地更新，出错会换回来", i18n.EN: "Update Ducter and its computers in place, with a rollback"}[lang],
 				L.T("coin.socket"),
 			} {
 				if !h.tt.HasText(want) {
 					t.Fatalf("home card: missing %q in %q", want, h.tt.Texts())
 				}
+			}
+			// What's new is in the card's own language, never the other one's (D172).
+			if other := map[i18n.Lang]string{i18n.ZH: "Update Ducter and its computers in place, with a rollback", i18n.EN: "Ducter 和它的电脑都能原地更新，出错会换回来"}[lang]; h.tt.HasText(other) {
+				t.Fatalf("home card: the other language's notes %q in %q", other, h.tt.Texts())
 			}
 			if h.tt.HasText("Codex") {
 				t.Fatalf("an AI that isn't installed shows before + Sign in another AI: %q", h.tt.Texts())

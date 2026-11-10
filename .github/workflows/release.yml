@@ -229,6 +229,9 @@ jobs:
           grep -q "  Ducter-${GITHUB_REF_NAME#v}-arm64.dmg\$" assets/SHA256SUMS.txt ||
             { echo "::error::SHA256SUMS.txt doesn't list Ducter-${GITHUB_REF_NAME#v}-arm64.dmg (the updater needs it)"; exit 1; }
           scripts/ci/release-notes.sh "$GITHUB_REF_NAME" >"$RUNNER_TEMP/notes.md"
+          # D172: the cards' what's new comes only from this block (zh and en); without it they show none.
+          grep -q '<!-- whats-new' "$RUNNER_TEMP/notes.md" ||
+            echo "::warning::CHANGELOG.md's section for $GITHUB_REF_NAME has no whats-new block: device cards will show no what's new (design/release/README.md)"
           v="${GITHUB_REF_NAME#v}"
           cat >>"$RUNNER_TEMP/notes.md" <<EOF
 

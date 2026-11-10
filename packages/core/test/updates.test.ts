@@ -24,7 +24,7 @@ const probes: Partial<DeviceProbes> = {
   harnesses: async () => [],
   kind: async () => "server",
 };
-const feed = (version = "0.0.4") => async () => new Response(JSON.stringify({ tag_name: `v${version}`, body: "## What's new\n- Update in place, from any device\n- Device cards you can rename" }), { status: 200 });
+const feed = (version = "0.0.4") => async () => new Response(JSON.stringify({ tag_name: `v${version}`, body: "## What's new\n- Update in place, from any device\n- Device cards you can rename\n<!-- whats-new\nzh: 在任何设备上原地更新\nzh: 设备卡片可以改名\nen: Update in place, from any device\nen: Device cards you can rename\n-->\n" }), { status: 200 });
 
 function boot(o: { version?: string; run?: (i: RunInput) => Promise<RunOutcome>; dir?: string } = {}): Core {
   const t = o.dir ? { dir: o.dir, cleanup: () => {} } : tempDir();
@@ -72,7 +72,8 @@ test("the home's card: its version, update to the latest with what's new; one ta
   const c = await client(core.url);
   c.send({ t: "devices" });
   const f = await c.until<Devices>((x) => x.t === "devices" && Boolean(homeOf(x as Devices).update?.latest));
-  expect(homeOf(f)).toMatchObject({ version: "0.0.3", update: { current: "0.0.3", latest: "0.0.4", available: true, how: "self", notes: ["Update in place, from any device", "Device cards you can rename"] } });
+  expect(homeOf(f)).toMatchObject({ version: "0.0.3", update: { current: "0.0.3", latest: "0.0.4", available: true, how: "self", notesBy: { zh: ["在任何设备上原地更新", "设备卡片可以改名"], en: ["Update in place, from any device", "Device cards you can rename"] } } });
+  expect((homeOf(f).update as any).notes).toBeUndefined(); // the English body is never sent as notes
   const n = c.frames.length;
   c.send({ t: "device_update", device: "local" });
   expect(await c.until((x) => x.t === "update_result", n)).toMatchObject({ ok: true });

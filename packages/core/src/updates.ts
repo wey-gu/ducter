@@ -6,7 +6,7 @@ import { statSync } from "node:fs";
 import type { Bodies, DeviceUpdate, Settings, UpdateHow, UpdatePhase, UpdateReason } from "@ducter/protocol";
 import type { LogStore } from "@ducter/protocol/src/internal.ts";
 import { compareVersions, DUCTER_VERSION, isVersion } from "@ducter/protocol/src/version.ts";
-import { FRESH_MS, type Release, type ReleaseWatch } from "./release.ts";
+import { FRESH_MS, hasNotes, type Release, type ReleaseWatch } from "./release.ts";
 import { judgeResult, readResult, resultFile, runUpdate, writeResult, type Fail, type RunInput, type UpdateResult, type UpdateSys } from "./update.ts";
 import { inQuiet } from "./push.ts";
 
@@ -214,7 +214,7 @@ export function createUpdates(d: UpdatesDeps): Updates {
       available,
       how: how ?? "source",
       ...(latest ? { latest } : {}),
-      ...(available && rel?.notes.length ? { notes: rel.notes } : {}),
+      ...(available && hasNotes(rel?.notes) ? { notesBy: rel!.notes } : {}),
       ...(available && rel?.security ? { security: true } : {}),
       ...(d.release.checkedAt() ? { checkedAt: d.release.checkedAt() } : {}),
     };
@@ -223,7 +223,8 @@ export function createUpdates(d: UpdatesDeps): Updates {
       const age = now() - p.at;
       // A failure stands only while the device still runs what it started from (D167): one
       // that has since reached the target, or moved on, didn't fail as far as anyone can see.
-      const stands = p.phase !== "failed" || judgeResult({ ok: false, from: p.from, to: p.to }, current) === "failed";
+      // "Nothing newer is out" is never a failure.
+      const stands = p.phase !== "failed" || (p.reason !== "no_release" && judgeResult({ ok: false, from: p.from, to: p.to }, current) === "failed");
       const shown = stands && (p.phase === "done" ? age < DONE_SHOWN_MS : p.phase === "failed" ? age < FAILED_SHOWN_MS : true);
       if (shown) {
         Object.assign(out, {

@@ -1658,6 +1658,8 @@ const signin: Record<Lang, Record<string, string>> = {
     "live.blind": "它现在看不见",
     "live.where": "Ducter 的浏览器",
     "live.opening": "正在打开 %s…",
+    "live.stuck": "%s 上的浏览器 40 秒都没有回应，页面没打开。可以再试一次。",
+    "live.retry": "再试一次",
     "live.back": "后退",
     "live.reload": "刷新",
     "live.keyboard": "键盘",
@@ -1668,6 +1670,7 @@ const signin: Record<Lang, Record<string, string>> = {
     "web.add": "装上",
     "web.installing": "正在装浏览器……第一次要下载一会儿",
     "web.deps": "这台还缺 Chrome 要用的几个系统库。在这台上运行一次下面这行，再试一次。",
+    "web.sandbox": "这台的系统不让 Chrome 开它的安全沙盒。在这台上运行一次下面这行（只给 Ducter 的 Chrome 放行），再试一次。",
     "web.failed": "浏览器没装好：%s",
     "web.retry": "再试一次",
     "web.try": "试一下",
@@ -1696,6 +1699,8 @@ const signin: Record<Lang, Record<string, string>> = {
     "live.blind": "it can't see this now",
     "live.where": "Ducter's browser",
     "live.opening": "Opening %s…",
+    "live.stuck": "The browser on %s didn't answer within 40 seconds, so the page didn't open. You can try again.",
+    "live.retry": "Try again",
     "live.back": "Back",
     "live.reload": "Reload",
     "live.keyboard": "Keyboard",
@@ -1706,6 +1711,7 @@ const signin: Record<Lang, Record<string, string>> = {
     "web.add": "Add",
     "web.installing": "Getting the browser ready… the first time takes a few minutes",
     "web.deps": "Chrome needs a few system libraries this device doesn't have yet. Run this line on it once, then try again.",
+    "web.sandbox": "This system doesn't let Chrome start its security sandbox. Run this line on it once (it allows only Ducter's Chrome), then try again.",
     "web.failed": "The browser didn't install: %s",
     "web.retry": "Try again",
     "web.try": "Try it",
@@ -2200,6 +2206,25 @@ export interface Strings {
   t(key: string, ...args: unknown[]): string;
 }
 
+/** Tests (test/guard.ts): hears every placeholder the copy prints filled with an empty string. */
+let onEmptyArg: ((key: string, arg: number) => void) | undefined;
+export function guardEmptyArgs(fn: ((key: string, arg: number) => void) | undefined) {
+  onEmptyArg = fn;
+}
+
+/** Which of n arguments a format prints (%s in order, %[2]s by position; %% none). */
+export function usedArgs(fmt: string, n: number): boolean[] {
+  const used = new Array<boolean>(n).fill(false);
+  let i = 0;
+  fmt.replace(/%(?:\[(\d+)\])?([sd%])/g, (_m, pos: string | undefined, verb: string) => {
+    if (verb === "%") return "";
+    const at = pos ? Number(pos) - 1 : i++;
+    if (at >= 0 && at < n) used[at] = true;
+    return "";
+  });
+  return used;
+}
+
 export function strings(lang: Lang): Strings {
   const table = TABLES[lang];
   return {
@@ -2207,6 +2232,10 @@ export function strings(lang: Lang): Strings {
     t(key, ...args) {
       const v = table[key] ?? en[key] ?? key; // a missing key shows itself, so it gets fixed
       if (!args.length) return v;
+      if (onEmptyArg) {
+        const used = usedArgs(v, args.length);
+        args.forEach((a, i) => used[i] && (a === undefined || a === null || (typeof a === "string" && !a.trim())) && onEmptyArg!(key, i));
+      }
       const out = format(v, args);
       return lang === "zh" ? joinHan(spaceHan(out)) : out;
     },

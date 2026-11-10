@@ -8,7 +8,7 @@ import type { ServerFrame } from "@ducter/protocol";
 import { createLive } from "../src/browser/live.ts";
 import type { BrowserHost, RunningBrowser } from "../src/browser/host.ts";
 import type { CdpConn, CdpEvent } from "../src/browser/cdp.ts";
-import { aptNames, cftPlatform, chromeArgs, debPackages, installChrome, plainUserAgent, type Exec } from "../src/browser/chrome.ts";
+import { aptNames, cftPlatform, chromeArgs, debPackages, installChrome, plainUserAgent, sandboxBlocked, sandboxCommand, type Exec } from "../src/browser/chrome.ts";
 import { readSites, rememberSite, siteOf } from "../src/browser/sites.ts";
 import { pageUrl } from "../src/browser/tools.ts";
 import { forwardText } from "../src/decisions.ts";
@@ -335,6 +335,24 @@ describe("上网 on a Linux server (D151)", () => {
     expect(s.installs()).toBe(1);
     s.v.stop();
     s.td.cleanup();
+  });
+
+  // Found by the E2E rig (D172): Ubuntu 24.04 as a normal user, Chrome dies "No usable sandbox!".
+  test("a blocked sandbox (Ubuntu 23.10+ AppArmor) as a normal user: the one line that allows only Ducter's Chrome", async () => {
+    const s = view(() => ({ state: "deps", command: "sudo sh -c '…'", why: "sandbox" }));
+    expect(await web(s.v)).toMatchObject({ state: "unavailable", reason: "browser_sandbox", detail: "sudo sh -c '…'" });
+    expect((await s.v.setAbility("local", "web", true)).ok).toBe(true);
+    expect(s.installs()).toBe(1);
+    s.v.stop();
+    s.td.cleanup();
+    expect(sandboxBlocked({ read: () => "1\n", exists: () => false })).toBe(true);
+    expect(sandboxBlocked({ read: () => "1\n", exists: () => true })).toBe(false); // the profile is there
+    expect(sandboxBlocked({ read: () => "0\n", exists: () => false })).toBe(false);
+    expect(sandboxBlocked({ root: true, read: () => "1", exists: () => false })).toBe(false); // root: --no-sandbox
+    const cmd = sandboxCommand("/home/u/.ducter");
+    expect(cmd).toContain("profile ducter-chrome /home/u/.ducter/browser/*/chrome-linux*/chrome flags=(unconfined)");
+    expect(cmd).toContain("userns,");
+    expect(cmd).toContain("apparmor_parser -r /etc/apparmor.d/ducter-chrome");
   });
 
   test("removed stays removed", async () => {

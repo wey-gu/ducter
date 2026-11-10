@@ -29,9 +29,13 @@ test("versions compare as semver, pre-releases before their release", () => {
   expect(compareVersions("garbage", "0.0.1")).toBe(-1);
 });
 
-test("what's new: the notes' first plain lines, without headings, marks or the install boilerplate", () => {
-  const body = "## 0.0.4\n\n- **Update in place** from the app or `ducter update`\n- Device cards, [renamed](https://x) in place\n- third\n\n### Install\n";
-  expect(whatsNew(body)).toEqual(["Update in place from the app or ducter update", "Device cards, renamed in place"]);
+test("what's new: each language's own short lines from the whats-new block, whole; none without it", () => {
+  // The author's zh card showed "Your tasks know which computer to run on / With more than one computer (say a server and a MacBook that does tasks f…".
+  const body = "**Your tasks know which computer to run on**\n- With more than one computer (say a server and a MacBook that does tasks for it), your partner picks\n";
+  expect(whatsNew(body)).toEqual({}); // the English body is never the notes
+  const block = body + "\n<!-- whats-new\nzh: 每件事都说清楚在哪台电脑上做\nzh：合电脑时，一张卡片就搬好\nzh: 第三行不显示\nen: Each task says which computer it runs on\nen: " + "x".repeat(81) + "\n-->\n";
+  expect(whatsNew(block)).toEqual({ zh: ["每件事都说清楚在哪台电脑上做", "合电脑时，一张卡片就搬好"], en: ["Each task says which computer it runs on"] });
+  expect(whatsNew("<!-- whats-new\nen: Only English\n-->")).toEqual({ en: ["Only English"] }); // a zh card then shows none
   expect(isSecurity("## Security\n- fix")).toBe(true);
   expect(isSecurity("- faster", "0.0.4")).toBe(false);
 });
@@ -40,8 +44,8 @@ const json = (v: unknown, status = 200) => new Response(JSON.stringify(v), { sta
 
 describe("the release feed", () => {
   test("the API answer, drafts and pre-releases never offered, 404 is no releases", async () => {
-    const rel = await fetchLatest(async () => json({ tag_name: "v0.0.4", body: "- Update in place", html_url: "https://github.com/wey-gu/ducter/releases/tag/v0.0.4", assets: [{ name: "SHA256SUMS.txt" }] }));
-    expect(rel).toMatchObject({ version: "0.0.4", notes: ["Update in place"], security: false, assets: ["SHA256SUMS.txt"] });
+    const rel = await fetchLatest(async () => json({ tag_name: "v0.0.4", body: "- Update in place\n<!-- whats-new\nen: Update in place\n-->", html_url: "https://github.com/wey-gu/ducter/releases/tag/v0.0.4", assets: [{ name: "SHA256SUMS.txt" }] }));
+    expect(rel).toMatchObject({ version: "0.0.4", notes: { en: ["Update in place"] }, security: false, assets: ["SHA256SUMS.txt"] });
     expect(await fetchLatest(async () => json({ tag_name: "v0.0.5", prerelease: true }))).toBeUndefined();
     expect(await fetchLatest(async () => json({ message: "Not Found" }, 404))).toBeUndefined();
   });
@@ -50,7 +54,7 @@ describe("the release feed", () => {
     const rel = await fetchLatest(async (url) =>
       url.includes("api.github.com") ? json({ message: "rate limit" }, 403) : new Response(null, { status: 302, headers: { location: "https://github.com/wey-gu/ducter/releases/tag/v0.0.4" } }),
     );
-    expect(rel).toMatchObject({ version: "0.0.4", notes: [] });
+    expect(rel).toMatchObject({ version: "0.0.4", notes: {} });
   });
 
   test("offline: silent, the last answer stays; read again only after an hour", async () => {

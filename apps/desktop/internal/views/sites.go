@@ -23,8 +23,8 @@ type sitesState struct {
 func (a *App) ducterBrowserTrouble(c *ui.Context, dv *protocol.DeviceView, ab *protocol.DeviceAbility) {
 	t := a.T
 	switch ab.Reason {
-	case "browser_deps":
-		a.reasonLine(c, a.L.T("ability.reason.browser_deps"))
+	case "browser_deps", "browser_sandbox":
+		a.reasonLine(c, a.L.T("ability.reason."+ab.Reason))
 		a.commandBoxSized(c, ab.Detail, 12)
 	default:
 		a.reasonLine(c, a.L.T("ability.reason.browser_failed", ab.Detail))

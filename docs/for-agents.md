@@ -45,8 +45,8 @@ asks you when it isn't clear:
   at your own domain, over HTTPS.
 - **Other computers can do tasks** for it. They keep nothing of their own but the work in
   progress.
-- **Claude Code or Codex** has to be installed and signed in on each computer that does the
-  work.
+- **An AI agent** (Claude Code, Codex, pi or DeepSeek Harness) has to be installed and signed
+  in on each computer that does the work.
 - Ducter only listens on the computer it runs on. On a server, [Caddy](https://caddyserver.com)
   answers at your domain and passes requests to it.
 

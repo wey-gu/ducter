@@ -13,7 +13,8 @@ write to a colleague.
 ## What you need
 
 - **A Mac with Apple silicon** (M1 or later).
-- **An AI agent:** Claude Code or Codex, signed in with your own account
+- **An AI agent:** Claude Code or Codex signed in with your own account, or pi or DeepSeek
+  Harness with your DeepSeek account
   ([which agents](faq.md#which-ai-agents-does-it-work-with)). Ducter does its work through
   the plan you already have. If neither is set up yet, Ducter installs one for you in the next
   step.

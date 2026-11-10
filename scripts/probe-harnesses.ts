@@ -8,7 +8,7 @@
 // facts (design/harnesses.md) and widens `verified`.
 import { readFileSync, realpathSync } from "node:fs";
 import { HARNESS_IDS, type HarnessId } from "../packages/protocol/src/harnesses.ts";
-import { HARNESS_FACTS, versionStanding } from "../packages/protocol/src/harness-facts.ts";
+import { CLAUDE_SWITCHES, HARNESS_FACTS, versionStanding } from "../packages/protocol/src/harness-facts.ts";
 
 type Line = { harness: HarnessId; what: string; ok: boolean | null; detail: string };
 const lines: Line[] = [];
@@ -59,9 +59,18 @@ function probeClaude() {
     ["precomputeCompactionEnabled", "background summary setting"],
     ["stdout appended as custom compact instructions", "PreCompact hook semantics"],
     ["e-13000", "compaction buffer (13K)"],
-    ["var AZr=20000", "summary reserve (20K; minified name may move)"],
+    // The switches Ducter's code sets (harness-facts CLAUDE_SWITCHES): gone = Ducter sets a dead switch.
+    [CLAUDE_SWITCHES.toolSearchEnv, "tool search switch (clean sessions load Ducter's tools up front)"],
+    [CLAUDE_SWITCHES.alwaysLoadMeta, "per-tool alwaysLoad meta (tasks keep Ducter's tools loaded)"],
+    [CLAUDE_SWITCHES.readCapEnv, "Read output cap (the partner's working set)"],
+    ["claudeMdExcludes", "user memory exclusion (the partner's clean setup)"],
+    ['"--chrome"', "Claude in Chrome flag (browser places, D126)"],
   ];
   for (const [s, what] of needles) say("claude-code", what, data.includes(s), s);
+  // A minified name moves with every build (2.1.322: the 20K reserve's variable was renamed, and
+  // the compaction code now has per-window entries and a fork rule for the percent override), so
+  // this one only informs; the live checks in design/harnesses.md decide.
+  say("claude-code", "summary reserve (20K)", data.includes("var AZr=20000") ? true : null, "minified name; re-run the live compaction check when it moves");
 }
 
 /** Codex validates its config keys' types: a string where it wants a number names the key. */

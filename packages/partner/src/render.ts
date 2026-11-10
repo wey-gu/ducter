@@ -29,7 +29,7 @@ export function renderTime(now: Date): string {
 }
 
 function renderReport(r: Bodies["report"], title?: string): string {
-  const head = `[task ${r.taskId}${title ? ` "${title}"` : ""} report: ${r.state}] ${clip(r.summary, 600)}`;
+  const head = `[task ${r.taskId}${title ? ` "${clip(title, 120)}"` : ""} report: ${r.state}] ${clip(r.summary, 600)}`;
   const lines = [head];
   for (const ev of r.evidence ?? []) lines.push(`  evidence (${ev.kind}): ${ev.label} -> ${ev.ref}${ev.check === "verified" ? " [Ducter checked: there]" : ev.check === "missing" ? " [Ducter checked: NOT there; not done until it is]" : ""}`);
   for (const q of r.questions ?? []) {
@@ -204,10 +204,17 @@ function took(c: TaskCard): string {
   return ` · took about ${min < 60 ? `${min} min` : `${Math.round(min / 6) / 10} h`}`;
 }
 
+/** Open tasks listed in a fresh session's seed; the rest are named by count (research/48 F2). */
+export const OPEN_TASKS_MAX = 20;
+
 export function renderTasks(all: TaskCard[], maxDone = 8, ctx?: Pick<RenderCtx, "merged" | "taskBase">): string {
   // A task dropped before its brief arrived (D120) never did anything: not worth a line.
   const cards = all.filter((c) => !(c.attention === "dropped" && c.reason === "not started"));
-  const open = cards.filter((c) => ACTIVE.has(c.attention));
+  // Those that need the user first, then the most recently moved.
+  const rank = (c: TaskCard) => (c.attention === "needs_you" || c.attention === "blocked" ? 0 : 1);
+  const allOpen = cards.filter((c) => ACTIVE.has(c.attention));
+  const open = allOpen.length > OPEN_TASKS_MAX ? [...allOpen].sort((a, b) => rank(a) - rank(b) || b.updatedAt.localeCompare(a.updatedAt)).slice(0, OPEN_TASKS_MAX) : allOpen;
+  const hidden = allOpen.length - open.length;
   const closed = cards
     .filter((c) => !ACTIVE.has(c.attention))
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
@@ -219,11 +226,12 @@ export function renderTasks(all: TaskCard[], maxDone = 8, ctx?: Pick<RenderCtx, 
     const merged = ctx?.merged?.(c.taskId) ? ` · merged into ${ctx.taskBase?.(c.taskId) ?? "its base branch"} by the user (new work = a new task)` : "";
     // D128: one the user opened themselves (their words are its brief); you report it like any task.
     const yours = c.openedBy === "you" ? " · the user opened this one themselves" : "";
-    return `- ${c.taskId} "${c.title}" · ${c.attention}${yours}${took(c)}${merged}${where}${last}`;
+    return `- ${c.taskId} "${clip(c.title, 120)}" · ${c.attention}${yours}${took(c)}${merged}${where}${last}`;
   };
   const out: string[] = [];
   out.push("Open:");
   out.push(...(open.length ? open.map(line) : ["- (none)"]));
+  if (hidden) out.push(`- (${hidden} more open tasks not listed, quieter ones; log_search finds one by its words)`);
   if (closed.length) {
     out.push("Recently finished:");
     out.push(...closed.map(line));

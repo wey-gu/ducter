@@ -51,7 +51,8 @@ describe("live-run regressions", () => {
     await partner.idle();
     expect(fr.sessions[0]!.spec.isolateUserConfig).toBe(true);
     expect(fr.sessions[0]!.spec.readOnly).toBe(true); // principle 6: no native write or run tools
-    expect(fr.sessions[0]!.spec.env).toEqual({ ENABLE_TOOL_SEARCH: "false" });
+    // Loading its tools up front is the adapter's switch for an isolated session (runner/oar.ts).
+    expect(fr.sessions[0]!.spec.env).toBeUndefined();
   });
 
   test("task_open without title derives one from the brief; without brief it fails before touching the channel", async () => {

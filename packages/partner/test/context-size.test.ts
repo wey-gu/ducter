@@ -147,7 +147,7 @@ test("the harness's compactor is bounded for the partner, above the re-cut", asy
   expect(spec.harnessCompactAt).toBe(200_000);
   expect(spec.contextWindow).toBe(200_000); // D135: a small window, standard-window model (runner/oar.ts)
   expect(spec.harnessCompactAt!).toBeGreaterThan(120_000);
-  expect(spec.env).toEqual({ ENABLE_TOOL_SEARCH: "false" });
+  expect(spec.isolateUserConfig).toBe(true); // the adapter loads its tools up front (runner/oar.ts)
   await w.partner.close();
   // A larger re-cut size keeps the bound above it.
   const big = setup(reporting([]), { recutTokens: 300_000 });

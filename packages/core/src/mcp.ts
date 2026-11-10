@@ -6,6 +6,7 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import type { McpHub, ToolHandler } from "@ducter/protocol/src/internal.ts";
+import { CLAUDE_SWITCHES } from "@ducter/protocol/src/harness-facts.ts";
 
 type Role = "partner" | "task";
 interface Tool {
@@ -62,7 +63,7 @@ const b64 = (s: string) => Buffer.from(s).toString("base64url");
  * per-server alwaysLoad, and ENABLE_TOOL_SEARCH=false would load the user's own servers up front
  * too. Codex and pi load MCP tools directly; other clients ignore the key.
  */
-const ALWAYS_LOAD = { "anthropic/alwaysLoad": true } as const;
+const ALWAYS_LOAD = { [CLAUDE_SWITCHES.alwaysLoadMeta]: true } as const;
 
 export function createMcpHub(opts: { secret: string; port?: number; version?: string }): CoreMcpHub {
   let port = opts.port ?? 7777;

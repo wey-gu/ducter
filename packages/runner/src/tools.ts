@@ -59,24 +59,33 @@ export const checkpointSchema = {
   required: ["text"],
 } as const;
 
+/**
+ * A report enters the partner's turn verbatim (partner/src/render.ts) and the Log, so every part of
+ * it is bounded, not only the summary (principle 5; research/48 F2). A task that sends more questions
+ * or evidence than this is cut to the first ones, which is what a person could act on anyway.
+ */
+export const REPORT_BOUNDS = { questions: 5, questionText: 500, questionDefault: 200, id: 40, evidence: 12, label: 120, ref: 300 } as const;
+const cut = (s: string, n: number) => (s.length <= n ? s : s.slice(0, n - 1) + "…");
+
 export function normalizeReport(taskId: string, args: any): Bodies["report"] {
   const state = STATES.includes(args?.state) ? (args.state as Bodies["report"]["state"]) : "progress";
   let summary = String(args?.summary ?? "").trim();
   if (summary.length > SUMMARY_MAX) summary = summary.slice(0, SUMMARY_MAX - 1) + "…";
+  const B = REPORT_BOUNDS;
   const questions: Question[] = Array.isArray(args?.questions)
-    ? args.questions.map((q: any, i: number) => ({
-        id: String(q?.id ?? `q${i + 1}`),
-        text: String(q?.text ?? ""),
+    ? args.questions.slice(0, B.questions).map((q: any, i: number) => ({
+        id: cut(String(q?.id ?? `q${i + 1}`), B.id),
+        text: cut(String(q?.text ?? ""), B.questionText),
         blocking: Boolean(q?.blocking),
-        default: q?.default != null ? String(q.default) : undefined,
+        default: q?.default != null ? cut(String(q.default), B.questionDefault) : undefined,
         reversible: Boolean(q?.reversible),
       }))
     : [];
   const evidence: EvidenceRef[] = Array.isArray(args?.evidence)
-    ? args.evidence.map((e: any) => ({
+    ? args.evidence.slice(0, B.evidence).map((e: any) => ({
         kind: EVIDENCE_KINDS.includes(e?.kind) ? e.kind : "log",
-        label: String(e?.label ?? ""),
-        ref: String(e?.ref ?? ""),
+        label: cut(String(e?.label ?? ""), B.label),
+        ref: cut(String(e?.ref ?? ""), B.ref),
         // never the task's own `check`: only Ducter sets it
       }))
     : [];

@@ -105,6 +105,22 @@ const cc = (how: string): Evidence => ({ kind: "VERIFIED", how, date: D, version
 const cx = (how: string): Evidence => ({ kind: "VERIFIED", how, date: D, version: "0.167.0" });
 const pi = (how: string): Evidence => ({ kind: "VERIFIED", how, date: D, version: "1.4.0" });
 
+/**
+ * Claude Code's switches that Ducter's code sets, named once here so the adapter (runner/oar.ts),
+ * the MCP hub (core/mcp.ts) and the probe (scripts/probe-harnesses.ts) read the same strings
+ * (research/48: a guardrail test fails on these literals anywhere else).
+ *  - toolSearchEnv: "false" loads every MCP tool up front. Set for clean (isolated) sessions only:
+ *    there no user server competes, and deferral costs a model round trip before the ack (~3 s).
+ *  - alwaysLoadMeta: the per-tool `_meta` key that keeps Ducter's own tools loaded in tasks,
+ *    which keep the user's servers and so their tool search (2.1.319 binary strings, research/08).
+ *  - readCapEnv: the cap on one Read's output, the partner's working-set rule (principle 5).
+ */
+export const CLAUDE_SWITCHES = {
+  toolSearchEnv: "ENABLE_TOOL_SEARCH",
+  alwaysLoadMeta: "anthropic/alwaysLoad",
+  readCapEnv: "CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS",
+} as const;
+
 /** Claude Code's compaction point for a window (2.1.319 binary): window - min(maxOutput, 20K) - 13K. */
 export const CLAUDE_SUMMARY_RESERVE = 20_000;
 export const CLAUDE_COMPACT_BUFFER = 13_000;

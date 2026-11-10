@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.0.7
+
+**Your tasks know which computer to run on**
+- With more than one computer (say a server and a MacBook that does tasks for it), your partner
+  picks the computer and the AI agent together, from what the task needs: a repo, browsing, your
+  signed-in sites, a Mac app, a long run. Each task says where it runs ("在 hel 上 · 用 Ducter
+  自己的浏览器"), and why on a tap.
+- It asks only when it matters: the right computer is asleep (wait for it, the default, or do it
+  elsewhere now), or a task would get more access, like your Chrome. Equal computers never ask.
+- Switch who and where from one sheet. Tasks move between computers (a repo task pushes its
+  branch first); New task offers a computer when there's a real choice.
+- "我要合电脑了": one card moves what can move to an always-on computer.
+- A Mac that does tasks for your server can now browse too, in your Chrome first.
+
+**Updating, calmly**
+- Restart to update shows "Putting the new version in, back in a moment", then the window goes;
+  no blank, frozen window. The new version says once that it was updated.
+- "Up to date" always says when it was checked; Ducter checks every hour, and again as soon as a
+  newer app connects.
+
 ## 0.0.6
 
 **Notifications on the iPhone app, from any Ducter**

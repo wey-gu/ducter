@@ -104,8 +104,10 @@ func (a *App) escDevice() bool {
 }
 
 // cardName is the card's title: the name, which a click turns into a field
-// (Enter keeps it, Esc puts it back), when it can be renamed.
-func (a *App) cardName(c *ui.Context, id, name string, renamable bool) {
+// (Enter keeps it, Esc puts it back), when it can be renamed. real is the name
+// the field edits: the device's own name, which for this Mac differs from the
+// "this Mac" the title says (D155: the home renames too).
+func (a *App) cardName(c *ui.Context, id, name, real string, renamable bool) {
 	t := a.T
 	r := &a.devState().rename
 	if res := a.S.Renamed; res != nil {
@@ -141,10 +143,10 @@ func (a *App) cardName(c *ui.Context, id, name string, renamable bool) {
 		b.Children(func() {
 			ui.Box(c).Size(14, 14) // the pencil's twin, so the name stays centered
 			a.heading(c, name, size).SingleLine().Shrink(1)
-			// A quiet pencil, on hover only.
+			// A quiet pencil, always there so the name reads as editable; full ink on hover.
 			pen := ui.Box(c.Key("pencil")).Size(14, 14).AccessHidden(true)
 			if !hover {
-				pen.Opacity(0)
+				pen.Opacity(0.45)
 			}
 			pen.Draw(func(p *ui.Painter, rr ui.Rect) {
 				var m ui.Path
@@ -157,13 +159,13 @@ func (a *App) cardName(c *ui.Context, id, name string, renamable bool) {
 			})
 		})
 		if b.Clicked() {
-			*r = renameState{device: id, draft: name}
+			*r = renameState{device: id, draft: real}
 		}
 		return
 	}
 	save := func() {
 		next := strings.TrimSpace(r.draft)
-		if next == "" || next == name {
+		if next == "" || next == real {
 			r.device = ""
 			return
 		}
@@ -171,7 +173,7 @@ func (a *App) cardName(c *ui.Context, id, name string, renamable bool) {
 		a.send(protocol.RenameDeviceReq{T: "rename_device", Device: id, Name: next})
 	}
 	ui.Column(c).Gap(t.S2).Children(func() {
-		in := ui.TextInput(c.Key("input:device-name:"+id), &r.draft).Placeholder(name).Label(a.L.T("device.rename")).
+		in := ui.TextInput(c.Key("input:device-name:"+id), &r.draft).Placeholder(real).Label(a.L.T("device.rename")).
 			Font(t.Display).FontSize(t.LG).FontWeight(800).Padding(t.S1, t.S2).Radius(t.RadiusSM).Background(t.Bg).Border(1, t.Line).
 			MinWidth(120).OnSubmit(save)
 		if !r.focused {

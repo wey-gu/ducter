@@ -3790,8 +3790,22 @@ button.dev-name {
 @keyframes dc-drift { 50% { transform: translateX(4px); } }
 @keyframes dc-blanket { 50% { transform: scaleY(1.045); } }
 .dc-name { display: flex; justify-content: center; margin-top: 2px; }
-.dc-name .dev-name { position: relative; padding: 2px 10px; border: 0; border-radius: 10px; background: none; font-size: 26px; text-align: center; overflow: visible; }
+.dc-name .dev-name { position: relative; padding: 2px 10px; border: 0; border-radius: 10px; background: none; font-size: 26px; text-align: center; overflow: visible; white-space: normal; overflow-wrap: anywhere; text-wrap: balance; max-width: 100%; }
 .dc-name button.dev-name:active { background: var(--sunken); }
+/* The pencil beside a name that renames in place: always there, quiet, so the name reads as editable
+   on a phone too (no hover there); full ink on hover. Drawn by mask so it takes the ink token. */
+.dev-name .pen {
+  display: inline-block;
+  width: 0.55em;
+  height: 0.55em;
+  margin-inline-start: 0.3em;
+  vertical-align: 0.1em;
+  background: var(--muted);
+  opacity: 0.6;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath d='M3 11 10.5 3.5' stroke='%23000' stroke-width='2.2' stroke-linecap='round'/%3E%3Cpath d='M1.5 12.5 2.4 9.4 4.6 11.6Z'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath d='M3 11 10.5 3.5' stroke='%23000' stroke-width='2.2' stroke-linecap='round'/%3E%3Cpath d='M1.5 12.5 2.4 9.4 4.6 11.6Z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+@media (any-hover: hover) { button.dev-name:hover .pen { opacity: 1; background: var(--ink); } }
 .dc-name .dev-edit { align-items: center; }
 .dc-status { margin: 0 0 var(--s4); text-align: center; font-size: var(--md); color: var(--ink-muted); }
 .dc-status.working { color: var(--working-ink); font-weight: 700; }

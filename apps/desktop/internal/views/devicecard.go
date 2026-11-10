@@ -69,11 +69,10 @@ func (a *App) deviceDetail(c *ui.Context, dv *protocol.DeviceView) {
 	}
 	name := a.deviceName(dv)
 	card.Role(ui.RoleGroup).Label(name + ", " + a.kindLine(dv)).Children(func() {
-		// D155: every device renames in place, the home too; only "this Mac" is
-		// said for the Mac this app runs Ducter on.
-		renamable := !(dv.Home && name != dv.Name)
+		// D155: every device renames in place, the home too; the title says "this Mac"
+		// for the Mac this app runs Ducter on, and the field edits its real name.
 		a.sheetHero(c, "dev:"+dv.ID, deviceArt(dv), deviceIdle(dv), dv.State == protocol.DeviceUnreachable)
-		a.sheetName(c, dv.ID, name, renamable)
+		a.sheetName(c, dv.ID, name, dv.Name, true)
 		line, ink, strong := a.sheetStatus(dv)
 		a.statusLine(c, line, ink, strong)
 		// D157: a laptop doing tasks, with another computer to carry them: one tap before closing it.
@@ -104,7 +103,7 @@ func (a *App) clientCard(c *ui.Context, cl *protocol.ReachClient) {
 		kind = idleFloat
 	}
 	a.sheetHero(c, "cl:"+cl.ID, art, kind, false)
-	a.sheetName(c, cl.ID, name, true)
+	a.sheetName(c, cl.ID, name, cl.Name, true)
 	line, _ := a.clientState(cl)
 	if computer != "" && !isCLI(cl) && a.isThisMac(computer) {
 		line = a.L.T("card.status.this")
@@ -155,9 +154,9 @@ func (a *App) sheetHero(c *ui.Context, key, art string, kind idleKind, grey bool
 }
 
 // sheetName is the name under the clay, centered, renamed by clicking it.
-func (a *App) sheetName(c *ui.Context, id, name string, renamable bool) {
+func (a *App) sheetName(c *ui.Context, id, name, real string, renamable bool) {
 	ui.Row(c.Key("sheet-name:"+id)).Justify(ui.Center).Margin(2, 0, 0, 0).Children(func() {
-		a.cardName(c, id, name, renamable)
+		a.cardName(c, id, name, real, renamable)
 	})
 }
 

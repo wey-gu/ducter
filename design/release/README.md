@@ -40,9 +40,60 @@ app to TestFlight. Pull requests and `main` run `.github/workflows/ci.yml`.
    the notification relay to `api.push.apple.com`. The relay needs its APNs key and settings
    first: `design/release/push-relay.md` (D159). No home needs a key of its own.
 
-After this, every release is: bump the version, commit, `git tag vX.Y.Z`, push the tag. An rc tag
-is no exception: bump `packages/cli/package.json` to the rc version (`0.1.0-rc.2`) and commit
+After this, every release is: write its `CHANGELOG.md` section with its what's-new lines (below),
+bump the version, run the pre-release gate (below), commit, `git tag vX.Y.Z`, push the tag. An rc
+tag is no exception: bump `packages/cli/package.json` to the rc version (`0.1.0-rc.2`) and commit
 before tagging `v0.1.0-rc.2`, or `meta` fails on the mismatch.
+
+### What's new, in both languages (D172)
+
+A device card that offers an update shows what's new in the reader's own language, at most two
+short whole lines, and nothing when the release has none in that language (never the English body,
+never cut mid-sentence). Each `## X.Y.Z` section of `CHANGELOG.md` carries them as an HTML comment,
+which GitHub's release page doesn't render:
+
+```md
+## 0.0.8
+
+<!-- whats-new
+zh: 每件事都说清楚在哪台电脑上做
+en: Each task says which computer it runs on
+-->
+
+**…the full notes, in English, as before…**
+```
+
+At most two lines per language, each at most 40 characters in zh and 80 in en (a longer line is
+dropped, not cut). `packages/core/test/changelog.test.ts` fails a section after 0.0.7 without both
+languages or with a line too long.
+
+### The pre-release gate: `bun run e2e:linux`
+
+Before tagging, run the near-real E2E rig on this Mac (`scripts/e2e/linux.ts`, about 15 minutes,
+needs colima, Go and network for Bun, apt and Chrome for Testing). It builds three Linux bundles
+of the checkout with made-up versions (9.0.1 < 9.0.2 < 9.0.3) the way the `linux` job does,
+starts a colima VM of its own (profile `ducter-e2e`, Ubuntu with systemd, mounting only a scratch
+folder, `--activate=false` so this Mac's Docker context stays), and then, from a headless client
+that is the Mac app's own client and frame decoder (`apps/desktop/cmd/e2eclient`):
+
+1. installs 9.0.1 from its tarball with its `install.sh --service` (the systemd user service, as
+   on a server), and pairs the client with a code;
+2. updates in place twice, 9.0.1 → 9.0.2 → 9.0.3, from 更新, against a local feed and mirror
+   (`DUCTER_UPDATE_FEED`, `DUCTER_UPDATE_MIRROR`: loopback only), checking the card offers the
+   release's own zh line and never says 没更新成 once the home runs the target;
+3. adds 上网 (running each line Ducter says, as a person would: Chrome's system libraries, and on
+   Ubuntu 23.10+ the AppArmor profile that lets its Chrome keep its sandbox) and runs 试一下:
+   real JPEG frames must arrive and decode in the Mac app's own decoder (a still page paints once,
+   so the client taps 刷新 for the next);
+4. updates pi (a fake package on a local npm registry, `DUCTER_NPM_REGISTRY`, loopback only)
+   1.5.0 → 1.5.1, then asks a worker whose pi was updated behind the home's back to update
+   again: "nothing newer" must not show as a failure.
+
+It deletes the VM and the builds at the end (`--keep` leaves them; the log stays in the scratch
+folder). The home in the VM listens on 47777, never 7777 (lima forwards the VM's ports to this
+Mac's loopback). What it can't stand in for: a real network hop and TLS between the Mac and the
+server, the auth gate seen from a non-loopback peer, an x64 server, and the signed Mac app's own
+update; those still need hel and a real Mac before a release.
 
 ## What a tag does
 
@@ -52,7 +103,7 @@ before tagging `v0.1.0-rc.2`, or `meta` fails on the mismatch.
 | `macos` | macos-15 (arm64) | Imports the Developer ID `.p12` into a throwaway keychain (`scripts/ci/import-certificate.sh`), writes the API key `.p8`, runs `scripts/make-app.sh` with `DUCTER_REQUIRE_NOTARIZATION=1`. That script signs inside out with the hardened runtime, notarizes the app and the DMG with the API key, staples both, and checks them with `spctl`. The job checks the DMG again and uploads `Ducter-X-arm64.dmg`. |
 | `linux` | ubuntu | `scripts/install.sh --linux` builds `bun-linux-arm64` and `bun-linux-x64` with build.sh's pinned Bun 1.4.4. It smoke-runs the x64 binary, then packs `ducter-X-linux-{arm64,x64}.tar.gz`. Each tarball unpacks to one folder holding `ducter` and `install.sh`. |
 | `ios` | macos-26 (Xcode 26) | `scripts/ci/testflight.sh`: xcodegen (unless the project is committed), `xcodebuild archive`, then `-exportArchive` with `destination=upload`. Marketing version is the tag without its suffix; the build number is `run_number.run_attempt`. It skips with a notice when `apps/ios` isn't on the tagged commit or no key is set, and it never blocks the GitHub Release. |
-| `release` | ubuntu | Writes `SHA256SUMS.txt`. Notes come from the `## X` section of `CHANGELOG.md` if there is one, otherwise from the commit subjects since the previous `v*` tag (`scripts/ci/release-notes.sh`). The release is created as a draft, the files are uploaded, then it is published. |
+| `release` | ubuntu | Writes `SHA256SUMS.txt`. Notes come from the `## X` section of `CHANGELOG.md` if there is one (its whats-new block is what the cards show; a section without one gets a warning), otherwise from the commit subjects since the previous `v*` tag (`scripts/ci/release-notes.sh`). The release is created as a draft, the files are uploaded, then it is published. |
 
 Only Apple silicon gets a DMG for now. An Intel build would add a `macos-15-intel` job running
 the same steps.

@@ -187,6 +187,9 @@ brings one: **Ducter's own browser**, a real Chrome that runs on the server with
 - **If the server lacks a few system libraries**, and Ducter doesn't run as root, it can't
   install them itself. The card says so under its chips, with the one line to run on the server
   (`sudo apt-get install …`); run it, then **Try again**. As root, Ducter installs them itself.
+- **On Ubuntu 23.10 and later** (24.04 included), the system doesn't let a normal user's Chrome
+  start its security sandbox. The card says so with one line to run on the server once: it
+  allows only Ducter's copy of Chrome, and keeps the sandbox on. Run it, then **Try again**.
 - **Its profile is its own**, kept on the server, separate from any Chrome of yours. Sites you
   sign into stay signed in for later tasks.
 - **Files a page downloads** land in the task's own folder.
@@ -194,7 +197,8 @@ brings one: **Ducter's own browser**, a real Chrome that runs on the server with
 **Seeing it work.** Once it's added, **Try it** (in **Browse**'s **i** on the server's card, in the
 Mac app or on your phone) opens a test page in the server's browser, live, so you can see it browse
 for yourself. The top line says whose browser it is and where it runs: **Ducter's own browser ·
-on hel · Chrome for Testing 157**. Tap **Done** to close it. You can also just ask Ducter
+on hel · Chrome for Testing 157**. Tap **Done** to close it. If the page doesn't come up within
+40 seconds, it says the server's browser didn't answer, with **Try again**. You can also just ask Ducter
 "I just added the browser, can you check it works?": it opens a test page itself and tells you
 in a sentence, no task needed. From a terminal: `ducter browser check` (add `--json` for a
 script) starts it, opens example.com, says which Chrome and how long it took, and closes it.

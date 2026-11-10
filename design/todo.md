@@ -23,6 +23,10 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       and of a Linux worker from the card and with `ducter update --all`, including one forced
       rollback (a release whose binary fails `/health`) and the helper surviving `systemctl
       restart`. All steps are tested with fakes only. Trigger: the 0.0.5 release.
+      **D172:** two consecutive home updates of the systemd user service now run in a VM like hel
+      (`bun run e2e:linux`); still open there: a Linux worker's update, a forced rollback, x64
+      (the rig is arm64 on Apple silicon), and a real network hop with TLS and a non-loopback
+      peer at the auth gate (lima forwards the VM's port to this Mac's loopback).
 - [ ] **Updating the AI agents (D156) for real:** an npm Codex and a native Claude Code on a
       server updated from the card and with `ducter update --agents --yes`, one forced rollback
       (a pinned npm version that fails `--version`), a worker's agent over its socket, and a
@@ -461,6 +465,12 @@ Codex first, once OAR is near 1.0. See `research/17`.
 - [ ] Evaluate moejs as the client plugin host (cf. MyGo Music / mygo-plugin)
 
 ## Release and CI (`design/release/README.md`)
+
+- [ ] **The E2E rig in CI (D172, `scripts/e2e/linux.ts`).** It runs on a Mac with colima today.
+      Next: a forced-rollback release (a binary that fails `/health`) in the same run; the Mac
+      app's own update (a signed DMG through `DUCTER_UPDATE_FEED`); the phone client in a
+      headless browser against the same VM; an x64 VM (qemu) for the x64 tarball. Trigger: the
+      next release that touches update or the live view.
 
 - [ ] **The notification relay live (D159, `design/release/push-relay.md`).** Built and tested
       with a fake APNs and a fake relay only; nothing is deployed. Open: the APNs key and the

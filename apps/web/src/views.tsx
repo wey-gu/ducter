@@ -20,6 +20,7 @@ import { FindsNote } from "./finds.tsx";
 import { appPush, disablePush, enablePush } from "./push-client.ts";
 import { inApp, unsupportedKey } from "./native.ts";
 import { useWide } from "./wide.ts";
+import { FillButton, FullTop } from "./board.tsx";
 import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, WaitBubble, waitCaption, WaitDetails, waitLine } from "./work.tsx";
 import { BriefCard, safe, saidSince, shortGo, shortTitle, taskBlocks, TaskMeta, TimerPie, WhatItDid } from "./transcript.tsx";
 import {
@@ -107,7 +108,7 @@ export function Avatar({ size, state, still }: { size: number; state?: Face; sti
 }
 
 /** An opened task's face: how the partner looks about it (D76). */
-function faceOf(a: Attention): Face {
+export function faceOf(a: Attention): Face {
   if (a === "needs_you" || a === "failed") return "needsyou";
   if (a === "done" || a === "done_claimed") return "done";
   if (a === "working") return "working";
@@ -177,7 +178,7 @@ const Back = () => (
 
 // A finished task reads "Done": done_claimed means Ducter couldn't check its evidence and the
 // partner hasn't confirmed it yet, usually for seconds (desktop: stateLabel).
-const stateLabel = (a: Attention) => t(`state.${a === "done_claimed" ? "done" : a}`);
+export const stateLabel = (a: Attention) => t(`state.${a === "done_claimed" ? "done" : a}`);
 
 
 function AutoText(p: { value: string; onInput: (v: string) => void; placeholder: string; label: string; onEnter?: () => void; autoFocus?: boolean; id?: string }) {
@@ -380,7 +381,7 @@ export function peerHarness(agent: string): string {
 
 /** One ask: the asking task's title as a quiet link (nothing for the partner's own asks, or
  *  inside its own task), the question, its default, and Go / Hold / Reply…. */
-function DecisionCard({ d, taskId, inTask }: { d: DecisionState; taskId?: string; inTask?: boolean }) {
+export function DecisionCard({ d, taskId, inTask }: { d: DecisionState; taskId?: string; inTask?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const flash = A.flash === d.decisionId;
   useEffect(() => {
@@ -1259,6 +1260,8 @@ function Top({ back, face = true, plus, level }: { back?: string; face?: boolean
           </button>
         )}
         {face && !wide && <Avatar size={40} />}
+        {/* D184: wide, the level can take the whole screen; the same button brings it back. */}
+        {wide && <FillButton level={level ? "onhand" : "task"} />}
       </header>
     );
   return (
@@ -1519,7 +1522,7 @@ function Hello() {
 
 /** Where a task runs and why there, in one short muted line ("Codex · MacBook · Your rule …");
  *  the model, the repo, the branch and the rest of the reason are in the task's Details. */
-function metaLine(task: Task): string {
+export function metaLine(task: Task): string {
   const p = placeOf(task);
   // D157: with two or more computers every row names its computer.
   const where = manyComputers() ? computerName(p.device) : p.kind === "none" ? "" : deviceLabel(A.L, p.device);
@@ -1527,7 +1530,7 @@ function metaLine(task: Task): string {
 }
 
 /** What a waiting task waits for, said once: the lane already says it is waiting. */
-function waitReason(task: Task): string {
+export function waitReason(task: Task): string {
   const w = A.S.waiterFor(task.id);
   if (w) return [waitLine(w.reason), waitCaption(w)].filter(Boolean).join(" · ");
   const r = reasonOf(task);
@@ -1928,7 +1931,7 @@ function FolderChangesView({ task }: { task: Task }) {
   );
 }
 
-export function TaskView({ id }: { id: string }) {
+export function TaskView({ id, full }: { id: string; full?: boolean }) {
   const task = A.S.tasks.get(id);
   const scroller = useRef<HTMLDivElement>(null);
   // D152: while it works, a reader at the end follows the newest step; one who scrolled up stays.
@@ -1966,7 +1969,16 @@ export function TaskView({ id }: { id: string }) {
   const canSwitch = !!harnessOf(task) && !["dropped", "superseded"].includes(a);
   return (
     <>
-      <Top back={t("nav.back")} face={false} />
+      {full ? (
+        // D184: the whole screen, as the Mac shows an opened task: the crumbs, then Pause and
+        // Drop at the header's end.
+        <FullTop task={task}>
+          {(a === "working" || a === "queued") && <Btn kind="text" size="sm" label={t("task.action.pause")} onClick={() => A.taskAction(id, "interrupt")} />}
+          {!finished(task) && !["dropped", "superseded", "done"].includes(a) && <Btn kind="text" size="sm" label={t("task.action.drop")} onClick={() => A.drop(id)} />}
+        </FullTop>
+      ) : (
+        <Top back={t("nav.back")} face={false} />
+      )}
       <main class="scroll task-page" ref={scroller} onScroll={(e) => { const el = e.currentTarget; atEnd.current = el.scrollHeight - el.scrollTop - el.clientHeight < 48; }}>
         <div class="task-head">
           <span class="face">
@@ -2001,7 +2013,7 @@ export function TaskView({ id }: { id: string }) {
             )}
           </div>
         )}
-        {!finished(task) && (
+        {!finished(task) && !full && (
           <div class="btns">
             {(a === "working" || a === "queued") && <Btn kind="text" label={t("task.action.pause")} onClick={() => A.taskAction(id, "interrupt")} />}
             {!["dropped", "superseded", "done"].includes(a) && <Btn kind="text" label={t("task.action.drop")} onClick={() => A.drop(id)} />}

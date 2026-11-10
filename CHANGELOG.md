@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.0.5
+
+**Accounts through OOMOL's hosted service work**
+- Hosted by OOMOL now connects at the right address with a key from console.oomol.com/api-key:
+  a **Get a key** button opens the page, the key is masked with Show, and Return adds it. After
+  adding, it says which accounts it can now read (Gmail, Discord, …), or that none are connected
+  in OOMOL yet, with a link.
+- Every refusal says why (no key, wrong key, can't reach) in the warning look, never in the
+  success look.
+
+**Devices, tidier**
+- The command line on a computer folds into that computer's card ("The command line is
+  connected too") instead of showing as its own device.
+- Every card renames in place, phones and the home included; two phones with the same name get
+  "· 2". Cards say what each device is in plain words, when it was last seen, and what it does.
+- **Let this Mac do tasks for your server:** one switch on the Mac's card (and in Settings › Where
+  it runs). It keeps running in the background and at login; turning it off removes it and
+  disconnects it on the server. `ducter service install --worker` works on a Mac too.
+- The right side of Devices is one scroll; nothing is clipped.
+
+**Each AI agent's version**
+- Device cards show the version of Claude Code, Codex, pi and DeepSeek Harness on each computer,
+  where that copy came from, and an Update button when its own channel has a newer one. It waits
+  until nothing is using it, checks the new version answers, and goes back where it can.
+  A copy that came with the Codex app updates with the app. `ducter update --agents`.
+- The night update (off by default) only installs versions Ducter has checked.
+
+**Browsing, easier to trust**
+- **Try it** on 上网 opens a live view of a page in Ducter's own browser; `ducter browser check`
+  does the same from the terminal. Browser results say which browser and machine they came from.
+- Your partner tells you a task's result in your language, even when the AI agent reported in
+  English.
+
+**Phone and site**
+- ducter.ai fits every phone width; docs tables read as lists on narrow screens.
+- Settings choices on the phone stack instead of spilling out of their pill.
+
 ## 0.0.4
 
 **Update in place, from the app**

@@ -72,11 +72,11 @@ write to it directly while it works.
 ### Can I edit a task's code myself?
 
 Yes. Each coding task works in its own copy of your project, a folder named after the project and
-its branch (such as `~/.ducter/worktrees/hawdb/fix-flaky-test`); the opened task on the Mac
-shows the path.
-On the Mac, **Open** at the task's top right shows it in Finder, opens it in Terminal, or opens
-it in Cursor, Visual Studio Code or Zed, whichever you have. It shows when that copy is on the
-Mac you're using.
+its branch, in the words you used for the task (such as `~/.ducter/worktrees/hawdb/fix-flaky-test`,
+or `…/hawdb/修复登录页` for a task written in Chinese); the opened task on the Mac shows the path.
+On the Mac, **Open** at the task's top right shows it in Finder, opens it in Cursor, Visual
+Studio Code or Zed, or opens it in Terminal, iTerm2, Ghostty or Warp, whichever you have, the one
+you used last first. It shows when that copy is on the Mac you're using.
 
 ### Can I start a task myself, without asking Ducter?
 

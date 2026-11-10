@@ -230,14 +230,18 @@ func main() {
 		})
 		app.Win = win
 		app.Desktop = desktop{win}
-		// D198: 打开 / Open on an opened task: Finder, Terminal, and the editors found here.
+		// D198, D201: 打开 / Open on an opened task: Finder, and the editors and terminals found here.
 		app.OpenFolder = local.OpenFolder
 		go func() {
-			var eds []views.Editor
-			for _, e := range local.InstalledEditors() {
-				eds = append(eds, views.Editor{Name: e.Name, App: e.App})
+			conv := func(in []local.Editor) []views.Editor {
+				var out []views.Editor
+				for _, e := range in {
+					out = append(out, views.Editor{Name: e.Name, App: e.App, Bundle: e.Bundle})
+				}
+				return out
 			}
-			win.Update(func() { app.Editors = eds })
+			eds, terms := conv(local.InstalledEditors()), conv(local.InstalledTerminals())
+			win.Update(func() { app.Editors, app.Terminals = eds, terms })
 		}()
 		// D186: 加一个文件夹 asks macOS for a folder (a sheet on the window).
 		app.PickFolder = func(title, button string) (string, error) {

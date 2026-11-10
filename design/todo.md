@@ -128,12 +128,15 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [ ] **A resume rejected after it started** (the harness accepts the id, then its stream
       errors) still parks the task; only a refusal at start falls back to a new session.
 - [ ] Tasks can write outside their place (one used `/tmp/flk`); no sandbox on the Mac.
-- [ ] Branch slugs from Chinese titles keep only the ASCII words (`ducter/foo-…`).
-      Since D198 the worktree's folder is that slug too, so an all-Chinese title gives
-      `worktrees/<repo>/task`, `task-2`. Trigger: a Chinese user can't tell their worktrees apart.
 - [ ] **D198 on the phone and web:** the opened task shows no working-copy path there (the Mac
       app does; there is nothing to open it with). Trigger: someone wants to copy it from the phone.
-- [ ] **D198's 打开 offers Terminal only**, not iTerm2, Ghostty or Warp. Trigger: asked for.
+- [ ] **D201: con and Rex can't be opened at a folder on macOS yet**, so 打开 leaves them out
+      until their Info.plist claims folders. For con (ours): add a `CFBundleDocumentTypes` entry
+      for `public.folder` and handle the open (`application:openURLs:`) as a new window at that
+      directory, the macOS twin of its Linux `--working-directory`; Ducter then lists it with no
+      change. Rex's bundle id (`com.superlogical.rex`) is inferred; check it on an installed
+      copy. Warp's URI is documented, not run here. Trigger: con or Rex ships folder opening, or
+      someone with Warp tries it.
 - [ ] The honesty guard is a regex over zh/en wording; it can miss paraphrases.
 - [ ] Measure partner latency on opus (live runs used sonnet only).
 

@@ -65,8 +65,8 @@ and the branch, such as `~/.ducter/worktrees/hawdb/fix-flaky-test`; on the Mac, 
 shows its path over its changes.
 
 To work on it by hand, open the task on the Mac and choose **Open** at its top right: **Show in
-Finder**, **Open in Terminal**, or **Open in** Cursor, Visual Studio Code or Zed, whichever you
-have. **Open** shows when the copy is on this Mac.
+Finder**, **Open in** Cursor, Visual Studio Code or Zed, or **Open in** Terminal, iTerm2, Ghostty
+or Warp, whichever you have. **Open** shows when the copy is on this Mac.
 
 ## 3. Get your first result
 

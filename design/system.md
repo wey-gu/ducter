@@ -685,7 +685,9 @@ redesign later:
 
 - **Environment port** in the runner, beside `HarnessPort`: worktree, folder, and browser
   now; phone (ADB / WebDriverAgent MCP) and call later. A new task's worktree is
-  `<dataDir>/worktrees/<repo name>/<branch slug>`, `-2`, `-3` when taken (D198); a task from
+  `<dataDir>/worktrees/<repo name>/<branch slug>`, `-2`, `-3` when taken (D198; taken compared
+  NFC). The slug keeps letters, marks and digits of any script, NFC, ≤ 40 characters cut by
+  grapheme, and is the branch's too, `ducter/<slug>` (D201); a task from
   before keeps its stored `<dataDir>/worktrees/<taskId>`. Archive removes only worktrees under
   `<dataDir>/worktrees`, and a repo's folder there once it is empty.
 - **Place** as a typed union carrying an `isolation` field (for honest isolation claims,

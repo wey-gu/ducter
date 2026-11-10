@@ -10,10 +10,23 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 )
 
-// Editor is a code editor on this Mac that 打开 / Open offers (D198): its
-// name as the menu says it, and the .app that opens a folder.
+// Editor is an app on this Mac that 打开 / Open offers (D198: a code
+// editor; D201: a terminal too): its name as the menu says it, the .app
+// that opens a folder, and its bundle id.
 type Editor struct {
-	Name, App string
+	Name, App, Bundle string
+}
+
+// appleTerminal is macOS's own Terminal: named in the person's language
+// (终端), and offered even when detection found none (it is always there).
+const appleTerminal = "com.apple.Terminal"
+
+// terminals are the terminals on this Mac, the one used last first (D201).
+func (a *App) terminals() []Editor {
+	if len(a.Terminals) == 0 {
+		return []Editor{{Name: "Terminal", App: "terminal", Bundle: appleTerminal}}
+	}
+	return a.Terminals
 }
 
 // workFolder is a task's working copy: a repo task's worktree, a folder
@@ -66,8 +79,9 @@ func (a *App) openableFolder(task *store.Task) string {
 }
 
 // openIn is 打开 / Open in the opened task's header (D198): a quiet button
-// whose menu shows the working copy in Finder, opens a Terminal there,
-// or opens it in each code editor installed here, the one used last first.
+// whose menu shows the working copy in Finder, then opens it in each code
+// editor installed here, then in each terminal (D201); in each group the
+// one used last comes first.
 func (a *App) openIn(c *ui.Context, task *store.Task) {
 	t := a.T
 	if a.openFailed != "" {
@@ -90,14 +104,21 @@ func (a *App) openIn(c *ui.Context, task *store.Task) {
 		if m.Item(a.L.T("task.open.finder")).Chosen() {
 			a.openFolder("finder", path)
 		}
-		if m.Item(a.L.T("task.open.terminal")).Chosen() {
-			a.openFolder("terminal", path)
-		}
 		if len(a.Editors) > 0 {
 			m.Separator()
 		}
 		for _, e := range a.Editors {
 			if m.Item(a.L.T("task.open.editor", e.Name)).Chosen() {
+				a.openFolder(e.App, path)
+			}
+		}
+		m.Separator()
+		for _, e := range a.terminals() {
+			label := a.L.T("task.open.in", e.Name)
+			if e.Bundle == appleTerminal {
+				label = a.L.T("task.open.terminal")
+			}
+			if m.Item(label).Chosen() {
 				a.openFolder(e.App, path)
 			}
 		}

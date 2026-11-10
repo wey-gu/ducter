@@ -145,6 +145,23 @@ test("open_pr with a signed-in gh pushes the branch and logs an outside effect",
   await runner.dispose();
 });
 
+test("D201: a branch in Chinese is pushed and handed to gh as one argument, never through a shell", async () => {
+  const p = repoWithTaskBranch();
+  const branch = "ducter/修复登录页-闪退";
+  sh(p.worktree!, "branch", "-m", branch);
+  const remote = join(dir, "remote.git");
+  Bun.spawnSync(["git", "init", "-q", "--bare", remote]);
+  sh(p.repoPath, "remote", "add", "origin", remote);
+  const argsFile = join(dir, "gh-args");
+  const gh = join(dir, "gh");
+  // Each argument on its own line, so a split or a re-quoted one shows.
+  writeFileSync(gh, `#!/bin/sh\nif [ "$1" = auth ]; then exit 0; fi\nfor a in "$@"; do printf '%s\\n' "$a"; done > '${argsFile}'\necho https://github.com/me/repo/pull/8\n`, { mode: 0o755 });
+  const r = await openDraftPr({ ...p, branch }, { gh });
+  expect(r).toEqual({ ok: true, message: `Opened a draft PR for ${branch}.`, ref: "https://github.com/me/repo/pull/8" });
+  expect((await git(remote, ["rev-parse", "--verify", `refs/heads/${branch}`])).ok).toBe(true);
+  expect((await Bun.file(argsFile).text()).trimEnd().split("\n")).toEqual(["pr", "create", "--draft", "--fill", "--head", branch, "--base", "main"]);
+});
+
 test("branchChanges: commits ahead of the base and uncommitted work; nothing on a fresh branch", async () => {
   const p = repoWithTaskBranch();
   expect(await branchChanges(p)).toEqual({ commits: 1, uncommitted: false, files: 1, adds: 1, dels: 0 });

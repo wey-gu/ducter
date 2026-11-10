@@ -88,6 +88,7 @@ key. That's fine for the author. For everyone else there are two ways: build the
 own team (`Local.xcconfig`, plus your own key), or a small relay run by Nowledge that holds the
 key and forwards pushes, with end-to-end encrypted payloads. That would be a new
 trusted component, so it goes through the change loop first (open question; not decided).
+*Update 2026-11-10: decided as D159, the relay with end to end encrypted payloads (research/45).*
 
 ## Implications for Ducter
 

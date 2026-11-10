@@ -60,8 +60,13 @@ exactly what it will and won't do. This page lists it.
 
 ## What runs where
 
-- **Everything runs on your own computers:** your Mac, and any server you set up. Ducter has no
-  service of its own in the cloud, and no account to sign up for.
+- **Everything runs on your own computers:** your Mac, and any server you set up. There's no
+  account to sign up for. The one exception is the **notification relay** for the iPhone app:
+  Apple only takes the app's notifications from its publisher, so Nowledge runs a small relay
+  that passes them on. Each notification is encrypted for your phone before it leaves your Ducter;
+  the relay and Apple only see **Ducter needs you**, when it was sent and roughly how big it was.
+  The relay keeps no list of phones and stores nothing about what it passes on. Ducter in a
+  browser, and its web notifications, never use it. More in [Your phone](phone.md#in-the-iphone-app).
 - **Your conversation, tasks and settings** stay in `~/.ducter` on the computer Ducter lives on.
   The folder and its files can only be read by your own user account.
 - **What does leave your computer** is what any AI agent sends: your messages and the work

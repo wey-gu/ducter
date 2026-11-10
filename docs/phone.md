@@ -52,7 +52,29 @@ doesn't buzz over and over.
   the iPhone's browser, tapping it opens the decision. The iPhone app (public beta on TestFlight)
   lets you answer **Go**, **Hold** or **Reply** right from the notification.
 
-### On iPhone
+### In the iPhone app
+
+The app's notifications work with any Ducter, with nothing to set up. Apple delivers them only
+for the app's publisher, so your Ducter sends them through a small **notification relay** run by
+Nowledge, the makers of Ducter. What it says stays private:
+
+- **The words are encrypted for your phone.** When you turn notifications on, the app gives your
+  Ducter a key that only this phone has. Your Ducter locks every notification with it; the phone
+  unlocks it when it arrives. The relay and Apple only ever see **Ducter needs you**, which is
+  also what you see for a moment if the phone can't unlock one.
+- **What the relay does see:** your phone's notification address from Apple, when a
+  notification goes out, roughly how big it is, and whether it's a question for you. It keeps
+  none of that, only short-lived counters to stop abuse.
+- **Disconnecting the phone** (or turning its notifications off, or connecting the app to another
+  Ducter) stops the relay delivering anything more to it.
+- If the relay can't be reached, the app says so under **Notifications**, and notifications may
+  arrive late.
+- **Rather not use it?** Use Ducter in Safari, added to your Home Screen (below): those
+  notifications go through Apple's web push and never touch the relay. If you build the app
+  yourself under your own Apple developer account, your Ducter can send to Apple directly with
+  your own push key instead.
+
+### In Safari on iPhone
 
 iPhone shows notifications from a web app only once it's on your Home Screen (iOS 16.4 or
 later). In Safari, tap **Share**, then **Add to Home Screen**, and open Ducter from the Home

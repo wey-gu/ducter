@@ -75,7 +75,9 @@ heard of a subagent.
 ## Not planned for now
 
 - Taking over AI agent sessions you started yourself outside Ducter.
-- A hosted Ducter: it stays self-hosted, on your own machines.
+- A hosted Ducter: it stays self-hosted, on your own machines. The one piece Nowledge runs is
+  the notification relay for the iPhone app (D159): it forwards Apple notifications, encrypted
+  end to end, and nothing else.
 
 ## Help wanted
 

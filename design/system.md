@@ -251,8 +251,32 @@ changes.
     with Web Push from `packages/core/src/push.ts`. It shares the desktop's i18n keys and Pebble
     tokens. A MyGo WASM web client is not planned.
   - iPhone (D131): a native SwiftUI shell (`apps/ios`) around the same phone client, with APNs
-    and Go / Hold / Reply on a decision's notification; TestFlight, internal for now
+    and Go / Hold / Reply on a decision's notification; TestFlight public beta
     (`design/release/ios.md`). Expo is not planned.
+  - **Notifications to the iPhone app (D159, research/45).** APNs takes pushes only under the
+    app publisher's key, so a home reaches the public app through the **notification relay**:
+    one Vercel Node function next to the website (`apps/site/api/push/[op].ts`,
+    `https://ducter.ai/api/push`), holding the APNs key; runbook `design/release/push-relay.md`.
+    - *Flow:* the app registers its device token with the relay and gets an opaque handle (the
+      token encrypted under the relay's own key; the relay keeps no token list). It sends the
+      home the token, the handle and the phone's 32-byte key over the paired API
+      (`POST /api/push/subscribe {apns: {token, env, topic, relay, key}}`). The home encrypts
+      each notification for the phone (`packages/core/src/push-relay.ts`: AES-256-GCM, AAD
+      `ducter-push-v1`, padded to 256-byte steps, collapse id = HMAC of the item) and posts
+      `{handle, d, collapse, category}` to the relay; the relay sends Apple a neutral `loc-key`
+      alert with `mutable-content: 1` and `d`. The extension `DucterNotify` (shared keychain group
+      `<team>.<bundle id>.shared`, `apps/ios/Shared/PushCrypto.swift`) puts the words back.
+    - *What the relay learns:* the device token (inside the handle), when a push goes and its
+      padded size, whether it is a decision (the category), and the caller's address (kept only as
+      a keyed hash in a rate counter). Store: Upstash Redis via REST, revoked handle ids (400 days)
+      and counters (1 h / 1 day).
+    - *Ways out of a home:* its own APNs key if `apns.json` is set (straight to Apple, encrypted
+      the same way; the relay when Apple answers 403), else the relay (`DUCTER_PUSH_RELAY`,
+      default `https://ducter.ai/api/push`, `off` to turn it off). Disconnecting a device, turning
+      notifications off or connecting the app elsewhere revokes the handle.
+    - *Tests:* `apps/site/test/push-relay.test.ts` (fake APNs), `packages/core/test/push-relay.test.ts`
+      (fake relay, through core), and one vector both sides open
+      (`packages/core/test/fixtures/push-vector.json`, `apps/ios/scripts/check-push-vector.sh`).
   - The client protocol comes first; the two UI codebases share only the protocol, the state
     model, and design tokens.
 

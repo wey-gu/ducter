@@ -37,7 +37,8 @@ app to TestFlight. Pull requests and `main` run `.github/workflows/ci.yml`.
    The GitHub Release comes out marked pre-release. TestFlight gets build `0.1.0 (<run>.1)`.
 6. **Install from TestFlight** on your iPhone and confirm that pushes arrive. A TestFlight build
    is a Release build, so it subscribes with `env: production`, and the core then sends through
-   `api.push.apple.com`. The core still needs its APNs key (`<dataDir>/apns.json` or `DUCTER_APNS_*`).
+   the notification relay to `api.push.apple.com`. The relay needs its APNs key and settings
+   first: `design/release/push-relay.md` (D159). No home needs a key of its own.
 
 After this, every release is: bump the version, commit, `git tag vX.Y.Z`, push the tag. An rc tag
 is no exception: bump `packages/cli/package.json` to the rc version (`0.1.0-rc.2`) and commit

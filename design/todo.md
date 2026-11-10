@@ -404,6 +404,20 @@ Codex first, once OAR is near 1.0. See `research/17`.
 
 ## Release and CI (`design/release/README.md`)
 
+- [ ] **The notification relay live (D159, `design/release/push-relay.md`).** Built and tested
+      with a fake APNs and a fake relay only; nothing is deployed. Open: the APNs key and the
+      relay's environment in Vercel; `GET https://ducter.ai/api/push/health` says `ok: true,
+      store: "kv"` (confirms Vercel builds `apps/site/api/` next to the Astro preset); the first
+      tagged release signs `DucterNotify` (`co.nowledge.ducter.ios.notify`) through CI; on a real
+      iPhone a decision arrives with its words and Go / Hold / Reply, and "Ducter needs you" shows
+      when the key is missing. Trigger: the author's steps in `push-relay.md`.
+- [ ] **Relay hardening, later (D159):** App Attest on register so only the genuine app can get
+      a handle; rotating the handle encryption key with a key id; a per-home budget once homes
+      identify themselves to the relay. Trigger: abuse seen in the relay's 429s, or the App Store
+      release.
+- [ ] **Notification relay for Android** (an FCM relay in the same function) if a native Android
+      app ships; until then Android uses Web Push. Trigger: an Android app.
+
 - [ ] First tagged release end to end (notarized DMG, Linux tarballs, TestFlight). Trigger: the
       author's checklist at the top of `design/release/README.md` is done.
 - [x] One Bun for everything: 1.4.4 for CI, the web bundle and the CLI (build:web fetches it

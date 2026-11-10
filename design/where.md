@@ -419,3 +419,8 @@ with §8's keys and these added in the build: `where.reason.no_signin` (用不�
 `switch.cant.web`, `switch.waits.away`, `switch.move.plain` / `.signin`, `move.closing.*` (搬走 · 先不搬),
 `isles.tag.*` (在等 · 搬到 {device} 上了). `switch.move.explain` says "推上去" without the remote's name
 (the client doesn't know it).
+
+D161 (2026-11-10) restyles two of these surfaces in its coin language: 换谁来做 with two or more
+computers says **换谁，也可以换一台电脑 / Someone else, or another computer** under its title, and
+each group head is the device's mini card (its clay, name and state; asleep in dusk ink), on the
+Mac and the phone (`design/ui-devices-card.md` §6, §12).

@@ -101,10 +101,10 @@ hours hold everything. **Send a test** under **Notifications** confirms it works
 ### Browsing the web can't be added
 
 If you use Codex, install the Codex app and turn on its computer use; if you use Claude Code,
-open Chrome with the Claude extension signed in to the same account. Either one makes **Browse
-the web** ready **In your Chrome**, with nothing more to set up.
+open Chrome with the Claude extension signed in to the same account. Either one makes **Browse**
+ready in your Chrome, with nothing more to set up.
 
-Otherwise, choosing **Browse the web** opens **Set up browsing**, three small steps that check themselves
+Otherwise, tapping **+ Browse** opens **Set up browsing**, three small steps that check themselves
 off: install (or update) the browser driver, then turn on **CuaDriver** under **Accessibility**
 and under **Screen & System Audio Recording** in System Settings › Privacy & Security. The
 switches are for CuaDriver, not for Ducter. If a step won't turn green:

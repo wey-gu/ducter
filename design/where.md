@@ -337,7 +337,7 @@ test of the stage (D81's open item) should include one Lands and one Moves clip 
 6. **Honest isolation** (principle 18): the where line says **用你的 Chrome** whenever it is the
    user's signed-in browser.
 
-## 13. What to build (draft; steps and triggers in `todo.md`)
+## 13. What to build (built 2026-11-10 in this order; status in §16)
 
 1. Lift "browser places run on this machine only" for workers (`runner.ts:924`; D155 (3) keeps
    it on the roadmap): a worker's 上网 reports `where: chrome | ducter` like the home's. **First**,
@@ -393,3 +393,29 @@ Moves, the switch sheet with a MacBook row picked, New task with the computer li
   to move" moment (W6) is only told, not shown. A later prototype pass could show the lid closing
   over a stage where nothing stops.
 
+
+## 16. Build status (2026-11-10)
+
+Built in §13's order, one commit per step, tested with fakes (fake workers over an in-process link,
+a fake Chrome behind the CDP tunnel, fake clocks); not yet run on hel and the MacBook (todo).
+Shots: `.shots/where-built/` (Mac `mac-*-{zh,en}.png` from `TestWhereShots`; phone `phone-*` from
+`apps/web/demo-where.ts` driven headless), outside git (D75).
+
+| Step | Built | Where | Left (todo) |
+|---|---|---|---|
+| 1. Browser places on a worker | the worker builds the browser (D130 native first, cua-driver, D151 Ducter's own); Ducter's own browser on a worker is driven over the worker socket (CDP down, events up), so tools, blind rule and the live view's frames are the home's code; 上网 and `alwaysOn` per computer, set on that computer; `worker_old` for an older Ducter | `core/src/browser/remote.ts`, `core/src/worker-browse.ts`, `runner/src/worker-host.ts`, `runner/src/remote.ts` | live check; a worker's Signed-in sites in Settings; evidence screenshots land on the home |
+| 2. Needs and one ranking | `task_open needs`; (computer × agent × model) ranked as §4.3; one reason (`BodyWhy.where`); a named computer holds even asleep; the `[devices]` line says how each browses and whether it sleeps; a rule may name a computer | `core/src/candidates.ts`, `core/src/loadout.ts`, `partner/src/partner.ts` | partner eval W1–W6; continuity as a real signal; a repo on two computers |
+| 3. Say it | the where line on the opened task (both clients) with what it uses; why on hover (Mac) or tap (phone); On hand rows name the computer; the switch-on line | `apps/desktop/internal/views/where.go`, `apps/web/src/where.ts` | — |
+| 4. Ask only when it matters | a task waits for its computer (在等 · MacBook 睡着了) and starts when it is back; the one-line ask with Hold (等它醒) as the default, no countdown; Go re-places it; the user's own pick that waits; widening said on the card | `runner/src/runner.ts` (`waitThere`, `askWhere`, `moveWaiting`), `core/src/decisions.ts` | waiting across a home restart |
+| 5. Change it | the switch sheet: islands strip (Mac) + list grouped by computer (both); the move (no repo: free; repo: push, fetch on the target; folder: never) | `runner.moveTask`, `whereswitch.go`, `views.tsx` `SwitchList` | — |
+| 6. New task | the computer part on No folder; 在哪台电脑上做; an agent on another computer brings it along | `newtaskwhere.go`, `views.tsx` `NewTaskSheet` | a repo on two computers |
+| 7. 我要合电脑了 | one card, Go (move) by default after 90 s, never toward more access; `move_before_closing` for the partner; 合上之前搬走 on a working laptop's card | `core/src/closing.ts` | the Mac's willSleep as the trigger (no sleep observer; nothing sends `{t:"sleep"}` yet) |
+| 8. Motion | Lands (0.9 s, squash, title tag 1.2 s), Waits (still at the home end, 在等), Moves (home, a rest, out again); reduced motion shows the parcel where it is with its tag | `isles_where.go`, `isles.go` | the human comprehension test (D81) |
+
+Copy as built: `apps/desktop/internal/i18n/where.go` (the web client's table is generated from it),
+with §8's keys and these added in the build: `where.reason.no_signin` (用不着你的登录，{device} 自己的
+浏览器就够了), `where.reason.home` (Ducter 就住在 {device} 上), `where.reason.you` / `.rule`,
+`where.ask.*` (the ask's question, Go, Hold, the default line), `where.waiting` ({device} 睡着了),
+`switch.cant.web`, `switch.waits.away`, `switch.move.plain` / `.signin`, `move.closing.*` (搬走 · 先不搬),
+`isles.tag.*` (在等 · 搬到 {device} 上了). `switch.move.explain` says "推上去" without the remote's name
+(the client doesn't know it).

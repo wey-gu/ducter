@@ -404,22 +404,40 @@ the worker only holds the place (disk, checkouts, worktrees) and runs the harnes
   *offline* frame; the task's residency becomes `offline` at once (silent); after the grace
   (2 min, `DUCTER_OFFLINE_GRACE_MS`) a working task becomes `blocked` with reason
   `device:unreachable:<name>`, which clients show as **在等 · <name> 连不上 / Waiting ·
-  Can't reach <name>**. A message to it, or a new task for that device, fails with
-  "<name> is not connected" and the partner says so. When the worker says hello again, the
+  Can't reach <name>**. A message to it fails with "<name> is not connected" and the partner
+  says so. A **new** task for it waits there instead (D157): `blocked`/`offline` with
+  `device:asleep:<name>` (it said it was going to sleep) or `device:unreachable:<name>`, planned
+  and started when the worker says hello. When the worker says hello again, the
   runner resumes the native session by id on the worker and tells it to carry on. A worker
   process that loses its socket closes its sessions (nobody to report to); idle tasks just go
   `parked` when it's back.
 - **Partner.** When workers exist, each turn carries one context line
-  (`[devices] local (this machine, the default) · vps-2 (awake, linux, signed in: claude-code)`);
-  without workers nothing changes. The `task_open` place `device` field says to use another
-  device only when the user asks or the task needs what only it has. "在 vps-2 上跑…" works.
+  (`[devices] local (Ducter's home) · MacBook (awake, darwin, sleeps when its lid closes, browses
+  in the user's own Chrome (their sign-ins), signed in: claude-code, codex)`); without workers
+  nothing changes. D157: the partner passes what a task needs (`task_open needs`: browse,
+  signedIn and the site, app, long) and core ranks (computer × agent × model) and picks
+  (`core/src/candidates.ts`, `design/where.md` §4); `place.device` is a pin only when the user
+  named a computer. "在 vps-2 上跑…" works.
+- **Browser places on a worker (D157).** The worker builds the place's browser with its own
+  browsers (`runner/src/worker-host.ts` op `browser`): the agent's own tools in the user's Chrome
+  first (D130), cua-driver's browser, or Ducter's own browser (D151). It sends a description
+  (`SidecarWire`); the main rebuilds the parts that read tool events. Ducter's own browser on a
+  worker is driven from the main over the worker socket (`core/src/browser/remote.ts`: CDP
+  commands down as `cdpSend`, events up as `cdp` frames), so the task's browser tools, the blind
+  rule and the sign-in card's live view are the home's code on a `@<device>:<profile>` profile;
+  frames reach the window through the worker socket. A worker reports 上网 (`where`) and
+  `alwaysOn` in its hello and after a change (`abilities` frame); 上网 on its card is set there
+  (op `ability`, installing Ducter's browser there when it's the one).
+- **Moving a task (D157, E3).** `runner.moveTask`: a task with no repo moves and carries on there
+  from its saved progress; a repo task pushes its branch first (op `push`; uncommitted work stops
+  the move) and the target fetches it into a worktree (`ResolvedPlace.fetch`); a folder never
+  moves. 我要合电脑了 is one decision (`core/src/closing.ts`).
 - **Revocation.** `ducter devices disconnect` (another process) closes live device sockets
   within 10 s (close 4401); a refused worker exits 3 and its unit has
   `RestartPreventExitStatus=3`.
-- **Not yet:** browser places on a worker (refused with a plain message); the A2-W confirm card
-  ("vps-1 想加入 … 好，加上 / 不是我的"); placing by need ("needs Linux") instead of by name;
-  queueing a task for an asleep worker instead of refusing it; reattaching a session that
-  survived a socket blip (today it's closed and resumed by id).
+- **Not yet:** the A2-W confirm card ("vps-1 想加入 … 好，加上 / 不是我的"); reattaching a
+  session that survived a socket blip (today it's closed and resumed by id); a task waiting for
+  its computer across a restart of the home (it is recovered as a parked task, todo).
 
 ## Updating in place (D148, built 2026-11-10)
 
@@ -721,7 +739,7 @@ so the main process holds one.
   any view, its tab closed with it, nothing answered or remembered. The open frame carries
   `browser` for the view's top line.
 - **Not built:** Xvfb for sites that refuse headless; a vault that fills passwords, TOTP,
-  session probes, per-site rate limits (research/25 §3); browser places on a worker.
+  session probes, per-site rate limits (research/25 §3).
 
 ### The Ducter browser's identity (D62)
 

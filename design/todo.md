@@ -333,25 +333,33 @@ note and a `Dn`) before it is built.
 
 D157 was decided 2026-11-10; the build runs in `where.md` §13's order (step 1 unblocks the Mac worker).
 
-- [ ] **Browser places on a worker** (`runner.ts:924` refuses them; D155 (3) keeps browser and
-      computer use home-only): the worker's runner hosts the browser place (native driver on a
-      Mac, D130; Ducter's own browser on Linux, D151) and reports 上网 with `where`. Trigger: the
-      first Mac switched on with D155's 让这台 Mac 也替 hel 做事.
-- [ ] **Devices frame facts:** `alwaysOn` (a server; a Mac on power with the power assertion) and
-      a worker's Signed-in sites.
-- [ ] **`fw_candidates` over (computer × agent):** `Candidate.device`, `waits`, `BodyWhy.where`,
-      the ranking in `where.md` §4.3, table tests (equal computers, sleeping best, widen never
-      automatic, a pin that pins its computer, long work to a server).
-- [ ] **`task_open {needs}`** and the partner's `[devices]` line with abilities and sleep; a
-      persona rule: pass needs, name a computer only when the user did; partner eval scenarios
-      for W1–W6 (zh/en).
-- [ ] **Queue a task for a sleeping worker** instead of refusing it (`system.md` "Not yet").
-- [ ] **The where line** on both clients whenever two or more computers run tasks (amends
-      D152 (2)); the reason on hover/tap.
-- [ ] **Switch who does it:** the island strip (desktop) and the grouped list; the move and widen
-      lines. **New task:** the computer part and an agent on another computer.
-- [ ] **Move before closing** on a laptop's card and the partner's one decision; the parcel's
-      Lands / Waits / Moves on the Devices stage.
+Built 2026-11-10 (`where.md` §16): browser places on a worker (native, cua-driver, Ducter's own
+browser driven over the worker socket, the live view through it); 上网 and `alwaysOn` per
+computer; the one ranking with needs and one reason; a task waiting for its computer and the ask;
+the where line on both clients; Switch who does it with the island strip and the move; New task's
+computer part; 我要合电脑了; the parcel's Lands / Waits / Moves. Still open:
+
+- [ ] **Live check on hel + the MacBook** (the build is tested with fakes only): a browser task on
+      the MacBook in the user's Chrome, Ducter's own browser on a Linux worker with a real sign-in
+      through the live view, a move of a repo task with a real push. Trigger: the author's next run
+      with the Mac switched on.
+- [ ] **Partner eval scenarios W1–W6** (zh/en) for `task_open needs` and the ack naming where only
+      when it waits or uses the user's Chrome. Trigger: the next partner eval run.
+- [ ] **The Mac's own sleep notice as the closing trigger** (NSWorkspace willSleep): the worker is
+      the `ducter worker` process, the app has no sleep observer, and nothing sends `{t:"sleep"}`
+      today, so "asleep" is never reported (a lid close reads as 连不上). Trigger: the first real
+      lid close with work on the Mac; build a willSleep observer in the app that tells its worker.
+- [ ] **`alwaysOn` for a Mac on power** (a power assertion while plugged in, A3): today a laptop
+      always counts as sleeping. Trigger: a plugged-in laptop used as the always-on computer.
+- [ ] **A repo on two computers** gets New task's computer part too (`where.md` §6.3; today only
+      No folder has it), and continuity (its worktree or uncommitted changes) as a ranking step
+      with a real signal. Trigger: the first repo cloned on both hel and the Mac.
+- [ ] **A worker's Signed-in sites** in Settings (the ranking already reads them from the home's
+      `@<device>:<profile>.sites.json`). Trigger: the first sign-in through a worker's live view.
+- [ ] **A task waiting for its computer across a home restart** is recovered as parked, not as
+      waiting. Trigger: the first restart with such a task.
+- [ ] **Evidence screenshots of Ducter's own browser on a worker** are saved on the home, where the
+      task on the worker can't read them. Trigger: a task that needs to look at its own screenshot.
 - [ ] **Comprehension check** of Lands and Moves with D81's owed human test of the stage.
 
 ## Devices stage: the Isles (D81)

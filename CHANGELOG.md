@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.0.11
 
 <!-- whats-new
 zh: 安卓 App 来了：从 GitHub 发布页下载，之后自己更新
@@ -20,6 +20,11 @@ en: On a foldable, the conversation and On hand meet at the fold
   on the other. Half-open on a table: the conversation above, On hand below. Folded: one column.
   Folding and turning never reload the page. Chrome on a foldable gets the same split.
 - Notifications in the Android app are not in this version; Ducter in Chrome still notifies you.
+
+**Your agents, in clay**
+- Each AI agent's coin is now its own mark, sculpted in clay: Claude Code's starburst, OpenAI's
+  knot for Codex, DeepSeek's whale, pi's blocks. Signed out, the same shape in grey clay; at work,
+  it rocks gently on its spot.
 
 ## 0.0.10
 

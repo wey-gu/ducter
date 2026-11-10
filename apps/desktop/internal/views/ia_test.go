@@ -267,7 +267,15 @@ func TestTrayDecisions(t *testing.T) {
 	}
 }
 
-type fakeUpdates struct{ st update.Status }
+type fakeUpdates struct {
+	st    update.Status
+	hints []string
+}
+
+func (f *fakeUpdates) Hint(_ context.Context, v string) bool {
+	f.hints = append(f.hints, v)
+	return true
+}
 
 func (f *fakeUpdates) Status() update.Status                  { return f.st }
 func (f *fakeUpdates) CheckNow(context.Context) update.Status { return f.st }

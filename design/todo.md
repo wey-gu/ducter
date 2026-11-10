@@ -33,9 +33,13 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       night round inside the verified range. Only fakes so far; no real install was run. Also
       open: the partner holding a new turn while its own agent updates (only waited for today),
       a Codex app copy seen on a real Mac. Trigger: the next Codex or Claude Code release.
+- [ ] **A Mac updated from the phone (D187) for real:** the author's MacBook (a worker of hel)
+  from 0.0.14 to the next release, tapped on the phone: steps on the card, the putting-in screen
+  on the Mac, 回来了 on the card; then once with the app closed (没开着). Also the night-time
+  auto-update for Macs whose Ducter asks its app (today D148 (10) skips them; the restart would
+  happen while the person may be at the Mac). Trigger: the first release that carries D187.
 - [ ] **Updating in place, the rest of D148:** the partner's one line for a security release
-      (nothing tells the partner yet); a macOS worker inside Ducter.app asking its own app to
-      update (it answers `app` today); archive sweeps inside the runner's critical section;
+      (nothing tells the partner yet); archive sweeps inside the runner's critical section;
       renaming from the island's tag (the card's name does it). Trigger: after the first real
       update round.
 - [ ] One real-harness task on a worker (`claude auth login` / `codex login --device-auth` on
@@ -100,6 +104,15 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 
 - [ ] **New task: attachments (D128).** Trigger: the first time a brief needs a screenshot.
       A file or image dropped on the card's What row goes to the task with the words.
+- [ ] **Projects: rename and remove (D186).** Defaults: click the name in By project to rename
+      (the `cardName` control; every task carrying it follows); remove from the group's ⋯, its
+      tasks untouched. Trigger: the first time a folder's name isn't the name the author wants.
+- [ ] **Projects: add a folder from a server home or the phone (D186).** Today only the Mac whose
+      Ducter runs on it. Default: a path field with the home's folders suggested. Trigger: the
+      first project added on hel.
+- [ ] **New task: "every time something happens" (D185).** The card's 等某件事发生 is one-shot;
+      a repeating condition still goes through the partner (its check is compiled by a model).
+      Trigger: the first time the author wants a watcher without saying it.
 - [ ] **New task: By project on the phone (D128).** The phone's On hand stays by state.
       Trigger: someone works several repos from the phone.
 

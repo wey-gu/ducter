@@ -4,6 +4,8 @@
 // the glossary (通知 / Notifications, 添加到主屏幕 / Add to Home Screen, 这台手机 / This phone).
 // Strings use printf verbs (%s, %d, %[n]s).
 
+import { starts } from "./i18n-starts.ts";
+
 export type Lang = "zh" | "en";
 
 const zh: Record<string, string> = {
@@ -1457,6 +1459,9 @@ const devup: Record<Lang, Record<string, string>> = {
     "devup.phase.rolledback": "没更新成，已经换回 %s",
     "devup.how.away": "%s 现在连不上，等它醒着再更新。",
     "devup.how.app": "在 %s 上打开 Ducter，它会自己更新。",
+    "devup.how.app.here": "%s 上的 Ducter 会下载、核对，等手头的事停好再重启。",
+    "devup.why.app_closed": "那台 Mac 上的 Ducter 没开着，或者 Mac 睡着了，所以什么都没动。打开 Ducter 再点更新；它自己也会发现新版本。",
+    "devup.why.app_password": "那台 Mac 上的 Ducter 是用管理员身份装的，这次更新要在那台 Mac 上输一次密码。新版本已经下好了。",
     "devup.how.manual": "%s 上的 Ducter 太旧，没法从这里更新；在它上面重新装一次就好。",
     "devup.how.source": "这份 Ducter 是从源码跑的，跟着代码一起更新。",
     "devup.why.network": "连不上 GitHub，等有网了再试。",
@@ -1600,6 +1605,9 @@ const devup: Record<Lang, Record<string, string>> = {
     "devup.phase.rolledback": "Didn't update; back on %s",
     "devup.how.away": "Can't reach %s now; update it when it's awake.",
     "devup.how.app": "Open Ducter on %s; it updates itself.",
+    "devup.how.app.here": "Ducter on %s downloads and checks it, then restarts once nothing is mid-way.",
+    "devup.why.app_closed": "Ducter isn't open on that Mac, or the Mac is asleep, so nothing was started. Open Ducter there and tap Update again; it also finds new versions on its own.",
+    "devup.why.app_password": "Ducter on that Mac was installed by an administrator, so this update needs its password once, at that Mac. The new version is already downloaded.",
     "devup.how.manual": "The Ducter on %s is too old to update from here; install it there once more.",
     "devup.how.source": "This Ducter runs from source; it updates with the code.",
     "devup.why.network": "Couldn't reach GitHub. Try again when online.",
@@ -2206,7 +2214,7 @@ const accounts: Record<Lang, Record<string, string>> = {
   },
 };
 
-export const TABLES: Record<Lang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh, ...where.zh, ...devcard.zh, ...accounts.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en, ...where.en, ...devcard.en, ...accounts.en } };
+export const TABLES: Record<Lang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh, ...where.zh, ...devcard.zh, ...accounts.zh, ...starts.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en, ...where.en, ...devcard.en, ...accounts.en, ...starts.en } };
 
 /** Drops a space between two Chinese characters (zh copy spaces around a name for Latin names). */
 /** D78: a space where a Chinese character touches a Latin letter or a digit ("住在%s 上" with "hel"). */

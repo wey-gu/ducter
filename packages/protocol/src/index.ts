@@ -475,7 +475,27 @@ export interface OnHand {
   routines?: RoutineView[];
   /** D193: phone calls that are live, waiting for Go, or ended today (newest first). */
   calls?: CallView[];
+  /** D186: the projects the user added by hand (a folder each), shown even before a task. */
+  projects?: ProjectView[];
 }
+
+/** D186: a project the user added: a folder (a repo or not) on the home's computer, and its name. */
+export interface ProjectView {
+  name: string;
+  place: Place; // kind "repo" or "folder"
+  addedAt: string;
+}
+
+/** D185: when a task the user opens by hand starts. Absent = now. at: once, at a time (a routine
+ *  of one firing); every: on a schedule (a routine, active at once); when: the task opens now and
+ *  first waits for what the words say (its own wait_for, D112 (4)); until: it keeps going until
+ *  that holds (D113). Times are wall clock in tz (the client's zone). */
+export type NewTaskWhen =
+  | { kind: "now" }
+  | { kind: "at"; date: string; time: string; tz: string }
+  | { kind: "every"; every: "day" | "weekday" | "week" | "hours"; days?: number[]; hours?: number; time: string; tz: string }
+  | { kind: "when"; condition: string }
+  | { kind: "until"; condition: string };
 
 /** An armed waiter plus what it has seen so far (kept by core, not logged per look). */
 export type WaiterView = Bodies["waiter"] & { armedAt?: string; lastLookAt?: string; lastSummary?: string; looks?: number; nextLookAt?: string; changes?: number };
@@ -526,7 +546,9 @@ export interface EventSpec {
 export type RoutineTrigger =
   | {
       kind: "time";
-      every: "day" | "weekday" | "week" | "month" | "hours";
+      // once (D185): one firing on `date` at `time`; the routine ends after its run.
+      every: "day" | "weekday" | "week" | "month" | "hours" | "once";
+      date?: string; // once: "2026-11-12", a day on the zone's wall clock
       days?: number[]; // week: 0 = Sunday ... 6
       dayOfMonth?: number; // month
       hours?: number; // hours: every n hours, starting at `time`
@@ -552,6 +574,12 @@ export interface RoutineBody {
   reviewAt: string; // 30 days after it starts; then it asks "Keep this?"
   pausedBy?: "user" | "partner" | "system";
   pauseReason?: "asked" | "failures" | "unread" | "review" | "budget";
+  /** D185: made by the user on the New task card (no proposal card; active at once). Its runs
+   *  take the brief as the user's own words, and the agent they picked. */
+  by?: "you";
+  harness?: string;
+  model?: string;
+  project?: string;
 }
 
 export interface RoutineView extends RoutineBody {
@@ -711,7 +739,12 @@ export type ClientFrame =
   // when the user picked someone other than the top candidate: it is pinned for this task.
   // clientId: a resend with the same id opens nothing twice and gets the same result.
   | { t: "task_new_options"; place?: Place }
-  | { t: "task_new"; words: string; place?: Place; harness?: string; model?: string; clientId?: string }
+  // when (D185): absent or now opens it at once; at / every make a routine of the user's own
+  // (task_new_result carries routineId, no taskId); when / until open it now with its wait or loop.
+  | { t: "task_new"; words: string; place?: Place; harness?: string; model?: string; clientId?: string; when?: NewTaskWhen }
+  // D186: add a folder on the home's computer as a project (a repo or not). Answered with
+  // project_add_result; On hand's projects and the card's places then include it.
+  | { t: "project_add"; path: string; clientId?: string }
   // open_task: show this task in the apps (`ducter open <task>`): pushed to every connected app
   // as an open_task frame; the sender gets open_result with how many apps were told.
   | { t: "open_task"; taskId: string }
@@ -763,10 +796,11 @@ export interface PlaceChoice {
   usedAt?: string; // the last task there, or when the repo was last touched
   defaultBranch?: string; // repo places on this machine: what a task starts from unless picked
   branches?: string[]; // local branches, most recently committed first (at most 30)
+  added?: boolean; // D186: a project the user added by hand (listed even with no task yet)
 }
 
-/** Why a New task didn't open: empty words, nothing can do it, not a repo, its device is away, or anything else (message). */
-export type NewTaskReason = "empty" | "no_agent" | "not_repo" | "offline" | "failed";
+/** Why a New task didn't open: empty words, nothing can do it, not a repo, its device is away, a time already past or a wait with nothing to wait for (D185), or anything else (message). */
+export type NewTaskReason = "empty" | "no_agent" | "not_repo" | "offline" | "past" | "no_condition" | "failed";
 
 export type ServerFrame =
   // machine: a hash of the machine the main runs on (core/src/machine.ts); a client that computes
@@ -804,7 +838,8 @@ export type ServerFrame =
   // D128: New task. card: the task as On hand will show it; message: a reason in words (English).
   | { t: "task_new_options"; places: PlaceChoice[]; candidates: Candidate[] }
   | { t: "close_result"; device: string; ok: boolean; none?: boolean; decisionId?: string; message?: string }
-  | { t: "task_new_result"; ok: boolean; clientId?: string; taskId?: string; card?: TaskCard; reason?: NewTaskReason; message?: string }
+  | { t: "task_new_result"; ok: boolean; clientId?: string; taskId?: string; card?: TaskCard; routineId?: string; routine?: RoutineView; reason?: NewTaskReason; message?: string }
+  | { t: "project_add_result"; ok: boolean; clientId?: string; place?: PlaceChoice; reason?: "not_found" | "failed"; message?: string }
   // Show this task (the app opens it, Esc returns). open_result answers the sender: apps = how many apps were told.
   | { t: "open_task"; taskId: string }
   | { t: "open_result"; taskId: string; ok: boolean; apps: number; message?: string }
@@ -1071,9 +1106,12 @@ export type UpdatePhase = "downloading" | "verifying" | "waiting" | "restarting"
  * busy: a merge or an undo kept running; health: the new one didn't come up (rolled back);
  * downgrade: older than this one without an explicit version; not_writable: its folder can't be
  * written; app / source: updated another way (how); offline: the device isn't connected;
- * running: an update is already under way; failed: anything else (detail).
+ * running: an update is already under way; failed: anything else (detail). D187, a Mac that
+ * updates with its app, asked from elsewhere: app_closed = Ducter isn't open on that Mac (nothing
+ * was started); app_password = Ducter.app there was installed by an administrator, so its password
+ * is needed once, at that Mac.
  */
-export type UpdateReason = "network" | "no_release" | "no_asset" | "checksum" | "disk" | "selfcheck" | "busy" | "health" | "downgrade" | "not_writable" | "app" | "source" | "manual" | "offline" | "running" | "failed";
+export type UpdateReason = "network" | "no_release" | "no_asset" | "checksum" | "disk" | "selfcheck" | "busy" | "health" | "downgrade" | "not_writable" | "app" | "source" | "manual" | "offline" | "running" | "failed" | "app_closed" | "app_password";
 
 export interface DeviceUpdate {
   current: string;
@@ -1086,6 +1124,11 @@ export interface DeviceUpdate {
   notesBy?: { zh?: string[]; en?: string[] };
   security?: boolean; // the notes name a security fix
   how: UpdateHow;
+  /**
+   * D187: how "app", and this Mac's Ducter can ask its app to update (any client's 更新 does it:
+   * the app downloads and checks it, then restarts at the safe point). Absent: open the app there.
+   */
+  fromHere?: boolean;
   /** An update under way or just finished; absent when idle. */
   phase?: UpdatePhase;
   progress?: number; // downloading, 0..1

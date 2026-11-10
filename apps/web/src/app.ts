@@ -53,11 +53,58 @@ export interface NewTaskDraft {
   err: string;
   computer?: string; // D157: the computer chosen (a device id); "" = the suggested one
   computerOpen?: boolean;
+  // D185: the one list open under the pills ("place", "who", "when"; the branch and computer
+  // keep their own flags), when it starts ("" now, "at", "every", "when", "until") with its
+  // day (0 today, 1 tomorrow, 2 the day after), time, schedule (0 every day, 1 weekdays,
+  // 2 weekly on weekday, 3 every few hours, hours an index of EVERY_HOURS) and condition;
+  // again keeps the sheet after a start (⇧⌘↩), started says what just started.
+  list?: string;
+  when?: "" | "at" | "every" | "when" | "until";
+  atDay?: number;
+  atTime?: string;
+  every?: number;
+  weekday?: number;
+  hours?: number;
+  condition?: string;
+  again?: boolean;
+  started?: string;
+  startedTask?: string;
 }
 
-export const placeKey = (p: Place): string => (p.kind === "repo" ? `${p.device || "local"} ${p.repoPath.replace(/\/+$/, "")}` : "none");
+/** D185: the "every few hours" the sheet offers. */
+export const EVERY_HOURS = [1, 2, 4, 8];
+const WHO = "ducter.newtask.who";
+
+/** A typed time as "HH:MM" (9, 9:00, 21:30, 9.30, 9：30), or "" when it isn't one. */
+export function parseClock(s: string | undefined): string {
+  const m = /^\s*(\d{1,2})(?:\s*[:.：]\s*(\d{2}))?\s*$/.exec(s ?? "");
+  if (!m) return "";
+  const h = Number(m[1]), mm = Number(m[2] ?? 0);
+  return h > 23 || mm > 59 ? "" : `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+}
+
+const tzNow = (): string => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  } catch {
+    return "UTC";
+  }
+};
+const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+export const placeKey = (p: Place): string =>
+  p.kind === "repo" ? `${p.device || "local"} ${p.repoPath.replace(/\/+$/, "")}` : p.kind === "folder" ? `${p.device || "local"} ${p.path.replace(/\/+$/, "")}` : "none";
 export const candKey = (c: Candidate) => `${c.device ? c.device + "|" : ""}${c.harness}/${c.model ?? ""}`;
-const freshDraft = (words = ""): NewTaskDraft => ({ words, placeKey: "", branch: "", branchOpen: false, pick: "", sending: "", err: "" });
+// Kept here too: storage can be missing or refuse (a private window).
+let lastWho = "";
+const rememberedWho = () => {
+  try {
+    return localStorage.getItem(WHO) ?? lastWho;
+  } catch {
+    return lastWho;
+  }
+};
+const freshDraft = (words = ""): NewTaskDraft => ({ words, placeKey: "", branch: "", branchOpen: false, pick: rememberedWho(), sending: "", err: "", when: "", atDay: 1, atTime: "9:00", every: 0, weekday: 1, hours: 1, condition: "" });
 
 export interface Toast {
   id: number;
@@ -366,6 +413,11 @@ class AppState {
       this.nt.placeKey = placeKey(ask);
       if (at.baseBranch) this.nt.branch = at.baseBranch;
     }
+    if (at?.kind === "folder") {
+      ask = { kind: "folder", device: at.device, path: at.path };
+      this.nt.prefill = ask;
+      this.nt.placeKey = placeKey(ask);
+    }
     this.sheet = { kind: "newtask" };
     this.send({ t: "task_new_options", ...(ask ? { place: ask } : {}) });
     this.changed();
@@ -403,8 +455,8 @@ class AppState {
   newTaskPlaces(): PlaceChoice[] {
     const places = [...(this.newTaskOptions?.places ?? [])];
     const pre = this.nt.prefill;
-    if (pre && pre.kind === "repo" && !places.some((p) => placeKey(p.place) === placeKey(pre)))
-      places.unshift({ place: pre, name: pre.repoPath.replace(/\/+$/, "").split("/").pop() ?? "" });
+    if (pre && (pre.kind === "repo" || pre.kind === "folder") && !places.some((p) => placeKey(p.place) === placeKey(pre)))
+      places.unshift({ place: pre, name: (pre.kind === "repo" ? pre.repoPath : pre.path).replace(/\/+$/, "").split("/").pop() ?? "" });
     if (!places.length || places[places.length - 1]!.place.kind !== "none") places.push({ place: { kind: "none" }, name: "" });
     return places;
   }
@@ -448,12 +500,48 @@ class AppState {
   }
 
   pickPlace(p: PlaceChoice) {
+    this.nt.list = "";
+    if (placeKey(p.place) === placeKey(this.chosenPlace().place)) return this.changed();
     this.nt.placeKey = placeKey(p.place);
     this.nt.branch = "";
     this.nt.branchOpen = false;
     this.nt.err = "";
-    this.send({ t: "task_new_options", ...(p.place.kind === "repo" ? { place: p.place } : {}) });
+    this.send({ t: "task_new_options", ...(p.place.kind === "repo" || p.place.kind === "folder" ? { place: p.place } : {}) });
     this.changed();
+  }
+
+  /** D185: who the user picked, remembered for the next sheet ("" = the suggested one). */
+  pickWho(key: string) {
+    this.nt.pick = key;
+    this.nt.list = "";
+    lastWho = key;
+    try {
+      localStorage.setItem(WHO, key);
+    } catch {}
+    this.changed();
+  }
+
+  /** D185: the sheet's when as the frame says it (undefined: now), or a line saying what is missing. */
+  ntWhen(): { when?: Extract<ClientFrame, { t: "task_new" }>["when"]; bad?: string } {
+    const nt = this.nt;
+    if (nt.when === "at" || nt.when === "every") {
+      const time = parseClock(nt.atTime);
+      if (nt.when === "every" && nt.every === 3) return { when: { kind: "every", every: "hours", hours: EVERY_HOURS[nt.hours ?? 1], time: "00:00", tz: tzNow() } };
+      if (!time) return { bad: this.L.t("newtask.err.time") };
+      if (nt.when === "at") {
+        const d = new Date();
+        d.setDate(d.getDate() + (nt.atDay ?? 1));
+        return { when: { kind: "at", date: ymd(d), time, tz: tzNow() } };
+      }
+      const every = (["day", "weekday", "week"] as const)[nt.every ?? 0]!;
+      return { when: { kind: "every", every, time, tz: tzNow(), ...(every === "week" ? { days: [nt.weekday ?? 1] } : {}) } };
+    }
+    if (nt.when === "when" || nt.when === "until") {
+      const condition = (nt.condition ?? "").trim();
+      if (!condition) return { bad: this.L.t("newtask.err.no_condition") };
+      return { when: { kind: nt.when, condition } };
+    }
+    return {};
   }
 
   /** The line under Start: why it didn't open. "Say what it should do first" holds only while
@@ -465,12 +553,18 @@ class AppState {
   }
 
   /** Start: sends task_new; the result opens the task or says why not, on the sheet. */
-  startNewTask(): boolean {
+  startNewTask(again = false): boolean {
     const nt = this.nt;
     if (nt.sending) return false;
     const words = nt.words.trim();
     if (!words) return (nt.err = this.L.t("newtask.err.empty")), this.changed(), false;
     if (this.status !== "connected" || !this.S.welcomed) return (nt.err = this.L.t("newtask.err.conn")), this.changed(), false;
+    const { when, bad } = this.ntWhen();
+    if (bad) return (nt.err = bad), this.changed(), false;
+    nt.again = again;
+    nt.started = nt.startedTask = "";
+    nt.list = "";
+    nt.branchOpen = nt.computerOpen = false;
     const chosen = this.chosenPlace();
     const cp = chosen.place;
     // D157: No folder with two or more computers: the chosen (or suggested) computer goes with it.
@@ -478,13 +572,15 @@ class AppState {
     const place: Place | undefined =
       cp.kind === "repo"
         ? { kind: "repo", device: cp.device, repoPath: cp.repoPath, ...(nt.branch && nt.branch !== chosen.defaultBranch ? { baseBranch: nt.branch } : {}) }
-        : comp
-          ? { kind: "none", device: comp.home ? "local" : comp.name }
-          : undefined;
+        : cp.kind === "folder"
+          ? { kind: "folder", device: cp.device || "local", path: cp.path }
+          : comp
+            ? { kind: "none", device: comp.home ? "local" : comp.name }
+            : undefined;
     const { c, picked } = this.chosenCandidate();
     nt.sending = `n${Date.now()}-${++this.nextClient}`;
     nt.err = "";
-    this.send({ t: "task_new", words, ...(place ? { place } : {}), ...(c && (picked || (nt.pick && nt.computer)) ? { harness: c.harness, ...(c.model ? { model: c.model } : {}) } : {}), clientId: nt.sending });
+    this.send({ t: "task_new", words, ...(place ? { place } : {}), ...(c && (picked || (nt.pick && nt.computer)) ? { harness: c.harness, ...(c.model ? { model: c.model } : {}) } : {}), clientId: nt.sending, ...(when ? { when } : {}) });
     this.changed();
     return true;
   }
@@ -492,14 +588,23 @@ class AppState {
   private newTaskResult(f: Extract<ServerFrame, { t: "task_new_result" }>) {
     if (!this.nt.sending || f.clientId !== this.nt.sending) return;
     this.nt.sending = "";
-    if (f.ok && f.taskId) {
+    if (f.ok && (f.taskId || f.routineId)) {
+      const nt = this.nt;
+      if (nt.again) {
+        // ⇧⌘↩ (D185): the sheet stays, empty, with the same place, who and when, saying what started.
+        nt.words = nt.condition = nt.err = "";
+        if (f.routine) nt.started = this.L.t("newtask.scheduled", f.routine.triggerWords, f.routine.name);
+        else (nt.started = this.L.t("newtask.opened", f.card?.title ?? "")), (nt.startedTask = f.taskId ?? "");
+        return this.changed();
+      }
       this.nt = freshDraft();
       this.sheet = null;
-      return this.go({ name: "task", id: f.taskId });
+      // A start later or on a schedule lives on On hand (its routine card).
+      return f.taskId ? this.go({ name: "task", id: f.taskId }) : this.go({ name: "onhand" });
     }
     const r = f.reason;
     this.nt.err =
-      r === "empty" || r === "no_agent" || r === "not_repo" || r === "offline"
+      r === "empty" || r === "no_agent" || r === "not_repo" || r === "offline" || r === "past" || r === "no_condition"
         ? this.L.t(`newtask.err.${r}`)
         : f.message
           ? this.L.t("newtask.err.failed", f.message.replace(/[.\s]+$/, ""))

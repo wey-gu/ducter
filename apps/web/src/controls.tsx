@@ -208,9 +208,10 @@ export function Seg<V extends string | number>(p: { label: string; value: V | un
  * (faded); grey: excluded or unreachable; add: the dashed tile at the tray's end (再连一个).
  */
 export function AppTile(p: { label: string; sub?: string; about?: string; sel?: boolean; off?: boolean; grey?: boolean; add?: boolean; onClick: () => void; children?: ComponentChildren }) {
-  const acc = [p.label, p.sub, p.about].filter(Boolean).join(" · ");
+  // about is the whole name (Slack · Nowledge Labs, Inc): what it is called aloud, and on hover when a line is cut short (D192).
+  const acc = p.about || [p.label, p.sub].filter(Boolean).join(" · ");
   return (
-    <button class={`app-tile${p.sel ? " sel" : ""}${p.off ? " off" : ""}${p.grey ? " grey" : ""}${p.add ? " add" : ""}`} aria-label={acc} aria-pressed={p.add ? undefined : !!p.sel} onClick={p.onClick}>
+    <button class={`app-tile${p.sel ? " sel" : ""}${p.off ? " off" : ""}${p.grey ? " grey" : ""}${p.add ? " add" : ""}`} aria-label={acc} title={acc} aria-pressed={p.add ? undefined : !!p.sel} onClick={p.onClick}>
       <span class="sq" aria-hidden="true">
         {p.add ? "+" : p.children}
       </span>

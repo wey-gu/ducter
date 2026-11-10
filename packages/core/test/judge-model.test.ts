@@ -42,7 +42,7 @@ test("proactive triage runs on the registry's cheap model; the bar on the partne
       const triage = await createHarnessAsk({ harness: () => a.port, pick, dataDir: dir, cheap: true, dir: "triage" })("x");
       await createHarnessAsk({ harness: () => a.port, pick, dataDir: dir, cheap: false, dir: "judge" })("x");
       expect(a.specs.map((s) => s.model)).toEqual([HARNESSES[h].cheapModel!, "brain-model"]);
-      expect(a.specs.every((s) => s.noTools)).toBe(true); // D174 (3): no tools at all
+      expect(a.specs.every((s) => s.noTools)).toBe(true); // D175 (3): no tools at all
       // Cache reads count at a tenth (P4): 1,000 + 100 + 10,000 x 0.1.
       expect(triage.tokens).toBe(2_100);
     }

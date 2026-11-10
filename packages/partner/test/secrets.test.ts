@@ -1,4 +1,4 @@
-// D174 (research/48 F7): one secret detector. What a task is given (the partner's brief guard)
+// D175 (research/48 F7): one secret detector. What a task is given (the partner's brief guard)
 // and what a screen shows (protocol/redact.ts, D152) find the same keys; the only key a task may
 // get is a Nowledge Mem connect code the user pasted in their own words, as D152's scenario needs.
 import { expect, test } from "bun:test";

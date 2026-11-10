@@ -163,7 +163,7 @@ Each find is typed (stage 2 extracts, stage 3 judges). The kind is what the pers
 
 Kinds left out on purpose: newsletters, receipts, shipping updates that say it all in the
 subject, "you have N unread", social notifications, anything GitHub or the calendar already
-pushes. They go to the **没说的 / Left out** count, which the partner says only when asked (D172).
+pushes. They go to the **没说的 / Left out** count, which the partner says only when asked (D173).
 
 ## 5. When it speaks: one ladder, one switch
 
@@ -171,7 +171,7 @@ The existing escalation (principle 7: badge → message → push → call) with 
 
 | Rung | What reaches the person | Which finds |
 |---|---|---|
-| **Left out** | Nothing on screen (D172). The partner knows it and says it only when asked ("还有别的吗？" → "没说的：12 封通知和收据，看标题就知道；1 封像推销。") | everything below the bar |
+| **Left out** | Nothing on screen (D173). The partner knows it and says it only when asked ("还有别的吗？" → "没说的：12 封通知和收据，看标题就知道；1 封像推销。") | everything below the bar |
 | **The morning note** | One message in the conversation at the end of quiet hours; one **silent** notification (Apple's passive level; research/46) | up to the daily cap |
 | **Fold-in** | While the person is in Ducter, a find that is timely today joins the open living message (principle 7, revised in place, never re-notifies) | today's finds after the morning |
 | **Now** | A notification that may come through (time-sensitive, which the phone lets them turn off per app) | only "costs something today and needs you": a flight changed today, a domain that lapses tomorrow unpaid. Counts within the cap |
@@ -188,7 +188,7 @@ mirrored in Settings › 通知 (什么时候找你):
 |---|---|
 | **只说急的 / Only urgent** | Only the "Now" rung; no morning note |
 | **每天最多 3 件 / Up to 3 a day** (default) | Morning note with ≤ 3, plus "Now" within the 3 |
-| **有用就说 / Whenever useful** | No daily cap; still batched into the note and fold-ins, at most 5 a note (D173), the rest counted for when they ask |
+| **有用就说 / Whenever useful** | No daily cap; still batched into the note and fold-ins, at most 5 a note (D174), the rest counted for when they ask |
 | **不用主动找我 / Only when I ask** | Nothing proactive; it reads only when asked. Watching stops (no cost) |
 
 Why a cap of 3 and not a confidence bar alone: the research says false alarms are the main
@@ -201,17 +201,17 @@ phone screen with a next step each. INFERRED, to be tuned by the triage eval (§
   Ducter earlier, it is assembled then. Never at a fixed time that could wake them.
 - **What:** one partner message, the partner's own voice, first person, plain, dates and
   amounts exact, no exclamation marks:
-  1. a greeting at most: **早。 / Morning.** It never says what or how much it read (D172):
+  1. a greeting at most: **早。 / Morning.** It never says what or how much it read (D173):
      restraint is what makes it trustworthy, not a count;
   2. up to 3 finds, each **≤ 2 sentences** (zh ≤ ~60 characters; How I know and the two learning buttons share one row), most costly first, each with
      its one next step as a Go button (D73 labels), **先等等 / Hold**, and **怎么知道的** folded;
-  3. no **没说的** line: what was left out is the partner's to say when asked (D172).
+  3. no **没说的** line: what was left out is the partner's to say when asked (D173).
 - **Length:** the whole note fits one phone screen at 390 × 844 without scrolling.
 - **Silent days:** when nothing clears the bar there is **no message, no notification and no
-  line anywhere** (D172): silence means success. The partner knows it looked, and says so if asked.
+  line anywhere** (D173): silence means success. The partner knows it looked, and says so if asked.
 - **On the lock screen:** the notification's title is the partner's name, its body the finds'
   own first clauses ("ducter.dev 11/16 到期还没续费；11/21 那晚还没订到住处"), never an "N things"
-  summary (D172). It goes
+  summary (D173). It goes
   through D159's encrypted path; previews follow the phone's own "显示预览" setting (no new
   Ducter setting). Tapping opens the note.
 - **Held over:** a find not acted on stays as a decision on 手头的事 until its date passes, then
@@ -265,7 +265,7 @@ Asks raised by background work **expire into Passed** with the find's date (the 
   when asked. **不让 Ducter 看这个 / Don't let Ducter read this one** excludes an account
   entirely (the existing `policy.deny`, now with a control).
 - **Reading is logged and visible on asking:** the card's status line says only the plain state
-  (D172), and **看了哪些 / What it read** under ⋯ opens today's reads (the `connection_call`
+  (D173), and **看了哪些 / What it read** under ⋯ opens today's reads (the `connection_call`
   summaries) in place; counts live only there.
 - **The honest line** stays on every card: where mail passes (OOMOL's servers, or your own
   machine) and **它读到的内容会给你的 AI 账号看，别人拿不到。**
@@ -279,12 +279,12 @@ Asks raised by background work **expire into Passed** with the find's date (the 
 | 0. Look | **oo:** a model-free scheduled read through the broker (`gmail.search_threads` newer than the last look, every 10 min; calendar every 15 min; GitHub notifications every 10 min; Discord mentions and DMs every 10 min), because oo has no triggers (`OO_NOT_WATCHABLE`). **OpenConnector:** Provider Triggers with a checkpoint (built for waits). | no model; oo or OpenConnector calls |
 | 1. Rules | code: drop bulk (`List-Unsubscribe`, Promotions/Updates), the person's own sends (kept for the waits/commitments ledger only), already-read-elsewhere, muted senders and kinds | none |
 | 2. Triage | the cheapest capable model over batches (≤ 20 items, headers + snippet), only when stage 1 passed something: kind, typed facts, who's waiting, confidence | ~5–15 small calls a day for a typical inbox (INFERRED) |
-| 3. Judge | the partner's model over at most 10 candidates (urgent first), once before the morning note and, during the day, only for what can't wait (urgent, or due today); at most 4 runs a day, a verdict remembered per candidate and content hash; past that, or with the sources over budget, code's tests (D173) | ≤ 4 calls a day; 8 in a synthetic busy 24 h of 144 looks (`proactive-cost.test.ts`) |
+| 3. Judge | the partner's model over at most 10 candidates (urgent first), once before the morning note and, during the day, only for what can't wait (urgent, or due today); at most 4 runs a day, a verdict remembered per candidate and content hash; past that, or with the sources over budget, code's tests (D174) | ≤ 4 calls a day; 8 in a synthetic busy 24 h of 144 looks (`proactive-cost.test.ts`) |
 | 4. Say | the morning note, fold-ins, "Now", rendered from typed finds | none |
 
 **Budget:** each source has a monthly model budget (the routine mechanism, D114; default 2M
 tokens), shown in the card's detail as **这个月用了 3%**. Triage and the judge both count; a judge
-call is shared by the sources its candidates came from, and cache reads count at a tenth (D173).
+call is shared by the sources its candidates came from, and cache reads count at a tenth (D174).
 At the budget that source drops to **只说急的** for the rest of the month (the others don't) and
 says so once. "Only when I ask" costs nothing.
 
@@ -296,7 +296,7 @@ says so once. "Only when I ask" costs nothing.
    · **好，看一眼 / Take a look** (the default) · **先不用 / Not now**.
 2. Go: a read-only look (stages 1–3 over 3 days), said within about a minute:
    **有 1 件在等你回：Lina 周一问你 #2141 什么时候能 review，今天又问了一次。**
-   (with its next step), or **没有在等你回的。** Never how much it read (D172). Meanwhile, silently, the
+   (with its next step), or **没有在等你回的。** Never how much it read (D173). Meanwhile, silently, the
    60-day backfill fills the ledger with bookings, renewals and commitments (no message).
 3. Right under the answer, the one question, with a default:
    **以后我自己留意着：每天早上把值得说的放在一条里，最多 3 件；急的随时说。这样行吗？**
@@ -322,7 +322,7 @@ existing parts; the app tile is literal (an app's rounded square), not a metapho
    / Accounts in oo**, **OOMOL**, the name you gave your OpenConnector, the server's name.
 2. **How it is: one status line** (D161 (2), muted ink; exceptions in their ink):
    - watching: **在留意 / Keeping an eye out**; the morning note paused itself: **已暂停 / Paused**
-     (D172: the plain state, never a read count; counts are under ⋯ 看了哪些);
+     (D173: the plain state, never a read count; counts are under ⋯ 看了哪些);
    - only when asked: **你问起来才去看 / Reads only when you ask**;
    - signed out of oo: **oo 退出登录了 · 在终端里运行 oo login** (failed ink);
    - refused key: **钥匙失效了 · 换一把** with **去拿钥匙** (failed ink, D158);
@@ -377,7 +377,7 @@ the desktop's own renderer, phone from a scratch core with a fake oo).
   as letters). The drawn mailbox and glyphs are stand-ins; real clay art and marks are owed
   (`todo.md`). The English connection line wraps on the phone ("…OOMOL's servers"); the build
   needs a shorter en form.
-- **放心:** restraint (D172): it speaks only when something needs the person, and a quiet day is
+- **放心:** restraint (D173): it speaks only when something needs the person, and a quiet day is
   silent everywhere; 看了哪些 under ⋯ shows each read for whoever wants to check; every next step
   waits for Go; "这类不用告诉我" lands in 你的规则 where it can be undone. Not shown and owed: what a person sees in Mem after a find (记下了).
 - **惊喜:** the first look answers within a minute with a real person waiting; the flight/hotel
@@ -425,7 +425,7 @@ line (the tray and the connection line say them), **加一个** as the page's pr
    on synthetic inboxes (`packages/partner/eval/proactive/`); a labeled set from the author's
    real inbox, private, outside git (like research/15), is still owed for a live run.
 4. **Stage 3 judge + the morning note** as a typed `finds` report rendered by the core (like
-   the living message), nothing on a silent day (D172), the passive notification (D159 path).
+   the living message), nothing on a silent day (D173), the passive notification (D159 path).
 5. **The first-account moment** (§11) and the chip row (settings: `proactive`).
 6. **Reactions:** 有用 / 这类不用告诉我 → rules; per-kind bars; the 3-unread pause.
 7. **Follow-through:** each find's one next step as a decision; drafts kept in Ducter.
@@ -438,7 +438,7 @@ line (the tray and the connection line say them), **加一个** as the page's pr
 1. **Seven kinds**, all on by default except as noted (Discord/Slack: mentions and DMs only).
    **Default: yes.** Alternative: start with three (two things don't match, deadlines and
    money, waiting on you) and add the rest after the eval.
-2. **Cap 3, one morning note, silent on nothing days** (D172: no header line either). **Default: yes.** Alternative: a one-line "nothing today" message every morning.
+2. **Cap 3, one morning note, silent on nothing days** (D173: no header line either). **Default: yes.** Alternative: a one-line "nothing today" message every morning.
 3. **"Now" only for "costs something today and needs you"**, time-sensitive, inside the cap;
    night only by a per-kind rule the person said. **Default: yes.**
 4. **Watching starts only after the one question** (no answer = only when asked). **Default:
@@ -809,7 +809,7 @@ examples.
      · Look up options · Hold
 
 **Morning message frame.**
-- zh: "早。" then the two (#1 and #2). No count and no left-out line (D172); asked "还有别的吗？",
+- zh: "早。" then the two (#1 and #2). No count and no left-out line (D173); asked "还有别的吗？",
   the partner says "没说的：12 封通知和收据你看标题就知道了；1 封像是推销，没理它。"
 - en: "Morning." then the two. Asked "anything else?": "Left out: 12 notifications and receipts you can read from the subject line; 1 that looked like a sales pitch."
 

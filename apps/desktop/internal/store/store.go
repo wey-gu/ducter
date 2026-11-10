@@ -872,7 +872,7 @@ func (s *Store) job(id string) *Job {
 }
 
 // addFinds adds a note, or revises the one it revises in place (a fold-in,
-// an answered ask). A quiet morning (D172) is nothing at all: no message,
+// an answered ask). A quiet morning (D173) is nothing at all: no message,
 // no header line.
 func (s *Store) addFinds(ev protocol.LogEvent, b *protocol.Finds) {
 	if b.Quiet {

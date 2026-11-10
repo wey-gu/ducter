@@ -1,4 +1,4 @@
-// D174 (3), research/48 F8: a one-shot (the judge, the digest writer) runs with no tools at all
+// D175 (3), research/48 F8: a one-shot (the judge, the digest writer) runs with no tools at all
 // where the agent can say so, mapped by the adapter from the registry. Measured live on Claude Code
 // 2.1.322 with haiku: 9,679 input tokens with 12 built-ins denied, 629 with --tools "".
 import { expect, test } from "bun:test";

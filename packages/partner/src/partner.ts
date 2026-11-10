@@ -252,7 +252,7 @@ const CLAIMS_CHOICE = /(选|点|按|回复?|回)\s*[「“"]?\s*(Go|Hold|好|先
 /**
  * Secret-shaped strings never reach a task (G-safety G3): the user's words are copied into the
  * brief verbatim, so a pasted key would land in the task's prompt, transcript and Log. One
- * detector with what renders (protocol/redact.ts, D152; research/48 F7, D174), so a format the
+ * detector with what renders (protocol/redact.ts, D152; research/48 F7, D175), so a format the
  * screens hide (a JWT, a bearer token, `glpat-`, `hf_`, a password in a URL, token=…) never
  * reaches a task either. The one exception is D152's scenario: a Nowledge Mem connect code
  * (`nmem_ct_…`) the user pasted in their own words this turn, which the task needs to connect.

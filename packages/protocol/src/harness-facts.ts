@@ -74,7 +74,7 @@ export interface HarnessFacts {
   /** D168/D169: the user's Nowledge Mem plugin for this agent, and how Ducter turns it off in one session (research/48 M3, M4). */
   memPlugin?: Fact<MemPluginFact>;
   /**
-   * D174 (3), research/48 F8: how a one-shot session (the judge, the digest writer) runs with no
+   * D175 (3), research/48 F8: how a one-shot session (the judge, the digest writer) runs with no
    * tools at all, built-ins included. Launch args for the agent; empty: none known, so the named
    * built-ins are denied one by one instead (the old way).
    */
@@ -156,7 +156,7 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
   "claude-code": {
     harness: "claude-code",
     version: { command: ["claude", "--version"], pattern: /(\d+\.\d+\.\d+)/ },
-    // 2.1.322 re-verified live 2026-11-10 (D174 (2), research/48 addendum): windows 1M / 200K,
+    // 2.1.322 re-verified live 2026-11-10 (D175 (2), research/48 addendum): windows 1M / 200K,
     // the compaction point with and without the percent override, every switch Ducter sets.
     verified: { from: "2.1.319", to: "2.1.322" },
     models: {
@@ -304,7 +304,7 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
   pi: {
     harness: "pi",
     version: { command: ["pi", "--version"], pattern: /(\d+\.\d+\.\d+)/ },
-    // 1.5.1 re-checked 2026-11-10 (D174 (2)): every flag Ducter passes is in `pi --help`, still no
+    // 1.5.1 re-checked 2026-11-10 (D175 (2)): every flag Ducter passes is in `pi --help`, still no
     // window flag, compaction.reserveTokens still in its settings schema.
     verified: { from: "1.4.0", to: "1.5.1" },
     models: { value: {}, evidence: pi("provider/model ids; windows come from pi's own model catalog") },

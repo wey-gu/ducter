@@ -1,4 +1,4 @@
-// research/48 P1–P5, D172: what proactive costs and how much it says. The judge runs a few times a
+// research/48 P1–P5, D173: what proactive costs and how much it says. The judge runs a few times a
 // day however often Ducter looks (memoized, batched, counted in each source's budget), sees a
 // capped set, a note holds a capped set, mail's words reach a task only fenced as data, a broken
 // judge or a restart loses nothing, and no proactive text says how much was read. No model.
@@ -181,10 +181,10 @@ test("a restart in the middle of the 60-day look back picks it up again; said ke
   expect(existsSync(file)).toBe(true);
 });
 
-/** D172: proactive never boasts of what it read. */
+/** D173: proactive never boasts of what it read. */
 const READ_COUNT = /看了[^。；]*\d|\d+\s*封信|\bread \d+|\d+ emails|\d+ (things|items)? ?worth|有 \d+ 件值得/i;
 
-test("D172: no proactive text, to the person or to the partner, says how much was read", async () => {
+test("D173: no proactive text, to the person or to the partner, says how much was read", async () => {
   for (const mode of ["three", "useful"] as const) {
     const r = make({ mode, present: true });
     await r.p.lookNow(40);

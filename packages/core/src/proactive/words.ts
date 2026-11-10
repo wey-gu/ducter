@@ -17,7 +17,7 @@ const join = (xs: string[], zh: boolean) => (zh ? xs.join("、") : xs.length < 2
 
 export const W = {
   /**
-   * The morning note's opening: a greeting and nothing else (D172). It never says what or how much
+   * The morning note's opening: a greeting and nothing else (D173). It never says what or how much
    * was read ("看了 214 封信"): restraint; the things themselves follow.
    */
   open: (zh: boolean) => (zh ? "早。" : "Morning."),
@@ -32,7 +32,7 @@ export const W = {
   },
   firstOffer: (zh: boolean, apps: string[]) =>
     zh ? `已经能看你的 ${join(apps, true)} 了。要不要我现在看一眼过去 3 天，有没有在等你回的？` : `I can read your ${join(apps, false)} now. Want me to look through the last 3 days for anything waiting on you?`,
-  /** The first look's answer: only what matters (D172), never how much it read. */
+  /** The first look's answer: only what matters (D173), never how much it read. */
   firstAnswer: (zh: boolean, k: number) => (zh ? (k ? `有 ${k} 件在等你回：` : "没有在等你回的。") : k ? (k === 1 ? "One thing is waiting on you:" : `${k} things are waiting on you:`) : "Nothing is waiting on you."),
   firstLater: (zh: boolean) => (zh ? "好，先不看。" : "OK, not now."),
   keepNote: (zh: boolean) => (zh ? "早上那条还要吗？" : "Keep the morning note?"),
@@ -42,7 +42,7 @@ export const W = {
     if (zh) return sender ? `${sender} 的「${k.zh}」不用告诉我` : `「${k.zh}」这类不用告诉我`;
     return sender ? `Don't tell me "${k.en}" from ${sender}` : `Don't tell me "${k.en}"`;
   },
-  /** The lock screen's body (§6, D172): the finds' own first clauses, never an "N things" summary. */
+  /** The lock screen's body (§6, D173): the finds' own first clauses, never an "N things" summary. */
   lockBody(zh: boolean, texts: string[]) {
     return texts.map((t) => t.split(/[。.!?！？]/)[0]!.trim()).filter(Boolean).join(zh ? "；" : "; ");
   },

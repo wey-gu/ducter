@@ -51,7 +51,7 @@ const MARK = /\uE000(\d+)\uE001/g;
 /**
  * Finds every key in the text and lets `hide` say what stands in its place (undefined keeps it).
  * The one detector: `redact` (what renders, D152) and the partner's brief guard (what reaches a
- * task, G-safety G3; research/48 F7, D174) both use it.
+ * task, G-safety G3; research/48 F7, D175) both use it.
  */
 export function redactWith(s: string, hide: (k: FoundKey) => string | undefined, o: { strict?: boolean } = {}): string {
   if (!s || s.length < 8) return s;
@@ -80,7 +80,7 @@ export function redact(s: string): string {
   return redactWith(s, (k) => (k.kind === "pem" ? `-----BEGIN PRIVATE KEY-----${HIDDEN}-----END PRIVATE KEY-----` : k.kind === "prefixed" ? k.head + HIDDEN : HIDDEN));
 }
 
-/** A Nowledge Mem connect code ("nmem_ct_…"): the one key a user may hand a task on purpose (D152's scenario, D174). */
+/** A Nowledge Mem connect code ("nmem_ct_…"): the one key a user may hand a task on purpose (D152's scenario, D175). */
 export const isConnectCode = (k: FoundKey) => k.kind === "prefixed" && /^nmem_[a-z]{2,4}_$/.test(k.head);
 
 /** Whether the text had a key hidden in it (a client says so under it). */

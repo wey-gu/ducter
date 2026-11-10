@@ -155,7 +155,7 @@ Process rules proposed alongside (for AGENTS.md, the author's call):
 3. After a day of parallel merges, re-run this audit's measurements (`DUCTER_BUDGET_PRINT=1 bun
    test packages/partner/test/prompt-budget.test.ts`, the probe).
 
-## Follow-up: what was fixed after the merges (2026-11-10, D173)
+## Follow-up: what was fixed after the merges (2026-11-10, D174)
 
 VERIFIED by tests with no model calls; numbers from `packages/core/test/proactive-cost.test.ts`.
 
@@ -167,13 +167,13 @@ VERIFIED by tests with no model calls; numbers from `packages/core/test/proactiv
 | P4 | Cache reads weigh 0.1; each source pays its share; the budget is per source, never the whole mode. | `judge-model`: weighted tokens; `proactive-learn`, `proactive-cost`: per-source budget |
 | P5 | The look's checkpoint moves after intake; failed triage batches retry; the 60-day back-fill resumes after a restart; said keys and old verdicts are pruned; a throwing judge falls back to code (it already did: the INFERRED failure didn't hold). | `proactive-watch`: the checkpoint; `proactive-cost`: restart, prune, throwing judge |
 | L1 | The quiet-hours default is `push.ts`'s; the prompts put the date next to the data. Not done: one CJK helper (there is no shared one yet; five call sites use the same regex). | `proactive-cascade`: the date after the instructions |
-| M1 | The task's memory mode reads "present in any form" (installed, review, update); Ducter's recall only where the check says absent or has nothing to say (deviation, said in D173 (6)); `<what_i_know>` capped at the render. | `mem-plugins`: present(); `prompt-budget`: the first turn with recall |
+| M1 | The task's memory mode reads "present in any form" (installed, review, update); Ducter's recall only where the check says absent or has nothing to say (deviation, said in D174 (6)); `<what_i_know>` capped at the render. | `mem-plugins`: present(); `prompt-budget`: the first turn with recall |
 | M2 | Not measurable without a live session: `memPlugin.contextCost: "unknown"` in harness-facts; todo with its trigger. | — |
 | M3 | Memory off on pi (`--no-extensions`) and DeepSeek Harness (a Ducter-owned home); Codex's separate hooks script is a todo. | runner `memory`: every agent with a plugin |
 | M4 | Host, ids, off method, context cost in harness-facts `memPlugin`; `MEM_HOSTS`/`MEM_PLUGIN_IDS` derive from it; the probe checks pi's flag and Mem's host names. Principle 17's wording stays the author's (§4.6). | runner `memory`: the ids come from the registry |
 | F7 | Not changed: unifying the brief's detector is a behaviour choice (§4.1). | — |
 
-## Addendum: the six calls of §4, done (D174, 2026-11-10)
+## Addendum: the six calls of §4, done (D175, 2026-11-10)
 
 1. **One secret detector** (F7): `redactWith` in `protocol/src/redact.ts` is the one scan; the
    brief guard is strict and keeps only a connect code the user pasted that turn. VERIFIED by

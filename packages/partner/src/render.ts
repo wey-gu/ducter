@@ -181,7 +181,7 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
       // D165: what Ducter noticed and said by itself, so the partner can answer about it.
       const b = e.body as Bodies["finds"];
       if (b.answered) return `[${t} the user answered your ${b.ask === "first_look" ? "first-look offer" : b.ask === "keep_note" ? "keep-the-morning-note question" : "how-to-tell-you question"}: ${b.answered}]`;
-      // D172: what was left out is said only when they ask ("还有别的吗？").
+      // D173: what was left out is said only when they ask ("还有别的吗？").
       const left = b.leftOut ? ` (left out, say only if they ask: ${clip(b.leftOut, 200)})` : "";
       if (b.quiet) return `[${t} you looked through their accounts this morning; nothing needed them, so you said nothing${left}]`;
       // A fold-in carries the whole note: only its new finds here, the rest are in the morning's line

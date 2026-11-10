@@ -189,7 +189,7 @@ blocked feature. Copy never implies payment.
   (≤ 5 results, 6 per task, each read logged by query and ids) is answered by the home, so a
   worker holds no Mem key. `<what_i_know>` is capped at the render too (4 notes, 220 chars
   each; `KNOWN_MAX`, guarded in `prompt-budget.test.ts`). Where the plugin is there **in any
-  form** (installed, review, update: D173 (6); the author's own Codex is a review), neither: it
+  form** (installed, review, update: D174 (6); the author's own Codex is a review), neither: it
   already gives that context, and a second recall would double it. The plugin's own Context
   Bundle size is not measured yet (harness-facts `memPlugin.contextCost: "unknown"`, todo).
 - **Writing:** the plugin keeps the thread; memories come only from the partner. A task
@@ -202,7 +202,7 @@ blocked feature. Copy never implies payment.
   type it into a form or a URL.
 - **Mem off** in Ducter: no recall, no tool, no words about memory in the brief, no NMEM
   identity, and the plugin turned off in the session the way harness-facts `memPlugin.off` says
-  for each agent (D173 (7)): Claude Code `--settings enabledPlugins`, Codex
+  for each agent (D174 (7)): Claude Code `--settings enabledPlugins`, Codex
   `-c plugins.<id>.enabled=false`, pi `--no-extensions` (all of the user's pi extensions, as pi
   has no per-package switch), DeepSeek Harness under a Ducter-owned home (INFERRED). Open: whether
   Codex's Mem hooks script sits outside the plugin (todo).

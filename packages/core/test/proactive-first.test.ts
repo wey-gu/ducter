@@ -37,7 +37,7 @@ test("好，看一眼: a 3-day look, the person waiting on them, then the cadenc
   const answer = ns[2]!;
   expect(answer.rung).toBe("first");
   expect(answer.ask).toBe("cadence");
-  expect(answer.opening).toBe("有 1 件在等你回："); // D172: what matters, never "I read N emails"
+  expect(answer.opening).toBe("有 1 件在等你回："); // D173: what matters, never "I read N emails"
   expect(answer.finds.map((f) => f.kind)).toEqual(["waiting_on_you"]);
   expect(answer.finds[0]!.text).toContain("Lina");
   // The 3-day look read only mail, GitHub and chat over 3 days; then the quiet 60-day look back.

@@ -6,7 +6,7 @@
 > installed version is outside the verified range. Tags: VERIFIED (how, date, version),
 > DOCUMENTED (source), INFERRED.
 
-## Verified versions (2026-11-09; widened 2026-11-10, D174 (2))
+## Verified versions (2026-11-09; widened 2026-11-10, D175 (2))
 
 | Harness | Verified | Window knob | Compaction point | 1M off |
 |---|---|---|---|---|
@@ -39,7 +39,7 @@
   `anthropic/alwaysLoad` (Ducter's tools in tasks). Both strings, and the Read cap, are
   `CLAUDE_SWITCHES` in harness-facts; a test fails on them anywhere but the registry and the
   adapter, and the probe checks the binary still has them (research/48).
-- **2.1.322, re-verified live 2026-11-10 (D174 (2), research/48 addendum).** Windows 1M / 200K;
+- **2.1.322, re-verified live 2026-11-10 (D175 (2), research/48 addendum).** Windows 1M / 200K;
   `effectiveWindow` = window − 20K; the percent override still lowers the compaction point
   (`level=compact` at 8K tokens with pct 1, `ok` without). The binary also has per-window
   entries and a rule that a fork ignores the override (Ducter doesn't fork). `verified` is now
@@ -74,13 +74,13 @@ channel names where its latest is read and how it updates. Ducter never touches 
 | pi | `@earendil-works/pi-coding-agent` | none | `managed-install.json` · `pi update --self` · none | none (inside Ducter from a checkout) |
 | DeepSeek Harness | `@deepseek-ai/dsh` (npm's `latest` is a pre-release) | none | none | none |
 
-## One-shots with no tools (D174 (3), research/48 F8)
+## One-shots with no tools (D175 (3), research/48 F8)
 
 `noTools` in harness-facts: the judge and the digest writer set `SessionSpec.noTools`, and the
 adapter sends Claude Code `--tools ""` (VERIFIED 2.1.322: 9,679 → 629 input tokens a call) and pi
 `--no-tools` (DOCUMENTED); Codex and DeepSeek Harness keep the named denials (no switch known).
 
-## The Nowledge Mem plugin in tasks (D168, D173, research/48 M3/M4)
+## The Nowledge Mem plugin in tasks (D168, D174, research/48 M3/M4)
 
 `memPlugin` in harness-facts: Mem's host name, the plugin's id, and how one session runs without
 it when memory is off. The probe checks pi's flag and that `nmem plugins inspect` still names

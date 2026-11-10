@@ -87,7 +87,7 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 
 ## Partner and tasks (`design/plan/v1-tonight.md` "Known gaps", `research/30`)
 
-- [ ] **A two-tier partner tool list** (D174 (5), research/48 §3): the core tools always, routines,
+- [ ] **A two-tier partner tool list** (D175 (5), research/48 §3): the core tools always, routines,
       rules and connections loaded when used. Not now: the 24 tools are ~7K tokens. Trigger: the
       partner's list passes 30 tools or 32K JSON chars (`tool-budget.test.ts` G2 forces it).
 
@@ -173,7 +173,7 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 
 ## Long-term memory (`design/memory.md`)
 
-- [ ] **Ask Mem for orchestrator attribution on plugin writes** (D174 (6), principle 17): a task's
+- [ ] **Ask Mem for orchestrator attribution on plugin writes** (D175 (6), principle 17): a task's
       plugin capture records the persona and its agent's `source_app`, but nothing says Ducter
       ran it or which task. Ask for an env the plugin passes through (e.g. `NMEM_ORCHESTRATOR`
       with a task id / Log pointer). Trigger: the next Mem sync.
@@ -188,7 +188,7 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       beside `codex plugin add`; if it lands in the user's own hooks, `plugins.<id>.enabled=false`
       leaves its SessionStart hook running. Check on a scratch `CODEX_HOME`; if so, also turn the
       user's hooks off in memory-off tasks (`features.hooks=false`), and say so. Trigger: same.
-- [ ] **DeepSeek Harness memory off** (D173 (7)) runs under a Ducter-owned home: verify the login
+- [ ] **DeepSeek Harness memory off** (D174 (7)) runs under a Ducter-owned home: verify the login
       and the profile bundle's absence on a real install. Trigger: DSH verified at all.
 
 - [x] **One live write**, read back, then removed (D63, D141 (6), 2026-11-09): identity,

@@ -461,15 +461,15 @@ export function createProactive(o: ProactiveOptions): Proactive {
       // 有用就说: what the note had no room for is counted, never dropped silently (P2).
       if (m === "useful") st.more += kept.length - pick.length;
       const noteId = newId("note");
-      // D172: what was left out is the partner's to say only when asked ("还有别的吗？"); no screen shows it.
+      // D173: what was left out is the partner's to say only when asked ("还有别的吗？"); no screen shows it.
       const leftOut = W.leftOut(z, { ...st.left, more: st.more });
       if (!pick.length) {
-        // A quiet day (D172): nothing sent and nothing shown. The partner alone knows it looked.
+        // A quiet day (D173): nothing sent and nothing shown. The partner alone knows it looked.
         const e = note({ noteId, rung: "morning", opening: "", finds: [], quiet: true, ...(leftOut ? { leftOut } : {}) });
         st.mornings.push({ noteId, seq: e.seq, day: today(), finds: 0 });
       } else {
         const finds = pick.map((x) => makeFind(x.c, x.text, noteId));
-        // D172: no "I read 214 emails": a one-word greeting, then the things themselves.
+        // D173: no "I read 214 emails": a one-word greeting, then the things themselves.
         const e = note({ noteId, rung: "morning", opening: W.open(z), finds, ...(leftOut ? { leftOut } : {}) });
         st.mornings.push({ noteId, seq: e.seq, day: today(), finds: finds.length });
         st.day.said += finds.length;

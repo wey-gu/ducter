@@ -41,7 +41,7 @@ type Finds struct {
 	Rung     string     `json:"rung"`
 	Opening  string     `json:"opening"`
 	Finds    []FindView `json:"finds"`
-	LeftOut  string     `json:"leftOut,omitempty"` // the partner's, said only when asked (D172); never drawn
+	LeftOut  string     `json:"leftOut,omitempty"` // the partner's, said only when asked (D173); never drawn
 	Quiet    bool       `json:"quiet,omitempty"`
 	Ask      string     `json:"ask,omitempty"`
 	Revises  string     `json:"revises,omitempty"`

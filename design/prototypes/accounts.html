@@ -337,10 +337,10 @@ const T = {
   fCap: ["Mac：点「好，看一眼」→ 一分钟内回答 → 最后一个问题。没回答就什么都不盯。", "Mac: Take a look → an answer within a minute → the one question. No answer means nothing watches."],
   phfCap: ["手机上同一段对话。", "The same moment on the phone."],
   mH: ["早上那条：最多 3 件，没声音；没事的日子什么都不发", "The morning note: up to 3, no sound; nothing at all on a quiet day"],
-  mP: ["免打扰结束时，一条消息、一个静音通知。不说看了多少（D172：克制），一句「早。」就是事情本身；每件事两句话以内加一个下一步。没说的，你问起来才说。", "At the end of quiet hours, one message and one silent notification. It never says how much it read (D172: restraint): \"Morning.\" and then the things themselves, each in two sentences or fewer with one next step. What it left out, only if you ask."],
+  mP: ["免打扰结束时，一条消息、一个静音通知。不说看了多少（D173：克制），一句「早。」就是事情本身；每件事两句话以内加一个下一步。没说的，你问起来才说。", "At the end of quiet hours, one message and one silent notification. It never says how much it read (D173: restraint): \"Morning.\" and then the things themselves, each in two sentences or fewer with one next step. What it left out, only if you ask."],
   lockCap: ["锁屏：静音（被动级别）。正文就是那几件事本身，不写「有 N 件」；预览跟着手机自己的设置走。", "Lock screen: silent (the passive level). The body is the things themselves, never \"N things\"; previews follow the phone's own setting."],
   noteCap: ["点开：一屏放得下。每件事下面有「有用」和「这类不用告诉我」。", "Opened: fits one screen. Each find has Useful and Don't tell me this kind."],
-  quietCap: ["没事的日子：不发消息、不通知，哪儿都不显示（D172）：没动静就是一切都好。", "A quiet day: no message, no notification, nothing shown anywhere (D172): silence means all is well."],
+  quietCap: ["没事的日子：不发消息、不通知，哪儿都不显示（D173）：没动静就是一切都好。", "A quiet day: no message, no notification, nothing shown anywhere (D173): silence means all is well."],
   aH: ["两件事对不上：从发现到一个要你点「好」的任务", "Two things don't match: from a find to a task that waits for your Go"],
   aP: ["航班和酒店差一晚。点「好，看看能不能提前」才开任务（上网，在 MacBook 上）；改订和付钱都是你自己的。下面的「这类不用告诉我」会变成一条规则。", "The flight and the hotel are a night apart. Only Go opens a task (browsing, on the MacBook); changing the booking and paying stay yours. Don't tell me this kind becomes a rule."],
   ahaCap: ["点「好，看看能不能提前」看任务走完。", "Tap Check for that night and watch the task run."],
@@ -496,7 +496,7 @@ function renderBefore() {
   document.getElementById("newA").innerHTML = `<div style="display:flex;flex-direction:column;gap:16px">${proChips("a")}${sourceCard("a", sources().oo)}</div>`;
   document.getElementById("fixes").innerHTML = [
     L("<b>它会做什么</b>：没写 → 上面一排「自己发现了事，怎么告诉你」，一个选择，带默认。", "<b>What it will do</b>: missing → one chip row on top, a single choice with a default."),
-    L("<b>它现在怎么样</b>：没有 → 一行状态「在留意」（不报数，D172；看了多少在 ⋯ 里）。", "<b>How it is now</b>: missing → one status line, Keeping an eye out (no counts, D172; they are under ⋯)."),
+    L("<b>它现在怎么样</b>：没有 → 一行状态「在留意」（不报数，D173；看了多少在 ⋯ 里）。", "<b>How it is now</b>: missing → one status line, Keeping an eye out (no counts, D173; they are under ⋯)."),
     L("<b>能看什么</b>：一串字 → 一排 app 方块，点开说看什么、什么先问你、最后什么时候看的。", "<b>What it can read</b>: a run of names → a tray of app tiles; tap one for what it reads, what asks first, when it last looked."),
     L("<b>看了哪些</b>：看不到 → ⋯ 里一行一条，和诚实的那句话。", "<b>What it read</b>: invisible → ⋯ opens today's reads and the honest line."),
     L("<b>主按钮</b>：「加一个」→ 退到卡片下面的小字；卡片只有一个危险按钮，原地确认。", "<b>The primary button</b>: Add one → a quiet link under the cards; the card has one destructive action, confirmed in place."),

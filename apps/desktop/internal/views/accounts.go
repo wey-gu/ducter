@@ -139,7 +139,7 @@ func (a *App) sourceStatus(cv protocol.ConnectionView) (string, ui.Color) {
 	if l == nil || !l.Watching {
 		return a.L.T("card.status.asked"), t.InkSoft
 	}
-	// D172: the plain state, never how much it read (that is under ⋯ 看了哪些).
+	// D173: the plain state, never how much it read (that is under ⋯ 看了哪些).
 	if l.Paused {
 		return a.L.T("card.status.paused"), t.InkSoft
 	}

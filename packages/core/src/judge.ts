@@ -74,7 +74,7 @@ export function createHarnessAsk(opts: { harness: () => HarnessPort | undefined;
       mcp: [],
       permissionMode: "bypass",
       isolateUserConfig: true,
-      // No tools at all where the agent can (D174 (3)); the named built-ins stay denied where it can't.
+      // No tools at all where the agent can (D175 (3)); the named built-ins stay denied where it can't.
       noTools: true,
       disallowedTools: TOOLS_OFF,
     });

@@ -116,7 +116,7 @@ func TestMorningNoteInTheConversation(t *testing.T) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
 	}
-	// D172: restraint. What was left out is the partner's to say when asked, and nothing on
+	// D173: restraint. What was left out is the partner's to say when asked, and nothing on
 	// screen says how much was read.
 	for _, s := range tt.Texts() {
 		if strings.Contains(s, "没说的") || readCount.MatchString(s) {
@@ -151,7 +151,7 @@ func TestMorningNoteInTheConversation(t *testing.T) {
 	}
 }
 
-// D172: a quiet morning is nothing at all: no message and no header line.
+// D173: a quiet morning is nothing at all: no message and no header line.
 func TestQuietMorningShowsNothing(t *testing.T) {
 	app, _ := iaApp(t, i18n.ZH)
 	app.Status = client.Connected
@@ -276,5 +276,5 @@ func firstEvents(en bool) []protocol.LogEvent {
 	}
 }
 
-// readCount is how much was read, said anywhere (D172 forbids it on screen).
+// readCount is how much was read, said anywhere (D173 forbids it on screen).
 var readCount = regexp.MustCompile(`看了[^。；]*\d|\d+\s*封信|(?i)\bread \d+|\d+ emails|有 \d+ 件值得`)

@@ -316,7 +316,7 @@ export class Store {
         return entry({ user: ev.body as Bodies["user_msg"] });
       case "finds": {
         const b = ev.body as Bodies["finds"];
-        // A quiet morning (D172): nothing sent, nothing shown, not even a header line.
+        // A quiet morning (D173): nothing sent, nothing shown, not even a header line.
         if (b.quiet) return void this.bySeq.set(ev.seq, null);
         const old = b.revises ? this.notes.get(b.revises) : undefined;
         if (old) {

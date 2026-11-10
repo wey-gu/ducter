@@ -83,7 +83,7 @@ export interface SourceLook {
   watching: boolean;
   /** The morning note paused itself (three unread mornings); 早上那条还要吗？ is pending. */
   paused?: boolean;
-  /** Items read today by the watchers (emails, events, threads). Details only (⋯), never the status line (D172). */
+  /** Items read today by the watchers (emails, events, threads). Details only (⋯), never the status line (D173). */
   readToday: number;
   /** Finds said today from this source. */
   worthToday: number;

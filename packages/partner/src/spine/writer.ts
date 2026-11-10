@@ -198,7 +198,7 @@ export function createHarnessWriter(opts: { harness: () => HarnessPort | undefin
         mcp: [],
         permissionMode: "bypass",
         isolateUserConfig: true,
-        // No tools at all where the agent can (D174 (3)); the named built-ins stay denied where it can't.
+        // No tools at all where the agent can (D175 (3)); the named built-ins stay denied where it can't.
         noTools: true,
         disallowedTools: TOOLS_OFF,
         contextWindow: WINDOW_DEFAULTS.partner.window, // D135: a standard-window model, never a 1M variant

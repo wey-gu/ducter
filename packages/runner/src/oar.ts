@@ -310,7 +310,7 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
   switch (h) {
     case "claude-code":
       if (spec.launchArgs?.length) launchArgs = spec.launchArgs;
-      // D174 (3): a one-shot with no tools at all (harness-facts noTools: ~9K input tokens less a call).
+      // D175 (3): a one-shot with no tools at all (harness-facts noTools: ~9K input tokens less a call).
       if (spec.noTools) {
         launchArgs = [...(launchArgs ?? []), ...HARNESS_FACTS["claude-code"].noTools.value.args];
         disallowed = [];

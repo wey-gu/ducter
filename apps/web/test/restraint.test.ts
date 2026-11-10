@@ -1,4 +1,4 @@
-// D172: proactive help never boasts of what it read. The phone's words for the accounts card and
+// D173: proactive help never boasts of what it read. The phone's words for the accounts card and
 // the conversation header carry no read counts, a quiet day shows nothing, and the morning note
 // draws no left-out line (the partner says it only when asked).
 import { expect, test } from "bun:test";

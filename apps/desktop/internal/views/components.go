@@ -707,6 +707,14 @@ func (a *App) decisionButtons(c *ui.Context, d *store.DecisionState, st decision
 		a.signInButtons(c, d, st) // D151: Sign in opens the live view
 		return
 	}
+	if d.Pay != nil {
+		a.payButtons(c, d, st) // D191: merchant, amount, card, the code
+		return
+	}
+	if d.Fill != nil {
+		a.fillButtons(c, d, st)
+		return
+	}
 	if d.Resolved != nil || d.Pending != "" {
 		msg := a.answeredWords(d)
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {

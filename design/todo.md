@@ -356,6 +356,27 @@ note and a `Dn`) before it is built.
 - [ ] **Linux check:** reflink on btrfs/xfs and the network/external mount detection were
       written from the mount table, not run on Linux. Trigger: the first Linux server user.
 
+## Autofill (D191, `design/autofill.md`)
+
+- [ ] **The author's review of D191** (draft): the three stores, never storing the security code,
+      no reveal, OK per site, the Pay card. Trigger: the author's next session.
+- [ ] **A real errand, once:** a test-mode checkout on a real site (a Stripe test page) from the
+      phone, end to end; never a real card. Trigger: the review.
+- [ ] **Clay art for Autofill** through the metaphor process (it borrows the 上网 clay today).
+      Trigger: the review of the Settings shots.
+- [ ] **Face ID / Touch ID on the Pay card** (the iPhone shell's existing unlock; LocalAuthentication
+      in the Mac app). Trigger: the first real payment.
+- [ ] **The live view's "fill from saved"** plugs into `FillSeam` (`packages/core/src/saved/fill.ts`)
+      when the takeover work lands; the owner taps a field, then a saved thing.
+- [ ] **1Password / Bitwarden by reference** (research/54 §5: 1Password's agent programme is
+      partner-only; Bitwarden Agent Access SDK is alpha). Trigger: a public path for self-hosted agents.
+- [ ] **Single-use cards** (Stripe Link agent wallet via `link-cli --output-file`, Privacy.com) behind
+      the same Pay card, US/Canada. Trigger: a user outside the owner's-card path asks.
+- [ ] **Codes from a connected mailbox** with per-account consent and a Muse-like filter. Trigger: 3-D
+      Secure by SMS/email shows up as the common blocker.
+- [ ] **Filling on a worker's browser** sends the value over the worker socket (the owner's own
+      computer); say it on the Autofill page, or fill on the home only. Trigger: the review.
+
 ## Browser places (W5)
 
 `packages/runner/src/browser.ts` attaches cua-driver directly (D47). Verified live on 0.44.0

@@ -32,9 +32,12 @@ exactly what it will and won't do. This page lists it.
   and to ask before deleting more than 10 files at once. With Codex, it can't write anywhere
   else. With Claude Code that's asked of it, not enforced, and a change outside the folder isn't
   covered by the copy.
-- **It never types your passwords.** When a website needs a login, you type it yourself, in
-  your Chrome or in Ducter's browser window; the AI never sees it. Submitting forms, posting and
-  paying are always left to you.
+- **It never sees your passwords or card numbers.** When a website needs a login, you type it
+  yourself, in your Chrome or in Ducter's browser window; the AI never sees it. If you saved a
+  sign-in or a card in [Autofill](autofill.md), Ducter fills it into its own browser without the
+  AI seeing it, only on that sign-in's own site, and every payment waits for you to tap **Pay** on
+  a card that names the shop, the amount and your card's last four. Submitting forms and posting
+  are left to you.
 - **On a server, it can't look while you sign in.** Ducter's browser on a server shows you its
   page live when a task asks you to sign in. While that view is open, the task's browser tools
   refuse to read anything (no text, no picture), and nothing you type or see there goes to the

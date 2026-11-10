@@ -62,12 +62,13 @@ const (
 	TabPartner  = "partner"
 	TabNotify   = "notify"
 	TabAccounts = "accounts"
+	TabAutofill = "autofill"
 	TabLook     = "look"
 	TabRun      = "run"
 	TabAbout    = "about"
 )
 
-var settingsTabs = []string{TabPartner, TabNotify, TabAccounts, TabLook, TabRun, TabAbout}
+var settingsTabs = []string{TabPartner, TabNotify, TabAccounts, TabAutofill, TabLook, TabRun, TabAbout}
 
 type settingsState struct {
 	// tab is the section shown ("" is the first).
@@ -205,6 +206,8 @@ func (a *App) settingsView(c *ui.Context) {
 						a.partnerPanel(c, w-railW)
 					case TabNotify:
 						a.notifyPanel(c)
+					case TabAutofill:
+						a.autofillPanel(c)
 					case TabAccounts:
 						a.accountsPanel(c)
 					case TabLook:
@@ -292,6 +295,8 @@ func (a *App) tabIcon(c *ui.Context, tab string, size float32) {
 		bmp = theme.Clay("wait_clock")
 	case TabAccounts:
 		bmp = theme.Clay("wait_mail")
+	case TabAutofill:
+		bmp = theme.Clay("ab_web")
 	case TabRun:
 		bmp = theme.Clay("mini_awake")
 	case TabLook:

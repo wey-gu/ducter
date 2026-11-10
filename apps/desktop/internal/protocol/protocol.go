@@ -164,6 +164,10 @@ type Decision struct {
 	// SignIn marks a sign-in card (D151): Go is 好了 / Done in the live view of
 	// Ducter's browser.
 	SignIn *SignInAsk `json:"signIn,omitempty"`
+	// Pay (D191): 付款 / Pay: merchant, amount, card; Go carries the code.
+	Pay *PayAsk `json:"pay,omitempty"`
+	// Fill (D191): a saved sign-in or detail used on a site for the first time.
+	Fill *FillAsk `json:"fill,omitempty"`
 	// Where (D157): wait for a computer (Hold, the default) or do it now on
 	// another (Go).
 	Where *WhereAsk `json:"where,omitempty"`
@@ -1395,6 +1399,12 @@ type ServerFrame struct {
 	Sites      []SiteView `json:"sites,omitempty"`
 	// D154: live (open) says which browser it is.
 	Browser *BrowserAbout `json:"browser,omitempty"`
+	// saved (D191): the Autofill list (Items, Details, Uses, KeptIn; OK and
+	// Reason after a save).
+	SavedItems   []SavedView  `json:"items,omitempty"`
+	SavedDetails []DetailView `json:"details,omitempty"`
+	Uses         []SavedUse   `json:"uses,omitempty"`
+	KeptIn       string       `json:"keptIn,omitempty"`
 }
 
 // Words are the same words in both languages: the client shows its own.
@@ -1535,7 +1545,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	case "welcome", "events", "on_hand", "task_history", "sent", "action_result", "error",
 		"devices", "ability_result", "pair_code", "rename_result", "disconnect_result", "update_result", "agent_update_result", "mem_plugin_result", "settings", "connections", "connection_result", "rules", "candidates", "activity",
 		"task_new_options", "task_new_result", "open_task", "open_result", "project_add_result",
-		"first_screen", "folder_changes", "close_result", "live", "live_frame", "browser_sites", "browser_check", "connection_reads":
+		"first_screen", "folder_changes", "close_result", "live", "live_frame", "browser_sites", "browser_check", "connection_reads", "saved":
 	default:
 		return f, fmt.Errorf("unknown server frame %q", f.T)
 	}

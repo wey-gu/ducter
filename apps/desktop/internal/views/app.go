@@ -193,6 +193,7 @@ type App struct {
 	live       liveState
 	liveNote   string
 	sites      sitesState
+	af         autofillState // D191: 设置 › 自动填充
 	winW, winH float32
 	// partner and settings are the Partner page's and Settings' own state.
 	partner  partnerState

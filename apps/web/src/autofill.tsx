@@ -156,7 +156,8 @@ function useLine(u: SavedUse): string {
 export function AutofillSettings() {
   useEffect(() => {
     if (A.S.welcomed) A.send({ t: "saved" });
-  }, []);
+    // Opened before the socket said welcome (a deep link): ask once it has.
+  }, [A.S.welcomed]);
   const [editing, setEditing] = useState<Editing>(null);
   const f = A.saved;
   if (!f) return <div class="small">{t("conn.connecting")}</div>;

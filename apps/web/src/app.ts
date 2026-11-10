@@ -878,7 +878,7 @@ class AppState {
     if (hash === "#onhand") return this.applyRoute({ name: "onhand" });
     if (hash === "#onhand/full") return this.applyRoute({ name: "onhand", full: true });
     this.route = { name: "conv" };
-    const set = /^#settings(?:=(partner|notify|accounts|devices|phone))?$/.exec(hash);
+    const set = /^#settings(?:=(partner|notify|accounts|autofill|devices|phone))?$/.exec(hash);
     if (set) {
       history.replaceState(null, "", location.pathname);
       return this.openSettings((set[1] ?? "") as SettingsPage);

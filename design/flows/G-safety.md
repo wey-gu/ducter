@@ -344,7 +344,7 @@ W hits a missing credential (auth error, a site login wall, a CLI asking to log 
            + a link: "怎么建一个只够用的 token / How to make a token with just enough access"
 Add it ──► a secure sheet, not the conversation: one masked field + where it will live:
            "存在 Linux 盒子上 · {persona} 的 · 给部署用 / Kept on the Linux box · {persona}'s ·
-           for deploys" ──► stored in the vault (credd) [doc system.md]; never in model env,
+           for deploys" ──► kept on the home like Autofill's secrets (D191, autofill.md; API tokens there not built yet); never in model env,
            args, files, or the Log; the gate injects it at use
 Take over to sign in ──► B5 flow (Screen, the agent paused, 2FA on the phone)
 After ──► the task resumes; the item becomes a row on the "{name} 能用的账号 / Accounts

@@ -2325,7 +2325,7 @@ function Loadout() {
           <Coin harness={brain.harness} size={40} />
           <span class="grow">
             <b>{harnessName(brain.harness)}</b>
-            {A.brainNow?.why === "only_codex" && <small class="auto">{t("loadout.brain.auto", harnessName(brain.harness))}</small>}
+            {A.brainNow?.why && <small class="auto">{A.brainNow.why === "only_codex" ? t("loadout.brain.auto", harnessName(brain.harness)) : t("loadout.brain.auto_other")}</small>}
             <small>{reserve}</small>
           </span>
         </div>

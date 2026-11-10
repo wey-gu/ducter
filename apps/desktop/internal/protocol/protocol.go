@@ -1032,7 +1032,7 @@ type MemView struct {
 type BrainNow struct {
 	Brain
 	// Auto: the user never chose; core picked it. Why: the reason when it
-	// isn't the setting ("only_codex").
+	// isn't the setting ("only_codex"; "only_signed_in" for another agent, D177).
 	Auto bool   `json:"auto"`
 	Why  string `json:"why,omitempty"`
 	// Models are the ones it may think with on the home (D150); none: its
@@ -1326,7 +1326,7 @@ type ServerFrame struct {
 	Settings *Settings `json:"settings,omitempty"`
 	Mem      *MemView  `json:"mem,omitempty"`
 	// BrainNow is what the partner thinks with right now (D150): Brain,
-	// unless core runs it on the only signed-in agent (Why "only_codex").
+	// unless core runs it on a signed-in agent instead (Why "only_codex", "only_signed_in").
 	BrainNow *BrainNow `json:"brainNow,omitempty"`
 	Forgot   *Forgot   `json:"forgot,omitempty"`
 	// rules: Your rules. candidates: who could do TaskID, best first.

@@ -205,7 +205,8 @@ test("night target: only verified versions; a pinning channel may go to the newe
   expect(nightTarget("codex", "brew", "0.166.0", "0.199.0")).toBeUndefined(); // a cask can't pin
   expect(nightTarget("codex", "npm", top, "0.199.0")).toBeUndefined(); // already there: waits for a tap
   expect(nightTarget("codex", "app", "0.166.0", top)).toBeUndefined();
-  expect(nightTarget("deepseek-harness", "npm", "0.2.1", "0.2.2-rc.1")).toBeUndefined(); // nothing verified yet
+  expect(nightTarget("deepseek-harness", "npm", "0.2.1", "0.2.2-rc.1")).toBe("0.2.2-rc.1"); // verified live (D177)
+  expect(nightTarget("deepseek-harness", "npm", "0.2.1", "0.3.0")).toBe("0.2.2-rc.1"); // pinned to the verified one
 });
 
 // ---------- the home's side ----------

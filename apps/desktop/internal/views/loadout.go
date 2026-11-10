@@ -555,9 +555,13 @@ func (a *App) brainCard(c *ui.Context) {
 					head += " · " + a.L.T("loadout.model.default")
 				}
 				ui.Text(c, head).Font(t.Display).FontSize(t.LG).FontWeight(800).SingleLine()
-				if bn := a.S.BrainNow; bn != nil && bn.Why == "only_codex" && a.lo.pending == nil {
-					// D150: core picked it, the user didn't: say so.
-					ui.Text(c, a.L.T("loadout.brain.auto", harnessName(b.Harness))).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).MaxLines(2)
+				if bn := a.S.BrainNow; bn != nil && bn.Why != "" && a.lo.pending == nil {
+					// D150/D177: core picked it, the user didn't: say so, and only what is true.
+					auto := a.L.T("loadout.brain.auto", harnessName(b.Harness))
+					if bn.Why != "only_codex" {
+						auto = a.L.T("loadout.brain.auto_other")
+					}
+					ui.Text(c, auto).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).MaxLines(2)
 				}
 				line := ""
 				if h != nil && h.Allowance != nil {

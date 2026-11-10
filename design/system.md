@@ -67,17 +67,21 @@ One table (`packages/protocol/src/harnesses.ts`), one adapter (`packages/runner/
 
 | | Claude Code | Codex | pi | DeepSeek Harness |
 |---|---|---|---|---|
-| Partner (v1) | yes | yes | tasks only until it passes the partner eval | same |
-| Clean setup | OAR `userConfiguration: "exclude"` | `-c` overrides: each user MCP server `enabled=false` by name, `features.{hooks,plugins,apps,memories,…}=false`, `notify=[]`; partner also drops goals, subagents, images, computer use | pi flags `--no-skills --no-context-files --no-prompt-templates --no-extensions --no-themes` on its RPC process | Ducter-owned `DSH_HOME` + `DSH_AGENTS_HOME` under `<dataDir>/harness/deepseek-harness` |
-| Partner prompt | system prompt | `baseInstructions` | system prompt | `$DSH_HOME/AGENTS.md` (OAR refuses its system prompt) |
+| Partner | yes | yes | yes (D177; passed the eval on `deepseek/deepseek-flash`) | yes (D177; passed the eval on `deepseek-official/deepseek-flash`) |
+| Clean setup | OAR `userConfiguration: "exclude"` | `-c` overrides: each user MCP server `enabled=false` by name, `features.{hooks,plugins,apps,memories,…}=false`, `notify=[]`; partner also drops goals, subagents, images, computer use | pi flags `--no-skills --no-context-files --no-prompt-templates --no-extensions --no-themes` on its RPC process | a Ducter-owned `DSH_HOME` + `DSH_AGENTS_HOME` per setup, `<dataDir>/harness/dsh/<hash of its profile layer and AGENTS.md>`, so the same setup resumes in the same home; its profile layer (`profiles/acp/cordis.patch.yml`) also turns the session-log upload off |
+| Partner prompt | system prompt | `baseInstructions` | system prompt | the system prompt's whole opener: the profile layer's `system-prompt` row, `includeHarnessIdentity: false` + `personaPrefix` (D177; a prompt with `{{` falls back to `$DSH_HOME/AGENTS.md`, which DSH sends as "workspace instructions" in a user message) |
 | Task brief | append | `developerInstructions` | append | first message, `<instructions>…</instructions>` |
 | Ducter's MCP | HTTP + bearer | HTTP + bearer | HTTP + bearer | stdio bridge (`mcp-bridge.ts`), target in a 0600 file |
-| Tool denial | built-ins | MCP tools only | none wired (pi's `--exclude-tools` unverified) | none (refused) |
+| Read-only partner (principle 6) | write and run built-ins denied by name | `sandbox_mode="read-only"` | an allowlist `--tools read,grep,find,ls,mcp__*`, plus bash/edit/write excluded (D177) | the profile layer drops every tool row that runs, writes, delegates or plans; `tool-fs` keeps `read`; `DSH_PERMISSION_MODE=read-only` underneath (D177) |
+| Window and compaction (D135) | `CLAUDE_CODE_AUTO_COMPACT_WINDOW` + percent | `-c model_context_window` / `model_auto_compact_token_limit` | none per session: Ducter's re-cut at 120K is the bound | in a Ducter-owned home, `compaction-basic.thresholdRatio` = compaction point / the model's 1M window, `retainTokens` a quarter of it (D177) |
 | Runs as | `claude` | `codex app-server` | `node <OAR's bundled pi rpc-entry>` (Bun cannot host it), else the user's `pi` | `dsh --profile acp` |
 | Signed in | `claude auth status`, or a `CLAUDE_CODE_OAUTH_TOKEN` in `<dataDir>/keys.env` | `codex login status` | a provider key in `~/.pi/agent`, the env or `keys.env` | a DeepSeek key in the env, `<dataDir>/keys.env`, or DSH's credential file |
-| Keys it is given (D102) | `CLAUDE_CODE_OAUTH_TOKEN`, `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN` | `OPENAI_API_KEY`, `CODEX_API_KEY`, the `env_key` its `config.toml` names | its provider keys, not `DEEPSEEK_API_KEY` | `DEEPSEEK_API_KEY` |
+| Keys it is given (D102) | `CLAUDE_CODE_OAUTH_TOKEN`, `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN` | `OPENAI_API_KEY`, `CODEX_API_KEY`, the `env_key` its `config.toml` names | its provider keys, not `DEEPSEEK_API_KEY` (pi on DeepSeek signs in with its own `/login`) | `DEEPSEEK_API_KEY` |
+| Models offered as the brain | Opus (smart), Sonnet (fast) | its listed models | what pi lists; DeepSeek's `deepseek/deepseek-v4-pro` smart, `deepseek/deepseek-flash` fast | `deepseek-official/deepseek-v4-pro` smart, `deepseek-official/deepseek-flash` fast |
 
-- **The brain** is `Settings.brain = { harness, model? }` (default Claude Code + opus). The
+- **The brain** is `Settings.brain = { harness, model? }` (default Claude Code + opus; with
+  nothing chosen and Claude Code not signed in on the home, the first signed-in of Codex,
+  DeepSeek Harness, pi: `PARTNER_FALLBACK`, D150, D177). The
   partner reads it at each session start; a session id never crosses harnesses (the prompt
   hash covers the harness; Claude Code keeps the prompt-only hash so upgrades still resume).
 - **Tasks** take the partner's choice, else the top of `fw_candidates` (D89: rules, then the tier
@@ -115,7 +119,8 @@ One table (`packages/protocol/src/harnesses.ts`), one adapter (`packages/runner/
   - Not yet scoped: the cua-driver spawns of the browser (`packages/runner/src/browser.ts`).
 - **The partner's session is read-only** (principle 6, `SessionSpec.readOnly`; per harness in
   `design/conversation.md` "Executors"). Bypass stays (D16): nothing asks, the write and run tools
-  are simply not there. Not narrowed yet: DeepSeek Harness.
+  are simply not there. On every first-wave harness (D177: pi by an allowlist, DeepSeek Harness
+  by its Ducter-owned home's profile layer, both checked live in research/50 §2).
 - **Known gaps:** Codex's global `AGENTS.md` and `personality` are not left out (unverified);
   Codex lists the partner's sessions in the user's own history; pi's model list does not test
   its keys; in its owned home DeepSeek Harness sees only the DeepSeek key, not the user's other

@@ -34,13 +34,17 @@ At the top is your partner, its name and one line: where it lives and what it th
   in every window and on your phone.
 - **AI agents on …** shows the AI agents on the computer Ducter lives on (this Mac, or a server
   like "hel"), each with how much of its limit is left.
-- **What it thinks with.** The AI agent your partner itself runs on, in a round clay socket.
-  When you haven't picked one and only Codex is signed in, your partner uses Codex and says
-  **Picked for you: only Codex is signed in**. With Claude Code, pick **Opus · Smartest** or
-  **Sonnet · Faster replies**. **Switch** lets you drop another AI agent that is signed in there
+- **What it thinks with.** The AI agent your partner itself runs on, in a round clay socket:
+  Claude Code, Codex, DeepSeek Harness or pi, whichever are signed in there. When you haven't
+  picked one and Claude Code isn't signed in, your partner uses Codex if it is (**Picked for you:
+  only Codex is signed in**), else DeepSeek Harness, else pi (**Picked for you: Claude Code isn't
+  signed in**). With Claude Code, pick **Opus · Smartest** or **Sonnet · Faster replies**; with
+  DeepSeek Harness, or pi signed in to DeepSeek, pick DeepSeek's **V4 Pro** (smartest) or
+  **Flash** (faster replies). **Switch** lets you drop another AI agent that is signed in there
   into the socket. Switching keeps its name, what it remembers and your conversation; the new
-  choice takes over from your next message. Today your partner thinks with Claude Code or
-  Codex; other AI agents do tasks only.
+  choice takes over from your next message. On every one of them your partner only reads and
+  decides: it can't change your files or run commands itself; that is what its tasks do.
+  DeepSeek Harness and pi are paid per use with your own key.
 - **Who does the tasks.** For each task your partner picks the best fit. Click an AI agent on
   the tray to see where it's signed in, how many devices share it, and **Use it for tasks** (on
   unless you turn it off). An AI agent you pay per use says **Pay per use**.

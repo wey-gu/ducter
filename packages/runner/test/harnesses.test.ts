@@ -2,7 +2,7 @@
 // DeepSeek Harness against OAR's own declared contract on the scripted runtime, the stdio MCP
 // bridge, and the one tool-name form.
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { scriptedRuntime, type ScriptedTurn } from "@botiverse/oar/testing";
@@ -11,7 +11,7 @@ import { dshRuntime } from "@botiverse/oar/runtimes/dsh";
 import { HARNESSES, HARNESS_IDS } from "@ducter/protocol";
 import type { SessionSpec } from "@ducter/protocol/src/internal.ts";
 import { CLAUDE_SWITCHES } from "@ducter/protocol/src/harness-facts.ts";
-import { adaptSpec, codexCleanArgs, contextTokensOf, createOarHarnessPort, PARTNER_READ_MAX_TOKENS, PI_CLEAN_FLAGS, withPreamble } from "../src/oar.ts";
+import { adaptSpec, codexCleanArgs, contextTokensOf, createOarHarnessPort, PARTNER_READ_MAX_TOKENS, PI_CLEAN_FLAGS, piFlags, piVariant, withPreamble } from "../src/oar.ts";
 import { Normalizer, stripThinking } from "../src/normalize.ts";
 import { runBridge } from "../src/mcp-bridge.ts";
 
@@ -35,8 +35,8 @@ const spec = (harness: SessionSpec["harness"], over: Partial<SessionSpec> = {}):
 test("the capability table covers the four, each task-capable", () => {
   expect([...HARNESS_IDS]).toEqual(["claude-code", "codex", "pi", "deepseek-harness"]);
   for (const id of HARNESS_IDS) expect(HARNESSES[id]).toMatchObject({ id, task: true });
-  // v1 rule (ai-loadout): only Claude Code and Codex may be the partner until the others pass the eval.
-  expect(HARNESS_IDS.filter((id) => HARNESSES[id].partner)).toEqual(["claude-code", "codex"]);
+  // D177: all four may be the partner; pi and DeepSeek Harness passed the eval (research/50 §5).
+  expect(HARNESS_IDS.filter((id) => HARNESSES[id].partner)).toEqual(["claude-code", "codex", "pi", "deepseek-harness"]);
   expect(HARNESSES["deepseek-harness"].name).toBe("DeepSeek Harness");
 });
 
@@ -86,6 +86,20 @@ describe("adaptSpec: the partner's clean setup per harness", () => {
     expect((claude.options.mcpServers![0] as { url: string }).url).toBe(ducterMcp.url);
     const pi = adaptSpec(spec("pi", { readOnly: true }), { dataDir: dir });
     expect(pi.options.disallowedTools).toEqual(["bash", "edit", "write"]);
+    // D177: and an allowlist on its RPC process: pi's reading tools and the session's MCP tools only.
+    expect(piVariant(spec("pi", { readOnly: true }))).toEqual({ clean: true, readOnly: true });
+    expect(piFlags({ clean: true, readOnly: true })).toEqual([...PI_CLEAN_FLAGS, "--tools", "read,grep,find,ls,mcp__*"]);
+    expect(piFlags({ clean: true, noTools: true, readOnly: true })).toEqual([...PI_CLEAN_FLAGS, "--no-tools"]);
+    // DeepSeek Harness: the partner's home drops every tool that runs or writes, read-only sandbox underneath.
+    const ds = adaptSpec(spec("deepseek-harness", { readOnly: true }), { dataDir: dir, env: {} });
+    const dsEnv = ds.options.env as Record<string, string>;
+    expect(dsEnv.DSH_PERMISSION_MODE).toBe("read-only");
+    const rows = JSON.parse(readFileSync(join(dsEnv.DSH_HOME!, "profiles", "acp", "cordis.patch.yml"), "utf8")) as { id: string; disabled?: boolean; config?: Record<string, unknown> }[];
+    for (const id of ["tool-bash", "tool-jobs", "tool-subagent", "tool-workflow", "tool-skill"]) expect(rows.find((r) => r.id === id)?.disabled).toBe(true);
+    expect(rows.find((r) => r.id === "tool-fs")?.config).toEqual({ write: false, edit: false, applyPatch: false });
+    expect(rows.some((r) => r.id === "tool-web" || r.id === "tool-fs-search")).toBe(false); // reading and the web stay
+    const dsTask = adaptSpec(spec("deepseek-harness", { isolateUserConfig: false }), { dataDir: dir, env: {} });
+    expect((dsTask.options.env as Record<string, string | null> | undefined)?.DSH_PERMISSION_MODE).toBeUndefined();
     const task = adaptSpec(spec("claude-code", { isolateUserConfig: false }), { dataDir: dir });
     expect(task.options.disallowedTools).not.toContain("Bash");
     expect(adaptSpec(spec("codex", { isolateUserConfig: false }), { dataDir: dir }).options.launchArgs).toBeUndefined();
@@ -196,12 +210,26 @@ describe("adaptSpec: the partner's clean setup per harness", () => {
     expect(a.options.model).toBe("minimax-coding-plan/MiniMax-M3");
   });
 
-  test("DeepSeek Harness: own home with the prompt as its AGENTS.md, the key from Ducter's file, MCP over the bridge", () => {
+  test("DeepSeek Harness: own home with the prompt as its system-prompt opener, the key from Ducter's file, MCP over the bridge", () => {
     writeFileSync(join(dir, "keys.env"),"# keys\nDEEPSEEK_API_KEY=\"sk-test-not-real\"\n", { mode: 0o600 });
     const a = adaptSpec(spec("deepseek-harness", { model: "deepseek-flash" }), { dataDir: dir, env: {}, refused: dshRuntime.refusedSessionOptions as Record<string, string> });
-    const home = join(dir, "harness", "deepseek-harness");
-    expect(a.options.env).toMatchObject({ DSH_HOME: home, DSH_AGENTS_HOME: join(home, "agents"), DEEPSEEK_API_KEY: "sk-test-not-real" });
-    expect(readFileSync(join(home, "AGENTS.md"), "utf8")).toBe("You are Ducter.\n");
+    const home = (a.options.env as Record<string, string>).DSH_HOME!;
+    expect(home.startsWith(join(dir, "harness", "dsh") + "/")).toBe(true);
+    expect(a.options.env).toMatchObject({ DSH_AGENTS_HOME: join(home, "agents"), DEEPSEEK_API_KEY: "sk-test-not-real" });
+    // D177: the prompt is the system prompt's whole opener (DSH's own identity off), not AGENTS.md
+    // (which DSH sends as "workspace instructions" in a user message); no empty AGENTS.md either.
+    const layer = JSON.parse(readFileSync(join(home, "profiles", "acp", "cordis.patch.yml"), "utf8")) as { id: string; config?: Record<string, unknown> }[];
+    expect(layer.find((r) => r.id === "system-prompt")?.config).toEqual({ includeHarnessIdentity: false, personaPrefix: "You are Ducter." });
+    expect(layer.find((r) => r.id === "session-log-deepseek")?.config).toEqual({ enabled: false });
+    expect(existsSync(join(home, "AGENTS.md"))).toBe(false);
+    // The same setup lands in the same home (its sessions resume there); another prompt in another.
+    expect((adaptSpec(spec("deepseek-harness", { model: "deepseek-flash" }), { dataDir: dir, env: {} }).options.env as Record<string, string>).DSH_HOME).toBe(home);
+    expect((adaptSpec(spec("deepseek-harness", { systemPrompt: "You are a judge." }), { dataDir: dir, env: {} }).options.env as Record<string, string>).DSH_HOME).not.toBe(home);
+    // A prompt DSH would read as template variables rides in AGENTS.md instead.
+    const braces = adaptSpec(spec("deepseek-harness", { systemPrompt: "Say {{x}}." }), { dataDir: dir, env: {} });
+    const bh = (braces.options.env as Record<string, string>).DSH_HOME!;
+    expect(readFileSync(join(bh, "AGENTS.md"), "utf8")).toBe("Say {{x}}.\n");
+    expect(JSON.parse(readFileSync(join(bh, "profiles", "acp", "cordis.patch.yml"), "utf8")).some((r: { id: string }) => r.id === "system-prompt")).toBe(false);
     expect(a.preamble).toBeUndefined();
     expect(a.options.model).toBe("deepseek-official/deepseek-flash");
     // Nothing OAR's dsh runtime refuses is sent.
@@ -278,7 +306,7 @@ describe("DeepSeek Harness on OAR's scripted runtime", () => {
     const port = createOarHarnessPort({ loadRuntime: async () => dshLike(seen), dataDir: dir });
     const s = await port.start(spec("deepseek-harness"));
     expect(seen.options.mcpServers[0].command).toBeTruthy();
-    expect(seen.options.env.DSH_HOME).toBe(join(dir, "harness", "deepseek-harness"));
+    expect(seen.options.env.DSH_HOME.startsWith(join(dir, "harness", "dsh") + "/")).toBe(true);
     await s.send("hi");
     await drain(s, (e) => e.turnEnd);
     expect(seen.inputs[0]).toBe("hi"); // the prompt is the home's AGENTS.md, not the message

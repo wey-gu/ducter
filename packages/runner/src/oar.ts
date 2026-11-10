@@ -12,13 +12,13 @@
 //   - Ducter's MCP endpoint: HTTP with headers, or the stdio bridge (DeepSeek Harness);
 //   - tool denials only where the harness can honor them.
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DSH_KEY_ENV, HARNESS_IDS, type HarnessId } from "@ducter/protocol";
 import { readEnvFile, readKeys } from "@ducter/protocol/src/keys.ts";
-import { CLAUDE_SWITCHES, HARNESS_FACTS, modelForWindow, windowKnobs } from "@ducter/protocol/src/harness-facts.ts";
+import { CLAUDE_SWITCHES, DSH_PROFILE, HARNESS_FACTS, PI_READ_ONLY_TOOLS, modelForWindow, windowKnobs } from "@ducter/protocol/src/harness-facts.ts";
 import type { HarnessEvent, HarnessPort, HarnessSession, SessionSpec } from "@ducter/protocol/src/internal.ts";
 import type { Runtime, Session, SessionOptions, McpServer } from "@botiverse/oar/browser";
 import { Normalizer } from "./normalize.ts";
@@ -41,13 +41,60 @@ export const PI_CLEAN_FLAGS = ["--no-skills", "--no-context-files", "--no-prompt
  * them; their skills, context files and prompt templates stay (research/48 M3).
  */
 export const PI_MEM_OFF_FLAGS = ["--no-extensions"];
+/**
+ * D177: a read-only (partner) pi session keeps only pi's reading tools, by allowlist, so a tool a
+ * later pi adds is off until named here; Ducter's MCP tools (its RPC extension's) stay (research/50 §2).
+ */
+export const PI_READ_ONLY_FLAGS = ["--tools", PI_READ_ONLY_TOOLS.join(",")];
+
+export type PiVariant = { clean?: boolean; extensionsOff?: boolean; noTools?: boolean; readOnly?: boolean };
 
 /** Which pi runtime a session needs: Ducter's clean setup, the user's setup without extensions (memory off), or the user's own. */
-export function piVariant(spec: Pick<SessionSpec, "harness" | "isolateUserConfig" | "disablePlugins" | "noTools">): { clean?: boolean; extensionsOff?: boolean; noTools?: boolean } | undefined {
+export function piVariant(spec: Pick<SessionSpec, "harness" | "isolateUserConfig" | "disablePlugins" | "noTools" | "readOnly">): PiVariant | undefined {
   if (spec.harness !== "pi") return undefined;
-  if (spec.isolateUserConfig) return { clean: true, ...(spec.noTools ? { noTools: true } : {}) };
-  if (spec.disablePlugins?.length) return { extensionsOff: true };
-  return undefined;
+  if (spec.isolateUserConfig) return { clean: true, ...(spec.noTools ? { noTools: true } : spec.readOnly ? { readOnly: true } : {}) };
+  if (spec.disablePlugins?.length) return { extensionsOff: true, ...(spec.readOnly ? { readOnly: true } : {}) };
+  return spec.readOnly ? { readOnly: true } : undefined;
+}
+
+/** The flags one pi variant runs with (exported for tests). */
+export function piFlags(v: PiVariant | undefined): string[] {
+  return [
+    ...(v?.clean ? PI_CLEAN_FLAGS : v?.extensionsOff ? PI_MEM_OFF_FLAGS : []),
+    ...(v?.noTools ? HARNESS_FACTS.pi.noTools.value.args : v?.readOnly ? PI_READ_ONLY_FLAGS : []),
+  ];
+}
+
+/**
+ * D177: DeepSeek Harness's profile layer for a home Ducter owns (DSH_PROFILE, research/50): the
+ * session's prompt as the whole system-prompt opener, the tools a read-only or tool-less session
+ * may not have dropped, the session-log upload off, and the compaction point.
+ */
+export function dshLayer(o: { prompt?: string; readOnly?: boolean; noTools?: boolean; compaction?: Record<string, unknown>[] }): Record<string, unknown>[] {
+  const rows: Record<string, unknown>[] = [];
+  if (o.prompt) rows.push({ id: DSH_PROFILE.systemPrompt, config: { includeHarnessIdentity: false, personaPrefix: o.prompt } });
+  if (o.readOnly || o.noTools) {
+    for (const id of DSH_PROFILE.readOnlyOff) rows.push({ id, disabled: true });
+    if (o.noTools) for (const id of DSH_PROFILE.noToolsOff) rows.push({ id, disabled: true });
+    else rows.push({ id: DSH_PROFILE.fs, config: { write: false, edit: false, applyPatch: false } });
+  }
+  rows.push({ id: DSH_PROFILE.sessionLog, config: { enabled: false } });
+  rows.push(...(o.compaction ?? []));
+  return rows;
+}
+
+/** Writes a Ducter-owned DSH home: its profile layer and its user-global AGENTS.md. */
+function writeDshHome(home: string, layer: Record<string, unknown>[], agentsMd: string): { home: string; agents: string } {
+  const agents = join(home, "agents");
+  const profile = join(home, "profiles", DSH_PROFILE.profile);
+  mkdirSync(agents, { recursive: true, mode: 0o700 });
+  mkdirSync(profile, { recursive: true, mode: 0o700 });
+  // JSON is YAML: no `!!js` tag can ride in on the prompt's text.
+  writeFileSync(join(profile, DSH_PROFILE.layerFile), JSON.stringify(layer, null, 2) + "\n", { mode: 0o600 });
+  // No file when there is nothing to say: an empty one still costs an empty "workspace instructions" message.
+  if (agentsMd) writeFileSync(join(home, "AGENTS.md"), agentsMd + "\n", { mode: 0o600 });
+  else rmSync(join(home, "AGENTS.md"), { force: true });
+  return { home, agents };
 }
 
 /**
@@ -200,11 +247,11 @@ function piCommand(): { command: string; args: string[] } | undefined {
   return pi ? { command: pi, args: [] } : undefined;
 }
 
-export type RuntimeLoader = (harness: HarnessId, variant?: { clean?: boolean; extensionsOff?: boolean; noTools?: boolean }) => Promise<Runtime | undefined>;
+export type RuntimeLoader = (harness: HarnessId, variant?: PiVariant) => Promise<Runtime | undefined>;
 
 /** Lazy per-runtime import. A failed load is retried next time, never cached. */
 const defaultLoader: RuntimeLoader = async (harness, variant) => {
-  const key = `${harness}${variant?.clean ? ":clean" : variant?.extensionsOff ? ":noext" : ""}${variant?.noTools ? ":notools" : ""}`;
+  const key = `${harness}:${piFlags(variant).join(" ")}`;
   const cache = loaded.get(key);
   if (cache) return cache;
   let rt: Runtime | undefined;
@@ -222,7 +269,9 @@ const defaultLoader: RuntimeLoader = async (harness, variant) => {
       // Memory off must hold (D168): without a pi command to pass the flag to, the task doesn't start.
       if (variant?.extensionsOff && !cmd) throw new Error("pi needs node or the pi command on PATH to run with memory off");
       // One native RPC process per session (in-process pi re-enters the host).
-      const flags = [...(variant?.clean ? PI_CLEAN_FLAGS : variant?.extensionsOff ? PI_MEM_OFF_FLAGS : []), ...(variant?.noTools ? HARNESS_FACTS.pi.noTools.value.args : [])];
+      // A read-only session's allowlist must hold (D177): without a pi command to pass it to, it doesn't start.
+      if (variant?.readOnly && !cmd) throw new Error("pi needs node or the pi command on PATH to run read-only");
+      const flags = piFlags(variant);
       rt = (cmd ? m.createPiRuntime({ execution: "subprocess", command: cmd.command, args: [...cmd.args, ...flags] }) : m.piRuntime) as Runtime;
       break;
     }
@@ -264,9 +313,12 @@ export interface Adapted {
  *   - Codex 0.167.0: `-c sandbox_mode="read-only"` after OAR's own danger-full-access override
  *     (the later one wins: app-server config/read shows read-only in the session-flags layer).
  *     Shell commands still run, read-only and without network. No read cap.
- *   - pi: its bash, edit and write tools are excluded (OAR's excludeTools); read/grep/find/ls stay.
- *   - DeepSeek Harness: no per-session tool denial (OAR refuses it) and its read-only permission
- *     mode is unverified, so nothing changes (design/system.md, known gaps).
+ *   - pi: an allowlist on its RPC process (`--tools read,grep,find,ls`, PI_READ_ONLY_FLAGS), and
+ *     bash, edit and write excluded by name as well (OAR's excludeTools). Live (research/50 §2).
+ *   - DeepSeek Harness: OAR refuses per-session tool denial, so the partner's Ducter-owned home
+ *     carries a profile layer that drops every tool that runs or writes (dshLayer), with DSH's
+ *     read-only sandbox preset underneath. Live (research/50 §2): before it, the partner wrote a
+ *     file and ran a command.
  */
 export const READ_ONLY_DENY: Partial<Record<HarnessId, string[]>> = {
   "claude-code": ["Bash", "BashOutput", "KillShell", "KillBash", "Edit", "MultiEdit", "Write", "NotebookEdit", "Task", "Agent"],
@@ -305,7 +357,7 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
 
   // D135: the window and compaction point, as this harness takes them (harness-facts.ts).
   const window = spec.contextWindow ?? spec.harnessCompactAt;
-  const knobs = window ? windowKnobs(h, { window, compactAt: spec.harnessCompactAt ?? window }) : undefined;
+  const knobs = window ? windowKnobs(h, { window, compactAt: spec.harnessCompactAt ?? window }, modelFor(h, spec.model)) : undefined;
 
   switch (h) {
     case "claude-code":
@@ -367,22 +419,31 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
         return { name: m.name, command: b.command, args: b.args };
       });
       const instructions = [systemPrompt, appendSystemPrompt].filter(Boolean).join("\n\n");
-      systemPrompt = appendSystemPrompt = undefined;
       // Memory off in a task (harness-facts memPlugin "home"): Mem ships as a DSH profile bundle and
       // DSH has no known per-session profile switch, so the task runs under a Ducter-owned home of
-      // its own too (research/48 M3; INFERRED, DSH unverified).
+      // its own too (research/48 M3).
       const memOff = !clean && !!spec.disablePlugins?.length;
       if (clean || memOff) {
-        // A Ducter-owned home: none of the user's profiles, plugins, AGENTS.md or ~/.agents.
-        // Its user-global AGENTS.md is the session's prompt (DSH loads it as the baseline).
-        const home = memOff ? join(ctx.dataDir, "harness", "deepseek-harness-memory-off", createHash("sha256").update(spec.cwd).digest("hex").slice(0, 12)) : join(ctx.dataDir, "harness", "deepseek-harness");
-        const agents = join(home, "agents");
-        mkdirSync(agents, { recursive: true, mode: 0o700 });
-        writeFileSync(join(home, "AGENTS.md"), instructions ? instructions + "\n" : "", { mode: 0o600 });
+        // A Ducter-owned home: none of the user's profiles, plugins, AGENTS.md or ~/.agents, and a
+        // profile layer of Ducter's own (D177, research/50): the clean session's prompt is the
+        // system prompt's whole opener (a prompt with `{{` would be read as DSH template variables,
+        // so it rides in AGENTS.md instead), a read-only or tool-less session has no tool that runs
+        // or writes, the session-log upload is off, and the compactor fires where the plan says.
+        const asPrompt = clean && !!systemPrompt && !systemPrompt.includes("{{") ? systemPrompt : undefined;
+        const agentsMd = asPrompt ? (appendSystemPrompt ?? "") : instructions;
+        const layer = dshLayer({ prompt: asPrompt, readOnly: spec.readOnly, noTools: spec.noTools, compaction: knobs?.profile });
+        // One home per setup: sessions live in their home, so the same prompt and tools resume
+        // where they were, and a one-shot starting beside the partner never rewrites its files.
+        const key = createHash("sha256").update(JSON.stringify(layer)).update("\0").update(agentsMd).digest("hex").slice(0, 12);
+        const at = memOff ? join(ctx.dataDir, "harness", "deepseek-harness-memory-off", createHash("sha256").update(spec.cwd).digest("hex").slice(0, 12)) : join(ctx.dataDir, "harness", "dsh", key);
+        const { home, agents } = writeDshHome(at, layer, agentsMd);
         env = { ...env, DSH_HOME: home, DSH_AGENTS_HOME: agents, DSH_TELEMETRY_DISABLED: "1" };
+        // Underneath the dropped tools, DSH's own read-only sandbox preset (research/50 §2).
+        if (spec.readOnly || spec.noTools) env[DSH_PROFILE.permissionEnv] = "read-only";
       } else if (instructions) {
         preamble = instructions;
       }
+      systemPrompt = appendSystemPrompt = undefined;
       break;
     }
   }

@@ -2,11 +2,11 @@
 // where the agent can say so, mapped by the adapter from the registry. Measured live on Claude Code
 // 2.1.322 with haiku: 9,679 input tokens with 12 built-ins denied, 629 with --tools "".
 import { expect, test } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { HARNESS_IDS } from "@ducter/protocol";
-import { HARNESS_FACTS } from "@ducter/protocol/src/harness-facts.ts";
+import { DSH_PROFILE, HARNESS_FACTS } from "@ducter/protocol/src/harness-facts.ts";
 import { adaptSpec, piVariant, PI_CLEAN_FLAGS } from "../src/oar.ts";
 
 const TOOLS_OFF = ["Bash", "Edit", "Read"];
@@ -33,8 +33,23 @@ test("pi: the clean runtime with --no-tools; agents with no known switch keep th
   expect(PI_CLEAN_FLAGS).not.toContain("--no-tools");
   for (const h of HARNESS_IDS) {
     const f = HARNESS_FACTS[h].noTools;
-    // A switch the adapter sends is evidenced; an empty one says why there is none.
-    if (f.value.args.length) expect(["VERIFIED", "DOCUMENTED"]).toContain(f.evidence.kind);
+    // A switch the adapter sends is evidenced; an empty one says why there is none. DeepSeek
+    // Harness takes no launch arguments: its one-shot's home drops the tool rows (below).
+    if (f.value.args.length || h === "deepseek-harness") expect(["VERIFIED", "DOCUMENTED"]).toContain(f.evidence.kind);
     else expect(f.evidence.kind).toBe("INFERRED");
+  }
+});
+
+test("DeepSeek Harness: a one-shot's own home drops every tool row, read and web included (D177)", () => {
+  const dir = mkdtempSync(join(tmpdir(), "ducter-notools-"));
+  try {
+    const a = adaptSpec({ harness: "deepseek-harness", cwd: dir, mcp: [], systemPrompt: "Judge.", isolateUserConfig: true, noTools: true }, { dataDir: dir, env: {} });
+    const home = (a.options.env as Record<string, string>).DSH_HOME!;
+    const layer = JSON.parse(readFileSync(join(home, "profiles", "acp", "cordis.patch.yml"), "utf8")) as { id: string; disabled?: boolean }[];
+    const off = layer.filter((r) => r.disabled).map((r) => r.id);
+    for (const id of [...DSH_PROFILE.readOnlyOff, ...DSH_PROFILE.noToolsOff]) expect(off).toContain(id);
+    expect((a.options.env as Record<string, string>)[DSH_PROFILE.permissionEnv]).toBe("read-only");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
   }
 });

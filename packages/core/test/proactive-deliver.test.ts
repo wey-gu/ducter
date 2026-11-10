@@ -121,3 +121,18 @@ test("opened before the end of quiet hours: the note is assembled then, once", a
   expect(r.notes()).toHaveLength(1);
   void MORNING;
 });
+
+test("one booking mailed to two accounts is one find, said once", async () => {
+  const r = make({ mode: "useful" });
+  const renewal = (account: string, id: string) => ({ ref: { connectionId: "conn_oo", service: "gmail", account, id }, label: "Cloudflare · renews", at: "2026-11-09T09:00:00+08:00", type: "renewal" as const, name: "ducter.dev", due: "2026-11-14", amount: "$10.44" });
+  r.p.ledger.add([renewal("work", "a1"), renewal("home", "b1")]);
+  await r.advance(HOUR + 2 * 60_000);
+  expect(r.lastNote()!.finds.filter((f) => f.kind === "deadline")).toHaveLength(1);
+});
+
+test("no model to judge with: the bar falls back to code; the note still goes", async () => {
+  const r = make({ mode: "three", judge: async () => Promise.reject(new Error("no AI agent to ask yet")) });
+  await r.p.lookNow(40);
+  await r.advance(HOUR + 2 * 60_000);
+  expect(r.lastNote()!.finds).toHaveLength(3);
+});

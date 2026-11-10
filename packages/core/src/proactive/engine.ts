@@ -282,9 +282,23 @@ export function createProactive(o: ProactiveOptions): Proactive {
 
   /** Candidates not yet said and not muted, judged against the bar, most costly first. */
   async function judged(cands: Candidate[]): Promise<{ c: Candidate; text: string }[]> {
-    const open = cands.filter((c) => !st.said[c.key] && !muted(c));
+    // The same thing seen twice (one booking mailed to two accounts) is one find, said once.
+    const saidWords = new Set(Object.values(st.finds).map((f) => f.text));
+    const seen = new Set<string>();
+    const open = cands.filter((c) => {
+      const w = c.words.en;
+      if (st.said[c.key] || muted(c) || seen.has(w) || saidWords.has(c.words.zh) || saidWords.has(w)) return false;
+      seen.add(w);
+      return true;
+    });
     if (!open.length) return [];
-    const r = await judge(open, { zh: zh(), today: today(), bars: st.bars });
+    const ctx = { zh: zh(), today: today(), bars: st.bars };
+    // No model to judge with right now (no AI agent signed in yet, a timeout): code's own tests
+    // and the detector's words, rather than saying nothing at all.
+    const r = await judge(open, ctx).catch((err: Error) => {
+      console.warn(`[proactive] the bar fell back to code: ${err.message}`);
+      return barJudge(open, ctx);
+    });
     const cid = o.connections.view()[0]?.id;
     if (r.tokens && cid) spend(cid, r.tokens);
     const by = new Map(r.verdicts.map((v) => [v.key, v]));

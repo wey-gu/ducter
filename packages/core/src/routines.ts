@@ -20,6 +20,7 @@ import { realClock, type Clock } from "./clock.ts";
 import { isActive, type CoreRegistry } from "./registry.ts";
 import { describeTrigger, nextFirings, periodMs, validateTimeTrigger } from "./schedule.ts";
 import type { ArmInput, Waiters } from "./waiters.ts";
+import { BODY_NOTE_PREFIX } from "./loadout.ts";
 
 const DAY = 86_400_000;
 export const REVIEW_DAYS = 30;
@@ -40,8 +41,22 @@ export interface ProposeInput {
   zh?: boolean;
 }
 
+/** D185: a routine the user sets up themselves on the New task card: their words as the brief,
+ *  their place and agent; active at once (their tap is the Go). */
+export interface YoursInput {
+  name: string;
+  trigger: Extract<RoutineTrigger, { kind: "time" }>;
+  brief: string;
+  place?: Place;
+  project?: string;
+  harness?: string;
+  model?: string;
+  zh?: boolean;
+}
+
 export interface Routines {
   propose(input: ProposeInput): Promise<RoutineView>;
+  yours(input: YoursInput): RoutineView;
   pause(routineId: string, by: "user" | "partner" | "system", reason?: RoutineBody["pauseReason"]): boolean;
   resume(routineId: string): boolean;
   end(routineId: string): boolean;
@@ -151,6 +166,42 @@ export function createRoutines(opts: {
     }
     const zh = /[一-鿿]/.test(r.name + r.brief);
     const when = new Date(scheduledFor).toLocaleString(zh ? "zh-CN" : "en-US", { timeZone: zoneOf(r), month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    const once = r.trigger.kind === "time" && r.trigger.every === "once";
+    if (r.by === "you") {
+      // D185: the user's own words, as they wrote them, then one line on when this is; the user
+      // picked the agent and the place. A one-time one is just their task, opened at its time.
+      const yourBrief = once
+        ? r.brief
+        : [r.brief, "", `(This is one run of something the user set to repeat: ${r.triggerWords}. Scheduled for ${at}${extra.catchUp ? ", running late" : ""}.${s.lastRun?.taskId ? ` The previous run was task ${s.lastRun.taskId}; read it with log_read if you need what it found.` : ""})`].join("\n");
+      try {
+        const card = await runner.openTask({
+          persona: opts.persona,
+          title: once ? r.name : `${r.name} · ${when}`,
+          brief: yourBrief,
+          ...(r.place ? { place: r.place } : {}),
+          project: r.project ?? "",
+          ...(r.harness ? { harness: r.harness, ...(r.model ? { model: r.model } : {}) } : {}),
+          language: zh ? "zh" : "en",
+          origin: "you",
+        });
+        s.running = { taskId: card.taskId, runId, scheduledFor: at, tokens: 0 };
+        byTask.set(card.taskId, r.routineId);
+        run({ routineId: r.routineId, runId, scheduledFor: at, state: "started", taskId: card.taskId, ...(extra.catchUp ? { catchUp: true } : {}), ...(extra.coalesced ? { coalesced: extra.coalesced } : {}) });
+        // For the partner only (hidden in every client, never wakes it), like New task's note.
+        log.append({
+          stream: "channel",
+          origin: "user",
+          kind: "job_status",
+          body: { jobId: `${BODY_NOTE_PREFIX}${card.taskId}_opened`, taskId: card.taskId, state: "running", text: `the user set this up themselves on the New task card (${r.triggerWords}); it just started at its time with their own words as its brief. It reports back to you like any task: say its result when it does.` },
+        });
+        if (once) setState(s, { state: "ended" });
+      } catch (err) {
+        run({ routineId: r.routineId, runId, scheduledFor: at, state: "failed", reason: (err as Error).message.slice(0, 200) });
+        if (once) setState(s, { state: "ended" });
+        else failed(s);
+      }
+      return;
+    }
     const brief = [
       r.brief,
       "",
@@ -198,7 +249,11 @@ export function createRoutines(opts: {
     later(s, "review", reviewAt, () => review(s));
     if (r.trigger.kind === "time") {
       const next = nextFirings(r.trigger, Math.max(clock.now(), s.lastScheduled ?? 0), 1, zoneOf(r))[0];
-      if (next === undefined) return;
+      if (next === undefined) {
+        // A one-time one whose time is behind it (run, or missed past catching up): it's over.
+        if (r.trigger.every === "once" && !s.running) setState(s, { state: "ended" });
+        return;
+      }
       later(s, "timer", next, () => {
         s.lastScheduled = next;
         void startRun(s, next).finally(() => arm(s));
@@ -225,7 +280,10 @@ export function createRoutines(opts: {
     s.lastScheduled = latest;
     const lateOk = Math.min(periodMs(r.trigger) / 2, 12 * 3_600_000);
     if (clock.now() - latest <= lateOk) void startRun(s, latest, { catchUp: true, coalesced: missed.length - 1 });
-    else run({ routineId: r.routineId, runId: newId("run"), scheduledFor: new Date(latest).toISOString(), state: "skipped", reason: "missed", coalesced: missed.length });
+    else {
+      run({ routineId: r.routineId, runId: newId("run"), scheduledFor: new Date(latest).toISOString(), state: "skipped", reason: "missed", coalesced: missed.length });
+      if (r.trigger.every === "once") setState(s, { state: "ended" });
+    }
   }
 
   function review(s: State) {
@@ -407,6 +465,42 @@ export function createRoutines(opts: {
         kind: "decision",
         body: { decisionId, question: zh ? `例行 · ${r.name}` : `Routine · ${r.name}`, goLabel: zh ? "开始" : "Start", defaultOption: "hold", reversible: false, routineId: r.routineId },
       });
+      return view(s);
+    },
+    yours(input) {
+      const name = input.name?.trim();
+      if (!name) throw new Error("a routine needs a short name");
+      if (!input.brief?.trim()) throw new Error("say what it should do");
+      const t = input.trigger;
+      const bad = validateTimeTrigger(t);
+      if (bad) throw new Error(bad);
+      const now = clock.now();
+      const first = nextFirings(t, now, 1, t.zone === "personal" ? userZone : t.tz)[0];
+      if (first === undefined) throw new Error("that time has already passed");
+      const zh = input.zh ?? /[一-鿿]/.test(name + input.brief);
+      // A one-time one far ahead is not "up for review" before it has run.
+      const reviewAt = Math.max(now + REVIEW_DAYS * DAY, t.every === "once" ? first + DAY : 0);
+      const r: RoutineBody = {
+        routineId: newId("rt"),
+        name: name.slice(0, 60),
+        trigger: t,
+        triggerWords: describeTrigger(t, zh),
+        brief: input.brief.trim(),
+        ...(input.place ? { place: input.place } : {}),
+        reports: "every",
+        effect: "local_writes",
+        budget: { monthTokens: DEFAULT_MONTH_TOKENS },
+        state: "active",
+        createdAt: new Date(now).toISOString(),
+        reviewAt: new Date(reviewAt).toISOString(),
+        by: "you",
+        ...(input.project ? { project: input.project } : {}),
+        ...(input.harness ? { harness: input.harness, ...(input.model ? { model: input.model } : {}) } : {}),
+      };
+      const s: State = { r, fails: 0, unread: 0, monthTokens: 0, month: monthOf(now), lastScheduled: now };
+      states.set(r.routineId, s);
+      write(r);
+      arm(s);
       return view(s);
     },
     pause: (id, by, reason) => pause(id, by, reason ?? "asked"),

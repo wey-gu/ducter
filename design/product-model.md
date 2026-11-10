@@ -26,7 +26,7 @@
 | a level taking the whole screen on a wide screen (D184) | the header's button, arrows out **铺满 / Full screen**, arrows in **放回对话旁边 / Back beside the conversation** (its label and tooltip; the button shows only the arrows) | Wide, On hand or an opened task stands beside the conversation by default; this takes it to the whole screen as the Mac shows it, and back. ⌘2 does the same for On hand |
 | attention states | 等你 / Needs you · 在做 / Working · 在等 / Waiting · 做完了 / Done · 没成 / Didn't work · 放下了 / Dropped | `done?` shows as "做完了 · 在检查 / Done · checking" only while a check runs, else as Done (D68); `queued` shows as "还没开始 / Not started yet" |
 | decision actions | **好 / Go** · **先等等 / Hold** · **回复… / Reply…** · **看细节 / Details** | The Go button may name the action: en says the action alone in sentence case ("Rebase"), zh keeps 好 in front ("好，rebase") (D73). An ask's small heading is the asking task's title; the count is said once, "2 件等你 / 2 need you" |
-| Project | **项目 / Project**; no project = **其他 / Other** | An editable grouping label |
+| Project | **项目 / Project**; no project = **其他 / Other**; making one (D186): **加一个文件夹 / Add a folder** (the picker: **选一个文件夹，它会成为一个项目 / Choose a folder; it becomes a project**, **加进来 / Add**; not there: **那儿没有这个文件夹。/ There's no folder there.**); an added one with nothing yet: **还没有事。/ Nothing here yet.** | An editable grouping label; its everyday form is one folder you work in, named after it (D186) |
 | Place | **在哪儿做 / Where** | Where a task works |
 | Device (machine, runner) | **设备 / Devices** | |
 | harness (Claude Code, Codex, pi, DeepSeek Harness, …) | each by its own product name; as a category **AI agent / AI agent** (D88) | The AI tools Ducter hands work to. Not "coding agent": people use them for much more than code |
@@ -62,6 +62,7 @@
 | outcomes | **停下了 / Stopped** · **撤销 / Undo** · **再试一次 / Try again** · **告诉它怎么做… / Tell it what to do** · **检查没过 / Check didn't pass** | 告诉它怎么做… sits beside 再试一次 on a task that didn't work and opens the task's composer (D76) |
 | a merge / draft PR whose result was lost with the connection | **不确定成没成，你看一眼 / Not sure it went through — check** · **再试一次 / Try again** | Only when the Log doesn't show it done after reconnecting. Never "failed" wording: it may have happened |
 | a task the user opens themselves (D128) | **开一件事 / New task** (⌘N) · the card's rows **在哪儿做 / Where** · **谁来做 / Who does it** · **做什么 / What** · **不用文件夹 / No folder** · the top candidate's coin tag **推荐 / Suggested** · under What **你写的话会原样交给它 / It gets your words as you wrote them** · **开始 / Start** · a pick, on hover "…，是你选的 / …; you picked it" · On hand's toggle **按状态 / By state** · **按项目 / By project** · a group's **在这儿开一件 / New task here** · tasks of no place **其他 / Other** · on the phone a **＋** on On hand opens it as a bottom sheet · the branch list **从哪个分支开始 / Start from which branch** (**默认 / default**) · **取消 / Cancel** · while it opens **在开… / Starting…** · in the opened task the words are under **你交代的 / What you asked for** · a refusal in one line under Start (**那台设备现在连不上。/ That device can't be reached right now.** · **这个文件夹不是 git 仓库。/ That folder isn't a git repository.** · **现在没有 AI agent 能接这件事。/ No AI agent can take this right now.** · **没开成：… / It didn't start: …**) · the Changes header **改动 · 3 个文件 +42 −7 / Changes · 3 files +42 −7** | The power path, never required. Nothing is said in the conversation when it opens; the partner reports its result like any task. CLI: `ducter task`, which prints 开了：「…」/ Opened: "…" |
+| starting it now or later, by hand (D185) | the card's pill **什么时候开始 / When it starts**: **现在 / Now** (马上开始 / Starts right away) · **定个时间 / At a time** (到点自己开始 / Starts by itself then; **今天 / Today** · **明天 / Tomorrow** · **后天 / Day after**, **几点 / At**) · **定期做 / On a schedule** (每次到点开一件新的 / A fresh one each time; **每天 / Every day** · **工作日 / Weekdays** · **每周 / Weekly** · **每隔几小时 / Every few hours**) · **等某件事发生 / When something happens** (现在开，先等着，等到了再做 / Opens now, waits, then does it; **等到 / Wait until**) · **一直做到… / Keep going until…** (没做到就接着再来一次 / Tries again until it holds; **做到 / Until**) · Start for a time or a schedule **定好 / Schedule** · the foot **⌘↩ 开始 · ⇧⌘↩ 开完接着开下一件 / ⌘↩ Start · ⇧⌘↩ and start another** · after ⇧⌘↩ **开了：「X」/ Opened: “X”** with **打开 / Open**, **定好了：{when} ·「X」/ Scheduled: {when} · “X”** · refusals **这个时间已经过了。/ That time has already passed.** · **写一句它等什么，或者做到什么为止。/ Say what it waits for, or what it keeps going until.** · **时间写成 9:00 这样。/ Write the time like 9:00.** · a one-time start on On hand **到时候开始 / Starts then** with **不做了 / Don't do it** · By project a row's kind **等 … / Waiting until …** or **第 n 次 / Try n** | A time and a schedule are routines of the user's own (no proposal card); a wait and a loop are the task's own `wait_for` and `until`. Never "cron" or "trigger" on screen |
 | quiet hours | **免打扰 / Quiet hours** ("免打扰 23:00–08:00") | The word the user's phone already uses |
 | remote access ability | **在哪儿都能用 / Reach from anywhere** | Done: "MacBook 现在在哪儿都能用了" |
 | pairing a client with a server (D54) | **连接到你的 Ducter / Connect to your Ducter** · **地址 / Address** · **连接码 / Code** · **连上 / Connect** · **断开 / Disconnect** · again: **再连一次 / Connect it again** | The desktop card, the phone and the CLI (`ducter pair`, `ducter devices disconnect`). Sentences say "这个码只能用一次 / The code works once". Never "token", "配对 / pair", "授权 / authorize" or "绑定" in UI |
@@ -187,19 +188,23 @@ Every task shows two editable things on its card and header.
   once there are two computers, and never moved toward the user's sign-ins without them.
 - **Project:** inferred from the place (a repo's project) or from the conversation. It is
   created implicitly the first time and shown as a "new project" chip you can rename or undo.
+  You can also make one yourself (D186): **加一个文件夹 / Add a folder** picks a folder (a repo
+  or not) on the home's computer; it becomes a project with the folder's name, shown on On hand
+  By project before any task, and every task in that folder belongs to it.
 
 **Controllable always:**
 - **Projects:** rename one inline (every task carrying it follows), move a task to another
   project, or merge two projects.
 - **Changing a task's device, base branch, or repo** is a handoff (principle 13). The old task
   becomes superseded. Adding a repo just extends the place.
-- **开一件事 / New task** (D128): a quiet text button on On hand, or ⌘N, opens a three-row
-  card: 在哪儿做 / Where (a repo, most recent first, or 不用文件夹 / No folder;
-  the base branch in its chip, default the repo's default branch; the device inferred as
-  today) · 谁来做 / Who does it (the best fit, tagged 推荐 / Suggested, its reason on hover;
-  picking another pins it for this task, "…，是你选的 / …; you picked it" on hover) · 做什么 /
-  What ("你写的话会原样交给它 / It gets your words as you wrote them"). Start opens the task with those words as its brief, unchanged, and
-  opens it. The partner says nothing then and reports the result like any task. It is the
+- **开一件事 / New task** (D128, D185): a quiet text button on On hand, or ⌘N, opens a card:
+  做什么 / What first ("你写的话会原样交给它 / It gets your words as you wrote them"), then one
+  row of pills: the folder (most recent first, or 不用文件夹 / No folder), the repo's branch,
+  the computer when the choice is real, 谁来做 / Who does it (the best fit, tagged 推荐 /
+  Suggested; the last pick remembered), and 什么时候开始 / When it starts (现在 / Now, or later,
+  on a schedule, when something happens, or until something holds). Start (⌘↩) opens the task
+  with those words as its brief, unchanged, and opens it; ⇧⌘↩ starts it and keeps the card for
+  the next one. The partner says nothing then and reports the result like any task. It is the
   power path, never required. From a terminal: `ducter task "<words>"`. Details:
   `design/new-task.md`.
 

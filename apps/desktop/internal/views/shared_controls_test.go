@@ -27,7 +27,7 @@ var sharedControls = map[string]bool{
 // controlFiles are the cards and settings pages the rule covers.
 var controlFiles = []string{
 	"devicecard.go", "devupdate.go", "computers.go", "sites.go", "abilities.go", "agentversion.go",
-	"settings.go", "settings_panels.go", "settings_update.go", "partner.go", "loadout.go", "whereswitch.go", "shared.go",
+	"settings.go", "settings_panels.go", "settings_update.go", "partner.go", "loadout.go", "whereswitch.go", "shared.go", "memplugin.go",
 }
 
 // adHoc reports a call that makes a control by hand.

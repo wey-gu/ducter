@@ -52,10 +52,13 @@ At the top is your partner, its name and one line: where it lives and what it th
   **English** always answers in that language.
 - **What it remembers.** With [Nowledge Mem](https://mem.nowledge.co) connected, your partner
   remembers what you've told it across conversations, kept in Nowledge Mem under your
-  partner's name. Without it, the row says so and offers **Get Nowledge Mem** instead of a
-  switch. **Noted lately** lists what it wrote down; **Forget** removes a line (Nowledge Mem
+  partner's name. Without it, your partner still remembers your conversation on its own, and the
+  row says what Nowledge Mem would add (it is free to download and runs on your own computer),
+  with **About Nowledge Mem**. That row is the only place Ducter mentions it. **Noted lately** lists what it wrote down; **Forget** removes a line (Nowledge Mem
   forgets it when it can, otherwise the line is only hidden here, and the app tells you which).
-  Turn off **Remember things** to stop it from recalling or noting anything.
+  Its tasks use it too, through your Nowledge Mem plugin. Turn off **Remember things** to stop it from recalling
+  or noting anything, in the conversation and in its tasks; the Nowledge Mem lines on your
+  devices' cards go away too.
 - **On its own, or asks you first.** The rules Ducter keeps, in two lists. On its own: changing
   files in its own copy (your originals stay as they are), reading your projects and files,
   looking things up and reading web pages (in your own Chrome when it can), and going with the

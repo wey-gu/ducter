@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "local_only": true,
+  "plugins": [
+    {
+      "host": "codex-cli",
+      "installation": "absent",
+      "enabled": null,
+      "installed_version": null,
+      "runtime": "not_checked",
+      "recommended_action": "install",
+      "installations": [],
+      "warnings": [
+        "Managed policy, session flags and runtime loading are not verified.",
+        "Multiple registrations or cached versions exist; no effective version or enablement is inferred."
+      ]
+    },
+    {
+      "host": "claude-code",
+      "installation": "absent",
+      "enabled": null,
+      "installed_version": null,
+      "runtime": "not_checked",
+      "recommended_action": "install",
+      "installations": [],
+      "warnings": [
+        "Managed policy, invocation-local plugins and runtime loading are not verified."
+      ]
+    },
+    {
+      "host": "pi",
+      "installation": "absent",
+      "enabled": null,
+      "installed_version": null,
+      "runtime": "not_checked",
+      "recommended_action": "install",
+      "installations": [],
+      "warnings": [
+        "Invocation-only extensions and runtime loading are not verified."
+      ]
+    },
+    {
+      "host": "gemini-cli",
+      "installation": "absent",
+      "enabled": null,
+      "installed_version": null,
+      "runtime": "not_checked",
+      "recommended_action": "install",
+      "installations": [],
+      "warnings": [
+        "Linked Gemini extensions require host source resolution; link targets are not followed.",
+        "Gemini invocation overrides, extension permissions and runtime loading are not checked."
+      ]
+    },
+    {
+      "host": "deepseek-harness",
+      "installation": "absent",
+      "enabled": null,
+      "installed_version": null,
+      "runtime": "not_checked",
+      "recommended_action": "install",
+      "installations": [],
+      "warnings": [
+        "A DSH profile has no readable package manifest.",
+        "DSH profile selection is declarative; active profile, overlays, host compatibility and runtime loading are not checked."
+      ]
+    }
+  ]
+}

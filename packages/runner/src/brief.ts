@@ -12,6 +12,36 @@ export interface BriefInput {
   mcpServerName: string; // the Ducter MCP server name, e.g. "ducter"
   /** The language the user reads reports in; absent: the brief's own words decide. */
   language?: "zh" | "en";
+  /** D168: plugin = the user's Nowledge Mem plugin is on in this session; ducter = Ducter's own read-only memory stands in. Absent: none (off, or a browser). */
+  memory?: "plugin" | "ducter";
+}
+
+/** D168: what the user's memory gives this task. Absent: nothing at all about memory. */
+function memorySection(b: BriefInput): string {
+  if (!b.memory) return "";
+  const s = b.mcpServerName;
+  const write = `You never save memories yourself (no "save" or "distill" command, no \`nmem m add\`): if you learned something durable about the user (a stated preference, a convention they keep, a lasting fact about their work or people), put it in \`remember\` on your final report; ${b.partnerName} decides what to keep. Never secrets, never task plumbing (branches, commits, ids, progress).`;
+  if (b.memory === "plugin")
+    return `
+## What ${b.partnerName} remembers about the user
+
+- Nowledge Mem is on in this session as ${b.partnerName}'s own memory: what it gives you at the start, and what you find with its search, is what the user and ${b.partnerName} know. Search it when the work turns on something the user decided or prefers that you can't see. Follow what fits; the brief wins.
+- It keeps this session's thread by itself; leave that to it.
+- ${write}
+`;
+  return `
+## What ${b.partnerName} remembers about the user
+
+- Your first message may start with \`<what_i_know>\`: the few things the user's long-term memory holds that matter here (their preferences, conventions, people), each with its id. Follow them unless the brief says otherwise; the brief wins.
+- To look closer, \`memory_search\` on the \`${s}\` server reads the user's memory (a few short results, read-only). Use it when the work turns on something the user decided or prefers that you can't see; not for facts in the repo or on the web.
+- ${write}
+`;
+}
+
+/** D168: the memories in front of a task's first turn (ids so it can look closer; the brief wins). */
+export function knownTurn(notes: { id?: string; title: string; content: string; date?: string }[], partnerName: string): string {
+  const lines = notes.map((n) => `- ${n.id ? `[${n.id}] ` : ""}${n.title}: ${n.content}${n.date ? ` (${n.date})` : ""}`);
+  return `<what_i_know>\nFrom the user's memory, what ${partnerName} thinks matters for this task (background; the brief wins):\n${lines.join("\n")}\n</what_i_know>\n\n`;
 }
 
 /** The report-language rule. Named when known: a haiku task with an English brief reported in
@@ -79,7 +109,7 @@ ${languageLine(b.language)}
 - Call \`checkpoint\` (same server) after each meaningful step with where the work stands and what comes next. Your context is small and is compacted when it fills up; your last checkpoint is what you carry on from afterwards.
 - Never ask the user questions in plain text, and never wait for a reply in text. Put every question in \`report_to_main\` with a default.
 - If you lack context, use \`log_search\` / \`log_read\` on the same server before asking.
-`;
+${memorySection(b)}`;
 }
 
 /** First user turn of a fresh task session. */

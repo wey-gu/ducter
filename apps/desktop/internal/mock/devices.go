@@ -210,6 +210,14 @@ func (h *hub) handleDevices(c *conn, f protocol.ClientFrame) bool {
 				time.Sleep(80 * time.Millisecond)
 			}
 		}()
+	case "mem_plugin_install":
+		// D169: the setup task opens there; a beat later it reads the check again: installed.
+		c.send(map[string]any{"t": "mem_plugin_result", "device": f.Device, "harness": f.Harness, "ok": true, "taskId": "tsk_mem"})
+		h.MemPlugin(f.Device, f.Harness, &protocol.MemPluginView{State: "absent", TaskID: "tsk_mem"})
+		go func() {
+			time.Sleep(150 * time.Millisecond)
+			h.MemPlugin(f.Device, f.Harness, &protocol.MemPluginView{State: "installed", Version: "0.7.34"})
+		}()
 	case "rename_device":
 		name := strings.TrimSpace(f.Name)
 		d.mu.Lock()
@@ -280,6 +288,24 @@ func (h *hub) UpdateStep(device, phase string, progress float64) {
 				nu.Reason, nu.RolledBack = "health", true
 			}
 			list[i].Update = &nu
+		}
+		return list
+	})
+}
+
+// MemPlugin sets one AI agent's Nowledge Mem line on a device's card (D169),
+// as the main would after Mem's own check.
+func (h *hub) MemPlugin(device, harness string, m *protocol.MemPluginView) {
+	h.SetDevices(func(list []protocol.DeviceView, _ *protocol.Reach) []protocol.DeviceView {
+		for i := range list {
+			if list[i].ID != device {
+				continue
+			}
+			for j := range list[i].Harnesses {
+				if list[i].Harnesses[j].Harness == harness {
+					list[i].Harnesses[j].Mem = m
+				}
+			}
 		}
 		return list
 	})

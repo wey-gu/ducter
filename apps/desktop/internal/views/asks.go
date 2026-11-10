@@ -222,29 +222,6 @@ func (a *App) phoneAsk(c *ui.Context) {
 	})
 }
 
-// memLine is the one quiet line of the empty conversation when Nowledge
-// Mem isn't on this Mac: never a step, never blocking.
-func (a *App) memLine(c *ui.Context) {
-	if a.Backend == nil || a.Local == nil || a.asks.answered[askMem] || !a.Local.MayAsk(askMem, a.Now(), AskAgainAfter) {
-		return
-	}
-	k, ok := a.setup.report.Get("nmem")
-	if !ok || k.Status != "missing" || k.Fix == "" {
-		return
-	}
-	t := a.T
-	ui.Row(c.Key("memline")).Gap(6).AlignItems(ui.Center).Margin(6, 0, 0, 0).Children(func() {
-		ui.Text(c, a.L.T("mem.ask", a.S.PersonaName)).FontSize(t.SM).TextColor(t.InkMuted)
-		if a.button(c, a.L.T("mem.get"), btnText, 32, t.Bg) {
-			_ = a.Backend.OpenURL(k.Fix)
-			a.answer(askMem, "yes")
-		}
-		if a.button(c, a.L.T("ask.later"), btnText, 32, t.Bg) {
-			a.answer(askMem, "later")
-		}
-	})
-}
-
 // NeedsYouNotice is the notification for something new waiting, when the
 // person said yes to notifications ("" when not to send).
 func (a *App) NeedsYouNotice(n int) (title, body string) {

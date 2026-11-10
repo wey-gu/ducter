@@ -47,6 +47,8 @@ export interface SettingsStore extends SettingsApi {
   onChange(fn: () => void): () => void;
   /** The persona's Mem identity was bound (D141): clients show whose name its memories are under. */
   memIdentityChanged(): void;
+  /** Mem answered "not installed or not connected" the last time it was asked (D169: then nothing about its plugin shows). */
+  memMissing(): boolean;
   /** A reversible decision's wait, from the setting. */
   defaultAfterMs(): number;
   /** The user (or DUCTER_PARTNER_HARNESS) chose what the partner thinks with; else it's the default. */
@@ -146,6 +148,7 @@ export function openSettings(opts: {
       changed();
     },
     defaultAfterMs: () => get().defaultAfterMin * 60_000,
+    memMissing: () => memSeen === "missing",
     async view() {
       const s = get();
       const state: MemView["state"] = !s.memory ? "off" : memSeen ?? (forgetter ? "connected" : "missing");

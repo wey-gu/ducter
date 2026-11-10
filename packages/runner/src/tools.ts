@@ -1,6 +1,6 @@
 // Task-role Ducter MCP tools: report_to_main and checkpoint. Core serves them at /mcp; this
 // registers the handlers. Call once at wiring time (main.ts) unless core registers its own.
-import type { Attention, Bodies, BranchChanges, EvidenceRef, FolderSummary, Question } from "@ducter/protocol";
+import type { Attention, Bodies, BranchChanges, EvidenceRef, FolderSummary, Question, RememberNote } from "@ducter/protocol";
 import type { CoreApi } from "@ducter/protocol/src/internal.ts";
 
 const SUMMARY_MAX = 600;
@@ -46,9 +46,35 @@ export const reportToMainSchema = {
         required: ["kind", "label", "ref"],
       },
     },
+    remember: {
+      type: "array",
+      maxItems: 3,
+      description: "Final reports only, and only when you learned something durable about the user (a stated preference, a convention they keep, a lasting fact about their work or people). Your partner decides what to keep; you never write to their memory. Never secrets or task plumbing.",
+      items: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "Short, in the user's language" },
+          content: { type: "string", description: "One or two self-contained sentences" },
+        },
+        required: ["title", "content"],
+      },
+    },
   },
   required: ["state", "summary"],
 } as const;
+
+/** D168: a task's remember proposals, capped (3, 80 / 400 chars); empty ones dropped. */
+export function normalizeRemember(v: unknown): RememberNote[] {
+  if (!Array.isArray(v)) return [];
+  const clip = (x: unknown, n: number) => {
+    const t = String(x ?? "").replace(/\s+/g, " ").trim();
+    return t.length <= n ? t : t.slice(0, n - 1) + "…";
+  };
+  return v
+    .map((r: any) => ({ title: clip(r?.title, 80), content: clip(r?.content, 400) }))
+    .filter((r) => r.title && r.content)
+    .slice(0, 3);
+}
 
 export const checkpointSchema = {
   type: "object",
@@ -80,7 +106,8 @@ export function normalizeReport(taskId: string, args: any): Bodies["report"] {
         // never the task's own `check`: only Ducter sets it
       }))
     : [];
-  return { taskId, state, summary, questions, evidence };
+  const remember = normalizeRemember(args?.remember);
+  return { taskId, state, summary, questions, evidence, ...(remember.length ? { remember } : {}) };
 }
 
 export interface TaskToolOptions {

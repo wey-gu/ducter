@@ -187,6 +187,7 @@ export interface Bodies {
     signIn?: SignInAsk; // D151: a sign-in card; Go = 好了 / Done in the live view
     where?: WhereAsk; // D157: wait for a computer (Hold, the default) or do it now on another (Go)
     closing?: ClosingPlan; // D157: 合上之前搬走 / Move before closing: Go (the default) moves them
+    memPlugin?: MemPluginAsk; // D169: put Nowledge Mem into this agent on that computer (Go); 先不装 / Not now (Hold, the default)
   };
   decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default" };
   read_receipt: { upToSeq: number };
@@ -234,6 +235,9 @@ export interface Bodies {
     /** D142: set by Ducter on a done or failed report of a non-git folder task: what it changed
      *  there and until when it can be undone. */
     folder?: FolderSummary;
+    /** D168: what the task thinks is worth remembering about the user (at most 3). A task never
+     *  writes to Mem itself: the partner distills these and writes with the task's provenance. */
+    remember?: RememberNote[];
   };
   checkpoint: { taskId: string; text: string; gitRef?: string };
   // A waiter is a cheap wait that wakes the partner (wait_until). Shown on On hand as a compact row.
@@ -590,6 +594,10 @@ export type ClientFrame =
   // (check: read the latest versions again and only report). Answered with agent_update_result;
   // progress arrives as fresh devices frames and agent_update events.
   | { t: "agent_update"; device: string; harness: string; check?: boolean }
+  // D169: mem_plugin_install: 装上 / Install Nowledge Mem into one AI agent on a device, by a task
+  // there that follows Mem's own setup guide (the user tapped it, so it is their Go). Answered with
+  // mem_plugin_result; the card then reads the check again when the task finishes.
+  | { t: "mem_plugin_install"; device: string; harness: string }
   // The partner's and the app's settings (D71): "settings" answers with a settings frame and
   // keeps the socket subscribed (every change goes to every subscriber). "settings_set" changes
   // some of them. "memory_forget" forgets one 记下了 / Noted line: in Nowledge Mem when it has the
@@ -712,6 +720,7 @@ export type ServerFrame =
   | { t: "disconnect_result"; device: string; ok: boolean; reason?: "unknown_device" | "home" }
   | { t: "update_result"; device: string; ok: boolean; reason?: UpdateReason; detail?: string; update?: DeviceUpdate }
   | { t: "agent_update_result"; device: string; harness: string; ok: boolean; reason?: AgentReason; detail?: string }
+  | { t: "mem_plugin_result"; device: string; harness: string; ok: boolean; taskId?: string; reason?: MemPluginReason }
   | { t: "settings"; settings: Settings; mem: MemView; brainNow?: BrainNow; forgot?: { seq: number; how: "mem" | "hidden" } }
   | { t: "rules"; rules: RuleView[] }
   | { t: "candidates"; taskId: string; candidates: Candidate[] }
@@ -863,6 +872,45 @@ export interface DeviceHarness {
   latestVerified?: boolean;
   /** D156: an update of this agent under way or just finished; absent when idle. */
   update?: AgentUpdate;
+  /** D169: Nowledge Mem's plugin for this agent, when the user uses it outside Ducter; absent
+   *  when memory is off, nmem isn't on that device, or its check can't tell. */
+  mem?: MemPluginView;
+}
+
+// ---------- Nowledge Mem in the user's own agents (D169, design/memory.md "Mem and tasks") ----------
+
+/**
+ * installed: Mem's check finds its plugin installed and enabled (never "working": the check is
+ * local and doesn't prove the agent loads it); absent: not installed; update: the check says a
+ * newer one should go in; review: the check can't settle it (several copies, can't read it).
+ */
+export type MemPluginState = "installed" | "absent" | "update" | "review";
+/** Why a review: several copies or registrations; anything else the check couldn't settle. */
+export type MemPluginWhy = "multiple" | "unclear";
+
+export interface MemPluginView {
+  state: MemPluginState;
+  version?: string; // installed: the version the check read
+  why?: MemPluginWhy; // review
+  /** A setup task for it is open right now (its id). */
+  taskId?: string;
+  checkedAt?: string; // ISO
+}
+
+/** Why 装上 didn't start: memory is off, no such device or agent, it's away, no signed-in agent there, or anything else. */
+export type MemPluginReason = "off" | "unknown" | "offline" | "no_agent" | "running" | "failed";
+
+/** D169: the partner's one offer to put Mem into an agent on a computer (once per computer and agent). */
+export interface MemPluginAsk {
+  device: string; // device id ("local" for the home)
+  deviceName: string;
+  harness: string;
+}
+
+/** D168: one thing a task thinks is worth remembering about the user (it proposes; the partner writes). */
+export interface RememberNote {
+  title: string; // ≤ 80 chars
+  content: string; // ≤ 400 chars, self-contained
 }
 
 // ---------- The AI agents' own versions (D156, design/system.md "Updating the AI agents") ----------

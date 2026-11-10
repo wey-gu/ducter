@@ -74,6 +74,8 @@ export interface WsDeps {
   updates?: () => import("./updates.ts").Updates | undefined;
   /** D156: updating the AI agents on each device (agents.ts); absent in tests that don't need it. */
   agents?: () => import("./agents.ts").AgentUpdates | undefined;
+  /** D169: Nowledge Mem in each device's own agents (mem-plugins.ts); absent in tests that don't need it. */
+  memPlugins?: () => import("./mem-plugins.ts").MemPlugins | undefined;
   /** D151: Ducter's own browser (live view, Sites); absent in tests that don't need it. */
   browser?: DucterBrowser;
   batchMs?: number;
@@ -472,6 +474,16 @@ export function createWsHandler(deps: WsDeps) {
         const r = await ag.start(device, harness, { by: "user" });
         send(ws, r.ok ? { t: "agent_update_result", device, harness, ok: true } : { t: "agent_update_result", device, harness, ok: false, reason: r.reason, ...(r.detail ? { detail: r.detail } : {}) });
         return; // progress pushes fresh devices frames to every subscriber
+      }
+      case "mem_plugin_install": {
+        // D169: the user tapped 装上 / Install: that is their Go for this one setup task.
+        const device = String(f.device ?? "local");
+        const harness = String(f.harness ?? "");
+        const mp = deps.memPlugins?.();
+        if (!mp) return send(ws, { t: "mem_plugin_result", device, harness, ok: false, reason: "failed" });
+        watchDevices();
+        const r = await mp.install(device, harness);
+        return send(ws, r.ok ? { t: "mem_plugin_result", device, harness, ok: true, taskId: r.taskId } : { t: "mem_plugin_result", device, harness, ok: false, reason: r.reason });
       }
       case "settings": {
         if (!deps.settings) throw new Error("settings are not available");

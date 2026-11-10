@@ -86,16 +86,27 @@ doesn't get the keys or tokens from the environment Ducter was started in, eithe
 
 Tasks use your plan's limits like any other session would. Your agent's own settings, skills and
 tools apply to tasks too, so a Ducter task in your project behaves the way your own session
-there does.
+there does, including your Nowledge Mem plugin (below).
 
 ## Memory, with Nowledge Mem
 
-Memory is optional. Without it, Ducter works fine and remembers your conversation.
+Memory is optional. Without it, Ducter works fine: your partner remembers your conversation on
+its own, and tasks run the same. Ducter never asks you to get Nowledge Mem; it is mentioned in one
+place, Settings › What it remembers. Nowledge Mem is free to download and runs on your own
+computer.
 
 If you use [Nowledge Mem](https://mem.nowledge.co), your partner starts out knowing who you are
 and what you're working on, from the same memory your other AI tools share. When it saves
 something worth keeping, its reply's **Details** shows one quiet line: **Noted · <what it
 saved>**, with **Forget**. **Partner › What it remembers** lists all of them.
+Its tasks know you too. A task runs with your Nowledge Mem plugin, under your partner's name in
+Nowledge Mem, so it starts with what you and your partner know and its work is kept there the
+way your own sessions are. On a computer where the plugin isn't installed for that AI agent, your
+partner gives the task the few things it remembers that fit the work, and the task can look up
+more. A task never saves memories itself; it can suggest something worth keeping, and your
+partner decides. Tasks in a browser get none of it, so a web page can't ask for it. Turn off
+**Remember things** and tasks get no memory: the plugin is switched off inside them too.
+
 Every memory records that it came from Ducter, which partner wrote it (its own name in
 Nowledge Mem, the same for its tasks) and which conversation it came from, so you can always
 trace it back. If you already chose an AI identity for Nowledge Mem on this computer, Ducter

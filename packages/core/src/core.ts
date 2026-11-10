@@ -37,6 +37,8 @@ import { createReleaseWatch, type Fetch as ReleaseFetch, type ReleaseWatch } fro
 import { createUpdates, type Updates, type UpdatesDeps } from "./updates.ts";
 import { createAgentLatest, createAgentUpdates, type AgentUpdates, type AgentUpdatesDeps } from "./agents.ts";
 import { bundledPiVersion, detectAgent, probeHarnesses } from "./harness-probe.ts";
+import { createMemPlugins, type MemPlugins } from "./mem-plugins.ts";
+import { inspectMemPlugins, nmemInspectExec } from "@ducter/protocol/src/mem-plugins.ts";
 import { realSys, updateHow, writeAlive, type UpdateSys } from "./update.ts";
 import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 import { createDucterBrowser, type DucterBrowser, type DucterBrowserOptions } from "./browser/index.ts";
@@ -77,6 +79,8 @@ export interface CoreOptions {
   update?: { fetch?: ReleaseFetch; sys?: UpdateSys; run?: UpdatesDeps["run"]; how?: import("@ducter/protocol").UpdateHow; version?: string; homeName?: string; execPath?: string; autoEveryMs?: number; graceMs?: number; criticalWaitMs?: number };
   /** D156 test seams: the channels' feed, the agents' updaters, this machine's copies. */
   agents?: { fetch?: ReleaseFetch; sys?: UpdateSys; which?: (c: string) => string | null; detect?: AgentUpdatesDeps["detect"]; loggedIn?: AgentUpdatesDeps["loggedIn"]; exists?: (p: string) => boolean; settleMs?: number; autoEveryMs?: number };
+  /** D169 test seams: the Mem plugin check on the home (default: the real `nmem`, never in tests). */
+  memPlugins?: { inspectLocal?: () => Promise<Record<string, import("@ducter/protocol").MemPluginView> | undefined>; everyMs?: number; now?: () => number; connected?: () => boolean };
   /** D151 test seams for Ducter's own browser (false: none). */
   browser?: false | Partial<Omit<DucterBrowserOptions, "mcp" | "log" | "tasks" | "decisions" | "persona" | "dataDir">>;
   /** The machine's platform as Devices sees it (tests: "linux"). */
@@ -114,6 +118,8 @@ export interface Core extends CoreApi {
   release: ReleaseWatch;
   /** D156: the AI agents' own versions and their updates. */
   agents: AgentUpdates;
+  /** D169: Nowledge Mem's plugin in each device's own agents. */
+  memPlugins: MemPlugins;
   /** D151: Ducter's own browser. */
   ducterBrowser?: DucterBrowser;
   port: number;
@@ -297,7 +303,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   // 开一件事 / New task (D128): the one opening path the card and `ducter task` share.
   const newTaskDeps = { log, tasks, runner: () => runner, persona, dataDir, loadout, settings, ...(opts.git ? { git: opts.git } : {}) };
   const newTask = { open: (i: NewTaskInput) => openYourTask(newTaskDeps, i), options: (p?: Place) => newTaskOptions(newTaskDeps, p) };
-  const ws = createWsHandler({ core: api, decisions, runner: () => runner, devices: () => devicesView, settings, connections, rules, loadout, closing, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, batchMs: opts.batchMs, ...(browser ? { browser } : {}) });
+  const ws = createWsHandler({ core: api, decisions, runner: () => runner, devices: () => devicesView, settings, connections, rules, loadout, closing, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, memPlugins: () => memPluginsRef, batchMs: opts.batchMs, ...(browser ? { browser } : {}) });
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.
   let partnerTurn = false;
@@ -320,6 +326,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const gate = createGate({ auth: gateAuth, personaName: () => persona.name });
   let updatesRef: Updates | undefined;
   let agentsRef: AgentUpdates | undefined;
+  let memPluginsRef: MemPlugins | undefined;
   const workers = createWorkers({
     personaName: () => persona.name,
     onUpdate: (id, name, f) => updatesRef?.fromWorker(id, name, f),
@@ -410,11 +417,67 @@ export function startCore(opts: CoreOptions = {}): Core {
     ...(a.exists ? { exists: a.exists } : {}),
   });
   agentsRef = agents;
-  devicesView = createDevicesView({ dataDir, auth: devices, workers, connected: () => ws.connected(), probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, agents: () => agents, ...(agentTesting ? {} : { piBundled: bundledPiVersion }), self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` }, ...(browser ? { browser } : {}), ...(opts.platform ? { platform: opts.platform } : {}), onDisconnect: (id) => {
+  devicesView = createDevicesView({ dataDir, auth: devices, workers, connected: () => ws.connected(), probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, agents: () => agents, mem: () => memPluginsRef, ...(agentTesting ? {} : { piBundled: bundledPiVersion }), self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` }, ...(browser ? { browser } : {}), ...(opts.platform ? { platform: opts.platform } : {}), onDisconnect: (id) => {
     for (const s of push.forget(id)) void apns.revoke?.(s);
   } });
   updates.onChange(() => devicesView?.changed());
   agents.onChange(() => devicesView?.changed());
+  // D169: Nowledge Mem in the user's own agents, per device. Checked at start, each day, when a
+  // computer comes online, and after a sign-in or an agent update (both refresh the devices).
+  const mp = opts.memPlugins ?? {};
+  // D169: only for someone who already has Mem connected (its identity bound, D141, and Mem not
+  // answering "missing"); without Mem, nothing about its plugin shows, anywhere.
+  const memConnected = mp.connected ?? (() => !!persona.mem && !settings.memMissing());
+  const memOn = () => settings.get().memory && process.env.DUCTER_MEMORY !== "off" && memConnected();
+  const memPlugins = createMemPlugins({
+    dataDir,
+    log,
+    tasks,
+    persona,
+    runner: () => runner,
+    on: memOn,
+    zh: () => settings.get().language === "zh",
+    inspectLocal:
+      mp.inspectLocal ??
+      (agentTesting ? async () => undefined : () => inspectMemPlugins(nmemInspectExec(process.env))),
+    inspectWorker: async (id) => {
+      const link = workers.link(id);
+      if (!link?.online()) return undefined;
+      return link.call<Record<string, import("@ducter/protocol").MemPluginView> | null>("mem_plugins", {}, 30_000).then((r) => r ?? undefined).catch(() => undefined);
+    },
+    devices: async () => ((await devicesView?.frame())?.devices ?? []).map((x) => ({ id: x.id, name: x.name, home: x.home, awake: x.state === "awake", harnesses: x.harnesses })),
+    ...(mp.everyMs !== undefined ? { everyMs: mp.everyMs } : agentTesting ? { everyMs: 0 } : {}),
+    ...(mp.now ? { now: mp.now } : {}),
+  });
+  memPluginsRef = memPlugins;
+  api.memPluginIn = (device, harness) => memPlugins.installed(device, harness); // D168: a task there has it
+  memPlugins.onChange(() => devicesView?.changed());
+  {
+    // A sign-in, a sign-out or an agent update refreshes the devices: read the check again.
+    const v = devicesView;
+    const refresh = v.refresh.bind(v);
+    let soon: ReturnType<typeof setTimeout> | undefined;
+    v.refresh = () => {
+      refresh();
+      if (soon) clearTimeout(soon);
+      soon = setTimeout(() => void memPlugins.check(), 1_500);
+    };
+    // A computer that comes online is checked once it said hello.
+    let up = new Set(workers.online().map((w) => w.deviceId));
+    workers.onChange(() => {
+      const now = new Set(workers.online().filter((w) => w.hello).map((w) => w.deviceId));
+      for (const id of now) if (!up.has(id)) void memPlugins.check(id);
+      up = now;
+    });
+    // Memory switched back on: check everything again.
+    let wasOn = memOn();
+    settings.onChange(() => {
+      const on = memOn();
+      if (on && !wasOn) void memPlugins.check();
+      wasOn = on;
+    });
+    void memPlugins.check();
+  }
   devicesView.harnessesNow(); // probe once at start, so the partner's first turn knows who is signed in
   const sockets = splitSockets(ws.websocket, workers, { isLive: (id) => devices.isLive(id), nameOf: (id) => devices.list().find((d) => d.id === id)?.name, sweepMs: opts.sweepMs });
   // The iPhone app: this home's own Apple key if it has one, else the notification relay (D159).
@@ -499,6 +562,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     updates,
     release,
     agents,
+    memPlugins,
     ...(browser ? { ducterBrowser: browser } : {}),
     port,
     url: `ws://127.0.0.1:${port}/ws`,
@@ -533,6 +597,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       pusher.stop();
       updates.stop();
       agents.stop();
+      memPlugins.stop();
       release.stop();
       void server.stop(true); // awaiting hangs in Bun 1.3 when a WebSocket was open
       log.close();

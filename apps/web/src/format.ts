@@ -1,5 +1,5 @@
 // Time and place wording, the same rules as the desktop (views/app.go formatting).
-import type { DeviceUpdate, Place } from "@ducter/protocol";
+import type { DeviceUpdate, MemPluginView, Place } from "@ducter/protocol";
 import { compareVersions, isVersion } from "@ducter/protocol/src/version.ts";
 import type { Strings } from "./i18n.ts";
 
@@ -162,4 +162,19 @@ export function phaseLine(L: Strings, u: DeviceUpdate): string {
       return u.rolledBack ? L.t("devup.phase.rolledback", u.from) : L.t("devup.phase.failed");
   }
   return "";
+}
+
+/** D169: an agent's Nowledge Mem line and its action's words, from Mem's own check (never "working"). */
+export function memWords(L: Strings, m: MemPluginView): { line: string; action?: string } {
+  if (m.taskId) return { line: L.t("memp.setting") };
+  switch (m.state) {
+    case "installed":
+      return { line: m.version ? L.t("memp.installed", m.version) : L.t("memp.installed.bare") };
+    case "absent":
+      return { line: L.t("memp.absent"), action: L.t("memp.btn.install") };
+    case "update":
+      return { line: L.t("memp.update"), action: L.t("memp.btn.update") };
+    case "review":
+      return { line: L.t(m.why === "multiple" ? "memp.review.multiple" : "memp.review.unclear"), action: L.t("memp.btn.review") };
+  }
 }

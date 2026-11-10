@@ -103,9 +103,10 @@ when their input changes. [2]
 A persona is one Nowledge Mem identity, and its windows share it. Ducter writes only its own
 persona and reads the rest. Every Mem write records its provenance: the persona's identity,
 `source_app = ducter`, and the window plus Log pointer. Subscriptions run only through the user's own official binaries.
-Skills and harness config stay the user's, and windows inherit them. A user may have several
-personas. Each has its own conversation and identity, and they are isolated unless the user
-links them. Attention aggregates per person, never per persona. [3][8][10]
+Skills and harness config stay the user's, and windows inherit them, Nowledge Mem's plugin
+included, as the persona; only with memory off does Ducter turn that plugin off in a window.
+A user may have several personas. Each has its own conversation and identity, and they are
+isolated unless the user links them. Attention aggregates per person, never per persona. [3][8][10]
 
 **18. No per-call approvals: scope the credentials, gate the effects.**
 `needs-you` is for decisions, not permissions. Windows hold only scoped credentials, never in

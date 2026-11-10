@@ -104,6 +104,13 @@ it turns white on the card's ledge deepened 45% toward the state's strong tone, 
 ledge. The same hover (a shade lighter), press (sink) and keyboard focus ring on all of them.
 In a row the primary is last (macOS) and at most one primary shows per group.
 
+**The in-place ask.** An action on a card that changes something outside Ducter asks where it
+stands, never in a floating layer: a sunken block on the page's ground (`Bg`, radius 12,
+padding 12) with one bold question, one note saying what changes and where, then the secondary
+button and a text Cancel (`disconnectConfirm` in `views/devupdate.go`, `.dev-cut` on the phone).
+Used by 断开 / Disconnect and by an agent's Nowledge Mem line in its coin detail (D169, `views/memplugin.go`,
+`MemAction` in `apps/web/src/devcard.tsx`), drawn through the coin detail's `coinLines` (its line) and `coinActions` (its action) slots; a new action of that kind uses it, not a new control.
+
 **Task lines.** A task line says its title once, then where it stands: the job's status line
 when it adds something, else the state (a status line that only repeats the title falls back to
 the state). A finished task reads 做完了 / Done: `done?` shows as Done until something actually
@@ -323,7 +330,7 @@ One vocabulary on every tab:
 - **Partner:** one calm clay header (the partner at 112, its name 34 with Rename, one line "住在
   hel 上 · 用 Codex 想事情"), then the tray titled **{device} 上的 AI agent**, What it thinks with
   (the clay well holding the token; the token flies into it on Switch), Who does the tasks, How it
-  talks, What it remembers (no Mem: no switch, **装上 Nowledge Mem** instead), On its own or asks
+  talks, What it remembers (no Mem: no switch; one gentle line on what Mem adds and **了解 Nowledge Mem**, D169), On its own or asks
   you first (two lists side by side in one card). Single column; the faces strip is gone.
 - **Look and sound** opens on a preview stage: the partner, one message of yours and its answer
   in this window's language, and Details folded or shown as set. The partner smiles (its done

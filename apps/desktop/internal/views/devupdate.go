@@ -24,6 +24,8 @@ type cardState struct {
 	answer    *protocol.ServerFrame // the last update_result that said no
 	asked     string                // the device an update was asked for
 	agent     *protocol.ServerFrame // the last agent_update_result that said no (D156)
+	memAsk    string                // "device:harness" whose 装上 / Install is being confirmed (D169)
+	mem       *protocol.ServerFrame // the last mem_plugin_result that said no (D169)
 	checking  bool                  // 现在检查 / Check now asked, no answer yet
 	sheet     sheetState            // D161: the character sheet's coins, chips and connections
 }
@@ -56,6 +58,14 @@ func (a *App) drainDeviceResults() {
 		} else {
 			fc := *res
 			d.card.agent = &fc
+		}
+	case "mem_plugin_result":
+		d.card.memAsk = ""
+		if res.OK {
+			d.card.mem = nil
+		} else {
+			fc := *res
+			d.card.mem = &fc
 		}
 	case "update_result":
 		d.card.checking = false

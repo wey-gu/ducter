@@ -300,9 +300,13 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
           const settings = { idleCompaction: false, hooks: preCompactHooks(spec.preCompactNote) };
           // OAR owns --settings under "exclude"; there the task's folder holds them.
           if (clean || spec.userConfiguration === "exclude") writeClaudeSettings(spec.cwd, settings);
-          else launchArgs = [...(launchArgs ?? []), "--settings", JSON.stringify(settings)];
+          else launchArgs = [...(launchArgs ?? []), "--settings", JSON.stringify({ ...settings, ...pluginsOff(spec) })];
         }
       }
+      // D168: the user's own Mem plugin stays out of a task that keeps the user's setup (memory
+      // comes from Ducter there); under the clean setup none of their plugins load anyway.
+      if (!clean && spec.userConfiguration !== "exclude" && spec.disablePlugins?.length && !launchArgs?.includes("--settings"))
+        launchArgs = [...(launchArgs ?? []), "--settings", JSON.stringify(pluginsOff(spec))];
       break;
     case "codex":
       // Codex denies only MCP tools qualified as mcp__server__tool (OAR tool-denials).
@@ -314,6 +318,10 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
         const nativeTools = !!spec.keepNativeTools || (!clean && spec.userConfiguration === "exclude");
         launchArgs = codexCleanArgs(readCodexConfig(ctx.env ?? {}), mcpServers.map((m) => m.name), { nativeTools });
       }
+      else if (spec.disablePlugins?.length)
+        // D168: the user's setup stays, their Mem plugin is turned off by id (bare, as above).
+        // Only ids the user's config.toml has: an override for a plugin Codex doesn't know is never sent.
+        launchArgs = spec.disablePlugins.filter((id) => /^[A-Za-z0-9_@-]+$/.test(id) && readCodexConfig(ctx.env ?? {})?.plugins?.[id]).flatMap((id) => ["-c", `plugins.${id}.enabled=false`]);
       if (knobs) launchArgs = [...(launchArgs ?? []), ...knobs.args];
       // D142: a folder task writes only inside its folder (and the temp folders). OAR passes
       // its own sandbox_mode first; a later -c wins (checked with codex 0.167 config/read, and
@@ -380,6 +388,12 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
   };
   for (const k of Object.keys(options) as (keyof SessionOptions)[]) if (options[k] === undefined) delete (options as any)[k];
   return { options, ...(preamble ? { preamble } : {}), clean };
+}
+
+/** D168: Claude Code settings that turn the named plugins off for this session only. */
+function pluginsOff(spec: SessionSpec): { enabledPlugins?: Record<string, false> } {
+  const ids = spec.disablePlugins ?? [];
+  return ids.length ? { enabledPlugins: Object.fromEntries(ids.map((id) => [id, false as const])) } : {};
 }
 
 /** DeepSeek Harness routes by provider/model; a bare DeepSeek name gets the official provider. */

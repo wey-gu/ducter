@@ -3,7 +3,8 @@
 // sound (D87), under the title and again under the end card; the video reads without it.
 import { linearTiming, type TransitionPresentation, TransitionSeries } from "@remotion/transitions";
 import { fade } from "@remotion/transitions/fade";
-import { Audio, interpolate, Sequence, staticFile, useVideoConfig } from "remotion";
+import { useLayoutEffect } from "react";
+import { Audio, continueRender, delayRender, getInputProps, interpolate, Sequence, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import { type Lang, LangContext } from "./copy";
 import { Decide } from "./scenes/Decide";
 import { End } from "./scenes/End";
@@ -45,6 +46,31 @@ const Sound = ({ from, length }: { from: number; length: number }) => {
   );
 };
 
+/**
+ * The safe-area audit (scripts/audit.ts): with the input prop `audit`, every frame logs the box of
+ * each visible element marked `data-safe` (headline, window, phone, tags, coins, Ducter…), so a
+ * script can check none of them leaves the frame's safe margins. Off in normal renders.
+ */
+const Audit = () => {
+  const frame = useCurrentFrame();
+  useLayoutEffect(() => {
+    const handle = delayRender("safe-area audit");
+    requestAnimationFrame(() => {
+      const boxes: [string, number, number, number, number][] = [];
+      document.querySelectorAll<HTMLElement>("[data-safe]").forEach((el) => {
+        let op = 1;
+        for (let e: HTMLElement | null = el; e; e = e.parentElement) op *= Number.parseFloat(getComputedStyle(e).opacity);
+        const r = el.getBoundingClientRect();
+        if (op < 0.2 || r.width === 0 || r.height === 0) return;
+        boxes.push([el.dataset.safe ?? "", Math.round(r.left), Math.round(r.top), Math.round(r.right), Math.round(r.bottom)]);
+      });
+      console.log(`SAFE ${JSON.stringify({ frame, boxes })}`);
+      continueRender(handle);
+    });
+  }, [frame]);
+  return null;
+};
+
 export type LaunchProps = { lang: Lang };
 
 export const Launch = ({ lang }: LaunchProps) => {
@@ -71,6 +97,7 @@ export const Launch = ({ lang }: LaunchProps) => {
       </TransitionSeries>
       <Sound from={startOf("Title")} length={9 * 30} />
       <Sound from={end - 30} length={LAUNCH_FRAMES - end + 30} />
+      {(getInputProps() as { audit?: boolean }).audit && <Audit />}
     </LangContext.Provider>
   );
 };

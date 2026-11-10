@@ -66,6 +66,18 @@ the world). Missing or outdated against the list above:
 v3 renders: `.shots/promo/v3/ducter-launch-{16x9,1x1,16x9-zh}.mp4`, stills in
 `.shots/promo/v3/stills/`.
 
+**v4 (the author on v3: slow zooms pushed content past the frame's edges).** Every camera move
+is gone: the title's drift and lean-in, the cut into the conversation (the title no longer scales
+up while the paper circle opens), the hand-off's open-out from 1.28×, the world's drift back, the
+phone's 1.5× (1.85× square) push-in, the real shots' 7% push-in, the hook's 5% and the end card's
+sky. The phone is framed whole instead and leans in by 3% around its card; the title's logo drops
+28 px instead of 90. Motion stays inside the frame (coins, parcels, the sheet, the tap, Ducter).
+A check guards it: `node scripts/audit.ts` renders every 2nd frame of each cut with the `audit`
+input prop, collects the boxes of every element marked `data-safe` (headline, window, phone,
+tags, coins, devices, Ducter, logo, end card) and fails if one leaves the frame minus 24 px,
+except while it enters in its scene's first 32 frames (Ducter's drop, the island and the phone
+rising). It catches the old 1.5× phone push (288 px out). Renders: `.shots/promo/v4/`.
+
 ## Putting the video on the site (D75)
 
 Recommendation: **a poster image plus a link to the full video as a GitHub release asset.** The

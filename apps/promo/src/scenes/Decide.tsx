@@ -1,5 +1,5 @@
-// 6 · The phone buzzes once. The camera moves in on the one question, its default and the
-// countdown to it (the product's signature: decisions carry defaults). One tap on Rebase; the
+// 6 · The phone buzzes once and its sheet rises with the one question, its default and the
+// countdown to it; the phone is framed whole and only leans in by 3% (v4: no camera push) (the product's signature: decisions carry defaults). One tap on Rebase; the
 // card turns green, says what it's doing now, and that it can be undone.
 import { interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { useCopy, useLang } from "../copy";
@@ -25,18 +25,18 @@ export const Decide = () => {
   const pop = interpolate(frame, [TAP + 4, TAP + 8, TAP + 13], [0.97, 1.025, 1], clamp);
   const mins = frame < 80 ? 30 : 29;
   const left = interpolate(frame, [SHEET, 80, 81, TAP], [1, 0.995, 0.967, 0.962], clamp);
-  const pw = sq ? 400 : 470;
+  const pw = sq ? 440 : 460;
   const ph = pw * 2.06;
   const k = pw / 430; // sizes below are for a 430-wide phone
   const px = sq ? (width - pw) / 2 : 1250;
-  const py = sq ? 300 : (height - ph) / 2;
-  // the card's centre inside the phone, and where the camera puts it
+  // whole in the frame; on the square cut its empty top fades under the headline
+  const py = sq ? height - 40 - ph : (height - ph) / 2;
+  // the card's centre inside the phone: the small lean-in is centred on it
   const card = { x: pw / 2, y: ph - 268 * k };
-  const Z = sq ? 1.85 : 1.5;
-  const target = sq ? { x: width / 2, y: 650 } : { x: 1395, y: 560 };
+  const Z = 1.03;
   const z = interpolate(frame, [ZOOM, ZOOM + 22], [0, 1], { ...clamp, easing: easeOut });
   const scale = 1 + (Z - 1) * z;
-  const dx = (target.x - (px + card.x)) * z, dy = (target.y - (py + card.y)) * z;
+  const dx = 0, dy = 0;
   const tint = (a: string, b: string) => `color-mix(in srgb, ${b} ${Math.round(turn * 100)}%, ${a})`;
   return (
     <Fill style={{ background: C.bg }}>

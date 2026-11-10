@@ -72,14 +72,13 @@ export const Hook = () => {
   const gridW = cols * tw + (cols - 1) * gap;
   const gridH = rows * th + (rows - 1) * gap;
   const dim = interpolate(frame, [DIM, DIM + 12], [0, 1], { ...clamp, easing: easeOut });
-  const push = interpolate(frame, [0, durationInFrames], [1.0, 1.05]);
   // the band of paper: opens from a line, then at the end widens to fill the frame
   const open = interpolate(frame, [BAND, BAND + 9], [0, 1], { ...clamp, easing: easeOut });
   const fill = interpolate(frame, [durationInFrames - 14, durationInFrames - 2], [0, 1], { ...clamp, easing: (x) => x * x });
   const bandH = (sq ? 300 : 230) * open + (height - (sq ? 300 : 230)) * fill;
   return (
     <Fill style={{ background: "#1A130D" }}>
-      <div style={{ position: "absolute", left: (width - gridW) / 2, top: (height - gridH) / 2, width: gridW, height: gridH, transform: `scale(${push})`, filter: `brightness(${1 - dim * 0.6}) saturate(${1 - dim * 0.4}) blur(${dim * 2.5}px)` }}>
+      <div style={{ position: "absolute", left: (width - gridW) / 2, top: (height - gridH) / 2, width: gridW, height: gridH, filter: `brightness(${1 - dim * 0.6}) saturate(${1 - dim * 0.4}) blur(${dim * 2.5}px)` }}>
         {TILES.map((t, i) => (
           <div key={i} style={{ position: "absolute", left: (i % cols) * (tw + gap), top: Math.floor(i / cols) * (th + gap) }}>
             <TileView t={t} i={i} w={tw} h={th} />

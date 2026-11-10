@@ -56,7 +56,7 @@ export const Quiet = () => {
       <div style={{ position: "absolute", left: 0, right: 0, top: dy + dW * 0.825, height: 2, background: C.line, opacity: 0.7 }} />
       <div style={{ position: "absolute", left: dx + dW * 0.18, top: dy + dW * 0.8, width: dW * 0.7, height: 40, borderRadius: "50%", background: "radial-gradient(closest-side, rgba(110,70,30,0.28), rgba(110,70,30,0))", transform: `translateX(${interpolate(day, [0, 1], [-60, 90])}px) scaleX(${1 + day * 0.5})` }} />
       <div style={{ position: "absolute", left: dx, top: dy, width: dW, opacity: pose, transformOrigin: "50% 92%", transform: `translateY(${(1 - pose) * 30}px) scale(${1 + 0.012 * breathe}, ${1 + 0.012 * breathe * 1.3})` }}>
-        <Art src="ducter/waiting.png" style={{ width: "100%" }} />
+        <Art src="ducter/waiting.png" safe="ducter" style={{ width: "100%" }} />
       </div>
       <div style={{ position: "absolute", left: sq ? width - clock - 110 : 1400, top: sq ? 330 : 330, transform: `scale(${pose})`, display: "flex", flexDirection: "column", alignItems: "center", gap: 18 }}>
         <Clock minute={minute} size={clock} />

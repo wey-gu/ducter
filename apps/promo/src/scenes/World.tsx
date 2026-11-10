@@ -136,7 +136,7 @@ const Flying = ({ c, origin, settled }: { c: Coin; origin: Pt; settled: boolean 
       {/* its shadow on the island, from the moment it's on its way */}
       <div style={{ position: "absolute", left: c.to.x - 34, top: c.to.y - 9, width: 68, height: 18, borderRadius: "50%", background: "radial-gradient(closest-side, rgba(60,40,20,0.35), rgba(60,40,20,0))", opacity: a }} />
       <div style={{ position: "absolute", left: x - size / 2, top: y - size, width: size, height: size, transformOrigin: "50% 100%", transform: `scale(${(0.7 + 0.3 * peel) * sq}, ${(0.7 + 0.3 * peel) / sq}) rotate(${tilt}deg)` }}>
-        <Art src={`clay/coin_${c.name}.png`} style={{ width: "100%" }} />
+        <Art src={`clay/coin_${c.name}.png`} safe="coin" style={{ width: "100%" }} />
         <Art src="clay/coin_sheen.png" style={{ position: "absolute", inset: 0, width: "100%", opacity: sheenOp, transform: `rotate(${sheenRot}deg)` }} />
       </div>
       {landed >= 0 && <Sparkles at={c.at + Math.ceil(EQUIP * 0.62)} x={c.to.x} y={c.to.y - 50} r={78} n={6} />}
@@ -164,11 +164,7 @@ export const World = ({ mode }: { mode: "handoff" | "world" }) => {
     { name: "pi", label: "pi", to: { x: MINI.x + 74, y: MINI.y - 14 }, at: PEEL + 3 },
   ];
   const landAt = (i: number) => COINS[i].at + Math.ceil(EQUIP * 0.62);
-  // camera: hand-off starts close on Ducter and opens out as the coins fly; the world drifts back
-  const zoom = handoff
-    ? interpolate(frame, [0, PEEL], [1.28, 1], { ...clamp, easing: easeOut })
-    : interpolate(frame, [0, durationInFrames], [1.0, 0.95], clamp);
-  const camY = handoff ? interpolate(frame, [0, PEEL], [-100, 0], { ...clamp, easing: easeOut }) : 0;
+  // the camera holds still (v4): the coins, parcels and the phone's island do the moving
   const phone = useSpring(handoff ? 99999 : 14, { damping: 13, stiffness: 90 });
   const phoneDrop = useSpring(handoff ? 99999 : 28, { damping: 9, stiffness: 160 });
   const origin = { x: HOME.x - 150, y: HOME.y - 120 };
@@ -186,17 +182,17 @@ export const World = ({ mode }: { mode: "handoff" | "world" }) => {
   const homeTag = handoff ? tag(0, 1, c.livesHere) : { sub: t(c.tasks(1)), dot: C.work };
   const cloudTag = tag(1, 2, c.linuxServer);
   const miniTag = tag(3, 1, c.forDucter);
-  const s = L.scale * zoom;
+  const s = L.scale;
   return (
     <Fill>
-      <div style={{ position: "absolute", left: (width - 1920) / 2, top: (height - 1080) / 2 + L.top, width: 1920, height: 1080, transform: `scale(${s}) translateY(${camY}px)`, transformOrigin: "50% 45%" }}>
+      <div style={{ position: "absolute", left: (width - 1920) / 2, top: (height - 1080) / 2 + L.top, width: 1920, height: 1080, transform: `scale(${s})`, transformOrigin: "50% 45%" }}>
         <Sea />
         {!handoff && (
           <>
             <Bridge from={{ x: HOME.x, y: HOME.y - 140 }} to={{ x: PHONE.x, y: PHONE.y + 40 }} show={phone} />
             <Island at={PHONE} w={200} rise={phone}>
               <div style={{ position: "absolute", left: -30, top: -96, width: 60, transformOrigin: "50% 100%", transform: `translateY(${(1 - Math.min(1, phoneDrop)) * -260}px) scale(${1 + (phoneDrop > 1 ? (phoneDrop - 1) * 2 : 0)}, ${1 - (phoneDrop > 1 ? (phoneDrop - 1) * 2 : 0)})`, opacity: phoneDrop > 0.02 ? 1 : 0 }}>
-                <Art src="clay/phone.png" style={{ width: "100%" }} />
+                <Art src="clay/phone.png" safe="device" style={{ width: "100%" }} />
               </div>
             </Island>
             <Sparkles at={36} x={PHONE.x} y={PHONE.y - 50} r={70} n={6} />
@@ -206,14 +202,14 @@ export const World = ({ mode }: { mode: "handoff" | "world" }) => {
         <Bridge {...toMini} lit={miniTs} />
         <Bridge {...toCloud} lit={cloudTs} />
         <Island at={MINI} w={380}>
-          <Art src="clay/mini_awake.png" style={{ position: "absolute", width: 160, left: -112, top: -190 }} />
+          <Art src="clay/mini_awake.png" safe="device" style={{ position: "absolute", width: 160, left: -112, top: -190 }} />
         </Island>
         <Island at={CLOUD} w={380}>
-          <Art src="clay/server_awake.png" style={{ position: "absolute", width: 190, left: -104, top: -218 }} />
+          <Art src="clay/server_awake.png" safe="device" style={{ position: "absolute", width: 190, left: -104, top: -218 }} />
         </Island>
         <Island at={HOME} w={620} big>
-          <Art src="clay/laptop_awake.png" style={{ position: "absolute", width: 250, left: -36, top: -238 }} />
-          <Art src={ducter} style={{ position: "absolute", width: 240, left: -270, top: -240 }} />
+          <Art src="clay/laptop_awake.png" safe="device" style={{ position: "absolute", width: 250, left: -36, top: -238 }} />
+          <Art src={ducter} safe="ducter" style={{ position: "absolute", width: 240, left: -270, top: -240 }} />
         </Island>
         <Parcels {...toCloud} ts={cloudTs} />
         <Parcels {...toMini} ts={miniTs} />

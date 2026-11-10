@@ -54,7 +54,7 @@ export const SayIt = () => {
       </div>
       {!sq && (
         <div style={{ position: "absolute", left: 1370, top: 470, width: 400, transformOrigin: "50% 95%", transform: `translateY(${(1 - mascot) * 80}px) scale(${1 + 0.012 * breathe}, ${1 + 0.03 * breathe * 0.4})`, opacity: Math.min(1, mascot * 2) }}>
-          <Art src={reading ? "ducter/working.png" : blink ? "ducter/idle_closed.png" : "ducter/idle.png"} style={{ width: "100%" }} />
+          <Art src={reading ? "ducter/working.png" : blink ? "ducter/idle_closed.png" : "ducter/idle.png"} safe="ducter" style={{ width: "100%" }} />
         </div>
       )}
     </Fill>

@@ -248,7 +248,8 @@ export function CalendarBadge({ r, big }: { r: RoutineView; big?: boolean }) {
   const next = r.nextAt ?? r.upcoming?.[0];
   if (!next) return null;
   const d = new Date(next);
-  const monthly = r.trigger.kind === "time" && r.trigger.every === "month";
+  // A monthly one, and a one-time start (D185), say the month under the date.
+  const monthly = r.trigger.kind === "time" && (r.trigger.every === "month" || r.trigger.every === "once");
   const zh = A.L.lang === "zh";
   const sub = monthly ? (zh ? `${d.getMonth() + 1} 月` : d.toLocaleString("en", { month: "short" })) : zh ? ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][d.getDay()] : d.toLocaleString("en", { weekday: "short" });
   return (
@@ -276,9 +277,11 @@ export function pausedWhy(r: RoutineView): string {
  *  stands, with Pause / Resume. */
 export function RoutineRow({ r }: { r: RoutineView }) {
   const paused = r.state === "paused";
+  const once = r.trigger.kind === "time" && r.trigger.every === "once"; // D185: a start at a time
   const lines: string[] = [];
   if (paused) lines.push(pausedWhy(r));
   else if (r.running) lines.push(t("routine.running"));
+  else if (once) lines.push(t("routine.once.starts"));
   else if (r.nextAt) lines.push(tp("routine.next", (when(A.L, r.nextAt))));
   if (r.lastRun) lines.push(tp(`routine.last.${r.lastRun.state}`, (day(A.L, r.lastRun.at))));
   return (
@@ -294,7 +297,9 @@ export function RoutineRow({ r }: { r: RoutineView }) {
         {r.trigger.kind === "time" && !r.name.includes(r.triggerWords) && <span class="m">{r.triggerWords}</span>}
         {lines.length > 0 && <span class="m cap">{lines.join(" · ")}</span>}
       </span>
-      {paused ? (
+      {once && !paused ? (
+        <button class="btn text sm" onClick={() => A.routineAction(r.routineId, "end")}>{t("routine.cancel")}</button>
+      ) : paused ? (
         <button class="btn secondary sm" onClick={() => A.routineAction(r.routineId, "resume")}>{t("routine.resume")}</button>
       ) : (
         <button class="btn text sm" onClick={() => A.routineAction(r.routineId, "pause")}>{t("routine.pause")}</button>

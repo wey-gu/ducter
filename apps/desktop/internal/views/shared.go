@@ -197,3 +197,69 @@ const (
 	appTileW   = 96
 	appTileArt = 48
 )
+
+// pill is one property of a card that opens a short list under it (New
+// task's place, branch, computer, who and when; D185): one height, flat on
+// the sunken tint, a caret at its end; open, it stands white with an ink
+// hairline, like a chosen choice. body draws what it holds. It returns
+// the pill (the list's anchor) and whether it was clicked.
+func (a *App) pill(c *ui.Context, key, about string, open bool, body func()) (ui.Element, bool) {
+	t := a.T
+	e := ui.Row(c.Key(key)).Height(t.ControlSM).Padding(0, t.S3, 0, t.S3).Gap(t.S2).Radius(t.RadiusSM).AlignItems(ui.Center).Shrink(1).MinWidth(0).
+		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(about).Expanded(open).Focusable()
+	switch {
+	case open:
+		e.Background(t.Surface).InsetShadow(0, 0, 0, 1.5, t.Ink)
+	case e.Pressed():
+		e.Background(t.Line)
+	case e.Hovered():
+		e.Background(t.SurfaceSunken.Mix(t.Line, 0.5))
+	default:
+		e.Background(t.SurfaceSunken)
+	}
+	e.Children(func() {
+		body()
+		ui.Box(c).Size(10, 10).Shrink(0).Draw(drawCaret(t.InkMuted)).AccessHidden(true)
+	})
+	return e, e.Clicked()
+}
+
+// menuRow is one choice in a list a pill opens: a compact row, a soft tint
+// on hover, the chosen one sunken with a check at its end; off is greyed
+// and can't be picked. body draws its words. It reports a pick.
+func (a *App) menuRow(c *ui.Context, key, label string, on, off bool, body func()) bool {
+	t := a.T
+	row := ui.Row(c.Key(key)).MinHeight(t.ControlSM).Padding(t.S1+2, t.S3).Gap(t.S3).Radius(t.RadiusSM).AlignItems(ui.Center).
+		Role(ui.RoleRadio).Label(label).AccessSelected(on)
+	switch {
+	case off:
+		row.Opacity(0.5)
+	case on:
+		row.Background(t.SurfaceSunken).Cursor(ui.CursorPointer).Focusable()
+	case row.Hovered():
+		row.Background(t.SurfaceSunken.Mix(t.Surface, 0.5)).Cursor(ui.CursorPointer).Focusable()
+	default:
+		row.Cursor(ui.CursorPointer).Focusable()
+	}
+	row.Children(func() {
+		ui.Row(c).Grow(1).MinWidth(0).Gap(t.S3).AlignItems(ui.Center).AccessHidden(true).Children(body)
+		if on {
+			a.glyph(c, 14, drawCheck(t.Ink))
+		}
+	})
+	return !off && row.Clicked()
+}
+
+// listPanel is the floating list a pill opens: the card's surface, a
+// hairline, the floating shadow, its title small above the rows.
+func (a *App) listPanel(c *ui.Context, anchor ui.Element, open *bool, title string, width float32, body func()) {
+	t := a.T
+	ui.PopoverBase(c, anchor, open, func(panel ui.Element) {
+		panel.Margin(t.S2, 0, 0, 0).Width(width).Padding(t.S2).Radius(t.RadiusMD).Background(t.Surface).
+			Shadow(0, t.Floating.Y, t.Floating.Blur, 0, t.Floating.Color).Border(1, t.LineSoft).Label(title)
+		ui.Text(c, title).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Padding(t.S2, t.S3, t.S1, t.S3)
+		ui.Scroll(c.Key("list")).MaxHeight(360).Children(func() {
+			ui.Column(c).Gap(2).Role(ui.RoleRadioGroup).Label(title).Children(body)
+		})
+	})
+}

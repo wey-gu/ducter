@@ -226,3 +226,33 @@ export function AppTile(p: { label: string; sub?: string; about?: string; sel?: 
     </button>
   );
 }
+
+/**
+ * D185: one property of a sheet that opens a short list under it (New task's place, branch,
+ * computer, who and when): one height, flat on the sunken tint, a caret at its end; open, white
+ * with an ink hairline. The Mac's `pill`.
+ */
+export function Pill(p: { label: string; about: string; open: boolean; onClick: () => void; children: ComponentChildren }) {
+  return (
+    <button class={`pill${p.open ? " open" : ""}`} aria-label={`${p.about} · ${p.label}`} aria-expanded={p.open} onClick={p.onClick}>
+      {p.children}
+      <svg class="caret" viewBox="0 0 10 10" aria-hidden="true">
+        <path d="M2 3.5 5 6.7 8 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </button>
+  );
+}
+
+/** D185: one choice in the list a Pill opens: the chosen one sunken with a check, off greyed. The Mac's `menuRow`. */
+export function MenuRow(p: { label: string; on: boolean; off?: boolean; why?: string; onClick: () => void; children: ComponentChildren }) {
+  return (
+    <button class={`menu-row${p.on ? " on" : ""}`} role="radio" aria-checked={p.on} aria-label={p.label} disabled={p.off} title={p.why} onClick={p.onClick}>
+      <span class="mr-body">{p.children}</span>
+      {p.on && (
+        <svg class="mr-check" viewBox="0 0 14 14" aria-hidden="true">
+          <path d="M2.5 7.4 5.6 10.4 11.5 3.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      )}
+    </button>
+  );
+}

@@ -37,6 +37,7 @@ import { openConnections, type ConnectionsStore, type Linker, type OoSource } fr
 import { registerConnectionTools } from "./connection-tools.ts";
 import { createChanges, type Changes } from "./changes.ts";
 import { newTaskOptions, openYourTask, type GitRun, type NewTaskInput } from "./newtask.ts";
+import { createProjects } from "./projects.ts";
 import { createReleaseWatch, type Fetch as ReleaseFetch, type ReleaseWatch } from "./release.ts";
 import { createUpdates, type Updates, type UpdatesDeps } from "./updates.ts";
 import { createAgentLatest, createAgentUpdates, type AgentUpdates, type AgentUpdatesDeps } from "./agents.ts";
@@ -266,7 +267,13 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D128: what each repo task changed (cached counts), for On hand by project.
   let onHandChanged = () => {};
   const changes = createChanges({ log, tasks, runner: () => runner, onChange: () => onHandChanged() });
-  tasks.setDecorator((o) => changes.decorate(work.decorate(o)));
+  // D186: the projects the user added by hand; On hand shows them before their first task.
+  const projects = createProjects({ dataDir, ...(opts.git ? { git: opts.git } : {}), onChange: () => onHandChanged() });
+  tasks.setDecorator((o) => {
+    const on = changes.decorate(work.decorate(o));
+    const added = projects.list();
+    return added.length ? { ...on, projects: added } : on;
+  });
   if (opts.work?.judge) work.setJudge(opts.work.judge);
 
   let proactiveRef: Proactive | undefined;
@@ -311,8 +318,18 @@ export function startCore(opts: CoreOptions = {}): Core {
     return e.why ? { harness: e.harness } : undefined;
   };
   // 开一件事 / New task (D128): the one opening path the card and `ducter task` share.
-  const newTaskDeps = { log, tasks, runner: () => runner, persona, dataDir, loadout, settings, ...(opts.git ? { git: opts.git } : {}) };
-  const newTask = { open: (i: NewTaskInput) => openYourTask(newTaskDeps, i), options: (p?: Place) => newTaskOptions(newTaskDeps, p) };
+  const newTaskDeps = { log, tasks, runner: () => runner, persona, dataDir, loadout, settings, routines: work.routines, untils: work.untils, projects, ...(opts.git ? { git: opts.git } : {}) };
+  const newTask = {
+    open: (i: NewTaskInput) => openYourTask(newTaskDeps, i),
+    options: (p?: Place) => newTaskOptions(newTaskDeps, p),
+    // D186: a folder becomes a project; answered as the place the card then offers.
+    async addProject(path: string) {
+      const r = await projects.add(path);
+      if (!r.ok) return r;
+      const place = (await newTaskOptions(newTaskDeps)).places.find((p) => p.added && p.name === r.project.name) ?? { place: r.project.place, name: r.project.name, added: true };
+      return { ok: true as const, place };
+    },
+  };
   const ws = createWsHandler({ core: api, decisions, runner: () => runner, devices: () => devicesView, settings, connections, rules, loadout, closing, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, memPlugins: () => memPluginsRef, proactive: () => proactiveRef, batchMs: opts.batchMs, ...(browser ? { browser } : {}) });
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.
@@ -369,7 +386,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     version,
     workers: () => ({
       online: () =>
-        workers.online().map((w) => ({ id: w.deviceId, name: w.name, ...(w.hello?.version ? { version: w.hello.version } : {}), how: (w.hello?.how === "self" || w.hello?.how === "app" || w.hello?.how === "source" ? w.hello.how : "manual") as import("@ducter/protocol").UpdateHow })),
+        workers.online().map((w) => ({ id: w.deviceId, name: w.name, ...(w.hello?.version ? { version: w.hello.version } : {}), how: (w.hello?.how === "self" || w.hello?.how === "app" || w.hello?.how === "source" ? w.hello.how : "manual") as import("@ducter/protocol").UpdateHow, ...(w.hello?.asksApp ? { asksApp: true } : {}) })),
       update: async (id, args) => {
         const link = workers.link(id);
         if (!link) return { ok: false, reason: "offline" };

@@ -437,11 +437,18 @@ type Routine struct {
 	DryRun       *RoutineDryRun `json:"dryRun,omitempty"`
 	LastRun      *RoutineRun    `json:"lastRun,omitempty"`
 	Running      string         `json:"running,omitempty"`
+	// D185: set up by the user on the New task card, with its place.
+	By      string `json:"by,omitempty"`
+	Place   *Place `json:"place,omitempty"`
+	Project string `json:"project,omitempty"`
 }
 
 type RoutineTrigger struct {
-	Kind      string     `json:"kind"` // time | condition
-	Every     string     `json:"every,omitempty"`
+	Kind      string     `json:"kind"`            // time | condition
+	Every     string     `json:"every,omitempty"` // day | weekday | week | month | hours | once
+	Date      string     `json:"date,omitempty"`  // once (D185)
+	Days      []int      `json:"days,omitempty"`
+	Hours     int        `json:"hours,omitempty"`
 	Time      string     `json:"time,omitempty"`
 	Zone      string     `json:"zone,omitempty"`
 	TZ        string     `json:"tz,omitempty"`
@@ -702,6 +709,8 @@ type OnHand struct {
 	// Missed (D145) are the task-less waits that ended unmet today: the
 	// finished area keeps them, with Keep waiting.
 	Missed []Waiter `json:"missed,omitempty"`
+	// Projects (D186) the user added by hand, shown before any task.
+	Projects []ProjectView `json:"projects,omitempty"`
 }
 
 // ---------- Client <-> main process WebSocket ----------
@@ -1205,18 +1214,21 @@ type DeviceUpdate struct {
 	Available bool   `json:"available"`
 	// NotesBy is what's new per language ("zh", "en"), short whole lines;
 	// a card shows its own language's and none otherwise (D172).
-	NotesBy    map[string][]string `json:"notesBy,omitempty"`
-	Security   bool                `json:"security,omitempty"`
-	How        string              `json:"how"`
-	Phase      string              `json:"phase,omitempty"`
-	Progress   float64             `json:"progress,omitempty"`
-	From       string              `json:"from,omitempty"`
-	To         string              `json:"to,omitempty"`
-	Reason     string              `json:"reason,omitempty"`
-	Detail     string              `json:"detail,omitempty"`
-	RolledBack bool                `json:"rolledBack,omitempty"`
-	At         string              `json:"at,omitempty"`
-	CheckedAt  string              `json:"checkedAt,omitempty"`
+	NotesBy  map[string][]string `json:"notesBy,omitempty"`
+	Security bool                `json:"security,omitempty"`
+	How      string              `json:"how"`
+	// FromHere (D187): how "app", and that Mac's Ducter asks its app to
+	// update when any client taps 更新.
+	FromHere   bool    `json:"fromHere,omitempty"`
+	Phase      string  `json:"phase,omitempty"`
+	Progress   float64 `json:"progress,omitempty"`
+	From       string  `json:"from,omitempty"`
+	To         string  `json:"to,omitempty"`
+	Reason     string  `json:"reason,omitempty"`
+	Detail     string  `json:"detail,omitempty"`
+	RolledBack bool    `json:"rolledBack,omitempty"`
+	At         string  `json:"at,omitempty"`
+	CheckedAt  string  `json:"checkedAt,omitempty"`
 }
 
 // Running reports an update under way (not yet done or failed).
@@ -1352,6 +1364,12 @@ type ServerFrame struct {
 	ClientID string        `json:"clientId,omitempty"`
 	Card     *TaskCard     `json:"card,omitempty"`
 	Apps     int           `json:"apps,omitempty"`
+	// D185: task_new_result for a start later or on a schedule: the
+	// routine it made (no TaskID). D186: project_add_result: the Place
+	// the card then offers.
+	RoutineID string       `json:"routineId,omitempty"`
+	Routine   *Routine     `json:"routine,omitempty"`
+	Place     *PlaceChoice `json:"place,omitempty"`
 	// update_result (D148): Device, OK, Reason, Detail, and with a check the
 	// device's Update. disconnect_result: Device, OK, Reason.
 	Update *DeviceUpdate `json:"update,omitempty"`
@@ -1516,7 +1534,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	// D172: 试一下 sat at 正在打开 example.com…… forever).
 	case "welcome", "events", "on_hand", "task_history", "sent", "action_result", "error",
 		"devices", "ability_result", "pair_code", "rename_result", "disconnect_result", "update_result", "agent_update_result", "mem_plugin_result", "settings", "connections", "connection_result", "rules", "candidates", "activity",
-		"task_new_options", "task_new_result", "open_task", "open_result",
+		"task_new_options", "task_new_result", "open_task", "open_result", "project_add_result",
 		"first_screen", "folder_changes", "close_result", "live", "live_frame", "browser_sites", "browser_check", "connection_reads":
 	default:
 		return f, fmt.Errorf("unknown server frame %q", f.T)
@@ -1546,6 +1564,37 @@ type PlaceChoice struct {
 	UsedAt        string   `json:"usedAt,omitempty"`
 	DefaultBranch string   `json:"defaultBranch,omitempty"`
 	Branches      []string `json:"branches,omitempty"`
+	// Added: a project the user added by hand (D186).
+	Added bool `json:"added,omitempty"`
+}
+
+// NewTaskWhen is when a task the user opens by hand starts (D185): "now"
+// (or nil), "at" (Date, Time), "every" (Every, Days, Hours, Time),
+// "when" and "until" (Condition). Times are wall clock in TZ.
+type NewTaskWhen struct {
+	Kind      string `json:"kind"`
+	Date      string `json:"date,omitempty"`
+	Time      string `json:"time,omitempty"`
+	TZ        string `json:"tz,omitempty"`
+	Every     string `json:"every,omitempty"` // day | weekday | week | hours
+	Days      []int  `json:"days,omitempty"`
+	Hours     int    `json:"hours,omitempty"`
+	Condition string `json:"condition,omitempty"`
+}
+
+// ProjectAdd adds a folder on the home's computer as a project (D186);
+// answered with project_add_result.
+type ProjectAdd struct {
+	T        string `json:"t"` // "project_add"
+	Path     string `json:"path"`
+	ClientID string `json:"clientId,omitempty"`
+}
+
+// ProjectView is a project the user added (D186).
+type ProjectView struct {
+	Name    string `json:"name"`
+	Place   Place  `json:"place"`
+	AddedAt string `json:"addedAt"`
 }
 
 // TaskNewOptions asks what the New task card offers at Place (nil: this
@@ -1559,12 +1608,13 @@ type TaskNewOptions struct {
 // Harness/Model only when the user picked someone other than the top
 // candidate. Answered with task_new_result.
 type TaskNew struct {
-	T        string `json:"t"` // "task_new"
-	Words    string `json:"words"`
-	Place    *Place `json:"place,omitempty"`
-	Harness  string `json:"harness,omitempty"`
-	Model    string `json:"model,omitempty"`
-	ClientID string `json:"clientId,omitempty"`
+	T        string       `json:"t"` // "task_new"
+	Words    string       `json:"words"`
+	Place    *Place       `json:"place,omitempty"`
+	Harness  string       `json:"harness,omitempty"`
+	Model    string       `json:"model,omitempty"`
+	ClientID string       `json:"clientId,omitempty"`
+	When     *NewTaskWhen `json:"when,omitempty"`
 }
 
 // OpenTask asks the apps to show a task (`ducter open <task>`).

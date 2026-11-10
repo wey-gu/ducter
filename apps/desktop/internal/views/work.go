@@ -167,7 +167,7 @@ func (a *App) calendarBadge(c *ui.Context, r *protocol.Routine, size float32) {
 	zh := a.L.Lang == i18n.ZH
 	big := fmt.Sprint(at.Day())
 	var sub string
-	if r.Trigger.Every == "month" {
+	if r.Trigger.Every == "month" || r.Trigger.Every == "once" {
 		if zh {
 			big += " 号"
 			sub = fmt.Sprintf("%d 月", int(at.Month()))
@@ -490,10 +490,16 @@ func (a *App) routine(id string) *protocol.Routine {
 
 // routineShelf is the calm shelf at the bottom of On hand (D115): one card
 // per routine with its trigger in words, the next firing, the latest run,
-// and Pause / Resume.
-func (a *App) routineShelf(c *ui.Context) {
+// and Pause / Resume. placeless: only the ones of no folder (By project
+// shows the others in their project's group, D185).
+func (a *App) routineShelf(c *ui.Context, placeless bool) {
 	t := a.T
-	list := a.routines()
+	var list []protocol.Routine
+	for _, r := range a.routines() {
+		if !placeless || routineProject(r) == "" {
+			list = append(list, r)
+		}
+	}
 	if len(list) == 0 {
 		return
 	}
@@ -532,11 +538,14 @@ func (a *App) routineCard(c *ui.Context, r *protocol.Routine) {
 				ui.Text(c, r.TriggerWords).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(2)
 			}
 			line := ""
+			once := r.Trigger.Every == "once"
 			switch {
 			case paused:
 				line = a.pausedWhy(r)
 			case r.Running != "":
 				line = a.L.T("routine.running")
+			case once:
+				line = a.L.T("routine.once.starts")
 			case r.NextAt != "":
 				line = a.tp("routine.next", (a.when(store.ParseTime(r.NextAt))))
 			}
@@ -547,7 +556,12 @@ func (a *App) routineCard(c *ui.Context, r *protocol.Routine) {
 				ui.Text(c, line).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(2)
 			}
 		})
-		if paused {
+		if r.Trigger.Every == "once" && !paused {
+			// One start at a time (D185): nothing to pause; it can be called off.
+			if a.button(c, a.L.T("routine.cancel"), btnText, t.ControlSM, t.Surface) {
+				a.send(protocol.RoutineAction{T: "routine_action", RoutineID: r.RoutineID, Action: "end"})
+			}
+		} else if paused {
 			if a.button(c, a.L.T("routine.resume"), btnSecondary, t.ControlSM, t.Surface) {
 				a.send(protocol.RoutineAction{T: "routine_action", RoutineID: r.RoutineID, Action: "resume"})
 			}

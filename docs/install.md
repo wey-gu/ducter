@@ -324,7 +324,9 @@ Everything about the phone and the iPad, including notifications and quiet hours
 ## Updates
 
 The Mac app looks for a new version when it opens and once a day, and gets it ready in the
-background. When one is ready, the Ducter menu says **Update 0.2.0 ready · restart to finish**.
+background. If it couldn't look (no network, or GitHub didn't answer), it says **Couldn't check
+this time** and looks again within the hour. When your server already knows of a newer version,
+the app hears it from there and gets it right away. When one is ready, the Ducter menu says **Update 0.2.0 ready · restart to finish**.
 It installs the next time you quit Ducter, or right away with **Restart Now**: the window says
 **Putting the new version in, back in a moment**, closes, and Ducter opens again on the new
 version with a quiet **Updated to 0.2.0**. Your tasks carry on.
@@ -349,13 +351,18 @@ it to see why.
 From a terminal, on the computer Ducter lives on:
 
 ```sh
-ducter update --check   # where each device stands
+ducter update --check   # where every device stands (also from a Mac that does tasks for your server)
 ducter update           # this computer (asks first; --yes doesn't)
 ducter update --all     # the other computers first, then this one
 ```
 
-A Mac updates with the app, as above; its card says so. Another Mac's card says to open Ducter
-there. The Mac you're on updates with this app: if the app is already up to date but the part
+A Mac updates with the app, as above. Its card has the same **Update** button, from your phone or
+from another computer: the card says **Ducter on MacBook downloads and checks it, then restarts
+once nothing is mid-way**, then shows each step, and the Mac's window says **Putting the new version
+in, back in a moment** while it switches. Ducter has to be open on that Mac: if it's closed, or the
+Mac is asleep, the card says so and nothing changes; open Ducter there and tap **Update** again. If
+Ducter.app was installed by an administrator, the first update needs that Mac's password once, at
+the Mac. The Mac you're on updates with this app: if the app is already up to date but the part
 that does tasks for your server still runs the older version, its card says so with **Restart it**. A computer running a Ducter older than
 0.0.4 can't be updated from here: run the install command on it once more.
 

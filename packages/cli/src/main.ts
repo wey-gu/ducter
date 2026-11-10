@@ -553,7 +553,7 @@ export async function run(argv: string[]): Promise<number | "running"> {
   if (args.command === "connect") return cmdConnect({ t, style, dataDir, json: args.json, rest: args.rest ?? [], ...(args.code ? { code: args.code } : {}) });
   if (args.command === "disconnect") return cmdDisconnect({ t, style, dataDir, json: args.json });
   // A home command goes to the Ducter the CLI follows; a machine command stays here (D147).
-  if (commandClass(args.command, { all: args.all }) === "home") {
+  if (commandClass(args.command, { all: args.all, check: args.check }) === "home") {
     const r = resolveTarget({ dataDir, port, local: args.local, home: args.home, portGiven: args.port != null });
     if (!r.ok) {
       if (args.json) console.log(JSON.stringify({ ok: false, error: r.key === "home.needsConnect" ? "not_connected" : "bad_address", ...r.vars }));
@@ -643,7 +643,7 @@ export async function run(argv: string[]): Promise<number | "running"> {
     case "worker":
       return cmdWorker({ t, style, args, dataDir });
     case "update":
-      return cmdUpdate({ t, style, args, port, dataDir });
+      return cmdUpdate({ t, style, args, port, dataDir, target: ctx.target });
   }
 }
 

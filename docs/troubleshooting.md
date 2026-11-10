@@ -126,6 +126,16 @@ Run `ducter uninstall --all` (it lists what goes before asking), or choose **Sto
 delete the `~/.ducter` folder. This erases your conversation, tasks and settings for good, so
 only do it if you mean it. The next start is a first run.
 
+### The Mac app says there's no new version, but a card says there is
+
+Since this version they give one answer: the app hears about a new version from your server too,
+and looks again within the hour when GitHub didn't answer. On a version before that, GitHub can
+refuse a Mac that asked too often from the same network for an hour, and the app then said **No
+new version to find yet** for a day. To get past it: quit Ducter (**Ducter › Quit Ducter**) and
+open it again after the top of the hour, then **Settings › Updates and about › Check now**; or
+download the newest `Ducter-<version>-arm64.dmg` from the release page and drag it over the one in
+Applications.
+
 ### An update didn't go through
 
 The device's card says **Didn't update** and why. Nothing is lost:
@@ -138,6 +148,11 @@ The device's card says **Didn't update** and why. Nothing is lost:
   server, usually in `~/.local/bin`). What happened is in `~/.ducter/updates/result.json` (in
   the data folder). `ducter report` includes the log lines; please attach them to an issue.
 - **"A merge or an undo is still running":** try again once it's done.
+- **"Ducter isn't open on that Mac, or the Mac is asleep":** a Mac updates through its app; open
+  Ducter there and tap **Update** again. Nothing was changed.
+- **"…installed by an administrator":** go to that Mac once and choose **Restart Now** under
+  **Settings › Updates and about**; it asks for the Mac's password, and from then on it updates
+  from anywhere.
 
 To go back to a version by hand on a server: `ducter update --to 0.0.3 --yes`, or move
 `ducter.prev` over `ducter` and run `systemctl --user restart ducter`.

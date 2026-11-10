@@ -12,7 +12,7 @@ import { ooCli, ooEnv, ooExec } from "../src/oo-link.ts";
 import { recordedTriage } from "../src/proactive/triage.ts";
 import { barJudge } from "../src/proactive/judge.ts";
 import { fakeOo } from "./fake-oo.ts";
-import { busyWeek } from "./fixtures/inbox.ts";
+import { busyWeek, MORNING } from "./fixtures/inbox.ts";
 import { tempDir } from "./helpers.ts";
 
 let stops: (() => Promise<void> | void)[] = [];
@@ -23,6 +23,7 @@ afterEach(async () => {
 
 function boot(): { core: Core; oo: ReturnType<typeof fakeOo>; woke: LogEvent[]; opened: unknown[] } {
   const t = tempDir();
+  const started = Date.now();
   const fx = busyWeek();
   const bin = join(t.dir, "bin");
   mkdirSync(bin);
@@ -48,6 +49,9 @@ function boot(): { core: Core; oo: ReturnType<typeof fakeOo>; woke: LogEvent[]; 
     push: false,
     ooSource: ooSource({ env, dir: join(t.dir, "oo-config"), which: () => oo.bin, cli }),
     proactive: { triage: recordedTriage(fx.triage), judge: barJudge, zone: "Asia/Shanghai" },
+    // The fixture's "today" (Tuesday 2026-11-10, 07:00 Shanghai), moving at real speed: on the real
+    // date a thread ages past the waiting threshold and the finds change with the calendar.
+    clock: { now: () => MORNING + (Date.now() - started), setTimeout: (fn, ms) => setTimeout(fn, ms), clearTimeout: (h) => clearTimeout(h as ReturnType<typeof setTimeout>) },
   });
   stops.push(t.cleanup, () => core.stop());
   const woke: LogEvent[] = [];

@@ -49,15 +49,30 @@ export function validateTimeTrigger(t: TimeTrigger): string | undefined {
     return (e as Error).message;
   }
   if (!validZone(t.tz)) return `unknown time zone ${t.tz}`;
+  if (t.every === "once" && !parseDate(t.date)) return `a one-time routine needs date (YYYY-MM-DD), got ${t.date ?? "nothing"}`;
   if (t.every === "week" && !(t.days?.length && t.days.every((d) => Number.isInteger(d) && d >= 0 && d <= 6))) return "a weekly routine needs days (0 = Sunday … 6)";
   if (t.every === "month" && !(t.dayOfMonth && t.dayOfMonth >= 1 && t.dayOfMonth <= 31)) return "a monthly routine needs dayOfMonth (1–31)";
   if (t.every === "hours" && !(t.hours && t.hours >= 1 && t.hours <= 24)) return "an hourly routine needs hours (1–24)";
   return undefined;
 }
 
+/** "2026-11-12" as year, month, day; undefined when it isn't a real day. */
+function parseDate(s: string | undefined): { y: number; m: number; d: number } | undefined {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s?.trim() ?? "");
+  if (!m) return undefined;
+  const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+  const dt = new Date(Date.UTC(y, mo - 1, d));
+  return dt.getUTCFullYear() === y && dt.getUTCMonth() === mo - 1 && dt.getUTCDate() === d ? { y, m: mo, d } : undefined;
+}
+
 /** The firings strictly after `fromMs`, at most n, within a year. `tz` overrides the trigger's. */
 export function nextFirings(t: TimeTrigger, fromMs: number, n: number, tz = t.tz): number[] {
   const { hh, mm } = parseTime(t.time);
+  if (t.every === "once") {
+    const day = parseDate(t.date);
+    const at = day ? zoned(day.y, day.m, day.d, hh, mm, tz) : undefined;
+    return at !== undefined && at > fromMs && n > 0 ? [at] : [];
+  }
   const out: number[] = [];
   const start = wall(fromMs, tz);
   let day = Date.UTC(start.y, start.m - 1, start.d);
@@ -84,7 +99,7 @@ export function nextFirings(t: TimeTrigger, fromMs: number, n: number, tz = t.tz
 /** The time between two firings, roughly (for how late a missed one may still run). */
 export function periodMs(t: TimeTrigger): number {
   if (t.every === "hours") return (t.hours ?? 1) * 3_600_000;
-  if (t.every === "day" || t.every === "weekday") return DAY;
+  if (t.every === "day" || t.every === "weekday" || t.every === "once") return DAY;
   if (t.every === "week") return (7 / Math.max(1, t.days?.length ?? 1)) * DAY;
   return 30 * DAY;
 }
@@ -96,6 +111,12 @@ const EN_DAYS = ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "F
 export function describeTrigger(t: RoutineTrigger, zh: boolean): string {
   if (t.kind === "condition") return t.condition;
   const time = t.time.replace(/^0(\d)/, "$1");
+  if (t.every === "once") {
+    // One firing: the day and the time, no time zone line (it is the user's own clock now).
+    const d = parseDate(t.date);
+    if (!d) return time;
+    return zh ? `${d.m}月${d.d}日 ${time}` : `${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][d.m - 1]} ${d.d}, ${time}`;
+  }
   const when =
     t.every === "day" ? (zh ? `每天 ${time}` : `Every day ${time}`)
     : t.every === "weekday" ? (zh ? `工作日 ${time}` : `Weekdays ${time}`)

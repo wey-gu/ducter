@@ -6,9 +6,12 @@
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, join, resolve } from "node:path";
-import type { Candidate, NewTaskReason, Place, PlaceChoice, TaskCard } from "@ducter/protocol";
+import type { Candidate, NewTaskReason, NewTaskWhen, Place, PlaceChoice, RoutineTrigger, RoutineView, TaskCard } from "@ducter/protocol";
 import type { LogStore, Runner, SettingsApi, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import { BODY_NOTE_PREFIX, type Loadout } from "./loadout.ts";
+import type { Projects } from "./projects.ts";
+import type { Routines } from "./routines.ts";
+import type { Untils } from "./until.ts";
 
 /** `git -C cwd …`: ok and the trimmed stdout. Injected in tests. */
 export type GitRun = (cwd: string, args: string[]) => Promise<{ ok: boolean; out: string }>;
@@ -32,6 +35,11 @@ export interface NewTaskDeps {
   loadout?: Loadout;
   settings?: SettingsApi;
   git?: GitRun;
+  /** D185: later and repeating starts are routines of the user's own; a loop is an until. */
+  routines?: Routines;
+  untils?: Untils;
+  /** D186: the projects the user added by hand (their names; offered as places). */
+  projects?: Projects;
 }
 
 export interface NewTaskInput {
@@ -39,9 +47,34 @@ export interface NewTaskInput {
   place?: Place;
   harness?: string;
   model?: string;
+  when?: NewTaskWhen;
 }
 
-export type NewTaskResult = { ok: true; card: TaskCard } | { ok: false; reason: NewTaskReason; message: string };
+export type NewTaskResult = { ok: true; card: TaskCard } | { ok: true; routine: RoutineView } | { ok: false; reason: NewTaskReason; message: string };
+
+/** D185: what the task is told first when it starts by waiting (its own wait_for, D112 (4)). */
+export function waitFirstBrief(condition: string, words: string, zh: boolean): string {
+  return zh
+    ? `先等到：${condition}\n然后：${words}\n\n（等的时候用 wait_for 和一个检查来等，别自己轮询；等到了会叫醒你。）`
+    : `First wait until: ${condition}\nThen: ${words}\n\n(Wait with wait_for and a check, never by polling yourself; you are woken when it holds.)`;
+}
+
+/** D185: a when of the card as a routine's time trigger (at and every), else undefined. */
+export function triggerOf(when: NewTaskWhen | undefined): Extract<RoutineTrigger, { kind: "time" }> | undefined {
+  if (!when) return undefined;
+  if (when.kind === "at") return { kind: "time", every: "once", date: when.date, time: when.time, zone: "world", tz: when.tz };
+  if (when.kind === "every")
+    return {
+      kind: "time",
+      every: when.every,
+      ...(when.every === "week" ? { days: when.days?.length ? when.days : [1] } : {}),
+      ...(when.every === "hours" ? { hours: Math.min(24, Math.max(1, Math.round(when.hours ?? 1))) } : {}),
+      time: when.time,
+      zone: "personal",
+      tz: when.tz,
+    };
+  return undefined;
+}
 
 const CJK = /[㐀-鿿豈-﫿　-〿＀-￯]/;
 const wide = (ch: string) => (CJK.test(ch) ? 2 : 1);
@@ -140,13 +173,40 @@ export async function openYourTask(d: NewTaskDeps, input: NewTaskInput): Promise
   } else if (place.kind === "folder") {
     project = basename(place.path);
   }
+  // D186: a project the user added keeps the name they know it by.
+  project = d.projects?.of(place)?.name ?? project;
   const title = titleFromWords(words);
+  const when = input.when;
+  const zh = languageOf(words, d.settings) === "zh";
+  // D185: at a time, or every …: a routine of the user's own, active at once.
+  const trigger = triggerOf(when);
+  if (trigger) {
+    if (!d.routines) return { ok: false, reason: "failed", message: "Ducter can't keep a schedule right now." };
+    try {
+      const routine = d.routines.yours({
+        name: title,
+        trigger,
+        brief: words,
+        ...(place.kind !== "none" || place.device ? { place } : {}),
+        ...(project ? { project } : {}),
+        ...(input.harness ? { harness: input.harness, ...(input.model ? { model: input.model } : {}) } : {}),
+        zh,
+      });
+      return { ok: true, routine };
+    } catch (err) {
+      const message = (err as Error).message;
+      return { ok: false, reason: /already passed/.test(message) ? "past" : "failed", message };
+    }
+  }
+  const condition = when && (when.kind === "when" || when.kind === "until") ? String(when.condition ?? "").trim() : "";
+  if (when && (when.kind === "when" || when.kind === "until") && !condition) return { ok: false, reason: "no_condition", message: "Say what it waits for, or what it keeps going until." };
+  if (when?.kind === "until" && !d.untils) return { ok: false, reason: "failed", message: "Ducter can't keep a task going right now." };
   let card: TaskCard;
   try {
     card = await runner.openTask({
       persona: d.persona.id,
       title,
-      brief: words,
+      brief: when?.kind === "when" ? waitFirstBrief(condition, words, zh) : words,
       place,
       project,
       ...(input.harness ? { harness: input.harness, ...(input.model ? { model: input.model } : {}) } : {}),
@@ -168,9 +228,17 @@ export async function openYourTask(d: NewTaskDeps, input: NewTaskInput): Promise
       jobId: `${BODY_NOTE_PREFIX}${card.taskId}_opened`,
       taskId: card.taskId,
       state: "running",
-      text: `the user opened this task themselves ("${card.title}"); their own words went to it as its brief, unchanged: ${clipWords(words)}. It reports back to you like any task: say its result when it does. After its first report you may give it a better title once (task_retitle).`,
+      text: `the user opened this task themselves ("${card.title}"); their own words went to it as its brief, unchanged: ${clipWords(words)}.${when?.kind === "when" ? ` It first waits until: ${clipWords(condition, 200)}.` : when?.kind === "until" ? ` It keeps going until: ${clipWords(condition, 200)}.` : ""} It reports back to you like any task: say its result when it does. After its first report you may give it a better title once (task_retitle).`,
     },
   });
+  // D185: keep going until it holds (D113): judged after each of its turns.
+  if (when?.kind === "until") {
+    try {
+      d.untils!.start({ taskId: card.taskId, condition });
+    } catch {
+      // The task is open with the words; the loop is the part that didn't take. Say nothing more.
+    }
+  }
   return { ok: true, card: d.tasks.get(card.taskId) ?? card };
 }
 
@@ -206,20 +274,45 @@ export async function newTaskOptions(d: NewTaskDeps, at?: Place, limit = 12): Pr
   const git = d.git ?? realGit;
   const seen = new Map<string, PlaceChoice>();
   const key = (device: string, path: string) => `${device} ${resolve(expandHome(path))}`;
-  const cards = d.tasks.list().filter((c) => c.place.kind === "repo").sort((a, b) => b.openedAt.localeCompare(a.openedAt));
+  const cards = d.tasks.list().filter((c) => c.place.kind === "repo" || c.place.kind === "folder").sort((a, b) => b.openedAt.localeCompare(a.openedAt));
+  const nameOf = (p: Place, fallback: string) => d.projects?.of(p)?.name ?? fallback;
   for (const c of cards) {
-    const p = c.place as Extract<Place, { kind: "repo" }>;
-    const k = key(p.device || "local", p.repoPath);
-    if (!seen.has(k)) seen.set(k, { place: { kind: "repo", device: p.device || "local", repoPath: p.repoPath }, name: basename(p.repoPath), usedAt: c.openedAt });
+    if (c.place.kind === "repo") {
+      const p = c.place;
+      const k = key(p.device || "local", p.repoPath);
+      const place: Place = { kind: "repo", device: p.device || "local", repoPath: p.repoPath };
+      if (!seen.has(k)) seen.set(k, { place, name: nameOf(place, basename(p.repoPath)), usedAt: c.openedAt });
+    } else if (c.place.kind === "folder") {
+      const p = c.place;
+      const k = key(p.device || "local", p.path);
+      const place: Place = { kind: "folder", device: p.device || "local", path: p.path };
+      if (!seen.has(k)) seen.set(k, { place, name: nameOf(place, basename(p.path)), usedAt: c.openedAt });
+    }
   }
+  // D186: the projects the user added, by when they were added or last used.
+  for (const pr of d.projects?.list() ?? []) {
+    const path = pr.place.kind === "repo" ? pr.place.repoPath : pr.place.kind === "folder" ? pr.place.path : "";
+    const k = key(pr.place.device || "local", path);
+    const had = seen.get(k);
+    if (had) {
+      had.added = true;
+      if (!had.usedAt || pr.addedAt > had.usedAt) had.usedAt = pr.addedAt;
+    } else seen.set(k, { place: pr.place, name: pr.name, usedAt: pr.addedAt, added: true });
+  }
+  const used = [...seen.values()].sort((a, b) => (b.usedAt ?? "").localeCompare(a.usedAt ?? ""));
   for (const r of hintRepos(d.dataDir)) {
     const k = key("local", r.path);
-    if (!seen.has(k)) seen.set(k, { place: { kind: "repo", device: "local", repoPath: resolve(expandHome(r.path)) }, name: r.name || basename(r.path), usedAt: r.touchedAt });
+    if (!seen.has(k)) {
+      const c: PlaceChoice = { place: { kind: "repo", device: "local", repoPath: resolve(expandHome(r.path)) }, name: r.name || basename(r.path), usedAt: r.touchedAt };
+      seen.set(k, c);
+      used.push(c);
+    }
   }
-  const places = [...seen.values()].slice(0, limit);
+  const places = used.slice(0, limit);
   await Promise.all(
     places.map(async (c) => {
-      const p = c.place as Extract<Place, { kind: "repo" }>;
+      if (c.place.kind !== "repo") return;
+      const p = c.place;
       if (!isLocal(p.device)) return;
       const path = resolve(expandHome(p.repoPath));
       if (!existsSync(path)) return;

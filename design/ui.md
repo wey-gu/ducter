@@ -284,6 +284,7 @@ A new control is added to the set (and to this table) before it is used.
 | An agent's coin in a tray, and the socket | `coinTile`, `socketTile` (`devicecard.go`); `trayToken` (`loadout.go`) | `CoinButton`, `SocketButton` |
 | An ability chip with its ⓘ | `abilityChip` (`devicecard.go`) | `Chip` |
 | One line in a list of devices | `listRow` (`abilities.go`) | `ListRow` |
+| An app a source can read, on the accounts card (D166; the dashed 再连一个 too) | `appTile` (`shared.go`) | `AppTile` |
 | A candidate row in 换谁来做 | `candRow` (`shared.go`) | the `cand` row in `SwitchList` |
 | Back to the list | the chrome's crumb | `BackRow` |
 

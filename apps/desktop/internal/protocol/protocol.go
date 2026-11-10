@@ -173,6 +173,9 @@ type Decision struct {
 	// MemPlugin (D169): put Nowledge Mem into this agent on that computer
 	// (Go); 先不装 / Not now (Hold) is the default.
 	MemPlugin *MemPluginAsk `json:"memPlugin,omitempty"`
+	// FindID (D165): a find's one next step; shown inside its note, never
+	// as a card of its own in the conversation.
+	FindID string `json:"findId,omitempty"`
 }
 
 // ClosingPlan is what moves to a computer that stays awake before one
@@ -585,6 +588,10 @@ func (e LogEvent) Typed() (any, error) {
 		v = &BridgeMsg{}
 	case KindBodySelected:
 		v = &BodySelected{}
+	case KindFinds:
+		v = &Finds{}
+	case KindFindState:
+		v = &FindState{}
 	default:
 		return nil, nil
 	}
@@ -861,6 +868,8 @@ type ConnectionView struct {
 	// Apps: what it can read, as oo last listed it (source "oo"), or the
 	// accounts connected in an OpenConnector (D158).
 	Apps []OoApp `json:"apps,omitempty"`
+	// Look (D166): its watching today, the status line and the tiles.
+	Look *SourceLook `json:"look,omitempty"`
 }
 
 // OoApp is one service connected in oo and its accounts' own labels.
@@ -925,6 +934,9 @@ type Settings struct {
 	TaskAccounts map[string]TaskAccount `json:"taskAccounts,omitempty"`
 	// AutoUpdate: update at night, in quiet hours, when nothing is working (D148).
 	AutoUpdate bool `json:"autoUpdate,omitempty"`
+	// Proactive (D165): when it notices something; "" = never answered
+	// (nothing watches).
+	Proactive string `json:"proactive,omitempty"`
 }
 
 // SettingsPatch is a change to some settings. Quiet is sent as given, so
@@ -940,6 +952,7 @@ type SettingsPatch struct {
 	Brain           *Brain                 `json:"brain,omitempty"`
 	TaskAccounts    map[string]TaskAccount `json:"taskAccounts,omitempty"`
 	AutoUpdate      *bool                  `json:"autoUpdate,omitempty"`
+	Proactive       string                 `json:"proactive,omitempty"`
 }
 
 // MarshalJSON writes Quiet only when it is set or cleared.
@@ -1291,6 +1304,8 @@ type ServerFrame struct {
 	Oo          *OoDetect        `json:"oo,omitempty"`
 	ID          string           `json:"id,omitempty"`
 	Readable    []OoApp          `json:"readable,omitempty"`
+	// connection_reads (D166): 看了哪些 for connection ID.
+	Reads []ReadLine `json:"reads,omitempty"`
 	// activity: what the partner is doing while the user waits (D104); nil
 	// when its turn ended. Never logged.
 	Activity *PartnerActivity `json:"activity,omitempty"`

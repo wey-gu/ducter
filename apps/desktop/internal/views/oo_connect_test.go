@@ -63,7 +63,8 @@ func TestOoOfferIsTheDefault(t *testing.T) {
 		protocol.ConnectionView{ID: "conn_1", Name: "oo", URL: "oo:", Source: "oo", Via: "oo", State: "ok", Apps: ooApps}))
 	tt.Frame()
 	tt.Frame()
-	for _, want := range []string{"oo 里的账号", "Gmail (2) · Slack · Discord bot", "经过 oo · 邮件和登录经过 OOMOL 的服务器", "加一个"} {
+	// D166: a character sheet: the name, its tiles, where mail passes, and 加一个 stepped back.
+	for _, want := range []string{"oo 里的账号", "Gmail", "Slack", "Discord bot", "经过 oo · 邮件会经过 OOMOL 的服务器", "加一个"} {
 		if !tt.HasText(want) {
 			t.Errorf("after adding: no %q", want)
 		}
@@ -153,23 +154,25 @@ func TestAccountRemoveAsksFirst(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 2200, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
+	// D166: the card's one destructive, 不用 oo 里的账号了, asks in place first.
 	n := len(*sent)
-	tt.Click("移除")
+	stop := app.L.T("card.stop", "oo 里的账号")
+	tt.Click(stop)
 	tt.Frame()
 	if len(*sent) != n {
-		t.Fatalf("the first Remove sends nothing, sent %d", len(*sent)-n)
+		t.Fatalf("the first tap sends nothing, sent %d", len(*sent)-n)
 	}
-	if !tt.HasText("移除 oo 里的账号？Ducter 就看不到这些账号了。") || !tt.HasText("算了") {
-		t.Fatalf("the row asks first; texts: %v", tt.Texts())
+	if !tt.HasText("不用了以后它就看不到这些账号；记下的事还在「记得什么」里，可以忘掉。") || !tt.HasText("算了") {
+		t.Fatalf("the card asks first; texts: %v", tt.Texts())
 	}
-	tt.Click("算了")
+	tt.Click("算了 · oo 里的账号")
 	tt.Frame()
-	if tt.HasText("算了") || len(*sent) != n {
+	if tt.HasText("不用了以后它就看不到这些账号") || len(*sent) != n {
 		t.Fatalf("Keep it closes the ask and sends nothing")
 	}
-	tt.Click("移除")
+	tt.Click(stop)
 	tt.Frame()
-	tt.Click("移除")
+	tt.Click("不用了 · oo 里的账号")
 	tt.Frame()
 	if len(*sent) != n+1 {
 		t.Fatalf("the second Remove sends one frame, got %d", len(*sent)-n)

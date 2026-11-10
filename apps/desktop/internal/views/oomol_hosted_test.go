@@ -143,7 +143,8 @@ func TestOomolHostedOutcomes(t *testing.T) {
 	app.Receive(protocol.ServerFrame{T: "connection_result", OK: true, ID: "conn_1", Readable: []protocol.OoApp{}})
 	tt.Frame()
 	tt.Frame()
-	if app.partner.toastTone != noticeInfo || !tt.HasText("Connected, but no accounts are connected in OOMOL yet.") {
+	// D166: the card's status line says so, with the way to fix it under it.
+	if app.partner.toastTone != noticeInfo || !tt.HasText("No accounts connected there yet · connect one") {
 		t.Errorf("connected but empty: tone %d", app.partner.toastTone)
 	}
 	tt.Click("Connect accounts in OOMOL")

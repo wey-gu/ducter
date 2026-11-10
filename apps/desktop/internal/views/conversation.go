@@ -334,6 +334,10 @@ func (a *App) summary(b store.Board) string {
 	if n := a.doneToday(b); n > 0 {
 		parts = append(parts, a.L.T("header.done", n))
 	}
+	if len(parts) == 0 && a.S.QuietMorning() {
+		// D165: a quiet morning sends nothing; only this line says it looked.
+		return a.L.T("header.quiet_day")
+	}
 	if len(parts) == 0 {
 		return a.L.T("header.summary.none")
 	}
@@ -429,6 +433,8 @@ func (a *App) entry(c *ui.Context, e *store.Entry) {
 		a.job(c, e)
 	case e.Living != nil:
 		a.living(c, e)
+	case e.Finds != nil:
+		a.findsEntry(c, e)
 	case e.Decision != nil:
 		if d := a.S.Decisions[e.Decision.DecisionID]; d != nil {
 			a.ask(c, d, "")

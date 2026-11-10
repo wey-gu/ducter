@@ -137,3 +137,61 @@ func (a *App) candRow(c *ui.Context, key, harness, name, reason string, off, cur
 	})
 	return !off && !current && row.Clicked()
 }
+
+// appTile is one app a source can read (D166): a literal rounded square
+// with the app's mark, its label under it (the app, then the account).
+// sel: its detail is open under the tray (a white lift); off: not watched
+// (faded); grey: unreachable or excluded; add: the dashed tile at the
+// tray's end (在 oo 里再连一个). It reports a tap.
+func (a *App) appTile(c *ui.Context, key, label, sub, about string, mark func(p *ui.Painter, r ui.Rect), sel, off, grey, add bool) bool {
+	t := a.T
+	acc := label
+	if sub != "" {
+		acc += " · " + sub
+	}
+	if about != "" {
+		acc += " · " + about
+	}
+	tile := ui.Column(c.Key("tile:"+key)).Width(appTileW).AlignItems(ui.Center).Gap(4).Padding(t.S2, 2, t.S2, 2).Radius(14).
+		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(acc).Focusable().AccessSelected(sel).Shrink(0)
+	switch {
+	case sel:
+		tile.Background(t.Surface).Shadow(0, 2, 0, 0, t.Line2)
+	case tile.Hovered():
+		tile.Background(t.Surface.Alpha(0.55))
+	}
+	tile.Children(func() {
+		sq := ui.Box(c.Key("tile-art:"+key)).Size(appTileArt, appTileArt).Radius(12).AccessHidden(true).Shrink(0)
+		if add {
+			sq.Draw(func(p *ui.Painter, r ui.Rect) {
+				p.StrokeDashed(r, t.InkMuted.Alpha(0.6), 12, 1.5)
+				cx, cy := r.X+r.W/2, r.Y+r.H/2
+				p.Fill(ui.Rect{X: cx - 7, Y: cy - 1, W: 14, H: 2}, t.InkMuted, 1)
+				p.Fill(ui.Rect{X: cx - 1, Y: cy - 7, W: 2, H: 14}, t.InkMuted, 1)
+			})
+		} else {
+			sq.Background(t.Surface).Shadow(0, 3, 0, 0, t.Line)
+			if tile.Pressed() && !c.Preferences().ReduceMotion {
+				sq.Translate(0, 2)
+			}
+			if off || grey {
+				sq.Opacity(0.5)
+			}
+			sq.Draw(mark)
+		}
+		lc := t.Ink
+		if grey {
+			lc = t.InkMuted
+		}
+		ui.Text(c, label).FontSize(t.XS).FontWeight(700).TextColor(lc).SingleLine().AccessHidden(true)
+		if sub != "" {
+			ui.Text(c, sub).FontSize(11).TextColor(t.InkMuted).SingleLine().MaxWidth(appTileW - 4).AccessHidden(true)
+		}
+	})
+	return tile.Clicked()
+}
+
+const (
+	appTileW   = 76
+	appTileArt = 48
+)

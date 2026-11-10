@@ -25,6 +25,9 @@ type Entry struct {
 	Living   *protocol.LivingMsg
 	Decision *protocol.Decision
 	Noted    *protocol.MemoryNoted // something the partner remembered
+	// Finds is a note the partner said by itself (D165); a fold-in or an
+	// answer revises it in place.
+	Finds *protocol.Finds
 	// Revision counts how often a living message was superseded in place,
 	// for the re-settle motion.
 	Revision int
@@ -328,7 +331,13 @@ type Store struct {
 	Jobs      map[string]*Job
 	Decisions map[string]*DecisionState
 	Tasks     map[string]*Task
-	OnHand    *protocol.OnHand
+	// FindStates are each find's latest change (D165), by find id.
+	FindStates map[string]*protocol.FindState
+	// QuietSeq is the latest quiet morning (D165): the header says it
+	// looked, until the user next writes (LastUserSeq).
+	QuietSeq, LastUserSeq int64
+	notes                 map[string]*Entry
+	OnHand                *protocol.OnHand
 	// Waiters are the waiters known, by id (from waiter events and the
 	// snapshot's armed list).
 	Waiters map[string]*protocol.Waiter
@@ -373,9 +382,11 @@ type Store struct {
 	// the page to turn into one line.
 	Connections []protocol.ConnectionView
 	ConnAsked   bool
-	Oo          *protocol.OoDetect
-	ConnResult  *protocol.ServerFrame
-	Forgot      *protocol.Forgot
+	// ConnReads is 看了哪些 / What it read today, by connection (D166).
+	ConnReads  map[string][]protocol.ReadLine
+	Oo         *protocol.OoDetect
+	ConnResult *protocol.ServerFrame
+	Forgot     *protocol.Forgot
 	// Rules are 你的规则 / Your rules, as last sent (nil until a rules
 	// frame; RulesAt says one came). Candidates are who could do a task,
 	// by task id, as last asked; SwitchResults the switch answers not yet
@@ -420,6 +431,8 @@ func New() *Store {
 		Jobs:        map[string]*Job{},
 		Decisions:   map[string]*DecisionState{},
 		Tasks:       map[string]*Task{},
+		FindStates:  map[string]*protocol.FindState{},
+		notes:       map[string]*Entry{},
 		Waiters:     map[string]*protocol.Waiter{},
 		Missed:      map[string]*protocol.Waiter{},
 	}
@@ -483,6 +496,11 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		if f.Forgot != nil {
 			s.Forgot = f.Forgot
 		}
+	case "connection_reads":
+		if s.ConnReads == nil {
+			s.ConnReads = map[string][]protocol.ReadLine{}
+		}
+		s.ConnReads[f.ID] = append([]protocol.ReadLine{}, f.Reads...)
 	case "connections":
 		s.Connections, s.Oo, s.ConnAsked = f.Connections, f.Oo, true
 		if s.Connections == nil {
@@ -699,7 +717,13 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 	}
 	switch b := body.(type) {
 	case *protocol.UserMsg:
+		s.LastUserSeq = max(s.LastUserSeq, ev.Seq)
 		s.add(&Entry{Event: ev, User: b})
+	case *protocol.Finds:
+		s.addFinds(ev, b)
+	case *protocol.FindState:
+		s.FindStates[b.FindID] = b
+		s.bySeq[ev.Seq] = nil
 	case *protocol.AIMsg:
 		// A task's question in the partner's words (D129) is that question's
 		// words, not a message of its own.
@@ -768,6 +792,11 @@ func (s *Store) ApplyEvent(ev protocol.LogEvent) {
 		s.add(&Entry{Event: ev, Living: b})
 	case *protocol.Decision:
 		s.addDecision(ev, b)
+		if b.FindID != "" {
+			// A find's next step lives inside its note (D165).
+			s.bySeq[ev.Seq] = nil
+			return
+		}
 		s.add(&Entry{Event: ev, Decision: b})
 	case *protocol.DecisionResolved:
 		s.resolve(b)
@@ -804,6 +833,31 @@ func (s *Store) job(id string) *Job {
 	}
 	return j
 }
+
+// addFinds adds a note, or revises the one it revises in place (a fold-in,
+// an answered ask). A quiet morning is no message: only the header knows.
+func (s *Store) addFinds(ev protocol.LogEvent, b *protocol.Finds) {
+	if b.Quiet {
+		s.QuietSeq = max(s.QuietSeq, ev.Seq)
+		s.bySeq[ev.Seq] = nil
+		return
+	}
+	if b.Revises != "" {
+		if old := s.notes[b.Revises]; old != nil {
+			old.Finds = b
+			old.Revision++
+			s.notes[b.NoteID] = old
+			s.bySeq[ev.Seq] = old
+			return
+		}
+	}
+	e := &Entry{Event: ev, Finds: b}
+	s.notes[b.NoteID] = e
+	s.add(e)
+}
+
+// QuietMorning says the header should read 早上看过了，没有要你操心的.
+func (s *Store) QuietMorning() bool { return s.QuietSeq > 0 && s.QuietSeq > s.LastUserSeq }
 
 func (s *Store) addDecision(ev protocol.LogEvent, d *protocol.Decision) {
 	if old := s.Decisions[d.DecisionID]; old != nil {

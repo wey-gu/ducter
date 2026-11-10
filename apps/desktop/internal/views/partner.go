@@ -46,6 +46,8 @@ type partnerState struct {
 	// acctRemoving: the connection whose Remove asks in its own row first (a
 	// remove is never one tap: the accounts stop being read at once).
 	acctRemoving string
+	// cards: the accounts card's open tile, 看了哪些 and stop (D166).
+	cards acctCards
 }
 
 // say sets the tab's one line and how it looks.
@@ -469,164 +471,145 @@ func (a *App) accountsPanel(c *ui.Context) {
 	a.drainConnResult()
 	a.panelHead(c, TabAccounts, a.L.T("settings.lede.accounts"))
 	a.partnerToast(c)
-	a.group(c, "accounts", a.L.T("acct.title"), a.L.T("acct.lede"), func() {
-		list := a.S.Connections
-		oo := a.S.Oo
-		if a.S.ConnAsked && len(list) == 0 && (oo == nil || !oo.Account) {
-			a.rowBlock(c, "none", func() {
-				ui.Text(c, a.L.T("acct.none")).FontSize(t.MD).LineHeight(a.leading(1.5)).TextColor(t.InkSoft)
-			})
-		}
-		for _, cv := range list {
-			cv := cv
-			a.sep(c)
-			ui.Row(c.Key("acct:"+cv.ID)).Gap(t.S4).AlignItems(ui.Center).Padding(t.S4, t.S5).Children(func() {
-				ui.Box(c).Size(30, 46).Draw(a.drawMailbox(cv.Source)).Shrink(0).AccessHidden(true)
-				ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
-					ui.Text(c, connName(a, cv)).FontSize(t.MD).FontWeight(700).SingleLine()
-					if line := ooAppsLine(cv.Apps); line != "" {
-						ui.Text(c, line).FontSize(t.SM).FontWeight(600).TextColor(t.InkSoft).SingleLine()
-					}
-					a.note(c, a.L.T("acct.src."+cv.Source))
-					if cv.State == "unreachable" || cv.State == "unauthorized" {
-						ui.Text(c, a.L.T("acct.state."+cv.State)).FontSize(t.SM).FontWeight(700).TextColor(t.Failed.Ink)
-					} else if (cv.Source == "oomol" || cv.Source == "self") && cv.Apps != nil && len(cv.Apps) == 0 {
-						// D158: connected, but nothing to read there yet; say where to fix it.
-						ui.Text(c, a.L.T("acct.empty."+cv.Source)).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
-						if cv.Source == "oomol" && a.quietLink(c, "acct-connect:"+cv.ID, a.L.T("acct.connect.oomol"), a.L.T("acct.connect.oomol")) {
-							a.openLink(oomolAccounts)
-						}
-					}
-				})
-				if ps.acctRemoving != cv.ID && a.buttonFor(c, a.L.T("acct.remove"), cv.Name, btnText, t.ControlSM, t.Surface) {
-					ps.acctRemoving = cv.ID
-				}
-			})
-			if ps.acctRemoving == cv.ID {
-				ui.Row(c.Key("acct-rm:"+cv.ID)).Gap(t.S2).AlignItems(ui.Center).Padding(0, t.S5, t.S4, t.S5).Children(func() {
-					ui.Text(c, a.L.T("acct.remove.ask", connName(a, cv))).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkSoft).Grow(1).MinWidth(0)
-					if a.buttonFor(c, a.L.T("acct.remove.keep"), cv.Name, btnText, t.ControlSM, t.Surface) {
-						ps.acctRemoving = ""
-					}
-					if a.buttonFor(c, a.L.T("acct.remove"), cv.Name+" ✓", btnSecondary, t.ControlSM, t.Surface) {
-						ps.acctRemoving = ""
-						a.send(protocol.ConnectionRemove{T: "connection_remove", ID: cv.ID})
-					}
-				})
-			}
-		}
-		usedOo := false
-		for _, cv := range list {
-			usedOo = usedOo || cv.Via == "oo"
-		}
-		// D122: oo signed in makes the one tap the default surface; the
-		// address-and-key form steps back to a quiet link.
-		ooOffer := oo != nil && oo.Account && !usedOo
-		if ooOffer {
-			a.rowBlock(c, "oo", func() { a.ooOffer(c, oo) })
-		} else if oo != nil && oo.SelfHosted != nil && !usedOo {
-			a.row(c, "oo-self", a.L.T("acct.oo"), a.L.T("acct.oo.note", oo.SelfHosted.URL), func() {
-				if a.button(c, a.L.T("acct.oo"), btnSecondary, t.ControlMD, t.Surface) && !ps.acctWaiting {
-					ps.acctWaiting = true
-					a.send(protocol.ConnectionOo{T: "connection_oo"})
-				}
-			})
-		}
-		if !ps.acctAdding {
-			open := false
-			if ooOffer {
-				a.actions(c, "acct", func() {
-					open = a.button(c, a.L.T("acct.manual"), btnText, t.ControlMD, t.Surface)
-				}, nil)
-			} else {
-				a.actions(c, "acct", nil, func() {
-					open = a.button(c, a.L.T("acct.add"), btnPrimary, t.ControlMD, t.Surface)
-				})
-			}
-			if open {
+	list := a.S.Connections
+	if len(list) > 0 {
+		// D166: the chips once above the cards, then a character sheet per source.
+		a.proactiveChips(c, "acct")
+		a.sourceCards(c, list)
+	}
+	title, lede := a.L.T("acct.title"), a.L.T("acct.lede")
+	if len(list) > 0 {
+		title, lede = "", ""
+	}
+	if len(list) > 0 && !ps.acctAdding && !(a.S.Oo != nil && a.S.Oo.Account && !usedOoOf(list)) {
+		// Adding a second source is rare: 加一个 steps back to a quiet text button.
+		ui.Row(c).Children(func() {
+			if a.quietButton(c, "acct-add", a.L.T("acct.add"), "", false, 1) {
 				ps.acctAdding, ps.acctWhere, ps.acctURL, ps.acctToken = true, 0, hostedConnector, ""
 				ps.acctErr, ps.acctNoKey, ps.acctShow = "", false, false
 			}
-			return
-		}
-		wheres := []string{"oomol", "self", "mcp"}
-		hosted := ps.acctWhere == 0
-		if ps.acctNoKey && strings.TrimSpace(ps.acctToken) != "" {
-			ps.acctNoKey = false
-		}
-		submit := func() {
-			url := strings.TrimSpace(ps.acctURL)
-			if hosted {
-				url = hostedConnector
+		})
+	} else {
+		a.group(c, "accounts", title, lede, func() {
+			oo := a.S.Oo
+			if a.S.ConnAsked && len(list) == 0 && (oo == nil || !oo.Account) {
+				a.rowBlock(c, "none", func() {
+					ui.Text(c, a.L.T("acct.none")).FontSize(t.MD).LineHeight(a.leading(1.5)).TextColor(t.InkSoft)
+				})
 			}
-			if ps.acctWaiting || url == "" {
+			usedOo := false
+			for _, cv := range list {
+				usedOo = usedOo || cv.Via == "oo"
+			}
+			// D122: oo signed in makes the one tap the default surface; the
+			// address-and-key form steps back to a quiet link.
+			ooOffer := oo != nil && oo.Account && !usedOo
+			if ooOffer {
+				a.rowBlock(c, "oo", func() { a.ooOffer(c, oo) })
+			} else if oo != nil && oo.SelfHosted != nil && !usedOo {
+				a.row(c, "oo-self", a.L.T("acct.oo"), a.L.T("acct.oo.note", oo.SelfHosted.URL), func() {
+					if a.button(c, a.L.T("acct.oo"), btnSecondary, t.ControlMD, t.Surface) && !ps.acctWaiting {
+						ps.acctWaiting = true
+						a.send(protocol.ConnectionOo{T: "connection_oo"})
+					}
+				})
+			}
+			if !ps.acctAdding {
+				open := false
+				if ooOffer {
+					a.actions(c, "acct", func() {
+						open = a.button(c, a.L.T("acct.manual"), btnText, t.ControlMD, t.Surface)
+					}, nil)
+				} else {
+					a.actions(c, "acct", nil, func() {
+						open = a.button(c, a.L.T("acct.add"), btnPrimary, t.ControlMD, t.Surface)
+					})
+				}
+				if open {
+					ps.acctAdding, ps.acctWhere, ps.acctURL, ps.acctToken = true, 0, hostedConnector, ""
+					ps.acctErr, ps.acctNoKey, ps.acctShow = "", false, false
+				}
 				return
 			}
-			// A pasted key often brings a space or a line break along.
-			key := strings.Join(strings.Fields(ps.acctToken), "")
-			if hosted && key == "" {
-				ps.acctNoKey, ps.acctErr = true, ""
-				return
+			wheres := []string{"oomol", "self", "mcp"}
+			hosted := ps.acctWhere == 0
+			if ps.acctNoKey && strings.TrimSpace(ps.acctToken) != "" {
+				ps.acctNoKey = false
 			}
-			ps.acctWaiting, ps.acctNoKey, ps.acctErr = true, false, ""
-			a.send(protocol.ConnectionAdd{T: "connection_add", URL: url, Token: key})
-			ps.acctToken = "" // sent once; never kept in the app
-		}
-		a.rowBlock(c, "acct-form", func() {
-			labels := []string{a.L.T("acct.where.oomol"), a.L.T("acct.where.self"), a.L.T("acct.where.mcp")}
-			if i := a.choices(c, "acct-where", a.L.T("acct.where"), labels, ps.acctWhere); i >= 0 {
-				ps.acctWhere, ps.acctErr, ps.acctNoKey = i, "", false
-				switch i {
-				case 0:
-					ps.acctURL = hostedConnector
-				case 1:
-					ps.acctURL = "http://localhost:3000"
-				default:
-					ps.acctURL = ""
+			submit := func() {
+				url := strings.TrimSpace(ps.acctURL)
+				if hosted {
+					url = hostedConnector
 				}
-			}
-			a.note(c, a.L.T("acct.where."+wheres[ps.acctWhere]+".note"))
-			if hosted {
-				// D158: OOMOL Hosted has one address, so no address field;
-				// the three steps are the way in, each with its own door.
-				a.oomolSteps(c)
-			} else {
-				a.acctField(c, "acct-url", a.L.T("acct.address"), &ps.acctURL, false, false, submit)
-			}
-			a.acctKey(c, submit)
-			if ps.acctErr != "" {
-				a.acctRefusal(c, hosted)
-			}
-			if !hosted {
-				// The technical steps (where the key is made) stay behind a fold:
-				// the card says what it does for the person, not how it's wired.
-				how := a.L.T("acct.how")
-				if ps.acctHow {
-					how = a.L.T("acct.how.hide")
+				if ps.acctWaiting || url == "" {
+					return
 				}
-				if a.quietLink(c, "acct-how", how, a.L.T("acct.how")) {
-					ps.acctHow = !ps.acctHow
+				// A pasted key often brings a space or a line break along.
+				key := strings.Join(strings.Fields(ps.acctToken), "")
+				if hosted && key == "" {
+					ps.acctNoKey, ps.acctErr = true, ""
+					return
 				}
-				if ps.acctHow {
-					a.note(c, a.L.T("acct.how."+wheres[ps.acctWhere]))
-				}
+				ps.acctWaiting, ps.acctNoKey, ps.acctErr = true, false, ""
+				a.send(protocol.ConnectionAdd{T: "connection_add", URL: url, Token: key})
+				ps.acctToken = "" // sent once; never kept in the app
 			}
+			a.rowBlock(c, "acct-form", func() {
+				labels := []string{a.L.T("acct.where.oomol"), a.L.T("acct.where.self"), a.L.T("acct.where.mcp")}
+				if i := a.choices(c, "acct-where", a.L.T("acct.where"), labels, ps.acctWhere); i >= 0 {
+					ps.acctWhere, ps.acctErr, ps.acctNoKey = i, "", false
+					switch i {
+					case 0:
+						ps.acctURL = hostedConnector
+					case 1:
+						ps.acctURL = "http://localhost:3000"
+					default:
+						ps.acctURL = ""
+					}
+				}
+				a.note(c, a.L.T("acct.where."+wheres[ps.acctWhere]+".note"))
+				if hosted {
+					// D158: OOMOL Hosted has one address, so no address field;
+					// the three steps are the way in, each with its own door.
+					a.oomolSteps(c)
+				} else {
+					a.acctField(c, "acct-url", a.L.T("acct.address"), &ps.acctURL, false, false, submit)
+				}
+				a.acctKey(c, submit)
+				if ps.acctErr != "" {
+					a.acctRefusal(c, hosted)
+				}
+				if !hosted {
+					// The technical steps (where the key is made) stay behind a fold:
+					// the card says what it does for the person, not how it's wired.
+					how := a.L.T("acct.how")
+					if ps.acctHow {
+						how = a.L.T("acct.how.hide")
+					}
+					if a.quietLink(c, "acct-how", how, a.L.T("acct.how")) {
+						ps.acctHow = !ps.acctHow
+					}
+					if ps.acctHow {
+						a.note(c, a.L.T("acct.how."+wheres[ps.acctWhere]))
+					}
+				}
+			})
+			a.actions(c, "acct-form", func() {
+				if a.button(c, a.L.T("acct.cancel"), btnText, t.ControlMD, t.Surface) {
+					ps.acctAdding, ps.acctToken, ps.acctErr, ps.acctNoKey = false, "", "", false
+				}
+			}, func() {
+				label := a.L.T("acct.check")
+				if ps.acctWaiting {
+					label = a.L.T("acct.checking")
+				}
+				if a.button(c, label, btnPrimary, t.ControlMD, t.Surface) {
+					submit()
+				}
+			})
 		})
-		a.actions(c, "acct-form", func() {
-			if a.button(c, a.L.T("acct.cancel"), btnText, t.ControlMD, t.Surface) {
-				ps.acctAdding, ps.acctToken, ps.acctErr, ps.acctNoKey = false, "", "", false
-			}
-		}, func() {
-			label := a.L.T("acct.check")
-			if ps.acctWaiting {
-				label = a.L.T("acct.checking")
-			}
-			if a.button(c, label, btnPrimary, t.ControlMD, t.Surface) {
-				submit()
-			}
-		})
-	})
-	ui.Text(c, a.L.T("acct.honest")).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Padding(0, t.S1).Margin(-t.S3, 0, 0, 0)
+		ui.Text(c, a.L.T("acct.honest")).FontSize(t.SM).LineHeight(a.leading(1.5)).TextColor(t.InkMuted).Padding(0, t.S1).Margin(-t.S3, 0, 0, 0)
+	}
 	a.group(c, "ai-accounts", "", "", func() {
 		if a.linkRow(c, "ai-accounts", a.L.T("acct.ai.link"), a.L.T("acct.ai.link.help"), false) {
 			a.OpenDevices()
@@ -794,6 +777,15 @@ func (a *App) acctRefusal(c *ui.Context, hosted bool) {
 // appsList is "Gmail、Discord" / "Gmail, Discord".
 // connName is what a connection is called on screen: the oo kind is "Accounts
 // in oo", never its internal record name "oo".
+func usedOoOf(list []protocol.ConnectionView) bool {
+	for _, cv := range list {
+		if cv.Via == "oo" {
+			return true
+		}
+	}
+	return false
+}
+
 func connName(a *App, cv protocol.ConnectionView) string {
 	if cv.Source == "oo" {
 		return a.L.T("acct.oo.name")

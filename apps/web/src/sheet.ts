@@ -1,0 +1,99 @@
+// D161: the character sheet's words, without the page: a device's one status line, the list's
+// one word, how it is connected, how an agent was installed, and which chips it gets. The same
+// rules as the desktop's devicecard.go.
+import type { DeviceHarness, DeviceView, Reach } from "@ducter/protocol";
+
+export type Client = Reach["clients"][number];
+type Words = { t(key: string, ...args: unknown[]): string };
+export type Tone = "" | "working" | "asleep" | "away";
+
+/** The one status line under a device's name: the role or the state, never the kind. */
+export function statusLine(L: Words, dv: DeviceView, o: { persona: string; home: string; running: number; ago?: string }): { text: string; tone: Tone } {
+  if (dv.state === "unreachable") return { text: o.ago ? L.t("card.status.unreachable", o.ago) : L.t("card.status.unreachable.none"), tone: "away" };
+  if (dv.state === "asleep") return { text: L.t("device.state.asleep"), tone: "asleep" };
+  const n = o.running;
+  if (dv.home) return { text: n === 1 ? L.t("card.status.home.working.one", o.persona) : n > 1 ? L.t("card.status.home.working", o.persona, n) : L.t("card.status.home", o.persona), tone: "" };
+  if (dv.kind === "phone") return { text: L.t("device.client.now"), tone: "" };
+  if (n === 1) return { text: L.t("card.status.working.one", o.home), tone: "working" };
+  if (n > 1) return { text: L.t("card.status.working", o.home, n), tone: "working" };
+  return { text: L.t("card.status.does", o.home), tone: "" };
+}
+
+/** The list's one word of state: the status line shortened to its first idea. */
+export function listWord(L: Words, dv: DeviceView, o: { home: string; running: number }): { text: string; tone: Tone } {
+  const ph = dv.update?.phase;
+  if (ph === "downloading" || ph === "verifying" || ph === "waiting" || ph === "restarting") return { text: L.t("list.state.updating"), tone: "" };
+  if (dv.state === "asleep") return { text: L.t("list.state.asleep"), tone: "asleep" };
+  if (dv.state === "unreachable") return { text: L.t("list.state.away"), tone: "away" };
+  if (dv.home) return { text: L.t("list.state.home"), tone: "" };
+  if (dv.kind === "phone") return { text: L.t("list.state.now"), tone: "" };
+  if (o.running > 0) return { text: L.t("list.state.tasks", o.running), tone: "working" };
+  return { text: L.t("list.state.does", o.home), tone: "" };
+}
+
+const cli = (cl: Client) => cl.form === "cli" || (!cl.form && cl.name.startsWith("CLI on "));
+
+/** How a connection reaches Ducter. */
+export function connWay(cl: Client): "app" | "cli" | "safari" | "browser" {
+  const p = cl.platform.toLowerCase();
+  if (cli(cl)) return "cli";
+  if (p.includes("ios") || p.includes("iphone")) return p.includes("safari") || p.includes("web") ? "safari" : "app";
+  if (p.includes("android")) return "browser";
+  if (p.startsWith("darwin") || p.includes("mac")) return "app";
+  return "browser";
+}
+
+/** One quiet line: 通过 app 和命令行连着 / Connected via the app and command line. */
+export function viaText(L: Words, list: Client[]): string {
+  const ways: string[] = [];
+  for (const cl of list) {
+    const w = L.t(`card.via.${connWay(cl)}`);
+    if (!ways.includes(w)) ways.push(w);
+  }
+  return ways.length ? L.t("card.via", ways.join(L.t("card.via.and"))) : "";
+}
+
+/** How a copy was installed, in words, for the version line. */
+export function coinHow(L: Words, h: DeviceHarness): string {
+  switch (h.how) {
+    case "npm":
+    case "brew":
+    case "installer":
+      return L.t(`coin.how.${h.how}`);
+    case "app":
+      return L.t("agentv.how.app", h.harness === "claude-code" ? "Claude" : "Codex");
+    case "ducter":
+      return L.t("agentv.how.ducter");
+  }
+  return "";
+}
+
+/** The version line in a coin's detail: 版本 2.1.322 · 用 npm 装的. */
+export function versionLine(L: Words, h: DeviceHarness): string {
+  if (!h.version) return "";
+  const how = coinHow(L, h);
+  return how ? L.t("coin.version", h.version, how) : L.t("agentv.version", h.version);
+}
+
+export type ChipLook = "on" | "off" | "add" | "fail";
+
+/** The ability chips a device gets, in order (web, computer, remote; later ones aren't shown). */
+export function chipsFor(dv: DeviceView): { id: string; look: ChipLook }[] {
+  const out: { id: string; look: ChipLook }[] = [];
+  for (const id of ["web", "computer", "remote"]) {
+    const ab = dv.abilities.find((a) => a.id === id);
+    if (!ab || ab.state === "later") continue;
+    let look: ChipLook = "off";
+    if (id === "web" && ab.where === "ducter" && ab.state === "unavailable" && ab.reason !== "env_off") look = "fail";
+    else if (ab.state === "on") look = "on";
+    else if (ab.state === "off" && dv.state === "awake") look = "add";
+    out.push({ id, look });
+  }
+  return out;
+}
+
+/** An agent update under way. */
+export const agentRunning = (h: DeviceHarness) => !!h.update && ["waiting", "updating", "checking"].includes(h.update.phase);
+
+/** Newer on its own channel, updatable from here, not mid-way. */
+export const agentBehind = (h: DeviceHarness) => !!h.available && !!h.latest && !agentRunning(h) && h.update?.phase !== "failed";

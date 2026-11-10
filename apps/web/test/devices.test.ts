@@ -65,24 +65,25 @@ describe("your devices (D148)", () => {
   });
 
   test("D167: the devices section and its version block use shared controls only; 在查… lives in the version row", async () => {
-    const src = await Bun.file(new URL("../src/views.tsx", import.meta.url)).text();
+    // D161: the devices section and the card live in devcard.tsx.
+    const src = await Bun.file(new URL("../src/devcard.tsx", import.meta.url)).text();
     const body = (head: string) => {
       const at = src.indexOf(head);
       expect(at).toBeGreaterThan(-1);
       return src.slice(at, src.indexOf("\n}\n", at));
     };
-    for (const head of ["function VersionBlock(", "export function DevicesSection("]) {
+    for (const head of ["function DucterLine(", "function Versions(", "export function DevicesSection("]) {
       const b = body(head);
       expect(b).not.toMatch(/<(button|input|select|textarea|a)[\s>]/);
       // Every handler sits on a shared component (Btn, Toggle), never on a bare element.
       for (const m of b.matchAll(/onClick=|onChange=/g)) {
         const tag = b.slice(b.lastIndexOf("<", m.index), m.index);
-        expect(tag).toMatch(/^<(Btn|Toggle)\s/);
+        expect(tag).toMatch(/^<(Btn|Toggle|ListRow|BackRow)\s/);
       }
     }
-    const v = body("function VersionBlock(");
-    const row = v.slice(v.indexOf('class="dev-ver-row"'), v.indexOf("\n      </div>", v.indexOf('class="dev-ver-row"')));
-    expect(row).toContain('t("devup.checking")');
-    expect(v.split('t("devup.checking")').length).toBe(2);
+    // 在查… replaces 现在检查 in the one place it lives, beside what the home runs.
+    const v = body("function Versions(");
+    expect(v).toContain('t("devup.checking")');
+    expect(src.split('t("devup.checking")').length).toBe(2);
   });
 });

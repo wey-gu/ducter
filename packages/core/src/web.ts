@@ -67,6 +67,18 @@ import routineCalendar from "../../../apps/web/static/art/routine_calendar.webp"
 // D150: Settings › This phone.
 import artPhone from "../../../apps/web/static/art/phone.webp" with { type: "file" };
 import artMini from "../../../apps/web/static/art/mini_awake.webp" with { type: "file" };
+// D161: the device card's clay (the device big on its ground) and the ability chips.
+import artDevServerAwake from "../../../apps/web/static/art/dev_server_awake.webp" with { type: "file" };
+import artDevServerAsleep from "../../../apps/web/static/art/dev_server_asleep.webp" with { type: "file" };
+import artDevLaptopAwake from "../../../apps/web/static/art/dev_laptop_awake.webp" with { type: "file" };
+import artDevLaptopAsleep from "../../../apps/web/static/art/dev_laptop_asleep.webp" with { type: "file" };
+import artDevMiniAwake from "../../../apps/web/static/art/dev_mini_awake.webp" with { type: "file" };
+import artDevMiniAsleep from "../../../apps/web/static/art/dev_mini_asleep.webp" with { type: "file" };
+import artDevDeviceUnreachable from "../../../apps/web/static/art/dev_device_unreachable.webp" with { type: "file" };
+import artDevPhone from "../../../apps/web/static/art/dev_phone.webp" with { type: "file" };
+import artAbWeb from "../../../apps/web/static/art/ab_web.webp" with { type: "file" };
+import artAbComputer from "../../../apps/web/static/art/ab_computer.webp" with { type: "file" };
+import artAbRemote from "../../../apps/web/static/art/ab_remote.webp" with { type: "file" };
 
 const INDEX = indexHtml as unknown as string; // Bun types an .html import as an HTMLBundle; with type "file" it is a path
 
@@ -113,6 +125,17 @@ const ASSETS: Record<string, [string, string]> = {
   "art/routine_calendar.webp": [routineCalendar, "image/webp"],
   "art/phone.webp": [artPhone, "image/webp"],
   "art/mini_awake.webp": [artMini, "image/webp"],
+  "art/dev_server_awake.webp": [artDevServerAwake, "image/webp"],
+  "art/dev_server_asleep.webp": [artDevServerAsleep, "image/webp"],
+  "art/dev_laptop_awake.webp": [artDevLaptopAwake, "image/webp"],
+  "art/dev_laptop_asleep.webp": [artDevLaptopAsleep, "image/webp"],
+  "art/dev_mini_awake.webp": [artDevMiniAwake, "image/webp"],
+  "art/dev_mini_asleep.webp": [artDevMiniAsleep, "image/webp"],
+  "art/dev_device_unreachable.webp": [artDevDeviceUnreachable, "image/webp"],
+  "art/dev_phone.webp": [artDevPhone, "image/webp"],
+  "art/ab_web.webp": [artAbWeb, "image/webp"],
+  "art/ab_computer.webp": [artAbComputer, "image/webp"],
+  "art/ab_remote.webp": [artAbRemote, "image/webp"],
 };
 
 // The page loads only its own scripts and styles; it talks only to this origin.

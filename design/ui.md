@@ -253,6 +253,32 @@ face, breathing) and one 15pt muted line sit where the reply will land, from the
 sending; the line follows the partner's step and a 13pt reassurance joins it past 15 s and
 45 s on one step. Words in `design/quiet-conversation.md`. The header no longer says 在想….
 
+### Shared controls (D161)
+
+The author's rule: a card or a settings page shows **only shared controls**; no view styles a
+button, switch, chip or row of its own. Each is defined once, per client, and a test fails when a
+covered view draws a control any other way (Mac: `TestSharedControlsOnly` in
+`apps/desktop/internal/views/shared_controls_test.go`; phone: `apps/web/test/controls.test.ts`).
+A new control is added to the set (and to this table) before it is used.
+
+| Control | Mac (`apps/desktop/internal/views`) | Phone (`apps/web/src/controls.tsx`) |
+|---|---|---|
+| The button family: primary, secondary, accent, text (D76) | `button`, `buttonFor` (`components.go`); `iconButton`, `navButton` | `Btn` |
+| Quiet text button and link (现在检查, 看日志) | `quietButton`, `quietLink` (`quiet.go`) | `Btn` kind `text` |
+| Switch | `switchControl` (`shared.go`), inside `switchRow`, `toggleRow` | `Toggle` |
+| Segmented choice | `choices` (`partner.go`) | `Seg` |
+| Choice row (a theme, Remove's plan) | `selectRow` (`shared.go`) | — |
+| Disclosure row (素材与致谢) and link row | `disclosureRow` (`shared.go`), `linkRow` (`settings.go`) | — |
+| Settings rail tab | `railTab` (`settings.go`) | the pushed-page list |
+| Destructive text button (断开这台 MacBook, a connection's 断开) | `dangerText` (`shared.go`) | `DangerButton` |
+| ⋯ that opens more in place | `moreButton` (`shared.go`) | `MoreButton` |
+| A name renamed in place | `cardName` (`devupdate.go`) | `RenameTitle` |
+| An agent's coin in a tray, and the socket | `coinTile`, `socketTile` (`devicecard.go`); `trayToken` (`loadout.go`) | `CoinButton`, `SocketButton` |
+| An ability chip with its ⓘ | `abilityChip` (`devicecard.go`) | `Chip` |
+| One line in a list of devices | `listRow` (`abilities.go`) | `ListRow` |
+| A candidate row in 换谁来做 | `candRow` (`shared.go`) | the `cand` row in `SwitchList` |
+| Back to the list | the chrome's crumb | `BackRow` |
+
 ## Places (D71)
 
 v1 has five places, and every one is reachable from the menu bar, a shortcut and the window:
@@ -403,7 +429,7 @@ empty list (no noted lines) is left out with its heading. Screenshots:
 | Quiet conversation (D104) | https://claude.ai/artifact/8ZaW9XS7a7NEBX1ATD4Khr | before / after on the demo seed, the waiting line, where each removed line went, three users (zh/en) | proposal, pending the author's review |
 | Where a task runs (draft D157) | `design/prototypes/where.html` (open from the repo; shots in `.shots/where/`) | New task with and without a computer choice, the where line, Switch who does it with the island strip, the sleeping-Mac ask, the parcel landing / waiting / moving, closing the laptop; zh/en, motion / still | draft, pending the author's review |
 | Your other agents ask you (draft D163, D164) | `design/prototypes/bridge-asks.html` (open from the repo; shots in `.shots/bridge/`) | X1 "有事问 Ducter": the terminal side, the phone card with the asker's coin and suggestion, answered → 已回复; the same ask in On hand's Needs you beside a task; X2's offer "直接接" and Settings › 伙伴's learned rules with X3's team switch and a muted sender; zh/en, motion / still | draft, pending the author's review (`design/bridge.md` "Beyond itself") |
-| Device card as a character sheet (draft D161) | `design/prototypes/device-card.html` (open from the repo; shots in `.shots/device-card-v2/`) | before → after on the MacBook, the Mac's Devices page, five card states, the phone's Settings › Devices, and D157's switch sheet, where line, ask and rules in the same coin language; zh/en, motion / still | draft, pending the author's review (`design/ui-devices-card.md`) |
+| Device card as a character sheet (D161) | `design/prototypes/device-card.html` (open from the repo; shots in `.shots/device-card-v2/`) | before → after on the MacBook, the Mac's Devices page, five card states, the phone's Settings › Devices, and D157's switch sheet, where line, ask and rules in the same coin language; zh/en, motion / still | decided 2026-11-10 and built on both clients (`design/ui-devices-card.md` §12; built shots `.shots/device-card-built/`) |
 | Where a task runs (D157) | `design/prototypes/where.html` (open from the repo; shots in `.shots/where/`) | New task with and without a computer choice, the where line, Switch who does it with the island strip, the sleeping-Mac ask, the parcel landing / waiting / moving, closing the laptop; zh/en, motion / still | decided (D157); the build follows it |
 | Accounts and proactive help (drafts D165, D166) | `design/prototypes/accounts.html` (open from the repo; shots in `.shots/accounts/`) | today's card → the source as a character sheet; the first account (the 3-day look, the one question); the morning note in the conversation and on the lock screen; a silent day; an aha find becoming a Go-gated 上网 task; 有用 / 这类不用告诉我 → a rule; the other kinds; the Mac's Accounts page with four sources and a tile's detail; the phone; zh/en, motion / still | draft, pending the author's review (`design/connectors.md` Part A) |
 | Phone web (built) | `.shots/phone-*.png` (390×844, zh/en, light/dark) | the real `apps/web` client: conversation, decisions, On hand, opened task, pairing, notifications | built, pending review |

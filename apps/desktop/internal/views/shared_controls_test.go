@@ -4,6 +4,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"os"
 	"sort"
 	"strings"
 	"testing"
@@ -80,6 +81,16 @@ func TestSharedControlsOnly(t *testing.T) {
 				}
 				return true
 			})
+		}
+	}
+	// design/ui.md lists the same set.
+	ui, err := os.ReadFile("../../../../design/ui.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name := range sharedControls {
+		if !strings.Contains(string(ui), "`"+name+"`") {
+			bad = append(bad, "design/ui.md: "+name+" is not in Shared controls")
 		}
 	}
 	sort.Strings(bad)

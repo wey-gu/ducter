@@ -114,6 +114,7 @@ const TITLES: Record<string, string> = {
   github: "GitHub", slack: "Slack", slackbot: "Slack bot", discord: "Discord", discordbot: "Discord bot", notion: "Notion", linear: "Linear",
   outlook: "Outlook", wecom_bot: "WeCom bot", feishu: "Feishu", lark: "Lark", dingtalk: "DingTalk", telegram: "Telegram", jira: "Jira",
 };
+export const knownService = (s: string) => s in TITLES;
 export const serviceTitle = (s: string) => TITLES[s] ?? s.replace(/[_-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
 export const appsOf = (services: OoService[]): OoApp[] => services.map((s) => ({ service: s.service, title: s.title, accounts: s.connections.map((c) => c.label) }));

@@ -2,7 +2,7 @@
 // sea, every computer on its own island, plank bridges from home. Two scenes use it:
 // 4 · the hand-off: the AI agents' coins peel off Ducter together and fly, with the equip's
 //     peel → arc → snap, to the islands they're signed in on; each lands with a squash and
-//     sparkles, its sheen starts (D146: working), parcels start crossing the bridges and the
+//     sparkles, it starts rocking (D183: working), parcels start crossing the bridges and the
 //     planks light under them. Everything starts at once: the agents work in parallel.
 // 9 · the whole world: the iPhone's island rises and the phone drops on, under the tagline.
 import type { ReactNode } from "react";
@@ -106,7 +106,7 @@ const Parcels = ({ from, to, ts }: { from: Pt; to: Pt; ts: number[] }) => (
 type Coin = { name: string; label: string; to: Pt; at: number };
 const EQUIP = 25; // 0.82 s: peel (14%) → arc (50%) → snap (62–69%)
 
-/** An AI agent's coin, flown from Ducter with the equip and left working (its sheen turning). */
+/** An AI agent's coin, flown from Ducter with the equip and left working (rocking on its base). */
 const Flying = ({ c, origin, settled }: { c: Coin; origin: Pt; settled: boolean }) => {
   const frame = useCurrentFrame();
   const f = settled ? 999 : frame - c.at;
@@ -124,10 +124,8 @@ const Flying = ({ c, origin, settled }: { c: Coin; origin: Pt; settled: boolean 
   const size = 86;
   const landed = f - EQUIP * 0.62;
   const tag = interpolate(landed, [4, 12], [0, 1], { ...clamp, easing: easeOut });
-  // D146: while its task works, a soft light turns a quarter of the way round the rim (4.2 s)
-  const sweep = landed > 0 ? ((landed + 10) % 126) / 126 : -1;
-  const sheenRot = sweep < 0 ? 0 : interpolate(sweep, [0, 0.65], [-30, 60], clamp);
-  const sheenOp = sweep < 0 ? 0 : interpolate(sweep, [0, 0.3, 0.65], [0, 1, 0], clamp);
+  // D183: while its task works, the coin rocks gently on its base, 5° each way (4.2 s)
+  const rock = landed > 0 ? 5 * Math.sin((2 * Math.PI * (landed + 10)) / 126) : 0;
   return (
     <>
       {landed >= 0 && landed < 22 && (
@@ -136,8 +134,7 @@ const Flying = ({ c, origin, settled }: { c: Coin; origin: Pt; settled: boolean 
       {/* its shadow on the island, from the moment it's on its way */}
       <div style={{ position: "absolute", left: c.to.x - 34, top: c.to.y - 9, width: 68, height: 18, borderRadius: "50%", background: "radial-gradient(closest-side, rgba(60,40,20,0.35), rgba(60,40,20,0))", opacity: a }} />
       <div style={{ position: "absolute", left: x - size / 2, top: y - size, width: size, height: size, transformOrigin: "50% 100%", transform: `scale(${(0.7 + 0.3 * peel) * sq}, ${(0.7 + 0.3 * peel) / sq}) rotate(${tilt}deg)` }}>
-        <Art src={`clay/coin_${c.name}.png`} safe="coin" style={{ width: "100%" }} />
-        <Art src="clay/coin_sheen.png" style={{ position: "absolute", inset: 0, width: "100%", opacity: sheenOp, transform: `rotate(${sheenRot}deg)` }} />
+        <Art src={`clay/coin_${c.name}.png`} safe="coin" style={{ width: "100%", transformOrigin: "50% 92%", transform: `rotate(${rock}deg)` }} />
       </div>
       {landed >= 0 && <Sparkles at={c.at + Math.ceil(EQUIP * 0.62)} x={c.to.x} y={c.to.y - 50} r={78} n={6} />}
       {tag > 0 && (

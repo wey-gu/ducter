@@ -180,49 +180,35 @@
   ]
  },
  "coin_claude_code": {
-  "w": 256,
-  "h": 256,
+  "w": 975,
+  "h": 983,
   "widths": [
    96,
    192
   ]
  },
  "coin_codex": {
-  "w": 256,
-  "h": 256,
+  "w": 983,
+  "h": 982,
   "widths": [
    96,
    192
   ]
  },
  "coin_pi": {
-  "w": 256,
-  "h": 256,
+  "w": 983,
+  "h": 983,
   "widths": [
    96,
    192
   ]
  },
  "coin_deepseek_harness": {
-  "w": 256,
-  "h": 256,
+  "w": 983,
+  "h": 730,
   "widths": [
    96,
    192
-  ]
- },
- "coin_claude_code_plain": {
-  "w": 256,
-  "h": 256,
-  "widths": [
-   96
-  ]
- },
- "coin_codex_plain": {
-  "w": 256,
-  "h": 256,
-  "widths": [
-   96
   ]
  },
  "wait_ci": {

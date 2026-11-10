@@ -3624,31 +3624,29 @@ ol.tries b {
 .folder-list .mono-ish { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .folder-list li .qlink { flex: none; }
 
-/* An AI agent's clay coin (coin.tsx). While that agent works a soft light turns a quarter of
-   the way round its rim (the sheen layer never covers the print); while it waits on you the coin
-   bobs. Clay may move, status never (D77); reduced motion stops both. */
+/* An AI agent's clay coin (coin.tsx, D183): the agent's own mark in clay. While that agent works
+   it rocks gently on its base; while it waits on you it bobs. Clay may move, status never (D77);
+   reduced motion stops both. */
 .coin-art { position: relative; display: inline-block; flex: none; line-height: 0; }
 .coin-art img { display: block; width: 100%; height: 100%; }
-.coin-art .sheen { position: absolute; inset: 0; opacity: 0; pointer-events: none; animation: coin-sweep 4.2s ease-in-out infinite; }
+.coin-art.m-working img { transform-origin: 50% 92%; animation: coin-rock 4.2s ease-in-out infinite; }
 .coin-art.m-needs_you { animation: coin-bob 2.6s ease-in-out infinite; }
-@keyframes coin-sweep {
-  0% { transform: rotate(-30deg); opacity: 0; }
-  30% { opacity: 1; }
-  65% { transform: rotate(60deg); opacity: 0; }
-  100% { transform: rotate(60deg); opacity: 0; }
+@keyframes coin-rock {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(5deg); }
+  75% { transform: rotate(-5deg); }
 }
 @keyframes coin-bob {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-2px); }
 }
-/* In the dark an unavailable coin's pale veil would read as lit: a second veil of the page's own
-   colour lies over the whole coin (never a fade of the print itself). */
-:root[data-theme="dark"] .coin-art.off::after { content: ""; position: absolute; inset: 1%; border-radius: 50%; background: var(--bg); opacity: 0.5; }
+/* In the dark an unavailable coin's grey clay would read as lit: it sits back a little. */
+:root[data-theme="dark"] .coin-art.off img { opacity: 0.6; }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .coin-art.off::after { content: ""; position: absolute; inset: 1%; border-radius: 50%; background: var(--bg); opacity: 0.5; }
+  :root:not([data-theme="light"]) .coin-art.off img { opacity: 0.6; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .coin-art .sheen,
+  .coin-art.m-working img,
   .coin-art.m-needs_you { animation: none; }
 }
 /* 你的设备 / Your devices (D148): one card per device; its name renamed in place, a quiet clay

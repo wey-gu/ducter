@@ -309,7 +309,7 @@ func (a *App) socket(c *ui.Context) {
 		well.Children(func() {
 			// The token sits in the well, unless it is the one in flight.
 			if !flying {
-				if bmp := theme.Clay(coinArt(b.Harness, 84, false)); bmp != nil {
+				if bmp := theme.Clay(coinArt(b.Harness, false)); bmp != nil {
 					ui.Image(c, bmp).Size(84, 84).Absolute().Left(14).Top(14)
 				}
 			}
@@ -337,7 +337,7 @@ func (a *App) socketWell(c *ui.Context, b protocol.Brain) {
 		Role(ui.RoleImage).Label(a.L.T("loadout.socket") + " · " + a.brainLine(b))
 	well.Children(func() {
 		if !flying {
-			if bmp := theme.Clay(coinArt(b.Harness, 60, false)); bmp != nil {
+			if bmp := theme.Clay(coinArt(b.Harness, false)); bmp != nil {
 				ui.Image(c, bmp).Size(60, 60).Absolute().Left(10).Top(10)
 			}
 		}
@@ -421,7 +421,7 @@ func (a *App) trayToken(c *ui.Context, h protocol.DeviceHarness, b protocol.Brai
 		coin := ui.Box(c.Key("coin")).Size(84, 84).Draw(a.limitRing(h, isBrain)).AccessHidden(true)
 		coin.Children(func() {
 			off := !h.Installed || !h.LoggedIn
-			if bmp := theme.Clay(coinArt(h.Harness, 62, off)); bmp != nil && !flying {
+			if bmp := theme.Clay(coinArt(h.Harness, off)); bmp != nil && !flying {
 				img := ui.Image(c, bmp).Size(62, 62).Absolute().Left(11).Top(11)
 				// An agent's own coin has its unavailable look drawn in; the generic
 				// token is dimmed here.
@@ -512,7 +512,7 @@ func (a *App) brainFlyer(c *ui.Context) {
 	to := shrink(fx.to, 84.0/112)
 	pose := equipFx{start: fx.start, from: from, to: to}
 	x, y, s, rot, sy := a.flightPose(&pose, min(max(q, 0), 1), still)
-	bmp := theme.Clay(coinArt(lo.fxTo.Harness, 84, false))
+	bmp := theme.Clay(coinArt(lo.fxTo.Harness, false))
 	if bmp == nil {
 		return
 	}
@@ -694,7 +694,7 @@ func (a *App) acctLine(c *ui.Context) {
 	ui.Column(c.Key("acct:"+h.Harness)).Gap(t.S2).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.SurfaceSunken).
 		Role(ui.RoleGroup).Label(name).Children(func() {
 		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-			if bmp := theme.Clay(coinArt(h.Harness, 28, false)); bmp != nil {
+			if bmp := theme.Clay(coinArt(h.Harness, false)); bmp != nil {
 				ui.Image(c, bmp).Size(28, 28).Shrink(0).AccessHidden(true)
 			}
 			ui.Text(c, name).FontSize(t.MD).FontWeight(800).Grow(1).MinWidth(0)

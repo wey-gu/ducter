@@ -19,4 +19,7 @@ apps/desktop/bin/
 /design/screens/
 /apps/ios/screens/
 /design/art/assets/raw/
+# The AI agents' official marks, downloaded as reference images for the coins (design/art/LOGOS.md):
+# their owners' files, never committed.
+/design/art/assets/marks/
 /design/art/assets/norm/

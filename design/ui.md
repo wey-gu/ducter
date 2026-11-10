@@ -197,7 +197,7 @@ the clay thing awaited (PR, cloud, envelope, clock, file; `design/art/assets/alp
 | an ability that is on (Devices stage) | floats 5pt like an awake device (5.6 s), its own phase |
 | the sea and sky (Devices stage) | clouds drift ±16pt (70 s); slow light on the water drifts and fades (11–19 s); repainted at 12 fps |
 | parcels on a bridge | cross at a steady 40 scene-points a second, only while a task runs on that device (a state that is true, not decoration); still mode freezes them in place so "working" still reads |
-| an AI agent's coin (D146) | only while a task of that agent shows (task footer, On hand's asker row): working, a soft light sweeps a quarter turn round the rim and fades (4.2 s; the sheen never crosses the printed dome); waiting on you, bobs 2pt (2.6 s); still otherwise, and everywhere else |
+| an AI agent's coin (D183) | only while a task of that agent shows (task footer, On hand's asker row): working, rocks on its base 5° each way (4.2 s); waiting on you, bobs 2pt (2.6 s); still otherwise, and everywhere else |
 | a device that joins | its island rises out of the water (0.55 s), then the device drops on with the equip's squash and sparkles |
 | the equip | peel (14%) → arc (50%) → snap (62–69%), 0.82 s, a tock and a 10 ms haptic |
 | the title moment (D87) | once per Mac: dawn rises, a 3% push-in with parallax, the eyes open on the tone, the logotype lit by a passing light; see `onboarding.md` |
@@ -523,6 +523,11 @@ runtime @1280); the sea, sky, foam, reflections, bridges and parcels are drawn f
   chosen device's card and the ability grid on the right. (First drafted as round-2 board v2,
   `r2_board_2.jpg`: the hero device on a pedestal with slots, AI-account tokens with
   allowance rings at the bottom.)
+- **The AI agents' coins (D183):** each agent's real mark sculpted as a small free-standing
+  clay toy (Claude Code's starburst, Codex's cloud with `>_`, DeepSeek's whale, pi's blocks), in
+  the same clay, light and camera as the character; one family by material and optical size,
+  told apart by silhouette. Two looks: the coin, and the same object in grey clay when signed
+  out (`*_off`). Pipeline and sources: `design/art/LOGOS.md`, `tools/art/coins.py`.
 - **Equip motion:** sticker peel-and-stick (`research/26`, `research/28` timings).
 - **Asset pipeline:** generate with the reference images for consistency, select, clean up,
   and export at 1×/2×/3× with transparent backgrounds. Only final exports go into git, plain

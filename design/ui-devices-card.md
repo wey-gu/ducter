@@ -97,7 +97,7 @@ One line, one idea: the role or the state, never the kind and never how it conne
 ### 3.3 What it carries: the loadout row
 
 - The agents on that device as coins at 56, in one row with their names under them (13/700),
-  D146's looks: printed coin when signed in; **grey (`*_off`) when signed out**; not installed
+  D183's looks: the agent's own mark in clay when signed in; **grey clay (`*_off`) when signed out**; not installed
   is not shown (it folds into **+ 再登录一个 AI**, D148, now a dashed coin-sized socket at the
   row's end, `slot_empty` art).
 - **A small static dot** on a coin's top right when that agent has an update (D148/D156's one
@@ -246,7 +246,7 @@ always one line with the default (**等它醒**) and the reassurance (**不回�
 | Moment | Motion |
 |---|---|
 | a chip toggled | press sinks 2pt (70 ms, the button press), on release a squish: scale-x 1.06 / scale-y 0.94 → 1 with `Bouncy` (240 ms); the clay object hops 3pt once when it turns on |
-| an update lands on a coin | the coin pops: scale 1 → 1.16 → 1 (`Bouncy`, 420 ms) with a short sheen sweep (D146's rim light, once), the dot shrinks to 0 (160 ms) |
+| an update lands on a coin | the coin pops: scale 1 → 1.16 → 1 (`Bouncy`, 420 ms) with one small wiggle (D183; D146's sheen sweep is retired), the dot shrinks to 0 (160 ms) |
 | the coin's detail | enter 220 ms (6pt rise + fade, ui.md's enter) |
 | ⋯ disclosure | height eases open (`Snappy`, 200 ms) |
 | the name saved | the name settles from 0.98 (140 ms) |
@@ -347,7 +347,7 @@ Against the north star:
   hel's clay).
 - **放心:** nothing red unless something failed; "not checked" is said quietly and once; turning
   off a computer with tasks running asks with a safe default.
-- **惊喜:** the update pop with its sheen sweep and the chip squish are small and earned. The
+- **惊喜:** the update pop with its wiggle and the chip squish are small and earned. The
   prototype's stage on the Devices page is a stub (flat bridges, static coins); the built stage
   stays D81's.
 
@@ -382,7 +382,7 @@ What differs from the prototype, and why:
 | The socket **再登录一个** opens a sign-in | its detail lists the agents not on that device; on the Mac Ducter runs on each installs from there (the existing account sheet), elsewhere it says to do it on that device | sign-ins never copy between computers (D157 (7)) |
 | The phone's iPhone card with a 通知 chip | only on the phone's own card (the web client knows its own notifications, not another phone's); the Mac's card for a phone has no chips | the Mac can't see a phone's notification state |
 | Learned rules on Settings › 伙伴 with **你换过两次以后定的** | not built in this step | todo |
-| Coins at 52 printed with their names | the plain coin body at 52 (the printed coin from 72) | D146: below 72 a printed name is a smudge; the name is under the coin anyway |
+| Coins at 52 printed with their names | the coin at 52, the agent's mark in clay (D183) | a sculpted mark reads at every size; the name is under the coin anyway |
 | The socket **再登录一个** on every tray | only when an agent isn't on that device yet | an always-there socket that opens nothing new is noise |
 | MacBook's 上网 off as a flat chip | off and can be added is the dashed **+ 上网**; flat grey is "can't now" (asleep, unavailable), a tap says why | one look per meaning: dashed = one tap adds it, flat = it can't be added right now |
 | (not in the prototype) | **合上之前搬走** under a working laptop's status line | D157 (6), kept |

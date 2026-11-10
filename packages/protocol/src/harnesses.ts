@@ -93,7 +93,7 @@ export const HARNESSES: Record<HarnessId, HarnessInfo> = {
     id: "pi",
     name: "pi",
     badge: "pi",
-    partner: false, // v1 rule (ai-loadout): tasks only until it passes the partner eval
+    partner: true, // D177: passed the partner eval (research/50 §5), read-only enforced live (§2)
     task: true,
     isolation: "flags",
     systemPrompt: "replace",
@@ -109,7 +109,7 @@ export const HARNESSES: Record<HarnessId, HarnessInfo> = {
     name: "DeepSeek Harness",
     badge: "ds",
     command: "dsh",
-    partner: false, // v1 rule (ai-loadout): tasks only until it passes the partner eval
+    partner: true, // D177: passed the partner eval (research/50 §5), read-only enforced live (§2)
     task: true,
     isolation: "home",
     systemPrompt: "home-file",
@@ -123,6 +123,13 @@ export const HARNESSES: Record<HarnessId, HarnessInfo> = {
     signIn: "a DeepSeek API key (DEEPSEEK_API_KEY)",
   },
 };
+
+/**
+ * D150/D177: what the partner thinks with when the user never chose and Claude Code (the default)
+ * isn't signed in on the home: the first of these that is signed in there and may be the partner.
+ * A plan before a key paid by use; DeepSeek Harness before pi, by the partner eval (research/50 §5).
+ */
+export const PARTNER_FALLBACK: readonly HarnessId[] = ["claude-code", "codex", "deepseek-harness", "pi"];
 
 export function harnessName(id: string): string {
   return isHarnessId(id) ? HARNESSES[id].name : id;

@@ -6,14 +6,14 @@
 > installed version is outside the verified range. Tags: VERIFIED (how, date, version),
 > DOCUMENTED (source), INFERRED.
 
-## Verified versions (2026-11-09; widened 2026-11-10, D175 (2))
+## Verified versions (2026-11-09; widened 2026-11-10, D175 (2), D177)
 
 | Harness | Verified | Window knob | Compaction point | 1M off |
 |---|---|---|---|---|
 | Claude Code | 2.1.319–2.1.322 | env `CLAUDE_CODE_AUTO_COMPACT_WINDOW` (100K–1M) | env `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE`: min(⌊(W − 20K) × pct⌋, W − 33K) | env `CLAUDE_CODE_DISABLE_1M_CONTEXT=1` |
 | Codex | 0.167.0 | `-c model_context_window` | `-c model_auto_compact_token_limit` (clamped to 90% of the window, INFERRED) | n/a |
 | pi | 1.4.0–1.5.1 | none per session | settings.json `compaction.reserveTokens` only (DOCUMENTED) | n/a |
-| DeepSeek Harness | none | unknown | unknown | unknown |
+| DeepSeek Harness | 0.2.2-rc.1 (D177) | none: the model's window (1M for both official models) | profile layer `compaction-basic.thresholdRatio` (+ `retainTokens`), in a Ducter-owned home only; VERIFIED live | n/a |
 
 ## Claude Code 2.1.319–2.1.322
 
@@ -56,11 +56,34 @@
 - **Events.** `compaction_started` and `compaction_ended` both reach Ducter.
 - **Browser.** Computer Use works headless under OAR (research/38).
 
-## pi 1.4.0–1.5.1 and DeepSeek Harness
+## pi 1.4.0–1.5.1 and DeepSeek Harness 0.2.2-rc.1 (D177, research/50)
 
 pi has no per-session window or compaction flag (`pi --help`); its compaction lives in
-settings.json, and `session_before_compact` can cancel or replace a summary (research/11).
-DeepSeek Harness is not installed on the verifying Mac. Both run with their defaults (todo).
+settings.json, and `session_before_compact` can cancel or replace a summary (research/11). As
+the partner its window is bounded by Ducter's own re-cut at 120K (pi reports the context size
+on every turn, VERIFIED), far below pi's own point (the model's window minus 16K).
+
+DeepSeek Harness reads a profile layer from its home (`$DSH_HOME/profiles/acp/cordis.patch.yml`,
+the user's layer, applied after every bundle and before OAR's `--patch`). In a home Ducter owns
+(the partner, a one-shot, a memory-off task) Ducter writes it (`dshLayer` in `runner/oar.ts`,
+the ids in `DSH_PROFILE`):
+- the system prompt: `system-prompt` with `includeHarnessIdentity: false` and `personaPrefix` set
+  to Ducter's prompt, so the prompt opens the system message; AGENTS.md would arrive as a user
+  message of "workspace instructions" that "do not override system instructions";
+- read-only: the tool rows that run, write, delegate or plan disabled (bash, pwsh, jobs,
+  subagents, workflow, goals, todos, skills, the working-directory switch), `tool-fs` with
+  `write`/`edit`/`applyPatch` false, and `DSH_PERMISSION_MODE=read-only` underneath (Ducter's MCP
+  tools still answer under it, VERIFIED);
+- compaction: `thresholdRatio` = compaction point / W and `retainTokens` = a quarter of it. Its
+  default retention (16% of W, ~104K) at or above the threshold rejects the whole plugin at load,
+  with no error: no compaction and no overflow recovery (VERIFIED: a 20K point did nothing until
+  `retainTokens` was set, then compacted at ~20K and kept the conversation);
+- the session-log upload (`session-log-deepseek`, the canonical log sent to DeepSeek's API beside
+  each request) off.
+
+Gotcha found here: under Bun 1.3.1 a host that opens and closes several pi RPC sessions is
+SIGKILLed after a few (the eval died after 2–9 scenarios, every time; no `process.kill` from the
+host). Under the pinned Bun 1.4.4 the same runs finish. Ducter ships 1.4.4; run evals with it.
 
 ## Where each copy comes from, and how it updates (D156, 2026-11-10)
 
@@ -78,7 +101,9 @@ channel names where its latest is read and how it updates. Ducter never touches 
 
 `noTools` in harness-facts: the judge and the digest writer set `SessionSpec.noTools`, and the
 adapter sends Claude Code `--tools ""` (VERIFIED 2.1.322: 9,679 → 629 input tokens a call) and pi
-`--no-tools` (DOCUMENTED); Codex and DeepSeek Harness keep the named denials (no switch known).
+`--no-tools` (DOCUMENTED); DeepSeek Harness runs a one-shot in a Ducter-owned home whose profile
+layer drops every tool row (VERIFIED 0.2.2-rc.1: an empty tool list, 228 input tokens for the
+judge's prompt, D177); Codex keeps the named denials (no switch known).
 
 ## The Nowledge Mem plugin in tasks (D168, D174, research/48 M3/M4)
 

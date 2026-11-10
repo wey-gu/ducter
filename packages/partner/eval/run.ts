@@ -52,6 +52,8 @@ const PRICE: Record<string, { in: number; out: number; cw: number; cr: number }>
   // DeepSeek's list price is in CNY (api-docs.deepseek.com/zh-cn/quick_start/pricing, read
   // 2026-11-09): flash peak 2 / 0.04 (cache hit) / 8 元 per 1M; here at ≈7.1 元 per $.
   "deepseek-official/deepseek-flash": { in: 0.28, out: 1.13, cw: 0.28, cr: 0.0056 },
+  // The same model through pi's own deepseek provider (D177).
+  "deepseek/deepseek-flash": { in: 0.28, out: 1.13, cw: 0.28, cr: 0.0056 },
   // Plan-metered (a ChatGPT plan, MiniMax's coding plan): no per-token price to show.
   "gpt-6-luna": { in: 0, out: 0, cw: 0, cr: 0 },
   "minimax-coding-plan/MiniMax-M3": { in: 0, out: 0, cw: 0, cr: 0 },
@@ -248,9 +250,18 @@ async function runScenario(sc: Scenario, root: string): Promise<RunResult> {
   const perSession = new Map<number, Usage>();
   const tools: ToolCall[] = [];
   const cur = { step: -1 };
+  // A call is counted once: from its early head (a streamed title, D120) when it has one, else
+  // from its end event, which carries the whole input. Before D177 only the early events were
+  // counted, so a call with no `title` field (rule_save, notice_rule) was never seen on any harness.
+  const early = new Set<string>();
   const port = teePort(createOarHarnessPort({ dataDir }), (ev, idx) => {
     if (ev.turnEnd && ev.usage) perSession.set(idx, { inputTokens: ev.usage.inputTokens ?? 0, outputTokens: ev.usage.outputTokens ?? 0, cacheRead: ev.usage.cacheRead ?? 0, cacheWrite: ev.usage.cacheWrite ?? 0 });
-    if (ev.tool && ev.tool.input !== undefined && ev.tool.output === undefined) tools.push({ name: ev.tool.name, input: ev.tool.input, step: cur.step });
+    if (!ev.tool || ev.tool.input === undefined) return;
+    const callId = `${idx}:${(ev.raw as { callId?: string } | undefined)?.callId ?? ""}`;
+    if (ev.tool.output === undefined) {
+      tools.push({ name: ev.tool.name, input: ev.tool.input, step: cur.step });
+      early.add(callId);
+    } else if (!early.has(callId)) tools.push({ name: ev.tool.name, input: ev.tool.input, step: cur.step });
   });
   const fr = fakeRunner(core, port, cur);
   const mem = fakeMemory(sc.memories ?? [], { down: sc.memoryDown });

@@ -1194,12 +1194,13 @@ export interface Brain {
 
 /**
  * What the partner thinks with right now (D150): settings.brain, unless the user never chose one and
- * the home has only Codex signed in, when core runs it on Codex instead (why: "only_codex").
+ * Claude Code isn't signed in on the home, when core runs it on the first signed-in AI agent of
+ * PARTNER_FALLBACK instead (why: "only_codex" for Codex, "only_signed_in" for the others, D177).
  */
 export interface BrainNow extends Brain {
   /** auto: the user never chose; core picked it. why: the reason when it isn't the setting. */
   auto: boolean;
-  why?: "only_codex";
+  why?: "only_codex" | "only_signed_in";
   /** The models it may think with on the home (its listed ones, else Ducter's tier table); none: its own default. */
   models: { id: string; label: string; kind: "smart" | "fast" }[];
 }

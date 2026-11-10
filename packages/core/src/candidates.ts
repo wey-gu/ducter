@@ -18,17 +18,25 @@ interface Tier {
   harness: string;
   model?: string;
   kind: "smart" | "fast";
+  /** Only when the home lists the model: pi's models depend on the providers it is signed in to. */
+  listed?: true;
+  /** The model in plain words, where its id isn't one (DeepSeek's provider/model ids). */
+  label?: string;
 }
 
 /**
  * The shipped tier table: curated data, refreshed with Ducter (no learned router). A harness
  * whose models aren't listed here runs on its own default model (one row, no model).
+ * D177: DeepSeek's two official models, smart and fast, on DeepSeek Harness and on pi.
  */
 const TIERS: Tier[] = [
   { harness: "claude-code", model: "opus", kind: "smart" },
   { harness: "claude-code", model: "sonnet", kind: "fast" },
   { harness: "codex", kind: "smart" },
-  { harness: "deepseek-harness", kind: "fast" },
+  { harness: "deepseek-harness", model: "deepseek-official/deepseek-v4-pro", kind: "smart", label: "V4 Pro" },
+  { harness: "deepseek-harness", model: "deepseek-official/deepseek-flash", kind: "fast", label: "Flash" },
+  { harness: "pi", model: "deepseek/deepseek-v4-pro", kind: "smart", listed: true, label: "V4 Pro" },
+  { harness: "pi", model: "deepseek/deepseek-flash", kind: "fast", listed: true, label: "Flash" },
   { harness: "pi", kind: "fast" },
 ];
 
@@ -100,9 +108,12 @@ export function blockOf(h: DeviceHarness | undefined, s: CandidateInput["setting
 const rows = (h: DeviceHarness): Tier[] => {
   if (h.models?.length) {
     const known = TIERS.filter((t) => t.harness === h.harness && t.model);
-    return h.models.map((m, i) => ({ harness: h.harness, model: m.id, kind: known.find((k) => k.model === m.id)?.kind ?? (i === 0 ? "smart" : "fast") }));
+    return h.models.map((m, i) => {
+      const k = known.find((x) => x.model === m.id);
+      return { harness: h.harness, model: m.id, kind: k?.kind ?? (i === 0 ? "smart" : "fast"), ...(k?.label ? { label: k.label } : {}) };
+    });
   }
-  const own = TIERS.filter((t) => t.harness === h.harness);
+  const own = TIERS.filter((t) => t.harness === h.harness && !t.listed);
   return own.length ? own : [{ harness: h.harness, kind: "fast" }];
 };
 
@@ -117,7 +128,7 @@ export function brainModelRows(harness: string, h: DeviceHarness | undefined): {
   const listed = h?.models?.length ? h.models : undefined;
   return rows(h ?? { harness, installed: true, loggedIn: true, canBePartner: true })
     .filter((t): t is Tier & { model: string } => !!t.model && known(t.model))
-    .map((t) => ({ id: t.model, label: listed?.find((m) => m.id === t.model)?.label || t.model[0]!.toUpperCase() + t.model.slice(1), kind: t.kind }));
+    .map((t) => ({ id: t.model, label: t.label || listed?.find((m) => m.id === t.model)?.label || t.model[0]!.toUpperCase() + t.model.slice(1), kind: t.kind }));
 }
 
 const same = (a: { harness: string; model?: string }, b?: { harness: string; model?: string }) =>

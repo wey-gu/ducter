@@ -308,7 +308,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D150: the one helper (brain.ts) the runner and the settings frame share.
   api.partnerFallback = () => {
     const e = effectiveBrain(settings.get().brain, settings.brainChosen(), devicesView?.harnessesNow());
-    return e.why === "only_codex" ? { harness: "codex" } : undefined;
+    return e.why ? { harness: e.harness } : undefined;
   };
   // 开一件事 / New task (D128): the one opening path the card and `ducter task` share.
   const newTaskDeps = { log, tasks, runner: () => runner, persona, dataDir, loadout, settings, ...(opts.git ? { git: opts.git } : {}) };

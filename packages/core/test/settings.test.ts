@@ -134,8 +134,9 @@ test("D85: the brain is a setting, partner-capable harnesses only; task accounts
   expect(core.settings.set({ brain: { harness: "codex", model: "gpt-6-luna" } })).toEqual(["brain"]);
   expect(core.settings.get().brain).toEqual({ harness: "codex", model: "gpt-6-luna" });
   expect(core.settings.set({ brain: { harness: "codex", model: "gpt-6-luna" } })).toEqual([]);
-  // v1: pi and DeepSeek Harness are tasks only (ai-loadout), and unknown ids are ignored.
-  expect(core.settings.set({ brain: { harness: "pi" } })).toEqual([]);
+  // D177: pi and DeepSeek Harness may be the partner too, once each passed the eval; unknown ids are ignored.
+  expect(core.settings.set({ brain: { harness: "deepseek-harness", model: "deepseek-official/deepseek-flash" } })).toEqual(["brain"]);
+  expect(core.settings.set({ brain: { harness: "pi" } })).toEqual(["brain"]);
   expect(core.settings.set({ brain: { harness: "nope" as any } })).toEqual([]);
   expect(core.settings.set({ brain: { harness: "claude-code" } })).toEqual(["brain"]);
   expect(core.settings.get().brain).toEqual({ harness: "claude-code" });

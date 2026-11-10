@@ -27,7 +27,15 @@ test("knobs per harness", () => {
   expect(windowKnobs("claude-code", { window: 500_000, compactAt: 400_000 }).env.CLAUDE_CODE_DISABLE_1M_CONTEXT).toBeUndefined();
   expect(windowKnobs("codex", { window: 200_000, compactAt: 160_000 }).args).toEqual(["-c", "model_context_window=200000", "-c", "model_auto_compact_token_limit=160000"]);
   expect(windowKnobs("pi", { window: 200_000, compactAt: 160_000 }).unbounded).toBe(true);
-  expect(windowKnobs("deepseek-harness", { window: 200_000, compactAt: 160_000 }).unbounded).toBe(true);
+  // D177: DeepSeek Harness compacts at a fraction of the model's 1M window, with a retention below
+  // that point (its default 16% at or above it rejects the plugin at load, research/50 §3).
+  const ds = windowKnobs("deepseek-harness", { window: 200_000, compactAt: 200_000 }, "deepseek-official/deepseek-flash");
+  expect(ds.unbounded).toBeUndefined();
+  const row = ds.profile![0] as { id: string; config: { thresholdRatio: number; retainTokens: number } };
+  expect(row.id).toBe("compaction-basic");
+  expect(Math.floor(1_048_576 * row.config.thresholdRatio)).toBe(200_000);
+  expect(row.config.retainTokens).toBeLessThan(200_000);
+  expect(row.config.thresholdRatio).toBeGreaterThan(row.config.retainTokens / 1_048_576);
 });
 
 test("model ids: aliases as concrete ids, never a 1M variant on a standard window", () => {
@@ -63,5 +71,6 @@ test("versions against the verified range", () => {
   expect(versionStanding("pi", "1.5.2")).toBe("newer");
   expect(versionStanding("codex", "codex-cli 0.160.0")).toBe("older");
   expect(versionStanding("codex", "garbage")).toBe("unknown");
-  expect(versionStanding("deepseek-harness", "1.0.0")).toBe("unknown"); // never verified
+  expect(versionStanding("deepseek-harness", "0.2.2-rc.1")).toBe("verified"); // run live (D177, research/50)
+  expect(versionStanding("deepseek-harness", "1.0.0")).toBe("newer");
 });

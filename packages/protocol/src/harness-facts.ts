@@ -30,7 +30,8 @@ export interface ModelFact {
 
 /** A tunable the harness reads: where it goes, its unit and its accepted range. */
 export interface Knob {
-  via: "env" | "config" | "settings" | "flag" | "none";
+  /** profile: a row of DeepSeek Harness's profile layer, in a Ducter-owned home only (DSH_PROFILE). */
+  via: "env" | "config" | "settings" | "flag" | "profile" | "none";
   key: string;
   unit?: "tokens" | "percent" | "bool";
   min?: number;
@@ -79,6 +80,12 @@ export interface HarnessFacts {
    * built-ins are denied one by one instead (the old way).
    */
   noTools: Fact<{ args: string[] }>;
+  /**
+   * D177: how a read-only session (the partner, principle 6) is held to reading on this agent,
+   * enforced by the agent rather than asked of the model. `tools`: what the partner can still call
+   * of the agent's own (Ducter's MCP tools always stay).
+   */
+  readOnly: Fact<{ how: string; tools: string[] }>;
 }
 
 /**
@@ -131,6 +138,15 @@ const D = "2026-11-09";
 const cc = (how: string): Evidence => ({ kind: "VERIFIED", how, date: D, version: "2.1.319" });
 const cx = (how: string): Evidence => ({ kind: "VERIFIED", how, date: D, version: "0.167.0" });
 const pi = (how: string): Evidence => ({ kind: "VERIFIED", how, date: D, version: "1.4.0" });
+/** D177, research/50: the live partner probe on pi (OAR's bundled 1.5.0 RPC; the user's 1.5.1 --help) with deepseek/deepseek-flash, scratch agent dir. */
+const PI_LIVE: Evidence = {
+  kind: "VERIFIED",
+  how: "research/50 §2: a partner session (clean, read-only) asked to write a file and to run touch: no such tool, neither file made; read and Ducter's MCP tools worked as mcp__ducter__<tool>; the session's tool list held read + Ducter's tools only; resumed by id with its history",
+  date: "2026-11-10",
+  version: "1.5.0",
+};
+/** D177, research/50: the live partner probe on DeepSeek Harness 0.2.2-rc.1 (scratch install and home). */
+const DSH_LIVE = (how: string): Evidence => ({ kind: "VERIFIED", how, date: "2026-11-10", version: "0.2.2-rc.1" });
 
 /**
  * Claude Code's switches that Ducter's code sets, named once here so the adapter (runner/oar.ts),
@@ -147,6 +163,46 @@ export const CLAUDE_SWITCHES = {
   alwaysLoadMeta: "anthropic/alwaysLoad",
   readCapEnv: "CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS",
 } as const;
+
+/**
+ * D177: DeepSeek Harness's profile layer, written by Ducter only into a home it owns (the partner's
+ * clean setup, a one-shot, a memory-off task): `$DSH_HOME/profiles/acp/cordis.patch.yml`, the user
+ * layer DSH applies after every bundle and before OAR's own `--patch` overlay (dsh 0.2.2-rc.1
+ * `--help`, research/50). Rows are the plugin ids `dsh --profile acp --dump-config` lists.
+ *  - systemPrompt: the system-prompt row; `includeHarnessIdentity: false` + `personaPrefix` make
+ *    Ducter's prompt the whole opener, instead of AGENTS.md riding in a user message as
+ *    "workspace instructions" that "do not override system instructions".
+ *  - readOnlyOff: every row whose tools run, write, delegate or plan (bash, jobs, subagents,
+ *    workflow, goals, todos, skills, the working-directory switch); `tool-fs` keeps only `read`.
+ *  - noToolsOff: a one-shot (D175 (3)) also drops the read, search, web and MCP-resource tools.
+ *  - compaction: the compactor fires at floor(min(W x thresholdRatio, W - O - headroom)).
+ *  - sessionLog: DSH uploads the canonical session log to DeepSeek's official API beside every
+ *    request (`dsh_session_log`); off in Ducter-owned homes, so nothing but the model call leaves.
+ */
+export const DSH_PROFILE = {
+  profile: "acp",
+  layerFile: "cordis.patch.yml",
+  systemPrompt: "system-prompt",
+  fs: "tool-fs",
+  compaction: "compaction-basic",
+  sessionLog: "session-log-deepseek",
+  readOnlyOff: ["tool-bash", "tool-pwsh", "tool-jobs", "tool-subagent", "tool-subagent-fork", "tool-subagent-control", "tool-workflow", "tool-goal", "tool-todo", "tool-skill", "tool-working-directory", "tool-plugin-manager"],
+  /** Rows named tool-* that are machinery, not model tools (the probe checks every other tool row is named above). */
+  notTools: ["tool-result-pruner", "tool-executor-native", "tool-executor-ptc"],
+  noToolsOff: ["tool-fs", "tool-fs-search", "tool-web", "mcp-resources"],
+  /** Its sandbox preset (dsh-base: read-only | workspace-write | danger-full-access); OAR sets danger-full-access unless a host names one. */
+  permissionEnv: "DSH_PERMISSION_MODE",
+  /** The official models' window, as DeepSeek's /models listing and DSH's own catalog declare it. */
+  officialWindow: 1_048_576,
+} as const;
+
+/**
+ * What a read-only pi session keeps (`pi --tools`, an allowlist): pi's reading tools, and the MCP
+ * tools OAR's extension registers for the session's own servers (named mcp__<server>__<tool>; a
+ * list without the pattern drops them too, live research/50 §2). OAR runs pi with --no-mcp, so no
+ * other MCP server is there to match it.
+ */
+export const PI_READ_ONLY_TOOLS = ["read", "grep", "find", "ls", "mcp__*"] as const;
 
 /** Claude Code's compaction point for a window (2.1.319 binary): window - min(maxOutput, 20K) - 13K. */
 export const CLAUDE_SUMMARY_RESERVE = 20_000;
@@ -216,6 +272,10 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
         version: "2.1.322",
       },
     },
+    readOnly: {
+      value: { how: "built-ins that write or run denied by name (Bash, Edit, Write, Task, …); a Read is capped", tools: ["Read", "Grep", "Glob", "WebFetch", "WebSearch"] },
+      evidence: { kind: "VERIFIED", how: "the partner eval's readonly smoke (results/2026-11-09-haiku-readonly-smoke.md): no write or run tool call in any scenario", date: D, version: "2.1.319" },
+    },
     memPlugin: {
       value: { host: "claude-code", ids: ["nowledge-mem@nowledge-community"], off: "settings", contextCost: "unknown" },
       evidence: { kind: "DOCUMENTED", source: "https://mem.nowledge.co/SKILL.md (read 2026-11-10), research/47 §3; enabledPlugins in the --settings JSON (runner/test/memory.test.ts)" },
@@ -274,6 +334,10 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
       evidence: { kind: "VERIFIED", how: "research/38 §1", date: D, version: "0.167.0" },
     },
     noTools: { value: { args: [] }, evidence: { kind: "INFERRED", why: "no per-session switch for Codex's own shell and patch tools is known; the judge's clean setup turns off plugins, apps and MCP, and named MCP tools are denied" } },
+    readOnly: {
+      value: { how: '-c sandbox_mode="read-only" after OAR\'s own override: shell commands still run, read-only and without network', tools: ["shell (read-only sandbox)"] },
+      evidence: { kind: "VERIFIED", how: "app-server config/read shows read-only in the session-flags layer; results/2026-11-10-codex-gpt-6-luna-readonly-smoke.md", date: "2026-11-10", version: "0.167.0" },
+    },
     memPlugin: {
       value: { host: "codex-cli", ids: ["nowledge-mem@nowledge-community"], off: "config", contextCost: "unknown" },
       evidence: {
@@ -321,6 +385,10 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
     resume: { value: { supported: true, how: "session file path (OAR)" }, evidence: { kind: "INFERRED", why: "OAR pi runtime" } },
     browser: { value: "none (read, bash, edit, write; extensions only)", evidence: pi("`pi --help` (research/38)") },
     noTools: { value: { args: ["--no-tools"] }, evidence: { kind: "DOCUMENTED", source: "`pi --help` 1.5.1: --no-tools disables all tools by default (built-in and extension)" } },
+    readOnly: {
+      value: { how: "an allowlist: `--tools read,grep,find,ls` on its RPC process, and bash, edit and write excluded by name (OAR excludeTools)", tools: [...PI_READ_ONLY_TOOLS] },
+      evidence: PI_LIVE,
+    },
     memPlugin: {
       value: { host: "pi", ids: ["npm:nowledge-mem-pi"], off: "flag", contextCost: "unknown" },
       evidence: { kind: "DOCUMENTED", source: "https://mem.nowledge.co/SKILL.md (read 2026-11-10), research/47 §3 (`pi install npm:nowledge-mem-pi`); `pi --help`: --no-extensions disables extension discovery, explicit -e paths still load (research/03 §4.1)" },
@@ -335,19 +403,42 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
   },
   "deepseek-harness": {
     harness: "deepseek-harness",
-    version: { command: ["dsh", "--version"], pattern: /(\d+\.\d+\.\d+)/ },
-    verified: { from: "0.0.0", to: "0.0.0" },
-    models: { value: {}, evidence: { kind: "INFERRED", why: "not installed on the verifying Mac" } },
-    windowKnob: { value: { via: "none", key: "" }, evidence: { kind: "INFERRED", why: "not installed; unknown" } },
-    compactAtKnob: { value: { via: "none", key: "" }, evidence: { kind: "INFERRED", why: "not installed; unknown" } },
-    defaultCompactAt: { value: "unknown", evidence: { kind: "INFERRED", why: "not installed" } },
-    preCompactHook: { value: { supported: false }, evidence: { kind: "INFERRED", why: "not installed; unknown" } },
-    compactionEvents: { value: { started: true, ended: true }, evidence: { kind: "INFERRED", why: "OAR runtimes/dsh/projection.js maps both" } },
-    contextReport: { value: "unknown", evidence: { kind: "INFERRED", why: "not installed" } },
-    toolSearch: { value: "stdio MCP through Ducter's bridge", evidence: { kind: "INFERRED", why: "runner/oar.ts" } },
-    resume: { value: { supported: true, how: "OAR SessionOptions.resume" }, evidence: { kind: "INFERRED", why: "OAR dsh runtime" } },
-    browser: { value: "none known", evidence: { kind: "INFERRED", why: "research/38" } },
-    noTools: { value: { args: [] }, evidence: { kind: "INFERRED", why: "DSH not installed on the verifying Mac; per-session tool denial is unverified (OAR refuses it)" } },
+    // It ships prereleases (0.2.2-rc.1): the version keeps its tag, which orders before 0.2.2.
+    version: { command: ["dsh", "--version"], pattern: /(\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)/ },
+    // 0.2.2-rc.1 installed into a scratch prefix and run live 2026-11-10 (D177, research/50).
+    verified: { from: "0.2.2-rc.1", to: "0.2.2-rc.1" },
+    models: {
+      value: {
+        "deepseek-official/deepseek-flash": { id: "deepseek-official/deepseek-flash", window: DSH_PROFILE.officialWindow },
+        "deepseek-official/deepseek-v4-pro": { id: "deepseek-official/deepseek-v4-pro", window: DSH_PROFILE.officialWindow },
+        "deepseek-flash": { id: "deepseek-official/deepseek-flash", window: DSH_PROFILE.officialWindow },
+        "deepseek-v4-pro": { id: "deepseek-official/deepseek-v4-pro", window: DSH_PROFILE.officialWindow },
+      },
+      evidence: DSH_LIVE("DeepSeek's GET /models: context_window 1,048,576 and max_output_tokens 393,216 for deepseek-flash (DeepSeek-V4.1-Flash) and deepseek-v4-pro; DSH's own catalog (dsh-llm-deepseek OFFICIAL_CONTEXT_WINDOW) the same"),
+    },
+    windowKnob: {
+      value: { via: "none", key: "", note: "the model's catalog window (1M for both official models); only the compaction point is set" },
+      evidence: DSH_LIVE("dsh-compaction-basic README: the trigger is a fraction of the routed model's window W; no per-session window"),
+    },
+    compactAtKnob: {
+      value: { via: "profile", key: `${DSH_PROFILE.compaction}.thresholdRatio`, unit: "percent", min: 0, max: 1, note: "a fraction of W, in a Ducter-owned home's profile layer only; a task under the user's own home keeps the user's" },
+      evidence: DSH_LIVE("research/50 §3: thresholdRatio set in the home's profile layer moved the compaction point live (compaction_started/ended through OAR at the set size)"),
+    },
+    defaultCompactAt: { value: "floor(min(W x 0.8, W - O - 65,536)); W 1,048,576: about 590K", evidence: { kind: "DOCUMENTED", source: "dsh-compaction-basic README 0.2.2-rc.1 (thresholdRatio 0.8, headroomTokens 65,536)" } },
+    preCompactHook: { value: { supported: false }, evidence: { kind: "INFERRED", why: "no pre-compaction hook among the acp profile's rows (dsh --dump-config 0.2.2-rc.1); retainRatio/retainTokens set what stays verbatim" } },
+    compactionEvents: { value: { started: true, ended: true }, evidence: DSH_LIVE("research/50 §3: both reached Ducter through OAR runtimes/dsh/projection.js") },
+    contextReport: { value: "the last request's total tokens (input + cache read), OAR contextUsage", evidence: DSH_LIVE("research/50 §2: contextTokens on every turn end, equal to the session log's usage.totalTokens") },
+    toolSearch: { value: "stdio MCP through Ducter's bridge; loaded up front, named mcp__<server>__<tool>", evidence: DSH_LIVE("research/50 §2: the session's tool list") },
+    resume: { value: { supported: true, how: "OAR SessionOptions.resume, sessions kept under DSH_HOME/sessions" }, evidence: DSH_LIVE("research/50 §2: resumed by id with its history") },
+    browser: { value: "none (web_search / web_fetch over DeepSeek's API; no browser)", evidence: DSH_LIVE("the acp profile's tool-web row") },
+    noTools: {
+      value: { args: [] },
+      evidence: DSH_LIVE("research/50 §2: no launch arguments (OAR owns them); a one-shot's Ducter-owned home drops every tool row in its profile layer (DSH_PROFILE.readOnlyOff + noToolsOff), and the session's tool list was empty"),
+    },
+    readOnly: {
+      value: { how: "a Ducter-owned home whose profile layer drops every tool that runs, writes, delegates or plans (DSH_PROFILE.readOnlyOff), tool-fs keeps only read, and DSH_PERMISSION_MODE=read-only underneath", tools: ["read", "read_image", "glob", "grep", "web_search", "web_fetch"] },
+      evidence: DSH_LIVE("research/50 §2: before, the partner session wrote a file and ran touch (bash, write); after, neither tool existed, neither file was made, Ducter's MCP tools still answered"),
+    },
     memPlugin: {
       value: { host: "deepseek-harness", ids: ["nowledge-mem"], off: "home", contextCost: "unknown" },
       evidence: { kind: "INFERRED", why: "the author's inspect fixture lists a dsh_profile_bundle 0.1.2 for host deepseek-harness (packages/protocol/fixtures/mem-inspect); DSH is not installed on the verifying Mac, so no per-session profile switch is known; a Ducter-owned DSH_HOME (as the partner's clean setup) loads none of the user's profiles" },
@@ -373,7 +464,9 @@ export interface WindowKnobs {
   args: string[];
   /** Claude Code settings (the session's settings file or --settings). */
   settings: Record<string, unknown>;
-  /** Not enforceable on this harness (pi, DeepSeek Harness): left to its defaults. */
+  /** DeepSeek Harness profile-layer rows (DSH_PROFILE), applied only in a home Ducter owns. */
+  profile?: Record<string, unknown>[];
+  /** Not enforceable on this harness (pi; DeepSeek Harness under the user's own home): left to its defaults. */
   unbounded?: boolean;
 }
 
@@ -386,7 +479,7 @@ export function claudeCompactPct(window: number, compactAt: number): number | un
 }
 
 /** The flags and env that hold a session to its window and compaction point. */
-export function windowKnobs(h: HarnessId, plan: WindowPlan): WindowKnobs {
+export function windowKnobs(h: HarnessId, plan: WindowPlan, model?: string): WindowKnobs {
   const f = HARNESS_FACTS[h];
   const window = Math.round(plan.window);
   const compactAt = Math.round(Math.min(plan.compactAt, plan.window));
@@ -403,6 +496,16 @@ export function windowKnobs(h: HarnessId, plan: WindowPlan): WindowKnobs {
     }
     case "codex":
       return { env: {}, args: ["-c", `${f.windowKnob.value.key}=${window}`, "-c", `${f.compactAtKnob.value.key}=${compactAt}`], settings: {} };
+    case "deepseek-harness": {
+      // The compactor fires at a fraction of the model's own window (research/50 §3): the plan's
+      // compaction point over that window. The window itself can't be narrowed.
+      const w = (model && f.models.value[model]?.window) || DSH_PROFILE.officialWindow;
+      const ratio = Math.min(0.8, Math.max(0.01, Math.ceil((compactAt / w) * 1e6) / 1e6));
+      // Its default retention (16% of the window, ~104K) at or above the threshold rejects the
+      // whole plugin at load, silently: no compaction and no overflow recovery (research/50 §3).
+      // A quarter of the compaction point stays verbatim instead.
+      return { env: {}, args: [], settings: {}, profile: [{ id: DSH_PROFILE.compaction, config: { thresholdRatio: ratio, retainTokens: Math.round(Math.min(compactAt, w * ratio) / 4) } }] };
+    }
     default:
       return { env: {}, args: [], settings: {}, unbounded: true };
   }
@@ -439,16 +542,26 @@ export function defaultsToOneMillion(h: HarnessId, model: string): boolean {
 
 // ---------- versions ----------
 
-function parts(v: string): number[] {
-  return v.split(".").map((x) => Number.parseInt(x, 10) || 0);
-}
-
+/** semver order with prereleases (0.2.2-rc.1 < 0.2.2), numeric parts compared as numbers. */
 export function compareVersions(a: string, b: string): number {
-  const x = parts(a);
-  const y = parts(b);
-  for (let i = 0; i < Math.max(x.length, y.length); i++) {
-    const d = (x[i] ?? 0) - (y[i] ?? 0);
+  const re = /^(\d+(?:\.\d+)*)(?:-([0-9A-Za-z.-]+))?/;
+  const x = re.exec(a.trim()) ?? [a, a, undefined];
+  const y = re.exec(b.trim()) ?? [b, b, undefined];
+  const nums = (v: string) => v.split(".").map((p) => Number.parseInt(p, 10) || 0);
+  const [cx, cy] = [nums(x[1]!), nums(y[1]!)];
+  for (let i = 0; i < Math.max(cx.length, cy.length); i++) {
+    const d = (cx[i] ?? 0) - (cy[i] ?? 0);
     if (d) return d < 0 ? -1 : 1;
+  }
+  if (!x[2] || !y[2]) return x[2] ? -1 : y[2] ? 1 : 0;
+  const [px, py] = [x[2].split("."), y[2].split(".")];
+  for (let i = 0; i < Math.max(px.length, py.length); i++) {
+    if (px[i] === undefined) return -1;
+    if (py[i] === undefined) return 1;
+    const [nx, ny] = [Number(px[i]), Number(py[i])];
+    if (/^\d+$/.test(px[i]!) && /^\d+$/.test(py[i]!)) {
+      if (nx !== ny) return nx < ny ? -1 : 1;
+    } else if (px[i] !== py[i]) return px[i]! < py[i]! ? -1 : 1;
   }
   return 0;
 }

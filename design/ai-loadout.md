@@ -320,7 +320,9 @@ first. Reused: 规则, 额度, 装上, 换到 X 接着做, 谁在做, 好 / 先�
 6. **Which harnesses may be the brain in v1:** Claude Code only (built, isolated) and show the
    others as tasks-only with "以后会有 / Coming later" in the socket, vs build Codex-as-partner
    (`-c` overrides, no user `AGENTS.md`). *Default: Claude Code and Codex; pi and DeepSeek
-   tasks-only until each passes the partner eval (`packages/partner/eval`).*
+   tasks-only until each passes the partner eval (`packages/partner/eval`).* Both passed it
+   (D177, research/50): all four may be the brain now, so "以后会有 / Coming later" shows only for
+   an AI agent the registry doesn't let carry the partner (none today).
 7. **Rules UI:** list and remove on Partner, add only by saying it. *Default: yes; no rule
    editor form.*
 8. **Per-account "Use it for tasks" switch.** *Default: on for every signed-in account.*

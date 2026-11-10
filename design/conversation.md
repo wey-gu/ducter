@@ -70,10 +70,15 @@ promotion are not built.*
   NotebookEdit and subagents are denied; Read, Grep, Glob, WebFetch, WebSearch and Ducter's tools
   stay, and a file read over 8k tokens is refused so it is read in parts. Codex: its read-only
   sandbox (shell still runs, read-only, no network); Ducter's tools are marked read-only for that
-  session so Codex runs them. pi: bash, edit and write are excluded. DeepSeek Harness: not
-  narrowed (no tool denial; its read-only mode is unverified). Evals:
+  session so Codex runs them. pi (D177): an allowlist, `--tools read,grep,find,ls,mcp__*`, with
+  bash, edit and write also excluded by name. DeepSeek Harness (D177): the partner's
+  Ducter-owned home carries a profile layer that drops every tool that runs, writes, delegates or
+  plans (read, glob, grep, web search and fetch stay), with DSH's read-only sandbox preset
+  underneath. Both checked live: asked to write a file and to run a command, neither could
+  (research/50 §2; before D177, DeepSeek Harness did both). Evals:
   `packages/partner/eval/results/2026-11-09-haiku-readonly-smoke.md`,
-  `2026-11-10-codex-gpt-6-luna-readonly-smoke.md`.
+  `2026-11-10-codex-gpt-6-luna-readonly-smoke.md`, and the full runs on pi and DeepSeek Harness
+  (research/50 §5).
 - **Promotion.** A fork that outgrows its budget becomes a window seeded with a brief plus
   the fork's checkpoint. The fork itself does not continue, so a long job never carries the
   whole channel.

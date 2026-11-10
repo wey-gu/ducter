@@ -5,7 +5,7 @@ import { afterEach, expect, test } from "bun:test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type { DeviceHarness, LogEvent, RuleView, ServerFrame, Settings } from "@ducter/protocol";
-import { chooseBody, fwCandidates } from "../src/candidates.ts";
+import { brainModelRows, chooseBody, fwCandidates } from "../src/candidates.ts";
 import { startCore, triggersPartner, type Core } from "../src/core.ts";
 import { openRules, ruleFor } from "../src/rules.ts";
 import { tempDir } from "./helpers.ts";
@@ -29,8 +29,9 @@ test("candidates: the strongest with the most limit first, then the others, then
     "claude-code:opus:fit",
     "codex::fit",
     "claude-code:sonnet:fast",
+    // D177: DeepSeek Harness's rows carry DeepSeek's models; blocked, its strongest is named.
+    "deepseek-harness:deepseek-official/deepseek-v4-pro:not_installed",
     "pi::no_model",
-    "deepseek-harness::not_installed",
   ]);
   expect(list[0]!.left).toBe(0.64);
 });
@@ -178,8 +179,32 @@ test("socket: a Codex-only home shows Codex, auto, and refuses Claude Code", asy
   expect(core.partnerFallback?.()).toEqual({ harness: "codex" });
 });
 
+// D177: a home with only a DeepSeek key works as it is: DeepSeek Harness, auto, said truthfully.
+test("socket: a DeepSeek-only home thinks with DeepSeek Harness, auto", async () => {
+  const dsIn: DeviceHarness = { harness: "deepseek-harness", installed: true, loggedIn: true, canBePartner: true, billing: "usage", models: [{ id: "deepseek-official/deepseek-flash", label: "DeepSeek-V4.1-Flash" }, { id: "deepseek-official/deepseek-v4-pro", label: "DeepSeek-V4-Pro" }] };
+  harnessesNow = [cc(0.5, { installed: false, loggedIn: false, canBePartner: false }), { ...pi, loggedIn: true, canBePartner: true }, dsIn];
+  const core = boot();
+  for (let i = 0; i < 50 && !core.devicesView.harnessesNow(); i++) await Bun.sleep(10);
+  const c = await client(core.url);
+  c.send({ t: "settings" });
+  type S = Extract<ServerFrame, { t: "settings" }>;
+  const s = await c.until<S>((f) => f.t === "settings");
+  // DeepSeek Harness before pi (PARTNER_FALLBACK); a plan (Codex) would come before both.
+  expect(s.brainNow).toMatchObject({ harness: "deepseek-harness", auto: true, why: "only_signed_in" });
+  // The models in plain words, smartest and faster (never the provider/model id).
+  expect(s.brainNow!.models).toEqual([
+    { id: "deepseek-official/deepseek-flash", label: "Flash", kind: "fast" },
+    { id: "deepseek-official/deepseek-v4-pro", label: "V4 Pro", kind: "smart" },
+  ]);
+  // Not listed by the home: the tier table's two, in the same words.
+  expect(brainModelRows("deepseek-harness", undefined).map((m) => `${m.label}:${m.kind}`)).toEqual(["V4 Pro:smart", "Flash:fast"]);
+  // pi: DeepSeek's only when pi lists them (its models follow its providers).
+  expect(brainModelRows("pi", { harness: "pi", installed: true, loggedIn: true, canBePartner: true })).toEqual([]);
+  expect(core.partnerFallback?.()).toEqual({ harness: "deepseek-harness" });
+});
+
 test("socket: brain must be signed in here and able to be the partner", async () => {
-  harnessesNow = [cc(), { ...pi, loggedIn: true }];
+  harnessesNow = [cc(), pi];
   const core = boot();
   const c = await client(core.url);
   c.send({ t: "settings_set", patch: { brain: { harness: "pi" } } });

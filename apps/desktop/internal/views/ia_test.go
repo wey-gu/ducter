@@ -91,6 +91,30 @@ func TestPartnerTabShowsTheBrainInUse(t *testing.T) {
 	}
 }
 
+// D177: a home with only a DeepSeek key thinks with DeepSeek Harness, and the
+// auto line says only what is true (pi may be signed in too).
+func TestPartnerTabDeepSeekFallback(t *testing.T) {
+	app, _ := iaApp(t, i18n.ZH)
+	app.URL = "wss://hel.example.com/ws"
+	f := settingsFrame()
+	f.BrainNow = &protocol.BrainNow{Brain: protocol.Brain{Harness: "deepseek-harness"}, Auto: true, Why: "only_signed_in"}
+	app.Receive(f)
+	app.Receive(protocol.ServerFrame{T: "devices", Devices: []protocol.DeviceView{{ID: "hel", Name: "hel", Kind: "server", Home: true, State: protocol.DeviceAwake,
+		Harnesses: []protocol.DeviceHarness{{Harness: "claude-code"}, {Harness: "pi", Installed: true, LoggedIn: true, CanBePartner: true}, {Harness: "deepseek-harness", Installed: true, LoggedIn: true, CanBePartner: true}}}}})
+	app.OpenPartner()
+	tt := ui.NewTesterWith(app.View, 1280, 1400, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
+	tt.Frame()
+	tt.Frame()
+	for _, want := range []string{"住在 hel 上 · 用 DeepSeek Harness 想事情", "自动选的：Claude Code 没登录"} {
+		if !tt.HasText(want) {
+			t.Errorf("no %q in %q", want, tt.Texts())
+		}
+	}
+	if tt.HasText("自动选的：只有 DeepSeek Harness 登录了") {
+		t.Errorf("says only DeepSeek Harness is signed in while pi is too: %q", tt.Texts())
+	}
+}
+
 // D141: with the persona's Mem identity bound, the memory card says whose name
 // its memories are kept under, in plain words.
 func TestPartnerPageKeptUnder(t *testing.T) {

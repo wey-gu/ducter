@@ -130,8 +130,8 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       scripted runtime (`packages/cli/test/brain-switch.test.ts`). A live Codex partner turn is
       still to walk.
 - [ ] **Codex as what it thinks with** behind its config isolation (`-c` overrides, no user
-      `AGENTS.md`) and a pass of `packages/partner/eval`; pi and DeepSeek Harness the same,
-      each when it passes the eval.
+      `AGENTS.md`) and a pass of `packages/partner/eval`. pi and DeepSeek Harness: done (D177,
+      research/50 §5).
 - [ ] **The partner's prompt sees Your rules** (today core applies them in `fw_candidates`;
       the partner learns them only through `rule_list`). Trigger: a rule the partner ignores
       when it pins a harness itself.
@@ -196,7 +196,9 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       leaves its SessionStart hook running. Check on a scratch `CODEX_HOME`; if so, also turn the
       user's hooks off in memory-off tasks (`features.hooks=false`), and say so. Trigger: same.
 - [ ] **DeepSeek Harness memory off** (D174 (7)) runs under a Ducter-owned home: verify the login
-      and the profile bundle's absence on a real install. Trigger: DSH verified at all.
+      and the profile bundle's absence on a real install. DSH 0.2.2-rc.1 now runs live (D177): the
+      login holds in an owned home (the key from the env); the bundle's absence needs Mem's DSH
+      bundle installed in a user home to compare. Trigger: a user with Mem on DSH.
 
 - [x] **One live write**, read back, then removed (D63, D141 (6), 2026-11-09): identity,
       `source_app` and `metadata.source_message_id` verified on Cloud. The key may not create
@@ -257,13 +259,17 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [x] The partner's harness compactor bounded above the re-cut (Claude Code window + no idle or
       precomputed compaction; Codex token limit), the context size taken from the harness's own
       count and kept across a resume, and a re-cut with no digest (research/11 §7.3.7).
-- [ ] Bound pi's and DeepSeek Harness's own compactors for the partner (pi:
-      `session_before_compact` → cancel, research/11 §7.3.7). Trigger: either becomes
-      partner-capable.
+- [x] Bound pi's and DeepSeek Harness's own compactors for the partner (D177): DeepSeek Harness
+      by its owned home's `compaction-basic.thresholdRatio` + `retainTokens` (live); pi by Ducter's
+      re-cut at 120K (pi's own point is the window minus 16K).
+- [ ] pi's own compactor as a second bound under the re-cut: an extension on
+      `session_before_compact` that cancels in a partner session. Trigger: a pi model with a
+      window under ~140K offered as the brain.
 - [ ] D135 small windows on pi and DeepSeek Harness: pi has no per-session window or
       compaction flag (settings.json `compaction.reserveTokens` only; a project `.pi/settings.json`
-      or an extension on `session_before_compact` could carry the save/re-inject); DeepSeek
-      Harness is unverified. Both run with their defaults. Trigger: a task on either runs long.
+      or an extension on `session_before_compact` could carry the save/re-inject). DeepSeek
+      Harness tasks in a Ducter-owned home (memory off) get the compaction point (D177); a task in
+      the user's own home keeps the user's. Trigger: a task on either runs long.
 - [ ] D135 periodic re-verify of `design/harnesses.md`: `bun scripts/probe-harnesses.ts --strict`
       on each harness update (and in CI on a machine with them installed); widen `verified` only
       after the live checks behind each fact are re-run. Trigger: `ducter doctor`'s warning, or
@@ -392,10 +398,9 @@ note and a `Dn`) before it is built.
       would make app-level keystrokes impossible in a browser place; the `mcp_servers.<name>.enabled`
       path is verified, the `env` one is not (it might replace the server's whole env and break
       it). Trigger: the first live run of (2) above.
-- [ ] **A clean setup for DeepSeek Harness browser tasks.** Its clean home
-      (`<dataDir>/harness/deepseek-harness`, AGENTS.md = instructions) is the partner's; a browser
-      task there would overwrite it. Give tasks a home of their own per task, then set it in
-      runner `withBrowser`. Trigger: the first DeepSeek Harness browser task.
+- [ ] **A clean setup for DeepSeek Harness browser tasks.** Owned homes are per setup now
+      (`<dataDir>/harness/dsh/<hash>`, D177), so a browser task no longer overwrites the partner's;
+      set the clean setup in runner `withBrowser`. Trigger: the first DeepSeek Harness browser task.
 
 ## The device card as a character sheet (D161, `design/ui-devices-card.md`)
 
@@ -584,9 +589,17 @@ Codex first, once OAR is near 1.0. See `research/17`.
 
 ## First-wave harnesses (D85, `research/34`)
 
-- [ ] The full partner eval (all scenarios, 2 runs) on pi and on DeepSeek Harness; flip
-      `HARNESSES[id].partner` when one holds the Claude Code floor. Trigger: the author asks for
-      a non-plan brain, or a cheaper partner.
+- [x] The full partner eval on pi and on DeepSeek Harness, flipped `partner` (D177: DSH 68/74,
+      pi 62/74, Claude Code + haiku 52/74 on the same persona; research/50 §5).
+- [ ] A second full run of each (variance), and DeepSeek V4 Pro on both. Trigger: before 0.0.9 ships.
+- [ ] pi's cache reads were 73% of input in the eval against DSH's 96% on the same model: find the
+      part of pi's request that varies early. Trigger: pi as the brain on a busy day.
+- [ ] Owned DSH homes are one per setup (`<dataDir>/harness/dsh/<hash>`): each persona edit leaves
+      the old home and its sessions. Remove homes untouched for 30 days. Trigger: ten of them.
+- [ ] One DeepSeek key for pi and DeepSeek Harness (D102 gives it to DSH only; pi on DeepSeek signs
+      in with its own `/login`). The author's call (D177, default no).
+- [ ] Why Bun 1.3.1 SIGKILLs a host after a few pi RPC sessions (research/50 §4; 1.4.4 doesn't).
+      Trigger: a Bun older than the pin anywhere Ducter runs.
 - [ ] The full partner eval on Codex at its workhorse model (gpt-6.1-sol) before Codex is
       offered as the brain. Trigger: the ai-loadout UI lands.
 - [ ] Verify Codex leaves out a non-empty global `~/.codex/AGENTS.md` and the user's

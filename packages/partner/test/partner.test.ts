@@ -382,8 +382,8 @@ describe("turn loop", () => {
     await p1.close();
     expect(fr.sessions[0]!.spec).toMatchObject({ harness: "codex", model: "gpt-6-luna", isolateUserConfig: true });
     clock.advance(5 * 60 * 1000);
-    // A brain the partner may not use (v1: pi is tasks only) falls back to Claude Code + opus.
-    settings = { brain: { harness: "pi" } };
+    // A brain the partner may not use (an id it doesn't know) falls back to Claude Code + opus.
+    settings = { brain: { harness: "nope" } };
     const p2 = createPartner(withSettings({ ...fc.core, mcp: fakeCore(clock, dir).core.mcp }), fr.runner, { now: clock.now, onError: () => {} });
     p2.onTrigger(fc.core.log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: "again" } }));
     await p2.idle();

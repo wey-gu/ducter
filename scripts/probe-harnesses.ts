@@ -140,6 +140,40 @@ function probeMem() {
     say("mem", "nmem plugins inspect", null, "no JSON");
   }
 }
+/**
+ * D177 (research/50): the read-only partner's switches. pi must still take the allowlist and the
+ * denylist; DeepSeek Harness's acp profile must still have every row Ducter's profile layer names
+ * (a renamed tool row would stay on in the partner). The dump runs under a throwaway DSH_HOME, so
+ * the user's own home is never touched.
+ */
+async function probeReadOnly() {
+  if (Bun.which("pi")) {
+    const r = run(["pi", "--help"]);
+    for (const f of ["--tools", "--exclude-tools", "--no-tools"]) say("pi", `read-only: ${f}`, r.out.includes(f), "harness-facts readOnly / noTools");
+  }
+  if (!Bun.which("dsh")) return;
+  const { mkdtempSync, rmSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { DSH_PROFILE } = await import("../packages/protocol/src/harness-facts.ts");
+  const home = mkdtempSync(join(tmpdir(), "ducter-probe-dsh-"));
+  try {
+    const r = Bun.spawnSync(["dsh", "--profile", DSH_PROFILE.profile, "--dump-config"], { cwd: home, stdin: "ignore", stdout: "pipe", stderr: "pipe", timeout: 30_000, env: { ...process.env, DSH_HOME: home, DSH_TELEMETRY_DISABLED: "1", NO_COLOR: "1" } });
+    const ids = new Set([...r.stdout.toString().matchAll(/^- id: (\S+)/gm)].map((m) => m[1]));
+    if (!ids.size) return say("deepseek-harness", "profile rows", null, "no --dump-config output");
+    const want = [DSH_PROFILE.systemPrompt, DSH_PROFILE.fs, DSH_PROFILE.compaction, DSH_PROFILE.sessionLog, ...DSH_PROFILE.readOnlyOff, ...DSH_PROFILE.noToolsOff];
+    const gone = want.filter((id) => !ids.has(id));
+    say("deepseek-harness", "profile rows the partner's layer names", gone.length === 0, gone.length ? `gone: ${gone.join(", ")}` : `${want.length} rows present`);
+    // A new tool row stays on in the partner until it is named: drift, not a note.
+    const known: readonly string[] = [...want, ...DSH_PROFILE.notTools, "tool-fs-search", "tool-web"];
+    const fresh = [...ids].filter((id) => id!.startsWith("tool-") && !known.includes(id!));
+    say("deepseek-harness", "every tool row is named (read-only or off)", fresh.length === 0, fresh.length ? `new: ${fresh.join(", ")}: read-only, or add it to DSH_PROFILE.readOnlyOff` : "");
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+}
+await probeReadOnly();
+
 if (!process.argv.includes("--offline")) await probeChannels();
 
 /**

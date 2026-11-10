@@ -5,6 +5,8 @@
 <!-- whats-new
 zh: App 支持 iPad 和 iPhone Duo；宽屏时对话和手头的事并排
 en: The app runs on iPad and iPhone Duo; wide screens show On hand beside the chat
+zh: 伙伴也能用 DeepSeek Harness 或 pi 想事情
+en: Your partner can now think with DeepSeek Harness or pi
 -->
 
 **iPad and iPhone Duo**
@@ -16,6 +18,18 @@ en: The app runs on iPad and iPhone Duo; wide screens show On hand beside the ch
 - With a keyboard: ⌘N new task, ⌘1 conversation, ⌘2 On hand, ⌘3 your devices, ⌘4 partner, ⌘,
   Settings, ⌘K the box to write in, Esc back one level. Sheets open in the middle on an iPad.
 - An iPad calls itself an iPad: "this iPad" in the copy, "iPad · Ducter" in your devices.
+
+**Your partner on DeepSeek Harness or pi**
+- In Settings › Partner, DeepSeek Harness and pi can now go in the socket next to Claude Code and
+  Codex, with DeepSeek's **V4 Pro** (smartest) or **Flash** (faster replies). A server with only a
+  DeepSeek key works as it is: your partner thinks with DeepSeek Harness and says why.
+- On every AI agent your partner only reads and decides: on these two as well, it can't change
+  your files or run commands itself (checked, not just asked); its tasks do the work.
+- On DeepSeek Harness, Ducter's own instructions are its partner's real system prompt, its long
+  conversations compact where Ducter sets, and only the model call goes to DeepSeek.
+
+**Under the hood**
+- DeepSeek Harness 0.2.2-rc.1 verified; a look-up on the web is never answered from memory.
 
 ## 0.0.8
 

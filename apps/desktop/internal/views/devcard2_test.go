@@ -125,17 +125,17 @@ func TestDevicesHelColumn(t *testing.T) {
 				h.tt.SetSize(sz.w, sz.h)
 				h.settle(200 * time.Millisecond)
 				// The card's first line is never under the column's edge.
-				if r, ok := h.tt.Find(h.app.kindLine(h.app.homeDevice())); !ok || r.Y < float32(ChromeH) {
-					t.Fatalf("%s: the card's kind line is clipped: %v %v", sz.name, r, ok)
+				if r, ok := h.tt.Find(h.app.L.T("card.status.home", h.app.S.PersonaName)); !ok || r.Y < float32(ChromeH) {
+					t.Fatalf("%s: the card's status line is clipped: %v %v", sz.name, r, ok)
 				}
 				h.shotPage(fmt.Sprintf("column-%s-%s", lang, sz.name))
 			}
-			// One scroll: the last ability's words are reachable, whole.
+			// One scroll: the card's last chip is reachable, whole.
 			h.tt.SetSize(1280, 860)
 			h.tt.Scroll(640, 430, 0, 4000)
 			h.settle(200 * time.Millisecond)
-			if r, ok := h.tt.Find(h.app.L.T("ability.call")); !ok || r.Y+r.H > 860 {
-				t.Fatalf("the grid's last tile is cut off: %v %v", r, ok)
+			if r, ok := h.tt.Find(h.app.L.T("chip.remote")); !ok || r.Y+r.H > 860 {
+				t.Fatalf("the card's last chip is cut off: %v %v", r, ok)
 			}
 		})
 	}
@@ -155,15 +155,17 @@ func TestDevicesHelFolding(t *testing.T) {
 			}
 			d.selClient = "app1"
 			h.settle(200 * time.Millisecond)
-			for _, want := range []string{L.T("device.kind.mac.app"), L.T("device.cli.too"), L.T("device.does"), L.T("work.mac.title", "hel")} {
+			for _, want := range []string{L.T("card.status.this"), L.T("card.via", L.T("card.via.app")+L.T("card.via.and")+L.T("card.via.cli")), L.T("chip.worker", "hel")} {
 				if !h.tt.HasText(want) {
 					t.Fatalf("this Mac's card: missing %q in %q", want, h.tt.Texts())
 				}
 			}
 			h.shotPage(fmt.Sprintf("mac-%s-cli-folded", lang))
 
-			// The command line's own 断开, from its line's menu, confirmed in place.
-			d.card.cutting = "cli1"
+			// The command line's own 断开, inside the ⋯ in place, confirmed in place.
+			h.click(L.T("card.via.more"))
+			h.settle(100 * time.Millisecond)
+			h.click(L.T("device.disconnect") + " · " + L.T("device.cli.name", thisMac))
 			h.settle(100 * time.Millisecond)
 			ask := L.T("device.disconnect.ask", L.T("device.cli.name", thisMac))
 			if !h.tt.HasText(ask) || !h.tt.HasText(L.T("device.disconnect.means.cli")) {
@@ -191,7 +193,7 @@ func TestDevicesHelFolding(t *testing.T) {
 			}
 			d.selClient, d.sel = "", "w-mac"
 			h.settle(200 * time.Millisecond)
-			for _, want := range []string{L.T("device.app.too"), L.T("work.mac.note.on", w.Log()) + " " + L.T("where.first_line")} {
+			for _, want := range []string{L.T("card.via", L.T("card.via.app")), L.T("chip.worker", "hel")} {
 				if !h.tt.HasText(want) {
 					t.Fatalf("worker card: missing %q in %q", want, h.tt.Texts())
 				}
@@ -205,8 +207,8 @@ func TestDevicesHelFolding(t *testing.T) {
 			}
 			d.sel, d.selClient = "", "app1"
 			h.settle(200 * time.Millisecond)
-			if !h.tt.HasText(L.T("work.mac.note.off", "hel")) {
-				t.Fatalf("off: %q", h.tt.Texts())
+			if !h.tt.HasText(L.T("chip.worker", "hel")) || h.tt.HasText(L.T("work.mac.note.off", "hel")) {
+				t.Fatalf("off: the chip, its helper behind ⓘ: %q", h.tt.Texts())
 			}
 			h.shotPage(fmt.Sprintf("mac-%s-work-off", lang))
 
@@ -229,7 +231,7 @@ func TestDevicesHelClientCard(t *testing.T) {
 			d := h.app.devState()
 			d.selClient = "ph2"
 			h.settle(200 * time.Millisecond)
-			for _, want := range []string{L.T("device.kind.iphone.safari"), L.T("device.does.phone", h.app.S.PersonaName), L.T("device.disconnect")} {
+			for _, want := range []string{L.T("card.via", L.T("card.via.safari")), L.T("card.disconnect.device", "iPhone · Safari · 2")} {
 				if !h.tt.HasText(want) {
 					t.Fatalf("phone card: missing %q in %q", want, h.tt.Texts())
 				}
@@ -269,7 +271,7 @@ func TestDevicesHelClientCard(t *testing.T) {
 			h.until("lone cli", func() bool { return len(h.app.S.Reach.Clients) == 1 })
 			d.selClient, d.sel = "cli9", ""
 			h.settle(200 * time.Millisecond)
-			if !h.tt.HasText("mini") || !h.tt.HasText(L.T("device.cli.only")) || !h.tt.HasText(L.T("device.kind.cli")) {
+			if !h.tt.HasText("mini") || !h.tt.HasText(L.T("card.via", L.T("card.via.cli"))) || !h.tt.HasText(L.T("device.client.now")) {
 				t.Fatalf("lone cli: %q", h.tt.Texts())
 			}
 			for _, s := range h.tt.Texts() {

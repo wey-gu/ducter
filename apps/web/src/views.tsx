@@ -13,6 +13,8 @@ import { closingWords, computerApart, computerName, computerOf, computers, compu
 import { ago, behind, cjkPad, deviceLabel, duration, firstClause, harnessName, modelName, phaseLine as phaseWords, placeLine, sameWords, splitOutcome, when } from "./format.ts";
 import { markdown } from "./markdown.ts";
 import { Coin } from "./coin.tsx";
+import { Btn, Toggle } from "./controls.tsx";
+import { deviceArt, DevicesSection } from "./devcard.tsx";
 import { appPush, disablePush, enablePush } from "./push-client.ts";
 import { inApp } from "./native.ts";
 import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, WaitBubble, waitCaption, WaitDetails, waitLine } from "./work.tsx";
@@ -173,21 +175,6 @@ const Back = () => (
 // partner hasn't confirmed it yet, usually for seconds (desktop: stateLabel).
 const stateLabel = (a: Attention) => t(`state.${a === "done_claimed" ? "done" : a}`);
 
-/** One clay button family (D76): primary last in a row, at most one per group. */
-function Btn(p: { kind: "primary" | "secondary" | "text" | "accent"; size?: "sm" | "lg"; onClick: () => void; label: string; about?: string; disabled?: boolean; grow?: boolean; class?: string; expanded?: boolean }) {
-  return (
-    <button
-      class={`btn ${p.kind}${p.size ? ` ${p.size}` : ""}${p.grow ? " grow" : ""}${p.class ? ` ${p.class}` : ""}`}
-      onClick={p.onClick}
-      title={p.kind === "primary" ? p.label : undefined}
-      aria-label={p.about ? `${p.label} · ${p.about}` : undefined}
-      disabled={p.disabled}
-      aria-expanded={p.expanded}
-    >
-      <span class="lbl">{p.label}</span>
-    </button>
-  );
-}
 
 function AutoText(p: { value: string; onInput: (v: string) => void; placeholder: string; label: string; onEnter?: () => void; autoFocus?: boolean; id?: string }) {
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -1236,7 +1223,7 @@ function Composer({ taskId }: { taskId?: string }) {
 // ---------- notifications ask (in the partner's voice, with a default) ----------
 
 /** Asks the browser, subscribes, tells core; says so if the browser can't. */
-async function turnOnPush() {
+export async function turnOnPush() {
   try {
     const s = await Promise.race([
       enablePush(A.api, A.base, A.L.lang, A.me!.push.publicKey!),
@@ -1674,6 +1661,8 @@ function SwitchList({ task }: { task: Task }) {
   const go = moving ? t("switch.move.go", chosen!.deviceName ?? "") : chosen ? t("who.go", candName(chosen)) : "";
   return (
     <div class="switch-list" role="radiogroup" aria-label={t("who.switch")}>
+      {/* D161 (6): with two or more computers the sheet says it covers where too. */}
+      {multi && <div class="switch-sub">{t("switch.sub")}</div>}
       <div class="small sub">{t(running ? "who.switch.note" : "who.switch.note.idle")}</div>
       {multi
         ? groups.map((g) => {
@@ -1681,8 +1670,10 @@ function SwitchList({ task }: { task: Task }) {
             return (
               <div key={g} class="switch-group">
                 <div class="switch-head">
+                  {/* D161 (9): a group head is the device's mini card. */}
+                  {dv && <img src={deviceArt(dv)} alt="" />}
                   <b>{dv?.name ?? g}</b>
-                  {dv && <span>· {computerState(dv)}</span>}
+                  {dv && <span class={dv.state === "asleep" ? "asleep" : ""}>· {computerState(dv)}</span>}
                 </div>
                 {list.filter((c) => (c.device ?? "") === g).map(row)}
               </div>
@@ -2014,17 +2005,6 @@ function Seg<V extends string | number>(p: { label: string; value: V | undefined
   );
 }
 
-function Toggle(p: { label: string; help?: string; checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
-  return (
-    <label class="switch">
-      <span>
-        {p.label}
-        {p.help && <small>{p.help}</small>}
-      </span>
-      <input type="checkbox" role="switch" checked={p.checked} disabled={p.disabled} onChange={(e) => p.onChange((e.target as HTMLInputElement).checked)} />
-    </label>
-  );
-}
 
 const tz = () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 
@@ -2555,436 +2535,6 @@ function Accounts() {
       )}
       {!adding && refusal && <AcctRefusal reason={refusal} hosted={false} />}
       <div class="small sub">{t("acct.honest")}</div>
-    </section>
-  );
-}
-
-// ---------- 你的设备 / Your devices (D148): each card renamed in place, its version and update ----------
-
-/** What a device is and what it's for, in plain words (the desktop's kindLine). */
-function kindLine(dv: DeviceView): string {
-  const who = A.S.personaName;
-  let what = t("device.what.computer");
-  if (dv.kind === "server") what = t("device.what.cloud");
-  else if ((dv.platform ?? "").startsWith("darwin") || dv.kind === "laptop" || dv.kind === "mini") what = t("device.what.mac");
-  if (dv.home) return t("device.what.home", what, who);
-  return t("device.what.worker", dv.kind === "server" ? what : t("device.other"), who);
-}
-
-type Client = Reach["clients"][number];
-
-// D155: one computer, one card. The command line (and the app window on a computer that does tasks)
-// folds into its computer's card as one quiet line, with its own 断开; alone, it stands as its
-// computer, never as "CLI on …".
-const isCli = (cl: Client) => cl.form === "cli" || (!cl.form && cl.name.startsWith("CLI on "));
-function clientComputer(cl: Client): string {
-  if (cl.computer) return cl.computer;
-  if (isCli(cl)) return cl.name.replace(/^CLI on /, "").trim();
-  return /^(darwin|linux|win)/i.test(cl.platform) ? cl.name : "";
-}
-const clientName = (cl: Client) => (isCli(cl) && cl.name.startsWith("CLI on ") ? clientComputer(cl) || cl.name : cl.name);
-
-/** Which clients fold into which card ("dev:id" | "cl:id"), and which get none of their own. */
-export function foldClients(devices: DeviceView[], clients: Client[]): { hidden: Set<string>; members: Map<string, Client[]> } {
-  const key = (s: string) => s.trim().toLowerCase();
-  const workers = new Map<string, string>();
-  for (const dv of devices) if (!dv.home) workers.set(key(dv.computer || dv.name), `dev:${dv.id}`);
-  const apps = new Map<string, string>();
-  for (const cl of clients) {
-    const k = key(clientComputer(cl));
-    if (k && !isCli(cl) && !apps.has(k)) apps.set(k, `cl:${cl.id}`);
-  }
-  const hidden = new Set<string>();
-  const members = new Map<string, Client[]>();
-  for (const cl of clients) {
-    const k = key(clientComputer(cl));
-    if (!k) continue;
-    const owner = workers.get(k) ?? (isCli(cl) ? apps.get(k) : undefined);
-    if (!owner) continue;
-    hidden.add(cl.id);
-    members.set(owner, [...(members.get(owner) ?? []), cl]);
-  }
-  return { hidden, members };
-}
-
-function clientKind(cl: Client): string {
-  const p = cl.platform.toLowerCase();
-  if (isCli(cl)) return t("device.kind.cli");
-  if (p.includes("ios") || p.includes("iphone")) return t(p.includes("safari") || p.includes("web") ? "device.kind.iphone.safari" : "device.kind.iphone.app");
-  if (p.includes("android")) return t("device.kind.android");
-  if (p.startsWith("darwin") || p.includes("mac")) return t("device.kind.mac.app");
-  return p ? t("device.kind.browser") : t("device.kind.other");
-}
-
-function clientDoes(cl: Client): string {
-  const p = cl.platform.toLowerCase();
-  const who = A.S.personaName;
-  if (isCli(cl)) return t("device.does.cli");
-  if (/ios|iphone|android/.test(p)) return t("device.does.phone", who);
-  if (p.startsWith("darwin") || p.includes("mac")) return t("device.does.app", who);
-  return t("device.does.browser", who);
-}
-
-/** A computer card's quiet lines: the command line (and the app) on it, each with its own 断开. */
-function Folded({ list, computer, alone }: { list: Client[]; computer: string; alone?: boolean }) {
-  if (!list.length) return null;
-  return (
-    <div class="dev-folded">
-      {list.map((cl) => {
-        const cli = isCli(cl);
-        const name = t(cli ? "device.cli.name" : "device.app.name", computer);
-        return (
-          <div class="dev-fold" key={cl.id}>
-            <div class="dev-fold-line">
-              <span class={`dev-fold-dot ${cl.connected ? "on" : ""}`} aria-hidden="true" />
-              <span>{t(cli ? (alone ? "device.cli.only" : "device.cli.too") : "device.app.too")}</span>
-              {!cl.connected && cl.lastSeen && <span class="small sub"> · {ago(A.L, cl.lastSeen)}</span>}
-            </div>
-            <Disconnect id={cl.id} name={name} means={cli ? "device.disconnect.means.cli" : "device.disconnect.means.client"} />
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-const phaseLine = (u: DeviceUpdate) => phaseWords(A.L, u);
-
-/** A card's name: a tap makes it a field; Enter keeps it, Esc puts it back. */
-function CardName({ id, name, renamable }: { id: string; name: string; renamable: boolean }) {
-  const [draft, setDraft] = useState<string | null>(null);
-  const save = () => {
-    const next = (draft ?? "").trim();
-    if (next && next !== name) A.renameDevice(id, next);
-    setDraft(null);
-  };
-  if (draft === null)
-    return renamable ? (
-      <button class="dev-name" aria-label={`${t("device.rename")} · ${name}`} onClick={() => setDraft(name)}>
-        {name}
-      </button>
-    ) : (
-      <div class="dev-name">{name}</div>
-    );
-  return (
-    <div class="dev-edit">
-      <input
-        class="dev-input"
-        value={draft}
-        aria-label={t("device.rename")}
-        autoFocus
-        onInput={(e) => setDraft((e.target as HTMLInputElement).value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") save();
-          if (e.key === "Escape") e.stopPropagation(), setDraft(null);
-        }}
-        onBlur={save}
-      />
-      <div class="small sub">{t("device.rename.keys")}</div>
-    </div>
-  );
-}
-
-function Disconnect({ id, name, client, means }: { id: string; name: string; client?: boolean; means?: string }) {
-  const [asking, setAsking] = useState(false);
-  if (!asking) return <Btn kind="text" size="sm" label={t("device.disconnect")} about={name} onClick={() => setAsking(true)} />;
-  return (
-    <div class="dev-cut">
-      <div class="dev-cut-q">{t("device.disconnect.ask", name)}</div>
-      <div class="small sub">{t(means ?? (client ? "device.disconnect.means.client" : "device.disconnect.means"))}</div>
-      <div class="btns">
-        <Btn kind="secondary" size="sm" label={t("device.disconnect.ok")} about={name} onClick={() => (A.disconnectDevice(id), setAsking(false))} />
-        <Btn kind="text" size="sm" label={t("device.disconnect.cancel")} onClick={() => setAsking(false)} />
-      </div>
-    </div>
-  );
-}
-
-/** Never "latest" without when it was read: 已经是最新的 · 3 小时前查过 / Up to date · checked 3 h ago. */
-function upToDate(u: NonNullable<DeviceView["update"]>): string {
-  if (!u.checkedAt) return t("devup.current");
-  const age = Date.now() - Date.parse(u.checkedAt);
-  return `${t("devup.current")} · ${age < 2 * 60_000 ? t("devup.checked.now") : t("devup.checked", ago(A.L, u.checkedAt))}`;
-}
-
-function VersionBlock({ dv }: { dv: DeviceView }) {
-  const u = dv.update;
-  // D167: 没更新成 opens its why (and what was seen) on a tap.
-  const [why, setWhy] = useState(false);
-  if (!u && !dv.version) return null;
-  const current = u?.current ?? dv.version ?? "";
-  const line = u ? phaseLine(u) : "";
-  const offer = !!u && (behind(u) || (u.phase === "failed" && u.available));
-  const answer = A.deviceAnswer?.device === dv.id ? A.deviceAnswer.reason : undefined;
-  const failed = u?.phase === "failed";
-  return (
-    <div class="dev-ver">
-      {/* D156: the agents above carry versions too; this one is Ducter's own. */}
-      <div class="dev-sub">Ducter</div>
-      <div class="dev-ver-row">
-        <span>{t("devup.version", current)}</span>
-        {u && behind(u) && (
-          <>
-            <span class="dot" aria-hidden="true" />
-            <b>{t("devup.available", u.latest)}</b>
-          </>
-        )}
-        {u && !u.available && u.latest && !u.phase && (
-          <>
-            <span class="sub">{upToDate(u)}</span>
-            {A.checkingUpdates ? <span class="sub">{t("devup.checking")}</span> : <Btn kind="text" size="sm" label={t("devup.checknow")} onClick={() => A.checkUpdates(dv.id)} />}
-          </>
-        )}
-      </div>
-      {line && !failed && <div class={`dev-phase ${u!.phase}`}>{line}</div>}
-      {failed && <Btn kind="text" size="sm" class="dev-phase failed" label={line} about={dv.name} expanded={why} onClick={() => setWhy(!why)} />}
-      {failed && why && <div class="small sub">{t(`devup.why.${u!.reason ?? "failed"}`)}</div>}
-      {failed && why && u!.detail && <div class="small sub">{u!.detail}</div>}
-      {u?.phase === "downloading" && !!u.progress && (
-        <div class="dev-bar">
-          <i style={{ width: `${Math.round(u.progress * 100)}%` }} />
-        </div>
-      )}
-      {offer && u!.phase !== "failed" && u!.how === "self" && u!.notes?.map((n) => <div class="small sub">{n}</div>)}
-      {offer &&
-        (u!.how === "self" ? (
-          dv.state === "awake" ? (
-            <Btn kind="secondary" size="sm" label={t(u!.phase === "failed" ? "devup.retry" : "devup.button")} about={dv.name} onClick={() => A.updateDevice(dv.id)} />
-          ) : (
-            <div class="small sub">{t("devup.how.away", dv.name)}</div>
-          )
-        ) : (
-          <div class="small sub">{u!.how === "app" ? t("devup.how.app", dv.name) : u!.how === "manual" ? t("devup.how.manual", dv.name) : t("devup.how.source")}</div>
-        ))}
-      {answer && <div class="small warn">{t(answer === "name_taken" ? "device.rename.name_taken" : `devup.why.${answer}`)}</div>}
-    </div>
-  );
-}
-
-/** D156: an agent update under way. */
-const agentRunning = (u?: AgentUpdate) => !!u && (u.phase === "waiting" || u.phase === "updating" || u.phase === "checking");
-
-function agentPhase(u: AgentUpdate): string {
-  switch (u.phase) {
-    case "waiting":
-      return t("agentv.phase.waiting");
-    case "updating":
-      return t("agentv.phase.updating", u.to ?? "");
-    case "checking":
-      return t("agentv.phase.checking", u.to ?? "");
-    case "done":
-      return t("agentv.phase.done", u.to ?? u.from);
-    case "failed":
-      return u.rolledBack ? t("agentv.phase.rolledback", u.from) : t("agentv.phase.failed");
-  }
-  return "";
-}
-
-/**
- * D156: one AI agent on a device card: its coin and name, its version quietly; a dot and 有新版本
- * with 更新 when it's behind; an honest line when Ducter hasn't checked the version; a copy in
- * an app or inside Ducter says where its update comes from.
- */
-function AgentRow({ dv, h }: { dv: DeviceView; h: DeviceHarness }) {
-  const u = h.update;
-  const behindNow = !!h.available && !!h.latest && !agentRunning(u) && u?.phase !== "failed";
-  const retry = u?.phase === "failed" && !!h.available;
-  const answer = A.agentAnswer?.device === dv.id && A.agentAnswer.harness === h.harness ? A.agentAnswer.reason : undefined;
-  return (
-    <div class="dev-agent">
-      <Coin harness={h.harness} size={28} />
-      <div class="dev-agent-what">
-        <div class="dev-agent-name">{harnessName(h.harness)}</div>
-        {h.version && (
-          <div class="dev-agent-ver">
-            <span>{t("agentv.version", h.version)}</span>
-            {h.how === "app" && <span>{t("agentv.how.app", h.harness === "claude-code" ? "Claude" : "Codex")}</span>}
-            {h.how === "ducter" && <span>{t("agentv.how.ducter")}</span>}
-            {behindNow && (
-              <>
-                <span class="dot" aria-hidden="true" />
-                <b>{t("agentv.available", h.latest)}</b>
-              </>
-            )}
-          </div>
-        )}
-        {(h.standing === "newer" || h.standing === "older") && <div class="dev-agent-note">{t("agentv.unverified")}</div>}
-        {u && agentPhase(u) && <div class={`dev-phase small ${u.phase}`}>{agentPhase(u)}</div>}
-        {u?.phase === "failed" && u.reason && <div class="dev-agent-note">{t(`agentv.why.${u.reason}`)}</div>}
-        {(behindNow || retry) && h.latestVerified === false && <div class="dev-agent-note">{t("agentv.latest.unverified", h.latest)}</div>}
-        {(behindNow || retry) &&
-          (dv.state === "awake" ? (
-            <Btn kind="secondary" size="sm" label={t(retry ? "agentv.retry" : "agentv.button")} about={harnessName(h.harness)} onClick={() => A.updateAgent(dv.id, h.harness)} />
-          ) : (
-            <div class="dev-agent-note">{t("agentv.away", dv.name)}</div>
-          ))}
-        {answer && <div class="small warn">{t(`agentv.why.${answer}`)}</div>}
-      </div>
-    </div>
-  );
-}
-
-function DeviceCard({ dv, folded }: { dv: DeviceView; folded: Client[] }) {
-  const state =
-    dv.state === "awake" ? t("device.state.awake") : dv.state === "asleep" ? t("device.state.asleep") : dv.lastSeen ? t("device.state.unreachable", ago(A.L, dv.lastSeen)) : t("device.state.unreachable.never");
-  const signedIn = dv.harnesses.filter((h) => h.installed && h.loggedIn);
-  return (
-    <div class="dev-card" role="group" aria-label={dv.name}>
-      <div class="dev-head">
-        <CardName id={dv.id} name={dv.name} renamable />
-      </div>
-      <div class="dev-kind">{kindLine(dv)}</div>
-      <div class={`dev-state ${dv.state}`}>{state}</div>
-      <Folded list={folded} computer={dv.computer || dv.name} />
-      {!!signedIn.length && (
-        <div class="dev-agents">
-          {signedIn.map((h) => (
-            <AgentRow dv={dv} h={h} key={h.harness} />
-          ))}
-        </div>
-      )}
-      <BrowserBlock dv={dv} />
-      <VersionBlock dv={dv} />
-      {!dv.home && (
-        <div class="dev-actions">
-          <Disconnect id={dv.id} name={dv.name} />
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** D151: 上网 on a server (Ducter's own browser): getting it, what's in the way, then the sites signed in to. */
-function BrowserBlock({ dv }: { dv: DeviceView }) {
-  const ab = dv.abilities.find((a) => a.id === "web");
-  const [clearing, setClearing] = useState(false);
-  const on = ab?.where === "ducter" && ab.state === "on" && !ab.setup;
-  useEffect(() => {
-    if (on) A.send({ t: "browser_sites" });
-  }, [on]);
-  if (!ab || ab.where !== "ducter") return null;
-  const add = () => A.send({ t: "ability", device: dv.id, ability: "web", on: true });
-  const sites = A.sites?.sites ?? [];
-  return (
-    <div class="dev-web">
-      {!on && <div class="dev-sub">{t("web.title")}</div>}
-      {ab.setup === "installing" ? (
-        <div class="dev-note">{t("web.installing")}</div>
-      ) : ab.state === "unavailable" && ab.reason === "browser_deps" ? (
-        <>
-          <div class="dev-note">{t("web.deps")}</div>
-          <code class="dev-cmd">{ab.detail}</code>
-          <Btn kind="secondary" size="sm" label={t("web.retry")} onClick={add} />
-        </>
-      ) : ab.state === "unavailable" && ab.reason === "browser_failed" ? (
-        <>
-          <div class="dev-note">{t("web.failed", ab.detail ?? "")}</div>
-          <Btn kind="secondary" size="sm" label={t("web.retry")} onClick={add} />
-        </>
-      ) : ab.state === "off" ? (
-        <>
-          <div class="small">{t("web.about")}</div>
-          {dv.state === "awake" && <Btn kind="secondary" size="sm" label={t("web.add")} about={t("web.title")} onClick={add} />}
-        </>
-      ) : on ? (
-        <>
-          {/* D154: 试一下 / Try it, the live view on a harmless page: see it browse. */}
-          {dv.state === "awake" && (
-            <div class="dev-try">
-              <div class="small">{t("web.try.about")}</div>
-              <Btn kind="secondary" size="sm" label={t("web.try")} about={t("web.title")} onClick={() => A.openLive(TRY_LIVE, "example.com", liveSize(), true)} />
-            </div>
-          )}
-          <div class="dev-sub">{t("sites.title")}</div>
-          {!sites.length && <div class="small">{t("sites.none")}</div>}
-          {sites.map((s) => (
-            <div class="dev-site" key={s.site}>
-              <div class="dev-site-what">
-                <div class="dev-site-name">{s.site}</div>
-                <div class="small">{s.cookies ? t("sites.when", ago(A.L, s.signedInAt)) : t("sites.gone")}</div>
-              </div>
-              <Btn kind="text" size="sm" label={t("sites.signout")} about={s.site} onClick={() => A.send({ t: "browser_site_signout", site: s.site })} />
-            </div>
-          ))}
-          {!!sites.length &&
-            (clearing ? (
-              <>
-                <div class="small">{t("sites.clear.ask")}</div>
-                <div class="btns">
-                  <Btn kind="secondary" size="sm" label={t("sites.keep")} onClick={() => setClearing(false)} />
-                  <Btn kind="primary" size="sm" label={t("sites.clear.go")} onClick={() => (setClearing(false), A.send({ t: "browser_sites_clear" }))} />
-                </div>
-              </>
-            ) : (
-              <Btn kind="text" size="sm" label={t("sites.clear")} onClick={() => setClearing(true)} />
-            ))}
-        </>
-      ) : null}
-    </div>
-  );
-}
-
-/** A phone's, a window's or a lone command line's card in the D148 language (D155). */
-function ClientCard({ cl, folded }: { cl: Client; folded: Client[] }) {
-  const mine = A.me?.deviceId === cl.id;
-  const name = clientName(cl);
-  const computer = clientComputer(cl);
-  const cli = isCli(cl);
-  return (
-    <div class="dev-card" role="group" aria-label={name}>
-      <div class="dev-head">
-        <CardName id={cl.id} name={name} renamable />
-      </div>
-      <div class="dev-kind">{clientKind(cl)}</div>
-      {cli ? (
-        <Folded list={[cl]} computer={computer} alone />
-      ) : (
-        <>
-          <div class={`dev-state ${cl.connected ? "awake" : ""}`}>{mine ? t("device.client.this") : cl.connected ? t("device.client.now") : cl.lastSeen ? t("device.client.seen", ago(A.L, cl.lastSeen)) : t("device.client.notnow")}</div>
-          <Folded list={folded} computer={computer} />
-        </>
-      )}
-      <div class="dev-sub">{t("device.does")}</div>
-      <div class="small">{clientDoes(cl)}</div>
-      {!cli && (
-        <div class="dev-actions">
-          <Disconnect id={cl.id} name={name} client />
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** 你的设备 / Your devices: a self-contained section, so the Settings page can place it. */
-export function DevicesSection() {
-  // Every time it opens: the home also reads the latest release again when its answer is older
-  // than 15 minutes, so "up to date" is never stale here.
-  useEffect(() => {
-    if (A.S.welcomed) A.send({ t: "devices" });
-  }, []);
-  const list = A.devices;
-  if (!list?.length) return null;
-  return (
-    <section class="set devices">
-      <h3>{t("devices.title")}</h3>
-      {((f) => (
-        <>
-          {list.map((dv) => (
-            <DeviceCard dv={dv} key={dv.id} folded={f.members.get(`dev:${dv.id}`) ?? []} />
-          ))}
-          {A.reach?.clients
-            .filter((cl) => !f.hidden.has(cl.id))
-            .map((cl) => (
-              <ClientCard cl={cl} key={cl.id} folded={f.members.get(`cl:${cl.id}`) ?? []} />
-            ))}
-        </>
-      ))(foldClients(list, A.reach?.clients ?? []))}
-      {A.settings && (
-        <>
-          <Toggle label={t("settings.versions.night")} checked={!!A.settings.autoUpdate} onChange={(v) => A.setSettings({ autoUpdate: v })} />
-          <div class="small sub">{t("settings.versions.night.note")}</div>
-        </>
-      )}
     </section>
   );
 }

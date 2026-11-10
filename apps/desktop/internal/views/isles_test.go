@@ -86,10 +86,10 @@ func TestIslesWorkingAndAccount(t *testing.T) {
 	h.hub.Scene("cloud-working")
 	h.until("cloud", func() bool { return h.app.S.Device("cloud1") != nil && h.app.runningOn(h.app.S.Device("cloud1")) == 1 })
 	h.settle(200 * time.Millisecond)
-	if !h.tt.HasText(L.T("device.other")+" · "+L.T("device.other.working.one")) || !h.tt.HasText(L.T("isles.working.one")) {
+	if !h.tt.HasText("· "+L.T("list.state.tasks", 1)) || !h.tt.HasText(L.T("isles.working.one")) {
 		t.Fatalf("no working line: %q", h.tt.Texts())
 	}
-	h.click("Claude Code · " + L.T("token.signed_in") + " · " + L.T("token.shared", 2))
+	h.click("Claude Code · " + h.app.deviceNameIn(h.app.homeDevice()))
 	h.settle(400 * time.Millisecond)
 	if h.app.devState().lit != "claude-code" {
 		t.Fatal("not lit")
@@ -138,7 +138,7 @@ func TestIslesPhone(t *testing.T) {
 	h.hub.Scene("phone")
 	h.until("phone", func() bool { return h.app.S.Reach != nil && len(h.app.S.Reach.Clients) == 1 })
 	h.settle(200 * time.Millisecond)
-	line := L.T("device.kind.iphone.app") // D155: what it is, in plain words
+	line, _ := h.app.clientWord(&h.app.S.Reach.Clients[0]) // D161: one word of state
 	h.click("iPhone · " + line)
 	h.settle(200 * time.Millisecond)
 	if h.app.devState().selClient != "c-iphone" || h.tt.HasText(L.T("devices.grid")) {

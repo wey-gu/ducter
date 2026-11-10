@@ -235,8 +235,7 @@ func (a *App) switchRow(c *ui.Context, key, label, note string, on bool) (bool, 
 				a.note(c, note)
 			}
 		})
-		sw := ui.Switch(c.Key("sw:"+key), &v).Label(label)
-		changed = sw.Changed()
+		changed = a.switchControl(c, key, label, &v)
 	})
 	return v, changed
 }

@@ -62,6 +62,7 @@
   --failed-dot: #e5577a;
   --failed-surface: #fbdde4;
   --failed-ink: #8a1f3b;
+  --dusk-ink: #4b4a7a;
 
   /* Depth: one clay (D76). A card rests on a solid 4px base and never moves; a button stands
      on a 3px ledge in a darker shade of its fill, with a drop and a top highlight, and sinks
@@ -173,6 +174,7 @@
     --done-ink: #a6ecbb;
     --failed-surface: #3a1621;
     --failed-ink: #f8a9bc;
+  --dusk-ink: #c9c4f0;
     --base: 0 4px 0 #0d0a07;
     --floating: 0 10px 32px rgba(0, 0, 0, 0.5);
     --scrim: rgba(0, 0, 0, 0.42);
@@ -228,6 +230,7 @@
   --done-ink: #a6ecbb;
   --failed-surface: #3a1621;
   --failed-ink: #f8a9bc;
+  --dusk-ink: #c9c4f0;
   --base: 0 4px 0 #0d0a07;
   --floating: 0 10px 32px rgba(0, 0, 0, 0.5);
   --scrim: rgba(0, 0, 0, 0.42);
@@ -3519,20 +3522,6 @@ ol.tries b {
 }
 /* 你的设备 / Your devices (D148): one card per device; its name renamed in place, a quiet clay
    dot when it's behind, the update's step in words, Disconnect at the bottom. */
-.dev-card {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: var(--s3) var(--s3) var(--s2) 14px;
-  border-radius: var(--r-md);
-  background: var(--surface);
-  box-shadow: var(--base);
-}
-.dev-head {
-  display: flex;
-  align-items: center;
-  gap: var(--s2);
-}
 .dev-name {
   min-width: 0;
   padding: 0;
@@ -3566,93 +3555,6 @@ button.dev-name {
   font-size: var(--lg);
   font-weight: 800;
 }
-.dev-card .dot {
-  flex: none;
-  width: 8px;
-  height: 8px;
-  border-radius: 4px;
-  background: var(--accent);
-}
-.dev-kind {
-  font-size: var(--sm);
-  font-weight: 700;
-  color: var(--ink-soft);
-}
-.dev-state {
-  font-size: var(--sm);
-  color: var(--ink-muted);
-}
-.dev-state.awake {
-  color: var(--done-ink);
-}
-/* D156: each AI agent on a device card, with its own version. */
-.dev-agents {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s2);
-  margin-top: var(--s1);
-  margin-bottom: var(--s2);
-}
-.dev-agent {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--s3);
-}
-.dev-agent-what {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  flex: 1 1 auto;
-  min-width: 0;
-}
-.dev-agent-name {
-  font-size: var(--sm);
-  font-weight: 800;
-  color: var(--ink);
-}
-.dev-agent-ver {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px var(--s2);
-  font-size: var(--xs);
-  font-weight: 600;
-  color: var(--ink-muted);
-}
-.dev-agent-ver b {
-  font-weight: 800;
-  color: var(--ink);
-}
-.dev-agent-note {
-  font-size: var(--xs);
-  line-height: 1.4;
-  color: var(--ink-muted);
-}
-.dev-agent .btn {
-  align-self: flex-start;
-  margin-top: 4px;
-}
-.dev-ver {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-top: var(--s1);
-}
-.dev-ver-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--s2);
-  font-size: var(--sm);
-  color: var(--ink-soft);
-}
-.dev-ver-row b {
-  color: var(--ink);
-}
-.dev-ver .btn,
-.dev-actions .btn {
-  align-self: flex-start;
-}
 .dev-phase {
   font-size: var(--sm);
   font-weight: 700;
@@ -3677,10 +3579,6 @@ button.dev-name {
   border-radius: 2px;
   background: var(--accent);
 }
-.dev-actions {
-  display: flex;
-  margin-inline-start: -8px;
-}
 .dev-cut {
   display: flex;
   flex-direction: column;
@@ -3694,13 +3592,6 @@ button.dev-name {
   font-size: var(--sm);
   font-weight: 800;
 }
-/* D155: the command line (and the app) on a computer, a quiet line in its card with its own 断开. */
-.dev-folded { display: flex; flex-direction: column; gap: 2px; margin-top: 2px; }
-.dev-fold { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 var(--s2); }
-.dev-fold > .dev-cut { flex-basis: 100%; }
-.dev-fold-line { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: var(--sm); font-weight: 700; color: var(--ink-soft); }
-.dev-fold-dot { flex: none; width: 6px; height: 6px; border-radius: 3px; background: var(--line-2); }
-.dev-fold-dot.on { background: var(--done-ink); }
 /* Nothing in a long sheet is squeezed: it scrolls instead (D150). */
 .sheet > * {
   flex-shrink: 0;
@@ -3739,3 +3630,127 @@ button.dev-name {
 .dev-site { display: flex; align-items: center; gap: var(--s3); padding: var(--s2) var(--s3); border-radius: var(--r-sm); background: var(--bg); }
 .dev-site-what { flex: 1; min-width: 0; }
 .dev-site-name { font-size: var(--sm); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- D161: the device card as a character sheet (design/prototypes/device-card.html) ---------- */
+.plist { display: flex; flex-direction: column; padding: 6px; border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--base); }
+.li-row { display: flex; align-items: center; gap: 10px; height: 56px; padding: 0 10px; border: 0; border-radius: 14px; background: none; color: inherit; font: inherit; text-align: start; cursor: pointer; }
+.li-row:active { background: var(--sunken); }
+.li-row img { flex: none; width: 36px; height: 32px; object-fit: contain; }
+.li-row .t { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.li-row .t b { font-size: var(--md); overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.li-row .t small { flex: none; font-size: var(--sm); color: var(--ink-muted); }
+.li-row .t small.working { color: var(--working-ink); }
+.li-row .t small.asleep { color: var(--dusk-ink); }
+.li-row .t small.away { color: var(--failed-ink); }
+.li-row .t .dot { flex: none; align-self: center; width: 8px; height: 8px; border-radius: 4px; background: var(--accent); }
+.li-row .chev { flex: none; color: var(--faint); font-weight: 800; }
+
+.dc { display: flex; flex-direction: column; padding: 4px 18px 16px; border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--base); }
+.dc-hero { position: relative; height: 146px; display: flex; justify-content: center; align-items: flex-end; }
+.dc-hero .ground { position: absolute; bottom: 6px; left: 50%; width: 200px; height: 36px; margin-left: -100px; border-radius: 50%; background: radial-gradient(closest-side, var(--line), var(--sunken) 70%, transparent); }
+.dc-hero .art { position: relative; width: 128px; margin-bottom: 14px; filter: drop-shadow(0 6px 5px rgb(60 50 20 / 0.16)); }
+.dc-hero .art.tall { width: 64px; }
+.dc-hero .art.grey { filter: grayscale(0.7) opacity(0.7); }
+.dc-hero .mist { position: absolute; inset: 30% 18% 4%; border-radius: 50%; background: radial-gradient(closest-side, rgb(255 255 255 / 0.75), transparent); }
+.dc-hero .float { animation: dc-float 5.6s ease-in-out infinite; }
+.dc-hero .drift { animation: dc-drift 11s ease-in-out infinite; }
+.dc-hero .blanket { animation: dc-blanket 4.8s ease-in-out infinite; transform-origin: 50% 100%; }
+@keyframes dc-float { 50% { transform: translateY(-5px); } }
+@keyframes dc-drift { 50% { transform: translateX(4px); } }
+@keyframes dc-blanket { 50% { transform: scaleY(1.045); } }
+.dc-name { display: flex; justify-content: center; margin-top: 2px; }
+.dc-name .dev-name { position: relative; padding: 2px 10px; border: 0; border-radius: 10px; background: none; font-size: 26px; text-align: center; overflow: visible; }
+.dc-name button.dev-name:active { background: var(--sunken); }
+.dc-name .dev-edit { align-items: center; }
+.dc-status { margin: 0 0 var(--s4); text-align: center; font-size: var(--md); color: var(--ink-muted); }
+.dc-status.working { color: var(--working-ink); font-weight: 700; }
+.dc-status.asleep { color: var(--dusk-ink); font-weight: 700; }
+.dc-status.away { color: var(--failed-ink); font-weight: 700; }
+
+.dc-tray { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; padding: 12px 8px 8px; border-radius: 18px; background: var(--sunken); }
+.coin-tile { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 70px; padding: 4px 0 2px; border: 0; border-radius: 14px; background: none; color: inherit; font: inherit; cursor: pointer; }
+.coin-tile.sel { background: var(--surface); box-shadow: 0 2px 0 var(--line-2); }
+.coin-tile .c { position: relative; display: grid; place-items: center; width: 52px; height: 52px; transition: transform var(--press, 70ms) ease-out; }
+.coin-tile:active .c { transform: translateY(2px); }
+.coin-tile .c.pop { animation: dc-pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+.coin-tile .c.pop::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: linear-gradient(115deg, transparent 35%, rgb(255 255 255 / 0.7) 50%, transparent 65%); background-size: 260% 100%; animation: dc-sheen 520ms ease-out forwards; pointer-events: none; mix-blend-mode: soft-light; }
+@keyframes dc-pop { 45% { transform: scale(1.16); } }
+@keyframes dc-sheen { from { background-position: 100% 0; } to { background-position: -60% 0; } }
+.coin-tile .cdot { position: absolute; right: 1px; top: 1px; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2.5px var(--sunken); }
+.coin-tile.sel .cdot { box-shadow: 0 0 0 2.5px var(--surface); }
+.coin-tile .cring { position: absolute; inset: -3px; border-radius: 50%; border: 2.5px solid transparent; border-top-color: var(--accent); animation: dc-spin 1.1s linear infinite; }
+@keyframes dc-spin { to { transform: rotate(360deg); } }
+.coin-tile .cn { font-size: var(--xs); font-weight: 700; color: var(--ink-soft); white-space: nowrap; }
+.coin-tile.off .cn { color: var(--ink-muted); font-weight: 600; }
+.coin-tile.socket .c { border: 2px dashed var(--line-2); border-radius: 50%; color: var(--ink-muted); font-size: 22px; font-weight: 700; background: rgb(255 255 255 / 0.35); }
+.coin-tile.socket .cn { color: var(--ink-muted); font-weight: 600; }
+
+.dc-detail { position: relative; display: flex; flex-direction: column; gap: 2px; margin-top: 10px; padding: 14px 16px; border-radius: var(--r-md); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line), 0 2px 0 var(--line); animation: dc-enter 220ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.dc-detail::before { content: ""; position: absolute; top: -7px; left: var(--notch, 50%); width: 12px; height: 12px; background: var(--surface); transform: translateX(-50%) rotate(45deg); box-shadow: -1px -1px 0 var(--line); }
+@keyframes dc-enter { from { opacity: 0; transform: translateY(6px); } }
+.dc-detail .dh { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+.dc-detail .dh b { font-size: var(--md); }
+.dc-detail .dh small { font-size: var(--sm); color: var(--ink-muted); }
+.dc-detail .ln { font-size: var(--sm); line-height: 1.5; color: var(--ink-muted); }
+.dc-detail .ln.soft { color: var(--ink-soft); }
+.dc-detail .ln.small { font-size: var(--xs); }
+.dc-detail .switch { margin: 6px 0 0; padding: 0; min-height: 40px; background: none; box-shadow: none; font-size: 14px; font-weight: 700; }
+.dc-missing { display: flex; align-items: center; gap: var(--s3); min-height: 36px; }
+.dc-upd { display: flex; align-items: center; gap: 12px; margin: 8px 0 4px; padding: 10px 12px; border-radius: 12px; background: var(--bg); }
+.dc-upd .tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: var(--sm); }
+.dc-upd .tx b { font-size: 14px; }
+.dc-upd .tx b.done { color: var(--done-ink); }
+.dc-upd .tx b.failed { color: var(--failed-ink); }
+.dc-upd .tx small { font-size: var(--xs); color: var(--ink-muted); }
+
+.dc-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 14px; }
+.chip-wrap { position: relative; display: inline-flex; }
+.ach { display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 14px 0 6px; border: 0; border-radius: var(--r-btn); color: var(--ink); font: inherit; font-size: 14px; font-weight: 700; white-space: nowrap; cursor: pointer; transition: transform var(--press, 70ms) ease-out, box-shadow var(--press, 70ms) ease-out; }
+.ach img { width: 30px; height: 30px; object-fit: contain; transition: filter 160ms, opacity 160ms; }
+.ach.on { background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-2), 0 3px 0 var(--line-2); }
+.ach.off { background: var(--sunken); color: var(--ink-muted); box-shadow: 0 2px 0 var(--line); }
+.ach.off img { filter: grayscale(0.85); opacity: 0.55; }
+.ach.add { padding-left: 12px; background: transparent; color: var(--ink-muted); outline: 1.5px dashed var(--line-2); outline-offset: -1.5px; }
+.ach.fail { background: var(--failed-surface); color: var(--failed-ink); box-shadow: 0 3px 0 var(--failed-ledge, #efb7c4); }
+.ach:active { transform: translateY(2px); }
+.ach.on:active { box-shadow: inset 0 0 0 1px var(--line-2), 0 1px 0 var(--line-2); }
+.ach.squish { animation: dc-squish 240ms cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: 50% 100%; }
+.ach.squish.on img { animation: dc-hop 300ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes dc-squish { 0% { transform: translateY(2px) scale(1.06, 0.94); } 100% { transform: none; } }
+@keyframes dc-hop { 40% { transform: translateY(-3px); } }
+/* ⓘ on the chip's corner: on hover, always on touch, so nothing moves. */
+.chip-i { position: absolute; right: -6px; top: -7px; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 50%; background: var(--surface); box-shadow: inset 0 0 0 1.2px var(--faint); color: var(--ink-muted); font: 700 11px/20px var(--font); text-align: center; cursor: pointer; opacity: 0; }
+.chip-wrap:hover .chip-i, .chip-i.open, .chip-i:focus-visible { opacity: 1; }
+@media (hover: none) { .chip-i { opacity: 1; } }
+.dc-note { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: var(--bg); font-size: var(--sm); line-height: 1.55; color: var(--ink-soft); animation: dc-enter 220ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+:lang(zh) .dc-note { line-height: 1.75; }
+.dc-note .acts { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+
+.dc-via { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 16px; font-size: var(--sm); color: var(--ink-muted); }
+.more-btn { height: 24px; padding: 0 6px; border: 0; border-radius: 8px; background: none; color: var(--ink-muted); font: inherit; font-weight: 800; letter-spacing: 1px; cursor: pointer; }
+.more-btn:hover, .more-btn.open { background: var(--sunken); color: var(--ink); }
+.dc-conns { margin-top: 8px; border-radius: 12px; background: var(--bg); overflow: hidden; animation: dc-enter 200ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.dc-conn { display: flex; align-items: center; gap: 8px; padding: 6px 12px; font-size: var(--sm); }
+.dc-conn + .dc-conn { border-top: 1px solid var(--line-soft); }
+.dc-conn small { flex: 1; min-width: 0; color: var(--ink-muted); }
+.danger-text { height: 32px; padding: 0 8px; border: 0; border-radius: var(--r-sm); background: none; color: var(--failed-ink); font: inherit; font-size: var(--sm); font-weight: 700; white-space: nowrap; cursor: pointer; }
+.danger-text:hover, .danger-text:active { background: var(--failed-surface); }
+
+.dc-ver { display: flex; flex-direction: column; gap: 4px; margin-top: 14px; padding: 10px 12px; border-radius: 12px; background: var(--bg); font-size: var(--sm); }
+.dc-ver .row1 { display: flex; align-items: center; gap: 10px; }
+.dc-ver .vd { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.dc-ver .tx { flex: 1; min-width: 0; font-weight: 700; }
+.dc-ver .tx.done { color: var(--done-ink); }
+.dc-ver .tx.failed { color: var(--failed-ink); }
+.dc-versions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin: 8px 4px 0; }
+.dc-ver .row1 .btn.tx { flex: 1; justify-content: flex-start; padding-left: 0; color: var(--failed-ink); }
+.dc-foot { display: flex; flex-direction: column; margin-top: 16px; padding-top: 10px; border-top: 1px solid var(--line-soft); align-items: flex-start; }
+.dc-foot .dev-cut { align-self: stretch; }
+@media (prefers-reduced-motion: reduce) {
+  .dc *, .dc *::before, .dc *::after { animation: none !important; transition: none !important; }
+}
+/* D161: the switch sheet's subtitle and its group heads as mini cards. */
+.switch-sub { font-size: var(--sm); font-weight: 700; color: var(--ink-soft); }
+.switch-head { align-items: center; }
+.switch-head img { flex: none; width: 36px; height: 28px; object-fit: contain; }
+.switch-head span.asleep { color: var(--dusk-ink); font-weight: 700; }

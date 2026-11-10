@@ -81,6 +81,8 @@ type renameState struct {
 	draft   string
 	focused bool
 	failed  string // why the server said no (rename_result reason)
+	saved   string // the device whose new name just landed (it settles, D161)
+	savedAt time.Time
 }
 
 type equipFx struct {
@@ -189,7 +191,14 @@ func (a *App) devicesView(c *ui.Context) {
 	d := a.devState()
 	a.drainAbilityResults()
 	w, _ := c.Size()
+	// D161: the card keeps its 380 and the stage the room its scene needs
+	// (about 600): a window under 1360 gives the list and the gutters less;
+	// under 1180 the list goes on top, one row of devices.
 	narrow := w > 0 && w < 1180
+	listW, gap, side := float32(250), t.S4, t.S6
+	if w > 0 && w < 1360 {
+		listW, gap, side = 226, t.S3, t.S5
+	}
 	dev := a.shownDevice()
 	if d.ability == "" {
 		d.ability = protocol.AbilityWeb
@@ -207,38 +216,37 @@ func (a *App) devicesView(c *ui.Context) {
 	stageH := max(float32(480), winH-ChromeH-150)
 	root := ui.Scroll(c.Key("devices-page")).Grow(1).MinHeight(0)
 	root.Children(func() {
-		ui.Column(c).Gap(t.S4).Padding(t.S5, t.S6, t.S6, t.S6).Children(func() {
+		ui.Column(c).Gap(t.S4).Padding(t.S5, side, t.S6, side).Children(func() {
 			a.devicesHeader(c, dev)
 			switch {
 			case len(a.S.Devices) == 0:
 				a.devicesWaiting(c)
 			case narrow:
-				ui.Row(c).Gap(t.S3).Wrap().AlignItems(ui.Center).Children(func() { a.deviceCards(c, 230); a.connectEntry(c) })
-				ui.Column(c).Height(560).Children(func() { a.stage(c, dev) })
-				ui.Row(c).Gap(t.S4).AlignItems(ui.Start).Children(func() {
-					ui.Column(c).Grow(1).Basis(0).Gap(t.S3).Children(func() { a.deviceDetail(c, dev) })
-					ui.Column(c).Grow(1).Basis(0).Gap(t.S3).Children(func() {
-						if d.selClient == "" {
-							a.abilityGrid(c, dev, 3)
-							a.abilityDetail(c, dev)
-						}
+				ui.Row(c).Gap(t.S2).Wrap().AlignItems(ui.Center).Children(func() { a.deviceCards(c, 230); a.connectEntry(c) })
+				if w < 1040 {
+					// Too narrow for both: the stage, then the card under it.
+					ui.Column(c).Height(560).Children(func() { a.stage(c, dev) })
+					ui.Row(c).Justify(ui.Center).Children(func() {
+						ui.Column(c.Key("abilities")).Width(sheetW + 60).MaxWidthPercent(100).Children(func() { a.deviceDetail(c, dev) })
 					})
+					break
+				}
+				ui.Row(c).Gap(gap).AlignItems(ui.Start).Children(func() {
+					ui.Column(c).Grow(1).MinWidth(0).Height(stageH).Sticky().Top(t.S4).Children(func() { a.stage(c, dev) })
+					ui.Column(c.Key("abilities")).Width(sheetW).Shrink(0).Gap(t.S3).Children(func() { a.deviceDetail(c, dev) })
 				})
 			default:
-				ui.Row(c).Gap(t.S4).AlignItems(ui.Start).Children(func() {
-					ui.Column(c).Width(260).Shrink(0).Gap(t.S3).Children(func() {
-						ui.Text(c, a.L.T("devices.list")).FontSize(t.XS).FontWeight(800).LetterSpacing(1.2).TextColor(t.InkMuted)
+				// D161: one line per device on the left, the stage, the character sheet on the right.
+				ui.Row(c).Gap(gap).AlignItems(ui.Start).Children(func() {
+					ui.Column(c).Width(listW).Shrink(0).Gap(t.S1 + 2).Children(func() {
+						ui.Text(c, a.L.T("devices.list")).FontSize(t.SM).FontWeight(800).TextColor(t.InkMuted).Margin(t.S1, t.S2, t.S1, t.S2)
 						a.deviceCards(c, 0)
-						a.connectEntry(c)
+						ui.Row(c).Margin(t.S2, 0, 0, 0).Children(func() { a.connectEntry(c) })
 					})
-					// The stage stays in view while the card and the grid scroll past (it never clips: it is shorter than the window).
+					// The stage stays in view while the card scrolls past (it never clips: it is shorter than the window).
 					ui.Column(c).Grow(1).MinWidth(0).Height(stageH).Sticky().Top(t.S4).Children(func() { a.stage(c, dev) })
-					ui.Column(c.Key("abilities")).Width(300).Shrink(0).Gap(t.S3).Children(func() {
+					ui.Column(c.Key("abilities")).Width(sheetW).Shrink(0).Gap(t.S3).Children(func() {
 						a.deviceDetail(c, dev)
-						if d.selClient == "" {
-							a.abilityGrid(c, dev, 2)
-							a.abilityDetail(c, dev)
-						}
 					})
 				})
 			}
@@ -288,48 +296,15 @@ func (a *App) devicesWaiting(c *ui.Context) {
 // ---------- device cards ----------
 
 func (a *App) deviceCards(c *ui.Context, width float32) {
-	t := a.T
 	shown := a.shownDevice()
 	d := a.devState()
 	for i := range a.S.Devices {
 		dv := &a.S.Devices[i]
 		sel := shown != nil && shown.ID == dv.ID && d.selClient == ""
-		name := a.deviceName(dv)
-		chip, sc := a.deviceChip(dv)
-		_ = chip
-		card := ui.Row(c.Key("dev:" + dv.ID)).Gap(t.S3).Padding(t.S3).Radius(t.RadiusLG).Background(t.Surface).AlignItems(ui.Center).
-			Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(name + " · " + chip).AccessSelected(sel)
-		if width > 0 {
-			card.Width(width)
-		}
-		a.selectable(c, card, sel)
-		card.Children(func() {
-			ui.Box(c).Size(72, 72).Radius(t.RadiusMD).Background(t.Clay).Padding(t.S2).Shrink(0).Children(func() {
-				a.deviceClay(c, "card:"+dv.ID, dv).Grow(1)
-			})
-			ui.Column(c).Gap(t.S1).Grow(1).MinWidth(0).Children(func() {
-				ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-					ui.Text(c, name).FontSize(t.Bubble).FontWeight(800).SingleLine().Shrink(1)
-					if behind(dv) {
-						a.updateDot(c)
-					}
-				})
-				// Shown, not explained (D43): the clay says awake or asleep,
-				// Ducter on the stage says where it lives. Words only for
-				// what is unusual, plainly, in the state's ink; no pill.
-				// Another computer always says what it is (D84).
-				if dv.Update.Running() {
-					// D148: while it updates, the step is its line.
-					ui.Text(c, a.phaseLine(dv.Update)).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft).LineHeight(1.4).MaxLines(2)
-					c.After(500e6)
-				} else if !dv.Home {
-					a.otherComputerLine(c, dv, sc)
-				} else if line, ink := a.deviceLine(dv, sc); line != "" {
-					ui.Text(c, line).FontSize(t.XS).FontWeight(700).TextColor(ink).LineHeight(1.4).MaxLines(2)
-				}
-			})
-		})
-		if card.Clicked() {
+		word, ink := a.listWord(dv)
+		if a.listRow(c, "dev:"+dv.ID, a.deviceName(dv), word, ink, behind(dv), sel, width, func() {
+			a.deviceClay(c, "list:"+dv.ID, dv).Size(36, 32).Shrink(0)
+		}) {
 			d.sel, d.selClient = dv.ID, ""
 			d.removing = ""
 		}
@@ -346,104 +321,78 @@ func (a *App) deviceCards(c *ui.Context, width float32) {
 		if hidden[cl.ID] {
 			continue
 		}
-		sel := d.selClient == cl.ID
-		line := a.clientLine(cl)
-		name := a.clientName(cl)
-		card := ui.Row(c.Key("cl:" + cl.ID)).Gap(t.S3).Padding(t.S3).Radius(t.RadiusLG).Background(t.Surface).AlignItems(ui.Center).
-			Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(name + " · " + line).AccessSelected(sel)
-		if width > 0 {
-			card.Width(width)
-		}
-		a.selectable(c, card, sel)
-		card.Children(func() {
-			ui.Box(c).Size(72, 72).Radius(t.RadiusMD).Background(t.Clay).Padding(t.S2).Shrink(0).Children(func() {
-				a.clientClay(c, "card:"+cl.ID, cl, clientArt(cl)).Grow(1)
-			})
-			ui.Column(c).Gap(t.S1).Grow(1).MinWidth(0).Children(func() {
-				ui.Text(c, name).FontSize(t.Bubble).FontWeight(800).SingleLine()
-				ui.Text(c, line).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).LineHeight(1.4).MaxLines(2)
-			})
-		})
-		if card.Clicked() {
+		word, ink := a.clientWord(cl)
+		if a.listRow(c, "cl:"+cl.ID, a.clientName(cl), word, ink, false, d.selClient == cl.ID, width, func() {
+			a.clientClay(c, "list:"+cl.ID, cl, clientArt(cl)).Size(36, 32).Shrink(0)
+		}) {
 			d.selClient, d.removing = cl.ID, ""
 		}
 	}
 }
 
-// otherComputerLine is the subtitle of a computer that isn't the one
-// Ducter lives on: 另一台电脑 · 替 Ducter 做事, the second half replaced by
-// its state, in the state's ink, when something is wrong (D84).
-func (a *App) otherComputerLine(c *ui.Context, dv *protocol.DeviceView, sc theme.StateColors) {
+// listRow is one line in the left list (D161 (7)): the clay at 32, the
+// name, and after a middle dot one short word of state; never wraps (the
+// name ellipsizes, not the state). 52 high, all equal.
+func (a *App) listRow(c *ui.Context, key, name, word string, ink ui.Color, dot, sel bool, width float32, clay func()) bool {
 	t := a.T
-	if dv.State != protocol.DeviceAsleep && dv.State != protocol.DeviceUnreachable {
-		line, _ := a.deviceLine(dv, sc)
-		ui.Text(c, line).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).LineHeight(1.4).MaxLines(2)
-		return
-	}
-	state, _ := a.deviceChip(dv)
-	ui.Row(c).Gap(t.S1).Wrap().Children(func() {
-		ui.Text(c, a.L.T("device.other")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).LineHeight(1.4)
-		ui.Text(c, "·").FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).LineHeight(1.4)
-		ui.Text(c, state).FontSize(t.XS).FontWeight(700).TextColor(sc.Ink).LineHeight(1.4).MaxLines(2)
-	})
-}
-
-// renameRow is 改名字 / Rename under the chosen computer's card: one tap,
-// then the name is a field in place (as on Partner, D71).
-func (a *App) renameRow(c *ui.Context, dv *protocol.DeviceView, width float32) {
-	t := a.T
-	r := &a.devState().rename
-	if res := a.S.Renamed; res != nil {
-		a.S.Renamed = nil
-		if res.OK {
-			r.device, r.failed = "", ""
-		} else if res.Device == r.device {
-			r.failed = res.Reason
-		}
-	}
-	row := ui.Row(c.Key("rename:" + dv.ID)).Gap(t.S2).AlignItems(ui.Center).Wrap()
+	row := ui.Row(c.Key(key)).Height(52).Gap(t.S2+2).Padding(0, t.S2+2).Radius(14).AlignItems(ui.Center).
+		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(name + " · " + word).AccessSelected(sel).Focusable()
 	if width > 0 {
 		row.Width(width)
 	}
-	if r.device != dv.ID {
-		row.Children(func() {
-			if a.button(c, a.L.T("device.rename"), btnText, t.ControlSM, t.Bg) {
-				*r = renameState{device: dv.ID, draft: dv.Name}
-			}
-		})
-		return
-	}
-	save := func() {
-		name := strings.TrimSpace(r.draft)
-		if name == "" || name == dv.Name {
-			r.device = ""
-			return
-		}
-		r.failed = ""
-		a.send(protocol.RenameDeviceReq{T: "rename_device", Device: dv.ID, Name: name})
+	switch {
+	case sel:
+		row.Background(t.Surface).InsetShadow(0, 0, 0, 2, t.Ink)
+	case row.Hovered():
+		row.Background(t.Sunken)
 	}
 	row.Children(func() {
-		in := ui.TextInput(c.Key("input:device-name:"+dv.ID), &r.draft).Placeholder(dv.Name).Label(a.L.T("device.rename")).
-			FontSize(t.MD).FontWeight(700).Padding(t.S2, t.S3).Radius(t.RadiusSM).Background(t.Surface).Border(1, t.Line).
-			Grow(1).MinWidth(140).OnSubmit(save)
-		if !r.focused {
-			in.Focus()
-			r.focused = true
-		}
-		if a.button(c, a.L.T("device.rename.cancel"), btnText, t.ControlSM, t.Bg) {
-			r.device = ""
-		}
-		if a.button(c, a.L.T("device.rename.ok"), btnPrimary, t.ControlSM, t.Bg) {
-			save()
-		}
+		clay()
+		ui.Row(c).Gap(6).AlignItems(ui.Center).Grow(1).MinWidth(0).Children(func() {
+			ui.Text(c, name).FontSize(t.MD).FontWeight(700).SingleLine().Shrink(1).MinWidth(0).AccessHidden(true)
+			if dot {
+				a.updateDot(c)
+			}
+			if word != "" {
+				ui.Text(c, "· "+word).FontSize(t.SM).TextColor(ink).SingleLine().Shrink(0).AccessHidden(true)
+			}
+		})
 	})
-	switch r.failed {
-	case "":
-	case "name_taken":
-		a.reasonLine(c, a.L.T("device.rename.name_taken", strings.TrimSpace(r.draft)))
-	default:
-		a.reasonLine(c, a.L.T("device.rename."+r.failed))
+	return row.Clicked()
+}
+
+// listWord is a device's one word of state for the list: the status line
+// shortened to its first idea.
+func (a *App) listWord(dv *protocol.DeviceView) (string, ui.Color) {
+	t := a.T
+	switch {
+	case dv.Update.Running():
+		return a.L.T("list.state.updating"), t.InkMuted
+	case dv.State == protocol.DeviceAsleep:
+		return a.L.T("list.state.asleep"), t.Asleep.Ink
+	case dv.State == protocol.DeviceUnreachable:
+		return a.L.T("list.state.away"), t.Failed.Ink
+	case dv.Home:
+		return a.L.T("list.state.home"), t.InkMuted
+	case dv.Kind == "phone":
+		return a.L.T("list.state.now"), t.InkMuted
 	}
+	if n := a.runningOn(dv); n > 0 {
+		return a.L.T("list.state.tasks", n), t.Working.Ink
+	}
+	return a.L.T("list.state.does", a.workHome()), t.InkMuted
+}
+
+// clientWord is a phone's or a window's word: connected now, or when.
+func (a *App) clientWord(cl *protocol.ReachClient) (string, ui.Color) {
+	t := a.T
+	if cl.Connected {
+		return a.L.T("list.state.now"), t.InkMuted
+	}
+	if ago := a.agoLong(cl.LastSeen); ago != "" {
+		return ago, t.InkMuted
+	}
+	return a.L.T("device.client.never"), t.InkMuted
 }
 
 // connectEntry is the way to add a device: a phone or another computer
@@ -473,31 +422,6 @@ func (a *App) deviceChip(dv *protocol.DeviceView) (string, theme.StateColors) {
 		return a.L.T("device.home", a.S.PersonaName), t.Awake
 	}
 	return a.L.T("device.state.awake"), t.Awake
-}
-
-// deviceLine is the one quiet line under a device's name: why it is
-// asleep or can't be reached; for the home device, that Ducter lives
-// there; for another computer, what it is and that it does tasks for
-// Ducter, or how many it is doing (research/33 §7b).
-func (a *App) deviceLine(dv *protocol.DeviceView, sc theme.StateColors) (string, ui.Color) {
-	switch {
-	case dv.State == protocol.DeviceAsleep || dv.State == protocol.DeviceUnreachable:
-		text, _ := a.deviceChip(dv)
-		return text, sc.Ink
-	case dv.Home:
-		return a.L.T("device.home.line", a.S.PersonaName), a.T.InkMuted
-	case dv.Kind == "phone":
-		return a.L.T("device.client.line", a.S.PersonaName), a.T.InkMuted
-	}
-	// Another computer says what it is, and what it does or is doing (D84).
-	switch n := a.runningOn(dv); n {
-	case 0:
-		return a.L.T("device.other") + " · " + a.L.T("device.other.does", a.S.PersonaName), a.T.InkMuted
-	case 1:
-		return a.L.T("device.other") + " · " + a.L.T("device.other.working.one"), a.T.InkMuted
-	default:
-		return a.L.T("device.other") + " · " + a.L.T("device.other.working", n), a.T.InkMuted
-	}
 }
 
 // selectable styles a card that can be chosen (a device, an ability): a
@@ -613,186 +537,6 @@ func (a *App) stageLine(c *ui.Context, dv *protocol.DeviceView, sw float32) {
 }
 
 // ---------- the ability grid and detail ----------
-
-func (a *App) abilityGrid(c *ui.Context, dv *protocol.DeviceView, cols int) {
-	t := a.T
-	d := a.devState()
-	ui.Text(c, a.L.T("devices.grid")).FontSize(t.XS).FontWeight(800).LetterSpacing(1.2).TextColor(t.InkMuted)
-	hovered := ""
-	ui.Grid(c).Columns(cols).Gap(t.S3).Children(func() {
-		for _, id := range gridAbilities {
-			ab := (*protocol.DeviceAbility)(nil)
-			if dv != nil {
-				ab = dv.Ability(id)
-			}
-			name := a.L.T("ability." + id)
-			sub := ""
-			addable := dv != nil && a.canAdd(dv, id)
-			switch {
-			case dv != nil && a.shownOn(dv, id):
-				sub = a.L.T("ability.on.at", a.deviceNameIn(dv))
-				if id == protocol.AbilityWeb && ab != nil && ab.Where == protocol.WhereChrome {
-					sub += " · " + a.L.T("web.where.chrome")
-				}
-				if id == protocol.AbilityWeb && ab != nil && ab.Setup == "installing" {
-					sub = a.L.T("web.installing.short") // D151: Ducter is installing its browser
-				}
-			case id == protocol.AbilityWeb && ab != nil && ab.Reason == "browser_deps":
-				sub = a.L.T("ability.oneStep")
-			case ab == nil && dv != nil && !dv.Home:
-				sub = a.L.T("ability.unavailable")
-			case ab == nil || ab.State == protocol.AbilityLater:
-				sub = a.L.T("ability.later")
-			case ab.State == protocol.AbilityUnavailable:
-				sub = a.L.T("ability.unavailable")
-			}
-			if id == protocol.AbilityWeb && dv != nil && a.webNeedsSetup(dv) {
-				sub = a.L.T("web.tile")
-			}
-			if id == protocol.AbilityRemote && dv != nil && a.abilityOn(dv, id) && a.S.Reach != nil && len(a.S.Reach.Clients) > 0 {
-				sub = a.L.T("pair.connected") + " · " + a.lastReach()
-			}
-			label := name
-			if sub != "" {
-				label += " · " + sub
-			} else if addable {
-				label += " · " + a.L.T("ability.add", a.deviceNameIn(dv))
-			}
-			tile := ui.Column(c.Key("ab:"+id)).Radius(t.RadiusLG).Background(t.Surface).Padding(t.S2, t.S2, t.S3, t.S2).Gap(2).AlignItems(ui.Center).
-				Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(label).Focusable().AccessSelected(d.ability == id)
-			a.selectable(c, tile, d.ability == id)
-			locked := ab == nil || ab.State == protocol.AbilityLater
-			if locked {
-				tile.Opacity(0.72)
-			}
-			if addable {
-				tile.Drag(abilityDrag{id})
-				if tile.Hovered() || tile.Dragging() {
-					hovered = id
-				}
-			}
-			flying := d.fx != nil && d.fx.ability == id
-			tile.Children(func() {
-				well := ui.Box(c.Key("well")).WidthPercent(100).Height(84).Radius(t.RadiusMD).Background(t.Clay).Padding(t.S2)
-				well.Children(func() {
-					art := abilityArt(id)
-					if locked {
-						art = abilityLaterArt(id)
-					}
-					if bmp := theme.Clay(art); bmp != nil {
-						im := ui.Image(c, bmp).Grow(1).AccessHidden(true)
-						if flying {
-							im.Opacity(0)
-						}
-					}
-				})
-				d.tiles[id] = well.Bounds()
-				ui.Text(c, name).FontSize(t.SM).FontWeight(800).TextAlign(ui.Center).Margin(4, 0, 0, 0)
-				if sub != "" {
-					ui.Text(c, sub).FontSize(t.XS).TextColor(t.InkMuted).TextAlign(ui.Center).LineHeight(1.35).MaxLines(3)
-				}
-			})
-			if tile.Clicked() {
-				d.ability, d.removing = id, ""
-				if id == protocol.AbilityWeb && dv != nil && a.webNeedsSetup(dv) {
-					a.openWebSetup()
-				}
-				if addable {
-					a.startEquip(dv, id, d.tiles[id], false)
-				}
-			}
-			if dv != nil && a.abilityOn(dv, id) && id == protocol.AbilityWeb && dv.State == protocol.DeviceAwake {
-				tile.ContextMenu(func(m *ui.Menu) {
-					if m.Item(a.L.T("ability.remove")).Chosen() {
-						d.ability, d.removing = id, id
-					}
-				})
-			}
-		}
-	})
-	if d.fx == nil {
-		d.hover = hovered
-	}
-}
-
-func (a *App) abilityDetail(c *ui.Context, dv *protocol.DeviceView) {
-	t := a.T
-	d := a.devState()
-	if dv == nil {
-		return
-	}
-	id := d.ability
-	ab := dv.Ability(id)
-	name := a.L.T("ability." + id)
-	card := ui.Column(c.Key("detail:"+id)).Radius(t.RadiusLG).Background(t.Surface).Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Padding(t.S4).Gap(t.S3).
-		Role(ui.RoleGroup).Label(name)
-	card.Children(func() {
-		a.heading(c, name, t.XL)
-		on := a.shownOn(dv, id)
-		if !(on && d.removing == id) {
-			about := "ability." + id + ".about"
-			if id == protocol.AbilityWeb && ab != nil && ab.Where == protocol.WhereChrome {
-				about = "ability.web.about.chrome" // an AI agent's own browser, in the user's Chrome (D130)
-			}
-			if id == protocol.AbilityWeb && ab != nil && ab.Where == protocol.WhereDucter {
-				about = "ability.web.about.ducter" // Ducter's own browser, on a server (D151)
-			}
-			ui.Text(c, a.L.T(about)).FontSize(t.MD).LineHeight(1.6).TextColor(t.InkSoft)
-		}
-		if id == protocol.AbilityWeb && a.webSetupOwned(dv) {
-			a.pollCua(c, false) // the two switches may be off even when the server says on
-		}
-		switch {
-		case ab == nil && !dv.Home && id != protocol.AbilityRemote:
-			a.reasonLine(c, a.L.T("ability.later"))
-		case ab == nil || ab.State == protocol.AbilityLater:
-			a.reasonLine(c, a.L.T("ability.later"))
-		case id == protocol.AbilityWeb && a.webNeedsSetup(dv) && dv.State == protocol.DeviceAwake:
-			a.webSetupEntry(c, dv)
-		case ab.State == protocol.AbilityUnavailable:
-			a.unavailable(c, ab)
-		case on && id == protocol.AbilityRemote:
-			a.reachList(c)
-			if a.button(c, a.L.T("pair.again"), btnSecondary, t.ControlMD, t.Bg) {
-				a.openPair()
-			}
-		case on && d.removing == id:
-			ui.Text(c, a.L.T("ability.remove."+id, a.deviceNameIn(dv))).FontSize(t.MD).LineHeight(1.55).TextColor(t.Ink)
-			ui.Row(c).Gap(t.S3).Children(func() {
-				if a.button(c, a.L.T("ability.remove.keep"), btnSecondary, t.ControlMD, t.Bg) {
-					d.removing = ""
-				}
-				if a.buttonFor(c, a.L.T("ability.remove"), name, btnPrimary, t.ControlMD, t.Surface) {
-					a.removeAbility(dv, id)
-				}
-			})
-		case on:
-			ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-				a.glyph(c, 18, drawCheck(t.Awake.Ink))
-				ui.Text(c, a.L.T("ability.on.at", a.deviceNameIn(dv))).FontSize(t.SM).FontWeight(700).Grow(1).MinWidth(0)
-				if dv.State == protocol.DeviceAwake && a.buttonFor(c, a.L.T("ability.remove"), name, btnText, t.ControlSM, t.Surface) {
-					d.removing = id
-				}
-			})
-			// D151: Ducter's own browser getting ready (its sites are in the device card).
-			if id == protocol.AbilityWeb && ab != nil && ab.Setup == "installing" {
-				a.reasonLine(c, a.L.T("web.installing"))
-			}
-		case dv.State != protocol.DeviceAwake:
-			a.reasonLine(c, a.L.T("ability.reason.asleep"))
-		case id == protocol.AbilityRemote && d.pair.open:
-			ui.Text(c, a.L.T("pair.waiting")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
-		default:
-			if r, ok := d.refused[dv.ID+"/"+id]; ok {
-				a.reasonLine(c, a.reasonText(r.Reason))
-			}
-			if a.buttonFor(c, a.L.T("ability.add", a.deviceNameIn(dv)), name, btnPrimary, t.ControlLG, t.Surface) {
-				a.startEquip(dv, id, d.tiles[id], false)
-			}
-			ui.Text(c, a.L.T("devices.empty.hint", a.deviceNameIn(dv))).FontSize(t.XS).TextColor(t.InkMuted).TextAlign(ui.Center)
-		}
-	})
-}
 
 func (a *App) reasonLine(c *ui.Context, text string) {
 	t := a.T

@@ -366,6 +366,7 @@ func (a *App) View(c *ui.Context) {
 	c.SetTheme(a.uiTheme)
 	a.winW, a.winH = c.Size()
 	a.drainActionResults(c)
+	a.watchStopAfter() // D161: 做完再停 lands wherever the window is
 	a.shortcuts(c)
 	a.titleTick(c)
 	a.sayInstalled(c)

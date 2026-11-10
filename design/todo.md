@@ -350,18 +350,24 @@ note and a `Dn`) before it is built.
       task there would overwrite it. Give tasks a home of their own per task, then set it in
       runner `withBrowser`. Trigger: the first DeepSeek Harness browser task.
 
-## The device card as a character sheet (draft D161, `design/ui-devices-card.md`)
+## The device card as a character sheet (D161, `design/ui-devices-card.md`)
 
-Trigger for all of it: the author approves D161.
+Built 2026-11-10 on both clients (§12). Still open:
 
-- [ ] **Desktop card** (`apps/desktop/internal/views/devicecard.go`, `abilities.go`): the hero,
-      status line, coin tray with in-place detail, ability chips, the one connection line with
-      its in-place ⋯, one Disconnect; the left list's one-word state. Keys from §8.
-- [ ] **Phone card** (`apps/web/src/views.tsx`): the same, one column.
-- [ ] **Motion:** chip squish and coin pop in both clients, reduced motion off.
-- [ ] **Owed design:** a dedicated small clay object for 替 {home} 做事 (today hel's own clay);
-      Pebble dark on the phone; a device with five or more agents; the comprehension check of
-      the chips with naive raters (LLM proxies first).
+- [ ] **Learned rules on Settings › 伙伴** with **你换过两次以后定的** and **不要这条** (D161 (9)).
+      Trigger: the first rule the partner learns from two switches.
+- [ ] **Owed design:** a dedicated small clay object for 替 {home} 做事 (today the home's own
+      clay); Pebble dark on the phone's sheet; a device with five or more agents (the tray wraps
+      today); the comprehension check of the chips with naive raters (LLM proxies first).
+      Trigger: the next design pass on Devices.
+- [ ] **The phone's chips for another computer**: 上网 and 用电脑 toggle from the phone, but 在哪儿都能用
+      (a pairing code) and 替 {home} 做事 (a LaunchAgent on that Mac) only explain themselves there.
+      Trigger: pairing from the phone.
+- [ ] **A phone's 通知 chip on the Mac's card** needs the home to know each phone's notification
+      state. Trigger: the protocol carries it.
+- [ ] **The shared-controls guard on the rest of the phone client** (`views.tsx` still has its own
+      `qlink` and form buttons): move them into `controls.tsx` and widen `test/controls.test.ts`.
+      Trigger: the next settings or task-page change on the phone.
 
 ## Where a task runs (draft D157, `design/where.md`)
 ## Where a task runs (D157, `design/where.md`)

@@ -922,7 +922,13 @@ func (a *App) switchSheet(c *ui.Context, task *store.Task) {
 	a.enter(c, sheet)
 	sheet.Children(func() {
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-			a.heading(c, a.L.T("who.switch"), t.LG).Grow(1).MinWidth(0)
+			ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
+				a.heading(c, a.L.T("who.switch"), t.LG)
+				// D161 (6): with two or more computers the sheet says it covers where too.
+				if a.manyComputers() {
+					ui.Text(c, a.L.T("switch.sub")).FontSize(t.SM).TextColor(t.InkMuted)
+				}
+			})
 			if a.button(c, a.L.T("loadout.cancel"), btnText, t.ControlSM, t.Surface) {
 				lo.switchFor = ""
 			}
@@ -958,10 +964,18 @@ func (a *App) switchSheet(c *ui.Context, task *store.Task) {
 					if dv != nil {
 						name = dv.Name
 					}
-					ui.Row(c.Key("grp:"+dev)).Gap(t.S2).Padding(t.S2, 0, 0, 0).AlignItems(ui.Center).Children(func() {
-						ui.Text(c, name).FontSize(t.SM).FontWeight(800).TextColor(t.InkSoft)
+					// D161 (9): a group head is the device's mini card: its clay, its name, its state.
+					ui.Row(c.Key("grp:"+dev)).Gap(t.S2).Padding(t.S2, t.S2, 0, t.S1).AlignItems(ui.Center).Children(func() {
+						if dv != nil {
+							a.deviceClay(c, "grp:"+dev, dv).Size(36, 28).Shrink(0)
+						}
+						ui.Text(c, name).FontSize(t.MD).FontWeight(800).TextColor(t.Ink)
 						if s := a.computerState(dv); s != "" {
-							ui.Text(c, "· "+s).FontSize(t.SM).TextColor(t.InkMuted)
+							ink := t.InkMuted
+							if dv != nil && dv.State == protocol.DeviceAsleep {
+								ink = t.Asleep.Ink
+							}
+							ui.Text(c, "· "+s).FontSize(t.SM).TextColor(ink)
 						}
 					})
 				}
@@ -984,35 +998,7 @@ func (a *App) switchSheet(c *ui.Context, task *store.Task) {
 					if r := a.whereCandReason(cd); r != "" {
 						reason = r
 					}
-					row := ui.Row(c.Key("cand:"+key)).Gap(t.S3).Padding(t.S2, t.S3).Radius(t.RadiusMD).Background(t.Bg).
-						Shadow(0, 3, 0, 0, t.Line).AlignItems(ui.Center).Role(ui.RoleRadio).Label(name + " · " + reason).AccessSelected(on)
-					if off || cd.Current {
-						row.Opacity(map[bool]float32{true: 0.55, false: 1}[off])
-					} else {
-						row.Cursor(ui.CursorPointer).Focusable()
-						a.lift(c, row, 1)
-					}
-					if on {
-						row.InsetShadow(0, 0, 0, 2, t.Ink)
-					}
-					row.Children(func() {
-						if bmp := theme.Clay(coinArt(cd.Harness, 40, off)); bmp != nil {
-							img := ui.Image(c, bmp).Size(40, 40).Shrink(0).AccessHidden(true)
-							if off && !coinKnown(cd.Harness) {
-								img.Grayscale()
-							}
-						}
-						ui.Column(c).Grow(1).MinWidth(0).Gap(2).AccessHidden(true).Children(func() {
-							ui.Text(c, name).FontSize(t.MD).FontWeight(800).SingleLine()
-							if reason != "" {
-								ui.Text(c, reason).FontSize(t.SM).TextColor(t.InkMuted).MaxLines(2)
-							}
-						})
-						if cd.Current {
-							ui.Text(c, a.L.T("who.now")).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted).Shrink(0).AccessHidden(true)
-						}
-					})
-					if !off && !cd.Current && row.Clicked() {
+					if a.candRow(c, key, cd.Harness, name, reason, off, cd.Current, on) {
 						lo.pick = key
 					}
 				}

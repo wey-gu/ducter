@@ -28,24 +28,19 @@ func (a *App) lookPanel(c *ui.Context) {
 	a.lookPreview(c)
 	a.group(c, "look", a.L.T("settings.look.group"), "", func() {
 		a.sep(c)
-		b := ui.Row(c.Key("theme:pebble")).Gap(t.S4).Padding(t.S4, t.S5).AlignItems(ui.Center).Cursor(ui.CursorPointer).
-			Role(ui.RoleRadio).AccessSelected(true).Label(a.L.T("settings.look.pebble")).Focusable()
-		if b.Hovered() {
-			b.Background(t.Ink.Alpha(0.03))
-		}
-		b.Children(func() {
-			ui.Row(c).Gap(4).Shrink(0).Padding(t.S1).Radius(t.RadiusSM).Border(2, t.Ink).Children(func() {
-				for _, col := range []ui.Color{t.Bg, t.NeedsYou.Surface, t.Accent, t.Done.Surface, t.Ink} {
-					ui.Box(c).Size(18, 36).Radius(t.RadiusXS-2).Background(col).Border(1, t.Line)
-				}
+		if a.selectRow(c, "theme:pebble", a.L.T("settings.look.pebble"), true, false, func() {
+			ui.Row(c).Gap(t.S4).AlignItems(ui.Center).Children(func() {
+				ui.Row(c).Gap(4).Shrink(0).Padding(t.S1).Radius(t.RadiusSM).Border(2, t.Ink).Children(func() {
+					for _, col := range []ui.Color{t.Bg, t.NeedsYou.Surface, t.Accent, t.Done.Surface, t.Ink} {
+						ui.Box(c).Size(18, 36).Radius(t.RadiusXS-2).Background(col).Border(1, t.Line)
+					}
+				})
+				ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
+					ui.Text(c, a.L.T("settings.look.pebble")).FontSize(t.MD).FontWeight(700)
+					a.note(c, a.L.T("settings.look.pebble.note"))
+				})
 			})
-			ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
-				ui.Text(c, a.L.T("settings.look.pebble")).FontSize(t.MD).FontWeight(700)
-				a.note(c, a.L.T("settings.look.pebble.note"))
-			})
-			a.glyph(c, 20, drawCheck(t.Ink))
-		})
-		if b.Clicked() {
+		}) {
 			a.cheer()
 		}
 	})
@@ -124,7 +119,7 @@ func (a *App) soundRow(c *ui.Context, playing bool) (bool, bool) {
 				}
 			}
 		}
-		changed = ui.Switch(c.Key("sw:sound"), &on).Label(a.L.T("settings.sound.row")).Changed()
+		changed = a.switchControl(c, "sound", a.L.T("settings.sound.row"), &on)
 	})
 	return on, changed
 }
@@ -426,18 +421,10 @@ func (a *App) removeEntry(c *ui.Context) {
 			ui.Column(c).Gap(t.S2).Role(ui.RoleRadioGroup).Label(a.L.T("remove.title")).Children(func() {
 				for _, o := range opts {
 					on := o.all == r.all
-					row := ui.Column(c.Key("rm:" + o.name)).Gap(2).Padding(t.S3).Radius(t.RadiusMD).Cursor(ui.CursorPointer).
-						Role(ui.RoleRadio).Label(o.name).AccessSelected(on).Focusable()
-					if on {
-						row.Border(2, t.Ink)
-					} else {
-						row.Border(1, t.Line)
-					}
-					row.Children(func() {
+					if a.selectRow(c, "rm:"+o.name, o.name, on, true, func() {
 						ui.Text(c, o.name).FontSize(t.MD).FontWeight(700)
 						a.note(c, o.sub)
-					})
-					if row.Clicked() && !on {
+					}) && !on {
 						r.all, r.word = o.all, ""
 						a.loadPlan(rm, o.all)
 					}
@@ -566,19 +553,7 @@ func (a *App) aboutPanel(c *ui.Context) {
 	})
 	a.group(c, "credits", "", "", func() {
 		a.sep(c)
-		b := ui.Row(c.Key("credits")).Gap(t.S4).Padding(t.S4, t.S5).MinHeight(60).AlignItems(ui.Center).
-			Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(a.L.T("settings.credits")).Expanded(ss.credits).Focusable()
-		if b.Hovered() || b.Pressed() {
-			b.Background(t.Ink.Alpha(0.03))
-		}
-		b.Children(func() {
-			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(2).Children(func() {
-				ui.Text(c, a.L.T("settings.credits")).FontSize(t.MD).FontWeight(700)
-				ui.Text(c, a.L.T("settings.credits.help")).FontSize(t.SM).TextColor(t.InkMuted)
-			})
-			a.glyph(c, 16, drawChevron(t.InkMuted, ss.credits))
-		})
-		if b.Clicked() {
+		if a.disclosureRow(c, "credits", a.L.T("settings.credits"), a.L.T("settings.credits.help"), ss.credits) {
 			ss.credits = !ss.credits
 		}
 		if ss.credits {

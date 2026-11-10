@@ -23,6 +23,12 @@ func TestTryItOnTheBrowserBlock(t *testing.T) {
 		app, sent, tt := devicesApp(t, lang, protocol.DeviceAbility{ID: "web", State: "on", Where: "ducter", Detail: "157.0.8103.38"})
 		app.Receive(protocol.ServerFrame{T: "browser_sites", Ready: true})
 		tt.Frame()
+		// D161: Try it is in 上网's ⓘ.
+		if err := tt.Click(pick("这是做什么的 · 上网", "What this does · Browse")); err != nil {
+			t.Fatal(err)
+		}
+		tt.Frame()
+		tt.Frame()
 		for _, want := range []string{pick("试一下", "Try it"), pick("打开一个测试网页，亲眼看看它能上网。", "Opens a test page so you can see it browse.")} {
 			if !tt.HasText(want) {
 				t.Fatalf("%s: no %q in %q", lang, want, tt.Texts())

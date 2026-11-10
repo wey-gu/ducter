@@ -1,7 +1,8 @@
 # The device card as a character sheet
 
-> 2026-11-10 · **DRAFT D161, not decided, not built.** Design and prototype only. Amends the
-> card parts of D148 (11), D155 (1)–(2) and D156 (2); keeps every mechanism they decided.
+> 2026-11-10 · **D161, decided 2026-11-10** (the author: "按建议", all seven defaults in §10) **and
+> built on both clients** (§12). Amends the card parts of D148 (11), D155 (1)–(3), D156 (2) and
+> D157 (4)–(5); keeps every mechanism they decided.
 > Prototype: `design/prototypes/device-card.html` (open from the repo; art loads by relative
 > path; shots in `.shots/device-card-v2/`, outside git, D75). Builds on D81 (the Isles), D89
 > (who does it, rules, 用它做事), D146 (coins), D150 (Settings), D157 (draft: where a task runs,
@@ -294,7 +295,7 @@ Removed from the card (the words stay in the glossary where other surfaces use t
 
 Mechanisms (pairing, rename, revoke, updates, rules) are unchanged.
 
-## 10. The author's calls (each with a proposed default)
+## 10. The author's calls (decided 2026-11-10: every default taken)
 
 1. **Status as a line, not a chip** (D73 keeps capsules out). **Default: the line.**
 2. **Kind line removed**, the art says what it is (accessible name keeps it). **Default: yes.**
@@ -349,3 +350,36 @@ Against the north star:
 Not shown, owed: the rename moment at full size, Pebble dark on the phone, a device with five or
 more agents (the tray scrolling), and the human comprehension check of the chips without labels
 in ⓘ.
+
+## 12. As built (2026-11-10)
+
+Built on the Mac (`apps/desktop/internal/views/devicecard.go`, the left list in `abilities.go`, the
+switch sheet in `loadout.go`, copy in `i18n/devicecard.go`) and the phone
+(`apps/web/src/devcard.tsx`, words in `sheet.ts`, shared controls in `controls.tsx`). Tested with
+the mock main and offscreen testers (Mac: `TestCharacterSheet`, the updated D148/D155/D156 view
+tests; phone: `test/sheet.test.ts`), and against a demo core for the phone
+(`apps/web/demo-devices.ts`, driven headless). Shots in `.shots/device-card-built/` (outside git,
+D75): Mac `mac-*-{zh,en}.png` at 1100×720 and 1280×860, phone `phone-*-{zh,en}.png` at 390.
+
+**The shared-controls rule** came with the approval (the author: "这种事情要杜绝"): every control on
+a card or a settings page is one of the set in `design/ui.md` "Shared controls"; a test on each
+client fails otherwise. Settings › About's version rows (D167, built on main the same day) are
+shared pieces too: 现在检查 sits in the home's row there. On the phone, with the card's version
+line gone when current, **已经是最新的 · {t}查过 · 现在检查** stands once under the device list.
+
+What differs from the prototype, and why:
+
+| Prototype | Built | Why |
+|---|---|---|
+| The card at 380 beside a 250 list at every width | 380 always; under a 1360 window the list is 226 and the gutters 24; under 1180 the list goes on top as one row; under 1040 the card goes under the stage | the stage's scene needs about 600 points or its words overlap (`TestIslesScenes`) |
+| ⓘ appears inside the chip on hover | ⓘ sits on the chip's top-right corner, shown on hover (always on touch) | nothing moves on hover; a chip that grew on hover could re-wrap the row under the pointer |
+| **和 hel 共用一个账号的额度** whenever the same agent is signed in elsewhere | only when the home says the account is shared (`allowance.sharedBy` > 1), naming the other devices | "signed in elsewhere" is not "the same account"; the line must not guess |
+| 上网's Try it and signed-in sites | in 上网's ⓘ note (Ducter's own browser) | the card shows no paragraphs by default; the sites stay one tap away |
+| The socket **再登录一个** opens a sign-in | its detail lists the agents not on that device; on the Mac Ducter runs on each installs from there (the existing account sheet), elsewhere it says to do it on that device | sign-ins never copy between computers (D157 (7)) |
+| The phone's iPhone card with a 通知 chip | only on the phone's own card (the web client knows its own notifications, not another phone's); the Mac's card for a phone has no chips | the Mac can't see a phone's notification state |
+| Learned rules on Settings › 伙伴 with **你换过两次以后定的** | not built in this step | todo |
+| Coins at 52 printed with their names | the plain coin body at 52 (the printed coin from 72) | D146: below 72 a printed name is a smudge; the name is under the coin anyway |
+| The socket **再登录一个** on every tray | only when an agent isn't on that device yet | an always-there socket that opens nothing new is noise |
+| MacBook's 上网 off as a flat chip | off and can be added is the dashed **+ 上网**; flat grey is "can't now" (asleep, unavailable), a tap says why | one look per meaning: dashed = one tap adds it, flat = it can't be added right now |
+| (not in the prototype) | **合上之前搬走** under a working laptop's status line | D157 (6), kept |
+| The coin detail | also keeps a slot for more per-agent lines (the next is the memory line, from another branch) | — |

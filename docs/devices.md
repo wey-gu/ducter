@@ -19,52 +19,62 @@ back to the middle one, because everything connects through the computer Ducter 
 
 - **Little parcels cross a bridge** while a task is running on that computer. When it's done
   they stop; the bridge stays.
-- **The AI agents signed in on a device** stand on its island. Tap one and every island where it
-  is signed in lifts a little; the card beside the scene says, for example, *"Signed in · shared
-  by 2 devices"*.
-- **What a device can do** stands in front of its island at full size. An empty spot is
-  something you can add: tap it, or drag it from **You can also add**.
+- **The AI agents signed in on a device** stand on its island. Tap one on a device's card and
+  every island where it is signed in lifts a little.
+- **What a device can do** stands in front of its island at full size.
 - **A device that can't be reached** sits in a soft mist with one line, such as *"Can't reach ·
   2 h ago"*. Nothing needs fixing on your side; it shows up again when it's back.
 
-Choose an island (or its card on the left) to see that device's card: its name, what it is
-(*A computer in the cloud · Ducter lives here*, *Another computer · does tasks for Ducter*), whether
-it's awake, what it can do, the AI agents signed in on it, and its Ducter version. AI agents that
-aren't signed in there stay behind **+ Sign in another AI**.
+The list on the left has one line per device: its name and one word of how it is (*home*,
+*2 tasks*, *asleep*, *connected*). Choose a line or an island to see that device's card. It reads
+top to bottom like a character in a game:
 
-- **Rename** any device, the one Ducter lives on too, by clicking its name on the card: type,
-  then Enter to keep it or Esc to leave it as it was.
-- **Disconnect** is at the bottom of the card. Ducter asks once and says what it means; to bring
-  the device back, connect it again with a new code.
+- **Who:** the device itself, big, with its name under it. Click the name to **rename** it (the
+  one Ducter lives on too): type, then Enter to keep it or Esc to leave it as it was.
+- **How it is:** one line, such as *Ducter lives here*, *Doing 2 tasks for hel*, *Asleep ·
+  carries on when it wakes* or *Can't reach · last seen 2 h ago*.
+- **What it carries:** its AI agents, one coin each. A grey coin is signed out; a small dot means
+  a newer version is out. Tap a coin to see its details right there: its version and how it was
+  installed, an update, **Use it for tasks**, and who shares its account. **Add an AI** at the end
+  of the row lists the agents not on that device yet.
+- **What it can do:** a few chips, such as **Browse**, **Use apps** and **From anywhere**. One tap
+  turns one on or off. The small **i** on a chip says what it does.
+- **How it's connected:** one quiet line, such as *Connected via the app and command line*. The
+  **⋯** beside it shows each connection with its own **Disconnect**.
+- **Disconnect this MacBook** is at the very bottom. Ducter asks once and says what it means; to
+  bring the device back, connect it again with a new code.
 
-Phones and app windows have the same card: what it is in plain words (*Your iPhone · connected
-through Safari*, *A Mac · through the Ducter app*), whether it's connected now or when it was last
-seen, and what it does for you (*Get notifications · Answer what waits for you · Talk with
-Ducter*). Two phones that would get the same name get *· 2* after the second one; rename either.
+Ducter's own version shows on the card only when there is an update; **Settings › About** lists
+every computer's version, with **Check now**.
+
+Phones and app windows have the same card, without coins. Two phones that would get the same name
+get *· 2* after the second one; rename either.
 
 **One computer, one card.** When the Ducter app connects your Mac to a Ducter on a server, the
 `ducter` command line on that Mac connects too. It isn't a device of its own: the Mac's card says
-*The command line is connected too*, and the **⋯** beside that line disconnects just the command
-line. The same goes for the app on a Mac that also does tasks: *The Ducter app is connected too*.
+*Connected via the app and command line*, and the **⋯** beside that line disconnects just the
+command line.
 
 ## Let this Mac do tasks
 
 When the Ducter app on your Mac is connected to a Ducter on a server (say, *hel*), your Mac's
-card, and **Settings › Where it runs**, has one switch: **Let this Mac do tasks for hel**. Turn
-it on and your Mac becomes one of hel's computers, with the AI agents signed in on it (Claude
+card has a chip **Tasks for hel**, and **Settings › Where it runs** has the same switch: **Let this
+Mac do tasks for hel**. Turn it on and your Mac becomes one of hel's computers, with the AI agents signed in on it (Claude
 Code and others), its repos and its browsers: *"run it on my Mac"* now works, and so do errands
 that need the sites you're signed in to in your Chrome. It keeps running in the background,
 starts when you log in, and starts again if it stops. It only does tasks: it never sees your
-conversation. Turn it off and it stops, and hel forgets it. From then on, every task says which
+conversation. Turn it off and it stops, and hel forgets it. If tasks are still running on it,
+Ducter asks first, and **After they finish** is the default. From then on, every task says which
 computer it's on (see [Which computer a task runs on](#which-computer-a-task-runs-on)).
 - **Update:** a device that's behind gets one small dot by its name and an **Update** button on its
   card. See [Updates](install.md#updates).
 
 ### Your AI agents' versions
 
-Under each AI agent on a device's card is the version it runs there, for example *Version
-0.167.0*. When a newer one is out, a small dot and **Update to 0.168.0** appear with an
-**Update** button. Ducter updates it the same way it was installed (npm, Homebrew, or the agent's
+Tap an AI agent's coin on a device's card to see the version it runs there and how it was
+installed, for example *Version 0.167.0 · installed with npm*. When a newer one is out, the coin
+has a small dot, and its details say **Update to 0.168.0** with an **Update** button. When an
+update lands, the coin pops once. Ducter updates it the same way it was installed (npm, Homebrew, or the agent's
 own installer), but only once nothing is running on that agent there: you may see *Waiting for its
 work to settle…* first, then *Updating to 0.168.0…* and *Done, now on 0.168.0*. If the new version
 doesn't start, or its sign-in stops working, Ducter puts the previous version back where it can
@@ -81,7 +91,8 @@ and says so.
 From the command line: `ducter update --agents --check` shows them, `ducter update --agents`
 updates the ones behind (`--all` for every computer, `--json` for scripts).
 
-The phone shows the same cards under **Settings › Your devices**, without the islands.
+The phone shows the same list and cards under **Settings › Your devices**, without the islands: tap
+a device to open its card.
 
 Each device is in one of three states:
 
@@ -90,9 +101,9 @@ Each device is in one of three states:
   pause and pick up again when it wakes. Nothing is lost.
 - **Can't reach:** Ducter can't get to it right now, with when it was last seen.
 
-Another computer you lent Ducter shows its own name and the line *Another computer · does tasks
-for Ducter*. When it is asleep or can't be reached, the second half says that instead. To give it
-a name you'll recognise, choose it and then **Rename**; Ducter knows it by the new name from then
+Another computer you lent Ducter shows its own name and the line *Does tasks for hel* (or what it
+is doing). When it is asleep or can't be reached, the line says that instead. To give it a name
+you'll recognise, click its name on its card; Ducter knows it by the new name from then
 on, and tasks you started there before keep going.
 
 What a device can do:
@@ -105,9 +116,8 @@ What a device can do:
 | **Use a phone** | Ducter does things on your phone | Coming later |
 | **Make calls** | Ducter makes phone calls for you | Coming later |
 
-To give a device something, choose **Add to** it. When it's done you see, for example,
-*"MacBook can browse the web now"*. **Remove** takes it away again; before anything changes,
-Ducter tells you what that means.
+To give a device something, tap its dashed chip (**+ Browse**). When it's done you see, for
+example, *"MacBook can browse the web now"*. Tap the chip again to take it away.
 
 ### Browsing the web
 
@@ -117,7 +127,7 @@ Browsing the web now uses your AI agent's own browser when it can:
 - **Claude Code** works in your Chrome through the Claude extension, when the extension is
   connected.
 
-Then **Browse the web** says **In your Chrome**, and there is nothing to set up. A task there is
+Then **Browse** is ready, its **i** says it works in your Chrome, and there is nothing to set up. A task there is
 signed in to the sites you are signed in to, as you. It keeps to what it opened:
 
 - **It opens a window or tab of its own** and works only there. It never types into a page you
@@ -151,18 +161,18 @@ What you'll notice with Ducter's own browser:
 On a Linux server (a VPS with no screen) your AI agent has no browser of its own, so Ducter
 brings one: **Ducter's own browser**, a real Chrome that runs on the server with no window.
 
-- **Adding it is one tap.** Choose **Browse the web** on the server in Devices, then **Add to**.
+- **Adding it is one tap.** Tap **+ Browse** on the server's card in Devices.
   Ducter downloads Chrome (about 170 MB, the first time only) and says **Getting ready…** until
   it can start. From a terminal, `ducter ability add browser` does the same.
 - **If the server lacks a few system libraries**, and Ducter doesn't run as root, it can't
-  install them itself. Devices shows **One step left** and the one line to run on the server
+  install them itself. The card says so under its chips, with the one line to run on the server
   (`sudo apt-get install …`); run it, then **Try again**. As root, Ducter installs them itself.
 - **Its profile is its own**, kept on the server, separate from any Chrome of yours. Sites you
   sign into stay signed in for later tasks.
 - **Files a page downloads** land in the task's own folder.
 
-**Seeing it work.** Once it's added, **Try it** (under Browse the web on the server, in the Mac
-app or on your phone) opens a test page in the server's browser, live, so you can see it browse
+**Seeing it work.** Once it's added, **Try it** (in **Browse**'s **i** on the server's card, in the
+Mac app or on your phone) opens a test page in the server's browser, live, so you can see it browse
 for yourself. The top line says whose browser it is and where it runs: **Ducter's own browser ·
 on hel · Chrome for Testing 157**. Tap **Done** to close it. You can also just ask Ducter
 "I just added the browser, can you check it works?": it opens a test page itself and tells you
@@ -179,7 +189,7 @@ While that view is open, the task can't see the page at all: it waits. Your pass
 codes go from your keyboard to the site and nowhere else; nothing of it is shown to the AI or
 kept in your conversation. **Not now** closes the view and leaves the question open.
 
-**Signed-in sites.** Devices › **Browse the web** on the server lists the sites you signed into
+**Signed-in sites.** The **i** on the server's **Browse** chip lists the sites you signed into
 there. **Sign out** forgets one site's sign-in on the server; **Clear all** forgets every one.
 (To be sure, also sign that session out on the site's own security page.) From a terminal:
 `ducter browser sites`, `ducter browser signout <site>`, `ducter browser clear`.

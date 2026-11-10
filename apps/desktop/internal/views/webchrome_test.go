@@ -38,7 +38,10 @@ func TestWebInYourChrome(t *testing.T) {
 			if dv := h.app.S.Device("local"); dv == nil || h.app.webNeedsSetup(dv) {
 				t.Fatal("a ready native browser still asks for cua-driver's setup")
 			}
-			h.has(T("web.where.chrome"))
+			// D161: which browser is said in 上网's ⓘ, one tap away.
+			h.click(T("chip.info") + " · " + T("chip.web"))
+			h.settle(200 * time.Millisecond)
+			h.has(T("ability.web.about.chrome"))
 			if strings.Contains(strings.Join(h.tt.Texts(), "\n"), T("web.tile")) {
 				t.Error("the tile still offers the three setup steps")
 			}

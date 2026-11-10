@@ -58,10 +58,10 @@ func TestDeviceCards(t *testing.T) {
 			d.sel = "local"
 			h.settle(200 * time.Millisecond)
 			for _, want := range []string{
-				L.T("device.what.home", L.T("device.what.cloud"), h.app.S.PersonaName),
-				L.T("devup.available", "0.0.4"),
+				L.T("card.status.home", h.app.S.PersonaName),
+				L.T("card.ducter.update", "0.0.4"),
 				"Update Ducter and its computers in place, with a rollback",
-				L.T("devices.accounts.more"),
+				L.T("coin.socket"),
 			} {
 				if !h.tt.HasText(want) {
 					t.Fatalf("home card: missing %q in %q", want, h.tt.Texts())
@@ -114,11 +114,11 @@ func TestDeviceCards(t *testing.T) {
 			// The phone: what it is, when it was last here, and 断开 with a confirm.
 			d.selClient = "c1"
 			h.settle(200 * time.Millisecond)
-			if !h.tt.HasText(L.T("device.kind.iphone.safari")) || !h.tt.HasText(L.T("device.does.phone", h.app.S.PersonaName)) {
+			if !h.tt.HasText(L.T("card.via", L.T("card.via.safari"))) || !h.tt.HasText(L.T("device.last_seen", L.T("time.ago.hour", 3))) {
 				t.Fatalf("phone card: %q", h.tt.Texts())
 			}
 			shot("phone")
-			h.click(L.T("device.disconnect") + " · Wey 的 iPhone")
+			h.click(L.T("card.disconnect.device", "Wey 的 iPhone"))
 			h.settle(100 * time.Millisecond)
 			if !h.tt.HasText(L.T("device.disconnect.ask", "Wey 的 iPhone")) {
 				t.Fatalf("confirm: %q", h.tt.Texts())

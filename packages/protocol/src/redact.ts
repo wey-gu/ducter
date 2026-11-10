@@ -26,6 +26,24 @@ const FIELD =
   /((?:[A-Za-z0-9]+[_\-])*(?:api[_\-]?key|apikey|access[_\-]?key|secret|token|password|passwd|pwd|credential|auth[_\-]?key|private[_\-]?key|connect[_\-]?code)(?:[_\-][A-Za-z0-9]+)*\\?["']?\s*(?:[:=]|\s)\s*\\?["']?)([^\s"'`,;<>()\[\]{}\\•\uE000\uE001]{12,})/gi;
 /** A PEM private key block. */
 const PEM = /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g;
+/** D191: a card number (15–16 digits from a card network, or grouped as printed) that passes Luhn; the last four stay. */
+const CARD = /\b(?:[2-6]\d{14,15}|\d{4}(?:[ -]\d{4}){3}|\d{4}[ -]\d{6}[ -]\d{5})\b/g;
+
+/** D191: a card's security code or a one-time code, named: "CVV 737", "安全码 737", "验证码：482913". */
+const CVC = /((?:cvc2?|cvv2?|csc|cvn|security code|安全码|验证码|校验码)\s*[:：=]?\s*)(\d{3,8})\b/gi;
+
+/** The Luhn check (a card number), on the digits only. */
+export function luhnOk(s: string): boolean {
+  const d = s.replace(/\D+/g, "");
+  if (d.length < 15 || d.length > 16) return false;
+  let sum = 0;
+  for (let i = 0; i < d.length; i++) {
+    let n = d.charCodeAt(d.length - 1 - i) - 48;
+    if (i % 2 === 1 && (n *= 2) > 9) n -= 9;
+    sum += n;
+  }
+  return sum % 10 === 0;
+}
 
 /** A value that reads as a key, not a word: long, with a digit, not one repeated character, not a path. */
 function keyLike(v: string): boolean {
@@ -38,7 +56,7 @@ function keyLike(v: string): boolean {
 
 /** One key found in a text: its format, its head (a prefixed key's "nmem_ct_", kept on screen; else the label before it, "Bearer ", "token="), and the key (a prefixed one with its head). */
 export interface FoundKey {
-  kind: "pem" | "prefixed" | "jwt" | "bearer" | "url" | "field";
+  kind: "pem" | "prefixed" | "jwt" | "bearer" | "url" | "field" | "card";
   head: string;
   key: string;
 }
@@ -58,6 +76,8 @@ export function redactWith(s: string, hide: (k: FoundKey) => string | undefined,
   const found: FoundKey[] = [];
   const mark = (k: FoundKey) => `\uE000${found.push(k) - 1}\uE001`;
   let out = s.replace(PEM, (m) => mark({ kind: "pem", head: "", key: m }));
+  out = out.replace(CARD, (m) => (luhnOk(m) ? mark({ kind: "card", head: "", key: m }) : m));
+  out = out.replace(CVC, (_m, head: string, v: string) => head + mark({ kind: "field", head, key: v }));
   // A known head with a digit after it is a key. strict (what reaches a task): a long tail is one
   // too, digits or not (a screen keeps "sk-learn-preprocessing" readable; a task loses nothing by it).
   out = out.replace(PREFIXED, (m, head: string) => (/[0-9]/.test(m.slice(head.length)) || (o.strict && m.length - head.length >= 16) ? mark({ kind: "prefixed", head, key: m }) : m));
@@ -77,7 +97,7 @@ export function redactWith(s: string, hide: (k: FoundKey) => string | undefined,
 
 /** The text with every key in it hidden. */
 export function redact(s: string): string {
-  return redactWith(s, (k) => (k.kind === "pem" ? `-----BEGIN PRIVATE KEY-----${HIDDEN}-----END PRIVATE KEY-----` : k.kind === "prefixed" ? k.head + HIDDEN : HIDDEN));
+  return redactWith(s, (k) => (k.kind === "pem" ? `-----BEGIN PRIVATE KEY-----${HIDDEN}-----END PRIVATE KEY-----` : k.kind === "prefixed" ? k.head + HIDDEN : k.kind === "card" ? HIDDEN + k.key.replace(/\D+/g, "").slice(-4) : HIDDEN));
 }
 
 /** A Nowledge Mem connect code ("nmem_ct_…"): the one key a user may hand a task on purpose (D152's scenario, D175). */

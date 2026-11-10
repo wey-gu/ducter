@@ -21,6 +21,8 @@ var (
 	urlCred  = regexp.MustCompile(`(?i)(\b[a-z][a-z0-9+.\-]*://[^\s:/@]+:)[^\s@/]{3,}@`)
 	field    = regexp.MustCompile(`(?i)((?:[A-Za-z0-9]+[_\-])*(?:api[_\-]?key|apikey|access[_\-]?key|secret|token|password|passwd|pwd|credential|auth[_\-]?key|private[_\-]?key|connect[_\-]?code)(?:[_\-][A-Za-z0-9]+)*\\?["']?\s*(?:[:=]|\s)\s*\\?["']?)([^\s"'` + "`" + `,;<>()\[\]{}\\•]{12,})`)
 	pem      = regexp.MustCompile(`-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----`)
+	card     = regexp.MustCompile(`\b(?:[2-6]\d{14,15}|\d{4}(?:[ -]\d{4}){3}|\d{4}[ -]\d{6}[ -]\d{5})\b`)
+	cvc      = regexp.MustCompile(`(?i)((?:cvc2?|cvv2?|csc|cvn|security code|安全码|验证码|校验码)\s*[:：=]?\s*)(\d{3,8})\b`)
 	digit    = regexp.MustCompile(`[0-9]`)
 	letter   = regexp.MustCompile(`[A-Za-z]`)
 	base64   = regexp.MustCompile(`^[A-Za-z0-9+/]{20,}={0,2}$`)
@@ -68,6 +70,20 @@ func Text(s string) string {
 		return s
 	}
 	out := pem.ReplaceAllString(s, "-----BEGIN PRIVATE KEY-----"+Hidden+"-----END PRIVATE KEY-----")
+	// D191: a card number that passes Luhn keeps its last four; a named security code is hidden.
+	out = replace(card, out, func(m []string, _ int) string {
+		d := strings.Map(func(r rune) rune {
+			if r >= '0' && r <= '9' {
+				return r
+			}
+			return -1
+		}, m[0])
+		if !luhn(d) {
+			return m[0]
+		}
+		return Hidden + d[len(d)-4:]
+	})
+	out = replace(cvc, out, func(m []string, _ int) string { return m[1] + Hidden })
 	out = replace(prefixed, out, func(m []string, _ int) string {
 		if digit.MatchString(m[0][len(m[1]):]) {
 			return m[1] + Hidden
@@ -85,6 +101,24 @@ func Text(s string) string {
 		return m[0]
 	})
 	return out
+}
+
+// luhn: a 15- or 16-digit card number's checksum.
+func luhn(d string) bool {
+	if len(d) < 15 || len(d) > 16 {
+		return false
+	}
+	sum := 0
+	for i := 0; i < len(d); i++ {
+		n := int(d[len(d)-1-i] - '0')
+		if i%2 == 1 {
+			if n *= 2; n > 9 {
+				n -= 9
+			}
+		}
+		sum += n
+	}
+	return sum%10 == 0
 }
 
 // Has reports whether a key was hidden in s.

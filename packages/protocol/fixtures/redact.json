@@ -18,5 +18,9 @@
   { "in": "commit 4f4f8d5a9b2c1e3d7f6a8b9c0d1e2f3a4b5c6d7e on main", "want": "commit 4f4f8d5a9b2c1e3d7f6a8b9c0d1e2f3a4b5c6d7e on main" },
   { "in": "bun 1.3.14 and node v22.11.0", "want": "bun 1.3.14 and node v22.11.0" },
   { "in": "-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQ\n-----END OPENSSH PRIVATE KEY-----", "want": "-----BEGIN PRIVATE KEY-----••••••-----END PRIVATE KEY-----" },
-  { "in": "slack xoxb-1234567890-0987654321-AbCdEfGhIjKl", "want": "slack xoxb-••••••" }
+  { "in": "slack xoxb-1234567890-0987654321-AbCdEfGhIjKl", "want": "slack xoxb-••••••" },
+  { "in": "card 4242 4242 4242 4242 exp 08/29", "want": "card ••••••4242 exp 08/29" },
+  { "in": "我的卡号 4242424242424242，安全码 737，帮我订", "want": "我的卡号 ••••••4242，安全码 ••••••，帮我订" },
+  { "in": "Amex 3782-822463-10005 CVV: 1234", "want": "Amex ••••••0005 CVV: ••••••" },
+  { "in": "order 4242424242424241 shipped; build 1794327346044 done", "want": "order 4242424242424241 shipped; build 1794327346044 done" }
 ]

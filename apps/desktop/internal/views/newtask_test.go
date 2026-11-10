@@ -363,6 +363,72 @@ func TestNewTaskAddFolder(t *testing.T) {
 	}
 }
 
+// D197, the author's setup on 2026-11-11: the home is on a server (hel,
+// "Hetzner Server") and this Mac does tasks for it. Add a folder… picks a
+// folder on this Mac and sends it with this Mac's worker id; the list says
+// which computer each place is on. Without the worker, the row is greyed
+// with the one step that turns it on.
+func TestNewTaskAddFolderOnThisMacForAHomeElsewhere(t *testing.T) {
+	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
+		for _, on := range []bool{true, false} {
+			app, sent, tt := newTaskApp(t, lang)
+			L := app.L
+			app.URL = "wss://hel.example/ws" // the home elsewhere (no machine hash: not this Mac)
+			app.MacWorker = &macWorkOn{on: on}
+			app.Receive(protocol.ServerFrame{T: "devices", Devices: []protocol.DeviceView{
+				{ID: "local", Name: "Hetzner Server", Kind: "server", Home: true, State: protocol.DeviceAwake},
+				{ID: "dev_mac", Name: "Macbook Pro M3", Kind: "laptop", State: protocol.DeviceAwake, Platform: "darwin-arm64"},
+			}})
+			picked := ""
+			app.PickFolder = func(title, button string) (string, error) {
+				picked = title
+				return "/Users/weyl/dev/ducter", nil
+			}
+			app.OpenNewTask(nil)
+			opts := newTaskOptions(lang)
+			opts.Places = []protocol.PlaceChoice{
+				{Place: protocol.Place{Kind: "repo", Device: "dev_mac", RepoPath: "/Users/weyl/dev/hawdb"}, Name: "hawdb", DefaultBranch: "main", Branches: []string{"main", "wal-bench"}, Computer: "Macbook Pro M3"},
+				{Place: protocol.Place{Kind: "repo", Device: "local", RepoPath: "/root/ducter-server"}, Name: "ducter-server", DefaultBranch: "main", Computer: "Hetzner Server"},
+				{Place: protocol.Place{Kind: "none"}},
+			}
+			app.Receive(opts)
+			tt.Frame()
+			click(t, tt, L.T("newtask.where")+" · hawdb")
+			// The worker's repo has its branch pill; each row says its computer.
+			if !tt.HasText("main") {
+				t.Errorf("%s: no branch pill for the Mac's repo: %q", lang, tt.Texts())
+			}
+			for _, line := range []string{"~/dev/hawdb · Macbook Pro M3", "/root/ducter-server · Hetzner Server"} {
+				if !tt.HasText(line) {
+					t.Errorf("%s: no %q in Where's list: %q", lang, line, tt.Texts())
+				}
+			}
+			why := L.T("newtask.addfolder.off", "Hetzner Server")
+			if on {
+				if tt.HasText(why) {
+					t.Errorf("%s: the off line shows with the worker on", lang)
+				}
+				click(t, tt, L.T("newtask.addfolder"))
+				add, ok := lastFrame[protocol.ProjectAdd](sent)
+				if !ok || add.Path != "/Users/weyl/dev/ducter" || add.Device != "dev_mac" || add.ClientID == "" || picked == "" {
+					t.Fatalf("%s: project_add %+v (picker asked: %q)", lang, add, picked)
+				}
+				newTaskShot(t, tt, "card-add-folder-worker-"+string(lang))
+				continue
+			}
+			if !tt.HasText(why) {
+				t.Fatalf("%s: no line saying how to add a folder here: %q", lang, tt.Texts())
+			}
+			_ = tt.Click(L.T("newtask.addfolder") + " · " + why)
+			tt.Frame()
+			if _, ok := lastFrame[protocol.ProjectAdd](sent); ok || picked != "" {
+				t.Errorf("%s: the greyed row asked for a folder", lang)
+			}
+			newTaskShot(t, tt, "card-add-folder-off-"+string(lang))
+		}
+	}
+}
+
 // ⌘N inside an opened task starts the card at that task's place.
 func TestNewTaskFromTask(t *testing.T) {
 	app, sent, tt := newTaskApp(t, i18n.EN)

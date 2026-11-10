@@ -64,14 +64,14 @@ function fakeRunner(core: Core, opts: { changes?: BranchChanges } = {}) {
   return { opened };
 }
 
-function boot(): { core: Core; dir: string; woke: LogEvent[] } {
+function boot(extra: Partial<Parameters<typeof startCore>[0]> = {}): { core: Core; dir: string; woke: LogEvent[] } {
   const t = tempDir();
   // Two AI agents signed in here: the candidates come from them, never from probing this Mac.
   const harnesses = async () => [
     { harness: "claude-code", installed: true, loggedIn: true },
     { harness: "codex", installed: true, loggedIn: true },
   ];
-  const core = startCore({ dataDir: t.dir, port: 0, batchMs: 5, deviceProbes: { cua: async () => ({ missing: "test" }), harnesses, kind: async () => "laptop" } });
+  const core = startCore({ dataDir: t.dir, port: 0, batchMs: 5, deviceProbes: { cua: async () => ({ missing: "test" }), harnesses, kind: async () => "laptop" }, ...extra });
   stops.push(t.cleanup, () => core.stop());
   const woke: LogEvent[] = [];
   core.setPartner({ onTrigger: (e) => void woke.push(e) });
@@ -314,4 +314,81 @@ test("D186: a folder the user adds becomes a project: offered first, on On hand 
   // Not a folder: said plainly.
   c.send({ t: "project_add", path: join(dir, "nope"), clientId: "p3" });
   expect(await c.until((f) => f.t === "project_add_result" && f.clientId === "p3")).toMatchObject({ ok: false, reason: "not_found" });
+});
+
+/** D197: the user's Mac as a worker of a home on a server: its folders read there, through the link. */
+function fakeMac(state: { online: boolean; slow?: boolean; asked: string[] }) {
+  const folders: Record<string, import("@ducter/protocol/src/folder-info.ts").FolderInfo> = {
+    "/Users/weyl/dev/ducter/apps": { exists: true, kind: "repo", root: "/Users/weyl/dev/ducter", name: "ducter", defaultBranch: "main", branches: ["main", "worktree-x"] },
+    "/Users/weyl/dev/ducter": { exists: true, kind: "repo", root: "/Users/weyl/dev/ducter", name: "ducter", defaultBranch: "main", branches: ["main", "worktree-x"] },
+    "/Users/weyl/Notes": { exists: true, kind: "folder", root: "/Users/weyl/Notes", name: "Notes" },
+  };
+  return {
+    nameOf: (dev: string) => (dev === "wmac" ? "Macbook Pro M3" : undefined),
+    homeName: () => "Hetzner Server",
+    async folderInfo(dev: string, path: string) {
+      state.asked.push(path);
+      if (dev !== "wmac" || !state.online) return "offline" as const;
+      if (state.slow) await Bun.sleep(5_000);
+      return folders[path] ?? { exists: false };
+    },
+  };
+}
+
+test("D197: a folder on this Mac, for a home elsewhere: read on the Mac, kept with its computer, offered with its branches and the computer's name", async () => {
+  const mac = { online: true, asked: [] as string[] };
+  const { core, dir } = boot({ newTaskComputers: fakeMac(mac) });
+  const { opened } = fakeRunner(core);
+  const here = repo(dir, "hawdb"); // a repo on the home itself
+  writeFileSync(join(dir, "firstrun.json"), JSON.stringify({ version: 1, repos: [{ name: "hawdb", path: here, touchedAt: "2026-11-01T00:00:00.000Z" }] }));
+  const c = await client(core);
+  // A folder inside a repo on the Mac adds the repo, on the Mac.
+  c.send({ t: "project_add", path: "/Users/weyl/dev/ducter/apps", device: "wmac", clientId: "m1" });
+  const a = await c.until<Extract<ServerFrame, { t: "project_add_result" }>>((f) => f.t === "project_add_result" && f.clientId === "m1");
+  expect(a).toMatchObject({ ok: true, place: { name: "ducter", added: true, place: { kind: "repo", device: "wmac", repoPath: "/Users/weyl/dev/ducter" }, defaultBranch: "main", branches: ["main", "worktree-x"], computer: "Macbook Pro M3" } });
+  expect(mac.asked[0]).toBe("/Users/weyl/dev/ducter/apps");
+  c.send({ t: "project_add", path: "/Users/weyl/Notes", device: "wmac", clientId: "m2" });
+  expect(await c.until((f) => f.t === "project_add_result" && f.clientId === "m2")).toMatchObject({ ok: true, place: { place: { kind: "folder", device: "wmac", path: "/Users/weyl/Notes" } } });
+  // The card: each place says its computer, since they span two.
+  c.send({ t: "task_new_options" });
+  const o = await c.until<Extract<ServerFrame, { t: "task_new_options" }>>((f) => f.t === "task_new_options");
+  expect(o.places.map((p) => [p.name, p.computer])).toEqual([["Notes", "Macbook Pro M3"], ["ducter", "Macbook Pro M3"], ["hawdb", "Hetzner Server"], ["", undefined]]);
+  expect(o.places[1]).toMatchObject({ defaultBranch: "main", branches: ["main", "worktree-x"] });
+  // A task there carries the project's name and the Mac's place.
+  c.send({ t: "task_new", words: "Fix the card.", place: { kind: "repo", device: "wmac", repoPath: "/Users/weyl/dev/ducter", baseBranch: "worktree-x" }, clientId: "t1" });
+  await c.until((f) => f.t === "task_new_result" && f.clientId === "t1");
+  expect(opened[0]).toMatchObject({ project: "ducter", place: { kind: "repo", device: "wmac", repoPath: "/Users/weyl/dev/ducter", baseBranch: "worktree-x" } });
+  // The Mac away: adding says so; the card still lists its places, without branches.
+  mac.online = false;
+  c.send({ t: "project_add", path: "/Users/weyl/Other", device: "wmac", clientId: "m3" });
+  expect(await c.until((f) => f.t === "project_add_result" && f.clientId === "m3")).toMatchObject({ ok: false, reason: "offline" });
+  const before = c.frames.length;
+  c.send({ t: "task_new_options" });
+  const o2 = await c.until<Extract<ServerFrame, { t: "task_new_options" }>>((f) => f.t === "task_new_options" && c.frames.indexOf(f) >= before);
+  const d2 = o2.places.find((p) => p.name === "ducter")!;
+  expect(d2.place).toMatchObject({ device: "wmac" });
+  expect(d2.branches).toBeUndefined();
+  // Not there on the Mac: said plainly.
+  mac.online = true;
+  c.send({ t: "project_add", path: "/Users/weyl/gone", device: "wmac", clientId: "m4" });
+  expect(await c.until((f) => f.t === "project_add_result" && f.clientId === "m4")).toMatchObject({ ok: false, reason: "not_found" });
+});
+
+test("D197: a worker slow to answer never holds the card past the short wait", async () => {
+  const mac = { online: true, slow: false, asked: [] as string[] };
+  const { core } = boot({ newTaskComputers: fakeMac(mac) });
+  fakeRunner(core);
+  const c = await client(core);
+  c.send({ t: "project_add", path: "/Users/weyl/dev/ducter", device: "wmac", clientId: "m1" });
+  await c.until((f) => f.t === "project_add_result" && f.clientId === "m1");
+  mac.slow = true;
+  const t0 = Date.now();
+  const before = c.frames.length;
+  c.send({ t: "task_new_options" });
+  const o = await c.until<Extract<ServerFrame, { t: "task_new_options" }>>((f) => f.t === "task_new_options" && c.frames.indexOf(f) >= before, 5000);
+  expect(Date.now() - t0).toBeLessThan(4000);
+  expect(o.places[0]).toMatchObject({ name: "ducter", place: { device: "wmac" } });
+  expect(o.places[0]!.branches).toBeUndefined();
+  // Only one computer among the places: no computer named.
+  expect(o.places[0]!.computer).toBeUndefined();
 });

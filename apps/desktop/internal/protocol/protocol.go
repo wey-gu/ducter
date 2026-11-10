@@ -1646,6 +1646,9 @@ type PlaceChoice struct {
 	Branches      []string `json:"branches,omitempty"`
 	// Added: a project the user added by hand (D186).
 	Added bool `json:"added,omitempty"`
+	// Computer: the computer it is on, only when the places span more
+	// than one (D197).
+	Computer string `json:"computer,omitempty"`
 }
 
 // NewTaskWhen is when a task the user opens by hand starts (D185): "now"
@@ -1663,10 +1666,12 @@ type NewTaskWhen struct {
 }
 
 // ProjectAdd adds a folder on the home's computer as a project (D186);
-// answered with project_add_result.
+// answered with project_add_result. Device (D197): the folder is on that
+// worker (this Mac's, when the home is elsewhere) and is read there.
 type ProjectAdd struct {
 	T        string `json:"t"` // "project_add"
 	Path     string `json:"path"`
+	Device   string `json:"device,omitempty"`
 	ClientID string `json:"clientId,omitempty"`
 }
 

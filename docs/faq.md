@@ -99,7 +99,10 @@ project, with each task's branch, what it waits for or which try it is on, and h
 changed; what starts later or repeats there sits in the same group. The **+** on a project
 starts a new task there. To make a project yourself, choose **Add a folder** (at the bottom of
 **By project**, or in the card's folder list) and pick a folder on your Mac; it becomes a
-project with the folder's name, before any task runs there.
+project with the folder's name, before any task runs there. If your Ducter lives on a server,
+this works once your Mac does tasks for it (Settings › Where it lives › **Let this Mac do tasks
+for …**): the folder stays on your Mac and tasks there run on your Mac. When your folders are on
+more than one computer, the list says which computer each one is on.
 
 ### Does it remember me?
 

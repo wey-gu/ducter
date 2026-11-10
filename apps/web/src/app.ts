@@ -95,6 +95,14 @@ const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart
 
 export const placeKey = (p: Place): string =>
   p.kind === "repo" ? `${p.device || "local"} ${p.repoPath.replace(/\/+$/, "")}` : p.kind === "folder" ? `${p.device || "local"} ${p.path.replace(/\/+$/, "")}` : "none";
+/** A home path as ~/…: shorter, and no user name on screen. ~ is the home folder of the computer
+ *  the path is on, read from the path itself (D197); the Mac app uses the same rule. */
+export const tilde = (p: string) => p.replace(/^\/(Users|home)\/[^/]+(?=\/|$)/, "~");
+/** A place's second line in the New task list: its path, and its computer when the places span more than one (D197). */
+export const placeLine = (p: PlaceChoice) => {
+  const path = p.place.kind === "repo" ? p.place.repoPath : p.place.kind === "folder" ? p.place.path : "";
+  return path ? tilde(path) + (p.computer ? ` · ${p.computer}` : "") : "";
+};
 export const candKey = (c: Candidate) => `${c.device ? c.device + "|" : ""}${c.harness}/${c.model ?? ""}`;
 // Kept here too: storage can be missing or refuse (a private window).
 let lastWho = "";

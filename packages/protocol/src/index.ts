@@ -489,7 +489,7 @@ export interface OnHand {
   projects?: ProjectView[];
 }
 
-/** D186: a project the user added: a folder (a repo or not) on the home's computer, and its name. */
+/** D186: a project the user added: a folder (a repo or not) on the home's computer, or on a worker (place.device, D197), and its name. */
 export interface ProjectView {
   name: string;
   place: Place; // kind "repo" or "folder"
@@ -755,8 +755,9 @@ export type ClientFrame =
   // (task_new_result carries routineId, no taskId); when / until open it now with its wait or loop.
   | { t: "task_new"; words: string; place?: Place; harness?: string; model?: string; clientId?: string; when?: NewTaskWhen }
   // D186: add a folder on the home's computer as a project (a repo or not). Answered with
-  // project_add_result; On hand's projects and the card's places then include it.
-  | { t: "project_add"; path: string; clientId?: string }
+  // project_add_result; On hand's projects and the card's places then include it. device (D197):
+  // the folder is on that worker (the Mac app's own, when the home is elsewhere), read there.
+  | { t: "project_add"; path: string; device?: string; clientId?: string }
   // open_task: show this task in the apps (`ducter open <task>`): pushed to every connected app
   // as an open_task frame; the sender gets open_result with how many apps were told.
   | { t: "open_task"; taskId: string }
@@ -824,9 +825,10 @@ export interface PlaceChoice {
   place: Place; // kind "none" is 不用特定的地方 / No particular place (always last)
   name: string; // the repo's folder name; "" for no particular place
   usedAt?: string; // the last task there, or when the repo was last touched
-  defaultBranch?: string; // repo places on this machine: what a task starts from unless picked
+  defaultBranch?: string; // repo places (on a worker too, D197, when it answers in time): what a task starts from unless picked
   branches?: string[]; // local branches, most recently committed first (at most 30)
   added?: boolean; // D186: a project the user added by hand (listed even with no task yet)
+  computer?: string; // D197: the computer it is on, only when the places span more than one
 }
 
 /** Why a New task didn't open: empty words, nothing can do it, not a repo, its device is away, a time already past or a wait with nothing to wait for (D185), or anything else (message). */
@@ -869,7 +871,7 @@ export type ServerFrame =
   | { t: "task_new_options"; places: PlaceChoice[]; candidates: Candidate[] }
   | { t: "close_result"; device: string; ok: boolean; none?: boolean; decisionId?: string; message?: string }
   | { t: "task_new_result"; ok: boolean; clientId?: string; taskId?: string; card?: TaskCard; routineId?: string; routine?: RoutineView; reason?: NewTaskReason; message?: string }
-  | { t: "project_add_result"; ok: boolean; clientId?: string; place?: PlaceChoice; reason?: "not_found" | "failed"; message?: string }
+  | { t: "project_add_result"; ok: boolean; clientId?: string; place?: PlaceChoice; reason?: "not_found" | "offline" | "failed"; message?: string }
   // Show this task (the app opens it, Esc returns). open_result answers the sender: apps = how many apps were told.
   | { t: "open_task"; taskId: string }
   | { t: "open_result"; taskId: string; ok: boolean; apps: number; message?: string }

@@ -4,27 +4,27 @@
 // records task_open with origin "you". Nothing is said in the conversation: the partner reads a
 // hidden note ("the user opened this themselves") and reports the result like any task (D124).
 import { existsSync, readFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import type { Candidate, NewTaskReason, NewTaskWhen, Place, PlaceChoice, RoutineTrigger, RoutineView, TaskCard } from "@ducter/protocol";
+import { expandHome, type FolderInfo, type GitRun, realGit, repoBranches, repoTop } from "@ducter/protocol/src/folder-info.ts";
 import type { LogStore, Runner, SettingsApi, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import { BODY_NOTE_PREFIX, type Loadout } from "./loadout.ts";
 import type { Projects } from "./projects.ts";
 import type { Routines } from "./routines.ts";
 import type { Untils } from "./until.ts";
 
-/** `git -C cwd …`: ok and the trimmed stdout. Injected in tests. */
-export type GitRun = (cwd: string, args: string[]) => Promise<{ ok: boolean; out: string }>;
+// D197: the git reads are shared with a worker's folderInfo op (protocol/src/folder-info.ts).
+export { realGit, repoBranches, repoTop, type GitRun };
 
-export const realGit: GitRun = async (cwd, args) => {
-  try {
-    const p = Bun.spawn(["git", "-C", cwd, ...args], { stdout: "pipe", stderr: "ignore", stdin: "ignore" });
-    const [out, code] = await Promise.all([new Response(p.stdout).text(), p.exited]);
-    return { ok: code === 0, out: out.trim() };
-  } catch {
-    return { ok: false, out: "" };
-  }
-};
+/** D197: the computers that work for this home, as the New task card needs them. */
+export interface NewTaskComputers {
+  /** A worker's name by its id (or name); undefined when it isn't one of this home's. */
+  nameOf(device: string): string | undefined;
+  /** This home's own computer's name. */
+  homeName(): string;
+  /** A folder on that worker, read there; "offline" when it is away (or too old to answer). */
+  folderInfo(device: string, path: string, timeoutMs: number): Promise<FolderInfo | "offline">;
+}
 
 export interface NewTaskDeps {
   log: LogStore;
@@ -40,7 +40,12 @@ export interface NewTaskDeps {
   untils?: Untils;
   /** D186: the projects the user added by hand (their names; offered as places). */
   projects?: Projects;
+  /** D197: the workers (a repo on one gets its branches from there; a list over two computers names them). */
+  computers?: NewTaskComputers;
 }
+
+/** D197: how long the card waits for a worker's branches before it shows the list without them. */
+export const WORKER_BRANCHES_MS = 3_000;
 
 export interface NewTaskInput {
   words: string;
@@ -117,32 +122,11 @@ export function languageOf(words: string, settings?: SettingsApi): "zh" | "en" {
   return CJK.test(words) ? "zh" : "en";
 }
 
-const expandHome = (p: string) => (p === "~" ? homedir() : p.startsWith("~/") ? join(homedir(), p.slice(2)) : p);
 const isLocal = (device: string | undefined) => !device || device === "local";
 
 /** What a task starts from unless the user picks: the branch origin points at, else main or master, else the checkout's own. */
 export async function defaultBranch(repoPath: string, run: GitRun = realGit): Promise<string | undefined> {
   return (await repoBranches(repoPath, run)).defaultBranch;
-}
-
-/** A repo's local branches, most recently committed first (at most 30), and its default one. One round of calls, run together. */
-export async function repoBranches(repoPath: string, run: GitRun = realGit): Promise<{ defaultBranch?: string; branches: string[] }> {
-  const [origin, refs, head] = await Promise.all([
-    run(repoPath, ["symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"]),
-    run(repoPath, ["for-each-ref", "--sort=-committerdate", "--format=%(refname:short)", "refs/heads"]),
-    run(repoPath, ["rev-parse", "--abbrev-ref", "HEAD"]),
-  ]);
-  const all = refs.ok ? refs.out.split("\n").filter(Boolean) : [];
-  const fromOrigin = origin.ok ? origin.out.replace(/^origin\//, "") : "";
-  const cur = head.ok && head.out !== "HEAD" ? head.out : "";
-  const def = [fromOrigin, "main", "master"].find((b) => b && all.includes(b)) ?? (cur || undefined);
-  return { ...(def ? { defaultBranch: def } : {}), branches: all.slice(0, 30) };
-}
-
-/** The top of the git checkout that holds `dir`, or undefined when it isn't in one. */
-export async function repoTop(dir: string, git: GitRun = realGit): Promise<string | undefined> {
-  const r = await git(resolve(expandHome(dir)), ["rev-parse", "--show-toplevel"]);
-  return r.ok && r.out ? r.out : undefined;
 }
 
 /** Opens a task with the user's own words. The one path the card and `ducter task` share. */
@@ -247,6 +231,19 @@ const clipWords = (s: string, n = 400) => {
   return `"${one.length > n ? one.slice(0, n - 1) + "…" : one}"`;
 };
 
+/** D197: a folder on a worker, read there within `ms`; undefined when it is away, slow or can't say. */
+export async function workerFolder(c: NewTaskComputers | undefined, device: string, path: string, ms: number): Promise<FolderInfo | undefined> {
+  if (!c) return undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<undefined>((r) => (timer = setTimeout(() => r(undefined), ms)));
+  try {
+    const r = await Promise.race([c.folderInfo(device, path, ms).catch(() => "offline" as const), late]);
+    return r && r !== "offline" ? r : undefined;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 interface RepoHint {
   name: string;
   path: string;
@@ -313,7 +310,13 @@ export async function newTaskOptions(d: NewTaskDeps, at?: Place, limit = 12): Pr
     places.map(async (c) => {
       if (c.place.kind !== "repo") return;
       const p = c.place;
-      if (!isLocal(p.device)) return;
+      if (!isLocal(p.device)) {
+        // D197: a repo on a worker: its branches from there, briefly; away or slow, none (as before).
+        const info = await workerFolder(d.computers, p.device!, p.repoPath, WORKER_BRANCHES_MS);
+        if (info?.defaultBranch) c.defaultBranch = info.defaultBranch;
+        if (info?.branches?.length) c.branches = info.branches;
+        return;
+      }
       const path = resolve(expandHome(p.repoPath));
       if (!existsSync(path)) return;
       const b = await repoBranches(path, git);
@@ -321,6 +324,14 @@ export async function newTaskOptions(d: NewTaskDeps, at?: Place, limit = 12): Pr
       if (b.branches.length) c.branches = b.branches;
     }),
   );
+  // D197: places on more than one computer: each says which (the client puts it after the path).
+  const computerOf = (dev: string | undefined) => (isLocal(dev) ? (d.computers?.homeName() ?? "") : (d.computers?.nameOf(dev!) ?? dev!));
+  const devOf = (c: PlaceChoice) => (c.place.kind === "repo" || c.place.kind === "folder" ? c.place.device : undefined);
+  if (new Set(places.map((c) => computerOf(devOf(c)))).size > 1)
+    for (const c of places) {
+      const name = computerOf(devOf(c));
+      if (name) c.computer = name;
+    }
   places.push({ place: { kind: "none" }, name: "" });
   const candidates = d.loadout ? await d.loadout.candidatesFor({ title: "", place: at }).catch(() => []) : [];
   return { places, candidates };

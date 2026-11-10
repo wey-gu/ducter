@@ -2,7 +2,6 @@ package views
 
 import (
 	"fmt"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -445,10 +444,33 @@ func (a *App) newTaskError(reason, message string) string {
 	return a.L.T("newtask.err.failed", strings.TrimRight(message, ". "))
 }
 
-// canAddFolder: a folder can be picked here and made a project (D186):
-// the Ducter this window talks to runs on this Mac, so its paths are ours.
+// folderAdd says how 加一个文件夹… works from this window (D186, D197):
+// "here": the Ducter this window talks to runs on this Mac, so its paths
+// are ours; "worker": it runs elsewhere and this Mac does tasks for it, so
+// the folder picked is this Mac's and the home reads it through this Mac's
+// worker (device, its id there); "off": it runs elsewhere and this Mac
+// doesn't do tasks for it yet (the row shows greyed, with the one step);
+// "": no folder picker here.
+func (a *App) folderAdd() (mode, device string) {
+	if a.PickFolder == nil {
+		return "", ""
+	}
+	if a.onThisMachine() {
+		return "here", ""
+	}
+	if a.MacWorker == nil {
+		return "", ""
+	}
+	if on, id := a.workOn(); on && id != "" {
+		return "worker", id
+	}
+	return "off", ""
+}
+
+// canAddFolder: a folder can be picked here and made a project.
 func (a *App) canAddFolder() bool {
-	return a.PickFolder != nil && a.onThisMachine()
+	m, _ := a.folderAdd()
+	return m == "here" || m == "worker"
 }
 
 // addFolder asks macOS for a folder and adds it as a project; the card
@@ -456,7 +478,8 @@ func (a *App) canAddFolder() bool {
 func (a *App) addFolder() {
 	nt := &a.nt
 	nt.placeOpen = false
-	if a.PickFolder == nil {
+	mode, device := a.folderAdd()
+	if mode != "here" && mode != "worker" {
 		return
 	}
 	done := func(path string, err error) {
@@ -466,7 +489,8 @@ func (a *App) addFolder() {
 		a.nextClient++
 		nt.adding = fmt.Sprintf("p%d-%d", a.Now().UnixMilli(), a.nextClient)
 		nt.err, nt.errEmpty = "", false
-		a.send(protocol.ProjectAdd{T: "project_add", Path: path, ClientID: nt.adding})
+		// D197: a folder on this Mac for a home elsewhere goes with this Mac's worker id.
+		a.send(protocol.ProjectAdd{T: "project_add", Path: path, Device: device, ClientID: nt.adding})
 	}
 	if a.Win == nil { // tests: inline
 		done(a.PickFolder(a.L.T("newtask.addfolder.title"), a.L.T("newtask.addfolder.button")))
@@ -559,8 +583,8 @@ func (a *App) placePill(c *ui.Context, places []protocol.PlaceChoice, chosen pro
 			ui.Spinner(c).Size(12, 12)
 		}
 	})
-	if p := placePath(chosen.Place); p != "" {
-		e.Tooltip(tildePath(p))
+	if line := placeLine(chosen); line != "" {
+		e.Tooltip(line)
 	}
 	if click {
 		nt.shut("place")
@@ -582,15 +606,16 @@ func (a *App) placePill(c *ui.Context, places []protocol.PlaceChoice, chosen pro
 				}
 				ui.Column(c).Grow(1).MinWidth(0).Gap(1).Children(func() {
 					ui.Text(c, name).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine()
-					if path := placePath(p.Place); path != "" {
-						ui.Text(c, tildePath(path)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkMuted).SingleLine()
+					if line := placeLine(p); line != "" {
+						ui.Text(c, line).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.InkMuted).SingleLine()
 					}
 				})
 			}) {
 				a.pickPlace(p) // the chosen one again just closes the list
 			}
 		}
-		if a.canAddFolder() {
+		switch mode, _ := a.folderAdd(); mode {
+		case "here", "worker":
 			ui.Box(c.Key("nt-add-rule")).Height(1).Background(t.LineSoft).Margin(t.S1, t.S2)
 			if a.menuRow(c, "nt-add-folder", a.L.T("newtask.addfolder"), false, false, func() {
 				a.glyph(c, 16, drawPlus(t.InkSoft))
@@ -598,6 +623,18 @@ func (a *App) placePill(c *ui.Context, places []protocol.PlaceChoice, chosen pro
 			}) {
 				a.addFolder()
 			}
+		case "off":
+			// D197: the home is elsewhere and this Mac doesn't do tasks for it, so the
+			// folders here aren't reachable from it yet. Greyed, with the one step.
+			why := a.L.T("newtask.addfolder.off", a.workHome())
+			ui.Box(c.Key("nt-add-rule")).Height(1).Background(t.LineSoft).Margin(t.S1, t.S2)
+			a.menuRow(c, "nt-add-folder", a.L.T("newtask.addfolder")+" · "+why, false, true, func() {
+				a.glyph(c, 16, drawPlus(t.InkSoft))
+				ui.Column(c).Grow(1).MinWidth(0).Gap(1).Children(func() {
+					ui.Text(c, a.L.T("newtask.addfolder")).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).SingleLine()
+					ui.Text(c, why).FontSize(t.XS).TextColor(t.InkMuted)
+				})
+			})
 		}
 	})
 }
@@ -980,16 +1017,37 @@ func (a *App) newTaskFoot(c *ui.Context) {
 }
 
 // tildePath shows a home path as ~/…: shorter, and no user name on screen.
+// D197: ~ is the home folder of the computer the path is on, read from the
+// path itself (/Users/<name> on a Mac, /home/<name> on Linux), never from
+// this Mac's own home: a place may be on the server or another Mac. The
+// web sheet uses the same rule.
 func tildePath(p string) string {
-	if home := homeDir(); home != "" && (p == home || strings.HasPrefix(p, home+"/")) {
-		return "~" + strings.TrimPrefix(p, home)
-	}
-	if i := strings.Index(p, "/Users/"); i == 0 {
-		if j := strings.Index(p[len("/Users/"):], "/"); j > 0 {
-			return "~" + p[len("/Users/")+j:]
+	for _, root := range []string{"/Users/", "/home/"} {
+		if !strings.HasPrefix(p, root) {
+			continue
+		}
+		rest := p[len(root):]
+		if j := strings.Index(rest, "/"); j > 0 {
+			return "~" + rest[j:]
+		}
+		if rest != "" {
+			return "~"
 		}
 	}
 	return p
+}
+
+// placeLine is a place's second line in the card's list: its path, and
+// the computer it is on when the places span more than one (D197).
+func placeLine(p protocol.PlaceChoice) string {
+	path := placePath(p.Place)
+	if path == "" {
+		return ""
+	}
+	if p.Computer != "" {
+		return tildePath(path) + " · " + p.Computer
+	}
+	return tildePath(path)
 }
 
 // drawCaret is a small down caret: the chip opens a list.
@@ -1039,10 +1097,4 @@ func drawBranch(col ui.Color) func(p *ui.Painter, r ui.Rect) {
 		dots.Circle(x+4*s, y+12*s, 1.8*s)
 		p.FillPath(&dots, col)
 	}
-}
-
-// homeDir is this user's home folder, "" when unknown.
-func homeDir() string {
-	h, _ := os.UserHomeDir()
-	return strings.TrimRight(h, "/")
 }

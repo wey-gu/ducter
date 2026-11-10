@@ -26,7 +26,7 @@
 | a level taking the whole screen on a wide screen (D184) | the header's button, arrows out **铺满 / Full screen**, arrows in **放回对话旁边 / Back beside the conversation** (its label and tooltip; the button shows only the arrows) | Wide, On hand or an opened task stands beside the conversation by default; this takes it to the whole screen as the Mac shows it, and back. ⌘2 does the same for On hand |
 | attention states | 等你 / Needs you · 在做 / Working · 在等 / Waiting · 做完了 / Done · 没成 / Didn't work · 放下了 / Dropped | `done?` shows as "做完了 · 在检查 / Done · checking" only while a check runs, else as Done (D68); `queued` shows as "还没开始 / Not started yet" |
 | decision actions | **好 / Go** · **先等等 / Hold** · **回复… / Reply…** · **看细节 / Details** | The Go button may name the action: en says the action alone in sentence case ("Rebase"), zh keeps 好 in front ("好，rebase") (D73). An ask's small heading is the asking task's title; the count is said once, "2 件等你 / 2 need you" |
-| Project | **项目 / Project**; no project = **其他 / Other**; making one (D186): **加一个文件夹 / Add a folder** (the picker: **选一个文件夹，它会成为一个项目 / Choose a folder; it becomes a project**, **加进来 / Add**; not there: **那儿没有这个文件夹。/ There's no folder there.**); an added one with nothing yet: **还没有事。/ Nothing here yet.** | An editable grouping label; its everyday form is one folder you work in, named after it (D186) |
+| Project | **项目 / Project**; no project = **其他 / Other**; making one (D186): **加一个文件夹 / Add a folder** (the picker: **选一个文件夹，它会成为一个项目 / Choose a folder; it becomes a project**, **加进来 / Add**; not there: **那儿没有这个文件夹。/ There's no folder there.**; for a home elsewhere when this Mac doesn't do tasks for it (D197), greyed with **在设置 › 住在哪儿打开「让这台 Mac 也替 {home} 做事」，就能加这台 Mac 上的文件夹。/ To add a folder on this Mac, turn on "Let this Mac do tasks for {home}" in Settings › Where it lives.**; places on two computers end their path line in **· {computer}**); an added one with nothing yet: **还没有事。/ Nothing here yet.** | An editable grouping label; its everyday form is one folder you work in, named after it (D186) |
 | Place | **在哪儿做 / Where** | Where a task works |
 | Device (machine, runner) | **设备 / Devices** | |
 | harness (Claude Code, Codex, pi, DeepSeek Harness, …) | each by its own product name; as a category **AI agent / AI agent** (D88) | The AI tools Ducter hands work to. Not "coding agent": people use them for much more than code |
@@ -196,7 +196,8 @@ Every task shows two editable things on its card and header.
 - **Project:** inferred from the place (a repo's project) or from the conversation. It is
   created implicitly the first time and shown as a "new project" chip you can rename or undo.
   You can also make one yourself (D186): **加一个文件夹 / Add a folder** picks a folder (a repo
-  or not) on the home's computer; it becomes a project with the folder's name, shown on On hand
+  or not) on the home's computer, or (D197) on this Mac when the home is on a server and this
+  Mac does tasks for it; it becomes a project with the folder's name, shown on On hand
   By project before any task, and every task in that folder belongs to it.
 
 **Controllable always:**

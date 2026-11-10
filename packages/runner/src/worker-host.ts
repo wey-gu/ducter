@@ -6,6 +6,7 @@
 // token beside the task's role token on /mcp, nowhere else).
 import type { HarnessEvent, HarnessPort, HarnessSession, SessionSpec } from "@ducter/protocol/src/internal.ts";
 import { runCheck } from "@ducter/protocol/src/checks-run.ts";
+import { folderInfo, realGit, type GitRun } from "@ducter/protocol/src/folder-info.ts";
 import { archiveWorktree, branchChanges, mergeTaskBranch, openDraftPr, pushForMove } from "./integrate.ts";
 import { planPlace, provisionPlace } from "./places.ts";
 import { createFolderStore } from "./folder.ts";
@@ -20,6 +21,8 @@ export interface WorkerHostOptions {
   deviceToken: string;
   send(frame: object): void;
   gh?: string;
+  /** D197 test seam: how folderInfo runs git here. */
+  git?: GitRun;
   /** D157: this computer's browsers for browser places (its Chrome and the agents' own tools,
    *  cua-driver, Ducter's own browser), as the home's runner has them. */
   browser?: BrowserOptions;
@@ -159,6 +162,9 @@ export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
     // D112: a waiter's check runs here when the task works on this device (read-only, validated
     // again here: the worker never trusts the main to have checked).
     check: (a) => runCheck(a.spec),
+    // D197: what a folder here is (missing, a folder, or a repo with its branches), so a home
+    // elsewhere can add it as a project and offer its branches. Read-only.
+    folderInfo: (a: { path?: unknown }) => folderInfo(String(a.path ?? ""), o.git ?? realGit),
     // D157: a browser place on this computer, with this computer's browsers and sign-ins.
     async browser(a: { input?: Omit<SidecarInput, "dataDir"> }) {
       const input = { ...(a.input as SidecarInput), dataDir: o.dataDir };

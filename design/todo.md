@@ -107,9 +107,10 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [ ] **Projects: rename and remove (D186).** Defaults: click the name in By project to rename
       (the `cardName` control; every task carrying it follows); remove from the group's ⋯, its
       tasks untouched. Trigger: the first time a folder's name isn't the name the author wants.
-- [ ] **Projects: add a folder from a server home or the phone (D186).** Today only the Mac whose
-      Ducter runs on it. Default: a path field with the home's folders suggested. Trigger: the
-      first project added on hel.
+- [ ] **Projects: add a folder on the server itself, or from the phone (D186).** A folder on the
+      Mac is D197 (through its worker). Still open: a folder on the server home itself, and adding
+      from the phone. Default: a path field with that computer's folders suggested. Trigger: the
+      first project wanted on hel's own disk.
 - [ ] **New task: "every time something happens" (D185).** The card's 等某件事发生 is one-shot;
       a repeating condition still goes through the partner (its check is compiled by a model).
       Trigger: the first time the author wants a watcher without saying it.

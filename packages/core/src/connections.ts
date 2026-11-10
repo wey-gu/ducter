@@ -15,6 +15,9 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import type { Bodies, ConnectionReason, ConnectionSource, ConnectionView, OoApp, OoDetect } from "@ducter/protocol";
 import { appsOf, findOo, ooCli, ooEnv, ooExec, ooLinker, ooOp, serviceTitle, type OoCli, type OoService } from "./oo-link.ts";
 import type { ConnectionCaller, ConnectionInfo, ConnectionOutcome, ConnectionsApi, LogStore } from "@ducter/protocol/src/internal.ts";
+import type { SignInView } from "@ducter/protocol";
+import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
+import { discover, importedToken, pollDevice, refresh as refreshToken, revoke as revokeToken, stale, startDevice, type DeviceStart, type OAuthServer, type OAuthToken } from "./mcp-oauth.ts";
 
 export const CONNECTIONS_FILE = "connections.json";
 export const CONNECTION_TOKENS_FILE = "connection-tokens.json";
@@ -46,9 +49,12 @@ export interface Link {
 }
 export type Linker = (url: string, token?: string) => Promise<Link>;
 
+/** D193: every request the broker makes says who it is (Cloudflare refuses some default agents, error 1010). */
+export const USER_AGENT = `Ducter/${DUCTER_VERSION}`;
+
 export class LinkError extends Error {
   constructor(
-    readonly reason: "unreachable" | "unauthorized" | "not_mcp",
+    readonly reason: "unreachable" | "unauthorized" | "not_mcp" | "blocked",
     message: string,
   ) {
     super(message);
@@ -61,6 +67,8 @@ function linkErrorOf(err: unknown): LinkError {
   // The SDK's HTTP error carries the status in `code`, not in its message: OOMOL's gateway answers
   // 401 with the bare text "token not found" (research/44), which once read as not_mcp.
   const code = (err as { code?: unknown })?.code;
+  // D193: Cloudflare's "browser signature banned" (error 1010) is a 403 that is not about the key.
+  if (/\b1010\b|browser_signature_banned|error code: 1010/i.test(m)) return new LinkError("blocked", m);
   if (typeof code === "number" && code > 0) {
     if (code === 401 || code === 403) return new LinkError("unauthorized", m);
     if (code >= 500 || code === 408 || code === 429) return new LinkError("unreachable", m);
@@ -74,8 +82,8 @@ function linkErrorOf(err: unknown): LinkError {
 
 /** The real link: one MCP client over Streamable HTTP, Bearer token in a header only. */
 export const httpLinker: Linker = async (url, token) => {
-  const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-  const client = new Client({ name: "ducter", version: "0.0.1" });
+  const headers: Record<string, string> = { "User-Agent": USER_AGENT, ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+  const client = new Client({ name: "ducter", version: DUCTER_VERSION });
   const transport = new StreamableHTTPClientTransport(new URL(url), { requestInit: { headers } });
   try {
     await client.connect(transport);
@@ -447,6 +455,21 @@ export interface ConnectionsStore extends ConnectionsApi {
   setApp(id: string, service: string, account: string | undefined, patch: { watch?: boolean; excluded?: boolean }): boolean;
   /** The connection removed (its facts go with it). */
   onRemove(fn: (id: string) => void): () => void;
+  /** D193: a connection's own tool list (cached), for Ducter's own flows (phone.ts). */
+  toolsOf(id: string): Promise<LinkTool[]>;
+  /**
+   * D193: one tool call made by Ducter itself, never by a model: the flow that calls it (phone.ts)
+   * holds the owner's Go and the rails. Logged as a connection_call like any other.
+   */
+  invoke(id: string, tool: string, args: Record<string, unknown>): Promise<LinkResult>;
+  /** D193: tools only Ducter's own flow may run (a reason when refused; undefined = allowed). */
+  reserve(fn: (id: string, action: string) => string | undefined): void;
+  /** D193: the device sign-in in progress (RFC 8628), if any. */
+  signInView(): SignInView | undefined;
+  onSignIn(fn: (v: SignInView) => void): () => void;
+  cancelSignIn(): void;
+  /** D193: sign in again to a connection that was signed out (its refresh token is gone). */
+  reauth(id: string): Promise<{ ok: true } | { ok: false; reason: ConnectionReason }>;
 }
 
 /** One app in a source: a service and one of its accounts (oo's connection name, or a label). */
@@ -482,7 +505,23 @@ function itemText(x: unknown): string {
   return (pick.length ? pick.join(" · ") : JSON.stringify(o)).slice(0, 2000);
 }
 
-export function openConnections(opts: { dataDir: string; log: LogStore; linker?: Linker; oo?: OoSource; now?: () => number; fetcher?: (url: string, init: RequestInit) => Promise<Response> }): ConnectionsStore {
+export function openConnections(opts: {
+  dataDir: string;
+  log: LogStore;
+  linker?: Linker;
+  oo?: OoSource;
+  now?: () => number;
+  fetcher?: (url: string, init: RequestInit) => Promise<Response>;
+  /** D193: how OAuth sign-in reaches the authorization server (tests: a fake). */
+  oauthFetch?: (url: string, init?: RequestInit) => Promise<Response>;
+  /** D193: milliseconds per second of the server's poll interval (tests: 1). */
+  signInMsPerSec?: number;
+  /** D193: the name the provider's sign-in page shows ("Ducter"). */
+  clientName?: string;
+  /** D193: a name for a connection whose tools are known (a calling connection: "Tuwa"). */
+  knownName?: (tools: LinkTool[]) => string | undefined;
+}): ConnectionsStore {
+  const knownName = opts.knownName;
   const linker = opts.linker ?? httpLinker;
   const fetcher = opts.fetcher ?? ((u: string, i: RequestInit) => fetch(u, i));
   const oo = opts.oo ?? ooSource();
@@ -509,7 +548,36 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
       return;
     }
   }
-  let tokens: Record<string, string> = readJson<Record<string, string>>(tokPath, {});
+  // A pasted key (a string), or D193's OAuth tokens from a device sign-in (refreshed here).
+  let tokens: Record<string, string | OAuthToken> = readJson<Record<string, string | OAuthToken>>(tokPath, {});
+  const oauthFetch = opts.oauthFetch ?? ((u: string, i?: RequestInit) => fetch(u, i));
+  /** The key for a header, for the paths that only ever hold a pasted key (OpenConnector). */
+  const keyOf = (id: string): string | undefined => {
+    const t = tokens[id];
+    return typeof t === "string" ? t : t?.access;
+  };
+  const refreshing = new Map<string, Promise<string | undefined>>();
+  /** The bearer for a link: an OAuth token is refreshed a minute before it runs out (or when forced). */
+  async function bearer(id: string, force = false): Promise<string | undefined> {
+    const t = tokens[id];
+    if (!t || typeof t === "string") return t;
+    if (!force && !stale(t, now())) return t.access;
+    if (!refreshing.has(id))
+      refreshing.set(
+        id,
+        (async () => {
+          const r = await refreshToken(t, oauthFetch, now());
+          if (r.ok) {
+            tokens = { ...tokens, [id]: r.token };
+            save();
+            return r.token.access;
+          }
+          if (r.gone) health.set(id, { state: "unauthorized", at: now() });
+          return r.gone ? undefined : t.access;
+        })().finally(() => refreshing.delete(id)),
+      );
+    return refreshing.get(id);
+  }
   const health = new Map<string, { state: ConnectionView["state"]; at: number }>();
   const toolCache = new Map<string, { tools: LinkTool[]; at: number }>();
   const opCache = new Map<string, "read" | "write">(); // `${id} ${action}`
@@ -547,13 +615,32 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
       if (r.source === "oo") {
         if (!ooLink) throw new LinkError("unreachable", "oo is not installed on this computer");
         link = await ooLink(r.url);
-      } else link = await linker(r.url, tokens[r.id]);
+      } else {
+        // D193: an OAuth token refused mid-life (at connect or on the call): refresh once, try again.
+        const once = async () => {
+          link = await linker(r.url, await bearer(r.id));
+          return fn(link);
+        };
+        const oauth = typeof tokens[r.id] === "object";
+        let got: T;
+        try {
+          got = await once();
+        } catch (err) {
+          if (!oauth || linkErrorOf(err).reason !== "unauthorized") throw err;
+          await link?.close();
+          link = undefined;
+          await bearer(r.id, true);
+          got = await once();
+        }
+        health.set(r.id, { state: "ok", at: now() });
+        return got;
+      }
       const out = await fn(link);
       health.set(r.id, { state: "ok", at: now() });
       return out;
     } catch (err) {
       const e = linkErrorOf(err);
-      health.set(r.id, { state: e.reason === "unauthorized" ? "unauthorized" : e.reason === "unreachable" ? "unreachable" : "unknown", at: now() });
+      health.set(r.id, { state: e.reason === "unauthorized" ? "unauthorized" : e.reason === "unreachable" || e.reason === "blocked" ? "unreachable" : "unknown", at: now() });
       throw e;
     } finally {
       await link?.close();
@@ -592,7 +679,7 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
   async function appIdOf(r: Record_, account: string): Promise<string | undefined> {
     try {
       const res = await fetcher(`${apiBase(r.url)}/v1/apps?status=active`, {
-        headers: { accept: "application/json", ...(tokens[r.id] ? { authorization: `Bearer ${tokens[r.id]}` } : {}) },
+        headers: { accept: "application/json", ...(keyOf(r.id) ? { authorization: `Bearer ${keyOf(r.id)}` } : {}) },
         signal: AbortSignal.timeout(15_000),
       });
       if (!res.ok) return;
@@ -655,7 +742,93 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
     return withLink(r, (l) => l.call(action, args));
   }
 
+  /** Saves a connection that answered its tool list (a pasted key, none, or a finished sign-in). */
+  async function saveNew(url: string, ts: LinkTool[], token: string | OAuthToken | undefined, input: { name?: string; via?: "manual" | "oo" }): Promise<{ ok: true; id: string; apps?: OoApp[] }> {
+    const oc = isOpenConnector(ts);
+    // OOMOL Hosted is OOMOL's by its address, whatever its tool list looks like (research/44).
+    const source: ConnectionSource = url === OOMOL_HOSTED_MCP || (oc && isOomol(url)) ? "oomol" : oc ? "self" : "mcp";
+    const known = knownName?.(ts);
+    const name = (input.name?.trim() || (source === "oomol" ? "OOMOL" : oc ? "OpenConnector" : known ?? new URL(url).hostname)).slice(0, 40);
+    // What it can read now: the accounts connected there (OpenConnector's /v1/apps).
+    const apps = source === "mcp" ? undefined : await appsAt(url, typeof token === "string" ? token : undefined);
+    const id = `conn_${crypto.randomUUID().replaceAll("-", "").slice(0, 8)}`;
+    records = [...records, { id, name: records.some((r) => r.name === name) ? `${name} ${records.length + 1}` : name, url, source, addedAt: new Date(now()).toISOString(), via: input.via ?? "manual" }];
+    if (token) tokens = { ...tokens, [id]: token };
+    save();
+    health.set(id, { state: "ok", at: now() });
+    toolCache.set(id, { tools: ts, at: now() });
+    if (apps) appsCache.set(id, apps);
+    changed();
+    return { ok: true, id, ...(apps ? { apps } : {}) };
+  }
+
+  // ---------- D193: the device sign-in (RFC 8628), one at a time ----------
+  let signIn: { view: SignInView; server: OAuthServer; start: DeviceStart; timer?: ReturnType<typeof setTimeout>; input: { name?: string; via?: "manual" | "oo"; reconnect?: string } } | undefined;
+  const signInListeners = new Set<(v: SignInView) => void>();
+  const emitSignIn = (v: SignInView) => {
+    for (const f of signInListeners) f(v);
+  };
+  const msPerSec = opts.signInMsPerSec ?? 1000;
+  const shortName = (s: OAuthServer, url: string) => (s.name ? s.name.split(/\s+/)[0]! : new URL(url).hostname.replace(/^(api|mcp)\./, "").split(".")[0]!).replace(/^./, (c) => c.toUpperCase());
+  async function beginSignIn(url: string, server: OAuthServer, input: { name?: string; via?: "manual" | "oo"; reconnect?: string }): Promise<boolean> {
+    if (signIn?.timer) clearTimeout(signIn.timer);
+    signIn = undefined;
+    const start = await startDevice(server, opts.clientName ?? "Ducter", oauthFetch, now());
+    if ("error" in start) return false;
+    const view: SignInView = {
+      url,
+      name: input.name?.trim() || shortName(server, url),
+      state: "waiting",
+      userCode: start.userCode,
+      verifyUrl: start.verifyUrl,
+      ...(start.verifyUrlComplete ? { verifyUrlComplete: start.verifyUrlComplete } : {}),
+      expiresAt: new Date(start.expiresAt).toISOString(),
+      ...(input.reconnect ? { reconnect: true, id: input.reconnect } : {}),
+    };
+    signIn = { view, server, start, input };
+    emitSignIn(view);
+    const cur = signIn;
+    const tick = async (interval: number) => {
+      if (signIn !== cur) return;
+      const r = await pollDevice(server, cur.start, oauthFetch, now());
+      if (signIn !== cur) return;
+      if (r.state === "pending") {
+        cur.start = { ...cur.start, interval: r.interval };
+        cur.timer = setTimeout(() => void tick(r.interval), r.interval * msPerSec);
+        return;
+      }
+      signIn = undefined;
+      if (r.state !== "done") return emitSignIn({ ...cur.view, state: r.state });
+      if (input.reconnect) {
+        if (!records.some((x) => x.id === input.reconnect)) return emitSignIn({ ...cur.view, state: "failed" });
+        tokens = { ...tokens, [input.reconnect]: r.token };
+        save();
+        health.set(input.reconnect, { state: "ok", at: now() });
+        toolCache.delete(input.reconnect);
+        changed();
+        return emitSignIn({ ...cur.view, state: "done", id: input.reconnect });
+      }
+      // Signed in: the server must now answer its tool list with the token, like any add.
+      let link: Link | undefined;
+      try {
+        link = await linker(url, r.token.access);
+        const ts = await link.tools();
+        await link.close();
+        link = undefined;
+        if (records.some((x) => x.url === url)) return emitSignIn({ ...cur.view, state: "failed" });
+        const saved = await saveNew(url, ts, r.token, { name: input.name, via: input.via });
+        emitSignIn({ ...cur.view, state: "done", id: saved.id });
+      } catch {
+        await link?.close();
+        emitSignIn({ ...cur.view, state: "failed" });
+      }
+    };
+    cur.timer = setTimeout(() => void tick(start.interval), start.interval * msPerSec);
+    return true;
+  }
+
   const err = (error: string, op?: "read" | "write"): ConnectionOutcome => ({ ok: false, error, ...(op ? { op } : {}) });
+  let reserved: (id: string, action: string) => string | undefined = () => undefined;
   const NOT_FOUND = "No such connection. Call connections_list for the user's connections.";
 
   const api: ConnectionsStore = {
@@ -698,7 +871,7 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
               continue;
             }
             if (!appsCache.has(r.id)) {
-              const apps = await appsAt(r.url, tokens[r.id]);
+              const apps = await appsAt(r.url, keyOf(r.id));
               if (apps) appsCache.set(r.id, apps);
             }
             const connected = (appsCache.get(r.id) ?? []).map((a) => a.service);
@@ -779,6 +952,11 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
         record({ ...base, op: "read", state: "denied" }, w);
         return err(`The user's rules for ${r.name} don't allow ${action}.`);
       }
+      const why = reserved(r.id, action);
+      if (why) {
+        record({ ...base, op: "read", state: "denied", error: "reserved" }, w);
+        return err(why);
+      }
       const service = /^([a-z0-9_-]+)\./i.exec(action)?.[1];
       if (service && isExcluded(r, service, account)) {
         record({ ...base, op: "read", state: "denied", error: "excluded" }, w);
@@ -809,6 +987,8 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
       const r = find(key);
       if (!r) return { ok: false, error: NOT_FOUND };
       if (!policyAllows(r.policy, action)) return { ok: false, error: `The user's rules for ${r.name} don't allow ${action}.` };
+      const why = reserved(r.id, action);
+      if (why) return { ok: false, error: why };
       const callId = record({ connectionId: r.id, connection: r.name, action, op: "write", state: "needs_go", decisionId, input: account ? { input, account } : { input } });
       return { ok: true, callId };
     },
@@ -872,6 +1052,7 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
           state: h?.state ?? "unknown",
           ...(h ? { checkedAt: new Date(h.at).toISOString() } : {}),
           ...(apps ? { apps } : {}),
+          ...(typeof tokens[r.id] === "object" ? { signIn: true } : {}),
         };
       });
     },
@@ -880,6 +1061,28 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
       const url = normalizeUrl(input.url);
       if (!url) return { ok: false, reason: "bad_url" };
       if (records.some((r) => r.url === url)) return { ok: false, reason: "duplicate" };
+      // D193: an OAuth token the owner already holds (JSON: a bridge's credentials or a token
+      // answer), imported instead of a new device sign-in. Refreshed first when it has run out.
+      if (input.token?.trim().startsWith("{")) {
+        const s = await discover(url, oauthFetch).catch(() => undefined);
+        let tok = s ? importedToken(input.token, s, now()) : undefined;
+        if (!tok) return { ok: false, reason: "unauthorized" };
+        if (!tok.access || stale(tok, now())) {
+          const r = await refreshToken(tok, oauthFetch, now());
+          if (!r.ok) return { ok: false, reason: "unauthorized" };
+          tok = r.token;
+        }
+        let l: Link | undefined;
+        try {
+          l = await linker(url, tok.access);
+          const ts = await l.tools();
+          return await saveNew(url, ts, tok, input);
+        } catch (e) {
+          return { ok: false, reason: linkErrorOf(e).reason };
+        } finally {
+          await l?.close();
+        }
+      }
       // A pasted key often brings a space or a line break along; a key never holds one.
       const token = input.token?.replace(/\s+/g, "") || undefined;
       if (token && /[\u0000-\u001f\u007f]/.test(token)) return { ok: false, reason: "unauthorized" };
@@ -892,31 +1095,24 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
         ts = await link.tools();
       } catch (e) {
         const reason = linkErrorOf(e).reason;
+        // D193: no key, and the server signs in on its own page (OAuth device code): start that.
+        if (reason === "unauthorized" && !token) {
+          const s = await discover(url, oauthFetch).catch(() => undefined);
+          if (s) return (await beginSignIn(url, s, { name: input.name, via: input.via })) ? { ok: false, reason: "signing_in" } : { ok: false, reason: "sign_in_failed" };
+        }
         return { ok: false, reason };
       } finally {
         await link?.close();
       }
-      const oc = isOpenConnector(ts);
-      // OOMOL Hosted is OOMOL's by its address, whatever its tool list looks like (research/44).
-      const source: ConnectionSource = url === OOMOL_HOSTED_MCP || (oc && isOomol(url)) ? "oomol" : oc ? "self" : "mcp";
-      const name = (input.name?.trim() || (source === "oomol" ? "OOMOL" : oc ? "OpenConnector" : new URL(url).hostname)).slice(0, 40);
-      // What it can read now: the accounts connected there (OpenConnector's /v1/apps).
-      const apps = source === "mcp" ? undefined : await appsAt(url, token);
-      const id = `conn_${crypto.randomUUID().replaceAll("-", "").slice(0, 8)}`;
-      records = [...records, { id, name: records.some((r) => r.name === name) ? `${name} ${records.length + 1}` : name, url, source, addedAt: new Date(now()).toISOString(), via: input.via ?? "manual" }];
-      if (token) tokens = { ...tokens, [id]: token };
-      save();
-      health.set(id, { state: "ok", at: now() });
-      toolCache.set(id, { tools: ts, at: now() });
-      if (apps) appsCache.set(id, apps);
-      changed();
-      return { ok: true, id, ...(apps ? { apps } : {}) };
+      return saveNew(url, ts, token, input);
     },
 
     remove(id) {
       const before = records.length;
+      const tok = tokens[id];
       records = records.filter((r) => r.id !== id);
       if (records.length === before) return false;
+      if (tok && typeof tok === "object") void revokeToken(tok, oauthFetch);
       const { [id]: _gone, ...rest } = tokens;
       tokens = rest;
       save();
@@ -928,6 +1124,50 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
       for (const f of removed) f(id);
       changed();
       return true;
+    },
+
+    async toolsOf(id) {
+      const r = find(id);
+      if (!r) throw new LinkError("not_mcp", "no such connection");
+      return tools(r);
+    },
+
+    async invoke(id, tool, args) {
+      const r = find(id);
+      if (!r) return { isError: true, data: "no such connection" };
+      const base = { connectionId: r.id, connection: r.name, action: tool, op: "write" as const };
+      try {
+        const res = await withLink(r, (l) => l.call(tool, args));
+        record(failed(res) ? { ...base, state: "failed", error: errorText(res) } : { ...base, state: "done", summary: summarize(res.data) });
+        return res;
+      } catch (e) {
+        record({ ...base, state: "failed", error: linkErrorOf(e).reason });
+        throw e;
+      }
+    },
+
+    reserve(fn) {
+      reserved = fn;
+    },
+
+    signInView: () => signIn?.view,
+    onSignIn(fn) {
+      signInListeners.add(fn);
+      return () => signInListeners.delete(fn);
+    },
+    cancelSignIn() {
+      if (!signIn) return;
+      const s = signIn;
+      signIn = undefined;
+      if (s.timer) clearTimeout(s.timer);
+      emitSignIn({ ...s.view, state: "failed" });
+    },
+    async reauth(id) {
+      const r = find(id);
+      if (!r) return { ok: false, reason: "unknown_connection" };
+      const s = await discover(r.url, oauthFetch).catch(() => undefined);
+      if (!s) return { ok: false, reason: "sign_in_failed" };
+      return (await beginSignIn(r.url, s, { reconnect: r.id })) ? { ok: true } : { ok: false, reason: "sign_in_failed" };
     },
 
     apps(id) {
@@ -1012,7 +1252,7 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
           if (r.source === "oo" && ooLink) return withLink(r, () => ooLink.services()).catch(() => undefined);
           await tools(r).catch(() => undefined);
           if (isOC(r) && health.get(r.id)?.state === "ok") {
-            const apps = await appsAt(r.url, tokens[r.id]);
+            const apps = await appsAt(r.url, keyOf(r.id));
             if (apps) appsCache.set(r.id, apps);
           }
         }),
@@ -1043,7 +1283,7 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
       try {
         const res = await fetcher(url, {
           method: "POST",
-          headers: { "content-type": "application/json", ...(tokens[r.id] ? { authorization: `Bearer ${tokens[r.id]}` } : {}) },
+          headers: { "content-type": "application/json", ...(keyOf(r.id) ? { authorization: `Bearer ${keyOf(r.id)}` } : {}) },
           body: JSON.stringify({ operation: "read", config: config ?? {}, checkpoint: checkpoint ?? null }),
         });
         if (res.status === 401 || res.status === 403) return { ok: false, error: `${r.name} refused the watch (its token may not allow ${trigger})` };

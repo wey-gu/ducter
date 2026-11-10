@@ -4,6 +4,7 @@
 // Rule (principle 4, research/13): a fresh session reads as an ongoing conversation.
 // Nothing rendered here may say the session was reset, restarted, or lost.
 import type { Bodies, LogEvent, TaskCard } from "../../protocol/src/index.ts";
+import { renderCallEnded } from "../../protocol/src/phone.ts";
 import { shownOut, whoForModel } from "./bridge-out.ts";
 
 const CJK = /[㐀-鿿豈-﫿]/;
@@ -93,6 +94,14 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
         const what = b.option === "go" ? "it is on now and runs by itself; nothing to do" : b.option === "hold" ? "it stays off" : "the user replied instead";
         return `[routine card answered: ${b.option}${by}] "${d.question}": ${what}${b.text ? ` · user: ${b.text}` : ""}`;
       }
+      if (d?.call) {
+        // D193: Ducter acts on a call's cards itself: Go dials (or waits for the allowed hour), a
+        // question's answer goes to the line. Nothing to say unless the user replied with a change.
+        if (d.call.kind === "question") return `[a question from the call answered${by}] "${d.question}"${b.text ? ` · user: ${b.text}` : ""}: Ducter passed it to the line itself; say nothing.`;
+        if (b.option === "go") return `[call card answered: go] "${d.question}": Ducter places the call itself${d.call.plan?.at ? ` at ${d.call.plan.at}` : ""}; say nothing now, the outcome comes back to you.`;
+        if (b.option === "hold") return `[call card answered: not now${by}] "${d.question}": nothing was dialed; say nothing.`;
+        return `[call card: the user replied instead] "${d.question}" · user: ${b.text ?? ""}. Nothing was dialed. If they changed something, phone_call again with the change (a new card); otherwise answer them.`;
+      }
       if (d?.memPlugin) {
         // D169: Ducter's own card; on Go it opens the setup task itself (it reports like any task).
         const what = b.option === "go" ? "Ducter opens the setup task itself; say nothing now" : b.option === "hold" ? "not now; never bring it up again" : "the user replied instead";
@@ -137,6 +146,10 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
     }
     case "ai_msg":
       return `[${e.origin}] ${(e.body as Bodies["ai_msg"]).text}`;
+    case "phone_call": {
+      const c = e.body as Bodies["phone_call"];
+      return renderCallEnded(c, c.taskId ? ctx.taskTitle(c.taskId) : undefined);
+    }
     case "bridge_msg": {
       const b = e.body as Bodies["bridge_msg"];
       return renderBridge(b, b.direction === "in" ? ctx.bridgeOut?.(b.inReplyTo) : undefined, !!(b.mine && b.agent && ctx.trusted?.(b.agent)));

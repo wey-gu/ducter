@@ -34,6 +34,8 @@ import { openSettings, type SettingsStore } from "./settings.ts";
 import { openRules, type RulesStore } from "./rules.ts";
 import { createLoadout, isRuleHint, registerRuleTools, type Loadout } from "./loadout.ts";
 import { openConnections, type ConnectionsStore, type Linker, type OoSource } from "./connections.ts";
+import { callWakes, openPhone, type Phone } from "./phone.ts";
+import { providerOf } from "./phone-provider.ts";
 import { registerConnectionTools } from "./connection-tools.ts";
 import { createChanges, type Changes } from "./changes.ts";
 import { newTaskOptions, openYourTask, type GitRun, type NewTaskInput } from "./newtask.ts";
@@ -77,6 +79,9 @@ export interface CoreOptions {
   /** Test seams for connections: the MCP link, and the oo CLI's config. */
   connectionLinker?: Linker;
   ooSource?: OoSource;
+  /** D193 test seams: how OAuth sign-in reaches the server, and ms per second of its poll interval. */
+  oauthFetch?: (url: string, init?: RequestInit) => Promise<Response>;
+  signInMsPerSec?: number;
   /** Test seam for New task (D128): how newtask.ts runs its repo commands. */
   git?: GitRun;
   /** D148 test seams: the release feed, the update side effects, how this process updates. */
@@ -117,6 +122,8 @@ export interface Core extends CoreApi {
   loadout: Loadout;
   /** The user's connections (D96). */
   connections: ConnectionsStore;
+  /** D193: phone calls through the calling connection. */
+  phone: Phone;
   /** D165: what Ducter notices in them, and how it says so. */
   proactive: Proactive;
   /** What each repo task changed so far (D128). */
@@ -163,6 +170,8 @@ export function triggersPartner(e: LogEvent): boolean {
   if (e.kind === "bridge_msg") return (e.body as Bodies["bridge_msg"]).direction === "in" && !(e.body as Bodies["bridge_msg"]).state;
   // The second switch the same way: the partner offers a rule once (loadout.ts).
   if (isRuleHint(e)) return true;
+  // D193: a call that ended on its own (not the owner's hang-up or Not now) is said once.
+  if (e.kind === "phone_call") return callWakes(e.body as Bodies["phone_call"]);
   return false;
 }
 
@@ -243,7 +252,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   registerCoreTools(mcp, log, tasks);
   const rules = openRules(dataDir);
   registerRuleTools(mcp, rules);
-  const connections = openConnections({ dataDir, log, linker: opts.connectionLinker, oo: opts.ooSource, fetcher: opts.work?.connectionFetch });
+  const connections = openConnections({ dataDir, log, linker: opts.connectionLinker, oo: opts.ooSource, fetcher: opts.work?.connectionFetch, oauthFetch: opts.oauthFetch, signInMsPerSec: opts.signInMsPerSec, clientName: "Ducter", knownName: (ts) => providerOf(ts)?.name });
   registerConnectionTools(mcp, connections);
   let workersRef: Workers | undefined;
   const work = createWork({
@@ -266,7 +275,22 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D128: what each repo task changed (cached counts), for On hand by project.
   let onHandChanged = () => {};
   const changes = createChanges({ log, tasks, runner: () => runner, onChange: () => onHandChanged() });
-  tasks.setDecorator((o) => changes.decorate(work.decorate(o)));
+  // D193: phone calls (the partner drafts; the owner's Go places; Ducter polls and keeps the rails).
+  const phone = openPhone({
+    dataDir,
+    log,
+    connections,
+    clock,
+    quiet: () => push.settings().quiet,
+    zone: () => settings.get().quiet?.tz ?? opts.work?.defaultZone ?? (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"),
+    partnerName: () => persona.name,
+    onChange: () => onHandChanged(),
+  });
+  tasks.setDecorator((o) => {
+    const out = changes.decorate(work.decorate(o));
+    const calls = phone.calls();
+    return calls.length ? { ...out, calls } : out;
+  });
   if (opts.work?.judge) work.setJudge(opts.work.judge);
 
   let proactiveRef: Proactive | undefined;
@@ -304,7 +328,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   // D157: 我要合电脑了 / Move before closing: one decision for a computer.
   const closing = createClosing({ log, tasks, loadout, runner: () => runner });
   registerClosingTool(mcp, closing, () => settings.get().language === "zh");
-  const api = { log, tasks, mcp, persona, dataDir, settings, connections, bodies: loadout, spine: log.spine, ...(browser ? { browser: browser.port } : {}) } as CoreApi;
+  const api = { log, tasks, mcp, persona, dataDir, settings, connections, phone, bodies: loadout, spine: log.spine, ...(browser ? { browser: browser.port } : {}) } as CoreApi;
   // D150: the one helper (brain.ts) the runner and the settings frame share.
   api.partnerFallback = () => {
     const e = effectiveBrain(settings.get().brain, settings.brainChosen(), devicesView?.harnessesNow());
@@ -313,7 +337,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   // 开一件事 / New task (D128): the one opening path the card and `ducter task` share.
   const newTaskDeps = { log, tasks, runner: () => runner, persona, dataDir, loadout, settings, ...(opts.git ? { git: opts.git } : {}) };
   const newTask = { open: (i: NewTaskInput) => openYourTask(newTaskDeps, i), options: (p?: Place) => newTaskOptions(newTaskDeps, p) };
-  const ws = createWsHandler({ core: api, decisions, runner: () => runner, devices: () => devicesView, settings, connections, rules, loadout, closing, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, memPlugins: () => memPluginsRef, proactive: () => proactiveRef, batchMs: opts.batchMs, ...(browser ? { browser } : {}) });
+  const ws = createWsHandler({ core: api, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, closing, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, memPlugins: () => memPluginsRef, proactive: () => proactiveRef, batchMs: opts.batchMs, ...(browser ? { browser } : {}) });
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.
   let partnerTurn = false;
@@ -590,6 +614,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     rules,
     loadout,
     connections,
+    phone,
     proactive,
     changes,
     updates,
@@ -630,6 +655,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       workers.stop();
       sockets.stop();
       unsubscribePartner();
+      phone.stop();
       decisions.stop();
       living.stop();
       work.stop();

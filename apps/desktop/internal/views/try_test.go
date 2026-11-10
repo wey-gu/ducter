@@ -2,6 +2,9 @@ package views
 
 import (
 	"testing"
+	"time"
+
+	"github.com/egoist/mygo/ui"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
@@ -74,6 +77,54 @@ func TestTryItOnTheBrowserBlock(t *testing.T) {
 		}
 		if app.S.Live != nil {
 			t.Errorf("%s: the view stays open", lang)
+		}
+	}
+}
+
+// The author's Mac, opening hel's browser: the back button sat under the
+// traffic lights, the page stayed at 正在打开 example.com…… forever (the app
+// dropped every live frame, protocol.TestEveryServerFrameDecodes) and the
+// footer said "这是  上的浏览器". Now the bar keeps the traffic lights' room,
+// the device is named while it opens, and after 40 s it says so with 再试一次.
+func TestTryItWhileItOpens(t *testing.T) {
+	for _, lang := range []i18n.Lang{i18n.ZH, i18n.EN} {
+		app, sent, tt := devicesApp(t, lang, protocol.DeviceAbility{ID: "web", State: "on", Where: "ducter", Detail: "157.0.8103.38"})
+		tt.SetTitleBar(ui.TitleBar{Height: ChromeH, Left: 78})
+		now := time.Date(2026, 11, 10, 9, 0, 0, 0, time.UTC)
+		app.Now = func() time.Time { return now }
+		app.OpenTry()
+		tt.Frame()
+		tt.Frame()
+		L := app.L
+		if r, ok := tt.Find(L.T("live.back")); !ok || r.X < 78 {
+			t.Errorf("%s: back at %+v, under the traffic lights (78)", lang, r)
+		}
+		note := L.T("live.try.note", "hetzner-1")
+		if !tt.HasText(note) || !tt.HasText(L.T("live.opening", "example.com")) {
+			t.Errorf("%s: while opening, no %q in %q", lang, note, tt.Texts())
+		}
+		now = now.Add(41 * time.Second)
+		tt.Advance(time.Second)
+		tt.Frame()
+		if !tt.HasText(L.T("live.stuck", "hetzner-1")) {
+			t.Fatalf("%s: stuck: %q", lang, tt.Texts())
+		}
+		n := len(*sent)
+		if err := tt.Click(L.T("live.retry")); err != nil {
+			t.Fatal(err)
+		}
+		if open, ok := lastSent[protocol.LiveOpenReq](*sent); !ok || len(*sent) == n || !open.Try {
+			t.Errorf("%s: 再试一次 sent %#v", lang, open)
+		}
+		tt.Frame()
+		if tt.HasText(L.T("live.stuck", "hetzner-1")) {
+			t.Errorf("%s: still stuck right after a retry", lang)
+		}
+		// The server said no: the view closes with why.
+		app.Receive(protocol.ServerFrame{T: "live", DecisionID: protocol.TryLive, State: "closed", Reason: "failed", Message: "Chrome exited (127) before it opened its DevTools port"})
+		tt.Frame()
+		if app.S.Live != nil {
+			t.Errorf("%s: a refused view stays open", lang)
 		}
 	}
 }

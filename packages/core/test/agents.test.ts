@@ -5,7 +5,7 @@ import { afterEach, expect, test } from "bun:test";
 import type { DeviceHarness, ServerFrame } from "@ducter/protocol";
 import { HARNESS_FACTS } from "@ducter/protocol/src/harness-facts.ts";
 import type { HarnessId } from "@ducter/protocol/src/harnesses.ts";
-import { createAgentLatest, createAgentUpdates, createWorkerAgentUpdater, nightTarget, parseLatest, updateAgent, updatePlan, type AgentLatest } from "../src/agents.ts";
+import { createAgentLatest, createAgentUpdates, createWorkerAgentUpdater, judgeAgent, nightTarget, parseLatest, updateAgent, updatePlan, type AgentLatest } from "../src/agents.ts";
 import { agentHow, detectAgent, type AgentInstall } from "../src/harness-probe.ts";
 import { startCore, type Core } from "../src/core.ts";
 import type { DeviceProbes } from "../src/devices.ts";
@@ -246,8 +246,12 @@ test("the card: latest, behind, verified or not, then a tap runs the steps at a 
   expect(cc!.latest).toBeUndefined();
 
   expect(await ag.start("local", "codex", { by: "user" })).toEqual({ ok: true });
-  for (let i = 0; i < 50 && ag.view("local", list)[0]!.update?.phase !== "done"; i++) await Bun.sleep(5);
-  expect(ag.view("local", list)[0]!.update).toMatchObject({ phase: "done", from: "0.167.0", to: "0.168.0", by: "user" });
+  // The devices frame reads each copy again after an update: the view is judged against it.
+  const now = () => [{ ...list[0]!, version: f.m.version! }, list[1]!];
+  for (let i = 0; i < 50 && ag.view("local", now())[0]!.update?.phase !== "done"; i++) await Bun.sleep(5);
+  expect(ag.view("local", now())[0]!.update).toMatchObject({ phase: "done", from: "0.167.0", to: "0.168.0", by: "user" });
+  // A stale list (still the old version) doesn't call it done.
+  expect(ag.view("local", list)[0]!.update).toBeUndefined();
   expect(holds).toEqual(["codex:true", "codex:false"]);
   const steps = log.read({ stream: "devices", kinds: ["agent_update"] }).map((e) => (e.body as any).phase);
   expect(steps).toEqual(["waiting", "updating", "checking", "done"]);
@@ -302,6 +306,60 @@ test("a worker: the op goes down its socket, the worker updates itself and repor
   const w2 = createWorkerAgentUpdater({ sys: app.sys, detect: app.detect, loggedIn: app.loggedIn, probe: async () => [] });
   await w2.handle({ id: 8, args: { harness: "codex", to: "0.168.0" } }, (x) => refused.push(x), { turningOn: () => 0 });
   expect(refused).toEqual([{ t: "res", id: 8, ok: true, result: { ok: false, reason: "how", detail: "app" } }]);
+});
+
+// The author's MacBook: pi updated to 1.5.1, the home still thought 1.5.0 (the worker's hello was
+// probed once, at its start) and asked again; the card said 没更新成 · 没有更新的版本.
+test("a stale view asking for a version already there: never a failure, and the home hears the truth", async () => {
+  const f = fakeMachine({ how: "npm", version: "1.5.1" });
+  const sent: any[] = [];
+  const w = createWorkerAgentUpdater({ sys: f.sys, detect: f.detect, loggedIn: f.loggedIn, probe: async () => [{ id: "pi", installed: true, loggedIn: true, version: "1.5.1", how: "npm" }] });
+  await w.handle({ id: 9, args: { harness: "pi", to: "1.5.1", latest: "1.5.1" } }, (x) => sent.push(x), { turningOn: () => 0 });
+  expect(sent).toEqual([
+    { t: "res", id: 9, ok: true, result: { ok: false, reason: "no_update", detail: "already on 1.5.1" } },
+    { t: "agents", harnesses: [{ id: "pi", installed: true, loggedIn: true, version: "1.5.1", how: "npm" }] },
+  ]);
+  expect(f.runs.length).toBe(0);
+  // On this machine: done with nothing run.
+  expect(await updateAgent(f.sys, { harness: "pi", to: "1.5.1", detect: f.detect, loggedIn: f.loggedIn })).toEqual({ ok: true, from: "1.5.1", to: "1.5.1", already: true });
+});
+
+test("judgeAgent: an outcome is judged against the version installed now", () => {
+  const failed = { phase: "failed" as const, from: "1.5.0", to: "1.5.1", reason: "unchanged" as const };
+  expect(judgeAgent(failed, "1.5.0")).toBe("stands"); // still on from: it didn't update
+  expect(judgeAgent(failed, "1.5.1")).toBe("done"); // reached the target since
+  expect(judgeAgent(failed, "1.5.2")).toBe("superseded"); // moved on
+  expect(judgeAgent({ phase: "failed", from: "1.5.1", to: "1.5.1", reason: "no_update" }, "1.5.1")).toBe("done");
+  expect(judgeAgent({ phase: "failed", from: "1.5.0", to: "1.5.1", reason: "no_update" }, "1.5.0")).toBe("superseded"); // never a failure
+  expect(judgeAgent({ phase: "done", from: "1.5.0", to: "1.5.1" }, "1.5.1")).toBe("done");
+  expect(judgeAgent({ phase: "done", from: "1.5.0", to: "1.5.1" }, "1.5.0")).toBe("superseded");
+  expect(judgeAgent({ phase: "updating", from: "1.5.0", to: "1.5.1" }, "1.5.0")).toBe("stands");
+});
+
+test("the card drops a failure the copy has moved past (an older worker's frame, a hand update)", async () => {
+  const t = tempDir();
+  stops.push(t.cleanup);
+  const log = openLog({ path: t.dir + "/log.db", persona: "p" });
+  stops.push(() => log.close());
+  const ag = createAgentUpdates({
+    log,
+    sys: { run: async () => ({ code: 0, out: "" }), sleep: async () => {}, now: () => Date.now() },
+    latest: staticLatest({ pi: "1.5.1" }),
+    name: () => "hel",
+    detect: async () => undefined,
+    loggedIn: async () => true,
+    busy: () => 0,
+    autoEveryMs: 0,
+  });
+  stops.push(() => ag.stop());
+  // A worker on an older build still says "failed · no_update".
+  ag.fromWorker("w1", "MacBook", { t: "agent_update", harness: "pi", phase: "failed", from: "1.5.1", to: "1.5.1", reason: "no_update" });
+  const pi = (v: string): DeviceHarness[] => [{ harness: "pi", installed: true, loggedIn: true, canBePartner: true, version: v, how: "npm" }];
+  expect(ag.view("w1", pi("1.5.1"))[0]!.update).toMatchObject({ phase: "done", to: "1.5.1" });
+  ag.fromWorker("w1", "MacBook", { t: "agent_update", harness: "pi", phase: "failed", from: "1.5.0", to: "1.5.1", reason: "unchanged" });
+  expect(ag.view("w1", pi("1.5.0"))[0]!.update).toMatchObject({ phase: "failed", reason: "unchanged" });
+  expect(ag.view("w1", pi("1.5.1"))[0]!.update).toMatchObject({ phase: "done" });
+  expect(ag.view("w1", pi("1.5.1"))[0]!.available).toBe(false);
 });
 
 // ---------- over the real client socket ----------

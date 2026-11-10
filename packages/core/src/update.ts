@@ -77,6 +77,16 @@ export const linuxArch = (arch: string) => (arch === "arm64" || arch === "aarch6
 export const assetName = (version: string, arch: string) => `ducter-${version}-linux-${linuxArch(arch)}.tar.gz`;
 export const downloadBase = (version: string) => `https://github.com/${REPO}/releases/download/v${version}`;
 
+/**
+ * Tests and the E2E rig only (scripts/e2e): DUCTER_UPDATE_MIRROR names a release mirror on this
+ * machine (http://127.0.0.1 or localhost; anything else is ignored), laid out as GitHub's:
+ * <mirror>/download/v<version>/SHA256SUMS.txt and the tarballs. The feed is DUCTER_UPDATE_FEED.
+ */
+export function mirrorBase(env: Record<string, string | undefined>, version: string): string | undefined {
+  const m = (env.DUCTER_UPDATE_MIRROR ?? "").trim().replace(/\/+$/, "");
+  return m && /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?(\/|$)/.test(m) ? `${m}/download/v${version}` : undefined;
+}
+
 /** Only GitHub's own hosts, over HTTPS (a download is redirected to its storage host). */
 export function officialUrl(raw: string): boolean {
   let u: URL;
@@ -147,10 +157,11 @@ export async function stage(sys: UpdateSys, i: StageInput): Promise<{ ok: true; 
 
   i.onPhase?.("downloading", 0);
   const name = assetName(i.to, i.arch);
-  const base = (i.base ?? downloadBase(i.to)).replace(/\/+$/, "");
+  const local = i.base ?? mirrorBase(process.env, i.to);
+  const base = (local ?? downloadBase(i.to)).replace(/\/+$/, "");
   let want: string | undefined;
   try {
-    const r = await getChecked(sys, `${base}/SHA256SUMS.txt`, i.base);
+    const r = await getChecked(sys, `${base}/SHA256SUMS.txt`, local);
     if (r.status === 404) return bail(fail("no_asset", "the release has no SHA256SUMS.txt"));
     if (!r.ok) return bail(fail("network", `SHA256SUMS.txt: ${r.status}`));
     want = sumFor(await r.text(), name);
@@ -162,7 +173,7 @@ export async function stage(sys: UpdateSys, i: StageInput): Promise<{ ok: true; 
   const tarball = join(dir, name);
   const hash = createHash("sha256");
   try {
-    const r = await getChecked(sys, `${base}/${name}`, i.base);
+    const r = await getChecked(sys, `${base}/${name}`, local);
     if (r.status === 404) return bail(fail("no_asset", `${name} isn't in the release`));
     if (!r.ok || !r.body) return bail(fail("network", `${name}: ${r.status}`));
     const size = Number(r.headers.get("content-length") ?? 0);

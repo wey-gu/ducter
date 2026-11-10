@@ -566,7 +566,11 @@ func (a appWorker) Start(ctx context.Context) error {
 }
 
 func (a appWorker) Stop() (string, error) { return a.w.Stop() }
-func (a appWorker) Log() string           { return a.w.Agent.LogPath() }
+
+// Restart restarts this Mac's worker so it runs the app's own helper again
+// (its card's 重启它, D172).
+func (a appWorker) Restart() error { return a.w.Agent.Restart() }
+func (a appWorker) Log() string    { return a.w.Agent.LogPath() }
 
 // target is the server to dial and its device token: DUCTER_URL (and
 // DUCTER_TOKEN) win; then the saved connection; then the local default.

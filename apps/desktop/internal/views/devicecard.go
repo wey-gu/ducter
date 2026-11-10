@@ -1235,7 +1235,10 @@ func (a *App) ducterLine(c *ui.Context, dv *protocol.DeviceView) {
 	if u.Running() {
 		c.After(500e6)
 	}
-	canTap := (u.How == "self" && dv.State == protocol.DeviceAwake) || (u.How == "app" && dv.Home && a.onThisMac())
+	// This Mac's own copy updates with this app (the home it runs, or the
+	// worker it runs, D172); a worker whose app is current only needs a restart
+	// (updateAction says so).
+	canTap := (u.How == "self" && dv.State == protocol.DeviceAwake) || (u.How == "app" && a.appOnThisMac(dv) && a.helperBehind(dv) == "")
 	offer := behind(dv) || (u.Phase == "failed" && u.Available)
 	ui.Column(c.Key("version:"+dv.ID)).Gap(t.S1).Margin(t.S3+2, 0, 0, 0).Padding(t.S2+2, t.S3).Radius(t.RadiusSM).Background(t.Bg).Children(func() {
 		ui.Row(c).Gap(t.S2 + 2).AlignItems(ui.Center).Children(func() {
@@ -1274,8 +1277,9 @@ func (a *App) ducterLine(c *ui.Context, dv *protocol.DeviceView) {
 		if u.Phase == "downloading" && u.Progress > 0 {
 			a.progressBar(c, u.Progress)
 		}
-		for _, n := range notesIf(behind(dv) && u.How == "self", u.Notes) {
-			ui.Text(c, n).FontSize(t.XS).LineHeight(1.45).TextColor(t.InkMuted).MaxLines(2)
+		// Each line is whole and short (the release keeps it so): it wraps, never cut.
+		for _, n := range a.notesIf(behind(dv) && u.How == "self", u) {
+			ui.Text(c, n).FontSize(t.XS).LineHeight(1.45).TextColor(t.InkMuted)
 		}
 		if offer && !canTap {
 			a.updateAction(c, dv) // where the update happens instead, in one line

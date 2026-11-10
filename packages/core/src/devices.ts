@@ -221,7 +221,7 @@ export function webAbilityOf(p: {
       case "installing":
         return { id: "web", state: "on", where: "ducter", setup: "installing" };
       case "deps":
-        return { id: "web", state: "unavailable", reason: "browser_deps", detail: s.command, where: "ducter" };
+        return { id: "web", state: "unavailable", reason: s.why === "sandbox" ? "browser_sandbox" : "browser_deps", detail: s.command, where: "ducter" };
       case "failed":
         return { id: "web", state: "unavailable", reason: "browser_failed", detail: s.message, where: "ducter" };
       case "missing":
@@ -423,7 +423,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
     // D151: adding Browse the web on a server installs Ducter's browser (again, after a failure or
     // once the missing libraries are there). The choice is saved at once; the frame says
     // 正在准备 / Getting it ready until it is.
-    if (ability === "web" && on && d.home && a.where === "ducter" && (a.state === "off" || a.reason === "browser_deps" || a.reason === "browser_failed")) {
+    if (ability === "web" && on && d.home && a.where === "ducter" && (a.state === "off" || a.reason === "browser_deps" || a.reason === "browser_sandbox" || a.reason === "browser_failed")) {
       if (envPinned() === "off") return res(false, "env_off");
       writeAbilitySettings(o.dataDir, { web: true });
       if (o.browser!.setup().state !== "ready") void o.browser!.install();

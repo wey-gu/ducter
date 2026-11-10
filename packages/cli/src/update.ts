@@ -15,7 +15,7 @@ import { arch as osArch, hostname as osHostname, platform as osPlatform } from "
 import { join } from "node:path";
 import type { DeviceUpdate, DeviceView, ServerFrame, UpdateReason } from "@ducter/protocol";
 import { compareVersions } from "@ducter/protocol/src/version.ts";
-import { fetchLatest, type Release } from "@ducter/core/src/release.ts";
+import { fetchLatest, hasNotes, type Release } from "@ducter/core/src/release.ts";
 import { finish, judgeResult, readPlan, readResult, realSys, runUpdate, updateHow, writeResult, type Fail, type UpdateSys } from "@ducter/core/src/update.ts";
 import type { WorkerUpdateFrame } from "@ducter/core/src/updates.ts";
 import { CRITICAL_WAIT_MS, TURN_GRACE_MS } from "@ducter/core/src/updates.ts";
@@ -306,7 +306,7 @@ async function direct(c: UpdateCtx, sys: UpdateSys, say: (s: string) => void): P
   const latest = rel?.version;
   const available = Boolean(latest && compareVersions(latest, current) > 0);
   const name = osHostname().replace(/\.local$/, "");
-  const row: Row = { id: "local", name, home: !existsSync(join(c.dataDir, "worker.json")), online: true, update: { current, available, how, ...(latest ? { latest } : {}), ...(available && rel?.notes.length ? { notes: rel.notes } : {}), ...(rel?.security ? { security: true } : {}) } };
+  const row: Row = { id: "local", name, home: !existsSync(join(c.dataDir, "worker.json")), online: true, update: { current, available, how, ...(latest ? { latest } : {}), ...(available && hasNotes(rel?.notes) ? { notesBy: rel!.notes } : {}), ...(rel?.security ? { security: true } : {}) } };
   if (args.check) {
     say(args.json ? JSON.stringify({ latest: latest ?? null, devices: [{ ...row, ...row.update }] }, null, 2) : formatRows([row], t, style));
     return 0;

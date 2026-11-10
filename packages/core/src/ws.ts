@@ -1,6 +1,6 @@
 // Client WebSocket protocol (ClientFrame / ServerFrame) over Bun's built-in WS.
 import { brainNow } from "./brain.ts";
-import { harnessName, isHarnessId } from "@ducter/protocol";
+import { harnessName, isHarnessId, TRY_LIVE } from "@ducter/protocol";
 import type { ServerWebSocket } from "bun";
 import type { Bodies, ClientFrame, ClientKind, Delivery, LogEvent, OoApp, PartnerActivity, Place, ServerFrame, UndoConfirm } from "@ducter/protocol";
 import type { NewTaskInput, NewTaskResult } from "./newtask.ts";
@@ -709,13 +709,24 @@ export function createWsHandler(deps: WsDeps) {
       case "live_ack":
       case "live_close": {
         const b = deps.browser;
-        if (!b) throw new Error("Ducter's browser isn't available here");
+        // A view that can't open says so in its own frame (the client closes it with the
+        // reason), never only as a generic error that leaves it at "Opening…".
+        const refuse = (message: string) => f.t === "live_open" && send(ws, { t: "live", id: "", decisionId: f.try ? TRY_LIVE : String(f.decisionId ?? ""), state: "closed", reason: "failed", message });
+        if (!b) {
+          if (f.t === "live_open") return void refuse("Ducter's browser isn't available here");
+          throw new Error("Ducter's browser isn't available here");
+        }
         ws.data.sink ??= { send: (fr) => sockets.has(ws) && send(ws, fr) };
         const sink = ws.data.sink;
         const size = f.t === "live_open" ? { ...(f.width ? { width: f.width } : {}), ...(f.height ? { height: f.height } : {}), ...(f.scale ? { scale: f.scale } : {}) } : undefined;
-        if (f.t === "live_open" && f.try) await b.live.tryIt(sink, size);
-        else if (f.t === "live_open") await b.live.open(sink, String(f.decisionId ?? ""), size);
-        else if (f.t === "live_input") await b.live.input(sink, String(f.id ?? ""), f.input);
+        if (f.t === "live_open") {
+          try {
+            if (f.try) await b.live.tryIt(sink, size);
+            else await b.live.open(sink, String(f.decisionId ?? ""), size);
+          } catch (e) {
+            refuse((e as Error).message);
+          }
+        } else if (f.t === "live_input") await b.live.input(sink, String(f.id ?? ""), f.input);
         else if (f.t === "live_ack") b.live.ack(sink, String(f.id ?? ""), Number(f.seq));
         else await b.live.close(sink, String(f.id ?? ""), !!f.done);
         return;

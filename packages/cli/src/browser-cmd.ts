@@ -53,8 +53,8 @@ export async function cmdAbility(o: Opts): Promise<number> {
     c.send({ t: "ability", device: "local", ability: "web", on: verb === "add" });
     const r = await c.next(isFrame("ability_result"), 30_000);
     if (!r?.ok) {
-      if (r?.reason === "browser_deps" && r.detail) {
-        console.log(o.t("ability.deps"));
+      if ((r?.reason === "browser_deps" || r?.reason === "browser_sandbox") && r.detail) {
+        console.log(o.t(r.reason === "browser_sandbox" ? "ability.sandbox" : "ability.deps"));
         console.log(`  ${r.detail}`);
         return 1;
       }
@@ -79,8 +79,8 @@ export async function cmdAbility(o: Opts): Promise<number> {
         if (o.json) console.log(JSON.stringify({ ok: true, device: name, version: web.detail ?? "" }));
         else console.log(o.t("ability.ready", { device: name, version: web.detail ?? "" }));
         return 0;
-      } else if (web?.reason === "browser_deps") {
-        console.log(o.t("ability.deps"));
+      } else if (web?.reason === "browser_deps" || web?.reason === "browser_sandbox") {
+        console.log(o.t(web.reason === "browser_sandbox" ? "ability.sandbox" : "ability.deps"));
         console.log(`  ${web.detail ?? ""}`);
         return 1;
       } else if (web?.state === "unavailable") {

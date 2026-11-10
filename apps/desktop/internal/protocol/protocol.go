@@ -1200,21 +1200,23 @@ type DeviceView struct {
 // (too old to update from here). Phase: downloading | verifying | waiting |
 // restarting | done | failed; empty when idle.
 type DeviceUpdate struct {
-	Current    string   `json:"current"`
-	Latest     string   `json:"latest,omitempty"`
-	Available  bool     `json:"available"`
-	Notes      []string `json:"notes,omitempty"`
-	Security   bool     `json:"security,omitempty"`
-	How        string   `json:"how"`
-	Phase      string   `json:"phase,omitempty"`
-	Progress   float64  `json:"progress,omitempty"`
-	From       string   `json:"from,omitempty"`
-	To         string   `json:"to,omitempty"`
-	Reason     string   `json:"reason,omitempty"`
-	Detail     string   `json:"detail,omitempty"`
-	RolledBack bool     `json:"rolledBack,omitempty"`
-	At         string   `json:"at,omitempty"`
-	CheckedAt  string   `json:"checkedAt,omitempty"`
+	Current   string `json:"current"`
+	Latest    string `json:"latest,omitempty"`
+	Available bool   `json:"available"`
+	// NotesBy is what's new per language ("zh", "en"), short whole lines;
+	// a card shows its own language's and none otherwise (D172).
+	NotesBy    map[string][]string `json:"notesBy,omitempty"`
+	Security   bool                `json:"security,omitempty"`
+	How        string              `json:"how"`
+	Phase      string              `json:"phase,omitempty"`
+	Progress   float64             `json:"progress,omitempty"`
+	From       string              `json:"from,omitempty"`
+	To         string              `json:"to,omitempty"`
+	Reason     string              `json:"reason,omitempty"`
+	Detail     string              `json:"detail,omitempty"`
+	RolledBack bool                `json:"rolledBack,omitempty"`
+	At         string              `json:"at,omitempty"`
+	CheckedAt  string              `json:"checkedAt,omitempty"`
 }
 
 // Running reports an update under way (not yet done or failed).
@@ -1508,9 +1510,14 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 		return f, err
 	}
 	switch f.T {
+	// Every frame the core sends (ServerFrame in packages/protocol/src/index.ts);
+	// TestEveryServerFrameDecodes reads that union, so a new one can't be
+	// dropped here unseen (the live view's live / live_frame were, from D151 to
+	// D172: 试一下 sat at 正在打开 example.com…… forever).
 	case "welcome", "events", "on_hand", "task_history", "sent", "action_result", "error",
 		"devices", "ability_result", "pair_code", "rename_result", "disconnect_result", "update_result", "agent_update_result", "mem_plugin_result", "settings", "connections", "connection_result", "rules", "candidates", "activity",
-		"task_new_options", "task_new_result", "open_task", "open_result":
+		"task_new_options", "task_new_result", "open_task", "open_result",
+		"first_screen", "folder_changes", "close_result", "live", "live_frame", "browser_sites", "browser_check", "connection_reads":
 	default:
 		return f, fmt.Errorf("unknown server frame %q", f.T)
 	}

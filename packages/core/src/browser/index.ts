@@ -17,7 +17,7 @@ export type BrowserSetup =
   | { state: "ready"; version: string }
   | { state: "missing" }
   | { state: "installing"; step?: InstallStep }
-  | { state: "deps"; command: string }
+  | { state: "deps"; command: string; why?: "sandbox" }
   | { state: "failed"; message: string };
 
 export interface DucterBrowser {
@@ -77,7 +77,7 @@ export function createDucterBrowser(o: DucterBrowserOptions): DucterBrowser {
     if (installing) return { state: "installing", ...(step ? { step } : {}) };
     const found = host.find();
     if (found) return { state: "ready", version: found.version ?? "system" };
-    if (last && !last.ok) return last.reason === "deps" ? { state: "deps", command: last.command } : { state: "failed", message: last.message };
+    if (last && !last.ok) return last.reason === "deps" ? { state: "deps", command: last.command } : last.reason === "sandbox" ? { state: "deps", command: last.command, why: "sandbox" } : { state: "failed", message: last.message };
     return { state: "missing" };
   };
 
@@ -95,7 +95,7 @@ export function createDucterBrowser(o: DucterBrowserOptions): DucterBrowser {
       step = undefined;
       changed();
       if (r.ok) console.log(`[ducter] browser: Chrome ${r.version} installed at ${r.path}`);
-      else console.warn(`[ducter] browser: install ${r.reason === "deps" ? `needs: ${r.command}` : `failed: ${r.message}`}`);
+      else console.warn(`[ducter] browser: install ${r.reason === "deps" || r.reason === "sandbox" ? `needs: ${r.command}` : `failed: ${r.message}`}`);
       return r;
     });
     return installing;
@@ -109,7 +109,9 @@ export function createDucterBrowser(o: DucterBrowserOptions): DucterBrowser {
         s.state === "installing"
           ? "Ducter is installing its browser on this device right now; try again in a minute"
           : s.state === "deps"
-            ? `Ducter's browser needs system libraries here; run: ${s.command}`
+            ? s.why === "sandbox"
+              ? `This system doesn't let Ducter's browser start its sandbox; run once: ${s.command}`
+              : `Ducter's browser needs system libraries here; run: ${s.command}`
             : s.state === "failed"
               ? `Ducter's browser couldn't be set up here: ${s.message}`
               : "Ducter's browser isn't installed on this device: add Browse the web (上网) in Devices, or run `ducter ability add browser`";

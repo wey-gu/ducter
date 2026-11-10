@@ -18,16 +18,18 @@ import (
 // with updateSection.
 
 type cardState struct {
-	cutting   string                // the device whose 断开 is being confirmed
-	cutFailed string                // why the server said no
-	more      map[string]bool       // devices whose not-signed-in AI accounts are shown
-	answer    *protocol.ServerFrame // the last update_result that said no
-	asked     string                // the device an update was asked for
-	agent     *protocol.ServerFrame // the last agent_update_result that said no (D156)
-	memAsk    string                // "device:harness" whose 装上 / Install is being confirmed (D169)
-	mem       *protocol.ServerFrame // the last mem_plugin_result that said no (D169)
-	checking  bool                  // 现在检查 / Check now asked, no answer yet
-	sheet     sheetState            // D161: the character sheet's coins, chips and connections
+	cutting     string                // the device whose 断开 is being confirmed
+	cutFailed   string                // why the server said no
+	more        map[string]bool       // devices whose not-signed-in AI accounts are shown
+	answer      *protocol.ServerFrame // the last update_result that said no
+	asked       string                // the device an update was asked for
+	agent       *protocol.ServerFrame // the last agent_update_result that said no (D156)
+	memAsk      string                // "device:harness" whose 装上 / Install is being confirmed (D169)
+	mem         *protocol.ServerFrame // the last mem_plugin_result that said no (D169)
+	checking    bool                  // 现在检查 / Check now asked, no answer yet
+	restarted   string                // this Mac's worker whose 重启它 was tapped (D172)
+	restartedAt time.Time
+	sheet       sheetState // D161: the character sheet's coins, chips and connections
 }
 
 // drainDeviceResults reads the server's answer to the last disconnect or
@@ -53,7 +55,9 @@ func (a *App) drainDeviceResults() {
 			d.card.cutFailed = res.Reason
 		}
 	case "agent_update_result":
-		if res.OK {
+		// "Nothing newer" answers a stale view, not a failure: the devices
+		// frame that follows has the version there now.
+		if res.OK || res.Reason == "no_update" {
 			d.card.agent = nil
 		} else {
 			fc := *res
@@ -72,7 +76,7 @@ func (a *App) drainDeviceResults() {
 		if res.Update != nil {
 			return // a check's answer: the devices frame says the rest
 		}
-		if res.OK {
+		if res.OK || res.Reason == "no_release" {
 			d.card.answer = nil
 		} else {
 			fc := *res
@@ -325,21 +329,77 @@ func (a *App) updateAction(c *ui.Context, dv *protocol.DeviceView) {
 			}
 		})
 	case "app":
-		if dv.Home && a.onThisMac() {
-			// The Mac's own app updater (D72): restart into a ready copy, or open its card.
-			a.textRow(c, t.ControlSM).Children(func() {
-				if a.buttonFor(c, a.L.T("devup.button"), dv.Name, btnSecondary, t.ControlSM, t.Surface) {
-					a.updateThisMac()
-				}
-			})
+		if !a.appOnThisMac(dv) {
+			a.note(c, a.L.T("devup.how.app", a.deviceNameIn(dv))) // another Mac: its own app does it
 			return
 		}
-		a.note(c, a.L.T("devup.how.app", a.deviceNameIn(dv)))
+		if v := a.helperBehind(dv); v != "" {
+			// This Mac's app is already current; the worker it runs still has
+			// the old helper in memory (D167): one restart, not "open Ducter".
+			if a.workRestarting(dv.ID) {
+				a.note(c, a.L.T("devup.phase.restarting"))
+				return
+			}
+			a.note(c, a.L.T("devup.how.helper", v, a.workHome()))
+			if r, ok := a.MacWorker.(workerRestarter); ok {
+				a.textRow(c, t.ControlSM).Children(func() {
+					if a.buttonFor(c, a.L.T("devup.restart"), dv.Name, btnSecondary, t.ControlSM, t.Surface) {
+						a.devState().card.restarted, a.devState().card.restartedAt = dv.ID, a.Now()
+						go func() { _ = r.Restart() }()
+					}
+				})
+			}
+			return
+		}
+		// The Mac's own app updater (D72): restart into a ready copy, or open its card.
+		a.textRow(c, t.ControlSM).Children(func() {
+			if a.buttonFor(c, a.L.T("devup.button"), dv.Name, btnSecondary, t.ControlSM, t.Surface) {
+				a.updateThisMac()
+			}
+		})
 	case "manual":
 		a.note(c, a.L.T("devup.how.manual", a.deviceNameIn(dv)))
 	default:
 		a.note(c, a.L.T("devup.how.source"))
 	}
+}
+
+// appOnThisMac: this device's Ducter is the one inside this very app: the
+// home this window runs, or this Mac doing tasks for a home elsewhere (its
+// worker is the app's own helper, D155). Its update is this app's.
+func (a *App) appOnThisMac(dv *protocol.DeviceView) bool {
+	if dv.Home {
+		return a.onThisMac()
+	}
+	return a.isThisMac(deviceComputer(dv))
+}
+
+// helperBehind is this app's version when the app is current but this
+// Mac's worker still says an older one (it runs the old helper from memory
+// until it restarts); "" otherwise.
+func (a *App) helperBehind(dv *protocol.DeviceView) string {
+	if dv.Home || a.Updates == nil || dv.Update == nil {
+		return ""
+	}
+	st := a.Updates.Status()
+	appV := st.Current
+	if appV == "" || update.Compare(dv.Update.Current, appV) >= 0 {
+		return ""
+	}
+	if st.State == update.Ready || st.State == update.Available || st.State == update.Downloading {
+		return "" // the app itself is behind: its update comes first
+	}
+	return appV
+}
+
+// workerRestarter restarts this Mac's worker (its LaunchAgent), when the
+// app can (main.go's appWorker).
+type workerRestarter interface{ Restart() error }
+
+// workRestarting: 重启它 was tapped for this device in the last minute.
+func (a *App) workRestarting(id string) bool {
+	d := a.devState()
+	return d.card.restarted == id && a.Now().Sub(d.card.restartedAt) < time.Minute
 }
 
 // updateThisMac is the seam into the app's own updater (D72, internal/update):
@@ -504,10 +564,11 @@ func homeDevice(ds []*protocol.DeviceView) *protocol.DeviceView {
 	return nil
 }
 
-// notesIf: what is new, only while it is still news (not again after a failure).
-func notesIf(ok bool, notes []string) []string {
-	if !ok {
+// notesIf: what is new in this window's language, only while it is still
+// news (not again after a failure). Never the other language's (D172).
+func (a *App) notesIf(ok bool, u *protocol.DeviceUpdate) []string {
+	if !ok || u == nil {
 		return nil
 	}
-	return notes
+	return u.NotesBy[string(a.L.Lang)]
 }

@@ -468,6 +468,9 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 	case "devices":
 		for i := range f.Devices {
 			dropStaleFailure(f.Devices[i].Update)
+			for j := range f.Devices[i].Harnesses {
+				dropStaleAgentUpdate(&f.Devices[i].Harnesses[j])
+			}
 		}
 		s.Devices, s.Reach, s.DevicesAt = f.Devices, f.Reach, time.Now()
 	case "ability_result":
@@ -1250,7 +1253,8 @@ func dropStaleFailure(u *protocol.DeviceUpdate) {
 	if u == nil || u.Phase != "failed" || u.To == "" {
 		return
 	}
-	stands := update.Compare(u.Current, u.To) != 0
+	// "Nothing newer is out" is never a failure.
+	stands := update.Compare(u.Current, u.To) != 0 && u.Reason != "no_release"
 	if stands && update.Compare(u.From, "0.0.0") >= 0 {
 		stands = update.Compare(u.Current, u.From) == 0
 	} else if stands {
@@ -1258,5 +1262,27 @@ func dropStaleFailure(u *protocol.DeviceUpdate) {
 	}
 	if !stands {
 		u.Phase, u.From, u.To, u.Reason, u.Detail, u.RolledBack, u.At = "", "", "", "", "", false, ""
+	}
+}
+
+// dropStaleAgentUpdate is the same rule for an AI agent's own update (D156):
+// judged against the version installed now. On the target it is done
+// whatever was said; still on where it started, a failure stands; anywhere
+// else (updated since, by hand) it is gone. "Nothing newer" (no_update) is
+// never a failure. A home older than the rule can still send one.
+func dropStaleAgentUpdate(h *protocol.DeviceHarness) {
+	u := h.Update
+	if u == nil || (u.Phase != "failed" && u.Phase != "done") || h.Version == "" {
+		return
+	}
+	switch {
+	case u.To != "" && update.Compare(h.Version, u.To) == 0:
+		if u.Phase == "failed" {
+			h.Update = &protocol.AgentUpdate{Phase: "done", From: u.From, To: u.To, At: u.At, By: u.By}
+		}
+	case u.Phase == "failed" && u.Reason != "no_update" && u.From != "" && update.Compare(h.Version, u.From) == 0:
+		// still where it started: it didn't update
+	default:
+		h.Update = nil
 	}
 }

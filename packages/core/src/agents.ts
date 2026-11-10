@@ -136,12 +136,16 @@ export function createAgentLatest(o: { dataDir: string; fetch?: Fetch; now?: () 
       renameSync(file + ".tmp", file);
     } catch {}
   };
+  // Tests and the E2E rig only: an npm registry on this machine (http://127.0.0.1 or localhost)
+  // answers for registry.npmjs.org; anything else is ignored.
+  const reg = (env.DUCTER_NPM_REGISTRY ?? "").trim().replace(/\/+$/, "");
+  const npmMirror = /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(reg) ? reg : undefined;
   const readOne = (url: string) => {
     let p = inflight.get(url);
     if (p) return p;
     p = (async () => {
       try {
-        const r = await o.fetch!(url, { headers: { accept: "application/json, text/plain", "user-agent": "ducter-agents" }, signal: AbortSignal.timeout(10_000) });
+        const r = await o.fetch!(npmMirror ? url.replace(/^https:\/\/registry\.npmjs\.org/, npmMirror) : url, { headers: { accept: "application/json, text/plain", "user-agent": "ducter-agents" }, signal: AbortSignal.timeout(10_000) });
         if (!r.ok) return;
         const v = parseLatest(await r.text());
         if (!v) return;
@@ -190,7 +194,22 @@ export function createAgentLatest(o: { dataDir: string; fetch?: Fetch; now?: () 
 // ---------- one update, on the machine the agent is on ----------
 
 export type AgentFail = { ok: false; reason: AgentReason; detail?: string; rolledBack?: boolean };
-export type AgentOutcome = { ok: true; from: string; to: string } | (AgentFail & { from?: string; to?: string });
+/** already: the copy was on (or past) the target before anything ran; nothing newer to do, never a failure. */
+export type AgentOutcome = { ok: true; from: string; to: string; already?: boolean } | (AgentFail & { from?: string; to?: string });
+
+/**
+ * An update's outcome judged against the version installed now (the D167 rule, for agents): on
+ * its target, it is done whatever was said; still on the version it started from, a failure
+ * stands; on anything else (updated since, by hand or by another update), it is superseded and
+ * shown no more. "Nothing newer" (no_update) is never a failure.
+ */
+export function judgeAgent(u: Pick<AgentUpdate, "phase" | "from" | "to" | "reason">, version: string | undefined): "stands" | "done" | "superseded" {
+  if (u.phase !== "done" && u.phase !== "failed") return "stands"; // still under way
+  if (!version || !versionIn(version)) return u.phase === "failed" && u.reason !== "no_update" ? "stands" : "superseded";
+  if (u.to && versionIn(u.to) && cmp(version, u.to) === 0) return "done";
+  if (u.phase === "done" || u.reason === "no_update") return "superseded";
+  return u.from && cmp(version, u.from) === 0 ? "stands" : "superseded";
+}
 
 export interface AgentRunInput {
   harness: HarnessId;
@@ -226,7 +245,8 @@ export async function updateAgent(sys: Pick<UpdateSys, "run">, i: AgentRunInput)
   const from = before.version;
   const plan = updatePlan(h, before, i.to, { latest: i.latest, exists: i.exists });
   if (!plan) return { ok: false, reason: "how", from, detail: before.how };
-  if (cmp(i.to, from) === 0) return { ok: false, reason: "no_update", from, detail: `already on ${from}` };
+  // Already there (a stale view of this copy asked for it): done, with nothing run.
+  if (cmp(from, i.to) >= 0) return { ok: true, from, to: from, already: true };
   const wasIn = await i.loggedIn().catch(() => false);
   if (i.settle) {
     i.onPhase?.("waiting", i.to);
@@ -364,6 +384,11 @@ export function createAgentUpdates(d: AgentUpdatesDeps): AgentUpdates {
     changed();
   };
 
+  /** Nothing to show for it (an update that found it already there). */
+  const clear = (device: string, h: string) => {
+    if (states.delete(key(device, h))) changed();
+  };
+
   const running = (device: string, h: string) => {
     const p = states.get(key(device, h))?.phase;
     return p === "waiting" || p === "updating" || p === "checking";
@@ -387,10 +412,13 @@ export function createAgentUpdates(d: AgentUpdatesDeps): AgentUpdates {
       const s = states.get(key(device, h.harness));
       if (s) {
         const age = now() - s.atMs;
-        const shown = s.phase === "done" ? age < AGENT_DONE_SHOWN_MS : s.phase === "failed" ? age < AGENT_FAILED_SHOWN_MS : true;
+        // Judged against the version there now: a failure the copy has moved past isn't one.
+        const j = judgeAgent(s, h.version);
+        const phase = j === "done" ? "done" : s.phase;
+        const shown = j !== "superseded" && (phase === "done" ? age < AGENT_DONE_SHOWN_MS : phase === "failed" ? age < AGENT_FAILED_SHOWN_MS : true);
         if (shown) {
           const { atMs: _, ...u } = s;
-          out.update = u;
+          out.update = j === "done" && s.phase === "failed" ? { phase: "done", from: u.from, at: u.at, ...(u.to ? { to: u.to } : {}), ...(u.by ? { by: u.by } : {}) } : u;
         }
       }
       return out;
@@ -430,7 +458,8 @@ export function createAgentUpdates(d: AgentUpdatesDeps): AgentUpdates {
         ...(d.exists ? { exists: d.exists } : {}),
       }).catch((err): AgentOutcome => ({ ok: false, reason: "failed", detail: (err as Error).message }));
       d.probed?.();
-      if (out.ok) set("local", name, h, { phase: "done", from: out.from, to: out.to, ...(o.by ? { by: o.by } : {}) });
+      if (out.ok && out.already) clear("local", h);
+      else if (out.ok) set("local", name, h, { phase: "done", from: out.from, to: out.to, ...(o.by ? { by: o.by } : {}) });
       else
         set("local", name, h, {
           phase: "failed",
@@ -557,6 +586,12 @@ export function createWorkerAgentUpdater(o: {
       const a = await o.detect(h);
       if (!a?.version) return answer(false, "failed", "not installed here");
       if (!updatable(a.how)) return answer(false, "how", a.how);
+      if (cmp(a.version, to) >= 0) {
+        // The home's view of this copy is stale: say so (not a failure), and send what is here.
+        answer(false, "no_update", `already on ${a.version}`);
+        out({ t: "agents", harnesses: await o.probe().catch(() => []) });
+        return;
+      }
       busy.add(h);
       answer(true);
       const frame = (f: Omit<WorkerAgentFrame, "t" | "harness" | "from">) => out({ t: "agent_update", harness: h, from: a.version!, ...f });

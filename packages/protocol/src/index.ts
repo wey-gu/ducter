@@ -880,11 +880,13 @@ export type AbilityState = "on" | "off" | "unavailable" | "later";
  * env_off: DUCTER_BROWSER=0 pins it off; home_only: only on the device Ducter lives on;
  * no_address: nothing outside can reach this Ducter yet (remote). D151, Ducter's own browser on a
  * server: browser_deps = system libraries are missing and Ducter can't install them (not root):
- * detail is the one command to run; browser_failed = the install or the first start failed (detail).
+ * detail is the one command to run; browser_sandbox = the system stops Chrome's sandbox for a
+ * normal user (Ubuntu 23.10+ AppArmor) and detail is the one command that allows it for Ducter's
+ * Chrome only (D172); browser_failed = the install or the first start failed (detail).
  * D157: worker_old = the Ducter on that computer is from before workers browsed (update it there);
  * offline = that computer can't be reached right now to change it.
  */
-export type AbilityReason = "cua_missing" | "cua_old" | "env_off" | "home_only" | "no_address" | "unknown_device" | "failed" | "browser_deps" | "browser_failed" | "worker_old" | "offline";
+export type AbilityReason = "cua_missing" | "cua_old" | "env_off" | "home_only" | "no_address" | "unknown_device" | "failed" | "browser_deps" | "browser_sandbox" | "browser_failed" | "worker_old" | "offline";
 
 export interface Allowance {
   left: number; // 0..1, as the harness reports it
@@ -1051,8 +1053,11 @@ export interface DeviceUpdate {
   current: string;
   latest?: string;
   available: boolean; // latest is newer than current
-  /** The release notes' first plain lines (what's new), at most two. */
-  notes?: string[];
+  /**
+   * What's new, per language (D172): a client shows its own language's lines and nothing when
+   * there are none, never the other language. Each line is whole and short (≤ 40 zh / 80 en).
+   */
+  notesBy?: { zh?: string[]; en?: string[] };
   security?: boolean; // the notes name a security fix
   how: UpdateHow;
   /** An update under way or just finished; absent when idle. */

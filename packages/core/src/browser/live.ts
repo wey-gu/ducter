@@ -160,7 +160,14 @@ export function createLive(d: LiveDeps): Live {
       return fail(sink, decisionId, a.taskId ? "couldn't open the sign-in page" : "couldn't open a page");
     }
     {
-      const { sessionId } = await b.cdp.send("Target.attachToTarget", { targetId, flatten: true });
+      // A tab that can't be attached must not leave the profile blind (tasks refuse while live).
+      const attached = await b.cdp.send("Target.attachToTarget", { targetId, flatten: true }).catch((e: Error) => e);
+      if (attached instanceof Error || !attached?.sessionId) {
+        d.host.setLive(profile, undefined);
+        if (ownTarget) await b.cdp.send("Target.closeTarget", { targetId }).catch(() => {});
+        return fail(sink, decisionId, attached instanceof Error ? attached.message : "couldn't show the page");
+      }
+      const { sessionId } = attached as { sessionId: string };
       const id = newId();
       const v: View = {
         id, sink, decisionId, taskId: a.taskId ?? "", profile, site: a.site, b, targetId, sessionId, ownTarget,

@@ -452,6 +452,11 @@ export function SignInBody({ d, compact }: { d: DecisionState; compact?: boolean
  * taps and keys going straight into it. Over everything, until 好了 / Done or 先不登了 / Not now.
  * Nothing here is kept: frames are shown and dropped.
  */
+/** Whose browser it is: what the server said when it opened, else (still opening) the home's. */
+export function liveDevice(lv: NonNullable<typeof A.live>): string {
+  return lv.browser?.device || A.homeName || t("live.where");
+}
+
 export function LiveView() {
   const lv = A.live;
   const img = useRef<HTMLImageElement>(null);
@@ -492,7 +497,7 @@ export function LiveView() {
               which browser on which machine (D154). */}
           <div class="live-sub">
             {lv.try && lv.browser ? (
-              <span>{t("live.try.where", lv.browser.device, `${lv.browser.name}${lv.browser.version ? ` ${lv.browser.version.split(".")[0]}` : ""}`)}</span>
+              <span>{t("live.try.where", liveDevice(lv), `${lv.browser.name}${lv.browser.version ? ` ${lv.browser.version.split(".")[0]}` : ""}`)}</span>
             ) : (
               <>
                 <EyeShut />
@@ -552,7 +557,16 @@ export function LiveView() {
             onWheel={(e) => (e.preventDefault(), A.liveInput({ kind: "wheel", ...at(e), dx: e.deltaX, dy: e.deltaY }))}
           />
         ) : (
-          <div class="live-wait">{t("live.opening", lv.site)}</div>
+          <div class="live-wait">
+            {lv.stuck ? (
+              <>
+                <div>{t("live.stuck", liveDevice(lv))}</div>
+                <Btn kind="secondary" size="sm" label={t("live.retry")} about={lv.site} onClick={() => A.retryLive()} />
+              </>
+            ) : (
+              t("live.opening", lv.site)
+            )}
+          </div>
         )}
         {/* What you type goes straight to the page, a key or a word at a time; nothing is kept here. */}
         <input
@@ -586,7 +600,7 @@ export function LiveView() {
         />
       </div>
       <div class="live-bottom">
-        {lv.try && <div class="live-note">{t("live.try.note", lv.browser?.device ?? "")}</div>}
+        {lv.try && <div class="live-note">{t("live.try.note", liveDevice(lv))}</div>}
         <div class="btns">
           {!lv.try && <Btn kind="secondary" label={t("live.notnow")} onClick={() => A.closeLive(false)} />}
           <Btn kind="primary" label={t("live.done")} onClick={() => A.closeLive(true)} />

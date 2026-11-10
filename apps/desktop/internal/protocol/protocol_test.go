@@ -2,8 +2,40 @@ package protocol
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
 	"testing"
 )
+
+// TestEveryServerFrameDecodes reads the core's ServerFrame union and decodes
+// a frame of each type: a frame the core sends must never be dropped here as
+// unknown (the live view's were, so the Mac's 试一下 never opened).
+func TestEveryServerFrameDecodes(t *testing.T) {
+	src, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "packages", "protocol", "src", "index.ts"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(src)
+	start := strings.Index(s, "export type ServerFrame =")
+	if start < 0 {
+		t.Fatal("no ServerFrame union in index.ts")
+	}
+	body := s[start:]
+	if end := strings.Index(body, "\n\n"); end > 0 {
+		body = body[:end]
+	}
+	types := regexp.MustCompile(`\{ t: "([a-z_]+)"`).FindAllStringSubmatch(body, -1)
+	if len(types) < 20 {
+		t.Fatalf("read only %d frame types from the union", len(types))
+	}
+	for _, m := range types {
+		if _, err := DecodeServerFrame([]byte(`{"t":"` + m[1] + `"}`)); err != nil {
+			t.Errorf("the core sends %q but the app drops it: %v", m[1], err)
+		}
+	}
+}
 
 // Frames as the TypeScript core writes them (packages/protocol/src/index.ts).
 const eventsFrame = `{"t":"events","events":[

@@ -16,36 +16,50 @@ export const FRESH_MS = 15 * 60_000;
 
 export type Fetch = (url: string, init?: RequestInit) => Promise<Response>;
 
+/** What's new in a release, short and in each language (never the other language as a stand-in). */
+export type ReleaseNotes = { zh?: string[]; en?: string[] };
+
 export interface Release {
   version: string;
-  /** The notes' first plain lines, at most two (what's new). */
-  notes: string[];
+  /** What's new, from the notes' whats-new block: per language, at most two whole lines. */
+  notes: ReleaseNotes;
   security: boolean;
   url: string; // the release page
   assets?: string[]; // file names, when the API answered
 }
 
+/** The longest line a card shows whole (zh counts each character, en each letter). */
+export const NOTE_MAX = { zh: 40, en: 80 } as const;
+
 /**
- * The first plain lines of release notes: headings, empty lines and the install boilerplate
- * dropped; list marks, links, bold and code marks taken off; each line at most 140 characters.
+ * What's new, as the release says it in each language: the CHANGELOG section's whats-new block
+ * (an HTML comment, so the release page doesn't show it twice):
+ *
+ *     <!-- whats-new
+ *     zh: 每件事都说清楚在哪台电脑上做。
+ *     en: Each task says which computer it runs on.
+ *     -->
+ *
+ * At most two lines per language, each kept whole (never cut mid-sentence); a line longer than a
+ * card shows is left out. No block: no notes (the release's English body is never shown as them).
  */
-export function whatsNew(body: string | undefined, max = 2): string[] {
-  const out: string[] = [];
-  for (const raw of (body ?? "").split(/\r?\n/)) {
-    let l = raw.trim();
-    if (!l || l.startsWith("#") || /^[-=*_]{3,}$/.test(l) || l.startsWith("|") || l.startsWith("```")) continue;
-    l = l
-      .replace(/^[-*+]\s+|^\d+[.)]\s+/, "")
-      .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
-      .replace(/\*\*|__|`/g, "")
-      .replace(/\s+/g, " ")
-      .trim();
-    if (!l || /^(install|download|mac( app)?|linux( server)?|check a download)\b/i.test(l)) continue;
-    out.push(l.length > 140 ? l.slice(0, 139).trimEnd() + "…" : l);
-    if (out.length >= max) break;
+export function whatsNew(body: string | undefined, max = 2): ReleaseNotes {
+  const m = /<!--\s*whats-new\b([\s\S]*?)-->/.exec(body ?? "");
+  const out: ReleaseNotes = {};
+  for (const raw of (m?.[1] ?? "").split(/\r?\n/)) {
+    const l = /^\s*(zh|en)\s*[:：]\s*(.+?)\s*$/.exec(raw);
+    if (!l) continue;
+    const lang = l[1] as "zh" | "en";
+    const line = l[2]!;
+    if ([...line].length > NOTE_MAX[lang]) continue;
+    const list = (out[lang] ??= []);
+    if (list.length < max) list.push(line);
   }
   return out;
 }
+
+/** Some language has a line (a saved answer from before D172 has a plain list: none). */
+export const hasNotes = (n: ReleaseNotes | string[] | undefined): n is ReleaseNotes => !!n && !Array.isArray(n) && Boolean(n.zh?.length || n.en?.length);
 
 /** A release says it fixes a security problem: in its name, a heading, or a line that starts with it. */
 export function isSecurity(body: string | undefined, name?: string): boolean {
@@ -86,7 +100,7 @@ export async function fetchLatest(fetch: Fetch, o: { api?: string; page?: string
     const r = await fetch(page, { redirect: "manual", headers: { "user-agent": "ducter-updater" }, signal: AbortSignal.timeout(10_000) });
     const to = r.headers.get("location") ?? (r.redirected ? r.url : "");
     const m = /\/releases\/tag\/v?([^/?#]+)$/.exec(to);
-    if (m && isVersion(m[1])) return { version: bareVersion(m[1]!), notes: [], security: false, url: to };
+    if (m && isVersion(m[1])) return { version: bareVersion(m[1]!), notes: {}, security: false, url: to };
     if (r.status === 404) return undefined;
   } catch {}
   throw apiErr instanceof Error ? apiErr : new Error(String(apiErr));

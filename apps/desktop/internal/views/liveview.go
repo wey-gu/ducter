@@ -6,6 +6,7 @@ import (
 	_ "image/jpeg" // live view frames
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 
@@ -25,8 +26,14 @@ import (
 type liveState struct {
 	bmp    *ui.Bitmap
 	shown  int64
-	sentAt string // the decision whose live_open went out
+	sentAt string    // the decision whose live_open went out
+	at     time.Time // when it went out: no page by liveStuckAfter says so
 }
+
+// liveStuckAfter is how long the view waits for its first page before it
+// says, honestly, that the browser didn't answer, with 再试一次 (the server
+// gives up on its own steps well before: a launch 20 s, each step 15 s).
+const liveStuckAfter = 40 * time.Second
 
 // signInBody is a sign-in card's words and buttons, in place of the
 // question, default line and Go / Hold / Reply….
@@ -76,7 +83,7 @@ func (a *App) questionOf(d *store.DecisionState) string {
 // OpenLive opens the live view for a sign-in card, sized to this window.
 func (a *App) OpenLive(decisionID, site string) {
 	a.S.OpenLive(decisionID, site)
-	a.live = liveState{sentAt: decisionID}
+	a.live = liveState{sentAt: decisionID, at: a.Now()}
 	w, h := a.liveSize()
 	a.send(protocol.LiveOpenReq{T: "live_open", DecisionID: decisionID, Width: w, Height: h, Scale: 2})
 }
@@ -86,7 +93,7 @@ func (a *App) OpenLive(decisionID, site string) {
 // own browser working with their own eyes.
 func (a *App) OpenTry() {
 	a.S.OpenLive(protocol.TryLive, "example.com")
-	a.live = liveState{sentAt: protocol.TryLive}
+	a.live = liveState{sentAt: protocol.TryLive, at: a.Now()}
 	w, h := a.liveSize()
 	a.send(protocol.LiveOpenReq{T: "live_open", DecisionID: protocol.TryLive, Width: w, Height: h, Scale: 2, Try: true})
 }
@@ -99,6 +106,28 @@ func (a *App) liveTitle(lv *store.LiveView) string {
 	return a.L.T("signin.title", lv.Site)
 }
 
+// liveDevice names the computer whose browser this is: what the server said
+// when it opened, else (still opening) the home's, where Try it and a
+// sign-in's browser run. Never an empty name in a sentence.
+func (a *App) liveDevice(lv *store.LiveView) string {
+	if lv.Browser != nil && lv.Browser.Device != "" {
+		return lv.Browser.Device
+	}
+	if h := a.homeDevice(); h != nil && h.Name != "" {
+		return h.Name
+	}
+	return a.L.T("live.where")
+}
+
+// retryLive sends the same live_open again (再试一次 after it got stuck).
+func (a *App) retryLive(lv *store.LiveView) {
+	if lv.Try() {
+		a.OpenTry()
+		return
+	}
+	a.OpenLive(lv.DecisionID, lv.Site)
+}
+
 // liveWhere is the view's small line: whose browser and that the partner
 // can't see it; for Try it, which browser on which machine (D154).
 func (a *App) liveWhere(lv *store.LiveView) string {
@@ -108,7 +137,7 @@ func (a *App) liveWhere(lv *store.LiveView) string {
 		if b.Version != "" {
 			name += " " + strings.SplitN(b.Version, ".", 2)[0]
 		}
-		return a.L.T("live.try.where", b.Device, name)
+		return a.L.T("live.try.where", a.liveDevice(lv), name)
 	}
 	return a.L.T("live.where") + " · " + a.L.T("live.blind")
 }
@@ -199,10 +228,11 @@ func (a *App) liveView(c *ui.Context) {
 	}
 	ui.Column(c.Key("live")).Absolute().Left(0).Top(0).Right(0).Bottom(0).ZIndex(2000).Background(t.Bg).
 		Role(ui.RoleDialog).Label(a.liveTitle(lv)).Children(func() {
-		// The top line: back, whose browser this is and that the partner can't
-		// see it, reload.
-		ui.Row(c).Padding(t.S2, t.S4).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-			if a.buttonFor(c, a.L.T("live.back"), host, btnText, t.ControlSM, t.Bg) {
+		// The top line is the window's own bar (chrome: the traffic lights'
+		// room kept, it drags the window): back, whose browser this is and
+		// that the partner can't see it, reload.
+		a.chrome(c, "live", func() {
+			if a.buttonFor(c, a.L.T("live.back"), host, btnText, t.ControlSM, t.Chrome) {
 				a.liveInput(protocol.LiveInput{Kind: "nav", Action: "back"})
 			}
 			ui.Column(c).Grow(1).MinWidth(0).AlignItems(ui.Center).Gap(2).Children(func() {
@@ -214,12 +244,24 @@ func (a *App) liveView(c *ui.Context) {
 					ui.Text(c, a.liveWhere(lv)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
 				})
 			})
-			if a.buttonFor(c, a.L.T("live.reload"), host, btnText, t.ControlSM, t.Bg) {
+		}, func() {
+			if a.buttonFor(c, a.L.T("live.reload"), host, btnText, t.ControlSM, t.Chrome) {
 				a.liveInput(protocol.LiveInput{Kind: "nav", Action: "reload"})
 			}
 		})
 		ui.Row(c).Grow(1).MinHeight(0).Justify(ui.Center).AlignItems(ui.Start).Background(t.SurfaceSunken).Children(func() {
 			if a.live.bmp == nil {
+				if !a.live.at.IsZero() && a.Now().Sub(a.live.at) >= liveStuckAfter {
+					// No page: say so, and offer the same open again.
+					ui.Column(c.Key("live-stuck")).Gap(t.S3).AlignItems(ui.Center).MaxWidth(420).Margin(t.S6, t.S4, 0, t.S4).Children(func() {
+						ui.Text(c, a.L.T("live.stuck", a.liveDevice(lv))).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.5).TextAlign(ui.Center)
+						if a.buttonFor(c, a.L.T("live.retry"), lv.Site, btnSecondary, t.ControlSM, t.SurfaceSunken) {
+							a.retryLive(lv)
+						}
+					})
+					return
+				}
+				c.After(time.Second) // look again: the stuck line comes on its own
 				ui.Text(c, a.L.T("live.opening", lv.Site)).FontSize(t.SM).TextColor(t.InkMuted).Margin(t.S6, 0, 0, 0)
 				return
 			}
@@ -272,11 +314,7 @@ func (a *App) liveView(c *ui.Context) {
 		ui.Row(c).Padding(t.S3, t.S4).Gap(t.S3).Justify(ui.End).AlignItems(ui.Center).Children(func() {
 			if lv.Try() {
 				// Try it has nothing to answer: what this is, and Done.
-				device := ""
-				if lv.Browser != nil {
-					device = lv.Browser.Device
-				}
-				ui.Text(c, a.L.T("live.try.note", device)).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.45).Grow(1).MinWidth(0)
+				ui.Text(c, a.L.T("live.try.note", a.liveDevice(lv))).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.45).Grow(1).MinWidth(0)
 			} else if a.buttonFor(c, a.L.T("live.notnow"), host, btnSecondary, t.ControlMD, t.Bg) {
 				a.CloseLive(false)
 			}

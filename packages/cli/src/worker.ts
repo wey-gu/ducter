@@ -169,6 +169,7 @@ export async function cmdWorker(o: { t: T; style: Style; args: Args; dataDir: st
     return host;
   };
   let outcomeWatch: ReturnType<typeof setInterval> | undefined;
+  let agentsTimer: ReturnType<typeof setInterval> | undefined;
   const code = await stayConnected(s, hello, t, style, makeHost, updater, agentUpdater, () => {
     // Reached the main: a restart after an update is healthy now (update.ts waitHealthy).
     writeAlive(dataDir, pkg.version);
@@ -186,6 +187,17 @@ export async function cmdWorker(o: { t: T; style: Style; args: Args; dataDir: st
     }
     // 上网 may have changed while it was away (Claude in Chrome connected, Chrome installed).
     void browse.abilities().then((abilities) => sendUp({ t: "abilities", abilities }));
+    // The AI agents too: the hello was probed when this worker started, and an agent updated
+    // since (by Ducter before a reconnect, or by hand) must not be offered again at its old
+    // version (that update then "fails" with nothing newer). Fresh on every welcome, and every
+    // 30 min while connected.
+    const agents = () =>
+      void probeHarnesses(t, dataDir)
+        .then((harnesses) => ((hello.harnesses = harnesses), sendUp({ t: "agents", harnesses })))
+        .catch(() => {});
+    agents();
+    agentsTimer ??= setInterval(agents, 30 * 60_000);
+    (agentsTimer as any).unref?.();
   });
   return refusedExit(code, process.env);
 }

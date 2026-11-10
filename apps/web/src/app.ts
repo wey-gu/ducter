@@ -5,7 +5,7 @@ import { detectLang, langOfText, strings, type Lang, type Strings } from "./i18n
 import { pushState, type PushState } from "./push-client.ts";
 import { haptic } from "./native.ts";
 import { attention, finished, LANE, laneOf, looksSecret, Store, title, type DecisionState, type Entry } from "./store.ts";
-import { withoutStaleFailure } from "./format.ts";
+import { withoutStaleAgentUpdate, withoutStaleFailure } from "./format.ts";
 
 export type Route = { name: "conv" } | { name: "onhand" } | { name: "task"; id: string };
 /** Settings (D150) is a list of sections; page is the one pushed ("" is the list). */
@@ -63,6 +63,9 @@ export function savedDetails(): DetailsPref {
 }
 export const DONE_GLOW_MS = 6_000;
 
+/** How long the live view waits for its first page before it says the browser didn't answer. */
+export const LIVE_STUCK_MS = 40_000;
+
 class AppState {
   S = new Store();
   uiLang: UiLang = savedUiLang();
@@ -114,7 +117,23 @@ class AppState {
   route: Route = { name: "conv" };
   sheet: Sheet = null;
   /** D151: the live view of Ducter's browser, while the user signs in (never stored). */
-  live?: { decisionId: string; site: string; state: "opening" | "open"; id?: string; src?: string; seq?: number; w?: number; h?: number; url?: string; title?: string; try?: boolean; browser?: import("@ducter/protocol").BrowserAbout };
+  live?: {
+    decisionId: string;
+    site: string;
+    state: "opening" | "open";
+    id?: string;
+    src?: string;
+    seq?: number;
+    w?: number;
+    h?: number;
+    url?: string;
+    title?: string;
+    try?: boolean;
+    browser?: import("@ducter/protocol").BrowserAbout;
+    /** No page LIVE_STUCK_MS after it was asked for: the view says so, with 再试一次. */
+    stuck?: boolean;
+    size: { width: number; height: number; scale?: number };
+  };
   status: ConnStatus = "connecting";
   me?: Me;
   api!: Api;
@@ -212,11 +231,14 @@ class AppState {
     if (f.t === "rules") return void ((this.rules = f.rules), this.changed());
     if (f.t === "devices") {
       const home = f.devices.find((d) => d.home);
-      return void ((this.agents = home?.harnesses ?? []), (this.homeName = home?.name), (this.devices = f.devices.map((d) => (d.update ? { ...d, update: withoutStaleFailure(d.update) } : d))), (this.reach = f.reach), this.changed());
+      // A failure the device (or the agent's copy) has moved past is dropped (D167, D156).
+      const devices = f.devices.map((d) => ({ ...d, ...(d.update ? { update: withoutStaleFailure(d.update) } : {}), harnesses: d.harnesses.map(withoutStaleAgentUpdate) }));
+      return void ((this.agents = devices.find((d) => d.home)?.harnesses ?? home?.harnesses ?? []), (this.homeName = home?.name), (this.devices = devices), (this.reach = f.reach), this.changed());
     }
     if (f.t === "mem_plugin_result") return void ((this.memAnswer = f.ok ? undefined : { device: f.device, harness: f.harness, reason: f.reason ?? "failed" }), this.changed());
-    if (f.t === "agent_update_result") return void ((this.agentAnswer = f.ok ? undefined : { device: f.device, harness: f.harness, reason: f.reason ?? "failed" }), this.changed());
-    if (f.t === "update_result") return void ((this.checkingUpdates = false), (this.deviceAnswer = f.ok || f.update ? undefined : { device: f.device, reason: f.reason ?? "failed" }), this.changed());
+    // "Nothing newer" answers a stale view, never a failure: the devices frame that follows has the version there now.
+    if (f.t === "agent_update_result") return void ((this.agentAnswer = f.ok || f.reason === "no_update" ? undefined : { device: f.device, harness: f.harness, reason: f.reason ?? "failed" }), this.changed());
+    if (f.t === "update_result") return void ((this.checkingUpdates = false), (this.deviceAnswer = f.ok || f.update || f.reason === "no_release" ? undefined : { device: f.device, reason: f.reason ?? "failed" }), this.changed());
     if (f.t === "disconnect_result" || f.t === "rename_result") return void ((this.deviceAnswer = f.ok ? undefined : { device: f.device, reason: f.reason === "name_taken" ? "name_taken" : "failed" }), this.changed());
     if (f.t === "candidates") return void (this.candidates.set(f.taskId, f.candidates), this.changed());
     if (f.t === "task_new_options") return void ((this.newTaskOptions = { places: f.places, candidates: f.candidates }), this.changed());
@@ -731,10 +753,21 @@ class AppState {
   /** D151: open the live view of Ducter's browser for a sign-in card, sized to this screen. */
   openLive(decisionId: string, site: string, size: { width: number; height: number; scale?: number }, tryIt = false) {
     // D154: Try it is the same view on a harmless page, with no card behind it.
-    this.live = { decisionId, site, state: "opening", ...(tryIt ? { try: true } : {}) };
+    const lv: NonNullable<AppState["live"]> = { decisionId, site, state: "opening", size, ...(tryIt ? { try: true } : {}) };
+    this.live = lv;
+    // The server gives up on its own steps well before (a launch 20 s, each step 15 s).
+    setTimeout(() => {
+      if (this.live === lv && !lv.src) (lv.stuck = true), this.changed();
+    }, LIVE_STUCK_MS);
     this.send({ t: "live_open", decisionId, width: Math.round(size.width), height: Math.round(size.height), ...(size.scale ? { scale: size.scale } : {}), ...(tryIt ? { try: true } : {}) });
     haptic("light");
     this.changed();
+  }
+
+  /** 再试一次 after the view got stuck: the same open again. */
+  retryLive() {
+    const lv = this.live;
+    if (lv) this.openLive(lv.decisionId, lv.site, lv.size, !!lv.try);
   }
 
   liveFrame(f: Extract<ServerFrame, { t: "live" | "live_frame" }>) {

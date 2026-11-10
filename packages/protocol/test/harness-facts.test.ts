@@ -57,7 +57,10 @@ test("settings: defaults, env over the file, out-of-range values named and not u
 
 test("versions against the verified range", () => {
   expect(versionStanding("claude-code", "2.1.319 (Claude Code)")).toBe("verified");
-  expect(versionStanding("claude-code", "2.1.320 (Claude Code)")).toBe("newer");
+  expect(versionStanding("claude-code", "2.1.322 (Claude Code)")).toBe("verified"); // re-verified live (D174 (2))
+  expect(versionStanding("claude-code", "2.1.323 (Claude Code)")).toBe("newer");
+  expect(versionStanding("pi", "1.5.1")).toBe("verified");
+  expect(versionStanding("pi", "1.5.2")).toBe("newer");
   expect(versionStanding("codex", "codex-cli 0.160.0")).toBe("older");
   expect(versionStanding("codex", "garbage")).toBe("unknown");
   expect(versionStanding("deepseek-harness", "1.0.0")).toBe("unknown"); // never verified

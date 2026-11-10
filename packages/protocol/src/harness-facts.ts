@@ -156,7 +156,9 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
   "claude-code": {
     harness: "claude-code",
     version: { command: ["claude", "--version"], pattern: /(\d+\.\d+\.\d+)/ },
-    verified: { from: "2.1.319", to: "2.1.319" },
+    // 2.1.322 re-verified live 2026-11-10 (D174 (2), research/48 addendum): windows 1M / 200K,
+    // the compaction point with and without the percent override, every switch Ducter sets.
+    verified: { from: "2.1.319", to: "2.1.322" },
     models: {
       value: {
         opus: { id: "claude-opus-5-5", window: 1_000_000, standardWindow: 200_000 },
@@ -302,7 +304,9 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
   pi: {
     harness: "pi",
     version: { command: ["pi", "--version"], pattern: /(\d+\.\d+\.\d+)/ },
-    verified: { from: "1.4.0", to: "1.4.0" },
+    // 1.5.1 re-checked 2026-11-10 (D174 (2)): every flag Ducter passes is in `pi --help`, still no
+    // window flag, compaction.reserveTokens still in its settings schema.
+    verified: { from: "1.4.0", to: "1.5.1" },
     models: { value: {}, evidence: pi("provider/model ids; windows come from pi's own model catalog") },
     windowKnob: { value: { via: "none", key: "", note: "the model catalog's contextWindow; no per-session override" }, evidence: pi("`pi --help`: no context flag") },
     compactAtKnob: {

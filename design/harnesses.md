@@ -6,16 +6,16 @@
 > installed version is outside the verified range. Tags: VERIFIED (how, date, version),
 > DOCUMENTED (source), INFERRED.
 
-## Verified versions (2026-11-09)
+## Verified versions (2026-11-09; widened 2026-11-10, D174 (2))
 
 | Harness | Verified | Window knob | Compaction point | 1M off |
 |---|---|---|---|---|
-| Claude Code | 2.1.319 | env `CLAUDE_CODE_AUTO_COMPACT_WINDOW` (100K–1M) | env `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE`: min(⌊(W − 20K) × pct⌋, W − 33K) | env `CLAUDE_CODE_DISABLE_1M_CONTEXT=1` |
+| Claude Code | 2.1.319–2.1.322 | env `CLAUDE_CODE_AUTO_COMPACT_WINDOW` (100K–1M) | env `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE`: min(⌊(W − 20K) × pct⌋, W − 33K) | env `CLAUDE_CODE_DISABLE_1M_CONTEXT=1` |
 | Codex | 0.167.0 | `-c model_context_window` | `-c model_auto_compact_token_limit` (clamped to 90% of the window, INFERRED) | n/a |
-| pi | 1.4.0 | none per session | settings.json `compaction.reserveTokens` only (DOCUMENTED) | n/a |
+| pi | 1.4.0–1.5.1 | none per session | settings.json `compaction.reserveTokens` only (DOCUMENTED) | n/a |
 | DeepSeek Harness | none | unknown | unknown | unknown |
 
-## Claude Code 2.1.319
+## Claude Code 2.1.319–2.1.322
 
 - **Models.** `opus`, `sonnet`, `haiku` resolve to `claude-opus-5-5`, `claude-sonnet-5-5`,
   `claude-haiku-5-5`. Every name, alias or full id, got a 1,000,000 window on this Max
@@ -39,10 +39,11 @@
   `anthropic/alwaysLoad` (Ducter's tools in tasks). Both strings, and the Read cap, are
   `CLAUDE_SWITCHES` in harness-facts; a test fails on them anywhere but the registry and the
   adapter, and the probe checks the binary still has them (research/48).
-- **Drift seen 2026-11-10 (2.1.322, binary only, INFERRED).** The compaction code now has
-  per-window entries and a rule that a fork ignores `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE`; the 20K
-  reserve's minified name moved. The knobs' strings are all present. Re-run the live
-  compaction check before widening `verified` (research/48 F4).
+- **2.1.322, re-verified live 2026-11-10 (D174 (2), research/48 addendum).** Windows 1M / 200K;
+  `effectiveWindow` = window − 20K; the percent override still lowers the compaction point
+  (`level=compact` at 8K tokens with pct 1, `ok` without). The binary also has per-window
+  entries and a rule that a fork ignores the override (Ducter doesn't fork). `verified` is now
+  2.1.319–2.1.322.
 - **Browser.** Claude in Chrome through `--chrome`; no computer use in `-p` (research/38).
 
 ## Codex 0.167.0
@@ -55,7 +56,7 @@
 - **Events.** `compaction_started` and `compaction_ended` both reach Ducter.
 - **Browser.** Computer Use works headless under OAR (research/38).
 
-## pi 1.4.0 and DeepSeek Harness
+## pi 1.4.0–1.5.1 and DeepSeek Harness
 
 pi has no per-session window or compaction flag (`pi --help`); its compaction lives in
 settings.json, and `session_before_compact` can cancel or replace a summary (research/11).

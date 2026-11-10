@@ -178,6 +178,23 @@ VERIFIED by tests with no model calls; numbers from `packages/core/test/proactiv
 1. **One secret detector** (F7): `redactWith` in `protocol/src/redact.ts` is the one scan; the
    brief guard is strict and keeps only a connect code the user pasted that turn. VERIFIED by
    `partner/test/secrets.test.ts` over every `fixtures/redact.json` case.
+2. **Live re-verify** (F4), 2026-11-10, haiku, scratch folder, `--no-session-persistence`
+   (one empty `~/.claude/projects/<scratch>/memory` folder was created by the run and deleted).
+   Claude Code **2.1.322**, all VERIFIED:
+   - windows: `haiku` → `claude-haiku-5-5` at 1,000,000; with `CLAUDE_CODE_DISABLE_1M_CONTEXT=1`, 200,000;
+   - compaction (`--debug-file`, `CLAUDE_CODE_AUTO_COMPACT_WINDOW=100000`): `effectiveWindow=80000`
+     (the 20K reserve holds), an 8.1K-token prompt is `level=ok` without the override and
+     `level=compact` with `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=1` (`thresholdSource=env`), a
+     111K-token prompt is `level=compact` without it; so the override still lowers the point
+     and the default still sits under the window. New in this build: a single-turn session
+     answers "Reactive compact: fewer than 2 groups, nothing to compact" (no summary call);
+   - the probe's 13 binary checks pass (switches, PreCompact semantics, the 13K buffer).
+   Cost: $0.112 (the 111K prompt was $0.108 of it; a smaller one would have done).
+   pi **1.5.1**: every flag Ducter passes (`--no-skills`, `--no-context-files`,
+   `--no-prompt-templates`, `--no-extensions`, `--no-themes`, `--no-tools`) is in `pi --help`, still
+   no window flag, `compaction.reserveTokens` still in `dist/core/settings-schema.js`. No model call.
+   `verified` widened to 2.1.319–2.1.322 and 1.4.0–1.5.1. Not re-run: the fork rule for the
+   override (Ducter doesn't fork Claude sessions).
 3. **Tool-less one-shots** (F8). VERIFIED live, 2026-11-10, Claude Code 2.1.322, haiku, one `-p`
    call each in a scratch folder with `--no-session-persistence --strict-mcp-config
    --setting-sources project,local` and the judge's system prompt; both answered `{"ok": true}`:

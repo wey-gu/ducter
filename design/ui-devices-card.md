@@ -157,10 +157,22 @@ Which chips a device gets:
 
 | Device | Chips (default order) |
 |---|---|
-| hel (home, server) | 上网 (Ducter's own browser, D151) · 在哪儿都能用 (D143) · (socket) |
-| a Mac that is the home | 上网 · 用电脑 · 在哪儿都能用 |
-| a Mac connected to a home elsewhere | **替 hel 做事** first (D155's switch, now a chip) · 上网 (needs D157 (9)) · 用电脑 |
+| hel (home, server) | 上网 (Ducter's own browser, D151) · 在哪儿都能用 (D143) · 打电话 (D199) · then the ghosts 用电脑 · 用手机 |
+| a Mac that is the home | 上网 · 用电脑 · 在哪儿都能用 · 打电话 · then the ghosts still to come |
+| a Mac connected to a home elsewhere | **替 hel 做事** first (D155's switch, now a chip) · 上网 (needs D157 (9)) · 用电脑; no 打电话, no ghosts |
 | a phone | 通知 · 用手机 (later) |
+
+**打电话 / Calls (D199)** is the home's only: a call runs on Tuwa's line, not on a computer. On while
+a calling connection is connected (`ab_call`); a tap opens Settings › 账号 at the phone card. Off,
+the dashed **+ 打电话** opens 账号 and starts the offer's own Tuwa sign-in (never a second flow;
+the core refuses an `ability` request for it). Its sign-in gone (D193), the failed tint with **需要重新登录
+/ Sign in again**, and a tap goes to the card that signs in again. ⓘ: **替你打电话，走 Tuwa 的线路。每一通都先给你看要说什么，你点了打过去才打；Tuwa
+按分钟收费。** and **在设置 › 账号里连上和管理。**
+
+**Ghosts (D199):** on the home's sheet only, after the live chips, each ability still to come
+(`later`) shows as a flat sunken chip with its `_later` clay, no base, its name and a faint **以后会有
+/ coming later**. It never sinks, squishes or adds; a tap opens its ⓘ (what it will do). So the
+author sees what is coming, without a control that does nothing.
 
 ### 3.5 How it is connected: one quiet line
 

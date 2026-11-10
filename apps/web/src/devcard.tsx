@@ -389,6 +389,7 @@ function Chips({ dv }: { dv: DeviceView }) {
   const web = dv.abilities.find((a) => a.id === "web");
   const about = (id: string) => (id === "web" && web?.where === "chrome" ? "ability.web.about.chrome" : id === "web" && web?.where === "ducter" ? "ability.web.about.ducter" : `ability.${id}.about`);
   const set = (id: string, on: boolean) => A.send({ t: "ability", device: dv.id, ability: id as "web", on });
+  const look = (id: string) => chips.find((c) => c.id === id)?.look;
   return (
     <>
       <div class="dc-chips">
@@ -396,12 +397,15 @@ function Chips({ dv }: { dv: DeviceView }) {
           <Chip
             key={c.id}
             label={t(`chip.${c.id}`)}
-            art={art(`ab_${c.id}`)}
+            art={art(c.look === "later" ? `ab_${c.id}_later` : `ab_${c.id}`)}
             look={c.look}
+            {...(c.id === "call" && c.look === "fail" ? { state: t("chip.call.signed_out") } : {})}
             infoOpen={info === c.id}
             onInfo={() => setInfo(info === c.id ? "" : c.id)}
             onClick={() => {
-              if (c.id === "remote" || c.look === "off" || c.look === "fail") return setInfo(info === c.id ? "" : c.id);
+              // D199: 打电话 lives in Accounts (the phone card); + starts the same Tuwa sign-in as its offer.
+              if (c.id === "call") return A.openCalls(c.look === "add");
+              if (c.look === "later" || c.id === "remote" || c.look === "off" || c.look === "fail") return setInfo(info === c.id ? "" : c.id);
               if (dv.state === "awake") set(c.id, c.look !== "on");
             }}
           />
@@ -421,8 +425,9 @@ function Chips({ dv }: { dv: DeviceView }) {
       {info && (
         <div class="dc-note">
           {t(about(info))}
+          {info === "call" && <div class="small sub">{t(look("call") === "fail" ? "ability.call.signed_out" : "ability.call.where")}</div>}
           {info === "web" && web?.where === "ducter" && web.state === "on" && !web.setup && <Sites dv={dv} />}
-          {info !== "remote" && chips.find((c) => c.id === info)?.look === "off" && dv.state !== "awake" && <div class="small sub">{t("ability.reason.asleep")}</div>}
+          {info !== "remote" && look(info) === "off" && dv.state !== "awake" && <div class="small sub">{t("ability.reason.asleep")}</div>}
         </div>
       )}
     </>

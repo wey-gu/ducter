@@ -4,7 +4,7 @@ import { afterEach, expect, test } from "bun:test";
 import type { DeviceView, ServerFrame } from "@ducter/protocol";
 import { readAbilitySettings } from "@ducter/protocol/src/abilities.ts";
 import { startCore, type Core } from "../src/core.ts";
-import { kindFromPlatform, qrRows } from "../src/devices.ts";
+import { callAbility, kindFromPlatform, qrRows } from "../src/devices.ts";
 import type { DeviceProbes } from "../src/devices.ts";
 import { tempDir } from "./helpers.ts";
 
@@ -72,7 +72,16 @@ test("this machine: awake, home, harness logins as probed, no allowance, web on,
   expect(ability(home, "computer").state).toBe("later");
   expect(ability(home, "remote").state).toBe("off");
   expect(ability(home, "phone").state).toBe("later");
+  expect(ability(home, "call")).toEqual({ id: "call", state: "off" }); // D199: no calling connection yet
   expect(f.reach.clients).toEqual([]);
+});
+
+test("D199: 打电话 follows the calling connection: off, on, signed out; gone with it", () => {
+  expect(callAbility(undefined, [])).toEqual({ id: "call", state: "off" });
+  expect(callAbility({ connectionId: "c1" }, [{ id: "c1", state: "ok" }])).toEqual({ id: "call", state: "on" });
+  expect(callAbility({ connectionId: "c1" }, [{ id: "c1", state: "unknown" }])).toEqual({ id: "call", state: "on" });
+  expect(callAbility({ connectionId: "c1" }, [{ id: "c1", state: "unauthorized" }])).toEqual({ id: "call", state: "on", reason: "signed_out" });
+  expect(callAbility({ connectionId: "c1" }, [])).toEqual({ id: "call", state: "off" }); // removed a moment ago
 });
 
 test("removing and adding 上网 persists the choice the runner reads, and pushes a fresh frame", async () => {
@@ -216,6 +225,7 @@ test("D157: a worker Mac browses with its own Chrome; 上网 there is added and 
   const f = await c.until<Devices>((x) => x.t === "devices" && x.devices.some((d) => d.name === "MacBook" && d.state === "awake"), n);
   const d = f.devices.find((x) => x.name === "MacBook")!;
   expect(ability(d, "web")).toMatchObject({ state: "on", where: "chrome" });
+  expect(d.abilities.map((a) => a.id)).not.toContain("call"); // D199: calls are the home's, not a computer's
   expect(d.alwaysOn).toBe(false); // a laptop sleeps when its lid closes
   n = c.frames.length;
   c.send({ t: "ability", device: mac.device.id, ability: "web", on: false });

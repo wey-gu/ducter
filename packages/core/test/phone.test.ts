@@ -110,6 +110,14 @@ describe("a calling connection, through a fake Tuwa", () => {
     expect(JSON.stringify(core.connections.view())).not.toContain("at_1");
   });
 
+  test("D199: the home's 打电话 is off before Tuwa and on once it is connected; a call ability request is refused", async () => {
+    const call = async () => (await core.devicesView.frame()).devices.find((d) => d.home)!.abilities.find((a) => a.id === "call");
+    expect(await call()).toEqual({ id: "call", state: "off" });
+    await connect();
+    expect(await call()).toEqual({ id: "call", state: "on" });
+    expect(await core.devicesView.setAbility("local", "call", true)).toMatchObject({ ok: false, reason: "failed" }); // added in Accounts
+  });
+
   test("the rails at connect: $10 a day, voice sampling paused, Friends sync off, the phone agent named", async () => {
     const id = await connect();
     expect(tuwa.settings.dailyLimitCents).toBe(1000);

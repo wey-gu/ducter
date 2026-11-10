@@ -625,6 +625,10 @@ func (a *App) startEquip(dv *protocol.DeviceView, id string, from ui.Rect, dropp
 		a.openPair()
 		return
 	}
+	if id == protocol.AbilityCall {
+		a.openCalls(true) // D199: Accounts' own Tuwa sign-in
+		return
+	}
 	a.send(protocol.AbilityReq{T: "ability", Device: dv.ID, Ability: id, On: true})
 	a.flyIn(dv.ID, id, from, dropped)
 }

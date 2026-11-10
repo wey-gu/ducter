@@ -2,7 +2,7 @@
 // list's one word, how it is connected, the version line in a coin's detail with the channel
 // in words, the chips a device gets, and the same keys as the desktop.
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { strings, TABLES } from "../src/i18n.ts";
 import { agentBehind, chipsFor, listWord, statusLine, versionLine, viaText } from "../src/sheet.ts";
 
@@ -65,6 +65,38 @@ describe("the character sheet (D161)", () => {
     ]);
     expect(chipsFor(dev({ state: "asleep", abilities: [{ id: "web", state: "off" }] }))).toEqual([{ id: "web", look: "off" }]);
     expect(chipsFor(dev({ abilities: [{ id: "web", state: "unavailable", where: "ducter", reason: "browser_deps" }] }))).toEqual([{ id: "web", look: "fail" }]);
+  });
+
+  test("D199: the home has 打电话 (on, + to add, sign in again) and its later abilities as ghosts; another computer has neither", () => {
+    const home = (call: Record<string, unknown>) =>
+      dev({
+        id: "local",
+        home: true,
+        abilities: [
+          { id: "web", state: "on", where: "chrome" },
+          { id: "computer", state: "later" },
+          { id: "remote", state: "off" },
+          { id: "phone", state: "later" },
+          { id: "call", ...call },
+        ],
+      });
+    expect(chipsFor(home({ state: "off" }))).toEqual([
+      { id: "web", look: "on" },
+      { id: "remote", look: "add" },
+      { id: "call", look: "add" },
+      { id: "computer", look: "later" },
+      { id: "phone", look: "later" },
+    ]);
+    expect(chipsFor(home({ state: "on" })).find((c) => c.id === "call")).toEqual({ id: "call", look: "on" });
+    expect(chipsFor(home({ state: "on", reason: "signed_out" })).find((c) => c.id === "call")).toEqual({ id: "call", look: "fail" });
+    // A computer that works for the home: no calls, no ghosts.
+    const worker = dev({ abilities: [{ id: "web", state: "on", where: "chrome" }, { id: "computer", state: "later" }, { id: "phone", state: "later" }] });
+    expect(chipsFor(worker)).toEqual([{ id: "web", look: "on" }]);
+    // Every chip has its words and its clay, in both languages.
+    for (const L of [zh, en]) for (const k of ["chip.call", "chip.phone", "chip.computer", "chip.state.later", "chip.call.signed_out", "ability.call.about", "ability.call.where", "ability.call.signed_out", "ability.phone.about", "ability.computer.about"]) expect(L.t(k)).not.toBe(k);
+    for (const f of ["ab_call", "ab_computer_later", "ab_phone_later"]) expect(existsSync(new URL(`../static/art/${f}.webp`, import.meta.url))).toBe(true);
+    expect(zh.t("ability.call.about")).not.toMatch(/免费|拨/);
+    expect(en.t("ability.call.about")).not.toMatch(/free|dial/i);
   });
 
   test("the sheet's words are the desktop's, in zh and en", () => {

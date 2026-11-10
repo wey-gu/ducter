@@ -578,7 +578,7 @@ export function openConnections(opts: {
             save();
             return r.token.access;
           }
-          if (r.gone) health.set(id, { state: "unauthorized", at: now() });
+          if (r.gone) (health.set(id, { state: "unauthorized", at: now() }), changed()); // D199: the home's 打电话 says sign in again
           return r.gone ? undefined : t.access;
         })().finally(() => refreshing.delete(id)),
       );

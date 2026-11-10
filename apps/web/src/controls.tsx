@@ -115,21 +115,30 @@ export function SocketButton(p: { label: string; sel: boolean; onClick: () => vo
   );
 }
 
-/** An ability as a toggle chip: its clay and 2–5 words; on, off, can be added (dashed) or failed; ⓘ beside it. */
-export function Chip(p: { label: string; art?: string; look: "on" | "off" | "add" | "fail"; info?: string; infoOpen?: boolean; onClick: () => void; onInfo?: () => void }) {
+/**
+ * An ability as a toggle chip: its clay and 2–5 words; on, off, can be added (dashed) or failed; ⓘ
+ * beside it. D199: later is a ghost (the desaturated clay and 以后会有): it only explains itself.
+ * `state` words a failed chip's trouble when it isn't "didn't start" (打电话: 需要重新登录).
+ */
+export function Chip(p: { label: string; art?: string; look: "on" | "off" | "add" | "fail" | "later"; state?: string; info?: string; infoOpen?: boolean; onClick: () => void; onInfo?: () => void }) {
   const [squish, setSquish] = useState(0);
-  const state = p.look === "on" ? t("chip.state.on") : p.look === "off" ? t("chip.state.off") : p.look === "fail" ? t("chip.failed") : "";
+  const state = p.state ?? (p.look === "on" ? t("chip.state.on") : p.look === "off" ? t("chip.state.off") : p.look === "fail" ? t("chip.failed") : p.look === "later" ? t("chip.state.later") : "");
   return (
     <span class="chip-wrap">
       <button
         key={squish}
         class={`ach ${p.look}${squish ? " squish" : ""}`}
-        aria-pressed={p.look === "on"}
+        aria-pressed={p.look === "later" ? undefined : p.look === "on"}
         aria-label={p.look === "add" ? `+ ${p.label}` : `${p.label} · ${state}`}
-        onClick={() => (setSquish(squish + 1), p.onClick())}
+        onClick={() => (p.look === "later" || setSquish(squish + 1), p.onClick())}
       >
         {p.look !== "add" && p.art && <img src={p.art} alt="" />}
         {p.look === "add" ? `+ ${p.label}` : p.label}
+        {p.look === "later" && (
+          <small class="ach-later" aria-hidden="true">
+            {t("chip.state.later")}
+          </small>
+        )}
       </button>
       {p.onInfo && (
         <button class={`chip-i${p.infoOpen ? " open" : ""}`} aria-label={`${t("chip.info")} · ${p.label}`} aria-expanded={!!p.infoOpen} onClick={p.onInfo}>

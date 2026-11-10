@@ -1,6 +1,6 @@
 // The phone app's state and actions (the views read it and call these). One store, one socket.
 import type { AgentReason, MemPluginReason, BrainNow, Candidate, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, MemView, OoDetect, Reach, RuleView, ServerFrame, Settings, SettingsPatch, UpdateReason } from "@ducter/protocol";
-import { WATCH_LIVE } from "@ducter/protocol";
+import { TUWA_MCP, WATCH_LIVE } from "@ducter/protocol";
 import { Api, Connection, deviceName, type ConnStatus, type Me, wsUrl } from "./conn.ts";
 import { detectLang, langOfText, strings, type Handheld, type Lang, type Strings } from "./i18n.ts";
 import { pushState, type PushState } from "./push-client.ts";
@@ -689,6 +689,16 @@ class AppState {
     this.connRefusal = undefined;
     this.send({ t: "connection_add", url, ...(token ? { token } : {}) });
     this.changed();
+  }
+  /**
+   * D199: 打电话 on the home's sheet goes where calls are kept: Settings › Accounts, at the phone
+   * card. Adding starts the same Tuwa sign-in as the offer there (never a second flow).
+   */
+  openCalls(add: boolean) {
+    this.openSettings("accounts");
+    this.askConnections();
+    if (add && !this.connecting && this.signIn?.state !== "waiting") this.addConnection(TUWA_MCP, "");
+    setTimeout(() => globalThis.document?.getElementById("acct-phone")?.scrollIntoView({ block: "start", behavior: "smooth" }), 160);
   }
   /** D193: the device sign-in and the phone card. */
   cancelSignIn() {

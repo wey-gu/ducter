@@ -3,14 +3,14 @@
 // Accounts the offer, the device sign-in (code, link, waiting, the end) and the phone card (the
 // day's cap, the rails, your voice). Only shared controls (controls.tsx); words from i18n-phone.ts.
 import type { CallPlan, CallView, ConnectionView, SignInView } from "@ducter/protocol";
-import { callEnded, prettyNumber } from "@ducter/protocol";
+import { callEnded, prettyNumber, TUWA_MCP } from "@ducter/protocol";
 import { useState } from "preact/hooks";
 import { A } from "./app.ts";
 import { Btn, DangerButton, Seg, Toggle } from "./controls.tsx";
 import type { DecisionState } from "./store.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
-export const TUWA_MCP = "https://api.tuwa.ai/mcp";
+export { TUWA_MCP };
 const money = (n: number) => `$${n.toFixed(2)}`;
 
 /** The time a call dials, in the owner's own clock (and a word for the day). */
@@ -226,7 +226,7 @@ export function PhoneOffer() {
   const s = A.signIn;
   if (s && (s.state === "waiting" || s.url === TUWA_MCP)) return <SignInPanel s={s} />;
   return (
-    <section class="src-card phone-offer" aria-label={t("call.offer.title")}>
+    <section id="acct-phone" class="src-card phone-offer" aria-label={t("call.offer.title")}>
       <div class="src-who">
         <CallArt off size={96} />
         <h3>{t("call.offer.title")}</h3>
@@ -255,7 +255,7 @@ export function SignInPanel({ s }: { s: SignInView }) {
   const waiting = s.state === "waiting";
   const mins = s.expiresAt ? Math.max(1, Math.round((Date.parse(s.expiresAt) - Date.now()) / 60_000)) : undefined;
   return (
-    <section class="src-card signin-card" aria-label={t("call.signin.title", s.name)} aria-live="polite">
+    <section id="acct-phone" class="src-card signin-card" aria-label={t("call.signin.title", s.name)} aria-live="polite">
       <div class="src-who">
         <CallArt off={!waiting && s.state !== "done"} size={72} />
         <h3>{t(s.reconnect ? "call.signin.again" : "call.signin.title", s.name)}</h3>
@@ -302,7 +302,7 @@ export function PhoneCard({ c }: { c: ConnectionView }) {
   const name = t("call.card.title", p.provider);
   if (A.signIn?.reconnect && A.signIn.id === c.id && A.signIn.state === "waiting") return <SignInPanel s={A.signIn} />;
   return (
-    <section class="src-card phone-card" aria-label={name}>
+    <section id="acct-phone" class="src-card phone-card" aria-label={name}>
       <div class="src-who">
         <CallArt off={out} size={96} />
         <h3>{name}</h3>

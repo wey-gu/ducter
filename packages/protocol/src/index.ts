@@ -993,7 +993,11 @@ export type Delivery = "steered" | "prompted" | "queued";
 
 export type DeviceKind = "laptop" | "mini" | "server" | "phone";
 export type DeviceState = "awake" | "asleep" | "unreachable";
-/** web 上网 · computer 用电脑 · remote 远程打开 · phone 用手机 · call 打电话 */
+/**
+ * web 上网 · computer 用电脑 · remote 远程打开 · phone 用手机 · call 打电话. D199: call is the home's
+ * only (calls don't run on a computer): on while a calling connection is connected, off before; it
+ * is added and opened in Settings › Accounts (the phone card), never by an `ability` request.
+ */
 export type AbilityId = "web" | "computer" | "remote" | "phone" | "call";
 /** later = not in this version (shown locked, "以后会有"); unavailable = can't be added here, see reason. */
 export type AbilityState = "on" | "off" | "unavailable" | "later";
@@ -1008,8 +1012,10 @@ export type AbilityState = "on" | "off" | "unavailable" | "later";
  * Chrome only (D172); browser_failed = the install or the first start failed (detail).
  * D157: worker_old = the Ducter on that computer is from before workers browsed (update it there);
  * offline = that computer can't be reached right now to change it.
+ * D199: signed_out = 打电话 is on (a calling connection is there) but its sign-in is gone: the
+ * phone card in Accounts signs in again.
  */
-export type AbilityReason = "cua_missing" | "cua_old" | "env_off" | "home_only" | "no_address" | "unknown_device" | "failed" | "browser_deps" | "browser_sandbox" | "browser_failed" | "worker_old" | "offline";
+export type AbilityReason = "cua_missing" | "cua_old" | "env_off" | "home_only" | "no_address" | "unknown_device" | "failed" | "browser_deps" | "browser_sandbox" | "browser_failed" | "worker_old" | "offline" | "signed_out";
 
 export interface Allowance {
   left: number; // 0..1, as the harness reports it

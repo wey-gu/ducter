@@ -84,6 +84,9 @@ working carries on there from its saved progress; it doesn't start over.
 - **If you don't answer** sets how long a decision waits before your partner goes with its
   suggested default: 10 minutes, 30 minutes, 1 hour or 2 hours. This applies only to things
   that can be undone. Anything that can't be undone always waits for you.
+- **When it notices something** (once you have accounts): how your partner tells you what it
+  noticed by itself: **Only urgent**, **Up to 3 a day**, **Whenever useful** or **Only when I
+  ask**. The same row sits on Accounts; see [When it notices something](accounts.md#when-it-notices-something).
 
 On a phone, this page also turns on notifications for that phone and sends a test.
 
@@ -91,8 +94,10 @@ On a phone, this page also turns on notifications for that phone and sends a tes
 
 Your partner can read your Gmail, calendar, Slack, GitHub and other accounts when you ask. If
 you use OOMOL's `oo` and are signed in, it's one tap on **Use these accounts**; otherwise **Add
-one** takes an address and a key. Reading just happens; sending or changing anything waits for
-your Go. All of it is in [Accounts your partner can read](accounts.md). The AI accounts
+one** takes an address and a key. Each place your accounts come from has its own card, with a
+square for each app it can read; tap one for what it reads and to stop it watching or reading.
+Reading just happens; sending or changing anything waits for your Go. All of it is in
+[Accounts your partner can read](accounts.md). The AI accounts
 (Claude Code, Codex) live on **Devices**; the last row goes there.
 
 ## Look and sound

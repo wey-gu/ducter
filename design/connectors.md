@@ -3,7 +3,9 @@
 > Draft 4 · 2026-11-10 · Status: **D96, D122, D158 decided and built** (the broker, the oo one
 > tap, OOMOL Hosted with a key; Part B). **Proactive work is redone from first principles as
 > D165**, and the accounts card as **D166**: designed, prototyped, and **decided 2026-11-10**
-> (the author: "按建议", all eight defaults of §15); being built in §14's order. D165 supersedes the proposals D97–D101 that Draft 3 carried (moved to the
+> (the author: "按建议", all eight defaults of §15); **built 2026-11-10** in §14's order, steps
+> 1–9 (§1.1), with fakes and recorded triage; the live trial (step 10) and a live triage run are
+> owed. D165 supersedes the proposals D97–D101 that Draft 3 carried (moved to the
 > decisions log's Superseded section). Evidence: `research/35` (dots, Muse, the Grok bot,
 > Google access, open-connector, the mailbox metaphor test), `research/46` (Gmail's nudges,
 > Microsoft's Briefing email, Apple's interruption levels). Builds on principles 6, 7, 15–18,
@@ -71,6 +73,28 @@ one tap with no confirm, on the Mac and the phone; it now asks in its row first 
 (2) The added line named the oo kind by its record name ("加上了 oo"); it now says **加上了 oo
 里的账号，…**. Tests: `apps/desktop/internal/views/oo_connect_test.go`
 `TestAccountRemoveAsksFirst`.
+
+### 1.1 Built (2026-11-10, after the decision; VERIFIED by tests, not yet live)
+
+The table above is the audit before the build. Now, in `packages/core/src/proactive/`:
+
+| Step (§14) | Built | Tested |
+|---|---|---|
+| 1. Watching, oo by polling | `watch.ts`: per app, code only, mail/GitHub/chat every 10 min and calendars every 15, a checkpoint per app (`watch.json`, 0600), only after yes; reads as the broker's read-only `watch` caller, logged on the `watch` stream (`connections.ts`) | `proactive-watch.test.ts` (a fake accounts source; the real broker over a fake oo) |
+| 2. Rules and the facts ledger | `stage1.ts`; `ledger.ts` (`findings.json`, 0600, typed facts with pointers, never a snippet; 30-day expiry; dropped with the account) | `proactive-ledger.test.ts`, `proactive-cascade.test.ts` |
+| 3. Triage, and its eval | `triage.ts` (the cheapest model of the partner's harness, ≤ 20 per batch, fenced, checked field by field); the eval set `packages/partner/eval/proactive/` (seven synthetic inboxes; per-kind misses and false alarms; how often the cap bites) | `proactive-cascade.test.ts`, `packages/partner/test/proactive-bar.test.ts` (recorded answers; no model) |
+| 4. The bar and the morning note | `judge.ts` (code's tests, then the partner's model in one call; falls back to code with no model); `engine.ts` (the note at the end of quiet hours, a quiet day changes only the header, one passive notification) | `proactive-deliver.test.ts` |
+| 5. The first account and the chips | `engine.ts` `added`/`answer`; `settings.proactive`; the chips on Accounts and Notifications | `proactive-first.test.ts`, `proactive-core.test.ts` |
+| 6. Learning | `react` (有用; 这类不用告诉我 → a notice Rule in 你的规则), per-kind bars, the 3-unread pause and 早上那条还要吗？, the monthly budget | `proactive-learn.test.ts` |
+| 7. Follow-through | a find's step is a decision (`findId`, default Hold, never pushed alone); Go opens one read-only task with its needs (D157 places it); 过了 | `proactive-follow.test.ts` |
+| 8. The cards | Mac `views/accounts.go`, `finds.go`; phone `accounts.tsx`, `finds.tsx`; the shared `appTile` / `AppTile` (design/ui.md) | `accounts_test.go`, `controls.test.ts`; shots `.shots/accounts-built/` |
+| 9. Meeting prep and "now" | `detect.ts` `meetingPrep` (a 5-minute tick, 10 min before, only with something open); "now" time-sensitive inside the cap; at night only kinds in a wake Rule (`notice_rule`) | `proactive-detect.test.ts`, `proactive-deliver.test.ts` |
+| Mem | through the partner only: its history shows the notes and reactions; its instructions say when to `memory_add` a distilled gist | `regressions.test.ts` snapshot |
+
+Not yet: the live trial on the author's oo (step 10); the action ids oo really answers for
+calendar, GitHub and chat (`watch.ts` tries a short list; mail's `gmail.search_threads` is
+known); a live triage run on a private labeled set; the clay mailbox and tile art, the lid
+lifting while it looks and the equip snap; iOS's time-sensitive category on the app.
 
 ## 2. User first
 
@@ -390,14 +414,14 @@ the desktop's own renderer, phone from a scratch core with a fake oo).
 Retired by D166 when built: the row's **{apps} (2) · …** line and the source line as a second
 line (the tray and the connection line say them), **加一个** as the page's primary button.
 
-## 14. Build steps (for `todo.md`; each a small PR with tests)
+## 14. Build steps (for `todo.md`; each a small PR with tests; 1–9 built 2026-11-10, §1.1)
 
 1. **Watch for oo** — a system watcher per source on the routine engine (D114: budget, unread
    pause, review): model-free scheduled reads, checkpoints by newest id/time in the waiter table.
 2. **Stage 1 rules + the findings ledger** (`findings.ts`, 0600, expiry, drop on remove).
-3. **Stage 2 triage** on the cheap model, typed output per kind; **the triage eval** first: a
-   labeled set from the author's real inbox, private, outside git (like research/15), false
-   alarms and misses per kind.
+3. **Stage 2 triage** on the cheap model, typed output per kind; **the triage eval**: built
+   on synthetic inboxes (`packages/partner/eval/proactive/`); a labeled set from the author's
+   real inbox, private, outside git (like research/15), is still owed for a live run.
 4. **Stage 3 judge + the morning note** as a typed `finds` report rendered by the core (like
    the living message), the silent-day header line, the passive notification (D159 path).
 5. **The first-account moment** (§11) and the chip row (settings: `proactive`).

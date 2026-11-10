@@ -79,9 +79,53 @@ The key is kept only in Ducter's own data folder, and is never shown again.
 - **Where your mail goes.** Through oo or Hosted by OOMOL, your mail and sign-ins pass through
   OOMOL's servers. What your partner reads is shown to your AI account to understand it; no one
   else gets it.
-- **Remove** takes the accounts away from Ducter, after you confirm it in the same row. Through
-  oo, that doesn't sign you out of oo.
+- **Stop using …** at the foot of a card takes the accounts away from Ducter, after you confirm
+  it in place. Through oo, that doesn't sign you out of oo. What it noted stays in **What it
+  remembers**, where you can forget it.
 
-This is new and still being tried out. Your partner doesn't yet watch your accounts on its own;
-it looks when you ask. Coming soon: if you want it to, it keeps an eye out and tells you a few
-things worth knowing in one message in the morning, and stays quiet otherwise.
+## The card for each place
+
+Each place your accounts come from (oo, OOMOL, your own OpenConnector, another service) has one
+card: its mailbox, its name and one line that says how it is (**Read 214 emails today · 1 worth
+telling**, or **Reads only when you ask**, or what went wrong and how to fix it). Under it, a
+square for each app it can read. Tap one to see what it reads, what it always asks you first,
+when it last looked, and two choices:
+
+- **Watch on its own**: on, Ducter looks at this app by itself (once you said yes, below). For
+  Discord and Slack it looks only at @-mentions and direct messages.
+- **Don't let Ducter read this one**: nothing reads that account, not even when you ask.
+
+**⋯** beside the line about where your mail passes shows **What it read** today, one line per
+look (how many, and what it looked at; never what the mail said).
+
+## When it notices something
+
+If you want, your partner keeps an eye on your accounts and tells you only what matters. When you
+add accounts the first time, it asks once whether to look through the last 3 days for anything
+waiting on you, and then how you want to hear about things. Until you answer, it doesn't look by
+itself.
+
+The same choice sits above the cards, and under **Notifications**:
+
+- **Only urgent**: only what costs you something if it waits until tomorrow.
+- **Up to 3 a day** (suggested): one message in the morning, when your quiet hours end, with at
+  most three things; anything urgent right away. On a day with nothing worth saying it sends
+  nothing; the line under its name says **Looked this morning — nothing needs you**.
+- **Whenever useful**: everything worth saying, still in the morning message.
+- **Only when I ask**: it doesn't look by itself.
+
+What it may tell you: two things that don't match (a flight that lands the night before your
+hotel starts), someone waiting on your answer, you waiting on someone, something you promised
+for today, a deadline or a payment, a plan that changed, and, 10 minutes before a meeting, what
+you have open with those people. Each comes with **How I know** (the mails or events, with
+dates) and at most one next step, like **See if it can start earlier**: nothing happens until
+you tap it, and even then it only looks things up or drafts; it never sends, pays, books,
+deletes or marks anything read. A step you don't take quietly becomes **Passed** after its date.
+
+Under each one, **Useful** or **Don't tell me this kind**. The second becomes a rule in **Your
+rules**, where you can remove it. If three morning messages in a row go unread, they stop, and
+the next time you write it asks whether to keep them. At night it never wakes you, unless you
+said so for a kind ("wake me if a flight changes").
+
+It reads headers and the first lines of new mail, and keeps only small facts with dates (a
+booking, a renewal, a promise) for 30 days after they stop mattering; never the mail itself.

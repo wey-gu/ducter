@@ -3,6 +3,11 @@
 Thanks for looking. Ducter is an early preview with a small team, so focused contributions
 that start from an issue work best.
 
+**A thank-you from the team.** Ducter is made by the people behind
+[Nowledge Mem](https://mem.nowledge.co). Once a pull request of yours is merged, mention it in
+the pull request or an issue and we'll send you a free lifetime Nowledge Mem license. You don't
+need Mem to use or work on Ducter; it simply makes your partner remember more.
+
 ## How Ducter is made
 
 Ducter writes its design down before its code, and every change goes through the same loop:

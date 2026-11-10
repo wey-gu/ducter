@@ -134,6 +134,9 @@
 
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+  /* A phone on its side, a foldable's vertical bar (D176). */
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
 }
 /* Chinese reads looser and keeps its own rules (D78). */
 :root:lang(zh) {
@@ -338,12 +341,63 @@ a {
   clip: rect(0 0 0 0);
 }
 
+/* One column at most 640 wide, clear of a phone's side insets when it lies on its side (D176). */
 #app {
   height: 100%;
   display: flex;
   flex-direction: column;
-  max-width: 640px;
-  margin: 0 auto;
+  width: min(640px, calc(100% - var(--safe-left) - var(--safe-right)));
+  margin-left: max(var(--safe-left), calc((100% - 640px) / 2));
+}
+
+/* Side by side (D176; wide.ts's WIDE): the conversation on the left, On hand or the opened task
+   beside it on a hairline, each pane scrolling on its own. The conversation keeps its reading
+   measure (720) centered in its pane; the side pane is a phone's width and a little more, the
+   width every On hand and task component was drawn for. */
+@media (min-width: 1000px) {
+  #app {
+    width: auto;
+    margin: 0;
+    padding-left: var(--safe-left);
+    padding-right: var(--safe-right);
+  }
+}
+.panes {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+.pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100%;
+  position: relative;
+}
+.pane.conv {
+  flex: 1 1 0;
+}
+.pane.side {
+  flex: 0 0 clamp(400px, 40%, 560px);
+  border-left: 1px solid var(--line);
+}
+.pane.conv > .top,
+.pane.conv > .conn,
+.pane.conv > .scroll,
+.pane.conv > .composer-wrap {
+  padding-left: max(16px, calc((100% - 720px) / 2));
+  padding-right: max(16px, calc((100% - 720px) / 2));
+}
+/* The level's name in a pane's header, where a phone has its back button (18/800, the chrome). */
+.top .level {
+  margin: 0;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-family: var(--head);
+  font-size: var(--lg);
+  font-weight: 800;
+  letter-spacing: -0.2px;
 }
 
 /* ---------- header ---------- */
@@ -653,7 +707,7 @@ a {
 .qlink:active {
   text-decoration: underline;
 }
-@media (hover: hover) {
+@media (hover: hover), (any-hover: hover) {
   .qlink:hover,
   .taskline:hover .t {
     color: var(--ink);
@@ -754,7 +808,7 @@ a {
   transform: translateY(var(--lh));
   box-shadow: inset 0 1.5px 0 var(--hi), inset 0 0 0 1px var(--rim-c), 0 0 0 var(--seam), 0 0 0 var(--ledge-c), var(--drop-pressed);
 }
-@media (hover: hover) {
+@media (hover: hover), (any-hover: hover) {
   .btn:hover:not(:disabled):not(.text) {
     filter: brightness(1.04);
   }
@@ -1808,7 +1862,7 @@ a {
 .gist.open .chev {
   transform: rotate(90deg);
 }
-@media (hover: hover) {
+@media (hover: hover), (any-hover: hover) {
   .gist:hover {
     background: var(--surface-sunken);
   }
@@ -1936,6 +1990,23 @@ a {
   border-radius: 5px;
   background: var(--line);
   align-self: center;
+}
+/* An iPad or a wide window (D176): a sheet stands in the middle as a card, like an iPad form
+   sheet, not pinned to a far-away bottom edge; it has no grab. */
+@media (min-width: 700px) and (min-height: 640px) {
+  .sheet {
+    top: 50%;
+    bottom: auto;
+    translate: 0 -50%;
+    width: calc(100% - 48px);
+    border-radius: var(--r-xl);
+    padding-top: 20px;
+    padding-bottom: 24px;
+    max-height: min(88vh, 900px);
+  }
+  .sheet .grab {
+    display: none;
+  }
 }
 .sheet h2 {
   margin: 0;
@@ -2636,7 +2707,7 @@ a {
 .tb[aria-expanded="true"] .chev {
   transform: rotate(90deg);
 }
-@media (hover: hover) {
+@media (hover: hover), (any-hover: hover) {
   .tb:hover {
     color: var(--ink);
   }
@@ -3661,7 +3732,7 @@ button.dev-name {
 .signin-why svg { flex: none; margin-top: 2px; color: var(--ink-muted); }
 .askq.signin > .signin-why { padding: 2px 4px 0; }
 .askq.signin > .tray, .askq.signin > .said { margin-top: 2px; }
-.live { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; background: var(--bg); padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
+.live { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; background: var(--bg); padding: env(safe-area-inset-top) var(--safe-right) env(safe-area-inset-bottom) var(--safe-left); }
 .live-top, .live-bottom { flex: none; display: flex; align-items: center; gap: 10px; padding: 8px 12px; }
 .live-top { min-height: 56px; border-bottom: 1px solid var(--line-soft); }
 .live-where { flex: 1; min-width: 0; text-align: center; }

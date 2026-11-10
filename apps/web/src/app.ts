@@ -1,11 +1,14 @@
 // The phone app's state and actions (the views read it and call these). One store, one socket.
 import type { AgentReason, MemPluginReason, BrainNow, Candidate, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, MemView, OoDetect, Reach, RuleView, ServerFrame, Settings, SettingsPatch, UpdateReason } from "@ducter/protocol";
-import { Api, Connection, type ConnStatus, type Me, wsUrl } from "./conn.ts";
-import { detectLang, langOfText, strings, type Lang, type Strings } from "./i18n.ts";
+import { Api, Connection, deviceName, type ConnStatus, type Me, wsUrl } from "./conn.ts";
+import { detectLang, langOfText, strings, type Handheld, type Lang, type Strings } from "./i18n.ts";
 import { pushState, type PushState } from "./push-client.ts";
 import { haptic } from "./native.ts";
-import { attention, finished, LANE, laneOf, looksSecret, Store, title, type DecisionState, type Entry } from "./store.ts";
+import { attention, finished, LANE, laneOf, looksSecret, placeOf, Store, title, type DecisionState, type Entry } from "./store.ts";
 import { withoutStaleAgentUpdate, withoutStaleFailure } from "./format.ts";
+
+/** An iPad says "this iPad" where a phone says "this phone" (D176). */
+const HANDHELD: Handheld = typeof navigator !== "undefined" && deviceName().name.startsWith("iPad") ? "ipad" : "phone";
 
 export type Route = { name: "conv" } | { name: "onhand" } | { name: "task"; id: string };
 /** Settings (D150) is a list of sections; page is the one pushed ("" is the list). */
@@ -76,7 +79,7 @@ class AppState {
   thinkingSince?: number;
   /** Messages whose Details the person flipped from the default (D104). */
   flipped = new Set<string>();
-  L: Strings = strings(this.uiLang === "auto" ? detectLang() : this.uiLang);
+  L: Strings = strings(this.uiLang === "auto" ? detectLang() : this.uiLang, HANDHELD);
   localeSet = this.uiLang !== "auto";
   /** The partner's settings (D71), once the server sent them; mem is what it remembers. */
   settings?: Settings;
@@ -342,6 +345,27 @@ class AppState {
     this.changed();
   }
 
+  /** The app's menu commands and their keys (D176), the Mac's set (D71): ⌘N New task (inside an
+   *  opened task, at its place), ⌘1 the conversation, ⌘2 On hand, ⌘3 your devices, ⌘4 the
+   *  partner, ⌘, Settings, ⌘K the composer of the level shown. Unknown names do nothing. */
+  command(c: string) {
+    const r = this.route;
+    if (c === "new") {
+      if (this.sheet?.kind === "newtask") return;
+      const task = r.name === "task" ? this.S.tasks.get(r.id) : undefined;
+      return this.openNewTask(task ? placeOf(task) : undefined);
+    }
+    if (c === "conv" || c === "onhand") return (this.sheet = null), this.go({ name: c });
+    if (c === "devices" || c === "partner") return this.openSettings(c);
+    if (c === "settings") return this.openSettings();
+    if (c === "composer") {
+      this.sheet = null;
+      if (r.name === "onhand") this.go({ name: "conv" });
+      else this.changed();
+      requestAnimationFrame(() => document.getElementById(r.name === "task" ? "composer-task" : "composer")?.focus());
+    }
+  }
+
   /** The places the sheet offers: the server's, a prefilled one first when it isn't listed. */
   newTaskPlaces(): PlaceChoice[] {
     const places = [...(this.newTaskOptions?.places ?? [])];
@@ -600,7 +624,7 @@ class AppState {
       else localStorage.setItem(UI_LANG, v);
     } catch {}
     this.localeSet = v !== "auto";
-    this.L = strings(v === "auto" ? detectLang() : v);
+    this.L = strings(v === "auto" ? detectLang() : v, HANDHELD);
     if (v === "auto") this.followUserLanguage();
     this.changed();
   }
@@ -612,7 +636,7 @@ class AppState {
     const l = langOfText(first.user!.text);
     if (l) {
       this.localeSet = true;
-      if (l !== this.L.lang) this.L = strings(l);
+      if (l !== this.L.lang) this.L = strings(l, HANDHELD);
     }
   }
 

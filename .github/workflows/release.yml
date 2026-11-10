@@ -202,6 +202,8 @@ jobs:
           MARKETING_VERSION: ${{ needs.meta.outputs.marketing }}
           # Unique and increasing per upload: the release run number, plus the attempt on a re-run.
           BUILD_NUMBER: ${{ github.run_number }}.${{ github.run_attempt }}
+          # D176: the iOS 27.1 SDK, so iPhone Duo shows the app full-screen; the default Xcode when absent.
+          DUCTER_XCODE: "27.1"
         run: scripts/ci/testflight.sh
 
   release:

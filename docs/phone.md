@@ -1,6 +1,6 @@
 ---
 title: Your phone
-description: Connect your phone to Ducter, get notified only when something needs you, and keep your nights quiet.
+description: Connect your phone or iPad to Ducter, get notified only when something needs you, and keep your nights quiet.
 order: 7
 ---
 
@@ -94,3 +94,23 @@ If you turn quiet hours off, they stay off, even when you connect another phone.
 
 To change the hours or turn them off, open **Partner** and use **Quiet hours** (see
 [Your partner and settings](settings.md#partner)).
+
+## On an iPad
+
+The iPhone app runs on iPad too, from the same TestFlight link, and so does Ducter in Safari.
+Connect it the same way, with its own code.
+
+- **Held across** (or a 13-inch iPad held upright), the conversation stays on the left and
+  **On hand** stands beside it. Open a task there, and it opens in that place while the
+  conversation stays where it was.
+- **Upright, or side by side with another app** in Split View or Stage Manager, Ducter is one
+  column, as on a phone. Turning the iPad or resizing the window keeps what you were reading and
+  typing.
+- **With a keyboard:** ⌘N starts a new task, ⌘1 shows the conversation, ⌘2 On hand, ⌘3 your
+  devices, ⌘4 your partner, ⌘, Settings and ⌘K the box to write in. Esc goes back one level. Hold
+  ⌘ to see the list. A trackpad shows what you can tap as you point at it.
+- Everything that says "this phone" says "this iPad" there; notifications and quiet hours work
+  the same way.
+
+On iPhone Duo the app runs open or closed, laid out for the display it is on. Filling the whole
+open display, edge to edge, is coming soon.

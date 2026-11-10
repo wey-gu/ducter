@@ -65,6 +65,11 @@ final class AppState: ObservableObject {
         set { defaults.set(newValue, forKey: "apnsToken") }
     }
 
+    /// The partner's name, as the page last said it: the ⌘K menu item reads "Talk to {name}".
+    @Published var personaName: String = UserDefaults.standard.string(forKey: "personaName") ?? "Ducter" {
+        didSet { defaults.set(personaName, forKey: "personaName") }
+    }
+
     var locale: String {
         get { defaults.string(forKey: "locale") ?? (Locale.preferredLanguages.first?.hasPrefix("zh") == true ? "zh" : "en") }
         set { defaults.set(newValue, forKey: "locale") }

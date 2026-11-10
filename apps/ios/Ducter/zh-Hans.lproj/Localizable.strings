@@ -9,6 +9,7 @@
 "connect.code.placeholder" = "K7QM-4XPA";
 "connect.go" = "连上";
 "connect.phone.safe" = "这个码只能用一次。之后这台手机会记住这个连接；随时可以在那台电脑上用 ducter devices 断开它。";
+"connect.pad.safe" = "这个码只能用一次。之后这台 iPad 会记住这个连接；随时可以在那台电脑上用 ducter devices 断开它。";
 "connect.err.address" = "这看起来不像一个地址。";
 "connect.err.unreachable" = "连不上 %@。地址对吗？用 SSH 隧道的话，隧道还开着吗？";
 "connect.other" = "连接到另一个 Ducter";
@@ -23,3 +24,11 @@
 /* D159：苹果和通知中转只带这一句；真正的内容由手机自己解开（DucterNotify）。 */
 "push.relay.title" = "Ducter";
 "push.relay.body" = "Ducter 需要你看一下";
+/* D176：iPad 的菜单栏和按住 ⌘ 时的快捷键列表；就是 Mac 的那几个地方（D71）。 */
+"menu.newtask" = "开一件事";
+"menu.settings" = "设置…";
+"menu.conversation" = "对话";
+"menu.onhand" = "手头的事";
+"menu.devices" = "你的设备";
+"menu.partner" = "伙伴";
+"menu.composer" = "跟 %@ 说";

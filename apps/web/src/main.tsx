@@ -9,6 +9,7 @@ import { registerWorker } from "./push-client.ts";
 import { inApp, tellApp } from "./native.ts";
 import { startAutospace } from "./autospace.ts";
 import { Avatar, Conversation, LiveView, OnHand, Sheets, TaskView, Toasts } from "./views.tsx";
+import { escUp, useWide } from "./wide.ts";
 
 const base = baseUrl();
 const token = () => storage.get()?.token;
@@ -28,11 +29,27 @@ function App() {
     document.documentElement.lang = A.L.lang === "zh" ? "zh-CN" : "en";
   });
   const r = A.route;
+  // D176: wide enough for two (an iPad held across, a 13" iPad upright, a wide window): the
+  // conversation stays on the left, and On hand, or the task opened from it, stands beside it.
+  const wide = useWide();
   return (
     <>
-      {r.name === "conv" && <Conversation />}
-      {r.name === "onhand" && <OnHand />}
-      {r.name === "task" && <TaskView id={r.id} />}
+      {wide ? (
+        <div class="panes">
+          <section class="pane conv" aria-label={t("nav.conversation")}>
+            <Conversation />
+          </section>
+          <section class="pane side" aria-label={r.name === "task" ? undefined : t("nav.onhand")}>
+            {r.name === "task" ? <TaskView key={r.id} id={r.id} /> : <OnHand />}
+          </section>
+        </div>
+      ) : (
+        <>
+          {r.name === "conv" && <Conversation />}
+          {r.name === "onhand" && <OnHand />}
+          {r.name === "task" && <TaskView id={r.id} />}
+        </>
+      )}
       <Sheets />
       <LiveView />
       <Toasts />
@@ -133,6 +150,9 @@ async function boot(pairing?: PairView) {
   if (!inApp()) void registerWorker(base); // the app's notifications are its own (APNs)
   A.start(base, api, me, token);
   A.fromHash();
+  // The app's menus and hardware-keyboard shortcuts (⌘N, ⌘1…⌘4, ⌘, and ⌘K, as on the Mac; D176).
+  (globalThis as { ducterCommand?: (c: string) => void }).ducterCommand = (c) => A.command(c);
+  addEventListener("keydown", escUp);
   addEventListener("popstate", () => A.fromHash());
   addEventListener("hashchange", () => A.fromHash());
   navigator.serviceWorker?.addEventListener("message", (e: MessageEvent) => {

@@ -20,6 +20,32 @@ struct DucterApp: App {
                 .tint(Pebble.accent)
             #endif
         }
+        .commands { PlaceCommands(shell: shell, connected: state.entry != nil, name: state.personaName) }
+    }
+}
+
+/// The Mac's places and keys (D71), in the iPad's menu bar and its ⌘-hold list, and on any
+/// hardware keyboard (D176). The page does each one; before it is connected they are off.
+struct PlaceCommands: Commands {
+    let shell: Shell
+    let connected: Bool
+    let name: String
+
+    var body: some Commands {
+        CommandGroup(replacing: .newItem) {
+            Button(L("menu.newtask")) { shell.command("new") }.keyboardShortcut("n").disabled(!connected)
+        }
+        CommandGroup(replacing: .appSettings) {
+            Button(L("menu.settings")) { shell.command("settings") }.keyboardShortcut(",").disabled(!connected)
+        }
+        CommandGroup(before: .toolbar) {
+            Button(L("menu.conversation")) { shell.command("conv") }.keyboardShortcut("1").disabled(!connected)
+            Button(L("menu.onhand")) { shell.command("onhand") }.keyboardShortcut("2").disabled(!connected)
+            Button(L("menu.devices")) { shell.command("devices") }.keyboardShortcut("3").disabled(!connected)
+            Button(L("menu.partner")) { shell.command("partner") }.keyboardShortcut("4").disabled(!connected)
+            Button(L("menu.composer", name)) { shell.command("composer") }.keyboardShortcut("k").disabled(!connected)
+            Divider()
+        }
     }
 }
 
@@ -54,6 +80,19 @@ struct Root: View {
             shell.open(path)
             state.open = nil
         }
+        #if DEBUG
+        // Simulator runs: `-orientation landscape` turns the window, as turning the device would
+        // (simctl can't rotate a simulator without its window).
+        .onAppear {
+            guard let o = UserDefaults.standard.string(forKey: "orientation") else { return }
+            let mask: UIInterfaceOrientationMask = o == "landscape" ? .landscapeRight : .portrait
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                for case let s as UIWindowScene in UIApplication.shared.connectedScenes {
+                    s.requestGeometryUpdate(.iOS(interfaceOrientations: mask))
+                }
+            }
+        }
+        #endif
     }
 }
 
@@ -101,7 +140,9 @@ struct Unreachable: View {
             Button(L("connect.other"), action: other).buttonStyle(QuietButtonStyle())
             Button(L("task.action.retry"), action: retry).buttonStyle(PrimaryButtonStyle())
         }
+        .frame(maxWidth: 480)
         .padding(24)
+        .frame(maxWidth: .infinity)
         .background(Pebble.bg)
     }
 }
@@ -160,10 +201,13 @@ struct ConnectView: View {
                     .buttonStyle(canScan ? AnyButtonStyle(QuietButtonStyle()) : AnyButtonStyle(PrimaryButtonStyle()))
                     .disabled(address.trimmingCharacters(in: .whitespaces).isEmpty)
                     .padding(.top, 4)
-                Text(L("connect.phone.safe")).font(Pebble.text(13, relativeTo: .footnote)).foregroundStyle(Pebble.inkMuted).multilineTextAlignment(.center)
+                Text(L(UIDevice.current.model.hasPrefix("iPad") ? "connect.pad.safe" : "connect.phone.safe")).font(Pebble.text(13, relativeTo: .footnote)).foregroundStyle(Pebble.inkMuted).multilineTextAlignment(.center)
                     .padding(.top, 8)
             }
+            // D176: one phone-wide column on an iPad or an open foldable, never a stretched form.
+            .frame(maxWidth: 480)
             .padding(.horizontal, 24)
+            .frame(maxWidth: .infinity)
             .padding(.bottom, 24)
         }
         .scrollDismissesKeyboard(.interactively)

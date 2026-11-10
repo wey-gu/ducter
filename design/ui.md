@@ -362,6 +362,19 @@ stand on the card base; an
 empty list (no noted lines) is left out with its heading. Screenshots:
 `.shots/ia-2026-11-09/` (native zh/en, full-length headless, the phone sheet).
 
+**Wide screens: the phone client on an iPad (D176).** The phone client lays itself out from the
+width it has, never the device or orientation, and changes in place. Under 1000 CSS px it is
+the phone's one column (at most 640): a phone, iPad Split View's thirds, halves and two-thirds,
+an 11" iPad upright, both displays of iPhone Duo. From 1000 (an iPad held across, a 13" iPad
+upright, a wide window) it is two panes: the conversation on the left at its 720 measure, and on
+a 1pt `line` hairline the side pane (40% of the width, 400–560: the width On hand and the opened
+task were drawn for) showing On hand, or the task opened from it. The side pane's header names
+the level (18/800, the chrome's rule) with New task's ＋; an opened task's crumb there is
+**‹ 手头的事 / On hand**. The conversation's header drops its On hand button; the face lives
+only in the conversation's header. Sheets from 700 × 640 stand centered as a card (radius 24 all
+round, no grab). Keys as on the Mac (⌘N, ⌘1–⌘4, ⌘,, ⌘K, Esc), in the iPad app's menu bar.
+Screens: `.shots/ipad/`.
+
 ## Three zoom levels (Core UI canvas: https://claude.ai/artifact/U9r15Tpm8AL7aGQZwrtbDL)
 
 1. **The conversation** (default). One partner, no machinery: its words, and one quiet row

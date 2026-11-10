@@ -10,6 +10,7 @@
 "connect.code.placeholder" = "K7QM-4XPA";
 "connect.go" = "Connect";
 "connect.phone.safe" = "The code works once. After that this phone remembers the connection; disconnect it anytime with ducter devices on that computer.";
+"connect.pad.safe" = "The code works once. After that this iPad remembers the connection; disconnect it anytime with ducter devices on that computer.";
 "connect.err.address" = "That doesn't look like an address.";
 "connect.err.unreachable" = "Can't reach %@. Is the address right? If you use an SSH tunnel, is it still open?";
 "connect.other" = "Connect to another Ducter";
@@ -24,3 +25,11 @@
 /* D159: what Apple and the notification relay carry; the phone opens the real words (DucterNotify). */
 "push.relay.title" = "Ducter";
 "push.relay.body" = "Ducter needs you";
+/* D176: the iPad's menu bar and ⌘-hold list; the Mac's places (D71). */
+"menu.newtask" = "New task";
+"menu.settings" = "Settings…";
+"menu.conversation" = "Conversation";
+"menu.onhand" = "On hand";
+"menu.devices" = "Your devices";
+"menu.partner" = "Partner";
+"menu.composer" = "Talk to %@";

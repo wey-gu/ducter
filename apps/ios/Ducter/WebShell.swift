@@ -18,6 +18,9 @@ final class Shell: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegat
         config.applicationNameForUserAgent = "Mobile/15E148 DucterApp/\(Native.version)"
         config.allowsInlineMediaPlayback = true
         config.dataDetectorTypes = []
+        // D176: on an iPad too, the page as it is, laid out from the width it has (WebKit would
+        // otherwise ask for it as a Mac's desktop page, and the pairing would name a "Browser").
+        config.defaultWebpagePreferences.preferredContentMode = .mobile
         let info = "window.ducterNative = Object.freeze({platform: 'ios', version: '\(Native.version)', bundleId: '\(Native.bundleId)', apnsEnv: '\(Native.apnsEnv)'});"
         config.userContentController.addUserScript(WKUserScript(source: info, injectionTime: .atDocumentStart, forMainFrameOnly: true))
         #if DEBUG
@@ -67,6 +70,12 @@ final class Shell: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegat
             loaded = nil
             load(u)
         }
+    }
+
+    /// A menu command or its hardware-keyboard shortcut (D176): the page does it (`A.command`).
+    func command(_ name: String) {
+        guard phase == .ready else { return }
+        web.evaluateJavaScript("window.ducterCommand && window.ducterCommand(\(jsString(name)))")
     }
 
     // MARK: navigation: this Ducter in the app, everything else in Safari
@@ -123,6 +132,7 @@ final class Shell: NSObject, ObservableObject, WKNavigationDelegate, WKUIDelegat
         case "hello":
             if let token = m["token"] as? String, !token.isEmpty { Keychain.token = token }
             if let l = m["locale"] as? String { AppState.shared.locale = l }
+            if let n = m["personaName"] as? String, !n.isEmpty, n != AppState.shared.personaName { AppState.shared.personaName = n }
             // Notifications were on before: make sure the main has this phone's current token.
             if AppState.shared.pushOn, let tok = AppState.shared.apnsToken { await API.subscribe(token: tok) }
             return (["ok": true], nil)

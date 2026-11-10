@@ -30,4 +30,5 @@ jobs:
           MARKETING_VERSION: "0.0.0"
           BUILD_NUMBER: ${{ github.run_number }}
           DUCTER_TESTFLIGHT_DRY_RUN: "1"
+          DUCTER_XCODE: "27.1" # as release.yml (D176)
         run: scripts/ci/testflight.sh

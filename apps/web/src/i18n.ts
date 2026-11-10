@@ -61,6 +61,7 @@ const zh: Record<string, string> = {
   "newtask.err.failed": "没开成：%s",
   "newtask.err.unknown": "没开成，再试一次？",
   "nav.onhand": "手头的事",
+  "nav.conversation": "对话",
   "nav.back": "回到对话",
   "header.working": "在做 %d 件",
   "header.needs": "%d 件等你",
@@ -698,6 +699,7 @@ const en: Record<string, string> = {
   "newtask.err.failed": "It didn't start: %s",
   "newtask.err.unknown": "It didn't start. Try again?",
   "nav.onhand": "On hand",
+  "nav.conversation": "Conversation",
   "nav.back": "Back to the conversation",
   "header.working": "Working on %d",
   "header.needs": "%d need you",
@@ -1402,6 +1404,8 @@ const devup: Record<Lang, Record<string, string>> = {
     "device.disconnect.means.cli": "在这台电脑上，ducter 命令就连不上了；这台电脑别的连接不受影响。想再连上，在 app 里重新连一次，或用 ducter connect。",
     "device.kind.iphone.safari": "你的 iPhone · 用 Safari 连着",
     "device.kind.iphone.app": "你的 iPhone · 用 Ducter app 连着",
+    "device.kind.ipad.safari": "你的 iPad · 用 Safari 连着",
+    "device.kind.ipad.app": "你的 iPad · 用 Ducter app 连着",
     "device.kind.android": "你的安卓手机 · 用浏览器连着",
     "device.kind.mac.app": "一台 Mac · 用 Ducter app 连着",
     "device.kind.browser": "一个浏览器 · 打开的是网页版",
@@ -1542,6 +1546,8 @@ const devup: Record<Lang, Record<string, string>> = {
     "device.disconnect.means.cli": "ducter commands on that computer can't reach your Ducter anymore; its other connections stay. To connect it again, connect again in the app, or use ducter connect.",
     "device.kind.iphone.safari": "Your iPhone · connected through Safari",
     "device.kind.iphone.app": "Your iPhone · through the Ducter app",
+    "device.kind.ipad.safari": "Your iPad · connected through Safari",
+    "device.kind.ipad.app": "Your iPad · through the Ducter app",
     "device.kind.android": "Your Android phone · through its browser",
     "device.kind.mac.app": "A Mac · through the Ducter app",
     "device.kind.browser": "A browser · the web app",
@@ -2223,12 +2229,17 @@ export function usedArgs(fmt: string, n: number): boolean[] {
   return used;
 }
 
-export function strings(lang: Lang): Strings {
+/** D176: on an iPad the copy's "this phone" (这台手机 / This phone) names the iPad instead. */
+export type Handheld = "phone" | "ipad";
+const onIpad = (s: string) => s.replace(/这台手机/g, "这台 iPad").replace(/\b([Tt])his phone\b/g, "$1his iPad");
+
+export function strings(lang: Lang, handheld: Handheld = "phone"): Strings {
   const table = TABLES[lang];
   return {
     lang,
     t(key, ...args) {
-      const v = table[key] ?? en[key] ?? key; // a missing key shows itself, so it gets fixed
+      let v = table[key] ?? en[key] ?? key; // a missing key shows itself, so it gets fixed
+      if (handheld === "ipad") v = onIpad(v);
       if (!args.length) return v;
       if (onEmptyArg) {
         const used = usedArgs(v, args.length);

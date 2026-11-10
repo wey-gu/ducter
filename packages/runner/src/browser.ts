@@ -188,6 +188,101 @@ export interface BrowserSidecar {
   fallback?(tool: BrowserTool): boolean;
   /** native only: a correction to steer into the task when a tool call broke a safety rule (D130). */
   guard?(tool: BrowserTool): BrowserGuardHit | undefined;
+  /** ducter only: the profile's name, and where downloads land (on the computer the browser runs on). */
+  profile?: string;
+  downloads?: string;
+}
+
+/** The status line for each driver's navigation tool: "Looking at {host}" once per new site. */
+export function statusForDriver(driver: BrowserSidecar["driver"]): (tool: BrowserTool) => BrowserStatus | undefined {
+  let lastHost: string | undefined;
+  const once = (url: string, host: string | undefined, own?: boolean): BrowserStatus | undefined => {
+    if (!host || host === lastHost) return undefined;
+    lastHost = host;
+    return { text: `Looking at ${host}`, host, url, ...(own ? { own: true } : {}) };
+  };
+  return (tool) => {
+    if (tool.ok === false) return undefined;
+    if (driver === "native") {
+      const url = nativeUrlOf(tool);
+      return url ? once(url, hostOf(url), true) : undefined;
+    }
+    const url = (tool.input as { url?: unknown } | undefined)?.url;
+    if (typeof url !== "string") return undefined;
+    if (driver === "ducter") {
+      if (!/(^|__|\.)browser_(open|ask_sign_in)$/.test(tool.name)) return undefined;
+      return once(url, hostOf(/^[a-z][a-z0-9+.-]*:/i.test(url) ? url : `https://${url}`));
+    }
+    if (!new RegExp(`(^|__)${BROWSER_MCP_NAME}__browser_navigate$`).test(tool.name)) return undefined;
+    try {
+      return once(url, new URL(url).hostname.replace(/^www\./, ""));
+    } catch {
+      return undefined;
+    }
+  };
+}
+
+/** Claude in Chrome said "not connected" (once): the task moves to Ducter's own browser. */
+export function nativeFallback(kind: NativeKind): (tool: BrowserTool) => boolean {
+  let fellBack = false;
+  return (tool) => {
+    if (fellBack || kind !== "claude-in-chrome" || !/(^|__)claude-in-chrome__/.test(tool.name)) return false;
+    if (!CLAUDE_CHROME_NOT_CONNECTED.test(tool.output ?? "")) return false;
+    fellBack = true;
+    return true;
+  };
+}
+
+/**
+ * D157: a browser place on a worker. The worker builds the sidecar with its own browsers (its
+ * Chrome and native tools, D130; its cua-driver; Ducter's own browser there, D151) and sends this
+ * description; the main rebuilds the parts that read tool events.
+ */
+export interface SidecarWire {
+  driver: BrowserSidecar["driver"];
+  native?: NativeKind;
+  mcp?: StdioMcpConfig;
+  brief: string;
+  claude: BrowserSidecar["claude"];
+  profileDir: string;
+  evidenceDir: string;
+  profile?: string;
+  downloads?: string;
+}
+
+export function sidecarWire(sc: BrowserSidecar): SidecarWire {
+  return {
+    driver: sc.driver,
+    ...(sc.native ? { native: sc.native } : {}),
+    ...(sc.mcp ? { mcp: sc.mcp } : {}),
+    brief: sc.brief,
+    claude: sc.claude,
+    profileDir: sc.profileDir,
+    evidenceDir: sc.evidenceDir,
+    ...(sc.profile ? { profile: sc.profile } : {}),
+    ...(sc.downloads ? { downloads: sc.downloads } : {}),
+  };
+}
+
+/** The main's handle on a worker's browser: tool events read here, ready and close run there. */
+export function sidecarFromWire(w: SidecarWire, run: { ready(): Promise<void>; close(): Promise<boolean> }): BrowserSidecar {
+  const guard = w.native === "codex-computer" ? computerUseGuard() : undefined;
+  return {
+    driver: w.driver,
+    ...(w.native ? { native: w.native, fallback: nativeFallback(w.native) } : {}),
+    ...(w.mcp ? { mcp: w.mcp } : {}),
+    ...(guard ? { guard } : {}),
+    ...(w.profile ? { profile: w.profile } : {}),
+    ...(w.downloads ? { downloads: w.downloads } : {}),
+    brief: w.brief,
+    claude: w.claude,
+    statusFor: statusForDriver(w.driver),
+    ready: run.ready,
+    close: run.close,
+    profileDir: w.profileDir,
+    evidenceDir: w.evidenceDir,
+    socket: "",
+  };
 }
 
 export type BrowserTool = { name: string; input?: unknown; output?: string; ok?: boolean };
@@ -477,7 +572,6 @@ export async function browserSidecar(input: SidecarInput, opts: BrowserOptions =
     );
   }
 
-  let lastHost: string | undefined;
   const allowed = new Set(BROWSER_TOOLS);
   return {
     driver: "cua",
@@ -487,20 +581,7 @@ export async function browserSidecar(input: SidecarInput, opts: BrowserOptions =
       launchArgs: ["--tools", BROWSER_BUILTIN_TOOLS.join(",")],
       userConfiguration: "exclude",
     },
-    statusFor(tool) {
-      if (tool.ok === false || !new RegExp(`(^|__)${BROWSER_MCP_NAME}__browser_navigate$`).test(tool.name)) return undefined;
-      const url = (tool.input as { url?: unknown } | undefined)?.url;
-      if (typeof url !== "string") return undefined;
-      let host: string;
-      try {
-        host = new URL(url).hostname.replace(/^www\./, "");
-      } catch {
-        return undefined;
-      }
-      if (!host || host === lastHost) return undefined;
-      lastHost = host;
-      return { text: `Looking at ${host}`, host, url };
-    },
+    statusFor: statusForDriver("cua"),
     mcp: { name: BROWSER_MCP_NAME, command: found.bin, args: ["mcp", "--socket", socket] },
     brief: browserBrief({ partnerName: input.partnerName, profile: name, session, bin: found.bin, socket, evidenceDir }),
     ready,
@@ -517,8 +598,6 @@ export async function browserSidecar(input: SidecarInput, opts: BrowserOptions =
  */
 function nativeSidecar(input: SidecarInput, kind: NativeKind): BrowserSidecar {
   const evidenceDir = join(input.dataDir, "evidence", input.taskId);
-  let lastHost: string | undefined;
-  let fellBack = false;
   const guard = kind === "codex-computer" ? computerUseGuard() : undefined;
   return {
     driver: "native",
@@ -529,20 +608,8 @@ function nativeSidecar(input: SidecarInput, kind: NativeKind): BrowserSidecar {
       launchArgs: ["--chrome", "--tools", BROWSER_BUILTIN_TOOLS.join(",")],
       userConfiguration: "exclude",
     },
-    statusFor(tool) {
-      if (tool.ok === false) return undefined;
-      const url = nativeUrlOf(tool);
-      const host = url && hostOf(url);
-      if (!url || !host || host === lastHost) return undefined;
-      lastHost = host;
-      return { text: `Looking at ${host}`, host, url, own: true };
-    },
-    fallback(tool) {
-      if (fellBack || kind !== "claude-in-chrome" || !/(^|__)claude-in-chrome__/.test(tool.name)) return false;
-      if (!CLAUDE_CHROME_NOT_CONNECTED.test(tool.output ?? "")) return false;
-      fellBack = true;
-      return true;
-    },
+    statusFor: statusForDriver("native"),
+    fallback: nativeFallback(kind),
     ...(guard ? { guard } : {}),
     brief: nativeBrowserBrief({ partnerName: input.partnerName, kind, evidenceDir }),
     async ready() {
@@ -564,19 +631,12 @@ function ducterSidecar(input: SidecarInput, port: DucterBrowserPort): BrowserSid
   const evidenceDir = join(input.dataDir, "evidence", input.taskId);
   const downloads = join(input.dataDir, "scratch", input.taskId);
   const name = profileName(input.persona, input.place.kind === "browser" ? input.place.profile : undefined);
-  let lastHost: string | undefined;
   return {
     driver: "ducter",
+    profile: name,
+    downloads,
     claude: { disallowedTools: [], launchArgs: ["--tools", BROWSER_BUILTIN_TOOLS.join(",")], userConfiguration: "exclude" },
-    statusFor(tool) {
-      if (tool.ok === false || !/(^|__|\.)browser_(open|ask_sign_in)$/.test(tool.name)) return undefined;
-      const url = (tool.input as { url?: unknown } | undefined)?.url;
-      if (typeof url !== "string") return undefined;
-      const host = hostOf(/^[a-z][a-z0-9+.-]*:/i.test(url) ? url : `https://${url}`);
-      if (!host || host === lastHost) return undefined;
-      lastHost = host;
-      return { text: `Looking at ${host}`, host, url };
-    },
+    statusFor: statusForDriver("ducter"),
     brief: ducterBrowserBrief({ partnerName: input.partnerName, evidenceDir }),
     async ready() {
       mkdirSync(evidenceDir, { recursive: true });

@@ -1018,7 +1018,7 @@ func (u *AgentUpdate) Running() bool {
 type DeviceAbility struct {
 	ID     string `json:"id"`
 	State  string `json:"state"`
-	Reason string `json:"reason,omitempty"` // cua_missing | cua_old | env_off | home_only | no_address | unknown_device | failed
+	Reason string `json:"reason,omitempty"` // cua_missing | cua_old | env_off | home_only | no_address | unknown_device | failed | worker_old | offline
 	Detail string `json:"detail,omitempty"`
 	// web only (D130): where browser tasks run. WhereChrome = the user's own Chrome through an
 	// AI agent's own browser tools (no cua-driver needed); WhereDucter = Ducter's own browser.
@@ -1048,6 +1048,9 @@ type DeviceView struct {
 	// Computer is the computer it runs on (D155): an app window and the
 	// command line on it fold into its card.
 	Computer string `json:"computer,omitempty"`
+	// AlwaysOn: it doesn't sleep (a server, a desktop Mac), so long work
+	// keeps going there (D157).
+	AlwaysOn bool `json:"alwaysOn,omitempty"`
 }
 
 // DeviceUpdate is a device's version against the latest release, and an

@@ -265,7 +265,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const browser =
     opts.browser === false
       ? undefined
-      : createDucterBrowser({ dataDir, mcp, log, tasks, decisions, persona: persona.id, device: () => opts.update?.homeName ?? osHostname().replace(/\.local$/, ""), ...(opts.platform ? { platform: opts.platform } : {}), lang: () => (settings.get().language === "zh" ? "zh-CN" : "en-US"), ...(opts.browser ?? {}) });
+      : createDucterBrowser({ dataDir, mcp, log, tasks, decisions, persona: persona.id, device: () => opts.update?.homeName ?? osHostname().replace(/\.local$/, ""), ...(opts.platform ? { platform: opts.platform } : {}), lang: () => (settings.get().language === "zh" ? "zh-CN" : "en-US"), workers: () => workersRef, workerBrowserVersion: (id) => workersRef?.online().find((w) => w.deviceId === id)?.hello?.abilities?.find((a) => a.id === "web")?.detail, ...(opts.browser ?? {}) });
   let devicesView: DevicesView | undefined;
   const loadout = createLoadout({ log, tasks, settings, rules, devices: () => devicesView });
   const api = { log, tasks, mcp, persona, dataDir, settings, connections, bodies: loadout, spine: log.spine, ...(browser ? { browser: browser.port } : {}) } as CoreApi;

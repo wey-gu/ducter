@@ -9,6 +9,8 @@ import type { FolderStore } from "./folder.ts";
 import type { HarnessEvent, HarnessPort, HarnessSession, SessionSpec, WorkerLink, WorkerSessionFrame } from "@ducter/protocol/src/internal.ts";
 import type { ActionResult } from "./integrate.ts";
 import type { ResolvedPlace } from "./places.ts";
+import { sidecarFromWire, type BrowserSidecar, type SidecarInput, type SidecarWire } from "./browser.ts";
+import type { DucterBrowserPort } from "@ducter/protocol/src/internal.ts";
 
 export interface PlaceOps {
   /** Set for a worker; undefined for this machine. */
@@ -24,6 +26,8 @@ export interface PlaceOps {
   archive(place: Place): Promise<ActionResult & { removed: boolean }>;
   /** D142: the copy of a non-git folder, kept on the machine that holds it (folder.ts). */
   folder: FolderOps;
+  /** D157: a browser place on a worker, built there with its browsers; absent for this machine. */
+  browser?(input: SidecarInput): Promise<BrowserSidecar>;
 }
 
 /** FolderStore over a promise, so it can live on a worker. */
@@ -76,7 +80,8 @@ function remoteSession(link: WorkerLink, key: string, init: { sessionId?: string
       busy = f.busy;
       if (f.sessionId) id = f.sessionId;
       queue.push(f.ev);
-    } else done = { ...(f.error ? { error: f.error } : {}), ...(f.offline ? { offline: true } : {}) };
+    } else if (f.t === "end") done = { ...(f.error ? { error: f.error } : {}), ...(f.offline ? { offline: true } : {}) };
+    else return;
     wake?.();
   });
   const call = (op: string, args: object) =>
@@ -114,10 +119,51 @@ function remoteSession(link: WorkerLink, key: string, init: { sessionId?: string
   };
 }
 
-export function remoteOps(link: WorkerLink): PlaceOps {
+/** "@<device id>:<profile>": a worker's profile in the main's browser host (core/src/browser/remote.ts). */
+const workerProfile = (deviceId: string, profile: string) => `@${deviceId}:${profile}`;
+
+/**
+ * D157: a worker's browser place. Native and cua-driver browsers run beside the session there;
+ * Ducter's own browser there is driven by the main's browser tools over the worker's socket, so
+ * the main attaches the task to that worker's profile.
+ */
+async function remoteBrowser(link: WorkerLink, input: SidecarInput, ducter: DucterBrowserPort | undefined, guard: <T>(p: Promise<T>) => Promise<T>): Promise<BrowserSidecar> {
+  const { dataDir, ...rest } = input;
+  let w: SidecarWire;
+  try {
+    w = await guard(link.call<SidecarWire>("browser", { input: rest }, 60_000));
+  } catch (err) {
+    // A Ducter there from before D157 doesn't know the op.
+    if (/unknown op browser/.test(String((err as Error).message))) throw new Error(`browser tasks need a newer Ducter on ${link.name}: update it there`);
+    throw err;
+  }
+  const evidenceDir = `${dataDir}/evidence/${input.taskId}`;
+  if (w.driver === "ducter") {
+    if (!ducter) throw new Error(`Ducter's browser on ${link.name} can't be driven from here`);
+    const profile = workerProfile(link.id, w.profile ?? "default");
+    return sidecarFromWire(
+      { ...w, evidenceDir },
+      {
+        async ready() {
+          const { mkdirSync } = await import("node:fs");
+          mkdirSync(evidenceDir, { recursive: true });
+          ducter.attach(input.taskId, { profile, evidenceDir, downloads: w.downloads ?? "" });
+        },
+        close: () => ducter.release(input.taskId),
+      },
+    );
+  }
+  return sidecarFromWire(w, {
+    ready: () => guard(link.call<void>("browserReady", { taskId: input.taskId }, 60_000)).then(() => {}),
+    close: () => link.call<{ closed: boolean }>("browserClose", { taskId: input.taskId }, 30_000).then((r) => !!r?.closed).catch(() => false),
+  });
+}
+
+export function remoteOps(link: WorkerLink, o: { ducter?: DucterBrowserPort } = {}): PlaceOps {
   const guard = <T>(p: Promise<T>) => p.catch((err) => Promise.reject(isOffline(err) ? new DeviceOfflineError(link.name) : err));
   return {
     device: link,
+    browser: (input) => remoteBrowser(link, input, o.ducter, guard),
     plan: (place, taskId, title) => guard(link.call<ResolvedPlace>("plan", { place, taskId, title })),
     provision: (r) => guard(link.call<void>("provision", { resolved: r }, 10 * 60_000)),
     harness: {

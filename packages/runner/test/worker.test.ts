@@ -21,7 +21,7 @@ beforeEach(() => {
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
 /** A worker host behind a fake link that can drop and come back like a socket. */
-function fakeWorker(turn: (t: ScriptedTurn) => void | Promise<void>, seen: { options: any[] }) {
+function fakeWorker(turn: (t: ScriptedTurn) => void | Promise<void>, seen: { options: any[] }, hostOpts: Partial<Parameters<typeof createWorkerHost>[0]> = {}) {
   let online = true;
   let nextId = 0;
   const pending = new Map<number, { resolve(v: unknown): void; reject(e: Error): void }>();
@@ -44,6 +44,7 @@ function fakeWorker(turn: (t: ScriptedTurn) => void | Promise<void>, seen: { opt
       harness,
       mainBase: "https://ducter.example.com",
       deviceToken: "dvc.worker.token",
+      ...hostOpts,
       send(f: any) {
         if (!online) return;
         if (f.t === "res") {
@@ -168,6 +169,39 @@ test("a worker can't answer plan with a browser place (that would start cua-driv
   const runner = createRunner(core, { browser: { env: { DUCTER_BROWSER: "1" }, which: () => ((sidecar = true), null) } });
   await expect(runner.openTask({ persona: "p1", title: "x", brief: "y", place: { kind: "none", device: "vps-2" } })).rejects.toThrow("different kind of place");
   expect(sidecar).toBe(false);
+  await runner.dispose();
+});
+
+test("D157: a browser place on a worker Mac runs there, in the user's Chrome through the agent's own tools; the main reads its tool events", async () => {
+  const seen = { options: [] as any[] };
+  const w = fakeWorker(
+    async (t) => {
+      await t.tool("mcp__claude-in-chrome__navigate", JSON.stringify({ url: "https://www.taobao.com/orders" }), () => "ok");
+      await t.tool("mcp__ducter__report_to_main", "{}", () => core.call("report_to_main", { state: "done", summary: "Order is on its way" }, "tskbrw01"));
+    },
+    seen,
+    // The worker's own probes: Claude in Chrome connected there (never the main's).
+    { browser: { env: {}, nativeProbe: async (h: string) => (h === "claude-code" ? "claude-in-chrome" : undefined) } },
+  );
+  core.workers = { link: (d) => (d === "vps-2" ? w.link : undefined), list: () => [] };
+  let mainProbed = false;
+  const runner = createRunner(core, { newId: () => "tskbrw01", browser: { env: {}, nativeProbe: async () => ((mainProbed = true), undefined) } });
+  const card = await runner.openTask({ persona: "p1", title: "Where is my order", brief: "check taobao", place: { kind: "browser", device: "vps-2", profile: "default" }, harness: "claude-code" });
+  await runner.whenStarted(card.taskId);
+  await waitFor(() => core.tasks.get(card.taskId)?.attention === "done_claimed", "done");
+  expect(mainProbed).toBe(false); // the browser is the worker's
+  const opts = seen.options[0];
+  expect(String(opts.appendSystemPrompt ?? opts.systemPromptAppend ?? JSON.stringify(opts))).toContain("This is the user's own browser");
+  const evs = core.events.filter((e) => e.kind === "task_event").map((e) => e.body as Bodies["task_event"]);
+  expect(evs.some((e) => /Looking at taobao\.com/.test(e.text ?? ""))).toBe(true);
+  await runner.dispose();
+});
+
+test("D157: a worker without a browser says why, in words the partner can pass on", async () => {
+  const w = fakeWorker(() => {}, { options: [] }, { browser: { env: { DUCTER_BROWSER: "0" } } });
+  core.workers = { link: (d) => (d === "vps-2" ? w.link : undefined), list: () => [] };
+  const runner = createRunner(core, { newId: () => "tskbrw02" });
+  await expect(runner.openTask({ persona: "p1", title: "x", brief: "y", place: { kind: "browser", device: "vps-2", profile: "default" } })).rejects.toThrow(/browser tasks are turned off on this device/);
   await runner.dispose();
 });
 

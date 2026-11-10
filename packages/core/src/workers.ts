@@ -27,6 +27,10 @@ export interface WorkerHello {
   /** D148: how it updates (self · app · source), and the outcome of its last update when it restarted for one. */
   how?: string;
   update?: import("./updates.ts").WorkerUpdateFrame;
+  /** D157: what it can do for tasks, as its own probes say (上网 with where: chrome | ducter). */
+  abilities?: import("@ducter/protocol").DeviceAbility[];
+  /** D157: it doesn't sleep (a server, a desktop Mac). */
+  alwaysOn?: boolean;
 }
 
 /** What the main last knew of a worker that isn't connected now. */
@@ -302,6 +306,11 @@ export function createWorkers(opts: {
         else if (f?.t === "update") opts.onUpdate?.(ws.data.device.id, nameOf(st), f);
         // D156: an agent update on that worker, and its agents as they are after it.
         else if (f?.t === "agent_update") opts.onAgentUpdate?.(ws.data.device.id, nameOf(st), f);
+        // D157: its abilities changed (上网 added or removed there, its browser installed).
+        else if (f?.t === "abilities") {
+          const entry = live.get(ws.data.device.id);
+          if (entry?.hello && Array.isArray(f.abilities)) (entry.hello.abilities = f.abilities), changed();
+        }
         else if (f?.t === "agents") {
           const entry = live.get(ws.data.device.id);
           if (entry?.hello && Array.isArray(f.harnesses)) (entry.hello.harnesses = f.harnesses), changed();
@@ -313,9 +322,10 @@ export function createWorkers(opts: {
           clearTimeout(p.timer);
           if (f.ok) p.resolve(f.result);
           else p.reject(new Error(String(f.error ?? "worker error")));
-        } else if (f?.t === "ev" || f?.t === "end") {
+        } else if (f?.t === "ev" || f?.t === "end" || f?.t === "cdp") {
           st.sessions.get(f.key)?.(f as WorkerSessionFrame);
           if (f.t === "end") st.sessions.delete(f.key);
+          else if (f.t === "cdp" && f.closed) st.sessions.delete(f.key);
         } else send(ws, { t: "error", message: `unknown frame ${f?.t}` });
       },
     },

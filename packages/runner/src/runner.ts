@@ -224,11 +224,15 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     archive: (place) => archiveWorktree(place, core.dataDir),
     folder: localFolderOps(folders),
   };
+  /** D157: a browser place's browser, on the computer the place is on (a worker builds its own). */
+  const sidecarFor = async (ops: PlaceOps, input: SidecarInput): Promise<BrowserSidecar | undefined> =>
+    input.place.kind !== "browser" ? undefined : ops.device && ops.browser ? ops.browser(input) : browserSidecar(input, browserOpts);
+
   /** A paired worker's ops when the place names one; any other name (e.g. "mac") is this machine. */
   function opsFor(place: Place | undefined): PlaceOps {
     const device = deviceOf(place);
     const link = device ? core.workers?.link(device) : undefined;
-    return link ? remoteOps(link) : localOps;
+    return link ? remoteOps(link, { ...(browserOpts.ducter ? { ducter: browserOpts.ducter } : {}) }) : localOps;
   }
 
   const unsubscribe = core.log.subscribe((e: LogEvent) => {
@@ -399,10 +403,10 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
    */
   async function prepareSpec(t: TaskRt) {
     const h = t.base.harness;
-    if (t.card.place?.kind === "browser" && !t.ops.device && (!t.sidecar || t.sidecarInput?.harness !== h)) {
+    if (t.card.place?.kind === "browser" && (!t.sidecar || t.sidecarInput?.harness !== h)) {
       const prev = t.sidecarInput?.harness === h ? t.sidecarInput : undefined;
       const input: SidecarInput = { place: t.card.place, persona: t.persona, taskId: t.id, dataDir: core.dataDir, partnerName: partnerNameOf(), harness: h, ...(prev?.forceCua ? { forceCua: true } : {}) };
-      const sc = await browserSidecar(input, browserOpts);
+      const sc = await sidecarFor(t.ops, input);
       if (!sc) throw new Error("this browser place could not be prepared");
       await sc.ready();
       t.sidecar = sc;
@@ -623,7 +627,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     t.running = true;
     let cua: BrowserSidecar | undefined;
     try {
-      cua = await browserSidecar({ ...input, forceCua: true }, browserOpts);
+      cua = await sidecarFor(t.ops, { ...input, forceCua: true });
     } catch (err) {
       cua = undefined;
       const reason = preview(err instanceof Error ? err.message : String(err), 400);
@@ -923,17 +927,16 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     // Where it runs: this machine, or a worker that must be connected right now.
     const ops = opsFor(input.place);
     if (ops.device && !ops.device.online()) throw new DeviceOfflineError(ops.device.name);
-    if (ops.device && input.place?.kind === "browser") throw new Error(`browser places run on this machine only for now, not on ${ops.device.name}`);
     const resolved = await ops.plan(input.place, id, title);
     // A worker plans its own place; it can't turn it into something this machine then runs
-    // (a browser place starts cua-driver here).
+    // (a browser place's browser is the worker's own, D157).
     if (ops.device && resolved?.place?.kind !== (input.place?.kind ?? "none")) throw new Error(`${ops.device.name} answered with a different kind of place`);
     const project = input.project ?? "";
     const persona = input.persona || core.persona.id;
     const partnerName = opts.partnerName ?? core.persona.name ?? "Ducter";
     // Throws before the task exists when a browser place is unavailable (the partner says why).
     const sidecarInput: SidecarInput = { place: resolved.place, persona, taskId: id, dataDir: core.dataDir, partnerName, harness: h };
-    const sidecar = await browserSidecar(sidecarInput, browserOpts);
+    const sidecar = await sidecarFor(ops, sidecarInput);
 
     // The partner's, a rule's or the person's choice wins; else DUCTER_TASK_MODEL; else the
     // ranking's model; else the harness default.

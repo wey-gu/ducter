@@ -212,7 +212,8 @@ export function createLive(d: LiveDeps): Live {
       if (!d.decisions.isPending(decisionId)) return fail(sink, decisionId, "this card is already answered");
       const card = d.tasks.get(dec.taskId);
       if (card?.place?.kind !== "browser") return fail(sink, decisionId, "this task has no browser");
-      const profile = profileName(card.persona ?? d.persona, card.place.profile);
+      // The profile the task's browser runs on: a worker's when it runs there (D157).
+      const profile = d.host.task(dec.taskId)?.profile ?? profileName(card.persona ?? d.persona, card.place.profile);
       return show(sink, { decisionId, taskId: dec.taskId, profile, site: dec.signIn.site, url: dec.signIn.url ?? `https://${dec.signIn.site}` }, size);
     },
 

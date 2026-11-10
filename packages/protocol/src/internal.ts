@@ -179,7 +179,10 @@ export interface SettingsApi {
 /** One frame the worker sends up about a remote harness session. */
 export type WorkerSessionFrame =
   | { t: "ev"; key: string; ev: HarnessEvent; busy: boolean; sessionId?: string }
-  | { t: "end"; key: string; error?: string; offline?: boolean };
+  | { t: "end"; key: string; error?: string; offline?: boolean }
+  // D157: Ducter's own browser on a worker. One CDP message (an event) from the browser there,
+  // or the browser's connection closed (closed: true); the main drives it with cdpSend.
+  | { t: "cdp"; key: string; msg?: { method: string; params?: unknown; sessionId?: string }; closed?: boolean };
 
 export interface WorkerInfo {
   id: string; // device id

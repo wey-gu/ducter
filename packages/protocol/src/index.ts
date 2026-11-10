@@ -778,8 +778,10 @@ export type AbilityState = "on" | "off" | "unavailable" | "later";
  * no_address: nothing outside can reach this Ducter yet (remote). D151, Ducter's own browser on a
  * server: browser_deps = system libraries are missing and Ducter can't install them (not root):
  * detail is the one command to run; browser_failed = the install or the first start failed (detail).
+ * D157: worker_old = the Ducter on that computer is from before workers browsed (update it there);
+ * offline = that computer can't be reached right now to change it.
  */
-export type AbilityReason = "cua_missing" | "cua_old" | "env_off" | "home_only" | "no_address" | "unknown_device" | "failed" | "browser_deps" | "browser_failed";
+export type AbilityReason = "cua_missing" | "cua_old" | "env_off" | "home_only" | "no_address" | "unknown_device" | "failed" | "browser_deps" | "browser_failed" | "worker_old" | "offline";
 
 export interface Allowance {
   left: number; // 0..1, as the harness reports it
@@ -879,6 +881,8 @@ export interface DeviceView {
   platform?: string;
   /** D155: the computer it runs on (its host name), when it said: a CLI on it folds into its card. */
   computer?: string;
+  /** D157: it doesn't sleep (a server, a desktop Mac), so long work keeps going there. */
+  alwaysOn?: boolean;
 }
 
 // ---------- Updating in place (D148, design/system.md "Updating in place") ----------

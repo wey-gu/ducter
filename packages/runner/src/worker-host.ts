@@ -9,6 +9,7 @@ import { runCheck } from "@ducter/protocol/src/checks-run.ts";
 import { archiveWorktree, branchChanges, mergeTaskBranch, openDraftPr } from "./integrate.ts";
 import { planPlace, provisionPlace } from "./places.ts";
 import { createFolderStore } from "./folder.ts";
+import { browserSidecar, sidecarWire, type BrowserOptions, type BrowserSidecar, type SidecarInput } from "./browser.ts";
 import { join } from "node:path";
 
 export interface WorkerHostOptions {
@@ -19,6 +20,13 @@ export interface WorkerHostOptions {
   deviceToken: string;
   send(frame: object): void;
   gh?: string;
+  /** D157: this computer's browsers for browser places (its Chrome and the agents' own tools,
+   *  cua-driver, Ducter's own browser), as the home's runner has them. */
+  browser?: BrowserOptions;
+  /** D157: more ops the main may call (Ducter's own browser here: core/src/browser/remote.ts). */
+  extraOps?: Record<string, (a: any) => Promise<unknown>>;
+  /** D157: what this computer can do for tasks now (sent up after 上网 changes here). */
+  abilities?: { set(id: "web", on: boolean): Promise<{ ok: boolean; reason?: string; detail?: string }> };
 }
 
 export interface WorkerHost {
@@ -70,6 +78,8 @@ function wireEvent(ev: HarnessEvent): HarnessEvent {
 
 export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
   const sessions = new Map<string, HarnessSession>();
+  // D157: each browser place's browser here, by task (the main reads its tool events).
+  const browsers = new Map<string, BrowserSidecar>();
   const harnessOf = new Map<string, string>(); // session key -> its AI agent (D156)
   // D142: the copy of a non-git folder lives here, beside the folder (folder.ts).
   const folders = createFolderStore({ root: join(o.dataDir, "snapshots") });
@@ -147,6 +157,35 @@ export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
     // D112: a waiter's check runs here when the task works on this device (read-only, validated
     // again here: the worker never trusts the main to have checked).
     check: (a) => runCheck(a.spec),
+    // D157: a browser place on this computer, with this computer's browsers and sign-ins.
+    async browser(a: { input?: Omit<SidecarInput, "dataDir"> }) {
+      const input = { ...(a.input as SidecarInput), dataDir: o.dataDir };
+      if (input.place?.kind !== "browser") throw new Error("not a browser place");
+      const sc = await browserSidecar(input, o.browser ?? {});
+      if (!sc) throw new Error("this browser place could not be prepared");
+      const old = browsers.get(input.taskId);
+      browsers.set(input.taskId, sc);
+      if (old && old !== sc) await old.close().catch(() => false);
+      return sidecarWire(sc);
+    },
+    async browserReady(a: { taskId?: unknown }) {
+      const sc = browsers.get(String(a.taskId ?? ""));
+      if (!sc) throw new Error("no browser for that task on this computer (it may have restarted)");
+      await sc.ready();
+      return {};
+    },
+    async browserClose(a: { taskId?: unknown }) {
+      const id = String(a.taskId ?? "");
+      const sc = browsers.get(id);
+      browsers.delete(id);
+      return { closed: sc ? await sc.close().catch(() => false) : false };
+    },
+    // D157: 上网 added or removed on this computer's card (from any window of the home).
+    async ability(a: { id?: unknown; on?: unknown }) {
+      if (a.id !== "web" || !o.abilities) return { ok: false, reason: "failed" };
+      return o.abilities.set("web", a.on === true);
+    },
+    ...(o.extraOps ?? {}),
   };
 
   let inCritical = 0;

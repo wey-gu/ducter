@@ -803,7 +803,7 @@ func (a *App) reasonLine(c *ui.Context, text string) {
 
 func (a *App) reasonText(reason string) string {
 	switch reason {
-	case "cua_missing", "cua_old", "env_off", "failed", "browser_deps":
+	case "cua_missing", "cua_old", "env_off", "failed", "browser_deps", "worker_old", "offline":
 		return a.L.T("ability.reason." + reason)
 	case "home_only":
 		return a.L.T("ability.reason.home_only", a.S.PersonaName)

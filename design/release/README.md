@@ -41,7 +41,8 @@ app to TestFlight. Pull requests and `main` run `.github/workflows/ci.yml`.
    first: `design/release/push-relay.md` (D159). No home needs a key of its own.
 
 After this, every release is: write its `CHANGELOG.md` section with its what's-new lines (below),
-bump the version, run the pre-release gate (below), commit, `git tag vX.Y.Z`, push the tag. An rc
+bump the version, rebuild the web bundle (`sh scripts/build-web.sh`: it embeds the version, and CI
+fails a stale one), run the pre-release gate (below), commit, `git tag vX.Y.Z`, push the tag. An rc
 tag is no exception: bump `packages/cli/package.json` to the rc version (`0.1.0-rc.2`) and commit
 before tagging `v0.1.0-rc.2`, or `meta` fails on the mismatch.
 

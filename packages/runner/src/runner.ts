@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { HARNESS_IDS, harnessName, type Attention, type Bodies, type BranchChanges, type Delivery, type EvidenceRef, type FolderChanges, type FolderSummary, type UndoConfirm, type LogEvent, type Place, type Residency, type TaskCard } from "@ducter/protocol";
+import { HARNESS_IDS, harnessName, type Attention, type Bodies, type BranchChanges, type Delivery, type EvidenceRef, type FolderChanges, type FolderSummary, type UndoConfirm, type LogEvent, type Place, type Residency, type TaskCard, type TaskNeeds } from "@ducter/protocol";
 import type { CoreApi, HarnessEvent, HarnessPort, HarnessSession, Runner, SessionSpec } from "@ducter/protocol/src/internal.ts";
 import { NUDGE, PRECOMPACT_NOTE, REOPENED, RESUME_AFTER_RESTART, SAVE_BEFORE_COMPACT, afterCompaction, briefTurn, handedOver, kickoff, noCopyAnswer, seedThen, startedAfresh, taskBrief } from "./brief.ts";
 import { resolveWindows, saveBeforeAt } from "@ducter/protocol/src/harness-facts.ts";
@@ -148,6 +148,16 @@ export function withBrowser(base: SessionSpec, sc: BrowserSidecar | undefined, p
   }
   if (h === "codex" && sc?.driver !== "native" && sc?.driver !== "ducter") spec.appendSystemPrompt = (spec.appendSystemPrompt ?? "") + codexComputerBrief(partnerName);
   return spec;
+}
+
+/**
+ * D157: the place on the computer the ranking picked. A repo or a folder stays on its own computer;
+ * work that browses gets a browser place there (its profile kept); anything else a place-less one.
+ */
+export function placeOn(p: Place | undefined, device: string, needs?: TaskNeeds): Place {
+  if (p?.kind === "repo" || p?.kind === "folder") return p;
+  if (p?.kind === "browser" || needs?.browse || needs?.signedIn) return { kind: "browser", device, profile: p?.kind === "browser" ? p.profile : "default" };
+  return { kind: "none", device };
 }
 
 /** D142: the ask before a task changes a folder Ducter couldn't copy (a report from the runner). */
@@ -904,9 +914,12 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     // Who does it (D89): the person's rules, the limits and Use it for tasks, through core's
     // chooser; a pick this runner can't run (or no device info) keeps the old default.
     const you = input.origin === "you"; // D128: the user opened it; a harness given is their pick
-    const picked = await core.bodies?.choose({ title: input.title, brief: input.brief, place: input.place, harness: input.harness, model: input.model, ...(you ? { by: "you" as const } : {}) });
+    const picked = await core.bodies?.choose({ title: input.title, brief: input.brief, place: input.place, harness: input.harness, model: input.model, ...(you ? { by: "you" as const } : {}), ...(input.needs ? { needs: input.needs } : {}) });
     if (picked && "none" in picked) throw new Error(picked.none);
     const pick = picked && HARNESSES.includes(picked.harness as HarnessId) ? picked : undefined;
+    // D157: the computer goes with who: the pick's computer becomes the place's (a repo or a
+    // folder stays where it is; browsing work gets a browser place there).
+    if (pick?.device) input = { ...input, place: placeOn(input.place, pick.device, input.needs) };
     // The pick's model goes with it (the card says what runs); a model the caller named for
     // another agent never rides along when the pick moved.
     if (pick) {
@@ -943,7 +956,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
     const fixed = h === "claude-code" ? (opts.defaultModel ?? opts.taskModel ?? process.env.DUCTER_TASK_MODEL) || undefined : undefined;
     const model = (ranked && fixed) || input.model || fixed;
     const later = typeof briefIn !== "string";
-    const body: Bodies["task_open"] = { taskId: id, title, project, place: resolved.place, harness: h, model, brief: later ? "" : briefIn, ...(input.language ? { language: input.language } : {}), ...(you ? { origin: "you" as const } : {}) };
+    const body: Bodies["task_open"] = { taskId: id, title, project, place: resolved.place, harness: h, model, brief: later ? "" : briefIn, ...(input.language ? { language: input.language } : {}), ...(you ? { origin: "you" as const } : {}), ...(input.needs && Object.keys(input.needs).length ? { needs: input.needs } : {}) };
     const opened = core.log.append({ persona, stream: stream(id), origin: "system", kind: "task_open", body });
     core.log.append({ persona, stream: stream(id), origin: "system", kind: "body_selected", body: { taskId: id, harness: h, ...(model ? { model } : {}), why: pick?.why ?? { kind: input.harness ? (you ? "you" : "partner") : "default" } } });
     const card: TaskCard = {

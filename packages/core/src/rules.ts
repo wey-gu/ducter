@@ -12,7 +12,7 @@ const MAX_RULES = 50;
 
 export interface RulesStore {
   list(): RuleView[];
-  add(r: { text: string; harness: string; model?: string; match: string[] }): RuleView;
+  add(r: { text: string; harness: string; model?: string; match: string[]; device?: string }): RuleView;
   remove(id: string): boolean;
   onChange(fn: () => void): () => void;
 }
@@ -46,7 +46,8 @@ export function openRules(dataDir: string, now: () => Date = () => new Date()): 
       if (!match.length) throw new Error("a rule needs at least one word that marks the kind of work");
       // The same kind of work said again: the newer rule replaces the older one (newest wins).
       rules = rules.filter((x) => !x.match.some((m) => match.includes(m)));
-      const rule: RuleView = { id: `rule_${randomBytes(5).toString("hex")}`, text, harness: r.harness, ...(r.model ? { model: r.model } : {}), match, createdAt: now().toISOString() };
+      const device = r.device?.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 64);
+      const rule: RuleView = { id: `rule_${randomBytes(5).toString("hex")}`, text, harness: r.harness, ...(r.model ? { model: r.model } : {}), match, createdAt: now().toISOString(), ...(device ? { device } : {}) };
       rules = [...rules, rule].slice(-MAX_RULES);
       save();
       return { ...rule };

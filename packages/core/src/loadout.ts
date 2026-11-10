@@ -1,10 +1,10 @@
 // Who does the tasks (D89): picks who does a new task (fw_candidates v0), lists who else could
 // (换谁来做 / Switch who does it), moves a task when the person switches it, keeps 你的规则 / Your
 // rules, and after two switches the same way asks the partner to offer a rule once.
-import type { Bodies, BodyWhy, Candidate, DeviceHarness, LogEvent, Place } from "@ducter/protocol";
+import type { Bodies, Candidate, DeviceHarness, LogEvent, Place, TaskNeeds } from "@ducter/protocol";
 import { harnessName } from "@ducter/protocol";
-import type { LogStore, Runner } from "@ducter/protocol/src/internal.ts";
-import { blockOf, chooseBody, fwCandidates } from "./candidates.ts";
+import type { BodyChoice, LogStore, Runner } from "@ducter/protocol/src/internal.ts";
+import { blockOf, chooseBody, computersOf, fwCandidates, type Computer } from "./candidates.ts";
 import type { DevicesView } from "./devices.ts";
 import type { CoreMcpHub } from "./mcp.ts";
 import { taskStream, type CoreRegistry } from "./registry.ts";
@@ -18,10 +18,13 @@ export const RULE_HINT_SUFFIX = "_rule_hint";
 
 export interface Loadout {
   /** Who does a new task: the pick and why, "none" with a reason when nobody can, undefined without device info. */
-  choose(work: { title: string; brief?: string; place?: Place; harness?: string; model?: string; by?: "you" }): Promise<{ harness: string; model?: string; why: BodyWhy } | { none: string } | undefined>;
+  choose(work: { title: string; brief?: string; place?: Place; harness?: string; model?: string; by?: "you"; needs?: TaskNeeds }): Promise<BodyChoice | { none: string } | undefined>;
   candidates(taskId: string): Promise<Candidate[]>;
-  /** D128: who could do new work at this place, best first (the New task card's 谁来做 / Who does it). */
-  candidatesFor(work: { title: string; brief?: string; place?: Place }): Promise<Candidate[]>;
+  /** D128: who could do new work at this place, best first (the New task card's 谁来做 / Who does it).
+   *  D157: with two or more computers, on every computer (anyComputer: a No folder card). */
+  candidatesFor(work: { title: string; brief?: string; place?: Place; needs?: TaskNeeds }): Promise<Candidate[]>;
+  /** D157: the computers that run tasks, as the ranking sees them (undefined without device info). */
+  computers(): Promise<Computer[] | undefined>;
   /** 换到 X 接着做 / Continue on X. */
   switchTask(taskId: string, harness: string, model: string | undefined, runner: Runner | undefined): Promise<{ ok: boolean; message?: string }>;
 }
@@ -32,7 +35,23 @@ export function createLoadout(o: {
   settings: SettingsStore;
   rules: RulesStore;
   devices: () => DevicesView | undefined;
+  /** D157: the sites Ducter's own browser on a computer is signed in to. */
+  sites?: (deviceId: string) => string[];
 }): Loadout {
+  /** D157: every computer that runs tasks, from the devices frame. */
+  const computers = async (): Promise<Computer[] | undefined> => {
+    const v = o.devices();
+    if (!v) return undefined;
+    const f = await v.frame().catch((err) => (console.warn("[loadout] devices:", (err as Error).message), undefined));
+    if (!f) return undefined;
+    return computersOf(f.devices, o.sites);
+  };
+  /** A computer the user named in the place (not the home's "local" default), for a place that can go anywhere. */
+  const pinOf = (place?: Place) => {
+    if (!place || place.kind === "repo" || place.kind === "folder") return undefined;
+    const d = place.device?.trim();
+    return d && d !== "local" ? d : undefined;
+  };
   /** The AI agents on the device a task runs on (home unless the place names a worker). */
   const harnessesFor = async (device?: string): Promise<DeviceHarness[] | undefined> => {
     const v = o.devices();
@@ -46,12 +65,21 @@ export function createLoadout(o: {
   };
 
   const api: Loadout = {
+    computers,
+
     async choose(work) {
-      const hs = await harnessesFor(work.place && "device" in work.place ? work.place.device : undefined);
-      if (!hs) return undefined;
+      const comps = await computers();
+      // D157: two or more computers: one ranking over all of them, from what the task needs.
+      const multi = comps && comps.length > 1 && comps.some((c) => c.harnesses.length);
+      const hs = multi ? [] : await harnessesFor(work.place && "device" in work.place ? work.place.device : undefined);
+      if (!multi && !hs) return undefined;
+      const pinDevice = pinOf(work.place);
       const pick = chooseBody({
         work,
-        harnesses: hs,
+        ...(multi ? { computers: comps } : { harnesses: hs }),
+        ...(work.needs ? { needs: work.needs } : {}),
+        ...(work.place ? { place: work.place } : {}),
+        ...(pinDevice ? { pinDevice } : {}),
         settings: o.settings.get(),
         rules: o.rules.list(),
         ...(work.harness ? { pinned: { harness: work.harness, ...(work.model ? { model: work.model } : {}) } } : {}),
@@ -60,11 +88,18 @@ export function createLoadout(o: {
       // The person's own pick can't run: their one line, never a silent move.
       if (pick && "problem" in pick) return { none: pick.problem };
       if (pick) return pick;
-      const why = hs.map((h) => `${harnessName(h.harness)}: ${blockOf(h, o.settings.get()) ?? "ok"}`).join(", ");
+      const why = (multi ? comps!.flatMap((c) => c.harnesses.map((h) => ({ h, on: c.name }))) : (hs ?? []).map((h) => ({ h, on: "" })))
+        .map(({ h, on }) => `${harnessName(h.harness)}${on ? ` on ${on}` : ""}: ${blockOf(h, o.settings.get()) ?? "can't do what this task needs there"}`)
+        .join(", ");
       return { none: `no AI agent can take this task right now (${why}). Tell the user in one line and offer what would make one available.` };
     },
 
     async candidatesFor(work) {
+      const comps = await computers();
+      if (comps && comps.length > 1) {
+        const pinDevice = pinOf(work.place);
+        return fwCandidates({ work, computers: comps, ...(work.place ? { place: work.place } : {}), ...(work.needs ? { needs: work.needs } : {}), ...(pinDevice ? { pinDevice } : {}), settings: o.settings.get(), rules: o.rules.list() });
+      }
       const hs = (await harnessesFor(work.place && "device" in work.place ? work.place.device : undefined)) ?? [];
       return fwCandidates({ work, harnesses: hs, settings: o.settings.get(), rules: o.rules.list() });
     },
@@ -74,13 +109,30 @@ export function createLoadout(o: {
       if (!card) throw new Error(`unknown task ${taskId}`);
       // The latest: a task opened before its brief was written logs the brief in a second one (D120).
       const open = o.log.read({ stream: taskStream(taskId), kinds: ["task_open"], limit: 1000 }).at(-1)?.body as Bodies["task_open"] | undefined;
+      const comps = await computers();
+      const current = { harness: card.harness, ...(card.model ? { model: card.model } : {}) };
+      if (comps && comps.length > 1) {
+        // D157: who and where together (the switch sheet groups by computer). The task keeps its
+        // needs; a browser place needs a browser wherever it goes.
+        const sel = o.log.read({ stream: taskStream(taskId), kinds: ["body_selected"], limit: 1000 }).at(-1)?.body as Bodies["body_selected"] | undefined;
+        const device = card.place.device || "local";
+        return fwCandidates({
+          work: { title: card.title, brief: open?.brief },
+          computers: comps,
+          place: card.place,
+          ...(open?.needs ? { needs: open.needs } : {}),
+          settings: o.settings.get(),
+          rules: o.rules.list(),
+          current: { ...current, device, ...(sel?.why.where?.uses === "chrome" || sel?.why.where?.uses === "ducter" ? { uses: sel.why.where.uses } : {}) },
+        });
+      }
       const hs = (await harnessesFor("device" in card.place ? card.place.device : undefined)) ?? [];
       return fwCandidates({
         work: { title: card.title, brief: open?.brief },
         harnesses: hs,
         settings: o.settings.get(),
         rules: o.rules.list(),
-        current: { harness: card.harness, ...(card.model ? { model: card.model } : {}) },
+        current,
       });
     },
 
@@ -149,17 +201,19 @@ export function registerRuleTools(mcp: CoreMcpHub, rules: RulesStore) {
         text: { type: "string", description: 'The rule in one line, in the user\'s language, as "<kind of work> → <AI agent>", e.g. "后端的事 → Codex" or "Interface work → Claude Code"' },
         harness: { type: "string", enum: ["claude-code", "codex", "pi", "deepseek-harness"] },
         model: { type: "string", description: "Only when the user named a model" },
+        device: { type: "string", description: "D157: only when the rule names a computer (\"要登录的网页都在 MacBook 上做\"): its name from the [devices] line" },
         match: { type: "array", items: { type: "string" }, description: "3–10 words that mark this kind of work in a task title or brief, in both Chinese and English (e.g. [\"后端\", \"backend\", \"api\", \"server\"])" },
       },
       required: ["text", "harness", "match"],
     },
-    async (a: { text?: unknown; harness?: unknown; model?: unknown; match?: unknown }) => {
+    async (a: { text?: unknown; harness?: unknown; model?: unknown; match?: unknown; device?: unknown }) => {
       try {
         const r = rules.add({
           text: String(a.text ?? ""),
           harness: String(a.harness ?? ""),
           ...(typeof a.model === "string" && a.model.trim() ? { model: a.model.trim() } : {}),
           match: Array.isArray(a.match) ? a.match.map(String) : [],
+          ...(typeof a.device === "string" && a.device.trim() ? { device: a.device.trim() } : {}),
         });
         return { ok: true, rule: r, note: "Saved. It shows on the Partner page under Your rules." };
       } catch (err) {

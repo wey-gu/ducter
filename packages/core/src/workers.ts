@@ -252,16 +252,24 @@ export function createWorkers(opts: {
       return stateFor(d).link;
     },
     list(): WorkerInfo[] {
-      return [...live.values()]
-        .filter((l) => l.hello)
-        .map(({ ws, hello }) => ({
-          id: ws.data.device.id,
-          name: ws.data.device.name,
-          online: true,
-          ...(hello!.os ? { os: hello!.os } : {}),
-          ...(hello!.arch ? { arch: hello!.arch } : {}),
-          ...(hello!.harnesses ? { harnesses: hello!.harnesses } : {}),
-        }));
+      const info = (id: string, name: string, online: boolean, hello: WorkerHello, asleep?: boolean): WorkerInfo => {
+        const web = hello.abilities?.find((a) => a.id === "web");
+        return {
+          id,
+          name,
+          online,
+          ...(asleep ? { asleep: true } : {}),
+          ...(hello.os ? { os: hello.os } : {}),
+          ...(hello.arch ? { arch: hello.arch } : {}),
+          ...(hello.harnesses ? { harnesses: hello.harnesses } : {}),
+          ...(web?.state === "on" && web.where ? { web: web.where } : {}),
+          ...(hello.alwaysOn != null ? { alwaysOn: hello.alwaysOn } : hello.kind ? { alwaysOn: hello.kind !== "laptop" } : {}),
+        };
+      };
+      const up = [...live.values()].filter((l) => l.hello).map(({ ws, hello }) => info(ws.data.device.id, ws.data.device.name, true, hello!));
+      // D157: a worker that is away still runs tasks when it's back (asleep: a task can wait for it).
+      const away = [...gone.entries()].filter(([id, g]) => g.hello && !live.has(id)).map(([id, g]) => info(id, states.get(id)?.device.name ?? g.hello!.name ?? id, false, g.hello!, g.asleep));
+      return [...up, ...away];
     },
     websocket: {
       open(ws) {

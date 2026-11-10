@@ -5,7 +5,7 @@
 export * from "./harnesses.ts";
 import type { HarnessId } from "./harnesses.ts";
 export * from "./loadout.ts";
-import type { BodyWhy, Candidate, RuleView, TaskBody } from "./loadout.ts";
+import type { BodyWhy, Candidate, RuleView, TaskBody, TaskNeeds } from "./loadout.ts";
 
 // ---------- States (design/focus-window-states.md) ----------
 
@@ -163,6 +163,8 @@ export interface Bodies {
     // D128: "you" = the user opened it themselves (开一件事 / New task, `ducter task`); the brief
     // is their words as they are. Absent = the partner opened it.
     origin?: "you";
+    // D157: what the task needs of its computer (kept so a move or a switch keeps them).
+    needs?: TaskNeeds;
   };
   task_state: { taskId: string; attention: Attention; residency: Residency; reason?: string };
   // Who does the task and why (D89, focus-window.md "Choosing a body"): appended when it opens

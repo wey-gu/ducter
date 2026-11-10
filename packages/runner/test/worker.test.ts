@@ -197,6 +197,33 @@ test("D157: a browser place on a worker Mac runs there, in the user's Chrome thr
   await runner.dispose();
 });
 
+test("D157: the pick's computer becomes the place's: needs browse on the MacBook makes a browser place there, logged with why", async () => {
+  const seen = { options: [] as any[] };
+  const w = fakeWorker(
+    async (t) => {
+      await t.tool("mcp__ducter__report_to_main", "{}", () => core.call("report_to_main", { state: "done", summary: "ok" }, "tskwhere1"));
+    },
+    seen,
+    { browser: { env: {}, nativeProbe: async () => "claude-in-chrome" } },
+  );
+  core.workers = { link: (d) => (d === "MacBook" ? w.link : undefined), list: () => [] };
+  const asked: any[] = [];
+  core.bodies = {
+    choose: async (work) => (asked.push(work), { harness: "claude-code", why: { kind: "default", where: { device: "MacBook", kind: "signed_in", site: "taobao.com", uses: "chrome" } }, device: "MacBook", deviceId: "w1", uses: "chrome" }),
+  };
+  const runner = createRunner(core, { newId: () => "tskwhere1" });
+  const card = await runner.openTask({ persona: "p1", title: "淘宝订单", brief: "看看到哪了", needs: { signedIn: true, site: "taobao.com" } });
+  expect(asked[0].needs).toEqual({ signedIn: true, site: "taobao.com" });
+  expect(card.place).toEqual({ kind: "browser", device: "MacBook", profile: "default" });
+  await runner.whenStarted(card.taskId);
+  await waitFor(() => core.tasks.get(card.taskId)?.attention === "done_claimed", "done");
+  const open = core.events.find((e) => e.kind === "task_open")!.body as Bodies["task_open"];
+  expect(open.needs).toEqual({ signedIn: true, site: "taobao.com" });
+  const sel = core.events.find((e) => e.kind === "body_selected")!.body as Bodies["body_selected"];
+  expect(sel.why.where).toMatchObject({ device: "MacBook", kind: "signed_in" });
+  await runner.dispose();
+});
+
 test("D157: a worker without a browser says why, in words the partner can pass on", async () => {
   const w = fakeWorker(() => {}, { options: [] }, { browser: { env: { DUCTER_BROWSER: "0" } } });
   core.workers = { link: (d) => (d === "vps-2" ? w.link : undefined), list: () => [] };

@@ -4,7 +4,7 @@
 //   runner  owns: HarnessPort over OAR, worktrees, task sessions, event normalization.
 //   partner owns: the main AI (persona prompt, projection, turn loop) on any first-wave harness (D85) via runner's HarnessPort.
 import type { HarnessId } from "./harnesses.ts";
-import type { Attention, Bodies, BodyWhy, BranchChanges, Delivery, FolderChanges, UndoConfirm, EventKind, LogEvent, OnHand, Origin, PartnerActivity, Place, Residency, Settings, TaskCard } from "./index.ts";
+import type { Attention, Bodies, BodyWhy, BranchChanges, Delivery, FolderChanges, UndoConfirm, EventKind, LogEvent, OnHand, Origin, PartnerActivity, Place, Residency, Settings, TaskCard, TaskNeeds } from "./index.ts";
 
 // ---------- core ----------
 
@@ -126,7 +126,23 @@ export interface CoreApi {
  */
 export interface BodyChooser {
   // by "you": the user picked harness/model themselves (D128 New task): the pin's why says so.
-  choose(work: { title: string; brief?: string; place?: Place; harness?: string; model?: string; by?: "you" }): Promise<{ harness: string; model?: string; why: BodyWhy } | { none: string } | undefined>;
+  // D157: needs say what the task needs of its computer; the pick says which computer (device:
+  // its name, "local" for the home), whether it waits there, and what it uses.
+  choose(work: { title: string; brief?: string; place?: Place; harness?: string; model?: string; by?: "you"; needs?: TaskNeeds }): Promise<BodyChoice | { none: string } | undefined>;
+}
+
+/** D157: who does a new task, on which computer, and why. */
+export interface BodyChoice {
+  harness: string;
+  model?: string;
+  why: BodyWhy;
+  device?: string;
+  deviceId?: string;
+  home?: boolean;
+  waits?: "asleep" | "unreachable";
+  uses?: "chrome" | "ducter";
+  needsSignIn?: boolean;
+  now?: { device: string; deviceId: string; harness: string; model?: string; uses?: "chrome" | "ducter"; needsSignIn?: boolean };
 }
 
 /** Who is calling into a connection: the partner, or one task (which must have been granted it). */
@@ -191,6 +207,12 @@ export interface WorkerInfo {
   os?: string;
   arch?: string;
   harnesses?: { id: string; installed: boolean; loggedIn: boolean }[];
+  /** D157: it said it was going to sleep before its socket went (online false). */
+  asleep?: boolean;
+  /** D157: how it browses for tasks (its 上网), when it is on. */
+  web?: "chrome" | "ducter";
+  /** D157: it doesn't sleep. */
+  alwaysOn?: boolean;
 }
 
 /** The main's handle on one worker. Stable across reconnects. */
@@ -308,11 +330,13 @@ export interface Runner {
   harness: HarnessPort;
   // language: the language the user reads the task's report in (from the conversation or their setting).
   // origin "you" (D128): the user opened it themselves; logged on task_open, and a harness given is their pick.
-  openTask(input: { persona: string; title: string; brief: string; place?: Place; project?: string; harness?: string; model?: string; language?: "zh" | "en"; origin?: "you" }): Promise<TaskCard>;
+  // needs (D157): what the task needs of its computer; Ducter picks the computer (a place.device
+  // the user named stays a pin).
+  openTask(input: { persona: string; title: string; brief: string; place?: Place; project?: string; harness?: string; model?: string; language?: "zh" | "en"; origin?: "you"; needs?: TaskNeeds }): Promise<TaskCard>;
   // Optional (D120, ack and go): open a task while its brief is still being written. The card,
   // the place and the session start now; the brief becomes the session's first turn when it
   // settles. If it rejects, the task is dropped before it did anything.
-  openTaskEarly?(input: { persona: string; title: string; place?: Place; project?: string; harness?: string; model?: string; language?: "zh" | "en" }, brief: Promise<string>): Promise<TaskCard>;
+  openTaskEarly?(input: { persona: string; title: string; place?: Place; project?: string; harness?: string; model?: string; language?: "zh" | "en"; needs?: TaskNeeds }, brief: Promise<string>): Promise<TaskCard>;
   // Logs the text as task_event {role:"user", from, clientId} before delivering it.
   send(taskId: string, text: string, mode?: "steer" | "queue", from?: "user" | "partner", clientId?: string): Promise<{ delivered: Delivery }>;
   interrupt(taskId: string): Promise<void>;

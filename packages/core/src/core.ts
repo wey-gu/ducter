@@ -39,6 +39,9 @@ import { bundledPiVersion, detectAgent, probeHarnesses } from "./harness-probe.t
 import { realSys, updateHow, type UpdateSys } from "./update.ts";
 import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 import { createDucterBrowser, type DucterBrowser, type DucterBrowserOptions } from "./browser/index.ts";
+import { readSites } from "./browser/sites.ts";
+import { workerProfile } from "./browser/remote.ts";
+import { profileName } from "@ducter/protocol/src/browser-profile.ts";
 
 declare const DUCTER_COMMIT: string | undefined; // set by packages/cli/build.sh via --define
 /** The build this core runs ("dev" from a checkout): /health says it, so Ducter.app can tell a background
@@ -267,7 +270,17 @@ export function startCore(opts: CoreOptions = {}): Core {
       ? undefined
       : createDucterBrowser({ dataDir, mcp, log, tasks, decisions, persona: persona.id, device: () => opts.update?.homeName ?? osHostname().replace(/\.local$/, ""), ...(opts.platform ? { platform: opts.platform } : {}), lang: () => (settings.get().language === "zh" ? "zh-CN" : "en-US"), workers: () => workersRef, workerBrowserVersion: (id) => workersRef?.online().find((w) => w.deviceId === id)?.hello?.abilities?.find((a) => a.id === "web")?.detail, ...(opts.browser ?? {}) });
   let devicesView: DevicesView | undefined;
-  const loadout = createLoadout({ log, tasks, settings, rules, devices: () => devicesView });
+  // D157: the sites Ducter's own browser on each computer is signed in to (the ranking prefers the
+  // computer where the user already signed in, over their Chrome: least access that does the job).
+  const sitesOn = (deviceId: string) => {
+    const p = profileName(persona.id);
+    try {
+      return readSites(dataDir, deviceId === "local" ? p : workerProfile(deviceId, p)).map((s) => s.site);
+    } catch {
+      return [];
+    }
+  };
+  const loadout = createLoadout({ log, tasks, settings, rules, devices: () => devicesView, sites: sitesOn });
   const api = { log, tasks, mcp, persona, dataDir, settings, connections, bodies: loadout, spine: log.spine, ...(browser ? { browser: browser.port } : {}) } as CoreApi;
   // D150: the one helper (brain.ts) the runner and the settings frame share.
   api.partnerFallback = () => {

@@ -8,6 +8,11 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/update"
 )
 
+// otherMacWorker is the worker of another Mac than the card's.
+type otherMacWorker struct{ macWorkOn }
+
+func (o *otherMacWorker) On() (bool, string) { return o.on, "dev_mini" }
+
 // restartingWorker is this Mac's worker with the app's restart (main.go).
 type restartingWorker struct {
 	macWorkOn
@@ -72,6 +77,7 @@ func TestThisMacsWorkerUpdatesHere(t *testing.T) {
 		// Another Mac: open Ducter there.
 		app3 := sheetApp(t, lang, "awake")
 		app3.ThisComputer = "Mac mini"
+		app3.MacWorker = &otherMacWorker{macWorkOn{on: true}} // its own worker, not dev_mac (D187: matched by id)
 		app3.Receive(world("0.0.6"))
 		tt3 := sheetTester(app3, 1100, 1800, true)
 		if !tt3.HasText(L.T("devup.how.app", "MacBook")) {

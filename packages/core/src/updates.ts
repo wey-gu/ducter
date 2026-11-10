@@ -9,6 +9,7 @@ import { compareVersions, DUCTER_VERSION, isVersion } from "@ducter/protocol/src
 import { FRESH_MS, hasNotes, type Release, type ReleaseWatch } from "./release.ts";
 import { judgeResult, readResult, resultFile, runUpdate, writeResult, type Fail, type RunInput, type UpdateResult, type UpdateSys } from "./update.ts";
 import { inQuiet } from "./push.ts";
+import { askApp } from "./app-update.ts";
 
 /** How long 回来了 / Back stays on a card, and how long a failure does. */
 export const DONE_SHOWN_MS = 30 * 60_000;
@@ -43,7 +44,7 @@ export interface WorkerUpdateFrame {
 
 export interface WorkerSide {
   /** Online workers: id, name, version and how they update (from their hello). */
-  online(): { id: string; name: string; version?: string; how?: UpdateHow }[];
+  online(): { id: string; name: string; version?: string; how?: UpdateHow; asksApp?: boolean }[];
   /** Sends the update op; resolves with the worker's first answer (accepted or why not). */
   update(id: string, args: { to: string; explicit?: boolean }): Promise<{ ok: boolean; reason?: UpdateReason; detail?: string }>;
 }
@@ -65,6 +66,8 @@ export interface UpdatesDeps {
   settings?: () => Pick<Settings, "autoUpdate" | "quiet">;
   /** Tests: a fake run (the default runs update.ts's runUpdate). */
   run?: (i: RunInput) => ReturnType<typeof runUpdate>;
+  /** Tests: a fake ask of the app (D187; the default is app-update.ts's askApp). */
+  askApp?: typeof askApp;
   version?: string;
   graceMs?: number;
   criticalWaitMs?: number;
@@ -75,8 +78,8 @@ export interface UpdatesDeps {
 }
 
 export interface Updates {
-  /** What a device's card shows. id "local" is the home. */
-  view(id: string, current: string | undefined, how: UpdateHow | undefined): DeviceUpdate | undefined;
+  /** What a device's card shows. id "local" is the home. asksApp: a worker that can ask its Mac's app (D187). */
+  view(id: string, current: string | undefined, how: UpdateHow | undefined, o?: { asksApp?: boolean }): DeviceUpdate | undefined;
   /** Update a device. Resolves once it is under way (or refused); progress comes as changes. */
   start(id: string, o?: { to?: string; by?: "user" | "night" }): Promise<{ ok: true } | Fail>;
   /** A worker's update frame (its socket) or the result in its hello. */
@@ -202,7 +205,7 @@ export function createUpdates(d: UpdatesDeps): Updates {
   // This Ducter itself, newer than the last answer (a home updated by hand).
   queueMicrotask(() => sawVersion(version));
 
-  function view(id: string, current: string | undefined, how: UpdateHow | undefined): DeviceUpdate | undefined {
+  function view(id: string, current: string | undefined, how: UpdateHow | undefined, vo: { asksApp?: boolean } = {}): DeviceUpdate | undefined {
     if (!current) return undefined;
     if (id === "local") absorb();
     sawVersion(current);
@@ -213,6 +216,8 @@ export function createUpdates(d: UpdatesDeps): Updates {
       current,
       available,
       how: how ?? "source",
+      // D187: this home asks the app it lives in; a worker says whether it can.
+      ...(how === "app" && (id === "local" || vo.asksApp) ? { fromHere: true } : {}),
       ...(latest ? { latest } : {}),
       ...(available && hasNotes(rel?.notes) ? { notesBy: rel!.notes } : {}),
       ...(available && rel?.security ? { security: true } : {}),
@@ -259,6 +264,7 @@ export function createUpdates(d: UpdatesDeps): Updates {
   }
 
   async function startHome(to: string, explicit: boolean): Promise<{ ok: true } | Fail> {
+    if (d.self.how === "app") return startViaApp(to);
     if (d.self.how !== "self") return { ok: false, reason: d.self.how };
     const name = d.name();
     const run = d.run ?? ((i: RunInput) => runUpdate(d.sys, i));
@@ -290,6 +296,42 @@ export function createUpdates(d: UpdatesDeps): Updates {
     return { ok: true };
   }
 
+  /**
+   * D187: this home lives in Ducter.app on a Mac: the app updates it (app-update.ts). Refused at
+   * once when the app isn't open; else the steps show as the app takes them, and the restart
+   * waits for the safe point (settle) like the home's own.
+   */
+  async function startViaApp(to: string): Promise<{ ok: true } | Fail> {
+    const name = d.name();
+    const ask = d.askApp ?? askApp;
+    const sys = { now, sleep: (ms: number) => d.sys.sleep(ms) };
+    let first: ((v: { ok: true } | Fail) => void) | undefined;
+    const answered = new Promise<{ ok: true } | Fail>((r) => (first = r));
+    void ask({
+      dataDir: d.dataDir,
+      current: version,
+      to,
+      sys,
+      settle,
+      onPhase: (phase, progress) => {
+        first?.({ ok: true });
+        first = undefined;
+        set("local", name, { phase, from: version, to, ...(progress !== undefined ? { progress } : {}) }, phase === "downloading" && states.get("local")?.phase === "downloading");
+      },
+      onAfter: (f) => set("local", name, { phase: "failed", from: version, to, reason: f.reason, ...(f.detail ? { detail: f.detail } : {}), rolledBack: false }),
+    }).then((out) => {
+      if (out.ok) return;
+      d.holdCritical?.(undefined);
+      if (first) {
+        first(out); // refused before any step: nothing was started, the asker hears why
+        first = undefined;
+        return;
+      }
+      set("local", name, { phase: "failed", from: version, to, reason: out.reason, ...(out.detail ? { detail: out.detail } : {}), rolledBack: false });
+    });
+    return answered;
+  }
+
   async function start(id: string, o: { to?: string; by?: "user" | "night" } = {}): Promise<{ ok: true } | Fail> {
     if (running(id)) return { ok: false, reason: "running" };
     let to = o.to;
@@ -302,7 +344,7 @@ export function createUpdates(d: UpdatesDeps): Updates {
     const ws = d.workers?.();
     const w = ws?.online().find((x) => x.id === id || x.name === id);
     if (!ws || !w) return { ok: false, reason: "offline" };
-    if (w.how && w.how !== "self") return { ok: false, reason: w.how };
+    if (w.how && w.how !== "self" && !(w.how === "app" && w.asksApp)) return { ok: false, reason: w.how };
     const from = w.version ?? "?";
     if (!o.to && w.version && compareVersions(to, w.version) <= 0) return { ok: false, reason: "no_release", detail: `already on ${w.version}` };
     const res = await ws.update(w.id, { to, explicit: Boolean(o.to) }).catch((err) => ({ ok: false, reason: "offline" as UpdateReason, detail: (err as Error).message }));

@@ -142,10 +142,12 @@ const HOME = new Set(["status", "say", "task", "tail", "answer", "merge", "undo"
 /**
  * machine: acts on this computer, whatever the CLI follows. home: goes to the Ducter the CLI
  * follows. self: the CLI itself (help, version, connect, disconnect). `update` updates this
- * machine; `update --all` updates the home and the computers that do tasks for it.
+ * machine; `update --all` updates the home and the computers that do tasks for it; `update
+ * --check` says where every computer of the home stands (D187: on a computer that does tasks
+ * for a home elsewhere, it asked nobody and listed only itself).
  */
-export function commandClass(command: string, o: { all?: boolean } = {}): CommandClass {
-  if (command === "update") return o.all ? "home" : "machine";
+export function commandClass(command: string, o: { all?: boolean; check?: boolean } = {}): CommandClass {
+  if (command === "update") return o.all || o.check ? "home" : "machine";
   if (MACHINE.has(command)) return "machine";
   if (HOME.has(command)) return "home";
   return "self";

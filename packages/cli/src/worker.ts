@@ -150,6 +150,8 @@ export async function cmdWorker(o: { t: T; style: Style; args: Args; dataDir: st
     harnesses: await probeHarnesses(t, o.dataDir),
     // D148: how this computer updates, and how its last update went (once, after its restart).
     how: updateHow({ compiled: isCompiled(), platform: platform(), execPath: process.execPath }),
+    // D187: a Mac's worker asks its app to update (the phone's 更新 reaches it).
+    asksApp: updateHow({ compiled: isCompiled(), platform: platform(), execPath: process.execPath }) === "app",
     ...((u) => (u ? { update: u } : {}))(lastOutcome(o.dataDir, { version: pkg.version })),
   };
   // DUCTER_SCRIPTED_MODEL=1: canned model words, real tools (scripted.ts), for demos and e2e.

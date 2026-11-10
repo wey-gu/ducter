@@ -1214,18 +1214,21 @@ type DeviceUpdate struct {
 	Available bool   `json:"available"`
 	// NotesBy is what's new per language ("zh", "en"), short whole lines;
 	// a card shows its own language's and none otherwise (D172).
-	NotesBy    map[string][]string `json:"notesBy,omitempty"`
-	Security   bool                `json:"security,omitempty"`
-	How        string              `json:"how"`
-	Phase      string              `json:"phase,omitempty"`
-	Progress   float64             `json:"progress,omitempty"`
-	From       string              `json:"from,omitempty"`
-	To         string              `json:"to,omitempty"`
-	Reason     string              `json:"reason,omitempty"`
-	Detail     string              `json:"detail,omitempty"`
-	RolledBack bool                `json:"rolledBack,omitempty"`
-	At         string              `json:"at,omitempty"`
-	CheckedAt  string              `json:"checkedAt,omitempty"`
+	NotesBy  map[string][]string `json:"notesBy,omitempty"`
+	Security bool                `json:"security,omitempty"`
+	How      string              `json:"how"`
+	// FromHere (D187): how "app", and that Mac's Ducter asks its app to
+	// update when any client taps 更新.
+	FromHere   bool    `json:"fromHere,omitempty"`
+	Phase      string  `json:"phase,omitempty"`
+	Progress   float64 `json:"progress,omitempty"`
+	From       string  `json:"from,omitempty"`
+	To         string  `json:"to,omitempty"`
+	Reason     string  `json:"reason,omitempty"`
+	Detail     string  `json:"detail,omitempty"`
+	RolledBack bool    `json:"rolledBack,omitempty"`
+	At         string  `json:"at,omitempty"`
+	CheckedAt  string  `json:"checkedAt,omitempty"`
 }
 
 // Running reports an update under way (not yet done or failed).

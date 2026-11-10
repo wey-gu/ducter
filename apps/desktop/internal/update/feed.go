@@ -19,6 +19,16 @@ import (
 // address, and the app asks once at launch and once a day.
 const DefaultFeed = "https://api.github.com/repos/wey-gu/ducter/releases/latest"
 
+// DefaultPage is the release page that redirects to the newest tag, and
+// DefaultDownload where a tag's files are. Neither is GitHub's API, so
+// neither shares its 60-an-hour limit with every other unauthenticated
+// caller behind the same address (D187): when the API refuses, the
+// version comes from the redirect and the files from their tag.
+const (
+	DefaultPage     = "https://github.com/wey-gu/ducter/releases/latest"
+	DefaultDownload = "https://github.com/wey-gu/ducter/releases/download"
+)
+
 // Release is what the feed says about the newest version.
 type Release struct {
 	Version string // without the "v"
@@ -35,9 +45,14 @@ type Asset struct {
 }
 
 // ErrNoFeed means there is nothing to read yet: the repository is private
-// (GitHub answers 404 to an anonymous caller), has no published release, or
-// is rate limited. Not a failure the person needs to see.
+// (GitHub answers 404 to an anonymous caller) or has no published release.
+// Not a failure the person needs to see. A rate limit is not this (D187):
+// it says nothing about whether a release is out.
 var ErrNoFeed = errors.New("no public release feed")
+
+// ErrRateLimited: GitHub's API refused an anonymous caller (403/429), most
+// often because others behind the same address used up its hourly 60.
+var ErrRateLimited = errors.New("GitHub's API is rate limited")
 
 // maxFeed bounds what is read from the API and from SHA256SUMS.txt.
 const maxFeed = 1 << 20
@@ -60,8 +75,11 @@ func FetchRelease(ctx context.Context, hc *http.Client, feed, arch string) (Rele
 	body, err := get(ctx, hc, feed, maxFeed)
 	if err != nil {
 		var se statusError
-		if errors.As(err, &se) && (se.code == http.StatusNotFound || se.code == http.StatusForbidden || se.code == http.StatusTooManyRequests) {
+		if errors.As(err, &se) && se.code == http.StatusNotFound {
 			return Release{}, fmt.Errorf("%w (%s)", ErrNoFeed, se.status)
+		}
+		if errors.As(err, &se) && (se.code == http.StatusForbidden || se.code == http.StatusTooManyRequests) {
+			return Release{}, fmt.Errorf("%w (%s)", ErrRateLimited, se.status)
 		}
 		return Release{}, err
 	}
@@ -92,6 +110,94 @@ func FetchRelease(ctx context.Context, hc *http.Client, feed, arch string) (Rele
 		return r, fmt.Errorf("release %s has no SHA256SUMS.txt", r.Version)
 	}
 	return r, nil
+}
+
+// Source is where the newest release is read: the API document, else the
+// release page's redirect, and where a tag's files are.
+type Source struct {
+	Feed     string
+	Page     string // "": no fallback (a test feed)
+	Download string
+}
+
+// Latest is the newest release for arch (D187). The API answers first; when
+// it can't (a rate limit, an error, no answer) the version comes from the
+// release page's redirect, else from hint (a newer version the home knows
+// of), and the files from that tag's download address. A hint newer than
+// what the page says wins too (the page can lag by a minute). Whatever
+// names the version, the disk image must match the tag's SHA256SUMS.txt
+// and be signed by this app's own team before it is offered, so a wrong
+// hint can at most fetch a genuine release that then doesn't check out.
+func Latest(ctx context.Context, hc *http.Client, src Source, arch, hint string) (Release, error) {
+	r, err := FetchRelease(ctx, hc, src.Feed, arch)
+	if err == nil {
+		if Compare(hint, r.Version) > 0 && src.Download != "" {
+			return ByTag(src.Download, strings.TrimPrefix(hint, "v"), arch), nil
+		}
+		return r, nil
+	}
+	if r.Version != "" {
+		return r, err // the API answered: that release has no image for this Mac
+	}
+	if errors.Is(err, ErrNoFeed) && hint == "" {
+		return r, err
+	}
+	v := ""
+	if src.Page != "" {
+		if tag, perr := LatestTag(ctx, hc, src.Page); perr == nil {
+			v = tag
+		}
+	}
+	if _, ok := parse(hint); ok && Compare(hint, v) > 0 {
+		v = strings.TrimPrefix(hint, "v")
+	}
+	if v == "" || src.Download == "" {
+		return Release{}, err
+	}
+	return ByTag(src.Download, v, arch), nil
+}
+
+// ByTag is release v's files at their download address, without the API.
+func ByTag(download, v, arch string) Release {
+	d := strings.TrimRight(download, "/")
+	base := d + "/v" + v + "/"
+	dmg := "Ducter-" + v + "-" + arch + ".dmg"
+	page := strings.Replace(d, "/releases/download", "/releases/tag", 1) + "/v" + v
+	return Release{Version: v, Page: page, DMG: Asset{Name: dmg, URL: base + dmg}, Sums: Asset{Name: "SHA256SUMS.txt", URL: base + "SHA256SUMS.txt"}}
+}
+
+// LatestTag reads the version the release page redirects to
+// (…/releases/tag/v0.0.13), without following it.
+func LatestTag(ctx context.Context, hc *http.Client, page string) (string, error) {
+	u, err := url.Parse(page)
+	if err != nil {
+		return "", err
+	}
+	if u.Scheme != "https" && !(u.Scheme == "http" && loopback(u.Hostname())) {
+		return "", fmt.Errorf("refusing %s: updates come over HTTPS", page)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, page, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("User-Agent", "Ducter-updater")
+	c := *hc
+	c.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	resp, err := c.Do(req)
+	if err != nil {
+		return "", err
+	}
+	resp.Body.Close()
+	loc := resp.Header.Get("Location")
+	i := strings.LastIndex(loc, "/releases/tag/")
+	if resp.StatusCode/100 != 3 || i < 0 {
+		return "", fmt.Errorf("GET %s: %s, no release tag", page, resp.Status)
+	}
+	v := strings.TrimPrefix(loc[i+len("/releases/tag/"):], "v")
+	if _, ok := parse(v); !ok {
+		return "", fmt.Errorf("the release page points at %q, not a version", loc)
+	}
+	return v, nil
 }
 
 // ExpectedSum fetches SHA256SUMS.txt and returns the sum listed for name.

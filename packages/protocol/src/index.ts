@@ -1080,9 +1080,12 @@ export type UpdatePhase = "downloading" | "verifying" | "waiting" | "restarting"
  * busy: a merge or an undo kept running; health: the new one didn't come up (rolled back);
  * downgrade: older than this one without an explicit version; not_writable: its folder can't be
  * written; app / source: updated another way (how); offline: the device isn't connected;
- * running: an update is already under way; failed: anything else (detail).
+ * running: an update is already under way; failed: anything else (detail). D187, a Mac that
+ * updates with its app, asked from elsewhere: app_closed = Ducter isn't open on that Mac (nothing
+ * was started); app_password = Ducter.app there was installed by an administrator, so its password
+ * is needed once, at that Mac.
  */
-export type UpdateReason = "network" | "no_release" | "no_asset" | "checksum" | "disk" | "selfcheck" | "busy" | "health" | "downgrade" | "not_writable" | "app" | "source" | "manual" | "offline" | "running" | "failed";
+export type UpdateReason = "network" | "no_release" | "no_asset" | "checksum" | "disk" | "selfcheck" | "busy" | "health" | "downgrade" | "not_writable" | "app" | "source" | "manual" | "offline" | "running" | "failed" | "app_closed" | "app_password";
 
 export interface DeviceUpdate {
   current: string;
@@ -1095,6 +1098,11 @@ export interface DeviceUpdate {
   notesBy?: { zh?: string[]; en?: string[] };
   security?: boolean; // the notes name a security fix
   how: UpdateHow;
+  /**
+   * D187: how "app", and this Mac's Ducter can ask its app to update (any client's 更新 does it:
+   * the app downloads and checks it, then restarts at the safe point). Absent: open the app there.
+   */
+  fromHere?: boolean;
   /** An update under way or just finished; absent when idle. */
   phase?: UpdatePhase;
   progress?: number; // downloading, 0..1

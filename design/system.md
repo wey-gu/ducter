@@ -528,6 +528,33 @@ with **重启它** (the worker's LaunchAgent restarted, D167's fix by hand). Onl
 Ducter on itself). `source`: from a
 checkout. `manual`: a worker that sent no `how` (before 0.0.4).
 
+**A Mac from any client (D187).** A Ducter that lives in Ducter.app (a worker whose hello says
+`asksApp`, or a Mac home) updates when any client taps 更新: the card carries `fromHere` and
+says **{Mac} 上的 Ducter 会下载、核对，等手头的事停好再重启。** The Ducter there asks the app
+through the data folder they share (`core/src/app-update.ts`, `desktop/internal/update/asks.go`):
+`updates/app-ask.json` (`{id, to, step: get | restart}`) from this side; `updates/app.json`
+(`{pid, current, state, version, progress, reason, canRestart, asked, at}`) from the app, on
+every change of its updater and every 15 s, removed as it quits. Get: the app fetches and checks
+`to` (D72's checks); the card shows downloading and verifying from the app's progress. Then the
+safe point (above), then restart: the app's Restart to update (the putting-in screen, D160),
+whose swap restarts that Mac's Ducter; `result.json` was written `{from, to, ok}` before, so the
+restarted one is judged by D167's rule, and a reopened app whose swap didn't take (its updater's
+`install` failure) makes the still-running Ducter say 没更新成. Refused at once, nothing started:
+no `app.json` fresher than 45 s (`app_closed`: the app is closed or the Mac asleep), an app
+installed by an administrator (`app_password`: no password prompt on an unattended Mac). The app
+already current with its Ducter on the old helper: only the restart (the helper's LaunchAgent).
+
+**The Mac app's own answer agrees with the home's (D187).** The app reads GitHub's API
+anonymously, whose 60 an hour are shared by everything on that address; a 403 or 429 is not
+"no releases": the app reads the release page's redirect for the version and the tag's download
+address for the files. The home's devices frame is a hint (`Updater.Hint`): when this Mac's row
+(matched by the worker's device id from `worker.json`, else the computer's name) says a newer
+version, the app checks now, once per version every 15 min, and fetches that version by tag if
+GitHub can't say; the image must still match the tag's `SHA256SUMS.txt` and this app's team.
+Only an answer is a check: a failed read keeps the last "checked" time and is tried again within
+the hour (**这次没查成 · GitHub 没应答，一小时内再试。**). `ducter update --check` goes to the
+home the CLI follows and lists every computer there.
+
 **The staged update** (`core/src/update.ts`, one path for the home, a worker and the CLI):
 
 | Step | What is checked |

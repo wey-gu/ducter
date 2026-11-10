@@ -130,7 +130,15 @@ type feed struct {
 	image   []byte
 	sums    string // overrides the right listing when set
 	status  int    // the API's answer, when not 200
+	// pageStatus: the release page's answer instead of its redirect.
+	pageStatus int
+	mu         sync.Mutex
+	pageHits   int
 }
+
+// fallback: the feed's release page and download address (D187).
+func (f *feed) page() string     { return f.srv.URL + "/wey-gu/ducter/releases/latest" }
+func (f *feed) download() string { return f.srv.URL + "/dl" }
 
 func newFeed(t *testing.T, version string, image []byte) *feed {
 	f := &feed{version: version, image: image}
@@ -149,8 +157,26 @@ func newFeed(t *testing.T, version string, image []byte) *feed {
 			},
 		})
 	})
+	// The release page redirects to the newest tag (D187's fallback).
+	mux.HandleFunc("/wey-gu/ducter/releases/latest", func(w http.ResponseWriter, r *http.Request) {
+		if f.pageStatus != 0 {
+			w.WriteHeader(f.pageStatus)
+			return
+		}
+		f.mu.Lock()
+		f.pageHits++
+		f.mu.Unlock()
+		http.Redirect(w, r, f.srv.URL+"/wey-gu/ducter/releases/tag/v"+f.version, http.StatusFound)
+	})
+	mux.HandleFunc("/wey-gu/ducter/releases/tag/", func(w http.ResponseWriter, r *http.Request) {
+		t.Error("the release page's redirect is read, never followed")
+	})
 	mux.HandleFunc("/dl/", func(w http.ResponseWriter, r *http.Request) {
-		name := strings.TrimPrefix(r.URL.Path, "/dl/")
+		name := filepath.Base(r.URL.Path) // /dl/<name>, or by tag: /dl/v<version>/<name>
+		if dir := filepath.Base(filepath.Dir(r.URL.Path)); dir != "dl" && dir != "v"+f.version {
+			http.NotFound(w, r)
+			return
+		}
 		if name == "SHA256SUMS.txt" {
 			if f.sums != "" {
 				fmt.Fprint(w, f.sums)
@@ -234,7 +260,7 @@ func TestUpToDateAndNoFeed(t *testing.T) {
 		t.Fatalf("404: %+v", st)
 	}
 	w.feed.status = http.StatusInternalServerError
-	if st := w.u.CheckNow(context.Background()); st.State != Failed || st.Reason != ReasonNetwork {
+	if st := w.u.CheckNow(context.Background()); st.State != Failed || st.Reason != ReasonFeed {
 		t.Fatalf("500: %+v", st)
 	}
 }

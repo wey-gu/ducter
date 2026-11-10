@@ -33,9 +33,13 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       night round inside the verified range. Only fakes so far; no real install was run. Also
       open: the partner holding a new turn while its own agent updates (only waited for today),
       a Codex app copy seen on a real Mac. Trigger: the next Codex or Claude Code release.
+- [ ] **A Mac updated from the phone (D187) for real:** the author's MacBook (a worker of hel)
+  from 0.0.14 to the next release, tapped on the phone: steps on the card, the putting-in screen
+  on the Mac, 回来了 on the card; then once with the app closed (没开着). Also the night-time
+  auto-update for Macs whose Ducter asks its app (today D148 (10) skips them; the restart would
+  happen while the person may be at the Mac). Trigger: the first release that carries D187.
 - [ ] **Updating in place, the rest of D148:** the partner's one line for a security release
-      (nothing tells the partner yet); a macOS worker inside Ducter.app asking its own app to
-      update (it answers `app` today); archive sweeps inside the runner's critical section;
+      (nothing tells the partner yet); archive sweeps inside the runner's critical section;
       renaming from the island's tag (the card's name does it). Trigger: after the first real
       update round.
 - [ ] One real-harness task on a worker (`claude auth login` / `codex login --device-auth` on

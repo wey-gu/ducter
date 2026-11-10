@@ -138,3 +138,38 @@ class FoldTest {
         assertNull(Fold.of(intArrayOf(1104, 0, 1104, 1840), vertical = true, halfOpened = false, separating = false, occluding = false, web = intArrayOf(0, 0, 1000, 1840), density = 2.625f))
     }
 }
+
+/** D200: the same cases as the iPhone app's apps/ios/scripts/home-version/main.swift. */
+class HomeVersionTest {
+    @Test fun core() {
+        assertEquals(listOf(0L, 0L, 9L), HomeVersion.core("0.0.9"))
+        assertEquals(listOf(0L, 2L, 0L), HomeVersion.core("v0.2.0-beta.1"))
+        assertEquals(listOf(0L, 0L, 14L), HomeVersion.core("0.0.14-dev"))
+        assertNull(HomeVersion.core("1.2"))
+        assertNull(HomeVersion.core("dev"))
+        assertNull(HomeVersion.core("1.x.3"))
+    }
+
+    @Test fun older() {
+        assertTrue(HomeVersion.older("0.0.15", "0.0.9"))
+        assertTrue("numeric, not text", HomeVersion.older("0.0.10", "0.0.9"))
+        assertTrue(HomeVersion.older("0.1.0", "0.0.99"))
+        assertFalse(HomeVersion.older("0.0.15", "0.0.15"))
+        assertFalse("home newer", HomeVersion.older("0.0.15", "0.0.16"))
+        assertFalse("a beta home and the store build of it", HomeVersion.older("0.2.0", "0.2.0-beta.1"))
+        assertTrue("no version: a home from before D200", HomeVersion.older("0.0.15", null))
+        assertFalse(HomeVersion.older("0.0.0", null))
+        assertFalse(HomeVersion.older("0.0.15", "dev"))
+        assertFalse(HomeVersion.older("nonsense", "0.0.9"))
+    }
+
+    @Test fun gotItHoldsForThatPair() {
+        val base = "https://ducter.example.com/"
+        assertTrue(HomeVersion.shouldShow("0.0.15", "0.0.9", base, null))
+        val k = HomeVersion.key(base, "0.0.9", "0.0.15")
+        assertFalse(HomeVersion.shouldShow("0.0.15", "0.0.9", base, k))
+        assertTrue("home updated, still behind", HomeVersion.shouldShow("0.0.15", "0.0.12", base, k))
+        assertTrue("app updated", HomeVersion.shouldShow("0.0.16", "0.0.9", base, k))
+        assertTrue("another home", HomeVersion.shouldShow("0.0.15", "0.0.9", "https://other.example/", k))
+    }
+}

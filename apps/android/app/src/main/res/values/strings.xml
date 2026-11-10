@@ -38,5 +38,10 @@
     <string name="update_why_checksum">The download didn\'t match its checksum, so nothing was changed.</string>
     <string name="update_why_no_asset">This release has no file for Android.</string>
     <string name="update_why_signature">This copy of Ducter was installed from somewhere else, so Android won\'t update it from the release. Uninstall it and install the APK from the release once.</string>
+    <!-- D200: the home runs an older Ducter than this app. -->
+    <string name="home_older">Ducter on %1$s is still %2$s, older than this app; some new things wait for it to update.</string>
+    <string name="home_older_unknown">Ducter on %1$s is older than this app; some new things wait for it to update.</string>
+    <string name="home_older_go">Update it</string>
+    <string name="home_older_dismiss">Got it</string>
     <string name="update_whats_new">What\'s new</string>
 </resources>

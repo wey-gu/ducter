@@ -126,6 +126,12 @@ Connect it the same way, with its own code.
 On iPhone Duo the app runs open or closed, laid out for the display it is on. Filling the whole
 open display, edge to edge, is coming soon.
 
+**When the app is newer than your Ducter.** The app shows the pages your Ducter serves, so a
+Ducter still on an older version shows its older pages, and newer things wait for it. The app
+(iPhone, iPad or Android) then says so in one line: "Ducter on … is still …, older than this app".
+Tap **Update it** to go to **Settings › Your devices**, where your Ducter's own card has
+**Update**, or **Got it** to put the line away until the versions change again.
+
 ## The Android app
 
 **Install it.** On your Android phone, open

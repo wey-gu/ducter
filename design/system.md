@@ -495,7 +495,8 @@ tap, without SSH. A Mac home keeps the app's own updater (D72); this section is 
 
 **Knowing** (`core/src/release.ts`, `protocol/src/version.ts`). The version is
 `packages/cli/package.json`'s (the release tag must equal it). `/health` says `version` beside
-`build` (local callers only). A worker's hello says `version` and `how`. The home reads
+`build` (local callers only); `/api/me` says it to a paired device too (D200), so the iPhone and
+Android apps can tell a home older than themselves and say so natively. A worker's hello says `version` and `how`. The home reads
 `api.github.com/repos/wey-gu/ducter/releases/latest`, else the `github.com/…/releases/latest`
 redirect (version only), at most every hour (`<dataDir>/updates/latest.json`, D160, was 6 h); a
 failure is silent and keeps the last answer; `DUCTER_UPDATE_CHECK=off` never asks; drafts and

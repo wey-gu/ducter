@@ -55,6 +55,11 @@ class MainActivity : ComponentActivity() {
     private lateinit var web: WebView
     private var overlay: View? = null
     private lateinit var card: UpdateCard
+    /** D200: the home runs an older Ducter than this app (the same card, as one quiet line). */
+    private lateinit var homeCard: UpdateCard
+    /** The page's device token, from its hello, for the one /api/me this app asks (never stored). */
+    private var token: String? = null
+    private var homeLine: String? = null // the key of the line shown, else null
     private lateinit var scanner: ActivityResultLauncher<ScanOptions>
 
     private var loaded: String? = null
@@ -81,10 +86,12 @@ class MainActivity : ComponentActivity() {
         WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)
         web = makeWebView()
         card = UpdateCard(this).apply { visibility = View.GONE }
+        homeCard = UpdateCard(this).apply { visibility = View.GONE }
         root = FrameLayout(this).apply {
             setBackgroundColor(Pebble.color(context, R.color.bg))
             addView(web, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
             addView(card, FrameLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT, Gravity.BOTTOM))
+            addView(homeCard, FrameLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT, Gravity.BOTTOM))
         }
         setContentView(root)
         watchInsets()
@@ -127,6 +134,8 @@ class MainActivity : ComponentActivity() {
         // Back from Android's "Install unknown apps" switch: carry on with the update.
         (Updater.state.value as? UpdateState.NeedsPermission)?.let { if (packageManager.canRequestPackageInstalls()) Updater.install(this, it.r, it.apk) }
         if (helloed || store.base == null) quietCheck()
+        // Back to the app: the home may have updated meanwhile (or fallen behind a new app).
+        if (helloed && phase == "ready") homeCheck()
     }
 
     // MARK: the page
@@ -227,6 +236,8 @@ class MainActivity : ComponentActivity() {
     /** Back to the connect screen (another Ducter, or this one was unreachable). */
     private fun forget() {
         store.forget()
+        token = null
+        showHomeLine(null)
         loaded = null
         web.stopLoading()
         web.loadUrl("about:blank")
@@ -295,11 +306,13 @@ window.ducterNative=Object.freeze($info);})();"""
             "hello" -> {
                 m.optString("locale").takeIf { it == "zh" || it == "en" }?.let { store.locale = it }
                 m.optString("personaName").takeIf { it.isNotEmpty() }?.let { store.personaName = it }
+                token = m.optString("token").takeIf { it.isNotEmpty() }
                 helloed = true
                 pushInsets()
                 pushFold()
                 render(Updater.state.value)
                 quietCheck()
+                homeCheck()
                 answer(JSONObject().put("ok", true))
             }
             "haptic" -> {
@@ -340,6 +353,7 @@ window.ducterNative=Object.freeze($info);})();"""
             (web.layoutParams as FrameLayout.LayoutParams).bottomMargin = ime.bottom
             web.requestLayout()
             card.setPadding(bars.left + Pebble.dp(this, 12), 0, bars.right + Pebble.dp(this, 12), maxOf(bars.bottom, ime.bottom) + Pebble.dp(this, 12))
+            homeCard.setPadding(card.paddingLeft, 0, card.paddingRight, card.paddingBottom)
             applyOverlayInsets(bars.top, bars.bottom, bars.left, bars.right)
             pushInsets()
             web.post { pushFold() }
@@ -372,6 +386,10 @@ window.ducterNative=Object.freeze($info);})();"""
             lp.gravity = Gravity.BOTTOM
         }
         card.layoutParams = lp
+        val hl = homeCard.layoutParams as FrameLayout.LayoutParams
+        hl.width = lp.width
+        hl.gravity = lp.gravity
+        homeCard.layoutParams = hl
     }
 
     private fun pushInsets() {
@@ -419,6 +437,75 @@ window.ducterNative=Object.freeze($info);})();"""
         web.evaluateJavascript(s, null)
     }
 
+    // MARK: the home older than this app (D200)
+
+    /**
+     * Asks the home its version (GET /api/me with the page's device token) and shows the line when
+     * it is older than this app. Quiet on any failure: a home that can't answer is the can't-reach
+     * screen's business, not this line's.
+     */
+    private var homeBusy = false
+    private fun homeCheck() {
+        val base = store.base ?: return
+        if (homeBusy) return
+        homeBusy = true
+        val app = Versions.bare(BuildConfig.VERSION_NAME)
+        val tok = token
+        lifecycleScope.launch {
+            try {
+                val answer = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    try {
+                        val c = java.net.URL(java.net.URL(base), "api/me").openConnection() as java.net.HttpURLConnection
+                        c.connectTimeout = 10_000
+                        c.readTimeout = 10_000
+                        if (tok != null) c.setRequestProperty("Authorization", "Bearer $tok")
+                        try {
+                            if (c.responseCode != 200) null else JSONObject(c.inputStream.bufferedReader().readText())
+                        } finally { c.disconnect() }
+                    } catch (_: Exception) { null }
+                } ?: return@launch
+                if (!answer.has("personaName") || store.base != base) return@launch
+                val home = answer.optString("version").takeIf { it.isNotEmpty() }
+                if (!HomeVersion.shouldShow(app, home, base, store.homeOlderDismissed)) return@launch showHomeLine(null)
+                val host = Uri.parse(base).host ?: base
+                showHomeLine(HomeVersion.key(base, home, app), if (home != null) str(R.string.home_older, host, home) else str(R.string.home_older_unknown, host))
+            } finally {
+                homeBusy = false
+            }
+        }
+    }
+
+    private fun showHomeLine(key: String?, text: String = "") {
+        val c = homeCard
+        if (key == null) {
+            homeLine = null
+            c.visibility = View.GONE
+            return
+        }
+        c.line(text, str(R.string.home_older_go), str(R.string.home_older_dismiss))
+        c.go.setOnClickListener {
+            // The page's Settings › Your devices, where the home's own card updates it. A hash the
+            // page has understood since Settings was one place (D150), so an older page goes too.
+            showHomeLine(null)
+            val b = store.base ?: return@setOnClickListener
+            js("location.assign(${JSONObject.quote(b + "app#settings=devices")})")
+        }
+        c.later.setOnClickListener {
+            store.homeOlderDismissed = homeLine
+            showHomeLine(null)
+        }
+        val fresh = homeLine != key
+        homeLine = key
+        // The app's own update speaks first; this line waits behind it.
+        if (card.visibility == View.VISIBLE) { c.visibility = View.GONE; return }
+        if (c.visibility != View.VISIBLE || fresh) {
+            c.visibility = View.VISIBLE
+            c.translationY = Pebble.dp(this, 40).toFloat()
+            c.alpha = 0f
+            c.animate().translationY(0f).alpha(1f).setDuration(220).start()
+        }
+    }
+
     // MARK: updates (D181)
 
     private fun quietCheck() {
@@ -463,7 +550,10 @@ window.ducterNative=Object.freeze($info);})();"""
 
     private fun render(s: UpdateState) {
         val c = card
-        fun hide() { c.visibility = View.GONE }
+        fun hide() {
+            c.visibility = View.GONE
+            if (homeLine != null && homeCard.visibility != View.VISIBLE) homeCard.visibility = View.VISIBLE
+        }
         c.later.setOnClickListener {
             (Updater.state.value as? UpdateState.Available)?.r?.let { store.laterVersion = it.version; store.laterAt = System.currentTimeMillis() }
             asked = false
@@ -511,6 +601,7 @@ window.ducterNative=Object.freeze($info);})();"""
             }
         }
         if (s !is UpdateState.Idle && c.visibility != View.VISIBLE && (s !is UpdateState.Checking || asked)) {
+            homeCard.visibility = View.GONE
             c.visibility = View.VISIBLE
             c.translationY = Pebble.dp(this, 40).toFloat()
             c.alpha = 0f

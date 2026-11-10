@@ -133,6 +133,9 @@ xcrun simctl push booted co.nowledge.ducter.ios payload.apns   # category DUCTER
 ```
 
 `-pairLink`, `-open 'app#onhand'` and `-orientation landscape` are Debug-only launch arguments.
+So is `-appVersion 0.0.99` (D200): a Debug build says project.yml's placeholder version, so it
+never says its home is older unless given one; `apps/ios/scripts/check-home-version.sh` checks the
+rule itself against the Android app's cases.
 `-orientation` turns an iPhone; an iPad, which supports multitasking, refuses to be turned by the
 app, so iPad landscape is checked at its widths in a browser. For an iPad, use
 `-destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M5)'`; with a hardware keyboard the

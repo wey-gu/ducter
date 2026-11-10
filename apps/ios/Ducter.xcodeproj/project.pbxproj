@@ -13,7 +13,9 @@
 		2B8826AE33539926AC1E4ABC /* Push.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF24A8D192017C97A5783A0B /* Push.swift */; };
 		45C67028072AECABD8CFE461 /* BricolageGrotesque.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 5C1AA35A18761F27CAB058C4 /* BricolageGrotesque.ttf */; };
 		5BB00299EF14494B05764666 /* DucterNotify.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7F13E0FF5AD5B5FA5A4F165D /* DucterNotify.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		71627E4184D1E53396F4ACC5 /* HomeVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBBE7F91E3393AE65BB6ABF7 /* HomeVersion.swift */; };
 		7798E0851BCB793E7A4C4D0A /* PushCrypto.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46439BF3A0328223D2A49B23 /* PushCrypto.swift */; };
+		81A9148619D3B94044E551DB /* HomeOlder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8923DEFAF6516B2F2BB862A6 /* HomeOlder.swift */; };
 		A8A67290C3FE4008D63E86F4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 55B12901E540FA984F872F21 /* Assets.xcassets */; };
 		AD4ED5462FD2005D72767E67 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE70874634C0BE491CD57671 /* Theme.swift */; };
 		DC5CEF39E1D4BDC4FC0742B3 /* PushCrypto.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46439BF3A0328223D2A49B23 /* PushCrypto.swift */; };
@@ -63,9 +65,11 @@
 		780B1F8DF10D337E792AF3AD /* Ducter.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Ducter.entitlements; sourceTree = "<group>"; };
 		7E75A9097C852D0731F100D3 /* WebShell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebShell.swift; sourceTree = "<group>"; };
 		7F13E0FF5AD5B5FA5A4F165D /* DucterNotify.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = DucterNotify.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		8923DEFAF6516B2F2BB862A6 /* HomeOlder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeOlder.swift; sourceTree = "<group>"; };
 		A2509E21008EBA71C43F73C2 /* DucterNotify.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DucterNotify.entitlements; sourceTree = "<group>"; };
 		AF0A95EBBD9D8AB9E7F38931 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		B916A5E27898761A81FEB28D /* DucterApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DucterApp.swift; sourceTree = "<group>"; };
+		CBBE7F91E3393AE65BB6ABF7 /* HomeVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeVersion.swift; sourceTree = "<group>"; };
 		CE70874634C0BE491CD57671 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		DF24A8D192017C97A5783A0B /* Push.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Push.swift; sourceTree = "<group>"; };
 		F042FC5CAD8F133B2246CB7B /* Ducter.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Ducter.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -86,6 +90,8 @@
 				55B12901E540FA984F872F21 /* Assets.xcassets */,
 				780B1F8DF10D337E792AF3AD /* Ducter.entitlements */,
 				B916A5E27898761A81FEB28D /* DucterApp.swift */,
+				8923DEFAF6516B2F2BB862A6 /* HomeOlder.swift */,
+				CBBE7F91E3393AE65BB6ABF7 /* HomeVersion.swift */,
 				36E1820CEB79934CDC921D02 /* Info.plist */,
 				DF24A8D192017C97A5783A0B /* Push.swift */,
 				08C5B880B5BEE0A2A05E3B60 /* Store.swift */,
@@ -256,6 +262,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				12253FD137F9C417D4C81D00 /* DucterApp.swift in Sources */,
+				81A9148619D3B94044E551DB /* HomeOlder.swift in Sources */,
+				71627E4184D1E53396F4ACC5 /* HomeVersion.swift in Sources */,
 				2B8826AE33539926AC1E4ABC /* Push.swift in Sources */,
 				7798E0851BCB793E7A4C4D0A /* PushCrypto.swift in Sources */,
 				24AAD08DDA66090595E2BA8A /* Store.swift in Sources */,

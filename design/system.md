@@ -523,9 +523,9 @@ inside Ducter.app (the app's updater does it; on that Mac the card's button call
 home this window runs, or this Mac's own worker (D155) when the window talks to a home elsewhere
 (D172): the app's update when the app is behind; when the app is current and its worker still
 says an older version, **这台 Mac 上的 Ducter 已经是 {v}，替 {home} 做事的那部分还在用旧的，重启一下就好**
-with **重启它** (the worker's LaunchAgent restarted, D167's fix by hand). Only another Mac says
-**在 {device} 上打开 Ducter，它会自己更新** (found on 0.0.7: this very Mac's card told it to open
-Ducter on itself). `source`: from a
+with **重启它** (the worker's LaunchAgent restarted, D167's fix by hand). Only another Mac on an app older than 0.0.14 (no `asksApp`, so it can't take 更新 from here)
+says **{device} 上的 Ducter 版本较早，还不能从这里更新。在那台 Mac 上更新一次，以后在这里点更新就行。**
+(D194; never this very Mac, found on 0.0.7). `source`: from a
 checkout. `manual`: a worker that sent no `how` (before 0.0.4).
 
 **A Mac from any client (D187).** A Ducter that lives in Ducter.app (a worker whose hello says

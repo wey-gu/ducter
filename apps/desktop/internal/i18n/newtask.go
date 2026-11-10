@@ -6,10 +6,10 @@ package i18n
 // uses the same keys for the same words.
 
 var zhNewTask = Table{
-	"newtask.button":         "开一件事",
+	"newtask.button":         "交代一件事",
 	"task.brief.you":         "你交代的",
-	"newtask.menu":           "开一件事…",
-	"newtask.title":          "开一件事",
+	"newtask.menu":           "交代一件事…",
+	"newtask.title":          "交代一件事",
 	"newtask.where":          "在哪儿做",
 	"newtask.who":            "谁来做",
 	"newtask.what":           "做什么",
@@ -24,19 +24,19 @@ var zhNewTask = Table{
 	"newtask.branch.default": "默认",
 	"newtask.cancel":         "取消",
 	"newtask.start":          "开始",
-	"newtask.starting":       "在开…",
+	"newtask.starting":       "在交给它…",
 	"newtask.err.empty":      "先写一句要它做什么。",
-	"newtask.err.conn":       "还没连上 Ducter，连上了再开。",
+	"newtask.err.conn":       "还没连上 Ducter，连上了再交代。",
 	"newtask.err.no_agent":   "现在没有 AI agent 能接这件事。",
 	"newtask.err.not_repo":   "这个文件夹不是 git 仓库。",
 	"newtask.err.offline":    "那台设备现在连不上。",
-	"newtask.err.failed":     "没开成：%s",
-	"newtask.err.unknown":    "没开成，再试一次？",
+	"newtask.err.failed":     "没能开始：%s",
+	"newtask.err.unknown":    "没能开始，再试一次？",
 	"onhand.by.state":        "按状态",
 	"onhand.by.project":      "按项目",
 	"onhand.by":              "怎么排",
 	"onhand.other":           "其他",
-	"onhand.newhere":         "在这儿开一件",
+	"onhand.newhere":         "在这儿交代一件",
 }
 
 var enNewTask = Table{

@@ -25,7 +25,7 @@
 "push.relay.title" = "Ducter";
 "push.relay.body" = "Ducter 需要你看一下";
 /* D176：iPad 的菜单栏和按住 ⌘ 时的快捷键列表；就是 Mac 的那几个地方（D71）。 */
-"menu.newtask" = "开一件事";
+"menu.newtask" = "交代一件事";
 "menu.settings" = "设置…";
 "menu.conversation" = "对话";
 "menu.onhand" = "手头的事";

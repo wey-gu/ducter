@@ -329,9 +329,9 @@ note and a `Dn`) before it is built.
       task there would overwrite it. Give tasks a home of their own per task, then set it in
       runner `withBrowser`. Trigger: the first DeepSeek Harness browser task.
 
-## Where a task runs (draft D157, `design/where.md`)
+## Where a task runs (D157, `design/where.md`)
 
-Trigger for all of it: the author approves D157. Order matters: step 1 unblocks the Mac worker.
+D157 was decided 2026-11-10; the build runs in `where.md` §13's order (step 1 unblocks the Mac worker).
 
 - [ ] **Browser places on a worker** (`runner.ts:924` refuses them; D155 (3) keeps browser and
       computer use home-only): the worker's runner hosts the browser place (native driver on a

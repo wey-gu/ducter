@@ -70,7 +70,7 @@ Design notes:
 - `system.md`: adapter, identity/Mem, safety, storage, runtime.
 - `ui.md`: themes, tokens, zoom levels, canvases.
 - `bridge.md`: Nowledge Bridge, agents Ducter didn't start (draft).
-- `where.md`: which computer a task runs on, said and changed with who (draft D157).
+- `where.md`: which computer a task runs on, said and changed with who (D157).
 - `product-model.md`: see above.
 
 ## The change loop (run it for every new question or discovered problem)

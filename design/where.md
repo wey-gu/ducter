@@ -1,6 +1,6 @@
 # Where a task runs: picking the computer, saying it, changing it
 
-> 2026-11-10 · **Draft for the author's review (D157, not decided, not built).** Evidence:
+> 2026-11-10 · **Decided (D157): the author took every default in §14.** Build status: §16. Evidence:
 > `research/43`. Prototype: `design/prototypes/where.html` (open it from the repo so the clay
 > art loads; shots in `.shots/where/`, outside git, D75). Builds on D89 and D128 (who does it),
 > D130 and D151 (the two browsers), D152 (the meta line), D155 (one tap makes a Mac do tasks for
@@ -351,7 +351,10 @@ test of the stage (D81's open item) should include one Lands and one Moves clip 
 7. Queue a task for a sleeping worker instead of refusing it (system.md "Not yet").
 8. "Move before closing", the move hop on the stage.
 
-## 14. The author's calls (each with a proposed default)
+## 14. The author's calls (decided 2026-11-10: every default taken)
+
+The author's answer: "按建议，第一性原理把事情都做好，给用户最优雅体验和情绪价值". Each default below
+is now the rule, and the rest of this note already follows it.
 
 1. **Public browsing when both are awake:** Ducter's own browser on hel (least access, and it
    never types into the user's windows, research/38 B2) or the MacBook through Codex's native

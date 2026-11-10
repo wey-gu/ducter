@@ -26,7 +26,7 @@ renders it at `/docs`.
 | [`conversation.md`](conversation.md) | The conversation surface: jobs and the living message |
 | [`focus-window.md`](focus-window.md) | Tasks: brief, report, checkpoint, where they run |
 | [`ai-loadout.md`](ai-loadout.md) | Draft proposal: what the partner thinks with, who does the tasks, switching a task |
-| [`where.md`](where.md) | Draft (D157): which computer a task runs on, how it's said and changed together with who |
+| [`where.md`](where.md) | D157: which computer a task runs on, how it's said and changed together with who |
 | [`focus-window-states.md`](focus-window-states.md) | The task state machine |
 | [`system.md`](system.md) | Harness adapter, identity and Mem, safety and trust, storage, server mode, workers |
 | [`onboarding.md`](onboarding.md) | The first five minutes, on a Mac and on a server |

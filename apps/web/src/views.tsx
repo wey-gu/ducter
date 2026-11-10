@@ -2382,6 +2382,7 @@ function Accounts() {
   const [show, setShow] = useState(false); // the key shows as typed
   const [noKey, setNoKey] = useState(false); // OOMOL Hosted checked with no key: said on the field, nothing sent
   const [how, setHow] = useState(false); // How to connect: the setup steps behind a fold
+  const [removing, setRemoving] = useState(""); // a Remove asks in its row first: never one tap
   useEffect(() => {
     if (!A.connections) A.askConnections();
   }, []);
@@ -2446,7 +2447,16 @@ function Accounts() {
               )
             )}
           </div>
-          <Btn kind="text" label={t("acct.remove")} about={c.name} onClick={() => A.removeConnection(c.id)} />
+          {removing !== c.id && <Btn kind="text" label={t("acct.remove")} about={c.name} onClick={() => setRemoving(c.id)} />}
+          {removing === c.id && (
+            <div class="acct-remove-ask" role="group">
+              <span class="small">{t("acct.remove.ask", c.source === "oo" ? t("acct.oo.name") : c.name)}</span>
+              <span class="acts">
+                <Btn kind="text" label={t("acct.remove.keep")} about={c.name} onClick={() => setRemoving("")} />
+                <Btn kind="secondary" label={t("acct.remove")} about={c.name} onClick={() => (setRemoving(""), A.removeConnection(c.id))} />
+              </span>
+            </div>
+          )}
         </div>
       ))}
       {offer && <OoOffer oo={oo!} />}

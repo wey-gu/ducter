@@ -2201,6 +2201,27 @@ a {
   flex: 1;
   min-width: 0;
 }
+.acct-row:has(.acct-remove-ask) {
+  flex-wrap: wrap;
+}
+.acct-remove-ask {
+  flex: 1 0 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s1) var(--s2);
+  padding: 8px 4px 4px 4px;
+  border-top: 1px solid var(--line-soft, var(--line));
+  color: var(--ink-soft);
+}
+.acct-remove-ask .small {
+  flex: 1 1 12em;
+}
+.acct-remove-ask .acts {
+  display: flex;
+  gap: var(--s1);
+  margin-left: auto;
+}
 .acct-name {
   font-size: var(--md);
   font-weight: 700;

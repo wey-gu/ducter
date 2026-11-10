@@ -172,7 +172,8 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       the `ducter-scratch` Space and the rename (`nmem agents set`) live. Trigger: an owner key
       or a local Mem.
 - [ ] The Bridge's named Agent Context names the persona's identity (D141 (7)): at bind time,
-      adopt the context's identity, or say when they differ. Trigger: Bridge on by default.
+      adopt the context's identity, or say when they differ. Trigger: Bridge on by default. (The live
+      trial's preflight already checks it, D162.)
 - [ ] Outbox with idempotency keys when Mem is down (research/private/10 §"Mem down ≠ Ducter
       down"). Today a save while Mem is down is dropped and nothing is shown.
 - [ ] Search before writing, to supersede instead of duplicating (`nmem m supersede`).
@@ -540,7 +541,20 @@ Codex first, once OAR is near 1.0. See `research/17`.
 ## Nowledge Bridge (D105–D111, `design/bridge.md`)
 
 - [ ] Run `bun run bridge:live -- --real` and record the result in research/37. Trigger: the author says the
-      account and both contexts are ready (J-Q14 steps 1–4).
+      persona's context (`ducter-test` selecting `ducter`) and the terminal side's context are ready (research/37
+      §6; Mem's backend answers since 2026-11-10).
+- [ ] A start mark for the persona's mailbox (B14): messages from before Bridge was switched on for this persona
+      are not requests. Trigger: before `DUCTER_BRIDGE` is on by default, or the trial used `ducter`.
+- [ ] X1 · "有事问 Ducter" (draft D164): `ask` for a peer message with the reply by code, the "wait" default's
+      reply, 60 s checks while a conversation with an own agent is live, at most 3 open asks per sender. Trigger:
+      the author approves D164 and the live trial passes.
+- [ ] X2 · "直接接" (draft D163): the offer after two Go's, the learned rule in Settings › 伙伴, the limits.
+      Trigger: D163 approved and X1 built.
+- [ ] X3 · teammates (draft D163): per-team opt-in (the command shown, never run), the per-sender quota and
+      **不再听 <agent> 的**, Space-scoped answers. Trigger: D163 approved and Mem's Team Bridge accepted.
+- [ ] X5 · consumer AIs (J5): take X1–X3's rules unchanged. Trigger: Mem's remote-MCP delegation (#8956) ships.
+- [ ] Mem asks B11–B13 (research/37 §6): a member name on cards, no retained identity offered without a
+      context, one agent per card across Spaces. Trigger: the author files them (D111's channel).
 - [ ] Replace the tolerant JSON parsing (`inbox`, `open`, `outbox`, `inspect`, send/reply results, the member in
       passive `setup`) with the real shapes from that run's `raw-<time>/` folder. Trigger: the live run.
 - [ ] Turn `DUCTER_BRIDGE` on by default behind a Partner-page toggle (J-Q1). Trigger: the live run passes.

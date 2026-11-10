@@ -85,7 +85,6 @@ export function FindsNote({ n, join }: { n: Bodies["finds"]; join?: boolean }) {
         {n.finds.map((f) => (
           <Find key={f.findId} f={f} />
         ))}
-        {n.leftOut && <div class="small sub left-out">{n.leftOut}</div>}
         <Ask n={n} />
       </div>
     </div>

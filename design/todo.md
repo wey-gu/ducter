@@ -169,6 +169,19 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 
 ## Long-term memory (`design/memory.md`)
 
+- [ ] **Measure the Mem plugin's Context Bundle per agent** (research/48 M2): one scratch task per
+      harness with the plugin present, on a real persona, at the task window; read the first
+      turn's input tokens with and without the plugin; record it as `memPlugin.contextCost` in
+      harness-facts and add its ceiling to `prompt-budget.test.ts`. If it is large, ask Mem for a
+      size knob. It re-enters after each compaction (SessionStart "compact"). Trigger: before the
+      first tagged release.
+- [ ] **Codex: does memory off hold?** (research/48 M3) The setup guide adds "its hooks script"
+      beside `codex plugin add`; if it lands in the user's own hooks, `plugins.<id>.enabled=false`
+      leaves its SessionStart hook running. Check on a scratch `CODEX_HOME`; if so, also turn the
+      user's hooks off in memory-off tasks (`features.hooks=false`), and say so. Trigger: same.
+- [ ] **DeepSeek Harness memory off** (D173 (7)) runs under a Ducter-owned home: verify the login
+      and the profile bundle's absence on a real install. Trigger: DSH verified at all.
+
 - [x] **One live write**, read back, then removed (D63, D141 (6), 2026-11-09): identity,
       `source_app` and `metadata.source_message_id` verified on Cloud. The key may not create
       Spaces, so it went to the Personal zone, not a `ducter-scratch` Space.

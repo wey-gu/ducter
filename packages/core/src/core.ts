@@ -460,7 +460,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     ...(mp.now ? { now: mp.now } : {}),
   });
   memPluginsRef = memPlugins;
-  api.memPluginIn = (device, harness) => memPlugins.installed(device, harness); // D168: a task there has it
+  api.memPluginIn = (device, harness) => memPlugins.present(device, harness); // D168: a task there has it, in any form (research/48 M1)
   memPlugins.onChange(() => devicesView?.changed());
   {
     // A sign-in, a sign-out or an agent update refreshes the devices: read the check again.

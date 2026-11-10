@@ -30,10 +30,6 @@ func (a *App) findsEntry(c *ui.Context, e *store.Entry) {
 				}
 				a.findBlock(c, f)
 			}
-			if n.LeftOut != "" {
-				ui.Box(c).Height(1).Background(t.LineSoft).Margin(t.S1, 0)
-				ui.Text(c, autospace(n.LeftOut)).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5)
-			}
 			a.noteAsk(c, n)
 		})
 	})

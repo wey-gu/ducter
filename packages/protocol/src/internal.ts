@@ -120,7 +120,7 @@ export interface CoreApi {
   browser?: DucterBrowserPort;
   /** D168: memory for tasks, from the partner's own Mem client; absent in tests, stubs and with no partner. */
   taskMemory?: TaskMemoryPort;
-  /** D168: the user's Nowledge Mem plugin for this agent is installed on that device (by id or name; undefined = the home), as Mem's own check last said. */
+  /** D168: the user's Nowledge Mem plugin for this agent is on that device in any form but absent (by id or name; undefined = the home), as Mem's own check last said (research/48 M1). */
   memPluginIn?(device: string | undefined, harness: string): boolean;
 }
 

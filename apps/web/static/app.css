@@ -3864,5 +3864,4 @@ button.dev-name {
 .bubble.note .freact .grow { flex: 1; }
 .bubble.note .freact .btn.text { font-size: var(--xs); color: var(--ink-muted); }
 .bubble.note .fhow { display: flex; flex-direction: column; gap: 2px; color: var(--ink-soft); }
-.bubble.note .left-out { padding-top: 10px; border-top: 1px solid var(--line); line-height: 1.5; }
 .bubble.note .note-ask { display: flex; flex-direction: column; gap: 8px; padding-top: 10px; border-top: 1px solid var(--line); }

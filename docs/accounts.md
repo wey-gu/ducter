@@ -86,8 +86,8 @@ The key is kept only in Ducter's own data folder, and is never shown again.
 ## The card for each place
 
 Each place your accounts come from (oo, OOMOL, your own OpenConnector, another service) has one
-card: its mailbox, its name and one line that says how it is (**Read 214 emails today · 1 worth
-telling**, or **Reads only when you ask**, or what went wrong and how to fix it). Under it, a
+card: its mailbox, its name and one line that says how it is (**Keeping an eye out**, **Paused**,
+**Reads only when you ask**, or what went wrong and how to fix it). Under it, a
 square for each app it can read. Tap one to see what it reads, what it always asks you first,
 when it last looked, and two choices:
 
@@ -110,8 +110,8 @@ The same choice sits above the cards, and under **Notifications**:
 - **Only urgent**: only what costs you something if it waits until tomorrow.
 - **Up to 3 a day** (suggested): one message in the morning, when your quiet hours end, with at
   most three things; anything urgent right away. On a day with nothing worth saying it sends
-  nothing; the line under its name says **Looked this morning — nothing needs you**.
-- **Whenever useful**: everything worth saying, still in the morning message.
+  nothing and shows nothing: no news is good news.
+- **Whenever useful**: everything worth saying, still in the morning message (at most five in one).
 - **Only when I ask**: it doesn't look by itself.
 
 What it may tell you: two things that don't match (a flight that lands the night before your
@@ -126,6 +126,9 @@ Under each one, **Useful** or **Don't tell me this kind**. The second becomes a 
 rules**, where you can remove it. If three morning messages in a row go unread, they stop, and
 the next time you write it asks whether to keep them. At night it never wakes you, unless you
 said so for a kind ("wake me if a flight changes").
+
+It doesn't tell you how much it read or list what it skipped. Ask "anything else?" and it tells
+you what it left out; **What it read** under **⋯** on the card shows each look.
 
 It reads headers and the first lines of new mail, and keeps only small facts with dates (a
 booking, a renewal, a promise) for 30 days after they stop mattering; never the mail itself.

@@ -146,6 +146,9 @@ export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
   }
 }
 
+/** Finds rendered per note line (a note holds at most 5; a long fold-in chain is clipped too). */
+const FINDS_SHOWN = 6;
+
 /** Compact one-line rendering of a channel event for the background block, or null to skip. */
 export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
   const t = hhmm(e.ts);
@@ -178,10 +181,16 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
       // D165: what Ducter noticed and said by itself, so the partner can answer about it.
       const b = e.body as Bodies["finds"];
       if (b.answered) return `[${t} the user answered your ${b.ask === "first_look" ? "first-look offer" : b.ask === "keep_note" ? "keep-the-morning-note question" : "how-to-tell-you question"}: ${b.answered}]`;
-      if (b.quiet) return `[${t} you looked through their accounts this morning; nothing needed them, so you said nothing]`;
-      const finds = b.finds.map((f) => `${f.kind}: ${clip(f.text, 200)}${f.goLabel ? ` (next step offered: ${f.goLabel})` : ""}`).join(" | ");
+      // D172: what was left out is said only when they ask ("还有别的吗？").
+      const left = b.leftOut ? ` (left out, say only if they ask: ${clip(b.leftOut, 200)})` : "";
+      if (b.quiet) return `[${t} you looked through their accounts this morning; nothing needed them, so you said nothing${left}]`;
+      // A fold-in carries the whole note: only its new finds here, the rest are in the morning's line
+      // (research/48 P2). At most FINDS_SHOWN either way.
+      const fresh = b.rung === "fold" && b.added ? b.finds.slice(-b.added) : b.finds;
+      const shown = fresh.slice(0, FINDS_SHOWN);
+      const finds = [...shown.map((f) => `${f.kind}: ${clip(f.text, 200)}${f.goLabel ? ` (next step offered: ${clip(f.goLabel, 40)})` : ""}`), ...(fresh.length > shown.length ? [`${fresh.length - shown.length} more`] : [])].join(" | ");
       const what = b.rung === "fold" ? "you added to this morning's note" : b.rung === "first" ? "you said when they added accounts" : `you noticed in their accounts (${b.rung})`;
-      return `[${t} ${what}] ${clip(b.opening, 200)}${finds ? ` ${finds}` : ""}`.trim();
+      return `[${t} ${what}] ${b.rung === "fold" ? "" : clip(b.opening, 200)}${finds ? ` ${finds}` : ""}${left}`.replace(/\] +/, "] ").trim();
     }
     case "find_state": {
       const b = e.body as Bodies["find_state"];

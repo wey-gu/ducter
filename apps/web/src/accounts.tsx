@@ -39,7 +39,8 @@ function status(c: ConnectionView): { line: string; warn: boolean } {
   if (c.source !== "mcp" && c.apps && !c.apps.length) return { line: t("card.empty"), warn: false };
   const l = c.look;
   if (!l?.watching) return { line: t("card.status.asked"), warn: false };
-  return { line: l.worthToday ? t("card.status.read", l.readToday, l.worthToday) : t("card.status.calm", l.readToday), warn: false };
+  // D172: the plain state, never how much it read (that is under ⋯ 看了哪些).
+  return { line: t(l.paused ? "card.status.paused" : "card.status.watching"), warn: false };
 }
 
 export function tilesOf(c: ConnectionView): AppWatch[] {

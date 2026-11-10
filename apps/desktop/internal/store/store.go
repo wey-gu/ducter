@@ -337,11 +337,10 @@ type Store struct {
 	Tasks     map[string]*Task
 	// FindStates are each find's latest change (D165), by find id.
 	FindStates map[string]*protocol.FindState
-	// QuietSeq is the latest quiet morning (D165): the header says it
-	// looked, until the user next writes (LastUserSeq).
-	QuietSeq, LastUserSeq int64
-	notes                 map[string]*Entry
-	OnHand                *protocol.OnHand
+	// LastUserSeq is the user's latest message.
+	LastUserSeq int64
+	notes       map[string]*Entry
+	OnHand      *protocol.OnHand
 	// Waiters are the waiters known, by id (from waiter events and the
 	// snapshot's armed list).
 	Waiters map[string]*protocol.Waiter
@@ -873,10 +872,10 @@ func (s *Store) job(id string) *Job {
 }
 
 // addFinds adds a note, or revises the one it revises in place (a fold-in,
-// an answered ask). A quiet morning is no message: only the header knows.
+// an answered ask). A quiet morning (D172) is nothing at all: no message,
+// no header line.
 func (s *Store) addFinds(ev protocol.LogEvent, b *protocol.Finds) {
 	if b.Quiet {
-		s.QuietSeq = max(s.QuietSeq, ev.Seq)
 		s.bySeq[ev.Seq] = nil
 		return
 	}
@@ -893,9 +892,6 @@ func (s *Store) addFinds(ev protocol.LogEvent, b *protocol.Finds) {
 	s.notes[b.NoteID] = e
 	s.add(e)
 }
-
-// QuietMorning says the header should read 早上看过了，没有要你操心的.
-func (s *Store) QuietMorning() bool { return s.QuietSeq > 0 && s.QuietSeq > s.LastUserSeq }
 
 func (s *Store) addDecision(ev protocol.LogEvent, d *protocol.Decision) {
 	if old := s.Decisions[d.DecisionID]; old != nil {

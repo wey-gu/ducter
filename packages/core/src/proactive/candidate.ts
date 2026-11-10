@@ -17,6 +17,11 @@ export interface Candidate {
   people: string[];
   how: FindHow[];
   words: { zh: string; en: string };
-  step?: { kind: StepKind; goLabel: { zh: string; en: string }; brief: string; needs?: TaskNeeds };
+  /**
+   * The one next step. brief: Ducter's own instructions, with no words from anyone's mail in them;
+   * data: the fields it is about (names, subjects, asks), which came from other people's mail and
+   * reach the task fenced as data, never as instructions (D62, research/48 P3).
+   */
+  step?: { kind: StepKind; goLabel: { zh: string; en: string }; brief: string; data?: Record<string, string>; needs?: TaskNeeds };
   facts: string[];
 }

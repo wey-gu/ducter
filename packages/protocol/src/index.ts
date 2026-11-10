@@ -385,7 +385,7 @@ export interface Bodies {
   // "first": the first-account moment (§11). quiet: a silent day: no message, no notification;
   // clients change the header line until the person next writes. leftOut: the 没说的 line.
   // answered: the ask was answered (the clients show the controls settled, not live).
-  finds: { noteId: string; rung: FindRung; opening: string; finds: FindView[]; leftOut?: string; quiet?: boolean; ask?: ProactiveAsk; revises?: string; answered?: string };
+  finds: { noteId: string; rung: FindRung; opening: string; finds: FindView[]; leftOut?: string; quiet?: boolean; ask?: ProactiveAsk; revises?: string; answered?: string; /** A fold-in: how many finds at the end are new in this revision (the partner reads only those). */ added?: number };
   // A find changed: Go or Hold on its step, passed its date (过了), or the person's reaction
   // (有用; 这类不用告诉我 adds a Rule, ruleId). taskId: the task Go opened.
   find_state: { findId: string; kind: FindKind; state: FindState; taskId?: string; ruleId?: string };

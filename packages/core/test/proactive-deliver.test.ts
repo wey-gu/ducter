@@ -24,7 +24,9 @@ test("the morning note: at the end of quiet hours, at most 3, most costly first,
   const n = notes[0]!.body;
   expect(n.rung).toBe("morning");
   expect(n.finds.map((f) => f.kind)).toEqual(["mismatch", "deadline", "waiting_on_you"]);
-  expect(n.opening).toBe("早。昨晚到现在看了 9 封信、今天的 2 个会和 GitHub，有 3 件值得你知道。");
+  // D172: a greeting, never what or how much was read.
+  expect(n.opening).toBe("早。");
+  // What was left out is the partner's to say when asked; no screen shows it.
   expect(n.leftOut).toBe("没说的：3 封通知和收据，看标题就知道；1 封像推销，没理它。");
   for (const f of n.finds) {
     expect(fitsBudget(f.text, true)).toBe(true);
@@ -37,13 +39,15 @@ test("the morning note: at the end of quiet hours, at most 3, most costly first,
   expect(ds.every((d) => d.findId && d.defaultOption === "hold" && !d.reversible)).toBe(true);
   expect(r.sent).toHaveLength(1);
   expect(r.sent[0]).toMatchObject({ title: "Ducter", level: "passive" });
-  expect(r.sent[0]!.body).toStartWith("有 3 件值得你知道：11/21 的 CA929");
+  // The finds themselves, never an "N things" summary (D172).
+  expect(r.sent[0]!.body).toStartWith("11/21 的 CA929");
+  expect(r.sent[0]!.body).not.toMatch(/\d+ 件/);
   // Nothing is said twice: the next look finds the same things, and says nothing.
   await r.p.lookNow(40);
   expect(r.notes()).toHaveLength(1);
 });
 
-test("a quiet day sends nothing: no message, no notification; only the header line changes", async () => {
+test("a quiet day sends nothing and shows nothing: the note is only in the Log, for the partner (D172)", async () => {
   const r = make({ mode: "three", fx: quietDay() });
   await r.p.lookNow(40);
   await r.advance(HOUR + 2 * 60_000);

@@ -337,10 +337,10 @@ const T = {
   fCap: ["Mac：点「好，看一眼」→ 一分钟内回答 → 最后一个问题。没回答就什么都不盯。", "Mac: Take a look → an answer within a minute → the one question. No answer means nothing watches."],
   phfCap: ["手机上同一段对话。", "The same moment on the phone."],
   mH: ["早上那条：最多 3 件，没声音；没事的日子什么都不发", "The morning note: up to 3, no sound; nothing at all on a quiet day"],
-  mP: ["免打扰结束时，一条消息、一个静音通知。开头说看了什么（沉默才可信），每件事两句话以内加一个下一步，最后一行是没说的。", "At the end of quiet hours, one message and one silent notification. It opens with what it read (so silence is trustworthy), each find in two sentences or fewer with one next step, and ends with what it left out."],
-  lockCap: ["锁屏：静音（被动级别）。正文就是开头那句，预览跟着手机自己的设置走。", "Lock screen: silent (the passive level). The body is the opening line; previews follow the phone's own setting."],
+  mP: ["免打扰结束时，一条消息、一个静音通知。不说看了多少（D172：克制），一句「早。」就是事情本身；每件事两句话以内加一个下一步。没说的，你问起来才说。", "At the end of quiet hours, one message and one silent notification. It never says how much it read (D172: restraint): \"Morning.\" and then the things themselves, each in two sentences or fewer with one next step. What it left out, only if you ask."],
+  lockCap: ["锁屏：静音（被动级别）。正文就是那几件事本身，不写「有 N 件」；预览跟着手机自己的设置走。", "Lock screen: silent (the passive level). The body is the things themselves, never \"N things\"; previews follow the phone's own setting."],
   noteCap: ["点开：一屏放得下。每件事下面有「有用」和「这类不用告诉我」。", "Opened: fits one screen. Each find has Useful and Don't tell me this kind."],
-  quietCap: ["没事的日子：不发消息、不通知，只在名字下面那行写「早上看过了，没有要你操心的」。", "A quiet day: no message, no notification; the line under its name says Looked this morning — nothing needs you."],
+  quietCap: ["没事的日子：不发消息、不通知，哪儿都不显示（D172）：没动静就是一切都好。", "A quiet day: no message, no notification, nothing shown anywhere (D172): silence means all is well."],
   aH: ["两件事对不上：从发现到一个要你点「好」的任务", "Two things don't match: from a find to a task that waits for your Go"],
   aP: ["航班和酒店差一晚。点「好，看看能不能提前」才开任务（上网，在 MacBook 上）；改订和付钱都是你自己的。下面的「这类不用告诉我」会变成一条规则。", "The flight and the hotel are a night apart. Only Go opens a task (browsing, on the MacBook); changing the booking and paying stay yours. Don't tell me this kind becomes a rule."],
   ahaCap: ["点「好，看看能不能提前」看任务走完。", "Tap Check for that night and watch the task run."],
@@ -389,7 +389,7 @@ function mailbox(kind, cls = "") {
 /* ---------- data ---------- */
 function sources() {
   return {
-    oo: { kind: "oo", name: L("oo 里的账号", "Accounts in oo"), status: () => L("今天看了 <b>214</b> 封信 · 有 <b>1</b> 件值得说", "Read <b>214</b> emails today · <b>1</b> worth telling"),
+    oo: { kind: "oo", name: L("oo 里的账号", "Accounts in oo"), status: () => L("在留意", "Keeping an eye out"),
       via: L("经过 oo · 邮件会经过 OOMOL 的服务器", "Through oo · your mail passes through OOMOL's servers"), more: L("在 oo 里再连一个", "Connect another in oo"),
       stop: L("不用 oo 里的账号了", "Stop using the accounts in oo"), signout: L("要退出登录，去 oo 里", "Sign out in oo"),
       apps: [
@@ -496,7 +496,7 @@ function renderBefore() {
   document.getElementById("newA").innerHTML = `<div style="display:flex;flex-direction:column;gap:16px">${proChips("a")}${sourceCard("a", sources().oo)}</div>`;
   document.getElementById("fixes").innerHTML = [
     L("<b>它会做什么</b>：没写 → 上面一排「自己发现了事，怎么告诉你」，一个选择，带默认。", "<b>What it will do</b>: missing → one chip row on top, a single choice with a default."),
-    L("<b>它现在怎么样</b>：没有 → 一行状态「今天看了 214 封信 · 有 1 件值得说」。", "<b>How it is now</b>: missing → one status line, Read 214 emails today · 1 worth telling."),
+    L("<b>它现在怎么样</b>：没有 → 一行状态「在留意」（不报数，D172；看了多少在 ⋯ 里）。", "<b>How it is now</b>: missing → one status line, Keeping an eye out (no counts, D172; they are under ⋯)."),
     L("<b>能看什么</b>：一串字 → 一排 app 方块，点开说看什么、什么先问你、最后什么时候看的。", "<b>What it can read</b>: a run of names → a tray of app tiles; tap one for what it reads, what asks first, when it last looked."),
     L("<b>看了哪些</b>：看不到 → ⋯ 里一行一条，和诚实的那句话。", "<b>What it read</b>: invisible → ⋯ opens today's reads and the honest line."),
     L("<b>主按钮</b>：「加一个」→ 退到卡片下面的小字；卡片只有一个危险按钮，原地确认。", "<b>The primary button</b>: Add one → a quiet link under the cards; the card has one destructive action, confirmed in place."),
@@ -513,7 +513,7 @@ function firstBody(phone) {
     ${FIRST === 0 ? `<div class="acts"><button class="btn primary sm" data-first="go">${L("好，看一眼", "Take a look")}</button><button class="btn text sm" data-first="no">${L("先不用", "Not now")}</button></div>` : ""}</div>`);
   if (FIRST >= 1) parts.push(`<div class="bub you">${L("好，看一眼", "Take a look")}</div>`);
   if (FIRST === 1) parts.push(`<div class="waitline"><img src="${ART.working}" alt="">${L("在看过去 3 天的信", "Reading the last 3 days")} <span class="dots"><i></i><i></i><i></i></span></div>`);
-  if (FIRST >= 2) parts.push(`<div class="bub partner"><p>${L("看了 3 天的 386 封信和 GitHub。有 1 件：Lina 周一问你 nowledge-co/mem #2141 什么时候能 review，今天上午又问了一次。改了 4 个文件，测试都过了。", "I read 386 emails from the last 3 days, and GitHub. One thing: Lina asked on Monday when you can review nowledge-co/mem #2141, and asked again this morning. 4 files changed, tests pass.")}</p>
+  if (FIRST >= 2) parts.push(`<div class="bub partner"><p>${L("有 1 件在等你回：Lina 周一问你 nowledge-co/mem #2141 什么时候能 review，今天上午又问了一次。改了 4 个文件，测试都过了。", "One thing is waiting on you: Lina asked on Monday when you can review nowledge-co/mem #2141, and asked again this morning. 4 files changed, tests pass.")}</p>
       <div class="acts"><button class="btn secondary sm">${L("好，先帮我读一遍", "Read it first")}</button><button class="btn text sm">${L("先等等", "Hold")}</button></div>
       <details class="how"><summary>${L("怎么知道的", "How I know")}</summary><ul><li>${L("11/9 GitHub 通知《Review requested》", "GitHub notification \"Review requested\", 11/9")}</li><li>${L("今天 09:12 Lina 在 PR 下的评论", "Lina's comment on the PR, today 09:12")}</li></ul></details>
       <div class="find" style="border:0;padding:0;margin-top:14px"><p>${L("以后我自己留意着：每天早上把值得说的放在一条里，最多 3 件；急的随时说。这样行吗？", "From now on I'll keep an eye out: one note each morning with up to 3 things, and anything urgent right away. OK?")}</p>
@@ -554,16 +554,15 @@ function findHTML(f, o = {}) {
 }
 function noteHTML(o = {}) {
   const fs = finds().slice(0, o.two ? 2 : 3);
-  return `<div class="bub partner"><p>${L(`早。昨晚到现在看了 214 封信、今天的 5 个会和 GitHub，有 ${fs.length} 件值得你知道。`, `Morning. Since last night I read 214 emails, today's 5 meetings and GitHub; ${fs.length} worth knowing.`)}</p>
-    ${fs.map((f, i) => findHTML(f, { first: i === 0 })).join("")}
-    <div class="leftout">${L("没说的：12 封通知和收据，看标题就知道；1 封像推销，没理它。", "Left out: 12 notifications and receipts you can read from the subject; 1 that looked like a sales pitch.")}</div></div>`;
+  return `<div class="bub partner"><p>${L("早。", "Morning.")}</p>
+    ${fs.map((f, i) => findHTML(f, { first: i === 0 })).join("")}</div>`;
 }
 function renderMorning() {
   document.getElementById("ph-lock").innerHTML = `<div class="lock"><div class="time">8:00</div><div class="date">${L("11月10日 星期二", "Tuesday, November 10")}</div>
     <div class="notif"><img src="${ART.icon}" alt=""><div class="h">${NAME}<small>${L("现在", "now")}</small></div>
-      <div class="tx">${L("早。有 3 件值得你知道：ducter.dev 11/16 到期还没续费；11/21 那晚还没订到住处；Lina 又问 #2141 了。", "Morning. 3 worth knowing: ducter.dev lapses 11/16 unpaid; nowhere to stay on 11/21; Lina asked about #2141 again.")}</div></div></div>`;
+      <div class="tx">${L("ducter.dev 11/16 到期还没续费；11/21 那晚还没订到住处；Lina 又问 #2141 了", "ducter.dev lapses 11/16 unpaid; nowhere to stay on 11/21; Lina asked about #2141 again")}</div></div></div>`;
   document.getElementById("ph-note").innerHTML = `<div class="scroll"><div class="pbar"><img src="${ART.idle}" alt=""><div><b>${NAME}</b><small>${L("手头没事，随时说", "Nothing on hand; just say")}</small></div></div><div class="convo phone">${noteHTML()}</div></div>`;
-  document.getElementById("quiet").innerHTML = `<div class="bar"><img src="${ART.idle}" alt=""><div><b>${NAME}</b><small class="quietday">${L("早上看过了，没有要你操心的", "Looked this morning — nothing needs you")}</small></div></div>
+  document.getElementById("quiet").innerHTML = `<div class="bar"><img src="${ART.idle}" alt=""><div><b>${NAME}</b><small>${L("手头没事，随时说", "Nothing on hand; just say")}</small></div></div>
     <div class="body convo"><div class="sysline">${L("昨天", "Yesterday")}</div><div class="bub you">${L("帮我把周报草稿理一下", "Tidy up my weekly report draft")}</div><div class="bub partner"><p>${L("理好了，放在「做好的」里。", "Done; it's in Everything finished.")}</p></div>
     <div class="sysline">${L("今天 · 没有新消息", "Today · nothing new")}</div></div>`;
 }
@@ -573,8 +572,7 @@ let AHA = 0; // 0 find · 1 task working · 2 done
 let RULE_NEW = false;
 function renderAha() {
   const f = finds()[1];
-  const parts = [`<div class="bub partner"><p>${L("早。昨晚到现在看了 214 封信和今天的 5 个会，有 1 件值得你知道。", "Morning. Since last night I read 214 emails and today's 5 meetings; 1 worth knowing.")}</p>${findHTML(f, { first: true, goAttr: AHA === 0 ? `data-aha="go"` : "disabled" })}
-    <div class="leftout">${L("没说的：9 封通知和收据。", "Left out: 9 notifications and receipts.")}</div></div>`];
+  const parts = [`<div class="bub partner"><p>${L("早。", "Morning.")}</p>${findHTML(f, { first: true, goAttr: AHA === 0 ? `data-aha="go"` : "disabled" })}</div>`];
   if (AHA >= 1) {
     parts.push(`<div class="bub you">${L("好，看看能不能提前", "Check for that night")}</div>`);
     parts.push(`<div class="bub partner"><p>${L("好，我去酒店官网看看 11/21 能不能加一晚。", "OK, I'll check the hotel's site for the night of 11/21.")}</p></div>`);
@@ -612,7 +610,7 @@ function renderKinds() {
     <div class="notif"><img src="${ART.icon}" alt=""><div class="h">${NAME}<small>${L("现在", "now")}</small></div><div class="lvl">${L("时效通知", "Time Sensitive")}</div>
       <div class="tx">${L("CA929 改到 14:05 起飞，晚了 4 小时 45 分，你 18:00 在东京的晚饭赶不上了。要我看看能改签哪些？", "CA929 now leaves at 14:05, 4 h 45 min late; you'd miss your 18:00 dinner in Tokyo. Want me to look up other flights?")}</div></div>
     <div class="notif" style="animation-delay:200ms"><img src="${ART.icon}" alt=""><div class="h">${NAME}<small>${L("8:00", "8:00")}</small></div>
-      <div class="tx">${L("早。有 1 件值得你知道：今晚成田的酒店改好了，入住 21:40 以后也行。", "Morning. 1 worth knowing: tonight's Narita hotel is sorted; check-in after 21:40 is fine.")}</div></div></div>`;
+      <div class="tx">${L("今晚成田的酒店改好了，入住 21:40 以后也行", "Tonight's Narita hotel is sorted; check-in after 21:40 is fine")}</div></div></div>`;
 }
 
 /* Mac page and phone */

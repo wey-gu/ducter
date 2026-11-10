@@ -157,15 +157,10 @@ export class Store {
   errors: string[] = [];
   /** 记下了 / Noted lines in the channel, shown inside the Details of the reply they belong to (D104). */
   noted: { seq: number; title: string; memoryId?: string; replyTo?: number }[] = [];
-  /** D165: each find's latest change, and the latest quiet morning / the user's latest message. */
+  /** D165: each find's latest change, and the user's latest message. */
   findStates = new Map<string, Bodies["find_state"]>();
-  quietSeq = 0;
   lastUserSeq = 0;
   private notes = new Map<string, Entry>();
-  /** The header says 早上看过了，没有要你操心的 until the user next writes. */
-  quietMorning(): boolean {
-    return this.quietSeq > 0 && this.quietSeq > this.lastUserSeq;
-  }
   /** Senders set aside per day (D163): how many, and the seq of the one line that says so. */
   setAside = new Map<string, { n: number; seq: number }>();
   /** What the partner is doing while the user waits (D104): its step, when this client first saw
@@ -321,10 +316,8 @@ export class Store {
         return entry({ user: ev.body as Bodies["user_msg"] });
       case "finds": {
         const b = ev.body as Bodies["finds"];
-        if (b.quiet) {
-          this.quietSeq = Math.max(this.quietSeq, ev.seq);
-          return void this.bySeq.set(ev.seq, null);
-        }
+        // A quiet morning (D172): nothing sent, nothing shown, not even a header line.
+        if (b.quiet) return void this.bySeq.set(ev.seq, null);
         const old = b.revises ? this.notes.get(b.revises) : undefined;
         if (old) {
           old.finds = b;

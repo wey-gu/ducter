@@ -11,6 +11,7 @@
 //     (DeepSeek Harness, isolated) or the first message (DeepSeek Harness tasks);
 //   - Ducter's MCP endpoint: HTTP with headers, or the stdio bridge (DeepSeek Harness);
 //   - tool denials only where the harness can honor them.
+import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
@@ -34,6 +35,20 @@ const DISALLOWED: Partial<Record<HarnessId, string[]>> = {
 
 /** pi's own CLI flags that leave the user's pi setup out (pi --help, 1.4.0+). Login and models stay. */
 export const PI_CLEAN_FLAGS = ["--no-skills", "--no-context-files", "--no-prompt-templates", "--no-extensions", "--no-themes"];
+/**
+ * Memory off in a pi task that keeps the user's setup (harness-facts memPlugin "flag"): pi has no
+ * per-package switch, so every extension the user installed is off for that session, Mem's among
+ * them; their skills, context files and prompt templates stay (research/48 M3).
+ */
+export const PI_MEM_OFF_FLAGS = ["--no-extensions"];
+
+/** Which pi runtime a session needs: Ducter's clean setup, the user's setup without extensions (memory off), or the user's own. */
+export function piVariant(spec: Pick<SessionSpec, "harness" | "isolateUserConfig" | "disablePlugins">): { clean?: boolean; extensionsOff?: boolean } | undefined {
+  if (spec.harness !== "pi") return undefined;
+  if (spec.isolateUserConfig) return { clean: true };
+  if (spec.disablePlugins?.length) return { extensionsOff: true };
+  return undefined;
+}
 
 /**
  * `-c` overrides that give a codex session Ducter's clean setup while it keeps CODEX_HOME (the
@@ -185,11 +200,11 @@ function piCommand(): { command: string; args: string[] } | undefined {
   return pi ? { command: pi, args: [] } : undefined;
 }
 
-export type RuntimeLoader = (harness: HarnessId, variant?: { clean?: boolean }) => Promise<Runtime | undefined>;
+export type RuntimeLoader = (harness: HarnessId, variant?: { clean?: boolean; extensionsOff?: boolean }) => Promise<Runtime | undefined>;
 
 /** Lazy per-runtime import. A failed load is retried next time, never cached. */
 const defaultLoader: RuntimeLoader = async (harness, variant) => {
-  const key = `${harness}${variant?.clean ? ":clean" : ""}`;
+  const key = `${harness}${variant?.clean ? ":clean" : variant?.extensionsOff ? ":noext" : ""}`;
   const cache = loaded.get(key);
   if (cache) return cache;
   let rt: Runtime | undefined;
@@ -204,8 +219,11 @@ const defaultLoader: RuntimeLoader = async (harness, variant) => {
       const m: any = await import("@botiverse/oar/runtimes/pi");
       const cmd = piCommand();
       if (variant?.clean && !cmd) throw new Error("pi needs node or the pi command on PATH to run with Ducter's clean setup");
+      // Memory off must hold (D168): without a pi command to pass the flag to, the task doesn't start.
+      if (variant?.extensionsOff && !cmd) throw new Error("pi needs node or the pi command on PATH to run with memory off");
       // One native RPC process per session (in-process pi re-enters the host).
-      rt = (cmd ? m.createPiRuntime({ execution: "subprocess", command: cmd.command, args: [...cmd.args, ...(variant?.clean ? PI_CLEAN_FLAGS : [])] }) : m.piRuntime) as Runtime;
+      const flags = variant?.clean ? PI_CLEAN_FLAGS : variant?.extensionsOff ? PI_MEM_OFF_FLAGS : [];
+      rt = (cmd ? m.createPiRuntime({ execution: "subprocess", command: cmd.command, args: [...cmd.args, ...flags] }) : m.piRuntime) as Runtime;
       break;
     }
     case "deepseek-harness":
@@ -345,10 +363,14 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
       });
       const instructions = [systemPrompt, appendSystemPrompt].filter(Boolean).join("\n\n");
       systemPrompt = appendSystemPrompt = undefined;
-      if (clean) {
+      // Memory off in a task (harness-facts memPlugin "home"): Mem ships as a DSH profile bundle and
+      // DSH has no known per-session profile switch, so the task runs under a Ducter-owned home of
+      // its own too (research/48 M3; INFERRED, DSH unverified).
+      const memOff = !clean && !!spec.disablePlugins?.length;
+      if (clean || memOff) {
         // A Ducter-owned home: none of the user's profiles, plugins, AGENTS.md or ~/.agents.
-        // Its user-global AGENTS.md is the partner's prompt (DSH loads it as the baseline).
-        const home = join(ctx.dataDir, "harness", "deepseek-harness");
+        // Its user-global AGENTS.md is the session's prompt (DSH loads it as the baseline).
+        const home = memOff ? join(ctx.dataDir, "harness", "deepseek-harness-memory-off", createHash("sha256").update(spec.cwd).digest("hex").slice(0, 12)) : join(ctx.dataDir, "harness", "deepseek-harness");
         const agents = join(home, "agents");
         mkdirSync(agents, { recursive: true, mode: 0o700 });
         writeFileSync(join(home, "AGENTS.md"), instructions ? instructions + "\n" : "", { mode: 0o600 });
@@ -412,8 +434,7 @@ export function createOarHarnessPort(opts: OarPortOptions = {}): HarnessPort {
   const dataDir = opts.dataDir ?? process.env.DUCTER_DATA_DIR ?? join(homedir(), ".ducter");
   return {
     async start(spec) {
-      const clean = !!spec.isolateUserConfig && spec.harness === "pi";
-      const rt = await load(spec.harness, clean ? { clean } : undefined);
+      const rt = await load(spec.harness, piVariant(spec));
       if (!rt) throw new Error(`harness ${spec.harness} is not supported`);
       const inst = await rt.installation?.({ env: harnessEnv(spec.harness, { env: opts.env, dataDir }) });
       if (!inst || inst.kind !== "available") throw new Error(`harness ${spec.harness} is not installed`);

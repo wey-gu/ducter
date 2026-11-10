@@ -17,6 +17,13 @@ import type { Judge } from "./waiters.ts";
 export function judgeModel(harness: HarnessId, model?: string): string | undefined {
   return HARNESSES[harness]?.cheapModel ?? model;
 }
+/**
+ * What one call counts against a budget (research/48 P4): cache reads at a tenth, as Anthropic and
+ * OpenAI price them (INFERRED for the other harnesses' providers); everything else in full.
+ */
+export const CACHE_READ_WEIGHT = 0.1;
+export const weightedTokens = (u: { inputTokens?: number; outputTokens?: number; cacheRead?: number; cacheWrite?: number }) =>
+  Math.round((u.inputTokens ?? 0) + (u.outputTokens ?? 0) + (u.cacheWrite ?? 0) + (u.cacheRead ?? 0) * CACHE_READ_WEIGHT);
 const TOOLS_OFF = ["Bash", "Edit", "Write", "MultiEdit", "Read", "Glob", "Grep", "WebFetch", "WebSearch", "Task", "NotebookEdit", "TodoWrite"];
 
 export function judgePrompt(q: Parameters<Judge>[0]): string {
@@ -76,7 +83,7 @@ export function createHarnessAsk(opts: { harness: () => HarnessPort | undefined;
       const reading = (async () => {
         for await (const ev of session.events()) {
           if (ev.role === "assistant" && ev.text) text += ev.text;
-          if (ev.usage) tokens = (ev.usage.inputTokens ?? 0) + (ev.usage.outputTokens ?? 0) + (ev.usage.cacheRead ?? 0) + (ev.usage.cacheWrite ?? 0);
+          if (ev.usage) tokens = weightedTokens(ev.usage);
           if (ev.turnEnd) break;
         }
       })();

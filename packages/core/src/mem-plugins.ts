@@ -3,8 +3,8 @@
 // (D168), so where the plugin is matters: this keeps one line per agent per device from Mem's own
 // local, read-only check (`nmem --json plugins inspect`): on the home here, on a worker through
 // its `mem_plugins` op. The check runs when a device comes online, once a day, after an agent
-// update or a sign-in, and after a setup task ends; the runner asks `installed` to know whether a
-// task there has the plugin (else Ducter's own read-only memory stands in).
+// update or a sign-in, and after a setup task ends; the runner asks `present` to know whether a
+// task there has the plugin in any form (else Ducter's own read-only memory stands in).
 //
 // Installing is never silent (D17: the agents' setup is the user's): 装上 / Install opens one task
 // on that computer, with that agent, that follows Mem's official setup guide and reads the check
@@ -42,8 +42,12 @@ export interface MemPluginsDeps {
 export interface MemPlugins {
   /** A device's agents with their Mem line (none when memory is off or the check can't tell). */
   view(deviceId: string, list: DeviceHarness[]): DeviceHarness[];
-  /** D168: Mem's check last said this agent's plugin is installed on that device (id or name; undefined = the home). */
-  installed(device: string | undefined, harness: string): boolean;
+  /**
+   * D168, research/48 M1: Mem's check last saw this agent's plugin on that device in any form
+   * (installed, review, update: anything but absent), so a task there gets the plugin's own
+   * context and no recall from Ducter. Id or name; undefined = the home.
+   */
+  present(device: string | undefined, harness: string): boolean;
   /** Runs the check on one device (or every awake one) now. */
   check(deviceId?: string): Promise<void>;
   /** 装上 / Install: opens the setup task on that device with that agent. */
@@ -231,10 +235,13 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
   (timer as { unref?: () => void } | undefined)?.unref?.();
 
   return {
-    installed(device, harness) {
+    present(device, harness) {
       if (!d.on()) return false;
       const id = !device || device === "local" ? "local" : seen.has(device) ? device : (names.get(device) ?? device);
-      return seen.get(id)?.[harness]?.state === "installed";
+      const s = seen.get(id)?.[harness]?.state;
+      // A review (two registrations, an install it can't call enabled) or an update still loads
+      // the plugin's SessionStart bundle: counting only "installed" injected both (the author's Codex).
+      return s !== undefined && s !== "absent";
     },
     view(deviceId, list) {
       if (!d.on()) return list;

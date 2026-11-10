@@ -41,11 +41,13 @@ type Finds struct {
 	Rung     string     `json:"rung"`
 	Opening  string     `json:"opening"`
 	Finds    []FindView `json:"finds"`
-	LeftOut  string     `json:"leftOut,omitempty"`
+	LeftOut  string     `json:"leftOut,omitempty"` // the partner's, said only when asked (D172); never drawn
 	Quiet    bool       `json:"quiet,omitempty"`
 	Ask      string     `json:"ask,omitempty"`
 	Revises  string     `json:"revises,omitempty"`
 	Answered string     `json:"answered,omitempty"`
+	// Added: on a fold-in, how many finds at the end are new in this revision.
+	Added int `json:"added,omitempty"`
 }
 
 // FindState is a find's change: go, held, passed (过了), useful, muted.
@@ -71,6 +73,7 @@ type AppWatch struct {
 // SourceLook is a source's watching today: the status line and the tiles.
 type SourceLook struct {
 	Watching   bool       `json:"watching"`
+	Paused     bool       `json:"paused,omitempty"`
 	ReadToday  int        `json:"readToday"`
 	WorthToday int        `json:"worthToday"`
 	BudgetPct  int        `json:"budgetPct"`

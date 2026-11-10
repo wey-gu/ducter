@@ -3,12 +3,14 @@
 // <what_i_know>, logged by id) and read-only memory_search stand in. Memory off in Ducter: the
 // plugin is turned off in the session. A browser task gets none; a task proposes `remember`.
 import { afterEach, beforeEach, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Bodies } from "@ducter/protocol";
+import { HARNESS_IDS, type Bodies } from "@ducter/protocol";
+import { HARNESS_FACTS } from "@ducter/protocol/src/harness-facts.ts";
+import { MEM_PLUGIN_IDS } from "@ducter/protocol/src/mem-plugins.ts";
 import type { HarnessEvent, HarnessPort, HarnessSession, SessionSpec, TaskMemoryNote } from "@ducter/protocol/src/internal.ts";
-import { adaptSpec } from "../src/oar.ts";
+import { adaptSpec, PI_MEM_OFF_FLAGS, piVariant } from "../src/oar.ts";
 import { createRunner, normalizeReport, registerTaskTools, taskBrief } from "../src/index.ts";
 import { createFakeCore, waitFor, type FakeCore } from "./fake-core.ts";
 
@@ -143,6 +145,32 @@ test("memory off in Ducter: the user's Mem plugin is off in the task, on Claude 
   expect(adaptSpec(spec, { dataDir: dir, env: { CODEX_HOME: home } }).options.launchArgs ?? []).toEqual([]);
   writeFileSync(join(home, "config.toml"), '[plugins."nowledge-mem@nowledge-community"]\nenabled = true\n');
   expect(adaptSpec(spec, { dataDir: dir, env: { CODEX_HOME: home } }).options.launchArgs).toEqual(["-c", "plugins.nowledge-mem@nowledge-community.enabled=false"]);
+});
+
+test("memory off holds on every agent Mem has a plugin for: pi without extensions, DeepSeek Harness under its own home (research/48 M3)", async () => {
+  core.taskMemory = { on: () => false, recall: async () => undefined };
+  core.memPluginIn = () => true;
+  // Every agent in the registry with a Mem plugin gets its ids, read from harness-facts (M4).
+  for (const h of HARNESS_IDS) expect(MEM_PLUGIN_IDS[h]?.length ?? 0).toBe(HARNESS_FACTS[h].memPlugin ? HARNESS_FACTS[h].memPlugin!.value.ids.length : 0);
+  expect(Object.keys(MEM_PLUGIN_IDS).sort()).toEqual(["claude-code", "codex", "deepseek-harness", "pi"]);
+  const specs: SessionSpec[] = [];
+  for (const harness of ["pi", "deepseek-harness"] as const) {
+    const h = recordingPort();
+    const runner = createRunner(core, { harness: h.port, newId: () => `tsk_${harness}` });
+    await runner.whenStarted((await runner.openTask({ persona: "p1", title: "x", brief: "b", harness })).taskId);
+    specs.push(h.specs[0]!);
+  }
+  const [pi, dsh] = specs;
+  expect(pi!.disablePlugins).toEqual(["npm:nowledge-mem-pi"]);
+  expect(piVariant(pi!)).toEqual({ extensionsOff: true });
+  expect(PI_MEM_OFF_FLAGS).toEqual(["--no-extensions"]);
+  // Memory on: the user's own pi, extensions and all.
+  expect(piVariant({ harness: "pi" })).toBeUndefined();
+  const a = adaptSpec({ ...dsh!, appendSystemPrompt: "the brief" }, { dataDir: dir, env: {} });
+  expect(a.options.env?.DSH_HOME).toContain(join("harness", "deepseek-harness-memory-off"));
+  expect(readFileSync(join(a.options.env!.DSH_HOME!, "AGENTS.md"), "utf8")).toContain("the brief");
+  // Memory on: the user's own DSH home.
+  expect(adaptSpec({ harness: "deepseek-harness", cwd: dir, mcp: [] }, { dataDir: dir, env: {} }).options.env?.DSH_HOME).toBeUndefined();
 });
 
 test("remember: at most three, clipped, empty ones dropped; absent when none", () => {

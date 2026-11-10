@@ -73,6 +73,19 @@ channel names where its latest is read and how it updates. Ducter never touches 
 | pi | `@earendil-works/pi-coding-agent` | none | `managed-install.json` · `pi update --self` · none | none (inside Ducter from a checkout) |
 | DeepSeek Harness | `@deepseek-ai/dsh` (npm's `latest` is a pre-release) | none | none | none |
 
+## The Nowledge Mem plugin in tasks (D168, D173, research/48 M3/M4)
+
+`memPlugin` in harness-facts: Mem's host name, the plugin's id, and how one session runs without
+it when memory is off. The probe checks pi's flag and that `nmem plugins inspect` still names
+each host.
+
+| Harness | Host | Id | Off in one session | Evidence | Context it adds |
+|---|---|---|---|---|---|
+| Claude Code | `claude-code` | `nowledge-mem@nowledge-community` | `--settings {"enabledPlugins": {id: false}}` | DOCUMENTED | unknown (todo) |
+| Codex | `codex-cli` | `nowledge-mem@nowledge-community` | `-c plugins.<id>.enabled=false` (ids in config.toml only) | INFERRED: its hooks script may sit outside the plugin | unknown |
+| pi | `pi` | `npm:nowledge-mem-pi` | `--no-extensions` (every user extension; `-e` ones stay) | DOCUMENTED | unknown |
+| DeepSeek Harness | `deepseek-harness` | `nowledge-mem` (a profile bundle) | a Ducter-owned `DSH_HOME` for that task | INFERRED: DSH unverified | unknown |
+
 `bun scripts/probe-harnesses.ts` prints each channel's latest beside the verified range
 (`--offline` skips it). On 2026-11-10: Claude Code npm/installer 2.1.321, cask 2.1.311; Codex
 0.167.0 everywhere (verified); pi 1.5.0; DeepSeek Harness 0.2.2-rc.1.

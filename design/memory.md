@@ -182,13 +182,16 @@ blocked feature. Copy never implies payment.
   `source_app` (DOCUMENTED); it takes no other provenance from the environment (VERIFIED: the
   NMEM_* names its scripts read). The link to the Log is the native session id, which the Log
   keeps per task. `NMEM_NO_MAILBOX_NOTICE=1` keeps the persona's Bridge mailbox out of tasks.
-- **Where the plugin isn't installed** for that agent on that computer (Mem's own check,
-  D169), Ducter fills in: before the first turn the runner asks the partner's Mem client once
+- **Where the plugin isn't there** for that agent on that computer (Mem's own check, D169,
+  says absent, or has nothing to say yet: no nmem there, an older worker), Ducter fills in: before the first turn the runner asks the partner's Mem client once
   with the title and brief (≤ 300 chars, 4 hits, 6 s cap) and puts `<what_i_know>` (ids, "the
   brief wins") in front of the first turn, logged by id; a read-only task `memory_search`
   (≤ 5 results, 6 per task, each read logged by query and ids) is answered by the home, so a
-  worker holds no Mem key. Where the plugin is there, neither: it already gives that context,
-  and a second recall would double it.
+  worker holds no Mem key. `<what_i_know>` is capped at the render too (4 notes, 220 chars
+  each; `KNOWN_MAX`, guarded in `prompt-budget.test.ts`). Where the plugin is there **in any
+  form** (installed, review, update: D173 (6); the author's own Codex is a review), neither: it
+  already gives that context, and a second recall would double it. The plugin's own Context
+  Bundle size is not measured yet (harness-facts `memPlugin.contextCost: "unknown"`, todo).
 - **Writing:** the plugin keeps the thread; memories come only from the partner. A task
   proposes `remember` (≤ 3) in its report; the partner keeps what is durable with
   `memory_add` and the task's provenance. The brief says not to save or distill memories
@@ -198,8 +201,11 @@ blocked feature. Copy never implies payment.
   put the user's Context Bundle into the session unasked, and a page could steer the agent to
   type it into a form or a URL.
 - **Mem off** in Ducter: no recall, no tool, no words about memory in the brief, no NMEM
-  identity, and the plugin turned off by id in the session (Claude Code `--settings
-  enabledPlugins`, Codex `-c plugins.<id>.enabled=false`), so the switch is true in tasks.
+  identity, and the plugin turned off in the session the way harness-facts `memPlugin.off` says
+  for each agent (D173 (7)): Claude Code `--settings enabledPlugins`, Codex
+  `-c plugins.<id>.enabled=false`, pi `--no-extensions` (all of the user's pi extensions, as pi
+  has no per-package switch), DeepSeek Harness under a Ducter-owned home (INFERRED). Open: whether
+  Codex's Mem hooks script sits outside the plugin (todo).
 
 **Where it is, per computer (D169).** Tasks depend on the plugin, so Ducter keeps track of it
 on every computer, without owning it (D17):

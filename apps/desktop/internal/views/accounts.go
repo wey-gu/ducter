@@ -139,10 +139,11 @@ func (a *App) sourceStatus(cv protocol.ConnectionView) (string, ui.Color) {
 	if l == nil || !l.Watching {
 		return a.L.T("card.status.asked"), t.InkSoft
 	}
-	if l.WorthToday > 0 {
-		return a.L.T("card.status.read", l.ReadToday, l.WorthToday), t.InkSoft
+	// D172: the plain state, never how much it read (that is under ⋯ 看了哪些).
+	if l.Paused {
+		return a.L.T("card.status.paused"), t.InkSoft
 	}
-	return a.L.T("card.status.calm", l.ReadToday), t.InkSoft
+	return a.L.T("card.status.watching"), t.InkSoft
 }
 
 // tiles are the apps a source shows: from its look when watched, else

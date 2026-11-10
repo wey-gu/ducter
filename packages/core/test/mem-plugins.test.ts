@@ -113,19 +113,22 @@ test("every signed-in agent without it gets one card, Go 装上 recommended and 
   expect(again.decisions()).toHaveLength(0);
 });
 
-test("installed(): what a task there has, by id or name; memory off: never", async () => {
+test("present(): what a task there has, in any form but absent, by id or name; memory off: never (research/48 M1)", async () => {
   const devs: Dev[] = [
     { id: "local", name: "hel", home: true, awake: true, harnesses: signed("claude-code") },
     { id: "w1", name: "mini", home: false, awake: true, harnesses: signed("claude-code") },
   ];
   const s = setup({ devs });
   await s.mp.check();
-  expect(s.mp.installed(undefined, "claude-code")).toBe(true);
-  expect(s.mp.installed("local", "codex")).toBe(false); // a review is not installed
-  expect(s.mp.installed("mini", "claude-code")).toBe(false); // the fresh worker
-  expect(s.mp.installed("w1", "claude-code")).toBe(false);
+  expect(s.mp.present(undefined, "claude-code")).toBe(true);
+  // A review (the author's Codex: two registrations) still loads the plugin's bundle: present, so no Ducter recall on top.
+  expect(s.mp.present("local", "codex")).toBe(true);
+  expect(s.mp.present("local", "deepseek-harness")).toBe(true); // a review too (a DSH profile bundle)
+  expect(s.mp.present("local", "pi")).toBe(false); // absent: Ducter's recall stands in
+  expect(s.mp.present("mini", "claude-code")).toBe(false); // the fresh worker
+  expect(s.mp.present("w1", "claude-code")).toBe(false);
   s.setOn(false);
-  expect(s.mp.installed(undefined, "claude-code")).toBe(false);
+  expect(s.mp.present(undefined, "claude-code")).toBe(false);
 });
 
 test("an agent signed in later on a known computer gets its one card; memory off: none", async () => {

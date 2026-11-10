@@ -155,6 +155,24 @@ Process rules proposed alongside (for AGENTS.md, the author's call):
 3. After a day of parallel merges, re-run this audit's measurements (`DUCTER_BUDGET_PRINT=1 bun
    test packages/partner/test/prompt-budget.test.ts`, the probe).
 
+## Follow-up: what was fixed after the merges (2026-11-10, D173)
+
+VERIFIED by tests with no model calls; numbers from `packages/core/test/proactive-cost.test.ts`.
+
+| # | Fix | Test that would have caught it |
+|---|---|---|
+| P1 | The judge runs before the morning note and, by day, only for urgent or due-today candidates, ≤ 4 runs a day; verdicts memoized by key + content hash; judge tokens charged to the candidates' sources; triage stays on `cheapModel`. A synthetic busy 24 h (144 looks) costs 8 judge calls, ≤ 4 per day. | `proactive-cost`: the busy-day ceiling, no re-judging, over-budget source; `judge-model`: triage on the cheap model, the bar on the brain |
+| P2 | ≤ 10 candidates per judge call (urgent first), ≤ 5 finds per note in 有用就说 (the rest counted as 还有 N 件没说, for the partner), a fold-in renders only its new finds to the partner. | `proactive-cost`: the prompt cap, the note cap; `prompt-budget`: the finds line |
+| P3 | A Go task's brief holds Ducter's words only; mail-derived fields travel as JSON in `<data>`; subjects and snippets are `redact`ed before triage. | `proactive-cost`: the fence; `prompt-budget`: the Go brief; `proactive-cascade`: a key in a mail |
+| P4 | Cache reads weigh 0.1; each source pays its share; the budget is per source, never the whole mode. | `judge-model`: weighted tokens; `proactive-learn`, `proactive-cost`: per-source budget |
+| P5 | The look's checkpoint moves after intake; failed triage batches retry; the 60-day back-fill resumes after a restart; said keys and old verdicts are pruned; a throwing judge falls back to code (it already did: the INFERRED failure didn't hold). | `proactive-watch`: the checkpoint; `proactive-cost`: restart, prune, throwing judge |
+| L1 | The quiet-hours default is `push.ts`'s; the prompts put the date next to the data. Not done: one CJK helper (there is no shared one yet; five call sites use the same regex). | `proactive-cascade`: the date after the instructions |
+| M1 | The task's memory mode reads "present in any form" (installed, review, update); Ducter's recall only where the check says absent or has nothing to say (deviation, said in D173 (6)); `<what_i_know>` capped at the render. | `mem-plugins`: present(); `prompt-budget`: the first turn with recall |
+| M2 | Not measurable without a live session: `memPlugin.contextCost: "unknown"` in harness-facts; todo with its trigger. | — |
+| M3 | Memory off on pi (`--no-extensions`) and DeepSeek Harness (a Ducter-owned home); Codex's separate hooks script is a todo. | runner `memory`: every agent with a plugin |
+| M4 | Host, ids, off method, context cost in harness-facts `memPlugin`; `MEM_HOSTS`/`MEM_PLUGIN_IDS` derive from it; the probe checks pi's flag and Mem's host names. Principle 17's wording stays the author's (§4.6). | runner `memory`: the ids come from the registry |
+| F7 | Not changed: unifying the brief's detector is a behaviour choice (§4.1). | — |
+
 ## Implications for Ducter
 
 - The small-window strategy holds on main: a busy fresh session starts at about 34K of a 120K

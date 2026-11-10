@@ -91,6 +91,8 @@ test("at the month's budget it drops to 只说急的 and says so once", async ()
   const said = r.log.read({ stream: "channel", kinds: ["ai_msg"] }).map((e) => (e.body as Bodies["ai_msg"]).text);
   expect(said).toEqual(["oo 里的账号 这个月的额度用完了，这个月剩下的日子我只说急的。"]);
   await r.advance(HOUR + 2 * 60_000);
-  expect(r.notes().every((e) => e.body.rung !== "morning")).toBe(true);
+  // Per source (research/48 P4): the source over its budget says only what is urgent; the
+  // morning note still comes (another source may have something) and has nothing from it.
+  expect(r.notes().filter((e) => e.body.rung === "morning").every((e) => e.body.finds.length === 0)).toBe(true);
   expect(r.p.look("conn_oo")!.budgetPct).toBe(100);
 });

@@ -38,9 +38,13 @@ function memorySection(b: BriefInput): string {
 `;
 }
 
+/** At most this many memories, each clipped, in front of a task's first turn (the recall asks for 4 × 200; research/48 M1). */
+export const KNOWN_MAX = { notes: 4, title: 80, content: 220, id: 40 } as const;
+const clipTo = (s: string, n: number) => (s.length <= n ? s : s.slice(0, n - 1) + "…");
+
 /** D168: the memories in front of a task's first turn (ids so it can look closer; the brief wins). */
 export function knownTurn(notes: { id?: string; title: string; content: string; date?: string }[], partnerName: string): string {
-  const lines = notes.map((n) => `- ${n.id ? `[${n.id}] ` : ""}${n.title}: ${n.content}${n.date ? ` (${n.date})` : ""}`);
+  const lines = notes.slice(0, KNOWN_MAX.notes).map((n) => `- ${n.id ? `[${clipTo(n.id, KNOWN_MAX.id)}] ` : ""}${clipTo(n.title, KNOWN_MAX.title)}: ${clipTo(n.content, KNOWN_MAX.content)}${n.date ? ` (${n.date.slice(0, 10)})` : ""}`);
   return `<what_i_know>\nFrom the user's memory, what ${partnerName} thinks matters for this task (background; the brief wins):\n${lines.join("\n")}\n</what_i_know>\n\n`;
 }
 

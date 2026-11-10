@@ -71,6 +71,27 @@ export interface HarnessFacts {
   browser: Fact<string>;
   /** D156: where it's installed from and how each copy updates (research/42). */
   channels: Fact<AgentChannels>;
+  /** D168/D169: the user's Nowledge Mem plugin for this agent, and how Ducter turns it off in one session (research/48 M3, M4). */
+  memPlugin?: Fact<MemPluginFact>;
+}
+
+/**
+ * The Nowledge Mem plugin for one agent: its host name in `nmem plugins inspect`, its id(s) in the
+ * agent's own plugin registry, and how a single session is run without it when memory is off.
+ *  - settings: Claude Code `--settings {"enabledPlugins": {<id>: false}}`, the user's other plugins kept;
+ *  - config: Codex `-c plugins.<id>.enabled=false`, only for ids the user's config.toml has;
+ *  - flag: pi `--no-extensions` (no per-package switch: every extension the user installed is off
+ *    in that session; explicit `-e` extensions, Ducter's MCP among them, stay);
+ *  - home: DeepSeek Harness under a Ducter-owned DSH home (Mem ships as a DSH profile bundle; DSH has
+ *    no per-session profile switch known), so none of the user's profiles load.
+ * contextCost: the size of what the plugin injects at session start (its Context Bundle), per
+ * session; "unknown" until measured live (research/48 M2, design/todo.md).
+ */
+export interface MemPluginFact {
+  host: string;
+  ids: string[];
+  off: "settings" | "config" | "flag" | "home";
+  contextCost: "unknown" | number;
 }
 
 /**
@@ -178,6 +199,10 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
       value: "Claude in Chrome via --chrome (the user's real Chrome, needs the extension); computer use is not available in -p",
       evidence: { kind: "VERIFIED", how: "research/38 §1", date: D, version: "2.1.319" },
     },
+    memPlugin: {
+      value: { host: "claude-code", ids: ["nowledge-mem@nowledge-community"], off: "settings", contextCost: "unknown" },
+      evidence: { kind: "DOCUMENTED", source: "https://mem.nowledge.co/SKILL.md (read 2026-11-10), research/47 §3; enabledPlugins in the --settings JSON (runner/test/memory.test.ts)" },
+    },
     channels: {
       value: {
         npm: "@anthropic-ai/claude-code",
@@ -231,6 +256,13 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
       value: "Computer Use (cua_repl) works headless under OAR and reaches the user's real Chrome as an app; the in-app browser and Chrome extension do not; only features.plugins=false removes it",
       evidence: { kind: "VERIFIED", how: "research/38 §1", date: D, version: "0.167.0" },
     },
+    memPlugin: {
+      value: { host: "codex-cli", ids: ["nowledge-mem@nowledge-community"], off: "config", contextCost: "unknown" },
+      evidence: {
+        kind: "INFERRED",
+        why: "ids and the bare -c plugin path are DOCUMENTED (https://mem.nowledge.co/SKILL.md (read 2026-11-10), research/47 §3; research/38 §1 for the bare id). Not proven: the setup guide adds 'its hooks script' as well; if that lands in the user's own hooks rather than the plugin's, turning the plugin off may leave its SessionStart hook running. Live check owed (design/todo.md).",
+      },
+    },
     channels: {
       value: {
         npm: "@openai/codex",
@@ -268,6 +300,10 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
     toolSearch: { value: "MCP through Ducter's extension; loaded directly", evidence: { kind: "INFERRED", why: "no deferral in pi" } },
     resume: { value: { supported: true, how: "session file path (OAR)" }, evidence: { kind: "INFERRED", why: "OAR pi runtime" } },
     browser: { value: "none (read, bash, edit, write; extensions only)", evidence: pi("`pi --help` (research/38)") },
+    memPlugin: {
+      value: { host: "pi", ids: ["npm:nowledge-mem-pi"], off: "flag", contextCost: "unknown" },
+      evidence: { kind: "DOCUMENTED", source: "https://mem.nowledge.co/SKILL.md (read 2026-11-10), research/47 §3 (`pi install npm:nowledge-mem-pi`); `pi --help`: --no-extensions disables extension discovery, explicit -e paths still load (research/03 §4.1)" },
+    },
     channels: {
       value: {
         npm: "@earendil-works/pi-coding-agent",
@@ -290,6 +326,10 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
     toolSearch: { value: "stdio MCP through Ducter's bridge", evidence: { kind: "INFERRED", why: "runner/oar.ts" } },
     resume: { value: { supported: true, how: "OAR SessionOptions.resume" }, evidence: { kind: "INFERRED", why: "OAR dsh runtime" } },
     browser: { value: "none known", evidence: { kind: "INFERRED", why: "research/38" } },
+    memPlugin: {
+      value: { host: "deepseek-harness", ids: ["nowledge-mem"], off: "home", contextCost: "unknown" },
+      evidence: { kind: "INFERRED", why: "the author's inspect fixture lists a dsh_profile_bundle 0.1.2 for host deepseek-harness (packages/protocol/fixtures/mem-inspect); DSH is not installed on the verifying Mac, so no per-session profile switch is known; a Ducter-owned DSH_HOME (as the partner's clean setup) loads none of the user's profiles" },
+    },
     channels: {
       value: { npm: "@deepseek-ai/dsh" },
       evidence: { kind: "DOCUMENTED", source: "OAR 0.95.1 runtimes/dsh/install.js (npm package @deepseek-ai/dsh); research/34, research/42 §4" },

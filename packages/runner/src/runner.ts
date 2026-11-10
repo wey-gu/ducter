@@ -855,10 +855,12 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
   }
 
   /**
-   * D168: what memory a task in this place has. plugin: the user's Nowledge Mem plugin for this
-   * agent is installed on that computer, and does it (Context Bundle at start, its own searches,
-   * its capture); ducter: it isn't, so Ducter's recall and read-only memory_search stand in;
-   * none: a browser place (D62) or memory off.
+   * D168: what memory a task in this place has. plugin: Mem's check sees the user's Nowledge Mem
+   * plugin for this agent on that computer in any form (installed, review, update), and it does
+   * it (Context Bundle at start, its own searches, its capture), so Ducter adds no recall: never
+   * both (research/48 M1). ducter: the check says it is absent there, or has nothing to say yet
+   * (no nmem there, a worker too old to ask, not checked yet), so Ducter's recall (≤ 4 short
+   * notes) and read-only memory_search stand in. none: a browser place (D62) or memory off.
    */
   function memoryMode(place: Place, harness: string): "plugin" | "ducter" | "none" {
     if (place.kind === "browser" || !memoryOn()) return "none";

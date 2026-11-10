@@ -108,7 +108,8 @@ function mismatches(facts: Fact[], c: DetectCtx): Candidate[] {
         step: {
           kind: "lookup",
           goLabel: { zh: "看看能不能提前", en: "See if it can start earlier" },
-          brief: `Look up whether ${next.name || "the hotel"} can start on ${dayKey(Date.parse(arrive), c.zone)} (the night ${fl.name} lands, ${hm(arrive, c.zone)}), and two nearby places for that one night, with prices. Read only: book nothing, pay nothing, sign up for nothing; the person decides. Report in two or three lines.`,
+          brief: `Look up whether the hotel can start on ${dayKey(Date.parse(arrive), c.zone)} (the night the flight lands, ${hm(arrive, c.zone)}), and two nearby places for that one night, with prices. Read only: book nothing, pay nothing, sign up for nothing; the person decides. Report in two or three lines.`,
+          data: { hotel: next.name || "", flight: fl.name, ...(fl.place ? { lands_at: fl.place } : {}), hotel_mail: next.label, flight_mail: fl.label },
           needs: { browse: true },
         },
         facts: [fl.id, next.id],
@@ -164,7 +165,8 @@ function deadlines(facts: Fact[], c: DetectCtx): Candidate[] {
       step: {
         kind: "lookup",
         goLabel: { zh: "打开续费页", en: "Open the renewal page" },
-        brief: `Open the renewal or billing page for ${r.name} in Ducter's browser and stop there: tell the person the price, the due date (${dayKey(Date.parse(r.due), c.zone)}) and what card is on file if it shows. Never pay, never change a setting; paying is the person's.`,
+        brief: `Open the renewal or billing page for the service below in Ducter's browser and stop there: tell the person the price, the due date (${dayKey(Date.parse(r.due), c.zone)}) and what card is on file if it shows. Never pay, never change a setting; paying is the person's.`,
+        data: { service: r.name, mail: r.label, ...(r.amount ? { amount: r.amount } : {}) },
         needs: { browse: true, signedIn: true },
       },
       facts: [r.id],
@@ -190,7 +192,7 @@ function changes(facts: Fact[], c: DetectCtx): Candidate[] {
         people: [],
         how: [howOf(f)],
         words: cancelled ? { zh: `${f.name}（${md(f.on, c.zone)}）取消了。`, en: `${f.name} on ${md(f.on, c.zone)} was cancelled.` } : { zh: `${f.name} 改了：现在是 ${when}。`, en: `${f.name} changed: now ${when}.` },
-        step: { kind: "lookup" as const, goLabel: { zh: "看看有什么选择", en: "Look up options" }, brief: `${f.name} ${cancelled ? "was cancelled" : "changed"} (${f.label}). Look up the options (rebooking, the next one, refunds) and what each costs. Read only: change nothing, book nothing; the person decides.`, needs: { browse: true } },
+        step: { kind: "lookup" as const, goLabel: { zh: "看看有什么选择", en: "Look up options" }, brief: `The plan below ${cancelled ? "was cancelled" : "changed"}. Look up the options (rebooking, the next one, refunds) and what each costs. Read only: change nothing, book nothing; the person decides.`, data: { plan: f.name, mail: f.label }, needs: { browse: true } },
         facts: [f.id],
       };
     });
@@ -227,8 +229,8 @@ function waitingOnYou(facts: Fact[], c: DetectCtx): Candidate[] {
       how: list.map(howOf).slice(-3),
       words: { zh, en },
       step: gh
-        ? { kind: "read", goLabel: { zh: "先帮我读一遍", en: "Read it for me first" }, brief: `${who} is waiting on the person: ${first.label}. Read it (the PR or issue, its diff and discussion) and write up in a few lines what matters for the person's answer. Read only: comment nothing, approve nothing.` }
-        : { kind: "draft", goLabel: { zh: "拟个回复", en: "Draft a reply" }, brief: `${who} asked the person "${first.what}" (${first.label}). Read the thread and write a short reply draft in the thread's language. Show the draft whole in your report; send nothing, save nothing to the mailbox.` },
+        ? { kind: "read", goLabel: { zh: "先帮我读一遍", en: "Read it for me first" }, brief: "Someone is waiting on the person on GitHub (below). Read it (the PR or issue, its diff and discussion) and write up in a few lines what matters for the person's answer. Read only: comment nothing, approve nothing.", data: { from: who, item: first.label } }
+        : { kind: "draft", goLabel: { zh: "拟个回复", en: "Draft a reply" }, brief: "Someone asked the person something (below). Read the thread and write a short reply draft in the thread's language. Show the draft whole in your report; send nothing, save nothing to the mailbox.", data: { from: who, asked: first.what, thread: first.label } },
       facts: list.map((a) => a.id),
     });
   }
@@ -263,7 +265,7 @@ function waitingOnThem(facts: Fact[], c: DetectCtx): Candidate[] {
       people: [a.to.toLowerCase()],
       how: [howOf(a)],
       words: { zh: `你 ${md(a.at, c.zone)} 问 ${who}「${a.what}」，到现在没回。`, en: `You asked ${who} "${a.what}" on ${md(a.at, c.zone)}; no answer yet.` },
-      step: { kind: "draft", goLabel: { zh: "拟个跟进", en: "Draft a follow-up" }, brief: `The person asked ${who} "${a.what}" on ${dayKey(Date.parse(a.at), c.zone)} (${a.label}) and has no answer. Write a short, friendly follow-up draft in the thread's language. Show it whole in your report; send nothing.` },
+      step: { kind: "draft", goLabel: { zh: "拟个跟进", en: "Draft a follow-up" }, brief: `The person asked someone something on ${dayKey(Date.parse(a.at), c.zone)} (below) and has no answer. Write a short, friendly follow-up draft in the thread's language. Show it whole in your report; send nothing.`, data: { to: who, asked: a.what, thread: a.label } },
       facts: [a.id],
     });
   }
@@ -288,7 +290,7 @@ function promised(facts: Fact[], c: DetectCtx): Candidate[] {
       people: [p.to.toLowerCase()],
       how: [howOf(p)],
       words: { zh: `你答应 ${who} 今天${p.what ? `「${p.what}」` : "给个东西"}。`, en: `You told ${who} you'd ${p.what || "send something"} by today.` },
-      step: { kind: "read", goLabel: { zh: "找找相关的东西", en: "Find what's related" }, brief: `The person promised ${who} "${p.what}" by today (${p.label}). Find the related draft, files or thread, and say in a few lines where things stand. Read only; send nothing.` },
+      step: { kind: "read", goLabel: { zh: "找找相关的东西", en: "Find what's related" }, brief: "The person promised someone something by today (below). Find the related draft, files or thread, and say in a few lines where things stand. Read only; send nothing.", data: { to: who, promised: p.what, thread: p.label } },
       facts: [p.id],
     });
   }

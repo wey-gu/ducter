@@ -5,6 +5,7 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -54,7 +55,7 @@ func TestAccountsCardSheet(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 1400, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	for _, want := range []string{"自己发现了事，怎么告诉你", "每天最多 3 件", "oo 里的账号", "今天看了 214 封信 · 有 1 件值得说", "经过 oo · 邮件会经过 OOMOL 的服务器", i18n.New(i18n.ZH).T("card.stop", "oo 里的账号"), "连不上", "加一个", "日历", "Discord"} {
+	for _, want := range []string{"自己发现了事，怎么告诉你", "每天最多 3 件", "oo 里的账号", "在留意", "经过 oo · 邮件会经过 OOMOL 的服务器", i18n.New(i18n.ZH).T("card.stop", "oo 里的账号"), "连不上", "加一个", "日历", "Discord"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
@@ -89,7 +90,7 @@ func TestAccountsCardSheet(t *testing.T) {
 }
 
 func morningEvents() []protocol.LogEvent {
-	note := protocol.Finds{NoteID: "n1", Rung: "morning", Opening: "早。昨晚到现在看了 214 封信、今天的 5 个会和 GitHub，有 3 件值得你知道。", LeftOut: "没说的：12 封通知和收据，看标题就知道；1 封像推销，没理它。", Finds: []protocol.FindView{
+	note := protocol.Finds{NoteID: "n1", Rung: "morning", Opening: "早。", LeftOut: "没说的：12 封通知和收据，看标题就知道；1 封像推销，没理它。", Finds: []protocol.FindView{
 		{FindID: "f1", Kind: "deadline", Text: "ducter.dev 11/16 到期（$10.44）。自动续费那张卡已经过期了。", DecisionID: "d1", GoLabel: "打开续费页", How: []protocol.FindHow{{What: "Cloudflare · Your domain ducter.dev renews on November 16", At: "2026-10-17T01:12:00Z"}}},
 		{FindID: "f2", Kind: "mismatch", Text: "11/21 的 CA929 晚上 21:40 到成田，新宿的酒店却是 11/22 才入住，那晚还没地方住。", DecisionID: "d2", GoLabel: "看看能不能提前", How: []protocol.FindHow{{What: "Air China · Itinerary: CA929", At: "2026-11-02T12:01:00Z"}, {What: "Shinjuku Granbell · Reservation confirmed", At: "2026-11-03T03:40:00Z"}}},
 		{FindID: "f3", Kind: "waiting_on_you", Text: "Lina 4 天前问你「#2141 什么时候能 review」，今天又问了一次。", DecisionID: "d3", GoLabel: "先帮我读一遍", How: []protocol.FindHow{{What: "Lina Wu · #2141 review?", At: "2026-11-06T02:05:00Z"}}},
@@ -113,6 +114,13 @@ func TestMorningNoteInTheConversation(t *testing.T) {
 	for _, want := range []string{"快到期 · 要花钱", "好，打开续费页", "先等等", "怎么知道的", "有用", "这类不用告诉我", "两件事对不上"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
+		}
+	}
+	// D172: restraint. What was left out is the partner's to say when asked, and nothing on
+	// screen says how much was read.
+	for _, s := range tt.Texts() {
+		if strings.Contains(s, "没说的") || readCount.MatchString(s) {
+			t.Errorf("the note shows %q", s)
 		}
 	}
 	// A find's step is inside its note: never also a card of its own.
@@ -143,22 +151,22 @@ func TestMorningNoteInTheConversation(t *testing.T) {
 	}
 }
 
-func TestQuietMorningChangesOnlyTheHeader(t *testing.T) {
+// D172: a quiet morning is nothing at all: no message and no header line.
+func TestQuietMorningShowsNothing(t *testing.T) {
 	app, _ := iaApp(t, i18n.ZH)
 	app.Status = client.Connected
 	app.Receive(protocol.ServerFrame{T: "events", Events: []protocol.LogEvent{
 		ev("channel", protocol.KindUserMsg, protocol.UserMsg{Text: "帮我把周报草稿理一下"}),
-		ev("channel", protocol.KindFinds, protocol.Finds{NoteID: "q", Rung: "morning", Quiet: true, Finds: []protocol.FindView{}}),
 	}})
-	if !app.S.QuietMorning() {
-		t.Fatal("a quiet morning isn't known")
-	}
+	before := app.summary(app.S.Board())
+	app.Receive(protocol.ServerFrame{T: "events", Events: []protocol.LogEvent{
+		ev("channel", protocol.KindFinds, protocol.Finds{NoteID: "q", Rung: "morning", Quiet: true, Finds: []protocol.FindView{}, LeftOut: "没说的：3 封通知和收据"}),
+	}})
 	if n := len(app.S.Channel); n != 1 {
 		t.Errorf("a quiet morning became a message: %d entries", n)
 	}
-	app.Receive(protocol.ServerFrame{T: "events", Events: []protocol.LogEvent{ev("channel", protocol.KindUserMsg, protocol.UserMsg{Text: "早"})}})
-	if app.S.QuietMorning() {
-		t.Error("the header line stays after the user wrote")
+	if after := app.summary(app.S.Board()); after != before {
+		t.Errorf("a quiet morning changed the header: %q -> %q", before, after)
 	}
 }
 
@@ -236,7 +244,7 @@ func TestAccountsShots(t *testing.T) {
 
 func morningEventsEN() []protocol.LogEvent {
 	evs := morningEvents()
-	en := protocol.Finds{NoteID: "n1", Rung: "morning", Opening: "Morning. Since last night I read 214 emails, today's 5 meetings and GitHub; 3 worth knowing.", LeftOut: "Left out: 12 notices and receipts the subject says all of; 1 looked like marketing.", Finds: []protocol.FindView{
+	en := protocol.Finds{NoteID: "n1", Rung: "morning", Opening: "Morning.", LeftOut: "Left out: 12 notices and receipts the subject says all of; 1 looked like marketing.", Finds: []protocol.FindView{
 		{FindID: "f1", Kind: "deadline", Text: "ducter.dev is due 11/16 ($10.44). The card on file has expired.", DecisionID: "d1", GoLabel: "Open the renewal page", How: []protocol.FindHow{{What: "Cloudflare · Your domain ducter.dev renews on November 16", At: "2026-10-17T01:12:00Z"}}},
 		{FindID: "f2", Kind: "mismatch", Text: "CA929 lands at Narita at 21:40 on 11/21, but the Shinjuku hotel starts 11/22: nowhere to stay that night.", DecisionID: "d2", GoLabel: "See if it can start earlier", How: []protocol.FindHow{{What: "Air China · Itinerary: CA929", At: "2026-11-02T12:01:00Z"}, {What: "Shinjuku Granbell · Reservation confirmed", At: "2026-11-03T03:40:00Z"}}},
 		{FindID: "f3", Kind: "waiting_on_you", Text: "Lina asked you \"when can you review #2141\" 4 days ago, and asked again.", DecisionID: "d3", GoLabel: "Read it for me first", How: []protocol.FindHow{{What: "Lina Wu · #2141 review?", At: "2026-11-06T02:05:00Z"}}},
@@ -251,12 +259,12 @@ func morningEventsEN() []protocol.LogEvent {
 
 func firstEvents(en bool) []protocol.LogEvent {
 	offer := "已经能看你的 Gmail、日历、GitHub、Discord 了。要不要我现在看一眼过去 3 天，有没有在等你回的？"
-	answer := "看了 3 天的 386 封信。有 1 件："
+	answer := "有 1 件在等你回："
 	find := "Lina 4 天前问你「#2141 什么时候能 review」，今天又问了一次。"
 	label := "先帮我读一遍"
 	if en {
 		offer = "I can read your Gmail, calendar, GitHub and Discord now. Want me to look through the last 3 days for anything waiting on you?"
-		answer = "I read 386 emails from the last 3 days. 1 waiting on you:"
+		answer = "One thing is waiting on you:"
 		find = "Lina asked you \"when can you review #2141\" 4 days ago, and asked again."
 		label = "Read it for me first"
 	}
@@ -267,3 +275,6 @@ func firstEvents(en bool) []protocol.LogEvent {
 		ev("channel", protocol.KindFinds, protocol.Finds{NoteID: "a", Rung: "first", Opening: answer, Ask: "cadence", Finds: []protocol.FindView{{FindID: "f9", Kind: "waiting_on_you", Text: find, DecisionID: "d9", GoLabel: label, How: []protocol.FindHow{{What: "Lina Wu · Re: #2141 review?", At: "2026-11-09T22:40:00Z"}}}}}),
 	}
 }
+
+// readCount is how much was read, said anywhere (D172 forbids it on screen).
+var readCount = regexp.MustCompile(`看了[^。；]*\d|\d+\s*封信|(?i)\bread \d+|\d+ emails|有 \d+ 件值得`)

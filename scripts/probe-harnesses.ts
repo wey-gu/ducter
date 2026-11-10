@@ -10,9 +10,9 @@ import { readFileSync, realpathSync } from "node:fs";
 import { HARNESS_IDS, type HarnessId } from "../packages/protocol/src/harnesses.ts";
 import { CLAUDE_SWITCHES, HARNESS_FACTS, versionStanding } from "../packages/protocol/src/harness-facts.ts";
 
-type Line = { harness: HarnessId; what: string; ok: boolean | null; detail: string };
+type Line = { harness: HarnessId | "mem"; what: string; ok: boolean | null; detail: string };
 const lines: Line[] = [];
-const say = (harness: HarnessId, what: string, ok: boolean | null, detail = "") => lines.push({ harness, what, ok, detail });
+const say = (harness: HarnessId | "mem", what: string, ok: boolean | null, detail = "") => lines.push({ harness, what, ok, detail });
 
 function run(argv: string[], timeoutMs = 15_000): { code: number; out: string } {
   try {
@@ -65,6 +65,7 @@ function probeClaude() {
     [CLAUDE_SWITCHES.readCapEnv, "Read output cap (the partner's working set)"],
     ["claudeMdExcludes", "user memory exclusion (the partner's clean setup)"],
     ['"--chrome"', "Claude in Chrome flag (browser places, D126)"],
+    ["enabledPlugins", "per-session plugin switch (memory off turns the Mem plugin off, D168)"],
   ];
   for (const [s, what] of needles) say("claude-code", what, data.includes(s), s);
   // A minified name moves with every build (2.1.322: the 20K reserve's variable was renamed, and
@@ -109,6 +110,36 @@ for (const h of HARNESS_IDS) {
 }
 probeClaude();
 probeCodex();
+probeMem();
+
+/**
+ * D168/D169 (research/48 M4): the Mem plugin facts. pi must still have the flag memory-off uses,
+ * and Mem's own read-only check must still name every host the registry knows (a renamed host
+ * would make the device card and the task's memory mode silently wrong).
+ */
+function probeMem() {
+  if (Bun.which("pi")) {
+    const r = run(["pi", "--help"]);
+    say("pi", "memory off: --no-extensions", r.out.includes("--no-extensions"), "harness-facts memPlugin.off = flag");
+  }
+  for (const h of HARNESS_IDS) {
+    const m = HARNESS_FACTS[h].memPlugin;
+    if (m && m.evidence.kind === "INFERRED") say(h, "memory off", null, `INFERRED: ${m.evidence.why.slice(0, 120)}`);
+    if (m && m.value.contextCost === "unknown") say(h, "Mem plugin context size", null, "not measured (design/todo.md)");
+  }
+  if (!Bun.which("nmem")) return say("mem", "nmem plugins inspect", null, "nmem not on PATH");
+  const r = run(["nmem", "--json", "plugins", "inspect"]);
+  try {
+    const j = JSON.parse(r.out.slice(r.out.indexOf("{"))) as { plugins?: { host?: string }[] };
+    const hosts = new Set((j.plugins ?? []).map((p) => p.host));
+    for (const h of HARNESS_IDS) {
+      const m = HARNESS_FACTS[h].memPlugin;
+      if (m) say(h, `Mem host "${m.value.host}"`, hosts.has(m.value.host), hosts.has(m.value.host) ? "in nmem's inspect" : "gone from nmem's inspect");
+    }
+  } catch {
+    say("mem", "nmem plugins inspect", null, "no JSON");
+  }
+}
 if (!process.argv.includes("--offline")) await probeChannels();
 
 /**

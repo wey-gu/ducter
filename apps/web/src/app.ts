@@ -925,8 +925,6 @@ class AppState {
     const done = this.doneToday();
     // A phone header has room for two things: what needs you and what's moving come first.
     if (done && parts.length < 2) parts.push(L.t("header.done", done));
-    // D165: a quiet morning sends nothing; only this line says it looked.
-    if (!parts.length && this.S.quietMorning()) return L.t("header.quiet_day");
     return parts.length ? parts.join(" · ") : L.t("header.summary.none");
   }
 

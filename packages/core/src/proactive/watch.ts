@@ -171,10 +171,12 @@ export function createWatchers(opts: {
         // Calendars come back as a window: an event is new when its id or its time changed.
         const idOf = (i: Item) => (i.kind === "event" ? `${i.id}@${i.start}${i.cancelled ? "x" : ""}` : i.id);
         const fresh = items.filter((i) => !seen.has(idOf(i)));
+        // The checkpoint moves only after the items were taken in (research/48 P5): a restart in
+        // between reads them again (the ledger keeps one fact per item), never loses them.
+        if (fresh.length) await opts.onItems(a, fresh);
         st.seen[k] = [...(st.seen[k] ?? []), ...fresh.map(idOf)].slice(-SEEN_MAX);
         if (spec.kind !== "event") st.since[k] = Math.max(since, ...items.map((i) => i.at).filter((t) => t > 0 && t <= now + MIN), now - MIN);
         save();
-        if (fresh.length) await opts.onItems(a, fresh);
       }
     } catch (err) {
       console.warn(`[watch] ${a.title}: ${(err as Error).message}`);

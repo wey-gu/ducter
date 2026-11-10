@@ -3,25 +3,23 @@
 // registrations on this machine and says what it found. This file turns its answer into the one
 // line a device card shows per agent, and names the Mem plugin Ducter turns off inside its tasks
 // (D168: inside Ducter's tasks, memory comes from Ducter).
+import { HARNESS_FACTS } from "./harness-facts.ts";
 import type { MemPluginView, MemPluginWhy } from "./index.ts";
 import { nmemEnv } from "./tool-env.ts";
 
+// The plugin's facts per agent live in the registry with their evidence (harness-facts memPlugin,
+// research/48 M4); these two views are read from it.
+const facts = Object.values(HARNESS_FACTS).flatMap((f) => (f.memPlugin ? [[f.harness, f.memPlugin.value] as const] : []));
+
 /** Mem's host name for each Ducter agent (harnesses.ts ids). */
-export const MEM_HOSTS: Readonly<Record<string, string>> = {
-  "claude-code": "claude-code",
-  codex: "codex-cli",
-  pi: "pi",
-  "deepseek-harness": "deepseek-harness",
-};
+export const MEM_HOSTS: Readonly<Record<string, string>> = Object.fromEntries(facts.map(([h, m]) => [h, m.host]));
 
 /**
- * The Mem plugin's id in each agent's own plugin registry, as Mem's setup guide installs it
- * (https://mem.nowledge.co/SKILL.md, read 2026-11-10). Turned off by id inside Ducter's tasks.
+ * The Mem plugin's id(s) in each agent's own plugin registry, as Mem's setup guide installs it.
+ * Every agent Mem has a plugin for has them, so "memory off" holds on every one (research/48 M3):
+ * the adapter (runner/oar.ts) turns them off the way harness-facts says.
  */
-export const MEM_PLUGIN_IDS: Readonly<Record<string, readonly string[]>> = {
-  "claude-code": ["nowledge-mem@nowledge-community"],
-  codex: ["nowledge-mem@nowledge-community"],
-};
+export const MEM_PLUGIN_IDS: Readonly<Record<string, readonly string[]>> = Object.fromEntries(facts.map(([h, m]) => [h, m.ids]));
 
 /** One host's entry in the inspect answer (schema_version 1). Fields we don't read are ignored. */
 interface InspectHost {

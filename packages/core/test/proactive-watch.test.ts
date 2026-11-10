@@ -140,3 +140,33 @@ test("oo can be watched by polling through the real broker: the watch caller rea
   w.stop();
   log.close();
 });
+
+test("the checkpoint moves only after the items were taken in: a look that dies in between is read again (research/48 P5)", async () => {
+  const dir = scratch();
+  const clock = new FakeClock(MORNING - 3 * 86_400_000);
+  const acc = fakeAccounts(busyWeek());
+  let dies = true;
+  const got: string[] = [];
+  const w = createWatchers({
+    dataDir: dir,
+    connections: acc.store,
+    clock,
+    enabled: () => true,
+    zone: () => ZONE,
+    onItems: (_a, items) => {
+      if (dies) throw new Error("the process died mid-triage");
+      got.push(...items.filter((i) => i.kind === "mail").map((i) => i.id));
+    },
+  });
+  w.sync();
+  for (let i = 0; i < 3 * 24 * 6; i++) {
+    clock.advance(10 * 60_000);
+    await flush();
+  }
+  expect(got).toHaveLength(0);
+  dies = false;
+  clock.advance(10 * 60_000);
+  await flush();
+  expect(got).toContain("m_lina2"); // nothing was lost while intake kept failing
+  w.stop();
+});

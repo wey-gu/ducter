@@ -110,6 +110,14 @@ describe("the rules of where", () => {
     expect(list.filter((c) => c.device === "local").every((c) => c.blocked === "elsewhere")).toBe(true);
   });
 
+  test("a computer the user named holds even asleep: it waits there, nothing asked", () => {
+    const p = choose(setup({ mac: "asleep" }), { pinDevice: "MacBook" });
+    expect(p).toMatchObject({ device: "MacBook", waits: "asleep" });
+    expect(p.now).toBeUndefined();
+    const q = choose(setup({ mac: "asleep", helAgents: [h("codex"), h("claude-code")] }), { pinDevice: "MacBook", pinned: { harness: "claude-code" }, pinnedBy: "you" });
+    expect(q).toMatchObject({ device: "MacBook", harness: "claude-code", waits: "asleep" });
+  });
+
   test("a rule can name a computer", () => {
     const rule: RuleView = { id: "r1", text: "要登录的网页都在 MacBook 上做", harness: "codex", match: ["订单"], createdAt: "2026-11-10T00:00:00Z", device: "MacBook" };
     const p = chooseBody({ work: { title: "看看订单" }, computers: setup(), settings, rules: [rule], needs: { browse: true } }) as BodyPick;

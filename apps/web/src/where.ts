@@ -78,6 +78,15 @@ export function whereCandReason(c: Candidate): string {
   return "";
 }
 
+/** What sets a computer apart on New task's list: asleep, always awake, or the user's Chrome and Mac apps. */
+export function computerApart(d: DeviceView): string {
+  if (d.state === "asleep") return t("newtask.computer.asleep");
+  if (d.state === "unreachable") return t("newtask.computer.away");
+  if (d.alwaysOn) return t("newtask.computer.always_on");
+  if (d.abilities.some((a) => a.id === "web" && a.where === "chrome")) return t("newtask.computer.mac");
+  return "";
+}
+
 /** A computer group's state words: 醒着 · 一直醒着. */
 export function computerState(d: DeviceView): string {
   const s = d.state === "asleep" ? t("switch.computer.asleep") : d.state === "unreachable" ? t("switch.computer.away") : t("switch.computer.awake");

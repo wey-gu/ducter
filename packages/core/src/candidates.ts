@@ -315,12 +315,14 @@ export interface BodyPick {
  */
 export function chooseBody(inp: Omit<CandidateInput, "current"> & { pinned?: { harness: string; model?: string }; pinnedBy?: "you" }): BodyPick | { problem: string } | undefined {
   const { rows: all, multi } = rank(inp);
-  const ok = all.filter((c) => !c.blocked);
+  // A computer the user named holds, even asleep: the task waits there (never moved silently).
+  const named = inp.pinDevice ? all.filter((c) => !c.blocked && isComputer(c.comp, inp.pinDevice)) : [];
+  const ok = named.length ? named : all.filter((c) => !c.blocked);
   const rule = ruleFor(inp.rules, inp.work);
   const pick = (c: Row, why: BodyWhy): BodyPick => {
     const where = multi ? whereWhy(c, all, inp, rule) : undefined;
     // The one that can start now, for the ask (never one that widens access silently: the ask says so).
-    const now = c.waits ? ok.find((r) => !r.waits && r.comp.id !== c.comp.id) : undefined;
+    const now = c.waits && !named.length ? all.find((r) => !r.blocked && !r.waits && r.comp.id !== c.comp.id) : undefined;
     return {
       harness: c.harness,
       ...(c.model ? { model: c.model } : {}),
@@ -334,7 +336,7 @@ export function chooseBody(inp: Omit<CandidateInput, "current"> & { pinned?: { h
   };
   if (inp.pinned) {
     const mine = all.filter((c) => c.harness === inp.pinned!.harness);
-    const usable = mine.filter((c) => !c.blocked);
+    const usable = [...mine.filter((c) => !c.blocked && named.includes(c)), ...mine.filter((c) => !c.blocked)];
     const best = usable.find((c) => !inp.pinned!.model || c.model === inp.pinned!.model) ?? usable[0];
     if (best) {
       // D128: the user picked it on the New task card (or `ducter task --agent`): "…，是你选的".

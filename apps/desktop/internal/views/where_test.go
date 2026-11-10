@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/wey-gu/ducter/apps/desktop/internal/client"
 	"github.com/wey-gu/ducter/apps/desktop/internal/i18n"
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
@@ -89,6 +90,40 @@ func TestWhereLineOnEveryTaskWithTwoComputers(t *testing.T) {
 	en.Receive(whereDevices("awake"))
 	if on, why := en.taskWhere(en.S.Tasks["t_order"]); on != "on MacBook · in your Chrome" || why != "Why MacBook: Needs your signed-in taobao.com" {
 		t.Errorf("en: %q / %q", on, why)
+	}
+}
+
+// New task with two computers (where.md §6.3): No folder carries the
+// suggested computer; Claude Code lives only on the MacBook, so picking it
+// brings the MacBook along; Start sends both.
+func TestNewTaskComputerPart(t *testing.T) {
+	app, sent := iaApp(t, i18n.ZH)
+	app.Status = client.Connected
+	app.Receive(whereDevices("awake"))
+	app.OpenNewTask(nil)
+	app.Receive(protocol.ServerFrame{T: "task_new_options", Places: []protocol.PlaceChoice{{Place: protocol.Place{Kind: "none"}}}, Candidates: []protocol.Candidate{
+		{Harness: "codex", Device: "local", DeviceName: "hel", Reason: protocol.CandidateReason{Kind: "fit"}},
+		{Harness: "claude-code", Model: "opus", Device: "dev_mac", DeviceName: "MacBook", Reason: protocol.CandidateReason{Kind: "fit"}},
+		{Harness: "codex", Device: "dev_mac", DeviceName: "MacBook", Reason: protocol.CandidateReason{Kind: "fit"}},
+	}})
+	o := app.S.NewTaskOptions
+	if got := app.ntComputer(o.Candidates); got != "local" {
+		t.Fatalf("suggested computer %q", got)
+	}
+	rows, elsewhere := app.ntCands(o.Candidates)
+	if len(rows) != 2 || rows[1].Harness != "claude-code" || !elsewhere[ntKey(rows[1])] {
+		t.Fatalf("who on hel, then Claude Code tagged on MacBook: %+v %v", rows, elsewhere)
+	}
+	// Picking Claude Code (on MacBook) moves the computer part with it.
+	app.nt.pick, app.nt.computer = ntKey(rows[1]), rows[1].Device
+	app.nt.words = "用 Claude Code 重构这个"
+	*sent = nil
+	if !app.StartNewTask() {
+		t.Fatalf("not started: %q", app.nt.err)
+	}
+	f := (*sent)[len(*sent)-1].(protocol.TaskNew)
+	if f.Place == nil || f.Place.Kind != "none" || f.Place.Device != "MacBook" || f.Harness != "claude-code" {
+		t.Errorf("sent %+v place %+v", f, f.Place)
 	}
 }
 

@@ -9,7 +9,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import type { JSX } from "preact";
 import { A, candKey, placeKey, type SettingsPage } from "./app.ts";
 import { TRY_LIVE } from "@ducter/protocol";
-import { computerName, computerOf, computerState, deviceWait, manyComputers, whereAsk, whereCandReason } from "./where.ts";
+import { computerApart, computerName, computerOf, computers, computerState, deviceWait, manyComputers, whereAsk, whereCandReason } from "./where.ts";
 import { ago, behind, cjkPad, deviceLabel, duration, firstClause, harnessName, modelName, phaseLine as phaseWords, placeLine, sameWords, splitOutcome, when } from "./format.ts";
 import { markdown } from "./markdown.ts";
 import { Coin } from "./coin.tsx";
@@ -3017,6 +3017,12 @@ function NewTaskSheet() {
   const branch = nt.branch || chosen.defaultBranch || "";
   const { c: who, picked } = A.chosenCandidate();
   const pickable = (chosen.branches?.length ?? 0) > 1;
+  // D157: the computer part of No folder, only when the choice is real.
+  const { list: whoList, elsewhere } = A.ntCands();
+  const multi = (opts?.candidates ?? []).some((c) => c.device) && manyComputers();
+  const compId = multi ? A.ntComputer() : "";
+  const comp = compId ? computerOf(compId) : undefined;
+  const suggested = multi ? (opts?.candidates ?? []).find((c) => !c.blocked && !c.waits && c.device)?.device : undefined;
   return (
     <>
       <div class="scrim" onClick={close} />
@@ -3037,9 +3043,22 @@ function NewTaskSheet() {
                   aria-checked={on}
                   aria-expanded={on && p.place.kind === "repo" && pickable ? nt.branchOpen : undefined}
                   title={p.place.kind === "repo" ? p.place.repoPath : undefined}
-                  onClick={() => (on ? pickable && ((nt.branchOpen = !nt.branchOpen), A.changed()) : A.pickPlace(p))}
+                  onClick={() =>
+                    on
+                      ? p.place.kind !== "repo" && comp
+                        ? ((nt.computerOpen = !nt.computerOpen), A.changed())
+                        : pickable && ((nt.branchOpen = !nt.branchOpen), A.changed())
+                      : A.pickPlace(p)
+                  }
                 >
                   <b>{name}</b>
+                  {on && p.place.kind !== "repo" && comp && (
+                    <>
+                      <span class="dot">·</span>
+                      <span>{comp.name}</span>
+                      <Chev />
+                    </>
+                  )}
                   {on && p.place.kind === "repo" && branch && (
                     <>
                       <span class="dot">·</span>
@@ -3051,6 +3070,26 @@ function NewTaskSheet() {
               );
             })}
           </div>
+          {nt.computerOpen && comp && (
+            <div class="branches computers" role="radiogroup" aria-label={t("newtask.computer")}>
+              <small>{t("newtask.computer")}</small>
+              {computers().map((d) => (
+                <button
+                  key={d.id}
+                  role="radio"
+                  aria-checked={d.id === compId}
+                  disabled={d.state === "unreachable"}
+                  class={d.id === compId ? "on" : ""}
+                  onClick={() => ((nt.computer = d.id === suggested ? "" : d.id), (nt.computerOpen = false), (nt.pick = ""), A.changed())}
+                >
+                  <b>{d.name}</b>
+                  <small>{computerApart(d)}</small>
+                  {d.id === suggested && <small class="suggested">{t("newtask.suggested")}</small>}
+                  {d.id === compId && <Check />}
+                </button>
+              ))}
+            </div>
+          )}
           {nt.branchOpen && pickable && (
             <div class="branches" role="radiogroup" aria-label={t("newtask.branch.title")}>
               <small>{t("newtask.branch.title")}</small>
@@ -3078,11 +3117,12 @@ function NewTaskSheet() {
             <div class="small sub">{t("newtask.nobody")}</div>
           ) : (
             <div class="chips">
-              {opts.candidates.map((c) => {
+              {whoList.map((c) => {
                 const off = !!c.blocked;
                 const on = !off && candKey(c) === candKey(who);
-                const top = opts.candidates.find((x) => !x.blocked);
+                const top = whoList.find((x) => !x.blocked);
                 const best = !!top && candKey(top) === candKey(c);
+                const away = elsewhere.has(candKey(c)); // D157: lives only on another computer
                 // The best fit carries 推荐 / Suggested; why is a tooltip, and so is "…，是你选的".
                 const tip = off || best ? candReason(c) : on && picked ? t("newtask.picked", candName(c)) : undefined;
                 return (
@@ -3093,10 +3133,11 @@ function NewTaskSheet() {
                     aria-checked={on}
                     disabled={off}
                     title={tip || undefined}
-                    onClick={() => ((nt.pick = best ? "" : candKey(c)), A.changed())}
+                    onClick={() => ((nt.pick = best ? "" : candKey(c)), away && c.device && ((nt.computer = c.device), (nt.pick = candKey(c))), A.changed())}
                   >
                     <Coin harness={c.harness} size={26} off={off} />
                     <b>{candName(c)}</b>
+                    {away && <small>{t("newtask.agent.elsewhere", c.deviceName ?? "")}</small>}
                     {best && <small class="suggested">{t("newtask.suggested")}</small>}
                   </button>
                 );

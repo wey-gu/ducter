@@ -21,10 +21,12 @@ export interface NewTaskDraft {
   pick: string; // a candidate key; "" = the top one
   sending: string; // the clientId in flight
   err: string;
+  computer?: string; // D157: the computer chosen (a device id); "" = the suggested one
+  computerOpen?: boolean;
 }
 
 export const placeKey = (p: Place): string => (p.kind === "repo" ? `${p.device || "local"} ${p.repoPath.replace(/\/+$/, "")}` : "none");
-export const candKey = (c: Candidate) => `${c.harness}/${c.model ?? ""}`;
+export const candKey = (c: Candidate) => `${c.device ? c.device + "|" : ""}${c.harness}/${c.model ?? ""}`;
 const freshDraft = (words = ""): NewTaskDraft => ({ words, placeKey: "", branch: "", branchOpen: false, pick: "", sending: "", err: "" });
 
 export interface Toast {
@@ -312,9 +314,34 @@ class AppState {
     return places.find((p) => this.nt.placeKey && placeKey(p.place) === this.nt.placeKey) ?? places[0]!;
   }
 
+  /** D157: the computer New task starts the task on: the user's pick, else where the best agent that can start now is. */
+  ntComputer(): string {
+    const list = this.newTaskOptions?.candidates ?? [];
+    const pick = this.nt.computer;
+    if (pick && (this.devices ?? []).some((d) => d.id === pick)) return pick;
+    return list.find((c) => !c.blocked && !c.waits && c.device)?.device ?? (this.devices ?? []).find((d) => d.home)?.id ?? "";
+  }
+
+  /** D157: who New task offers: on the chosen computer, then agents that live only on another (elsewhere). */
+  ntCands(): { list: Candidate[]; elsewhere: Set<string> } {
+    const all = this.newTaskOptions?.candidates ?? [];
+    const elsewhere = new Set<string>();
+    if (!all.some((c) => c.device)) return { list: all, elsewhere };
+    const comp = this.ntComputer();
+    const list = all.filter((c) => c.device === comp);
+    const here = new Set(list.map((c) => c.harness));
+    for (const c of all) {
+      if (c.device === comp || here.has(c.harness) || c.blocked) continue;
+      here.add(c.harness);
+      list.push(c);
+      elsewhere.add(candKey(c));
+    }
+    return { list, elsewhere };
+  }
+
   /** Who does it: the user's pick, else the top candidate that can. */
   chosenCandidate(): { c?: Candidate; picked: boolean } {
-    const list = this.newTaskOptions?.candidates ?? [];
+    const list = this.ntCands().list;
     const top = list.find((c) => !c.blocked);
     const pick = this.nt.pick ? list.find((c) => !c.blocked && candKey(c) === this.nt.pick) : undefined;
     if (pick) return { c: pick, picked: !top || candKey(top) !== this.nt.pick };
@@ -347,12 +374,18 @@ class AppState {
     if (this.status !== "connected" || !this.S.welcomed) return (nt.err = this.L.t("newtask.err.conn")), this.changed(), false;
     const chosen = this.chosenPlace();
     const cp = chosen.place;
+    // D157: No folder with two or more computers: the chosen (or suggested) computer goes with it.
+    const comp = cp.kind !== "repo" && (this.newTaskOptions?.candidates ?? []).some((c) => c.device) ? (this.devices ?? []).find((d) => d.id === this.ntComputer()) : undefined;
     const place: Place | undefined =
-      cp.kind === "repo" ? { kind: "repo", device: cp.device, repoPath: cp.repoPath, ...(nt.branch && nt.branch !== chosen.defaultBranch ? { baseBranch: nt.branch } : {}) } : undefined;
+      cp.kind === "repo"
+        ? { kind: "repo", device: cp.device, repoPath: cp.repoPath, ...(nt.branch && nt.branch !== chosen.defaultBranch ? { baseBranch: nt.branch } : {}) }
+        : comp
+          ? { kind: "none", device: comp.home ? "local" : comp.name }
+          : undefined;
     const { c, picked } = this.chosenCandidate();
     nt.sending = `n${Date.now()}-${++this.nextClient}`;
     nt.err = "";
-    this.send({ t: "task_new", words, ...(place ? { place } : {}), ...(c && picked ? { harness: c.harness, ...(c.model ? { model: c.model } : {}) } : {}), clientId: nt.sending });
+    this.send({ t: "task_new", words, ...(place ? { place } : {}), ...(c && (picked || (nt.pick && nt.computer)) ? { harness: c.harness, ...(c.model ? { model: c.model } : {}) } : {}), clientId: nt.sending });
     this.changed();
     return true;
   }

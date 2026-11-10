@@ -1,5 +1,54 @@
 # Changelog
 
+## 0.0.14
+
+<!-- whats-new
+zh: 伙伴能替你打电话、付款前给你看清楚再付
+en: Your partner can make calls for you and pay with your OK on every payment
+zh: 看它在浏览器里做事，随时换你来，用完还给它
+en: Watch its browser work, take a turn yourself, then hand it back
+-->
+
+**Phone calls**
+- Your partner can call a restaurant, a clinic or a shop for you, through Tuwa (you need a Tuwa
+  account; connect it in Settings › Accounts by approving on your phone). Every call shows you
+  who, what it may say and what it won't, whose voice and the likely cost, and waits for your
+  **Call**.
+- A question from the other end comes to you at once, even in quiet hours; the result says what
+  was agreed. It never calls in your quiet hours or outside 9:00–20:00 where the other person is,
+  keeps to a daily limit, starts every call by saying it's an AI calling for you, and never
+  dials emergency numbers. Mainland China numbers aren't reachable yet.
+
+**Watch it browse, take a turn**
+- **Watch it browse** shows Ducter's browser live on your phone, iPad, Android or Mac, with what
+  it's doing in one quiet line. **My turn** lets you use the page yourself (sign in, a two-step
+  code, a payment check) while it can't see or touch it; **Hand it back** and the task goes on,
+  told what changed.
+
+**Autofill**
+- Save a sign-in, a card or your travel details once in Settings › Autofill. Your partner fills
+  them in for you without ever seeing them, on the right site only. Every payment asks first:
+  the shop, the amount, what for and the card, with its security code typed each time and never
+  kept.
+
+**Starting work by hand**
+- **New task** is one quick card: the words first, then one row for the folder, branch,
+  computer, who does it and **When it starts**: **Now**, **At a time**, **Every …**, **When
+  something happens**, or **Keep going until …**. ⌘↩ starts it; ⇧⌘↩ starts it and keeps the
+  card open for the next one.
+- **Add a folder** makes a project of your own; On hand's **By project** shows each task's kind
+  and when it runs next.
+
+**iPad and foldables**
+- On a wide screen, On hand or an opened task can take the whole screen, as on the Mac, and come
+  back beside the conversation in one move (⌘2, the header's button or Esc).
+
+**Updates and settings**
+- The Mac app finds a new version even when GitHub is busy, and you can update a Mac from your
+  phone: it downloads, checks it, and restarts once its work is at a safe stop.
+- The Accounts card names every account plainly (Gmail · weyl.gu, Slack · your workspace) and
+  says why one isn't read; Settings' switches, headings and buttons line up on every screen.
+
 ## 0.0.13
 
 <!-- whats-new

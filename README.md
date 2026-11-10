@@ -114,7 +114,11 @@ Building from source, the walkthroughs and every command: [Install](docs/install
 - **Reviews and write-ups.** "Review this week's open PRs." "Write the v0.4 release notes."
 - **Things that take time.** Wait for a CI run, keep trying until the tests pass, or run every
   Monday at 9 ([Waiting and routines](docs/waiting-and-routines.md)).
-- **The web.** It reads pages in its own Chrome window; logins, forms and payments stay with you.
+- **The web.** It browses in its own Chrome; watch it from your phone and take a turn when a page
+  needs you ([Your devices](docs/devices.md)).
+- **Errands.** Book and buy with your saved sign-ins and cards, filled in without being seen, and
+  every payment waits for your OK ([Autofill](docs/autofill.md)). Calls through Tuwa, after you
+  tap Call ([Phone calls](docs/calls.md); needs a Tuwa account).
 - **Your mail and calendar.** Say yes once, and it tells you only what needs you: a morning
   message with at most three things ([Accounts it can read](docs/accounts.md)).
 - **What you already decided.** With [Nowledge Mem](https://mem.nowledge.co) (optional), your
@@ -152,8 +156,8 @@ flowchart LR
 
 ## Privacy and safety
 
-Nothing lands without you: Ducter never merges, never works in your own checkout, never types
-your passwords and never pays. Your work reaches an AI provider only through your own agent's
+Nothing lands without you: Ducter never merges, never works in your own checkout, never sees
+your passwords, and never pays, sends or calls without your OK. Your work reaches an AI provider only through your own agent's
 login or key. A server listens on itself only, and each phone or computer connects with a
 one-time code. Details: [Privacy and safety](docs/privacy-and-safety.md).
 
@@ -174,7 +178,9 @@ it and we'll send you a free lifetime Nowledge Mem license ([details](CONTRIBUTI
 Ducter 是开源、自己部署的个人 AI。你只跟一个伙伴说话，它把活儿交给 Claude Code、Codex、pi 或
 DeepSeek Harness 去做，用的是你本来就在付的订阅。它住在你的 Mac 上，或者你自己的 Linux 服务器上（家里或云上都行）；做完了一两句话告诉你结果，证据点开就能看，只有真要你拍板的事才来找你，而且先替你想好默认的做法。
 
-在哪儿用：Mac 桌面 app（Apple 芯片）、Linux 服务器、iPhone 和 iPad（同一个 app，TestFlight 公测，iPad 横屏时对话和手头的事并排）；Android 现在用手机浏览器，Android app 即将推出。界面中英双语。上手请看
+在哪儿用：Mac 桌面 app（Apple 芯片）、Linux 服务器、iPhone 和 iPad（同一个 app，TestFlight 公测）、Android（GitHub 发布页下载，自己更新，折叠屏也照顾到了）。界面中英双语。
+
+能替你跑腿：订、买时用你存好的登录和卡，它填进去但看不见，每笔付款都先问你；通过 Tuwa 替你打电话（需要 Tuwa 账号），你点了「打过去」才拨。上手请看
 [Getting started](docs/getting-started.md)。
 
 ## License

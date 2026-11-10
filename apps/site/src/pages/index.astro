@@ -181,9 +181,9 @@ const ld = {
     </div>
 
     <ul class="points three">
-      <li><span><b>Each task says where it runs.</b> Your partner picks the computer and the AI agent together, from what the task needs: your repo, a browser, a long run. One quiet line says where, and why if you tap it.</span></li>
-      <li><span><b>Lend it more computers.</b> A server keeps working while your Mac sleeps, and one switch lets your Mac do tasks for it. Closing your laptop? It moves what can move to a computer that stays on.</span></li>
-      <li><span><b>It asks only when it matters:</b> when the right computer is asleep, or when a task would get more access, like your own Chrome. Between equal computers it just picks.</span></li>
+      <li><span><b>Each task says where it runs.</b> Your partner picks the computer and the AI agent for what the task needs; tap the line to see why.</span></li>
+      <li><span><b>Lend it more computers.</b> A server keeps working while your Mac sleeps; closing your laptop moves what can move to one that stays on.</span></li>
+      <li><span><b>It asks only when it matters:</b> a sleeping computer, or more access, like your own Chrome.</span></li>
     </ul>
   </div>
 </section>
@@ -281,11 +281,11 @@ const ld = {
       <div class="sec-head">
         <h2>It doesn't start from zero.</h2>
       </div>
-      <p class="lede">Much of what your partner needs to know is somewhere else: in your mail, your calendar, and last week's sessions with your other AI tools. Your memory and your accounts work today; your other AI agents are next. None of it needs your passwords.</p>
+      <p class="lede">What your partner needs to know is often somewhere else: your mail, your calendar, last week's sessions with other AI tools. It reads them without your passwords.</p>
       <ul class="points">
-        <li><span><b>One memory for all your AIs.</b> <a href="https://mem.nowledge.co" rel="noopener">Nowledge Mem</a> keeps what you've decided and what you're working on, from every AI tool you connect to it. Your partner reads from it and adds to it, and you see Noted when it does; its tasks can use it too, under your partner's name. <span class="when">Works today, and optional: Mem is free to download, and without it your partner remembers your conversation.</span></span></li>
-        <li><span><b>Your mail, calendar and other accounts.</b> If you use OOMOL's oo, it's one tap: your partner reads the accounts you already connected there. Otherwise paste an address and a key from <a href="https://github.com/oomol-lab/open-connector" rel="noopener">OpenConnector</a> (OOMOL's hosted one, or your own on your own computer or server). The AI agents never see your passwords. Reading is fine; anything that would send waits for your Go. <span class="when">Works today.</span></span></li>
-        <li><span><b>Your AI agents, reaching each other.</b> With Nowledge Bridge, the Claude Code session in your terminal can hand your partner a job, and your partner can ask that session what it knows. It checks with you before it takes the job or sends the question. <span class="when">Early, and coming soon.</span></span></li>
+        <li><span><b>One memory for all your AIs.</b> <a href="https://mem.nowledge.co" rel="noopener">Nowledge Mem</a> keeps what you've decided, from every AI tool you connect. Your partner reads and adds to it, and says Noted when it does. <span class="when">Optional and free to download.</span></span></li>
+        <li><span><b>Your mail, calendar and chat.</b> One tap with OOMOL's oo, or an address and key from <a href="https://github.com/oomol-lab/open-connector" rel="noopener">OpenConnector</a>. Reading is fine; anything that sends waits for your Go.</span></li>
+        <li><span><b>Your AI agents, reaching each other.</b> With Nowledge Bridge, a Claude Code session in your terminal can hand your partner a job, with your OK. <span class="when">Coming soon.</span></span></li>
       </ul>
     </div>
     <div class="memory-card reveal" aria-label="Example">
@@ -330,17 +330,32 @@ const ld = {
 </section>
 
 <!-- ============ TRUST ============ -->
+<!-- ============ ERRANDS: calls, Autofill, taking a turn ============ -->
+<section class="sec deep" id="errands">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>It runs errands, with your OK.</h2>
+    </div>
+    <p class="lede">Booking, buying, calling: every step that spends money or reaches a person shows you exactly what will happen, and waits for you.</p>
+    <ul class="points three">
+      <li><span><b>It calls for you.</b> A restaurant, a clinic, a shop, in its voice or yours, through <a href="https://tuwa.ai" rel="noopener">Tuwa</a>. You see who, what it may say and the likely cost, then tap Call. <span class="when">Needs a Tuwa account; not mainland China numbers yet.</span></span></li>
+      <li><span><b>It fills in without seeing.</b> Save a sign-in, a card or your travel details once. Your partner fills them in on the right site; every payment asks you first.</span></li>
+      <li><span><b>You can take a turn.</b> Watch its browser from your phone or iPad. Tap My turn to sign in or check a page yourself, then Hand it back.</span></li>
+    </ul>
+  </div>
+</section>
+
 <section class="sec ink-band" id="trust">
   <div class="wrap split">
     <div>
       <div class="sec-head">
         <h2>It asks before anything reaches other people.</h2>
       </div>
-      <p class="lede">A task doesn't stop you for every command. Emails, posts, PR comments and pushes to shared branches wait for your Go, and every one is written down. In a folder that isn't a git repo, every change can be undone with one tap. A few things it never does at all.</p>
+      <p class="lede">A task doesn't stop you for every command. Emails, posts, PR comments, payments, calls and pushes to shared branches wait for your Go, and every one is written down. A few things it never does at all.</p>
       <ul class="nevers">
         <li><b>It never merges into main.</b><span>A finished task offers Merge into main or Open draft PR, and waits for you.</span></li>
-        <li><b>It never types your passwords.</b><span>You sign in yourself, in its browser window. The AI never sees what you type.</span></li>
-        <li><b>It never pays.</b><span>Payments are always left to you.</span></li>
+        <li><b>It never sees your passwords.</b><span>It fills a saved one only on its own site, or you sign in yourself with My turn.</span></li>
+        <li><b>It never pays on its own.</b><span>Every payment shows the shop, the amount and the card, and waits for your OK and the security code.</span></li>
       </ul>
     </div>
     <div class="ledger reveal" id="ledger">
@@ -350,8 +365,9 @@ const ld = {
         <li class="step"><code>gh pr create --draft "Fix flaky checkpoint_recovery"</code><span class="verdict asked"><Fragment set:html={check} />Asked you; you said Go</span></li>
         <li class="step"><code>git push origin main</code><span class="verdict waits"><Fragment set:html={lock} />Waits for you, always</span></li>
         <li class="step"><code>email: load-test numbers → a HawDB contributor</code><span class="verdict asked"><Fragment set:html={out} />Asks you first</span></li>
-        <li class="step"><code>sign in to github.com</code><span class="verdict yours"><Fragment set:html={lock} />Yours to do</span></li>
-        <li class="step"><code>pay: renew a domain</code><span class="verdict yours"><Fragment set:html={lock} />Never Ducter's call</span></li>
+        <li class="step"><code>sign in to github.com</code><span class="verdict yours"><Fragment set:html={lock} />Filled in; it never saw it</span></li>
+        <li class="step"><code>pay: renew a domain, $10.44</code><span class="verdict waits"><Fragment set:html={lock} />Waits for your OK</span></li>
+        <li class="step"><code>call: a table for two, Friday 19:00</code><span class="verdict asked"><Fragment set:html={out} />Asks you first</span></li>
       </ol>
     </div>
   </div>
@@ -362,7 +378,7 @@ const ld = {
   <div class="wrap">
     <div class="sec-head">
         <h2>Open anything. Any time.</h2>
-      <p class="lede">Most days you stay in the conversation. When you want a closer look, <b>On hand</b> shows every task at a glance. Open one to read what it did, step by step, and the diff of every file it changed. You can write to it directly while it works.</p>
+      <p class="lede">Most days you stay in the conversation. When you want a closer look, <b>On hand</b> shows every task at a glance. Open one to read what it did, step by step, and the diff of every file it changed, and write to it while it works. On an iPad or a foldable, On hand can take the whole screen.</p>
     </div>
     <div class="task-win reveal" aria-label="An opened task">
       <div class="tw-bar">

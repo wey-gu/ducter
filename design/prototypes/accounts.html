@@ -1,0 +1,675 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Accounts and proactive help</title>
+<!--
+  Prototype for design/connectors.md Part A (drafts D165, D166). Decides nothing: it shows the note.
+  Open from the repo (art loads by relative path from apps/desktop and apps/site).
+  Tokens are Pebble's (design/ui.md, apps/web/static/app.css), shared with device-card.html (D161).
+  URL: ?lang=en · ?still=1 · ?only=<board id without b->
+  Data: the author's real setup (oo with two Gmail accounts, a work calendar, Discord, GitHub) and
+  the finds connectors.md §21 already uses. App marks are plain drawn glyphs; the build uses each
+  brand's mark where its guidelines allow (D146's rule).
+-->
+<style>
+@font-face { font-family: "Bricolage Grotesque"; src: url("../../apps/web/static/bricolage.woff") format("woff"); font-weight: 200 800; }
+@font-face { font-family: "Ducter Rounded SC"; src: url("../../apps/web/static/fonts/rounded-sc-bold.woff2") format("woff2"); font-weight: 700 900; size-adjust: 94%; unicode-range: U+2E80-9FFF, U+3000-303F, U+F900-FAFF, U+FF00-FFEF; }
+:root {
+  --bg: #fff6ea; --bg-deep: #fcecd7; --surface: #ffffff; --sunken: #f7ebda; --surface-sunken: #f3e6d3;
+  --ink: #2b2118; --ink-soft: #4a3d30; --ink-muted: #75654f; --faint: #c7b49a; --accent: #ff8a3d; --accent-ledge: #c9642a;
+  --line: #e8d9c4; --line-2: #e0c9b0; --line-soft: #f3e6d3;
+  --working-ink: #174a75; --working-dot: #3f7fb8; --needs-surface: #ffe3cf; --needs-ink: #8a3a0c;
+  --done-ink: #1f5e2f; --dusk-ink: #4b4a7a; --fail-surface: #fbdde4; --fail-ink: #8a1f3b;
+  --base: 0 4px 0 var(--line); --press-primary: #140d07; --primary-top: #3b2d22; --press-quiet: #cdae8c;
+  --drop: 0 7px 12px -4px rgba(43,33,24,.28); --floating: 0 10px 32px rgba(43,33,24,.14);
+  --font: "Bricolage Grotesque", "PingFang SC", "Noto Sans SC", system-ui, sans-serif;
+  --head: "Bricolage Grotesque", "Ducter Rounded SC", "PingFang SC", "Noto Sans SC", system-ui, sans-serif;
+  --r-sm: 12px; --r-btn: 14px; --r-md: 16px; --r-tray: 18px; --r-lg: 24px; --r-xl: 28px;
+  --press: 70ms; --enter: 220ms; --bouncy: cubic-bezier(.34,1.56,.64,1); --snappy: cubic-bezier(.2,.8,.2,1);
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 var(--font); padding: 0 24px 80px; }
+:lang(zh) body { line-height: 1.75; }
+h1, h2, h3, h4 { font-family: var(--head); margin: 0; }
+button { font: inherit; color: inherit; }
+img { max-width: 100%; }
+
+/* page chrome (prototype only) */
+.top { position: sticky; top: 0; z-index: 50; display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; padding: 16px 0 12px; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(8px); }
+.top h1 { font-size: 20px; font-weight: 800; }
+.top .sub { color: var(--ink-muted); font-size: 13px; }
+.seg { display: inline-flex; background: var(--surface-sunken); border-radius: var(--r-md); padding: 4px; gap: 2px; }
+.seg button { border: 0; background: transparent; padding: 6px 14px; border-radius: 12px; font-weight: 700; font-size: 13px; color: var(--ink-muted); cursor: pointer; white-space: nowrap; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 2px 0 var(--line); }
+.board { max-width: 1280px; margin: 40px auto 0; }
+.board > header { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.board > header h2 { font-size: 20px; font-weight: 800; }
+.board > header .id { font: 700 12px ui-monospace, Menlo, monospace; color: var(--ink-muted); background: var(--surface-sunken); border-radius: 8px; padding: 2px 8px; }
+.board > header p { margin: 0; color: var(--ink-muted); font-size: 13px; flex: 1 0 100%; }
+.row { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+.cap { font-size: 12px; color: var(--ink-muted); margin: 8px 4px 0; max-width: 400px; }
+.frame { background: var(--bg-deep); border-radius: var(--r-xl); padding: 24px; position: relative; }
+
+/* ===== the source card (character sheet, D166) ===== */
+.sc { width: 400px; max-width: 100%; background: var(--surface); border-radius: var(--r-lg); box-shadow: var(--base); padding: 6px 22px 16px; position: relative; }
+.sc.phone { width: 100%; padding: 2px 16px 14px; }
+.sc .hero { position: relative; height: 150px; display: flex; justify-content: center; align-items: flex-end; }
+.sc.phone .hero { height: 132px; }
+.sc .ground { position: absolute; bottom: 6px; left: 50%; width: 190px; height: 34px; margin-left: -95px; border-radius: 50%; background: radial-gradient(closest-side, var(--surface-sunken), var(--sunken) 70%, transparent); }
+.sc .mb { position: relative; width: 112px; margin-bottom: 12px; filter: drop-shadow(0 6px 5px rgb(60 50 20 / .18)); }
+.sc.phone .mb { width: 92px; }
+.sc .mb.grey { filter: grayscale(.75) opacity(.7); }
+.sc .mist { position: absolute; inset: 26% 22% 6%; background: radial-gradient(closest-side, rgb(255 255 255 / .75), transparent); border-radius: 50%; }
+.mb .lid { transform-origin: 30% 42%; transition: transform 300ms var(--bouncy); }
+.mb.looking .lid { transform: rotate(-9deg) translateY(-2px); }
+.sc .name { text-align: center; font: 800 25px/1.25 var(--head); margin-top: 2px; }
+.sc .status { text-align: center; font-size: 15px; color: var(--ink-muted); margin: 0 0 14px; }
+.sc .status b { color: var(--ink); font-weight: 700; }
+.sc .status.fail { color: var(--fail-ink); font-weight: 700; }
+.sc .status.quiet { color: var(--dusk-ink); }
+
+/* app tiles on the sunken tray */
+.tray { background: var(--sunken); border-radius: var(--r-tray); padding: 12px 6px 8px; display: flex; gap: 2px; justify-content: center; flex-wrap: wrap; }
+.tile { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 66px; border: 0; background: none; cursor: pointer; padding: 4px 0 3px; border-radius: 14px; position: relative; animation: enter var(--enter) var(--snappy) both; }
+.tile:hover { background: rgb(255 255 255 / .55); }
+.tile.sel { background: var(--surface); box-shadow: 0 2px 0 var(--line-2); }
+.tile .t { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; position: relative;
+  background: linear-gradient(160deg, #fffdf8 0%, #f6ecdd 70%, #ead9c2 100%);
+  box-shadow: inset 0 2px 0 rgb(255 255 255 / .9), inset 0 -3px 4px rgb(120 90 50 / .14), 0 3px 0 #dcc6a8, 0 5px 6px rgb(60 50 20 / .18); transition: transform var(--press) ease-out; }
+.tile:active .t { transform: translateY(2px); }
+.tile .t svg { width: 30px; height: 30px; }
+.tile span { font-size: 12px; font-weight: 700; color: var(--ink-soft); white-space: nowrap; line-height: 1.3; }
+.tile small { font-size: 11px; font-weight: 600; color: var(--ink-muted); line-height: 1.1; margin-top: -2px; }
+.tile.off .t { filter: saturate(.25) opacity(.7); box-shadow: inset 0 2px 0 rgb(255 255 255 / .8), 0 1px 0 #dcc6a8; }
+.tile.off span { color: var(--ink-muted); font-weight: 600; }
+.tile.bad .t { filter: grayscale(1) opacity(.55); }
+.tile.add .t { background: rgb(255 255 255 / .35); box-shadow: none; outline: 2px dashed var(--line-2); outline-offset: -2px; color: var(--ink-muted); font: 700 22px var(--font); }
+.tile.add span { color: var(--ink-muted); font-weight: 600; }
+.tile .pip { position: absolute; right: 9px; top: 2px; width: 10px; height: 10px; border-radius: 50%; background: var(--working-dot); box-shadow: 0 0 0 2.5px var(--sunken); }
+
+.detail { position: relative; margin-top: 10px; background: var(--surface); border-radius: var(--r-md); box-shadow: inset 0 0 0 1px var(--line), 0 2px 0 var(--line); padding: 14px 16px 10px; animation: enter var(--enter) var(--snappy); }
+@keyframes enter { from { opacity: 0; transform: translateY(6px); } }
+.detail::before { content: ""; position: absolute; top: -7px; left: var(--notch, 50%); width: 12px; height: 12px; background: var(--surface); transform: translateX(-50%) rotate(45deg); box-shadow: -1px -1px 0 var(--line); }
+.detail .dh { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.detail .dh b { font-size: 15px; }
+.detail .dh small { font-size: 13px; color: var(--ink-muted); }
+.detail .ln { font-size: 13px; color: var(--ink-soft); margin-top: 4px; }
+.detail .ln i { font-style: normal; color: var(--ink-muted); }
+.detail .sw { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; font-size: 14px; font-weight: 700; }
+.detail .sw small { display: block; font-weight: 500; font-size: 12px; color: var(--ink-muted); }
+.detail .foot2 { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; flex-wrap: wrap; gap: 4px; }
+.switch { width: 44px; height: 26px; border-radius: 13px; background: var(--line-2); position: relative; border: 0; cursor: pointer; transition: background 160ms; flex: none; }
+.switch::after { content: ""; position: absolute; left: 3px; top: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 2px 0 rgb(43 33 24 / .18); transition: transform 240ms var(--bouncy); }
+.switch.on { background: var(--ink); }
+.switch.on::after { transform: translateX(18px); }
+
+.via { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 14px; font-size: 13px; color: var(--ink-muted); text-align: center; }
+.more { border: 0; background: none; cursor: pointer; color: var(--ink-muted); font-weight: 800; letter-spacing: 1px; padding: 0 6px; border-radius: 8px; height: 24px; }
+.more:hover, .more[aria-expanded="true"] { background: var(--sunken); color: var(--ink); }
+.reads { margin-top: 8px; border-radius: 12px; background: var(--bg); padding: 8px 12px; font-size: 13px; animation: enter 200ms var(--snappy); }
+.reads .r { display: flex; gap: 8px; padding: 3px 0; color: var(--ink-soft); }
+.reads .r time { color: var(--ink-muted); width: 44px; flex: none; font-variant-numeric: tabular-nums; }
+.reads .hon { color: var(--ink-muted); border-top: 1px solid var(--line-soft); margin-top: 6px; padding-top: 6px; }
+.dfoot { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line-soft); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dfoot .ask { flex: 1 1 14em; font-size: 13px; color: var(--ink-soft); }
+
+/* proactive chips (single choice) */
+.pchips { display: flex; flex-wrap: wrap; gap: 8px; }
+.pc { height: 38px; padding: 0 14px; border-radius: var(--r-btn); border: 0; cursor: pointer; font-size: 14px; font-weight: 700; white-space: nowrap; transition: transform var(--press) ease-out; }
+.pc.off { background: var(--sunken); color: var(--ink-muted); box-shadow: 0 2px 0 var(--line); }
+.pc.on { background: var(--surface); color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--ink), 0 3px 0 var(--line-2); }
+.pc:active { transform: translateY(2px); }
+.pc.squish { animation: squish 240ms var(--bouncy); }
+@keyframes squish { 0% { transform: translateY(2px) scale(1.06, .94); } 100% { transform: none; } }
+.ptitle { font: 800 15px var(--head); margin: 0 0 8px 2px; }
+.pnote { font-size: 13px; color: var(--ink-muted); margin: 8px 2px 0; }
+
+/* buttons */
+.btn { border: 0; cursor: pointer; font-weight: 700; font-size: 15px; border-radius: var(--r-btn); padding: 0 18px; height: 44px; transition: transform var(--press) ease-out, box-shadow var(--press) ease-out; white-space: nowrap; }
+.btn.sm { height: 36px; font-size: 13px; padding: 0 14px; border-radius: var(--r-sm); }
+.btn.primary { color: #fff6ea; background: linear-gradient(var(--primary-top), var(--ink)); box-shadow: inset 0 1.5px 0 rgb(255 246 234 / .26), 0 3px 0 var(--press-primary), var(--drop); }
+.btn.secondary { background: var(--bg); color: var(--ink); box-shadow: inset 0 0 0 1px rgb(43 33 24 / .09), 0 3px 0 var(--press-quiet); }
+.btn.text { background: none; color: var(--ink-soft); padding: 0 8px; }
+.btn.text:hover { background: var(--sunken); }
+.btn.danger { background: none; color: var(--fail-ink); padding: 0 8px; }
+.btn.danger:hover { background: var(--fail-surface); }
+.btn:active { transform: translateY(3px); box-shadow: none; }
+.qlink { font-size: 13px; font-weight: 700; color: var(--ink-soft); border: 0; background: none; cursor: pointer; padding: 2px 4px; border-radius: 6px; }
+.qlink:hover { background: var(--sunken); }
+
+/* the Mac's Accounts page */
+.mac { width: 100%; min-width: 980px; background: var(--bg); border-radius: var(--r-xl); box-shadow: inset 0 0 0 1px var(--line); display: grid; grid-template-columns: 220px 1fr; overflow: hidden; }
+.macwrap { overflow-x: auto; }
+.rail { background: #fffaf2; border-right: 1px solid var(--line); padding: 22px 12px; display: flex; flex-direction: column; gap: 4px; }
+.rail .it { display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 10px; border-radius: 14px; font-weight: 700; font-size: 14px; color: var(--ink-soft); }
+.rail .it.sel { background: var(--surface); box-shadow: 0 3px 0 var(--line); color: var(--ink); }
+.rail .it img { width: 30px; height: 30px; object-fit: contain; }
+.macmain { padding: 30px 36px 40px; }
+.macmain h3 { font-size: 24px; font-weight: 800; }
+.macmain .lede { color: var(--ink-muted); font-size: 13px; margin: 2px 0 20px; }
+.cards { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; margin-top: 20px; }
+.addq { margin-top: 16px; }
+
+/* conversation (quiet-conversation.md bubbles) */
+.convo { width: 560px; max-width: 100%; display: flex; flex-direction: column; gap: 10px; }
+.convo.phone { width: 100%; }
+.bub { max-width: 92%; padding: 12px 16px; font-size: 16px; line-height: 1.65; }
+:lang(zh) .bub { line-height: 1.8; }
+.bub.you { align-self: flex-end; background: var(--accent); color: var(--ink); border-radius: 20px 20px 6px 20px; }
+.bub.partner { align-self: flex-start; background: var(--surface); border-radius: 20px 20px 20px 6px; box-shadow: var(--base); animation: enter var(--enter) var(--snappy); }
+.bub p { margin: 0; }
+.bub p + p { margin-top: 8px; }
+.bub .acts { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; align-items: center; }
+.bub .how { font-size: 13px; color: var(--ink-muted); margin-top: 6px; }
+.bub .how summary { cursor: pointer; font-weight: 700; color: var(--ink-soft); list-style: none; }
+.bub .how summary::-webkit-details-marker { display: none; }
+.bub .how summary::after { content: " ›"; }
+.bub .how[open] summary::after { content: " ⌄"; }
+.bub .how ul { margin: 4px 0 0; padding-left: 18px; }
+.sysline { align-self: center; font-size: 12px; color: var(--ink-muted); background: var(--sunken); border-radius: 10px; padding: 3px 12px; }
+.find { border-top: 1px solid var(--line-soft); padding-top: 10px; margin-top: 10px; }
+.find .k { font-size: 12px; font-weight: 800; color: var(--ink-muted); letter-spacing: .02em; }
+.find .fb { display: flex; gap: 2px; margin-left: auto; }
+.metarow { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin-top: 4px; }
+.metarow .how { margin-top: 0; }
+.convo.phone .bub { max-width: 100%; font-size: 15px; padding: 12px 14px; }
+.find .acts { margin-top: 8px !important; }
+.find .fb button { border: 0; background: none; font-size: 12px; font-weight: 700; color: var(--ink-muted); padding: 2px 6px; border-radius: 6px; cursor: pointer; }
+.find .fb button:hover { background: var(--sunken); color: var(--ink-soft); }
+.find.muted { opacity: .55; }
+.said { font-size: 13px; color: var(--done-ink); font-weight: 700; margin-top: 4px; animation: enter var(--enter) var(--snappy); }
+.leftout { font-size: 13px; color: var(--ink-muted); border-top: 1px solid var(--line-soft); padding-top: 8px; margin-top: 10px; }
+.waitline { align-self: flex-start; display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink-muted); }
+.waitline img { width: 34px; }
+.dots i { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--ink-muted); margin: 0 1.5px; animation: dot 1.2s infinite; }
+.dots i:nth-child(2) { animation-delay: .15s; } .dots i:nth-child(3) { animation-delay: .3s; }
+@keyframes dot { 50% { opacity: .25; } }
+.taskcard { align-self: flex-start; width: 92%; background: var(--surface); border-radius: var(--r-md); box-shadow: var(--base); padding: 12px 16px; animation: enter var(--enter) var(--snappy); }
+.taskcard b { font-size: 15px; }
+.meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 13px; color: var(--ink-muted); margin-top: 4px; }
+.meta .working { color: var(--working-ink); font-weight: 700; }
+.meta .done { color: var(--done-ink); font-weight: 700; }
+.meta img { width: 20px; height: 20px; vertical-align: -5px; margin-right: 3px; }
+.meta .d { color: var(--faint); }
+
+/* conversation windows */
+.win { width: 620px; max-width: 100%; background: var(--bg); border-radius: var(--r-lg); box-shadow: inset 0 0 0 1px var(--line), var(--floating); overflow: hidden; }
+.win .bar { display: flex; align-items: center; gap: 10px; padding: 12px 18px; border-bottom: 1px solid var(--line); background: #fffaf2; }
+.win .bar img { width: 34px; }
+.win .bar b { font: 800 16px var(--head); }
+.win .bar small { display: block; font-size: 12px; color: var(--ink-muted); margin-top: -2px; }
+.win .bar small.quietday { color: var(--done-ink); font-weight: 700; }
+.win .body { padding: 18px; display: flex; flex-direction: column; gap: 10px; min-height: 200px; }
+
+/* rules list */
+.rules { width: 520px; max-width: 100%; }
+.rcard { background: var(--surface); border-radius: var(--r-lg); box-shadow: var(--base); }
+.rrow { display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 10px 20px; }
+.rrow + .rrow { border-top: 1px solid var(--line-soft); }
+.rrow .tx { flex: 1; }
+.rrow .tx b { display: block; font-size: 15px; }
+.rrow .tx small { font-size: 13px; color: var(--ink-muted); }
+.rrow.new { animation: enter var(--enter) var(--snappy); background: linear-gradient(90deg, var(--needs-surface), transparent 60%); border-radius: var(--r-lg); }
+
+/* phone */
+.phonef { width: 390px; height: 820px; background: var(--bg); border-radius: 40px; box-shadow: 0 0 0 10px #2b2118, var(--floating); overflow: hidden; position: relative; flex: none; }
+.phonef .scroll { position: absolute; inset: 0; overflow-y: auto; padding: 54px 16px 30px; }
+.phonef .nav { display: flex; align-items: center; gap: 4px; font-size: 15px; font-weight: 700; color: var(--ink-soft); margin-bottom: 8px; }
+.phonef .pt { font: 800 28px var(--head); margin: 0 4px 12px; }
+.phonef .pbar { display: flex; align-items: center; gap: 10px; margin: -6px 0 14px; }
+.phonef .pbar img { width: 44px; }
+.phonef .pbar b { font: 800 18px var(--head); display: block; }
+.phonef .pbar small { font-size: 12px; color: var(--ink-muted); }
+.lock { position: absolute; inset: 0; background: linear-gradient(170deg, #5b6f86 0%, #9a8c7c 55%, #c9a989 100%); color: #fff; padding: 64px 14px 20px; }
+.lock .time { text-align: center; font: 300 78px/1 -apple-system, "SF Pro Display", var(--font); letter-spacing: -1px; }
+.lock .date { text-align: center; font-size: 17px; font-weight: 600; opacity: .9; margin-bottom: 36px; }
+.notif { background: rgb(255 255 255 / .72); backdrop-filter: blur(20px); color: #1c1c1e; border-radius: 20px; padding: 11px 14px; display: grid; grid-template-columns: 38px 1fr; gap: 0 10px; margin-bottom: 8px; animation: enter 400ms var(--snappy) both; }
+.notif img { width: 38px; height: 38px; border-radius: 9px; background: var(--bg); grid-row: span 3; }
+.notif .h { display: flex; justify-content: space-between; font-size: 14px; font-weight: 700; }
+.notif .h small { font-weight: 500; color: #555; font-size: 13px; }
+.notif .tx { font-size: 14px; line-height: 1.35; }
+.notif .lvl { font-size: 12px; color: #6a4b2f; font-weight: 700; }
+
+/* before (today's row, redrawn from partner.go) */
+.old { width: 600px; max-width: 100%; background: var(--surface); border-radius: var(--r-lg); box-shadow: var(--base); padding: 18px 22px; font-size: 13px; }
+.old .rw { display: flex; gap: 14px; align-items: center; }
+.old .rw b { font-size: 14px; }
+.old .m { color: var(--ink-muted); }
+.old .ap { color: var(--ink-soft); font-weight: 600; }
+.old .bt { margin-left: auto; font-weight: 700; color: var(--ink-soft); }
+.old .add { display: flex; justify-content: flex-end; border-top: 1px solid var(--line-soft); margin-top: 14px; padding-top: 12px; }
+.fixes { margin: 0; padding-left: 20px; font-size: 13px; color: var(--ink-soft); }
+.fixes li + li { margin-top: 4px; }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+body.still *, body.still *::before, body.still *::after { animation: none !important; transition: none !important; }
+</style>
+</head>
+<body>
+<div class="top">
+  <h1 data-t="title"></h1>
+  <span class="sub" data-t="subtitle"></span>
+  <span style="flex:1"></span>
+  <div class="seg" role="group" aria-label="language"><button data-lang="zh" aria-pressed="true">中文</button><button data-lang="en" aria-pressed="false">English</button></div>
+  <div class="seg" role="group" aria-label="motion"><button data-motion="full" aria-pressed="true" data-t="motionFull"></button><button data-motion="still" aria-pressed="false" data-t="motionStill"></button></div>
+</div>
+
+<section class="board" id="b-before">
+  <header><span class="id">before → after</span><h2 data-t="baH"></h2><p data-t="baP"></p></header>
+  <div class="row">
+    <div><div class="frame" id="old"></div><p class="cap" data-t="oldCap"></p></div>
+    <div><div class="frame" id="newA"></div><p class="cap" data-t="newCap"></p></div>
+    <div style="flex:1;min-width:260px"><ol class="fixes" id="fixes"></ol></div>
+  </div>
+</section>
+
+<section class="board" id="b-first">
+  <header><span class="id">K6 · the first account</span><h2 data-t="fH"></h2><p data-t="fP"></p></header>
+  <div class="row">
+    <div><div class="win" id="first"></div><p class="cap" data-t="fCap"></p></div>
+    <div><div class="phonef" id="ph-first"></div><p class="cap" data-t="phfCap"></p></div>
+  </div>
+</section>
+
+<section class="board" id="b-morning">
+  <header><span class="id">K7 · the morning note</span><h2 data-t="mH"></h2><p data-t="mP"></p></header>
+  <div class="row">
+    <div><div class="phonef" id="ph-lock"></div><p class="cap" data-t="lockCap"></p></div>
+    <div><div class="phonef" id="ph-note"></div><p class="cap" data-t="noteCap"></p></div>
+    <div><div class="win" id="quiet"></div><p class="cap" data-t="quietCap"></p></div>
+  </div>
+</section>
+
+<section class="board" id="b-aha">
+  <header><span class="id">K8 · a find becomes a task</span><h2 data-t="aH"></h2><p data-t="aP"></p></header>
+  <div class="row">
+    <div><div class="win" id="aha"></div><p class="cap" data-t="ahaCap"></p></div>
+    <div><div class="frame"><div class="rules" id="rules"></div></div><p class="cap" data-t="rulesCap"></p></div>
+  </div>
+</section>
+
+<section class="board" id="b-kinds">
+  <header><span class="id">D165 · the other kinds</span><h2 data-t="kH"></h2><p data-t="kP"></p></header>
+  <div class="row">
+    <div><div class="win" id="kinds"></div><p class="cap" data-t="kindsCap"></p></div>
+    <div><div class="phonef" id="ph-now"></div><p class="cap" data-t="nowCap"></p></div>
+  </div>
+</section>
+
+<section class="board" id="b-page">
+  <header><span class="id">K9 · Mac · Settings › Accounts</span><h2 data-t="pH"></h2><p data-t="pP"></p></header>
+  <div class="macwrap"><div class="mac" id="mac"></div></div>
+</section>
+
+<section class="board" id="b-phone">
+  <header><span class="id">K9 · phone</span><h2 data-t="phH"></h2><p data-t="phP"></p></header>
+  <div class="row">
+    <div><div class="phonef" id="ph-acct"></div><p class="cap" data-t="ph1Cap"></p></div>
+    <div><div class="phonef" id="ph-acct2"></div><p class="cap" data-t="ph2Cap"></p></div>
+  </div>
+</section>
+
+<script>
+const C = "../../apps/desktop/internal/theme/art/clay/";
+const W = "../../apps/web/static/art/";
+const ART = {
+  idle: W + "idle.webp", working: W + "working.webp", waiting: W + "waiting.webp", done: W + "done.webp",
+  web: C + "ab_web@640.png", mail: C + "wait_mail@256.png", cal: C + "routine_calendar@256.png", pr: C + "wait_pr@256.png",
+  coinClaude: C + "coin_claude_code@256.png", coinCodex: C + "coin_codex@256.png", icon: "../../apps/web/static/icon-192.png",
+};
+let lang = new URLSearchParams(location.search).get("lang") === "en" ? "en" : "zh";
+const L = (zh, en) => (lang === "zh" ? zh : en);
+const NAME = "Ducter";
+
+const T = {
+  title: ["它能看的账号 · 它自己留意的事", "Accounts it can read · what it notices on its own"],
+  subtitle: ["草稿 D165 + D166 · design/connectors.md Part A · 数据是作者自己的 oo（两个 Gmail、日历、Discord、GitHub）", "Drafts D165 + D166 · design/connectors.md Part A · the author's own oo (two Gmail accounts, a calendar, Discord, GitHub)"],
+  motionFull: ["动起来", "Motion"], motionStill: ["静止", "Still"],
+  baH: ["之前 → 之后：加完 oo 以后的那张卡", "Before → after: the card after adding oo"],
+  baP: ["左边是今天的样子（照着 partner.go 和文案重画）。右边是角色卡：谁 · 怎么样 · 能看什么 · 怎么连着，加上它自己留意时怎么告诉你。", "Left: today's row, redrawn from partner.go and its copy. Right: the character sheet — who, how it is, what it can read, how it is connected — plus how it tells you when it notices something."],
+  oldCap: ["今天：一行设置。没说它会怎么用这些账号，没有状态，唯一的主按钮是「再加一个」；移除一下就没了（已修：现在先问）。", "Today: a settings row. Nothing about what it will do with the accounts, no state, the only primary button adds another; Remove was one tap (fixed: it asks first now)."],
+  newCap: ["之后：默认 5 行字。点一个 app 看它看什么、什么要先问你；⋯ 看今天看了哪些。", "After: five lines of text by default. Tap an app for what it reads and what asks first; ⋯ for what it read today."],
+  fH: ["第一次加上账号：它马上开口，问一次", "The first account: it speaks at once, and asks once"],
+  fP: ["不是 toast。伙伴在对话里说一句，给一个立刻的小收获（看过去 3 天有没有在等你回的），然后只问一个问题，带默认。点按钮试试。", "Not a toast. The partner says one thing in the conversation, offers a small win right away (anything waiting on you from the last 3 days), then asks one question with a default. Try the buttons."],
+  fCap: ["Mac：点「好，看一眼」→ 一分钟内回答 → 最后一个问题。没回答就什么都不盯。", "Mac: Take a look → an answer within a minute → the one question. No answer means nothing watches."],
+  phfCap: ["手机上同一段对话。", "The same moment on the phone."],
+  mH: ["早上那条：最多 3 件，没声音；没事的日子什么都不发", "The morning note: up to 3, no sound; nothing at all on a quiet day"],
+  mP: ["免打扰结束时，一条消息、一个静音通知。开头说看了什么（沉默才可信），每件事两句话以内加一个下一步，最后一行是没说的。", "At the end of quiet hours, one message and one silent notification. It opens with what it read (so silence is trustworthy), each find in two sentences or fewer with one next step, and ends with what it left out."],
+  lockCap: ["锁屏：静音（被动级别）。正文就是开头那句，预览跟着手机自己的设置走。", "Lock screen: silent (the passive level). The body is the opening line; previews follow the phone's own setting."],
+  noteCap: ["点开：一屏放得下。每件事下面有「有用」和「这类不用告诉我」。", "Opened: fits one screen. Each find has Useful and Don't tell me this kind."],
+  quietCap: ["没事的日子：不发消息、不通知，只在名字下面那行写「早上看过了，没有要你操心的」。", "A quiet day: no message, no notification; the line under its name says Looked this morning — nothing needs you."],
+  aH: ["两件事对不上：从发现到一个要你点「好」的任务", "Two things don't match: from a find to a task that waits for your Go"],
+  aP: ["航班和酒店差一晚。点「好，看看能不能提前」才开任务（上网，在 MacBook 上）；改订和付钱都是你自己的。下面的「这类不用告诉我」会变成一条规则。", "The flight and the hotel are a night apart. Only Go opens a task (browsing, on the MacBook); changing the booking and paying stay yours. Don't tell me this kind becomes a rule."],
+  ahaCap: ["点「好，看看能不能提前」看任务走完。", "Tap Check for that night and watch the task run."],
+  rulesCap: ["设置 › 伙伴 › 你的规则：点了「这类不用告诉我」，多一条，随时「不要这条」。", "Settings › Partner › Your rules: Don't tell me this kind adds one, removable any time."],
+  kH: ["其他几类：在等你回、你在等别人、你答应过的、开会前、计划变了", "The other kinds: waiting on you, waiting on someone, promised, before a meeting, a plan changed"],
+  kP: ["每一类都是一句话加一个下一步。开会前只在有事没了的时候说；计划变了并且影响今天，才算「急的」，可以穿过免打扰以外的时间。", "Each kind is a sentence and one next step. Before a meeting speaks only when something is open; a plan that changed and affects today is the only kind of urgent, and still never breaks quiet hours unless you asked."],
+  kindsCap: ["对话里的样子（Mac）。", "In the conversation (Mac)."],
+  nowCap: ["「急的」：时效通知（手机可以按 app 关掉），算在每天 3 件里。", "Urgent: a time-sensitive notification (the phone lets you turn that off per app), counted within the 3 a day."],
+  pH: ["Mac 的设置 › 账号：四种来源，四张角色卡", "The Mac's Settings › Accounts: four sources, four character sheets"],
+  pP: ["oo、OOMOL 托管、自己部署的 OpenConnector、另一个账号服务。上面一排是「自己发现了事，怎么告诉你」。点 app、点 ⋯、点开关、点最下面的按钮都能试。", "oo, Hosted by OOMOL, a self-hosted OpenConnector, another account service. The chips on top say how it tells you. Apps, ⋯, switches and the foot all work."],
+  phH: ["手机：设置 › 账号", "The phone: Settings › Accounts"],
+  phP: ["同一张卡，单列；app 的详情原地展开。", "The same sheet in one column; an app's detail opens in place."],
+  ph1Cap: ["默认：五行字。", "Default: five lines of text."],
+  ph2Cap: ["点了 Discord：只看 @你 和私信；不让它看的话，一下就关。", "Discord tapped: only @-mentions and DMs; one tap keeps it out."],
+};
+function applyT() {
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-t]").forEach((el) => { const v = T[el.dataset.t]; if (v) el.textContent = lang === "zh" ? v[0] : v[1]; });
+}
+
+/* ---------- glyphs (plain marks; the build follows each brand's guidelines) ---------- */
+const GLYPH = {
+  gmail: `<svg viewBox="0 0 32 32"><rect x="4" y="8" width="24" height="17" rx="3" fill="#fff" stroke="#d9cbb5"/><path d="M5 10l11 8 11-8" fill="none" stroke="#e5483b" stroke-width="3" stroke-linejoin="round"/><path d="M5 11v13" stroke="#4285f4" stroke-width="3"/><path d="M27 11v13" stroke="#34a853" stroke-width="3"/></svg>`,
+  cal: `<svg viewBox="0 0 32 32"><rect x="5" y="7" width="22" height="20" rx="4" fill="#fff" stroke="#d9cbb5"/><path d="M5 12h22" stroke="#4285f4" stroke-width="4"/><text x="16" y="24" text-anchor="middle" font-size="10" font-weight="800" fill="#4285f4" font-family="system-ui">10</text></svg>`,
+  discord: `<svg viewBox="0 0 32 32"><rect x="4" y="7" width="24" height="18" rx="9" fill="#5865f2"/><circle cx="12" cy="16" r="2.3" fill="#fff"/><circle cx="20" cy="16" r="2.3" fill="#fff"/></svg>`,
+  github: `<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="11" fill="#24292f"/><circle cx="12" cy="13" r="2" fill="#fff"/><circle cx="12" cy="21" r="2" fill="#fff"/><circle cx="20" cy="15" r="2" fill="#fff"/><path d="M12 15v4M20 17c0 2-3 2-6 3" stroke="#fff" stroke-width="1.6" fill="none"/></svg>`,
+  linear: `<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="11" fill="#5e6ad2"/><path d="M9 18l5 5M9 14l9 9M11 11l10 10M15 9l8 8" stroke="#fff" stroke-width="1.6"/></svg>`,
+  slack: `<svg viewBox="0 0 32 32"><rect x="8" y="13" width="16" height="6" rx="3" fill="#36c5f0"/><rect x="13" y="8" width="6" height="16" rx="3" fill="#e01e5a" opacity=".9"/></svg>`,
+};
+/* the clay mailbox (research/35 §5's unlabeled winner); colour says where it runs */
+function mailbox(kind, cls = "") {
+  const col = { oo: ["#ffa25e", "#ff8a3d", "#c9642a"], oomol: ["#ffa25e", "#ff8a3d", "#c9642a"], self: ["#6aa3d6", "#3f7fb8", "#2b5f8e"], mcp: ["#c9b9a3", "#a8977f", "#85755f"] }[kind];
+  return `<svg class="mb ${cls}" viewBox="0 0 120 150" aria-hidden="true">
+    <defs><linearGradient id="g${kind}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${col[0]}"/><stop offset="1" stop-color="${col[1]}"/></linearGradient>
+    <linearGradient id="p${kind}" x1="0" x2="1"><stop offset="0" stop-color="#efe1cc"/><stop offset=".5" stop-color="#fbf3e6"/><stop offset="1" stop-color="#dcc8ab"/></linearGradient></defs>
+    <rect x="52" y="78" width="16" height="66" rx="6" fill="url(#p${kind})"/>
+    <ellipse cx="60" cy="144" rx="22" ry="5" fill="#e3cfb3"/>
+    <path d="M14 82V46c0-26 92-26 92 0v36c0 5-4 8-9 8H23c-5 0-9-3-9-8z" fill="url(#g${kind})"/>
+    <path d="M24 82V48c0-17 72-17 72 0v34z" fill="#fff6ea" opacity=".95"/>
+    <g class="lid"><path d="M30 76V52c0-12 60-12 60 0v24z" fill="url(#g${kind})"/>
+      <rect x="40" y="54" width="40" height="22" rx="4" fill="#fff6ea"/><path d="M41 56l19 12 19-12" fill="none" stroke="${col[2]}" stroke-width="2.6" stroke-linejoin="round"/></g>
+    <path d="M22 30c10-10 30-12 40-12" stroke="#fff" stroke-opacity=".55" stroke-width="5" stroke-linecap="round" fill="none"/>
+  </svg>`;
+}
+
+/* ---------- data ---------- */
+function sources() {
+  return {
+    oo: { kind: "oo", name: L("oo 里的账号", "Accounts in oo"), status: () => L("今天看了 <b>214</b> 封信 · 有 <b>1</b> 件值得说", "Read <b>214</b> emails today · <b>1</b> worth telling"),
+      via: L("经过 oo · 邮件会经过 OOMOL 的服务器", "Through oo · your mail passes through OOMOL's servers"), more: L("在 oo 里再连一个", "Connect another in oo"),
+      stop: L("不用 oo 里的账号了", "Stop using the accounts in oo"), signout: L("要退出登录，去 oo 里", "Sign out in oo"),
+      apps: [
+        { id: "gw", g: "gmail", label: "Gmail", sub: "work", acct: "wey@nowledge.co", watch: true, n: L("今天 41 次 · 2 分钟前", "41 looks today · 2 min ago") },
+        { id: "gh", g: "gmail", label: "Gmail", sub: "home", acct: "wey.gu@gmail.com", watch: true, n: L("今天 41 次 · 2 分钟前", "41 looks today · 2 min ago") },
+        { id: "cal", g: "cal", label: L("日历", "Calendar"), acct: "wey@nowledge.co", watch: true, n: L("今天 27 次 · 9 分钟前", "27 looks today · 9 min ago"), cal: true },
+        { id: "dc", g: "discord", label: "Discord", acct: "wey", watch: true, mentions: true, n: L("今天 40 次 · 4 分钟前", "40 looks today · 4 min ago") },
+        { id: "gith", g: "github", label: "GitHub", acct: "wey-gu", watch: true, n: L("今天 40 次 · 6 分钟前", "40 looks today · 6 min ago"), gh: true },
+      ] },
+    oomol: { kind: "oomol", name: "OOMOL", status: () => L("你问起来才去看", "Reads only when you ask"), quiet: true,
+      via: L("OOMOL 托管 · 邮件会经过 OOMOL 的服务器", "Hosted by OOMOL · your mail passes through OOMOL's servers"), more: L("去 OOMOL 再连一个", "Connect another in OOMOL"),
+      stop: L("不用 OOMOL 了", "Stop using OOMOL"), signout: L("要退出登录，去 OOMOL 控制台", "Sign out in the OOMOL console"),
+      apps: [{ id: "sl", g: "slack", label: "Slack", acct: "Nowledge Labs", watch: false, mentions: true, n: L("昨天 · 你问起来的时候", "yesterday · when you asked") }] },
+    self: { kind: "self", name: L("家里的 OpenConnector", "Home OpenConnector"), status: () => L("连不上 · 最后在线 2 小时前", "Can't reach · last seen 2 h ago"), fail: true,
+      via: L("自己部署的 · 留在你自己的服务器上", "Self-hosted · stays on your own server"), more: L("在它那里再连一个", "Connect another there"),
+      stop: L("不用它了", "Stop using it"), signout: L("要退出登录，去它的控制台", "Sign out in its console"),
+      apps: [{ id: "g2", g: "gmail", label: "Gmail", sub: "lab", acct: "lab@siwei.info", watch: true, bad: true, n: L("2 小时前", "2 h ago") }] },
+    mcp: { kind: "mcp", name: "Linear", status: () => L("你问起来才去看", "Reads only when you ask"), quiet: true,
+      via: L("另一个账号服务 · 它没标「只读」的事都先问你", "Another account service · anything not marked read-only asks you first"), more: null,
+      stop: L("不用 Linear 了", "Stop using Linear"), signout: null,
+      apps: [{ id: "ln", g: "linear", label: "Linear", acct: "nowledge", watch: false, n: L("3 天前", "3 days ago") }] },
+  };
+}
+
+/* ---------- card state ---------- */
+const S = {};
+const st = (k) => (S[k] ??= { open: null, reads: false, stop: false, watch: {}, out: {}, looking: false });
+let PRO = 1; // the proactive chip: 0 urgent · 1 three · 2 useful · 3 off
+
+function sourceCard(key, src, o = {}) {
+  const s = st(key);
+  const tiles = src.apps.map((a, i) => {
+    const watch = s.watch[a.id] ?? a.watch;
+    const out = s.out[a.id];
+    const cls = out || a.bad ? "bad" : watch && PRO !== 3 ? "" : "off";
+    return `<button class="tile ${cls} ${s.open === a.id ? "sel" : ""}" style="animation-delay:${i * 40}ms" data-k="${key}" data-tile="${a.id}" aria-label="${a.label}">
+      <div class="t">${GLYPH[a.g]}</div><span>${a.label}</span>${a.sub ? `<small>${a.sub}</small>` : ""}</button>`;
+  }).join("") + (src.more ? `<button class="tile add" data-k="${key}" data-addapp><div class="t">+</div><span>${lang === "zh" ? "再连一个" : "Add one"}</span></button>` : "");
+  const idx = src.apps.findIndex((a) => a.id === s.open);
+  const n = src.apps.length + (src.more ? 1 : 0);
+  let detail = "";
+  if (idx >= 0) {
+    const a = src.apps[idx];
+    const watch = s.watch[a.id] ?? a.watch;
+    const reads = a.cal ? L("日程的时间、地点、谁参加；不看会议里附的文件", "times, places and who's coming; not attached files")
+      : a.gh ? L("提到你的、请你 review 的、你的 PR 和 issue 动态", "what mentions you, review requests, your PRs and issues")
+      : a.g === "discord" || a.g === "slack" ? L("@你 的消息和私信", "@-mentions and DMs")
+      : a.g === "linear" ? L("分给你的 issue 和评论", "issues assigned to you and comments")
+      : L("新邮件的发件人、标题和开头几行；要细看才读全文", "new mail's sender, subject and first lines; the full text only when needed");
+    const asks = a.cal ? L("接受、拒绝、改时间、新建", "accepting, declining, moving, creating")
+      : a.gh ? L("评论、合并、关 issue", "commenting, merging, closing")
+      : a.g === "discord" || a.g === "slack" ? L("发消息、回复、加反应", "posting, replying, reacting")
+      : a.g === "linear" ? L("改状态、评论、新建", "changing status, commenting, creating")
+      : L("发信、回复、存草稿、改标签、删除", "sending, replying, saving drafts, labels, deleting");
+    detail = `<div class="detail" style="--notch:calc(${((idx + 0.5) / n) * 100}%)">
+      <div class="dh"><b>${a.label}${a.sub ? " · " + a.sub : ""}</b><small>${a.acct}</small></div>
+      <div class="ln"><i>${L("会看：", "Reads: ")}</i>${reads}</div>
+      <div class="ln"><i>${L("先问你：", "Asks you first: ")}</i>${asks}</div>
+      <div class="ln"><i>${L("最后看过：", "Last looked: ")}</i>${a.n}</div>
+      ${a.bad ? `<div class="ln" style="color:var(--fail-ink);font-weight:700">${L("现在连不上它所在的服务器。", "Its server can't be reached right now.")}</div>` : `<div class="sw"><span>${L("自己留意", "Watch on its own")}<small>${a.mentions ? L("只看 @你 和私信", "Only @-mentions and DMs") : watch ? L("这个月用了 3%", "3% of this month's budget") : L("你问起来才去看", "Reads only when you ask")}</small></span><button class="switch ${watch && PRO !== 3 ? "on" : ""}" data-k="${key}" data-watch="${a.id}" aria-label="${L("自己留意", "Watch on its own")}"></button></div>`}
+      <div class="foot2"><button class="btn text sm" style="height:30px;padding:0 6px" data-k="${key}" data-out="${a.id}">${s.out[a.id] ? L("让 Ducter 看这个", "Let Ducter read this one") : L("不让 Ducter 看这个", "Don't let Ducter read this one")}</button>${src.signout ? `<small style="color:var(--ink-muted);font-size:12px">${src.signout}</small>` : ""}</div>
+    </div>`;
+  }
+  const reads = s.reads ? `<div class="reads">
+      <div class="r"><time>08:00</time><span>${L("Gmail · work：新邮件 23 封（看了标题和开头）", "Gmail · work: 23 new (subjects and first lines)")}</span></div>
+      <div class="r"><time>08:00</time><span>${L("日历：今天 5 个会", "Calendar: 5 meetings today")}</span></div>
+      <div class="r"><time>07:59</time><span>${L("GitHub：3 条提到你的", "GitHub: 3 that mention you")}</span></div>
+      <div class="r"><time>07:58</time><span>${L("Gmail · work：读了 1 封全文（Cloudflare 续费）", "Gmail · work: read 1 in full (Cloudflare renewal)")}</span></div>
+      <div class="hon">${L("它读到的内容会给你的 AI 账号看，别人拿不到。", "What it reads is shown to your AI account. No one else gets it.")}</div></div>` : "";
+  const foot = s.stop
+    ? `<div class="dfoot"><span class="ask">${L("不用了以后它就看不到这些账号；记下的事还在「记得什么」里，可以忘掉。", "Once stopped, it can't read these accounts. What it noted stays in What it remembers, where you can forget it.")}</span><button class="btn text sm" data-k="${key}" data-stop>${L("算了", "Keep it")}</button><button class="btn danger sm" data-k="${key}" data-stop>${L("不用了", "Stop")}</button></div>`
+    : `<div class="dfoot"><button class="btn danger sm" data-k="${key}" data-stop>${src.stop}</button></div>`;
+  const statusCls = src.fail ? "fail" : src.quiet || PRO === 3 ? "quiet" : "";
+  const statusTx = PRO === 3 && !src.fail ? L("你问起来才去看", "Reads only when you ask") : src.status();
+  return `<div class="sc ${o.phone ? "phone" : ""}" aria-label="${src.name}">
+    <div class="hero"><div class="ground"></div>${mailbox(src.kind, `${src.fail ? "grey" : ""} ${s.looking ? "looking" : ""}`)}${src.fail ? `<div class="mist"></div>` : ""}</div>
+    <div class="name">${src.name}</div>
+    <div class="status ${statusCls}">${statusTx}</div>
+    <div class="tray">${tiles}</div>${detail}
+    <div class="via">${src.via}<button class="more" data-k="${key}" data-reads aria-expanded="${s.reads}" aria-label="${L("看了哪些", "What it read")}">⋯</button></div>${reads}
+    ${foot}</div>`;
+}
+function proChips(key) {
+  const opts = [L("只说急的", "Only urgent"), L("每天最多 3 件", "Up to 3 a day"), L("有用就说", "Whenever useful"), L("不用主动找我", "Only when I ask")];
+  const notes = [L("只在拖到明天就来不及的时候找你，没有早上那条。", "Only when tomorrow would be too late; no morning note."),
+    L("早上把值得说的放在一条里，最多 3 件；急的随时说。", "One note in the morning with up to 3 things; urgent ones right away."),
+    L("不设上限，还是放在早上那条和你在用的时候说。", "No cap, still in the morning note and while you're here."),
+    L("它不自己看了，你问起来才去看。", "It stops looking on its own; it reads only when you ask.")];
+  return `<div><div class="ptitle">${L("自己发现了事，怎么告诉你", "When it notices something")}</div>
+    <div class="pchips" role="radiogroup">${opts.map((t, i) => `<button class="pc ${PRO === i ? "on" : "off"}" role="radio" aria-checked="${PRO === i}" data-pro="${i}" data-k="${key}">${t}</button>`).join("")}</div>
+    <div class="pnote">${notes[PRO]}</div></div>`;
+}
+
+/* ---------- boards ---------- */
+function renderBefore() {
+  document.getElementById("old").innerHTML = `<div class="old">
+    <div style="font:800 16px var(--head)">${L("它能看的账号", "Accounts it can read")}</div>
+    <div class="m" style="margin:2px 0 12px">${L("让 Ducter 帮你看邮件、日历和 GitHub：你问起来，它自己去看。看没关系；要发出去或改东西，都先问你。", "Let Ducter read your mail, calendar and GitHub, so when you ask, it looks for itself. Reading is fine; sending or changing anything asks you first.")}</div>
+    <div class="rw"><svg width="24" height="38" viewBox="0 0 52 84"><rect x="22" y="44" width="8" height="37" rx="3" fill="#e0c9b0"/><path d="M6 46V26C6 4 46 4 46 26V46Z" fill="#ff8a3d"/><path d="M10 44V28C10 10 42 10 42 28V44Z" fill="#fff"/><rect x="15" y="27" width="22" height="15" rx="2.5" fill="#ff8a3d"/></svg>
+      <div><b>${L("oo 里的账号", "Accounts in oo")}</b><div class="ap">Gmail (2) · Discord · Google Calendar · GitHub</div><div class="m">${L("经过 oo · 邮件和登录经过 OOMOL 的服务器", "Through oo · your mail and sign-ins pass through OOMOL's servers")}</div></div>
+      <span class="bt">${L("移除", "Remove")}</span></div>
+    <div class="add"><button class="btn primary sm">${L("加一个", "Add one")}</button></div>
+    <div class="m" style="margin-top:10px">${L("它读到的内容会给你的 AI 账号看，别人拿不到。", "What it reads is shown to your AI account. No one else gets it.")}</div></div>`;
+  document.getElementById("newA").innerHTML = `<div style="display:flex;flex-direction:column;gap:16px">${proChips("a")}${sourceCard("a", sources().oo)}</div>`;
+  document.getElementById("fixes").innerHTML = [
+    L("<b>它会做什么</b>：没写 → 上面一排「自己发现了事，怎么告诉你」，一个选择，带默认。", "<b>What it will do</b>: missing → one chip row on top, a single choice with a default."),
+    L("<b>它现在怎么样</b>：没有 → 一行状态「今天看了 214 封信 · 有 1 件值得说」。", "<b>How it is now</b>: missing → one status line, Read 214 emails today · 1 worth telling."),
+    L("<b>能看什么</b>：一串字 → 一排 app 方块，点开说看什么、什么先问你、最后什么时候看的。", "<b>What it can read</b>: a run of names → a tray of app tiles; tap one for what it reads, what asks first, when it last looked."),
+    L("<b>看了哪些</b>：看不到 → ⋯ 里一行一条，和诚实的那句话。", "<b>What it read</b>: invisible → ⋯ opens today's reads and the honest line."),
+    L("<b>主按钮</b>：「加一个」→ 退到卡片下面的小字；卡片只有一个危险按钮，原地确认。", "<b>The primary button</b>: Add one → a quiet link under the cards; the card has one destructive action, confirmed in place."),
+    L("<b>加上那一刻</b>：一个 toast → 伙伴在对话里开口（见下一块）。", "<b>The moment of adding</b>: a toast → the partner speaks in the conversation (next board)."),
+  ].map((x) => `<li>${x}</li>`).join("");
+}
+
+/* the first account */
+let FIRST = 0; // 0 offered · 1 looking · 2 answered · 3 cadence picked
+let FIRSTPICK = null;
+function firstBody(phone) {
+  const parts = [`<div class="sysline">${L("加上了 oo 里的账号", "Added the accounts in oo")}</div>`];
+  parts.push(`<div class="bub partner"><p>${L("已经能看你的 Gmail、日历、Discord 和 GitHub 了。要不要我现在看一眼过去 3 天，有没有在等你回的？", "I can read your Gmail, calendar, Discord and GitHub now. Want me to look through the last 3 days for anything waiting on you?")}</p>
+    ${FIRST === 0 ? `<div class="acts"><button class="btn primary sm" data-first="go">${L("好，看一眼", "Take a look")}</button><button class="btn text sm" data-first="no">${L("先不用", "Not now")}</button></div>` : ""}</div>`);
+  if (FIRST >= 1) parts.push(`<div class="bub you">${L("好，看一眼", "Take a look")}</div>`);
+  if (FIRST === 1) parts.push(`<div class="waitline"><img src="${ART.working}" alt="">${L("在看过去 3 天的信", "Reading the last 3 days")} <span class="dots"><i></i><i></i><i></i></span></div>`);
+  if (FIRST >= 2) parts.push(`<div class="bub partner"><p>${L("看了 3 天的 386 封信和 GitHub。有 1 件：Lina 周一问你 nowledge-co/mem #2141 什么时候能 review，今天上午又问了一次。改了 4 个文件，测试都过了。", "I read 386 emails from the last 3 days, and GitHub. One thing: Lina asked on Monday when you can review nowledge-co/mem #2141, and asked again this morning. 4 files changed, tests pass.")}</p>
+      <div class="acts"><button class="btn secondary sm">${L("好，先帮我读一遍", "Read it first")}</button><button class="btn text sm">${L("先等等", "Hold")}</button></div>
+      <details class="how"><summary>${L("怎么知道的", "How I know")}</summary><ul><li>${L("11/9 GitHub 通知《Review requested》", "GitHub notification \"Review requested\", 11/9")}</li><li>${L("今天 09:12 Lina 在 PR 下的评论", "Lina's comment on the PR, today 09:12")}</li></ul></details>
+      <div class="find" style="border:0;padding:0;margin-top:14px"><p>${L("以后我自己留意着：每天早上把值得说的放在一条里，最多 3 件；急的随时说。这样行吗？", "From now on I'll keep an eye out: one note each morning with up to 3 things, and anything urgent right away. OK?")}</p>
+      ${FIRST === 2 ? `<div class="acts"><button class="btn primary sm" data-pick="1">${L("好", "Sounds good")}</button><button class="btn text sm" data-pick="0">${L("只说急的", "Only urgent")}</button><button class="btn text sm" data-pick="3">${L("不用主动找我", "Only when I ask")}</button></div>` : ""}</div></div>`);
+  if (FIRST === 3) {
+    const t = { 0: L("只说急的", "Only urgent"), 1: L("好", "Sounds good"), 3: L("不用主动找我", "Only when I ask") }[FIRSTPICK];
+    parts.push(`<div class="bub you">${t}</div>`);
+    parts.push(`<div class="sysline">${FIRSTPICK === 3 ? L("它不会自己去看。设置 › 账号 里随时改。", "It won't look on its own. Change it any time in Settings › Accounts.") : FIRSTPICK === 0 ? L("只说急的。设置 › 账号 里随时改。", "Only urgent. Change it any time in Settings › Accounts.") : L("每天最多 3 件，早上 8 点。设置 › 账号 里随时改。", "Up to 3 a day, at 8 in the morning. Change it any time in Settings › Accounts.")}</div>`);
+  }
+  return parts.join("");
+}
+function renderFirst() {
+  document.getElementById("first").innerHTML = `<div class="bar"><img src="${ART.idle}" alt=""><div><b>${NAME}</b><small>${L("手头没事，随时说", "Nothing on hand; just say")}</small></div></div><div class="body convo">${firstBody()}</div>`;
+  document.getElementById("ph-first").innerHTML = `<div class="scroll"><div class="pbar"><img src="${ART.idle}" alt=""><div><b>${NAME}</b><small>${L("手头没事，随时说", "Nothing on hand; just say")}</small></div></div><div class="convo phone">${firstBody(true)}</div></div>`;
+}
+
+/* morning note */
+const MUTED = new Set(); const USEFUL = new Set();
+function finds() {
+  return [
+    { id: "domain", k: L("快到期 · 要花钱", "Deadlines and money"),
+      tx: L("ducter.dev 11/16 到期。Cloudflare 10/17 发了续费通知（$10.44），之后没有付款收据，自动续费那张卡 10 月也过期了。", "ducter.dev expires on 11/16. Cloudflare sent a renewal notice on 10/17 ($10.44); I haven't seen a receipt since, and the auto-renew card expired in October."),
+      go: L("好，打开续费页", "Open the renewal page"), how: [L("10/17 的邮件《Your domain renews soon》", "email \"Your domain renews soon\", 10/17"), L("10/02 的邮件《Card expiring》", "email \"Card expiring\", 10/02"), L("之后没有收据", "no receipt after")] },
+    { id: "hotel", k: L("两件事对不上", "Two things don't match"),
+      tx: L("11/21 的 CA929 晚上 21:40 到成田，新宿的酒店却是 11/22 才入住，那晚还没地方住。", "Your CA929 on 11/21 lands at Narita at 21:40, but the Shinjuku hotel starts on 11/22; you have nowhere to stay that night."),
+      go: L("好，看看能不能提前", "Check for that night"), how: [L("11/02 的订票确认", "flight confirmation, 11/02"), L("10/28 的酒店确认", "hotel confirmation, 10/28")] },
+    { id: "pr", k: L("在等你回", "Waiting on you"),
+      tx: L("Lina 的 PR（nowledge-co/mem #2141）等你 review 两天了，她今天上午又问了一次。", "Lina's PR (nowledge-co/mem #2141) has waited two days for your review; she asked again this morning."),
+      go: L("好，先帮我读一遍", "Read it first"), how: [L("11/8 的 review 请求", "review request, 11/8"), L("今天 09:12 她的评论", "her comment, today 09:12")] },
+  ];
+}
+function findHTML(f, o = {}) {
+  const muted = MUTED.has(f.id);
+  return `<div class="find ${muted ? "muted" : ""}" ${o.first ? `style="border:0;padding-top:0;margin-top:8px"` : ""}><div class="k">${f.k}</div><p>${f.tx}</p>
+    <div class="acts"><button class="btn secondary sm" ${o.goAttr || ""}>${f.go}</button><button class="btn text sm">${L("先等等", "Hold")}</button></div>
+    <div class="metarow"><details class="how"><summary>${L("怎么知道的", "How I know")}</summary><ul>${f.how.map((h) => `<li>${h}</li>`).join("")}</ul></details>
+    ${muted ? `<div class="said">${L("好，这类以后不说了。", "OK, I won't mention this kind again.")}</div>` : USEFUL.has(f.id) ? `<div class="said">${L("记下了。", "Noted.")}</div>` : `<div class="fb"><button data-useful="${f.id}">${L("有用", "Useful")}</button><button data-mute="${f.id}">${L("这类不用告诉我", "Don't tell me this kind")}</button></div>`}</div></div>`;
+}
+function noteHTML(o = {}) {
+  const fs = finds().slice(0, o.two ? 2 : 3);
+  return `<div class="bub partner"><p>${L(`早。昨晚到现在看了 214 封信、今天的 5 个会和 GitHub，有 ${fs.length} 件值得你知道。`, `Morning. Since last night I read 214 emails, today's 5 meetings and GitHub; ${fs.length} worth knowing.`)}</p>
+    ${fs.map((f, i) => findHTML(f, { first: i === 0 })).join("")}
+    <div class="leftout">${L("没说的：12 封通知和收据，看标题就知道；1 封像推销，没理它。", "Left out: 12 notifications and receipts you can read from the subject; 1 that looked like a sales pitch.")}</div></div>`;
+}
+function renderMorning() {
+  document.getElementById("ph-lock").innerHTML = `<div class="lock"><div class="time">8:00</div><div class="date">${L("11月10日 星期二", "Tuesday, November 10")}</div>
+    <div class="notif"><img src="${ART.icon}" alt=""><div class="h">${NAME}<small>${L("现在", "now")}</small></div>
+      <div class="tx">${L("早。有 3 件值得你知道：ducter.dev 11/16 到期还没续费；11/21 那晚还没订到住处；Lina 又问 #2141 了。", "Morning. 3 worth knowing: ducter.dev lapses 11/16 unpaid; nowhere to stay on 11/21; Lina asked about #2141 again.")}</div></div></div>`;
+  document.getElementById("ph-note").innerHTML = `<div class="scroll"><div class="pbar"><img src="${ART.idle}" alt=""><div><b>${NAME}</b><small>${L("手头没事，随时说", "Nothing on hand; just say")}</small></div></div><div class="convo phone">${noteHTML()}</div></div>`;
+  document.getElementById("quiet").innerHTML = `<div class="bar"><img src="${ART.idle}" alt=""><div><b>${NAME}</b><small class="quietday">${L("早上看过了，没有要你操心的", "Looked this morning — nothing needs you")}</small></div></div>
+    <div class="body convo"><div class="sysline">${L("昨天", "Yesterday")}</div><div class="bub you">${L("帮我把周报草稿理一下", "Tidy up my weekly report draft")}</div><div class="bub partner"><p>${L("理好了，放在「做好的」里。", "Done; it's in Everything finished.")}</p></div>
+    <div class="sysline">${L("今天 · 没有新消息", "Today · nothing new")}</div></div>`;
+}
+
+/* aha */
+let AHA = 0; // 0 find · 1 task working · 2 done
+let RULE_NEW = false;
+function renderAha() {
+  const f = finds()[1];
+  const parts = [`<div class="bub partner"><p>${L("早。昨晚到现在看了 214 封信和今天的 5 个会，有 1 件值得你知道。", "Morning. Since last night I read 214 emails and today's 5 meetings; 1 worth knowing.")}</p>${findHTML(f, { first: true, goAttr: AHA === 0 ? `data-aha="go"` : "disabled" })}
+    <div class="leftout">${L("没说的：9 封通知和收据。", "Left out: 9 notifications and receipts.")}</div></div>`];
+  if (AHA >= 1) {
+    parts.push(`<div class="bub you">${L("好，看看能不能提前", "Check for that night")}</div>`);
+    parts.push(`<div class="bub partner"><p>${L("好，我去酒店官网看看 11/21 能不能加一晚。", "OK, I'll check the hotel's site for the night of 11/21.")}</p></div>`);
+    parts.push(`<div class="taskcard"><b>${L("看新宿那家酒店能不能提前一晚", "Check if the Shinjuku hotel can add a night")}</b>
+      <div class="meta">${AHA === 1 ? `<span class="working">${L("在做", "Working")}</span>` : `<span class="done">${L("做完了", "Done")}</span>`}<span class="d">·</span>${AHA === 1 ? L("1 分钟", "1 min") : L("3 分钟", "3 min")}<span class="d">·</span><span><img src="${ART.coinClaude}" alt="">Claude Code</span><span class="d">·</span><span><img src="${ART.web}" alt="">${L("上网 · 在 MacBook 上", "Browse · on the MacBook")}</span></div></div>`);
+  }
+  if (AHA === 2) parts.push(`<div class="bub partner"><p>${L("能加：11/21 那晚还有同样的房型，¥1,180，要在官网的「我的预订」里改。我把那一页留在 Ducter 的浏览器里了，改和付钱你来。", "It can: the same room type is free on 11/21 at ¥1,180, changed under My bookings on their site. I left that page open in Ducter's browser; changing it and paying are yours.")}</p>
+    <div class="acts"><button class="btn secondary sm">${L("打开那一页", "Open that page")}</button></div>
+    <details class="how"><summary>${L("怎么知道的", "How I know")}</summary><ul><li>${L("酒店官网 11/21 的房态（截图）", "the hotel's availability for 11/21 (screenshot)")}</li><li>${L("没有登录、没有改任何东西", "not signed in; nothing changed")}</li></ul></details></div>`);
+  document.getElementById("aha").innerHTML = `<div class="bar"><img src="${AHA === 1 ? ART.working : ART.idle}" alt=""><div><b>${NAME}</b><small>${AHA === 1 ? L("在做 1 件事", "1 task under way") : L("手头没事，随时说", "Nothing on hand; just say")}</small></div></div><div class="body convo">${parts.join("")}</div>`;
+  const rows = [
+    [L("Codex 做前端的事", "Codex does front-end work"), L("你说过的", "You said this")],
+    [L("航班改了，夜里也叫我", "Wake me at night for flight changes"), L("你说过的 · 免打扰时也说", "You said this · even in quiet hours")],
+  ];
+  if (RULE_NEW) rows.push([L("「两件事对不上」这类不用告诉我", "Don't tell me about \"two things don't match\""), L("你刚才点的", "You just tapped this")]);
+  document.getElementById("rules").innerHTML = `<h3 style="font-size:20px;font-weight:800;margin:0 0 4px 4px">${L("你的规则", "Your rules")}</h3>
+    <p style="font-size:13px;color:var(--ink-muted);margin:0 0 10px 4px">${L("你说过的，和你换过两次以后定下的。", "What you said, and what you settled after switching twice.")}</p>
+    <div class="rcard">${rows.map((r, i) => `<div class="rrow ${RULE_NEW && i === rows.length - 1 ? "new" : ""}"><div class="tx"><b>${r[0]}</b><small>${r[1]}</small></div><button class="btn text sm">${L("不要这条", "Remove")}</button></div>`).join("")}</div>`;
+}
+
+/* other kinds */
+function renderKinds() {
+  const k = (kind, tx, go, how) => `<div class="bub partner"><div class="find" style="border:0;padding:0;margin:0"><div class="k">${kind}</div><p>${tx}</p>
+    ${go ? `<div class="acts"><button class="btn secondary sm">${go}</button><button class="btn text sm">${L("先等等", "Hold")}</button></div>` : ""}
+    <details class="how"><summary>${L("怎么知道的", "How I know")}</summary><ul>${how.map((h) => `<li>${h}</li>`).join("")}</ul></details>
+    <div class="fb"><button>${L("有用", "Useful")}</button><button>${L("这类不用告诉我", "Don't tell me this kind")}</button></div></div></div>`;
+  document.getElementById("kinds").innerHTML = `<div class="bar"><img src="${ART.idle}" alt=""><div><b>${NAME}</b><small>${L("手头没事，随时说", "Nothing on hand; just say")}</small></div></div><div class="body convo">
+    <div class="sysline">${L("早上那条里", "In the morning note")}</div>
+    ${k(L("你在等别人回", "You're waiting on someone"), L("你 11/5 问 OOMOL 的 Kevin，托管版的钥匙能不能只给读的权限，4 个工作日了还没回。", "On 11/5 you asked Kevin at OOMOL whether a hosted key can be read-only; 4 working days, no reply."), L("好，写一句跟进", "Write a follow-up"), [L("11/5 你发的《Read-only keys?》", "your email \"Read-only keys?\", 11/5"), L("之后这个线程里没有新邮件", "nothing new in the thread since")])}
+    ${k(L("你答应过的", "Something you promised"), L("你 11/6 跟 Lina 说「下周二前把 Bridge 的试用说明发你」。今天就是周二，我还没看到你发过。", "On 11/6 you told Lina \"I'll send the Bridge trial notes by next Tuesday\". It's Tuesday, and I haven't seen them go out."), L("好，按之前的邮件起个草稿", "Draft it from the thread"), [L("11/6 你发给 Lina 的邮件", "your email to Lina, 11/6"), L("之后你发的邮件里没有附件或说明", "no notes or attachment in what you sent since")])}
+    <div class="sysline">${L("10:20 · 开会前", "10:20 · before a meeting")}</div>
+    ${k(L("开会前", "Before a meeting"), L("10 分钟后和 Lina 的 1:1。#2141 你还没回她；答应今天给她的 Bridge 试用说明也还没发。", "Your 1:1 with Lina is in 10 minutes. You haven't answered her on #2141, and the Bridge trial notes you promised today haven't gone out."), "", [L("日历：10:30 Lina / Wey 1:1", "Calendar: 10:30 Lina / Wey 1:1"), L("上面两件", "the two above")])}
+  </div>`;
+  document.getElementById("ph-now").innerHTML = `<div class="lock"><div class="time">13:02</div><div class="date">${L("11月21日 星期六", "Saturday, November 21")}</div>
+    <div class="notif"><img src="${ART.icon}" alt=""><div class="h">${NAME}<small>${L("现在", "now")}</small></div><div class="lvl">${L("时效通知", "Time Sensitive")}</div>
+      <div class="tx">${L("CA929 改到 14:05 起飞，晚了 4 小时 45 分，你 18:00 在东京的晚饭赶不上了。要我看看能改签哪些？", "CA929 now leaves at 14:05, 4 h 45 min late; you'd miss your 18:00 dinner in Tokyo. Want me to look up other flights?")}</div></div>
+    <div class="notif" style="animation-delay:200ms"><img src="${ART.icon}" alt=""><div class="h">${NAME}<small>${L("8:00", "8:00")}</small></div>
+      <div class="tx">${L("早。有 1 件值得你知道：今晚成田的酒店改好了，入住 21:40 以后也行。", "Morning. 1 worth knowing: tonight's Narita hotel is sorted; check-in after 21:40 is fine.")}</div></div></div>`;
+}
+
+/* Mac page and phone */
+function renderMac() {
+  const src = sources();
+  document.getElementById("mac").innerHTML = `<div class="rail">
+      <div class="it"><img src="${ART.idle}" alt="">${L("伙伴", "Partner")}</div>
+      <div class="it"><img src="${ART.cal}" alt="">${L("通知", "Notifications")}</div>
+      <div class="it sel"><img src="${ART.mail}" alt="">${L("账号", "Accounts")}</div>
+      <div class="it"><img src="${ART.web}" alt="">${L("在哪儿运行", "Where it runs")}</div></div>
+    <div class="macmain"><h3>${L("账号", "Accounts")}</h3><div class="lede">${L("你让它能看的邮件、日历和别的账号。看没关系；要发出去或改东西，都先问你。", "The mail, calendars and other accounts you let it read. Reading is fine; sending or changing anything asks you first.")}</div>
+      ${proChips("mac")}
+      <div class="cards">${sourceCard("m1", src.oo)}${sourceCard("m2", src.oomol)}${sourceCard("m3", src.self)}${sourceCard("m4", src.mcp)}</div>
+      <div class="addq"><button class="qlink">${L("加一个 ›", "Add one ›")}</button></div></div>`;
+  const ph = (id, key) => `<div class="scroll"><div class="nav">‹ ${L("设置", "Settings")}</div><div class="pt">${L("账号", "Accounts")}</div>
+    ${proChips(key)}<div style="height:14px"></div>${sourceCard(key, src.oo, { phone: true })}<div class="addq"><button class="qlink">${L("加一个 ›", "Add one ›")}</button></div></div>`;
+  document.getElementById("ph-acct").innerHTML = ph("ph-acct", "p1");
+  document.getElementById("ph-acct2").innerHTML = ph("ph-acct2", "p2");
+}
+
+function render() { applyT(); renderBefore(); renderFirst(); renderMorning(); renderAha(); renderKinds(); renderMac(); }
+
+/* ---------- interaction ---------- */
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.lang) { lang = b.dataset.lang; document.querySelectorAll("[data-lang]").forEach((x) => x.setAttribute("aria-pressed", x === b)); return render(); }
+  if (b.dataset.motion) { document.body.classList.toggle("still", b.dataset.motion === "still"); document.querySelectorAll("[data-motion]").forEach((x) => x.setAttribute("aria-pressed", x === b)); return; }
+  const k = b.dataset.k;
+  if (b.dataset.tile) { const s = st(k); s.open = s.open === b.dataset.tile ? null : b.dataset.tile; return render(); }
+  if (b.dataset.watch) { const s = st(k); const src = Object.values(sources()).flatMap((x) => x.apps).find((a) => a.id === b.dataset.watch); s.watch[b.dataset.watch] = !(s.watch[b.dataset.watch] ?? src.watch); return render(); }
+  if (b.dataset.out) { const s = st(k); s.out[b.dataset.out] = !s.out[b.dataset.out]; return render(); }
+  if ("reads" in b.dataset) { const s = st(k); s.reads = !s.reads; if (s.reads) { s.looking = true; setTimeout(() => { s.looking = false; render(); }, 600); } return render(); }
+  if ("stop" in b.dataset) { const s = st(k); s.stop = !s.stop; return render(); }
+  if (b.dataset.pro) { PRO = +b.dataset.pro; render(); const n = document.querySelector(`[data-k="${k}"][data-pro="${PRO}"]`); if (n) n.classList.add("squish"); return; }
+  if (b.dataset.first === "go") { FIRST = 1; render(); setTimeout(() => { FIRST = 2; render(); }, 1400); return; }
+  if (b.dataset.first === "no") { FIRST = 3; FIRSTPICK = 3; return render(); }
+  if (b.dataset.pick) { FIRST = 3; FIRSTPICK = +b.dataset.pick; PRO = FIRSTPICK; return render(); }
+  if (b.dataset.useful) { USEFUL.add(b.dataset.useful); return render(); }
+  if (b.dataset.mute) { MUTED.add(b.dataset.mute); if (b.dataset.mute === "hotel") RULE_NEW = true; return render(); }
+  if (b.dataset.aha === "go") { AHA = 1; render(); setTimeout(() => { AHA = 2; render(); }, 1800); return; }
+});
+
+/* ?lang=en · ?still=1 · ?only=<board> · ?open=<scenario> for screenshots */
+const q = new URLSearchParams(location.search);
+if (q.get("still")) { document.body.classList.add("still"); document.querySelectorAll("[data-motion]").forEach((x) => x.setAttribute("aria-pressed", x.dataset.motion === "still")); }
+document.querySelectorAll("[data-lang]").forEach((x) => x.setAttribute("aria-pressed", x.dataset.lang === lang));
+const open = q.get("open") || "";
+if (open.includes("tile")) { st("a").open = "gw"; st("m1").open = "gw"; st("p2").open = "dc"; }
+if (open.includes("reads")) { st("m1").reads = true; }
+if (open.includes("first")) { FIRST = 2; }
+if (open.includes("picked")) { FIRST = 3; FIRSTPICK = 1; }
+if (open.includes("aha")) { AHA = 2; }
+if (open.includes("muted")) { MUTED.add("hotel"); RULE_NEW = true; }
+if (open.includes("stop")) { st("m4").stop = true; }
+render();
+const only = q.get("only");
+if (only) document.querySelectorAll(".board").forEach((b) => { if (b.id !== "b-" + only) b.remove(); });
+</script>
+</body>
+</html>

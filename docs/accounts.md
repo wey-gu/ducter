@@ -79,7 +79,9 @@ The key is kept only in Ducter's own data folder, and is never shown again.
 - **Where your mail goes.** Through oo or Hosted by OOMOL, your mail and sign-ins pass through
   OOMOL's servers. What your partner reads is shown to your AI account to understand it; no one
   else gets it.
-- **Remove** takes the accounts away from Ducter. Through oo, that doesn't sign you out of oo.
+- **Remove** takes the accounts away from Ducter, after you confirm it in the same row. Through
+  oo, that doesn't sign you out of oo.
 
 This is new and still being tried out. Your partner doesn't yet watch your accounts on its own;
-it looks when you ask.
+it looks when you ask. Coming soon: if you want it to, it keeps an eye out and tells you a few
+things worth knowing in one message in the morning, and stays quiet otherwise.

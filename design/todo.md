@@ -236,7 +236,22 @@ note and a `Dn`) before it is built.
       boundary, action allow/block policy, MCP surface, license: modified Apache 2.0 that
       bars offering it as a hosted service, which embedding in Ducter is not). Trigger: the
       first user scenario that needs mail or calendar.
-- [ ] **oo's own read/write hint and action list** (D122, `connectors.md` §4.4). oo has no "list
+- [ ] **Proactive help (draft D165) and the accounts card (draft D166)**, `connectors.md` Part A
+      §14. In order, each a small PR with tests: (1) watch oo by model-free polling as a system
+      routine per source (budget, unread pause); (2) stage-1 rules and the findings ledger
+      (`findings.json`, 0600, expiry, dropped with the account); (3) **the triage eval first**
+      (a private labeled set from the author's inbox, outside git, false alarms and misses per
+      kind), then stage-2 triage; (4) the stage-3 judge and the morning note as a typed report,
+      the silent-day header line, a passive notification; (5) the first-account moment and the
+      `proactive` chip setting; (6) 有用 / 这类不用告诉我 → rules, per-kind bars, the 3-unread
+      pause; (7) each find's one next step as a decision, drafts kept in Ducter; (8) the card on
+      Mac and phone (`policy.deny` control, 看了哪些); (9) meeting prep and time-sensitive "now"
+      last; (10) a live trial on the author's oo with a scratch home. Trigger: the author's
+      answers to `connectors.md` §15.
+- [ ] **Mailbox and app-tile art** (D166): a clay mailbox per source colour at 640 (closed, lid
+      up, grey) and the app tiles' clay base; marks per each brand's guidelines (D146's rule).
+      Then the human comprehension test (with D65's). Trigger: D166 approved.
+- [ ] **oo's own read/write hint and action list** (D122, `connectors.md` §18.4). oo has no "list
       actions" and `connector schema` carries no read/write; OOMOL has both (its generated
       `oo-gmail` skill tags `[write]` / `[destructive]`). Ask OOMOL to expose them, then use
       them over the verb rule (keep the rule as the fallback). Trigger: the next oo release, or

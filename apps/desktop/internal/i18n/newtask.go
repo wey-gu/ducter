@@ -6,10 +6,10 @@ package i18n
 // uses the same keys for the same words.
 
 var zhNewTask = Table{
-	"newtask.button":         "交代一件事",
+	"newtask.button":         "新建",
 	"task.brief.you":         "你交代的",
-	"newtask.menu":           "交代一件事…",
-	"newtask.title":          "交代一件事",
+	"newtask.menu":           "新建…",
+	"newtask.title":          "新建",
 	"newtask.where":          "在哪儿做",
 	"newtask.who":            "谁来做",
 	"newtask.what":           "做什么",
@@ -26,7 +26,7 @@ var zhNewTask = Table{
 	"newtask.start":          "开始",
 	"newtask.starting":       "在交给它…",
 	"newtask.err.empty":      "先写一句要它做什么。",
-	"newtask.err.conn":       "还没连上 Ducter，连上了再交代。",
+	"newtask.err.conn":       "还没连上 Ducter，连上了再新建。",
 	"newtask.err.no_agent":   "现在没有 AI agent 能接这件事。",
 	"newtask.err.not_repo":   "这个文件夹不是 git 仓库。",
 	"newtask.err.offline":    "那台设备现在连不上。",
@@ -36,7 +36,7 @@ var zhNewTask = Table{
 	"onhand.by.project":      "按项目",
 	"onhand.by":              "怎么排",
 	"onhand.other":           "其他",
-	"onhand.newhere":         "在这儿交代一件",
+	"onhand.newhere":         "在这儿新建",
 }
 
 var enNewTask = Table{

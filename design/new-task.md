@@ -22,7 +22,7 @@ shot against `apps/web/demo-newtask.ts`). D185/D186 built 2026-11-11: core
   whom and wants no middleman rewriting it; also anyone who already knows the words.
 - **Before:** "I know what I want; let me just start it." **After:** it is running, in the
   place they picked, with their own words, and the partner will tell them when it's done.
-- **First time:** they see 交代一件事 / New task on On hand (a quiet text button, never a FAB),
+- **First time:** they see 新建 / New task on On hand (a quiet text button, never a FAB),
   or press ⌘N. The card's defaults are already right (last repo, its default branch, the best
   fit); typing and pressing Start is all it takes.
 
@@ -49,8 +49,8 @@ bottom:
    typed time (9, 9:00, 21:30, 9.30); On a schedule: 每天 / 工作日 / 每周 (and a day) / 每隔几小时
    (1, 2, 4 or 8, round the clock) and the time; When something happens: **等到** and what it
    waits for; Keep going until: **做到** and what must hold (Return starts).
-4. **The foot:** one line on the left (what didn't work, in the failed ink; or **交代了：「X」** with
-   **打开 / Open** after ⇧⌘↩; or the keys **⌘↩ 开始 · ⇧⌘↩ 交代完接着下一件**), then **取消 /
+4. **The foot:** one line on the left (what didn't work, in the failed ink; or **开始了：「X」** with
+   **打开 / Open** after ⇧⌘↩; or the keys **⌘↩ 开始 · ⇧⌘↩ 开始并接着新建**), then **取消 /
    Cancel** and **开始 / Start** (**定好 / Schedule** for a time or a schedule) at one height.
 
 **⌘↩** (anywhere in the card) starts: `task_new`, then on `task_new_result` ok it opens that task

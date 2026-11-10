@@ -15,7 +15,7 @@ var zhMemPlugin = Table{
 	"memp.btn.update":      "更新",
 	"memp.btn.review":      "理一下",
 	"memp.ask":             "在 %[2]s 上给 %[1]s 装上 Nowledge Mem？",
-	"memp.means":           "会在 %[2]s 上交代一件事，照 Nowledge Mem 的官方说明来装：只改 %[1]s 自己的设置，不动 Ducter。装好以后，重开 %[1]s 才用得上。",
+	"memp.means":           "会在 %[2]s 上新建一件事，照 Nowledge Mem 的官方说明来装：只改 %[1]s 自己的设置，不动 Ducter。装好以后，重开 %[1]s 才用得上。",
 	"memp.ok":              "装上",
 	"memp.cancel":          "算了",
 	"memp.why.offline":     "那台电脑现在连不上。",

@@ -105,7 +105,7 @@ describe("talking to a running Ducter", () => {
     const c = ctx({ rest: ["修一下 tinycart 里失败的测试。别改 API。"], cwd: repo, agent: "codex" });
     expect(await cmdTask(c)).toBe(0);
     expect(opened.at(-1)).toMatchObject({ brief: "修一下 tinycart 里失败的测试。别改 API。", title: "修一下 tinycart 里失败的测试", harness: "codex", origin: "you", place: { kind: "repo", repoPath: repo, baseBranch: "main" } });
-    expect(c.lines[0]).toBe("交代了：「修一下 tinycart 里失败的测试」· tinycart (main) · Codex（你选的）");
+    expect(c.lines[0]).toBe("开始了：「修一下 tinycart 里失败的测试」· tinycart (main) · Codex（你选的）");
     expect(c.lines[1]).toBe(`看它做：ducter tail t1 --port ${core.port}   在应用里打开：ducter open t1 --port ${core.port}`);
     // Nothing in the conversation but the quiet note for the partner.
     expect(core.log.read({ stream: "channel" }).map((e) => [e.kind, e.origin])).toEqual([["job_status", "user"]]);
@@ -161,7 +161,7 @@ describe("talking to a running Ducter", () => {
     await following(c);
     core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: "测试都过了。" } });
     expect(await p).toBe(0);
-    expect(c.lines).toContain("· 你自己交代了「修一下 tinycart 里失败的测试」");
+    expect(c.lines).toContain("· 你新建了「修一下 tinycart 里失败的测试」");
     expect(c.lines).toContain("你  你好");
     expect(c.lines).toContain("Ducter  你好！我在。");
     expect(c.lines).toContain("  ✓ 回答了：好");

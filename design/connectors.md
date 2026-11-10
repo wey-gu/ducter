@@ -526,9 +526,14 @@ broker speaks only MCP.
     this machine or the local network, and an address with credentials, a query or a fragment
     is refused. A pasted key loses its spaces and line breaks.
   - OOMOL Hosted with no key is refused before anything is sent (`no_key`).
-  - Then the broker checks it. It connects, lists the tools, and recognises OpenConnector by
-    `search_actions`, `get_action_guide` and `execute_action`; anything at OOMOL Hosted's
-    address is `oomol` whatever its list.
+  - Then the broker checks it. It connects, lists the tools, and recognises an OpenConnector
+    catalog by what its tools take, not their names (D180): execute takes `actionId` and
+    `input`, the guide `actionId` alone, search a `q` or `query`; the execute tool's own
+    parameters say how an account is picked (`appId`, `alias` or `connectionName`). The first
+    names (`search_actions`, `get_action_guide`, `execute_action`) break ties. The tool list is
+    re-read with the five-minute recheck, so a rename on their side is picked up; a list that no
+    longer reads as a catalog makes it a plain MCP server (its own tools, writes unless marked
+    read-only). Anything at OOMOL Hosted's address is `oomol` whatever its list.
   - The answer comes from the HTTP status the MCP SDK keeps in its error's `code` (its message
     may hold only the server's text, like OOMOL's `token not found`): 401/403 `unauthorized`,
     5xx `unreachable` (as are network failures), any other 4xx or a non-MCP answer `not_mcp`.
@@ -539,7 +544,8 @@ broker speaks only MCP.
     (`ConnectionView.apps`) carry it; `[]` means connected, but no account there yet. It is
     refreshed with the five-minute recheck.
 - **Read or write, from the server's own metadata, and conservative.**
-  - For OpenConnector: `get_action_guide` → `capability.operationType`. Only `read` is a read;
+  - For OpenConnector: the guide's `operationType` (`capability.operationType`, or
+    `action.operationType` since OOMOL's rename). Only `read` is a read;
     `write`, `destructive` and unknown are writes.
   - For any other MCP server: `annotations.readOnlyHint === true` is a read, and anything else
     is a write.

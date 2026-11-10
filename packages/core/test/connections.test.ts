@@ -4,7 +4,7 @@ import { join } from "node:path";
 import type { Bodies } from "@ducter/protocol";
 import { openLog } from "../src/log.ts";
 import { appsFromV1, httpLinker, normalizeUrl, OOMOL_HOSTED_MCP, ooSource, openConnections, parseOoConnectorToml, policyAllows, summarize } from "../src/connections.ts";
-import { fakeOpenConnector, fakePlainMcp, type FakeServer } from "./fake-mcp.ts";
+import { fakeOpenConnector, fakeOpenConnectorV2, fakePlainMcp, type FakeServer } from "./fake-mcp.ts";
 import { tempDir } from "./helpers.ts";
 
 const TOKEN = "oct_test_secret_123";
@@ -196,6 +196,53 @@ describe("reads and writes", () => {
     expect(all).not.toContain(TOKEN);
     expect(all).not.toContain("2141");
     expect(oc.authSeen.every((a) => a === `Bearer ${TOKEN}` || a === "Bearer wrong")).toBe(true);
+  });
+  test("OOMOL's renamed catalog (connector_*, q, appId, output): found from the tool list, not by name (D180)", async () => {
+    const apps = [{ id: "app_work", service: "gmail", accountLabel: "wei@work.example", alias: "work", authType: "oauth2", status: "active" }];
+    for (const prefix of ["connector_", "cx_"]) {
+      let onExit = () => {};
+      const v2 = fakeOpenConnectorV2(actions, TOKEN, { prefix, apps });
+      try {
+        const { c } = setup();
+        const added = await c.add({ url: v2.url, token: TOKEN });
+        expect(added).toMatchObject({ ok: true });
+        onExit = () => added.ok && c.remove(added.id);
+        const s = await c.search(P, "email", { service: "gmail" });
+        expect(JSON.stringify(s)).toContain("gmail.send_email");
+        expect(v2.executed.find((e) => e.name === `${prefix}search_actions`)!.args).toMatchObject({ q: "email", service: "gmail" });
+        expect(await c.classify("OpenConnector", "gmail.search_threads")).toBe("read");
+        expect(await c.classify("OpenConnector", "gmail.send_email")).toBe("write");
+        const r = await c.read(P, "OpenConnector", "gmail.search_threads", { query: "x" }, "wei@work.example");
+        expect(r).toEqual({ ok: true, op: "read", result: { threads: [{ id: "t1" }] } });
+        expect(v2.executed.find((e) => e.name === `${prefix}execute_action`)!.args).toEqual({ actionId: "gmail.search_threads", input: { query: "x" }, appId: "app_work" });
+        // A label it doesn't know rides as the alias, for the server to judge.
+        await c.read(P, "OpenConnector", "gmail.search_threads", { query: "y" }, "home");
+        expect(v2.executed.filter((e) => e.name === `${prefix}execute_action`).at(-1)!.args).toMatchObject({ alias: "home" });
+      } finally {
+        onExit();
+        v2.stop();
+      }
+    }
+  });
+  test("a catalog it can't read any more is used as a plain MCP server: its own tools, writes unless marked read-only", async () => {
+    const { c } = setup();
+    await c.add({ url: oc.url, token: TOKEN });
+    const plain = fakePlainMcp(TOKEN);
+    try {
+      // The same connection, now answering with tools that aren't a catalog.
+      const rec = JSON.parse(readFileSync(join(t.dir, "connections.json"), "utf8"));
+      rec.connections[0].url = plain.url + "/mcp";
+      writeFileSync(join(t.dir, "connections.json"), JSON.stringify(rec));
+      const { c: again } = setup();
+      const s = await again.search(P, "notes");
+      expect(JSON.stringify(s)).toContain("read_notes");
+      expect(await again.classify("OpenConnector", "read_notes")).toBe("read");
+      expect(await again.classify("OpenConnector", "post_note")).toBe("write");
+      expect(await again.read(P, "OpenConnector", "read_notes", {})).toMatchObject({ ok: true, op: "read" });
+    } finally {
+      plain.stop();
+    }
+    void c;
   });
   test("search lists actions; guide says read or write", async () => {
     const { c } = setup();

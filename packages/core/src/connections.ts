@@ -184,9 +184,42 @@ const isOomol = (url: string) => {
   }
 };
 
-/** OpenConnector's MCP endpoint exposes this discovery set (research/34 §4). */
-const OC_TOOLS = ["search_actions", "get_action_guide", "execute_action"];
-const isOpenConnector = (tools: LinkTool[]) => OC_TOOLS.every((n) => tools.some((t) => t.name === n));
+/**
+ * How to speak to an OpenConnector-style catalog (OOMOL Hosted, self-hosted OpenConnector): its
+ * search, guide and execute tools, what search calls its query, and how execute picks an account.
+ * Found from the server's own tool list by what each tool takes, never assumed by name: OOMOL
+ * renamed them once (search_actions → connector_search_actions, query → q, connectionName →
+ * appId/alias; D180), and a rename must keep working. Names are only a tie-break.
+ */
+export interface OcDialect {
+  search: string;
+  query: string;
+  guide: string;
+  exec: string;
+  /** The execute argument that picks an account, or undefined when it takes none. */
+  account?: "appId" | "alias" | "connectionName";
+}
+const propsOf = (t: LinkTool) => Object.keys(((t.inputSchema ?? {}) as { properties?: Record<string, unknown> }).properties ?? {});
+const named = (tools: LinkTool[], re: RegExp) => tools.find((t) => re.test(t.name));
+export function ocDialect(tools: LinkTool[]): OcDialect | undefined {
+  const exec = tools.find((t) => propsOf(t).includes("actionId") && propsOf(t).includes("input")) ?? named(tools, /(^|_)execute_action$/);
+  const guide =
+    tools.find((t) => t !== exec && propsOf(t).includes("actionId") && !propsOf(t).includes("input")) ?? named(tools, /(^|_)(get_action(_guide)?|action_guide)$/);
+  const search =
+    tools.find((t) => /search/.test(t.name) && propsOf(t).some((p) => p === "q" || p === "query")) ?? named(tools, /(^|_)search_actions$/);
+  if (!exec || !guide || !search) return;
+  const sp = propsOf(search);
+  const ep = propsOf(exec);
+  const account = ep.includes("appId") ? "appId" : ep.includes("alias") ? "alias" : ep.includes("connectionName") || !ep.length ? "connectionName" : undefined;
+  return { search: search.name, query: sp.includes("q") && !sp.includes("query") ? "q" : "query", guide: guide.name, exec: exec.name, account };
+}
+const isOpenConnector = (tools: LinkTool[]) => ocDialect(tools) !== undefined;
+
+/** An action's read/write from either guide shape: v1 `data.capability.operationType`, v2 `action.operationType`. */
+export const ocOperation = (data: unknown): string | undefined => {
+  const d = data as { data?: { capability?: { operationType?: string } }; action?: { operationType?: string } };
+  return d?.action?.operationType ?? d?.data?.capability?.operationType;
+};
 
 // ---------- the oo CLI (OOMOL's) ----------
 
@@ -354,6 +387,11 @@ const forModel = (data: unknown): unknown => {
 };
 
 /** An OpenConnector payload that says ok: false is an error even when the MCP call isn't. */
+/** An action's own result inside either envelope: `{ ok, data }` or `{ executionId, output }`. */
+const payloadOf = (d: unknown) => {
+  const o = d as { data?: unknown; output?: unknown } | undefined;
+  return o?.data ?? o?.output ?? d;
+};
 const failed = (r: LinkResult) => r.isError || ((r.data as { ok?: boolean })?.ok === false);
 const errorText = (r: LinkResult) => {
   const e = (r.data as { error?: { code?: string; message?: string } })?.error;
@@ -512,6 +550,41 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
   }
 
   const isOC = (r: Record_) => r.source === "oomol" || r.source === "self";
+  /**
+   * Whether to use the connection as a catalog (search, guide, execute). One whose tools no longer
+   * read as a catalog is used as a plain MCP server instead: its own tools, a write unless marked
+   * read-only, so a change on their side costs a Go, never a silent write or a dead connection.
+   */
+  async function speaksCatalog(r: Record_): Promise<boolean> {
+    if (!isOC(r)) return false;
+    try {
+      return ocDialect(await tools(r)) !== undefined;
+    } catch {
+      return true; // can't list now: the catalog path reports the link error as before
+    }
+  }
+  /** The connection's catalog tools, read from what it lists now (toolCache rechecks it). */
+  const dialect = async (r: Record_): Promise<OcDialect> => {
+    const d = ocDialect(await tools(r));
+    if (!d) throw new LinkError("not_mcp", `${r.name} no longer lists a search, guide and execute tool`);
+    return d;
+  };
+  /** The OpenConnector app id behind an account label (its email, alias or name), for v2's appId. */
+  async function appIdOf(r: Record_, account: string): Promise<string | undefined> {
+    try {
+      const res = await fetcher(`${apiBase(r.url)}/v1/apps?status=active`, {
+        headers: { accept: "application/json", ...(tokens[r.id] ? { authorization: `Bearer ${tokens[r.id]}` } : {}) },
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (!res.ok) return;
+      const rows = ((await res.json()) as { data?: Record<string, unknown>[] })?.data ?? [];
+      const want = account.trim().toLowerCase();
+      const hit = rows.find((o) => [o.accountLabel, o.alias, o.displayName, o.connectionName].some((v) => typeof v === "string" && v.trim().toLowerCase() === want));
+      return typeof hit?.id === "string" ? hit.id : undefined;
+    } catch {
+      return;
+    }
+  }
   const opOf = (t?: LinkTool) => (t?.annotations?.readOnlyHint === true ? "read" : "write");
 
   async function classify(key: string, action: string): Promise<"read" | "write"> {
@@ -524,10 +597,10 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
     if (hit) return hit;
     let op: "read" | "write" = "write";
     try {
-      if (isOC(r)) {
-        const g = await withLink(r, (l) => l.call("get_action_guide", { actionId: action }));
-        const t = (g.data as { data?: { capability?: { operationType?: string } } })?.data?.capability?.operationType;
-        op = !failed(g) && t === "read" ? "read" : "write";
+      if (await speaksCatalog(r)) {
+        const d = await dialect(r);
+        const g = await withLink(r, (l) => l.call(d.guide, { actionId: action }));
+        op = !failed(g) && ocOperation(g.data) === "read" ? "read" : "write";
       } else {
         const t = (await tools(r)).find((x) => x.name === action);
         op = t?.annotations?.readOnlyHint === true ? "read" : "write";
@@ -548,7 +621,16 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
 
   async function execute(r: Record_, action: string, input: unknown, account?: string): Promise<LinkResult> {
     const args = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
-    if (isOC(r)) return withLink(r, (l) => l.call("execute_action", { actionId: action, input: args, ...(account ? { connectionName: account } : {}) }));
+    if (await speaksCatalog(r)) {
+      const d = await dialect(r);
+      let pick: Record<string, string> = {};
+      if (account && d.account === "appId") {
+        // An app id when the label (email, alias or name) is one it knows; else the label as alias.
+        const id = await appIdOf(r, account);
+        pick = id ? { appId: id } : { alias: account };
+      } else if (account && d.account) pick = { [d.account]: account };
+      return withLink(r, (l) => l.call(d.exec, { actionId: action, input: args, ...pick }));
+    }
     // oo: the account (one of the service's connection names) rides as `connection`.
     if (r.source === "oo") return withLink(r, (l) => l.call(action, account ? { ...args, connection: account } : args));
     return withLink(r, (l) => l.call(action, args));
@@ -585,9 +667,10 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
       const out: unknown[] = [];
       for (const r of usable) {
         try {
-          if (isOC(r)) {
-            const res = await withLink(r, (l) => l.call("search_actions", { query, ...(o.service ? { service: o.service } : {}), limit: 8 }));
-            const items = (res.data as { data?: unknown })?.data ?? res.data;
+          if (await speaksCatalog(r)) {
+            const d = await dialect(r);
+            const res = await withLink(r, (l) => l.call(d.search, { [d.query]: query, ...(o.service ? { service: o.service } : {}), limit: 8 }));
+            const items = (res.data as { data?: unknown; actions?: unknown })?.data ?? (res.data as { actions?: unknown })?.actions ?? res.data;
             out.push({ connection: r.name, kind: "openconnector", actions: failed(res) ? [] : items, ...(failed(res) ? { error: errorText(res) } : {}) });
           } else if (r.source === "oo") {
             // oo's own search (it understands "unread mail from this week"), only the services
@@ -618,8 +701,8 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
       const r = find(key);
       if (!r || !allowedFor(who, r)) return err(NOT_FOUND);
       try {
-        if (isOC(r)) {
-          const g = await withLink(r, (l) => l.call("get_action_guide", { actionId: action }));
+        if (await speaksCatalog(r)) {
+          const g = await withLink(r, async (l) => l.call((await dialect(r)).guide, { actionId: action }));
           if (failed(g)) return err(errorText(g));
           const op = await classify(r.id, action);
           const md = (g.data as { data?: { markdown?: string } })?.data?.markdown;
@@ -669,7 +752,7 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
         }
         record({ ...base, op, state: "done", summary: summarize(res.data) }, w);
         // The watchers parse the whole answer themselves (never kept); a model gets it clipped.
-        const data = (res.data as { data?: unknown })?.data ?? res.data;
+        const data = payloadOf(res.data);
         return { ok: true, op, result: w ? data : forModel(data) };
       } catch (e) {
         record({ ...base, op, state: "failed", error: (e as LinkError).reason }, w);
@@ -712,7 +795,7 @@ export function openConnections(opts: { dataDir: string; log: LogStore; linker?:
           return err(errorText(res), "write");
         }
         record({ ...base, state: "done", summary: summarize(res.data) });
-        return { ok: true, op: "write", result: forModel((res.data as { data?: unknown })?.data ?? res.data) };
+        return { ok: true, op: "write", result: forModel(payloadOf(res.data)) };
       } catch (e) {
         // Not retried: a write whose answer was lost may have happened (research/34, G-safety).
         record({ ...base, state: "failed", error: (e as LinkError).reason });

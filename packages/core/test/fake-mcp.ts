@@ -30,6 +30,53 @@ export interface ServeOpts {
   apps?: unknown[];
 }
 
+/**
+ * OOMOL Hosted's catalog since 2026-11 (D180): the tools carry a prefix (`connector_` by default),
+ * search takes `q`, the guide answers `{ action: { operationType, inputSchema } }`, execute picks an
+ * account by `appId` or `alias` and wraps the result as `{ executionId, actionId, output }`.
+ */
+export function fakeOpenConnectorV2(actions: FakeAction[], token?: string, opts: ServeOpts & { prefix?: string } = {}): FakeServer {
+  const by = new Map(actions.map((a) => [a.id, a]));
+  const px = opts.prefix ?? "connector_";
+  const schema = (props: string[], required: string[] = []) => ({ type: "object", properties: Object.fromEntries(props.map((p) => [p, { type: "string" }])), required });
+  return serve(
+    [
+      { name: `${px}list_services`, description: "Services", inputSchema: schema(["teamName", "cursor", "limit", "query"]), annotations: { readOnlyHint: true }, run: () => ({ services: [] }) },
+      {
+        name: `${px}search_actions`,
+        description: "Search actions",
+        inputSchema: schema(["teamName", "q", "service", "limit"], ["q"]),
+        annotations: { readOnlyHint: true },
+        run: (a) => ({ actions: actions.filter((x) => !a.service || x.id.startsWith(`${a.service}.`)).map((x) => ({ actionId: x.id, description: x.id, authenticated: true })) }),
+      },
+      {
+        name: `${px}get_action`,
+        description: "One action",
+        inputSchema: schema(["teamName", "actionId"], ["actionId"]),
+        annotations: { readOnlyHint: true },
+        run: (a) => {
+          const x = by.get(String(a.actionId));
+          if (!x) return { errorCode: "invalid_input", message: `unknown action: ${a.actionId}`, ok: false };
+          return { action: { id: x.id, operationType: x.operationType, inputSchema: { type: "object" } } };
+        },
+      },
+      {
+        name: `${px}execute_action`,
+        description: "Execute",
+        inputSchema: schema(["teamName", "actionId", "input", "approval", "appId", "alias"], ["actionId"]),
+        annotations: { readOnlyHint: false, destructiveHint: true },
+        run: (a) => {
+          const x = by.get(String(a.actionId));
+          if (!x) return { errorCode: "invalid_input", message: "unknown action", ok: false };
+          return { executionId: "ex_1", actionId: x.id, output: x.run((a.input ?? {}) as Record<string, unknown>) };
+        },
+      },
+    ],
+    token,
+    opts,
+  );
+}
+
 function serve(tools: ToolDef[], token?: string, opts: ServeOpts = {}): FakeServer {
   const executed: FakeServer["executed"] = [];
   const authSeen: string[] = [];

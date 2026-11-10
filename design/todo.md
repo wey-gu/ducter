@@ -87,6 +87,10 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 
 ## Partner and tasks (`design/plan/v1-tonight.md` "Known gaps", `research/30`)
 
+- [ ] **A two-tier partner tool list** (D174 (5), research/48 §3): the core tools always, routines,
+      rules and connections loaded when used. Not now: the 24 tools are ~7K tokens. Trigger: the
+      partner's list passes 30 tools or 32K JSON chars (`tool-budget.test.ts` G2 forces it).
+
 - [ ] **New task: attachments (D128).** Trigger: the first time a brief needs a screenshot.
       A file or image dropped on the card's What row goes to the task with the words.
 - [ ] **New task: By project on the phone (D128).** The phone's On hand stays by state.
@@ -168,6 +172,11 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       Mac app has one light token set. Trigger: the roadmap slot for themes.
 
 ## Long-term memory (`design/memory.md`)
+
+- [ ] **Ask Mem for orchestrator attribution on plugin writes** (D174 (6), principle 17): a task's
+      plugin capture records the persona and its agent's `source_app`, but nothing says Ducter
+      ran it or which task. Ask for an env the plugin passes through (e.g. `NMEM_ORCHESTRATOR`
+      with a task id / Log pointer). Trigger: the next Mem sync.
 
 - [ ] **Measure the Mem plugin's Context Bundle per agent** (research/48 M2): one scratch task per
       harness with the plugin present, on a real persona, at the task window; read the first

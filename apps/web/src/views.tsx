@@ -18,7 +18,7 @@ import { deviceArt, DevicesSection } from "./devcard.tsx";
 import { ProactiveChips, SourceCards } from "./accounts.tsx";
 import { FindsNote } from "./finds.tsx";
 import { appPush, disablePush, enablePush } from "./push-client.ts";
-import { inApp } from "./native.ts";
+import { inApp, unsupportedKey } from "./native.ts";
 import { useWide } from "./wide.ts";
 import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, WaitBubble, waitCaption, WaitDetails, waitLine } from "./work.tsx";
 import { BriefCard, safe, saidSince, shortGo, shortTitle, taskBlocks, TaskMeta, TimerPie, WhatItDid } from "./transcript.tsx";
@@ -1323,7 +1323,7 @@ export async function turnOnPush() {
       new Promise<never>((_, no) => setTimeout(() => no(new Error("timeout")), 20_000)),
     ]);
     if (s === "denied") A.toast(t("notify.denied"));
-    if (s === "unsupported") A.toast(t(inApp() ? "notify.app.unavailable" : "notify.unsupported"));
+    if (s === "unsupported") A.toast(t(unsupportedKey()));
     return s;
   } catch (err) {
     A.toast(t("result.action.failed", (err as Error).message));
@@ -2631,7 +2631,7 @@ function PhonePush() {
     <section class="set">
       <h3>{t("settings.phone")}</h3>
       {A.push === "ios-install" && <div class="hint">{t("notify.ios")}</div>}
-      {A.push === "unsupported" && <div class="hint">{t(inApp() ? "notify.app.unavailable" : "notify.unsupported")}</div>}
+      {A.push === "unsupported" && <div class="hint">{t(unsupportedKey())}</div>}
       {inApp() && A.push === "off" && !A.me?.push.apns && <div class="hint">{t("notify.app.nokey")}</div>}
       {inApp() && A.push === "on" && appPush.why && <div class="hint">{t(appPush.why === "relay" ? "notify.app.relaydown" : appPush.why === "update" ? "notify.app.update" : "notify.app.nokey")}</div>}
       {inApp() && A.push === "on" && !appPush.why && A.me?.push.relay === "unreachable" && <div class="hint">{t("notify.app.relaydown")}</div>}

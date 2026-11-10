@@ -71,6 +71,7 @@ Design notes:
 - `ui.md`: themes, tokens, zoom levels, canvases.
 - `bridge.md`: Nowledge Bridge, agents Ducter didn't start (draft).
 - `where.md`: which computer a task runs on, said and changed with who (D157).
+- `android.md`: the Android app, its self-update and foldable layout (D178–D180).
 - `product-model.md`: see above.
 
 ## The change loop (run it for every new question or discovered problem)

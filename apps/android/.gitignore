@@ -1,0 +1,12 @@
+.gradle/
+build/
+app/build/
+local.properties
+.idea/
+*.iml
+.kotlin/
+# Release signing is CI's (secrets) or a maintainer's own, never the repo's (design/release/android.md).
+*.jks
+*.keystore
+*.p12
+keystore.properties

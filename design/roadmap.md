@@ -44,6 +44,11 @@ heard of a subagent.
 
 ## Next
 
+- **An Android app, from the release** (0.0.10, built; D178–D180): the APK on the GitHub
+  Release, updating itself from there with a checksum and a same-key check, laid out at a
+  foldable's fold. Owed before it ships: the release key and its secrets, Android developer
+  verification, a real phone and a Chinese ROM. Notifications in the app come after
+  (UnifiedPush, `todo.md`).
 - **Move your Ducter between computers.** Start on a Mac, move to a server later (and back):
   one command moves the conversation, settings, routines and accounts; the old machine keeps
   doing tasks for its local repos.

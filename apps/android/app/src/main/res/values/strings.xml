@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Words from the glossary (design/product-model.md, apps/web/src/i18n.ts, apps/ios's
+     Localizable.strings). update.* are the app's own, in the device card's words (devup.*). -->
+<resources>
+    <string name="app_name" translatable="false">Ducter</string>
+
+    <string name="connect_title">Connect to your Ducter</string>
+    <string name="connect_body">On the computer running Ducter, run ducter pair, then scan the QR code it shows.</string>
+    <string name="connect_scan">Scan the QR code</string>
+    <string name="connect_or">or type them in</string>
+    <string name="connect_address">Address</string>
+    <string name="connect_address_placeholder">ducter.example.com, or paste the whole link</string>
+    <string name="connect_paste">Paste</string>
+    <string name="connect_code">Code</string>
+    <string name="connect_code_placeholder" translatable="false">K7QM-4XPA</string>
+    <string name="connect_go">Connect</string>
+    <string name="connect_safe">The code works once. After that this phone remembers the connection; disconnect it anytime with ducter devices on that computer.</string>
+    <string name="connect_err_address">That doesn\'t look like an address.</string>
+    <string name="connect_err_unreachable">Can\'t reach %1$s. Is the address right? If you use an SSH tunnel, is it still open?</string>
+    <string name="connect_other">Connect to another Ducter</string>
+    <string name="conn_connecting">Connecting…</string>
+    <string name="retry">Try again</string>
+
+    <string name="update_available">Update to %1$s</string>
+    <string name="update_button">Update</string>
+    <string name="update_later">Later</string>
+    <string name="update_downloading">Downloading %1$s… %2$d%%</string>
+    <string name="update_verifying">Checking %1$s…</string>
+    <string name="update_installing">Installing %1$s… Ducter closes once it\'s in; open it again for the new one</string>
+    <string name="update_done">Back, now on %1$s</string>
+    <string name="update_current">Up to date</string>
+    <string name="update_checking">Checking…</string>
+    <string name="update_check">Check for updates</string>
+    <string name="update_allow">Android asks once whether Ducter may install its own updates. Turn on Allow from this source, then come back.</string>
+    <string name="update_allow_go">Open the setting</string>
+    <string name="update_failed">Didn\'t update</string>
+    <string name="update_why_network">Couldn\'t reach GitHub. Try again when online.</string>
+    <string name="update_why_checksum">The download didn\'t match its checksum, so nothing was changed.</string>
+    <string name="update_why_no_asset">This release has no file for Android.</string>
+    <string name="update_why_signature">This copy of Ducter was installed from somewhere else, so Android won\'t update it from the release. Uninstall it and install the APK from the release once.</string>
+    <string name="update_whats_new">What\'s new</string>
+</resources>

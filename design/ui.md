@@ -375,6 +375,16 @@ only in the conversation's header. Sheets from 700 × 640 stand centered as a ca
 round, no grab). Keys as on the Mac (⌘N, ⌘1–⌘4, ⌘,, ⌘K, Esc), in the iPad app's menu bar.
 Screens: `.shots/ipad/`.
 
+**At a foldable's fold (D180).** A fold in view splits the panes at the fold, at any width: held
+like a book (the fold top to bottom, flat or half-open, each side ≥ 320 CSS px) the conversation
+runs from the left edge to the fold and On hand or the task from the fold to the right; stood up
+half-open (tabletop) the conversation sits above the fold and On hand below it, at the
+conversation's 720 measure. A hinge's width stays empty; each pane keeps only the insets of its
+outer edges (`data-split`, `--fold-a`, `--fold-gap`; `apps/web/src/fold.ts`). Flat with the fold
+across, and folded, it is one column. The Android app's own screens follow the rule: the connect
+screen spreads partner | form across the two halves, connecting and can't-reach keep to the first
+half, an update card stands in the half past the fold. Screens: `.shots/android/`.
+
 ## Three zoom levels (Core UI canvas: https://claude.ai/artifact/U9r15Tpm8AL7aGQZwrtbDL)
 
 1. **The conversation** (default). One partner, no machinery: its words, and one quiet row

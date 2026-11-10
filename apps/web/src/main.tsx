@@ -9,7 +9,7 @@ import { registerWorker } from "./push-client.ts";
 import { inApp, tellApp } from "./native.ts";
 import { startAutospace } from "./autospace.ts";
 import { Avatar, Conversation, LiveView, OnHand, Sheets, TaskView, Toasts } from "./views.tsx";
-import { escUp, useWide } from "./wide.ts";
+import { escUp, useSplit, useWide } from "./wide.ts";
 
 const base = baseUrl();
 const token = () => storage.get()?.token;
@@ -28,14 +28,23 @@ function App() {
   useEffect(() => {
     document.documentElement.lang = A.L.lang === "zh" ? "zh-CN" : "en";
   });
+  // The page's language settles after boot (it follows your first words): the app's own screens,
+  // an update's card on Android (D179), follow it.
+  const lang = A.L.lang;
+  useEffect(() => {
+    if (inApp()) tellApp({ base: base.href, locale: lang, personaName: A.S.personaName });
+  }, [lang]);
   const r = A.route;
   // D176: wide enough for two (an iPad held across, a 13" iPad upright, a wide window): the
   // conversation stays on the left, and On hand, or the task opened from it, stands beside it.
   const wide = useWide();
+  // D180: on a foldable the panes split at the fold, left and right (a book) or top and bottom
+  // (tabletop); app.css places them from --fold-a and --fold-gap.
+  const split = useSplit();
   return (
     <>
       {wide ? (
-        <div class="panes">
+        <div class={split ? `panes ${split.kind}` : "panes"}>
           <section class="pane conv" aria-label={t("nav.conversation")}>
             <Conversation />
           </section>

@@ -61,7 +61,7 @@ function clientKind(cl: Client): string {
     const kind = cl.name.startsWith("iPad") ? "ipad" : "iphone"; // "iPad · Ducter" (D176)
     return t(`device.kind.${kind}.${p.includes("safari") || p.includes("web") ? "safari" : "app"}`);
   }
-  if (p.includes("android")) return t("device.kind.android");
+  if (p.includes("android")) return t(cl.name.endsWith("· Ducter") ? "device.kind.android.app" : "device.kind.android"); // the Android app (D178)
   if (p.startsWith("darwin") || p.includes("mac")) return t("device.kind.mac.app");
   return p ? t("device.kind.browser") : t("device.kind.other");
 }

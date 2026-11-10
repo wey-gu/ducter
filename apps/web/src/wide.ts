@@ -4,16 +4,20 @@
 // typed, the route and the open sheet stay.
 import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
+import { currentSplit, markSplit, onFoldChange, type Split } from "./fold.ts";
 
 /** Two panes from this width: an iPad held across (1133–1366), a 13" iPad upright (1024–1032), a
  *  wide window. Under it, one column: a phone, Split View's thirds and halves, an 11" iPad
- *  upright, a foldable's inner display. Keep in step with `.panes` in static/app.css. */
+ *  upright, a foldable's inner display without a fold in view. A fold in view splits the panes at
+ *  the fold instead, at any width (D180, fold.ts). Keep in step with `.panes` in static/app.css. */
 export const WIDE = "(min-width: 1000px)";
 
 const query = () => (typeof matchMedia === "function" ? matchMedia(WIDE) : undefined);
 
+/** Two panes: wide enough, or a foldable's fold in view (D180, fold.ts). */
 export function useWide(): boolean {
   const [wide, setWide] = useState(() => !!query()?.matches);
+  const split = useSplit();
   useEffect(() => {
     const q = query();
     if (!q) return;
@@ -22,7 +26,22 @@ export function useWide(): boolean {
     q.addEventListener("change", on);
     return () => q.removeEventListener("change", on);
   }, []);
-  return wide;
+  return wide || !!split;
+}
+
+/** How the panes split at a fold right now, kept on the page for CSS (data-split, --fold-*). */
+export function useSplit(): Split | undefined {
+  const [split, setSplit] = useState(currentSplit);
+  useEffect(() => {
+    const on = () => {
+      const s = currentSplit();
+      markSplit(s);
+      setSplit((p) => (p?.kind === s?.kind && p?.a === s?.a && p?.gap === s?.gap ? p : s));
+    };
+    on();
+    return onFoldChange(on);
+  }, []);
+  return split;
 }
 
 /** Esc goes up one level (an opened task → On hand → the conversation), as on the Mac. Sheets and

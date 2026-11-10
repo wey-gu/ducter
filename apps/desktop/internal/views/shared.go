@@ -142,7 +142,9 @@ func (a *App) candRow(c *ui.Context, key, harness, name, reason string, off, cur
 // with the app's mark, its label under it (the app, then the account).
 // sel: its detail is open under the tray (a white lift); off: not watched
 // (faded); grey: unreachable or excluded; add: the dashed tile at the
-// tray's end (在 oo 里再连一个). It reports a tap.
+// tray's end (在 oo 里再连一个). about is the whole name (Slack · Nowledge
+// Labs, Inc): what it is called aloud, and on hover when a line is cut
+// short (D192). It reports a tap.
 func (a *App) appTile(c *ui.Context, key, label, sub, about string, mark func(p *ui.Painter, r ui.Rect), sel, off, grey, add bool) bool {
 	t := a.T
 	acc := label
@@ -150,10 +152,10 @@ func (a *App) appTile(c *ui.Context, key, label, sub, about string, mark func(p 
 		acc += " · " + sub
 	}
 	if about != "" {
-		acc += " · " + about
+		acc = about
 	}
 	tile := ui.Column(c.Key("tile:"+key)).Width(appTileW).AlignItems(ui.Center).Gap(4).Padding(t.S2, 2, t.S2, 2).Radius(14).
-		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(acc).Focusable().AccessSelected(sel).Shrink(0)
+		Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(acc).Tooltip(acc).Focusable().AccessSelected(sel).Shrink(0)
 	switch {
 	case sel:
 		tile.Background(t.Surface).Shadow(0, 2, 0, 0, t.Line2)
@@ -183,16 +185,16 @@ func (a *App) appTile(c *ui.Context, key, label, sub, about string, mark func(p 
 		if grey {
 			lc = t.InkMuted
 		}
-		ui.Text(c, label).FontSize(t.XS).FontWeight(700).TextColor(lc).SingleLine().AccessHidden(true)
+		ui.Text(c, label).FontSize(t.XS).FontWeight(700).TextColor(lc).SingleLine().MaxWidth(appTileW - 8).AccessHidden(true)
 		if sub != "" {
-			ui.Text(c, sub).FontSize(11).TextColor(t.InkMuted).SingleLine().MaxWidth(appTileW - 4).AccessHidden(true)
+			ui.Text(c, sub).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(2).TextAlign(ui.Center).MaxWidth(appTileW - 8).AccessHidden(true)
 		}
 	})
 	return tile.Clicked()
 }
 
 const (
-	appTileW   = 76
+	appTileW   = 96
 	appTileArt = 48
 )
 

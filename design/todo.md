@@ -497,8 +497,6 @@ computer part; 我要合电脑了; the parcel's Lands / Waits / Moves. Still ope
 - [ ] **The opened task's own parts, web vs Mac**: the whole-screen task uses the web's task page
       (D152) under the Mac's crumbs; its head (meta line wrapping, the outcome block) still differs
       from the Mac's in places. Converge part by part. Trigger: the next change to either task page.
-- [ ] **接下来 / Next in the side pane**: the whole-screen On hand shows it (the Mac's); the side
-      pane does not yet. Trigger: the author's call (default: add it, one muted line).
 - [ ] **A tabletop's whole screen**: today neither level takes it on a tabletop. If wanted: Needs
       you above the fold, the other lanes below. Trigger: someone uses a fold that way.
 

@@ -384,7 +384,7 @@ Back beside the conversation**) brings it back, and so do ⌘2 (a toggle for On 
 the whole screen is the Mac's On hand, part for part (`apps/web/src/board.tsx` mirrors
 `onhand.go` and `byproject.go`): a 60-high header on the chrome's hairline with the crumbs (15/600
 muted, `/` faint, the title 18/800, the counts 12 muted), then **按状态 · 按项目** (`Seg`) and
-**开一件事** (`Btn` text); **接下来** in 13 muted; the lanes as flex columns with the Mac's grow and
+**开一件事** (`Btn` text); **接下来** in 13 muted (the side pane shows the same one line above its sections, D192); the lanes as flex columns with the Mac's grow and
 basis (Needs you 2/400, Working 1/240, Waiting 1/220, Done today 1/260, each at most 2.2× its basis),
 their names at 20/800 with the count muted; working and waiting cards white on the card's base
 (title 15/800, where it stands 13 soft, the rest 12 muted), Done today one card of rows; by

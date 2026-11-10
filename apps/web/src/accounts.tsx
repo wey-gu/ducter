@@ -7,7 +7,7 @@ import type { AppWatch, ConnectionView, ProactiveMode } from "@ducter/protocol";
 import { PROACTIVE_MODES } from "@ducter/protocol";
 import { useEffect, useState } from "preact/hooks";
 import { A } from "./app.ts";
-import { AppTile, Btn, DangerButton, MoreButton, Seg, Toggle } from "./controls.tsx";
+import { AppTile, Btn, DangerButton, Seg, Toggle } from "./controls.tsx";
 import { ago } from "./format.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -56,16 +56,43 @@ export function kindOf(service: string): "mail" | "calendar" | "github" | "chat"
   return "other";
 }
 
-/** A tile's two lines: the app (日历 for any calendar) and the account's short form. */
+/** A tile's two lines: the app (日历 for any calendar) and, when the app has more than one account here, the account's short form. */
 export function tileWords(w: AppWatch, siblings: string[] = []): [string, string] {
   const title = w.service.includes("calendar") ? t("tile.calendar") : w.title;
   if (siblings.length < 2 || !w.account) return [title, ""];
-  const at = w.account.indexOf("@");
-  if (at <= 0) return [title, w.account];
-  const local = w.account.slice(0, at);
-  if (siblings.filter((s) => s.startsWith(`${local}@`)).length < 2) return [title, local];
-  return [title, w.account.slice(at + 1).split(".")[0]!];
+  return [title, shortAccount(w.account, siblings)];
 }
+
+/** Mail domains anyone can sign up at: there the name before @ says whose it is; anywhere else the domain does (D192). */
+const PUBLIC_MAIL = new Set(["gmail.com", "googlemail.com", "outlook.com", "hotmail.com", "live.com", "msn.com", "icloud.com", "me.com", "mac.com", "yahoo.com", "aol.com", "proton.me", "protonmail.com", "qq.com", "foxmail.com", "163.com", "126.com", "yeah.net", "sina.com"]);
+const mailLocal = (a: string) => (a.lastIndexOf("@") > 0 ? a.slice(0, a.lastIndexOf("@")) : a);
+const mailShort = (a: string) => {
+  const at = a.lastIndexOf("@");
+  if (at <= 0) return a;
+  const dom = a.slice(at + 1).toLowerCase();
+  return PUBLIC_MAIL.has(dom) ? a.slice(0, at) : dom.split(".")[0] || dom;
+};
+
+/**
+ * An account's short form on its tile (D192, as the Mac): an address at a mail provider by its name
+ * (weyl.gu), one at a company by its domain (nowledge-labs); when two of the app's accounts would
+ * read the same, the name before @; still the same, the whole address. A workspace or handle is itself.
+ */
+export function shortAccount(acc: string, siblings: string[]): string {
+  const clash = (f: (a: string) => string) => siblings.some((o) => o !== acc && f(o) === f(acc));
+  if (!clash(mailShort)) return mailShort(acc);
+  if (!clash(mailLocal)) return mailLocal(acc);
+  return acc;
+}
+
+/** What passes through a hosted source, by the apps it holds: 邮件和消息, never mail for a card that also holds chats. */
+function flows(c: ConnectionView): string {
+  const has = new Set(tilesOf(c).filter((w) => !w.excluded).map((w) => kindOf(w.service)));
+  const words = (["mail", "calendar", "chat", "github", "other"] as const).filter((k) => has.has(k)).map((k) => t(`flow.${k}`));
+  if (!words.length) return t("flow.other");
+  return words.length === 1 ? words[0]! : words.slice(0, -1).join(t("acct.sep")) + t("flow.and") + words[words.length - 1];
+}
+const connLine = (c: ConnectionView) => (c.source === "oo" || c.source === "oomol" ? t(`card.conn.${c.source}`, flows(c)) : t(`card.conn.${c.source}`));
 
 /** The app's mark: simple printed shapes in its own colours (the clay art and official marks are owed). */
 export function AppMark({ service }: { service: string }) {
@@ -94,14 +121,22 @@ export function AppMark({ service }: { service: string }) {
           <ellipse cx="18.6" cy="10" rx="2.2" ry="3" fill="#fff" />
         </>
       )}
-      {k === "chat" && (
+      {k === "chat" && service.startsWith("slack") && (
         <>
-          <rect x="2" y="6" width="26" height="18" rx="8" fill={service.startsWith("slack") ? "#4A154B" : "#5865F2"} />
+          <rect x="5" y="8.5" width="20" height="5" rx="2.5" fill="#36C5F0" />
+          <rect x="16.5" y="5" width="5" height="20" rx="2.5" fill="#2EB67D" />
+          <rect x="5" y="16.5" width="20" height="5" rx="2.5" fill="#ECB22E" />
+          <rect x="8.5" y="5" width="5" height="20" rx="2.5" fill="#E01E5A" />
+        </>
+      )}
+      {k === "chat" && !service.startsWith("slack") && (
+        <>
+          <rect x="2" y="6" width="26" height="18" rx="8" fill="#5865F2" />
           <ellipse cx="10.5" cy="15" rx="2.4" ry="2.8" fill="#fff" />
           <ellipse cx="19.5" cy="15" rx="2.4" ry="2.8" fill="#fff" />
         </>
       )}
-      {k === "other" && <circle cx="15" cy="15" r="10" fill="var(--ink-muted)" opacity=".6" />}
+      {k === "other" && [0, 1].flatMap((i) => [0, 1].map((j) => <rect key={`${i}${j}`} x={6 + i * 10} y={6 + j * 10} width="8" height="8" rx="2.5" fill="var(--ink-soft)" />))}
     </svg>
   );
 }
@@ -125,21 +160,47 @@ function MailboxHero({ source, off }: { source: ConnectionView["source"]; off: b
   );
 }
 
+/**
+ * A tile's detail, in place under the tray, in three bands (D192): who (the app, the whole account,
+ * when it last looked); what it may do (会看 and 先问你 as a label column and the words); the person's
+ * two choices: 自己留意 and, quiet at the foot, 不让 Ducter 看这个. A tile it doesn't read says only that.
+ */
 function TileDetail({ c, w }: { c: ConnectionView; w: AppWatch }) {
   const k = kindOf(w.service);
   const [title] = tileWords(w);
-  const budget = c.look?.watching && w.watch ? t("card.budget", c.look.budgetPct) : "";
+  const mode = A.settings?.proactive;
+  const held = w.watch && (!mode || mode === "off") ? t(`tile.watch.held.${mode ? "off" : "never"}`) : "";
+  const budget = !held && c.look?.watching && w.watch ? t("card.budget", c.look.budgetPct) : "";
   const note = [k === "chat" ? t("tile.mentions") : "", budget].filter(Boolean).join(" · ");
+  const sub = [w.account, w.lastReadAt && !w.excluded ? t("tile.last", ago(A.L, w.lastReadAt)) : ""].filter(Boolean).join(" · ");
   return (
     <div class="tile-detail">
       <div class="td-name">
-        <b>{title}</b>
-        {w.account && <span class="small sub">{w.account}</span>}
+        <span class="sq" aria-hidden="true">
+          <AppMark service={w.service} />
+        </span>
+        <div>
+          <b>{title}</b>
+          {sub && <div class="small sub">{sub}</div>}
+        </div>
       </div>
-      <div class="small">{t("tile.reads", t(`tile.reads.${k}`))}</div>
-      <div class="small">{t("tile.asks", t(`tile.asks.${k}`))}</div>
-      <div class="small">{w.lastReadAt ? t("tile.last", ago(A.L, w.lastReadAt)) : t("tile.last.never")}</div>
-      {!w.excluded && k !== "other" && <Toggle label={t("tile.watch")} help={note || undefined} checked={w.watch} onChange={(v) => A.setApp(c.id, w.service, w.account, { watch: v })} />}
+      {w.excluded ? (
+        <div class="small sub">{t("tile.excluded.note")}</div>
+      ) : (
+        <>
+          <dl class="td-facts">
+            <dt>{t("tile.reads.label")}</dt>
+            <dd>{t(`tile.reads.${k}`)}</dd>
+            <dt>{t("tile.asks.label")}</dt>
+            <dd>{t(`tile.asks.${k}`)}</dd>
+          </dl>
+          {k !== "other" && (
+            <div class="td-watch">
+              <Toggle label={t("tile.watch")} help={[note, held].filter(Boolean).join("\n") || undefined} checked={w.watch} onChange={(v) => A.setApp(c.id, w.service, w.account, { watch: v })} />
+            </div>
+          )}
+        </>
+      )}
       <div class="td-foot">
         <Btn kind="text" size="sm" label={t(w.excluded ? "tile.include" : "tile.exclude")} about={title} onClick={() => A.setApp(c.id, w.service, w.account, { excluded: !w.excluded })} />
         {c.source === "oo" && <span class="small sub">{t("tile.signout_oo")}</span>}
@@ -157,11 +218,8 @@ function ReadsList({ c }: { c: ConnectionView }) {
       {reads.slice(0, 8).map((r, i) => {
         const w = tiles.find((x) => x.service === r.service);
         let app = w ? tileWords(w)[0] : r.service;
-        if (r.account && kindOf(r.service) === "mail") {
-          const sibs = tiles.filter((x) => x.service === r.service).map((x) => x.account ?? "");
-          const sub = tileWords({ service: r.service, title: "", account: r.account, watch: true, excluded: false }, sibs)[1];
-          if (sub) app += ` · ${sub}`;
-        }
+        const sibs = tiles.filter((x) => x.service === r.service).map((x) => x.account ?? "");
+        if (r.account && sibs.length > 1) app += ` · ${shortAccount(r.account, sibs)}`;
         return (
           <div class="read" key={i}>
             <span class="at">{new Date(r.at).toTimeString().slice(0, 5)}</span>
@@ -195,9 +253,12 @@ export function SourceCard({ c }: { c: ConnectionView }) {
       </div>
       <div class="tray">
         {tiles.map((w) => {
-          const [label, sub] = tileWords(w, accts.get(w.service));
+          const [label, short] = tileWords(w, accts.get(w.service));
+          // Not read: the tile says so in words, not only in grey (D192).
+          const sub = w.excluded ? t("tile.excluded") : short;
+          const full = [label, w.account, w.excluded ? sub : ""].filter(Boolean).join(" · ");
           return (
-            <AppTile key={key(w)} label={label} sub={sub || undefined} about={w.excluded ? t("tile.excluded") : undefined} sel={open === key(w)} off={!w.watch} grey={w.excluded || !!w.unreachable || down(c)} onClick={() => setOpen(open === key(w) ? "" : key(w))}>
+            <AppTile key={key(w)} label={label} sub={sub || undefined} about={full} sel={open === key(w)} off={!w.watch} grey={w.excluded || !!w.unreachable || down(c)} onClick={() => setOpen(open === key(w) ? "" : key(w))}>
               <AppMark service={w.service} />
             </AppTile>
           );
@@ -205,14 +266,15 @@ export function SourceCard({ c }: { c: ConnectionView }) {
         {(c.source === "oo" || c.source === "oomol") && <AppTile label={t("tile.more")} about={t(`tile.more.${c.source}`)} add onClick={() => window.open(OOMOL_ACCOUNTS, "_blank", "noopener")} />}
       </div>
       {sel && <TileDetail c={c} w={sel} />}
-      <div class="src-conn">
-        <span class="small sub">{t(`card.conn.${c.source}`)}</span>
-        <MoreButton label={t("card.read_list")} open={reads} onClick={() => (setReads(!reads), !reads && A.askReads(c.id))} />
-      </div>
-      {reads && <ReadsList c={c} />}
+      {/* The connection itself, last and quiet (D192): where what it reads passes, then one row of its two actions. */}
       <div class="src-foot">
+        <div class="small soft">{connLine(c)}</div>
+        {reads && <ReadsList c={c} />}
         {!stopping ? (
-          <DangerButton label={t("card.stop", name)} onClick={() => setStopping(true)} />
+          <div class="src-acts">
+            <Btn kind="text" size="sm" class={reads ? "open" : "chev"} label={t("card.read_list")} expanded={reads} onClick={() => (setReads(!reads), !reads && A.askReads(c.id))} />
+            <DangerButton label={t("card.stop", name)} onClick={() => setStopping(true)} />
+          </div>
         ) : (
           <div class="stop-ask" role="group">
             <div class="small">{t("card.stop.ask")}</div>

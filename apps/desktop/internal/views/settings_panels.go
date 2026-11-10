@@ -223,20 +223,20 @@ func (a *App) runPanel(c *ui.Context) {
 		a.placeRow(c, art, a.L.T("settings.where.here"), line)
 		if a.Backend.BackgroundBlocked() {
 			a.row(c, "allow", a.L.T("settings.run.allow"), "", func() {
-				if a.button(c, a.L.T("settings.run.allow"), btnSecondary, t.ControlMD, t.Surface) {
+				if a.button(c, a.L.T("settings.run.allow"), btnSecondary, t.ControlSM, t.Surface) {
 					_ = a.Backend.OpenSettings(local.SettingsLoginItems)
 				}
 			})
 		}
 		if a.Resting() {
 			a.row(c, "wake", a.L.T("rest.wake", name), "", func() {
-				if a.button(c, a.L.T("rest.wake", name), btnPrimary, t.ControlMD, t.Surface) {
+				if a.button(c, a.L.T("rest.wake", name), btnPrimary, t.ControlSM, t.Surface) {
 					a.Wake()
 				}
 			})
 		} else {
 			a.row(c, "rest", a.L.T("menu.rest"), a.L.T("menu.rest.sub"), func() {
-				if a.button(c, a.L.T("settings.rest.go"), btnSecondary, t.ControlMD, t.Surface) {
+				if a.button(c, a.L.T("settings.rest.go"), btnSecondary, t.ControlSM, t.Surface) {
 					a.Rest()
 				}
 			})

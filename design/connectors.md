@@ -329,20 +329,25 @@ existing parts; the app tile is literal (an app's rounded square), not a metapho
    - nothing connected there: **OOMOL 里还没连账号 · 去连一个** (D158).
 3. **What it can read: a tray of app tiles.** Each connected account as a small clay tile
    (rounded square, 48; phone 52) with the app's printed mark (official marks where their
-   guidelines allow, as D146), the label under it (**Gmail · work**, **日历**, **GitHub**). A
-   tile not watched sits flat and a little faded; a tile oo or OOMOL can't reach is grey. A
+   guidelines allow, as D146), the app under it (**Gmail**, **日历**, **GitHub**: the service's name,
+   never the account's own display name, D192) and, when the app has more than one account here,
+   whose it is in a few letters (**weyl.gu** at a mail provider, **nowledge-labs** at a company; the
+   whole address when two would read the same). A tile not watched sits flat and a little faded; a
+   tile oo or OOMOL can't reach is grey; a tile the person said not to read says **不看**. A
    dashed tile at the end, **在 oo 里再连一个 / Connect another in oo**, opens oo's or OOMOL's
    page (accounts are connected there, not in Ducter).
-4. **Tap a tile → its detail in place** (never a floating layer): **Gmail · wey@nowledge.co**;
-   **会看：新邮件的发件人、标题和开头几行；要细看才读全文**; **先问你：发信、回复、存草稿、改标签、
-   删除**; **最后看过 2 分钟前**; the **自己留意 / Watch on its own** switch (Discord: **只看 @你
+4. **Tap a tile → its detail in place** (never a floating layer), in three bands (D192): the app's
+   mark, **Gmail**, **wey@nowledge.co · 最后看过：2 分钟前** (nothing when it never looked); then
+   **会看** · **新邮件的发件人、标题和开头几行；要细看才读全文** and **先问你** · **发信、回复、存草稿、改标签、
+   删除** as a label column beside the words; the **自己留意 / Watch on its own** switch (Discord: **只看 @你
    和私信**); **这个月用了 3%** when watching; at the foot, quiet: **不让 Ducter 看这个** (and for
    oo: **要退出登录，去 oo 里**).
 5. **The proactive chips** (§5) sit once above the cards, titled **自己发现了事，怎么告诉你 / When
    it notices something**; with a single source the page reads as one sheet.
-6. **One connection line:** **经过 oo · 邮件会经过 OOMOL 的服务器 / Through oo · your mail
-   passes through OOMOL's servers** with one ⋯ that opens, in place, **看了哪些 / What it read**
-   (today's reads, one line each) and the honest line about the AI account.
+6. **One connection line, last:** where what it reads passes, worded by what the card holds
+   (**经过 oo · 邮件和消息会经过 OOMOL 的服务器 / Through oo · your emails and messages pass through
+   OOMOL's servers**, D192), then one row: **看了哪些 / What it read** (opens in place: today's reads,
+   one line each, and the honest line about the AI account) at the start and the foot's stop at the end.
 7. **Foot:** one destructive text button, **不用 oo 里的账号了 / Stop using the accounts in oo**,
    confirmed inline: **不用了以后它就看不到这些账号；记下的事还在「记得什么」里，可以忘掉。** ·
    **算了** · **不用了**.

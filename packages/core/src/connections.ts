@@ -13,7 +13,7 @@ import { join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { Bodies, ConnectionReason, ConnectionSource, ConnectionView, OoApp, OoDetect } from "@ducter/protocol";
-import { appsOf, findOo, ooCli, ooEnv, ooExec, ooLinker, ooOp, serviceTitle, type OoCli, type OoService } from "./oo-link.ts";
+import { appsOf, findOo, ooCli, ooEnv, ooExec, ooLinker, ooOp, knownService, serviceTitle, type OoCli, type OoService } from "./oo-link.ts";
 import type { ConnectionCaller, ConnectionInfo, ConnectionOutcome, ConnectionsApi, LogStore } from "@ducter/protocol/src/internal.ts";
 
 export const CONNECTIONS_FILE = "connections.json";
@@ -166,8 +166,13 @@ export function appsFromV1(body: unknown): OoApp[] | undefined {
     const id = typeof o.id === "string" ? o.id : "";
     if (!service || /^(no_auth|marketplace):/.test(id) || o.authType === "no_auth") continue;
     if (typeof o.status === "string" && o.status !== "active") continue;
-    const title = typeof o.displayName === "string" && o.displayName.trim() ? o.displayName.trim() : serviceTitle(service);
-    const label = [o.accountLabel, o.alias, o.connectionName].find((v): v is string => typeof v === "string" && v.trim() !== "")?.trim() ?? "";
+    // The app's name is the service's: on OOMOL Hosted displayName is the account's own name
+    // (a Slack workspace, a mailbox's name), so it never titles the app it belongs to (D192).
+    // Only a service Ducter has no name for takes it.
+    const shown = typeof o.displayName === "string" ? o.displayName.trim() : "";
+    const title = knownService(service) || !shown ? serviceTitle(service) : shown;
+    const named = shown && shown.toLowerCase() !== title.toLowerCase() ? shown : "";
+    const label = [o.accountLabel, o.alias, named, o.connectionName].find((v): v is string => typeof v === "string" && v.trim() !== "")?.trim() ?? "";
     const app = by.get(service) ?? { service, title, accounts: [] };
     if (label && !app.accounts.includes(label)) app.accounts.push(label);
     by.set(service, app);

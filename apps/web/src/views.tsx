@@ -22,7 +22,7 @@ import { appPush, disablePush, enablePush } from "./push-client.ts";
 import { inApp, unsupportedKey } from "./native.ts";
 import { useWide } from "./wide.ts";
 import { AutofillSettings, FillBody, fillTitle, PayBody } from "./autofill.tsx";
-import { FillButton, FullTop } from "./board.tsx";
+import { FillButton, forecast, FullTop } from "./board.tsx";
 import { Goal, Groove, RoutineFacts, RoutineShelf, TryStrip, untilLine, WaitBubble, waitCaption, WaitDetails, waitLine } from "./work.tsx";
 import { BriefCard, safe, saidSince, shortGo, shortTitle, taskBlocks, TaskMeta, TimerPie, WhatItDid } from "./transcript.tsx";
 import {
@@ -1593,6 +1593,8 @@ export function OnHand() {
   const nothing = !needs.length && !partnerDs.length && !working.length && !waiting.length && !done.length && !loose.length && !missed.length && !routines.length;
   const openCount = A.defaultable().length;
   const wide = useWide();
+  // Beside the conversation, 接下来 as the Mac shows it: one quiet grey line, only when more than one thing is coming (D184).
+  const next = wide && !nothing ? forecast() : "";
   return (
     <>
       <Top back={t("nav.back")} plus level={t("onhand.title")} />
@@ -1602,6 +1604,12 @@ export function OnHand() {
           <div class="calm">{t("onhand.empty", A.S.personaName)}</div>
         ) : (
           <>
+            {next && (
+              <p class="next" title={next}>
+                <b>{t("onhand.next")}</b>
+                {next}
+              </p>
+            )}
             <section class="section">
               <h3>
                 {t("lane.needs_you")} <span class="n">{needs.length + partnerDs.length || ""}</span>

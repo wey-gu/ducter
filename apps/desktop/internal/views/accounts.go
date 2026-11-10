@@ -52,7 +52,8 @@ func (a *App) proactiveChips(c *ui.Context, key string) {
 	}
 	ui.Column(c.Key("proactive:" + key)).Gap(t.S2).Children(func() {
 		if !strings.HasPrefix(key, "note-") { // in a note, the question above is its title
-			ui.Text(c, a.L.T("proactive.title")).FontSize(t.MD).FontWeight(800)
+			// A settings section like the others (D192): its title at the group headings' size.
+			a.heading(c, a.L.T("proactive.title"), t.XL).Padding(0, t.S1)
 		}
 		if i := a.choices(c, "proactive-"+key, a.L.T("proactive.title"), labels, sel); i >= 0 {
 			st.Proactive = modes[i]
@@ -62,7 +63,11 @@ func (a *App) proactiveChips(c *ui.Context, key string) {
 		if sel >= 0 {
 			note = "proactive.note." + modes[sel]
 		}
-		a.note(c, a.L.T(note))
+		pad := t.S1
+		if strings.HasPrefix(key, "note-") {
+			pad = 0
+		}
+		ui.Column(c).Padding(0, pad).Children(func() { a.note(c, a.L.T(note)) })
 	})
 }
 
@@ -80,13 +85,13 @@ func (a *App) sourceCard(c *ui.Context, cv protocol.ConnectionView) {
 	t := a.T
 	cs := a.cards()
 	name := connName(a, cv)
-	card := ui.Column(c.Key("src:"+cv.ID)).Width(400).MinWidth(0).Grow(1).MaxWidth(520).Radius(t.RadiusLG).Background(t.Surface).
-		Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Padding(t.S5).Gap(t.S3).Role(ui.RoleGroup).Label(name)
+	card := ui.Column(c.Key("src:"+cv.ID)).Width(400).MinWidth(0).Grow(1).Radius(t.RadiusLG).Background(t.Surface).
+		Shadow(0, t.Raised.Y, t.Raised.Blur, 0, t.Raised.Color).Padding(t.S5).Gap(t.S4).Role(ui.RoleGroup).Label(name)
 	card.Children(func() {
 		// Who: the mailbox on its oval, the name, one status line.
 		ui.Column(c).AlignItems(ui.Center).Gap(t.S1).Children(func() {
 			ui.Box(c.Key("mailbox:"+cv.ID)).Size(220, 128).Draw(a.drawMailboxHero(cv.Source, sourceDown(cv))).AccessHidden(true)
-			ui.Text(c, name).FontSize(t.XL).FontWeight(800).SingleLine()
+			ui.Text(c, name).FontSize(t.XL).FontWeight(800).SingleLine().Tooltip(name)
 			line, ink := a.sourceStatus(cv)
 			ui.Text(c, line).FontSize(t.SM).TextColor(ink).LineHeight(a.leading(1.45))
 			// D158: connected, but nothing there to read yet: where to fix it.
@@ -96,26 +101,52 @@ func (a *App) sourceCard(c *ui.Context, cv protocol.ConnectionView) {
 				}
 			}
 		})
-		// What it can read: the tray.
+		// What it can read: the tray, and the open tile's detail under it.
 		a.appTray(c, cv)
-		// Where it runs, with ⋯ for 看了哪些 and the honest line.
-		ui.Row(c.Key("conn:" + cv.ID)).Gap(t.S2).AlignItems(ui.Center).Justify(ui.Center).Children(func() {
-			ui.Text(c, a.L.T("card.conn."+cv.Source)).FontSize(t.SM).TextColor(t.InkSoft).Shrink(1).MinWidth(0)
-			if a.moreButton(c, "reads:"+cv.ID, a.L.T("card.read_list"), cs.reads == cv.ID) {
-				if cs.reads == cv.ID {
-					cs.reads = ""
-				} else {
-					cs.reads = cv.ID
-					a.send(protocol.ConnectionReadsReq{T: "connection_reads", ID: cv.ID})
-				}
-			}
-		})
-		if cs.reads == cv.ID {
-			a.readsList(c, cv)
-		}
+		// The connection itself, last and quiet (D192): where what it reads
+		// passes, then its two actions on one row: 看了哪些 and the stop.
 		ui.Box(c).Height(1).Background(t.LineSoft)
-		a.stopRow(c, cv, name)
+		ui.Column(c.Key("conn:" + cv.ID)).Gap(t.S2).Children(func() {
+			ui.Text(c, a.connLine(cv)).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.45))
+			if cs.reads == cv.ID {
+				a.readsList(c, cv)
+			}
+			a.connActions(c, cv, name)
+		})
 	})
+}
+
+// connLine is where what a source reads passes (D192): worded by the apps
+// it holds (邮件和消息), never mail for a source that also holds chats.
+func (a *App) connLine(cv protocol.ConnectionView) string {
+	switch cv.Source {
+	case "oo", "oomol":
+		return a.L.T("card.conn."+cv.Source, a.flows(cv))
+	}
+	return a.L.T("card.conn." + cv.Source)
+}
+
+// flows is what passes, in the order a person thinks of it: 邮件、日程和消息.
+func (a *App) flows(cv protocol.ConnectionView) string {
+	has := map[string]bool{}
+	for _, w := range tilesOf(cv) {
+		if !w.Excluded {
+			has[kindOf(w.Service)] = true
+		}
+	}
+	var words []string
+	for _, k := range []string{"mail", "calendar", "chat", "github", "other"} {
+		if has[k] {
+			words = append(words, a.L.T("flow."+k))
+		}
+	}
+	if len(words) == 0 {
+		return a.L.T("flow.other")
+	}
+	if len(words) == 1 {
+		return words[0]
+	}
+	return strings.Join(words[:len(words)-1], a.L.T("acct.sep")) + a.L.T("flow.and") + words[len(words)-1]
 }
 
 func sourceDown(cv protocol.ConnectionView) bool {
@@ -139,7 +170,7 @@ func (a *App) sourceStatus(cv protocol.ConnectionView) (string, ui.Color) {
 	if l == nil || !l.Watching {
 		return a.L.T("card.status.asked"), t.InkSoft
 	}
-	// D173: the plain state, never how much it read (that is under ⋯ 看了哪些).
+	// D173: the plain state, never how much it read (that is under 看了哪些).
 	if l.Paused {
 		return a.L.T("card.status.paused"), t.InkSoft
 	}
@@ -166,42 +197,70 @@ func tilesOf(cv protocol.ConnectionView) []protocol.AppWatch {
 
 func tileKey(w protocol.AppWatch) string { return w.Service + ":" + w.Account }
 
-// tileWords is a tile's two lines: the app (日历 for any calendar) and
-// the account's short form (the part before @, or the label).
+// tileWords is a tile's two lines: the app (日历 for any calendar) and,
+// when the app has more than one account here, the account's short form.
 func (a *App) tileWords(w protocol.AppWatch, siblings []string) (string, string) {
-	many := len(siblings) > 1
 	title := w.Title
 	if strings.Contains(w.Service, "calendar") {
 		title = a.L.T("tile.calendar")
 	}
 	sub := ""
-	if many && w.Account != "" {
+	if len(siblings) > 1 && w.Account != "" {
 		sub = shortAccount(w.Account, siblings)
 	}
 	return title, sub
 }
 
-// shortAccount is an account's short form on its tile: the name before @,
-// or, when two accounts share it (wey@work…, wey@home…), the first word of
-// the domain.
+// publicMail are the mail domains anyone can sign up at: there the name
+// before @ says whose it is; anywhere else the domain does (D192).
+var publicMail = map[string]bool{
+	"gmail.com": true, "googlemail.com": true, "outlook.com": true, "hotmail.com": true, "live.com": true, "msn.com": true,
+	"icloud.com": true, "me.com": true, "mac.com": true, "yahoo.com": true, "aol.com": true, "proton.me": true, "protonmail.com": true,
+	"qq.com": true, "foxmail.com": true, "163.com": true, "126.com": true, "yeah.net": true, "sina.com": true,
+}
+
+// shortAccount is an account's short form on its tile (D192): an address
+// at a mail provider by its name (weyl.gu), one at a company by its
+// domain (nowledge-labs); when two of the app's accounts would read the
+// same, the name before @; still the same, the whole address. Anything
+// not an address (a workspace, a handle) is itself.
 func shortAccount(acc string, siblings []string) string {
-	at := strings.Index(acc, "@")
+	clash := func(f func(string) string) bool {
+		s := f(acc)
+		for _, o := range siblings {
+			if o != acc && f(o) == s {
+				return true
+			}
+		}
+		return false
+	}
+	if !clash(mailShort) {
+		return mailShort(acc)
+	}
+	if !clash(mailLocal) {
+		return mailLocal(acc)
+	}
+	return acc
+}
+
+func mailLocal(acc string) string {
+	if at := strings.LastIndex(acc, "@"); at > 0 {
+		return acc[:at]
+	}
+	return acc
+}
+
+func mailShort(acc string) string {
+	at := strings.LastIndex(acc, "@")
 	if at <= 0 {
 		return acc
 	}
-	local := acc[:at]
-	clash := 0
-	for _, s := range siblings {
-		if strings.HasPrefix(s, local+"@") {
-			clash++
-		}
+	dom := strings.ToLower(acc[at+1:])
+	if publicMail[dom] {
+		return acc[:at]
 	}
-	if clash < 2 {
-		return local
-	}
-	dom := acc[at+1:]
 	if i := strings.Index(dom, "."); i > 0 {
-		dom = dom[:i]
+		return dom[:i]
 	}
 	return dom
 }
@@ -215,16 +274,21 @@ func (a *App) appTray(c *ui.Context, cv protocol.ConnectionView) {
 		accts[w.Service] = append(accts[w.Service], w.Account)
 	}
 	open := cs.tile[cv.ID]
-	ui.Row(c.Key("tray:" + cv.ID)).Wrap().Gap(t.S1).Justify(ui.Center).Padding(t.S3).Radius(t.RadiusMD).Background(t.SurfaceSunken).Children(func() {
+	ui.Row(c.Key("tray:" + cv.ID)).Wrap().Gap(t.S1).Justify(ui.Center).AlignItems(ui.Start).Padding(t.S3).Radius(t.RadiusMD).Background(t.SurfaceSunken).Children(func() {
 		for _, w := range tiles {
 			w := w
 			label, sub := a.tileWords(w, accts[w.Service])
 			k := tileKey(w)
-			about := ""
-			if w.Excluded {
-				about = a.L.T("tile.excluded")
+			full := label
+			if w.Account != "" {
+				full += " · " + w.Account
 			}
-			if a.appTile(c, cv.ID+"|"+k, label, sub, about, a.drawAppMark(w.Service), open == k, !w.Watch, w.Excluded || w.Unreachable || sourceDown(cv), false) {
+			// Not read: the tile says so in words, not only in grey (D192).
+			if w.Excluded {
+				sub = a.L.T("tile.excluded")
+				full += " · " + sub
+			}
+			if a.appTile(c, cv.ID+"|"+k, label, sub, full, a.drawAppMark(w.Service), open == k, !w.Watch, w.Excluded || w.Unreachable || sourceDown(cv), false) {
 				if open == k {
 					cs.tile[cv.ID] = ""
 				} else {
@@ -265,58 +329,98 @@ func kindOf(service string) string {
 }
 
 // tileDetail is a tile's detail, in place under the tray (never a
-// floating layer): what it reads, what asks first, last read, 自己留意
-// (chat: only @-mentions and DMs), the month's budget, and at the foot,
-// quiet, 不让 Ducter 看这个 (oo: 要退出登录，去 oo 里).
+// floating layer), in three bands (D192): who (the app, the whole account,
+// when it last looked); what it may do (会看 and 先问你, a label column and
+// the words); and the person's two choices: 自己留意 (chat: only
+// @-mentions and DMs) and, quiet at the foot, 不让 Ducter 看这个 (oo:
+// signing out is in oo). A tile it doesn't read says only that.
 func (a *App) tileDetail(c *ui.Context, cv protocol.ConnectionView, w protocol.AppWatch) {
 	t := a.T
 	k := kindOf(w.Service)
 	title, _ := a.tileWords(w, nil)
-	ui.Column(c.Key("detail:"+cv.ID+"|"+tileKey(w))).Gap(t.S2).Padding(t.S4).Radius(t.RadiusMD).Border(1, t.LineSoft).Children(func() {
-		ui.Row(c).Gap(t.S2).AlignItems(ui.Baseline).Children(func() {
-			ui.Text(c, title).FontSize(t.MD).FontWeight(800).Shrink(0)
-			if w.Account != "" {
-				ui.Text(c, w.Account).FontSize(t.SM).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0)
-			}
-		})
-		ui.Text(c, a.L.T("tile.reads", a.L.T("tile.reads."+k))).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5))
-		ui.Text(c, a.L.T("tile.asks", a.L.T("tile.asks."+k))).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5))
-		last := a.L.T("tile.last.never")
-		if w.LastReadAt != "" {
-			last = a.L.T("tile.last", a.ago(w.LastReadAt))
-		}
-		ui.Text(c, last).FontSize(t.SM).TextColor(t.InkSoft)
-		if !w.Excluded && k != "other" {
-			label := a.L.T("tile.watch")
-			note := ""
-			if k == "chat" {
-				note = a.L.T("tile.mentions")
-			}
-			if cv.Look != nil && cv.Look.Watching && w.Watch {
-				if note != "" {
-					note += " · "
-				}
-				note += a.L.T("card.budget", cv.Look.BudgetPct)
-			}
-			if v, changed := a.switchRow(c, "watch:"+cv.ID+"|"+tileKey(w), label, note, w.Watch); changed {
-				a.send(protocol.AppWatchSet{T: "app_watch", ID: cv.ID, Service: w.Service, Account: w.Account, Watch: &v})
-			}
-		}
+	rule := func() { ui.Box(c).Height(1).Background(t.LineSoft) }
+	ui.Column(c.Key("detail:"+cv.ID+"|"+tileKey(w))).Gap(t.S3).Padding(t.S4).Radius(t.RadiusMD).Border(1, t.LineSoft).Children(func() {
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
+			ui.Box(c).Size(t.IconTile+8, t.IconTile+8).Radius(10).Background(t.Surface).Shadow(0, 2, 0, 0, t.Line).Draw(a.drawAppMark(w.Service)).AccessHidden(true).Shrink(0)
+			ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
+				ui.Text(c, title).FontSize(t.MD).FontWeight(800).SingleLine()
+				sub := w.Account
+				if w.LastReadAt != "" && !w.Excluded {
+					last := a.L.T("tile.last", a.ago(w.LastReadAt))
+					if sub != "" {
+						sub += " · "
+					}
+					sub += last
+				}
+				if sub != "" {
+					ui.Text(c, sub).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(a.leading(1.4))
+				}
+			})
+		})
+		if w.Excluded {
+			a.note(c, a.L.T("tile.excluded.note"))
+		} else {
+			rule()
+			ui.Column(c).Gap(t.S2).Children(func() {
+				a.factRow(c, a.L.T("tile.reads.label"), a.L.T("tile.reads."+k))
+				a.factRow(c, a.L.T("tile.asks.label"), a.L.T("tile.asks."+k))
+			})
+			if k != "other" {
+				rule()
+				note := ""
+				if k == "chat" {
+					note = a.L.T("tile.mentions")
+				}
+				if st := a.S.Settings; st != nil && (st.Proactive == "" || st.Proactive == "off") && w.Watch {
+					// The switch keeps the person's choice; it says why it isn't looking now.
+					if note != "" {
+						note += "\n"
+					}
+					note += a.L.T("tile.watch.held." + map[bool]string{true: "never", false: "off"}[st.Proactive == ""])
+				} else if cv.Look != nil && cv.Look.Watching && w.Watch {
+					if note != "" {
+						note += " · "
+					}
+					note += a.L.T("card.budget", cv.Look.BudgetPct)
+				}
+				if v, changed := a.switchRow(c, "watch:"+cv.ID+"|"+tileKey(w), a.L.T("tile.watch"), note, w.Watch); changed {
+					a.send(protocol.AppWatchSet{T: "app_watch", ID: cv.ID, Service: w.Service, Account: w.Account, Watch: &v})
+				}
+			}
+		}
+		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Wrap().Children(func() {
 			ex := a.L.T("tile.exclude")
 			if w.Excluded {
 				ex = a.L.T("tile.include")
 			}
-			if a.quietButton(c, "exclude:"+cv.ID+"|"+tileKey(w), ex, title, true, 0) {
+			if a.quietButton(c, "exclude:"+cv.ID+"|"+tileKey(w), ex, title, w.Excluded, 0) {
 				v := !w.Excluded
 				a.send(protocol.AppWatchSet{T: "app_watch", ID: cv.ID, Service: w.Service, Account: w.Account, Excluded: &v})
 			}
-			ui.Box(c).Grow(1)
 			if cv.Source == "oo" {
+				ui.Box(c).Grow(1)
 				ui.Text(c, a.L.T("tile.signout_oo")).FontSize(t.SM).TextColor(t.InkMuted).SingleLine()
 			}
 		})
 	})
+}
+
+// factRow is one fact in a detail: a short label in a column of its own,
+// then the words (会看 · @你 的消息和私信).
+func (a *App) factRow(c *ui.Context, label, text string) {
+	t := a.T
+	ui.Row(c).Gap(t.S3).AlignItems(ui.Baseline).Children(func() {
+		ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).Width(a.factW()).Shrink(0)
+		ui.Text(c, text).FontSize(t.SM).TextColor(t.Ink).LineHeight(a.leading(1.5)).Grow(1).Basis(0).MinWidth(0)
+	})
+}
+
+// factW is the label column: two or three characters in zh, a word or two in en.
+func (a *App) factW() float32 {
+	if a.L.Lang == "zh" {
+		return 52
+	}
+	return 84
 }
 
 // readsList is 看了哪些 / What it read, in place: today's reads, one line
@@ -333,21 +437,15 @@ func (a *App) readsList(c *ui.Context, cv protocol.ConnectionView) {
 				break
 			}
 			app := r.Service
+			var sibs []string
 			for _, w := range tilesOf(cv) {
 				if w.Service == r.Service {
 					app, _ = a.tileWords(w, nil)
+					sibs = append(sibs, w.Account)
 				}
 			}
-			if r.Account != "" && kindOf(r.Service) == "mail" {
-				var sibs []string
-				for _, w := range tilesOf(cv) {
-					if w.Service == r.Service {
-						sibs = append(sibs, w.Account)
-					}
-				}
-				if len(sibs) > 1 {
-					app += " · " + shortAccount(r.Account, sibs)
-				}
+			if r.Account != "" && len(sibs) > 1 {
+				app += " · " + shortAccount(r.Account, sibs)
 			}
 			ui.Row(c.Key("read:" + itoa(int64(i)))).Gap(t.S3).AlignItems(ui.Baseline).Children(func() {
 				ui.Text(c, clockOf(r.At)).FontSize(t.SM).TextColor(t.InkMuted).Width(44).Shrink(0)
@@ -359,29 +457,40 @@ func (a *App) readsList(c *ui.Context, cv protocol.ConnectionView) {
 	})
 }
 
-// stopRow is the card's one destructive action, confirmed in place.
-func (a *App) stopRow(c *ui.Context, cv protocol.ConnectionView, name string) {
+// connActions is the connection's one row (D192): 看了哪些 at the start,
+// the one destructive at the end; the stop asks in place, on the same row.
+func (a *App) connActions(c *ui.Context, cv protocol.ConnectionView, name string) {
 	t := a.T
 	cs := a.cards()
-	if cs.stopping != cv.ID {
-		ui.Row(c).Children(func() {
-			if a.dangerText(c, "stop:"+cv.ID, a.L.T("card.stop", name), "") {
-				cs.stopping = cv.ID
-			}
+	if cs.stopping == cv.ID {
+		ui.Column(c.Key("stop-ask:"+cv.ID)).Gap(t.S2).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.Failed.Surface).Children(func() {
+			ui.Text(c, a.L.T("card.stop.ask")).FontSize(t.SM).TextColor(t.Ink).LineHeight(a.leading(1.5))
+			ui.Row(c).Gap(t.S2).Justify(ui.End).AlignItems(ui.Center).Children(func() {
+				if a.quietButton(c, "stop-keep:"+cv.ID, a.L.T("card.stop.keep"), name, false, 0) {
+					cs.stopping = ""
+				}
+				if a.dangerText(c, "stop-go:"+cv.ID, a.L.T("card.stop.go"), name) {
+					cs.stopping = ""
+					a.send(protocol.ConnectionRemove{T: "connection_remove", ID: cv.ID})
+				}
+			})
 		})
 		return
 	}
-	ui.Column(c.Key("stop-ask:" + cv.ID)).Gap(t.S2).Children(func() {
-		ui.Text(c, a.L.T("card.stop.ask")).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(a.leading(1.5))
-		ui.Row(c).Gap(t.S2).Justify(ui.End).Children(func() {
-			if a.buttonFor(c, a.L.T("card.stop.keep"), name, btnText, t.ControlSM, t.Surface) {
-				cs.stopping = ""
+	ui.Row(c.Key("conn-acts:" + cv.ID)).Gap(t.S3).AlignItems(ui.Center).Children(func() {
+		open := cs.reads == cv.ID
+		if a.quietButton(c, "reads:"+cv.ID, a.L.T("card.read_list"), "", false, map[bool]int{true: 2, false: 1}[open]) {
+			if open {
+				cs.reads = ""
+			} else {
+				cs.reads = cv.ID
+				a.send(protocol.ConnectionReadsReq{T: "connection_reads", ID: cv.ID})
 			}
-			if a.dangerText(c, "stop-go:"+cv.ID, a.L.T("card.stop.go"), name) {
-				cs.stopping = ""
-				a.send(protocol.ConnectionRemove{T: "connection_remove", ID: cv.ID})
-			}
-		})
+		}
+		ui.Box(c).Grow(1)
+		if a.dangerText(c, "stop:"+cv.ID, a.L.T("card.stop", name), "") {
+			cs.stopping = cv.ID
+		}
 	})
 }
 
@@ -446,15 +555,24 @@ func (a *App) drawAppMark(service string) func(p *ui.Painter, r ui.Rect) {
 			p.FillPath(oval(cx-3.6, cy-5, 2.2, 3), hex("#FFFFFF"))
 			p.FillPath(oval(cx+3.6, cy-5, 2.2, 3), hex("#FFFFFF"))
 		case "chat":
-			col := hex("#5865F2")
 			if strings.HasPrefix(service, "slack") {
-				col = hex("#4A154B")
+				// Slack's four bars, so it never reads as Discord.
+				p.Fill(ui.Rect{X: cx - 10, Y: cy - 6.5, W: 20, H: 5}, hex("#36C5F0"), 2.5)
+				p.Fill(ui.Rect{X: cx + 1.5, Y: cy - 10, W: 5, H: 20}, hex("#2EB67D"), 2.5)
+				p.Fill(ui.Rect{X: cx - 10, Y: cy + 1.5, W: 20, H: 5}, hex("#ECB22E"), 2.5)
+				p.Fill(ui.Rect{X: cx - 6.5, Y: cy - 10, W: 5, H: 20}, hex("#E01E5A"), 2.5)
+				return
 			}
-			p.Fill(ui.Rect{X: cx - 13, Y: cy - 9, W: 26, H: 18}, col, 8)
+			p.Fill(ui.Rect{X: cx - 13, Y: cy - 9, W: 26, H: 18}, hex("#5865F2"), 8)
 			p.FillPath(oval(cx-4.5, cy, 2.4, 2.8), hex("#FFFFFF"))
 			p.FillPath(oval(cx+4.5, cy, 2.4, 2.8), hex("#FFFFFF"))
 		default:
-			p.FillPath(oval(cx, cy, 10, 10), t.InkMuted.Alpha(0.6))
+			// Any other app: a plain app grid, in ink (never the grey of off).
+			for i := 0; i < 2; i++ {
+				for j := 0; j < 2; j++ {
+					p.Fill(ui.Rect{X: cx - 9 + float32(i)*10, Y: cy - 9 + float32(j)*10, W: 8, H: 8}, t.InkSoft, 2.5)
+				}
+			}
 		}
 	}
 }

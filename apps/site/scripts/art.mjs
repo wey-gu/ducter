@@ -36,6 +36,7 @@ const jobs = [
   ["mini_asleep", clay("mini_asleep"), [240, 480]],
   ["server_awake", clay("server_awake"), [240, 480]],
   ["phone", clay("phone"), [120, 240]],
+  ["android", clay("android"), [120, 240]],
   ["ab_web", clay("ab_web"), [160, 320]],
   ["ab_remote", clay("ab_remote"), [160, 320]],
   ["ab_web_later", app("ab_web_later"), [128, 256]],

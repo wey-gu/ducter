@@ -55,7 +55,7 @@ func TestAccountsCardSheet(t *testing.T) {
 	tt := ui.NewTesterWith(app.View, 1280, 1400, ui.TesterOptions{Preferences: ui.Preferences{ReduceMotion: true}})
 	tt.Frame()
 	tt.Frame()
-	for _, want := range []string{"自己发现了事，怎么告诉你", "每天最多 3 件", "oo 里的账号", "在留意", "经过 oo · 邮件会经过 OOMOL 的服务器", i18n.New(i18n.ZH).T("card.stop", "oo 里的账号"), "连不上", "加一个", "日历", "Discord"} {
+	for _, want := range []string{"自己发现了事，怎么告诉你", "每天最多 3 件", "oo 里的账号", "在留意", "经过 oo · 邮件、日程、消息和 GitHub 通知会经过 OOMOL 的服务器", i18n.New(i18n.ZH).T("card.stop", "oo 里的账号"), "连不上", "加一个", "日历", "Discord"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
@@ -278,3 +278,24 @@ func firstEvents(en bool) []protocol.LogEvent {
 
 // readCount is how much was read, said anywhere (D173 forbids it on screen).
 var readCount = regexp.MustCompile(`看了[^。；]*\d|\d+\s*封信|(?i)\bread \d+|\d+ emails|有 \d+ 件值得`)
+
+// D192: a tile's account says whose it is in a few letters, and two
+// tiles of one app never read the same.
+func TestShortAccount(t *testing.T) {
+	for _, tc := range []struct {
+		acc  string
+		sibs []string
+		want string
+	}{
+		{"w@nowledge-labs.ai", []string{"w@nowledge-labs.ai", "weyl.gu@gmail.com"}, "nowledge-labs"},
+		{"weyl.gu@gmail.com", []string{"w@nowledge-labs.ai", "weyl.gu@gmail.com"}, "weyl.gu"},
+		{"wey@work.example.com", []string{"wey@work.example.com", "wey@home.example.com"}, "work"},
+		{"wey@acme.com", []string{"wey@acme.com", "lab@acme.com"}, "wey"},
+		{"wey@gmail.com", []string{"wey@gmail.com", "wey@googlemail.com"}, "wey@gmail.com"},
+		{"Nowledge Labs, Inc", []string{"Nowledge Labs, Inc", "nowledge-community"}, "Nowledge Labs, Inc"},
+	} {
+		if got := shortAccount(tc.acc, tc.sibs); got != tc.want {
+			t.Errorf("shortAccount(%q) = %q, want %q", tc.acc, got, tc.want)
+		}
+	}
+}

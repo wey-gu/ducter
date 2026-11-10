@@ -34,8 +34,15 @@
   no `compaction_started`.
 - **Context reading.** The last request's input + cache read + cache write; unknown right
   after a compaction.
-- **Tool search.** MCP tools deferred by default; `ENABLE_TOOL_SEARCH=false` (partner) or the
-  per-tool `_meta` `anthropic/alwaysLoad` (Ducter's tools in tasks).
+- **Tool search.** MCP tools deferred by default; `ENABLE_TOOL_SEARCH=false` (the adapter sets
+  it for every clean session: the partner, the judge, the digest writer) or the per-tool `_meta`
+  `anthropic/alwaysLoad` (Ducter's tools in tasks). Both strings, and the Read cap, are
+  `CLAUDE_SWITCHES` in harness-facts; a test fails on them anywhere but the registry and the
+  adapter, and the probe checks the binary still has them (research/48).
+- **Drift seen 2026-11-10 (2.1.322, binary only, INFERRED).** The compaction code now has
+  per-window entries and a rule that a fork ignores `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE`; the 20K
+  reserve's minified name moved. The knobs' strings are all present. Re-run the live
+  compaction check before widening `verified` (research/48 F4).
 - **Browser.** Claude in Chrome through `--chrome`; no computer use in `-p` (research/38).
 
 ## Codex 0.167.0

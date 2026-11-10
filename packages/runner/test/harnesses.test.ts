@@ -10,6 +10,7 @@ import type { Runtime } from "@botiverse/oar/browser";
 import { dshRuntime } from "@botiverse/oar/runtimes/dsh";
 import { HARNESSES, HARNESS_IDS } from "@ducter/protocol";
 import type { SessionSpec } from "@ducter/protocol/src/internal.ts";
+import { CLAUDE_SWITCHES } from "@ducter/protocol/src/harness-facts.ts";
 import { adaptSpec, codexCleanArgs, contextTokensOf, createOarHarnessPort, PARTNER_READ_MAX_TOKENS, PI_CLEAN_FLAGS, withPreamble } from "../src/oar.ts";
 import { Normalizer, stripThinking } from "../src/normalize.ts";
 import { runBridge } from "../src/mcp-bridge.ts";
@@ -88,6 +89,18 @@ describe("adaptSpec: the partner's clean setup per harness", () => {
     const task = adaptSpec(spec("claude-code", { isolateUserConfig: false }), { dataDir: dir });
     expect(task.options.disallowedTools).not.toContain("Bash");
     expect(adaptSpec(spec("codex", { isolateUserConfig: false }), { dataDir: dir }).options.launchArgs).toBeUndefined();
+  });
+
+  test("Claude Code: a clean session loads Ducter's tools up front; a task keeps the user's tool search", () => {
+    const clean = adaptSpec(spec("claude-code", { isolateUserConfig: true }), { dataDir: dir });
+    expect((clean.options.env as Record<string, string>)[CLAUDE_SWITCHES.toolSearchEnv]).toBe("false");
+    const own = adaptSpec(spec("claude-code", { isolateUserConfig: true, env: { [CLAUDE_SWITCHES.toolSearchEnv]: "true" } }), { dataDir: dir });
+    expect((own.options.env as Record<string, string>)[CLAUDE_SWITCHES.toolSearchEnv]).toBe("true");
+    const task = adaptSpec(spec("claude-code", { isolateUserConfig: false }), { dataDir: dir });
+    expect((task.options.env as Record<string, string | null>)[CLAUDE_SWITCHES.toolSearchEnv]).toBeUndefined();
+    // Never a Claude Code switch on another harness.
+    const codex = adaptSpec(spec("codex", { isolateUserConfig: true }), { dataDir: dir, env: { CODEX_HOME: join(dir, "none") } });
+    expect((codex.options.env as Record<string, string | null>)[CLAUDE_SWITCHES.toolSearchEnv]).toBeUndefined();
   });
 
   test("Codex task (not clean): no overrides at all", () => {

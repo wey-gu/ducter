@@ -9,20 +9,32 @@ export const DEFAULT_IDENTITY = [
   "Report back plainly, ask for the user's attention only when it truly matters, and always offer a default.",
 ].join(" ");
 
+/**
+ * Bounds on the identity (principle 5: cap every read before it enters). It is L1 of every partner
+ * session's cached prefix, read from data the user grows in Mem (a profile, a rule stack), so it
+ * never grows with it: a field, a rule and the whole block each have a ceiling (research/48 F1).
+ */
+export const IDENTITY_FIELD_MAX = 2_000;
+export const IDENTITY_RULE_MAX = 300;
+export const IDENTITY_RULES_MAX = 30;
+export const IDENTITY_MAX = 8_000;
+const clip = (s: string, n: number) => (s.length <= n ? s : s.slice(0, n - 1) + "…");
+
 /** Builds identity text from an `nmem --json context` bundle; undefined if it carries nothing useful. */
 export function identityFromBundle(b: any): { name?: string; identity?: string } {
   const owner = b?.owner_profile ?? {};
   const agent = b?.agent_profile ?? {};
+  const field = (v: unknown) => clip(String(v).trim(), IDENTITY_FIELD_MAX);
   const lines: string[] = [];
-  if (owner.name) lines.push(`The user is ${owner.name}${owner.aliases ? ` (also: ${owner.aliases})` : ""}.`);
-  if (owner.context) lines.push(String(owner.context));
-  if (owner.preferred_language) lines.push(`The user's preferred language: ${owner.preferred_language}.`);
-  if (owner.custom_instructions) lines.push(String(owner.custom_instructions));
-  for (const r of Array.isArray(b?.rule_stack) ? b.rule_stack : []) {
-    const text = typeof r === "string" ? r : r?.text ?? r?.content;
-    if (text) lines.push(`- ${text}`);
-  }
-  return { name: agent.display_name || undefined, identity: lines.length ? lines.join("\n") : undefined };
+  if (owner.name) lines.push(`The user is ${clip(String(owner.name), 120)}${owner.aliases ? ` (also: ${clip(String(owner.aliases), 200)})` : ""}.`);
+  if (owner.context) lines.push(field(owner.context));
+  if (owner.preferred_language) lines.push(`The user's preferred language: ${clip(String(owner.preferred_language), 40)}.`);
+  if (owner.custom_instructions) lines.push(field(owner.custom_instructions));
+  const rules = (Array.isArray(b?.rule_stack) ? b.rule_stack : []).map((r: any) => (typeof r === "string" ? r : r?.text ?? r?.content)).filter((t: unknown) => typeof t === "string" && t.trim());
+  for (const text of rules.slice(0, IDENTITY_RULES_MAX)) lines.push(`- ${clip(text.trim(), IDENTITY_RULE_MAX)}`);
+  if (rules.length > IDENTITY_RULES_MAX) lines.push(`(${rules.length - IDENTITY_RULES_MAX} more of the user's rules are not shown here)`);
+  const identity = lines.length ? clip(lines.join("\n"), IDENTITY_MAX) : undefined;
+  return { name: agent.display_name ? clip(String(agent.display_name), 60) : undefined, identity };
 }
 
 export async function loadPersona(opts: { timeoutMs?: number; bin?: string; off?: boolean; mem?: { agentId: string; space?: string } } = {}): Promise<Persona & { source: string }> {

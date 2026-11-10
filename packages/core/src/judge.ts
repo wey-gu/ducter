@@ -5,11 +5,18 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import type { HarnessId } from "@ducter/protocol";
+import { HARNESSES } from "@ducter/protocol/src/harnesses.ts";
 import type { HarnessPort } from "@ducter/protocol/src/internal.ts";
 import type { Judge } from "./waiters.ts";
 
-/** The cheapest capable model per harness (research/07); undefined = the harness's own default. */
-const CHEAP: Partial<Record<HarnessId, string>> = { "claude-code": "haiku" };
+/**
+ * The model a judge runs on: the harness's registered cheapest capable model (protocol/src/
+ * harnesses.ts, principle 16), else the brain's own. One registry: a table here once named only
+ * Claude Code, so a Codex brain judged on its full partner model (research/48 F3).
+ */
+export function judgeModel(harness: HarnessId, model?: string): string | undefined {
+  return HARNESSES[harness]?.cheapModel ?? model;
+}
 const TOOLS_OFF = ["Bash", "Edit", "Write", "MultiEdit", "Read", "Glob", "Grep", "WebFetch", "WebSearch", "Task", "NotebookEdit", "TodoWrite"];
 
 export function judgePrompt(q: Parameters<Judge>[0]): string {
@@ -51,7 +58,7 @@ export function createHarnessAsk(opts: { harness: () => HarnessPort | undefined;
     if (!port) throw new Error("no AI agent to ask yet");
     mkdirSync(cwd, { recursive: true, mode: 0o700 });
     const { harness, model } = opts.pick();
-    const use = opts.cheap ? (CHEAP[harness] ?? model) : model;
+    const use = opts.cheap ? judgeModel(harness, model) : model;
     const session = await port.start({
       harness,
       ...(use ? { model: use } : {}),

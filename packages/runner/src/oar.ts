@@ -17,7 +17,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DSH_KEY_ENV, HARNESS_IDS, type HarnessId } from "@ducter/protocol";
 import { readEnvFile, readKeys } from "@ducter/protocol/src/keys.ts";
-import { modelForWindow, windowKnobs } from "@ducter/protocol/src/harness-facts.ts";
+import { CLAUDE_SWITCHES, modelForWindow, windowKnobs } from "@ducter/protocol/src/harness-facts.ts";
 import type { HarnessEvent, HarnessPort, HarnessSession, SessionSpec } from "@ducter/protocol/src/internal.ts";
 import type { Runtime, Session, SessionOptions, McpServer } from "@botiverse/oar/browser";
 import { Normalizer } from "./normalize.ts";
@@ -258,7 +258,7 @@ export const PARTNER_READ_MAX_TOKENS = 8_000;
 
 function readOnlyFor(h: HarnessId, a: { disallowed: string[]; launchArgs?: string[]; env?: Record<string, string | null> }): { disallowed: string[]; launchArgs?: string[]; env?: Record<string, string | null> } {
   const disallowed = [...a.disallowed, ...(READ_ONLY_DENY[h] ?? []).filter((t) => !a.disallowed.includes(t))];
-  if (h === "claude-code") return { ...a, disallowed, env: { ...a.env, CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS: String(PARTNER_READ_MAX_TOKENS) } };
+  if (h === "claude-code") return { ...a, disallowed, env: { ...a.env, [CLAUDE_SWITCHES.readCapEnv]: String(PARTNER_READ_MAX_TOKENS) } };
   if (h === "codex") {
     // Under any sandbox codex declines an MCP call not marked readOnlyHint (with approvals off it
     // can't ask; measured: task_open and wait_for refused). See the MCP URL in adaptSpec.
@@ -292,6 +292,10 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
   switch (h) {
     case "claude-code":
       if (spec.launchArgs?.length) launchArgs = spec.launchArgs;
+      // A clean session has only Ducter's servers: load their tools up front. Deferring them
+      // behind tool search cost a model round trip (~3 s) before the partner's ack (live, sonnet).
+      // A session's own value wins.
+      if (clean && !(CLAUDE_SWITCHES.toolSearchEnv in (env ?? {}))) env = { ...env, [CLAUDE_SWITCHES.toolSearchEnv]: "false" };
       if (knobs) {
         env = { ...env, ...knobs.env };
         if (spec.preCompactNote === undefined) {

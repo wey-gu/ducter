@@ -812,9 +812,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       isolateUserConfig: true,
       // Principle 6: the partner reads and decides; writing and running belong to a task.
       readOnly: true,
-      // Ducter's handful of tools load up front: deferring them behind ToolSearch cost a full
-      // model round trip (~3 s) before the ack on a fresh session (live, sonnet).
-      env: { ENABLE_TOOL_SEARCH: "false" },
+      // Ducter's handful of tools load up front in an isolated session: the adapter sets each
+      // harness's switch for it (runner/oar.ts, harness-facts CLAUDE_SWITCHES).
       // The harness's own compactor stays above the re-cut and never runs while idle, so the
       // Log's digests, not the harness's summary, carry the long conversation (research/11 §7.3.7).
       contextWindow,
@@ -2242,6 +2241,8 @@ export function parseNeeds(raw: unknown): TaskNeeds | undefined {
   return Object.keys(n).length ? n : undefined;
 }
 
+export const DEVICES_MAX = 12;
+
 /**
  * Other computers that can run tasks, as one context line; empty when there are none (so prompts
  * without workers are unchanged). Device states use the glossary words (醒着 / Awake). D157: what
@@ -2249,12 +2250,16 @@ export function parseNeeds(raw: unknown): TaskNeeds | undefined {
  */
 export function renderDevices(workers: { name: string; online: boolean; asleep?: boolean; os?: string; harnesses?: { id: string; loggedIn: boolean }[]; web?: "chrome" | "ducter"; alwaysOn?: boolean }[]): string {
   if (!workers.length) return "";
+  // An L4 line on every turn: bounded however many computers join (research/48 F2).
+  const shown = workers.length > DEVICES_MAX ? [...workers].sort((a, b) => Number(b.online) - Number(a.online)).slice(0, DEVICES_MAX) : workers;
+  const more = workers.length - shown.length;
   const one = (w: (typeof workers)[number]) => {
-    const ai = (w.harnesses ?? []).filter((h) => h.loggedIn).map((h) => h.id);
+    const ai = (w.harnesses ?? []).filter((h) => h.loggedIn).map((h) => h.id).slice(0, 6);
     const state = w.online ? "awake" : w.asleep ? "asleep" : "can't reach";
     const sleeps = w.alwaysOn === false ? ", sleeps when its lid closes" : w.alwaysOn ? ", never sleeps" : "";
     const web = w.web === "chrome" ? ", browses in the user's own Chrome (their sign-ins)" : w.web === "ducter" ? ", browses in Ducter's own browser" : "";
-    return `${w.name} (${state}${w.os ? `, ${w.os}` : ""}${sleeps}${web}${ai.length ? `, signed in: ${ai.join(", ")}` : ", no AI signed in"})`;
+    const name = w.name.length > 40 ? w.name.slice(0, 39) + "…" : w.name;
+    return `${name} (${state}${w.os ? `, ${w.os.slice(0, 30)}` : ""}${sleeps}${web}${ai.length ? `, signed in: ${ai.join(", ")}` : ", no AI signed in"})`;
   };
-  return `[devices] local (Ducter's home) · ${workers.map(one).join(" · ")}. Say what a task needs (task_open needs) and Ducter picks the computer and says where; name one in place.device only when the user named it.`;
+  return `[devices] local (Ducter's home) · ${shown.map(one).join(" · ")}${more ? ` · and ${more} more computers` : ""}. Say what a task needs (task_open needs) and Ducter picks the computer and says where; name one in place.device only when the user named it.`;
 }

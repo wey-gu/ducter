@@ -13,7 +13,9 @@ import { argsFor } from "../src/phone-provider.ts";
 import { fakeTuwa, type FakeTuwa } from "./fake-tuwa.ts";
 import { tempDir } from "./helpers.ts";
 
-const until = async (cond: () => boolean, ms = 4000) => {
+const until = async (cond: () => boolean, ms = 15_000) => {
+  // Real time, not the fake clock: polling slows under the full suite's load (a 4 s window failed there
+  // once, 2026-11-11), and the preload gives each test 20 s.
   const end = Date.now() + ms;
   while (!cond()) {
     if (Date.now() > end) throw new Error("timed out waiting");

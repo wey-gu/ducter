@@ -127,6 +127,10 @@ func (a *App) taskActions(c *ui.Context, task *store.Task) {
 	case protocol.Failed, protocol.Dropped, protocol.Done, protocol.DoneClaimed, protocol.Superseded:
 		return
 	}
+	// D190: the page it is working on in Ducter's own browser, live.
+	if a.S.Browsing(task.ID) != "" && a.button(c, a.L.T("live.watch.title"), btnSecondary, t.ControlSM, t.Chrome) {
+		a.OpenWatch(task.ID)
+	}
 	if att == protocol.Working && a.button(c, a.L.T("task.action.pause"), btnText, t.ControlSM, t.Chrome) {
 		a.TaskAction(task.ID, "interrupt")
 	}

@@ -11,6 +11,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"github.com/wey-gu/ducter/apps/desktop/internal/protocol"
+	"github.com/wey-gu/ducter/apps/desktop/internal/redact"
 	"github.com/wey-gu/ducter/apps/desktop/internal/store"
 )
 
@@ -28,6 +29,11 @@ type liveState struct {
 	shown  int64
 	sentAt string    // the decision whose live_open went out
 	at     time.Time // when it went out: no page by liveStuckAfter says so
+	// D190: the window out of sight (no frames asked for), and the address
+	// line being typed in (the user's turn).
+	paused  bool
+	editing bool
+	addr    string
 }
 
 // liveStuckAfter is how long the view waits for its first page before it
@@ -91,17 +97,81 @@ func (a *App) OpenLive(decisionID, site string) {
 // OpenTry is 试一下 / Try it on the 上网 block (D154): the same live view
 // on a harmless page, with no card behind it, so the user sees Ducter's
 // own browser working with their own eyes.
-func (a *App) OpenTry() {
+func (a *App) OpenTry() { a.OpenTryOn("") }
+
+// OpenTryOn is Try it on one computer's browser ("" or "local": the home's).
+func (a *App) OpenTryOn(device string) {
 	a.S.OpenLive(protocol.TryLive, "example.com")
+	a.S.Live.Device = device
 	a.live = liveState{sentAt: protocol.TryLive, at: a.Now()}
 	w, h := a.liveSize()
-	a.send(protocol.LiveOpenReq{T: "live_open", DecisionID: protocol.TryLive, Width: w, Height: h, Scale: 2, Try: true})
+	a.send(protocol.LiveOpenReq{T: "live_open", DecisionID: protocol.TryLive, Width: w, Height: h, Scale: 2, Try: true, Device: device})
 }
+
+// OpenWatch is 看它上网 / Watch it browse (D190): the tab a task is working
+// in, live, in its turn; 换我来 / My turn makes it the user's.
+func (a *App) OpenWatch(taskID string) {
+	a.S.OpenWatch(taskID)
+	a.live = liveState{sentAt: protocol.WatchLive, at: a.Now()}
+	w, h := a.liveSize()
+	a.send(protocol.LiveOpenReq{T: "live_open", DecisionID: protocol.WatchLive, TaskID: taskID, Width: w, Height: h, Scale: 2})
+}
+
+// LiveTurn is 换我来 / My turn (mine) or 还给它 / Hand it back (D190).
+func (a *App) LiveTurn(mine bool) {
+	if lv := a.S.Live; lv != nil && lv.ID != "" {
+		a.send(protocol.LiveTurnReq{T: "live_turn", ID: lv.ID, Mine: mine})
+	}
+}
+
+// liveGo opens a typed web address in the user's turn (http or https only;
+// the home checks again).
+func (a *App) liveGo(raw string) bool {
+	s := strings.TrimSpace(raw)
+	if s == "" {
+		return false
+	}
+	if !strings.Contains(s, "://") {
+		s = "https://" + s
+	}
+	u, err := url.Parse(s)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		a.liveNote = a.L.T("live.badurl")
+		return false
+	}
+	a.liveInput(protocol.LiveInput{Kind: "go", URL: u.String()})
+	return true
+}
+
+// doingWords is what the task is doing in its tab, in a few calm words (D190).
+func (a *App) doingWords(d *protocol.LiveDoing) string {
+	switch d.Kind {
+	case "open":
+		if d.Host != "" {
+			return a.L.T("live.doing.open", d.Host)
+		}
+		return a.L.T("live.doing.read")
+	case "click", "type":
+		if d.Label != "" {
+			return a.L.T("live.doing."+d.Kind, d.Label)
+		}
+		return a.L.T("live.doing." + d.Kind + ".0")
+	case "press":
+		return a.L.T("live.doing.press", d.Key)
+	}
+	return a.L.T("live.doing." + d.Kind)
+}
+
+// liveDoingFor is how long a step stays on the line before it goes quiet.
+const liveDoingFor = 6 * time.Second
 
 // liveTitle names the view for assistive tech: the sign-in, or Try it.
 func (a *App) liveTitle(lv *store.LiveView) string {
 	if lv.Try() {
 		return a.L.T("web.try")
+	}
+	if lv.Watch() {
+		return a.L.T("live.watch.title")
 	}
 	return a.L.T("signin.title", lv.Site)
 }
@@ -122,7 +192,11 @@ func (a *App) liveDevice(lv *store.LiveView) string {
 // retryLive sends the same live_open again (再试一次 after it got stuck).
 func (a *App) retryLive(lv *store.LiveView) {
 	if lv.Try() {
-		a.OpenTry()
+		a.OpenTryOn(lv.Device)
+		return
+	}
+	if lv.Watch() {
+		a.OpenWatch(lv.TaskID)
 		return
 	}
 	a.OpenLive(lv.DecisionID, lv.Site)
@@ -138,6 +212,12 @@ func (a *App) liveWhere(lv *store.LiveView) string {
 			name += " " + strings.SplitN(b.Version, ".", 2)[0]
 		}
 		return a.L.T("live.try.where", a.liveDevice(lv), name)
+	}
+	if lv.Watch() {
+		if lv.Task != nil && lv.Task.Title != "" {
+			return redact.Text(lv.Task.Title)
+		}
+		return a.L.T("live.where")
 	}
 	return a.L.T("live.where") + " · " + a.L.T("live.blind")
 }
@@ -213,6 +293,19 @@ func (a *App) liveView(c *ui.Context) {
 	if u, err := url.Parse(lv.URL); err == nil && u.Hostname() != "" {
 		host = strings.TrimPrefix(u.Hostname(), "www.")
 	}
+	if host == "" {
+		host = a.L.T("live.where")
+	}
+	mine := lv.Mine()
+	watch := lv.Watch()
+	// D190: out of sight (hidden, minimized), no frames; back, they come again.
+	if hidden := c.WindowHidden(); lv.ID != "" && hidden != a.live.paused {
+		a.live.paused = hidden
+		a.send(protocol.LivePauseReq{T: "live_pause", ID: lv.ID, Paused: hidden})
+	}
+	if !mine {
+		a.live.editing = false
+	}
 	// The newest frame goes into the bitmap; the server sends the next
 	// once this one is acked.
 	if lv.Seq != 0 && lv.Seq != a.live.shown && lv.Frame != nil {
@@ -226,31 +319,79 @@ func (a *App) liveView(c *ui.Context) {
 		a.live.shown = lv.Seq
 		a.send(protocol.LiveAckReq{T: "live_ack", ID: lv.ID, Seq: lv.Seq})
 	}
+	var doing *protocol.LiveDoing
+	if watch && !mine && lv.Turn != "you" && lv.Doing != nil && a.Now().Sub(lv.DoingAt) < liveDoingFor {
+		doing = lv.Doing
+		c.After(liveDoingFor - a.Now().Sub(lv.DoingAt)) // the line goes quiet on its own
+	}
 	ui.Column(c.Key("live")).Absolute().Left(0).Top(0).Right(0).Bottom(0).ZIndex(2000).Background(t.Bg).
 		Role(ui.RoleDialog).Label(a.liveTitle(lv)).Children(func() {
 		// The top line is the window's own bar (chrome: the traffic lights'
-		// room kept, it drags the window): back, whose browser this is and
-		// that the partner can't see it, reload.
+		// room kept, it drags the window): back and forward in the user's
+		// turn, the page's address (typed into in the user's turn), whose
+		// tab or browser this is, then reload, or Close while watching.
 		a.chrome(c, "live", func() {
-			if a.buttonFor(c, a.L.T("live.back"), host, btnText, t.ControlSM, t.Chrome) {
-				a.liveInput(protocol.LiveInput{Kind: "nav", Action: "back"})
+			if mine {
+				if a.buttonFor(c, a.L.T("live.back"), host, btnText, t.ControlSM, t.Chrome) {
+					a.liveInput(protocol.LiveInput{Kind: "nav", Action: "back"})
+				}
+				if watch && a.buttonFor(c, a.L.T("live.forward"), host, btnText, t.ControlSM, t.Chrome) {
+					a.liveInput(protocol.LiveInput{Kind: "nav", Action: "forward"})
+				}
 			}
 			ui.Column(c).Grow(1).MinWidth(0).AlignItems(ui.Center).Gap(2).Children(func() {
-				ui.Text(c, host).FontSize(t.MD).FontWeight(800).SingleLine()
+				if mine && a.live.editing {
+					in := ui.TextInput(c.Key("input:live-addr"), &a.live.addr).Placeholder(a.L.T("live.address.hint")).Label(a.L.T("live.address")).
+						FontSize(t.SM).Padding(t.S1, t.S2).Radius(t.RadiusSM).Background(t.Bg).Border(1, t.Line).MinWidth(320).MaxWidth(560).
+						OnSubmit(func() {
+							if a.liveGo(a.live.addr) {
+								a.live.editing = false
+							}
+						})
+					in.Focus()
+				} else if mine {
+					if a.buttonFor(c, host, a.L.T("live.address"), btnText, t.ControlSM, t.Chrome) {
+						a.live.editing, a.live.addr = true, redact.Text(lv.URL)
+					}
+				} else {
+					ui.Text(c, host).FontSize(t.MD).FontWeight(800).SingleLine()
+				}
 				ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
-					if !lv.Try() {
+					if watch && lv.Task != nil && lv.Task.Harness != "" {
+						a.coinBox(c, "live", lv.Task.Harness, 16, false, coinStill)
+					} else if !lv.Try() && !watch {
 						a.glyph(c, 14, drawEyeShut(t.InkMuted))
 					}
 					ui.Text(c, a.liveWhere(lv)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()
 				})
 			})
 		}, func() {
-			if a.buttonFor(c, a.L.T("live.reload"), host, btnText, t.ControlSM, t.Chrome) {
-				a.liveInput(protocol.LiveInput{Kind: "nav", Action: "reload"})
+			if mine {
+				if a.buttonFor(c, a.L.T("live.reload"), host, btnText, t.ControlSM, t.Chrome) {
+					a.liveInput(protocol.LiveInput{Kind: "nav", Action: "reload"})
+				}
+			} else if a.buttonFor(c, a.L.T("live.close"), host, btnText, t.ControlSM, t.Chrome) {
+				a.CloseLive(false)
 			}
 		})
-		ui.Row(c).Grow(1).MinHeight(0).Justify(ui.Center).AlignItems(ui.Start).Background(t.SurfaceSunken).Children(func() {
+		// D190: the user's turn of a watch, said plainly, once, above the page.
+		if watch && mine {
+			w := t.State("blocked")
+			ui.Row(c.Key("live-band")).Gap(6).Justify(ui.Center).AlignItems(ui.Center).Padding(t.S2, t.S4).Background(w.Surface).Role(ui.RoleStatus).Children(func() {
+				a.glyph(c, 14, drawEyeShut(w.Ink))
+				ui.Text(c, a.L.T("live.yourturn")).FontSize(t.SM).TextColor(w.Ink)
+			})
+		}
+		align := ui.Start
+		if watch && !mine {
+			align = ui.Center // watching: the page sits in the middle, like a picture
+		}
+		ui.Row(c).Grow(1).MinHeight(0).Justify(ui.Center).AlignItems(align).Background(t.SurfaceSunken).Children(func() {
 			if a.live.bmp == nil {
+				if watch && lv.Open {
+					ui.Text(c, a.L.T("live.nopage")).FontSize(t.SM).TextColor(t.InkMuted).LineHeight(1.5).TextAlign(ui.Center).MaxWidth(360).Margin(t.S6, t.S4, 0, t.S4)
+					return
+				}
 				if !a.live.at.IsZero() && a.Now().Sub(a.live.at) >= liveStuckAfter {
 					// No page: say so, and offer the same open again.
 					ui.Column(c.Key("live-stuck")).Gap(t.S3).AlignItems(ui.Center).MaxWidth(420).Margin(t.S6, t.S4, 0, t.S4).Children(func() {
@@ -262,11 +403,18 @@ func (a *App) liveView(c *ui.Context) {
 					return
 				}
 				c.After(time.Second) // look again: the stuck line comes on its own
-				ui.Text(c, a.L.T("live.opening", lv.Site)).FontSize(t.SM).TextColor(t.InkMuted).Margin(t.S6, 0, 0, 0)
+				what := lv.Site
+				if what == "" && lv.Task != nil {
+					what = lv.Task.Title
+				}
+				ui.Text(c, a.L.T("live.opening", what)).FontSize(t.SM).TextColor(t.InkMuted).Margin(t.S6, 0, 0, 0)
 				return
 			}
 			pw, ph := float32(lv.Width), float32(lv.Height)
 			page := ui.Image(c.Key("page"), a.live.bmp).Size(pw, ph).Shrink(1).MaxWidth(pw).Focusable().AutoFocus().Cursor(ui.CursorDefault)
+			if !mine {
+				return // watching: nothing the user does goes in
+			}
 			r := page.Bounds()
 			frac := func(x, y float32) (float64, float64) {
 				if r.W <= 0 || r.H <= 0 {
@@ -312,14 +460,46 @@ func (a *App) liveView(c *ui.Context) {
 			}).TextCaret(ui.Rect{X: 0, Y: 0, W: 1, H: 16})
 		})
 		ui.Row(c).Padding(t.S3, t.S4).Gap(t.S3).Justify(ui.End).AlignItems(ui.Center).Children(func() {
-			if lv.Try() {
+			switch {
+			case watch:
+				// What the task is doing, calm; or whose browser, where.
+				line, col := a.L.T("live.where")+" · "+a.L.T("live.on", a.liveDevice(lv)), t.InkMuted
+				if doing != nil {
+					line, col = a.doingWords(doing), t.InkSoft
+				} else if lv.Turn == "you" && !lv.Here {
+					line = a.L.T("live.elsewhere")
+				}
+				if mine {
+					line = ""
+				}
+				ui.Row(c.Key("live-doing")).Gap(t.S2).AlignItems(ui.Center).Grow(1).MinWidth(0).Role(ui.RoleStatus).Children(func() {
+					if doing != nil {
+						ui.Box(c.Key("live-pulse")).Size(8, 8).Shrink(0).Radius(4).Background(t.State("working").Dot)
+					}
+					if line != "" {
+						ui.Text(c, line).FontSize(t.SM).TextColor(col).SingleLine()
+					}
+				})
+				if mine {
+					if a.buttonFor(c, a.L.T("live.handback"), host, btnPrimary, t.ControlMD, t.Bg) {
+						a.LiveTurn(false)
+					}
+				} else if a.buttonFor(c, a.L.T("live.myturn"), host, btnPrimary, t.ControlMD, t.Bg) {
+					a.LiveTurn(true)
+				}
+			case lv.Try():
 				// Try it has nothing to answer: what this is, and Done.
 				ui.Text(c, a.L.T("live.try.note", a.liveDevice(lv))).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.45).Grow(1).MinWidth(0)
-			} else if a.buttonFor(c, a.L.T("live.notnow"), host, btnSecondary, t.ControlMD, t.Bg) {
-				a.CloseLive(false)
-			}
-			if a.buttonFor(c, a.L.T("live.done"), host, btnPrimary, t.ControlMD, t.Bg) {
-				a.CloseLive(true)
+				if a.buttonFor(c, a.L.T("live.done"), host, btnPrimary, t.ControlMD, t.Bg) {
+					a.CloseLive(true)
+				}
+			default:
+				if a.buttonFor(c, a.L.T("live.notnow"), host, btnSecondary, t.ControlMD, t.Bg) {
+					a.CloseLive(false)
+				}
+				if a.buttonFor(c, a.L.T("live.done"), host, btnPrimary, t.ControlMD, t.Bg) {
+					a.CloseLive(true)
+				}
 			}
 		})
 	})

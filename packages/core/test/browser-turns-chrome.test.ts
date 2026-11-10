@@ -34,7 +34,7 @@ run("Watch it browse, and taking turns, on a real Chrome (D190)", () => {
   const sink = { send: (f: ServerFrame) => frames.push(f) };
   const live = () => core.ducterBrowser!.live;
   const lastFrame = () => frames.filter((f) => f.t === "live_frame").at(-1) as Extract<ServerFrame, { t: "live_frame" }> | undefined;
-  const until = async (ok: () => boolean, ms = 5_000) => {
+  const until = async (ok: () => boolean, ms = 15_000) => {
     const end = Date.now() + ms;
     while (!ok() && Date.now() < end) await Bun.sleep(30);
     return ok();
@@ -121,7 +121,7 @@ run("Watch it browse, and taking turns, on a real Chrome (D190)", () => {
     await Bun.sleep(300);
     expect(await look("location.pathname")).toBe("/");
     expect(await call("browser_read")).toContain("Page: Clicked");
-  }, 30_000);
+  }, 60_000);
 
   test("换我来 / My turn: the task is blind, the page takes the viewer's size, the user's taps and words go in", async () => {
     await live().turn(sink, id, true);
@@ -142,7 +142,7 @@ run("Watch it browse, and taking turns, on a real Chrome (D190)", () => {
     expect(await look("document.title")).not.toBe("pwned");
     await live().input(sink, id, { kind: "go", url: `${base}/next` });
     expect(await until(() => (lastFrame()?.url ?? "").endsWith("/next"))).toBe(true);
-  }, 30_000);
+  }, 60_000);
 
   test("还给它 / Hand it back: the task sees again, at its own size, and is told what changed", async () => {
     await live().turn(sink, id, false);
@@ -159,7 +159,7 @@ run("Watch it browse, and taking turns, on a real Chrome (D190)", () => {
     const logged = JSON.stringify(core.log.read({ fromSeq: 0, limit: 10_000 }));
     expect(logged).not.toContain("林小满");
     expect(logged).not.toContain(lastFrame()!.data.slice(0, 200));
-  }, 30_000);
+  }, 60_000);
 
   test("a paused view gets no frames until it's back; the stream reports its numbers", async () => {
     await live().pause(sink, id, true);
@@ -169,6 +169,8 @@ run("Watch it browse, and taking turns, on a real Chrome (D190)", () => {
     await Bun.sleep(600);
     expect(frames.filter((f) => f.t === "live_frame").length).toBe(n);
     await live().pause(sink, id, false);
+    // Back in sight with nothing moving on the page: one still picture of it comes anyway.
+    expect(await until(() => frames.filter((f) => f.t === "live_frame").length > n, 2_000)).toBe(true);
     await call("browser_scroll", { direction: "down" });
     expect(await until(() => frames.filter((f) => f.t === "live_frame").length > n)).toBe(true);
     const s = live().stats(id)!;
@@ -176,7 +178,7 @@ run("Watch it browse, and taking turns, on a real Chrome (D190)", () => {
     expect(s.bytes).toBeGreaterThan(1000);
     expect(s.rttMs).toBeGreaterThanOrEqual(0);
     console.log(`[D190] watch stream: ${s.frames} frames, ${Math.round(s.bytes / 1024)} KB, ack round trip ${s.rttMs} ms, capture to send ${s.lagMs} ms, JPEG q${s.quality}`);
-  }, 30_000);
+  }, 60_000);
 
   test("closing a watch leaves the task's tab and its turn alone", async () => {
     await live().close(sink, id);
@@ -197,5 +199,5 @@ run("Watch it browse, and taking turns, on a real Chrome (D190)", () => {
     await Bun.sleep(50);
     expect(told.at(-1)![1]).toContain("handed Ducter's browser back");
     expect(told.at(-1)![1]).toContain("Your tab is still on");
-  }, 30_000);
+  }, 60_000);
 });

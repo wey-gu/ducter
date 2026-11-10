@@ -683,6 +683,13 @@ type TaskCard struct {
 	OpenedBy        string           `json:"openedBy,omitempty"`    // D128: "you" = the user opened it
 	Changes         *DiffStat        `json:"changes,omitempty"`     // D128: repo tasks, once counted
 	Folder          *FolderSummary   `json:"folder,omitempty"`      // D142: non-git folder tasks
+	Browsing        *Browsing        `json:"browsing,omitempty"`    // D190: holds Ducter's browser there
+}
+
+// Browsing says a task holds Ducter's own browser on a computer ("local" or
+// a device id), so its tab can be watched (D190).
+type Browsing struct {
+	Device string `json:"device"`
 }
 
 // PendingDecision is Bodies["decision"] & { askedAt }.
@@ -1395,6 +1402,13 @@ type ServerFrame struct {
 	Sites      []SiteView `json:"sites,omitempty"`
 	// D154: live (open) says which browser it is.
 	Browser *BrowserAbout `json:"browser,omitempty"`
+	// D190: live (open) and live_turn: whose turn (agent | you) and whether
+	// this window holds the user's; Task: the task whose tab a watch shows.
+	// live_doing: what the task just did (nil: nothing just now).
+	Turn  string     `json:"turn,omitempty"`
+	Here  bool       `json:"here,omitempty"`
+	Task  *LiveTask  `json:"task,omitempty"`
+	Doing *LiveDoing `json:"doing,omitempty"`
 }
 
 // Words are the same words in both languages: the client shows its own.
@@ -1442,6 +1456,40 @@ type BrowserAbout struct {
 // TryLive is the decisionId of a 试一下 / Try it live view (no card).
 const TryLive = "try"
 
+// WatchLive is the decisionId of a 看它上网 / Watch it browse view (D190).
+const WatchLive = "watch"
+
+// LiveTask is the task whose tab a live view shows (D190).
+type LiveTask struct {
+	Title   string `json:"title"`
+	Harness string `json:"harness"`
+}
+
+// LiveDoing is one step a task just took in its tab (D190); X, Y are where
+// it clicked, as fractions of the page (nil: not said).
+type LiveDoing struct {
+	Kind  string   `json:"kind"`
+	Host  string   `json:"host,omitempty"`
+	Label string   `json:"label,omitempty"`
+	Key   string   `json:"key,omitempty"`
+	X     *float64 `json:"x,omitempty"`
+	Y     *float64 `json:"y,omitempty"`
+}
+
+// LiveTurnReq is 换我来 / My turn (Mine) or 还给它 / Hand it back (D190).
+type LiveTurnReq struct {
+	T    string `json:"t"` // "live_turn"
+	ID   string `json:"id"`
+	Mine bool   `json:"mine"`
+}
+
+// LivePauseReq stops frames while the view is out of sight (D190).
+type LivePauseReq struct {
+	T      string `json:"t"` // "live_pause"
+	ID     string `json:"id"`
+	Paused bool   `json:"paused"`
+}
+
 type SiteView struct {
 	Site       string `json:"site"`
 	SignedInAt string `json:"signedInAt"`
@@ -1457,6 +1505,10 @@ type LiveOpenReq struct {
 	Scale      float64 `json:"scale,omitempty"`
 	// Try (D154): 试一下 / Try it, a harmless page with no card (DecisionID TryLive).
 	Try bool `json:"try,omitempty"`
+	// D190: TaskID with DecisionID WatchLive watches that task's tab; Device is
+	// whose browser Try it opens ("local" or a device id).
+	TaskID string `json:"taskId,omitempty"`
+	Device string `json:"device,omitempty"`
 }
 
 // LiveInput is one pointer, wheel, text, key or nav input; X, Y are fractions
@@ -1474,6 +1526,10 @@ type LiveInput struct {
 	Key    string  `json:"key,omitempty"`
 	Shift  bool    `json:"shift,omitempty"`
 	Action string  `json:"action,omitempty"` // nav: back | forward | reload
+	URL    string  `json:"url,omitempty"`    // go (D190): a typed web address
+	Width  int     `json:"width,omitempty"`  // resize
+	Height int     `json:"height,omitempty"` // resize
+	Scale  float64 `json:"scale,omitempty"`  // resize
 }
 
 // LiveInputReq, LiveAckReq and LiveCloseReq drive a live view (D151).
@@ -1535,7 +1591,7 @@ func DecodeServerFrame(data []byte) (ServerFrame, error) {
 	case "welcome", "events", "on_hand", "task_history", "sent", "action_result", "error",
 		"devices", "ability_result", "pair_code", "rename_result", "disconnect_result", "update_result", "agent_update_result", "mem_plugin_result", "settings", "connections", "connection_result", "rules", "candidates", "activity",
 		"task_new_options", "task_new_result", "open_task", "open_result", "project_add_result",
-		"first_screen", "folder_changes", "close_result", "live", "live_frame", "browser_sites", "browser_check", "connection_reads":
+		"first_screen", "folder_changes", "close_result", "live", "live_frame", "live_turn", "live_doing", "browser_sites", "browser_check", "connection_reads":
 	default:
 		return f, fmt.Errorf("unknown server frame %q", f.T)
 	}

@@ -214,6 +214,24 @@ While that view is open, the task can't see the page at all: it waits. Your pass
 codes go from your keyboard to the site and nowhere else; nothing of it is shown to the AI or
 kept in your conversation. **Not now** closes the view and leaves the question open.
 
+**Watching it browse.** While a task works in the server's browser, you can watch the page live:
+tap **Watch it browse** in the task, or **Watch** beside it on the server's **Browse** block (on
+a wide screen, on its card in On hand too). You see the page as the task works, with a calm line
+of what it is doing: *Opening shop.example.com*, *Clicking "Add to cart"*, *Typing in "Search"*.
+Watching changes nothing for the task, and nothing you tap goes in. On a phone, double-tap the
+page to zoom in, and again to zoom out.
+
+**Your turn.** Tap **My turn** to use the page yourself: a band says plainly that it's your turn
+and that the task can't see the page or touch it; the task waits. Tap the address to open
+another page, use the back and forward arrows, type (Chinese input included; on a phone the
+keyboard button brings up the keyboard). When you're done, tap **Hand it back**: the task carries
+on, and if the page changed while you had it, it is told where it is now. Closing the view hands
+it back too. This is also the easy way to sign in to a site before a task needs it: sites you
+sign in to on your turn join **Signed-in sites**.
+
+When the app goes to the background the picture pauses, so it costs nothing on your data; it
+picks up again when you come back.
+
 **Signed-in sites.** The **i** on the server's **Browse** chip lists the sites you signed into
 there. **Sign out** forgets one site's sign-in on the server; **Clear all** forgets every one.
 (To be sure, also sign that session out on the site's own security page.) From a terminal:

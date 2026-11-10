@@ -474,7 +474,7 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		s.Devices, s.Reach, s.DevicesAt = f.Devices, f.Reach, time.Now()
 	case "ability_result":
 		s.AbilityResults = append(s.AbilityResults, f)
-	case "live", "live_frame":
+	case "live", "live_frame", "live_turn", "live_doing":
 		s.applyLive(f)
 	case "browser_sites":
 		fc := f

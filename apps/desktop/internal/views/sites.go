@@ -41,10 +41,31 @@ func (a *App) tryRow(c *ui.Context, dv *protocol.DeviceView) {
 	if dv.State != protocol.DeviceAwake {
 		return
 	}
+	// D190: the tasks using this computer's browser now, each with 看看 / Watch.
+	if a.S.OnHand != nil {
+		for _, card := range a.S.OnHand.Tasks {
+			if card.Browsing == nil || card.Browsing.Device != dv.ID {
+				continue
+			}
+			switch card.Attention {
+			case protocol.Working, protocol.Queued, protocol.NeedsYou, protocol.Blocked:
+			default:
+				continue
+			}
+			id, title := card.TaskID, card.Title
+			ui.Row(c.Key("browsing:" + id)).Gap(t.S3).AlignItems(ui.Center).Children(func() {
+				a.coinBox(c, "browsing:"+id, card.Harness, 20, false, coinStill)
+				ui.Text(c, a.L.T("live.using", title)).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.5).Grow(1).MinWidth(0)
+				if a.buttonFor(c, a.L.T("live.watch"), title, btnSecondary, t.ControlSM, t.Surface) {
+					a.OpenWatch(id)
+				}
+			})
+		}
+	}
 	ui.Row(c.Key("try:" + dv.ID)).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 		ui.Text(c, a.L.T("web.try.about")).FontSize(t.SM).TextColor(t.InkSoft).LineHeight(1.5).Grow(1).MinWidth(0)
 		if a.buttonFor(c, a.L.T("web.try"), a.L.T("ability.web"), btnSecondary, t.ControlSM, t.Surface) {
-			a.OpenTry()
+			a.OpenTryOn(dv.ID)
 		}
 	})
 }

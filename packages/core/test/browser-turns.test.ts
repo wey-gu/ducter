@@ -174,6 +174,12 @@ describe("看它上网 / Watch it browse (D190)", () => {
     r.emit(r.frame("S1"));
     await Bun.sleep(5);
     expect(sent().length).toBe(k);
+    // Back in sight: the screencast starts again and the next frame goes out.
+    await r.live.pause(r.sink, id, false);
+    expect(r.calls.filter((c) => c.method === "Page.startScreencast").length).toBe(casts.length + 1);
+    r.emit(r.frame("S1", "BACK"));
+    await Bun.sleep(5);
+    expect(sent().at(-1)!.data).toBe("BACK");
     r.td.cleanup();
   }, 10_000);
 });

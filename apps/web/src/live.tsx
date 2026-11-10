@@ -135,7 +135,7 @@ export function LiveView() {
     return () => clearTimeout(id);
   }, [lv?.doingAt]);
   useEffect(() => {
-    if (editing) addr.current?.select();
+    if (editing) addr.current?.focus(), addr.current?.select();
   }, [editing]);
   // IME text (Chinese, Japanese…) goes in once, as committed. Listened for directly: Preact's
   // onCompositionStart becomes a "CompositionStart" event (no oncompositionstart on inputs), which
@@ -246,7 +246,7 @@ export function LiveView() {
                 autoCapitalize="off"
                 spellcheck={false}
                 onBlur={() => setEditing(false)}
-                onKeyDown={(e) => e.key === "Escape" && setEditing(false)}
+                onKeyDown={(e) => (e.key === "Escape" ? setEditing(false) : e.key === "Enter" && !e.isComposing && (e.preventDefault(), go(e.currentTarget.value)))}
               />
             </form>
           ) : mine ? (

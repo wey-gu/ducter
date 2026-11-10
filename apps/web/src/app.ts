@@ -360,6 +360,10 @@ class AppState {
     for (const [id, t] of this.S.tasks) if (finished(t) && before.has(id) && !["done", "done_claimed", "failed"].includes(before.get(id)!)) this.doneAt = Date.now();
     if (f.t === "action_result") this.actSent.delete(f.taskId);
     if (f.t === "welcome") {
+      // D190: a new socket (the phone came back from the background, the link dropped): the old
+      // socket's live view closed with it on the home, so the view that's still on screen opens
+      // again, the same way (a watch stays a watch; the user's turn ended with the old socket).
+      if (this.live?.id) queueMicrotask(() => this.retryLive());
       this.readSent = 0;
       // What the old socket left unanswered: actions are settled from the Log after the replay;
       // messages go again, in order (core dedupes them, so none shows or lands twice).

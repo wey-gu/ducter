@@ -221,6 +221,23 @@ export function createLive(d: LiveDeps): Live {
       maxHeight: Math.round(Math.min(2000, v.want.height * px)),
       everyNthFrame: 1,
     });
+    // A still page paints nothing new, so the screencast may send no frame at all (a watch of a
+    // page the task is reading showed only "opening"): if none came soon, one picture of it now.
+    const session = v.sessionId;
+    const castAt = Date.now();
+    setTimeout(() => {
+      if (v.closed || v.paused || v.pending || v.lastSent >= castAt || v.sessionId !== session) return;
+      void (async () => {
+        const m = await cdp(v)("Page.getLayoutMetrics").catch(() => undefined);
+        const vp = m?.cssVisualViewport ?? m?.layoutViewport;
+        const w = Number(vp?.clientWidth) || v.width, h = Number(vp?.clientHeight) || v.height;
+        const scale = Math.min(px, Math.min(1600, v.want.width * px) / w);
+        const shot = await cdp(v)("Page.captureScreenshot", { format: "jpeg", quality: t.quality, clip: { x: Number(vp?.pageX) || 0, y: Number(vp?.pageY) || 0, width: w, height: h, scale } }).catch(() => undefined);
+        if (!shot?.data || v.closed || v.pending || v.inflight || v.sessionId !== session) return;
+        v.pending = { data: String(shot.data), width: Math.round(w), height: Math.round(h) };
+        pump(v);
+      })();
+    }, 500);
   };
   const restartCast = async (v: View) => {
     await cdp(v)("Page.stopScreencast").catch(() => {});

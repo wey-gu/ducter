@@ -38,7 +38,7 @@ export interface BridgeMessage {
 /** One recipient card from `bridge contacts`: an opaque handle plus who and where, as returned. */
 export interface BridgeContact {
   contact: string; // the opaque handle `send --to` takes; choosing it grants nothing
-  label: string; // "agent (member)", for the user's confirmation card
+  label: string; // "agent (member)" when the member has a name, else the agent alone, for the user's card
   agent?: string;
   mine?: boolean; // the user's own agent
   description?: string;
@@ -104,10 +104,18 @@ const pickName = (o: any): string | undefined => {
 };
 const agentOf = (m: any): string | undefined => pickName(m?.agent) ?? pickName(m?.sender?.agent) ?? pickName(m?.from?.agent) ?? str(m?.sender_agent_id) ?? str(m?.agent_id);
 
+/** The id in an id-only member label ("Member 4e74…"), as real contact cards carry it. */
+export function memberIdLabel(v: string): string | undefined {
+  return /^Member\s+(\S+)$/.exec(v.trim())?.[1];
+}
+
 /** A readable sender from whatever the CLI returned (an object with names/ids, or a string). */
 export function senderOf(m: any): string {
   const agent = agentOf(m);
-  const member = pickName(m?.member) ?? pickName(m?.sender?.member) ?? pickName(m?.from?.member) ?? str(m?.member_display_name) ?? str(m?.custodian_id);
+  // Only a member's name reads well; an id-only label ("Member <uuid>", the real CLI's card) never
+  // reaches a card or the conversation (research/37 §6).
+  const raw = pickName(m?.member) ?? pickName(m?.sender?.member) ?? pickName(m?.from?.member) ?? str(m?.member_display_name);
+  const member = raw && !memberIdLabel(raw) ? raw : undefined;
   const flat = typeof m?.from === "string" ? m.from : typeof m?.sender === "string" ? m.sender : undefined;
   if (agent && member && agent !== member) return `${agent} (${member})`;
   return agent ?? member ?? flat ?? "another agent";
@@ -116,10 +124,13 @@ export function senderOf(m: any): string {
 /** The member behind a message, a card or the persona's own setup: its id and name, as returned. */
 export function memberOf(m: any): { id?: string; name?: string } {
   const o = m?.member ?? m?.sender?.member ?? m?.from?.member ?? m?.owner ?? m?.agent?.owner;
+  // The real CLI (nmem 0.10.116, 2026-11-10): a contact card's member is the string "Member <id>",
+  // and passive `bridge setup` in a Space reports the user's own member as `identity.custodian_id`.
+  const labelled = typeof o === "string" ? memberIdLabel(o) : undefined;
   const id =
-    str(o?.id) ?? str(o?.member_id) ?? str(m?.member_id) ?? str(m?.sender_member_id) ?? str(m?.owner_member_id) ?? str(m?.ownerMemberId) ??
-    str(m?.agent?.ownerMemberId) ?? str(m?.agent?.owner_member_id) ?? str(m?.custodian_member_id) ?? str(m?.custodianMemberId);
-  const name = (typeof o === "string" ? o : str(o?.display_name) ?? str(o?.displayName) ?? str(o?.name)) ?? str(m?.member_display_name);
+    labelled ?? str(o?.id) ?? str(o?.member_id) ?? str(m?.member_id) ?? str(m?.sender_member_id) ?? str(m?.owner_member_id) ?? str(m?.ownerMemberId) ??
+    str(m?.agent?.ownerMemberId) ?? str(m?.agent?.owner_member_id) ?? str(m?.custodian_member_id) ?? str(m?.custodianMemberId) ?? str(m?.identity?.custodian_id);
+  const name = labelled ? str(m?.member_display_name) : ((typeof o === "string" ? o : str(o?.display_name) ?? str(o?.displayName) ?? str(o?.name)) ?? str(m?.member_display_name));
   return { ...(id ? { id } : {}), ...(name ? { name } : {}) };
 }
 
@@ -153,6 +164,17 @@ export function outgoingReads(j: any): Record<string, boolean> | undefined {
   return out;
 }
 
+/**
+ * A teammate's agent whose card names no member (the real CLI, B11) is told by its team instead:
+ * "reviewer · dev team" (D162). The user's own agents and personal Spaces keep the bare name.
+ */
+function teamLabel(c: any, label: string, mine: boolean): string {
+  const team = str(c?.space?.label);
+  const kind = str(c?.space?.kind);
+  if (mine || !team || kind === "personal" || label !== (agentOf(c) ?? label)) return label;
+  return `${label} · ${team}`;
+}
+
 /** Recipient cards from `bridge contacts --json`: `contacts[]` (or `cards[]`) with an opaque `contact`. */
 export function contactsOf(j: any, me?: string): BridgeContact[] {
   const list = Array.isArray(j?.contacts) ? j.contacts : Array.isArray(j?.cards) ? j.cards : [];
@@ -165,7 +187,7 @@ export function contactsOf(j: any, me?: string): BridgeContact[] {
     const agent = agentOf(c);
     out.push({
       contact,
-      label: senderOf(c),
+      label: teamLabel(c, senderOf(c), isMine(c, me)),
       ...(agent ? { agent } : {}),
       ...(isMine(c, me) ? { mine: true } : {}),
       ...(description ? { description: clip(description, 200) } : {}),

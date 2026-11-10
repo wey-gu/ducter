@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your other agents ask you</title>
+<!--
+  Prototype for design/bridge.md "Beyond itself" (draft D163, D164). Decides nothing: it shows the note.
+  X1 "有事问 Ducter" (top), X2 "直接接", X3 teammates. Open from the repo (art loads by relative path).
+  Tokens are Pebble's (apps/web/static/app.css); components read only these vars.
+-->
+<style>
+@font-face { font-family: "Bricolage Grotesque"; src: url("../../apps/web/static/bricolage.woff") format("woff"); font-weight: 200 800; }
+@font-face { font-family: "Ducter Rounded SC"; src: url("../../apps/web/static/fonts/rounded-sc-bold.woff2") format("woff2"); font-weight: 700 900; size-adjust: 94%; unicode-range: U+2E80-9FFF, U+3000-303F, U+F900-FAFF, U+FF00-FFEF; }
+@font-face { font-family: "JetBrains Mono"; src: url("../../apps/web/static/fonts/jetbrains-mono.woff2") format("woff2"); }
+:root {
+  --bg: #fff6ea; --bg-deep: #fcecd7; --surface: #ffffff; --sunken: #f7ebda; --surface-sunken: #f3e6d3;
+  --ink: #2b2118; --ink-soft: #4a3d30; --ink-muted: #75654f; --faint: #c7b49a; --accent: #ff8a3d;
+  --line: #e8d9c4; --line-2: #e0c9b0; --line-soft: #f3e6d3;
+  --working-dot: #4ba8f0; --working-surface: #dcefff; --working-ink: #174a75;
+  --waiting-dot: #ffc94d; --waiting-surface: #fff0bf; --waiting-ink: #6b5000;
+  --needs-surface: #ffe3cf; --needs-ink: #8a3a0c;
+  --done-ink: #1f5e2f; --dusk-ink: #4b4a7a;
+  --base: 0 4px 0 var(--line); --press-primary: #140d07; --primary-top: #3b2d22; --press-quiet: #cdae8c;
+  --drop: 0 7px 12px -4px rgba(43,33,24,.28); --floating: 0 10px 32px rgba(43,33,24,.14);
+  --term-bg: #2b2118; --term-ink: #f3e6d3; --term-muted: #a8957c;
+  --font: "Bricolage Grotesque", "PingFang SC", "Noto Sans SC", system-ui, sans-serif;
+  --head: "Bricolage Grotesque", "Ducter Rounded SC", "PingFang SC", "Noto Sans SC", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --r-sm: 12px; --r-btn: 14px; --r-md: 16px; --r-lg: 24px; --r-xl: 28px;
+  --spring: cubic-bezier(.34,1.56,.64,1); --ease: cubic-bezier(.2,.8,.2,1);
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 var(--font); padding: 0 24px 80px; }
+body:lang(zh) { line-height: 1.75; }
+h1, h2, h3, h4 { font-family: var(--head); margin: 0; }
+button { font: inherit; color: inherit; }
+
+.top { position: sticky; top: 0; z-index: 50; display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; padding: 16px 0 12px; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(8px); }
+.top h1 { font-size: 20px; font-weight: 800; }
+.top .sub { color: var(--ink-muted); font-size: 13px; }
+.seg { display: inline-flex; background: var(--surface-sunken); border-radius: var(--r-md); padding: 4px; gap: 2px; }
+.seg button { border: 0; background: transparent; padding: 6px 14px; border-radius: 12px; font-weight: 700; font-size: 13px; color: var(--ink-muted); cursor: pointer; white-space: nowrap; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 2px 0 var(--line); }
+.board { max-width: 1240px; margin: 32px auto 0; }
+.board > header { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.board > header h2 { font-size: 20px; font-weight: 800; }
+.board > header .id { font: 700 12px var(--mono); color: var(--ink-muted); background: var(--surface-sunken); border-radius: 8px; padding: 2px 8px; }
+.board > header p { margin: 0; color: var(--ink-muted); font-size: 13px; flex: 1 0 100%; }
+.row { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+.cap { font-size: 12px; color: var(--ink-muted); margin: 8px 4px 0; max-width: 420px; }
+.frame { background: var(--bg-deep); border-radius: var(--r-xl); padding: 24px; }
+
+/* The other side: a terminal (literal, not Ducter's UI) */
+.term { width: 440px; max-width: 100%; background: var(--term-bg); color: var(--term-ink); border-radius: 16px; padding: 14px 16px 16px; font: 13px/1.6 var(--mono); box-shadow: var(--floating); }
+.term .bar { display: flex; gap: 6px; margin-bottom: 10px; }
+.term .bar i { width: 10px; height: 10px; border-radius: 50%; background: #5b4a3a; }
+.term .bar span { margin-left: 8px; color: var(--term-muted); font-size: 12px; }
+.term p { margin: 0 0 6px; white-space: pre-wrap; }
+.term .you { color: #ffcf9e; }
+.term .mu { color: var(--term-muted); }
+.term .in { color: #bfe6a8; }
+
+/* Phone */
+.phonef { width: 390px; height: 660px; background: var(--bg); border-radius: 40px; box-shadow: 0 0 0 10px #2b2118, var(--floating); overflow: hidden; position: relative; flex: none; }
+.phonef .scroll { position: absolute; inset: 0; overflow-y: auto; padding: 56px 14px 24px; display: flex; flex-direction: column; gap: 10px; }
+.phonef .hd { display: flex; align-items: center; gap: 10px; margin: 0 4px 6px; }
+.phonef .hd img { width: 40px; height: 40px; }
+.phonef .hd b { font: 800 18px var(--head); }
+.bub { max-width: 88%; padding: 11px 15px; font-size: 15px; line-height: 1.6; }
+.bub.you { align-self: flex-end; background: var(--accent); border-radius: 20px 20px 6px 20px; }
+.bub.partner { align-self: flex-start; background: var(--surface); border-radius: 20px 20px 20px 6px; box-shadow: var(--base); }
+.quiet { align-self: center; font-size: 12px; color: var(--ink-muted); background: var(--surface-sunken); border-radius: 999px; padding: 3px 12px; display: inline-flex; align-items: center; gap: 6px; max-width: 94%; }
+.quiet img { width: 16px; height: 16px; }
+
+/* The decision card asked for an outside agent (D164) */
+.ask { align-self: stretch; background: var(--surface); border-radius: var(--r-lg); box-shadow: var(--base), inset 0 0 0 2px var(--needs-surface); padding: 14px 16px 14px; }
+.ask .who { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 800; color: var(--needs-ink); }
+.ask .who img { width: 34px; height: 34px; }
+.ask .who small { display: block; font-weight: 600; color: var(--ink-muted); }
+.ask .q { font-size: 16px; font-weight: 700; margin: 10px 0 12px; line-height: 1.55; }
+.ask .opts { display: flex; flex-direction: column; gap: 8px; }
+.ask .o { display: flex; align-items: center; justify-content: space-between; gap: 8px; border: 0; cursor: pointer; text-align: left; font-weight: 800; font-size: 15px; padding: 11px 14px; border-radius: var(--r-btn); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-2), 0 3px 0 var(--press-quiet); transition: transform 70ms ease-out, box-shadow 70ms ease-out; }
+.ask .o:active { transform: translateY(2px); box-shadow: inset 0 0 0 1px var(--line-2), 0 1px 0 var(--press-quiet); }
+.ask .o .sug { font-size: 11px; font-weight: 800; color: var(--needs-ink); background: var(--needs-surface); border-radius: 6px; padding: 1px 7px; white-space: nowrap; }
+.ask .o.chosen { background: linear-gradient(var(--primary-top), var(--ink)); color: #fff6ea; box-shadow: 0 3px 0 var(--press-primary); }
+.ask .o.chosen .sug { background: rgb(255 255 255 / .16); color: #fff6ea; }
+.ask .r { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; font-size: 12px; color: var(--ink-muted); }
+.ask .r .reply { font-weight: 800; color: var(--ink-soft); cursor: pointer; }
+.ask.done { box-shadow: var(--base); opacity: .72; }
+.coin-bob { animation: bob 2.6s ease-in-out infinite; }
+@keyframes bob { 50% { transform: translateY(-2px); } }
+.enter { animation: enter 360ms var(--spring) both; }
+@keyframes enter { from { transform: translateY(10px) scale(.97); opacity: 0; } }
+
+/* On hand · Needs you (desktop) */
+.lane { width: 520px; max-width: 100%; }
+.lane h3 { font-size: 15px; font-weight: 800; color: var(--needs-ink); margin: 0 0 10px 4px; display: flex; gap: 8px; align-items: baseline; }
+.lane h3 span { font-size: 12px; color: var(--ink-muted); }
+.dc { background: var(--surface); border-radius: var(--r-lg); box-shadow: var(--base); padding: 14px 18px; margin-bottom: 12px; }
+.dc .t { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--ink-muted); font-weight: 700; }
+.dc .t img { width: 26px; height: 26px; }
+.dc .t b { color: var(--ink); font-size: 14px; }
+.dc .t .from { font-size: 11px; font-weight: 800; color: var(--needs-ink); background: var(--needs-surface); border-radius: 6px; padding: 1px 7px; margin-left: auto; white-space: nowrap; }
+.dc .qq { font-size: 15px; font-weight: 700; margin: 8px 0 10px; }
+.dc .acts { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.dc .def { font-size: 12px; color: var(--ink-muted); margin-left: auto; }
+.btn { border: 0; cursor: pointer; font-weight: 800; font-size: 14px; border-radius: var(--r-btn); padding: 8px 16px; white-space: nowrap; }
+.btn.primary { color: #fff6ea; background: linear-gradient(var(--primary-top), var(--ink)); box-shadow: 0 3px 0 var(--press-primary), var(--drop); }
+.btn.secondary { background: var(--surface); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line-2), 0 3px 0 var(--press-quiet); }
+.btn.text { background: none; padding: 8px 4px; color: var(--ink-soft); }
+.timer { display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: conic-gradient(var(--ink-muted) 0 70%, var(--line) 70% 100%); vertical-align: -2px; margin-right: 4px; }
+
+/* Settings › Partner: learned rules (D161's list) */
+.rules { width: 520px; max-width: 100%; }
+.rules h3 { font-size: 18px; font-weight: 800; margin: 0 0 4px 4px; }
+.rules .lede { font-size: 13px; color: var(--ink-muted); margin: 0 0 10px 4px; }
+.rcard { background: var(--surface); border-radius: var(--r-lg); box-shadow: var(--base); }
+.rrow { display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 12px 20px; }
+.rrow + .rrow { border-top: 1px solid var(--line-soft); }
+.rrow img { width: 30px; height: 30px; flex: none; }
+.rrow .tx { flex: 1; }
+.rrow .tx b { display: block; font-size: 15px; }
+.rrow .tx small { font-size: 12px; color: var(--ink-muted); }
+.rrow .lnk { font-weight: 800; font-size: 13px; color: var(--ink-soft); cursor: pointer; white-space: nowrap; }
+.sw { width: 44px; height: 26px; border-radius: 13px; background: var(--line-2); position: relative; flex: none; cursor: pointer; transition: background .2s; }
+.sw::after { content: ""; position: absolute; left: 3px; top: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--surface); box-shadow: 0 2px 0 var(--press-quiet); transition: transform 240ms var(--spring); }
+.sw.on { background: var(--working-dot); }
+.sw.on::after { transform: translateX(18px); }
+.cmd { margin: 0 20px 14px 62px; font: 12px/1.6 var(--mono); background: var(--sunken); border-radius: 10px; padding: 8px 10px; color: var(--ink-soft); }
+
+.still * { animation: none !important; transition: none !important; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+.row > div { max-width: 100%; min-width: 0; }
+.term p { overflow-wrap: anywhere; }
+@media (max-width: 520px) {
+  body { padding: 0 16px 60px; }
+  .frame { padding: 12px; }
+  .phonef { width: calc(100vw - 52px); }
+  .cmd { margin-left: 20px; overflow-wrap: anywhere; }
+}
+</style>
+</head>
+<body>
+<div class="top">
+  <h1 id="h1"></h1>
+  <span class="sub" id="sub"></span>
+  <div class="seg" id="lang"><button data-v="zh" aria-pressed="true">中文</button><button data-v="en" aria-pressed="false">English</button></div>
+  <div class="seg" id="mot"><button data-v="motion" aria-pressed="true">motion</button><button data-v="still" aria-pressed="false">still</button></div>
+  <button class="btn secondary" id="replay"></button>
+</div>
+<main id="app"></main>
+<script>
+const C = "../../apps/desktop/internal/theme/art/clay/";
+const ART = {
+  ducter: "../../apps/site/public/art/ducter_idle-320.webp",
+  claude: C + "coin_claude_code@256.png", codex: C + "coin_codex@256.png", plain: C + "coin_off_plain@256.png",
+};
+const PARTNER = "小鸭", PARTNER_EN = "Duckie";
+let lang = "zh", answered = null, stopRule = false, teamOn = false;
+// zh never has a space between two Han characters (D78).
+const L = (zh, en) => (lang === "zh" ? zh.replace(/([㐀-鿿])\s+(?=[㐀-鿿])/g, "$1") : en);
+const name = () => (lang === "zh" ? PARTNER : PARTNER_EN);
+
+function terminal(after) {
+  return `<div class="term">
+    <div class="bar"><i></i><i></i><i></i><span>claude · ~/dev/ducter · fix-linux-ci</span></div>
+    <p class="you">&gt; ${L("我出门吃饭了，要我定的事发给 Ducter", "Heading out for lunch. Send anything you need me to decide to Ducter")}</p>
+    <p>${L("好。CI 还差 macOS 那一项。到了要推的时候我会问你的 Ducter，等它回话。", "OK. CI still has the macOS job left. When it's time to push I'll ask your Ducter and wait for the answer.")}</p>
+    <p class="mu">· nmem bridge send → Ducter</p>
+    ${after
+      ? `<p class="in">${L(`Ducter 回复：用户选了：「${answered}」`, `Ducter replied: The user chose: «${answered}»`)}</p>
+         <p>${L("收到，等 macOS 跑完再推。", "Got it. I'll push after the macOS job finishes.")}</p>`
+      : `<p class="mu">${L("· 等回话（最多 30 分钟）", "· waiting for the answer (up to 30 min)")}</p>`}
+  </div>`;
+}
+
+const OPTS = () => [
+  { id: "wait", zh: "等 macOS 跑完再推", en: "Wait for macOS, then push", sug: true },
+  { id: "now", zh: "现在推", en: "Push now" },
+];
+
+function askCard() {
+  const done = !!answered;
+  return `<div class="ask enter ${done ? "done" : ""}">
+    <div class="who"><img class="${done ? "" : "coin-bob"}" src="${ART.claude}" alt="Claude Code">
+      <div>${L("你的 terminal-claude 问你", "Your terminal-claude asks")}<small>~/dev/ducter · fix-linux-ci</small></div></div>
+    <div class="q">${L("Linux 那几项已经绿了，就差 macOS。现在把 fix-linux-ci 推上去，还是等 macOS 跑完？", "The Linux jobs are green; only macOS is left. Push fix-linux-ci now, or wait for macOS to finish?")}</div>
+    <div class="opts">${OPTS().map((o) => `<button class="o ${answered === (lang === "zh" ? o.zh : o.en) ? "chosen" : ""}" data-o="${o.id}" ${done ? "disabled" : ""}>
+      <span>${L(o.zh, o.en)}</span>${o.sug ? `<span class="sug">${L("它建议", "It suggests")}</span>` : ""}</button>`).join("")}</div>
+    <div class="r"><span><span class="timer"></span>${L("没回就让它先等着", "If you don't answer, it keeps waiting")}</span><span class="reply">${L("回复…", "Reply…")}</span></div>
+  </div>`;
+}
+
+function phone() {
+  return `<div class="phonef"><div class="scroll">
+    <div class="hd"><img src="${ART.ducter}" alt=""><b>${name()}</b></div>
+    <div class="bub you">${L("我出门吃个饭，一小时回来", "Out for lunch, back in an hour")}</div>
+    <div class="bub partner">${L("好，路上慢点。", "Enjoy it.")}</div>
+    <div class="quiet"><img src="${ART.claude}" alt="">${L("你的 terminal-claude 问你 · 要不要现在推", "Your terminal-claude asks · push now?")}</div>
+    ${askCard()}
+    ${answered ? `<div class="quiet enter">${L("已回复 你的 terminal-claude", "Replied to your terminal-claude")}</div>` : ""}
+  </div></div>`;
+}
+
+function lane() {
+  return `<div class="lane"><h3>${L("等你", "Needs you")} <span>2</span></h3>
+    <div class="dc"><div class="t"><img src="${ART.codex}" alt="Codex"><b>${L("HawDB 基准测试", "HawDB benchmark")}</b></div>
+      <div class="qq">${L("基准跑完了，比上周慢 4%。要我查原因吗？", "The benchmark finished, 4% slower than last week. Shall I look into why?")}</div>
+      <div class="acts"><button class="btn primary">${L("查", "Look")}</button><button class="btn text">${L("先不", "Hold")}</button><span class="def"><span class="timer"></span>${L("20 分钟后先不查", "Holds in 20 min")}</span></div></div>
+    <div class="dc"><div class="t"><img class="coin-bob" src="${ART.claude}" alt="Claude Code"><b>${L("你的 terminal-claude", "your terminal-claude")}</b> · ~/dev/ducter</div>
+      <div class="qq">${L("现在推 fix-linux-ci，还是等 macOS 跑完？", "Push fix-linux-ci now, or wait for macOS?")}</div>
+      <div class="acts"><button class="btn secondary">${L("等 macOS 跑完再推", "Wait for macOS")}</button><button class="btn secondary">${L("现在推", "Push now")}</button><button class="btn text">${L("回复…", "Reply…")}</button><span class="def"><span class="timer"></span>${L("没回就让它先等着", "Keeps waiting")}</span></div></div>
+  </div>`;
+}
+
+function standing() {
+  return `<div class="phonef"><div class="scroll">
+    <div class="hd"><img src="${ART.ducter}" alt=""><b>${name()}</b></div>
+    <div class="quiet"><img src="${ART.claude}" alt="">${L("你的 terminal-claude 发来请求 · 修 CLI 的 --json 输出", "Request from your terminal-claude · fix the CLI's --json output")}</div>
+    <div class="bub partner">${L("开个任务修 ducter status 的 --json 输出？只改 CLI，做完把结果回给它。", "Open a task to fix ducter status --json? CLI only; the result goes back to it.")}
+      <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap"><button class="btn primary">${L("好", "Go")}</button><button class="btn text">${L("先不", "Hold")}</button></div></div>
+    <div class="bub partner enter">${L("这是它这周第三次找你了。以后你的 terminal-claude 发来的活，直接接？", "That's its third this week. Take work from your terminal-claude without asking from now on?")}
+      <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap"><button class="btn secondary">${L("直接接", "Take it directly")}</button><button class="btn primary">${L("还是先问我", "Keep asking me")}</button></div>
+      <div style="font-size:12px;color:var(--ink-muted);margin-top:8px">${L("只限你已经在用的文件夹和电脑；新仓库、推到 main、往外发消息照旧先问你。一天最多 5 件。", "Only folders and computers you already use; a new repo, a push to main or a message out still asks you. At most 5 a day.")}</div></div>
+  </div></div>`;
+}
+
+function rules() {
+  return `<div class="rules"><h3>${L("伙伴", "Partner")}</h3><p class="lede">${L(`${name()} 记住的做法`, `What ${name()} has learned`)}</p>
+    <div class="rcard">
+      <div class="rrow"><img src="${ART.claude}" alt=""><div class="tx"><b>${stopRule ? L("你的 terminal-claude 发来的活，先问你", "Work from your terminal-claude asks you first") : L("你的 terminal-claude 发来的活直接接", "Work from your terminal-claude starts without asking")}</b><small>${L("你接过两次以后定的", "Set after you took it twice")}</small></div><span class="lnk" data-act="stop">${stopRule ? L("撤销", "Undo") : L("不再直接接", "Stop")}</span></div>
+      <div class="rrow"><img src="${ART.plain}" alt=""><div class="tx"><b>${L(`让 dev team 里的 agent 也能找到 ${name()}`, `Let agents in dev team reach ${name()}`)}</b><small>${L("它们能问，不能让我开任务；每个一天最多 20 条", "They can ask, never open tasks; at most 20 messages a day each")}</small></div><span class="sw ${teamOn ? "on" : ""}" data-act="team" role="switch" aria-checked="${teamOn}"></span></div>
+      ${teamOn ? `<div class="cmd enter">${L("在 Nowledge Mem 里确认一次（Ducter 不替你做）：", "Confirm it once in Nowledge Mem (Ducter never does this for you):")}<br>nmem agents context select-cloud --name ducter-dev-team --agent-id ducter --space-id &lt;dev team&gt;</div>` : ""}
+      <div class="rrow"><img src="${ART.plain}" alt="" style="opacity:.6"><div class="tx"><b>${L("不再听 reviewer · dev team 的", "Stopped listening to reviewer · dev team")}</b><small>${L("它发来的不会再打开", "Its messages aren't opened any more")}</small></div><span class="lnk">${L("恢复", "Undo")}</span></div>
+    </div></div>`;
+}
+
+function render() {
+  document.documentElement.lang = lang;
+  document.getElementById("h1").textContent = L("你的其他 AI 来问你", "Your other agents ask you");
+  document.getElementById("sub").textContent = L("草稿 D163、D164 · 只是展示，不做决定", "Draft D163, D164 · shows, decides nothing");
+  document.getElementById("replay").textContent = L("重来", "Replay");
+  document.getElementById("app").innerHTML = `
+  <section class="board"><header><h2>${L("有事问 Ducter", "“Ask Ducter”")}</h2><span class="id">X1 · D164</span>
+    <p>${L("终端里的会话要你拍板时，问题到你手机上的伙伴这儿，一张卡，一下点完，答案由 Ducter 的代码回给它。点一个选项试试。", "When a terminal session needs your call, the question reaches your partner on the phone as one card; one tap, and Ducter's code sends your answer back. Tap an option.")}</p></header>
+    <div class="row">
+      <div><div class="frame">${terminal(!!answered)}</div><p class="cap">${L("另一边：你在终端里说一句。Ducter 这边不用设置。", "The other side: one sentence in the terminal. Nothing to set up in Ducter.")}</p></div>
+      <div>${phone()}<p class="cap">${L("它的建议标出来，但不替你选；没回就让它等着，不会替你答应。", "Its suggestion is marked, never chosen for you; if you don't answer it waits, nothing is agreed for you.")}</p></div>
+    </div></section>
+  <section class="board"><header><h2>${L("手头的事 · 等你", "On hand · Needs you")}</h2><span class="id">X1</span>
+    <p>${L("和 Ducter 自己的任务排在一起：同样的硬币、同样一个问题；标题的位置写的是谁在问、在哪儿。", "Beside Ducter's own tasks: the same coin, the same one question; where a title would be, who is asking and where it works.")}</p></header>
+    <div class="row"><div class="frame">${lane()}</div></div></section>
+  <section class="board"><header><h2>${L("直接接", "Take it directly")}</h2><span class="id">X2 · D163</span>
+    <p>${L("同一个 agent 的活你点过两次「好」，伙伴才问一次要不要以后直接接；默认还是先问你。", "Only after you said Go twice to the same agent does the partner ask, once; the default keeps asking you.")}</p></header>
+    <div class="row"><div>${standing()}</div><div class="frame">${rules()}<p class="cap">${L("学到的做法都在这儿，一下撤销。打开团队那一行试试。", "Everything it learned is here, one tap to undo. Try the team switch.")}</p></div></div></section>`;
+  bind();
+}
+
+function bind() {
+  document.querySelectorAll(".ask .o").forEach((b) => b.addEventListener("click", () => {
+    const o = OPTS().find((x) => x.id === b.dataset.o);
+    answered = lang === "zh" ? o.zh : o.en;
+    render();
+  }));
+  document.querySelectorAll("[data-act=stop]").forEach((b) => b.addEventListener("click", () => { stopRule = !stopRule; render(); }));
+  document.querySelectorAll("[data-act=team]").forEach((b) => b.addEventListener("click", () => { teamOn = !teamOn; render(); }));
+}
+document.querySelectorAll("#lang button").forEach((b) => b.addEventListener("click", () => {
+  lang = b.dataset.v; answered = null;
+  document.querySelectorAll("#lang button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  render();
+}));
+document.querySelectorAll("#mot button").forEach((b) => b.addEventListener("click", () => {
+  document.body.classList.toggle("still", b.dataset.v === "still");
+  document.querySelectorAll("#mot button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+}));
+document.getElementById("replay").addEventListener("click", () => { answered = null; stopRule = false; teamOn = false; render(); });
+const q = new URLSearchParams(location.search);
+if (q.get("lang") === "en") { lang = "en"; document.querySelectorAll("#lang button").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.v === "en"))); }
+if (q.get("still")) document.body.classList.add("still");
+render();
+if (q.get("answer")) { const o = OPTS().find((x) => x.id === q.get("answer")); if (o) { answered = lang === "zh" ? o.zh : o.en; render(); } }
+if (q.get("team")) { teamOn = true; render(); }
+</script>
+</body>
+</html>

@@ -36,6 +36,8 @@ const PEER_MODEL = arg("peer-model", "haiku")!;
 const CTX = arg("context", REAL ? "ducter-test" : "ducter-main")!;
 const PEER_CTX = arg("peer-context", REAL ? "terminal-test" : "terminal-claude")!;
 const PEER_CONFIG = arg("peer-config-dir");
+// The persona's Mem identity (D141: `ducter` for the default persona); the trial's context must select it.
+const PERSONA_AGENT = arg("persona-agent", "ducter")!;
 const OUT = resolve(arg("out", join(homedir(), "dev", "ducter-evidence", "bridge"))!);
 const ONLY = arg("only", REAL ? "s1,s2,s3" : "s1,s2,s3,j6")!.split(",");
 const STAMP = new Date().toISOString().replace(/[:.]/g, "-");
@@ -103,8 +105,35 @@ async function preflight(): Promise<boolean> {
     const ready = code === 0 && st === "ready";
     say(`  ${ready ? "✓" : "✗"} ${name}: exit ${code}, state ${st || "(none)"}${ready ? "" : ` ${err.trim().slice(0, 200)}`}`);
     ok &&= ready;
+    // D141: the persona's mailbox is the persona's own identity. Read-only (`context show` never
+    // contacts the mailbox backend); a context that selects another identity is reported, not used.
+    if (name === CTX && ready) {
+      const show = Bun.spawn([nmem, "--json", "agents", "context", "show", "--name", name], { env: e, stdout: "pipe", stderr: "ignore" });
+      const text = await new Response(show.stdout).text();
+      await show.exited;
+      let agentId = "";
+      try {
+        const j = JSON.parse(text);
+        agentId = String(j.agent_id ?? j.identity?.agent_id ?? j.context?.agent_id ?? "");
+      } catch {
+        /* not JSON */
+      }
+      const same = agentId === PERSONA_AGENT;
+      say(`  ${same ? "✓" : "✗"} ${name} is the persona's identity (${PERSONA_AGENT}): ${agentId || "(not reported)"}`);
+      ok &&= same || !agentId; // unreported: the trial goes on and the record says so
+    }
   }
-  if (!ok) say("\nNot ready. Finish J-Q14 steps 1–4 (cohort, Space, two contexts, `bridge setup --enable` for each), then run this again.");
+  if (!ok)
+    say(
+      [
+        "\nNot ready. On your side (Ducter never does these):",
+        `  1. nmem agents context select-cloud --name ${CTX} --agent-id ${PERSONA_AGENT} --space-id <the Space you choose>`,
+        `  2. nmem --agent-context ${CTX} bridge setup, then the same with --enable`,
+        `  3. the terminal side: an existing identity of yours with its own Agent key, as context ${PEER_CTX} in the same Space`,
+        "     (its own nmem config through --peer-config-dir if it can't share this one), and `bridge setup --enable` for it",
+        "Then run this again.",
+      ].join("\n"),
+    );
   return ok;
 }
 

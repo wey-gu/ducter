@@ -268,6 +268,66 @@ Ducter decides what to run.
 - **Restart gap and unknown outcome: closed (D106).** Every outgoing op is in the Log before its CLI call; a card
   survives a restart; an unknown outcome is recovered with `outbox → inspect → resume`, never resent.
 
+## 6. Live check, 2026-11-10 (the author: "bridge 似乎好了")
+
+Same machine, same `nmem 0.10.116`, the author's own connection. **Read-only and passive commands only:**
+`bridge setup` (no `--enable`), `bridge contacts` (read-only discovery), `agents list`, `agents context show`,
+and the live driver's preflight. No context was created, nothing was enabled, nothing was sent. Raw output is in
+the session scratchpad, not in git; ids are not reproduced here.
+
+| Observation | Tag |
+|---|---|
+| **The backend answers now.** `bridge contacts --query <q> --all-spaces` exits 0 with every one of the 8 Spaces `status: searched` (it was `cloud_agent_im_backend_unavailable` in all 8 on 11-09). | VERIFIED |
+| Discovery returns real cards: other agents with mailboxes exist (two of the author's own, earlier Bridge pilots, and one under another member), each repeated once per Space it is reachable in. No card matches `ducter`: the persona has no mailbox yet. | VERIFIED |
+| **The real card shape:** `{space: {id, label, kind}, member: "Member <uuid>", agent: "<name>", description, contact: "bc1:…", send_args_prefix: [...]}` under top-level `cards[]`, with `spaces[]` (`status`, `next_cursor`), `coverage_scope`, `spaces_next_args` and a `next` hint. **The member is an id-only label, never a person's name.** | VERIFIED |
+| **Passive setup in an exact Space** (no context) answers `schema_version: 1`, `state: enable_needed`, `identity {custodian_id, agent_id, identity_birth, attachment_id, attachment_generation}`, `registration_confirmed / messaging_confirmed / receiving_confirmed: false` and `next_args` (… `setup --enable`). `identity.custodian_id` equals the user's own member id on the cards. | VERIFIED |
+| That passive answer names a **retained `bridge-…` identity** from an earlier pilot, not the persona's. Running its `next_args` would enable *that* identity's mailbox. Ducter never runs it (it never passes `--enable`); the author shouldn't either for Ducter's purposes. | VERIFIED (the identity), INFERRED (the consequence) |
+| The persona's identity **`ducter` exists** (profile "Ducter", source app `ducter`, minted, D141). | VERIFIED (`agents list`) |
+| **No named Agent Context exists** (`ducter-test`, `terminal-test`, `ducter`, `ducter-main`, `terminal-claude`): `agents context show` still answers `selection_required` for a name never made (B2 unchanged), while `bridge setup --agent-context <missing>` now exits 1 with `agent context "<name>" was not found`. | VERIFIED |
+| `bun run bridge:live -- --real` stops at its preflight: both contexts not found. Nothing past the preflight ran. | VERIFIED |
+
+**Why the trial stopped there.** The approved rules (D141, the Bridge skill) say the persona's mailbox is the
+persona's own identity, chosen by the user with an exact Space, and Ducter never selects an identity, creates a
+context or enables a mailbox. A round-trip peer needs a second identity with its own Agent key, which only the
+author can choose. So no live message has gone through Ducter yet.
+
+**What the author does** (the preflight now prints this):
+1. `nmem agents context select-cloud --name ducter-test --agent-id ducter --space-id <the "Only me" Space's id>`
+2. `nmem --agent-context ducter-test bridge setup`, then the same with `--enable`.
+3. For the terminal side: an existing identity of the author's with its own standard Agent key (one of the
+   earlier pilot identities, which already have mailboxes), selected as `terminal-test` in the same Space; its own
+   nmem config through `--peer-config-dir` if it can't share this one; `bridge setup --enable` for it.
+4. `bun run bridge:live -- --real` (the preflight checks that `ducter-test` selects `ducter`).
+
+**Fixed from what the real shapes showed** (`packages/partner/src/bridge.ts`, tests in `bridge-out.test.ts`):
+- The card's `member: "Member <uuid>"` was read as a *name*, so every recipient card would have said
+  "发给 Claude 收尾协调 (Member 4e74…)？" and none would ever have been "你的". The id is now parsed out; an id-only
+  label never reaches a card or the conversation.
+- The user's own member comes from passive setup's `identity.custodian_id`, which the tolerant parser missed: with
+  the real CLI, `isMine` was always false and every agent would have been treated as a teammate's.
+- The fake Bridge now emits the real `contacts` and `setup` shapes, so the unit tests, the partner eval and the
+  fake live run exercise them. `inbox`, `open`, `outbox` and `inspect` remain guesses until a message goes through.
+
+**New findings for the Nowledge team** (not filed from this session; the author's call, D111's channel):
+- **B11 · No member name on a card.** A teammate's agent can't be told apart by whose it is ("Alex's reviewer"),
+  and a host can only show the agent's name. Expected: the member's display name, as visible to the asker.
+- **B12 · Passive setup without a context picks a retained identity.** Its `next_args` would enable an identity
+  the user never chose for this host. Expected: `selection_needed` for the identity too, as for the Space.
+- **B13 · Recipient discovery returns one card per Space for the same agent** with no hint they are one agent.
+  Fine for a context-scoped host; noisy for an all-Spaces chooser.
+- **B14 (Ducter-side, todo) · A mailbox shared by the trial and the real persona.** If the trial uses `ducter`, the
+  real Ducter later sees the trial's messages in the same inbox. Ducter needs a start mark: messages from before
+  Bridge was switched on for this persona are not requests.
+
+## 7. Implications (2026-11-10)
+
+- The Mem side is now out of the way; what blocks the live trial is two choices only the author can make (the
+  persona's context and the terminal side's identity). Everything Ducter-side is ready.
+- The two parsing bugs above would have broken D108 (你的 <agent>) and the card copy on the first real message.
+  Copying real shapes into the fake was worth more than the tolerant parser.
+- Because a member has no name on a card, a teammate's agent is shown by the agent's own name only. D108's
+  "<agent> (<name>)" becomes "<agent>" until Mem returns names (D162).
+
 ## Summary
 
 - Bridge is not usable on the author's account today: the IM backend is unavailable in all 8 Spaces, and no
@@ -287,3 +347,7 @@ Ducter decides what to run.
 - Ten dogfood findings for the Nowledge team, all filed. The most important: an unavailable backend exits 0
   (B1), there is no context list (B2), there is no account-level readiness (B3), and there are two send contracts
   and three overlapping surfaces (B4, B5).
+- **2026-11-10 (§6):** the backend now answers in every Space and real cards come back; the persona's identity
+  `ducter` exists but has no context or mailbox, so the live trial stops at its preflight until the author
+  selects the context and a terminal-side identity. Two real-shape parsing bugs (member labels, the user's own
+  member) are fixed; four new findings (B11–B14).

@@ -48,17 +48,25 @@ J-Q4, J-Q6, J-Q7 and J-Q9 to J-Q13 are answered (D105–D111, below). What is st
 - *Default:* accept; revisit for Team (J3).
 
 **J-Q14. The live trial (needs you, on Mem's side).**
-- *Status:* the Cloud IM backend reported unavailable in all 8 Spaces, and no Agent Context existed (research/37
-  §1, read-only). You are setting this up (steps 1–4).
+- *Status (2026-11-10, research/37 §6):* the backend answers in all 8 Spaces. The persona's identity `ducter`
+  exists with no mailbox, and no Agent Context exists, so the trial stops at its preflight.
 - *Steps:*
-  1. admit the account to the Bridge cohort, or bring the backend up;
+  1. done: the backend answers;
   2. use the personal "Only me" Space;
-  3. use two existing identities, one for the persona and one for the terminal session;
-  4. run `agents context select-cloud` for each (`ducter-test`, `terminal-test`), then
+  3. the persona's own identity `ducter` (D141), never a new one and never the retained pilot identity passive
+     setup offers without a context; for the terminal side an existing identity with its own Agent key;
+  4. run `agents context select-cloud` for each (`ducter-test --agent-id ducter`, `terminal-test`), then
      `bridge setup --enable` for each;
   5. `bun run bridge:live -- --real` (add `--peer-config-dir DIR` if the terminal side needs its own nmem config,
      and `DUCTER_BRIDGE_MEMBER=<your member id>` if passive setup doesn't report your member).
 - *Default:* I run step 5 when you say it's ready. `DUCTER_BRIDGE` stays off by default until it passes.
+
+**J-Q15. Beyond itself (draft D163–D164, `../bridge.md` "Beyond itself").**
+- *Recommendation:* build X1 "有事问 Ducter" first (your own agents' questions come to you as one card, the answer
+  goes back by code, silence never answers), then X2 "直接接" (a standing go learned after two Go's), then X3
+  (teammates, opt in per team, trust and quota per sender). J5 waits on #8956.
+- *Defaults:* the three as drafted; quota 20 messages a day and 3 open asks per sender; X2 offered after 2 Go's in
+  14 days, at most 5 a day; 60 s checks for 30 minutes while an own agent's conversation is live.
 
 ## Answered on 2026-11-09 (Bridge, the author's "按建议 go")
 

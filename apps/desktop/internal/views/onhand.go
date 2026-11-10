@@ -487,6 +487,9 @@ func (a *App) defaultRow(c *ui.Context, d *store.DecisionState) {
 		return
 	}
 	g := strings.TrimRight(strings.TrimSpace(d.GoLabel), ".。")
+	if d.Closing != nil {
+		g = a.L.T("move.closing.go")
+	}
 	if g == "" {
 		g = a.L.T("decision.go")
 	}

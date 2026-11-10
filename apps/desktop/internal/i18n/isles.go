@@ -5,6 +5,9 @@ package i18n
 // doesn't collide with other passes on i18n.go and ia.go.
 
 var zhIsles = Table{
+	// D157: the words on a parcel: waiting at the bridge, moved here.
+	"isles.tag.waits": "在等",
+	"isles.tag.moved": "搬到 %s 上了",
 	// Another computer (D84) while tasks run on it: 另一台电脑 · 在做 1 件事.
 	"device.other.working":     "在做 %d 件事",
 	"device.other.working.one": "在做 1 件事",
@@ -27,6 +30,8 @@ var zhIsles = Table{
 }
 
 var enIsles = Table{
+	"isles.tag.waits":          "Waiting",
+	"isles.tag.moved":          "Moved to %s",
 	"device.other.working":     "working on %d tasks",
 	"device.other.working.one": "working on 1 task",
 	"device.client.line":       "Reaches %s from anywhere",

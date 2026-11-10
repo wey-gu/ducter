@@ -163,7 +163,7 @@ func (a *App) decisionTray(c *ui.Context, d *store.DecisionState, task *store.Ta
 				if a.buttonFor(c, a.L.T("decision.reply"), about, btnText, t.ControlSM, t.Surface) {
 					a.replyOpen[d.DecisionID] = !a.replyOpen[d.DecisionID]
 				}
-				if a.buttonFor(c, a.L.T("decision.hold"), about, btnText, t.ControlSM, t.Surface) {
+				if a.buttonFor(c, a.holdLabel(d), about, btnText, t.ControlSM, t.Surface) {
 					a.Decide(d.DecisionID, "hold", "")
 				}
 				ui.Spacer(c)

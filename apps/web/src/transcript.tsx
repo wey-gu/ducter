@@ -350,7 +350,7 @@ export function whereLine(p: Place): string {
   const parts: string[] = [];
   if (p.kind === "repo") parts.push(last(p.repoPath), p.branch ?? "");
   else if (p.kind === "folder") parts.push(last(p.path));
-  else if (p.kind === "browser") parts.push((p as { profile?: string }).profile ?? "");
+  else if (p.kind === "browser" && (p as { profile?: string }).profile !== "default") parts.push((p as { profile?: string }).profile ?? "");
   const d = (p as { device?: string }).device;
   // D157: with two or more computers the computer is said apart (taskWhere), on every task.
   if (d && d !== "local" && d !== "this" && !manyComputers()) parts.push(t("task.where.on", d));
@@ -363,7 +363,8 @@ export function TaskMeta({ task, stateLabel, mark, onSwitch }: { task: Task; sta
   const a = attention(task);
   const done = finished(task);
   const [, tick] = useState(0);
-  const [why, setWhy] = useState(false);
+  const [whyFor, setWhy] = useState(""); // the task whose why is open (a tap; one task at a time)
+  const why = whyFor === task.id;
   useEffect(() => {
     if (done) return;
     const h = setInterval(() => tick((n) => n + 1), 1000);
@@ -402,7 +403,7 @@ export function TaskMeta({ task, stateLabel, mark, onSwitch }: { task: Task; sta
         <span class="who where">
           <span class="sep">·</span>
           {on.why ? (
-            <button class="where-on" title={on.why} aria-expanded={why} onClick={() => setWhy(!why)}>
+            <button class="where-on" title={on.why} aria-expanded={why} onClick={() => setWhy(why ? "" : task.id)}>
               {on.line}
             </button>
           ) : (

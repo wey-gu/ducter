@@ -571,7 +571,8 @@ func (a *App) whereLine(p protocol.Place) string {
 			parts = append(parts, f)
 		}
 	case "browser":
-		if p.Profile != "" {
+		// The persona's own profile goes unsaid (it isn't a model or a place a person picked).
+		if p.Profile != "" && p.Profile != "default" {
 			parts = append(parts, p.Profile)
 		}
 	}

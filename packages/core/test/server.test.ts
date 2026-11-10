@@ -27,7 +27,7 @@ afterEach(async () => {
 
 function boot(): Core {
   const t = tempDir();
-  const core = startCore({ dataDir: t.dir, port: 0, batchMs: 5 });
+  const core = startCore({ dataDir: t.dir, port: 0, batchMs: 5, platform: "darwin" });
   stops.push(t.cleanup, () => core.stop());
   return core;
 }

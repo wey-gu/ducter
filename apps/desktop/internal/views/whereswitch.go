@@ -150,7 +150,7 @@ func (a *App) islandStrip(c *ui.Context, task *store.Task, cands []protocol.Cand
 							continue
 						}
 						seen[cd.Harness] = true
-						if bmp := theme.Clay(coinArt(cd.Harness, 28, false)); bmp != nil {
+						if bmp := theme.Clay(coinArt(cd.Harness, false)); bmp != nil {
 							coin := ui.Box(c.Key("strip-coin:"+dv.ID+cd.Harness)).Size(28, 28).Cursor(ui.CursorPointer)
 							coin.Children(func() { ui.Image(c, bmp).Size(28, 28) })
 							if cd.Waits != "" {

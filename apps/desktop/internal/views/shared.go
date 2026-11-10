@@ -119,7 +119,7 @@ func (a *App) candRow(c *ui.Context, key, harness, name, reason string, off, cur
 		row.InsetShadow(0, 0, 0, 2, t.Ink)
 	}
 	row.Children(func() {
-		if bmp := theme.Clay(coinArt(harness, 40, off)); bmp != nil {
+		if bmp := theme.Clay(coinArt(harness, off)); bmp != nil {
 			img := ui.Image(c, bmp).Size(40, 40).Shrink(0).AccessHidden(true)
 			if off && !coinKnown(harness) {
 				img.Grayscale()

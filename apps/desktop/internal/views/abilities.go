@@ -944,7 +944,7 @@ func (a *App) accountSheet(c *ui.Context, dv *protocol.DeviceView, sw, sh float3
 	a.enter(c, sheet)
 	sheet.Children(func() {
 		ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
-			if bmp := theme.Clay(coinArt(h.Harness, 44, false)); bmp != nil {
+			if bmp := theme.Clay(coinArt(h.Harness, false)); bmp != nil {
 				ui.Image(c, bmp).Size(44, 44).Shrink(0).AccessHidden(true)
 			}
 			a.heading(c, name, t.XL).Grow(1).MinWidth(0)

@@ -10,10 +10,10 @@ import (
 	"github.com/wey-gu/ducter/apps/desktop/internal/theme"
 )
 
-// An AI agent's clay coin (tools/art/coins.py, design/art/LOGOS.md): each
-// agent Ducter knows has its own, printed with its logo where its owner
-// allows that and its name otherwise; an unknown agent gets the generic
-// clay token. The agent's name and model are always text beside the coin.
+// An AI agent's clay coin (tools/art/coins.py, D183): the agent's own mark
+// sculpted as a small clay object (Claude Code's starburst, Codex's cloud,
+// DeepSeek's whale, pi's blocks); an unknown agent gets the generic clay
+// token. The agent's name and model are always text beside the coin.
 
 // coinIDs maps a harness to its coin's art.
 var coinIDs = map[string]string{
@@ -23,34 +23,16 @@ var coinIDs = map[string]string{
 	"deepseek-harness": "deepseek_harness",
 }
 
-// coinPrintMin is the size in points below which a coin's print would be a
-// smudge: smaller coins show the plain body. A logo of a few bold shapes
-// (pi's) still reads down to coinLogoMin; a printed name needs coinPrintMin.
-const (
-	coinPrintMin = 72
-	coinLogoMin  = 24
-)
-
-// coinLogos are the coins printed with a logo rather than a name.
-var coinLogos = map[string]bool{"pi": true}
-
-// coinArt names an agent's coin at a size in points; off: signed out or not
-// installed (grey clay, the print unchanged, a pale layer over it all).
-func coinArt(harness string, size float32, off bool) string {
+// coinArt names an agent's coin; off: signed out or not installed (the same
+// object in grey clay). A sculpted mark reads at every size the apps draw,
+// so there is one image per look, whatever the size.
+func coinArt(harness string, off bool) string {
 	id, ok := coinIDs[harness]
-	least := float32(coinPrintMin)
-	if coinLogos[harness] {
-		least = coinLogoMin
-	}
 	switch {
 	case !ok:
 		return "token_ink"
-	case off && size < least:
-		return "coin_off_plain" // one grey body for every agent
 	case off:
 		return "coin_" + id + "_off"
-	case size < least:
-		return "coin_" + id + "_plain"
 	}
 	return "coin_" + id
 }
@@ -67,7 +49,7 @@ type coinMotion int
 
 const (
 	coinStill   coinMotion = iota
-	coinWorking            // a soft light turns a quarter of the way round its rim, 4.2 s
+	coinWorking            // a gentle rock on its base, 5 degrees each way, 4.2 s
 	coinWaiting            // waiting on you: a 2-point bob, 2.6 s
 )
 
@@ -82,10 +64,9 @@ func coinMotionOf(att protocol.Attention) coinMotion {
 	return coinStill
 }
 
-// drawCoin paints an agent's coin into r, moving by m. The light runs only
-// over the rim (the sheen layer never reaches the dome where the print is).
+// drawCoin paints an agent's coin into r, moving by m.
 func drawCoin(p *ui.Painter, r ui.Rect, harness string, off bool, m coinMotion, phase float64) {
-	bmp := theme.Clay(coinArt(harness, r.W, off))
+	bmp := theme.Clay(coinArt(harness, off))
 	if bmp == nil {
 		return
 	}
@@ -95,19 +76,10 @@ func drawCoin(p *ui.Painter, r ui.Rect, harness string, off bool, m coinMotion, 
 	now := p.Now()
 	switch m {
 	case coinWorking:
-		p.Image(bmp, r, ui.Contain)
-		f := cycle(now, 4200*time.Millisecond, phase)
-		if f < 0.65 {
-			s := f / 0.65
-			alpha := float32(math.Sin(math.Pi * s))
-			deg := float32(-30 + 90*(0.5-0.5*math.Cos(math.Pi*s)))
-			if sh := theme.Clay("coin_sheen"); sh != nil {
-				at := fitIn(bmp, r)
-				p.Transform(ui.Rotation(deg), at.X+at.W/2, at.Y+at.H/2, func() {
-					p.ImageRegion(sh, ui.Rect{}, at, ui.ImageOptions{Tint: ui.RGBA(255, 255, 255, alpha)})
-				})
-			}
-		}
+		// It rocks on its base like a toy someone is busy with.
+		deg := float32(5 * math.Sin(2*math.Pi*cycle(now, 4200*time.Millisecond, phase)))
+		at := fitIn(bmp, r)
+		p.Transform(ui.Rotation(deg), at.X+at.W/2, at.Y+at.H*0.92, func() { p.Image(bmp, r, ui.Contain) })
 		idleFrame(p)
 	case coinWaiting:
 		w := easeWave(cycle(now, 2600*time.Millisecond, phase))

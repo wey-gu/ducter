@@ -26,7 +26,7 @@ for (const pose of ["idle", "idle_closed", "working", "needsyou", "done", "waiti
 for (const name of [
   "island_big@1280", "island_small@1280", "laptop_awake@640", "server_awake@640", "mini_awake@640",
   "mini_asleep@640", "phone@640", "ab_remote@640", "ab_web@640", "coin_claude_code@256", "coin_codex@256",
-  "coin_pi@256", "coin_deepseek_harness@256", "coin_sheen@256", "wait_ci@256", "wait_clock@256",
+  "coin_pi@256", "coin_deepseek_harness@256", "wait_ci@256", "wait_clock@256",
 ]) {
   files[`clay/${name.split("@")[0]}.png`] = `${theme}/art/clay/${name}.png`;
 }

@@ -328,22 +328,17 @@ func (a *App) coinTile(c *ui.Context, dv *protocol.DeviceView, h protocol.Device
 			still := p.Preferences().ReduceMotion
 			el := p.Now().Sub(popAt)
 			if !popAt.IsZero() && el < 520*time.Millisecond && !still {
-				// The update landed: the coin pops (1 → 1.16 → 1) with one sheen sweep.
+				// The update landed: the coin pops (1 → 1.16 → 1) with one little wiggle.
 				f := float32(el) / float32(420*time.Millisecond)
 				k := float32(1)
 				if f < 1 {
 					k = 1 + 0.16*float32(math.Sin(math.Pi*float64(f)))*(1-0.35*f)
 				}
-				p.Transform(ui.Scaling(k, k), r.X+r.W/2, r.Y+r.H/2, func() { drawCoin(p, r, h.Harness, off, coinStill, phase) })
-				if sh := theme.Clay("coin_sheen"); sh != nil && el < 520*time.Millisecond {
-					g := float32(el) / float32(520*time.Millisecond)
-					alpha := float32(math.Sin(math.Pi * float64(g)))
-					bmp := theme.Clay(coinArt(h.Harness, r.W, off))
-					at := fitIn(bmp, r)
-					p.Transform(ui.Rotation(-40+140*g), at.X+at.W/2, at.Y+at.H/2, func() {
-						p.ImageRegion(sh, ui.Rect{}, at, ui.ImageOptions{Tint: ui.RGBA(255, 255, 255, alpha)})
-					})
-				}
+				g := float64(el) / float64(520*time.Millisecond)
+				deg := float32(8 * math.Sin(2*math.Pi*g) * (1 - g))
+				p.Transform(ui.Scaling(k, k), r.X+r.W/2, r.Y+r.H/2, func() {
+					p.Transform(ui.Rotation(deg), r.X+r.W/2, r.Y+r.H*0.9, func() { drawCoin(p, r, h.Harness, off, coinStill, phase) })
+				})
 				p.AnimationFrame()
 			} else {
 				drawCoin(p, r, h.Harness, off, coinStill, phase)

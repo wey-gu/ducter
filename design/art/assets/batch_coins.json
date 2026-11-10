@@ -1,0 +1,6 @@
+{"jobs": 4, "tasks": [
+ {"id": "coin_claude_code", "promptFiles": ["prompts/_style_coins.md", "prompts/coin_claude_code.md"], "image": "raw/coin_claude_code.png", "ar": "1:1", "ref": ["marks/claude.png", "alpha/token_orange.png", "alpha/ducter_idle.png"]},
+ {"id": "coin_codex", "promptFiles": ["prompts/_style_coins.md", "prompts/coin_codex.md"], "image": "raw/coin_codex.png", "ar": "1:1", "ref": ["marks/codex.png", "alpha/token_orange.png", "alpha/ducter_idle.png"]},
+ {"id": "coin_deepseek_harness", "promptFiles": ["prompts/_style_coins.md", "prompts/coin_deepseek_harness.md"], "image": "raw/coin_deepseek_harness.png", "ar": "1:1", "ref": ["marks/deepseek.png", "alpha/token_orange.png", "alpha/ducter_idle.png"]},
+ {"id": "coin_pi", "promptFiles": ["prompts/_style_coins.md", "prompts/coin_pi.md"], "image": "raw/coin_pi.png", "ar": "1:1", "ref": ["marks/pi.png", "alpha/token_orange.png", "alpha/ducter_idle.png"]}
+]}

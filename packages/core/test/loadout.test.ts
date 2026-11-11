@@ -282,3 +282,18 @@ test("partner fallback: Codex when it's the only one signed in and nothing was c
   core.settings.set({ brain: { harness: "claude-code", model: "sonnet" } });
   expect(core.partnerFallback?.()).toBeUndefined();
 });
+
+test("choose: one computer that can browse takes a browser task, a pinned one included (D191 trial)", async () => {
+  // The New task card's browser place on a one-computer home: the ranking knows this computer browses.
+  const t = tempDir();
+  const core = startCore({
+    dataDir: t.dir,
+    port: 0,
+    batchMs: 5,
+    deviceProbes: { cua: async () => ({ missing: "test" }), native: async () => "codex", harnesses: async () => [cc(), cx()], kind: async () => "laptop" },
+  });
+  stops.push(t.cleanup, () => core.stop());
+  const place = { kind: "browser" as const, device: "local", profile: "default" };
+  expect(await core.loadout.choose({ title: "Pay the test checkout", place, harness: "claude-code", model: "sonnet", by: "you" })).toMatchObject({ harness: "claude-code", model: "sonnet" });
+  expect(await core.loadout.choose({ title: "Pay the test checkout", place })).toMatchObject({ harness: "claude-code" });
+});

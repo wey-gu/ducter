@@ -72,8 +72,10 @@ export function hostSeam(host: BrowserHost): FillSeam {
     },
     async fill(taskId, ref, value) {
       const send = await page(taskId);
-      const ok = await evaluate(send, `(() => { const el = document.querySelector('[data-ducter-ref="${ref}"]'); return !!el && (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement); })()`);
-      if (!ok) throw new Error(`there is no field [${ref}] on the page now: browser_read again`);
+      const ok = await evaluate(send, `(() => { const el = document.querySelector('[data-ducter-ref="${ref}"]'); if (!el || !(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement)) return "none"; const was = el.getAttribute("data-ducter-was"); return was === null || was === \`\${el.name}|\${el.id}|\${el.autocomplete || ""}|\${el.type}\` ? "ok" : "changed"; })()`);
+      if (ok === "none") throw new Error(`there is no field [${ref}] on the page now: browser_read again`);
+      // A re-render (a checkout's address block, say) can reuse the node for another field: never type a saved value there.
+      if (ok === "changed") throw new Error(`the page changed under field [${ref}] since your last read: nothing was filled. browser_read again and use the new number`);
       const select = await evaluate(send, `document.querySelector('[data-ducter-ref="${ref}"]') instanceof HTMLSelectElement`);
       if (select) {
         // A select (expiry month, country): pick the option whose value or text matches.
@@ -142,6 +144,10 @@ export function registerFillTools(d: FillDeps): Fill {
   const approvals = new Map<string, Approval>(); // taskId -> its one payment Go
   const asked = new Map<string, { taskId: string; pay?: PayAsk; fill?: FillAsk }>(); // decisionId -> what it asks
   const cvcs = new Map<string, string>(); // decisionId -> the code typed on its card
+  // First-use OKs still open, by task, handle and site: a second fill (the password after the user
+  // name, in the same turn) waits on the same card instead of raising another.
+  const pendingOk = new Set<string>();
+  const okKey = (taskId: string, handle: string, site: string) => `${taskId} ${handle} ${site}`;
 
   const any = () => {
     try {
@@ -176,6 +182,7 @@ export function registerFillTools(d: FillDeps): Fill {
     const cvc = cvcs.get(r.decisionId);
     cvcs.delete(r.decisionId);
     const task = title(a.taskId);
+    if (a.fill) pendingOk.delete(okKey(a.taskId, a.fill.handle, a.fill.site));
     try {
       if (a.pay) {
         if (r.option === "go") {
@@ -223,12 +230,16 @@ export function registerFillTools(d: FillDeps): Fill {
         if (!onSite(at.host, r.site))
           throw new Error(`This sign-in is for ${r.site}, and this page is ${at.host}. Saved sign-ins fill only on their own site, so nothing was filled. If the page is the real sign-in for ${r.site}, browser_open ${r.site} instead; otherwise this may be a look-alike: say so in your report.`);
         if (!saved.okOn(handle, at.host) && !saved.okOn(handle, r.site)) {
+          if (pendingOk.has(okKey(taskId, handle, r.site))) return `The user is already being asked to OK this saved sign-in on ${r.site}. End your turn now; when they answer you'll get a message, then call browser_fill again.`;
+          pendingOk.add(okKey(taskId, handle, r.site));
           ask(taskId, { id: "fill", text: `First time signing in to ${r.site} with what the user saved (${r.item.username})`, blocking: true, default: "OK", reversible: false, fill: { site: r.site, handle, label: r.label, kind: "signin" } }, `Wants to sign in to ${r.site} with your saved sign-in.`);
           return `This is the first time this saved sign-in is used on ${r.site}: the user was asked to OK it. End your turn now; when they answer you'll get a message, then call browser_fill again.`;
         }
         value = saved.secret(handle, part ?? "username");
       } else if (r.kind === "detail") {
         if (DETAIL_CLASS[r.key as DetailKey] === "fill" && !saved.okOn(handle, at.host)) {
+          if (pendingOk.has(okKey(taskId, handle, at.host))) return `The user is already being asked to OK giving ${at.host} their ${r.label.toLowerCase()}. End your turn now; when they answer you'll get a message, then call browser_fill again.`;
+          pendingOk.add(okKey(taskId, handle, at.host));
           ask(taskId, { id: "fill", text: `First time giving ${at.host} the user's ${r.label.toLowerCase()}`, blocking: true, default: "OK", reversible: false, fill: { site: at.host, handle, label: r.label, kind: "detail" } }, `Wants to give ${at.host} your ${r.label.toLowerCase()}.`);
           return `The user's ${r.label.toLowerCase()} goes to ${at.host} for the first time: the user was asked to OK it. End your turn now; when they answer you'll get a message, then call browser_fill again.`;
         }
@@ -315,12 +326,12 @@ export function savedListText(saved: SavedStore, role: "task" | "partner"): stri
   const cards = v.items.filter((x) => x.kind === "card");
   if (!sign.length && !cards.length && !v.details.some((x) => x.kept)) return "Nothing is saved in Autofill yet. The user adds sign-ins, cards and their details in Settings › Autofill.";
   lines.push(role === "task" ? "Saved by the user (fill with browser_fill by handle; you never see the values):" : "Saved in Autofill (tasks fill these by handle in Ducter's browser; nobody sees the values):");
-  for (const s of sign) lines.push(`- ${s.handle}: sign-in for ${s.site}, user ${s.username}${s.okSites?.length ? "" : " (its first use asks the user)"}`);
+  for (const s of sign) lines.push(`- ${s.handle}: sign-in for ${s.site}, user ${s.username}${s.okSites?.length ? "" : " (call browser_fill: its first use there asks the user's OK by itself)"}`);
   for (const c of cards) lines.push(`- ${c.handle}: ${c.label}, expires ${c.exp}, name ${c.name} (every payment: browser_ask_to_pay first)`);
   const kept = v.details.filter((x) => x.kept);
   if (kept.length) {
     lines.push("Details:");
-    for (const x of kept) lines.push(x.value !== undefined ? `- ${x.handle} = ${x.value}` : `- ${x.handle} (kept; fill only, its first use on a site asks the user)`);
+    for (const x of kept) lines.push(x.value !== undefined ? `- ${x.handle} = ${x.value}` : `- ${x.handle} (kept; fill only: call browser_fill, its first use on a site asks the user's OK by itself)`);
   }
   return lines.join("\n");
 }

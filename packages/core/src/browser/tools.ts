@@ -187,7 +187,7 @@ export function registerBrowserTools(d: BrowserToolsDeps): void {
     if (!Number.isInteger(n) || n < 1) throw new Error("ref must be a number from the last browser_read");
     const at = await evaluate(send, locateExpression(n));
     if (!at) throw new Error(`there is no [${n}] on the page now: browser_read again (numbers change when the page does)`);
-    return { n, ...(at as { x: number; y: number; secret: boolean; field: boolean; card?: boolean; filled?: boolean; label?: string; vw?: number; vh?: number }) };
+    return { n, ...(at as { x: number; y: number; secret: boolean; field: boolean; card?: boolean; filled?: boolean; label?: string; tag?: string; vw?: number; vh?: number }) };
   };
 
   /** D190: where on the page a step lands (fractions of the viewport) and the element's own words. */
@@ -215,7 +215,7 @@ export function registerBrowserTools(d: BrowserToolsDeps): void {
 
   reg(
     "browser_type",
-    "Type text into a field by its [number]. Replaces what is in it unless append is true; submit presses Enter after. Never for passwords or codes: those are the user's (browser_ask_sign_in).",
+    "Type text into a field by its [number]. Replaces what is in it unless append is true; submit presses Enter after. On a select (a dropdown), picks the choice whose words match. Never for passwords or codes: those are the user's (browser_ask_sign_in).",
     { type: "object", properties: { ref: { type: "number" }, text: { type: "string" }, append: { type: "boolean" }, submit: { type: "boolean" } }, required: ["ref", "text"] },
     async (args, taskId) => {
       const send = await page(taskId);
@@ -228,6 +228,16 @@ export function registerBrowserTools(d: BrowserToolsDeps): void {
       if (at.card || at.filled)
         throw new Error(at.filled ? `[${at.n}] was filled from saved; leave it as it is.` : `[${at.n}] is a card field. Cards are filled only from a saved card after the user's Go (browser_ask_to_pay, then browser_fill), never typed.`);
       note(taskId, { kind: "type", ...where(at) });
+      if (at.tag === "select") {
+        // A dropdown can't be typed into or opened headless: pick the choice by its words.
+        const want = JSON.stringify(String(args.text ?? "").trim().toLowerCase());
+        const r = await evaluate(
+          send,
+          `(() => { const el = document.querySelector('[data-ducter-ref="${at.n}"]'); const w = ${want}; const os = [...el.options]; const o = os.find((o) => o.text.trim().toLowerCase() === w || o.value.toLowerCase() === w) || os.find((o) => o.text.trim().toLowerCase().includes(w)); if (!o) return { none: os.slice(0, 12).map((o) => o.text.trim()) }; el.value = o.value; el.dispatchEvent(new Event("input", { bubbles: true })); el.dispatchEvent(new Event("change", { bubbles: true })); return { text: o.text.trim() }; })()`,
+        );
+        if (r?.none) throw new Error(`[${at.n}] has no choice matching "${args.text}"; its choices begin: ${r.none.join(", ")}`);
+        return `Chose "${r?.text}" in [${at.n}].`;
+      }
       await evaluate(send, focusExpression(at.n, !args.append));
       await send("Input.insertText", { text: String(args.text ?? "") });
       if (args.submit) {

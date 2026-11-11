@@ -21,6 +21,13 @@ const PAGE_LOGIN = `<!doctype html><meta charset="utf-8"><title>Sign in · Test<
 <label for="p">Password</label><input id="p" name="p" type="password" value="prefilled-secret">
 <button type="submit">Sign in</button></form>`;
 
+// Stripe Checkout's payment-method rows: the real control is a 0×0 button whose ::after covers the row.
+const PAGE_METHODS = `<!doctype html><meta charset="utf-8"><title>Pay</title><style>
+.row{position:relative;width:300px;height:40px;border:1px solid #ccc}.box{width:0;height:0}.hit{padding:0;border:0;width:0;height:0}.hit::after{content:"";position:absolute;inset:0}</style>
+<div class="row"><span>Card</span><div class="box"><button class="hit" aria-label="Pay with card" onclick="document.getElementById('f').hidden=false"></button></div></div>
+<div id="f" hidden><label for="n">Card number</label><input id="n" autocomplete="cc-number"></div>
+<label for="c">Country</label><select id="c"><option value="">Choose</option><option value="JP">Japan</option><option value="US">United States</option></select>`;
+
 run("Ducter's browser on a real Chrome (D151)", () => {
   let site: ReturnType<typeof Bun.serve>;
   let core: Core;
@@ -42,6 +49,7 @@ run("Ducter's browser on a real Chrome (D151)", () => {
           return new Response(null, { status: 303, headers: { Location: "/home", ...(ok ? { "Set-Cookie": "session=ok; Max-Age=86400; Path=/; HttpOnly" } : {}) } });
         }
         if (u.pathname === "/login") return new Response(PAGE_LOGIN, { headers: { "content-type": "text/html" } });
+        if (u.pathname === "/methods") return new Response(PAGE_METHODS, { headers: { "content-type": "text/html" } });
         const body = signedIn ? `<h1>Welcome back, Ada</h1><a href="/orders">Your orders</a>` : `<h1>Hello, stranger</h1><a href="/login">Sign in</a>`;
         return new Response(`<!doctype html><title>Home</title>${body}`, { headers: { "content-type": "text/html" } });
       },
@@ -90,6 +98,19 @@ run("Ducter's browser on a real Chrome (D151)", () => {
     const email = Number(out.match(/\[(\d+)\] text field "Email"/)![1]);
     expect(await call("browser_type", { ref: email, text: "ada@example.com" })).toContain("Typed into");
     expect(await call("browser_read", { query: "email" })).toContain('= "ada@example.com"');
+  });
+
+  test("a 0×0 control with a stretched click area is listed and clicked", async () => {
+    const read = await call("browser_open", { url: `${base}/methods` });
+    expect(read).toContain('[1] button "Pay with card"');
+    expect(read).not.toContain("card number field");
+    await call("browser_click", { ref: 1 });
+    const read2 = await call("browser_read");
+    expect(read2).toContain('card number field "Card number"');
+    const c = Number(read2.match(/\[(\d+)\] select "Country"/)![1]);
+    expect(await call("browser_type", { ref: c, text: "united states" })).toBe(`Chose "United States" in [${c}].`);
+    expect(await call("browser_read")).toContain('select "Country" = "United States"');
+    await expect(call("browser_type", { ref: c, text: "Narnia" })).rejects.toThrow(/no choice matching "Narnia"; its choices begin: Choose, Japan/);
   });
 
   test("only web pages open", async () => {

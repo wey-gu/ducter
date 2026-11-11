@@ -23,11 +23,27 @@ function readPage(maxLines: number) {
     if (ac.includes("cc-csc") || /cvc|cvv|csc|security.?code/i.test(n)) return "code";
     return "";
   };
+  const INTERACTIVE = 'a[href], button, input:not([type="hidden"]), textarea, select, [role="button"], [role="link"], [role="checkbox"], [role="tab"], [role="menuitem"], [contenteditable="true"], summary';
+  // A 0×0 control whose ::before/::after is laid over its row is still the thing to click
+  // (the "stretched click area": Stripe Checkout's payment-method rows, Bootstrap's stretched-link).
+  const stretched = (el: any): boolean =>
+    ["::before", "::after"].some((p) => {
+      const c = getComputedStyle(el, p);
+      return c.content !== "none" && (c.position === "absolute" || c.position === "fixed") && parseFloat(c.width) > 0 && parseFloat(c.height) > 0;
+    });
   const visible = (el: any): boolean => {
     const r = (el as any).getBoundingClientRect?.();
-    if (!r || (r.width === 0 && r.height === 0)) return false;
+    if (!r || (r.width === 0 && r.height === 0 && !(el.matches?.(INTERACTIVE) && stretched(el)))) return false;
     const cs = getComputedStyle(el);
     return cs.visibility !== "hidden" && cs.display !== "none" && Number(cs.opacity) > 0;
+  };
+  // A container is walked unless it is hidden; a 0×0 one only when it lets its children show.
+  const shown = (el: any): boolean => {
+    if (visible(el)) return true;
+    const cs = getComputedStyle(el);
+    if (cs.display === "none" || cs.visibility === "hidden" || Number(cs.opacity) === 0 || cs.overflow !== "visible") return false;
+    const r = el.getBoundingClientRect();
+    return r.width === 0 && r.height === 0;
   };
   const clean = (s: string) => s.replace(/\s+/g, " ").trim();
   const label = (el: any): string => {
@@ -41,9 +57,8 @@ function readPage(maxLines: number) {
     }
     return clean(h.innerText || h.textContent || "").slice(0, 120);
   };
-  const INTERACTIVE = 'a[href], button, input:not([type="hidden"]), textarea, select, [role="button"], [role="link"], [role="checkbox"], [role="tab"], [role="menuitem"], [contenteditable="true"], summary';
   let n = 0;
-  document.querySelectorAll("[data-ducter-ref]").forEach((e: any) => e.removeAttribute("data-ducter-ref"));
+  document.querySelectorAll("[data-ducter-ref]").forEach((e: any) => (e.removeAttribute("data-ducter-ref"), e.removeAttribute("data-ducter-was")));
   const lines: string[] = [];
   const seen = new Set<any>();
   const walk = (node: any) => {
@@ -63,6 +78,8 @@ function readPage(maxLines: number) {
       if (!visible(el)) return;
       const ref = ++n;
       el.setAttribute("data-ducter-ref", String(ref));
+      // What this field was when read: a page that re-renders may reuse the node for another field.
+      if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement) el.setAttribute("data-ducter-was", `${el.name}|${el.id}|${el.autocomplete || ""}|${el.type}`);
       const role = el.getAttribute("role");
       let kind = role || tag;
       let extra = "";
@@ -97,7 +114,7 @@ function readPage(maxLines: number) {
       lines.push(`[${ref}] ${kind}${text ? ` "${text}"` : ""}${extra}`);
       return;
     }
-    if (!visible(el) && el !== document.body) return;
+    if (!shown(el) && el !== document.body) return;
     const block = /^(p|div|li|h[1-6]|tr|section|article|header|footer|br|dt|dd|td|th)$/.test(tag);
     if (/^h[1-6]$/.test(tag)) {
       const t = clean((el as any).innerText || "");
@@ -126,7 +143,9 @@ export function locateExpression(ref: number): string {
     const el = document.querySelector('[data-ducter-ref="${ref}"]');
     if (!el) return null;
     el.scrollIntoView({ block: "center", inline: "center" });
-    const r = el.getBoundingClientRect();
+    let r = el.getBoundingClientRect();
+    // A 0×0 control with a stretched click area (reader.ts): click the middle of what its pseudo-element covers.
+    if (r.width === 0 && r.height === 0 && el.offsetParent) r = el.offsetParent.getBoundingClientRect();
     const ac = ((el.autocomplete || "") + "").toLowerCase();
     const secret = el instanceof HTMLInputElement && (el.type === "password" || ac.includes("one-time-code") || ac.includes("current-password") || ac.includes("new-password") || /otp|2fa|totp|passcode/i.test(el.name + " " + el.id));
     const field = el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el.isContentEditable;

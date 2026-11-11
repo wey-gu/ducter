@@ -470,6 +470,8 @@ export interface SidecarInput {
   harness?: string;
   /** cua-driver even when the harness has its own tools (a task whose native tools said no). */
   forceCua?: boolean;
+  /** The brief, when known before task_open is in the Log (a saved handle in it wants Ducter's browser, D191). */
+  brief?: string;
 }
 
 /**
@@ -491,7 +493,7 @@ export async function browserSidecar(input: SidecarInput, opts: BrowserOptions =
   // D191: a task that fills from Autofill needs Ducter's own browser (only there does a fill by
   // reference keep the value from the model); when it can't start here, the usual order follows
   // and the user signs in or pays themselves.
-  if (opts.ducter?.wants?.(input.taskId) && !input.forceCua) {
+  if (opts.ducter?.wants?.(input.taskId, input.brief) && !input.forceCua) {
     const st = await opts.ducter.status();
     if (st.ok) return ducterSidecar(input, opts.ducter);
   }
@@ -681,7 +683,7 @@ You never type passwords or one-time codes (the tools refuse those fields). When
 
 ### What the user saved (Autofill)
 
-When \`saved_list\` is among your tools, the user saved sign-ins, cards or their details for you to fill by handle. \`browser_fill\` {ref, use, part} types one into a field and you never see the value. A sign-in fills only on its own site, and the first time the user is asked: end your turn when it says so. To pay: on the checkout page with the total shown, call \`browser_ask_to_pay\` {use, amount, currency, what} and end your turn; after the user's Go, fill the card fields, place the order once, and report the order number. Never type a card number; never pay twice, on another site, or another amount than the one asked; if the total changes, ask again. A 3-D Secure or one-time code page is the user's: \`browser_ask_sign_in\` with that page's url.
+When \`saved_list\` is among your tools, the user saved sign-ins, cards or their details for you to fill by handle. \`browser_fill\` {ref, use, part} types one into a field and you never see the value. A sign-in fills only on its own site. The first use on a site asks the user's OK by itself: call \`browser_fill\` (never ask with \`report_to_main\` first) and end your turn when it says so. To pay: on the checkout page with the total shown, call \`browser_ask_to_pay\` {use, amount, currency, what} and end your turn; after the user's Go, fill the card fields, place the order once, and report the order number. Never type a card number; never pay twice, on another site, or another amount than the one asked; if the total changes, ask again. A 3-D Secure or one-time code page is the user's: \`browser_ask_sign_in\` with that page's url.
 
 ### Leave these to the user
 

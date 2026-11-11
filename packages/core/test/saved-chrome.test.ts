@@ -120,6 +120,18 @@ run("Fill by reference on a real Chrome (D191)", () => {
     expect(core.autofill.store.view().uses.map((u) => u.what)).toEqual(["filled", "approved"]);
   }, 60_000);
 
+  test("a field the page re-rendered into another one since the read gets nothing", async () => {
+    core.autofill.store.put({ kind: "detail", values: { email: "ada@example.com" } });
+    const read = await call("browser_open", { url: `${base}/checkout` });
+    const ref = refOf(read, "Name on card");
+    // A re-render that reuses the node for another field (Stripe's billing block does this).
+    const { b, sessionId } = await core.ducterBrowser!.host.tab("t1");
+    await b.cdp.send("Runtime.evaluate", { expression: `(() => { const el = document.getElementById("name"); el.name = "addressLine1"; el.autocomplete = "address-line1"; })()` }, sessionId);
+    await expect(call("browser_fill", { ref, use: "me.email" })).rejects.toThrow(/page changed under field/);
+    const again = await call("browser_read");
+    await call("browser_fill", { ref: refOf(again, "Name on card"), use: "me.email" });
+  }, 30_000);
+
   test("a saved sign-in never fills on another site", async () => {
     await call("browser_open", { url: `${base}/checkout` });
     await expect(call("browser_fill", { ref: 1, use: "signin:github.com", part: "password" })).rejects.toThrow(/only on their own site/);

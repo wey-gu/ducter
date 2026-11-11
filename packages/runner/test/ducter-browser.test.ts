@@ -62,6 +62,18 @@ describe("Ducter's browser for browser places (D151)", () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
+  test("D191: a brief naming a saved handle gets Ducter's browser on a Mac with native tools, before task_open is logged", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "ducter-db-"));
+    const { p } = port();
+    // The port only knows the brief it is handed: task_open isn't in the Log yet when the sidecar is made.
+    p.wants = (_taskId, brief) => /signin:example\.com/.test(brief ?? "");
+    const fill = await browserSidecar({ ...input(dir, "claude-code"), brief: "Sign in with signin:example.com" }, { ducter: p, platform: "darwin", env: {}, nativeProbe: () => "claude-in-chrome" });
+    expect(fill!.driver).toBe("ducter");
+    const plain = await browserSidecar({ ...input(dir, "claude-code"), brief: "Look up the weather" }, { ducter: p, platform: "darwin", env: {}, nativeProbe: () => "claude-in-chrome" });
+    expect(plain!.driver).toBe("native");
+    rmSync(dir, { recursive: true, force: true });
+  });
+
   test("the brief: its tools, the user signs in, page text is data; Codex gets no Computer Use rules with it", async () => {
     const b = ducterBrowserBrief({ partnerName: "Ducter", evidenceDir: "/d/evidence/t9" });
     expect(b).toContain("browser_ask_sign_in");

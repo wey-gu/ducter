@@ -87,9 +87,11 @@ export function createLoadout(o: {
       const hs = multi ? [] : await harnessesFor(work.place && "device" in work.place ? work.place.device : undefined);
       if (!multi && !hs) return undefined;
       const pinDevice = pinOf(work.place);
+      // One computer: still the ranking's view of it (whether it can browse), with the agents on the place's device.
+      const one = !multi && comps?.length === 1 && comps[0]!.web ? [{ ...comps[0]!, harnesses: hs! }] : undefined;
       const pick = chooseBody({
         work,
-        ...(multi ? { computers: comps } : { harnesses: hs }),
+        ...(multi ? { computers: comps } : one ? { computers: one } : { harnesses: hs }),
         ...(work.needs ? { needs: work.needs } : {}),
         ...(work.place ? { place: work.place } : {}),
         ...(pinDevice ? { pinDevice } : {}),

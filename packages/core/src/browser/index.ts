@@ -57,7 +57,7 @@ export interface DucterBrowserOptions extends HostOptions {
   /** D191: hides saved values (Autofill) from what the browser tools answer. */
   scrub?: (text: string) => string;
   /** D191: a task that fills from Autofill (runs on this browser wherever it can start). */
-  wants?: (taskId: string) => boolean;
+  wants?: (taskId: string, brief?: string) => boolean;
 }
 
 export function createDucterBrowser(o: DucterBrowserOptions): DucterBrowser {
@@ -130,7 +130,7 @@ export function createDucterBrowser(o: DucterBrowserOptions): DucterBrowser {
     },
     attach: (taskId, a) => host.attach(taskId, a),
     release: (taskId) => host.release(taskId),
-    wants: (taskId) => o.wants?.(taskId) ?? false,
+    wants: (taskId, brief) => o.wants?.(taskId, brief) ?? false,
   };
 
   const profile = () => profileName(o.persona);

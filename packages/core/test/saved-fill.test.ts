@@ -112,6 +112,9 @@ describe("sign-ins", () => {
     answers.push(first);
     expect(first).toMatch(/first time/);
     expect(typed).toEqual([]);
+    // The user name in the same turn waits on the same card: one OK, not two (the live trial's haiku did this).
+    expect(await call("browser_fill", { ref: 1, use: "signin:github.com", part: "username" })).toMatch(/already being asked/);
+    expect(core.log.read({ fromSeq: 0, limit: 1000, kinds: ["decision"] }).length).toBe(1);
     const d = lastDecision();
     expect(d.fill).toMatchObject({ site: "github.com", handle: "signin:github.com", kind: "signin" });
     core.log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body: { decisionId: d.decisionId, option: "go", by: "user" } });

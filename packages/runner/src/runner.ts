@@ -1033,7 +1033,7 @@ export function createRunner(core: CoreApi, opts: RunnerOptions = {}): RunnerExt
       // (a browser place's browser is the worker's own, D157).
       if (ops.device && resolved?.place?.kind !== (input.place?.kind ?? "none")) throw new Error(`${ops.device.name} answered with a different kind of place`);
       // Throws before the task exists when a browser place is unavailable (the partner says why).
-      sidecarInput = { place: resolved.place, persona, taskId: id, dataDir: core.dataDir, partnerName, harness: h };
+      sidecarInput = { place: resolved.place, persona, taskId: id, dataDir: core.dataDir, partnerName, harness: h, ...(typeof briefIn === "string" && briefIn ? { brief: briefIn } : {}) };
       sidecar = await sidecarFor(ops, sidecarInput);
     }
 

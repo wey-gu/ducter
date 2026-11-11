@@ -5,6 +5,10 @@ import type { Bodies, Candidate, DeviceHarness, LogEvent, Place, TaskNeeds } fro
 import { harnessName } from "@ducter/protocol";
 import type { BodyChoice, LogStore, Runner } from "@ducter/protocol/src/internal.ts";
 import { blockOf, chooseBody, computersOf, fwCandidates, type Computer } from "./candidates.ts";
+import { checkEffort, type ModelCatalog } from "./models.ts";
+
+/** D202: how long a task's open waits for the chosen model's effort levels it doesn't have yet. */
+const EFFORT_CHECK_MS = 10_000;
 import type { DevicesView } from "./devices.ts";
 import type { CoreMcpHub } from "./mcp.ts";
 import { taskStream, type CoreRegistry } from "./registry.ts";
@@ -18,11 +22,11 @@ export const RULE_HINT_SUFFIX = "_rule_hint";
 
 export interface Loadout {
   /** Who does a new task: the pick and why, "none" with a reason when nobody can, undefined without device info. */
-  choose(work: { title: string; brief?: string; place?: Place; harness?: string; model?: string; by?: "you"; needs?: TaskNeeds }): Promise<BodyChoice | { none: string } | undefined>;
+  choose(work: { title: string; brief?: string; place?: Place; harness?: string; model?: string; effort?: string; by?: "you"; needs?: TaskNeeds }): Promise<BodyChoice | { none: string } | undefined>;
   candidates(taskId: string): Promise<Candidate[]>;
   /** D128: who could do new work at this place, best first (the New task card's 谁来做 / Who does it).
    *  D157: with two or more computers, on every computer (anyComputer: a No folder card). */
-  candidatesFor(work: { title: string; brief?: string; place?: Place; needs?: TaskNeeds }): Promise<Candidate[]>;
+  candidatesFor(work: { title: string; brief?: string; place?: Place; needs?: TaskNeeds }, opts?: { every?: true }): Promise<Candidate[]>;
   /** D157: the computers that run tasks, as the ranking sees them (undefined without device info). */
   computers(): Promise<Computer[] | undefined>;
   /** 换到 X 接着做 / Continue on X; D157: on another computer (device: its id or name), the task moves there. */
@@ -37,6 +41,8 @@ export function createLoadout(o: {
   devices: () => DevicesView | undefined;
   /** D157: the sites Ducter's own browser on a computer is signed in to. */
   sites?: (deviceId: string) => string[];
+  /** D202: each agent's models on each computer, to check an effort against the chosen model. */
+  models?: ModelCatalog;
 }): Loadout {
   /** D157: every computer that runs tasks, from the devices frame. */
   const computers = async (): Promise<Computer[] | undefined> => {
@@ -64,6 +70,13 @@ export function createLoadout(o: {
     return d?.harnesses.length ? d.harnesses : undefined;
   };
 
+  /** D202: the effort asked for, kept only when the chosen model on its computer offers it. */
+  const withEffort = async <P extends { harness: string; model?: string; deviceId?: string }>(pick: P, effort: string): Promise<P & { effort?: string; effortDropped?: string }> => {
+    const list = await o.models?.get(pick.deviceId ?? "local", pick.harness, EFFORT_CHECK_MS);
+    const r = checkEffort(pick.harness, pick.model, effort, list);
+    return r.ok ? { ...pick, effort } : { ...pick, effortDropped: `effort ${effort} was left out: ${r.why}` };
+  };
+
   const api: Loadout = {
     computers,
 
@@ -87,21 +100,21 @@ export function createLoadout(o: {
       });
       // The person's own pick can't run: their one line, never a silent move.
       if (pick && "problem" in pick) return { none: pick.problem };
-      if (pick) return pick;
+      if (pick) return work.effort ? withEffort(pick, work.effort) : pick;
       const why = (multi ? comps!.flatMap((c) => c.harnesses.map((h) => ({ h, on: c.name }))) : (hs ?? []).map((h) => ({ h, on: "" })))
         .map(({ h, on }) => `${harnessName(h.harness)}${on ? ` on ${on}` : ""}: ${blockOf(h, o.settings.get()) ?? "can't do what this task needs there"}`)
         .join(", ");
       return { none: `no AI agent can take this task right now (${why}). Tell the user in one line and offer what would make one available.` };
     },
 
-    async candidatesFor(work) {
+    async candidatesFor(work, opts) {
       const comps = await computers();
       if (comps && comps.length > 1) {
         const pinDevice = pinOf(work.place);
-        return fwCandidates({ work, computers: comps, ...(work.place ? { place: work.place } : {}), ...(work.needs ? { needs: work.needs } : {}), ...(pinDevice ? { pinDevice } : {}), settings: o.settings.get(), rules: o.rules.list() });
+        return fwCandidates({ work, computers: comps, ...(work.place ? { place: work.place } : {}), ...(work.needs ? { needs: work.needs } : {}), ...(pinDevice ? { pinDevice } : {}), settings: o.settings.get(), rules: o.rules.list(), ...(opts?.every ? { every: true as const } : {}) });
       }
       const hs = (await harnessesFor(work.place && "device" in work.place ? work.place.device : undefined)) ?? [];
-      return fwCandidates({ work, harnesses: hs, settings: o.settings.get(), rules: o.rules.list() });
+      return fwCandidates({ work, harnesses: hs, settings: o.settings.get(), rules: o.rules.list(), ...(opts?.every ? { every: true as const } : {}) });
     },
 
     async candidates(taskId) {

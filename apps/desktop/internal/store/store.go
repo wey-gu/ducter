@@ -265,6 +265,20 @@ func (t *Task) Harness() string {
 	return ""
 }
 
+// Effort is the reasoning effort the task runs at, when the user picked one (D202).
+func (t *Task) Effort() string {
+	if w := t.Who(); w != nil {
+		return w.Effort
+	}
+	if t.Open != nil && t.Open.Effort != "" {
+		return t.Open.Effort
+	}
+	if t.Card != nil {
+		return t.Card.Effort
+	}
+	return ""
+}
+
 func (t *Task) Model() string {
 	if w := t.Who(); w != nil {
 		return w.Model
@@ -1103,7 +1117,7 @@ func (s *Store) applyTask(t *Task, ev protocol.LogEvent, body any) {
 		}
 	case *protocol.BodySelected:
 		if t.Body == nil || ev.Seq >= t.bodySeq {
-			t.Body, t.bodySeq = &protocol.TaskBody{Harness: b.Harness, Model: b.Model, Why: b.Why}, ev.Seq
+			t.Body, t.bodySeq = &protocol.TaskBody{Harness: b.Harness, Model: b.Model, Effort: b.Effort, Why: b.Why}, ev.Seq
 		}
 	case *protocol.Checkpoint:
 		t.Checkpoints = append(t.Checkpoints, CheckpointAt{Checkpoint: *b, Seq: ev.Seq, TS: ev.TS})

@@ -44,8 +44,9 @@ export function createRegistry(log: LogStore, clock: Clock = realClock): CoreReg
           place: b.place,
           harness: b.harness,
           model: b.model,
+          ...(b.effort ? { effort: b.effort } : {}),
           bodyReason: b.bodyReason,
-          ...(prev?.body ? { body: prev.body, harness: prev.body.harness, model: prev.body.model } : {}),
+          ...(prev?.body ? { body: prev.body, harness: prev.body.harness, model: prev.body.model, effort: prev.body.effort } : {}),
           attention: prev?.attention ?? "queued",
           residency: prev?.residency ?? "provisioning",
           reason: prev?.reason,
@@ -107,10 +108,13 @@ export function createRegistry(log: LogStore, clock: Clock = realClock): CoreReg
         const b = e.body as Bodies["body_selected"];
         const c = cards.get(b.taskId);
         if (!c) return;
-        c.body = { harness: b.harness, ...(b.model ? { model: b.model } : {}), why: b.why };
+        c.body = { harness: b.harness, ...(b.model ? { model: b.model } : {}), ...(b.effort ? { effort: b.effort } : {}), why: b.why };
         c.harness = b.harness;
         if (b.model) c.model = b.model;
         else delete c.model;
+        // D202: the effort goes with who: a switch to another agent or model logs none.
+        if (b.effort) c.effort = b.effort;
+        else delete c.effort;
         c.updatedAt = e.ts;
         break;
       }

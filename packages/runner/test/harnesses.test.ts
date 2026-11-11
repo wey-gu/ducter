@@ -40,6 +40,32 @@ test("the capability table covers the four, each task-capable", () => {
   expect(HARNESSES["deepseek-harness"].name).toBe("DeepSeek Harness");
 });
 
+test("D202: effort goes to OAR on open and on a resume, only to an agent that takes one", () => {
+  expect(adaptSpec(spec("claude-code", { effort: "high" }), { dataDir: dir }).options.effort).toBe("high");
+  expect(adaptSpec(spec("claude-code", { effort: "high", resumeSessionId: "s1" }), { dataDir: dir }).options).toMatchObject({ resume: "s1", effort: "high" });
+  expect(adaptSpec(spec("codex", { effort: "xhigh", resumeSessionId: "th1" }), { dataDir: dir, env: { CODEX_HOME: dir } }).options).toMatchObject({ resume: "th1", effort: "xhigh" });
+  expect("effort" in adaptSpec(spec("pi", { effort: "high" }), { dataDir: dir }).options).toBe(false);
+  expect("effort" in adaptSpec(spec("claude-code"), { dataDir: dir }).options).toBe(false);
+  // What the runtime refuses is never sent.
+  expect("effort" in adaptSpec(spec("claude-code", { effort: "high" }), { dataDir: dir, refused: { effort: "no" } }).options).toBe(false);
+});
+
+test("D202: the port lists an agent's models with their effort levels, disabled ones left out, in Ducter's own folder", async () => {
+  const { createOarHarnessPort, listedModels } = await import("../src/oar.ts");
+  expect(listedModels([{ id: "opus", displayName: "Opus 5.5", effortLevels: ["low", "high"] }, { id: "old", disabled: { reason: "upgrade" } }, { id: "gpt-6.1-terra", default: true, defaultEffort: "low", effortLevels: ["low"] }])).toEqual([
+    { id: "opus", label: "Opus 5.5", efforts: ["low", "high"] },
+    { id: "gpt-6.1-terra", label: "gpt-6.1-terra", efforts: ["low"], defaultEffort: "low", default: true },
+  ]);
+  let cwd = "";
+  const rt = { installation: async () => ({ kind: "available", via: "executable", command: "x" }), listModels: async (_: unknown, o: { cwd: string }) => ((cwd = o.cwd), { kind: "ok", models: [{ id: "sonnet", displayName: "Sonnet 5.5", effortLevels: ["low"] }] }) };
+  const port = createOarHarnessPort({ loadRuntime: async () => rt as any, dataDir: join(dir, "d") });
+  expect(await port.models!("claude-code")).toEqual([{ id: "sonnet", label: "Sonnet 5.5", efforts: ["low"] }]);
+  expect(cwd).toBe(join(dir, "d"));
+  expect(await port.models!("nope")).toBeUndefined();
+  const signedOut = createOarHarnessPort({ loadRuntime: async () => ({ ...rt, listModels: async () => ({ kind: "unauthenticated" }) }) as any, dataDir: dir });
+  expect(await signedOut.models!("codex")).toBeUndefined();
+});
+
 describe("adaptSpec: the partner's clean setup per harness", () => {
   test("Claude Code: OAR's native exclude, and the features that compete with Ducter denied", () => {
     const a = adaptSpec(spec("claude-code"), { dataDir: dir });

@@ -5,13 +5,14 @@
 // hidden note ("the user opened this themselves") and reports the result like any task (D124).
 import { existsSync, readFileSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
-import type { Candidate, NewTaskReason, NewTaskWhen, Place, PlaceChoice, RoutineTrigger, RoutineView, TaskCard } from "@ducter/protocol";
-import { expandHome, type FolderInfo, type GitRun, realGit, repoBranches, repoTop } from "@ducter/protocol/src/folder-info.ts";
+import type { AgentModels, Candidate, NewTaskReason, NewTaskWhen, Place, PlaceChoice, RoutineTrigger, RoutineView, TaskCard } from "@ducter/protocol";
+import { expandHome, type FolderInfo, type GitRun, realGit, repoBranches, repoRemote, repoTop } from "@ducter/protocol/src/folder-info.ts";
 import type { LogStore, Runner, SettingsApi, TaskRegistry } from "@ducter/protocol/src/internal.ts";
 import { BODY_NOTE_PREFIX, type Loadout } from "./loadout.ts";
 import type { Projects } from "./projects.ts";
 import type { Routines } from "./routines.ts";
 import type { Untils } from "./until.ts";
+import { agentModels, agentsOf, MODELS_WAIT_MS, type ModelCatalog } from "./models.ts";
 
 // D197: the git reads are shared with a worker's folderInfo op (protocol/src/folder-info.ts).
 export { realGit, repoBranches, repoTop, type GitRun };
@@ -42,6 +43,8 @@ export interface NewTaskDeps {
   projects?: Projects;
   /** D197: the workers (a repo on one gets its branches from there; a list over two computers names them). */
   computers?: NewTaskComputers;
+  /** D202: each agent's models on each computer (the card's Model and Effort rows). */
+  models?: ModelCatalog;
 }
 
 /** D197: how long the card waits for a worker's branches before it shows the list without them. */
@@ -52,6 +55,8 @@ export interface NewTaskInput {
   place?: Place;
   harness?: string;
   model?: string;
+  /** D202: one of the model's own effort levels (checked where the task runs; dropped with a line if it isn't). */
+  effort?: string;
   when?: NewTaskWhen;
 }
 
@@ -173,7 +178,7 @@ export async function openYourTask(d: NewTaskDeps, input: NewTaskInput): Promise
         brief: words,
         ...(place.kind !== "none" || place.device ? { place } : {}),
         ...(project ? { project } : {}),
-        ...(input.harness ? { harness: input.harness, ...(input.model ? { model: input.model } : {}) } : {}),
+        ...(input.harness ? { harness: input.harness, ...(input.model ? { model: input.model } : {}), ...(input.effort ? { effort: input.effort } : {}) } : {}),
         zh,
       });
       return { ok: true, routine };
@@ -194,6 +199,7 @@ export async function openYourTask(d: NewTaskDeps, input: NewTaskInput): Promise
       place,
       project,
       ...(input.harness ? { harness: input.harness, ...(input.model ? { model: input.model } : {}) } : {}),
+      ...(input.effort ? { effort: input.effort } : {}),
       language: languageOf(words, d.settings),
       origin: "you",
     });
@@ -267,7 +273,7 @@ function hintRepos(dataDir: string): RepoHint[] {
  * up` noticed; each on this machine with its default branch and branches. 不用特定的地方 / No
  * particular place is always last. Who could do it: the candidates at `place` (or this machine).
  */
-export async function newTaskOptions(d: NewTaskDeps, at?: Place, limit = 12): Promise<{ places: PlaceChoice[]; candidates: Candidate[] }> {
+export async function newTaskOptions(d: NewTaskDeps, at?: Place, limit = 12): Promise<{ places: PlaceChoice[]; candidates: Candidate[]; models?: AgentModels[] }> {
   const git = d.git ?? realGit;
   const seen = new Map<string, PlaceChoice>();
   const key = (device: string, path: string) => `${device} ${resolve(expandHome(path))}`;
@@ -306,6 +312,12 @@ export async function newTaskOptions(d: NewTaskDeps, at?: Place, limit = 12): Pr
     }
   }
   const places = used.slice(0, limit);
+  // D202: who could do it (every agent on every computer) and their models, read alongside the branches.
+  const who = (async () => {
+    const candidates = d.loadout ? await d.loadout.candidatesFor({ title: "", place: at }, { every: true }).catch(() => [] as Candidate[]) : [];
+    const models = d.models ? await newTaskModels(d.models, candidates).catch(() => undefined) : undefined;
+    return { candidates, models };
+  })();
   await Promise.all(
     places.map(async (c) => {
       if (c.place.kind !== "repo") return;
@@ -315,13 +327,15 @@ export async function newTaskOptions(d: NewTaskDeps, at?: Place, limit = 12): Pr
         const info = await workerFolder(d.computers, p.device!, p.repoPath, WORKER_BRANCHES_MS);
         if (info?.defaultBranch) c.defaultBranch = info.defaultBranch;
         if (info?.branches?.length) c.branches = info.branches;
+        if (info?.remote) c.remote = info.remote;
         return;
       }
       const path = resolve(expandHome(p.repoPath));
       if (!existsSync(path)) return;
-      const b = await repoBranches(path, git);
+      const [b, remote] = await Promise.all([repoBranches(path, git), repoRemote(path, git)]);
       if (b.defaultBranch) c.defaultBranch = b.defaultBranch;
       if (b.branches.length) c.branches = b.branches;
+      if (remote) c.remote = remote;
     }),
   );
   // D197: places on more than one computer: each says which (the client puts it after the path).
@@ -333,6 +347,13 @@ export async function newTaskOptions(d: NewTaskDeps, at?: Place, limit = 12): Pr
       if (name) c.computer = name;
     }
   places.push({ place: { kind: "none" }, name: "" });
-  const candidates = d.loadout ? await d.loadout.candidatesFor({ title: "", place: at }).catch(() => []) : [];
-  return { places, candidates };
+  // D202: who could do it, every agent on every computer (one on another computer than the
+  // folder's is offered there, with its own copy of the repo); and each one's models.
+  const { candidates, models } = await who;
+  return { places, candidates, ...(models?.length ? { models } : {}) };
+}
+
+/** D202: the Model and Effort rows of every agent the card may offer, read together (at most MODELS_WAIT_MS). */
+export async function newTaskModels(catalog: ModelCatalog, candidates: Candidate[], ms = MODELS_WAIT_MS): Promise<AgentModels[]> {
+  return Promise.all(agentsOf(candidates).map(async (a) => agentModels(a.harness, a.device, a.model, await catalog.get(a.device ?? "local", a.harness, ms))));
 }

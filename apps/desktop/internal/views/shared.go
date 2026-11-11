@@ -250,6 +250,38 @@ func (a *App) menuRow(c *ui.Context, key, label string, on, off bool, body func(
 	return !off && row.Clicked()
 }
 
+// choice is one short choice in a row of them (New task's model and
+// effort under the chosen agent, D202): the chosen one raised on the
+// surface, the others sunken; tag "suggested" (推荐) or "default" (默认)
+// beside its words. The web's `Choice`.
+func (a *App) choice(c *ui.Context, key, label string, on bool, tag string) bool {
+	t := a.T
+	row := ui.Row(c.Key(key)).Height(28).Padding(0, t.S2+2).Gap(t.S1 + 1).Radius(t.RadiusSM).AlignItems(ui.Center).
+		Role(ui.RoleRadio).Label(label).AccessSelected(on).Cursor(ui.CursorPointer).Focusable()
+	if on {
+		row.Background(t.Surface).Border(1, t.Line2)
+	} else if row.Hovered() {
+		row.Background(t.SurfaceSunken.Mix(t.Surface, 0.4))
+	} else {
+		row.Background(t.SurfaceSunken)
+	}
+	row.Children(func() {
+		w := ui.Text(c, label).FontSize(t.SM).SingleLine().AccessHidden(true)
+		if on {
+			w.FontWeight(700).TextColor(t.Ink)
+		} else {
+			w.TextColor(t.InkSoft)
+		}
+		switch tag {
+		case "suggested":
+			a.suggestedTag(c)
+		case "default":
+			ui.Text(c, a.L.T("newtask.effort.default")).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().AccessHidden(true)
+		}
+	})
+	return !on && row.Clicked()
+}
+
 // listPanel is the floating list a pill opens: the card's surface, a
 // hairline, the floating shadow, its title small above the rows.
 func (a *App) listPanel(c *ui.Context, anchor ui.Element, open *bool, title string, width float32, body func()) {

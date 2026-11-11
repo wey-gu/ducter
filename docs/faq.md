@@ -84,7 +84,12 @@ Yes. Press **⌘N** in the Mac app, or **New task** at the top of **On hand** (o
 **＋**). Write what to do first; it gets your words as you wrote them. Under the words, one row
 says where it works (a folder, and for a repo the branch it starts from, or **No folder**), who
 does it (the one marked **Suggested** is already picked, and the one you pick is remembered for
-next time) and when it starts. Tap any of them to change it. **⌘↩** starts it; **⇧⌘↩** starts
+next time) and when it starts. Tap any of them to change it. Under the AI agent you pick, choose
+its **Model** and its **Effort** (how hard it thinks: **Low** to **Max**, as that model offers);
+the ones it starts with are the suggested model and the model's own default, and your last choice
+for that agent is remembered. Every AI agent you have is in the list, on whichever computer it is:
+one on another computer says so (*on MacBook*), and picking it moves the task to that computer,
+to the same project there, or asks you to pick a folder there. **⌘↩** starts it; **⇧⌘↩** starts
 it and keeps the card open for the next one, so you can start several in a row. Ducter tells
 you the result when it's done, like any other task.
 

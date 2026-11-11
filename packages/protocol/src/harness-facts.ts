@@ -86,6 +86,12 @@ export interface HarnessFacts {
    * of the agent's own (Ducter's MCP tools always stay).
    */
   readOnly: Fact<{ how: string; tools: string[] }>;
+  /**
+   * D202: the reasoning effort a session can ask for. levels: every level the agent accepts (each
+   * model lists its own, through OAR listModels: the New task card offers those); perModel: the
+   * listing says which levels each model takes and its default. Absent: no effort is passed.
+   */
+  effort?: Fact<{ levels: string[]; how: string; perModel: boolean; defaultListed: boolean }>;
 }
 
 /**
@@ -276,6 +282,20 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
       value: { how: "built-ins that write or run denied by name (Bash, Edit, Write, Task, …); a Read is capped", tools: ["Read", "Grep", "Glob", "WebFetch", "WebSearch"] },
       evidence: { kind: "VERIFIED", how: "the partner eval's readonly smoke (results/2026-11-09-haiku-readonly-smoke.md): no write or run tool call in any scenario", date: D, version: "2.1.319" },
     },
+    effort: {
+      value: {
+        levels: ["low", "medium", "high", "xhigh", "max"],
+        how: "--effort <level> on open and again on --resume (it keeps no effort per session); OAR SessionOptions.effort, read back through get_settings",
+        perModel: true,
+        defaultListed: false,
+      },
+      evidence: {
+        kind: "VERIFIED",
+        how: "`claude --help`: `--effort <level>  Effort level for the current session (low, medium, high, xhigh, max)`; OAR listModels (list_models control request, token-free): each alias and id with its supportedEffortLevels (opus, fable, sonnet, haiku: all five; Haiku 4.5: none; Opus 4.6: no xhigh), and no default level listed",
+        date: "2026-11-11",
+        version: "2.1.322",
+      },
+    },
     memPlugin: {
       value: { host: "claude-code", ids: ["nowledge-mem@nowledge-community"], off: "settings", contextCost: "unknown" },
       evidence: { kind: "DOCUMENTED", source: "https://mem.nowledge.co/SKILL.md (read 2026-11-10), research/47 §3; enabledPlugins in the --settings JSON (runner/test/memory.test.ts)" },
@@ -311,6 +331,20 @@ export const HARNESS_FACTS: Record<HarnessId, HarnessFacts> = {
         "gpt-5.6-luna": { id: "gpt-5.6-luna", window: 272_000 },
       },
       evidence: cx("`codex debug models`: context_window per listed model (max_context_window 872,000 for all)"),
+    },
+    effort: {
+      value: {
+        levels: ["low", "medium", "high", "xhigh", "max", "ultra"],
+        how: "model_reasoning_effort on a new thread; a resume sets it on the loaded thread (OAR SessionOptions.effort)",
+        perModel: true,
+        defaultListed: true,
+      },
+      evidence: {
+        kind: "VERIFIED",
+        how: "OAR listModels (app-server model/list): every model with its effortLevels and defaultEffort (gpt-6.1-sol, gpt-6.1-terra, gpt-5.6-sol: low..ultra, default low; gpt-6-astra, gpt-6-sol, gpt-5.6-terra: low..ultra, default medium; the luna models: low..max, default medium); how it is applied: OAR 0.95.1 SessionOptions.effort docs",
+        date: "2026-11-11",
+        version: "0.167.1",
+      },
     },
     windowKnob: {
       value: { via: "config", key: "model_context_window", unit: "tokens", note: "-c model_context_window=<n>; Codex counts its window (and the auto-compact clamp) from it" },

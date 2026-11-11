@@ -123,6 +123,8 @@ export const canIntegrate = (t: Task): boolean => {
 export const whoOf = (t: Task): TaskBody | undefined => t.body ?? t.card?.body;
 export const harnessOf = (t: Task) => whoOf(t)?.harness || t.open?.harness || t.card?.harness || "";
 export const modelOf = (t: Task) => { const w = whoOf(t); return w ? w.model ?? "" : t.open?.model || t.card?.model || ""; };
+/** D202: the effort it runs at, when the user picked one ("" = the model's own default). */
+export const effortOf = (t: Task) => { const w = whoOf(t); return w ? w.effort ?? "" : t.open?.effort || t.card?.effort || ""; };
 export const projectOf = (t: Task) => t.open?.project ?? t.card?.project ?? "";
 export const bodyReasonOf = (t: Task) => t.open?.bodyReason || t.card?.bodyReason || "";
 export const finished = (t: Task) => ["done", "done_claimed", "failed"].includes(attention(t));
@@ -501,7 +503,7 @@ export class Store {
       case "body_selected":
         if (!t.body || ev.seq >= (t.bodySeq ?? 0)) {
           const b = ev.body as Bodies["body_selected"];
-          (t.body = { harness: b.harness, ...(b.model ? { model: b.model } : {}), why: b.why }), (t.bodySeq = ev.seq);
+          (t.body = { harness: b.harness, ...(b.model ? { model: b.model } : {}), ...(b.effort ? { effort: b.effort } : {}), why: b.why }), (t.bodySeq = ev.seq);
         }
         break;
       case "checkpoint":

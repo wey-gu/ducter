@@ -367,6 +367,7 @@ test("D197: folderInfo reads a folder here for a home elsewhere: a folder inside
     if (args[0] === "rev-parse" && args[1] === "--show-toplevel") return inRepo ? { ok: true, out: repo } : { ok: false, out: "" };
     if (args[0] === "for-each-ref") return { ok: true, out: "feature/x\nmain" };
     if (args[0] === "symbolic-ref") return { ok: true, out: "origin/main" };
+    if (args[0] === "remote") return { ok: true, out: "git@github.com:Acme/tinycart.git" };
     return { ok: true, out: "feature/x" };
   };
   const sent: any[] = [];
@@ -375,7 +376,17 @@ test("D197: folderInfo reads a folder here for a home elsewhere: a folder inside
     await host.handle({ t: "req", id, op: "folderInfo", args: { path } });
     return sent.find((f) => f.id === id);
   };
-  expect(await ask(1, join(repo, "src"))).toEqual({ t: "res", id: 1, ok: true, result: { exists: true, kind: "repo", root: repo, name: "tinycart", defaultBranch: "main", branches: ["feature/x", "main"] } });
+  expect(await ask(1, join(repo, "src"))).toEqual({ t: "res", id: 1, ok: true, result: { exists: true, kind: "repo", root: repo, name: "tinycart", defaultBranch: "main", branches: ["feature/x", "main"], remote: "github.com/acme/tinycart" } });
   expect((await ask(2, plain)).result).toEqual({ exists: true, kind: "folder", root: plain, name: "notes" });
   expect((await ask(3, join(dir, "nope"))).result).toEqual({ exists: false });
+});
+
+test("D202: the worker answers the home's models op from its own agents (null when it can't say)", async () => {
+  const sent: any[] = [];
+  const harness = { start: async () => ({}) as any, available: async () => [], models: async (h: string) => (h === "claude-code" ? [{ id: "opus", label: "Opus 5.5", efforts: ["low", "high"] }] : undefined) };
+  const host = createWorkerHost({ dataDir: join(dir, "w2"), harness, mainBase: "http://main", deviceToken: "dvc", send: (f) => sent.push(f) });
+  await host.handle({ t: "req", id: 1, op: "models", args: { harness: "claude-code" } });
+  await host.handle({ t: "req", id: 2, op: "models", args: { harness: "pi" } });
+  expect(sent.find((f) => f.id === 1)).toEqual({ t: "res", id: 1, ok: true, result: [{ id: "opus", label: "Opus 5.5", efforts: ["low", "high"] }] });
+  expect(sent.find((f) => f.id === 2)).toEqual({ t: "res", id: 2, ok: true, result: null });
 });

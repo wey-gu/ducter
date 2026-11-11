@@ -42,8 +42,8 @@ beforeAll(() => {
       opened.push(input);
       const taskId = `t${++n}`;
       const s = `task:${taskId}`;
-      core.log.append({ stream: s, origin: "system", kind: "task_open", body: { taskId, title: input.title, project: input.project ?? "", place: input.place ?? { kind: "none" }, harness: input.harness ?? "claude-code", ...(input.model ? { model: input.model } : {}), brief: input.brief, ...(input.origin ? { origin: input.origin } : {}) } });
-      core.log.append({ stream: s, origin: "system", kind: "body_selected", body: { taskId, harness: input.harness ?? "claude-code", ...(input.model ? { model: input.model } : {}), why: { kind: input.harness ? "you" : "default" } } });
+      core.log.append({ stream: s, origin: "system", kind: "task_open", body: { taskId, title: input.title, project: input.project ?? "", place: input.place ?? { kind: "none" }, harness: input.harness ?? "claude-code", ...(input.model ? { model: input.model } : {}), ...(input.effort ? { effort: input.effort } : {}), brief: input.brief, ...(input.origin ? { origin: input.origin } : {}) } });
+      core.log.append({ stream: s, origin: "system", kind: "body_selected", body: { taskId, harness: input.harness ?? "claude-code", ...(input.model ? { model: input.model } : {}), ...(input.effort ? { effort: input.effort } : {}), why: { kind: input.harness ? "you" : "default" } } });
       core.tasks.setState(taskId, "working", "hot");
       return core.tasks.get(taskId)!;
     },
@@ -78,6 +78,8 @@ function ctx(over: Partial<TalkCtx> & { rest: string[] }): TalkCtx & { lines: st
 describe("args", () => {
   test("the new commands take their words and flags", () => {
     expect(parseArgs(["task", "修一下测试", "--repo", "/r", "--agent", "codex", "--base", "dev"])).toEqual({ ok: true, args: { command: "task", desktop: true, json: false, rest: ["修一下测试"], repo: "/r", agent: "codex", base: "dev" } });
+    expect(parseArgs(["task", "想深一点", "--agent", "claude-code/opus", "--effort", "High"])).toMatchObject({ ok: true, args: { agent: "claude-code/opus", effort: "high" } });
+    expect(parseArgs(["task", "x", "--effort"])).toMatchObject({ ok: false, error: { key: "err.missingValue" } });
     expect(parseArgs(["say", "你好", "--timeout", "30"])).toMatchObject({ ok: true, args: { command: "say", rest: ["你好"], timeout: 30 } });
     expect(parseArgs(["answer", "d1", "go"])).toMatchObject({ ok: true, args: { command: "answer", rest: ["d1", "go"] } });
     expect(parseArgs(["open", "tinycart"])).toMatchObject({ ok: true, args: { command: "open", rest: ["tinycart"] } });
@@ -200,6 +202,13 @@ describe("talking to a running Ducter", () => {
     await Bun.sleep(30);
     expect(got).toContain("open_task");
     ws.close();
+  });
+
+  test("D202: task --effort goes with the agent, and the line says it", async () => {
+    const c = ctx({ rest: ["Think hard about the cache."], cwd: repo, agent: "claude-code/opus", effort: "high", t: en });
+    expect(await cmdTask(c)).toBe(0);
+    expect(opened.at(-1)).toMatchObject({ harness: "claude-code", model: "opus", effort: "high" });
+    expect(c.lines[0]).toContain("Claude Code · opus · high");
   });
 });
 

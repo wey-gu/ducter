@@ -5,7 +5,7 @@ import { homedir, hostname as osHostname } from "node:os";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";
 import type { Bodies, LogEvent, OnHand, Place } from "@ducter/protocol";
-import type { CoreApi, Partner, Runner } from "@ducter/protocol/src/internal.ts";
+import type { CoreApi, ListedModel, Partner, Runner } from "@ducter/protocol/src/internal.ts";
 import { migrateKeys, readKeys, scrubKeysFromEnv } from "@ducter/protocol/src/keys.ts";
 import { realClock, type Clock } from "./clock.ts";
 import { createDecisions, type Decisions } from "./decisions.ts";
@@ -38,6 +38,7 @@ import { callWakes, openPhone, type Phone } from "./phone.ts";
 import { providerOf } from "./phone-provider.ts";
 import { registerConnectionTools } from "./connection-tools.ts";
 import { createChanges, type Changes } from "./changes.ts";
+import { createModelCatalog, type ModelCatalog } from "./models.ts";
 import { newTaskOptions, openYourTask, type GitRun, type NewTaskComputers, type NewTaskInput } from "./newtask.ts";
 import { createProjects } from "./projects.ts";
 import { createReleaseWatch, type Fetch as ReleaseFetch, type ReleaseWatch } from "./release.ts";
@@ -88,6 +89,8 @@ export interface CoreOptions {
   git?: GitRun;
   /** D197 test seam: the workers as New task and projects see them (names, a folder read there). */
   newTaskComputers?: NewTaskComputers;
+  /** D202 test seam: each agent's models on each computer (else read from the agents themselves). */
+  models?: ModelCatalog;
   /** D148 test seams: the release feed, the update side effects, how this process updates. */
   update?: { fetch?: ReleaseFetch; sys?: UpdateSys; run?: UpdatesDeps["run"]; how?: import("@ducter/protocol").UpdateHow; version?: string; homeName?: string; execPath?: string; autoEveryMs?: number; graceMs?: number; criticalWaitMs?: number };
   /** D156 test seams: the channels' feed, the agents' updaters, this machine's copies. */
@@ -355,7 +358,20 @@ export function startCore(opts: CoreOptions = {}): Core {
       return [];
     }
   };
-  const loadout = createLoadout({ log, tasks, settings, rules, devices: () => devicesView, sites: sitesOn });
+  // D202: each agent's models on each computer: the home's through the runner's harness port, a
+  // worker's through its `models` op (an older worker can't say: the card keeps the tier table).
+  const modelCatalog =
+    opts.models ??
+    createModelCatalog({
+      async read(device, harness) {
+        if (device === "local") return runner?.harness.models?.(harness);
+        const link = workersRef?.link(device);
+        if (!link?.online()) return undefined;
+        const r = await link.call<ListedModel[] | null>("models", { harness }, 20_000).catch(() => null);
+        return Array.isArray(r) ? r : undefined;
+      },
+    });
+  const loadout = createLoadout({ log, tasks, settings, rules, devices: () => devicesView, sites: sitesOn, models: modelCatalog });
   // D157: 我要合电脑了 / Move before closing: one decision for a computer.
   const closing = createClosing({ log, tasks, loadout, runner: () => runner });
   registerClosingTool(mcp, closing, () => settings.get().language === "zh");
@@ -366,7 +382,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     return e.why ? { harness: e.harness } : undefined;
   };
   // 开一件事 / New task (D128): the one opening path the card and `ducter task` share.
-  const newTaskDeps = { log, tasks, runner: () => runner, persona, dataDir, loadout, settings, routines: work.routines, untils: work.untils, projects, computers, ...(opts.git ? { git: opts.git } : {}) };
+  const newTaskDeps = { log, tasks, runner: () => runner, persona, dataDir, loadout, settings, routines: work.routines, untils: work.untils, projects, computers, models: modelCatalog, ...(opts.git ? { git: opts.git } : {}) };
   const newTask = {
     open: (i: NewTaskInput) => openYourTask(newTaskDeps, i),
     options: (p?: Place) => newTaskOptions(newTaskDeps, p),

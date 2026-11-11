@@ -879,6 +879,9 @@ func (a *App) bodyLine(t *store.Task) string {
 	if m := t.Model(); m != "" {
 		parts = append(parts, modelLabel(a.trayHarness(t.Harness()), m))
 	}
+	if e := t.Effort(); e != "" {
+		parts = append(parts, a.effortWord(e)) // D202
+	}
 	return strings.Join(parts, " · ")
 }
 

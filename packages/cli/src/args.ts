@@ -22,6 +22,7 @@ export interface Args {
   out?: string; // report --out <dir>
   repo?: string; // task --repo <dir> (or "none": no particular place)
   agent?: string; // task --agent <name>: who does it (pinned for this task)
+  effort?: string; // task --effort <level>: how hard it thinks (D202; one of the model's own levels)
   base?: string; // task --base <branch>: what it starts from
   timeout?: number; // say --timeout <seconds>
   remove?: boolean; // domain --remove: take Ducter's site out of Caddy
@@ -139,10 +140,11 @@ export function parseArgs(argv: string[]): ParseResult {
         continue;
       case "--repo":
       case "--agent":
+      case "--effort":
       case "--base": {
         const v = value();
         if (v === undefined || !v.trim()) return { ok: false, error: { key: "err.missingValue", vars: { flag: a } } };
-        args[a.slice(2) as "repo" | "agent" | "base"] = v.trim();
+        args[a.slice(2) as "repo" | "agent" | "base" | "effort"] = a === "--effort" ? v.trim().toLowerCase() : v.trim();
         continue;
       }
       case "--timeout": {

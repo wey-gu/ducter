@@ -19,7 +19,7 @@ import { fileURLToPath } from "node:url";
 import { DSH_KEY_ENV, HARNESS_IDS, type HarnessId } from "@ducter/protocol";
 import { readEnvFile, readKeys } from "@ducter/protocol/src/keys.ts";
 import { CLAUDE_SWITCHES, DSH_PROFILE, HARNESS_FACTS, PI_READ_ONLY_TOOLS, modelForWindow, windowKnobs } from "@ducter/protocol/src/harness-facts.ts";
-import type { HarnessEvent, HarnessPort, HarnessSession, SessionSpec } from "@ducter/protocol/src/internal.ts";
+import type { HarnessEvent, HarnessPort, HarnessSession, ListedModel, SessionSpec } from "@ducter/protocol/src/internal.ts";
 import type { Runtime, Session, SessionOptions, McpServer } from "@botiverse/oar/browser";
 import { Normalizer } from "./normalize.ts";
 import { bridgeCommand, writeBridgeTarget } from "./mcp-bridge.ts";
@@ -472,6 +472,9 @@ export function adaptSpec(spec: SessionSpec, ctx: { env?: Record<string, string 
     disallowedTools: disallowed.length ? disallowed : undefined,
     launchArgs,
     resume: spec.resumeSessionId,
+    // D202: the effort picked on the New task card (checked against the model's own levels by
+    // core), on open and on every resume; only where the agent takes one (harness-facts effort).
+    effort: spec.effort && !refused.effort && HARNESS_FACTS[h]?.effort ? spec.effort : undefined,
     env: harnessEnv(h, ctx, env),
     // claude: --setting-sources project,local --strict-mcp-config + claudeMdExcludes. The other
     // runtimes refuse "exclude"; their clean setup is made above. A browser sidecar may ask for
@@ -542,7 +545,39 @@ export function createOarHarnessPort(opts: OarPortOptions = {}): HarnessPort {
       }
       return out;
     },
+
+    // D202: the account's own models here, with each one's effort levels (token-free: Claude
+    // Code answers list_models before any turn, Codex its model/list). Listed in Ducter's own
+    // folder, never a project's (a listing starts the agent there, OAR ListModelsOptions.cwd).
+    async models(harness) {
+      if (!(HARNESS_IDS as readonly string[]).includes(harness)) return undefined;
+      try {
+        const h = harness as HarnessId;
+        const rt = await load(h);
+        const env = harnessEnv(h, { env: opts.env, dataDir });
+        const inst = await rt?.installation?.({ env });
+        if (!rt?.listModels || !inst || inst.kind !== "available") return undefined;
+        mkdirSync(dataDir, { recursive: true });
+        const r = await rt.listModels(inst, { env, cwd: dataDir, timeoutMs: 20_000 });
+        return r.kind === "ok" ? listedModels(r.models) : undefined;
+      } catch {
+        return undefined;
+      }
+    },
   };
+}
+
+/** D202: OAR's model entries as Ducter lists them: the disabled ones left out. */
+export function listedModels(models: readonly { id: string; displayName?: string; effortLevels?: readonly string[]; defaultEffort?: string; default?: true; disabled?: unknown }[]): ListedModel[] {
+  return models
+    .filter((m) => !m.disabled && m.id)
+    .map((m) => ({
+      id: m.id,
+      label: m.displayName || m.id,
+      ...(m.effortLevels?.length ? { efforts: [...m.effortLevels] } : {}),
+      ...(m.defaultEffort ? { defaultEffort: m.defaultEffort } : {}),
+      ...(m.default ? { default: true as const } : {}),
+    }));
 }
 
 /** Extra members beyond the contract's HarnessSession (see the runner's contract requests). */

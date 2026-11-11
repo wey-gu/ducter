@@ -156,7 +156,8 @@ export interface BodyChooser {
   // by "you": the user picked harness/model themselves (D128 New task): the pin's why says so.
   // D157: needs say what the task needs of its computer; the pick says which computer (device:
   // its name, "local" for the home), whether it waits there, and what it uses.
-  choose(work: { title: string; brief?: string; place?: Place; harness?: string; model?: string; by?: "you"; needs?: TaskNeeds }): Promise<BodyChoice | { none: string } | undefined>;
+  // D202: effort, the user's pick, is checked against the chosen model's levels on its computer.
+  choose(work: { title: string; brief?: string; place?: Place; harness?: string; model?: string; effort?: string; by?: "you"; needs?: TaskNeeds }): Promise<BodyChoice | { none: string } | undefined>;
 }
 
 /** D157: who does a new task, on which computer, and why. */
@@ -171,6 +172,10 @@ export interface BodyChoice {
   uses?: "chrome" | "ducter";
   needsSignIn?: boolean;
   now?: { device: string; deviceId: string; name: string; harness: string; model?: string; uses?: "chrome" | "ducter"; needsSignIn?: boolean };
+  /** D202: the effort asked for, when the chosen model offers it. */
+  effort?: string;
+  /** D202: the effort asked for was dropped (the model doesn't list it, or its list couldn't be read): why, in words. */
+  effortDropped?: string;
 }
 
 /** Who is calling into a connection: the partner, or one task (which must have been granted it). */
@@ -295,6 +300,9 @@ export interface StdioMcpConfig {
 export interface SessionSpec {
   harness: HarnessId;
   model?: string;
+  // D202: the reasoning effort (one of the model's own levels, checked before it gets here); a
+  // resume passes it again (Claude Code keeps no effort per session).
+  effort?: string;
   cwd: string;
   systemPrompt?: string; // replaces the harness default where supported
   appendSystemPrompt?: string;
@@ -363,6 +371,19 @@ export interface HarnessSession {
 export interface HarnessPort {
   start(spec: SessionSpec): Promise<HarnessSession>;
   available(): Promise<{ harness: string; installed: boolean; loggedIn: boolean; models?: string[] }[]>;
+  /** D202: the models this account offers here now (the agent's own list, token-free), or
+   *  undefined when it can't say (not installed, signed out, no listing). Never throws. */
+  models?(harness: string): Promise<ListedModel[] | undefined>;
+}
+
+/** D202: one model as an AI agent lists it (OAR listModels), the disabled ones left out. */
+export interface ListedModel {
+  id: string;
+  label: string;
+  efforts?: string[];
+  defaultEffort?: string;
+  /** What it runs when no model is named, where the agent says so. */
+  default?: true;
 }
 
 export interface Runner {
@@ -371,7 +392,7 @@ export interface Runner {
   // origin "you" (D128): the user opened it themselves; logged on task_open, and a harness given is their pick.
   // needs (D157): what the task needs of its computer; Ducter picks the computer (a place.device
   // the user named stays a pin).
-  openTask(input: { persona: string; title: string; brief: string; place?: Place; project?: string; harness?: string; model?: string; language?: "zh" | "en"; origin?: "you"; needs?: TaskNeeds }): Promise<TaskCard>;
+  openTask(input: { persona: string; title: string; brief: string; place?: Place; project?: string; harness?: string; model?: string; effort?: string; language?: "zh" | "en"; origin?: "you"; needs?: TaskNeeds }): Promise<TaskCard>;
   // Optional (D120, ack and go): open a task while its brief is still being written. The card,
   // the place and the session start now; the brief becomes the session's first turn when it
   // settles. If it rejects, the task is dropped before it did anything.

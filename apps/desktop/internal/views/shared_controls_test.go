@@ -25,7 +25,7 @@ var sharedControls = map[string]bool{
 	// D166: an app a source can read, on the accounts card
 	"appTile": true,
 	// D185: a card's property that opens a list, and the list's rows (New task)
-	"pill": true, "menuRow": true,
+	"pill": true, "menuRow": true, "choice": true,
 }
 
 // controlFiles are the cards and settings pages the rule covers.

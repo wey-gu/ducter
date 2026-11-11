@@ -496,6 +496,16 @@ computer part; 我要合电脑了; the parcel's Lands / Waits / Moves. Still ope
 - [ ] **Evidence screenshots of Ducter's own browser on a worker** are saved on the home, where the
       task on the worker can't read them. Trigger: a task that needs to look at its own screenshot.
 - [ ] **Comprehension check** of Lands and Moves with D81's owed human test of the stage.
+- [ ] **D202: Claude Code's pinned model versions** (claude-opus-4-8, claude-sonnet-4-6, …) in New
+      task's Model row (today its named models only: opus, fable, sonnet, haiku), behind a **更多 /
+      More**. Trigger: the first time the user wants an older model for a task.
+- [ ] **D202: live check** of Model and Effort on hel + the Mac (a worker on this build answers
+      `models`; an older one leaves the card on the tier table), and Claude Code's `get_settings`
+      read-back refusing an effort its settings clamp (the task then fails to start, with OAR's
+      line). Trigger: the author's next run with the Mac switched on.
+- [ ] **D202: the switch sheet (换谁来做) picks a model and effort** the same way (today it keeps
+      its rows per model and drops the effort on a switch). Trigger: the first ask to switch to a
+      deeper effort mid-task.
 
 ## Wide screens: the whole screen (D184)
 

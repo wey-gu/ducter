@@ -6,10 +6,11 @@
 // ⇧⌘↩ starts and keeps the sheet for the next one.
 import type { Candidate } from "@ducter/protocol";
 import { useEffect, useRef } from "preact/hooks";
-import { A, candKey, EVERY_HOURS, parseClock, placeKey, placeLine } from "./app.ts";
+import { A, agentKey, effortWord, EVERY_HOURS, parseClock, placeKey, placeLine } from "./app.ts";
 import { Coin } from "./coin.tsx";
-import { Btn, MenuRow, Pill, Seg } from "./controls.tsx";
+import { Btn, Choice, MenuRow, Pill, Seg } from "./controls.tsx";
 import { candName, candReason, coarse } from "./views.tsx";
+import { harnessName } from "./format.ts";
 import { computerApart, computerOf, computers, manyComputers } from "./where.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -60,6 +61,44 @@ function whenLabel(): string {
 
 const Suggested = () => <small class="suggested">{t("newtask.suggested")}</small>;
 
+const whoLabel = (c: Candidate) => A.ntWhoLabel(c) || candName(c);
+
+/**
+ * D202: under the chosen agent, its 模型 / Model row (its own models, Ducter's suggestion tagged
+ * 推荐) and 思考深度 / Effort row (that model's levels, its own default tagged 默认; none when the
+ * model takes none). One short row each; a choice is remembered for this agent on this client.
+ */
+function Tune({ c }: { c: Candidate }) {
+  const tu = A.ntTune(c);
+  if (!tu.models.length) return null;
+  const chip = (key: string, on: boolean, label: string, pick: () => void, tag?: "suggested" | "default") => (
+    <Choice key={key} label={label} on={on} onClick={pick}>
+      {label}
+      {tag === "suggested" && <Suggested />}
+      {tag === "default" && <small class="nt-dflt">{t("newtask.effort.default")}</small>}
+    </Choice>
+  );
+  return (
+    <div class="nt-tune">
+      <div class="nt-chips">
+        <small>{t("newtask.model")}</small>
+        <div class="nt-chip-row" role="radiogroup" aria-label={t("newtask.model")}>
+          {tu.models.map((m) => chip(m.id, m.id === tu.model?.id, m.label, () => A.pickTune(c, "model", m.id), m.suggested ? "suggested" : undefined))}
+        </div>
+      </div>
+      {tu.efforts.length > 0 && (
+        <div class="nt-chips">
+          <small>{t("newtask.effort")}</small>
+          <div class="nt-chip-row" role="radiogroup" aria-label={t("newtask.effort")}>
+            {!tu.model?.defaultEffort && chip("default", !tu.effort, t("newtask.effort.default"), () => A.pickTune(c, "effort", "default"))}
+            {tu.efforts.map((e) => chip(e, e === tu.effort, effortWord(A.L, e), () => A.pickTune(c, "effort", e === tu.model?.defaultEffort ? "default" : e), e === tu.model?.defaultEffort ? "default" : undefined))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function NewTaskSheet() {
   const nt = A.nt;
   const close = () => ((A.sheet = null), A.changed());
@@ -96,10 +135,15 @@ export function NewTaskSheet() {
   const top = whoList.find((x) => !x.blocked);
   const scheduled = nt.when === "at" || nt.when === "every";
   const start = scheduled ? t("newtask.schedule") : t("newtask.start");
-  const pickCand = (c: Candidate) => {
-    const best = !!top && candKey(top) === candKey(c);
-    if (elsewhere.has(candKey(c)) && c.device) nt.computer = c.device;
-    A.pickWho(best && !elsewhere.has(candKey(c)) ? "" : candKey(c));
+  // D202: the folder list, only one computer's while an agent there waits for a folder.
+  const only = nt.placeOnly;
+  const shown = only ? places.filter((p) => p.place.kind !== "none" && A.placeComputer(p.place) === only) : places;
+  const onlyName = only ? (computerOf(only)?.name ?? "") : "";
+  const awayLine = (c: Candidate) => {
+    if (chosen.place.kind === "none") return candReason({ ...c, blocked: undefined });
+    const name = c.deviceName ?? computerOf(c.device ?? "")?.name ?? "";
+    const copy = c.device ? A.ntCopyOn(c.device, chosen) : undefined;
+    return copy ? t("newtask.agent.copy", name, placeName(copy)) : t("newtask.agent.needsfolder", name);
   };
   const setWhen = (k: (typeof WHEN_KINDS)[number]) => {
     nt.when = k;
@@ -127,7 +171,7 @@ export function NewTaskSheet() {
           <div class="small sub">{t("newtask.verbatim")}</div>
         </div>
         <div class="nt-pills">
-          <Pill label={placeName() ?? ""} about={t("newtask.where")} open={nt.list === "place"} onClick={() => toggle("place")}>
+          <Pill label={placeName() ?? ""} about={t("newtask.where")} open={nt.list === "place"} onClick={() => A.togglePlaces()}>
             <Folder />
             <b>{placeName()}</b>
           </Pill>
@@ -144,13 +188,17 @@ export function NewTaskSheet() {
           )}
           {!opts ? (
             <span class="nt-wait small sub">{t("newtask.loading")}</span>
-          ) : !who ? (
+          ) : !who && !elsewhere.size ? (
             <span class="nt-wait small sub">{t("newtask.nobody")}</span>
+          ) : !who ? (
+            <Pill label={t("newtask.pickwho")} about={t("newtask.who")} open={nt.list === "who"} onClick={() => toggle("who")}>
+              <b>{t("newtask.pickwho")}</b>
+            </Pill>
           ) : (
-            <Pill label={candName(who)} about={t("newtask.who")} open={nt.list === "who"} onClick={() => toggle("who")}>
+            <Pill label={whoLabel(who)} about={t("newtask.who")} open={nt.list === "who"} onClick={() => toggle("who")}>
               <Coin harness={who.harness} size={22} off={false} />
-              <b>{candName(who)}</b>
-              {!picked && <Suggested />}
+              <b>{whoLabel(who)}</b>
+              {!picked && !A.ntSendTune(who).model && !A.ntSendTune(who).effort && <Suggested />}
             </Pill>
           )}
           <Pill label={whenLabel()} about={t("newtask.when")} open={nt.list === "when"} onClick={() => toggle("when")}>
@@ -160,8 +208,8 @@ export function NewTaskSheet() {
         </div>
         {nt.list === "place" && (
           <div class="nt-list" role="radiogroup" aria-label={t("newtask.where")}>
-            <small>{t("newtask.where")}</small>
-            {places.map((p) => (
+            <small>{only ? t("newtask.agent.needsfolder", onlyName) : t("newtask.where")}</small>
+            {shown.map((p) => (
               <MenuRow key={placeKey(p.place)} label={placeName(p) ?? ""} on={placeKey(p.place) === placeKey(chosen.place)} onClick={() => A.pickPlace(p)}>
                 <Folder faint={p.place.kind === "none"} />
                 <span class="mr-t">
@@ -170,6 +218,15 @@ export function NewTaskSheet() {
                 </span>
               </MenuRow>
             ))}
+            {only && (
+              <MenuRow key="none" label={`${t("newtask.nowhere")} · ${onlyName}`} on={false} onClick={() => A.pickPlace({ place: { kind: "none" }, name: "" })}>
+                <Folder faint />
+                <span class="mr-t">
+                  <b>{t("newtask.nowhere")}</b>
+                  <small>{t("newtask.agent.elsewhere", onlyName)}</small>
+                </span>
+              </MenuRow>
+            )}
           </div>
         )}
         {nt.branchOpen && chosen.branches && (
@@ -198,23 +255,30 @@ export function NewTaskSheet() {
             ))}
           </div>
         )}
-        {nt.list === "who" && who && (
+        {nt.list === "who" && (who || elsewhere.size > 0) && (
           <div class="nt-list" role="radiogroup" aria-label={t("newtask.who")}>
             <small>{t("newtask.who")}</small>
             {whoList.map((c) => {
-              const off = !!c.blocked;
-              const best = !!top && candKey(top) === candKey(c);
-              const away = elsewhere.has(candKey(c));
+              const k = agentKey(c);
+              const away = elsewhere.has(k);
+              const off = !!c.blocked && !away;
+              const best = !!top && agentKey(top) === k;
+              const on = !off && !!who && k === agentKey(who);
+              const line = away ? awayLine(c) : candReason(c);
+              const name = harnessName(c.harness);
               return (
-                <MenuRow key={candKey(c)} label={candName(c)} on={!off && candKey(c) === candKey(who)} off={off} why={off ? candReason(c) : undefined} onClick={() => pickCand(c)}>
-                  <Coin harness={c.harness} size={28} off={off} />
-                  <span class="mr-t">
-                    <b>
-                      {candName(c)} {away && <small>{t("newtask.agent.elsewhere", c.deviceName ?? "")}</small>} {best && <Suggested />}
-                    </b>
-                    {candReason(c) && <small>{candReason(c)}</small>}
-                  </span>
-                </MenuRow>
+                <div key={k} class="nt-agent">
+                  <MenuRow label={name} on={on} off={off} why={off ? candReason(c) : undefined} onClick={() => A.pickAgent(c)}>
+                    <Coin harness={c.harness} size={28} off={off} />
+                    <span class="mr-t">
+                      <b>
+                        {name} {away && <small>{t("newtask.agent.elsewhere", c.deviceName ?? "")}</small>} {best && <Suggested />}
+                      </b>
+                      {line && <small>{line}</small>}
+                    </span>
+                  </MenuRow>
+                  {on && <Tune c={c} />}
+                </div>
               );
             })}
           </div>

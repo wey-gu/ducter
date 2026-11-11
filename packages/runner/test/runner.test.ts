@@ -360,6 +360,42 @@ describe("send: steer vs queue", () => {
     await runner.dispose();
   });
 
+  test("D202: the effort core kept reaches the session, the card and the Log, and a restart resumes with it", async () => {
+    const fake = new FakePort();
+    (core as any).bodies = { choose: async (w: any) => ({ harness: "claude-code", model: "opus", effort: w.effort, why: { kind: "you" } }) };
+    const runner = createRunner(core, { harness: fake, newId: nextId });
+    const card = await runner.openTask({ persona: "p1", title: "深想一下", brief: "b", harness: "claude-code", model: "opus", effort: "high", origin: "you" });
+    await runner.whenStarted(card.taskId);
+    expect(fake.specs[0]).toMatchObject({ harness: "claude-code", model: "opus", effort: "high" });
+    const open = core.events.find((e) => e.kind === "task_open")!.body as Bodies["task_open"];
+    expect(open.effort).toBe("high");
+    expect((core.events.find((e) => e.kind === "body_selected")!.body as Bodies["body_selected"]).effort).toBe("high");
+    // The process dies mid-turn; the next one resumes the session with the same effort.
+    const fake2 = new FakePort();
+    const r2 = createRunner(core, { harness: fake2, newId: nextId });
+    await r2.whenStarted(card.taskId);
+    expect(fake2.specs[0]).toMatchObject({ resumeSessionId: "fake-1", effort: "high" });
+    delete (core as any).bodies;
+    await runner.dispose();
+    await r2.dispose();
+  });
+
+  test("D202: an effort the chosen model doesn't offer is never sent; the task says so in one line", async () => {
+    const fake = new FakePort();
+    (core as any).bodies = { choose: async () => ({ harness: "claude-code", model: "sonnet", effortDropped: "effort ultra was left out: Sonnet 5.5 doesn't offer effort ultra", why: { kind: "you" } }) };
+    const runner = createRunner(core, { harness: fake, newId: nextId });
+    const card = await runner.openTask({ persona: "p1", title: "x", brief: "b", harness: "claude-code", model: "sonnet", effort: "ultra", origin: "you" });
+    await runner.whenStarted(card.taskId);
+    expect(fake.specs[0]!.effort).toBeUndefined();
+    expect(taskEvents(card.taskId).some((e) => e.role === "system" && /effort ultra was left out/.test(e.text ?? ""))).toBe(true);
+    // No chooser to check it against (no device info): left out too.
+    delete (core as any).bodies;
+    const c2 = await runner.openTask({ persona: "p1", title: "y", brief: "b", harness: "claude-code", effort: "high", origin: "you" });
+    await runner.whenStarted(c2.taskId);
+    expect(fake.specs[1]!.effort).toBeUndefined();
+    await runner.dispose();
+  });
+
   test("switching a running task hands it off: the old session closes, the new one starts from saved progress", async () => {
     const fake = new FakePort();
     const runner = createRunner(core, { harness: fake, newId: nextId });

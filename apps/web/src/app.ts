@@ -1,12 +1,12 @@
 // The phone app's state and actions (the views read it and call these). One store, one socket.
-import type { AgentReason, MemPluginReason, BrainNow, Candidate, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, MemView, OoDetect, Reach, RuleView, ServerFrame, Settings, SettingsPatch, UpdateReason } from "@ducter/protocol";
+import type { AgentModels, AgentReason, MemPluginReason, BrainNow, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, MemView, OoDetect, Reach, RuleView, ServerFrame, Settings, SettingsPatch, UpdateReason } from "@ducter/protocol";
 import { TUWA_MCP, WATCH_LIVE } from "@ducter/protocol";
 import { Api, Connection, deviceName, type ConnStatus, type Me, wsUrl } from "./conn.ts";
 import { detectLang, langOfText, strings, type Handheld, type Lang, type Strings } from "./i18n.ts";
 import { pushState, type PushState } from "./push-client.ts";
 import { haptic } from "./native.ts";
 import { attention, finished, LANE, laneOf, looksSecret, placeOf, Store, title, type DecisionState, type Entry } from "./store.ts";
-import { withoutStaleAgentUpdate, withoutStaleFailure } from "./format.ts";
+import { harnessName, modelName, withoutStaleAgentUpdate, withoutStaleFailure } from "./format.ts";
 import { canFillNow, wideNow } from "./fold.ts";
 
 /** An iPad says "this iPad" where a phone says "this phone" (D176). */
@@ -70,11 +70,19 @@ export interface NewTaskDraft {
   again?: boolean;
   started?: string;
   startedTask?: string;
+  // D202: the model and effort picked for the chosen agent ("" = the remembered one, else the
+  // suggestion and the model's own default); pending: an agent on another computer waiting for a
+  // folder there (the place list then shows only that computer's, placeOnly its device id).
+  model?: string;
+  effort?: string;
+  pending?: string;
+  placeOnly?: string;
 }
 
 /** D185: the "every few hours" the sheet offers. */
 export const EVERY_HOURS = [1, 2, 4, 8];
 const WHO = "ducter.newtask.who";
+const TUNE = "ducter.newtask.tune";
 
 /** A typed time as "HH:MM" (9, 9:00, 21:30, 9.30, 9：30), or "" when it isn't one. */
 export function parseClock(s: string | undefined): string {
@@ -104,6 +112,33 @@ export const placeLine = (p: PlaceChoice) => {
   return path ? tilde(path) + (p.computer ? ` · ${p.computer}` : "") : "";
 };
 export const candKey = (c: Candidate) => `${c.device ? c.device + "|" : ""}${c.harness}/${c.model ?? ""}`;
+/** D202: one agent on one computer (the Who list has one row each; its model is picked under it). */
+export const agentKey = (c: Candidate) => `${c.device ? c.device + "|" : ""}${c.harness}`;
+/** An agent key from what was remembered (before D202 it held the model too). */
+const asAgentKey = (k: string) => k.replace(/\/.*$/, "");
+/** D202: an effort level in the user's words (低 / Low …); a level Ducter has no word for, as the agent says it. */
+export const effortWord = (L: Strings, e: string) => {
+  const w = L.t(`effort.${e}`);
+  return w === `effort.${e}` ? e : w;
+};
+/** D202: the last model and effort picked for each AI agent on this client. */
+type Tune = Record<string, { model?: string; effort?: string }>;
+let lastTune: Tune = {};
+const rememberedTune = (): Tune => {
+  try {
+    const v = JSON.parse(localStorage.getItem(TUNE) ?? "null");
+    return v && typeof v === "object" ? v : lastTune;
+  } catch {
+    return lastTune;
+  }
+};
+/** D202: same repo on another computer: by its origin when both know one, else (neither does) by the folder's exact name. */
+export const sameRepo = (a: PlaceChoice, b: PlaceChoice) => {
+  if (a.place.kind !== "repo" || b.place.kind !== "repo") return false;
+  if (a.remote || b.remote) return !!a.remote && a.remote === b.remote;
+  const base = (p: PlaceChoice) => (p.place.kind === "repo" ? p.place.repoPath.replace(/\/+$/, "").split("/").pop() : "");
+  return !!base(a) && base(a) === base(b);
+};
 // Kept here too: storage can be missing or refuse (a private window).
 let lastWho = "";
 const rememberedWho = () => {
@@ -113,7 +148,7 @@ const rememberedWho = () => {
     return lastWho;
   }
 };
-const freshDraft = (words = ""): NewTaskDraft => ({ words, placeKey: "", branch: "", branchOpen: false, pick: rememberedWho(), sending: "", err: "", when: "", atDay: 1, atTime: "9:00", every: 0, weekday: 1, hours: 1, condition: "" });
+const freshDraft = (words = ""): NewTaskDraft => ({ words, placeKey: "", branch: "", branchOpen: false, pick: asAgentKey(rememberedWho()), sending: "", err: "", when: "", atDay: 1, atTime: "9:00", every: 0, weekday: 1, hours: 1, condition: "" });
 
 export interface Toast {
   id: number;
@@ -191,7 +226,7 @@ class AppState {
   memAnswer?: { device: string; harness: string; reason: MemPluginReason };
   candidates = new Map<string, Candidate[]>();
   /** New task (D128): what the sheet offers (places, who could), as last sent; the draft. */
-  newTaskOptions?: { places: PlaceChoice[]; candidates: Candidate[] };
+  newTaskOptions?: { places: PlaceChoice[]; candidates: Candidate[]; models?: AgentModels[] };
   nt: NewTaskDraft = freshDraft();
   switchFor = "";
   switching = "";
@@ -352,7 +387,7 @@ class AppState {
     if (f.t === "update_result") return void ((this.checkingUpdates = false), (this.deviceAnswer = f.ok || f.update || f.reason === "no_release" ? undefined : { device: f.device, reason: f.reason ?? "failed" }), this.changed());
     if (f.t === "disconnect_result" || f.t === "rename_result") return void ((this.deviceAnswer = f.ok ? undefined : { device: f.device, reason: f.reason === "name_taken" ? "name_taken" : "failed" }), this.changed());
     if (f.t === "candidates") return void (this.candidates.set(f.taskId, f.candidates), this.changed());
-    if (f.t === "task_new_options") return void ((this.newTaskOptions = { places: f.places, candidates: f.candidates }), this.changed());
+    if (f.t === "task_new_options") return void ((this.newTaskOptions = { places: f.places, candidates: f.candidates, ...(f.models ? { models: f.models } : {}) }), this.changed());
     if (f.t === "task_new_result") return this.newTaskResult(f);
     // `ducter open <task>` (D128): show it as if tapped; back returns.
     if (f.t === "open_task") return void ((this.sheet = null), this.go({ name: "task", id: f.taskId }));
@@ -518,48 +553,167 @@ class AppState {
     return places.find((p) => this.nt.placeKey && placeKey(p.place) === this.nt.placeKey) ?? places[0]!;
   }
 
-  /** D157: the computer New task starts the task on: the user's pick, else where the best agent that can start now is. */
+  /** D202: the computer a place is on (a device id): "local" is the home; else the worker by id or name. */
+  placeComputer(p: Place): string {
+    const dev = p.kind === "repo" || p.kind === "folder" ? p.device || "local" : "";
+    if (!dev) return "";
+    const ds = this.devices ?? [];
+    if (dev === "local") return ds.find((d) => d.home)?.id ?? "local";
+    return ds.find((d) => d.id === dev || d.name === dev)?.id ?? dev;
+  }
+
+  /** D157: the computer New task starts the task on: a folder's own; else the user's pick, else where the best agent that can start now is. */
   ntComputer(): string {
     const list = this.newTaskOptions?.candidates ?? [];
+    const cp = this.chosenPlace().place;
+    if ((cp.kind === "repo" || cp.kind === "folder") && list.some((c) => c.device)) return this.placeComputer(cp);
     const pick = this.nt.computer;
     if (pick && (this.devices ?? []).some((d) => d.id === pick)) return pick;
     return list.find((c) => !c.blocked && !c.waits && c.device)?.device ?? (this.devices ?? []).find((d) => d.home)?.id ?? "";
   }
 
-  /** D157: who New task offers: on the chosen computer, then agents that live only on another (elsewhere). */
+  /**
+   * D157, D202: who New task offers, one row per agent: those on the chosen computer that can,
+   * then every agent that can't there but can on another computer (elsewhere: picking it moves the
+   * folder or the computer with it), then the ones that can't anywhere, greyed with why.
+   */
   ntCands(): { list: Candidate[]; elsewhere: Set<string> } {
     const all = this.newTaskOptions?.candidates ?? [];
     const elsewhere = new Set<string>();
-    if (!all.some((c) => c.device)) return { list: all, elsewhere };
+    const seen = new Set<string>();
+    const firsts = all.filter((c) => !seen.has(agentKey(c)) && !!seen.add(agentKey(c)));
+    if (!all.some((c) => c.device)) return { list: firsts, elsewhere };
     const comp = this.ntComputer();
-    const list = all.filter((c) => c.device === comp);
-    const here = new Set(list.map((c) => c.harness));
-    for (const c of all) {
-      if (c.device === comp || here.has(c.harness) || c.blocked) continue;
-      here.add(c.harness);
-      list.push(c);
-      elsewhere.add(candKey(c));
+    const here = firsts.filter((c) => c.device === comp);
+    const can = new Set(here.filter((c) => !c.blocked).map((c) => c.harness));
+    const away: Candidate[] = [];
+    for (const c of firsts) {
+      if (c.device === comp || can.has(c.harness) || (c.blocked && c.blocked !== "elsewhere") || away.some((x) => x.harness === c.harness)) continue;
+      away.push(c);
+      elsewhere.add(agentKey(c));
     }
-    return { list, elsewhere };
+    const moved = new Set(away.map((c) => c.harness));
+    return { list: [...here.filter((c) => !c.blocked), ...away, ...here.filter((c) => c.blocked && !moved.has(c.harness))], elsewhere };
   }
 
-  /** Who does it: the user's pick, else the top candidate that can. */
+  /** Who does it: the user's pick, else the top candidate that can (never one on another computer by itself). */
   chosenCandidate(): { c?: Candidate; picked: boolean } {
-    const list = this.ntCands().list;
+    const { list } = this.ntCands();
     const top = list.find((c) => !c.blocked);
-    const pick = this.nt.pick ? list.find((c) => !c.blocked && candKey(c) === this.nt.pick) : undefined;
-    if (pick) return { c: pick, picked: !top || candKey(top) !== this.nt.pick };
+    const pick = this.nt.pick ? list.find((c) => !c.blocked && agentKey(c) === this.nt.pick) : undefined;
+    if (pick) return { c: pick, picked: !top || agentKey(top) !== this.nt.pick };
     return { c: top, picked: false };
   }
 
+  /** D202: the copy of the chosen repo on that computer, among the places offered. */
+  ntCopyOn(device: string, chosen = this.chosenPlace()): PlaceChoice | undefined {
+    return this.newTaskPlaces().find((p) => this.placeComputer(p.place) === device && sameRepo(p, chosen));
+  }
+
+  /** D202: the Model and Effort rows of an agent: its models, which is chosen, and the effort. */
+  ntTune(c: Candidate | undefined): { models: ModelChoice[]; model?: ModelChoice; suggested?: ModelChoice; efforts: string[]; effort: string; live: boolean } {
+    const none = { models: [] as ModelChoice[], efforts: [] as string[], effort: "", live: false };
+    if (!c) return none;
+    const row: AgentModels | undefined = (this.newTaskOptions?.models ?? []).find((m) => m.harness === c.harness && (m.device ?? "") === (c.device ?? ""));
+    if (!row?.models.length) return none;
+    const kept = rememberedTune()[c.harness] ?? {};
+    const by = (id?: string) => (id ? row.models.find((m) => m.id === id) : undefined);
+    const suggested = row.models.find((m) => m.suggested);
+    const model = by(this.nt.model) ?? by(kept.model) ?? suggested ?? row.models.find((m) => m.default);
+    const efforts = model?.efforts ?? [];
+    // "default": the user picked the model's own default (over a remembered level).
+    const dflt = model?.defaultEffort && efforts.includes(model.defaultEffort) ? model.defaultEffort : "";
+    const effort = this.nt.effort === "default" ? dflt : ([this.nt.effort, kept.effort].find((e) => !!e && efforts.includes(e)) ?? dflt);
+    return { models: row.models, ...(model ? { model } : {}), ...(suggested ? { suggested } : {}), efforts, effort, live: row.from === "live" };
+  }
+
+  /** D202: the model and effort the frame carries: only what differs from the suggestion and the model's own default. */
+  ntSendTune(c: Candidate | undefined): { model?: string; effort?: string; listed: boolean } {
+    const tune = this.ntTune(c);
+    const model = tune.model && tune.model.id !== tune.suggested?.id ? tune.model.id : undefined;
+    const effort = tune.effort && tune.effort !== tune.model?.defaultEffort ? tune.effort : undefined;
+    return { ...(model ? { model } : {}), ...(effort ? { effort } : {}), listed: tune.models.length > 0 };
+  }
+
+  /** D202: who does it as the pill says it: the agent, its model and its effort ("Claude Code · Opus 5.5 · 高"); "" without a model list. */
+  ntWhoLabel(c: Candidate): string {
+    const tu = this.ntTune(c);
+    if (!tu.models.length) return "";
+    return [harnessName(c.harness), tu.model?.label ?? (c.model && modelName(c.model)), tu.effort && effortWord(this.L, tu.effort)].filter(Boolean).join(" · ");
+  }
+
+  /** D202: the model or effort picked under the chosen agent, remembered for this agent on this client. */
+  pickTune(c: Candidate, part: "model" | "effort", v: string) {
+    if (part === "model") (this.nt.model = v), (this.nt.effort = "");
+    else this.nt.effort = v;
+    const t = this.ntTune(c);
+    const all = rememberedTune();
+    all[c.harness] = { ...(t.model ? { model: t.model.id } : {}), ...(t.effort && t.effort !== t.model?.defaultEffort ? { effort: t.effort } : {}) };
+    lastTune = all;
+    try {
+      localStorage.setItem(TUNE, JSON.stringify(all));
+    } catch {}
+    this.changed();
+  }
+
   pickPlace(p: PlaceChoice) {
-    this.nt.list = "";
+    const nt = this.nt;
+    nt.list = "";
+    // D202: the agent that waited for a folder on its computer is picked with it.
+    if (nt.pending) {
+      const on = nt.placeOnly ?? "";
+      if (p.place.kind === "none" && on) nt.computer = on;
+      if (p.place.kind === "none" || this.placeComputer(p.place) === on) this.pickWho(nt.pending);
+    }
+    nt.pending = nt.placeOnly = undefined;
     if (placeKey(p.place) === placeKey(this.chosenPlace().place)) return this.changed();
-    this.nt.placeKey = placeKey(p.place);
-    this.nt.branch = "";
-    this.nt.branchOpen = false;
-    this.nt.err = "";
+    nt.placeKey = placeKey(p.place);
+    nt.branch = "";
+    nt.branchOpen = false;
+    nt.err = "";
     this.send({ t: "task_new_options", ...(p.place.kind === "repo" || p.place.kind === "folder" ? { place: p.place } : {}) });
+    this.changed();
+  }
+
+  /** D202: the folder list closes (or opens): an agent waiting for a folder stops waiting. */
+  togglePlaces() {
+    const nt = this.nt;
+    nt.list = nt.list === "place" ? "" : "place";
+    nt.pending = nt.placeOnly = undefined;
+    nt.branchOpen = nt.computerOpen = false;
+    this.changed();
+  }
+
+  /**
+   * D202: an agent picked in Who. One on another computer brings its computer along: No folder
+   * moves there; a repo switches to its copy there (and the same branch when that copy has it);
+   * else the folder list opens on that computer's places, the agent waiting for one.
+   */
+  pickAgent(c: Candidate) {
+    const nt = this.nt;
+    const { list, elsewhere } = this.ntCands();
+    const key = agentKey(c);
+    nt.model = nt.effort = "";
+    if (!elsewhere.has(key) || !c.device) {
+      const top = list.find((x) => !x.blocked);
+      return this.pickWho(top && agentKey(top) === key ? "" : key);
+    }
+    const chosen = this.chosenPlace();
+    if (chosen.place.kind === "none") {
+      nt.computer = c.device;
+      return this.pickWho(key);
+    }
+    const copy = this.ntCopyOn(c.device, chosen);
+    if (copy) {
+      const branch = nt.branch || chosen.defaultBranch || "";
+      this.pickWho(key);
+      this.pickPlace(copy);
+      if (branch && branch !== copy.defaultBranch && copy.branches?.includes(branch)) nt.branch = branch;
+      return this.changed();
+    }
+    nt.pending = key;
+    nt.placeOnly = c.device;
+    nt.list = "place";
     this.changed();
   }
 
@@ -631,9 +785,13 @@ class AppState {
             ? { kind: "none", device: comp.home ? "local" : comp.name }
             : undefined;
     const { c, picked } = this.chosenCandidate();
+    // D202: the model and effort go only when they differ from the suggestion and the model's own default.
+    const { model, effort, listed } = this.ntSendTune(c);
+    const sendModel = model ?? (listed ? undefined : c?.model);
+    const who = c && (picked || (nt.pick && nt.computer) || model || effort) ? { harness: c.harness, ...(sendModel ? { model: sendModel } : {}), ...(effort ? { effort } : {}) } : {};
     nt.sending = `n${Date.now()}-${++this.nextClient}`;
     nt.err = "";
-    this.send({ t: "task_new", words, ...(place ? { place } : {}), ...(c && (picked || (nt.pick && nt.computer)) ? { harness: c.harness, ...(c.model ? { model: c.model } : {}) } : {}), clientId: nt.sending, ...(when ? { when } : {}) });
+    this.send({ t: "task_new", words, ...(place ? { place } : {}), ...who, clientId: nt.sending, ...(when ? { when } : {}) });
     this.changed();
     return true;
   }

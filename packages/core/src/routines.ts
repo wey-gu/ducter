@@ -51,6 +51,7 @@ export interface YoursInput {
   project?: string;
   harness?: string;
   model?: string;
+  effort?: string;
   zh?: boolean;
 }
 
@@ -180,7 +181,7 @@ export function createRoutines(opts: {
           brief: yourBrief,
           ...(r.place ? { place: r.place } : {}),
           project: r.project ?? "",
-          ...(r.harness ? { harness: r.harness, ...(r.model ? { model: r.model } : {}) } : {}),
+          ...(r.harness ? { harness: r.harness, ...(r.model ? { model: r.model } : {}), ...(r.effort ? { effort: r.effort } : {}) } : {}),
           language: zh ? "zh" : "en",
           origin: "you",
         });
@@ -495,7 +496,7 @@ export function createRoutines(opts: {
         reviewAt: new Date(reviewAt).toISOString(),
         by: "you",
         ...(input.project ? { project: input.project } : {}),
-        ...(input.harness ? { harness: input.harness, ...(input.model ? { model: input.model } : {}) } : {}),
+        ...(input.harness ? { harness: input.harness, ...(input.model ? { model: input.model } : {}), ...(input.effort ? { effort: input.effort } : {}) } : {}),
       };
       const s: State = { r, fails: 0, unread: 0, monthTokens: 0, month: monthOf(now), lastScheduled: now };
       states.set(r.routineId, s);

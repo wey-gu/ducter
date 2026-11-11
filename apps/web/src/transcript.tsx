@@ -11,11 +11,11 @@ import type { Step } from "@ducter/protocol/src/steps.ts";
 import { blocksOf, latestVoice, type Block, type StepRow } from "@ducter/protocol/src/transcript.ts";
 import { useEffect, useState } from "preact/hooks";
 import type { JSX } from "preact";
-import { A } from "./app.ts";
+import { A, effortWord } from "./app.ts";
 import { Coin } from "./coin.tsx";
 import { duration, harnessName, modelName } from "./format.ts";
 import { markdown } from "./markdown.ts";
-import { attention, finished, harnessOf, modelOf, placeOf, type Task } from "./store.ts";
+import { attention, effortOf, finished, harnessOf, modelOf, placeOf, type Task } from "./store.ts";
 import { manyComputers, taskWhere } from "./where.ts";
 
 export { goRelay } from "@ducter/protocol/src/transcript.ts";
@@ -372,7 +372,8 @@ export function TaskMeta({ task, stateLabel, mark, onSwitch }: { task: Task; sta
   }, [done]);
   const h = harnessOf(task);
   const m = modelOf(task);
-  const who = [harnessName(h), m && modelName(m)].filter(Boolean).join(" · ");
+  const e = effortOf(task);
+  const who = [harnessName(h), m && modelName(m), e && effortWord(A.L, e)].filter(Boolean).join(" · ");
   const where = whereLine(placeOf(task));
   const start = task.openedAt ? Date.parse(task.openedAt) : NaN;
   let when = "";

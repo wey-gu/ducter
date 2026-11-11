@@ -120,14 +120,14 @@ describe("New task: when it starts (D185)", () => {
     expect(sent.at(-1)).toEqual({ t: "task_new_options", place: { kind: "folder", device: "local", path: "/r/notes" } });
     A.receive(options);
     A.nt.words = "Sort the notes by month.";
-    A.pickWho("codex/");
+    A.pickWho("codex");
     A.startNewTask();
     expect(sent.at(-1)).toMatchObject({ place: { kind: "folder", device: "local", path: "/r/notes" }, harness: "codex" });
     A.receive({ t: "task_new_result", ok: false, clientId: sent.at(-1).clientId, reason: "failed" } as any);
     A.nt.words = "";
     A.sheet = null;
     A.openNewTask();
-    expect(A.nt.pick).toBe("codex/");
+    expect(A.nt.pick).toBe("codex");
     A.pickWho("");
     A.sheet = null;
   });

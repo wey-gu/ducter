@@ -481,7 +481,7 @@ func (u *Updater) fetchAndStage(ctx context.Context, rel Release, team string) (
 		os.RemoveAll(stage)
 		return "", ReasonDisk, cerr
 	}
-	if r, err := u.verify(dst, rel.Version, team); err != nil {
+	if r, err := u.verify(dst, rel.Version, team, true); err != nil {
 		os.RemoveAll(stage)
 		return "", r, err
 	}
@@ -489,7 +489,9 @@ func (u *Updater) fetchAndStage(ctx context.Context, rel Release, team string) (
 }
 
 // verify checks a copy of the app before it may replace the running one.
-func (u *Updater) verify(app, version, team string) (Reason, error) {
+// gatekeeper: also ask Gatekeeper (spctl). The staged copy asks it once; the
+// check again before the swap doesn't (see Begin).
+func (u *Updater) verify(app, version, team string, gatekeeper bool) (Reason, error) {
 	in, err := ReadInfo(app)
 	if err != nil {
 		return ReasonBundle, err
@@ -505,6 +507,9 @@ func (u *Updater) verify(app, version, team string) (Reason, error) {
 	}
 	if got, err := u.cfg.Check.Team(app); err != nil || got != team {
 		return ReasonSignature, fmt.Errorf("the update is signed by team %q, this app by %q (%v)", got, team, err)
+	}
+	if !gatekeeper {
+		return ReasonNone, nil
 	}
 	if err := u.cfg.Check.Gatekeeper(app); err != nil {
 		return ReasonGatekeep, err
@@ -677,13 +682,18 @@ func (u *Updater) Begin(relaunch bool) (bool, error) {
 	if p == nil || st.State != Ready || !(relaunch || st.InstallOnQuit || strings.HasPrefix(p.note, "rollback")) {
 		return false, nil
 	}
-	// The copy is checked again: it sat on disk since it was staged.
+	// The copy is checked again: it sat on disk since it was staged. Its
+	// signature, so a changed file is caught; not Gatekeeper, whose verdict
+	// rests on the notarization ticket for this code's hash (the one the
+	// signature check pins) and was given when the copy was staged. 2026-11-11: spctl hung
+	// for its full 2 minutes on a restart asked from the phone, the copy was
+	// dropped, and the update never went in; the same spctl takes 0.4 s.
 	if p.note == "update" {
 		team, err := u.cfg.Check.Team(u.cfg.App)
 		if err != nil || team == "" {
 			return false, fmt.Errorf("the running app's team: %v", err)
 		}
-		if r, err := u.verify(p.from, st.Version, team); err != nil {
+		if r, err := u.verify(p.from, st.Version, team, false); err != nil {
 			u.dropStaged()
 			u.fail(r, err, u.cfg.Now())
 			return false, err

@@ -461,3 +461,18 @@ func TestSwapPutsTheOldOneBackWhenTheNewOneCantMove(t *testing.T) {
 		t.Fatal("the running version is back in place")
 	}
 }
+
+// The check before the swap doesn't ask Gatekeeper again: it was asked when
+// the copy was staged (2026-11-11, spctl hung on the restart and the update
+// never went in).
+func TestRestartDoesNotAskGatekeeperAgain(t *testing.T) {
+	w := setup(t, "0.2.0", "TEAM", nil)
+	if st := w.u.CheckNow(context.Background()); st.State != Ready {
+		t.Fatalf("status %+v", st)
+	}
+	w.check.gatekeep = errors.New("spctl: signal: killed")
+	started, err := w.u.Begin(true)
+	if err != nil || !started {
+		t.Fatalf("Begin: %v %v", started, err)
+	}
+}

@@ -368,8 +368,26 @@ note and a `Dn`) before it is built.
 
 - [ ] **The author's review of D191** (draft): the three stores, never storing the security code,
       no reveal, OK per site, the Pay card. Trigger: the author's next session.
-- [ ] **A real errand, once:** a test-mode checkout on a real site (a Stripe test page) from the
-      phone, end to end; never a real card. Trigger: the review.
+- [x] **A real errand, once** (2026-11-11, a scratch home; shots `.shots/autofill-live/`): a saved
+      sign-in on practicetestautomation.com, a home address into httpbin.org's form, and Stripe's
+      test-mode Checkout paid with the test Visa after the Pay card, each after its card was answered
+      over the client protocol. No secret in the Log, the transcripts or any tool answer. Fixed on the
+      way: a one-computer home refused browser places; the sidecar chose before the brief was logged
+      (a saved handle didn't get Ducter's browser); two OK cards for one sign-in; fills into a
+      re-rendered field; Stripe's 0x0 payment-method buttons; no way to choose a select.
+- [ ] **Card fields in a cross-origin iframe** (Stripe Elements, the embedded Checkout on a merchant's
+      page): the reader doesn't enter iframes, so the task can't see or fill them, and the Pay card's
+      merchant would have to be the top page's host while the fill goes into the frame. Trigger: the
+      first real checkout that embeds its card form.
+- [ ] **Say the result of a payment the page shows only as an icon** (Stripe's green check): read the
+      button's state or aria, or a screenshot to the user. Trigger: a task reports "not sure" after Go.
+- [ ] **Screenshots of a page that echoes a filled value** show it in clear (httpbin's echo of the
+      address): the dots only cover filled fields. Keep screenshots from the model, or mask echoed
+      values before saving. Trigger: the review of D191.
+- [ ] **A model's own payment question beside the Pay card** (sonnet asked with `report_to_main` in the
+      same turn; its done was held until that was answered too). Trigger: it happens again in the eval.
+- [ ] **A card's postcode isn't scrubbed** from reads (only values of 6+ characters are, and postcodes
+      aren't listed). Trigger: the review of D191.
 - [ ] **Clay art for Autofill** through the metaphor process (it borrows the 上网 clay today).
       Trigger: the review of the Settings shots.
 - [ ] **Face ID / Touch ID on the Pay card** (the iPhone shell's existing unlock; LocalAuthentication

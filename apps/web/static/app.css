@@ -585,16 +585,6 @@ a {
   opacity: 0;
 }
 
-.conn {
-  margin: 0 16px 6px;
-  padding: 8px 12px;
-  border-radius: var(--r-md);
-  background: var(--waiting-surface);
-  color: var(--waiting-ink);
-  font-size: var(--sm);
-  font-weight: 700;
-}
-
 /* ---------- conversation ---------- */
 .scroll {
   flex: 1;
@@ -878,6 +868,42 @@ a {
   width: 44px;
   padding: 0;
 }
+/* A text button that opens something in place: a drawn chevron, turned down while open (D211). */
+.btn .btn-chev {
+  flex: none;
+  margin-left: -4px;
+  transition: transform 160ms ease;
+}
+.btn[aria-expanded="true"] .btn-chev {
+  transform: rotate(90deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn .btn-chev {
+    transition: none;
+  }
+}
+/* The one drawn chevron everywhere else (D213): links, rows, the way back. Same stroke and size as
+   the button's; it sits on the text's baseline in the text's ink, and turns down while open. */
+.chev-g {
+  flex: none;
+  display: inline-block;
+  vertical-align: -0.06em;
+  margin-inline-start: 3px;
+  transition: transform 160ms ease;
+}
+.chev-g.open,
+[aria-expanded="true"] > .chev-g {
+  transform: rotate(90deg);
+}
+.chev-g.back {
+  margin-inline: 0 3px;
+  transform: rotate(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .chev-g {
+    transition: none;
+  }
+}
 .btn.text {
   height: 44px;
   padding: 0 12px;
@@ -996,9 +1022,8 @@ a {
   text-align: left;
   min-height: 24px;
 }
-.decision .asker .coin-art {
-  flex: none;
-  border-radius: 50%;
+.decision .asker .chev-g {
+  margin-inline-start: -5px;
 }
 .decision .asker span {
   min-width: 0;
@@ -1758,12 +1783,29 @@ a {
 .standing .when {
   font-variant-numeric: tabular-nums;
 }
-.standing .coin-art {
-  flex: none;
-  border-radius: 50%;
+/* A group's leading dot sits in the gap before it, outside the group: when the group wraps to the
+   start of a line its dot falls past the line's left edge and is clipped, so no line starts with
+   "·" (D211, D213: no coin there to start the group any more). */
+.standing {
+  column-gap: 10px;
+  clip-path: inset(-12px -12px -12px 0);
+}
+.standing .who {
+  position: relative;
+}
+.standing > :first-child + b {
+  margin-inline-start: -4px;
+}
+.standing .who > .sep:first-child {
+  position: absolute;
+  right: 100%;
+  margin-right: 3px;
 }
 .standing .inline-link {
   font-size: var(--sm);
+}
+.standing .inline-link .chev-g {
+  color: inherit;
 }
 /* D157: which computer it runs on; a tap (or a hover) says why there. */
 .standing .where-on {
@@ -2451,9 +2493,11 @@ a {
   color: var(--ink-soft);
 }
 .set-back .back-chev {
-  font-size: 24px;
-  line-height: 1;
-  margin-top: -2px;
+  display: inline-flex;
+}
+.set-back .back-chev .chev-g {
+  width: 13px;
+  height: 13px;
 }
 .set-back:active {
   background: var(--surface-sunken);
@@ -3705,8 +3749,7 @@ ol.tries b {
 /* D78 line breaking for titles that wrap: Latin words and short Chinese words stay whole, breaks
    prefer spaces and punctuation, and two-line titles are balanced. */
 .task-head h1,
-.task-head .waitline,
-.decision .q {
+.task-head .waitline {
   word-break: keep-all;
   overflow-wrap: anywhere;
   line-break: strict;
@@ -3827,15 +3870,12 @@ ol.tries b {
 .nt-wait {
   padding: 0 4px;
 }
-/* 推荐 / Suggested: the best fit's small tag. */
+/* 推荐 / Suggested: the best fit's small word in the highlight's ink, never a capsule (D73, D211). */
 .sheet.newtask .suggested {
   display: inline-block;
   font-size: var(--xs);
   font-weight: 700;
   line-height: 1;
-  padding: 3px 6px;
-  border-radius: 6px;
-  background: var(--highlight);
   color: var(--highlight-ink);
   white-space: nowrap;
   vertical-align: 1px;
@@ -4086,6 +4126,9 @@ ol.tries b {
   font-weight: 600;
   min-width: 0;
 }
+.nt-started > svg {
+  flex: none;
+}
 .nt-started > span {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -4121,6 +4164,14 @@ ol.tries b {
 @keyframes coin-bob {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-2px); }
+}
+/* A coin with a dark-theme rendition (D213) shows it only on the dark ground. */
+.coin-art img.dk { position: absolute; inset: 0; visibility: hidden; }
+:root[data-theme="dark"] .coin-art.has-dark img:not(.dk) { visibility: hidden; }
+:root[data-theme="dark"] .coin-art.has-dark img.dk { visibility: visible; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .coin-art.has-dark img:not(.dk) { visibility: hidden; }
+  :root:not([data-theme="light"]) .coin-art.has-dark img.dk { visibility: visible; }
 }
 /* In the dark an unavailable coin's grey clay would read as lit: it sits back a little. */
 :root[data-theme="dark"] .coin-art.off img { opacity: 0.6; }
@@ -4284,8 +4335,10 @@ button.dev-name {
 .li-row .t small.working { color: var(--working-ink); }
 .li-row .t small.asleep { color: var(--dusk-ink); }
 .li-row .t small.away { color: var(--failed-ink); }
-.li-row .t .dot { flex: none; align-self: center; width: 8px; height: 8px; border-radius: 4px; background: var(--accent); }
-.li-row .chev { flex: none; color: var(--faint); font-weight: 800; }
+/* D213: an update is said in words in the highlight's ink, never a dot (D69). */
+.li-row .t small.update { color: var(--highlight-ink); font-weight: 700; }
+.li-row .chev { flex: none; display: inline-flex; color: var(--faint); }
+.li-row .chev .chev-g { width: 12px; height: 12px; }
 
 .dc { display: flex; flex-direction: column; padding: 4px 18px 16px; border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--base); }
 .dc-hero { position: relative; height: 146px; display: flex; justify-content: center; align-items: flex-end; }
@@ -4953,10 +5006,11 @@ button.bcard:active {
   font-weight: 800;
   color: var(--ink-soft);
 }
+/* Add: a drawn ＋ in the row's ink, never a glyph on a tile (D73, D211). */
 .af-plus {
-  background: var(--needs-surface);
-  box-shadow: 0 var(--ledge) 0 var(--needs-ledge);
-  color: var(--needs-ink);
+  background: none;
+  box-shadow: none;
+  color: var(--ink-soft);
 }
 .af-dots {
   flex: none;

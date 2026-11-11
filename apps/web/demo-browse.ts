@@ -6,6 +6,7 @@
 // The shop answers as shop.example.com (Chrome maps the name to it). Each 5 s the open views'
 // stream numbers are printed ([demo-browse] stats …).
 import { startCore, stubRunner } from "@ducter/core";
+import { noOo } from "./demo-oo.ts";
 
 const zh = (process.env.DEMO_LANG ?? "zh") === "zh";
 const SITE = "shop.example.com";
@@ -48,7 +49,7 @@ const site = Bun.serve({
 process.env.DUCTER_CHROME_FLAGS = `--host-resolver-rules=MAP ${SITE} 127.0.0.1`;
 const ORIGIN = `http://${SITE}:${site.port}`;
 
-const core = startCore({ persona: { id: "default", name: "Ducter", identity: "" }, hostname: "127.0.0.1", push: false, browser: { idleMs: 60 * 60_000 } });
+const core = startCore({ ooSource: noOo, persona: { id: "default", name: "Ducter", identity: "" }, hostname: "127.0.0.1", push: false, browser: { idleMs: 60 * 60_000 } });
 const runner = stubRunner(core);
 runner.send = async (taskId, text) => (console.log(`[demo-browse] told ${taskId}: ${text}`), { delivered: "prompted" });
 core.setRunner(runner);

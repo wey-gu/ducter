@@ -44,6 +44,7 @@ import coinClaudeCode from "../../../apps/web/static/art/coin_claude_code.webp" 
 import coinClaudeCodeOff from "../../../apps/web/static/art/coin_claude_code_off.webp" with { type: "file" };
 import coinCodex from "../../../apps/web/static/art/coin_codex.webp" with { type: "file" };
 import coinCodexOff from "../../../apps/web/static/art/coin_codex_off.webp" with { type: "file" };
+import coinCodexDark from "../../../apps/web/static/art/coin_codex_dark.webp" with { type: "file" };
 import coinPi from "../../../apps/web/static/art/coin_pi.webp" with { type: "file" };
 import coinPiOff from "../../../apps/web/static/art/coin_pi_off.webp" with { type: "file" };
 import coinDeepseekHarness from "../../../apps/web/static/art/coin_deepseek_harness.webp" with { type: "file" };
@@ -105,6 +106,7 @@ const ASSETS: Record<string, [string, string]> = {
   "art/coin_claude_code_off.webp": [coinClaudeCodeOff, "image/webp"],
   "art/coin_codex.webp": [coinCodex, "image/webp"],
   "art/coin_codex_off.webp": [coinCodexOff, "image/webp"],
+  "art/coin_codex_dark.webp": [coinCodexDark, "image/webp"],
   "art/coin_pi.webp": [coinPi, "image/webp"],
   "art/coin_pi_off.webp": [coinPiOff, "image/webp"],
   "art/coin_deepseek_harness.webp": [coinDeepseekHarness, "image/webp"],

@@ -50,15 +50,11 @@ func (a *App) peerWho(agent string, mine bool) string {
 }
 
 // peerAskerRow stands where a task's title would on a card asked for one of
-// the user's own agents: its coin, 你的 <agent> 问你, and where it works.
-func (a *App) peerAskerRow(c *ui.Context, d *protocol.PeerAsk, open bool) {
+// the user's own agents: 你的 <agent> 问你 and where it works (no coin at
+// this size, D213).
+func (a *App) peerAskerRow(c *ui.Context, d *protocol.PeerAsk) {
 	t := a.T
-	m := coinStill
-	if open {
-		m = coinWaiting
-	}
 	ui.Row(c.Key("peer-asker")).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-		a.coinBox(c, "peer:"+d.MessageID, peerHarness(d.Agent), 22, false, m)
 		ui.Text(c, a.L.T("peer.asks", d.Agent)).FontSize(t.SM).FontWeight(700).TextColor(t.NeedsYou.Ink).MaxLines(1)
 		if d.Where != "" {
 			ui.Text(c, "· "+d.Where).FontSize(t.SM).TextColor(t.InkMuted).MaxLines(1)
@@ -285,7 +281,6 @@ func (a *App) peerLine(c *ui.Context, b *protocol.BridgeMsg, setAside int) {
 	}
 	ui.Row(c).Justify(ui.Center).Children(func() {
 		ui.Row(c).Gap(t.S1+2).AlignItems(ui.Center).Padding(3, t.S3).Radius(999).Background(t.SurfaceSunken).Children(func() {
-			a.coinBox(c, "peerline", peerHarness(firstNonEmpty(b.Agent, b.From, b.To)), 16, false, coinStill)
 			ui.Text(c, text).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(1)
 		})
 	})

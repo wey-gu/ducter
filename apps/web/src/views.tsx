@@ -14,7 +14,7 @@ import { ago, behind, cjkPad, deviceLabel, duration, firstClause, harnessName, m
 import { markdown } from "./markdown.ts";
 import { Coin } from "./coin.tsx";
 import { EyeShut, liveSize } from "./live.tsx";
-import { Btn, Seg, Toggle } from "./controls.tsx";
+import { Btn, Chev, Seg, Toggle } from "./controls.tsx";
 import { deviceArt, DevicesSection } from "./devcard.tsx";
 import { ProactiveChips, SourceCards } from "./accounts.tsx";
 import { CallDecision, CallRow, PhoneCard, PhoneOffer } from "./phone.tsx";
@@ -138,7 +138,8 @@ const Cross = () => (
   </svg>
 );
 
-const Check = () => (
+/** A drawn ✓ (D73: marks are drawn glyphs, never a font's symbol). */
+export const Check = () => (
   <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
     <path d="M3 7.4l2.6 2.6L11 4.6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
   </svg>
@@ -152,11 +153,6 @@ const Clock = () => (
 const Arrow = () => (
   <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
     <path d="M10 15V5M5.5 9.5L10 5l4.5 4.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
-  </svg>
-);
-const Chev = () => (
-  <svg class="chev" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
-    <path d="M4.5 2.5 8 6l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
   </svg>
 );
 const Out = () => (
@@ -212,7 +208,7 @@ function AutoText(p: { value: string; onInput: (v: string) => void; placeholder:
       onInput={(e) => p.onInput((e.target as HTMLTextAreaElement).value)}
       onKeyDown={(e) => {
         // On a phone Return breaks the line and the button sends; with a keyboard Enter sends.
-        // ⌘↩ sends everywhere, a keyboard on a phone or tablet included (D210).
+        // ⌘⏎ sends everywhere, a keyboard on a phone or tablet included (D210).
         if (e.key === "Enter" && !e.isComposing && p.onEnter && (e.metaKey || e.ctrlKey || (!e.shiftKey && !coarse()))) {
           e.preventDefault();
           p.onEnter();
@@ -378,7 +374,6 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
 function PeerAsker({ d }: { d: DecisionState }) {
   return (
     <div class="asker peer">
-      <Coin harness={peerHarness(d.asker!.agent)} size={20} motion={d.resolved || d.pending ? "still" : "needs_you"} />
       <span>
         {t("peer.asks", d.asker!.agent)}
         {d.asker!.where && <small> · {d.asker!.where}</small>}
@@ -411,8 +406,8 @@ export function DecisionCard({ d, taskId, inTask }: { d: DecisionState; taskId?:
       {task && title(task) && !inTask && (
         // Who asks and about what (D127): the agent's coin and the task's short title, the way into it.
         <button class="asker" title={title(task)} onClick={() => ((A.sheet = null), A.go({ name: "task", id: task.id }))}>
-          {harnessOf(task) && <Coin harness={harnessOf(task)} size={20} motion="needs_you" />}
-          <span>{shortTitle(title(task))} ›</span>
+          <span>{shortTitle(title(task))}</span>
+          <Chev />
         </button>
       )}
       <DecisionBody d={d} taskId={taskId} />
@@ -472,7 +467,10 @@ function TaskLine({ task, detail }: { task: Task; detail?: string }) {
         <StateMark a={a} />
       </span>
       <span class="t">{title(task) || t("task.unknown")}</span>
-      <span class="s">· {d} ›</span>
+      <span class="s">
+        · {d}
+        <Chev />
+      </span>
     </button>
   );
 }
@@ -517,7 +515,8 @@ function ProofLine({ task, evs, withTitle, max = 4 }: { task: Task; evs: Evidenc
       {rest.slice(0, max).map((ev, i) =>
         /^https?:/.test(ev.ref) ? (
           <button key={i} class="qlink" onClick={() => openEvidence(ev, task)}>
-            {proofLabel(ev, A.L.lang)} ›
+            {proofLabel(ev, A.L.lang)}
+            <Chev />
           </button>
         ) : (
           <span key={i} class="mk" title={ev.ref}>
@@ -536,14 +535,16 @@ function ProofLine({ task, evs, withTitle, max = 4 }: { task: Task; evs: Evidenc
       {changes &&
         (withTitle ? (
           <button class="qlink" onClick={() => A.go({ name: "task", id: task.id })}>
-            {changes} ›
+            {changes}
+            <Chev />
           </button>
         ) : (
           <span class="mk">{changes}</span>
         ))}
       {withTitle && (
         <button class="qlink" onClick={() => A.go({ name: "task", id: task.id })}>
-          {title(task) || t("task.unknown")} ›
+          {title(task) || t("task.unknown")}
+          <Chev />
         </button>
       )}
     </div>
@@ -1062,7 +1063,6 @@ function PeerLine({ b, ts }: { b: Bodies["bridge_msg"]; ts: string }) {
   const n = b.state === "set_aside" ? A.S.setAside.get(`${b.from}|${ts.slice(0, 10)}`)?.n : undefined;
   return (
     <div class="peerline" role="status">
-      <Coin harness={peerHarness(b.agent ?? b.from ?? b.to ?? "")} size={16} />
       <span>{peerLineText(b, ts, n)}</span>
     </div>
   );
@@ -1287,12 +1287,8 @@ export function Conversation() {
   const empty = rows.length === 0 && A.pending.length === 0 && A.S.welcomed;
   return (
     <>
+      {/* Offline is said once, in the header's line under the sleeping face (D73, D211). */}
       <Top />
-      {A.status === "offline" && (
-        <div class="conn" role="status">
-          {t("conn.offline")}
-        </div>
-      )}
       <main
         class="scroll"
         ref={scroller}
@@ -1456,7 +1452,7 @@ function Row({ task, meta }: { task: Task; meta: string }) {
         <span class="m">{meta}</span>
       </span>
       <span class="chev" aria-hidden="true">
-        ›
+        <Chev />
       </span>
     </button>
   );
@@ -1837,7 +1833,8 @@ function FolderChangesView({ task }: { task: Task }) {
           )
         ) : (
           <button class="qlink" onClick={() => (setListOpen(true), A.folderChanges(task.id))}>
-            {t("folder.list")} ›
+            {t("folder.list")}
+            <Chev />
           </button>
         )
       )}
@@ -1898,11 +1895,9 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
   return (
     <>
       {full ? (
-        // D184: the whole screen, as the Mac shows an opened task: the crumbs, then Pause and
-        // Drop at the header's end.
+        // D184: the whole screen, as the Mac shows an opened task: the crumbs (Pause and Cancel
+        // task are in the foot, D210, D213); D214: the workbench's toggle at the header's end.
         <FullTop task={task}>
-          {!finished(task) && !["dropped", "superseded", "done"].includes(a) && <Btn kind="text" size="sm" label={t("task.action.drop")} onClick={() => A.drop(id)} />}
-          {/* D214: the workbench, beside the task. */}
           <BenchToggle task={task} />
         </FullTop>
       ) : (
@@ -1946,12 +1941,6 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
             ) : (
               <ResultActions task={task} inTask />
             )}
-          </div>
-        )}
-        {/* D210: Pause sits in the foot over the composer (Esc twice); Cancel task stays here. */}
-        {!finished(task) && !full && !["dropped", "superseded", "done"].includes(a) && (
-          <div class="btns">
-            <Btn kind="text" label={t("task.action.drop")} onClick={() => A.drop(id)} />
           </div>
         )}
         <WaitDetails task={task} />
@@ -2236,7 +2225,6 @@ function PeerSettings() {
       </div>
       {p.trusted.map((a) => (
         <div class="noted-row" key={`t-${a}`}>
-          <Coin harness={peerHarness(a)} size={20} />
           <span>
             {t("peers.trusted", a)} · <small>{t("peers.trusted.why")}</small>
           </span>
@@ -2245,7 +2233,6 @@ function PeerSettings() {
       ))}
       {p.muted.map((a) => (
         <div class="noted-row" key={`m-${a}`}>
-          <Coin harness={peerHarness(a)} size={20} off />
           <span>{t("peers.muted", a)}</span>
           <Btn kind="text" label={t("peers.muted.undo")} about={a} onClick={() => set({ muted: p.muted.filter((x) => x !== a) })} />
         </div>
@@ -2274,7 +2261,7 @@ function NotifySettings() {
         )}
       </section>
       {/* D165: the same chips as on Accounts, once there is something to watch. */}
-      {(s.proactive || A.connections?.length) && (
+      {(s.proactive || !!A.connections?.length) && (
         <section class="set">
           <ProactiveChips />
         </section>
@@ -2524,7 +2511,7 @@ function Accounts() {
       <>
         <SourceCards list={list} />
         <section class="set accounts quiet-add">
-          <Btn kind="text" label={`${t("acct.add")} ›`} onClick={() => setAdding(true)} />
+          <Btn kind="text" chev label={t("acct.add")} onClick={() => setAdding(true)} />
           {refusal && <AcctRefusal reason={refusal} hosted={false} />}
         </section>
       </>
@@ -2544,7 +2531,8 @@ function Accounts() {
       {!adding ? (
         offer ? (
           <button class="qlink" onClick={() => setAdding(true)}>
-            {t("acct.manual")} ›
+            {t("acct.manual")}
+            <Chev />
           </button>
         ) : (
           <Btn kind="secondary" label={t("acct.add")} onClick={() => setAdding(true)} />
@@ -2559,7 +2547,8 @@ function Accounts() {
               <li>
                 <span>{t("acct.step.oomol.1")}</span>
                 <a class="qlink" href={OOMOL_ACCOUNTS} target="_blank" rel="noopener noreferrer">
-                  {t("acct.connect.oomol")} ›
+                  {t("acct.connect.oomol")}
+                  <Chev />
                 </a>
               </li>
               <li>
@@ -2614,7 +2603,8 @@ function Accounts() {
           {!hosted && (
             <>
               <button type="button" class="qlink" aria-expanded={how} onClick={() => setHow(!how)}>
-                {t(how ? "acct.how.hide" : "acct.how")} ›
+                {t(how ? "acct.how.hide" : "acct.how")}
+                <Chev />
               </button>
               {how && <div class="small sub steps">{t(`acct.how.${where}`)}</div>}
             </>
@@ -2763,7 +2753,7 @@ function SettingsSheet() {
         <div class="set-page pushed" key={page}>
           <button class="set-back" onClick={() => go("")} aria-label={t("settings.back")}>
             <span class="back-chev" aria-hidden="true">
-              ‹
+              <Chev back />
             </span>
             {t("settings.back")}
           </button>

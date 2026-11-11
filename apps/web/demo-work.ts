@@ -4,6 +4,7 @@
 //   DUCTER_PORT=7980 DUCTER_DATA_DIR=/tmp/x DEMO_LANG=zh bun apps/web/demo-work.ts
 // DEMO_FIRE_MS: after this long the PR's checks turn green and the wait comes true (default off).
 import { startCore, stubRunner } from "@ducter/core";
+import { noOo } from "./demo-oo.ts";
 import type { Bodies, Place } from "@ducter/protocol";
 
 const zh = (process.env.DEMO_LANG ?? "zh") === "zh";
@@ -16,7 +17,7 @@ const verdicts = [
   // The copy loop: nothing to count (Ducter at work and the latest try in words).
   { met: false, reason: zh ? "开头顺了，结尾还有点硬" : "The opening reads well; the ending is still stiff", progress: "better" as const },
 ];
-const core = startCore({
+const core = startCore({ ooSource: noOo,
   persona: { id: "default", name: "Ducter", identity: "" },
   hostname: process.env.DUCTER_HOST || "127.0.0.1",
   work: {

@@ -408,20 +408,31 @@ func (a *App) needsCard(c *ui.Context, task *store.Task) {
 	})
 }
 
-// askerRow is who asks and about what: the agent's coin (its hover says
-// who and where), the task's short title as a link, and how long ago.
+// askerRow is what the ask is about: the task's short title as a link
+// (its hover says the whole title, who and where), and how long ago. No
+// coin: at this size it reads as an emoji (D213).
 func (a *App) askerRow(c *ui.Context, task *store.Task) {
 	t := a.T
 	ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
-		if h := task.Harness(); h != "" {
-			ui.Box(c.Key("coin")).Shrink(0).Tooltip(a.whereWhy(task)).Children(func() { a.coin(c, h, 22, coinWaiting) })
-		}
 		title := shortTitle(task.Title())
-		l := ui.Text(c, title+" ›").FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft).Grow(1).MinWidth(0).SingleLine().
-			Cursor(ui.CursorPointer).Role(ui.RoleLink).Label(task.Title()).Focusable().Tooltip(task.Title())
-		if l.Hovered() || l.Pressed() {
-			l.TextColor(t.Ink).Underline()
+		tip := task.Title()
+		if why := a.whereWhy(task); why != "" {
+			tip += "\n" + why
 		}
+		l := ui.Row(c.Key("asker")).Gap(2).AlignItems(ui.Center).Grow(1).MinWidth(0).Cursor(ui.CursorPointer).
+			Role(ui.RoleLink).Label(task.Title()).Focusable().Tooltip(tip)
+		hover := l.Hovered() || l.Pressed()
+		l.Children(func() {
+			col := t.InkSoft
+			if hover {
+				col = t.Ink
+			}
+			tx := ui.Text(c, title).FontSize(t.SM).FontWeight(700).TextColor(col).MinWidth(0).Shrink(1).SingleLine().AccessHidden(true)
+			if hover {
+				tx.Underline()
+			}
+			a.glyph(c, 12, drawChevron(col, false))
+		})
 		if l.Clicked() {
 			a.OpenTask(task.ID)
 		}
@@ -677,7 +688,7 @@ func (a *App) partnerDecisionCard(c *ui.Context, d *store.DecisionState) {
 		Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge).Children(func() {
 		if d.Asker != nil {
 			// X1 (D170): the agent's coin and who it is stand where a task's title would.
-			a.peerAskerRow(c, d.Asker, true)
+			a.peerAskerRow(c, d.Asker)
 		} else {
 			ui.Row(c).Gap(t.S3).AlignItems(ui.Center).Children(func() {
 				a.avatar(c, theme.NeedsYou, 28)

@@ -364,7 +364,7 @@ func (a *App) benchBack(c *ui.Context, label string) bool {
 	t := a.T
 	r := ui.Row(c.Key("back:" + label)).Gap(t.S1).AlignItems(ui.Center).Cursor(ui.CursorPointer).Role(ui.RoleButton).Label(label).Focusable()
 	r.Children(func() {
-		ui.Text(c, "‹").FontSize(t.MD).FontWeight(700).TextColor(t.InkSoft).AccessHidden(true)
+		a.glyph(c, 12, drawBack(t.InkSoft))
 		ui.Text(c, label).FontSize(t.SM).FontWeight(700).TextColor(t.InkSoft)
 	})
 	return r.Clicked()
@@ -600,11 +600,11 @@ func (a *App) benchFiles(c *ui.Context, task *store.Task, b *benchTask) {
 				row.Background(t.SurfaceSunken)
 			}
 			row.Children(func() {
-				mark := " "
 				if e.Kind == "d" {
-					mark = "›"
+					a.glyph(c, 12, drawChevron(t.InkMuted, b.expanded[p]))
+				} else {
+					ui.Box(c).Size(12, 12).Shrink(0)
 				}
-				ui.Text(c, mark).FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).Rotate(map[bool]float32{true: 90, false: 0}[b.expanded[p]]).Width(10).AccessHidden(true)
 				ink := t.Ink
 				switch changed[p] {
 				case "added":
@@ -700,4 +700,16 @@ func (a *App) taskComputerName(task *store.Task) string {
 		return a.L.T("device.local")
 	}
 	return d
+}
+
+// drawBack is a small ‹ (back to the list), the chevron's mirror.
+func drawBack(col ui.Color) func(p *ui.Painter, r ui.Rect) {
+	return func(p *ui.Painter, r ui.Rect) {
+		cx, cy := r.X+r.W/2, r.Y+r.H/2
+		var m ui.Path
+		m.MoveTo(cx+1.5, cy-3.5)
+		m.LineTo(cx-2, cy)
+		m.LineTo(cx+1.5, cy+3.5)
+		p.StrokePath(&m, 1.8, col)
+	}
 }

@@ -14,6 +14,8 @@ export function ago(L: Strings, iso: string | undefined, now = Date.now()): stri
   const s = Math.max(0, (now - Date.parse(iso)) / 1000);
   if (s < 60) return L.t("time.now");
   if (s < 3600) return L.t("time.ago.min", Math.round(s / 60));
+  // From a day and a half on, days ("9 天前", never "220 小时前"; the Mac's rule too).
+  if (s >= 36 * 3600) return L.t("time.ago.day", Math.round(s / 86400));
   return L.t("time.ago.hour", Math.round(s / 3600));
 }
 

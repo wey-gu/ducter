@@ -250,7 +250,7 @@ export function SourceCard({ c }: { c: ConnectionView }) {
         <MailboxHero source={c.source} off={down(c)} />
         <h3>{name}</h3>
         <div class={`small ${s.warn ? "warn" : "sub"}`}>{s.line}</div>
-        {c.source === "oomol" && c.apps && !c.apps.length && !down(c) && <Btn kind="text" size="sm" label={`${t("acct.connect.oomol")} ›`} onClick={() => window.open(OOMOL_ACCOUNTS, "_blank", "noopener")} />}
+        {c.source === "oomol" && c.apps && !c.apps.length && !down(c) && <Btn kind="text" size="sm" chev label={t("acct.connect.oomol")} onClick={() => window.open(OOMOL_ACCOUNTS, "_blank", "noopener")} />}
       </div>
       <div class="tray">
         {tiles.map((w) => {
@@ -273,7 +273,7 @@ export function SourceCard({ c }: { c: ConnectionView }) {
         {reads && <ReadsList c={c} />}
         {!stopping ? (
           <div class="src-acts">
-            <Btn kind="text" size="sm" class={reads ? "open" : "chev"} label={t("card.read_list")} expanded={reads} onClick={() => (setReads(!reads), !reads && A.askReads(c.id))} />
+            <Btn kind="text" size="sm" chev label={t("card.read_list")} expanded={reads} onClick={() => (setReads(!reads), !reads && A.askReads(c.id))} />
             <DangerButton label={t("card.stop", name)} onClick={() => setStopping(true)} />
           </div>
         ) : (

@@ -69,7 +69,7 @@ export interface NewTaskDraft {
   // keep their own flags), when it starts ("" now, "at", "every", "when", "until") with its
   // day (0 today, 1 tomorrow, 2 the day after), time, schedule (0 every day, 1 weekdays,
   // 2 weekly on weekday, 3 every few hours, hours an index of EVERY_HOURS) and condition;
-  // again keeps the sheet after a start (⇧⌘↩), started says what just started.
+  // again keeps the sheet after a start (⇧⌘⏎), started says what just started.
   list?: string;
   when?: "" | "at" | "every" | "when" | "until";
   atDay?: number;
@@ -1137,7 +1137,7 @@ class AppState {
     if (f.ok && (f.taskId || f.routineId)) {
       const nt = this.nt;
       if (nt.again) {
-        // ⇧⌘↩ (D185): the sheet stays, empty, with the same place, who and when, saying what started.
+        // ⇧⌘⏎ (D185): the sheet stays, empty, with the same place, who and when, saying what started.
         nt.words = nt.condition = nt.err = "";
         this.picks.delete("new");
         if (f.routine) nt.started = this.L.t("newtask.scheduled", f.routine.triggerWords, f.routine.name);

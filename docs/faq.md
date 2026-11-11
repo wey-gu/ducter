@@ -90,7 +90,7 @@ its **Model** and its **Effort** (how hard it thinks: **Low** to **Max**, as tha
 the ones it starts with are the suggested model and the model's own default, and your last choice
 for that agent is remembered. Every AI agent you have is in the list, on whichever computer it is:
 one on another computer says so (*on MacBook*), and picking it moves the task to that computer,
-to the same project there, or asks you to pick a folder there. **⌘↩** starts it; **⇧⌘↩** starts
+to the same project there, or asks you to pick a folder there. **⌘⏎** starts it; **⇧⌘⏎** starts
 it and keeps the card open for the next one, so you can start several in a row. Ducter tells
 you the result when it's done, like any other task.
 

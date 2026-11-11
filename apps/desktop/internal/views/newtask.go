@@ -18,8 +18,8 @@ import (
 // one row of pills: where (a folder, recent first; 加一个文件夹… makes a
 // project, D186), its branch, the computer when the choice is real (D157),
 // who does it, and when it starts (现在 / Now by default; a time, a
-// schedule, when something happens, or keep going until). ⌘↩ starts and
-// opens it; ⇧⌘↩ starts it and keeps the card for the next one.
+// schedule, when something happens, or keep going until). ⌘⏎ starts and
+// opens it; ⇧⌘⏎ starts it and keeps the card for the next one.
 
 // newTaskState is the card's own state.
 type newTaskState struct {
@@ -66,7 +66,7 @@ type newTaskState struct {
 	hours     int
 	condition string
 	focusCond bool
-	// again: the start in flight keeps the card (⇧⌘↩); started is the line
+	// again: the start in flight keeps the card (⇧⌘⏎); started is the line
 	// that says what just started, startedTask the task to open from it.
 	again       bool
 	started     string
@@ -314,7 +314,7 @@ func (a *App) ntWhen() (*protocol.NewTaskWhen, string) {
 }
 
 // StartNewTask sends what the card holds; again keeps the card open for
-// the next one (⇧⌘↩). It reports whether it went.
+// the next one (⇧⌘⏎). It reports whether it went.
 func (a *App) StartNewTask(again ...bool) bool {
 	nt := &a.nt
 	if nt.sending != "" {
@@ -390,7 +390,7 @@ func (a *App) StartNewTask(again ...bool) bool {
 }
 
 // drainNewTask takes the server's answers: an opened task closes the card
-// and shows that task (or, started with ⇧⌘↩, stays for the next one); a
+// and shows that task (or, started with ⇧⌘⏎, stays for the next one); a
 // schedule closes it on On hand; a refusal stays on the card, in one line.
 // A folder added as a project (D186) becomes the chosen place.
 func (a *App) drainNewTask() {
@@ -918,11 +918,7 @@ func (a *App) whoPill(c *ui.Context) {
 		name = a.whoLabel(*chosen)
 	}
 	e, click := a.pill(c, "nt-who", a.L.T("newtask.who")+" · "+name, nt.whoOpen, func() {
-		if chosen != nil {
-			if bmp := theme.Clay(coinArt(chosen.Harness, false)); bmp != nil {
-				ui.Image(c, bmp).Size(22, 22).Shrink(0).AccessHidden(true)
-			}
-		}
+		// The agent's name alone: a 22-point coin in a pill reads as an emoji (D213).
 		ui.Text(c, name).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().AccessHidden(true)
 		if chosen != nil && !picked && a.tuneIsDefault(*chosen) {
 			a.suggestedTag(c)
@@ -1004,10 +1000,11 @@ func (a *App) awayLine(cd protocol.Candidate, place protocol.PlaceChoice) string
 	return a.L.T("newtask.agent.needsfolder", cd.DeviceName)
 }
 
-// suggestedTag is 推荐 / Suggested on the best fit.
+// suggestedTag is 推荐 / Suggested on the best fit: a small word in the
+// highlight's ink, never a capsule (D73, D211).
 func (a *App) suggestedTag(c *ui.Context) {
 	t := a.T
-	ui.Row(c.Key("nt-suggested")).Padding(2, t.S1+3).Radius(6).Background(t.Highlight).Shrink(0).AccessHidden(true).Children(func() {
+	ui.Row(c.Key("nt-suggested")).Shrink(0).AccessHidden(true).Children(func() {
 		ui.Text(c, a.L.T("newtask.suggested")).FontSize(t.XS).FontWeight(700).TextColor(t.HighlightInk).SingleLine()
 	})
 }

@@ -7,11 +7,12 @@
 // Then POST /step?phase=downloading (or verifying, waiting, restarting, done, failed) on DEMO_CTL_PORT,
 // or /agent?phase=waiting (updating, checking, done, failed) for Codex's own update on hel.
 import { startCore, stubRunner } from "@ducter/core";
+import { noOo } from "./demo-oo.ts";
 
 const feed = async () => new Response(JSON.stringify({ tag_name: "v0.0.8", body: "- Every device card is a character sheet\n- Coins pop when an update lands" }));
 const registry = async (u: string) =>
   u.includes("@openai/codex") ? new Response('{"version":"0.168.0"}') : u.includes("claude-code-releases") ? new Response("2.1.322") : new Response("", { status: 404 });
-const core = startCore({
+const core = startCore({ ooSource: noOo,
   persona: { id: "default", name: "Ducter", identity: "" },
   hostname: "127.0.0.1",
   deviceProbes: {

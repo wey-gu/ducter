@@ -1,5 +1,5 @@
 // D185 and D186: the New task sheet starts work now, at a time, on a schedule, when something
-// happens or until it holds; ⇧⌘↩ keeps the sheet for the next one; a folder place is a place.
+// happens or until it holds; ⇧⌘⏎ keeps the sheet for the next one; a folder place is a place.
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { strings } from "../src/i18n.ts";
@@ -87,7 +87,7 @@ describe("New task: when it starts (D185)", () => {
     A.nt.when = "";
   });
 
-  test("a schedule closes the sheet on On hand; ⇧⌘↩ keeps it, empty, saying what started", async () => {
+  test("a schedule closes the sheet on On hand; ⇧⌘⏎ keeps it, empty, saying what started", async () => {
     const g = globalThis as any;
     const had = { location: g.location, history: g.history, scrollTo: g.scrollTo };
     g.location = { hash: "", pathname: "/" };

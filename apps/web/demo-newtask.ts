@@ -6,6 +6,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { startCore } from "@ducter/core";
+import { noOo } from "./demo-oo.ts";
 import type { Bodies, BranchChanges, DeviceHarness, Place, TaskCard } from "@ducter/protocol";
 import type { ListedModel, Runner } from "@ducter/protocol/src/internal.ts";
 import { createModelCatalog } from "../../packages/core/src/models.ts";
@@ -63,7 +64,7 @@ const lists: Record<string, ListedModel[]> = {
   ],
 };
 
-const core = startCore({
+const core = startCore({ ooSource: noOo,
   persona: { id: "default", name: "Ducter", identity: "" },
   models: createModelCatalog({ read: async (_device, harness) => lists[harness] }),
   hostname: process.env.DUCTER_HOST || "127.0.0.1",

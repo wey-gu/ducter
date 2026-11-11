@@ -9,7 +9,6 @@
 import type { LiveDoing, LiveKey } from "@ducter/protocol";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { A } from "./app.ts";
-import { Coin } from "./coin.tsx";
 import { Btn } from "./controls.tsx";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -199,7 +198,6 @@ export function LiveView({ embedded }: { embedded?: boolean } = {}) {
     if (lv.watch)
       return (
         <>
-          {lv.task?.harness && <Coin harness={lv.task.harness} size={16} />}
           <span class="live-task">{lv.task?.title ?? t("live.where")}</span>
         </>
       );

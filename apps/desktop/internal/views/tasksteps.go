@@ -278,8 +278,9 @@ func (a *App) whereLine(p protocol.Place) string {
 	return strings.Join(parts, " · ")
 }
 
-// taskWho is the meta line's second half: who does it (its coin, the agent
-// and the model), where, and Switch who does it as a small action.
+// taskWho is the meta line's second half: who does it (the agent and the
+// model in words; no coin at this size, D213), where, and Switch who does
+// it as a small action.
 func (a *App) taskWho(c *ui.Context, task *store.Task) {
 	t := a.T
 	who := a.bodyLine(task)
@@ -289,9 +290,6 @@ func (a *App) taskWho(c *ui.Context, task *store.Task) {
 	}
 	ui.Row(c.Key("who")).Gap(t.S1).AlignItems(ui.Center).MinWidth(0).Shrink(1).Children(func() {
 		ui.Text(c, "·").FontSize(t.SM).TextColor(t.InkMuted)
-		if h := task.Harness(); h != "" {
-			ui.Box(c).Padding(0, 2).Children(func() { a.coin(c, h, 16, coinMotionOf(task.Attention())) })
-		}
 		line := strings.Join(nonEmpty(who, where), " · ")
 		tx := ui.Text(c, line).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0).Shrink(1)
 		p := task.Place()

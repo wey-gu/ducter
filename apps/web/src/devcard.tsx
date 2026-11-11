@@ -125,7 +125,7 @@ export function DevicesSection() {
       <div class="plist">
         {list.map((dv) => {
           const w = listWord(A.L, dv, { home, running: runningOn(dv) });
-          return <ListRow key={dv.id} art={deviceArt(dv)} name={dv.name} word={w.text} tone={w.tone} dot={!!dv.update && behind(dv.update)} onClick={() => setOpen(`dev:${dv.id}`)} />;
+          return <ListRow key={dv.id} art={deviceArt(dv)} name={dv.name} word={w.text} tone={w.tone} update={dv.update && behind(dv.update) ? t("devices.update_word") : undefined} onClick={() => setOpen(`dev:${dv.id}`)} />;
         })}
         {A.reach?.clients
           .filter((cl) => !f.hidden.has(cl.id))
@@ -442,7 +442,6 @@ function Browsing({ dv }: { dv: DeviceView }) {
     <div class="dev-browsing">
       {busy.map((c) => (
         <div class="dev-site" key={c.taskId}>
-          <Coin harness={c.harness} size={20} motion={c.attention === "working" ? "working" : "still"} />
           <div class="dev-site-what">
             <div class="small">{t("live.using", c.title)}</div>
           </div>

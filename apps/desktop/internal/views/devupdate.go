@@ -225,16 +225,11 @@ func (a *App) kindLine(dv *protocol.DeviceView) string {
 	return a.L.T("device.what.worker", what, who)
 }
 
-// behind: one quiet dot by a device's name, and nothing louder (D148 (9)).
+// behind: an update is available and not under way: said in words by the
+// device's name (有更新, D213), and nothing louder.
 func behind(dv *protocol.DeviceView) bool {
 	u := dv.Update
 	return u != nil && u.Available && !u.Running() && u.Phase != "failed"
-}
-
-// updateDot is the one quiet clay dot of a device that's behind.
-func (a *App) updateDot(c *ui.Context) {
-	t := a.T
-	ui.Box(c).Size(8, 8).Radius(4).Background(t.Accent).Shrink(0).Label(a.L.T("devup.dot")).Role(ui.RoleImage)
 }
 
 // phaseLine is an update's step in words.
@@ -540,10 +535,6 @@ func (a *App) versionRow(c *ui.Context, dv *protocol.DeviceView, home bool) {
 	key := "ver:" + dv.ID
 	open := a.open[key]
 	failed := u != nil && u.Phase == "failed"
-	var mark func()
-	if behind(dv) {
-		mark = func() { a.updateDot(c) }
-	}
 	status := func() {
 		if u == nil {
 			return
@@ -594,7 +585,8 @@ func (a *App) versionRow(c *ui.Context, dv *protocol.DeviceView, home bool) {
 			}
 		}
 	}
-	a.valueRow(c, key, a.deviceName(dv), a.kindLine(dv), mark, v, status, below)
+	// Behind: the status says so in words (devup.available); no dot (D213).
+	a.valueRow(c, key, a.deviceName(dv), a.kindLine(dv), nil, v, status, below)
 }
 
 // homeDevice is the home among the devices shown, or nil.

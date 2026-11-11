@@ -10,6 +10,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { startCore } from "@ducter/core";
+import { noOo } from "./demo-oo.ts";
 import type { TaskCard } from "@ducter/protocol";
 import type { Runner } from "@ducter/protocol/src/internal.ts";
 import { parseGitAddress } from "@ducter/protocol/src/clone.ts";
@@ -34,7 +35,7 @@ git(hel, "add", ".");
 git(hel, "commit", "-q", "-m", "init");
 git(hel, "remote", "add", "origin", "git@github.com:wey-gu/ducter.git");
 
-const core = startCore({
+const core = startCore({ ooSource: noOo,
   persona: { id: "default", name: "Ducter", identity: "" },
   hostname: process.env.DUCTER_HOST || "127.0.0.1",
   deviceProbes: { cua: async () => ({ missing: "demo" }), native: async () => undefined, harnesses: async () => [{ harness: "codex", installed: true, loggedIn: true }], kind: async () => "server" },

@@ -5,11 +5,12 @@
 // ask. Real core and real web client; the runner is the stub, the worker a socket that says hello.
 //   DUCTER_PORT=7811 DUCTER_DATA_DIR=$(mktemp -d) DEMO_LANG=zh DEMO_MAC=asleep bun apps/web/demo-where.ts
 import { startCore, stubRunner } from "@ducter/core";
+import { noOo } from "./demo-oo.ts";
 import type { Bodies, Place } from "@ducter/protocol";
 
 const zh = (process.env.DEMO_LANG ?? "zh") === "zh";
 const w = (z: string, e: string) => (zh ? z : e);
-const core = startCore({
+const core = startCore({ ooSource: noOo,
   persona: { id: "default", name: "Ducter", identity: "" },
   hostname: "127.0.0.1",
   deviceProbes: {

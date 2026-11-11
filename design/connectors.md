@@ -737,10 +737,10 @@ question). A live test against a self-hosted OpenConnector is still owed (§22).
     **连不上这个地址。看看网络，过一会儿再试。** · **这个地址上没有 Ducter 能用的账号服务，看看地址对不对。**
     Never in the done look. On the phone the same, in the card; the toast carries only an add.
   - 连上 / connect for an account here is OOMOL's own word for what the person does in OOMOL's
-    console (D158); Ducter's own action stays 添加 / add (D214).
-  - 密钥 / Key, as every zh product says for an API key (D214; it was 钥匙, which reads as a door key).
+    console (D158); Ducter's own action stays 添加 / add (D212).
+  - 密钥 / Key, as every zh product says for an API key (D212; it was 钥匙, which reads as a door key).
   - Never 授权 / authorize, 接入, or "connector" in UI.
-  - 连接 / Connect stays reserved for devices (D54; 连上 until D214).
+  - 连接 / Connect stays reserved for devices (D54; 连上 until D212).
 - **Owed:** the human comprehension test (with the D65 test), and art for the mailboxes (the
   prototype draws them in SVG).
 

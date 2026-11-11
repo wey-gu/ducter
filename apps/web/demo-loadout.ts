@@ -5,6 +5,7 @@
 // DEMO_ACCOUNTS: one (a fresh user: Claude Code only) | multi (Claude Code, Codex, pi, DeepSeek Harness not installed)
 // DEMO_ALLOWANCE: plenty (Claude Code 64% left) | low (5%: only the part kept for Ducter)
 import { startCore, stubRunner } from "@ducter/core";
+import { noOo } from "./demo-oo.ts";
 import type { Bodies, DeviceHarness, Place } from "@ducter/protocol";
 
 const zh = (process.env.DEMO_LANG ?? "zh") === "zh";
@@ -34,7 +35,7 @@ const harnesses: DeviceHarness[] = [
     : []),
 ];
 
-const core = startCore({
+const core = startCore({ ooSource: noOo,
   persona: { id: "default", name: "Ducter", identity: "" },
   hostname: process.env.DUCTER_HOST || "127.0.0.1",
   deviceProbes: { cua: async () => ({ missing: "demo" }), harnesses: async () => harnesses, kind: async () => "laptop" },

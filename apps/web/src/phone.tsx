@@ -6,7 +6,7 @@ import type { CallPlan, CallView, ConnectionView, SignInView } from "@ducter/pro
 import { callEnded, prettyNumber, TUWA_MCP } from "@ducter/protocol";
 import { useState } from "preact/hooks";
 import { A } from "./app.ts";
-import { Btn, DangerButton, Seg, Toggle } from "./controls.tsx";
+import { Btn, Chev, DangerButton, Seg, Toggle } from "./controls.tsx";
 import type { DecisionState } from "./store.ts";
 
 const t = (key: string, ...args: unknown[]) => A.L.t(key, ...args);
@@ -310,7 +310,7 @@ export function CallRow({ c }: { c: CallView }) {
           <span class="t">{callLine(c)}</span>
           {sub && <span class={`s${sub.warn ? " warn" : ""}`}>{sub.text}</span>}
         </span>
-        {more && <span class="chev" aria-hidden="true">{open ? "‹" : "›"}</span>}
+        {more && <span class="chev" aria-hidden="true"><Chev open={open} /></span>}
       </button>
       {c.state === "failed" && c.payUrl && <Btn kind="text" size="sm" label={t("call.pay", c.plan.provider)} onClick={() => window.open(c.payUrl, "_blank", "noopener")} />}
       {(live || c.state === "waiting") && <Btn kind="text" size="sm" label={t(live ? "call.hangup" : "call.cancel")} about={c.plan.name} onClick={() => A.callCancel(c.callId)} />}
@@ -454,7 +454,7 @@ export function PhoneCard({ c }: { c: ConnectionView }) {
           <>
             <div class="small">{t("call.voice.none")}</div>
             <div class="phone-acts">
-              <Btn kind="secondary" size="sm" label={`${t("call.voice.record", p.provider)} ›`} onClick={() => A.phoneVoice("record")} />
+              <Btn kind="secondary" size="sm" chev label={t("call.voice.record", p.provider)} onClick={() => A.phoneVoice("record")} />
               <Btn kind="text" size="sm" label={t("call.voice.done")} onClick={() => A.phoneVoice("refresh")} />
             </div>
           </>

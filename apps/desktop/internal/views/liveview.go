@@ -357,9 +357,7 @@ func (a *App) liveView(c *ui.Context) {
 					ui.Text(c, host).FontSize(t.MD).FontWeight(800).SingleLine()
 				}
 				ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
-					if watch && lv.Task != nil && lv.Task.Harness != "" {
-						a.coinBox(c, "live", lv.Task.Harness, 16, false, coinStill)
-					} else if !lv.Try() && !watch {
+					if !lv.Try() && !watch {
 						a.glyph(c, 14, drawEyeShut(t.InkMuted))
 					}
 					ui.Text(c, a.liveWhere(lv)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine()

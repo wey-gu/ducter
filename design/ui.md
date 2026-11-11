@@ -171,6 +171,17 @@ lives in Details. On hand needs no state chip: the lane is the state.
   U+FE0E doesn't rescue them (on iOS it draws a box). A mark is a drawn glyph; an "opens more"
   text button ends in the drawn chevron (`Btn chev`); keys use ⌘ ⇧ ⌥ ⌃ ⏎. Only symbols seen drawn
   as text on iOS may appear in words; `scripts/check-glyphs.ts` (in `bun test`) holds the list.
+- **One drawn chevron (D213).** Every link, text button or row that opens more ends in the same
+  drawn chevron, never a font's › ‹ ⌄: 12 pt, a 1.8 stroke with round ends, in its text's ink (a
+  row's in the faint ink), on the text's baseline 3 pt after it; it turns down (90°, 160 ms; none
+  under reduced motion) while what it opens is open, and points left for the way back. Web:
+  `Chev` (`controls.tsx`, which `Btn chev` uses); Mac: `drawChevron` through `glyph`. A path
+  in words ("Settings › Accounts") is prose, not an affordance, and keeps its ›.
+- **The agent's coin only where it stands as an object (D213):** 28 pt and up (the who list, the
+  switch list, the device tray, Settings › Partner, the account sheet). Smaller, beside a line of
+  text (a pill, a meta line, an ask's heading, a quiet line, a row), a sculpted coin reads as an
+  emoji; there the agent's name alone says who, in the line's own ink, and where the line has no
+  name, nothing stands in for it.
 - A small action at the end of a line ("How I know") is a text button like every other one:
   flat, no underline.
 - A one-time highlight (a decision found from a notification) deepens the card's own tint;
@@ -212,7 +223,7 @@ the clay thing awaited (PR, cloud, envelope, clock, file; `design/art/assets/alp
 | an ability that is on (Devices stage) | floats 5pt like an awake device (5.6 s), its own phase |
 | the sea and sky (Devices stage) | clouds drift ±16pt (70 s); slow light on the water drifts and fades (11–19 s); repainted at 12 fps |
 | parcels on a bridge | cross at a steady 40 scene-points a second, only while a task runs on that device (a state that is true, not decoration); still mode freezes them in place so "working" still reads |
-| an AI agent's coin (D183) | only while a task of that agent shows (task footer, On hand's asker row): working, rocks on its base 5° each way (4.2 s); waiting on you, bobs 2pt (2.6 s); still otherwise, and everywhere else |
+| an AI agent's coin (D183) | working, rocks on its base 5° each way (4.2 s); waiting on you, bobs 2pt (2.6 s); still otherwise. Since D213 no coin stands for a running task (those were the small ones), so every coin shown is still |
 | a device that joins | its island rises out of the water (0.55 s), then the device drops on with the equip's squash and sparkles |
 | the equip | peel (14%) → arc (50%) → snap (62–69%), 0.82 s, a tock and a 10 ms haptic |
 | the title moment (D87) | once per Mac: dawn rises, a 3% push-in with parallax, the eyes open on the tone, the logotype lit by a passing light; see `onboarding.md` |
@@ -286,11 +297,11 @@ A new control is added to the set (and to this table) before it is used.
 | Control | Mac (`apps/desktop/internal/views`) | Phone (`apps/web/src/controls.tsx`) |
 |---|---|---|
 | The button family: primary, secondary, accent, text (D76) | `button`, `buttonFor` (`components.go`); `iconButton`, `navButton` | `Btn` |
-| Quiet text button and link (现在检查, 看日志) | `quietButton`, `quietLink` (`quiet.go`) | `Btn` kind `text` |
+| Quiet text button and link (检查更新, 看日志) | `quietButton`, `quietLink` (`quiet.go`) | `Btn` kind `text` |
 | Switch | `switchControl` (`shared.go`), inside `switchRow`, `toggleRow` | `Toggle` |
 | Segmented choice | `choices` (`partner.go`) | `Seg` |
 | Choice row (a theme, Remove's plan) | `selectRow` (`shared.go`) | — |
-| A value row's side link (现在检查 and its 在查…, 没更新成 ›; D167) | `sideLink` inside `valueRow` (`settings.go`) | the `Versions` line under the device list (`Btn` kind `text`) |
+| A value row's side link (检查更新 and its 正在检查…, 没能更新 ›; D167) | `sideLink` inside `valueRow` (`settings.go`) | the `Versions` line under the device list (`Btn` kind `text`) |
 | Disclosure row (素材与致谢) and link row | `disclosureRow` (`shared.go`), `linkRow` (`settings.go`) | — |
 | Settings rail tab | `railTab` (`settings.go`) | the pushed-page list |
 | Destructive text button (断开这台 MacBook, a connection's 断开) | `dangerText` (`shared.go`) | `DangerButton` |
@@ -304,6 +315,7 @@ A new control is added to the set (and to this table) before it is used.
 | A property pill that opens a short list, and that list's rows (New task's where, branch, computer, who, when; D185) | `pill`, `menuRow` (`shared.go`; the list is `listPanel`) | `Pill`, `MenuRow` |
 | One short choice in a row of them, the chosen one raised (New task's model and effort under the chosen agent; D202) | `choice` (`shared.go`) | `Choice` |
 | Back to the list | the chrome's crumb | `BackRow` |
+| The drawn chevron of anything that opens more (D213) | `drawChevron` through `glyph` (`quiet.go`) | `Chev` |
 
 ## Places (D71)
 
@@ -405,7 +417,7 @@ basis (Needs you 2/400, Working 1/240, Waiting 1/220, Done today 1/260, each at 
 their names at 20/800 with the count muted; working and waiting cards white on the card's base
 (title 15/800, where it stands 13 soft, the rest 12 muted), Done today one card of rows; by
 project, groups at most 960. An opened task at the whole screen keeps its page on the 720 measure
-under the crumbs **对话 / 手头的事 / {task}**, with **暂停 / 取消任务** in the header (D207, D214). The move between
+under the crumbs **对话 / 手头的事 / {task}**; **暂停 / 取消任务** are in its foot (D210, D213, D212). The move between
 the two is one view transition (`level` and `conv`, 320 ms, `--ease`; none under reduced motion).
 On a book fold the whole-screen On hand puts Needs you on the first half and the other lanes on
 the second; a task stays in its half; a tabletop offers neither. Screens:
@@ -437,7 +449,7 @@ it slides up once and goes with either button. Simulator shot: `.shots/d200/`.
    - The top is one quiet line, **接下来 / Next**, only when more than one thing is coming
      (defaults taking effect, waits coming due; D127). The lanes' headers carry the counts.
    - Below it are four lanes: **等你 / Needs you** (wide decision cards read at one glance,
-     D127: the agent's coin and the task's short title, one question, the default as a small
+     D127: the task's short title with the drawn chevron (no coin, D213), one question, the default as a small
      timer and one caption, Reply… · Hold · a short Go), **在做 / Working**, **在等 / Waiting**
      (dashed, showing what it waits for), and **做完了 / Done** (with "在检查 / checking"
      for `done?`).
@@ -450,9 +462,9 @@ it slides up once and goes with either button. Simulator shot: `.shots/d200/`.
    measure and rhythm, read top to bottom; the window's header is the breadcrumb and the title only.
    1. **The head is one block** (D90): the state face (96 pt) beside one quiet meta line
       (D152): the state in its ink, the task's one clock once finished ("用了 18 分钟 / took 18
-      min"; while it works the clock ticks in the foot, D210), the agent's coin, the agent and the model, where
+      min"; while it works the clock ticks in the foot, D210), the agent and the model (no coin, D213), where
       (repo · branch, a folder, "在 hel 上 / on hel" for another machine; nothing for no
-      place), and **换谁来做 / Switch who does it ›** as a small action; then a headline that is always there (D152: the task's short title, or where a browser or a wait stands; never the agent's latest sentence, which the transcript says): before D152, while it works, what it is doing now in a
+      place), and **换谁来做 / Switch who does it** with the drawn chevron as a small action; a group that wraps to a new line never starts with "·"; then a headline that is always there (D152: the task's short title, or where a browser or a wait stands; never the agent's latest sentence, which the transcript says): before D152, while it works, what it is doing now in a
       sentence (why it waits, its latest report, its latest saved progress, else its title)
       at 28/800; finished, the outcome at 34/800. No link chain in the head.
    2. A pending ask, as in the conversation; **换谁来做 / Switch who does it** opens here as
@@ -495,16 +507,18 @@ it slides up once and goes with either button. Simulator shot: `.shots/d200/`.
    The box to talk to the task stays at the bottom of the window, as the conversation's
    composer does; a pending ask sits over it (D152). Over it, **the foot** (D210): while the task
    works, a spinner (the only thing that moves), **在做 / Working** in the working ink, the clock
-   in tabular figures, its latest step in InkSoft, and **暂停 / Pause** at the end (Esc twice: the
-   first turns it into **再按一次 Esc 就暂停** with **继续** and **暂停**); over to you, **等你回复**
-   in the needs ink and the hint muted; silent otherwise. A task that works or waits on you opens
+   in tabular figures, its latest step in InkSoft, and **取消任务 / Cancel task** then **暂停 / Pause**
+   at the end (Esc twice: the first turns it into **再按一次 Esc 就暂停** with **继续** and
+   **暂停**); over to you, **等你回复** in the needs ink and the hint muted, **取消任务** at the end;
+   otherwise, until it finishes, the foot holds only **取消任务** at its end (D213); gone once it
+   finishes. A task that works or waits on you opens
    at its latest, a finished one at its head; while it works a reader at the end follows the
    newest step, one who scrolled up gets **回到最新 / Jump to latest**, a 40 pt round raised
    button (Surface, the floating shadow) centred over the transcript's foot. Header actions: **打开 / Open** (D198: a menu, Show in
    Finder; then Open in each of Cursor / Visual Studio Code / Zed installed; then, D201, Open
    in each terminal installed, Terminal / iTerm2 / Ghostty / Warp, and Rex or con once they
-   open folders; a separator between the groups, the one used last first in each) in every state while its working copy is on this Mac, and
-   **取消任务 / Cancel task** until it finishes (D207); **暂停 / Pause** is in the foot (D210). Over its changes, the working copy's path,
+   open folders; a separator between the groups, the one used last first in each) in every state while its working copy is on this Mac;
+   **暂停 / Pause** (D210) and **取消任务 / Cancel task** (D213) are in the foot. Over its changes, the working copy's path,
    `~/…`, mono, small and selectable (D198).
 
 ## Prototype canvases
@@ -596,7 +610,10 @@ runtime @1280); the sea, sky, foam, reflections, bridges and parcels are drawn f
   clay toy (Claude Code's starburst, Codex's cloud with `>_`, DeepSeek's whale, pi's blocks), in
   the same clay, light and camera as the character; one family by material and optical size,
   told apart by silhouette. Two looks: the coin, and the same object in grey clay when signed
-  out (`*_off`). Pipeline and sources: `design/art/LOGOS.md`, `tools/art/coins.py`.
+  out (`*_off`); a coin whose clay would vanish on the dark ground has a third, the dark theme's
+  (`*_dark`, D213): the same object re-cast in a pale clay, its form and top light kept (Codex's
+  charcoal knot becomes bone clay, the way the mark itself turns light on a dark page). Shown at
+  28 pt and up only (D213). Pipeline and sources: `design/art/LOGOS.md`, `tools/art/coins.py`.
 - **Equip motion:** sticker peel-and-stick (`research/26`, `research/28` timings).
 - **Asset pipeline:** generate with the reference images for consistency, select, clean up,
   and export at 1×/2×/3× with transparent backgrounds. Only final exports go into git, plain

@@ -5,6 +5,7 @@
 //   DUCTER_PORT=7993 DUCTER_DATA_DIR=<scratch> DEMO_LANG=zh DEMO_PHASE=running|done|failed|yourturn bun apps/web/demo-transcript.ts
 // then open http://127.0.0.1:7993/app#task=mem1 (cc1 for "failed").
 import { startCore, stubRunner } from "@ducter/core";
+import { noOo } from "./demo-oo.ts";
 import type { Attention, LogEvent, MediaRef } from "@ducter/protocol";
 import { readFileSync } from "node:fs";
 import { cases, glanceEvents } from "../../packages/protocol/fixtures/transcript-cases.ts";
@@ -13,7 +14,7 @@ const phase = process.env.DEMO_PHASE ?? "running";
 const zh = (process.env.DEMO_LANG ?? "zh") === "zh";
 let offset = 0;
 const clock = { now: () => Date.now() - offset, setTimeout: (fn: () => void, ms: number) => setTimeout(fn, ms), clearTimeout: (h: unknown) => clearTimeout(h as ReturnType<typeof setTimeout>) };
-const core = startCore({ persona: { id: "default", name: zh ? "小鸭" : "Ducter", identity: "" }, hostname: process.env.DUCTER_HOST || "127.0.0.1", clock });
+const core = startCore({ ooSource: noOo, persona: { id: "default", name: zh ? "小鸭" : "Ducter", identity: "" }, hostname: process.env.DUCTER_HOST || "127.0.0.1", clock });
 core.setRunner(stubRunner(core));
 core.setPartner({ onTrigger() {} });
 

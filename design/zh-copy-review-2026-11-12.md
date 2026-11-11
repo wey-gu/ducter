@@ -1,7 +1,7 @@
 # Chinese Copy Review (2026-11-12)
 
 > Asked by the author: 「我之前注意到那个'不做了'的表达非常不 Native speaker 哈，类似的表达请你仔细审视杜绝一下…」. Decided as
-> D214 (its rules are there). Every zh string on web, Mac, the CLI, iOS, Android and core's fixed lines was read; this is
+> D212 (its rules are there). Every zh string on web, Mac, the CLI, iOS, Android and core's fixed lines was read; this is
 > every change, by key. Keys shared by the web and the Mac keep one value; a key whose value differs by surface (这台手机 /
 > 这台 Mac) has a row per value. Surfaces: web = `apps/web/src/i18n*.ts`, mac = `apps/desktop/internal/i18n/*.go`, cli =
 > `packages/cli/src/i18n.ts`.

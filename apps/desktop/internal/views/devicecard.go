@@ -1331,7 +1331,6 @@ func (a *App) ducterLine(c *ui.Context, dv *protocol.DeviceView) {
 					ink = t.Failed.Ink
 				}
 			} else if behind(dv) {
-				a.updateDot(c)
 				text = a.L.T("card.ducter.update", u.Latest)
 			}
 			ui.Text(c, text).FontSize(t.SM).FontWeight(700).TextColor(ink).LineHeight(1.45).Grow(1).MinWidth(0)

@@ -514,14 +514,25 @@ func (a *App) taskEsc(c *ui.Context) bool {
 
 // taskFoot is where the task stands, over the composer: while it works, a
 // spinner, the clock and its latest step, and Pause (Esc twice); when it is
-// over to the user, saying so with what to do. Silent otherwise: the
-// outcome is at the head.
+// over to the user, saying so with what to do. Cancel task sits at its end
+// while the task can still be cancelled (D213); with nothing else to say the
+// foot holds only that. Gone once the task is over: the outcome is at the head.
 func (a *App) taskFoot(c *ui.Context, task *store.Task, blocks []Block) {
 	t := a.T
 	att := task.Attention()
 	working := att == protocol.Working || att == protocol.Queued
 	yours := a.yourTurn(task)
 	if !working && !yours {
+		switch att {
+		case protocol.Failed, protocol.Dropped, protocol.Done, protocol.DoneClaimed, protocol.Superseded:
+			return
+		}
+		a.aboveComposer(c, func() {
+			ui.Row(c.Key("foot")).Gap(t.S2).MinHeight(t.ControlSM).Padding(0, t.S3).AlignItems(ui.Center).MinWidth(0).Children(func() {
+				ui.Spacer(c)
+				a.dropButton(c, task)
+			})
+		})
 		return
 	}
 	a.aboveComposer(c, func() {
@@ -529,6 +540,8 @@ func (a *App) taskFoot(c *ui.Context, task *store.Task, blocks []Block) {
 			if yours {
 				ui.Text(c, a.L.T("task.your.turn")).FontSize(t.SM).FontWeight(800).TextColor(t.State(string(protocol.NeedsYou)).Ink).Shrink(0)
 				ui.Text(c, a.L.T("task.your.turn.hint")).FontSize(t.SM).TextColor(t.InkMuted).MinWidth(0).Shrink(1)
+				ui.Spacer(c)
+				a.dropButton(c, task)
 				return
 			}
 			ui.Box(c).Size(16, 16).Shrink(0).Center().Children(func() { ui.Spinner(c).Size(12, 12) })
@@ -541,6 +554,7 @@ func (a *App) taskFoot(c *ui.Context, task *store.Task, blocks []Block) {
 			}
 			ui.Spacer(c)
 			if att != protocol.Working {
+				a.dropButton(c, task)
 				return
 			}
 			if a.escArmed(c, task.ID) {
@@ -554,6 +568,7 @@ func (a *App) taskFoot(c *ui.Context, task *store.Task, blocks []Block) {
 				}
 				return
 			}
+			a.dropButton(c, task)
 			if a.button(c, a.L.T("task.action.pause"), btnText, t.ControlSM, t.Bg) {
 				a.TaskAction(task.ID, "interrupt")
 			}

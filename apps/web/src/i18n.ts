@@ -247,7 +247,7 @@ const zh: Record<string, string> = {
   "wait.last": "上次%s",
   "wait.often": "多久一次",
   "wait.looks": "看过的",
-  "wait.looks.v": "看了 %d 次，变了 %d 次 ›",
+  "wait.looks.v": "看了 %d 次，变了 %d 次",
   "wait.cancel": "停止等待",
   "wait.look": "立即查看",
   "wait.missed": "没等到：%s",
@@ -958,7 +958,7 @@ const en: Record<string, string> = {
   "wait.last": "last %s",
   "wait.often": "How often",
   "wait.looks": "Looks",
-  "wait.looks.v": "%d looks, changed %d times ›",
+  "wait.looks.v": "%d looks, changed %d times",
   "wait.cancel": "Stop waiting",
   "wait.look": "Look now",
   "wait.missed": "Didn't happen: %s",
@@ -1515,6 +1515,7 @@ const folder: Record<Lang, Record<string, string>> = {
 const devup: Record<Lang, Record<string, string>> = {
   zh: {
     "devices.title": "你的设备",
+    "devices.update_word": "有更新",
     "device.what.cloud": "云上的电脑",
     "device.what.computer": "一台电脑",
     "device.what.mac": "一台 Mac",
@@ -1661,6 +1662,7 @@ const devup: Record<Lang, Record<string, string>> = {
   },
   en: {
     "devices.title": "Your devices",
+    "devices.update_word": "Update available",
     "device.what.cloud": "A computer in the cloud",
     "device.what.computer": "A computer",
     "device.what.mac": "A Mac",

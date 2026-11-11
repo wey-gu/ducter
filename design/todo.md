@@ -98,12 +98,12 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 
 ## Partner and tasks (`design/plan/v1-tonight.md` "Known gaps", `research/30`)
 
-- [ ] **The persona's one stale button word (D214)**: rule 15 says On hand keeps a missed wait
+- [ ] **The persona's one stale button word (D212)**: rule 15 says On hand keeps a missed wait
       "with 接着等 / Keep waiting"; the button is 继续等 now. Not changed alone because a persona
       change needs a fresh eval (D175). Trigger: the next persona change, in the same run.
-- [ ] **The zh pass, round two (D214)**: the agent's English step titles inside zh chrome (D211's
+- [ ] **The zh pass, round two (D212)**: the agent's English step titles inside zh chrome (D211's
       recommendation), and an audit of the CLI's long help lines with a native reader. Trigger:
-      the author's review of D214.
+      the author's review of D212.
 
 - [ ] **The opened task, after D210** (`research/58`): (1) a step under way: Ducter's Log has a
       tool call only once it is done, so the foot names the latest finished step; a "running"

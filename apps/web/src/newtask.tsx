@@ -225,7 +225,6 @@ export function NewTaskSheet() {
             </Pill>
           ) : (
             <Pill label={whoLabel(who)} about={t("newtask.who")} open={nt.list === "who"} onClick={() => toggle("who")}>
-              <Coin harness={who.harness} size={22} off={false} />
               <b>{whoLabel(who)}</b>
               {!picked && !A.ntSendTune(who).model && !A.ntSendTune(who).effort && <Suggested />}
             </Pill>

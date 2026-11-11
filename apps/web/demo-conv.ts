@@ -4,10 +4,11 @@
 //   DUCTER_PORT=7798 DUCTER_DATA_DIR=/tmp/x DEMO_LANG=zh DEMO_STAGE=2 bun apps/web/demo-conv.ts
 // DEMO_STAGE: 0 = the ask is open; 1 = answered, the task's question open; 2 = the result is in.
 import { startCore, stubRunner } from "@ducter/core";
+import { noOo } from "./demo-oo.ts";
 
 const zh = (process.env.DEMO_LANG ?? "zh") === "zh";
 const stage = Number(process.env.DEMO_STAGE ?? "2");
-const core = startCore({ persona: { id: "default", name: "Ducter", identity: "" }, hostname: process.env.DUCTER_HOST || "127.0.0.1" });
+const core = startCore({ ooSource: noOo, persona: { id: "default", name: "Ducter", identity: "" }, hostname: process.env.DUCTER_HOST || "127.0.0.1" });
 core.setRunner(stubRunner(core));
 core.setPartner({ onTrigger() {} });
 const log = core.log;

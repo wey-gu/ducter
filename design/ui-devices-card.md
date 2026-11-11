@@ -199,8 +199,9 @@ author sees what is coming, without a control that does nothing.
 
 One line per device: the clay at 32, the name 15/700 and, after a middle dot, **one short
 word** of state in muted ink: **住这儿 · 替 hel 做事 · 睡着了 · 连不上 · 现在连着 · 2 小时前**
-(the status line shortened to its first idea). Never wraps; overflow ellipsizes the name, not
-the state. Rows are 52 high, all equal.
+(the status line shortened to its first idea), then, when it is behind, **· 有更新 / · Update
+available** in the highlight's ink at 700 (D213; never a dot). Never wraps; overflow ellipsizes
+the name, not the state. Rows are 52 high, all equal.
 
 ## 5. The phone
 
@@ -212,8 +213,9 @@ coin's detail opens in place exactly as on the desktop. The phone's own card say
 ## 6. One language for computers × agents (D157 in the same system)
 
 The coin row is the **one component** for "this agent on this computer" wherever it appears:
-the card's loadout, the switch sheet's island strip and list, New task's Who row, and the
-opened task's meta line. The same coin, same grey for signed out, same dot for an update.
+the card's loadout, the switch sheet's island strip and list, and New task's Who list. The same
+coin, same grey for signed out, same dot for an update. Never under 28 points (D213): New task's
+Who pill and the opened task's meta line say the agent's name alone.
 
 ### 6.1 The task card's one line (D157 §5)
 
@@ -380,8 +382,8 @@ D75): Mac `mac-*-{zh,en}.png` at 1100×720 and 1280×860, phone `phone-*-{zh,en}
 **The shared-controls rule** came with the approval (the author: "这种事情要杜绝"): every control on
 a card or a settings page is one of the set in `design/ui.md` "Shared controls"; a test on each
 client fails otherwise. Settings › About's version rows (D167, built on main the same day) are
-shared pieces too: 现在检查 sits in the home's row there. On the phone, with the card's version
-line gone when current, **已经是最新的 · {t}查过 · 现在检查** stands once under the device list.
+shared pieces too: 检查更新 sits in the home's row there. On the phone, with the card's version
+line gone when current, **已经是最新的 · {t}检查过 · 检查更新** stands once under the device list.
 
 What differs from the prototype, and why:
 

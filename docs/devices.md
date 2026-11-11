@@ -74,8 +74,8 @@ starts when you log in, and starts again if it stops. It only does tasks: it nev
 conversation. Turn it off and it stops, and hel forgets it. If tasks are still running on it,
 Ducter asks first, and **After they finish** is the default. From then on, every task says which
 computer it's on (see [Which computer a task runs on](#which-computer-a-task-runs-on)).
-- **Update:** a device that's behind gets one small dot by its name and an **Update** button on its
-  card. See [Updates](install.md#updates).
+- **Update:** a device that's behind says **Update available** by its name and gets an
+  **Update** button on its card. See [Updates](install.md#updates).
 
 ### Your AI agents' versions
 

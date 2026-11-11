@@ -603,7 +603,7 @@ func (a *App) decisionCard(c *ui.Context, d *store.DecisionState, taskID string)
 	ui.Column(c).Padding(t.S5-4, t.S5-2).Gap(t.S2+2).Radius(t.RadiusLG).Background(t.NeedsYou.Surface).
 		Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge).Children(func() {
 		if d.Asker != nil {
-			a.peerAskerRow(c, d.Asker, d.Resolved == nil)
+			a.peerAskerRow(c, d.Asker)
 		} else if task := a.S.Task(firstNonEmpty(taskID, d.TaskID)); task != nil && task.Title() != "" {
 			ui.Text(c, task.Title()).FontSize(t.SM).FontWeight(700).TextColor(t.NeedsYou.Ink)
 		}

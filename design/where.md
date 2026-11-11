@@ -156,7 +156,7 @@ nobody said. This amends D152 (2), which says the device only "when it isn't thi
 
 | Surface | What it says |
 |---|---|
-| The opened task's meta line (D152) | {state} · {clock} · {agent coin} {agent} · {model} · **在 hel 上** (repo: **ducter · main · 在 hel 上**) · **用你的 Chrome** / **用 Ducter 自己的浏览器** / **用 Keynote** when that is the point · **换谁来做** |
+| The opened task's meta line (D152) | {state} · {clock} · {agent} · {model} (no coin, D213) · **在 hel 上** (repo: **ducter · main · 在 hel 上**) · **用你的 Chrome** / **用 Ducter 自己的浏览器** / **用 Keynote** when that is the point · **换谁来做** |
 | On hand | unchanged when it runs; a waiting row says why (**在等 · MacBook 睡着了**, built) |
 | The conversation | nothing extra in the task line when the pick is plain (D104 quiet conversation); the ack says where only when it waits or uses the user's Chrome ("我用你 Mac 上的 Chrome 看一下。") |
 | The Devices stage | the parcel on the bridge to that computer while it works (D81, built), now also landing at start and travelling on a move (§9) |

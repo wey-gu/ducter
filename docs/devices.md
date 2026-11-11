@@ -181,8 +181,8 @@ What a device can do:
 | **Browse the web** | The computer can get things done on the web: look things up, read pages, gather what it finds. In your Chrome when your AI agent has its own browser, otherwise in Ducter's own browser | Ready on every computer that does tasks (a Mac, or a server: see below) |
 | **Reach from anywhere** | Reach Ducter from your phone or another computer, with a one-time code | Ready (needs an address that works from outside; see [Install](install.md#a-linux-server-that-stays-on)) |
 | **Use this computer** | Ducter uses the other apps on the computer the way you do | Coming later |
-| **Use a phone** | Ducter does things on your phone | Coming later |
-| **Make calls** | Ducter makes phone calls for you | Coming later |
+| **Use a phone** | Ducter gets things done in apps on a phone of its own, running on your Mac ([below](#ducters-phone)) | Ready on a Mac with Apple silicon that Ducter lives on |
+| **Make calls** | Ducter makes phone calls for you, through Tuwa or from your own Android phone | Ready (needs a Tuwa account, or your own phone with a cable kit and a live-voice key; see [Phone calls](calls.md)) |
 
 To give a device something, tap its dashed chip (**+ Browse**). When it's done you see, for
 example, *"MacBook can browse the web now"*. Tap the chip again to take it away.

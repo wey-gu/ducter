@@ -30,7 +30,8 @@ These pages are for using Ducter. If you want to build it or change it, start wi
 - **[On hand](on-hand.md):** every task at a glance, what each one is doing now, finding one
   fast, and acting on several at once.
 - **[Your devices](devices.md):** which computers Ducter works on, what each one can do, how it
-  keeps working when you close the window, and watching Ducter's browser or using it yourself.
+  keeps working when you close the window, watching Ducter's browser or using it yourself, and
+  Ducter's own phone for apps.
 - **[Your partner and settings](settings.md):** rename your partner, choose what it thinks with
   and who does the tasks, how it talks, when it may come to you and what it remembers, and the
   app's own settings and menus.
@@ -44,7 +45,7 @@ These pages are for using Ducter. If you want to build it or change it, start wi
 - **[Waiting, keep going, routines](waiting-and-routines.md):** "tell me when…", "keep fixing
   until it works", and "every Monday…".
 - **[Phone calls](calls.md):** let your partner ring a restaurant, a clinic or a shop for you, only
-  after you say Call, in its voice or yours.
+  after you say Call, in its voice or yours, through Tuwa or from your own number.
 - **[Your phone](phone.md):** connect your iPhone, iPad or Android phone, get a nudge when
   something needs you, and keep your nights quiet.
 - **[Privacy and safety](privacy-and-safety.md):** what Ducter never does by itself, what runs

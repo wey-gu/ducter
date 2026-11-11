@@ -1,6 +1,6 @@
 // Build-time facts about the GitHub repo, so the page never links to a 404.
-// The repo is private until launch; the Mac app has no tagged release yet. Both flip on the
-// next deploy after they change (no client-side calls, no rate limits for visitors).
+// The download links come from the latest release's assets (the .dmg and the Android .apk);
+// the fallbacks show only while no release has them. They change on the next deploy (no client-side calls, no rate limits for visitors).
 export const REPO = "wey-gu/ducter";
 export const REPO_URL = `https://github.com/${REPO}`;
 export const RELEASES_URL = `${REPO_URL}/releases/latest`;

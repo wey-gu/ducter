@@ -169,7 +169,15 @@ update it first.
 
 ### Can it use my other apps, my phone, or make calls?
 
-Not yet. Those are coming later.
+It can use apps on a phone and make calls; using the other apps on your computer is coming
+soon.
+
+- **Apps on a phone:** on a Mac with Apple silicon, **Use a phone** gives Ducter an Android phone
+  of its own, running on your Mac. You install the apps and sign in yourself; anything that sends,
+  pays or deletes waits for your Go. See [Ducter's phone](devices.md#ducters-phone).
+- **Calls:** through Tuwa, or from your own Android phone and SIM (with a small cable kit and a
+  live-voice API key), which also reaches mainland China. Every call waits for your **Call**. See
+  [Phone calls](calls.md).
 
 ### Can I rename my partner?
 

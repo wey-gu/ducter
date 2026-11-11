@@ -76,6 +76,8 @@ test("asks the app: its steps, then the safe point, then the restart; the outcom
   expect(settled).toBe(true);
   expect([...new Set(phases)]).toEqual(["downloading", "verifying", "waiting", "restarting"]);
   await Bun.sleep(30);
+  // The card can say restarting a moment before the restart is recorded (CI raced it once).
+  for (let i = 0; i < 100 && !app.restarts.length; i++) await Bun.sleep(20);
   expect(app.restarts.map((a) => a.to)).toEqual(["0.0.13"]);
   expect(readResult(dir.dir)).toMatchObject({ from: "0.0.12", to: "0.0.13", ok: true });
 });

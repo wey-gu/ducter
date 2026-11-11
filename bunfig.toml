@@ -1,3 +1,8 @@
+# The web client's .tsx files load in tests with Preact's JSX (the root tsconfig stays without JSX:
+# it made tsc pull Preact's DOM types and break the Bun types).
+jsx = "react-jsx"
+jsxImportSource = "preact"
+
 [test]
 # Every test run: a placeholder printed empty fails the test that drew it (apps/web/test/guard.ts).
 preload = ["./scripts/test/setup.ts", "./apps/web/test/guard.ts"]

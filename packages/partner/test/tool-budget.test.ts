@@ -23,7 +23,7 @@ const PARTNER_TOOLS = [
 const TASK_TOOLS = ["checkpoint", "log_read", "log_search", "memory_search", "report_to_main", "wait_for"]; // memory_search: only where Mem is connected and the plugin is absent (D168)
 /** JSON characters of the whole tools/list result (≈ chars / 3.6 tokens). */
 const CEILING = {
-  partner: 29_000, // 28.4K today: 26 tools (phone_call, D193, 2.2K after trimming; D206 media on task_open and task_send); wait_for (3.9K) and task_open (4.8K) are the largest
+  partner: 29_500, // 29.1K today (D215's call sheet fields on phone_call, D217's needs.phone on task_open): 26 tools (phone_call, D193, 2.2K after trimming; D206 media on task_open and task_send); wait_for (3.9K) and task_open (4.8K) are the largest
   task: 8_500, // 7.6K: 6 tools; wait_for alone is 3.6K; memory_search (1.2K) is the D168 fallback where the Mem plugin is absent
 };
 

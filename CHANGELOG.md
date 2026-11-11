@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.0.22
+
+<!-- whats-new
+zh: 手机和 iPad 一打开就是上次的对话，不再闪空白
+en: The phone and iPad apps open on your conversation at once, no blank screen
+zh: iPad 上第二栏全屏立刻切换
+en: Full screen on the iPad's second column happens at once
+-->
+
+**Opening fast**
+- The apps open on your last conversation and On hand straight away and catch up with your Ducter
+  in the background; they never show an empty screen while connecting.
+- Full screen on the second column (iPad, wide windows) takes effect at once instead of after
+  about four seconds.
+- The apps keep the page's code until your Ducter has a newer one, so opening doesn't wait on the
+  network.
+
 ## 0.0.21
 
 <!-- whats-new

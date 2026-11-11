@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.0.19
+
+<!-- whats-new
+zh: Ducter 更新后，手机上开着的页面会自己换成新版
+en: A page left open on your phone moves to the new version after Ducter updates
+zh: 新建不再列出找不到电脑的旧文件夹
+en: New task no longer lists old folders on a computer Ducter can't find
+-->
+
+**Fixes**
+- The phone and browser load the new page by themselves once your Ducter has updated (when
+  nothing is open and nothing is unsent), instead of drawing the old one until you close the app.
+- **New task** leaves out a folder whose computer Ducter no longer knows; it couldn't start there.
+
 ## 0.0.18
 
 <!-- whats-new

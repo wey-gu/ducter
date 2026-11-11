@@ -120,8 +120,7 @@ voice: never a family member's, a friend's or anyone else's.
 ## Call from your own number
 
 Your partner can also call from **your own Android phone and SIM**, so the other side sees your
-number. This works in any country your SIM can call, mainland China included, where Tuwa can't
-call. It needs a little hardware and one key, set up once on the **Call from your own number**
+number. It needs a little hardware and one key, set up once on the **Call from your own number**
 card in **Settings › Accounts**. The card has five steps and ticks each one off by itself.
 
 1. **Phone.** Plug the Android phone into the computer Ducter lives on with a USB cable, and turn on

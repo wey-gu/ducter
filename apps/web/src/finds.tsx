@@ -32,7 +32,7 @@ function Find({ f }: { f: FindView }) {
           <div class="small sub">{t((d.pending ?? d.resolved?.option) === "go" ? "find.going" : "find.held")}</div>
         ))}
       <div class="freact">
-        <Btn kind="text" size="sm" label={`${t("find.how")} ${how ? "⌄" : "›"}`} expanded={how} onClick={() => setHow(!how)} />
+        <Btn kind="text" size="sm" label={t("find.how")} chev expanded={how} onClick={() => setHow(!how)} />
         <span class="grow" />
         {st?.state === "muted" ? (
           <span class="small sub">{t("find.muted")}</span>

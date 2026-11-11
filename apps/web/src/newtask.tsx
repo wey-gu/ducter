@@ -2,14 +2,14 @@
 // design/new-task.md). The words first, then one row of pills: where (recent folders and the
 // projects added on the Mac, D186), its branch, the computer when the choice is real (D157),
 // who does it, and when it starts (现在 / Now unless set: a time, a schedule, when something
-// happens, or keep going until). A pill opens its list in place under the row. ⌘↩ starts;
-// ⇧⌘↩ starts and keeps the sheet for the next one.
+// happens, or keep going until). A pill opens its list in place under the row. ⌘⏎ starts;
+// ⇧⌘⏎ starts and keeps the sheet for the next one.
 import type { Candidate } from "@ducter/protocol";
 import { useEffect, useRef } from "preact/hooks";
 import { A, agentKey, effortWord, EVERY_HOURS, parseClock, placeKey, placeLine, tilde } from "./app.ts";
 import { Coin } from "./coin.tsx";
 import { Btn, Choice, MenuRow, Pill, Seg } from "./controls.tsx";
-import { candName, candReason, coarse } from "./views.tsx";
+import { candName, candReason, Check, coarse } from "./views.tsx";
 import { AddPictures, DropHint, Tray, useDropPaste } from "./media.tsx";
 import { harnessName } from "./format.ts";
 import { computerApart, computerOf, computers, manyComputers } from "./where.ts";
@@ -122,7 +122,7 @@ export function NewTaskSheet() {
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
       if (e.key === "Escape") return nt.list ? ((nt.list = ""), A.changed()) : close();
-      // ⌘↩ starts wherever the focus is; ⇧⌘↩ starts and keeps the sheet for the next one.
+      // ⌘⏎ starts wherever the focus is; ⇧⌘⏎ starts and keeps the sheet for the next one.
       if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) e.preventDefault(), A.startNewTask(e.shiftKey);
     };
     addEventListener("keydown", k);
@@ -402,7 +402,8 @@ export function NewTaskSheet() {
           </div>
         ) : nt.started ? (
           <div class="nt-started" role="status">
-            <span>✓ {nt.started}</span>
+            <Check />
+            <span>{nt.started}</span>
             {nt.startedTask && <Btn kind="text" size="sm" label={t("newtask.open")} about={nt.started} onClick={() => ((A.sheet = null), A.go({ name: "task", id: nt.startedTask! }))} />}
           </div>
         ) : (

@@ -137,7 +137,8 @@ const Cross = () => (
   </svg>
 );
 
-const Check = () => (
+/** A drawn ✓ (D73: marks are drawn glyphs, never a font's symbol). */
+export const Check = () => (
   <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
     <path d="M3 7.4l2.6 2.6L11 4.6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
   </svg>
@@ -211,7 +212,7 @@ function AutoText(p: { value: string; onInput: (v: string) => void; placeholder:
       onInput={(e) => p.onInput((e.target as HTMLTextAreaElement).value)}
       onKeyDown={(e) => {
         // On a phone Return breaks the line and the button sends; with a keyboard Enter sends.
-        // ⌘↩ sends everywhere, a keyboard on a phone or tablet included (D210).
+        // ⌘⏎ sends everywhere, a keyboard on a phone or tablet included (D210).
         if (e.key === "Enter" && !e.isComposing && p.onEnter && (e.metaKey || e.ctrlKey || (!e.shiftKey && !coarse()))) {
           e.preventDefault();
           p.onEnter();
@@ -1285,12 +1286,8 @@ export function Conversation() {
   const empty = rows.length === 0 && A.pending.length === 0 && A.S.welcomed;
   return (
     <>
+      {/* Offline is said once, in the header's line under the sleeping face (D73, D211). */}
       <Top />
-      {A.status === "offline" && (
-        <div class="conn" role="status">
-          {t("conn.offline")}
-        </div>
-      )}
       <main
         class="scroll"
         ref={scroller}
@@ -2270,7 +2267,7 @@ function NotifySettings() {
         )}
       </section>
       {/* D165: the same chips as on Accounts, once there is something to watch. */}
-      {(s.proactive || A.connections?.length) && (
+      {(s.proactive || !!A.connections?.length) && (
         <section class="set">
           <ProactiveChips />
         </section>

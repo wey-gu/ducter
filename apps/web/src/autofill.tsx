@@ -201,7 +201,9 @@ export function AutofillSettings() {
           ) : (
             <button class="set-row af-add" onClick={() => edit({ kind: "signin" })}>
               <span class="af-plus" aria-hidden="true">
-                +
+                <svg width="16" height="16" viewBox="0 0 14 14">
+                  <path d="M7 2.5v9M2.5 7h9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                </svg>
               </span>
               <span class="grow">
                 <b>{t("af.signin.add")}</b>
@@ -241,7 +243,9 @@ export function AutofillSettings() {
           ) : (
             <button class="set-row af-add" onClick={() => edit({ kind: "card" })}>
               <span class="af-plus" aria-hidden="true">
-                +
+                <svg width="16" height="16" viewBox="0 0 14 14">
+                  <path d="M7 2.5v9M2.5 7h9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                </svg>
               </span>
               <span class="grow">
                 <b>{t("af.card.add")}</b>

@@ -66,12 +66,12 @@ bottom:
    (1, 2, 4 or 8, round the clock) and the time; When something happens: **等到** and what it
    waits for; Keep going until: **做到** and what must hold (Return starts).
 4. **The foot:** one line on the left (what didn't work, in the failed ink; or **开始了：「X」** with
-   **打开 / Open** after ⇧⌘↩; or the keys **⌘↩ 开始 · ⇧⌘↩ 开始并接着新建**), then **取消 /
+   **打开 / Open** after ⇧⌘⏎; or the keys **⌘⏎ 开始 · ⇧⌘⏎ 开始并接着新建**), then **取消 /
    Cancel** and **开始 / Start** (**定好 / Schedule** for a time or a schedule) at one height.
 
-**⌘↩** (anywhere in the card) starts: `task_new`, then on `task_new_result` ok it opens that task
+**⌘⏎** (anywhere in the card) starts: `task_new`, then on `task_new_result` ok it opens that task
 (Esc returns to where the user was); a time or a schedule instead closes the card on On hand.
-**⇧⌘↩** starts and keeps the card, empty, with the same folder, branch, agent and when. A failed
+**⇧⌘⏎** starts and keeps the card, empty, with the same folder, branch, agent and when. A failed
 open keeps the card and its words, with the reason in the foot (offline, not a repo, no agent, a
 time already past, nothing to wait for, else `message`).
 

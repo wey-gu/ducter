@@ -13,14 +13,13 @@ import { blocksOf, latestVoice, turnsOf, type Block, type Line, type StepRow, ty
 import type { MediaRef } from "@ducter/protocol";
 import { useEffect, useState } from "preact/hooks";
 import { Component, type JSX } from "preact";
-import { Btn } from "./controls.tsx";
+import { Btn, Chev } from "./controls.tsx";
 import { escArmed } from "./esc.ts";
 import { A, effortWord } from "./app.ts";
-import { Coin } from "./coin.tsx";
 import { duration, harnessName, modelName } from "./format.ts";
 import { markdown } from "./markdown.ts";
 import { MediaBlock } from "./media.tsx";
-import { attention, effortOf, finished, harnessOf, modelOf, placeOf, type Task } from "./store.ts";
+import { attention, effortOf, finished, harnessOf, modelOf, placeOf, title, type Task } from "./store.ts";
 import { manyComputers, taskWhere } from "./where.ts";
 
 export { goRelay } from "@ducter/protocol/src/transcript.ts";
@@ -488,9 +487,14 @@ export function liveWords(blocks: Block[]): string {
 }
 
 /** Where the task stands, over the composer (D210): while it works, its clock and latest step, and
- *  Pause (Esc twice); when it's over to you, saying so. Silent otherwise: the outcome is at the head. */
+ *  Pause (Esc twice); when it's over to you, saying so. Cancel task sits at its end, beside Pause,
+ *  while the task can still be cancelled (D213); with nothing else to say the foot holds only that.
+ *  Gone once the task is over: the outcome is at the head. */
 export function TaskFoot({ task, blocks }: { task: Task; blocks: Block[] }) {
   const a = attention(task);
+  const droppable = !finished(task) && !["dropped", "superseded", "done"].includes(a);
+  // Cancel task: undone from the toast it leaves (A.drop), as before.
+  const drop = droppable && <Btn kind="text" size="sm" label={t("task.action.drop")} about={title(task)} onClick={() => A.drop(task.id)} />;
   const [, tick] = useState(0);
   const moving = a === "working" || a === "queued";
   useEffect(() => {
@@ -499,12 +503,20 @@ export function TaskFoot({ task, blocks }: { task: Task; blocks: Block[] }) {
     return () => clearInterval(h);
   }, [moving]);
   const yours = a === "needs_you" && !A.S.pendingDecision(task.id);
-  if (!moving && !yours) return null;
+  if (!moving && !yours)
+    return droppable ? (
+      <div class="task-foot only-end">
+        <span class="grow" />
+        {drop}
+      </div>
+    ) : null;
   if (yours)
     return (
       <div class="task-foot st-needs_you" role="status">
         <b>{t("task.your.turn")}</b>
         <span class="now">{t("task.your.turn.hint")}</span>
+        <span class="grow" />
+        {drop}
       </div>
     );
   const start = task.openedAt ? Date.parse(task.openedAt) : NaN;
@@ -529,8 +541,12 @@ export function TaskFoot({ task, blocks }: { task: Task; blocks: Block[] }) {
             <Btn kind="secondary" size="sm" label={t("task.action.pause")} onClick={() => ((A.escAt = undefined), A.taskAction(task.id, "interrupt"))} />
           </>
         ) : (
-          <Btn kind="text" size="sm" label={t("task.action.pause")} onClick={() => A.taskAction(task.id, "interrupt")} />
+          <>
+            {drop}
+            <Btn kind="text" size="sm" label={t("task.action.pause")} onClick={() => A.taskAction(task.id, "interrupt")} />
+          </>
         ))}
+      {a !== "working" && drop}
     </div>
   );
 }
@@ -594,7 +610,6 @@ export function TaskMeta({ task, stateLabel, mark, onSwitch }: { task: Task; sta
       {(who || where) && (
         <span class="who">
           <span class="sep">·</span>
-          {h && <Coin harness={h} size={16} motion={done ? "still" : a === "needs_you" ? "needs_you" : a === "working" ? "working" : "still"} />}
           <span title={p.repoPath || p.path || undefined}>{[who, where].filter(Boolean).join(" · ")}</span>
         </span>
       )}
@@ -612,7 +627,8 @@ export function TaskMeta({ task, stateLabel, mark, onSwitch }: { task: Task; sta
       )}
       {onSwitch && (
         <button class="inline-link" aria-expanded={A.switchFor === task.id} onClick={onSwitch}>
-          {t("who.switch")} ›
+          {t("who.switch")}
+          <Chev />
         </button>
       )}
     </div>

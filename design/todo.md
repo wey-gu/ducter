@@ -98,6 +98,19 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 
 ## Partner and tasks (`design/plan/v1-tonight.md` "Known gaps", `research/30`)
 
+- [ ] **The workbench, after D214** (`design/workbench.md`, `research/59`): (1) a worker task end to
+  end (a second scratch Ducter as a worker; its page through the worker's socket), and hot reload
+  for a worker's page (a websocket carried over the worker link). Trigger: the author's first
+  coding task on hel with a dev server. (2) A terminal: a server-owned PTY per task with a bounded
+  tail any client reattaches to (t3code's shape), read-only first. Trigger: the author asks to run
+  a command beside the agent, or a task's dev server log is needed. (3) Comments on diff lines and
+  on the preview, sent with the next words as chips (Conductor, Codex). Trigger: the first review
+  of a real task's diff in the workbench. (4) Per-hunk revert and "this turn" as a scope (Codex).
+  (5) The Mac: resizing the column, Results and Phone pages, an embedded preview (a web view).
+  (6) The phone-use view registers with `registerScreen("phone", …)` (`apps/web/src/workbench-screens.ts`);
+  computer use (the agent driving a desktop) gets the same Screen frame once Ducter streams it.
+  (7) Verify the phone sheet in the iOS Simulator and on Android; a single-HTTPS home's Preview
+  through Ducter's browser on hel.
 - [ ] **The opened task, after D210** (`research/58`): (1) a step under way: Ducter's Log has a
       tool call only once it is done, so the foot names the latest finished step; a "running"
       line needs the runner to log a tool's start (OAR's item started events). Trigger: a live

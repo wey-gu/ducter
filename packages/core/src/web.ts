@@ -44,6 +44,7 @@ import coinClaudeCode from "../../../apps/web/static/art/coin_claude_code.webp" 
 import coinClaudeCodeOff from "../../../apps/web/static/art/coin_claude_code_off.webp" with { type: "file" };
 import coinCodex from "../../../apps/web/static/art/coin_codex.webp" with { type: "file" };
 import coinCodexOff from "../../../apps/web/static/art/coin_codex_off.webp" with { type: "file" };
+import coinCodexDark from "../../../apps/web/static/art/coin_codex_dark.webp" with { type: "file" };
 import coinPi from "../../../apps/web/static/art/coin_pi.webp" with { type: "file" };
 import coinPiOff from "../../../apps/web/static/art/coin_pi_off.webp" with { type: "file" };
 import coinDeepseekHarness from "../../../apps/web/static/art/coin_deepseek_harness.webp" with { type: "file" };
@@ -105,6 +106,7 @@ const ASSETS: Record<string, [string, string]> = {
   "art/coin_claude_code_off.webp": [coinClaudeCodeOff, "image/webp"],
   "art/coin_codex.webp": [coinCodex, "image/webp"],
   "art/coin_codex_off.webp": [coinCodexOff, "image/webp"],
+  "art/coin_codex_dark.webp": [coinCodexDark, "image/webp"],
   "art/coin_pi.webp": [coinPi, "image/webp"],
   "art/coin_pi_off.webp": [coinPiOff, "image/webp"],
   "art/coin_deepseek_harness.webp": [coinDeepseekHarness, "image/webp"],
@@ -140,6 +142,17 @@ const ASSETS: Record<string, [string, string]> = {
 
 // The page loads only its own scripts and styles; it talks only to this origin.
 const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' ws: wss:; manifest-src 'self'; worker-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'";
+
+/**
+ * D214: a task's page previews in a frame of the opened task's workbench, from a port of this
+ * same host (preview.ts): only this host's own ports may be framed and pinged, nothing else.
+ */
+export function cspFor(req: Request): string {
+  const host = (req.headers.get("host") ?? "").replace(/:\d+$/, "");
+  if (!/^(\[[0-9a-fA-F:.]+\]|[A-Za-z0-9.-]{1,253})$/.test(host)) return CSP;
+  const here = `http://${host}:* https://${host}:*`;
+  return CSP.replace("connect-src 'self' ws: wss:", `connect-src 'self' ws: wss: ${here}`).replace("default-src 'self';", `default-src 'self'; frame-src ${here};`);
+}
 
 const etags = new Map<string, string>();
 async function serveFile(req: Request, path: string, type: string, cache: string): Promise<Response> {
@@ -197,7 +210,7 @@ export async function webStatic(req: Request): Promise<Response | undefined> {
   if (path === "/") return new Response(null, { status: 302, headers: { location: "app" } });
   if (path === "/app" || path === "/app/" || path === "/pair") {
     const res = await serveIndex(req);
-    res.headers.set("content-security-policy", CSP);
+    res.headers.set("content-security-policy", cspFor(req));
     res.headers.set("referrer-policy", "no-referrer");
     return res;
   }

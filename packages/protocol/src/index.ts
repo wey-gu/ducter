@@ -678,6 +678,9 @@ export type ClientFrame =
   | { t: "task_action"; taskId: string; action: "interrupt" | "drop" | "undrop" | "reopen" | "merge" | "open_pr" | "undo" | "keep"; path?: string; force?: boolean }
   // D142: the list behind a folder task's Changes; answered with a folder_changes frame.
   | { t: "folder_changes"; taskId: string }
+  // D214: one op of the opened task's workbench (its files, changes, pages), answered with a wb
+  // frame carrying the same id.
+  | { t: "wb"; id: string; taskId: string; req: import("./workbench.ts").WbRequest }
   | { t: "read"; upToSeq: number }
   | { t: "task_history"; taskId: string; beforeSeq?: number; limit?: number }
   // Devices and abilities (D43, D51): "devices" answers with a devices frame and keeps the
@@ -935,6 +938,7 @@ export type ServerFrame =
   // these would be lost (count, the first few paths).
   | { t: "action_result"; taskId: string; action: string; ok: boolean; message?: string; ref?: string; confirm?: UndoConfirm }
   | { t: "folder_changes"; taskId: string; changes: FolderChanges | null }
+  | ({ t: "wb"; id: string; taskId: string } & ({ ok: true; answer: import("./workbench.ts").WbAnswer } | { ok: false; error: import("./workbench.ts").WbError; message?: string }))
   | { t: "devices"; devices: DeviceView[]; reach: Reach }
   | { t: "ability_result"; device: string; ability: AbilityId; on: boolean; ok: boolean; reason?: AbilityReason; detail?: string }
   | { t: "pair_code"; code: string; expiresAt: string; address?: string; link?: string; qr?: string[] }

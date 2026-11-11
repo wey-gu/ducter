@@ -27,12 +27,25 @@ import (
 // none by default); then a quiet Details disclosure. The composer to talk
 // to the task stays at the bottom, as in the conversation.
 func (a *App) task(c *ui.Context) {
-	t := a.T
 	task := a.S.Task(a.TaskID)
 	if task == nil {
 		task = &store.Task{ID: a.TaskID}
 	}
 	a.taskHeader(c, task)
+	// D214: the workbench stands at the right; the task keeps the rest.
+	if a.benchShown(task) {
+		ui.Row(c.Key("benchrow")).Grow(1).MinHeight(0).AlignItems(ui.Stretch).Children(func() {
+			ui.Column(c.Key("taskcol")).Grow(1).MinWidth(0).MinHeight(0).Children(func() { a.taskBody(c, task) })
+			a.workbench(c, task)
+		})
+		return
+	}
+	a.taskBody(c, task)
+}
+
+// taskBody is the task's page under its header: the transcript, its foot and its composer.
+func (a *App) taskBody(c *ui.Context, task *store.Task) {
+	t := a.T
 	if a.taskScroll == nil {
 		a.taskScroll = map[string]*ui.ScrollState{}
 	}
@@ -136,13 +149,23 @@ func (a *App) taskHeader(c *ui.Context, task *store.Task) {
 }
 
 // taskActions are what the user can do to the task itself while it is
-// open: open its working copy (D198, any state), pause it while it works,
-// drop it (undoable for UndoWindow). Try again for a task that ended sits
-// with its outcome.
+// open: open its working copy (D198, any state) and watch its page (D190).
+// Pause and Cancel task sit in the foot over the composer (D210, D213);
+// Try again for a task that ended sits with its outcome.
 func (a *App) taskActions(c *ui.Context, task *store.Task) {
 	t := a.T
 	// D198: its working copy in Finder, a Terminal or an editor, whatever its state.
 	a.openIn(c, task)
+	// D214: the workbench, beside the task (⌥⌘B).
+	if len(a.benchTabs(task)) > 0 {
+		kind := btnText
+		if a.benchShown(task) {
+			kind = btnSecondary
+		}
+		if a.button(c, a.L.T("wb.toggle"), kind, t.ControlSM, t.Chrome) {
+			a.ToggleBench()
+		}
+	}
 	att := task.Attention()
 	switch att {
 	case protocol.Failed, protocol.Dropped, protocol.Done, protocol.DoneClaimed, protocol.Superseded:
@@ -152,8 +175,18 @@ func (a *App) taskActions(c *ui.Context, task *store.Task) {
 	if a.S.Browsing(task.ID) != "" && a.button(c, a.L.T("live.watch.title"), btnSecondary, t.ControlSM, t.Chrome) {
 		a.OpenWatch(task.ID)
 	}
-	// D210: Pause sits in the foot over the composer, with Esc twice.
-	if a.button(c, a.L.T("task.action.drop"), btnText, t.ControlSM, t.Chrome) {
+}
+
+// dropButton is Cancel task (不做了), in the foot beside Pause while the task
+// can still be cancelled (D213): it drops the task, undoable from its toast
+// for UndoWindow.
+func (a *App) dropButton(c *ui.Context, task *store.Task) {
+	t := a.T
+	switch task.Attention() {
+	case protocol.Failed, protocol.Dropped, protocol.Done, protocol.DoneClaimed, protocol.Superseded:
+		return
+	}
+	if a.button(c, a.L.T("task.action.drop"), btnText, t.ControlSM, t.Bg) {
 		a.DropTask(task.ID)
 		title := task.Title()
 		c.AddToast(ui.Toast{ID: "undo:" + task.ID, Title: a.L.T("undo.dropped", title), Timeout: UndoWindow,
@@ -749,7 +782,7 @@ func (a *App) fileRow(c *ui.Context, task *store.Task, f *diffFile) {
 			row.Background(t.SurfaceSunken.Mix(t.Surface, 0.5))
 		}
 		row.Children(func() {
-			ui.Text(c, "›").FontSize(t.SM).FontWeight(700).TextColor(t.InkMuted).Rotate(map[bool]float32{true: 90, false: 0}[open]).AccessHidden(true)
+			a.glyph(c, 12, drawChevron(t.InkMuted, open))
 			ui.Text(c, f.name).Font(t.Mono).FontSize(t.MonoSM).Grow(1).MinWidth(0).SingleLine().AccessHidden(true)
 			ui.Text(c, fmt.Sprintf("+%d", f.added)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Done.Ink)
 			ui.Text(c, fmt.Sprintf("−%d", f.deleted)).Font(t.Mono).FontSize(t.MonoSM).TextColor(t.Failed.Ink)

@@ -124,6 +124,8 @@ type App struct {
 	replyOpen  map[string]bool
 	replyDraft map[string]string
 	diffs      map[string]*diffPane
+	// D214: the opened task's workbench (workbench.go).
+	bench benchState
 	// D142: a folder task's list was asked for (throttle), and an undo
 	// that came back asking to confirm (what would be lost).
 	folderAsked   map[string]int // 1: asked; 2: asked, and ask again on the answer
@@ -469,6 +471,8 @@ func (a *App) shortcuts(c *ui.Context) {
 		a.OpenPartner()
 	case c.Shortcut(ui.Cmd, ui.KeyComma):
 		a.OpenSettings()
+	case c.Shortcut(ui.Cmd|ui.Alt, ui.KeyB):
+		a.ToggleBench() // D214: the workbench, as VS Code's, Zed's and Codex's right panel
 	case c.Shortcut(ui.Cmd, ui.KeyK):
 		if a.Route != RouteConversation && a.Route != RouteTask {
 			a.Route = RouteConversation
@@ -817,6 +821,10 @@ func (a *App) followUserLanguage() {
 // follows the stream, as the open task's diff.
 func (a *App) Applied(f protocol.ServerFrame) {
 	// D142: a folder's list came back; ask once more if something changed meanwhile.
+	if f.T == "wb" {
+		a.wbFrame(f)
+		return
+	}
 	if f.T == "folder_changes" {
 		again := a.folderAsked[f.TaskID] == 2
 		delete(a.folderAsked, f.TaskID)

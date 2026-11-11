@@ -10,6 +10,8 @@ import type { BranchChanges, FolderChanges, Place } from "@ducter/protocol";
 import type { FolderStore } from "./folder.ts";
 import type { HarnessEvent, HarnessPort, HarnessSession, SessionSpec, WorkerLink, WorkerSessionFrame } from "@ducter/protocol/src/internal.ts";
 import type { ActionResult } from "./integrate.ts";
+import { WbFail, type WbCall, type WbFetch, type WbFetched } from "./workbench.ts";
+import type { WbAnswer, WbError } from "@ducter/protocol/src/workbench.ts";
 import type { ResolvedPlace } from "./places.ts";
 import { sidecarFromWire, type BrowserSidecar, type SidecarInput, type SidecarWire } from "./browser.ts";
 import type { DucterBrowserPort } from "@ducter/protocol/src/internal.ts";
@@ -34,6 +36,10 @@ export interface PlaceOps {
   browser?(input: SidecarInput): Promise<BrowserSidecar>;
   /** D206: a file the task shows the user, read where the task runs (shown.ts). */
   shown(a: ShownAsk): Promise<ShownFile>;
+  /** D214: the workbench's ops where the working copy is (workbench.ts); a refusal is thrown as WbFail. */
+  wb(a: WbCall): Promise<WbAnswer>;
+  /** D214: a request for a task's page on a worker (its preview); absent for this machine (the home reaches it itself). */
+  wbFetch?(a: WbFetch): Promise<WbFetched>;
 }
 
 /** FolderStore over a promise, so it can live on a worker. */
@@ -195,6 +201,21 @@ export function remoteOps(link: WorkerLink, o: { ducter?: DucterBrowserPort } = 
     // D206: an older worker doesn't know "shown": the report goes on without that file.
     shown: (a) =>
       guard(link.call<{ name: string; data: string }>("shown", a, 60_000)).then((r) => ({ name: String(r?.name ?? ""), bytes: new Uint8Array(Buffer.from(String(r?.data ?? ""), "base64")) })),
+    // D214: an older worker doesn't know "wb": the workbench says it can't be read there.
+    wb: async (a) => {
+      const r = await guard(link.call<{ ok: true; answer: WbAnswer } | { ok: false; error: WbError; message?: string }>("wb", a, 30_000)).catch((err) => {
+        throw isOffline(err) ? new WbFail("offline") : new WbFail("unsupported", (err as Error).message);
+      });
+      if (!r?.ok) throw new WbFail(r?.error ?? "failed", r?.message);
+      return r.answer;
+    },
+    wbFetch: async (a) => {
+      const r = await guard(link.call<{ ok: true; answer: WbFetched } | { ok: false; error: WbError; message?: string }>("wbFetch", a, 70_000)).catch((err) => {
+        throw isOffline(err) ? new WbFail("offline") : new WbFail("unsupported", (err as Error).message);
+      });
+      if (!r?.ok) throw new WbFail(r?.error ?? "failed", r?.message);
+      return r.answer;
+    },
     // D142: an older worker doesn't know these: it can't keep a copy, so the task asks first.
     folder: {
       prepare: (taskId, folder) => guard(link.call<Awaited<ReturnType<FolderStore["prepare"]>>>("folderPrepare", { taskId, folder }, 10 * 60_000)).catch((err) => (isOffline(err) ? Promise.reject(err) : { ok: false as const, why: "copy_failed" as const, detail: String(err) })),

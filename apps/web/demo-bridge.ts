@@ -5,6 +5,7 @@
 // DEMO_BRIDGE: ready · connecting · connected · update · no_space · refused:<reason> · failed · unconfirmed
 // then open http://127.0.0.1:7798/app#settings=partner
 import { startCore, stubRunner } from "@ducter/core";
+import { noOo } from "./demo-oo.ts";
 import { REFUSALS } from "@ducter/core/src/bridge-link.ts";
 
 const zh = (process.env.DEMO_LANG ?? "zh") === "zh";
@@ -38,7 +39,7 @@ const run = async (args: string[]) => {
   return { code: 2, out: "", err: "demo: not scripted" };
 };
 
-const core = startCore({ persona: { id: "default", name: zh ? "小鸭" : "Duckie", identity: "" }, hostname: process.env.DUCTER_HOST || "127.0.0.1", update: { homeName: "hel" }, bridgeLink: { run, env: {} } });
+const core = startCore({ ooSource: noOo, persona: { id: "default", name: zh ? "小鸭" : "Duckie", identity: "" }, hostname: process.env.DUCTER_HOST || "127.0.0.1", update: { homeName: "hel" }, bridgeLink: { run, env: {} } });
 core.setRunner(stubRunner(core));
 core.setPartner({ onTrigger() {} });
 core.persona.mem = { agentId: "ducter", owned: true };

@@ -117,6 +117,12 @@ In our own runs, a small "fix the failing tests" task came back done in under a 
   every suggested answer at once.
 - **On hand** shows every task at a glance and what's waiting for you. Open any task to read
   *What it did*, see its changes, and talk to it directly.
+- **Work beside it.** In a task that changes files or runs a web page, the **Workbench** button
+  in its header (or ⌥⌘B) opens a side column (a sheet on the phone): **Changes** with each file's
+  diff and **Undo** for one file, **Files** to read any file and edit it yourself, **Preview** to
+  see the page it is building, and **Browser** while it uses Ducter's browser. When you save a
+  file, the task is told what you changed the next time it works. If it changed the file while
+  you were editing, Ducter asks before saving over it.
 - **Close the window whenever you like.** Ducter keeps working. The Dock icon brings the window
   back, and its badge counts what is waiting for you.
 - **A few small offers come later, one at a time,** each with **Later**: notifications on this

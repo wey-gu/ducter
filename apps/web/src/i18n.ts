@@ -7,6 +7,7 @@
 import { starts } from "./i18n-starts.ts";
 import { phone } from "./i18n-phone.ts";
 import { onhandWords } from "./i18n-onhand.ts";
+import { workbench } from "./i18n-workbench.ts";
 
 export type Lang = "zh" | "en";
 
@@ -248,7 +249,7 @@ const zh: Record<string, string> = {
   "wait.last": "上次%s",
   "wait.often": "多久一次",
   "wait.looks": "看过的",
-  "wait.looks.v": "看了 %d 次，变了 %d 次 ›",
+  "wait.looks.v": "看了 %d 次，变了 %d 次",
   "wait.cancel": "不等了",
   "wait.look": "现在看一眼",
   "wait.missed": "没等到：%s",
@@ -959,7 +960,7 @@ const en: Record<string, string> = {
   "wait.last": "last %s",
   "wait.often": "How often",
   "wait.looks": "Looks",
-  "wait.looks.v": "%d looks, changed %d times ›",
+  "wait.looks.v": "%d looks, changed %d times",
   "wait.cancel": "Stop waiting",
   "wait.look": "Look now",
   "wait.missed": "Didn't happen: %s",
@@ -1516,6 +1517,7 @@ const folder: Record<Lang, Record<string, string>> = {
 const devup: Record<Lang, Record<string, string>> = {
   zh: {
     "devices.title": "你的设备",
+    "devices.update_word": "有更新",
     "device.what.cloud": "云上的电脑",
     "device.what.computer": "一台电脑",
     "device.what.mac": "一台 Mac",
@@ -1662,6 +1664,7 @@ const devup: Record<Lang, Record<string, string>> = {
   },
   en: {
     "devices.title": "Your devices",
+    "devices.update_word": "Update available",
     "device.what.cloud": "A computer in the cloud",
     "device.what.computer": "A computer",
     "device.what.mac": "A Mac",
@@ -2459,7 +2462,7 @@ const accounts: Record<Lang, Record<string, string>> = {
 };
 
 import { autofill } from "./i18n-autofill.ts";
-export const TABLES: Record<Lang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh, ...where.zh, ...devcard.zh, ...accounts.zh, ...starts.zh, ...autofill.zh, ...phone.zh, ...onhandWords.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en, ...where.en, ...devcard.en, ...accounts.en, ...starts.en, ...autofill.en, ...phone.en, ...onhandWords.en } };
+export const TABLES: Record<Lang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh, ...where.zh, ...devcard.zh, ...accounts.zh, ...starts.zh, ...autofill.zh, ...phone.zh, ...workbench.zh, ...onhandWords.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en, ...where.en, ...devcard.en, ...accounts.en, ...starts.en, ...autofill.en, ...phone.en, ...workbench.en, ...onhandWords.en } };
 
 /** Drops a space between two Chinese characters (zh copy spaces around a name for Latin names). */
 /** D78: a space where a Chinese character touches a Latin letter or a digit ("住在%s 上" with "hel"). */

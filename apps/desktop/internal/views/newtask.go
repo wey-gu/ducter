@@ -918,11 +918,7 @@ func (a *App) whoPill(c *ui.Context) {
 		name = a.whoLabel(*chosen)
 	}
 	e, click := a.pill(c, "nt-who", a.L.T("newtask.who")+" · "+name, nt.whoOpen, func() {
-		if chosen != nil {
-			if bmp := theme.Clay(coinArt(chosen.Harness, false)); bmp != nil {
-				ui.Image(c, bmp).Size(22, 22).Shrink(0).AccessHidden(true)
-			}
-		}
+		// The agent's name alone: a 22-point coin in a pill reads as an emoji (D213).
 		ui.Text(c, name).FontSize(t.SM).FontWeight(700).TextColor(t.Ink).SingleLine().AccessHidden(true)
 		if chosen != nil && !picked && a.tuneIsDefault(*chosen) {
 			a.suggestedTag(c)

@@ -12,8 +12,10 @@ import { startAutospace } from "./autospace.ts";
 import { Avatar, Conversation, OnHand, Sheets, TaskView, Toasts } from "./views.tsx";
 import { LiveView } from "./live.tsx";
 import { Board, Rail } from "./board.tsx";
-import { openKey, useRoomy } from "./wide.ts";
+import { openKey, ROOMY, ROOMY_BENCH, useRoomy } from "./wide.ts";
 import { escUp, useFill, useSplit, useWide } from "./wide.ts";
+import { benchKey, benchOpen, benchShown, Workbench } from "./workbench.tsx";
+import { liveInBench } from "./live.tsx";
 
 const base = baseUrl();
 const token = () => storage.get()?.token;
@@ -48,14 +50,21 @@ function App() {
   // D184: On hand, or an opened task, can take the whole screen as the Mac shows it; the two
   // panes stay the default and come back in one move (⌘2, the header's button, Esc).
   const fill = useFill();
-  // D216: a task at the whole screen keeps On hand beside it as a rail when there is room.
-  const roomy = useRoomy();
+  // D214: the opened task's workbench: wide, a column at the whole screen's right; else a sheet.
+  const benchTask = r.name === "task" ? A.S.tasks.get(r.id) : undefined;
+  const benched = benchOpen(benchTask) && (fill || !wide);
+  liveInBench.taskId = benchShown.taskId = benched && benchTask ? benchTask.id : "";
+  // D216: a task at the whole screen keeps On hand beside it as a rail when there is room (more
+  // room when its workbench is open beside it too).
+  const roomy = useRoomy(ROOMY);
+  const roomyBench = useRoomy(ROOMY_BENCH);
+  const rail = r.name === "task" && !split && (benched ? roomyBench : roomy);
   return (
     <>
       {fill ? (
-        <div class={split ? `full ${split.kind}` : "full"}>
+        <div class={`${split ? `full ${split.kind}` : "full"}${benched ? " benched" : ""}`}>
           {r.name === "task" ? (
-            roomy && !split ? (
+            rail ? (
               <div class="with-rail">
                 <Rail />
                 <div class="beside-rail">
@@ -68,6 +77,7 @@ function App() {
           ) : (
             <Board />
           )}
+          {benched && benchTask && <Workbench key={benchTask.id} task={benchTask} />}
         </div>
       ) : wide ? (
         <div class={split ? `panes ${split.kind}` : "panes"}>
@@ -83,6 +93,7 @@ function App() {
           {r.name === "conv" && <Conversation />}
           {r.name === "onhand" && <OnHand />}
           {r.name === "task" && <TaskView id={r.id} />}
+          {benched && benchTask && <Workbench key={benchTask.id} task={benchTask} sheet />}
         </>
       )}
       <Sheets />
@@ -214,6 +225,7 @@ function run(me: Me, had: string | undefined, device: string, glance?: Glance) {
   A.fromHash();
   // The app's menus and hardware-keyboard shortcuts (⌘N, ⌘1…⌘4, ⌘, and ⌘K, as on the Mac; D176).
   (globalThis as { ducterCommand?: (c: string) => void }).ducterCommand = (c) => A.command(c);
+  addEventListener("keydown", (e) => void benchKey(e));
   addEventListener("keydown", escUp);
   addEventListener("keydown", openKey);
   addEventListener("popstate", () => A.fromHash());

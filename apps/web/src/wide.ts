@@ -87,16 +87,19 @@ export function escUp(e: KeyboardEvent) {
 /** D216: room for On hand's rail beside a task at the whole screen (the rail, then the task's
  *  720 column with its own room). Keep in step with `.with-rail` in static/app.css. */
 export const ROOMY = "(min-width: 1360px)";
-export function useRoomy(): boolean {
-  const q = () => (typeof matchMedia === "function" ? matchMedia(ROOMY) : undefined);
+/** With the task's workbench open beside it too (D214), the rail needs more. */
+export const ROOMY_BENCH = "(min-width: 1720px)";
+export function useRoomy(query: string): boolean {
+  const q = () => (typeof matchMedia === "function" ? matchMedia(query) : undefined);
   const [on, setOn] = useState(() => !!q()?.matches);
   useEffect(() => {
     const m = q();
     if (!m) return;
     const f = () => setOn(m.matches);
+    f();
     m.addEventListener("change", f);
     return () => m.removeEventListener("change", f);
-  }, []);
+  }, [query]);
   return on;
 }
 

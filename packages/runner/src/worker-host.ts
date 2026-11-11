@@ -8,6 +8,7 @@ import type { HarnessEvent, HarnessPort, HarnessSession, SessionSpec } from "@du
 import { runCheck } from "@ducter/protocol/src/checks-run.ts";
 import { folderInfo, realGit, type GitRun } from "@ducter/protocol/src/folder-info.ts";
 import { archiveWorktree, branchChanges, mergeTaskBranch, openDraftPr, pushForMove } from "./integrate.ts";
+import { wbErrorOf, wbHost, type WbCall, type WbFetch } from "./workbench.ts";
 import { planPlace, provisionPlace } from "./places.ts";
 import { createFolderStore } from "./folder.ts";
 import { browserSidecar, sidecarWire, type BrowserOptions, type BrowserSidecar, type SidecarInput } from "./browser.ts";
@@ -98,6 +99,8 @@ export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
   // D142: the copy of a non-git folder lives here, beside the folder (folder.ts).
   const folders = createFolderStore({ root: join(o.dataDir, "snapshots") });
   folders.sweep();
+  // D214: the workbench for the tasks here (their working copies are on this computer).
+  const bench = wbHost({ dataDir: o.dataDir, folders });
   /** D206: a picture the home sent with a message, kept in <dataDir>/media-in under its own name. */
   const keepPicture = (i: { name?: unknown; mediaType?: unknown; data?: unknown }) => {
     const name = basename(String(i.name ?? "")).replace(/[^A-Za-z0-9._-]/g, "") || "picture";
@@ -184,6 +187,9 @@ export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
       folders.sweep();
     },
     folderChanges: (a) => folders.changes(String(a.taskId), a.opts),
+    // D214: the workbench's ops on a task's working copy here, confined to it (workbench.ts).
+    wb: (a: WbCall) => bench.op(a).then((answer) => ({ ok: true, answer }), (e) => ({ ok: false, ...wbErrorOf(e) })),
+    wbFetch: (a: WbFetch) => bench.fetch(a).then((answer) => ({ ok: true, answer }), (e) => ({ ok: false, ...wbErrorOf(e) })),
     folderUndo: (a) => folders.undo(String(a.taskId), a.opts),
     folderKeep: async (a) => folders.keep(String(a.taskId)),
     // D112: a waiter's check runs here when the task works on this device (read-only, validated

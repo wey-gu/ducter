@@ -163,6 +163,13 @@ export function noCopyAnswer(answer: string): string {
   return `Ducter couldn't keep a copy of this folder, so nothing you change here can be undone. Asked whether you may change it anyway, the user said: "${answer.trim()}". Change nothing in the folder unless that clearly means yes; otherwise only read, and report.`;
 }
 
+/** D214: put before the next turn after the user changed the task's files in its workbench. */
+export function userEditsNote(edits: { path: string; how: "edited" | "reverted" }[]): string {
+  const list = (how: "edited" | "reverted") => edits.filter((e) => e.how === how).map((e) => e.path).slice(0, 20).join(", ");
+  const parts = [list("edited") && `edited ${list("edited")}`, list("reverted") && `put ${list("reverted")} back as it was before this task`].filter(Boolean);
+  return `(Since your last turn the user ${parts.join(", and ")} themselves, in Ducter. Read those files again before you change them; keep their changes unless they ask otherwise.)`;
+}
+
 /** The one nudge after a turn ends with no report (stall rule). */
 export const NUDGE = "Report status via report_to_main.";
 

@@ -5,11 +5,12 @@
 //   DUCTER_PORT=7991 DUCTER_DATA_DIR=/tmp/x DEMO_LANG=zh DEMO_PHASE=ask|go bun apps/web/demo-tasks.ts
 // DEMO_PHASE=go answers the ask with Go and lets the task carry on.
 import { startCore, stubRunner } from "@ducter/core";
+import { noOo } from "./demo-oo.ts";
 import type { Bodies } from "@ducter/protocol";
 
 const zh = (process.env.DEMO_LANG ?? "zh") === "zh";
 const w = (z: string, e: string) => (zh ? z : e);
-const core = startCore({ persona: { id: "default", name: "Ducter", identity: "" }, hostname: process.env.DUCTER_HOST || "127.0.0.1" });
+const core = startCore({ ooSource: noOo, persona: { id: "default", name: "Ducter", identity: "" }, hostname: process.env.DUCTER_HOST || "127.0.0.1" });
 const log = core.log;
 // The runner logs what it sends a task, as the real one does (a Go arrives as "User says Go: …").
 core.setRunner({

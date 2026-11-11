@@ -14,6 +14,10 @@ Each agent gets two files:
     coin_<id>_off  signed out or not installed: the same object in one grey clay (its form and
                    light kept, its colour gone), so it is still recognisable but plainly off
 
+and an agent whose clay would vanish on the dark ground (DARK) a third:
+
+    coin_<id>_dark the dark theme's coin: the same object re-cast in a pale clay
+
     python3 tools/art/coins.py                         # every coin, every size
     python3 tools/art/coins.py master <id> <cut.png> [#tone]  # a new master from a cut-out render
 
@@ -47,6 +51,12 @@ COINS = {
 
 # The unavailable coin's grey clay (the old coins' grey body).
 OFF = "#B3ADA5"
+
+# A coin whose clay is near the dark theme's ground gets a dark-theme rendition (D213): the same
+# object re-cast in a pale clay, its form and light kept (lightness shifted, not inverted, so the
+# key light still falls from the top), the way the mark itself turns light on a dark page.
+# Codex's charcoal knot vanished on the dark ground; it becomes bone clay there.
+DARK = {"codex": "#DCD4C8"}
 
 
 # --- colour -------------------------------------------------------------------------------
@@ -138,9 +148,26 @@ def grey(im):
     return Image.fromarray((np.clip(res, 0, 1) * 255 + 0.5).astype(np.uint8), "RGBA")
 
 
-def save(name, im):
+def recast(im, tone):
+    """The same clay object in another clay: lightness re-centred on the tone's, its spread kept
+    (the form and the light), the hue the tone's with half the object's own faint tint."""
+    a = np.asarray(im).astype(np.float64) / 255
+    rgb, alpha = a[..., :3], a[..., 3:]
+    lab = to_lab(rgb)
+    ref = np.median(lab[alpha[..., 0] > 0.5][:, 0])
+    tgt = to_lab(hexrgb(tone)[None, None, :])[0, 0]
+    out = np.empty_like(lab)
+    out[..., 0] = np.clip(tgt[0] + (lab[..., 0] - ref), 20, 97)
+    out[..., 1] = tgt[1] + 0.5 * lab[..., 1]
+    out[..., 2] = tgt[2] + 0.5 * lab[..., 2]
+    res = np.concatenate([from_lab(out), alpha], -1)
+    return Image.fromarray((np.clip(res, 0, 1) * 255 + 0.5).astype(np.uint8), "RGBA")
+
+
+def save(name, im, desk=True):
     a = im.convert("RGBa")
-    a.resize((256, 256), Image.LANCZOS).convert("RGBA").save(DESK / f"{name}@256.png", optimize=True)
+    if desk:  # the Mac has no dark theme yet, so it loads no dark coin
+        a.resize((256, 256), Image.LANCZOS).convert("RGBA").save(DESK / f"{name}@256.png", optimize=True)
     a.resize((128, 128), Image.LANCZOS).convert("RGBA").save(
         WEB / f"{name}.webp", quality=88, alpha_quality=100, method=6, exact=True)
 
@@ -152,6 +179,8 @@ def build(only=None):
         coin = placed(cid, fill)
         save(f"coin_{cid}", coin)
         save(f"coin_{cid}_off", grey(coin))
+        if cid in DARK:
+            save(f"coin_{cid}_dark", recast(coin, DARK[cid]), desk=False)
 
 
 if __name__ == "__main__":

@@ -243,3 +243,26 @@ export const Sparkles = ({ at, x, y, r = 70, n = 6, color = "#FFFDF4" }: { at: n
     </>
   );
 };
+
+/** Ducter's own phone (D217): an Android phone, drawn: a slimmer ink bezel, a punch-hole camera,
+ * the gesture bar. Not the owner's iPhone, so it reads as a different device at a glance. */
+export const Android = ({ children, width = 400, style }: { children: ReactNode; width?: number; style?: CSSProperties }) => {
+  const h = width * 2.2;
+  return (
+    <div data-safe="phone" style={{ width, height: h, borderRadius: width * 0.1, background: "#231A13", padding: width * 0.026, boxShadow: `inset 0 0 0 2px #4A3D30, 0 50px 90px -30px rgba(74,50,26,0.5)`, ...style }}>
+      <div style={{ width: "100%", height: "100%", borderRadius: width * 0.08, background: C.surface, overflow: "hidden", position: "relative", fontFamily: FONT }}>
+        <div style={{ position: "absolute", top: width * 0.03, left: "50%", marginLeft: -width * 0.024, width: width * 0.048, height: width * 0.048, borderRadius: 99, background: "#140D07", zIndex: 3 }} />
+        <div style={{ position: "absolute", top: width * 0.032, left: width * 0.07, fontWeight: 650, fontSize: width * 0.038, color: C.ink, zIndex: 3 }}>14:52</div>
+        {children}
+        <div style={{ position: "absolute", bottom: width * 0.025, left: "50%", marginLeft: -width * 0.14, width: width * 0.28, height: width * 0.012, borderRadius: 9, background: C.ink, opacity: 0.6, zIndex: 3 }} />
+      </div>
+    </div>
+  );
+};
+
+/** A plain drawn play mark (never the emoji-capable triangle character). */
+export const PlayMark = ({ size = 24, color = C.surface }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: "block" }}>
+    <path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.6-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z" fill={color} />
+  </svg>
+);

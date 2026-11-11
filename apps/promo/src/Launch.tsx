@@ -1,4 +1,4 @@
-// The launch video: eleven scenes, joined by short fades (the title opens into the conversation
+// The launch video (v5): fourteen scenes, joined by short fades (the title opens into the conversation
 // out of Ducter itself). The only sound is Ducter's own title
 // sound (D87), under the title and again under the end card; the video reads without it.
 import { linearTiming, type TransitionPresentation, TransitionSeries } from "@remotion/transitions";
@@ -9,12 +9,15 @@ import { type Lang, LangContext } from "./copy";
 import { Decide } from "./scenes/Decide";
 import { End } from "./scenes/End";
 import { HeadsUp } from "./scenes/HeadsUp";
+import { Call } from "./scenes/Call";
+import { PhoneUse } from "./scenes/PhoneUse";
+import { Pictures } from "./scenes/Pictures";
 import { Hook } from "./scenes/Hook";
 import { Quiet } from "./scenes/Quiet";
-import { RealApp } from "./scenes/RealApp";
 import { Result } from "./scenes/Result";
 import { SayIt } from "./scenes/SayIt";
 import { Title, titleLayout } from "./scenes/Title";
+import { Workbench } from "./scenes/Workbench";
 import { World } from "./scenes/World";
 import "./theme";
 import { LAUNCH_FRAMES, SCENES, X, startOf } from "./timeline";
@@ -28,8 +31,11 @@ const body = {
   Quiet: <Quiet />,
   Decide: <Decide />,
   Result: <Result />,
-  RealApp: <RealApp />,
+  Workbench: <Workbench />,
+  Pictures: <Pictures />,
   HeadsUp: <HeadsUp />,
+  PhoneUse: <PhoneUse />,
+  Call: <Call />,
   World: <World mode="world" />,
   End: <End />,
 };

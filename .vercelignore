@@ -6,6 +6,8 @@
 /apps/site/node_modules
 /apps/site/dist
 /apps/site/.astro
+# the launch film is fetched from its GitHub release at build time (apps/site/scripts/film.mjs)
+/apps/site/public/film
 !/docs
 !/skills
 !/.vercelignore

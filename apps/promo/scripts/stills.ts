@@ -9,14 +9,15 @@ import { bundle } from "@remotion/bundler";
 import { renderStill, selectComposition } from "@remotion/renderer";
 import { startOf } from "../src/timeline";
 
-// one frame per scene that shows what the scene is for (RealApp twice: its two shots)
+// one frame per scene that shows what the scene is for (twice or three times where a scene has beats)
 const STORYBOARD: [string, number][] = [
   ["Hook", 84], ["Title", 76], ["SayIt", 112], ["Handoff", 96], ["Quiet", 74], ["Decide", 96],
-  ["Decide", 140], ["Result", 104], ["RealApp", 34], ["RealApp", 84], ["HeadsUp", 100], ["World", 96], ["End", 120],
+  ["Decide", 140], ["Result", 104], ["Workbench", 50], ["Workbench", 130], ["Pictures", 70], ["Pictures", 112],
+  ["HeadsUp", 100], ["PhoneUse", 80], ["PhoneUse", 112], ["Call", 70], ["Call", 100], ["Call", 150], ["World", 96], ["End", 120],
 ];
 
 const repo = resolve(import.meta.dir, "../../..");
-const out = resolve(process.env.DUCTER_SHOTS_DIR ?? resolve(repo, ".shots"), "promo/v4/stills");
+const out = resolve(process.env.DUCTER_SHOTS_DIR ?? resolve(repo, ".shots"), "promo/v5/stills");
 mkdirSync(out, { recursive: true });
 
 const args = process.argv.slice(2);

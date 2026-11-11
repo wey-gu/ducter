@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.0.16
 
 <!-- whats-new
 zh: 新建时能选别的电脑上的 AI agent
@@ -11,13 +11,19 @@ en: Pick the model and how hard it thinks in New task; it remembers
 
 **New task: who, which model, how hard it thinks**
 - **Who does it** lists every AI agent you have, on every computer. When your folder is on your
-  server and Claude Code is on your Mac, Claude Code is there, *on MacBook*: picking it moves the
+  server and Claude Code is on your Mac, Claude Code is there, marked with the computer it's on: picking it moves the
   task to the same project on your Mac (with its branch), or asks you to pick a folder there.
 - Under the AI agent you pick: its **Model** (the ones your account offers, read from the agent
   itself) and its **Effort** (**Low**, **Medium**, **High**, **Extra high**, **Max**, as that
   model offers). The suggested model and the model's own default are already picked; your last
   choice is remembered for each agent. The task keeps its effort when it resumes.
 - `ducter task --agent claude-code/opus --effort high` does the same from the command line.
+
+**A task's working copy, in your words**
+- A task's folder and branch keep the language you wrote in: a task called 修复登录页 works in
+  `ducter/修复登录页`, not `ducter/task`.
+- **Open** lists every terminal you have that can open a folder: Terminal, iTerm2, Ghostty, Warp,
+  and con (from its 0.1.0-beta.177).
 
 ## 0.0.15
 

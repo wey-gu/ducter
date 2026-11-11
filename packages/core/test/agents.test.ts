@@ -284,7 +284,7 @@ test("night: in quiet hours, nothing working, only to a verified version; outsid
   });
   stops.push(() => ag.stop());
   await ag.nightly();
-  for (let i = 0; i < 50 && f.m.version !== top; i++) await Bun.sleep(5);
+  for (let i = 0; i < 600 && f.m.version !== top; i++) await Bun.sleep(5); // up to 3 s: 250 ms failed under the full suite (2026-11-11)
   expect(f.m.version).toBe(top); // the newest verified, not 0.199.0
   expect(ag.view("local", harnesses())[0]!.update).toMatchObject({ phase: "done", by: "night", to: top });
   const before = f.runs.length;

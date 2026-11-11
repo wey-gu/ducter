@@ -1,3 +1,6 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import film from "./film.json";
 import { repoFacts, RELEASES_URL, REPO_URL } from "./github";
 
 /** The download and source links every page shows, decided once at build time. */
@@ -12,8 +15,15 @@ export async function siteLinks() {
 }
 
 /**
- * The launch film, hosted as a GitHub release asset (D75 keeps the ~11 MB video out of git).
- * Attached to the v0.0.8 release (v4 cut); the home's last section shows a poster
- * (public/film-poster.webp) linking to it. See design/site-audit-2026-11.md.
+ * The launch film (D75 keeps the video out of git). Its source of truth is a GitHub release asset
+ * (src/lib/film.json); scripts/film.mjs copies it into public/film/ at build time, because GitHub
+ * serves assets as downloads that Safari and iOS won't play inline. `src` is null when that copy
+ * failed, and the page then shows the poster linking to the release. See design/site-audit-2026-11.md.
  */
-export const FILM_URL: string | null = "https://github.com/wey-gu/ducter/releases/download/v0.0.8/ducter-launch-16x9.mp4";
+
+export function launchFilm() {
+  // Astro builds from apps/site, so the working directory is the site root.
+  const local = join(process.cwd(), "public", "film", film.release, film.file);
+  const release = `https://github.com/wey-gu/ducter/releases/tag/${film.release}`;
+  return { src: existsSync(local) ? `/film/${film.release}/${film.file}` : null, poster: film.poster, seconds: film.seconds, release };
+}

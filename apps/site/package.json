@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "node scripts/skills.mjs && astro dev",
-    "build": "node scripts/skills.mjs && astro build",
+    "build": "node scripts/skills.mjs && node scripts/film.mjs && astro build",
     "preview": "astro preview",
     "art": "node scripts/art.mjs"
   },

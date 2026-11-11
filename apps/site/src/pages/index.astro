@@ -8,11 +8,12 @@ import Nav from "../components/Nav.astro";
 import Footer from "../components/Footer.astro";
 import Isles from "../components/Isles.astro";
 import GitHubMark from "../components/GitHubMark.astro";
-import { FILM_URL, siteLinks } from "../lib/links";
+import { launchFilm, siteLinks } from "../lib/links";
 import { RELEASES_URL } from "../lib/github";
 import { agentsLine, agentsToday, agentsTodayAnd } from "../lib/agents";
 
 const { facts, dl, gh } = await siteLinks();
+const film = launchFilm();
 const title = "Ducter: say it once, hear back when it's done";
 const description =
   `Ducter is an open-source personal AI on your own Mac or server. Tell one partner what you want. It hands the work to AI agents like ${agentsTodayAnd} and tells you when it's done.`;
@@ -521,12 +522,14 @@ const ld = {
     <Face id="final-face" faces={["napping", "idle"]} start="napping" sizes="168px" />
     <h2>Say it once.</h2>
     <p class="lede">Then get on with your day. Ducter tells you when it's done.</p>
-    {FILM_URL && (
-      <figure class="film">
-        <video src={FILM_URL} poster="/film-poster.webp" width="960" height="540" controls preload="none" playsinline aria-label="The launch film, 42 seconds"></video>
-        <figcaption>The launch film · 42 s · <a href="https://github.com/wey-gu/ducter/releases/tag/v0.0.8" rel="noopener">also in Chinese and square</a></figcaption>
-      </figure>
-    )}
+    <figure class="film">
+      {film.src ? (
+        <video src={film.src} poster={film.poster} width="960" height="540" controls preload="none" playsinline aria-label={`The launch film, ${film.seconds} seconds`}></video>
+      ) : (
+        <a class="film-poster" href={film.release} rel="noopener"><img src={film.poster} width="960" height="540" alt={`The launch film, ${film.seconds} seconds: opens on GitHub`} loading="lazy" decoding="async" /></a>
+      )}
+      <figcaption>The launch film · {film.seconds} s · <a href={film.release} rel="noopener">also in Chinese and square</a></figcaption>
+    </figure>
     <div class="cta-row">
       <a class="btn secondary lg gh" href={gh.href} rel="noopener"><GitHubMark />Star on GitHub</a>
       <a class="btn lg" href={dl.href}>{dl.label}</a>

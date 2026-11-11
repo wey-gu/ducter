@@ -83,8 +83,13 @@ rising). It catches the old 1.5× phone push (288 px out). Renders: `.shots/prom
 Recommendation: **a poster image plus a link to the full video as a GitHub release asset.** The
 site already plays the same moments live (the hero conversation, the board, the phone), so a
 muted loop would repeat them at lower quality; the 16:9 film is ~11 MB, far over D75's 2 MB.
-Built: `FILM_URL` in `apps/site/src/lib/links.ts` is `null`, and the final section shows the
-poster and a "Watch the launch film" link only once it is set. The author's steps: attach
-`ducter-launch-16x9.mp4` (and the zh cut) to the v0.0.8 release, set `FILM_URL` to the asset's
-URL, deploy. The alternative, a ≤ 2 MB muted 6–8 s loop of the Decide scene committed under
+Built: the film's release and file name live in `apps/site/src/lib/film.json`; the asset is
+attached to that GitHub release. GitHub serves release assets as downloads
+(`application/octet-stream`, `content-disposition: attachment`), which Safari and iOS refuse to
+play inline, so `apps/site/scripts/film.mjs` copies the asset into `public/film/<release>/`
+(gitignored) at build time and the page plays it from ducter.ai, served as `video/mp4` with range
+requests (`vercel.json`). If the copy fails the build still succeeds and the page shows the
+poster linking to the release. To ship a new cut: attach it to a release, change `film.json`
+and the poster, deploy.
+The alternative, a ≤ 2 MB muted 6–8 s loop of the Decide scene committed under
 `apps/site/public/`, is cheap to add later if the poster link underperforms.

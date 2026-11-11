@@ -6,6 +6,10 @@
   "headers": [
     { "source": "/fonts/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] },
     { "source": "/art/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=604800, stale-while-revalidate=86400" }] },
+    { "source": "/film/(.*)", "headers": [
+      { "key": "Content-Type", "value": "video/mp4" },
+      { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+    ] },
     { "source": "/install.sh", "headers": [
       { "key": "Content-Type", "value": "text/plain; charset=utf-8" },
       { "key": "Cache-Control", "value": "public, max-age=300, must-revalidate" }

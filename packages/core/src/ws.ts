@@ -1,4 +1,5 @@
 // Client WebSocket protocol (ClientFrame / ServerFrame) over Bun's built-in WS.
+import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 import { brainNow } from "./brain.ts";
 import { harnessName, isHarnessId, TRY_LIVE, WATCH_LIVE } from "@ducter/protocol";
 import type { ServerWebSocket } from "bun";
@@ -305,7 +306,7 @@ export function createWsHandler(deps: WsDeps) {
     switch (f.t) {
       case "hello": {
         const machine = machineId();
-        send(ws, { t: "welcome", persona: core.persona.id, personaName: core.persona.name, headSeq: log.head(), ...(machine ? { machine } : {}) });
+        send(ws, { t: "welcome", persona: core.persona.id, personaName: core.persona.name, headSeq: log.head(), ...(machine ? { machine } : {}), version: DUCTER_VERSION });
         // Channel only: task streams are pulled with task_history.
         const events =
           f.cursor != null && f.cursor >= 0

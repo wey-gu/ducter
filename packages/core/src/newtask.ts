@@ -441,7 +441,15 @@ export async function newTaskOptions(d: NewTaskDeps, at?: Place, limit = 12): Pr
       if (!had.usedAt || pr.addedAt > had.usedAt) had.usedAt = pr.addedAt;
     } else seen.set(k, { place: pr.place, name: pr.name, usedAt: pr.addedAt, added: true });
   }
-  const used = [...seen.values()].sort((a, b) => (b.usedAt ?? "").localeCompare(a.usedAt ?? ""));
+  // A place on a computer this home no longer knows (a name that isn't the home's or a worker's,
+  // 2026-11-11: "/Users/weyl" on "Siweis-MacBook-Pro") can't be started there: it isn't offered.
+  const known = (c: PlaceChoice) => {
+    const dev = c.place.kind === "repo" || c.place.kind === "folder" ? c.place.device : undefined;
+    if (isLocal(dev) || !d.computers) return true;
+    const ws = d.computers.workers?.(); // away ones too: their places stay listed
+    return ws ? ws.some((w) => w.id === dev || w.name === dev) : d.computers.nameOf(dev!) !== undefined;
+  };
+  const used = [...seen.values()].filter(known).sort((a, b) => (b.usedAt ?? "").localeCompare(a.usedAt ?? ""));
   const places = used.slice(0, limit);
   // D202: who could do it (every agent on every computer) and their models, read alongside the branches.
   const who = (async () => {

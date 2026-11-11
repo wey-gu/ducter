@@ -1,6 +1,7 @@
 // The phone app's state and actions (the views read it and call these). One store, one socket.
 import type { AgentModels, AgentReason, MemPluginReason, BrainNow, Candidate, ModelChoice, ClientFrame, Place, PlaceChoice, ConnectionReason, ConnectionView, DeviceHarness, DeviceView, DucterFolderView, MemView, OoDetect, Reach, RuleView, ServerFrame, Settings, SettingsPatch, UpdateReason } from "@ducter/protocol";
 import { TUWA_MCP, WATCH_LIVE } from "@ducter/protocol";
+import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 import { Api, Connection, deviceName, type ConnStatus, type Me, wsUrl } from "./conn.ts";
 import { detectLang, langOfText, strings, type Handheld, type Lang, type Strings } from "./i18n.ts";
 import { pushState, type PushState } from "./push-client.ts";
@@ -318,6 +319,28 @@ class AppState {
   changed() {
     for (const fn of this.listeners) fn();
     this.scheduleRead();
+    this.reloadIfStale();
+  }
+
+  /** The home's version, when it isn't the one this page was built with (welcome.version). */
+  staleFor = "";
+
+  /**
+   * The home updated while this page stayed open (a phone app in the background, 2026-11-11: the
+   * 0.0.17 card on a 0.0.18 home had no 找一个文件夹… or 从 Git 地址加…): load the home's page
+   * again, once nothing would be lost (no sheet, no live view, no unsent words), and only once per
+   * version, so a page the home still serves old can't reload in a loop.
+   */
+  reloadIfStale() {
+    if (!this.staleFor || this.sheet || this.live?.id || this.draft.trim()) return;
+    if (typeof location === "undefined" || typeof sessionStorage === "undefined") return;
+    try {
+      if (sessionStorage.getItem("ducter.reloadedFor") === this.staleFor) return;
+      sessionStorage.setItem("ducter.reloadedFor", this.staleFor);
+    } catch {
+      return;
+    }
+    location.reload();
   }
 
   start(base: URL, api: Api, me: Me, token: () => string | undefined) {
@@ -457,6 +480,7 @@ class AppState {
     for (const [id, t] of this.S.tasks) if (finished(t) && before.has(id) && !["done", "done_claimed", "failed"].includes(before.get(id)!)) this.doneAt = Date.now();
     if (f.t === "action_result") this.actSent.delete(f.taskId);
     if (f.t === "welcome") {
+      if (typeof f.version === "string" && f.version !== DUCTER_VERSION) this.staleFor = f.version;
       // D190: a new socket (the phone came back from the background, the link dropped): the old
       // socket's live view closed with it on the home, so the view that's still on screen opens
       // again, the same way (a watch stays a watch; the user's turn ended with the old socket).

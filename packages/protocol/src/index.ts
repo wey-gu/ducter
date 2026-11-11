@@ -902,7 +902,7 @@ export type NewTaskReason = "empty" | "no_agent" | "not_repo" | "offline" | "pas
 export type ServerFrame =
   // machine: a hash of the machine the main runs on (core/src/machine.ts); a client that computes
   // the same hash is on that machine, so the place paths it sees are its own.
-  | { t: "welcome"; persona: string; personaName: string; headSeq: number; machine?: string }
+  | { t: "welcome"; persona: string; personaName: string; headSeq: number; machine?: string; /** The home's Ducter version: a page built for another reloads (it would draw an older card). */ version?: string }
   | { t: "events"; events: LogEvent[] }
   | { t: "on_hand"; onHand: OnHand }
   | { t: "task_history"; taskId: string; events: LogEvent[] }

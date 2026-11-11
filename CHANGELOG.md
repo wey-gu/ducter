@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.0.26
+
+<!-- whats-new
+zh: Ducter 有了自己的安卓手机：装 app、登录，让它替你在手机上办事
+en: Ducter has its own Android phone: add apps, sign in, and let it do things there
+zh: 手头的事改成一个清单，每行都写着它此刻在做什么
+en: On hand is one list, and every row says what each task is doing right now
+-->
+
+**Ducter's phone** (a Mac with Apple silicon)
+- On your Mac's card in **Devices**, **+ 用手机 / Use a phone** adds an Android phone that lives
+  inside Ducter (about 2.3 GB to download, about 10 GB once used; Google's licenses are shown first).
+  It starts when a task or you need it and sleeps after five idle minutes.
+- Open it to install apps from Google Play and sign in yourself; the task can't see while you do.
+  Tasks then work in those apps. Sending, paying, posting, deleting, installing, calling or signing
+  out waits for your OK on a card first; banking, wallet and password apps stay out of its reach.
+
+**On hand**
+- One list on every screen: what needs you on top, answered in place; every other task a row that
+  says what it's on right now, with its changes, draft PR or merge, and time.
+- Find (from 10 tasks), **By project**, keys (j/k, Enter, /), **⌘O** to jump to any task, actions on
+  hover, several at once on a wide screen, and beside a task opened full screen the list stays as a
+  rail.
+
 ## 0.0.25
 
 <!-- whats-new

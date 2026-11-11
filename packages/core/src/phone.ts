@@ -47,6 +47,14 @@ const CC = ["1", "7", "20", "27", "30", "31", "32", "33", "34", "36", "39", "40"
  * nowhere else is drafted. Mainland China (+86) is not among them.
  */
 export const TUWA_REACHES = ["1", "81", "82", "44", "49", "33", "91", "55", "61", "64", "66", "63", "65", "60", "971", "977", "852", "853", "886"];
+/**
+ * D215: whether a line Ducter has, or would have once connected, calls this number's country.
+ * No connection yet counts as Tuwa (the one Ducter offers). Another provider decides for itself.
+ */
+export function reaches(provider: string | undefined, n: string): boolean {
+  if (provider && provider !== "Tuwa") return true;
+  return TUWA_REACHES.includes(countryCode(n) ?? "");
+}
 export function countryCode(n: string): string | undefined {
   const d = n.replace(/^\+/, "");
   for (const len of [3, 2, 1]) if (CC.includes(d.slice(0, len))) return d.slice(0, len);
@@ -260,7 +268,7 @@ export function openPhone(deps: PhoneDeps): Phone {
   // card that offers Call now). zones: every zone the callee's hours are checked in (D208).
   type Call = CallBody & { ref?: { draft?: string; confirmation?: string; call?: string; token?: string; summary?: string; scheduled?: boolean; yesNo?: boolean; held?: boolean; zones?: string[] }; updatedAt: string };
   const calls = new Map<string, Call>();
-  const byDecision = new Map<string, { callId: string; kind: "go" | "question" }>();
+  const byDecision = new Map<string, { callId: string; kind: "go" | "question" | "sheet" }>();
   for (const e of deps.log.read({ stream: "channel", kinds: ["phone_call", "decision"], fromSeq: 0, limit: Number.MAX_SAFE_INTEGER })) {
     if (e.kind === "phone_call") calls.set((e.body as CallBody).callId, { ...(e.body as Call), updatedAt: e.ts });
     else {
@@ -505,6 +513,12 @@ export function openPhone(deps: PhoneDeps): Phone {
     if (!link) return;
     const c = calls.get(link.callId);
     if (!c) return;
+    // D215: a call sheet: 打完了 / Done calling says the owner called it themselves (the partner
+    // asks how it went and records it); 先不打 / Not now, or a reply, sets it aside. Nothing dials.
+    if (link.kind === "sheet") {
+      if (c.state !== "needs_go") return;
+      return void put(c, r.option === "go" ? { state: "done", endedAt: new Date(clock.now()).toISOString() } : { state: "held" });
+    }
     if (link.kind === "go") {
       if (c.state !== "needs_go") return;
       if (r.option === "go") {
@@ -578,8 +592,54 @@ export function openPhone(deps: PhoneDeps): Phone {
       then: lang === "zh" ? "到点再打" : "Call then",
       now: lang === "zh" ? "现在就打" : "Call now",
       us: lang === "zh" ? "这是美国的私人号码时，对方得事先同意接 AI 的电话。" : "If this is a private US mobile, the person must have agreed to AI calls.",
-      cn: lang === "zh" ? "打到中国大陆的号码，多半接不通。" : "Calls to mainland China numbers likely won't connect.",
+      // D215: a call sheet's card: the question names who; Go is the owner saying they called.
+      sheet: (name: string) => (lang === "zh" ? `打给 ${name} 的通话单` : `Call sheet: ${name}`),
+      done: lang === "zh" ? "打完了" : "Done calling",
     };
+  }
+
+  /**
+   * D215: a number no calling provider reaches (a country outside Tuwa's coverage). The card is
+   * a call sheet the owner calls themselves: no provider, no cost, no hours (the owner dials when
+   * they like). Needs no calling connection. When a provider that reaches the number exists (the
+   * owner's own phone, later), draft() takes it before ever getting here.
+   */
+  function sheet(to: string, req: DraftRequest, o: { lang: "zh" | "en" }): DraftResult {
+    if ((file.doNotCall ?? []).some((x) => x.number === to)) return { ok: false, reason: "dnc", error: "That number is on the user's do-not-call list. Say so in one line; no sheet." };
+    const name = (req.name ?? "").trim();
+    const goal = (req.goal ?? "").trim();
+    if (!name || !goal) return { ok: false, reason: "missing", error: "A call sheet needs who (name) and the one thing it is for (goal). Ask the user in one short line." };
+    const open = (req.open ?? "").trim();
+    if (!open)
+      return { ok: false, reason: "sheet", error: "No line Ducter has calls that country, so the card is a call sheet the user calls themselves: phone_call again with open (the first thing they say, in the call's language, in their own words), ask (the questions to ask) and note (what to write down)." };
+    const list = (v?: string[]) => (v ?? []).map((s) => clip(String(s).trim(), 200)).filter(Boolean).slice(0, 8);
+    const mustNot = list(req.mustNot);
+    const keep = req.keep?.trim() ? clip(req.keep.trim(), 300) : undefined;
+    const w = langOf(o.lang);
+    const plan: CallPlan = {
+      to,
+      name: clip(name, 80),
+      goal: clip(goal, 300),
+      say: list(req.say),
+      ...(keep ? { keep } : {}),
+      mustNot,
+      voice: "ducter",
+      from: "self",
+      provider: "",
+      minutes: 0,
+      costUsd: 0,
+      perMinUsd: 0,
+      calleeZone: calleeZones(to, req.calleeZone)?.[0] ?? deps.zone(),
+      sheet: { why: "uncovered", open: clip(open, 300), ask: list(req.ask), dont: [...mustNot, ...(keep ? [keep] : [])], note: list(req.note) },
+    };
+    const callId = newCallId();
+    const decisionId = newDecisionId();
+    const card: Bodies["decision"] = { decisionId, question: w.sheet(plan.name), goLabel: w.done, defaultOption: "hold", reversible: false, call: { callId, kind: "sheet", plan } };
+    byDecision.set(decisionId, { callId, kind: "sheet" });
+    // A newer sheet for the same number replaces the one still up.
+    for (const x of calls.values()) if (x.state === "needs_go" && x.plan.to === to && x.decisionId && !answered.has(x.decisionId)) deps.log.append({ stream: "channel", origin: "system", kind: "decision_resolved", body: { decisionId: x.decisionId, option: "hold", by: "default" } });
+    put({ callId, connectionId: "", state: "needs_go", plan, decisionId, ...(req.taskId ? { taskId: req.taskId } : {}), updatedAt: new Date(clock.now()).toISOString() }, {});
+    return { ok: true, needsInput: false, callId, card, plan };
   }
 
   const api: Phone = {
@@ -588,6 +648,13 @@ export function openPhone(deps: PhoneDeps): Phone {
     },
 
     async draft(req, o) {
+      // D215: a number no line Ducter has (or could connect) reaches: a call sheet the owner calls
+      // themselves. Asked before the connection, since connecting one wouldn't help.
+      const n = !(o.callId && o.answers) ? e164(req.to ?? "") : undefined;
+      if (n && !neverCall(n)) {
+        const f0 = await resolve().catch(() => undefined);
+        if (!reaches(f0?.provider.name, n)) return sheet(n, req, o);
+      }
       const f = await resolve();
       if (!f) return { ok: false, reason: "no_phone", error: "No calling connection yet. Tell the user in one line: they can connect calls (Tuwa) in Settings › Accounts; it takes a minute on their phone." };
       const io = ioOf(f);
@@ -608,7 +675,7 @@ export function openPhone(deps: PhoneDeps): Phone {
       if (!to) return { ok: false, reason: "number", error: "That is not a full phone number. Ask the user for it with the country code (+81…, +1…); never guess one." };
       if (neverCall(to)) return { ok: false, reason: "emergency", error: "Ducter never calls emergency or short service numbers. Tell the user to call it themselves, now if it is urgent." };
       if (f.provider.name === "Tuwa" && !TUWA_REACHES.includes(countryCode(to) ?? ""))
-        return { ok: false, reason: "region", error: `Tuwa's numbers don't call ${to.startsWith("+86") ? "mainland China" : "that country"} (it calls the US, Canada, Japan, Korea, the UK, Germany, France, India, Brazil, Australia, New Zealand, Thailand, the Philippines, Singapore, Malaysia, the UAE, Nepal, Hong Kong, Macau and Taiwan). Tell the user in one line, in their language.` };
+        return { ok: false, reason: "region", error: `Tuwa's numbers don't call that country (it calls the US, Canada, Japan, Korea, the UK, Germany, France, India, Brazil, Australia, New Zealand, Thailand, the Philippines, Singapore, Malaysia, the UAE, Nepal, Hong Kong, Macau and Taiwan). Tell the user in one line, in their language.` };
       if ((file.doNotCall ?? []).some((x) => x.number === to)) return { ok: false, reason: "dnc", error: "That number is on the user's do-not-call list. Say so in one line; don't call it." };
       const name = (req.name ?? "").trim();
       const goal = (req.goal ?? "").trim();
@@ -634,7 +701,7 @@ export function openPhone(deps: PhoneDeps): Phone {
       const wait = waits ? whyWaits(now, at!, deps.quiet(), zones, { present, own }) : undefined;
       // D208: only the courtesy hours pushed a call the owner just asked for: the card offers Call now.
       const canNow = waits && present && !own && wait?.why === "callee" && nextAllowed(now, deps.quiet(), zones, { present, own, courtesy: false }) === now;
-      const note = to.startsWith("+86") ? w.cn : to.startsWith("+1") && req.person && !own ? w.us : undefined;
+      const note = to.startsWith("+1") && req.person && !own ? w.us : undefined;
       const plan: CallPlan = {
         to,
         name: clip(name, 80),
@@ -732,6 +799,21 @@ export function openPhone(deps: PhoneDeps): Phone {
       if (c.state === "waiting") return void put(c, { state: "cancelled", by, endedAt: new Date(clock.now()).toISOString() }), true;
       await finish(callId, { state: "cancelled", by });
       return true;
+    },
+
+    result(callId, outcome, reached = true) {
+      const c = calls.get(callId) ?? [...calls.values()].filter((x) => x.plan.from === "self" && !x.outcome && x.state !== "held").sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
+      if (!c || c.plan.from !== "self") return { ok: false, error: "No call sheet with that callId. Only a call the user made themselves is recorded this way." };
+      const text = outcome.trim();
+      if (!text) return { ok: false, error: "Pass how it went, in the user's words (one line)." };
+      const open = c.state === "needs_go" && !!c.decisionId && !answered.has(c.decisionId);
+      put(c, { state: reached ? "done" : "no_answer", outcome: clip(text, 400), endedAt: c.endedAt ?? new Date(clock.now()).toISOString() });
+      // Said in the conversation before the card was tapped: the sheet is answered too (by the partner, so nothing wakes again).
+      if (open) {
+        answered.add(c.decisionId!);
+        deps.log.append({ stream: "channel", origin: "partner", kind: "decision_resolved", body: { decisionId: c.decisionId!, option: "go", by: "user" } });
+      }
+      return { ok: true };
     },
 
     block(number, why) {

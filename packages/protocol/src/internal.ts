@@ -497,6 +497,8 @@ export interface PhonePort {
   answer(text: string, callId?: string): { ok: true } | { ok: false; error: string };
   cancel(callId: string, by: "owner" | "ducter"): Promise<boolean>;
   block(number: string, why?: string): { ok: true; number: string } | { ok: false; error: string };
+  /** D215: how a call the user made themselves from a call sheet went, in their words (reached false: nobody answered). */
+  result(callId: string, outcome: string, reached?: boolean): { ok: true } | { ok: false; error: string };
   get(callId: string): CallBody | undefined;
   calls(): (CallBody & { updatedAt: string })[];
 }

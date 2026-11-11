@@ -73,6 +73,23 @@ agreed, what was said (when Tuwa has it), how long it took and what it cost.
 - **Didn't go through**: it was never placed (a card to save, no minutes left, today's limit, or
   Tuwa refused it).
 
+## A number it can't call: the call sheet
+
+When the number is in a country Tuwa doesn't call, your partner says so plainly and gives you a
+**call sheet** instead, so you can make the call yourself. You don't need Tuwa connected for this.
+
+The sheet has the number, what the call is for, **Open with** (the first thing to say, set apart so
+you can read it out), the questions to **Ask**, what you **May say** (the name to book under),
+what to keep back (**Don't share**), and what to **Note down**.
+
+- **Call it yourself** on your phone opens the phone's dialer with the number. On a Mac, **Copy
+  number** puts it on the clipboard.
+- **Done calling** when you've hung up: your partner asks how it went, in one line, and keeps your
+  answer with the call on **On hand**. You can also just tell it ("打完了，订上了").
+- **Not now** sets the sheet aside.
+
+Ducter dials nothing and nothing is charged for a call sheet.
+
 ## What it never does
 
 - Call while you're in your quiet hours unless you just asked for it yourself, or call someone
@@ -81,7 +98,8 @@ agreed, what was said (when Tuwa has it), how long it took and what it cost.
 - Call emergency numbers. Call them yourself.
 - Call countries Tuwa doesn't call. Tuwa's numbers reach the US, Canada, Japan, Korea, the UK,
   Germany, France, India, Brazil, Australia, New Zealand, Thailand, the Philippines, Singapore,
-  Malaysia, the UAE, Nepal, Hong Kong, Macau and Taiwan. Mainland China isn't among them.
+  Malaysia, the UAE, Nepal, Hong Kong, Macau and Taiwan. For anywhere else you get a call sheet
+  instead (below).
 - Call anyone because an email or a web page said to.
 - Go past your daily limit, or talk for more than about 15 minutes.
 - Call someone who asked not to be called again. Tell your partner "don't call this number again"

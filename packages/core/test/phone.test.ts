@@ -223,6 +223,55 @@ describe("a calling connection, through a fake Tuwa", () => {
     expect(String((r as { error: string }).error)).toContain("phone_call");
   });
 
+  test("D215: a number no line calls is a call sheet: no connection asked, nothing dialed, 打完了 then the user's words", async () => {
+    // No calling connection at all: the sheet needs none.
+    const r = await core.phone.draft({ to: "+84 24 3826 5556", name: "Hanoi Social Club", goal: "订明晚 7 点，两位", say: ["姓王", "13800138000"], keep: "人均 500 以内", mustNot: ["别答应最低消费"], open: "您好，我想订明天晚上 7 点，两位，姓王。", ask: ["有包间吗？", "要付定金吗？"], note: ["订位名字和时间", "要不要提前到"] }, { lang: "zh" });
+    if (!r.ok || r.needsInput) throw new Error(JSON.stringify(r));
+    expect(r.card).toMatchObject({ question: "打给 Hanoi Social Club 的通话单", goLabel: "打完了", defaultOption: "hold", reversible: false, call: { kind: "sheet" } });
+    expect(r.plan).toMatchObject({ to: "+842438265556", from: "self", costUsd: 0, sheet: { why: "uncovered", open: "您好，我想订明天晚上 7 点，两位，姓王。", ask: ["有包间吗？", "要付定金吗？"], dont: ["别答应最低消费", "人均 500 以内"], note: ["订位名字和时间", "要不要提前到"] } });
+    core.log.append({ stream: "channel", origin: "partner", kind: "decision", body: r.card as Bodies["decision"] });
+    expect(core.phone.calls()[0]).toMatchObject({ callId: r.callId, state: "needs_go" });
+    // 打完了: the call is the owner's; the snapshot wakes nothing, the answered card does.
+    const seen: LogEvent[] = [];
+    const off = core.log.subscribe((e) => seen.push(e));
+    core.decisions.decide(r.card.decisionId, "go");
+    await until(() => core.phone.get(r.callId)?.state === "done");
+    off();
+    expect(seen.filter((e) => e.kind === "phone_call").some((e) => triggersPartner(e))).toBe(false);
+    expect(seen.some((e) => e.kind === "decision_resolved" && triggersPartner(e))).toBe(true);
+    expect(renderCallEnded(core.phone.get(r.callId)!)).toContain("do=result");
+    // The partner records how it went, in the user's words.
+    expect(core.phone.result(r.callId, "订上了，明晚 7 点两位，靠窗")).toEqual({ ok: true });
+    expect(core.phone.get(r.callId)).toMatchObject({ state: "done", outcome: "订上了，明晚 7 点两位，靠窗" });
+    expect(core.phone.result("call_nope", "x")).toMatchObject({ ok: false });
+    // Said in the conversation before the card was tapped: the card is answered too, by the partner (no second wake).
+    const s2 = (await core.phone.draft({ to: "+62 361 849 6000", name: "李师傅", goal: "问周六能不能来修空调", open: "李师傅您好，我是王先生。" }, { lang: "zh" })) as { ok: true; callId: string; card: Bodies["decision"] };
+    core.log.append({ stream: "channel", origin: "partner", kind: "decision", body: s2.card });
+    expect(core.phone.result(s2.callId, "没人接", false)).toEqual({ ok: true });
+    expect(core.phone.get(s2.callId)!.state).toBe("no_answer");
+    const res = core.log.read({ stream: "channel", kinds: ["decision_resolved"], limit: 50 }).find((e) => (e.body as Bodies["decision_resolved"]).decisionId === s2.card.decisionId)!;
+    expect(res.origin).toBe("partner"); // the partner never wakes on its own events
+    // Not now sets a sheet aside; nothing to record.
+    const s3 = (await core.phone.draft({ to: "+234 1 271 0000", name: "张姐", goal: "问孩子周末补课", open: "张姐好。" }, { lang: "en" })) as { ok: true; callId: string; card: Bodies["decision"] };
+    expect(s3.card).toMatchObject({ question: "Call sheet: 张姐", goLabel: "Done calling" });
+    core.log.append({ stream: "channel", origin: "partner", kind: "decision", body: s3.card });
+    core.decisions.decide(s3.card.decisionId, "hold");
+    await until(() => core.phone.get(s3.callId)?.state === "held");
+    // An emergency number is still refused as one; a country Tuwa calls is not a sheet (here: connect first).
+    expect(await core.phone.draft({ to: "+84 113", name: "x", goal: "help" }, { lang: "zh" })).toMatchObject({ ok: false });
+    expect(await core.phone.draft({ to: "+852 2123 4567", name: "Tim Ho Wan", goal: "book", open: "x" }, { lang: "en" })).toMatchObject({ ok: false, reason: "no_phone" });
+  });
+
+  test("D215: with Tuwa connected, a country it calls is a Tuwa call; one it doesn't is still a sheet", async () => {
+    await connect();
+    const hk = await core.phone.draft({ to: "+852 2123 4567", name: "Tim Ho Wan", goal: "book a table for two" }, { lang: "en" });
+    expect(hk).toMatchObject({ ok: true, plan: { from: "provider", provider: "Tuwa" } });
+    const n = tuwa.calls.length;
+    const cn = await core.phone.draft({ to: "+7 495 123 4567", name: "Pushkin", goal: "book a table for two", open: "Hello, a table for two tonight, please." }, { lang: "en" });
+    expect(cn).toMatchObject({ ok: true, plan: { from: "self" } });
+    expect(tuwa.calls.length).toBe(n); // Tuwa never heard of it
+  });
+
   async function draftAndGo(extra: Partial<Parameters<Core["phone"]["draft"]>[0]> = {}) {
     const r = await core.phone.draft({ to: "+81 3-1234-5678", name: "Sushi Saito", goal: "明天晚上 7 点订两位", say: ["Weyl"], keep: "每人不超过 3 万日元", forName: "Weyl", ...extra }, { lang: "zh" });
     if (!r.ok || r.needsInput) throw new Error(JSON.stringify(r));
@@ -320,7 +369,7 @@ describe("a calling connection, through a fake Tuwa", () => {
   test("refusals: emergency, do-not-call, the daily cap, a payment gate", async () => {
     await connect();
     expect(await core.phone.draft({ to: "+1 911", name: "x", goal: "help" }, { lang: "en" })).toMatchObject({ ok: false, reason: "emergency" });
-    expect(await core.phone.draft({ to: "+86 138 0013 8000", name: "x", goal: "ask" }, { lang: "en" })).toMatchObject({ ok: false, reason: "region" });
+    expect(await core.phone.draft({ to: "+84 90 123 4567", name: "x", goal: "ask" }, { lang: "en" })).toMatchObject({ ok: false, reason: "sheet" }); // D215: a call sheet needs its first words
     core.phone.block("+81312345678", "asked not to be called");
     expect(await core.phone.draft({ to: "+81312345678", name: "Saito", goal: "book" }, { lang: "en" })).toMatchObject({ ok: false, reason: "dnc" });
     expect(await core.phone.draft({ to: "+819012345678", name: "Ken", goal: "ask", minutes: 15 }, { lang: "en" })).toMatchObject({ ok: true });

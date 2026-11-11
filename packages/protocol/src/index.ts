@@ -227,7 +227,9 @@ export interface Bodies {
     // D189/D193: a phone call. kind "go": the call's Go card (打给 X？ / Call X?), never a default,
     // never "don't ask next time". kind "question": a question from the line, pushed at once even
     // in quiet hours; its choices are buttons that answer with option "reply" and that text.
-    call?: { callId: string; kind: "go" | "question"; plan?: CallPlan; choices?: string[]; yesNo?: boolean };
+    // kind "sheet" (D215): a call sheet the owner calls themselves (no line calls that country); Go = 打完了 /
+    // Done calling, Hold = 先不打 / Not now; 自己打 / Call it yourself is the client's own tel: link.
+    call?: { callId: string; kind: "go" | "question" | "sheet"; plan?: CallPlan; choices?: string[]; yesNo?: boolean };
   };
   // now (D208): a call's Go given as 现在就打 / Call now, over the callee's courtesy hours.
   decision_resolved: { decisionId: string; option: "go" | "hold" | "reply"; text?: string; by: "user" | "default"; now?: boolean };

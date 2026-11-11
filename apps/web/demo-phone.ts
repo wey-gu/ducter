@@ -2,7 +2,8 @@
 // fake Tuwa (packages/core/test/fake-tuwa.ts, never the real one), with a silent partner.
 //   DUCTER_PORT=7971 DUCTER_DATA_DIR=$(mktemp -d) DEMO_LANG=zh DEMO_PHONE=calls bun apps/web/demo-phone.ts
 // DEMO_PHONE: offer (no calling connection yet) | signin (the device sign-in, waiting) |
-// calls (connected: a Go card, a live call with a question, a call waiting for the morning, two ended).
+// calls (connected: a Go card, a live call with a question, a call waiting for the morning, two ended) |
+// sheet (D215: a call sheet for a number no line calls, and one the owner already called).
 import { startCore, stubRunner } from "@ducter/core";
 import type { Bodies, CallBody } from "@ducter/protocol";
 import { fakeTuwa } from "../../packages/core/test/fake-tuwa.ts";
@@ -67,6 +68,29 @@ if (mode === "calls") {
   await seed.stop();
 }
 
+if (mode === "sheet") {
+  // D215: a number no line calls: the call sheet (no calling connection needed), and one the owner already called.
+  const seed = startCore({ dataDir, port: 0, push: false, persona, ooSource });
+  seed.setPartner({ onTrigger() {} });
+  const log = seed.log;
+  log.append({ stream: "channel", origin: "user", kind: "user_msg", body: { text: zh ? "帮我打给胡志明市的金玉楼订明晚 7 点两位，他们说中文，用王先生的名字" : "Can you call the Alila Seminyak in Bali and ask about an airport pickup Friday at 3 pm? Name's Alex." } });
+  log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body: { text: zh ? "越南的号码我还打不过去，做了张通话单，你照着打就行。" : "I can't call numbers in Indonesia for you yet, so here's a call sheet to ring them yourself." } });
+  const d = await seed.phone.draft(
+    zh
+      ? { to: "+84 28 3829 1234", name: "金玉楼", goal: "订明晚 7 点，两位，姓王", say: ["王先生", "+86 138 0013 8000"], mustNot: ["银行卡号"], open: "您好，我想订明天晚上 7 点的位子，两位，姓王。", ask: ["明晚 7 点两位还有位子吗？", "要不要付定金？"], note: ["订位的名字和时间", "要不要提前到"] }
+      : { to: "+62 361 302 1888", name: "Alila Seminyak", goal: "An airport pickup on Friday at 3 pm, and what it costs", say: ["Alex", "Flight QZ 7510"], mustNot: ["Card details over the phone"], open: "Hi, this is Alex. I'm staying with you from Friday, and I'd like an airport pickup at 3 pm.", ask: ["Can you do 3 pm on Friday?", "How much is it, and do I pay at the hotel?"], note: ["The price", "Where the driver will wait"] },
+    { lang: zh ? "zh" : "en" },
+  );
+  if (!d.ok || d.needsInput) throw new Error(`sheet: ${JSON.stringify(d)}`);
+  log.append({ stream: "channel", origin: "partner", kind: "decision", body: d.card as Bodies["decision"] });
+  const s2 = await seed.phone.draft({ to: "+7 495 123 4567", name: zh ? "普希金咖啡馆" : "Café Pushkin", goal: zh ? "问周六中午有没有位子" : "Ask about a table for Saturday lunch", open: zh ? "您好，请问周六中午还有位子吗？" : "Hello, do you have a table for Saturday lunch?" }, { lang: zh ? "zh" : "en" });
+  if (s2.ok && !s2.needsInput) {
+    seed.phone.result(s2.callId, zh ? "订上了：周六 12:30，两位，靠窗" : "Booked: Saturday 12:30, two, by the window");
+  }
+  await Bun.sleep(100);
+  await seed.stop();
+}
+
 const core = startCore({ dataDir, persona, push: false, ooSource, hostname: process.env.DUCTER_HOST || "127.0.0.1" });
 core.setRunner(stubRunner(core));
 core.setPartner({ onTrigger() {} });
@@ -75,3 +99,4 @@ if (mode === "signin") {
   console.log("signin:", JSON.stringify(r));
 }
 console.log(`demo-phone (${mode}, ${zh ? "zh" : "en"}) on :${core.port}; fake Tuwa at ${tuwa.origin}`);
+if (process.env.DEMO_PAIR) console.log(`pair: http://127.0.0.1:${core.port}/pair#c=${(await core.devicesView.pairCode()).code}`); // the iPhone Simulator: simctl launch booted co.nowledge.ducter.ios -pairLink <it>

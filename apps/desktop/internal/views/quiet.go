@@ -336,7 +336,7 @@ func (a *App) ask(c *ui.Context, d *store.DecisionState, taskID string) {
 				a.routineFacts(c, d.RoutineID, t.NeedsYou.Ink)
 			})
 		}
-		if d.Call != nil && d.Call.Kind == "go" && d.Call.Plan != nil && openAsk(d) {
+		if d.Call != nil && (d.Call.Kind == "go" || d.Call.Kind == "sheet") && d.Call.Plan != nil && openAsk(d) {
 			a.callFactsCard(c, d) // D189 (4): who, what, the voice, the number, the cost, when
 		}
 		if d.SignIn != nil {

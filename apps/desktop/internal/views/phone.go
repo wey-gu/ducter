@@ -21,20 +21,22 @@ import (
 
 // phoneState is what the phone views keep between frames.
 type phoneState struct {
-	connecting bool              // 连上 Tuwa was tapped; the sign-in frame is on its way
-	stopping   bool              // 不用 Tuwa 打电话了 asks in place
-	deleting   bool              // 删除我的声音 asks in place
-	summary    map[string]bool   // a Go card's provider summary, unfolded
-	open       map[string]bool   // an ended call's result, open in place
-	script     map[string]bool   // its transcript, unfolded
-	answer     map[string]string // a question's typed answer, by decision
-	now        map[string]bool   // D208: Call now was tapped on this Go card
+	connecting bool                 // 连上 Tuwa was tapped; the sign-in frame is on its way
+	stopping   bool                 // 不用 Tuwa 打电话了 asks in place
+	deleting   bool                 // 删除我的声音 asks in place
+	summary    map[string]bool      // a Go card's provider summary, unfolded
+	open       map[string]bool      // an ended call's result, open in place
+	script     map[string]bool      // its transcript, unfolded
+	answer     map[string]string    // a question's typed answer, by decision
+	now        map[string]bool      // D208: Call now was tapped on this Go card
+	copied     map[string]time.Time // D215: Copy number was tapped on this call sheet, when
 }
 
 func (a *App) ph() *phoneState {
 	p := &a.phone
 	if p.summary == nil {
 		p.summary, p.open, p.script, p.answer, p.now = map[string]bool{}, map[string]bool{}, map[string]bool{}, map[string]string{}, map[string]bool{}
+		p.copied = map[string]time.Time{}
 	}
 	return p
 }
@@ -407,6 +409,16 @@ func (a *App) callBody(c *ui.Context, d *store.DecisionState) {
 		return
 	}
 	t := a.T
+	if d.Call.Kind == "sheet" && d.Call.Plan != nil && d.Call.Plan.Sheet != nil {
+		// D215: a call sheet: the question, why, the sheet (kept after it's answered: they may
+		// still read from it), then 先不打 · 打完了 (Copy number sits by the number).
+		a.heading(c, autospace(d.Question), t.XL).LineHeight(1.35)
+		a.callSheetBody(c, d, true)
+		ui.Column(c).Padding(t.S1, 0, 0, 0).Children(func() {
+			a.decisionButtons(c, d, decisionStyle{height: t.ControlMD, quietBg: t.NeedsYou.Surface})
+		})
+		return
+	}
 	a.heading(c, autospace(d.Question), t.XL).LineHeight(1.35)
 	if d.Call.Plan != nil && d.Resolved == nil && d.Pending == "" {
 		a.callPlanBody(c, d)
@@ -421,7 +433,70 @@ func (a *App) callBody(c *ui.Context, d *store.DecisionState) {
 func (a *App) callFactsCard(c *ui.Context, d *store.DecisionState) {
 	t := a.T
 	ui.Column(c.Key("callfacts:"+d.DecisionID)).MaxWidth(t.BubbleMeasure).Gap(t.S3).Padding(t.S4, t.S4).Radius(t.RadiusLG).
-		Background(t.NeedsYou.Surface).Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge).Children(func() { a.callPlanBody(c, d) })
+		Background(t.NeedsYou.Surface).Shadow(0, t.Raised.Y, 0, 0, t.NeedsYou.Ledge).Children(func() {
+		if d.Call.Kind == "sheet" && d.Call.Plan.Sheet != nil {
+			a.callSheetBody(c, d, false) // the partner just said why
+			return
+		}
+		a.callPlanBody(c, d)
+	})
+}
+
+// callSheetBody is a call sheet (D215): why Ducter can't call (while it's
+// open), the number with Copy number (the Mac can't dial), what for, the
+// first words set apart as the line to speak, then the questions, what may
+// be given, what not to share, what to note down.
+func (a *App) callSheetBody(c *ui.Context, d *store.DecisionState, why bool) {
+	t := a.T
+	pl := d.Call.Plan
+	s := pl.Sheet
+	p := a.ph()
+	if why && d.Resolved == nil && d.Pending == "" {
+		ui.Text(c, autospace(a.L.T("call.sheet.why"))).FontSize(t.SM).TextColor(t.NeedsYou.Ink).LineHeight(a.leading(1.45))
+	}
+	row := func(key, label string, lines []string) {
+		if len(lines) == 0 {
+			return
+		}
+		ui.Row(c.Key("sheet:" + key)).Gap(t.S3).AlignItems(ui.Baseline).Children(func() {
+			ui.Text(c, label).FontSize(t.SM).TextColor(t.InkMuted).Width(84).Shrink(0)
+			ui.Column(c).Gap(2).Grow(1).MinWidth(0).Children(func() {
+				for i, l := range lines {
+					ui.Text(c.Key(i), autospace(l)).FontSize(t.MD).TextColor(t.Ink).LineHeight(a.leading(1.45))
+				}
+			})
+		})
+	}
+	ui.Column(c.Key("sheet:" + d.DecisionID)).Gap(t.S3).Children(func() {
+		ui.Column(c).Gap(t.S2).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.Surface).Children(func() {
+			ui.Row(c.Key("sheet:number")).Gap(t.S3).AlignItems(ui.Center).Children(func() {
+				ui.Text(c, a.L.T("call.number")).FontSize(t.SM).TextColor(t.InkMuted).Width(84).Shrink(0)
+				ui.Text(c, prettyNumber(pl.To)).FontSize(t.MD).FontWeight(700).TextColor(t.Ink).FontFeatures("tnum").Grow(1).MinWidth(0)
+				label := a.L.T("call.sheet.copy")
+				if at, ok := p.copied[d.DecisionID]; ok && a.Now().Sub(at) < 2*time.Second {
+					label = a.L.T("call.sheet.copied")
+					c.After(2 * time.Second)
+				}
+				if a.buttonFor(c.Key("copy"), label, pl.Name, btnText, t.ControlSM, t.Surface) {
+					c.WriteClipboard(pl.To)
+					p.copied[d.DecisionID] = a.Now()
+				}
+			})
+			row("goal", a.L.T("call.goal"), []string{pl.Goal})
+		})
+		ui.Column(c.Key("sheet:open")).Gap(t.S1).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.SurfaceSunken).Children(func() {
+			ui.Text(c, a.L.T("call.sheet.open")).FontSize(t.XS).FontWeight(800).TextColor(t.InkMuted)
+			ui.Text(c, autospace(s.Open)).FontSize(t.LG).FontWeight(700).TextColor(t.Ink).LineHeight(a.leading(1.45))
+		})
+		if len(s.Ask)+len(pl.Say)+len(s.Dont)+len(s.Note) > 0 {
+			ui.Column(c).Gap(t.S2).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.Surface).Children(func() {
+				row("ask", a.L.T("call.sheet.ask"), s.Ask)
+				row("say", a.L.T("call.say"), pl.Say)
+				row("dont", a.L.T("call.sheet.dont"), s.Dont)
+				row("note", a.L.T("call.sheet.note"), s.Note)
+			})
+		}
+	})
 }
 
 // callPlanBody is the facts, a warning when there is one, the opening line
@@ -749,6 +824,9 @@ func (a *App) callRows(c *ui.Context) {
 // callTitle is a call's row in words, by its state.
 func (a *App) callTitle(cl protocol.CallBody, now time.Time) string {
 	n := cl.Plan.Name
+	if cl.State == protocol.CallNeedsGo && cl.Plan.From == "self" {
+		return a.L.T("call.row.sheet", n) // D215: a call sheet, for the owner to call
+	}
 	switch cl.State {
 	case protocol.CallWaiting:
 		at := store.ParseTime(cl.Plan.At)
@@ -795,6 +873,9 @@ func (a *App) callFailWords(cl protocol.CallBody) string {
 // callSub is the line under a call's row title (D208).
 func (a *App) callSub(cl protocol.CallBody) string {
 	ended := protocol.CallEnded(cl.State)
+	if cl.Plan.From == "self" && ended {
+		return firstNonEmpty(cl.Outcome, a.L.T("call.self")) // D215: how their own call went, in their words
+	}
 	var parts []string
 	switch {
 	case cl.State == protocol.CallFailed:

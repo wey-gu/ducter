@@ -139,6 +139,7 @@ interface TurnState {
   acked?: boolean; // an ack went out this turn
   asked?: boolean; // the partner made a decision card (ask) this turn
   askedId?: string; // the last decision it made this turn
+  sheet?: boolean; // D215: that card is a call sheet: its one plain line ("I can't call there yet") is kept
   quiet?: boolean; // woken only by task questions: the partner says each in its own words (D129)
   relayed?: boolean; // a task question was said this turn
   results?: number; // done reports in this turn (several = one combined message)
@@ -674,7 +675,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     if (turn.acked && turn.userTexts.length <= 1 && p.trim().length < 200 && !/[?？]/.test(p)) return;
     // The card speaks for itself (eval: "Pending your answer.", "上面那张卡片等你点 Go 或 Hold"):
     // a short line after an ask only describes the card, so it is dropped.
-    if (turn.asked && p.trim().length < 200) return;
+    if (turn.asked && !turn.sheet && p.trim().length < 200) return;
     // A task's question, said in the partner's own words (D129): the clients show it as that
     // question's words, with the task's Go / Hold / Reply under it; the task's own wording
     // moves to Details. One message per question; a second line in the same turn is dropped.
@@ -1878,11 +1879,15 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   core.mcp.register(
     "partner",
     "phone_call",
-    "Phone call for the user. do=draft (default): number, who, one goal → the Go card. needs_input: ask, then redraft with callId, text = their answers. do=answer: their words to a call's question. do=cancel; do=block.",
+    "Phone call for the user. do=draft (default): number, who, one goal → the Go card, or, where no line calls, a call sheet they call themselves (add open, ask, note). needs_input: ask, then redraft with callId, text = their answers. do=answer: their words to a call's question. do=result: how their own call went (text). do=cancel; do=block.",
     {
       type: "object",
       properties: {
-        do: { type: "string", enum: ["draft", "answer", "cancel", "block"] },
+        do: { type: "string", enum: ["draft", "answer", "result", "cancel", "block"] },
+        open: { type: "string", description: "Sheet: their first words" },
+        ask: { type: "array", items: { type: "string" } },
+        note: { type: "array", items: { type: "string" }, description: "To write down" },
+        reached: { type: "boolean", description: "result: someone answered" },
         to: { type: "string", description: "E.164" },
         name: { type: "string" },
         goal: { type: "string", description: "In the user's language" },
@@ -1906,6 +1911,11 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       if (what === "answer") {
         const r = phone.answer(s(a.text), s(a.callId) || undefined);
         return r.ok ? { ok: true, note: "Passed to the line exactly. Say nothing: the card shows it went." } : r;
+      }
+      if (what === "result") {
+        // D215: a call the user made themselves from a call sheet: their words, recorded once.
+        const r = phone.result(s(a.callId), s(a.text), a.reached !== false);
+        return r.ok ? { ok: true, note: "Recorded on the call sheet. Reply with a few words at most; never restate what they told you." } : r;
       }
       if (what === "cancel") return (await phone.cancel(s(a.callId), "owner")) ? { ok: true } : { ok: false, error: "No such live call." };
       if (what === "block") return phone.block(s(a.to), s(a.goal) || undefined);
@@ -1935,6 +1945,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           own: a.own === true,
           present,
           taskId: s(a.taskId) || undefined,
+          open: s(a.open) || undefined,
+          ask: arr(a.ask),
+          note: arr(a.note),
         },
         { lang, callId: s(a.callId) || undefined, answers: (s(a.callId) && s(a.text)) || undefined },
       );
@@ -1942,6 +1955,15 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       if (r.needsInput) return { ok: true, needsInput: true, callId: r.callId, questions: r.questions, note: "Ask the user these in one short message, in your words. Then phone_call again with callId and text = their answers. Never answer for them." };
       core.log.append({ stream: "channel", origin: "partner", kind: "decision", body: r.card as Bodies["decision"] });
       if (turn) (turn.asked = true), (turn.askedId = r.card.decisionId);
+      // D215: no line calls that country: a call sheet the user calls themselves; Ducter dials nothing.
+      if (r.plan.from === "self" && turn) turn.sheet = true;
+      if (r.plan.from === "self")
+        return {
+          ok: true,
+          sheet: true,
+          callId: r.callId,
+          note: "No line Ducter has calls that country, so the card is a call sheet with 自己打 / Call it yourself. Say that plainly in one short sentence (about 15 words), in their language: you can't call numbers there for them yet, the sheet has what to say. Never describe the sheet. When they say they called, ask briefly how it went, then phone_call do=result with callId and text.",
+        };
       return {
         ok: true,
         needsGo: true,

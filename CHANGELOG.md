@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.0.21
+
+<!-- whats-new
+zh: 你说「现在打」就现在打，电话结果按实际情况说
+en: Calls go now when you say now, and say what really happened
+zh: 任务页的说法更自然，任务不再碰 Ducter 自己的数据
+en: Plainer words in a task, and tasks never touch Ducter's own data
+-->
+
+**Calls**
+- A call you ask for while you're here goes now; your quiet hours only hold calls Ducter starts on
+  its own. When it's late or early where they are, the card says so with their clock and offers
+  **Call now**; never before 8:00 or after 21:00 their time. Calls to your own number have no hours.
+  US and Canadian numbers are placed in the right time zone by area code.
+- What happened is said as it was: an automated message (voicemail, or Google Voice screening, with
+  how to let it through), no answer, didn't connect, or didn't go through.
+- The call card puts Tuwa's own wording under a fold, in rows; the Tuwa card in Settings says
+  plainly what Ducter turned off there.
+
+**Tasks**
+- No task ever works in Ducter's own data folder.
+- The opened task: **Pause** and **Cancel task** at the top, no needless "got it" under your
+  messages, the composer empties when you send, runner notes in plain words, and commands are no
+  longer called browsing.
+
 ## 0.0.20
 
 <!-- whats-new

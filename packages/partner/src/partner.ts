@@ -51,8 +51,8 @@
 //   that arrived while down) are queued again; user messages that already got a reply are not.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { callWakes, HARNESSES, HARNESS_IDS, isHarnessId, type ActivityStep, type Bodies, type Brain, type EventKind, type HarnessId, type LogEvent, type Place, type TaskCard, type TaskNeeds } from "../../protocol/src/index.ts";
-import type { CoreApi, HarnessEvent, HarnessSession, Partner, Runner } from "../../protocol/src/internal.ts";
+import { callWakes, HARNESSES, HARNESS_IDS, isHarnessId, isImage, MEDIA_LIMITS, type MediaRef, type ActivityStep, type Bodies, type Brain, type EventKind, type HarnessId, type LogEvent, type Place, type TaskCard, type TaskNeeds } from "../../protocol/src/index.ts";
+import type { CoreApi, HarnessEvent, HarnessSession, Partner, Runner, SendImage } from "../../protocol/src/internal.ts";
 import { resolveWindows, WINDOW_MAX, WINDOW_MIN } from "../../protocol/src/harness-facts.ts";
 import { bridgeContextFor, bridgeFor, type BridgeClient, type BridgeContact, type BridgeOp } from "./bridge.ts";
 import { claimText, fixedOutcome, followCandidates, followLine, foldOut, inQuiet, lostLine, mayHaveGone, overAsks, peerAnswer, whoForModel, whoForUser, zhJoin, DAY_MS, FOLLOW_ACTIVE_MS, LIVE_CHECK_MS, LIVE_MS, PEER_ASKS_OPEN, PEER_NOT_YET_MS, SENDER_DAILY, TRUST_AFTER, TRUST_WINDOW_MS, TRUSTED_DAILY, type OutKind, type OutOp, type OutState } from "./bridge-out.ts";
@@ -144,6 +144,7 @@ interface TurnState {
   zh: boolean;
   recalls: number; // memory_search calls this turn
   noted: { title: string; memoryId?: string }[]; // memory_add successes, shown after the turn's text
+  shows?: MediaRef[]; // D206: what the triggering reports showed, put under this turn's first message
   carried?: Carried; // this turn redoes one a restart cut off
   early: EarlyOpen[]; // tasks opened from the streamed head of a task_open call (D120)
 }
@@ -157,6 +158,7 @@ interface EarlyOpen {
   callId?: string; // the streamed call it was opened from
   card: Promise<TaskCard | null>; // null: the early open failed; the call opens it the usual way
   brief: { resolve(text: string): void; reject(err: Error): void };
+  media: (refs: MediaRef[]) => void; // D206: the pictures the call hands on, settled with the brief
   used?: boolean; // its task_open call arrived
 }
 
@@ -488,6 +490,9 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
   }
 
   const ctx: RenderCtx = {
+    get seesPictures() {
+      return HARNESSES[partnerRun().harness]?.images !== false;
+    },
     // Spike: an incoming message that answers one we sent renders as that answer.
     bridgeOut: (messageId) => {
       if (!messageId) return undefined;
@@ -565,6 +570,10 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     if (decisionId) {
       body.decisionId = decisionId;
       if (turn) turn.relayed = true;
+    } else if (turn?.shows?.length) {
+      // D206: what a task showed goes under the partner's first words about it, once.
+      body.media = turn.shows;
+      turn.shows = undefined;
     }
     core.log.append({ stream: "channel", origin: "partner", kind: "ai_msg", body });
   };
@@ -782,8 +791,11 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     let settle!: EarlyOpen["brief"];
     const brief = new Promise<string>((resolve, reject) => (settle = { resolve, reject }));
     brief.catch(() => {});
+    let mediaSettle!: EarlyOpen["media"];
+    const media = new Promise<MediaRef[]>((resolve) => (mediaSettle = resolve));
+    brief.catch(() => mediaSettle([]));
     const replyTo = replyToFor(t);
-    const card = runner.openTaskEarly({ persona: core.persona.id, title, place, ...who, language: taskLanguage(t) }, brief).then(
+    const card = runner.openTaskEarly({ persona: core.persona.id, title, place, ...who, language: taskLanguage(t) }, brief, media).then(
       (c) => {
         jobs.set(c.taskId, { jobId, title: c.title || title, replyTo, state: "running" });
         core.log.append({ stream: "channel", origin: "partner", kind: "job_status", body: { jobId, text: c.title || title, state: "running", taskId: c.taskId } });
@@ -791,7 +803,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       },
       () => null,
     );
-    t.early.push({ jobId, title, place, who, callId, card, brief: settle });
+    t.early.push({ jobId, title, place, who, callId, card, brief: settle, media: mediaSettle });
   }
 
   // ---------- session ----------
@@ -1048,6 +1060,40 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     }
   }
 
+  /**
+   * D206: the pictures this turn's partner sees, as its runtime's own image input: what the user
+   * sent, then what a task showed (a few, so it can say what they are). None on an AI that can't see.
+   */
+  function picturesOf(batch: LogEvent[]): SendImage[] | undefined {
+    if (!ctx.seesPictures || !core.media) return undefined;
+    const sent = batch.flatMap((e) => (e.kind === "user_msg" ? ((e.body as Bodies["user_msg"]).media ?? []) : []));
+    const shown = batch.flatMap((e) => (e.kind === "report" ? ((e.body as Bodies["report"]).media ?? []) : [])).slice(0, 4);
+    const out: SendImage[] = [];
+    for (const m of [...sent, ...shown].filter(isImage).slice(0, MEDIA_LIMITS.perMessage)) {
+      const path = core.media.path(m.id);
+      if (path) out.push({ path, mediaType: m.type });
+    }
+    return out.length ? out : undefined;
+  }
+
+  /** D206: the pictures an agent names by id (a 12-hex prefix or more), among the recent ones. */
+  function mediaNamed(ids: unknown): { media: MediaRef[]; unknown: string[] } {
+    const want = Array.isArray(ids) ? ids.filter((x): x is string => typeof x === "string").map((x) => x.trim().toLowerCase()).filter(Boolean) : [];
+    if (!want.length) return { media: [], unknown: [] };
+    const recent = core.log
+      .read({ kinds: ["user_msg", "report"], beforeSeq: core.log.head() + 1, limit: 300 })
+      .flatMap((e) => ((e.body as { media?: MediaRef[] }).media ?? []))
+      .reverse();
+    const media: MediaRef[] = [];
+    const unknown: string[] = [];
+    for (const w of want.slice(0, MEDIA_LIMITS.perMessage)) {
+      const hit = w.length >= 8 ? recent.find((m) => m.id.startsWith(w.replace(/^(?:picture|file)\s+/, ""))) : undefined;
+      if (!hit) unknown.push(w);
+      else if (!media.some((m) => m.id === hit.id)) media.push(hit);
+    }
+    return { media, unknown };
+  }
+
   async function runTurn(batch: LogEvent[]) {
     const userEvents = batch.filter((e) => e.kind === "user_msg");
     const userTexts = userEvents.map((e) => (e.body as Bodies["user_msg"]).text);
@@ -1090,6 +1136,8 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const quiet = batch.length > 0 && batch.every((e) => e.kind === "report" && (e.body as Bodies["report"]).state === "needs_input");
     const results = batch.filter((e) => e.kind === "report" && (e.body as Bodies["report"]).state === "done").length;
     turn = { triggers: batch, userTexts, replyTo, pending: null, unboundAck: null, opensSeen: 0, opensHandled: 0, zh, quiet, results, recalls: 0, noted: [], early: [] };
+    const shows = batch.flatMap((e) => (e.kind === "report" ? ((e.body as Bodies["report"]).media ?? []) : []));
+    if (shows.length) turn.shows = shows;
     if (redo) turn.carried = redo;
     const real = batch.map((e) => e.seq).filter((n) => n > 0);
     if (real.length) inflight = { seqs: real, from: core.log.head() }, saveState();
@@ -1097,7 +1145,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
     const turnFrom = core.log.head();
     try {
       const reading = readTurn();
-      await session!.send(input, "turn");
+      await session!.send(input, "turn", picturesOf(batch));
       await reading;
       flushPending();
       appendNoted(turn);
@@ -1227,6 +1275,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
             site: { type: "string", description: 'With signedIn: the site, when known ("taobao.com")' },
             app: { type: "string", description: 'A Mac app it works in ("Keynote", "Xcode")' },
             long: { type: "boolean", description: "Long or ongoing work (an hour or more, a loop, a wait): better on a computer that doesn't sleep" },
+            draw: { type: "boolean", description: "It makes a picture (画一张…, draw, generate an image): only an agent that generates images takes it" },
           },
         },
         project: { type: "string" },
@@ -1238,10 +1287,15 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         },
         model: { type: "string", description: "Only with harness, and only when the user names a model; written the way that harness names its models." },
         brief: { type: "string", description: "Last, after title and place: the user's verbatim words, decisions, done-criteria, out of scope, place" },
+        media: {
+          type: "array",
+          items: { type: "string" },
+          description: `Pictures the task needs, by the id in [with … picture <id>] (the user's or a task's). It sees them with its brief. ${HARNESS_IDS.filter((h) => !HARNESSES[h].images).map((h) => HARNESSES[h].name).join(", ")} can't see pictures: leave harness out or name one that can.`,
+        },
       },
       required: ["title", "brief"],
     }),
-    async (raw: { title?: unknown; brief?: unknown; place?: Place; project?: string; harness?: string; model?: string; forMessage?: unknown; needs?: unknown }) => {
+    async (raw: { title?: unknown; brief?: unknown; place?: Place; project?: string; harness?: string; model?: string; forMessage?: unknown; needs?: unknown; media?: unknown }) => {
       // Validate before any channel side effect (live: a call without `title` crashed after
       // "On it: undefined" and a failed job_status were already on the channel).
       // A Bridge message is another agent's request, not the user's: no task from it until the
@@ -1278,6 +1332,12 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
       const userTexts = t?.userTexts ?? [];
       const place = resolvePlace(args.place, [args.brief, args.title, ...userTexts], core.tasks.list(), fs);
       const brief = redactSecrets(withVerbatim(args.brief, userTexts), userTexts);
+      // D206: the pictures it hands on (the ones the user sent this turn when it names none but the
+      // brief is about them: an agent would otherwise get "this screenshot" without the screenshot).
+      const named = mediaNamed(raw.media);
+      if (named.unknown.length && !named.media.length) return { ok: false, error: `No picture with id ${named.unknown.join(", ")}. Use the ids from [with … picture <id>].` };
+      const sentNow = (t?.triggers ?? []).flatMap((e) => (e.kind === "user_msg" ? ((e.body as Bodies["user_msg"]).media ?? []) : []));
+      const handed = named.media.length ? named.media : sentNow;
       const note = forOriginal
         ? `Task opened. Ducter already told ${forOriginal.agent ?? forOriginal.from ?? "the agent that asked"} it is taken; don't reply to it now. When the task reports, you'll be told to send the outcome.`
         : OPENED_NOTE;
@@ -1296,6 +1356,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         jobId = early.jobId;
         const card = await early.card;
         if (card && samePlace(place, early.place) && (args.harness ?? "") === (early.who.harness ?? "") && (args.model ?? "") === (early.who.model ?? "")) {
+          early.media(handed);
           early.brief.resolve(brief);
           await claimFor(card);
           return { ok: true, taskId: card.taskId, title: card.title, place: card.place, attention: card.attention, note };
@@ -1329,6 +1390,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
           ...(args.model ? { model: args.model } : {}),
           ...((n) => (n ? { needs: n } : {}))(parseNeeds(raw.needs)),
           language: taskLanguage(t),
+          ...(handed.length ? { media: handed } : {}),
         });
         jobs.set(card.taskId, { jobId, title: card.title || args.title, replyTo: t ? replyToFor(t) : undefined, state: "running" });
         core.log.append({
@@ -1357,17 +1419,20 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
         taskId: { type: "string" },
         text: { type: "string" },
         mode: { type: "string", enum: ["steer", "queue"] },
+        media: { type: "array", items: { type: "string" }, description: "Pictures to pass on with the text, by id (see task_open)." },
       },
       required: ["taskId", "text"],
     },
-    async (args: { taskId: string; text: string; mode?: "steer" | "queue" }) => {
+    async (args: { taskId: string; text: string; mode?: "steer" | "queue"; media?: unknown }) => {
       await Bun.sleep(5); // let the streamed text land first
       flushPending(); // a line written before this call is a message, not an ack
       // A turn woken only by a task's question: the user answers it on its card (eval: the
       // partner sent "Go：…" to the task on the user's behalf).
       if (turn?.quiet) return { ok: false, error: "The user answers this question on its card; send the task nothing and end your turn." };
       try {
-        const r = await runner.send(args.taskId, redactSecrets(args.text, turn?.userTexts ?? []), args.mode);
+        const named = mediaNamed(args.media);
+        if (named.unknown.length && !named.media.length) return { ok: false, error: `No picture with id ${named.unknown.join(", ")}.` };
+        const r = await runner.send(args.taskId, redactSecrets(args.text, turn?.userTexts ?? []), args.mode, undefined, undefined, named.media.length ? named.media : undefined);
         return { ok: true, ...r };
       } catch (err) {
         return { ok: false, error: err instanceof Error ? err.message : String(err) };
@@ -2587,6 +2652,7 @@ export function parseNeeds(raw: unknown): TaskNeeds | undefined {
     ...(str(r.site) ? { site: str(r.site)!.replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^www\./i, "").toLowerCase() } : {}),
     ...(str(r.app) ? { app: str(r.app) } : {}),
     ...(r.long === true ? { long: true } : {}),
+    ...(r.draw === true ? { draw: true } : {}),
   };
   return Object.keys(n).length ? n : undefined;
 }

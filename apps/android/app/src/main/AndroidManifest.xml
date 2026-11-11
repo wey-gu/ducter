@@ -44,6 +44,17 @@
             </intent-filter>
         </activity>
 
+        <!-- D206: a photo taken for the conversation is handed to the camera through this. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/shared_files" />
+        </provider>
+
         <!-- Where Android reports how an update's install went (PackageInstaller). -->
         <receiver
             android:name=".InstallReceiver"

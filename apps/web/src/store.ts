@@ -39,6 +39,11 @@ export type DecisionState = Bodies["decision"] & {
 
 export interface Send {
   text: string;
+  /** D206: pictures going with it (while they go up), then their ids. */
+  pics?: import("./media-up.ts").Pic[];
+  media?: string[];
+  /** Tries a picture that didn't go up again, then sends. */
+  retry?: () => void;
   /** The id it was sent with; a resend after a reconnect uses the same one (core dedupes). */
   clientId?: string;
   delivered?: Delivery;
@@ -518,12 +523,13 @@ export class Store {
   /** What to send again after a welcome, in order: messages to the partner not yet echoed, then
    *  direct task messages not yet acked. Core dedupes both by clientId, so a copy it already has
    *  is echoed (or acked) again, never appended twice. */
-  resends(pending: { clientId: string; text: string }[]): ClientFrame[] {
+  resends(pending: { clientId: string; text: string; media?: string[] }[]): ClientFrame[] {
     const echoed = new Set<string>();
     for (const e of this.channel) if (e.user?.clientId) echoed.add(e.user.clientId);
-    const out: ClientFrame[] = pending.filter((p) => !echoed.has(p.clientId)).map((p) => ({ t: "send", text: p.text, clientId: p.clientId }));
+    const out: ClientFrame[] = pending.filter((p) => !echoed.has(p.clientId)).map((p) => ({ t: "send", text: p.text, clientId: p.clientId, ...(p.media?.length ? { media: p.media } : {}) }));
     for (const t of this.tasks.values())
-      for (const sd of t.sends) if (sd.clientId && !sd.delivered && !sd.failed) out.push({ t: "task_send", taskId: t.id, text: sd.text, clientId: sd.clientId });
+      for (const sd of t.sends)
+        if (sd.clientId && !sd.delivered && !sd.failed && (!sd.pics || sd.media)) out.push({ t: "task_send", taskId: t.id, text: sd.text, clientId: sd.clientId, ...(sd.media?.length ? { media: sd.media } : {}) });
     return out;
   }
 

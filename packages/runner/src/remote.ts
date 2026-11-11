@@ -4,6 +4,8 @@
 // integrate.ts directly; remote ops send the same calls down the worker's outbound socket
 // (WorkerLink), where worker-host.ts runs them. The runner keeps all task state on the main.
 import { randomBytes } from "node:crypto";
+import { basename } from "node:path";
+import type { ShownAsk, ShownFile } from "./shown.ts";
 import type { BranchChanges, FolderChanges, Place } from "@ducter/protocol";
 import type { FolderStore } from "./folder.ts";
 import type { HarnessEvent, HarnessPort, HarnessSession, SessionSpec, WorkerLink, WorkerSessionFrame } from "@ducter/protocol/src/internal.ts";
@@ -30,6 +32,8 @@ export interface PlaceOps {
   push(place: Place): Promise<ActionResult>;
   /** D157: a browser place on a worker, built there with its browsers; absent for this machine. */
   browser?(input: SidecarInput): Promise<BrowserSidecar>;
+  /** D206: a file the task shows the user, read where the task runs (shown.ts). */
+  shown(a: ShownAsk): Promise<ShownFile>;
 }
 
 /** FolderStore over a promise, so it can live on a worker. */
@@ -96,9 +100,11 @@ function remoteSession(link: WorkerLink, key: string, init: { sessionId?: string
     },
     canSteer: init.canSteer,
     busy: () => busy,
-    async send(text, mode) {
+    async send(text, mode, images) {
       busy = busy || mode === "turn" || mode === undefined;
-      await call("send", { text, mode });
+      // D206: the pictures are files on the home; their bytes go down with the words.
+      const pics = images?.length ? await Promise.all(images.map(async (i) => ({ mediaType: i.mediaType, name: basename(i.path), data: Buffer.from(await Bun.file(i.path).arrayBuffer()).toString("base64") }))) : undefined;
+      await call("send", { text, mode, ...(pics ? { images: pics } : {}) });
     },
     interrupt: () => call("interrupt", {}),
     async close() {
@@ -186,6 +192,9 @@ export function remoteOps(link: WorkerLink, o: { ducter?: DucterBrowserPort } = 
     changes: (place) => link.call<BranchChanges | undefined>("changes", { place }, 10_000).catch(() => undefined),
     // An older worker doesn't know "archive": its worktree stays, as before.
     archive: (place) => link.call<ActionResult & { removed: boolean }>("archive", { place }, 60_000).catch((err) => ({ ok: false, removed: false, message: `Kept the worktree on ${link.name}: ${err instanceof Error ? err.message : String(err)}` })),
+    // D206: an older worker doesn't know "shown": the report goes on without that file.
+    shown: (a) =>
+      guard(link.call<{ name: string; data: string }>("shown", a, 60_000)).then((r) => ({ name: String(r?.name ?? ""), bytes: new Uint8Array(Buffer.from(String(r?.data ?? ""), "base64")) })),
     // D142: an older worker doesn't know these: it can't keep a copy, so the task asks first.
     folder: {
       prepare: (taskId, folder) => guard(link.call<Awaited<ReturnType<FolderStore["prepare"]>>>("folderPrepare", { taskId, folder }, 10 * 60_000)).catch((err) => (isOffline(err) ? Promise.reject(err) : { ok: false as const, why: "copy_failed" as const, detail: String(err) })),

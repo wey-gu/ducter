@@ -37,6 +37,8 @@ These pages are for using Ducter. If you want to build it or change it, start wi
 - **[Autofill](autofill.md):** save a sign-in, a card or your travel details once, so your
   partner can book and buy for you, filling them in without seeing them, with your Go on every
   payment.
+- **[Pictures](pictures.md):** send a screenshot or a photo, see what a task made, ask for a
+  drawing, and look through every picture in the conversation.
 - **[Waiting, keep going, routines](waiting-and-routines.md):** "tell me when…", "keep fixing
   until it works", and "every Monday…".
 - **[Phone calls](calls.md):** let your partner ring a restaurant, a clinic or a shop for you, only

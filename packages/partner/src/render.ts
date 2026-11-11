@@ -5,6 +5,7 @@
 // Nothing rendered here may say the session was reset, restarted, or lost.
 import type { Bodies, LogEvent, TaskCard } from "../../protocol/src/index.ts";
 import { renderCallEnded } from "../../protocol/src/phone.ts";
+import { isImage, shortId, type MediaRef } from "../../protocol/src/media.ts";
 import { shownOut, whoForModel } from "./bridge-out.ts";
 
 const CJK = /[㐀-鿿豈-﫿]/;
@@ -29,6 +30,13 @@ export function renderTime(now: Date): string {
   return `[time] ${hhmm(now.toISOString())} ${days[now.getDay()]}`;
 }
 
+/** D206: pictures and files in words an agent can name them by: "picture 3f2a91c04b7e (1290×2796)". */
+export function mediaWords(media: MediaRef[]): string {
+  return media
+    .map((m) => (isImage(m) ? `picture ${shortId(m.id)}${m.w && m.h ? ` (${m.w}×${m.h})` : ""}` : `file ${shortId(m.id)} "${clip(m.name ?? "file", 80)}"`))
+    .join(", ");
+}
+
 function renderReport(r: Bodies["report"], title?: string): string {
   const head = `[task ${r.taskId}${title ? ` "${clip(title, 120)}"` : ""} report: ${r.state}] ${clip(r.summary, 600)}`;
   const lines = [head];
@@ -39,7 +47,9 @@ function renderReport(r: Bodies["report"], title?: string): string {
         (q.default ? ` [default: ${q.default}${q.reversible ? "" : ", not reversible"}]` : ""),
     );
   }
-  if (r.state === "done" && (r.evidence ?? []).length === 0) lines.push("  (no evidence attached)");
+  if (r.state === "done" && (r.evidence ?? []).length === 0 && !r.media?.length) lines.push("  (no evidence attached)");
+  // D206: what it showed the user. The app puts it under your next message about this report.
+  if (r.media?.length) lines.push(`  it shows the user: ${mediaWords(r.media)}. They appear under your message about this report: say what they are in a few words; never describe the path or the file name.`);
   // D142: a folder that isn't a repo. Ducter kept a copy from before; the user can undo it all.
   const f = r.folder;
   if (f && f.undo === "open" && f.added + f.changed + f.removed + f.moved + f.renamed + f.folders > 0) {
@@ -59,6 +69,8 @@ function renderReport(r: Bodies["report"], title?: string): string {
 }
 
 export interface RenderCtx {
+  /** D206: false when the AI the partner thinks with can't see pictures. */
+  seesPictures?: boolean;
   taskTitle(taskId: string): string | undefined;
   decision(decisionId: string): Bodies["decision"] | undefined;
   /** A repo task's base branch, so "merged into its base branch" names it (eval: "can't tell if that's main"). */
@@ -79,8 +91,12 @@ function userAction(b: Bodies["job_status"], ctx: RenderCtx, n = 400): string {
 /** One L4 delta for a trigger event, tagged by origin. */
 export function renderTrigger(e: LogEvent, ctx: RenderCtx): string {
   switch (e.kind) {
-    case "user_msg":
-      return `[user] ${(e.body as Bodies["user_msg"]).text}`;
+    case "user_msg": {
+      const b = e.body as Bodies["user_msg"];
+      // D206: the pictures ride as the turn's own image input; here they are only named.
+      const pics = b.media?.length ? ` [with ${b.media.length === 1 ? "a picture" : `${b.media.length} pictures`}: ${mediaWords(b.media)}${ctx.seesPictures === false ? "; you can't see pictures on this AI" : "; you see them with this message"}]` : "";
+      return `[user] ${b.text}${pics}`;
+    }
     case "report": {
       const r = e.body as Bodies["report"];
       return renderReport(r, ctx.taskTitle(r.taskId));
@@ -166,8 +182,10 @@ const FINDS_SHOWN = 6;
 export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
   const t = hhmm(e.ts);
   switch (e.kind) {
-    case "user_msg":
-      return `[${t} user] ${clip((e.body as Bodies["user_msg"]).text, 1200)}`;
+    case "user_msg": {
+      const b = e.body as Bodies["user_msg"];
+      return `[${t} user] ${clip(b.text, 1200)}${b.media?.length ? ` [sent ${mediaWords(b.media)}]` : ""}`;
+    }
     case "ai_msg":
       return `[${t} you] ${clip((e.body as Bodies["ai_msg"]).text, 800)}`;
     case "ack":
@@ -188,7 +206,7 @@ export function renderHistoryLine(e: LogEvent, ctx: RenderCtx): string | null {
     case "report": {
       const r = e.body as Bodies["report"];
       const ev = (r.evidence ?? []).map((x) => `${x.kind}:${x.label}`).join(", ");
-      return `[${t} task ${r.taskId} report: ${r.state}] ${clip(r.summary, 300)}${ev ? ` (evidence: ${ev})` : ""}`;
+      return `[${t} task ${r.taskId} report: ${r.state}] ${clip(r.summary, 300)}${ev ? ` (evidence: ${ev})` : ""}${r.media?.length ? ` (showed the user ${mediaWords(r.media)})` : ""}`;
     }
     case "finds": {
       // D165: what Ducter noticed and said by itself, so the partner can answer about it.

@@ -11,8 +11,10 @@ import { archiveWorktree, branchChanges, mergeTaskBranch, openDraftPr, pushForMo
 import { planPlace, provisionPlace } from "./places.ts";
 import { createFolderStore } from "./folder.ts";
 import { browserSidecar, sidecarWire, type BrowserOptions, type BrowserSidecar, type SidecarInput } from "./browser.ts";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { homedir } from "node:os";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { readShown } from "./shown.ts";
 import { listFolders, projectRepos, realFs, type FsLike } from "@ducter/protocol/src/repos.ts";
 import { ducterFolder } from "@ducter/protocol/src/ducter-folder.ts";
 import { cloneRepo, type GitSpawn } from "@ducter/protocol/src/clone.ts";
@@ -96,6 +98,15 @@ export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
   // D142: the copy of a non-git folder lives here, beside the folder (folder.ts).
   const folders = createFolderStore({ root: join(o.dataDir, "snapshots") });
   folders.sweep();
+  /** D206: a picture the home sent with a message, kept in <dataDir>/media-in under its own name. */
+  const keepPicture = (i: { name?: unknown; mediaType?: unknown; data?: unknown }) => {
+    const name = basename(String(i.name ?? "")).replace(/[^A-Za-z0-9._-]/g, "") || "picture";
+    const dir = join(o.dataDir, "media-in");
+    mkdirSync(dir, { recursive: true, mode: 0o700 });
+    const path = join(dir, name);
+    if (!existsSync(path)) writeFileSync(path, Buffer.from(String(i.data ?? ""), "base64"), { mode: 0o600 });
+    return { path, mediaType: String(i.mediaType ?? "image/png") };
+  };
   const busyOf = (s: HarnessSession) => {
     try {
       return Boolean(s.busy());
@@ -141,8 +152,15 @@ export function createWorkerHost(o: WorkerHostOptions): WorkerHost {
     },
     async send(a) {
       const s = need(a.key);
-      await s.send(a.text, a.mode);
+      // D206: pictures from the home, written here once (by their content-addressed name).
+      const images = Array.isArray(a.images) ? a.images.map((i: { name?: unknown; mediaType?: unknown; data?: unknown }) => keepPicture(i)) : undefined;
+      await s.send(a.text, a.mode, images?.length ? images : undefined);
       return { busy: busyOf(s) };
+    },
+    // D206: a file a task here shows the user (only from its own folders, shown.ts).
+    shown: async (a: { path?: unknown; cwd?: unknown; taskId?: unknown }) => {
+      const f = readShown({ path: String(a.path ?? ""), cwd: String(a.cwd ?? ""), taskId: String(a.taskId ?? "") }, { dataDir: o.dataDir });
+      return { name: f.name, data: Buffer.from(f.bytes).toString("base64") };
     },
     async interrupt(a) {
       await need(a.key).interrupt();

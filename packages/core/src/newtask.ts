@@ -214,6 +214,8 @@ export interface NewTaskInput {
   /** D202: one of the model's own effort levels (checked where the task runs; dropped with a line if it isn't). */
   effort?: string;
   when?: NewTaskWhen;
+  /** D206: pictures dropped on the What row; they go to the task with the words (not to a routine yet). */
+  media?: import("@ducter/protocol").MediaRef[];
 }
 
 export type NewTaskResult = { ok: true; card: TaskCard } | { ok: true; routine: RoutineView } | { ok: false; reason: NewTaskReason; message: string };
@@ -358,6 +360,7 @@ export async function openYourTask(d: NewTaskDeps, input: NewTaskInput): Promise
       ...(input.effort ? { effort: input.effort } : {}),
       language: languageOf(words, d.settings),
       origin: "you",
+      ...(input.media?.length ? { media: input.media } : {}),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

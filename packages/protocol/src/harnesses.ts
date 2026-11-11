@@ -35,6 +35,10 @@ export interface HarnessInfo {
   command?: string;
   partner: boolean;
   task: boolean;
+  /** D206: it sees pictures handed to it (OAR's capabilities.images for its runtime, 0.95.1). */
+  images: boolean;
+  /** D206: it makes pictures itself (Codex's image_generation, kept on for tasks). */
+  draws?: boolean;
   isolation: IsolationMethod;
   /** replace: native system prompt; home-file: AGENTS.md in the Ducter-owned home; first-turn: prefixed to the first message. */
   systemPrompt: "replace" | "home-file";
@@ -60,6 +64,7 @@ export const HARNESSES: Record<HarnessId, HarnessInfo> = {
     command: "claude",
     partner: true,
     task: true,
+    images: true,
     isolation: "native",
     systemPrompt: "replace",
     taskInstructions: "append",
@@ -78,6 +83,8 @@ export const HARNESSES: Record<HarnessId, HarnessInfo> = {
     command: "codex",
     partner: true,
     task: true,
+    images: true,
+    draws: true,
     isolation: "overrides",
     systemPrompt: "replace",
     taskInstructions: "append",
@@ -95,6 +102,7 @@ export const HARNESSES: Record<HarnessId, HarnessInfo> = {
     badge: "pi",
     partner: true, // D177: passed the partner eval (research/50 §5), read-only enforced live (§2)
     task: true,
+    images: true,
     isolation: "flags",
     systemPrompt: "replace",
     taskInstructions: "append",
@@ -111,6 +119,7 @@ export const HARNESSES: Record<HarnessId, HarnessInfo> = {
     command: "dsh",
     partner: true, // D177: passed the partner eval (research/50 §5), read-only enforced live (§2)
     task: true,
+    images: false,
     isolation: "home",
     systemPrompt: "home-file",
     taskInstructions: "first-turn",

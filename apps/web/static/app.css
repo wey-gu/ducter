@@ -125,6 +125,15 @@
   --bubble-partner: 20px 20px 20px 6px;
   --bubble-join: 6px; /* the tail side's top corner of a bubble stacked on one of its voice */
   --bubble-measure: 38em;
+  /* D206: pictures. One picture at most 70% of the column and a little over a third of the
+     screen tall; a grid's tiles 2px apart inside one rounded box; the viewer on the theme's paper. */
+  --pics-w: min(70%, 22rem);
+  --pics-h: min(52vh, 380px);
+  --pic-gap: 2px;
+  --r-pics: var(--r-btn-lg);
+  --viewer-scrim: rgba(255, 246, 234, 0.97);
+  --pic-dim: rgba(43, 33, 24, 0.42);
+  --ring-back: rgba(43, 33, 24, 0.38);
 
   --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -200,9 +209,13 @@
   --drop-primary: var(--drop);
     --drop-primary: var(--drop);
     --drop-pressed: 0 1px 3px rgba(0, 0, 0, 0.4);
+    --viewer-scrim: rgba(10, 8, 6, 0.96);
+    --pic-dim: rgba(0, 0, 0, 0.5);
   }
 }
 :root[data-theme="dark"] {
+  --viewer-scrim: rgba(10, 8, 6, 0.96);
+  --pic-dim: rgba(0, 0, 0, 0.5);
   --bg: #17120e;
   --bg-deep: #120e0b;
   --surface: #231c16;
@@ -5002,3 +5015,388 @@ button.bcard:active {
 .bwatch { position: relative; }
 .bwatch > .bcard { width: 100%; padding-right: 72px; }
 .bwatch > .btn { position: absolute; right: 8px; bottom: 8px; }
+
+
+/* ---------- pictures and files (D206, design/media.md) ---------- */
+.user-m {
+  align-self: flex-end;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+.user-m > .user {
+  max-width: min(80%, var(--bubble-measure));
+}
+.media {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  width: 100%;
+}
+.media.on-user {
+  align-items: flex-end;
+}
+.media.on-partner,
+.media.on-task {
+  align-items: flex-start;
+}
+.partner > .media {
+  margin-left: 0;
+}
+.pics {
+  position: relative;
+  width: var(--pics-w);
+  border-radius: var(--r-pics);
+  overflow: hidden;
+  background: var(--sunken);
+}
+.media.on-task .pics {
+  --pics-w: min(100%, 22rem);
+}
+.tx.you .media {
+  margin-bottom: var(--s2);
+}
+.pics .tile {
+  position: absolute;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+  -webkit-tap-highlight-color: transparent;
+}
+.pics .tile > img,
+.pics .tile > .ph {
+  position: absolute;
+  inset: calc(var(--pic-gap) / 2);
+  width: calc(100% - var(--pic-gap));
+  height: calc(100% - var(--pic-gap));
+  object-fit: cover;
+  display: block;
+}
+.pics.one .tile > img,
+.pics.one .tile > .ph {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.pics .tile > .ph {
+  background-size: cover;
+  background-position: center;
+  filter: blur(14px);
+  transform: scale(1.15);
+}
+.pics .tile > img {
+  opacity: 0;
+  transition: opacity var(--t-med) var(--ease);
+}
+.pics .tile.in > img {
+  opacity: 1;
+}
+.pics .tile:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+}
+.pics .tile .more {
+  position: absolute;
+  inset: calc(var(--pic-gap) / 2);
+  display: grid;
+  place-items: center;
+  background: var(--pic-dim);
+  color: #fff;
+  font: 800 var(--t20) / 1 var(--head);
+}
+.pics .tile.in.failed > img {
+  opacity: 0.45;
+}
+.ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  margin: -18px 0 0 -18px;
+  border-radius: 50%;
+  background: var(--ring-back);
+}
+.ring circle {
+  fill: none;
+  stroke-width: 2.6;
+}
+.ring .track {
+  stroke: rgba(255, 255, 255, 0.28);
+}
+.ring .arc {
+  stroke: #fff;
+  stroke-linecap: round;
+  transform: rotate(-90deg);
+  transform-origin: 18px 18px;
+  transition: stroke-dashoffset var(--t-fast) linear;
+}
+.unsent {
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+  font-size: var(--sm);
+  font-weight: 700;
+  color: var(--failed-ink);
+}
+.unsent .btn.text {
+  color: var(--failed-ink);
+}
+/* A file a task showed: one line on a card, Open at its end. */
+.filecard {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  width: min(100%, 22rem);
+  padding: 6px 6px 6px 14px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: var(--base);
+  color: var(--ink);
+}
+.filecard .fi {
+  flex-shrink: 0;
+  color: var(--ink-muted);
+}
+.filecard .fn {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--md);
+  font-weight: 700;
+}
+.filecard .fs {
+  flex-shrink: 0;
+  font-size: var(--sm);
+  color: var(--ink-muted);
+}
+.filecard .btn.text {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  color: var(--ink);
+  font-weight: 700;
+}
+/* The composer: 加图片 / Add images first, the tray of what is picked above it. */
+.composer .add-pic {
+  flex-shrink: 0;
+  align-self: flex-end;
+  margin-left: -10px;
+  color: var(--ink-muted);
+}
+.tray-pics {
+  display: flex;
+  gap: var(--s2);
+  overflow-x: auto;
+  padding: 8px 4px 10px;
+  scrollbar-width: none;
+}
+.tray-pics::-webkit-scrollbar {
+  display: none;
+}
+.chosen {
+  position: relative;
+  flex: 0 0 auto;
+  width: 64px;
+  height: 64px;
+  border-radius: var(--r-sm);
+  background: var(--sunken);
+  box-shadow: var(--base);
+  animation: pop-in 220ms var(--spring);
+}
+.chosen > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--r-sm);
+  display: block;
+}
+.chosen .ring {
+  transform: scale(0.72);
+}
+.chosen.failed > img {
+  opacity: 0.4;
+}
+.chosen .retry {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: none;
+  font-size: var(--xs);
+  font-weight: 800;
+  color: var(--failed-ink);
+}
+.chosen .x {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--bg);
+  box-shadow: var(--drop-pressed);
+}
+.chosen .x::after {
+  content: "";
+  position: absolute;
+  inset: -10px;
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+}
+.composer-wrap,
+.nt-what,
+.scroll {
+  position: relative;
+}
+.drop-hint {
+  position: absolute;
+  inset: 6px;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-lg);
+  border: 2px solid var(--accent);
+  background: color-mix(in srgb, var(--bg-deep) 88%, transparent);
+  pointer-events: none;
+  font-weight: 800;
+  color: var(--needs-ink);
+}
+.scroll > .drop-hint {
+  position: sticky;
+  top: 6px;
+  min-height: 30vh;
+}
+.nt-what-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+.nt-what-foot .small {
+  flex: 1;
+}
+/* The viewer: the picture on the theme's paper, everything else out of its way. */
+.viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  color: var(--ink);
+  touch-action: none;
+  animation: fade-in 180ms var(--ease);
+}
+.viewer.closing {
+  animation: fade-out 200ms var(--ease) forwards;
+}
+.viewer .scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: var(--viewer-scrim);
+  animation: none;
+}
+.viewer .stage,
+.viewer .v-top,
+.viewer .v-bar {
+  z-index: 1;
+}
+.viewer .stage {
+  position: absolute;
+  inset: calc(var(--safe-top) + 56px) 0 calc(var(--safe-bottom) + 64px);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.viewer .stage img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  background-size: cover;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  will-change: transform;
+  transition: transform 220ms var(--ease);
+  border-radius: 0;
+}
+.viewer .v-top,
+.viewer .v-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: 6px max(12px, var(--safe-right)) 6px max(12px, var(--safe-left));
+}
+.viewer .v-top {
+  top: 0;
+  padding-top: calc(var(--safe-top) + 6px);
+}
+.viewer .v-bar {
+  bottom: 0;
+  padding-bottom: calc(var(--safe-bottom) + 10px);
+}
+.viewer .v-top .count {
+  font-size: var(--sm);
+  font-weight: 700;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.viewer .btn.text {
+  color: var(--ink);
+  font-weight: 700;
+}
+.viewer .from {
+  min-width: 0;
+  max-width: 55%;
+  height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--ink-soft);
+  font-size: var(--sm);
+  font-weight: 700;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-decoration: underline;
+  text-decoration-color: var(--line-2);
+  text-underline-offset: 3px;
+}
+.viewer .grow {
+  flex: 1;
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .viewer,
+  .viewer.closing,
+  .chosen {
+    animation: none;
+  }
+  .viewer .stage img,
+  .pics .tile > img {
+    transition: none;
+  }
+}

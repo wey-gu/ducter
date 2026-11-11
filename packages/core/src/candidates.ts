@@ -177,7 +177,8 @@ function rank(inp: CandidateInput): { rows: Row[]; multi: boolean } {
     const f = fit(c, inp.needs, inp.place);
     for (const h of c.harnesses) {
       if (!isHarnessId(h.harness) || !HARNESSES[h.harness].task) continue;
-      const blocked = blockOf(h, inp.settings) ?? f.block;
+      // D206: a picture to make goes only to an agent that makes pictures.
+      const blocked = blockOf(h, inp.settings) ?? f.block ?? (inp.needs?.draw && !HARNESSES[h.harness].draws ? ("no_draw" as const) : undefined);
       for (const t of rows(h)) {
         const ruled = !!rule && rule.harness === t.harness && (!rule.model || rule.model === t.model);
         const left = h.allowance?.left;
@@ -202,6 +203,7 @@ function rank(inp: CandidateInput): { rows: Row[]; multi: boolean } {
           ...(multi && waits ? { waits } : {}),
           ...(f.uses ? { uses: f.uses } : {}),
           ...(f.needsSignIn ? { needsSignIn: true } : {}),
+          ...(isHarnessId(t.harness) && !HARNESSES[t.harness].images ? { noImages: true as const } : {}),
           ...(f.uses === "chrome" && inp.current && inp.current.uses !== "chrome" && (inp.current.uses || inp.place?.kind === "browser") ? { widens: true } : {}),
           key,
           comp: c,
@@ -252,6 +254,7 @@ const BLOCK_WORDS: Record<CandidateBlock, string> = {
   no_chrome: "it needs the user's Chrome, and no computer it is on has it",
   no_app: "it needs a Mac app, and it isn't on a Mac",
   elsewhere: "the folder is on another computer",
+  no_draw: "it can't make pictures (only Codex can)",
 };
 
 /** The one line the New task card / `ducter task --agent` shows when the person's own pick can't run. */

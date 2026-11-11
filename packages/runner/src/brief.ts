@@ -109,6 +109,7 @@ ${languageLine(b.language)}
 - \`questions\`: each with \`id\`, \`text\`, \`blocking\`, a \`default\` (what you will do if nobody answers), and \`reversible\` (whether that default can be undone).
   The user answers with three buttons: **Go** = do your \`default\`; **Hold** = pause and wait (it never means "no"); **Reply** = their own words. So phrase each question so that Go is the default action, and do not mention the buttons in the text.
 - \`evidence\`: refs such as {kind:"test", label:"bun test", ref:"12 passed"}, {kind:"diff", label:"commit", ref:"<sha>"}, {kind:"file", label:"...", ref:"<path>"}.
+- \`show\`: paths of what the user should see with the report, shown to them in the conversation: a picture you generated or drew (your image tool says where it saved it), a screenshot that shows the result, a file you made for them. Only what shows the outcome or what they asked for, never everything you looked at. Pictures the user sent you came with your messages; you don't need to show them back.
 - After reporting needs_input or blocked, end your turn and wait; the answer will arrive as a message.
 - Call \`checkpoint\` (same server) after each meaningful step with where the work stands and what comes next. Your context is small and is compacted when it fills up; your last checkpoint is what you carry on from afterwards.
 - Never ask the user questions in plain text, and never wait for a reply in text. Put every question in \`report_to_main\` with a default.

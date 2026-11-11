@@ -336,6 +336,18 @@ func (a *App) StartNewTask(again ...bool) bool {
 		return false
 	}
 	f := protocol.TaskNew{T: "task_new", Words: words, When: when}
+	// D206: the pictures on the card go with the words, once they're all up.
+	if atts := a.med().trays["nt"]; len(atts) > 0 {
+		if anyFailed(atts) {
+			nt.err, nt.errEmpty = a.L.T("media.failed"), false
+			return false
+		}
+		if !allReady(atts) {
+			nt.err, nt.errEmpty = a.L.T("media.sending"), false
+			return false
+		}
+		f.Media = idsOf(atts)
+	}
 	place := a.chosenPlace(a.newTaskPlaces())
 	switch place.Place.Kind {
 	case "repo":
@@ -435,6 +447,7 @@ func (a *App) drainNewTask() {
 		}
 		nt.sending = ""
 		if r.OK && (r.TaskID != "" || r.RoutineID != "") {
+			a.takeTray("nt") // they went with it
 			title := ""
 			if r.Card != nil {
 				title = r.Card.Title
@@ -962,6 +975,10 @@ func (a *App) whoPill(c *ui.Context) {
 					if why != "" {
 						ui.Text(c, why).FontSize(t.XS).TextColor(t.InkMuted).MaxLines(2)
 					}
+					// D206: the card holds pictures and this one can't see them.
+					if cd.NoImages && len(a.med().trays["nt"]) > 0 {
+						ui.Text(c, a.L.T("media.noImages")).FontSize(t.XS).FontWeight(700).TextColor(t.InkSoft)
+					}
 				})
 			}) {
 				a.pickAgent(cd, top, away)
@@ -1128,11 +1145,19 @@ func (a *App) whenDetail(c *ui.Context) {
 func (a *App) wordsField(c *ui.Context) {
 	t := a.T
 	nt := &a.nt
-	ui.Column(c.Key("nt-what")).Gap(t.S2).Children(func() {
+	what := ui.Column(c.Key("nt-what")).Gap(t.S2)
+	over := a.takeDrops(what, "nt") // D206: a picture dropped on the What row goes with the words
+	what.Children(func() {
+		if over {
+			a.dropHint(c)
+		}
 		ta := ui.TextArea(c.Key(fmt.Sprintf("nt-words:%d", nt.seq)), &nt.words).Lines(4, 10).MinHeight(0).
 			Placeholder(a.L.T("newtask.placeholder")).Label(a.L.T("newtask.what")).
 			Background(t.Bg).Border(1, t.LineSoft).Radius(t.RadiusMD).Padding(t.S3, t.S4).FontSize(t.Bubble).LineHeight(a.leading(1.5)).
 			OnTextKey(func(k ui.TextKey) bool {
+				if a.pictureKeys("nt", k) {
+					return true
+				}
 				if k.Key == ui.KeyEnter && k.Mods&ui.Cmd != 0 {
 					nt.words = k.Text()
 					a.StartNewTask(k.Mods&ui.Shift != 0)
@@ -1148,7 +1173,11 @@ func (a *App) wordsField(c *ui.Context) {
 			ta.Focus()
 			nt.focus = false
 		}
-		ui.Text(c, a.L.T("newtask.verbatim")).FontSize(t.XS).TextColor(t.InkMuted)
+		a.picTray(c, "nt")
+		ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+			ui.Text(c, a.L.T("newtask.verbatim")).FontSize(t.XS).TextColor(t.InkMuted).Grow(1)
+			a.addPicturesButton(c, "nt")
+		})
 	})
 }
 

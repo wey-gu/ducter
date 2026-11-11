@@ -6,6 +6,7 @@
 import type { HarnessId } from "./harnesses.ts";
 import type { CallBody, DraftRequest, DraftResult } from "./phone.ts";
 import type { Attention, Bodies, BodyWhy, BranchChanges, Delivery, FolderChanges, UndoConfirm, EventKind, LogEvent, OnHand, Origin, PartnerActivity, Place, Residency, PeersSettings, Settings, TaskCard, TaskNeeds } from "./index.ts";
+import type { MediaRef } from "./media.ts";
 
 // ---------- core ----------
 
@@ -132,6 +133,18 @@ export interface CoreApi {
   memPluginIn?(device: string | undefined, harness: string): boolean;
   /** D205: the persona's own Bridge connection, made from Settings › 伙伴 (core/src/bridge-link.ts); absent in tests and stubs. */
   bridgeLink?: BridgeLinkApi;
+  /** D206: pictures and files on the home (core/src/media.ts); absent in tests and stubs. */
+  media?: MediaApi;
+}
+
+/** D206: the home's media store as the runner and the partner use it. */
+export interface MediaApi {
+  get(id: string): import("./media.ts").MediaRef | undefined;
+  /** The file the bytes are in, on the home. */
+  path(id: string): string | undefined;
+  /** A file on the home (a task's report): copied in. files: besides pictures. Throws when it isn't one Ducter shows. */
+  putFile(path: string, o?: { name?: string; from?: { taskId: string }; files?: boolean }): import("./media.ts").MediaRef;
+  put(bytes: Uint8Array, o?: { name?: string; from?: { taskId: string }; files?: boolean }): import("./media.ts").MediaRef;
 }
 
 /**
@@ -375,11 +388,19 @@ export interface HarnessEvent {
   raw?: unknown;
 }
 
+/** D206: one picture handed to an agent with its input: a file on the home. */
+export interface SendImage {
+  path: string;
+  mediaType: string;
+}
+
 export interface HarnessSession {
   id: string; // native session id, resumable
   readonly canSteer: boolean; // harness accepts input mid-turn
   busy(): boolean; // a turn is in progress
-  send(text: string, mode?: "turn" | "steer" | "queue"): Promise<void>;
+  // D206: images ride with the text as the runtime's own image input (OAR InputOptions.images):
+  // files on the home; a worker's session gets their bytes and writes them on its side.
+  send(text: string, mode?: "turn" | "steer" | "queue", images?: SendImage[]): Promise<void>;
   interrupt(): Promise<void>;
   close(): Promise<void>;
   events(): AsyncIterable<HarnessEvent>;
@@ -409,13 +430,16 @@ export interface Runner {
   // origin "you" (D128): the user opened it themselves; logged on task_open, and a harness given is their pick.
   // needs (D157): what the task needs of its computer; Ducter picks the computer (a place.device
   // the user named stays a pin).
-  openTask(input: { persona: string; title: string; brief: string; place?: Place; project?: string; harness?: string; model?: string; effort?: string; language?: "zh" | "en"; origin?: "you"; needs?: TaskNeeds }): Promise<TaskCard>;
+  // media (D206): the pictures the brief carries; the first turn hands them to the agent.
+  openTask(input: { persona: string; title: string; brief: string; place?: Place; project?: string; harness?: string; model?: string; effort?: string; language?: "zh" | "en"; origin?: "you"; needs?: TaskNeeds; media?: MediaRef[] }): Promise<TaskCard>;
   // Optional (D120, ack and go): open a task while its brief is still being written. The card,
   // the place and the session start now; the brief becomes the session's first turn when it
   // settles. If it rejects, the task is dropped before it did anything.
-  openTaskEarly?(input: { persona: string; title: string; place?: Place; project?: string; harness?: string; model?: string; language?: "zh" | "en"; needs?: TaskNeeds }, brief: Promise<string>): Promise<TaskCard>;
+  // media (D206): settles with the brief (the call's last part), the pictures the brief carries.
+  openTaskEarly?(input: { persona: string; title: string; place?: Place; project?: string; harness?: string; model?: string; language?: "zh" | "en"; needs?: TaskNeeds }, brief: Promise<string>, media?: Promise<MediaRef[]>): Promise<TaskCard>;
   // Logs the text as task_event {role:"user", from, clientId} before delivering it.
-  send(taskId: string, text: string, mode?: "steer" | "queue", from?: "user" | "partner", clientId?: string): Promise<{ delivered: Delivery }>;
+  // media (D206): pictures that go with the text (an agent that can't see them gets a line saying so).
+  send(taskId: string, text: string, mode?: "steer" | "queue", from?: "user" | "partner", clientId?: string, media?: MediaRef[]): Promise<{ delivered: Delivery }>;
   interrupt(taskId: string): Promise<void>;
   // Optional: resume (or start) a finished/dropped task's session and tell it to carry on.
   reopen?(taskId: string): Promise<{ delivered: Delivery }>;

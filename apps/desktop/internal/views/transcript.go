@@ -51,6 +51,8 @@ type Block struct {
 	Go    *string   `json:"go,omitempty"`    // you: their Go relayed, its label
 	State string    `json:"state,omitempty"` // report
 	Bad   bool      `json:"bad,omitempty"`   // note: a turn or delivery that failed
+	// Media (D206): you: the pictures sent with it; report: what it showed.
+	Media []protocol.MediaRef `json:"media,omitempty"`
 }
 
 var (
@@ -206,7 +208,7 @@ func blocksOf(harness string, events []protocol.LogEvent, working bool) []Block 
 			if ev.Seq == last {
 				continue
 			}
-			out = append(out, Block{K: "report", Seq: ev.Seq, State: b.State, Text: redact.Text(b.Summary)})
+			out = append(out, Block{K: "report", Seq: ev.Seq, State: b.State, Text: redact.Text(b.Summary), Media: b.Media})
 		case *protocol.TaskEvent:
 			if len(b.Thinking) > 0 {
 				addRow(ev.Seq, StepRow{Seq: ev.Seq, Thought: redact.Text(strings.Join(b.Thinking, " · ")), N: 1, Outcome: "ok"})
@@ -253,7 +255,7 @@ func blocksOf(harness string, events []protocol.LogEvent, working bool) []Block 
 					continue
 				}
 				out = append(out, Block{K: "note", Seq: ev.Seq, Text: redact.Text(text), Bad: failedSystemRe.MatchString(text)})
-			case text == "":
+			case text == "" && len(b.Media) == 0:
 			case b.Role == "user":
 				if b.From == "runner" || b.From == "" && (strings.HasPrefix(text, `Start the task "`) || strings.HasPrefix(text, "<brief>")) {
 					continue // the runner's kickoff, not something anyone said
@@ -262,7 +264,7 @@ func blocksOf(harness string, events []protocol.LogEvent, working bool) []Block 
 					out = append(out, Block{K: "partner", Seq: ev.Seq, Text: redact.Text(text)})
 					continue
 				}
-				blk := Block{K: "you", Seq: ev.Seq, Text: redact.Text(text)}
+				blk := Block{K: "you", Seq: ev.Seq, Text: redact.Text(text), Media: b.Media}
 				if label, ok := goRelay(text); ok {
 					blk.Go = &label
 				}

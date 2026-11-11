@@ -297,3 +297,21 @@ test("choose: one computer that can browse takes a browser task, a pinned one in
   expect(await core.loadout.choose({ title: "Pay the test checkout", place, harness: "claude-code", model: "sonnet", by: "you" })).toMatchObject({ harness: "claude-code", model: "sonnet" });
   expect(await core.loadout.choose({ title: "Pay the test checkout", place })).toMatchObject({ harness: "claude-code" });
 });
+
+test("candidates (D206): an agent that can't see pictures says so; the others carry nothing extra", () => {
+  const dsIn: DeviceHarness = { harness: "deepseek-harness", installed: true, loggedIn: true, canBePartner: true, billing: "usage" };
+  const list = fwCandidates({ work: { title: "看看这张截图" }, harnesses: [cc(), dsIn], settings: settings(), rules: [] });
+  const ds = list.filter((c) => c.harness === "deepseek-harness");
+  expect(ds.length).toBeGreaterThan(0);
+  expect(ds.every((c) => c.noImages === true)).toBe(true);
+  expect(list.filter((c) => c.harness === "claude-code").every((c) => c.noImages === undefined)).toBe(true);
+});
+
+test("candidates (D206): a picture to make goes only to an agent that makes pictures; none: nobody, with why", () => {
+  const draw = fwCandidates({ work: { title: "画一只猫" }, harnesses: [cc(), cx()], settings: settings(), rules: [], needs: { draw: true } });
+  expect(draw.filter((c) => !c.blocked).map((c) => c.harness)).toEqual(["codex"]);
+  expect(draw.filter((c) => c.harness === "claude-code").every((c) => c.blocked === "no_draw")).toBe(true);
+  // The partner names Claude Code by mistake: it moves to Codex, never draws on an agent that can't.
+  expect(chooseBody({ work: { title: "画一只猫" }, harnesses: [cc(), cx()], settings: settings(), rules: [], needs: { draw: true }, pinned: { harness: "claude-code" } })).toMatchObject({ harness: "codex" });
+  expect(chooseBody({ work: { title: "画一只猫" }, harnesses: [cc()], settings: settings(), rules: [], needs: { draw: true } })).toBeUndefined();
+});

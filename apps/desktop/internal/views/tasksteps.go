@@ -113,6 +113,23 @@ func (a *App) whatItDid(c *ui.Context, task *store.Task, blocks []Block) {
 				a.sentBubble(c, sd.Text, sd)
 			}
 		}
+		// D206: words with pictures still going up: shown, sent when they land.
+		for _, w := range a.waitingTaskSends(task.ID) {
+			ui.Column(c.Key("tw:" + w.clientID)).Gap(t.S1).AlignItems(ui.End).Children(func() {
+				a.messageMedia(c, "tw"+w.clientID, nil, w.atts, true, "task:"+task.ID)
+				if w.text != "" {
+					a.sentBubble(c, w.text, nil)
+				}
+				if anyFailed(w.atts) {
+					ui.Row(c).Gap(t.S2).AlignItems(ui.Center).Children(func() {
+						ui.Text(c, a.L.T("media.failed")).FontSize(t.XS).FontWeight(700).TextColor(t.Failed.Ink)
+						if a.button(c, a.L.T("media.retry"), btnText, t.ControlSM, t.Bg) {
+							a.retryPictures(w.atts)
+						}
+					})
+				}
+			})
+		}
 	})
 }
 
@@ -135,13 +152,14 @@ func (a *App) block(c *ui.Context, task *store.Task, b *Block) {
 		if b.Go != nil {
 			text = a.shortGo(*b.Go) // the user's Go, said as they said it
 		}
-		a.sentBubble(c, text, task.SendFor(b.Seq))
+		a.sentBubble(c, text, task.SendFor(b.Seq), b.Media...)
 	case "partner":
 		ui.Text(c, a.L.T("task.from.partner", a.S.PersonaName)).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
 		ui.Text(c, b.Text).FontSize(t.MD).LineHeight(leadingFor(b.Text, 1.55)).TextColor(t.InkSoft).Selectable()
 	case "report":
 		ui.Text(c, a.reportLabel(&protocol.Report{State: b.State})).FontSize(t.XS).FontWeight(700).TextColor(t.InkMuted)
 		ui.Text(c, b.Text).FontSize(t.MD).LineHeight(leadingFor(b.Text, 1.55)).TextColor(t.InkSoft).Selectable()
+		a.messageMedia(c, fmt.Sprint("r", b.Seq), b.Media, nil, false, "task:"+task.ID)
 	case "note":
 		ui.Row(c).Gap(t.S2).Height(26).AlignItems(ui.Center).MinWidth(0).Children(func() {
 			if b.Bad {

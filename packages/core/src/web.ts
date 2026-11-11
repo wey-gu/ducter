@@ -11,6 +11,7 @@
 //   GET|POST /api/push/settings      {done?, quiet?}
 //   POST /api/push/test              one test push to this device's subscriptions
 //   POST /api/decide                 {decisionId, option, text?}: Go / Hold / Reply from a notification
+//   POST /api/media                  D206: a picture (multipart: file, thumb?, preview?, name?) → {media}
 // The assets are imported as files, so `bun build --compile` embeds them in the binary.
 import type { Decisions } from "./decisions.ts";
 import type { Gate, GateResult } from "./auth.ts";
@@ -138,7 +139,7 @@ const ASSETS: Record<string, [string, string]> = {
 };
 
 // The page loads only its own scripts and styles; it talks only to this origin.
-const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' ws: wss:; manifest-src 'self'; worker-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'";
+const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' ws: wss:; manifest-src 'self'; worker-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'";
 
 const etags = new Map<string, string>();
 async function serveFile(req: Request, path: string, type: string, cache: string): Promise<Response> {
@@ -188,6 +189,8 @@ export interface WebApiDeps {
   personaName: () => string;
   /** D200: the Ducter version this home runs, so the apps can tell a home older than themselves. */
   version?: string;
+  /** D206: the media store (media.ts); absent in tests that don't need it. */
+  media?: import("./media.ts").MediaStore;
 }
 
 const json = (status: number, body: unknown) => Response.json(body, { status, headers: { "cache-control": "no-store" } });
@@ -305,6 +308,9 @@ export async function webApi(req: Request, g: Extract<GateResult, { pass: true }
       const ok = results.some((r) => r.status >= 200 && r.status < 300);
       return json(ok ? 200 : 502, { results: results.map((r) => ({ status: r.status })), ...(!ok && deps.apns?.relayUnreachable?.() ? { relay: "unreachable" } : {}) });
     }
+    case "POST /api/media":
+      if (!deps.media) return json(404, { error: "not found" });
+      return deps.media.upload(req);
     case "POST /api/decide": {
       const b = await body();
       const option = b.option;

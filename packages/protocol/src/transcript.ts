@@ -6,6 +6,7 @@
 // (fixtures/transcript.json). Every text in a block has its keys hidden (redact.ts): the home
 // already hides them in what it sends, this is the second wall.
 import type { Bodies, LogEvent } from "./index.ts";
+import type { MediaRef } from "./media.ts";
 import { redact } from "./redact.ts";
 import { stepOf, type Step } from "./steps.ts";
 
@@ -39,15 +40,16 @@ export interface Gist {
 }
 
 export type Block =
-  | { k: "brief"; seq: number; text: string; by: "you" | "partner" }
+  // media (D206): the pictures that came with it (a brief, your words, the partner's) or that a report showed.
+  | { k: "brief"; seq: number; text: string; by: "you" | "partner"; media?: MediaRef[] }
   /** The agent's own words: a message, or progress it saved (`saved`), said once. */
   | { k: "voice"; seq: number; text: string; saved?: boolean }
   | { k: "steps"; seq: number; rows: StepRow[]; gist: Gist; live?: boolean }
   /** The user's words to the task; `go` = their Go relayed (its label, may be ""). */
-  | { k: "you"; seq: number; text: string; go?: string }
-  | { k: "partner"; seq: number; text: string }
+  | { k: "you"; seq: number; text: string; go?: string; media?: MediaRef[] }
+  | { k: "partner"; seq: number; text: string; media?: MediaRef[] }
   /** An earlier report to the partner (the latest is the outcome, said above the transcript). */
-  | { k: "report"; seq: number; state: Bodies["report"]["state"]; text: string }
+  | { k: "report"; seq: number; state: Bodies["report"]["state"]; text: string; media?: MediaRef[] }
   /** A harness's note that says something to a person; `bad` = a turn or delivery that failed. */
   | { k: "note"; seq: number; text: string; bad?: boolean };
 
@@ -112,7 +114,7 @@ export function blocksOf(harness: string, events: LogEvent[], working: boolean):
         // A task opened before its brief was written (D120) logs an empty one first; a retitle is a later one.
         if (briefed || !b.brief.trim()) break;
         briefed = true;
-        out.push({ k: "brief", seq: ev.seq, text: redact(b.brief.trim()), by: b.origin === "you" ? "you" : "partner" });
+        out.push({ k: "brief", seq: ev.seq, text: redact(b.brief.trim()), by: b.origin === "you" ? "you" : "partner", ...(b.media?.length ? { media: b.media } : {}) });
         break;
       }
       case "checkpoint": {
@@ -127,7 +129,7 @@ export function blocksOf(harness: string, events: LogEvent[], working: boolean):
       case "report": {
         if (ev.seq === lastReport) break;
         const r = ev.body as Bodies["report"];
-        out.push({ k: "report", seq: ev.seq, state: r.state, text: redact(r.summary) });
+        out.push({ k: "report", seq: ev.seq, state: r.state, text: redact(r.summary), ...(r.media?.length ? { media: r.media } : {}) });
         break;
       }
       case "task_event": {
@@ -163,14 +165,15 @@ export function blocksOf(harness: string, events: LogEvent[], working: boolean):
           out.push({ k: "note", seq: ev.seq, text: redact(text), ...(FAILED_SYSTEM.test(text) ? { bad: true } : {}) });
           break;
         }
-        if (!text) break;
+        if (!text && !b.media?.length) break;
         if (b.role === "user") {
+          const media = b.media?.length ? { media: b.media } : {};
           // The runner's kickoff (the brief again in tags) is not what anyone said.
           if (b.from === "runner" || (!b.from && KICKOFF.test(text))) break;
-          if (b.from === "partner" || ev.origin === "partner") out.push({ k: "partner", seq: ev.seq, text: redact(text) });
+          if (b.from === "partner" || ev.origin === "partner") out.push({ k: "partner", seq: ev.seq, text: redact(text), ...media });
           else {
             const go = goRelay(text);
-            out.push({ k: "you", seq: ev.seq, text: redact(text), ...(go !== undefined ? { go } : {}) });
+            out.push({ k: "you", seq: ev.seq, text: redact(text), ...(go !== undefined ? { go } : {}), ...media });
           }
           break;
         }

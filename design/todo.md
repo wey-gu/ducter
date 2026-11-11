@@ -102,8 +102,8 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
       rules and connections loaded when used. Not now: the 24 tools are ~7K tokens. Trigger: the
       partner's list passes 30 tools or 32K JSON chars (`tool-budget.test.ts` G2 forces it).
 
-- [ ] **New task: attachments (D128).** Trigger: the first time a brief needs a screenshot.
-      A file or image dropped on the card's What row goes to the task with the words.
+- [x] **New task: attachments (D128).** Done by D206 for pictures (drop, paste or 加图片 on the
+      What row; they go to the task with the words). Files follow phase 2 below.
 - [ ] **Projects: rename and remove (D186).** Defaults: click the name in By project to rename
       (the `cardName` control; every task carrying it follows); remove from the group's ⋯, its
       tasks untouched. Trigger: the first time a folder's name isn't the name the author wants.
@@ -342,6 +342,26 @@ note and a `Dn`) before it is built.
       before flagging, not only snippets. Trigger: the next eval round.
 - [ ] **Nowledge Bridge live** (`design/bridge.md`): the live J1 round trip, then outbound
       (J4). Trigger: the account is enabled for Bridge.
+
+## Pictures and files, phases 2 and 3 (D206, `design/media.md`)
+
+- [ ] **Phase 2: files and PDFs from the user.** The same tray, a file card in the message, the
+      file handed to a task as a path in its place (an agent reads it there; a PDF to a model that
+      takes documents through OAR when it does). Trigger: the first time the user wants to send a
+      PDF or a log file.
+- [ ] **Phase 2: a share sheet into Ducter.** An iOS share extension and an Android share intent
+      that open the conversation with the picture (or file) in the tray. Trigger: phase 2 files,
+      or the first time a picture has to be saved first to be sent.
+- [ ] **Phase 3: video.** Send and view; the model sees ~6 frames taken on the sending device.
+      Trigger: the first screen recording a task should look at.
+- [ ] **Phase 3: reply to a message** (quote one message or picture), and **link previews**.
+      Trigger: two conversations a week where "that one" is ambiguous / a pasted link reads as noise.
+- [ ] **A routine's pictures.** A New task scheduled for later keeps its words only. Trigger: the
+      first scheduled task that needs a picture.
+- [ ] **Media housekeeping.** The store keeps everything; a sweep of pictures no event references
+      for 90 days. Trigger: the media folder passes 2 GB on any home.
+- [ ] **Mac viewer: pinch and grow-from-tile.** The Mac opens with a scale and fade and zooms by
+      double-click only; HEIC from Finder is skipped (Go reads none). Trigger: the author's review.
 
 ## Folders that aren't repos (D142)
 

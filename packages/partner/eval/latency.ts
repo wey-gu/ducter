@@ -61,7 +61,7 @@ const port: HarnessPort = {
         return s.canSteer;
       },
       busy: () => s.busy(),
-      send: (t, m) => s.send(t, m),
+      send: (t, m, i) => s.send(t, m, i),
       interrupt: () => s.interrupt(),
       close: () => s.close(),
       events() {

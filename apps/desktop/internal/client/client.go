@@ -116,6 +116,14 @@ func (c *Client) RetryNow() {
 	}
 }
 
+// Target is the server the client dials now and its device token ("" on
+// this Mac's own home): the app's HTTP calls (pictures, D206) use them too.
+func (c *Client) Target() (url, token string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.url, c.token
+}
+
 // NextAttempt is when the client will try again, while it waits; zero
 // otherwise.
 func (c *Client) NextAttempt() time.Time {

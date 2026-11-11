@@ -20,6 +20,7 @@ import { ProactiveChips, SourceCards } from "./accounts.tsx";
 import { CallDecision, CallRow, PhoneCard, PhoneOffer } from "./phone.tsx";
 import { callEnded } from "@ducter/protocol";
 import { FindsNote } from "./finds.tsx";
+import { AddPictures, DropHint, MediaBlock, Tray, useDropPaste, Viewer } from "./media.tsx";
 import { NewTaskSheet } from "./newtask.tsx";
 import { appPush, disablePush, enablePush } from "./push-client.ts";
 import { inApp, unsupportedKey } from "./native.ts";
@@ -1006,11 +1007,22 @@ function stacks(prev: Entry | undefined, e: Entry, chipOwner: Map<string, number
 }
 
 function EntryView({ e, chipOwner, livingItems, join }: { e: Entry; chipOwner: Map<string, number>; livingItems: (e: Entry) => LivingItem[]; join?: boolean }) {
-  if (e.user) return <div class={`user${join ? " join" : ""}`}>{e.user.text}</div>;
+  if (e.user) {
+    // D206: the pictures stand above the words, on their own, as in a messaging app.
+    if (!e.user.media?.length) return <div class={`user${join ? " join" : ""}`}>{e.user.text}</div>;
+    return (
+      <div class={`user-m${join ? " join" : ""}`}>
+        <MediaBlock media={e.user.media} side="user" ctx={{ kind: "conv" }} />
+        {e.user.text && <div class="user">{e.user.text}</div>}
+      </div>
+    );
+  }
   if (e.ai) {
     return (
       <div class={`partner${join ? " join" : ""}`}>
         <div class="bubble" dangerouslySetInnerHTML={{ __html: markdown(e.ai.text) }} />
+        {/* D206: what a task showed, under the partner's words about it. */}
+        {e.ai.media?.length ? <MediaBlock media={e.ai.media} side="partner" ctx={{ kind: "conv" }} /> : null}
         <Quiet k={`m${e.firstSeq}`} tasks={replyTasks(e, chipOwner)} noted={A.notedFor(e)} />
       </div>
     );
@@ -1147,6 +1159,10 @@ function Held() {
 }
 
 function Composer({ taskId }: { taskId?: string }) {
+  const where = taskId ?? "";
+  const pics = A.picks.get(where) ?? [];
+  const wrap = useRef<HTMLDivElement>(null);
+  const over = useDropPaste(wrap, where);
   const value = taskId ? (A.taskDrafts.get(taskId) ?? "") : A.draft;
   const set = (v: string) => {
     if (taskId) A.taskDrafts.set(taskId, v);
@@ -1159,11 +1175,14 @@ function Composer({ taskId }: { taskId?: string }) {
   };
   const label = taskId ? t("composer.task") : t("composer.label", A.S.personaName);
   return (
-    <div class="composer-wrap">
+    <div class="composer-wrap" ref={wrap}>
       {(A.held?.taskId ?? "") === (taskId ?? "") && <Held />}
+      <DropHint on={over} />
+      <Tray where={where} />
       <div class="composer">
+        <AddPictures where={where} />
         <AutoText id={taskId ? "composer-task" : "composer"} value={value} onInput={set} onEnter={submit} label={label} placeholder={taskId ? t("composer.task") : t("composer.placeholder", A.S.personaName)} />
-        <button class="btn accent icon send" aria-label={t("composer.send")} disabled={!value.trim()} onClick={submit}>
+        <button class="btn accent icon send" aria-label={t("composer.send")} disabled={!value.trim() && !pics.length} onClick={submit}>
           <Arrow />
         </button>
       </div>
@@ -1254,6 +1273,7 @@ function timeGap(prev: Entry | undefined, e: Entry): boolean {
 export function Conversation() {
   const { rows, livingItems, chipOwner } = A.rows();
   const scroller = useRef<HTMLDivElement>(null);
+  const dropping = useDropPaste(scroller, "");
   const atBottom = useRef(true);
   useLayoutEffect(() => {
     const el = scroller.current;
@@ -1277,6 +1297,7 @@ export function Conversation() {
         }}
       >
         <div class="spacer" />
+        <DropHint on={dropping} />
         {empty && <Hello />}
         {rows.map((e, i) => {
           const gap = timeGap(rows[i - 1], e);
@@ -1287,11 +1308,25 @@ export function Conversation() {
             </Fragment>
           );
         })}
-        {A.pending.map((p, i) => (
-          <div key={p.clientId} class={`user pending${i > 0 || rows.at(-1)?.user ? " join" : ""}`}>
-            {p.text}
-          </div>
-        ))}
+        {A.pending.map((p, i) =>
+          p.pics?.length ? (
+            <div key={p.clientId} class={`user-m pending${i > 0 || rows.at(-1)?.user ? " join" : ""}`}>
+              <MediaBlock pics={p.pics} side="user" ctx={{ kind: "conv" }} />
+              {p.text && <div class="user">{p.text}</div>}
+              {/* Words are never lost (D206): they wait here with the picture until it goes. */}
+              {p.failed && (
+                <div class="unsent" role="alert">
+                  <span>{t("media.failed")}</span>
+                  <Btn kind="text" size="sm" label={t("media.retry")} onClick={() => A.retryPending(p.clientId)} />
+                </div>
+              )}
+            </div>
+          ) : (
+            <div key={p.clientId} class={`user pending${i > 0 || rows.at(-1)?.user ? " join" : ""}`}>
+              {p.text}
+            </div>
+          ),
+        )}
         {A.thinking() && <Presence />}
         <NotifyAsk />
       </main>
@@ -1882,6 +1917,7 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
         {finished(task) && (
           <div class="outcome">
             {lede && <div class="said">{lede}</div>}
+            {r?.media?.length ? <MediaBlock media={r.media} side="task" ctx={{ kind: "task", taskId: id }} /> : null}
             <ProofLine task={task} evs={resultEvidence(task)} />
             <SentLine task={task} />
             {a === "failed" ? (
@@ -2733,6 +2769,7 @@ function SettingsSheet() {
 // ---------- 开一件事 / New task (D128, D185): the sheet is in newtask.tsx ----------
 
 export function Sheets() {
+  if (A.viewer) return <Viewer />;
   if (!A.sheet) return null;
   if (A.sheet.kind === "newtask") return <NewTaskSheet />;
   return A.sheet.kind === "decision" ? <DecisionSheet id={A.sheet.id} /> : <SettingsSheet />;

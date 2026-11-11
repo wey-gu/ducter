@@ -1,2 +1,4 @@
-"NSCameraUsageDescription" = "To scan the QR code from ducter pair.";
+"NSCameraUsageDescription" = "To scan the QR code from ducter pair, and to take a photo you send to Ducter.";
+"NSPhotoLibraryUsageDescription" = "To send photos from your library to Ducter.";
+"NSPhotoLibraryAddUsageDescription" = "To save a picture from the conversation to your Photos.";
 "NSLocalNetworkUsageDescription" = "To reach your Ducter when it runs on a computer at home.";

@@ -40,8 +40,8 @@ OK).
 **At rest:** `<dataDir>/saved/<persona>.enc`, AES-256-GCM, 0600. The key is apart from it: on a
 Mac in the login keychain (generic password, service `Ducter Autofill`, an account per data folder,
 via `/usr/bin/security`); elsewhere `<dataDir>/saved/key`, 0600. The screen says which, plainly:
-**锁着存在 {home} 上，钥匙在这台 Mac 的钥匙串里 / Locked on {home}, its key in this Mac's
-keychain** or **…钥匙是一个只有 Ducter 能读的文件 / …its key in a file only Ducter can read**.
+**锁着存在 {home} 上，密钥在这台 Mac 的钥匙串里 / Locked on {home}, its key in this Mac's
+keychain** or **…密钥在一个只有 Ducter 能读的文件里 / …its key in a file only Ducter can read**.
 Never synced to a client; a client sends a secret once (`saved_put`) and never gets it back.
 Tests and the eval always use the key file (`DUCTER_SAVED_KEY=file`, and `bun test`).
 
@@ -69,10 +69,10 @@ Tests and the eval always use the key file (`DUCTER_SAVED_KEY=file`, and `bun te
 
 | What | Rule | Card |
 |---|---|---|
-| A saved sign-in | only on its own site (the host or a subdomain of it); a look-alike page gets nothing and the task is told it may be one | the first use on that site: **第一次用存着的登录进 {site}？ / Sign in to {site} with what you saved, for the first time?**, **可以 / OK** · **先不用 / Not now**; never again on that site |
+| A saved sign-in | only on its own site (the host or a subdomain of it); a look-alike page gets nothing and the task is told it may be one | the first use on that site: **第一次用存着的登录进 {site}？ / Sign in to {site} with what you saved, for the first time?**, **可以 / OK** · **暂不使用 / Not now**; never again on that site |
 | A private detail | per site | the first time on each site: **第一次把你的{detail}给 {site}？ / Give {site} your {detail} for the first time?** |
 | A readable detail | none | — |
-| **Every payment** | the task calls `browser_ask_to_pay` on the checkout; the merchant is the page's host read by code, never the model's word | **在 {site} 付款？ / Pay on {site}?** with Amount, For, Merchant (+ **第一次在这里付 / First payment here**), Card; the security-code field; **先不付 / Not now** · **付 {amount} / Pay {amount}**. No default, never pushed past quiet hours as a default. Go without the code is refused |
+| **Every payment** | the task calls `browser_ask_to_pay` on the checkout; the merchant is the page's host read by code, never the model's word | **在 {site} 付款？ / Pay on {site}?** with Amount, For, Merchant (+ **第一次在这里付款 / First payment here**), Card; the security-code field; **暂不付款 / Not now** · **支付 {amount} / Pay {amount}**. No default, never pushed past quiet hours as a default. Go without the code is refused |
 | After Go | the card fills only on that site, for that task, within 15 minutes; a changed total means a new ask | — |
 | Any page that isn't https | nothing fills, nothing pays | the task says so |
 
@@ -94,7 +94,7 @@ on a question. The partner does not ask first itself (one card, not two); it ope
 **设置 › 自动填充 / Settings › Autofill**, after Accounts. One lede, then four groups:
 **登录 / Sign-ins** (site, user name, last used, a dot row), **卡 / Cards** (a small clay card
 with the last four, name, expiry), **你的资料 / Your details** (readable values; private ones by
-name only), **用在了哪儿 / Where it was used** (filled · said Go to {amount} · said OK · said no,
+name only), **使用记录 / Where it was used** (filled · said Go to {amount} · said OK · said no,
 with the site, the task and when; the newest 30 shown, 300 kept). Add and edit in place; **删掉 /
 Remove** asks once (**确定删掉**). Editing a secret replaces it (empty keeps it); nothing is ever
 revealed, to anyone, the owner included: the owner's own password manager is where to look one up.

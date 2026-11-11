@@ -54,8 +54,8 @@ test("one card for the MacBook: CI and the translation move to hel; Keynote and 
   const r = await closing.ask("MacBook", true);
   expect(r).toMatchObject({ ok: true });
   const d = log.events.find((e) => e.kind === "decision")!.body as Bodies["decision"];
-  expect(d.question).toBe("合上之前：「修 CI」「英译」搬到 hel 上接着做；「做 Keynote」「整理照片」只能在 MacBook 上做，醒了接着。");
-  expect(d).toMatchObject({ defaultOption: "go", reversible: true, goLabel: "搬走" });
+  expect(d.question).toBe("合上之前：「修 CI」「英译」转到 hel 上接着做；「做 Keynote」「整理照片」只能在 MacBook 上做，醒了接着。");
+  expect(d).toMatchObject({ defaultOption: "go", reversible: true, goLabel: "转移" });
   expect(d.closing!.moves.map((m) => m.taskId)).toEqual(["t_ci", "t_tr"]);
   expect(d.closing!.stays.map((s) => [s.taskId, s.why])).toEqual([["t_key", "only_here"], ["t_dir", "folder"]]);
   log.append({ stream: "channel", origin: "system", kind: "decision_resolved", body: { decisionId: d.decisionId, option: "go", by: "default" } });

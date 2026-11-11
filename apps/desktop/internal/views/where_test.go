@@ -134,10 +134,10 @@ func TestClosingCardWords(t *testing.T) {
 		Moves: []protocol.ClosingMove{{TaskID: "a", Title: "修 CI", To: "local", ToName: "hel"}, {TaskID: "b", Title: "英译", To: "local", ToName: "hel"}},
 		Stays: []protocol.ClosingStay{{TaskID: "c", Title: "做 Keynote", Why: "only_here"}}}
 	d := &store.DecisionState{Decision: protocol.Decision{Closing: p}}
-	if q := app.questionOf(d); q != "合上之前：「修 CI」「英译」搬到 hel 上接着做；「做 Keynote」只能在 MacBook 上做，醒了接着。" {
+	if q := app.questionOf(d); q != "合上之前：「修 CI」「英译」转到 hel 上接着做；「做 Keynote」只能在 MacBook 上做，醒了接着。" {
 		t.Errorf("zh %q", q)
 	}
-	if g := app.goLabel(d); g != "搬走" {
+	if g := app.goLabel(d); g != "转移" {
 		t.Errorf("go %q", g)
 	}
 	en, _ := iaApp(t, i18n.EN)

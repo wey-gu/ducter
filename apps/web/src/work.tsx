@@ -266,7 +266,7 @@ function nextFew(r: RoutineView): string {
   return (r.upcoming ?? []).slice(0, 4).map((x) => md(x)).join(" · ");
 }
 
-/** Why a routine is paused, in words: "停着：连着 3 次你没看", "停着：你暂停的". */
+/** Why a routine is paused, in words: "已暂停：连着 3 次你没看", "已暂停：你停下的". */
 export function pausedWhy(r: RoutineView): string {
   const why = r.pauseReason ?? "asked";
   if (why !== "asked") return t(`routine.paused.${why}`);

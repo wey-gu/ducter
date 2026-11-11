@@ -238,7 +238,7 @@ describe("after a reconnect (soak design calls 2 and 3)", () => {
   });
 
   test("the unsure line has zh and en copy", () => {
-    expect(strings("zh").t("result.unsure")).toBe("不确定成没成，你看一眼");
+    expect(strings("zh").t("result.unsure")).toBe("不确定成功了没有，你看一眼");
     expect(strings("en").t("result.unsure")).toBe("Not sure it went through — check");
   });
 });
@@ -289,7 +289,7 @@ describe("settings (D71)", () => {
     expect(sent[0]).toEqual({ t: "memory_forget", seq: 7 });
     expect(A.mem?.noted).toEqual([]); // gone at once
     A.receive(frame({ mem: { state: "connected", noted: [] }, forgot: { seq: 7, how: "mem" } }));
-    expect(A.toasts.at(-1)?.text).toBe("忘掉了：测试统一用假时钟");
+    expect(A.toasts.at(-1)?.text).toBe("已忘掉：测试统一用假时钟");
     A.receive(frame({ mem: { state: "connected", noted: [{ seq: 8, title: "回复要短", at: "2026-11-09T10:00:00Z" }] } }));
     A.forget(8);
     A.receive(frame({ mem: { state: "connected", noted: [] }, forgot: { seq: 8, how: "hidden" } }));

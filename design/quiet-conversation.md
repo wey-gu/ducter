@@ -90,8 +90,8 @@ measured 2–4 ms), so the first feedback never waits on the server.
 | looking | 在查… | Looking into it… | any other tool |
 
 Housekeeping (ToolSearch, memory_add, task_retitle) keeps the current step. Tool names never
-reach a client. One step past 15 s adds **比平常久一点，还在弄 / Taking a bit longer than usual**;
-past 45 s, **还在弄。你可以先忙别的，好了我说 / Still on it. Carry on with something else; I'll
+reach a client. One step past 15 s adds **比平时久一点，还在处理 / Taking a bit longer than usual**;
+past 45 s, **还在处理。你可以先忙别的，好了告诉你 / Still on it. Carry on with something else; I'll
 say when it's ready**. The clock is per step, on the client's own clock.
 
 **Mechanics.** A new unlogged server frame `{t:"activity", activity: {step, since, stepSince} |

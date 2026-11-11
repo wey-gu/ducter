@@ -24,7 +24,7 @@ func TestPhoneFrames(t *testing.T) {
 	if err != nil || len(f.OnHand.Calls) != 1 || f.OnHand.Calls[0].Plan.CostUSD != 1.6 {
 		t.Fatalf("on_hand calls: %v %+v", err, f.OnHand)
 	}
-	ev := LogEvent{Kind: KindDecision, Body: json.RawMessage(`{"decisionId":"d1","question":"打给 Sushi Saito？","goLabel":"打过去","defaultOption":"hold","reversible":false,"call":{"callId":"call_1","kind":"go","plan":{"to":"+81312345678","name":"Sushi Saito","goal":"book","say":["Weyl"],"mustNot":[],"voice":"ducter","from":"provider","provider":"Tuwa","minutes":4,"costUsd":1.6,"perMinUsd":0.4,"calleeZone":"Asia/Tokyo"}}}`)}
+	ev := LogEvent{Kind: KindDecision, Body: json.RawMessage(`{"decisionId":"d1","question":"打给 Sushi Saito？","goLabel":"拨打","defaultOption":"hold","reversible":false,"call":{"callId":"call_1","kind":"go","plan":{"to":"+81312345678","name":"Sushi Saito","goal":"book","say":["Weyl"],"mustNot":[],"voice":"ducter","from":"provider","provider":"Tuwa","minutes":4,"costUsd":1.6,"perMinUsd":0.4,"calleeZone":"Asia/Tokyo"}}}`)}
 	v, err := ev.Typed()
 	if d, ok := v.(*Decision); err != nil || !ok || d.Call == nil || d.Call.Plan.Name != "Sushi Saito" {
 		t.Fatalf("a call's decision: %v %+v", err, v)

@@ -53,7 +53,7 @@ export function createClosing(o: { log: LogStore; tasks: CoreRegistry; loadout: 
     const moved = p.moves.map((m) => q(m.title)).join(zh ? "" : ", ");
     const stay = p.stays.map((s) => q(s.title)).join(zh ? "" : ", ");
     const dst = p.moves[0]?.toName ?? "";
-    if (zh) return [moved && `合上之前：${moved}搬到 ${dst} 上接着做`, stay && `${stay}只能在 ${p.name} 上做，醒了接着`].filter(Boolean).join("；") + "。";
+    if (zh) return [moved && `合上之前：${moved}转到 ${dst} 上接着做`, stay && `${stay}只能在 ${p.name} 上做，醒了接着`].filter(Boolean).join("；") + "。";
     return [moved && `Before you close it: ${moved} move to ${dst} and carry on`, stay && `${stay} can only run on ${p.name} and continue when it wakes`].filter(Boolean).join("; ") + ".";
   };
 
@@ -83,7 +83,7 @@ export function createClosing(o: { log: LogStore; tasks: CoreRegistry; loadout: 
       const body: Bodies["decision"] = {
         decisionId,
         question: words(p, zh),
-        goLabel: zh ? "搬走" : "Move them",
+        goLabel: zh ? "转移" : "Move them",
         // Nothing to move (all of it can only run there): no default, it just says so.
         defaultOption: movable ? "go" : "hold",
         reversible: movable,

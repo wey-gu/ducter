@@ -226,7 +226,7 @@ its pushed branch; uncommitted work never moves. What this note adds:
 1. **Targets come from the same ranking**, with the task's needs. A folder task, a task that
    needs a Mac app, or one that needs the user's Chrome can't move to hel; the sheet greys hel
    with why, so the person never picks a move that would fail.
-2. **"我要合电脑了"** (the user says it, or taps **合上之前搬走 / Move before closing** on the
+2. **"我要合电脑了"** (the user says it, or taps **合盖前转移 / Move before closing** on the
    MacBook's island card): one decision for the whole computer, default **move**, because the
    user stated the intent: **合上之前：「修 CI」「英译」搬到 hel 上接着做；「做 Keynote」只能在
    MacBook 上做，醒了接着。** Go moves the movable ones; nothing that would widen access moves.

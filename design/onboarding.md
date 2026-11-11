@@ -317,7 +317,7 @@ green by itself (`cua-driver permissions status --json` every 1.5 s; it never pr
    /Applications/CuaDriver.app; read line by line instead (flags, /Applications, no TTY skips
    its own guide). Walked with a stand-in driver.
 2. 允许它用鼠标和键盘: the literal pane name "辅助功能 / Accessibility", a small drawn picture of
-   the CuaDriver row with its switch on, **带我去设置 / Take me there** (runs `cua-driver
+   the CuaDriver row with its switch on, **前往设置 / Take me there** (runs `cua-driver
    permissions grant`, its own guide), and "只打开系统设置 / Just open System Settings".
 3. 允许它看到屏幕: "录屏与系统录音 / Screen & System Audio Recording", same shape.
 

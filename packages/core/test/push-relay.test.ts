@@ -187,7 +187,7 @@ describe("through core", () => {
     expect((await post("/api/push/test", {})).status).toBe(200);
     const send = r.calls.find((c) => c.url.endsWith("/send"))!;
     expect(send.url).toBe("https://ducter.ai/api/push/send");
-    expect(JSON.parse(dec.decode(await decryptForDevice(KEY, send.body.d))).body).toBe("通知通了。需要你的时候，我会这样叫你。");
+    expect(JSON.parse(dec.decode(await decryptForDevice(KEY, send.body.d))).body).toBe("通知设好了。需要你的时候，我会这样告诉你。");
 
     down = true;
     const failed = await post("/api/push/test", {});

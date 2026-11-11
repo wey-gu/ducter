@@ -40,7 +40,7 @@ func TestWatchItBrowse(t *testing.T) {
 			t.Fatalf("%s: no %q in %q", lang, using, tt.Texts())
 		}
 		shoot(t, tt, "desktop-watch-block-"+string(lang)+".png")
-		if err := tt.Click(pick("看看", "Watch")); err != nil {
+		if err := tt.Click(pick("查看", "Watch")); err != nil {
 			t.Fatal(err)
 		}
 		tt.Frame()
@@ -56,7 +56,7 @@ func TestWatchItBrowse(t *testing.T) {
 		app.Receive(protocol.ServerFrame{T: "live_doing", ID: "lv1", Doing: &protocol.LiveDoing{Kind: "click", Label: "View", X: &x, Y: &y}})
 		tt.Frame()
 		tt.Frame()
-		for _, want := range []string{"shop.example.com", title, pick("正在点「View」", "Clicking “View”"), pick("换我来", "My turn"), pick("关掉", "Close")} {
+		for _, want := range []string{"shop.example.com", title, pick("正在点「View」", "Clicking “View”"), pick("接手", "My turn"), pick("关闭", "Close")} {
 			if !tt.HasText(want) {
 				t.Fatalf("%s: no %q in %q", lang, want, tt.Texts())
 			}
@@ -65,7 +65,7 @@ func TestWatchItBrowse(t *testing.T) {
 			t.Fatalf("%s: watching shows the user's controls: %q", lang, tt.Texts())
 		}
 		shoot(t, tt, "desktop-watch-"+string(lang)+".png")
-		if err := tt.Click(pick("换我来", "My turn")); err != nil {
+		if err := tt.Click(pick("接手", "My turn")); err != nil {
 			t.Fatal(err)
 		}
 		tt.Frame()
@@ -90,10 +90,10 @@ func TestWatchItBrowse(t *testing.T) {
 		}
 		app.Receive(protocol.ServerFrame{T: "live_turn", ID: "lv1", Turn: "agent"})
 		tt.Frame()
-		if !tt.HasText(pick("换我来", "My turn")) {
+		if !tt.HasText(pick("接手", "My turn")) {
 			t.Fatalf("%s: after handing back: %q", lang, tt.Texts())
 		}
-		if err := tt.Click(pick("关掉", "Close")); err != nil {
+		if err := tt.Click(pick("关闭", "Close")); err != nil {
 			t.Fatal(err)
 		}
 		tt.Frame()

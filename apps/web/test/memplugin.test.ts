@@ -8,9 +8,9 @@ test("the line per state, in zh and en, never claiming more than the check knows
   let L = strings("zh");
   const memWords = (m: any) => words(L, m);
   expect(memWords({ state: "installed", version: "0.7.34" })).toEqual({ line: "Nowledge Mem 已装 · 0.7.34" });
-  expect(memWords({ state: "absent" })).toEqual({ line: "Nowledge Mem 没装", action: "装上" });
-  expect(memWords({ state: "review", why: "multiple" })).toEqual({ line: "Nowledge Mem 装了不止一份，要看一下", action: "理一下" });
-  expect(memWords({ state: "absent", taskId: "t1" })).toEqual({ line: "正在装 Nowledge Mem…" });
+  expect(memWords({ state: "absent" })).toEqual({ line: "Nowledge Mem 没装", action: "安装" });
+  expect(memWords({ state: "review", why: "multiple" })).toEqual({ line: "Nowledge Mem 装了不止一份，需要检查", action: "检查" });
+  expect(memWords({ state: "absent", taskId: "t1" })).toEqual({ line: "正在安装 Nowledge Mem…" });
   L = strings("en");
   expect(memWords({ state: "update" })).toEqual({ line: "Nowledge Mem has an update", action: "Update" });
   expect(memWords({ state: "review", why: "unclear" }).line).toBe("Can't tell if Nowledge Mem is set up; worth a look");

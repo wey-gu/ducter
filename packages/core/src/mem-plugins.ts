@@ -163,7 +163,7 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
       question: zh
         ? `${deviceName} 上的 ${agent} 还没装 Nowledge Mem。装上以后，我在那儿做事和你自己用 ${agent} 时都记得你；会改 ${agent} 自己的设置。`
         : `${agent} on ${deviceName} doesn't have Nowledge Mem. With it, my work there and your own ${agent} sessions both remember you; it changes ${agent}'s own settings.`,
-      goLabel: zh ? "装上" : "Install",
+      goLabel: zh ? "安装" : "Install",
       // Recommended, never applied by itself: Go is the suggestion, and it waits for the tap (no timer).
       defaultOption: "go",
       reversible: true,
@@ -192,7 +192,7 @@ export function createMemPlugins(d: MemPluginsDeps): MemPlugins {
     try {
       const card = await runner.openTask({
         persona: d.persona.id,
-        title: zh ? `给 ${dev.name} 上的 ${agent} 装上 Nowledge Mem` : `Install Nowledge Mem for ${agent} on ${dev.name}`,
+        title: zh ? `为 ${dev.name} 上的 ${agent} 安装 Nowledge Mem` : `Install Nowledge Mem for ${agent} on ${dev.name}`,
         brief: memSetupBrief({ agent, host, device: dev.name, zh }),
         place: dev.home ? { kind: "none" } : { kind: "none", device: dev.id },
         harness: body.harness,

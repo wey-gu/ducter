@@ -218,7 +218,7 @@ on every computer, without owning it (D17):
   only what the check knows: every answer carries "runtime loading is not verified", which
   alone never makes a review; the check's own `review`, several copies, or an install it
   can't call enabled does. `update` shows only when the check says so.
-- **装上 / Install** asks in place what it changes, then opens one task on that computer with
+- **安装 / Install** asks in place what it changes, then opens one task on that computer with
   that agent (else any agent signed in there), with the user's own setup, origin "you": it
   follows https://mem.nowledge.co/SKILL.md for that host only, never guesses a URL or key,
   asks for a connect link when Mem isn't connected there, verifies with the check, and says

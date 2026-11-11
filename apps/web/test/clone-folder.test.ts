@@ -83,7 +83,7 @@ describe("Add from a Git address (D204)", () => {
       no_access: "hel 没有这个仓库的权限：先在 hel 上登录 git，再试一次。",
       not_found: "找不到这个仓库，或者 hel 没有它的权限。",
       network: "hel 连不上那个地址。",
-      timeout: "克隆超过 10 分钟，停下了。",
+      timeout: "克隆超过 10 分钟，已停止。",
       invalid: "这不像 Git 地址。试试 https://…、git@…:主人/仓库 或 主人/仓库。",
       offline: "hel 现在连不上。",
       old: "hel 上的 Ducter 需要更新，才能这样做。",

@@ -512,7 +512,7 @@ notes (found on 0.0.7: "Your tasks know which computer to run on / With more tha
 release mirror on loopback; any other address is ignored.
 
 **Never "latest" without when (D160).** The cards say **已经是最新的 · 3 小时前查过 / Up to date ·
-checked 3 h ago** (刚查过 / checked just now under 2 min) with a quiet **现在检查 / Check now**
+checked 3 h ago** (刚查过 / checked just now under 2 min) with a quiet **检查更新 / Check now**
 (`device_update {check:true}`). The answer is read again: when a `devices` request comes (Devices
 or Updates and about opened) and it is older than 15 min (`Updates.freshen`); and at once when a
 device says it runs a version newer than the latest known (`Updates.sawVersion`: the home itself
@@ -1001,7 +1001,7 @@ the *secret*. The model never sees passwords, card numbers or one-time codes.
   profile lets the user sign out of any site.
 - **Per-site policy:** draft-first for posting, rate limits with jitter, and a stop after two
   consecutive write errors. A Grok-bot user's X account was frozen after its scheduled retries.
-- **Audit:** every fill, every Go and every OK is a line of Autofill's **用在了哪儿 / Where it
+- **Audit:** every fill, every Go and every OK is a line of Autofill's **使用记录 / Where it
   was used** (D191); every write goes through its Go card.
 - **Open:** whether the encrypted volume survives a gVisor sandbox restart; filling through
   cua-driver (only Ducter's own browser fills today).

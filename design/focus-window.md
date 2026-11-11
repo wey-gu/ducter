@@ -163,7 +163,7 @@ hold, and saves it with `rule_save` on Go.
 
 **Rules as built.** Said in the conversation and saved by the partner (`rule_save`, after it
 restated the rule); kept in `rules.json` in the data folder; listed on Partner as **你的规则 /
-Your rules** with **不要这条 / Remove**. No rule editor.
+Your rules** with **删除 / Remove**. No rule editor.
 
 **When quota runs out mid-task:**
 1. Wait, if the reset is soon.
@@ -193,7 +193,7 @@ What the window writes is what the user reads when they open the task, in one co
   Error** with the line as logged on hover; every other line the runner logs (session started,
   memory recalled, a retry, archiving, a restart) says nothing;
 - a **message the user sends** carries a receipt only when it says something: **在发… /
-  Sending…**, queued **它忙完手上的就看 / It'll read this once it's done with what it's doing**,
+  Sending…**, queued **它忙完手上的事就会看到 / It'll read this once it's done with what it's doing**,
   or **没送到 / Didn't get through**; steered in or started at once, the foot over the composer
   shows it at work (D207, D210); a queued one reads **排队中 / Queued** until the window answers;
 - **checkpoints** are the window's words said once, marked saved (D152);

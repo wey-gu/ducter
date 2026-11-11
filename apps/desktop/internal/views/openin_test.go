@@ -67,7 +67,7 @@ func TestOpenInMenu(t *testing.T) {
 		want := []string{L.T("task.open.finder"), "-", L.T("task.open.editor", "Zed"), L.T("task.open.editor", "Cursor"),
 			"-", L.T("task.open.in", "Ghostty"), L.T("task.open.terminal"), L.T("task.open.in", "iTerm2")}
 		wantWords := map[i18n.Lang][]string{
-			i18n.ZH: {"在 Finder 中显示", "-", "用 Zed 打开", "用 Cursor 打开", "-", "在 Ghostty 里打开", "在终端里打开", "在 iTerm2 里打开"},
+			i18n.ZH: {"在访达中显示", "-", "用 Zed 打开", "用 Cursor 打开", "-", "在 Ghostty 里打开", "在终端里打开", "在 iTerm2 里打开"},
 			i18n.EN: {"Show in Finder", "-", "Open in Zed", "Open in Cursor", "-", "Open in Ghostty", "Open in Terminal", "Open in iTerm2"},
 		}[lang]
 		if !reflect.DeepEqual(want, wantWords) {

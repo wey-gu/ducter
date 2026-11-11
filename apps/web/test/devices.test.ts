@@ -21,9 +21,9 @@ describe("your devices (D148)", () => {
     expect(A.reach?.clients.map((c) => c.name)).toEqual(["iPhone"]);
     expect(behind(A.devices![0]!.update)).toBe(true);
     expect(phaseLine({ current: "0.0.3", available: true, how: "self", phase: "downloading", to: "0.0.4", progress: 0.4 })).toBe("在下载 0.0.4… 40%");
-    expect(phaseLine({ current: "0.0.3", available: true, how: "self", phase: "waiting" })).toBe("等手头的事停好…");
-    expect(phaseLine({ current: "0.0.4", available: false, how: "self", phase: "done", to: "0.0.4" })).toBe("回来了，现在是 0.0.4");
-    expect(phaseLine({ current: "0.0.3", available: true, how: "self", phase: "failed", from: "0.0.3", rolledBack: true })).toBe("没更新成，已经换回 0.0.3");
+    expect(phaseLine({ current: "0.0.3", available: true, how: "self", phase: "waiting" })).toBe("等手头的事停下…");
+    expect(phaseLine({ current: "0.0.4", available: false, how: "self", phase: "done", to: "0.0.4" })).toBe("已更新到 0.0.4");
+    expect(phaseLine({ current: "0.0.3", available: true, how: "self", phase: "failed", from: "0.0.3", rolledBack: true })).toBe("没能更新，已经换回 0.0.3");
     // Under way: no dot (the step says it), and no second tap.
     expect(behind({ current: "0.0.3", latest: "0.0.4", available: true, how: "self", phase: "restarting" })).toBe(false);
   });

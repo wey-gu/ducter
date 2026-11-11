@@ -98,6 +98,13 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 
 ## Partner and tasks (`design/plan/v1-tonight.md` "Known gaps", `research/30`)
 
+- [ ] **The persona's one stale button word (D214)**: rule 15 says On hand keeps a missed wait
+      "with 接着等 / Keep waiting"; the button is 继续等 now. Not changed alone because a persona
+      change needs a fresh eval (D175). Trigger: the next persona change, in the same run.
+- [ ] **The zh pass, round two (D214)**: the agent's English step titles inside zh chrome (D211's
+      recommendation), and an audit of the CLI's long help lines with a native reader. Trigger:
+      the author's review of D214.
+
 - [ ] **The opened task, after D210** (`research/58`): (1) a step under way: Ducter's Log has a
       tool call only once it is done, so the foot names the latest finished step; a "running"
       line needs the runner to log a tool's start (OAR's item started events). Trigger: a live
@@ -851,7 +858,7 @@ Codex first, once OAR is near 1.0. See `research/17`.
       wasn't reproduced. Trigger: the next time it happens, read the task's Log.
 - [ ] D127's step table was built from the shapes the author's App Store Connect run showed and
       from OAR's per-runtime tool names; check it against a live Codex computer-use run and a pi
-      run, and add what reads as **用了 / Used {tool}**. Trigger: the next live dogfood run.
+      run, and add what reads as **使用 / Used {tool}**. Trigger: the next live dogfood run.
 - [ ] Older Logs have no thinking headings (`task_event.thinking` is new); a session resumed
       across the change shows Thinking lines only from then on. Trigger: none needed.
 - [ ] D138: the browser's cua-driver spawns (`packages/runner/src/browser.ts`) still inherit the

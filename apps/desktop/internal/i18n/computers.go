@@ -32,8 +32,8 @@ var zhComputers = Table{
 	"work.mac.title":              "让这台 Mac 也替 %s 做事",
 	"work.mac.note.off":           "%s 能把事派到这台 Mac 上，用这里登录的 AI（Claude Code 这些）和这里的代码仓库。它只做事，看不到你们的对话。",
 	"work.mac.note.on":            "在后台运行：登录时自己开始，停了会自己重启。日志在 %s。",
-	"work.mac.starting":           "在连上…",
-	"work.mac.stopping":           "在停下…",
+	"work.mac.starting":           "正在连接…",
+	"work.mac.stopping":           "正在停止…",
 	"work.mac.err":                "没能开始：%s",
 	"work.mac.err.notoken":        "这个连接没有设备令牌（本机隧道），在终端里用 ducter worker 连。",
 }

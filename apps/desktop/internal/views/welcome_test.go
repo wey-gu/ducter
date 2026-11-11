@@ -108,8 +108,8 @@ func TestFirstScreenGreetsInThePartnersName(t *testing.T) {
 		composer   string
 		noDevLinks bool
 	}{
-		{i18n.ZH, firstNew, "早上好呀，我是小鸭。", "查点东西、记件事、到点提醒你，说一句就行。需要你的时候，我再来问你。", "跟小鸭说", true},
-		{i18n.ZH, firstDev, "早上好呀，小鸭在呢。", "邮件、电脑上的文件、代码，都可以交给我。需要你的时候，我再来问你。", "跟小鸭说", true},
+		{i18n.ZH, firstNew, "早上好，我是小鸭。", "查点东西、记件事、到点提醒你，说一句就行。需要你的时候，我再来问你。", "跟小鸭说", true},
+		{i18n.ZH, firstDev, "早上好，小鸭在呢。", "邮件、电脑上的文件、代码，都可以交给我。需要你的时候，我再来问你。", "跟小鸭说", true},
 		{i18n.EN, firstNew, "Good morning, I'm 小鸭.", "Ask me to look something up, keep track of things or remind you on time. I'll come to you only when it needs you.", "Talk to 小鸭", true},
 	} {
 		h := firstScreen(t, c.lang, "小鸭", c.f, true)
@@ -127,12 +127,12 @@ func TestFirstScreenGreetsInThePartnersName(t *testing.T) {
 	}
 	// Before the home's words arrive (or from an older Ducter): everyday ones.
 	h := firstScreen(t, i18n.ZH, "Ducter", nil, true)
-	h.has("早上好呀，我是 Ducter。", "你能帮我做些什么？举三个例子", "明早 9 点提醒我回邮件")
+	h.has("早上好，我是 Ducter。", "你能帮我做些什么？举三个例子", "明早 9 点提醒我回邮件")
 }
 
 func TestFirstScreenGreetingFollowsTheClock(t *testing.T) {
 	h := firstScreen(t, i18n.ZH, "小鸭", firstNew, true)
-	for hour, want := range map[int]string{7: "早上好呀，我是小鸭。", 12: "中午好呀，我是小鸭。", 15: "下午好呀，我是小鸭。", 20: "晚上好呀，我是小鸭。", 1: "这么晚还没睡呀？我是小鸭。"} {
+	for hour, want := range map[int]string{7: "早上好，我是小鸭。", 12: "中午好，我是小鸭。", 15: "下午好，我是小鸭。", 20: "晚上好，我是小鸭。", 1: "这么晚还没睡？我是小鸭。"} {
 		h.app.Now = func() time.Time { return time.Date(2026, 11, 10, hour, 0, 0, 0, time.Local) }
 		if got := h.app.greeting(); got != want {
 			t.Errorf("%d h: %q, want %q", hour, got, want)
@@ -151,11 +151,11 @@ func TestFirstScreenStarterFillsTheComposer(t *testing.T) {
 
 func TestFirstScreenNewsOpensTheResult(t *testing.T) {
 	h := firstScreen(t, i18n.ZH, "小鸭", firstNews, true)
-	h.has("早上好呀，小鸭在呢。", autospace("「整理十月的发票」做好了，结果在这儿。"))
+	h.has("早上好，小鸭在呢。", autospace("「整理十月的发票」做好了，结果在这儿。"))
 	if h.tt.HasText(autospace(h.app.words(firstNews.Line))) {
 		t.Error("the news replaces the line, not both")
 	}
-	h.click("去看看")
+	h.click("查看")
 	if h.app.Route != RouteTask || h.app.TaskID != "t-invoices" {
 		t.Errorf("route %v task %q", h.app.Route, h.app.TaskID)
 	}
@@ -163,7 +163,7 @@ func TestFirstScreenNewsOpensTheResult(t *testing.T) {
 	n := *firstNews
 	n.News = &protocol.FirstNews{Kind: "missed", Words: w("「PR #9950 的检查都过」没等到。要接着等吗？", `“PR #9950's checks pass” didn't happen. Keep waiting?`)}
 	h = firstScreen(t, i18n.ZH, "小鸭", &n, true)
-	h.click("去看看")
+	h.click("查看")
 	if h.app.Route != RouteOnHand {
 		t.Errorf("route %v", h.app.Route)
 	}

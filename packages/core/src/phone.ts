@@ -573,10 +573,10 @@ export function openPhone(deps: PhoneDeps): Phone {
   function langOf(lang: "zh" | "en") {
     return {
       question: (name: string) => (lang === "zh" ? `打给 ${name}？` : `Call ${name}?`),
-      go: lang === "zh" ? "打过去" : "Call",
+      go: lang === "zh" ? "拨打" : "Call",
       // D208: a card that waits for the callee's hours: Go is "then", 现在就打 / Call now is beside it.
-      then: lang === "zh" ? "到点再打" : "Call then",
-      now: lang === "zh" ? "现在就打" : "Call now",
+      then: lang === "zh" ? "到时拨打" : "Call then",
+      now: lang === "zh" ? "立即拨打" : "Call now",
       us: lang === "zh" ? "这是美国的私人号码时，对方得事先同意接 AI 的电话。" : "If this is a private US mobile, the person must have agreed to AI calls.",
       cn: lang === "zh" ? "打到中国大陆的号码，多半接不通。" : "Calls to mainland China numbers likely won't connect.",
     };

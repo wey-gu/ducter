@@ -296,7 +296,7 @@ export function createRoutines(opts: {
       stream: "channel",
       origin: "schedule",
       kind: "decision",
-      body: { decisionId, question: zh ? `例行「${s.r.name}」到期了，还要吗？` : `The routine "${s.r.name}" is up for review. Keep this?`, goLabel: zh ? "留着" : "Keep it", defaultOption: "hold", reversible: true, routineId: s.r.routineId },
+      body: { decisionId, question: zh ? `例行「${s.r.name}」到期了，还要吗？` : `The routine "${s.r.name}" is up for review. Keep this?`, goLabel: zh ? "保留" : "Keep it", defaultOption: "hold", reversible: true, routineId: s.r.routineId },
     });
   }
 

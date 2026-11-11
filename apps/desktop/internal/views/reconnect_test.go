@@ -176,7 +176,7 @@ func TestActingResolvesFromLog(t *testing.T) {
 }
 
 func TestUnsureCopy(t *testing.T) {
-	if got := i18n.New(i18n.ZH).T("result.unsure"); got != "不确定成没成，你看一眼" {
+	if got := i18n.New(i18n.ZH).T("result.unsure"); got != "不确定成功了没有，你看一眼" {
 		t.Errorf("zh %q", got)
 	}
 	if got := i18n.New(i18n.EN).T("result.unsure"); got != "Not sure it went through — check" {

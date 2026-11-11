@@ -331,7 +331,7 @@ func TestFailedPictureKeepsTheWords(t *testing.T) {
 	}
 	tt := mediaTester(app, 1100, 900)
 	all := texts(tt)
-	if !strings.Contains(all, "看下这个") || !strings.Contains(all, "没发出去") {
+	if !strings.Contains(all, "看下这个") || !strings.Contains(all, "没能发送") {
 		t.Fatalf("the failed message doesn't show its words and the line: %q", all)
 	}
 	h.fail = false
@@ -407,15 +407,15 @@ func TestNoImagesLine(t *testing.T) {
 	app.OpenNewTask(nil)
 	app.nt.whoOpen = true
 	tt := mediaTester(app, 1280, 900)
-	if strings.Contains(texts(tt), "看不了图片") {
+	if strings.Contains(texts(tt), "无法显示图片") {
 		t.Errorf("the line shows with no pictures on the card")
 	}
 	app.AddPicture("nt", pngBytes(phoneShot()), "")
 	app.nt.whoOpen = true
 	tt.Frame()
 	tt.Frame()
-	if !strings.Contains(texts(tt), "看不了图片") {
-		t.Errorf("no 看不了图片 for DeepSeek Harness: %q", texts(tt))
+	if !strings.Contains(texts(tt), "无法显示图片") {
+		t.Errorf("no 无法显示图片 for DeepSeek Harness: %q", texts(tt))
 	}
 }
 

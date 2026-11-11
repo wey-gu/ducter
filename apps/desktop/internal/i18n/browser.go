@@ -4,13 +4,13 @@ package i18n
 // The same keys and words as the phone (apps/web/src/i18n.ts). Glossary:
 // design/product-model.md (换我来 / My turn, 还给它 / Hand it back).
 var zhBrowser = Table{
-	"live.watch":          "看看",
+	"live.watch":          "查看",
 	"live.watch.title":    "看它上网",
 	"live.using":          "%s 正在用它",
 	"live.on":             "在 %s 上",
-	"live.myturn":         "换我来",
+	"live.myturn":         "接手",
 	"live.handback":       "还给它",
-	"live.close":          "关掉",
+	"live.close":          "关闭",
 	"live.forward":        "前进",
 	"live.yourturn":       "现在你在用。它看不见这个页面，也不会动它。",
 	"live.yourturn.short": "你在用 · 它看不见",
@@ -23,12 +23,12 @@ var zhBrowser = Table{
 	"live.doing.read":     "正在看这一页",
 	"live.doing.click":    "正在点「%s」",
 	"live.doing.click.0":  "正在点",
-	"live.doing.type":     "正在往「%s」里填",
+	"live.doing.type":     "正在填写「%s」",
 	"live.doing.type.0":   "正在输入",
 	"live.doing.press":    "正在按 %s",
 	"live.doing.scroll":   "正在翻页",
 	"live.doing.back":     "正在后退",
-	"live.doing.tab":      "换到了另一个标签页",
+	"live.doing.tab":      "切换到了另一个标签页",
 	"live.doing.shot":     "正在截图",
 }
 

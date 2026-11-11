@@ -770,7 +770,7 @@ describe("X1 / D164, D170: the user's own agents ask the user through the partne
       await t.partner.idle();
     }
     expect(offers().length).toBe(1);
-    expect((offers()[0]!.body as Bodies["decision"]).question).toBe("以后你的 terminal-claude 发来的活，直接接？");
+    expect((offers()[0]!.body as Bodies["decision"]).question).toBe("以后你的 terminal-claude 发来的事，直接接下？");
     t.tap((offers()[0]!.body as Bodies["decision"]).decisionId, "go");
     await t.partner.idle();
     expect(peers.trusted).toEqual(["terminal-claude"]);

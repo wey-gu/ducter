@@ -44,7 +44,7 @@ func lastAdd(sent *[]any) (protocol.ConnectionAdd, bool) {
 
 func TestOomolHostedForm(t *testing.T) {
 	app, sent, tt, opened := hostedForm(t, i18n.ZH)
-	for _, want := range []string{"在 OOMOL 登录，把 Gmail、Discord 这些账号连上。", "去 OOMOL 连账号", "在 OOMOL 控制台新建一把钥匙。", "去拿钥匙", "钥匙", "显示"} {
+	for _, want := range []string{"在 OOMOL 登录，把 Gmail、Discord 这些账号连上。", "去 OOMOL 连账号", "在 OOMOL 控制台新建一个密钥。", "获取密钥", "密钥", "显示"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q", want)
 		}
@@ -55,7 +55,7 @@ func TestOomolHostedForm(t *testing.T) {
 	if tt.HasText("Access") || tt.HasText("Create Token") {
 		t.Errorf("the hosted steps still name OpenConnector's Access page")
 	}
-	tt.Click("去拿钥匙")
+	tt.Click("获取密钥")
 	tt.Click("去 OOMOL 连账号")
 	if len(*opened) != 2 || (*opened)[0] != "https://console.oomol.com/api-key" || (*opened)[1] != "https://console.oomol.com/app-connections" {
 		t.Errorf("the links open %v", *opened)
@@ -63,22 +63,22 @@ func TestOomolHostedForm(t *testing.T) {
 
 	// Empty key: nothing is sent, and the field says so.
 	n := len(*sent)
-	tt.Click("检查并加上")
+	tt.Click("检查并添加")
 	tt.Frame()
 	if len(*sent) != n {
 		t.Errorf("an empty key was sent")
 	}
-	if !tt.HasText("先把钥匙填上。") {
+	if !tt.HasText("先填上密钥。") {
 		t.Errorf("no inline line for the empty key")
 	}
 
 	// A pasted key with a space and a line break: trimmed, sent to the hosted address.
 	app.partner.acctToken = "  api_abc123 \n"
 	tt.Frame()
-	if tt.HasText("先把钥匙填上。") {
+	if tt.HasText("先填上密钥。") {
 		t.Errorf("the empty-key line stays once a key is typed")
 	}
-	tt.Click("检查并加上")
+	tt.Click("检查并添加")
 	tt.Frame()
 	f, ok := lastAdd(sent)
 	if !ok || f.URL != hostedConnector || f.Token != "api_abc123" {
@@ -91,7 +91,7 @@ func TestOomolHostedForm(t *testing.T) {
 
 func TestOomolHostedOutcomes(t *testing.T) {
 	refusals := map[string]string{
-		"unauthorized": "钥匙不对或已失效，换一把新的。",
+		"unauthorized": "密钥不对或已失效，换一个新的。",
 		"not_mcp":      "这个地址上没有 Ducter 能用的账号服务，看看地址对不对。",
 		"unreachable":  "连不上这个地址。看看网络，过一会儿再试。",
 	}
@@ -107,7 +107,7 @@ func TestOomolHostedOutcomes(t *testing.T) {
 		if app.partner.toast != "" {
 			t.Errorf("%s: a refusal went to the done-look toast", reason)
 		}
-		if (reason == "unauthorized") != (tt.HasText("去拿钥匙") && app.partner.acctErr == "unauthorized") {
+		if (reason == "unauthorized") != (tt.HasText("获取密钥") && app.partner.acctErr == "unauthorized") {
 			t.Errorf("%s: Get a key beside the refusal is only for a refused key", reason)
 		}
 	}

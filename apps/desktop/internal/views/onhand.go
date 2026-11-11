@@ -22,23 +22,12 @@ func (a *App) onHand(c *ui.Context) {
 		a.chromeTitle(c, a.L.T("onhand.title"))
 		ui.Text(c, a.summary(b)).FontSize(t.XS).TextColor(t.InkMuted).SingleLine().Shrink(1).MinWidth(0).Margin(0, 0, 0, 4)
 	}, func() {
-		// 按状态 / 按项目 (D128): remembered on this Mac, not a setting.
-		if !a.boardEmpty(b) {
-			by := 0
-			if a.Local.ByProject() {
-				by = 1
-			}
-			ui.Row(c.Key("onhand-by")).Shrink(0).Children(func() {
-				if i := a.choices(c, "onhand-by", a.L.T("onhand.by"), []string{a.L.T("onhand.by.state"), a.L.T("onhand.by.project")}, by); i >= 0 {
-					a.Local.SetByProject(i == 1)
-				}
-			})
-		}
-		// 开一件事 / New task: a quiet text button, never a FAB (D128).
+		// 新建 / New task: a quiet text button, never a FAB (D128).
 		if a.button(c, a.L.T("newtask.button"), btnText, t.ControlSM, t.Chrome) {
 			a.OpenNewTask(nil)
 		}
 	})
+	var find ui.Element
 	ui.Scroll(c).Grow(1).Children(func() {
 		ui.Column(c).Gap(t.S5).Padding(t.S5, t.S6, t.S6, t.S6).Children(func() {
 			if a.boardEmpty(b) && len(a.partnerDecisions()) == 0 && len(a.shownCalls()) == 0 {
@@ -48,43 +37,68 @@ func (a *App) onHand(c *ui.Context) {
 				})
 				return
 			}
-			a.forecastBand(c, b)
-			a.callRows(c) // D193: the calls, live and today's
-			if a.Local.ByProject() {
-				a.byProject(c, b)
-				a.routineShelf(c, true)
-				return
-			}
-			needs := len(b.Lanes[store.LaneNeedsYou]) + len(a.partnerDecisions())
-			if needs == 0 {
-				// Nothing needs the user: one warm line, not an empty lane.
-				line := a.L.T("onhand.calm")
-				if n := len(b.Lanes[store.LaneWorking]); n > 0 {
-					line = a.L.T("onhand.calm.working", a.S.PersonaName, n)
+			// D216: one list on the wide measure, as the phone and the web draw it.
+			ui.Column(c.Key("list")).Gap(t.S5).Width(960).MaxWidthPercent(100).AlignSelf(ui.Center).Children(func() {
+				a.forecastBand(c, b)
+				n := 0
+				for _, l := range b.Lanes {
+					n += len(l)
 				}
-				ui.Row(c.Key("calm")).Gap(t.S3).Padding(t.S4, t.S5).Radius(t.RadiusLG).Background(t.Done.Surface).AlignItems(ui.Center).Children(func() {
-					a.glyph(c, 22, drawCheck(t.Done.Ink))
-					ui.Text(c, line).FontSize(t.MD).FontWeight(600).TextColor(t.Done.Ink)
-				})
-			}
-			ui.Row(c).Gap(t.S5).Wrap().AlignItems(ui.Start).Children(func() {
-				// Only lanes with something in them; empty ones collapse.
-				if needs > 0 {
-					a.lane(c, store.LaneNeedsYou, b.Lanes[store.LaneNeedsYou], 2, 400)
+				canBy := boardProjects(b) >= projectsFrom
+				if n >= findFrom || canBy {
+					ui.Row(c.Key("tools")).Gap(t.S3).AlignItems(ui.Center).Children(func() {
+						if n >= findFrom {
+							find = a.findField(c)
+						} else {
+							ui.Spacer(c)
+						}
+						// 按状态 / 按项目 (D128): remembered on this Mac, not a setting.
+						if canBy {
+							by := 0
+							if a.Local.ByProject() {
+								by = 1
+							}
+							ui.Row(c.Key("onhand-by")).Shrink(0).Children(func() {
+								if i := a.choices(c, "onhand-by", a.L.T("onhand.by"), []string{a.L.T("onhand.by.state"), a.L.T("onhand.by.project")}, by); i >= 0 {
+									a.Local.SetByProject(i == 1)
+								}
+							})
+						}
+					})
 				}
-				if len(b.Lanes[store.LaneWorking]) > 0 {
-					a.lane(c, store.LaneWorking, b.Lanes[store.LaneWorking], 1, 240)
+				a.callRows(c) // D193: the calls, live and today's
+				if canBy && a.Local.ByProject() {
+					a.oh.order = a.oh.order[:0]
+					a.byProject(c, b)
+					a.routineShelf(c, true)
+					return
 				}
-				if len(b.Lanes[store.LaneWaiting]) > 0 || len(a.looseWaiters()) > 0 {
-					a.lane(c, store.LaneWaiting, b.Lanes[store.LaneWaiting], 1, 220)
-				}
-				if len(b.Lanes[store.LaneDone]) > 0 || len(a.S.MissedToday(time.Now())) > 0 {
-					a.lane(c, store.LaneDone, b.Lanes[store.LaneDone], 1, 260)
-				}
+				a.onHandList(c, b)
+				a.routineShelf(c, false)
 			})
-			a.routineShelf(c, false)
 		})
 	})
+	a.onHandKeys(c, find)
+}
+
+// boardProjects is how many projects the board's tasks are in.
+func boardProjects(b store.Board) int {
+	seen := map[string]bool{}
+	for _, l := range b.Lanes {
+		for _, task := range l {
+			name := task.Project()
+			if p := task.Place(); name == "" && p.Kind == "repo" {
+				name = strings.TrimRight(p.RepoPath, "/")
+				if i := strings.LastIndex(name, "/"); i >= 0 {
+					name = name[i+1:]
+				}
+			}
+			if name != "" {
+				seen[name] = true
+			}
+		}
+	}
+	return len(seen)
 }
 
 // partnerDecisions are the open decisions of no task: the partner's own

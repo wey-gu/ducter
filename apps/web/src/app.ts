@@ -50,7 +50,7 @@ export function morph(apply: () => void) {
 }
 /** Settings (D150) is a list of sections; page is the one pushed ("" is the list). */
 export type SettingsPage = "" | "partner" | "notify" | "accounts" | "autofill" | "devices" | "phone";
-export type Sheet = { kind: "decision"; id: string } | { kind: "settings"; page?: SettingsPage } | { kind: "newtask" } | null;
+export type Sheet = { kind: "decision"; id: string } | { kind: "settings"; page?: SettingsPage } | { kind: "newtask" } | { kind: "switch" } | null;
 
 /** 开一件事 / New task's sheet (D128): what the user chose and typed, and how starting went. */
 export interface NewTaskDraft {
@@ -703,6 +703,12 @@ class AppState {
       return this.openNewTask(task ? placeOf(task) : undefined);
     }
     if (c === "conv") return (this.sheet = null), this.go({ name: c });
+    // D216: ⌘O, 打开一件事 / Open a task: the switcher (pressed again, closed).
+    if (c === "switch") {
+      if (this.sheet?.kind === "newtask") return;
+      this.sheet = this.sheet?.kind === "switch" ? null : { kind: "switch" };
+      return this.changed();
+    }
     if (c === "onhand") {
       this.sheet = null;
       // D184: wide, ⌘2 is the Mac's On hand: the whole screen, and pressed again, back to the two

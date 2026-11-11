@@ -6,6 +6,7 @@
 
 import { starts } from "./i18n-starts.ts";
 import { phone } from "./i18n-phone.ts";
+import { onhandWords } from "./i18n-onhand.ts";
 
 export type Lang = "zh" | "en";
 
@@ -2458,7 +2459,7 @@ const accounts: Record<Lang, Record<string, string>> = {
 };
 
 import { autofill } from "./i18n-autofill.ts";
-export const TABLES: Record<Lang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh, ...where.zh, ...devcard.zh, ...accounts.zh, ...starts.zh, ...autofill.zh, ...phone.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en, ...where.en, ...devcard.en, ...accounts.en, ...starts.en, ...autofill.en, ...phone.en } };
+export const TABLES: Record<Lang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh, ...where.zh, ...devcard.zh, ...accounts.zh, ...starts.zh, ...autofill.zh, ...phone.zh, ...onhandWords.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en, ...where.en, ...devcard.en, ...accounts.en, ...starts.en, ...autofill.en, ...phone.en, ...onhandWords.en } };
 
 /** Drops a space between two Chinese characters (zh copy spaces around a name for Latin names). */
 /** D78: a space where a Chinese character touches a Latin letter or a digit ("住在%s 上" with "hel"). */

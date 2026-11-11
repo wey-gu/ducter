@@ -202,7 +202,8 @@ export interface Bodies {
   // media (D206): what a task showed, relayed with the partner's words about it.
   ai_msg: { text: string; replyTo?: number; decisionId?: string; media?: MediaRef[] };
   ack: { jobId: string; text: string; replyTo: number }; // names the action, never the outcome
-  job_status: { jobId: string; text: string; state: "running" | "done" | "failed"; taskId?: string };
+  // act, ref (D216): the line a user's Merge or Open draft PR logs, with the merge's commit or the PR's address.
+  job_status: { jobId: string; text: string; state: "running" | "done" | "failed"; taskId?: string; act?: "merge" | "open_pr"; ref?: string };
   living_msg: { items: LivingItem[] }; // supersedes the previous living_msg while unread
   decision: {
     decisionId: string;
@@ -488,6 +489,11 @@ export interface TaskCard {
   folder?: FolderSummary; // D142: non-git folder tasks, once counted (cached like changes)
   /** D190: the task holds Ducter's own browser on this computer ("local" or a device id), so it can be watched. */
   browsing?: { device: string };
+  /** D216: its latest step or words (a task_event, long fields cut), so On hand says what it is on
+   *  before a client holds the task's events. A client prefers a newer event it holds. */
+  latest?: LogEvent<"task_event">;
+  /** D216: what the user did with its branch from Ducter: merged it (ref: the commit) or opened a draft PR (ref: its address). */
+  integrated?: { act: "merge" | "open_pr"; ref?: string; at: string };
 }
 
 export interface OnHand {

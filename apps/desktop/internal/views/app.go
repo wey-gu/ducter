@@ -226,6 +226,8 @@ type App struct {
 	// a task opened by it or by `ducter open`.
 	nt   newTaskState
 	back *returnTo
+	// oh is On hand's list state (D216): the row the keys are on, Find, the switcher.
+	oh onHandState
 	// SystemLang is macOS's language, for Settings' "follow the system";
 	// OnLanguage is told when the window's language changes (the menus).
 	SystemLang i18n.Lang
@@ -433,6 +435,7 @@ func (a *App) View(c *ui.Context) {
 	}))
 	if a.S.Welcomed {
 		a.newTaskCard(c)
+		a.switcher(c) // D216: ⌘O, 打开一件事
 		a.liveView(c)
 	}
 	a.viewer(c) // D206: a picture, over everything
@@ -445,7 +448,15 @@ func (a *App) shortcuts(c *ui.Context) {
 	if a.nt.open {
 		return // the New task card has the keys (Esc closes it)
 	}
+	if a.oh.sw {
+		if c.Shortcut(ui.Cmd, ui.KeyO) || c.Shortcut(0, ui.KeyEscape) {
+			a.oh.sw = false
+		}
+		return // the switcher has the keys (D216)
+	}
 	switch {
+	case c.Shortcut(ui.Cmd, ui.KeyO):
+		a.OpenSwitcher()
 	case c.Shortcut(ui.Cmd, ui.KeyN):
 		a.NewTaskShortcut()
 	case c.Shortcut(ui.Cmd, ui.Key1):

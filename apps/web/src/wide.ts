@@ -83,3 +83,26 @@ export function escUp(e: KeyboardEvent) {
   const up = upFrom(A.route);
   if (up) A.go(up);
 }
+
+/** D216: room for On hand's rail beside a task at the whole screen (the rail, then the task's
+ *  720 column with its own room). Keep in step with `.with-rail` in static/app.css. */
+export const ROOMY = "(min-width: 1360px)";
+export function useRoomy(): boolean {
+  const q = () => (typeof matchMedia === "function" ? matchMedia(ROOMY) : undefined);
+  const [on, setOn] = useState(() => !!q()?.matches);
+  useEffect(() => {
+    const m = q();
+    if (!m) return;
+    const f = () => setOn(m.matches);
+    m.addEventListener("change", f);
+    return () => m.removeEventListener("change", f);
+  }, []);
+  return on;
+}
+
+/** D216: ⌘O (Ctrl+O elsewhere) opens the switcher, 打开一件事 / Open a task, as the app's menu does. */
+export function openKey(e: KeyboardEvent) {
+  if (e.key.toLowerCase() !== "o" || !(e.metaKey || e.ctrlKey) || e.shiftKey || e.altKey) return;
+  e.preventDefault();
+  A.command("switch");
+}

@@ -11,7 +11,8 @@ import { inApp, tellApp } from "./native.ts";
 import { startAutospace } from "./autospace.ts";
 import { Avatar, Conversation, OnHand, Sheets, TaskView, Toasts } from "./views.tsx";
 import { LiveView } from "./live.tsx";
-import { Board } from "./board.tsx";
+import { Board, Rail } from "./board.tsx";
+import { openKey, useRoomy } from "./wide.ts";
 import { escUp, useFill, useSplit, useWide } from "./wide.ts";
 
 const base = baseUrl();
@@ -47,11 +48,26 @@ function App() {
   // D184: On hand, or an opened task, can take the whole screen as the Mac shows it; the two
   // panes stay the default and come back in one move (⌘2, the header's button, Esc).
   const fill = useFill();
+  // D216: a task at the whole screen keeps On hand beside it as a rail when there is room.
+  const roomy = useRoomy();
   return (
     <>
       {fill ? (
         <div class={split ? `full ${split.kind}` : "full"}>
-          {r.name === "task" ? <TaskView key={r.id} id={r.id} full /> : <Board />}
+          {r.name === "task" ? (
+            roomy && !split ? (
+              <div class="with-rail">
+                <Rail />
+                <div class="beside-rail">
+                  <TaskView key={r.id} id={r.id} full />
+                </div>
+              </div>
+            ) : (
+              <TaskView key={r.id} id={r.id} full />
+            )
+          ) : (
+            <Board />
+          )}
         </div>
       ) : wide ? (
         <div class={split ? `panes ${split.kind}` : "panes"}>
@@ -199,6 +215,7 @@ function run(me: Me, had: string | undefined, device: string, glance?: Glance) {
   // The app's menus and hardware-keyboard shortcuts (⌘N, ⌘1…⌘4, ⌘, and ⌘K, as on the Mac; D176).
   (globalThis as { ducterCommand?: (c: string) => void }).ducterCommand = (c) => A.command(c);
   addEventListener("keydown", escUp);
+  addEventListener("keydown", openKey);
   addEventListener("popstate", () => A.fromHash());
   addEventListener("hashchange", () => A.fromHash());
   navigator.serviceWorker?.addEventListener("message", (e: MessageEvent) => {

@@ -44,6 +44,7 @@ struct PlaceCommands: Commands {
             Button(L("menu.devices")) { shell.command("devices") }.keyboardShortcut("3").disabled(!connected)
             Button(L("menu.partner")) { shell.command("partner") }.keyboardShortcut("4").disabled(!connected)
             Button(L("menu.composer", name)) { shell.command("composer") }.keyboardShortcut("k").disabled(!connected)
+            Button(L("menu.switch")) { shell.command("switch") }.keyboardShortcut("o").disabled(!connected)
             Divider()
         }
     }

@@ -152,6 +152,10 @@ func (a *App) taskActions(c *ui.Context, task *store.Task) {
 	if a.S.Browsing(task.ID) != "" && a.button(c, a.L.T("live.watch.title"), btnSecondary, t.ControlSM, t.Chrome) {
 		a.OpenWatch(task.ID)
 	}
+	// D214: it is using Ducter's phone: watch it (a minimal mount; the side panel takes it later).
+	if dev := a.S.Phoning(task.ID); dev != "" && a.button(c, a.L.T("phoneuse.watch"), btnSecondary, t.ControlSM, t.Chrome) {
+		a.OpenPhone(dev, task.ID, "", "watch")
+	}
 }
 
 // dropButton is Cancel task (不做了), in the foot beside Pause while the task

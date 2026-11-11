@@ -1287,6 +1287,7 @@ export function createPartner(core: CoreApi, runner: Runner, opts: PartnerOption
             app: { type: "string", description: 'A Mac app it works in ("Keynote", "Xcode")' },
             long: { type: "boolean", description: "Long or ongoing work (an hour or more, a loop, a wait): better on a computer that doesn't sleep" },
             draw: { type: "boolean", description: "It makes a picture (画一张…, draw, generate an image): only an agent that generates images takes it" },
+            phone: { type: "boolean", description: "It works in an app on a phone (用手机, 在某个 app 里…): Ducter's own phone, on the computer that has 用手机 / Use a phone" },
           },
         },
         project: { type: "string" },
@@ -2675,6 +2676,7 @@ export function parseNeeds(raw: unknown): TaskNeeds | undefined {
     ...(str(r.app) ? { app: str(r.app) } : {}),
     ...(r.long === true ? { long: true } : {}),
     ...(r.draw === true ? { draw: true } : {}),
+    ...(r.phone === true ? { phone: true } : {}),
   };
   return Object.keys(n).length ? n : undefined;
 }

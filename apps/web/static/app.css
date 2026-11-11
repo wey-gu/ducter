@@ -5589,3 +5589,28 @@ dl.call-summary dd { margin: 0; }
     transition: none;
   }
 }
+
+/* D214 · Ducter's phone. The live view is D190's (.live) with the screen shown as a phone's: its
+   own rounded glass on the sunken page, the Android keys under it in the user's turn. */
+.phone-live .phone-page { align-items: center; padding: var(--s3) var(--s3) 0; box-sizing: border-box; }
+.phone-live .phone-page img.phone-screen { max-height: 100%; max-width: 100%; border-radius: var(--r-xl); box-shadow: var(--base); background: #000; }
+.phone-live.embedded { position: relative; inset: auto; z-index: auto; height: 100%; padding: 0; }
+.phone-keys { flex: none; display: flex; justify-content: center; gap: var(--s5, 28px); padding: 4px 12px 0; background: var(--sunken); }
+.phone-keys .btn { min-width: 52px; color: var(--ink-soft); }
+.phone-block .phone-bar { height: 6px; margin: 8px 0 4px; border-radius: 3px; background: var(--line-soft); overflow: hidden; }
+.phone-block .phone-bar > span { display: block; height: 100%; border-radius: 3px; background: var(--accent); transition: width 400ms var(--ease, ease-out); }
+.sheet.phone-install .phone-install-art { display: block; width: 64px; height: auto; margin: 4px auto 6px; }
+.sheet.phone-install h2 { text-align: center; }
+.sheet.phone-install .lede { margin: 0 0 var(--s3); font-size: var(--sm); line-height: 1.55; color: var(--ink-soft); text-align: center; }
+.phone-facts { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 0 0 var(--s3); font-size: var(--sm); line-height: 1.45; }
+.phone-facts dt { color: var(--ink-muted); }
+.phone-facts dd { margin: 0; color: var(--ink); }
+.phone-lic { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 12px; background: var(--bg); }
+.phone-lic-head { display: flex; width: 100%; align-items: baseline; gap: 10px; padding: 8px 0; border: 0; background: none; color: var(--ink); font: inherit; font-size: var(--sm); font-weight: 700; text-align: left; cursor: pointer; }
+.phone-lic-head > span { flex: 1; min-width: 0; }
+.phone-lic-head > small { flex: none; color: var(--accent-ink, var(--ink-muted)); font-weight: 700; }
+.phone-lic-text { max-height: 220px; overflow: auto; margin: 4px 0 6px; padding: 8px 10px; border-radius: var(--r-sm); background: var(--surface); font: inherit; font-size: var(--xs); line-height: 1.5; white-space: pre-wrap; color: var(--ink-soft); }
+.phone-agree { display: flex; align-items: flex-start; gap: 8px; margin-top: 6px; font-size: var(--sm); line-height: 1.45; color: var(--ink); cursor: pointer; }
+.phone-agree input { margin-top: 3px; accent-color: var(--accent); }
+.sheet.phone-install .btns { display: flex; gap: 10px; margin-top: var(--s3); }
+.sheet.phone-install .btns .btn { flex: 1; }

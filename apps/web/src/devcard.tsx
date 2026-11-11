@@ -3,6 +3,7 @@
 // status line, its AI agents as coins whose detail opens in place, its abilities as chips, one
 // line of how it is connected (⋯ opens the connections in place), Ducter's version only with an
 // update, one 断开这台 {device}. Every control here is a shared one (controls.tsx).
+import { PhoneBlock, PhoneInfo, startInstall } from "./phone-use.tsx";
 import type { DeviceHarness, DeviceUpdate, DeviceView } from "@ducter/protocol";
 import { TRY_LIVE } from "@ducter/protocol";
 import { Fragment, type ComponentChildren } from "preact";
@@ -387,7 +388,7 @@ function Chips({ dv }: { dv: DeviceView }) {
   const chips = chipsFor(dv);
   if (!chips.length) return null;
   const web = dv.abilities.find((a) => a.id === "web");
-  const about = (id: string) => (id === "web" && web?.where === "chrome" ? "ability.web.about.chrome" : id === "web" && web?.where === "ducter" ? "ability.web.about.ducter" : `ability.${id}.about`);
+  const about = (id: string) => (id === "web" && web?.where === "chrome" ? "ability.web.about.chrome" : id === "web" && web?.where === "ducter" ? "ability.web.about.ducter" : id === "phone" && chips.find((c) => c.id === id)?.look === "later" ? "ability.phone.later" : `ability.${id}.about`);
   const set = (id: string, on: boolean) => A.send({ t: "ability", device: dv.id, ability: id as "web", on });
   const look = (id: string) => chips.find((c) => c.id === id)?.look;
   return (
@@ -405,6 +406,8 @@ function Chips({ dv }: { dv: DeviceView }) {
             onClick={() => {
               // D199: 打电话 lives in Accounts (the phone card); + starts the same Tuwa sign-in as its offer.
               if (c.id === "call") return A.openCalls(c.look === "add");
+              // D214: + 用手机 opens what it downloads and Google's licenses; on, the ⓘ says where it lives.
+              if (c.id === "phone") return c.look === "add" || c.look === "fail" ? startInstall(dv.id) : setInfo(info === c.id ? "" : c.id);
               if (c.look === "later" || c.id === "remote" || c.look === "off" || c.look === "fail") return setInfo(info === c.id ? "" : c.id);
               if (dv.state === "awake") set(c.id, c.look !== "on");
             }}
@@ -412,6 +415,7 @@ function Chips({ dv }: { dv: DeviceView }) {
         ))}
       </div>
       {web?.where === "ducter" && web.state === "on" && <Browsing dv={dv} />}
+      <PhoneBlock dv={dv} />
       {web?.where === "ducter" && web.setup === "installing" && <div class="dc-note">{t("web.installing")}</div>}
       {web?.where === "ducter" && web.state === "unavailable" && web.reason !== "env_off" && (
         <div class="dc-note">
@@ -427,6 +431,7 @@ function Chips({ dv }: { dv: DeviceView }) {
           {t(about(info))}
           {info === "call" && <div class="small sub">{t(look("call") === "fail" ? "ability.call.signed_out" : "ability.call.where")}</div>}
           {info === "web" && web?.where === "ducter" && web.state === "on" && !web.setup && <Sites dv={dv} />}
+          {info === "phone" && <PhoneInfo dv={dv} />}
           {info !== "remote" && look(info) === "off" && dv.state !== "awake" && <div class="small sub">{t("ability.reason.asleep")}</div>}
         </div>
       )}

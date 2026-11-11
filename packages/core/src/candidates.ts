@@ -54,6 +54,8 @@ export interface Computer {
   harnesses: DeviceHarness[];
   web?: { on: boolean; where?: "chrome" | "ducter" };
   sites?: string[];
+  /** D214: Ducter's phone is on here (用手机). */
+  phone?: boolean;
 }
 
 /** The computers that run tasks (the home and its workers), from the devices frame. */
@@ -62,6 +64,7 @@ export function computersOf(devices: DeviceView[], sites?: (deviceId: string) =>
     .filter((d) => d.kind !== "phone")
     .map((d) => {
       const web = d.abilities.find((a) => a.id === "web");
+      const phone = d.abilities.find((a) => a.id === "phone");
       const mac = d.platform ? d.platform.startsWith("darwin") : d.kind !== "server";
       return {
         id: d.id,
@@ -73,6 +76,7 @@ export function computersOf(devices: DeviceView[], sites?: (deviceId: string) =>
         harnesses: d.harnesses,
         ...(web ? { web: { on: web.state === "on", ...(web.where ? { where: web.where } : {}) } } : {}),
         ...(sites ? { sites: sites(d.id) } : {}),
+        ...(phone?.state === "on" && !phone.setup ? { phone: true } : {}),
       };
     });
 }
@@ -148,6 +152,8 @@ function fit(c: Computer, needs: TaskNeeds | undefined, place: Place | undefined
   // A folder or a repo lives on one computer: the task runs there (a folder never moves, D142).
   if (place && (place.kind === "repo" || place.kind === "folder") && !isComputer(c, place.device)) return { block: "elsewhere" };
   if (needs?.app && !c.mac) return { block: "no_app" };
+  // D214: work on an app on a phone runs where Ducter's phone is.
+  if (needs?.phone && !c.phone) return { block: "no_phone" };
   const browses = !!(needs?.browse || needs?.signedIn || place?.kind === "browser");
   if (!browses) return {};
   if (!c.web?.on) return { block: needs?.signedIn ? "no_chrome" : "no_browser" };
@@ -255,9 +261,13 @@ const BLOCK_WORDS: Record<CandidateBlock, string> = {
   no_app: "it needs a Mac app, and it isn't on a Mac",
   elsewhere: "the folder is on another computer",
   no_draw: "it can't make pictures (only Codex can)",
+  no_phone: "it needs Ducter's phone, which isn't added yet: the user adds 用手机 / Use a phone on their Mac in 设备 / Devices (a one-time download of about 2.3 GB)",
 };
 
 /** The one line the New task card / `ducter task --agent` shows when the person's own pick can't run. */
+/** D214: what the partner hears when work needs Ducter's phone and no computer has it. */
+export const NO_PHONE = `no computer has Ducter's phone yet: the user adds 用手机 / Use a phone on their Mac in 设备 / Devices (a one-time download of about 2.3 GB). Tell the user that in one line; no task was opened.`;
+
 export function pinProblem(harness: string, b: CandidateBlock): string {
   return `${harnessName(harness)} can't take this task: ${BLOCK_WORDS[b]}. Pick another AI agent, or fix that first.`;
 }
@@ -276,6 +286,7 @@ function whereWhy(top: Row, all: Row[], inp: CandidateInput, rule: RuleView | un
     // Nobody else can. Say what only this computer has.
     if (inp.place && (inp.place.kind === "repo" || inp.place.kind === "folder")) return { ...base, kind: "changes_here" };
     if (needs?.app) return { ...base, kind: "only_here", thing: "app", app: needs.app };
+    if (needs?.phone) return { ...base, kind: "only_here", thing: "phone" };
     if (needs?.signedIn && top.uses === "chrome") return { ...base, kind: "signed_in", ...(needs.site ? { site: needs.site } : {}) };
     if (needs?.browse || needs?.signedIn) return { ...base, kind: "only_here", thing: top.uses === "chrome" ? "chrome" : "browser" };
     const elsewhere = all.some((r) => r.comp.id !== c.id && r.harness === top.harness && !r.blocked);

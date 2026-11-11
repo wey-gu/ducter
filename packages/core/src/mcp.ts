@@ -112,6 +112,8 @@ export function createMcpHub(opts: { secret: string; port?: number; version?: st
     server.setRequestHandler(CallToolRequestSchema, async (req) => {
       try {
         const out = await call(ctx, req.params.name, req.params.arguments);
+        // D214: a tool may answer with MCP content itself (text and a picture of the phone's screen).
+        if (out && typeof out === "object" && Array.isArray((out as { content?: unknown }).content)) return out as { content: any[] };
         const text = typeof out === "string" ? out : JSON.stringify(out ?? { ok: true });
         return { content: [{ type: "text", text }] };
       } catch (err) {

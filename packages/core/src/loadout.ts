@@ -4,7 +4,7 @@
 import type { Bodies, Candidate, DeviceHarness, LogEvent, Place, TaskNeeds } from "@ducter/protocol";
 import { harnessName } from "@ducter/protocol";
 import type { BodyChoice, LogStore, Runner } from "@ducter/protocol/src/internal.ts";
-import { blockOf, chooseBody, computersOf, fwCandidates, type Computer } from "./candidates.ts";
+import { blockOf, chooseBody, computersOf, fwCandidates, type Computer, NO_PHONE } from "./candidates.ts";
 import { checkEffort, type ModelCatalog } from "./models.ts";
 
 /** D202: how long a task's open waits for the chosen model's effort levels it doesn't have yet. */
@@ -82,13 +82,15 @@ export function createLoadout(o: {
 
     async choose(work) {
       const comps = await computers();
+      // D214: work on an app on a phone needs Ducter's phone somewhere; without it, nothing opens.
+      if (work.needs?.phone && comps && !comps.some((c) => c.phone)) return { none: NO_PHONE };
       // D157: two or more computers: one ranking over all of them, from what the task needs.
       const multi = comps && comps.length > 1 && comps.some((c) => c.harnesses.length);
       const hs = multi ? [] : await harnessesFor(work.place && "device" in work.place ? work.place.device : undefined);
       if (!multi && !hs) return undefined;
       const pinDevice = pinOf(work.place);
       // One computer: still the ranking's view of it (whether it can browse), with the agents on the place's device.
-      const one = !multi && comps?.length === 1 && comps[0]!.web ? [{ ...comps[0]!, harnesses: hs! }] : undefined;
+      const one = !multi && comps?.length === 1 && (comps[0]!.web || comps[0]!.phone) ? [{ ...comps[0]!, harnesses: hs! }] : undefined;
       const pick = chooseBody({
         work,
         ...(multi ? { computers: comps } : one ? { computers: one } : { harnesses: hs }),

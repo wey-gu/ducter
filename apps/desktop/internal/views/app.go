@@ -209,6 +209,7 @@ type App struct {
 	// D151: the live view's bitmap and acks, a line to say once it closed, and the window size it asks for.
 	live       liveState
 	liveNote   string
+	pu         phoneUseState // D214: Ducter's phone
 	sites      sitesState
 	af         autofillState // D191: 设置 › 自动填充
 	winW, winH float32
@@ -434,6 +435,8 @@ func (a *App) View(c *ui.Context) {
 	if a.S.Welcomed {
 		a.newTaskCard(c)
 		a.liveView(c)
+		a.phoneInstallSheet(c) // D214
+		a.phoneView(c)
 	}
 	a.viewer(c) // D206: a picture, over everything
 }

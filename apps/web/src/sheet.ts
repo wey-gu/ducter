@@ -100,7 +100,11 @@ export function chipsFor(dv: DeviceView): { id: string; look: ChipLook }[] {
       if (dv.home) out.push({ id, look: ab.state !== "on" ? "add" : ab.reason === "signed_out" ? "fail" : "on" });
       continue;
     }
-    if (id === "phone") continue;
+    // D214: 用手机 on a Mac: + adds it (the install sheet), on while installing too.
+    if (id === "phone") {
+      out.push({ id, look: ab.state === "on" ? "on" : ab.state === "unavailable" ? "fail" : dv.state === "awake" ? "add" : "off" });
+      continue;
+    }
     let look: ChipLook = "off";
     if (id === "web" && ab.where === "ducter" && ab.state === "unavailable" && ab.reason !== "env_off") look = "fail";
     else if (ab.state === "on") look = "on";

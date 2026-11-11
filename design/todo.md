@@ -907,3 +907,13 @@ Codex first, once OAR is near 1.0. See `research/17`.
 ## Ducter's data folder and the opened task (D207)
 
 - [ ] **A place-less task's scratch folder outside the data folder** (`<Ducter folder>/scratch/<taskId>`): today it is `<dataDir>/scratch/<taskId>`, Ducter-made and empty, the one way into the data folder. Trigger: a task seen reaching up out of its scratch into the data folder, or the Ducter folder gaining a third kind of thing.
+
+## Ducter's phone (D214)
+
+- [ ] **On the author's Mac:** add 用手机 from the real app, sign in to Google Play and one real app, and run a real errand in it end to end (a Go at the tap, a sign-in turn). Trigger: the author's review.
+- [ ] **A worker Mac's phone**, driven over its socket like D157's browsers; then a Linux server (x86_64 image, KVM). Trigger: the author's home on hel.
+- [ ] **The opened task's side panel** mounts `PhoneLivePanel` / `phoneView` (a Phone tab). Trigger: the side panel framework lands.
+- [ ] **The user's own phones:** physical Android over adb (USB/Wi-Fi), iPhones through Pinky once it can be approved from outside its window (its M4) or a presence-proving client exists. Trigger: either lands.
+- [ ] **Autofill on the phone** (D191 by reference into app fields; the Pay card for in-app payments). Trigger: the first errand that needs a saved sign-in in an app.
+- [ ] **A faster screen reader** (an accessibility companion, ~70 ms vs uiautomator's ~2 s) and **video frames** (scrcpy) for games and video. Trigger: a task that waits on reading, or a moving screen.
+- [ ] **Update the pinned Android packages** (platform-tools, emulator, the image) on a schedule, with sizes and checksums together. Trigger: a security update to the image.

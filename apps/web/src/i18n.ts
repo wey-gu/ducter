@@ -6,6 +6,7 @@
 
 import { starts } from "./i18n-starts.ts";
 import { phone } from "./i18n-phone.ts";
+import { phoneuse } from "./i18n-phoneuse.ts";
 
 export type Lang = "zh" | "en";
 
@@ -2180,7 +2181,7 @@ const devcard: Record<Lang, Record<string, string>> = {
     "ability.call.about": "替你打电话，走 Tuwa 的线路。每一通都先给你看要说什么，你点了打过去才打；Tuwa 按分钟收费。",
     "ability.call.where": "在设置 › 账号里连上和管理。",
     "ability.call.signed_out": "Tuwa 的登录过期了。到账号里重新登录，就能接着打。",
-    "ability.phone.about": "让 Ducter 用你的手机做事。以后会有。",
+    "ability.phone.about": "Ducter 自己的一台安卓手机，放在这台 Mac 上。你在上面装 app、自己登录；之后它能替你在这些 app 里办事。发送、发布、付款、安装和删除，每一下都先问你。",
     "list.state.home": "住这儿",
     "list.state.tasks": "在做 %d 件",
     "list.state.does": "替 %s 做事",
@@ -2257,7 +2258,7 @@ const devcard: Record<Lang, Record<string, string>> = {
     "ability.call.about": "Makes calls for you over Tuwa's line. Each call shows you what will be said first and goes out only when you tap Call. Tuwa charges by the minute.",
     "ability.call.where": "Connected and managed in Settings › Accounts.",
     "ability.call.signed_out": "Your Tuwa sign-in has run out. Sign in again in Accounts to keep calling.",
-    "ability.phone.about": "Lets Ducter do things on your phone. Coming later.",
+    "ability.phone.about": "Ducter's own Android phone, on this Mac. You install apps on it and sign in yourself; then it can get things done in those apps for you. Sending, posting, paying, installing and deleting each wait for your Go.",
     "list.state.home": "home",
     "list.state.tasks": "%d tasks",
     "list.state.does": "for %s",
@@ -2460,7 +2461,7 @@ const accounts: Record<Lang, Record<string, string>> = {
 };
 
 import { autofill } from "./i18n-autofill.ts";
-export const TABLES: Record<Lang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh, ...where.zh, ...devcard.zh, ...accounts.zh, ...starts.zh, ...autofill.zh, ...phone.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en, ...where.en, ...devcard.en, ...accounts.en, ...starts.en, ...autofill.en, ...phone.en } };
+export const TABLES: Record<Lang, Record<string, string>> = { zh: { ...zh, ...folder.zh, ...devup.zh, ...signin.zh, ...where.zh, ...devcard.zh, ...accounts.zh, ...starts.zh, ...autofill.zh, ...phone.zh, ...phoneuse.zh }, en: { ...en, ...folder.en, ...devup.en, ...signin.en, ...where.en, ...devcard.en, ...accounts.en, ...starts.en, ...autofill.en, ...phone.en, ...phoneuse.en } };
 
 /** Drops a space between two Chinese characters (zh copy spaces around a name for Latin names). */
 /** D78: a space where a Chinese character touches a Latin letter or a digit ("住在%s 上" with "hel"). */

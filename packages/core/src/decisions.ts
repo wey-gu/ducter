@@ -133,6 +133,8 @@ export function createDecisions(opts: {
           ...(q.signIn ? { signIn: q.signIn } : {}),
           ...(q.pay ? { pay: q.pay, goLabel: "Pay", defaultOption: "hold" as const } : {}),
           ...(q.fill ? { fill: q.fill } : {}),
+          // D214: a commit on Ducter's phone has no default (Go taps it once); the user's turn on it is Done.
+          ...(q.phone ? { phone: q.phone, ...(q.phone.kind === "go" ? { goLabel: "Go", defaultOption: "hold" as const } : { goLabel: "Done", defaultOption: "hold" as const }) } : {}),
           ...(q.where ? { where: q.where } : {}),
         };
         if (q.reversible && hasDefault) body.defaultAt = new Date(clock.now() + delay()).toISOString();

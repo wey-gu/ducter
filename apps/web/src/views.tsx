@@ -1,6 +1,7 @@
 // The phone's screens: the conversation (default), 手头的事 / On hand, an opened task, and the
 // sheets (a decision opened from a notification; this phone's settings). Behavior follows the
 // desktop client (apps/desktop/internal/views); copy comes only from i18n.ts.
+import { openPhone, PhoneAskBody } from "./phone-use.tsx";
 import type { AgentUpdate, Attention, Bodies, Candidate, DeviceHarness, DeviceUpdate, DeviceView, EvidenceRef, FolderChange, FolderSummary, LivingItem, OoDetect, Reach } from "@ducter/protocol";
 import { Fragment } from "preact";
 import { PARTNER_RESERVE } from "@ducter/protocol/src/loadout.ts";
@@ -302,6 +303,8 @@ export function DecisionBody({ d, taskId }: { d: DecisionState; taskId?: string 
   const goText = goLabel(d);
   const draft = A.replyDraft.get(d.decisionId) ?? "";
   if (d.signIn) return <SignInBody d={d} />;
+  // D214: a phone task's Go for one tap, or the user's own turn on the phone.
+  if (d.phone) return <PhoneAskBody d={d} />;
   // D191: a payment names merchant, amount and card and asks for the security code; a first use asks OK.
   if (d.pay) return <PayBody d={d} />;
   if (d.fill) return <FillBody d={d} />;
@@ -829,6 +832,13 @@ function Ask({ d, taskId, buttons = true }: { d: DecisionState; taskId?: string;
         <div class="decision">
           <CallDecision d={d} />
         </div>
+      </div>
+    );
+  if (d.phone)
+    return (
+      <div ref={ref} class={`partner askq ${d.phone.kind === "user" ? "signin" : "pay"}${flash ? " flash" : ""}`} id={`d-${d.decisionId}`}>
+        <div class="bubble">{d.said || d.question}</div>
+        {(buttons || !open) && <PhoneAskBody d={d} compact />}
       </div>
     );
   if (d.signIn)
@@ -1884,6 +1894,8 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
   const detail = !finished(task) ? (br && browsingLine(br)) || "" : "";
   // D190: it holds Ducter's own browser (not the user's Chrome): its tab can be watched.
   const watchable = !finished(task) && !!A.S.onHand?.tasks.find((c) => c.taskId === id)?.browsing;
+  // D214: it is using Ducter's phone: watch it from here (a minimal mount; the side panel takes it later).
+  const phoning = !finished(task) ? A.S.onHand?.tasks.find((c) => c.taskId === id)?.phoning : undefined;
   const [headline, lede] = finished(task) && r ? splitOutcome(safe(r.summary)) : ["", ""];
   const blocks = taskBlocks(task);
   // Waiting on you with nothing to answer (its turn ended on a question in its own words, or a
@@ -1914,11 +1926,12 @@ export function TaskView({ id, full }: { id: string; full?: boolean }) {
           </div>
           {headline && <p class="headline">{headline}</p>}
         </div>
-        {(detail || watchable) && (
-          <div class={`outcome${watchable ? " watch-row" : ""}`}>
+        {(detail || watchable || phoning) && (
+          <div class={`outcome${watchable || phoning ? " watch-row" : ""}`}>
             {detail && <div class="said">{safe(detail)}</div>}
             {/* D190: the page it is working on, live, from here. */}
             {watchable && <Btn kind="secondary" size="sm" label={t("live.watch.title")} about={safe(title(task))} onClick={() => A.watchLive(id, liveSize())} />}
+            {phoning && <Btn kind="secondary" size="sm" label={t("phoneuse.watch")} about={safe(title(task))} onClick={() => openPhone({ device: phoning.device, taskId: id, mode: "watch" })} />}
           </div>
         )}
         {A.switchFor === id && <SwitchList task={task} />}

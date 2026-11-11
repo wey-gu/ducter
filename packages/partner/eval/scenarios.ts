@@ -97,7 +97,7 @@ export interface Expect {
   /** Regexes the partner's own lines (messages and acks, not card text) may not match. */
   proseForbid?: RegExp[];
   /** D157: some opened task's needs has each of these (a string matches case-insensitively as a part; false = absent or false). */
-  needs?: { browse?: boolean; signedIn?: boolean; site?: string; app?: string; long?: boolean; draw?: boolean };
+  needs?: { browse?: boolean; signedIn?: boolean; site?: string; app?: string; long?: boolean; draw?: boolean; phone?: boolean };
   /** Some opened task names this agent (harness). */
   harness?: string;
   /** Some opened task's place has this kind. */
@@ -143,6 +143,8 @@ export interface Scenario {
   saved?: import("../../protocol/src/saved.ts").SavedInput[];
   /** D193: a calling connection (the fake Tuwa, packages/core/test/fake-tuwa.ts), never the real one. */
   phone?: true;
+  /** D214: Ducter's phone is added on this computer (a stand-in install; no emulator runs). */
+  ownPhone?: true;
   /** D193: the owner's quiet hours cover now (calls wait for the morning). */
   quietNow?: true;
 }
@@ -1330,6 +1332,27 @@ export const scenarios: Scenario[] = [
     expect: { opens: 1, ackFirst: true, needs: { draw: true }, placeKind: "none", maxChars: 80, forbid: [/画好了[。！:：]|已经画好|画完了[。！]/] },
     rubric: "The user asks for a picture to be drawn. It opens one task whose needs say draw (needs.draw true, place none), the brief keeps the user's words and asks to show the picture with the report. Before it, one short Chinese ack naming the action (我去画…, 画好了给你看); it never claims the picture is done, never draws with text or describes the picture it will make.",
   },
+  // ---------- Ducter's phone (D214): a stand-in install; the task never runs ----------
+  {
+    id: "phone-app-zh",
+    category: "phone-use",
+    lang: "zh",
+    ownPhone: true,
+    steps: [{ user: "用你的手机在小红书里帮我看看，最近大家怎么评价京都的红叶季" }],
+    expect: { opens: 1, ackFirst: true, needs: { phone: true }, placeKind: "none", maxChars: 80, notCalled: ["ask"], forbid: [/看完了|找到了[。！]|大家都说/] },
+    rubric: "Work in an app on a phone. It opens one task whose needs say phone (needs.phone true, place none), the brief keeps the user's words. Before it, one short Chinese ack naming the action (我用手机去小红书看看…); it never claims results, never asks first, and never says emulator, adb or Android Studio.",
+  },
+  {
+    id: "phone-send-no-ask-zh",
+    category: "phone-use",
+    lang: "zh",
+    ownPhone: true,
+    steps: [{ user: "用手机在信息里给 5551234 发一条短信：周六见" }],
+    expect: { opens: 1, ackFirst: true, needs: { phone: true }, maxChars: 80, notCalled: ["ask"], forbid: [/发出去了|已发送|发好了/] },
+    rubric: "A send on Ducter's phone. It does not ask first (the phone itself asks the user's Go at the tap that sends, as for payments): it opens one phone task (needs.phone true) with the user's words in the brief and one short Chinese ack naming the action. It never claims the message was sent.",
+  },
+  // No phone anywhere: the loadout refuses the task (NO_PHONE, unit-tested in core android-phone.test.ts);
+  // the eval's runner opens tasks without the loadout, so it is not a scenario here.
   {
     id: "notice-rule-zh",
     category: "accounts",

@@ -56,6 +56,7 @@ import { realSys, updateHow, writeAlive, type UpdateSys } from "./update.ts";
 import { DUCTER_VERSION } from "@ducter/protocol/src/version.ts";
 import { createAutofill, type Autofill } from "./saved/index.ts";
 import { createDucterBrowser, type DucterBrowser, type DucterBrowserOptions } from "./browser/index.ts";
+import { createDucterPhone, type DucterPhone, type DucterPhoneOptions } from "./android/index.ts";
 import { readSites } from "./browser/sites.ts";
 import { createClosing, registerClosingTool } from "./closing.ts";
 import { workerProfile } from "./browser/remote.ts";
@@ -112,6 +113,8 @@ export interface CoreOptions {
   memPlugins?: { inspectLocal?: () => Promise<Record<string, import("@ducter/protocol").MemPluginView> | undefined>; everyMs?: number; now?: () => number; connected?: () => boolean };
   /** D151 test seams for Ducter's own browser (false: none). */
   browser?: false | Partial<Omit<DucterBrowserOptions, "mcp" | "log" | "tasks" | "decisions" | "persona" | "dataDir">>;
+  /** D214: Ducter's phone (用手机); false leaves it out (tests). */
+  ownPhone?: false | Partial<Omit<DucterPhoneOptions, "mcp" | "log" | "tasks" | "decisions" | "dataDir">>;
   /** The machine's platform as Devices sees it (tests: "linux"). */
   platform?: string;
   /** Work over time test seams (D112-D114): fake commands, a lower look floor, the judge. */
@@ -159,6 +162,8 @@ export interface Core extends CoreApi {
   memPlugins: MemPlugins;
   /** D151: Ducter's own browser. */
   ducterBrowser?: DucterBrowser;
+  /** D214: Ducter's phone (用手机). */
+  ducterPhone?: DucterPhone;
   /** D191: 自动填充 / Autofill. */
   autofill: Autofill;
   port: number;
@@ -408,6 +413,15 @@ export function startCore(opts: CoreOptions = {}): Core {
       : createDucterBrowser({ dataDir, mcp, log, tasks, decisions, persona: persona.id, device: () => opts.update?.homeName ?? osHostname().replace(/\.local$/, ""), ...(opts.platform ? { platform: opts.platform } : {}), lang: () => (settings.get().language === "zh" ? "zh-CN" : "en-US"), workers: () => workersRef, workerBrowserVersion: (id) => workersRef?.online().find((w) => w.deviceId === id)?.hello?.abilities?.find((a) => a.id === "web")?.detail, scrub: (t) => autofill.scrub(t), wants: (taskId, brief) => autofill.wants(brief !== undefined ? { brief } : log.read({ stream: `task:${taskId}`, fromSeq: 0, limit: 1, kinds: ["task_open"] })[0]?.body as { brief?: string } | undefined), tell: (taskId, text) => runner?.send(taskId, text, undefined, "user").catch((e) => console.warn(`[core] couldn't tell ${taskId} the browser is back:`, (e as Error).message)), ...(opts.browser ?? {}) });
   if (browser) autofill.attachBrowser(browser.host);
   if (browser) decorateBrowsing = (o) => browser.decorate(o);
+  // D214: Ducter's phone (an Android emulator on a Mac), on this computer's card as 用手机.
+  const ownPhone =
+    opts.ownPhone === false
+      ? undefined
+      : createDucterPhone({ dataDir, mcp, log, tasks, decisions, deviceName: () => savedHomeName(dataDir) ?? opts.update?.homeName ?? osHostname().replace(/\.local$/, ""), ...(opts.platform ? { platform: opts.platform } : {}), tell: (taskId, text) => runner?.send(taskId, text, undefined, "user").catch((e) => console.warn(`[core] couldn't tell ${taskId} the phone is back:`, (e as Error).message)), ...(opts.ownPhone ?? {}) });
+  if (ownPhone) {
+    const before = decorateBrowsing;
+    decorateBrowsing = (o) => ownPhone.decorate(before(o));
+  }
   let devicesView: DevicesView | undefined;
   // D157: the sites Ducter's own browser on each computer is signed in to (the ranking prefers the
   // computer where the user already signed in, over their Chrome: least access that does the job).
@@ -476,7 +490,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     // D204: 从 Git 地址加… / Add from a Git address…, cloned on that computer, then added there.
     clone: (device: string | undefined, address: string) => cloneProject(newTaskDeps, device, address, (path, dev) => newTask.addProject(path, dev)),
   };
-  const ws = createWsHandler({ core: api, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, closing, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, memPlugins: () => memPluginsRef, proactive: () => proactiveRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}) });
+  const ws = createWsHandler({ core: api, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, closing, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, memPlugins: () => memPluginsRef, proactive: () => proactiveRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}) });
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.
   let partnerTurn = false;
@@ -590,7 +604,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     ...(a.exists ? { exists: a.exists } : {}),
   });
   agentsRef = agents;
-  devicesView = createDevicesView({ dataDir, auth: devices, workers, connected: () => ws.connected(), probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, agents: () => agents, mem: () => memPluginsRef, ...(agentTesting ? {} : { piBundled: bundledPiVersion }), self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` }, ...(browser ? { browser } : {}), ...(opts.platform ? { platform: opts.platform } : {}), call: () => callAbility(phone.available(), connections.view()), onDisconnect: (id) => {
+  devicesView = createDevicesView({ dataDir, auth: devices, workers, connected: () => ws.connected(), probes: opts.deviceProbes, ...(u.homeName ? { hostname: u.homeName } : {}), updates: () => updates, agents: () => agents, mem: () => memPluginsRef, ...(agentTesting ? {} : { piBundled: bundledPiVersion }), self: { version, how: selfHow, platform: `${process.platform}-${process.arch}` }, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ...(opts.platform ? { platform: opts.platform } : {}), call: () => callAbility(phone.available(), connections.view()), onDisconnect: (id) => {
     for (const s of push.forget(id)) void apns.revoke?.(s);
   } });
   updates.onChange(() => devicesView?.changed());
@@ -766,6 +780,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     agents,
     memPlugins,
     ...(browser ? { ducterBrowser: browser } : {}),
+    ...(ownPhone ? { ducterPhone: ownPhone } : {}),
     autofill,
     port,
     url: `ws://127.0.0.1:${port}/ws`,
@@ -796,6 +811,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     async stop() {
       ws.stop();
       await browser?.stop().catch(() => {});
+      await ownPhone?.stop().catch(() => {});
       autofill.stop();
       devicesView?.stop();
       workers.stop();

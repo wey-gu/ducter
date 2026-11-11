@@ -158,6 +158,7 @@ Which chips a device gets:
 | Device | Chips (default order) |
 |---|---|
 | hel (home, server) | 上网 (Ducter's own browser, D151) · 在哪儿都能用 (D143) · 打电话 (D199) · then the ghosts 用电脑 · 用手机 |
+| a MacBook (home, Apple silicon) | 上网 · 在哪儿都能用 · 打电话 · **用手机** (D214: + opens the install sheet; on, the phone's block under the chips) · the ghost 用电脑 |
 | a Mac that is the home | 上网 · 用电脑 · 在哪儿都能用 · 打电话 · then the ghosts still to come |
 | a Mac connected to a home elsewhere | **替 hel 做事** first (D155's switch, now a chip) · 上网 (needs D157 (9)) · 用电脑; no 打电话, no ghosts |
 | a phone | 通知 · 用手机 (later) |

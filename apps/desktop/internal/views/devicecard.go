@@ -735,6 +735,10 @@ func (a *App) chipSpecs(c *ui.Context, card string, dv *protocol.DeviceView, cl 
 				out = append(out, a.callSpec(c, card, ab))
 			}
 		case id == protocol.AbilityPhone:
+			// D214: Ducter's own phone on a Mac (+ opens the install sheet).
+			if dv.Home {
+				out = append(out, a.phoneSpec(c, card, dv, ab))
+			}
 		default:
 			out = append(out, a.abilitySpec(c, card, dv, ab))
 		}
@@ -756,8 +760,14 @@ func (a *App) toggleChipInfo(card, id string) {
 // 以后会有, so the home shows what is coming; a tap only explains it.
 func (a *App) laterSpec(c *ui.Context, card, id string) chipSpec {
 	return chipSpec{id: id, label: a.L.T("chip." + id), art: abilityLaterArt(id), look: chipLater,
-		tap:  func(ui.Rect) { a.toggleChipInfo(card, id) },
-		info: func() { a.infoText(c, a.L.T("ability."+id+".about")) }}
+		tap: func(ui.Rect) { a.toggleChipInfo(card, id) },
+		info: func() {
+			key := "ability." + id + ".about"
+			if id == protocol.AbilityPhone {
+				key = "ability.phone.later" // D214: on an Apple Silicon Mac it is a real chip
+			}
+			a.infoText(c, a.L.T(key))
+		}}
 }
 
 // callSpec is 打电话 on the home (D199): on while a calling connection is
@@ -1176,6 +1186,7 @@ func (a *App) chipNotes(c *ui.Context, card string, dv *protocol.DeviceView, cl 
 			note("web-trouble", false, func() { a.ducterBrowserTrouble(c, dv, ab) })
 		}
 	}
+	a.phoneNotes(c, card, dv, note) // D214
 	for _, id := range []string{protocol.AbilityWeb, protocol.AbilityComputer, protocol.AbilityRemote} {
 		if r, ok := d.refused[dv.ID+"/"+id]; ok {
 			note("refused-"+id, true, func() {

@@ -382,6 +382,8 @@ type Store struct {
 	Live         *LiveView
 	LiveClosed   *protocol.ServerFrame
 	BrowserSites *protocol.ServerFrame
+	// Phone is Ducter's phone (D214): its live view, install sheet and results.
+	Phone PhoneState
 	// Saved is 设置 › 自动填充 / Autofill (D191): names, last four, where used; never a secret.
 	Saved *protocol.ServerFrame
 	// PairCode is the newest pairing code the server minted for this app.
@@ -503,6 +505,8 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		s.AbilityResults = append(s.AbilityResults, f)
 	case "live", "live_frame", "live_turn", "live_doing":
 		s.applyLive(f)
+	case "phone_view", "phone_frame", "phone_doing", "phone_terms", "phone_install_result", "phone_erase_result":
+		s.applyPhone(f)
 	case "saved":
 		fc := f
 		s.Saved = &fc

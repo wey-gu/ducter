@@ -71,7 +71,8 @@ test("this machine: awake, home, harness logins as probed, no allowance, web on,
   expect(ability(home, "web")).toMatchObject({ state: "on" });
   expect(ability(home, "computer").state).toBe("later");
   expect(ability(home, "remote").state).toBe("off");
-  expect(ability(home, "phone").state).toBe("later");
+  // D214: Ducter's phone can be added on an Apple Silicon Mac (not installed yet: off); elsewhere it is still to come.
+  expect(ability(home, "phone").state).toBe(process.platform === "darwin" && process.arch === "arm64" ? "off" : "later");
   expect(ability(home, "call")).toEqual({ id: "call", state: "off" }); // D199: no calling connection yet
   expect(f.reach.clients).toEqual([]);
 });

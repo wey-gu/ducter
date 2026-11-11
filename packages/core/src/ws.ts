@@ -41,6 +41,8 @@ export interface WsData {
   client?: ClientKind;
   /** D151: this socket's end of its live views (frames go only to the socket that opened one). */
   sink?: LiveSink;
+  /** D214: this socket's end of its phone views. */
+  phoneSink?: import("./android/live.ts").PhoneSink;
 }
 
 const ON_HAND_KINDS = new Set<string>([...PROJECTED_KINDS, "phone_call"]);
@@ -83,6 +85,8 @@ export interface WsDeps {
   memPlugins?: () => import("./mem-plugins.ts").MemPlugins | undefined;
   /** D151: Ducter's own browser (live view, Sites); absent in tests that don't need it. */
   browser?: DucterBrowser;
+  /** D214: Ducter's phone (用手机): install, erase, live view; absent in tests that don't need it. */
+  ownPhone?: import("./android/index.ts").DucterPhone;
   /** D191: 自动填充 / Autofill; absent in tests that don't need it. */
   autofill?: import("./saved/index.ts").Autofill;
   /** D165/D166: what Ducter notices in the accounts; absent in tests that don't need it. */
@@ -893,6 +897,50 @@ export function createWsHandler(deps: WsDeps) {
         else await b.live.close(sink, String(f.id ?? ""), !!f.done);
         return;
       }
+      // D214: 用手机 / Use a phone: install (with the licenses accepted), erase, and its live view.
+      case "phone_terms":
+      case "phone_install":
+      case "phone_erase":
+      case "phone_open":
+      case "phone_input":
+      case "phone_ack":
+      case "phone_turn":
+      case "phone_pause":
+      case "phone_close": {
+        const p = deps.ownPhone;
+        const where = typeof (f as { device?: unknown }).device === "string" ? String((f as { device?: string }).device) : "local";
+        if (f.t === "phone_terms") {
+          if (!p || where !== "local") return void send(ws, { t: "phone_terms", ok: false, reason: "not_mac_arm" });
+          return void send(ws, { t: "phone_terms", ...(await p.terms()) });
+        }
+        if (f.t === "phone_install") {
+          if (!p || where !== "local") return void send(ws, { t: "phone_install_result", ok: false, reason: "not_mac_arm" });
+          const accepted = Array.isArray(f.accepted) ? f.accepted.filter((a) => a && typeof a.id === "string" && typeof a.sha256 === "string").map((a) => ({ id: a.id, sha256: a.sha256 })) : [];
+          // It takes minutes: the card shows the progress; the result says only whether it started.
+          const started = p.install(accepted);
+          const quick = await Promise.race([started, Bun.sleep(300).then(() => undefined)]);
+          if (quick && !quick.ok) return void send(ws, { t: "phone_install_result", ok: false, reason: quick.reason, message: quick.message });
+          return void send(ws, { t: "phone_install_result", ok: true });
+        }
+        if (f.t === "phone_erase") {
+          if (!p) return void send(ws, { t: "phone_erase_result", ok: false, message: "Ducter's phone isn't here" });
+          await p.erase(!!f.keepSdk);
+          return void send(ws, { t: "phone_erase_result", ok: true });
+        }
+        if (f.t === "phone_open" && (ws.data.client === "cli" || !p)) return void send(ws, { t: "phone_view", id: "", state: "closed", mode: f.mode ?? "watch", turn: "agent", here: false, device: "", reason: "failed", message: !p ? "Ducter's phone isn't available here" : "the phone shows in the Mac app or the phone" });
+        if (!p) throw new Error("Ducter's phone isn't available here");
+        ws.data.phoneSink ??= { send: (fr) => sockets.has(ws) && send(ws, fr) };
+        const sink = ws.data.phoneSink;
+        if (f.t === "phone_open") {
+          const mode = f.mode === "takeover" || f.mode === "signin" ? f.mode : "watch";
+          await p.live.open(sink, { mode, ...(typeof f.taskId === "string" && f.taskId ? { taskId: f.taskId } : {}), ...(typeof f.decisionId === "string" && f.decisionId ? { decisionId: f.decisionId } : {}) });
+        } else if (f.t === "phone_input") await p.live.input(sink, String(f.id ?? ""), f.input);
+        else if (f.t === "phone_ack") p.live.ack(sink, String(f.id ?? ""), Number(f.seq));
+        else if (f.t === "phone_turn") await p.live.turn(sink, String(f.id ?? ""), !!f.mine);
+        else if (f.t === "phone_pause") p.live.pause(sink, String(f.id ?? ""), !!f.paused);
+        else await p.live.close(sink, String(f.id ?? ""), !!f.done);
+        return;
+      }
       case "browser_check": {
         // D154: one look at Ducter's own browser (`ducter browser check`), no task.
         const b = deps.browser;
@@ -942,6 +990,7 @@ export function createWsHandler(deps: WsDeps) {
       close(ws: ServerWebSocket<WsData>) {
         sockets.delete(ws);
         if (ws.data.sink) void deps.browser?.live.drop(ws.data.sink);
+        if (ws.data.phoneSink) void deps.ownPhone?.live.drop(ws.data.phoneSink);
         if (ws.data.device) devicesView()?.changed();
       },
       async message(ws: ServerWebSocket<WsData>, raw: string | Buffer) {

@@ -10,6 +10,8 @@ export * from "./saved.ts";
 import type { FillAsk, PayAsk, SavedFrame, SavedInput } from "./saved.ts";
 export * from "./phone.ts";
 export * from "./media.ts";
+export * from "./phone-use.ts";
+import type { PhoneAsk, PhoneClientFrame, PhoneInstallStep, PhoneServerFrame } from "./phone-use.ts";
 import type { MediaRef } from "./media.ts";
 import type { CallBody, CallPlan, CallView, PhoneView, SignInView } from "./phone.ts";
 import type { FindKind, FindRung, FindState, FindView, ProactiveAsk, ProactiveMode, ReadLine, SourceLook } from "./proactive.ts";
@@ -135,6 +137,8 @@ export interface Question {
   pay?: PayAsk;
   /** D191: the first use of a saved sign-in or private detail on a site (set by browser_fill). */
   fill?: FillAsk;
+  /** D214: a tap on Ducter's phone that commits (go), or the user's own turn on it (user); set by the phone tools only. */
+  phone?: PhoneAsk;
 }
 
 /**
@@ -216,6 +220,7 @@ export interface Bodies {
     signIn?: SignInAsk; // D151: a sign-in card; Go = 好了 / Done in the live view
     pay?: PayAsk; // D191: 付款 / Pay: merchant, amount, card; Go pays once, no default
     fill?: FillAsk; // D191: first use of a saved sign-in or detail on a site
+    phone?: PhoneAsk; // D214: one tap on Ducter's phone that commits (Go taps it once), or the user's turn on it (Go = 好了 / Done)
     where?: WhereAsk; // D157: wait for a computer (Hold, the default) or do it now on another (Go)
     closing?: ClosingPlan; // D157: 合上之前搬走 / Move before closing: Go (the default) moves them
     memPlugin?: MemPluginAsk; // D169: put Nowledge Mem into this agent on that computer (Go); 先不装 / Not now (Hold, the default)
@@ -488,6 +493,8 @@ export interface TaskCard {
   folder?: FolderSummary; // D142: non-git folder tasks, once counted (cached like changes)
   /** D190: the task holds Ducter's own browser on this computer ("local" or a device id), so it can be watched. */
   browsing?: { device: string };
+  /** D214: the task is using Ducter's phone on this computer, so it can be watched. */
+  phoning?: { device: string };
 }
 
 export interface OnHand {
@@ -818,6 +825,8 @@ export type ClientFrame =
   | { t: "live_pause"; id: string; paused: boolean }
   // D151, 已登录的网站 / Signed-in sites in Ducter's browser: answered with a browser_sites frame.
   | { t: "browser_sites" }
+  // D214: 用手机 / Use a phone (phone-use.ts).
+  | PhoneClientFrame
   | { t: "browser_site_signout"; site: string }
   | { t: "browser_sites_clear" }
   // D154, `ducter browser check`: start Ducter's browser, load a page, quit. Answered with browser_check.
@@ -982,6 +991,7 @@ export type ServerFrame =
   | { t: "browser_sites"; ready: boolean; sites: SiteView[]; ok?: boolean; message?: string }
   | ({ t: "browser_check" } & BrowserCheck)
   | SavedFrame
+  | PhoneServerFrame
   | { t: "error"; message: string };
 
 /** D154: the decisionId of a 试一下 / Try it live view (no card behind it). */
@@ -1105,8 +1115,10 @@ export type AbilityState = "on" | "off" | "unavailable" | "later";
  * offline = that computer can't be reached right now to change it.
  * D199: signed_out = 打电话 is on (a calling connection is there) but its sign-in is gone: the
  * phone card in Accounts signs in again.
+ * D214: phone_unsupported = Ducter's phone can't run on this computer yet (phase 1: Apple
+ * Silicon Macs; detail says why); phone_failed = installing or starting it failed (detail).
  */
-export type AbilityReason = "cua_missing" | "cua_old" | "env_off" | "home_only" | "no_address" | "unknown_device" | "failed" | "browser_deps" | "browser_sandbox" | "browser_failed" | "worker_old" | "offline" | "signed_out";
+export type AbilityReason = "cua_missing" | "cua_old" | "env_off" | "home_only" | "no_address" | "unknown_device" | "failed" | "browser_deps" | "browser_sandbox" | "browser_failed" | "worker_old" | "offline" | "signed_out" | "phone_unsupported" | "phone_failed";
 
 export interface Allowance {
   left: number; // 0..1, as the harness reports it
@@ -1225,8 +1237,12 @@ export interface DeviceAbility {
    * own browser (cua-driver).
    */
   where?: "chrome" | "ducter";
-  /** web only (D151): Ducter is installing its own browser on this device right now. */
+  /** web only (D151): Ducter is installing its own browser on this device right now. phone (D214) too. */
   setup?: "installing";
+  /** phone (D214): how far the install is. */
+  step?: PhoneInstallStep;
+  /** phone (D214): Ducter's phone is running right now (it stops by itself when nobody needs it). */
+  running?: boolean;
 }
 
 export interface DeviceView {

@@ -47,6 +47,7 @@ export function whereReason(w: WhereWhy | undefined): string {
       if (w.thing === "app") return t("where.reason.only_app", dev, w.app ?? "");
       if (w.thing === "chrome") return t("where.reason.only_chrome", dev);
       if (w.thing === "browser") return t("where.reason.only_web", dev);
+      if (w.thing === "phone") return t("where.reason.only_phone", dev);
       if (w.thing === "agent") return t("where.reason.agent_here", harnessName(w.agent ?? ""), dev);
       return "";
     case "awake":
@@ -74,6 +75,7 @@ export function whereCandReason(c: Candidate): string {
   if (c.blocked === "no_browser") return t("switch.cant.web", name);
   if (c.blocked === "no_app") return t("switch.cant.app");
   if (c.blocked === "no_draw") return t("switch.cant.draw");
+  if (c.blocked === "no_phone") return t("switch.cant.phone", name);
   if (c.blocked === "elsewhere") return t("switch.cant.folder");
   if (!c.blocked && c.waits) return t(c.waits === "asleep" ? "switch.waits" : "switch.waits.away");
   return "";

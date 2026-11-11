@@ -69,6 +69,8 @@ export interface DevicesOptions {
   onDisconnect?: (deviceId: string) => void;
   /** D199: 打电话 on the home, from the calling connection (`callAbility`); off when absent. */
   call?: () => DeviceAbility;
+  /** D214: 用手机 / Use a phone on the home: Ducter's own phone (an Android emulator on a Mac). */
+  ownPhone?: { ability(): DeviceAbility; onChange(fn: () => void): () => void };
 }
 
 /**
@@ -336,7 +338,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
       state: "awake", // this answer comes from it
       alwaysOn: alwaysOnKind(me.kind),
       harnesses: agentsView("local", me.harnesses.map((h) => deviceHarness(h))),
-      abilities: [webAbility(me.cua, me.native), later("computer"), { id: "remote", state: remoteOn ? "on" : "off" }, later("phone"), o.call?.() ?? { id: "call", state: "off" }],
+      abilities: [webAbility(me.cua, me.native), later("computer"), { id: "remote", state: remoteOn ? "on" : "off" }, o.ownPhone?.ability() ?? later("phone"), o.call?.() ?? { id: "call", state: "off" }],
       ...(o.self ? { version: o.self.version, platform: o.self.platform } : {}),
     };
     const up = o.updates?.();
@@ -394,6 +396,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
   };
   const offWorkers = o.workers.onChange(changed);
   const offBrowser = o.browser?.onChange(changed);
+  const offPhone = o.ownPhone?.onChange(changed);
 
   async function setAbility(device: string, ability: AbilityId, on: boolean): Promise<AbilityResult> {
     const res = (ok: boolean, reason?: AbilityReason, detail?: string): AbilityResult => ({
@@ -453,6 +456,10 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
       case "call":
         // D199: a calling connection is added (and removed) in Settings › Accounts, where its
         // sign-in runs; the clients route there, never here.
+        return res(false, "failed");
+      case "phone":
+        // D214: adding Ducter's phone is the install sheet (phone_install, with the licenses
+        // accepted); removing it is 抹掉 / Erase (phone_erase). Never a bare switch.
         return res(false, "failed");
       case "remote":
         // On = a device pairs with a code (pair_code); off would disconnect every paired client,
@@ -528,6 +535,7 @@ export function createDevicesView(o: DevicesOptions): DevicesView {
     stop() {
       offWorkers();
       offBrowser?.();
+      offPhone?.();
       if (timer) clearTimeout(timer);
       fns.clear();
     },

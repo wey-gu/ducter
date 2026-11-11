@@ -2,7 +2,7 @@
 // the folder's is "on {computer}", and picking it switches to that repo's copy there, or opens the
 // folder list on that computer); under the chosen agent, its Model and Effort rows, the choice
 // remembered per agent; the frame says model and effort only when they differ from the defaults.
-import { describe, expect, test } from "bun:test";
+import { afterAll, describe, expect, test } from "bun:test";
 import { strings } from "../src/i18n.ts";
 
 // The author's setup: the home is the server hel (Codex only); the Mac is its worker, with Claude Code.
@@ -178,4 +178,19 @@ describe("Model and effort (D202)", () => {
     expect(["low", "medium", "high", "xhigh", "max", "ultra"].map((e) => effortWord(en, e))).toEqual(["Low", "Medium", "High", "Extra high", "Max", "Ultra"]);
     expect(effortWord(en, "turbo")).toBe("turbo");
   });
+});
+
+// The app is one module for every web test file: leave it as a fresh client found it (no draft,
+// no devices, nothing remembered), whatever order the files run in.
+afterAll(async () => {
+  const { A } = await import("../src/app.ts");
+  try {
+    localStorage.removeItem("ducter.newtask.who");
+    localStorage.removeItem("ducter.newtask.tune");
+  } catch {}
+  A.nt.words = "";
+  A.nt.pick = "";
+  A.sheet = null;
+  A.devices = undefined;
+  A.newTaskOptions = undefined;
 });

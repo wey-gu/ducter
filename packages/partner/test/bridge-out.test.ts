@@ -501,7 +501,9 @@ describe("J-Q6 / D106: an outgoing message is never lost or sent twice", () => {
     partner.onTrigger(fc.core.log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body: { decisionId: card().decisionId, option: "go", by: "user" } }));
     for (let i = 0; i < 100 && outs().length < 3; i++) await Bun.sleep(50);
     expect(outs().map((b) => b.state)).toEqual(["pending", "sending", "unknown"]);
-    await partner.checkBridge();
+    // One check at a time: a check that began while the send was still in flight is joined, and it
+    // had nothing to recover yet (a loaded CI box hits this). The next one recovers it.
+    for (let i = 0; i < 10 && outs().at(-1)?.state !== "sent"; i++) await partner.checkBridge();
     const s = JSON.parse(readFileSync(state, "utf8"));
     expect(s.messages.length).toBe(1);
     expect(s.messages[0].pending).toBe(false);

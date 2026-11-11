@@ -386,6 +386,7 @@ describe("New task (D128)", () => {
     A.send = (f) => void sent.push(f);
     A.S.welcomed = true;
     A.status = "connected";
+    A.nt.words = ""; // the sheet keeps a closed draft's words; this one starts from none
     A.openNewTask();
     expect(A.sheet).toEqual({ kind: "newtask" });
     expect(sent.at(-1)).toEqual({ t: "task_new_options" });

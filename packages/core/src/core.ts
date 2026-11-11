@@ -38,7 +38,8 @@ import { createBridgeLink, type NmemCall } from "./bridge-link.ts";
 import { openRules, type RulesStore } from "./rules.ts";
 import { createLoadout, isRuleHint, registerRuleTools, type Loadout } from "./loadout.ts";
 import { openConnections, type ConnectionsStore, type Linker, type OoSource } from "./connections.ts";
-import { callWakes, openPhone, type Phone } from "./phone.ts";
+import { callWakes, neverCall, openPhone, type Phone } from "./phone.ts";
+import { openOwnPhone } from "./phone-own/index.ts";
 import { providerOf } from "./phone-provider.ts";
 import { registerConnectionTools } from "./connection-tools.ts";
 import { createChanges, type Changes } from "./changes.ts";
@@ -108,6 +109,8 @@ export interface CoreOptions {
   /** D148 test seams: the release feed, the update side effects, how this process updates. */
   /** D205: the persona's Bridge connection (bridge-link.ts): tests pass a fake nmem. */
   bridgeLink?: { run?: NmemCall; env?: Record<string, string | undefined> };
+  /** D218: seams for the own-number phone (tests and demos: a fake phone, a loopback cable, a fake voice engine). */
+  ownNumber?: Partial<import("./phone-own/index.ts").OwnPhoneDeps>;
   update?: { fetch?: ReleaseFetch; sys?: UpdateSys; run?: UpdatesDeps["run"]; how?: import("@ducter/protocol").UpdateHow; version?: string; homeName?: string; execPath?: string; autoEveryMs?: number; graceMs?: number; criticalWaitMs?: number };
   /** D156 test seams: the channels' feed, the agents' updaters, this machine's copies. */
   agents?: { fetch?: ReleaseFetch; sys?: UpdateSys; which?: (c: string) => string | null; detect?: AgentUpdatesDeps["detect"]; loggedIn?: AgentUpdatesDeps["loggedIn"]; exists?: (p: string) => boolean; settleMs?: number; autoEveryMs?: number };
@@ -151,6 +154,8 @@ export interface Core extends CoreApi {
   connections: ConnectionsStore;
   /** D193: phone calls through the calling connection. */
   phone: Phone;
+  /** D218: calls from the owner's own phone and number. */
+  ownNumber: import("./phone-own/index.ts").OwnPhone;
   /** D165: what Ducter notices in them, and how it says so. */
   proactive: Proactive;
   /** What each repo task changed so far (D128). */
@@ -362,7 +367,28 @@ export function startCore(opts: CoreOptions = {}): Core {
   const projects = createProjects({ dataDir, ...(opts.git ? { git: opts.git } : {}), onChange: () => onHandChanged(), remote: (dev, path) => computers.folderInfo(dev, path, 15_000) });
   // D193: phone calls (the partner drafts; the owner's Go places; Ducter polls and keeps the rails).
   let autofillRef: Autofill | undefined;
+  const savedPhone = () => {
+    try {
+      return autofillRef?.store.secret("me.phone") ?? undefined;
+    } catch {
+      return undefined;
+    }
+  };
+  const callZone = () => settings.get().quiet?.tz ?? opts.work?.defaultZone ?? (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC");
+  // D218: calls from the owner's own Android phone and SIM, plugged into this home.
+  const ownNumber = openOwnPhone({
+    dataDir,
+    clock,
+    where: () => savedHomeName(dataDir) ?? (opts.update?.homeName ?? osHostname()).replace(/\.local$/, ""),
+    partnerName: () => persona.name,
+    savedNumber: savedPhone,
+    zone: callZone,
+    neverCall,
+    ...(opts.ownNumber ?? {}),
+    onChange: () => onHandChanged(), // the live call's row in On hand
+  });
   const phone = openPhone({
+    own: ownNumber,
     dataDir,
     log,
     connections,
@@ -498,7 +524,7 @@ export function startCore(opts: CoreOptions = {}): Core {
   const previews = createPreviews({ hostname, route: (id) => runner?.pageRoute?.(id), loopback: loopbackOf });
   const workbench = createWbFrames({ log, runner: () => runner, previews, exclude: () => [port, ...(previewsPorts())] });
   const previewsPorts = () => previews.list().map((p) => p.previewPort);
-  const ws = createWsHandler({ core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, closing, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, memPlugins: () => memPluginsRef, proactive: () => proactiveRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}) });
+  const ws = createWsHandler({ core: api, workbench, bridgeLink, decisions, runner: () => runner, devices: () => devicesView, settings, connections, phone, rules, loadout, closing, work: work.frames, newTask, updates: () => updatesRef, agents: () => agentsRef, memPlugins: () => memPluginsRef, proactive: () => proactiveRef, batchMs: opts.batchMs, autofill, ...(browser ? { browser } : {}), ...(ownPhone ? { ownPhone } : {}), ownNumber });
   onHandChanged = ws.onHandChanged;
   // D156: a partner turn in flight keeps an update of the agent it thinks with waiting.
   let partnerTurn = false;
@@ -781,6 +807,7 @@ export function startCore(opts: CoreOptions = {}): Core {
     loadout,
     connections,
     phone,
+    ownNumber,
     proactive,
     changes,
     updates,
@@ -827,6 +854,7 @@ export function startCore(opts: CoreOptions = {}): Core {
       sockets.stop();
       unsubscribePartner();
       phone.stop();
+      ownNumber.stop();
       decisions.stop();
       living.stop();
       work.stop();

@@ -34,11 +34,18 @@ export interface CallPlan {
   keep?: string; // 不说 / Won't say: the bottom line the agent uses but never says (a budget)
   mustNot: string[]; // the owner's own "don't"s (Ducter's fixed rails are added on top, never shown as theirs)
   voice: "ducter" | "owner"; // 用 Ducter 的声音 / 用你的声音
-  /** provider: a calling connection's line places it (从 Tuwa 的号码 / From a Tuwa number); self: the owner calls it themselves from a call sheet (D215). */
-  from: "provider" | "self";
-  provider: string; // "Tuwa"
+  /**
+   * provider: a calling connection's line places it (从 Tuwa 的号码 / From a Tuwa number); self: the
+   * owner calls it themselves from a call sheet (D215); own: the owner's own phone and SIM (D218,
+   * 用你自己的号码打).
+   */
+  from: "provider" | "self" | "own";
+  provider: string; // "Tuwa", or OWN_PHONE for the owner's own phone, "" for a sheet
+  /** D218, own: the owner's number as the callee will see it (when known), and the phone it rings from. */
+  fromNumber?: string;
+  fromPhone?: string; // "Pixel 7"
   minutes: number; // the estimate
-  costUsd: number; // the estimate, rounded to cents
+  costUsd: number; // the estimate, rounded to cents (own: the voice engine only; the carrier bills the owner's plan)
   perMinUsd: number;
   calleeZone: string; // IANA zone the 9:00–20:00 rule was checked in
   at?: string; // ISO: when it will dial, when that is not now (after quiet hours, or in the callee's morning)
@@ -124,7 +131,7 @@ export interface CallBody {
  * but the line failed, for a reason the provider gave or didn't; lost: Ducter couldn't tell whether a
  * confirmation that errored placed the call (check the provider's app; never dialed twice).
  */
-export type CallFailReason = "payment" | "balance" | "cap" | "provider" | "call_failed" | "lost" | "unreachable" | "signed_out" | "too_long";
+export type CallFailReason = "payment" | "balance" | "cap" | "provider" | "call_failed" | "lost" | "unreachable" | "signed_out" | "too_long" | "phone_busy" | "phone_gone";
 
 /** On hand's row and the opened call: the snapshot plus when it last changed. */
 export type CallView = CallBody & { updatedAt: string };
@@ -175,7 +182,8 @@ export function prettyNumber(n: string): string {
     ["20", "27", "30", "31", "32", "33", "34", "36", "39", "40", "41", "43", "44", "45", "46", "47", "48", "49", "51", "52", "53", "54", "55", "56", "57", "58", "60", "61", "62", "63", "64", "65", "66", "81", "82", "84", "86", "90", "91", "92", "93", "94", "95", "98"].find((c) => d.startsWith(c)) ??
     (d.startsWith("1") ? "1" : d.startsWith("7") ? "7" : d.slice(0, 2));
   const rest = d.slice(cc.length);
-  const groups = rest.length > 8 ? [rest.slice(0, rest.length - 8), rest.slice(-8, -4), rest.slice(-4)] : [rest.slice(0, rest.length - 4), rest.slice(-4)];
+  // +1: 415 555 0123, as the Mac groups it (it read "41 5555 0123").
+  const groups = cc === "1" && rest.length === 10 ? [rest.slice(0, 3), rest.slice(3, 6), rest.slice(6)] : rest.length > 8 ? [rest.slice(0, rest.length - 8), rest.slice(-8, -4), rest.slice(-4)] : [rest.slice(0, rest.length - 4), rest.slice(-4)];
   return `+${cc} ${groups.filter(Boolean).join(" ")}`;
 }
 
@@ -203,6 +211,8 @@ export interface DraftRequest {
   calleeZone?: string; // where the person is now, only when known (they're travelling); else read from the number
   minutes?: number;
   own?: boolean; // D208: the owner said this number is theirs
+  /** D218: which line places it: own = the owner's own phone and SIM; tuwa = a Tuwa number; unset = Ducter picks. */
+  from?: "own" | "tuwa";
   present?: boolean; // D208: the owner asked for this call just now, in the conversation (their quiet hours don't hold it)
   forName?: string; // whom the call is for, as they'd be named on the line
   person?: boolean; // a private person, not a business
@@ -264,4 +274,62 @@ export function renderCallEnded(c: CallBody, taskTitle?: string): string {
     }
   }
 }
+
+// ---------- D218: calls from the owner's own phone (用你自己的号码打 / Call from your own number) ----------
+
+/** The provider name and connection id an own-phone call carries (CallPlan.provider, CallBody.connectionId). */
+export const OWN_PHONE = "own";
+
+/**
+ * The own-number card in Settings › Accounts: one checklist, each step a fact Ducter read itself.
+ * Nothing here is a secret: the voice engine's key is only `key: true`.
+ */
+export interface OwnPhoneView {
+  /** The computer the phone is plugged into (D157: the call runs there). */
+  where: string;
+  /** adb (Android's USB tool) on that computer; missing: the card says how to get it. */
+  adb: boolean;
+  /** The phone, when one is plugged in. unauthorized: tap Allow on the phone; offline: plug it in again. */
+  phone?: { serial: string; model: string; state: "ready" | "unauthorized" | "offline"; android?: string };
+  /** The SIM as the phone reports it (nothing else is read from the phone). */
+  sim?: { state: "ready" | "absent" | "locked" | "unknown"; carrier?: string };
+  /** The owner's number as the callee sees it: from Your details, or typed here. */
+  number?: string;
+  /** The phone sees a headset with a microphone (the cable's phone end). */
+  headset: "yes" | "no" | "unknown";
+  /** The computer end: its sound devices and the pair Ducter uses. tool: ffmpeg is there to reach them. */
+  audio: { inputs: string[]; outputs: string[]; input?: string; output?: string; tool: boolean };
+  /** The real-time voice engine for the call. It needs its own key: a Claude or ChatGPT plan can't do live voice. */
+  voice: { engine: "openai" | "qwen"; key: boolean; model: string; perMinUsd: number };
+  /**
+   * The test call (no AI): Ducter rings a number the owner picks, plays a chime and one sentence.
+   * calling: ringing; playing: on the line; asking: hung up, did the other phone hear it?
+   * heardLine: Ducter heard the line (their hello or a greeting) through the cable.
+   * detail: why it failed (no_pickup, no_line, not_heard, phone, busy), a word the clients map.
+   */
+  test: { state: "never" | "calling" | "playing" | "asking" | "passed" | "failed"; to?: string; at?: string; heardLine?: boolean; detail?: "no_pickup" | "no_line" | "not_heard" | "phone" | "busy" | "audio" };
+  /** Every step done: calls can go from this phone. */
+  ready: boolean;
+  /** Use this phone for every call it can make (otherwise when asked, or where Tuwa can't call). */
+  prefer: boolean;
+  /** Ducter is on a call from this phone right now. */
+  live?: { callId: string; name: string };
+  /** The phone is on a call Ducter didn't place (the owner's own): Ducter waits for it to end. */
+  busy?: boolean;
+  /** Calls from this phone today, and the day's limit (a person's own errands, not a call centre). */
+  today: number;
+  perDay: number;
+}
+
+/** What the own-number card asks the home to do (client frame `own_phone`). */
+export type OwnPhoneAction =
+  | { action: "scan" }
+  | { action: "audio"; input?: string; output?: string }
+  | { action: "number"; number: string }
+  | { action: "key"; engine: "openai" | "qwen"; key: string }
+  | { action: "key_remove" }
+  | { action: "test"; to: string }
+  | { action: "heard"; heard: boolean }
+  | { action: "prefer"; on: boolean }
+  | { action: "forget" };
 

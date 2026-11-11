@@ -1,6 +1,6 @@
 ---
 title: Phone calls
-description: Let your partner phone a restaurant, a clinic or a shop for you, in its own voice or yours, and only after you say Call.
+description: Let your partner phone a restaurant, a clinic or a shop for you, through Tuwa or from your own number, and only after you say Call.
 order: 12
 ---
 
@@ -96,7 +96,7 @@ Ducter dials nothing and nothing is charged for a call sheet.
   before 8:00 or after 21:00 their time. Between 9:00 and 20:00 their time is the usual window; you
   can choose **Call now** outside it, up to 21:00.
 - Call emergency numbers. Call them yourself.
-- Call countries Tuwa doesn't call. Tuwa's numbers reach the US, Canada, Japan, Korea, the UK,
+- Call countries Tuwa doesn't call through Tuwa (your own number can; see below). Tuwa's numbers reach the US, Canada, Japan, Korea, the UK,
   Germany, France, India, Brazil, Australia, New Zealand, Thailand, the Philippines, Singapore,
   Malaysia, the UAE, Nepal, Hong Kong, Macau and Taiwan. For anywhere else you get a call sheet
   instead (below).
@@ -117,6 +117,56 @@ Even in your voice, the call says it is your AI assistant speaking in your voice
 by Tuwa's voice provider, in China. **Delete my voice** asks Tuwa to delete it. Only ever your own
 voice: never a family member's, a friend's or anyone else's.
 
+## Call from your own number
+
+Your partner can also call from **your own Android phone and SIM**, so the other side sees your
+number. This works in any country your SIM can call, mainland China included, where Tuwa can't
+call. It needs a little hardware and one key, set up once on the **Call from your own number**
+card in **Settings › Accounts**. The card has five steps and ticks each one off by itself.
+
+1. **Phone.** Plug the Android phone into the computer Ducter lives on with a USB cable, and turn on
+   **USB debugging** in its Developer options. Tap **Allow** when the phone asks. If the computer
+   doesn't have adb yet, the card shows the one command to install it
+   (`brew install android-platform-tools`).
+2. **SIM.** The card shows the carrier and the number they'll see (from Your details, or type it).
+3. **Cable.** The phone needs to think a headset is plugged in, and the computer needs to hear it
+   and talk into it. You need, for about $15:
+   - a USB-C to 3.5 mm headset adapter (only if the phone has no headset socket);
+   - a headset splitter: one 4-pole 3.5 mm plug to a headphone plug and a mic plug;
+   - a USB sound card with a headphone socket and a mic socket;
+   - a 3.5 mm cable with an attenuator (about −25 dB).
+
+   The phone's headphone side goes into the sound card's mic socket; the sound card's headphone
+   socket goes through the attenuator into the phone's mic side. The card finds the sound card by
+   its name; pick another one if it guessed wrong. The computer needs ffmpeg
+   (`brew install ffmpeg`), and on a Mac, Ducter asks once to use the microphone.
+4. **Live voice.** Talking on a call in real time takes a voice model with its own API key. Your
+   Claude or ChatGPT plan doesn't include live voice. Paste an **OpenAI** key (works worldwide,
+   except mainland China; about $0.20 a minute of talking) or a **Qwen** key from Alibaba Cloud
+   Model Studio (works in mainland China). The key stays on that computer.
+5. **Test call.** Type a number you can answer, such as another phone of yours. Ducter rings it,
+   plays a chime and one sentence, and hangs up. No AI is involved. Then tell the card whether you
+   heard it.
+
+Then the card reads **Ready to call from your number**. Your partner uses your number when you ask
+("用我自己的号码打给…", "call them from my number"), and for numbers Tuwa can't reach. Turn on
+**Use my number for every call** to use it always. The **Call?** card shows **From: Your number …
+(your phone)**, and **About** counts only the voice model: the call itself is on your phone plan.
+
+Everything else is the same as any call: the card first, the line says it's an AI assistant calling
+for you, the hours, the outcome as heard. A few things are different:
+
+- One call at a time. If you're on a call on that phone yourself, Ducter waits until you're done.
+- At most 10 calls a day from your number, so your carrier sees a person's errands, not a call
+  center.
+- Ducter only dials, hangs up, presses keypad digits for phone menus, and reads whether a call is
+  on. It never reads your messages or contacts, never opens other apps, and never answers a call.
+- Nothing is recorded. What was said is kept as text, like any call.
+- **On hand** and the card show **On a call from your phone**, with **Hang up**, on any of your
+  devices.
+- The phone stays plugged into that computer: calls run there.
+
 ## Coming soon
 
-Answering calls to your own number, calling from your own number, and listening in live.
+Answering calls to your own number, listening in live, and a phone plugged into another of your
+computers instead of the one Ducter lives on.

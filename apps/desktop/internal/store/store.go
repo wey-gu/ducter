@@ -416,7 +416,10 @@ type Store struct {
 	// phone card takes it.
 	SignIn      *protocol.SignInView
 	VoiceResult *protocol.ServerFrame
-	Forgot      *protocol.Forgot
+	// D218: the own-number card, and its last refusal (number, key, busy).
+	OwnPhone  *protocol.OwnPhoneView
+	OwnAnswer string
+	Forgot    *protocol.Forgot
 	// Rules are 你的规则 / Your rules, as last sent (nil until a rules
 	// frame; RulesAt says one came). Candidates are who could do a task,
 	// by task id, as last asked; SwitchResults the switch answers not yet
@@ -543,7 +546,7 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		}
 		s.ConnReads[f.ID] = append([]protocol.ReadLine{}, f.Reads...)
 	case "connections":
-		s.Connections, s.Oo, s.ConnAsked = f.Connections, f.Oo, true
+		s.Connections, s.Oo, s.ConnAsked, s.OwnPhone = f.Connections, f.Oo, true, f.OwnPhone
 		if s.Connections == nil {
 			s.Connections = []protocol.ConnectionView{}
 		}
@@ -552,6 +555,11 @@ func (s *Store) Apply(f protocol.ServerFrame) {
 		s.ConnResult = &fc
 	case "connection_signin":
 		s.SignIn = f.SignIn
+	case "own_phone_result":
+		s.OwnAnswer = f.Reason
+		if s.OwnAnswer == "" {
+			s.OwnAnswer = "phone"
+		}
 	case "phone_voice_result":
 		fc := f
 		s.VoiceResult = &fc

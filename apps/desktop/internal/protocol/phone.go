@@ -51,16 +51,18 @@ type CallPlan struct {
 	Keep       string     `json:"keep,omitempty"`
 	MustNot    []string   `json:"mustNot"`
 	Voice      string     `json:"voice"` // ducter | owner
-	From       string     `json:"from"`  // provider | self (D215)
+	From       string     `json:"from"`  // provider | self (D215) | own (D218)
 	Provider   string     `json:"provider"`
 	Minutes    float64    `json:"minutes"`
 	CostUSD    float64    `json:"costUsd"`
 	PerMinUSD  float64    `json:"perMinUsd"`
 	CalleeZone string     `json:"calleeZone"`
 	At         string     `json:"at,omitempty"`
-	Wait       *CallWait  `json:"wait,omitempty"`   // D208: why it isn't now, when At is set
-	CanNow     bool       `json:"canNow,omitempty"` // D208: 现在就打 / Call now is offered
-	Own        bool       `json:"own,omitempty"`    // D208: the owner's own number
+	Wait       *CallWait  `json:"wait,omitempty"`       // D208: why it isn't now, when At is set
+	CanNow     bool       `json:"canNow,omitempty"`     // D208: 现在就打 / Call now is offered
+	Own        bool       `json:"own,omitempty"`        // D208: the owner's own number
+	FromNumber string     `json:"fromNumber,omitempty"` // D218: the owner's number, when the call goes from their own phone
+	FromPhone  string     `json:"fromPhone,omitempty"`  // D218: the phone it rings from ("Pixel 7")
 	Summary    string     `json:"summary,omitempty"`
 	Note       string     `json:"note,omitempty"`
 	Sheet      *CallSheet `json:"sheet,omitempty"` // D215: a call sheet the owner calls themselves (From = self)
@@ -211,4 +213,70 @@ type CallNow struct {
 type PhoneCap struct {
 	T   string  `json:"t"` // "phone_cap"
 	USD float64 `json:"usd"`
+}
+
+// OwnPhone is the provider an own-number call carries (D218).
+const OwnPhone = "own"
+
+// OwnPhoneView is the own-number card (D218, 用你自己的号码打 / Call from
+// your own number): the phone, its SIM, the cable, the live voice, the test
+// call, each a fact the home read. The voice key is only Key: true.
+type OwnPhoneView struct {
+	Where string `json:"where"`
+	ADB   bool   `json:"adb"`
+	Phone *struct {
+		Serial  string `json:"serial"`
+		Model   string `json:"model"`
+		State   string `json:"state"` // ready | unauthorized | offline
+		Android string `json:"android,omitempty"`
+	} `json:"phone,omitempty"`
+	SIM *struct {
+		State   string `json:"state"` // ready | absent | locked | unknown
+		Carrier string `json:"carrier,omitempty"`
+	} `json:"sim,omitempty"`
+	Number  string `json:"number,omitempty"`
+	Headset string `json:"headset"` // yes | no | unknown
+	Audio   struct {
+		Inputs  []string `json:"inputs"`
+		Outputs []string `json:"outputs"`
+		Input   string   `json:"input,omitempty"`
+		Output  string   `json:"output,omitempty"`
+		Tool    bool     `json:"tool"`
+	} `json:"audio"`
+	Voice struct {
+		Engine    string  `json:"engine"` // openai | qwen
+		Key       bool    `json:"key"`
+		Model     string  `json:"model"`
+		PerMinUSD float64 `json:"perMinUsd"`
+	} `json:"voice"`
+	Test struct {
+		State     string `json:"state"` // never | calling | playing | asking | passed | failed
+		To        string `json:"to,omitempty"`
+		At        string `json:"at,omitempty"`
+		HeardLine *bool  `json:"heardLine,omitempty"`
+		Detail    string `json:"detail,omitempty"`
+	} `json:"test"`
+	Ready  bool `json:"ready"`
+	Prefer bool `json:"prefer"`
+	Live   *struct {
+		CallID string `json:"callId"`
+		Name   string `json:"name"`
+	} `json:"live,omitempty"`
+	Busy   bool `json:"busy,omitempty"`
+	Today  int  `json:"today"`
+	PerDay int  `json:"perDay"`
+}
+
+// OwnPhoneAct is one step on the own-number card (client frame own_phone).
+type OwnPhoneAct struct {
+	T      string `json:"t"`      // "own_phone"
+	Action string `json:"action"` // scan | audio | number | key | key_remove | test | heard | prefer | forget
+	Input  string `json:"input,omitempty"`
+	Output string `json:"output,omitempty"`
+	Number string `json:"number,omitempty"`
+	Engine string `json:"engine,omitempty"`
+	Key    string `json:"key,omitempty"`
+	To     string `json:"to,omitempty"`
+	Heard  *bool  `json:"heard,omitempty"`
+	On     *bool  `json:"on,omitempty"`
 }

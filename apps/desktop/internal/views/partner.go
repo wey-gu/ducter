@@ -484,6 +484,7 @@ func (a *App) accountsPanel(c *ui.Context) {
 		a.sourceCards(c, list)
 	}
 	a.phoneOfferRow(c) // D193: calls, before a calling connection (then its card is among the cards)
+	a.ownPhoneCard(c)  // D218: calls from the owner's own phone and number
 	title, lede := a.L.T("acct.title"), a.L.T("acct.lede")
 	if len(list) > 0 {
 		title, lede = "", ""

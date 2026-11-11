@@ -73,6 +73,8 @@ export interface WsDeps {
   connections?: ConnectionsStore;
   /** D193: phone calls (phone.ts); absent in tests that don't need it. */
   phone?: import("./phone.ts").Phone;
+  /** D218: the owner's own Android phone and SIM for calls (phone-own/). */
+  ownNumber?: import("./phone-own/index.ts").OwnPhone;
   /** Work over time (D112-D114): waiters, until loops, routines; absent in tests that don't need it. */
   work?: WorkFrames;
   /** 开一件事 / New task (D128, newtask.ts); absent in tests that don't need it. */
@@ -204,11 +206,32 @@ export function createWsHandler(deps: WsDeps) {
       const phone = deps.phone?.view(c.id);
       return { ...c, ...(look ? { look } : {}), ...(phone ? { phone } : {}) };
     });
-    return { t: "connections", connections: list, oo: deps.connections!.oo() };
+    const own = deps.ownNumber?.view();
+    return { t: "connections", connections: list, oo: deps.connections!.oo(), ...(own ? { ownPhone: own } : {}) };
   };
   const offConnections = deps.connections?.onChange(() => {
     for (const ws of sockets) if (ws.data.connections) send(ws, connectionsFrame());
   });
+  // D218: the own-number card follows the phone (plugged in, allowed, the test call, a live call).
+  let ownTimer: ReturnType<typeof setTimeout> | undefined;
+  const offOwn = deps.ownNumber?.onChange(() => {
+    if (ownTimer || !deps.connections) return;
+    ownTimer = setTimeout(() => {
+      ownTimer = undefined;
+      for (const ws of sockets) if (ws.data.connections) send(ws, connectionsFrame());
+    }, 150);
+  });
+  // While Settings › Accounts is open somewhere, look for the phone every few seconds (plugging it
+  // in, tapping Allow on it), so the card moves on by itself.
+  let ownScan: ReturnType<typeof setInterval> | undefined;
+  const watchOwn = () => {
+    if (ownScan || !deps.ownNumber) return;
+    void deps.ownNumber.scan().catch(() => undefined);
+    ownScan = setInterval(() => {
+      if (![...sockets].some((ws) => ws.data.connections)) return void (clearInterval(ownScan), (ownScan = undefined));
+      void deps.ownNumber!.scan().catch(() => undefined);
+    }, 4000);
+  };
   // D193: the device sign-in: every socket that has Settings › Accounts open sees the code and the end.
   const offSignIn = deps.connections?.onSignIn((signIn) => {
     for (const ws of sockets) if (ws.data.connections) send(ws, { t: "connection_signin", signIn });
@@ -656,6 +679,7 @@ export function createWsHandler(deps: WsDeps) {
         if (!deps.connections) throw new Error("connections are not available");
         ws.data.connections = true;
         watchLook();
+        watchOwn();
         send(ws, connectionsFrame());
         const si = deps.connections.signInView();
         if (si) send(ws, { t: "connection_signin", signIn: si });
@@ -691,6 +715,17 @@ export function createWsHandler(deps: WsDeps) {
         const usd = Number(f.usd);
         if (!Number.isFinite(usd) || usd <= 0) throw new Error("a cap is a positive amount");
         await deps.phone.setCap(usd, `Yes. (The person set the daily limit to $${usd} in Ducter's settings.)`);
+        send(ws, connectionsFrame());
+        return;
+      }
+      case "own_phone": {
+        // D218: the own-number card. The key goes to the home only and never comes back in a frame.
+        if (!deps.ownNumber || !deps.connections) throw new Error("calls from your own number are not available here");
+        ws.data.connections = true;
+        watchOwn();
+        const { t: _t, ...a } = f;
+        const r = await deps.ownNumber.act(a);
+        if (!r.ok) send(ws, { t: "own_phone_result", ok: false, action: a.action, ...(r.error ? { reason: r.error } : {}) });
         send(ws, connectionsFrame());
         return;
       }
@@ -1040,6 +1075,9 @@ export function createWsHandler(deps: WsDeps) {
       offSettings?.();
       offRules?.();
       offConnections?.();
+      offOwn?.();
+      if (ownScan) clearInterval(ownScan);
+      if (ownTimer) clearTimeout(ownTimer);
       offLook?.();
       if (lookTimer) clearTimeout(lookTimer);
       offNoted();

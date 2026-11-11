@@ -2,7 +2,7 @@
 // card, a question from the line, the live call row and its result on On hand, and in Settings ›
 // Accounts the offer, the device sign-in (code, link, waiting, the end) and the phone card (the
 // day's cap, the rails, your voice). Only shared controls (controls.tsx); words from i18n-phone.ts.
-import type { CallPlan, CallView, ConnectionView, SignInView } from "@ducter/protocol";
+import type { CallPlan, CallView, ConnectionView, OwnPhoneView, SignInView } from "@ducter/protocol";
 import { callEnded, prettyNumber, TUWA_MCP } from "@ducter/protocol";
 import { useState } from "preact/hooks";
 import { A } from "./app.ts";
@@ -40,6 +40,10 @@ export const CallArt = ({ off, size = 72 }: { off?: boolean; size?: number }) =>
 /** D208: why it isn't now, in plain words (the callee's clock, or the owner's quiet hours). */
 export const waitWords = (p: CallPlan) => (p.wait ? (p.wait.why === "quiet" ? t("call.wait.quiet") : t(`call.wait.${p.wait.why}`, p.wait.their, p.wait.then)) : "");
 
+/** D218: 从 / From: a Tuwa number, or the owner's own number and phone. */
+export const fromWords = (p: CallPlan) =>
+  p.from !== "own" ? t("call.from.provider", p.provider) : p.fromNumber ? (p.fromPhone ? t("call.from.ownphone", prettyNumber(p.fromNumber), p.fromPhone) : t("call.from.own", prettyNumber(p.fromNumber))) : t("call.from.phone", p.fromPhone ?? "Android");
+
 function PlanRows({ p, now }: { p: CallPlan; now?: () => void }) {
   const rows: [string, string][] = [
     [t("call.row.number"), prettyNumber(p.to)],
@@ -48,8 +52,8 @@ function PlanRows({ p, now }: { p: CallPlan; now?: () => void }) {
     ...(p.keep ? [[t("call.row.keep"), p.keep] as [string, string]] : []),
     ...(p.mustNot.length ? [[t("call.row.mustnot"), p.mustNot.join(t("acct.sep"))] as [string, string]] : []),
     [t("call.row.voice"), t(p.voice === "owner" ? "call.voice.owner" : "call.voice.ducter")],
-    [t("call.row.from"), t("call.from.provider", p.provider)],
-    [t("call.row.about"), t("call.about", p.minutes, money(p.costUsd))],
+    [t("call.row.from"), fromWords(p)],
+    [t("call.row.about"), p.from === "own" ? t("call.about.own", p.minutes, money(p.costUsd)) : t("call.about", p.minutes, money(p.costUsd))],
   ];
   return (
     <dl class="call-plan">
@@ -311,7 +315,7 @@ export function callSub(c: CallView): { text: string; warn?: boolean } | undefin
     case "calling":
     case "talking":
     case "question":
-      return { text: prettyNumber(c.plan.to) };
+      return { text: c.plan.from === "own" ? t("call.sub.own", prettyNumber(c.plan.to)) : prettyNumber(c.plan.to) };
     default:
       return undefined;
   }

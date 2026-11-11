@@ -18,6 +18,7 @@ import { EyeShut, liveSize } from "./live.tsx";
 import { Btn, Chev, Seg, Toggle } from "./controls.tsx";
 import { deviceArt, DevicesSection } from "./devcard.tsx";
 import { ProactiveChips, SourceCards } from "./accounts.tsx";
+import { OwnPhoneCard } from "./own-phone.tsx";
 import { CallDecision, CallRow, PhoneCard, PhoneOffer } from "./phone.tsx";
 import { callEnded } from "@ducter/protocol";
 import { FindsNote } from "./finds.tsx";
@@ -2515,6 +2516,7 @@ function Accounts() {
       <div class="small sub">{t("acct.honest")}</div>
       {/* D193: calls are their own card, offered beside the accounts. */}
       {list && (list.some((c) => c.phone) ? list.filter((c) => c.phone).map((c) => <PhoneCard key={c.id} c={c} />) : <PhoneOffer />)}
+      {list && <OwnPhoneCard />}
     </section>
   );
 }

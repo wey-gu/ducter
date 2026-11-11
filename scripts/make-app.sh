@@ -123,6 +123,8 @@ cat >"$APP/Contents/Info.plist" <<EOF
 	<true/>
 	<key>NSSupportsAutomaticGraphicsSwitching</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Calls from your own number: Ducter hears the call through the sound card your phone is plugged into. Nothing is recorded.</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>Ducter, open source. Runs on your own Mac.</string>
 </dict>
@@ -143,7 +145,8 @@ else
   # Inside out: the helper, then the bundle, which signs Contents/MacOS/Ducter with it.
   # Hardened runtime + timestamp on both. The helper's one entitlement is allow-jit:
   # JavaScriptCore maps MAP_JIT pages, and without it a Bun binary dies with "Ran out of
-  # executable memory" once code gets hot (tested with Bun 1.4.4). The CLI loads no native
+  # executable memory" once code gets hot (tested with Bun 1.4.4). D218 adds audio-input: the
+  # helper starts ffmpeg to hear an own-number call through the sound card. The CLI loads no native
   # addons, so library validation stays on; the desktop binary needs no entitlements.
   codesign --force --timestamp --options runtime --sign "$IDENTITY" \
     --identifier "$ID.cli" --entitlements "$ENT" "$APP/Contents/Helpers/ducter"

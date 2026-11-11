@@ -913,9 +913,18 @@ Codex first, once OAR is near 1.0. See `research/17`.
   number and goal approved 3 times in 14 days).
 - [ ] **The partner's 连上 / Connect from the conversation**: today it says in one line where to
   connect; a card that opens the sign-in in place.
-- [ ] **Inbound and the owner's own number** (Tuwa Device on a Mac home with the iPhone nearby),
-  live listening, Ducter calling the owner as the top escalation rung.
-- [ ] **A second calling provider** behind the same card (Twilio + a real-time model) if Tuwa's
+- [ ] **Inbound** (never answered by Ducter today, D218 (5)), live listening, Ducter calling the
+  owner as the top escalation rung.
+- [ ] **D218, own number, with real hardware** (trigger: the author's spare Android, the cable and a
+  key): research/63 §6 one by one (real-network call states, keypad digits mid-call, headset words,
+  levels through the cable, both engines' live session shapes and Qwen's price, microphone
+  permission in the signed Mac app); then a PRC lawyer on research 60 §6 before offering it to
+  mainland users at large.
+- [ ] **D218 on a worker** (trigger: a phone plugged into a computer other than the home): the
+  worker runs adb, ffmpeg and the voice loop and streams the call's state to the home (D157).
+- [ ] **D218: Bluetooth HFP from a Linux computer** (no cable), and `gpt-realtime-2.1-mini` as a
+  cheaper engine once the eval of a call in someone's name shows it holds the rails.
+- [ ] **A third calling provider** behind the same card (Twilio + a real-time model) if Tuwa's
   reach or terms stop fitting.
 
 ## Watching Ducter's browser and taking turns (D190)

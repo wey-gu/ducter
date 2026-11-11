@@ -651,8 +651,8 @@ func (a *App) callFacts(c *ui.Context, d *store.DecisionState) {
 		{a.L.T("call.keep"), pl.Keep},
 		{a.L.T("call.mustnot"), strings.Join(pl.MustNot, a.L.T("acct.sep"))},
 		{a.L.T("call.voice"), voice},
-		{a.L.T("call.from"), a.L.T("call.from.provider", firstNonEmpty(pl.Provider, "Tuwa"))},
-		{a.L.T("call.about"), a.L.T("call.about.v", mins, money(pl.CostUSD))},
+		{a.L.T("call.from"), a.callFrom(pl)},
+		{a.L.T("call.about"), a.callAbout(pl, mins)},
 		{a.L.T("call.when"), when},
 	}
 	ui.Column(c).Gap(t.S2).Padding(t.S3, t.S4).Radius(t.RadiusMD).Background(t.Surface).Children(func() {
@@ -893,7 +893,11 @@ func (a *App) callSub(cl protocol.CallBody) string {
 	case cl.Outcome != "" && cl.State != protocol.CallAutomated:
 		parts = append(parts, cl.Outcome)
 	case !ended:
-		parts = append(parts, prettyNumber(cl.Plan.To)+" · "+cl.Plan.Goal)
+		if cl.Plan.From == protocol.OwnPhone {
+			parts = append(parts, a.L.T("call.sub.own", prettyNumber(cl.Plan.To))+" · "+cl.Plan.Goal)
+		} else {
+			parts = append(parts, prettyNumber(cl.Plan.To)+" · "+cl.Plan.Goal)
+		}
 	}
 	if cl.Hint == "screening" && (cl.State == protocol.CallAutomated || cl.State == protocol.CallNoAnswer || cl.State == protocol.CallFailed) {
 		parts = append(parts, a.L.T("call.auto.screening"))

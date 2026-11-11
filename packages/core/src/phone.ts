@@ -11,10 +11,11 @@
 import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Bodies, CallBody, CallPlan, CallState, CallView, CallWait, DraftRequest, DraftResult, LogEvent, PhoneView } from "@ducter/protocol";
-import { callEnded, e164 } from "@ducter/protocol";
+import { callEnded, e164, OWN_PHONE } from "@ducter/protocol";
 import type { LogStore, PhonePort } from "@ducter/protocol/src/internal.ts";
 import { realClock, type Clock } from "./clock.ts";
-import type { ConnectionsStore } from "./connections.ts";
+import type { ConnectionsStore, LinkResult } from "./connections.ts";
+import type { OwnPhone } from "./phone-own/index.ts";
 import { nanpZones } from "./nanp.ts";
 import { providerOf, type CallProvider, type ProviderIo } from "./phone-provider.ts";
 import { inQuiet, localMinutes, type Quiet } from "./push.ts";
@@ -235,6 +236,8 @@ export interface PhoneDeps {
   onChange?: () => void;
   /** D199: the calling connection came or went (the home's 打电话 follows it). */
   onCalling?: () => void;
+  /** D218: the owner's own Android phone and SIM, when this home has it (phone-own/). */
+  own?: OwnPhone;
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -318,10 +321,26 @@ export function openPhone(deps: PhoneDeps): Phone {
     }
     return found;
   }
-  const ioOf = (f: NonNullable<typeof found>): ProviderIo => ({
-    call: (tool, args) => deps.connections.invoke(f.connectionId, tool, args),
-    schema: (tool) => f.tools.get(tool),
-  });
+  /** D218: the owner's own phone, as a provider (no connection behind it: it is local). */
+  const ownFound = (): NonNullable<typeof found> | undefined => (deps.own ? { connectionId: OWN_PHONE, provider: deps.own.provider, tools: new Map() } : undefined);
+  /** The provider a call was drafted with. */
+  async function resolveFor(connectionId: string): Promise<typeof found> {
+    if (connectionId === OWN_PHONE) return ownFound();
+    const f = await resolve();
+    return f && f.connectionId === connectionId ? f : undefined;
+  }
+  const ioOf = (f: NonNullable<typeof found>): ProviderIo =>
+    f.connectionId === OWN_PHONE
+      ? { call: async () => ({ ok: false, isError: true, data: "local" }) as unknown as LinkResult, schema: () => undefined }
+      : {
+          call: (tool, args) => deps.connections.invoke(f.connectionId, tool, args),
+          schema: (tool) => f.tools.get(tool),
+        };
+  /** How often a live call is read: the own phone is local (fast); a provider asks for 15 s. */
+  const pollOf = (f: NonNullable<typeof found> | undefined, live: boolean) => (f && "pollMs" in f.provider ? Number((f.provider as { pollMs: number }).pollMs) : live ? POLL_LIVE_MS : POLL_MS);
+  /** D218: when the owner's phone is busy (their own call), a Go waits; this long at most. */
+  const busySince = new Map<string, number>();
+  const BUSY_WAIT_MS = 10 * 60_000;
   // Connection tools that are the call flow: only this module runs them.
   deps.connections.reserve((id, action) => (found?.connectionId === id && found.provider.reserved.has(action) ? "Calls go through phone_call (one Go card per call, with Ducter's rails); this tool is not run directly." : undefined));
 
@@ -383,8 +402,19 @@ export function openPhone(deps: PhoneDeps): Phone {
       return later(callId, at - clock.now(), () => dial(callId));
     }
     if (spentToday(callId) + c.plan.costUsd > cap()) return void put(c, { state: "failed", reason: "cap", error: `today's calls would pass the $${cap()} daily cap` });
-    const f = await resolve();
-    if (!f || f.connectionId !== c.connectionId) return void put(c, { state: "failed", reason: "signed_out", error: "the calling connection is gone or signed out" });
+    const f = await resolveFor(c.connectionId);
+    if (!f) return void put(c, { state: "failed", reason: c.connectionId === OWN_PHONE ? "phone_gone" : "signed_out", error: c.connectionId === OWN_PHONE ? "calls from your own number aren't set up on this home any more" : "the calling connection is gone or signed out" });
+    if (f.connectionId === OWN_PHONE && deps.own) {
+      // One call at a time, never over the owner's own call: wait for the phone to be free.
+      if (await deps.own.busy()) {
+        const since = busySince.get(callId) ?? clock.now();
+        busySince.set(callId, since);
+        if (clock.now() - since > BUSY_WAIT_MS) return busySince.delete(callId), void put(c, { state: "failed", reason: "phone_busy", error: "your phone stayed on another call for 10 minutes" });
+        return later(callId, 20_000, () => dial(callId));
+      }
+      busySince.delete(callId);
+      if (!deps.own.roomToday()) return void put(c, { state: "failed", reason: "cap", error: "today's calls from your own number reached the day's limit" });
+    }
     const io = ioOf(f);
     let conf = c.ref?.confirmation;
     let r: Awaited<ReturnType<CallProvider["confirm"]>> | undefined = conf ? await f.provider.confirm(io, conf, true, c.approvedWords ?? "Yes").catch((e) => ({ ok: false as const, reason: "provider" as const, error: String((e as Error).message ?? e) })) : undefined;
@@ -415,13 +445,13 @@ export function openPhone(deps: PhoneDeps): Phone {
       return later(callId, Math.max(POLL_MS, Date.parse(c.plan.at!) - clock.now()), () => poll(callId));
     }
     c = put(c, { state: "calling", placedAt: new Date(clock.now()).toISOString(), ref: { ...c.ref, confirmation: conf, call: r.id ?? c.ref?.draft } });
-    later(callId, POLL_MS, () => poll(callId));
+    later(callId, pollOf(f, false), () => poll(callId));
   }
 
   async function poll(callId: string): Promise<void> {
     let c = calls.get(callId);
     if (!c || !(["calling", "talking", "question"].includes(c.state) || (c.state === "waiting" && c.ref?.scheduled))) return;
-    const f = await resolve().catch(() => undefined);
+    const f = await resolveFor(c.connectionId).catch(() => undefined);
     const id = c.ref?.call ?? c.ref?.draft;
     if (!f || !id) return void put(c, { state: "uncertain", error: "lost the calling connection mid-call; check the provider's app" });
     const io = ioOf(f);
@@ -430,7 +460,7 @@ export function openPhone(deps: PhoneDeps): Phone {
       const n = (lost.get(callId) ?? 0) + 1;
       lost.set(callId, n);
       if (n >= MAX_LOST_POLLS) return void (await finish(callId, { state: "uncertain", outcome: undefined, error: "Ducter lost track of the call; check the provider's app" }));
-      return later(callId, POLL_MS, () => poll(callId));
+      return later(callId, pollOf(f, false), () => poll(callId));
     }
     lost.delete(callId);
     if (s.phase === "finished") return void (await finish(callId));
@@ -457,13 +487,13 @@ export function openPhone(deps: PhoneDeps): Phone {
       await f.provider.cancel(io, id).catch(() => false);
       return void (await finish(callId, { by: "ducter", reason: "too_long" }));
     }
-    later(callId, c.state === "calling" ? POLL_MS : POLL_LIVE_MS, () => poll(callId));
+    later(callId, pollOf(f, c.state !== "calling"), () => poll(callId));
   }
 
   async function finish(callId: string, extra: Partial<Call> = {}) {
     const c = calls.get(callId);
     if (!c || callEnded(c.state)) return;
-    const f = await resolve().catch(() => undefined);
+    const f = await resolveFor(c.connectionId).catch(() => undefined);
     const id = c.ref?.call ?? c.ref?.draft;
     const res = f && id ? await f.provider.result(ioOf(f), id).catch(() => undefined) : undefined;
     // An open question is closed: the line is gone.
@@ -502,7 +532,7 @@ export function openPhone(deps: PhoneDeps): Phone {
     const c = link && calls.get(link.callId);
     closeQuestion(decisionId);
     if (!c || c.state !== "question") return;
-    const f = await resolve().catch(() => undefined);
+    const f = await resolveFor(c.connectionId).catch(() => undefined);
     if (f && c.ref?.token) await f.provider.reply(ioOf(f), c.ref.call ?? c.ref.draft ?? "", c.ref.token, CALLBACK_REPLY).catch(() => false);
     put(c, { state: "talking" });
   }
@@ -531,7 +561,7 @@ export function openPhone(deps: PhoneDeps): Phone {
       }
       // Not now, or a reply (the partner reads it and drafts again): withdraw the draft.
       put(c, { state: "held" });
-      const f = await resolve().catch(() => undefined);
+      const f = await resolveFor(c.connectionId).catch(() => undefined);
       if (f && c.ref?.draft) await f.provider.cancel(ioOf(f), c.ref.draft).catch(() => false);
       return;
     }
@@ -541,7 +571,7 @@ export function openPhone(deps: PhoneDeps): Phone {
     if (r.by === "default" || c.state !== "question" || c.question?.decisionId !== r.decisionId) return;
     const d = deps.log.read({ stream: "channel", kinds: ["decision"], limit: 5000 }).map((e) => e.body as Bodies["decision"]).find((x) => x.decisionId === r.decisionId);
     const text = r.option === "reply" ? (r.text ?? "").trim() : r.option === "go" ? (d?.goLabel ?? "") : "";
-    const f = await resolve().catch(() => undefined);
+    const f = await resolveFor(c.connectionId).catch(() => undefined);
     if (f && c.ref?.token) await f.provider.reply(ioOf(f), c.ref.call ?? c.ref.draft ?? "", c.ref.token, text || CALLBACK_REPLY, !!c.ref.yesNo && !!text).catch(() => false);
     put(c, { state: "talking" });
   }
@@ -644,27 +674,31 @@ export function openPhone(deps: PhoneDeps): Phone {
 
   const api: Phone = {
     available() {
-      return found ? { connectionId: found.connectionId, provider: found.provider.name } : undefined;
+      if (found) return { connectionId: found.connectionId, provider: found.provider.name };
+      return deps.own?.ready() ? { connectionId: OWN_PHONE, provider: OWN_PHONE } : undefined;
     },
 
     async draft(req, o) {
+      const tuwa = await resolve().catch(() => undefined);
+      const ownReady = !!deps.own?.ready();
       // D215: a number no line Ducter has (or could connect) reaches: a call sheet the owner calls
-      // themselves. Asked before the connection, since connecting one wouldn't help.
+      // themselves. Asked before the connection, since connecting one wouldn't help. D218: the
+      // owner's own phone, once set up, reaches every number its SIM can call, so no sheet then
+      // (unless Tuwa was asked for); asked for their own number, it's set up first, never a sheet.
       const n = !(o.callId && o.answers) ? e164(req.to ?? "") : undefined;
-      if (n && !neverCall(n)) {
-        const f0 = await resolve().catch(() => undefined);
-        if (!reaches(f0?.provider.name, n)) return sheet(n, req, o);
-      }
-      const f = await resolve();
-      if (!f) return { ok: false, reason: "no_phone", error: "No calling connection yet. Tell the user in one line: they can connect calls (Tuwa) in Settings › Accounts; it takes a minute on their phone." };
-      const io = ioOf(f);
+      const ownLine = req.from === "own" || (ownReady && req.from !== "tuwa");
+      if (n && !neverCall(n) && !ownLine && !reaches(tuwa?.provider.name, n)) return sheet(n, req, o);
+      if (!tuwa && !ownReady)
+        return { ok: false, reason: "no_phone", error: deps.own?.view().phone ? "Calls from the user's own phone aren't fully set up yet (Settings › Accounts › Call from your own number). Tell the user in one line which step is left." : "No calling connection yet. Tell the user in one line: they can connect calls (Tuwa) in Settings › Accounts; it takes a minute on their phone. Or call from their own Android phone and number, set up on the same page." };
+      let f: NonNullable<typeof found> = (tuwa ?? ownFound())!;
+      let io = ioOf(f);
       const w = langOf(o.lang);
 
       // Continuing a draft the provider asked about: the owner's answers, exactly.
       if (o.callId && o.answers) {
         const pend = pending.get(o.callId);
-        if (!pend) return { ok: false, error: "No draft waiting for answers with that callId. Draft the call again." };
-        const out = await f.provider.answer(io, pend.draftId, o.answers);
+        if (!pend || !tuwa) return { ok: false, error: "No draft waiting for answers with that callId. Draft the call again." };
+        const out = await tuwa.provider.answer(io, pend.draftId, o.answers);
         return after(out, pend.req, pend.plan, pend.x);
       }
 
@@ -674,6 +708,20 @@ export function openPhone(deps: PhoneDeps): Phone {
       const to = e164(req.to ?? "");
       if (!to) return { ok: false, reason: "number", error: "That is not a full phone number. Ask the user for it with the country code (+81…, +1…); never guess one." };
       if (neverCall(to)) return { ok: false, reason: "emergency", error: "Ducter never calls emergency or short service numbers. Tell the user to call it themselves, now if it is urgent." };
+      // D218: which line. Asked for → that one; else the owner's own phone when they prefer it or
+      // Tuwa can't reach the country (mainland China first); Tuwa otherwise.
+      const tuwaReaches = !!tuwa && (tuwa.provider.name !== "Tuwa" || TUWA_REACHES.includes(countryCode(to) ?? ""));
+      if (req.from === "own") {
+        if (!ownReady) return { ok: false, reason: "no_phone", error: "Calls from the user's own number aren't set up yet (Settings › Accounts › Call from your own number: their Android phone, a cable, a voice key). Tell the user in one line." };
+        f = ownFound()!;
+      } else if (req.from === "tuwa") {
+        if (!tuwa) return { ok: false, reason: "no_phone", error: "Tuwa isn't connected. Tell the user in one line: Settings › Accounts › Make calls." };
+        f = tuwa;
+      } else f = ownReady && (deps.own!.prefer() || !tuwaReaches) ? ownFound()! : (tuwa ?? ownFound()!);
+      io = ioOf(f);
+      const fromOwn = f.connectionId === OWN_PHONE;
+      if (fromOwn && req.voice === "owner") return { ok: false, reason: "voice", error: "A call from the user's own number speaks in Ducter's voice only. Draft it in Ducter's voice." };
+      if (fromOwn && !deps.own!.roomToday()) return { ok: false, reason: "cap", error: "The user's own number has made today's calls already (a few a day keeps the carrier from flagging the SIM). Tell the user in one line; it can wait until tomorrow." };
       if (f.provider.name === "Tuwa" && !TUWA_REACHES.includes(countryCode(to) ?? ""))
         return { ok: false, reason: "region", error: `Tuwa's numbers don't call that country (it calls the US, Canada, Japan, Korea, the UK, Germany, France, India, Brazil, Australia, New Zealand, Thailand, the Philippines, Singapore, Malaysia, the UAE, Nepal, Hong Kong, Macau and Taiwan). Tell the user in one line, in their language.` };
       if ((file.doNotCall ?? []).some((x) => x.number === to)) return { ok: false, reason: "dnc", error: "That number is on the user's do-not-call list. Say so in one line; don't call it." };
@@ -689,7 +737,8 @@ export function openPhone(deps: PhoneDeps): Phone {
       if (voice === "owner" && !file.voice?.on) return { ok: false, reason: "voice", error: "The user's own voice isn't set up and on (Settings › Accounts › the phone card). Draft it in Ducter's voice, and tell the user in one line, in their language, where to set theirs up." };
       const minutes = Math.min(TALK_LIMIT_MIN, Math.max(1, Math.round(Number(req.minutes) || 4)));
       const sur = surcharge(to);
-      const perMinUsd = round2(BASE_PER_MIN + (sur ?? 0.3));
+      // D218: from the owner's own phone, Ducter's cost is the voice engine's (the carrier bills their plan).
+      const perMinUsd = fromOwn ? round2(deps.own!.perMinUsd()) : round2(BASE_PER_MIN + (sur ?? 0.3));
       const costUsd = round2(perMinUsd * minutes);
       const spent = spentToday();
       if (spent + costUsd > cap()) return { ok: false, reason: "cap", error: `Today's calls would pass the $${cap()} daily cap ($${spent} so far, about $${costUsd} for this one). Tell the user in one line; it can wait until tomorrow.` };
@@ -702,6 +751,8 @@ export function openPhone(deps: PhoneDeps): Phone {
       // D208: only the courtesy hours pushed a call the owner just asked for: the card offers Call now.
       const canNow = waits && present && !own && wait?.why === "callee" && nextAllowed(now, deps.quiet(), zones, { present, own, courtesy: false }) === now;
       const note = to.startsWith("+1") && req.person && !own ? w.us : undefined;
+      const ownNo = fromOwn ? deps.own!.number() : undefined;
+      const ownModel = fromOwn ? deps.own!.model() : undefined;
       const plan: CallPlan = {
         to,
         name: clip(name, 80),
@@ -710,8 +761,10 @@ export function openPhone(deps: PhoneDeps): Phone {
         ...(req.keep?.trim() ? { keep: clip(req.keep.trim(), 300) } : {}),
         mustNot: (req.mustNot ?? []).map((s) => clip(String(s), 200)).slice(0, 8),
         voice,
-        from: "provider",
+        from: fromOwn ? "own" : "provider",
         provider: f.provider.name,
+        ...(ownNo ? { fromNumber: ownNo } : {}),
+        ...(ownModel ? { fromPhone: ownModel } : {}),
         minutes,
         costUsd,
         perMinUsd,
@@ -724,7 +777,8 @@ export function openPhone(deps: PhoneDeps): Phone {
       if (at === undefined) return { ok: false, reason: "hours", error: "No hour in the next three days is outside the user's quiet hours and inside 9:00–20:00 where the callee is. Say so in one line." };
       // A card that offers Call now keeps the time in Ducter (no scheduledAt): Go waits here for the
       // hour, Call now confirms at once. Otherwise the provider holds the time (D193 (5)).
-      const held = !!plan.at && !canNow;
+      // D218: the own phone keeps no schedule: Ducter holds the hour for it.
+      const held = !!plan.at && !canNow && !fromOwn;
       const out = await f.provider.draft(io, {
         to,
         voice,
@@ -737,6 +791,7 @@ export function openPhone(deps: PhoneDeps): Phone {
         mustNot: [...plan.mustNot, ...r.mustNot],
         context: r.context,
         ...(req.language ? { language: req.language } : {}),
+        ...(req.forName?.trim() ? { forName: req.forName.trim() } : {}),
       });
       return after(out, req, plan, { held, zones });
 
@@ -793,7 +848,7 @@ export function openPhone(deps: PhoneDeps): Phone {
         if (c.decisionId && !answered.has(c.decisionId)) deps.log.append({ stream: "channel", origin: "user", kind: "decision_resolved", body: { decisionId: c.decisionId, option: "hold", by: "user" } });
         return true;
       }
-      const f = await resolve().catch(() => undefined);
+      const f = await resolveFor(c.connectionId).catch(() => undefined);
       const id = c.ref?.call ?? c.ref?.draft;
       if (f && id) await f.provider.cancel(ioOf(f), id).catch(() => false);
       if (c.state === "waiting") return void put(c, { state: "cancelled", by, endedAt: new Date(clock.now()).toISOString() }), true;

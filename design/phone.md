@@ -1,4 +1,5 @@
-# Phone calls (D189, D193, D208, D215)
+
+# Phone calls (D189, D193, D208, D215, D218)
 
 **Status: settled and built (2026-11-11); the author's first real calls the same day changed the
 hours and the outcomes (D208).** The author: "第一性原理 做决定", D189's defaults taken; what changed
@@ -6,7 +7,7 @@ on reflection is in D193, what the first real test changed in D208. Evidence:
 `research/53-phone-calls-tuwa.md` (§8: Tuwa's real tool list, read with the author's account).
 Words: the glossary in `product-model.md` §1 ("a phone call").
 
-Ducter places phone calls for the owner to get things done: book a table, ask a clinic for a slot,
+Ducter places phone calls for the owner to get things done (through Tuwa, or from the owner's own phone and number, §10): book a table, ask a clinic for a slot,
 chase a supplier, confirm a delivery. The voice on the line is **Ducter's own** (the partner's name,
 a Tuwa voice) or **the owner's own**, enrolled on Tuwa's page. The first provider is Tuwa (tuwa.ai),
 reached as a connection; the design names "a calling connection" so another provider can take the
@@ -141,7 +142,7 @@ approved 3 times in 14 days.
 
 ## 7. Not in v1
 
-Inbound calls; calls from the owner's own number; listening live; recordings; another provider;
+Inbound calls; listening live; recordings; a third provider;
 Ducter calling the owner as the top escalation rung; keeping a call in Mem from its result.
 
 ## 8. Built
@@ -163,3 +164,44 @@ kept in the repo, so the outcome is read from the words (`outcomeOf`). Check:
 `tuwa_confirm`'s answer, `tuwa_call_status`'s status words and `pendingQuestion` (its token, a yes/no
 marker, its choices), `tuwa_call_result`'s `outcome` / `outcomeSummary` / transcript / duration / cost,
 `tuwa_settings`'s personal-voice field, and that `scheduledAt` with `+00:00` holds the call.
+
+## 10. From the owner's own number (D218)
+
+**Status: built 2026-11-12, verified with fakes and the Android emulator only** (`research/63-own-number-calls.md`).
+The owner's own Android phone and SIM place the call; Ducter speaks through a real-time voice model
+on the computer the phone is plugged into. It reaches anywhere the SIM can call, mainland China
+included, and the callee sees the owner's own number.
+
+| | Heavy multi-agent developer | Consumer personal-AI user | Fresh user |
+|---|---|---|---|
+| **Who** | Abroad, needs a Shanghai restaurant; or a supplier who only answers known numbers | In mainland China, where no AI calling service is open to individuals | Has an old Android in a drawer |
+| **Before** | "Tuwa can't call there" | Nothing exists for them | Doubt it's for them |
+| **After** | The call goes out as them, said as their AI assistant | Same, on their own SIM | Five ticks on one card, then the first call |
+| **How it starts** | Settings › Accounts › **用你自己的号码打 / Call from your own number**, the steps tick themselves off; or "用我自己的号码打给…" before setup: the partner says where | The same | The same, with the parts list and drawing |
+
+**Pieces** (`packages/core/src/phone-own/`): `adb.ts` (the phone: six things only; argv templates,
+never a shell line), `audio.ts` (the computer end of the cable through ffmpeg; a loopback for
+tests), `voice.ts` (one Realtime-protocol client for OpenAI `gpt-realtime-2.1` and Qwen-Omni-Realtime:
+the plan as instructions, tools ask_owner / press_keys / end_call, barge-in by truncate, the cost from
+reported usage), `index.ts` (the setup checklist, the AI-free test call, the call loop, the
+`CallProvider`). `phone.ts` picks the line per call (D218 (4)), holds the hour itself for the own
+phone (it has no schedule), waits while the phone is busy, polls it every 1.5 s.
+
+**One call:** the Go card as §3, From = **你的号码 … (Pixel 7)**, About = the voice only. On Go:
+the voice session opens (warm), adb dials, the call state is read every 0.7 s; ringing past 55 s
+hangs up (no answer); answered → the line's sound flows to the model, which opens with the AI line
+(after the callee's hello, or 1.2 s); a question → the question card (90 s, then the call-back
+line); end_call → the last words play out, adb hangs up; the line dropped without end_call → one
+short text turn asks the model for the outcome (uncertain unless clearly given). The 17-minute stop,
+the cap ($: the voice estimate), quiet hours and the callee's hours are §6's.
+
+**Rails added** (D218 (5)): six adb actions only, never an incoming call answered, one call at a
+time, waits for the owner's own call, 10 a day, nothing recorded, caller ID shown, local only.
+
+**Checks** (`packages/core/test/own-phone.test.ts`): the parsers on dumps as Android printed them;
+the adb allow-list; a full call against a fake phone, a loopback cable and a fake Realtime server
+over a real WebSocket (the question card answered, the outcome, the transcript, the hang-up); the
+owner's own call holding a Go; hanging up from the app; the line choice. Opt-in against the
+emulator: `DUCTER_OWN_PHONE_EMULATOR=emulator-5580` (with `DUCTER_PHONE_ADB_PORT=5037` when it registered with the default adb server; Ducter otherwise uses its own phone's adb server, D217) (dial, idle → dialing → active, hang up → idle).
+Mac `apps/desktop/internal/views/ownphone_test.go`; demo home `apps/web/demo-own-phone.ts`. Shots:
+`.shots/own-number/`.

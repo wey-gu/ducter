@@ -264,6 +264,9 @@ class AppState {
   /** D193: the device sign-in in progress (or how it just ended), and the phone card's last refusal. */
   signIn?: import("@ducter/protocol").SignInView;
   voiceAnswer?: string;
+  /** D218: the own-number card, and its last refusal (a word: number, key, busy). */
+  ownPhone?: import("@ducter/protocol").OwnPhoneView;
+  ownAnswer?: string;
   /** D166: 看了哪些 / What it read today, by connection, once asked for. */
   connReads = new Map<string, import("@ducter/protocol").ReadLine[]>();
   route: Route = { name: "conv" };
@@ -565,7 +568,8 @@ class AppState {
     if (f.t === "open_result") return;
     // D214: a workbench answer (workbench.tsx asked for it).
     if (f.t === "wb") return onWbFrame(f as Parameters<typeof onWbFrame>[0]);
-    if (f.t === "connections") return (this.connections = f.connections), (this.oo = f.oo), this.changed();
+    if (f.t === "connections") return (this.connections = f.connections), (this.oo = f.oo), (this.ownPhone = f.ownPhone), this.changed();
+    if (f.t === "own_phone_result") return (this.ownAnswer = f.reason ?? "phone"), this.changed();
     if (f.t === "connection_reads") return void (this.connReads.set(f.id, f.reads), this.changed());
     // D193: the device sign-in: the code and link, then done (a toast) or why not.
     if (f.t === "connection_signin") {
@@ -1230,6 +1234,12 @@ class AppState {
   }
   phoneCap(usd: number) {
     this.send({ t: "phone_cap", usd });
+  }
+  /** D218: a step on the own-number card (the key goes to the home only). */
+  ownPhoneAct(a: import("@ducter/protocol").OwnPhoneAction) {
+    this.ownAnswer = undefined;
+    this.send({ t: "own_phone", ...a } as ClientFrame);
+    this.changed();
   }
   callCancel(callId: string) {
     this.send({ t: "call_cancel", callId });

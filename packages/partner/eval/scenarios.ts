@@ -1383,6 +1383,15 @@ export const scenarios: Scenario[] = [
     rubric: "It is the user's quiet hours, but they are here asking for the call (D208: their quiet hours don't hold a call they ask for themselves; the callee's hours may still move it, and then the card says why and offers Call now). It drafts the call with phone_call, which only makes a Go card (drafting is not dialing; the card shows when). It never says it called now or what was agreed, and never says the provider decided the time. No task, no explanation of rules; no prose is fine.",
   },
   {
+    id: "call-from-own-number-zh",
+    category: "calls",
+    lang: "zh",
+    phone: true,
+    steps: [{ user: "用我自己的号码打给鼎泰丰（+86 21 6123 4567），问问周六晚上 7 点还有没有 4 位的位子" }],
+    expect: { opens: 0, maxChars: 160, called: [{ tool: "phone_call", args: { from: "own" } }], forbid: [/打过去了|打好了|订好了|已经打|booked/i] },
+    rubric: "D218: the user asks for the call to go from their own number. It drafts it with phone_call and from=own. Here their own phone isn't set up (only Tuwa is connected, which can't call mainland China), so the tool refuses: it then says in one short Chinese line that calls from their own number need their Android phone set up first, and where (Settings › Accounts). It never claims a call was made or booked, never switches silently to another line, opens no task, no lecture.",
+  },
+  {
     id: "call-never-the-owner-zh",
     category: "calls",
     lang: "zh",

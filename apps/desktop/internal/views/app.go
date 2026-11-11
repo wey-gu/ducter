@@ -218,6 +218,7 @@ type App struct {
 	// partner and settings are the Partner page's and Settings' own state.
 	partner  partnerState
 	phone    phoneState // D193: the phone card, the sign-in, a call's cards
+	own      ownState   // D218: the own-number card
 	settings settingsState
 	// title is the title moment's own state (D87); PlayTitle starts its
 	// sound (nil: silent, as in tests).

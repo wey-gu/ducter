@@ -13,7 +13,7 @@ export * from "./media.ts";
 export * from "./phone-use.ts";
 import type { PhoneAsk, PhoneClientFrame, PhoneInstallStep, PhoneServerFrame } from "./phone-use.ts";
 import type { MediaRef } from "./media.ts";
-import type { CallBody, CallPlan, CallView, PhoneView, SignInView } from "./phone.ts";
+import type { CallBody, CallPlan, CallView, OwnPhoneAction, OwnPhoneView, PhoneView, SignInView } from "./phone.ts";
 import type { FindKind, FindRung, FindState, FindView, ProactiveAsk, ProactiveMode, ReadLine, SourceLook } from "./proactive.ts";
 import type { BodyWhy, Candidate, RuleView, TaskBody, TaskNeeds } from "./loadout.ts";
 
@@ -775,6 +775,8 @@ export type ClientFrame =
   | { t: "call_now"; callId: string }
   // D193, the phone card: Ducter's daily cap for calls (it sets the provider's own too; raising is the owner's tap).
   | { t: "phone_cap"; usd: number }
+  // D218, the own-number card: set up and use the owner's own Android phone and SIM for calls.
+  | ({ t: "own_phone" } & OwnPhoneAction)
   // D165: the person's answer in a note: a reaction to a find, or an ask (first_look, keep_note).
   | { t: "find_react"; findId: string; reaction: "useful" | "mute" }
   | { t: "proactive_answer"; noteId: string; ask: "first_look" | "keep_note"; yes: boolean }
@@ -961,7 +963,9 @@ export type ServerFrame =
   | { t: "settings"; settings: Settings; mem: MemView; brainNow?: BrainNow; forgot?: { seq: number; how: "mem" | "hidden" }; bridge?: BridgeView }
   | { t: "rules"; rules: RuleView[] }
   | { t: "candidates"; taskId: string; candidates: Candidate[] }
-  | { t: "connections"; connections: ConnectionView[]; oo: OoDetect }
+  | { t: "connections"; connections: ConnectionView[]; oo: OoDetect; ownPhone?: OwnPhoneView }
+  // D218: an own-number step the home refused (number: not a full number; key: not a key; busy: a call is on).
+  | { t: "own_phone_result"; ok: false; action: string; reason?: string }
   | { t: "connection_reads"; id: string; reads: ReadLine[] }
   // readable (D158): what the added connection can read now; [] = connected, but no account there yet.
   | { t: "connection_result"; ok: boolean; id?: string; reason?: ConnectionReason; readable?: OoApp[] }

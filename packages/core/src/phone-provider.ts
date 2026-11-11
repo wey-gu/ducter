@@ -28,6 +28,8 @@ export interface DraftInput {
   mustNot: string[]; // the owner's and Ducter's, together
   context: { text: string; source: string }[];
   language?: string;
+  /** D218: whom the call is for, as they'd be named on the line (the own-number voice's prompt). */
+  forName?: string;
 }
 
 export type ProviderFail = { ok: false; reason: "payment" | "balance" | "cap" | "provider"; error: string; payUrl?: string };

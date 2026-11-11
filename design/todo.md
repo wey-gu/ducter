@@ -130,13 +130,12 @@ SSH-tunnel paths, desktop connect card, worker enrollment, presence and task pla
 - [ ] Tasks can write outside their place (one used `/tmp/flk`); no sandbox on the Mac.
 - [ ] **D198 on the phone and web:** the opened task shows no working-copy path there (the Mac
       app does; there is nothing to open it with). Trigger: someone wants to copy it from the phone.
-- [ ] **D201: con and Rex can't be opened at a folder on macOS yet**, so 打开 leaves them out
-      (con: nowledge-co/con-terminal#557) until their Info.plist claims folders. For con (ours): add a `CFBundleDocumentTypes` entry
-      for `public.folder` and handle the open (`application:openURLs:`) as a new window at that
-      directory, the macOS twin of its Linux `--working-directory`; Ducter then lists it with no
-      change. Rex's bundle id (`com.superlogical.rex`) is inferred; check it on an installed
-      copy. Warp's URI is documented, not run here. Trigger: con or Rex ships folder opening, or
-      someone with Warp tries it.
+- [ ] **D201: Rex can't be opened at a folder on macOS yet**, so 打开 leaves it out until its
+      Info.plist claims folders. Its bundle id (`com.superlogical.rex`) is inferred; check it on an
+      installed copy. Warp's URI is documented, not run here. (con ships it from 0.1.0-beta.177,
+      nowledge-co/con-terminal#557: its Info.plist claims `public.folder`, so Ducter lists it with no
+      change; seen in the release's plist, not yet on an updated copy.) Trigger: Rex ships folder
+      opening, or someone with Warp tries it.
 - [ ] The honesty guard is a regex over zh/en wording; it can miss paraphrases.
 - [ ] Measure partner latency on opus (live runs used sonnet only).
 
